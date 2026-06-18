@@ -24,9 +24,18 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/TijjAce/maitrize-tauri/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc4OURFOEJFNTlFNjlFOTcKUldTWG51Wlp2dWlkZUFWS0p4bG1nTkFxSk55UzNyNTNCMFZJSE5aZGVFbFZJKzVLdFdwZWozSGkK"
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "category": "Education",
     "shortDescription": "Outil de préparation et de suivi de classe pour enseignants.",
     "longDescription": "Maitrize V2 aide les enseignants à préparer leurs séquences et séances, organiser le planning, suivre les élèves, gérer le matériel et la progression annuelle.",

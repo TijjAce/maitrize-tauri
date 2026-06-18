@@ -19,6 +19,17 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         // Fenêtre opaque standard (pas d'API privée macOS) → compatible
         // Mac App Store / Microsoft Store.
+        .setup(|app| {
+            // Mises à jour automatiques (distribution directe hors stores).
+            // Plugins desktop uniquement.
+            #[cfg(desktop)]
+            {
+                app.handle()
+                    .plugin(tauri_plugin_updater::Builder::new().build())?;
+                app.handle().plugin(tauri_plugin_process::init())?;
+            }
+            Ok(())
+        })
         .manage(Db(Mutex::new(conn)))
         .invoke_handler(tauri::generate_handler![
             // Projets
