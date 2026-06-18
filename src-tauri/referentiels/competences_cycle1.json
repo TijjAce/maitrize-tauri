@@ -1,0 +1,1948 @@
+{
+  "cycle": 1,
+  "titre": "Cycle 1 – École maternelle",
+  "domaines": [
+    {
+      "id": "D1",
+      "titre": "1. Mobiliser le langage dans toutes ses dimensions",
+      "sousDomaines": [
+        {
+          "id": "D1.SD1",
+          "titre": "Acquérir le langage oral",
+          "competencesGenerales": [
+            {
+              "id": "D1.SD1.CG1",
+              "titre": "Enrichir son vocabulaire",
+              "competences": [
+                {
+                  "texte": "Comprendre les mots des corpus enseignés",
+                  "id": "5367357c",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Mémoriser les mots des corpus enseignés",
+                  "id": "0c512b56",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Réemployer les mots de corpus enseignés",
+                  "id": "d43ae7c6",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Organiser les mots en catégorie et en réseau",
+                  "id": "fb963f8b",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Comprendre les mots des corpus enseignés",
+                  "id": "d4723b93",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Mémoriser les mots des corpus enseignés",
+                  "id": "e412548a",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Réemployer les mots de corpus enseignés",
+                  "id": "f59cfce5",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Organiser les mots en catégorie et en réseau",
+                  "id": "a91d1283",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Comprendre les mots des corpus enseignés",
+                  "id": "f01ccbad",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Mémoriser les mots des corpus enseignés",
+                  "id": "3b0cbe16",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Réemployer les mots de corpus enseignés",
+                  "id": "2e15c896",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Organiser les mots en catégorie et en réseau",
+                  "id": "f2b0f32b",
+                  "niveau": "GS"
+                }
+              ]
+            },
+            {
+              "id": "D1.SD1.CG2",
+              "titre": "Développer sa syntaxe",
+              "competences": [
+                {
+                  "texte": "Diversifier les pronoms employés",
+                  "id": "90921345",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Construire à l'oral un système de temps de plus en plus efficace",
+                  "id": "51228ca7",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Formuler des énoncés de plus en plus complexes",
+                  "id": "e24c2e9c",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Diversifier les pronoms employés",
+                  "id": "af30df22",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Construire à l'oral un système de temps de plus en plus efficace",
+                  "id": "453c1e98",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Formuler des énoncés de plus en plus complexes",
+                  "id": "674a20c7",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Diversifier les pronoms employés",
+                  "id": "6091249b",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Construire à l'oral un système de temps de plus en plus efficace",
+                  "id": "d3b4ebc7",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Formuler des énoncés de plus en plus complexes",
+                  "id": "542b7e81",
+                  "niveau": "GS"
+                }
+              ]
+            },
+            {
+              "id": "D1.SD1.CG3",
+              "titre": "Articuler distinctement",
+              "competences": [
+                {
+                  "texte": "Articuler distinctement les couples de consonnes proches suivants: t/k, f/s, m/n",
+                  "id": "c5c68786",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Distinguer et produire correctement les nasales: é/in, a/an, o/on",
+                  "id": "b52c1823",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Articuler distinctement les couples de consonnes proches suivants: f/v, s/z, p/b, t/d, k/g",
+                  "id": "8ac0a093",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Prononcer correctement les couples de consonnes proches suivants: ch/s, ch/j, ch/z",
+                  "id": "81846998",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Prononcer correctement les doubles consonnes: br/cr/bl/pl/sl",
+                  "id": "5a8c4c81",
+                  "niveau": "GS"
+                }
+              ]
+            },
+            {
+              "id": "D1.SD1.CG4",
+              "titre": "Produire des discours variés",
+              "competences": [
+                {
+                  "texte": "Entrer en communication verbale avec un adulte ou un autre élève",
+                  "id": "d8861f95",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Dire ce qu'on fait",
+                  "id": "8f0f9812",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Dire ce qu'on fait et, peu à peu, ce qu'on va faire",
+                  "id": "30d52099",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Prendre part à l'ovalisation d'un court texte mémorisé",
+                  "id": "6a7995bb",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Dire ce qu'on va faire",
+                  "id": "969af5b6",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Dire comment on a fait ou comment on va faire",
+                  "id": "c5590282",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Prendre part à l'oralisation d'un court texte mémorisé",
+                  "id": "fd99b067",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Participer à des échanges en restant dans le propos",
+                  "id": "58d0fe03",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Décrire une action ou une activité qui a été menée par un autre élève",
+                  "id": "5b73df1a",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Se faire comprendre, par le truchement du langage, d'un adulte qui ne connait rien à la situation évoquée",
+                  "id": "50ff297d",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Participer à une conversation avec un adulte ou des pairs et reformuler son propos s'il n'a pas été compris",
+                  "id": "56eea753",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Emettre une hypothèse",
+                  "id": "187e5ffb",
+                  "niveau": "GS"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "D1.SD2",
+          "titre": "Acquérir le langage oral",
+          "competencesGenerales": [
+            {
+              "id": "D1.SD2.CG1",
+              "titre": "Acquérir les habilités phonologiques et le principe alphabétique",
+              "competences": [
+                {
+                  "texte": "Identifier les sons de la langue, lors de situations d'écoute proposées par le professeur",
+                  "id": "8f9db7bd",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "identifier un mot donné à l'oral dans une phrase, dans un texte",
+                  "id": "bf29406f",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Scander les syllabes d'un mot",
+                  "id": "2dd81a6c",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Dire des comptines courtes comprenant des phonèmes proches",
+                  "id": "0c05e302",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Reconnaitre et nommer certaines lettres de son prénom écrit en capitales",
+                  "id": "2ca12b6c",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Utiliser la voix parlée, chantée et les possibilités vocales (imitation de sons, onomatopées) afin d'expérimenter différents sons",
+                  "id": "9f9a3e7a",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Entendre, discriminer des phonèmes",
+                  "id": "1b52ed9c",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Scander les syllabes d'un mot",
+                  "id": "7f68448e",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Manipuler les syllabes d'un mot (ajout, suppression, permutation, répétition, fusion, substitution)",
+                  "id": "b88dda48",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Dire des comptines courtes comprenant des phonèmes proches",
+                  "id": "bb4f05c9",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Nommer les lettres de son prénom et quelques lettres de mots connus (le professeur nomme systématiquement les lettres)",
+                  "id": "d02023e7",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Connaitre la correspondance entre les lettres scriptes, majuscules et minuscules et les lettres cursives minuscules",
+                  "id": "32938944",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Donner les valeurs sonores de quelques lettres de mots simples connus",
+                  "id": "a1376b81",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Utiliser les possibilités sonores de la voix",
+                  "id": "06cd29ac",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Augmenter sa mémoire auditive et sa capacité de concentration",
+                  "id": "b7632b0a",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Supprimer,ajouter,remplacer,inverser,substituer,fusionner les syllabes d'un mot",
+                  "id": "39b0f170",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Repérer et produire des rimes et des assonances.",
+                  "id": "2cedb18d",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Entendre,disciminer,manipuler des phonèmes",
+                  "id": "e9bb339c",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Connaitre le nom des lettres de l'alphabet",
+                  "id": "8e27c3a3",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Connaitre les différentes graphies d'une même lettre (majuscule lettre capitale; minuscule scriptes; cursives)",
+                  "id": "9edbf5c3",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Distinguer des lettres visuellement proches (b/d , c/e/o , p/q) grâce à leur écriture cursive et les nommer correctement",
+                  "id": "4f9d6551",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Connaitre le nom des lettres de l'alphabet et leur valeur sonore hormis les occlusives",
+                  "id": "fd671726",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Discriminer des mots auditivement proches",
+                  "id": "3200eced",
+                  "niveau": "GS"
+                }
+              ]
+            },
+            {
+              "id": "D1.SD2.CG2",
+              "titre": "S'éveiller à la diversité linguistique",
+              "competences": [
+                {
+                  "texte": "écouter des chants, des comptines, des histoires connues dans des versions en français et en langue étrangère",
+                  "id": "82c20a74",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Participer à des jeux dans une autre langue: jeux de doigts, rondes, jeux dansés, mimes, jeux de cartes",
+                  "id": "6bd013f2",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Comparer des histoires lues en français et dans une autre langue",
+                  "id": "34ab8e3d",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Participer à des jeux dans une autre langue: jeux de doigts, rondes, jeux dansés, mimes, jeux de cartes",
+                  "id": "c4459348",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Comparer des histoires lues en français et dans une autre langue",
+                  "id": "e663e96e",
+                  "niveau": "GS"
+                }
+              ]
+            },
+            {
+              "id": "D1.SD2.CG3",
+              "titre": "écouter et comprendre différentes formes d'écrits",
+              "competences": [
+                {
+                  "texte": "repérer les outils fonctionnels utilisés quotidiennement en classe (étiquette du prénom, emploi du temps, affiches, etc",
+                  "id": "e66d3c13",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Reconnaitre quelques écrits utilisés et produits en classe (comptines, recettes, carnet de lecteur)",
+                  "id": "0c2692af",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Reconnaitre un personnage, le nommer et le situer dans les illustrations",
+                  "id": "38b5584d",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Comprendre des histoires où l'enchainement des actions peut être rattaché à des expériences connues de la vie quotidienne",
+                  "id": "e98ce7da",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Reconnaitre, nommer et identifier la fonction de différents écrits rencontrés dans la vie courante",
+                  "id": "4d1e7461",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Prendre conscience de la notion de destinataire et du contenu de la requête addresée par un écrit",
+                  "id": "a57f0098",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Identifier et utiliser quotidiennement des outils fonctionnels pour se repérer, s'organiser, ranger",
+                  "id": "aae0d236",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Identifier et décrire le personnage principal et les personnages secondaires",
+                  "id": "a96539f2",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Comprendre des histoires dont les actions sont organisées autour d'une structure répétitive (rencontres successives)",
+                  "id": "7fc15db3",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Commencer à comprendre des informations implicites (émotions, états et sentiments des personnages)",
+                  "id": "00e38059",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Différencier les types d'écrits et associer un écrit à un projet d'écriture ou de communication",
+                  "id": "f566fd75",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Repérer et dégager la structure et l'organisation (mise en page, typographie) de formes d'écrits fréquemment utilisés en classe",
+                  "id": "bb6563d4",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Construire les caractéristiques des personnages archétypaux",
+                  "id": "6c6432a6",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Comprendre des histoires et l'enchainement des actions est lié au destin des personnages centraux ou secondaires",
+                  "id": "3d949718",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Comprendre les émotions, les intentions et les sentiments qui animent les personnages",
+                  "id": "33692ac7",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "établir un lien entre la lecture effectuée et sa propre expérience.",
+                  "id": "a2a5613f",
+                  "niveau": "GS"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "D1.SD3",
+          "titre": "Passer de l'oral à l'écrit: se préparer à apprendre à écrire",
+          "competencesGenerales": [
+            {
+              "id": "D1.SD3.CG1",
+              "titre": "Apprendre le geste d'écriture",
+              "competences": [
+                {
+                  "texte": "Participer aux activités de motricité générale, de motricité fine et aux exercices de graphismes",
+                  "id": "713982c7",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Guider son geste par le regard lorsqu'il trace ou écrit",
+                  "id": "66a07bb1",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Prendre des repères spatiaux sur le support utilisé pour tracer",
+                  "id": "0ed5e19d",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Adopter une posture adaptée au geste d'écriture",
+                  "id": "4013c4a5",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Adopter une préhension correcte du stylo et s'entrainer à ne pas le lever en écrivant",
+                  "id": "0f68eb2c",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Utiliser de façon coordonnée les qu'âtres articulations qui servent à tenir et guider le crayon(épaule, coude, poignet, doigts)",
+                  "id": "b48838ca",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Tracer des lettres capitales",
+                  "id": "cdad77ee",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "S'initier aux tracés de l'écriture cursive",
+                  "id": "91c247c7",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Tenir correctement son stylo par la pince des doigts et utiliser de façon coordonnée les quatres articulations",
+                  "id": "cf33b83e",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "travailler la ligature entre deux lettres",
+                  "id": "06d213e4",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "GSTracer des lettres en écriture cursive, les enchainer",
+                  "id": "5cc66390"
+                }
+              ]
+            },
+            {
+              "id": "D1.SD3.CG2",
+              "titre": "Produire de premiers écrits",
+              "competences": [
+                {
+                  "texte": "Percevoir que l'écrit encode l'oral",
+                  "id": "a33f7188",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Utiliser un support écrit connu",
+                  "id": "25a04f37",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Mimer la posture et les gestes d'écriture de l'adulte lors de la production de traces qui s'apparent à de l'écriture",
+                  "id": "542aad52",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Tracer volontairement des signes abstraits dont on comprend qu'il ne s'agit pas de dessins, mais de lettres",
+                  "id": "eee1575b",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Comprendre que lorsque l'adulte lit un même texte plusieurs fois, ce qu'il y a écrit est toujours identiques",
+                  "id": "6969d27f",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Comprendre que l'écrit code des sons",
+                  "id": "170300f9",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Proposer au PE, le contenu d'un court message, stabiliser un énoncé oral et le mémoriser pour pouvoir ensuite le dicter",
+                  "id": "3901d191",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Comparer la longueur d'un texte écrit et la durée du texte entendu",
+                  "id": "11f960b4",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Savoir que le sens de la lecture est de gauche à droite et de haut en bas",
+                  "id": "a66d1771",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Chercher parmi les outils à sa disposition des modèles qui seront réutilisés dans un essai d'écriture",
+                  "id": "27b9dae2",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "segmenter l'oral en mots, les mots en syllabes, quelques syllabes en phonèmes",
+                  "id": "aa0aeb6f",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Comprendre que l'écrit encode l'oral et que les sons de la langue sont codés par des lettres",
+                  "id": "f1c6a104",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Suivre la trace écrite des yeux lors d'une relecture par l'adulte d'un message produit lors d'une dictée à l'adulte",
+                  "id": "cd11ab12",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Mémoriser la graphie d'un mot transparent à l'aide la conscience phonologique et la retranscrire sur un support",
+                  "id": "ce89e0dd",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Se repérer dans l'alphabet pour retrouver l'écriture d'une lettre nécessaire pour produire un écrit",
+                  "id": "dd7ba5cb",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Reinvestir ses premières connaissances relatives au principe alphabétique pour produire un écrit",
+                  "id": "b4152a3a",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Mémoriser l'écriture de mots transparents ou de syllabes connues pour les réutiliser en production d'écrit",
+                  "id": "ca6f4a98",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Comprendre qu'il existe une norme pour écrire: ponctuation, majuscule, mise en page, etc",
+                  "id": "9f184e87",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Persever pour mener la production d'écrit à son teme: préparation, énonciation et révision",
+                  "id": "acb7f72f",
+                  "niveau": "GS"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "D2",
+      "titre": "2. Agir, s'exprimer, comprendre à travers l'activité physique",
+      "sousDomaines": [
+        {
+          "id": "D2.SD1",
+          "titre": "Agir dans l'espace, dans la durée et sur les objets",
+          "competences": [
+            {
+              "texte": "Courir, sauter, lancer de différentes façons, dans des espaces et avec des matériels variés, dans un but précis",
+              "id": "d315cf2e"
+            },
+            {
+              "texte": "Ajuster et enchaîner ses actions et ses déplacements en fonction d'obstacles à franchir ou de la trajectoire d'objets sur lesquels agir",
+              "id": "6c389982"
+            },
+            {
+              "texte": "S'engager dans l'activité dans la durée et explorer différents possibles, à partir d'objets manipulables",
+              "id": "79151cca"
+            },
+            {
+              "texte": "Adapter son geste pour donner des trajectoires différentes à des projectiles variés et répondre aux consignes données",
+              "id": "2ac49c5c"
+            },
+            {
+              "texte": "Ajuster ses actions et ses déplacements en fonction de la trajectoire de l'objet qu'un autre lui envoie",
+              "id": "ebd41431"
+            },
+            {
+              "texte": "Trouver des manières de faire efficaces pour mieux atteindre les buts proposés et chercher à progresser en fonction des effets ou des scores obtenus",
+              "id": "8fafc4cd"
+            },
+            {
+              "texte": "Investir un espace aménagé et explorer différents cheminements ou différentes actions",
+              "id": "c64e6db6"
+            },
+            {
+              "texte": "Proposer différentes solutions ou reproduire celles d'un autre, sur un parcours orienté, pour s'adapter aux obstacles rencontrés",
+              "id": "abce87a0"
+            },
+            {
+              "texte": "Enchainer, dans la continuité, une succession d'actions différentes en respectant les contraintes de réalisation ou les critères de réussite proposés",
+              "id": "00f249be"
+            },
+            {
+              "texte": "Anticiper et mettre en oeuvre un projet d'action en fonction des effets ou des résultats obtenus afin d'atteindre le but recherché",
+              "id": "af031b66"
+            }
+          ]
+        },
+        {
+          "id": "D2.SD2",
+          "titre": "Adapter ses équilibres et ses déplacements à des environnements ou des contraintes variées",
+          "competences": [
+            {
+              "texte": "Ajuster et enchaîner ses actions et ses déplacements en fonction d'obstacles à franchir",
+              "id": "56b022c6"
+            },
+            {
+              "texte": "Se déplacer avec aisance et en sécurité dans des environnements variés, naturels ou aménagés",
+              "id": "ba90bc72"
+            },
+            {
+              "texte": "S'engager dans l'activité et élaborer des itinéraires ou des actions en réponse à un aménagement donné",
+              "id": "16bfbca9"
+            },
+            {
+              "texte": "Oser proposer, reproduire ou inventer des actions nouvelles, remettant en jeu les repères habituels",
+              "id": "99a0462e"
+            },
+            {
+              "texte": "Se risquer à des déséquilibres afin de réaliser des « acrobaties » et montrer à d'autres ses trouvailles, ses propres « exploits »",
+              "id": "d5ddc928"
+            },
+            {
+              "texte": "Anticiper, réaliser, montrer à d'autres un projet de parcours, constitué de l'enchainement d'une courte séquence d'actions, se déroulant dans un espace orienté",
+              "id": "6fb408f0"
+            },
+            {
+              "texte": "Utiliser des engins inhabituels, en cherchant à réguler les déséquilibres que ceux-ci occasionnent",
+              "id": "c198c028"
+            },
+            {
+              "texte": "Trouver des moyens efficaces d'actions et de propulsion pour se déplacer dans un espace aménagé",
+              "id": "0db259f1"
+            },
+            {
+              "texte": "Piloter des engins, en prenant des repères sur le milieu, afin de réaliser des itinéraires précis, des trajectoires prévues",
+              "id": "87114e6d"
+            },
+            {
+              "texte": "Prélever des indices dans un espace plus large ou inconnu, prendre en compte des moyens de guidage ou d'orientation pour anticiper et réaliser un projet d'action",
+              "id": "d901ae97"
+            },
+            {
+              "texte": "Entrer dans l'eau et participer aux jeux proposés",
+              "id": "8bac0d22"
+            },
+            {
+              "texte": "S'immerger totalement et ouvrir les yeux dans l'eau",
+              "id": "3c7267e6"
+            },
+            {
+              "texte": "Abandonner les appuis plantaires pour se déplacer par appuis manuels ou se laisser flotter",
+              "id": "ddc68613"
+            },
+            {
+              "texte": "Se déplacer, tête dans l'eau, en s'aidant des bras et des jambes et explorer le volume aquatique",
+              "id": "8cccbdbc"
+            },
+            {
+              "texte": "Communiquer avec les autres au travers d'actions à visée expressive ou artistique",
+              "id": "c38edefb"
+            }
+          ]
+        },
+        {
+          "id": "D2.SD3",
+          "titre": "Collaborer, coopérer, s'opposer",
+          "competences": [
+            {
+              "texte": "Construire et conserver une séquence d'actions et de déplacements, en relation avec d'autres partenaires, avec ou sans support musical",
+              "id": "ee5c7f8a"
+            },
+            {
+              "texte": "Coordonner ses gestes et ses déplacements avec ceux des autres, lors de rondes et jeux chantés",
+              "id": "9bebdb8a"
+            },
+            {
+              "texte": "Explorer différents possibles à partir d'inducteurs variés, matériels ou imaginaires",
+              "id": "a448716a"
+            },
+            {
+              "texte": "Transformer son mouvement par l'exploration de contrastes de vitesses, d'énergies, de niveaux, de dissociations",
+              "id": "a8576445"
+            },
+            {
+              "texte": "Inventer, apprendre et reproduire une courte phrase dansée, constituée d'une séquence d'actions et de déplacements qu'il a pu globalement mémoriser",
+              "id": "4d9cda65"
+            },
+            {
+              "texte": "Inscrire ses actions et ses déplacements en relation avec les autres, dans un espace scénique commun orienté, dans le cadre d'un projet présenté à des spectateurs",
+              "id": "16012f10"
+            },
+            {
+              "texte": "Accorder ses gestes et ses déplacements avec ceux des autres pour évoluer collectivement selon une disposition spatiale simple",
+              "id": "218bb633"
+            },
+            {
+              "texte": "Anticiper les changements d'orientation ou de mode de groupement en fonction du support musical, tout en respectant la disposition spatiale",
+              "id": "2fc612aa"
+            },
+            {
+              "texte": "Repérer la chronologie des actions ou des rôles dans différentes danses collectives, montrées ou transmises à d'autres",
+              "id": "b56dde90"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "D3",
+      "titre": "3. Agir, s'exprimer, comprendre à travers les activités artistiques",
+      "sousDomaines": [
+        {
+          "id": "D3.SD1",
+          "titre": "Les productions plastiques et visuelles",
+          "competences": [
+            {
+              "texte": "Choisir différents outils, médiums, supports en fonction d'un projet ou d'une consigne et les utiliser en adaptant son geste",
+              "id": "bc6a50f7"
+            },
+            {
+              "texte": "Pratiquer le dessin pour représenter ou illustrer, en étant fidèle au réel ou à un modèle, ou en inventant",
+              "id": "159bfbc3"
+            },
+            {
+              "texte": "Réaliser une composition personnelle en reproduisant des graphismes. Créer des graphismes nouveaux",
+              "id": "654fe248"
+            },
+            {
+              "texte": "Réaliser des compositions plastiques, seul ou en petit groupe, en choisissant et combinant des matériaux, en réinvestissant des techniques et des procédés",
+              "id": "da8b2769"
+            },
+            {
+              "texte": "Décrire une image et exprimer son ressenti ou sa compréhension en utilisant un vocabulaire adapté",
+              "id": "1315aa83"
+            },
+            {
+              "texte": "Proposer des solutions dans des situations de projet, de création, de résolution de problèmes",
+              "id": "cd9032ed"
+            },
+            {
+              "texte": "S'engager spontanément dans l'exploration libre, puis guidée, de différents outils et sur des supports variés",
+              "id": "6e2fb9c1"
+            },
+            {
+              "texte": "Commencer à représenter ou à illustrer ce qu'il voit, ce dont il se souvient ou ce qu'il imagine",
+              "id": "39d2d6b4"
+            },
+            {
+              "texte": "Faire des choix d'outils et de procédés en fonction d'une intention donnée",
+              "id": "bccf2472"
+            },
+            {
+              "texte": "S'exprimer sur sa production, sur celle d'un autre ou à propos d'une oeuvre d'artiste",
+              "id": "ff958d3a"
+            },
+            {
+              "texte": "Commencer à mettre en mots ce qu'il a voulu évoquer ou représenter",
+              "id": "5f478c6a"
+            },
+            {
+              "texte": "Commenter les effets produits, et les situer par rapport à ses intentions initiales",
+              "id": "2eaef0e3"
+            },
+            {
+              "texte": "Contrôler et varier l'amplitude du geste pour s'adapter au format du support, produire des tracés de plus en plus diversifiés et plus précis",
+              "id": "6de4f738"
+            },
+            {
+              "texte": "Reproduire, assembler, organiser, enchaîner des motifs graphiques puis en créer de nouveaux",
+              "id": "e06029dd"
+            },
+            {
+              "texte": "S'exprimer sur ses propres tracés et nommer les éléments graphiques produits",
+              "id": "a030d953"
+            },
+            {
+              "texte": "Repérer des motifs graphiques sur différents supports ou dans son environnement pour constituer un répertoire",
+              "id": "8e2c368b"
+            },
+            {
+              "texte": "Commencer à mettre en mots ses procédures lors d'échanges entre pairs",
+              "id": "9071dd5d"
+            },
+            {
+              "texte": "Commencer à décrire une organisation produite ou observée",
+              "id": "9db24c14"
+            },
+            {
+              "texte": "Explorer et s'approprier différents médiums, outils et matériaux",
+              "id": "589d9f20"
+            },
+            {
+              "texte": "Faire des choix de médiums (craie, encre, peinture...), de matériaux, d'outils et de supports en fonction de son intention",
+              "id": "cf5a1ebb"
+            },
+            {
+              "texte": "S'exprimer sur sa production et / ou ses découvertes",
+              "id": "f64e3cf6"
+            },
+            {
+              "texte": "Mémoriser et réinvestir un lexique approprié pour décrire les actions et / ou les effets produits",
+              "id": "98762771"
+            },
+            {
+              "texte": "Mettre en mots la relation entre ce qu'il a fait et ce qu'il souhaitait faire",
+              "id": "1ae0991a"
+            },
+            {
+              "texte": "Observer des images fixes et animées, dire ce qu'il voit, ce qu'il imagine",
+              "id": "5aa400ec"
+            },
+            {
+              "texte": "Comparer pour commencer à classer en repérant les différences et les ressemblances entre des images fixes et animées selon des critères simples",
+              "id": "25239622"
+            },
+            {
+              "texte": "Commencer à établir et verbaliser des liens entre des images sélectionnées",
+              "id": "fc230fd5"
+            },
+            {
+              "texte": "Entrer dans une lecture plus fine des images : lister les éléments narratifs et plastiques",
+              "id": "d6e53cfd"
+            },
+            {
+              "texte": "Classer des images en déterminant des critères simples",
+              "id": "851edbdb"
+            },
+            {
+              "texte": "Utiliser un lexique adapté pour décrire ce qu'il voit, dire son ressenti ou traduire sa compréhension",
+              "id": "6deb0f21"
+            },
+            {
+              "texte": "Transformer des images en respectant une consigne",
+              "id": "e777c3f4"
+            }
+          ]
+        },
+        {
+          "id": "D3.SD2",
+          "titre": "Univers sonores",
+          "competences": [
+            {
+              "texte": "Avoir mémorisé un répertoire varié de comptines et de chansons et les interpréter de manière expressive",
+              "id": "7e281320"
+            },
+            {
+              "texte": "Jouer avec sa voix pour explorer des variantes de timbre, d'intensité, de hauteur, de nuance",
+              "id": "9244a5af"
+            },
+            {
+              "texte": "Repérer et reproduire, corporellement ou avec des instruments, des formules rythmiques simples",
+              "id": "167f40f3"
+            },
+            {
+              "texte": "Proposer des solutions dans des situations de projet, de création, de résolution de problèmes, avec son corps, sa voix ou des objets sonores",
+              "id": "0aeaf957"
+            },
+            {
+              "texte": "Parler d'un extrait musical et exprimer son ressenti ou sa compréhension en utilisant un vocabulaire adapté",
+              "id": "b6ff411d"
+            },
+            {
+              "texte": "Oser jouer avec sa voix seul ou en groupe pour reproduire un motif musical, une phrase (chanson, comptine)",
+              "id": "2ed4c756"
+            },
+            {
+              "texte": "Mémoriser des comptines et des chansons pour chanter en choeur avec ses pairs",
+              "id": "5f65ea45"
+            },
+            {
+              "texte": "S'exprimer sur sa production et sur celles de ses pairs",
+              "id": "a1c8ffad"
+            },
+            {
+              "texte": "Enrichir son bagage lexical spécifique au travers des chants et le réinvestir dans d'autres contextes",
+              "id": "929a4a98"
+            },
+            {
+              "texte": "Mobiliser son attention lors de moments d'écoute",
+              "id": "eb7b3b94"
+            },
+            {
+              "texte": "Faire des propositions musicales enrichies par les écoutes",
+              "id": "23a98965"
+            },
+            {
+              "texte": "Développer un vocabulaire pour nommer les paramètres du son",
+              "id": "635b04ba"
+            },
+            {
+              "texte": "Réinvestir le vocabulaire acquis lors des diverses activités de production",
+              "id": "9ad1ab85"
+            },
+            {
+              "texte": "Explorer différents instruments de musique, des objets sonores, les trier, les catégoriser (type de timbres et durée du son...)",
+              "id": "fcc6f404"
+            },
+            {
+              "texte": "Explorer son corps au travers de percussions corporelles",
+              "id": "c46a86a8"
+            },
+            {
+              "texte": "Faire le lien entre le geste et le son, le maîtriser en vue de produire un son attendu",
+              "id": "4e72257b"
+            },
+            {
+              "texte": "S'exprimer sur sa production et sur celles de ses pairs",
+              "id": "f06770c9"
+            },
+            {
+              "texte": "Développer un vocabulaire musical des actions liées au geste producteur ou caractérisant les principes sonores",
+              "id": "2b00c4ba"
+            }
+          ]
+        },
+        {
+          "id": "D3.SD3",
+          "titre": "Le spectacle vivant",
+          "competences": [
+            {
+              "texte": "Proposer des solutions dans des situations de projet, de création, de résolution de problèmes, avec son corps, sa voix ou des objets sonores",
+              "id": "14b19bbb"
+            },
+            {
+              "texte": "Oser mettre en jeu son corps avec et face aux autres : en imitant (l'enseignant, artiste ou un pair) ou en inventant ou en assemblant des propositions après avoir fait un choix",
+              "id": "83d997d1"
+            },
+            {
+              "texte": "Occuper un espace et y évoluer",
+              "id": "d328131d"
+            },
+            {
+              "texte": "Transformer ses façons usuelles d'agir et de se déplacer",
+              "id": "89f0dafd"
+            },
+            {
+              "texte": "S'inscrire dans l'espace et le temps d'une production collective",
+              "id": "5a3e25d9"
+            },
+            {
+              "texte": "Devenir un spectateur actif et attentif",
+              "id": "c7bdf98b"
+            },
+            {
+              "texte": "Témoigner de sa sensibilité à la portée poétique et esthétique du mouvement",
+              "id": "ee020e22"
+            },
+            {
+              "texte": "Exprimer intentionnellement des émotions par le visage ou par le corps",
+              "id": "99935cb8"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "D4",
+      "titre": "4. Acquérir les premiers outils mathématiques",
+      "sousDomaines": [
+        {
+          "id": "D4.SD1",
+          "titre": "Découvrir les nombres",
+          "competencesGenerales": [
+            {
+              "id": "D4.SD1.CG1",
+              "titre": "Exprimer une quantité par un nombre",
+              "competences": [
+                {
+                  "texte": "Comprendre qu'une quantité d'objets ne dépend ni de la nature de ces objets ni de leur organisation",
+                  "id": "0086430c",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Comprendre que: ajout d'un objet à une collection, le nombre qui désigne sa quantité est le suivant dans la suite orale des noms nombres",
+                  "id": "1608d3b6",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Comprendre que: dans la suite orale des nombres, chaque nombre s'obtient en ajoutant un au nombre précédent",
+                  "id": "66f8998a",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Dénombrer une collection d'objets (jusqu'à trois voire quatre",
+                  "id": "14a972a8",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Constituer une collection (jusqu'à trois, voir quatre objets) d'un cardinal donné",
+                  "id": "731943c0",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Comparer des quantités",
+                  "id": "79d4ec54",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Composer et décomposer des nombres (deux, trois, voire quatre).",
+                  "id": "fbde8ad6",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Manipuler et verbaliser des compositions et des décompositions de nombres",
+                  "id": "47dc2776",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Associer une quantité, le nom d'un nombre et une écriture chiffrée",
+                  "id": "07a8558d",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Connaitre la comptine numérique de un à six",
+                  "id": "35a54041",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Poursuivre la compréhension qu'une quantité d'objets ne dépend ni de la nature de ces objets ni de leur organisation",
+                  "id": "9320c3e4",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Poursuivre la compréhension que: dans la suite orale des nombres, chaque nombre s'obtient en ajoutant un au nombre précédent",
+                  "id": "38344ff5",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Poursuivre compréhension: ajout un objet à une collection=nbr désignant sa quantité = le suivant dans la suite orale des noms nombres",
+                  "id": "a5b06211",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Parcourir une collection en passant une et une seule fois par chacun de ses éléments",
+                  "id": "9c5bdc63",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Dénombrer une collection d'objets (jusqu'à six)",
+                  "id": "4709690b",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Constituer une collection d'un cardinal donné (jusqu'à six objets)",
+                  "id": "15526de0",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Comparer des quantités",
+                  "id": "510478dc",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Composer et décomposer des nombres inférieurs ou égaux à six",
+                  "id": "19635526",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Manipuler et verbaliser des compositions et des décompositions de nombres",
+                  "id": "6b7e1066",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Associer une quantité, le nom d'un nombre et une écriture chiffrée.",
+                  "id": "95fe54e6",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "écrire en chiffres les nombres de un à six",
+                  "id": "ac9d8404",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Connaitre la comptine numérique de un à douze",
+                  "id": "57c89b74",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Poursuivre la compréhension qu'une quantité d'objets ne dépend ni de la nature de ces objets ni de leur organisation",
+                  "id": "755f56a4",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Poursuivre la compréhension que: dans la suite orale des nombres, chaque nombre s'obtient en ajoutant un au nombre précédent",
+                  "id": "a32a23cd",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Poursuivre compréhension: ajout un objet à une collection=nbr désignant sa quantité = le suivant dans la suite orale des noms nombres",
+                  "id": "3f20a454",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Poursuivre les stratégies de parcours d'une collection en passant une et une seule fois par chacun de ses éléments",
+                  "id": "a4bb8170",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Dénombrer une collection d'objets (jusqu'à 10, voire au delà)",
+                  "id": "78f92556",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Constituer une collection d'un cardinal donné (jusqu'à 10, voir au-delà)",
+                  "id": "1b41dadc",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Comparer des quantités",
+                  "id": "04991369",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Composer ou décomposer des nombres inférieurs ou égaux à dix voir au delà",
+                  "id": "5653d582",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Manipuler et verbaliser des compositions et des décompositions de nombres.",
+                  "id": "bade5224",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Surcompter",
+                  "id": "804eaca9",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Associer une quantité, le nom d'un nombre et une écriture chiffrée",
+                  "id": "0e2e218d",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "écrire en chiffres les nombres de 1 à 10",
+                  "id": "18995099",
+                  "niveau": "GS"
+                },
+                {
+                  "texte": "Connaitre et utiliser la comptine numérique jusqu'à trente",
+                  "id": "4690be95",
+                  "niveau": "GS"
+                }
+              ]
+            },
+            {
+              "id": "D4.SD1.CG2",
+              "titre": "Exprimer un rang ou une position par un nombre",
+              "competences": [
+                {
+                  "texte": "Comprendre la notion de rang",
+                  "id": "857c0f35",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Déterminer l'effet d'un déplacement sur une position",
+                  "id": "56e5902b",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Se familiariser avec le début de la bande numérique",
+                  "id": "d906ba0d",
+                  "niveau": "PS"
+                },
+                {
+                  "texte": "Comprendre la notion de rang d'un objet",
+                  "id": "b16b2a79",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Déterminer l'effet d'un déplacement sur une position",
+                  "id": "72acde61",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Comprendre le lien entre un ajout et un avancement et celui entre un retrait et un recul",
+                  "id": "3a9c88d8",
+                  "niveau": "MS"
+                },
+                {
+                  "texte": "Construire la bande numérique jusqu'à dix",
+                  "id": "7ec654e0",
+                  "niveau": "MS"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "D4.SD2",
+          "titre": "Utiliser les nombres pour résoudre des problèmes",
+          "competences": [
+            {
+              "texte": "Recherche du tout ou d'une partie dans un problème de parties-tout",
+              "id": "5a3104fe",
+              "niveau": "PS"
+            },
+            {
+              "texte": "Rechercher le tout ou une partie dans un problème de parties-tout",
+              "id": "3de93697",
+              "niveau": "MS"
+            },
+            {
+              "texte": "Trouver une position finale à partir d'une position initiale et d'un déplacement sur une piste du type jeu de l'oie ou bande numérique",
+              "id": "3301425e",
+              "niveau": "MS"
+            },
+            {
+              "texte": "Rechercher le tout dans un problème de groupements",
+              "id": "4c507b37",
+              "niveau": "MS"
+            },
+            {
+              "texte": "Déterminer le tout ou une partie dans un problème de parties-tout (d'abord deux parties, puis éventuellement trois)",
+              "id": "1f7cb505",
+              "niveau": "GS"
+            },
+            {
+              "texte": "Déterminer la quantité d'objets ayant été ajoutée ou retirée à une collection à partir de ses quantités initiale et finale",
+              "id": "1ff7dca4",
+              "niveau": "GS"
+            },
+            {
+              "texte": "Déterminer la position finale à partir de la position initiale et d'un déplacement sur une piste du type jeu de l'oie ou bande numérique",
+              "id": "86b840c0",
+              "niveau": "GS"
+            },
+            {
+              "texte": "Déterminer le cardinal d'une collection à partir de celui d'une autre collection et de l'écart entre les deux.",
+              "id": "4c601d0a",
+              "niveau": "GS"
+            },
+            {
+              "texte": "Déterminer le tout dans un problème de groupement d'objets",
+              "id": "b56d3895",
+              "niveau": "GS"
+            },
+            {
+              "texte": "Déterminer la valeur d'une part dans un problème de partage équitable (avec éventuellement un reste)",
+              "id": "e24d4fe5",
+              "niveau": "GS"
+            }
+          ]
+        },
+        {
+          "id": "D4.SD3",
+          "titre": "Explorer les solides et les formes planes",
+          "competences": [
+            {
+              "texte": "Reconnaitre, trier et classer des objets selon leur forme",
+              "id": "5a6c555c",
+              "niveau": "PS"
+            },
+            {
+              "texte": "Percevoir l'invariance de la forme d'un objet par rapport aux déplacements qu'il peut subir",
+              "id": "eb4d1a8c",
+              "niveau": "PS"
+            },
+            {
+              "texte": "Reproduire des assemblages de solides ou de formes planes",
+              "id": "b5ab0239",
+              "niveau": "PS"
+            },
+            {
+              "texte": "Reconnaitre et classer des solides et des formes géométriques planes",
+              "id": "b3eae934",
+              "niveau": "MS"
+            },
+            {
+              "texte": "Reproduire des assemblages de solides ou de formes planes",
+              "id": "1c618e79",
+              "niveau": "MS"
+            },
+            {
+              "texte": "Décrire quelques solides simples",
+              "id": "5fd20040",
+              "niveau": "GS"
+            },
+            {
+              "texte": "Reconnaitre, trier et classer des formes géométriques planes indépendamment d'autres critères",
+              "id": "5409d6b8",
+              "niveau": "GS"
+            },
+            {
+              "texte": "Décrire et nommer quelques figures géométriques simples",
+              "id": "7d6bb750",
+              "niveau": "GS"
+            },
+            {
+              "texte": "Reproduire des assemblages de solides (au maximum cinq) et de formes planes (au maximum 8)",
+              "id": "4b5434b0",
+              "niveau": "GS"
+            },
+            {
+              "texte": "S'approprier la règle comme outil de tracé",
+              "id": "008ded64",
+              "niveau": "GS"
+            }
+          ]
+        },
+        {
+          "id": "D4.SD4",
+          "titre": "Explorer des grandeurs: la longueur, la masse",
+          "competences": [
+            {
+              "texte": "Reconnaitre un objet de même longueur qu'un objet donné",
+              "id": "d8babf37",
+              "niveau": "PS"
+            },
+            {
+              "texte": "Comparer des objets selon leur longueur",
+              "id": "c9a5e493",
+              "niveau": "PS"
+            },
+            {
+              "texte": "Comparer directement des longueurs d'objets rectilignes et verbaliser le résultat",
+              "id": "8ec62c8d",
+              "niveau": "MS"
+            },
+            {
+              "texte": "Classer des objets rectilignes selon leur longueur",
+              "id": "5a250610",
+              "niveau": "MS"
+            },
+            {
+              "texte": "Ordonner des objets rectilignes selon leur longueur et verbaliser le résultat",
+              "id": "070bb045",
+              "niveau": "MS"
+            },
+            {
+              "texte": "Comparer les masses de deux objets",
+              "id": "cb234136",
+              "niveau": "MS"
+            },
+            {
+              "texte": "Comparer indirectement des longueurs d'objets rectilignes",
+              "id": "35efcb3f",
+              "niveau": "GS"
+            },
+            {
+              "texte": "Ordonner des objets rectlignes selon leur longueur (au maximum)",
+              "id": "736384b7",
+              "niveau": "GS"
+            },
+            {
+              "texte": "Produire un objet rectiligne de même longueur qu'un objet donné",
+              "id": "680dbe2f",
+              "niveau": "GS"
+            },
+            {
+              "texte": "Ordonner les masses de trois objets et verbaliser les résultats",
+              "id": "9056fad4",
+              "niveau": "GS"
+            },
+            {
+              "texte": "Reconnaitre l'égalité de deux masses et verbaliser le résultat.",
+              "id": "75b889d5",
+              "niveau": "GS"
+            }
+          ]
+        },
+        {
+          "id": "D4.SD5",
+          "titre": "Se familiariser avec les motifs organisés",
+          "competences": [
+            {
+              "texte": "Mémoriser un motif répétitif très simple",
+              "id": "72b1ccb4",
+              "niveau": "PS"
+            },
+            {
+              "texte": "Reproduire un motif répétitif à l'identique",
+              "id": "cfa18c4f",
+              "niveau": "PS"
+            },
+            {
+              "texte": "Mémoriser un motif répétitif simple",
+              "id": "95064959",
+              "niveau": "MS"
+            },
+            {
+              "texte": "Reconnaitre un motif répétitifs simples de différentes natures, sans nécessairement recourir au vocabulaire spécialisé",
+              "id": "86aa86f2",
+              "niveau": "MS"
+            },
+            {
+              "texte": "Prolonger l'amorce d'un motif répétitif et verbaliser la règle de prolongement utilisée",
+              "id": "42d4d95b",
+              "niveau": "MS"
+            },
+            {
+              "texte": "Repérer et décrire oralement la structure d'un motif évolutif (abaabbaaabbb)",
+              "id": "9915443d",
+              "niveau": "GS"
+            },
+            {
+              "texte": "Identifier la structure d'un motif répétitif ou évolutif indépendamment des éléments physiques qui le composent",
+              "id": "6be9eb77",
+              "niveau": "GS"
+            },
+            {
+              "texte": "Créer des motifs de différentes natures",
+              "id": "b5af73fe",
+              "niveau": "GS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "D5",
+      "titre": "5. Explorer le monde",
+      "sousDomaines": [
+        {
+          "id": "D5.SD1",
+          "titre": "Se repérer dans le temps et l'espace",
+          "competencesGenerales": [
+            {
+              "id": "D5.SD1.CG1",
+              "titre": "Se repérer dans le temps",
+              "competences": [
+                {
+                  "texte": "Situer des événements vécus les uns par rapport aux autres et en les repérant dans la journée, la semaine, le mois ou une saison",
+                  "id": "e526701c"
+                },
+                {
+                  "texte": "Ordonner une suite de photographies ou d'images, pour rendre compte d'une situation vécue ou d'un récit fictif entendu, en marquant de manière exacte succession et simultanéité",
+                  "id": "0f6f7699"
+                },
+                {
+                  "texte": "Utiliser des marqueurs temporels adaptés (puis, pendant, avant, après...) dans des récits, descriptions ou explications",
+                  "id": "a265d111"
+                },
+                {
+                  "texte": "Associer les moments de la journée avec des activités régulières de la classe",
+                  "id": "59398822"
+                },
+                {
+                  "texte": "Dire ce qu'on a fait avant et après une activité",
+                  "id": "c02f2f3d"
+                },
+                {
+                  "texte": "Se repérer dans les premiers éléments chronologiques sur un temps court (la demi-journée) et utiliser correctement les mots « matin », « apres-midi », « soir »",
+                  "id": "0f4b312e"
+                },
+                {
+                  "texte": "Utiliser correctement les mots « jour » et « mois »",
+                  "id": "539ee216"
+                },
+                {
+                  "texte": "Connaitre la suite des noms des jours, de la semaine et savoir dire « celui qui précède » et « celui qui suit » un jour donné",
+                  "id": "5242f41b"
+                },
+                {
+                  "texte": "Utiliser des marques temporelles dans le langage, notamment pour situer ce dont on parle par rapport au moment où l'on parle (hier, aujourd'hui, demain, plus tard...)",
+                  "id": "70febb8b"
+                },
+                {
+                  "texte": "Utiliser les formes des verbes adaptées (présent, futur, passé) même si la conjugaison exacte fait encore défaut",
+                  "id": "37519bc7"
+                },
+                {
+                  "texte": "Utiliser le vocabulaire adapté pour traduire une relation entre deux faits, deux moments : avant, après, pendant,",
+                  "id": "7de5b218"
+                },
+                {
+                  "texte": "Utiliser divers outils (comptage régulier, sablier, horloge...) pour comparer des durées",
+                  "id": "1f6c9ef9"
+                }
+              ]
+            },
+            {
+              "id": "D5.SD1.CG2",
+              "titre": "Se repérer dans l'espace",
+              "competences": [
+                {
+                  "texte": "Situer des objets par rapport à soi, entre eux, par rapport à des objets repères",
+                  "id": "5c825bd3"
+                },
+                {
+                  "texte": "Se situer par rapport à d'autres, par rapport à des objets repères",
+                  "id": "470cf7fd"
+                },
+                {
+                  "texte": "Dans un environnement bien connu, réaliser un trajet, un parcours à partir de sa représentation (dessin ou codage)",
+                  "id": "7fce916b"
+                },
+                {
+                  "texte": "Élaborer des premiers essais de représentation plane, communicables (construction d'un code commun)",
+                  "id": "704a0272"
+                },
+                {
+                  "texte": "Orienter et utiliser correctement une feuille de papier, un livre ou autre support d'écrit, en fonction de consignes, d'un but ou d'un projet précis",
+                  "id": "b84e1936"
+                },
+                {
+                  "texte": "Utiliser des marqueurs spatiaux adaptés (devant, derrière, droite, gauche, dessus, dessous...) dans des récits, des descriptions ou explications",
+                  "id": "44d49e36"
+                },
+                {
+                  "texte": "Se repérer dans l'espace de la classe",
+                  "id": "2e69470c"
+                },
+                {
+                  "texte": "Identifier les espaces communs de l'école (salle de classe, salle de jeux, couloirs, dortoir, salle de restauration, cour...) et s'y déplacer en autonomie",
+                  "id": "e48022c4"
+                },
+                {
+                  "texte": "Se déplacer en respectant des règles ou consignes",
+                  "id": "afb0d71b"
+                },
+                {
+                  "texte": "Utiliser des locutions spatiales en particulier celles fondées sur des oppositions : sur/sous, dedans/dehors, à côté de/loin de...",
+                  "id": "3d17f01a"
+                },
+                {
+                  "texte": "Reconnaître et utiliser des représentations d'espaces connus",
+                  "id": "8c14e6f0"
+                },
+                {
+                  "texte": "Coder des déplacements, des emplacements sur un « plan » connu ou une photographie d'un espace vécu (salle de classe, salle de jeux, cour de récréation...)",
+                  "id": "b561e243"
+                },
+                {
+                  "texte": "Repérer sa droite et sa gauche",
+                  "id": "c65b8945"
+                },
+                {
+                  "texte": "Décrire des positions dans l'espace : positions par rapport à soi ; positions relatives de deux objets ou deux personnes l'un(e) par rapport à l'autre",
+                  "id": "b735419b"
+                },
+                {
+                  "texte": "Se repérer dans une page et utiliser le vocabulaire usuel (haut et bas notamment, gauche et droite)",
+                  "id": "ed7adff4"
+                },
+                {
+                  "texte": "Parler d'espaces lointains (hors du vécu) en employant un vocabulaire adapté pour décrire des habitats, des monuments,",
+                  "id": "8b6e710e"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "D5.SD2",
+          "titre": "Découvrir le monde du vivant",
+          "competences": [
+            {
+              "texte": "Reconnaître et décrire les principales étapes du développement d'un animal ou d'un végétal sur du réel ou des images",
+              "id": "a4dac8f2"
+            },
+            {
+              "texte": "Connaître les besoins essentiels de quelques animaux et végétaux",
+              "id": "095bffba"
+            },
+            {
+              "texte": "Situer et nommer les différentes parties du corps humain, sur soi ou sur une représentation",
+              "id": "28837ea2"
+            },
+            {
+              "texte": "Connaître et mettre en oeuvre quelques règles d'hygiène corporelle et d'une vie saine",
+              "id": "865eaf4d"
+            },
+            {
+              "texte": "Situer et nommer quelques parties du corps sur lui-même",
+              "id": "d01bc7f1"
+            },
+            {
+              "texte": "Situer et nommer quelques parties du visage et du corps sur lui-même et sur une représentation",
+              "id": "433f0d8f"
+            },
+            {
+              "texte": "Lister les parties du corps nécessaires à une première représentation d'un être humain (tête, corps, bras, jambes, pieds, mains)",
+              "id": "51e620aa"
+            },
+            {
+              "texte": "Situer et nommer les parties du visage, du corps et quelques articulations (cheville, genou, coude, hanche, épaule, nuque) sur lui-même ou sur une représentation",
+              "id": "477449a6"
+            },
+            {
+              "texte": "Évoluer de traces éparses à un dessin plus représentatif du corps humain",
+              "id": "01016697"
+            },
+            {
+              "texte": "Dessiner un être humain complet (pieds, jambes, bassin, torse, bras, tête avec éventuellement quelques détails sur le visage)",
+              "id": "9901bd53"
+            },
+            {
+              "texte": "Dessiner un être humain complet avec des parties de son visage. Les membres commencent à prendre de l'épaisseur",
+              "id": "93e99b1e"
+            },
+            {
+              "texte": "Se représenter avec un corps articulé en mouvement (en train de courir ou de sauter...)",
+              "id": "0970a5a8"
+            },
+            {
+              "texte": "Respecter les règles d'hygiène après invitation, avec l'aide de l'adulte",
+              "id": "11cdd9c9"
+            },
+            {
+              "texte": "Réaliser les premiers gestes qui garantissent son hygiène corporelle",
+              "id": "acff9273"
+            },
+            {
+              "texte": "Demander de l'aide pour répondre à ses besoins physiologiques",
+              "id": "b70978e9"
+            },
+            {
+              "texte": "Gérer ses besoins physiologiques de façon autonome",
+              "id": "ef2e1ba0"
+            },
+            {
+              "texte": "Réguler et anticiper ses besoins physiologiques pour ne pas arrêter les activités prévues",
+              "id": "5408fa42"
+            },
+            {
+              "texte": "Énoncer les règles d'hygiène corporelle et de vie saine",
+              "id": "d366b1bf"
+            },
+            {
+              "texte": "Établir des premiers liens entre ce qu'il consomme et les conséquences possibles sur sa santé",
+              "id": "d4fdc9e1"
+            },
+            {
+              "texte": "Reconnaître et nommer les animaux observés en classe et participer à l'entretien des élevages en fournissant la « nourriture » nécessaire, en assurant le nettoyage",
+              "id": "6a4e1d87"
+            },
+            {
+              "texte": "Savoir que les animaux ont besoin de se nourrir et de boire pour vivre",
+              "id": "6afa7697"
+            },
+            {
+              "texte": "Savoir que les animaux ont besoin de boire et d'une nourriture adaptée à leur régime alimentaire",
+              "id": "4d8fec1a"
+            },
+            {
+              "texte": "Savoir que les animaux ont besoin de respirer, de dormir",
+              "id": "bee5043c"
+            },
+            {
+              "texte": "Savoir que les animaux grandissent et se transforment",
+              "id": "fe7e9b14"
+            },
+            {
+              "texte": "Connaître les principales étapes du développement d'un animal (naissance, croissance, reproduction, vieillissement, mort)",
+              "id": "10875de2"
+            },
+            {
+              "texte": "Observer et repérer les naissances dans les élevages",
+              "id": "1a0b567e"
+            },
+            {
+              "texte": "Savoir qu'en général, la reproduction animale nécessite un mâle et une femelle",
+              "id": "99cdb393"
+            },
+            {
+              "texte": "Associer des modes de reproduction à des types d'animaux : Le bébé se développe dans le ventre de la femelle",
+              "id": "1a1ebb70"
+            },
+            {
+              "texte": "Associer des modes de reproduction à des types d'animaux : Le bébé se développe dans un oeuf, à l'extérieur de la femelle",
+              "id": "70d3f45b"
+            },
+            {
+              "texte": "Savoir que chez certains animaux, les femelles peuvent avoir des bébés sans l'intervention d'un mâle",
+              "id": "55b3e534"
+            },
+            {
+              "texte": "Reconnaître et nommer les plantes observées en classe et participer à l'entretien des plantations en fournissant l'arrosage et l'entretien nécessaires",
+              "id": "1369dac4"
+            },
+            {
+              "texte": "Savoir que les plantes ont des besoins : eau, lumière et nourriture pour se développer",
+              "id": "0e2a578e"
+            },
+            {
+              "texte": "Savoir que les végétaux sont vivants, que les plantes grandissent et se transforment",
+              "id": "39972af6"
+            },
+            {
+              "texte": "Reconnaître les principales étapes du développement d'un végétal",
+              "id": "1c5645fb"
+            },
+            {
+              "texte": "Établir des premiers liens entre fleur, fruit et graine",
+              "id": "ce668342"
+            }
+          ]
+        },
+        {
+          "id": "D5.SD3",
+          "titre": "Explorer la matière",
+          "competences": [
+            {
+              "texte": "Choisir, utiliser et savoir désigner des outils et des matériaux adaptés à une situation, à des actions techniques spécifiques",
+              "id": "d91e153c"
+            },
+            {
+              "texte": "Découvrir et manipuler des matériaux existants ou fabriqués en classe",
+              "id": "21eb9d73"
+            },
+            {
+              "texte": "Identifier quelques matériaux et les différencier en grandes familles",
+              "id": "61016627"
+            },
+            {
+              "texte": "Trier, comparer des matériaux en fonction de caractéristiques physiques accessibles par les 5 sens  ou d'autres propriétés physiques",
+              "id": "4d8ccf6e"
+            },
+            {
+              "texte": "Connaître d'autres propriétés physiques des matériaux",
+              "id": "e1cb7cfa"
+            },
+            {
+              "texte": "Classer des objets selon le matériau qui les compose (manipulation) selon une propriété commune selon leurs usages",
+              "id": "d54ada14"
+            },
+            {
+              "texte": "Repérer des transformations de matériaux sous l'effet de la chaleur, de l'eau, de l'air , d'actions mécaniques avec des mains et avec des outils",
+              "id": "b65407fd"
+            },
+            {
+              "texte": "Agir de manière raisonnée sur un matériau, choisir le bon matériau en fonction d'un besoin, d'un effet attendu, d'un projet",
+              "id": "29c8c3fb"
+            },
+            {
+              "texte": "Modifier une procédure si nécessaire pour l'adapter au résultat attendu",
+              "id": "fa92bdf4"
+            },
+            {
+              "texte": "Prendre conscience du caractère réversible (ou non) de certaines actions",
+              "id": "c027fd96"
+            },
+            {
+              "texte": "Lister les actions et l'ordre de réalisation, les transformations accomplies et les outils nécessaires",
+              "id": "4bce2a0b"
+            }
+          ]
+        },
+        {
+          "id": "D5.SD4",
+          "titre": "Utiliser, fabriquer, manipuler des objets",
+          "competences": [
+            {
+              "texte": "Réaliser des constructions ; construire des maquettes simples en fonction de plans ou d'instructions de montage",
+              "id": "dc4930c8"
+            },
+            {
+              "texte": "Prendre en compte les risques de l'environnement familier proche (objets et comportements dangereux, produits toxiques)",
+              "id": "680f005a"
+            },
+            {
+              "texte": "Réaliser des montages de plus en plus complexes avec une intention repérable",
+              "id": "3d05e66d"
+            },
+            {
+              "texte": "Réaliser des montages de plus en plus complexes avec une intention formulée",
+              "id": "c9763ae2"
+            },
+            {
+              "texte": "Réaliser une construction, reconstituer un objet en disposant d'un modèle de référence qu'il peut manipuler ou observer",
+              "id": "25e61c01"
+            },
+            {
+              "texte": "Réaliser une construction, reconstituer un objet à partir d'un modèle représenté (photographie, dessin, schéma)",
+              "id": "8b284954"
+            },
+            {
+              "texte": "Réaliser une construction, reconstituer un objet à partir d'illustrations des étapes de la construction, de représentations avec différentes vues",
+              "id": "57276eb0"
+            },
+            {
+              "texte": "Représenter par le dessin/schéma un montage qu'il a réalisé",
+              "id": "913a6231"
+            },
+            {
+              "texte": "Réaliser des photographies caractéristiques des différentes étapes du montage",
+              "id": "380705ab"
+            },
+            {
+              "texte": "Reconnaître les différents systèmes de fermeture des vêtements ou des chaussures",
+              "id": "5d4e3308"
+            },
+            {
+              "texte": "Découvrir la fonction d'usage et réaliser les gestes adaptés.",
+              "id": "bb1961e4"
+            },
+            {
+              "texte": "Reconnaître, identifier et nommer quelques objets parmi une famille d'objets",
+              "id": "1070d15d"
+            },
+            {
+              "texte": "Trier, comparer en fonction des usages",
+              "id": "a86caf0d"
+            },
+            {
+              "texte": "Utiliser de manière raisonnée, choisir le bon outil en fonction d'un besoin, d'un effet attendu, d'un contexte d'utilisation",
+              "id": "cdf43070"
+            },
+            {
+              "texte": "Identifier et nommer les risques liés à certaines activités ou à certains outils utilisés (chuter, se pincer, se couper, s'étouffer, s'électrocuter, se brûler...)",
+              "id": "59637c98"
+            },
+            {
+              "texte": "Adapter et justifier son comportement en fonction des risques identifiés",
+              "id": "3b181ef1"
+            },
+            {
+              "texte": "Reconnaître certains produits toxiques ou dangereux et le justifier grâce aux indications visuelles présentes",
+              "id": "6d51ec0f"
+            },
+            {
+              "texte": "Alerter un adulte en cas de danger pour lui-même ou pour un camarade",
+              "id": "61c29de2"
+            }
+          ]
+        },
+        {
+          "id": "D5.SD5",
+          "titre": "Utiliser des outils numérique",
+          "competences": [
+            {
+              "texte": "Utiliser des objets numériques : appareil photo, tablette, ordinateur",
+              "id": "ecedd97b"
+            },
+            {
+              "texte": "Agir sur une tablette numérique (allumer, éteindre, choisir une application : l'ouvrir, l'utiliser et la fermer)",
+              "id": "4282e333"
+            },
+            {
+              "texte": "Choisir l'outil numérique qui convient en fonction d'un besoin (photographier, filmer, enregistrer la voix, copier du texte...)",
+              "id": "042f78d2"
+            },
+            {
+              "texte": "Manipuler une souris d'ordinateur pour pointer un élément, cliquer sur un élément, déplacer un élément",
+              "id": "1b22c560"
+            },
+            {
+              "texte": "Repérer des lettres sur un clavier (ordinateur ou tablette)",
+              "id": "28123bf5"
+            },
+            {
+              "texte": "Utiliser les touches de direction (haut, bas, gauche, droite) pour déplacer un personnage dans un jeu éducatif",
+              "id": "59e1777f"
+            },
+            {
+              "texte": "Copier, écrire à l'aide d'un clavier (ordinateur ou tablette) : son prénom, des mots, le titre d'un livre, des phrases, de courts textes",
+              "id": "88043783"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

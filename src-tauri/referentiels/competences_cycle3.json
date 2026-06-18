@@ -1,0 +1,620 @@
+{
+  "cycle": 3,
+  "titre": "Cycle 3 – CM1, CM2",
+  "domaines": [
+    {
+      "id": "FR",
+      "titre": "Français",
+      "sousDomaines": [
+        {
+          "id": "FR.LO",
+          "titre": "Langage oral",
+          "competencesGenerales": [
+            {
+              "id": "FR.LO.CG1",
+              "titre": "Écouter pour comprendre",
+              "competences": [
+                { "id": "c3_fr_lo_001", "texte": "Écouter et comprendre un message oral, une émission ou un texte lu à voix haute", "niveau": "CM1" },
+                { "id": "c3_fr_lo_002", "texte": "Prendre des notes sur l'essentiel d'un exposé ou d'un texte entendu", "niveau": "CM1" },
+                { "id": "c3_fr_lo_003", "texte": "Repérer les informations implicites et évaluer la fiabilité d'un message oral", "niveau": "CM2" },
+                { "id": "c3_fr_lo_004", "texte": "Reconnaître les procédés de discours (argument, exemple, illustration)", "niveau": "CM2" }
+              ]
+            },
+            {
+              "id": "FR.LO.CG2",
+              "titre": "Parler en continu",
+              "competences": [
+                { "id": "c3_fr_lo_005", "texte": "Présenter un exposé structuré (introduction, développement, conclusion)", "niveau": "CM1" },
+                { "id": "c3_fr_lo_006", "texte": "Raconter à l'oral avec clarté et fluidité", "niveau": "CM1" },
+                { "id": "c3_fr_lo_007", "texte": "Lire un texte à voix haute de façon expressive et compréhensible", "niveau": "CM2" },
+                { "id": "c3_fr_lo_008", "texte": "Adapter son niveau de langue et son registre à la situation de communication", "niveau": "CM2" }
+              ]
+            },
+            {
+              "id": "FR.LO.CG3",
+              "titre": "Réagir et dialoguer",
+              "competences": [
+                { "id": "c3_fr_lo_009", "texte": "Participer à un débat en formulant et en défendant un point de vue", "niveau": "CM1" },
+                { "id": "c3_fr_lo_010", "texte": "Interpréter un texte ou un rôle dans un jeu dramatique", "niveau": "CM1" },
+                { "id": "c3_fr_lo_011", "texte": "Interroger, nuancer et critiquer de façon argumentée les propos d'un interlocuteur", "niveau": "CM2" },
+                { "id": "c3_fr_lo_012", "texte": "Pratiquer un oral préparé et un oral spontané dans des registres variés", "niveau": "CM2" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "FR.LEC",
+          "titre": "Lecture et compréhension de l'écrit",
+          "competencesGenerales": [
+            {
+              "id": "FR.LEC.CG1",
+              "titre": "Lire avec fluidité",
+              "competences": [
+                { "id": "c3_fr_lec_001", "texte": "Lire silencieusement des textes variés avec fluidité et compréhension", "niveau": "CM1" },
+                { "id": "c3_fr_lec_002", "texte": "Lire à voix haute avec expression des textes préparés", "niveau": "CM1" },
+                { "id": "c3_fr_lec_003", "texte": "Lire des textes longs et complexes (romans, documentaires) de manière autonome", "niveau": "CM2" }
+              ]
+            },
+            {
+              "id": "FR.LEC.CG2",
+              "titre": "Comprendre et interpréter",
+              "competences": [
+                { "id": "c3_fr_lec_004", "texte": "Comprendre les informations explicites et implicites d'un texte", "niveau": "CM1" },
+                { "id": "c3_fr_lec_005", "texte": "Identifier le point de vue narratif et les caractéristiques du genre textuel", "niveau": "CM1" },
+                { "id": "c3_fr_lec_006", "texte": "Mettre en relation un texte avec d'autres textes ou sa propre expérience", "niveau": "CM2" },
+                { "id": "c3_fr_lec_007", "texte": "Justifier une interprétation en s'appuyant sur des éléments du texte", "niveau": "CM2" }
+              ]
+            },
+            {
+              "id": "FR.LEC.CG3",
+              "titre": "Lire des œuvres littéraires et des textes documentaires",
+              "competences": [
+                { "id": "c3_fr_lec_008", "texte": "Lire 5 à 10 œuvres intégrales dans l'année (littérature de jeunesse, patrimoine)", "niveau": "CM1" },
+                { "id": "c3_fr_lec_009", "texte": "Comparer différentes œuvres d'un même auteur ou d'un même genre", "niveau": "CM2" },
+                { "id": "c3_fr_lec_010", "texte": "Lire et exploiter des textes documentaires pour construire des connaissances", "niveau": "CM2" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "FR.ECR",
+          "titre": "Écriture",
+          "competencesGenerales": [
+            {
+              "id": "FR.ECR.CG1",
+              "titre": "Rédiger des textes variés",
+              "competences": [
+                { "id": "c3_fr_ecr_001", "texte": "Rédiger un texte narratif cohérent (récit, conte, nouvelle courte)", "niveau": "CM1" },
+                { "id": "c3_fr_ecr_002", "texte": "Rédiger un texte descriptif ou explicatif structuré", "niveau": "CM1" },
+                { "id": "c3_fr_ecr_003", "texte": "Rédiger un texte argumentatif court (donner et justifier un point de vue)", "niveau": "CM2" },
+                { "id": "c3_fr_ecr_004", "texte": "Produire différents types d'écrits (lettre, compte rendu, poème, article)", "niveau": "CM2" }
+              ]
+            },
+            {
+              "id": "FR.ECR.CG2",
+              "titre": "Améliorer et réviser ses écrits",
+              "competences": [
+                { "id": "c3_fr_ecr_005", "texte": "Relire et corriger ses écrits (orthographe, syntaxe, cohérence)", "niveau": "CM1" },
+                { "id": "c3_fr_ecr_006", "texte": "Utiliser des outils d'aide à l'écriture (dictionnaire, correcteur)", "niveau": "CM1" },
+                { "id": "c3_fr_ecr_007", "texte": "Enrichir ses textes (vocabulaire précis, connecteurs logiques, ponctuation expressive)", "niveau": "CM2" },
+                { "id": "c3_fr_ecr_008", "texte": "Participer à l'écriture collaborative et réviser avec ses pairs", "niveau": "CM2" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "FR.EDL",
+          "titre": "Étude de la langue",
+          "competencesGenerales": [
+            {
+              "id": "FR.EDL.CG1",
+              "titre": "Grammaire",
+              "competences": [
+                { "id": "c3_fr_edl_001", "texte": "Distinguer phrase simple et phrase complexe (coordination, subordination)", "niveau": "CM1" },
+                { "id": "c3_fr_edl_002", "texte": "Identifier la nature et la fonction des mots dans la phrase", "niveau": "CM1" },
+                { "id": "c3_fr_edl_003", "texte": "Reconnaître les compléments circonstanciels (lieu, temps, manière, cause)", "niveau": "CM1" },
+                { "id": "c3_fr_edl_004", "texte": "Maîtriser les propositions subordonnées relatives et conjonctives", "niveau": "CM2" },
+                { "id": "c3_fr_edl_005", "texte": "Maîtriser la conjugaison des verbes : tous les temps usuels à l'indicatif, conditionnel, subjonctif présent", "niveau": "CM2" },
+                { "id": "c3_fr_edl_006", "texte": "Utiliser les différents types et formes de phrases", "niveau": "CM2" }
+              ]
+            },
+            {
+              "id": "FR.EDL.CG2",
+              "titre": "Orthographe",
+              "competences": [
+                { "id": "c3_fr_edl_007", "texte": "Orthographier les mots du répertoire consolidé (sans erreurs)", "niveau": "CM1" },
+                { "id": "c3_fr_edl_008", "texte": "Maîtriser les accords dans le groupe nominal et dans la phrase", "niveau": "CM1" },
+                { "id": "c3_fr_edl_009", "texte": "Distinguer et orthographier les homophones lexicaux et grammaticaux courants", "niveau": "CM1" },
+                { "id": "c3_fr_edl_010", "texte": "Conjuguer et orthographier les verbes des 3 groupes aux temps et modes étudiés", "niveau": "CM2" },
+                { "id": "c3_fr_edl_011", "texte": "Appliquer les règles d'accord du participe passé (avec être et cas simples avec avoir)", "niveau": "CM2" }
+              ]
+            },
+            {
+              "id": "FR.EDL.CG3",
+              "titre": "Lexique",
+              "competences": [
+                { "id": "c3_fr_edl_012", "texte": "Enrichir son vocabulaire par la lecture et les activités de classe", "niveau": "CM1" },
+                { "id": "c3_fr_edl_013", "texte": "Utiliser les ressources morphologiques : préfixes, suffixes, radicaux latins et grecs", "niveau": "CM1" },
+                { "id": "c3_fr_edl_014", "texte": "Comprendre et utiliser les figures de style (métaphore, comparaison, personnification)", "niveau": "CM2" },
+                { "id": "c3_fr_edl_015", "texte": "Utiliser les synonymes, antonymes, paronymes pour éviter les répétitions", "niveau": "CM2" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MA",
+      "titre": "Mathématiques",
+      "sousDomaines": [
+        {
+          "id": "MA.NC",
+          "titre": "Nombres et calculs",
+          "competencesGenerales": [
+            {
+              "id": "MA.NC.CG1",
+              "titre": "Nombres entiers, décimaux et fractions",
+              "competences": [
+                { "id": "c3_ma_nc_001", "texte": "Lire, écrire et comparer les grands nombres entiers (jusqu'aux millions)", "niveau": "CM1" },
+                { "id": "c3_ma_nc_002", "texte": "Comprendre et utiliser les nombres décimaux (dixièmes, centièmes)", "niveau": "CM1" },
+                { "id": "c3_ma_nc_003", "texte": "Utiliser les fractions : comprendre, comparer, poser des opérations simples", "niveau": "CM1" },
+                { "id": "c3_ma_nc_004", "texte": "Passer d'une écriture fractionnaire à une écriture décimale et inversement", "niveau": "CM2" },
+                { "id": "c3_ma_nc_005", "texte": "Comprendre et utiliser les nombres négatifs dans des contextes simples", "niveau": "CM2" }
+              ]
+            },
+            {
+              "id": "MA.NC.CG2",
+              "titre": "Calculer",
+              "competences": [
+                { "id": "c3_ma_nc_006", "texte": "Poser et calculer les quatre opérations sur les entiers", "niveau": "CM1" },
+                { "id": "c3_ma_nc_007", "texte": "Calculer mentalement avec des entiers et des décimaux simples", "niveau": "CM1" },
+                { "id": "c3_ma_nc_008", "texte": "Poser et calculer les opérations sur les nombres décimaux", "niveau": "CM2" },
+                { "id": "c3_ma_nc_009", "texte": "Estimer un ordre de grandeur avant de calculer et vérifier la cohérence d'un résultat", "niveau": "CM2" },
+                { "id": "c3_ma_nc_010", "texte": "Utiliser une calculatrice à bon escient (vérification, grands nombres)", "niveau": "CM2" }
+              ]
+            },
+            {
+              "id": "MA.NC.CG3",
+              "titre": "Résoudre des problèmes",
+              "competences": [
+                { "id": "c3_ma_nc_011", "texte": "Résoudre des problèmes à plusieurs étapes faisant intervenir des entiers et décimaux", "niveau": "CM1" },
+                { "id": "c3_ma_nc_012", "texte": "Résoudre des problèmes de proportionnalité (tableaux, règle de trois)", "niveau": "CM2" },
+                { "id": "c3_ma_nc_013", "texte": "Appliquer un pourcentage simple dans un contexte de la vie courante", "niveau": "CM2" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "MA.GM",
+          "titre": "Grandeurs et mesures",
+          "competencesGenerales": [
+            {
+              "id": "MA.GM.CG1",
+              "titre": "Mesurer et calculer",
+              "competences": [
+                { "id": "c3_ma_gm_001", "texte": "Calculer le périmètre et l'aire de figures planes (rectangle, triangle, disque)", "niveau": "CM1" },
+                { "id": "c3_ma_gm_002", "texte": "Utiliser les unités de mesure usuelles et effectuer des conversions complexes", "niveau": "CM1" },
+                { "id": "c3_ma_gm_003", "texte": "Calculer le volume d'un pavé droit", "niveau": "CM2" },
+                { "id": "c3_ma_gm_004", "texte": "Résoudre des problèmes de vitesse, de durée et de distance", "niveau": "CM2" },
+                { "id": "c3_ma_gm_005", "texte": "Utiliser le tableau des unités de mesure pour des conversions complexes (km, m, cm, mm ; t, kg, g)", "niveau": "CM2" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "MA.EG",
+          "titre": "Espace et géométrie",
+          "competencesGenerales": [
+            {
+              "id": "MA.EG.CG1",
+              "titre": "Figures planes",
+              "competences": [
+                { "id": "c3_ma_eg_001", "texte": "Identifier et décrire les propriétés des figures planes usuelles (triangle, quadrilatères, cercle)", "niveau": "CM1" },
+                { "id": "c3_ma_eg_002", "texte": "Construire des figures géométriques avec précision (règle, équerre, rapporteur, compas)", "niveau": "CM1" },
+                { "id": "c3_ma_eg_003", "texte": "Réaliser des agrandissements et réductions de figures en conservant les proportions", "niveau": "CM2" },
+                { "id": "c3_ma_eg_004", "texte": "Reconnaître et utiliser les transformations : symétrie axiale, translation", "niveau": "CM2" }
+              ]
+            },
+            {
+              "id": "MA.EG.CG2",
+              "titre": "Solides et espace",
+              "competences": [
+                { "id": "c3_ma_eg_005", "texte": "Reconnaître et décrire des solides (pavé, prisme, pyramide, cône, sphère, cylindre)", "niveau": "CM1" },
+                { "id": "c3_ma_eg_006", "texte": "Construire et représenter des solides (patron, perspective cavalière simple)", "niveau": "CM2" }
+              ]
+            },
+            {
+              "id": "MA.EG.CG3",
+              "titre": "Repérage dans le plan",
+              "competences": [
+                { "id": "c3_ma_eg_007", "texte": "Utiliser un repère orthogonal pour placer et lire des points", "niveau": "CM1" },
+                { "id": "c3_ma_eg_008", "texte": "Lire, interpréter et tracer des courbes ou des tableaux dans un repère", "niveau": "CM2" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "MA.OD",
+          "titre": "Organisation et gestion de données",
+          "competencesGenerales": [
+            {
+              "id": "MA.OD.CG1",
+              "titre": "Traiter et représenter des données",
+              "competences": [
+                { "id": "c3_ma_od_001", "texte": "Lire et interpréter des tableaux, graphiques et diagrammes", "niveau": "CM1" },
+                { "id": "c3_ma_od_002", "texte": "Calculer une moyenne dans un contexte simple", "niveau": "CM2" },
+                { "id": "c3_ma_od_003", "texte": "Produire des représentations graphiques adaptées à un ensemble de données", "niveau": "CM2" },
+                { "id": "c3_ma_od_004", "texte": "Comprendre la notion de probabilité dans un contexte de hasard simple", "niveau": "CM2" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "HG",
+      "titre": "Histoire-Géographie",
+      "sousDomaines": [
+        {
+          "id": "HG.HI",
+          "titre": "Histoire",
+          "competencesGenerales": [
+            {
+              "id": "HG.HI.CG1",
+              "titre": "Se repérer dans le temps",
+              "competences": [
+                { "id": "c3_hg_hi_001", "texte": "Placer des événements et des périodes sur une frise chronologique", "niveau": "CM1" },
+                { "id": "c3_hg_hi_002", "texte": "Distinguer et caractériser les grandes périodes historiques", "niveau": "CM1" },
+                { "id": "c3_hg_hi_003", "texte": "Établir des relations de causalité et de continuité entre des faits historiques", "niveau": "CM2" }
+              ]
+            },
+            {
+              "id": "HG.HI.CG2",
+              "titre": "Comprendre les grandes périodes de l'histoire de France",
+              "competences": [
+                { "id": "c3_hg_hi_004", "texte": "Décrire la vie quotidienne à la Préhistoire et dans l'Antiquité", "niveau": "CM1" },
+                { "id": "c3_hg_hi_005", "texte": "Comprendre les caractéristiques de la société médiévale (féodalité, Église, ville)", "niveau": "CM1" },
+                { "id": "c3_hg_hi_006", "texte": "Comprendre la Révolution française et ses idéaux (liberté, égalité, fraternité)", "niveau": "CM2" },
+                { "id": "c3_hg_hi_007", "texte": "Connaître les grandes transformations de la France aux XIXe et XXe siècles", "niveau": "CM2" },
+                { "id": "c3_hg_hi_008", "texte": "Comprendre les enjeux des deux guerres mondiales et de la construction européenne", "niveau": "CM2" }
+              ]
+            },
+            {
+              "id": "HG.HI.CG3",
+              "titre": "Analyser des documents historiques",
+              "competences": [
+                { "id": "c3_hg_hi_009", "texte": "Identifier la nature, la source et l'époque d'un document historique", "niveau": "CM1" },
+                { "id": "c3_hg_hi_010", "texte": "Extraire des informations d'un document et les confronter à d'autres sources", "niveau": "CM2" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "HG.GE",
+          "titre": "Géographie",
+          "competencesGenerales": [
+            {
+              "id": "HG.GE.CG1",
+              "titre": "Se repérer dans l'espace",
+              "competences": [
+                { "id": "c3_hg_ge_001", "texte": "Lire et utiliser des cartes à différentes échelles (commune, région, France, Europe, monde)", "niveau": "CM1" },
+                { "id": "c3_hg_ge_002", "texte": "Situer la France en Europe et dans le monde", "niveau": "CM1" },
+                { "id": "c3_hg_ge_003", "texte": "Identifier les grands ensembles géographiques (reliefs, fleuves, mers, régions)", "niveau": "CM2" }
+              ]
+            },
+            {
+              "id": "HG.GE.CG2",
+              "titre": "Comprendre les relations entre territoire et société",
+              "competences": [
+                { "id": "c3_hg_ge_004", "texte": "Décrire différents types de paysages et espaces (urbain, rural, littoral, montagnard)", "niveau": "CM1" },
+                { "id": "c3_hg_ge_005", "texte": "Comprendre les notions de densité et de répartition de la population", "niveau": "CM2" },
+                { "id": "c3_hg_ge_006", "texte": "Identifier les enjeux du développement durable dans les territoires étudiés", "niveau": "CM2" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ST",
+      "titre": "Sciences et technologie",
+      "sousDomaines": [
+        {
+          "id": "ST.VV",
+          "titre": "Le vivant et ses fonctions",
+          "competencesGenerales": [
+            {
+              "id": "ST.VV.CG1",
+              "titre": "Biodiversité et évolution",
+              "competences": [
+                { "id": "c3_st_vv_001", "texte": "Comprendre la notion de biodiversité et ses enjeux", "niveau": "CM1" },
+                { "id": "c3_st_vv_002", "texte": "Décrire les principales fonctions des êtres vivants (nutrition, reproduction, croissance)", "niveau": "CM1" },
+                { "id": "c3_st_vv_003", "texte": "Comprendre les chaînes alimentaires et les relations entre êtres vivants", "niveau": "CM2" }
+              ]
+            },
+            {
+              "id": "ST.VV.CG2",
+              "titre": "Corps humain et santé",
+              "competences": [
+                { "id": "c3_st_vv_004", "texte": "Identifier les grands systèmes du corps humain (digestif, respiratoire, circulatoire)", "niveau": "CM1" },
+                { "id": "c3_st_vv_005", "texte": "Comprendre les règles d'hygiène et de santé au quotidien", "niveau": "CM1" },
+                { "id": "c3_st_vv_006", "texte": "Expliquer le fonctionnement de la reproduction chez les êtres vivants", "niveau": "CM2" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ST.ME",
+          "titre": "Matière, mouvement et énergie",
+          "competencesGenerales": [
+            {
+              "id": "ST.ME.CG1",
+              "titre": "Matière et énergie",
+              "competences": [
+                { "id": "c3_st_me_001", "texte": "Identifier les différentes sources d'énergie (renouvelables et non renouvelables)", "niveau": "CM1" },
+                { "id": "c3_st_me_002", "texte": "Comprendre les propriétés de la matière (solide, liquide, gaz ; mélanges et solutions)", "niveau": "CM1" },
+                { "id": "c3_st_me_003", "texte": "Décrire le cycle de l'eau dans la nature", "niveau": "CM2" },
+                { "id": "c3_st_me_004", "texte": "Mettre en œuvre une démarche expérimentale simple (observer, formuler, tester, conclure)", "niveau": "CM2" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ST.OT",
+          "titre": "Objets techniques et numérique",
+          "competencesGenerales": [
+            {
+              "id": "ST.OT.CG1",
+              "titre": "Comprendre et utiliser des objets et systèmes techniques",
+              "competences": [
+                { "id": "c3_st_ot_001", "texte": "Analyser le fonctionnement d'un objet technique (fonction, énergie, mécanisme)", "niveau": "CM1" },
+                { "id": "c3_st_ot_002", "texte": "Concevoir et réaliser un objet technique répondant à un besoin", "niveau": "CM2" },
+                { "id": "c3_st_ot_003", "texte": "Utiliser des outils numériques pour collecter, traiter et présenter des données", "niveau": "CM2" },
+                { "id": "c3_st_ot_004", "texte": "Comprendre la notion d'algorithme et réaliser un programme simple", "niveau": "CM2" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ST.TE",
+          "titre": "La Terre et l'environnement",
+          "competencesGenerales": [
+            {
+              "id": "ST.TE.CG1",
+              "titre": "Connaître la Terre et son environnement",
+              "competences": [
+                { "id": "c3_st_te_001", "texte": "Situer la Terre dans le système solaire et comprendre les mouvements (rotation, révolution)", "niveau": "CM1" },
+                { "id": "c3_st_te_002", "texte": "Expliquer les phénomènes naturels liés à la Terre (séismes, volcans, érosion)", "niveau": "CM2" },
+                { "id": "c3_st_te_003", "texte": "Identifier les impacts humains sur l'environnement et les enjeux écologiques", "niveau": "CM2" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EMC",
+      "titre": "Enseignement moral et civique",
+      "sousDomaines": [
+        {
+          "id": "EMC.SE",
+          "titre": "La sensibilité : soi et les autres",
+          "competencesGenerales": [
+            {
+              "id": "EMC.SE.CG1",
+              "titre": "Exprimer et comprendre les émotions",
+              "competences": [
+                { "id": "c3_emc_se_001", "texte": "Exprimer ses émotions de façon maîtrisée et respectueuse" },
+                { "id": "c3_emc_se_002", "texte": "Comprendre les émotions d'autrui et développer l'empathie" },
+                { "id": "c3_emc_se_003", "texte": "Reconnaître et refuser toutes formes de discrimination et de harcèlement" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "EMC.DR",
+          "titre": "Le droit et la règle",
+          "competencesGenerales": [
+            {
+              "id": "EMC.DR.CG1",
+              "titre": "Comprendre le droit et les institutions",
+              "competences": [
+                { "id": "c3_emc_dr_001", "texte": "Comprendre les droits et devoirs du citoyen dans la démocratie" },
+                { "id": "c3_emc_dr_002", "texte": "Connaître les institutions françaises (école, mairie, État, Parlement, Président)" },
+                { "id": "c3_emc_dr_003", "texte": "Comprendre la Convention internationale des droits de l'enfant" },
+                { "id": "c3_emc_dr_004", "texte": "Comprendre le principe de laïcité et son rôle à l'école et dans la société" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "EMC.JU",
+          "titre": "Le jugement",
+          "competencesGenerales": [
+            {
+              "id": "EMC.JU.CG1",
+              "titre": "Développer la pensée critique",
+              "competences": [
+                { "id": "c3_emc_ju_001", "texte": "Distinguer faits, opinions, croyances et connaissances" },
+                { "id": "c3_emc_ju_002", "texte": "Argumenter et nuancer ses jugements moraux ou civiques" },
+                { "id": "c3_emc_ju_003", "texte": "Développer un regard critique sur les médias et l'information" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "EMC.EN",
+          "titre": "L'engagement",
+          "competencesGenerales": [
+            {
+              "id": "EMC.EN.CG1",
+              "titre": "S'engager dans la vie collective",
+              "competences": [
+                { "id": "c3_emc_en_001", "texte": "Participer à la vie de l'école (conseil, projets, élections)" },
+                { "id": "c3_emc_en_002", "texte": "S'impliquer dans des projets collectifs à visée solidaire ou écologique" },
+                { "id": "c3_emc_en_003", "texte": "Comprendre les valeurs du service public et de la solidarité nationale" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EA",
+      "titre": "Enseignements artistiques",
+      "sousDomaines": [
+        {
+          "id": "EA.AP",
+          "titre": "Arts plastiques",
+          "competencesGenerales": [
+            {
+              "id": "EA.AP.CG1",
+              "titre": "Expérimenter, produire, créer",
+              "competences": [
+                { "id": "c3_ea_ap_001", "texte": "Choisir des matériaux et des techniques en lien avec une intention artistique" },
+                { "id": "c3_ea_ap_002", "texte": "Concevoir un projet artistique et le réaliser de façon autonome" },
+                { "id": "c3_ea_ap_003", "texte": "Prendre des risques créatifs et défendre ses choix" }
+              ]
+            },
+            {
+              "id": "EA.AP.CG2",
+              "titre": "Mettre en relation sa pratique et les œuvres d'art",
+              "competences": [
+                { "id": "c3_ea_ap_004", "texte": "Analyser des œuvres d'art avec un vocabulaire spécialisé (couleur, composition, matière)" },
+                { "id": "c3_ea_ap_005", "texte": "Situer des œuvres dans leur contexte historique et culturel" },
+                { "id": "c3_ea_ap_006", "texte": "Établir des liens entre sa propre production et des œuvres du patrimoine" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "EA.EM",
+          "titre": "Éducation musicale",
+          "competencesGenerales": [
+            {
+              "id": "EA.EM.CG1",
+              "titre": "Chanter et créer",
+              "competences": [
+                { "id": "c3_ea_em_001", "texte": "Chanter un répertoire varié avec justesse, précision rythmique et expressivité" },
+                { "id": "c3_ea_em_002", "texte": "Improviser ou composer des séquences sonores simples" },
+                { "id": "c3_ea_em_003", "texte": "Réaliser des arrangements rythmiques ou mélodiques en petits groupes" }
+              ]
+            },
+            {
+              "id": "EA.EM.CG2",
+              "titre": "Écouter, analyser, comparer",
+              "competences": [
+                { "id": "c3_ea_em_004", "texte": "Comparer des œuvres musicales en identifiant leurs caractéristiques (genre, style, époque)" },
+                { "id": "c3_ea_em_005", "texte": "Mettre en relation une œuvre musicale et son contexte de création" },
+                { "id": "c3_ea_em_006", "texte": "Utiliser un vocabulaire spécialisé pour décrire des œuvres musicales" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EPS",
+      "titre": "Éducation physique et sportive",
+      "sousDomaines": [
+        {
+          "id": "EPS.MO",
+          "titre": "Développer sa motricité",
+          "competencesGenerales": [
+            {
+              "id": "EPS.MO.CG1",
+              "titre": "Maîtriser et enrichir sa motricité",
+              "competences": [
+                { "id": "c3_eps_mo_001", "texte": "Réaliser des actions motrices dans des situations variées (athlétisme, natation, danse, lutte)" },
+                { "id": "c3_eps_mo_002", "texte": "Mémoriser et réinvestir des techniques dans des activités physiques" },
+                { "id": "c3_eps_mo_003", "texte": "Gérer son effort et adapter son activité à ses capacités" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "EPS.AP",
+          "titre": "S'approprier par la pratique",
+          "competencesGenerales": [
+            {
+              "id": "EPS.AP.CG1",
+              "titre": "Apprendre à s'entraîner",
+              "competences": [
+                { "id": "c3_eps_ap_001", "texte": "Mettre en place une démarche pour progresser dans une activité physique" },
+                { "id": "c3_eps_ap_002", "texte": "Observer et analyser sa performance ou celle d'un pair" },
+                { "id": "c3_eps_ap_003", "texte": "Comprendre les effets de l'activité physique sur le corps et la santé" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "EPS.RE",
+          "titre": "Partager des règles et assumer des rôles",
+          "competencesGenerales": [
+            {
+              "id": "EPS.RE.CG1",
+              "titre": "Coopérer et respecter",
+              "competences": [
+                { "id": "c3_eps_re_001", "texte": "Assumer des rôles variés (capitaine, arbitre, observateur, coach) dans les activités" },
+                { "id": "c3_eps_re_002", "texte": "Respecter les règles des activités sportives et les adversaires" },
+                { "id": "c3_eps_re_003", "texte": "Coopérer avec ses partenaires pour construire une stratégie collective" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "LVE",
+      "titre": "Langues vivantes étrangères ou régionales",
+      "sousDomaines": [
+        {
+          "id": "LVE.OR",
+          "titre": "Activités orales",
+          "competencesGenerales": [
+            {
+              "id": "LVE.OR.CG1",
+              "titre": "Comprendre l'oral (A1→A2)",
+              "competences": [
+                { "id": "c3_lve_or_001", "texte": "Comprendre des expressions courantes sur des sujets familiers (famille, école, loisirs)" },
+                { "id": "c3_lve_or_002", "texte": "Comprendre des informations factuelles simples dans un message oral court" },
+                { "id": "c3_lve_or_003", "texte": "Identifier des accents, des variétés régionales et des registres différents" }
+              ]
+            },
+            {
+              "id": "LVE.OR.CG2",
+              "titre": "Parler en continu et dialoguer (A1→A2)",
+              "competences": [
+                { "id": "c3_lve_or_004", "texte": "Décrire en termes simples des aspects de sa vie quotidienne" },
+                { "id": "c3_lve_or_005", "texte": "Communiquer dans des situations simples de la vie courante (achats, directions, présentations)" },
+                { "id": "c3_lve_or_006", "texte": "Présenter un court exposé sur un sujet connu" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "LVE.EC",
+          "titre": "Activités écrites",
+          "competencesGenerales": [
+            {
+              "id": "LVE.EC.CG1",
+              "titre": "Lire et comprendre (A1→A2)",
+              "competences": [
+                { "id": "c3_lve_ec_001", "texte": "Lire et comprendre des textes courts et simples (messages, affiches, extraits)" },
+                { "id": "c3_lve_ec_002", "texte": "Repérer des informations dans un document écrit authentique simple" }
+              ]
+            },
+            {
+              "id": "LVE.EC.CG2",
+              "titre": "Écrire (A1→A2)",
+              "competences": [
+                { "id": "c3_lve_ec_003", "texte": "Écrire des phrases simples sur des sujets familiers" },
+                { "id": "c3_lve_ec_004", "texte": "Rédiger un court message ou une carte postale simple en langue étrangère" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

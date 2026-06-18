@@ -1,0 +1,74 @@
+[
+  {
+    "titre": "ONDE",
+    "description": "Base élèves du premier degré : effectifs, répartitions, admissions.",
+    "categorie": "Gestion & direction",
+    "url": "https://onde.education.gouv.fr"
+  },
+  {
+    "titre": "apps.education.fr",
+    "description": "Services numériques de l'État : nuage, visioconférence, blogs, mails.",
+    "categorie": "Gestion & direction",
+    "url": "https://apps.education.fr"
+  },
+  {
+    "titre": "Tribu",
+    "description": "Espaces collaboratifs sécurisés pour partager documents et projets d'équipe.",
+    "categorie": "Gestion & direction",
+    "url": "https://tribu.phm.education.gouv.fr"
+  },
+  {
+    "titre": "m@gistère",
+    "description": "Plateforme de formation continue en ligne des enseignants.",
+    "categorie": "Formation & accompagnement",
+    "url": "https://magistere.education.fr"
+  },
+  {
+    "titre": "Réseau Canopé",
+    "description": "Formations, ressources et services pour la communauté éducative.",
+    "categorie": "Formation & accompagnement",
+    "url": "https://www.reseau-canope.fr"
+  },
+  {
+    "titre": "Cap École inclusive",
+    "description": "Outils et ressources pour accompagner les élèves à besoins particuliers.",
+    "categorie": "Formation & accompagnement",
+    "url": "https://www.reseau-canope.fr/cap-ecole-inclusive"
+  },
+  {
+    "titre": "Éduscol",
+    "description": "Programmes, ressources d'accompagnement et actualités officielles.",
+    "categorie": "Ressources pédagogiques",
+    "url": "https://eduscol.education.fr"
+  },
+  {
+    "titre": "Primàbord",
+    "description": "Le portail du numérique éducatif pour le premier degré.",
+    "categorie": "Ressources pédagogiques",
+    "url": "https://primabord.eduscol.education.fr"
+  },
+  {
+    "titre": "Éduthèque",
+    "description": "Ressources culturelles et scientifiques des grands établissements publics.",
+    "categorie": "Ressources pédagogiques",
+    "url": "https://www.edutheque.fr"
+  },
+  {
+    "titre": "Lumni Enseignement",
+    "description": "Vidéos et ressources audiovisuelles classées par niveau et discipline.",
+    "categorie": "Ressources pédagogiques",
+    "url": "https://www.lumni.fr/enseignants"
+  },
+  {
+    "titre": "La Quizinière",
+    "description": "Créer et partager des exercices interactifs (Réseau Canopé).",
+    "categorie": "Évaluation & compétences",
+    "url": "https://www.quiziniere.com"
+  },
+  {
+    "titre": "PIX",
+    "description": "Évaluer et certifier les compétences numériques.",
+    "categorie": "Évaluation & compétences",
+    "url": "https://pix.fr"
+  }
+]

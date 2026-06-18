@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Identifiant d'app (doit correspondre au provisioning profile) :
+         TEAMID.bundleId. Requis pour TestFlight / Mac App Store. -->
+    <key>com.apple.application-identifier</key>
+    <string>AZZ5PTTNXH.fr.clementsapp.maitrizev2</string>
+    <key>com.apple.developer.team-identifier</key>
+    <string>AZZ5PTTNXH</string>
+
+    <!-- App Sandbox : OBLIGATOIRE pour le Mac App Store. -->
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+
+    <!-- Accès réseau sortant (API Mistral, vacances scolaires). -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+
+    <!-- Lecture/écriture des fichiers que l'utilisateur choisit
+         (dialogues « Ouvrir » / « Enregistrer sous », imports/exports JSON, PDF). -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+</dict>
+</plist>

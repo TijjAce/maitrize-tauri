@@ -1,0 +1,174 @@
+[
+{
+"id": "d1",
+"titre": "1. Développement et structuration du langage oral et écrit",
+"titreObservations": "Les réussites observées par l'enseignant",
+"items": [
+{
+"id": "d1.o1",
+"bloc": "Acquérir le langage oral",
+"label": "Enrichir son vocabulaire : mémoriser et réemployer les mots des corpus étudiés"
+},
+{
+"id": "d1.o2",
+"bloc": "Acquérir le langage oral",
+"label": "Développer sa syntaxe et articuler distinctement : s'exprimer clairement dans un langage structuré"
+},
+{
+"id": "d1.o3",
+"bloc": "Acquérir le langage oral",
+"label": "Produire des discours variés : raconter ou expliquer des situations de manière compréhensible"
+},
+{
+"id": "d1.l1",
+"bloc": "Se préparer à apprendre à lire",
+"label": "Acquérir les habiletés phonologiques et le principe alphabétique : manipuler des syllabes orales puis des phonèmes, connaître le nom et le son des lettres, faire le lien entre lettres et sons"
+},
+{
+"id": "d1.l2",
+"bloc": "Se préparer à apprendre à lire",
+"label": "S'éveiller à la diversité linguistique : écouter, identifier, discriminer et reproduire des sons"
+},
+{
+"id": "d1.l3",
+"bloc": "Se préparer à apprendre à lire",
+"label": "Écouter et comprendre différentes formes d'écrits : comprendre des textes lus par le professeur"
+},
+{
+"id": "d1.e1",
+"bloc": "Se préparer à apprendre à écrire",
+"label": "Apprendre le geste d'écriture : tracer des lettres en écriture cursive et les enchaîner"
+},
+{
+"id": "d1.e2",
+"bloc": "Se préparer à apprendre à écrire",
+"label": "Produire de premiers écrits : comprendre le lien entre l'oral et l'écrit et commencer à écrire seul des mots transparents"
+}
+],
+"enonces": []
+},
+{
+"id": "d2",
+"titre": "2. Agir, s'exprimer, comprendre à travers l'activité physique",
+"titreObservations": "Les réussites observées par l'enseignant",
+"items": [
+{
+"id": "d2.p1",
+"bloc": null,
+"label": "S'engager avec aisance dans les actions ou déplacements"
+},
+{
+"id": "d2.p2",
+"bloc": null,
+"label": "Coopérer. Interagir. Respecter les rôles de chacun."
+}
+],
+"enonces": []
+},
+{
+"id": "d3",
+"titre": "3. Agir, s'exprimer, comprendre à travers les activités artistiques",
+"titreObservations": "Les réussites observées par l'enseignant",
+"items": [
+{
+"id": "d3.a1",
+"bloc": null,
+"label": "S'engager dans les activités. Réaliser des productions personnelles : dessin, compositions graphiques et plastiques, voix, chant, pratiques rythmiques et corporelles."
+}
+],
+"enonces": []
+},
+{
+"id": "d4",
+"titre": "4. Acquisition des premiers outils mathématiques",
+"titreObservations": "Les réussites observées par l'enseignant",
+"items": [
+{
+"id": "d4.qte",
+"bloc": "Découvrir les nombres — exprimer une quantité par un nombre",
+"label": "Dénombrer une collection d'objets (jusqu'à dix, voire au-delà). Constituer une collection d'un cardinal donné. Comparer des quantités. Composer et décomposer des nombres ≤ 10. Associer une quantité, le nom d'un nombre et une écriture chiffrée. Écrire en chiffres les nombres de un à dix. Connaître et utiliser la comptine numérique jusqu'à trente."
+},
+{
+"id": "d4.rang",
+"bloc": "Découvrir les nombres — exprimer un rang ou une position par un nombre",
+"label": "Repérer le rang d'un objet dans une suite ordonnée. Communiquer oralement ou par écrit le rang d'un objet dans une suite ordonnée. Compléter une bande numérique lacunaire (jusqu'à dix)."
+},
+{
+"id": "d4.pb",
+"bloc": "Utiliser les nombres pour résoudre des problèmes",
+"label": "Déterminer le tout ou une partie dans un problème de parties-tout. Déterminer la position finale ou initiale à partir d'un déplacement sur une piste (jeu de l'oie, bande numérique). Déterminer le cardinal d'une collection à partir d'une autre et de l'écart entre les deux."
+},
+{
+"id": "d4.formes",
+"bloc": "Explorer les solides et les formes planes",
+"label": "Reconnaître, décrire et nommer quelques solides simples et quelques figures géométriques simples."
+},
+{
+"id": "d4.grand",
+"bloc": "Explorer des grandeurs : la longueur, la masse",
+"label": "Comparer indirectement des longueurs d'objets rectilignes. Ordonner des objets rectilignes selon leur longueur (au maximum cinq). Ordonner les masses de trois objets. Reconnaître l'égalité de deux masses."
+},
+{
+"id": "d4.motifs",
+"bloc": "Se familiariser avec les motifs organisés",
+"label": "Identifier la structure d'un motif répétitif ou évolutif simple, indépendamment des éléments physiques qui le composent."
+}
+],
+"enonces": []
+},
+{
+"id": "d5",
+"titre": "5. Explorer le monde",
+"titreObservations": "Les réussites observées par l'enseignant",
+"items": [
+{
+"id": "d5.t1",
+"bloc": null,
+"label": "Le temps : repérer. Situer. Ordonner. Représenter."
+},
+{
+"id": "d5.e1",
+"bloc": null,
+"label": "L'espace : repérer. Situer. Orienter. Représenter."
+},
+{
+"id": "d5.v1",
+"bloc": null,
+"label": "Le vivant : identifier. Catégoriser. Adopter une attitude respectueuse des lieux et du vivant."
+},
+{
+"id": "d5.m1",
+"bloc": null,
+"label": "La matière : utiliser. Classer. Fabriquer."
+},
+{
+"id": "d5.o1",
+"bloc": null,
+"label": "Les objets : utiliser. Fabriquer. Construire."
+},
+{
+"id": "d5.s1",
+"bloc": null,
+"label": "Les règles de sécurité et d'hygiène : avoir conscience des risques liés à l'usage des objets, appliquer des règles d'hygiène"
+},
+{
+"id": "d5.n1",
+"bloc": null,
+"label": "Les outils numériques : les utiliser de manière adaptée"
+}
+],
+"enonces": []
+},
+{
+"id": "aeve",
+"titre": "Apprendre ensemble et vivre ensemble",
+"titreObservations": "Observations réalisées par l'enseignant",
+"items": [],
+"enonces": [
+"S'engager dans l'effort. Persévérer.",
+"Prendre en compte les consignes collectives.",
+"Participer aux activités, à la réalisation de projets communs. Coopérer. Prendre des initiatives, des responsabilités au sein d'un groupe.",
+"Connaître et appliquer les principes premiers de la vie en société. S'appuyer sur ses premières expériences morales."
+]
+}
+]

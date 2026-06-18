@@ -1,0 +1,578 @@
+{
+  "cycle": 2,
+  "titre": "Cycle 2 – CP, CE1, CE2",
+  "domaines": [
+    {
+      "id": "FR",
+      "titre": "Français",
+      "sousDomaines": [
+        {
+          "id": "FR.LO",
+          "titre": "Langage oral",
+          "competencesGenerales": [
+            {
+              "id": "FR.LO.CG1",
+              "titre": "Comprendre un énoncé oral",
+              "competences": [
+                { "id": "c2_fr_lo_001", "texte": "Identifier l'essentiel d'un message oral court", "niveau": "CP" },
+                { "id": "c2_fr_lo_002", "texte": "Retenir les informations importantes entendues", "niveau": "CP" },
+                { "id": "c2_fr_lo_003", "texte": "Identifier le sujet et les informations principales d'un texte lu", "niveau": "CE1" },
+                { "id": "c2_fr_lo_004", "texte": "Formuler des hypothèses sur le contenu d'un message", "niveau": "CE1" },
+                { "id": "c2_fr_lo_005", "texte": "Comprendre des messages ou textes complexes lus à voix haute", "niveau": "CE2" },
+                { "id": "c2_fr_lo_006", "texte": "Mémoriser et restituer des informations importantes d'un texte entendu", "niveau": "CE2" }
+              ]
+            },
+            {
+              "id": "FR.LO.CG2",
+              "titre": "Parler en continu",
+              "competences": [
+                { "id": "c2_fr_lo_007", "texte": "Raconter en phrases simples un événement vécu ou une histoire connue", "niveau": "CP" },
+                { "id": "c2_fr_lo_008", "texte": "Décrire une image ou une situation avec des mots précis", "niveau": "CP" },
+                { "id": "c2_fr_lo_009", "texte": "Présenter une information préparée avec un début et une fin", "niveau": "CE1" },
+                { "id": "c2_fr_lo_010", "texte": "Reformuler avec ses propres mots ce qui vient d'être dit", "niveau": "CE1" },
+                { "id": "c2_fr_lo_011", "texte": "Présenter un court exposé organisé devant la classe", "niveau": "CE2" },
+                { "id": "c2_fr_lo_012", "texte": "Adapter son niveau de langue à la situation de communication", "niveau": "CE2" }
+              ]
+            },
+            {
+              "id": "FR.LO.CG3",
+              "titre": "Réagir et dialoguer",
+              "competences": [
+                { "id": "c2_fr_lo_013", "texte": "Participer à des échanges en respectant les règles", "niveau": "CP" },
+                { "id": "c2_fr_lo_014", "texte": "Prendre la parole en s'exprimant de façon audible et claire", "niveau": "CP" },
+                { "id": "c2_fr_lo_015", "texte": "Prendre en compte les propos des autres et rebondir", "niveau": "CE1" },
+                { "id": "c2_fr_lo_016", "texte": "Formuler un point de vue et le justifier sommairement", "niveau": "CE1" },
+                { "id": "c2_fr_lo_017", "texte": "Argumenter et débattre en respectant les règles de l'échange", "niveau": "CE2" },
+                { "id": "c2_fr_lo_018", "texte": "Exprimer son accord ou désaccord de façon construite et polie", "niveau": "CE2" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "FR.LEC",
+          "titre": "Lecture",
+          "competencesGenerales": [
+            {
+              "id": "FR.LEC.CG1",
+              "titre": "Déchiffrer et identifier des mots",
+              "competences": [
+                { "id": "c2_fr_lec_001", "texte": "Décoder des syllabes et des mots réguliers (CGP étudiées)", "niveau": "CP" },
+                { "id": "c2_fr_lec_002", "texte": "Lire à voix haute des mots réguliers avec fluidité (~30 mots/min)", "niveau": "CP" },
+                { "id": "c2_fr_lec_003", "texte": "Reconnaître les mots outils sans décodage (lecture globale)", "niveau": "CP" },
+                { "id": "c2_fr_lec_004", "texte": "Mobiliser toutes les CGP de façon automatisée, lire à ~60 mots/min", "niveau": "CE1" },
+                { "id": "c2_fr_lec_005", "texte": "Lire des textes courts adaptés avec fluidité et expressivité", "niveau": "CE1" },
+                { "id": "c2_fr_lec_006", "texte": "Lire avec fluidité des textes variés (~90 mots/min en fin de CE2)", "niveau": "CE2" },
+                { "id": "c2_fr_lec_007", "texte": "Identifier des mots inconnus par analogie ou analyse morphologique", "niveau": "CE2" }
+              ]
+            },
+            {
+              "id": "FR.LEC.CG2",
+              "titre": "Comprendre un texte",
+              "competences": [
+                { "id": "c2_fr_lec_008", "texte": "Comprendre une histoire simple lue par le maître", "niveau": "CP" },
+                { "id": "c2_fr_lec_009", "texte": "Identifier les personnages et les événements principaux d'un récit", "niveau": "CP" },
+                { "id": "c2_fr_lec_010", "texte": "Repérer les informations explicites d'un texte court", "niveau": "CE1" },
+                { "id": "c2_fr_lec_011", "texte": "Inférer des informations non explicites simples", "niveau": "CE1" },
+                { "id": "c2_fr_lec_012", "texte": "Synthétiser les informations lues pour répondre à une question", "niveau": "CE2" },
+                { "id": "c2_fr_lec_013", "texte": "Distinguer les types de textes (narratif, descriptif, explicatif)", "niveau": "CE2" }
+              ]
+            },
+            {
+              "id": "FR.LEC.CG3",
+              "titre": "Lire des œuvres littéraires",
+              "competences": [
+                { "id": "c2_fr_lec_014", "texte": "Écouter des œuvres lues par l'enseignant et en comprendre les enjeux", "niveau": "CP" },
+                { "id": "c2_fr_lec_015", "texte": "Lire des albums et des textes de littérature de jeunesse adaptés", "niveau": "CE1" },
+                { "id": "c2_fr_lec_016", "texte": "Lire 5 à 10 œuvres intégrales dans l'année scolaire", "niveau": "CE2" },
+                { "id": "c2_fr_lec_017", "texte": "Donner son avis sur une œuvre lue et le justifier", "niveau": "CE2" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "FR.ECR",
+          "titre": "Écriture",
+          "competencesGenerales": [
+            {
+              "id": "FR.ECR.CG1",
+              "titre": "Écriture cursive et copie",
+              "competences": [
+                { "id": "c2_fr_ecr_001", "texte": "Écrire les minuscules cursives avec soin et lisibilité", "niveau": "CP" },
+                { "id": "c2_fr_ecr_002", "texte": "Copier un texte court en respectant la mise en page", "niveau": "CP" },
+                { "id": "c2_fr_ecr_003", "texte": "Écrire les majuscules cursives", "niveau": "CE1" },
+                { "id": "c2_fr_ecr_004", "texte": "Copier avec stratégie : observer – mémoriser – écrire – vérifier", "niveau": "CE1" },
+                { "id": "c2_fr_ecr_005", "texte": "Écrire en cursive de façon fluide et lisible", "niveau": "CE2" },
+                { "id": "c2_fr_ecr_006", "texte": "Prendre des notes simples sous dictée ou lors d'une recherche", "niveau": "CE2" }
+              ]
+            },
+            {
+              "id": "FR.ECR.CG2",
+              "titre": "Production d'écrits",
+              "competences": [
+                { "id": "c2_fr_ecr_007", "texte": "Écrire une phrase simple correctement ponctutée", "niveau": "CP" },
+                { "id": "c2_fr_ecr_008", "texte": "Produire un court texte avec aide (image, situation)", "niveau": "CP" },
+                { "id": "c2_fr_ecr_009", "texte": "Rédiger quelques phrases cohérentes pour raconter ou décrire", "niveau": "CE1" },
+                { "id": "c2_fr_ecr_010", "texte": "Commencer à organiser ses écrits (début, milieu, fin)", "niveau": "CE1" },
+                { "id": "c2_fr_ecr_011", "texte": "Rédiger un texte court et organisé (récit, description, lettre)", "niveau": "CE2" },
+                { "id": "c2_fr_ecr_012", "texte": "Réviser son écrit : relire, corriger orthographe et sens", "niveau": "CE2" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "FR.EDL",
+          "titre": "Étude de la langue",
+          "competencesGenerales": [
+            {
+              "id": "FR.EDL.CG1",
+              "titre": "Grammaire",
+              "competences": [
+                { "id": "c2_fr_edl_001", "texte": "Identifier la phrase (majuscule initiale, ponctuation finale)", "niveau": "CP" },
+                { "id": "c2_fr_edl_002", "texte": "Distinguer groupe sujet et groupe verbal dans la phrase simple", "niveau": "CE1" },
+                { "id": "c2_fr_edl_003", "texte": "Identifier le verbe conjugué dans une phrase", "niveau": "CE1" },
+                { "id": "c2_fr_edl_004", "texte": "Reconnaître les classes de mots : nom, déterminant, adjectif, verbe, pronom", "niveau": "CE1" },
+                { "id": "c2_fr_edl_005", "texte": "Identifier le genre et le nombre d'un nom", "niveau": "CE2" },
+                { "id": "c2_fr_edl_006", "texte": "Reconnaître les compléments du verbe (COD, complément de lieu, de temps)", "niveau": "CE2" },
+                { "id": "c2_fr_edl_007", "texte": "Utiliser les temps verbaux : présent, passé composé, imparfait, futur simple", "niveau": "CE2" }
+              ]
+            },
+            {
+              "id": "FR.EDL.CG2",
+              "titre": "Orthographe",
+              "competences": [
+                { "id": "c2_fr_edl_008", "texte": "Encoder les sons en respectant les correspondances grapho-phonémiques", "niveau": "CP" },
+                { "id": "c2_fr_edl_009", "texte": "Mémoriser les mots invariables les plus fréquents (et, est, ou, où…)", "niveau": "CP" },
+                { "id": "c2_fr_edl_010", "texte": "Orthographier correctement les mots du répertoire appris", "niveau": "CE1" },
+                { "id": "c2_fr_edl_011", "texte": "Respecter l'accord sujet-verbe dans la phrase simple", "niveau": "CE1" },
+                { "id": "c2_fr_edl_012", "texte": "Accorder le groupe nominal : déterminant + nom + adjectif", "niveau": "CE2" },
+                { "id": "c2_fr_edl_013", "texte": "Conjuguer et orthographier les verbes usuels aux temps étudiés", "niveau": "CE2" },
+                { "id": "c2_fr_edl_014", "texte": "Utiliser les homophones grammaticaux courants : a/à, est/et, on/ont, son/sont", "niveau": "CE2" }
+              ]
+            },
+            {
+              "id": "FR.EDL.CG3",
+              "titre": "Vocabulaire / Lexique",
+              "competences": [
+                { "id": "c2_fr_edl_015", "texte": "Constituer des collections de mots par thème ou par famille", "niveau": "CP" },
+                { "id": "c2_fr_edl_016", "texte": "Comprendre et mémoriser les mots nouveaux du corpus enseigné", "niveau": "CP" },
+                { "id": "c2_fr_edl_017", "texte": "Distinguer le sens propre et le sens figuré d'un mot courant", "niveau": "CE1" },
+                { "id": "c2_fr_edl_018", "texte": "Utiliser les relations de synonymie et d'antonymie", "niveau": "CE1" },
+                { "id": "c2_fr_edl_019", "texte": "Utiliser le contexte pour inférer le sens d'un mot inconnu", "niveau": "CE2" },
+                { "id": "c2_fr_edl_020", "texte": "Connaître les préfixes et suffixes courants et en déduire le sens", "niveau": "CE2" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MA",
+      "titre": "Mathématiques",
+      "sousDomaines": [
+        {
+          "id": "MA.NC",
+          "titre": "Nombres et calculs",
+          "competencesGenerales": [
+            {
+              "id": "MA.NC.CG1",
+              "titre": "Comprendre et utiliser les nombres entiers",
+              "competences": [
+                { "id": "c2_ma_nc_001", "texte": "Dénombrer, lire et écrire les nombres jusqu'à 100", "niveau": "CP" },
+                { "id": "c2_ma_nc_002", "texte": "Comparer et ordonner des nombres jusqu'à 100", "niveau": "CP" },
+                { "id": "c2_ma_nc_003", "texte": "Comprendre la valeur positionnelle (dizaines/unités)", "niveau": "CP" },
+                { "id": "c2_ma_nc_004", "texte": "Lire et écrire les nombres jusqu'à 1 000", "niveau": "CE1" },
+                { "id": "c2_ma_nc_005", "texte": "Utiliser les notions de moitié, quart, demi", "niveau": "CE1" },
+                { "id": "c2_ma_nc_006", "texte": "Comprendre les fractions unitaires simples (1/2, 1/3, 1/4…)", "niveau": "CE1" },
+                { "id": "c2_ma_nc_007", "texte": "Lire, écrire et comparer les nombres jusqu'à 10 000", "niveau": "CE2" },
+                { "id": "c2_ma_nc_008", "texte": "Utiliser les fractions simples inférieures ou égales à 1", "niveau": "CE2" },
+                { "id": "c2_ma_nc_009", "texte": "Maîtriser la valeur positionnelle : milliers, centaines, dizaines, unités", "niveau": "CE2" }
+              ]
+            },
+            {
+              "id": "MA.NC.CG2",
+              "titre": "Calculer",
+              "competences": [
+                { "id": "c2_ma_nc_010", "texte": "Mémoriser les tables d'addition (jusqu'à 10 + 10)", "niveau": "CP" },
+                { "id": "c2_ma_nc_011", "texte": "Calculer mentalement des sommes et différences simples", "niveau": "CP" },
+                { "id": "c2_ma_nc_012", "texte": "Poser et calculer l'addition et la soustraction en colonnes", "niveau": "CE1" },
+                { "id": "c2_ma_nc_013", "texte": "Mémoriser les tables de multiplication par 2, 5 et 10", "niveau": "CE1" },
+                { "id": "c2_ma_nc_014", "texte": "Calculer mentalement des produits simples", "niveau": "CE1" },
+                { "id": "c2_ma_nc_015", "texte": "Mémoriser toutes les tables de multiplication jusqu'à 9 × 9", "niveau": "CE2" },
+                { "id": "c2_ma_nc_016", "texte": "Poser et calculer la multiplication (un chiffre × plusieurs chiffres)", "niveau": "CE2" },
+                { "id": "c2_ma_nc_017", "texte": "Comprendre et utiliser la division euclidienne", "niveau": "CE2" },
+                { "id": "c2_ma_nc_018", "texte": "Développer des automatismes de calcul mental (doubles, moitiés, compléments)", "niveau": "CE2" }
+              ]
+            },
+            {
+              "id": "MA.NC.CG3",
+              "titre": "Résoudre des problèmes",
+              "competences": [
+                { "id": "c2_ma_nc_019", "texte": "Résoudre des problèmes additifs simples (1 étape)", "niveau": "CP" },
+                { "id": "c2_ma_nc_020", "texte": "Résoudre des problèmes soustractifs simples (1 étape)", "niveau": "CP" },
+                { "id": "c2_ma_nc_021", "texte": "Résoudre des problèmes multiplicatifs et de partage équitable", "niveau": "CE1" },
+                { "id": "c2_ma_nc_022", "texte": "Résoudre des problèmes nécessitant une ou deux opérations", "niveau": "CE2" },
+                { "id": "c2_ma_nc_023", "texte": "Mettre en œuvre une démarche de résolution de problèmes structurée", "niveau": "CE2" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "MA.GM",
+          "titre": "Grandeurs et mesures",
+          "competencesGenerales": [
+            {
+              "id": "MA.GM.CG1",
+              "titre": "Mesurer et comparer des grandeurs",
+              "competences": [
+                { "id": "c2_ma_gm_001", "texte": "Comparer des longueurs, masses et contenances directement ou avec une unité", "niveau": "CP" },
+                { "id": "c2_ma_gm_002", "texte": "Mesurer des longueurs avec une règle (cm et m)", "niveau": "CE1" },
+                { "id": "c2_ma_gm_003", "texte": "Comparer des masses avec une balance ; connaître le kg et le g", "niveau": "CE1" },
+                { "id": "c2_ma_gm_004", "texte": "Résoudre des problèmes de mesure (longueur, masse, contenance)", "niveau": "CE2" },
+                { "id": "c2_ma_gm_005", "texte": "Utiliser les unités usuelles et effectuer des conversions simples (m↔cm, kg↔g)", "niveau": "CE2" }
+              ]
+            },
+            {
+              "id": "MA.GM.CG2",
+              "titre": "Temps et monnaie",
+              "competences": [
+                { "id": "c2_ma_gm_006", "texte": "Lire l'heure sur une horloge analogique (heures entières)", "niveau": "CP" },
+                { "id": "c2_ma_gm_007", "texte": "Utiliser les unités de temps : heure, minute, seconde ; lire les demi-heures", "niveau": "CE1" },
+                { "id": "c2_ma_gm_008", "texte": "Utiliser les pièces et billets courants pour composer une somme", "niveau": "CE1" },
+                { "id": "c2_ma_gm_009", "texte": "Lire l'heure et calculer des durées simples", "niveau": "CE2" },
+                { "id": "c2_ma_gm_010", "texte": "Résoudre des problèmes de durées, de dates et de monnaie", "niveau": "CE2" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "MA.EG",
+          "titre": "Espace et géométrie",
+          "competencesGenerales": [
+            {
+              "id": "MA.EG.CG1",
+              "titre": "Se repérer dans l'espace",
+              "competences": [
+                { "id": "c2_ma_eg_001", "texte": "Se repérer et se déplacer sur un quadrillage", "niveau": "CP" },
+                { "id": "c2_ma_eg_002", "texte": "Utiliser des repères et des représentations simples de l'espace (plan, carte)", "niveau": "CE1" },
+                { "id": "c2_ma_eg_003", "texte": "Lire et produire des représentations simples de l'espace", "niveau": "CE2" }
+              ]
+            },
+            {
+              "id": "MA.EG.CG2",
+              "titre": "Figures planes et solides",
+              "competences": [
+                { "id": "c2_ma_eg_004", "texte": "Reconnaître et nommer les figures planes : carré, rectangle, triangle, cercle", "niveau": "CP" },
+                { "id": "c2_ma_eg_005", "texte": "Reconnaître et nommer des solides : cube, pavé, pyramide, boule, cylindre", "niveau": "CP" },
+                { "id": "c2_ma_eg_006", "texte": "Reproduire des figures sur quadrillage", "niveau": "CE1" },
+                { "id": "c2_ma_eg_007", "texte": "Tracer des figures avec les instruments (règle, équerre)", "niveau": "CE2" },
+                { "id": "c2_ma_eg_008", "texte": "Identifier les propriétés du losange et des figures usuelles", "niveau": "CE2" },
+                { "id": "c2_ma_eg_009", "texte": "Reconnaître et utiliser la symétrie axiale", "niveau": "CE2" },
+                { "id": "c2_ma_eg_010", "texte": "Distinguer angles aigus et angles obtus", "niveau": "CE2" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "MA.OD",
+          "titre": "Organisation et gestion de données",
+          "competencesGenerales": [
+            {
+              "id": "MA.OD.CG1",
+              "titre": "Lire, organiser et représenter des données",
+              "competences": [
+                { "id": "c2_ma_od_001", "texte": "Lire un tableau à double entrée simple", "niveau": "CE1" },
+                { "id": "c2_ma_od_002", "texte": "Lire et interpréter des diagrammes et graphiques simples", "niveau": "CE2" },
+                { "id": "c2_ma_od_003", "texte": "Recueillir, classer et organiser des données dans un tableau", "niveau": "CE2" },
+                { "id": "c2_ma_od_004", "texte": "Produire un tableau ou un diagramme à partir de données collectées", "niveau": "CE2" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "QLM",
+      "titre": "Questionner le monde",
+      "sousDomaines": [
+        {
+          "id": "QLM.VT",
+          "titre": "Le vivant, la matière et les objets",
+          "competencesGenerales": [
+            {
+              "id": "QLM.VT.CG1",
+              "titre": "Le monde vivant",
+              "competences": [
+                { "id": "c2_qlm_vt_001", "texte": "Distinguer les êtres vivants des objets inertes", "niveau": "CP" },
+                { "id": "c2_qlm_vt_002", "texte": "Décrire les stades du développement d'un être vivant", "niveau": "CE1" },
+                { "id": "c2_qlm_vt_003", "texte": "Identifier les caractéristiques des êtres vivants (nutrition, reproduction, croissance)", "niveau": "CE2" },
+                { "id": "c2_qlm_vt_004", "texte": "Classer des animaux et des végétaux selon leurs caractéristiques", "niveau": "CE2" }
+              ]
+            },
+            {
+              "id": "QLM.VT.CG2",
+              "titre": "La matière",
+              "competences": [
+                { "id": "c2_qlm_vt_005", "texte": "Identifier les matières qui constituent des objets du quotidien", "niveau": "CP" },
+                { "id": "c2_qlm_vt_006", "texte": "Reconnaître les trois états de l'eau (solide, liquide, gazeux)", "niveau": "CE1" },
+                { "id": "c2_qlm_vt_007", "texte": "Décrire les changements d'état (fusion, solidification, évaporation)", "niveau": "CE2" }
+              ]
+            },
+            {
+              "id": "QLM.VT.CG3",
+              "titre": "Les objets techniques",
+              "competences": [
+                { "id": "c2_qlm_vt_008", "texte": "Décrire le fonctionnement d'un objet technique simple", "niveau": "CE1" },
+                { "id": "c2_qlm_vt_009", "texte": "Identifier la fonction des éléments d'une chaîne électrique simple", "niveau": "CE2" },
+                { "id": "c2_qlm_vt_010", "texte": "Réaliser une maquette ou un objet technique simple", "niveau": "CE2" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "QLM.ET",
+          "titre": "L'espace et le temps",
+          "competencesGenerales": [
+            {
+              "id": "QLM.ET.CG1",
+              "titre": "Se repérer dans l'espace",
+              "competences": [
+                { "id": "c2_qlm_et_001", "texte": "Utiliser un plan ou une carte simple pour se repérer", "niveau": "CE1" },
+                { "id": "c2_qlm_et_002", "texte": "Situer sa commune, sa région, la France sur une carte", "niveau": "CE2" },
+                { "id": "c2_qlm_et_003", "texte": "Décrire des milieux géographiques proches", "niveau": "CE2" }
+              ]
+            },
+            {
+              "id": "QLM.ET.CG2",
+              "titre": "Se repérer dans le temps",
+              "competences": [
+                { "id": "c2_qlm_et_004", "texte": "Utiliser un calendrier et une frise du temps de la classe", "niveau": "CP" },
+                { "id": "c2_qlm_et_005", "texte": "Situer des événements vécus sur une frise chronologique", "niveau": "CE1" },
+                { "id": "c2_qlm_et_006", "texte": "Comprendre la notion de chronologie à travers des récits historiques simples", "niveau": "CE2" },
+                { "id": "c2_qlm_et_007", "texte": "Situer quelques grandes périodes de l'histoire de France sur une frise", "niveau": "CE2" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EMC",
+      "titre": "Enseignement moral et civique",
+      "sousDomaines": [
+        {
+          "id": "EMC.SE",
+          "titre": "La sensibilité : soi et les autres",
+          "competencesGenerales": [
+            {
+              "id": "EMC.SE.CG1",
+              "titre": "Identifier et exprimer ses émotions",
+              "competences": [
+                { "id": "c2_emc_se_001", "texte": "Identifier et nommer ses émotions et ses sentiments" },
+                { "id": "c2_emc_se_002", "texte": "Respecter les émotions et la sensibilité des autres" },
+                { "id": "c2_emc_se_003", "texte": "Développer de l'empathie envers ses camarades" },
+                { "id": "c2_emc_se_004", "texte": "Exprimer ses opinions dans le respect des autres" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "EMC.DR",
+          "titre": "Le droit et la règle : vivre ensemble",
+          "competencesGenerales": [
+            {
+              "id": "EMC.DR.CG1",
+              "titre": "Comprendre et respecter les règles",
+              "competences": [
+                { "id": "c2_emc_dr_001", "texte": "Comprendre la nécessité des règles dans la vie collective" },
+                { "id": "c2_emc_dr_002", "texte": "Distinguer droits et devoirs de l'élève à l'école" },
+                { "id": "c2_emc_dr_003", "texte": "Connaître les symboles et les valeurs de la République (Liberté, Égalité, Fraternité)" },
+                { "id": "c2_emc_dr_004", "texte": "Comprendre ce qu'est la laïcité à l'école" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "EMC.JU",
+          "titre": "Le jugement : penser par soi-même",
+          "competencesGenerales": [
+            {
+              "id": "EMC.JU.CG1",
+              "titre": "Développer son esprit critique",
+              "competences": [
+                { "id": "c2_emc_ju_001", "texte": "Distinguer une information d'une opinion" },
+                { "id": "c2_emc_ju_002", "texte": "Participer à un débat réglé en respectant les règles de l'échange" },
+                { "id": "c2_emc_ju_003", "texte": "Exercer son jugement moral face à des situations concrètes" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "EMC.EN",
+          "titre": "L'engagement : agir collectivement",
+          "competencesGenerales": [
+            {
+              "id": "EMC.EN.CG1",
+              "titre": "S'engager dans la vie de la classe et de l'école",
+              "competences": [
+                { "id": "c2_emc_en_001", "texte": "Participer aux instances de la vie collective (conseil de classe)" },
+                { "id": "c2_emc_en_002", "texte": "S'engager dans des projets collectifs ou de solidarité" },
+                { "id": "c2_emc_en_003", "texte": "Adopter un comportement responsable envers l'environnement" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EA",
+      "titre": "Enseignements artistiques",
+      "sousDomaines": [
+        {
+          "id": "EA.AP",
+          "titre": "Arts plastiques",
+          "competencesGenerales": [
+            {
+              "id": "EA.AP.CG1",
+              "titre": "Expérimenter, produire, créer",
+              "competences": [
+                { "id": "c2_ea_ap_001", "texte": "Explorer des techniques plastiques variées (dessin, peinture, collage, modelage)" },
+                { "id": "c2_ea_ap_002", "texte": "Réaliser des productions plastiques à partir de consignes données" },
+                { "id": "c2_ea_ap_003", "texte": "Exprimer ses choix et ses intentions dans ses réalisations" }
+              ]
+            },
+            {
+              "id": "EA.AP.CG2",
+              "titre": "S'exprimer, analyser sa pratique",
+              "competences": [
+                { "id": "c2_ea_ap_004", "texte": "Décrire et commenter une œuvre d'art avec un vocabulaire adapté" },
+                { "id": "c2_ea_ap_005", "texte": "Identifier quelques œuvres du patrimoine artistique" },
+                { "id": "c2_ea_ap_006", "texte": "Établir des liens entre une production personnelle et des références artistiques" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "EA.EM",
+          "titre": "Éducation musicale",
+          "competencesGenerales": [
+            {
+              "id": "EA.EM.CG1",
+              "titre": "Chanter et pratiquer",
+              "competences": [
+                { "id": "c2_ea_em_001", "texte": "Chanter en chœur avec justesse et respect du rythme" },
+                { "id": "c2_ea_em_002", "texte": "Mémoriser des chants appris en classe (répertoire varié)" },
+                { "id": "c2_ea_em_003", "texte": "Pratiquer des jeux rythmiques et corporels" }
+              ]
+            },
+            {
+              "id": "EA.EM.CG2",
+              "titre": "Écouter, comparer, commenter",
+              "competences": [
+                { "id": "c2_ea_em_004", "texte": "Écouter des œuvres musicales variées et en parler" },
+                { "id": "c2_ea_em_005", "texte": "Identifier des instruments ou des familles d'instruments dans une œuvre" },
+                { "id": "c2_ea_em_006", "texte": "Repérer des éléments musicaux (tempo, nuances, hauteur, timbre)" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EPS",
+      "titre": "Éducation physique et sportive",
+      "sousDomaines": [
+        {
+          "id": "EPS.MO",
+          "titre": "Développer sa motricité",
+          "competencesGenerales": [
+            {
+              "id": "EPS.MO.CG1",
+              "titre": "Maîtriser son corps dans des activités variées",
+              "competences": [
+                { "id": "c2_eps_mo_001", "texte": "Courir, sauter, lancer avec efficacité et en sécurité" },
+                { "id": "c2_eps_mo_002", "texte": "S'exprimer corporellement (danse, expression scénique)" },
+                { "id": "c2_eps_mo_003", "texte": "Adapter ses déplacements à des contraintes variées (natation, escalade, équilibre)" },
+                { "id": "c2_eps_mo_004", "texte": "Mobiliser sa motricité pour des activités d'opposition (jeux de lutte, jeux collectifs)" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "EPS.AP",
+          "titre": "S'approprier par la pratique",
+          "competencesGenerales": [
+            {
+              "id": "EPS.AP.CG1",
+              "titre": "Apprendre à s'entraîner et à progresser",
+              "competences": [
+                { "id": "c2_eps_ap_001", "texte": "Identifier ses ressources et ses progrès en EPS" },
+                { "id": "c2_eps_ap_002", "texte": "Se fixer des objectifs simples et chercher à les atteindre" },
+                { "id": "c2_eps_ap_003", "texte": "Reconnaître et mémoriser des règles d'un jeu ou d'une APSA" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "EPS.RE",
+          "titre": "Partager des règles et assumer des rôles",
+          "competencesGenerales": [
+            {
+              "id": "EPS.RE.CG1",
+              "titre": "Coopérer et respecter les règles",
+              "competences": [
+                { "id": "c2_eps_re_001", "texte": "Respecter les règles d'un jeu collectif ou d'une activité sportive" },
+                { "id": "c2_eps_re_002", "texte": "Assumer des rôles variés : joueur, arbitre, observateur" },
+                { "id": "c2_eps_re_003", "texte": "Coopérer avec ses partenaires pour atteindre un but commun" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "LVE",
+      "titre": "Langues vivantes étrangères ou régionales",
+      "sousDomaines": [
+        {
+          "id": "LVE.OR",
+          "titre": "Activités orales (réception et production)",
+          "competencesGenerales": [
+            {
+              "id": "LVE.OR.CG1",
+              "titre": "Comprendre l'oral (niveau A1)",
+              "competences": [
+                { "id": "c2_lve_or_001", "texte": "Comprendre des mots familiers et des expressions très courantes" },
+                { "id": "c2_lve_or_002", "texte": "Identifier des éléments connus dans une comptine ou une chanson" },
+                { "id": "c2_lve_or_003", "texte": "Comprendre des instructions simples données en classe dans la langue étudiée" }
+              ]
+            },
+            {
+              "id": "LVE.OR.CG2",
+              "titre": "Parler en continu et dialoguer (niveau A1)",
+              "competences": [
+                { "id": "c2_lve_or_004", "texte": "Reproduire des comptines, des dialogues courts après écoute" },
+                { "id": "c2_lve_or_005", "texte": "Se présenter et répondre à des questions simples sur soi" },
+                { "id": "c2_lve_or_006", "texte": "Utiliser des expressions mémorisées pour communiquer dans la classe" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "LVE.EC",
+          "titre": "Activités écrites (premier contact)",
+          "competencesGenerales": [
+            {
+              "id": "LVE.EC.CG1",
+              "titre": "Lire et écrire en langue étrangère",
+              "competences": [
+                { "id": "c2_lve_ec_001", "texte": "Lire et comprendre des mots ou des phrases très courtes" },
+                { "id": "c2_lve_ec_002", "texte": "Copier des mots ou des phrases courtes appris à l'oral" },
+                { "id": "c2_lve_ec_003", "texte": "Établir des correspondances grapho-phonémiques simples de la langue étudiée" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Maitrize V2",
+  "version": "1.0.0",
+  "identifier": "fr.clementsapp.maitrizev2",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Maitrize V2",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 900,
+        "minHeight": 600,
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Education",
+    "shortDescription": "Outil de préparation et de suivi de classe pour enseignants.",
+    "longDescription": "Maitrize V2 aide les enseignants à préparer leurs séquences et séances, organiser le planning, suivre les élèves, gérer le matériel et la progression annuelle.",
+    "copyright": "© 2026 Clément",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "entitlements": "entitlements.plist"
+    },
+    "windows": {
+      "nsis": {
+        "languages": ["French", "English"]
+      }
+    }
+  }
+}
