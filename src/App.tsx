@@ -23,6 +23,7 @@ import { CguGate } from "./components/CGU";
 import { bootTheme } from "./theme";
 import { raccourci, isMac } from "./api";
 import { Toaster, toast } from "./components/Toaster";
+import { UpdateBanner } from "./components/UpdateBanner";
 import { releverBoiteAuxLettres, messageRecu } from "./inbox";
 
 const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: true })[] = [
@@ -131,6 +132,7 @@ export default function App() {
         </Routes>
       </main>
       <Toaster />
+      <UpdateBanner />
       <NotesPanel />
       <CommandPalette />
       <Onboarding />
