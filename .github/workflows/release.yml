@@ -54,16 +54,13 @@ jobs:
           # Signature des artefacts de mise à jour (clé minisign Tauri)
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # Signature + notarisation macOS (Developer ID, hors App Store) :
-          # à RÉACTIVER quand les secrets Apple seront configurés. Tant qu'ils
-          # sont vides, il NE FAUT PAS passer ces variables (sinon tauri-action
-          # tente d'importer un certificat vide et échoue). Bloc à rajouter :
-          #   APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          #   APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          #   APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          #   APPLE_ID: ${{ secrets.APPLE_ID }}
-          #   APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          #   APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Signature Developer ID + notarisation macOS (hors App Store)
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Maitrize V2 ${{ github.ref_name }}"
