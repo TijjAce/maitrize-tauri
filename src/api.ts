@@ -335,7 +335,17 @@ export const api = {
   boiteListe: () => invoke<BoiteItem[]>("boite_liste"),
   boiteRecuperer: (id: string) => invoke<void>("boite_recuperer", { id }),
   boiteSupprimer: (id: string) => invoke<void>("boite_supprimer", { id }),
+  // Version portable : serveur local sur le WiFi + QR code (lecture seule).
+  portableDemarrer: () => invoke<PortableInfo>("portable_demarrer"),
+  portableArreter: () => invoke<void>("portable_arreter"),
 };
+
+export interface PortableInfo {
+  url: string;
+  ip: string;
+  port: number;
+  qrSvg: string;
+}
 
 export interface Identite { clePublique: string; nom: string; empreinte: string; }
 export interface Ami {

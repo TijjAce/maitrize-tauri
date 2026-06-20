@@ -1,6 +1,6 @@
 import React from "react";
 import { Page } from "../App";
-import { api, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, getMatiereOverrides, setMatiereOverrides, telechargerTexte, anneeScolaireActuelle, MODELES_MISTRAL, MODELE_DEFAUT } from "../api";
+import { api, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, getMatiereOverrides, setMatiereOverrides, telechargerTexte, anneeScolaireActuelle, MODELES_MISTRAL, MODELE_DEFAUT, type PortableInfo } from "../api";
 import { Field, Input, Select, Modal } from "../components/ui";
 import { applyTheme, MODES, ACCENTS, STYLES } from "../theme";
 import { lireAcceptationCgu, CguAcceptation } from "../components/CGU";
@@ -66,6 +66,21 @@ export default function Reglages() {
     catch (e: any) { setTestMsg("❌ " + String(e)); }
     finally { setTestEnCours(false); }
   };
+
+  // ── Version portable (serveur local WiFi + QR) ──────────────────
+  const [portable, setPortable] = React.useState<PortableInfo | null>(null);
+  const [portMsg, setPortMsg] = React.useState("");
+  const activerPortable = async () => {
+    setPortMsg("");
+    try { setPortable(await api.portableDemarrer()); }
+    catch (e: any) { setPortMsg("❌ " + String(e)); }
+  };
+  const arreterPortable = async () => {
+    try { await api.portableArreter(); } catch { /* ignore */ }
+    setPortable(null);
+  };
+  // Arrête le partage si on quitte les Réglages (sécurité).
+  React.useEffect(() => () => { api.portableArreter().catch(() => {}); }, []);
 
   if (!chargé) return <Page titre="Réglages"><div /></Page>;
 
@@ -174,6 +189,34 @@ export default function Reglages() {
           <button className="btn" onClick={() => importInput.current?.click()}>⬆️ Importer</button>
           <span style={{ fontSize: 13 }}>{dataMsg}</span>
         </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
+        <h3 style={{ marginTop: 0 }}>📱 Version portable (WiFi)</h3>
+        <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
+          Consultez vos données sur votre téléphone, sur le même réseau WiFi. Rien n'est
+          envoyé sur internet : tout reste sur le réseau local, et le partage s'arrête
+          quand vous quittez cette page.
+        </p>
+        {!portable ? (
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <button className="btn primary" onClick={activerPortable}>📤 Envoyer vers le téléphone</button>
+            {portMsg && <span style={{ fontSize: 13 }}>{portMsg}</span>}
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
+            <div className="qr-portable" aria-label="QR code de connexion"
+              dangerouslySetInnerHTML={{ __html: portable.qrSvg }} />
+            <div style={{ minWidth: 220, flex: 1 }}>
+              <p style={{ margin: "0 0 6px", fontWeight: 600 }}>Scannez ce QR code avec l'appareil photo de votre téléphone.</p>
+              <p style={{ margin: "0 0 10px", fontSize: 12, color: "var(--text-2)" }}>
+                Ou ouvrez cette adresse dans le navigateur : <br />
+                <code style={{ fontSize: 12 }}>{portable.url.replace(/\?t=.*/, "")}</code>
+              </p>
+              <button className="btn danger" onClick={arreterPortable}>⏹ Arrêter le partage</button>
+            </div>
+          </div>
+        )}
       </div>
 
       <DevSeedCard />

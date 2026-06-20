@@ -42,4 +42,7 @@ sha2 = "0.10"
 chacha20poly1305 = "0.10"
 hkdf = "0.12"
 aws-sdk-s3 = "1"
+# Version portable : petit serveur HTTP sur le réseau local + QR code
+tiny_http = "0.12"
+qrcode = { version = "0.14", default-features = false }
 

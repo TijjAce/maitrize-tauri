@@ -3,6 +3,7 @@ mod amis;
 mod commands;
 mod db;
 mod models;
+mod portable;
 mod seed;
 mod sync;
 
@@ -31,6 +32,7 @@ pub fn run() {
             Ok(())
         })
         .manage(Db(Mutex::new(conn)))
+        .manage(portable::Portable(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             // Projets
             projets_list, projet_save, projet_delete,
@@ -90,6 +92,8 @@ pub fn run() {
             sync::sync_envoyer, sync::sync_relever,
             sync::sequence_partager, sync::programmation_partager, sync::projet_partager,
             sync::boite_relever, sync::boite_liste, sync::boite_recuperer, sync::boite_supprimer,
+            // Version portable (serveur local WiFi + QR)
+            portable::portable_demarrer, portable::portable_arreter,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
