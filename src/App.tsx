@@ -22,6 +22,7 @@ import { ContextMenuHost } from "./components/ctxmenu";
 import { CguGate } from "./components/CGU";
 import { bootTheme } from "./theme";
 import { raccourci, isMac } from "./api";
+import { getVersion } from "@tauri-apps/api/app";
 import { Toaster, toast } from "./components/Toaster";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { releverBoiteAuxLettres, messageRecu } from "./inbox";
@@ -48,7 +49,9 @@ const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: t
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [version, setVersion] = React.useState("");
   React.useEffect(() => { bootTheme(); }, []);
+  React.useEffect(() => { getVersion().then(setVersion).catch(() => {}); }, []);
 
   // Boîte aux lettres : relève automatique au démarrage puis toutes les 2 min.
   // Chaque nouvel élément reçu déclenche une notification (toast).
@@ -94,7 +97,7 @@ export default function App() {
     <CguGate>
     <div className="app">
       <nav className="sidebar" aria-label="Navigation principale">
-        <div className="brand"><img src={logo} className="brand-logo" alt="" />Maitrize V2</div>
+        <div className="brand"><img src={logo} className="brand-logo" alt="" /><span className="brand-text">Maitrize V2{version && <span className="brand-version">v{version}</span>}</span></div>
         <button className="palette-trigger" aria-label="Rechercher dans l'application"
           aria-keyshortcuts={isMac ? "Meta+K" : "Control+K"}
           onClick={() => window.dispatchEvent(new Event("maitrize:palette"))}>
