@@ -33,6 +33,7 @@ pub fn run() {
         })
         .manage(Db(Mutex::new(conn)))
         .manage(portable::Portable(Mutex::new(None)))
+        .manage(portable::PhotoCapture(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             // Projets
             projets_list, projet_save, projet_delete,
@@ -92,8 +93,12 @@ pub fn run() {
             sync::sync_envoyer, sync::sync_relever,
             sync::sequence_partager, sync::programmation_partager, sync::projet_partager,
             sync::boite_relever, sync::boite_liste, sync::boite_recuperer, sync::boite_supprimer,
+            // Sauvegarde chiffrée sur stockage S3/MinIO
+            sync::sauvegarde_push, sync::sauvegarde_pull,
             // Version portable (serveur local WiFi + QR)
             portable::portable_demarrer, portable::portable_arreter,
+            // Capture photo depuis le téléphone
+            portable::photo_capture_demarrer, portable::photo_capture_arreter,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

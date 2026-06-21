@@ -53,6 +53,21 @@
   --bg: #f1efe9; --panel: #fffdf8; --panel-2: #ece8df; --border: #e2ddd0;
   --text: #2b2b33; --text-2: #6f6c63; --shadow: 0 1px 3px rgba(40,35,25,.05), 0 6px 24px rgba(40,35,25,.05);
 }
+:root[data-theme="nuit"] {
+  color-scheme: dark;
+  --bg: #000000; --panel: #0c0d12; --panel-2: #15171f; --border: #242732;
+  --text: #e9ebf2; --text-2: #8c93a6; --shadow: 0 1px 3px rgba(0,0,0,.6), 0 6px 24px rgba(0,0,0,.5);
+}
+:root[data-theme="lavande"] {
+  color-scheme: light;
+  --bg: #f3f0fb; --panel: #fbfaff; --panel-2: #ece7f9; --border: #e0d8f1;
+  --text: #2c2540; --text-2: #6f6790; --shadow: 0 1px 3px rgba(60,40,110,.06), 0 6px 24px rgba(60,40,110,.06);
+}
+:root[data-theme="foret"] {
+  color-scheme: light;
+  --bg: #eef3ec; --panel: #f8fbf6; --panel-2: #e3ecdf; --border: #d3e0cd;
+  --text: #233028; --text-2: #5e7060; --shadow: 0 1px 3px rgba(30,60,40,.06), 0 6px 24px rgba(30,60,40,.06);
+}
 
 /* ── Styles d'interface ─────────────────────────────────── */
 :root[data-style="epure"] { --shadow: none; --radius: 10px; }

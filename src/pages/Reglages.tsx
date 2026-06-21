@@ -219,6 +219,8 @@ export default function Reglages() {
         )}
       </div>
 
+      <SauvegardeS3Card />
+
       <DevSeedCard />
 
       <div className="card" style={{ maxWidth: 620 }}>
@@ -311,5 +313,59 @@ function CouleursMatieresModal({ onClose }: { onClose: () => void }) {
         </div>
       ))}
     </Modal>
+  );
+}
+
+// Sauvegarde chiffrée de toute la base sur un stockage S3-compatible
+// (MinIO local aujourd'hui ; serveur en ligne plus tard = juste l'adresse change).
+function SauvegardeS3Card() {
+  const [cfg, setCfg] = React.useState({ endpoint: "", region: "us-east-1", bucket: "", access: "", secret: "", aSecret: false });
+  const [phrase, setPhrase] = React.useState("");
+  const [msg, setMsg] = React.useState("");
+  const [busy, setBusy] = React.useState("");
+
+  React.useEffect(() => {
+    api.syncConfigGet().then((c) => setCfg((p) => ({ ...p, endpoint: c.endpoint, region: c.region || "us-east-1", bucket: c.bucket, access: c.access, aSecret: c.aSecret }))).catch(() => {});
+    api.settingGet("sauvegarde_phrase").then((v) => setPhrase(v || "")).catch(() => {});
+  }, []);
+
+  const enregistrer = async () => {
+    await api.syncConfigSet({ endpoint: cfg.endpoint.trim(), region: cfg.region.trim() || "us-east-1", bucket: cfg.bucket.trim(), access: cfg.access.trim(), secret: cfg.secret ? cfg.secret : undefined });
+    await api.settingSet("sauvegarde_phrase", phrase.trim());
+  };
+  const action = async (cle: string, fn: () => Promise<string>) => {
+    setBusy(cle); setMsg("");
+    try { await enregistrer(); setMsg(await fn()); } catch (e: any) { setMsg("❌ " + String(e)); } finally { setBusy(""); }
+  };
+  const restaurer = async () => {
+    if (!confirm("Restaurer remplacera vos données locales par la sauvegarde du stockage. Continuer ?")) return;
+    action("pull", () => api.sauvegardePull());
+  };
+
+  return (
+    <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
+      <h3 style={{ marginTop: 0 }}>☁️ Sauvegarde sur mon stockage (S3 / MinIO)</h3>
+      <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
+        Sauvegarde chiffrée de toutes vos données sur votre propre stockage (MinIO en local, un NAS, ou un serveur en ligne — il suffira de changer l'adresse). Le stockage ne voit que du contenu chiffré.
+      </p>
+      <div className="row">
+        <Field label="Adresse (endpoint)"><Input value={cfg.endpoint} placeholder="http://192.168.1.20:9000" onChange={(e) => setCfg({ ...cfg, endpoint: e.target.value })} /></Field>
+        <Field label="Bucket"><Input value={cfg.bucket} placeholder="maitrize" onChange={(e) => setCfg({ ...cfg, bucket: e.target.value })} /></Field>
+      </div>
+      <div className="row">
+        <Field label="Clé d'accès"><Input value={cfg.access} onChange={(e) => setCfg({ ...cfg, access: e.target.value })} /></Field>
+        <Field label="Clé secrète"><Input type="password" placeholder={cfg.aSecret ? "•••••••• (déjà enregistrée)" : ""} value={cfg.secret} onChange={(e) => setCfg({ ...cfg, secret: e.target.value })} /></Field>
+      </div>
+      <Field label="Phrase secrète de sauvegarde (chiffre les données — à conserver précieusement !)">
+        <Input type="password" value={phrase} placeholder="une phrase que vous seul connaissez" onChange={(e) => setPhrase(e.target.value)} />
+      </Field>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 4 }}>
+        <button className="btn" disabled={!!busy} onClick={enregistrer}>💾 Enregistrer la config</button>
+        <button className="btn" disabled={!!busy} onClick={() => action("test", () => api.syncTest())}>{busy === "test" ? "…" : "🔌 Tester"}</button>
+        <button className="btn primary" disabled={!!busy} onClick={() => action("push", () => api.sauvegardePush())}>{busy === "push" ? "Envoi…" : "☁️ Sauvegarder maintenant"}</button>
+        <button className="btn danger" disabled={!!busy} onClick={restaurer}>{busy === "pull" ? "…" : "⬇️ Restaurer"}</button>
+      </div>
+      {msg && <p style={{ fontSize: 13, marginBottom: 0 }}>{msg}</p>}
+    </div>
   );
 }

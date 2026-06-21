@@ -1,7 +1,7 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Page } from "../App";
-import { api, Sequence, Seance, nouvelleSeance, couleurHex, nowIso, DUREES, formatDuree, telechargerTexte } from "../api";
+import { api, Sequence, Seance, MaterielItem, nouvelleSeance, couleurHex, nowIso, newId, DUREES, formatDuree, telechargerTexte } from "../api";
 import { Modal, Field, Input, Textarea, Select, Stars, Empty, Confirm, useAsync } from "../components/ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
 import { TableauEditor, MaterielSeance, imageDuPresse, fileToBase64 } from "../components/SeanceParts";
@@ -9,12 +9,14 @@ import { IllustrationsEditor, DeroulementRead, CelluleContenu, FichierImg, Citat
 import { fichierToBlobUrl } from "../components/PdfViewer";
 import { printHTML, escapeHtml } from "../print";
 import { openCtx } from "../components/ctxmenu";
+import { PhotoTelephone } from "../components/PhotoTelephone";
 
 export default function SequenceDetail() {
   const { id } = useParams();
   const nav = useNavigate();
   const { data: sequences, reload: reloadSeq } = useAsync(() => api.sequencesList(), []);
   const { data: seances, reload } = useAsync(() => api.seancesList(id), [id]);
+  const { data: mats, reload: reloadMat } = useAsync(() => api.materielList().then((all) => all.filter((m) => m.sequenceId === id)), [id]);
   const [edit, setEdit] = React.useState<Seance | null>(null);
   const [voir, setVoir] = React.useState<Seance | null>(null);
   const [del, setDel] = React.useState<Seance | null>(null);
@@ -47,6 +49,55 @@ export default function SequenceDetail() {
     reload();
   };
 
+  // ── Matériel de la séquence (drag-drop) ──────────────────────────
+  const matsSeq = (mats ?? []).filter((m) => !m.seanceId);
+  const matsDeSeance = (sid: string) => (mats ?? []).filter((m) => m.seanceId === sid);
+
+  // Déplace un matériel vers une séance (ou le renvoie à la séquence si seanceId=null).
+  const assignerMat = async (mid: string, seanceId: string | null) => {
+    const m = (mats ?? []).find((x) => x.id === mid);
+    if (m) { await api.materielSave({ ...m, seanceId }); reloadMat(); }
+  };
+
+  // Dépôt de fichiers (PDF/images) sur la séquence → crée le matériel.
+  const deposerFichiers = async (files: FileList) => {
+    for (const file of Array.from(files)) {
+      const b64 = await fileToBase64(file);
+      const nom = await api.fichierSave(file.name, b64);
+      const pdf = /\.pdf$/i.test(file.name) || file.type === "application/pdf";
+      await api.materielSave({
+        id: newId(), titre: file.name.replace(/\.[^.]+$/, ""), descriptionMateriel: "",
+        competenceId: comp?.competenceRefId ?? "", competenceTitre: comp?.competenceTitre ?? "",
+        domaineTitre: comp?.domaineTitre ?? seq.matiere ?? "", sousDomaineTitre: comp?.sousDomaineTitre ?? "",
+        cycle: seq.cycle, imagesJson: pdf ? "[]" : JSON.stringify([nom]), pdfsJson: pdf ? JSON.stringify([nom]) : "[]",
+        dateCreation: nowIso(), seanceId: null, sequenceId: seq.id,
+      });
+    }
+    reloadMat();
+  };
+
+  // Photo prise depuis le téléphone → matériel image de la séquence.
+  const photoVersMateriel = async (nom: string) => {
+    await api.materielSave({
+      id: newId(), titre: "Photo " + new Date().toLocaleDateString("fr-FR"), descriptionMateriel: "",
+      competenceId: comp?.competenceRefId ?? "", competenceTitre: comp?.competenceTitre ?? "",
+      domaineTitre: comp?.domaineTitre ?? seq.matiere ?? "", sousDomaineTitre: comp?.sousDomaineTitre ?? "",
+      cycle: seq.cycle, imagesJson: JSON.stringify([nom]), pdfsJson: "[]",
+      dateCreation: nowIso(), seanceId: null, sequenceId: seq.id,
+    });
+    reloadMat();
+  };
+
+  const matChip = (m: MaterielItem) => {
+    let pdf = false; try { pdf = (JSON.parse(m.pdfsJson || "[]") as string[]).length > 0; } catch { /* ignore */ }
+    return (
+      <span key={m.id} className="chip" draggable title="Glisser vers une séance"
+        onDragStart={(e) => e.dataTransfer.setData("text/materiel", m.id)} style={{ cursor: "grab" }}>
+        {pdf ? "📄" : "📷"} {m.titre}
+      </span>
+    );
+  };
+
   return (
     <Page titre={seq.titre} sous={[seq.matiere, seq.cycle, `Période ${seq.periode}`, seq.annee].filter(Boolean).join(" · ")}
       actions={<>
@@ -67,6 +118,22 @@ export default function SequenceDetail() {
         </div>
       </div>
 
+      <div className="card" style={{ marginBottom: 18, borderStyle: "dashed" }}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          const mid = e.dataTransfer.getData("text/materiel");
+          if (mid) { assignerMat(mid, null); return; }
+          if (e.dataTransfer.files?.length) deposerFichiers(e.dataTransfer.files);
+        }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: matsSeq.length ? 8 : 0 }}>
+          <h3 style={{ margin: 0, fontSize: 15 }}>📎 Matériel de la séquence</h3>
+          <span className="meta" style={{ flex: 1 }}>Glissez ici vos PDF / images — puis sur une séance.</span>
+          <PhotoTelephone onPhoto={photoVersMateriel} />
+        </div>
+        {matsSeq.length > 0 && <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{matsSeq.map(matChip)}</div>}
+      </div>
+
       <h3 style={{ margin: "4px 2px 12px" }}>Séances</h3>
       {(seances?.length ?? 0) === 0 ? (
         <Empty icone="📝" titre="Aucune séance" sous="Ajoutez la première séance de cette séquence." />
@@ -76,6 +143,8 @@ export default function SequenceDetail() {
           try { comps = s.competences ? JSON.parse(s.competences) : []; } catch { /* ignore */ }
           return (
             <div key={s.id} className="list-row"
+              onDragOver={(e) => { if (e.dataTransfer.types.includes("text/materiel")) e.preventDefault(); }}
+              onDrop={(e) => { const mid = e.dataTransfer.getData("text/materiel"); if (mid) { e.preventDefault(); assignerMat(mid, s.id); } }}
               onContextMenu={(e) => openCtx(e, [
                 { label: "Voir", icon: "👁", onClick: () => setVoir(s) },
                 { label: "Modifier", icon: "✏️", onClick: () => setEdit(s) },
@@ -88,6 +157,9 @@ export default function SequenceDetail() {
               <div style={{ flex: 1 }}>
                 <div className="title">{s.titre || "Séance sans titre"}</div>
                 <div className="meta">{formatDuree(s.duree)}{s.date ? " · " + new Date(s.date).toLocaleDateString("fr-FR") : ""}{comps.length ? ` · ${comps.length} compétence(s)` : ""}</div>
+                {matsDeSeance(s.id).length > 0 && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>{matsDeSeance(s.id).map(matChip)}</div>
+                )}
               </div>
               {s.deroulement && <span className="chip">📋 déroulement</span>}
               {s.bilan && <span className="chip">✅ bilan</span>}
@@ -229,6 +301,15 @@ function SeanceForm({ seance, cycle = "", onClose, onSaved }: { seance: Seance; 
   const [s, setS] = React.useState<Seance>(seance);
   const up = (p: Partial<Seance>) => setS((cur) => ({ ...cur, ...p }));
   const [dateActive, setDateActive] = React.useState(!!seance.date);
+  // Dernière position du curseur dans le déroulement (pour insérer une image au bon endroit).
+  const curseurDer = React.useRef<number | null>(null);
+  // Insère le marqueur [img:nom] à la position du curseur (ou à la fin).
+  const insererImage = (nom: string) => {
+    const t = s.deroulement;
+    const pos = curseurDer.current ?? t.length;
+    const next = (t.slice(0, pos).trimEnd() + `\n[img:${nom}]\n` + t.slice(pos).trimStart()).replace(/^\n/, "");
+    up({ deroulement: next });
+  };
 
   let comps: CompetenceSelectionnee[] = [];
   try { comps = s.competences ? JSON.parse(s.competences) : []; } catch { /* ignore */ }
@@ -292,6 +373,9 @@ function SeanceForm({ seance, cycle = "", onClose, onSaved }: { seance: Seance; 
 
       <Card titre="Déroulement">
         <Textarea style={{ minHeight: 130 }} value={s.deroulement} onChange={(e) => up({ deroulement: e.target.value })}
+          onSelect={(e) => { curseurDer.current = e.currentTarget.selectionStart; }}
+          onKeyUp={(e) => { curseurDer.current = e.currentTarget.selectionStart; }}
+          onClick={(e) => { curseurDer.current = e.currentTarget.selectionStart; }}
           placeholder="Phases de la séance, consignes, organisation… (collez une image directement)"
           onPaste={async (e) => {
             const file = imageDuPresse(e);
@@ -313,7 +397,7 @@ function SeanceForm({ seance, cycle = "", onClose, onSaved }: { seance: Seance; 
           <div style={{ fontSize: 12, fontWeight: 650, color: "var(--text-2)", marginBottom: 4 }}>Illustrations (insérables au fil du texte)</div>
           <IllustrationsEditor texte={s.deroulement} fichiers={illustrations}
             onChange={(f) => up({ imagesDeroulement: JSON.stringify(f) })}
-            onInsert={(nom) => up({ deroulement: (s.deroulement.trimEnd() + `\n[img:${nom}]\n`).trimStart() })} />
+            onInsert={insererImage} />
         </div>
       </Card>
 

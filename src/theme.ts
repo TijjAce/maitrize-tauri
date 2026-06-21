@@ -8,6 +8,9 @@ export const MODES = [
   { id: "sombre", label: "Sombre" },
   { id: "sepia", label: "Sépia" },
   { id: "confort", label: "Confort" },
+  { id: "nuit", label: "Nuit" },
+  { id: "lavande", label: "Lavande" },
+  { id: "foret", label: "Forêt" },
 ];
 
 export const ACCENTS = [

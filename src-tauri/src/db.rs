@@ -348,5 +348,6 @@ fn migrate(conn: &Connection) {
     // Migrations légères pour bases existantes (ignore l'erreur si déjà là).
     conn.execute("ALTER TABLE sequences ADD COLUMN video TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE materiel_items ADD COLUMN seance_id TEXT", []).ok();
+    conn.execute("ALTER TABLE materiel_items ADD COLUMN sequence_id TEXT", []).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN image_nom TEXT", []).ok();
 }

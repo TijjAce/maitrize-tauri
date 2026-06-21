@@ -53,6 +53,16 @@ export default function App() {
   React.useEffect(() => { bootTheme(); }, []);
   React.useEffect(() => { getVersion().then(setVersion).catch(() => {}); }, []);
 
+  // Empêche le navigateur d'OUVRIR un fichier lâché n'importe où dans la fenêtre
+  // (le comportement par défaut). Les vraies zones de dépôt gèrent le drop via
+  // leurs propres handlers React ; ici on neutralise juste l'ouverture.
+  React.useEffect(() => {
+    const stop = (e: DragEvent) => e.preventDefault();
+    window.addEventListener("dragover", stop);
+    window.addEventListener("drop", stop);
+    return () => { window.removeEventListener("dragover", stop); window.removeEventListener("drop", stop); };
+  }, []);
+
   // Boîte aux lettres : relève automatique au démarrage puis toutes les 2 min.
   // Chaque nouvel élément reçu déclenche une notification (toast).
   React.useEffect(() => {

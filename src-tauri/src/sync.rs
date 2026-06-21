@@ -539,3 +539,73 @@ fn importer_projet(c: &Connection, env: EnvProjet) -> R<String> {
     }
     Ok(titre)
 }
+
+// ── Sauvegarde personnelle chiffrée sur S3/MinIO ─────────────────────
+// Réutilise la même config S3 (endpoint local MinIO aujourd'hui ; en ligne
+// plus tard = juste l'endpoint qui change). Toute la base (export complet,
+// fichiers joints inclus) est chiffrée avec une clé dérivée d'une phrase
+// secrète, puis poussée comme un seul objet. Le stockage ne voit que du
+// ciphertext — donc tes données élèves restent protégées même sur le NAS.
+
+const OBJET_SAUVEGARDE: &str = "maitrize/sauvegarde.enc";
+
+fn cle_sauvegarde(phrase: &str) -> [u8; 32] {
+    let hk = Hkdf::<Sha256>::new(Some(b"maitrize-backup-salt-v1"), phrase.as_bytes());
+    let mut okm = [0u8; 32];
+    hk.expand(b"maitrize-backup-key-v1", &mut okm).expect("HKDF 32o");
+    okm
+}
+
+#[tauri::command]
+pub async fn sauvegarde_push(db: State<'_, Db>) -> R<String> {
+    let (cfg, key, json) = {
+        let c = db.0.lock().map_err(e)?;
+        let phrase = get_setting(&c, "sauvegarde_phrase");
+        if phrase.trim().is_empty() {
+            return Err("Définissez d'abord une phrase secrète de sauvegarde.".into());
+        }
+        let cfg = lire_cfg(&c)?;
+        let json = crate::commands::export_json(&c)?;
+        (cfg, cle_sauvegarde(phrase.trim()), json)
+    };
+    let taille = json.len();
+    let blob = chiffrer(&key, json.as_bytes())?;
+    let cl = client(&cfg);
+    cl.put_object()
+        .bucket(&cfg.bucket)
+        .key(OBJET_SAUVEGARDE)
+        .body(ByteStream::from(blob))
+        .send()
+        .await
+        .map_err(|err| format!("Envoi vers le stockage échoué : {err}"))?;
+    Ok(format!("✅ Sauvegarde envoyée ({} Ko).", taille / 1024))
+}
+
+#[tauri::command]
+pub async fn sauvegarde_pull(db: State<'_, Db>) -> R<String> {
+    let (cfg, key) = {
+        let c = db.0.lock().map_err(e)?;
+        let phrase = get_setting(&c, "sauvegarde_phrase");
+        if phrase.trim().is_empty() {
+            return Err("Renseignez la phrase secrète de sauvegarde.".into());
+        }
+        (lire_cfg(&c)?, cle_sauvegarde(phrase.trim()))
+    };
+    let cl = client(&cfg);
+    let resp = cl
+        .get_object()
+        .bucket(&cfg.bucket)
+        .key(OBJET_SAUVEGARDE)
+        .send()
+        .await
+        .map_err(|_| "Aucune sauvegarde trouvée sur le stockage (ou accès refusé).".to_string())?;
+    let bytes = resp.body.collect().await.map_err(e)?.into_bytes();
+    let clair = dechiffrer(&key, bytes.as_ref())
+        .map_err(|_| "Déchiffrement impossible — la phrase secrète ne correspond pas.".to_string())?;
+    let json = String::from_utf8(clair).map_err(|_| "Sauvegarde corrompue.".to_string())?;
+    {
+        let c = db.0.lock().map_err(e)?;
+        crate::commands::import_json(&c, &json)?;
+    }
+    Ok("✅ Sauvegarde restaurée. Rechargez l'application pour voir les données.".into())
+}

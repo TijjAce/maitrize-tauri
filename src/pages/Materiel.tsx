@@ -1,6 +1,6 @@
 import React from "react";
 import { Page } from "../App";
-import { api, MaterielItem, Referentiel, CYCLES, newId, nowIso } from "../api";
+import { api, MaterielItem, Referentiel, CYCLES, newId, nowIso, couleurPourMatiere, couleurHex } from "../api";
 import { Modal, Field, Input, Textarea, Select, Empty, Confirm, useAsync } from "../components/ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
 import { FileListEditor } from "../components/SeanceParts";
@@ -8,7 +8,7 @@ import { openCtx } from "../components/ctxmenu";
 
 const nouveau = (): MaterielItem => ({
   id: newId(), titre: "", descriptionMateriel: "", competenceId: "", competenceTitre: "",
-  domaineTitre: "", sousDomaineTitre: "", cycle: "", imagesJson: "[]", pdfsJson: "[]", dateCreation: nowIso(), seanceId: null,
+  domaineTitre: "", sousDomaineTitre: "", cycle: "", imagesJson: "[]", pdfsJson: "[]", dateCreation: nowIso(), seanceId: null, sequenceId: null,
 });
 
 export default function Materiel() {
@@ -17,6 +17,8 @@ export default function Materiel() {
   const [del, setDel] = React.useState<MaterielItem | null>(null);
   const [choixPdf, setChoixPdf] = React.useState<MaterielItem | null>(null);
   const [q, setQ] = React.useState("");
+  const [ouverts, setOuverts] = React.useState<Record<string, boolean>>({});
+  const toggle = (k: string) => setOuverts((s) => ({ ...s, [k]: !s[k] }));
 
   // macOS : ouvre le PDF dans Aperçu (app native) plutôt que dans l'app.
   const ouvrirPdfs = (m: MaterielItem) => {
@@ -27,40 +29,84 @@ export default function Materiel() {
 
   const filtres = (items ?? []).filter((m) => !q || m.titre.toLowerCase().includes(q.toLowerCase()));
 
+  // Regroupement par domaine / matière puis sous-domaine (« Sans domaine » en dernier).
+  const groupes: Record<string, Record<string, MaterielItem[]>> = {};
+  filtres.forEach((m) => {
+    const d = m.domaineTitre || "Sans domaine";
+    const sd = m.sousDomaineTitre || "Autres";
+    ((groupes[d] ??= {})[sd] ??= []).push(m);
+  });
+  const domaines = Object.keys(groupes).sort((a, b) => (a === "Sans domaine" ? 1 : b === "Sans domaine" ? -1 : a.localeCompare(b)));
+  // Vraie couleur de la matière (définie dans Réglages → général).
+  const teinte = (dom: string) => couleurHex[couleurPourMatiere(dom)] ?? couleurHex.gray;
+
+  const carte = (m: MaterielItem) => (
+    <div key={m.id} className="card"
+      onContextMenu={(e) => openCtx(e, [
+        { label: "Modifier", icon: "✏️", onClick: () => setEdit(m) },
+        { label: "Dupliquer", icon: "📑", onClick: () => api.materielSave({ ...m, id: crypto.randomUUID(), titre: m.titre + " (copie)" }).then(reload) },
+        { label: "Supprimer", icon: "🗑", danger: true, sep: true, onClick: () => setDel(m) },
+      ])}>
+      <div style={{ display: "flex", alignItems: "start" }}>
+        <div style={{ fontWeight: 700, flex: 1 }}>{m.titre}</div>
+        <button className="btn ghost sm" onClick={() => setEdit(m)} aria-label="Modifier">✏️</button>
+        <button className="btn ghost sm" onClick={() => setDel(m)} aria-label="Supprimer">🗑</button>
+      </div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+        {m.cycle && <span className="chip">{m.cycle}</span>}
+        {m.sousDomaineTitre && <span className="chip">{m.sousDomaineTitre}</span>}
+        {m.seanceId && <span className="chip" title="Ajouté depuis une séance">📎 séance</span>}
+        {nb(m.imagesJson) > 0 && <span className="chip">📷 {nb(m.imagesJson)}</span>}
+        {nb(m.pdfsJson) > 0 && (
+          <button className="chip" title="Voir / imprimer le(s) PDF"
+            style={{ cursor: "pointer", border: "none" }} onClick={() => ouvrirPdfs(m)}>
+            📄 {nb(m.pdfsJson)} · voir
+          </button>
+        )}
+      </div>
+      {m.competenceTitre && <div style={{ fontSize: 12.5, color: "var(--accent)", marginTop: 6 }}>🎯 {m.competenceTitre}</div>}
+      {m.descriptionMateriel && <div style={{ fontSize: 13, color: "var(--text-2)", marginTop: 8 }}>{m.descriptionMateriel.slice(0, 120)}</div>}
+    </div>
+  );
+
   return (
     <Page titre="Matériel" sous="Ressources et matériel pédagogique"
       actions={<button className="btn primary" onClick={() => setEdit(nouveau())}>+ Matériel</button>}>
       <div className="toolbar"><Input className="search" placeholder="Rechercher…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
       {filtres.length === 0 ? <Empty icone="🧰" titre="Aucun matériel" /> :
-        <div className="grid cols">
-          {filtres.map((m) => (
-            <div key={m.id} className="card"
-              onContextMenu={(e) => openCtx(e, [
-                { label: "Modifier", icon: "✏️", onClick: () => setEdit(m) },
-                { label: "Dupliquer", icon: "📑", onClick: () => api.materielSave({ ...m, id: crypto.randomUUID(), titre: m.titre + " (copie)" }).then(reload) },
-                { label: "Supprimer", icon: "🗑", danger: true, sep: true, onClick: () => setDel(m) },
-              ])}>
-              <div style={{ display: "flex", alignItems: "start" }}>
-                <div style={{ fontWeight: 700, flex: 1 }}>{m.titre}</div>
-                <button className="btn ghost sm" onClick={() => setEdit(m)} aria-label="Modifier">✏️</button>
-                <button className="btn ghost sm" onClick={() => setDel(m)} aria-label="Supprimer">🗑</button>
-              </div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
-                {m.cycle && <span className="chip">{m.cycle}</span>}
-                {m.seanceId && <span className="chip" title="Ajouté depuis une séance">📎 séance</span>}
-                {nb(m.imagesJson) > 0 && <span className="chip">📷 {nb(m.imagesJson)}</span>}
-                {nb(m.pdfsJson) > 0 && (
-                  <button className="chip" title="Voir / imprimer le(s) PDF"
-                    style={{ cursor: "pointer", border: "none" }} onClick={() => ouvrirPdfs(m)}>
-                    📄 {nb(m.pdfsJson)} · voir
-                  </button>
-                )}
-              </div>
-              {m.competenceTitre && <div style={{ fontSize: 12.5, color: "var(--accent)", marginTop: 6 }}>🎯 {m.competenceTitre}</div>}
-              {m.descriptionMateriel && <div style={{ fontSize: 13, color: "var(--text-2)", marginTop: 8 }}>{m.descriptionMateriel.slice(0, 120)}</div>}
+        domaines.map((dom) => {
+          const t = teinte(dom);
+          const total = Object.values(groupes[dom]).reduce((n, l) => n + l.length, 0);
+          const ouvert = q ? true : !!ouverts[dom];
+          const sousDoms = Object.keys(groupes[dom]).sort((a, b) => a.localeCompare(b));
+          return (
+            <div key={dom} style={{ marginBottom: 12 }}>
+              <button onClick={() => toggle(dom)} disabled={!!q}
+                style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", cursor: q ? "default" : "pointer",
+                  background: t + "1f", border: `1px solid ${t}55`, borderLeft: `3px solid ${t}`, borderRadius: 10,
+                  color: "var(--text)", font: "inherit", fontWeight: 700, fontSize: 14 }}>
+                <span style={{ fontSize: 16 }}>{ouvert ? "📂" : "📁"}</span>
+                <span style={{ flex: 1, textAlign: "left" }}>{dom}</span>
+                <span className="chip" style={{ background: t + "33" }}>{total}</span>
+                <span style={{ color: "var(--text-2)", transform: ouvert ? "rotate(90deg)" : "none", transition: "transform .15s" }}>›</span>
+              </button>
+              {ouvert && (
+                <div style={{ paddingLeft: 14, marginTop: 8 }}>
+                  {sousDoms.map((sd) => (
+                    <div key={sd} style={{ marginBottom: 12 }}>
+                      {(sousDoms.length > 1 || sd !== "Autres") && (
+                        <h3 style={{ margin: "0 0 8px", fontSize: 13, color: "var(--text-2)", display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: 2, background: t, flexShrink: 0 }} />{sd}
+                        </h3>
+                      )}
+                      <div className="grid cols">{groupes[dom][sd].map(carte)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
-        </div>}
+          );
+        })}
       {edit && <Form m={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
       {del && <Confirm message={`Supprimer « ${del.titre} » ?`} onYes={() => api.materielDelete(del.id).then(reload)} onClose={() => setDel(null)} />}
       {choixPdf && (

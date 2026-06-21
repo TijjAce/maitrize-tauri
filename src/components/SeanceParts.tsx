@@ -140,8 +140,8 @@ export function TableauEditor({ grid, onChange, illustrations = [] }: {
             {grid.map((row, r) => (
               <tr key={r}>
                 {row.map((cell, c) => (
-                  <td key={c} style={{ verticalAlign: "top", position: "relative", padding: 0 }}>
-                    <div style={{ border: "1px solid var(--border)", background: r === 0 ? "var(--panel-2)" : "var(--bg)", minHeight: 32 }}>
+                  <td key={c} style={{ verticalAlign: "top", position: "relative", padding: 0, height: 1 }}>
+                    <div style={{ border: "1px solid var(--border)", background: r === 0 ? "var(--panel-2)" : "var(--bg)", minHeight: 32, height: "100%", boxSizing: "border-box" }}>
                       <AutoCell value={cell} header={r === 0} onChange={(v) => setCell(r, c, v)}
                         onPasteImage={r > 0 ? (f) => collerImg(r, c, f) : undefined} />
                       {r > 0 && <VignettesCellule texte={cell} onRemove={(i) => retirerImg(r, c, i)} />}
@@ -222,7 +222,7 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
     await api.materielSave({
       id: newId(), titre: file.name.replace(/\.[^.]+$/, ""), descriptionMateriel: "",
       competenceId: "", competenceTitre: "", domaineTitre: "", sousDomaineTitre: "",
-      cycle, imagesJson: "[]", pdfsJson: JSON.stringify([nomFichier]), dateCreation: nowIso(), seanceId,
+      cycle, imagesJson: "[]", pdfsJson: JSON.stringify([nomFichier]), dateCreation: nowIso(), seanceId, sequenceId: null,
     });
     reload();
   };

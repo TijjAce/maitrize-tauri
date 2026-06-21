@@ -10,6 +10,7 @@ import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../component
 import { FichierImg } from "../components/Deroulement";
 import { openCtx } from "../components/ctxmenu";
 import { toast } from "../components/Toaster";
+import { PhotoTelephone } from "../components/PhotoTelephone";
 
 // Date de création lisible (vide si absente/invalide).
 const dateFr = (iso: string) => {
@@ -49,7 +50,11 @@ export default function Sequences() {
     } catch (e) { toast("Export impossible : " + String(e), { icone: "⚠️" }); }
   };
   const [cycle, setCycle] = React.useState("");
+  const [periode, setPeriode] = React.useState("");
+  const [annee, setAnnee] = React.useState("");
   const [tri, setTri] = React.useState<Tri>("defaut");
+  const [ouverts, setOuverts] = React.useState<Record<string, boolean>>({});
+  const toggle = (k: string) => setOuverts((s) => ({ ...s, [k]: !s[k] }));
 
   // Action « Nouvelle séquence » déclenchée depuis la palette ⌘K.
   React.useEffect(() => {
@@ -80,15 +85,27 @@ export default function Sequences() {
     } catch (e) { toast("Import impossible : " + String(e), { icone: "⚠️" }); }
   };
 
+  const anneesDispo = Array.from(new Set([anneeScolaireActuelle(), ...(sequences ?? []).map((s) => s.annee).filter(Boolean)])).sort().reverse();
+
   const filtres = (sequences ?? [])
     .filter((s) =>
       (!q || s.titre.toLowerCase().includes(q.toLowerCase()) || s.matiere.toLowerCase().includes(q.toLowerCase())) &&
-      (!cycle || s.cycle === cycle))
+      (!cycle || s.cycle === cycle) &&
+      (!periode || String(s.periode) === periode) &&
+      (!annee || s.annee === annee))
     .sort((a, b) => {
       if (tri === "recent") return b.dateCreation.localeCompare(a.dateCreation);
       if (tri === "ancien") return a.dateCreation.localeCompare(b.dateCreation);
       return (b.annee.localeCompare(a.annee)) || (a.periode - b.periode);
     });
+
+  // Vraie couleur de la matière (définie dans Réglages → général).
+  const teinte = (mat: string) => couleurHex[couleurPourMatiere(mat)] ?? couleurHex.gray;
+
+  // Regroupement en dossiers par matière (« Sans matière » en dernier).
+  const groupes: Record<string, Sequence[]> = {};
+  filtres.forEach((s) => { const k = s.matiere || "Sans matière"; (groupes[k] ??= []).push(s); });
+  const matieres = Object.keys(groupes).sort((a, b) => (a === "Sans matière" ? 1 : b === "Sans matière" ? -1 : a.localeCompare(b)));
 
   return (
     <Page titre="Séquences" sous={`${sequences?.length ?? 0} séquence(s)`}
@@ -107,6 +124,14 @@ export default function Sequences() {
           <option value="">Tous les cycles</option>
           {CYCLES.map((c) => <option key={c}>{c}</option>)}
         </Select>
+        <Select value={periode} onChange={(e) => setPeriode(e.target.value)} style={{ maxWidth: 150 }}>
+          <option value="">Toutes les périodes</option>
+          {[1, 2, 3, 4, 5].map((p) => <option key={p} value={String(p)}>Période {p}</option>)}
+        </Select>
+        <Select value={annee} onChange={(e) => setAnnee(e.target.value)} style={{ maxWidth: 170 }}>
+          <option value="">Toutes les années</option>
+          {anneesDispo.map((a) => <option key={a} value={a}>Année {a}</option>)}
+        </Select>
         <Select value={tri} onChange={(e) => setTri(e.target.value as Tri)} style={{ maxWidth: 170 }}>
           <option value="defaut">Année / période</option>
           <option value="recent">Plus récentes</option>
@@ -117,8 +142,21 @@ export default function Sequences() {
       {filtres.length === 0 ? (
         <Empty icone="📚" titre="Aucune séquence" sous="Créez votre première séquence pédagogique." />
       ) : (
-        <div className="grid cols">
-          {filtres.map((s) => {
+        matieres.map((mat) => {
+          const t = teinte(mat);
+          const ouvert = q ? true : !!ouverts[mat];
+          return (
+            <div key={mat} style={{ marginBottom: 12 }}>
+              <button onClick={() => toggle(mat)} disabled={!!q}
+                style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", cursor: q ? "default" : "pointer",
+                  background: t + "1f", border: `1px solid ${t}55`, borderLeft: `3px solid ${t}`, borderRadius: 10,
+                  color: "var(--text)", font: "inherit", fontWeight: 700, fontSize: 14 }}>
+                <span style={{ fontSize: 16 }}>{ouvert ? "📂" : "📁"}</span>
+                <span style={{ flex: 1, textAlign: "left" }}>{mat}</span>
+                <span className="chip" style={{ background: t + "33" }}>{groupes[mat].length}</span>
+                <span style={{ color: "var(--text-2)", transform: ouvert ? "rotate(90deg)" : "none", transition: "transform .15s" }}>›</span>
+              </button>
+              {ouvert && <div className="grid cols" style={{ marginTop: 10 }}>{groupes[mat].map((s) => {
             const projet = projets?.find((p) => p.id === s.projetId);
             let comp: CompetenceSelectionnee | null = null;
             try { comp = s.competenceVisee ? JSON.parse(s.competenceVisee) : null; } catch { /* ignore */ }
@@ -152,8 +190,10 @@ export default function Sequences() {
                 {dateFr(s.dateCreation) && <div className="meta" style={{ marginTop: 8, fontSize: 11.5 }}>🕓 Créée le {dateFr(s.dateCreation)}</div>}
               </div>
             );
-          })}
-        </div>
+          })}</div>}
+            </div>
+          );
+        })
       )}
 
       {edit && (
@@ -304,6 +344,7 @@ export function SequenceForm({ sequence, projets, onClose, onSaved }: {
             ? <FichierImg nom={s.imageNom} style={{ width: 96, height: 72, objectFit: "cover", border: "1px solid var(--border)" }} />
             : <div style={{ width: 96, height: 72, borderRadius: 8, background: "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>🖼</div>}
           <ImageUpload onUploaded={(nom) => up({ imageNom: nom })} />
+          <PhotoTelephone onPhoto={(nom) => up({ imageNom: nom })} />
           {s.imageNom && <button className="btn ghost sm" onClick={() => up({ imageNom: null })}>Retirer</button>}
         </div>
       </div>

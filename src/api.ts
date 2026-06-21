@@ -86,6 +86,7 @@ export interface MaterielItem {
   id: string; titre: string; descriptionMateriel: string; competenceId: string;
   competenceTitre: string; domaineTitre: string; sousDomaineTitre: string; cycle: string;
   imagesJson: string; pdfsJson: string; dateCreation: string; seanceId: string | null;
+  sequenceId: string | null;
 }
 
 export interface PapierEleve {
@@ -325,6 +326,9 @@ export const api = {
   syncConfigSet: (c: { endpoint: string; region: string; bucket: string; access: string; secret?: string }) =>
     invoke<void>("sync_config_set", { endpoint: c.endpoint, region: c.region, bucket: c.bucket, access: c.access, secret: c.secret ?? null }),
   syncTest: () => invoke<string>("sync_test"),
+  // Sauvegarde chiffrée de toute la base sur le stockage S3/MinIO.
+  sauvegardePush: () => invoke<string>("sauvegarde_push"),
+  sauvegardePull: () => invoke<string>("sauvegarde_pull"),
   syncEnvoyer: (amiId: string, texte: string) => invoke<void>("sync_envoyer", { amiId, texte }),
   syncRelever: (amiId: string) => invoke<SyncMessage[]>("sync_relever", { amiId }),
   sequencePartager: (amiId: string, sequenceId: string) => invoke<void>("sequence_partager", { amiId, sequenceId }),
@@ -338,6 +342,9 @@ export const api = {
   // Version portable : serveur local sur le WiFi + QR code (lecture seule).
   portableDemarrer: () => invoke<PortableInfo>("portable_demarrer"),
   portableArreter: () => invoke<void>("portable_arreter"),
+  // Capture photo depuis le téléphone (émet l'événement "photo:recue").
+  photoCaptureDemarrer: () => invoke<PortableInfo>("photo_capture_demarrer"),
+  photoCaptureArreter: () => invoke<void>("photo_capture_arreter"),
 };
 
 export interface PortableInfo {

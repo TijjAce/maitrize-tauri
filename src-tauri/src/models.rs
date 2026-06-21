@@ -519,6 +519,9 @@ pub struct MaterielItem {
     // Lien optionnel vers la séance d'origine (matériel ajouté depuis une séance).
     #[serde(default)]
     pub seance_id: Option<String>,
+    // Lien optionnel vers la séquence (matériel déposé au niveau de la séquence).
+    #[serde(default)]
+    pub sequence_id: Option<String>,
 }
 
 impl MaterielItem {
@@ -536,6 +539,7 @@ impl MaterielItem {
             pdfs_json: r.get("pdfs_json")?,
             date_creation: r.get("date_creation")?,
             seance_id: r.get("seance_id").ok(),
+            sequence_id: r.get("sequence_id").ok(),
         })
     }
 }

@@ -1,6 +1,7 @@
 import React from "react";
 import { api, DocumentCoffre } from "../api";
 import { fichierToBlobUrl } from "./PdfViewer";
+import { PhotoTelephone } from "./PhotoTelephone";
 
 // Marqueurs insérés dans le texte du déroulement :
 //   [img:<nomFichier>]            → image
@@ -42,7 +43,10 @@ export function IllustrationsEditor({ texte, fichiers, onChange, onInsert }: {
     <div>
       <input ref={input} type="file" accept="image/*" multiple style={{ display: "none" }}
         onChange={(e) => { Array.from(e.target.files ?? []).forEach((f) => ajouter(f)); e.target.value = ""; }} />
-      <button className="btn sm" onClick={() => input.current?.click()}>📷 Ajouter une illustration</button>
+      <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap" }}>
+        <button className="btn sm" onClick={() => input.current?.click()}>📷 Ajouter une illustration</button>
+        <PhotoTelephone onPhoto={(nom) => onChange([...fichiers, nom])} />
+      </span>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
         {fichiers.map((f) => {
           const dansTexte = contientMarqueur(texte, f);

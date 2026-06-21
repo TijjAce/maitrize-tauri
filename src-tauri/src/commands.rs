@@ -445,12 +445,12 @@ pub fn materiel_save(db: State<Db>, materiel: MaterielItem) -> R<MaterielItem> {
     c.execute(
         "INSERT OR REPLACE INTO materiel_items
          (id,titre,description_materiel,competence_id,competence_titre,domaine_titre,
-          sous_domaine_titre,cycle,images_json,pdfs_json,date_creation,seance_id)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
+          sous_domaine_titre,cycle,images_json,pdfs_json,date_creation,seance_id,sequence_id)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)",
         params![materiel.id, materiel.titre, materiel.description_materiel, materiel.competence_id,
                 materiel.competence_titre, materiel.domaine_titre, materiel.sous_domaine_titre,
                 materiel.cycle, materiel.images_json, materiel.pdfs_json, materiel.date_creation,
-                materiel.seance_id],
+                materiel.seance_id, materiel.sequence_id],
     ).map_err(e)?;
     Ok(materiel)
 }
@@ -1261,6 +1261,11 @@ pub fn exporter_base(db: State<Db>, chemin: String) -> R<()> {
 #[tauri::command]
 pub fn export_data(db: State<Db>) -> R<String> {
     let c = db.0.lock().map_err(e)?;
+    export_json(&c)
+}
+
+/// Construit le JSON d'export complet depuis une connexion (réutilisable, sous verrou).
+pub fn export_json(c: &rusqlite::Connection) -> R<String> {
     let mut root = serde_json::Map::new();
     root.insert("_format".into(), serde_json::Value::from("maitrize-backup-v1"));
     root.insert("_date".into(), serde_json::Value::from(now_iso()));
@@ -1297,9 +1302,14 @@ pub fn export_data(db: State<Db>) -> R<String> {
 /// Restaure depuis un JSON produit par export_data (remplace les données).
 #[tauri::command]
 pub fn import_data(db: State<Db>, json: String) -> R<()> {
-    let root: serde_json::Value = serde_json::from_str(&json).map_err(e)?;
-    let obj = root.as_object().ok_or("JSON racine invalide")?;
     let c = db.0.lock().map_err(e)?;
+    import_json(&c, &json)
+}
+
+/// Restaure depuis un JSON d'export, sur une connexion (réutilisable, sous verrou).
+pub fn import_json(c: &rusqlite::Connection, json: &str) -> R<()> {
+    let root: serde_json::Value = serde_json::from_str(json).map_err(e)?;
+    let obj = root.as_object().ok_or("JSON racine invalide")?;
 
     for t in TABLES_EXPORT {
         let Some(arr) = obj.get(*t).and_then(|v| v.as_array()) else { continue };
