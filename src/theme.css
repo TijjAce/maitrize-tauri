@@ -58,10 +58,10 @@
   --bg: #000000; --panel: #0c0d12; --panel-2: #15171f; --border: #242732;
   --text: #e9ebf2; --text-2: #8c93a6; --shadow: 0 1px 3px rgba(0,0,0,.6), 0 6px 24px rgba(0,0,0,.5);
 }
-:root[data-theme="lavande"] {
-  color-scheme: light;
-  --bg: #f3f0fb; --panel: #fbfaff; --panel-2: #ece7f9; --border: #e0d8f1;
-  --text: #2c2540; --text-2: #6f6790; --shadow: 0 1px 3px rgba(60,40,110,.06), 0 6px 24px rgba(60,40,110,.06);
+:root[data-theme="lavande-nuit"] {
+  color-scheme: dark;
+  --bg: #16121f; --panel: #201a2c; --panel-2: #2a2238; --border: #392f4a;
+  --text: #ece6f6; --text-2: #a294bd; --shadow: 0 1px 3px rgba(0,0,0,.4), 0 6px 24px rgba(0,0,0,.32);
 }
 :root[data-theme="foret"] {
   color-scheme: light;

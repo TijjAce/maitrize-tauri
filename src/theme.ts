@@ -9,7 +9,7 @@ export const MODES = [
   { id: "sepia", label: "Sépia" },
   { id: "confort", label: "Confort" },
   { id: "nuit", label: "Nuit" },
-  { id: "lavande", label: "Lavande" },
+  { id: "lavande-nuit", label: "Lavande Nuit" },
   { id: "foret", label: "Forêt" },
 ];
 
@@ -31,6 +31,7 @@ export function applyTheme(s: Record<string, string>) {
   const root = document.documentElement;
   let mode = s.apparence || "system";
   if (mode === "translucide") mode = "system"; // mode retiré : repli système
+  if (mode === "lavande") mode = "system"; // thème retiré : repli système
   if (mode === "system") root.removeAttribute("data-theme");
   else root.setAttribute("data-theme", mode); // clair|sombre|sepia|confort
 
