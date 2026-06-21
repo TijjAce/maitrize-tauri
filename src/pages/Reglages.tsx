@@ -110,7 +110,7 @@ export default function Reglages() {
         <Field label="Mode">
           <div className="seg" style={{ flexWrap: "wrap" }}>
             {MODES.map((m) => (
-              <button key={m.id} className={(s.apparence || "system") === m.id ? "active" : ""} onClick={() => set("apparence", m.id)}>{m.label}</button>
+              <button key={m.id} className={(s.apparence || "clair") === m.id ? "active" : ""} onClick={() => set("apparence", m.id)}>{m.label}</button>
             ))}
           </div>
         </Field>

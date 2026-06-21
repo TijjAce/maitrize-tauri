@@ -3,14 +3,13 @@
 import { api, setMatiereOverrides } from "./api";
 
 export const MODES = [
-  { id: "system", label: "Système" },
   { id: "clair", label: "Clair" },
-  { id: "sombre", label: "Sombre" },
+  { id: "aurore", label: "Aurore" },
   { id: "sepia", label: "Sépia" },
-  { id: "confort", label: "Confort" },
-  { id: "nuit", label: "Nuit" },
+  { id: "sombre", label: "Sombre" },
+  { id: "ardoise", label: "Ardoise" },
+  { id: "foret-nuit", label: "Forêt Nuit" },
   { id: "lavande-nuit", label: "Lavande Nuit" },
-  { id: "foret", label: "Forêt" },
 ];
 
 export const ACCENTS = [
@@ -29,11 +28,13 @@ export const STYLES = [
 
 export function applyTheme(s: Record<string, string>) {
   const root = document.documentElement;
-  let mode = s.apparence || "system";
-  if (mode === "translucide") mode = "system"; // mode retiré : repli système
-  if (mode === "lavande") mode = "system"; // thème retiré : repli système
-  if (mode === "system") root.removeAttribute("data-theme");
-  else root.setAttribute("data-theme", mode); // clair|sombre|sepia|confort
+  let mode = s.apparence || "clair";
+  // Modes/thèmes retirés ou renommés : repli vers un équivalent existant
+  if (mode === "system" || mode === "translucide" || mode === "confort") mode = "clair";
+  if (mode === "nuit") mode = "sombre";
+  if (mode === "lavande") mode = "lavande-nuit";
+  if (mode === "foret") mode = "foret-nuit";
+  root.setAttribute("data-theme", mode);
 
   const style = s.styleInterface || "";
   if (style) root.setAttribute("data-style", style); else root.removeAttribute("data-style");
