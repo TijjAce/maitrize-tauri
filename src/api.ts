@@ -295,6 +295,10 @@ export const api = {
   ouvrirHtml: (html: string) => invoke<void>("ouvrir_html", { html }),
   imprimerPlanning: (titre: string, jours: { jour: string; rangs: { heureDebut: string; heureFin: string; matiere: string; seance: string; couleur: string; objectifs: string; deroulement: string }[][] }[]) =>
     invoke<void>("imprimer_planning", { titre, jours }),
+  exporterSyntheseGs: (args: {
+    ecole: string; eleveNom: string; positions: number[][]; observations: string[];
+    dateVisaEnseignant: string; enseignantNom: string; directeurNom: string; dateVisaDirecteur: string;
+  }) => invoke<void>("exporter_synthese_gs", args),
 
   // Recherche
   recherche: (q: string) => invoke<ResultatRecherche[]>("recherche", { q }),

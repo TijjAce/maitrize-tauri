@@ -34,6 +34,7 @@ tokio = { version = "1", features = ["full"] }
 anyhow = "1"
 base64 = "0.22"
 printpdf = "0.7"
+lopdf = "0.31"
 # Appariement chiffré entre utilisateurs (identité X25519 + numéro de sécurité)
 x25519-dalek = { version = "2", features = ["static_secrets"] }
 rand_core = { version = "0.6", features = ["getrandom"] }

@@ -6,6 +6,7 @@ mod models;
 mod portable;
 mod seed;
 mod sync;
+mod synthese_pdf;
 
 use commands::*;
 use db::Db;
@@ -75,7 +76,7 @@ pub fn run() {
             settings_all, setting_get, setting_set,
             // Fichiers
             fichier_save, fichier_read, fichier_path, fichier_delete, enregistrer_texte,
-            imprimer_pdf, ouvrir_fichier, imprimer_planning, ouvrir_html,
+            imprimer_pdf, ouvrir_fichier, imprimer_planning, ouvrir_html, exporter_synthese_gs,
             // Recherche
             recherche,
             // Export / Import

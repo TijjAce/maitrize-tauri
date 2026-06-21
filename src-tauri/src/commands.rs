@@ -1089,6 +1089,42 @@ pub fn imprimer_planning(titre: String, jours: Vec<PlanningJour>) -> R<()> {
     Ok(())
 }
 
+/// Exporte la "Synthèse des acquis fin GS" en superposant les données de
+/// l'app sur le PDF officiel (gabarit MEN) plutôt que de le recréer, afin de
+/// garantir une mise en page strictement identique à l'original.
+#[tauri::command]
+pub fn exporter_synthese_gs(
+    ecole: String,
+    eleve_nom: String,
+    positions: Vec<Vec<u8>>,
+    observations: Vec<String>,
+    date_visa_enseignant: String,
+    enseignant_nom: String,
+    directeur_nom: String,
+    date_visa_directeur: String,
+) -> R<()> {
+    let donnees = crate::synthese_pdf::SyntheseDonnees {
+        ecole,
+        eleve_nom: eleve_nom.clone(),
+        positions,
+        observations,
+        date_visa_enseignant,
+        enseignant_nom,
+        directeur_nom,
+        date_visa_directeur,
+    };
+    let bytes = crate::synthese_pdf::generer(&donnees)?;
+    let nom = format!(
+        "synthese-gs-{}-{}.pdf",
+        eleve_nom.replace(' ', "_"),
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
+    );
+    let path = std::env::temp_dir().join(nom);
+    std::fs::write(&path, &bytes).map_err(e)?;
+    tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
+    Ok(())
+}
+
 /// Ouvre un fichier joint dans l'app par défaut du système (Aperçu pour un PDF
 /// sur macOS), plutôt que dans une visionneuse interne.
 #[tauri::command]

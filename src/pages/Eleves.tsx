@@ -7,7 +7,6 @@ import {
 } from "../api";
 import { Modal, Field, Input, Select, Empty, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
-import { printHTML, escapeHtml } from "../print";
 import { openCtx } from "../components/ctxmenu";
 import syntheseDomaines from "../data/syntheseGS.json";
 
@@ -329,18 +328,39 @@ function LSUSheet({ ev, onClose }: { ev: Evaluation; onClose: () => void }) {
 // ── Synthèse des acquis de fin de maternelle (GS) ──────────────────────────
 interface SynItem { id: string; bloc: string | null; label: string }
 interface SynDom { id: string; titre: string; titreObservations: string; items: SynItem[]; enonces: string[] }
-interface SynData { positionnements: Record<string, number>; observations: Record<string, string> }
+interface SynData { positionnements: Record<string, number>; observations: Record<string, string>; dateVisa?: string }
 const POS_GS = [
   { n: 1, label: "Ne réussit pas encore", couleur: "#d64d4d" },
   { n: 2, label: "En voie de réussite", couleur: "#eb9e33" },
   { n: 3, label: "Réussit souvent", couleur: "#57b873" },
 ];
 
+function todayIso() { return new Date().toISOString().slice(0, 10); }
+function fmtDateFr(iso?: string) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  return y && m && d ? `${d}/${m}/${y}` : iso;
+}
+
 function SyntheseGS() {
   const doms = syntheseDomaines as SynDom[];
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   const [eleveId, setEleveId] = React.useState("");
   const [data, setData] = React.useState<SynData>({ positionnements: {}, observations: {} });
+  const [ecole, setEcole] = React.useState("");
+  const [enseignantNom, setEnseignantNom] = React.useState("");
+  const [directeurNom, setDirecteurNom] = React.useState("");
+  const [directeurDate, setDirecteurDate] = React.useState("");
+
+  React.useEffect(() => {
+    api.settingGet("ecole").then((v) => setEcole(v ?? ""));
+    api.settingGet("enseignantNom").then((v) => setEnseignantNom(v ?? ""));
+    api.settingGet("syntheseGS:directeurNom").then((v) => setDirecteurNom(v ?? ""));
+    api.settingGet("syntheseGS:directeurDate").then((v) => setDirecteurDate(v ?? ""));
+  }, []);
+
+  const majDirecteurNom = (v: string) => { setDirecteurNom(v); api.settingSet("syntheseGS:directeurNom", v); };
+  const majDirecteurDate = (v: string) => { setDirecteurDate(v); api.settingSet("syntheseGS:directeurDate", v); };
 
   React.useEffect(() => {
     const gs = (eleves ?? []).filter((e) => e.niveau === "GS");
@@ -362,23 +382,34 @@ function SyntheseGS() {
     persister({ ...data, positionnements: p });
   };
   const setObs = (domId: string, t: string) => persister({ ...data, observations: { ...data.observations, [domId]: t } });
+  const setDateVisa = (v: string) => persister({ ...data, dateVisa: v });
 
   const eleve = eleves?.find((e) => e.id === eleveId);
 
-  const imprimer = () => {
+  const [exportEnCours, setExportEnCours] = React.useState(false);
+  const [exportErreur, setExportErreur] = React.useState("");
+
+  const imprimer = async () => {
     if (!eleve) return;
-    const html = `
-      <h1>Synthèse des acquis de fin de maternelle</h1>
-      <div class="meta">${escapeHtml(eleve.nom)} · GS · Légende : 1 ne réussit pas encore · 2 en voie de réussite · 3 réussit souvent</div>
-      ${doms.map((d) => `
-        <h2>${escapeHtml(d.titre)}</h2>
-        ${d.items.length ? `<table><tr><th>Item</th><th style="width:60px">Pos.</th></tr>
-          ${d.items.map((it) => `<tr><td>${it.bloc ? `<b>${escapeHtml(it.bloc)}</b><br>` : ""}${escapeHtml(it.label)}</td><td style="text-align:center">${data.positionnements[it.id] ?? ""}</td></tr>`).join("")}
-        </table>` : ""}
-        ${d.enonces.length ? `<ul>${d.enonces.map((e) => `<li>${escapeHtml(e)}</li>`).join("")}</ul>` : ""}
-        ${data.observations[d.id] ? `<div class="label">${escapeHtml(d.titreObservations)}</div><div class="pre">${escapeHtml(data.observations[d.id])}</div>` : ""}
-      `).join("")}`;
-    printHTML(`Synthèse GS — ${eleve.nom}`, html);
+    setExportErreur("");
+    setExportEnCours(true);
+    try {
+      // 5 domaines de la grille (hors AEVE), positions dans l'ordre exact des items.
+      const positions = doms.filter((d) => d.id !== "aeve")
+        .map((d) => d.items.map((it) => data.positionnements[it.id] ?? 0));
+      // 6 observations : d1..d5 puis aeve, dans cet ordre.
+      const observations = [...doms.filter((d) => d.id !== "aeve"), doms.find((d) => d.id === "aeve")!]
+        .map((d) => data.observations[d.id] ?? "");
+      await api.exporterSyntheseGs({
+        ecole, eleveNom: eleve.nom, positions, observations,
+        dateVisaEnseignant: fmtDateFr(data.dateVisa || todayIso()), enseignantNom,
+        directeurNom, dateVisaDirecteur: fmtDateFr(directeurDate),
+      });
+    } catch (e: any) {
+      setExportErreur(String(e));
+    } finally {
+      setExportEnCours(false);
+    }
   };
 
   return (
@@ -388,8 +419,28 @@ function SyntheseGS() {
           {eleves?.map((e) => <option key={e.id} value={e.id}>{e.nom}{e.niveau ? ` (${e.niveau})` : ""}</option>)}
         </Select>
         <div className="spacer" />
-        <button className="btn sm" onClick={imprimer} disabled={!eleve}>🖨 Imprimer</button>
+        {exportErreur && <span style={{ color: "var(--danger, #d64d4d)", fontSize: 12, marginRight: 8 }}>{exportErreur}</span>}
+        <button className="btn sm" onClick={imprimer} disabled={!eleve || exportEnCours}>
+          {exportEnCours ? "Export…" : "🖨 Exporter le PDF officiel"}
+        </button>
       </div>
+      {eleve && <div className="card" style={{ marginBottom: 14 }}>
+        <h3 style={{ marginTop: 0 }}>📝 Visa (export)</h3>
+        <div className="row">
+          <Field label="Date de signature — enseignant">
+            <Input type="date" value={data.dateVisa ?? todayIso()} onChange={(e) => setDateVisa(e.target.value)} />
+          </Field>
+          <Field label="Nom de la directrice / du directeur">
+            <Input value={directeurNom} onChange={(e) => majDirecteurNom(e.target.value)} placeholder="(commun à tous les élèves)" />
+          </Field>
+          <Field label="Date de signature — direction">
+            <Input type="date" value={directeurDate} onChange={(e) => majDirecteurDate(e.target.value)} />
+          </Field>
+        </div>
+        <div style={{ fontSize: 12, color: "var(--text-2)" }}>
+          Nom enseignant repris des Réglages ({enseignantNom || "non renseigné"}) — école : {ecole || "non renseignée"}.
+        </div>
+      </div>}
       {!eleve ? <Empty icone="🎓" titre="Aucun élève" sous="Ajoutez vos élèves de GS dans l'onglet Classe." /> :
         doms.map((d) => (
           <div key={d.id} className="card" style={{ marginBottom: 14 }}>
