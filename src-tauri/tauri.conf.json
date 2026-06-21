@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Maitrize V2",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "identifier": "fr.clementsapp.maitrizev2",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -29,7 +29,7 @@
       "endpoints": [
         "https://github.com/TijjAce/maitrize-tauri/releases/latest/download/latest.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc4OURFOEJFNTlFNjlFOTcKUldTWG51Wlp2dWlkZUFWS0p4bG1nTkFxSk55UzNyNTNCMFZJSE5aZGVFbFZJKzVLdFdwZWozSGkK"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ5RkI1MDI5QzA2RjdENjYKUldSbWZXL0FLVkQ3U1Jsbk44U1VrTEFGcXJvc1F0alo1ZnZZbmpwenk0a3JHc1gvYVlLVEEwcUEK"
     }
   },
   "bundle": {
