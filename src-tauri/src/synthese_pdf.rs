@@ -129,7 +129,7 @@ fn texte_multiligne(font_res: &str, size: f32, x: f32, y_top: f32, max_w: f32, m
         lignes.push(cur);
     }
     lignes.truncate(max_lignes);
-    let mut ops = vec![];
+    let mut ops = vec![Operation::new("rg", vec![Object::Real(0.0), Object::Real(0.0), Object::Real(0.0)])];
     for (i, ligne) in lignes.iter().enumerate() {
         let y = y_top - (i as f32) * interligne;
         ops.push(Operation::new("BT", vec![]));

@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
-import { api, Creneau, Seance, Sequence, MATIERES, couleurHex, couleurPourMatiere, joursFeriesFR, newId } from "../api";
+import { api, Creneau, Seance, Sequence, MATIERES, couleurHex, couleurPourMatiere, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance } from "../api";
 import { Modal, Field, Input, Select, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
 import { toast } from "../components/Toaster";
@@ -29,6 +29,12 @@ function jourPlanningInitial(): Date {
   return d;
 }
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// Année scolaire (sept→août) d'une date ISO donnée (≠ aujourd'hui).
+const anneeDe = (dateIso: string) => {
+  const d = new Date(dateIso); const y = d.getFullYear();
+  return d.getMonth() >= 7 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
+};
+const fmtDateLongueFr = (dateIso: string) => new Date(dateIso).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const fmtJour = (d: Date) => d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
 const toMin = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
 const minToHHMM = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
@@ -100,6 +106,27 @@ export default function Planning() {
   const [voirSeance, setVoirSeance] = React.useState<Seance | null>(null);
   const [deplacer, setDeplacer] = React.useState(false);
   const navigate = useNavigate();
+
+  // Crée une séance « libre » directement depuis un créneau quelconque : elle
+  // est rattachée à une séquence auto-créée pour la journée (une par date,
+  // réutilisée si elle existe déjà), puis on ouvre la fiche pour la compléter.
+  const creerSeanceDepuisCreneau = async (c: Creneau) => {
+    const dateIso = c.date.slice(0, 10);
+    const titreSeq = `Séances du ${fmtDateLongueFr(dateIso)}`;
+    let seq = (sequences ?? []).find((q) => q.titre === titreSeq && q.annee === anneeDe(dateIso));
+    if (!seq) {
+      seq = { ...nouvelleSequence(), titre: titreSeq, matiere: c.matiere, annee: anneeDe(dateIso) };
+      await api.sequenceSave(seq);
+    }
+    const numero = (seances ?? []).filter((s) => s.sequenceId === seq!.id).length + 1;
+    const duree = Math.max(5, toMin(c.heureFin) - toMin(c.heureDebut));
+    const seance: Seance = { ...nouvelleSeance(seq.id, numero), titre: c.matiere, date: dateIso, duree };
+    await api.seanceSave(seance);
+    await api.creneauSave({ ...c, seanceId: seance.id });
+    setEdit(null);
+    reload();
+    navigate(`/sequences/${seq.id}`);
+  };
 
   // Tap sur un créneau : fiche de la séance liée, sinon édition du créneau.
   const ouvrirCreneau = (c: Creneau) => {
@@ -352,7 +379,7 @@ export default function Planning() {
         onEdit={() => { const sid = voirSeance.sequenceId; setVoirSeance(null); if (sid) navigate(`/sequences/${sid}`); }} />}
       {edit && <CreneauForm creneau={edit} seances={seances ?? []} sequences={sequences ?? []}
         onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }}
-        onDelete={() => { setDel(edit); setEdit(null); }} />}
+        onDelete={() => { setDel(edit); setEdit(null); }} onCreerSeance={creerSeanceDepuisCreneau} />}
       {del && <Confirm message="Supprimer ce créneau ?" onYes={() => api.creneauDelete(del.id).then(reload)} onClose={() => setDel(null)} />}
     </Page>
   );
@@ -365,7 +392,10 @@ function GrilleHoraire({ jours, creneaux, seances, feries, vacanceDe, deplacable
 }) {
   const todayIso = iso(new Date());
   const heures = Array.from({ length: H_FIN - H_DEBUT + 1 }, (_, i) => H_DEBUT + i);
-  const hauteur = (H_FIN - H_DEBUT) * H_PX;
+  const [zoom, setZoom] = React.useState(() => { const v = Number(localStorage.getItem("planning-zoom")); return v >= 0.6 && v <= 2.5 ? v : 1; });
+  const majZoom = (v: number) => { const z = Math.max(0.6, Math.min(2.5, v)); setZoom(z); localStorage.setItem("planning-zoom", String(z)); };
+  const hpx = H_PX * zoom;
+  const hauteur = (H_FIN - H_DEBUT) * hpx;
   const colsRef = React.useRef<HTMLDivElement>(null);
   const [drag, setDrag] = React.useState<DragState | null>(null);
   const n = jours.length;
@@ -375,7 +405,7 @@ function GrilleHoraire({ jours, creneaux, seances, feries, vacanceDe, deplacable
   const creerA = (d: Date, e: React.MouseEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest(".cren-block")) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const start = Math.max(H_DEBUT * 60, Math.min((H_FIN - 1) * 60, H_DEBUT * 60 + Math.floor(((e.clientY - rect.top) / H_PX) * 60 / 30) * 30));
+    const start = Math.max(H_DEBUT * 60, Math.min((H_FIN - 1) * 60, H_DEBUT * 60 + Math.floor(((e.clientY - rect.top) / hpx) * 60 / 30) * 30));
     onEdit({ id: newId(), date: iso(d), heureDebut: minToHHMM(start), heureFin: minToHHMM(start + 60), matiere: "Français", couleur: couleurPourMatiere("Français"), seanceId: null, atelierId: null, espaceId: null });
   };
 
@@ -388,7 +418,7 @@ function GrilleHoraire({ jours, creneaux, seances, feries, vacanceDe, deplacable
     if (!deplacable) return;
     e.preventDefault(); e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const grabOffMin = (e.clientY - rect.top) / H_PX * 60;
+    const grabOffMin = (e.clientY - rect.top) / hpx * 60;
     majDrag({ id: c.id, dayIndex: jours.findIndex((d) => iso(d) === c.date.slice(0, 10)), startMin: toMin(c.heureDebut), durMin: toMin(c.heureFin) - toMin(c.heureDebut), grabOffMin });
 
     const onMove = (ev: MouseEvent) => {
@@ -397,7 +427,7 @@ function GrilleHoraire({ jours, creneaux, seances, feries, vacanceDe, deplacable
       const di = Math.max(0, Math.min(n - 1, Math.floor((ev.clientX - box.left) / (box.width / n))));
       // La grille commence à H_DEBUT (8h) : on convertit la position en minute
       // absolue de la journée, sinon tout retombe à 08:00 (clamp Math.max).
-      const yMin = H_DEBUT * 60 + (ev.clientY - box.top) / H_PX * 60 - cur.grabOffMin;
+      const yMin = H_DEBUT * 60 + (ev.clientY - box.top) / hpx * 60 - cur.grabOffMin;
       const start = Math.max(H_DEBUT * 60, Math.min(H_FIN * 60 - cur.durMin, Math.round(yMin / 15) * 15));
       majDrag({ ...cur, dayIndex: di, startMin: start });
     };
@@ -415,8 +445,15 @@ function GrilleHoraire({ jours, creneaux, seances, feries, vacanceDe, deplacable
     window.addEventListener("mouseup", onUp, { once: true });
   };
 
+  // Pincement trackpad (Safari/Chrome : wheel + ctrlKey) → zoom de la grille.
+  const onWheel = (e: React.WheelEvent) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    majZoom(zoom - e.deltaY * 0.01);
+  };
+
   return (
-    <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+    <div className="card" style={{ padding: 0, overflow: "hidden" }} onWheel={onWheel}>
       <div style={{ display: "grid", gridTemplateColumns: `44px repeat(${n}, 1fr)`, borderBottom: "1px solid var(--border)" }}>
         <div />
         {jours.map((d, i) => {
@@ -433,7 +470,7 @@ function GrilleHoraire({ jours, creneaux, seances, feries, vacanceDe, deplacable
       </div>
       <div style={{ display: "grid", gridTemplateColumns: `44px 1fr` }}>
         <div style={{ position: "relative", height: hauteur }}>
-          {heures.map((h, i) => <div key={h} style={{ position: "absolute", top: i * H_PX - 7, right: 6, fontSize: 11, color: "var(--text-2)" }}>{h}h</div>)}
+          {heures.map((h, i) => <div key={h} style={{ position: "absolute", top: i * hpx - 7, right: 6, fontSize: 11, color: "var(--text-2)" }}>{h}h</div>)}
         </div>
         <div ref={colsRef} style={{ display: "grid", gridTemplateColumns: `repeat(${n}, 1fr)` }}>
           {jours.map((d, di) => {
@@ -443,16 +480,18 @@ function GrilleHoraire({ jours, creneaux, seances, feries, vacanceDe, deplacable
               <div key={di} onClick={(e) => !off && !deplacable && creerA(d, e)}
                 style={{ position: "relative", height: hauteur, borderLeft: "1px solid var(--border)", cursor: off || deplacable ? "default" : "pointer",
                   background: off ? "repeating-linear-gradient(45deg, var(--panel-2), var(--panel-2) 8px, transparent 8px, transparent 16px)" : iso(d) === todayIso ? "color-mix(in srgb, var(--accent-soft) 40%, transparent)" : undefined }}>
-                {heures.map((_, i) => <div key={i} style={{ position: "absolute", top: i * H_PX, left: 0, right: 0, borderTop: "1px solid var(--border)", opacity: 0.5 }} />)}
+                {heures.map((_, i) => <div key={i} style={{ position: "absolute", top: i * hpx, left: 0, right: 0, borderTop: "1px solid var(--border)", opacity: 0.5 }} />)}
                 {pourJour(d).map((c) => {
                   const dragged = drag?.id === c.id;
                   const startMin = dragged ? drag!.startMin : toMin(c.heureDebut);
                   const durMin = dragged ? drag!.durMin : (toMin(c.heureFin) - toMin(c.heureDebut));
                   if (dragged && drag!.dayIndex !== di) return null;
-                  const top = (startMin - H_DEBUT * 60) / 60 * H_PX;
-                  const h = Math.max(20, durMin / 60 * H_PX);
+                  const top = (startMin - H_DEBUT * 60) / 60 * hpx;
+                  const h = Math.max(20, durMin / 60 * hpx);
                   const seance = seances.find((x) => x.id === c.seanceId);
                   const { lane, lanes } = (!dragged && lay.get(c.id)) || { lane: 0, lanes: 1 };
+                  const teinte = couleurHex[couleurPourMatiere(c.matiere)] || couleurHex.blue;
+                  const compact = h < 44;
                   return (
                     <div key={c.id} className="cren-block"
                       onMouseDown={(e) => { if (deplacable) onDragStart(c, e); }}
@@ -465,11 +504,17 @@ function GrilleHoraire({ jours, creneaux, seances, feries, vacanceDe, deplacable
                         { label: "Supprimer le créneau", icon: "🗑", danger: true, sep: true, onClick: () => api.creneauDelete(c.id).then(onReload) },
                       ])}
                       style={{ position: "absolute", top, height: h - 2, left: dragged ? 3 : `calc(${(lane / lanes) * 100}% + 3px)`, width: dragged ? "calc(100% - 6px)" : `calc(${100 / lanes}% - 6px)`,
-                        background: couleurHex[couleurPourMatiere(c.matiere)] || couleurHex.blue, borderRadius: 7, color: "#fff", padding: "4px 6px", overflow: "hidden", fontSize: 11.5, lineHeight: 1.3,
-                        boxShadow: dragged ? "0 4px 14px rgba(0,0,0,.35)" : "0 1px 3px rgba(0,0,0,.2)", opacity: dragged ? 0.92 : 1, outline: deplacable ? "2px dashed rgba(255,255,255,.7)" : "none", cursor: deplacable ? "grab" : "pointer", userSelect: "none", zIndex: dragged ? 10 : 1 }}>
-                      <div style={{ opacity: 0.92 }}>{minToHHMM(startMin)}–{minToHHMM(startMin + durMin)}</div>
-                      <div style={{ fontWeight: 700 }}>{c.matiere}</div>
-                      {seance && <div style={{ opacity: 0.92 }}>{seance.titre}</div>}
+                        background: seance ? teinte : `color-mix(in srgb, ${teinte} 12%, var(--panel-2))`,
+                        borderLeft: seance ? "none" : `3px solid ${teinte}`,
+                        borderRadius: 7, color: seance ? "#fff" : "var(--text)", padding: compact ? "2px 6px" : "4px 6px", overflow: "hidden", fontSize: compact ? 10.5 : 11.5, lineHeight: 1.25,
+                        boxShadow: dragged ? "0 4px 14px rgba(0,0,0,.35)" : seance ? "0 1px 3px rgba(0,0,0,.2)" : "none", opacity: dragged ? 0.92 : 1, outline: deplacable ? "2px dashed rgba(255,255,255,.7)" : "none", cursor: deplacable ? "grab" : "pointer", userSelect: "none", zIndex: dragged ? 10 : 1 }}>
+                      <div style={{ opacity: 0.85, fontSize: compact ? 9.5 : 11 }}>{minToHHMM(startMin)}–{minToHHMM(startMin + durMin)}</div>
+                      {seance ? <>
+                        <div style={{ fontWeight: 700 }}>{c.matiere}</div>
+                        {!compact && <div style={{ opacity: 0.92 }}>{seance.titre}</div>}
+                      </> : (
+                        <div style={{ fontWeight: 700, color: teinte }}>{c.matiere}{!compact && <span style={{ fontWeight: 400, fontStyle: "italic", opacity: 0.8 }}> · libre</span>}</div>
+                      )}
                     </div>
                   );
                 })}
@@ -478,7 +523,14 @@ function GrilleHoraire({ jours, creneaux, seances, feries, vacanceDe, deplacable
           })}
         </div>
       </div>
-      <div style={{ padding: "8px 12px", fontSize: 12, color: "var(--text-2)" }}>💡 Clic sur une plage vide pour créer · glisser pour déplacer.</div>
+      <div style={{ padding: "8px 12px", fontSize: 12, color: "var(--text-2)", display: "flex", alignItems: "center", gap: 10 }}>
+        <span>💡 Clic sur une plage vide pour créer · glisser pour déplacer · pincer (trackpad) pour zoomer.</span>
+        <div className="spacer" />
+        {zoom !== 1 && <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ minWidth: 34, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
+          <button className="btn sm" onClick={() => majZoom(1)} title="Réinitialiser le zoom">100%</button>
+        </span>}
+      </div>
     </div>
   );
 }
@@ -544,10 +596,12 @@ function VueMois({ ancre, creneaux, feries, vacanceDe, anniversaires, onJour }: 
   );
 }
 
-function CreneauForm({ creneau, seances, sequences, onClose, onSaved, onDelete }: {
+function CreneauForm({ creneau, seances, sequences, onClose, onSaved, onDelete, onCreerSeance }: {
   creneau: Creneau; seances: Seance[]; sequences: Sequence[]; onClose: () => void; onSaved: () => void; onDelete: () => void;
+  onCreerSeance: (c: Creneau) => void;
 }) {
   const [c, setC] = React.useState<Creneau>(creneau);
+  const [creationEnCours, setCreationEnCours] = React.useState(false);
   const up = (p: Partial<Creneau>) => setC((cur) => ({ ...cur, ...p }));
   // Séances groupées par séquence (séquences triées par titre, séances par n°).
   const seqsTriees = [...sequences].sort((a, b) => a.titre.localeCompare(b.titre));
@@ -572,6 +626,7 @@ function CreneauForm({ creneau, seances, sequences, onClose, onSaved, onDelete }
         </Select>
       </Field>
       <Field label="Séance liée (optionnel)">
+        <div className="row" style={{ alignItems: "flex-start" }}>
         <Select value={c.seanceId ?? ""} onChange={(e) => up({ seanceId: e.target.value || null })}>
           <option value="">Aucune</option>
           {seqsTriees.map((q) => {
@@ -588,6 +643,14 @@ function CreneauForm({ creneau, seances, sequences, onClose, onSaved, onDelete }
             </optgroup>
           )}
         </Select>
+        <button className="btn sm" disabled={creationEnCours}
+          onClick={async () => { setCreationEnCours(true); try { await onCreerSeance(c); } finally { setCreationEnCours(false); } }}>
+          {creationEnCours ? "Création…" : "+ Nouvelle séance"}
+        </button>
+        </div>
+        <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 4 }}>
+          Crée une séance vierge rattachée à une séquence « Séances du {fmtDateLongueFr(c.date.slice(0, 10))} » (créée automatiquement si besoin), puis ouvre sa fiche pour la compléter.
+        </div>
       </Field>
     </Modal>
   );
