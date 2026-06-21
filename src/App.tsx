@@ -53,6 +53,18 @@ export default function App() {
   React.useEffect(() => { bootTheme(); }, []);
   React.useEffect(() => { getVersion().then(setVersion).catch(() => {}); }, []);
 
+  // Liseré lumineux : met l'animation en pause quand la fenêtre perd le focus
+  // (économie de batterie). L'attribut est lu par le CSS [data-winfocus].
+  React.useEffect(() => {
+    const root = document.documentElement;
+    const focus = () => root.setAttribute("data-winfocus", "1");
+    const blur = () => root.setAttribute("data-winfocus", "0");
+    if (document.hasFocus()) focus(); else blur();
+    window.addEventListener("focus", focus);
+    window.addEventListener("blur", blur);
+    return () => { window.removeEventListener("focus", focus); window.removeEventListener("blur", blur); };
+  }, []);
+
   // Empêche le navigateur d'OUVRIR un fichier lâché n'importe où dans la fenêtre
   // (le comportement par défaut). Les vraies zones de dépôt gèrent le drop via
   // leurs propres handlers React ; ici on neutralise juste l'ouverture.
@@ -106,6 +118,7 @@ export default function App() {
   return (
     <CguGate>
     <div className="app">
+      <div className="neon-frame" aria-hidden="true" />
       <nav className="sidebar" aria-label="Navigation principale">
         <div className="brand"><img src={logo} className="brand-logo" alt="" /><span className="brand-text">Maitrize V2{version && <span className="brand-version">v{version}</span>}</span></div>
         <button className="palette-trigger" aria-label="Rechercher dans l'application"

@@ -57,7 +57,7 @@ export default function Reglages() {
     const next = { ...s, [cle]: valeur };
     setS(next);
     api.settingSet(cle, valeur);
-    if (cle === "apparence" || cle === "accent" || cle === "styleInterface") applyTheme(next);
+    if (cle === "apparence" || cle === "accent" || cle === "styleInterface" || cle === "liseret") applyTheme(next);
   };
 
   const tester = async () => {
@@ -145,6 +145,18 @@ export default function Reglages() {
                 </button>
               );
             })}
+          </div>
+        </Field>
+
+        <Field label="Liseré lumineux">
+          <div className="seg">
+            {[{ id: "on", label: "Activé" }, { id: "off", label: "Désactivé" }].map((o) => (
+              <button key={o.id} className={(s.liseret || "on") === o.id ? "active" : ""}
+                onClick={() => set("liseret", o.id)}>{o.label}</button>
+            ))}
+          </div>
+          <div style={{ fontSize: 11.5, color: "var(--text-2)", marginTop: 6 }}>
+            Halo coloré animé autour de la fenêtre. En pause quand l'app n'est pas au premier plan.
           </div>
         </Field>
 

@@ -42,6 +42,9 @@ export function applyTheme(s: Record<string, string>) {
   const accent = ACCENTS.find((a) => a.id === (s.accent || "indigo"))?.hex || "#6366f1";
   root.style.setProperty("--accent", accent);
   root.style.setProperty("--accent-soft", accent + "26"); // ~15% alpha
+
+  // Liseré lumineux animé autour de la fenêtre (activé par défaut)
+  root.setAttribute("data-neon", s.liseret === "off" ? "off" : "on");
 }
 
 /** Charge tous les réglages au démarrage et applique thème + couleurs matières. */

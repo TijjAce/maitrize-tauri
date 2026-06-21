@@ -82,6 +82,34 @@
   backdrop-filter: blur(12px); background: color-mix(in srgb, var(--panel) 78%, transparent);
 }
 
+/* ── Liseré lumineux animé autour de la fenêtre ─────────────
+   Overlay plein écran, sans interception des clics. Désactivé
+   quand data-neon="off". L'anneau est obtenu par un masque qui
+   évide le centre du dégradé conique. */
+@property --neon-ang { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+@keyframes neon-spin { to { --neon-ang: 360deg; } }
+
+.neon-frame { display: none; }
+:root[data-neon="on"] .neon-frame {
+  display: block; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+}
+.neon-frame::before, .neon-frame::after {
+  content: ""; position: absolute; inset: 0; padding: 3px;
+  background: conic-gradient(from var(--neon-ang),
+    #ff2d95, #7a5cff, #00e5ff, #39ff14, #ffd000, #ff2d95);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: neon-spin 9s linear infinite;
+}
+.neon-frame::after { padding: 5px; filter: blur(11px); opacity: .75; } /* halo */
+/* Pause quand la fenêtre n'a pas le focus (économie de batterie) */
+:root[data-winfocus="0"] .neon-frame::before,
+:root[data-winfocus="0"] .neon-frame::after { animation-play-state: paused; }
+/* Respect de la préférence « mouvement réduit » : anneau figé, sans rotation */
+@media (prefers-reduced-motion: reduce) {
+  .neon-frame::before, .neon-frame::after { animation: none; }
+}
+
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body { background: var(--bg); color: var(--text); font-size: 14px; }
