@@ -1,6 +1,7 @@
 import React from "react";
 import { api, MaterielItem, newId, nowIso, raccourci } from "../api";
 import { FichierImg } from "./Deroulement";
+import { useFileDropZone, estPdf, estImage, nomDeChemin } from "../dragdrop";
 
 // ============================================================
 // Tableau de déroulement — grille [[string]] éditable
@@ -216,28 +217,41 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
   }, [seanceId]);
   React.useEffect(() => { reload(); }, [reload]);
 
-  const ajouter = async (file: File) => {
-    const b64 = await fileToBase64(file);
-    const nomFichier = await api.fichierSave(file.name, b64);
+  const creerMateriel = async (titre: string, nomFichier: string) => {
     await api.materielSave({
-      id: newId(), titre: file.name.replace(/\.[^.]+$/, ""), descriptionMateriel: "",
+      id: newId(), titre, descriptionMateriel: "",
       competenceId: "", competenceTitre: "", domaineTitre: "", sousDomaineTitre: "",
       cycle, imagesJson: "[]", pdfsJson: JSON.stringify([nomFichier]), dateCreation: nowIso(), seanceId, sequenceId: null,
     });
     reload();
+  };
+  const ajouter = async (file: File) => {
+    const b64 = await fileToBase64(file);
+    const nomFichier = await api.fichierSave(file.name, b64);
+    await creerMateriel(file.name.replace(/\.[^.]+$/, ""), nomFichier);
   };
   const supprimer = async (m: MaterielItem) => {
     try { (JSON.parse(m.pdfsJson || "[]") as string[]).forEach((f) => api.fichierDelete(f)); } catch { /* ignore */ }
     await api.materielDelete(m.id); reload();
   };
 
+  // Glisser-déposer natif depuis le Finder/Aperçu (un PDF ouvert dans Aperçu
+  // peut être glissé directement depuis sa barre de titre).
+  const { ref: dropRef, actif: dropActif } = useFileDropZone({
+    accept: estPdf,
+    onFiles: (chemins) => chemins.forEach(async (c) => {
+      const nomFichier = await api.fichierImporterDepuisChemin(c);
+      await creerMateriel(nomDeChemin(c).replace(/\.[^.]+$/, ""), nomFichier);
+    }),
+  });
+
   return (
-    <div>
+    <div ref={dropRef} style={dropActif ? { outline: "2px dashed var(--accent)", borderRadius: 8, background: "var(--accent-soft)" } : undefined}>
       <input ref={pdfInput} type="file" accept="application/pdf" multiple style={{ display: "none" }}
         onChange={(e) => { Array.from(e.target.files ?? []).forEach((f) => ajouter(f)); e.target.value = ""; }} />
       <button className="btn sm" onClick={() => pdfInput.current?.click()}>📄 Ajouter un PDF</button>
       <div style={{ fontSize: 12, color: "var(--text-2)", margin: "6px 0 10px" }}>
-        Les PDF ajoutés ici apparaissent aussi dans l'onglet <b>Matériel</b>.
+        Les PDF ajoutés ici apparaissent aussi dans l'onglet <b>Matériel</b> — glissez-en un directement depuis le Finder ou Aperçu.
       </div>
       {items.length === 0 ? (
         <div style={{ fontSize: 13, color: "var(--text-2)", fontStyle: "italic" }}>Aucun PDF pour cette séance.</div>
@@ -267,8 +281,23 @@ export function FileListEditor({ type, fichiers, onChange }: {
   };
   const supprimer = async (nom: string) => { await api.fichierDelete(nom); onChange(fichiers.filter((f) => f !== nom)); };
 
+  // Import séquentiel : évite que deux fichiers déposés en même temps ne
+  // s'écrasent l'un l'autre via des `onChange([...fichiers, …])` concurrents.
+  const fichiersRef = React.useRef(fichiers);
+  fichiersRef.current = fichiers;
+  const { ref: dropRef, actif: dropActif } = useFileDropZone({
+    accept: type === "image" ? estImage : estPdf,
+    onFiles: async (chemins) => {
+      for (const c of chemins) {
+        const nom = await api.fichierImporterDepuisChemin(c);
+        fichiersRef.current = [...fichiersRef.current, nom];
+        onChange(fichiersRef.current);
+      }
+    },
+  });
+
   return (
-    <div>
+    <div ref={dropRef} style={dropActif ? { outline: "2px dashed var(--accent)", borderRadius: 8, background: "var(--accent-soft)" } : undefined}>
       <input ref={input} type="file" accept={type === "image" ? "image/*" : "application/pdf"} multiple style={{ display: "none" }}
         onChange={(e) => { Array.from(e.target.files ?? []).forEach((f) => ajouter(f)); e.target.value = ""; }} />
       <button className="btn sm" onClick={() => input.current?.click()}>{type === "image" ? "📷 Ajouter une image" : "📄 Ajouter un PDF"}</button>

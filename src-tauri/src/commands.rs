@@ -252,11 +252,11 @@ pub fn creneau_save(db: State<Db>, creneau: Creneau) -> R<Creneau> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
         "INSERT OR REPLACE INTO creneaux
-         (id,date,heure_debut,heure_fin,matiere,couleur,seance_id,atelier_id,espace_id)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+         (id,date,heure_debut,heure_fin,matiere,couleur,seance_id,atelier_id,espace_id,eleves_json)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
         params![creneau.id, creneau.date, creneau.heure_debut, creneau.heure_fin,
                 creneau.matiere, creneau.couleur, creneau.seance_id, creneau.atelier_id,
-                creneau.espace_id],
+                creneau.espace_id, creneau.eleves_json],
     ).map_err(e)?;
     Ok(creneau)
 }
@@ -791,6 +791,18 @@ pub fn fichier_path(nom: String) -> R<String> {
     Ok(fichiers_dir().join(&nom).to_string_lossy().to_string())
 }
 
+/// Copie un fichier externe (chemin absolu, ex. glisser-déposer depuis le
+/// Finder/Aperçu) dans Fichiers/ et renvoie le nom généré. Évite l'aller-retour
+/// en base64 pour les PDF/images potentiellement volumineux.
+#[tauri::command]
+pub fn fichier_importer_depuis_chemin(chemin: String) -> R<String> {
+    let src = std::path::Path::new(&chemin);
+    let ext = src.extension().and_then(|s| s.to_str()).unwrap_or("bin");
+    let fichier = format!("{}.{}", new_id(), ext);
+    std::fs::copy(src, fichiers_dir().join(&fichier)).map_err(e)?;
+    Ok(fichier)
+}
+
 /// Écrit du texte à un chemin absolu choisi par l'utilisateur (dialog save).
 /// Sert aux exports JSON (le téléchargement <a download> ne marche pas en WKWebView).
 #[tauri::command]
@@ -1089,15 +1101,13 @@ pub fn imprimer_planning(titre: String, jours: Vec<PlanningJour>) -> R<()> {
     Ok(())
 }
 
-/// Exporte la "Synthèse des acquis fin GS" en superposant les données de
-/// l'app sur le PDF officiel (gabarit MEN) plutôt que de le recréer, afin de
-/// garantir une mise en page strictement identique à l'original.
+/// Exporte la "Synthèse des acquis fin GS" en reconstruisant le tableau (mise
+/// en page proche du gabarit MEN) avec des cellules d'observation extensibles.
 #[tauri::command]
 pub fn exporter_synthese_gs(
     ecole: String,
     eleve_nom: String,
-    positions: Vec<Vec<u8>>,
-    observations: Vec<String>,
+    domaines: Vec<crate::synthese_pdf::SynDomIn>,
     date_visa_enseignant: String,
     enseignant_nom: String,
     directeur_nom: String,
@@ -1106,8 +1116,7 @@ pub fn exporter_synthese_gs(
     let donnees = crate::synthese_pdf::SyntheseDonnees {
         ecole,
         eleve_nom: eleve_nom.clone(),
-        positions,
-        observations,
+        domaines,
         date_visa_enseignant,
         enseignant_nom,
         directeur_nom,
@@ -1116,6 +1125,85 @@ pub fn exporter_synthese_gs(
     let bytes = crate::synthese_pdf::generer(&donnees)?;
     let nom = format!(
         "synthese-gs-{}-{}.pdf",
+        eleve_nom.replace(' ', "_"),
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
+    );
+    let path = std::env::temp_dir().join(nom);
+    std::fs::write(&path, &bytes).map_err(e)?;
+    tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
+    Ok(())
+}
+
+/// Remplit le formulaire officiel GEVA-Sco (support interactif CNSA) avec les
+/// données saisies dans l'app, puis l'ouvre. Le fichier produit reste le
+/// formulaire officiel, modifiable ensuite dans n'importe quel lecteur PDF.
+///
+/// `boutons` accepte trois formes de valeur : un nom d'état exact (« A »,
+/// « Oui »…), `~motif` pour choisir l'état contenant le motif, `!motif` pour
+/// celui qui ne le contient pas (les états longs et accentués du formulaire
+/// sont ainsi désignés sans dépendre de leur encodage interne).
+#[tauri::command]
+pub fn exporter_gevasco(
+    reexamen: bool,
+    eleve_nom: String,
+    textes: Vec<(String, String)>,
+    boutons: Vec<(String, String)>,
+) -> R<()> {
+    use crate::gevasco_pdf::Champs;
+    let mut champs = Champs::default();
+    for (nom, valeur) in textes {
+        champs.texte(&nom, valeur);
+    }
+    for (nom, etat) in boutons {
+        if let Some(motif) = etat.strip_prefix('~') {
+            champs.bouton_motif(&nom, motif, true);
+        } else if let Some(motif) = etat.strip_prefix('!') {
+            champs.bouton_motif(&nom, motif, false);
+        } else {
+            champs.bouton(&nom, &etat);
+        }
+    }
+    let bytes = crate::gevasco_pdf::remplir(reexamen, &champs)?;
+    let nom = format!(
+        "GEVA-Sco {} {}.pdf",
+        if reexamen { "reexamen" } else { "1re demande" },
+        // Nom de fichier stable par élève : réimprimer remplace le même
+        // document au lieu d'empiler une fenêtre d'Aperçu à chaque clic.
+        eleve_nom.chars().map(|c| if c.is_alphanumeric() || c == ' ' || c == '-' { c } else { '_' }).collect::<String>().trim().to_string()
+    );
+    let path = std::env::temp_dir().join(nom);
+    std::fs::write(&path, &bytes).map_err(e)?;
+    tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
+    Ok(())
+}
+
+/// Exporte le bilan de PPI (mode IME/inclusion) en PDF et l'ouvre dans Aperçu.
+#[tauri::command]
+pub fn exporter_bilan_ppi(
+    eleve_nom: String,
+    ecole: String,
+    enseignant_nom: String,
+    date: String,
+    besoins: String,
+    amenagements: String,
+    prises_en_charge: Vec<String>,
+    objectifs: Vec<crate::ppi_pdf::ObjectifIn>,
+    bilan_texte: String,
+) -> R<()> {
+    let donnees = crate::ppi_pdf::BilanPpi {
+        eleve_nom: eleve_nom.clone(),
+        ecole,
+        enseignant_nom,
+        date,
+        besoins,
+        amenagements,
+        prises_en_charge,
+        objectifs,
+        bilan_texte,
+    };
+    let bytes = crate::ppi_pdf::generer(&donnees)?;
+    let nom = format!(
+        "bilan-ppi-{}-{}.pdf",
         eleve_nom.replace(' ', "_"),
         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
     );

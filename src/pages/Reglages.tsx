@@ -102,6 +102,18 @@ export default function Reglages() {
             </Select>
           </Field>
         </div>
+        <Field label="Type de structure">
+          <Select value={s.typeStructure ?? "ordinaire"} onChange={(e) => set("typeStructure", e.target.value)}>
+            <option value="ordinaire">Classe ordinaire</option>
+            <option value="ime">IME / ULIS / inclusion (suivi individualisé)</option>
+          </Select>
+        </Field>
+        {(s.typeStructure ?? "ordinaire") === "ime" && (
+          <div style={{ fontSize: 12, color: "var(--text-2)" }}>
+            Active les onglets <b>Dispositifs</b> (PPS, PAP, PAI, PPRE, PPI) et <b>GEVA-Sco</b> dans Élèves,
+            et l'<b>organisation IME par semaine</b> dans l'emploi du temps, dont « Générer le jour » tient compte.
+          </div>
+        )}
       </div>
 
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>

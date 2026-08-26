@@ -124,8 +124,15 @@ export function Confirm({ message, onYes, onClose }: {
 
 /// ⌘←/→ (ou Ctrl) pour naviguer entre les segments d'un onglet courant.
 /// Inactif pendant l'édition de texte. À appeler dans chaque écran segmenté.
+// Vrai quand la page hôte est affichée. Avec le keep-alive, les pages non
+// visibles restent montées : ce contexte permet à leurs raccourcis clavier
+// globaux de ne pas réagir (sinon leur sous-onglet dériverait en arrière-plan).
+export const PageVisibleContext = React.createContext(true);
+
 export function useSegmentNav<T extends string>(ids: readonly T[], current: T, set: (v: T) => void) {
+  const visible = React.useContext(PageVisibleContext);
   React.useEffect(() => {
+    if (!visible) return;
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey) || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
       const t = e.target as HTMLElement;
@@ -137,7 +144,7 @@ export function useSegmentNav<T extends string>(ids: readonly T[], current: T, s
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [ids, current, set]);
+  }, [ids, current, set, visible]);
 }
 
 /// Hook simple de chargement de données.
@@ -151,6 +158,21 @@ export function useAsync<T>(fn: () => Promise<T>, deps: React.DependencyList = [
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
   React.useEffect(() => { reload(); }, [reload]);
+
+  // Keep-alive : quand la page redevient visible (retour sur l'onglet), on
+  // rafraîchit les données en silence (sans vider l'affichage ni perdre le
+  // défilement / sous-onglet) pour refléter d'éventuelles modifications.
+  const visible = React.useContext(PageVisibleContext);
+  const prevVisible = React.useRef(visible);
+  const fnRef = React.useRef(fn);
+  fnRef.current = fn;
+  React.useEffect(() => {
+    if (visible && !prevVisible.current) {
+      fnRef.current().then(setData).catch(() => {});
+    }
+    prevVisible.current = visible;
+  }, [visible]);
+
   return { data, loading, reload, setData };
 }
 

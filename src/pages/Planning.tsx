@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
-import { api, Creneau, Seance, Sequence, MATIERES, couleurHex, couleurPourMatiere, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance } from "../api";
+import { api, Creneau, Seance, Sequence, Eleve, MATIERES, couleurHex, couleurPourMatiere, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance } from "../api";
 import { Modal, Field, Input, Select, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
 import { toast } from "../components/Toaster";
@@ -155,21 +155,31 @@ export default function Planning() {
     setAncre(d);
   };
 
-  // Remplit les créneaux libres depuis l'EDT type : le jour affiché (vue jour)
-  // ou toute la semaine (vue semaine).
+  // Remplit les créneaux libres à partir de l'organisation choisie dans les
+  // Réglages : la trame annuelle en classe ordinaire, ou l'organisation IME de
+  // la semaine concernée (qui porte en plus les élèves présents).
   const generer = async () => {
     const jour = vue === "jour";
     const l = lundiDe(ancre);
     const semJours = JOURS.map((_, i) => { const d = new Date(l); d.setDate(d.getDate() + i); return d; });
     const refDate = jour ? ancre : l;
-    const annee = (() => { const y = refDate.getFullYear(); return refDate.getMonth() >= 7 ? `${y}-${y + 1}` : `${y - 1}-${y}`; })();
-    const edt = (edts ?? []).find((e) => e.annee === annee) ?? (edts ?? [])[0];
-    if (!edt) { toast("Aucun EDT type défini. Créez-le dans Organisation → EDT type.", { icone: "⚠️" }); return; }
-    let slots: { jour: string; heureDebut: string; heureFin: string; titre: string }[] = [];
+    const ime = (await api.settingGet("typeStructure")) === "ime";
+    // En IME, la source est la semaine du jour visé, pas l'année.
+    const source = ime ? `IME:${iso(lundiDe(refDate))}` : (() => {
+      const y = refDate.getFullYear(); return refDate.getMonth() >= 7 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
+    })();
+    const edt = (edts ?? []).find((e) => e.annee === source) ?? (ime ? undefined : (edts ?? []).find((e) => !e.annee.startsWith("IME:")));
+    const nomSource = ime ? "l'organisation IME de cette semaine" : "l'EDT type";
+    if (!edt) {
+      toast(ime ? "Aucune organisation IME pour cette semaine. Créez-la dans Organisation → EDT type → Organisation IME."
+                : "Aucun EDT type défini. Créez-le dans Organisation → EDT type.", { icone: "⚠️", duree: 6000 });
+      return;
+    }
+    let slots: { jour: string; heureDebut: string; heureFin: string; titre: string; eleves?: string[] }[] = [];
     try { slots = JSON.parse(edt.slotsJson); } catch { /* */ }
-    if (slots.length === 0) { toast("L'EDT type est vide.", { icone: "⚠️" }); return; }
-    if (!confirm(jour ? "Remplir les créneaux libres de ce jour depuis l'EDT type ?"
-                      : "Remplir les créneaux libres de la semaine depuis l'EDT type ?")) return;
+    if (slots.length === 0) { toast(`${nomSource[0].toUpperCase()}${nomSource.slice(1)} est vide.`, { icone: "⚠️" }); return; }
+    if (!confirm(jour ? `Remplir les créneaux libres de ce jour depuis ${nomSource} ?`
+                      : `Remplir les créneaux libres de la semaine depuis ${nomSource} ?`)) return;
     const chevauche = (date: string, d: string, f: string) => (creneaux ?? []).some((c) =>
       c.date.slice(0, 10) === date && toMin(d) < toMin(c.heureFin) && toMin(c.heureDebut) < toMin(f));
     const ancreDi = ancre.getDay() - 1; // Lundi = 0 … Vendredi = 4 (week-end : hors plage)
@@ -179,7 +189,9 @@ export default function Planning() {
       if (jour && di !== ancreDi) continue;
       const date = jour ? iso(ancre) : iso(semJours[di]);
       if (feries[date] || vacanceDe(date) || chevauche(date, s.heureDebut, s.heureFin)) continue;
-      await api.creneauSave({ id: newId(), date, heureDebut: s.heureDebut, heureFin: s.heureFin, matiere: s.titre, couleur: couleurPourMatiere(s.titre), seanceId: null, atelierId: null, espaceId: null });
+      await api.creneauSave({ id: newId(), date, heureDebut: s.heureDebut, heureFin: s.heureFin,
+        matiere: s.titre, couleur: couleurPourMatiere(s.titre), seanceId: null, atelierId: null, espaceId: null,
+        elevesJson: JSON.stringify(s.eleves ?? []) });
       poses++;
     }
     reload();
@@ -371,7 +383,7 @@ export default function Planning() {
       {vue === "mois"
         ? <VueMois ancre={ancre} creneaux={creneaux ?? []} feries={feries} vacanceDe={vacanceDe}
             anniversaires={anniversaires} onJour={(d) => { setAncre(d); setVue("jour"); }} />
-        : <GrilleHoraire jours={jours} creneaux={creneaux ?? []} seances={seances ?? []} feries={feries} vacanceDe={vacanceDe}
+        : <GrilleHoraire jours={jours} creneaux={creneaux ?? []} seances={seances ?? []} eleves={eleves ?? []} feries={feries} vacanceDe={vacanceDe}
             deplacable={deplacer} onEdit={setEdit} onTap={ouvrirCreneau} onReload={reload} />}
 
       {voirSeance && <SeanceReadView seance={voirSeance}
@@ -386,8 +398,8 @@ export default function Planning() {
 }
 
 // ── Grille horaire (1 jour ou 5 jours) ─────────────────────────────────────
-function GrilleHoraire({ jours, creneaux, seances, feries, vacanceDe, deplacable, onEdit, onTap, onReload }: {
-  jours: Date[]; creneaux: Creneau[]; seances: Seance[]; feries: Record<string, string>;
+function GrilleHoraire({ jours, creneaux, seances, eleves, feries, vacanceDe, deplacable, onEdit, onTap, onReload }: {
+  jours: Date[]; creneaux: Creneau[]; seances: Seance[]; eleves: Eleve[]; feries: Record<string, string>;
   vacanceDe: (d: string) => string | undefined; deplacable: boolean; onEdit: (c: Creneau) => void; onTap: (c: Creneau) => void; onReload: () => void;
 }) {
   const todayIso = iso(new Date());
@@ -406,7 +418,7 @@ function GrilleHoraire({ jours, creneaux, seances, feries, vacanceDe, deplacable
     if ((e.target as HTMLElement).closest(".cren-block")) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const start = Math.max(H_DEBUT * 60, Math.min((H_FIN - 1) * 60, H_DEBUT * 60 + Math.floor(((e.clientY - rect.top) / hpx) * 60 / 30) * 30));
-    onEdit({ id: newId(), date: iso(d), heureDebut: minToHHMM(start), heureFin: minToHHMM(start + 60), matiere: "Français", couleur: couleurPourMatiere("Français"), seanceId: null, atelierId: null, espaceId: null });
+    onEdit({ id: newId(), date: iso(d), heureDebut: minToHHMM(start), heureFin: minToHHMM(start + 60), matiere: "Français", couleur: couleurPourMatiere("Français"), seanceId: null, atelierId: null, espaceId: null, elevesJson: "[]" });
   };
 
   // Drag d'un créneau : écouteurs attachés une seule fois par geste (ref pour
@@ -504,8 +516,8 @@ function GrilleHoraire({ jours, creneaux, seances, feries, vacanceDe, deplacable
                         { label: "Supprimer le créneau", icon: "🗑", danger: true, sep: true, onClick: () => api.creneauDelete(c.id).then(onReload) },
                       ])}
                       style={{ position: "absolute", top, height: h - 2, left: dragged ? 3 : `calc(${(lane / lanes) * 100}% + 3px)`, width: dragged ? "calc(100% - 6px)" : `calc(${100 / lanes}% - 6px)`,
-                        background: seance ? teinte : `color-mix(in srgb, ${teinte} 12%, var(--panel-2))`,
-                        borderLeft: seance ? "none" : `3px solid ${teinte}`,
+                        background: seance ? teinte : `color-mix(in srgb, ${teinte} 6%, var(--panel-2))`,
+                        borderLeft: seance ? "none" : `3px solid color-mix(in srgb, ${teinte} 75%, var(--panel-2))`,
                         borderRadius: 7, color: seance ? "#fff" : "var(--text)", padding: compact ? "2px 6px" : "4px 6px", overflow: "hidden", fontSize: compact ? 10.5 : 11.5, lineHeight: 1.25,
                         boxShadow: dragged ? "0 4px 14px rgba(0,0,0,.35)" : seance ? "0 1px 3px rgba(0,0,0,.2)" : "none", opacity: dragged ? 0.92 : 1, outline: deplacable ? "2px dashed rgba(255,255,255,.7)" : "none", cursor: deplacable ? "grab" : "pointer", userSelect: "none", zIndex: dragged ? 10 : 1 }}>
                       <div style={{ opacity: 0.85, fontSize: compact ? 9.5 : 11 }}>{minToHHMM(startMin)}–{minToHHMM(startMin + durMin)}</div>
@@ -513,8 +525,16 @@ function GrilleHoraire({ jours, creneaux, seances, feries, vacanceDe, deplacable
                         <div style={{ fontWeight: 700 }}>{c.matiere}</div>
                         {!compact && <div style={{ opacity: 0.92 }}>{seance.titre}</div>}
                       </> : (
-                        <div style={{ fontWeight: 700, color: teinte }}>{c.matiere}{!compact && <span style={{ fontWeight: 400, fontStyle: "italic", opacity: 0.8 }}> · libre</span>}</div>
+                        <div style={{ fontWeight: 700, color: `color-mix(in srgb, ${teinte} 88%, var(--text))` }}>{c.matiere}{!compact && <span style={{ fontWeight: 400, fontStyle: "italic", opacity: 0.8 }}> · libre</span>}</div>
                       )}
+                      {/* Groupe restreint (IME) : qui participe, avec ou sans séance liée. */}
+                      {!compact && (() => {
+                        let ids: string[] = [];
+                        try { ids = JSON.parse(c.elevesJson || "[]"); } catch { ids = []; }
+                        if (!ids.length) return null;
+                        const noms = ids.map((id) => eleves.find((e) => e.id === id)?.nom.split(" ")[0]).filter(Boolean);
+                        return <div style={{ opacity: 0.85, fontSize: 10 }}>👥 {noms.join(", ")}</div>;
+                      })()}
                     </div>
                   );
                 })}

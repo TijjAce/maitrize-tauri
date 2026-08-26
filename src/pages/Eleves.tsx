@@ -3,21 +3,30 @@ import { Page } from "../App";
 import {
   api, Eleve, CommentaireEleve, Evaluation, NoteEleve,
   nouvelEleve, nouvelleEvaluation, NIVEAUX_SCOLAIRES, MATIERES, newId, nowIso,
-  NIVEAUX_MAITRISE,
+  NIVEAUX_MAITRISE, MODELE_DEFAUT,
 } from "../api";
 import { Modal, Field, Input, Select, Empty, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
 import { openCtx } from "../components/ctxmenu";
+import { toast } from "../components/Toaster";
+import { DispositifsTab } from "./Dispositifs";
+import { ProgressionsTab } from "./Progressions";
+import { GevaScoTab } from "./GevaSco";
 import syntheseDomaines from "../data/syntheseGS.json";
 
-const ELEVES_TABS = ["liste", "observations", "evaluations", "papiers", "synthese"] as const;
+const ELEVES_TABS = ["liste", "observations", "evaluations", "papiers", "synthese", "dispositifs", "gevasco", "progressions"] as const;
 export default function Eleves() {
   const [onglet, setOnglet] = React.useState<typeof ELEVES_TABS[number]>("liste");
-  useSegmentNav(ELEVES_TABS, onglet, setOnglet);
+  // Mode IME/ULIS/inclusion (Réglages → Type de structure) : ajoute les onglets
+  // Dispositifs (PPS, PAP, PAI, PPRE, PPI) et GEVA-Sco.
+  const { data: typeStructure } = useAsync(() => api.settingGet("typeStructure"), []);
+  const ime = typeStructure === "ime";
+  const tabs = React.useMemo(() => ELEVES_TABS.filter((t) => (t !== "dispositifs" && t !== "gevasco") || ime), [ime]);
+  useSegmentNav(tabs, onglet, setOnglet);
   return (
     <Page titre="Élèves" sous="Classe, observations et évaluations">
       <div className="seg" style={{ marginBottom: 18, flexWrap: "wrap" }}>
-        {[["liste", "Classe"], ["observations", "Observations"], ["evaluations", "Évaluations"], ["papiers", "Papiers"], ["synthese", "Synthèse GS"]]
+        {[["liste", "Classe"], ["observations", "Observations"], ["evaluations", "Évaluations"], ["papiers", "Papiers"], ["synthese", "Synthèse GS"], ...(ime ? [["dispositifs", "Dispositifs"], ["gevasco", "GEVA-Sco"]] : []), ["progressions", "Progressions"]]
           .map(([k, l]) => <button key={k} className={onglet === k ? "active" : ""} onClick={() => setOnglet(k as any)}>{l}</button>)}
       </div>
       {onglet === "liste" && <ListeEleves />}
@@ -25,6 +34,9 @@ export default function Eleves() {
       {onglet === "evaluations" && <Evaluations />}
       {onglet === "papiers" && <Papiers />}
       {onglet === "synthese" && <SyntheseGS />}
+      {onglet === "dispositifs" && ime && <DispositifsTab />}
+      {onglet === "gevasco" && ime && <GevaScoTab />}
+      {onglet === "progressions" && <ProgressionsTab />}
     </Page>
   );
 }
@@ -351,6 +363,7 @@ function SyntheseGS() {
   const [enseignantNom, setEnseignantNom] = React.useState("");
   const [directeurNom, setDirecteurNom] = React.useState("");
   const [directeurDate, setDirecteurDate] = React.useState("");
+  const [reformuleEnCours, setReformuleEnCours] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     api.settingGet("ecole").then((v) => setEcole(v ?? ""));
@@ -386,6 +399,33 @@ function SyntheseGS() {
 
   const eleve = eleves?.find((e) => e.id === eleveId);
 
+  // Reformulation IA (Mistral) d'un commentaire de domaine : transforme les
+  // notes brutes de l'enseignant en un bilan rédigé, bienveillant et adapté à
+  // un document officiel, en réutilisant le prénom de l'élève.
+  const reformuler = async (dom: SynDom) => {
+    const texte = (data.observations[dom.id] ?? "").trim();
+    if (!texte) { toast("Écrivez d'abord quelques mots à reformuler.", { icone: "✍️" }); return; }
+    const prenom = (eleve?.nom || "L'élève").trim().split(/\s+/)[0];
+    setReformuleEnCours(dom.id);
+    try {
+      const modele = (await api.settingGet("mistralModel")) || MODELE_DEFAUT;
+      const rep = await api.mistralChat([
+        { role: "system", content:
+          "Tu es enseignant·e de maternelle. Tu reformules les observations d'un enseignant pour la synthèse officielle des acquis de fin de Grande Section. " +
+          "Rédige en français, dans un style clair, bienveillant et professionnel, à la 3e personne en utilisant le prénom de l'élève. " +
+          "Reste fidèle au sens, ne rajoute aucune information inventée, garde une longueur similaire (2 à 4 phrases). " +
+          "Réponds UNIQUEMENT par le texte reformulé, sans guillemets ni commentaire." },
+        { role: "user", content: `Domaine : ${dom.titre}\nPrénom de l'élève : ${prenom}\n\nObservations à reformuler :\n${texte}` },
+      ], modele);
+      const propre = rep.trim().replace(/^["«»\s]+|["«»\s]+$/g, "");
+      if (propre) setObs(dom.id, propre);
+    } catch (e: any) {
+      toast("Reformulation impossible : " + String(e?.message ?? e), { icone: "⚠️", duree: 5000 });
+    } finally {
+      setReformuleEnCours(null);
+    }
+  };
+
   const [exportEnCours, setExportEnCours] = React.useState(false);
   const [exportErreur, setExportErreur] = React.useState("");
 
@@ -394,14 +434,17 @@ function SyntheseGS() {
     setExportErreur("");
     setExportEnCours(true);
     try {
-      // 5 domaines de la grille (hors AEVE), positions dans l'ordre exact des items.
-      const positions = doms.filter((d) => d.id !== "aeve")
-        .map((d) => d.items.map((it) => data.positionnements[it.id] ?? 0));
-      // 6 observations : d1..d5 puis aeve, dans cet ordre.
-      const observations = [...doms.filter((d) => d.id !== "aeve"), doms.find((d) => d.id === "aeve")!]
-        .map((d) => data.observations[d.id] ?? "");
+      // Structure complète des domaines (titres, items + positions, énoncés,
+      // observation) pour que le backend reconstruise le tableau.
+      const domaines = doms.map((d) => ({
+        titre: d.titre,
+        titreObservations: d.titreObservations,
+        items: d.items.map((it) => ({ bloc: it.bloc, label: it.label, position: data.positionnements[it.id] ?? 0 })),
+        enonces: d.enonces,
+        observation: data.observations[d.id] ?? "",
+      }));
       await api.exporterSyntheseGs({
-        ecole, eleveNom: eleve.nom, positions, observations,
+        ecole, eleveNom: eleve.nom, domaines,
         dateVisaEnseignant: fmtDateFr(data.dateVisa || todayIso()), enseignantNom,
         directeurNom, dateVisaDirecteur: fmtDateFr(directeurDate),
       });
@@ -464,7 +507,14 @@ function SyntheseGS() {
             {d.enonces.length > 0 && <ul style={{ margin: "6px 0", paddingLeft: 18, fontSize: 13, color: "var(--text-2)" }}>
               {d.enonces.map((e, i) => <li key={i}>{e}</li>)}</ul>}
             <div className="field" style={{ marginTop: 10, marginBottom: 0 }}>
-              <label>{d.titreObservations}</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <label style={{ flex: 1, margin: 0 }}>{d.titreObservations}</label>
+                <button className="btn sm" disabled={reformuleEnCours === d.id || !(data.observations[d.id] ?? "").trim()}
+                  title="Reformuler ce commentaire avec l'assistant IA"
+                  onClick={() => reformuler(d)}>
+                  {reformuleEnCours === d.id ? "Reformulation…" : "✨ Reformuler"}
+                </button>
+              </div>
               <textarea className="textarea" value={data.observations[d.id] ?? ""} onChange={(e) => setObs(d.id, e.target.value)} />
             </div>
           </div>
