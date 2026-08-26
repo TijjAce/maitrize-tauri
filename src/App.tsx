@@ -15,6 +15,8 @@ import Ressources from "./pages/Ressources";
 import Assistant from "./pages/Assistant";
 import Amis from "./pages/Amis";
 import Reglages from "./pages/Reglages";
+import { PageVisibleContext } from "./components/ui";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { NotesPanel } from "./components/NotesPanel";
 import { CommandPalette } from "./components/CommandPalette";
 import { Onboarding } from "./components/Onboarding";
@@ -26,6 +28,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { Toaster, toast } from "./components/Toaster";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { releverBoiteAuxLettres, messageRecu } from "./inbox";
+import { installerGlisserDeposer } from "./dragdrop";
 
 const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: true })[] = [
   { to: "/", ico: "🏠", label: "Tableau de bord", end: true },
@@ -46,12 +49,70 @@ const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: t
   { to: "/reglages", ico: "⚙️", label: "Réglages" },
 ];
 
+// Pages de premier niveau gardées « vivantes » : une fois visitées, elles
+// restent montées (cachées en display:none) pour qu'on retrouve son travail en
+// l'état (onglet, sélection, défilement, brouillons) en changeant d'onglet.
+// Le Planning en est volontairement exclu (il se réinitialise à chaque visite).
+const KEEP_ALIVE: { path: string; element: React.ReactNode }[] = [
+  { path: "/", element: <Dashboard /> },
+  { path: "/sequences", element: <Sequences /> },
+  { path: "/projets", element: <Projets /> },
+  { path: "/ateliers", element: <Ateliers /> },
+  { path: "/organisation", element: <Organisation /> },
+  { path: "/eleves", element: <Eleves /> },
+  { path: "/referentiels", element: <Referentiels /> },
+  { path: "/materiel", element: <Materiel /> },
+  { path: "/ressources", element: <Ressources /> },
+  { path: "/assistant", element: <Assistant /> },
+  { path: "/amis", element: <Amis /> },
+  { path: "/reglages", element: <Reglages /> },
+];
+const KEEP_PATHS = new Set(KEEP_ALIVE.map((p) => p.path));
+
+function KeepAliveHost({ pathname }: { pathname: string }) {
+  const estGardee = KEEP_PATHS.has(pathname);
+  // Montage paresseux : une page n'est créée qu'après sa première visite.
+  const [visitees, setVisitees] = React.useState<Set<string>>(() => new Set(estGardee ? [pathname] : []));
+  React.useEffect(() => {
+    if (estGardee && !visitees.has(pathname)) setVisitees((v) => new Set(v).add(pathname));
+  }, [pathname, estGardee, visitees]);
+
+  return (
+    <>
+      {KEEP_ALIVE.map((p) =>
+        visitees.has(p.path) ? (
+          <div key={p.path} className="page-scroll" style={{ display: pathname === p.path ? "flex" : "none" }}>
+            <PageVisibleContext.Provider value={pathname === p.path}>
+              <ErrorBoundary resetKey={pathname}>{p.element}</ErrorBoundary>
+            </PageVisibleContext.Provider>
+          </div>
+        ) : null
+      )}
+      {/* Routes non gardées : Planning (remonté à chaque fois), fiche séquence,
+          et repli. Rendu uniquement hors des pages gardées pour ne pas
+          déclencher le repli pendant qu'une page gardée est affichée. */}
+      {!estGardee && (
+        <div className="page-scroll">
+          <ErrorBoundary resetKey={pathname}>
+            <Routes>
+              <Route path="/planning" element={<Planning />} />
+              <Route path="/sequences/:id" element={<SequenceDetail />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </ErrorBoundary>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const [version, setVersion] = React.useState("");
   React.useEffect(() => { bootTheme(); }, []);
   React.useEffect(() => { getVersion().then(setVersion).catch(() => {}); }, []);
+  React.useEffect(() => { installerGlisserDeposer(); }, []);
 
   // Liseré lumineux : met l'animation en pause quand la fenêtre perd le focus
   // (économie de batterie). L'attribut est lu par le CSS [data-winfocus].
@@ -139,23 +200,7 @@ export default function App() {
       </nav>
 
       <main className="main">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/sequences" element={<Sequences />} />
-          <Route path="/sequences/:id" element={<SequenceDetail />} />
-          <Route path="/projets" element={<Projets />} />
-          <Route path="/ateliers" element={<Ateliers />} />
-          <Route path="/planning" element={<Planning />} />
-          <Route path="/organisation" element={<Organisation />} />
-          <Route path="/eleves" element={<Eleves />} />
-          <Route path="/referentiels" element={<Referentiels />} />
-          <Route path="/materiel" element={<Materiel />} />
-          <Route path="/ressources" element={<Ressources />} />
-          <Route path="/assistant" element={<Assistant />} />
-          <Route path="/amis" element={<Amis />} />
-          <Route path="/reglages" element={<Reglages />} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
+        <KeepAliveHost pathname={location.pathname} />
       </main>
       <Toaster />
       <UpdateBanner />

@@ -146,7 +146,8 @@ fn migrate(conn: &Connection) {
             couleur TEXT NOT NULL DEFAULT 'blue',
             seance_id TEXT REFERENCES seances(id) ON DELETE SET NULL,
             atelier_id TEXT REFERENCES ateliers(id) ON DELETE SET NULL,
-            espace_id TEXT REFERENCES espaces(id) ON DELETE SET NULL
+            espace_id TEXT REFERENCES espaces(id) ON DELETE SET NULL,
+            eleves_json TEXT NOT NULL DEFAULT '[]'
         );
 
         CREATE TABLE IF NOT EXISTS eleves (
@@ -350,4 +351,6 @@ fn migrate(conn: &Connection) {
     conn.execute("ALTER TABLE materiel_items ADD COLUMN seance_id TEXT", []).ok();
     conn.execute("ALTER TABLE materiel_items ADD COLUMN sequence_id TEXT", []).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN image_nom TEXT", []).ok();
+    // Élèves présents sur un créneau (organisation IME, groupes restreints).
+    conn.execute("ALTER TABLE creneaux ADD COLUMN eleves_json TEXT NOT NULL DEFAULT '[]'", []).ok();
 }

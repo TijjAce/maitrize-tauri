@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import {
-  api, ProgrammationFinale, ProgressionAnnuelle, EdtTypique, Sequence, Ami, anneeScolaireActuelle, MATIERES,
+  api, ProgrammationFinale, ProgressionAnnuelle, EdtTypique, Sequence, Ami, Eleve, anneeScolaireActuelle, MATIERES,
   HEURES_PROGRAMME, couleurHex, couleurPourMatiere, newId, telechargerTexte,
 } from "../api";
 import { Empty, Input, Select, Modal, ColorPicker, useAsync, useSegmentNav, useHistorique } from "../components/ui";
@@ -11,6 +11,7 @@ import { toast } from "../components/Toaster";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
 import { COULEURS } from "../api";
 import { printHTML, escapeHtml } from "../print";
+import { PlanSalleTab } from "./PlanSalle";
 
 // Couleurs officielles des périodes (miroir couleursPeriodes).
 const COULEUR_PERIODE: Record<number, string> = { 1: "#2e73d9", 2: "#d94033", 3: "#4d4d4d", 4: "#d97319", 5: "#269950" };
@@ -91,10 +92,10 @@ const SEGMENTS = [
   { id: "annuelle", label: "Progression" },
   { id: "edt", label: "EDT type" },
   { id: "cycle", label: "Travail de cycle" },
+  { id: "salle", label: "Plan de salle" },
 ] as const;
 type SegId = typeof SEGMENTS[number]["id"];
 
-const SEG_IDS = SEGMENTS.map((s) => s.id);
 
 // Liste d'années scolaires autour de l'année courante (pour le sélecteur).
 function anneesScolaires(courante: string): string[] {
@@ -117,18 +118,19 @@ function AnneeSelect({ annee, setAnnee }: { annee: string; setAnnee: (a: string)
 const SOUS_TITRE = "Programmation, progression annuelle, emploi du temps type et travail de cycle";
 export default function Organisation() {
   const [onglet, setOnglet] = React.useState<SegId>("prog");
+  const segments = React.useMemo(() => SEGMENTS.slice(), []);
   // Année sélectionnée mémorisée d'une session à l'autre (réglage « anneeCourante »).
   const [annee, setAnneeState] = React.useState(anneeScolaireActuelle());
   React.useEffect(() => { api.settingGet("anneeCourante").then((v) => { if (v) setAnneeState(v); }); }, []);
   const setAnnee = (a: string) => { setAnneeState(a); api.settingSet("anneeCourante", a); };
-  useSegmentNav(SEG_IDS, onglet, setOnglet);
+  useSegmentNav(segments.map((s) => s.id), onglet, setOnglet);
   const props = { annee, setAnnee };
   return (
     <Page titre="Organisation" sous={SOUS_TITRE}>
       <div className="seg" style={{ marginBottom: 18, flexWrap: "wrap" }}>
-        {SEGMENTS.map((s) => <button key={s.id} className={onglet === s.id ? "active" : ""} onClick={() => setOnglet(s.id)}>{s.label}</button>)}
+        {segments.map((s) => <button key={s.id} className={onglet === s.id ? "active" : ""} onClick={() => setOnglet(s.id)}>{s.label}</button>)}
       </div>
-      {onglet === "prog" ? <Programmation {...props} /> : onglet === "annuelle" ? <ProgressionAnnuelleVue {...props} /> : onglet === "edt" ? <EdtType {...props} /> : <TravailDeCycle {...props} />}
+      {onglet === "prog" ? <Programmation {...props} /> : onglet === "annuelle" ? <ProgressionAnnuelleVue {...props} /> : onglet === "edt" ? <EdtType {...props} /> : onglet === "salle" ? <PlanSalleTab /> : <TravailDeCycle {...props} />}
     </Page>
   );
 }
@@ -565,7 +567,9 @@ function LierSequences({ sequences, selection, onClose, onValider }: {
 }
 
 // ── EDT type + bilan vs volumes officiels ──────────────────────────────────
-interface Slot { id: string; jour: string; heureDebut: string; heureFin: string; titre: string; couleur: string }
+interface Slot { id: string; jour: string; heureDebut: string; heureFin: string; titre: string; couleur: string;
+  /** Élèves présents sur ce créneau (organisation IME). */
+  eleves?: string[] }
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const toMin = (s: string) => { const [h, m] = s.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
 const minHHMM = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
@@ -593,13 +597,17 @@ function layoutSlots(ss: Slot[]): Map<string, { lane: number; lanes: number }> {
   return res;
 }
 
-function SlotForm({ slot, onClose, onSave, onDelete }: {
+function SlotForm({ slot, onClose, onSave, onDelete, ime, eleves, intitules }: {
   slot: Slot; onClose: () => void; onSave: (s: Slot) => void; onDelete: () => void;
+  ime: boolean; eleves: Eleve[]; intitules: string[];
 }) {
   const [s, setS] = React.useState<Slot>(slot);
   const up = (p: Partial<Slot>) => setS((c) => ({ ...c, ...p }));
+  const presents = s.eleves ?? [];
+  const basculer = (id: string) =>
+    up({ eleves: presents.includes(id) ? presents.filter((x) => x !== id) : [...presents, id] });
   return (
-    <Modal titre="Créneau type" onClose={onClose}
+    <Modal titre={ime ? "Créneau" : "Créneau type"} onClose={onClose}
       footer={<>
         <button className="btn danger" onClick={onDelete}>Supprimer</button>
         <div className="spacer" />
@@ -612,10 +620,45 @@ function SlotForm({ slot, onClose, onSave, onDelete }: {
         <div className="field"><label>Début</label><Input type="time" value={s.heureDebut} onChange={(e) => up({ heureDebut: e.target.value })} /></div>
         <div className="field"><label>Fin</label><Input type="time" value={s.heureFin} onChange={(e) => up({ heureFin: e.target.value })} /></div>
       </div>
-      <div className="field"><label>Matière</label>
-        <Select value={s.titre} onChange={(e) => up({ titre: e.target.value, couleur: couleurPourMatiere(e.target.value) })}>
-          {MATIERES.map((m) => <option key={m}>{m}</option>)}
-        </Select></div>
+      {ime ? (
+        <>
+          <div className="field"><label>Intitulé</label>
+            <Input list="edt-intitules" value={s.titre} placeholder="Scolarité, Piscine, Atelier artistique…"
+              onChange={(e) => up({ titre: e.target.value, couleur: couleurPourMatiere(e.target.value) })} />
+            <datalist id="edt-intitules">{intitules.map((t) => <option key={t} value={t} />)}</datalist>
+          </div>
+          <div className="field">
+            <label>Élèves présents ({presents.length})</label>
+            {eleves.length === 0 ? (
+              <div style={{ fontSize: 13, color: "var(--text-2)", fontStyle: "italic" }}>
+                Ajoutez vos élèves dans l'onglet Élèves.
+              </div>
+            ) : (
+              <>
+                <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                  <button className="btn sm" onClick={() => up({ eleves: eleves.map((e) => e.id) })}>Tous</button>
+                  <button className="btn sm" onClick={() => up({ eleves: [] })}>Aucun</button>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+                  gap: 2, maxHeight: 220, overflowY: "auto" }}>
+                  {eleves.map((e) => (
+                    <label key={e.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 4px",
+                      borderRadius: 6, cursor: "pointer", fontSize: 13 }}>
+                      <input type="checkbox" checked={presents.includes(e.id)} onChange={() => basculer(e.id)} />
+                      {e.nom}
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="field"><label>Matière</label>
+          <Select value={s.titre} onChange={(e) => up({ titre: e.target.value, couleur: couleurPourMatiere(e.target.value) })}>
+            {MATIERES.map((m) => <option key={m}>{m}</option>)}
+          </Select></div>
+      )}
     </Modal>
   );
 }
@@ -624,7 +667,23 @@ interface EdtDrag { id: string; jourIndex: number; startMin: number; durMin: num
 
 function EdtType({ annee, setAnnee }: AnneeProps) {
   const { data, reload } = useAsync(() => api.edtTypiqueList(), []);
-  const edt = data?.find((e) => e.annee === annee);
+  const { data: eleves } = useAsync(() => api.elevesList(), []);
+  // Deux organisations distinctes derrière le même écran : la trame type de la
+  // classe ordinaire, et l'organisation IME dont les créneaux portent les
+  // élèves présents. Chacune a son enregistrement, elles ne se mélangent pas.
+  const [mode, setMode] = React.useState<"classe" | "ime">("classe");
+  React.useEffect(() => { api.settingGet("edt:mode").then((v) => { if (v === "ime") setMode("ime"); }); }, []);
+  const choisirMode = (m: "classe" | "ime") => { setMode(m); api.settingSet("edt:mode", m); };
+  const ime = mode === "ime";
+  // En IME l'organisation se refait chaque semaine : chaque semaine a son
+  // enregistrement, repéré par le lundi. En classe ordinaire, la trame reste
+  // annuelle.
+  const [lundi, setLundi] = React.useState(() => {
+    const x = new Date(); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); x.setHours(0, 0, 0, 0); return x;
+  });
+  const isoJour = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const cleAnnee = ime ? `IME:${isoJour(lundi)}` : annee;
+  const edt = data?.find((e) => e.annee === cleAnnee);
   const [niveau, setNiveau] = React.useState("");
   const [edit, setEdit] = React.useState<Slot | null>(null);
   const [deplacer, setDeplacer] = React.useState(false);
@@ -635,12 +694,24 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
 
   // État des créneaux avec annuler/rétablir (⌘Z / Ctrl+Z, ⌘⇧Z / Ctrl+Y).
   const { present: slots, reset: chargerSlots, commit: persister } = useHistorique<Slot[]>([], (next) => {
-    const e: EdtTypique = edt ? { ...edt, slotsJson: JSON.stringify(next) } : { id: newId(), annee, slotsJson: JSON.stringify(next) };
+    const e: EdtTypique = edt ? { ...edt, slotsJson: JSON.stringify(next) } : { id: newId(), annee: cleAnnee, slotsJson: JSON.stringify(next) };
     api.edtTypiqueSave(e).then(() => { if (!edt) reload(); });
   });
-  React.useEffect(() => { try { chargerSlots(edt ? JSON.parse(edt.slotsJson) : []); } catch { chargerSlots([]); } }, [edt?.id]);
+  React.useEffect(() => { try { chargerSlots(edt ? JSON.parse(edt.slotsJson) : []); } catch { chargerSlots([]); } }, [edt?.id, cleAnnee]);
   React.useEffect(() => { api.settingGet("niveauClasse").then((v) => setNiveau(v ?? "")); }, []);
   const upsert = (s: Slot) => persister(slots.some((x) => x.id === s.id) ? slots.map((x) => x.id === s.id ? s : x) : [...slots, s]);
+
+  // Report d'une semaine sur l'autre : on repart de l'organisation précédente
+  // plutôt que de tout resaisir, quitte à ajuster ensuite.
+  const reporterSemainePrecedente = () => {
+    const prec = new Date(lundi); prec.setDate(prec.getDate() - 7);
+    const src = data?.find((e) => e.annee === `IME:${isoJour(prec)}`);
+    let recopies: Slot[] = [];
+    try { recopies = src ? JSON.parse(src.slotsJson) : []; } catch { recopies = []; }
+    if (recopies.length === 0) { toast("Aucune organisation la semaine précédente.", { icone: "⚠️" }); return; }
+    persister(recopies.map((x) => ({ ...x, id: newId() })));
+    toast(`${recopies.length} créneau(x) reporté(s).`, { icone: "📋" });
+  };
   const supprimer = (id: string) => persister(slots.filter((s) => s.id !== id));
 
   const fileRef = React.useRef<HTMLInputElement>(null);
@@ -692,13 +763,22 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
   };
 
   const heures = Array.from({ length: EDT_H_FIN - EDT_H_DEBUT + 1 }, (_, i) => EDT_H_DEBUT + i);
-  const hauteur = (EDT_H_FIN - EDT_H_DEBUT) * EDT_H_PX;
+  const [zoom, setZoom] = React.useState(() => { const v = Number(localStorage.getItem("edt-zoom")); return v >= 0.6 && v <= 2.5 ? v : 1; });
+  const majZoom = (v: number) => { const z = Math.max(0.6, Math.min(2.5, v)); setZoom(z); localStorage.setItem("edt-zoom", String(z)); };
+  const hpx = EDT_H_PX * zoom;
+  const hauteur = (EDT_H_FIN - EDT_H_DEBUT) * hpx;
+  // Pincement trackpad (Safari/Chrome : wheel + ctrlKey) → zoom de la grille.
+  const onWheel = (e: React.WheelEvent) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    majZoom(zoom - e.deltaY * 0.01);
+  };
 
   const creerA = (jour: string, e: React.MouseEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest(".cren-block")) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const start = Math.max(EDT_H_DEBUT * 60, Math.min((EDT_H_FIN - 1) * 60,
-      EDT_H_DEBUT * 60 + Math.floor(((e.clientY - rect.top) / EDT_H_PX) * 60 / 30) * 30));
+      EDT_H_DEBUT * 60 + Math.floor(((e.clientY - rect.top) / hpx) * 60 / 30) * 30));
     setEdit({ id: newId(), jour, heureDebut: minHHMM(start), heureFin: minHHMM(start + 60), titre: "Français", couleur: couleurPourMatiere("Français") });
   };
 
@@ -707,7 +787,7 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
     if (!deplacer) return;
     e.preventDefault(); e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const grabOffMin = (e.clientY - rect.top) / EDT_H_PX * 60;
+    const grabOffMin = (e.clientY - rect.top) / hpx * 60;
     majDrag({ id: s.id, jourIndex: Math.max(0, JOURS.indexOf(s.jour)), startMin: toMin(s.heureDebut), durMin: toMin(s.heureFin) - toMin(s.heureDebut), grabOffMin });
 
     const onMove = (ev: MouseEvent) => {
@@ -715,7 +795,7 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
       if (!cur || !box) return;
       const colW = (box.width - 44) / 5;
       const ji = Math.max(0, Math.min(4, Math.floor((ev.clientX - box.left - 44) / colW)));
-      const yMin = EDT_H_DEBUT * 60 + (ev.clientY - box.top) / EDT_H_PX * 60 - cur.grabOffMin;
+      const yMin = EDT_H_DEBUT * 60 + (ev.clientY - box.top) / hpx * 60 - cur.grabOffMin;
       const start = Math.max(EDT_H_DEBUT * 60, Math.min(EDT_H_FIN * 60 - cur.durMin, Math.round(yMin / 15) * 15));
       majDrag({ ...cur, jourIndex: ji, startMin: start });
     };
@@ -742,6 +822,23 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
   return (
     <>
       <div className="toolbar"><AnneeSelect annee={annee} setAnnee={setAnnee} />
+        <div className="seg">
+          <button className={!ime ? "active" : ""} title="Trame hebdomadaire d'une classe ordinaire"
+            onClick={() => choisirMode("classe")}>EDT type — classe</button>
+          <button className={ime ? "active" : ""} title="Organisation IME : chaque créneau porte les élèves présents"
+            onClick={() => choisirMode("ime")}>Organisation IME</button>
+        </div>
+        {ime && <>
+          <button className="btn" aria-label="Semaine précédente"
+            onClick={() => { const d = new Date(lundi); d.setDate(d.getDate() - 7); setLundi(d); }}>←</button>
+          <b style={{ minWidth: 165, textAlign: "center", fontSize: 13 }}>
+            Semaine du {lundi.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+          </b>
+          <button className="btn" aria-label="Semaine suivante"
+            onClick={() => { const d = new Date(lundi); d.setDate(d.getDate() + 7); setLundi(d); }}>→</button>
+          <button className="btn sm" title="Recopier l'organisation de la semaine précédente"
+            onClick={reporterSemainePrecedente}>📋 Reporter</button>
+        </>}
         <div className="spacer" />
         {slots.length > 0 && <button className="btn" onClick={() => setDeplacer((v) => !v)}
           style={deplacer ? { background: "var(--accent)", color: "#fff", borderColor: "var(--accent)" } : undefined}
@@ -754,10 +851,16 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
           { label: "Importer (fichier)", icon: "⬆️", onClick: () => fileRef.current?.click() },
         ])}>📄 Fichier ▾</button>
       </div>
-      <div style={{ fontSize: 12, color: "var(--text-2)", margin: "-8px 0 12px" }}>
-        {deplacer ? "✋ Glissez un créneau pour le déplacer (jour et horaire)." : "Cliquez sur une plage vide pour ajouter un créneau · clic droit pour dupliquer/supprimer."}</div>
+      <div style={{ fontSize: 12, color: "var(--text-2)", margin: "-8px 0 12px", display: "flex", alignItems: "center", gap: 10 }}>
+        <span>{deplacer ? "✋ Glissez un créneau pour le déplacer (jour et horaire)." : "Cliquez sur une plage vide pour ajouter un créneau · clic droit pour dupliquer/supprimer · pincer (trackpad) pour zoomer."}</span>
+        <div className="spacer" />
+        {zoom !== 1 && <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ minWidth: 34, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
+          <button className="btn sm" onClick={() => majZoom(1)} title="Réinitialiser le zoom">100%</button>
+        </span>}
+      </div>
 
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="card" style={{ padding: 0, overflow: "hidden" }} onWheel={onWheel}>
         {/* En-têtes jours */}
         <div style={{ display: "grid", gridTemplateColumns: `44px repeat(5, 1fr)`, borderBottom: "1px solid var(--border)" }}>
           <div />
@@ -766,7 +869,7 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
         {/* Grille */}
         <div ref={colsRef} style={{ display: "grid", gridTemplateColumns: `44px repeat(5, 1fr)` }}>
           <div style={{ position: "relative", height: hauteur }}>
-            {heures.map((h, i) => <div key={h} style={{ position: "absolute", top: i * EDT_H_PX - 7, right: 6, fontSize: 11, color: "var(--text-2)" }}>{h}h</div>)}
+            {heures.map((h, i) => <div key={h} style={{ position: "absolute", top: i * hpx - 7, right: 6, fontSize: 11, color: "var(--text-2)" }}>{h}h</div>)}
           </div>
           {JOURS.map((j, ji) => {
             const dayNormal = slots.filter((s) => s.jour === j && s.id !== drag?.id);
@@ -775,10 +878,10 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
             return (
               <div key={j} onClick={(e) => { if (!deplacer) creerA(j, e); }}
                 style={{ position: "relative", height: hauteur, borderLeft: "1px solid var(--border)", cursor: deplacer ? "default" : "pointer" }}>
-                {heures.map((_, i) => <div key={i} style={{ position: "absolute", top: i * EDT_H_PX, left: 0, right: 0, borderTop: "1px solid var(--border)", opacity: 0.5 }} />)}
+                {heures.map((_, i) => <div key={i} style={{ position: "absolute", top: i * hpx, left: 0, right: 0, borderTop: "1px solid var(--border)", opacity: 0.5 }} />)}
                 {dayNormal.map((s) => {
-                  const top = (toMin(s.heureDebut) - EDT_H_DEBUT * 60) / 60 * EDT_H_PX;
-                  const h = Math.max(20, (toMin(s.heureFin) - toMin(s.heureDebut)) / 60 * EDT_H_PX);
+                  const top = (toMin(s.heureDebut) - EDT_H_DEBUT * 60) / 60 * hpx;
+                  const h = Math.max(20, (toMin(s.heureFin) - toMin(s.heureDebut)) / 60 * hpx);
                   const { lane, lanes } = lay.get(s.id) || { lane: 0, lanes: 1 };
                   return (
                     <div key={s.id} className="cren-block"
@@ -795,12 +898,19 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
                         outline: deplacer ? "2px dashed rgba(255,255,255,.7)" : "none", cursor: deplacer ? "grab" : "pointer", userSelect: "none" }}>
                       <div style={{ opacity: 0.9 }}>{s.heureDebut}–{s.heureFin}</div>
                       <div style={{ fontWeight: 700 }}>{s.titre}</div>
+                      {ime && (s.eleves?.length ?? 0) > 0 && (
+                        <div style={{ opacity: 0.92, fontSize: 10, lineHeight: 1.2 }}>
+                          👥 {s.eleves!.length} · {s.eleves!
+                            .map((id) => (eleves ?? []).find((e) => e.id === id)?.nom.split(" ")[0])
+                            .filter(Boolean).join(", ")}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
                 {dragged && (() => {
-                  const top = (drag!.startMin - EDT_H_DEBUT * 60) / 60 * EDT_H_PX;
-                  const h = Math.max(20, drag!.durMin / 60 * EDT_H_PX);
+                  const top = (drag!.startMin - EDT_H_DEBUT * 60) / 60 * hpx;
+                  const h = Math.max(20, drag!.durMin / 60 * hpx);
                   return (
                     <div className="cren-block" style={{ position: "absolute", top, height: h - 2, left: 3, width: "calc(100% - 6px)",
                       background: couleurHex[couleurPourMatiere(dragged.titre)] || couleurHex.blue, borderRadius: 7, color: "#fff", padding: "3px 6px",
@@ -816,10 +926,12 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
         </div>
       </div>
 
-      {edit && <SlotForm slot={edit} onClose={() => setEdit(null)}
+      {edit && <SlotForm slot={edit} onClose={() => setEdit(null)} ime={ime} eleves={eleves ?? []}
+        intitules={[...new Set(slots.map((x) => x.titre).filter(Boolean))]}
         onSave={(s) => { upsert(s); setEdit(null); }} onDelete={() => { supprimer(edit.id); setEdit(null); }} />}
 
-      {/* Bilan hebdomadaire vs volumes officiels */}
+      {/* Bilan hebdomadaire vs volumes officiels (classe ordinaire uniquement) */}
+      {!ime &&
       <div className="card" style={{ marginTop: 18 }}>
         <h3 style={{ marginTop: 0 }}>📊 Bilan hebdomadaire {niveau ? `(${niveau})` : ""}</h3>
         {!niveau ? <p style={{ color: "var(--text-2)" }}>Renseignez le niveau de la classe dans les Réglages pour comparer aux volumes officiels.</p> :
@@ -843,7 +955,14 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
               })}
             </tbody>
           </table>}
-      </div>
+      </div>}
+
+      {ime && (
+        <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 14 }}>
+          Chaque créneau porte les élèves présents : cliquez une plage vide pour en créer un,
+          puis cochez qui y participe. Le nombre d'élèves s'affiche sur le créneau.
+        </div>
+      )}
     </>
   );
 }

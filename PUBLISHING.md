@@ -12,7 +12,47 @@ Config déjà en place :
 
 ---
 
-## 🍎 Mac App Store
+## 🚀 Distribution directe (le mode utilisé aujourd'hui)
+
+Maitrize V2 n'est **pas** publiée sur l'App Store : elle est signée *Developer ID*,
+notarisée par Apple, puis diffusée via GitHub Releases. L'app se met à jour toute
+seule grâce au plugin updater.
+
+### Publier une version
+
+```bash
+# 1. Incrémenter "version" dans src-tauri/tauri.conf.json (source de vérité)
+# 2. Commiter, puis :
+git tag v1.1.0 && git push origin main --tags
+```
+
+Le tag déclenche `.github/workflows/release.yml`, qui construit macOS (universel)
+et Windows, signe, notarise, et crée une Release **en brouillon**.
+
+```bash
+# 3. Une fois les deux jobs verts, publier la Release :
+gh release edit v1.1.0 --draft=false --latest
+```
+
+> ⚠️ Tant que la Release reste en brouillon, `releases/latest/download/latest.json`
+> ne répond pas et **aucun client ne voit la mise à jour**. La dernière étape n'est
+> pas optionnelle.
+
+### Secrets GitHub requis
+
+| Secret | Rôle |
+| --- | --- |
+| `TAURI_SIGNING_PRIVATE_KEY` / `_PASSWORD` | Clé minisign qui signe les artefacts de mise à jour. **Sa clé publique est dans `tauri.conf.json` : la perdre casse définitivement l'updater de toutes les installations existantes.** |
+| `APPLE_CERTIFICATE` / `_PASSWORD` | Certificat *Developer ID Application* exporté en `.p12`, encodé en base64. |
+| `APPLE_SIGNING_IDENTITY` | Ex. `Developer ID Application: Nom (TEAMID)`. |
+| `APPLE_ID` / `APPLE_PASSWORD` / `APPLE_TEAM_ID` | Notarisation. `APPLE_PASSWORD` est un **mot de passe d'application**, pas le mot de passe du compte. |
+
+Sauvegarde la clé minisign **hors du Mac** (gestionnaire de mots de passe) : c'est
+la seule pièce irremplaçable de la chaîne.
+
+---
+
+## 🍎 Mac App Store (non utilisé)
 
 ### 1. Comptes & identité
 - **Apple Developer Program** (99 €/an) : https://developer.apple.com

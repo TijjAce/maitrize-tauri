@@ -5,6 +5,8 @@ mod db;
 mod models;
 mod portable;
 mod seed;
+mod gevasco_pdf;
+mod ppi_pdf;
 mod sync;
 mod synthese_pdf;
 
@@ -75,8 +77,8 @@ pub fn run() {
             // Réglages
             settings_all, setting_get, setting_set,
             // Fichiers
-            fichier_save, fichier_read, fichier_path, fichier_delete, enregistrer_texte,
-            imprimer_pdf, ouvrir_fichier, imprimer_planning, ouvrir_html, exporter_synthese_gs,
+            fichier_save, fichier_read, fichier_path, fichier_delete, fichier_importer_depuis_chemin, enregistrer_texte,
+            imprimer_pdf, ouvrir_fichier, imprimer_planning, ouvrir_html, exporter_synthese_gs, exporter_bilan_ppi, exporter_gevasco,
             // Recherche
             recherche,
             // Export / Import

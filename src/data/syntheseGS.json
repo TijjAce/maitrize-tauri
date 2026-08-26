@@ -21,27 +21,27 @@
 },
 {
 "id": "d1.l1",
-"bloc": "Se préparer à apprendre à lire",
-"label": "Acquérir les habiletés phonologiques et le principe alphabétique : manipuler des syllabes orales puis des phonèmes, connaître le nom et le son des lettres, faire le lien entre lettres et sons"
+"bloc": "Passer de l'oral à l'écrit : se préparer à apprendre à lire",
+"label": "Acquérir les habiletés phonologiques et le principe alphabétique : manipuler des syllabes orales puis des phonèmes, connaitre le nom des lettres, connaitre le son des lettres, commencer à faire le lien entre les lettres et les sons"
 },
 {
 "id": "d1.l2",
-"bloc": "Se préparer à apprendre à lire",
+"bloc": "Passer de l'oral à l'écrit : se préparer à apprendre à lire",
 "label": "S'éveiller à la diversité linguistique : écouter, identifier, discriminer et reproduire des sons"
 },
 {
 "id": "d1.l3",
-"bloc": "Se préparer à apprendre à lire",
-"label": "Écouter et comprendre différentes formes d'écrits : comprendre des textes lus par le professeur"
+"bloc": "Passer de l'oral à l'écrit : se préparer à apprendre à lire",
+"label": "Ecouter et comprendre différentes formes d'écrits : comprendre des textes lus par le professeur"
 },
 {
 "id": "d1.e1",
-"bloc": "Se préparer à apprendre à écrire",
-"label": "Apprendre le geste d'écriture : tracer des lettres en écriture cursive et les enchaîner"
+"bloc": "Passer de l'oral à l'écrit : se préparer à apprendre à écrire",
+"label": "Apprendre le geste d'écriture : tracer des lettres en écriture cursive et les enchainer"
 },
 {
 "id": "d1.e2",
-"bloc": "Se préparer à apprendre à écrire",
+"bloc": "Passer de l'oral à l'écrit : se préparer à apprendre à écrire",
 "label": "Produire de premiers écrits : comprendre le lien entre l'oral et l'écrit et commencer à écrire seul des mots transparents"
 }
 ],
@@ -73,30 +73,30 @@
 {
 "id": "d3.a1",
 "bloc": null,
-"label": "S'engager dans les activités. Réaliser des productions personnelles : dessin, compositions graphiques et plastiques, voix, chant, pratiques rythmiques et corporelles."
+"label": "S'engager dans les activités. Réaliser des productions personnelles : dessin, compositions graphiques, compositions plastiques, voix, chant, pratiques rythmiques et corporelles."
 }
 ],
 "enonces": []
 },
 {
 "id": "d4",
-"titre": "4. Acquisition des premiers outils mathématiques",
+"titre": "4 – Acquisition des premiers outils mathématiques",
 "titreObservations": "Les réussites observées par l'enseignant",
 "items": [
 {
 "id": "d4.qte",
-"bloc": "Découvrir les nombres — exprimer une quantité par un nombre",
-"label": "Dénombrer une collection d'objets (jusqu'à dix, voire au-delà). Constituer une collection d'un cardinal donné. Comparer des quantités. Composer et décomposer des nombres ≤ 10. Associer une quantité, le nom d'un nombre et une écriture chiffrée. Écrire en chiffres les nombres de un à dix. Connaître et utiliser la comptine numérique jusqu'à trente."
+"bloc": "Découvrir les nombres - Exprimer une quantité par un nombre",
+"label": "Dénombrer une collection d'objets (jusqu'à dix, voire au-delà). Constituer une collection d'un cardinal donné (jusqu'à dix, voire au-delà). Comparer des quantités. Composer et décomposer des nombres inférieurs ou égaux à dix. Associer une quantité, le nom d'un nombre et une écriture chiffrée. Écrire en chiffres les nombres de un à dix. Connaitre et utiliser la comptine numérique jusqu'à trente."
 },
 {
 "id": "d4.rang",
-"bloc": "Découvrir les nombres — exprimer un rang ou une position par un nombre",
+"bloc": "Découvrir les nombres - Exprimer un rang ou une position par un nombre",
 "label": "Repérer le rang d'un objet dans une suite ordonnée. Communiquer oralement ou par écrit le rang d'un objet dans une suite ordonnée. Compléter une bande numérique lacunaire (jusqu'à dix)."
 },
 {
 "id": "d4.pb",
 "bloc": "Utiliser les nombres pour résoudre des problèmes",
-"label": "Déterminer le tout ou une partie dans un problème de parties-tout. Déterminer la position finale ou initiale à partir d'un déplacement sur une piste (jeu de l'oie, bande numérique). Déterminer le cardinal d'une collection à partir d'une autre et de l'écart entre les deux."
+"label": "Déterminer le tout ou une partie dans un problème de parties-tout (deux parties et le tout restant inférieur ou égal à dix). Déterminer la position finale (respectivement initiale) à partir de la position initiale (respectivement finale) et d'un déplacement sur une piste du type du jeu de l'oie ou sur la bande numérique. Déterminer le cardinal d'une collection à partir de celui d'une autre collection et de l'écart entre les deux."
 },
 {
 "id": "d4.formes",
@@ -106,12 +106,12 @@
 {
 "id": "d4.grand",
 "bloc": "Explorer des grandeurs : la longueur, la masse",
-"label": "Comparer indirectement des longueurs d'objets rectilignes. Ordonner des objets rectilignes selon leur longueur (au maximum cinq). Ordonner les masses de trois objets. Reconnaître l'égalité de deux masses."
+"label": "Comparer indirectement des longueurs d'objets rectilignes. Ordonner des objets rectilignes selon leur longueur (au maximum cinq). Ordonner les masses de trois objets. Reconnaitre l'égalité de deux masses"
 },
 {
 "id": "d4.motifs",
 "bloc": "Se familiariser avec les motifs organisés",
-"label": "Identifier la structure d'un motif répétitif ou évolutif simple, indépendamment des éléments physiques qui le composent."
+"label": "Identifier la structure d'un motif répétitif ou évolutif (simple) indépendamment des éléments physiques qui le composent."
 }
 ],
 "enonces": []
@@ -149,12 +149,12 @@
 {
 "id": "d5.s1",
 "bloc": null,
-"label": "Les règles de sécurité et d'hygiène : avoir conscience des risques liés à l'usage des objets, appliquer des règles d'hygiène"
+"label": "Les règles de sécurité et d'hygiène : comprendre et avoir conscience des risques liés à l'usage des objets. Appliquer des règles d'hygiène."
 },
 {
 "id": "d5.n1",
 "bloc": null,
-"label": "Les outils numériques : les utiliser de manière adaptée"
+"label": "Les outils numériques : les utiliser de manière adaptée."
 }
 ],
 "enonces": []

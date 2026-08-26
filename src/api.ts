@@ -42,6 +42,8 @@ export interface Seance {
 export interface Creneau {
   id: string; date: string; heureDebut: string; heureFin: string; matiere: string;
   couleur: string; seanceId: string | null; atelierId: string | null; espaceId: string | null;
+  /** Élèves présents (JSON) — organisation IME en groupes restreints. */
+  elevesJson: string;
 }
 
 export interface Atelier {
@@ -289,6 +291,7 @@ export const api = {
   fichierRead: (nom: string) => invoke<string>("fichier_read", { nom }),
   fichierPath: (nom: string) => invoke<string>("fichier_path", { nom }),
   fichierDelete: (nom: string) => invoke<void>("fichier_delete", { nom }),
+  fichierImporterDepuisChemin: (chemin: string) => invoke<string>("fichier_importer_depuis_chemin", { chemin }),
   enregistrerTexte: (chemin: string, contenu: string) => invoke<void>("enregistrer_texte", { chemin, contenu }),
   imprimerPdf: (nom: string) => invoke<void>("imprimer_pdf", { nom }),
   ouvrirFichier: (nom: string) => invoke<void>("ouvrir_fichier", { nom }),
@@ -296,9 +299,20 @@ export const api = {
   imprimerPlanning: (titre: string, jours: { jour: string; rangs: { heureDebut: string; heureFin: string; matiere: string; seance: string; couleur: string; objectifs: string; deroulement: string }[][] }[]) =>
     invoke<void>("imprimer_planning", { titre, jours }),
   exporterSyntheseGs: (args: {
-    ecole: string; eleveNom: string; positions: number[][]; observations: string[];
+    ecole: string; eleveNom: string;
+    domaines: { titre: string; titreObservations: string; items: { bloc: string | null; label: string; position: number }[]; enonces: string[]; observation: string }[];
     dateVisaEnseignant: string; enseignantNom: string; directeurNom: string; dateVisaDirecteur: string;
   }) => invoke<void>("exporter_synthese_gs", args),
+  exporterBilanPpi: (args: {
+    eleveNom: string; ecole: string; enseignantNom: string; date: string;
+    besoins: string; amenagements: string; prisesEnCharge: string[];
+    objectifs: { domaine: string; intitule: string; critere: string; echeance: string; statut: string; notes: string }[];
+    bilanTexte: string;
+  }) => invoke<void>("exporter_bilan_ppi", args),
+  exporterGevasco: (args: {
+    reexamen: boolean; eleveNom: string;
+    textes: [string, string][]; boutons: [string, string][];
+  }) => invoke<void>("exporter_gevasco", args),
 
   // Recherche
   recherche: (q: string) => invoke<ResultatRecherche[]>("recherche", { q }),

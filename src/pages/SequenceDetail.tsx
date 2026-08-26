@@ -10,6 +10,7 @@ import { fichierToBlobUrl } from "../components/PdfViewer";
 import { printHTML, escapeHtml } from "../print";
 import { openCtx } from "../components/ctxmenu";
 import { PhotoTelephone } from "../components/PhotoTelephone";
+import { useFileDropZone, estPdf, estImage, nomDeChemin } from "../dragdrop";
 
 export default function SequenceDetail() {
   const { id } = useParams();
@@ -20,6 +21,15 @@ export default function SequenceDetail() {
   const [edit, setEdit] = React.useState<Seance | null>(null);
   const [voir, setVoir] = React.useState<Seance | null>(null);
   const [del, setDel] = React.useState<Seance | null>(null);
+
+  // Glisser-déposer natif (Finder/Aperçu). Le hook doit être appelé à chaque
+  // rendu (avant tout return conditionnel) — la logique d'import réelle, qui
+  // dépend de la séquence chargée, passe par une ref mise à jour plus bas.
+  const importerRef = React.useRef<(chemins: string[]) => void>(() => {});
+  const { ref: dropZoneRef, actif: dropActif } = useFileDropZone({
+    accept: (c) => estPdf(c) || estImage(c),
+    onFiles: (chemins) => importerRef.current(chemins),
+  });
 
   const seq = sequences?.find((s) => s.id === id);
   if (!seq) return <Page titre="Séquence"><Empty icone="🔍" titre="Séquence introuvable" /></Page>;
@@ -60,18 +70,29 @@ export default function SequenceDetail() {
   };
 
   // Dépôt de fichiers (PDF/images) sur la séquence → crée le matériel.
+  const creerMaterielDepuisFichier = async (nomOriginal: string, nom: string) => {
+    const pdf = estPdf(nomOriginal);
+    await api.materielSave({
+      id: newId(), titre: nomOriginal.replace(/\.[^.]+$/, ""), descriptionMateriel: "",
+      competenceId: comp?.competenceRefId ?? "", competenceTitre: comp?.competenceTitre ?? "",
+      domaineTitre: comp?.domaineTitre ?? seq.matiere ?? "", sousDomaineTitre: comp?.sousDomaineTitre ?? "",
+      cycle: seq.cycle, imagesJson: pdf ? "[]" : JSON.stringify([nom]), pdfsJson: pdf ? JSON.stringify([nom]) : "[]",
+      dateCreation: nowIso(), seanceId: null, sequenceId: seq.id,
+    });
+  };
   const deposerFichiers = async (files: FileList) => {
     for (const file of Array.from(files)) {
       const b64 = await fileToBase64(file);
       const nom = await api.fichierSave(file.name, b64);
-      const pdf = /\.pdf$/i.test(file.name) || file.type === "application/pdf";
-      await api.materielSave({
-        id: newId(), titre: file.name.replace(/\.[^.]+$/, ""), descriptionMateriel: "",
-        competenceId: comp?.competenceRefId ?? "", competenceTitre: comp?.competenceTitre ?? "",
-        domaineTitre: comp?.domaineTitre ?? seq.matiere ?? "", sousDomaineTitre: comp?.sousDomaineTitre ?? "",
-        cycle: seq.cycle, imagesJson: pdf ? "[]" : JSON.stringify([nom]), pdfsJson: pdf ? JSON.stringify([nom]) : "[]",
-        dateCreation: nowIso(), seanceId: null, sequenceId: seq.id,
-      });
+      await creerMaterielDepuisFichier(file.name, nom);
+    }
+    reloadMat();
+  };
+  // Branche l'import réel sur la ref (séquence désormais disponible).
+  importerRef.current = async (chemins: string[]) => {
+    for (const c of chemins) {
+      const nom = await api.fichierImporterDepuisChemin(c);
+      await creerMaterielDepuisFichier(nomDeChemin(c), nom);
     }
     reloadMat();
   };
@@ -118,7 +139,8 @@ export default function SequenceDetail() {
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 18, borderStyle: "dashed" }}
+      <div ref={dropZoneRef} className="card"
+        style={{ marginBottom: 18, borderStyle: "dashed", ...(dropActif ? { outline: "2px dashed var(--accent)", background: "var(--accent-soft)" } : {}) }}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();

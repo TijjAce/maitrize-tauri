@@ -193,6 +193,9 @@ pub struct Creneau {
     pub atelier_id: Option<String>,
     #[serde(default)]
     pub espace_id: Option<String>,
+    /// Élèves présents sur ce créneau (JSON), pour les groupes restreints.
+    #[serde(default = "vide_arr")]
+    pub eleves_json: String,
 }
 
 impl Creneau {
@@ -207,6 +210,7 @@ impl Creneau {
             seance_id: r.get("seance_id")?,
             atelier_id: r.get("atelier_id")?,
             espace_id: r.get("espace_id")?,
+            eleves_json: r.get("eleves_json").unwrap_or_else(|_| "[]".into()),
         })
     }
 }

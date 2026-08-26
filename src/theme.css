@@ -157,7 +157,10 @@ input, textarea, select { font-family: inherit; font-size: 14px; }
   border-radius: 5px; padding: 1px 5px; }
 .nav-sep { height: 1px; background: var(--border); margin: 8px 6px; }
 
-.main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+.main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+/* Conteneur de défilement propre à chaque page : permet de conserver la
+   position de défilement par page quand on garde les pages montées (keep-alive). */
+.page-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
 .topbar {
   position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 85%, transparent);
   backdrop-filter: blur(10px); border-bottom: 1px solid var(--border);
