@@ -131,6 +131,8 @@ export interface DocumentCoffre {
 export interface ChatMessage { role: "system" | "user" | "assistant"; content: string; }
 export interface ResultatRecherche { kind: string; id: string; titre: string; sousTitre: string; }
 export interface VacancePeriode { description: string; debut: string; fin: string; }
+/** Copie quotidienne automatique de la base. */
+export interface SauvegardeAuto { nom: string; jour: string; octets: number }
 
 // ============================================================
 // FABRIQUES (valeurs par défaut)
@@ -321,6 +323,8 @@ export const api = {
   exportData: () => invoke<string>("export_data"),
   importData: (json: string) => invoke<void>("import_data", { json }),
   exporterBase: (chemin: string) => invoke<void>("exporter_base", { chemin }),
+  sauvegardesAutoList: () => invoke<SauvegardeAuto[]>("sauvegardes_auto_list"),
+  sauvegardesAutoOuvrir: () => invoke<void>("sauvegardes_auto_ouvrir"),
 
   // Vacances scolaires
   vacancesScolaires: (zone: string) => invoke<VacancePeriode[]>("vacances_scolaires", { zone }),

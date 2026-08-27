@@ -1,7 +1,7 @@
 import React from "react";
 import { Page } from "../App";
 import { api, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, getMatiereOverrides, setMatiereOverrides, telechargerTexte, anneeScolaireActuelle, MODELES_MISTRAL, MODELE_DEFAUT, type PortableInfo } from "../api";
-import { Field, Input, Select, Modal } from "../components/ui";
+import { Field, Input, Select, Modal, useAsync } from "../components/ui";
 import { applyTheme, MODES, ACCENTS, STYLES } from "../theme";
 import { lireAcceptationCgu, CguAcceptation } from "../components/CGU";
 import { genererDonneesTest } from "../devSeed";
@@ -213,6 +213,7 @@ export default function Reglages() {
           <button className="btn" onClick={() => importInput.current?.click()}>⬆️ Importer</button>
           <span style={{ fontSize: 13 }}>{dataMsg}</span>
         </div>
+        <CopiesAutomatiques />
       </div>
 
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
@@ -390,6 +391,59 @@ function SauvegardeS3Card() {
         <button className="btn danger" disabled={!!busy} onClick={restaurer}>{busy === "pull" ? "…" : "⬇️ Restaurer"}</button>
       </div>
       {msg && <p style={{ fontSize: 13, marginBottom: 0 }}>{msg}</p>}
+    </div>
+  );
+}
+
+/** Copies quotidiennes de la base, faites au lancement de l'app. */
+function CopiesAutomatiques() {
+  const { data: copies } = useAsync(() => api.sauvegardesAutoList(), []);
+  const liste = copies ?? [];
+  const derniere = liste[0];
+
+  // Écart en jours entre la dernière copie et aujourd'hui.
+  const jours = React.useMemo(() => {
+    if (!derniere) return null;
+    const d = new Date(derniere.jour + "T00:00:00");
+    const auj = new Date(); auj.setHours(0, 0, 0, 0);
+    return Math.round((auj.getTime() - d.getTime()) / 86_400_000);
+  }, [derniere]);
+
+  const quand = jours === null ? "aucune copie pour l'instant"
+    : jours <= 0 ? "aujourd'hui"
+    : jours === 1 ? "hier"
+    : `il y a ${jours} jours`;
+  const mo = (o: number) => (o / 1_048_576).toFixed(1).replace(".", ",") + " Mo";
+  // Au-delà de deux jours sans copie, l'app n'a pas été lancée : on le signale.
+  const alerte = jours !== null && jours > 2;
+
+  return (
+    <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <b style={{ fontSize: 13 }}>Copies automatiques</b>
+        <span style={{ fontSize: 12, color: alerte ? "var(--danger, #ef4444)" : "var(--text-2)" }}>
+          dernière : {quand}
+        </span>
+        <div className="spacer" />
+        {liste.length > 0 && (
+          <button className="btn sm" onClick={() => api.sauvegardesAutoOuvrir()}>📂 Ouvrir le dossier</button>
+        )}
+      </div>
+      <p style={{ color: "var(--text-2)", fontSize: 12, margin: "6px 0 0" }}>
+        L'app copie sa base à chaque premier lancement de la journée et garde les 7 dernières.
+        Ces copies restent sur cet ordinateur : pour être vraiment à l'abri, exportez de temps
+        en temps sur une clé ou un disque externe.
+      </p>
+      {liste.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+          {liste.map((c) => (
+            <span key={c.nom} title={`${c.nom} · ${mo(c.octets)}`}
+              style={{ fontSize: 11, padding: "3px 7px", borderRadius: 6, background: "var(--panel-2)", color: "var(--text-2)" }}>
+              {c.jour}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

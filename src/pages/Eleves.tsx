@@ -82,7 +82,8 @@ function ListeEleves() {
           </div>
         ))}
       {edit && <EleveForm e={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
-      {del && <Confirm message={`Supprimer ${del.nom} ?`} onYes={() => api.eleveDelete(del.id).then(reload)} onClose={() => setDel(null)} />}
+      {del && <Confirm message={`Supprimer ${del.nom} ? Tout son dossier part avec : appels, commentaires, notes, papiers, photo, synthèse GS, PPI, GEVA-Sco, dispositifs, progressions, et sa place dans les créneaux et plans de salle. C'est définitif.`}
+        onYes={() => api.eleveDelete(del.id).then(reload)} onClose={() => setDel(null)} />}
     </>
   );
 }

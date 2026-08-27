@@ -3,7 +3,7 @@
 
 use crate::db::{fichiers_dir, Db};
 use crate::models::*;
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension};
 use tauri::State;
 
 type R<T> = Result<T, String>;
@@ -294,8 +294,121 @@ pub fn eleve_save(db: State<Db>, eleve: Eleve) -> R<Eleve> {
 
 #[tauri::command]
 pub fn eleve_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
-    c.execute("DELETE FROM eleves WHERE id=?1", params![id]).map_err(e)?;
+    let mut c = db.0.lock().map_err(e)?;
+    effacer_eleve(&mut c, &id)
+}
+
+/// Efface un élève **et tout son dossier** : lignes liées, documents rangés
+/// dans les réglages, fichiers joints, et présence dans les listes JSON
+/// (créneaux, EDT type, plans de salle).
+///
+/// Les tables portant un `eleve_id` ne déclarent pas de clé étrangère vers
+/// `eleves` — SQLite ne peut donc pas cascader. La suppression est faite ici,
+/// en une transaction, pour qu'un dossier effacé le soit vraiment : un
+/// enseignant doit pouvoir retirer un élève sans que ses données subsistent
+/// dans les sauvegardes.
+fn effacer_eleve(c: &mut rusqlite::Connection, id: &str) -> R<()> {
+    // Fichiers à retirer du disque : relevés avant suppression des lignes.
+    let mut fichiers: Vec<String> = Vec::new();
+    if let Ok(Some(photo)) = c.query_row("SELECT photo_fichier FROM eleves WHERE id=?1", params![id],
+        |r| r.get::<_, Option<String>>(0)) { fichiers.push(photo); }
+    {
+        let mut st = c.prepare("SELECT nom_fichier FROM papiers_eleve WHERE eleve_id=?1").map_err(e)?;
+        let noms = st.query_map(params![id], |r| r.get::<_, String>(0)).map_err(e)?;
+        for n in noms.flatten() { if !n.is_empty() { fichiers.push(n); } }
+    }
+
+    let tx = c.transaction().map_err(e)?;
+
+    for table in ["appels_journalier", "commentaires_eleve", "notes_eleve", "papiers_eleve", "progressions_eleve"] {
+        tx.execute(&format!("DELETE FROM {table} WHERE eleve_id=?1"), params![id]).map_err(e)?;
+    }
+    tx.execute("DELETE FROM eleves WHERE id=?1", params![id]).map_err(e)?;
+
+    // Documents rangés dans `settings` : préfixés par l'élève (synthèse GS,
+    // PPI, progressions, GEVA-Sco) ou suffixés (dispositif:<type>:<élève>).
+    tx.execute(
+        "DELETE FROM settings WHERE cle IN ('syntheseGS:'||?1, 'ppi:'||?1, 'progressions:'||?1, 'gevasco:'||?1)
+            OR cle LIKE 'dispositif:%:'||?1",
+        params![id]).map_err(e)?;
+
+    // Listes d'élèves stockées en JSON : créneaux du planning, EDT type,
+    // plans de salle. On réécrit uniquement les lignes réellement modifiées.
+    retirer_des_creneaux(&tx, id)?;
+    retirer_des_edt(&tx, id)?;
+    retirer_des_plans(&tx, id)?;
+
+    tx.commit().map_err(e)?;
+
+    for nom in fichiers {
+        std::fs::remove_file(fichiers_dir().join(&nom)).ok();
+    }
+    Ok(())
+}
+
+/// Retire l'élève des groupes restreints du planning (`creneaux.eleves_json`).
+fn retirer_des_creneaux(c: &rusqlite::Connection, id: &str) -> R<()> {
+    let lignes: Vec<(String, String)> = {
+        let mut st = c.prepare("SELECT id, eleves_json FROM creneaux WHERE eleves_json LIKE '%'||?1||'%'").map_err(e)?;
+        let it = st.query_map(params![id], |r| Ok((r.get(0)?, r.get(1)?))).map_err(e)?;
+        it.collect::<rusqlite::Result<_>>().map_err(e)?
+    };
+    for (cid, brut) in lignes {
+        let Ok(mut ids) = serde_json::from_str::<Vec<String>>(&brut) else { continue };
+        let avant = ids.len();
+        ids.retain(|x| x != id);
+        if ids.len() != avant {
+            let json = serde_json::to_string(&ids).unwrap_or_else(|_| "[]".into());
+            c.execute("UPDATE creneaux SET eleves_json=?1 WHERE id=?2", params![json, cid]).map_err(e)?;
+        }
+    }
+    Ok(())
+}
+
+/// Retire l'élève des créneaux de l'EDT type / organisation IME.
+fn retirer_des_edt(c: &rusqlite::Connection, id: &str) -> R<()> {
+    let lignes: Vec<(String, String)> = {
+        let mut st = c.prepare("SELECT id, slots_json FROM edt_typique WHERE slots_json LIKE '%'||?1||'%'").map_err(e)?;
+        let it = st.query_map(params![id], |r| Ok((r.get(0)?, r.get(1)?))).map_err(e)?;
+        it.collect::<rusqlite::Result<_>>().map_err(e)?
+    };
+    for (eid, brut) in lignes {
+        let Ok(mut slots) = serde_json::from_str::<Vec<serde_json::Value>>(&brut) else { continue };
+        let mut touche = false;
+        for slot in slots.iter_mut() {
+            let Some(liste) = slot.get_mut("eleves").and_then(|v| v.as_array_mut()) else { continue };
+            let avant = liste.len();
+            liste.retain(|v| v.as_str() != Some(id));
+            touche |= liste.len() != avant;
+        }
+        if touche {
+            let json = serde_json::to_string(&slots).unwrap_or(brut);
+            c.execute("UPDATE edt_typique SET slots_json=?1 WHERE id=?2", params![json, eid]).map_err(e)?;
+        }
+    }
+    Ok(())
+}
+
+/// Libère les places occupées par l'élève dans les plans de salle.
+fn retirer_des_plans(c: &rusqlite::Connection, id: &str) -> R<()> {
+    for cle in ["salle:plans", "salle:plansMatiere"] {
+        let brut: Option<String> = c.query_row("SELECT valeur FROM settings WHERE cle=?1", params![cle],
+            |r| r.get(0)).optional().map_err(e)?;
+        let Some(brut) = brut else { continue };
+        let Ok(mut plans) = serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(&brut) else { continue };
+        let mut touche = false;
+        for (_, plan) in plans.iter_mut() {
+            let Some(places) = plan.get_mut("places").and_then(|v| v.as_object_mut()) else { continue };
+            let vides: Vec<String> = places.iter()
+                .filter(|(_, v)| v.as_str() == Some(id))
+                .map(|(k, _)| k.clone()).collect();
+            for k in vides { places.remove(&k); touche = true; }
+        }
+        if touche {
+            let json = serde_json::to_string(&plans).unwrap_or(brut);
+            c.execute("UPDATE settings SET valeur=?1 WHERE cle=?2", params![json, cle]).map_err(e)?;
+        }
+    }
     Ok(())
 }
 
@@ -1371,6 +1484,39 @@ fn table_to_json(c: &rusqlite::Connection, table: &str) -> R<Vec<serde_json::Val
     rows.collect::<rusqlite::Result<_>>().map_err(e)
 }
 
+/// Une copie automatique de la base (nom, date, taille).
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SauvegardeAuto {
+    pub nom: String,
+    pub jour: String,
+    pub octets: u64,
+}
+
+/// Liste les copies quotidiennes, de la plus récente à la plus ancienne.
+#[tauri::command]
+pub fn sauvegardes_auto_list() -> R<Vec<SauvegardeAuto>> {
+    let dir = crate::db::sauvegardes_dir();
+    let Ok(entrees) = std::fs::read_dir(&dir) else { return Ok(vec![]) };
+    let mut out: Vec<SauvegardeAuto> = entrees
+        .flatten()
+        .filter_map(|f| {
+            let nom = f.file_name().to_string_lossy().to_string();
+            let jour = nom.strip_prefix("maitrize-")?.strip_suffix(".sqlite3")?.to_string();
+            let octets = f.metadata().map(|m| m.len()).unwrap_or(0);
+            Some(SauvegardeAuto { nom, jour, octets })
+        })
+        .collect();
+    out.sort_by(|a, b| b.jour.cmp(&a.jour));
+    Ok(out)
+}
+
+/// Ouvre le dossier des copies automatiques dans le Finder / l'Explorateur.
+#[tauri::command]
+pub fn sauvegardes_auto_ouvrir() -> R<()> {
+    tauri_plugin_opener::open_path(crate::db::sauvegardes_dir(), None::<&str>).map_err(e)
+}
+
 /// Exporte une copie consistante de la base SQLite vers un chemin choisi.
 /// `VACUUM INTO` intègre le WAL et produit un fichier unique et propre.
 #[tauri::command]
@@ -1485,4 +1631,81 @@ pub fn import_json(c: &rusqlite::Connection, json: &str) -> R<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests_eleve {
+    use super::*;
+    use rusqlite::Connection;
+
+    /// Base en mémoire avec le schéma réel.
+    fn base() -> Connection {
+        let c = Connection::open_in_memory().unwrap();
+        c.pragma_update(None, "foreign_keys", "ON").ok();
+        crate::db::migrate(&c);
+        c
+    }
+
+    fn set(c: &Connection, cle: &str, val: &str) {
+        c.execute("INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)", params![cle, val]).unwrap();
+    }
+    fn compte(c: &Connection, sql: &str) -> i64 {
+        c.query_row(sql, [], |r| r.get(0)).unwrap()
+    }
+
+    /// Supprimer un élève doit vider tout son dossier : lignes liées,
+    /// documents des réglages et présence dans les listes JSON. Sans quoi ces
+    /// données ressortent dans les sauvegardes.
+    #[test]
+    fn suppression_efface_tout_le_dossier() {
+        let mut c = base();
+        let (a, b) = ("el-a", "el-b");
+        for id in [a, b] {
+            c.execute("INSERT INTO eleves (id, nom) VALUES (?1, ?2)", params![id, id]).unwrap();
+            c.execute("INSERT INTO appels_journalier (id, date, eleve_id) VALUES (?1,'2026-01-01',?2)",
+                params![format!("ap-{id}"), id]).unwrap();
+            c.execute("INSERT INTO commentaires_eleve (id, date, eleve_id) VALUES (?1,'2026-01-01',?2)",
+                params![format!("co-{id}"), id]).unwrap();
+            c.execute("INSERT INTO notes_eleve (id, eleve_id) VALUES (?1,?2)", params![format!("no-{id}"), id]).unwrap();
+            c.execute("INSERT INTO papiers_eleve (id, eleve_id, date_ajout) VALUES (?1,?2,'2026-01-01')",
+                params![format!("pa-{id}"), id]).unwrap();
+            c.execute("INSERT INTO progressions_eleve (id, eleve_id) VALUES (?1,?2)", params![format!("pr-{id}"), id]).unwrap();
+            set(&c, &format!("syntheseGS:{id}"), "{}");
+            set(&c, &format!("gevasco:{id}"), "{}");
+            set(&c, &format!("ppi:{id}"), "{}");
+            set(&c, &format!("progressions:{id}"), "[]");
+            set(&c, &format!("dispositif:pap:{id}"), "{}");
+        }
+        c.execute("INSERT INTO creneaux (id, date, eleves_json) VALUES ('cr1','2026-01-01',?1)",
+            params![format!("[\"{a}\",\"{b}\"]")]).unwrap();
+        c.execute("INSERT INTO edt_typique (id, annee, slots_json) VALUES ('edt1','IME:2026-01-05',?1)",
+            params![format!("[{{\"id\":\"s1\",\"eleves\":[\"{a}\",\"{b}\"]}}]")]).unwrap();
+        set(&c, "salle:plans", &format!("{{\"cr1\":{{\"places\":{{\"p1\":\"{a}\",\"p2\":\"{b}\"}},\"notes\":{{}}}}}}"));
+        set(&c, "salle:plansMatiere", &format!("{{\"Scolarité\":{{\"places\":{{\"p1\":\"{a}\"}},\"notes\":{{}}}}}}"));
+
+        effacer_eleve(&mut c, a).unwrap();
+
+        // Plus aucune trace de l'élève supprimé…
+        for t in ["appels_journalier", "commentaires_eleve", "notes_eleve", "papiers_eleve", "progressions_eleve"] {
+            let n = compte(&c, &format!("SELECT COUNT(*) FROM {t} WHERE eleve_id='{a}'"));
+            assert_eq!(n, 0, "{t} garde des lignes orphelines");
+            assert_eq!(compte(&c, &format!("SELECT COUNT(*) FROM {t} WHERE eleve_id='{b}'")), 1,
+                "{t} : l'autre élève ne doit pas être touché");
+        }
+        assert_eq!(compte(&c, &format!("SELECT COUNT(*) FROM eleves WHERE id='{a}'")), 0);
+        assert_eq!(compte(&c, &format!("SELECT COUNT(*) FROM settings WHERE cle LIKE '%{a}'")), 0,
+            "des documents restent dans les réglages");
+        assert_eq!(compte(&c, &format!("SELECT COUNT(*) FROM settings WHERE cle LIKE '%{b}'")), 5,
+            "les documents de l'autre élève doivent survivre");
+
+        // …y compris dans les listes JSON.
+        let cren: String = c.query_row("SELECT eleves_json FROM creneaux WHERE id='cr1'", [], |r| r.get(0)).unwrap();
+        assert_eq!(cren, format!("[\"{b}\"]"), "créneau : élève non retiré");
+        let edt: String = c.query_row("SELECT slots_json FROM edt_typique WHERE id='edt1'", [], |r| r.get(0)).unwrap();
+        assert!(!edt.contains(a) && edt.contains(b), "EDT type : élève non retiré ({edt})");
+        let plans: String = c.query_row("SELECT valeur FROM settings WHERE cle='salle:plans'", [], |r| r.get(0)).unwrap();
+        assert!(!plans.contains(a) && plans.contains(b), "plan de salle : place non libérée ({plans})");
+        let mat: String = c.query_row("SELECT valeur FROM settings WHERE cle='salle:plansMatiere'", [], |r| r.get(0)).unwrap();
+        assert!(!mat.contains(a), "plan par matière : place non libérée ({mat})");
+    }
 }
