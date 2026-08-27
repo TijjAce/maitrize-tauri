@@ -29,6 +29,13 @@ pub fn data_dir() -> PathBuf {
     dir
 }
 
+/// Dossier des sauvegardes automatiques (copies horodatées de la base).
+pub fn sauvegardes_dir() -> PathBuf {
+    let dir = data_dir().join("Sauvegardes");
+    std::fs::create_dir_all(&dir).ok();
+    dir
+}
+
 /// Dossier des fichiers joints (images, PDF, photos d'élèves…).
 pub fn fichiers_dir() -> PathBuf {
     let dir = data_dir().join("Fichiers");
@@ -43,10 +50,61 @@ pub fn open() -> Connection {
     conn.pragma_update(None, "foreign_keys", "ON").ok();
     migrate(&conn);
     crate::seed::seed_referentiels(&conn);
+    sauvegarde_auto(&conn);
     conn
 }
 
-fn migrate(conn: &Connection) {
+/// Nombre de copies automatiques conservées (une par jour d'utilisation).
+const SAUVEGARDES_GARDEES: usize = 7;
+
+/// Copie quotidienne de la base, au lancement.
+///
+/// L'export manuel des Réglages ne protège que si on y pense ; cette copie
+/// tourne toute seule et garde les sept derniers jours d'utilisation.
+/// `VACUUM INTO` intègre le WAL et produit un fichier autonome, ouvrable tel
+/// quel — pas un instantané à moitié écrit.
+pub fn sauvegarde_auto(conn: &Connection) {
+    let dir = sauvegardes_dir();
+    let jour = jour_iso();
+    let cible = dir.join(format!("maitrize-{jour}.sqlite3"));
+    // Une seule copie par jour : relancer l'app dix fois ne recopie pas dix fois.
+    if !cible.exists() {
+        if let Err(err) = conn.execute("VACUUM INTO ?1", [cible.to_string_lossy().as_ref()]) {
+            eprintln!("sauvegarde automatique impossible : {err}");
+            return;
+        }
+    }
+    conn.execute(
+        "INSERT OR REPLACE INTO settings (cle, valeur) VALUES ('derniereSauvegardeAuto', ?1)",
+        [&jour],
+    ).ok();
+    purger_sauvegardes(&dir);
+}
+
+/// Ne garde que les copies les plus récentes.
+fn purger_sauvegardes(dir: &std::path::Path) {
+    let Ok(entrees) = std::fs::read_dir(dir) else { return };
+    let mut fichiers: Vec<PathBuf> = entrees
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.file_name().and_then(|n| n.to_str())
+            .is_some_and(|n| n.starts_with("maitrize-") && n.ends_with(".sqlite3")))
+        .collect();
+    if fichiers.len() <= SAUVEGARDES_GARDEES { return; }
+    // Le nom porte la date ISO : l'ordre alphabétique est l'ordre chronologique.
+    fichiers.sort();
+    for vieux in &fichiers[..fichiers.len() - SAUVEGARDES_GARDEES] {
+        std::fs::remove_file(vieux).ok();
+    }
+}
+
+/// Date du jour en ISO (AAAA-MM-JJ), en heure locale : la copie doit changer
+/// de nom au minuit de l'enseignant, pas à celui d'UTC.
+fn jour_iso() -> String {
+    chrono::Local::now().format("%Y-%m-%d").to_string()
+}
+
+pub(crate) fn migrate(conn: &Connection) {
     conn.execute_batch(
         r#"
         CREATE TABLE IF NOT EXISTS projets (
@@ -353,4 +411,49 @@ fn migrate(conn: &Connection) {
     conn.execute("ALTER TABLE projets ADD COLUMN image_nom TEXT", []).ok();
     // Élèves présents sur un créneau (organisation IME, groupes restreints).
     conn.execute("ALTER TABLE creneaux ADD COLUMN eleves_json TEXT NOT NULL DEFAULT '[]'", []).ok();
+}
+
+#[cfg(test)]
+mod tests_sauvegarde {
+    use super::*;
+
+    /// La copie du jour doit être créée, réutilisée sans doublon, et la
+    /// rotation ne doit garder que les plus récentes.
+    #[test]
+    fn copie_quotidienne_et_rotation() {
+        let dir = std::env::temp_dir().join(format!("maitrize-test-{}", std::process::id()));
+        std::fs::remove_dir_all(&dir).ok();
+        std::env::set_var("MAITRIZE_DATA_DIR", &dir);
+
+        let conn = Connection::open(data_dir().join("maitrize.sqlite3")).unwrap();
+        migrate(&conn);
+
+        // Fausses copies anciennes, plus nombreuses que la limite.
+        let sdir = sauvegardes_dir();
+        for j in 1..=10 {
+            std::fs::write(sdir.join(format!("maitrize-2026-01-{j:02}.sqlite3")), b"x").unwrap();
+        }
+
+        sauvegarde_auto(&conn);
+        let cible = sdir.join(format!("maitrize-{}.sqlite3", jour_iso()));
+        assert!(cible.exists(), "la copie du jour n'a pas été créée");
+        let taille = std::fs::metadata(&cible).unwrap().len();
+        assert!(taille > 0, "copie vide");
+
+        let restantes = || std::fs::read_dir(&sdir).unwrap().count();
+        assert_eq!(restantes(), SAUVEGARDES_GARDEES, "la rotation n'a pas purgé");
+
+        // Deuxième lancement le même jour : pas de nouvelle copie.
+        sauvegarde_auto(&conn);
+        assert_eq!(restantes(), SAUVEGARDES_GARDEES);
+        assert_eq!(std::fs::metadata(&cible).unwrap().len(), taille);
+
+        // La date de dernière copie est enregistrée.
+        let vu: String = conn.query_row("SELECT valeur FROM settings WHERE cle='derniereSauvegardeAuto'",
+            [], |r| r.get(0)).unwrap();
+        assert_eq!(vu, jour_iso());
+
+        std::env::remove_var("MAITRIZE_DATA_DIR");
+        std::fs::remove_dir_all(&dir).ok();
+    }
 }

@@ -82,7 +82,7 @@ pub fn run() {
             // Recherche
             recherche,
             // Export / Import
-            export_data, import_data, exporter_base,
+            export_data, import_data, exporter_base, sauvegardes_auto_list, sauvegardes_auto_ouvrir,
             // Vacances scolaires
             vacances_scolaires,
             // IA Mistral
