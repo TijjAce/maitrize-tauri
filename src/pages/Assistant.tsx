@@ -75,9 +75,40 @@ export default function Assistant() {
     window.addEventListener("maitrize:generer-sequence", h);
     return () => window.removeEventListener("maitrize:generer-sequence", h);
   }, []);
+  // ── Suivi du bas de la conversation ──────────────────────────────────
+  // La réponse arrive token par token : chaque morceau change `messages` et
+  // relancerait un défilement vers le bas. Sans garde-fou, impossible de
+  // relire le début d'une réponse tant qu'elle n'est pas terminée — on est
+  // ramené en bas à chaque token. On ne suit donc que si l'utilisateur est
+  // déjà en bas ; dès qu'il remonte, on le laisse lire.
+  const colleEnBas = React.useRef(true);
+  const [detache, setDetache] = React.useState(false);
+
+  const versLeBas = React.useCallback((lisse = false) => {
+    const n = scrollRef.current; if (!n) return;
+    // Pendant le streaming le défilement doit être instantané : une animation
+    // « smooth » est sans cesse relancée et rend la lecture impossible.
+    n.scrollTo({ top: n.scrollHeight, behavior: lisse ? "smooth" : "auto" });
+    colleEnBas.current = true; setDetache(false);
+  }, []);
+
+  /** Recolle si l'utilisateur revient au bas de lui-même. */
+  const surDefilement = React.useCallback(() => {
+    const n = scrollRef.current; if (!n) return;
+    const enBas = n.scrollHeight - n.scrollTop - n.clientHeight < 48;
+    if (colleEnBas.current === enBas) return;
+    colleEnBas.current = enBas; setDetache(!enBas);
+  }, []);
+
+  /** Un geste vers le haut décroche tout de suite, sans attendre la mesure. */
+  const surMolette = React.useCallback((e: React.WheelEvent) => {
+    if (e.deltaY >= 0) return;
+    colleEnBas.current = false; setDetache(true);
+  }, []);
+
   React.useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, loading]);
+    if (colleEnBas.current) versLeBas();
+  }, [messages, loading, versLeBas]);
 
   // Sauvegarde / met à jour la conversation courante (historique persistant).
   const sauvegarderConv = async (final: ChatMessage[]) => {
@@ -95,6 +126,7 @@ export default function Assistant() {
     if (!contenu || loading) return;
     const suite: ChatMessage[] = [...messages, { role: "user", content: contenu }];
     setMessages(suite); setInput(""); setLoading(true);
+    colleEnBas.current = true; setDetache(false);
     let cleanup = () => {};
     try {
       // Contexte désactivé → on n'envoie AUCUN message système (rien d'autre que
@@ -185,7 +217,7 @@ export default function Assistant() {
       </div>
       {showGen && <GenerateurSequence model={model} onClose={() => setShowGen(false)} />}
       {showModif && <ModifierSequence model={model} onClose={() => setShowModif(false)} />}
-      <div className="chat-scroll" ref={scrollRef}>
+      <div className="chat-scroll" ref={scrollRef} onScroll={surDefilement} onWheel={surMolette}>
         {messages.length === 0 && (
           <div style={{ margin: "auto", maxWidth: 520, textAlign: "center" }}>
             <div style={{ fontSize: 40, marginBottom: 8 }}>✨</div>
@@ -204,6 +236,12 @@ export default function Assistant() {
         ))}
         {loading && messages[messages.length - 1]?.role !== "assistant" && <div className="msg assistant" style={{ opacity: 0.6 }}>…</div>}
       </div>
+      {detache && (
+        <button className="chat-retour" onClick={() => versLeBas(true)}
+          title="Revenir au bas de la conversation">
+          ↓ {loading ? "La réponse continue" : "Revenir en bas"}
+        </button>
+      )}
       <div className="chat-input">
         <textarea className="textarea" rows={2} placeholder="Écrivez votre demande…" value={input}
           onChange={(e) => setInput(e.target.value)}
