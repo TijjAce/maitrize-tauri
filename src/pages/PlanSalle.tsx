@@ -4,6 +4,7 @@ import { Field, Input, Modal, Empty, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { openCtx } from "../components/ctxmenu";
 import { printHTML, escapeHtml } from "../print";
+import { isoJour, hhmm } from "../dates";
 
 // ── Plan de salle ─────────────────────────────────────────────────────────
 // L'aménagement (mobilier + places) est unique pour la salle ; le placement
@@ -42,12 +43,16 @@ const STYLE_ELEM: Record<TypeElem, React.CSSProperties> = {
 };
 
 const snap = (v: number) => Math.round(v / GRILLE) * GRILLE;
-const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const iso = isoJour;
 const fmtJour = (d: Date) => d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
-const hhmm = (h: string) => h.slice(0, 5).replace(":", "h");
 const teinte = (c: Creneau) => couleurHex[c.couleur] || couleurHex[couleurPourMatiere(c.matiere)] || couleurHex.blue;
-/** Élèves d'un créneau : la liste restreinte s'il y en a une, sinon toute la classe. */
-const idsDuCreneau = (c: Creneau | undefined, tous: Eleve[]) => {
+/**
+ * Élèves présents sur un créneau : la liste restreinte s'il y en a une,
+ * sinon toute la classe (cas de la classe ordinaire, où personne n'est coché).
+ * Les identifiants inconnus sont écartés — un élève supprimé ne doit pas
+ * laisser un fantôme dans la salle.
+ */
+export const idsDuCreneau = (c: Creneau | undefined, tous: Eleve[]) => {
   if (!c) return [] as string[];
   try {
     const ids = JSON.parse(c.elevesJson || "[]") as string[];
@@ -55,6 +60,26 @@ const idsDuCreneau = (c: Creneau | undefined, tous: Eleve[]) => {
   } catch { /* liste illisible : on retombe sur la classe entière */ }
   return tous.map((e) => e.id);
 };
+
+/**
+ * Assied les élèves non placés sur les places libres, dans l'ordre de lecture
+ * (de haut en bas, puis de gauche à droite). Une place tenue par un élève
+ * absent de ce créneau compte comme libre. S'il y a plus d'élèves que de
+ * places, les derniers restent debout plutôt que d'en déloger un.
+ */
+export function remplirPlacesLibres(
+  places: { id: string; x: number; y: number }[],
+  occupation: Record<string, string>,
+  aPlacer: string[],
+  estPresent: (id: string | undefined) => boolean,
+): Record<string, string> {
+  const libres = places
+    .filter((pl) => !occupation[pl.id] || !estPresent(occupation[pl.id]))
+    .sort((a, b) => (a.y - b.y) || (a.x - b.x));
+  const out = { ...occupation };
+  for (let i = 0; i < Math.min(libres.length, aPlacer.length); i++) out[libres[i].id] = aPlacer[i];
+  return out;
+}
 
 function usePhotos(eleves: Eleve[]) {
   const [photos, setPhotos] = React.useState<Record<string, string>>({});
@@ -169,17 +194,13 @@ export function PlanSalleTab() {
     persistPlan({ places: p, notes: n });
   };
 
-  /** Assied les élèves non placés sur les places libres, de haut en bas. */
   const placerAuto = () => {
-    const libres = places
-      .filter((pl) => !plan.places[pl.id] || !estPresent(plan.places[pl.id]))
-      .sort((a, b) => (a.y - b.y) || (a.x - b.x));
-    if (!libres.length || !nonPlaces.length) { toast("Rien à placer.", { icone: "ℹ️" }); return; }
-    const p = { ...plan.places };
-    const n = Math.min(libres.length, nonPlaces.length);
-    for (let i = 0; i < n; i++) p[libres[i].id] = nonPlaces[i].id;
+    const avant = Object.keys(plan.places).length;
+    const p = remplirPlacesLibres(places, plan.places, nonPlaces.map((e) => e.id), estPresent);
+    const poses = Object.keys(p).length - avant;
+    if (!poses) { toast("Rien à placer.", { icone: "ℹ️" }); return; }
     persistPlan({ places: p, notes: plan.notes });
-    toast(`${n} élève(s) placé(s).`, { icone: "🪑" });
+    toast(`${poses} élève(s) placé(s).`, { icone: "🪑" });
   };
 
   const viderPlan = () => {
@@ -373,7 +394,9 @@ export function PlanSalleTab() {
         <div className="card" style={{ marginBottom: 10, padding: 10 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <span style={{ fontSize: 12, color: "var(--text-2)" }}>
-              {nonPlaces.length ? `À placer (${nonPlaces.length}) :` : `Tous les présents sont placés (${presents.length}).`}
+              {presents.length === 0
+                ? "Aucun élève sur ce créneau — cochez-les dans l'organisation de la semaine."
+                : nonPlaces.length ? `À placer (${nonPlaces.length}) :` : `Tous les présents sont placés (${presents.length}).`}
             </span>
             {presents.map((e) => {
               const place = assis.some(([, id]) => id === e.id);

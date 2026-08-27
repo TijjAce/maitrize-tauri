@@ -701,6 +701,34 @@ impl ProgrammationFinale {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct DocumentEleve {
+    #[serde(default = "new_id")]
+    pub id: String,
+    #[serde(default)]
+    pub eleve_id: String,
+    /// « syntheseGS », « ppi », « gevasco », « progressions », « dispositif:pap »…
+    #[serde(default)]
+    pub type_doc: String,
+    #[serde(default = "vide_obj")]
+    pub donnees: String,
+    #[serde(default)]
+    pub date_maj: String,
+}
+
+impl DocumentEleve {
+    pub fn from_row(r: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: r.get("id")?,
+            eleve_id: r.get("eleve_id")?,
+            type_doc: r.get("type")?,
+            donnees: r.get("donnees")?,
+            date_maj: r.get("date_maj")?,
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct EdtTypique {
     #[serde(default = "new_id")]
     pub id: String,

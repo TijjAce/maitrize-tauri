@@ -5,13 +5,14 @@ import {
   api, ProgrammationFinale, ProgressionAnnuelle, EdtTypique, Sequence, Ami, Eleve, anneeScolaireActuelle, MATIERES,
   HEURES_PROGRAMME, couleurHex, couleurPourMatiere, newId, telechargerTexte,
 } from "../api";
-import { Empty, Input, Select, Modal, ColorPicker, useAsync, useSegmentNav, useHistorique } from "../components/ui";
+import { Empty, Input, Select, Modal, ColorPicker, useAsync, useSegmentNav, useHistorique, useOngletDemande } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
 import { toast } from "../components/Toaster";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
 import { COULEURS } from "../api";
 import { printHTML, escapeHtml } from "../print";
 import { PlanSalleTab } from "./PlanSalle";
+import { isoJour, lundiDe } from "../dates";
 
 // Couleurs officielles des périodes (miroir couleursPeriodes).
 const COULEUR_PERIODE: Record<number, string> = { 1: "#2e73d9", 2: "#d94033", 3: "#4d4d4d", 4: "#d97319", 5: "#269950" };
@@ -124,6 +125,7 @@ export default function Organisation() {
   React.useEffect(() => { api.settingGet("anneeCourante").then((v) => { if (v) setAnneeState(v); }); }, []);
   const setAnnee = (a: string) => { setAnneeState(a); api.settingSet("anneeCourante", a); };
   useSegmentNav(segments.map((s) => s.id), onglet, setOnglet);
+  useOngletDemande("organisation", segments.map((s) => s.id), setOnglet);
   const props = { annee, setAnnee };
   return (
     <Page titre="Organisation" sous={SOUS_TITRE}>
@@ -678,10 +680,7 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
   // En IME l'organisation se refait chaque semaine : chaque semaine a son
   // enregistrement, repéré par le lundi. En classe ordinaire, la trame reste
   // annuelle.
-  const [lundi, setLundi] = React.useState(() => {
-    const x = new Date(); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); x.setHours(0, 0, 0, 0); return x;
-  });
-  const isoJour = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const [lundi, setLundi] = React.useState(() => lundiDe(new Date()));
   const cleAnnee = ime ? `IME:${isoJour(lundi)}` : annee;
   const edt = data?.find((e) => e.annee === cleAnnee);
   const [niveau, setNiveau] = React.useState("");

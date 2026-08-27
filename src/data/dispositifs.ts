@@ -226,6 +226,7 @@ const PPRE: Dispositif = {
     {
       titre: "Identification",
       champs: [
+        { t: "ligne", id: "etablissement", label: "École / établissement" },
         { t: "ligne", id: "classe", label: "Classe" },
         { t: "ligne", id: "anneeScolaire", label: "Année scolaire" },
         { t: "ligne", id: "periode", label: "Période couverte (du … au …)", large: true },
@@ -278,6 +279,7 @@ const PPS: Dispositif = {
         { t: "ligne", id: "referent", label: "Enseignant référent", large: true },
         { t: "ligne", id: "etablissement", label: "École / établissement" },
         { t: "ligne", id: "classe", label: "Classe" },
+        { t: "ligne", id: "anneeScolaire", label: "Année scolaire" },
       ],
     },
     {
