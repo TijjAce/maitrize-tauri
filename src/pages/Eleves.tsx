@@ -5,7 +5,7 @@ import {
   nouvelEleve, nouvelleEvaluation, NIVEAUX_SCOLAIRES, MATIERES, newId, nowIso,
   NIVEAUX_MAITRISE, MODELE_DEFAUT,
 } from "../api";
-import { Modal, Field, Input, Select, Empty, Confirm, useAsync, useSegmentNav } from "../components/ui";
+import { Modal, Field, Input, Select, Empty, Confirm, useAsync, useSegmentNav, useOngletDemande } from "../components/ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
 import { openCtx } from "../components/ctxmenu";
 import { toast } from "../components/Toaster";
@@ -23,6 +23,10 @@ export default function Eleves() {
   const ime = typeStructure === "ime";
   const tabs = React.useMemo(() => ELEVES_TABS.filter((t) => (t !== "dispositifs" && t !== "gevasco") || ime), [ime]);
   useSegmentNav(tabs, onglet, setOnglet);
+  // Dispositifs et GEVA-Sco n'existent qu'en mode IME : plutôt qu'un clic sans
+  // effet, on dit pourquoi l'onglet demandé n'est pas là.
+  useOngletDemande("eleves", tabs, setOnglet, () =>
+    toast("Cet onglet demande le mode IME (Réglages → Type de structure).", { icone: "⚙️" }));
   return (
     <Page titre="Élèves" sous="Classe, observations et évaluations">
       <div className="seg" style={{ marginBottom: 18, flexWrap: "wrap" }}>
@@ -383,13 +387,13 @@ function SyntheseGS() {
 
   React.useEffect(() => {
     if (!eleveId) return;
-    api.settingGet(`syntheseGS:${eleveId}`).then((v) => {
+    api.documentEleveGet(eleveId, "syntheseGS").then((v) => {
       try { setData(v ? JSON.parse(v) : { positionnements: {}, observations: {} }); }
       catch { setData({ positionnements: {}, observations: {} }); }
     });
   }, [eleveId]);
 
-  const persister = (d: SynData) => { setData(d); if (eleveId) api.settingSet(`syntheseGS:${eleveId}`, JSON.stringify(d)); };
+  const persister = (d: SynData) => { setData(d); if (eleveId) api.documentEleveSet(eleveId, "syntheseGS", JSON.stringify(d)); };
   const setPos = (itemId: string, n: number) => {
     const p = { ...data.positionnements };
     if (p[itemId] === n) delete p[itemId]; else p[itemId] = n;

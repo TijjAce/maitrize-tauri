@@ -104,6 +104,48 @@ fn jour_iso() -> String {
     chrono::Local::now().format("%Y-%m-%d").to_string()
 }
 
+/// Déplace les dossiers d'élèves rangés dans `settings` vers `documents_eleve`.
+///
+/// Historiquement, synthèse GS, PPI, GEVA-Sco, progressions et dispositifs
+/// étaient enregistrés sous des clés `type:eleveId` (ou `dispositif:x:eleveId`).
+/// On les transfère une fois pour toutes ; la table prend le relais ensuite.
+/// Idempotent : ce qui est déplacé disparaît de `settings`.
+pub(crate) fn migrer_documents_eleve(conn: &Connection) {
+    let lignes: Vec<(String, String)> = {
+        let Ok(mut st) = conn.prepare(
+            "SELECT cle, valeur FROM settings
+             WHERE cle LIKE 'syntheseGS:%' OR cle LIKE 'ppi:%' OR cle LIKE 'gevasco:%'
+                OR cle LIKE 'progressions:%' OR cle LIKE 'dispositif:%'") else { return };
+        let Ok(it) = st.query_map([], |r| Ok((r.get(0)?, r.get(1)?))) else { return };
+        it.flatten().collect()
+    };
+    if lignes.is_empty() { return; }
+
+    let mut deplacees = 0usize;
+    for (cle, valeur) in lignes {
+        // `dispositif:pap:<élève>` → type « dispositif:pap » ; sinon `type:<élève>`.
+        let Some((type_doc, eleve_id)) = cle.rsplit_once(':') else { continue };
+        if eleve_id.is_empty() { continue; }
+        // Un élève supprimé entre-temps n'a plus de dossier à reprendre.
+        let existe: bool = conn.query_row("SELECT 1 FROM eleves WHERE id=?1", [eleve_id], |_| Ok(true))
+            .unwrap_or(false);
+        if existe {
+            let ok = conn.execute(
+                "INSERT OR REPLACE INTO documents_eleve (id, eleve_id, type, donnees, date_maj)
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
+                rusqlite::params![format!("{eleve_id}:{type_doc}"), eleve_id, type_doc, valeur,
+                    chrono::Utc::now().to_rfc3339()],
+            ).is_ok();
+            if !ok { continue; } // on garde la clé plutôt que de perdre la donnée
+            deplacees += 1;
+        }
+        conn.execute("DELETE FROM settings WHERE cle=?1", [&cle]).ok();
+    }
+    if deplacees > 0 {
+        println!("{deplacees} document(s) d'élève déplacé(s) des réglages vers la base.");
+    }
+}
+
 pub(crate) fn migrate(conn: &Connection) {
     conn.execute_batch(
         r#"
@@ -216,6 +258,19 @@ pub(crate) fn migrate(conn: &Connection) {
             ine TEXT NOT NULL DEFAULT '',
             date_naissance TEXT NOT NULL DEFAULT '',
             photo_fichier TEXT
+        );
+
+        -- Documents du dossier d'un élève (synthèse GS, PPI, GEVA-Sco,
+        -- progressions, dispositifs). Auparavant rangés en JSON dans
+        -- `settings` : impossibles à joindre, à chercher, ou à effacer avec
+        -- l'élève. La clé étrangère fait le ménage toute seule.
+        CREATE TABLE IF NOT EXISTS documents_eleve (
+            id TEXT PRIMARY KEY,
+            eleve_id TEXT NOT NULL REFERENCES eleves(id) ON DELETE CASCADE,
+            type TEXT NOT NULL DEFAULT '',
+            donnees TEXT NOT NULL DEFAULT '{}',
+            date_maj TEXT NOT NULL DEFAULT '',
+            UNIQUE (eleve_id, type)
         );
 
         CREATE TABLE IF NOT EXISTS appels_journalier (
@@ -400,6 +455,7 @@ pub(crate) fn migrate(conn: &Connection) {
         CREATE INDEX IF NOT EXISTS idx_notes_eval ON notes_eleve(evaluation_id);
         CREATE INDEX IF NOT EXISTS idx_pj_seance ON pieces_jointes(seance_id);
         CREATE INDEX IF NOT EXISTS idx_seq_projet ON sequences(projet_id);
+        CREATE INDEX IF NOT EXISTS idx_docs_eleve ON documents_eleve(eleve_id);
         "#,
     )
     .expect("création schéma");
@@ -409,6 +465,8 @@ pub(crate) fn migrate(conn: &Connection) {
     conn.execute("ALTER TABLE materiel_items ADD COLUMN seance_id TEXT", []).ok();
     conn.execute("ALTER TABLE materiel_items ADD COLUMN sequence_id TEXT", []).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN image_nom TEXT", []).ok();
+    migrer_documents_eleve(conn);
+
     // Élèves présents sur un créneau (organisation IME, groupes restreints).
     conn.execute("ALTER TABLE creneaux ADD COLUMN eleves_json TEXT NOT NULL DEFAULT '[]'", []).ok();
 }

@@ -147,6 +147,47 @@ export function useSegmentNav<T extends string>(ids: readonly T[], current: T, s
   }, [ids, current, set, visible]);
 }
 
+/** Nom de l'événement émis par la palette pour ouvrir un sous-onglet. */
+export const EVT_ONGLET = "maitrize:onglet";
+
+/** Demande l'ouverture d'un sous-onglet d'une page (depuis la palette). */
+export function ouvrirOnglet(page: string, onglet: string) {
+  window.dispatchEvent(new CustomEvent(EVT_ONGLET, { detail: { page, onglet } }));
+}
+
+/**
+ * Écoute les demandes d'ouverture de sous-onglet.
+ *
+ * Les sous-onglets ne sont pas dans l'URL : sans ce relais, une douzaine
+ * d'écrans (Plan de salle, GEVA-Sco, Dispositifs, Progressions…) ne sont
+ * atteignables qu'en sachant sous quel onglet parent ils se cachent.
+ *
+ * `indisponible` est appelé quand l'onglet demandé existe mais n'est pas
+ * affiché — mieux vaut l'expliquer que de ne rien faire.
+ */
+export function useOngletDemande<T extends string>(
+  page: string,
+  visibles: readonly T[],
+  set: (v: T) => void,
+  indisponible?: (onglet: string) => void,
+) {
+  const setRef = React.useRef(set);
+  setRef.current = set;
+  const dispoRef = React.useRef(indisponible);
+  dispoRef.current = indisponible;
+  const cles = visibles.join("|");
+  React.useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ page: string; onglet: string }>).detail;
+      if (!d || d.page !== page) return;
+      if (cles.split("|").includes(d.onglet)) setRef.current(d.onglet as T);
+      else dispoRef.current?.(d.onglet);
+    };
+    window.addEventListener(EVT_ONGLET, on);
+    return () => window.removeEventListener(EVT_ONGLET, on);
+  }, [page, cles]);
+}
+
 /// Hook simple de chargement de données.
 export function useAsync<T>(fn: () => Promise<T>, deps: React.DependencyList = []) {
   const [data, setData] = React.useState<T | null>(null);

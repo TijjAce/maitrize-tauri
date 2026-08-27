@@ -1,8 +1,25 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ResultatRecherche, joursFeriesFR, anneeScolaireActuelle, raccourci } from "../api";
+import { ouvrirOnglet } from "./ui";
 
 interface Cmd { id: string; ico: string; label: string; sous?: string; run: () => void | Promise<void>; }
+
+/** Sous-onglets, invisibles depuis la barre latérale. */
+const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; onglet: string; sous: string }[] = [
+  { ico: "👀", label: "Observations", to: "/eleves", page: "eleves", onglet: "observations", sous: "Élèves" },
+  { ico: "📝", label: "Évaluations", to: "/eleves", page: "eleves", onglet: "evaluations", sous: "Élèves" },
+  { ico: "📄", label: "Papiers des élèves", to: "/eleves", page: "eleves", onglet: "papiers", sous: "Élèves" },
+  { ico: "🎓", label: "Synthèse GS", to: "/eleves", page: "eleves", onglet: "synthese", sous: "Élèves" },
+  { ico: "🧾", label: "Dispositifs (PPS, PAP, PAI, PPRE)", to: "/eleves", page: "eleves", onglet: "dispositifs", sous: "Élèves · mode IME" },
+  { ico: "📋", label: "GEVA-Sco", to: "/eleves", page: "eleves", onglet: "gevasco", sous: "Élèves · mode IME" },
+  { ico: "📈", label: "Progressions par élève", to: "/eleves", page: "eleves", onglet: "progressions", sous: "Élèves" },
+  { ico: "🗒", label: "Programmation", to: "/organisation", page: "organisation", onglet: "prog", sous: "Organisation" },
+  { ico: "📉", label: "Progression annuelle", to: "/organisation", page: "organisation", onglet: "annuelle", sous: "Organisation" },
+  { ico: "🕘", label: "EDT type", to: "/organisation", page: "organisation", onglet: "edt", sous: "Organisation" },
+  { ico: "🤝", label: "Travail de cycle", to: "/organisation", page: "organisation", onglet: "cycle", sous: "Organisation" },
+  { ico: "🪑", label: "Plan de salle", to: "/organisation", page: "organisation", onglet: "salle", sous: "Organisation" },
+];
 
 const NAV: { ico: string; label: string; to: string }[] = [
   { ico: "🏠", label: "Tableau de bord", to: "/" },
@@ -204,9 +221,13 @@ export function CommandPalette() {
 
   const match = (label: string) => !q || label.toLowerCase().includes(q.toLowerCase());
   const navCmds: Cmd[] = NAV.filter((n) => match(n.label)).map((n) => ({ id: "nav" + n.to, ico: n.ico, label: n.label, sous: "Aller à", run: goNav(n.to) }));
+  const sousCmds: Cmd[] = SOUS_ONGLETS.filter((s) => match(s.label) || match(s.sous)).map((s) => ({
+    id: "sub" + s.page + s.onglet, ico: s.ico, label: s.label, sous: "Aller à · " + s.sous,
+    run: () => { setOpen(false); nav(s.to); setTimeout(() => ouvrirOnglet(s.page, s.onglet), 140); },
+  }));
   const actionCmds = ACTIONS.filter((a) => match(a.label) || match(a.sous ?? ""));
   const rechCmds: Cmd[] = res.map((r) => ({ id: r.kind + r.id, ico: KIND_ICO[r.kind] ?? "•", label: r.titre, sous: r.sousTitre, run: () => { setOpen(false); nav((KIND_TO[r.kind] ?? (() => "/"))(r.id)); } }));
-  const cmds = [...actionCmds, ...navCmds, ...rechCmds];
+  const cmds = [...actionCmds, ...navCmds, ...sousCmds, ...rechCmds];
   const clamped = Math.min(sel, Math.max(0, cmds.length - 1));
 
   if (!open) return null;

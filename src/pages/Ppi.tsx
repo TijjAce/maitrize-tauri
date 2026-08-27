@@ -57,12 +57,12 @@ export function PpiTab() {
 
   React.useEffect(() => {
     if (!eleveId) return;
-    api.settingGet(`ppi:${eleveId}`).then((v) => {
+    api.documentEleveGet(eleveId, "ppi").then((v) => {
       try { setData(v ? { ...VIDE, ...JSON.parse(v) } : VIDE); } catch { setData(VIDE); }
     });
   }, [eleveId]);
 
-  const persister = (d: PpiData) => { setData(d); if (eleveId) api.settingSet(`ppi:${eleveId}`, JSON.stringify(d)); };
+  const persister = (d: PpiData) => { setData(d); if (eleveId) api.documentEleveSet(eleveId, "ppi", JSON.stringify(d)); };
   const up = (p: Partial<PpiData>) => persister({ ...data, ...p });
   const upObjectif = (id: string, p: Partial<PpiObjectif>) =>
     up({ objectifs: data.objectifs.map((o) => o.id === id ? { ...o, ...p } : o) });

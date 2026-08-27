@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
+import { isoJour, lundiDe, jourPlanningInitial, anneeDe, toMin, minToHHMM } from "../dates";
 import { api, Creneau, Seance, Sequence, Eleve, MATIERES, couleurHex, couleurPourMatiere, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance } from "../api";
 import { Modal, Field, Input, Select, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
@@ -13,31 +14,9 @@ const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const JOURS7 = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const H_DEBUT = 8, H_FIN = 18, H_PX = 56;
 
-function lundiDe(d: Date): Date {
-  const x = new Date(d); const j = (x.getDay() + 6) % 7;
-  x.setDate(x.getDate() - j); x.setHours(0, 0, 0, 0); return x;
-}
-// Jour affiché à l'ouverture du planning : aujourd'hui, ou le lendemain
-// s'il est passé 18h, puis lundi si on tombe un week-end.
-function jourPlanningInitial(): Date {
-  const now = new Date();
-  const d = new Date(now); d.setHours(0, 0, 0, 0);
-  if (now.getHours() >= 18) d.setDate(d.getDate() + 1);
-  const jour = d.getDay(); // 0 = dimanche, 6 = samedi
-  if (jour === 6) d.setDate(d.getDate() + 2);
-  else if (jour === 0) d.setDate(d.getDate() + 1);
-  return d;
-}
-const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-// Année scolaire (sept→août) d'une date ISO donnée (≠ aujourd'hui).
-const anneeDe = (dateIso: string) => {
-  const d = new Date(dateIso); const y = d.getFullYear();
-  return d.getMonth() >= 7 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
-};
+const iso = isoJour;
 const fmtDateLongueFr = (dateIso: string) => new Date(dateIso).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const fmtJour = (d: Date) => d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
-const toMin = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
-const minToHHMM = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 
 interface DragState { id: string; dayIndex: number; startMin: number; durMin: number; grabOffMin: number; }
 

@@ -412,6 +412,45 @@ fn retirer_des_plans(c: &rusqlite::Connection, id: &str) -> R<()> {
     Ok(())
 }
 
+// ── Dossier de l'élève (documents) ───────────────────────────────────────
+// Synthèse GS, PPI, GEVA-Sco, progressions, dispositifs : un enregistrement
+// par élève et par type. La clé étrangère les efface avec l'élève.
+
+/// Contenu d'un document, ou `None` s'il n'a jamais été rempli.
+#[tauri::command]
+pub fn document_eleve_get(db: State<Db>, eleve_id: String, type_doc: String) -> R<Option<String>> {
+    let c = db.0.lock().map_err(e)?;
+    c.query_row("SELECT donnees FROM documents_eleve WHERE eleve_id=?1 AND type=?2",
+        params![eleve_id, type_doc], |r| r.get(0)).optional().map_err(e)
+}
+
+#[tauri::command]
+pub fn document_eleve_set(db: State<Db>, eleve_id: String, type_doc: String, donnees: String) -> R<()> {
+    let c = db.0.lock().map_err(e)?;
+    c.execute(
+        "INSERT INTO documents_eleve (id, eleve_id, type, donnees, date_maj) VALUES (?1,?2,?3,?4,?5)
+         ON CONFLICT(eleve_id, type) DO UPDATE SET donnees=excluded.donnees, date_maj=excluded.date_maj",
+        params![format!("{eleve_id}:{type_doc}"), eleve_id, type_doc, donnees, now_iso()],
+    ).map_err(e)?;
+    Ok(())
+}
+
+/// Documents existants : tous, ceux d'un élève, ou tous ceux d'un type.
+/// C'est ce qui permet de répondre à « quels élèves ont un PAP ? ».
+#[tauri::command]
+pub fn documents_eleve_list(db: State<Db>, eleve_id: Option<String>, type_doc: Option<String>) -> R<Vec<DocumentEleve>> {
+    let c = db.0.lock().map_err(e)?;
+    let (sql, p): (&str, Vec<&dyn rusqlite::ToSql>) = match (&eleve_id, &type_doc) {
+        (Some(id), Some(t)) => ("SELECT * FROM documents_eleve WHERE eleve_id=?1 AND type=?2", vec![id, t]),
+        (Some(id), None) => ("SELECT * FROM documents_eleve WHERE eleve_id=?1", vec![id]),
+        (None, Some(t)) => ("SELECT * FROM documents_eleve WHERE type=?1", vec![t]),
+        (None, None) => ("SELECT * FROM documents_eleve", vec![]),
+    };
+    let mut st = c.prepare(sql).map_err(e)?;
+    let rows = st.query_map(p.as_slice(), DocumentEleve::from_row).map_err(e)?;
+    rows.collect::<rusqlite::Result<_>>().map_err(e)
+}
+
 // ── Appel journalier ─────────────────────────────────────────────────────
 #[tauri::command]
 pub fn appels_list(db: State<Db>, date: Option<String>) -> R<Vec<AppelJournalier>> {
@@ -1447,7 +1486,7 @@ pub async fn vacances_scolaires(zone: String) -> R<Vec<VacancePeriode>> {
 // Tables exportées (les référentiels intégrés sont exclus : re-seedés).
 const TABLES_EXPORT: &[&str] = &[
     "projets", "sequences", "seances", "ateliers", "espaces", "atelier_espace",
-    "progressions_eleve", "creneaux", "eleves", "appels_journalier",
+    "progressions_eleve", "creneaux", "eleves", "documents_eleve", "appels_journalier",
     "commentaires_eleve", "evaluations", "notes_eleve", "pieces_jointes",
     "materiel_items", "papiers_eleve", "notes_competence", "progressions_annuelle",
     "programmations_finale", "edt_typique", "pilote_conversations",
@@ -1651,6 +1690,55 @@ mod tests_eleve {
     }
     fn compte(c: &Connection, sql: &str) -> i64 {
         c.query_row(sql, [], |r| r.get(0)).unwrap()
+    }
+
+    /// Les dossiers rangés jadis dans `settings` doivent rejoindre la table
+    /// au démarrage, sans perte, et sans traîner de clés orphelines.
+    #[test]
+    fn migration_des_documents_depuis_les_reglages() {
+        let c = Connection::open_in_memory().unwrap();
+        c.pragma_update(None, "foreign_keys", "ON").ok();
+        // La table `eleves` doit exister avant que la migration ne cherche
+        // à qui rattacher les documents.
+        crate::db::migrate(&c);
+        c.execute("INSERT INTO eleves (id, nom) VALUES ('e1','Apolline')", []).unwrap();
+        // Documents à l'ancienne, dont un appartenant à un élève disparu.
+        set(&c, "syntheseGS:e1", r#"{"a":1}"#);
+        set(&c, "dispositif:pap:e1", r#"{"b":2}"#);
+        set(&c, "gevasco:fantome", "{}");
+        set(&c, "anneeCourante", "2026-2027"); // réglage normal : à ne pas toucher
+
+        crate::db::migrer_documents_eleve(&c);
+
+        let lu = |t: &str| -> Option<String> {
+            c.query_row("SELECT donnees FROM documents_eleve WHERE eleve_id='e1' AND type=?1",
+                params![t], |r| r.get(0)).optional().unwrap()
+        };
+        assert_eq!(lu("syntheseGS").as_deref(), Some(r#"{"a":1}"#));
+        assert_eq!(lu("dispositif:pap").as_deref(), Some(r#"{"b":2}"#), "le type composé doit être conservé");
+        assert_eq!(compte(&c, "SELECT COUNT(*) FROM documents_eleve"), 2, "l'élève disparu ne doit rien créer");
+        // Les anciennes clés ont disparu, les réglages normaux sont intacts.
+        assert_eq!(compte(&c, "SELECT COUNT(*) FROM settings WHERE cle LIKE '%:e1'"), 0);
+        assert_eq!(compte(&c, "SELECT COUNT(*) FROM settings WHERE cle='gevasco:fantome'"), 0);
+        assert_eq!(compte(&c, "SELECT COUNT(*) FROM settings WHERE cle='anneeCourante'"), 1);
+
+        // Relancer ne casse rien.
+        crate::db::migrer_documents_eleve(&c);
+        assert_eq!(compte(&c, "SELECT COUNT(*) FROM documents_eleve"), 2);
+    }
+
+    /// La clé étrangère doit emporter les documents avec l'élève.
+    #[test]
+    fn suppression_emporte_les_documents() {
+        let mut c = base();
+        c.execute("INSERT INTO eleves (id, nom) VALUES ('e1','A'), ('e2','B')", []).unwrap();
+        for id in ["e1", "e2"] {
+            c.execute("INSERT INTO documents_eleve (id, eleve_id, type, donnees, date_maj)
+                       VALUES (?1, ?2, 'gevasco', '{}', '')", params![format!("{id}:gevasco"), id]).unwrap();
+        }
+        effacer_eleve(&mut c, "e1").unwrap();
+        assert_eq!(compte(&c, "SELECT COUNT(*) FROM documents_eleve WHERE eleve_id='e1'"), 0);
+        assert_eq!(compte(&c, "SELECT COUNT(*) FROM documents_eleve WHERE eleve_id='e2'"), 1);
     }
 
     /// Supprimer un élève doit vider tout son dossier : lignes liées,

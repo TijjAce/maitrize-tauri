@@ -1,5 +1,5 @@
 import React from "react";
-import { api, anneeScolaireActuelle } from "../api";
+import { api, anneeScolaireActuelle, type Eleve, type DocumentEleve } from "../api";
 import { Field, Input, Select, Empty, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { printHTML, escapeHtml } from "../print";
@@ -11,7 +11,7 @@ import { PpiTab } from "./Ppi";
 // schémas décrits dans data/dispositifs.ts : même saisie, même enregistrement,
 // même impression. Le PPI, plus riche (objectifs suivis, bilans, IA), garde
 // son écran dédié et s'ouvre depuis le même sélecteur.
-// Stockage par élève et par dispositif : clé `dispositif:{id}:{eleveId}`.
+// Un document par élève et par dispositif, type « dispositif:{id} ».
 
 type Valeurs = Record<string, any>;
 
@@ -19,6 +19,8 @@ const todayFr = () => new Date().toLocaleDateString("fr-FR");
 
 export function DispositifsTab() {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
+  // Dossiers déjà ouverts, tous élèves confondus.
+  const { data: documents, reload: rechargerDocs } = useAsync(() => api.documentsEleveList(), []);
   const [eleveId, setEleveId] = React.useState("");
   const [dispoId, setDispoId] = React.useState("pps");
   const [v, setV] = React.useState<Valeurs>({});
@@ -31,16 +33,17 @@ export function DispositifsTab() {
   React.useEffect(() => { if (!eleveId && eleves?.[0]) setEleveId(eleves[0].id); }, [eleves, eleveId]);
 
   const dispo = DISPOSITIFS.find((d) => d.id === dispoId);
-  const cle = `dispositif:${dispoId}:${eleveId}`;
+  // Un type de document par dispositif : « dispositif:pap », « dispositif:pai »…
+  const typeDoc = `dispositif:${dispoId}`;
 
   React.useEffect(() => {
     if (!eleveId || !dispo) return;
-    api.settingGet(cle).then((s) => {
+    api.documentEleveGet(eleveId, typeDoc).then((s) => {
       let charge: Valeurs = {};
       try { charge = s ? JSON.parse(s) : {}; } catch { charge = {}; }
       vRef.current = charge; setV(charge);
     });
-  }, [cle, eleveId, dispo]);
+  }, [typeDoc, eleveId, dispo]);
 
   // Référence à jour : deux saisies rapprochées doivent se composer.
   const vRef = React.useRef<Valeurs>({});
@@ -48,7 +51,7 @@ export function DispositifsTab() {
   const set = (id: string, valeur: any) => {
     const next = { ...vRef.current, [id]: valeur };
     vRef.current = next; setV(next);
-    if (eleveId) api.settingSet(cle, JSON.stringify(next));
+    if (eleveId) api.documentEleveSet(eleveId, typeDoc, JSON.stringify(next)).then(rechargerDocs);
   };
   const coche = (champId: string, item: number, col: number) => {
     const grille: Record<string, boolean> = { ...(vRef.current[champId] ?? {}) };
@@ -75,7 +78,7 @@ export function DispositifsTab() {
       if (c.id === "classe" && eleve?.niveau) auto[c.id] = eleve.niveau;
     }
     vRef.current = auto; setV(auto);
-    if (eleveId) api.settingSet(cle, JSON.stringify(auto));
+    if (eleveId) api.documentEleveSet(eleveId, typeDoc, JSON.stringify(auto));
     toast("Champs connus pré-remplis.", { icone: "✨" });
   };
 
@@ -162,6 +165,9 @@ export function DispositifsTab() {
           <button className="btn primary sm" onClick={imprimer}>🖨 Imprimer</button>
         </>}
       </div>
+
+      <VueDEnsemble eleves={eleves ?? []} documents={documents ?? []} eleveId={eleveId} dispoId={dispoId}
+        ouvrir={(eid, did) => { setEleveId(eid); setDispoId(did); }} />
 
       {dispoId === "ppi" ? <PpiTab /> : dispo && (
         <>
@@ -255,6 +261,61 @@ function ChampVue({ champ, valeur, onTexte, onCoche, onCellule }: {
               </div>
             ))}
           </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Qui a quel dispositif, d'un coup d'œil.
+ *
+ * Chaque dossier ouvert devient une pastille cliquable. Sans cette vue, il
+ * fallait parcourir les élèves un par un pour savoir lesquels ont un PAP —
+ * la question n'avait même pas de réponse tant que les dossiers vivaient en
+ * JSON dans les réglages.
+ */
+function VueDEnsemble({ eleves, documents, eleveId, dispoId, ouvrir }: {
+  eleves: Eleve[]; documents: DocumentEleve[]; eleveId: string; dispoId: string;
+  ouvrir: (eleveId: string, dispoId: string) => void;
+}) {
+  // « dispositif:pap » → « pap » ; « ppi » reste tel quel.
+  const parEleve = React.useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const d of documents) {
+      const id = d.typeDoc.startsWith("dispositif:") ? d.typeDoc.slice("dispositif:".length)
+        : d.typeDoc === "ppi" ? "ppi" : null;
+      if (!id) continue;
+      // Un dossier vide (ouvert puis abandonné) ne compte pas.
+      let rempli = false;
+      try { rempli = Object.values(JSON.parse(d.donnees || "{}")).some((v) => v !== "" && v != null); } catch { rempli = false; }
+      if (!rempli) continue;
+      m.set(d.eleveId, [...(m.get(d.eleveId) ?? []), id]);
+    }
+    return m;
+  }, [documents]);
+
+  const avecDossier = eleves.filter((e) => (parEleve.get(e.id) ?? []).length > 0);
+  const nom = (id: string) => DISPOSITIFS.find((d) => d.id === id)?.nom ?? id.toUpperCase();
+
+  if (avecDossier.length === 0) return null;
+  return (
+    <div className="card" style={{ marginBottom: 12, padding: "8px 10px" }}>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ fontSize: 12, color: "var(--text-2)" }}>Dossiers en cours :</span>
+        {avecDossier.map((e) => (
+          <span key={e.id} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
+            <b style={{ opacity: e.id === eleveId ? 1 : 0.75 }}>{e.nom.split(" ")[0]}</b>
+            {(parEleve.get(e.id) ?? []).map((d) => (
+              <button key={d} onClick={() => ouvrir(e.id, d)} title={`Ouvrir le ${nom(d)} de ${e.nom}`}
+                style={{ fontSize: 11, padding: "2px 7px", borderRadius: 999, cursor: "pointer",
+                  border: "1px solid " + (e.id === eleveId && d === dispoId ? "var(--accent)" : "var(--border)"),
+                  background: e.id === eleveId && d === dispoId ? "var(--accent-soft)" : "var(--panel-2)",
+                  color: "inherit", font: "inherit", lineHeight: 1.5 }}>
+                {nom(d)}
+              </button>
+            ))}
+          </span>
         ))}
       </div>
     </div>

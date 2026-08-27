@@ -9,7 +9,8 @@ export const raccourci = (touche: string) => (isMac ? `⌘${touche}` : `Ctrl+${t
 export const newId = () => crypto.randomUUID();
 export const nowIso = () => new Date().toISOString();
 
-// ── Année scolaire courante (sept→août) ──────────────────────────────
+// ── Année scolaire courante ──────────────────────────────────────────
+// Bascule au 1er août : en août on prépare la rentrée, pas l'année écoulée.
 export function anneeScolaireActuelle(): string {
   const d = new Date();
   const y = d.getFullYear();
@@ -131,6 +132,10 @@ export interface DocumentCoffre {
 export interface ChatMessage { role: "system" | "user" | "assistant"; content: string; }
 export interface ResultatRecherche { kind: string; id: string; titre: string; sousTitre: string; }
 export interface VacancePeriode { description: string; debut: string; fin: string; }
+/** Un document du dossier d'un élève (synthèse GS, PPI, GEVA-Sco, dispositif…). */
+export interface DocumentEleve {
+  id: string; eleveId: string; typeDoc: string; donnees: string; dateMaj: string;
+}
 /** Copie quotidienne automatique de la base. */
 export interface SauvegardeAuto { nom: string; jour: string; octets: number }
 
@@ -318,6 +323,14 @@ export const api = {
 
   // Recherche
   recherche: (q: string) => invoke<ResultatRecherche[]>("recherche", { q }),
+
+  // Dossier de l'élève (synthèse GS, PPI, GEVA-Sco, progressions, dispositifs)
+  documentEleveGet: (eleveId: string, typeDoc: string) =>
+    invoke<string | null>("document_eleve_get", { eleveId, typeDoc }),
+  documentEleveSet: (eleveId: string, typeDoc: string, donnees: string) =>
+    invoke<void>("document_eleve_set", { eleveId, typeDoc, donnees }),
+  documentsEleveList: (eleveId?: string, typeDoc?: string) =>
+    invoke<DocumentEleve[]>("documents_eleve_list", { eleveId: eleveId ?? null, typeDoc: typeDoc ?? null }),
 
   // Export / Import (sauvegarde)
   exportData: () => invoke<string>("export_data"),

@@ -52,6 +52,7 @@ pub fn run() {
             creneaux_list, creneau_save, creneau_delete,
             // Élèves / appel / commentaires
             eleves_list, eleve_save, eleve_delete,
+            document_eleve_get, document_eleve_set, documents_eleve_list,
             appels_list, appel_save, appel_delete,
             commentaires_list, commentaire_save, commentaire_delete,
             // Évaluations / notes

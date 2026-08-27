@@ -55,12 +55,12 @@ export function ProgressionsTab() {
 
   React.useEffect(() => {
     if (!eleveId) return;
-    api.settingGet(`progressions:${eleveId}`).then((v) => {
+    api.documentEleveGet(eleveId, "progressions").then((v) => {
       try { setProgs(v ? JSON.parse(v) : []); } catch { setProgs([]); }
     });
   }, [eleveId]);
 
-  const persister = (p: Progression[]) => { setProgs(p); if (eleveId) api.settingSet(`progressions:${eleveId}`, JSON.stringify(p)); };
+  const persister = (p: Progression[]) => { setProgs(p); if (eleveId) api.documentEleveSet(eleveId, "progressions", JSON.stringify(p)); };
   const upProg = (id: string, patch: Partial<Progression>) => persister(progs.map((p) => p.id === id ? { ...p, ...patch } : p));
   const upEtape = (pid: string, eid: string, patch: Partial<Etape>) =>
     upProg(pid, { etapes: progs.find((p) => p.id === pid)!.etapes.map((e) => e.id === eid ? { ...e, ...patch } : e) });
@@ -91,14 +91,14 @@ export function ProgressionsTab() {
   // en IME on réutilise souvent la même trame pour plusieurs jeunes.
   const copierVers = async (p: Progression, cibles: string[]) => {
     for (const id of cibles) {
-      const brut = await api.settingGet(`progressions:${id}`);
+      const brut = await api.documentEleveGet(id, "progressions");
       let liste: Progression[] = [];
       try { liste = brut ? JSON.parse(brut) : []; } catch { liste = []; }
       liste.push({
         id: newId(), domaine: p.domaine, titre: p.titre,
         etapes: p.etapes.map((e) => ({ id: newId(), intitule: e.intitule, statut: "nonabordee", date: "", notes: "" })),
       });
-      await api.settingSet(`progressions:${id}`, JSON.stringify(liste));
+      await api.documentEleveSet(id, "progressions", JSON.stringify(liste));
     }
     toast(`Progression copiée vers ${cibles.length} élève${cibles.length > 1 ? "s" : ""}.`, { icone: "✅" });
     setCopier(null);

@@ -288,7 +288,7 @@ export function GevaScoTab() {
 
   React.useEffect(() => {
     if (!eleveId) return;
-    api.settingGet(`gevasco:${eleveId}`).then((v) => {
+    api.documentEleveGet(eleveId, "gevasco").then((v) => {
       let charge = VIDE;
       try { charge = v ? { ...VIDE, ...JSON.parse(v) } : VIDE; } catch { charge = VIDE; }
       dRef.current = charge; setD(charge);
@@ -302,7 +302,7 @@ export function GevaScoTab() {
   const persister = (next: GevaData) => {
     dRef.current = next;
     setD(next);
-    if (eleveId) api.settingSet(`gevasco:${eleveId}`, JSON.stringify(next));
+    if (eleveId) api.documentEleveSet(eleveId, "gevasco", JSON.stringify(next));
   };
   const up = (p: Partial<GevaData>) => persister({ ...dRef.current, ...p });
   const upAct = (id: string, p: Partial<Activite>) => {
