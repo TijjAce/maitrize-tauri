@@ -47,6 +47,7 @@ pub fn run() {
             ateliers_list, atelier_save, atelier_delete,
             espaces_list, espace_save, espace_delete,
             atelier_espace_list, atelier_espace_set,
+            jeux_list, jeu_save, jeu_delete,
             progressions_eleve_list, progression_eleve_save, progression_eleve_delete,
             // Planning
             creneaux_list, creneau_save, creneau_delete,

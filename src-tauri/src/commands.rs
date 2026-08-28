@@ -178,6 +178,38 @@ pub fn espace_delete(db: State<Db>, id: String) -> R<()> {
     Ok(())
 }
 
+// ── Jeux (ludothèque de la classe) ───────────────────────────────────────
+
+#[tauri::command]
+pub fn jeux_list(db: State<Db>) -> R<Vec<Jeu>> {
+    let c = db.0.lock().map_err(e)?;
+    let mut st = c.prepare("SELECT * FROM jeux ORDER BY titre").map_err(e)?;
+    let rows = st.query_map([], Jeu::from_row).map_err(e)?;
+    rows.collect::<rusqlite::Result<_>>().map_err(e)
+}
+
+#[tauri::command]
+pub fn jeu_save(db: State<Db>, jeu: Jeu) -> R<Jeu> {
+    let c = db.0.lock().map_err(e)?;
+    c.execute(
+        "INSERT OR REPLACE INTO jeux
+         (id,titre,type_jeu,description_jeu,regles,competences,nb_joueurs_min,nb_joueurs_max,
+          duree,age_min,rangement,couleur,date_creation,image_nom,dossier)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)",
+        params![jeu.id, jeu.titre, jeu.type_jeu, jeu.description_jeu, jeu.regles, jeu.competences,
+                jeu.nb_joueurs_min, jeu.nb_joueurs_max, jeu.duree, jeu.age_min, jeu.rangement,
+                jeu.couleur, jeu.date_creation, jeu.image_nom, jeu.dossier],
+    ).map_err(e)?;
+    Ok(jeu)
+}
+
+#[tauri::command]
+pub fn jeu_delete(db: State<Db>, id: String) -> R<()> {
+    let c = db.0.lock().map_err(e)?;
+    c.execute("DELETE FROM jeux WHERE id=?1", params![id]).map_err(e)?;
+    Ok(())
+}
+
 /// Liaisons atelier↔espace (paires). Renvoie [[atelierId, espaceId], …].
 #[tauri::command]
 pub fn atelier_espace_list(db: State<Db>) -> R<Vec<(String, String)>> {
@@ -1485,7 +1517,7 @@ pub async fn vacances_scolaires(zone: String) -> R<Vec<VacancePeriode>> {
 
 // Tables exportées (les référentiels intégrés sont exclus : re-seedés).
 const TABLES_EXPORT: &[&str] = &[
-    "projets", "sequences", "seances", "ateliers", "espaces", "atelier_espace",
+    "projets", "sequences", "seances", "ateliers", "espaces", "atelier_espace", "jeux",
     "progressions_eleve", "creneaux", "eleves", "documents_eleve", "appels_journalier",
     "commentaires_eleve", "evaluations", "notes_eleve", "pieces_jointes",
     "materiel_items", "papiers_eleve", "notes_competence", "progressions_annuelle",

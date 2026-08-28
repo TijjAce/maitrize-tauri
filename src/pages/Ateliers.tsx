@@ -1,30 +1,54 @@
 import React from "react";
 import { Page } from "../App";
 import {
-  api, Atelier, Espace, Eleve, ProgressionEleve, nouvelAtelier, nouvelEspace,
-  MATIERES, couleurHex, couleurPourMatiere, newId,
+  api, Atelier, Espace, Jeu, Eleve, ProgressionEleve, nouvelAtelier, nouvelEspace, nouveauJeu,
+  MATIERES, TYPES_JEU, couleurHex, couleurPourMatiere, newId,
 } from "../api";
-import { Modal, Field, Input, Textarea, Select, Empty, ColorPicker, Confirm, useAsync, useSegmentNav } from "../components/ui";
+import { Modal, Field, Input, Textarea, Select, Empty, ColorPicker, Confirm, useAsync, useSegmentNav, useOngletDemande } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
 import { FichierImg } from "../components/Deroulement";
 import { fileToBase64 } from "../components/SeanceParts";
 
-const ATELIERS_TABS = ["ateliers", "espaces"] as const;
+/**
+ * Un jeu passe-t-il les filtres de la ludothèque ?
+ *
+ * `joueurs` désigne un effectif réel à la table : le jeu est retenu s'il
+ * l'accepte, c'est-à-dire si l'effectif tombe dans son intervalle. Un
+ * critère vide ne filtre rien.
+ */
+export function jeuAccepte(j: Jeu, f: { typeJeu?: string; joueurs?: string; dossier?: string }): boolean {
+  if (f.dossier && j.dossier !== f.dossier) return false;
+  if (f.typeJeu && j.typeJeu !== f.typeJeu) return false;
+  if (f.joueurs) {
+    const n = Number(f.joueurs);
+    if (!Number.isFinite(n) || n < j.nbJoueursMin || n > j.nbJoueursMax) return false;
+  }
+  return true;
+}
+
+const ATELIERS_TABS = ["ateliers", "espaces", "jeux"] as const;
 export default function Ateliers() {
   const [onglet, setOnglet] = React.useState<typeof ATELIERS_TABS[number]>("ateliers");
   useSegmentNav(ATELIERS_TABS, onglet, setOnglet);
+  useOngletDemande("ateliers", ATELIERS_TABS, setOnglet);
   const { data: ateliers, reload: rA } = useAsync(() => api.ateliersList(), []);
   const { data: espaces, reload: rE } = useAsync(() => api.espacesList(), []);
   const { data: liens, reload: rL } = useAsync(() => api.atelierEspaceList(), []);
+  const { data: jeux, reload: rJ } = useAsync(() => api.jeuxList(), []);
   const [editA, setEditA] = React.useState<Atelier | null>(null);
   const [editE, setEditE] = React.useState<Espace | null>(null);
   const [delA, setDelA] = React.useState<Atelier | null>(null);
   const [delE, setDelE] = React.useState<Espace | null>(null);
   const [suivi, setSuivi] = React.useState<Espace | null>(null);
+  const [editJ, setEditJ] = React.useState<Jeu | null>(null);
+  const [delJ, setDelJ] = React.useState<Jeu | null>(null);
   const [dossier, setDossier] = React.useState("");
+  // Filtre propre aux jeux : on cherche d'abord « à combien » et « quel type ».
+  const [typeJeu, setTypeJeu] = React.useState("");
+  const [joueurs, setJoueurs] = React.useState("");
 
   const dossiers = (liste: { dossier: string }[]) => Array.from(new Set(liste.map((x) => x.dossier).filter(Boolean)));
-  const courant = onglet === "ateliers" ? (ateliers ?? []) : (espaces ?? []);
+  const courant = onglet === "ateliers" ? (ateliers ?? []) : onglet === "espaces" ? (espaces ?? []) : (jeux ?? []);
   const dossiersDispo = dossiers(courant);
   const filtrer = <T extends { dossier: string }>(l: T[]) => dossier ? l.filter((x) => x.dossier === dossier) : l;
 
@@ -32,13 +56,27 @@ export default function Ateliers() {
     <Page titre="Ateliers & Espaces" sous="Activités en autonomie et stations de classe"
       actions={onglet === "ateliers"
         ? <button className="btn primary" onClick={() => setEditA(nouvelAtelier())}>+ Atelier</button>
-        : <button className="btn primary" onClick={() => setEditE(nouvelEspace())}>+ Espace</button>}>
+        : onglet === "espaces"
+        ? <button className="btn primary" onClick={() => setEditE(nouvelEspace())}>+ Espace</button>
+        : <button className="btn primary" onClick={() => setEditJ(nouveauJeu())}>+ Jeu</button>}>
       <div className="toolbar">
         <div className="seg">
           <button className={onglet === "ateliers" ? "active" : ""} onClick={() => { setOnglet("ateliers"); setDossier(""); }}>Ateliers ({ateliers?.length ?? 0})</button>
           <button className={onglet === "espaces" ? "active" : ""} onClick={() => { setOnglet("espaces"); setDossier(""); }}>Espaces ({espaces?.length ?? 0})</button>
+          <button className={onglet === "jeux" ? "active" : ""} onClick={() => { setOnglet("jeux"); setDossier(""); }}>Jeux ({jeux?.length ?? 0})</button>
         </div>
         <div className="spacer" />
+        {onglet === "jeux" && (jeux?.length ?? 0) > 0 && <>
+          <Select value={joueurs} onChange={(e) => setJoueurs(e.target.value)} style={{ maxWidth: 150 }}
+            title="Jeux jouables à ce nombre de joueurs">
+            <option value="">Tous les effectifs</option>
+            {[1, 2, 3, 4, 5, 6, 8].map((n) => <option key={n} value={n}>À {n} joueur{n > 1 ? "s" : ""}</option>)}
+          </Select>
+          <Select value={typeJeu} onChange={(e) => setTypeJeu(e.target.value)} style={{ maxWidth: 160 }}>
+            <option value="">Tous les types</option>
+            {Array.from(new Set((jeux ?? []).map((j) => j.typeJeu).filter(Boolean))).map((ty) => <option key={ty}>{ty}</option>)}
+          </Select>
+        </>}
         {dossiersDispo.length > 0 && (
           <Select value={dossier} onChange={(e) => setDossier(e.target.value)} style={{ maxWidth: 180 }}>
             <option value="">Tous les dossiers</option>
@@ -47,7 +85,7 @@ export default function Ateliers() {
         )}
       </div>
 
-      {onglet === "ateliers" ? (
+      {onglet === "ateliers" && (
         (ateliers?.length ?? 0) === 0 ? <Empty icone="🧩" titre="Aucun atelier" /> :
         <div className="grid cols">
           {filtrer(ateliers!).map((a) => (
@@ -74,7 +112,9 @@ export default function Ateliers() {
             </div>
           ))}
         </div>
-      ) : (
+      )}
+
+      {onglet === "espaces" && (
         (espaces?.length ?? 0) === 0 ? <Empty icone="🪑" titre="Aucun espace" /> :
         <div className="grid cols">
           {filtrer(espaces!).map((e) => {
@@ -105,12 +145,56 @@ export default function Ateliers() {
         </div>
       )}
 
+      {onglet === "jeux" && (
+        (jeux?.length ?? 0) === 0
+          ? <Empty icone="🎲" titre="Aucun jeu"
+              sous="Recensez les jeux de la classe : à combien on y joue, combien de temps, ce qu'ils travaillent et où ils sont rangés." />
+          : (() => {
+            const liste = jeux!.filter((j) => jeuAccepte(j, { typeJeu, joueurs, dossier }));
+            if (liste.length === 0) {
+              return <Empty icone="🔍" titre="Aucun jeu ne correspond"
+                sous="Élargissez le nombre de joueurs ou le type." />;
+            }
+            return (
+              <div className="grid cols">
+                {liste.map((j) => (
+                  <div key={j.id} className="card" style={{ borderTop: `3px solid ${couleurHex[j.couleur]}`, cursor: "pointer" }}
+                    onClick={() => setEditJ(j)}
+                    onContextMenu={(ev) => openCtx(ev, [
+                      { label: "Ouvrir", icon: "📂", onClick: () => setEditJ(j) },
+                      { label: "Dupliquer", icon: "📑", onClick: () => api.jeuSave({ ...j, id: newId(), titre: j.titre + " (copie)" }).then(rJ) },
+                      { label: "Supprimer", icon: "🗑", danger: true, sep: true, onClick: () => setDelJ(j) },
+                    ])}>
+                    {j.imageNom && <FichierImg nom={j.imageNom} style={{ width: "100%", height: 110, objectFit: "cover", marginBottom: 8 }} />}
+                    <div style={{ display: "flex", alignItems: "start" }}>
+                      <div style={{ fontWeight: 700, flex: 1 }}>{j.titre}</div>
+                      <button className="btn ghost sm" onClick={(ev) => { ev.stopPropagation(); setEditJ(j); }} aria-label="Modifier">✏️</button>
+                      <button className="btn ghost sm" onClick={(ev) => { ev.stopPropagation(); setDelJ(j); }} aria-label="Supprimer">🗑</button>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                      {j.typeJeu && <span className="chip">{j.typeJeu}</span>}
+                      <span className="chip">👥 {j.nbJoueursMin === j.nbJoueursMax ? j.nbJoueursMin : `${j.nbJoueursMin}–${j.nbJoueursMax}`}</span>
+                      <span className="chip">⏱ {j.duree} min</span>
+                      <span className="chip">🎂 {j.ageMin} ans et +</span>
+                      {j.dossier && <span className="chip">📁 {j.dossier}</span>}
+                    </div>
+                    {j.competences && <div style={{ fontSize: 13, color: "var(--text-2)", marginTop: 8 }}>🎯 {j.competences.slice(0, 90)}</div>}
+                    {j.rangement && <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 6 }}>📦 {j.rangement}</div>}
+                  </div>
+                ))}
+              </div>
+            );
+          })()
+      )}
+
       {editA && <AtelierForm a={editA} onClose={() => setEditA(null)} onSaved={() => { setEditA(null); rA(); }} />}
       {editE && <EspaceForm e={editE} ateliers={ateliers ?? []} liens={liens ?? []}
         onClose={() => setEditE(null)} onSaved={() => { setEditE(null); rE(); rL(); }} />}
       {suivi && <SuiviEspace espace={suivi} onClose={() => setSuivi(null)} />}
       {delA && <Confirm message={`Supprimer l'atelier « ${delA.titre} » ?`} onYes={() => api.atelierDelete(delA.id).then(rA)} onClose={() => setDelA(null)} />}
       {delE && <Confirm message={`Supprimer l'espace « ${delE.titre} » ?`} onYes={() => api.espaceDelete(delE.id).then(rE)} onClose={() => setDelE(null)} />}
+      {editJ && <JeuForm j={editJ} onClose={() => setEditJ(null)} onSaved={() => { setEditJ(null); rJ(); }} />}
+      {delJ && <Confirm message={`Supprimer le jeu « ${delJ.titre} » ?`} onYes={() => api.jeuDelete(delJ.id).then(rJ)} onClose={() => setDelJ(null)} />}
     </Page>
   );
 }
@@ -142,6 +226,57 @@ function AtelierForm({ a, onClose, onSaved }: { a: Atelier; onClose: () => void;
       </div>
       <div className="row">
         <Field label="Dossier (optionnel)"><Input value={v.dossier} placeholder="ex. Mathématiques" onChange={(e) => up({ dossier: e.target.value })} /></Field>
+        <Field label="Couleur"><ColorPicker value={v.couleur} onChange={(c) => up({ couleur: c })} /></Field>
+      </div>
+    </Modal>
+  );
+}
+
+function JeuForm({ j, onClose, onSaved }: { j: Jeu; onClose: () => void; onSaved: () => void }) {
+  const [v, setV] = React.useState<Jeu>(j);
+  const up = (p: Partial<Jeu>) => setV({ ...v, ...p });
+  // Le maximum ne peut pas passer sous le minimum, et inversement : sinon le
+  // jeu n'apparaît sous aucun effectif dans le filtre.
+  const setMin = (n: number) => up({ nbJoueursMin: n, nbJoueursMax: Math.max(n, v.nbJoueursMax) });
+  const setMax = (n: number) => up({ nbJoueursMax: n, nbJoueursMin: Math.min(n, v.nbJoueursMin) });
+
+  return (
+    <Modal titre={j.titre ? "Modifier le jeu" : "Nouveau jeu"} onClose={onClose}
+      footer={<><button className="btn" onClick={onClose}>Annuler</button>
+        <button className="btn primary" disabled={!v.titre.trim()} onClick={() => api.jeuSave(v).then(onSaved)}>Enregistrer</button></>}>
+      <Field label="Nom du jeu"><Input autoFocus value={v.titre} onChange={(e) => up({ titre: e.target.value })} /></Field>
+      <div className="row">
+        <Field label="Type"><Select value={v.typeJeu} onChange={(e) => up({ typeJeu: e.target.value })}>
+          {TYPES_JEU.map((ty) => <option key={ty}>{ty}</option>)}</Select></Field>
+        <Field label="Joueurs (min)"><Input type="number" min={1} value={v.nbJoueursMin} onChange={(e) => setMin(+e.target.value)} /></Field>
+        <Field label="Joueurs (max)"><Input type="number" min={1} value={v.nbJoueursMax} onChange={(e) => setMax(+e.target.value)} /></Field>
+      </div>
+      <div className="row">
+        <Field label="Durée (min)"><Input type="number" value={v.duree} onChange={(e) => up({ duree: +e.target.value })} /></Field>
+        <Field label="Âge minimum"><Input type="number" value={v.ageMin} onChange={(e) => up({ ageMin: +e.target.value })} /></Field>
+        <Field label="Rangement"><Input value={v.rangement} placeholder="ex. Armoire du fond, bac 3" onChange={(e) => up({ rangement: e.target.value })} /></Field>
+      </div>
+      <Field label="Ce que le jeu travaille">
+        <Textarea value={v.competences} placeholder="Attendre son tour, dénombrer jusqu'à 10, langage oral…"
+          onChange={(e) => up({ competences: e.target.value })} />
+      </Field>
+      <Field label="Description"><Textarea value={v.descriptionJeu} onChange={(e) => up({ descriptionJeu: e.target.value })} /></Field>
+      <Field label="Règle du jeu / variantes">
+        <Textarea value={v.regles} placeholder="Règle simplifiée, adaptations pour certains élèves…"
+          onChange={(e) => up({ regles: e.target.value })} />
+      </Field>
+      <div className="field">
+        <label>Vignette (photo de la boîte)</label>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          {v.imageNom
+            ? <FichierImg nom={v.imageNom} style={{ width: 96, height: 72, objectFit: "cover", border: "1px solid var(--border)" }} />
+            : <div style={{ width: 96, height: 72, borderRadius: 8, background: "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>🎲</div>}
+          <VignetteUpload onUploaded={(nom) => up({ imageNom: nom })} />
+          {v.imageNom && <button className="btn ghost sm" onClick={() => up({ imageNom: null })}>Retirer</button>}
+        </div>
+      </div>
+      <div className="row">
+        <Field label="Dossier (optionnel)"><Input value={v.dossier} placeholder="ex. Jeux de langage" onChange={(e) => up({ dossier: e.target.value })} /></Field>
         <Field label="Couleur"><ColorPicker value={v.couleur} onChange={(c) => up({ couleur: c })} /></Field>
       </div>
     </Modal>

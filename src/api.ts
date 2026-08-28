@@ -58,6 +58,14 @@ export interface Espace {
   couleur: string; dateCreation: string; imageNom: string | null; dossier: string;
 }
 
+/** Un jeu de la ludothèque de classe. */
+export interface Jeu {
+  id: string; titre: string; typeJeu: string; descriptionJeu: string; regles: string;
+  competences: string; nbJoueursMin: number; nbJoueursMax: number; duree: number;
+  ageMin: number; rangement: string; couleur: string; dateCreation: string;
+  imageNom: string | null; dossier: string;
+}
+
 export interface ProgressionEleve {
   id: string; nomEleve: string; eleveId: string | null; fait: boolean; espaceId: string | null;
 }
@@ -170,6 +178,12 @@ export const nouvelEspace = (): Espace => ({
   dateCreation: nowIso(), imageNom: null, dossier: "",
 });
 
+export const nouveauJeu = (): Jeu => ({
+  id: newId(), titre: "", typeJeu: TYPES_JEU[0], descriptionJeu: "", regles: "", competences: "",
+  nbJoueursMin: 2, nbJoueursMax: 4, duree: 20, ageMin: 3, rangement: "",
+  couleur: "purple", dateCreation: nowIso(), imageNom: null, dossier: "",
+});
+
 export const nouvelEleve = (niveau = ""): Eleve => ({
   id: newId(), nom: "", niveau, present: true, ine: "", dateNaissance: "", photoFichier: null,
 });
@@ -213,6 +227,11 @@ export const api = {
   progressionEleveSave: (progression: ProgressionEleve) =>
     invoke<ProgressionEleve>("progression_eleve_save", { progression }),
   progressionEleveDelete: (id: string) => invoke<void>("progression_eleve_delete", { id }),
+
+  // Jeux
+  jeuxList: () => invoke<Jeu[]>("jeux_list"),
+  jeuSave: (jeu: Jeu) => invoke<Jeu>("jeu_save", { jeu }),
+  jeuDelete: (id: string) => invoke<void>("jeu_delete", { id }),
 
   // Planning
   creneauxList: (debut?: string, fin?: string) =>
@@ -457,6 +476,12 @@ export const MATIERES = [
   "Structurer sa pensée", "Explorer le monde", "Accueil", "Rituel", "Récréation",
   "Pause méridienne", "APC", "Temps calme", "Autre",
 ];
+/** Familles de jeux, pour filtrer la ludothèque. */
+export const TYPES_JEU = [
+  "Société", "Coopératif", "Cartes", "Plateau", "Construction",
+  "Symbolique", "Motricité", "Sensoriel", "Numérique", "Fabrication maison",
+];
+
 export const COULEURS = ["blue", "indigo", "purple", "teal", "green", "orange", "red", "pink", "gray"];
 
 // Modèles Mistral proposés (du plus puissant au plus rapide/économe).
