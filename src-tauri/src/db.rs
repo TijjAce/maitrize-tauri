@@ -223,6 +223,27 @@ pub(crate) fn migrate(conn: &Connection) {
             dossier TEXT NOT NULL DEFAULT ''
         );
 
+        -- Jeux de la classe : ludothèque. Comme les ateliers, mais avec ce
+        -- qu'on cherche quand on choisit un jeu — nombre de joueurs, durée,
+        -- âge, et surtout où il est rangé.
+        CREATE TABLE IF NOT EXISTS jeux (
+            id TEXT PRIMARY KEY,
+            titre TEXT NOT NULL DEFAULT '',
+            type_jeu TEXT NOT NULL DEFAULT '',
+            description_jeu TEXT NOT NULL DEFAULT '',
+            regles TEXT NOT NULL DEFAULT '',
+            competences TEXT NOT NULL DEFAULT '',
+            nb_joueurs_min INTEGER NOT NULL DEFAULT 2,
+            nb_joueurs_max INTEGER NOT NULL DEFAULT 4,
+            duree INTEGER NOT NULL DEFAULT 20,
+            age_min INTEGER NOT NULL DEFAULT 3,
+            rangement TEXT NOT NULL DEFAULT '',
+            couleur TEXT NOT NULL DEFAULT 'purple',
+            date_creation TEXT NOT NULL,
+            image_nom TEXT,
+            dossier TEXT NOT NULL DEFAULT ''
+        );
+
         CREATE TABLE IF NOT EXISTS atelier_espace (
             atelier_id TEXT NOT NULL REFERENCES ateliers(id) ON DELETE CASCADE,
             espace_id TEXT NOT NULL REFERENCES espaces(id) ON DELETE CASCADE,

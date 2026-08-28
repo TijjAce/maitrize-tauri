@@ -305,6 +305,69 @@ impl Espace {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct Jeu {
+    #[serde(default = "new_id")]
+    pub id: String,
+    #[serde(default)]
+    pub titre: String,
+    #[serde(default)]
+    pub type_jeu: String,
+    #[serde(default)]
+    pub description_jeu: String,
+    #[serde(default)]
+    pub regles: String,
+    #[serde(default)]
+    pub competences: String,
+    #[serde(default = "deux")]
+    pub nb_joueurs_min: i64,
+    #[serde(default = "quatre")]
+    pub nb_joueurs_max: i64,
+    #[serde(default = "vingt_min")]
+    pub duree: i64,
+    #[serde(default = "trois")]
+    pub age_min: i64,
+    /// Où le jeu est rangé — la question posée en premier quand on le cherche.
+    #[serde(default)]
+    pub rangement: String,
+    #[serde(default = "default_purple")]
+    pub couleur: String,
+    #[serde(default = "now_iso")]
+    pub date_creation: String,
+    #[serde(default)]
+    pub image_nom: Option<String>,
+    #[serde(default)]
+    pub dossier: String,
+}
+fn deux() -> i64 { 2 }
+fn quatre() -> i64 { 4 }
+fn vingt_min() -> i64 { 20 }
+fn trois() -> i64 { 3 }
+fn default_purple() -> String { "purple".into() }
+
+impl Jeu {
+    pub fn from_row(r: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: r.get("id")?,
+            titre: r.get("titre")?,
+            type_jeu: r.get("type_jeu")?,
+            description_jeu: r.get("description_jeu")?,
+            regles: r.get("regles")?,
+            competences: r.get("competences")?,
+            nb_joueurs_min: r.get("nb_joueurs_min")?,
+            nb_joueurs_max: r.get("nb_joueurs_max")?,
+            duree: r.get("duree")?,
+            age_min: r.get("age_min")?,
+            rangement: r.get("rangement")?,
+            couleur: r.get("couleur")?,
+            date_creation: r.get("date_creation")?,
+            image_nom: r.get("image_nom")?,
+            dossier: r.get("dossier")?,
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ProgressionEleve {
     #[serde(default = "new_id")]
     pub id: String,
