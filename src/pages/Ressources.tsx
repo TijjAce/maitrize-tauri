@@ -22,6 +22,8 @@ const COULEUR_CAT: Record<string, string> = {
   "Évaluation": "orange", "Inclusion": "pink", "Numérique": "red", "Langues vivantes": "brown",
   "Gestion & direction": "blue", "Formation & accompagnement": "purple",
   "Ressources pédagogiques": "green", "Évaluation & compétences": "orange",
+  "École inclusive & ASH": "pink", "Textes de référence": "brown",
+  "Vie scolaire & orientation": "cyan",
 };
 const teinteCat = (cat: string) => couleurHex[COULEUR_CAT[cat] ?? "gray"] ?? couleurHex.gray;
 
@@ -165,10 +167,26 @@ function Documents() {
 
 function Outils() {
   const items = outils as Outil[];
+  const [cat, setCat] = React.useState("");
+  const [q, setQ] = React.useState("");
+  const rubriques = Array.from(new Set(items.map((o) => o.categorie)));
+  const filtres = items.filter((o) =>
+    (!cat || o.categorie === cat) &&
+    (!q || (o.titre + " " + o.description).toLowerCase().includes(q.toLowerCase())));
   const groupes: Record<string, Outil[]> = {};
-  for (const o of items) (groupes[o.categorie] ??= []).push(o);
+  for (const o of filtres) (groupes[o.categorie] ??= []).push(o);
   return (
     <>
+      <div className="toolbar">
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher un outil…" style={{ maxWidth: 260 }} />
+        <Select value={cat} onChange={(e) => setCat(e.target.value)} style={{ maxWidth: 220 }}>
+          <option value="">Toutes les rubriques ({items.length})</option>
+          {rubriques.map((r) => <option key={r} value={r}>{r} ({items.filter((o) => o.categorie === r).length})</option>)}
+        </Select>
+        <div className="spacer" />
+        <span style={{ fontSize: 12, color: "var(--text-2)" }}>{filtres.length} outil(s)</span>
+      </div>
+      {filtres.length === 0 && <Empty icone="🔍" titre="Aucun outil ne correspond" sous="Essayez un autre mot ou une autre rubrique." />}
       {Object.entries(groupes).map(([cat, list]) => {
         const teinte = teinteCat(cat);
         return (

@@ -1,45 +1,111 @@
 [
   {
-    "titre": "ONDE",
-    "description": "Base élèves du premier degré : effectifs, répartitions, admissions.",
-    "categorie": "Gestion & direction",
-    "url": "https://onde.education.gouv.fr"
+    "titre": "ARASAAC",
+    "categorie": "École inclusive & ASH",
+    "description": "Banque libre de pictogrammes pour la communication alternative.",
+    "url": "https://arasaac.org"
   },
   {
-    "titre": "apps.education.fr",
-    "description": "Services numériques de l'État : nuage, visioconférence, blogs, mails.",
-    "categorie": "Gestion & direction",
-    "url": "https://apps.education.fr"
+    "titre": "Autisme en ligne",
+    "categorie": "École inclusive & ASH",
+    "description": "Formations et fiches pratiques sur l'accompagnement des élèves autistes.",
+    "url": "https://www.autisme-en-ligne.eu"
   },
   {
-    "titre": "Tribu",
-    "description": "Espaces collaboratifs sécurisés pour partager documents et projets d'équipe.",
-    "categorie": "Gestion & direction",
-    "url": "https://tribu.phm.education.gouv.fr"
-  },
-  {
-    "titre": "m@gistère",
-    "description": "Plateforme de formation continue en ligne des enseignants.",
-    "categorie": "Formation & accompagnement",
-    "url": "https://magistere.education.fr"
-  },
-  {
-    "titre": "Réseau Canopé",
-    "description": "Formations, ressources et services pour la communauté éducative.",
-    "categorie": "Formation & accompagnement",
-    "url": "https://www.reseau-canope.fr"
+    "titre": "CNSA",
+    "categorie": "École inclusive & ASH",
+    "description": "Caisse nationale de solidarité pour l'autonomie : formulaires GEVA-Sco et guides MDPH.",
+    "url": "https://www.cnsa.fr"
   },
   {
     "titre": "Cap École inclusive",
     "description": "Outils et ressources pour accompagner les élèves à besoins particuliers.",
-    "categorie": "Formation & accompagnement",
+    "categorie": "École inclusive & ASH",
     "url": "https://www.reseau-canope.fr/cap-ecole-inclusive"
   },
   {
-    "titre": "Éduscol",
-    "description": "Programmes, ressources d'accompagnement et actualités officielles.",
+    "titre": "Circulaire Ulis",
+    "categorie": "École inclusive & ASH",
+    "description": "Texte fondateur des unités localisées pour l'inclusion scolaire (2015).",
+    "url": "https://www.education.gouv.fr/bo/15/Hebdo31/MENE1504950C.htm"
+  },
+  {
+    "titre": "INSEI",
+    "categorie": "École inclusive & ASH",
+    "description": "Institut national supérieur formation-recherche handicap : formations CAPPEI, publications.",
+    "url": "https://www.insei.fr"
+  },
+  {
+    "titre": "Le Cartable Fantastique",
+    "categorie": "École inclusive & ASH",
+    "description": "Ressources et extensions gratuites pour élèves dyspraxiques et dys.",
+    "url": "https://www.cartablefantastique.fr"
+  },
+  {
+    "titre": "MDPH en ligne",
+    "categorie": "École inclusive & ASH",
+    "description": "Suivi des demandes MDPH — utile pour accompagner les familles.",
+    "url": "https://mdphenligne.cnsa.fr"
+  },
+  {
+    "titre": "Mon Parcours Handicap",
+    "categorie": "École inclusive & ASH",
+    "description": "Portail public : droits, scolarité, démarches, expliqué aux familles.",
+    "url": "https://www.monparcourshandicap.gouv.fr"
+  },
+  {
+    "titre": "Éduscol — École inclusive",
+    "categorie": "École inclusive & ASH",
+    "description": "Le dossier de référence : textes, dispositifs, PPS, Ulis, AESH.",
+    "url": "https://eduscol.education.gouv.fr/4743/ecole-inclusive"
+  },
+  {
+    "titre": "Calculatice",
     "categorie": "Ressources pédagogiques",
-    "url": "https://eduscol.education.fr"
+    "description": "Exercices de calcul mental en ligne, du CP au CM2.",
+    "url": "https://calculatice.ac-lille.fr"
+  },
+  {
+    "titre": "Gallica",
+    "categorie": "Ressources pédagogiques",
+    "description": "Bibliothèque numérique de la BnF : images libres, presse ancienne, albums.",
+    "url": "https://gallica.bnf.fr"
+  },
+  {
+    "titre": "LearningApps",
+    "categorie": "Ressources pédagogiques",
+    "description": "Création d'exercices interactifs à partager (appariement, quiz, ordre).",
+    "url": "https://learningapps.org"
+  },
+  {
+    "titre": "Les Fondamentaux",
+    "categorie": "Ressources pédagogiques",
+    "description": "Films d'animation Canopé pour le français, les maths et les sciences.",
+    "url": "https://lesfondamentaux.reseau-canope.fr"
+  },
+  {
+    "titre": "LogicielEducatif",
+    "categorie": "Ressources pédagogiques",
+    "description": "Jeux éducatifs en ligne, classés par niveau et par notion.",
+    "url": "https://www.logicieleducatif.fr"
+  },
+  {
+    "titre": "Lumni Enseignement",
+    "description": "Vidéos et ressources audiovisuelles classées par niveau et discipline.",
+    "categorie": "Ressources pédagogiques",
+    "url": "https://www.lumni.fr/enseignants"
+  },
+  {
+    "titre": "MiCetF",
+    "categorie": "Ressources pédagogiques",
+    "description": "Générateurs et outils pour la classe : étiquettes, tables, chronomètres.",
+    "url": "https://micetf.fr"
+  },
+  {
+    "titre": "Pepit",
+    "categorie": "Ressources pédagogiques",
+    "description": "Exercices interactifs gratuits, de la maternelle au collège.",
+    "url": "https://www.pepit.be"
   },
   {
     "titre": "Primàbord",
@@ -48,16 +114,16 @@
     "url": "https://primabord.eduscol.education.fr"
   },
   {
-    "titre": "Éduthèque",
-    "description": "Ressources culturelles et scientifiques des grands établissements publics.",
+    "titre": "Vikidia",
     "categorie": "Ressources pédagogiques",
-    "url": "https://www.edutheque.fr"
+    "description": "Encyclopédie écrite pour les 8-13 ans : recherche documentaire accessible.",
+    "url": "https://fr.vikidia.org"
   },
   {
-    "titre": "Lumni Enseignement",
-    "description": "Vidéos et ressources audiovisuelles classées par niveau et discipline.",
+    "titre": "Éduscol",
+    "description": "Programmes, ressources d'accompagnement et actualités officielles.",
     "categorie": "Ressources pédagogiques",
-    "url": "https://www.lumni.fr/enseignants"
+    "url": "https://eduscol.education.fr"
   },
   {
     "titre": "La Quizinière",
@@ -70,5 +136,89 @@
     "description": "Évaluer et certifier les compétences numériques.",
     "categorie": "Évaluation & compétences",
     "url": "https://pix.fr"
+  },
+  {
+    "titre": "Éduscol — Suivi et évaluation",
+    "categorie": "Évaluation & compétences",
+    "description": "Cadre de l'évaluation des acquis : LSU, bulletins, positionnement.",
+    "url": "https://eduscol.education.gouv.fr/4476/suivi-et-evaluation"
+  },
+  {
+    "titre": "Évaluations nationales",
+    "categorie": "Évaluation & compétences",
+    "description": "Tests de positionnement : consignes, seuils et guides d'analyse.",
+    "url": "https://eduscol.education.gouv.fr/4467/evaluations-nationales-et-tests-de-positionnement"
+  },
+  {
+    "titre": "Digipad",
+    "categorie": "Numérique",
+    "description": "Mur collaboratif : déposer textes, images et liens avec les élèves.",
+    "url": "https://digipad.app"
+  },
+  {
+    "titre": "Edumoov",
+    "categorie": "Numérique",
+    "description": "Cahier-journal, fiches de préparation et livrets scolaires en ligne.",
+    "url": "https://www.edumoov.com"
+  },
+  {
+    "titre": "La Digitale",
+    "categorie": "Numérique",
+    "description": "Suite d'outils libres et sans traceur pour la classe.",
+    "url": "https://ladigitale.dev"
+  },
+  {
+    "titre": "Pearltrees",
+    "categorie": "Numérique",
+    "description": "Classer et partager ses ressources en ligne, version Éducation gratuite.",
+    "url": "https://www.pearltrees.com"
+  },
+  {
+    "titre": "Bulletin officiel",
+    "categorie": "Textes de référence",
+    "description": "Circulaires et programmes officiels, semaine par semaine.",
+    "url": "https://www.education.gouv.fr/le-bulletin-officiel-de-l-education-nationale-de-la-jeunesse-et-des-sports"
+  },
+  {
+    "titre": "Légifrance",
+    "categorie": "Textes de référence",
+    "description": "Code de l'éducation et textes de droit consolidés.",
+    "url": "https://www.legifrance.gouv.fr"
+  },
+  {
+    "titre": "Tribu",
+    "description": "Espaces collaboratifs sécurisés pour partager documents et projets d'équipe.",
+    "categorie": "Gestion & direction",
+    "url": "https://tribu.phm.education.gouv.fr"
+  },
+  {
+    "titre": "apps.education.fr",
+    "description": "Services numériques de l'État : nuage, visioconférence, blogs, mails.",
+    "categorie": "Gestion & direction",
+    "url": "https://apps.education.fr"
+  },
+  {
+    "titre": "Réseau Canopé",
+    "description": "Formations, ressources et services pour la communauté éducative.",
+    "categorie": "Formation & accompagnement",
+    "url": "https://www.reseau-canope.fr"
+  },
+  {
+    "titre": "m@gistère",
+    "description": "Plateforme de formation continue en ligne des enseignants.",
+    "categorie": "Formation & accompagnement",
+    "url": "https://magistere.education.fr"
+  },
+  {
+    "titre": "Non au harcèlement",
+    "categorie": "Vie scolaire & orientation",
+    "description": "Programme pHARe : protocoles, affiches et numéros d'urgence (3018).",
+    "url": "https://www.education.gouv.fr/non-au-harcelement"
+  },
+  {
+    "titre": "ONISEP",
+    "categorie": "Vie scolaire & orientation",
+    "description": "Information sur les parcours et l'orientation, y compris scolarité adaptée.",
+    "url": "https://www.onisep.fr"
   }
 ]
