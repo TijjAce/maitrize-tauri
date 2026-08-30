@@ -224,7 +224,7 @@ export function Page({ titre, sous, actions, children }: {
           {sous && <div className="sub">{sous}</div>}
         </div>
         <div className="spacer" />
-        {actions}
+        {actions && <div className="topbar-actions">{actions}</div>}
       </div>
       <div className="content">{children}</div>
     </>

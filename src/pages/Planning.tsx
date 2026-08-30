@@ -354,7 +354,7 @@ export default function Planning() {
           title={deplacer ? "Déplacement activé — glissez les créneaux. Cliquez pour désactiver." : "Activer le déplacement des créneaux par glisser-déposer"}>
           ✋ Déplacer</button>}
         {vue === "jour" && <button className="btn" onClick={() => setSalle({ date: iso(ancre) })}
-          title="Voir qui est assis où, créneau par créneau">🪑 Plan de salle</button>}
+          title="Plan de salle : voir qui est assis où, créneau par créneau">🪑 Salle</button>}
         {vue !== "mois" && <button className="btn" onClick={imprimer}>🖨 PDF</button>}
         <div className="seg" style={{ marginLeft: 4 }}>
           <button className={vue === "jour" ? "active" : ""} onClick={() => setVue("jour")}>Jour</button>
