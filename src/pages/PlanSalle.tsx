@@ -286,6 +286,8 @@ export function PlanSalleTab() {
   const [arme, setArme] = React.useState<string | null>(null);
   // Affectation place par place au clic, ou élève par élève dans une liste.
   const [parEleve, setParEleve] = React.useState(false);
+  // Agencement regardé hors de tout créneau (journée vide, préparation d'été).
+  const [profilManuel, setProfilManuel] = React.useState("");
   const [charge, setCharge] = React.useState(false);
   const [renommer, setRenommer] = React.useState<Profil | null>(null);
   const [supprProfil, setSupprProfil] = React.useState<Profil | null>(null);
@@ -334,7 +336,9 @@ export function PlanSalleTab() {
   // ── Agencement courant ────────────────────────────────────────────────
   // Choisi pour ce créneau, sinon retenu pour sa matière, sinon le premier.
   const etat: EtatSalle = { profils, plans, plansMatiere, profilCreneau, profilMatiere };
-  const profil = profilDuCreneau(etat, creneau);
+  const profil = creneau
+    ? profilDuCreneau(etat, creneau)
+    : (profils.find((p) => p.id === profilManuel) ?? profils[0]);
   const profilId = profil?.id ?? "";
   const elements = profil?.elements ?? [];
 
@@ -344,13 +348,16 @@ export function PlanSalleTab() {
 
   /** Rattache un agencement au créneau courant, et le retient pour sa matière. */
   const choisirProfil = (id: string) => {
+    setProfilManuel(id);
+    setSelId(null);
+    // Sans créneau on ne fait que regarder ou aménager : il n'y a rien à
+    // rattacher, mais changer d'agencement doit rester possible.
     if (!creneau) return;
     const pc = { ...profilCreneau, [creneau.id]: id };
     const pm = { ...profilMatiere, [creneau.matiere]: id };
     setProfilCreneau(pc); setProfilMatiere(pm);
     api.settingSet("salle:profilCreneau", JSON.stringify(pc));
     api.settingSet("salle:profilMatiere", JSON.stringify(pm));
-    setSelId(null);
   };
 
   const heritage = creneau ? plansMatiere[creneau.matiere] : undefined;
@@ -994,7 +1001,9 @@ function BarreProfils({ profils, profilId, creneau, onChoisir, onCreer, onDupliq
   return (
     <>
       <Select value={profilId} onChange={(e) => onChoisir(e.target.value)} style={{ maxWidth: 190 }}
-        disabled={!creneau} title={creneau ? "Agencement utilisé sur ce créneau" : "Choisissez d'abord un créneau"}>
+        title={creneau
+          ? "Agencement utilisé sur ce créneau — retenu ensuite pour cette matière"
+          : "Agencement affiché. Sans créneau, rien n'est rattaché : vous pouvez l'aménager librement."}>
         {profils.map((p) => <option key={p.id} value={p.id}>🪑 {p.nom}</option>)}
       </Select>
       <button className="btn sm" onClick={menuAgencements} title="Nouvel agencement">+</button>
