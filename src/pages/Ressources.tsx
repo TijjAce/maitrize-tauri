@@ -13,6 +13,12 @@ interface Vid { titre: string; sousTitre: string; plateforme: string; cycle: str
 interface Outil { titre: string; description: string; categorie: string; url: string }
 
 const ouvrir = (url: string) => { openUrl(url).catch(() => window.open(url, "_blank")); };
+/**
+ * Le coffre-fort ne stocke que des PDF. Certaines ressources Éduscol sont des
+ * pages web (rubriques Ulis, médico-social…) : y proposer « Coffre »
+ * enregistrerait une page HTML dans une liste de PDF.
+ */
+const estPdf = (url: string) => /\.pdf($|\?)/i.test(url) || /\/download($|\?)/i.test(url);
 const TABS = ["docs", "outils", "videos", "coffre"] as const;
 
 // Couleur stable par catégorie (documents & outils).
@@ -117,9 +123,11 @@ function Documents() {
       <div key={key} className="list-row" style={{ borderLeft: `3px solid ${teinte}`, background: teinte + "0d" }}>
         <span>📄</span>
         <div style={{ flex: 1, cursor: "pointer" }} className="title" onClick={() => ouvrir(d.url)}>{d.titre}</div>
-        <button className="btn ghost sm" disabled={st === "load" || st === "ok"} onClick={() => ajouterAuCoffre(d)}>
-          {st === "load" ? "⏳ Ajout…" : st === "ok" ? "✓ Au coffre" : st === "err" ? "❌ Échec" : "🗄️ Coffre"}
-        </button>
+        {estPdf(d.url)
+          ? <button className="btn ghost sm" disabled={st === "load" || st === "ok"} onClick={() => ajouterAuCoffre(d)}>
+              {st === "load" ? "⏳ Ajout…" : st === "ok" ? "✓ Au coffre" : st === "err" ? "❌ Échec" : "🗄️ Coffre"}
+            </button>
+          : <span className="chip" title="Page web : à consulter en ligne, pas un PDF à archiver">Page</span>}
         <button className="btn ghost sm" onClick={() => ouvrir(d.url)}>Ouvrir ↗</button>
       </div>
     );
