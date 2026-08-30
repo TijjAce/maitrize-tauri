@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { idsDuCreneau, remplirPlacesLibres } from "./PlanSalle";
+import { idsDuCreneau, remplirPlacesLibres, nomsDesPlaces, profilDuCreneau, planDuCreneau, assisDansProfil } from "./PlanSalle";
 import type { Creneau, Eleve } from "../api";
 
 const eleve = (id: string): Eleve => ({
@@ -83,5 +83,103 @@ describe("remplirPlacesLibres", () => {
 
   it("ne fait rien quand il n'y a personne à placer", () => {
     expect(remplirPlacesLibres(PLACES, { p1: "z" }, [], tousPresents)).toEqual({ p1: "z" });
+  });
+});
+
+describe("nomsDesPlaces", () => {
+  const pl = (id: string, x: number, y: number, label = "") =>
+    ({ id, type: "place" as const, x, y, w: 70, h: 70, label });
+
+  it("numérote dans l'ordre de lecture, pas dans l'ordre de création", () => {
+    const noms = nomsDesPlaces([pl("c", 90, 200), pl("a", 10, 100), pl("b", 90, 100)]);
+    expect([noms.a, noms.b, noms.c]).toEqual(["Place 1", "Place 2", "Place 3"]);
+  });
+
+  it("préfère l'étiquette saisie", () => {
+    const noms = nomsDesPlaces([pl("a", 10, 10, "Îlot 1·1"), pl("b", 90, 10)]);
+    expect(noms).toEqual({ a: "Îlot 1·1", b: "Place 2" });
+  });
+
+  it("ignore une étiquette qui n'est que des espaces", () => {
+    expect(nomsDesPlaces([pl("a", 10, 10, "   ")]).a).toBe("Place 1");
+  });
+});
+
+describe("profilDuCreneau", () => {
+  const profils = [
+    { id: "p1", nom: "Frontal", elements: [] },
+    { id: "p2", nom: "Îlots", elements: [] },
+  ];
+  const base = { profils, plans: {}, plansMatiere: {}, profilCreneau: {}, profilMatiere: {} };
+  const c = creneau("[]");
+
+  it("retient l'agencement donné au créneau", () => {
+    expect(profilDuCreneau({ ...base, profilCreneau: { c1: "p2" } }, c)?.nom).toBe("Îlots");
+  });
+
+  it("retombe sur celui de la matière", () => {
+    expect(profilDuCreneau({ ...base, profilMatiere: { "Scolarité": "p2" } }, c)?.nom).toBe("Îlots");
+  });
+
+  it("le choix du créneau prime sur celui de la matière", () => {
+    const etat = { ...base, profilCreneau: { c1: "p1" }, profilMatiere: { "Scolarité": "p2" } };
+    expect(profilDuCreneau(etat, c)?.nom).toBe("Frontal");
+  });
+
+  it("prend le premier agencement à défaut", () => {
+    expect(profilDuCreneau(base, c)?.nom).toBe("Frontal");
+  });
+
+  it("ne rend rien sans agencement du tout", () => {
+    expect(profilDuCreneau({ ...base, profils: [] }, c)).toBeUndefined();
+  });
+
+  it("ignore un agencement supprimé et n'invente pas de remplaçant", () => {
+    // Le créneau pointe vers un agencement disparu : mieux vaut rien
+    // qu'un plan pris dans une autre disposition.
+    expect(profilDuCreneau({ ...base, profilCreneau: { c1: "effacé" } }, c)).toBeUndefined();
+  });
+});
+
+describe("planDuCreneau", () => {
+  const plan = { places: { s1: "a" }, notes: {} };
+  const base = { profils: [], plans: {}, plansMatiere: {}, profilCreneau: {}, profilMatiere: {} };
+
+  it("rend le plan propre au créneau", () => {
+    expect(planDuCreneau({ ...base, plans: { c1: plan } }, creneau("[]"))).toEqual(plan);
+  });
+
+  it("hérite de celui de la matière", () => {
+    expect(planDuCreneau({ ...base, plansMatiere: { "Scolarité": plan } }, creneau("[]"))).toEqual(plan);
+  });
+
+  it("rend un plan vide sans créneau", () => {
+    expect(planDuCreneau(base, undefined)).toEqual({ places: {}, notes: {} });
+  });
+});
+
+describe("assisDansProfil", () => {
+  const places = [{ id: "i1" }, { id: "i2" }];
+  const tous = (id: string | undefined) => !!id;
+
+  it("compte les élèves assis sur les places de cet agencement", () => {
+    const plan = { places: { i1: "a", i2: "b" }, notes: {} };
+    expect(assisDansProfil(places, plan, tous)).toHaveLength(2);
+  });
+
+  it("ignore les places d'un autre agencement", () => {
+    // « s1 » vient d'une autre disposition : la compter afficherait
+    // « 3 placés sur 2 présents ».
+    const plan = { places: { i1: "a", s1: "b" }, notes: {} };
+    expect(assisDansProfil(places, plan, tous)).toEqual([["i1", "a"]]);
+  });
+
+  it("ignore un élève absent du créneau", () => {
+    const plan = { places: { i1: "a", i2: "absent" }, notes: {} };
+    expect(assisDansProfil(places, plan, (id) => id === "a")).toEqual([["i1", "a"]]);
+  });
+
+  it("rend une liste vide pour un agencement sans place", () => {
+    expect(assisDansProfil([], { places: { i1: "a" }, notes: {} }, tous)).toEqual([]);
   });
 });
