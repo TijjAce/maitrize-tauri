@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import { isoJour, lundiDe, jourPlanningInitial, anneeDe, toMin, minToHHMM } from "../dates";
+import { ApercuSalleJour } from "./PlanSalle";
 import { api, Creneau, Seance, Sequence, Eleve, MATIERES, couleurHex, couleurPourMatiere, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance } from "../api";
 import { Modal, Field, Input, Select, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
@@ -341,6 +342,9 @@ export default function Planning() {
     }
   };
 
+  // Aperçu du plan de salle : { date, éventuel créneau ciblé }.
+  const [salle, setSalle] = React.useState<{ date: string; creneauId?: string } | null>(null);
+
   return (
     <Page titre="Planning" sous={titre}
       actions={<>
@@ -349,6 +353,8 @@ export default function Planning() {
           style={deplacer ? { background: "var(--accent)", color: "#fff", borderColor: "var(--accent)" } : undefined}
           title={deplacer ? "Déplacement activé — glissez les créneaux. Cliquez pour désactiver." : "Activer le déplacement des créneaux par glisser-déposer"}>
           ✋ Déplacer</button>}
+        {vue === "jour" && <button className="btn" onClick={() => setSalle({ date: iso(ancre) })}
+          title="Voir qui est assis où, créneau par créneau">🪑 Plan de salle</button>}
         {vue !== "mois" && <button className="btn" onClick={imprimer}>🖨 PDF</button>}
         <div className="seg" style={{ marginLeft: 4 }}>
           <button className={vue === "jour" ? "active" : ""} onClick={() => setVue("jour")}>Jour</button>
@@ -363,11 +369,13 @@ export default function Planning() {
         ? <VueMois ancre={ancre} creneaux={creneaux ?? []} feries={feries} vacanceDe={vacanceDe}
             anniversaires={anniversaires} onJour={(d) => { setAncre(d); setVue("jour"); }} />
         : <GrilleHoraire jours={jours} creneaux={creneaux ?? []} seances={seances ?? []} eleves={eleves ?? []} feries={feries} vacanceDe={vacanceDe}
-            deplacable={deplacer} onEdit={setEdit} onTap={ouvrirCreneau} onReload={reload} />}
+            deplacable={deplacer} onEdit={setEdit} onTap={ouvrirCreneau} onReload={reload}
+            onSalle={(c) => setSalle({ date: c.date, creneauId: c.id })} />}
 
       {voirSeance && <SeanceReadView seance={voirSeance}
         onClose={() => setVoirSeance(null)}
         onEdit={() => { const sid = voirSeance.sequenceId; setVoirSeance(null); if (sid) navigate(`/sequences/${sid}`); }} />}
+      {salle && <ApercuSalleJour dateIso={salle.date} creneauId={salle.creneauId} onClose={() => setSalle(null)} />}
       {edit && <CreneauForm creneau={edit} seances={seances ?? []} sequences={sequences ?? []}
         onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }}
         onDelete={() => { setDel(edit); setEdit(null); }} onCreerSeance={creerSeanceDepuisCreneau} />}
@@ -377,9 +385,10 @@ export default function Planning() {
 }
 
 // ── Grille horaire (1 jour ou 5 jours) ─────────────────────────────────────
-function GrilleHoraire({ jours, creneaux, seances, eleves, feries, vacanceDe, deplacable, onEdit, onTap, onReload }: {
+function GrilleHoraire({ jours, creneaux, seances, eleves, feries, vacanceDe, deplacable, onEdit, onTap, onReload, onSalle }: {
   jours: Date[]; creneaux: Creneau[]; seances: Seance[]; eleves: Eleve[]; feries: Record<string, string>;
-  vacanceDe: (d: string) => string | undefined; deplacable: boolean; onEdit: (c: Creneau) => void; onTap: (c: Creneau) => void; onReload: () => void;
+  vacanceDe: (d: string) => string | undefined; deplacable: boolean; onEdit: (c: Creneau) => void; onTap: (c: Creneau) => void;
+  onReload: () => void; onSalle: (c: Creneau) => void;
 }) {
   const todayIso = iso(new Date());
   const heures = Array.from({ length: H_FIN - H_DEBUT + 1 }, (_, i) => H_DEBUT + i);
@@ -490,6 +499,7 @@ function GrilleHoraire({ jours, creneaux, seances, eleves, feries, vacanceDe, de
                       onContextMenu={(e) => openCtx(e, [
                         ...(c.seanceId ? [{ label: "Voir la séance", icon: "👁", onClick: () => onTap(c) }] : []),
                         { label: "Modifier le créneau", icon: "✏️", onClick: () => onEdit(c) },
+                        { label: "Plan de salle", icon: "🪑", onClick: () => onSalle(c) },
                         ...(c.seanceId ? [{ label: "Détacher la séance", icon: "🔗", onClick: () => api.creneauSave({ ...c, seanceId: null }).then(onReload) }] : []),
                         { label: "Dupliquer", icon: "📑", sep: true, onClick: () => api.creneauSave({ ...c, id: newId() }).then(onReload) },
                         { label: "Supprimer le créneau", icon: "🗑", danger: true, sep: true, onClick: () => api.creneauDelete(c.id).then(onReload) },
