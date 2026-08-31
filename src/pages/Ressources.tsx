@@ -7,8 +7,9 @@ import { PdfViewer } from "../components/PdfViewer";
 import eduscol from "../data/eduscol.json";
 import videos from "../data/videos.json";
 import outils from "../data/outils.json";
+import academies from "../data/academies.json";
 
-interface Doc { titre: string; url: string; categorie: string; sousCategorie: string }
+interface Doc { titre: string; url: string; categorie: string; sousCategorie: string; source?: string }
 interface Vid { titre: string; sousTitre: string; plateforme: string; cycle: string; matiere: string; duree: string; url: string }
 interface Outil { titre: string; description: string; categorie: string; url: string }
 
@@ -19,7 +20,7 @@ const ouvrir = (url: string) => { openUrl(url).catch(() => window.open(url, "_bl
  * enregistrerait une page HTML dans une liste de PDF.
  */
 const estPdf = (url: string) => /\.pdf($|\?)/i.test(url) || /\/download($|\?)/i.test(url);
-const TABS = ["docs", "outils", "videos", "coffre"] as const;
+const TABS = ["docs", "academies", "outils", "videos", "coffre"] as const;
 
 // Couleur stable par catégorie (documents & outils).
 const COULEUR_CAT: Record<string, string> = {
@@ -37,14 +38,17 @@ export default function Ressources() {
   const [onglet, setOnglet] = React.useState<typeof TABS[number]>("docs");
   useSegmentNav(TABS, onglet, setOnglet);
   return (
-    <Page titre="Ressources" sous="Documents Éduscol, outils de l'enseignant, vidéothèque et coffre-fort de PDF">
+    <Page titre="Ressources" sous="Éduscol, publications académiques, outils, vidéothèque et coffre-fort de PDF">
       <div className="seg" style={{ marginBottom: 18, flexWrap: "wrap" }}>
         <button className={onglet === "docs" ? "active" : ""} onClick={() => setOnglet("docs")}>Documents Éduscol ({(eduscol as Doc[]).length})</button>
+        <button className={onglet === "academies" ? "active" : ""} onClick={() => setOnglet("academies")}>Documents académiques ({(academies as Doc[]).length})</button>
         <button className={onglet === "outils" ? "active" : ""} onClick={() => setOnglet("outils")}>Outils de l'enseignant ({(outils as Outil[]).length})</button>
         <button className={onglet === "videos" ? "active" : ""} onClick={() => setOnglet("videos")}>Vidéothèque ({(videos as Vid[]).length})</button>
         <button className={onglet === "coffre" ? "active" : ""} onClick={() => setOnglet("coffre")}>Coffre-fort</button>
       </div>
-      {onglet === "docs" ? <Documents /> : onglet === "outils" ? <Outils /> : onglet === "videos" ? <Videos /> : <CoffreFort />}
+      {onglet === "docs" ? <Documents docs={eduscol as Doc[]} placeholder="Rechercher un document Éduscol…" />
+        : onglet === "academies" ? <Documents docs={academies as Doc[]} placeholder="Rechercher un document, une rubrique, une académie…" />
+        : onglet === "outils" ? <Outils /> : onglet === "videos" ? <Videos /> : <CoffreFort />}
     </Page>
   );
 }
@@ -96,11 +100,17 @@ function CoffreFort() {
   );
 }
 
-function Documents() {
-  const docs = eduscol as Doc[];
+/**
+ * Liste de documents rangée en dossiers (catégorie → sous-catégorie).
+ *
+ * Sert aux deux catalogues : Éduscol et les publications académiques. Les
+ * rubriques sont volontairement les mêmes, pour qu'on cherche au même endroit
+ * quelle que soit l'origine du document.
+ */
+function Documents({ docs, placeholder }: { docs: Doc[]; placeholder: string }) {
   const [q, setQ] = React.useState("");
   const filtres = docs.filter((d) =>
-    !q || d.titre.toLowerCase().includes(q.toLowerCase()) || d.sousCategorie.toLowerCase().includes(q.toLowerCase()) || d.categorie.toLowerCase().includes(q.toLowerCase()));
+    !q || [d.titre, d.sousCategorie, d.categorie, d.source ?? ""].some((c) => c.toLowerCase().includes(q.toLowerCase())));
 
   // Dossiers : catégorie → sous-catégorie → documents.
   const dossiers: Record<string, Record<string, Doc[]>> = {};
@@ -122,7 +132,10 @@ function Documents() {
     return (
       <div key={key} className="list-row" style={{ borderLeft: `3px solid ${teinte}`, background: teinte + "0d" }}>
         <span>📄</span>
-        <div style={{ flex: 1, cursor: "pointer" }} className="title" onClick={() => ouvrir(d.url)}>{d.titre}</div>
+        <div style={{ flex: 1, cursor: "pointer" }} onClick={() => ouvrir(d.url)}>
+          <div className="title">{d.titre}</div>
+          {d.source && <div className="meta">{d.source}</div>}
+        </div>
         {estPdf(d.url)
           ? <button className="btn ghost sm" disabled={st === "load" || st === "ok"} onClick={() => ajouterAuCoffre(d)}>
               {st === "load" ? "⏳ Ajout…" : st === "ok" ? "✓ Au coffre" : st === "err" ? "❌ Échec" : "🗄️ Coffre"}
@@ -136,7 +149,9 @@ function Documents() {
   return (
     <>
       <div className="toolbar">
-        <Input className="search" placeholder="Rechercher un document…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <Input className="search" placeholder={placeholder} value={q} onChange={(e) => setQ(e.target.value)} />
+        <div className="spacer" />
+        <span style={{ fontSize: 12, color: "var(--text-2)" }}>{filtres.length} document(s)</span>
       </div>
       {filtres.length === 0 ? <Empty icone="📚" titre="Aucun document" /> :
         Object.entries(dossiers).map(([cat, sous]) => {
