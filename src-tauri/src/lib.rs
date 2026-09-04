@@ -88,7 +88,7 @@ pub fn run() {
             // Vacances scolaires
             vacances_scolaires,
             // IA Mistral
-            ai::mistral_chat, ai::mistral_test, ai::mistral_chat_stream,
+            ai::mistral_chat, ai::mistral_test, ai::mistral_chat_stream, ai::transcrire_audio,
             // Amis (appariement chiffré)
             amis::identite_get, amis::identite_set_nom,
             amis::invitation_creer, amis::invitation_accepter,

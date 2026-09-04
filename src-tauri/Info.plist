@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Texte affiché par macOS lors de la demande d'accès au micro. -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Maitrize utilise le micro uniquement quand vous lancez une dictée d'atelier, pour transcrire vos observations. Aucun enregistrement n'est conservé.</string>
+</dict>
+</plist>

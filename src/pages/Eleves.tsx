@@ -12,6 +12,7 @@ import { toast } from "../components/Toaster";
 import { DispositifsTab } from "./Dispositifs";
 import { ProgressionsTab } from "./Progressions";
 import { GevaScoTab } from "./GevaSco";
+import { DicteeAtelier } from "../components/DicteeAtelier";
 import syntheseDomaines from "../data/syntheseGS.json";
 
 const ELEVES_TABS = ["liste", "observations", "evaluations", "papiers", "synthese", "dispositifs", "gevasco", "progressions"] as const;
@@ -138,6 +139,7 @@ function Observations() {
   const { data: commentaires, reload } = useAsync(() => api.commentairesList(eleveId || undefined), [eleveId]);
   const [texte, setTexte] = React.useState("");
   const [type, setType] = React.useState("divers");
+  const [dictee, setDictee] = React.useState(false);
 
   React.useEffect(() => { if (!eleveId && eleves?.length) setEleveId(eleves[0].id); }, [eleves, eleveId]);
 
@@ -153,7 +155,13 @@ function Observations() {
         <Select value={eleveId} onChange={(e) => setEleveId(e.target.value)} style={{ maxWidth: 240 }}>
           {eleves?.map((e) => <option key={e.id} value={e.id}>{e.nom}</option>)}
         </Select>
+        <div className="spacer" />
+        <button className="btn" disabled={!eleves?.length} onClick={() => setDictee(true)}
+          title="Raconter l'atelier à voix haute et répartir les observations par élève">
+          🎙 Dictée d'atelier
+        </button>
       </div>
+      {dictee && <DicteeAtelier eleves={eleves ?? []} onClose={() => setDictee(false)} onEnregistre={reload} />}
       <div className="card" style={{ marginBottom: 18 }}>
         <div className="row">
           <Select value={type} onChange={(e) => setType(e.target.value)} style={{ maxWidth: 170 }}>

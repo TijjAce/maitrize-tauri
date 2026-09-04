@@ -13,5 +13,9 @@
     <true/>
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
     <true/>
+    <!-- Dictée d'atelier : le micro n'est ouvert que pendant un enregistrement
+         lancé par l'enseignant, jamais en fond. -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
 </dict>
 </plist>

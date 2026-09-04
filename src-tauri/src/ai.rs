@@ -165,3 +165,58 @@ pub async fn mistral_chat_stream(
     let _ = app.emit("mistral://done", DoneEvt { id: request_id });
     Ok(())
 }
+
+// ── Transcription audio (dictée d'atelier) ───────────────────────────────
+//
+// L'audio part chez Mistral (Voxtral) et n'est jamais écrit sur le disque :
+// il arrive en mémoire depuis la fenêtre, part dans la requête, et disparaît.
+// L'écran appelant prévient l'enseignant avant tout enregistrement.
+
+/// Transcrit un enregistrement audio en texte français.
+///
+/// `audio_b64` est le contenu du fichier encodé en base64 (webm/opus produit
+/// par la fenêtre). Renvoie le texte brut, sans ponctuation garantie.
+#[tauri::command]
+pub async fn transcrire_audio(
+    db: State<'_, Db>,
+    audio_b64: String,
+    nom_fichier: String,
+) -> Result<String, String> {
+    use base64::Engine;
+    let cle = cle_mistral(&db)?;
+    let octets = base64::engine::general_purpose::STANDARD
+        .decode(audio_b64.as_bytes())
+        .map_err(|e| format!("Audio illisible : {e}"))?;
+    if octets.is_empty() {
+        return Err("Enregistrement vide.".into());
+    }
+
+    let partie = reqwest::multipart::Part::bytes(octets)
+        .file_name(nom_fichier)
+        .mime_str("application/octet-stream")
+        .map_err(|e| e.to_string())?;
+    let formulaire = reqwest::multipart::Form::new()
+        .text("model", "voxtral-mini-latest")
+        .text("language", "fr")
+        .part("file", partie);
+
+    let rep = reqwest::Client::new()
+        .post("https://api.mistral.ai/v1/audio/transcriptions")
+        .bearer_auth(cle)
+        .multipart(formulaire)
+        .send()
+        .await
+        .map_err(|e| format!("Envoi impossible : {e}"))?;
+
+    let statut = rep.status();
+    let corps = rep.text().await.map_err(|e| e.to_string())?;
+    if !statut.is_success() {
+        return Err(format!("Transcription refusée ({statut}) : {}", corps.chars().take(200).collect::<String>()));
+    }
+    let json: serde_json::Value = serde_json::from_str(&corps)
+        .map_err(|e| format!("Réponse illisible : {e}"))?;
+    json.get("text")
+        .and_then(|v| v.as_str())
+        .map(|s| s.trim().to_string())
+        .ok_or_else(|| "Réponse sans transcription.".to_string())
+}
