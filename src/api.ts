@@ -351,6 +351,10 @@ export const api = {
   documentsEleveList: (eleveId?: string, typeDoc?: string) =>
     invoke<DocumentEleve[]>("documents_eleve_list", { eleveId: eleveId ?? null, typeDoc: typeDoc ?? null }),
 
+  /** Transcrit un enregistrement audio (base64) en texte, via Mistral. */
+  transcrireAudio: (audioB64: string, nomFichier: string) =>
+    invoke<string>("transcrire_audio", { audioB64, nomFichier }),
+
   // Export / Import (sauvegarde)
   exportData: () => invoke<string>("export_data"),
   importData: (json: string) => invoke<void>("import_data", { json }),
