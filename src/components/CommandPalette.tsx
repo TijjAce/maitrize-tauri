@@ -22,6 +22,7 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "🕘", label: "EDT type", to: "/organisation", page: "organisation", onglet: "edt", sous: "Organisation" },
   { ico: "🤝", label: "Travail de cycle", to: "/organisation", page: "organisation", onglet: "cycle", sous: "Organisation" },
   { ico: "🪑", label: "Plan de salle", to: "/organisation", page: "organisation", onglet: "salle", sous: "Organisation" },
+  { ico: "📋", label: "Projet pédagogique", to: "/organisation", page: "organisation", onglet: "projet", sous: "Organisation" },
 ];
 
 const NAV: { ico: string; label: string; to: string }[] = [

@@ -3,23 +3,28 @@
 // Deux outils complémentaires, décrits en données pour qu'un seul écran sache
 // les afficher, les enregistrer et les imprimer :
 //
-//  - « Observation de classe » : grille détaillée de comportements observables,
+//  - « Observation générale » : grille détaillée de comportements observables,
 //    d'après la grille publiée par Ebla Éditions dans « Enseigner en Ulis ».
 //    Reproduite ici pour l'usage personnel de l'enseignant qui possède
 //    l'ouvrage ; la source est affichée dans l'écran et à l'impression.
 //
-//  - « Besoins de l'élève » : les 25 domaines d'observation de Cap école
-//    inclusive (Réseau Canopé), rangés sous les cinq domaines du socle commun.
-//    Les items sont relevés sur le site ; les propositions d'adaptation, elles,
-//    restent sur leur outil en ligne, vers lequel l'écran renvoie.
+//  - « Observation S4C » : la grille personnalisée de Cap école inclusive
+//    (Réseau Canopé), reprise item pour item depuis le PDF que l'outil génère
+//    — 101 observables, rangés en 25 sous-domaines sous les cinq domaines du
+//    socle. Les propositions d'adaptation, elles, restent sur leur site, vers
+//    lequel l'écran renvoie.
 
 export type Bloc =
   /** Cases à cocher indépendantes. */
   | { t: "cases"; id: string; titre: string; items: string[] }
   /** Un seul choix parmi des options courtes. */
   | { t: "choix"; id: string; titre: string; options: string[] }
-  /** Chaque item reçoit un niveau, plus une note libre facultative. */
-  | { t: "echelle"; id: string; titre: string; items: string[] }
+  /**
+   * Items notés sur une échelle, groupés par sous-domaine — c'est la forme
+   * de la grille S4C, où chaque domaine du socle se décline en sous-domaines
+   * puis en observables concrets.
+   */
+  | { t: "echelle"; id: string; titre: string; groupes: { nom: string; items: string[] }[] }
   /** Champs de saisie libre, en colonnes. */
   | { t: "champs"; id: string; titre: string; champs: { id: string; label: string }[] };
 
@@ -37,7 +42,7 @@ export interface Grille {
 // ── Grille d'observation de classe ───────────────────────────────────────
 const OBSERVATION: Grille = {
   id: "observation",
-  nom: "Observation de classe",
+  nom: "Observation générale",
   sousTitre: "Comportements observables, du repérage dans le temps à l'autonomie",
   source: "D'après la grille d'observation publiée par Ebla Éditions, « Enseigner en Ulis »",
   blocs: [
@@ -194,47 +199,189 @@ const OBSERVATION: Grille = {
 // ── Observation des besoins (Cap école inclusive) ────────────────────────
 const BESOINS: Grille = {
   id: "besoins",
-  nom: "Besoins de l'élève",
-  sousTitre: "Les 25 domaines d'observation, rangés sous les cinq domaines du socle commun",
-  source: "Domaines d'observation de Cap école inclusive (Réseau Canopé)",
+  nom: "Observation S4C",
+  sousTitre: "Les observables de la grille Cap école inclusive, rangés sous les cinq domaines du socle",
+  source: "Grille d'observation personnalisée de Cap école inclusive (Réseau Canopé)",
   lien: "https://www.reseau-canope.fr/cap-ecole-inclusive/observer.html",
-  niveaux: ["Réussi", "En cours", "Difficulté", "Non observé"],
+  // Échelle de la grille officielle.
+  niveaux: ["Souvent", "Parfois", "Rarement", "Jamais"],
   blocs: [
-    { t: "echelle", id: "d1", titre: "1. Les langages pour penser et communiquer", items: [
-      "Communication expressive orale",
-      "Compréhension du langage oral",
-      "Lecture — déchiffrage",
-      "Fluidité de la lecture",
-      "Compréhension du langage écrit",
-      "Accès au sens orthographique",
-      "Production d'écrit",
-      "Interactions sociales",
-    ] },
-    { t: "echelle", id: "d2", titre: "2. Les méthodes et outils pour apprendre", items: [
-      "Gestion de la tâche",
-      "Attention",
-      "Mémoire",
-      "Fonctionnement cognitif",
-      "Relation aux pairs et aux adultes — adaptation sociale",
-    ] },
-    { t: "echelle", id: "d3", titre: "3. La formation de la personne et du citoyen", items: [
-      "Autonomie",
-      "Estime de soi",
-      "Gestion des émotions",
-      "Sensorialité",
-      "Personnel",
-      "Inter-personnel",
-      "Respect des règles de vie",
-    ] },
-    { t: "echelle", id: "d4", titre: "4. Les systèmes naturels et les systèmes techniques", items: [
-      "Mathématiques",
-      "Démarche d'investigation",
-      "Gestes moteurs",
-    ] },
-    { t: "echelle", id: "d5", titre: "5. Les représentations du monde et l'activité humaine", items: [
-      "L'espace et le temps",
-      "Organisations et représentations du monde",
-    ] },
+  {
+    t: "echelle", id: "d1", titre: "1. Les langages pour penser et communiquer",
+    groupes: [
+      { nom: "Communication expressive orale", items: [
+        "Utilise des phrases avec des expansions",
+        "Parle de façon intelligible",
+        "Respecte l'ordre des mots dans les phrases",
+        "S'exprime verbalement",
+      ] },
+      { nom: "Compréhension du langage oral", items: [
+        "Comprend un discours ou un récit",
+        "Comprend une consigne orale y compris en contexte bruyant",
+      ] },
+      { nom: "Lecture - Déchiffrage", items: [
+        "Lit les mots irréguliers",
+        "Déchiffre aisément les mots réguliers",
+      ] },
+      { nom: "Fluidité de la lecture", items: [
+        "Peut lire une phrase courte",
+        "Lit facilement un stock de mots fréquents",
+        "Peut lire un texte de quelques lignes",
+      ] },
+      { nom: "Compréhension du langage écrit", items: [
+        "Comprend tous les textes y compris implicites",
+        "Comprend un texte court, simple et explicite",
+        "Comprend une phrase courte",
+        "Comprend une consigne écrite",
+      ] },
+      { nom: "Accès au sens orthographique", items: [
+        "Encode des graphies complexes",
+        "Encode des graphies simples",
+        "Mémorise l'orthographe d'usage",
+      ] },
+      { nom: "Production d'écrit", items: [
+        "Produit un texte organisé et compréhensible",
+        "Peut rédiger un texte de quelques lignes",
+        "Peut rédiger une phrase",
+        "Peut copier un texte de quelques lignes",
+      ] },
+      { nom: "Interactions sociales", items: [
+        "Répond de manière adaptée aux mimiques/intonations et gestes",
+        "Est capable de prendre en compte la parole de l'autre",
+        "Regarde le locuteur",
+        "Adopte une attitude verbale appropriée (intensité, forme)",
+        "Respecte les règles de la prise de parole (politessse, forme)",
+        "Accepte d'échanger en dehors de ses centres d'intérêts",
+        "Reste dans le contexte de la discussion",
+      ] },
+    ],
+  },
+  {
+    t: "echelle", id: "d2", titre: "2. Les méthodes et outils pour apprendre",
+    groupes: [
+      { nom: "Gestion de la tâche", items: [
+        "Exécute la tâche dans le temps imparti (hors lenteur d'écriture et de lecture)",
+        "Travaille seul",
+        "S'organise et anticipe",
+        "Reste assis à sa place avec une posture adaptée à la tâche",
+        "S'organise matériellement",
+        "Exécute une consigne orale double",
+        "Peut coordonner plusieurs savoir faire pour réaliser une tâche",
+        "Entre facilement dans la tâche",
+        "Fait attention à son matériel",
+      ] },
+      { nom: "Attention", items: [
+        "Sélectionne l'information pertinente d'une consigne",
+        "Maintient son attention en regroupement ou en travail collectif",
+        "Maintient son attention sur la durée",
+      ] },
+      { nom: "Mémoire", items: [
+        "Mémorise les faits numériques",
+        "Mémorise une poésie",
+        "Mémorise une leçon courte",
+      ] },
+      { nom: "Fonctionnement cognitif", items: [
+        "Accède aux contenus d'apprentissage de son âge",
+        "Fait des déductions/inférences à partir d'un texte ou d'une situation problème",
+        "Pose des questions, est curieux",
+      ] },
+      { nom: "Relation aux pairs et aux adultes/Adaptation sociale", items: [
+        "Communique avec les adultes",
+        "Communique avec ses camarades",
+        "Accepte de travailler en groupe",
+        "Accepte de changer d'activité dans les séances d'apprentissage",
+        "Varie ses activités",
+        "Accepte les changements de lieux, de personnes, d'activités",
+        "Participe aux jeux de cour",
+        "Accepte le contact visuel",
+      ] },
+    ],
+  },
+  {
+    t: "echelle", id: "d3", titre: "3. La formation de la personne et du citoyen",
+    groupes: [
+      { nom: "Autonomie", items: [
+        "Formule un avis, fait des choix",
+        "Se présente à l'heure aux cours",
+        "Se déplace et s'installe dans la classe",
+        "Est autonome dans les gestes quotidiens (habillage...)",
+        "Est autonome dans ses déplacements",
+        "Se positionne comme un élève de sa classe d'âge",
+      ] },
+      { nom: "Estime de soi", items: [
+        "Admet facilement ses erreurs",
+        "Identifie ses réussites",
+        "S'engage et et persévère face à une tâche nouvelle ou difficile",
+        "Se sent en situation de réussite",
+      ] },
+      { nom: "Gestion des émotions", items: [
+        "Exprime ses émotions",
+        "Maîtrise ses émotions",
+      ] },
+      { nom: "Sensorialité", items: [
+        "S'autostimule : répète les mêmes gestes, les mêmes jeux, les mêmes comportements (balancement?)",
+        "Accepte les variations de luminosité",
+        "Accepte la proximité et le contact physique de façon controlée",
+        "Accepte toutes les odeurs",
+        "Accepte toutes sortes de bruits : nuisances sonores, intensité de la voix, mots-stimulis",
+      ] },
+      { nom: "Personnel", items: [
+        "S'intègre de façon adaptée dans un groupe",
+        "Assure sa sécurité physique",
+        "Respecte ses engagements",
+        "Réagit de manière adaptée aux remarques de l'adulte",
+        "Gère les conflits avec les autres enfants",
+      ] },
+      { nom: "Inter-personnel", items: [
+        "Entre en relation avec les autres sans agressivité",
+        "Entre en relation sans recherche d'attention exclusive",
+      ] },
+      { nom: "Respect des règles de vie", items: [
+        "Accepte les contraintes",
+        "Respecte les règles établies",
+      ] },
+    ],
+  },
+  {
+    t: "echelle", id: "d4", titre: "4. Les systèmes naturels et les systèmes techniques",
+    groupes: [
+      { nom: "Mathématiques", items: [
+        "Analyse les figures géométriques",
+        "Manipule les outils pour réaliser des figures géométriques",
+        "Peut utiliser une calculatrice",
+        "Résoud un problème",
+        "Utilise les techniques de pose et de résolution d'opérations",
+        "Calcule mentalement",
+        "Écrit les nombres",
+        "Lit des nombres",
+        "Dénombre",
+        "Comprend la signification des opérations",
+      ] },
+      { nom: "Démarche d'investigation", items: [
+        "Mène une démarche d'investigation en intégralité ou en partie",
+      ] },
+      { nom: "Gestes moteurs", items: [
+        "Pratique aisément une activité physique",
+        "Exécute des gestes liés à la motricité fine : dessiner, colorier, découper, coller",
+        "Coordonne ses gestes (habillage, repas, toilettes)",
+        "A une posture confortable lors d'une activité",
+        "Écrit lisiblement",
+      ] },
+    ],
+  },
+  {
+    t: "echelle", id: "d5", titre: "5. Les représentations du monde et l'activité humaine",
+    groupes: [
+      { nom: "L'espace et le temps", items: [
+        "S'oriente dans l'espace",
+        "Se repère dans le temps",
+        "Repère des informations visuelles dans un support écrit : tableaux, cartes",
+      ] },
+      { nom: "Organisations et représentations du monde", items: [
+        "Analyse des représentations iconiques (images, courbes, schémas)",
+      ] },
+    ],
+  },
     { t: "champs", id: "suite", titre: "Suites données",
       champs: [
         { id: "prioritaires", label: "Besoins prioritaires retenus" },
@@ -253,7 +400,7 @@ export function compterRenseignes(grille: Grille, valeurs: Record<string, any>):
     if (v == null) continue;
     if (b.t === "cases") n += Object.values(v).filter(Boolean).length;
     else if (b.t === "choix") n += v ? 1 : 0;
-    else if (b.t === "echelle") n += Object.values(v).filter((x) => x && x !== "Non observé").length;
+    else if (b.t === "echelle") n += Object.values(v).filter((x) => String(x ?? "").trim()).length;
     else if (b.t === "champs") n += Object.values(v).filter((x) => String(x ?? "").trim()).length;
   }
   return n;
@@ -262,7 +409,8 @@ export function compterRenseignes(grille: Grille, valeurs: Record<string, any>):
 /** Total d'items d'une grille, pour situer la progression. */
 export function compterTotal(grille: Grille): number {
   return grille.blocs.reduce((n, b) => {
-    if (b.t === "cases" || b.t === "echelle") return n + b.items.length;
+    if (b.t === "cases") return n + b.items.length;
+    if (b.t === "echelle") return n + b.groupes.reduce((m, g) => m + g.items.length, 0);
     if (b.t === "champs") return n + b.champs.length;
     return n + 1;
   }, 0);

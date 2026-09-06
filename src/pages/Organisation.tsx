@@ -12,6 +12,7 @@ import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree
 import { COULEURS } from "../api";
 import { printHTML, escapeHtml } from "../print";
 import { PlanSalleTab } from "./PlanSalle";
+import { ProjetPedagogiqueTab } from "./ProjetPedagogique";
 import { isoJour, lundiDe } from "../dates";
 
 // Couleurs officielles des périodes (miroir couleursPeriodes).
@@ -94,6 +95,7 @@ const SEGMENTS = [
   { id: "edt", label: "EDT type" },
   { id: "cycle", label: "Travail de cycle" },
   { id: "salle", label: "Plan de salle" },
+  { id: "projet", label: "Projet pédagogique" },
 ] as const;
 type SegId = typeof SEGMENTS[number]["id"];
 
@@ -132,7 +134,12 @@ export default function Organisation() {
       <div className="seg" style={{ marginBottom: 18, flexWrap: "wrap" }}>
         {segments.map((s) => <button key={s.id} className={onglet === s.id ? "active" : ""} onClick={() => setOnglet(s.id)}>{s.label}</button>)}
       </div>
-      {onglet === "prog" ? <Programmation {...props} /> : onglet === "annuelle" ? <ProgressionAnnuelleVue {...props} /> : onglet === "edt" ? <EdtType {...props} /> : onglet === "salle" ? <PlanSalleTab /> : <TravailDeCycle {...props} />}
+      {onglet === "prog" ? <Programmation {...props} />
+        : onglet === "annuelle" ? <ProgressionAnnuelleVue {...props} />
+        : onglet === "edt" ? <EdtType {...props} />
+        : onglet === "salle" ? <PlanSalleTab />
+        : onglet === "projet" ? <ProjetPedagogiqueTab annee={annee} />
+        : <TravailDeCycle {...props} />}
     </Page>
   );
 }
