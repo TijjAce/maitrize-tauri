@@ -66,7 +66,7 @@ export default function Assistant() {
   React.useEffect(() => {
     api.settingGet("mistralApiKey").then((k) => setHasKey(!!k && k.trim().length > 0));
     api.settingGet("iaContexte").then((v) => setContexteActif(v !== "0"));
-    api.settingGet("mistralModel").then((v) => { if (v) setModel(v); });
+    api.modeleActif().then(setModel);
   }, []);
   const choisirModele = (m: string) => { setModel(m); api.settingSet("mistralModel", m); };
   const basculerContexte = () => {

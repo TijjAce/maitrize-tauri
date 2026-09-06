@@ -3,7 +3,7 @@ import { Page } from "../App";
 import {
   api, Eleve, CommentaireEleve, Evaluation, NoteEleve,
   nouvelEleve, nouvelleEvaluation, NIVEAUX_SCOLAIRES, MATIERES, newId, nowIso,
-  NIVEAUX_MAITRISE, MODELE_DEFAUT,
+  NIVEAUX_MAITRISE,
 } from "../api";
 import { Modal, Field, Input, Select, Empty, Confirm, useAsync, useSegmentNav, useOngletDemande } from "../components/ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
@@ -445,7 +445,7 @@ function SyntheseGS() {
     const prenom = (eleve?.nom || "L'élève").trim().split(/\s+/)[0];
     setReformuleEnCours(dom.id);
     try {
-      const modele = (await api.settingGet("mistralModel")) || MODELE_DEFAUT;
+      const modele = await api.modeleActif();
       const rep = await api.mistralChat([
         { role: "system", content:
           "Tu es enseignant·e de maternelle. Tu reformules les observations d'un enseignant pour la synthèse officielle des acquis de fin de Grande Section. " +

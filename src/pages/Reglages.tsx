@@ -1,6 +1,6 @@
 import React from "react";
 import { Page } from "../App";
-import { api, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, getMatiereOverrides, setMatiereOverrides, telechargerTexte, anneeScolaireActuelle, MODELES_MISTRAL, MODELE_DEFAUT, type PortableInfo } from "../api";
+import { api, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, getMatiereOverrides, setMatiereOverrides, telechargerTexte, anneeScolaireActuelle, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo } from "../api";
 import { Field, Input, Select, Modal, useAsync } from "../components/ui";
 import { applyTheme, MODES, ACCENTS, STYLES } from "../theme";
 import { lireAcceptationCgu, CguAcceptation } from "../components/CGU";
@@ -12,6 +12,7 @@ export default function Reglages() {
   const [chargé, setChargé] = React.useState(false);
   const [testMsg, setTestMsg] = React.useState("");
   const [testEnCours, setTestEnCours] = React.useState(false);
+  const [etats, setEtats] = React.useState<EtatModele[] | null>(null);
   const [dataMsg, setDataMsg] = React.useState("");
   const [showMatieres, setShowMatieres] = React.useState(false);
   const [cgu, setCgu] = React.useState<CguAcceptation | null>(null);
@@ -19,7 +20,19 @@ export default function Reglages() {
   React.useEffect(() => { getVersion().then(setVersion).catch(() => {}); }, []);
   const importInput = React.useRef<HTMLInputElement>(null);
 
-  React.useEffect(() => { api.settingsAll().then((m) => { setS(m); setChargé(true); }); }, []);
+  React.useEffect(() => {
+    api.settingsAll().then((m) => {
+      // Un modèle enregistré peut avoir été retiré par Mistral depuis. On répare
+      // le réglage à l'ouverture, sinon la liste afficherait un choix corrigé
+      // pendant que la base garde la valeur qui échoue.
+      const corrigé = normaliserModele(m.mistralModel);
+      if (m.mistralModel && m.mistralModel !== corrigé) {
+        m = { ...m, mistralModel: corrigé };
+        api.settingSet("mistralModel", corrigé);
+      }
+      setS(m); setChargé(true);
+    });
+  }, []);
   React.useEffect(() => { lireAcceptationCgu().then(setCgu); }, []);
 
   const exporter = async () => {
@@ -61,8 +74,18 @@ export default function Reglages() {
   };
 
   const tester = async () => {
-    setTestEnCours(true); setTestMsg("");
-    try { await api.mistralTest(); setTestMsg("✅ Connexion réussie"); }
+    setTestEnCours(true); setTestMsg(""); setEtats(null);
+    try { await api.mistralTest(s.mistralModel); setTestMsg("✅ Connexion réussie"); }
+    catch (e: any) { setTestMsg("❌ " + String(e)); }
+    finally { setTestEnCours(false); }
+  };
+
+  // Mistral n'ouvre pas les mêmes modèles à tous les abonnements, et refuse
+  // ceux qu'il n'accorde pas par un message de débit trompeur. Un essai réel
+  // sur chacun évite de chercher longtemps pourquoi l'assistant reste muet.
+  const testerLesModeles = async () => {
+    setTestEnCours(true); setTestMsg(""); setEtats(null);
+    try { setEtats(await api.mistralModelesDisponibles(MODELES_MISTRAL.map((m) => m.id))); }
     catch (e: any) { setTestMsg("❌ " + String(e)); }
     finally { setTestEnCours(false); }
   };
@@ -187,16 +210,34 @@ export default function Reglages() {
             onChange={(e) => set("mistralApiKey", e.target.value)} />
         </Field>
         <Field label="Modèle">
-          <Select value={s.mistralModel ?? MODELE_DEFAUT} onChange={(e) => set("mistralModel", e.target.value)}>
+          <Select value={normaliserModele(s.mistralModel)} onChange={(e) => set("mistralModel", e.target.value)}>
             {MODELES_MISTRAL.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
           </Select>
         </Field>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <button className="btn" disabled={testEnCours || !s.mistralApiKey} onClick={tester}>
             {testEnCours ? "Test en cours…" : "Tester la connexion"}
           </button>
+          <button className="btn" disabled={testEnCours || !s.mistralApiKey} onClick={testerLesModeles}>
+            Quels modèles puis-je utiliser ?
+          </button>
           <span style={{ fontSize: 13 }}>{testMsg}</span>
         </div>
+        {etats && (
+          <ul style={{ listStyle: "none", padding: 0, margin: "12px 0 0", fontSize: 13 }}>
+            {etats.map((e) => {
+              const nom = MODELES_MISTRAL.find((m) => m.id === e.id)?.label ?? e.id;
+              return (
+                <li key={e.id} style={{ padding: "5px 0", borderTop: "1px solid var(--bord)" }}>
+                  <strong>{e.disponible ? "✅" : "❌"} {nom}</strong>
+                  {!e.disponible && (
+                    <div style={{ color: "var(--text-2)", marginTop: 2 }}>{e.detail}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
 
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>

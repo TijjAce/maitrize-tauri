@@ -119,7 +119,7 @@ export function DicteeAtelier({ eleves, onClose, onEnregistre, texteInitial, tit
       // Le modèle par défaut du backend (« large ») n'est pas inclus dans tous
       // les abonnements Mistral : on reprend celui choisi dans les Réglages,
       // comme le fait l'assistant.
-      const modele = (await api.settingGet("mistralModel")) || MODELE_TACHES;
+      const modele = await api.modeleActif(MODELE_TACHES);
       const reponse = await api.mistralChat(promptRepartition(eleves.map(prenom), transcription), modele);
       const p = lirePropositions(reponse, eleves);
       if (p.length === 0) {

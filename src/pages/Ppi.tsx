@@ -1,5 +1,5 @@
 import React from "react";
-import { api, newId, MODELE_DEFAUT } from "../api";
+import { api, newId } from "../api";
 import { Field, Input, Select, Empty, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 
@@ -79,7 +79,7 @@ export function PpiTab() {
     if (!b.texte.trim()) { toast("Écrivez d'abord quelques mots à reformuler.", { icone: "✍️" }); return; }
     setReformuleId(b.id);
     try {
-      const modele = (await api.settingGet("mistralModel")) || MODELE_DEFAUT;
+      const modele = await api.modeleActif();
       const rep = await api.mistralChat([
         { role: "system", content:
           "Tu es enseignant·e spécialisé·e (IME/ULIS). Tu reformules les notes d'un enseignant pour le bilan officiel du Projet Personnalisé Individualisé d'un élève, destiné à l'équipe de suivi, la famille et la MDPH. " +
