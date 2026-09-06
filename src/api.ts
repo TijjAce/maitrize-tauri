@@ -495,6 +495,12 @@ export const MODELES_MISTRAL = [
   { id: "open-mistral-nemo", label: "Mistral Nemo (léger)" },
 ];
 export const MODELE_DEFAUT = "mistral-large-latest";
+/**
+ * Modèle de repli pour les tâches internes (ranger, classer, reformuler).
+ * « Large » n'est pas inclus dans les abonnements Mistral de base : s'en
+ * servir par défaut fait échouer la fonction avec un 403 peu parlant.
+ */
+export const MODELE_TACHES = "mistral-small-latest";
 
 // Palette de durées (miroir Swift) + format lisible.
 export const DUREES = [5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 75, 90, 105, 120, 150, 180];

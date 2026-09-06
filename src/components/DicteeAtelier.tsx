@@ -1,5 +1,5 @@
 import React from "react";
-import { api, Eleve, ChatMessage, newId, nowIso } from "../api";
+import { api, Eleve, ChatMessage, MODELE_TACHES, newId, nowIso } from "../api";
 import { Modal, Field, Input, Select, Textarea } from "./ui";
 import { toast } from "./Toaster";
 import { useDictee, mmss } from "../dictee";
@@ -80,15 +80,18 @@ export function promptRepartition(prenoms: string[], transcription: string): Cha
   ];
 }
 
-export function DicteeAtelier({ eleves, onClose, onEnregistre }: {
+export function DicteeAtelier({ eleves, onClose, onEnregistre, texteInitial, titre }: {
   eleves: Eleve[];
   onClose: () => void;
   onEnregistre: () => void;
+  /** Texte déjà écrit ailleurs (assistant) : on saute l'enregistrement. */
+  texteInitial?: string;
+  titre?: string;
 }) {
   type Etape = "consentement" | "enregistrement" | "texte" | "relecture";
-  const [etape, setEtape] = React.useState<Etape>("consentement");
+  const [etape, setEtape] = React.useState<Etape>(texteInitial ? "texte" : "consentement");
   const [occupe, setOccupe] = React.useState("");
-  const [transcription, setTranscription] = React.useState("");
+  const [transcription, setTranscription] = React.useState(texteInitial ?? "");
   const [props, setProps] = React.useState<Proposition[]>([]);
   const [type, setType] = React.useState("divers");
 
@@ -113,7 +116,11 @@ export function DicteeAtelier({ eleves, onClose, onEnregistre }: {
     if (!transcription.trim()) return;
     setOccupe("Répartition par élève…");
     try {
-      const reponse = await api.mistralChat(promptRepartition(eleves.map(prenom), transcription));
+      // Le modèle par défaut du backend (« large ») n'est pas inclus dans tous
+      // les abonnements Mistral : on reprend celui choisi dans les Réglages,
+      // comme le fait l'assistant.
+      const modele = (await api.settingGet("mistralModel")) || MODELE_TACHES;
+      const reponse = await api.mistralChat(promptRepartition(eleves.map(prenom), transcription), modele);
       const p = lirePropositions(reponse, eleves);
       if (p.length === 0) {
         toast("Aucun élève reconnu dans le texte. Ajoutez les observations à la main.", { icone: "🤔" });
@@ -148,10 +155,13 @@ export function DicteeAtelier({ eleves, onClose, onEnregistre }: {
   const retenues = props.filter((p) => p.garder).length;
 
   return (
-    <Modal titre="🎙 Dictée d'atelier" onClose={fermer} footer={
+    <Modal titre={titre ?? "🎙 Dictée d'atelier"} onClose={fermer} footer={
       <>
         {etape === "texte" && (
-          <button className="btn" onClick={() => { setTranscription(""); setEtape("consentement"); }}>↺ Recommencer</button>
+          <button className="btn" onClick={() => {
+            setTranscription("");
+            if (!texteInitial) setEtape("consentement");
+          }}>↺ Recommencer</button>
         )}
         {etape === "relecture" && (
           <button className="btn" onClick={() => setEtape("texte")}>← Revenir au texte</button>

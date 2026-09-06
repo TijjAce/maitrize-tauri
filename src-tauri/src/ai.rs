@@ -30,6 +30,31 @@ struct MistralChoice {
     message: ChatMessage,
 }
 
+/// Traduit une erreur de l'API en message actionnable.
+///
+/// L'API renvoie un JSON technique en anglais ; affiché tel quel, il n'aide
+/// pas à savoir quoi faire. Les trois cas courants ont une réponse concrète.
+pub(crate) fn message_erreur(code: u16, corps: &str) -> String {
+    let type_err = serde_json::from_str::<serde_json::Value>(corps)
+        .ok()
+        .and_then(|v| v.get("type").and_then(|t| t.as_str()).map(str::to_string))
+        .unwrap_or_default();
+    match (code, type_err.as_str()) {
+        (403, "tier_not_allowed") | (403, _) if corps.contains("subscription tier") =>
+            "Ce modèle n'est pas inclus dans votre abonnement Mistral. \
+             Choisissez-en un autre dans Réglages → Assistant IA (Mistral Small fonctionne sur tous les comptes)."
+                .to_string(),
+        (429, _) => "Trop de demandes d'affilée pour votre abonnement Mistral. \
+                     Patientez quelques secondes avant de réessayer.".to_string(),
+        (401, _) => "Clé API Mistral refusée. Vérifiez-la dans Réglages → Assistant IA.".to_string(),
+        (402, _) => "Crédit Mistral épuisé. Vérifiez votre compte sur console.mistral.ai.".to_string(),
+        _ => {
+            let extrait: String = corps.chars().take(200).collect();
+            format!("Mistral a refusé la demande (code {code}) : {extrait}")
+        }
+    }
+}
+
 fn cle_mistral(db: &State<Db>) -> Result<String, String> {
     let c = db.0.lock().map_err(|e| e.to_string())?;
     let cle: Option<String> = c
@@ -68,9 +93,9 @@ pub async fn mistral_chat(
         .map_err(|e| format!("Réseau : {e}"))?;
 
     if !resp.status().is_success() {
-        let code = resp.status();
+        let code = resp.status().as_u16();
         let txt = resp.text().await.unwrap_or_default();
-        return Err(format!("Mistral {code} : {txt}"));
+        return Err(message_erreur(code, &txt));
     }
 
     let parsed: MistralResponse = resp.json().await.map_err(|e| format!("Réponse : {e}"))?;
@@ -129,9 +154,9 @@ pub async fn mistral_chat_stream(
         .map_err(|e| envoyer_err(format!("Réseau : {e}")))?;
 
     if !resp.status().is_success() {
-        let code = resp.status();
+        let code = resp.status().as_u16();
         let txt = resp.text().await.unwrap_or_default();
-        return Err(envoyer_err(format!("Mistral {code} : {txt}")));
+        return Err(envoyer_err(message_erreur(code, &txt)));
     }
 
     // Les données arrivent en SSE : lignes « data: {json} », séparées par \n.
@@ -211,7 +236,7 @@ pub async fn transcrire_audio(
     let statut = rep.status();
     let corps = rep.text().await.map_err(|e| e.to_string())?;
     if !statut.is_success() {
-        return Err(format!("Transcription refusée ({statut}) : {}", corps.chars().take(200).collect::<String>()));
+        return Err(message_erreur(statut.as_u16(), &corps));
     }
     let json: serde_json::Value = serde_json::from_str(&corps)
         .map_err(|e| format!("Réponse illisible : {e}"))?;
@@ -219,4 +244,41 @@ pub async fn transcrire_audio(
         .and_then(|v| v.as_str())
         .map(|s| s.trim().to_string())
         .ok_or_else(|| "Réponse sans transcription.".to_string())
+}
+
+
+#[cfg(test)]
+mod tests_erreurs {
+    use super::message_erreur;
+
+    // Le message brut de l'API ne dit pas quoi faire ; ces traductions si.
+
+    #[test]
+    fn explique_un_modele_hors_abonnement() {
+        let corps = r#"{"object":"error","message":"This model is not available in your subscription tier","type":"tier_not_allowed","code":"1910"}"#;
+        let m = message_erreur(403, corps);
+        assert!(m.contains("abonnement"), "{m}");
+        assert!(m.contains("Réglages"), "doit dire où changer de modèle : {m}");
+        assert!(!m.contains("tier_not_allowed"), "le jargon ne doit pas ressortir : {m}");
+    }
+
+    #[test]
+    fn explique_une_limite_de_debit() {
+        let corps = r#"{"object":"error","message":"Rate limit exceeded","type":"rate_limited","code":"1300"}"#;
+        let m = message_erreur(429, corps);
+        assert!(m.contains("Patientez"), "{m}");
+    }
+
+    #[test]
+    fn explique_une_cle_refusee() {
+        assert!(message_erreur(401, r#"{"message":"Unauthorized"}"#).contains("Clé API"));
+    }
+
+    #[test]
+    fn reste_lisible_sur_un_code_inconnu() {
+        // Cas non prévu : on garde un extrait, jamais la réponse entière.
+        let m = message_erreur(500, &"x".repeat(1000));
+        assert!(m.contains("code 500"), "{m}");
+        assert!(m.len() < 300, "extrait trop long : {}", m.len());
+    }
 }
