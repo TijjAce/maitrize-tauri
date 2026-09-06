@@ -4,7 +4,7 @@ import { api } from "../api";
 import { Field, Input, Select, Textarea, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { printHTML, escapeHtml } from "../print";
-import { GRILLES, Grille, Bloc, compterRenseignes, compterTotal } from "../data/evaluationsDiagnostiques";
+import { GRILLES, Grille, Bloc, Mise, compterRenseignes, compterTotal } from "../data/evaluationsDiagnostiques";
 
 // ── Évaluation diagnostique ───────────────────────────────────────────────
 // Un écran générique pour les deux grilles décrites dans
@@ -68,6 +68,42 @@ export function EvaluationDiagnostiqueTab() {
   };
 
   const imprimer = () => {
+    const entete = `<h1>${escapeHtml(grille.nom)}</h1>
+       <div class="meta">${escapeHtml(eleve?.nom ?? "")}${eleve?.niveau ? " · " + escapeHtml(eleve.niveau) : ""}
+         · ${new Date().toLocaleDateString("fr-FR")}</div>`;
+    const pied = `<div class="meta" style="margin-top:14px;font-style:italic">${escapeHtml(grille.source)}</div>`;
+
+    // ── Disposition en colonnes : on rejoue la mise en page du document ──
+    if (grille.disposition === "colonnes") {
+      const rubrique = (b: Bloc): string => {
+        const val = v[b.id] ?? {};
+        const couleur = grille.mise?.[b.id]?.couleur ?? "#4b5262";
+        const ligne = (coche: boolean, texte: string) =>
+          `<div style="font-size:9.5pt;line-height:1.25">${coche ? "☒" : "☐"} ${escapeHtml(texte)}</div>`;
+        let corps = "";
+        if (b.t === "cases") corps = b.items.map((i) => ligne(!!val[i], i)).join("");
+        else if (b.t === "choix") corps = b.options.map((o) => ligne(val === o, o)).join("");
+        else if (b.t === "champs") corps = b.champs.map((c) =>
+          `<div style="font-size:9.5pt;line-height:1.4">${escapeHtml(c.label)} :
+             <span style="border-bottom:1px solid #999;display:inline-block;min-width:70px">${escapeHtml(String(val[c.id] ?? ""))}</span></div>`).join("");
+        return `<div style="border:1px solid #b9bfcc;border-radius:4px;padding:4px 6px;margin-bottom:6px;break-inside:avoid">
+            <div style="font-size:9pt;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:${couleur};margin-bottom:2px">${escapeHtml(b.titre)}</div>
+            ${corps}
+          </div>`;
+      };
+      // Trois colonnes CSS, comme sur le document : les rubriques ne sont pas
+      // coupées en deux grâce à break-inside.
+      const colonnes = [1, 2, 3].map((c) =>
+        `<div>${grille.blocs.filter((b) => (grille.mise?.[b.id]?.col ?? 1) === c).map(rubrique).join("")}</div>`
+      ).join("");
+      printHTML(`${grille.nom} — ${eleve?.nom ?? ""}`,
+        `${entete}
+         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;align-items:start">${colonnes}</div>
+         ${pied}`);
+      return;
+    }
+
+    // ── Disposition en liste (grille S4C) ──
     const blocHtml = (b: Bloc): string => {
       const val = v[b.id] ?? {};
       if (b.t === "champs") {
@@ -93,11 +129,7 @@ export function EvaluationDiagnostiqueTab() {
       return `<h3>${escapeHtml(b.titre)}</h3><table style="width:100%"><tr><th style="text-align:left">Observable</th><th>Fréquence</th></tr>${lignes}</table>`;
     };
     printHTML(`${grille.nom} — ${eleve?.nom ?? ""}`,
-      `<h1>${escapeHtml(grille.nom)}</h1>
-       <div class="meta">${escapeHtml(eleve?.nom ?? "")}${eleve?.niveau ? " · " + escapeHtml(eleve.niveau) : ""}
-         · ${new Date().toLocaleDateString("fr-FR")}</div>
-       ${grille.blocs.map(blocHtml).join("")}
-       <div class="meta" style="margin-top:18px;font-style:italic">${escapeHtml(grille.source)}</div>`);
+      `${entete}${grille.blocs.map(blocHtml).join("")}${pied}`);
   };
 
   const renseignes = compterRenseignes(grille, v);
@@ -141,7 +173,22 @@ export function EvaluationDiagnostiqueTab() {
         </div>
       </div>
 
-      {!charge ? <div /> : grille.blocs.map((b) => (
+      {!charge ? <div /> : grille.disposition === "colonnes" ? (
+        <div className="card" style={{ padding: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, alignItems: "start" }}>
+            {[1, 2, 3].map((col) => (
+              <div key={col} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {grille.blocs.filter((b) => (grille.mise?.[b.id]?.col ?? 1) === col).map((b) => (
+                  <Rubrique key={b.id} bloc={b} valeur={v[b.id]} mise={grille.mise?.[b.id]}
+                    onCase={(item) => basculerCase(b.id, item)}
+                    onChoix={(o) => majBloc(b.id, v[b.id] === o ? "" : o)}
+                    onTexte={(champ, texte) => saisir(b.id, champ, texte)} />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : grille.blocs.map((b) => (
         <BlocGrille key={b.id} bloc={b} valeur={v[b.id]} niveaux={grille.niveaux ?? []}
           onCase={(item) => basculerCase(b.id, item)}
           onChoix={(o) => majBloc(b.id, v[b.id] === o ? "" : o)}
@@ -217,6 +264,57 @@ function BlocGrille({ bloc, valeur, niveaux, onCase, onChoix, onNiveau, onTexte 
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+
+/**
+ * Une rubrique de la grille papier : encadré, titre en capitales colorées,
+ * items cochables à la suite. Volontairement compact — l'original tient sur
+ * une page, et c'est ce qui le rend consultable d'un coup d'œil.
+ */
+function Rubrique({ bloc, valeur, mise, onCase, onChoix, onTexte }: {
+  bloc: Bloc; valeur: any; mise?: Mise;
+  onCase: (item: string) => void;
+  onChoix: (option: string) => void;
+  onTexte: (champ: string, texte: string) => void;
+}) {
+  const val = valeur ?? {};
+  const couleur = mise?.couleur ?? "var(--text-2)";
+  const caseAcocher = (coche: boolean, texte: string, onClick: () => void) => (
+    <label key={texte} onClick={onClick}
+      style={{ display: "flex", gap: 5, alignItems: "flex-start", fontSize: 12.5, lineHeight: 1.35,
+        cursor: "pointer", padding: "1px 0" }}>
+      <span style={{ color: coche ? couleur : "var(--text-2)", fontWeight: 700, flexShrink: 0 }}>
+        {coche ? "☒" : "☐"}
+      </span>
+      <span style={{ opacity: coche ? 1 : 0.9 }}>{texte}</span>
+    </label>
+  );
+
+  return (
+    <div style={{ border: "1px solid var(--border)", borderRadius: 6, padding: "6px 8px", background: "var(--panel)" }}>
+      <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: 0.3, color: couleur,
+        textTransform: "uppercase", marginBottom: 4 }}>
+        {bloc.titre}
+      </div>
+
+      {bloc.t === "cases" && bloc.items.map((i) => caseAcocher(!!val[i], i, () => onCase(i)))}
+
+      {bloc.t === "choix" && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {bloc.options.map((o) => caseAcocher(valeur === o, o, () => onChoix(o)))}
+        </div>
+      )}
+
+      {bloc.t === "champs" && bloc.champs.map((c) => (
+        <div key={c.id} style={{ marginTop: 3 }}>
+          <div style={{ fontSize: 11, color: "var(--text-2)" }}>{c.label}</div>
+          <Input value={val[c.id] ?? ""} style={{ height: 26, fontSize: 12.5 }}
+            onChange={(e) => onTexte(c.id, e.target.value)} />
+        </div>
+      ))}
     </div>
   );
 }

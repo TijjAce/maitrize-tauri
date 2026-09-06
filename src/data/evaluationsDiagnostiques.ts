@@ -28,6 +28,9 @@ export type Bloc =
   /** Champs de saisie libre, en colonnes. */
   | { t: "champs"; id: string; titre: string; champs: { id: string; label: string }[] };
 
+/** Placement d'un bloc dans la grille papier : colonne et couleur du titre. */
+export interface Mise { col: 1 | 2 | 3; couleur: string }
+
 export interface Grille {
   id: string;
   nom: string;
@@ -36,6 +39,15 @@ export interface Grille {
   lien?: string;
   /** Niveaux proposés pour les blocs « echelle ». */
   niveaux?: string[];
+  /**
+   * Disposition à l'écran et à l'impression. « colonnes » reproduit la mise
+   * en page du document d'origine : trois colonnes de rubriques encadrées,
+   * titres en capitales colorées. On la garde parce que l'enseignant connaît
+   * cette grille de vue et la remplit plus vite quand elle en a l'allure.
+   */
+  disposition?: "liste" | "colonnes";
+  /** Placement de chaque bloc, quand la disposition est en colonnes. */
+  mise?: Record<string, Mise>;
   blocs: Bloc[];
 }
 
@@ -45,6 +57,34 @@ const OBSERVATION: Grille = {
   nom: "Observation générale",
   sousTitre: "Comportements observables, du repérage dans le temps à l'autonomie",
   source: "D'après la grille d'observation publiée par Ebla Éditions, « Enseigner en Ulis »",
+  disposition: "colonnes",
+  mise: {
+    lateralite:    { col: 1, couleur: "#4b5262" },
+    sante:         { col: 2, couleur: "#4b5262" },
+    priseEnCharge: { col: 3, couleur: "#4b5262" },
+    reglesDeVie:   { col: 1, couleur: "#2e7d4f" },
+    adultes:       { col: 2, couleur: "#2e7d4f" },
+    pairs:         { col: 3, couleur: "#2e7d4f" },
+    memorisation:  { col: 1, couleur: "#8e2f2f" },
+    attention:     { col: 2, couleur: "#2f5aa8" },
+    securite:      { col: 3, couleur: "#c2591f" },
+    temps:         { col: 1, couleur: "#b03030" },
+    espace:        { col: 2, couleur: "#1f7a6b" },
+    deplacer:      { col: 3, couleur: "#b03030" },
+    motriciteFine: { col: 1, couleur: "#8e2f2f" },
+    motricite:     { col: 2, couleur: "#2f3f7a" },
+    autonomie:     { col: 3, couleur: "#c2591f" },
+    communication: { col: 1, couleur: "#2e7d4f" },
+    tache:         { col: 2, couleur: "#2f3f7a" },
+    maths:         { col: 3, couleur: "#a8317a" },
+    lecture:       { col: 2, couleur: "#2f5aa8" },
+    organisation:  { col: 1, couleur: "#8e2f2f" },
+    evaluation:    { col: 2, couleur: "#2f5aa8" },
+    installation:  { col: 3, couleur: "#8e2f2f" },
+    comptine:      { col: 3, couleur: "#4b5262" },
+    identite:      { col: 1, couleur: "#4b5262" },
+    synthese:      { col: 1, couleur: "#4b5262" },
+  },
   blocs: [
     {
       t: "champs", id: "identite", titre: "Identification",
