@@ -7,6 +7,8 @@ import { openCtx } from "../components/ctxmenu";
 import { Markdown } from "../components/Markdown";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { useDictee, mmss } from "../dictee";
+import { toast } from "../components/Toaster";
 
 // Extrait un objet JSON d'une réponse IA (tolère du texte autour).
 function extraireJson(rep: string): any {
@@ -83,6 +85,21 @@ export default function Assistant() {
   // déjà en bas ; dès qu'il remonte, on le laisse lire.
   const colleEnBas = React.useRef(true);
   const [detache, setDetache] = React.useState(false);
+
+  // Dictée : on remplit la zone de saisie, sans envoyer — l'enseignant relit
+  // et complète avant de lancer la demande.
+  const dictee = useDictee();
+  const basculerDictee = async () => {
+    if (dictee.etat === "enregistrement") {
+      const { texte, erreur } = await dictee.arreter();
+      if (erreur) { toast("Transcription impossible : " + erreur, { icone: "⚠️" }); return; }
+      if (!texte.trim()) { toast("Rien n'a été compris.", { icone: "🤔" }); return; }
+      setInput((v) => (v.trim() ? v.trimEnd() + " " : "") + texte);
+      return;
+    }
+    const erreur = await dictee.demarrer();
+    if (erreur) toast(erreur, { icone: "🎙" });
+  };
 
   const versLeBas = React.useCallback((lisse = false) => {
     const n = scrollRef.current; if (!n) return;
@@ -243,9 +260,19 @@ export default function Assistant() {
         </button>
       )}
       <div className="chat-input">
-        <textarea className="textarea" rows={2} placeholder="Écrivez votre demande…" value={input}
+        <textarea className="textarea" rows={2}
+          placeholder={dictee.etat === "enregistrement" ? "Enregistrement en cours…" : "Écrivez ou dictez votre demande…"} value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } }} />
+        <button className={"btn" + (dictee.etat === "enregistrement" ? " danger" : "")}
+          onClick={basculerDictee} disabled={loading || dictee.etat === "transcription"}
+          title={dictee.etat === "enregistrement"
+            ? "Terminer la dictée et transcrire"
+            : "Dicter votre demande — l'audio part chez Mistral pour être transcrit"}
+          aria-pressed={dictee.etat === "enregistrement"}>
+          {dictee.etat === "enregistrement" ? `⏹ ${mmss(dictee.secondes)}`
+            : dictee.etat === "transcription" ? "⏳" : "🎙"}
+        </button>
         <button className="btn primary" disabled={loading || !input.trim()} onClick={() => envoyer()}>Envoyer</button>
       </div>
       </div>
