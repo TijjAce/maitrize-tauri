@@ -2,6 +2,7 @@ import React from "react";
 import { api, Eleve, ChatMessage, newId, nowIso } from "../api";
 import { Modal, Field, Input, Select, Textarea } from "./ui";
 import { toast } from "./Toaster";
+import { useDictee, mmss } from "../dictee";
 
 // ── Dictée d'atelier ──────────────────────────────────────────────────────
 //
@@ -79,8 +80,6 @@ export function promptRepartition(prenoms: string[], transcription: string): Cha
   ];
 }
 
-const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-
 export function DicteeAtelier({ eleves, onClose, onEnregistre }: {
   eleves: Eleve[];
   onClose: () => void;
@@ -88,68 +87,26 @@ export function DicteeAtelier({ eleves, onClose, onEnregistre }: {
 }) {
   type Etape = "consentement" | "enregistrement" | "texte" | "relecture";
   const [etape, setEtape] = React.useState<Etape>("consentement");
-  const [secondes, setSecondes] = React.useState(0);
   const [occupe, setOccupe] = React.useState("");
   const [transcription, setTranscription] = React.useState("");
   const [props, setProps] = React.useState<Proposition[]>([]);
   const [type, setType] = React.useState("divers");
 
-  const recRef = React.useRef<MediaRecorder | null>(null);
-  const morceaux = React.useRef<Blob[]>([]);
-  const fluxRef = React.useRef<MediaStream | null>(null);
-  const minuteur = React.useRef<number | null>(null);
-
-  // Le micro doit être relâché quoi qu'il arrive : fermeture, erreur, échap.
-  const couperMicro = React.useCallback(() => {
-    if (minuteur.current) { window.clearInterval(minuteur.current); minuteur.current = null; }
-    fluxRef.current?.getTracks().forEach((t) => t.stop());
-    fluxRef.current = null;
-    recRef.current = null;
-  }, []);
-  React.useEffect(() => couperMicro, [couperMicro]);
+  const dictee = useDictee();
 
   const demarrer = async () => {
-    try {
-      const flux = await navigator.mediaDevices.getUserMedia({ audio: true });
-      fluxRef.current = flux;
-      morceaux.current = [];
-      const rec = new MediaRecorder(flux);
-      rec.ondataavailable = (e) => { if (e.data.size) morceaux.current.push(e.data); };
-      rec.start();
-      recRef.current = rec;
-      setSecondes(0);
-      minuteur.current = window.setInterval(() => setSecondes((s) => s + 1), 1000);
-      setEtape("enregistrement");
-    } catch (e: any) {
-      toast(String(e?.message ?? e).includes("denied")
-        ? "Accès au micro refusé. Autorisez Maitrize dans Réglages système → Confidentialité → Microphone."
-        : "Micro indisponible : " + String(e?.message ?? e), { icone: "🎙" });
-    }
+    const erreur = await dictee.demarrer();
+    if (erreur) { toast(erreur, { icone: "🎙" }); return; }
+    setEtape("enregistrement");
   };
 
   const arreter = async () => {
-    const rec = recRef.current;
-    if (!rec) return;
     setOccupe("Transcription en cours…");
-    const blob: Blob = await new Promise((res) => {
-      rec.onstop = () => res(new Blob(morceaux.current, { type: rec.mimeType || "audio/webm" }));
-      rec.stop();
-    });
-    couperMicro();
-    try {
-      const b64 = await new Promise<string>((res, rej) => {
-        const r = new FileReader();
-        r.onload = () => res(String(r.result).split(",")[1] ?? "");
-        r.onerror = rej;
-        r.readAsDataURL(blob);
-      });
-      const texte = await api.transcrireAudio(b64, "atelier.webm");
-      setTranscription(texte);
-      setEtape("texte");
-    } catch (e: any) {
-      toast("Transcription impossible : " + String(e), { icone: "⚠️" });
-      setEtape("texte"); // le texte reste saisissable à la main
-    } finally { setOccupe(""); }
+    const { texte, erreur } = await dictee.arreter();
+    setOccupe("");
+    if (erreur) toast("Transcription impossible : " + erreur, { icone: "⚠️" });
+    else setTranscription(texte);
+    setEtape("texte"); // le texte reste saisissable à la main
   };
 
   const repartir = async () => {
@@ -187,7 +144,7 @@ export function DicteeAtelier({ eleves, onClose, onEnregistre }: {
   const maj = (id: string, patch: Partial<Proposition>) =>
     setProps((l) => l.map((p) => (p.id === id ? { ...p, ...patch } : p)));
 
-  const fermer = () => { couperMicro(); onClose(); };
+  const fermer = () => { dictee.annuler(); onClose(); };
   const retenues = props.filter((p) => p.garder).length;
 
   return (
@@ -245,7 +202,7 @@ export function DicteeAtelier({ eleves, onClose, onEnregistre }: {
       {etape === "enregistrement" && (
         <div style={{ textAlign: "center", padding: "18px 0" }}>
           <div style={{ fontSize: 44 }}>🔴</div>
-          <div style={{ fontSize: 28, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{mmss(secondes)}</div>
+          <div style={{ fontSize: 28, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{mmss(dictee.secondes)}</div>
           <p style={{ color: "var(--text-2)", fontSize: 13 }}>
             Enregistrement en cours. Nommez chaque élève par son prénom.
           </p>
