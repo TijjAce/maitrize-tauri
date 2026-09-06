@@ -5,11 +5,49 @@ import { SECTIONS, compterRempli } from "./ProjetPedagogique";
 // doit rester cohérente, et le compteur d'avancement honnête.
 
 describe("trame du projet pédagogique", () => {
-  it("couvre les étapes attendues d'un projet", () => {
+  it("suit la classification des fonctionnements de Bruno Egron", () => {
     expect(SECTIONS.map((s) => s.titre)).toEqual([
-      "Contexte", "Le groupe", "Axes de travail", "Organisation pédagogique",
-      "Démarches et supports", "Partenariats", "Évaluation du projet",
+      "Contexte",
+      "Conditions de vie familiales",
+      "Fonctionnement sensori-moteur",
+      "Fonctionnement psycho-affectif",
+      "Fonctionnement psycho-social",
+      "Fonctionnement cognitif",
+      "Relation au savoir",
+      "Fonctionnement instrumental",
+      "Organisation pédagogique",
+      "Partenariats",
+      "Évaluation du projet",
     ]);
+  });
+
+  it("rappelle sur chaque axe ce que la grille invite à observer", () => {
+    // Sans ces repères, la trame ne serait qu'une liste de titres : c'est
+    // l'apport de la grille d'Egron.
+    const axes = SECTIONS.filter((s) => s.titre.startsWith("Fonctionnement") || s.titre.startsWith("Relation"));
+    expect(axes).toHaveLength(6);
+    for (const a of axes) {
+      expect(a.observer?.length ?? 0, `${a.titre} sans repères d'observation`).toBeGreaterThan(2);
+      expect(a.besoins?.length ?? 0, `${a.titre} sans besoins suggérés`).toBeGreaterThan(4);
+    }
+  });
+
+  it("reprend les items de la grille, pas des intitulés inventés", () => {
+    const tout = SECTIONS.flatMap((s) => s.observer ?? []);
+    for (const item of ["Coordination motrice globale", "L'estime de soi", "Respecter les règles de vie",
+                        "Fatigabilité et attention", "Prise d'informations"]) {
+      expect(tout, `item absent : ${item}`).toContain(item);
+    }
+  });
+
+  it("pose les deux mêmes questions sur chaque axe", () => {
+    // « Ce que j'ai observé » puis « ce que je mets en place » : l'ordre que
+    // défend Egron, l'analyse après le constat.
+    for (const s of SECTIONS.filter((x) => x.observer && x.besoins)) {
+      const ids = s.champs.map((c) => c.id);
+      expect(ids.some((i) => i.endsWith("Besoins")), `${s.titre} sans champ besoins`).toBe(true);
+      expect(ids.some((i) => i.endsWith("Reponses")), `${s.titre} sans champ réponses`).toBe(true);
+    }
   });
 
   it("titre et remplit chaque section", () => {
@@ -51,7 +89,7 @@ describe("compterRempli", () => {
   });
 
   it("compte les rubriques renseignées", () => {
-    expect(compterRempli({ etablissement: "IME Les Tilleuls", axe1: "Autonomie" }).remplis).toBe(2);
+    expect(compterRempli({ etablissement: "IME Les Tilleuls", cognitifBesoins: "Attention courte" }).remplis).toBe(2);
   });
 
   it("ignore une rubrique qui ne contient que des espaces", () => {
