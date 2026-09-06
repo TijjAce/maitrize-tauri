@@ -13,6 +13,7 @@ import { DispositifsTab } from "./Dispositifs";
 import { ProgressionsTab } from "./Progressions";
 import { GevaScoTab } from "./GevaSco";
 import { DicteeAtelier } from "../components/DicteeAtelier";
+import { EvaluationDiagnostiqueTab } from "./EvaluationDiagnostique";
 import syntheseDomaines from "../data/syntheseGS.json";
 
 const ELEVES_TABS = ["liste", "observations", "evaluations", "papiers", "synthese", "dispositifs", "gevasco", "progressions"] as const;
@@ -190,9 +191,32 @@ function Evaluations() {
   const [edit, setEdit] = React.useState<Evaluation | null>(null);
   const [notes, setNotes] = React.useState<Evaluation | null>(null);
   const [del, setDel] = React.useState<Evaluation | null>(null);
+  // Deux natures d'évaluation : les épreuves notées, et le diagnostique
+  // d'entrée qui décrit ce que l'élève sait faire avant de noter quoi que ce soit.
+  const [vue, setVue] = React.useState<"notees" | "diagnostique">("notees");
+
+  if (vue === "diagnostique") {
+    return (
+      <>
+        <div className="toolbar">
+          <div className="seg">
+            <button onClick={() => setVue("notees")}>Évaluations notées</button>
+            <button className="active">🔍 Évaluation diagnostique</button>
+          </div>
+        </div>
+        <EvaluationDiagnostiqueTab />
+      </>
+    );
+  }
+
   return (
     <>
-      <div className="toolbar"><div className="spacer" /><button className="btn primary" onClick={() => setEdit(nouvelleEvaluation())}>+ Évaluation</button></div>
+      <div className="toolbar">
+        <div className="seg">
+          <button className="active">Évaluations notées</button>
+          <button onClick={() => setVue("diagnostique")}>🔍 Évaluation diagnostique</button>
+        </div>
+        <div className="spacer" /><button className="btn primary" onClick={() => setEdit(nouvelleEvaluation())}>+ Évaluation</button></div>
       {(evals?.length ?? 0) === 0 ? <Empty icone="📊" titre="Aucune évaluation" /> :
         evals!.map((ev) => (
           <div key={ev.id} className="list-row">
