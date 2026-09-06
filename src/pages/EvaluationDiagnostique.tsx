@@ -85,9 +85,12 @@ export function EvaluationDiagnostiqueTab() {
           `<li style="list-style:none">${val[i] ? "☒" : "☐"} ${escapeHtml(i)}</li>`).join("");
         return `<h3>${escapeHtml(b.titre)}</h3><ul style="margin:4px 0;padding-left:6px;columns:2">${items}</ul>`;
       }
-      const lignes = b.items.map((i) =>
-        `<tr><td>${escapeHtml(i)}</td><td style="text-align:center"><b>${escapeHtml(String(val[i] ?? "—"))}</b></td></tr>`).join("");
-      return `<h3>${escapeHtml(b.titre)}</h3><table style="width:100%"><tr><th style="text-align:left">Domaine</th><th>Niveau</th></tr>${lignes}</table>`;
+      const lignes = b.groupes.map((g) =>
+        `<tr><td colspan="2" style="background:#eef1f8;font-weight:700">${escapeHtml(g.nom)}</td></tr>` +
+        g.items.map((i) =>
+          `<tr><td>${escapeHtml(i)}</td><td style="text-align:center;white-space:nowrap"><b>${escapeHtml(String(val[i] ?? "—"))}</b></td></tr>`).join("")
+      ).join("");
+      return `<h3>${escapeHtml(b.titre)}</h3><table style="width:100%"><tr><th style="text-align:left">Observable</th><th>Fréquence</th></tr>${lignes}</table>`;
     };
     printHTML(`${grille.nom} — ${eleve?.nom ?? ""}`,
       `<h1>${escapeHtml(grille.nom)}</h1>
@@ -181,14 +184,21 @@ function BlocGrille({ bloc, valeur, niveaux, onCase, onChoix, onNiveau, onTexte 
       )}
 
       {bloc.t === "echelle" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {bloc.items.map((i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ flex: 1, fontSize: 13 }}>{i}</span>
-              <div className="seg">
-                {niveaux.map((n) => (
-                  <button key={n} className={val[i] === n ? "active" : ""} style={{ fontSize: 12 }}
-                    onClick={() => onNiveau(i, val[i] === n ? "" : n)}>{n}</button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {bloc.groupes.map((g) => (
+            <div key={g.nom}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--accent)", marginBottom: 4 }}>{g.nom}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                {g.items.map((i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ flex: 1, fontSize: 13 }}>{i}</span>
+                    <div className="seg">
+                      {niveaux.map((n) => (
+                        <button key={n} className={val[i] === n ? "active" : ""} style={{ fontSize: 12 }}
+                          onClick={() => onNiveau(i, val[i] === n ? "" : n)}>{n}</button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>

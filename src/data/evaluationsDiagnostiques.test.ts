@@ -7,7 +7,7 @@ import { GRILLES, compterRenseignes, compterTotal, type Grille } from "./evaluat
 
 describe("catalogue des grilles", () => {
   it("propose les deux grilles attendues", () => {
-    expect(GRILLES.map((g) => g.id).sort()).toEqual(["besoins", "observation"]);
+    expect(GRILLES.map((g) => g.nom)).toEqual(["Observation générale", "Observation S4C"]);
   });
 
   it("cite sa source pour chaque grille", () => {
@@ -32,7 +32,8 @@ describe.each(GRILLES.map((g) => [g.id, g] as const))("grille %s", (_id, g: Gril
     // Deux items identiques partageraient la même case : cocher l'un
     // cocherait l'autre.
     for (const b of g.blocs) {
-      const l = b.t === "cases" || b.t === "echelle" ? b.items
+      const l: string[] = b.t === "cases" ? b.items
+        : b.t === "echelle" ? b.groupes.flatMap((gr) => gr.items)
         : b.t === "choix" ? b.options
         : b.champs.map((c) => c.id);
       expect(l.filter((x, i) => l.indexOf(x) !== i), `doublon dans ${b.id}`).toEqual([]);
@@ -42,7 +43,8 @@ describe.each(GRILLES.map((g) => [g.id, g] as const))("grille %s", (_id, g: Gril
   it("titre et remplit chaque bloc", () => {
     for (const b of g.blocs) {
       expect(b.titre.trim(), `bloc ${b.id} sans titre`).not.toBe("");
-      const n = b.t === "cases" || b.t === "echelle" ? b.items.length
+      const n = b.t === "cases" ? b.items.length
+        : b.t === "echelle" ? b.groupes.reduce((m, gr) => m + gr.items.length, 0)
         : b.t === "choix" ? b.options.length : b.champs.length;
       expect(n, `bloc ${b.id} vide`).toBeGreaterThan(0);
     }
@@ -54,7 +56,7 @@ describe.each(GRILLES.map((g) => [g.id, g] as const))("grille %s", (_id, g: Gril
   });
 });
 
-describe("grille des besoins", () => {
+describe("grille S4C", () => {
   const g = GRILLES.find((x) => x.id === "besoins")!;
 
   it("couvre les cinq domaines du socle commun", () => {
@@ -62,12 +64,27 @@ describe("grille des besoins", () => {
     expect(echelles).toHaveLength(5);
   });
 
-  it("reprend les 25 domaines d'observation de Cap école inclusive", () => {
-    const items = g.blocs.flatMap((b) => (b.t === "echelle" ? b.items : []));
-    expect(items).toHaveLength(25);
-    expect(items).toContain("Attention");
-    expect(items).toContain("Fluidité de la lecture");
-    expect(items).toContain("Respect des règles de vie");
+  it("garde les 25 sous-domaines de la grille officielle", () => {
+    const sous = g.blocs.flatMap((b) => (b.t === "echelle" ? b.groupes.map((gr) => gr.nom) : []));
+    expect(sous).toHaveLength(25);
+    for (const attendu of ["Attention", "Fluidité de la lecture", "Respect des règles de vie",
+                           "Sensorialité", "Démarche d'investigation"]) {
+      expect(sous, `sous-domaine absent : ${attendu}`).toContain(attendu);
+    }
+  });
+
+  it("reprend les observables du PDF, pas seulement les intitulés de domaines", () => {
+    // Ce sont ces phrases-là que l'enseignant coche ; sans elles la grille
+    // ne serait qu'un sommaire.
+    const items = g.blocs.flatMap((b) => (b.t === "echelle" ? b.groupes.flatMap((gr) => gr.items) : []));
+    expect(items.length).toBeGreaterThanOrEqual(100);
+    expect(items).toContain("Parle de façon intelligible");
+    expect(items).toContain("Mémorise une poésie");
+    expect(items).toContain("Écrit lisiblement");
+  });
+
+  it("reprend l'échelle de fréquence de la grille officielle", () => {
+    expect(g.niveaux).toEqual(["Souvent", "Parfois", "Rarement", "Jamais"]);
   });
 
   it("renvoie vers l'outil en ligne, qui seul donne les adaptations", () => {
@@ -94,9 +111,9 @@ describe("comptage de complétion", () => {
     expect(compterRenseignes(g, { synthese: { remarques: "   " } })).toBe(0);
   });
 
-  it("ne compte pas « Non observé » comme renseigné", () => {
+  it("compte les fréquences notées sur la grille S4C", () => {
     const b = GRILLES.find((x) => x.id === "besoins")!;
-    expect(compterRenseignes(b, { d2: { Attention: "Non observé", Mémoire: "Réussi" } })).toBe(1);
+    expect(compterRenseignes(b, { d2: { "Mémorise une poésie": "Souvent" } })).toBe(1);
   });
 
   it("annonce un total cohérent avec le contenu", () => {
