@@ -367,8 +367,16 @@ export const api = {
 
   // IA Mistral
   mistralChat: (messages: ChatMessage[], model?: string) =>
-    invoke<string>("mistral_chat", { messages, model: model ?? null }),
-  mistralTest: () => invoke<boolean>("mistral_test"),
+    invoke<string>("mistral_chat", { messages, model: normaliserModele(model) }),
+  mistralTest: (model?: string) =>
+    invoke<boolean>("mistral_test", { model: normaliserModele(model) }),
+  /** Essaie chaque modèle et dit lesquels l'abonnement accepte réellement. */
+  mistralModelesDisponibles: (modeles: string[]) =>
+    invoke<EtatModele[]>("mistral_modeles_disponibles", { modeles }),
+
+  /** Modèle retenu pour une tâche : réglage de l'utilisateur, ou repli. */
+  modeleActif: async (repli = MODELE_DEFAUT) =>
+    normaliserModele((await invoke<string | null>("setting_get", { cle: "mistralModel" })) || repli),
 
   // Amis (appariement chiffré, 100 % local pour l'instant)
   identiteGet: () => invoke<Identite>("identite_get"),
@@ -488,19 +496,52 @@ export const TYPES_JEU = [
 
 export const COULEURS = ["blue", "indigo", "purple", "teal", "green", "orange", "red", "pink", "gray"];
 
-// Modèles Mistral proposés (du plus puissant au plus rapide/économe).
-export const MODELES_MISTRAL = [
-  { id: "mistral-large-latest", label: "Mistral Large (qualité max)" },
-  { id: "mistral-small-latest", label: "Mistral Small (rapide)" },
-  { id: "open-mistral-nemo", label: "Mistral Nemo (léger)" },
-];
-export const MODELE_DEFAUT = "mistral-large-latest";
 /**
- * Modèle de repli pour les tâches internes (ranger, classer, reformuler).
- * « Large » n'est pas inclus dans les abonnements Mistral de base : s'en
- * servir par défaut fait échouer la fonction avec un 403 peu parlant.
+ * Modèles Mistral proposés, du plus fin au plus rapide.
+ *
+ * Les trois « Ministral » sont ouverts à tous les comptes, y compris gratuits.
+ * Les deux derniers demandent un abonnement payant : Mistral les refuse
+ * ailleurs avec un quota de zéro requête par minute, d'où le libellé explicite.
  */
-export const MODELE_TACHES = "mistral-small-latest";
+export const MODELES_MISTRAL = [
+  { id: "ministral-14b-latest", label: "Ministral 14B (qualité)" },
+  { id: "ministral-8b-latest", label: "Ministral 8B (équilibré)" },
+  { id: "ministral-3b-latest", label: "Ministral 3B (rapide)" },
+  { id: "mistral-medium-latest", label: "Mistral Medium (abonnement payant)" },
+  { id: "mistral-large-latest", label: "Mistral Large (abonnement payant)" },
+];
+export const MODELE_DEFAUT = "ministral-8b-latest";
+/** Modèle des tâches internes (ranger, classer, reformuler) : rapide et ouvert. */
+export const MODELE_TACHES = "ministral-8b-latest";
+
+/**
+ * Identifiants qui ne sont plus proposés — retirés par Mistral, ou réservés
+ * aux abonnements payants — et leur équivalent ouvert à tous les comptes.
+ *
+ * Un réglage enregistré il y a plusieurs mois peut encore désigner un modèle
+ * qui n'existe plus, ou que l'abonnement refuse : l'appel échoue alors par un
+ * 403 ou un 429 incompréhensible. `normaliserModele` répare ces valeurs.
+ */
+export const MODELES_REMPLACES: Record<string, string> = {
+  "open-mistral-nemo": "ministral-8b-latest",
+  "open-mistral-7b": "ministral-8b-latest",
+  "open-mixtral-8x7b": "ministral-8b-latest",
+  "open-mixtral-8x22b": "ministral-14b-latest",
+  "mistral-small-latest": "ministral-14b-latest",
+  "magistral-small-latest": "ministral-14b-latest",
+  "mistral-tiny": "ministral-3b-latest",
+  "ministral-3b-2410": "ministral-3b-latest",
+  "ministral-8b-2410": "ministral-8b-latest",
+};
+
+/** Verdict d'un test réel sur un modèle, pour l'écran des réglages. */
+export interface EtatModele { id: string; disponible: boolean; detail: string }
+
+/** Ramène un identifiant de modèle enregistré vers un modèle encore servi. */
+export function normaliserModele(id: string | null | undefined): string {
+  if (!id || !id.trim()) return MODELE_DEFAUT;
+  return MODELES_REMPLACES[id] ?? id;
+}
 
 // Palette de durées (miroir Swift) + format lisible.
 export const DUREES = [5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 75, 90, 105, 120, 150, 180];
