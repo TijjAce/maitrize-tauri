@@ -9,6 +9,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useDictee, mmss } from "../dictee";
 import { toast } from "../components/Toaster";
+import { DicteeAtelier } from "../components/DicteeAtelier";
 
 // Extrait un objet JSON d'une réponse IA (tolère du texte autour).
 function extraireJson(rep: string): any {
@@ -89,6 +90,23 @@ export default function Assistant() {
   // Dictée : on remplit la zone de saisie, sans envoyer — l'enseignant relit
   // et complète avant de lancer la demande.
   const dictee = useDictee();
+  // Classement dans les fiches élèves : on part du texte en cours de saisie,
+  // sinon du dernier message envoyé — on raconte souvent avant d'y penser.
+  const { data: eleves } = useAsync(() => api.elevesList(), []);
+  const [aClasser, setAClasser] = React.useState<string | null>(null);
+  const dernierRecit = () => {
+    if (input.trim()) return input.trim();
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") return messages[i].content;
+    }
+    return "";
+  };
+  const classer = () => {
+    const texte = dernierRecit();
+    if (!texte) { toast("Racontez d'abord ce qui s'est passé.", { icone: "ℹ️" }); return; }
+    if (!eleves?.length) { toast("Aucun élève enregistré.", { icone: "ℹ️" }); return; }
+    setAClasser(texte);
+  };
   const basculerDictee = async () => {
     if (dictee.etat === "enregistrement") {
       const { texte, erreur } = await dictee.arreter();
@@ -264,6 +282,10 @@ export default function Assistant() {
           placeholder={dictee.etat === "enregistrement" ? "Enregistrement en cours…" : "Écrivez ou dictez votre demande…"} value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } }} />
+        <button className="btn" onClick={classer} disabled={loading}
+          title="Ranger ce récit dans les fiches élèves, après relecture">
+          👧 Classer
+        </button>
         <button className={"btn" + (dictee.etat === "enregistrement" ? " danger" : "")}
           onClick={basculerDictee} disabled={loading || dictee.etat === "transcription"}
           title={dictee.etat === "enregistrement"
@@ -275,6 +297,12 @@ export default function Assistant() {
         </button>
         <button className="btn primary" disabled={loading || !input.trim()} onClick={() => envoyer()}>Envoyer</button>
       </div>
+      {aClasser !== null && (
+        <DicteeAtelier eleves={eleves ?? []} texteInitial={aClasser}
+          titre="👧 Classer dans les fiches élèves"
+          onClose={() => setAClasser(null)}
+          onEnregistre={() => toast("Consultez Élèves → Observations.", { icone: "👧" })} />
+      )}
       </div>
     </div>
   );
