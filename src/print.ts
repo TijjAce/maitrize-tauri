@@ -8,8 +8,12 @@ export function escapeHtml(s: string): string {
 
 const STYLE = `
   * { box-sizing: border-box; }
+  /* Document destiné au papier : il s'affiche sur fond blanc, quel que soit
+     le thème du système. Sans ces deux lignes, l'aperçu d'un navigateur en
+     mode sombre montre du texte foncé sur fond foncé. */
+  :root { color-scheme: light; }
   body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    color: #1c2233; margin: 0; padding: 28px 32px; font-size: 13px; line-height: 1.5; }
+    color: #1c2233; background: #fff; margin: 0; padding: 28px 32px; font-size: 13px; line-height: 1.5; }
   h1 { font-size: 22px; margin: 0 0 4px; }
   h2 { font-size: 16px; margin: 22px 0 6px; border-bottom: 2px solid #e3e6ef; padding-bottom: 4px; }
   h3 { font-size: 14px; margin: 14px 0 4px; }
