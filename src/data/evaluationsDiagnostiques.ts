@@ -39,6 +39,8 @@ export interface Grille {
   lien?: string;
   /** Niveaux proposés pour les blocs « echelle ». */
   niveaux?: string[];
+  /** Blocs qui doivent commencer une nouvelle page à l'impression. */
+  sautAvant?: string[];
   /**
    * Disposition à l'écran et à l'impression. « colonnes » reproduit la mise
    * en page du document d'origine : trois colonnes de rubriques encadrées,
@@ -245,6 +247,10 @@ const BESOINS: Grille = {
   lien: "https://www.reseau-canope.fr/cap-ecole-inclusive/observer.html",
   // Échelle de la grille officielle.
   niveaux: ["Souvent", "Parfois", "Rarement", "Jamais"],
+  // Coupure choisie plutôt que subie : les domaines 1 et 2 remplissent la
+  // première feuille, les trois derniers la seconde. Sans elle, la césure
+  // tombe au milieu du domaine 3 et varie d'un navigateur à l'autre.
+  sautAvant: ["d3"],
   blocs: [
   {
     t: "echelle", id: "d1", titre: "1. Les langages pour penser et communiquer",

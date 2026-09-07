@@ -30,30 +30,39 @@ type Valeurs = Record<string, any>;
  * Les 101 observables tenaient sur cinq pages avec une seule colonne
  * « Fréquence » où figurait la valeur en toutes lettres. Une colonne par
  * fréquence, comme sur la grille d'origine, se coche en un caractère et
- * laisse resserrer le tout. Mesuré grille entièrement notée : 486 mm, soit
- * deux pages, en-tête du tableau repris à chaque changement de feuille.
+ * laisse resserrer le tout.
+ *
+ * La coupure est imposée avant le domaine 3 (voir `sautAvant`) : les deux
+ * pages se remplissent alors à 249 mm et 234 mm pour 279 mm utiles, soit
+ * 30 mm et 45 mm de blanc en pied de page. L'en-tête du tableau est repris
+ * en haut de la seconde feuille.
  */
 const STYLE_COMPACT = `
   @page { size: A4 portrait; margin: 9mm; }
-  body { padding: 0; font-size: 7.2pt; line-height: 1.12; }
+  body { padding: 0; font-size: 8.5pt; line-height: 1.05; }
   h1 { font-size: 13pt; margin: 0 0 1px; }
   .meta { font-size: 7pt; margin-bottom: 4px; }
-  h2.dom { font-size: 8.5pt; margin: 4px 0 1px; border: 0; padding: 0;
+  h2.dom { font-size: 9.5pt; margin: 4px 0 1px; border: 0; padding: 0;
     break-after: avoid; }
+  h2.dom.saut { break-before: page; margin-top: 0; }
   table.s4c { width: 100%; border-collapse: collapse; margin: 0 0 3px;
     table-layout: fixed; }
-  table.s4c th, table.s4c td { border: .4pt solid #cfd4e2; padding: .5px 3px;
-    font-size: 7.2pt; vertical-align: middle; }
+  /* Aucun rembourrage vertical : la hauteur de ligne se cale sur des pixels
+     entiers, et l'espace ainsi rendu paie l'agrandissement du texte. */
+  table.s4c th, table.s4c td { border: .4pt solid #cfd4e2; padding: 0 3px;
+    font-size: 8.5pt; vertical-align: middle; }
   /* Reprise de l'en-tête en haut de chaque page : sans elle, la deuxième
      feuille montre des colonnes de cases sans savoir laquelle est laquelle. */
   table.s4c thead { display: table-header-group; }
-  table.s4c thead th { background: #f0f2f8; font-size: 6.8pt; line-height: 1;
-    text-align: center; }
+  /* « Rarement » est le mot le plus long de l'en-tête : sans nowrap il se
+     coupe en deux et rallonge la ligne de titre de chaque tableau. */
+  table.s4c thead th { background: #f0f2f8; font-size: 7.5pt; line-height: 1.2;
+    padding: 1px 3px; text-align: center; white-space: nowrap; }
   table.s4c thead th:first-child { text-align: left; }
   table.s4c col.n { width: 13mm; }
   /* Interligne forcé sur la case : sans lui, le caractère ☒ impose sa propre
      hauteur et rallonge chacune des 101 lignes d'observable. */
-  table.s4c td.cc { text-align: center; font-size: 8pt; line-height: 1; }
+  table.s4c td.cc { text-align: center; font-size: 8.5pt; line-height: 1.05; }
   table.s4c tr { break-inside: avoid; }
   /* Un sous-domaine seul en bas de page n'aide personne. */
   table.s4c tr.sd { break-after: avoid; }
@@ -173,10 +182,11 @@ export function EvaluationDiagnostiqueTab() {
     const niveaux = grille.niveaux ?? [];
     const blocHtml = (b: Bloc): string => {
       const val = v[b.id] ?? {};
+      const saut = grille.sautAvant?.includes(b.id) ? " saut" : "";
       if (b.t === "champs") {
         const lignes = b.champs.map((c) =>
           `<div class="ch"><b>${escapeHtml(c.label)} :</b> ${escapeHtml(String(val[c.id] ?? "")) || "…"}</div>`).join("");
-        return `<h2 class="dom">${escapeHtml(b.titre)}</h2>${lignes}`;
+        return `<h2 class="dom${saut}">${escapeHtml(b.titre)}</h2>${lignes}`;
       }
       if (b.t === "choix") {
         const cases = b.options.map((o) =>
@@ -186,7 +196,7 @@ export function EvaluationDiagnostiqueTab() {
       if (b.t === "cases") {
         const items = b.items.map((i) =>
           `<li style="list-style:none">${val[i] ? "☒" : "☐"} ${escapeHtml(i)}</li>`).join("");
-        return `<h2 class="dom">${escapeHtml(b.titre)}</h2><ul style="margin:4px 0;padding-left:6px;columns:2">${items}</ul>`;
+        return `<h2 class="dom${saut}">${escapeHtml(b.titre)}</h2><ul style="margin:4px 0;padding-left:6px;columns:2">${items}</ul>`;
       }
       // Une colonne par fréquence, comme sur la grille de Cap école inclusive :
       // la feuille imprimée se remplit à la main aussi bien qu'elle restitue
@@ -200,7 +210,7 @@ export function EvaluationDiagnostiqueTab() {
       ).join("");
       const colgroup = `<colgroup><col>${niveaux.map(() => '<col class="n">').join("")}</colgroup>`;
       const entetes = niveaux.map((n) => `<th>${escapeHtml(n)}</th>`).join("");
-      return `<h2 class="dom">${escapeHtml(b.titre)}</h2>
+      return `<h2 class="dom${saut}">${escapeHtml(b.titre)}</h2>
         <table class="s4c">${colgroup}
           <thead><tr><th>Observable</th>${entetes}</tr></thead>
           <tbody>${lignes}</tbody>

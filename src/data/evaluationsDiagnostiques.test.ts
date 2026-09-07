@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { GRILLES, compterRenseignes, compterTotal, type Grille } from "./evaluationsDiagnostiques";
+import { GRILLES, compterRenseignes, compterTotal, type Bloc, type Grille } from "./evaluationsDiagnostiques";
 
 // Ces grilles pilotent un écran générique : une coquille ici ne provoque
 // aucune erreur de compilation, mais un item qui en écrase un autre à la
@@ -168,23 +168,45 @@ describe("tenue sur une page de la grille d'observation", () => {
 });
 
 // La grille S4C s'imprime en tableau : une colonne par fréquence, une ligne
-// par observable. Le rendu a été mesuré, grille entièrement notée : 472 mm
-// pour 558 mm sur deux pages, avec 126 lignes. Les bornes ci-dessous gardent
-// la marge relevée ; ajouter des observables sans revoir l'impression échoue.
+// par observable, avec une coupure imposée avant le domaine 3. Le rendu a été
+// mesuré, grille entièrement notée : 249 mm puis 234 mm pour 279 mm utiles,
+// soit 68 et 58 lignes. Les bornes ci-dessous gardent la marge relevée.
 describe("tenue sur deux pages de la grille S4C", () => {
   const g = GRILLES.find((x) => x.id === "besoins")!;
-  const LIGNES_MAX = 140;
+  const LIGNES_MAX_PAR_PAGE = 74;
+
+  const lignes = (b: Bloc) =>
+    b.t === "echelle" ? b.groupes.reduce((n, gr) => n + gr.items.length + 1, 0) : 0;
+
+  /** Découpe les blocs comme le fera l'impression, sur `sautAvant`. */
+  const pages = () => {
+    const out: Bloc[][] = [[]];
+    for (const b of g.blocs) {
+      if (g.sautAvant?.includes(b.id) && out[out.length - 1].length) out.push([]);
+      out[out.length - 1].push(b);
+    }
+    return out;
+  };
 
   it("garde quatre fréquences, la largeur du tableau en dépend", () => {
     expect(g.niveaux).toEqual(["Souvent", "Parfois", "Rarement", "Jamais"]);
   });
 
-  it("reste sous le nombre de lignes mesuré pour deux pages", () => {
-    const lignes = g.blocs.reduce((n, b) =>
-      b.t === "echelle"
-        ? n + b.groupes.reduce((m, gr) => m + gr.items.length + 1, 0)
-        : n, 0);
-    expect(lignes).toBeLessThanOrEqual(LIGNES_MAX);
+  it("coupe avant un bloc qui existe vraiment", () => {
+    for (const id of g.sautAvant ?? []) {
+      expect(g.blocs.some((b) => b.id === id), `saut vers un bloc inconnu : ${id}`).toBe(true);
+    }
+  });
+
+  it("tient en deux pages", () => {
+    expect(pages().length).toBe(2);
+  });
+
+  it("garde chaque page sous le nombre de lignes mesuré", () => {
+    pages().forEach((blocs, i) => {
+      const n = blocs.reduce((s, b) => s + lignes(b), 0);
+      expect(n, `page ${i + 1} trop chargée`).toBeLessThanOrEqual(LIGNES_MAX_PAR_PAGE);
+    });
   });
 
   it("range chaque observable sous un sous-domaine nommé", () => {
