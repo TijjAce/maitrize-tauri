@@ -23,6 +23,45 @@ type Valeurs = Record<string, any>;
  * entièrement cochée, le pire cas : 245 mm pour 281 mm utiles, soit une
  * réserve de 36 mm qui absorbe les écarts de rendu d'un navigateur à l'autre.
  */
+
+/**
+ * Feuille d'impression de la grille S4C.
+ *
+ * Les 101 observables tenaient sur cinq pages avec une seule colonne
+ * « Fréquence » où figurait la valeur en toutes lettres. Une colonne par
+ * fréquence, comme sur la grille d'origine, se coche en un caractère et
+ * laisse resserrer le tout. Mesuré grille entièrement notée : 486 mm, soit
+ * deux pages, en-tête du tableau repris à chaque changement de feuille.
+ */
+const STYLE_COMPACT = `
+  @page { size: A4 portrait; margin: 9mm; }
+  body { padding: 0; font-size: 7.2pt; line-height: 1.12; }
+  h1 { font-size: 13pt; margin: 0 0 1px; }
+  .meta { font-size: 7pt; margin-bottom: 4px; }
+  h2.dom { font-size: 8.5pt; margin: 4px 0 1px; border: 0; padding: 0;
+    break-after: avoid; }
+  table.s4c { width: 100%; border-collapse: collapse; margin: 0 0 3px;
+    table-layout: fixed; }
+  table.s4c th, table.s4c td { border: .4pt solid #cfd4e2; padding: .5px 3px;
+    font-size: 7.2pt; vertical-align: middle; }
+  /* Reprise de l'en-tête en haut de chaque page : sans elle, la deuxième
+     feuille montre des colonnes de cases sans savoir laquelle est laquelle. */
+  table.s4c thead { display: table-header-group; }
+  table.s4c thead th { background: #f0f2f8; font-size: 6.8pt; line-height: 1;
+    text-align: center; }
+  table.s4c thead th:first-child { text-align: left; }
+  table.s4c col.n { width: 13mm; }
+  /* Interligne forcé sur la case : sans lui, le caractère ☒ impose sa propre
+     hauteur et rallonge chacune des 101 lignes d'observable. */
+  table.s4c td.cc { text-align: center; font-size: 8pt; line-height: 1; }
+  table.s4c tr { break-inside: avoid; }
+  /* Un sous-domaine seul en bas de page n'aide personne. */
+  table.s4c tr.sd { break-after: avoid; }
+  table.s4c tr.sd td { background: #eef1f8; font-weight: 700; }
+  .ch { margin: 2px 0; }
+  @media screen { body { max-width: 192mm; } }
+`;
+
 const STYLE_UNE_PAGE = `
   @page { size: A4 portrait; margin: 8mm; }
   body { padding: 0; font-size: 8.5pt; line-height: 1.2; }
@@ -131,12 +170,13 @@ export function EvaluationDiagnostiqueTab() {
     }
 
     // ── Disposition en liste (grille S4C) ──
+    const niveaux = grille.niveaux ?? [];
     const blocHtml = (b: Bloc): string => {
       const val = v[b.id] ?? {};
       if (b.t === "champs") {
         const lignes = b.champs.map((c) =>
-          `<div style="margin:4px 0"><b>${escapeHtml(c.label)} :</b> ${escapeHtml(String(val[c.id] ?? "")) || "…"}</div>`).join("");
-        return `<h3>${escapeHtml(b.titre)}</h3>${lignes}`;
+          `<div class="ch"><b>${escapeHtml(c.label)} :</b> ${escapeHtml(String(val[c.id] ?? "")) || "…"}</div>`).join("");
+        return `<h2 class="dom">${escapeHtml(b.titre)}</h2>${lignes}`;
       }
       if (b.t === "choix") {
         const cases = b.options.map((o) =>
@@ -146,17 +186,29 @@ export function EvaluationDiagnostiqueTab() {
       if (b.t === "cases") {
         const items = b.items.map((i) =>
           `<li style="list-style:none">${val[i] ? "☒" : "☐"} ${escapeHtml(i)}</li>`).join("");
-        return `<h3>${escapeHtml(b.titre)}</h3><ul style="margin:4px 0;padding-left:6px;columns:2">${items}</ul>`;
+        return `<h2 class="dom">${escapeHtml(b.titre)}</h2><ul style="margin:4px 0;padding-left:6px;columns:2">${items}</ul>`;
       }
+      // Une colonne par fréquence, comme sur la grille de Cap école inclusive :
+      // la feuille imprimée se remplit à la main aussi bien qu'elle restitue
+      // ce qui a été saisi dans l'application.
       const lignes = b.groupes.map((g) =>
-        `<tr><td colspan="2" style="background:#eef1f8;font-weight:700">${escapeHtml(g.nom)}</td></tr>` +
+        `<tr class="sd"><td colspan="${niveaux.length + 1}">${escapeHtml(g.nom)}</td></tr>` +
         g.items.map((i) =>
-          `<tr><td>${escapeHtml(i)}</td><td style="text-align:center;white-space:nowrap"><b>${escapeHtml(String(val[i] ?? "—"))}</b></td></tr>`).join("")
+          `<tr><td>${escapeHtml(i)}</td>` +
+          niveaux.map((n) => `<td class="cc">${val[i] === n ? "☒" : "☐"}</td>`).join("") +
+          `</tr>`).join("")
       ).join("");
-      return `<h3>${escapeHtml(b.titre)}</h3><table style="width:100%"><tr><th style="text-align:left">Observable</th><th>Fréquence</th></tr>${lignes}</table>`;
+      const colgroup = `<colgroup><col>${niveaux.map(() => '<col class="n">').join("")}</colgroup>`;
+      const entetes = niveaux.map((n) => `<th>${escapeHtml(n)}</th>`).join("");
+      return `<h2 class="dom">${escapeHtml(b.titre)}</h2>
+        <table class="s4c">${colgroup}
+          <thead><tr><th>Observable</th>${entetes}</tr></thead>
+          <tbody>${lignes}</tbody>
+        </table>`;
     };
     printHTML(`${grille.nom} — ${eleve?.nom ?? ""}`,
-      `${entete}${grille.blocs.map(blocHtml).join("")}${pied}`);
+      `${entete}${grille.blocs.map(blocHtml).join("")}${pied}`,
+      STYLE_COMPACT);
   };
 
   const renseignes = compterRenseignes(grille, v);

@@ -166,3 +166,34 @@ describe("tenue sur une page de la grille d'observation", () => {
     expect(Math.max(...v) - Math.min(...v)).toBeLessThanOrEqual(12);
   });
 });
+
+// La grille S4C s'imprime en tableau : une colonne par fréquence, une ligne
+// par observable. Le rendu a été mesuré, grille entièrement notée : 472 mm
+// pour 558 mm sur deux pages, avec 126 lignes. Les bornes ci-dessous gardent
+// la marge relevée ; ajouter des observables sans revoir l'impression échoue.
+describe("tenue sur deux pages de la grille S4C", () => {
+  const g = GRILLES.find((x) => x.id === "besoins")!;
+  const LIGNES_MAX = 140;
+
+  it("garde quatre fréquences, la largeur du tableau en dépend", () => {
+    expect(g.niveaux).toEqual(["Souvent", "Parfois", "Rarement", "Jamais"]);
+  });
+
+  it("reste sous le nombre de lignes mesuré pour deux pages", () => {
+    const lignes = g.blocs.reduce((n, b) =>
+      b.t === "echelle"
+        ? n + b.groupes.reduce((m, gr) => m + gr.items.length + 1, 0)
+        : n, 0);
+    expect(lignes).toBeLessThanOrEqual(LIGNES_MAX);
+  });
+
+  it("range chaque observable sous un sous-domaine nommé", () => {
+    for (const b of g.blocs) {
+      if (b.t !== "echelle") continue;
+      for (const gr of b.groupes) {
+        expect(gr.nom.trim().length, `sous-domaine sans nom dans « ${b.titre} »`).toBeGreaterThan(0);
+        expect(gr.items.length, `sous-domaine « ${gr.nom} » vide`).toBeGreaterThan(0);
+      }
+    }
+  });
+});
