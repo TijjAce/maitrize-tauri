@@ -121,3 +121,48 @@ describe("comptage de complétion", () => {
     expect(compterRenseignes(g, {})).toBeLessThanOrEqual(compterTotal(g));
   });
 });
+
+// La grille « Observation générale » doit tenir sur une seule feuille A4.
+// Le rendu réel a été mesuré : grille entièrement cochée, la colonne la plus
+// chargée occupe 227 mm pour 268 mm disponibles sous l'en-tête, soit 52 lignes
+// (9 cadres + 43 items). Le plafond ci-dessous garde une marge sur ce relevé.
+// Un test ne mesure pas une mise en page ; il empêche seulement d'ajouter des
+// observables sans revoir l'impression.
+describe("tenue sur une page de la grille d'observation", () => {
+  const g = GRILLES.find((x) => x.id === "observation")!;
+  const LIGNES_MAX_PAR_COLONNE = 56;
+
+  const lignesParColonne = () => {
+    const par: Record<number, number> = { 1: 0, 2: 0, 3: 0 };
+    for (const b of g.blocs) {
+      const col = g.mise?.[b.id]?.col ?? 1;
+      const items = b.t === "cases" ? b.items.length
+        : b.t === "choix" ? b.options.length
+        : b.t === "champs" ? b.champs.length
+        : 0;
+      par[col] += items + 1; // les items, plus le titre du cadre
+    }
+    return par;
+  };
+
+  it("place chaque rubrique dans une des trois colonnes", () => {
+    for (const b of g.blocs) {
+      const col = g.mise?.[b.id]?.col;
+      expect(col, `rubrique « ${b.titre} » sans colonne`).toBeDefined();
+      expect([1, 2, 3]).toContain(col);
+    }
+  });
+
+  it("garde chaque colonne sous le plafond mesuré", () => {
+    for (const [col, lignes] of Object.entries(lignesParColonne())) {
+      expect(lignes, `colonne ${col} trop chargée pour une page`)
+        .toBeLessThanOrEqual(LIGNES_MAX_PAR_COLONNE);
+    }
+  });
+
+  it("répartit la charge entre les colonnes", () => {
+    // Une colonne deux fois plus longue qu'une autre gâche la page.
+    const v = Object.values(lignesParColonne());
+    expect(Math.max(...v) - Math.min(...v)).toBeLessThanOrEqual(12);
+  });
+});

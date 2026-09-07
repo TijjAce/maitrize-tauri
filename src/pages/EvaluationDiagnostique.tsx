@@ -13,6 +13,34 @@ import { GRILLES, Grille, Bloc, Mise, compterRenseignes, compterTotal } from "..
 
 type Valeurs = Record<string, any>;
 
+
+/**
+ * Feuille d'impression de la grille en colonnes : elle doit tenir sur une
+ * seule page A4.
+ *
+ * Les 118 observables ne rentrent qu'en resserrant tout à la fois — marge de
+ * page, corps du texte, interligne et cadres des rubriques. Mesuré grille
+ * entièrement cochée, le pire cas : 245 mm pour 281 mm utiles, soit une
+ * réserve de 36 mm qui absorbe les écarts de rendu d'un navigateur à l'autre.
+ */
+const STYLE_UNE_PAGE = `
+  @page { size: A4 portrait; margin: 8mm; }
+  body { padding: 0; font-size: 8.5pt; line-height: 1.2; }
+  h1 { font-size: 14pt; margin: 0 0 1px; }
+  .meta { font-size: 7.5pt; margin-bottom: 5px; }
+  .grille { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; align-items: start; }
+  .rub { border: .5pt solid #b9bfcc; border-radius: 3px; padding: 3px 5px 4px;
+    margin-bottom: 4px; break-inside: avoid; }
+  .rt { font-size: 8pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .02em; margin-bottom: 1px; }
+  /* Retrait négatif : une ligne trop longue revient sous le texte, pas sous
+     la case à cocher, comme sur la grille d'origine. */
+  .it { padding-left: 9px; text-indent: -9px; }
+  .ch { padding-left: 0; text-indent: 0; }
+  .tr { border-bottom: .5pt solid #999; display: inline-block; min-width: 55px; }
+  @media screen { body { max-width: 194mm; } }
+`;
+
 const cleDoc = (grille: Grille) => `evaldiag:${grille.id}`;
 
 export function EvaluationDiagnostiqueTab() {
@@ -79,27 +107,26 @@ export function EvaluationDiagnostiqueTab() {
         const val = v[b.id] ?? {};
         const couleur = grille.mise?.[b.id]?.couleur ?? "#4b5262";
         const ligne = (coche: boolean, texte: string) =>
-          `<div style="font-size:9.5pt;line-height:1.25">${coche ? "☒" : "☐"} ${escapeHtml(texte)}</div>`;
+          `<div class="it">${coche ? "☒" : "☐"} ${escapeHtml(texte)}</div>`;
         let corps = "";
         if (b.t === "cases") corps = b.items.map((i) => ligne(!!val[i], i)).join("");
         else if (b.t === "choix") corps = b.options.map((o) => ligne(val === o, o)).join("");
         else if (b.t === "champs") corps = b.champs.map((c) =>
-          `<div style="font-size:9.5pt;line-height:1.4">${escapeHtml(c.label)} :
-             <span style="border-bottom:1px solid #999;display:inline-block;min-width:70px">${escapeHtml(String(val[c.id] ?? ""))}</span></div>`).join("");
-        return `<div style="border:1px solid #b9bfcc;border-radius:4px;padding:4px 6px;margin-bottom:6px;break-inside:avoid">
-            <div style="font-size:9pt;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:${couleur};margin-bottom:2px">${escapeHtml(b.titre)}</div>
+          `<div class="it ch">${escapeHtml(c.label)} :
+             <span class="tr">${escapeHtml(String(val[c.id] ?? ""))}</span></div>`).join("");
+        return `<div class="rub">
+            <div class="rt" style="color:${couleur}">${escapeHtml(b.titre)}</div>
             ${corps}
           </div>`;
       };
-      // Trois colonnes CSS, comme sur le document : les rubriques ne sont pas
+      // Trois colonnes, comme sur le document : les rubriques ne sont pas
       // coupées en deux grâce à break-inside.
       const colonnes = [1, 2, 3].map((c) =>
         `<div>${grille.blocs.filter((b) => (grille.mise?.[b.id]?.col ?? 1) === c).map(rubrique).join("")}</div>`
       ).join("");
       printHTML(`${grille.nom} — ${eleve?.nom ?? ""}`,
-        `${entete}
-         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;align-items:start">${colonnes}</div>
-         ${pied}`);
+        `${entete}<div class="grille">${colonnes}</div>${pied}`,
+        STYLE_UNE_PAGE);
       return;
     }
 

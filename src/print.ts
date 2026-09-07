@@ -35,9 +35,14 @@ const STYLE = `
 // Ouvre le document dans le navigateur (via la commande native ouvrir_html),
 // d'où l'utilisateur imprime / enregistre en PDF (⌘P). L'impression directe
 // dans la webview Tauri n'étant pas fiable, on passe par le système.
-export function printHTML(title: string, bodyHtml: string) {
+/**
+ * `styleExtra` est ajouté après la feuille commune, donc il la surcharge :
+ * de quoi resserrer un document dense sans toucher aux autres impressions.
+ */
+export function printHTML(title: string, bodyHtml: string, styleExtra = "") {
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${STYLE}
-    @media screen { body { max-width: 820px; margin: 0 auto; } }</style></head><body>${bodyHtml}</body></html>`;
+    @media screen { body { max-width: 820px; margin: 0 auto; } }
+    ${styleExtra}</style></head><body>${bodyHtml}</body></html>`;
   // Import dynamique pour éviter tout cycle d'import au chargement.
   import("./api").then(({ api }) => { void api.ouvrirHtml(html); });
 }
