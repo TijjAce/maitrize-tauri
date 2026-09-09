@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  NATURES, FORMATS, couleurNature, nouveauGabarit, redimensionner,
+  NATURES, couleurNature, nouveauGabarit, redimensionner,
   casesPerdues, poser, remplies, verifier, lireGabarit,
 } from "./tla";
 import type { CaseTla, Gabarit } from "./api";
@@ -135,9 +135,4 @@ describe("code couleur", () => {
     expect(couleurNature("bidule" as any)).toBe(couleurNature("nom"));
   });
 
-  it("propose des formats du plus accessible au plus fourni", () => {
-    const tailles = FORMATS.map((f) => f.colonnes * f.lignes);
-    expect(tailles).toEqual([...tailles].sort((a, b) => a - b));
-    expect(tailles[0]).toBeLessThanOrEqual(6);
-  });
 });

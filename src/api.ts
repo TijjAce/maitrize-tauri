@@ -555,7 +555,7 @@ export interface EtatBanque {
   installee: boolean; pictos: number; images: number; octets: number; derniereMaj: string;
 }
 export interface CategorieArasaac { nom: string; nombre: number }
-export interface PictoArasaac { id: number; mot: string; fichier: string }
+export interface PictoArasaac { id: number; mot: string; fichier: string; nature?: string }
 export interface OptionsJeu {
   libelles: boolean; cartes: boolean; colonnes: number; lignes: number;
   planches: number; graine: number;
@@ -569,7 +569,7 @@ export interface CaseTla {
 }
 export interface Gabarit {
   id: string; nom: string; eleve: string;
-  colonnes: number; lignes: number; paysage: boolean; cases: CaseTla[];
+  colonnes: number; lignes: number; paysage: boolean; ecart: number; cases: CaseTla[];
 }
 export const caseVide = (): CaseTla => ({ pictoId: null, fichier: "", mot: "", nature: "nom" });
 

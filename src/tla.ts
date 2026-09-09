@@ -4,7 +4,8 @@
 // valeur d'un TLA — les places ne bougent pas, la grille ne se renumérote pas
 // — soient vérifiables par des tests plutôt que par l'œil.
 
-import { CaseTla, Gabarit, NatureMot, caseVide, newId } from "./api";
+import { CaseTla, Gabarit, NatureMot, PictoArasaac, caseVide, newId } from "./api";
+import { Squelette, plan, NATURE_DU_ROLE } from "./squelettes";
 
 export const NATURES: { id: NatureMot; label: string; couleur: string }[] = [
   { id: "personne", label: "Personne", couleur: "#fff2b8" },
@@ -18,19 +19,10 @@ export const NATURES: { id: NatureMot; label: string; couleur: string }[] = [
 export const couleurNature = (n: NatureMot) =>
   NATURES.find((x) => x.id === n)?.couleur ?? "#fce6ca";
 
-/** Tailles de grille courantes, du plus accessible au plus fourni. */
-export const FORMATS = [
-  { colonnes: 3, lignes: 2, label: "3 × 2 — 6 cases" },
-  { colonnes: 4, lignes: 3, label: "4 × 3 — 12 cases" },
-  { colonnes: 5, lignes: 4, label: "5 × 4 — 20 cases" },
-  { colonnes: 6, lignes: 5, label: "6 × 5 — 30 cases" },
-  { colonnes: 8, lignes: 6, label: "8 × 6 — 48 cases" },
-];
-
-export function nouveauGabarit(colonnes = 6, lignes = 5): Gabarit {
+export function nouveauGabarit(colonnes = 5, lignes = 4): Gabarit {
   return {
     id: newId(), nom: "Nouveau tableau", eleve: "",
-    colonnes, lignes, paysage: true,
+    colonnes, lignes, paysage: true, ecart: 3,
     cases: Array.from({ length: colonnes * lignes }, caseVide),
   };
 }
@@ -121,6 +113,7 @@ export function lireGabarit(json: string): Gabarit {
     colonnes: Number(brut?.colonnes) || 0,
     lignes: Number(brut?.lignes) || 0,
     paysage: brut?.paysage !== false,
+    ecart: Number.isFinite(Number(brut?.ecart)) ? Number(brut.ecart) : 3,
     cases: Array.isArray(brut?.cases)
       ? brut.cases.map((c: any): CaseTla => ({
           pictoId: c?.pictoId === null || c?.pictoId === undefined ? null : Number(c.pictoId),
@@ -133,4 +126,44 @@ export function lireGabarit(json: string): Gabarit {
   const soucis = verifier(g);
   if (soucis.length) throw new Error(soucis.join(" "));
   return g;
+}
+
+
+/**
+ * Construit un tableau à partir d'un squelette, du noyau résolu et du thème.
+ *
+ * Le noyau se pose aux coordonnées que le squelette lui assigne, toujours les
+ * mêmes ; le thème ne remplit que les cases de rôle « nom ». C'est ce qui fait
+ * la différence entre un tableau de langage et un tableau de choix : on doit
+ * pouvoir demander, questionner, commenter et refuser, pas seulement désigner
+ * un objet dans une liste.
+ *
+ * Un mot du noyau introuvable dans la banque laisse sa case vide plutôt que
+ * de décaler les suivantes — la place reste réservée pour un ajout à la main.
+ */
+export function tableauSurTheme(
+  s: Squelette,
+  nom: string,
+  noyau: Map<string, PictoArasaac>,
+  theme: PictoArasaac[],
+): Gabarit {
+  const cases: CaseTla[] = [];
+  let prochainNom = 0;
+  for (const place of plan(s)) {
+    if (place.role === "nom") {
+      const p = theme[prochainNom++];
+      cases.push(p
+        ? { pictoId: p.id, fichier: p.fichier, mot: p.mot, nature: "nom" }
+        : caseVide());
+      continue;
+    }
+    const p = place.mot ? noyau.get(place.mot) : undefined;
+    cases.push(p
+      ? { pictoId: p.id, fichier: p.fichier, mot: p.mot, nature: NATURE_DU_ROLE[place.role] }
+      : caseVide());
+  }
+  return {
+    id: newId(), nom, eleve: "",
+    colonnes: s.colonnes, lignes: s.lignes, paysage: true, ecart: 3, cases,
+  };
 }

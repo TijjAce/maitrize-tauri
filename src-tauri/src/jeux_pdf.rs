@@ -321,7 +321,7 @@ mod tests {
 
     fn vivier(n: usize) -> Vec<PictoChoisi> {
         (0..n)
-            .map(|i| PictoChoisi { id: i as i64, mot: format!("mot{i}"), fichier: String::new() })
+            .map(|i| PictoChoisi { id: i as i64, mot: format!("mot{i}"), fichier: String::new(), nature: String::new() })
             .collect()
     }
 
@@ -395,6 +395,7 @@ mod tests {
                 id: i as i64,
                 mot: format!("picto{i}"),
                 fichier: e.path().to_string_lossy().into_owned(),
+                nature: String::new(),
             })
             .collect();
         vivier.truncate(18);

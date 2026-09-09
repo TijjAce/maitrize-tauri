@@ -304,6 +304,9 @@ pub struct PictoChoisi {
     pub id: i64,
     pub mot: String,
     pub fichier: String,
+    /// Nature grammaticale, utile aux tableaux de langage ; ignorée des jeux.
+    #[serde(default)]
+    pub nature: String,
 }
 
 /// Tirage reproductible sans dépendance : un générateur congruentiel suffit
@@ -370,6 +373,7 @@ pub fn selection(
             id: p.id,
             mot: p.mot.clone(),
             fichier: dossier.join(format!("{}.png", p.id)).to_string_lossy().into_owned(),
+            nature: nature(&p.categories),
         })
         .collect();
 
@@ -440,6 +444,7 @@ pub fn arasaac_chercher(
             id: p.id,
             mot: p.mot.clone(),
             fichier: dossier.join(format!("{}.png", p.id)).to_string_lossy().into_owned(),
+            nature: nature(&p.categories),
         })
         .collect())
 }
@@ -513,6 +518,7 @@ pub fn arasaac_par_mots(
                 id: p.id,
                 mot: p.mot.clone(),
                 fichier: dossier.join(format!("{}.png", p.id)).to_string_lossy().into_owned(),
+                nature: nature(&p.categories),
             }),
             _ => absents.push(cherche),
         }
