@@ -378,6 +378,18 @@ export const api = {
   modeleActif: async (repli = MODELE_DEFAUT) =>
     normaliserModele((await invoke<string | null>("setting_get", { cle: "mistralModel" })) || repli),
 
+  // Générateur de jeux ARASAAC
+  arasaacEtat: () => invoke<EtatBanque>("arasaac_etat"),
+  arasaacTelecharger: () => invoke<EtatBanque>("arasaac_telecharger"),
+  arasaacCategories: () => invoke<CategorieArasaac[]>("arasaac_categories"),
+  arasaacSelection: (categories: string[], exclues: string[], intersection: boolean, combien: number, graine: number) =>
+    invoke<PictoArasaac[]>("arasaac_selection", { categories, exclues, intersection, combien, graine }),
+  arasaacImage: (id: number) => invoke<string>("arasaac_image", { id }),
+  arasaacParMots: (mots: string[]) =>
+    invoke<[PictoArasaac[], string[]]>("arasaac_par_mots", { mots }),
+  jeuGenerer: (jeu: string, pictos: PictoArasaac[], options: OptionsJeu, titre: string) =>
+    invoke<string>("jeu_generer", { jeu, pictos, options, titre }),
+
   // Amis (appariement chiffré, 100 % local pour l'instant)
   identiteGet: () => invoke<Identite>("identite_get"),
   identiteSetNom: (nom: string) => invoke<Identite>("identite_set_nom", { nom }),
@@ -533,6 +545,17 @@ export const MODELES_REMPLACES: Record<string, string> = {
   "ministral-3b-2410": "ministral-3b-latest",
   "ministral-8b-2410": "ministral-8b-latest",
 };
+
+// ── Générateur de jeux (banque ARASAAC) ───────────────────────────────────
+export interface EtatBanque {
+  installee: boolean; pictos: number; images: number; octets: number; derniereMaj: string;
+}
+export interface CategorieArasaac { nom: string; nombre: number }
+export interface PictoArasaac { id: number; mot: string; fichier: string }
+export interface OptionsJeu {
+  libelles: boolean; cartes: boolean; colonnes: number; lignes: number;
+  planches: number; graine: number;
+}
 
 /** Verdict d'un test réel sur un modèle, pour l'écran des réglages. */
 export interface EtatModele { id: string; disponible: boolean; detail: string }

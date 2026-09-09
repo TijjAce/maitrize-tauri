@@ -11,6 +11,7 @@ import Organisation from "./pages/Organisation";
 import Eleves from "./pages/Eleves";
 import Referentiels from "./pages/Referentiels";
 import Materiel from "./pages/Materiel";
+import Jeux from "./pages/Jeux";
 import Ressources from "./pages/Ressources";
 import Assistant from "./pages/Assistant";
 import Amis from "./pages/Amis";
@@ -42,6 +43,7 @@ const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: t
   { to: "/eleves", ico: "👧", label: "Élèves" },
   { to: "/referentiels", ico: "📖", label: "Référentiels" },
   { to: "/materiel", ico: "🧰", label: "Matériel" },
+  { to: "/jeux", ico: "🎲", label: "Fabriquer un jeu" },
   { to: "/ressources", ico: "🌐", label: "Ressources" },
   { sep: true },
   { to: "/assistant", ico: "✨", label: "Assistant IA" },
@@ -62,6 +64,7 @@ const KEEP_ALIVE: { path: string; element: React.ReactNode }[] = [
   { path: "/eleves", element: <Eleves /> },
   { path: "/referentiels", element: <Referentiels /> },
   { path: "/materiel", element: <Materiel /> },
+  { path: "/jeux", element: <Jeux /> },
   { path: "/ressources", element: <Ressources /> },
   { path: "/assistant", element: <Assistant /> },
   { path: "/amis", element: <Amis /> },
