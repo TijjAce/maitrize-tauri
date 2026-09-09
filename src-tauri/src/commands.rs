@@ -1412,6 +1412,37 @@ pub fn ouvrir_fichier(nom: String) -> R<()> {
 /// Ouvre un PDF (fichier joint) dans l'app PDF par défaut (Aperçu sur macOS),
 /// d'où l'utilisateur peut imprimer (⌘P → AirPrint, choix des pages). Passe par
 /// NSWorkspace (plugin opener) → compatible App Sandbox / Mac App Store.
+/// Fabrique un jeu et ouvre le PDF, prêt à imprimer.
+///
+/// Le vivier de pictogrammes vient de la fenêtre : elle l'a obtenu par
+/// `arasaac_selection`, et l'enseignant a pu en retirer ce qu'il ne voulait
+/// pas. Rien n'est deviné ici.
+#[tauri::command]
+pub fn jeu_generer(
+    jeu: String,
+    pictos: Vec<crate::arasaac::PictoChoisi>,
+    options: crate::jeux_pdf::Options,
+    titre: String,
+) -> R<String> {
+    let bytes = crate::jeux_pdf::construire(&jeu, &pictos, &options)?;
+    let propre: String = titre
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '_' })
+        .collect::<String>()
+        .trim_matches('_')
+        .to_lowercase();
+    let nom = format!(
+        "{}-{}-{}.pdf",
+        jeu,
+        if propre.is_empty() { "jeu".into() } else { propre },
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
+    );
+    let path = std::env::temp_dir().join(&nom);
+    std::fs::write(&path, &bytes).map_err(e)?;
+    tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
 #[tauri::command]
 pub fn imprimer_pdf(nom: String) -> R<()> {
     let path = fichiers_dir().join(&nom);

@@ -1,4 +1,6 @@
 mod ai;
+mod arasaac;
+mod jeux_pdf;
 mod amis;
 mod commands;
 mod db;
@@ -35,6 +37,7 @@ pub fn run() {
             Ok(())
         })
         .manage(Db(Mutex::new(conn)))
+        .manage(arasaac::BanqueArasaac::default())
         .manage(portable::Portable(Mutex::new(None)))
         .manage(portable::PhotoCapture(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
@@ -90,6 +93,9 @@ pub fn run() {
             // IA Mistral
             ai::mistral_chat, ai::mistral_test, ai::mistral_chat_stream, ai::transcrire_audio,
             ai::mistral_modeles_disponibles,
+            arasaac::arasaac_etat, arasaac::arasaac_telecharger, arasaac::arasaac_categories,
+            arasaac::arasaac_selection, arasaac::arasaac_par_mots, arasaac::arasaac_image,
+            commands::jeu_generer,
             // Amis (appariement chiffré)
             amis::identite_get, amis::identite_set_nom,
             amis::invitation_creer, amis::invitation_accepter,
