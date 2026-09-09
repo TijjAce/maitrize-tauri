@@ -1,12 +1,16 @@
 //! Impression d'un tableau de langage assisté (TLA).
 //!
-//! Un TLA est l'exact contraire d'une planche de loto, et la mise en page le
-//! reflète.
+//! Un TLA est l'exact contraire d'une planche de loto sur un point, et son
+//! semblable sur un autre.
 //!
-//! Le loto est **aéré** : un picto par case, beaucoup de vide autour, parce
-//! qu'un enfant avec autisme doit pouvoir isoler une image à la fois. Le TLA
-//! est **dense** : les cases se touchent, les marges sont minces, parce que
-//! chaque case perdue est un mot que l'enfant ne pourra pas dire.
+//! Il est plus **dense** : les marges sont minces et les cases nombreuses,
+//! parce que chaque case perdue est un mot que l'enfant ne pourra pas dire.
+//!
+//! Mais les cases restent **espacées**, comme sur une planche de loto : qui
+//! ne pointe pas de l'index désigne du poing ou de plusieurs doigts, et il
+//! lui faut de la marge pour viser. Le fond gris entre les cases fait par
+//! ailleurs ressortir les pictogrammes, ce dont certains ont besoin. L'écart
+//! se règle, jusqu'à zéro pour qui pointe finement et veut le maximum de mots.
 //!
 //! Le loto **rebat les cartes** à chaque tirage. Le TLA ne le fait jamais :
 //! une case garde sa place pour que le geste s'automatise, et c'est ce qui
@@ -52,6 +56,14 @@ pub struct Gabarit {
     pub cases: Vec<CaseTla>,
     #[serde(default)]
     pub paysage: bool,
+    /// Écart entre les cases, en millimètres. Une case bien détachée se vise
+    /// du poing ; un écart nul rend la place à des cases plus grandes.
+    #[serde(default = "ecart_defaut")]
+    pub ecart: f32,
+}
+
+fn ecart_defaut() -> f32 {
+    3.0
 }
 
 /// Fond de case par nature grammaticale.
@@ -132,9 +144,25 @@ pub fn construire(g: &Gabarit) -> Result<Vec<u8>, String> {
     const MARGE: f32 = 8.0;
     const HAUT: f32 = 9.0; // bandeau du titre
     const BAS: f32 = 6.0; // mention de licence
+    let ecart = g.ecart.clamp(0.0, 12.0);
     let grille_h = hauteur - MARGE - HAUT - MARGE - BAS;
-    let case_l = (largeur - 2.0 * MARGE) / g.colonnes as f32;
-    let case_h = grille_h / g.lignes as f32;
+    let case_l = (largeur - 2.0 * MARGE - (g.colonnes as f32 - 1.0) * ecart) / g.colonnes as f32;
+    let case_h = (grille_h - (g.lignes as f32 - 1.0) * ecart) / g.lignes as f32;
+
+    // Fond gris derrière la grille : il détache les cases et fait ressortir
+    // les pictogrammes pour qui en a besoin visuellement.
+    if ecart > 0.0 {
+        c.set_fill_color(couleur((0.80, 0.81, 0.84)));
+        c.add_rect(
+            Rect::new(
+                Mm(MARGE - ecart / 2.0),
+                Mm(MARGE + BAS - ecart / 2.0),
+                Mm(largeur - MARGE + ecart / 2.0),
+                Mm(hauteur - MARGE - HAUT + ecart / 2.0),
+            )
+            .with_mode(printpdf::path::PaintMode::Fill),
+        );
+    }
 
     // Bandeau : à qui est ce tableau, et lequel c'est.
     c.set_fill_color(couleur((0.2, 0.2, 0.25)));
@@ -145,19 +173,17 @@ pub fn construire(g: &Gabarit) -> Result<Vec<u8>, String> {
     for (i, case) in g.cases.iter().enumerate() {
         let col = (i % g.colonnes as usize) as f32;
         let rang = (i / g.colonnes as usize) as f32;
-        let x = MARGE + col * case_l;
-        let y = haut_grille - (rang + 1.0) * case_h;
+        let x = MARGE + col * (case_l + ecart);
+        let y = haut_grille - (rang + 1.0) * case_h - rang * ecart;
         let teinte = fond(&case.nature);
 
         // Fond coloré, puis contour fin. Une case vide garde son cadre : elle
         // marque une place réservée, pas une absence.
-        if case.picto_id.is_some() {
-            c.set_fill_color(couleur(teinte));
-            c.add_rect(
-                Rect::new(Mm(x), Mm(y), Mm(x + case_l), Mm(y + case_h))
-                    .with_mode(printpdf::path::PaintMode::Fill),
-            );
-        }
+        c.set_fill_color(couleur(if case.picto_id.is_some() { teinte } else { (1.0, 1.0, 1.0) }));
+        c.add_rect(
+            Rect::new(Mm(x), Mm(y), Mm(x + case_l), Mm(y + case_h))
+                .with_mode(printpdf::path::PaintMode::Fill),
+        );
         c.set_outline_color(couleur((0.55, 0.55, 0.6)));
         c.set_outline_thickness(0.7);
         c.add_rect(
@@ -238,6 +264,7 @@ mod tests {
             colonnes,
             lignes,
             paysage: true,
+            ecart: 3.0,
             cases: (0..n)
                 .map(|i| CaseTla {
                     picto_id: None,
@@ -304,6 +331,7 @@ mod tests {
             colonnes: 6,
             lignes: 5,
             paysage: true,
+            ecart: std::env::var("MAITRIZE_ECART").ok().and_then(|v| v.parse().ok()).unwrap_or(3.0),
             cases: mots
                 .iter()
                 .enumerate()
@@ -319,6 +347,17 @@ mod tests {
         let sortie = std::env::var("MAITRIZE_SORTIE").unwrap_or_else(|_| "/tmp/tla.pdf".into());
         std::fs::write(&sortie, &pdf).unwrap();
         println!("PDF écrit : {sortie} ({} octets)", pdf.len());
+    }
+
+    #[test]
+    fn l_ecart_reste_dans_des_bornes_utiles() {
+        // Un écart démesuré mangerait les cases ; on le borne plutôt que de
+        // produire une grille impossible.
+        let mut g = gabarit(4, 3, 12);
+        g.ecart = 999.0;
+        assert!(construire(&g).is_ok());
+        g.ecart = -5.0;
+        assert!(construire(&g).is_ok());
     }
 
     #[test]

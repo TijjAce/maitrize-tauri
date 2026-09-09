@@ -3,9 +3,11 @@ import { api, Gabarit, CaseTla, NatureMot, PictoArasaac, caseVide, telechargerTe
 import { Modal, Field, Input, Select, Empty, Confirm, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import {
-  NATURES, FORMATS, couleurNature, nouveauGabarit, redimensionner,
-  casesPerdues, poser, remplies, verifier, lireGabarit,
+  NATURES, couleurNature, nouveauGabarit, redimensionner,
+  casesPerdues, poser, remplies, verifier, lireGabarit, tableauSurTheme,
 } from "../tla";
+import { SQUELETTES, squelettePour, placesDuTheme, motsDuNoyau } from "../squelettes";
+import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
 
 // ── Tableaux de langage assisté ────────────────────────────────────────────
 //
@@ -24,6 +26,7 @@ export function TlaTab() {
   const [charge, setCharge] = React.useState(false);
   const [ouvert, setOuvert] = React.useState<string>("");
   const [aSupprimer, setASupprimer] = React.useState<Gabarit | null>(null);
+  const [surTheme, setSurTheme] = React.useState(false);
   const importInput = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -77,7 +80,8 @@ export function TlaTab() {
           <b> importez-le</b> plutôt que d'en créer un autre.
         </p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="btn primary" onClick={creer}>➕ Nouveau tableau</button>
+          <button className="btn primary" onClick={() => setSurTheme(true)}>✨ Tableau sur un thème</button>
+          <button className="btn" onClick={creer}>➕ Tableau vide</button>
           <button className="btn" onClick={() => importInput.current?.click()}>📥 Importer un gabarit</button>
           <input ref={importInput} type="file" accept="application/json" hidden
             onChange={(e) => { const f = e.target.files?.[0]; if (f) importer(f); e.target.value = ""; }} />
@@ -105,6 +109,11 @@ export function TlaTab() {
             </div>
           ))}
         </div>
+      )}
+
+      {surTheme && (
+        <SurTheme onClose={() => setSurTheme(false)}
+          onCree={(g) => { enregistrer([...ref.current, g]); setSurTheme(false); setOuvert(g.id); }} />
       )}
 
       {aSupprimer && (
@@ -160,9 +169,18 @@ function Editeur({ gabarit, onChange, onFermer }: {
           <Field label="Grille">
             <Select value={`${gabarit.colonnes}x${gabarit.lignes}`}
               onChange={(e) => { const [c, l] = e.target.value.split("x").map(Number); changerTaille(c, l); }}>
-              {FORMATS.map((f) => (
-                <option key={f.label} value={`${f.colonnes}x${f.lignes}`}>{f.label}</option>
+              {SQUELETTES.map((s) => (
+                <option key={s.label} value={`${s.colonnes}x${s.lignes}`}>{s.label}</option>
               ))}
+            </Select>
+          </Field>
+          <Field label="Écart entre les cases">
+            <Select value={String(gabarit.ecart)}
+              onChange={(e) => onChange({ ...gabarit, ecart: Number(e.target.value) })}
+              title="Des cases détachées se visent du poing ; un écart nul rend la place à des cases plus grandes">
+              <option value="0">Aucun — cases jointives</option>
+              <option value="3">Normal</option>
+              <option value="6">Large — pointage du poing</option>
             </Select>
           </Field>
           <Field label="Orientation">
@@ -350,5 +368,125 @@ function Resultat({ picto, actif, onClick }: { picto: PictoArasaac; actif: boole
         {picto.mot}
       </span>
     </button>
+  );
+}
+
+
+// ── Tableau sur un thème ───────────────────────────────────────────────────
+//
+// Le thème ne remplit que les cases de rôle « nom ». Le reste — mots
+// interrogatifs, pronoms, verbes, petits mots, adjectifs — vient du noyau et
+// se pose toujours aux mêmes coordonnées. Sans cela on produirait un tableau
+// de choix : une liste de noms où l'on désigne un objet, mais où l'on ne peut
+// ni demander, ni questionner, ni commenter, ni refuser.
+
+function SurTheme({ onClose, onCree }: { onClose: () => void; onCree: (g: Gabarit) => void }) {
+  const { data: categories } = useAsync(() => api.arasaacCategories(), []);
+  const [taille, setTaille] = React.useState("5x4");
+  const [q, setQ] = React.useState("");
+  const [theme, setTheme] = React.useState<string[]>([]);
+  const [nom, setNom] = React.useState("");
+  const [occupe, setOccupe] = React.useState(false);
+  const [absents, setAbsents] = React.useState<string[]>([]);
+
+  const [c, l] = taille.split("x").map(Number);
+  const squelette = squelettePour(c, l);
+  const places = placesDuTheme(squelette);
+
+  const visibles = React.useMemo(() => {
+    const f = q.trim().toLowerCase();
+    return (categories ?? [])
+      .filter((x) => x.nombre >= 6)
+      .filter((x) => !f || libelleCategorie(x.nom).toLowerCase().includes(f) || x.nom.toLowerCase().includes(f))
+      .sort((a, b) => libelleCategorie(a.nom).localeCompare(libelleCategorie(b.nom), "fr"));
+  }, [categories, q]);
+
+  const creer = async () => {
+    setOccupe(true); setAbsents([]);
+    try {
+      // Le noyau se résout par correspondance exacte : un mot introuvable
+      // laisse sa case vide, il ne se remplace pas par une approximation.
+      const [trouves, manquants] = await api.arasaacParMots(motsDuNoyau(squelette));
+      const noyau = new Map(trouves.map((p) => [p.mot, p]));
+      const mots = places > 0
+        ? await api.arasaacSelection(theme, EXCLUES_PAR_DEFAUT, false, places, Math.floor(Math.random() * 1e6))
+        : [];
+      const titre = nom.trim() || theme.map(libelleCategorie).join(" + ") || "Tableau";
+      setAbsents(manquants);
+      onCree(tableauSurTheme(squelette, titre, noyau, mots));
+    } catch (e: any) {
+      toast(String(e), { icone: "⚠️" });
+    } finally { setOccupe(false); }
+  };
+
+  return (
+    <Modal titre="Tableau sur un thème" onClose={onClose} large
+      footer={<>
+        <button className="btn" onClick={onClose}>Annuler</button>
+        <button className="btn primary" disabled={occupe} onClick={creer}>
+          {occupe ? "Construction…" : "Construire le tableau"}
+        </button>
+      </>}>
+      <p style={{ marginTop: 0, fontSize: 13, color: "var(--text-2)" }}>
+        Le thème ne remplit que la colonne des noms. Les mots interrogatifs,
+        les pronoms, les verbes et les adjectifs viennent du noyau et se posent
+        toujours aux mêmes cases : c'est ce qui permet de <b>demander,
+        questionner, commenter et refuser</b>, et pas seulement de désigner.
+      </p>
+
+      <Field label="Taille de la grille">
+        <Select value={taille} onChange={(e) => setTaille(e.target.value)}>
+          {SQUELETTES.map((s) => (
+            <option key={s.label} value={`${s.colonnes}x${s.lignes}`}>
+              {s.label}{s.documente ? " — disposition publiée" : ""}
+            </option>
+          ))}
+        </Select>
+      </Field>
+
+      <div style={{ fontSize: 13, margin: "8px 0" }}>
+        Structure : {squelette.roles.map((pile, i) => (
+          <span key={i} style={{
+            display: "inline-block", padding: "2px 7px", margin: "0 4px 4px 0",
+            borderRadius: 4, background: "var(--fond-2)", fontSize: 12,
+          }}>{pile.join(" + ")}</span>
+        ))}
+        <div style={{ color: "var(--text-2)", marginTop: 4 }}>
+          {places} case{places > 1 ? "s" : ""} pour le thème sur {squelette.colonnes * squelette.lignes}.
+          {places < 4 && " C'est peu, et c'est voulu : un tableau de langage est surtout du vocabulaire noyau. Prenez une grille plus grande s'il vous faut plus de noms."}
+        </div>
+      </div>
+
+      <Field label="Nom du tableau">
+        <Input placeholder="La cuisine, le bain, la récréation…" value={nom} onChange={(e) => setNom(e.target.value)} />
+      </Field>
+
+      <Field label="Thème (remplit les noms)">
+        <Input placeholder="Chercher une catégorie…" value={q} onChange={(e) => setQ(e.target.value)} />
+      </Field>
+      <div style={{ maxHeight: 200, overflowY: "auto", border: "1px solid var(--bord)", borderRadius: 8, marginTop: 6 }}>
+        {visibles.map((x) => (
+          <label key={x.nom} style={{
+            display: "flex", alignItems: "center", gap: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer",
+            background: theme.includes(x.nom) ? "var(--fond-2)" : undefined,
+          }}>
+            <input type="checkbox" checked={theme.includes(x.nom)}
+              onChange={() => setTheme((v) => v.includes(x.nom) ? v.filter((y) => y !== x.nom) : [...v, x.nom])} />
+            <span style={{ flex: 1 }}>{libelleCategorie(x.nom)}</span>
+            <span style={{ color: "var(--text-2)", fontSize: 12 }}>{x.nombre}</span>
+          </label>
+        ))}
+      </div>
+      {!!absents.length && (
+        <div style={{ marginTop: 10, fontSize: 13 }}>
+          Sans pictogramme, cases laissées libres : {absents.join(", ")}
+        </div>
+      )}
+      <p style={{ fontSize: 12, color: "var(--text-2)", marginTop: 12, marginBottom: 0 }}>
+        Le tableau s'ouvre ensuite dans l'éditeur : rien n'est figé, tout se
+        déplace et se complète avant impression. Un TLA se range avec son
+        activité — celui du repas à table, celui du bain dans la salle de bain.
+      </p>
+    </Modal>
   );
 }
