@@ -43,7 +43,7 @@ const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: t
   { to: "/eleves", ico: "👧", label: "Élèves" },
   { to: "/referentiels", ico: "📖", label: "Référentiels" },
   { to: "/materiel", ico: "🧰", label: "Matériel" },
-  { to: "/jeux", ico: "🎲", label: "Fabriquer un jeu" },
+  { to: "/jeux", ico: "🎲", label: "Fabriquer" },
   { to: "/ressources", ico: "🌐", label: "Ressources" },
   { sep: true },
   { to: "/assistant", ico: "✨", label: "Assistant IA" },

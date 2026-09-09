@@ -1443,6 +1443,31 @@ pub fn jeu_generer(
     Ok(path.to_string_lossy().into_owned())
 }
 
+/// Imprime un tableau de langage assisté.
+///
+/// Le gabarit arrive tel que l'enseignant l'a posé : ni tri, ni complétion.
+/// Déplacer une case briserait l'automatisation du geste que le tableau sert
+/// justement à installer.
+#[tauri::command]
+pub fn tla_generer(gabarit: crate::tla_pdf::Gabarit) -> R<String> {
+    let bytes = crate::tla_pdf::construire(&gabarit)?;
+    let propre: String = format!("{} {}", gabarit.eleve, gabarit.nom)
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '_' })
+        .collect::<String>()
+        .trim_matches('_')
+        .to_lowercase();
+    let nom = format!(
+        "tla-{}-{}.pdf",
+        if propre.is_empty() { "tableau".into() } else { propre },
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
+    );
+    let path = std::env::temp_dir().join(&nom);
+    std::fs::write(&path, &bytes).map_err(e)?;
+    tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
 #[tauri::command]
 pub fn imprimer_pdf(nom: String) -> R<()> {
     let path = fichiers_dir().join(&nom);

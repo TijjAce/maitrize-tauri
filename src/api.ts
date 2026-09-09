@@ -389,6 +389,10 @@ export const api = {
     invoke<[PictoArasaac[], string[]]>("arasaac_par_mots", { mots }),
   jeuGenerer: (jeu: string, pictos: PictoArasaac[], options: OptionsJeu, titre: string) =>
     invoke<string>("jeu_generer", { jeu, pictos, options, titre }),
+  arasaacChercher: (q: string, limite = 40) =>
+    invoke<PictoArasaac[]>("arasaac_chercher", { q, limite }),
+  arasaacNature: (id: number) => invoke<string>("arasaac_nature", { id }),
+  tlaGenerer: (gabarit: Gabarit) => invoke<string>("tla_generer", { gabarit }),
 
   // Amis (appariement chiffré, 100 % local pour l'instant)
   identiteGet: () => invoke<Identite>("identite_get"),
@@ -556,6 +560,18 @@ export interface OptionsJeu {
   libelles: boolean; cartes: boolean; colonnes: number; lignes: number;
   planches: number; graine: number;
 }
+
+// ── Tableau de langage assisté (TLA) ──────────────────────────────────────
+/** Nature grammaticale d'un mot : elle donne la couleur de la case. */
+export type NatureMot = "personne" | "verbe" | "adjectif" | "social" | "petit mot" | "nom";
+export interface CaseTla {
+  pictoId: number | null; fichier: string; mot: string; nature: NatureMot;
+}
+export interface Gabarit {
+  id: string; nom: string; eleve: string;
+  colonnes: number; lignes: number; paysage: boolean; cases: CaseTla[];
+}
+export const caseVide = (): CaseTla => ({ pictoId: null, fichier: "", mot: "", nature: "nom" });
 
 /** Verdict d'un test réel sur un modèle, pour l'écran des réglages. */
 export interface EtatModele { id: string; disponible: boolean; detail: string }
