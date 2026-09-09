@@ -5,6 +5,7 @@ import { api, EtatBanque, PictoArasaac, OptionsJeu } from "../api";
 import { Field, Input, Select, Empty, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
+import { TlaTab } from "./Tla";
 
 // ── Générateur de jeux ARASAAC ─────────────────────────────────────────────
 //
@@ -17,7 +18,10 @@ import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac"
 const OCTETS = (n: number) =>
   n > 1e9 ? `${(n / 1e9).toFixed(1)} Go` : n > 1e6 ? `${Math.round(n / 1e6)} Mo` : `${Math.round(n / 1e3)} ko`;
 
+const ONGLETS = ["jeux", "tla"] as const;
+
 export default function Jeux() {
+  const [onglet, setOnglet] = React.useState<typeof ONGLETS[number]>("jeux");
   const [etat, setEtat] = React.useState<EtatBanque | null>(null);
   const [progression, setProgression] = React.useState<{ etape: string; faits: number; total: number } | null>(null);
   const rafraichir = React.useCallback(() => { api.arasaacEtat().then(setEtat).catch(() => {}); }, []);
@@ -40,15 +44,27 @@ export default function Jeux() {
     }
   };
 
-  if (!etat) return <Page titre="Fabriquer un jeu"><div /></Page>;
+  if (!etat) return <Page titre="Fabriquer"><div /></Page>;
+
+  // La banque est commune aux jeux et aux tableaux : tant qu'elle n'est pas
+  // là, aucun des deux onglets n'a de quoi travailler.
+  if (!etat.installee) {
+    return (
+      <Page titre="Fabriquer" sous="À partir des pictogrammes ARASAAC">
+        <Banque progression={progression} onTelecharger={telecharger} />
+      </Page>
+    );
+  }
 
   return (
-    <Page titre="Fabriquer un jeu" sous="Loto, à partir des pictogrammes ARASAAC">
-      {!etat.installee ? (
-        <Banque progression={progression} onTelecharger={telecharger} />
-      ) : (
-        <Generateur etat={etat} progression={progression} onTelecharger={telecharger} />
-      )}
+    <Page titre="Fabriquer" sous="Jeux et tableaux de langage, à partir des pictogrammes ARASAAC">
+      <div className="seg" style={{ marginBottom: 14 }}>
+        <button className={onglet === "jeux" ? "active" : ""} onClick={() => setOnglet("jeux")}>🎲 Jeux</button>
+        <button className={onglet === "tla" ? "active" : ""} onClick={() => setOnglet("tla")}>🗣 Tableaux de langage</button>
+      </div>
+      {onglet === "jeux"
+        ? <Generateur etat={etat} progression={progression} onTelecharger={telecharger} />
+        : <TlaTab />}
     </Page>
   );
 }

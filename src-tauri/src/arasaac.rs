@@ -395,6 +395,86 @@ pub fn arasaac_selection(
     Ok(selection(&index, &categories, &exclues, intersection, combien, graine))
 }
 
+/// Cherche un pictogramme par son mot, pour l'éditeur de tableau.
+///
+/// La correspondance partielle est ici **volontaire**, à l'inverse de la
+/// sélection des jeux. La règle qui l'interdisait visait le choix automatique :
+/// deviner seul qu'un drapeau illustre « terre » produisait des aberrations.
+/// Ici l'enseignant voit les candidats et désigne le bon ; la machine propose,
+/// elle ne tranche pas. Les résultats sont classés du plus exact au plus vague
+/// pour que le bon soit presque toujours en tête.
+#[tauri::command]
+pub fn arasaac_chercher(
+    etat: tauri::State<BanqueArasaac>,
+    q: String,
+    limite: usize,
+) -> Result<Vec<PictoChoisi>, String> {
+    let index = charger_index(&etat)?;
+    let cherche = q.trim().to_lowercase();
+    if cherche.len() < 2 {
+        return Ok(Vec::new());
+    }
+    let dossier = images_dir();
+    let mut candidats: Vec<(u8, &Picto)> = index
+        .pictos
+        .iter()
+        .filter_map(|p| {
+            let rang = if p.mot == cherche {
+                0
+            } else if p.mot.starts_with(&cherche) {
+                1
+            } else if p.mot.contains(&cherche) {
+                2
+            } else {
+                return None;
+            };
+            Some((rang, p))
+        })
+        .filter(|(_, p)| dossier.join(format!("{}.png", p.id)).exists())
+        .collect();
+    candidats.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.mot.len().cmp(&b.1.mot.len())));
+    Ok(candidats
+        .into_iter()
+        .take(if limite == 0 { 40 } else { limite })
+        .map(|(_, p)| PictoChoisi {
+            id: p.id,
+            mot: p.mot.clone(),
+            fichier: dossier.join(format!("{}.png", p.id)).to_string_lossy().into_owned(),
+        })
+        .collect())
+}
+
+/// Nature grammaticale d'un picto, d'après ses catégories ARASAAC.
+///
+/// C'est ce qui donne la couleur de la case dans un tableau de langage : le
+/// code couleur usuel (clé de Fitzgerald) range les mots par nature, et la
+/// banque étiquette déjà les siens. Rien n'est déduit du mot lui-même.
+#[tauri::command]
+pub fn arasaac_nature(etat: tauri::State<BanqueArasaac>, id: i64) -> Result<String, String> {
+    let index = charger_index(&etat)?;
+    let picto = index.pictos.iter().find(|p| p.id == id);
+    Ok(picto.map(|p| nature(&p.categories)).unwrap_or_else(|| "nom".into()))
+}
+
+/// Nature grammaticale déduite des catégories, ou « nom » à défaut.
+pub fn nature(categories: &[String]) -> String {
+    let a = |c: &str| categories.iter().any(|x| x == c);
+    if a("personal pronoun") || a("pronoun") {
+        "personne"
+    } else if a("verb") || a("usual verbs") {
+        "verbe"
+    } else if a("qualifying adjective") || a("numeral adjective") || a("ordinal adjective") {
+        "adjectif"
+    } else if a("polite set expression") {
+        "social"
+    } else if a("preposition") || a("adverb of time") {
+        "petit mot"
+    } else {
+        "nom"
+    }
+    .to_string()
+}
+
 /// Image d'un picto, en base64, pour l'aperçu à l'écran.
 ///
 /// L'application lit déjà ses pièces jointes ainsi ; passer par la même voie
@@ -508,6 +588,25 @@ mod tests {
             .map(|p| p.mot.as_str())
             .collect();
         assert_eq!(gardes, vec!["pantalon"]);
+    }
+
+    #[test]
+    fn la_nature_vient_des_categories_pas_du_mot() {
+        assert_eq!(nature(&["personal pronoun".into()]), "personne");
+        assert_eq!(nature(&["usual verbs".into(), "clothes".into()]), "verbe");
+        assert_eq!(nature(&["qualifying adjective".into()]), "adjectif");
+        assert_eq!(nature(&["polite set expression".into()]), "social");
+        assert_eq!(nature(&["preposition".into()]), "petit mot");
+        // Tout le reste est un nom : c'est le cas le plus fréquent.
+        assert_eq!(nature(&["terrestrial animal".into()]), "nom");
+        assert_eq!(nature(&[]), "nom");
+    }
+
+    #[test]
+    fn le_verbe_l_emporte_sur_le_theme() {
+        // « baisser le pantalon » est rangé dans les vêtements ET dans les
+        // verbes : sur un tableau, c'est un verbe qu'il faut colorer.
+        assert_eq!(nature(&["clothes".into(), "routine".into(), "verb".into()]), "verbe");
     }
 
     #[test]

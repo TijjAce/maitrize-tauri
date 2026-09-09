@@ -1,6 +1,7 @@
 mod ai;
 mod arasaac;
 mod jeux_pdf;
+mod tla_pdf;
 mod amis;
 mod commands;
 mod db;
@@ -95,7 +96,8 @@ pub fn run() {
             ai::mistral_modeles_disponibles,
             arasaac::arasaac_etat, arasaac::arasaac_telecharger, arasaac::arasaac_categories,
             arasaac::arasaac_selection, arasaac::arasaac_par_mots, arasaac::arasaac_image,
-            commands::jeu_generer,
+            arasaac::arasaac_chercher, arasaac::arasaac_nature,
+            commands::jeu_generer, commands::tla_generer,
             // Amis (appariement chiffré)
             amis::identite_get, amis::identite_set_nom,
             amis::invitation_creer, amis::invitation_accepter,
