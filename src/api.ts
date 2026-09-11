@@ -389,6 +389,8 @@ export const api = {
     invoke<[PictoArasaac[], string[]]>("arasaac_par_mots", { mots }),
   jeuGenerer: (jeu: string, pictos: PictoArasaac[], options: OptionsJeu, titre: string) =>
     invoke<string>("jeu_generer", { jeu, pictos, options, titre }),
+  mistralVision: (consigne: string, imageB64: string, model?: string) =>
+    invoke<string>("mistral_vision", { consigne, imageB64, model: normaliserModele(model) }),
   arasaacChercher: (q: string, limite = 40) =>
     invoke<PictoArasaac[]>("arasaac_chercher", { q, limite }),
   arasaacNature: (id: number) => invoke<string>("arasaac_nature", { id }),

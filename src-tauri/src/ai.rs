@@ -160,6 +160,70 @@ pub async fn mistral_chat(
         .ok_or_else(|| "Réponse vide de Mistral".into())
 }
 
+/// Interroge le modèle sur une image.
+///
+/// Analyser une fiche d'exercice demande de la **voir** : le texte extrait ne
+/// dit rien du décor, de la densité ni de la place laissée pour répondre, qui
+/// sont précisément ce qui surcharge. Les modèles Ministral acceptent une
+/// image en entrée, ce que la version texte de `mistral_chat` ne sait pas
+/// exprimer — d'où cette commande séparée plutôt qu'un paramètre de plus.
+#[tauri::command]
+pub async fn mistral_vision(
+    db: State<'_, Db>,
+    consigne: String,
+    image_b64: String,
+    model: Option<String>,
+) -> Result<String, String> {
+    let cle = cle_mistral(&db)?;
+    let model = model.unwrap_or_else(|| MODELE_DEFAUT.to_string());
+    let body = serde_json::json!({
+        "model": model,
+        "temperature": 0.2,
+        "messages": [{
+            "role": "user",
+            "content": [
+                { "type": "text", "text": consigne },
+                { "type": "image_url", "image_url": format!("data:image/png;base64,{image_b64}") },
+            ],
+        }],
+    });
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(180))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let mut essai = 0u32;
+    let resp = loop {
+        let resp = client
+            .post("https://api.mistral.ai/v1/chat/completions")
+            .bearer_auth(&cle)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| format!("Réseau : {e}"))?;
+        if resp.status().is_success() {
+            break resp;
+        }
+        let code = resp.status().as_u16();
+        let quota = quota_minute(resp.headers());
+        if code == 429 && quota != Some(0) && essai < REESSAIS_429 {
+            essai += 1;
+            tokio::time::sleep(attente_avant_reessai(essai)).await;
+            continue;
+        }
+        let txt = resp.text().await.unwrap_or_default();
+        return Err(message_erreur(code, &txt, quota));
+    };
+
+    let parsed: MistralResponse = resp.json().await.map_err(|e| format!("Réponse : {e}"))?;
+    parsed
+        .choices
+        .into_iter()
+        .next()
+        .map(|c| c.message.content)
+        .ok_or_else(|| "Réponse vide de Mistral".into())
+}
+
 /// Vérifie que la clé fonctionne (petit ping).
 #[tauri::command]
 pub async fn mistral_test(db: State<'_, Db>, model: Option<String>) -> Result<bool, String> {
