@@ -1,5 +1,5 @@
 import React from "react";
-import { api, Eleve, ChatMessage, MODELE_TACHES, newId, nowIso } from "../api";
+import { api, Eleve, ChatMessage, MODELE_TACHES, TYPES_OBSERVATION, newId, nowIso } from "../api";
 import { Modal, Field, Input, Select, Textarea } from "./ui";
 import { toast } from "./Toaster";
 import { useDictee, mmss } from "../dictee";
@@ -14,7 +14,7 @@ import { useDictee, mmss } from "../dictee";
 // d'un élève engage l'enseignant, et une attribution automatique se trompe de
 // prénom tôt ou tard. L'écran propose, l'enseignant dispose.
 
-const TYPES = ["divers", "comportement", "scolaire", "santé"];
+const TYPES: string[] = [...TYPES_OBSERVATION];
 
 /** Une observation proposée pour un élève, avant validation. */
 interface Proposition {
@@ -67,7 +67,7 @@ export function promptRepartition(prenoms: string[], transcription: string): Cha
         "Tu aides un enseignant spécialisé à ranger ses observations d'atelier. " +
         "On te donne la liste des prénoms présents et la transcription de ce qu'il a dit. " +
         "Réponds UNIQUEMENT par un tableau JSON, sans texte autour, de la forme " +
-        '[{"eleve":"Prénom","observation":"…","type":"divers|comportement|scolaire|santé"}]. ' +
+        `[{"eleve":"Prénom","observation":"…","type":"${TYPES.join("|")}"}]. ` +
         "Règles : n'invente rien, reformule sans ajouter d'interprétation, " +
         "n'attribue une observation qu'à un prénom de la liste, " +
         "ignore ce qui ne concerne aucun élève nommé, " +

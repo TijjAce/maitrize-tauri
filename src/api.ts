@@ -515,6 +515,16 @@ export const TYPES_JEU = [
 export const COULEURS = ["blue", "indigo", "purple", "teal", "green", "orange", "red", "pink", "gray"];
 
 /**
+ * Natures d'observation sur un élève.
+ *
+ * « axe de travail » se distingue des autres : ce n'est pas un constat mais
+ * une intention. Le dossier le remonte en tête, et une fiche qui n'en porte
+ * aucun se voit tout de suite.
+ */
+export const TYPES_OBSERVATION = ["axe de travail", "divers", "comportement", "scolaire", "santé"] as const;
+export const TYPE_AXE = "axe de travail";
+
+/**
  * Modèles Mistral proposés, du plus fin au plus rapide.
  *
  * Les trois « Ministral » sont ouverts à tous les comptes, y compris gratuits.

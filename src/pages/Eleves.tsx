@@ -3,7 +3,7 @@ import { Page } from "../App";
 import {
   api, Eleve, CommentaireEleve, Evaluation, NoteEleve,
   nouvelEleve, nouvelleEvaluation, NIVEAUX_SCOLAIRES, MATIERES, newId, nowIso,
-  NIVEAUX_MAITRISE,
+  NIVEAUX_MAITRISE, TYPES_OBSERVATION,
 } from "../api";
 import { Modal, Field, Input, Select, Empty, Confirm, useAsync, useSegmentNav, useOngletDemande } from "../components/ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
@@ -13,10 +13,11 @@ import { DispositifsTab } from "./Dispositifs";
 import { ProgressionsTab } from "./Progressions";
 import { GevaScoTab } from "./GevaSco";
 import { DicteeAtelier } from "../components/DicteeAtelier";
+import { DossierTab } from "./DossierEleve";
 import { EvaluationDiagnostiqueTab } from "./EvaluationDiagnostique";
 import syntheseDomaines from "../data/syntheseGS.json";
 
-const ELEVES_TABS = ["liste", "observations", "evaluations", "papiers", "synthese", "dispositifs", "gevasco", "progressions"] as const;
+const ELEVES_TABS = ["liste", "dossier", "observations", "evaluations", "papiers", "synthese", "dispositifs", "gevasco", "progressions"] as const;
 export default function Eleves() {
   const [onglet, setOnglet] = React.useState<typeof ELEVES_TABS[number]>("liste");
   // Mode IME/ULIS/inclusion (Réglages → Type de structure) : ajoute les onglets
@@ -32,10 +33,11 @@ export default function Eleves() {
   return (
     <Page titre="Élèves" sous="Classe, observations et évaluations">
       <div className="seg" style={{ marginBottom: 18, flexWrap: "wrap" }}>
-        {[["liste", "Classe"], ["observations", "Observations"], ["evaluations", "Évaluations"], ["papiers", "Papiers"], ["synthese", "Synthèse GS"], ...(ime ? [["dispositifs", "Dispositifs"], ["gevasco", "GEVA-Sco"]] : []), ["progressions", "Progressions"]]
+        {[["liste", "Classe"], ["dossier", "Dossier"], ["observations", "Observations"], ["evaluations", "Évaluations"], ["papiers", "Papiers"], ["synthese", "Synthèse GS"], ...(ime ? [["dispositifs", "Dispositifs"], ["gevasco", "GEVA-Sco"]] : []), ["progressions", "Progressions"]]
           .map(([k, l]) => <button key={k} className={onglet === k ? "active" : ""} onClick={() => setOnglet(k as any)}>{l}</button>)}
       </div>
       {onglet === "liste" && <ListeEleves />}
+      {onglet === "dossier" && <DossierTab />}
       {onglet === "observations" && <Observations />}
       {onglet === "evaluations" && <Evaluations />}
       {onglet === "papiers" && <Papiers />}
@@ -166,7 +168,7 @@ function Observations() {
       <div className="card" style={{ marginBottom: 18 }}>
         <div className="row">
           <Select value={type} onChange={(e) => setType(e.target.value)} style={{ maxWidth: 170 }}>
-            {["divers", "comportement", "scolaire", "santé"].map((t) => <option key={t}>{t}</option>)}
+            {TYPES_OBSERVATION.map((t) => <option key={t}>{t}</option>)}
           </Select>
           <Input placeholder="Nouvelle observation…" value={texte} onChange={(e) => setTexte(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && ajouter()} />
