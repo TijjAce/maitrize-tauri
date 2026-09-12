@@ -624,6 +624,12 @@ pub struct SauvegardeDistante {
     /// Date lisible tirée du nom, ou vide pour l'ancienne sauvegarde unique.
     pub date: String,
     pub octets: i64,
+    /// Vrai si la base locale a été modifiée après cette sauvegarde.
+    ///
+    /// C'est le seul garde-fou d'un va-et-vient entre deux machines : restaurer
+    /// une sauvegarde plus ancienne que son travail en cours efface ce travail
+    /// sans rien demander. Mieux vaut le dire avant.
+    pub travail_local_plus_recent: bool,
 }
 
 #[tauri::command]
@@ -662,6 +668,14 @@ pub async fn sauvegarde_push(db: State<'_, Db>) -> R<String> {
 
 /// Les sauvegardes du stockage, la plus récente d'abord.
 async fn lister_distantes(cl: &Client, cfg: &S3Cfg) -> R<Vec<SauvegardeDistante>> {
+    // Date de dernière écriture de la base locale, au même format que les noms
+    // de sauvegarde, pour que la comparaison soit une simple comparaison de
+    // chaînes.
+    let date_locale = std::fs::metadata(crate::db::data_dir().join("maitrize.sqlite3"))
+        .ok()
+        .and_then(|m| m.modified().ok())
+        .map(|t| chrono::DateTime::<chrono::Local>::from(t).format("%Y-%m-%d-%H%M%S").to_string());
+
     let resp = cl
         .list_objects_v2()
         .bucket(&cfg.bucket)
@@ -683,7 +697,10 @@ async fn lister_distantes(cl: &Client, cfg: &S3Cfg) -> R<Vec<SauvegardeDistante>
             } else {
                 cle.trim_start_matches(PREFIXE_SAUVEGARDE).trim_end_matches(".enc").to_string()
             };
-            Some(SauvegardeDistante { cle, date, octets: o.size().unwrap_or(0) })
+            let travail_local_plus_recent = date_locale
+                .as_deref()
+                .is_some_and(|locale| !date.is_empty() && date.as_str() < locale);
+            Some(SauvegardeDistante { cle, date, octets: o.size().unwrap_or(0), travail_local_plus_recent })
         })
         .collect();
     // Le nom porte l'horodatage : l'ordre alphabétique est l'ordre du temps.

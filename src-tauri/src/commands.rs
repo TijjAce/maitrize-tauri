@@ -1621,6 +1621,58 @@ pub struct SauvegardeAuto {
 }
 
 /// Liste les copies quotidiennes, de la plus récente à la plus ancienne.
+/// Où vivent les données, et où elles pourraient vivre.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DossierDonnees {
+    pub chemin: String,
+    pub par_defaut: String,
+    pub personnalise: bool,
+    pub octets: u64,
+}
+
+#[tauri::command]
+pub fn dossier_donnees_get() -> DossierDonnees {
+    let chemin = crate::db::data_dir();
+    let octets = std::fs::read_dir(&chemin)
+        .map(|e| e.flatten().filter_map(|f| f.metadata().ok()).map(|m| m.len()).sum())
+        .unwrap_or(0);
+    DossierDonnees {
+        chemin: chemin.to_string_lossy().into_owned(),
+        par_defaut: crate::db::dossier_par_defaut().to_string_lossy().into_owned(),
+        personnalise: crate::db::dossier_choisi().is_some(),
+        octets,
+    }
+}
+
+/// Déplace l'emplacement des données.
+///
+/// Un chemin réseau est refusé, pas seulement déconseillé. SQLite en mode WAL
+/// exige que tous les processus partagent un segment de mémoire, ce que deux
+/// ordinateurs ne peuvent pas faire ; et le verrouillage de fichier sur SMB
+/// est réputé peu fiable. Accepter mènerait à une base corrompue, souvent
+/// plusieurs jours après le changement, quand plus personne ne fait le lien.
+#[tauri::command]
+pub fn dossier_donnees_set(chemin: Option<String>) -> R<DossierDonnees> {
+    match chemin.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        Some(c) => {
+            let p = std::path::PathBuf::from(c);
+            if crate::db::est_chemin_reseau(&p) {
+                return Err(
+                    "Ce dossier est sur un volume réseau. Une base SQLite ne peut pas y vivre : \
+                     deux ordinateurs ne peuvent pas partager les verrous ni la mémoire qu'elle \
+                     exige, et le fichier finirait corrompu. Choisissez un dossier local, et \
+                     servez-vous de la sauvegarde chiffrée pour passer d'une machine à l'autre."
+                        .into(),
+                );
+            }
+            crate::db::definir_dossier(Some(&p)).map_err(e)?;
+        }
+        None => crate::db::definir_dossier(None).map_err(e)?,
+    }
+    Ok(dossier_donnees_get())
+}
+
 #[tauri::command]
 pub fn sauvegardes_auto_list() -> R<Vec<SauvegardeAuto>> {
     let dir = crate::db::sauvegardes_dir();

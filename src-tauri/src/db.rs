@@ -11,6 +11,49 @@ use std::sync::Mutex;
 
 pub struct Db(pub Mutex<Connection>);
 
+/// Emplacement par défaut, propre à la plateforme.
+///
+/// macOS   → ~/Library/Application Support/fr.clementsapp.maitrize/
+/// Windows → %APPDATA%\fr.clementsapp.maitrize\
+/// Le crate `dirs` connaît la convention de chacune ; les coder en dur
+/// casserait sur un compte dont le dossier personnel n'est pas à sa place
+/// habituelle, ce qui arrive sur les postes d'établissement.
+pub fn dossier_par_defaut() -> PathBuf {
+    let base = dirs::data_dir().unwrap_or_else(|| std::env::temp_dir());
+    base.join("fr.clementsapp.maitrize")
+}
+
+/// Fichier qui mémorise un emplacement choisi par l'utilisateur.
+///
+/// Il ne peut pas vivre dans la base : c'est lui qui dit où la trouver. Il
+/// reste donc à l'emplacement par défaut, et ne contient qu'un chemin.
+fn marqueur_dossier() -> PathBuf {
+    dossier_par_defaut().join("dossier-donnees.txt")
+}
+
+/// Chemin des données choisi par l'utilisateur, s'il en a défini un.
+pub fn dossier_choisi() -> Option<PathBuf> {
+    let brut = std::fs::read_to_string(marqueur_dossier()).ok()?;
+    let chemin = brut.trim();
+    if chemin.is_empty() { None } else { Some(PathBuf::from(chemin)) }
+}
+
+/// Enregistre (ou efface) l'emplacement des données.
+pub fn definir_dossier(chemin: Option<&std::path::Path>) -> std::io::Result<()> {
+    std::fs::create_dir_all(dossier_par_defaut())?;
+    match chemin {
+        Some(p) => {
+            std::fs::create_dir_all(p)?;
+            std::fs::write(marqueur_dossier(), p.to_string_lossy().as_bytes())
+        }
+        None => {
+            std::fs::remove_file(marqueur_dossier()).or_else(|e| {
+                if e.kind() == std::io::ErrorKind::NotFound { Ok(()) } else { Err(e) }
+            })
+        }
+    }
+}
+
 /// Dossier racine des données de l'app (créé si absent).
 pub fn data_dir() -> PathBuf {
     // Override pour tests multi-utilisateurs : lancer une 2e instance avec
@@ -23,10 +66,40 @@ pub fn data_dir() -> PathBuf {
             return dir;
         }
     }
-    let base = dirs::data_dir().unwrap_or_else(|| std::env::temp_dir());
-    let dir = base.join("fr.clementsapp.maitrize");
+    // Emplacement choisi par l'enseignant — disque externe, autre partition.
+    // S'il a disparu (clé retirée, volume non monté), on ne se rabat PAS en
+    // silence sur le dossier par défaut : l'app repartirait d'une base vide et
+    // ferait croire à une perte de données. On recrée le chemin, et s'il est
+    // inaccessible l'ouverture échouera avec un message clair.
+    if let Some(dir) = dossier_choisi() {
+        std::fs::create_dir_all(&dir).ok();
+        return dir;
+    }
+    let dir = dossier_par_defaut();
     std::fs::create_dir_all(&dir).ok();
     dir
+}
+
+/// Le chemin désigne-t-il un volume réseau ?
+///
+/// SQLite ne peut pas y vivre : le mode WAL qu'utilise l'application exige que
+/// tous les processus partagent un segment de mémoire, ce que deux ordinateurs
+/// ne peuvent pas faire. Et le verrouillage de fichier, sur lequel repose la
+/// cohérence, est notoirement peu fiable sur SMB. Poser la base sur un partage
+/// ne donne pas une synchronisation : ça donne une base corrompue, souvent
+/// après plusieurs jours d'apparence normale.
+pub fn est_chemin_reseau(chemin: &std::path::Path) -> bool {
+    let s = chemin.to_string_lossy();
+    // UNC Windows : \\serveur\partage
+    if s.starts_with("\\\\") || s.starts_with("//") {
+        return true;
+    }
+    // Volume monté sur macOS : /Volumes/… (le disque de démarrage excepté)
+    if let Some(reste) = s.strip_prefix("/Volumes/") {
+        return !reste.is_empty();
+    }
+    // Points de montage réseau courants sous Linux
+    s.starts_with("/mnt/") || s.starts_with("/media/") || s.starts_with("/net/")
 }
 
 /// Dossier des sauvegardes automatiques (copies horodatées de la base).
@@ -490,6 +563,42 @@ pub(crate) fn migrate(conn: &Connection) {
 
     // Élèves présents sur un créneau (organisation IME, groupes restreints).
     conn.execute("ALTER TABLE creneaux ADD COLUMN eleves_json TEXT NOT NULL DEFAULT '[]'", []).ok();
+}
+
+#[cfg(test)]
+mod tests_dossier {
+    use super::*;
+    use std::path::Path;
+
+    // Poser la base sur un partage réseau ne synchronise pas : ça corrompt.
+    // Ce test garde le détecteur qui prévient l'enseignant avant le dégât.
+
+    #[test]
+    fn reconnait_un_partage_windows() {
+        assert!(est_chemin_reseau(Path::new(r"\\BUREAU\maitrize-data")));
+        assert!(est_chemin_reseau(Path::new("//bureau/maitrize-data")));
+    }
+
+    #[test]
+    fn reconnait_un_volume_monte_sur_mac() {
+        assert!(est_chemin_reseau(Path::new("/Volumes/maitrize-data/app")));
+    }
+
+    #[test]
+    fn laisse_passer_un_chemin_local() {
+        assert!(!est_chemin_reseau(Path::new("/Users/clement/Documents/maitrize")));
+        assert!(!est_chemin_reseau(Path::new(r"C:\maitrize-data")));
+        assert!(!est_chemin_reseau(Path::new("/Volumes/")));
+    }
+
+    #[test]
+    fn le_defaut_suit_la_convention_de_la_plateforme() {
+        let d = dossier_par_defaut();
+        assert!(d.ends_with("fr.clementsapp.maitrize"), "{d:?}");
+        if cfg!(target_os = "macos") {
+            assert!(d.to_string_lossy().contains("Application Support"), "{d:?}");
+        }
+    }
 }
 
 #[cfg(test)]
