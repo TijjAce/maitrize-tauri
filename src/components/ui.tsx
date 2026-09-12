@@ -189,6 +189,15 @@ export function useOngletDemande<T extends string>(
 }
 
 /// Hook simple de chargement de données.
+/**
+ * Signal émis quand des données arrivent d'une autre machine.
+ *
+ * Tous les écrans se relisent alors, sans vider l'affichage : c'est ce qui
+ * fait que la liste d'élèves se complète sous les yeux au lieu d'attendre le
+ * prochain aller-retour dans le menu.
+ */
+export const EVT_DONNEES_DISTANTES = "maitrize:donnees-distantes";
+
 export function useAsync<T>(fn: () => Promise<T>, deps: React.DependencyList = []) {
   const [data, setData] = React.useState<T | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -213,6 +222,14 @@ export function useAsync<T>(fn: () => Promise<T>, deps: React.DependencyList = [
     }
     prevVisible.current = visible;
   }, [visible]);
+
+  // Données reçues d'une autre machine : on relit en silence, page visible ou
+  // non — un écran caché mais gardé en vie doit être à jour quand on y revient.
+  React.useEffect(() => {
+    const h = () => { fnRef.current().then(setData).catch(() => {}); };
+    window.addEventListener(EVT_DONNEES_DISTANTES, h);
+    return () => window.removeEventListener(EVT_DONNEES_DISTANTES, h);
+  }, []);
 
   return { data, loading, reload, setData };
 }

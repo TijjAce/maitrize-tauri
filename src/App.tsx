@@ -18,6 +18,7 @@ import Assistant from "./pages/Assistant";
 import Amis from "./pages/Amis";
 import Reglages from "./pages/Reglages";
 import { PageVisibleContext } from "./components/ui";
+import { demarrerSyncAuto } from "./syncAuto";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { NotesPanel } from "./components/NotesPanel";
 import { CommandPalette } from "./components/CommandPalette";
@@ -119,6 +120,9 @@ export default function App() {
   React.useEffect(() => { bootTheme(); }, []);
   React.useEffect(() => { getVersion().then(setVersion).catch(() => {}); }, []);
   React.useEffect(() => { installerGlisserDeposer(); }, []);
+  // Synchronisation de fond : rien à cliquer, les écrans se relisent d'eux-mêmes
+  // quand des données arrivent de l'autre machine.
+  React.useEffect(() => demarrerSyncAuto(), []);
 
   // Liseré lumineux : met l'animation en pause quand la fenêtre perd le focus
   // (économie de batterie). L'attribut est lu par le CSS [data-winfocus].

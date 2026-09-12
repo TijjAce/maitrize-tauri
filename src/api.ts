@@ -149,6 +149,11 @@ export interface SauvegardeDistante {
   cle: string; date: string; octets: number; travailLocalPlusRecent: boolean;
 }
 
+/** Bilan d'un passage de synchronisation fine. */
+export interface ResultatSync {
+  envoyes: number; recus: number; appliques: number; message: string;
+}
+
 /** Où en est la synchronisation entre les machines. */
 export interface EtatSync {
   configure: boolean; aEnvoyer: boolean; aRecuperer: boolean; conflit: boolean;
@@ -431,6 +436,7 @@ export const api = {
   sauvegardePull: (cle?: string) => invoke<string>("sauvegarde_pull", { cle: cle ?? null }),
   sauvegardeListe: () => invoke<SauvegardeDistante[]>("sauvegarde_liste"),
   syncEtat: () => invoke<EtatSync>("sync_etat"),
+  syncDeltas: () => invoke<ResultatSync>("sync_deltas"),
   dossierDonneesGet: () => invoke<DossierDonnees>("dossier_donnees_get"),
   dossierDonneesSet: (chemin: string | null) => invoke<DossierDonnees>("dossier_donnees_set", { chemin }),
   syncEnvoyer: (amiId: string, texte: string) => invoke<void>("sync_envoyer", { amiId, texte }),
