@@ -98,6 +98,12 @@ export interface MaterielItem {
   competenceTitre: string; domaineTitre: string; sousDomaineTitre: string; cycle: string;
   imagesJson: string; pdfsJson: string; dateCreation: string; seanceId: string | null;
   sequenceId: string | null;
+  /** Rangement libre, comme pour les ateliers et les jeux. */
+  dossier: string;
+  /** Liens vidéo (YouTube ou autre), en JSON. */
+  videosJson: string;
+  /** Identifiants de documents du coffre-fort rattachés, en JSON. */
+  coffreJson: string;
 }
 
 export interface PapierEleve {

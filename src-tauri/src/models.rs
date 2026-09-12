@@ -589,6 +589,12 @@ pub struct MaterielItem {
     // Lien optionnel vers la séquence (matériel déposé au niveau de la séquence).
     #[serde(default)]
     pub sequence_id: Option<String>,
+    #[serde(default)]
+    pub dossier: String,
+    #[serde(default = "vide_arr")]
+    pub videos_json: String,
+    #[serde(default = "vide_arr")]
+    pub coffre_json: String,
 }
 
 impl MaterielItem {
@@ -607,6 +613,9 @@ impl MaterielItem {
             date_creation: r.get("date_creation")?,
             seance_id: r.get("seance_id").ok(),
             sequence_id: r.get("sequence_id").ok(),
+            dossier: r.get("dossier").unwrap_or_default(),
+            videos_json: r.get("videos_json").unwrap_or_else(|_| "[]".into()),
+            coffre_json: r.get("coffre_json").unwrap_or_else(|_| "[]".into()),
         })
     }
 }

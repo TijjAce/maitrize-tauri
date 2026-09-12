@@ -629,12 +629,14 @@ pub fn materiel_save(db: State<Db>, materiel: MaterielItem) -> R<MaterielItem> {
     c.execute(
         "INSERT OR REPLACE INTO materiel_items
          (id,titre,description_materiel,competence_id,competence_titre,domaine_titre,
-          sous_domaine_titre,cycle,images_json,pdfs_json,date_creation,seance_id,sequence_id)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)",
+          sous_domaine_titre,cycle,images_json,pdfs_json,date_creation,seance_id,sequence_id,
+          dossier,videos_json,coffre_json)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)",
         params![materiel.id, materiel.titre, materiel.description_materiel, materiel.competence_id,
                 materiel.competence_titre, materiel.domaine_titre, materiel.sous_domaine_titre,
                 materiel.cycle, materiel.images_json, materiel.pdfs_json, materiel.date_creation,
-                materiel.seance_id, materiel.sequence_id],
+                materiel.seance_id, materiel.sequence_id,
+                materiel.dossier, materiel.videos_json, materiel.coffre_json],
     ).map_err(e)?;
     Ok(materiel)
 }

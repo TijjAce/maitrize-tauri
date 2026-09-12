@@ -78,6 +78,7 @@ export default function SequenceDetail() {
       domaineTitre: comp?.domaineTitre ?? seq.matiere ?? "", sousDomaineTitre: comp?.sousDomaineTitre ?? "",
       cycle: seq.cycle, imagesJson: pdf ? "[]" : JSON.stringify([nom]), pdfsJson: pdf ? JSON.stringify([nom]) : "[]",
       dateCreation: nowIso(), seanceId: null, sequenceId: seq.id,
+      dossier: "", videosJson: "[]", coffreJson: "[]",
     });
   };
   const deposerFichiers = async (files: FileList) => {
@@ -105,6 +106,7 @@ export default function SequenceDetail() {
       domaineTitre: comp?.domaineTitre ?? seq.matiere ?? "", sousDomaineTitre: comp?.sousDomaineTitre ?? "",
       cycle: seq.cycle, imagesJson: JSON.stringify([nom]), pdfsJson: "[]",
       dateCreation: nowIso(), seanceId: null, sequenceId: seq.id,
+      dossier: "", videosJson: "[]", coffreJson: "[]",
     });
     reloadMat();
   };
