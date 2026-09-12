@@ -2,6 +2,7 @@ import React from "react";
 import { Page } from "../App";
 import { api, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, getMatiereOverrides, setMatiereOverrides, telechargerTexte, anneeScolaireActuelle, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo } from "../api";
 import { Field, Input, Select, Modal, Confirm, useAsync } from "../components/ui";
+import { MesAppareils } from "../components/MesAppareils";
 import { applyTheme, MODES, ACCENTS, STYLES } from "../theme";
 import { lireAcceptationCgu, CguAcceptation } from "../components/CGU";
 import { genererDonneesTest } from "../devSeed";
@@ -254,6 +255,7 @@ export default function Reglages() {
           <button className="btn" onClick={() => importInput.current?.click()}>⬆️ Importer</button>
           <span style={{ fontSize: 13 }}>{dataMsg}</span>
         </div>
+        <MesAppareils />
         <DossierDesDonnees />
         <CopiesAutomatiques />
       </div>

@@ -174,6 +174,13 @@ pub fn sync_config_get(db: State<Db>) -> R<SyncConfig> {
 #[tauri::command]
 pub fn sync_config_set(db: State<Db>, endpoint: String, region: String, bucket: String, access: String, secret: Option<String>) -> R<()> {
     let c = db.0.lock().map_err(e)?;
+    ecrire_cfg(&c, &endpoint, &region, &bucket, &access, secret.as_deref())
+}
+
+/// Écrit la configuration du stockage. Partagée avec l'appariement, qui pose
+/// exactement les mêmes réglages depuis un code.
+fn ecrire_cfg(c: &Connection, endpoint: &str, region: &str, bucket: &str,
+              access: &str, secret: Option<&str>) -> R<()> {
     let set = |k: &str, v: &str| {
         c.execute("INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)", params![k, v]).ok();
     };
@@ -181,7 +188,8 @@ pub fn sync_config_set(db: State<Db>, endpoint: String, region: String, bucket: 
     set("sync_region", region.trim());
     set("sync_bucket", bucket.trim());
     set("sync_access", access.trim());
-    if let Some(s) = secret { if !s.is_empty() { set("sync_secret", s.trim()); } }
+    // Un secret vide veut dire « garde celui déjà enregistré », pas « efface ».
+    if let Some(s) = secret { if !s.trim().is_empty() { set("sync_secret", s.trim()); } }
     Ok(())
 }
 
@@ -1065,6 +1073,40 @@ mod tests_sauvegarde {
     }
 
     #[test]
+    fn un_code_dappairage_fait_laller_retour() {
+        use base64::Engine;
+        let code = CodeAppairage {
+            endpoint: "http://192.168.1.20:9000".into(), region: "us-east-1".into(),
+            bucket: "maitrize".into(), access: "cle".into(), secret: "secret".into(),
+            phrase: "quatre mots sans rapport".into(),
+        };
+        let encode = base64::engine::general_purpose::STANDARD
+            .encode(serde_json::to_string(&code).unwrap());
+        let relu: CodeAppairage = serde_json::from_slice(
+            &base64::engine::general_purpose::STANDARD.decode(&encode).unwrap()).unwrap();
+        assert_eq!(relu.bucket, "maitrize");
+        // La phrase voyage avec : sans elle, la seconde machine se
+        // connecterait au bon endroit sans rien pouvoir déchiffrer, et
+        // l'échec ressemblerait à « l'autre n'a rien modifié ».
+        assert_eq!(relu.phrase, "quatre mots sans rapport");
+    }
+
+    #[test]
+    fn un_code_abime_est_refuse_clairement() {
+        use base64::Engine;
+        // Recopié de travers : le message doit le dire, pas parler de JSON.
+        assert!(base64::engine::general_purpose::STANDARD.decode("pas du base64 !!").is_err());
+        let pas_maitrize = base64::engine::general_purpose::STANDARD.encode("{\"x\":1}");
+        let octets = base64::engine::general_purpose::STANDARD.decode(pas_maitrize).unwrap();
+        assert!(serde_json::from_slice::<CodeAppairage>(&octets).is_err());
+    }
+
+    #[test]
+    fn la_plateforme_est_nommee_lisiblement() {
+        assert!(["Windows", "macOS", "Linux"].contains(&plateforme()));
+    }
+
+    #[test]
     fn la_derivation_est_volontairement_lente() {
         // Si Argon2 devenait instantané, la phrase secrète ne protégerait plus
         // rien : une phrase courte s'énumère en quelques heures.
@@ -1202,7 +1244,23 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
                     &chrono::Local::now().format("%Y-%m-%d-%H%M%S").to_string())?;
     }
 
-    // 3. Élaguer le journal partagé, qui n'a pas à grandir sans fin.
+    // 3. Se signaler à l'autre machine : c'est ce qui rend la liaison visible
+    // dans les réglages, et une configuration erronée repérable.
+    {
+        let m = {
+            let c = db.0.lock().map_err(e)?;
+            Machine {
+                id: machine.clone(),
+                nom: nom_machine(&c),
+                plateforme: plateforme().into(),
+                vue_le: chrono::Local::now().format("%Y-%m-%d-%H%M%S").to_string(),
+                moi: false,
+            }
+        };
+        publier_presence(&cl, &cfg, &phrase, &m).await;
+    }
+
+    // 4. Élaguer le journal partagé, qui n'a pas à grandir sans fin.
     if cles.len() > DELTAS_GARDES {
         let mut toutes: Vec<String> = liste.contents().iter()
             .filter_map(|o| o.key().map(str::to_string)).collect();
@@ -1311,4 +1369,167 @@ pub async fn sync_fichiers(db: State<'_, Db>) -> R<ResultatFichiers> {
         }
     }
     Ok(res)
+}
+
+
+// ── Mes appareils ──────────────────────────────────────────────────────────
+//
+// Deux machines se « connaissent » dès lors qu'elles pointent vers le même
+// stockage avec la même phrase secrète. Il n'y a donc rien à apparier au sens
+// cryptographique — la phrase est l'appariement.
+//
+// Ce qui manque n'est pas de la sécurité, c'est de la **confirmation** :
+// savoir que l'autre ordinateur parle bien au même endroit, et quand il l'a
+// fait pour la dernière fois. Sans cela, une configuration erronée ressemble
+// exactement à « je n'ai rien modifié là-bas ».
+
+const PREFIXE_MACHINE: &str = "maitrize/machines/";
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Machine {
+    pub id: String,
+    pub nom: String,
+    pub plateforme: String,
+    /// Dernière synchronisation, au format lisible.
+    pub vue_le: String,
+    #[serde(default)]
+    pub moi: bool,
+}
+
+fn nom_machine(c: &Connection) -> String {
+    let nom = get_setting(c, "nomMachine");
+    if !nom.trim().is_empty() {
+        return nom;
+    }
+    // À défaut, le nom réseau de l'ordinateur : plus parlant qu'un UUID.
+    hostname().unwrap_or_else(|| "Cet ordinateur".into())
+}
+
+fn hostname() -> Option<String> {
+    std::env::var("COMPUTERNAME") // Windows
+        .or_else(|_| std::env::var("HOSTNAME")) // Linux
+        .ok()
+        .or_else(|| {
+            // macOS : pas de variable d'environnement fiable.
+            std::process::Command::new("scutil")
+                .args(["--get", "ComputerName"])
+                .output()
+                .ok()
+                .filter(|o| o.status.success())
+                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        })
+        .filter(|s| !s.is_empty())
+}
+
+fn plateforme() -> &'static str {
+    if cfg!(target_os = "windows") { "Windows" }
+    else if cfg!(target_os = "macos") { "macOS" }
+    else { "Linux" }
+}
+
+/// Signale à l'autre machine qu'on est passé par là.
+async fn publier_presence(cl: &Client, cfg: &S3Cfg, phrase: &str, m: &Machine) {
+    let Ok(json) = serde_json::to_string(m) else { return };
+    let Ok(blob) = chiffrer_sauvegarde(phrase, json.as_bytes()) else { return };
+    cl.put_object().bucket(&cfg.bucket).key(format!("{PREFIXE_MACHINE}{}.enc", m.id))
+        .body(ByteStream::from(blob)).send().await.ok();
+}
+
+/// Les machines qui partagent ce stockage.
+#[tauri::command]
+pub async fn machines_liste(db: State<'_, Db>) -> R<Vec<Machine>> {
+    let (cfg, phrase, moi) = {
+        let c = db.0.lock().map_err(e)?;
+        let phrase = get_setting(&c, "sauvegarde_phrase");
+        let moi = Machine {
+            id: crate::db::identifiant_machine(&c),
+            nom: nom_machine(&c),
+            plateforme: plateforme().into(),
+            vue_le: get_setting(&c, CLE_DERNIERE_SYNC),
+            moi: true,
+        };
+        if phrase.trim().is_empty() {
+            return Ok(vec![moi]);
+        }
+        match lire_cfg(&c) {
+            Ok(cfg) => (cfg, phrase.trim().to_string(), moi),
+            Err(_) => return Ok(vec![moi]),
+        }
+    };
+
+    let cl = client(&cfg);
+    let mut sortie = vec![moi.clone()];
+    if let Ok(liste) = cl.list_objects_v2().bucket(&cfg.bucket).prefix(PREFIXE_MACHINE).send().await {
+        for o in liste.contents() {
+            let Some(cle) = o.key() else { continue };
+            let Ok(obj) = cl.get_object().bucket(&cfg.bucket).key(cle).send().await else { continue };
+            let Ok(corps) = obj.body.collect().await else { continue };
+            let Ok(clair) = dechiffrer_sauvegarde(&phrase, corps.into_bytes().as_ref()) else { continue };
+            let Ok(mut m) = serde_json::from_slice::<Machine>(&clair) else { continue };
+            if m.id == moi.id {
+                continue; // c'est nous, déjà en tête
+            }
+            m.moi = false;
+            sortie.push(m);
+        }
+    }
+    Ok(sortie)
+}
+
+#[tauri::command]
+pub fn machine_nom_set(db: State<Db>, nom: String) -> R<()> {
+    let c = db.0.lock().map_err(e)?;
+    set_setting(&c, "nomMachine", nom.trim())
+}
+
+// ── Appariement ────────────────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize)]
+struct CodeAppairage {
+    endpoint: String,
+    region: String,
+    bucket: String,
+    access: String,
+    secret: String,
+    phrase: String,
+}
+
+/// Fabrique le code à saisir sur l'autre ordinateur.
+///
+/// Il porte tout ce qu'il faut pour rejoindre le même stockage, y compris la
+/// phrase secrète : sans elle, la seconde machine se connecterait au bon
+/// endroit sans pouvoir rien déchiffrer — un échec silencieux, qui ressemble
+/// à « l'autre n'a rien modifié ».
+///
+/// Il est donc aussi sensible qu'un mot de passe, et l'écran le dit.
+#[tauri::command]
+pub fn appairage_code(db: State<Db>) -> R<String> {
+    use base64::Engine;
+    let c = db.0.lock().map_err(e)?;
+    let cfg = lire_cfg(&c)?;
+    let phrase = get_setting(&c, "sauvegarde_phrase");
+    if phrase.trim().is_empty() {
+        return Err("Définissez d'abord une phrase secrète de sauvegarde.".into());
+    }
+    let code = CodeAppairage {
+        endpoint: cfg.endpoint, region: cfg.region, bucket: cfg.bucket,
+        access: cfg.access, secret: cfg.secret, phrase: phrase.trim().into(),
+    };
+    let json = serde_json::to_string(&code).map_err(e)?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(json))
+}
+
+/// Applique un code reçu de l'autre ordinateur.
+#[tauri::command]
+pub fn appairage_appliquer(db: State<Db>, code: String) -> R<()> {
+    use base64::Engine;
+    let octets = base64::engine::general_purpose::STANDARD
+        .decode(code.trim())
+        .map_err(|_| "Ce code est incomplet ou mal recopié.".to_string())?;
+    let c: CodeAppairage = serde_json::from_slice(&octets)
+        .map_err(|_| "Ce code ne vient pas de Maitrize.".to_string())?;
+    let conn = db.0.lock().map_err(e)?;
+    ecrire_cfg(&conn, &c.endpoint, &c.region, &c.bucket, &c.access, Some(&c.secret))?;
+    set_setting(&conn, "sauvegarde_phrase", &c.phrase)
 }

@@ -159,6 +159,11 @@ export interface ResultatFichiers {
   envoyes: number; recus: number; restants: number; message: string;
 }
 
+/** Un ordinateur partageant le même stockage. */
+export interface Machine {
+  id: string; nom: string; plateforme: string; vueLe: string; moi: boolean;
+}
+
 /** Où en est la synchronisation entre les machines. */
 export interface EtatSync {
   configure: boolean; aEnvoyer: boolean; aRecuperer: boolean; conflit: boolean;
@@ -443,6 +448,10 @@ export const api = {
   syncEtat: () => invoke<EtatSync>("sync_etat"),
   syncDeltas: () => invoke<ResultatSync>("sync_deltas"),
   syncFichiers: () => invoke<ResultatFichiers>("sync_fichiers"),
+  machinesListe: () => invoke<Machine[]>("machines_liste"),
+  machineNomSet: (nom: string) => invoke<void>("machine_nom_set", { nom }),
+  appairageCode: () => invoke<string>("appairage_code"),
+  appairageAppliquer: (code: string) => invoke<void>("appairage_appliquer", { code }),
   dossierDonneesGet: () => invoke<DossierDonnees>("dossier_donnees_get"),
   dossierDonneesSet: (chemin: string | null) => invoke<DossierDonnees>("dossier_donnees_set", { chemin }),
   syncEnvoyer: (amiId: string, texte: string) => invoke<void>("sync_envoyer", { amiId, texte }),

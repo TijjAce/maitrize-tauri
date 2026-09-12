@@ -111,7 +111,8 @@ pub fn run() {
             sync::sequence_partager, sync::programmation_partager, sync::projet_partager,
             sync::boite_relever, sync::boite_liste, sync::boite_recuperer, sync::boite_supprimer,
             // Sauvegarde chiffrée sur stockage S3/MinIO
-            sync::sauvegarde_push, sync::sauvegarde_pull, sync::sauvegarde_liste, sync::sync_etat, sync::sync_deltas, sync::sync_fichiers,
+            sync::sauvegarde_push, sync::sauvegarde_pull, sync::sauvegarde_liste, sync::sync_etat, sync::sync_deltas, sync::sync_fichiers, sync::machines_liste, sync::machine_nom_set,
+            sync::appairage_code, sync::appairage_appliquer,
             // Version portable (serveur local WiFi + QR)
             portable::portable_demarrer, portable::portable_arreter,
             // Capture photo depuis le téléphone
