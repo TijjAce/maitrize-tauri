@@ -99,3 +99,47 @@ describe("nom affiché", () => {
     expect(nomVideo({ url: "https://www.lumni.fr/video/x" })).toBe("lumni.fr");
   });
 });
+
+// Un même lien n'est pas annoncé sous le même type selon la plateforme : le
+// Finder, Safari et Chrome diffèrent. N'en interroger qu'un revient à ne
+// marcher que sur l'un d'eux — et le curseur d'interdiction n'explique rien.
+describe("lecture d'un dépôt", () => {
+  // Reproduit lireTexteDepose sans DataTransfer, indisponible hors navigateur.
+  const lire = (donnees: Record<string, string>): string => {
+    for (const type of ["text/uri-list", "text/plain", "URL", "public.url", "text/html"]) {
+      const valeur = donnees[type];
+      if (!valeur) continue;
+      const ligne = valeur.split(/[\r\n]+/).map((l) => l.trim())
+        .find((l) => l && !l.startsWith("#") && /^https?:\/\//i.test(l));
+      if (ligne) return ligne;
+      const href = valeur.match(/href=["']?(https?:\/\/[^"'\s>]+)/i)?.[1];
+      if (href) return href;
+    }
+    return "";
+  };
+
+  it("lit un uri-list simple", () => {
+    expect(lire({ "text/uri-list": "https://youtu.be/dQw4w9WgXcQ" })).toBe("https://youtu.be/dQw4w9WgXcQ");
+  });
+
+  it("ignore les commentaires d'un uri-list", () => {
+    // Le format autorise des lignes de commentaire avant l'adresse.
+    expect(lire({ "text/uri-list": "# un commentaire\nhttps://youtu.be/dQw4w9WgXcQ\n" }))
+      .toBe("https://youtu.be/dQw4w9WgXcQ");
+  });
+
+  it("retombe sur le texte brut", () => {
+    expect(lire({ "text/plain": "https://eduscol.education.fr/x" })).toBe("https://eduscol.education.fr/x");
+  });
+
+  it("extrait l'adresse d'un fragment HTML", () => {
+    // Chrome dépose parfois le lien sous forme de balise.
+    expect(lire({ "text/html": '<a href="https://youtu.be/dQw4w9WgXcQ">Vidéo</a>' }))
+      .toBe("https://youtu.be/dQw4w9WgXcQ");
+  });
+
+  it("ne rend rien quand il n'y a pas d'adresse", () => {
+    expect(lire({ "text/plain": "juste du texte" })).toBe("");
+    expect(lire({})).toBe("");
+  });
+});
