@@ -41,6 +41,7 @@ export default function Assistant() {
   const [showGen, setShowGen] = React.useState(false);
   const [showModif, setShowModif] = React.useState(false);
   const [contexteActif, setContexteActif] = React.useState(true);
+  const [surLeWeb, setSurLeWeb] = React.useState(false);
   const [model, setModel] = React.useState(MODELE_DEFAUT);
   const [convId, setConvId] = React.useState("");
   const { data: convs, reload: reloadConvs } = useAsync(() => api.conversationsList(), []);
@@ -163,6 +164,30 @@ export default function Assistant() {
     setMessages(suite); setInput(""); setLoading(true);
     colleEnBas.current = true; setDetache(false);
     let cleanup = () => {};
+
+    // Recherche web : l'agent Mistral interroge le web puis répond en citant
+    // ses sources. Pas de streaming — la réponse arrive d'un bloc, après la
+    // recherche. On dit explicitement si la recherche a bien eu lieu : une
+    // réponse de mémoire affichée sous un bandeau « web » paraîtrait vérifiée
+    // alors qu'elle ne l'est pas, ce qui est pire que pas de recherche.
+    if (surLeWeb) {
+      try {
+        const r = await api.mistralRechercheWeb(contenu);
+        const sources = r.sources.length
+          ? "\n\n**Sources**\n" + r.sources.map((s) => `- [${s.titre}](${s.url})`).join("\n")
+          : "";
+        const avertissement = r.aCherche
+          ? ""
+          : "\n\n_⚠️ Le web n'a pas été consulté : cette réponse vient de la mémoire du modèle._";
+        const final: ChatMessage[] = [...suite,
+          { role: "assistant", content: (r.texte || "(réponse vide)") + sources + avertissement }];
+        setMessages(final); sauvegarderConv(final);
+      } catch (e: any) {
+        setMessages([...suite, { role: "assistant", content: "⚠️ " + String(e) }]);
+      } finally { setLoading(false); }
+      return;
+    }
+
     try {
       // Contexte désactivé → on n'envoie AUCUN message système (rien d'autre que
       // la conversation). Activé → rôle pédagogique + contexte non personnel.
@@ -247,6 +272,11 @@ export default function Assistant() {
             ? "L'IA reçoit le contexte de la classe (niveau, nombre d'élèves, séquences, programmation). Aucune donnée personnelle d'élève n'est transmise."
             : "L'IA ne reçoit aucun contexte sur ta classe."}>
           🏫 Contexte&nbsp;: {contexteActif ? "activé" : "désactivé"}</button>
+        <button className="btn sm" aria-pressed={surLeWeb} onClick={() => setSurLeWeb((v) => !v)}
+          title={surLeWeb
+            ? "La question part à un agent qui interroge le web et cite ses sources. Plus lent."
+            : "L'assistant répond de mémoire : il ignore tout ce qui suit son entraînement."}>
+          🔎 Web&nbsp;: {surLeWeb ? "activé" : "désactivé"}</button>
         <button className="btn sm" onClick={() => setShowModif(true)}>✏️ Modifier une séquence</button>
         <button className="btn sm primary" onClick={() => setShowGen(true)}>✨ Générer une séquence</button>
       </div>

@@ -95,7 +95,7 @@ pub fn run() {
             vacances_scolaires,
             // IA Mistral
             ai::mistral_chat, ai::mistral_test, ai::mistral_chat_stream, ai::transcrire_audio,
-            ai::mistral_modeles_disponibles, ai::mistral_vision,
+            ai::mistral_modeles_disponibles, ai::mistral_vision, ai::mistral_recherche_web,
             arasaac::arasaac_etat, arasaac::arasaac_telecharger, arasaac::arasaac_categories,
             arasaac::arasaac_selection, arasaac::arasaac_par_mots, arasaac::arasaac_image,
             arasaac::arasaac_chercher, arasaac::arasaac_nature,

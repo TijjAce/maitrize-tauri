@@ -224,6 +224,170 @@ pub async fn mistral_vision(
         .ok_or_else(|| "Réponse vide de Mistral".into())
 }
 
+// ── Recherche sur le web ───────────────────────────────────────────────────
+//
+// L'assistant répond de mémoire : il ignore tout ce qui suit son entraînement
+// et ne peut citer aucune source. Pour une date de vacances ou une référence
+// Éduscol, c'est exactement ce qu'il ne faut pas.
+//
+// Mistral expose un connecteur `web_search`, utilisable via un « agent ». Deux
+// contraintes le cadrent : seuls certains modèles l'acceptent — aucun Ministral
+// ne le fait — et l'agent se crée une fois puis se réutilise.
+
+/// Modèle capable d'utiliser les connecteurs. Les Ministral en sont incapables,
+/// quel que soit leur niveau : ce n'est pas une question de puissance.
+const MODELE_RECHERCHE: &str = "mistral-medium-latest";
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Source {
+    pub titre: String,
+    pub url: String,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ReponseWeb {
+    pub texte: String,
+    pub sources: Vec<Source>,
+    /// Vrai si le modèle a réellement interrogé le web.
+    ///
+    /// Sans cette distinction, une réponse de mémoire s'afficherait sous un
+    /// bandeau « recherche web » et paraîtrait vérifiée alors qu'elle ne l'est
+    /// pas — pire que pas de recherche du tout.
+    pub a_cherche: bool,
+}
+
+/// Récupère l'agent de recherche, ou le crée à la première utilisation.
+async fn agent_recherche(db: &State<'_, Db>, cle: &str) -> Result<String, String> {
+    {
+        let c = db.0.lock().map_err(|e| e.to_string())?;
+        let existant: Option<String> = c
+            .query_row("SELECT valeur FROM settings WHERE cle='agentRechercheId'", params![], |r| r.get(0))
+            .ok()
+            .filter(|v: &String| !v.trim().is_empty());
+        if let Some(id) = existant {
+            return Ok(id);
+        }
+    }
+    let corps = serde_json::json!({
+        "model": MODELE_RECHERCHE,
+        "name": "Maitrize — recherche web",
+        "description": "Répond aux questions d'un enseignant en citant ses sources.",
+        "instructions": "Tu aides un enseignant spécialisé français. Cherche sur le web avant \
+             de répondre, cite tes sources, et dis clairement quand tu ne trouves pas. \
+             Privilégie les sources officielles : education.gouv.fr, eduscol, service-public.",
+        "tools": [{ "type": "web_search" }],
+    });
+    let rep = reqwest::Client::new()
+        .post("https://api.mistral.ai/v1/agents")
+        .bearer_auth(cle)
+        .json(&corps)
+        .send()
+        .await
+        .map_err(|e| format!("Réseau : {e}"))?;
+    if !rep.status().is_success() {
+        let code = rep.status().as_u16();
+        let txt = rep.text().await.unwrap_or_default();
+        return Err(message_erreur(code, &txt, None));
+    }
+    let v: serde_json::Value = rep.json().await.map_err(|e| format!("Réponse : {e}"))?;
+    let id = v.get("id").and_then(|x| x.as_str()).unwrap_or_default().to_string();
+    if id.is_empty() {
+        return Err("Mistral n'a pas renvoyé d'agent.".into());
+    }
+    let c = db.0.lock().map_err(|e| e.to_string())?;
+    c.execute(
+        "INSERT OR REPLACE INTO settings (cle, valeur) VALUES ('agentRechercheId', ?1)",
+        params![id],
+    ).ok();
+    Ok(id)
+}
+
+/// Pose une question en cherchant sur le web, et rapporte les sources.
+#[tauri::command]
+pub async fn mistral_recherche_web(
+    db: State<'_, Db>,
+    question: String,
+) -> Result<ReponseWeb, String> {
+    let cle = cle_mistral(&db)?;
+    let agent = agent_recherche(&db, &cle).await?;
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(180))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let rep = client
+        .post("https://api.mistral.ai/v1/conversations")
+        .bearer_auth(&cle)
+        .json(&serde_json::json!({ "agent_id": agent, "inputs": question }))
+        .send()
+        .await
+        .map_err(|e| format!("Réseau : {e}"))?;
+    if !rep.status().is_success() {
+        let code = rep.status().as_u16();
+        let quota = quota_minute(rep.headers());
+        let txt = rep.text().await.unwrap_or_default();
+        return Err(message_erreur(code, &txt, quota));
+    }
+    let v: serde_json::Value = rep.json().await.map_err(|e| format!("Réponse : {e}"))?;
+    Ok(lire_reponse_web(&v))
+}
+
+/// Extrait texte, sources et preuve de recherche d'une conversation d'agent.
+///
+/// Isolée pour être testable : la forme de la réponse est imbriquée, et une
+/// erreur de lecture ferait passer une réponse de mémoire pour une réponse
+/// sourcée.
+pub(crate) fn lire_reponse_web(v: &serde_json::Value) -> ReponseWeb {
+    let sorties = v.get("outputs").and_then(|x| x.as_array()).cloned().unwrap_or_default();
+    let a_cherche = sorties.iter().any(|o| {
+        o.get("type").and_then(|x| x.as_str()) == Some("tool.execution")
+            && o.get("name").and_then(|x| x.as_str()) == Some("web_search")
+    });
+
+    let mut texte = String::new();
+    let mut sources: Vec<Source> = Vec::new();
+    for o in &sorties {
+        if o.get("type").and_then(|x| x.as_str()) != Some("message.output") {
+            continue;
+        }
+        match o.get("content") {
+            Some(serde_json::Value::String(s)) => texte.push_str(s),
+            Some(serde_json::Value::Array(morceaux)) => {
+                for m in morceaux {
+                    match m.get("type").and_then(|x| x.as_str()) {
+                        Some("text") => {
+                            if let Some(s) = m.get("text").and_then(|x| x.as_str()) {
+                                texte.push_str(s);
+                            }
+                        }
+                        Some("tool_reference") => {
+                            let url = m.get("url").and_then(|x| x.as_str()).unwrap_or_default();
+                            if url.is_empty() {
+                                continue;
+                            }
+                            // Une même source citée trois fois n'est qu'une source.
+                            if sources.iter().any(|s| s.url == url) {
+                                continue;
+                            }
+                            sources.push(Source {
+                                titre: m.get("title").and_then(|x| x.as_str())
+                                    .filter(|t| !t.trim().is_empty())
+                                    .unwrap_or(url).to_string(),
+                                url: url.to_string(),
+                            });
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    ReponseWeb { texte: texte.trim().to_string(), sources, a_cherche }
+}
+
 /// Vérifie que la clé fonctionne (petit ping).
 #[tauri::command]
 pub async fn mistral_test(db: State<'_, Db>, model: Option<String>) -> Result<bool, String> {
@@ -450,6 +614,87 @@ mod tests_erreurs {
         use super::attente_avant_reessai;
         let d: Vec<u64> = (1..=3).map(|n| attente_avant_reessai(n).as_millis() as u64).collect();
         assert_eq!(d, vec![1000, 2000, 4000], "l'attente doit doubler à chaque essai");
+    }
+
+    // ── Lecture d'une réponse d'agent ────────────────────────────────────
+    //
+    // La forme est imbriquée, et une erreur de lecture ferait passer une
+    // réponse de mémoire pour une réponse sourcée — pire que pas de recherche.
+
+    use super::lire_reponse_web;
+
+    fn conversation(avec_recherche: bool, contenu: serde_json::Value) -> serde_json::Value {
+        let mut sorties = vec![];
+        if avec_recherche {
+            sorties.push(serde_json::json!({ "type": "tool.execution", "name": "web_search" }));
+        }
+        sorties.push(serde_json::json!({ "type": "message.output", "content": contenu }));
+        serde_json::json!({ "outputs": sorties })
+    }
+
+    #[test]
+    fn reconnait_une_vraie_recherche() {
+        let v = conversation(true, serde_json::json!([
+            { "type": "text", "text": "Du 17 octobre au 2 novembre." },
+            { "type": "tool_reference", "title": "Service Public", "url": "https://service-public.gouv.fr/x" },
+        ]));
+        let r = lire_reponse_web(&v);
+        assert!(r.a_cherche);
+        assert_eq!(r.sources.len(), 1);
+        assert_eq!(r.sources[0].titre, "Service Public");
+        assert!(r.texte.contains("17 octobre"));
+    }
+
+    #[test]
+    fn signale_une_reponse_sans_recherche() {
+        // Le modèle a répondu de mémoire : le dire, plutôt que d'afficher la
+        // réponse sous un bandeau « recherche web » qui la ferait croire
+        // vérifiée.
+        let v = conversation(false, serde_json::json!([{ "type": "text", "text": "Je crois que…" }]));
+        assert!(!lire_reponse_web(&v).a_cherche);
+    }
+
+    #[test]
+    fn une_source_citee_plusieurs_fois_ne_compte_quune_fois() {
+        let v = conversation(true, serde_json::json!([
+            { "type": "text", "text": "a" },
+            { "type": "tool_reference", "title": "Éduscol", "url": "https://eduscol.education.fr/p" },
+            { "type": "text", "text": "b" },
+            { "type": "tool_reference", "title": "Éduscol", "url": "https://eduscol.education.fr/p" },
+        ]));
+        assert_eq!(lire_reponse_web(&v).sources.len(), 1);
+    }
+
+    #[test]
+    fn une_source_sans_titre_montre_son_adresse() {
+        let v = conversation(true, serde_json::json!([
+            { "type": "tool_reference", "title": "", "url": "https://exemple.fr/doc" },
+        ]));
+        assert_eq!(lire_reponse_web(&v).sources[0].titre, "https://exemple.fr/doc");
+    }
+
+    #[test]
+    fn une_source_sans_adresse_est_ecartee() {
+        // Une source qu'on ne peut pas ouvrir n'est pas une source.
+        let v = conversation(true, serde_json::json!([
+            { "type": "tool_reference", "title": "Quelque part", "url": "" },
+        ]));
+        assert!(lire_reponse_web(&v).sources.is_empty());
+    }
+
+    #[test]
+    fn accepte_un_contenu_en_texte_simple() {
+        let v = conversation(true, serde_json::json!("réponse brute"));
+        assert_eq!(lire_reponse_web(&v).texte, "réponse brute");
+    }
+
+    #[test]
+    fn ne_panique_pas_sur_une_reponse_vide() {
+        for brut in ["{}", r#"{"outputs":[]}"#, r#"{"outputs":[{"type":"autre"}]}"#] {
+            let v: serde_json::Value = serde_json::from_str(brut).unwrap();
+            let r = lire_reponse_web(&v);
+            assert!(r.texte.is_empty() && !r.a_cherche);
+        }
     }
 
     #[test]
