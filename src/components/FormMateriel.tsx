@@ -100,23 +100,28 @@ export function Vignettes({ videos }: { videos: Video[] }) {
           </button>
         ))}
       </div>
-      {lecture && (
-        <Modal titre={nomVideo(lecture)} onClose={() => setLecture(null)} large
-          footer={<>
-            <button className="btn" onClick={() => openUrl(lecture.url).catch(() => window.open(lecture.url, "_blank"))}>
-              ↗ Ouvrir dans le navigateur
-            </button>
-            <button className="btn primary" onClick={() => setLecture(null)}>Fermer</button>
-          </>}>
-          {lecture.youtubeId ? (
-            <iframe src={integrationYoutube(lecture.youtubeId)} title="Vidéo" allowFullScreen
-              style={{ width: "100%", aspectRatio: "16/9", border: "none", borderRadius: 8 }} />
-          ) : (
-            <p style={{ fontSize: 13, wordBreak: "break-all" }}>{lecture.url}</p>
-          )}
-        </Modal>
-      )}
+      {lecture && <LecteurVideo video={lecture} onClose={() => setLecture(null)} />}
     </>
+  );
+}
+
+/** Lit une vidéo dans l'application, avec une sortie vers le navigateur. */
+export function LecteurVideo({ video, onClose }: { video: Video; onClose: () => void }) {
+  return (
+    <Modal titre={nomVideo(video)} onClose={onClose} large
+      footer={<>
+        <button className="btn" onClick={() => openUrl(video.url).catch(() => window.open(video.url, "_blank"))}>
+          ↗ Ouvrir dans le navigateur
+        </button>
+        <button className="btn primary" onClick={onClose}>Fermer</button>
+      </>}>
+      {video.youtubeId ? (
+        <iframe src={integrationYoutube(video.youtubeId)} title="Vidéo" allowFullScreen
+          style={{ width: "100%", aspectRatio: "16/9", border: "none", borderRadius: 8 }} />
+      ) : (
+        <p style={{ fontSize: 13, wordBreak: "break-all" }}>{video.url}</p>
+      )}
+    </Modal>
   );
 }
 

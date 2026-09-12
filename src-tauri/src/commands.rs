@@ -978,6 +978,23 @@ pub fn fichier_path(nom: String) -> R<String> {
     Ok(fichiers_dir().join(&nom).to_string_lossy().to_string())
 }
 
+/// Ouvre une pièce jointe dans l'application par défaut (Aperçu, Acrobat…).
+///
+/// Passe par le backend plutôt que par le greffon côté fenêtre : celui-ci
+/// exigerait une permission d'ouverture de chemins, qui manquerait en silence.
+/// Le nom est refusé s'il sort du dossier des fichiers.
+#[tauri::command]
+pub fn fichier_ouvrir(nom: String) -> R<()> {
+    if nom.is_empty() || nom.contains('/') || nom.contains('\\') || nom.contains("..") {
+        return Err("Nom de fichier invalide.".into());
+    }
+    let chemin = fichiers_dir().join(&nom);
+    if !chemin.exists() {
+        return Err("Ce fichier n'existe plus.".into());
+    }
+    tauri_plugin_opener::open_path(&chemin, None::<&str>).map_err(e)
+}
+
 /// Copie un fichier externe (chemin absolu, ex. glisser-déposer depuis le
 /// Finder/Aperçu) dans Fichiers/ et renvoie le nom généré. Évite l'aller-retour
 /// en base64 pour les PDF/images potentiellement volumineux.

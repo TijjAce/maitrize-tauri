@@ -5,7 +5,9 @@ import { api, Sequence, MaterielItem, couleurHex, couleurPourMatiere, newId, now
 import { Input, Confirm, Demander, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { openCtx } from "../components/ctxmenu";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { FormMateriel } from "../components/FormMateriel";
+import { contenuDirect, nature } from "../bureau";
 import { lireVideos, lireLien, vignetteYoutube } from "../videos";
 import { useFileDropZone, estPdf, estImage, fichierEnBase64 } from "../dragdrop";
 import {
@@ -227,6 +229,17 @@ export default function PlanDeTravail() {
     setMaterielOuvert(m);
   };
 
+  /** Double-clic : un dépôt simple s'ouvre tel quel, le reste en fiche. */
+  const ouvrir = (e: Element) => {
+    if (e.genre === "sequence") { nav(`/sequences/${e.id}`); return; }
+    const c = contenuDirect(e.mat);
+    if (!c) { setMaterielOuvert(e.mat); return; }
+    // Dans le navigateur : l'intégration YouTube exige un référent que la
+    // fenêtre de l'application compilée (tauri://) ne fournit pas.
+    if (c.genre === "video") openUrl(c.video.url).catch(() => window.open(c.video.url, "_blank"));
+    else api.fichierOuvrir(c.nom).catch((err) => toast(String(err), { icone: "⚠️" }));
+  };
+
   const supprimer = async (e: Element) => {
     if (e.genre === "sequence") await api.sequenceDelete(e.id);
     else await api.materielDelete(e.id);
@@ -333,7 +346,8 @@ export default function PlanDeTravail() {
             ))}
             {ici.map((e) => (
               <TuileElement key={e.genre + e.id} element={e}
-                onOuvrir={() => e.genre === "sequence" ? nav(`/sequences/${e.id}`) : setMaterielOuvert(e.mat)}
+                onOuvrir={() => ouvrir(e)}
+                onModifier={e.genre === "materiel" && contenuDirect(e.mat) ? () => setMaterielOuvert(e.mat) : undefined}
                 onRanger={() => setDemande({
                   titre: "Ranger dans…", label: "Chemin du dossier",
                   valeur: e.dossier, placeholder: "Français/Lecture",
@@ -412,8 +426,10 @@ function TuileDossier({ dossier, survole, onOuvrir, onSurvol, onDepose, onRenomm
  * L'aperçu passe avant le nom : on reconnaît un document à son allure avant
  * de le lire.
  */
-function TuileElement({ element, onOuvrir, onRanger, onSupprimer, onDuplique }: {
+function TuileElement({ element, onOuvrir, onModifier, onRanger, onSupprimer, onDuplique }: {
   element: Element; onOuvrir: () => void; onRanger: () => void;
+  /** Présent pour un dépôt simple, qui s'ouvre sans passer par sa fiche. */
+  onModifier?: () => void;
   onSupprimer: () => void; onDuplique: () => void;
 }) {
   const seq = element.genre === "sequence" ? element.seq : null;
@@ -428,6 +444,7 @@ function TuileElement({ element, onOuvrir, onRanger, onSupprimer, onDuplique }: 
       onDoubleClick={onOuvrir}
       onContextMenu={(e) => openCtx(e, [
         { label: "Ouvrir", icon: "↗", onClick: onOuvrir },
+        ...(onModifier ? [{ label: "Modifier…", icon: "✏️", onClick: onModifier }] : []),
         ...(element.genre === "sequence" ? [{ label: "Dupliquer", icon: "📑",
           onClick: () => dupliquerSequence(element.seq).then(onDuplique) }] : []),
         { label: "Ranger dans…", icon: "📂", onClick: onRanger },
@@ -465,7 +482,7 @@ function TuileElement({ element, onOuvrir, onRanger, onSupprimer, onDuplique }: 
         textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {element.genre === "sequence"
           ? [seq!.matiere, seq!.cycle].filter(Boolean).join(" · ") || "Séquence"
-          : element.mat.sousDomaineTitre || "Matériel"}
+          : nature(element.mat)}
       </div>
     </div>
   );
