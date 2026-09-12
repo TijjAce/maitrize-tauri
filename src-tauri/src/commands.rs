@@ -1756,7 +1756,21 @@ pub fn import_data(db: State<Db>, json: String) -> R<()> {
 }
 
 /// Restaure depuis un JSON d'export, sur une connexion (réutilisable, sous verrou).
+/// Restaure depuis un JSON d'export.
+///
+/// Une restauration réécrit toutes les tables : les déclencheurs du journal y
+/// voient des dizaines de milliers d'écritures locales, qui repartiraient vers
+/// l'autre machine comme si on venait de tout ressaisir. On relève donc le
+/// repère avant, et l'on marque comme distant tout ce que la restauration a
+/// produit — ce n'est pas du travail neuf, c'est une remise en état.
 pub fn import_json(c: &rusqlite::Connection, json: &str) -> R<()> {
+    let avant = crate::journal::dernier_seq(c);
+    let resultat = import_json_brut(c, json);
+    crate::journal::marquer_distants(c, avant);
+    resultat
+}
+
+fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<()> {
     let root: serde_json::Value = serde_json::from_str(json).map_err(e)?;
     let obj = root.as_object().ok_or("JSON racine invalide")?;
 

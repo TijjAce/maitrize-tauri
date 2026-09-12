@@ -38,8 +38,11 @@ pub const CHAMPS_TEXTE: &[(&str, &str)] = &[
     ("sequences", "competence_visee"),
     ("projets", "descriptif"),
     ("commentaires_eleve", "texte"),
-    ("ateliers", "description"),
-    ("espaces", "description"),
+    ("ateliers", "objectifs"),
+    ("ateliers", "materiel"),
+    ("espaces", "description_espace"),
+    ("jeux", "description_jeu"),
+    ("jeux", "regles"),
     ("materiel_items", "description_materiel"),
     ("papiers_eleve", "note"),
 ];
@@ -241,5 +244,30 @@ mod tests {
         // « é » pèse deux octets : la borne ne doit pas tomber entre les deux.
         let (p, s) = bornes_communes("élève sage", "élève très sage");
         assert!("élève sage".is_char_boundary(p) && "élève sage".is_char_boundary(10 - s));
+    }
+}
+
+#[cfg(test)]
+mod tests_schema {
+    use super::CHAMPS_TEXTE;
+
+    /// Une colonne mal nommée ne provoque aucune erreur : le CRDT ne s'y
+    /// applique simplement jamais, et la fusion de ce champ retombe en
+    /// silence sur « le plus récent gagne ». Deux entrées l'ont été.
+    /// Ce test relit le schéma que l'application crée vraiment.
+    #[test]
+    fn les_champs_de_prose_existent_dans_le_schema() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        for (table, champ) in CHAMPS_TEXTE {
+            let cols: Vec<String> = {
+                let mut st = c.prepare(&format!("PRAGMA table_info({table})")).unwrap();
+                let v = st.query_map([], |r| r.get::<_, String>(1)).unwrap().flatten().collect();
+                v
+            };
+            assert!(!cols.is_empty(), "table « {table} » inconnue");
+            assert!(cols.iter().any(|x| x == champ),
+                    "colonne « {table}.{champ} » absente ; colonnes : {cols:?}");
+        }
     }
 }

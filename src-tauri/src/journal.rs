@@ -36,8 +36,17 @@ pub const TABLES_SYNC: &[&str] = &[
     "commentaires_eleve", "evaluations", "notes_eleve", "pieces_jointes",
     "materiel_items", "papiers_eleve", "notes_competence", "progressions_annuelle",
     "programmations_finale", "edt_typique", "documents_coffre", "documents_eleve",
-    "jeux",
+    "jeux", "pilote_conversations",
 ];
+
+/// Tables de liaison, sans colonne `id`.
+///
+/// `atelier_espace` associe un atelier à un espace par un couple de clés. Les
+/// déclencheurs généraux, qui s'appuient sur `NEW.id`, ne pouvaient donc rien
+/// y poser : la table était listée comme synchronisée et ne l'était pas — un
+/// atelier rangé dans un espace ici restait sans espace là-bas, sans que rien
+/// ne le signale. On lui fabrique un identifiant à partir de ses deux clés.
+const LIAISONS: &[(&str, &str, &str)] = &[("atelier_espace", "atelier_id", "espace_id")];
 
 /// Une écriture, telle que le journal la retient.
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -128,6 +137,7 @@ pub fn poser_declencheurs(conn: &Connection, machine: &str) {
     // L'identifiant de machine est constant : on le grave dans le déclencheur,
     // SQLite n'ayant pas de variable de session à interroger.
     let machine = machine.replace('\'', "");
+    poser_declencheurs_liaisons(conn, &machine);
     for table in TABLES_SYNC {
         let cols = colonnes(conn, table);
         if cols.is_empty() || !cols.iter().any(|c| c == "id") {
@@ -160,6 +170,30 @@ pub fn poser_declencheurs(conn: &Connection, machine: &str) {
              CREATE TRIGGER jrn_{table}_i AFTER INSERT ON {table} BEGIN {creation} END;
              CREATE TRIGGER jrn_{table}_u AFTER UPDATE ON {table} BEGIN {modification} END;
              CREATE TRIGGER jrn_{table}_d AFTER DELETE ON {table} BEGIN {suppr} END;"
+        );
+        conn.execute_batch(&sql).ok();
+    }
+}
+
+/// Déclencheurs des tables de liaison, dont la clé est un couple.
+fn poser_declencheurs_liaisons(conn: &Connection, machine: &str) {
+    for (table, a, b) in LIAISONS {
+        let objet = |p: &str| format!("'{a}', {p}.\"{a}\", '{b}', {p}.\"{b}\"");
+        let id = |p: &str| format!("{p}.\"{a}\" || '|' || {p}.\"{b}\"");
+        let ligne = |op: &str, p: &str, donnees: String| {
+            format!(
+                "INSERT INTO changements (table_nom, ligne_id, operation, donnees, avant, horodatage, origine)
+                 VALUES ('{table}', {}, '{op}', {donnees}, '', strftime('%Y-%m-%dT%H:%M:%fZ','now'), '{machine}');",
+                id(p)
+            )
+        };
+        let sql = format!(
+            "DROP TRIGGER IF EXISTS jrn_{table}_i;
+             DROP TRIGGER IF EXISTS jrn_{table}_d;
+             CREATE TRIGGER jrn_{table}_i AFTER INSERT ON {table} BEGIN {} END;
+             CREATE TRIGGER jrn_{table}_d AFTER DELETE ON {table} BEGIN {} END;",
+            ligne("maj", "NEW", format!("json_object({})", objet("NEW"))),
+            ligne("suppr", "OLD", "''".into()),
         );
         conn.execute_batch(&sql).ok();
     }
@@ -360,6 +394,15 @@ pub fn appliquer(conn: &mut Connection, recus: &[Changement]) -> rusqlite::Resul
             // s'applique donc que si elle l'emporte, sinon une suppression
             // ancienne effacerait un travail plus récent.
             if entrant_gagne {
+                if let Some((_, a, b)) = LIAISONS.iter().find(|(t, _, _)| *t == c.table_nom) {
+                    let Some((ga, gb)) = c.ligne_id.split_once('|') else { continue };
+                    tx.execute(
+                        &format!("DELETE FROM {} WHERE \"{a}\" = ?1 AND \"{b}\" = ?2", c.table_nom),
+                        params![ga, gb],
+                    )?;
+                    n += 1;
+                    continue;
+                }
                 tx.execute(
                     &format!("DELETE FROM {} WHERE id = ?1", c.table_nom),
                     params![c.ligne_id],
@@ -367,6 +410,15 @@ pub fn appliquer(conn: &mut Connection, recus: &[Changement]) -> rusqlite::Resul
             } else {
                 continue;
             }
+        } else if LIAISONS.iter().any(|(t, _, _)| *t == c.table_nom) {
+            // Une liaison n'a pas de champ à fusionner : elle existe ou non.
+            let cols = colonnes(&tx, &c.table_nom);
+            let noms = cols.iter().map(|x| format!("\"{x}\"")).collect::<Vec<_>>().join(", ");
+            let valeurs = cols.iter().map(|x| format!("json_extract(?1, '$.{x}')")).collect::<Vec<_>>().join(", ");
+            tx.execute(
+                &format!("INSERT OR REPLACE INTO {} ({noms}) VALUES ({valeurs})", c.table_nom),
+                params![c.donnees],
+            )?;
         } else {
             let cols = colonnes(&tx, &c.table_nom);
             if cols.is_empty() {
@@ -669,6 +721,40 @@ mod tests {
         assert!(tb.contains("rituel"), "l'ajout de A doit survivre chez B : {tb}");
         assert!(tb.contains("ateliers"), "celui de B doit rester : {tb}");
         assert_eq!(ta, tb, "les deux machines doivent afficher le même texte");
+    }
+
+    #[test]
+    fn une_table_de_liaison_voyage_aussi() {
+        // Sans déclencheur adapté, ranger un atelier dans un espace ici
+        // n'arrivait jamais là-bas : la table était annoncée comme
+        // synchronisée et ne l'était pas.
+        let neuve = |nom: &str| {
+            let c = Connection::open_in_memory().unwrap();
+            c.execute_batch(
+                "CREATE TABLE atelier_espace (atelier_id TEXT NOT NULL, espace_id TEXT NOT NULL,
+                                              PRIMARY KEY (atelier_id, espace_id));",
+            ).unwrap();
+            creer_table(&c);
+            poser_declencheurs(&c, nom);
+            c
+        };
+        let a = neuve("A");
+        let mut b = neuve("B");
+        a.execute("INSERT INTO atelier_espace VALUES ('at1','es1')", []).unwrap();
+        let (de_a, _) = changements_locaux(&a, 0).unwrap();
+        assert_eq!(de_a.len(), 1, "la liaison doit laisser une trace");
+        assert_eq!(de_a[0].ligne_id, "at1|es1");
+        appliquer(&mut b, &de_a).unwrap();
+        let n: i64 = b.query_row("SELECT COUNT(*) FROM atelier_espace", [], |r| r.get(0)).unwrap();
+        assert_eq!(n, 1, "la liaison doit arriver");
+
+        // Et sa suppression aussi.
+        std::thread::sleep(std::time::Duration::from_millis(3));
+        a.execute("DELETE FROM atelier_espace", []).unwrap();
+        let (suppr, _) = changements_locaux(&a, de_a.len() as i64).unwrap();
+        appliquer(&mut b, &suppr).unwrap();
+        let n: i64 = b.query_row("SELECT COUNT(*) FROM atelier_espace", [], |r| r.get(0)).unwrap();
+        assert_eq!(n, 0, "la suppression doit arriver");
     }
 
     #[test]
