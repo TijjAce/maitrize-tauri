@@ -5,8 +5,9 @@ import { api, Sequence, MaterielItem, couleurHex, couleurPourMatiere, newId, now
 import { Input, Empty, Confirm, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { openCtx } from "../components/ctxmenu";
-import { FormMateriel, Vignettes } from "../components/FormMateriel";
-import { lireVideos } from "../videos";
+import { FormMateriel } from "../components/FormMateriel";
+import { lireVideos, lireLien, vignetteYoutube } from "../videos";
+import { useFileDropZone, estPdf, estImage, nomDeChemin } from "../dragdrop";
 import {
   arbre, aplatir, normaliser, parent, estDans, renommerChemin,
 } from "../dossiers";
@@ -31,6 +32,16 @@ async function dupliquerSequence(seq: Sequence) {
   for (const s of seances) await api.seanceSave({ ...s, id: crypto.randomUUID(), sequenceId: copie.id });
 }
 
+/** Un matériel neuf, rangé où il faut. Partagé par la création et les dépôts. */
+const materielVierge = (dossier: string): MaterielItem => ({
+  id: newId(), titre: "Nouveau matériel", descriptionMateriel: "", competenceId: "",
+  competenceTitre: "", domaineTitre: "", sousDomaineTitre: "", cycle: "",
+  imagesJson: "[]", pdfsJson: "[]", dateCreation: nowIso(), seanceId: null,
+  sequenceId: null, dossier, videosJson: "[]", coffreJson: "[]",
+});
+
+const liste = (json: string): string[] => { try { return JSON.parse(json || "[]"); } catch { return []; } };
+
 const nb = (json: string): number => { try { return JSON.parse(json || "[]").length; } catch { return 0; } };
 
 type Element =
@@ -49,6 +60,7 @@ export default function PlanDeTravail() {
   const [renomme, setRenomme] = React.useState<string | null>(null);
   const [nomEnCours, setNomEnCours] = React.useState("");
   const [survol, setSurvol] = React.useState<string | null>(null);
+  const [survolLien, setSurvolLien] = React.useState(false);
   const [aSupprimer, setASupprimer] = React.useState<Element | null>(null);
   // Le matériel s'édite sur place : il n'y a plus d'écran où l'envoyer.
   const [materielOuvert, setMaterielOuvert] = React.useState<MaterielItem | null>(null);
@@ -116,13 +128,48 @@ export default function PlanDeTravail() {
   };
   creerRef.current = creerSequence;
 
+  /**
+   * Dépose un lien sur le bureau : il devient un matériel dans le dossier
+   * ouvert. C'est le geste qu'on attend d'un bureau — attraper une vidéo
+   * depuis le navigateur et la laisser tomber au bon endroit.
+   */
+  const deposerLien = async (texte: string) => {
+    const v = lireLien(texte);
+    if (!v) return false;
+    await api.materielSave({
+      ...materielVierge(dossier),
+      titre: v.youtubeId ? "Vidéo YouTube" : new URL(v.url).hostname.replace(/^www\./, ""),
+      videosJson: JSON.stringify([v]),
+    });
+    recharger();
+    toast(dossier ? `Vidéo ajoutée dans ${dossier}` : "Vidéo ajoutée", { icone: "▶️" });
+    return true;
+  };
+
+  /** Dépose des fichiers : un matériel par fichier, dans le dossier ouvert. */
+  const deposerFichiers = async (chemins: string[]) => {
+    let n = 0;
+    for (const c of chemins) {
+      const nom = await api.fichierImporterDepuisChemin(c);
+      const image = estImage(c);
+      await api.materielSave({
+        ...materielVierge(dossier),
+        titre: nomDeChemin(c).replace(/\.[^.]+$/, ""),
+        imagesJson: image ? JSON.stringify([nom]) : "[]",
+        pdfsJson: image ? "[]" : JSON.stringify([nom]),
+      });
+      n++;
+    }
+    if (n) { recharger(); toast(`${n} fichier(s) ajouté(s)`, { icone: "📥" }); }
+  };
+
+  const { ref: zoneFichiers, actif: survolFichiers } = useFileDropZone({
+    accept: (c) => estPdf(c) || estImage(c),
+    onFiles: deposerFichiers,
+  });
+
   const creerMateriel = async () => {
-    const m: MaterielItem = {
-      id: newId(), titre: "Nouveau matériel", descriptionMateriel: "", competenceId: "",
-      competenceTitre: "", domaineTitre: "", sousDomaineTitre: "", cycle: "",
-      imagesJson: "[]", pdfsJson: "[]", dateCreation: nowIso(), seanceId: null,
-      sequenceId: null, dossier, videosJson: "[]", coffreJson: "[]",
-    };
+    const m = materielVierge(dossier);
     await api.materielSave(m);
     recharger();
     // Ouvrir dans la foulée : créer une fiche vide qu'il faut ensuite
@@ -173,8 +220,46 @@ export default function PlanDeTravail() {
           )}
         </div>
 
-        {/* ── Volet droit : le contenu ── */}
-        <div>
+        {/* ── Volet droit : le contenu, et la zone de dépôt ── */}
+        <div ref={zoneFichiers}
+          onDragOver={(e) => {
+            // Seuls les liens venus de l'extérieur : un élément glissé depuis
+            // le bureau lui-même porte notre propre format et se range ailleurs.
+            if (e.dataTransfer.types.includes("application/json")) return;
+            e.preventDefault(); setSurvolLien(true);
+          }}
+          onDragLeave={() => setSurvolLien(false)}
+          onDrop={async (e) => {
+            if (e.dataTransfer.types.includes("application/json")) return;
+            e.preventDefault(); setSurvolLien(false);
+            const texte = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
+            if (texte && !(await deposerLien(texte))) {
+              toast("Ce n'est pas une adresse web.", { icone: "⚠️" });
+            }
+          }}
+          onContextMenu={(e) => {
+            // Le clic droit sur le vide, réflexe de bureau : créer là où on
+            // regarde plutôt que de remonter à la barre d'outils. Sur une
+            // tuile, c'est son propre menu qui doit s'ouvrir.
+            if ((e.target as HTMLElement).closest("[draggable]")) return;
+            openCtx(e, [
+              { label: "Nouvelle séquence", icon: "📚", onClick: creerSequence },
+              { label: "Nouveau matériel", icon: "🧰", onClick: creerMateriel },
+              { label: "Nouveau dossier ici…", icon: "📁", sep: true, onClick: () => {
+                const nom = prompt("Nom du dossier :");
+                if (!nom?.trim()) return;
+                // Un dossier n'existe qu'habité : on le crée avec un matériel
+                // plutôt que de laisser une entrée fantôme dans l'arbre.
+                const chemin = normaliser(dossier ? `${dossier}/${nom}` : nom);
+                api.materielSave({ ...materielVierge(chemin), titre: "Nouveau matériel" })
+                  .then(() => { recharger(); setDossier(chemin); });
+              } },
+            ]);
+          }}
+          style={{
+            outline: (survolLien || survolFichiers) ? "2px dashed var(--accent)" : "none",
+            outlineOffset: 6, borderRadius: 10, minHeight: 240,
+          }}>
           <div className="toolbar">
             <Input className="search" placeholder="Rechercher partout…" value={q}
               onChange={(e) => setQ(e.target.value)} />
@@ -186,9 +271,10 @@ export default function PlanDeTravail() {
 
           {!visibles.length ? (
             <Empty icone="🗂" titre={filtre ? "Rien trouvé" : "Dossier vide"}
-              sous={filtre ? undefined : "Créez une séquence ou du matériel, ou glissez-en un ici."} />
+              sous={filtre ? undefined
+                : "Déposez ici un PDF, une image ou un lien YouTube — ou créez une séquence."} />
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
               {visibles.map((e) => (
                 <Vignette key={e.genre + e.id} element={e}
                   onOuvrir={() => e.genre === "sequence"
@@ -258,15 +344,25 @@ function Dossier({ chemin, nom, total, profondeur, actif, survole, pliable, ouve
   );
 }
 
-/** Un élément du bureau : séquence ou matériel, déplaçable. */
+/**
+ * Une tuile du bureau : séquence ou matériel, déplaçable.
+ *
+ * L'aperçu passe avant le texte — sur un bureau, on reconnaît une fiche à son
+ * allure avant de lire son nom. À défaut d'image, une grande icône colorée par
+ * la matière remplit le même rôle.
+ */
 function Vignette({ element, onOuvrir, onRanger, onSupprimer, onDuplique }: {
   element: Element; onOuvrir: () => void;
   onRanger: (chemin: string) => void; onSupprimer: () => void; onDuplique: () => void;
 }) {
   const seq = element.genre === "sequence" ? element.seq : null;
   const t = seq ? (couleurHex[couleurPourMatiere(seq.matiere)] ?? couleurHex.gray) : couleurHex.gray;
+  const videos = element.genre === "materiel" ? lireVideos(element.mat.videosJson) : [];
+  const apercuVideo = videos.find((v) => v.youtubeId);
+  const image = element.genre === "materiel" ? liste(element.mat.imagesJson)[0] : seq?.imageNom;
+
   return (
-    <div className="card" draggable
+    <div draggable
       onDragStart={(e) => e.dataTransfer.setData("application/json", JSON.stringify(element))}
       onDoubleClick={onOuvrir}
       onContextMenu={(e) => openCtx(e, [
@@ -279,27 +375,61 @@ function Vignette({ element, onOuvrir, onRanger, onSupprimer, onDuplique }: {
         } },
         { label: "Supprimer", icon: "🗑", danger: true, sep: true, onClick: onSupprimer },
       ])}
-      style={{ cursor: "pointer", padding: 10, borderLeft: `3px solid ${t}` }}>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <span style={{ fontSize: 18 }}>{element.genre === "sequence" ? "📚" : "🧰"}</span>
-        <span style={{ flex: 1, fontWeight: 600, fontSize: 13.5, overflow: "hidden",
-          textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{element.titre}</span>
+      title={element.titre}
+      style={{ cursor: "pointer", display: "flex", flexDirection: "column", gap: 5,
+        padding: 6, borderRadius: 10, textAlign: "center" }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--panel-2)")}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+      <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", borderRadius: 8,
+        overflow: "hidden", background: t + "22", border: `1px solid ${t}55`,
+        display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {apercuVideo ? (
+          <img src={vignetteYoutube(apercuVideo.youtubeId!)} alt="" loading="lazy"
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+        ) : image ? (
+          <ApercuFichier nom={image} />
+        ) : (
+          <span style={{ fontSize: 34 }}>{element.genre === "sequence" ? "📚" : "🧰"}</span>
+        )}
+        {element.genre === "materiel" && (
+          <div style={{ position: "absolute", bottom: 3, right: 3, display: "flex", gap: 3 }}>
+            {nb(element.mat.pdfsJson) > 0 && <Pastille>📄 {nb(element.mat.pdfsJson)}</Pastille>}
+            {nb(element.mat.coffreJson) > 0 && <Pastille>🔐</Pastille>}
+            {videos.length > 0 && <Pastille>▶️</Pastille>}
+          </div>
+        )}
       </div>
-      <div style={{ fontSize: 11.5, color: "var(--text-2)", marginTop: 4 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.2, overflow: "hidden",
+        display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+        {element.titre}
+      </div>
+      <div style={{ fontSize: 10.5, color: "var(--text-2)", overflow: "hidden",
+        textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {element.genre === "sequence"
           ? [seq!.matiere, seq!.cycle].filter(Boolean).join(" · ") || "Séquence"
           : element.mat.sousDomaineTitre || "Matériel"}
       </div>
-      {element.genre === "materiel" && (
-        <div style={{ display: "flex", gap: 5, marginTop: 6, flexWrap: "wrap" }}>
-          {nb(element.mat.pdfsJson) > 0 && <span className="chip">📄 {nb(element.mat.pdfsJson)}</span>}
-          {nb(element.mat.imagesJson) > 0 && <span className="chip">📷 {nb(element.mat.imagesJson)}</span>}
-          {nb(element.mat.coffreJson) > 0 && <span className="chip">🔐 {nb(element.mat.coffreJson)}</span>}
-        </div>
-      )}
-      {element.genre === "materiel" && <Vignettes videos={lireVideos(element.mat.videosJson)} />}
     </div>
   );
+}
+
+const Pastille = ({ children }: { children: React.ReactNode }) => (
+  <span style={{ fontSize: 9.5, background: "rgba(0,0,0,.55)", color: "#fff",
+    borderRadius: 4, padding: "1px 4px" }}>{children}</span>
+);
+
+/** Aperçu d'une image déjà rangée dans les fichiers de l'application. */
+function ApercuFichier({ nom }: { nom: string }) {
+  const [src, setSrc] = React.useState("");
+  React.useEffect(() => {
+    let vivant = true;
+    api.fichierRead(nom).then((b) => { if (vivant) setSrc(`data:image;base64,${b}`); }).catch(() => {});
+    return () => { vivant = false; };
+  }, [nom]);
+  return src
+    ? <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+    : <span style={{ fontSize: 30 }}>🖼</span>;
 }
 
 function RenommerDossier({ chemin, valeur, onChange, onClose, onValider }: {
