@@ -1,6 +1,6 @@
 import React from "react";
 import { Page } from "../App";
-import { api, type SauvegardeDistante, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, getMatiereOverrides, setMatiereOverrides, telechargerTexte, anneeScolaireActuelle, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo } from "../api";
+import { api, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, getMatiereOverrides, setMatiereOverrides, telechargerTexte, anneeScolaireActuelle, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo } from "../api";
 import { Field, Input, Select, Modal, Confirm, useAsync } from "../components/ui";
 import { applyTheme, MODES, ACCENTS, STYLES } from "../theme";
 import { lireAcceptationCgu, CguAcceptation } from "../components/CGU";
@@ -254,6 +254,7 @@ export default function Reglages() {
           <button className="btn" onClick={() => importInput.current?.click()}>⬆️ Importer</button>
           <span style={{ fontSize: 13 }}>{dataMsg}</span>
         </div>
+        <DossierDesDonnees />
         <CopiesAutomatiques />
       </div>
 
@@ -457,7 +458,10 @@ function SauvegardeS3Card() {
                   padding: "5px 0", borderTop: "1px solid var(--bord)", fontSize: 13 }}>
                   <span style={{ flex: 1 }}>
                     {v.date ? formatDateSauvegarde(v.date) : "Ancienne sauvegarde (sans date)"}
-                    <div className="meta">{Math.round(v.octets / 1024)} Ko</div>
+                    <div className="meta">
+                      {Math.round(v.octets / 1024)} Ko
+                      {v.travailLocalPlusRecent && " · ⚠️ vous avez travaillé ici depuis"}
+                    </div>
                   </span>
                   <button className="btn danger sm" disabled={!!busy}
                     onClick={() => setARestaurer(v)}>Restaurer</button>
@@ -470,10 +474,66 @@ function SauvegardeS3Card() {
 
       {aRestaurer && (
         <Confirm
-          message={`Restaurer la sauvegarde du ${aRestaurer.date ? formatDateSauvegarde(aRestaurer.date) : "(sans date)"} ? Vos données locales actuelles seront remplacées. Les copies quotidiennes de votre disque ne sont pas touchées.`}
+          message={`Restaurer la sauvegarde du ${aRestaurer.date ? formatDateSauvegarde(aRestaurer.date) : "(sans date)"} ? Vos données locales actuelles seront remplacées.${aRestaurer.travailLocalPlusRecent ? " Attention : vous avez modifié des données sur cet ordinateur APRÈS cette sauvegarde — ce travail sera perdu." : ""} Les copies quotidiennes de votre disque ne sont pas touchées.`}
           onYes={() => { const v = aRestaurer; setARestaurer(null); action("pull", () => api.sauvegardePull(v.cle)); }}
           onClose={() => setARestaurer(null)} />
       )}
+    </div>
+  );
+}
+
+/**
+ * Emplacement des données.
+ *
+ * Utile pour poser le dossier sur un disque externe ou une autre partition.
+ * Un chemin réseau est refusé par le backend : une base SQLite ne survit pas
+ * à un partage SMB, et l'échec arrive des jours plus tard.
+ */
+function DossierDesDonnees() {
+  const [d, setD] = React.useState<DossierDonnees | null>(null);
+  const [msg, setMsg] = React.useState("");
+  React.useEffect(() => { api.dossierDonneesGet().then(setD).catch(() => {}); }, []);
+
+  const changer = async () => {
+    setMsg("");
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const choix = await open({ directory: true, multiple: false, title: "Dossier des données Maitrize" });
+      if (typeof choix !== "string") return;
+      setD(await api.dossierDonneesSet(choix));
+      setMsg("✅ Emplacement enregistré. Fermez et rouvrez l'application. Vos données actuelles ne sont pas déplacées : copiez-les vous-même, ou restaurez une sauvegarde.");
+    } catch (e: any) { setMsg("❌ " + String(e)); }
+  };
+
+  const revenir = async () => {
+    setMsg("");
+    try {
+      setD(await api.dossierDonneesSet(null));
+      setMsg("✅ Retour à l'emplacement par défaut. Fermez et rouvrez l'application.");
+    } catch (e: any) { setMsg("❌ " + String(e)); }
+  };
+
+  if (!d) return null;
+  return (
+    <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
+      <h3 style={{ marginTop: 0 }}>📂 Emplacement des données</h3>
+      <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
+        Base, fichiers joints et copies quotidiennes. Doit rester un dossier
+        <b> local</b> : sur un partage réseau, la base se corrompt.
+      </p>
+      <div style={{ fontSize: 13, fontFamily: "ui-monospace, monospace", wordBreak: "break-all",
+        background: "var(--fond-2)", padding: "6px 8px", borderRadius: 6 }}>
+        {d.chemin}
+      </div>
+      <div style={{ fontSize: 12, color: "var(--text-2)", margin: "6px 0 10px" }}>
+        {d.personnalise ? "Emplacement personnalisé" : "Emplacement par défaut"}
+        {d.octets > 0 && ` · ${Math.round(d.octets / 1024)} Ko à la racine`}
+      </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button className="btn" onClick={changer}>Choisir un autre dossier…</button>
+        {d.personnalise && <button className="btn" onClick={revenir}>Revenir au dossier par défaut</button>}
+      </div>
+      {msg && <p style={{ fontSize: 13, marginBottom: 0 }}>{msg}</p>}
     </div>
   );
 }
