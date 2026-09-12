@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import { api, Sequence, MaterielItem, couleurHex, couleurPourMatiere, newId, nowIso } from "../api";
-import { Input, Confirm, useAsync } from "../components/ui";
+import { Input, Confirm, Demander, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { openCtx } from "../components/ctxmenu";
 import { FormMateriel } from "../components/FormMateriel";
@@ -96,6 +96,10 @@ export default function PlanDeTravail() {
   const [aSupprimer, setASupprimer] = React.useState<Element | null>(null);
   const [dossierASupprimer, setDossierASupprimer] = React.useState<SousDossier | null>(null);
   const [materielOuvert, setMaterielOuvert] = React.useState<MaterielItem | null>(null);
+  // Saisies courtes : `window.prompt` n'existe pas dans la fenêtre de
+  // l'application, l'appel ne faisait rien et le bouton paraissait mort.
+  const [demande, setDemande] = React.useState<
+    { titre: string; label: string; valeur?: string; placeholder?: string; sur: (v: string) => void } | null>(null);
 
   const elements: Element[] = React.useMemo(() => [
     ...(sequences ?? []).map((s): Element => ({ genre: "sequence", id: s.id, titre: s.titre || "Sans titre", dossier: s.dossier, seq: s })),
@@ -155,18 +159,22 @@ export default function PlanDeTravail() {
   });
 
   // ── Dossiers ──
-  const creerDossier = () => {
-    const nom = prompt("Nom du dossier :");
-    if (!nom?.trim()) return;
-    // Un dossier n'existe qu'habité : on le crée avec un matériel dedans,
-    // sinon il disparaîtrait au rechargement suivant.
-    const chemin = normaliser(dossier ? `${dossier}/${nom}` : nom);
-    api.materielSave({ ...materielVierge(chemin) }).then(() => { recharger(); setDossier(chemin); });
-  };
+  const creerDossier = () => setDemande({
+    titre: "Nouveau dossier", label: "Nom du dossier", placeholder: "Lecture, Rituels…",
+    sur: (nom) => {
+      // Un dossier n'existe qu'habité : on le crée avec un matériel dedans,
+      // sinon il disparaîtrait au rechargement suivant.
+      const chemin = normaliser(dossier ? `${dossier}/${nom}` : nom);
+      api.materielSave({ ...materielVierge(chemin) }).then(() => { recharger(); setDossier(chemin); });
+    },
+  });
 
-  const renommerDossier = async (d: SousDossier) => {
-    const nom = prompt("Nouveau nom :", d.nom);
-    if (!nom?.trim() || nom === d.nom) return;
+  const renommerDossier = (d: SousDossier) => setDemande({
+    titre: "Renommer le dossier", label: "Nouveau nom", valeur: d.nom,
+    sur: (nom) => { if (nom !== d.nom) appliquerRenommage(d, nom); },
+  });
+
+  const appliquerRenommage = async (d: SousDossier, nom: string) => {
     const nouveau = normaliser(parent(d.chemin) ? `${parent(d.chemin)}/${nom}` : nom);
     const touches = elements.filter((e) => estDans(normaliser(e.dossier), d.chemin));
     for (const e of touches) {
@@ -326,13 +334,24 @@ export default function PlanDeTravail() {
             {ici.map((e) => (
               <TuileElement key={e.genre + e.id} element={e}
                 onOuvrir={() => e.genre === "sequence" ? nav(`/sequences/${e.id}`) : setMaterielOuvert(e.mat)}
-                onRanger={(c) => ranger(e, c)}
+                onRanger={() => setDemande({
+                  titre: "Ranger dans…", label: "Chemin du dossier",
+                  valeur: e.dossier, placeholder: "Français/Lecture",
+                  sur: (c) => ranger(e, c),
+                })}
                 onSupprimer={() => setASupprimer(e)}
                 onDuplique={recharger} />
             ))}
           </div>
         )}
       </div>
+
+      {demande && (
+        <Demander titre={demande.titre} label={demande.label} valeur={demande.valeur}
+          placeholder={demande.placeholder}
+          onClose={() => setDemande(null)}
+          onValider={(v) => { setDemande(null); demande.sur(v); }} />
+      )}
 
       {materielOuvert && (
         <FormMateriel m={materielOuvert} onClose={() => setMaterielOuvert(null)}
@@ -394,7 +413,7 @@ function TuileDossier({ dossier, survole, onOuvrir, onSurvol, onDepose, onRenomm
  * de le lire.
  */
 function TuileElement({ element, onOuvrir, onRanger, onSupprimer, onDuplique }: {
-  element: Element; onOuvrir: () => void; onRanger: (chemin: string) => void;
+  element: Element; onOuvrir: () => void; onRanger: () => void;
   onSupprimer: () => void; onDuplique: () => void;
 }) {
   const seq = element.genre === "sequence" ? element.seq : null;
@@ -411,10 +430,7 @@ function TuileElement({ element, onOuvrir, onRanger, onSupprimer, onDuplique }: 
         { label: "Ouvrir", icon: "↗", onClick: onOuvrir },
         ...(element.genre === "sequence" ? [{ label: "Dupliquer", icon: "📑",
           onClick: () => dupliquerSequence(element.seq).then(onDuplique) }] : []),
-        { label: "Ranger dans…", icon: "📂", onClick: () => {
-          const c = prompt("Chemin du dossier (ex. Français/Lecture) :", element.dossier);
-          if (c !== null) onRanger(c);
-        } },
+        { label: "Ranger dans…", icon: "📂", onClick: onRanger },
         { label: "Supprimer", icon: "🗑", danger: true, sep: true, onClick: onSupprimer },
       ])}
       title={element.titre}

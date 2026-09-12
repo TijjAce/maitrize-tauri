@@ -108,6 +108,42 @@ export function Dot({ couleur }: { couleur: string }) {
   return <span className="dot" style={{ background: couleurHex[couleur] || couleurHex.blue }} />;
 }
 
+/**
+ * Demande une courte saisie à l'enseignant.
+ *
+ * Remplace `window.prompt`, que la fenêtre d'application n'implémente pas :
+ * l'appel ne faisait rien, silencieusement, et le bouton paraissait mort.
+ * `confirm` et `alert` fonctionnent, `prompt` non — d'où ce composant plutôt
+ * qu'un correctif au cas par cas.
+ */
+export function Demander({ titre, label, valeur, placeholder, onClose, onValider }: {
+  titre: string; label?: string; valeur?: string; placeholder?: string;
+  onClose: () => void; onValider: (v: string) => void;
+}) {
+  const [v, setV] = React.useState(valeur ?? "");
+  const valider = () => { const x = v.trim(); if (x) onValider(x); else onClose(); };
+  return (
+    <div className="overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal" style={{ maxWidth: 440 }}>
+        <div className="modal-head"><h2>{titre}</h2></div>
+        <div className="modal-body">
+          {label && <label style={{ fontSize: 13, color: "var(--text-2)" }}>{label}</label>}
+          <Input autoFocus value={v} placeholder={placeholder}
+            onChange={(e) => setV(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); valider(); }
+              if (e.key === "Escape") onClose();
+            }} />
+        </div>
+        <div className="modal-foot">
+          <button className="btn" onClick={onClose}>Annuler</button>
+          <button className="btn primary" onClick={valider}>Valider</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Confirm({ message, onYes, onClose }: {
   message: string; onYes: () => void; onClose: () => void;
 }) {

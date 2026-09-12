@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ChatMessage, Sequence, Seance, PiloteConversation, CYCLES, MATIERES, MODELES_MISTRAL, MODELE_DEFAUT, nouvelleSequence, nouvelleSeance, couleurPourMatiere, newId, nowIso } from "../api";
-import { Modal, Field, Input, Select, useAsync } from "../components/ui";
+import { Modal, Field, Input, Select, Demander, useAsync } from "../components/ui";
 import { construireContexteIA } from "../contexteIA";
 import { openCtx } from "../components/ctxmenu";
 import { Markdown } from "../components/Markdown";
@@ -57,10 +57,12 @@ export default function Assistant() {
     if (c.id === convId) nouvelleConversation();
     reloadConvs();
   };
-  const renommerConv = async (c: PiloteConversation) => {
-    const t = prompt("Titre de la conversation :", c.titre);
-    if (t == null) return;
-    await api.conversationSave({ ...c, titre: t.trim() || c.titre, dateMaj: nowIso() });
+  // `window.prompt` n'existe pas dans la fenêtre de l'application : renommer
+  // une conversation ne faisait rien du tout, sans le dire.
+  const [aRenommer, setARenommer] = React.useState<PiloteConversation | null>(null);
+  const renommerConv = (c: PiloteConversation) => setARenommer(c);
+  const appliquerRenommage = async (c: PiloteConversation, titre: string) => {
+    await api.conversationSave({ ...c, titre: titre.trim() || c.titre, dateMaj: nowIso() });
     reloadConvs();
   };
 
@@ -280,6 +282,11 @@ export default function Assistant() {
         <button className="btn sm" onClick={() => setShowModif(true)}>✏️ Modifier une séquence</button>
         <button className="btn sm primary" onClick={() => setShowGen(true)}>✨ Générer une séquence</button>
       </div>
+      {aRenommer && (
+        <Demander titre="Renommer la conversation" label="Titre" valeur={aRenommer.titre}
+          onClose={() => setARenommer(null)}
+          onValider={(v) => { const c = aRenommer; setARenommer(null); appliquerRenommage(c, v); }} />
+      )}
       {showGen && <GenerateurSequence model={model} onClose={() => setShowGen(false)} />}
       {showModif && <ModifierSequence model={model} onClose={() => setShowModif(false)} />}
       <div className="chat-scroll" ref={scrollRef} onScroll={surDefilement} onWheel={surMolette}>
