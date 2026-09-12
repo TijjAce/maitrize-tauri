@@ -1830,6 +1830,69 @@ fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<()> {
 }
 
 #[cfg(test)]
+mod tests_materiel {
+    use crate::models::MaterielItem;
+
+    /// Enregistre un matériel sur une base créée par la vraie migration.
+    ///
+    /// Le plan de travail crée un dossier en y posant un matériel : si cette
+    /// écriture échoue, le dossier n'apparaît jamais et rien ne le dit.
+    #[test]
+    fn un_materiel_range_dans_un_dossier_senregistre() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+
+        let m = MaterielItem {
+            id: "m1".into(), titre: "Nouveau matériel".into(), description_materiel: String::new(),
+            competence_id: String::new(), competence_titre: String::new(),
+            domaine_titre: String::new(), sous_domaine_titre: String::new(), cycle: String::new(),
+            images_json: "[]".into(), pdfs_json: "[]".into(),
+            date_creation: "2026-09-12T20:00:00Z".into(), seance_id: None, sequence_id: None,
+            dossier: "Français/Lecture".into(), videos_json: "[]".into(), coffre_json: "[]".into(),
+        };
+        c.execute(
+            "INSERT OR REPLACE INTO materiel_items
+             (id,titre,description_materiel,competence_id,competence_titre,domaine_titre,
+              sous_domaine_titre,cycle,images_json,pdfs_json,date_creation,seance_id,sequence_id,
+              dossier,videos_json,coffre_json)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)",
+            rusqlite::params![m.id, m.titre, m.description_materiel, m.competence_id,
+                m.competence_titre, m.domaine_titre, m.sous_domaine_titre, m.cycle,
+                m.images_json, m.pdfs_json, m.date_creation, m.seance_id, m.sequence_id,
+                m.dossier, m.videos_json, m.coffre_json],
+        ).expect("l'écriture doit réussir sur le schéma réel");
+
+        let (titre, dossier): (String, String) = c
+            .query_row("SELECT titre, dossier FROM materiel_items WHERE id='m1'", [],
+                       |r| Ok((r.get(0)?, r.get(1)?)))
+            .unwrap();
+        assert_eq!(titre, "Nouveau matériel");
+        assert_eq!(dossier, "Français/Lecture");
+
+        // Et la relecture doit rendre les mêmes champs.
+        let relu = c.query_row("SELECT * FROM materiel_items WHERE id='m1'", [],
+                               MaterielItem::from_row).unwrap();
+        assert_eq!(relu.dossier, "Français/Lecture");
+        assert_eq!(relu.videos_json, "[]");
+    }
+
+    #[test]
+    fn une_sequence_rangee_dans_un_dossier_senregistre() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        c.execute(
+            "INSERT INTO sequences (id,titre,matiere,cycle,objectifs,competences,competence_visee,
+             image_nom,couleur,date_creation,periode,annee,rating_engagement,rating_facilite,
+             rating_apprentissage,rating_date_maj,projet_id,video,dossier)
+             VALUES ('s1','T','','','','[]','',NULL,'blue','2026-09-12',1,'',0,0,0,NULL,NULL,'','Maths')",
+            [],
+        ).expect("l'écriture doit réussir");
+        let d: String = c.query_row("SELECT dossier FROM sequences WHERE id='s1'", [], |r| r.get(0)).unwrap();
+        assert_eq!(d, "Maths");
+    }
+}
+
+#[cfg(test)]
 mod tests_eleve {
     use super::*;
     use rusqlite::Connection;
