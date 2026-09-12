@@ -547,18 +547,88 @@ fn importer_projet(c: &Connection, env: EnvProjet) -> R<String> {
 // secrète, puis poussée comme un seul objet. Le stockage ne voit que du
 // ciphertext — donc tes données élèves restent protégées même sur le NAS.
 
-const OBJET_SAUVEGARDE: &str = "maitrize/sauvegarde.enc";
+// ── Sauvegarde complète chiffrée ───────────────────────────────────────────
 
-fn cle_sauvegarde(phrase: &str) -> [u8; 32] {
+/// Préfixe des objets de sauvegarde. Le nom porte ensuite l'horodatage.
+const PREFIXE_SAUVEGARDE: &str = "maitrize/sauvegarde-";
+/// Ancien objet unique, écrasé à chaque envoi. Encore lu, jamais plus écrit.
+const OBJET_SAUVEGARDE_V1: &str = "maitrize/sauvegarde.enc";
+/// Nombre de sauvegardes conservées sur le stockage.
+const SAUVEGARDES_DISTANTES: usize = 10;
+/// Marqueur de format, en tête du blob chiffré.
+const MAGIE_V2: &[u8; 4] = b"MZB2";
+
+/// Dérive la clé de sauvegarde depuis la phrase secrète.
+///
+/// Argon2id et non HKDF. HKDF étire un secret **déjà aléatoire** — c'est le
+/// bon outil pour la clé partagée X25519 entre amis, dont l'entropie vient de
+/// la courbe. Une phrase choisie par un humain n'a pas cette entropie : qui
+/// obtient le fichier chiffré peut énumérer les phrases probables, et une
+/// dérivation instantanée lui permet d'en essayer des milliards. Argon2 rend
+/// chaque essai coûteux en temps et en mémoire.
+///
+/// Le sel est tiré au hasard à chaque sauvegarde et voyage dans le blob :
+/// deux sauvegardes de la même base ne donnent pas la même clé, et une table
+/// précalculée ne sert à rien.
+fn cle_sauvegarde_v2(phrase: &str, sel: &[u8]) -> R<[u8; 32]> {
+    let mut cle = [0u8; 32];
+    argon2::Argon2::default()
+        .hash_password_into(phrase.as_bytes(), sel, &mut cle)
+        .map_err(|_| "Dérivation de la clé impossible.".to_string())?;
+    Ok(cle)
+}
+
+/// Ancienne dérivation, conservée pour relire les sauvegardes déjà envoyées.
+fn cle_sauvegarde_v1(phrase: &str) -> [u8; 32] {
     let hk = Hkdf::<Sha256>::new(Some(b"maitrize-backup-salt-v1"), phrase.as_bytes());
     let mut okm = [0u8; 32];
     hk.expand(b"maitrize-backup-key-v1", &mut okm).expect("HKDF 32o");
     okm
 }
 
+/// Chiffre une sauvegarde : `MZB2 || sel(16) || nonce(24) || chiffré`.
+fn chiffrer_sauvegarde(phrase: &str, clair: &[u8]) -> R<Vec<u8>> {
+    let mut sel = [0u8; 16];
+    OsRng.fill_bytes(&mut sel);
+    let cle = cle_sauvegarde_v2(phrase, &sel)?;
+    let mut out = Vec::with_capacity(4 + 16 + 24 + clair.len() + 16);
+    out.extend_from_slice(MAGIE_V2);
+    out.extend_from_slice(&sel);
+    out.extend_from_slice(&chiffrer(&cle, clair)?);
+    Ok(out)
+}
+
+/// Déchiffre une sauvegarde, quel que soit son format.
+///
+/// Une sauvegarde faite avant ce changement reste lisible : sans le marqueur
+/// de tête, on retombe sur l'ancienne dérivation. Refuser de les ouvrir aurait
+/// transformé une amélioration en perte de données.
+fn dechiffrer_sauvegarde(phrase: &str, blob: &[u8]) -> R<Vec<u8>> {
+    if blob.len() > 4 + 16 && &blob[..4] == MAGIE_V2 {
+        let cle = cle_sauvegarde_v2(phrase, &blob[4..20])?;
+        return dechiffrer(&cle, &blob[20..]);
+    }
+    dechiffrer(&cle_sauvegarde_v1(phrase), blob)
+}
+
+/// Nom d'objet horodaté, trié chronologiquement par ordre alphabétique.
+fn nom_sauvegarde() -> String {
+    format!("{PREFIXE_SAUVEGARDE}{}.enc", chrono::Local::now().format("%Y-%m-%d-%H%M%S"))
+}
+
+/// Une sauvegarde présente sur le stockage.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SauvegardeDistante {
+    pub cle: String,
+    /// Date lisible tirée du nom, ou vide pour l'ancienne sauvegarde unique.
+    pub date: String,
+    pub octets: i64,
+}
+
 #[tauri::command]
 pub async fn sauvegarde_push(db: State<'_, Db>) -> R<String> {
-    let (cfg, key, json) = {
+    let (cfg, phrase, json) = {
         let c = db.0.lock().map_err(e)?;
         let phrase = get_setting(&c, "sauvegarde_phrase");
         if phrase.trim().is_empty() {
@@ -566,41 +636,119 @@ pub async fn sauvegarde_push(db: State<'_, Db>) -> R<String> {
         }
         let cfg = lire_cfg(&c)?;
         let json = crate::commands::export_json(&c)?;
-        (cfg, cle_sauvegarde(phrase.trim()), json)
+        (cfg, phrase.trim().to_string(), json)
     };
     let taille = json.len();
-    let blob = chiffrer(&key, json.as_bytes())?;
+    let blob = chiffrer_sauvegarde(&phrase, json.as_bytes())?;
     let cl = client(&cfg);
+    let cle = nom_sauvegarde();
     cl.put_object()
         .bucket(&cfg.bucket)
-        .key(OBJET_SAUVEGARDE)
+        .key(&cle)
         .body(ByteStream::from(blob))
         .send()
         .await
         .map_err(|err| format!("Envoi vers le stockage échoué : {err}"))?;
-    Ok(format!("✅ Sauvegarde envoyée ({} Ko).", taille / 1024))
+
+    // Purge après coup : si elle échoue, la sauvegarde qu'on vient d'envoyer
+    // est déjà en place. L'inverse aurait pu supprimer sans rien déposer.
+    let supprimees = purger_distantes(&cl, &cfg).await;
+    Ok(format!(
+        "✅ Sauvegarde envoyée ({} Ko){}.",
+        taille / 1024,
+        if supprimees > 0 { format!(", {supprimees} ancienne(s) retirée(s)") } else { String::new() }
+    ))
+}
+
+/// Les sauvegardes du stockage, la plus récente d'abord.
+async fn lister_distantes(cl: &Client, cfg: &S3Cfg) -> R<Vec<SauvegardeDistante>> {
+    let resp = cl
+        .list_objects_v2()
+        .bucket(&cfg.bucket)
+        .prefix("maitrize/")
+        .send()
+        .await
+        .map_err(|err| format!("Lecture du stockage impossible : {err}"))?;
+    let mut liste: Vec<SauvegardeDistante> = resp
+        .contents()
+        .iter()
+        .filter_map(|o| {
+            let cle = o.key()?.to_string();
+            let ancienne = cle == OBJET_SAUVEGARDE_V1;
+            if !ancienne && !cle.starts_with(PREFIXE_SAUVEGARDE) {
+                return None;
+            }
+            let date = if ancienne {
+                String::new()
+            } else {
+                cle.trim_start_matches(PREFIXE_SAUVEGARDE).trim_end_matches(".enc").to_string()
+            };
+            Some(SauvegardeDistante { cle, date, octets: o.size().unwrap_or(0) })
+        })
+        .collect();
+    // Le nom porte l'horodatage : l'ordre alphabétique est l'ordre du temps.
+    liste.sort_by(|a, b| b.cle.cmp(&a.cle));
+    Ok(liste)
 }
 
 #[tauri::command]
-pub async fn sauvegarde_pull(db: State<'_, Db>) -> R<String> {
-    let (cfg, key) = {
+pub async fn sauvegarde_liste(db: State<'_, Db>) -> R<Vec<SauvegardeDistante>> {
+    let cfg = { let c = db.0.lock().map_err(e)?; lire_cfg(&c)? };
+    lister_distantes(&client(&cfg), &cfg).await
+}
+
+/// Ne garde que les plus récentes. Renvoie le nombre de suppressions.
+///
+/// Écraser une sauvegarde unique, comme le faisait la version précédente,
+/// laissait sans recours : sauvegarder une base abîmée effaçait la bonne
+/// copie. Garder un historique est ce qui distingue une sauvegarde d'une
+/// simple synchronisation.
+async fn purger_distantes(cl: &Client, cfg: &S3Cfg) -> usize {
+    let Ok(liste) = lister_distantes(cl, cfg).await else { return 0 };
+    let trop: Vec<&SauvegardeDistante> = liste
+        .iter()
+        .filter(|s| s.cle != OBJET_SAUVEGARDE_V1)
+        .skip(SAUVEGARDES_DISTANTES)
+        .collect();
+    let mut n = 0;
+    for s in trop {
+        if cl.delete_object().bucket(&cfg.bucket).key(&s.cle).send().await.is_ok() {
+            n += 1;
+        }
+    }
+    n
+}
+
+/// Restaure une sauvegarde : celle qu'on désigne, ou la plus récente.
+#[tauri::command]
+pub async fn sauvegarde_pull(db: State<'_, Db>, cle: Option<String>) -> R<String> {
+    let (cfg, phrase) = {
         let c = db.0.lock().map_err(e)?;
         let phrase = get_setting(&c, "sauvegarde_phrase");
         if phrase.trim().is_empty() {
             return Err("Renseignez la phrase secrète de sauvegarde.".into());
         }
-        (lire_cfg(&c)?, cle_sauvegarde(phrase.trim()))
+        (lire_cfg(&c)?, phrase.trim().to_string())
     };
     let cl = client(&cfg);
+    let cible = match cle {
+        Some(k) if !k.trim().is_empty() => k,
+        _ => lister_distantes(&cl, &cfg)
+            .await?
+            .into_iter()
+            .next()
+            .map(|s| s.cle)
+            .ok_or_else(|| "Aucune sauvegarde sur le stockage.".to_string())?,
+    };
     let resp = cl
         .get_object()
         .bucket(&cfg.bucket)
-        .key(OBJET_SAUVEGARDE)
+        .key(&cible)
         .send()
         .await
-        .map_err(|_| "Aucune sauvegarde trouvée sur le stockage (ou accès refusé).".to_string())?;
+        .map_err(|_| format!("Sauvegarde « {cible} » introuvable (ou accès refusé)."))?;
     let bytes = resp.body.collect().await.map_err(e)?.into_bytes();
-    let clair = dechiffrer(&key, bytes.as_ref())
+    let clair = dechiffrer_sauvegarde(&phrase, bytes.as_ref())
         .map_err(|_| "Déchiffrement impossible — la phrase secrète ne correspond pas.".to_string())?;
     let json = String::from_utf8(clair).map_err(|_| "Sauvegarde corrompue.".to_string())?;
     {
@@ -608,4 +756,115 @@ pub async fn sauvegarde_pull(db: State<'_, Db>) -> R<String> {
         crate::commands::import_json(&c, &json)?;
     }
     Ok("✅ Sauvegarde restaurée. Rechargez l'application pour voir les données.".into())
+}
+
+#[cfg(test)]
+mod tests_sauvegarde {
+    use super::*;
+
+    #[test]
+    fn un_aller_retour_rend_le_texte_dorigine() {
+        let blob = chiffrer_sauvegarde("mon ours mange des myrtilles", b"{\"eleves\":[]}").unwrap();
+        let clair = dechiffrer_sauvegarde("mon ours mange des myrtilles", &blob).unwrap();
+        assert_eq!(clair, b"{\"eleves\":[]}");
+    }
+
+    #[test]
+    fn une_mauvaise_phrase_ne_dechiffre_pas() {
+        let blob = chiffrer_sauvegarde("bonne phrase", b"secret").unwrap();
+        assert!(dechiffrer_sauvegarde("mauvaise phrase", &blob).is_err());
+    }
+
+    #[test]
+    fn deux_sauvegardes_identiques_donnent_des_blobs_differents() {
+        // Sel tiré à chaque fois : sans cela, le stockage verrait que deux
+        // sauvegardes ont le même contenu.
+        let a = chiffrer_sauvegarde("phrase", b"meme contenu").unwrap();
+        let b = chiffrer_sauvegarde("phrase", b"meme contenu").unwrap();
+        assert_ne!(a, b);
+        assert_eq!(dechiffrer_sauvegarde("phrase", &a).unwrap(),
+                   dechiffrer_sauvegarde("phrase", &b).unwrap());
+    }
+
+    #[test]
+    fn une_ancienne_sauvegarde_reste_lisible() {
+        // Le changement de dérivation ne doit pas rendre illisible ce qui est
+        // déjà sur le stockage.
+        let ancien = chiffrer(&cle_sauvegarde_v1("phrase"), b"donnees v1").unwrap();
+        assert_eq!(dechiffrer_sauvegarde("phrase", &ancien).unwrap(), b"donnees v1");
+    }
+
+    #[test]
+    fn le_format_annonce_sa_version() {
+        let blob = chiffrer_sauvegarde("phrase", b"x").unwrap();
+        assert_eq!(&blob[..4], MAGIE_V2);
+        assert!(blob.len() > 4 + 16 + 24);
+    }
+
+    #[test]
+    fn le_nom_dune_sauvegarde_se_trie_chronologiquement() {
+        let nom = nom_sauvegarde();
+        assert!(nom.starts_with(PREFIXE_SAUVEGARDE) && nom.ends_with(".enc"), "{nom}");
+        // AAAA-MM-JJ-HHMMSS : comparer les chaînes revient à comparer les dates.
+        let date = nom.trim_start_matches(PREFIXE_SAUVEGARDE).trim_end_matches(".enc");
+        assert_eq!(date.len(), 17, "{date}");
+        assert!(date < "2100-01-01-000000");
+    }
+
+    /// Aller-retour complet contre un vrai serveur S3, que seul un essai réel
+    /// peut valider : lecture du listing, ordre chronologique, purge.
+    ///   MAITRIZE_S3=http://127.0.0.1:9100 MAITRIZE_S3_CLE=… MAITRIZE_S3_SECRET=… \
+    ///   cargo test aller_retour_s3 -- --ignored --nocapture
+    #[tokio::test]
+    #[ignore]
+    async fn aller_retour_s3() {
+        let Ok(endpoint) = std::env::var("MAITRIZE_S3") else { return };
+        let cfg = S3Cfg {
+            endpoint,
+            region: "us-east-1".into(),
+            bucket: std::env::var("MAITRIZE_S3_BUCKET").unwrap_or_else(|_| "maitrize".into()),
+            access: std::env::var("MAITRIZE_S3_CLE").unwrap_or_default(),
+            secret: std::env::var("MAITRIZE_S3_SECRET").unwrap_or_default(),
+        };
+        let cl = client(&cfg);
+        cl.create_bucket().bucket(&cfg.bucket).send().await.ok();
+
+        // Déposer douze sauvegardes horodatées, une de plus que la limite.
+        for i in 0..12 {
+            let cle = format!("{PREFIXE_SAUVEGARDE}2026-09-12-1200{i:02}.enc");
+            let blob = chiffrer_sauvegarde("phrase de test", format!("{{\"n\":{i}}}").as_bytes()).unwrap();
+            cl.put_object().bucket(&cfg.bucket).key(&cle)
+                .body(ByteStream::from(blob)).send().await.expect("dépôt");
+        }
+
+        let liste = lister_distantes(&cl, &cfg).await.expect("listing");
+        assert_eq!(liste.len(), 12, "les douze doivent être vues");
+        assert!(liste[0].cle > liste[1].cle, "la plus récente doit venir en tête");
+        assert!(liste[0].octets > 0, "la taille doit remonter");
+
+        let supprimees = purger_distantes(&cl, &cfg).await;
+        assert_eq!(supprimees, 12 - SAUVEGARDES_DISTANTES);
+        let apres = lister_distantes(&cl, &cfg).await.expect("listing");
+        assert_eq!(apres.len(), SAUVEGARDES_DISTANTES, "la purge garde les plus récentes");
+        assert_eq!(apres[0].cle, liste[0].cle, "la plus récente survit");
+
+        // Relire vraiment le contenu de la plus récente.
+        let obj = cl.get_object().bucket(&cfg.bucket).key(&apres[0].cle).send().await.expect("lecture");
+        let octets = obj.body.collect().await.unwrap().into_bytes();
+        let clair = dechiffrer_sauvegarde("phrase de test", octets.as_ref()).expect("déchiffrement");
+        assert_eq!(String::from_utf8(clair).unwrap(), "{\"n\":11}");
+
+        for s in apres { cl.delete_object().bucket(&cfg.bucket).key(&s.cle).send().await.ok(); }
+        println!("aller-retour S3 validé sur {}", cfg.bucket);
+    }
+
+    #[test]
+    fn la_derivation_est_volontairement_lente() {
+        // Si Argon2 devenait instantané, la phrase secrète ne protégerait plus
+        // rien : une phrase courte s'énumère en quelques heures.
+        let debut = std::time::Instant::now();
+        cle_sauvegarde_v2("phrase", b"0123456789abcdef").unwrap();
+        assert!(debut.elapsed() >= std::time::Duration::from_millis(10),
+                "dérivation trop rapide : {:?}", debut.elapsed());
+    }
 }

@@ -1,7 +1,7 @@
 import React from "react";
 import { Page } from "../App";
-import { api, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, getMatiereOverrides, setMatiereOverrides, telechargerTexte, anneeScolaireActuelle, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo } from "../api";
-import { Field, Input, Select, Modal, useAsync } from "../components/ui";
+import { api, type SauvegardeDistante, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, getMatiereOverrides, setMatiereOverrides, telechargerTexte, anneeScolaireActuelle, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo } from "../api";
+import { Field, Input, Select, Modal, Confirm, useAsync } from "../components/ui";
 import { applyTheme, MODES, ACCENTS, STYLES } from "../theme";
 import { lireAcceptationCgu, CguAcceptation } from "../components/CGU";
 import { genererDonneesTest } from "../devSeed";
@@ -389,6 +389,8 @@ function SauvegardeS3Card() {
   const [phrase, setPhrase] = React.useState("");
   const [msg, setMsg] = React.useState("");
   const [busy, setBusy] = React.useState("");
+  const [versions, setVersions] = React.useState<SauvegardeDistante[] | null>(null);
+  const [aRestaurer, setARestaurer] = React.useState<SauvegardeDistante | null>(null);
 
   React.useEffect(() => {
     api.syncConfigGet().then((c) => setCfg((p) => ({ ...p, endpoint: c.endpoint, region: c.region || "us-east-1", bucket: c.bucket, access: c.access, aSecret: c.aSecret }))).catch(() => {});
@@ -403,9 +405,14 @@ function SauvegardeS3Card() {
     setBusy(cle); setMsg("");
     try { await enregistrer(); setMsg(await fn()); } catch (e: any) { setMsg("❌ " + String(e)); } finally { setBusy(""); }
   };
-  const restaurer = async () => {
-    if (!confirm("Restaurer remplacera vos données locales par la sauvegarde du stockage. Continuer ?")) return;
-    action("pull", () => api.sauvegardePull());
+  // Lister avant de restaurer : choisir sa version est tout l'intérêt d'un
+  // historique, et voir la date évite d'écraser un mois de travail par une
+  // sauvegarde plus ancienne qu'on croyait récente.
+  const voirVersions = async () => {
+    setBusy("liste"); setMsg("");
+    try { await enregistrer(); setVersions(await api.sauvegardeListe()); }
+    catch (e: any) { setMsg("❌ " + String(e)); }
+    finally { setBusy(""); }
   };
 
   return (
@@ -429,11 +436,52 @@ function SauvegardeS3Card() {
         <button className="btn" disabled={!!busy} onClick={enregistrer}>💾 Enregistrer la config</button>
         <button className="btn" disabled={!!busy} onClick={() => action("test", () => api.syncTest())}>{busy === "test" ? "…" : "🔌 Tester"}</button>
         <button className="btn primary" disabled={!!busy} onClick={() => action("push", () => api.sauvegardePush())}>{busy === "push" ? "Envoi…" : "☁️ Sauvegarder maintenant"}</button>
-        <button className="btn danger" disabled={!!busy} onClick={restaurer}>{busy === "pull" ? "…" : "⬇️ Restaurer"}</button>
+        <button className="btn" disabled={!!busy} onClick={voirVersions}>{busy === "liste" ? "…" : "🕓 Sauvegardes en ligne"}</button>
       </div>
       {msg && <p style={{ fontSize: 13, marginBottom: 0 }}>{msg}</p>}
+
+      {versions && (
+        <div style={{ marginTop: 12, borderTop: "1px solid var(--bord)", paddingTop: 10 }}>
+          {!versions.length ? (
+            <p style={{ fontSize: 13, color: "var(--text-2)", margin: 0 }}>
+              Aucune sauvegarde sur ce stockage pour l'instant.
+            </p>
+          ) : (
+            <>
+              <p style={{ fontSize: 13, color: "var(--text-2)", margin: "0 0 6px" }}>
+                Les {versions.length} dernières sauvegardes, la plus récente en haut.
+                Restaurer <b>remplace</b> vos données locales.
+              </p>
+              {versions.map((v) => (
+                <div key={v.cle} style={{ display: "flex", gap: 10, alignItems: "center",
+                  padding: "5px 0", borderTop: "1px solid var(--bord)", fontSize: 13 }}>
+                  <span style={{ flex: 1 }}>
+                    {v.date ? formatDateSauvegarde(v.date) : "Ancienne sauvegarde (sans date)"}
+                    <div className="meta">{Math.round(v.octets / 1024)} Ko</div>
+                  </span>
+                  <button className="btn danger sm" disabled={!!busy}
+                    onClick={() => setARestaurer(v)}>Restaurer</button>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+
+      {aRestaurer && (
+        <Confirm
+          message={`Restaurer la sauvegarde du ${aRestaurer.date ? formatDateSauvegarde(aRestaurer.date) : "(sans date)"} ? Vos données locales actuelles seront remplacées. Les copies quotidiennes de votre disque ne sont pas touchées.`}
+          onYes={() => { const v = aRestaurer; setARestaurer(null); action("pull", () => api.sauvegardePull(v.cle)); }}
+          onClose={() => setARestaurer(null)} />
+      )}
     </div>
   );
+}
+
+/** « 2026-09-12-143005 » → « 12/09/2026 à 14:30 ». */
+function formatDateSauvegarde(brut: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})/.exec(brut);
+  return m ? `${m[3]}/${m[2]}/${m[1]} à ${m[4]}:${m[5]}` : brut;
 }
 
 /** Copies quotidiennes de la base, faites au lancement de l'app. */
