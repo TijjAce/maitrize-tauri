@@ -598,6 +598,78 @@ pub(crate) fn migrate(conn: &Connection) {
     conn.execute("ALTER TABLE materiel_items ADD COLUMN dossier TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE materiel_items ADD COLUMN videos_json TEXT NOT NULL DEFAULT '[]'", []).ok();
     conn.execute("ALTER TABLE materiel_items ADD COLUMN coffre_json TEXT NOT NULL DEFAULT '[]'", []).ok();
+    migrer_organisation_ime(conn);
+}
+
+#[cfg(test)]
+mod tests_organisation_ime {
+    use super::*;
+
+    fn base(annee: &str) -> Connection {
+        let c = Connection::open_in_memory().unwrap();
+        c.execute_batch(
+            "CREATE TABLE settings (cle TEXT PRIMARY KEY, valeur TEXT);
+             CREATE TABLE edt_typique (id TEXT PRIMARY KEY, annee TEXT, slots_json TEXT);",
+        ).unwrap();
+        c.execute("INSERT INTO settings VALUES ('anneeCourante', ?1)", [annee]).unwrap();
+        c
+    }
+    fn poser(c: &Connection, annee: &str, slots: &str) {
+        c.execute("INSERT INTO edt_typique VALUES (?1, ?2, ?3)",
+                  rusqlite::params![annee, annee, slots]).unwrap();
+    }
+    fn lire(c: &Connection, annee: &str) -> String {
+        c.query_row("SELECT slots_json FROM edt_typique WHERE annee=?1", [annee], |r| r.get(0))
+            .unwrap_or_default()
+    }
+
+    #[test]
+    fn reprend_la_semaine_la_mieux_remplie() {
+        // Sans cette reprise, l'organisation saisie resterait en base mais
+        // deviendrait introuvable depuis l'écran.
+        let c = base("2025-2026");
+        poser(&c, "IME:2026-08-24", r#"[{"id":"a"}]"#);
+        poser(&c, "IME:2026-08-31", r#"[{"id":"b"},{"id":"c"},{"id":"d"}]"#);
+        migrer_organisation_ime(&c);
+        assert_eq!(lire(&c, "2025-2026·IME"), r#"[{"id":"b"},{"id":"c"},{"id":"d"}]"#);
+    }
+
+    #[test]
+    fn ne_remplace_pas_une_organisation_deja_saisie() {
+        // Ce que l'enseignant a posé à l'année prime sur un report automatique.
+        let c = base("2025-2026");
+        poser(&c, "2025-2026·IME", r#"[{"id":"garde"}]"#);
+        poser(&c, "IME:2026-08-31", r#"[{"id":"x"},{"id":"y"}]"#);
+        migrer_organisation_ime(&c);
+        assert_eq!(lire(&c, "2025-2026·IME"), r#"[{"id":"garde"}]"#);
+    }
+
+    #[test]
+    fn ne_fait_rien_sans_semaine_remplie() {
+        let c = base("2025-2026");
+        poser(&c, "IME:2026-08-24", "[]");
+        migrer_organisation_ime(&c);
+        assert_eq!(lire(&c, "2025-2026·IME"), "");
+    }
+
+    #[test]
+    fn ne_touche_pas_a_la_trame_de_classe_ordinaire() {
+        let c = base("2025-2026");
+        poser(&c, "2025-2026", r#"[{"id":"classe"}]"#);
+        poser(&c, "IME:2026-08-31", r#"[{"id":"ime"}]"#);
+        migrer_organisation_ime(&c);
+        assert_eq!(lire(&c, "2025-2026"), r#"[{"id":"classe"}]"#);
+    }
+
+    #[test]
+    fn se_tait_si_lannee_est_inconnue() {
+        let c = Connection::open_in_memory().unwrap();
+        c.execute_batch(
+            "CREATE TABLE settings (cle TEXT PRIMARY KEY, valeur TEXT);
+             CREATE TABLE edt_typique (id TEXT PRIMARY KEY, annee TEXT, slots_json TEXT);",
+        ).unwrap();
+        migrer_organisation_ime(&c); // ne doit pas paniquer
+    }
 }
 
 #[cfg(test)]
@@ -679,4 +751,57 @@ mod tests_sauvegarde {
         std::env::remove_var("MAITRIZE_DATA_DIR");
         std::fs::remove_dir_all(&dir).ok();
     }
+}
+
+
+/// Ramène les organisations IME hebdomadaires vers une organisation d'année.
+///
+/// L'organisation se faisait semaine par semaine, sous une clé `IME:<lundi>`.
+/// Elle est désormais fixe, sous `<année>·IME` : un emploi du temps
+/// d'établissement se pose à l'année et ne bougeait pas d'une semaine à
+/// l'autre, ce qui obligeait à le reporter sans cesse.
+///
+/// Sans cette reprise, une organisation déjà saisie deviendrait invisible —
+/// toujours en base, mais introuvable depuis l'écran. On adopte la semaine la
+/// mieux remplie, et l'on ne touche à rien si l'organisation d'année existe
+/// déjà : ce que l'enseignant a saisi depuis prime sur un report automatique.
+pub(crate) fn migrer_organisation_ime(conn: &Connection) {
+    let annee: String = conn
+        .query_row("SELECT valeur FROM settings WHERE cle='anneeCourante'", [], |r| r.get(0))
+        .unwrap_or_default();
+    if annee.is_empty() {
+        return;
+    }
+    let cible = format!("{annee}·IME");
+    let deja: Option<String> = conn
+        .query_row("SELECT slots_json FROM edt_typique WHERE annee=?1", [&cible], |r| r.get(0))
+        .ok();
+    // Déjà des créneaux à l'année : on ne remplace rien.
+    if deja.is_some_and(|s| s.len() > 2) {
+        return;
+    }
+
+    // La semaine la mieux remplie : à défaut de savoir laquelle faisait foi,
+    // c'est celle qui représente le plus de travail.
+    let mut meilleure: Option<(usize, String)> = None;
+    if let Ok(mut st) = conn.prepare("SELECT slots_json FROM edt_typique WHERE annee LIKE 'IME:%'") {
+        if let Ok(lignes) = st.query_map([], |r| r.get::<_, String>(0)) {
+            for json in lignes.flatten() {
+                let n = serde_json::from_str::<Vec<serde_json::Value>>(&json)
+                    .map(|v| v.len())
+                    .unwrap_or(0);
+                if n > 0 && meilleure.as_ref().is_none_or(|(m, _)| n > *m) {
+                    meilleure = Some((n, json));
+                }
+            }
+        }
+    }
+    let Some((n, json)) = meilleure else { return };
+    conn.execute(
+        "INSERT OR REPLACE INTO edt_typique (id, annee, slots_json)
+         VALUES (COALESCE((SELECT id FROM edt_typique WHERE annee=?1), ?2), ?1, ?3)",
+        rusqlite::params![cible, uuid::Uuid::new_v4().to_string(), json],
+    )
+    .ok();
+    eprintln!("organisation IME : {n} créneau(x) repris depuis une semaine vers l'année");
 }

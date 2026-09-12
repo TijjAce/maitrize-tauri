@@ -13,7 +13,6 @@ import { COULEURS } from "../api";
 import { printHTML, escapeHtml } from "../print";
 import { PlanSalleTab } from "./PlanSalle";
 import { ProjetPedagogiqueTab } from "./ProjetPedagogique";
-import { isoJour, lundiDe } from "../dates";
 
 // Couleurs officielles des périodes (miroir couleursPeriodes).
 const COULEUR_PERIODE: Record<number, string> = { 1: "#2e73d9", 2: "#d94033", 3: "#4d4d4d", 4: "#d97319", 5: "#269950" };
@@ -684,11 +683,11 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
   React.useEffect(() => { api.settingGet("edt:mode").then((v) => { if (v === "ime") setMode("ime"); }); }, []);
   const choisirMode = (m: "classe" | "ime") => { setMode(m); api.settingSet("edt:mode", m); };
   const ime = mode === "ime";
-  // En IME l'organisation se refait chaque semaine : chaque semaine a son
-  // enregistrement, repéré par le lundi. En classe ordinaire, la trame reste
-  // annuelle.
-  const [lundi, setLundi] = React.useState(() => lundiDe(new Date()));
-  const cleAnnee = ime ? `IME:${isoJour(lundi)}` : annee;
+  // L'organisation IME est fixe sur l'année, comme la trame de classe
+  // ordinaire. Elle se faisait auparavant semaine par semaine, ce qui obligeait
+  // à la reporter sans cesse alors qu'elle ne bouge pas d'une semaine à
+  // l'autre : les emplois du temps d'établissement sont posés à l'année.
+  const cleAnnee = ime ? `${annee}·IME` : annee;
   const edt = data?.find((e) => e.annee === cleAnnee);
   const [niveau, setNiveau] = React.useState("");
   const [edit, setEdit] = React.useState<Slot | null>(null);
@@ -707,17 +706,6 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
   React.useEffect(() => { api.settingGet("niveauClasse").then((v) => setNiveau(v ?? "")); }, []);
   const upsert = (s: Slot) => persister(slots.some((x) => x.id === s.id) ? slots.map((x) => x.id === s.id ? s : x) : [...slots, s]);
 
-  // Report d'une semaine sur l'autre : on repart de l'organisation précédente
-  // plutôt que de tout resaisir, quitte à ajuster ensuite.
-  const reporterSemainePrecedente = () => {
-    const prec = new Date(lundi); prec.setDate(prec.getDate() - 7);
-    const src = data?.find((e) => e.annee === `IME:${isoJour(prec)}`);
-    let recopies: Slot[] = [];
-    try { recopies = src ? JSON.parse(src.slotsJson) : []; } catch { recopies = []; }
-    if (recopies.length === 0) { toast("Aucune organisation la semaine précédente.", { icone: "⚠️" }); return; }
-    persister(recopies.map((x) => ({ ...x, id: newId() })));
-    toast(`${recopies.length} créneau(x) reporté(s).`, { icone: "📋" });
-  };
   const supprimer = (id: string) => persister(slots.filter((s) => s.id !== id));
 
   const fileRef = React.useRef<HTMLInputElement>(null);
@@ -834,17 +822,6 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
           <button className={ime ? "active" : ""} title="Organisation IME : chaque créneau porte les élèves présents"
             onClick={() => choisirMode("ime")}>Organisation IME</button>
         </div>
-        {ime && <>
-          <button className="btn" aria-label="Semaine précédente"
-            onClick={() => { const d = new Date(lundi); d.setDate(d.getDate() - 7); setLundi(d); }}>←</button>
-          <b style={{ minWidth: 165, textAlign: "center", fontSize: 13 }}>
-            Semaine du {lundi.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
-          </b>
-          <button className="btn" aria-label="Semaine suivante"
-            onClick={() => { const d = new Date(lundi); d.setDate(d.getDate() + 7); setLundi(d); }}>→</button>
-          <button className="btn sm" title="Recopier l'organisation de la semaine précédente"
-            onClick={reporterSemainePrecedente}>📋 Reporter</button>
-        </>}
         <div className="spacer" />
         {slots.length > 0 && <button className="btn" onClick={() => setDeplacer((v) => !v)}
           style={deplacer ? { background: "var(--accent)", color: "#fff", borderColor: "var(--accent)" } : undefined}
