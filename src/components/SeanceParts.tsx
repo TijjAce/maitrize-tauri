@@ -222,6 +222,7 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
       id: newId(), titre, descriptionMateriel: "",
       competenceId: "", competenceTitre: "", domaineTitre: "", sousDomaineTitre: "",
       cycle, imagesJson: "[]", pdfsJson: JSON.stringify([nomFichier]), dateCreation: nowIso(), seanceId, sequenceId: null,
+      dossier: "", videosJson: "[]", coffreJson: "[]",
     });
     reload();
   };
