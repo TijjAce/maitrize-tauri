@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  arbre, aplatir, deplacementValide, estDans, normaliser, parent, renommerChemin,
+  estDans, filDAriane, normaliser, parent, renommerChemin, sousDossiers,
 } from "./dossiers";
 
 const el = (dossier: string, id = dossier + Math.random()) => ({ id, dossier });
@@ -27,47 +27,7 @@ describe("chemins", () => {
   });
 });
 
-describe("arbre", () => {
-  it("crée les dossiers intermédiaires", () => {
-    // Sans cela l'arbre a des trous et « Français » serait inatteignable.
-    const a = arbre([el("Français/Lecture/Sons")]);
-    expect(a).toHaveLength(1);
-    expect(a[0].chemin).toBe("Français");
-    expect(a[0].enfants[0].chemin).toBe("Français/Lecture");
-    expect(a[0].enfants[0].enfants[0].nom).toBe("Sons");
-  });
 
-  it("compte le direct et le total", () => {
-    const a = arbre([el("Français"), el("Français/Lecture"), el("Français/Lecture")]);
-    expect(a[0].directs).toBe(1);
-    expect(a[0].total).toBe(3);
-    expect(a[0].enfants[0].directs).toBe(2);
-  });
-
-  it("ignore ce qui n'est rangé nulle part", () => {
-    expect(arbre([el(""), el("   ")])).toEqual([]);
-  });
-
-  it("range les dossiers par ordre alphabétique français", () => {
-    const a = arbre([el("Écriture"), el("Arts"), el("Zoologie")]);
-    expect(a.map((n) => n.nom)).toEqual(["Arts", "Écriture", "Zoologie"]);
-  });
-
-  it("ne compte pas deux fois un même dossier", () => {
-    const a = arbre([el("Maths"), el("Maths")]);
-    expect(a).toHaveLength(1);
-    expect(a[0].total).toBe(2);
-  });
-});
-
-describe("dépliage", () => {
-  it("ne montre que les dossiers ouverts", () => {
-    const a = arbre([el("Français/Lecture"), el("Maths")]);
-    expect(aplatir(a, new Set()).map((n) => n.chemin)).toEqual(["Français", "Maths"]);
-    expect(aplatir(a, new Set(["Français"])).map((n) => n.chemin))
-      .toEqual(["Français", "Français/Lecture", "Maths"]);
-  });
-});
 
 describe("renommage", () => {
   it("emmène les sous-dossiers", () => {
@@ -82,19 +42,35 @@ describe("renommage", () => {
   });
 });
 
-describe("déplacement", () => {
-  it("refuse de mettre un dossier dans lui-même", () => {
-    // Le chemin se contiendrait lui-même et le dossier disparaîtrait.
-    expect(deplacementValide("Français", "Français")).toBe(false);
-    expect(deplacementValide("Français", "Français/Lecture")).toBe(false);
+
+
+describe("navigation façon bureau", () => {
+  const elements = [
+    el("Français"), el("Français/Lecture"), el("Français/Lecture/Sons"),
+    el("Maths"), el(""),
+  ];
+
+  it("ne montre que les dossiers d'ici", () => {
+    // Un bureau montre ce qui est ici, on entre pour voir la suite.
+    expect(sousDossiers(elements, "").map((d) => d.nom)).toEqual(["Français", "Maths"]);
+    expect(sousDossiers(elements, "Français").map((d) => d.nom)).toEqual(["Lecture"]);
+    expect(sousDossiers(elements, "Français/Lecture").map((d) => d.nom)).toEqual(["Sons"]);
+    expect(sousDossiers(elements, "Français/Lecture/Sons")).toEqual([]);
   });
 
-  it("refuse un déplacement sans effet", () => {
-    expect(deplacementValide("Français/Lecture", "Français")).toBe(false);
+  it("compte tout ce qu'un dossier contient, à tous les niveaux", () => {
+    // Sinon un dossier plein de sous-dossiers paraîtrait vide.
+    expect(sousDossiers(elements, "").find((d) => d.nom === "Français")!.total).toBe(3);
   });
 
-  it("accepte un déplacement vers un autre dossier", () => {
-    expect(deplacementValide("Français/Lecture", "Maths")).toBe(true);
-    expect(deplacementValide("Français/Lecture", "")).toBe(true);
+  it("ne confond pas deux noms qui se ressemblent", () => {
+    const l = [el("Français"), el("Francophonie")];
+    expect(sousDossiers(l, "Français")).toEqual([]);
+  });
+
+  it("dresse le fil d'Ariane", () => {
+    expect(filDAriane("Français/Lecture").map((x) => x.nom)).toEqual(["Bureau", "Français", "Lecture"]);
+    expect(filDAriane("").map((x) => x.nom)).toEqual(["Bureau"]);
+    expect(filDAriane("Français/Lecture")[1].chemin).toBe("Français");
   });
 });

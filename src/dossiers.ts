@@ -14,19 +14,6 @@ export interface Rangeable {
   dossier: string;
 }
 
-export interface Noeud {
-  /** Chemin complet : « Français/Lecture ». */
-  chemin: string;
-  /** Dernier segment : « Lecture ». */
-  nom: string;
-  profondeur: number;
-  enfants: Noeud[];
-  /** Éléments directement dedans. */
-  directs: number;
-  /** Éléments dedans et dans les sous-dossiers. */
-  total: number;
-}
-
 export const SEPARATEUR = "/";
 
 /** Nettoie un chemin saisi : segments vides retirés, espaces resserrés. */
@@ -51,67 +38,6 @@ export function estDans(chemin: string, sous: string): boolean {
 }
 
 /**
- * Construit l'arbre à partir des chemins réellement employés.
- *
- * Les dossiers intermédiaires sont créés même si rien ne s'y trouve
- * directement : ranger dans « Français/Lecture » doit faire apparaître
- * « Français », sinon l'arbre a des trous et le chemin devient inatteignable.
- */
-export function arbre(elements: Rangeable[]): Noeud[] {
-  const par = new Map<string, Noeud>();
-  const assurer = (chemin: string): Noeud => {
-    const existant = par.get(chemin);
-    if (existant) return existant;
-    const n: Noeud = {
-      chemin,
-      nom: chemin.slice(chemin.lastIndexOf(SEPARATEUR) + 1),
-      profondeur: chemin.split(SEPARATEUR).length - 1,
-      enfants: [],
-      directs: 0,
-      total: 0,
-    };
-    par.set(chemin, n);
-    const p = parent(chemin);
-    if (p) assurer(p).enfants.push(n);
-    return n;
-  };
-
-  for (const e of elements) {
-    const chemin = normaliser(e.dossier);
-    if (!chemin) continue;
-    assurer(chemin).directs++;
-    // Le total remonte jusqu'à la racine : un dossier replié doit dire
-    // combien il contient, sinon il faut l'ouvrir pour le savoir.
-    let courant: string | "" = chemin;
-    while (courant) {
-      assurer(courant).total++;
-      courant = parent(courant);
-    }
-  }
-
-  const trier = (l: Noeud[]) => {
-    l.sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
-    l.forEach((n) => trier(n.enfants));
-  };
-  const racines = [...par.values()].filter((n) => !parent(n.chemin));
-  trier(racines);
-  return racines;
-}
-
-/** Aplati l'arbre en respectant les dossiers dépliés. */
-export function aplatir(racines: Noeud[], ouverts: Set<string>): Noeud[] {
-  const sortie: Noeud[] = [];
-  const descendre = (l: Noeud[]) => {
-    for (const n of l) {
-      sortie.push(n);
-      if (ouverts.has(n.chemin)) descendre(n.enfants);
-    }
-  };
-  descendre(racines);
-  return sortie;
-}
-
-/**
  * Nouveau chemin d'un dossier renommé, et de ses descendants.
  *
  * Renommer « Français » doit emmener « Français/Lecture » avec lui : sans
@@ -123,15 +49,47 @@ export function renommerChemin(chemin: string, ancien: string, nouveau: string):
   return normaliser(nouveau + reste);
 }
 
+
+/** Un sous-dossier visible depuis un dossier courant. */
+export interface SousDossier {
+  chemin: string;
+  nom: string;
+  /** Éléments dedans, sous-dossiers compris. */
+  total: number;
+}
+
 /**
- * Empêche de déplacer un dossier dans l'un de ses propres descendants.
+ * Les sous-dossiers directement sous `courant`.
  *
- * « Français » glissé dans « Français/Lecture » produirait un chemin qui se
- * contient lui-même : le dossier disparaîtrait de l'arbre.
+ * Un bureau ne montre pas l'arbre entier : il montre ce qui est ici, et l'on
+ * entre. « Français/Lecture/Sons » vu depuis la racine n'est donc que
+ * « Français » — mais il compte les trois niveaux dans son total, sinon un
+ * dossier plein paraîtrait vide.
  */
-export function deplacementValide(source: string, cible: string): boolean {
-  if (!source) return false;
-  if (source === cible) return false;
-  if (estDans(cible, source)) return false;
-  return parent(source) !== cible || false;
+export function sousDossiers(elements: Rangeable[], courant: string): SousDossier[] {
+  const prefixe = courant ? courant + SEPARATEUR : "";
+  const totaux = new Map<string, number>();
+  for (const e of elements) {
+    const chemin = normaliser(e.dossier);
+    if (!chemin || !chemin.startsWith(prefixe) || chemin === courant) continue;
+    const reste = chemin.slice(prefixe.length);
+    if (!reste) continue;
+    const premier = reste.split(SEPARATEUR)[0];
+    const complet = prefixe + premier;
+    totaux.set(complet, (totaux.get(complet) ?? 0) + 1);
+  }
+  return [...totaux.entries()]
+    .map(([chemin, total]) => ({ chemin, nom: chemin.slice(chemin.lastIndexOf(SEPARATEUR) + 1), total }))
+    .sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+}
+
+/** Le fil d'Ariane d'un chemin : chaque ancêtre, racine comprise. */
+export function filDAriane(chemin: string): { chemin: string; nom: string }[] {
+  const fil = [{ chemin: "", nom: "Bureau" }];
+  let courant = "";
+  for (const segment of normaliser(chemin).split(SEPARATEUR).filter(Boolean)) {
+    courant = courant ? `${courant}${SEPARATEUR}${segment}` : segment;
+    fil.push({ chemin: courant, nom: segment });
+  }
+  return fil;
 }
