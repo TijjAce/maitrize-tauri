@@ -10,7 +10,7 @@ import { fichierToBlobUrl } from "../components/PdfViewer";
 import { printHTML, escapeHtml } from "../print";
 import { openCtx } from "../components/ctxmenu";
 import { PhotoTelephone } from "../components/PhotoTelephone";
-import { useFileDropZone, estPdf, estImage, nomDeChemin } from "../dragdrop";
+import { useFileDropZone, estPdf, estImage, fichierEnBase64 } from "../dragdrop";
 
 export default function SequenceDetail() {
   const { id } = useParams();
@@ -25,10 +25,10 @@ export default function SequenceDetail() {
   // Glisser-déposer natif (Finder/Aperçu). Le hook doit être appelé à chaque
   // rendu (avant tout return conditionnel) — la logique d'import réelle, qui
   // dépend de la séquence chargée, passe par une ref mise à jour plus bas.
-  const importerRef = React.useRef<(chemins: string[]) => void>(() => {});
+  const importerRef = React.useRef<(fichiers: File[]) => void>(() => {});
   const { ref: dropZoneRef, actif: dropActif } = useFileDropZone({
     accept: (c) => estPdf(c) || estImage(c),
-    onFiles: (chemins) => importerRef.current(chemins),
+    onFiles: (fichiers) => importerRef.current(fichiers),
   });
 
   const seq = sequences?.find((s) => s.id === id);
@@ -90,10 +90,10 @@ export default function SequenceDetail() {
     reloadMat();
   };
   // Branche l'import réel sur la ref (séquence désormais disponible).
-  importerRef.current = async (chemins: string[]) => {
-    for (const c of chemins) {
-      const nom = await api.fichierImporterDepuisChemin(c);
-      await creerMaterielDepuisFichier(nomDeChemin(c), nom);
+  importerRef.current = async (fichiers: File[]) => {
+    for (const f of fichiers) {
+      const nom = await api.fichierSave(f.name, await fichierEnBase64(f));
+      await creerMaterielDepuisFichier(f.name, nom);
     }
     reloadMat();
   };

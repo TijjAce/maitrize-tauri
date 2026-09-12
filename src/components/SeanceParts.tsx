@@ -1,7 +1,7 @@
 import React from "react";
 import { api, MaterielItem, newId, nowIso, raccourci } from "../api";
 import { FichierImg } from "./Deroulement";
-import { useFileDropZone, estPdf, estImage, nomDeChemin } from "../dragdrop";
+import { useFileDropZone, estPdf, estImage, fichierEnBase64 } from "../dragdrop";
 
 // ============================================================
 // Tableau de déroulement — grille [[string]] éditable
@@ -240,9 +240,9 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
   // peut être glissé directement depuis sa barre de titre).
   const { ref: dropRef, actif: dropActif } = useFileDropZone({
     accept: estPdf,
-    onFiles: (chemins) => chemins.forEach(async (c) => {
-      const nomFichier = await api.fichierImporterDepuisChemin(c);
-      await creerMateriel(nomDeChemin(c).replace(/\.[^.]+$/, ""), nomFichier);
+    onFiles: (fichiers) => fichiers.forEach(async (f) => {
+      const nomFichier = await api.fichierSave(f.name, await fichierEnBase64(f));
+      await creerMateriel(f.name.replace(/\.[^.]+$/, ""), nomFichier);
     }),
   });
 
@@ -288,9 +288,9 @@ export function FileListEditor({ type, fichiers, onChange }: {
   fichiersRef.current = fichiers;
   const { ref: dropRef, actif: dropActif } = useFileDropZone({
     accept: type === "image" ? estImage : estPdf,
-    onFiles: async (chemins) => {
-      for (const c of chemins) {
-        const nom = await api.fichierImporterDepuisChemin(c);
+    onFiles: async (fichiers) => {
+      for (const f of fichiers) {
+        const nom = await api.fichierSave(f.name, await fichierEnBase64(f));
         fichiersRef.current = [...fichiersRef.current, nom];
         onChange(fichiersRef.current);
       }
