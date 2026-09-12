@@ -144,6 +144,9 @@ export interface VacancePeriode { description: string; debut: string; fin: strin
 export interface DocumentEleve {
   id: string; eleveId: string; typeDoc: string; donnees: string; dateMaj: string;
 }
+/** Une sauvegarde chiffrée présente sur le stockage S3/MinIO. */
+export interface SauvegardeDistante { cle: string; date: string; octets: number }
+
 /** Copie quotidienne automatique de la base. */
 export interface SauvegardeAuto { nom: string; jour: string; octets: number }
 
@@ -412,7 +415,8 @@ export const api = {
   syncTest: () => invoke<string>("sync_test"),
   // Sauvegarde chiffrée de toute la base sur le stockage S3/MinIO.
   sauvegardePush: () => invoke<string>("sauvegarde_push"),
-  sauvegardePull: () => invoke<string>("sauvegarde_pull"),
+  sauvegardePull: (cle?: string) => invoke<string>("sauvegarde_pull", { cle: cle ?? null }),
+  sauvegardeListe: () => invoke<SauvegardeDistante[]>("sauvegarde_liste"),
   syncEnvoyer: (amiId: string, texte: string) => invoke<void>("sync_envoyer", { amiId, texte }),
   syncRelever: (amiId: string) => invoke<SyncMessage[]>("sync_relever", { amiId }),
   sequencePartager: (amiId: string, sequenceId: string) => invoke<void>("sequence_partager", { amiId, sequenceId }),

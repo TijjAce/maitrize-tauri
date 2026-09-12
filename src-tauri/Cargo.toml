@@ -44,6 +44,9 @@ sha2 = "0.10"
 # Transfert chiffré E2E via stockage S3-compatible (MinIO/Scaleway/Hetzner)
 chacha20poly1305 = "0.10"
 hkdf = "0.12"
+# Dérivation lente de la phrase de sauvegarde : HKDF convient à un secret déjà
+# aléatoire, pas à une phrase humaine qu'on peut énumérer.
+argon2 = "0.5"
 aws-sdk-s3 = "1"
 # Version portable : petit serveur HTTP sur le réseau local + QR code
 tiny_http = "0.12"
