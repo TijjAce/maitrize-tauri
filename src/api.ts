@@ -1,5 +1,28 @@
 // Couche d'accès au backend Rust via Tauri invoke. Types miroir des structs.
-import { invoke } from "@tauri-apps/api/core";
+import { invoke as invokeTauri } from "@tauri-apps/api/core";
+
+// La fenêtre de l'application n'a pas de console visible : quand une action
+// « ne fait rien », il ne reste aucune trace. Toute commande qui échoue est
+// donc écrite dans diagnostic.log (Réglages ▸ Données ▸ Journal d'incidents).
+function invoke<T>(cmd: string, ...args: unknown[]): Promise<T> {
+  return (invokeTauri as (c: string, ...a: unknown[]) => Promise<T>)(cmd, ...args).catch((err) => {
+    if (cmd !== "diag_ecrire") journal(`ÉCHEC ${cmd} : ${texteErreur(err)}`);
+    throw err;
+  });
+}
+
+/** Message lisible : une erreur Tauri est parfois une chaîne, parfois un objet. */
+export function texteErreur(err: unknown): string {
+  if (typeof err === "string") return err;
+  if (err instanceof Error) return err.message + (err.stack ? ` | ${err.stack.split("\n")[1]?.trim() ?? ""}` : "");
+  try { return JSON.stringify(err); } catch { return String(err); }
+}
+
+/** Écrit une ligne dans le journal d'incidents. Ne jette jamais. */
+export function journal(ligne: string): void {
+  try { (invokeTauri as (c: string, a: unknown) => Promise<void>)("diag_ecrire", { ligne }).catch(() => {}); }
+  catch { /* hors application */ }
+}
 
 // Touche de modification selon l'OS : ⌘ sur macOS, Ctrl sur Windows/Linux.
 export const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent);
@@ -462,6 +485,7 @@ export const api = {
   machineNomSet: (nom: string) => invoke<void>("machine_nom_set", { nom }),
   appairageCode: () => invoke<string>("appairage_code"),
   appairageAppliquer: (code: string) => invoke<void>("appairage_appliquer", { code }),
+  diagOuvrir: () => invoke<void>("diag_ouvrir"),
   dossierDonneesGet: () => invoke<DossierDonnees>("dossier_donnees_get"),
   dossierDonneesSet: (chemin: string | null) => invoke<DossierDonnees>("dossier_donnees_set", { chemin }),
   syncEnvoyer: (amiId: string, texte: string) => invoke<void>("sync_envoyer", { amiId, texte }),
