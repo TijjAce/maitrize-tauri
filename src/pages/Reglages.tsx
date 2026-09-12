@@ -1,14 +1,22 @@
 import React from "react";
 import { Page } from "../App";
-import { api, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, getMatiereOverrides, setMatiereOverrides, telechargerTexte, anneeScolaireActuelle, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo } from "../api";
+import { api, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, getMatiereOverrides, setMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo } from "../api";
 import { Field, Input, Select, Modal, Confirm, useAsync } from "../components/ui";
 import { MesAppareils } from "../components/MesAppareils";
 import { applyTheme, MODES, ACCENTS, STYLES } from "../theme";
 import { lireAcceptationCgu, CguAcceptation } from "../components/CGU";
-import { genererDonneesTest } from "../devSeed";
 import { getVersion } from "@tauri-apps/api/app";
 
+const ONGLETS = [
+  ["general", "Général"],
+  ["ia", "Assistant IA"],
+  ["donnees", "Données & synchro"],
+  ["partage", "Partage WiFi"],
+] as const;
+type Onglet = typeof ONGLETS[number][0];
+
 export default function Reglages() {
+  const [onglet, setOnglet] = React.useState<Onglet>("general");
   const [s, setS] = React.useState<Record<string, string>>({});
   const [chargé, setChargé] = React.useState(false);
   const [testMsg, setTestMsg] = React.useState("");
@@ -110,6 +118,12 @@ export default function Reglages() {
 
   return (
     <Page titre="Réglages">
+      <div className="seg" style={{ marginBottom: 18 }}>
+        {ONGLETS.map(([k, l]) => (
+          <button key={k} className={onglet === k ? "active" : ""} onClick={() => setOnglet(k as Onglet)}>{l}</button>
+        ))}
+      </div>
+      {onglet === "general" && <>
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
         <h3 style={{ marginTop: 0 }}>👤 Identité enseignant</h3>
         <Field label="Nom"><Input value={s.enseignantNom ?? ""} onChange={(e) => set("enseignantNom", e.target.value)} /></Field>
@@ -201,6 +215,9 @@ export default function Reglages() {
         </Field>
       </div>
 
+      </>}
+
+      {onglet === "ia" && <>
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
         <h3 style={{ marginTop: 0 }}>✨ Assistant IA — Mistral (en ligne)</h3>
         <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
@@ -229,7 +246,7 @@ export default function Reglages() {
             {etats.map((e) => {
               const nom = MODELES_MISTRAL.find((m) => m.id === e.id)?.label ?? e.id;
               return (
-                <li key={e.id} style={{ padding: "5px 0", borderTop: "1px solid var(--bord)" }}>
+                <li key={e.id} style={{ padding: "5px 0", borderTop: "1px solid var(--border)" }}>
                   <strong>{e.disponible ? "✅" : "❌"} {nom}</strong>
                   {!e.disponible && (
                     <div style={{ color: "var(--text-2)", marginTop: 2 }}>{e.detail}</div>
@@ -241,25 +258,36 @@ export default function Reglages() {
         )}
       </div>
 
+      </>}
+
+      {onglet === "donnees" && <>
+      {/* Du plus courant au plus rare : ce qu'on fait tous les jours d'abord,
+          l'emplacement des fichiers et l'export de secours à la fin. */}
+      <MesAppareils />
+      <SauvegardeS3Card />
+      <CopiesAutomatiques />
+      <DossierDesDonnees />
+
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
-        <h3 style={{ marginTop: 0 }}>💾 Données (sauvegarde)</h3>
+        <h3 style={{ marginTop: 0 }}>💾 Export manuel</h3>
         <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
-          Exportez toutes vos données dans un fichier JSON, ou restaurez une sauvegarde.
-          La clé API n'est jamais incluse dans l'export.
+          Un fichier unique contenant tout, pièces jointes comprises — à garder
+          sur une clé avant une manipulation délicate. La clé API n'y figure jamais.
         </p>
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <button className="btn" onClick={exporter}>⬇️ Exporter (JSON)</button>
-          <button className="btn" onClick={exporterBase}>🗄 Exporter la base (.sqlite3)</button>
           <input ref={importInput} type="file" accept="application/json,.json" style={{ display: "none" }}
             onChange={(e) => { const f = e.target.files?.[0]; if (f) importer(f); e.target.value = ""; }} />
           <button className="btn" onClick={() => importInput.current?.click()}>⬆️ Importer</button>
+          <button className="btn ghost sm" onClick={exporterBase} title="Copie brute de la base, pour l'ouvrir dans un outil SQLite">
+            base .sqlite3
+          </button>
           <span style={{ fontSize: 13 }}>{dataMsg}</span>
         </div>
-        <MesAppareils />
-        <DossierDesDonnees />
-        <CopiesAutomatiques />
       </div>
+      </>}
 
+      {onglet === "partage" && <>
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
         <h3 style={{ marginTop: 0 }}>📱 Version portable (WiFi)</h3>
         <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
@@ -288,10 +316,9 @@ export default function Reglages() {
         )}
       </div>
 
-      <SauvegardeS3Card />
+      </>}
 
-      <DevSeedCard />
-
+      {onglet === "general" && (
       <div className="card" style={{ maxWidth: 620 }}>
         <h3 style={{ marginTop: 0 }}>ℹ️ À propos</h3>
         <p style={{ color: "var(--text-2)", margin: 0, fontSize: 13 }}>
@@ -299,11 +326,11 @@ export default function Reglages() {
         </p>
         {cgu && (
           <p style={{ color: "var(--text-2)", margin: "10px 0 0", fontSize: 12 }}>
-            ✅ CGU (v{cgu.version}) acceptées le {new Date(cgu.accepteeLe).toLocaleString("fr-FR")}<br />
-            <span style={{ fontFamily: "monospace", fontSize: 11 }}>empreinte&nbsp;: {cgu.hash.slice(0, 24)}…</span>
+            ✅ CGU (v{cgu.version}) acceptées le {new Date(cgu.accepteeLe).toLocaleDateString("fr-FR")}
           </p>
         )}
       </div>
+      )}
 
       {showMatieres && <CouleursMatieresModal onClose={() => setShowMatieres(false)} />}
     </Page>
@@ -311,46 +338,8 @@ export default function Reglages() {
 }
 
 // Liste d'années scolaires autour de l'année donnée (pour le sélecteur du seed).
-function anneesOptions(courante: string): string[] {
-  const base = parseInt(courante.slice(0, 4), 10) || new Date().getFullYear();
-  const set = new Set<string>();
-  for (let y = base - 1; y <= base + 2; y++) set.add(`${y}-${y + 1}`);
-  set.add(courante);
-  return [...set].sort();
-}
 
 // Carte « Développement » : génère des données factices pour tester rapidement.
-function DevSeedCard() {
-  const [busy, setBusy] = React.useState(false);
-  const [msg, setMsg] = React.useState("");
-  const [annee, setAnnee] = React.useState(anneeScolaireActuelle());
-  React.useEffect(() => { api.settingGet("anneeCourante").then((v) => { if (v) setAnnee(v); }); }, []);
-
-  const generer = async () => {
-    if (!confirm(`Créer des données de test pour l'année ${annee} ?`)) return;
-    setBusy(true); setMsg("");
-    try { setMsg("✅ " + await genererDonneesTest(annee)); }
-    catch (e) { setMsg("❌ " + String(e)); }
-    finally { setBusy(false); }
-  };
-  return (
-    <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
-      <h3 style={{ marginTop: 0 }}>🧪 Développement</h3>
-      <p style={{ color: "var(--text-2)", margin: "0 0 10px", fontSize: 13 }}>
-        Crée des séquences, des séances et une programmation factices pour tester l'application.
-        Choisissez l'année scolaire cible (sans effet sur une programmation déjà existante pour cette année).
-      </p>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <Select value={annee} onChange={(e) => setAnnee(e.target.value)} style={{ maxWidth: 160, fontWeight: 600 }}>
-          {anneesOptions(annee).map((a) => <option key={a} value={a}>Année {a}</option>)}
-        </Select>
-        <button className="btn" onClick={generer} disabled={busy}>{busy ? "Création…" : "🧪 Générer des données de test"}</button>
-        {msg && <span style={{ fontSize: 13 }}>{msg}</span>}
-      </div>
-    </div>
-  );
-}
-
 function CouleursMatieresModal({ onClose }: { onClose: () => void }) {
   const [over, setOver] = React.useState<Record<string, string>>(() => ({ ...getMatiereOverrides() }));
 
@@ -444,7 +433,7 @@ function SauvegardeS3Card() {
       {msg && <p style={{ fontSize: 13, marginBottom: 0 }}>{msg}</p>}
 
       {versions && (
-        <div style={{ marginTop: 12, borderTop: "1px solid var(--bord)", paddingTop: 10 }}>
+        <div style={{ marginTop: 12, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
           {!versions.length ? (
             <p style={{ fontSize: 13, color: "var(--text-2)", margin: 0 }}>
               Aucune sauvegarde sur ce stockage pour l'instant.
@@ -457,7 +446,7 @@ function SauvegardeS3Card() {
               </p>
               {versions.map((v) => (
                 <div key={v.cle} style={{ display: "flex", gap: 10, alignItems: "center",
-                  padding: "5px 0", borderTop: "1px solid var(--bord)", fontSize: 13 }}>
+                  padding: "5px 0", borderTop: "1px solid var(--border)", fontSize: 13 }}>
                   <span style={{ flex: 1 }}>
                     {v.date ? formatDateSauvegarde(v.date) : "Ancienne sauvegarde (sans date)"}
                     <div className="meta">
@@ -524,7 +513,7 @@ function DossierDesDonnees() {
         <b> local</b> : sur un partage réseau, la base se corrompt.
       </p>
       <div style={{ fontSize: 13, fontFamily: "ui-monospace, monospace", wordBreak: "break-all",
-        background: "var(--fond-2)", padding: "6px 8px", borderRadius: 6 }}>
+        background: "var(--panel-2)", padding: "6px 8px", borderRadius: 6 }}>
         {d.chemin}
       </div>
       <div style={{ fontSize: 12, color: "var(--text-2)", margin: "6px 0 10px" }}>
@@ -569,9 +558,9 @@ function CopiesAutomatiques() {
   const alerte = jours !== null && jours > 2;
 
   return (
-    <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+    <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <b style={{ fontSize: 13 }}>Copies automatiques</b>
+        <h3 style={{ margin: 0 }}>🗂 Copies automatiques</h3>
         <span style={{ fontSize: 12, color: alerte ? "var(--danger, #ef4444)" : "var(--text-2)" }}>
           dernière : {quand}
         </span>

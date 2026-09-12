@@ -91,7 +91,7 @@ function Banque({ progression, onTelecharger }: {
             {progression.etape}
             {progression.total > 0 && ` — ${progression.faits} / ${progression.total}`}
           </div>
-          <div style={{ height: 8, background: "var(--fond-2)", borderRadius: 100, overflow: "hidden" }}>
+          <div style={{ height: 8, background: "var(--panel-2)", borderRadius: 100, overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${pourcent ?? 0}%`, background: "var(--accent)", transition: "width .3s" }} />
           </div>
         </>
@@ -182,11 +182,11 @@ function Generateur({ etat, progression, onTelecharger }: {
         <div className="card">
           <h3 style={{ marginTop: 0 }}>1. Choisir un thème</h3>
           <Input placeholder="Chercher une catégorie…" value={q} onChange={(e) => setQ(e.target.value)} />
-          <div style={{ maxHeight: 380, overflowY: "auto", marginTop: 8, border: "1px solid var(--bord)", borderRadius: 8 }}>
+          <div style={{ maxHeight: 380, overflowY: "auto", marginTop: 8, border: "1px solid var(--border)", borderRadius: 8 }}>
             {visibles.map((c) => (
               <label key={c.nom} style={{
                 display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", fontSize: 13,
-                cursor: "pointer", background: choisies.includes(c.nom) ? "var(--fond-2)" : undefined,
+                cursor: "pointer", background: choisies.includes(c.nom) ? "var(--panel-2)" : undefined,
               }}>
                 <input type="checkbox" checked={choisies.includes(c.nom)} onChange={() => basculer(c.nom)} />
                 <span style={{ flex: 1 }}>{libelleCategorie(c.nom)}</span>
@@ -339,7 +339,7 @@ function Vignette({ picto, ecarte, onClick }: { picto: PictoArasaac; ecarte: boo
   return (
     <button onClick={onClick} title={ecarte ? "Remettre" : "Écarter"}
       style={{
-        border: "1px solid var(--bord)", borderRadius: 8, background: "#fff", padding: 4,
+        border: "1px solid var(--border)", borderRadius: 8, background: "#fff", padding: 4,
         cursor: "pointer", opacity: ecarte ? 0.25 : 1, display: "flex", flexDirection: "column",
         alignItems: "center", gap: 2,
       }}>

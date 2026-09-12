@@ -357,7 +357,7 @@ function Resultat({ picto, actif, onClick }: { picto: PictoArasaac; actif: boole
   return (
     <button onClick={onClick} title={picto.mot}
       style={{
-        border: actif ? "2px solid var(--accent)" : "1px solid var(--bord)",
+        border: actif ? "2px solid var(--accent)" : "1px solid var(--border)",
         borderRadius: 8, background: "#fff", padding: 4, cursor: "pointer",
         display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
       }}>
@@ -448,7 +448,7 @@ function SurTheme({ onClose, onCree }: { onClose: () => void; onCree: (g: Gabari
         Structure : {squelette.roles.map((pile, i) => (
           <span key={i} style={{
             display: "inline-block", padding: "2px 7px", margin: "0 4px 4px 0",
-            borderRadius: 4, background: "var(--fond-2)", fontSize: 12,
+            borderRadius: 4, background: "var(--panel-2)", fontSize: 12,
           }}>{pile.join(" + ")}</span>
         ))}
         <div style={{ color: "var(--text-2)", marginTop: 4 }}>
@@ -464,11 +464,11 @@ function SurTheme({ onClose, onCree }: { onClose: () => void; onCree: (g: Gabari
       <Field label="Thème (remplit les noms)">
         <Input placeholder="Chercher une catégorie…" value={q} onChange={(e) => setQ(e.target.value)} />
       </Field>
-      <div style={{ maxHeight: 200, overflowY: "auto", border: "1px solid var(--bord)", borderRadius: 8, marginTop: 6 }}>
+      <div style={{ maxHeight: 200, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 8, marginTop: 6 }}>
         {visibles.map((x) => (
           <label key={x.nom} style={{
             display: "flex", alignItems: "center", gap: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer",
-            background: theme.includes(x.nom) ? "var(--fond-2)" : undefined,
+            background: theme.includes(x.nom) ? "var(--panel-2)" : undefined,
           }}>
             <input type="checkbox" checked={theme.includes(x.nom)}
               onChange={() => setTheme((v) => v.includes(x.nom) ? v.filter((y) => y !== x.nom) : [...v, x.nom])} />
