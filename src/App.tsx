@@ -30,7 +30,6 @@ import { getVersion } from "@tauri-apps/api/app";
 import { Toaster, toast } from "./components/Toaster";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { releverBoiteAuxLettres, messageRecu } from "./inbox";
-import { installerGlisserDeposer } from "./dragdrop";
 
 const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: true })[] = [
   { to: "/", ico: "🏠", label: "Tableau de bord", end: true },
@@ -121,7 +120,6 @@ export default function App() {
   const [version, setVersion] = React.useState("");
   React.useEffect(() => { bootTheme(); }, []);
   React.useEffect(() => { getVersion().then(setVersion).catch(() => {}); }, []);
-  React.useEffect(() => { installerGlisserDeposer(); }, []);
   // Synchronisation de fond : rien à cliquer, les écrans se relisent d'eux-mêmes
   // quand des données arrivent de l'autre machine.
   React.useEffect(() => demarrerSyncAuto(), []);

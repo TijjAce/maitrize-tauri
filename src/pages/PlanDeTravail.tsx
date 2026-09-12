@@ -7,7 +7,7 @@ import { toast } from "../components/Toaster";
 import { openCtx } from "../components/ctxmenu";
 import { FormMateriel } from "../components/FormMateriel";
 import { lireVideos, lireLien, vignetteYoutube } from "../videos";
-import { useFileDropZone, estPdf, estImage, nomDeChemin } from "../dragdrop";
+import { useFileDropZone, estPdf, estImage, fichierEnBase64 } from "../dragdrop";
 import {
   sousDossiers, filDAriane, normaliser, parent, estDans, renommerChemin, SousDossier,
 } from "../dossiers";
@@ -103,14 +103,14 @@ export default function PlanDeTravail() {
     return true;
   };
 
-  const deposerFichiers = async (chemins: string[]) => {
+  const deposerFichiers = async (fichiers: File[]) => {
     let n = 0;
-    for (const c of chemins) {
-      const nom = await api.fichierImporterDepuisChemin(c);
-      const image = estImage(c);
+    for (const f of fichiers) {
+      const nom = await api.fichierSave(f.name, await fichierEnBase64(f));
+      const image = estImage(f.name);
       await api.materielSave({
         ...materielVierge(dossier),
-        titre: nomDeChemin(c).replace(/\.[^.]+$/, ""),
+        titre: f.name.replace(/\.[^.]+$/, ""),
         imagesJson: image ? JSON.stringify([nom]) : "[]",
         pdfsJson: image ? "[]" : JSON.stringify([nom]),
       });
