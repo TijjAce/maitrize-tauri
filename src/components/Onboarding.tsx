@@ -7,7 +7,7 @@ interface Etape { titre: string; phrase: string; ico: string; couleur: string; t
 const ETAPES: Etape[] = [
   { titre: "Bienvenue dans Maitrize V2", ico: "✨", couleur: "#6366f1",
     phrase: "Une visite rapide des espaces que vous utiliserez le plus. Vous pouvez la passer à tout moment." },
-  { titre: "Séquences", ico: "📚", couleur: "#6366f1", to: "/sequences",
+  { titre: "Plan de travail", ico: "🗂", couleur: "#6366f1", to: "/plan",
     phrase: "Tout commence ici. Une séquence regroupe des séances autour d'un objectif. L'IA peut même vous en générer une." },
   { titre: "Planning", ico: "🗓️", couleur: "#a855f7", to: "/planning",
     phrase: "Posez vos créneaux à l'heure exacte, glissez-les, ou générez la semaine depuis votre EDT type." },

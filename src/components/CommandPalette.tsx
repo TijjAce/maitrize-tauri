@@ -27,14 +27,13 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
 
 const NAV: { ico: string; label: string; to: string }[] = [
   { ico: "🏠", label: "Tableau de bord", to: "/" },
-  { ico: "📚", label: "Séquences", to: "/sequences" },
+  { ico: "🗂", label: "Plan de travail", to: "/plan" },
   { ico: "📁", label: "Projets", to: "/projets" },
   { ico: "🧩", label: "Ateliers & Espaces", to: "/ateliers" },
   { ico: "🗓️", label: "Planning", to: "/planning" },
   { ico: "🗂️", label: "Organisation", to: "/organisation" },
   { ico: "👧", label: "Élèves", to: "/eleves" },
   { ico: "📖", label: "Référentiels", to: "/referentiels" },
-  { ico: "🧰", label: "Matériel", to: "/materiel" },
   { ico: "🌐", label: "Ressources", to: "/ressources" },
   { ico: "✨", label: "Assistant IA", to: "/assistant" },
   { ico: "⚙️", label: "Réglages", to: "/reglages" },
@@ -42,7 +41,7 @@ const NAV: { ico: string; label: string; to: string }[] = [
 
 const KIND_TO: Record<string, (id: string) => string> = {
   sequence: (id) => `/sequences/${id}`, atelier: () => "/ateliers", espace: () => "/ateliers",
-  eleve: () => "/eleves", materiel: () => "/materiel",
+  eleve: () => "/eleves", materiel: () => "/plan",
 };
 const KIND_ICO: Record<string, string> = { sequence: "📚", atelier: "🧩", espace: "🪑", eleve: "👧", materiel: "🧰" };
 
@@ -205,7 +204,7 @@ export function CommandPalette() {
 
   // Actions du natif portées (navigation, actions, réponses directes).
   const ACTIONS: Cmd[] = [
-    { id: "a-newseq", ico: "➕", label: "Nouvelle séquence", sous: "Action · créer", run: goAction("/sequences", "maitrize:nouvelle-sequence") },
+    { id: "a-newseq", ico: "➕", label: "Nouvelle séquence", sous: "Action · créer", run: goAction("/plan", "maitrize:nouvelle-sequence") },
     { id: "a-genia", ico: "✨", label: "Générer une séquence (IA)", sous: "Action · assistant", run: goAction("/assistant", "maitrize:generer-sequence") },
     { id: "a-assist", ico: "🪄", label: "Ouvrir l'assistant IA", sous: "Action", run: goNav("/assistant") },
     { id: "r-demain", ico: "🌅", label: "Préparer pour demain", sous: "Réponse directe", run: repondre("Préparer pour demain", preparerDemain) },

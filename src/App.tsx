@@ -2,7 +2,6 @@ import React from "react";
 import { NavLink, Route, Routes, Navigate, useNavigate, useLocation } from "react-router-dom";
 import logo from "./assets/logo.png";
 import Dashboard from "./pages/Dashboard";
-import Sequences from "./pages/Sequences";
 import SequenceDetail from "./pages/SequenceDetail";
 import Projets from "./pages/Projets";
 import Ateliers from "./pages/Ateliers";
@@ -10,7 +9,7 @@ import Planning from "./pages/Planning";
 import Organisation from "./pages/Organisation";
 import Eleves from "./pages/Eleves";
 import Referentiels from "./pages/Referentiels";
-import Materiel from "./pages/Materiel";
+import PlanDeTravail from "./pages/PlanDeTravail";
 import Jeux from "./pages/Jeux";
 import Adapter from "./pages/Adapter";
 import Ressources from "./pages/Ressources";
@@ -36,7 +35,7 @@ import { installerGlisserDeposer } from "./dragdrop";
 const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: true })[] = [
   { to: "/", ico: "🏠", label: "Tableau de bord", end: true },
   { sep: true },
-  { to: "/sequences", ico: "📚", label: "Séquences" },
+  { to: "/plan", ico: "🗂", label: "Plan de travail" },
   { to: "/projets", ico: "📁", label: "Projets" },
   { to: "/ateliers", ico: "🧩", label: "Ateliers & Espaces" },
   { to: "/planning", ico: "🗓️", label: "Planning" },
@@ -44,7 +43,6 @@ const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: t
   { sep: true },
   { to: "/eleves", ico: "👧", label: "Élèves" },
   { to: "/referentiels", ico: "📖", label: "Référentiels" },
-  { to: "/materiel", ico: "🧰", label: "Matériel" },
   { to: "/jeux", ico: "🎲", label: "Fabriquer" },
   { to: "/adapter", ico: "📄", label: "Adapter une fiche" },
   { to: "/ressources", ico: "🌐", label: "Ressources" },
@@ -60,13 +58,12 @@ const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: t
 // Le Planning en est volontairement exclu (il se réinitialise à chaque visite).
 const KEEP_ALIVE: { path: string; element: React.ReactNode }[] = [
   { path: "/", element: <Dashboard /> },
-  { path: "/sequences", element: <Sequences /> },
+  { path: "/plan", element: <PlanDeTravail /> },
   { path: "/projets", element: <Projets /> },
   { path: "/ateliers", element: <Ateliers /> },
   { path: "/organisation", element: <Organisation /> },
   { path: "/eleves", element: <Eleves /> },
   { path: "/referentiels", element: <Referentiels /> },
-  { path: "/materiel", element: <Materiel /> },
   { path: "/jeux", element: <Jeux /> },
   { path: "/adapter", element: <Adapter /> },
   { path: "/ressources", element: <Ressources /> },
@@ -104,6 +101,11 @@ function KeepAliveHost({ pathname }: { pathname: string }) {
             <Routes>
               <Route path="/planning" element={<Planning />} />
               <Route path="/sequences/:id" element={<SequenceDetail />} />
+              {/* Les anciens chemins restent valides : la palette ⌘K, le
+                  tableau de bord et l'accueil y renvoient encore, et un lien
+                  mort vaudrait moins qu'une redirection. */}
+              <Route path="/sequences" element={<Navigate to="/plan" replace />} />
+              <Route path="/materiel" element={<Navigate to="/plan" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </ErrorBoundary>

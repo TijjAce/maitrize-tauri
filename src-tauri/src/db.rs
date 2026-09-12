@@ -598,6 +598,8 @@ pub(crate) fn migrate(conn: &Connection) {
     conn.execute("ALTER TABLE materiel_items ADD COLUMN dossier TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE materiel_items ADD COLUMN videos_json TEXT NOT NULL DEFAULT '[]'", []).ok();
     conn.execute("ALTER TABLE materiel_items ADD COLUMN coffre_json TEXT NOT NULL DEFAULT '[]'", []).ok();
+    // Plan de travail : séquences et matériel se rangent dans les mêmes dossiers.
+    conn.execute("ALTER TABLE sequences ADD COLUMN dossier TEXT NOT NULL DEFAULT ''", []).ok();
     migrer_organisation_ime(conn);
 }
 

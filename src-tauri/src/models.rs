@@ -87,6 +87,8 @@ pub struct Sequence {
     pub projet_id: Option<String>,
     #[serde(default)]
     pub video: String,
+    #[serde(default)]
+    pub dossier: String,
 }
 fn default_blue() -> String { "blue".into() }
 fn un() -> i64 { 1 }
@@ -112,6 +114,7 @@ impl Sequence {
             rating_date_maj: r.get("rating_date_maj")?,
             projet_id: r.get("projet_id")?,
             video: r.get("video")?,
+            dossier: r.get("dossier").unwrap_or_default(),
         })
     }
 }

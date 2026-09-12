@@ -124,7 +124,7 @@ export default function SequenceDetail() {
   return (
     <Page titre={seq.titre} sous={[seq.matiere, seq.cycle, `Période ${seq.periode}`, seq.annee].filter(Boolean).join(" · ")}
       actions={<>
-        <button className="btn" onClick={() => nav("/sequences")}>← Retour</button>
+        <button className="btn" onClick={() => nav("/plan")}>← Retour</button>
         <button className="btn" onClick={() => imprimerSequence(seq, seances ?? [])}>🖨 Imprimer / PDF</button>
         <button className="btn" onClick={() => exporterSequence(seq, seances ?? [])}>⬇️ Exporter</button>
         <button className="btn primary" onClick={() => setEdit(nouvelleSeance(seq.id, next))}>+ Séance</button>
