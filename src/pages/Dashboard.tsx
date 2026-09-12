@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import { api, couleurHex, raccourci } from "../api";
 import { useAsync } from "../components/ui";
+import { BandeauSync } from "../components/BandeauSync";
 
 export default function Dashboard() {
   const nav = useNavigate();
@@ -30,6 +31,7 @@ export default function Dashboard() {
 
   return (
     <Page titre={nom ? `Bonjour ${nom}` : "Tableau de bord"} sous={new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}>
+      <BandeauSync />
       <div className="grid cols" style={{ marginBottom: 22 }}>
         {stats.map((s) => (
           <div key={s.label} className="card" style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }} onClick={() => nav(s.to)}>

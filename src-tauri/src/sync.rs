@@ -72,6 +72,14 @@ fn vers_32(v: Vec<u8>) -> R<[u8; 32]> {
     <[u8; 32]>::try_from(v.as_slice()).map_err(|_| "clé de taille invalide".to_string())
 }
 
+fn set_setting(c: &Connection, cle: &str, valeur: &str) -> R<()> {
+    c.execute(
+        "INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)",
+        params![cle, valeur],
+    ).map_err(e)?;
+    Ok(())
+}
+
 fn get_setting(c: &Connection, cle: &str) -> String {
     c.query_row("SELECT valeur FROM settings WHERE cle = ?1", [cle], |r| r.get(0))
         .optional().ok().flatten().unwrap_or_default()
@@ -611,6 +619,105 @@ fn dechiffrer_sauvegarde(phrase: &str, blob: &[u8]) -> R<Vec<u8>> {
     dechiffrer(&cle_sauvegarde_v1(phrase), blob)
 }
 
+/// Horodatage de la dernière synchronisation réussie, dans les réglages.
+const CLE_DERNIERE_SYNC: &str = "derniereSync";
+
+/// Dernière écriture réelle dans la base, au format des noms de sauvegarde.
+///
+/// On regarde aussi le journal WAL : en mode WAL, le fichier principal ne
+/// bouge qu'aux points de contrôle, si bien qu'une journée de saisie peut ne
+/// pas le rajeunir. Ne regarder que lui ferait croire que rien n'a changé.
+fn derniere_ecriture_locale() -> Option<String> {
+    let base = crate::db::data_dir().join("maitrize.sqlite3");
+    let wal = crate::db::data_dir().join("maitrize.sqlite3-wal");
+    [base, wal]
+        .iter()
+        .filter_map(|p| std::fs::metadata(p).ok()?.modified().ok())
+        .max()
+        .map(|t| chrono::DateTime::<chrono::Local>::from(t).format("%Y-%m-%d-%H%M%S").to_string())
+}
+
+/// Ce que l'enseignant doit savoir en ouvrant l'application.
+#[derive(Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct EtatSync {
+    pub configure: bool,
+    /// Du travail fait ici n'est pas encore parti.
+    pub a_envoyer: bool,
+    /// Une sauvegarde plus récente que la dernière synchro attend en ligne.
+    pub a_recuperer: bool,
+    /// Les deux à la fois : il faudra choisir, et l'un des deux sera perdu.
+    pub conflit: bool,
+    pub derniere_sync: String,
+    pub derniere_distante: String,
+    /// Renseigné quand le stockage n'a pas répondu : on ne prétend pas savoir.
+    pub hors_ligne: String,
+}
+
+/// Décide, à partir de trois horodatages, dans quel sens va la copie.
+///
+/// Isolée du réseau et du disque pour être vérifiable : c'est elle qui, en se
+/// trompant, ferait perdre une soirée de saisie.
+///
+/// Sans repère de synchronisation, on ne conclut rien : une base jamais
+/// synchronisée n'a pas de « depuis quand ». Annoncer du travail à envoyer
+/// dès la première ouverture apprendrait surtout à ignorer le bandeau.
+fn decider(locale: &str, derniere_sync: &str, distante: &str) -> (bool, bool) {
+    if derniere_sync.is_empty() {
+        return (false, !distante.is_empty());
+    }
+    (
+        !locale.is_empty() && locale > derniere_sync,
+        !distante.is_empty() && distante > derniere_sync,
+    )
+}
+
+/// Compare l'état local et l'état du stockage.
+///
+/// Aucune action : cette commande ne fait que regarder. C'est elle qui permet
+/// de proposer le bon bouton — envoyer ou récupérer — au lieu de laisser
+/// l'enseignant deviner dans quel sens va la copie.
+#[tauri::command]
+pub async fn sync_etat(db: State<'_, Db>) -> R<EtatSync> {
+    let (cfg, derniere_sync) = {
+        let c = db.0.lock().map_err(e)?;
+        let derniere = get_setting(&c, CLE_DERNIERE_SYNC);
+        match lire_cfg(&c) {
+            Ok(cfg) => (cfg, derniere),
+            // Stockage non configuré : ce n'est pas une erreur, juste un état.
+            Err(_) => return Ok(EtatSync::default()),
+        }
+    };
+
+    let locale = derniere_ecriture_locale().unwrap_or_default();
+    let (a_envoyer, _) = decider(&locale, &derniere_sync, "");
+
+    let distantes = match lister_distantes(&client(&cfg), &cfg).await {
+        Ok(l) => l,
+        Err(err) => {
+            return Ok(EtatSync {
+                configure: true,
+                a_envoyer,
+                derniere_sync,
+                hors_ligne: format!("Stockage injoignable : {err}"),
+                ..Default::default()
+            })
+        }
+    };
+    let derniere_distante = distantes.first().map(|s| s.date.clone()).unwrap_or_default();
+    let (a_envoyer, a_recuperer) = decider(&locale, &derniere_sync, &derniere_distante);
+
+    Ok(EtatSync {
+        configure: true,
+        a_envoyer,
+        a_recuperer,
+        conflit: a_envoyer && a_recuperer,
+        derniere_sync,
+        derniere_distante,
+        hors_ligne: String::new(),
+    })
+}
+
 /// Nom d'objet horodaté, trié chronologiquement par ordre alphabétique.
 fn nom_sauvegarde() -> String {
     format!("{PREFIXE_SAUVEGARDE}{}.enc", chrono::Local::now().format("%Y-%m-%d-%H%M%S"))
@@ -658,6 +765,11 @@ pub async fn sauvegarde_push(db: State<'_, Db>) -> R<String> {
 
     // Purge après coup : si elle échoue, la sauvegarde qu'on vient d'envoyer
     // est déjà en place. L'inverse aurait pu supprimer sans rien déposer.
+    {
+        let c = db.0.lock().map_err(e)?;
+        let horodatage = cle.trim_start_matches(PREFIXE_SAUVEGARDE).trim_end_matches(".enc");
+        set_setting(&c, CLE_DERNIERE_SYNC, horodatage)?;
+    }
     let supprimees = purger_distantes(&cl, &cfg).await;
     Ok(format!(
         "✅ Sauvegarde envoyée ({} Ko){}.",
@@ -771,6 +883,10 @@ pub async fn sauvegarde_pull(db: State<'_, Db>, cle: Option<String>) -> R<String
     {
         let c = db.0.lock().map_err(e)?;
         crate::commands::import_json(&c, &json)?;
+        // L'import réécrit les réglages : le repère de synchro se pose après,
+        // sinon il serait remplacé par celui de la machine d'origine.
+        let horodatage = cible.trim_start_matches(PREFIXE_SAUVEGARDE).trim_end_matches(".enc");
+        set_setting(&c, CLE_DERNIERE_SYNC, horodatage)?;
     }
     Ok("✅ Sauvegarde restaurée. Rechargez l'application pour voir les données.".into())
 }
@@ -873,6 +989,43 @@ mod tests_sauvegarde {
 
         for s in apres { cl.delete_object().bucket(&cfg.bucket).key(&s.cle).send().await.ok(); }
         println!("aller-retour S3 validé sur {}", cfg.bucket);
+    }
+
+    #[test]
+    fn sans_repere_on_ne_reclame_pas_denvoi() {
+        // Première ouverture : rien n'a jamais été synchronisé, donc rien ne
+        // permet de dire que du travail attend d'être envoyé.
+        assert_eq!(decider("2026-09-12-100000", "", ""), (false, false));
+        // En revanche une sauvegarde existante mérite d'être proposée.
+        assert_eq!(decider("2026-09-12-100000", "", "2026-09-11-200000"), (false, true));
+    }
+
+    #[test]
+    fn du_travail_local_apres_la_synchro_est_a_envoyer() {
+        assert_eq!(decider("2026-09-12-180000", "2026-09-12-090000", "2026-09-12-090000"), (true, false));
+    }
+
+    #[test]
+    fn une_sauvegarde_plus_recente_est_a_recuperer() {
+        assert_eq!(decider("2026-09-12-090000", "2026-09-12-090000", "2026-09-12-200000"), (false, true));
+    }
+
+    #[test]
+    fn les_deux_cotes_modifies_donnent_un_conflit() {
+        let (envoyer, recuperer) = decider("2026-09-12-180000", "2026-09-12-090000", "2026-09-12-200000");
+        assert!(envoyer && recuperer, "les deux doivent être signalés");
+    }
+
+    #[test]
+    fn rien_a_faire_quand_tout_colle() {
+        assert_eq!(decider("2026-09-12-090000", "2026-09-12-090000", "2026-09-12-090000"), (false, false));
+    }
+
+    #[test]
+    fn une_sauvegarde_anterieure_a_la_synchro_ne_se_propose_pas() {
+        // Elle existe, mais on l'a déjà dépassée : la reproposer ferait
+        // revenir en arrière.
+        assert_eq!(decider("2026-09-12-090000", "2026-09-12-090000", "2026-09-01-080000"), (false, false));
     }
 
     #[test]
