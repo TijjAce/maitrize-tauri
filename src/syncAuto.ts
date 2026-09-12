@@ -28,12 +28,17 @@ async function passage() {
   enCours = true;
   try {
     const r = await api.syncDeltas();
+    // Les fichiers après les lignes : une ligne qui désigne une photo absente
+    // affiche un cadre vide, l'inverse ne gêne personne.
+    const f = await api.syncFichiers().catch(() => null);
     // Ne prévenir les écrans que si quelque chose est réellement arrivé :
     // un rafraîchissement toutes les 30 secondes pour rien ferait clignoter
     // l'interface sans raison.
-    if (r.appliques > 0) {
+    if (r.appliques > 0 || (f?.recus ?? 0) > 0) {
       window.dispatchEvent(new CustomEvent(EVT_DONNEES_DISTANTES));
     }
+    // Gros lot de photos : on repasse vite plutôt que d'attendre 30 secondes.
+    prochainDelai = (f?.restants ?? 0) > 0 ? APRES_ECRITURE : PERIODE;
   } catch {
     /* silencieux : l'état s'affiche dans le bandeau */
   } finally {

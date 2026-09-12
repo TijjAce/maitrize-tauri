@@ -60,6 +60,12 @@ pub struct Changement {
     /// Machine d'origine. Départage les horodatages identiques.
     #[serde(default)]
     pub origine: String,
+    /// États CRDT des champs de prose, en base64, par nom de champ.
+    ///
+    /// Ils accompagnent la ligne : c'est ce qui permet de fusionner deux
+    /// rédactions du même déroulé de séance au lieu d'en perdre une.
+    #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
+    pub textes: std::collections::HashMap<String, String>,
 }
 
 /// Départage deux écritures concurrentes sur la même ligne.
@@ -76,6 +82,16 @@ fn gagne(a: (&str, &str), b: (&str, &str)) -> bool {
 }
 
 pub fn creer_table(conn: &Connection) {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS textes_crdt (
+            table_nom TEXT NOT NULL,
+            ligne_id TEXT NOT NULL,
+            champ TEXT NOT NULL,
+            etat BLOB NOT NULL,
+            PRIMARY KEY (table_nom, ligne_id, champ)
+         );",
+    )
+    .ok();
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS changements (
             seq INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -173,12 +189,83 @@ pub fn changements_locaux(
                 horodatage: r.get(4)?,
                 origine: r.get(5)?,
                 avant: r.get(6)?,
+                textes: Default::default(),
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
+    drop(st);
+    let mut lignes = lignes;
+    for ch in &mut lignes {
+        if ch.operation == "maj" {
+            enrichir_textes(conn, ch);
+        }
+    }
     // Le repère avance jusqu'au bout du journal, y compris sur les lignes
     // distantes écartées : sinon on les relirait à chaque envoi.
     Ok((lignes, dernier_seq(conn).max(depuis)))
+}
+
+/// Lit l'état CRDT d'un champ, ou rien s'il n'en a pas encore.
+fn etat_crdt(c: &Connection, table: &str, ligne: &str, champ: &str) -> Vec<u8> {
+    c.query_row(
+        "SELECT etat FROM textes_crdt WHERE table_nom=?1 AND ligne_id=?2 AND champ=?3",
+        params![table, ligne, champ],
+        |r| r.get(0),
+    )
+    .unwrap_or_default()
+}
+
+fn poser_crdt(c: &Connection, table: &str, ligne: &str, champ: &str, etat: &[u8]) {
+    c.execute(
+        "INSERT OR REPLACE INTO textes_crdt (table_nom, ligne_id, champ, etat) VALUES (?1,?2,?3,?4)",
+        params![table, ligne, champ, etat],
+    )
+    .ok();
+}
+
+/// Enrichit un changement sortant des états CRDT de ses champs de prose.
+///
+/// L'édition se déduit de l'avant et de l'après que le journal a déjà : nul
+/// besoin d'instrumenter les écrans de saisie, qui écrivent des chaînes
+/// entières sans savoir ce qu'ils ont changé.
+pub fn enrichir_textes(c: &Connection, ch: &mut Changement) {
+    use base64::Engine;
+    let Ok(apres) = serde_json::from_str::<serde_json::Value>(&ch.donnees) else { return };
+    let avant: serde_json::Value = serde_json::from_str(&ch.avant).unwrap_or(serde_json::Value::Null);
+    for (champ, valeur) in apres.as_object().into_iter().flatten() {
+        if !crate::texte_crdt::est_texte_libre(&ch.table_nom, champ) {
+            continue;
+        }
+        let neuf = valeur.as_str().unwrap_or_default();
+        let vieux = avant.get(champ).and_then(|v| v.as_str()).unwrap_or_default();
+        if neuf == vieux {
+            continue;
+        }
+        let etat = etat_crdt(c, &ch.table_nom, &ch.ligne_id, champ);
+        let nouvel = crate::texte_crdt::enregistrer_edition(&etat, vieux, neuf);
+        poser_crdt(c, &ch.table_nom, &ch.ligne_id, champ, &nouvel);
+        ch.textes.insert(
+            champ.clone(),
+            base64::engine::general_purpose::STANDARD.encode(&nouvel),
+        );
+    }
+}
+
+/// Fusionne les états CRDT reçus et renvoie les textes qui en résultent.
+fn fusionner_textes(
+    c: &Connection,
+    ch: &Changement,
+) -> std::collections::HashMap<String, String> {
+    use base64::Engine;
+    let mut sortie = std::collections::HashMap::new();
+    for (champ, b64) in &ch.textes {
+        let Ok(entrant) = base64::engine::general_purpose::STANDARD.decode(b64) else { continue };
+        let local = etat_crdt(c, &ch.table_nom, &ch.ligne_id, champ);
+        let (fusionne, texte) = crate::texte_crdt::fusionner(&local, &entrant);
+        poser_crdt(c, &ch.table_nom, &ch.ligne_id, champ, &fusionne);
+        sortie.insert(champ.clone(), texte);
+    }
+    sortie
 }
 
 /// Les champs qu'une écriture a réellement modifiés.
@@ -285,6 +372,7 @@ pub fn appliquer(conn: &mut Connection, recus: &[Changement]) -> rusqlite::Resul
             if cols.is_empty() {
                 continue;
             }
+            let ch_a_des_textes = !c.textes.is_empty();
             let entrant: serde_json::Value =
                 serde_json::from_str(&c.donnees).unwrap_or(serde_json::Value::Null);
             let objet = cols.iter().map(|x| format!("'{x}', \"{x}\"")).collect::<Vec<_>>().join(", ");
@@ -296,6 +384,11 @@ pub fn appliquer(conn: &mut Connection, recus: &[Changement]) -> rusqlite::Resul
                 )
                 .ok()
                 .and_then(|s| serde_json::from_str(&s).ok());
+
+            // Les champs de prose passent par le CRDT : leur valeur fusionnée
+            // remplace celle que transporte la ligne, laquelle ne représente
+            // que la vue de l'expéditeur.
+            let textes = if ch_a_des_textes { fusionner_textes(&tx, c) } else { Default::default() };
 
             let a_ecrire = match ici {
                 Some(locale) => {
@@ -313,6 +406,12 @@ pub fn appliquer(conn: &mut Connection, recus: &[Changement]) -> rusqlite::Resul
                 // Ligne absente ici : rien à fusionner, on la crée.
                 None => entrant,
             };
+            let mut a_ecrire = a_ecrire;
+            if let Some(o) = a_ecrire.as_object_mut() {
+                for (champ, texte) in &textes {
+                    o.insert(champ.clone(), serde_json::Value::String(texte.clone()));
+                }
+            }
             let json = a_ecrire.to_string();
             let noms = cols.iter().map(|x| format!("\"{x}\"")).collect::<Vec<_>>().join(", ");
             let valeurs = cols
@@ -531,6 +630,47 @@ mod tests {
         assert_eq!(nom, "Quang N.", "celle de B ne doit pas disparaître");
     }
 
+    /// Le cas que la fusion champ par champ ne savait pas traiter : deux
+    /// rédactions du **même** déroulé de séance. L'une écrasait l'autre.
+    #[test]
+    fn deux_redactions_du_meme_deroule_se_fusionnent() {
+        let neuve = |nom: &str| {
+            let c = Connection::open_in_memory().unwrap();
+            c.execute_batch("CREATE TABLE seances (id TEXT PRIMARY KEY, titre TEXT, deroulement TEXT);").unwrap();
+            creer_table(&c);
+            poser_declencheurs(&c, nom);
+            c
+        };
+        let mut a = neuve("A");
+        let mut b = neuve("B");
+
+        // Départ commun.
+        a.execute("INSERT INTO seances (id, titre, deroulement) VALUES ('s1','Lecture','Phase 1.\nPhase 2.')", []).unwrap();
+        let (depart, repere_a) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut b, &depart).unwrap();
+        let (_, repere_b) = changements_locaux(&b, 0).unwrap();
+
+        // Chacun complète une phase différente, sans voir l'autre.
+        std::thread::sleep(std::time::Duration::from_millis(3));
+        a.execute("UPDATE seances SET deroulement='Phase 1 : rituel.\nPhase 2.' WHERE id='s1'", []).unwrap();
+        b.execute("UPDATE seances SET deroulement='Phase 1.\nPhase 2 : ateliers.' WHERE id='s1'", []).unwrap();
+
+        let (de_a, _) = changements_locaux(&a, repere_a).unwrap();
+        let (de_b, _) = changements_locaux(&b, repere_b).unwrap();
+        assert!(!de_a[0].textes.is_empty(), "l'état CRDT doit accompagner le changement");
+
+        appliquer(&mut b, &de_a).unwrap();
+        appliquer(&mut a, &de_b).unwrap();
+
+        let lire = |c: &Connection| -> String {
+            c.query_row("SELECT deroulement FROM seances WHERE id='s1'", [], |r| r.get(0)).unwrap()
+        };
+        let (ta, tb) = (lire(&a), lire(&b));
+        assert!(tb.contains("rituel"), "l'ajout de A doit survivre chez B : {tb}");
+        assert!(tb.contains("ateliers"), "celui de B doit rester : {tb}");
+        assert_eq!(ta, tb, "les deux machines doivent afficher le même texte");
+    }
+
     #[test]
     fn un_changement_dune_table_inconnue_est_ignore() {
         let mut b = machine();
@@ -542,6 +682,7 @@ mod tests {
             horodatage: "2030-01-01T00:00:00.000Z".into(),
             origine: "Z".into(),
             avant: String::new(),
+            textes: Default::default(),
         };
         assert_eq!(appliquer(&mut b, &[intrus]).unwrap(), 0);
     }
