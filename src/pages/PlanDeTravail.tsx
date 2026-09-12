@@ -5,7 +5,8 @@ import { api, Sequence, MaterielItem, couleurHex, couleurPourMatiere, newId, now
 import { Input, Empty, Confirm, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { openCtx } from "../components/ctxmenu";
-import { FormMateriel } from "./Materiel";
+import { FormMateriel, Vignettes } from "../components/FormMateriel";
+import { lireVideos } from "../videos";
 import {
   arbre, aplatir, normaliser, parent, estDans, renommerChemin,
 } from "../dossiers";
@@ -29,6 +30,8 @@ async function dupliquerSequence(seq: Sequence) {
   const seances = await api.seancesList(seq.id);
   for (const s of seances) await api.seanceSave({ ...s, id: crypto.randomUUID(), sequenceId: copie.id });
 }
+
+const nb = (json: string): number => { try { return JSON.parse(json || "[]").length; } catch { return 0; } };
 
 type Element =
   | { genre: "sequence"; id: string; titre: string; dossier: string; seq: Sequence }
@@ -287,6 +290,14 @@ function Vignette({ element, onOuvrir, onRanger, onSupprimer, onDuplique }: {
           ? [seq!.matiere, seq!.cycle].filter(Boolean).join(" · ") || "Séquence"
           : element.mat.sousDomaineTitre || "Matériel"}
       </div>
+      {element.genre === "materiel" && (
+        <div style={{ display: "flex", gap: 5, marginTop: 6, flexWrap: "wrap" }}>
+          {nb(element.mat.pdfsJson) > 0 && <span className="chip">📄 {nb(element.mat.pdfsJson)}</span>}
+          {nb(element.mat.imagesJson) > 0 && <span className="chip">📷 {nb(element.mat.imagesJson)}</span>}
+          {nb(element.mat.coffreJson) > 0 && <span className="chip">🔐 {nb(element.mat.coffreJson)}</span>}
+        </div>
+      )}
+      {element.genre === "materiel" && <Vignettes videos={lireVideos(element.mat.videosJson)} />}
     </div>
   );
 }
