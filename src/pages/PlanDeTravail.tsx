@@ -31,6 +31,36 @@ type Element =
   | { genre: "sequence"; id: string; titre: string; dossier: string; seq: Sequence }
   | { genre: "materiel"; id: string; titre: string; dossier: string; mat: MaterielItem };
 
+/**
+ * Un élément glissé depuis le bureau lui-même porte notre format : il se range
+ * dans un dossier, il ne crée rien.
+ */
+const vientDuBureau = (e: React.DragEvent) =>
+  Array.from(e.dataTransfer.types).includes("application/json");
+
+/**
+ * Le texte d'un dépôt, quel que soit le type employé par la plateforme.
+ *
+ * Safari, Chrome et le Finder n'annoncent pas les mêmes types pour un même
+ * lien ; n'en interroger qu'un revient à ne marcher que sur l'un d'eux.
+ * `text/uri-list` peut par ailleurs contenir plusieurs lignes, dont des
+ * commentaires : on prend la première adresse.
+ */
+function lireTexteDepose(dt: DataTransfer): string {
+  for (const type of ["text/uri-list", "text/plain", "URL", "public.url", "text/html"]) {
+    let valeur = "";
+    try { valeur = dt.getData(type); } catch { continue; }
+    if (!valeur) continue;
+    const ligne = valeur.split(/[\r\n]+/).map((l) => l.trim())
+      .find((l) => l && !l.startsWith("#") && /^https?:\/\//i.test(l));
+    if (ligne) return ligne;
+    // text/html : le lien est dans un attribut href.
+    const href = valeur.match(/href=["']?(https?:\/\/[^"'\s>]+)/i)?.[1];
+    if (href) return href;
+  }
+  return "";
+}
+
 const liste = (json: string): string[] => { try { return JSON.parse(json || "[]"); } catch { return []; } };
 const nb = (json: string): number => liste(json).length;
 
@@ -239,15 +269,20 @@ export default function PlanDeTravail() {
       {/* ── La surface ── */}
       <div ref={zoneFichiers}
         onDragOver={(e) => {
-          if (e.dataTransfer.types.includes("application/json")) return;
-          e.preventDefault(); setSurvolBureau(true);
+          if (vientDuBureau(e)) return;
+          e.preventDefault();
+          // « copy » plutôt que le défaut : sans lui, certains navigateurs
+          // affichent le curseur d'interdiction même quand le dépôt est accepté.
+          e.dataTransfer.dropEffect = "copy";
+          setSurvolBureau(true);
         }}
         onDragLeave={() => setSurvolBureau(false)}
         onDrop={async (e) => {
-          if (e.dataTransfer.types.includes("application/json")) return;
+          if (vientDuBureau(e)) return;
           e.preventDefault(); setSurvolBureau(false);
-          const texte = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
-          if (texte && !(await deposerLien(texte))) toast("Ce n'est pas une adresse web.", { icone: "⚠️" });
+          const texte = lireTexteDepose(e.dataTransfer);
+          if (!texte) return; // un dépôt de fichiers est traité par la zone dédiée
+          if (!(await deposerLien(texte))) toast("Ce n'est pas une adresse web.", { icone: "⚠️" });
         }}
         onContextMenu={(e) => {
           // Sur une tuile, c'est son propre menu qui s'ouvre.
