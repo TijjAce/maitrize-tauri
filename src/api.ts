@@ -420,6 +420,8 @@ export const api = {
     invoke<[PictoArasaac[], string[]]>("arasaac_par_mots", { mots }),
   jeuGenerer: (jeu: string, pictos: PictoArasaac[], options: OptionsJeu, titre: string) =>
     invoke<string>("jeu_generer", { jeu, pictos, options, titre }),
+  mistralRechercheWeb: (question: string) =>
+    invoke<ReponseWeb>("mistral_recherche_web", { question }),
   mistralVision: (consigne: string, imageB64: string, model?: string) =>
     invoke<string>("mistral_vision", { consigne, imageB64, model: normaliserModele(model) }),
   arasaacChercher: (q: string, limite = 40) =>
@@ -625,6 +627,10 @@ export interface Gabarit {
   colonnes: number; lignes: number; paysage: boolean; ecart: number; cases: CaseTla[];
 }
 export const caseVide = (): CaseTla => ({ pictoId: null, fichier: "", mot: "", nature: "nom" });
+
+/** Réponse d'une recherche web, avec ses sources. */
+export interface SourceWeb { titre: string; url: string }
+export interface ReponseWeb { texte: string; sources: SourceWeb[]; aCherche: boolean }
 
 /** Verdict d'un test réel sur un modèle, pour l'écran des réglages. */
 export interface EtatModele { id: string; disponible: boolean; detail: string }
