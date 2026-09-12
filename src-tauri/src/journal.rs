@@ -48,6 +48,46 @@ pub const TABLES_SYNC: &[&str] = &[
 /// ne le signale. On lui fabrique un identifiant à partir de ses deux clés.
 const LIAISONS: &[(&str, &str, &str)] = &[("atelier_espace", "atelier_id", "espace_id")];
 
+/// Réglages qui voyagent, nommés un par un.
+///
+/// `settings` mêle trois choses : du travail (emploi du temps, plan de salle,
+/// tableaux de langage), des préférences, et des secrets. Tout exclure — ce
+/// que je faisais — laissait le nom de l'enseignant, son école et son emploi
+/// du temps sur une seule machine. Tout inclure enverrait la clé API et la
+/// phrase secrète à l'autre bout.
+///
+/// La liste est donc **blanche**, jamais noire : un réglage ajouté demain ne
+/// partira pas tant qu'on ne l'aura pas nommé. L'oubli fait rester une donnée
+/// sur place — ennuyeux ; l'inverse ferait fuiter un secret — grave.
+const REGLAGES_PARTAGES: &[&str] = &[
+    "enseignantNom", "ecole", "anneeCourante", "typeStructure", "zoneVacances",
+    "notesRapides", "mistralModel", "iaContexte",
+    "apparence", "accent", "styleInterface", "liseret",
+];
+
+/// Familles de réglages qui voyagent, par préfixe : emploi du temps, plan de
+/// salle, tableaux de langage. Ce sont des données de travail, pas des
+/// préférences d'affichage.
+const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:"];
+
+/// Ce qui ne doit jamais partir, quoi qu'il arrive.
+///
+/// `identifiantMachine` en particulier : c'est lui qui départage deux
+/// écritures simultanées. Le synchroniser donnerait le même identifiant aux
+/// deux machines, et le départage cesserait de fonctionner au moment précis
+/// où il sert.
+pub fn reglage_partage(cle: &str) -> bool {
+    const JAMAIS: &[&str] = &[
+        "mistralApiKey", "sauvegarde_phrase", "identifiantMachine", "nomMachine",
+        "derniereSync", "derniereSauvegardeAuto", "syncSeqEnvoyee", "syncDeltasVus",
+        "cgu", "onboardingVu", "vacancesCache",
+    ];
+    if JAMAIS.contains(&cle) || cle.starts_with("sync_") {
+        return false;
+    }
+    REGLAGES_PARTAGES.contains(&cle) || PREFIXES_PARTAGES.iter().any(|p| cle.starts_with(p))
+}
+
 /// Une écriture, telle que le journal la retient.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -138,6 +178,7 @@ pub fn poser_declencheurs(conn: &Connection, machine: &str) {
     // SQLite n'ayant pas de variable de session à interroger.
     let machine = machine.replace('\'', "");
     poser_declencheurs_liaisons(conn, &machine);
+    poser_declencheurs_reglages(conn, &machine);
     for table in TABLES_SYNC {
         let cols = colonnes(conn, table);
         if cols.is_empty() || !cols.iter().any(|c| c == "id") {
@@ -173,6 +214,33 @@ pub fn poser_declencheurs(conn: &Connection, machine: &str) {
         );
         conn.execute_batch(&sql).ok();
     }
+}
+
+/// Déclencheur des réglages partagés.
+///
+/// La clé primaire est `cle`, pas `id` : les déclencheurs généraux ne
+/// s'appliquent pas. La clause WHEN reprend la liste blanche, de sorte qu'un
+/// secret n'entre jamais dans le journal — même pas pour être filtré plus tard.
+fn poser_declencheurs_reglages(conn: &Connection, machine: &str) {
+    let noms = REGLAGES_PARTAGES.iter().map(|c| format!("'{c}'")).collect::<Vec<_>>().join(", ");
+    let prefixes = PREFIXES_PARTAGES
+        .iter()
+        .map(|p| format!("NEW.cle LIKE '{p}%'"))
+        .collect::<Vec<_>>()
+        .join(" OR ");
+    let condition = format!("NEW.cle IN ({noms}) OR {prefixes}");
+    let insertion = format!(
+        "INSERT INTO changements (table_nom, ligne_id, operation, donnees, avant, horodatage, origine)
+         VALUES ('settings', NEW.cle, 'maj', json_object('cle', NEW.cle, 'valeur', NEW.valeur), '',
+                 strftime('%Y-%m-%dT%H:%M:%fZ','now'), '{machine}');"
+    );
+    let sql = format!(
+        "DROP TRIGGER IF EXISTS jrn_settings_i;
+         DROP TRIGGER IF EXISTS jrn_settings_u;
+         CREATE TRIGGER jrn_settings_i AFTER INSERT ON settings WHEN {condition} BEGIN {insertion} END;
+         CREATE TRIGGER jrn_settings_u AFTER UPDATE ON settings WHEN {condition} BEGIN {insertion} END;"
+    );
+    conn.execute_batch(&sql).ok();
 }
 
 /// Déclencheurs des tables de liaison, dont la clé est un couple.
@@ -370,6 +438,25 @@ pub fn appliquer(conn: &mut Connection, recus: &[Changement]) -> rusqlite::Resul
             .query_row("SELECT COALESCE(MAX(seq), 0) FROM changements", [], |r| r.get(0))
             .unwrap_or(0);
         // Table inconnue : on ignore plutôt que d'écrire au hasard.
+        if c.table_nom == "settings" {
+            // Deuxième contrôle à l'arrivée : une machine mal réglée, ou une
+            // version plus ancienne, ne doit pas pouvoir nous imposer une clé
+            // que nous considérons comme un secret.
+            if !reglage_partage(&c.ligne_id) {
+                continue;
+            }
+            let valeur: Option<String> = serde_json::from_str::<serde_json::Value>(&c.donnees)
+                .ok()
+                .and_then(|v| v.get("valeur").and_then(|x| x.as_str()).map(str::to_string));
+            if let Some(v) = valeur {
+                tx.execute(
+                    "INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)",
+                    params![c.ligne_id, v],
+                )?;
+                n += 1;
+            }
+            continue;
+        }
         if !TABLES_SYNC.contains(&c.table_nom.as_str()) {
             continue;
         }
@@ -755,6 +842,93 @@ mod tests {
         appliquer(&mut b, &suppr).unwrap();
         let n: i64 = b.query_row("SELECT COUNT(*) FROM atelier_espace", [], |r| r.get(0)).unwrap();
         assert_eq!(n, 0, "la suppression doit arriver");
+    }
+
+    #[test]
+    fn les_secrets_ne_partent_jamais() {
+        // Le test le plus important du fichier : ces clés, sur le stockage ou
+        // sur l'autre machine, seraient une fuite.
+        for secret in ["mistralApiKey", "sauvegarde_phrase", "sync_secret",
+                       "sync_endpoint", "sync_access", "sync_bucket"] {
+            assert!(!reglage_partage(secret), "« {secret} » ne doit pas voyager");
+        }
+    }
+
+    #[test]
+    fn lidentifiant_de_machine_reste_local() {
+        // C'est lui qui départage deux écritures simultanées : le partager
+        // donnerait le même identifiant aux deux machines, et le départage
+        // cesserait de fonctionner au moment où il sert.
+        assert!(!reglage_partage("identifiantMachine"));
+        assert!(!reglage_partage("nomMachine"));
+        // Les repères de synchronisation sont locaux eux aussi.
+        assert!(!reglage_partage("derniereSync"));
+        assert!(!reglage_partage("syncSeqEnvoyee"));
+    }
+
+    #[test]
+    fn le_travail_de_lenseignant_voyage() {
+        for cle in ["enseignantNom", "ecole", "anneeCourante", "typeStructure",
+                    "notesRapides", "edt:mode", "edt:horaires:2025-2026",
+                    "salle:profils", "tla:gabarits"] {
+            assert!(reglage_partage(cle), "« {cle} » devrait voyager");
+        }
+    }
+
+    #[test]
+    fn un_reglage_inconnu_reste_sur_place() {
+        // Liste blanche : ce qu'on n'a pas nommé ne part pas. Un oubli fait
+        // rester une donnée sur place ; l'inverse ferait fuiter un secret.
+        assert!(!reglage_partage("nouveauReglageAjouteDemain"));
+    }
+
+    #[test]
+    fn les_reglages_partages_traversent() {
+        let neuve = |nom: &str| {
+            let c = Connection::open_in_memory().unwrap();
+            c.execute_batch("CREATE TABLE settings (cle TEXT PRIMARY KEY, valeur TEXT);").unwrap();
+            creer_table(&c);
+            poser_declencheurs(&c, nom);
+            c
+        };
+        let a = neuve("A");
+        let mut b = neuve("B");
+        a.execute("INSERT INTO settings VALUES ('enseignantNom','Clément T.')", []).unwrap();
+        a.execute("INSERT INTO settings VALUES ('ecole','IME Bourg-la-Reine')", []).unwrap();
+        a.execute("INSERT INTO settings VALUES ('mistralApiKey','SECRET')", []).unwrap();
+        a.execute("INSERT INTO settings VALUES ('identifiantMachine','uuid-de-A')", []).unwrap();
+
+        let (de_a, _) = changements_locaux(&a, 0).unwrap();
+        let cles: Vec<&str> = de_a.iter().map(|c| c.ligne_id.as_str()).collect();
+        assert!(cles.contains(&"enseignantNom") && cles.contains(&"ecole"));
+        assert!(!cles.contains(&"mistralApiKey"), "la clé API est dans le journal : {cles:?}");
+        assert!(!cles.contains(&"identifiantMachine"), "l'identifiant de machine voyage : {cles:?}");
+
+        appliquer(&mut b, &de_a).unwrap();
+        let nom: String = b.query_row("SELECT valeur FROM settings WHERE cle='enseignantNom'", [], |r| r.get(0)).unwrap();
+        assert_eq!(nom, "Clément T.");
+        let secret: Option<String> = b.query_row("SELECT valeur FROM settings WHERE cle='mistralApiKey'", [], |r| r.get(0)).ok();
+        assert!(secret.is_none(), "la clé API a traversé");
+    }
+
+    #[test]
+    fn un_secret_force_de_lexterieur_est_refuse() {
+        // Une machine mal réglée, ou une version plus ancienne, ne doit pas
+        // pouvoir nous imposer une clé que nous tenons pour un secret.
+        let mut b = Connection::open_in_memory().unwrap();
+        b.execute_batch("CREATE TABLE settings (cle TEXT PRIMARY KEY, valeur TEXT);").unwrap();
+        creer_table(&b);
+        poser_declencheurs(&b, "B");
+        let intrus = Changement {
+            table_nom: "settings".into(), ligne_id: "mistralApiKey".into(),
+            operation: "maj".into(),
+            donnees: r#"{"cle":"mistralApiKey","valeur":"VOLEE"}"#.into(),
+            avant: String::new(), horodatage: "2030-01-01T00:00:00.000Z".into(),
+            origine: "X".into(), textes: Default::default(),
+        };
+        assert_eq!(appliquer(&mut b, &[intrus]).unwrap(), 0);
+        let n: i64 = b.query_row("SELECT COUNT(*) FROM settings", [], |r| r.get(0)).unwrap();
+        assert_eq!(n, 0);
     }
 
     #[test]
