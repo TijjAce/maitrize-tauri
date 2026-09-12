@@ -80,7 +80,7 @@ function Contenu({ dossier: d }: { dossier: Dossier }) {
               l'onglet Observations.
             </p>
           ) : d.observations.axes.map((a) => (
-            <div key={a.id} style={{ padding: "6px 0", borderTop: "1px solid var(--bord)", fontSize: 13 }}>
+            <div key={a.id} style={{ padding: "6px 0", borderTop: "1px solid var(--border)", fontSize: 13 }}>
               {a.texte}
               <div className="meta">{new Date(a.date).toLocaleDateString("fr-FR")}</div>
             </div>
@@ -97,7 +97,7 @@ function Contenu({ dossier: d }: { dossier: Dossier }) {
           {!d.observations.parType.length ? (
             <p style={{ fontSize: 13, color: "var(--text-2)", margin: 0 }}>Aucune observation.</p>
           ) : d.observations.parType.map((g) => (
-            <div key={g.type} style={{ borderTop: "1px solid var(--bord)", padding: "7px 0" }}>
+            <div key={g.type} style={{ borderTop: "1px solid var(--border)", padding: "7px 0" }}>
               <div style={{ display: "flex", gap: 7, alignItems: "center" }}>
                 <span className="chip">{g.type}</span>
                 <span style={{ fontSize: 12, color: "var(--text-2)" }}>{g.items.length}</span>
@@ -123,7 +123,7 @@ function Contenu({ dossier: d }: { dossier: Dossier }) {
             <p style={{ fontSize: 13, color: "var(--text-2)", margin: 0 }}>Aucune note enregistrée.</p>
           ) : d.notes.slice(0, 8).map((l) => (
             <div key={l.note.id} style={{ display: "flex", gap: 8, alignItems: "baseline",
-              borderTop: "1px solid var(--bord)", padding: "5px 0", fontSize: 13 }}>
+              borderTop: "1px solid var(--border)", padding: "5px 0", fontSize: 13 }}>
               <span style={{ flex: 1 }}>
                 {l.evaluation.titre}
                 <div className="meta">{l.evaluation.matiere} · {new Date(l.evaluation.date).toLocaleDateString("fr-FR")}</div>
@@ -133,7 +133,7 @@ function Contenu({ dossier: d }: { dossier: Dossier }) {
             </div>
           ))}
           {d.progressions.total > 0 && (
-            <div style={{ borderTop: "1px solid var(--bord)", paddingTop: 7, marginTop: 7, fontSize: 13 }}>
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 7, marginTop: 7, fontSize: 13 }}>
               Progressions : <b>{d.progressions.faites}</b> / {d.progressions.total}
             </div>
           )}
@@ -143,7 +143,7 @@ function Contenu({ dossier: d }: { dossier: Dossier }) {
           <div className="card">
             <h3 style={{ marginTop: 0 }}>📎 Papiers <span style={{ fontWeight: 400, color: "var(--text-2)", fontSize: 13 }}>({d.papiers.length})</span></h3>
             {d.papiers.map((p) => (
-              <div key={p.id} style={{ borderTop: "1px solid var(--bord)", padding: "5px 0", fontSize: 13 }}>
+              <div key={p.id} style={{ borderTop: "1px solid var(--border)", padding: "5px 0", fontSize: 13 }}>
                 <span className="chip">{p.type}</span> {p.intitule}
                 <div className="meta">{new Date(p.dateAjout).toLocaleDateString("fr-FR")}</div>
               </div>
@@ -169,7 +169,7 @@ function Identite({ eleve, age }: { eleve: Eleve; age?: number }) {
     <div className="card" style={{ marginBottom: 14, display: "flex", gap: 14, alignItems: "center" }}>
       {src
         ? <img src={src} alt="" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover" }} />
-        : <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--fond-2)",
+        : <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--panel-2)",
             display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
             {eleve.nom.trim().charAt(0).toUpperCase() || "?"}
           </div>}
@@ -187,7 +187,7 @@ function Identite({ eleve, age }: { eleve: Eleve; age?: number }) {
 
 function LignePiece({ piece }: { piece: Piece }) {
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "center", borderTop: "1px solid var(--bord)", padding: "6px 0", fontSize: 13 }}>
+    <div style={{ display: "flex", gap: 8, alignItems: "center", borderTop: "1px solid var(--border)", padding: "6px 0", fontSize: 13 }}>
       <span>{piece.rempli ? "✅" : "⬜"}</span>
       <span style={{ flex: 1 }}>
         {piece.label}

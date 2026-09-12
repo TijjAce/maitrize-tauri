@@ -179,7 +179,7 @@ function Apercu({ rendu, constats, retenus, survole }: {
   rendu: PageRendue; constats: Constat[]; retenus: Set<number>; survole: number | null;
 }) {
   return (
-    <div style={{ position: "relative", lineHeight: 0, border: "1px solid var(--bord)", borderRadius: 6, overflow: "hidden" }}>
+    <div style={{ position: "relative", lineHeight: 0, border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden" }}>
       <img src={`data:image/png;base64,${rendu.image}`} alt="" style={{ width: "100%", display: "block" }} />
       {constats.map((c, i) => c.zone && (
         <div key={i} style={{
@@ -204,7 +204,7 @@ function Ligne({ constat, coche, onToggle, onSurvol }: {
     <label onMouseEnter={() => onSurvol(true)} onMouseLeave={() => onSurvol(false)}
       style={{
         display: "flex", gap: 9, alignItems: "flex-start", padding: "8px 0",
-        borderTop: "1px solid var(--bord)", fontSize: 13, cursor: "pointer",
+        borderTop: "1px solid var(--border)", fontSize: 13, cursor: "pointer",
       }}>
       <input type="checkbox" checked={coche} onChange={onToggle} style={{ marginTop: 3 }} />
       <span style={{ flex: 1 }}>

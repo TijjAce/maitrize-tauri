@@ -147,7 +147,7 @@ function LigneMachine({ m }: { m: Machine }) {
   const ico = m.plateforme === "Windows" ? "🪟" : m.plateforme === "macOS" ? "🍎" : "🐧";
   return (
     <div style={{ display: "flex", gap: 10, alignItems: "center", padding: "7px 0",
-      borderTop: "1px solid var(--bord)", fontSize: 13 }}>
+      borderTop: "1px solid var(--border)", fontSize: 13 }}>
       <span style={{ fontSize: 18 }}>{ico}</span>
       <span style={{ flex: 1 }}>
         <b>{m.nom}</b>{m.moi && <span style={{ color: "var(--text-2)" }}> — cet ordinateur</span>}
