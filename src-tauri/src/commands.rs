@@ -59,13 +59,14 @@ pub fn sequence_save(db: State<Db>, sequence: Sequence) -> R<Sequence> {
         "INSERT OR REPLACE INTO sequences
          (id,titre,matiere,cycle,objectifs,competences,competence_visee,image_nom,couleur,
           date_creation,periode,annee,rating_engagement,rating_facilite,rating_apprentissage,
-          rating_date_maj,projet_id,video)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18)",
+          rating_date_maj,projet_id,video,dossier)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19)",
         params![sequence.id, sequence.titre, sequence.matiere, sequence.cycle,
                 sequence.objectifs, sequence.competences, sequence.competence_visee,
                 sequence.image_nom, sequence.couleur, sequence.date_creation, sequence.periode,
                 sequence.annee, sequence.rating_engagement, sequence.rating_facilite,
-                sequence.rating_apprentissage, sequence.rating_date_maj, sequence.projet_id, sequence.video],
+                sequence.rating_apprentissage, sequence.rating_date_maj, sequence.projet_id,
+                sequence.video, sequence.dossier],
     ).map_err(e)?;
     Ok(sequence)
 }

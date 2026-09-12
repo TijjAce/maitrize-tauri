@@ -128,7 +128,7 @@ export default function Materiel() {
             </div>
           );
         })}
-      {edit && <Form m={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
+      {edit && <FormMateriel m={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
       {del && <Confirm message={`Supprimer « ${del.titre} » ?`} onYes={() => api.materielDelete(del.id).then(reload)} onClose={() => setDel(null)} />}
       {choixPdf && (
         <Modal titre={`PDF — ${choixPdf.titre}`} onClose={() => setChoixPdf(null)}
@@ -150,7 +150,14 @@ export default function Materiel() {
 function nb(json: string): number { try { return JSON.parse(json || "[]").length; } catch { return 0; } }
 function liste(json: string): string[] { try { return JSON.parse(json || "[]"); } catch { return []; } }
 
-function Form({ m, onClose, onSaved }: { m: MaterielItem; onClose: () => void; onSaved: () => void }) {
+/**
+ * Fiche d'édition d'un matériel.
+ *
+ * Exportée parce que le plan de travail l'ouvre directement : depuis qu'il n'y
+ * a plus d'onglet Matériel, un double-clic doit éditer sur place plutôt que
+ * renvoyer vers un écran disparu.
+ */
+export function FormMateriel({ m, onClose, onSaved }: { m: MaterielItem; onClose: () => void; onSaved: () => void }) {
   const [v, setV] = React.useState<MaterielItem>(m);
   // Les dossiers déjà employés sont proposés à la saisie : sans cela, on écrit
   // « Lecture » puis « lecture » et le rangement se dédouble.
