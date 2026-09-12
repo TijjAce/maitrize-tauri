@@ -122,9 +122,32 @@ pub fn open() -> Connection {
     conn.pragma_update(None, "journal_mode", "WAL").ok();
     conn.pragma_update(None, "foreign_keys", "ON").ok();
     migrate(&conn);
+    crate::journal::creer_table(&conn);
+    crate::journal::poser_declencheurs(&conn, &identifiant_machine(&conn));
     crate::seed::seed_referentiels(&conn);
     sauvegarde_auto(&conn);
     conn
+}
+
+/// Identifiant de cette machine, tiré une fois puis conservé.
+///
+/// Il départage les écritures concurrentes sur une même ligne et ne quitte
+/// jamais le poste autrement que dans le journal : il ne sert qu'à ce que les
+/// deux ordinateurs tranchent un conflit de la même façon.
+pub fn identifiant_machine(conn: &Connection) -> String {
+    if let Ok(Some(id)) = conn.query_row(
+        "SELECT valeur FROM settings WHERE cle='identifiantMachine'",
+        [],
+        |r| r.get::<_, String>(0),
+    ).map(|v| if v.trim().is_empty() { None } else { Some(v) }) {
+        return id;
+    }
+    let id = uuid::Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT OR REPLACE INTO settings (cle, valeur) VALUES ('identifiantMachine', ?1)",
+        [&id],
+    ).ok();
+    id
 }
 
 /// Nombre de copies automatiques conservées (une par jour d'utilisation).
