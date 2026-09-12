@@ -101,6 +101,7 @@ pub fn run() {
             arasaac::arasaac_chercher, arasaac::arasaac_nature,
             commands::jeu_generer, commands::tla_generer,
             commands::dossier_donnees_get, commands::dossier_donnees_set,
+            commands::diag_ecrire, commands::diag_ouvrir,
             // Amis (appariement chiffré)
             amis::identite_get, amis::identite_set_nom,
             amis::invitation_creer, amis::invitation_accepter,

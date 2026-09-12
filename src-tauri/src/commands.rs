@@ -1676,6 +1676,35 @@ pub fn dossier_donnees_set(chemin: Option<String>) -> R<DossierDonnees> {
     Ok(dossier_donnees_get())
 }
 
+/// Journal de diagnostic, dans le dossier de données.
+///
+/// Une fenêtre d'application n'a pas de console visible : quand une action ne
+/// fait rien, il ne reste aucune trace et l'on en est réduit à deviner. Ce
+/// fichier garde les erreurs de la fenêtre, horodatées, pour qu'on puisse les
+/// lire après coup.
+#[tauri::command]
+pub fn diag_ecrire(ligne: String) {
+    use std::io::Write;
+    let chemin = crate::db::data_dir().join("diagnostic.log");
+    // Borne la taille : un journal qui grossit sans fin finit par gêner.
+    if std::fs::metadata(&chemin).map(|m| m.len() > 512_000).unwrap_or(false) {
+        std::fs::remove_file(&chemin).ok();
+    }
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&chemin) {
+        let _ = writeln!(f, "{} {}", chrono::Local::now().format("%H:%M:%S"), ligne);
+    }
+}
+
+/// Ouvre le journal de diagnostic dans l'application par défaut.
+#[tauri::command]
+pub fn diag_ouvrir() -> R<()> {
+    let chemin = crate::db::data_dir().join("diagnostic.log");
+    if !chemin.exists() {
+        return Err("Aucun incident enregistré pour l'instant.".into());
+    }
+    tauri_plugin_opener::open_path(&chemin, None::<&str>).map_err(e)
+}
+
 #[tauri::command]
 pub fn sauvegardes_auto_list() -> R<Vec<SauvegardeAuto>> {
     let dir = crate::db::sauvegardes_dir();

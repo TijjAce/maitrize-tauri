@@ -157,6 +157,32 @@ pub fn creer_table(conn: &Connection) {
             ON changements(table_nom, ligne_id);",
     )
     .ok();
+    completer_changements(conn);
+}
+
+/// Ajoute à `changements` les colonnes apparues après coup.
+///
+/// `CREATE TABLE IF NOT EXISTS` ne touche pas une table déjà présente : sur une
+/// base créée par une version antérieure, une colonne ajoutée depuis manquerait
+/// pour toujours. Les déclencheurs, eux, sont recréés à chaque démarrage et
+/// citent la colonne — l'écriture échoue alors sur **toutes** les tables
+/// journalisées, et l'application entière devient incapable d'enregistrer quoi
+/// que ce soit. Le dommage est hors de proportion avec la cause : on complète
+/// donc la table plutôt que de supposer qu'elle est à jour.
+fn completer_changements(conn: &Connection) {
+    const ATTENDUES: &[(&str, &str)] = &[
+        ("donnees", "TEXT NOT NULL DEFAULT ''"),
+        ("avant", "TEXT NOT NULL DEFAULT ''"),
+        ("origine", "TEXT NOT NULL DEFAULT ''"),
+        ("distant", "INTEGER NOT NULL DEFAULT 0"),
+    ];
+    let presentes = colonnes(conn, "changements");
+    for (col, decl) in ATTENDUES {
+        if !presentes.iter().any(|c| c == col) {
+            conn.execute(&format!("ALTER TABLE changements ADD COLUMN {col} {decl}"), [])
+                .ok();
+        }
+    }
 }
 
 /// Colonnes d'une table, lues dans le schéma réel.
@@ -968,5 +994,36 @@ mod tests {
         elaguer(&c, repere);
         assert_eq!(changements_locaux(&c, 0).unwrap().0.len(), 0);
         assert_eq!(noms(&c).len(), 2, "élaguer le journal ne touche pas aux données");
+    }
+
+    /// Une base créée par une version antérieure — sans les colonnes ajoutées
+    /// depuis — doit rester inscriptible. Le défaut réel : les déclencheurs
+    /// citaient `avant`, la table ne l'avait pas, et plus aucune écriture ne
+    /// passait nulle part dans l'application.
+    #[test]
+    fn une_base_ancienne_reste_inscriptible() {
+        let c = Connection::open_in_memory().unwrap();
+        c.execute_batch(
+            "CREATE TABLE eleves (id TEXT PRIMARY KEY, nom TEXT, niveau TEXT);
+             CREATE TABLE changements (
+                seq INTEGER PRIMARY KEY AUTOINCREMENT,
+                table_nom TEXT NOT NULL,
+                ligne_id TEXT NOT NULL,
+                operation TEXT NOT NULL,
+                horodatage TEXT NOT NULL
+             );",
+        )
+        .unwrap();
+
+        creer_table(&c);
+        poser_declencheurs(&c, "machine-1");
+
+        c.execute("INSERT INTO eleves (id, nom, niveau) VALUES ('e1', 'Lina', 'CP')", [])
+            .expect("l'écriture doit passer sur une base ancienne");
+
+        let n: i64 = c
+            .query_row("SELECT count(*) FROM changements WHERE table_nom = 'eleves'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(n, 1, "le changement doit être journalisé");
     }
 }

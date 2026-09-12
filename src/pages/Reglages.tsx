@@ -267,6 +267,7 @@ export default function Reglages() {
       <SauvegardeS3Card />
       <CopiesAutomatiques />
       <DossierDesDonnees />
+      <JournalIncidents />
 
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
         <h3 style={{ marginTop: 0 }}>💾 Export manuel</h3>
@@ -584,6 +585,33 @@ function CopiesAutomatiques() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Journal d'incidents.
+ *
+ * La fenêtre de l'application n'a pas de console : jusqu'ici, une action qui
+ * échouait ne laissait aucune trace et ne se distinguait pas d'un bouton mort.
+ * Chaque échec est désormais écrit sur le disque, horodaté.
+ */
+function JournalIncidents() {
+  const [msg, setMsg] = React.useState("");
+  const ouvrir = async () => {
+    setMsg("");
+    try { await api.diagOuvrir(); }
+    catch (e: any) { setMsg(String(e)); }
+  };
+  return (
+    <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
+      <h3 style={{ marginTop: 0 }}>🩺 Journal d'incidents</h3>
+      <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
+        Si une action semble ne rien faire, ce fichier dit pourquoi. À ouvrir
+        avant de signaler un problème — il ne contient aucune donnée d'élève.
+      </p>
+      <button className="btn" onClick={ouvrir}>Ouvrir le journal</button>
+      {msg && <p style={{ fontSize: 13, marginBottom: 0, color: "var(--text-2)" }}>{msg}</p>}
     </div>
   );
 }
