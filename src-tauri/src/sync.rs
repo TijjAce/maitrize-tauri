@@ -1213,3 +1213,102 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
     }
     Ok(res)
 }
+
+
+// ── Pièces jointes ─────────────────────────────────────────────────────────
+//
+// Photos d'élèves, PDF, images de séances. Le journal transporte les lignes,
+// pas les fichiers : une ligne peut donc arriver en désignant une image
+// absente, et l'écran afficherait un cadre vide sans expliquer pourquoi.
+//
+// Ces fichiers ont une propriété qui simplifie tout : ils sont **immuables**.
+// Remplacer la photo d'un élève écrit un nouveau fichier sous un nouveau nom
+// plutôt que de modifier l'ancien. Il n'y a donc jamais de conflit à arbitrer,
+// seulement des fichiers présents d'un côté et pas de l'autre.
+
+const PREFIXE_FICHIER: &str = "maitrize/fichiers/";
+/// Au-delà, on ne bloque pas la synchronisation sur un seul passage.
+const FICHIERS_PAR_PASSAGE: usize = 20;
+
+#[derive(Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ResultatFichiers {
+    pub envoyes: usize,
+    pub recus: usize,
+    pub restants: usize,
+    pub message: String,
+}
+
+fn fichiers_locaux() -> std::collections::HashSet<String> {
+    std::fs::read_dir(crate::db::fichiers_dir())
+        .map(|d| {
+            d.flatten()
+                .filter(|e| e.path().is_file())
+                .filter_map(|e| e.file_name().to_str().map(str::to_string))
+                // Les fichiers temporaires d'un téléchargement interrompu ne
+                // doivent ni partir ni compter comme présents.
+                .filter(|n| !n.starts_with('.') && !n.ends_with(".part"))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Échange les pièces jointes manquantes de part et d'autre.
+///
+/// Chiffrées comme le reste : le stockage ne voit passer ni les photos
+/// d'élèves ni les notifications MDPH en clair.
+#[tauri::command]
+pub async fn sync_fichiers(db: State<'_, Db>) -> R<ResultatFichiers> {
+    let (cfg, phrase) = {
+        let c = db.0.lock().map_err(e)?;
+        let phrase = get_setting(&c, "sauvegarde_phrase");
+        if phrase.trim().is_empty() {
+            return Ok(ResultatFichiers { message: "Phrase secrète non définie.".into(), ..Default::default() });
+        }
+        let Ok(cfg) = lire_cfg(&c) else {
+            return Ok(ResultatFichiers { message: "Stockage non configuré.".into(), ..Default::default() });
+        };
+        (cfg, phrase.trim().to_string())
+    };
+
+    let cl = client(&cfg);
+    let ici = fichiers_locaux();
+    let liste = cl.list_objects_v2().bucket(&cfg.bucket).prefix(PREFIXE_FICHIER)
+        .send().await.map_err(|err| format!("Lecture impossible : {err}"))?;
+    let la_bas: std::collections::HashSet<String> = liste.contents().iter()
+        .filter_map(|o| o.key()?.strip_prefix(PREFIXE_FICHIER).map(str::to_string))
+        .filter(|n| !n.is_empty())
+        .collect();
+
+    let mut res = ResultatFichiers::default();
+    let dossier = crate::db::fichiers_dir();
+
+    // 1. Déposer ce que nous avons et qu'eux n'ont pas.
+    let a_envoyer: Vec<&String> = ici.difference(&la_bas).collect();
+    res.restants = a_envoyer.len().saturating_sub(FICHIERS_PAR_PASSAGE);
+    for nom in a_envoyer.into_iter().take(FICHIERS_PAR_PASSAGE) {
+        let Ok(octets) = std::fs::read(dossier.join(nom)) else { continue };
+        let blob = chiffrer_sauvegarde(&phrase, &octets)?;
+        if cl.put_object().bucket(&cfg.bucket).key(format!("{PREFIXE_FICHIER}{nom}"))
+            .body(ByteStream::from(blob)).send().await.is_ok() {
+            res.envoyes += 1;
+        }
+    }
+
+    // 2. Récupérer ce qu'ils ont et que nous n'avons pas.
+    let a_recevoir: Vec<&String> = la_bas.difference(&ici).collect();
+    res.restants += a_recevoir.len().saturating_sub(FICHIERS_PAR_PASSAGE);
+    for nom in a_recevoir.into_iter().take(FICHIERS_PAR_PASSAGE) {
+        let Ok(obj) = cl.get_object().bucket(&cfg.bucket).key(format!("{PREFIXE_FICHIER}{nom}"))
+            .send().await else { continue };
+        let Ok(corps) = obj.body.collect().await else { continue };
+        let Ok(clair) = dechiffrer_sauvegarde(&phrase, corps.into_bytes().as_ref()) else { continue };
+        // Écrire à côté puis renommer : une coupure ne doit pas laisser une
+        // photo à demi écrite, qui passerait ensuite pour reçue.
+        let tmp = dossier.join(format!("{nom}.part"));
+        if std::fs::write(&tmp, &clair).is_ok() && std::fs::rename(&tmp, dossier.join(nom)).is_ok() {
+            res.recus += 1;
+        }
+    }
+    Ok(res)
+}

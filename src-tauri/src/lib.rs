@@ -2,6 +2,7 @@ mod ai;
 mod arasaac;
 mod jeux_pdf;
 mod journal;
+mod texte_crdt;
 mod tla_pdf;
 mod amis;
 mod commands;
@@ -110,7 +111,7 @@ pub fn run() {
             sync::sequence_partager, sync::programmation_partager, sync::projet_partager,
             sync::boite_relever, sync::boite_liste, sync::boite_recuperer, sync::boite_supprimer,
             // Sauvegarde chiffrée sur stockage S3/MinIO
-            sync::sauvegarde_push, sync::sauvegarde_pull, sync::sauvegarde_liste, sync::sync_etat, sync::sync_deltas,
+            sync::sauvegarde_push, sync::sauvegarde_pull, sync::sauvegarde_liste, sync::sync_etat, sync::sync_deltas, sync::sync_fichiers,
             // Version portable (serveur local WiFi + QR)
             portable::portable_demarrer, portable::portable_arreter,
             // Capture photo depuis le téléphone

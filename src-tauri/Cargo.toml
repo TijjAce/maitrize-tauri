@@ -51,4 +51,5 @@ aws-sdk-s3 = "1"
 # Version portable : petit serveur HTTP sur le réseau local + QR code
 tiny_http = "0.12"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+yrs = "0.27.4"
 
