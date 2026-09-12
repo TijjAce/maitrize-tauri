@@ -378,6 +378,7 @@ export const api = {
   fichierSave: (nom: string, base64: string) => invoke<string>("fichier_save", { nom, base64 }),
   fichierRead: (nom: string) => invoke<string>("fichier_read", { nom }),
   fichierPath: (nom: string) => invoke<string>("fichier_path", { nom }),
+  fichierOuvrir: (nom: string) => invoke<void>("fichier_ouvrir", { nom }),
   fichierDelete: (nom: string) => invoke<void>("fichier_delete", { nom }),
   fichierImporterDepuisChemin: (chemin: string) => invoke<string>("fichier_importer_depuis_chemin", { chemin }),
   enregistrerTexte: (chemin: string, contenu: string) => invoke<void>("enregistrer_texte", { chemin, contenu }),
