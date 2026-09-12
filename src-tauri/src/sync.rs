@@ -95,7 +95,11 @@ fn lire_cfg(c: &Connection) -> R<S3Cfg> {
         secret: get_setting(c, "sync_secret"),
     };
     if cfg.endpoint.is_empty() || cfg.bucket.is_empty() || cfg.access.is_empty() || cfg.secret.is_empty() {
-        return Err("Configuration S3 incomplète (renseignez-la dans l'onglet Amis).".into());
+        // Le message nomme l'écran où agir : le stockage s'est déplacé dans
+        // les Réglages, et renvoyer vers un onglet qui n'en parle plus laissait
+        // l'enseignant chercher.
+        return Err("Aucun stockage configuré. Réglages → Données & synchro → \
+                    Sauvegarde sur mon stockage.".into());
     }
     Ok(cfg)
 }
@@ -106,7 +110,7 @@ fn contexte(db: &State<Db>, ami_id: &str) -> R<Ctx> {
     let c = db.0.lock().map_err(e)?;
     let (pv, pb): (Vec<u8>, Vec<u8>) = c
         .query_row("SELECT cle_privee, cle_publique FROM identite WHERE id = 1", [], |r| Ok((r.get(0)?, r.get(1)?)))
-        .map_err(|_| "Identité absente — ouvrez l'onglet Amis d'abord.".to_string())?;
+        .map_err(|_| "Identité absente — ouvrez la page Amis d'abord.".to_string())?;
     let nom: String = c.query_row("SELECT nom FROM identite WHERE id = 1", [], |r| r.get(0)).unwrap_or_default();
     let (apub, mid): (Vec<u8>, String) = c
         .query_row("SELECT cle_publique, mailbox_id FROM amis WHERE id = ?1", [ami_id], |r| Ok((r.get(0)?, r.get(1)?)))
