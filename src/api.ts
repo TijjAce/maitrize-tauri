@@ -149,6 +149,12 @@ export interface SauvegardeDistante {
   cle: string; date: string; octets: number; travailLocalPlusRecent: boolean;
 }
 
+/** Où en est la synchronisation entre les machines. */
+export interface EtatSync {
+  configure: boolean; aEnvoyer: boolean; aRecuperer: boolean; conflit: boolean;
+  derniereSync: string; derniereDistante: string; horsLigne: string;
+}
+
 /** Emplacement des données de l'application. */
 export interface DossierDonnees {
   chemin: string; parDefaut: string; personnalise: boolean; octets: number;
@@ -424,6 +430,7 @@ export const api = {
   sauvegardePush: () => invoke<string>("sauvegarde_push"),
   sauvegardePull: (cle?: string) => invoke<string>("sauvegarde_pull", { cle: cle ?? null }),
   sauvegardeListe: () => invoke<SauvegardeDistante[]>("sauvegarde_liste"),
+  syncEtat: () => invoke<EtatSync>("sync_etat"),
   dossierDonneesGet: () => invoke<DossierDonnees>("dossier_donnees_get"),
   dossierDonneesSet: (chemin: string | null) => invoke<DossierDonnees>("dossier_donnees_set", { chemin }),
   syncEnvoyer: (amiId: string, texte: string) => invoke<void>("sync_envoyer", { amiId, texte }),
