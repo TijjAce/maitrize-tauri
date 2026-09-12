@@ -49,6 +49,12 @@ pub struct Changement {
     pub operation: String,
     /// La ligne entière en JSON pour « maj », vide pour « suppr ».
     pub donnees: String,
+    /// La ligne **avant** l'écriture, pour une modification. Vide à la
+    /// création. C'est elle qui dit quels champs l'auteur a réellement
+    /// touchés : sans elle, on ne voit que le résultat et on ne peut plus
+    /// distinguer « j'ai changé le niveau » de « j'ai laissé le niveau ».
+    #[serde(default)]
+    pub avant: String,
     /// Horodatage UTC à la milliseconde.
     pub horodatage: String,
     /// Machine d'origine. Départage les horodatages identiques.
@@ -77,6 +83,7 @@ pub fn creer_table(conn: &Connection) {
             ligne_id TEXT NOT NULL,
             operation TEXT NOT NULL,
             donnees TEXT NOT NULL DEFAULT '',
+            avant TEXT NOT NULL DEFAULT '',
             horodatage TEXT NOT NULL,
             origine TEXT NOT NULL DEFAULT '',
             distant INTEGER NOT NULL DEFAULT 0
@@ -116,21 +123,26 @@ pub fn poser_declencheurs(conn: &Connection, machine: &str) {
                 .collect::<Vec<_>>()
                 .join(", ")
         };
-        let maj = format!(
-            "INSERT INTO changements (table_nom, ligne_id, operation, donnees, horodatage, origine)
-             VALUES ('{table}', NEW.id, 'maj', json_object({}), strftime('%Y-%m-%dT%H:%M:%fZ','now'), '{machine}');",
+        let creation = format!(
+            "INSERT INTO changements (table_nom, ligne_id, operation, donnees, avant, horodatage, origine)
+             VALUES ('{table}', NEW.id, 'maj', json_object({}), '', strftime('%Y-%m-%dT%H:%M:%fZ','now'), '{machine}');",
             objet("NEW")
         );
+        let modification = format!(
+            "INSERT INTO changements (table_nom, ligne_id, operation, donnees, avant, horodatage, origine)
+             VALUES ('{table}', NEW.id, 'maj', json_object({}), json_object({}), strftime('%Y-%m-%dT%H:%M:%fZ','now'), '{machine}');",
+            objet("NEW"), objet("OLD")
+        );
         let suppr = format!(
-            "INSERT INTO changements (table_nom, ligne_id, operation, donnees, horodatage, origine)
-             VALUES ('{table}', OLD.id, 'suppr', '', strftime('%Y-%m-%dT%H:%M:%fZ','now'), '{machine}');"
+            "INSERT INTO changements (table_nom, ligne_id, operation, donnees, avant, horodatage, origine)
+             VALUES ('{table}', OLD.id, 'suppr', '', '', strftime('%Y-%m-%dT%H:%M:%fZ','now'), '{machine}');"
         );
         let sql = format!(
             "DROP TRIGGER IF EXISTS jrn_{table}_i;
              DROP TRIGGER IF EXISTS jrn_{table}_u;
              DROP TRIGGER IF EXISTS jrn_{table}_d;
-             CREATE TRIGGER jrn_{table}_i AFTER INSERT ON {table} BEGIN {maj} END;
-             CREATE TRIGGER jrn_{table}_u AFTER UPDATE ON {table} BEGIN {maj} END;
+             CREATE TRIGGER jrn_{table}_i AFTER INSERT ON {table} BEGIN {creation} END;
+             CREATE TRIGGER jrn_{table}_u AFTER UPDATE ON {table} BEGIN {modification} END;
              CREATE TRIGGER jrn_{table}_d AFTER DELETE ON {table} BEGIN {suppr} END;"
         );
         conn.execute_batch(&sql).ok();
@@ -148,7 +160,7 @@ pub fn changements_locaux(
     depuis: i64,
 ) -> rusqlite::Result<(Vec<Changement>, i64)> {
     let mut st = conn.prepare(
-        "SELECT table_nom, ligne_id, operation, donnees, horodatage, origine
+        "SELECT table_nom, ligne_id, operation, donnees, horodatage, origine, avant
            FROM changements WHERE seq > ?1 AND distant = 0 ORDER BY seq",
     )?;
     let lignes = st
@@ -160,6 +172,7 @@ pub fn changements_locaux(
                 donnees: r.get(3)?,
                 horodatage: r.get(4)?,
                 origine: r.get(5)?,
+                avant: r.get(6)?,
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -168,46 +181,139 @@ pub fn changements_locaux(
     Ok((lignes, dernier_seq(conn).max(depuis)))
 }
 
+/// Les champs qu'une écriture a réellement modifiés.
+///
+/// Sans l'état d'avant — à la création d'une ligne — tout est nouveau.
+fn champs_touches(avant: &str, apres: &serde_json::Value) -> std::collections::HashSet<String> {
+    let Some(apres_o) = apres.as_object() else { return Default::default() };
+    let avant_v: Option<serde_json::Value> = serde_json::from_str(avant).ok();
+    let Some(avant_o) = avant_v.as_ref().and_then(|v| v.as_object()) else {
+        return apres_o.keys().cloned().collect();
+    };
+    apres_o
+        .iter()
+        .filter(|(k, v)| avant_o.get(*k) != Some(*v))
+        .map(|(k, _)| k.clone())
+        .collect()
+}
+
+/// Fusionne une ligne locale et une ligne entrante, **champ par champ**.
+///
+/// La fusion ligne par ligne perdait du travail sans le dire : corriger le
+/// niveau d'un élève sur le bureau pendant qu'on change son nom sur le
+/// portable, et l'une des deux modifications disparaissait — alors qu'elles
+/// ne se contredisent pas.
+///
+/// On n'applique donc de l'entrant que **ce qu'il a lui-même modifié**. Un
+/// champ touché des deux côtés est le seul vrai conflit : il revient au camp
+/// gagnant, désigné par l'horodatage puis par la machine.
+fn fusionner_champs(
+    locale: &serde_json::Value,
+    entrant: &serde_json::Value,
+    touches_entrant: &std::collections::HashSet<String>,
+    touches_local: &std::collections::HashSet<String>,
+    entrant_gagne: bool,
+) -> serde_json::Value {
+    let (Some(loc), Some(ent)) = (locale.as_object(), entrant.as_object()) else {
+        return entrant.clone();
+    };
+    let mut sortie = loc.clone();
+    for (cle, valeur) in ent {
+        if !touches_entrant.contains(cle) {
+            continue; // l'entrant n'a pas touché ce champ : on garde le nôtre
+        }
+        if touches_local.contains(cle) && !entrant_gagne {
+            continue; // touché des deux côtés, et c'est nous qui l'emportons
+        }
+        sortie.insert(cle.clone(), valeur.clone());
+    }
+    serde_json::Value::Object(sortie)
+}
+
 /// Applique des changements venus d'ailleurs.
 ///
-/// Règle : la plus récente écriture gagne, **ligne par ligne**. Deux machines
-/// qui touchent deux élèves différents gardent chacune son travail ; deux
-/// machines qui touchent le même élève laissent gagner la dernière. C'est le
-/// socle sur lequel une fusion plus fine — champ par champ, puis caractère par
-/// caractère — viendra s'appuyer.
+/// Règle : la ligne est fusionnée champ par champ. Chacun garde ce qu'il est
+/// seul à avoir modifié ; un champ touché des deux côtés revient au plus
+/// récent, départagé par la machine.
 pub fn appliquer(conn: &mut Connection, recus: &[Changement]) -> rusqlite::Result<usize> {
-    let avant = dernier_seq(conn);
+    let avant_tout = dernier_seq(conn);
     let tx = conn.transaction()?;
     let mut n = 0;
     for c in recus {
+        // Repère avant écriture : les traces que nos propres déclencheurs vont
+        // laisser doivent porter la provenance réelle du changement, pas la
+        // nôtre. Sans cela, une modification reçue paraîtrait écrite ici et
+        // maintenant, donc plus récente que les changements suivants du même
+        // envoi — qui seraient alors rejetés.
+        let avant_ligne: i64 = tx
+            .query_row("SELECT COALESCE(MAX(seq), 0) FROM changements", [], |r| r.get(0))
+            .unwrap_or(0);
         // Table inconnue : on ignore plutôt que d'écrire au hasard.
         if !TABLES_SYNC.contains(&c.table_nom.as_str()) {
             continue;
         }
-        // Une écriture locale qui l'emporte fait ignorer le changement reçu.
-        let local: Option<(String, String)> = tx
+        // Qui l'emporte sur les champs disputés — et ce que nous avons
+        // nous-même modifié depuis, pour ne pas l'écraser.
+        let local: Option<(String, String, String, String)> = tx
             .query_row(
-                "SELECT horodatage, origine FROM changements
+                "SELECT horodatage, origine, donnees, avant FROM changements
                   WHERE table_nom = ?1 AND ligne_id = ?2
                   ORDER BY horodatage DESC, origine DESC LIMIT 1",
                 params![c.table_nom, c.ligne_id],
-                |r| Ok((r.get(0)?, r.get(1)?)),
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
             )
             .ok();
-        if local.is_some_and(|(h, o)| gagne((&h, &o), (&c.horodatage, &c.origine))) {
-            continue;
-        }
+        let entrant_gagne = match &local {
+            Some((h, o, _, _)) => !gagne((h, o), (&c.horodatage, &c.origine)),
+            None => true,
+        };
 
         if c.operation == "suppr" {
-            tx.execute(
-                &format!("DELETE FROM {} WHERE id = ?1", c.table_nom),
-                params![c.ligne_id],
-            )?;
+            // Une suppression est totale : elle ne se fusionne pas. Elle ne
+            // s'applique donc que si elle l'emporte, sinon une suppression
+            // ancienne effacerait un travail plus récent.
+            if entrant_gagne {
+                tx.execute(
+                    &format!("DELETE FROM {} WHERE id = ?1", c.table_nom),
+                    params![c.ligne_id],
+                )?;
+            } else {
+                continue;
+            }
         } else {
             let cols = colonnes(&tx, &c.table_nom);
             if cols.is_empty() {
                 continue;
             }
+            let entrant: serde_json::Value =
+                serde_json::from_str(&c.donnees).unwrap_or(serde_json::Value::Null);
+            let objet = cols.iter().map(|x| format!("'{x}', \"{x}\"")).collect::<Vec<_>>().join(", ");
+            let ici: Option<serde_json::Value> = tx
+                .query_row(
+                    &format!("SELECT json_object({objet}) FROM {} WHERE id = ?1", c.table_nom),
+                    params![c.ligne_id],
+                    |r| r.get::<_, String>(0),
+                )
+                .ok()
+                .and_then(|s| serde_json::from_str(&s).ok());
+
+            let a_ecrire = match ici {
+                Some(locale) => {
+                    let touches_entrant = champs_touches(&c.avant, &entrant);
+                    let touches_local = local
+                        .as_ref()
+                        .map(|(_, _, d, a)| {
+                            let apres: serde_json::Value =
+                                serde_json::from_str(d).unwrap_or(serde_json::Value::Null);
+                            champs_touches(a, &apres)
+                        })
+                        .unwrap_or_default();
+                    fusionner_champs(&locale, &entrant, &touches_entrant, &touches_local, entrant_gagne)
+                }
+                // Ligne absente ici : rien à fusionner, on la crée.
+                None => entrant,
+            };
+            let json = a_ecrire.to_string();
             let noms = cols.iter().map(|x| format!("\"{x}\"")).collect::<Vec<_>>().join(", ");
             let valeurs = cols
                 .iter()
@@ -216,15 +322,21 @@ pub fn appliquer(conn: &mut Connection, recus: &[Changement]) -> rusqlite::Resul
                 .join(", ");
             tx.execute(
                 &format!("INSERT OR REPLACE INTO {} ({noms}) VALUES ({valeurs})", c.table_nom),
-                params![c.donnees],
+                params![json],
             )?;
         }
+        // Réattribuer la trace qu'on vient de produire à son véritable auteur.
+        tx.execute(
+            "UPDATE changements SET horodatage = ?1, origine = ?2, distant = 1
+              WHERE seq > ?3",
+            params![c.horodatage, c.origine, avant_ligne],
+        )?;
         n += 1;
     }
     tx.commit()?;
-    // Les déclencheurs viennent d'enregistrer nos écritures : elles sont
-    // d'origine distante et ne doivent pas repartir d'où elles viennent.
-    marquer_distants(conn, avant);
+    // Filet : toute trace restante produite pendant l'application est
+    // distante et ne doit pas repartir d'où elle vient.
+    marquer_distants(conn, avant_tout);
     Ok(n)
 }
 
@@ -358,6 +470,67 @@ mod tests {
         assert_eq!(noms(&a), noms(&b), "les deux machines doivent se rejoindre");
     }
 
+    fn ens(v: &[&str]) -> std::collections::HashSet<String> {
+        v.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn on_napplique_que_ce_que_lentrant_a_touche() {
+        // Le portable n'a changé que la photo : le niveau corrigé ici ne doit
+        // pas revenir à l'ancienne valeur que le portable transporte encore.
+        let locale = serde_json::json!({"id":"e1","niveau":"CM1","photo":null});
+        let entrant = serde_json::json!({"id":"e1","niveau":"CE2","photo":"p.jpg"});
+        let r = fusionner_champs(&locale, &entrant, &ens(&["photo"]), &ens(&["niveau"]), true);
+        assert_eq!(r["photo"], "p.jpg");
+        assert_eq!(r["niveau"], "CM1", "le niveau local ne doit pas régresser");
+    }
+
+    #[test]
+    fn un_champ_touche_des_deux_cotes_revient_au_gagnant() {
+        let locale = serde_json::json!({"id":"e1","nom":"Quang"});
+        let entrant = serde_json::json!({"id":"e1","nom":"Quang N."});
+        let (te, tl) = (ens(&["nom"]), ens(&["nom"]));
+        assert_eq!(fusionner_champs(&locale, &entrant, &te, &tl, true)["nom"], "Quang N.");
+        assert_eq!(fusionner_champs(&locale, &entrant, &te, &tl, false)["nom"], "Quang");
+    }
+
+    #[test]
+    fn vider_un_champ_est_une_intention_respectee() {
+        let locale = serde_json::json!({"id":"e1","note":"ancienne"});
+        let entrant = serde_json::json!({"id":"e1","note":""});
+        let r = fusionner_champs(&locale, &entrant, &ens(&["note"]), &ens(&[]), true);
+        assert_eq!(r["note"], "");
+    }
+
+    #[test]
+    fn champs_touches_compare_avant_et_apres() {
+        let apres = serde_json::json!({"id":"e1","nom":"Quang","niveau":"CM1"});
+        let avant = r#"{"id":"e1","nom":"Quang","niveau":"CE2"}"#;
+        assert_eq!(champs_touches(avant, &apres), ens(&["niveau"]));
+        // À la création, il n'y a pas d'avant : tout est nouveau.
+        assert_eq!(champs_touches("", &apres).len(), 3);
+    }
+
+    #[test]
+    fn deux_machines_modifient_deux_champs_du_meme_eleve() {
+        let a = machine_nommee("A");
+        let mut b = machine_nommee("B");
+        ajouter(&a, "e1", "Quang");
+        let (depart, _) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut b, &depart).unwrap();
+        // A change le niveau, B change le nom, chacun de son côté.
+        std::thread::sleep(std::time::Duration::from_millis(3));
+        a.execute("UPDATE eleves SET niveau='CM1' WHERE id='e1'", []).unwrap();
+        b.execute("UPDATE eleves SET nom='Quang N.' WHERE id='e1'", []).unwrap();
+        let (de_a, _) = changements_locaux(&a, depart.len() as i64).unwrap();
+        appliquer(&mut b, &de_a).unwrap();
+        let (nom, niveau): (String, String) = b
+            .query_row("SELECT nom, niveau FROM eleves WHERE id='e1'", [], |r| Ok((r.get(0)?, r.get(1)?)))
+            .unwrap();
+        assert_eq!(niveau, "CM1", "la modification de A doit arriver");
+        assert_eq!(nom, "Quang N.", "celle de B ne doit pas disparaître");
+    }
+
     #[test]
     fn un_changement_dune_table_inconnue_est_ignore() {
         let mut b = machine();
@@ -368,6 +541,7 @@ mod tests {
             donnees: "{}".into(),
             horodatage: "2030-01-01T00:00:00.000Z".into(),
             origine: "Z".into(),
+            avant: String::new(),
         };
         assert_eq!(appliquer(&mut b, &[intrus]).unwrap(), 0);
     }

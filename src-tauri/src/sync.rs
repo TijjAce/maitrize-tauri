@@ -1028,6 +1028,42 @@ mod tests_sauvegarde {
         assert_eq!(decider("2026-09-12-090000", "2026-09-12-090000", "2026-09-01-080000"), (false, false));
     }
 
+    /// Le trajet complet d'un changement : journal → JSON → chiffrement →
+    /// déchiffrement → JSON → application. Les tests du journal valident la
+    /// fusion, celui-ci valide que rien ne se perd en chemin — notamment le
+    /// champ `avant`, sans lequel la fusion champ par champ redeviendrait une
+    /// fusion ligne par ligne, en silence.
+    #[test]
+    fn un_changement_survit_au_trajet_chiffre() {
+        use crate::journal::{appliquer, changements_locaux, creer_table, poser_declencheurs, Changement};
+        let neuve = |nom: &str| {
+            let c = Connection::open_in_memory().unwrap();
+            c.execute_batch("CREATE TABLE eleves (id TEXT PRIMARY KEY, nom TEXT, niveau TEXT);").unwrap();
+            creer_table(&c);
+            poser_declencheurs(&c, nom);
+            c
+        };
+        let a = neuve("A");
+        let mut b = neuve("B");
+        a.execute("INSERT INTO eleves (id, nom, niveau) VALUES ('e1','Quang','CE2')", []).unwrap();
+        a.execute("UPDATE eleves SET niveau='CM1' WHERE id='e1'", []).unwrap();
+
+        let (locaux, _) = changements_locaux(&a, 0).unwrap();
+        assert!(locaux.iter().any(|c| !c.avant.is_empty()), "l'état d'avant doit être enregistré");
+
+        let json = serde_json::to_string(&locaux).unwrap();
+        let blob = chiffrer_sauvegarde("phrase de test", json.as_bytes()).unwrap();
+        let clair = dechiffrer_sauvegarde("phrase de test", &blob).unwrap();
+        let recus: Vec<Changement> = serde_json::from_slice(&clair).unwrap();
+        assert_eq!(recus.len(), locaux.len());
+        assert_eq!(recus.last().unwrap().avant, locaux.last().unwrap().avant,
+                   "le champ « avant » doit traverser le chiffrement");
+
+        appliquer(&mut b, &recus).unwrap();
+        let niveau: String = b.query_row("SELECT niveau FROM eleves WHERE id='e1'", [], |r| r.get(0)).unwrap();
+        assert_eq!(niveau, "CM1");
+    }
+
     #[test]
     fn la_derivation_est_volontairement_lente() {
         // Si Argon2 devenait instantané, la phrase secrète ne protégerait plus
@@ -1037,4 +1073,143 @@ mod tests_sauvegarde {
         assert!(debut.elapsed() >= std::time::Duration::from_millis(10),
                 "dérivation trop rapide : {:?}", debut.elapsed());
     }
+}
+
+
+// ── Synchronisation fine : transport des écarts ────────────────────────────
+//
+// Chaque machine dépose ses changements dans un journal partagé, sous forme
+// d'objets horodatés qu'on n'écrase jamais. Chacune relit ceux qu'elle n'a pas
+// encore vus. C'est un journal en ajout seul : pas d'état central à tenir à
+// jour, donc rien à réparer si une machine s'arrête au mauvais moment.
+
+const PREFIXE_DELTA: &str = "maitrize/deltas/";
+/// Repère local : jusqu'où le journal a déjà été envoyé.
+const CLE_SEQ_ENVOYEE: &str = "syncSeqEnvoyee";
+/// Objets déjà relus, pour ne pas réappliquer en boucle.
+const CLE_DELTAS_VUS: &str = "syncDeltasVus";
+/// Nombre d'objets de deltas conservés sur le stockage.
+const DELTAS_GARDES: usize = 400;
+
+#[derive(Serialize, Deserialize)]
+struct Lot {
+    machine: String,
+    changements: Vec<crate::journal::Changement>,
+}
+
+#[derive(Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ResultatSync {
+    pub envoyes: usize,
+    pub recus: usize,
+    pub appliques: usize,
+    /// Renseigné quand rien n'a pu se faire : à afficher discrètement.
+    pub message: String,
+}
+
+fn deltas_vus(c: &Connection) -> std::collections::HashSet<String> {
+    serde_json::from_str::<Vec<String>>(&get_setting(c, CLE_DELTAS_VUS))
+        .unwrap_or_default()
+        .into_iter()
+        .collect()
+}
+
+fn noter_vus(c: &Connection, vus: &std::collections::HashSet<String>) -> R<()> {
+    // Bornée : les clés sont horodatées, les plus anciennes ne reviendront pas.
+    let mut liste: Vec<&String> = vus.iter().collect();
+    liste.sort();
+    let garde: Vec<&&String> = liste.iter().rev().take(DELTAS_GARDES * 2).collect();
+    let json = serde_json::to_string(&garde).map_err(e)?;
+    set_setting(c, CLE_DELTAS_VUS, &json)
+}
+
+/// Envoie les changements locaux, relit ceux des autres machines, applique.
+///
+/// Les deux sens dans le même passage : c'est ce qui permet de l'appeler
+/// périodiquement sans que l'enseignant ait à savoir dans quel sens va la
+/// copie. Rien ne s'écrase — chaque machine ajoute au journal partagé.
+#[tauri::command]
+pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
+    let (cfg, phrase, machine, repere, vus, lot) = {
+        let c = db.0.lock().map_err(e)?;
+        let phrase = get_setting(&c, "sauvegarde_phrase");
+        if phrase.trim().is_empty() {
+            return Ok(ResultatSync { message: "Phrase secrète non définie.".into(), ..Default::default() });
+        }
+        let Ok(cfg) = lire_cfg(&c) else {
+            return Ok(ResultatSync { message: "Stockage non configuré.".into(), ..Default::default() });
+        };
+        let machine = crate::db::identifiant_machine(&c);
+        let depuis: i64 = get_setting(&c, CLE_SEQ_ENVOYEE).parse().unwrap_or(0);
+        let (changements, repere) = crate::journal::changements_locaux(&c, depuis).map_err(e)?;
+        (cfg, phrase.trim().to_string(), machine.clone(), repere, deltas_vus(&c),
+         Lot { machine, changements })
+    };
+
+    let cl = client(&cfg);
+    let mut res = ResultatSync::default();
+
+    // 1. Déposer nos changements, s'il y en a.
+    if !lot.changements.is_empty() {
+        res.envoyes = lot.changements.len();
+        let json = serde_json::to_string(&lot).map_err(e)?;
+        let blob = chiffrer_sauvegarde(&phrase, json.as_bytes())?;
+        let cle = format!(
+            "{PREFIXE_DELTA}{}-{}.enc",
+            chrono::Utc::now().format("%Y%m%d%H%M%S%3f"),
+            &machine[..8.min(machine.len())]
+        );
+        cl.put_object().bucket(&cfg.bucket).key(&cle)
+            .body(ByteStream::from(blob)).send().await
+            .map_err(|err| format!("Envoi impossible : {err}"))?;
+        // Le repère n'avance qu'après un dépôt réussi : une coupure fait
+        // renvoyer, jamais perdre.
+        let c = db.0.lock().map_err(e)?;
+        set_setting(&c, CLE_SEQ_ENVOYEE, &repere.to_string())?;
+    }
+
+    // 2. Relire ce que les autres ont déposé.
+    let liste = cl.list_objects_v2().bucket(&cfg.bucket).prefix(PREFIXE_DELTA)
+        .send().await.map_err(|err| format!("Lecture impossible : {err}"))?;
+    let mut cles: Vec<String> = liste.contents().iter()
+        .filter_map(|o| o.key().map(str::to_string))
+        .filter(|k| !vus.contains(k))
+        .collect();
+    cles.sort(); // horodatées : l'ordre alphabétique est l'ordre des écritures
+
+    let mut vus = vus;
+    let mut a_appliquer: Vec<crate::journal::Changement> = Vec::new();
+    for cle in &cles {
+        let Ok(obj) = cl.get_object().bucket(&cfg.bucket).key(cle).send().await else { continue };
+        let Ok(octets) = obj.body.collect().await else { continue };
+        let Ok(clair) = dechiffrer_sauvegarde(&phrase, octets.into_bytes().as_ref()) else { continue };
+        let Ok(lot) = serde_json::from_slice::<Lot>(&clair) else { continue };
+        // Nos propres dépôts : déjà chez nous, rien à appliquer.
+        if lot.machine != machine {
+            a_appliquer.extend(lot.changements);
+        }
+        vus.insert(cle.clone());
+    }
+    res.recus = a_appliquer.len();
+
+    if !a_appliquer.is_empty() || !cles.is_empty() {
+        let mut c = db.0.lock().map_err(e)?;
+        if !a_appliquer.is_empty() {
+            res.appliques = crate::journal::appliquer(&mut c, &a_appliquer).map_err(e)?;
+        }
+        noter_vus(&c, &vus)?;
+        set_setting(&c, CLE_DERNIERE_SYNC,
+                    &chrono::Local::now().format("%Y-%m-%d-%H%M%S").to_string())?;
+    }
+
+    // 3. Élaguer le journal partagé, qui n'a pas à grandir sans fin.
+    if cles.len() > DELTAS_GARDES {
+        let mut toutes: Vec<String> = liste.contents().iter()
+            .filter_map(|o| o.key().map(str::to_string)).collect();
+        toutes.sort();
+        for vieille in toutes.iter().rev().skip(DELTAS_GARDES) {
+            cl.delete_object().bucket(&cfg.bucket).key(vieille).send().await.ok();
+        }
+    }
+    Ok(res)
 }
