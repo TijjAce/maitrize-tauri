@@ -1,6 +1,7 @@
 mod ai;
 mod arasaac;
 mod jeux_pdf;
+mod journal;
 mod tla_pdf;
 mod amis;
 mod commands;
