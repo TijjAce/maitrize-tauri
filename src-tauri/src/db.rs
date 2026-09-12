@@ -242,6 +242,14 @@ pub(crate) fn migrer_documents_eleve(conn: &Connection) {
     }
 }
 
+/// Crée le schéma sur une connexion neuve, pour les tests qui ont besoin des
+/// vraies tables plutôt que d'un schéma réécrit à la main — lequel finirait
+/// par diverger de celui de l'application sans que rien ne le signale.
+#[cfg(test)]
+pub(crate) fn migrer_pour_test(conn: &Connection) {
+    migrate(conn);
+}
+
 pub(crate) fn migrate(conn: &Connection) {
     conn.execute_batch(
         r#"
