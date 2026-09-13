@@ -33,6 +33,14 @@ const MARGE_PAGE: f32 = 16.0;
 const ECART: f32 = 12.0;
 /// Hauteur réservée au mot quand les libellés sont demandés.
 const HAUTEUR_MOT: f32 = 8.0;
+/// Taille du mot, en points : la plus grande qui tient dans la case.
+const TAILLE_MOT: f32 = 13.0;
+/// Sur deux lignes, la taille est plafonnée pour tenir dans `HAUTEUR_MOT`.
+const TAILLE_MOT_DEUX_LIGNES: f32 = 10.0;
+const TAILLE_MOT_MIN: f32 = 7.0;
+/// Blanc laissé de chaque côté du mot, dans la case.
+const MARGE_MOT: f32 = 3.0;
+const PT_EN_MM: f32 = 0.3528;
 /// Rayon des angles de case, en millimètres.
 const RAYON: f32 = 6.0;
 
@@ -160,6 +168,75 @@ fn charger_sur_blanc(chemin: &str) -> Result<::image::RgbImage, String> {
     Ok(sortie)
 }
 
+/// Chasse d'un caractère en capitales dans l'Helvetica intégrée au PDF, en
+/// millièmes de cadratin (métriques Adobe des 14 polices standard). Les
+/// capitales accentuées ont la chasse de leur lettre de base.
+fn chasse(c: char) -> f32 {
+    let base = match c {
+        'À' | 'Â' | 'Ä' | 'Á' | 'Ã' | 'Å' => 'A',
+        'Ç' => 'C',
+        'È' | 'É' | 'Ê' | 'Ë' => 'E',
+        'Ì' | 'Í' | 'Î' | 'Ï' => 'I',
+        'Ñ' => 'N',
+        'Ò' | 'Ó' | 'Ô' | 'Õ' | 'Ö' => 'O',
+        'Ù' | 'Ú' | 'Û' | 'Ü' => 'U',
+        'Ý' | 'Ÿ' => 'Y',
+        autre => autre,
+    };
+    match base {
+        'A' | 'B' | 'E' | 'K' | 'P' | 'S' | 'V' | 'X' | 'Y' => 667.0,
+        'C' | 'D' | 'H' | 'N' | 'R' | 'U' => 722.0,
+        'F' | 'T' | 'Z' => 611.0,
+        'G' | 'O' | 'Q' => 778.0,
+        'I' => 278.0,
+        'J' => 500.0,
+        'L' => 556.0,
+        'M' => 833.0,
+        'W' => 944.0,
+        'Œ' | 'Æ' => 1000.0,
+        '0'..='9' => 556.0,
+        ' ' | '.' | ',' | ':' | ';' | '!' | '/' => 278.0,
+        '-' | '(' | ')' => 333.0,
+        '\'' => 191.0,
+        '’' => 222.0,
+        _ => 667.0,
+    }
+}
+
+/// Largeur d'un texte en capitales, en millimètres.
+fn largeur_capitales(texte: &str, taille: f32) -> f32 {
+    texte.chars().map(chasse).sum::<f32>() / 1000.0 * taille * PT_EN_MM
+}
+
+/// Le mot écrit sous le picto : en capitales d'imprimerie, les premières que
+/// les élèves apprennent à reconnaître, à la plus grande taille qui tient dans
+/// la case — sur deux lignes pour une expression trop longue.
+///
+/// Les capitales accentuées sont gardées (ÉCOLE) : l'Helvetica du PDF les
+/// connaît toutes.
+fn disposer_mot(mot: &str, largeur_dispo: f32) -> (Vec<String>, f32) {
+    let texte = mot.split_whitespace().collect::<Vec<_>>().join(" ").to_uppercase();
+    let a_taille_1 = largeur_capitales(&texte, 1.0);
+    if a_taille_1 * TAILLE_MOT <= largeur_dispo {
+        return (vec![texte], TAILLE_MOT);
+    }
+    let sur_une_ligne = largeur_dispo / a_taille_1;
+    let mots: Vec<&str> = texte.split(' ').collect();
+    if mots.len() < 2 || sur_une_ligne >= TAILLE_MOT_DEUX_LIGNES {
+        return (vec![texte], sur_une_ligne.max(TAILLE_MOT_MIN));
+    }
+    // Coupure la plus équilibrée : la ligne la plus longue la plus courte possible.
+    let (coupure, plus_longue) = (1..mots.len())
+        .map(|i| (i, largeur_capitales(&mots[..i].join(" "), 1.0).max(largeur_capitales(&mots[i..].join(" "), 1.0))))
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .unwrap();
+    let taille = (largeur_dispo / plus_longue).min(TAILLE_MOT_DEUX_LIGNES).max(TAILLE_MOT_MIN);
+    if taille <= sur_une_ligne {
+        return (vec![texte], sur_une_ligne.max(TAILLE_MOT_MIN));
+    }
+    (vec![mots[..coupure].join(" "), mots[coupure..].join(" ")], taille)
+}
+
 fn couleur(c: (f32, f32, f32)) -> Color {
     Color::Rgb(Rgb::new(c.0, c.1, c.2, None))
 }
@@ -260,10 +337,14 @@ fn rendre_planche(
 
         if o.libelles {
             c.set_fill_color(couleur((0.1, 0.1, 0.1)));
-            // printpdf ne centre pas : même estimation de largeur que les
-            // autres exports de l'application (demi-cadratin par caractère).
-            let largeur_mot = picto.mot.chars().count() as f32 * 13.0 * 0.5 * 0.3528;
-            c.use_text(&picto.mot, 13.0, Mm(x + (case_l - largeur_mot) / 2.0), Mm(y + marge_h), police);
+            let (lignes, taille) = disposer_mot(&picto.mot, case_l - 2.0 * MARGE_MOT);
+            let interligne = taille * 1.15 * PT_EN_MM;
+            for (k, ligne) in lignes.iter().enumerate() {
+                // printpdf ne centre pas : on centre d'après la chasse réelle des capitales.
+                let dx = (case_l - largeur_capitales(ligne, taille)) / 2.0;
+                let dy = (lignes.len() - 1 - k) as f32 * interligne;
+                c.use_text(ligne, taille, Mm(x + dx), Mm(y + marge_h + dy), police);
+            }
         }
     }
 
@@ -393,7 +474,10 @@ mod tests {
             .enumerate()
             .map(|(i, e)| PictoChoisi {
                 id: i as i64,
-                mot: format!("picto{i}"),
+                // Mots réels, accents et expressions longues compris : c'est là
+                // que les capitales et leur ajustement se voient.
+                mot: ["éléphant", "se brosser les dents", "cœur", "l'école", "mettre la table", "chat",
+                      "anticonstitutionnellement", "pomme", "île", "se laver les mains avec du savon"][i % 10].to_string(),
                 fichier: e.path().to_string_lossy().into_owned(),
                 nature: String::new(),
             })
@@ -402,10 +486,53 @@ mod tests {
         assert!(vivier.len() >= 6, "banque vide");
         let mut o = options();
         o.libelles = true;
+        if let Ok(g) = std::env::var("MAITRIZE_GRILLE") {
+            let (c, l) = g.split_once('x').expect("grille CxL");
+            (o.colonnes, o.lignes) = (c.parse().unwrap(), l.parse().unwrap());
+        }
         let pdf = construire("loto", &vivier, &o).expect("génération");
         let sortie = std::env::var("MAITRIZE_SORTIE").unwrap_or_else(|_| "/tmp/loto-test.pdf".into());
         std::fs::write(&sortie, &pdf).unwrap();
         println!("PDF écrit : {sortie} ({} octets)", pdf.len());
+    }
+
+    #[test]
+    fn le_mot_s_ecrit_en_capitales_accents_compris() {
+        let (lignes, taille) = disposer_mot("éléphant", 80.0);
+        assert_eq!(lignes, vec!["ÉLÉPHANT"]);
+        assert_eq!(taille, TAILLE_MOT);
+        assert_eq!(disposer_mot("  cœur ", 80.0).0, vec!["CŒUR"]);
+        assert_eq!(disposer_mot("l'école", 80.0).0, vec!["L'ÉCOLE"]);
+    }
+
+    #[test]
+    fn toutes_les_capitales_francaises_passent_dans_le_pdf() {
+        // Les polices intégrées du PDF ne savent écrire que le jeu Windows-1252 :
+        // un caractère hors jeu disparaîtrait sans bruit de la planche.
+        let capitales = "ABCDEFGHIJKLMNOPQRSTUVWXYZÀÂÄÇÈÉÊËÎÏÔÖÙÛÜŸŒÆ’'-";
+        let octets = lopdf::Document::encode_text(Some("WinAnsiEncoding"), capitales);
+        assert_eq!(octets.len(), capitales.chars().count());
+        assert_eq!("àâäçèéêëîïôöùûüÿœæ".to_uppercase(), "ÀÂÄÇÈÉÊËÎÏÔÖÙÛÜŸŒÆ");
+    }
+
+    #[test]
+    fn un_mot_long_tient_dans_la_case() {
+        // Case d'une grille 4 × 3 en paysage, la plus étroite.
+        let dispo = (297.0 - 2.0 * MARGE_PAGE - 3.0 * ECART) / 4.0 - 2.0 * MARGE_MOT;
+        for mot in ["se brosser les dents", "anticonstitutionnellement", "mettre la table", "chat"] {
+            let (lignes, taille) = disposer_mot(mot, dispo);
+            assert!(taille >= TAILLE_MOT_MIN && taille <= TAILLE_MOT, "{mot} : {taille}");
+            assert!(lignes.len() <= 2, "{mot}");
+            for l in &lignes {
+                assert!(largeur_capitales(l, taille) <= dispo + 0.01, "{mot} déborde : {l} à {taille} pt");
+            }
+        }
+        // Sur une ligne tant que la taille reste lisible (≥ 10 pt), sinon deux lignes équilibrées.
+        assert_eq!(disposer_mot("se brosser les dents", dispo).0, vec!["SE BROSSER LES DENTS"]);
+        let (lignes, taille) = disposer_mot("se brosser les dents", 35.0);
+        assert_eq!(lignes, vec!["SE BROSSER", "LES DENTS"], "coupure équilibrée");
+        assert_eq!(taille, TAILLE_MOT_DEUX_LIGNES);
+        assert_eq!(disposer_mot("chat", dispo), (vec!["CHAT".to_string()], TAILLE_MOT));
     }
 
     #[test]
