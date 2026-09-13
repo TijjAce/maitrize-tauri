@@ -584,8 +584,21 @@ pub fn appliquer(conn: &mut Connection, recus: &[Changement]) -> rusqlite::Resul
                 .map(|x| format!("json_extract(?1, '$.{x}')"))
                 .collect::<Vec<_>>()
                 .join(", ");
+            // Mise à jour sur place, jamais « remplacer » : pour SQLite, remplacer
+            // une ligne, c'est la supprimer puis la recréer — et la suppression
+            // emporte en cascade tout ce qui en dépend (les séances d'une
+            // séquence, les documents d'un élève, les notes d'une évaluation).
+            let maj = cols
+                .iter()
+                .filter(|x| x.as_str() != "id")
+                .map(|x| format!("\"{x}\" = excluded.\"{x}\""))
+                .collect::<Vec<_>>()
+                .join(", ");
             tx.execute(
-                &format!("INSERT OR REPLACE INTO {} ({noms}) VALUES ({valeurs})", c.table_nom),
+                &format!(
+                    "INSERT INTO {} ({noms}) VALUES ({valeurs}) ON CONFLICT(id) DO UPDATE SET {maj}",
+                    c.table_nom
+                ),
                 params![json],
             )?;
         }

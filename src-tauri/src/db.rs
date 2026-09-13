@@ -227,8 +227,8 @@ pub(crate) fn migrer_documents_eleve(conn: &Connection) {
             .unwrap_or(false);
         if existe {
             let ok = conn.execute(
-                "INSERT OR REPLACE INTO documents_eleve (id, eleve_id, type, donnees, date_maj)
-                 VALUES (?1, ?2, ?3, ?4, ?5)",
+                "INSERT INTO documents_eleve (id, eleve_id, type, donnees, date_maj)
+                 VALUES (?1, ?2, ?3, ?4, ?5) ON CONFLICT(id) DO UPDATE SET eleve_id = excluded.eleve_id, type = excluded.type, donnees = excluded.donnees, date_maj = excluded.date_maj",
                 rusqlite::params![format!("{eleve_id}:{type_doc}"), eleve_id, type_doc, valeur,
                     chrono::Utc::now().to_rfc3339()],
             ).is_ok();
@@ -818,8 +818,8 @@ pub(crate) fn migrer_organisation_ime(conn: &Connection) {
     }
     let Some((n, json)) = meilleure else { return };
     conn.execute(
-        "INSERT OR REPLACE INTO edt_typique (id, annee, slots_json)
-         VALUES (COALESCE((SELECT id FROM edt_typique WHERE annee=?1), ?2), ?1, ?3)",
+        "INSERT INTO edt_typique (id, annee, slots_json)
+         VALUES (COALESCE((SELECT id FROM edt_typique WHERE annee=?1), ?2), ?1, ?3) ON CONFLICT(id) DO UPDATE SET annee = excluded.annee, slots_json = excluded.slots_json",
         rusqlite::params![cible, uuid::Uuid::new_v4().to_string(), json],
     )
     .ok();

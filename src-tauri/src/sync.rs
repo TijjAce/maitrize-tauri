@@ -294,11 +294,10 @@ fn inserer_sequence(c: &Connection, mut s: Sequence, seances: Vec<Seance>, image
         .unwrap_or("png").to_string();
     s.image_nom = image_b64.and_then(|b| ecrire_image(&b, &ext));
     c.execute(
-        "INSERT OR REPLACE INTO sequences
-         (id,titre,matiere,cycle,objectifs,competences,competence_visee,image_nom,couleur,
+        "INSERT INTO sequences (id,titre,matiere,cycle,objectifs,competences,competence_visee,image_nom,couleur,
           date_creation,periode,annee,rating_engagement,rating_facilite,rating_apprentissage,
           rating_date_maj,projet_id,video)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18)",
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, matiere = excluded.matiere, cycle = excluded.cycle, objectifs = excluded.objectifs, competences = excluded.competences, competence_visee = excluded.competence_visee, image_nom = excluded.image_nom, couleur = excluded.couleur, date_creation = excluded.date_creation, periode = excluded.periode, annee = excluded.annee, rating_engagement = excluded.rating_engagement, rating_facilite = excluded.rating_facilite, rating_apprentissage = excluded.rating_apprentissage, rating_date_maj = excluded.rating_date_maj, projet_id = excluded.projet_id, video = excluded.video",
         params![s.id, s.titre, s.matiere, s.cycle, s.objectifs, s.competences, s.competence_visee,
                 s.image_nom, s.couleur, s.date_creation, s.periode, s.annee, s.rating_engagement,
                 s.rating_facilite, s.rating_apprentissage, s.rating_date_maj, s.projet_id, s.video],
@@ -307,10 +306,9 @@ fn inserer_sequence(c: &Connection, mut s: Sequence, seances: Vec<Seance>, image
         se.id = uuid::Uuid::new_v4().to_string();
         se.sequence_id = Some(new_seq.clone());
         c.execute(
-            "INSERT OR REPLACE INTO seances
-             (id,titre,numero,objectifs,competences,deroulement,materiel,duree,date,
+            "INSERT INTO seances (id,titre,numero,objectifs,competences,deroulement,materiel,duree,date,
               tableau_deroulement,images_deroulement,bilan,bilan_date,sequence_id)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)",
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, numero = excluded.numero, objectifs = excluded.objectifs, competences = excluded.competences, deroulement = excluded.deroulement, materiel = excluded.materiel, duree = excluded.duree, date = excluded.date, tableau_deroulement = excluded.tableau_deroulement, images_deroulement = excluded.images_deroulement, bilan = excluded.bilan, bilan_date = excluded.bilan_date, sequence_id = excluded.sequence_id",
             params![se.id, se.titre, se.numero, se.objectifs, se.competences, se.deroulement,
                     se.materiel, se.duree, se.date, se.tableau_deroulement, se.images_deroulement,
                     se.bilan, se.bilan_date, se.sequence_id],
@@ -491,8 +489,8 @@ fn importer_programmation(c: &Connection, env: EnvProg) -> R<String> {
     p.id = uuid::Uuid::new_v4().to_string();
     p.est_importee = true;
     c.execute(
-        "INSERT OR REPLACE INTO programmations_finale (id,annee,lignes_json,niveau,enseignant,est_importee)
-         VALUES (?1,?2,?3,?4,?5,?6)",
+        "INSERT INTO programmations_finale (id,annee,lignes_json,niveau,enseignant,est_importee)
+         VALUES (?1,?2,?3,?4,?5,?6) ON CONFLICT(id) DO UPDATE SET annee = excluded.annee, lignes_json = excluded.lignes_json, niveau = excluded.niveau, enseignant = excluded.enseignant, est_importee = excluded.est_importee",
         params![p.id, p.annee, p.lignes_json, p.niveau, p.enseignant, p.est_importee as i64],
     ).map_err(e)?;
     Ok(annee)
