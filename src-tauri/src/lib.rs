@@ -44,8 +44,6 @@ pub fn run() {
         .manage(portable::Portable(Mutex::new(None)))
         .manage(portable::PhotoCapture(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
-            // Projets
-            projets_list, projet_save, projet_delete,
             // Séquences / séances
             sequences_list, sequence_save, sequence_delete,
             seances_list, seance_save, seance_delete,
@@ -109,7 +107,7 @@ pub fn run() {
             // Synchro chiffrée E2E (S3)
             sync::sync_config_get, sync::sync_config_set, sync::sync_test,
             sync::sync_envoyer, sync::sync_relever,
-            sync::sequence_partager, sync::programmation_partager, sync::projet_partager,
+            sync::sequence_partager, sync::programmation_partager,
             sync::boite_relever, sync::boite_liste, sync::boite_recuperer, sync::boite_supprimer,
             // Sauvegarde chiffrée sur stockage S3/MinIO
             sync::sauvegarde_push, sync::sauvegarde_pull, sync::sauvegarde_liste, sync::sync_etat, sync::sync_deltas, sync::sync_fichiers, sync::machines_liste, sync::machine_nom_set,

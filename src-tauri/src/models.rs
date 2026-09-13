@@ -16,40 +16,6 @@ pub fn now_iso() -> String {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct Projet {
-    #[serde(default = "new_id")]
-    pub id: String,
-    #[serde(default)]
-    pub titre: String,
-    #[serde(default)]
-    pub descriptif: String,
-    #[serde(default = "default_indigo")]
-    pub couleur: String,
-    #[serde(default = "now_iso")]
-    pub date_creation: String,
-    #[serde(default)]
-    pub annee: String,
-    #[serde(default)]
-    pub image_nom: Option<String>,
-}
-fn default_indigo() -> String { "indigo".into() }
-
-impl Projet {
-    pub fn from_row(r: &Row) -> rusqlite::Result<Self> {
-        Ok(Self {
-            id: r.get("id")?,
-            titre: r.get("titre")?,
-            descriptif: r.get("descriptif")?,
-            couleur: r.get("couleur")?,
-            date_creation: r.get("date_creation")?,
-            annee: r.get("annee")?,
-            image_nom: r.get("image_nom").ok(),
-        })
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
 pub struct Sequence {
     #[serde(default = "new_id")]
     pub id: String,

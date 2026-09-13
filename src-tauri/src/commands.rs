@@ -10,37 +10,6 @@ type R<T> = Result<T, String>;
 fn e<E: std::fmt::Display>(err: E) -> String { err.to_string() }
 
 // ============================================================
-// PROJETS
-// ============================================================
-
-#[tauri::command]
-pub fn projets_list(db: State<Db>) -> R<Vec<Projet>> {
-    let c = db.0.lock().map_err(e)?;
-    let mut st = c.prepare("SELECT * FROM projets ORDER BY date_creation DESC").map_err(e)?;
-    let rows = st.query_map([], Projet::from_row).map_err(e)?;
-    rows.collect::<rusqlite::Result<_>>().map_err(e)
-}
-
-#[tauri::command]
-pub fn projet_save(db: State<Db>, projet: Projet) -> R<Projet> {
-    let c = db.0.lock().map_err(e)?;
-    c.execute(
-        "INSERT OR REPLACE INTO projets (id,titre,descriptif,couleur,date_creation,annee,image_nom)
-         VALUES (?1,?2,?3,?4,?5,?6,?7)",
-        params![projet.id, projet.titre, projet.descriptif, projet.couleur,
-                projet.date_creation, projet.annee, projet.image_nom],
-    ).map_err(e)?;
-    Ok(projet)
-}
-
-#[tauri::command]
-pub fn projet_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
-    c.execute("DELETE FROM projets WHERE id=?1", params![id]).map_err(e)?;
-    Ok(())
-}
-
-// ============================================================
 // SÉQUENCES
 // ============================================================
 

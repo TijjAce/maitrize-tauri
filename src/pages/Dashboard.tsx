@@ -12,7 +12,6 @@ export default function Dashboard() {
   const { data: sequences } = useAsync(() => api.sequencesList(), []);
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   const { data: ateliers } = useAsync(() => api.ateliersList(), []);
-  const { data: projets } = useAsync(() => api.projetsList(), []);
   const [nom, setNom] = React.useState("");
   React.useEffect(() => { api.settingGet("enseignantNom").then((v) => setNom(v ?? "")); }, []);
 
@@ -24,7 +23,6 @@ export default function Dashboard() {
 
   const stats = [
     { label: "Séquences", val: sequences?.length ?? 0, ico: "📚", to: "/plan" },
-    { label: "Projets", val: projets?.length ?? 0, ico: "📁", to: "/projets" },
     { label: "Ateliers", val: ateliers?.length ?? 0, ico: "🧩", to: "/ateliers" },
     { label: "Élèves", val: eleves?.length ?? 0, ico: "👧", to: "/eleves" },
   ];

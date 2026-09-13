@@ -28,7 +28,6 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
 const NAV: { ico: string; label: string; to: string }[] = [
   { ico: "🏠", label: "Tableau de bord", to: "/" },
   { ico: "🗂", label: "Plan de travail", to: "/plan" },
-  { ico: "📁", label: "Projets", to: "/projets" },
   { ico: "🧩", label: "Ateliers & Espaces", to: "/ateliers" },
   { ico: "🗓️", label: "Planning", to: "/planning" },
   { ico: "🗂️", label: "Organisation", to: "/organisation" },
