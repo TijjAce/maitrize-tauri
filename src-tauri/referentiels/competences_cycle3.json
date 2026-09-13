@@ -2164,16 +2164,31 @@
         },
         {
          "id": "c3.MA.3.1.cm1.08",
-         "texte": "Connaître les propriétés de parallélisme des côtés opposés, des égalités de longueurs et d’angles pour les figures usuelles : triangle rectangle, triangle isocèle, triangle équilatéral, carré, rectangle et losange. Reproduire ou construire un carré, un rectangle, un triangle, un triangle rectangle ou un cercle ou des assemblages de ces figures sur tout support (papier quadrillé, pointé ou uni), avec une règle graduée, une équerre ou un compas. Construire une figure géométrique composée de segments, de droites, de polygones usuels et de cercles. Reconnaître si une figure possède un ou plusieurs axes de symétrie",
+         "texte": "Connaître les propriétés de parallélisme des côtés opposés, des égalités de longueurs et d’angles pour les figures usuelles : triangle rectangle, triangle isocèle, triangle équilatéral, carré, rectangle et losange.",
          "niveau": "CM1"
         },
         {
          "id": "c3.MA.3.1.cm1.09",
-         "texte": "Compléter une figure pour la rendre symétrique par rapport à une droite donnée, horizontale ou verticale",
+         "texte": "Reproduire ou construire un carré, un rectangle, un triangle, un triangle rectangle ou un cercle ou des assemblages de ces figures sur tout support (papier quadrillé, pointé ou uni), avec une règle graduée, une équerre ou un compas.",
          "niveau": "CM1"
         },
         {
          "id": "c3.MA.3.1.cm1.10",
+         "texte": "Construire une figure géométrique composée de segments, de droites, de polygones usuels et de cercles.",
+         "niveau": "CM1"
+        },
+        {
+         "id": "c3.MA.3.1.cm1.11",
+         "texte": "Reconnaître si une figure possède un ou plusieurs axes de symétrie",
+         "niveau": "CM1"
+        },
+        {
+         "id": "c3.MA.3.1.cm1.12",
+         "texte": "Compléter une figure pour la rendre symétrique par rapport à une droite donnée, horizontale ou verticale",
+         "niveau": "CM1"
+        },
+        {
+         "id": "c3.MA.3.1.cm1.13",
          "texte": "Construire, sur papier quadrillé, la figure symétrique d’une figure donnée par rapport à une droite horizontale ou verticale",
          "niveau": "CM1"
         },
@@ -2219,16 +2234,21 @@
         },
         {
          "id": "c3.MA.3.1.cm2.09",
-         "texte": "Reproduire ou construire un carré, un rectangle, un triangle, un triangle rectangle ou un cercle ou des assemblages de ces figures sur tout support (papier quadrillé, pointé ou uni), avec une règle graduée, une équerre ou un compas. Construire une figure géométrique composée de segments, de droites, de polygones usuels et de cercles",
+         "texte": "Reproduire ou construire un carré, un rectangle, un triangle, un triangle rectangle ou un cercle ou des assemblages de ces figures sur tout support (papier quadrillé, pointé ou uni), avec une règle graduée, une équerre ou un compas.",
          "niveau": "CM2"
         },
         {
          "id": "c3.MA.3.1.cm2.10",
-         "texte": "Élaborer un programme de construction",
+         "texte": "Construire une figure géométrique composée de segments, de droites, de polygones usuels et de cercles",
          "niveau": "CM2"
         },
         {
          "id": "c3.MA.3.1.cm2.11",
+         "texte": "Élaborer un programme de construction",
+         "niveau": "CM2"
+        },
+        {
+         "id": "c3.MA.3.1.cm2.12",
          "texte": "Construire, sur papier quadrillé, la figure symétrique d’une figure donnée par rapport à une droite verticale, horizontale ou une diagonale du quadrillage",
          "niveau": "CM2"
         }

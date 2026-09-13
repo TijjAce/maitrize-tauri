@@ -25,5 +25,18 @@ vigueur progressivement (CP et CM1 à la rentrée 2026) ; ils sont retenus pour 
 3. Lancer les extractions (`voir.py`, `voir_listes.py`, `emc.py`, `sciences.py`, `c3_eps.py`,
    `arts.py`, `langues.py`), relire leur sortie, puis `assembler.py`.
 
-Contrôles : `controle.py` (fuites de colonne, fins tronquées) et `verif_listes.py` (aucun mot
-perdu ni ajouté). Les corrections manuelles sont listées dans `assembler.py` (`CORRECTIONS`).
+## Contrôles
+
+- `controle.py` : fuites de la colonne voisine, fins tronquées, objectifs anormalement longs.
+- `verif_listes.py` (cycle 3) : aucun mot perdu ni ajouté dans les listes d’objectifs.
+- `decoupe_geo.py` (cycle 3) : découpage des objectifs par la seule géométrie — deux lignes d’un
+  même objectif sont espacées de ~12 points, deux objectifs de 14 à 15 — comparé à l’extraction.
+- `ocr_zones.swift` + `comparer_ocr.py` (cycle 2) : la colonne des objectifs de chaque tableau est
+  relue sur l’image de la page, puis comparée caractère par caractère ; le nombre de puces lues
+  doit égaler le nombre d’objectifs.
+
+Dernière vérification (septembre 2026) : cycle 2, 3 caractères d’écart sur 16 214 en français et
+13 sur 13 536 en mathématiques, tous dus à la lecture de l’image (exposants, fractions en hauteur) ;
+cycle 3, aucun mot manquant ni ajouté et découpage conforme dans tous les blocs.
+
+Les corrections manuelles sont listées dans `assembler.py` (`CORRECTIONS`).

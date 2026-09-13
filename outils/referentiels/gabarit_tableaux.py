@@ -131,9 +131,18 @@ def extraire(bbox, entrees, entete=("Objectifs", "Exemples"), n_col=2, col=0, ma
             its = items(cols[col], **(options_items or {})) if len(cols) > col else []
             if not its and len(cols) > col:
                 its = items(cols[col], puces_obligatoires=False)  # liste sans puces dans le PDF
+            # Étendue du tableau, page par page : pour relire la colonne sur l'image de la page.
+            segments = {}
+            for rg in rangs:
+                y0, y1 = min(m.y0 for m in rg.mots), max(m.y1 for m in rg.mots)
+                a0, a1 = segments.get(rg.page, (y0, y1))
+                segments[rg.page] = (min(a0, y0), max(a1, y1))
             resultats.append({
                 "chemin": [chemin[k] for k in sorted(chemin)], "items": its,
-                "page": li.page, "y": li.y, "frontieres": [round(f) for f in front], "sans_entete": bool(sans_entete),
+                "segments": {str(p): [round(v[0], 1), round(v[1], 1)] for p, v in segments.items()},
+                "largeur_page": li.largeur_page, "hauteur_page": li.hauteur_page,
+                "gauche": min((m.x0 for rg in rangs for m in rg.mots), default=0),
+                "page": li.page, "y": li.y, "frontieres": [round(f, 1) for f in front], "sans_entete": bool(sans_entete),
             })
             attente = False
             i = max(j, i + 1)
