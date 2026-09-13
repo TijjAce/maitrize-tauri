@@ -11,7 +11,7 @@ const CLASSE = ["a", "b", "c"].map(eleve);
 const creneau = (elevesJson: string): Creneau => ({
   id: "c1", date: "2026-08-24", heureDebut: "09:00", heureFin: "10:30",
   matiere: "Scolarité", couleur: "teal", seanceId: null, atelierId: null,
-  espaceId: null, elevesJson,
+  espaceId: null, elevesJson, nature: "classe", prevu: "", bilan: "",
 });
 
 describe("idsDuCreneau", () => {

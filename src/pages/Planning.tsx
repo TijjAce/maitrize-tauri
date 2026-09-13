@@ -2,7 +2,6 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import { isoJour, lundiDe, jourPlanningInitial, anneeDe, toMin, minToHHMM } from "../dates";
-import { ApercuSalleJour } from "./PlanSalle";
 import { api, Creneau, Seance, Sequence, Eleve, MATIERES, couleurHex, couleurPourMatiere, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance } from "../api";
 import { Modal, Field, Input, Select, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
@@ -10,6 +9,8 @@ import { toast } from "../components/Toaster";
 import { SeanceReadView } from "./SequenceDetail";
 import { printHTML, escapeHtml } from "../print";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
+import { CahierJournal } from "../components/CahierJournal";
+import { minutesParNature, duree, natureDepuisTitre, natureDe } from "../heures";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const JOURS7 = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -65,6 +66,13 @@ export default function Planning() {
   }, [vue, ancre]);
 
   const { data: creneaux, reload } = useAsync(() => api.creneauxList(debut, fin), [debut, fin]);
+  // Heures de la semaine affichée (ou de la semaine du jour) : relues à chaque changement de créneaux.
+  const lundiSemaine = iso(lundiDe(ancre));
+  const vendrediSemaine = (() => { const d = lundiDe(ancre); d.setDate(d.getDate() + 4); return iso(d); })();
+  const { data: creneauxSemaine } = useAsync(
+    () => vue === "semaine" ? Promise.resolve(creneaux ?? []) : api.creneauxList(lundiSemaine, vendrediSemaine),
+    [lundiSemaine, vendrediSemaine, creneaux, vue]);
+  const heuresSemaine = React.useMemo(() => minutesParNature(creneauxSemaine ?? []), [creneauxSemaine]);
   const { data: seances } = useAsync(() => api.seancesList(), []);
   const { data: sequences } = useAsync(() => api.sequencesList(), []);
   const { data: edts } = useAsync(() => api.edtTypiqueList(), []);
@@ -171,7 +179,7 @@ export default function Planning() {
       if (feries[date] || vacanceDe(date) || chevauche(date, s.heureDebut, s.heureFin)) continue;
       await api.creneauSave({ id: newId(), date, heureDebut: s.heureDebut, heureFin: s.heureFin,
         matiere: s.titre, couleur: couleurPourMatiere(s.titre), seanceId: null, atelierId: null, espaceId: null,
-        elevesJson: JSON.stringify(s.eleves ?? []) });
+        elevesJson: JSON.stringify(s.eleves ?? []), nature: natureDepuisTitre(s.titre), prevu: "", bilan: "" });
       poses++;
     }
     reload();
@@ -225,9 +233,9 @@ export default function Planning() {
       const teinte = couleurHex[c.couleur] || couleurHex[couleurPourMatiere(c.matiere)] || couleurHex.blue;
       const titre = s?.titre || c.matiere || "Créneau";
       const dur = dureeTxt(c.heureDebut, c.heureFin);
-      const chips = `${c.matiere ? `<span class="chip" style="background:${teinte}26;color:${teinte}">${escapeHtml(c.matiere)}</span>` : ""}${dur ? `<span class="chip dur">⏱ ${dur}</span>` : ""}`;
+      const chips = `${c.matiere ? `<span class="chip" style="background:${teinte}26;color:${teinte}">${escapeHtml(c.matiere)}</span>` : ""}${natureDe(c) === "reunion" ? `<span class="chip dur">Réunion · formation</span>` : ""}${dur ? `<span class="chip dur">⏱ ${dur}</span>` : ""}`;
       const head = `<div class="head"><span class="ttl">${escapeHtml(titre)}</span><span class="chips">${chips}</span></div>`;
-      if (!s && estPause(c.matiere)) return `<div class="col">${head}</div>`;
+      if (!s && estPause(c.matiere) && !c.prevu?.trim() && !c.bilan?.trim()) return `<div class="col">${head}</div>`;
       let comps: CompetenceSelectionnee[] = [];
       try { comps = s?.competences ? JSON.parse(s.competences) : []; } catch { /* */ }
       let grid: string[][] = [];
@@ -242,6 +250,8 @@ export default function Planning() {
         comps.length ? champ("Compétences", comps.map((x) => escapeHtml(labelCourt(x))).join("<br>")) : "",
         grid.length ? `<div class="fl" style="margin-top:4px">Tableau :</div><table>${grid.map((row, r) => `<tr>${row.map((cell) => r === 0 ? `<th>${escapeHtml(cell)}</th>` : `<td>${rendreCell(cell)}</td>`).join("")}</tr>`).join("")}</table>` : "",
         illus.length ? `<div class="imgs">${illus.map(imgTag).join("")}</div>` : "",
+        c.prevu?.trim() ? `<div class="f"><span class="fl">Prévu :</span></div><div class="txt">${escapeHtml(c.prevu.trim())}</div>` : "",
+        c.bilan?.trim() ? `<div class="f"><span class="fl">Fait · bilan :</span></div><div class="txt">${escapeHtml(c.bilan.trim())}</div>` : "",
       ].join("");
       return `<div class="col">${head}${body ? `<div class="body">${body}</div>` : ""}</div>`;
     };
@@ -288,7 +298,7 @@ export default function Planning() {
       @media print{@page{margin:11mm}}
     `;
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Planning — ${escapeHtml(titre)}</title><style>${css}</style></head>
-      <body><h1>${escapeHtml(titre)}</h1><div class="sub">Planning du jour</div>
+      <body><h1>${escapeHtml(titre)}</h1><div class="sub">Cahier journal</div>
       <div class="jour">${rangs || '<div class="row"><div style="padding:20px;color:#687087">Aucun créneau ce jour-là.</div></div>'}</div>
       </body></html>`;
     await api.ouvrirHtml(html);
@@ -342,9 +352,6 @@ export default function Planning() {
     }
   };
 
-  // Aperçu du plan de salle : { date, éventuel créneau ciblé }.
-  const [salle, setSalle] = React.useState<{ date: string; creneauId?: string } | null>(null);
-
   return (
     <Page titre="Planning" sous={titre}
       actions={<>
@@ -353,8 +360,6 @@ export default function Planning() {
           style={deplacer ? { background: "var(--accent)", color: "#fff", borderColor: "var(--accent)" } : undefined}
           title={deplacer ? "Déplacement activé — glissez les créneaux. Cliquez pour désactiver." : "Activer le déplacement des créneaux par glisser-déposer"}>
           ✋ Déplacer</button>}
-        {vue === "jour" && <button className="btn" onClick={() => setSalle({ date: iso(ancre) })}
-          title="Plan de salle : voir qui est assis où, créneau par créneau">🪑 Salle</button>}
         {vue !== "mois" && <button className="btn" onClick={imprimer}>🖨 PDF</button>}
         <div className="seg" style={{ marginLeft: 4 }}>
           <button className={vue === "jour" ? "active" : ""} onClick={() => setVue("jour")}>Jour</button>
@@ -365,17 +370,31 @@ export default function Planning() {
         <button className="btn" onClick={() => { const d = new Date(); d.setHours(0, 0, 0, 0); setAncre(d); }}>Aujourd'hui</button>
         <button className="btn" onClick={() => decaler(1)} aria-label="Suivant">→</button>
       </>}>
+      {vue !== "mois" && (
+        <div className="heures-semaine" aria-label="Heures de la semaine">
+          <span style={{ color: "var(--text-2)" }}>
+            Semaine du {fmtJour(lundiDe(ancre))} au {fmtJour(new Date(vendrediSemaine))}
+          </span>
+          <span>🧑‍🏫 Classe <b>{duree(heuresSemaine.classe)}</b></span>
+          <span>🗣️ Réunions et formations <b>{duree(heuresSemaine.reunion)}</b></span>
+        </div>
+      )}
       {vue === "mois"
         ? <VueMois ancre={ancre} creneaux={creneaux ?? []} feries={feries} vacanceDe={vacanceDe}
             anniversaires={anniversaires} onJour={(d) => { setAncre(d); setVue("jour"); }} />
-        : <GrilleHoraire jours={jours} creneaux={creneaux ?? []} seances={seances ?? []} eleves={eleves ?? []} feries={feries} vacanceDe={vacanceDe}
-            deplacable={deplacer} onEdit={setEdit} onTap={ouvrirCreneau} onReload={reload}
-            onSalle={(c) => setSalle({ date: c.date, creneauId: c.id })} />}
+        : vue === "jour"
+          ? <div className="planning-jour">
+              <GrilleHoraire jours={jours} creneaux={creneaux ?? []} seances={seances ?? []} eleves={eleves ?? []} feries={feries} vacanceDe={vacanceDe}
+                deplacable={deplacer} onEdit={setEdit} onTap={ouvrirCreneau} onReload={reload} />
+              <CahierJournal dateIso={iso(ancre)} creneaux={creneaux ?? []} seances={seances ?? []} eleves={eleves ?? []}
+                onGenerer={generer} onModifier={setEdit} />
+            </div>
+          : <GrilleHoraire jours={jours} creneaux={creneaux ?? []} seances={seances ?? []} eleves={eleves ?? []} feries={feries} vacanceDe={vacanceDe}
+              deplacable={deplacer} onEdit={setEdit} onTap={ouvrirCreneau} onReload={reload} />}
 
       {voirSeance && <SeanceReadView seance={voirSeance}
         onClose={() => setVoirSeance(null)}
         onEdit={() => { const sid = voirSeance.sequenceId; setVoirSeance(null); if (sid) navigate(`/sequences/${sid}`); }} />}
-      {salle && <ApercuSalleJour dateIso={salle.date} creneauId={salle.creneauId} onClose={() => setSalle(null)} />}
       {edit && <CreneauForm creneau={edit} seances={seances ?? []} sequences={sequences ?? []}
         onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }}
         onDelete={() => { setDel(edit); setEdit(null); }} onCreerSeance={creerSeanceDepuisCreneau} />}
@@ -385,10 +404,10 @@ export default function Planning() {
 }
 
 // ── Grille horaire (1 jour ou 5 jours) ─────────────────────────────────────
-function GrilleHoraire({ jours, creneaux, seances, eleves, feries, vacanceDe, deplacable, onEdit, onTap, onReload, onSalle }: {
+function GrilleHoraire({ jours, creneaux, seances, eleves, feries, vacanceDe, deplacable, onEdit, onTap, onReload }: {
   jours: Date[]; creneaux: Creneau[]; seances: Seance[]; eleves: Eleve[]; feries: Record<string, string>;
   vacanceDe: (d: string) => string | undefined; deplacable: boolean; onEdit: (c: Creneau) => void; onTap: (c: Creneau) => void;
-  onReload: () => void; onSalle: (c: Creneau) => void;
+  onReload: () => void;
 }) {
   const todayIso = iso(new Date());
   const heures = Array.from({ length: H_FIN - H_DEBUT + 1 }, (_, i) => H_DEBUT + i);
@@ -406,7 +425,7 @@ function GrilleHoraire({ jours, creneaux, seances, eleves, feries, vacanceDe, de
     if ((e.target as HTMLElement).closest(".cren-block")) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const start = Math.max(H_DEBUT * 60, Math.min((H_FIN - 1) * 60, H_DEBUT * 60 + Math.floor(((e.clientY - rect.top) / hpx) * 60 / 30) * 30));
-    onEdit({ id: newId(), date: iso(d), heureDebut: minToHHMM(start), heureFin: minToHHMM(start + 60), matiere: "Français", couleur: couleurPourMatiere("Français"), seanceId: null, atelierId: null, espaceId: null, elevesJson: "[]" });
+    onEdit({ id: newId(), date: iso(d), heureDebut: minToHHMM(start), heureFin: minToHHMM(start + 60), matiere: "Français", couleur: couleurPourMatiere("Français"), seanceId: null, atelierId: null, espaceId: null, elevesJson: "[]", nature: "classe", prevu: "", bilan: "" });
   };
 
   // Drag d'un créneau : écouteurs attachés une seule fois par geste (ref pour
@@ -499,7 +518,6 @@ function GrilleHoraire({ jours, creneaux, seances, eleves, feries, vacanceDe, de
                       onContextMenu={(e) => openCtx(e, [
                         ...(c.seanceId ? [{ label: "Voir la séance", icon: "👁", onClick: () => onTap(c) }] : []),
                         { label: "Modifier le créneau", icon: "✏️", onClick: () => onEdit(c) },
-                        { label: "Plan de salle", icon: "🪑", onClick: () => onSalle(c) },
                         ...(c.seanceId ? [{ label: "Détacher la séance", icon: "🔗", onClick: () => api.creneauSave({ ...c, seanceId: null }).then(onReload) }] : []),
                         { label: "Dupliquer", icon: "📑", sep: true, onClick: () => api.creneauSave({ ...c, id: newId() }).then(onReload) },
                         { label: "Supprimer le créneau", icon: "🗑", danger: true, sep: true, onClick: () => api.creneauDelete(c.id).then(onReload) },
@@ -509,7 +527,11 @@ function GrilleHoraire({ jours, creneaux, seances, eleves, feries, vacanceDe, de
                         borderLeft: seance ? "none" : `3px solid color-mix(in srgb, ${teinte} 75%, var(--panel-2))`,
                         borderRadius: 7, color: seance ? "#fff" : "var(--text)", padding: compact ? "2px 6px" : "4px 6px", overflow: "hidden", fontSize: compact ? 10.5 : 11.5, lineHeight: 1.25,
                         boxShadow: dragged ? "0 4px 14px rgba(0,0,0,.35)" : seance ? "0 1px 3px rgba(0,0,0,.2)" : "none", opacity: dragged ? 0.92 : 1, outline: deplacable ? "2px dashed rgba(255,255,255,.7)" : "none", cursor: deplacable ? "grab" : "pointer", userSelect: "none", zIndex: dragged ? 10 : 1 }}>
-                      <div style={{ opacity: 0.85, fontSize: compact ? 9.5 : 11 }}>{minToHHMM(startMin)}–{minToHHMM(startMin + durMin)}</div>
+                      <div style={{ opacity: 0.85, fontSize: compact ? 9.5 : 11 }}>
+                        {natureDe(c) === "reunion" && <span title="Réunion ou formation">🗣️ </span>}
+                        {minToHHMM(startMin)}–{minToHHMM(startMin + durMin)}
+                        {(c.prevu || c.bilan) && <span title="Cahier journal rempli"> · 📓</span>}
+                      </div>
                       {seance ? <>
                         <div style={{ fontWeight: 700 }}>{c.matiere}</div>
                         {!compact && <div style={{ opacity: 0.92 }}>{seance.titre}</div>}
@@ -629,10 +651,21 @@ function CreneauForm({ creneau, seances, sequences, onClose, onSaved, onDelete, 
         <Field label="Début"><Input type="time" value={c.heureDebut} onChange={(e) => up({ heureDebut: e.target.value })} /></Field>
         <Field label="Fin"><Input type="time" value={c.heureFin} onChange={(e) => up({ heureFin: e.target.value })} /></Field>
       </div>
-      <Field label="Matière">
-        <Select value={c.matiere} onChange={(e) => up({ matiere: e.target.value, couleur: couleurPourMatiere(e.target.value) })}>
-          {MATIERES.map((m) => <option key={m}>{m}</option>)}
-        </Select>
+      <Field label="Nature">
+        <div className="seg" role="radiogroup" aria-label="Nature du créneau">
+          <button type="button" role="radio" aria-checked={natureDe(c) === "classe"} className={natureDe(c) === "classe" ? "active" : ""}
+            onClick={() => up({ nature: "classe" })}>🧑‍🏫 Classe</button>
+          <button type="button" role="radio" aria-checked={natureDe(c) === "reunion"} className={natureDe(c) === "reunion" ? "active" : ""}
+            onClick={() => up({ nature: "reunion", ...(MATIERES.includes(c.matiere) ? { matiere: "Réunion" } : {}) })}>🗣️ Réunion · formation</button>
+        </div>
+      </Field>
+      <Field label={natureDe(c) === "reunion" ? "Intitulé" : "Matière ou groupe"}>
+        <Input list={`intitules-${natureDe(c)}`} value={c.matiere}
+          onChange={(e) => up({ matiere: e.target.value, couleur: couleurPourMatiere(e.target.value) })} />
+        <datalist id="intitules-classe">{MATIERES.map((m) => <option key={m} value={m} />)}</datalist>
+        <datalist id="intitules-reunion">
+          {["Réunion", "Réunion d’équipe", "Synthèse", "Équipe de suivi (ESS)", "Formation", "Conseil de cycle", "Concertation"].map((m) => <option key={m} value={m} />)}
+        </datalist>
       </Field>
       <Field label="Séance liée (optionnel)">
         <div className="row" style={{ alignItems: "flex-start" }}>

@@ -291,15 +291,38 @@ pub fn creneaux_list(db: State<Db>, debut: Option<String>, fin: Option<String>) 
 #[tauri::command]
 pub fn creneau_save(db: State<Db>, creneau: Creneau) -> R<Creneau> {
     let c = db.0.lock().map_err(e)?;
+    ecrire_creneau(&c, creneau)
+}
+
+pub(crate) fn ecrire_creneau(c: &rusqlite::Connection, creneau: Creneau) -> R<Creneau> {
     c.execute(
         "INSERT OR REPLACE INTO creneaux
-         (id,date,heure_debut,heure_fin,matiere,couleur,seance_id,atelier_id,espace_id,eleves_json)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
+         (id,date,heure_debut,heure_fin,matiere,couleur,seance_id,atelier_id,espace_id,eleves_json,
+          nature,prevu,bilan)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)",
         params![creneau.id, creneau.date, creneau.heure_debut, creneau.heure_fin,
                 creneau.matiere, creneau.couleur, creneau.seance_id, creneau.atelier_id,
-                creneau.espace_id, creneau.eleves_json],
+                creneau.espace_id, creneau.eleves_json, creneau.nature, creneau.prevu, creneau.bilan],
     ).map_err(e)?;
     Ok(creneau)
+}
+
+/// Écrit le cahier journal d'un créneau, et rien d'autre.
+///
+/// Réécrire toute la ligne depuis l'écran du journal remettrait à son ancienne
+/// place un créneau déplacé entre-temps dans la grille.
+#[tauri::command]
+pub fn creneau_journal_save(db: State<Db>, id: String, prevu: String, bilan: String) -> R<()> {
+    let c = db.0.lock().map_err(e)?;
+    ecrire_journal_creneau(&c, &id, &prevu, &bilan)
+}
+
+pub(crate) fn ecrire_journal_creneau(c: &rusqlite::Connection, id: &str, prevu: &str, bilan: &str) -> R<()> {
+    let n = c.execute("UPDATE creneaux SET prevu = ?2, bilan = ?3 WHERE id = ?1", params![id, prevu, bilan]).map_err(e)?;
+    if n == 0 {
+        return Err("Ce créneau n'existe plus.".into());
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -1881,6 +1904,38 @@ fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests_cahier_journal {
+    use crate::models::Creneau;
+
+    /// Un déplacement de créneau réécrit toute la ligne : s'il oubliait une
+    /// colonne, le cahier journal de ce créneau s'effacerait en silence.
+    #[test]
+    fn prevu_bilan_et_nature_survivent_a_l_enregistrement() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        let cr: Creneau = serde_json::from_value(serde_json::json!({
+            "id": "cr1", "date": "2026-09-14", "heureDebut": "09:00", "heureFin": "10:00",
+            "matiere": "Synthèse", "nature": "reunion",
+            "prevu": "Préparer les bilans.", "bilan": "Bilans relus avec l'équipe."
+        })).unwrap();
+        super::ecrire_creneau(&c, cr).unwrap();
+        let lu = c.query_row("SELECT * FROM creneaux WHERE id='cr1'", [], Creneau::from_row).unwrap();
+        assert_eq!(lu.nature, "reunion");
+        assert_eq!(lu.prevu, "Préparer les bilans.");
+        assert_eq!(lu.bilan, "Bilans relus avec l'équipe.");
+        // Le journal s'écrit seul, sans toucher à l'horaire.
+        super::ecrire_journal_creneau(&c, "cr1", "Prévu modifié.", "").unwrap();
+        let lu2 = c.query_row("SELECT * FROM creneaux WHERE id='cr1'", [], Creneau::from_row).unwrap();
+        assert_eq!((lu2.prevu.as_str(), lu2.heure_debut.as_str(), lu2.nature.as_str()), ("Prévu modifié.", "09:00", "reunion"));
+        assert!(super::ecrire_journal_creneau(&c, "absent", "x", "y").is_err());
+        // Un créneau d'une ancienne version, sans ces champs, reste un créneau de classe.
+        let ancien: Creneau = serde_json::from_value(serde_json::json!({"id": "cr2", "date": "2026-09-14"})).unwrap();
+        assert_eq!(ancien.nature, "classe");
+        assert_eq!(ancien.prevu, "");
+    }
 }
 
 #[cfg(test)]

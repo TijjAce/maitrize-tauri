@@ -100,6 +100,7 @@ pub fn run() {
             commands::jeu_generer, commands::tla_generer,
             commands::dossier_donnees_get, commands::dossier_donnees_set,
             commands::diag_ecrire, commands::diag_ouvrir, commands::fichier_ouvrir,
+            commands::creneau_journal_save,
             commands::textes_list, commands::texte_save, commands::texte_delete,
             // Amis (appariement chiffré)
             amis::identite_get, amis::identite_set_nom,

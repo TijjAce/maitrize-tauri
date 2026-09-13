@@ -65,6 +65,12 @@ export interface Creneau {
   couleur: string; seanceId: string | null; atelierId: string | null; espaceId: string | null;
   /** Élèves présents (JSON) — organisation IME en groupes restreints. */
   elevesJson: string;
+  /** Temps de classe, ou de réunion / formation : pour compter les heures de la semaine. */
+  nature: "classe" | "reunion";
+  /** Cahier journal : ce qui est prévu. */
+  prevu: string;
+  /** Cahier journal : ce qui a été fait, et le bilan. */
+  bilan: string;
 }
 
 export interface Atelier {
@@ -290,6 +296,8 @@ export const api = {
   creneauxList: (debut?: string, fin?: string) =>
     invoke<Creneau[]>("creneaux_list", { debut: debut ?? null, fin: fin ?? null }),
   creneauSave: (creneau: Creneau) => invoke<Creneau>("creneau_save", { creneau }),
+  creneauJournalSave: (id: string, prevu: string, bilan: string) =>
+    invoke<void>("creneau_journal_save", { id, prevu, bilan }),
   creneauDelete: (id: string) => invoke<void>("creneau_delete", { id }),
 
   // Élèves
