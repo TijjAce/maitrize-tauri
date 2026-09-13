@@ -101,11 +101,13 @@ export const EditeurRiche = React.forwardRef<EditeurRicheHandle, {
       if (!sel || sel.rangeCount === 0 || !dansLaZone(sel.anchorNode)) { setBulle(null); setMenu((m) => (m === "bulle" ? null : m)); return; }
       const plage = sel.getRangeAt(0);
       derniere.current = plage.cloneRange();
-      setEtats({
+      const nouveaux: Record<string, boolean> = {
         bold: document.queryCommandState("bold"), italic: document.queryCommandState("italic"),
         underline: document.queryCommandState("underline"), insertUnorderedList: document.queryCommandState("insertUnorderedList"),
         insertOrderedList: document.queryCommandState("insertOrderedList"),
-      });
+      };
+      // Pas de nouveau rendu à chaque déplacement du curseur si rien n'a changé.
+      setEtats((avant) => (Object.keys(nouveaux).every((k) => avant[k] === nouveaux[k]) ? avant : nouveaux));
       if (sel.isCollapsed || !sel.toString().trim()) { setBulle(null); setMenu((m) => (m === "bulle" ? null : m)); return; }
       const r = plage.getBoundingClientRect();
       setBulle({ haut: Math.max(8, r.top - 46), gauche: Math.min(window.innerWidth - 220, Math.max(8, r.left + r.width / 2 - 70)) });
@@ -188,11 +190,6 @@ export const EditeurRiche = React.forwardRef<EditeurRicheHandle, {
     setProposition(null);
   };
 
-  const Outil = ({ titre, children, onClick, actif }: { titre: string; children: React.ReactNode; onClick: () => void; actif?: boolean }) => (
-    <button type="button" className="outil" title={titre} aria-label={titre} aria-pressed={actif}
-      onMouseDown={(e) => e.preventDefault()} onClick={onClick}>{children}</button>
-  );
-
   return (
     <div className="editeur-riche">
       <div className="editeur-riche-barre" role="toolbar" aria-label="Mise en forme">
@@ -274,6 +271,18 @@ export const EditeurRiche = React.forwardRef<EditeurRicheHandle, {
     </div>
   );
 });
+
+/**
+ * Bouton de la barre. Déclaré hors de l'éditeur : recréé à chaque rendu, il
+ * serait remplacé dans la page à chaque frappe, et un clic tombant pendant un
+ * enregistrement automatique pourrait se perdre.
+ */
+function Outil({ titre, children, onClick, actif }: { titre: string; children: React.ReactNode; onClick: () => void; actif?: boolean }) {
+  return (
+    <button type="button" className="outil" title={titre} aria-label={titre} aria-pressed={actif}
+      onMouseDown={(e) => e.preventDefault()} onClick={onClick}>{children}</button>
+  );
+}
 
 function MenuStyles({ onChoisir }: { onChoisir: (s: Style) => void }) {
   return (
