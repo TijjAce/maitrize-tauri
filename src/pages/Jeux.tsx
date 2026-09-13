@@ -6,6 +6,7 @@ import { Field, Input, Select, Empty, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
 import { TlaTab } from "./Tla";
+import { completer, candidatsNecessaires } from "../tirage";
 
 // ── Générateur de jeux ARASAAC ─────────────────────────────────────────────
 //
@@ -117,6 +118,9 @@ function Generateur({ etat, progression, onTelecharger }: {
   const [graine, setGraine] = React.useState(() => Math.floor(Math.random() * 1e6));
   const [vivier, setVivier] = React.useState<PictoArasaac[]>([]);
   const [ecartes, setEcartes] = React.useState<Set<number>>(new Set());
+  // Tout ce qui a été écarté pour ce thème : un nouveau tirage ne le ramène pas.
+  const [bannis, setBannis] = React.useState<Set<number>>(new Set());
+  React.useEffect(() => { setBannis(new Set()); }, [choisies, intersection, sansVerbes]);
   const [options, setOptions] = React.useState<OptionsJeu>({
     libelles: false, cartes: true, colonnes: 3, lignes: 2, planches: 6, graine: 0,
   });
@@ -137,19 +141,30 @@ function Generateur({ etat, progression, onTelecharger }: {
   const basculer = (nom: string) =>
     setChoisies((v) => (v.includes(nom) ? v.filter((x) => x !== nom) : [...v, nom]));
 
-  const tirer = async (nouvelleGraine?: number) => {
+  const retenus = vivier.filter((p) => !ecartes.has(p.id));
+
+  /**
+   * Tire des pictogrammes. `garder` : on conserve les retenus et l'on ne
+   * remplace que les écartés ; sinon tout est retiré au sort. Dans les deux
+   * cas, les écartés rejoignent les bannis et ne reviennent plus.
+   */
+  const tirer = async (nouvelleGraine?: number, garder = false) => {
     if (!choisies.length) return;
     const g = nouvelleGraine ?? graine;
     setGraine(g);
+    const exclus = new Set([...bannis, ...ecartes]);
+    const gardes = garder ? retenus : [];
     try {
-      const p = await api.arasaacSelection(choisies, sansVerbes ? EXCLUES_PAR_DEFAUT : [], intersection, combien, g);
+      const candidats = await api.arasaacSelection(choisies, sansVerbes ? EXCLUES_PAR_DEFAUT : [], intersection,
+        candidatsNecessaires(combien, exclus.size, gardes.length), g);
+      const p = completer(gardes, candidats, exclus, combien);
+      setBannis(exclus);
       setVivier(p);
       setEcartes(new Set());
       if (!p.length) toast("Aucun pictogramme pour cette sélection.", { icone: "⚠️" });
+      else if (p.length < combien) toast(`Ce thème n’a plus d’autres pictogrammes : ${p.length} sur ${combien}.`, { icone: "ℹ️" });
     } catch (e: any) { toast(String(e), { icone: "⚠️" }); }
   };
-
-  const retenus = vivier.filter((p) => !ecartes.has(p.id));
   const parPlanche = options.colonnes * options.lignes;
 
   const generer = async () => {
@@ -241,9 +256,16 @@ function Generateur({ etat, progression, onTelecharger }: {
                 {retenus.length} retenus{ecartes.size > 0 && ` · ${ecartes.size} écartés`}
               </span>
               <div style={{ flex: 1 }} />
+              {ecartes.size > 0 && (
+                <button className="btn sm primary" onClick={() => tirer(Math.floor(Math.random() * 1e6), true)}
+                  title="Garde les pictogrammes retenus et tire seulement de quoi remplacer les écartés">
+                  🔁 Remplacer les {ecartes.size} écartés
+                </button>
+              )}
               {vivier.length > 0 && (
-                <button className="btn sm" onClick={() => tirer(Math.floor(Math.random() * 1e6))}>
-                  🔀 Retirer au sort
+                <button className="btn sm" onClick={() => tirer(Math.floor(Math.random() * 1e6))}
+                  title="Tire un nouveau lot, sans jamais reprendre un pictogramme écarté">
+                  🔀 Tout retirer au sort
                 </button>
               )}
             </div>
@@ -255,8 +277,8 @@ function Generateur({ etat, progression, onTelecharger }: {
             ) : (
               <>
                 <p style={{ fontSize: 13, color: "var(--text-2)", margin: "8px 0" }}>
-                  Cliquez sur un pictogramme pour l'écarter. Rien ne s'imprime sans
-                  que vous l'ayez vu.
+                  Cliquez sur un pictogramme pour l'écarter : il ne reviendra plus dans
+                  les tirages de ce thème. Rien ne s'imprime sans que vous l'ayez vu.
                 </p>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(92px, 1fr))", gap: 8 }}>
                   {vivier.map((p) => (
