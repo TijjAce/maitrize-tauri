@@ -10,7 +10,7 @@ import { fichierToBlobUrl } from "../components/PdfViewer";
 import { printHTML, escapeHtml } from "../print";
 import { openCtx } from "../components/ctxmenu";
 import { PhotoTelephone } from "../components/PhotoTelephone";
-import { useFileDropZone, estPdf, estImage, fichierEnBase64 } from "../dragdrop";
+import { useFileDropZone, estDocument, estImage, fichierEnBase64 } from "../dragdrop";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { FormSequence } from "../components/FormSequence";
@@ -31,7 +31,7 @@ export default function SequenceDetail() {
   // dépend de la séquence chargée, passe par une ref mise à jour plus bas.
   const importerRef = React.useRef<(fichiers: File[]) => void>(() => {});
   const { ref: dropZoneRef, actif: dropActif } = useFileDropZone({
-    accept: (c) => estPdf(c) || estImage(c),
+    accept: (c) => estDocument(c) || estImage(c),
     onFiles: (fichiers) => importerRef.current(fichiers),
   });
 
@@ -75,7 +75,8 @@ export default function SequenceDetail() {
 
   // Dépôt de fichiers (PDF/images) sur la séquence → crée le matériel.
   const creerMaterielDepuisFichier = async (nomOriginal: string, nom: string) => {
-    const pdf = estPdf(nomOriginal);
+    // Tout ce qui n'est pas une image est un document : PDF, Word, LibreOffice…
+    const pdf = !estImage(nomOriginal);
     await api.materielSave({
       id: newId(), titre: nomOriginal.replace(/\.[^.]+$/, ""), descriptionMateriel: "",
       competenceId: comp?.competenceRefId ?? "", competenceTitre: comp?.competenceTitre ?? "",
@@ -166,7 +167,7 @@ export default function SequenceDetail() {
         }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: matsSeq.length ? 8 : 0 }}>
           <h3 style={{ margin: 0, fontSize: 15 }}>📎 Matériel de la séquence</h3>
-          <span className="meta" style={{ flex: 1 }}>Glissez ici vos PDF / images — puis sur une séance.</span>
+          <span className="meta" style={{ flex: 1 }}>Glissez ici vos PDF, documents Word ou LibreOffice, images — puis sur une séance.</span>
           <PhotoTelephone onPhoto={photoVersMateriel} />
         </div>
         {matsSeq.length > 0 && <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{matsSeq.map(matChip)}</div>}

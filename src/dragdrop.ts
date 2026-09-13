@@ -15,6 +15,21 @@ import React from "react";
 
 export const estPdf = (nom: string) => /\.pdf$/i.test(nom);
 export const estImage = (nom: string) => /\.(png|jpe?g|gif|webp|heic|bmp|svg)$/i.test(nom);
+/** Un document qu'on ouvre dans son application : PDF, Word, LibreOffice, tableur, présentation. */
+export const estDocument = (nom: string) => /\.(pdf|docx?|odt|rtf|pptx?|odp|xlsx?|ods)$/i.test(nom);
+/** Extensions acceptées par le sélecteur de fichiers des documents. */
+export const EXTENSIONS_DOCUMENTS = ".pdf,.doc,.docx,.odt,.rtf,.ppt,.pptx,.odp,.xls,.xlsx,.ods";
+
+/** Icône et nom lisible d'un document, d'après son extension. */
+export function typeDocument(nom: string): { icone: string; libelle: string } {
+  const ext = (nom.split(".").pop() || "").toLowerCase();
+  if (ext === "pdf") return { icone: "📄", libelle: "PDF" };
+  if (ext === "doc" || ext === "docx") return { icone: "📘", libelle: "Word" };
+  if (ext === "odt" || ext === "rtf") return { icone: "📝", libelle: ext === "odt" ? "LibreOffice" : "Texte RTF" };
+  if (["xls", "xlsx", "ods"].includes(ext)) return { icone: "📊", libelle: "Tableur" };
+  if (["ppt", "pptx", "odp"].includes(ext)) return { icone: "📽", libelle: "Présentation" };
+  return { icone: "📄", libelle: "Document" };
+}
 export const nomDeChemin = (chemin: string) => chemin.split(/[\\/]/).pop() || chemin;
 
 /**

@@ -1,7 +1,8 @@
 import React from "react";
 import { api, MaterielItem, newId, nowIso, raccourci } from "../api";
 import { FichierImg } from "./Deroulement";
-import { useFileDropZone, estPdf, estImage, fichierEnBase64 } from "../dragdrop";
+import { useFileDropZone, estPdf, estImage, estDocument, typeDocument, EXTENSIONS_DOCUMENTS, fichierEnBase64 } from "../dragdrop";
+import { toast } from "./Toaster";
 
 // ============================================================
 // Tableau de déroulement — grille [[string]] éditable
@@ -287,7 +288,7 @@ export function FileListEditor({ type, fichiers, onChange }: {
   const fichiersRef = React.useRef(fichiers);
   fichiersRef.current = fichiers;
   const { ref: dropRef, actif: dropActif } = useFileDropZone({
-    accept: type === "image" ? estImage : estPdf,
+    accept: type === "image" ? estImage : estDocument,
     onFiles: async (fichiers) => {
       for (const f of fichiers) {
         const nom = await api.fichierSave(f.name, await fichierEnBase64(f));
@@ -299,9 +300,9 @@ export function FileListEditor({ type, fichiers, onChange }: {
 
   return (
     <div ref={dropRef} style={dropActif ? { outline: "2px dashed var(--accent)", borderRadius: 8, background: "var(--accent-soft)" } : undefined}>
-      <input ref={input} type="file" accept={type === "image" ? "image/*" : "application/pdf"} multiple style={{ display: "none" }}
+      <input ref={input} type="file" accept={type === "image" ? "image/*" : EXTENSIONS_DOCUMENTS} multiple style={{ display: "none" }}
         onChange={(e) => { Array.from(e.target.files ?? []).forEach((f) => ajouter(f)); e.target.value = ""; }} />
-      <button className="btn sm" onClick={() => input.current?.click()}>{type === "image" ? "📷 Ajouter une image" : "📄 Ajouter un PDF"}</button>
+      <button className="btn sm" onClick={() => input.current?.click()}>{type === "image" ? "📷 Ajouter une image" : "📄 Ajouter un document"}</button>
       {type === "image" ? (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
           {fichiers.map((f) => <ImgThumb key={f} nom={f} onDelete={() => supprimer(f)} />)}
@@ -310,7 +311,8 @@ export function FileListEditor({ type, fichiers, onChange }: {
         <div style={{ marginTop: 8 }}>
           {fichiers.map((f) => (
             <div key={f} className="list-row" style={{ marginBottom: 6 }}>
-              <span>📄</span><div style={{ flex: 1 }} className="meta">{f}</div>
+              <span title={typeDocument(f).libelle}>{typeDocument(f).icone}</span><div style={{ flex: 1 }} className="meta">{typeDocument(f).libelle} · {f}</div>
+              <button className="btn ghost sm" onClick={() => api.fichierOuvrir(f).catch((e) => toast(String(e), { icone: "⚠️" }))} aria-label="Ouvrir">↗</button>
               <button className="btn ghost sm" onClick={() => supprimer(f)} aria-label="Supprimer">🗑</button>
             </div>
           ))}

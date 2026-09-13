@@ -6,6 +6,7 @@
 // second document —, c'est un matériel pédagogique et il s'ouvre en fiche.
 import type { MaterielItem } from "./api";
 import { lireVideos, type Video } from "./videos";
+import { typeDocument } from "./dragdrop";
 
 export type ContenuDirect =
   | { genre: "video"; video: Video }
@@ -33,5 +34,5 @@ export function contenuDirect(m: MaterielItem): ContenuDirect | null {
 export function nature(m: MaterielItem): string {
   const c = contenuDirect(m);
   if (!c) return m.sousDomaineTitre || "Matériel";
-  return c.genre === "video" ? "Vidéo" : c.genre === "pdf" ? "PDF" : "Image";
+  return c.genre === "video" ? "Vidéo" : c.genre === "pdf" ? typeDocument(c.nom).libelle : "Image";
 }
