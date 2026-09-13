@@ -14,6 +14,8 @@ import { printHTML, escapeHtml } from "../print";
 import { PlanSalleTab } from "./PlanSalle";
 import { ProjetPedagogiqueTab } from "./ProjetPedagogique";
 import { confirmer } from "../components/confirmer";
+import { tempsDeLaSemaineType, natureDuSlot, type SlotEdt } from "../organisation";
+import { duree } from "../heures";
 
 // Couleurs officielles des périodes (miroir couleursPeriodes).
 const COULEUR_PERIODE: Record<number, string> = { 1: "#2e73d9", 2: "#d94033", 3: "#4d4d4d", 4: "#d97319", 5: "#269950" };
@@ -576,9 +578,8 @@ function LierSequences({ sequences, selection, onClose, onValider }: {
 }
 
 // ── EDT type + bilan vs volumes officiels ──────────────────────────────────
-interface Slot { id: string; jour: string; heureDebut: string; heureFin: string; titre: string; couleur: string;
-  /** Élèves présents sur ce créneau (organisation IME). */
-  eleves?: string[] }
+/** Créneau de l'emploi du temps : élèves présents et nature (organisation IME). */
+type Slot = SlotEdt;
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const toMin = (s: string) => { const [h, m] = s.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
 const minHHMM = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
@@ -635,6 +636,17 @@ function SlotForm({ slot, onClose, onSave, onDelete, ime, eleves, intitules }: {
             <Input list="edt-intitules" value={s.titre} placeholder="Scolarité, Piscine, Atelier artistique…"
               onChange={(e) => up({ titre: e.target.value, couleur: couleurPourMatiere(e.target.value) })} />
             <datalist id="edt-intitules">{intitules.map((t) => <option key={t} value={t} />)}</datalist>
+          </div>
+          <div className="field"><label>Nature du temps</label>
+            <div className="seg" role="radiogroup" aria-label="Nature du temps">
+              {([["classe", "🧑‍🏫 Temps de classe"], ["reunion", "🗣️ Réunion ou formation"]] as const).map(([n, libelle]) => (
+                <button key={n} type="button" role="radio" aria-checked={natureDuSlot(s) === n}
+                  className={natureDuSlot(s) === n ? "active" : ""} onClick={() => up({ nature: n })}>{libelle}</button>
+              ))}
+            </div>
+            {!s.nature && s.titre && (
+              <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 4 }}>Déduit de l’intitulé — cliquez pour choisir.</div>
+            )}
           </div>
           <div className="field">
             <label>Élèves présents ({presents.length})</label>
@@ -708,6 +720,17 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
   const upsert = (s: Slot) => persister(slots.some((x) => x.id === s.id) ? slots.map((x) => x.id === s.id ? s : x) : [...slots, s]);
 
   const supprimer = (id: string) => persister(slots.filter((s) => s.id !== id));
+  // Vide l'emploi du temps de l'année affichée. Les créneaux déjà posés dans le
+  // planning ne bougent pas ; ⌘Z rétablit tout.
+  const viderAnnee = async () => {
+    const nom = ime ? `l'organisation IME ${annee}` : `l'EDT type ${annee}`;
+    if (!(await confirmer(`Supprimer ${nom} (${slots.length} créneau${slots.length > 1 ? "x" : ""}) ?\n\n`
+      + "Les créneaux déjà posés dans le planning restent. ⌘Z (Ctrl+Z) annule la suppression.",
+      { oui: "Supprimer", danger: true }))) return;
+    persister([]);
+    toast(`${nom[0].toUpperCase()}${nom.slice(1)} est supprimé${ime ? "e" : ""}.`, { icone: "🗑" });
+  };
+  const temps = tempsDeLaSemaineType(slots);
 
   const fileRef = React.useRef<HTMLInputElement>(null);
   const exporter = () => {
@@ -833,6 +856,8 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
           ...(slots.length > 0 ? [{ label: "Imprimer (PDF)", icon: "🖨", onClick: imprimer }] : []),
           ...(slots.length > 0 ? [{ label: "Exporter (fichier)", icon: "⬇️", onClick: exporter }] : []),
           { label: "Importer (fichier)", icon: "⬆️", onClick: () => fileRef.current?.click() },
+          ...(slots.length > 0 ? [{ label: ime ? `Supprimer l'organisation IME ${annee}` : `Supprimer l'EDT type ${annee}`,
+            icon: "🗑", danger: true, sep: true, onClick: viderAnnee }] : []),
         ])}>📄 Fichier ▾</button>
       </div>
       <div style={{ fontSize: 12, color: "var(--text-2)", margin: "-8px 0 12px", display: "flex", alignItems: "center", gap: 10 }}>
@@ -843,6 +868,14 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
           <button className="btn sm" onClick={() => majZoom(1)} title="Réinitialiser le zoom">100%</button>
         </span>}
       </div>
+
+      {ime && slots.length > 0 && (
+        <div className="heures-semaine" aria-label="Temps de travail de la semaine">
+          <span>⏱ Temps de travail de la semaine <b>{duree(temps.semaine.total)}</b></span>
+          <span>🧑‍🏫 Classe <b>{duree(temps.semaine.classe)}</b></span>
+          <span>🗣️ Réunions et formations <b>{duree(temps.semaine.reunion)}</b></span>
+        </div>
+      )}
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }} onWheel={onWheel}>
         {/* En-têtes jours */}
@@ -881,7 +914,7 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
                         overflow: "hidden", fontSize: 11, lineHeight: 1.25, boxShadow: "0 1px 3px rgba(0,0,0,.2)",
                         outline: deplacer ? "2px dashed rgba(255,255,255,.7)" : "none", cursor: deplacer ? "grab" : "pointer", userSelect: "none" }}>
                       <div style={{ opacity: 0.9 }}>{s.heureDebut}–{s.heureFin}</div>
-                      <div style={{ fontWeight: 700 }}>{s.titre}</div>
+                      <div style={{ fontWeight: 700 }}>{ime && natureDuSlot(s) === "reunion" ? "🗣️ " : ""}{s.titre}</div>
                       {ime && (s.eleves?.length ?? 0) > 0 && (
                         <div style={{ opacity: 0.92, fontSize: 10, lineHeight: 1.2 }}>
                           👥 {s.eleves!.length} · {s.eleves!
@@ -941,10 +974,39 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
           </table>}
       </div>}
 
+      {ime && slots.length > 0 && (
+        <div className="card" style={{ marginTop: 18 }}>
+          <h3 style={{ marginTop: 0 }}>⏱ Temps de travail de la semaine</h3>
+          <table className="tbl">
+            <thead><tr><th>Jour</th><th>🧑‍🏫 Classe</th><th>🗣️ Réunions et formations</th><th>Total</th></tr></thead>
+            <tbody>
+              {JOURS.map((j) => (
+                <tr key={j}>
+                  <td>{j}</td>
+                  <td>{temps.jours[j].classe ? duree(temps.jours[j].classe) : "—"}</td>
+                  <td>{temps.jours[j].reunion ? duree(temps.jours[j].reunion) : "—"}</td>
+                  <td style={{ fontWeight: 600 }}>{temps.jours[j].total ? duree(temps.jours[j].total) : "—"}</td>
+                </tr>
+              ))}
+              <tr style={{ fontWeight: 700 }}>
+                <td>Semaine</td>
+                <td>{duree(temps.semaine.classe)}</td>
+                <td>{duree(temps.semaine.reunion)}</td>
+                <td>{duree(temps.semaine.total)}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 8 }}>
+            Le temps de chaque créneau compte en classe ou en réunion selon la nature choisie dans le créneau.
+            Deux groupes pris en même temps ne comptent qu’une fois.
+          </div>
+        </div>
+      )}
+
       {ime && (
         <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 14 }}>
           Chaque créneau porte les élèves présents : cliquez une plage vide pour en créer un,
-          puis cochez qui y participe. Le nombre d'élèves s'affiche sur le créneau.
+          puis cochez qui y participe et s’il s’agit de classe ou d’une réunion. Le nombre d'élèves s'affiche sur le créneau.
         </div>
       )}
     </>
