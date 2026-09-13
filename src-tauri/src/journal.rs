@@ -66,9 +66,10 @@ const REGLAGES_PARTAGES: &[&str] = &[
 ];
 
 /// Familles de réglages qui voyagent, par préfixe : emploi du temps, plan de
-/// salle, tableaux de langage. Ce sont des données de travail, pas des
-/// préférences d'affichage.
-const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:", "dossier:"];
+/// salle, tableaux de langage, couleurs des dossiers et disposition du bureau
+/// du plan de travail. Ce sont des données de travail, pas des préférences
+/// d'affichage.
+const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:", "dossier:", "bureau:"];
 
 /// Ce qui ne doit jamais partir, quoi qu'il arrive.
 ///
@@ -909,7 +910,7 @@ mod tests {
     fn le_travail_de_lenseignant_voyage() {
         for cle in ["enseignantNom", "ecole", "anneeCourante", "typeStructure",
                     "notesRapides", "edt:mode", "edt:horaires:2025-2026",
-                    "salle:profils", "tla:gabarits"] {
+                    "salle:profils", "tla:gabarits", "dossier:Lecture", "bureau:", "bureau:Français/Lecture"] {
             assert!(reglage_partage(cle), "« {cle} » devrait voyager");
         }
     }

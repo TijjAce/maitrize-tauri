@@ -9,6 +9,7 @@ import { openCtx } from "../components/ctxmenu";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { FormMateriel } from "../components/FormMateriel";
 import { texteBrut } from "../texteRiche";
+import { disposer, poser, lireDispositions, lirePositions, reporterDispositions, PREFIXE_BUREAU, type Case, type Positions } from "../disposition";
 import { EditeurTexte } from "../components/EditeurTexte";
 import { FormSequence } from "../components/FormSequence";
 import { contenuDirect, nature } from "../bureau";
@@ -34,6 +35,13 @@ import {
 // Les dossiers ne sont pas une table mais un chemin écrit sur chaque élément —
 // « Français/Lecture ». Un dossier existe donc tant que quelque chose s'y
 // trouve : rien à créer, renommer ou réparer en base.
+//
+// Comme sur un vrai bureau, on pose chaque dossier ou document où l'on veut :
+// la surface est une grille de cases, et la case de chacun est gardée (voir
+// disposition.ts).
+
+/** Taille d'une case du bureau, en pixels. */
+const CASE_L = 136, CASE_H = 186;
 
 type Element =
   | { genre: "sequence"; id: string; titre: string; dossier: string; seq: Sequence }
@@ -63,6 +71,10 @@ function lireDepotInterne(dt: DataTransfer): { element?: Element; dossier?: stri
   if (chemin) return { dossier: chemin };
   try { return { element: JSON.parse(dt.getData("application/json")) }; } catch { return {}; }
 }
+
+/** Clés des tuiles dans la disposition d'un dossier. */
+const cleDossier = (d: SousDossier) => `d:${d.nom}`;
+const cleElement = (e: Element) => `${e.genre === "sequence" ? "s" : e.genre === "materiel" ? "m" : "t"}:${e.id}`;
 
 /** Couleur d'un dossier sans couleur choisie : le bleu doux d'un dossier ordinaire. */
 const COULEUR_DOSSIER = "#6fa8e6";
@@ -138,9 +150,23 @@ export default function PlanDeTravail() {
   const [couleurs, setCouleurs] = React.useState<Record<string, string>>({});
   const [aColorer, setAColorer] = React.useState<SousDossier | null>(null);
   const [couleursLues, setCouleursLues] = React.useState(false);
+  const [dispositions, setDispositions] = React.useState<Record<string, Positions>>({});
   React.useEffect(() => {
-    api.settingsAll().then((r) => { setCouleurs(lireCouleurs(r)); setCouleursLues(true); }).catch(() => {});
+    api.settingsAll().then((r) => { setCouleurs(lireCouleurs(r)); setDispositions(lireDispositions(r)); setCouleursLues(true); }).catch(() => {});
   }, []);
+
+  /** Applique des réécritures de dispositions, en base puis à l'écran. */
+  const ecrireDispositions = async (ecritures: Record<string, string>) => {
+    for (const [cle, valeur] of Object.entries(ecritures)) await api.settingSet(cle, valeur);
+    setDispositions((avant) => {
+      const apres = { ...avant };
+      for (const [cle, valeur] of Object.entries(ecritures)) {
+        const chemin = cle.slice(PREFIXE_BUREAU.length);
+        if (valeur) apres[chemin] = lirePositions(valeur); else delete apres[chemin];
+      }
+      return apres;
+    });
+  };
 
   /** Applique des réécritures de couleurs, en base puis à l'écran. */
   const ecrireCouleurs = async (ecritures: Record<string, string>) => {
@@ -198,6 +224,60 @@ export default function PlanDeTravail() {
       : normaliser(e.dossier) === dossier))
     .sort((a, b) => a.titre.localeCompare(b.titre, "fr"));
 
+  // ── Disposition libre ──
+  const surfaceEl = React.useRef<HTMLDivElement | null>(null);
+  const observateur = React.useRef<ResizeObserver | null>(null);
+  const [largeurSurface, setLargeurSurface] = React.useState(() => Math.max(CASE_L, window.innerWidth - 320));
+  const surfaceRef = React.useCallback((el: HTMLDivElement | null) => {
+    observateur.current?.disconnect();
+    surfaceEl.current = el;
+    if (!el) return;
+    const mesurer = () => { if (el.clientWidth) setLargeurSurface(el.clientWidth); };
+    mesurer();
+    observateur.current = new ResizeObserver(mesurer);
+    observateur.current.observe(el);
+  }, []);
+  const nbCols = Math.max(1, Math.floor(largeurSurface / CASE_L));
+  const cles = [...dossiers.map(cleDossier), ...ici.map(cleElement)];
+  const cleDisposition = cles.join("|");
+  const disposition = React.useMemo(() => disposer(cles, dispositions[dossier] ?? {}, nbCols),
+    [cleDisposition, dispositions, dossier, nbCols]); // eslint-disable-line react-hooks/exhaustive-deps
+  const nbRangs = cles.length ? Math.max(...Object.values(disposition).map((c) => c.rang)) + 1 : 0;
+
+  const glisse = React.useRef<{ cle: string; dx: number; dy: number } | null>(null);
+  const [caseVisee, setCaseVisee] = React.useState<Case | null>(null);
+  const caseSous = (x: number, y: number, decalage = { dx: CASE_L / 2, dy: 40 }): Case | null => {
+    const el = surfaceEl.current;
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    const gauche = x - r.left - decalage.dx + CASE_L / 2, haut = y - r.top - decalage.dy + CASE_H / 2;
+    return { col: Math.min(nbCols - 1, Math.max(0, Math.floor(gauche / CASE_L))), rang: Math.max(0, Math.floor(haut / CASE_H)) };
+  };
+  const commencerGlisser = (cle: string, e: React.DragEvent<HTMLElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    glisse.current = { cle, dx: e.clientX - r.left, dy: e.clientY - r.top };
+  };
+  const finirGlisser = () => { glisse.current = null; setCaseVisee(null); };
+  /** Pose la tuile glissée sur la case visée ; les autres ne bougent pas. */
+  const poserSurLeBureau = async (e: React.DragEvent) => {
+    const g = glisse.current;
+    const c = g ? caseSous(e.clientX, e.clientY, g) : null;
+    finirGlisser();
+    if (!g || !c || !disposition[g.cle]) return;
+    const actuelle = disposition[g.cle];
+    if (actuelle.col === c.col && actuelle.rang === c.rang) return;
+    await ecrireDispositions({ [PREFIXE_BUREAU + dossier]: JSON.stringify(poser(disposition, g.cle, c, nbCols)) });
+  };
+  /** Place une tuile qu'on vient de créer à l'endroit du clic droit. */
+  const caseCreation = React.useRef<Case | null>(null);
+  const placerCreation = async (cle: string) => {
+    const c = caseCreation.current;
+    caseCreation.current = null;
+    if (!c) return;
+    await ecrireDispositions({ [PREFIXE_BUREAU + dossier]: JSON.stringify(poser(disposition, cle, c, nbCols)) });
+  };
+  const rangerParNom = () => ecrireDispositions({ [PREFIXE_BUREAU + dossier]: "" });
+
   // ── Déplacements et dépôts ──
   const ranger = async (e: Element, vers: string) => {
     const cible = normaliser(vers);
@@ -251,6 +331,7 @@ export default function PlanDeTravail() {
       await enregistrerDossier(e, nouveau);
     }
     await ecrireCouleurs(reporterCouleurs(couleurs, chemin, arrivee));
+    await ecrireDispositions(reporterDispositions(dispositions, chemin, arrivee));
     // On regardait l'intérieur du dossier déplacé : on le suit.
     if (dossier && estDans(dossier, chemin)) setDossier(renommerChemin(dossier, chemin, arrivee));
     recharger();
@@ -272,7 +353,8 @@ export default function PlanDeTravail() {
       const chemin = normaliser(dossier ? `${dossier}/${nom}` : nom);
       if (!chemin) return;
       if (!couleurs[chemin]) await ecrireCouleurs({ [PREFIXE_COULEUR + chemin]: SANS_COULEUR });
-      setDossier(chemin);
+      // Comme sur un bureau : le dossier apparaît là où l'on a cliqué, on y entre d'un double-clic.
+      await placerCreation(`d:${chemin.slice(chemin.lastIndexOf("/") + 1)}`);
     },
   });
 
@@ -284,6 +366,7 @@ export default function PlanDeTravail() {
   const appliquerRenommage = async (d: SousDossier, nom: string) => {
     const nouveau = normaliser(parent(d.chemin) ? `${parent(d.chemin)}/${nom}` : nom);
     await ecrireCouleurs(reporterCouleurs(couleurs, d.chemin, nouveau));
+    await ecrireDispositions(reporterDispositions(dispositions, d.chemin, nouveau));
     const touches = elements.filter((e) => estDans(normaliser(e.dossier), d.chemin));
     for (const e of touches) {
       const chemin = renommerChemin(normaliser(e.dossier), d.chemin, nouveau);
@@ -306,6 +389,7 @@ export default function PlanDeTravail() {
       ...reporterCouleurs(autres, d.chemin, parent(d.chemin)),
       ...(couleurRetiree ? { [PREFIXE_COULEUR + d.chemin]: "" } : {}),
     });
+    await ecrireDispositions(reporterDispositions(dispositions, d.chemin, parent(d.chemin), true));
     setDossierASupprimer(null);
     recharger();
     toast(`${touches.length} élément(s) remonté(s) d'un dossier`, { icone: "📂" });
@@ -338,6 +422,7 @@ export default function PlanDeTravail() {
   const creerTexte = async () => {
     const x: Texte = { id: newId(), titre: "Nouveau texte", contenu: "", dossier, dateCreation: nowIso(), dateModification: "" };
     await api.texteSave(x);
+    await placerCreation(`t:${x.id}`);
     recharger();
     setTexteOuvert(x);
   };
@@ -363,6 +448,21 @@ export default function PlanDeTravail() {
   };
 
   const fil = filDAriane(dossier);
+
+  const tuileElement = (e: Element) => (
+    <TuileElement key={e.genre + e.id} element={e}
+      onOuvrir={() => ouvrir(e)}
+      onModifier={e.genre === "materiel" && contenuDirect(e.mat) ? () => setMaterielOuvert(e.mat)
+        : e.genre === "sequence" ? () => setSequenceFiche({ sequence: e.seq, nouvelle: false }) : undefined}
+      onRanger={() => setDemande({
+        titre: "Ranger dans…", label: "Chemin du dossier",
+        valeur: e.dossier, placeholder: "Français/Lecture",
+        sur: (c) => ranger(e, c),
+      })}
+      onSupprimer={() => setASupprimer(e)}
+      onDuplique={recharger}
+      onGlisser={(ev) => commencerGlisser(cleElement(e), ev)} onFinGlisser={finirGlisser} />
+  );
 
   return (
     <Page titre="Plan de travail" sous="Votre bureau : séquences, matériel, documents">
@@ -397,16 +497,31 @@ export default function PlanDeTravail() {
       {/* ── La surface ── */}
       <div ref={zoneFichiers}
         onDragOver={(e) => {
-          if (vientDuBureau(e)) return;
+          if (vientDuBureau(e)) {
+            // Une tuile du bureau qu'on déplace : on montre la case où elle arrivera.
+            if (!glisse.current || filtre) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            const c = caseSous(e.clientX, e.clientY, glisse.current);
+            setCaseVisee((avant) => (c && avant && avant.col === c.col && avant.rang === c.rang ? avant : c));
+            return;
+          }
           e.preventDefault();
           // « copy » plutôt que le défaut : sans lui, certains navigateurs
           // affichent le curseur d'interdiction même quand le dépôt est accepté.
           e.dataTransfer.dropEffect = "copy";
           setSurvolBureau(true);
         }}
-        onDragLeave={() => setSurvolBureau(false)}
+        onDragLeave={(e) => {
+          setSurvolBureau(false);
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setCaseVisee(null);
+        }}
         onDrop={async (e) => {
-          if (vientDuBureau(e)) return;
+          if (vientDuBureau(e)) {
+            e.preventDefault();
+            if (glisse.current && !filtre) await poserSurLeBureau(e);
+            return;
+          }
           e.preventDefault(); setSurvolBureau(false);
           const texte = lireTexteDepose(e.dataTransfer);
           if (!texte) return; // un dépôt de fichiers est traité par la zone dédiée
@@ -415,11 +530,15 @@ export default function PlanDeTravail() {
         onContextMenu={(e) => {
           // Sur une tuile, c'est son propre menu qui s'ouvre.
           if ((e.target as HTMLElement).closest("[draggable]")) return;
+          // Ce qu'on crée d'un clic droit apparaît à l'endroit du clic.
+          const caseClic = filtre || !surfaceEl.current ? null : caseSous(e.clientX, e.clientY);
+          const avecCase = (f: () => void) => () => { caseCreation.current = caseClic; f(); };
           openCtx(e, [
-            { label: "Nouveau dossier", icon: "📁", onClick: creerDossier },
-            { label: "Nouveau texte", icon: "📝", onClick: creerTexte },
-            { label: "Nouvelle séquence", icon: "📚", sep: true, onClick: creerSequence },
+            { label: "Nouveau dossier", icon: "📁", onClick: avecCase(creerDossier) },
+            { label: "Nouveau texte", icon: "📝", onClick: avecCase(creerTexte) },
+            { label: "Nouvelle séquence", icon: "📚", sep: true, onClick: avecCase(creerSequence) },
             { label: "Nouveau matériel", icon: "🧰", onClick: creerMateriel },
+            ...(!filtre && dispositions[dossier] ? [{ label: "Ranger par nom", icon: "🔤", sep: true, onClick: rangerParNom }] : []),
           ]);
         }}
         style={{
@@ -443,31 +562,44 @@ export default function PlanDeTravail() {
             )}
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(128px, 1fr))", gap: 14 }}>
-            {dossiers.map((d) => (
-              <TuileDossier key={d.chemin} dossier={d} survole={survol === d.chemin}
-                couleur={couleurHex[couleurDe(couleurs[d.chemin]) ?? ""] ?? COULEUR_DOSSIER}
-                onOuvrir={() => setDossier(d.chemin)}
-                onSurvol={setSurvol}
-                onDepose={(dt) => deposerSur(dt, d.chemin)}
-                onColorer={() => setAColorer(d)}
-                onRenommer={() => renommerDossier(d)}
-                onVider={() => setDossierASupprimer(d)} />
-            ))}
-            {ici.map((e) => (
-              <TuileElement key={e.genre + e.id} element={e}
-                onOuvrir={() => ouvrir(e)}
-                onModifier={e.genre === "materiel" && contenuDirect(e.mat) ? () => setMaterielOuvert(e.mat)
-                  : e.genre === "sequence" ? () => setSequenceFiche({ sequence: e.seq, nouvelle: false }) : undefined}
-                onRanger={() => setDemande({
-                  titre: "Ranger dans…", label: "Chemin du dossier",
-                  valeur: e.dossier, placeholder: "Français/Lecture",
-                  sur: (c) => ranger(e, c),
-                })}
-                onSupprimer={() => setASupprimer(e)}
-                onDuplique={recharger} />
-            ))}
-          </div>
+          filtre ? (
+            // Une recherche montre ses résultats en liste de cases, sans disposition.
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(128px, 1fr))", gap: 14 }}>
+              {ici.map((e) => tuileElement(e))}
+            </div>
+          ) : (
+            <div ref={surfaceRef} className="bureau-surface" style={{ height: Math.max(nbRangs + 1, 3) * CASE_H }}>
+              {caseVisee && !survol && (
+                <div className="bureau-case-visee" aria-hidden="true"
+                  style={{ left: caseVisee.col * CASE_L, top: caseVisee.rang * CASE_H, width: CASE_L, height: CASE_H }} />
+              )}
+              {dossiers.map((d) => {
+                const c = disposition[cleDossier(d)];
+                return (
+                  <div key={d.chemin} className="bureau-case" style={{ left: c.col * CASE_L, top: c.rang * CASE_H, width: CASE_L }}>
+                    <TuileDossier dossier={d} survole={survol === d.chemin}
+                      couleur={couleurHex[couleurDe(couleurs[d.chemin]) ?? ""] ?? COULEUR_DOSSIER}
+                      onOuvrir={() => setDossier(d.chemin)}
+                      onSurvol={setSurvol}
+                      onDepose={(dt) => deposerSur(dt, d.chemin)}
+                      onColorer={() => setAColorer(d)}
+                      onRenommer={() => renommerDossier(d)}
+                      onVider={() => setDossierASupprimer(d)}
+                      onGlisser={(e) => commencerGlisser(cleDossier(d), e)} onFinGlisser={finirGlisser}
+                      estSaisi={() => glisse.current?.cle === cleDossier(d)} />
+                  </div>
+                );
+              })}
+              {ici.map((e) => {
+                const c = disposition[cleElement(e)];
+                return (
+                  <div key={e.genre + e.id} className="bureau-case" style={{ left: c.col * CASE_L, top: c.rang * CASE_H, width: CASE_L }}>
+                    {tuileElement(e)}
+                  </div>
+                );
+              })}
+            </div>
+          )
         )}
       </div>
 
@@ -495,7 +627,13 @@ export default function PlanDeTravail() {
 
       {sequenceFiche && (
         <FormSequence sequence={sequenceFiche.sequence} onClose={() => setSequenceFiche(null)}
-          onSaved={(seq) => { const nouvelle = sequenceFiche.nouvelle; setSequenceFiche(null); recharger(); if (nouvelle) nav(`/sequences/${seq.id}`); }} />
+          onSaved={async (seq) => {
+            const nouvelle = sequenceFiche.nouvelle;
+            setSequenceFiche(null);
+            if (nouvelle) await placerCreation(`s:${seq.id}`);
+            recharger();
+            if (nouvelle) nav(`/sequences/${seq.id}`);
+          }} />
       )}
 
       {texteOuvert && (
@@ -521,25 +659,29 @@ export default function PlanDeTravail() {
 }
 
 /** Un dossier posé sur le bureau : on y entre, on y dépose. */
-function TuileDossier({ dossier, survole, couleur, onOuvrir, onSurvol, onDepose, onColorer, onRenommer, onVider }: {
+function TuileDossier({ dossier, survole, couleur, onOuvrir, onSurvol, onDepose, onColorer, onRenommer, onVider, onGlisser, onFinGlisser, estSaisi }: {
   dossier: SousDossier; survole: boolean; couleur: string; onOuvrir: () => void;
   onSurvol: (c: string | null) => void; onDepose: (dt: DataTransfer) => void;
   onColorer: () => void; onRenommer: () => void; onVider: () => void;
+  onGlisser?: (e: React.DragEvent<HTMLElement>) => void; onFinGlisser?: () => void;
+  /** Vrai quand c'est ce dossier même qu'on déplace : il ne se reçoit pas, il se pose ailleurs. */
+  estSaisi?: () => boolean;
 }) {
   return (
     <div draggable
-      onDragStart={(e) => { e.dataTransfer.setData(TYPE_DOSSIER, dossier.chemin); e.dataTransfer.effectAllowed = "move"; }}
+      onDragStart={(e) => { e.dataTransfer.setData(TYPE_DOSSIER, dossier.chemin); e.dataTransfer.effectAllowed = "move"; onGlisser?.(e); }}
+      onDragEnd={onFinGlisser}
       onDoubleClick={onOuvrir}
       onDragOver={(e) => {
         // Un lien ou un fichier venu d'ailleurs file jusqu'au bureau, qui sait
         // l'accueillir. Lâcher un dossier sur lui-même est refusé plus loin :
         // pendant le survol, on ne peut pas encore lire ce qui est glissé.
-        if (!vientDuBureau(e)) return;
-        e.preventDefault(); onSurvol(dossier.chemin);
+        if (!vientDuBureau(e) || estSaisi?.()) return;
+        e.preventDefault(); e.stopPropagation(); onSurvol(dossier.chemin);
       }}
       onDragLeave={() => onSurvol(null)}
       onDrop={(e) => {
-        if (!vientDuBureau(e)) return;
+        if (!vientDuBureau(e) || estSaisi?.()) return;
         e.preventDefault(); e.stopPropagation(); onSurvol(null); onDepose(e.dataTransfer);
       }}
       onContextMenu={(e) => openCtx(e, [
@@ -583,11 +725,12 @@ function IconeDossier({ couleur, ouvert }: { couleur: string; ouvert: boolean })
  * L'aperçu passe avant le nom : on reconnaît un document à son allure avant
  * de le lire.
  */
-function TuileElement({ element, onOuvrir, onModifier, onRanger, onSupprimer, onDuplique }: {
+function TuileElement({ element, onOuvrir, onModifier, onRanger, onSupprimer, onDuplique, onGlisser, onFinGlisser }: {
   element: Element; onOuvrir: () => void; onRanger: () => void;
   /** Présent pour un dépôt simple, qui s'ouvre sans passer par sa fiche. */
   onModifier?: () => void;
   onSupprimer: () => void; onDuplique: () => void;
+  onGlisser?: (e: React.DragEvent<HTMLElement>) => void; onFinGlisser?: () => void;
 }) {
   const seq = element.genre === "sequence" ? element.seq : null;
   const t = seq ? (couleurHex[couleurPourMatiere(seq.matiere)] ?? couleurHex.gray) : couleurHex.gray;
@@ -598,7 +741,8 @@ function TuileElement({ element, onOuvrir, onModifier, onRanger, onSupprimer, on
 
   return (
     <div draggable
-      onDragStart={(e) => e.dataTransfer.setData("application/json", JSON.stringify(element))}
+      onDragStart={(e) => { e.dataTransfer.setData("application/json", JSON.stringify(element)); onGlisser?.(e); }}
+      onDragEnd={onFinGlisser}
       onDoubleClick={onOuvrir}
       onContextMenu={(e) => openCtx(e, [
         { label: "Ouvrir", icon: "↗", onClick: onOuvrir },

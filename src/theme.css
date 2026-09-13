@@ -565,3 +565,9 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .informations-feuille-titre { font-size: 13.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .informations-feuille-date { font-size: 11.5px; color: var(--text-2); }
 @media (max-width: 860px) { .informations { grid-template-columns: 1fr; } .informations-liste { position: static; } }
+
+/* ── Plan de travail : bureau à disposition libre ── */
+.bureau-surface { position: relative; width: 100%; }
+.bureau-case { position: absolute; padding: 0 4px; box-sizing: border-box; transition: left .18s ease, top .18s ease; }
+.bureau-case-visee { position: absolute; border: 2px dashed var(--accent); border-radius: 12px; background: var(--accent-soft);
+  pointer-events: none; box-sizing: border-box; }
