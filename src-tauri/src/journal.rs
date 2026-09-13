@@ -68,7 +68,7 @@ const REGLAGES_PARTAGES: &[&str] = &[
 /// Familles de réglages qui voyagent, par préfixe : emploi du temps, plan de
 /// salle, tableaux de langage. Ce sont des données de travail, pas des
 /// préférences d'affichage.
-const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:"];
+const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:", "dossier:"];
 
 /// Ce qui ne doit jamais partir, quoi qu'il arrive.
 ///
@@ -923,10 +923,12 @@ mod tests {
         a.execute("INSERT INTO settings VALUES ('ecole','IME Bourg-la-Reine')", []).unwrap();
         a.execute("INSERT INTO settings VALUES ('mistralApiKey','SECRET')", []).unwrap();
         a.execute("INSERT INTO settings VALUES ('identifiantMachine','uuid-de-A')", []).unwrap();
+        a.execute("INSERT INTO settings VALUES ('dossier:Français/Lecture','green')", []).unwrap();
 
         let (de_a, _) = changements_locaux(&a, 0).unwrap();
         let cles: Vec<&str> = de_a.iter().map(|c| c.ligne_id.as_str()).collect();
         assert!(cles.contains(&"enseignantNom") && cles.contains(&"ecole"));
+        assert!(cles.contains(&"dossier:Français/Lecture"), "la couleur d'un dossier ne voyage pas : {cles:?}");
         assert!(!cles.contains(&"mistralApiKey"), "la clé API est dans le journal : {cles:?}");
         assert!(!cles.contains(&"identifiantMachine"), "l'identifiant de machine voyage : {cles:?}");
 

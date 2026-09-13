@@ -2,7 +2,8 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import { api, Sequence, MaterielItem, couleurHex, couleurPourMatiere, newId, nowIso } from "../api";
-import { Input, Confirm, Demander, useAsync } from "../components/ui";
+import { Input, Confirm, Demander, Modal, ColorPicker, useAsync } from "../components/ui";
+import { VignettePdf } from "../components/VignettePdf";
 import { toast } from "../components/Toaster";
 import { openCtx } from "../components/ctxmenu";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -12,6 +13,7 @@ import { lireVideos, lireLien, vignetteYoutube } from "../videos";
 import { useFileDropZone, estPdf, estImage, fichierEnBase64 } from "../dragdrop";
 import {
   sousDossiers, filDAriane, normaliser, parent, estDans, renommerChemin, SousDossier,
+  destinationDossier, reporterCouleurs, lireCouleurs, PREFIXE_COULEUR,
 } from "../dossiers";
 
 // ── Le bureau ──────────────────────────────────────────────────────────────
@@ -38,7 +40,27 @@ type Element =
  * dans un dossier, il ne crée rien.
  */
 const vientDuBureau = (e: React.DragEvent) =>
-  Array.from(e.dataTransfer.types).includes("application/json");
+  Array.from(e.dataTransfer.types).some((t) => t === "application/json" || t === TYPE_DOSSIER);
+
+/** Type de glisser propre aux dossiers : son contenu est un chemin. */
+const TYPE_DOSSIER = "application/x-maitrize-dossier";
+
+/** Ce qu'on lâche sur un dossier ou le fil d'Ariane : un élément, ou un dossier. */
+function lireDepotInterne(dt: DataTransfer): { element?: Element; dossier?: string } {
+  const chemin = dt.getData(TYPE_DOSSIER);
+  if (chemin) return { dossier: chemin };
+  try { return { element: JSON.parse(dt.getData("application/json")) }; } catch { return {}; }
+}
+
+/** Couleur d'un dossier sans couleur choisie : le bleu doux d'un dossier ordinaire. */
+const COULEUR_DOSSIER = "#6fa8e6";
+
+/** Assombrit une couleur #rrggbb, pour l'onglet du dossier. */
+function assombrir(hex: string, part: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const f = (d: number) => Math.round(((n >> d) & 255) * (1 - part)).toString(16).padStart(2, "0");
+  return `#${f(16)}${f(8)}${f(0)}`;
+}
 
 /**
  * Le texte d'un dépôt, quel que soit le type employé par la plateforme.
@@ -98,6 +120,22 @@ export default function PlanDeTravail() {
   const [aSupprimer, setASupprimer] = React.useState<Element | null>(null);
   const [dossierASupprimer, setDossierASupprimer] = React.useState<SousDossier | null>(null);
   const [materielOuvert, setMaterielOuvert] = React.useState<MaterielItem | null>(null);
+  const [couleurs, setCouleurs] = React.useState<Record<string, string>>({});
+  const [aColorer, setAColorer] = React.useState<SousDossier | null>(null);
+  React.useEffect(() => { api.settingsAll().then((r) => setCouleurs(lireCouleurs(r))).catch(() => {}); }, []);
+
+  /** Applique des réécritures de couleurs, en base puis à l'écran. */
+  const ecrireCouleurs = async (ecritures: Record<string, string>) => {
+    for (const [cle, valeur] of Object.entries(ecritures)) await api.settingSet(cle, valeur);
+    setCouleurs((avant) => {
+      const apres = { ...avant };
+      for (const [cle, valeur] of Object.entries(ecritures)) {
+        const chemin = cle.slice(PREFIXE_COULEUR.length);
+        if (valeur) apres[chemin] = valeur; else delete apres[chemin];
+      }
+      return apres;
+    });
+  };
   // Saisies courtes : `window.prompt` n'existe pas dans la fenêtre de
   // l'application, l'appel ne faisait rien et le bouton paraissait mort.
   const [demande, setDemande] = React.useState<
@@ -161,6 +199,29 @@ export default function PlanDeTravail() {
   });
 
   // ── Dossiers ──
+  const deplacerDossier = async (chemin: string, vers: string) => {
+    const arrivee = destinationDossier(chemin, vers);
+    if (!arrivee) return;
+    const touches = elements.filter((e) => estDans(normaliser(e.dossier), chemin));
+    for (const e of touches) {
+      const nouveau = renommerChemin(normaliser(e.dossier), chemin, arrivee);
+      if (e.genre === "sequence") await api.sequenceSave({ ...e.seq, dossier: nouveau });
+      else await api.materielSave({ ...e.mat, dossier: nouveau });
+    }
+    await ecrireCouleurs(reporterCouleurs(couleurs, chemin, arrivee));
+    // On regardait l'intérieur du dossier déplacé : on le suit.
+    if (dossier && estDans(dossier, chemin)) setDossier(renommerChemin(dossier, chemin, arrivee));
+    recharger();
+    toast(normaliser(vers) ? `Dossier rangé dans ${normaliser(vers)}` : "Dossier sorti sur le bureau", { icone: "📁" });
+  };
+
+  /** Ce qu'on lâche sur un dossier : un élément s'y range, un dossier y entre. */
+  const deposerSur = (dt: DataTransfer, cible: string) => {
+    const { element, dossier: d } = lireDepotInterne(dt);
+    if (d) deplacerDossier(d, cible);
+    else if (element) ranger(element, cible);
+  };
+
   const creerDossier = () => setDemande({
     titre: "Nouveau dossier", label: "Nom du dossier", placeholder: "Lecture, Rituels…",
     sur: (nom) => {
@@ -178,6 +239,7 @@ export default function PlanDeTravail() {
 
   const appliquerRenommage = async (d: SousDossier, nom: string) => {
     const nouveau = normaliser(parent(d.chemin) ? `${parent(d.chemin)}/${nom}` : nom);
+    await ecrireCouleurs(reporterCouleurs(couleurs, d.chemin, nouveau));
     const touches = elements.filter((e) => estDans(normaliser(e.dossier), d.chemin));
     for (const e of touches) {
       const chemin = renommerChemin(normaliser(e.dossier), d.chemin, nouveau);
@@ -196,6 +258,12 @@ export default function PlanDeTravail() {
       if (e.genre === "sequence") await api.sequenceSave({ ...e.seq, dossier: chemin });
       else await api.materielSave({ ...e.mat, dossier: chemin });
     }
+    // Le dossier disparaît avec sa couleur ; ses sous-dossiers remontent avec la leur.
+    const { [d.chemin]: couleurRetiree, ...autres } = couleurs;
+    await ecrireCouleurs({
+      ...reporterCouleurs(autres, d.chemin, parent(d.chemin)),
+      ...(couleurRetiree ? { [PREFIXE_COULEUR + d.chemin]: "" } : {}),
+    });
     setDossierASupprimer(null);
     recharger();
     toast(`${touches.length} élément(s) remonté(s) d'un dossier`, { icone: "📂" });
@@ -250,12 +318,7 @@ export default function PlanDeTravail() {
   const fil = filDAriane(dossier);
 
   return (
-    <Page titre="Plan de travail" sous="Votre bureau : séquences, matériel, documents"
-      actions={<>
-        <button className="btn" onClick={creerDossier}>📁 Dossier</button>
-        <button className="btn" onClick={creerMateriel}>🧰 Matériel</button>
-        <button className="btn primary" onClick={creerSequence}>📚 Séquence</button>
-      </>}>
+    <Page titre="Plan de travail" sous="Votre bureau : séquences, matériel, documents">
 
       <div className="toolbar">
         {/* Fil d'Ariane : on remonte en cliquant, et l'on peut y déposer pour
@@ -268,10 +331,7 @@ export default function PlanDeTravail() {
                 onClick={() => { setDossier(n.chemin); setQ(""); }}
                 onDragOver={(e) => { e.preventDefault(); setSurvol(n.chemin); }}
                 onDragLeave={() => setSurvol(null)}
-                onDrop={(e) => {
-                  e.preventDefault(); setSurvol(null);
-                  try { ranger(JSON.parse(e.dataTransfer.getData("application/json")), n.chemin); } catch { /* dépôt étranger */ }
-                }}
+                onDrop={(e) => { e.preventDefault(); setSurvol(null); deposerSur(e.dataTransfer, n.chemin); }}
                 style={{
                   border: "none", background: survol === n.chemin ? "var(--accent)" : "transparent",
                   color: survol === n.chemin ? "#fff" : i === fil.length - 1 ? "var(--text)" : "var(--text-2)",
@@ -338,9 +398,11 @@ export default function PlanDeTravail() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(128px, 1fr))", gap: 14 }}>
             {dossiers.map((d) => (
               <TuileDossier key={d.chemin} dossier={d} survole={survol === d.chemin}
+                couleur={couleurHex[couleurs[d.chemin]] ?? COULEUR_DOSSIER}
                 onOuvrir={() => setDossier(d.chemin)}
                 onSurvol={setSurvol}
-                onDepose={(el) => ranger(el, d.chemin)}
+                onDepose={(dt) => deposerSur(dt, d.chemin)}
+                onColorer={() => setAColorer(d)}
                 onRenommer={() => renommerDossier(d)}
                 onVider={() => setDossierASupprimer(d)} />
             ))}
@@ -367,6 +429,20 @@ export default function PlanDeTravail() {
           onValider={(v) => { setDemande(null); demande.sur(v); }} />
       )}
 
+      {aColorer && (
+        <Modal titre={`Couleur de « ${aColorer.nom} »`} onClose={() => setAColorer(null)}
+          footer={<>
+            <button className="btn" onClick={() => {
+              ecrireCouleurs({ [PREFIXE_COULEUR + aColorer.chemin]: "" }); setAColorer(null);
+            }}>Sans couleur</button>
+            <button className="btn primary" onClick={() => setAColorer(null)}>Fermer</button>
+          </>}>
+          <ColorPicker value={couleurs[aColorer.chemin] ?? ""} onChange={(c) => {
+            ecrireCouleurs({ [PREFIXE_COULEUR + aColorer.chemin]: c }); setAColorer(null);
+          }} />
+        </Modal>
+      )}
+
       {materielOuvert && (
         <FormMateriel m={materielOuvert} onClose={() => setMaterielOuvert(null)}
           onSaved={() => { setMaterielOuvert(null); recharger(); }} />
@@ -386,29 +462,38 @@ export default function PlanDeTravail() {
 }
 
 /** Un dossier posé sur le bureau : on y entre, on y dépose. */
-function TuileDossier({ dossier, survole, onOuvrir, onSurvol, onDepose, onRenommer, onVider }: {
-  dossier: SousDossier; survole: boolean; onOuvrir: () => void;
-  onSurvol: (c: string | null) => void; onDepose: (e: Element) => void;
-  onRenommer: () => void; onVider: () => void;
+function TuileDossier({ dossier, survole, couleur, onOuvrir, onSurvol, onDepose, onColorer, onRenommer, onVider }: {
+  dossier: SousDossier; survole: boolean; couleur: string; onOuvrir: () => void;
+  onSurvol: (c: string | null) => void; onDepose: (dt: DataTransfer) => void;
+  onColorer: () => void; onRenommer: () => void; onVider: () => void;
 }) {
   return (
-    <div onDoubleClick={onOuvrir}
-      onDragOver={(e) => { e.preventDefault(); onSurvol(dossier.chemin); }}
+    <div draggable
+      onDragStart={(e) => { e.dataTransfer.setData(TYPE_DOSSIER, dossier.chemin); e.dataTransfer.effectAllowed = "move"; }}
+      onDoubleClick={onOuvrir}
+      onDragOver={(e) => {
+        // Un lien ou un fichier venu d'ailleurs file jusqu'au bureau, qui sait
+        // l'accueillir. Lâcher un dossier sur lui-même est refusé plus loin :
+        // pendant le survol, on ne peut pas encore lire ce qui est glissé.
+        if (!vientDuBureau(e)) return;
+        e.preventDefault(); onSurvol(dossier.chemin);
+      }}
       onDragLeave={() => onSurvol(null)}
       onDrop={(e) => {
-        e.preventDefault(); onSurvol(null);
-        try { onDepose(JSON.parse(e.dataTransfer.getData("application/json"))); } catch { /* dépôt étranger */ }
+        if (!vientDuBureau(e)) return;
+        e.preventDefault(); e.stopPropagation(); onSurvol(null); onDepose(e.dataTransfer);
       }}
       onContextMenu={(e) => openCtx(e, [
         { label: "Ouvrir", icon: "📂", onClick: onOuvrir },
         { label: "Renommer", icon: "✏️", onClick: onRenommer },
+        { label: "Couleur…", icon: "🎨", onClick: onColorer },
         { label: "Supprimer le dossier", icon: "🗑", danger: true, sep: true, onClick: onVider },
       ])}
       title={`${dossier.nom} — ${dossier.total} élément(s)`}
       style={{ cursor: "pointer", textAlign: "center", padding: 8, borderRadius: 10,
         background: survole ? "var(--accent)" : "transparent",
         color: survole ? "#fff" : undefined, transition: "background .12s" }}>
-      <div style={{ fontSize: 48, lineHeight: 1.1 }}>{survole ? "📂" : "📁"}</div>
+      <IconeDossier couleur={couleur} ouvert={survole} />
       <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 4, overflow: "hidden",
         display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
         {dossier.nom}
@@ -417,6 +502,19 @@ function TuileDossier({ dossier, survole, onOuvrir, onSurvol, onDepose, onRenomm
         {dossier.total} élément{dossier.total > 1 ? "s" : ""}
       </div>
     </div>
+  );
+}
+
+/** Un dossier dessiné, pour pouvoir le teinter — un émoji ne se colore pas. */
+function IconeDossier({ couleur, ouvert }: { couleur: string; ouvert: boolean }) {
+  const onglet = assombrir(couleur, 0.16);
+  return (
+    <svg viewBox="0 0 64 52" width="76" height="62" aria-hidden="true" style={{ display: "block", margin: "0 auto" }}>
+      <path d="M3 9a5 5 0 0 1 5-5h15.2a5 5 0 0 1 3.9 1.9L30 10h26a5 5 0 0 1 5 5v5H3z" fill={onglet} />
+      <path d={ouvert ? "M1 22a4 4 0 0 1 4-4h56a3 3 0 0 1 3 3.6l-3.6 24A5 5 0 0 1 55.5 50h-47a5 5 0 0 1-4.9-4.3z"
+        : "M3 19a4 4 0 0 1 4-4h50a4 4 0 0 1 4 4v26a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5z"} fill={couleur} />
+      <path d="M3 19a4 4 0 0 1 4-4h50a4 4 0 0 1 4 4v2H3z" fill="#fff" opacity={ouvert ? 0 : 0.22} />
+    </svg>
   );
 }
 
@@ -437,6 +535,7 @@ function TuileElement({ element, onOuvrir, onModifier, onRanger, onSupprimer, on
   const videos = element.genre === "materiel" ? lireVideos(element.mat.videosJson) : [];
   const apercuVideo = videos.find((v) => v.youtubeId);
   const image = element.genre === "materiel" ? liste(element.mat.imagesJson)[0] : seq?.imageNom;
+  const pdf = element.genre === "materiel" ? liste(element.mat.pdfsJson)[0] : undefined;
 
   return (
     <div draggable
@@ -463,6 +562,8 @@ function TuileElement({ element, onOuvrir, onModifier, onRanger, onSupprimer, on
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
         ) : image ? (
           <ApercuFichier nom={image} />
+        ) : pdf ? (
+          <VignettePdf nom={pdf} />
         ) : (
           <span style={{ fontSize: 40 }}>{element.genre === "sequence" ? "📚" : "🧰"}</span>
         )}

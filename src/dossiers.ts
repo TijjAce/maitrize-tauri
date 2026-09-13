@@ -93,3 +93,52 @@ export function filDAriane(chemin: string): { chemin: string; nom: string }[] {
   }
   return fil;
 }
+
+/**
+ * Où arrive le dossier `chemin` lâché dans `vers`, ou `null` s'il ne bouge pas.
+ *
+ * Deux refus : le lâcher là où il est déjà, et le lâcher dans lui-même ou
+ * l'un de ses descendants — ce qui le détacherait de l'arbre.
+ */
+export function destinationDossier(chemin: string, vers: string): string | null {
+  const cible = normaliser(vers);
+  const nom = chemin.slice(chemin.lastIndexOf(SEPARATEUR) + 1);
+  const arrivee = normaliser(cible ? cible + SEPARATEUR + nom : nom);
+  if (!chemin || arrivee === chemin) return null;
+  if (cible && estDans(cible, chemin)) return null;
+  return arrivee;
+}
+
+/** Préfixe des réglages qui gardent la couleur d'un dossier. */
+export const PREFIXE_COULEUR = "dossier:";
+
+/**
+ * Les couleurs à réécrire quand `ancien` devient `nouveau`.
+ *
+ * Un dossier n'existe que par ses chemins : sa couleur, rangée sous son
+ * chemin, doit le suivre — sous-dossiers compris — sinon renommer ou déplacer
+ * un dossier lui ferait perdre sa couleur. Rend les écritures à faire : les
+ * nouvelles clés, et les anciennes vidées.
+ */
+export function reporterCouleurs(
+  couleurs: Record<string, string>, ancien: string, nouveau: string,
+): Record<string, string> {
+  const ecritures: Record<string, string> = {};
+  for (const [chemin, couleur] of Object.entries(couleurs)) {
+    if (!couleur || !estDans(chemin, ancien)) continue;
+    const arrivee = renommerChemin(chemin, ancien, nouveau);
+    if (arrivee === chemin) continue;
+    ecritures[PREFIXE_COULEUR + chemin] = ecritures[PREFIXE_COULEUR + chemin] ?? "";
+    ecritures[PREFIXE_COULEUR + arrivee] = couleur;
+  }
+  return ecritures;
+}
+
+/** Les couleurs des dossiers, lues dans l'ensemble des réglages. */
+export function lireCouleurs(reglages: Record<string, string>): Record<string, string> {
+  const couleurs: Record<string, string> = {};
+  for (const [cle, valeur] of Object.entries(reglages)) {
+    if (cle.startsWith(PREFIXE_COULEUR) && valeur) couleurs[cle.slice(PREFIXE_COULEUR.length)] = valeur;
+  }
+  return couleurs;
+}

@@ -133,3 +133,30 @@ export function rognerMarges(toile: HTMLCanvasElement, tolerance = 12): HTMLCanv
   sctx.drawImage(toile, x0, y0, l, h, 0, 0, l, h);
   return sortie;
 }
+
+/**
+ * La première page en petite image, pour une tuile du bureau.
+ *
+ * Pas de rognage ici : une vignette doit ressembler à la page, marges
+ * comprises. JPEG plutôt que PNG — à cette taille, dix fois plus léger, ce
+ * qui permet de garder les vignettes d'une visite à l'autre.
+ */
+export async function vignettePdf(octets: Uint8Array, largeur = 220): Promise<string> {
+  const doc = await pdfjs.getDocument({ data: copie(octets) }).promise;
+  try {
+    const page = await doc.getPage(1);
+    const base = page.getViewport({ scale: 1 });
+    const viewport = page.getViewport({ scale: largeur / base.width });
+    const toile = document.createElement("canvas");
+    toile.width = Math.round(viewport.width);
+    toile.height = Math.round(viewport.height);
+    const ctx = toile.getContext("2d");
+    if (!ctx) throw new Error("Rendu impossible dans cette fenêtre.");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, toile.width, toile.height);
+    await page.render({ canvasContext: ctx, viewport, canvas: toile } as any).promise;
+    return toile.toDataURL("image/jpeg", 0.82);
+  } finally {
+    doc.destroy();
+  }
+}
