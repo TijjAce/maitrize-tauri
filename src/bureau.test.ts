@@ -27,6 +27,13 @@ describe("contenuDirect", () => {
     expect(contenuDirect({ ...base, pdfsJson: '["a.pdf"]', coffreJson: '["d1"]' })).toBeNull();
   });
 
+  it("un document Word ou LibreOffice déposé s'ouvre et se nomme", () => {
+    expect(contenuDirect({ ...base, pdfsJson: '["a.docx"]' })).toEqual({ genre: "pdf", nom: "a.docx" });
+    expect(nature({ ...base, pdfsJson: '["a.docx"]' })).toBe("Word");
+    expect(nature({ ...base, pdfsJson: '["a.odt"]' })).toBe("LibreOffice");
+    expect(nature({ ...base, pdfsJson: '["a.pdf"]' })).toBe("PDF");
+  });
+
   it("plusieurs documents ou aucun : fiche", () => {
     expect(contenuDirect({ ...base, pdfsJson: '["a.pdf","b.pdf"]' })).toBeNull();
     expect(contenuDirect({ ...base, videosJson: yt, pdfsJson: '["a.pdf"]' })).toBeNull();

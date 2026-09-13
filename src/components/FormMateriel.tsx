@@ -47,7 +47,7 @@ export function FormMateriel({ m, onClose, onSaved }: { m: MaterielItem; onClose
       </div>
       <div className="row">
         <Field label="Images"><FileListEditor type="image" fichiers={liste(v.imagesJson)} onChange={(f) => up({ imagesJson: JSON.stringify(f) })} /></Field>
-        <Field label="PDF"><FileListEditor type="pdf" fichiers={liste(v.pdfsJson)} onChange={(f) => up({ pdfsJson: JSON.stringify(f) })} /></Field>
+        <Field label="Documents (PDF, Word, LibreOffice…)"><FileListEditor type="pdf" fichiers={liste(v.pdfsJson)} onChange={(f) => up({ pdfsJson: JSON.stringify(f) })} /></Field>
       </div>
       <Field label="Dossier">
         <Input list="dossiers-materiel" placeholder="Lecture, Manipulation, Rituels…"

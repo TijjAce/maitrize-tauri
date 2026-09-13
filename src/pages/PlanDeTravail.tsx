@@ -12,7 +12,7 @@ import { EditeurTexte } from "../components/EditeurTexte";
 import { FormSequence } from "../components/FormSequence";
 import { contenuDirect, nature } from "../bureau";
 import { lireVideos, lireLien, vignetteYoutube } from "../videos";
-import { useFileDropZone, estPdf, estImage, fichierEnBase64 } from "../dragdrop";
+import { useFileDropZone, estPdf, estImage, estDocument, typeDocument, fichierEnBase64 } from "../dragdrop";
 import {
   sousDossiers, filDAriane, normaliser, parent, estDans, renommerChemin, SousDossier,
   destinationDossier, reporterCouleurs, lireCouleurs, PREFIXE_COULEUR,
@@ -209,7 +209,7 @@ export default function PlanDeTravail() {
   };
 
   const { ref: zoneFichiers, actif: survolFichiers } = useFileDropZone({
-    accept: (c) => estPdf(c) || estImage(c),
+    accept: (c) => estDocument(c) || estImage(c),
     onFiles: deposerFichiers,
   });
 
@@ -410,7 +410,7 @@ export default function PlanDeTravail() {
             </div>
             {!filtre && (
               <div style={{ fontSize: 13, marginTop: 6 }}>
-                Déposez ici un lien YouTube, un PDF ou une image.<br />
+                Déposez ici un lien YouTube, un PDF, un document Word ou LibreOffice, une image.<br />
                 Clic droit pour créer un dossier, un texte ou une séquence.
               </div>
             )}
@@ -593,8 +593,13 @@ function TuileElement({ element, onOuvrir, onModifier, onRanger, onSupprimer, on
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
         ) : image ? (
           <ApercuFichier nom={image} />
-        ) : pdf ? (
+        ) : pdf && estPdf(pdf) ? (
           <VignettePdf nom={pdf} />
+        ) : pdf ? (
+          <span style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+            <span style={{ fontSize: 42 }}>{typeDocument(pdf).icone}</span>
+            <span style={{ fontSize: 10, color: "var(--text-2)", textTransform: "uppercase" }}>{pdf.split(".").pop()}</span>
+          </span>
         ) : element.genre === "texte" ? (
           <ApercuTexte contenu={element.txt.contenu} />
         ) : (
