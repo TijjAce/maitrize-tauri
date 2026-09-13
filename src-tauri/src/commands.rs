@@ -24,12 +24,15 @@ pub fn sequences_list(db: State<Db>) -> R<Vec<Sequence>> {
 #[tauri::command]
 pub fn sequence_save(db: State<Db>, sequence: Sequence) -> R<Sequence> {
     let c = db.0.lock().map_err(e)?;
+    ecrire_sequence(&c, sequence)
+}
+
+pub(crate) fn ecrire_sequence(c: &rusqlite::Connection, sequence: Sequence) -> R<Sequence> {
     c.execute(
-        "INSERT OR REPLACE INTO sequences
-         (id,titre,matiere,cycle,objectifs,competences,competence_visee,image_nom,couleur,
+        "INSERT INTO sequences (id,titre,matiere,cycle,objectifs,competences,competence_visee,image_nom,couleur,
           date_creation,periode,annee,rating_engagement,rating_facilite,rating_apprentissage,
           rating_date_maj,projet_id,video,dossier)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19)",
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, matiere = excluded.matiere, cycle = excluded.cycle, objectifs = excluded.objectifs, competences = excluded.competences, competence_visee = excluded.competence_visee, image_nom = excluded.image_nom, couleur = excluded.couleur, date_creation = excluded.date_creation, periode = excluded.periode, annee = excluded.annee, rating_engagement = excluded.rating_engagement, rating_facilite = excluded.rating_facilite, rating_apprentissage = excluded.rating_apprentissage, rating_date_maj = excluded.rating_date_maj, projet_id = excluded.projet_id, video = excluded.video, dossier = excluded.dossier",
         params![sequence.id, sequence.titre, sequence.matiere, sequence.cycle,
                 sequence.objectifs, sequence.competences, sequence.competence_visee,
                 sequence.image_nom, sequence.couleur, sequence.date_creation, sequence.periode,
@@ -66,11 +69,14 @@ pub fn seances_list(db: State<Db>, sequence_id: Option<String>) -> R<Vec<Seance>
 #[tauri::command]
 pub fn seance_save(db: State<Db>, seance: Seance) -> R<Seance> {
     let c = db.0.lock().map_err(e)?;
+    ecrire_seance(&c, seance)
+}
+
+pub(crate) fn ecrire_seance(c: &rusqlite::Connection, seance: Seance) -> R<Seance> {
     c.execute(
-        "INSERT OR REPLACE INTO seances
-         (id,titre,numero,objectifs,competences,deroulement,materiel,duree,date,
+        "INSERT INTO seances (id,titre,numero,objectifs,competences,deroulement,materiel,duree,date,
           tableau_deroulement,images_deroulement,bilan,bilan_date,sequence_id)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)",
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, numero = excluded.numero, objectifs = excluded.objectifs, competences = excluded.competences, deroulement = excluded.deroulement, materiel = excluded.materiel, duree = excluded.duree, date = excluded.date, tableau_deroulement = excluded.tableau_deroulement, images_deroulement = excluded.images_deroulement, bilan = excluded.bilan, bilan_date = excluded.bilan_date, sequence_id = excluded.sequence_id",
         params![seance.id, seance.titre, seance.numero, seance.objectifs, seance.competences,
                 seance.deroulement, seance.materiel, seance.duree, seance.date,
                 seance.tableau_deroulement, seance.images_deroulement, seance.bilan,
@@ -102,10 +108,9 @@ pub fn ateliers_list(db: State<Db>) -> R<Vec<Atelier>> {
 pub fn atelier_save(db: State<Db>, atelier: Atelier) -> R<Atelier> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO ateliers
-         (id,titre,matiere,objectifs,competences,materiel,nb_eleves_max,duree,couleur,
+        "INSERT INTO ateliers (id,titre,matiere,objectifs,competences,materiel,nb_eleves_max,duree,couleur,
           date_creation,image_nom,dossier)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, matiere = excluded.matiere, objectifs = excluded.objectifs, competences = excluded.competences, materiel = excluded.materiel, nb_eleves_max = excluded.nb_eleves_max, duree = excluded.duree, couleur = excluded.couleur, date_creation = excluded.date_creation, image_nom = excluded.image_nom, dossier = excluded.dossier",
         params![atelier.id, atelier.titre, atelier.matiere, atelier.objectifs,
                 atelier.competences, atelier.materiel, atelier.nb_eleves_max, atelier.duree,
                 atelier.couleur, atelier.date_creation, atelier.image_nom, atelier.dossier],
@@ -132,9 +137,8 @@ pub fn espaces_list(db: State<Db>) -> R<Vec<Espace>> {
 pub fn espace_save(db: State<Db>, espace: Espace) -> R<Espace> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO espaces
-         (id,titre,description_espace,nb_eleves_max,couleur,date_creation,image_nom,dossier)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
+        "INSERT INTO espaces (id,titre,description_espace,nb_eleves_max,couleur,date_creation,image_nom,dossier)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, description_espace = excluded.description_espace, nb_eleves_max = excluded.nb_eleves_max, couleur = excluded.couleur, date_creation = excluded.date_creation, image_nom = excluded.image_nom, dossier = excluded.dossier",
         params![espace.id, espace.titre, espace.description_espace, espace.nb_eleves_max,
                 espace.couleur, espace.date_creation, espace.image_nom, espace.dossier],
     ).map_err(e)?;
@@ -175,8 +179,8 @@ pub fn texte_save(db: State<Db>, texte: Texte) -> R<Texte> {
 pub(crate) fn ecrire_texte(c: &rusqlite::Connection, mut texte: Texte) -> R<Texte> {
     texte.date_modification = chrono::Utc::now().to_rfc3339();
     c.execute(
-        "INSERT OR REPLACE INTO textes (id,titre,contenu,dossier,date_creation,date_modification)
-         VALUES (?1,?2,?3,?4,?5,?6)",
+        "INSERT INTO textes (id,titre,contenu,dossier,date_creation,date_modification)
+         VALUES (?1,?2,?3,?4,?5,?6) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, contenu = excluded.contenu, dossier = excluded.dossier, date_creation = excluded.date_creation, date_modification = excluded.date_modification",
         params![texte.id, texte.titre, texte.contenu, texte.dossier, texte.date_creation, texte.date_modification],
     ).map_err(e)?;
     Ok(texte)
@@ -201,10 +205,9 @@ pub fn jeux_list(db: State<Db>) -> R<Vec<Jeu>> {
 pub fn jeu_save(db: State<Db>, jeu: Jeu) -> R<Jeu> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO jeux
-         (id,titre,type_jeu,description_jeu,regles,competences,nb_joueurs_min,nb_joueurs_max,
+        "INSERT INTO jeux (id,titre,type_jeu,description_jeu,regles,competences,nb_joueurs_min,nb_joueurs_max,
           duree,age_min,rangement,couleur,date_creation,image_nom,dossier)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)",
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, type_jeu = excluded.type_jeu, description_jeu = excluded.description_jeu, regles = excluded.regles, competences = excluded.competences, nb_joueurs_min = excluded.nb_joueurs_min, nb_joueurs_max = excluded.nb_joueurs_max, duree = excluded.duree, age_min = excluded.age_min, rangement = excluded.rangement, couleur = excluded.couleur, date_creation = excluded.date_creation, image_nom = excluded.image_nom, dossier = excluded.dossier",
         params![jeu.id, jeu.titre, jeu.type_jeu, jeu.description_jeu, jeu.regles, jeu.competences,
                 jeu.nb_joueurs_min, jeu.nb_joueurs_max, jeu.duree, jeu.age_min, jeu.rangement,
                 jeu.couleur, jeu.date_creation, jeu.image_nom, jeu.dossier],
@@ -256,8 +259,8 @@ pub fn progressions_eleve_list(db: State<Db>, espace_id: Option<String>) -> R<Ve
 pub fn progression_eleve_save(db: State<Db>, progression: ProgressionEleve) -> R<ProgressionEleve> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO progressions_eleve (id,nom_eleve,eleve_id,fait,espace_id)
-         VALUES (?1,?2,?3,?4,?5)",
+        "INSERT INTO progressions_eleve (id,nom_eleve,eleve_id,fait,espace_id)
+         VALUES (?1,?2,?3,?4,?5) ON CONFLICT(id) DO UPDATE SET nom_eleve = excluded.nom_eleve, eleve_id = excluded.eleve_id, fait = excluded.fait, espace_id = excluded.espace_id",
         params![progression.id, progression.nom_eleve, progression.eleve_id,
                 progression.fait as i64, progression.espace_id],
     ).map_err(e)?;
@@ -296,10 +299,9 @@ pub fn creneau_save(db: State<Db>, creneau: Creneau) -> R<Creneau> {
 
 pub(crate) fn ecrire_creneau(c: &rusqlite::Connection, creneau: Creneau) -> R<Creneau> {
     c.execute(
-        "INSERT OR REPLACE INTO creneaux
-         (id,date,heure_debut,heure_fin,matiere,couleur,seance_id,atelier_id,espace_id,eleves_json,
+        "INSERT INTO creneaux (id,date,heure_debut,heure_fin,matiere,couleur,seance_id,atelier_id,espace_id,eleves_json,
           nature,prevu,bilan)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)",
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13) ON CONFLICT(id) DO UPDATE SET date = excluded.date, heure_debut = excluded.heure_debut, heure_fin = excluded.heure_fin, matiere = excluded.matiere, couleur = excluded.couleur, seance_id = excluded.seance_id, atelier_id = excluded.atelier_id, espace_id = excluded.espace_id, eleves_json = excluded.eleves_json, nature = excluded.nature, prevu = excluded.prevu, bilan = excluded.bilan",
         params![creneau.id, creneau.date, creneau.heure_debut, creneau.heure_fin,
                 creneau.matiere, creneau.couleur, creneau.seance_id, creneau.atelier_id,
                 creneau.espace_id, creneau.eleves_json, creneau.nature, creneau.prevu, creneau.bilan],
@@ -347,9 +349,13 @@ pub fn eleves_list(db: State<Db>) -> R<Vec<Eleve>> {
 #[tauri::command]
 pub fn eleve_save(db: State<Db>, eleve: Eleve) -> R<Eleve> {
     let c = db.0.lock().map_err(e)?;
+    ecrire_eleve(&c, eleve)
+}
+
+pub(crate) fn ecrire_eleve(c: &rusqlite::Connection, eleve: Eleve) -> R<Eleve> {
     c.execute(
-        "INSERT OR REPLACE INTO eleves (id,nom,niveau,present,ine,date_naissance,photo_fichier)
-         VALUES (?1,?2,?3,?4,?5,?6,?7)",
+        "INSERT INTO eleves (id,nom,niveau,present,ine,date_naissance,photo_fichier)
+         VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET nom = excluded.nom, niveau = excluded.niveau, present = excluded.present, ine = excluded.ine, date_naissance = excluded.date_naissance, photo_fichier = excluded.photo_fichier",
         params![eleve.id, eleve.nom, eleve.niveau, eleve.present as i64, eleve.ine,
                 eleve.date_naissance, eleve.photo_fichier],
     ).map_err(e)?;
@@ -532,8 +538,8 @@ pub fn appels_list(db: State<Db>, date: Option<String>) -> R<Vec<AppelJournalier
 pub fn appel_save(db: State<Db>, appel: AppelJournalier) -> R<AppelJournalier> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO appels_journalier (id,date,statut_brut,eleve_id)
-         VALUES (?1,?2,?3,?4)",
+        "INSERT INTO appels_journalier (id,date,statut_brut,eleve_id)
+         VALUES (?1,?2,?3,?4) ON CONFLICT(id) DO UPDATE SET date = excluded.date, statut_brut = excluded.statut_brut, eleve_id = excluded.eleve_id",
         params![appel.id, appel.date, appel.statut_brut, appel.eleve_id],
     ).map_err(e)?;
     Ok(appel)
@@ -563,8 +569,8 @@ pub fn commentaires_list(db: State<Db>, eleve_id: Option<String>) -> R<Vec<Comme
 pub fn commentaire_save(db: State<Db>, commentaire: CommentaireEleve) -> R<CommentaireEleve> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO commentaires_eleve (id,date,texte,type,eleve_id)
-         VALUES (?1,?2,?3,?4,?5)",
+        "INSERT INTO commentaires_eleve (id,date,texte,type,eleve_id)
+         VALUES (?1,?2,?3,?4,?5) ON CONFLICT(id) DO UPDATE SET date = excluded.date, texte = excluded.texte, type = excluded.type, eleve_id = excluded.eleve_id",
         params![commentaire.id, commentaire.date, commentaire.texte, commentaire.r#type,
                 commentaire.eleve_id],
     ).map_err(e)?;
@@ -593,10 +599,13 @@ pub fn evaluations_list(db: State<Db>) -> R<Vec<Evaluation>> {
 #[tauri::command]
 pub fn evaluation_save(db: State<Db>, evaluation: Evaluation) -> R<Evaluation> {
     let c = db.0.lock().map_err(e)?;
+    ecrire_evaluation(&c, evaluation)
+}
+
+pub(crate) fn ecrire_evaluation(c: &rusqlite::Connection, evaluation: Evaluation) -> R<Evaluation> {
     c.execute(
-        "INSERT OR REPLACE INTO evaluations
-         (id,titre,matiere,date,bareme,periode,mode,competences_json,pdf_nom_fichier)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+        "INSERT INTO evaluations (id,titre,matiere,date,bareme,periode,mode,competences_json,pdf_nom_fichier)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, matiere = excluded.matiere, date = excluded.date, bareme = excluded.bareme, periode = excluded.periode, mode = excluded.mode, competences_json = excluded.competences_json, pdf_nom_fichier = excluded.pdf_nom_fichier",
         params![evaluation.id, evaluation.titre, evaluation.matiere, evaluation.date,
                 evaluation.bareme, evaluation.periode, evaluation.mode,
                 evaluation.competences_json, evaluation.pdf_nom_fichier],
@@ -627,9 +636,8 @@ pub fn notes_eleve_list(db: State<Db>, evaluation_id: Option<String>) -> R<Vec<N
 pub fn note_eleve_save(db: State<Db>, note: NoteEleve) -> R<NoteEleve> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO notes_eleve
-         (id,eleve_nom,eleve_id,note,absent,commentaire,evaluation_id,niveaux_json)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
+        "INSERT INTO notes_eleve (id,eleve_nom,eleve_id,note,absent,commentaire,evaluation_id,niveaux_json)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8) ON CONFLICT(id) DO UPDATE SET eleve_nom = excluded.eleve_nom, eleve_id = excluded.eleve_id, note = excluded.note, absent = excluded.absent, commentaire = excluded.commentaire, evaluation_id = excluded.evaluation_id, niveaux_json = excluded.niveaux_json",
         params![note.id, note.eleve_nom, note.eleve_id, note.note, note.absent as i64,
                 note.commentaire, note.evaluation_id, note.niveaux_json],
     ).map_err(e)?;
@@ -659,11 +667,10 @@ pub fn materiel_list(db: State<Db>) -> R<Vec<MaterielItem>> {
 pub fn materiel_save(db: State<Db>, materiel: MaterielItem) -> R<MaterielItem> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO materiel_items
-         (id,titre,description_materiel,competence_id,competence_titre,domaine_titre,
+        "INSERT INTO materiel_items (id,titre,description_materiel,competence_id,competence_titre,domaine_titre,
           sous_domaine_titre,cycle,images_json,pdfs_json,date_creation,seance_id,sequence_id,
           dossier,videos_json,coffre_json)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)",
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, description_materiel = excluded.description_materiel, competence_id = excluded.competence_id, competence_titre = excluded.competence_titre, domaine_titre = excluded.domaine_titre, sous_domaine_titre = excluded.sous_domaine_titre, cycle = excluded.cycle, images_json = excluded.images_json, pdfs_json = excluded.pdfs_json, date_creation = excluded.date_creation, seance_id = excluded.seance_id, sequence_id = excluded.sequence_id, dossier = excluded.dossier, videos_json = excluded.videos_json, coffre_json = excluded.coffre_json",
         params![materiel.id, materiel.titre, materiel.description_materiel, materiel.competence_id,
                 materiel.competence_titre, materiel.domaine_titre, materiel.sous_domaine_titre,
                 materiel.cycle, materiel.images_json, materiel.pdfs_json, materiel.date_creation,
@@ -696,8 +703,8 @@ pub fn papiers_list(db: State<Db>) -> R<Vec<PapierEleve>> {
 pub fn papier_save(db: State<Db>, papier: PapierEleve) -> R<PapierEleve> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO papiers_eleve (id,intitule,eleve_id,type,nom_fichier,note,date_ajout)
-         VALUES (?1,?2,?3,?4,?5,?6,?7)",
+        "INSERT INTO papiers_eleve (id,intitule,eleve_id,type,nom_fichier,note,date_ajout)
+         VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET intitule = excluded.intitule, eleve_id = excluded.eleve_id, type = excluded.type, nom_fichier = excluded.nom_fichier, note = excluded.note, date_ajout = excluded.date_ajout",
         params![papier.id, papier.intitule, papier.eleve_id, papier.r#type, papier.nom_fichier,
                 papier.note, papier.date_ajout],
     ).map_err(e)?;
@@ -727,8 +734,8 @@ pub fn referentiels_list(db: State<Db>) -> R<Vec<Referentiel>> {
 pub fn referentiel_save(db: State<Db>, referentiel: Referentiel) -> R<Referentiel> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO referentiels (id,nom,cycle,donnees,est_integre,date_ajout,actif)
-         VALUES (?1,?2,?3,?4,?5,?6,?7)",
+        "INSERT INTO referentiels (id,nom,cycle,donnees,est_integre,date_ajout,actif)
+         VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET nom = excluded.nom, cycle = excluded.cycle, donnees = excluded.donnees, est_integre = excluded.est_integre, date_ajout = excluded.date_ajout, actif = excluded.actif",
         params![referentiel.id, referentiel.nom, referentiel.cycle, referentiel.donnees,
                 referentiel.est_integre as i64, referentiel.date_ajout, referentiel.actif as i64],
     ).map_err(e)?;
@@ -754,9 +761,8 @@ pub fn notes_competence_list(db: State<Db>) -> R<Vec<NoteCompetence>> {
 pub fn note_competence_save(db: State<Db>, note: NoteCompetence) -> R<NoteCompetence> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO notes_competence
-         (id,competence_ref_id,texte,date_creation,date_modification)
-         VALUES (?1,?2,?3,?4,?5)",
+        "INSERT INTO notes_competence (id,competence_ref_id,texte,date_creation,date_modification)
+         VALUES (?1,?2,?3,?4,?5) ON CONFLICT(id) DO UPDATE SET competence_ref_id = excluded.competence_ref_id, texte = excluded.texte, date_creation = excluded.date_creation, date_modification = excluded.date_modification",
         params![note.id, note.competence_ref_id, note.texte, note.date_creation,
                 note.date_modification],
     ).map_err(e)?;
@@ -779,8 +785,8 @@ pub fn progressions_annuelle_list(db: State<Db>) -> R<Vec<ProgressionAnnuelle>> 
 pub fn progression_annuelle_save(db: State<Db>, p: ProgressionAnnuelle) -> R<ProgressionAnnuelle> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO progressions_annuelle (id,annee,periode,colonnes_json,cellules_json)
-         VALUES (?1,?2,?3,?4,?5)",
+        "INSERT INTO progressions_annuelle (id,annee,periode,colonnes_json,cellules_json)
+         VALUES (?1,?2,?3,?4,?5) ON CONFLICT(id) DO UPDATE SET annee = excluded.annee, periode = excluded.periode, colonnes_json = excluded.colonnes_json, cellules_json = excluded.cellules_json",
         params![p.id, p.annee, p.periode, p.colonnes_json, p.cellules_json],
     ).map_err(e)?;
     Ok(p)
@@ -798,8 +804,8 @@ pub fn programmations_finale_list(db: State<Db>) -> R<Vec<ProgrammationFinale>> 
 pub fn programmation_finale_save(db: State<Db>, p: ProgrammationFinale) -> R<ProgrammationFinale> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO programmations_finale (id,annee,lignes_json,niveau,enseignant,est_importee)
-         VALUES (?1,?2,?3,?4,?5,?6)",
+        "INSERT INTO programmations_finale (id,annee,lignes_json,niveau,enseignant,est_importee)
+         VALUES (?1,?2,?3,?4,?5,?6) ON CONFLICT(id) DO UPDATE SET annee = excluded.annee, lignes_json = excluded.lignes_json, niveau = excluded.niveau, enseignant = excluded.enseignant, est_importee = excluded.est_importee",
         params![p.id, p.annee, p.lignes_json, p.niveau, p.enseignant, p.est_importee as i64],
     ).map_err(e)?;
     Ok(p)
@@ -824,7 +830,7 @@ pub fn edt_typique_list(db: State<Db>) -> R<Vec<EdtTypique>> {
 pub fn edt_typique_save(db: State<Db>, edt: EdtTypique) -> R<EdtTypique> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO edt_typique (id,annee,slots_json) VALUES (?1,?2,?3)",
+        "INSERT INTO edt_typique (id,annee,slots_json) VALUES (?1,?2,?3) ON CONFLICT(id) DO UPDATE SET annee = excluded.annee, slots_json = excluded.slots_json",
         params![edt.id, edt.annee, edt.slots_json],
     ).map_err(e)?;
     Ok(edt)
@@ -850,9 +856,8 @@ pub fn pieces_jointes_list(db: State<Db>, seance_id: Option<String>) -> R<Vec<Pi
 pub fn piece_jointe_save(db: State<Db>, piece: PieceJointe) -> R<PieceJointe> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO pieces_jointes
-         (id,nom,type,nom_fichier,date_ajout,seance_id,a_imprimer)
-         VALUES (?1,?2,?3,?4,?5,?6,?7)",
+        "INSERT INTO pieces_jointes (id,nom,type,nom_fichier,date_ajout,seance_id,a_imprimer)
+         VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET nom = excluded.nom, type = excluded.type, nom_fichier = excluded.nom_fichier, date_ajout = excluded.date_ajout, seance_id = excluded.seance_id, a_imprimer = excluded.a_imprimer",
         params![piece.id, piece.nom, piece.r#type, piece.nom_fichier, piece.date_ajout,
                 piece.seance_id, piece.a_imprimer as i64],
     ).map_err(e)?;
@@ -882,9 +887,8 @@ pub fn conversations_list(db: State<Db>) -> R<Vec<PiloteConversation>> {
 pub fn conversation_save(db: State<Db>, conversation: PiloteConversation) -> R<PiloteConversation> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO pilote_conversations
-         (id,titre,messages_json,date_creation,date_maj)
-         VALUES (?1,?2,?3,?4,?5)",
+        "INSERT INTO pilote_conversations (id,titre,messages_json,date_creation,date_maj)
+         VALUES (?1,?2,?3,?4,?5) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, messages_json = excluded.messages_json, date_creation = excluded.date_creation, date_maj = excluded.date_maj",
         params![conversation.id, conversation.titre, conversation.messages_json,
                 conversation.date_creation, conversation.date_maj],
     ).map_err(e)?;
@@ -914,8 +918,8 @@ pub fn coffre_list(db: State<Db>) -> R<Vec<DocumentCoffre>> {
 pub fn coffre_save(db: State<Db>, document: DocumentCoffre) -> R<DocumentCoffre> {
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO documents_coffre (id,nom,nom_fichier,taille_octets,date_ajout)
-         VALUES (?1,?2,?3,?4,?5)",
+        "INSERT INTO documents_coffre (id,nom,nom_fichier,taille_octets,date_ajout)
+         VALUES (?1,?2,?3,?4,?5) ON CONFLICT(id) DO UPDATE SET nom = excluded.nom, nom_fichier = excluded.nom_fichier, taille_octets = excluded.taille_octets, date_ajout = excluded.date_ajout",
         params![document.id, document.nom, document.nom_fichier, document.taille_octets, document.date_ajout],
     ).map_err(e)?;
     Ok(document)
@@ -934,8 +938,8 @@ pub async fn coffre_download(db: State<'_, Db>, url: String, nom: String) -> R<D
     };
     let c = db.0.lock().map_err(e)?;
     c.execute(
-        "INSERT OR REPLACE INTO documents_coffre (id,nom,nom_fichier,taille_octets,date_ajout)
-         VALUES (?1,?2,?3,?4,?5)",
+        "INSERT INTO documents_coffre (id,nom,nom_fichier,taille_octets,date_ajout)
+         VALUES (?1,?2,?3,?4,?5) ON CONFLICT(id) DO UPDATE SET nom = excluded.nom, nom_fichier = excluded.nom_fichier, taille_octets = excluded.taille_octets, date_ajout = excluded.date_ajout",
         params![doc.id, doc.nom, doc.nom_fichier, doc.taille_octets, doc.date_ajout],
     ).map_err(e)?;
     Ok(doc)
@@ -1987,11 +1991,10 @@ mod tests_materiel {
             dossier: "Français/Lecture".into(), videos_json: "[]".into(), coffre_json: "[]".into(),
         };
         c.execute(
-            "INSERT OR REPLACE INTO materiel_items
-             (id,titre,description_materiel,competence_id,competence_titre,domaine_titre,
+            "INSERT INTO materiel_items (id,titre,description_materiel,competence_id,competence_titre,domaine_titre,
               sous_domaine_titre,cycle,images_json,pdfs_json,date_creation,seance_id,sequence_id,
               dossier,videos_json,coffre_json)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)",
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, description_materiel = excluded.description_materiel, competence_id = excluded.competence_id, competence_titre = excluded.competence_titre, domaine_titre = excluded.domaine_titre, sous_domaine_titre = excluded.sous_domaine_titre, cycle = excluded.cycle, images_json = excluded.images_json, pdfs_json = excluded.pdfs_json, date_creation = excluded.date_creation, seance_id = excluded.seance_id, sequence_id = excluded.sequence_id, dossier = excluded.dossier, videos_json = excluded.videos_json, coffre_json = excluded.coffre_json",
             rusqlite::params![m.id, m.titre, m.description_materiel, m.competence_id,
                 m.competence_titre, m.domaine_titre, m.sous_domaine_titre, m.cycle,
                 m.images_json, m.pdfs_json, m.date_creation, m.seance_id, m.sequence_id,
@@ -2151,5 +2154,96 @@ mod tests_eleve {
         assert!(!plans.contains(a) && plans.contains(b), "plan de salle : place non libérée ({plans})");
         let mat: String = c.query_row("SELECT valeur FROM settings WHERE cle='salle:plansMatiere'", [], |r| r.get(0)).unwrap();
         assert!(!mat.contains(a), "plan par matière : place non libérée ({mat})");
+    }
+}
+
+#[cfg(test)]
+mod tests_cascades {
+    //! Enregistrer une ligne ne doit jamais effacer ce qui en dépend.
+    //!
+    //! Avec « INSERT OR REPLACE », SQLite supprime puis recrée la ligne : la
+    //! suppression déclenchait les ON DELETE CASCADE. Déplacer une séquence
+    //! effaçait ses séances ; enregistrer un élève, ses documents.
+    use crate::models::*;
+    use rusqlite::Connection;
+
+    fn base() -> Connection {
+        let c = Connection::open_in_memory().unwrap();
+        c.pragma_update(None, "foreign_keys", "ON").unwrap();
+        crate::db::migrer_pour_test(&c);
+        c
+    }
+
+    fn compter(c: &Connection, sql: &str) -> i64 {
+        c.query_row(sql, [], |r| r.get(0)).unwrap()
+    }
+
+    #[test]
+    fn deplacer_une_sequence_garde_ses_seances() {
+        let c = base();
+        let seq: Sequence = serde_json::from_value(serde_json::json!({"id": "s1", "titre": "Jardinage"})).unwrap();
+        super::ecrire_sequence(&c, seq.clone()).unwrap();
+        let se: Seance = serde_json::from_value(serde_json::json!({"id": "se1", "titre": "Semis", "sequenceId": "s1"})).unwrap();
+        super::ecrire_seance(&c, se).unwrap();
+        super::ecrire_sequence(&c, Sequence { dossier: "Sciences".into(), ..seq }).unwrap();
+        assert_eq!(compter(&c, "SELECT count(*) FROM seances WHERE sequence_id='s1'"), 1, "les séances ont été effacées");
+        assert_eq!(compter(&c, "SELECT count(*) FROM sequences WHERE id='s1' AND dossier='Sciences'"), 1);
+    }
+
+    #[test]
+    fn enregistrer_une_seance_la_laisse_au_planning() {
+        let c = base();
+        let se: Seance = serde_json::from_value(serde_json::json!({"id": "se1", "titre": "Semis"})).unwrap();
+        super::ecrire_seance(&c, se.clone()).unwrap();
+        let cr: Creneau = serde_json::from_value(serde_json::json!({"id": "cr1", "date": "2026-09-14", "seanceId": "se1"})).unwrap();
+        super::ecrire_creneau(&c, cr).unwrap();
+        super::ecrire_seance(&c, Seance { titre: "Semis de radis".into(), ..se }).unwrap();
+        assert_eq!(compter(&c, "SELECT count(*) FROM creneaux WHERE seance_id='se1'"), 1, "la séance a été détachée du créneau");
+    }
+
+    #[test]
+    fn enregistrer_un_eleve_garde_ses_documents() {
+        let c = base();
+        let el: Eleve = serde_json::from_value(serde_json::json!({"id": "e1", "nom": "Apolline Martin"})).unwrap();
+        super::ecrire_eleve(&c, el.clone()).unwrap();
+        c.execute("INSERT INTO documents_eleve (id, eleve_id, type, donnees, date_maj) VALUES ('d1','e1','ppi','{}','x')", []).unwrap();
+        super::ecrire_eleve(&c, Eleve { nom: "Apolline M.".into(), ..el }).unwrap();
+        assert_eq!(compter(&c, "SELECT count(*) FROM documents_eleve WHERE eleve_id='e1'"), 1, "les documents de l'élève ont été effacés");
+    }
+
+    #[test]
+    fn enregistrer_une_evaluation_garde_ses_notes() {
+        let c = base();
+        let ev: Evaluation = serde_json::from_value(serde_json::json!({"id": "ev1", "titre": "Lecture"})).unwrap();
+        super::ecrire_evaluation(&c, ev.clone()).unwrap();
+        c.execute("INSERT INTO notes_eleve (id, eleve_nom, evaluation_id) VALUES ('n1','Apolline','ev1')", []).unwrap();
+        super::ecrire_evaluation(&c, Evaluation { titre: "Lecture CP".into(), ..ev }).unwrap();
+        assert_eq!(compter(&c, "SELECT count(*) FROM notes_eleve WHERE evaluation_id='ev1'"), 1, "les notes ont été effacées");
+    }
+
+    /// La synchronisation applique les changements reçus : elle ne doit pas non
+    /// plus effacer, sur l'autre machine, les séances d'une séquence modifiée.
+    #[test]
+    fn une_sequence_recue_garde_ses_seances() {
+        let a = base();
+        let mut b = base();
+        for (c, nom) in [(&a, "A"), (&b, "B")] {
+            crate::journal::creer_table(c);
+            crate::journal::poser_declencheurs(c, nom);
+        }
+        let seq: Sequence = serde_json::from_value(serde_json::json!({"id": "s1", "titre": "Jardinage"})).unwrap();
+        let se: Seance = serde_json::from_value(serde_json::json!({"id": "se1", "titre": "Semis", "sequenceId": "s1"})).unwrap();
+        super::ecrire_sequence(&a, seq.clone()).unwrap();
+        super::ecrire_seance(&a, se).unwrap();
+        let (tout, _) = crate::journal::changements_locaux(&a, 0).unwrap();
+        crate::journal::appliquer(&mut b, &tout).unwrap();
+        assert_eq!(compter(&b, "SELECT count(*) FROM seances WHERE sequence_id='s1'"), 1);
+        // A range la séquence ; B reçoit la modification.
+        let apres = crate::journal::dernier_seq(&a);
+        super::ecrire_sequence(&a, Sequence { dossier: "Sciences".into(), ..seq }).unwrap();
+        let (nouveaux, _) = crate::journal::changements_locaux(&a, apres).unwrap();
+        crate::journal::appliquer(&mut b, &nouveaux).unwrap();
+        assert_eq!(compter(&b, "SELECT count(*) FROM sequences WHERE dossier='Sciences'"), 1, "la modification n'est pas arrivée");
+        assert_eq!(compter(&b, "SELECT count(*) FROM seances WHERE sequence_id='s1'"), 1, "la synchronisation a effacé les séances");
     }
 }
