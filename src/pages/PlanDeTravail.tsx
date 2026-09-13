@@ -8,6 +8,7 @@ import { toast } from "../components/Toaster";
 import { openCtx } from "../components/ctxmenu";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { FormMateriel } from "../components/FormMateriel";
+import { texteBrut } from "../texteRiche";
 import { EditeurTexte } from "../components/EditeurTexte";
 import { FormSequence } from "../components/FormSequence";
 import { contenuDirect, nature } from "../bureau";
@@ -161,7 +162,9 @@ export default function PlanDeTravail() {
   const elements: Element[] = React.useMemo(() => [
     ...(sequences ?? []).map((s): Element => ({ genre: "sequence", id: s.id, titre: s.titre || "Sans titre", dossier: s.dossier, seq: s })),
     ...(materiels ?? []).map((m): Element => ({ genre: "materiel", id: m.id, titre: m.titre || "Sans titre", dossier: m.dossier, mat: m })),
-    ...(textes ?? []).map((x): Element => ({ genre: "texte", id: x.id, titre: x.titre || "Sans titre", dossier: x.dossier, txt: x })),
+    // Les dossiers « @… » sont réservés (feuilles d'informations d'Organisation) : pas sur le bureau.
+    ...(textes ?? []).filter((x) => !x.dossier.startsWith("@"))
+      .map((x): Element => ({ genre: "texte", id: x.id, titre: x.titre || "Sans titre", dossier: x.dossier, txt: x })),
   ], [sequences, materiels, textes]);
 
   // Les anciennes créations de dossier y déposaient un « Nouveau matériel »
@@ -191,7 +194,7 @@ export default function PlanDeTravail() {
   // qu'on cherche avant de le chercher.
   const ici = elements
     .filter((e) => (filtre
-      ? e.titre.toLowerCase().includes(filtre) || (e.genre === "texte" && e.txt.contenu.toLowerCase().includes(filtre))
+      ? e.titre.toLowerCase().includes(filtre) || (e.genre === "texte" && texteBrut(e.txt.contenu).toLowerCase().includes(filtre))
       : normaliser(e.dossier) === dossier))
     .sort((a, b) => a.titre.localeCompare(b.titre, "fr"));
 
@@ -654,7 +657,7 @@ function TuileElement({ element, onOuvrir, onModifier, onRanger, onSupprimer, on
 
 /** Les premières lignes d'un texte, posées comme sur une feuille. */
 function ApercuTexte({ contenu }: { contenu: string }) {
-  const debut = contenu.split("\n").slice(0, 14).join("\n").slice(0, 600);
+  const debut = texteBrut(contenu).split("\n").slice(0, 14).join("\n").slice(0, 600);
   return (
     <div aria-hidden="true" style={{
       width: "72%", height: "86%", background: "#fff", borderRadius: 2, padding: "8px 8px",

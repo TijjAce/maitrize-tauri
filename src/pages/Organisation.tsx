@@ -13,6 +13,7 @@ import { COULEURS } from "../api";
 import { printHTML, escapeHtml } from "../print";
 import { PlanSalleTab } from "./PlanSalle";
 import { ProjetPedagogiqueTab } from "./ProjetPedagogique";
+import { InformationsTab } from "./Informations";
 import { confirmer } from "../components/confirmer";
 import { tempsDeLaSemaineType, natureDuSlot, type SlotEdt } from "../organisation";
 import { duree } from "../heures";
@@ -98,6 +99,7 @@ const SEGMENTS = [
   { id: "cycle", label: "Travail de cycle" },
   { id: "salle", label: "Plan de salle" },
   { id: "projet", label: "Projet pédagogique" },
+  { id: "infos", label: "Informations" },
 ] as const;
 type SegId = typeof SEGMENTS[number]["id"];
 
@@ -141,6 +143,7 @@ export default function Organisation() {
         : onglet === "edt" ? <EdtType {...props} />
         : onglet === "salle" ? <PlanSalleTab />
         : onglet === "projet" ? <ProjetPedagogiqueTab annee={annee} />
+        : onglet === "infos" ? <InformationsTab annee={annee} />
         : <TravailDeCycle {...props} />}
     </Page>
   );
