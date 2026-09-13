@@ -73,9 +73,10 @@ def extraire(bbox, domaines, marge_haut=0, marge_bas=0, ignorer_titres=()):
             premier = L[k].mots[0]
             enveloppe = (prec.page == L[k].page and not blanc_avant(k)
                          and prec.x1 + 3 + (premier.x1 - premier.x0) > marge_droite)
+            ecart = L[k].y - prec.y if prec.page == L[k].page else None
             if courant is None:
                 courant = t
-            elif continue_objectif(courant, t, enveloppe):
+            elif continue_objectif(courant, t, enveloppe, ecart):
                 courant = courant + " " + t
             else:
                 fermer(); courant = t
@@ -97,12 +98,18 @@ NOMS_EN_RE = {"Terre", "Guerre", "Pierre", "Angleterre", "Ordre", "Titre", "Nomb
               "Chiffre", "Cadre", "Membre", "Octobre", "Novembre", "Décembre", "Septembre", "Notre", "Votre", "Entre"}
 
 
-def continue_objectif(courant, suite, enveloppe):
-    """La ligne `suite` prolonge-t-elle l’objectif `courant` ?"""
+def continue_objectif(courant, suite, enveloppe, ecart=None):
+    """La ligne `suite` prolonge-t-elle l’objectif `courant` ?
+
+    Chaque objectif occupe sa propre ligne de tableau, avec une marge intérieure : sur une même page,
+    deux lignes d’un même objectif sont espacées d’environ 12 points, deux objectifs de 14 à 15.
+    Cet écart décide. Au passage d’une page, il ne veut plus rien dire : la langue prend le relais."""
+    if ecart is not None:
+        return ecart < 12.9
     if suite[:1].islower() or not suite[:1].isalpha():
         return True
-    if courant.endswith((",", ";", ":", "—", "–", "(", "-", "/", "+", "’", ".")):
-        return True  # phrase interrompue, ou seconde phrase du même objectif
+    if courant.endswith((",", ";", ":", "—", "–", "(", "-", "/", "+", "’")):
+        return True  # phrase interrompue
     premier = suite.split()[0].rstrip(",.;:")
     if INFINITIF.match(suite) and premier not in NOMS_EN_RE:
         return False
