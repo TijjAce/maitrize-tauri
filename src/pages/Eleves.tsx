@@ -13,16 +13,16 @@ import { DispositifsTab } from "./Dispositifs";
 import { ProgressionsTab } from "./Progressions";
 import { GevaScoTab } from "./GevaSco";
 import { DicteeAtelier } from "../components/DicteeAtelier";
+import { ChipObservation, ChoixTypeObservation, couleurObservation } from "../components/TypeObservation";
 import { DossierTab } from "./DossierEleve";
 import { EvaluationDiagnostiqueTab } from "./EvaluationDiagnostique";
 import syntheseDomaines from "../data/syntheseGS.json";
-import { preRemplir, indicesDeLEleve, type SynDom, type SynData } from "../syntheseGS";
-import { lireCompetences, TYPE_DOC_COMPETENCES } from "../competencesTravaillees";
 import { pseudonymiser, restaurer } from "../confidentialite";
+import { SyntheseEleveTab } from "./SyntheseEleve";
 
 const ELEVES_TABS = ["liste", "dossier", "observations", "evaluations", "papiers", "dispositifs", "gevasco", "progressions"] as const;
-/** Ce qu'affiche l'onglet Évaluations : le sommatif (notes, synthèse GS) ou le diagnostique. */
-type VueEvaluation = "notees" | "synthese" | "diagnostique";
+/** Ce qu'affiche l'onglet Évaluations : le sommatif (notes, synthèse, synthèse GS) ou le diagnostique. */
+type VueEvaluation = "notees" | "synthese" | "gs" | "diagnostique";
 export default function Eleves() {
   const [onglet, setOnglet] = React.useState<typeof ELEVES_TABS[number]>("liste");
   const [vueEvaluation, setVueEvaluation] = React.useState<VueEvaluation>("notees");
@@ -35,9 +35,10 @@ export default function Eleves() {
   // Dispositifs et GEVA-Sco n'existent qu'en mode IME : plutôt qu'un clic sans
   // effet, on dit pourquoi l'onglet demandé n'est pas là.
   useOngletDemande("eleves", tabs, setOnglet, (demande) => {
-    // La synthèse GS vit désormais dans l'évaluation sommative : les liens
+    // Synthèse et synthèse GS vivent dans l'évaluation sommative : les liens
     // du dossier de l'élève et de ⌘K y mènent toujours.
-    if (demande === "synthese") { setOnglet("evaluations"); setVueEvaluation("synthese"); return; }
+    if (demande === "synthese") { setOnglet("evaluations"); setVueEvaluation("gs"); return; }
+    if (demande === "syntheseEleve") { setOnglet("evaluations"); setVueEvaluation("synthese"); return; }
     toast("Cet onglet demande le mode IME (Réglages → Type de structure).", { icone: "⚙️" });
   });
   return (
@@ -152,6 +153,13 @@ function Observations() {
   const [texte, setTexte] = React.useState("");
   const [type, setType] = React.useState("divers");
   const [dictee, setDictee] = React.useState(false);
+  const [filtre, setFiltre] = React.useState<string | null>(null);
+  const comptes = React.useMemo(() => {
+    const n: Record<string, number> = {};
+    for (const c of commentaires ?? []) n[c.type] = (n[c.type] ?? 0) + 1;
+    return n;
+  }, [commentaires]);
+  const affichees = (commentaires ?? []).filter((c) => !filtre || c.type === filtre);
 
   React.useEffect(() => { if (!eleveId && eleves?.length) setEleveId(eleves[0].id); }, [eleves, eleveId]);
 
@@ -174,20 +182,30 @@ function Observations() {
         </button>
       </div>
       {dictee && <DicteeAtelier eleves={eleves ?? []} onClose={() => setDictee(false)} onEnregistre={reload} />}
-      <div className="card" style={{ marginBottom: 18 }}>
-        <div className="row">
-          <Select value={type} onChange={(e) => setType(e.target.value)} style={{ maxWidth: 170 }}>
-            {TYPES_OBSERVATION.map((t) => <option key={t}>{t}</option>)}
-          </Select>
+      <div className="card" style={{ marginBottom: 14 }}>
+        <ChoixTypeObservation valeur={type} onChange={setType} />
+        <div className="row" style={{ marginTop: 10 }}>
           <Input placeholder="Nouvelle observation…" value={texte} onChange={(e) => setTexte(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && ajouter()} />
+            onKeyDown={(e) => e.key === "Enter" && ajouter()}
+            style={{ borderLeft: `4px solid ${couleurObservation(type)}` }} />
           <button className="btn primary" style={{ flex: "none" }} onClick={ajouter}>Ajouter</button>
         </div>
       </div>
+      {(commentaires?.length ?? 0) > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+          <button className={`btn sm${filtre === null ? " primary" : ""}`} onClick={() => setFiltre(null)}>Toutes · {commentaires!.length}</button>
+          {TYPES_OBSERVATION.filter((t) => comptes[t]).map((t) => (
+            <button key={t} type="button" onClick={() => setFiltre(filtre === t ? null : t)} aria-pressed={filtre === t}
+              style={{ border: "none", background: "none", padding: 0, cursor: "pointer", opacity: filtre && filtre !== t ? 0.45 : 1 }}>
+              <ChipObservation type={t} compte={comptes[t]} />
+            </button>
+          ))}
+        </div>
+      )}
       {(commentaires?.length ?? 0) === 0 ? <Empty icone="📝" titre="Aucune observation" /> :
-        commentaires!.map((c: CommentaireEleve) => (
-          <div key={c.id} className="list-row">
-            <span className="chip">{c.type}</span>
+        affichees.map((c: CommentaireEleve) => (
+          <div key={c.id} className="list-row" style={{ borderLeft: `4px solid ${couleurObservation(c.type)}` }}>
+            <ChipObservation type={c.type} />
             <div style={{ flex: 1 }}>{c.texte}<div className="meta">{new Date(c.date).toLocaleDateString("fr-FR")}</div></div>
             <button className="btn ghost sm" onClick={() => api.commentaireDelete(c.id).then(reload)} aria-label="Supprimer">🗑</button>
           </div>
@@ -196,10 +214,11 @@ function Observations() {
   );
 }
 
-// ── Évaluations : sommative (notes, synthèse GS) et diagnostique ───────────
+// ── Évaluations : sommative (notes, synthèse, synthèse GS) et diagnostique ──
 // Deux natures qu'on ne mélange pas : le diagnostique décrit ce que l'élève
 // sait faire en arrivant ; le sommatif fait le point sur ce qui est acquis —
-// épreuves notées ou par compétences, et synthèse des acquis de fin de GS.
+// épreuves notées ou par compétences, synthèse rédigée d'après le suivi, et
+// synthèse officielle des acquis de fin de GS.
 function Evaluations({ vue, setVue }: { vue: VueEvaluation; setVue: (v: VueEvaluation) => void }) {
   const { data: evals, reload } = useAsync(() => api.evaluationsList(), []);
   const [edit, setEdit] = React.useState<Evaluation | null>(null);
@@ -221,7 +240,9 @@ function Evaluations({ vue, setVue }: { vue: VueEvaluation; setVue: (v: VueEvalu
             <button role="tab" aria-selected={vue === "notees"} className={vue === "notees" ? "active" : ""}
               onClick={() => setVue("notees")}>🔢 Évaluations notées</button>
             <button role="tab" aria-selected={vue === "synthese"} className={vue === "synthese" ? "active" : ""}
-              onClick={() => setVue("synthese")}>🎓 Synthèse GS</button>
+              onClick={() => setVue("synthese")}>📋 Synthèse</button>
+            <button role="tab" aria-selected={vue === "gs"} className={vue === "gs" ? "active" : ""}
+              onClick={() => setVue("gs")}>🎓 Synthèse GS</button>
           </div>
         )}
         <div className="spacer" />
@@ -229,7 +250,8 @@ function Evaluations({ vue, setVue }: { vue: VueEvaluation; setVue: (v: VueEvalu
       </div>
 
       {vue === "diagnostique" && <EvaluationDiagnostiqueTab />}
-      {vue === "synthese" && <SyntheseGS />}
+      {vue === "synthese" && <SyntheseEleveTab />}
+      {vue === "gs" && <SyntheseGS />}
       {vue === "notees" && ((evals?.length ?? 0) === 0 ? <Empty icone="📊" titre="Aucune évaluation" /> :
         evals!.map((ev) => (
           <div key={ev.id} className="list-row">
@@ -388,6 +410,9 @@ function LSUSheet({ ev, onClose }: { ev: Evaluation; onClose: () => void }) {
 }
 
 // ── Synthèse des acquis de fin de maternelle (GS) ──────────────────────────
+interface SynItem { id: string; bloc: string | null; label: string }
+interface SynDom { id: string; titre: string; titreObservations: string; items: SynItem[]; enonces: string[] }
+interface SynData { positionnements: Record<string, number>; observations: Record<string, string>; dateVisa?: string }
 const POS_GS = [
   { n: 1, label: "Ne réussit pas encore", couleur: "#d64d4d" },
   { n: 2, label: "En voie de réussite", couleur: "#eb9e33" },
@@ -439,41 +464,7 @@ function SyntheseGS() {
   const setPos = (itemId: string, n: number) => {
     const p = { ...data.positionnements };
     if (p[itemId] === n) delete p[itemId]; else p[itemId] = n;
-    // L'enseignant a tranché : ce n'est plus une proposition.
-    const { [itemId]: _choisi, ...origines } = data.origines ?? {};
-    persister({ ...data, positionnements: p, origines });
-  };
-
-  // Reprend le suivi de l'élève : compétences travaillées, progressions,
-  // évaluations et observations. Ne remplit que ce qui est vide.
-  const [preRemplissage, setPreRemplissage] = React.useState(false);
-  const preRemplirDepuisLeSuivi = async () => {
-    if (!eleveId) return;
-    setPreRemplissage(true);
-    try {
-      const [competences, progressions, evaluations, notes, observations] = await Promise.all([
-        api.documentEleveGet(eleveId, TYPE_DOC_COMPETENCES).then(lireCompetences),
-        api.documentEleveGet(eleveId, "progressions").then((v) => { try { return v ? JSON.parse(v) : []; } catch { return []; } }),
-        api.evaluationsList(), api.notesEleveList(), api.commentairesList(eleveId),
-      ]);
-      const indices = indicesDeLEleve(eleveId, { competences, progressions, evaluations, notes, observations });
-      const autres = (eleves ?? []).filter((e) => e.id !== eleveId).map((e) => e.nom);
-      const r = preRemplir(doms, data, indices, autres);
-      if (r.positionnes + r.commentaires === 0) {
-        toast(indices.length
-          ? "Tout ce que le suivi permet de proposer est déjà rempli."
-          : "Rien à reprendre : citez des compétences (Progressions), positionnez des évaluations ou notez des observations.",
-          { icone: "ℹ️", duree: 6000 });
-        return;
-      }
-      persister(r.data);
-      toast(`${r.positionnes} positionnement${r.positionnes > 1 ? "s" : ""} et ${r.commentaires} commentaire${r.commentaires > 1 ? "s" : ""} proposés d'après le suivi — à relire. Rien de ce qui était rempli n'a changé.`,
-        { icone: "✨", duree: 7000 });
-    } catch (e) {
-      toast(`Pré-remplissage impossible : ${e}`, { icone: "⚠️" });
-    } finally {
-      setPreRemplissage(false);
-    }
+    persister({ ...data, positionnements: p });
   };
   const setObs = (domId: string, t: string) => persister({ ...data, observations: { ...data.observations, [domId]: t } });
   const setDateVisa = (v: string) => persister({ ...data, dateVisa: v });
@@ -546,10 +537,6 @@ function SyntheseGS() {
         <Select value={eleveId} onChange={(e) => setEleveId(e.target.value)} style={{ maxWidth: 240 }}>
           {eleves?.map((e) => <option key={e.id} value={e.id}>{e.nom}{e.niveau ? ` (${e.niveau})` : ""}</option>)}
         </Select>
-        <button className="btn sm" onClick={preRemplirDepuisLeSuivi} disabled={!eleve || preRemplissage}
-          title="Positionne les items et rédige un brouillon par domaine d'après les compétences travaillées, les progressions, les évaluations et les observations. Ne remplace rien.">
-          {preRemplissage ? "Lecture du suivi…" : "✨ Pré-remplir d'après le suivi"}
-        </button>
         <div className="spacer" />
         {exportErreur && <span style={{ color: "var(--danger, #d64d4d)", fontSize: 12, marginRight: 8 }}>{exportErreur}</span>}
         <button className="btn sm" onClick={imprimer} disabled={!eleve || exportEnCours}>
@@ -582,11 +569,6 @@ function SyntheseGS() {
                 <div style={{ flex: 1, fontSize: 13 }}>
                   {it.bloc && <div style={{ fontWeight: 700, color: "var(--text-2)", fontSize: 12, marginBottom: 2 }}>{it.bloc}</div>}
                   {it.label}
-                  {data.origines?.[it.id] && (
-                    <div style={{ fontSize: 11.5, color: "var(--text-2)", fontStyle: "italic", marginTop: 3 }}>
-                      ✨ Proposé d'après : {data.origines[it.id]}
-                    </div>
-                  )}
                 </div>
                 <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
                   {POS_GS.map((p) => {

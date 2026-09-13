@@ -1,4 +1,5 @@
 import React from "react";
+import { ChipObservation } from "../components/TypeObservation";
 import { api, Eleve, TYPE_AXE } from "../api";
 import { Select, Empty, useAsync, ouvrirOnglet } from "../components/ui";
 import { printHTML, escapeHtml } from "../print";
@@ -99,8 +100,7 @@ function Contenu({ dossier: d }: { dossier: Dossier }) {
           ) : d.observations.parType.map((g) => (
             <div key={g.type} style={{ borderTop: "1px solid var(--border)", padding: "7px 0" }}>
               <div style={{ display: "flex", gap: 7, alignItems: "center" }}>
-                <span className="chip">{g.type}</span>
-                <span style={{ fontSize: 12, color: "var(--text-2)" }}>{g.items.length}</span>
+                <ChipObservation type={g.type} compte={g.items.length} />
               </div>
               {g.items.slice(0, 3).map((c) => (
                 <div key={c.id} style={{ fontSize: 13, marginTop: 3 }}>
