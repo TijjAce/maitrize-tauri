@@ -165,7 +165,17 @@ pub struct Creneau {
     /// Élèves présents sur ce créneau (JSON), pour les groupes restreints.
     #[serde(default = "vide_arr")]
     pub eleves_json: String,
+    /// « classe » ou « reunion » (réunion, formation) : pour compter les heures.
+    #[serde(default = "nature_classe")]
+    pub nature: String,
+    /// Cahier journal : ce qui est prévu sur ce créneau.
+    #[serde(default)]
+    pub prevu: String,
+    /// Cahier journal : ce qui a été fait, et le bilan.
+    #[serde(default)]
+    pub bilan: String,
 }
+fn nature_classe() -> String { "classe".into() }
 
 impl Creneau {
     pub fn from_row(r: &Row) -> rusqlite::Result<Self> {
@@ -180,6 +190,9 @@ impl Creneau {
             atelier_id: r.get("atelier_id")?,
             espace_id: r.get("espace_id")?,
             eleves_json: r.get("eleves_json").unwrap_or_else(|_| "[]".into()),
+            nature: r.get("nature")?,
+            prevu: r.get("prevu")?,
+            bilan: r.get("bilan")?,
         })
     }
 }

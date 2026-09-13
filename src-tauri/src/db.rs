@@ -606,6 +606,12 @@ pub(crate) fn migrate(conn: &Connection) {
 
     // Élèves présents sur un créneau (organisation IME, groupes restreints).
     conn.execute("ALTER TABLE creneaux ADD COLUMN eleves_json TEXT NOT NULL DEFAULT '[]'", []).ok();
+    // Cahier journal : ce qui était prévu et ce qui a été fait, créneau par
+    // créneau ; et la nature du temps — classe, ou réunion / formation — pour
+    // compter les heures de la semaine.
+    conn.execute("ALTER TABLE creneaux ADD COLUMN nature TEXT NOT NULL DEFAULT 'classe'", []).ok();
+    conn.execute("ALTER TABLE creneaux ADD COLUMN prevu TEXT NOT NULL DEFAULT ''", []).ok();
+    conn.execute("ALTER TABLE creneaux ADD COLUMN bilan TEXT NOT NULL DEFAULT ''", []).ok();
     // Matériel : rangement en dossiers, liens vidéo, et renvois vers le coffre.
     conn.execute("ALTER TABLE materiel_items ADD COLUMN dossier TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE materiel_items ADD COLUMN videos_json TEXT NOT NULL DEFAULT '[]'", []).ok();

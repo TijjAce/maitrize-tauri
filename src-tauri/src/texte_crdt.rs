@@ -46,6 +46,8 @@ pub const CHAMPS_TEXTE: &[(&str, &str)] = &[
     ("materiel_items", "description_materiel"),
     ("papiers_eleve", "note"),
     ("textes", "contenu"),
+    ("creneaux", "prevu"),
+    ("creneaux", "bilan"),
 ];
 
 pub fn est_texte_libre(table: &str, champ: &str) -> bool {
