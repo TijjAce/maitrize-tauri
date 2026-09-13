@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   estDans, filDAriane, normaliser, parent, renommerChemin, sousDossiers,
+  destinationDossier, reporterCouleurs, lireCouleurs,
 } from "./dossiers";
 
 const el = (dossier: string, id = dossier + Math.random()) => ({ id, dossier });
@@ -72,5 +73,41 @@ describe("navigation façon bureau", () => {
     expect(filDAriane("Français/Lecture").map((x) => x.nom)).toEqual(["Bureau", "Français", "Lecture"]);
     expect(filDAriane("").map((x) => x.nom)).toEqual(["Bureau"]);
     expect(filDAriane("Français/Lecture")[1].chemin).toBe("Français");
+  });
+});
+
+describe("destinationDossier", () => {
+  it("un dossier lâché dans un autre y entre avec son nom", () => {
+    expect(destinationDossier("Rituels", "Français")).toBe("Français/Rituels");
+    expect(destinationDossier("Français/Lecture/Sons", "")).toBe("Sons");
+  });
+  it("refuse de le lâcher là où il est", () => {
+    expect(destinationDossier("Français/Lecture", "Français")).toBeNull();
+    expect(destinationDossier("Rituels", "")).toBeNull();
+  });
+  it("refuse de le lâcher dans lui-même ou un descendant", () => {
+    expect(destinationDossier("Français", "Français")).toBeNull();
+    expect(destinationDossier("Français", "Français/Lecture")).toBeNull();
+  });
+  it("un nom qui commence pareil n'est pas un descendant", () => {
+    expect(destinationDossier("Français", "Français bis")).toBe("Français bis/Français");
+  });
+});
+
+describe("couleurs des dossiers", () => {
+  const couleurs = { "Français": "blue", "Français/Lecture": "green", "Maths": "red" };
+  it("suivent un dossier déplacé, sous-dossiers compris", () => {
+    expect(reporterCouleurs(couleurs, "Français", "Classe/Français")).toEqual({
+      "dossier:Français": "", "dossier:Classe/Français": "blue",
+      "dossier:Français/Lecture": "", "dossier:Classe/Français/Lecture": "green",
+    });
+  });
+  it("ne touchent pas aux autres dossiers", () => {
+    expect(reporterCouleurs(couleurs, "Maths", "Mathématiques")).toEqual({
+      "dossier:Maths": "", "dossier:Mathématiques": "red",
+    });
+  });
+  it("se lisent dans les réglages, sans les couleurs retirées", () => {
+    expect(lireCouleurs({ "dossier:A": "blue", "dossier:B": "", "theme": "sombre" })).toEqual({ A: "blue" });
   });
 });
