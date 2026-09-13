@@ -15,7 +15,7 @@ fn e<E: std::fmt::Display>(err: E) -> String { err.to_string() }
 
 #[tauri::command]
 pub fn sequences_list(db: State<Db>) -> R<Vec<Sequence>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT * FROM sequences ORDER BY date_creation DESC").map_err(e)?;
     let rows = st.query_map([], Sequence::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
@@ -23,7 +23,7 @@ pub fn sequences_list(db: State<Db>) -> R<Vec<Sequence>> {
 
 #[tauri::command]
 pub fn sequence_save(db: State<Db>, sequence: Sequence) -> R<Sequence> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     ecrire_sequence(&c, sequence)
 }
 
@@ -45,7 +45,7 @@ pub(crate) fn ecrire_sequence(c: &rusqlite::Connection, sequence: Sequence) -> R
 
 #[tauri::command]
 pub fn sequence_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM sequences WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
@@ -56,7 +56,7 @@ pub fn sequence_delete(db: State<Db>, id: String) -> R<()> {
 
 #[tauri::command]
 pub fn seances_list(db: State<Db>, sequence_id: Option<String>) -> R<Vec<Seance>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let (sql, p): (&str, Vec<&dyn rusqlite::ToSql>) = match &sequence_id {
         Some(sid) => ("SELECT * FROM seances WHERE sequence_id=?1 ORDER BY numero", vec![sid]),
         None => ("SELECT * FROM seances ORDER BY numero", vec![]),
@@ -68,7 +68,7 @@ pub fn seances_list(db: State<Db>, sequence_id: Option<String>) -> R<Vec<Seance>
 
 #[tauri::command]
 pub fn seance_save(db: State<Db>, seance: Seance) -> R<Seance> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     ecrire_seance(&c, seance)
 }
 
@@ -87,7 +87,7 @@ pub(crate) fn ecrire_seance(c: &rusqlite::Connection, seance: Seance) -> R<Seanc
 
 #[tauri::command]
 pub fn seance_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM seances WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
@@ -98,7 +98,7 @@ pub fn seance_delete(db: State<Db>, id: String) -> R<()> {
 
 #[tauri::command]
 pub fn ateliers_list(db: State<Db>) -> R<Vec<Atelier>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT * FROM ateliers ORDER BY titre").map_err(e)?;
     let rows = st.query_map([], Atelier::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
@@ -106,7 +106,7 @@ pub fn ateliers_list(db: State<Db>) -> R<Vec<Atelier>> {
 
 #[tauri::command]
 pub fn atelier_save(db: State<Db>, atelier: Atelier) -> R<Atelier> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO ateliers (id,titre,matiere,objectifs,competences,materiel,nb_eleves_max,duree,couleur,
           date_creation,image_nom,dossier)
@@ -120,14 +120,14 @@ pub fn atelier_save(db: State<Db>, atelier: Atelier) -> R<Atelier> {
 
 #[tauri::command]
 pub fn atelier_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM ateliers WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn espaces_list(db: State<Db>) -> R<Vec<Espace>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT * FROM espaces ORDER BY titre").map_err(e)?;
     let rows = st.query_map([], Espace::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
@@ -135,7 +135,7 @@ pub fn espaces_list(db: State<Db>) -> R<Vec<Espace>> {
 
 #[tauri::command]
 pub fn espace_save(db: State<Db>, espace: Espace) -> R<Espace> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO espaces (id,titre,description_espace,nb_eleves_max,couleur,date_creation,image_nom,dossier)
          VALUES (?1,?2,?3,?4,?5,?6,?7,?8) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, description_espace = excluded.description_espace, nb_eleves_max = excluded.nb_eleves_max, couleur = excluded.couleur, date_creation = excluded.date_creation, image_nom = excluded.image_nom, dossier = excluded.dossier",
@@ -147,7 +147,7 @@ pub fn espace_save(db: State<Db>, espace: Espace) -> R<Espace> {
 
 #[tauri::command]
 pub fn espace_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM espaces WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
@@ -160,7 +160,7 @@ pub fn espace_delete(db: State<Db>, id: String) -> R<()> {
 
 #[tauri::command]
 pub fn textes_list(db: State<Db>) -> R<Vec<Texte>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     lire_textes(&c)
 }
 
@@ -172,7 +172,7 @@ pub(crate) fn lire_textes(c: &rusqlite::Connection) -> R<Vec<Texte>> {
 
 #[tauri::command]
 pub fn texte_save(db: State<Db>, texte: Texte) -> R<Texte> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     ecrire_texte(&c, texte)
 }
 
@@ -188,14 +188,14 @@ pub(crate) fn ecrire_texte(c: &rusqlite::Connection, mut texte: Texte) -> R<Text
 
 #[tauri::command]
 pub fn texte_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM textes WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn jeux_list(db: State<Db>) -> R<Vec<Jeu>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT * FROM jeux ORDER BY titre").map_err(e)?;
     let rows = st.query_map([], Jeu::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
@@ -203,7 +203,7 @@ pub fn jeux_list(db: State<Db>) -> R<Vec<Jeu>> {
 
 #[tauri::command]
 pub fn jeu_save(db: State<Db>, jeu: Jeu) -> R<Jeu> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO jeux (id,titre,type_jeu,description_jeu,regles,competences,nb_joueurs_min,nb_joueurs_max,
           duree,age_min,rangement,couleur,date_creation,image_nom,dossier)
@@ -217,7 +217,7 @@ pub fn jeu_save(db: State<Db>, jeu: Jeu) -> R<Jeu> {
 
 #[tauri::command]
 pub fn jeu_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM jeux WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
@@ -225,7 +225,7 @@ pub fn jeu_delete(db: State<Db>, id: String) -> R<()> {
 /// Liaisons atelier↔espace (paires). Renvoie [[atelierId, espaceId], …].
 #[tauri::command]
 pub fn atelier_espace_list(db: State<Db>) -> R<Vec<(String, String)>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT atelier_id, espace_id FROM atelier_espace").map_err(e)?;
     let rows = st.query_map([], |r| Ok((r.get(0)?, r.get(1)?))).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
@@ -233,7 +233,7 @@ pub fn atelier_espace_list(db: State<Db>) -> R<Vec<(String, String)>> {
 
 #[tauri::command]
 pub fn atelier_espace_set(db: State<Db>, espace_id: String, atelier_ids: Vec<String>) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM atelier_espace WHERE espace_id=?1", params![espace_id]).map_err(e)?;
     for aid in atelier_ids {
         c.execute("INSERT OR IGNORE INTO atelier_espace (atelier_id,espace_id) VALUES (?1,?2)",
@@ -245,7 +245,7 @@ pub fn atelier_espace_set(db: State<Db>, espace_id: String, atelier_ids: Vec<Str
 // ── Progressions d'élève (suivi par espace) ──────────────────────────────
 #[tauri::command]
 pub fn progressions_eleve_list(db: State<Db>, espace_id: Option<String>) -> R<Vec<ProgressionEleve>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let (sql, p): (&str, Vec<&dyn rusqlite::ToSql>) = match &espace_id {
         Some(id) => ("SELECT * FROM progressions_eleve WHERE espace_id=?1", vec![id]),
         None => ("SELECT * FROM progressions_eleve", vec![]),
@@ -257,7 +257,7 @@ pub fn progressions_eleve_list(db: State<Db>, espace_id: Option<String>) -> R<Ve
 
 #[tauri::command]
 pub fn progression_eleve_save(db: State<Db>, progression: ProgressionEleve) -> R<ProgressionEleve> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO progressions_eleve (id,nom_eleve,eleve_id,fait,espace_id)
          VALUES (?1,?2,?3,?4,?5) ON CONFLICT(id) DO UPDATE SET nom_eleve = excluded.nom_eleve, eleve_id = excluded.eleve_id, fait = excluded.fait, espace_id = excluded.espace_id",
@@ -269,7 +269,7 @@ pub fn progression_eleve_save(db: State<Db>, progression: ProgressionEleve) -> R
 
 #[tauri::command]
 pub fn progression_eleve_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM progressions_eleve WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
@@ -280,7 +280,7 @@ pub fn progression_eleve_delete(db: State<Db>, id: String) -> R<()> {
 
 #[tauri::command]
 pub fn creneaux_list(db: State<Db>, debut: Option<String>, fin: Option<String>) -> R<Vec<Creneau>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let (sql, p): (&str, Vec<&dyn rusqlite::ToSql>) = match (&debut, &fin) {
         (Some(d), Some(f)) =>
             ("SELECT * FROM creneaux WHERE date>=?1 AND date<=?2 ORDER BY date,heure_debut", vec![d, f]),
@@ -293,7 +293,7 @@ pub fn creneaux_list(db: State<Db>, debut: Option<String>, fin: Option<String>) 
 
 #[tauri::command]
 pub fn creneau_save(db: State<Db>, creneau: Creneau) -> R<Creneau> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     ecrire_creneau(&c, creneau)
 }
 
@@ -315,7 +315,7 @@ pub(crate) fn ecrire_creneau(c: &rusqlite::Connection, creneau: Creneau) -> R<Cr
 /// place un créneau déplacé entre-temps dans la grille.
 #[tauri::command]
 pub fn creneau_journal_save(db: State<Db>, id: String, prevu: String, bilan: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     ecrire_journal_creneau(&c, &id, &prevu, &bilan)
 }
 
@@ -329,7 +329,7 @@ pub(crate) fn ecrire_journal_creneau(c: &rusqlite::Connection, id: &str, prevu: 
 
 #[tauri::command]
 pub fn creneau_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM creneaux WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
@@ -340,7 +340,7 @@ pub fn creneau_delete(db: State<Db>, id: String) -> R<()> {
 
 #[tauri::command]
 pub fn eleves_list(db: State<Db>) -> R<Vec<Eleve>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT * FROM eleves ORDER BY nom").map_err(e)?;
     let rows = st.query_map([], Eleve::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
@@ -348,7 +348,7 @@ pub fn eleves_list(db: State<Db>) -> R<Vec<Eleve>> {
 
 #[tauri::command]
 pub fn eleve_save(db: State<Db>, eleve: Eleve) -> R<Eleve> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     ecrire_eleve(&c, eleve)
 }
 
@@ -364,7 +364,7 @@ pub(crate) fn ecrire_eleve(c: &rusqlite::Connection, eleve: Eleve) -> R<Eleve> {
 
 #[tauri::command]
 pub fn eleve_delete(db: State<Db>, id: String) -> R<()> {
-    let mut c = db.0.lock().map_err(e)?;
+    let mut c = db.lock();
     effacer_eleve(&mut c, &id)
 }
 
@@ -489,14 +489,14 @@ fn retirer_des_plans(c: &rusqlite::Connection, id: &str) -> R<()> {
 /// Contenu d'un document, ou `None` s'il n'a jamais été rempli.
 #[tauri::command]
 pub fn document_eleve_get(db: State<Db>, eleve_id: String, type_doc: String) -> R<Option<String>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.query_row("SELECT donnees FROM documents_eleve WHERE eleve_id=?1 AND type=?2",
         params![eleve_id, type_doc], |r| r.get(0)).optional().map_err(e)
 }
 
 #[tauri::command]
 pub fn document_eleve_set(db: State<Db>, eleve_id: String, type_doc: String, donnees: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO documents_eleve (id, eleve_id, type, donnees, date_maj) VALUES (?1,?2,?3,?4,?5)
          ON CONFLICT(eleve_id, type) DO UPDATE SET donnees=excluded.donnees, date_maj=excluded.date_maj",
@@ -509,7 +509,7 @@ pub fn document_eleve_set(db: State<Db>, eleve_id: String, type_doc: String, don
 /// C'est ce qui permet de répondre à « quels élèves ont un PAP ? ».
 #[tauri::command]
 pub fn documents_eleve_list(db: State<Db>, eleve_id: Option<String>, type_doc: Option<String>) -> R<Vec<DocumentEleve>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let (sql, p): (&str, Vec<&dyn rusqlite::ToSql>) = match (&eleve_id, &type_doc) {
         (Some(id), Some(t)) => ("SELECT * FROM documents_eleve WHERE eleve_id=?1 AND type=?2", vec![id, t]),
         (Some(id), None) => ("SELECT * FROM documents_eleve WHERE eleve_id=?1", vec![id]),
@@ -524,7 +524,7 @@ pub fn documents_eleve_list(db: State<Db>, eleve_id: Option<String>, type_doc: O
 // ── Appel journalier ─────────────────────────────────────────────────────
 #[tauri::command]
 pub fn appels_list(db: State<Db>, date: Option<String>) -> R<Vec<AppelJournalier>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let (sql, p): (&str, Vec<&dyn rusqlite::ToSql>) = match &date {
         Some(d) => ("SELECT * FROM appels_journalier WHERE date=?1", vec![d]),
         None => ("SELECT * FROM appels_journalier ORDER BY date DESC", vec![]),
@@ -536,7 +536,7 @@ pub fn appels_list(db: State<Db>, date: Option<String>) -> R<Vec<AppelJournalier
 
 #[tauri::command]
 pub fn appel_save(db: State<Db>, appel: AppelJournalier) -> R<AppelJournalier> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO appels_journalier (id,date,statut_brut,eleve_id)
          VALUES (?1,?2,?3,?4) ON CONFLICT(id) DO UPDATE SET date = excluded.date, statut_brut = excluded.statut_brut, eleve_id = excluded.eleve_id",
@@ -547,7 +547,7 @@ pub fn appel_save(db: State<Db>, appel: AppelJournalier) -> R<AppelJournalier> {
 
 #[tauri::command]
 pub fn appel_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM appels_journalier WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
@@ -555,7 +555,7 @@ pub fn appel_delete(db: State<Db>, id: String) -> R<()> {
 // ── Commentaires / observations ──────────────────────────────────────────
 #[tauri::command]
 pub fn commentaires_list(db: State<Db>, eleve_id: Option<String>) -> R<Vec<CommentaireEleve>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let (sql, p): (&str, Vec<&dyn rusqlite::ToSql>) = match &eleve_id {
         Some(id) => ("SELECT * FROM commentaires_eleve WHERE eleve_id=?1 ORDER BY date DESC", vec![id]),
         None => ("SELECT * FROM commentaires_eleve ORDER BY date DESC", vec![]),
@@ -567,7 +567,7 @@ pub fn commentaires_list(db: State<Db>, eleve_id: Option<String>) -> R<Vec<Comme
 
 #[tauri::command]
 pub fn commentaire_save(db: State<Db>, commentaire: CommentaireEleve) -> R<CommentaireEleve> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO commentaires_eleve (id,date,texte,type,eleve_id)
          VALUES (?1,?2,?3,?4,?5) ON CONFLICT(id) DO UPDATE SET date = excluded.date, texte = excluded.texte, type = excluded.type, eleve_id = excluded.eleve_id",
@@ -579,7 +579,7 @@ pub fn commentaire_save(db: State<Db>, commentaire: CommentaireEleve) -> R<Comme
 
 #[tauri::command]
 pub fn commentaire_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM commentaires_eleve WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
@@ -590,7 +590,7 @@ pub fn commentaire_delete(db: State<Db>, id: String) -> R<()> {
 
 #[tauri::command]
 pub fn evaluations_list(db: State<Db>) -> R<Vec<Evaluation>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT * FROM evaluations ORDER BY date DESC").map_err(e)?;
     let rows = st.query_map([], Evaluation::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
@@ -598,7 +598,7 @@ pub fn evaluations_list(db: State<Db>) -> R<Vec<Evaluation>> {
 
 #[tauri::command]
 pub fn evaluation_save(db: State<Db>, evaluation: Evaluation) -> R<Evaluation> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     ecrire_evaluation(&c, evaluation)
 }
 
@@ -615,14 +615,14 @@ pub(crate) fn ecrire_evaluation(c: &rusqlite::Connection, evaluation: Evaluation
 
 #[tauri::command]
 pub fn evaluation_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM evaluations WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn notes_eleve_list(db: State<Db>, evaluation_id: Option<String>) -> R<Vec<NoteEleve>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let (sql, p): (&str, Vec<&dyn rusqlite::ToSql>) = match &evaluation_id {
         Some(id) => ("SELECT * FROM notes_eleve WHERE evaluation_id=?1", vec![id]),
         None => ("SELECT * FROM notes_eleve", vec![]),
@@ -634,7 +634,7 @@ pub fn notes_eleve_list(db: State<Db>, evaluation_id: Option<String>) -> R<Vec<N
 
 #[tauri::command]
 pub fn note_eleve_save(db: State<Db>, note: NoteEleve) -> R<NoteEleve> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO notes_eleve (id,eleve_nom,eleve_id,note,absent,commentaire,evaluation_id,niveaux_json)
          VALUES (?1,?2,?3,?4,?5,?6,?7,?8) ON CONFLICT(id) DO UPDATE SET eleve_nom = excluded.eleve_nom, eleve_id = excluded.eleve_id, note = excluded.note, absent = excluded.absent, commentaire = excluded.commentaire, evaluation_id = excluded.evaluation_id, niveaux_json = excluded.niveaux_json",
@@ -646,7 +646,7 @@ pub fn note_eleve_save(db: State<Db>, note: NoteEleve) -> R<NoteEleve> {
 
 #[tauri::command]
 pub fn note_eleve_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM notes_eleve WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
@@ -657,7 +657,7 @@ pub fn note_eleve_delete(db: State<Db>, id: String) -> R<()> {
 
 #[tauri::command]
 pub fn materiel_list(db: State<Db>) -> R<Vec<MaterielItem>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT * FROM materiel_items ORDER BY date_creation DESC").map_err(e)?;
     let rows = st.query_map([], MaterielItem::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
@@ -665,7 +665,7 @@ pub fn materiel_list(db: State<Db>) -> R<Vec<MaterielItem>> {
 
 #[tauri::command]
 pub fn materiel_save(db: State<Db>, materiel: MaterielItem) -> R<MaterielItem> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO materiel_items (id,titre,description_materiel,competence_id,competence_titre,domaine_titre,
           sous_domaine_titre,cycle,images_json,pdfs_json,date_creation,seance_id,sequence_id,
@@ -682,7 +682,7 @@ pub fn materiel_save(db: State<Db>, materiel: MaterielItem) -> R<MaterielItem> {
 
 #[tauri::command]
 pub fn materiel_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM materiel_items WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
@@ -693,7 +693,7 @@ pub fn materiel_delete(db: State<Db>, id: String) -> R<()> {
 
 #[tauri::command]
 pub fn papiers_list(db: State<Db>) -> R<Vec<PapierEleve>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT * FROM papiers_eleve ORDER BY date_ajout DESC").map_err(e)?;
     let rows = st.query_map([], PapierEleve::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
@@ -701,7 +701,7 @@ pub fn papiers_list(db: State<Db>) -> R<Vec<PapierEleve>> {
 
 #[tauri::command]
 pub fn papier_save(db: State<Db>, papier: PapierEleve) -> R<PapierEleve> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO papiers_eleve (id,intitule,eleve_id,type,nom_fichier,note,date_ajout)
          VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET intitule = excluded.intitule, eleve_id = excluded.eleve_id, type = excluded.type, nom_fichier = excluded.nom_fichier, note = excluded.note, date_ajout = excluded.date_ajout",
@@ -713,7 +713,7 @@ pub fn papier_save(db: State<Db>, papier: PapierEleve) -> R<PapierEleve> {
 
 #[tauri::command]
 pub fn papier_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM papiers_eleve WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
@@ -724,7 +724,7 @@ pub fn papier_delete(db: State<Db>, id: String) -> R<()> {
 
 #[tauri::command]
 pub fn referentiels_list(db: State<Db>) -> R<Vec<Referentiel>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT * FROM referentiels ORDER BY cycle,nom").map_err(e)?;
     let rows = st.query_map([], Referentiel::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
@@ -732,7 +732,7 @@ pub fn referentiels_list(db: State<Db>) -> R<Vec<Referentiel>> {
 
 #[tauri::command]
 pub fn referentiel_save(db: State<Db>, referentiel: Referentiel) -> R<Referentiel> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO referentiels (id,nom,cycle,donnees,est_integre,date_ajout,actif)
          VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET nom = excluded.nom, cycle = excluded.cycle, donnees = excluded.donnees, est_integre = excluded.est_integre, date_ajout = excluded.date_ajout, actif = excluded.actif",
@@ -744,14 +744,14 @@ pub fn referentiel_save(db: State<Db>, referentiel: Referentiel) -> R<Referentie
 
 #[tauri::command]
 pub fn referentiel_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM referentiels WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn notes_competence_list(db: State<Db>) -> R<Vec<NoteCompetence>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT * FROM notes_competence").map_err(e)?;
     let rows = st.query_map([], NoteCompetence::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
@@ -759,7 +759,7 @@ pub fn notes_competence_list(db: State<Db>) -> R<Vec<NoteCompetence>> {
 
 #[tauri::command]
 pub fn note_competence_save(db: State<Db>, note: NoteCompetence) -> R<NoteCompetence> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO notes_competence (id,competence_ref_id,texte,date_creation,date_modification)
          VALUES (?1,?2,?3,?4,?5) ON CONFLICT(id) DO UPDATE SET competence_ref_id = excluded.competence_ref_id, texte = excluded.texte, date_creation = excluded.date_creation, date_modification = excluded.date_modification",
@@ -775,7 +775,7 @@ pub fn note_competence_save(db: State<Db>, note: NoteCompetence) -> R<NoteCompet
 
 #[tauri::command]
 pub fn progressions_annuelle_list(db: State<Db>) -> R<Vec<ProgressionAnnuelle>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT * FROM progressions_annuelle ORDER BY annee,periode").map_err(e)?;
     let rows = st.query_map([], ProgressionAnnuelle::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
@@ -783,7 +783,7 @@ pub fn progressions_annuelle_list(db: State<Db>) -> R<Vec<ProgressionAnnuelle>> 
 
 #[tauri::command]
 pub fn progression_annuelle_save(db: State<Db>, p: ProgressionAnnuelle) -> R<ProgressionAnnuelle> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO progressions_annuelle (id,annee,periode,colonnes_json,cellules_json)
          VALUES (?1,?2,?3,?4,?5) ON CONFLICT(id) DO UPDATE SET annee = excluded.annee, periode = excluded.periode, colonnes_json = excluded.colonnes_json, cellules_json = excluded.cellules_json",
@@ -794,7 +794,7 @@ pub fn progression_annuelle_save(db: State<Db>, p: ProgressionAnnuelle) -> R<Pro
 
 #[tauri::command]
 pub fn programmations_finale_list(db: State<Db>) -> R<Vec<ProgrammationFinale>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT * FROM programmations_finale ORDER BY annee").map_err(e)?;
     let rows = st.query_map([], ProgrammationFinale::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
@@ -802,7 +802,7 @@ pub fn programmations_finale_list(db: State<Db>) -> R<Vec<ProgrammationFinale>> 
 
 #[tauri::command]
 pub fn programmation_finale_save(db: State<Db>, p: ProgrammationFinale) -> R<ProgrammationFinale> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO programmations_finale (id,annee,lignes_json,niveau,enseignant,est_importee)
          VALUES (?1,?2,?3,?4,?5,?6) ON CONFLICT(id) DO UPDATE SET annee = excluded.annee, lignes_json = excluded.lignes_json, niveau = excluded.niveau, enseignant = excluded.enseignant, est_importee = excluded.est_importee",
@@ -813,14 +813,14 @@ pub fn programmation_finale_save(db: State<Db>, p: ProgrammationFinale) -> R<Pro
 
 #[tauri::command]
 pub fn programmation_finale_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM programmations_finale WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn edt_typique_list(db: State<Db>) -> R<Vec<EdtTypique>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT * FROM edt_typique ORDER BY annee").map_err(e)?;
     let rows = st.query_map([], EdtTypique::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
@@ -828,7 +828,7 @@ pub fn edt_typique_list(db: State<Db>) -> R<Vec<EdtTypique>> {
 
 #[tauri::command]
 pub fn edt_typique_save(db: State<Db>, edt: EdtTypique) -> R<EdtTypique> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO edt_typique (id,annee,slots_json) VALUES (?1,?2,?3) ON CONFLICT(id) DO UPDATE SET annee = excluded.annee, slots_json = excluded.slots_json",
         params![edt.id, edt.annee, edt.slots_json],
@@ -842,7 +842,7 @@ pub fn edt_typique_save(db: State<Db>, edt: EdtTypique) -> R<EdtTypique> {
 
 #[tauri::command]
 pub fn pieces_jointes_list(db: State<Db>, seance_id: Option<String>) -> R<Vec<PieceJointe>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let (sql, p): (&str, Vec<&dyn rusqlite::ToSql>) = match &seance_id {
         Some(id) => ("SELECT * FROM pieces_jointes WHERE seance_id=?1 ORDER BY date_ajout", vec![id]),
         None => ("SELECT * FROM pieces_jointes ORDER BY date_ajout", vec![]),
@@ -854,7 +854,7 @@ pub fn pieces_jointes_list(db: State<Db>, seance_id: Option<String>) -> R<Vec<Pi
 
 #[tauri::command]
 pub fn piece_jointe_save(db: State<Db>, piece: PieceJointe) -> R<PieceJointe> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO pieces_jointes (id,nom,type,nom_fichier,date_ajout,seance_id,a_imprimer)
          VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET nom = excluded.nom, type = excluded.type, nom_fichier = excluded.nom_fichier, date_ajout = excluded.date_ajout, seance_id = excluded.seance_id, a_imprimer = excluded.a_imprimer",
@@ -866,7 +866,7 @@ pub fn piece_jointe_save(db: State<Db>, piece: PieceJointe) -> R<PieceJointe> {
 
 #[tauri::command]
 pub fn piece_jointe_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM pieces_jointes WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
@@ -877,7 +877,7 @@ pub fn piece_jointe_delete(db: State<Db>, id: String) -> R<()> {
 
 #[tauri::command]
 pub fn conversations_list(db: State<Db>) -> R<Vec<PiloteConversation>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT * FROM pilote_conversations ORDER BY date_maj DESC").map_err(e)?;
     let rows = st.query_map([], PiloteConversation::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
@@ -885,7 +885,7 @@ pub fn conversations_list(db: State<Db>) -> R<Vec<PiloteConversation>> {
 
 #[tauri::command]
 pub fn conversation_save(db: State<Db>, conversation: PiloteConversation) -> R<PiloteConversation> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO pilote_conversations (id,titre,messages_json,date_creation,date_maj)
          VALUES (?1,?2,?3,?4,?5) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, messages_json = excluded.messages_json, date_creation = excluded.date_creation, date_maj = excluded.date_maj",
@@ -897,7 +897,7 @@ pub fn conversation_save(db: State<Db>, conversation: PiloteConversation) -> R<P
 
 #[tauri::command]
 pub fn conversation_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM pilote_conversations WHERE id=?1", params![id]).map_err(e)?;
     Ok(())
 }
@@ -908,7 +908,7 @@ pub fn conversation_delete(db: State<Db>, id: String) -> R<()> {
 
 #[tauri::command]
 pub fn coffre_list(db: State<Db>) -> R<Vec<DocumentCoffre>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT * FROM documents_coffre ORDER BY date_ajout DESC").map_err(e)?;
     let rows = st.query_map([], DocumentCoffre::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
@@ -916,7 +916,7 @@ pub fn coffre_list(db: State<Db>) -> R<Vec<DocumentCoffre>> {
 
 #[tauri::command]
 pub fn coffre_save(db: State<Db>, document: DocumentCoffre) -> R<DocumentCoffre> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO documents_coffre (id,nom,nom_fichier,taille_octets,date_ajout)
          VALUES (?1,?2,?3,?4,?5) ON CONFLICT(id) DO UPDATE SET nom = excluded.nom, nom_fichier = excluded.nom_fichier, taille_octets = excluded.taille_octets, date_ajout = excluded.date_ajout",
@@ -936,7 +936,7 @@ pub async fn coffre_download(db: State<'_, Db>, url: String, nom: String) -> R<D
     let doc = DocumentCoffre {
         id: new_id(), nom, nom_fichier: fichier, taille_octets: bytes.len() as i64, date_ajout: now_iso(),
     };
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute(
         "INSERT INTO documents_coffre (id,nom,nom_fichier,taille_octets,date_ajout)
          VALUES (?1,?2,?3,?4,?5) ON CONFLICT(id) DO UPDATE SET nom = excluded.nom, nom_fichier = excluded.nom_fichier, taille_octets = excluded.taille_octets, date_ajout = excluded.date_ajout",
@@ -947,7 +947,7 @@ pub async fn coffre_download(db: State<'_, Db>, url: String, nom: String) -> R<D
 
 #[tauri::command]
 pub fn coffre_delete(db: State<Db>, id: String, nom_fichier: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM documents_coffre WHERE id=?1", params![id]).map_err(e)?;
     if !nom_fichier.is_empty() { std::fs::remove_file(fichiers_dir().join(&nom_fichier)).ok(); }
     Ok(())
@@ -959,7 +959,7 @@ pub fn coffre_delete(db: State<Db>, id: String, nom_fichier: String) -> R<()> {
 
 #[tauri::command]
 pub fn settings_all(db: State<Db>) -> R<std::collections::HashMap<String, String>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT cle, valeur FROM settings").map_err(e)?;
     let rows = st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))).map_err(e)?;
     let mut map = std::collections::HashMap::new();
@@ -969,7 +969,7 @@ pub fn settings_all(db: State<Db>) -> R<std::collections::HashMap<String, String
 
 #[tauri::command]
 pub fn setting_get(db: State<Db>, cle: String) -> R<Option<String>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let v = c.query_row("SELECT valeur FROM settings WHERE cle=?1", params![cle],
                         |r| r.get::<_, String>(0)).ok();
     Ok(v)
@@ -977,7 +977,7 @@ pub fn setting_get(db: State<Db>, cle: String) -> R<Option<String>> {
 
 #[tauri::command]
 pub fn setting_set(db: State<Db>, cle: String, valeur: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("INSERT OR REPLACE INTO settings (cle,valeur) VALUES (?1,?2)",
               params![cle, valeur]).map_err(e)?;
     Ok(())
@@ -1554,7 +1554,7 @@ pub struct ResultatRecherche {
 
 #[tauri::command]
 pub fn recherche(db: State<Db>, q: String) -> R<Vec<ResultatRecherche>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let like = format!("%{}%", q);
     let mut out = Vec::new();
 
@@ -1784,7 +1784,7 @@ pub fn sauvegardes_auto_ouvrir() -> R<()> {
 /// `VACUUM INTO` intègre le WAL et produit un fichier unique et propre.
 #[tauri::command]
 pub fn exporter_base(db: State<Db>, chemin: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     std::fs::remove_file(&chemin).ok(); // VACUUM INTO échoue si la cible existe
     c.execute("VACUUM INTO ?1", params![chemin]).map_err(e)?;
     Ok(())
@@ -1793,7 +1793,7 @@ pub fn exporter_base(db: State<Db>, chemin: String) -> R<()> {
 /// Sérialise toutes les données utilisateur en un JSON unique (sauvegarde).
 #[tauri::command]
 pub fn export_data(db: State<Db>) -> R<String> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     export_json(&c)
 }
 
@@ -1835,7 +1835,7 @@ pub fn export_json(c: &rusqlite::Connection) -> R<String> {
 /// Restaure depuis un JSON produit par export_data (remplace les données).
 #[tauri::command]
 pub fn import_data(db: State<Db>, json: String) -> R<String> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let copie = crate::db::copie_de_securite(&c, "avant-import")?;
     import_json(&c, &json)?;
     Ok(copie)

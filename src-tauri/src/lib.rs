@@ -21,6 +21,15 @@ use std::sync::Mutex;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Une panique ne laissait aucune trace : la fenêtre n'a pas de console, et
+    // l'on ne voyait que ses suites (« poisoned lock »). Elle s'écrit désormais
+    // dans le journal d'incidents, avec l'endroit du code qui l'a produite.
+    let habituel = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        commands::diag_ecrire(format!("PANIQUE {}", info.to_string().replace('\n', " — ")));
+        habituel(info);
+    }));
+
     let conn = db::open();
 
     tauri::Builder::default()

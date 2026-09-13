@@ -126,7 +126,7 @@ fn empreinte(pub_: &[u8; 32]) -> String {
 
 #[tauri::command]
 pub fn identite_get(db: State<Db>) -> R<Identite> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let (_, pub_) = charger_identite(&c)?;
     let nom: String = c
         .query_row("SELECT nom FROM identite WHERE id = 1", [], |r| r.get(0))
@@ -137,7 +137,7 @@ pub fn identite_get(db: State<Db>) -> R<Identite> {
 #[tauri::command]
 pub fn identite_set_nom(db: State<Db>, nom: String) -> R<Identite> {
     {
-        let c = db.0.lock().map_err(e)?;
+        let c = db.lock();
         charger_identite(&c)?; // garantit l'existence
         c.execute("UPDATE identite SET nom = ?1 WHERE id = 1", params![nom]).map_err(e)?;
     }
@@ -147,7 +147,7 @@ pub fn identite_set_nom(db: State<Db>, nom: String) -> R<Identite> {
 /// Génère un code d'invitation à transmettre par un autre canal (mail, SMS…).
 #[tauri::command]
 pub fn invitation_creer(db: State<Db>) -> R<String> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let (_, pub_) = charger_identite(&c)?;
     let nom: String = c
         .query_row("SELECT nom FROM identite WHERE id = 1", [], |r| r.get(0))
@@ -168,7 +168,7 @@ pub fn invitation_accepter(db: State<Db>, code: String) -> R<Ami> {
     let charge: Charge = serde_json::from_slice(&json).map_err(|_| "Code d'invitation invalide.".to_string())?;
     let pub_ami = vers_32(STANDARD.decode(&charge.pk).map_err(|_| "Clé invalide dans le code.".to_string())?)?;
 
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let (_, mon_pub) = charger_identite(&c)?;
     if pub_ami == mon_pub {
         return Err("C'est votre propre code d'invitation.".to_string());
@@ -208,7 +208,7 @@ pub fn invitation_accepter(db: State<Db>, code: String) -> R<Ami> {
 
 #[tauri::command]
 pub fn amis_list(db: State<Db>) -> R<Vec<Ami>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare(
         "SELECT id, nom, cle_publique, mailbox_id, numero_securite, verifie, date_ajout
          FROM amis ORDER BY nom COLLATE NOCASE",
@@ -230,7 +230,7 @@ pub fn amis_list(db: State<Db>) -> R<Vec<Ami>> {
 
 #[tauri::command]
 pub fn ami_set_verifie(db: State<Db>, id: String, verifie: bool) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("UPDATE amis SET verifie = ?1 WHERE id = ?2",
         params![if verifie { 1 } else { 0 }, id]).map_err(e)?;
     Ok(())
@@ -238,7 +238,7 @@ pub fn ami_set_verifie(db: State<Db>, id: String, verifie: bool) -> R<()> {
 
 #[tauri::command]
 pub fn ami_supprimer(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM amis WHERE id = ?1", params![id]).map_err(e)?;
     Ok(())
 }

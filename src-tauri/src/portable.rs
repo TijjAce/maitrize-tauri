@@ -7,7 +7,7 @@ use crate::db::Db;
 use crate::models::{Creneau, Eleve, ProgrammationFinale, Seance, Sequence};
 use std::net::UdpSocket;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 use tauri::{Emitter, State};
 use uuid::Uuid;
@@ -64,7 +64,7 @@ fn qr_svg(data: &str) -> String {
 }
 
 fn snapshot(db: &State<Db>) -> R<String> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
 
     let planning = {
         let mut st = c
@@ -113,7 +113,7 @@ fn snapshot(db: &State<Db>) -> R<String> {
 #[tauri::command]
 pub fn portable_demarrer(db: State<Db>, portable: State<Portable>) -> R<PortableInfo> {
     // Arrêter une instance précédente éventuelle.
-    if let Some(stop) = portable.0.lock().map_err(e)?.take() {
+    if let Some(stop) = portable.0.lock().unwrap_or_else(PoisonError::into_inner).take() {
         stop.store(true, Ordering::Relaxed);
     }
 
@@ -145,7 +145,7 @@ pub fn portable_demarrer(db: State<Db>, portable: State<Portable>) -> R<Portable
         }
     });
 
-    *portable.0.lock().map_err(e)? = Some(stop);
+    *portable.0.lock().unwrap_or_else(PoisonError::into_inner) = Some(stop);
     Ok(PortableInfo {
         url,
         ip,
@@ -156,7 +156,7 @@ pub fn portable_demarrer(db: State<Db>, portable: State<Portable>) -> R<Portable
 
 #[tauri::command]
 pub fn portable_arreter(portable: State<Portable>) -> R<()> {
-    if let Some(stop) = portable.0.lock().map_err(e)?.take() {
+    if let Some(stop) = portable.0.lock().unwrap_or_else(PoisonError::into_inner).take() {
         stop.store(true, Ordering::Relaxed);
     }
     Ok(())
@@ -194,7 +194,7 @@ pub struct PhotoCapture(pub Mutex<Option<Arc<AtomicBool>>>);
 
 #[tauri::command]
 pub fn photo_capture_demarrer(app: tauri::AppHandle, photo: State<PhotoCapture>) -> R<PortableInfo> {
-    if let Some(stop) = photo.0.lock().map_err(e)?.take() {
+    if let Some(stop) = photo.0.lock().unwrap_or_else(PoisonError::into_inner).take() {
         stop.store(true, Ordering::Relaxed);
     }
     let token = Uuid::new_v4().to_string();
@@ -221,13 +221,13 @@ pub fn photo_capture_demarrer(app: tauri::AppHandle, photo: State<PhotoCapture>)
         }
     });
 
-    *photo.0.lock().map_err(e)? = Some(stop);
+    *photo.0.lock().unwrap_or_else(PoisonError::into_inner) = Some(stop);
     Ok(PortableInfo { url, ip, port, qr_svg: qr })
 }
 
 #[tauri::command]
 pub fn photo_capture_arreter(photo: State<PhotoCapture>) -> R<()> {
-    if let Some(stop) = photo.0.lock().map_err(e)?.take() {
+    if let Some(stop) = photo.0.lock().unwrap_or_else(PoisonError::into_inner).take() {
         stop.store(true, Ordering::Relaxed);
     }
     Ok(())

@@ -7,9 +7,31 @@
 
 use rusqlite::Connection;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 
 pub struct Db(pub Mutex<Connection>);
+
+impl Db {
+    /// La connexion, réservée à l'appelant le temps de son travail.
+    ///
+    /// Une panique survenue pendant qu'une opération tenait la base
+    /// « empoisonne » le verrou. Jusqu'ici, toutes les commandes suivantes
+    /// échouaient alors (« poisoned lock ») et l'application restait
+    /// inutilisable jusqu'au redémarrage. La connexion, elle, est intacte : une
+    /// transaction interrompue est annulée pendant la remontée de la panique.
+    /// On la reprend donc, en annulant par précaution une transaction qui
+    /// serait restée ouverte.
+    pub fn lock(&self) -> MutexGuard<'_, Connection> {
+        self.0.lock().unwrap_or_else(|empoisonne| {
+            self.0.clear_poison();
+            let c = empoisonne.into_inner();
+            if !c.is_autocommit() {
+                c.execute_batch("ROLLBACK").ok();
+            }
+            c
+        })
+    }
+}
 
 /// Emplacement par défaut, propre à la plateforme.
 ///
@@ -739,6 +761,53 @@ mod tests_dossier {
         if cfg!(target_os = "macos") {
             assert!(d.to_string_lossy().contains("Application Support"), "{d:?}");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests_verrou {
+    use super::*;
+    use std::panic::{catch_unwind, AssertUnwindSafe};
+
+    fn base() -> Db {
+        let db = Db(Mutex::new(Connection::open_in_memory().unwrap()));
+        db.lock().execute_batch("CREATE TABLE t (x INTEGER);").unwrap();
+        db
+    }
+
+    fn lignes(db: &Db) -> i64 {
+        db.lock().query_row("SELECT COUNT(*) FROM t", [], |r| r.get(0)).unwrap()
+    }
+
+    /// Le défaut réel : une panique pendant qu'une opération tenait la base,
+    /// et toutes les commandes suivantes échouaient sur « poisoned lock ».
+    #[test]
+    fn une_panique_ne_bloque_plus_la_base() {
+        let db = base();
+        let _ = catch_unwind(AssertUnwindSafe(|| {
+            let mut c = db.lock();
+            let tx = c.transaction().unwrap();
+            tx.execute("INSERT INTO t VALUES (1)", []).unwrap();
+            panic!("panique en pleine écriture");
+        }));
+        assert!(db.0.is_poisoned());
+        assert_eq!(lignes(&db), 0, "l'écriture interrompue ne doit pas rester à moitié faite");
+        assert!(!db.0.is_poisoned(), "le verrou doit redevenir sain");
+        db.lock().execute("INSERT INTO t VALUES (2)", []).expect("la base doit rester inscriptible");
+        assert_eq!(lignes(&db), 1);
+    }
+
+    #[test]
+    fn une_transaction_restee_ouverte_est_annulee() {
+        // Ouverte à la main : aucune garde ne l'annule pendant la panique.
+        let db = base();
+        let _ = catch_unwind(AssertUnwindSafe(|| {
+            let c = db.lock();
+            c.execute_batch("BEGIN; INSERT INTO t VALUES (1);").unwrap();
+            panic!("panique en pleine écriture");
+        }));
+        assert!(db.lock().is_autocommit());
+        assert_eq!(lignes(&db), 0);
     }
 }
 
