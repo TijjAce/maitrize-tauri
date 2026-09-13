@@ -9,6 +9,7 @@ import { openCtx } from "../components/ctxmenu";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { FormMateriel } from "../components/FormMateriel";
 import { EditeurTexte } from "../components/EditeurTexte";
+import { FormSequence } from "../components/FormSequence";
 import { contenuDirect, nature } from "../bureau";
 import { lireVideos, lireLien, vignetteYoutube } from "../videos";
 import { useFileDropZone, estPdf, estImage, fichierEnBase64 } from "../dragdrop";
@@ -123,6 +124,7 @@ export default function PlanDeTravail() {
   const { data: textes, reload: rT } = useAsync(() => api.textesList(), []);
   const recharger = () => { rS(); rM(); rT(); };
   const [texteOuvert, setTexteOuvert] = React.useState<Texte | null>(null);
+  const [sequenceFiche, setSequenceFiche] = React.useState<{ sequence: Sequence; nouvelle: boolean } | null>(null);
 
   const [dossier, setDossier] = React.useState("");
   const [q, setQ] = React.useState("");
@@ -287,9 +289,8 @@ export default function PlanDeTravail() {
       dateCreation: nowIso(), periode: 1, annee: "", ratingEngagement: 0, ratingFacilite: 0,
       ratingApprentissage: 0, ratingDateMaj: null, projetId: null, video: "", dossier,
     };
-    await api.sequenceSave(s);
-    recharger();
-    nav(`/sequences/${s.id}`);
+    // La fiche d'abord : on nomme la séquence avant d'y entrer.
+    setSequenceFiche({ sequence: s, nouvelle: true });
   };
   const creerRef = React.useRef(creerSequence);
   creerRef.current = creerSequence;
@@ -429,7 +430,8 @@ export default function PlanDeTravail() {
             {ici.map((e) => (
               <TuileElement key={e.genre + e.id} element={e}
                 onOuvrir={() => ouvrir(e)}
-                onModifier={e.genre === "materiel" && contenuDirect(e.mat) ? () => setMaterielOuvert(e.mat) : undefined}
+                onModifier={e.genre === "materiel" && contenuDirect(e.mat) ? () => setMaterielOuvert(e.mat)
+                  : e.genre === "sequence" ? () => setSequenceFiche({ sequence: e.seq, nouvelle: false }) : undefined}
                 onRanger={() => setDemande({
                   titre: "Ranger dans…", label: "Chemin du dossier",
                   valeur: e.dossier, placeholder: "Français/Lecture",
@@ -461,6 +463,11 @@ export default function PlanDeTravail() {
             ecrireCouleurs({ [PREFIXE_COULEUR + aColorer.chemin]: c }); setAColorer(null);
           }} />
         </Modal>
+      )}
+
+      {sequenceFiche && (
+        <FormSequence sequence={sequenceFiche.sequence} onClose={() => setSequenceFiche(null)}
+          onSaved={(seq) => { const nouvelle = sequenceFiche.nouvelle; setSequenceFiche(null); recharger(); if (nouvelle) nav(`/sequences/${seq.id}`); }} />
       )}
 
       {texteOuvert && (

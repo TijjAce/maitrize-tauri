@@ -11,6 +11,9 @@ import { printHTML, escapeHtml } from "../print";
 import { openCtx } from "../components/ctxmenu";
 import { PhotoTelephone } from "../components/PhotoTelephone";
 import { useFileDropZone, estPdf, estImage, fichierEnBase64 } from "../dragdrop";
+import { toast } from "../components/Toaster";
+import { confirmer } from "../components/confirmer";
+import { FormSequence } from "../components/FormSequence";
 
 export default function SequenceDetail() {
   const { id } = useParams();
@@ -21,6 +24,7 @@ export default function SequenceDetail() {
   const [edit, setEdit] = React.useState<Seance | null>(null);
   const [voir, setVoir] = React.useState<Seance | null>(null);
   const [del, setDel] = React.useState<Seance | null>(null);
+  const [modifier, setModifier] = React.useState(false);
 
   // Glisser-déposer natif (Finder/Aperçu). Le hook doit être appelé à chaque
   // rendu (avant tout return conditionnel) — la logique d'import réelle, qui
@@ -121,10 +125,20 @@ export default function SequenceDetail() {
     );
   };
 
+  const supprimerSequence = async () => {
+    const n = (seances ?? []).length;
+    if (!(await confirmer(`Supprimer la séquence « ${seq.titre} »${n ? ` et ses ${n} séance${n > 1 ? "s" : ""}` : ""} ?`, { oui: "Supprimer", danger: true }))) return;
+    await api.sequenceDelete(seq.id);
+    toast("Séquence supprimée", { icone: "🗑" });
+    nav("/plan");
+  };
+
   return (
     <Page titre={seq.titre} sous={[seq.matiere, seq.cycle, `Période ${seq.periode}`, seq.annee].filter(Boolean).join(" · ")}
       actions={<>
         <button className="btn" onClick={() => nav("/plan")}>← Retour</button>
+        <button className="btn" onClick={() => setModifier(true)}>✏️ Modifier</button>
+        <button className="btn" onClick={supprimerSequence} aria-label="Supprimer la séquence">🗑</button>
         <button className="btn" onClick={() => imprimerSequence(seq, seances ?? [])}>🖨 Imprimer / PDF</button>
         <button className="btn" onClick={() => exporterSequence(seq, seances ?? [])}>⬇️ Exporter</button>
         <button className="btn primary" onClick={() => setEdit(nouvelleSeance(seq.id, next))}>+ Séance</button>
@@ -196,6 +210,8 @@ export default function SequenceDetail() {
       )}
 
       {voir && <SeanceReadView seance={voir} onClose={() => setVoir(null)} onEdit={() => { setEdit(voir); setVoir(null); }} />}
+      {modifier && <FormSequence sequence={seq} onClose={() => setModifier(false)}
+        onSaved={() => { setModifier(false); reloadSeq(); }} />}
       {edit && <SeanceForm seance={edit} cycle={seq.cycle} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
       {del && <Confirm message={`Supprimer la séance « ${del.titre || del.numero} » ?`}
         onYes={() => api.seanceDelete(del.id).then(reload)} onClose={() => setDel(null)} />}
