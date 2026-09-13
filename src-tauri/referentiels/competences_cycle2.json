@@ -2572,7 +2572,12 @@
         },
         {
          "id": "c2.ST.2.3.ce1.01",
-         "texte": "S’impliquer dans une action de préservation d environnement proche de l’écol Développer un rapport sensible à la nature.",
+         "texte": "S’impliquer dans une action de préservation de l’environnement proche de l’école.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.2.3.ce1.03",
+         "texte": "Développer un rapport sensible à la nature.",
          "niveau": "CE1"
         },
         {

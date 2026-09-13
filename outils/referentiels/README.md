@@ -21,7 +21,10 @@ vigueur progressivement (CP et CM1 à la rentrée 2026) ; ils sont retenus pour 
 
 1. Télécharger les PDF (liens sur éduscol, pages « Enseigner au cycle 2 / 3 »), puis
    `pdftotext -layout` et `pdftotext -bbox-layout` pour chacun.
-2. Les programmes de sciences 2026 n’ont pas de texte extractible : `swift ocr.swift fichier.pdf`.
+2. Sciences 2026 : les premières versions publiées (juin 2026) sont des images, d’où l’OCR
+   (`swift ocr.swift fichier.pdf`). Depuis le 10 juillet 2026, le ministère publie des versions texte
+   (`annexe-1-programme-de-sciences-et-technologie-du-cycle-2-519020.pdf`, `…-cycle-3-519023.pdf`) :
+   les prendre pour une nouvelle extraction.
 3. Lancer les extractions (`voir.py`, `voir_listes.py`, `emc.py`, `sciences.py`, `c3_eps.py`,
    `arts.py`, `langues.py`), relire leur sortie, puis `assembler.py`.
 
@@ -38,5 +41,12 @@ vigueur progressivement (CP et CM1 à la rentrée 2026) ; ils sont retenus pour 
 Dernière vérification (septembre 2026) : cycle 2, 3 caractères d’écart sur 16 214 en français et
 13 sur 13 536 en mathématiques, tous dus à la lecture de l’image (exposants, fractions en hauteur) ;
 cycle 3, aucun mot manquant ni ajouté et découpage conforme dans tous les blocs.
+
+Sciences, contrôle sur les versions texte (septembre 2026) : chaque objectif extrait par OCR a été
+retrouvé mot pour mot dans le texte officiel (en tolérant l’entrelacement des deux colonnes), sauf un :
+au CE1, deux objectifs lus d’un trait et tronqués. Corrigé à la main dans le JSON : `c2.ST.2.3.ce1.01`
+(« S’impliquer dans une action de préservation de l’environnement proche de l’école. ») et
+`c2.ST.2.3.ce1.03` ajouté (« Développer un rapport sensible à la nature. »), sans renuméroter les
+autres pour ne pas casser les compétences déjà citées.
 
 Les corrections manuelles sont listées dans `assembler.py` (`CORRECTIONS`).
