@@ -1,578 +1,4295 @@
 {
-  "cycle": 2,
-  "titre": "Cycle 2 – CP, CE1, CE2",
-  "domaines": [
+ "cycle": 2,
+ "titre": "Cycle 2 – CP, CE1, CE2 (programmes en vigueur à la rentrée 2026)",
+ "version": "rentrée 2026",
+ "sources": [
+  {
+   "discipline": "Français",
+   "reference": "Arrêté du 22 octobre 2024, BO n° 41 du 31 octobre 2024",
+   "retenu": "objectifs d’apprentissage par année"
+  },
+  {
+   "discipline": "Mathématiques",
+   "reference": "Arrêté du 22 octobre 2024, BO n° 41 du 31 octobre 2024",
+   "retenu": "objectifs d’apprentissage par année"
+  },
+  {
+   "discipline": "Sciences et technologie",
+   "reference": "BO n° 24 du 11 juin 2026 (en vigueur au CP à la rentrée 2026, puis progressivement)",
+   "retenu": "objectifs d’apprentissage par année"
+  },
+  {
+   "discipline": "Histoire-géographie",
+   "reference": "BO n° 22 du 28 mai 2026 (en vigueur au CP à la rentrée 2026, puis progressivement)",
+   "retenu": "attendus (connaissances et compétences) par thème"
+  },
+  {
+   "discipline": "Enseignement moral et civique",
+   "reference": "Arrêté du 17 juin 2024, BO n° 24 du 13 juin 2024",
+   "retenu": "contenus d’enseignement par année"
+  },
+  {
+   "discipline": "Éducation physique et sportive",
+   "reference": "BO n° 22 du 28 mai 2026 (en vigueur au CP à la rentrée 2026, puis progressivement)",
+   "retenu": "objectifs d’apprentissage par année"
+  },
+  {
+   "discipline": "Enseignements artistiques",
+   "reference": "BO n° 31 du 30 juillet 2020",
+   "retenu": "compétences travaillées du cycle"
+  },
+  {
+   "discipline": "Langues vivantes étrangères et régionales",
+   "reference": "BO n° 12 du 19 mars 2026 (en vigueur au CP à la rentrée 2026, puis progressivement)",
+   "retenu": "rubriques de chaque activité langagière, avec leurs niveaux"
+  }
+ ],
+ "domaines": [
+  {
+   "id": "FR",
+   "titre": "Français",
+   "sousDomaines": [
     {
-      "id": "FR",
-      "titre": "Français",
-      "sousDomaines": [
+     "id": "FR.SD1",
+     "titre": "Lecture",
+     "competencesGenerales": [
+      {
+       "id": "FR.SD1.CG1",
+       "titre": "Identifier les mots de manière de plus en plus aisée",
+       "competences": [
         {
-          "id": "FR.LO",
-          "titre": "Langage oral",
-          "competencesGenerales": [
-            {
-              "id": "FR.LO.CG1",
-              "titre": "Comprendre un énoncé oral",
-              "competences": [
-                { "id": "c2_fr_lo_001", "texte": "Identifier l'essentiel d'un message oral court", "niveau": "CP" },
-                { "id": "c2_fr_lo_002", "texte": "Retenir les informations importantes entendues", "niveau": "CP" },
-                { "id": "c2_fr_lo_003", "texte": "Identifier le sujet et les informations principales d'un texte lu", "niveau": "CE1" },
-                { "id": "c2_fr_lo_004", "texte": "Formuler des hypothèses sur le contenu d'un message", "niveau": "CE1" },
-                { "id": "c2_fr_lo_005", "texte": "Comprendre des messages ou textes complexes lus à voix haute", "niveau": "CE2" },
-                { "id": "c2_fr_lo_006", "texte": "Mémoriser et restituer des informations importantes d'un texte entendu", "niveau": "CE2" }
-              ]
-            },
-            {
-              "id": "FR.LO.CG2",
-              "titre": "Parler en continu",
-              "competences": [
-                { "id": "c2_fr_lo_007", "texte": "Raconter en phrases simples un événement vécu ou une histoire connue", "niveau": "CP" },
-                { "id": "c2_fr_lo_008", "texte": "Décrire une image ou une situation avec des mots précis", "niveau": "CP" },
-                { "id": "c2_fr_lo_009", "texte": "Présenter une information préparée avec un début et une fin", "niveau": "CE1" },
-                { "id": "c2_fr_lo_010", "texte": "Reformuler avec ses propres mots ce qui vient d'être dit", "niveau": "CE1" },
-                { "id": "c2_fr_lo_011", "texte": "Présenter un court exposé organisé devant la classe", "niveau": "CE2" },
-                { "id": "c2_fr_lo_012", "texte": "Adapter son niveau de langue à la situation de communication", "niveau": "CE2" }
-              ]
-            },
-            {
-              "id": "FR.LO.CG3",
-              "titre": "Réagir et dialoguer",
-              "competences": [
-                { "id": "c2_fr_lo_013", "texte": "Participer à des échanges en respectant les règles", "niveau": "CP" },
-                { "id": "c2_fr_lo_014", "texte": "Prendre la parole en s'exprimant de façon audible et claire", "niveau": "CP" },
-                { "id": "c2_fr_lo_015", "texte": "Prendre en compte les propos des autres et rebondir", "niveau": "CE1" },
-                { "id": "c2_fr_lo_016", "texte": "Formuler un point de vue et le justifier sommairement", "niveau": "CE1" },
-                { "id": "c2_fr_lo_017", "texte": "Argumenter et débattre en respectant les règles de l'échange", "niveau": "CE2" },
-                { "id": "c2_fr_lo_018", "texte": "Exprimer son accord ou désaccord de façon construite et polie", "niveau": "CE2" }
-              ]
-            }
-          ]
+         "id": "c2.FR.1.1.cp.01",
+         "texte": "Décoder et encoder 12 à 15 correspondances grapho-phonémiques (CGP) régulières, fréquentes et aisément prononçables. (en fin de période 1)",
+         "niveau": "CP"
         },
         {
-          "id": "FR.LEC",
-          "titre": "Lecture",
-          "competencesGenerales": [
-            {
-              "id": "FR.LEC.CG1",
-              "titre": "Déchiffrer et identifier des mots",
-              "competences": [
-                { "id": "c2_fr_lec_001", "texte": "Décoder des syllabes et des mots réguliers (CGP étudiées)", "niveau": "CP" },
-                { "id": "c2_fr_lec_002", "texte": "Lire à voix haute des mots réguliers avec fluidité (~30 mots/min)", "niveau": "CP" },
-                { "id": "c2_fr_lec_003", "texte": "Reconnaître les mots outils sans décodage (lecture globale)", "niveau": "CP" },
-                { "id": "c2_fr_lec_004", "texte": "Mobiliser toutes les CGP de façon automatisée, lire à ~60 mots/min", "niveau": "CE1" },
-                { "id": "c2_fr_lec_005", "texte": "Lire des textes courts adaptés avec fluidité et expressivité", "niveau": "CE1" },
-                { "id": "c2_fr_lec_006", "texte": "Lire avec fluidité des textes variés (~90 mots/min en fin de CE2)", "niveau": "CE2" },
-                { "id": "c2_fr_lec_007", "texte": "Identifier des mots inconnus par analogie ou analyse morphologique", "niveau": "CE2" }
-              ]
-            },
-            {
-              "id": "FR.LEC.CG2",
-              "titre": "Comprendre un texte",
-              "competences": [
-                { "id": "c2_fr_lec_008", "texte": "Comprendre une histoire simple lue par le maître", "niveau": "CP" },
-                { "id": "c2_fr_lec_009", "texte": "Identifier les personnages et les événements principaux d'un récit", "niveau": "CP" },
-                { "id": "c2_fr_lec_010", "texte": "Repérer les informations explicites d'un texte court", "niveau": "CE1" },
-                { "id": "c2_fr_lec_011", "texte": "Inférer des informations non explicites simples", "niveau": "CE1" },
-                { "id": "c2_fr_lec_012", "texte": "Synthétiser les informations lues pour répondre à une question", "niveau": "CE2" },
-                { "id": "c2_fr_lec_013", "texte": "Distinguer les types de textes (narratif, descriptif, explicatif)", "niveau": "CE2" }
-              ]
-            },
-            {
-              "id": "FR.LEC.CG3",
-              "titre": "Lire des œuvres littéraires",
-              "competences": [
-                { "id": "c2_fr_lec_014", "texte": "Écouter des œuvres lues par l'enseignant et en comprendre les enjeux", "niveau": "CP" },
-                { "id": "c2_fr_lec_015", "texte": "Lire des albums et des textes de littérature de jeunesse adaptés", "niveau": "CE1" },
-                { "id": "c2_fr_lec_016", "texte": "Lire 5 à 10 œuvres intégrales dans l'année scolaire", "niveau": "CE2" },
-                { "id": "c2_fr_lec_017", "texte": "Donner son avis sur une œuvre lue et le justifier", "niveau": "CE2" }
-              ]
-            }
-          ]
+         "id": "c2.FR.1.1.cp.02",
+         "texte": "Déchiffrer des syllabes, des mots puis des phrases en fonction de la progression de l’apprentissage des CGP. (en fin de période 1)",
+         "niveau": "CP"
         },
         {
-          "id": "FR.ECR",
-          "titre": "Écriture",
-          "competencesGenerales": [
-            {
-              "id": "FR.ECR.CG1",
-              "titre": "Écriture cursive et copie",
-              "competences": [
-                { "id": "c2_fr_ecr_001", "texte": "Écrire les minuscules cursives avec soin et lisibilité", "niveau": "CP" },
-                { "id": "c2_fr_ecr_002", "texte": "Copier un texte court en respectant la mise en page", "niveau": "CP" },
-                { "id": "c2_fr_ecr_003", "texte": "Écrire les majuscules cursives", "niveau": "CE1" },
-                { "id": "c2_fr_ecr_004", "texte": "Copier avec stratégie : observer – mémoriser – écrire – vérifier", "niveau": "CE1" },
-                { "id": "c2_fr_ecr_005", "texte": "Écrire en cursive de façon fluide et lisible", "niveau": "CE2" },
-                { "id": "c2_fr_ecr_006", "texte": "Prendre des notes simples sous dictée ou lors d'une recherche", "niveau": "CE2" }
-              ]
-            },
-            {
-              "id": "FR.ECR.CG2",
-              "titre": "Production d'écrits",
-              "competences": [
-                { "id": "c2_fr_ecr_007", "texte": "Écrire une phrase simple correctement ponctutée", "niveau": "CP" },
-                { "id": "c2_fr_ecr_008", "texte": "Produire un court texte avec aide (image, situation)", "niveau": "CP" },
-                { "id": "c2_fr_ecr_009", "texte": "Rédiger quelques phrases cohérentes pour raconter ou décrire", "niveau": "CE1" },
-                { "id": "c2_fr_ecr_010", "texte": "Commencer à organiser ses écrits (début, milieu, fin)", "niveau": "CE1" },
-                { "id": "c2_fr_ecr_011", "texte": "Rédiger un texte court et organisé (récit, description, lettre)", "niveau": "CE2" },
-                { "id": "c2_fr_ecr_012", "texte": "Réviser son écrit : relire, corriger orthographe et sens", "niveau": "CE2" }
-              ]
-            }
-          ]
+         "id": "c2.FR.1.1.cp.03",
+         "texte": "Décoder et encoder de 25 à 30 CGP. (en milieu d’année)",
+         "niveau": "CP"
         },
         {
-          "id": "FR.EDL",
-          "titre": "Étude de la langue",
-          "competencesGenerales": [
-            {
-              "id": "FR.EDL.CG1",
-              "titre": "Grammaire",
-              "competences": [
-                { "id": "c2_fr_edl_001", "texte": "Identifier la phrase (majuscule initiale, ponctuation finale)", "niveau": "CP" },
-                { "id": "c2_fr_edl_002", "texte": "Distinguer groupe sujet et groupe verbal dans la phrase simple", "niveau": "CE1" },
-                { "id": "c2_fr_edl_003", "texte": "Identifier le verbe conjugué dans une phrase", "niveau": "CE1" },
-                { "id": "c2_fr_edl_004", "texte": "Reconnaître les classes de mots : nom, déterminant, adjectif, verbe, pronom", "niveau": "CE1" },
-                { "id": "c2_fr_edl_005", "texte": "Identifier le genre et le nombre d'un nom", "niveau": "CE2" },
-                { "id": "c2_fr_edl_006", "texte": "Reconnaître les compléments du verbe (COD, complément de lieu, de temps)", "niveau": "CE2" },
-                { "id": "c2_fr_edl_007", "texte": "Utiliser les temps verbaux : présent, passé composé, imparfait, futur simple", "niveau": "CE2" }
-              ]
-            },
-            {
-              "id": "FR.EDL.CG2",
-              "titre": "Orthographe",
-              "competences": [
-                { "id": "c2_fr_edl_008", "texte": "Encoder les sons en respectant les correspondances grapho-phonémiques", "niveau": "CP" },
-                { "id": "c2_fr_edl_009", "texte": "Mémoriser les mots invariables les plus fréquents (et, est, ou, où…)", "niveau": "CP" },
-                { "id": "c2_fr_edl_010", "texte": "Orthographier correctement les mots du répertoire appris", "niveau": "CE1" },
-                { "id": "c2_fr_edl_011", "texte": "Respecter l'accord sujet-verbe dans la phrase simple", "niveau": "CE1" },
-                { "id": "c2_fr_edl_012", "texte": "Accorder le groupe nominal : déterminant + nom + adjectif", "niveau": "CE2" },
-                { "id": "c2_fr_edl_013", "texte": "Conjuguer et orthographier les verbes usuels aux temps étudiés", "niveau": "CE2" },
-                { "id": "c2_fr_edl_014", "texte": "Utiliser les homophones grammaticaux courants : a/à, est/et, on/ont, son/sont", "niveau": "CE2" }
-              ]
-            },
-            {
-              "id": "FR.EDL.CG3",
-              "titre": "Vocabulaire / Lexique",
-              "competences": [
-                { "id": "c2_fr_edl_015", "texte": "Constituer des collections de mots par thème ou par famille", "niveau": "CP" },
-                { "id": "c2_fr_edl_016", "texte": "Comprendre et mémoriser les mots nouveaux du corpus enseigné", "niveau": "CP" },
-                { "id": "c2_fr_edl_017", "texte": "Distinguer le sens propre et le sens figuré d'un mot courant", "niveau": "CE1" },
-                { "id": "c2_fr_edl_018", "texte": "Utiliser les relations de synonymie et d'antonymie", "niveau": "CE1" },
-                { "id": "c2_fr_edl_019", "texte": "Utiliser le contexte pour inférer le sens d'un mot inconnu", "niveau": "CE2" },
-                { "id": "c2_fr_edl_020", "texte": "Connaître les préfixes et suffixes courants et en déduire le sens", "niveau": "CE2" }
-              ]
-            }
-          ]
+         "id": "c2.FR.1.1.cp.04",
+         "texte": "Avoir pris conscience de la présence de lettres finales muettes et s’appuyer sur le sens des mots pour les déchiffrer correctement. (en milieu d’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.1.cp.05",
+         "texte": "Mémoriser les mots fréquents et réguliers. (en milieu d’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.1.cp.06",
+         "texte": "Déchiffrer entre 15 et 30 mots par minute. (en milieu d’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.1.cp.07",
+         "texte": "Décoder 30 mots par minute au minimum fin CP, sans préparation, 50 après préparation. (en fin d’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.1.ce1.01",
+         "texte": "Automatiser le décodage des correspondances graphophonémiques (CGP) apprises au CP. (tout au long de l’année)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.1.1.ce1.02",
+         "texte": "Décoder toutes les CGP y compris les plus complexes. (en fin d’année)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.1.1.ce1.03",
+         "texte": "Avoir mémorisé l’ensemble des CGP dans tous les types d’écriture, en particulier celles des sons proches (en encodage et décodage). (en fin d’année)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.1.1.ce1.04",
+         "texte": "Identifier directement l’ensemble des mots courants et déchiffrer avec exactitude les mots nouveaux dont le décodage n’a pas encore été automatisé. (en fin d’année)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.1.1.ce2.01",
+         "texte": "Avoir automatisé toutes les correspondances graphophonémiques (CGP).",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.1.1.ce2.02",
+         "texte": "Lire un texte nouveau en s’appuyant sur un décodage rapide.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.1.1.ce2.03",
+         "texte": "Automatiser la lecture des mots.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.1.1.ce2.04",
+         "texte": "Repérer les lettres muettes et décoder les mots inconnus en conservant une vitesse de lecture correspondant aux objectifs de fin d’année.",
+         "niveau": "CE2"
         }
-      ]
+       ]
+      },
+      {
+       "id": "FR.SD1.CG2",
+       "titre": "Lire à voix haute",
+       "competences": [
+        {
+         "id": "c2.FR.1.2.cp.01",
+         "texte": "Oraliser les syllabes déchiffrées et encodées, puis les mots. (dès le début de l’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.2.cp.02",
+         "texte": "Oraliser régulièrement les mots et phrases déchiffrés et encodés. (en cours d’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.2.cp.03",
+         "texte": "S’entrainer à lire des textes déchiffrables de manière à automatiser sa lecture. (en cours d’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.2.cp.04",
+         "texte": "Lire après préparation un texte adapté à son niveau de lecture avec une vitesse de 30 mots par minute au minimum sans préparation, 50 après préparation. (en fin d’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.2.cp.05",
+         "texte": "Identifier les marques de ponctuation et les prendre en compte sur un texte préparé. (en fin d’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.2.cp.06",
+         "texte": "Amorcer une lecture expressive. (en fin d’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.2.ce1.01",
+         "texte": "Lire un texte adapté à son niveau de lecture avec une vitesse de 70 mots par minute. (en fin d’année)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.1.2.ce1.02",
+         "texte": "Lire des textes narratifs, documentaires et prescriptifs en respectant tous les signes de ponctuation et les groupes de souffle. (en fin d’année)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.1.2.ce1.03",
+         "texte": "Lire de manière expressive. (en fin d’année)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.1.2.ce2.01",
+         "texte": "Lire un texte adapté à son niveau de lecture avec une vitesse de 90 mots par minute.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.1.2.ce2.02",
+         "texte": "Lire un texte en respectant l’ensemble des marques de ponctuation et les liaisons.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.1.2.ce2.03",
+         "texte": "Manifester sa compréhension par une lecture expressive qui respecte la structure du texte, de la phrase et le sens.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "FR.SD1.CG3",
+       "titre": "Comprendre un texte",
+       "competences": [
+        {
+         "id": "c2.FR.1.3.cp.01",
+         "texte": "Dégager le sens global d’un texte entendu ou lu de façon autonome.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.3.cp.02",
+         "texte": "Identifier les mots inconnus dans un texte et chercher à leur donner un sens.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.3.cp.03",
+         "texte": "Se repérer dans la chaine anaphorique (qui relie un nom à sa ou ses reprise(s) pronominale(s) ou à d’autres noms de sens équivalent).",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.3.cp.04",
+         "texte": "Comprendre ce qui est implicite (inférences simples).",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.3.cp.05",
+         "texte": "Justifier ses réponses par un retour au texte.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.3.cp.06",
+         "texte": "Lire et comprendre en autonomie un texte narratif, informatif ou prescriptif d’une dizaine de lignes.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.3.ce1.01",
+         "texte": "Dégager le sens global d’un texte lu, de façon autonome, à la suite d’une séance dédiée à la compréhension.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.1.3.ce1.02",
+         "texte": "Développer des stratégies pour élucider le sens des mots et des expressions inconnus.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.1.3.ce1.03",
+         "texte": "Se repérer dans la chaine anaphorique (qui relie un nom à sa ou ses reprise(s) pronominale(s) ou à d’autres noms de sens équivalent) et s’appuyer sur le sens du texte pour résoudre des ambigüités.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.1.3.ce1.04",
+         "texte": "Comprendre ce qui est implicite dans le texte (inférences) dans des cas simples.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.1.3.ce1.05",
+         "texte": "Justifier ses réponses par un retour au texte.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.1.3.ce1.06",
+         "texte": "Lire et comprendre en autonomie un texte narratif, informatif ou prescriptif d’une quinzaine de lignes.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.1.3.ce2.01",
+         "texte": "Lire et dégager le sens d’un texte narratif, poétique, documentaire ou théâtral, lu en autonomie ou lu par un adulte en s’appuyant sur les caractéristiques de ces textes.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.1.3.ce2.02",
+         "texte": "Adopter une posture active par rapport au vocabulaire inconnu.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.1.3.ce2.03",
+         "texte": "Se repérer dans la chaine anaphorique (qui relie un nom à sa ou ses reprise(s) pronominale(s) ou à d’autres noms de sens équivalent) et s’appuyer sur le sens du texte pour résoudre des ambigüités.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.1.3.ce2.04",
+         "texte": "Différencier le type narratif du type informatif et prescriptif.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.1.3.ce2.05",
+         "texte": "Comprendre ce qui est implicite (inférences) en s’appuyant sur des indices explicites et sur ses propres connaissances.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.1.3.ce2.06",
+         "texte": "Revenir au texte pour identifier et comprendre les éléments complexes.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.1.3.ce2.07",
+         "texte": "Lire et comprendre en autonomie un texte narratif, informatif ou prescriptif d’une vingtaine de lignes.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "FR.SD1.CG4",
+       "titre": "Devenir lecteur",
+       "competences": [
+        {
+         "id": "c2.FR.1.4.cp.01",
+         "texte": "Lire 5 à 10 œuvres complètes et variées issues du patrimoine et de la littérature de jeunesse (albums, romans, contes, fables, poèmes, pièces de théâtre et documentaires).",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.4.cp.02",
+         "texte": "Repérer et reconnaitre des types de personnages.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.4.cp.03",
+         "texte": "Aller vers les livres et être capable d’en choisir à titre personnel.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.4.cp.04",
+         "texte": "Relier ses lectures à son expérience personnelle, être en mesure d’établir des liens entre ses différentes lectures (mise en réseau).",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.4.cp.05",
+         "texte": "Fréquenter régulièrement des lieux de lecture et se familiariser avec eux, rencontrer des acteurs du livre.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.1.4.ce1.01",
+         "texte": "Lire 5 à 10 œuvres complètes et variées issues du patrimoine et de la littérature de jeunesse (albums, romans, contes, fables, poèmes, pièces de théâtre et documentaires).",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.1.4.ce1.02",
+         "texte": "Se familiariser aux différents genres et types de textes.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.1.4.ce1.03",
+         "texte": "Faire preuve d’initiative dans ses lectures personnelles en empruntant des livres en fonction de ses gouts.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.1.4.ce1.04",
+         "texte": "Relier ses lectures à son expérience personnelle, être en mesure d’établir des liens entre ses différentes lectures (mise en réseau).",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.1.4.ce2.01",
+         "texte": "Lire de manière autonome 5 à 10 œuvres complètes et variées issues du patrimoine et de la littérature de jeunesse (albums, romans, contes, fables, poèmes, pièces de théâtre et documentaires).",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.1.4.ce2.02",
+         "texte": "Relier ses lectures à son expérience personnelle, être en mesure d’établir des liens entre ses différentes lectures (mise en réseau).",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.1.4.ce2.03",
+         "texte": "Fréquenter des lieux de lecture régulièrement et rencontrer des acteurs du livre.",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
     },
     {
-      "id": "MA",
-      "titre": "Mathématiques",
-      "sousDomaines": [
+     "id": "FR.SD2",
+     "titre": "Écriture",
+     "competencesGenerales": [
+      {
+       "id": "FR.SD2.CG1",
+       "titre": "Apprendre à écrire en écriture cursive",
+       "competences": [
         {
-          "id": "MA.NC",
-          "titre": "Nombres et calculs",
-          "competencesGenerales": [
-            {
-              "id": "MA.NC.CG1",
-              "titre": "Comprendre et utiliser les nombres entiers",
-              "competences": [
-                { "id": "c2_ma_nc_001", "texte": "Dénombrer, lire et écrire les nombres jusqu'à 100", "niveau": "CP" },
-                { "id": "c2_ma_nc_002", "texte": "Comparer et ordonner des nombres jusqu'à 100", "niveau": "CP" },
-                { "id": "c2_ma_nc_003", "texte": "Comprendre la valeur positionnelle (dizaines/unités)", "niveau": "CP" },
-                { "id": "c2_ma_nc_004", "texte": "Lire et écrire les nombres jusqu'à 1 000", "niveau": "CE1" },
-                { "id": "c2_ma_nc_005", "texte": "Utiliser les notions de moitié, quart, demi", "niveau": "CE1" },
-                { "id": "c2_ma_nc_006", "texte": "Comprendre les fractions unitaires simples (1/2, 1/3, 1/4…)", "niveau": "CE1" },
-                { "id": "c2_ma_nc_007", "texte": "Lire, écrire et comparer les nombres jusqu'à 10 000", "niveau": "CE2" },
-                { "id": "c2_ma_nc_008", "texte": "Utiliser les fractions simples inférieures ou égales à 1", "niveau": "CE2" },
-                { "id": "c2_ma_nc_009", "texte": "Maîtriser la valeur positionnelle : milliers, centaines, dizaines, unités", "niveau": "CE2" }
-              ]
-            },
-            {
-              "id": "MA.NC.CG2",
-              "titre": "Calculer",
-              "competences": [
-                { "id": "c2_ma_nc_010", "texte": "Mémoriser les tables d'addition (jusqu'à 10 + 10)", "niveau": "CP" },
-                { "id": "c2_ma_nc_011", "texte": "Calculer mentalement des sommes et différences simples", "niveau": "CP" },
-                { "id": "c2_ma_nc_012", "texte": "Poser et calculer l'addition et la soustraction en colonnes", "niveau": "CE1" },
-                { "id": "c2_ma_nc_013", "texte": "Mémoriser les tables de multiplication par 2, 5 et 10", "niveau": "CE1" },
-                { "id": "c2_ma_nc_014", "texte": "Calculer mentalement des produits simples", "niveau": "CE1" },
-                { "id": "c2_ma_nc_015", "texte": "Mémoriser toutes les tables de multiplication jusqu'à 9 × 9", "niveau": "CE2" },
-                { "id": "c2_ma_nc_016", "texte": "Poser et calculer la multiplication (un chiffre × plusieurs chiffres)", "niveau": "CE2" },
-                { "id": "c2_ma_nc_017", "texte": "Comprendre et utiliser la division euclidienne", "niveau": "CE2" },
-                { "id": "c2_ma_nc_018", "texte": "Développer des automatismes de calcul mental (doubles, moitiés, compléments)", "niveau": "CE2" }
-              ]
-            },
-            {
-              "id": "MA.NC.CG3",
-              "titre": "Résoudre des problèmes",
-              "competences": [
-                { "id": "c2_ma_nc_019", "texte": "Résoudre des problèmes additifs simples (1 étape)", "niveau": "CP" },
-                { "id": "c2_ma_nc_020", "texte": "Résoudre des problèmes soustractifs simples (1 étape)", "niveau": "CP" },
-                { "id": "c2_ma_nc_021", "texte": "Résoudre des problèmes multiplicatifs et de partage équitable", "niveau": "CE1" },
-                { "id": "c2_ma_nc_022", "texte": "Résoudre des problèmes nécessitant une ou deux opérations", "niveau": "CE2" },
-                { "id": "c2_ma_nc_023", "texte": "Mettre en œuvre une démarche de résolution de problèmes structurée", "niveau": "CE2" }
-              ]
-            }
-          ]
+         "id": "c2.FR.2.1.cp.01",
+         "texte": "Apprendre à écrire en écriture cursive tous les graphèmes étudiés selon la progression en décodage.",
+         "niveau": "CP"
         },
         {
-          "id": "MA.GM",
-          "titre": "Grandeurs et mesures",
-          "competencesGenerales": [
-            {
-              "id": "MA.GM.CG1",
-              "titre": "Mesurer et comparer des grandeurs",
-              "competences": [
-                { "id": "c2_ma_gm_001", "texte": "Comparer des longueurs, masses et contenances directement ou avec une unité", "niveau": "CP" },
-                { "id": "c2_ma_gm_002", "texte": "Mesurer des longueurs avec une règle (cm et m)", "niveau": "CE1" },
-                { "id": "c2_ma_gm_003", "texte": "Comparer des masses avec une balance ; connaître le kg et le g", "niveau": "CE1" },
-                { "id": "c2_ma_gm_004", "texte": "Résoudre des problèmes de mesure (longueur, masse, contenance)", "niveau": "CE2" },
-                { "id": "c2_ma_gm_005", "texte": "Utiliser les unités usuelles et effectuer des conversions simples (m↔cm, kg↔g)", "niveau": "CE2" }
-              ]
-            },
-            {
-              "id": "MA.GM.CG2",
-              "titre": "Temps et monnaie",
-              "competences": [
-                { "id": "c2_ma_gm_006", "texte": "Lire l'heure sur une horloge analogique (heures entières)", "niveau": "CP" },
-                { "id": "c2_ma_gm_007", "texte": "Utiliser les unités de temps : heure, minute, seconde ; lire les demi-heures", "niveau": "CE1" },
-                { "id": "c2_ma_gm_008", "texte": "Utiliser les pièces et billets courants pour composer une somme", "niveau": "CE1" },
-                { "id": "c2_ma_gm_009", "texte": "Lire l'heure et calculer des durées simples", "niveau": "CE2" },
-                { "id": "c2_ma_gm_010", "texte": "Résoudre des problèmes de durées, de dates et de monnaie", "niveau": "CE2" }
-              ]
-            }
-          ]
+         "id": "c2.FR.2.1.cp.02",
+         "texte": "Apprendre à les enchainer, avec fluidité, avec d’autres lettres dans des syllabes, mots, phrases.",
+         "niveau": "CP"
         },
         {
-          "id": "MA.EG",
-          "titre": "Espace et géométrie",
-          "competencesGenerales": [
-            {
-              "id": "MA.EG.CG1",
-              "titre": "Se repérer dans l'espace",
-              "competences": [
-                { "id": "c2_ma_eg_001", "texte": "Se repérer et se déplacer sur un quadrillage", "niveau": "CP" },
-                { "id": "c2_ma_eg_002", "texte": "Utiliser des repères et des représentations simples de l'espace (plan, carte)", "niveau": "CE1" },
-                { "id": "c2_ma_eg_003", "texte": "Lire et produire des représentations simples de l'espace", "niveau": "CE2" }
-              ]
-            },
-            {
-              "id": "MA.EG.CG2",
-              "titre": "Figures planes et solides",
-              "competences": [
-                { "id": "c2_ma_eg_004", "texte": "Reconnaître et nommer les figures planes : carré, rectangle, triangle, cercle", "niveau": "CP" },
-                { "id": "c2_ma_eg_005", "texte": "Reconnaître et nommer des solides : cube, pavé, pyramide, boule, cylindre", "niveau": "CP" },
-                { "id": "c2_ma_eg_006", "texte": "Reproduire des figures sur quadrillage", "niveau": "CE1" },
-                { "id": "c2_ma_eg_007", "texte": "Tracer des figures avec les instruments (règle, équerre)", "niveau": "CE2" },
-                { "id": "c2_ma_eg_008", "texte": "Identifier les propriétés du losange et des figures usuelles", "niveau": "CE2" },
-                { "id": "c2_ma_eg_009", "texte": "Reconnaître et utiliser la symétrie axiale", "niveau": "CE2" },
-                { "id": "c2_ma_eg_010", "texte": "Distinguer angles aigus et angles obtus", "niveau": "CE2" }
-              ]
-            }
-          ]
+         "id": "c2.FR.2.1.ce1.01",
+         "texte": "Mémoriser le tracé normé et la transcription de toutes les lettres minuscules scriptes en lettres minuscules cursives. (dès la période 1)",
+         "niveau": "CE1"
         },
         {
-          "id": "MA.OD",
-          "titre": "Organisation et gestion de données",
-          "competencesGenerales": [
-            {
-              "id": "MA.OD.CG1",
-              "titre": "Lire, organiser et représenter des données",
-              "competences": [
-                { "id": "c2_ma_od_001", "texte": "Lire un tableau à double entrée simple", "niveau": "CE1" },
-                { "id": "c2_ma_od_002", "texte": "Lire et interpréter des diagrammes et graphiques simples", "niveau": "CE2" },
-                { "id": "c2_ma_od_003", "texte": "Recueillir, classer et organiser des données dans un tableau", "niveau": "CE2" },
-                { "id": "c2_ma_od_004", "texte": "Produire un tableau ou un diagramme à partir de données collectées", "niveau": "CE2" }
-              ]
-            }
-          ]
+         "id": "c2.FR.2.1.ce1.02",
+         "texte": "Reconnaitre les lettres dans les quatre écritures : minuscules (scripte et cursive), majuscules (scripte ou cursive). (à partir de la période 2)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.2.1.ce1.03",
+         "texte": "Apprendre le tracé normé des lettres majuscules cursives par familles de gestes. (à partir de la période 2)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.2.1.ce2.01",
+         "texte": "Automatiser l’écriture de toutes les lettres minuscules et majuscules en cursive. (dès la période 1)",
+         "niveau": "CE2"
         }
-      ]
+       ]
+      },
+      {
+       "id": "FR.SD2.CG2",
+       "titre": "Encoder puis écrire sous dictée",
+       "competences": [
+        {
+         "id": "c2.FR.2.2.cp.01",
+         "texte": "Encoder des syllabes simples puis des mots selon la progression des CGP. (dès le début de l’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.2.2.cp.02",
+         "texte": "Écrire des mots dictés avec des lettres muettes apprises (mettre en relation des morphogrammes lexicaux et grammaticaux). (dès la fin de la 2e période)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.2.2.cp.03",
+         "texte": "Écrire sous la dictée des mots et des phrases. (en fin d’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.2.2.ce1.01",
+         "texte": "Orthographier correctement les mots fréquents, réguliers puis irréguliers.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.2.2.ce1.02",
+         "texte": "Réaliser des accords en genre et en nombre dans le groupe nominal (article, nom, adjectif) et dans le groupe verbal (marque de pluriel des verbes = nt).",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.2.2.ce2.01",
+         "texte": "Orthographier correctement les mots fréquents, réguliers et irréguliers et des phrases selon les accords étudiés dans le cadre de dictées. (à la fin de l’année)",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "FR.SD2.CG3",
+       "titre": "Copier et acquérir des stratégies de copie",
+       "competences": [
+        {
+         "id": "c2.FR.2.3.cp.01",
+         "texte": "Copier des syllabes simples puis des mots avec lettres muettes. (dès le début de l’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.2.3.cp.02",
+         "texte": "Copier une phrase en lien avec les 12/15 correspondances graphophonémiques étudiées. (dès la fin de la période 1)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.2.3.cp.03",
+         "texte": "Commencer à verbaliser et à utiliser des stratégies de copie pour dépasser la copie lettre à lettre : prise d’indices, mémorisation de mots ou groupes de mots. (dès la fin de la période 1)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.2.3.cp.04",
+         "texte": "Commencer à savoir se relire après copie. (dès la fin de la période 1)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.2.3.cp.05",
+         "texte": "Copier trois ou quatre phrases sans erreur et de façon lisible. (en fin d’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.2.3.ce1.01",
+         "texte": "Automatiser le geste d’écriture cursive par la copie de textes en temps limité.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.2.3.ce1.02",
+         "texte": "Acquérir des stratégies de copie et en mesurer l’efficacité.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.2.3.ce1.03",
+         "texte": "Copier quatre à cinq phrases courtes. (à l’issue de la période 1)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.2.3.ce1.04",
+         "texte": "Copier cinq ou six lignes sans erreur. (à partir de la période 3)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.2.3.ce1.05",
+         "texte": "Recopier sans effort une dizaine de lignes en respectant la ponctuation et la mise en page. (à la fin de l’année)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.2.3.ce2.01",
+         "texte": "Copier une dizaine de lignes sans erreur en conjuguant vitesse et exactitude et en respectant les mises en page complexes. (en fin d’année)",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "FR.SD2.CG4",
+       "titre": "Produire des écrits",
+       "competences": [
+        {
+         "id": "c2.FR.2.4.cp.01",
+         "texte": "Écrire des graphèmes, des syllabes, des mots puis quelques phrases avec l’aide du professeur à partir des mots connus et déchiffrés. Les activités de dictées à l’adulte sont poursuivies. (dès le début de l’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.2.4.cp.02",
+         "texte": "Produire des écrits courts porteurs de sens, d’une à cinq lignes, en articulation avec l’apprentissage de la lecture. (dès la 2e période)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.2.4.cp.03",
+         "texte": "S’appuyer sur les textes de lecture pour les transformer sur quelques points seulement (écrire à la façon de, ajouter un épisode, etc.). (dès la 2e période)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.2.4.cp.04",
+         "texte": "Produire des écrits courts porteurs de sens d’une à cinq lignes en articulation avec l’apprentissage de la lecture. (en fin d’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.2.4.cp.05",
+         "texte": "Commencer à acquérir une méthodologie de production écrite : planification, mise en mots avec vigilance orthographique, relectures et révisions. (en fin d’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.2.4.cp.06",
+         "texte": "Repérer les dysfonctionnements de son texte par la relecture à voix haute du professeur ou grâce à des outils d’aide construits à cet effet. (en fin d’année)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.2.4.ce1.01",
+         "texte": "Rédiger une phrase simple à partir d’une phrase prototypique, en changeant un puis plusieurs mots. (dès les premières semaines)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.2.4.ce1.02",
+         "texte": "Écrire un texte court de une à trois phrases. (dès la période 1)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.2.4.ce1.03",
+         "texte": "Insérer des connecteurs pour rendre cohérent l’enchainement de plusieurs phrases. (au cours des périodes 1 à 5)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.2.4.ce1.04",
+         "texte": "Retravailler un texte (issu de lecture et/ou d’écriture) en fonction d’une ou deux contraintes d’écriture. (au cours des périodes 1 à 5)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.2.4.ce1.05",
+         "texte": "Continuer à acquérir une méthodologie de production écrite : planification, mise en mots avec vigilance orthographique, révision après retours immédiats du professeur. (au cours des périodes 1 à 5)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.2.4.ce1.06",
+         "texte": "Écrire un texte de six ou sept phrases maximum en assurant la cohérence syntaxique et logique du texte produit. (en fin d’année)",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.2.4.ce2.01",
+         "texte": "Développer tout au long de l’année les compétences qui lui permettront en fin d’année : d’écrire pour transmettre un message, une émotion, une information, etc., à un destinataire ; de rédiger quelques phrases qui permettent d’entrainer les automatismes appris en grammaire et orthographe ; d’écrire un texte d’une dizaine de lignes de différents types et relevant des différents enseignements : respecter la syntaxe, les règles orthographiques étudiées, réemployer un lexique précis et prendre en compte des contraintes d’écriture ; de relire son texte méthodiquement.",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
     },
     {
-      "id": "QLM",
-      "titre": "Questionner le monde",
-      "sousDomaines": [
+     "id": "FR.SD3",
+     "titre": "Oral",
+     "competencesGenerales": [
+      {
+       "id": "FR.SD3.CG1",
+       "titre": "Écouter pour comprendre",
+       "competences": [
         {
-          "id": "QLM.VT",
-          "titre": "Le vivant, la matière et les objets",
-          "competencesGenerales": [
-            {
-              "id": "QLM.VT.CG1",
-              "titre": "Le monde vivant",
-              "competences": [
-                { "id": "c2_qlm_vt_001", "texte": "Distinguer les êtres vivants des objets inertes", "niveau": "CP" },
-                { "id": "c2_qlm_vt_002", "texte": "Décrire les stades du développement d'un être vivant", "niveau": "CE1" },
-                { "id": "c2_qlm_vt_003", "texte": "Identifier les caractéristiques des êtres vivants (nutrition, reproduction, croissance)", "niveau": "CE2" },
-                { "id": "c2_qlm_vt_004", "texte": "Classer des animaux et des végétaux selon leurs caractéristiques", "niveau": "CE2" }
-              ]
-            },
-            {
-              "id": "QLM.VT.CG2",
-              "titre": "La matière",
-              "competences": [
-                { "id": "c2_qlm_vt_005", "texte": "Identifier les matières qui constituent des objets du quotidien", "niveau": "CP" },
-                { "id": "c2_qlm_vt_006", "texte": "Reconnaître les trois états de l'eau (solide, liquide, gazeux)", "niveau": "CE1" },
-                { "id": "c2_qlm_vt_007", "texte": "Décrire les changements d'état (fusion, solidification, évaporation)", "niveau": "CE2" }
-              ]
-            },
-            {
-              "id": "QLM.VT.CG3",
-              "titre": "Les objets techniques",
-              "competences": [
-                { "id": "c2_qlm_vt_008", "texte": "Décrire le fonctionnement d'un objet technique simple", "niveau": "CE1" },
-                { "id": "c2_qlm_vt_009", "texte": "Identifier la fonction des éléments d'une chaîne électrique simple", "niveau": "CE2" },
-                { "id": "c2_qlm_vt_010", "texte": "Réaliser une maquette ou un objet technique simple", "niveau": "CE2" }
-              ]
-            }
-          ]
+         "id": "c2.FR.3.1.cp.01",
+         "texte": "Comprendre un message entendu de quelques minutes et mémoriser quelques informations importantes.",
+         "niveau": "CP"
         },
         {
-          "id": "QLM.ET",
-          "titre": "L'espace et le temps",
-          "competencesGenerales": [
-            {
-              "id": "QLM.ET.CG1",
-              "titre": "Se repérer dans l'espace",
-              "competences": [
-                { "id": "c2_qlm_et_001", "texte": "Utiliser un plan ou une carte simple pour se repérer", "niveau": "CE1" },
-                { "id": "c2_qlm_et_002", "texte": "Situer sa commune, sa région, la France sur une carte", "niveau": "CE2" },
-                { "id": "c2_qlm_et_003", "texte": "Décrire des milieux géographiques proches", "niveau": "CE2" }
-              ]
-            },
-            {
-              "id": "QLM.ET.CG2",
-              "titre": "Se repérer dans le temps",
-              "competences": [
-                { "id": "c2_qlm_et_004", "texte": "Utiliser un calendrier et une frise du temps de la classe", "niveau": "CP" },
-                { "id": "c2_qlm_et_005", "texte": "Situer des événements vécus sur une frise chronologique", "niveau": "CE1" },
-                { "id": "c2_qlm_et_006", "texte": "Comprendre la notion de chronologie à travers des récits historiques simples", "niveau": "CE2" },
-                { "id": "c2_qlm_et_007", "texte": "Situer quelques grandes périodes de l'histoire de France sur une frise", "niveau": "CE2" }
-              ]
-            }
-          ]
+         "id": "c2.FR.3.1.ce1.01",
+         "texte": "Maintenir une attention active pendant quelques minutes pour repérer, mémoriser, classer ou ordonner les informations importantes entendues à l’oral.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.3.1.ce2.01",
+         "texte": "Repérer, mémoriser et relier entre elles plusieurs informations importantes pour construire la cohérence d’un message entendu de plus en plus long et complexe (5 minutes maximum), en évaluant son degré de compréhension.",
+         "niveau": "CE2"
         }
-      ]
+       ]
+      },
+      {
+       "id": "FR.SD3.CG2",
+       "titre": "Dire pour être compris",
+       "competences": [
+        {
+         "id": "c2.FR.3.2.cp.01",
+         "texte": "Mener une brève production orale pour rapporter, raconter, décrire ou expliquer, en utilisant quelques organisateurs du discours et en mobilisant le lexique appris.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.3.2.cp.02",
+         "texte": "S’écouter pour progresser et proposer des reformulations.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.3.2.cp.03",
+         "texte": "Oraliser un texte mémorisé ou préparé en tenant compte de son auditoire.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.3.2.ce1.01",
+         "texte": "Utiliser à l’oral l’ensemble des temps verbaux pour raconter, décrire, expliquer, comparer ou exposer.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.3.2.ce1.02",
+         "texte": "Utiliser les critères définis pour évaluer sa prestation ou celle des autres et progresser dans la production de différents types de discours.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.3.2.ce2.01",
+         "texte": "Mener une production orale de plus en plus longue et structurée pour raconter, expliquer, argumenter, justifier.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.3.2.ce2.02",
+         "texte": "Maintenir l’intérêt de son auditoire lors des différentes prestations orales.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "FR.SD3.CG3",
+       "titre": "Participer à des échanges",
+       "competences": [
+        {
+         "id": "c2.FR.3.3.cp.01",
+         "texte": "Participer aux échanges en respectant les règles, en écoutant les autres et en donnant son avis.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.3.3.cp.02",
+         "texte": "Prendre conscience des écarts de niveau de langue selon les situations de communication.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.3.3.ce1.01",
+         "texte": "Respecter le propos au cours des échanges au sein d’un groupe.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.3.3.ce1.02",
+         "texte": "Adapter le registre de langue utilisé (familier, courant, soutenu) à la situation de communication proposée : conversation entre pairs, dialogue avec un adulte connu, une personnalité inconnue, etc.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.3.3.ce2.01",
+         "texte": "Tenir compte de ce qui a déjà été dit lors des interventions au sein d’un groupe.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.3.3.ce2.02",
+         "texte": "Utiliser un registre de langue et adopter des postures adaptées aux situations proposées (jeux de rôles).",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
     },
     {
-      "id": "EMC",
-      "titre": "Enseignement moral et civique",
-      "sousDomaines": [
+     "id": "FR.SD4",
+     "titre": "Vocabulaire",
+     "competencesGenerales": [
+      {
+       "id": "FR.SD4.CG1",
+       "titre": "Enrichir son vocabulaire dans toutes les disciplines",
+       "competences": [
         {
-          "id": "EMC.SE",
-          "titre": "La sensibilité : soi et les autres",
-          "competencesGenerales": [
-            {
-              "id": "EMC.SE.CG1",
-              "titre": "Identifier et exprimer ses émotions",
-              "competences": [
-                { "id": "c2_emc_se_001", "texte": "Identifier et nommer ses émotions et ses sentiments" },
-                { "id": "c2_emc_se_002", "texte": "Respecter les émotions et la sensibilité des autres" },
-                { "id": "c2_emc_se_003", "texte": "Développer de l'empathie envers ses camarades" },
-                { "id": "c2_emc_se_004", "texte": "Exprimer ses opinions dans le respect des autres" }
-              ]
-            }
-          ]
+         "id": "c2.FR.4.1.cp.01",
+         "texte": "Enrichir en contexte le vocabulaire appris au cycle 1.",
+         "niveau": "CP"
         },
         {
-          "id": "EMC.DR",
-          "titre": "Le droit et la règle : vivre ensemble",
-          "competencesGenerales": [
-            {
-              "id": "EMC.DR.CG1",
-              "titre": "Comprendre et respecter les règles",
-              "competences": [
-                { "id": "c2_emc_dr_001", "texte": "Comprendre la nécessité des règles dans la vie collective" },
-                { "id": "c2_emc_dr_002", "texte": "Distinguer droits et devoirs de l'élève à l'école" },
-                { "id": "c2_emc_dr_003", "texte": "Connaître les symboles et les valeurs de la République (Liberté, Égalité, Fraternité)" },
-                { "id": "c2_emc_dr_004", "texte": "Comprendre ce qu'est la laïcité à l'école" }
-              ]
-            }
-          ]
+         "id": "c2.FR.4.1.cp.02",
+         "texte": "Être sensible, sans en apprendre les concepts, à la polysémie et à la différence entre sens propre et sens figuré.",
+         "niveau": "CP"
         },
         {
-          "id": "EMC.JU",
-          "titre": "Le jugement : penser par soi-même",
-          "competencesGenerales": [
-            {
-              "id": "EMC.JU.CG1",
-              "titre": "Développer son esprit critique",
-              "competences": [
-                { "id": "c2_emc_ju_001", "texte": "Distinguer une information d'une opinion" },
-                { "id": "c2_emc_ju_002", "texte": "Participer à un débat réglé en respectant les règles de l'échange" },
-                { "id": "c2_emc_ju_003", "texte": "Exercer son jugement moral face à des situations concrètes" }
-              ]
-            }
-          ]
+         "id": "c2.FR.4.1.cp.03",
+         "texte": "Commencer à mobiliser l’ordre alphabétique pour utiliser un dictionnaire adapté (papier ou numérique).",
+         "niveau": "CP"
         },
         {
-          "id": "EMC.EN",
-          "titre": "L'engagement : agir collectivement",
-          "competencesGenerales": [
-            {
-              "id": "EMC.EN.CG1",
-              "titre": "S'engager dans la vie de la classe et de l'école",
-              "competences": [
-                { "id": "c2_emc_en_001", "texte": "Participer aux instances de la vie collective (conseil de classe)" },
-                { "id": "c2_emc_en_002", "texte": "S'engager dans des projets collectifs ou de solidarité" },
-                { "id": "c2_emc_en_003", "texte": "Adopter un comportement responsable envers l'environnement" }
-              ]
-            }
-          ]
+         "id": "c2.FR.4.1.ce1.01",
+         "texte": "Enrichir les répertoires constitués au CP en y ajoutant notamment des expressions ou locutions.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.4.1.ce1.02",
+         "texte": "Automatiser l’utilisation de différentes formulations, associées à un même réseau, en contexte.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.4.1.ce1.03",
+         "texte": "S’appuyer sur la morphologie des mots pour en trouver le sens.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.4.1.ce1.04",
+         "texte": "Prendre l’habitude de consulter des articles de dictionnaire adapté.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.4.1.ce2.01",
+         "texte": "Enrichir les répertoires constitués au CP et au CE1 en y ajoutant notamment des expressions ou des locutions.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.4.1.ce2.02",
+         "texte": "Automatiser l’utilisation de différentes formulations, associées à un réseau, en contexte.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.4.1.ce2.03",
+         "texte": "Comprendre le lien sémantique entre sens propre et sens figuré dans les cas les plus fréquents.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.4.1.ce2.04",
+         "texte": "S’appuyer sur la morphologie des mots pour en trouver le sens.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.4.1.ce2.05",
+         "texte": "Consulter avec aisance des articles de dictionnaire adapté pour y vérifier le sens supposé de mots rencontrés.",
+         "niveau": "CE2"
         }
-      ]
+       ]
+      },
+      {
+       "id": "FR.SD4.CG2",
+       "titre": "Établir des relations entre les mots",
+       "competences": [
+        {
+         "id": "c2.FR.4.2.cp.01",
+         "texte": "Constituer des répertoires de mots par thème, par classe grammaticale, par famille de mots, par analogies morphologiques.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.4.2.cp.02",
+         "texte": "Savoir proposer et justifier une catégorisation du corpus de mots étudié.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.4.2.cp.03",
+         "texte": "Savoir trouver des synonymes et des antonymes.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.4.2.ce1.01",
+         "texte": "Percevoir de grandes catégories et hiérarchiser les termes génériques, de base et spécifiques.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.4.2.ce1.02",
+         "texte": "Percevoir les niveaux de langue familier, courant et soutenu.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.4.2.ce1.03",
+         "texte": "Comprendre la différence entre sens propre/sens figuré.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.4.2.ce1.04",
+         "texte": "Trier et apparier les mots et leurs dérivés en fonction des préfixes et suffixes identifiés.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.4.2.ce2.01",
+         "texte": "Enrichir les collections constituées au début du cycle avec des mots, des expressions et des associations fréquentes.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.4.2.ce2.02",
+         "texte": "Percevoir de grandes catégories et hiérarchiser les termes génériques de base et spécifiques.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.4.2.ce2.03",
+         "texte": "Savoir utiliser les niveaux de langue (familier, courant et soutenu) en fonction des situations et des interlocuteurs.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.4.2.ce2.04",
+         "texte": "Se constituer un répertoire lexical personnel qui pourra forger l’autonomie visée au cycle 3.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.4.2.ce2.05",
+         "texte": "Trier et apparier des mots et leurs dérivés en fonction des préfixes et suffixes identifiés.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "FR.SD4.CG3",
+       "titre": "Réemployer le vocabulaire étudié",
+       "competences": [
+        {
+         "id": "c2.FR.4.3.cp.01",
+         "texte": "Réemployer et mémoriser le vocabulaire appris en maternelle.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.4.3.cp.02",
+         "texte": "Réemployer et mémoriser les expressions et les mots appris en fonction de contraintes de production orale ou écrite.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.4.3.cp.03",
+         "texte": "Percevoir la différence entre deux niveaux de langue et choisir le plus adapté à la situation.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.4.3.ce1.01",
+         "texte": "Mobiliser les mots rencontrés en contexte en fonction des lectures et des activités conduites pour mieux parler, mieux comprendre et mieux écrire.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.4.3.ce1.02",
+         "texte": "Utiliser les relations établies entre les mots depuis le cycle 1 (champ lexical, classe grammaticale, morphologie, niveau de langue) pour varier et adapter son expression.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.4.3.ce2.01",
+         "texte": "Employer à bon escient et rigoureusement les mots étudiés, en référence à leur contexte d’emploi et leur éventuelle polysémie.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.4.3.ce2.02",
+         "texte": "Comprendre la différence entre sens propre/sens figuré.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.4.3.ce2.03",
+         "texte": "Changer de niveau de langue selon les situations.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.4.3.ce2.04",
+         "texte": "Automatiser la restitution des mots d’un corpus étudié (fluence verbale).",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "FR.SD4.CG4",
+       "titre": "Mémoriser l’orthographe des mots",
+       "competences": [
+        {
+         "id": "c2.FR.4.4.cp.01",
+         "texte": "Mémoriser l’orthographe des mots réguliers fréquemment rencontrés et du lexique le plus couramment employé et pouvoir les écrire sous la dictée, en lien avec les correspondances graphophonémiques (CGP) étudiées.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.4.4.cp.02",
+         "texte": "Identifier et nommer les accents.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.4.4.cp.03",
+         "texte": "Connaitre la valeur sonore de certaines lettres (s – c – g) et la composition de certains graphèmes selon la lettre qui suit (an/am, en/em, on/om, in/im), en fonction du contexte et dans des mots fréquemment rencontrés.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.4.4.cp.04",
+         "texte": "Être capable de comprendre la présence d’une lettre muette finale à l’aide d’un mot de la même famille : chat/chaton, gros/grossir, etc.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.4.4.ce1.01",
+         "texte": "Mémoriser l’orthographe des mots réguliers et irréguliers fréquemment rencontrés et du lexique le plus couramment employé.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.4.4.ce1.02",
+         "texte": "Tenir compte des accents.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.4.4.ce1.03",
+         "texte": "Classer par analogie et mémoriser les mots les plus fréquents comportant des graphèmes à prononciation variable : s prononcé –ss ou –z, c prononcé –ss ou –k, g prononcé –j ou –g.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.4.4.ce1.04",
+         "texte": "Être capable d’anticiper une lettre muette finale à l’aide d’un mot de la même famille : blanc/blanche, sang/sanguin, etc.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.4.4.ce2.01",
+         "texte": "Écrire correctement sous la dictée les mots réguliers et irréguliers fréquemment rencontrés.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.4.4.ce2.02",
+         "texte": "Tenir compte des accents.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.4.4.ce2.03",
+         "texte": "S’appuyer sur des critères morphologiques (radical, préfixe et suffixe) et analogiques pour orthographier correctement les mots.",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
     },
     {
-      "id": "EA",
-      "titre": "Enseignements artistiques",
-      "sousDomaines": [
+     "id": "FR.SD5",
+     "titre": "Grammaire et orthographe",
+     "competencesGenerales": [
+      {
+       "id": "FR.SD5.CG1",
+       "titre": "Se repérer dans la phrase simple",
+       "competences": [
         {
-          "id": "EA.AP",
-          "titre": "Arts plastiques",
-          "competencesGenerales": [
-            {
-              "id": "EA.AP.CG1",
-              "titre": "Expérimenter, produire, créer",
-              "competences": [
-                { "id": "c2_ea_ap_001", "texte": "Explorer des techniques plastiques variées (dessin, peinture, collage, modelage)" },
-                { "id": "c2_ea_ap_002", "texte": "Réaliser des productions plastiques à partir de consignes données" },
-                { "id": "c2_ea_ap_003", "texte": "Exprimer ses choix et ses intentions dans ses réalisations" }
-              ]
-            },
-            {
-              "id": "EA.AP.CG2",
-              "titre": "S'exprimer, analyser sa pratique",
-              "competences": [
-                { "id": "c2_ea_ap_004", "texte": "Décrire et commenter une œuvre d'art avec un vocabulaire adapté" },
-                { "id": "c2_ea_ap_005", "texte": "Identifier quelques œuvres du patrimoine artistique" },
-                { "id": "c2_ea_ap_006", "texte": "Établir des liens entre une production personnelle et des références artistiques" }
-              ]
-            }
-          ]
+         "id": "c2.FR.5.1.cp.01",
+         "texte": "S’approprier progressivement la notion de phrase simple et ses trois marqueurs essentiels : majuscule initiale, ponctuation finale forte et sens.",
+         "niveau": "CP"
         },
         {
-          "id": "EA.EM",
-          "titre": "Éducation musicale",
-          "competencesGenerales": [
-            {
-              "id": "EA.EM.CG1",
-              "titre": "Chanter et pratiquer",
-              "competences": [
-                { "id": "c2_ea_em_001", "texte": "Chanter en chœur avec justesse et respect du rythme" },
-                { "id": "c2_ea_em_002", "texte": "Mémoriser des chants appris en classe (répertoire varié)" },
-                { "id": "c2_ea_em_003", "texte": "Pratiquer des jeux rythmiques et corporels" }
-              ]
-            },
-            {
-              "id": "EA.EM.CG2",
-              "titre": "Écouter, comparer, commenter",
-              "competences": [
-                { "id": "c2_ea_em_004", "texte": "Écouter des œuvres musicales variées et en parler" },
-                { "id": "c2_ea_em_005", "texte": "Identifier des instruments ou des familles d'instruments dans une œuvre" },
-                { "id": "c2_ea_em_006", "texte": "Repérer des éléments musicaux (tempo, nuances, hauteur, timbre)" }
-              ]
-            }
-          ]
+         "id": "c2.FR.5.1.cp.02",
+         "texte": "Comprendre que certains éléments (sujet/verbe et déterminants/noms/adjectifs) fonctionnent ensemble et constituent un système.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.5.1.cp.03",
+         "texte": "S’appuyer sur la ponctuation pour reconnaitre les trois types de phrases (déclarative, interrogative et impérative).",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.5.1.cp.04",
+         "texte": "Reconnaitre les formes négative et exclamative.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.5.1.cp.05",
+         "texte": "Constituer des corpus par classe de mots : noms, verbes, déterminants, adjectifs, pronoms personnels.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.5.1.ce1.01",
+         "texte": "Identifier la phrase simple, en distinguer les principaux constituants et les nommer : groupe sujet (GS), verbe et compléments sans distinguer ces derniers entre eux.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.5.1.ce1.02",
+         "texte": "Reconnaitre et utiliser les trois types de phrases, en lien avec la ponctuation : déclarative, interrogative et impérative.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.5.1.ce1.03",
+         "texte": "Reconnaitre les formes négatives et exclamatives et savoir effectuer des transformations.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.5.1.ce1.04",
+         "texte": "Différencier et nommer les principales classes de mots : le déterminant, le nom commun, le nom propre, l’adjectif, le verbe, le pronom personnel sujet.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.5.1.ce2.01",
+         "texte": "Identifier la phrase simple et reconnaitre ses principaux constituants : le groupe sujet, le verbe et les compléments sans distinguer ces derniers entre eux.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.5.1.ce2.02",
+         "texte": "Reconnaitre et produire les trois types de phrases : déclarative, interrogative et impérative.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.5.1.ce2.03",
+         "texte": "Reconnaitre et produire les formes négative et exclamative.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.5.1.ce2.04",
+         "texte": "Différencier et nommer les principales classes de mots : le déterminant, le nom commun, le nom propre, l’adjectif, le verbe, le pronom personnel sujet et l’adverbe.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.5.1.ce2.05",
+         "texte": "Utiliser la ponctuation de fin de phrase (. ! ?) et reconnaitre les marques du discours rapporté (« … »).",
+         "niveau": "CE2"
         }
-      ]
-    },
-    {
-      "id": "EPS",
-      "titre": "Éducation physique et sportive",
-      "sousDomaines": [
+       ]
+      },
+      {
+       "id": "FR.SD5.CG2",
+       "titre": "Découvrir, comprendre et mettre en œuvre l’orthographe grammaticale",
+       "competences": [
         {
-          "id": "EPS.MO",
-          "titre": "Développer sa motricité",
-          "competencesGenerales": [
-            {
-              "id": "EPS.MO.CG1",
-              "titre": "Maîtriser son corps dans des activités variées",
-              "competences": [
-                { "id": "c2_eps_mo_001", "texte": "Courir, sauter, lancer avec efficacité et en sécurité" },
-                { "id": "c2_eps_mo_002", "texte": "S'exprimer corporellement (danse, expression scénique)" },
-                { "id": "c2_eps_mo_003", "texte": "Adapter ses déplacements à des contraintes variées (natation, escalade, équilibre)" },
-                { "id": "c2_eps_mo_004", "texte": "Mobiliser sa motricité pour des activités d'opposition (jeux de lutte, jeux collectifs)" }
-              ]
-            }
-          ]
+         "id": "c2.FR.5.2.cp.01",
+         "texte": "Comprendre les notions de masculin et de féminin.",
+         "niveau": "CP"
         },
         {
-          "id": "EPS.AP",
-          "titre": "S'approprier par la pratique",
-          "competencesGenerales": [
-            {
-              "id": "EPS.AP.CG1",
-              "titre": "Apprendre à s'entraîner et à progresser",
-              "competences": [
-                { "id": "c2_eps_ap_001", "texte": "Identifier ses ressources et ses progrès en EPS" },
-                { "id": "c2_eps_ap_002", "texte": "Se fixer des objectifs simples et chercher à les atteindre" },
-                { "id": "c2_eps_ap_003", "texte": "Reconnaître et mémoriser des règles d'un jeu ou d'une APSA" }
-              ]
-            }
-          ]
+         "id": "c2.FR.5.2.cp.02",
+         "texte": "Comprendre les notions de singulier et de pluriel (plusieurs, plus qu’un).",
+         "niveau": "CP"
         },
         {
-          "id": "EPS.RE",
-          "titre": "Partager des règles et assumer des rôles",
-          "competencesGenerales": [
-            {
-              "id": "EPS.RE.CG1",
-              "titre": "Coopérer et respecter les règles",
-              "competences": [
-                { "id": "c2_eps_re_001", "texte": "Respecter les règles d'un jeu collectif ou d'une activité sportive" },
-                { "id": "c2_eps_re_002", "texte": "Assumer des rôles variés : joueur, arbitre, observateur" },
-                { "id": "c2_eps_re_003", "texte": "Coopérer avec ses partenaires pour atteindre un but commun" }
-              ]
-            }
-          ]
+         "id": "c2.FR.5.2.cp.03",
+         "texte": "Se familiariser avec la notion de « chaine d’accords » (déterminant/nom/adjectif) en repérant et en identifiant les régularités des marques de genre et de nombre.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.5.2.cp.04",
+         "texte": "S’initier à l’identification de la relation sujet-verbe à partir du sens et de l’observation des effets des transformations liées aux temps et aux personnes.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.5.2.cp.05",
+         "texte": "Observer les différentes formes verbales fréquentes et régulières.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.5.2.cp.06",
+         "texte": "Apprendre à conjuguer être et avoir au présent de l’indicatif et commencer à les mobiliser à l’écrit.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.FR.5.2.ce1.01",
+         "texte": "Reconnaitre le GN (déterminant/nom/adjectif) et, en écoutant des transformations de phrases à l’oral puis en les observant à l’écrit, comprendre le lien entre le déterminant, le nom et l’adjectif dans la « chaine d’accords ».",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.5.2.ce1.02",
+         "texte": "Identifier la relation sujet-verbe à partir de l’observation des effets des transformations liées au changement de temps et de personne dans des situations simples (groupe sujet + verbe).",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.5.2.ce1.03",
+         "texte": "Identifier le radical et la terminaison d’un verbe du premier groupe conjugué et trouver son infinitif.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.5.2.ce1.04",
+         "texte": "Apprendre à conjuguer au présent, à l’imparfait, au futur puis au passé composé de l’indicatif être et avoir et les verbes du premier groupe.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.FR.5.2.ce2.01",
+         "texte": "Repérer, comprendre et mettre en œuvre les marques d’accord au sein du groupe nominal.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.5.2.ce2.02",
+         "texte": "Identifier, dans des situations simples, la relation sujet-verbe.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.5.2.ce2.03",
+         "texte": "Apprendre à conjuguer au présent, à l’imparfait, au futur et au passé composé de l’indicatif être et avoir, les verbes du premier groupe et les verbes irréguliers du 3e groupe (faire, aller, dire, venir, pouvoir, voir, vouloir, prendre).",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.FR.5.2.ce2.04",
+         "texte": "Identifier le radical et la terminaison d’un verbe conjugué au programme et trouver son infinitif.",
+         "niveau": "CE2"
         }
-      ]
-    },
-    {
-      "id": "LVE",
-      "titre": "Langues vivantes étrangères ou régionales",
-      "sousDomaines": [
-        {
-          "id": "LVE.OR",
-          "titre": "Activités orales (réception et production)",
-          "competencesGenerales": [
-            {
-              "id": "LVE.OR.CG1",
-              "titre": "Comprendre l'oral (niveau A1)",
-              "competences": [
-                { "id": "c2_lve_or_001", "texte": "Comprendre des mots familiers et des expressions très courantes" },
-                { "id": "c2_lve_or_002", "texte": "Identifier des éléments connus dans une comptine ou une chanson" },
-                { "id": "c2_lve_or_003", "texte": "Comprendre des instructions simples données en classe dans la langue étudiée" }
-              ]
-            },
-            {
-              "id": "LVE.OR.CG2",
-              "titre": "Parler en continu et dialoguer (niveau A1)",
-              "competences": [
-                { "id": "c2_lve_or_004", "texte": "Reproduire des comptines, des dialogues courts après écoute" },
-                { "id": "c2_lve_or_005", "texte": "Se présenter et répondre à des questions simples sur soi" },
-                { "id": "c2_lve_or_006", "texte": "Utiliser des expressions mémorisées pour communiquer dans la classe" }
-              ]
-            }
-          ]
-        },
-        {
-          "id": "LVE.EC",
-          "titre": "Activités écrites (premier contact)",
-          "competencesGenerales": [
-            {
-              "id": "LVE.EC.CG1",
-              "titre": "Lire et écrire en langue étrangère",
-              "competences": [
-                { "id": "c2_lve_ec_001", "texte": "Lire et comprendre des mots ou des phrases très courtes" },
-                { "id": "c2_lve_ec_002", "texte": "Copier des mots ou des phrases courtes appris à l'oral" },
-                { "id": "c2_lve_ec_003", "texte": "Établir des correspondances grapho-phonémiques simples de la langue étudiée" }
-              ]
-            }
-          ]
-        }
-      ]
+       ]
+      }
+     ]
     }
-  ]
+   ]
+  },
+  {
+   "id": "MA",
+   "titre": "Mathématiques",
+   "sousDomaines": [
+    {
+     "id": "MA.SD1",
+     "titre": "Nombres, calcul et résolution de problèmes",
+     "competencesGenerales": [
+      {
+       "id": "MA.SD1.CG1",
+       "titre": "Les nombres entiers",
+       "competences": [
+        {
+         "id": "c2.MA.1.1.cp.01",
+         "texte": "Comparer et dénombrer des collections en les organisant.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.1.cp.02",
+         "texte": "Construire des collections de cardinal donné.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.1.cp.03",
+         "texte": "Connaitre la suite écrite et la suite orale des nombres jusqu’à cent.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.1.cp.04",
+         "texte": "Connaitre et utiliser diverses représentations d’un nombre et passer de l’une à l’autre.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.1.cp.05",
+         "texte": "Connaitre la valeur des chiffres en fonction de leur position (unités, dizaines).",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.1.cp.06",
+         "texte": "Comparer, encadrer, intercaler des nombres entiers en utilisant les symboles =, < et >.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.1.cp.07",
+         "texte": "Ordonner des nombres dans l’ordre croissant ou décroissant.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.1.cp.08",
+         "texte": "Savoir placer des nombres sur une demi-droite graduée de un en un.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.1.cp.09",
+         "texte": "Connaitre les nombres ordinaux jusqu’à « vingtième ».",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.1.cp.10",
+         "texte": "Comprendre et utiliser les nombres ordinaux.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.1.cp.11",
+         "texte": "Repérer un rang ou une position dans une file orientée ou dans une liste d’objets ou de personnes.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.1.cp.12",
+         "texte": "Faire le lien entre le rang d’un objet dans une liste et le nombre d’éléments qui le précèdent.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.1.cp.13",
+         "texte": "Utiliser les nombres ordinaux dans le cadre de l’étude de suites de symboles, de formes, de lettres ou de nombres.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.1.ce1.01",
+         "texte": "Dénombrer des collections en les organisant.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.1.ce1.02",
+         "texte": "Construire des collections de cardinal donné.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.1.ce1.03",
+         "texte": "Connaitre et utiliser la relation entre unités et dizaines, entre dizaines et centaines, entre unités et centaines.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.1.ce1.04",
+         "texte": "Connaitre la suite écrite et la suite orale des nombres jusqu’à mille.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.1.ce1.05",
+         "texte": "Connaitre et utiliser diverses représentations d’un nombre et passer de l’une à l’autre.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.1.ce1.06",
+         "texte": "Connaitre la valeur des chiffres en fonction de leur position dans un nombre.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.1.ce1.07",
+         "texte": "Comparer, encadrer, intercaler des nombres entiers en utilisant les symboles (=, <, >).",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.1.ce1.08",
+         "texte": "Ordonner des nombres dans l’ordre croissant ou décroissant.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.1.ce1.09",
+         "texte": "Comprendre et savoir utiliser les expressions « égal à », « supérieur à », « inférieur à », « compris entre … et … ».",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.1.ce1.10",
+         "texte": "Savoir placer des nombres sur une demi-droite graduée.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.1.ce1.11",
+         "texte": "Connaitre les nombres ordinaux jusqu’à cent.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.1.ce1.12",
+         "texte": "Comprendre et utiliser les nombres ordinaux.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.1.ce1.13",
+         "texte": "Repérer un rang ou une position dans une file orientée ou dans une liste d’objets ou de personnes.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.1.ce1.14",
+         "texte": "Faire le lien entre le rang d’un objet dans une liste et le nombre d’éléments qui le précèdent.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.1.ce1.15",
+         "texte": "Utiliser les nombres ordinaux dans le cadre de suite de symboles, de lettres ou de nombres.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.1.ce2.01",
+         "texte": "Dénombrer des collections.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.1.ce2.02",
+         "texte": "Construire des collections de cardinal donné.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.1.ce2.03",
+         "texte": "Connaitre et utiliser les relations entre les unités de numération.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.1.ce2.04",
+         "texte": "Connaitre la suite écrite et la suite orale des nombres jusqu’à dix-mille.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.1.ce2.05",
+         "texte": "Connaitre et utiliser diverses représentations d’un nombre et passer de l’une à l’autre.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.1.ce2.06",
+         "texte": "Connaitre la valeur des chiffres en fonction de leur position dans un nombre.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.1.ce2.07",
+         "texte": "Comparer, encadrer, intercaler des nombres entiers en utilisant les symboles (=, <, >).",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.1.ce2.08",
+         "texte": "Ordonner des nombres dans l’ordre croissant ou décroissant.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.1.ce2.09",
+         "texte": "Comprendre et savoir utiliser les expressions « égal à », « supérieur à », « inférieur à », « compris entre … et … ».",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.1.ce2.10",
+         "texte": "Savoir placer des nombres sur une demi-droite graduée.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "MA.SD1.CG2",
+       "titre": "Les quatre opérations",
+       "competences": [
+        {
+         "id": "c2.MA.1.2.cp.01",
+         "texte": "Comprendre le sens de l’addition et de la soustraction.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.2.cp.02",
+         "texte": "Comprendre et utiliser les symboles « + », « - » et « = ».",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.2.cp.03",
+         "texte": "Poser et effectuer des additions en colonnes.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.2.cp.04",
+         "texte": "Comprendre le sens de la multiplication.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.2.ce1.01",
+         "texte": "Poser et effectuer des additions et des soustractions en colonnes.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.2.ce1.02",
+         "texte": "Comprendre et utiliser le symbole « × ».",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.2.ce1.03",
+         "texte": "Comprendre et savoir que la multiplication est commutative.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.2.ce1.04",
+         "texte": "Connaitre la notion de parité d’un nombre.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.2.ce2.01",
+         "texte": "Comprendre et utiliser les mots « terme », « somme » et « différence ».",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.2.ce2.02",
+         "texte": "Poser et effectuer des additions et des soustractions en colonnes.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.2.ce2.03",
+         "texte": "Comprendre et utiliser les mots « facteur », « produit » et « multiple ».",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.2.ce2.04",
+         "texte": "Comprendre le sens de la division et utiliser le symbole « ÷ ».",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.2.ce2.05",
+         "texte": "Poser et effectuer des multiplications d’un nombre à deux ou trois chiffres par un nombre à un ou deux chiffres.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "MA.SD1.CG3",
+       "titre": "Le calcul mental : mémoriser des faits numériques",
+       "competences": [
+        {
+         "id": "c2.MA.1.3.cp.01",
+         "texte": "Connaitre dans les deux sens les tables d’addition.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.3.cp.02",
+         "texte": "Connaitre les doubles et les moitiés de nombres usuels.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.3.ce1.01",
+         "texte": "Connaitre dans les deux sens les tables d’addition.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.3.ce1.02",
+         "texte": "Connaitre dans les deux sens les tables de multiplication.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.3.ce1.03",
+         "texte": "Connaitre des faits multiplicatifs usuels.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.3.ce2.01",
+         "texte": "Connaitre dans les deux sens les tables d’addition.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.3.ce2.02",
+         "texte": "Connaitre dans les deux sens les tables de multiplication.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.3.ce2.03",
+         "texte": "Connaitre des faits multiplicatifs usuels.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "MA.SD1.CG4",
+       "titre": "Le calcul mental : utiliser ses connaissances en numération pour calculer mentalement",
+       "competences": [
+        {
+         "id": "c2.MA.1.4.cp.01",
+         "texte": "Ajouter ou soustraire 1 ou 2 à un nombre.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.4.cp.02",
+         "texte": "Ajouter ou soustraire 10 à un nombre.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.4.cp.03",
+         "texte": "Ajouter ou soustraire 20, 30, 40, 50, 60, 70, 80 ou 90 à un nombre.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.4.ce1.01",
+         "texte": "Ajouter ou soustraire un nombre entier de dizaines à un nombre. Ajouter ou soustraire un nombre entier de centaines à un nombre.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.4.ce1.02",
+         "texte": "Multiplier par 10 un nombre inférieur à 100.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.4.ce2.01",
+         "texte": "Multiplier un nombre entier par 10 ou 100.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "MA.SD1.CG5",
+       "titre": "Le calcul mental : apprendre des procédures de calcul mental",
+       "competences": [
+        {
+         "id": "c2.MA.1.5.cp.01",
+         "texte": "Trouver le complément d’un nombre à la dizaine supérieure.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.5.cp.02",
+         "texte": "Ajouter un nombre inférieur à 9 à un nombre.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.5.cp.03",
+         "texte": "Ajouter 9 à un nombre.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.5.cp.04",
+         "texte": "Ajouter deux nombres inférieurs à 100.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.5.cp.05",
+         "texte": "Déterminer la moitié d’un nombre pair.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.5.cp.06",
+         "texte": "Soustraire un nombre inférieur à 10 à un nombre entier de dizaines.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.5.ce1.01",
+         "texte": "Ajouter 9, 19 ou 29 à un nombre.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.5.ce1.02",
+         "texte": "Soustraire 9 à un nombre.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.5.ce1.03",
+         "texte": "Soustraire un nombre inférieur à 9 à un nombre.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.5.ce1.04",
+         "texte": "Déterminer la moitié d’un nombre pair.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.5.ce1.05",
+         "texte": "Calculer le produit d’un nombre compris entre 11 et 19 par un nombre inférieur à 10 en décomposant le plus grand des deux facteurs en la somme de deux nombres (propriété de distributivité de la multiplication par rapport à l’addition).",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.5.ce2.01",
+         "texte": "Ajouter 8, 9, 18, 19, 28, 29, 38 ou 39 à un nombre.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.5.ce2.02",
+         "texte": "Soustraire 9, 19, 29 ou 39 à un nombre.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.5.ce2.03",
+         "texte": "Multiplier un nombre entier par 4 ou par 8.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.5.ce2.04",
+         "texte": "Multiplier un nombre inférieur à 10 par un nombre entier de dizaines.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.5.ce2.05",
+         "texte": "Calculer le produit d’un nombre compris entre 11 et 99 par un nombre inférieur à 10 en décomposant le plus grand des deux facteurs en la somme de deux nombres (propriété de distributivité de la multiplication par rapport à l’addition).",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "MA.SD1.CG6",
+       "titre": "La résolution de problèmes",
+       "competences": [
+        {
+         "id": "c2.MA.1.6.cp.01",
+         "texte": "Résoudre des problèmes additifs en une étape du type parties-tout.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.6.cp.02",
+         "texte": "Résoudre des problèmes additifs en deux étapes (champ numérique inférieur ou égal à 30).",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.6.cp.03",
+         "texte": "Résoudre des problèmes multiplicatifs en une étape (champ numérique inférieur ou égal à 30).",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.1.6.ce1.01",
+         "texte": "Résoudre des problèmes additifs en une étape de type parties-tout.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.6.ce1.02",
+         "texte": "Résoudre des problèmes additifs de comparaison en une étape.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.6.ce1.03",
+         "texte": "Résoudre des problèmes additifs en deux étapes.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.6.ce1.04",
+         "texte": "Résoudre des problèmes multiplicatifs en une étape.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.6.ce1.05",
+         "texte": "Résoudre des problèmes mixtes en deux étapes (une étape additive et une étape multiplicative).",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.6.ce2.01",
+         "texte": "Résoudre des problèmes additifs en une étape de types parties-tout et comparaison.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.6.ce2.02",
+         "texte": "Résoudre des problèmes additifs en deux étapes.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.6.ce2.03",
+         "texte": "Résoudre des problèmes multiplicatifs en une étape.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.6.ce2.04",
+         "texte": "Résoudre des problèmes mixtes en deux ou trois étapes.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.6.ce2.05",
+         "texte": "Résoudre des problèmes de comparaison multiplicative en une étape.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.6.ce2.06",
+         "texte": "Résoudre des problèmes mettant en jeu des produits cartésiens.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "MA.SD1.CG7",
+       "titre": "Les fractions",
+       "competences": [
+        {
+         "id": "c2.MA.1.7.ce1.01",
+         "texte": "Savoir interpréter, représenter, écrire et lire les fractions 1/2, 1/3, 1/4, 1/5, 1/6, 1/8 et 1/10.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.7.ce1.02",
+         "texte": "Savoir interpréter, représenter, écrire et lire des fractions inférieures ou égales à 1.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.7.ce1.03",
+         "texte": "Connaitre et utiliser les mots « dénominateur » et « numérateur ».",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.7.ce1.04",
+         "texte": "Comparer des fractions ayant le même dénominateur.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.7.ce1.05",
+         "texte": "Comparer des fractions dont le numérateur est 1.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.7.ce1.06",
+         "texte": "Additionner et soustraire des fractions de même dénominateur.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.1.7.ce2.01",
+         "texte": "Savoir établir des égalités de fractions inférieures ou égales à 1.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.7.ce2.02",
+         "texte": "Partager une unité de longueur en fractions d’unité et mesurer des longueurs non entières par rapport à cette unité.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.7.ce2.03",
+         "texte": "Comparer des fractions inférieures à 1.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.1.7.ce2.04",
+         "texte": "Additionner et soustraire des fractions.",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "MA.SD2",
+     "titre": "Grandeurs et mesures",
+     "competencesGenerales": [
+      {
+       "id": "MA.SD2.CG1",
+       "titre": "Les longueurs",
+       "competences": [
+        {
+         "id": "c2.MA.2.1.cp.01",
+         "texte": "Utiliser le lexique spécifique associé aux longueurs.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.2.1.cp.02",
+         "texte": "Comparer des objets selon leur longueur.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.2.1.cp.03",
+         "texte": "Comparer des segments selon leur longueur.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.2.1.cp.04",
+         "texte": "Savoir mesurer la longueur d’un segment en utilisant une règle graduée.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.2.1.cp.05",
+         "texte": "Connaitre et utiliser les unités mètre et centimètre et les symboles associés (m et cm).",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.2.1.cp.06",
+         "texte": "Connaitre quelques longueurs de référence.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.2.1.cp.07",
+         "texte": "Savoir qu’un mètre est égal à cent centimètres.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.2.1.ce1.01",
+         "texte": "Connaitre et utiliser les unités mètre, centimètre, kilomètre et les symboles associés (m, cm et km).",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.1.ce1.02",
+         "texte": "Choisir l’unité la mieux adaptée pour exprimer une longueur.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.1.ce1.03",
+         "texte": "Connaitre les relations entre les unités de longueur usuelles.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.1.ce1.04",
+         "texte": "Savoir mesurer la longueur d’un segment en utilisant une règle graduée.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.1.ce1.05",
+         "texte": "Comparer des longueurs.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.1.ce1.06",
+         "texte": "Connaitre quelques longueurs de référence.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.1.ce1.07",
+         "texte": "Estimer la longueur d’un objet du quotidien.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.1.ce2.01",
+         "texte": "Connaitre et utiliser les unités mètre, décimètre, centimètre, millimètre, kilomètre et les symboles associés (m, dm, cm, mm, km).",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.1.ce2.02",
+         "texte": "Connaitre les relations entre les unités de longueur.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.1.ce2.03",
+         "texte": "Choisir l’unité la mieux adaptée pour exprimer une longueur.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.1.ce2.04",
+         "texte": "Comparer des longueurs.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.1.ce2.05",
+         "texte": "Tracer un segment de longueur donnée.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.1.ce2.06",
+         "texte": "Disposer de quelques longueurs de référence.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.1.ce2.07",
+         "texte": "Estimer la longueur d’un objet ou une distance.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.1.ce2.08",
+         "texte": "Savoir ce qu’est le périmètre d’une figure plane.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.1.ce2.09",
+         "texte": "Comparer le périmètre de plusieurs polygones sans règle graduée, en utilisant un compas.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.1.ce2.10",
+         "texte": "Déterminer le périmètre d’un polygone en utilisant une règle graduée.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "MA.SD2.CG2",
+       "titre": "Les masses",
+       "competences": [
+        {
+         "id": "c2.MA.2.2.cp.01",
+         "texte": "Utiliser le lexique associé aux masses.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.2.2.cp.02",
+         "texte": "Comparer des objets selon leur masse.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.2.2.ce1.01",
+         "texte": "Savoir identifier l’objet le plus léger (ou le plus lourd) parmi deux ou trois objets de volumes proches en les soupesant ou en utilisant une balance pour les peser.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.2.ce1.02",
+         "texte": "Connaitre et utiliser les unités gramme et kilogramme et les symboles associés (g, kg).",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.2.ce1.03",
+         "texte": "Savoir que 1 kg est égal à 1 000 g.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.2.ce1.04",
+         "texte": "Comparer des masses.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.2.ce1.05",
+         "texte": "Disposer de quelques masses de référence. Estimer la masse d’objets du quotidien en gramme ou en kilogramme.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.2.ce2.01",
+         "texte": "Connaitre et utiliser les unités gramme, kilogramme et tonne et les symboles associés (g, kg, t).",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.2.ce2.02",
+         "texte": "Choisir l’unité la mieux adaptée pour exprimer une masse.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.2.ce2.03",
+         "texte": "Connaitre les relations entre les unités de masse usuelles.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.2.ce2.04",
+         "texte": "Comparer des masses.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.2.ce2.05",
+         "texte": "Disposer de quelques masses de référence.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.2.ce2.06",
+         "texte": "Estimer la masse d’un objet.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "MA.SD2.CG3",
+       "titre": "La monnaie",
+       "competences": [
+        {
+         "id": "c2.MA.2.3.cp.01",
+         "texte": "Utiliser le lexique spécifique lié à la monnaie.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.2.3.cp.02",
+         "texte": "Comparer les valeurs de deux ensembles constitués de pièces de monnaie ou de deux ensembles constitués de pièces et de billets.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.2.3.cp.03",
+         "texte": "Déterminer la valeur en euro d’un ensemble constitué de pièces et de billets.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.2.3.cp.04",
+         "texte": "Constituer une somme d’argent donnée avec des pièces et des billets.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.2.3.cp.05",
+         "texte": "Simuler des achats en manipulant des pièces et des billets fictifs. Rendre la monnaie.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.2.3.ce1.01",
+         "texte": "Connaitre le lien entre les euros et les centimes.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.3.ce1.02",
+         "texte": "Comparer les valeurs en euro de deux ensembles constitués de pièces et de billets.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.3.ce1.03",
+         "texte": "Déterminer la valeur en euro et centime d’euro d’un ensemble constitué de pièces et de billets.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.3.ce1.04",
+         "texte": "Constituer avec des euros et des centimes d’euro une somme d’argent d’une valeur donnée.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.3.ce1.05",
+         "texte": "Simuler des achats en manipulant des pièces et des billets fictifs. Rendre la monnaie.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.3.ce1.06",
+         "texte": "Connaitre le sens de l’écriture à virgule d’une somme d’argent.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.3.ce2.01",
+         "texte": "Simuler des achats en manipulant des pièces et des billets fictifs. Rendre la monnaie.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.3.ce2.02",
+         "texte": "Poser et effectuer des additions de montants en euro.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.3.ce2.03",
+         "texte": "Poser et effectuer des soustractions de montants en euro.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "MA.SD2.CG4",
+       "titre": "Le repérage dans le temps",
+       "competences": [
+        {
+         "id": "c2.MA.2.4.cp.01",
+         "texte": "Lire sur une horloge à aiguilles une heure donnée en heures entières.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.2.4.cp.02",
+         "texte": "Positionner les aiguilles d’une horloge correspondant à une heure donnée (uniquement des heures entières inférieures ou égales à douze).",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.2.4.cp.03",
+         "texte": "Associer une heure à un moment de la journée.",
+         "niveau": "CP"
+        }
+       ]
+      },
+      {
+       "id": "MA.SD2.CG5",
+       "titre": "Le repérage dans le temps et les durées",
+       "competences": [
+        {
+         "id": "c2.MA.2.5.ce1.01",
+         "texte": "Lire l’heure sur une horloge à aiguilles (lorsque l’heure est donnée en heures entières, en heures et demi-heure ou en heures et quarts d’heure).",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.5.ce1.02",
+         "texte": "Positionner les aiguilles d’une horloge correspondant à une heure donnée en heures entières, en heures et demi-heure ou en heures et quart d’heure.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.5.ce1.03",
+         "texte": "Connaitre, utiliser et distinguer les heures du matin et celles de l’après-midi.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.5.ce1.04",
+         "texte": "Connaitre les unités de mesure de durée, heure et minute, et les symboles associés (h et min).",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.5.ce1.05",
+         "texte": "Comparer et mesurer des durées écoulées entre deux instants affichés sur une horloge (pour des intervalles de temps situés dans une même journée, avec des heures données en heures entières, en heures et demi-heure ou en heures et quarts d’heure).",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.2.5.ce2.01",
+         "texte": "Lire l’heure sur une horloge à aiguilles.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.5.ce2.02",
+         "texte": "Positionner les aiguilles d’une horloge correspondant à une heure donnée en heures entières ou en heures et minutes.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.5.ce2.03",
+         "texte": "Comparer et mesurer des durées écoulées entre deux instants affichés sur une horloge (pour des intervalles de temps situés dans une même journée).",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.5.ce2.04",
+         "texte": "Résoudre des problèmes à une ou deux étapes impliquant des durées.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "MA.SD2.CG6",
+       "titre": "Les contenances",
+       "competences": [
+        {
+         "id": "c2.MA.2.6.ce2.01",
+         "texte": "Comparer les contenances de différents objets.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.6.ce2.02",
+         "texte": "Connaitre et utiliser les unités litre, décilitre et centilitre et les symboles associés (L, dL et cL).",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.2.6.ce2.03",
+         "texte": "Savoir que 1 L est égal à 10 dL et également à 100 cL.",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "MA.SD3",
+     "titre": "Espace et géométrie",
+     "competencesGenerales": [
+      {
+       "id": "MA.SD3.CG1",
+       "titre": "Les solides",
+       "competences": [
+        {
+         "id": "c2.MA.3.1.cp.01",
+         "texte": "Reconnaitre les solides usuels suivants : cube, boule, cône, cylindre, pavé.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.1.cp.02",
+         "texte": "Nommer un cube, un pavé et une boule.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.1.cp.03",
+         "texte": "Décrire un cube ou un pavé en utilisant le terme « face ». Connaitre le nombre et la nature des faces d’un cube et d’un pavé.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.1.cp.04",
+         "texte": "Construire des cubes et des pavés.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.1.ce1.01",
+         "texte": "Reconnaitre les solides usuels suivants : cube, boule, cône, pyramide, cylindre, pavé.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.3.1.ce1.02",
+         "texte": "Nommer un cube, une boule, un pavé, un cône ou une pyramide.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.3.1.ce1.03",
+         "texte": "Décrire un cube, un pavé ou une pyramide en utilisant les termes « face », « sommet » et « arête ».",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.3.1.ce1.04",
+         "texte": "Connaitre le nombre et la nature des faces d’un cube ou d’un pavé.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.3.1.ce1.05",
+         "texte": "Construire un cube, un pavé droit ou une pyramide.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.3.1.ce2.01",
+         "texte": "Nommer un cube, une boule, un pavé, un cône, une pyramide ou un cylindre.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.3.1.ce2.02",
+         "texte": "Décrire un cube, un pavé ou une pyramide en utilisant les termes « face », « sommet » et « arête ».",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.3.1.ce2.03",
+         "texte": "Connaitre le nombre et la nature des faces d’un cube ou d’un pavé.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.3.1.ce2.04",
+         "texte": "Connaitre la nature des faces d’une pyramide.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.3.1.ce2.05",
+         "texte": "Construire un cube, un pavé ou une pyramide.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.3.1.ce2.06",
+         "texte": "Construire un cube à partir d’un patron.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "MA.SD3.CG2",
+       "titre": "La géométrie plane",
+       "competences": [
+        {
+         "id": "c2.MA.3.2.cp.01",
+         "texte": "Reconnaitre des formes planes (disque, carré, rectangle et triangle) dans un assemblage et dans son environnement proche.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.2.cp.02",
+         "texte": "Nommer le disque, le carré, le rectangle et le triangle.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.2.cp.03",
+         "texte": "Donner une première description du carré, du rectangle, du triangle en utilisant les termes « sommet » et « côté ».",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.2.cp.04",
+         "texte": "Repérer visuellement des alignements.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.2.cp.05",
+         "texte": "Utiliser la règle pour repérer ou vérifier des alignements.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.2.cp.06",
+         "texte": "Utiliser la règle comme instrument de tracé.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.2.cp.07",
+         "texte": "Construire un carré, un rectangle, un triangle ou un assemblage de ces figures sur du papier quadrillé ou pointé.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.2.ce1.01",
+         "texte": "Utiliser le vocabulaire géométrique approprié.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.3.2.ce1.02",
+         "texte": "Reconnaitre, nommer et décrire un cercle, un carré, un rectangle, un triangle, un triangle rectangle en utilisant le vocabulaire approprié.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.3.2.ce1.03",
+         "texte": "Connaitre les propriétés des angles et des égalités de longueur pour les carrés et les rectangles.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.3.2.ce1.04",
+         "texte": "Reproduire ou construire un carré, un rectangle, un triangle, un triangle rectangle et un cercle ou un assemblage de ces figures.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.3.2.ce1.05",
+         "texte": "Utiliser la règle pour vérifier des alignements et l’équerre pour vérifier qu’un angle est droit.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.3.2.ce1.06",
+         "texte": "Utiliser la règle graduée, l’équerre et le compas comme instruments de tracé.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.3.2.ce1.07",
+         "texte": "Connaitre et utiliser le code pour les angles droits.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.3.2.ce2.01",
+         "texte": "Utiliser le vocabulaire géométrique approprié.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.3.2.ce2.02",
+         "texte": "Reconnaitre, nommer et décrire le carré, le rectangle, le triangle, le triangle rectangle et le losange.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.3.2.ce2.03",
+         "texte": "Connaitre les propriétés des angles et les égalités de longueur pour les carrés, les rectangles et les losanges.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.3.2.ce2.04",
+         "texte": "Reproduire ou construire un carré, un rectangle, un triangle, un triangle rectangle et un cercle ou des assemblages de ces figures sur tout support (papier quadrillé ou pointé ou papier uni), avec une règle graduée, une équerre ou un compas.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.3.2.ce2.05",
+         "texte": "Connaitre et utiliser le codage d’un angle droit et celui qui indique que des segments ont la même longueur.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.3.2.ce2.06",
+         "texte": "Reconnaitre si une figure possède un ou plusieurs axes de symétrie en utilisant des pliages ou du papier calque.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.3.2.ce2.07",
+         "texte": "Compléter, sur une feuille quadrillée ou pointée, une figure simple pour la rendre symétrique par rapport à un axe donné.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "MA.SD3.CG3",
+       "titre": "Le repérage dans l’espace",
+       "competences": [
+        {
+         "id": "c2.MA.3.3.cp.01",
+         "texte": "Connaitre et utiliser le vocabulaire lié aux positions relatives.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.3.cp.02",
+         "texte": "Situer des personnes ou des objets les uns par rapport aux autres ou par rapport à d’autres repères dans la classe.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.3.cp.03",
+         "texte": "Construire et utiliser des représentations de la classe pour localiser, mémoriser et communiquer un emplacement.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.3.cp.04",
+         "texte": "Construire et reproduire des assemblages de solides à partir d’un modèle en trois dimensions ou de représentations planes.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.3.cp.05",
+         "texte": "Se déplacer et décrire des déplacements dans la classe en s’orientant et en utilisant des repères.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.3.cp.06",
+         "texte": "Construire et utiliser un plan de la classe pour communiquer un déplacement.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.3.cp.07",
+         "texte": "Utiliser et produire une suite d’instructions qui codent un déplacement en utilisant un vocabulaire spatial précis.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.3.3.ce1.01",
+         "texte": "Connaitre et utiliser le vocabulaire lié aux positions relatives.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.3.3.ce1.02",
+         "texte": "Situer des personnes ou des objets les uns par rapport aux autres ou par rapport à d’autres repères dans un espace familier.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.3.3.ce1.03",
+         "texte": "Construire et utiliser des représentations d’un espace familier pour localiser, mémoriser ou communiquer un emplacement.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.3.3.ce1.04",
+         "texte": "Construire des assemblages de cubes et de pavés.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.3.3.ce1.05",
+         "texte": "Comprendre, utiliser et produire une suite d’instructions qui codent un déplacement en utilisant un vocabulaire spatial précis.",
+         "niveau": "CE1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "MA.SD4",
+     "titre": "Organisation et gestion de données",
+     "competencesGenerales": [
+      {
+       "id": "MA.SD4.CG1",
+       "titre": "Organisation et gestion de données",
+       "competences": [
+        {
+         "id": "c2.MA.4.1.cp.01",
+         "texte": "Collecter des données et présenter ces données sous forme d’un tableau ou d’un diagramme en barres.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.4.1.cp.02",
+         "texte": "Construire et compléter un tableau à double entrée.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.MA.4.1.ce1.01",
+         "texte": "Produire un tableau ou un diagramme en barres pour présenter des données recueillies.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.4.1.ce1.02",
+         "texte": "Lire et interpréter les données d’un diagramme en barres. Lire et interpréter les données d’un tableau à double entrée.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.MA.4.1.ce2.01",
+         "texte": "Produire un tableau ou un diagramme en barres pour présenter des données recueillies.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.4.1.ce2.02",
+         "texte": "Lire et interpréter les données d’un tableau à double entrée ou d’un diagramme en barres.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.MA.4.1.ce2.03",
+         "texte": "Résoudre des problèmes en utilisant les données d’un tableau à double entrée ou d’un diagramme en barre.",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ST",
+   "titre": "Sciences et technologie",
+   "sousDomaines": [
+    {
+     "id": "ST.SD1",
+     "titre": "La matière, les mesures, l’électricité",
+     "competencesGenerales": [
+      {
+       "id": "ST.SD1.CG1",
+       "titre": "Masse, volumes et mesure de température",
+       "competences": [
+        {
+         "id": "c2.ST.1.1.cp.01",
+         "texte": "Comparer les masses de différents objets.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.ST.1.1.cp.02",
+         "texte": "Utiliser le vocabulaire associé aux masses.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.ST.1.1.cp.03",
+         "texte": "Lire la valeur de la température avec un thermomètre à liquide.",
+         "niveau": "CP"
+        }
+       ]
+      },
+      {
+       "id": "ST.SD1.CG2",
+       "titre": "États physiques de la matière",
+       "competences": [
+        {
+         "id": "c2.ST.1.2.cp.01",
+         "texte": "Reconnaitre et identifier les états solides et liquides de l’eau.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.ST.1.2.ce1.01",
+         "texte": "Observer le changement d’état physique de l’eau (solide et liquide) et sa réversibilité.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.1.2.ce1.02",
+         "texte": "Nommer le changement d’état (solidification et fusion).",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.1.2.ce1.03",
+         "texte": "Constater la conservation de la masse lors d’un changement d’état.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.1.2.ce1.04",
+         "texte": "Constater que le volume de l’eau ne se conserve pas lors de sa solidification.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.1.2.ce1.05",
+         "texte": "Réaliser des expériences mettant en évidence la matérialité de l’air.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.1.2.ce2.01",
+         "texte": "Différencier les états physiques solide (forme et volume propre) et liquide (volume propre, absence de forme propre et surface horizontale).",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "ST.SD1.CG3",
+       "titre": "Masse et volumes",
+       "competences": [
+        {
+         "id": "c2.ST.1.3.ce1.01",
+         "texte": "Mesurer les masses des objets avec une balance, comparer et classer les masses grâce à la mesure.",
+         "niveau": "CE1"
+        }
+       ]
+      },
+      {
+       "id": "ST.SD1.CG4",
+       "titre": "L’électricité",
+       "competences": [
+        {
+         "id": "c2.ST.1.4.ce1.01",
+         "texte": "Réaliser un circuit électrique à une boucle associant un générateur (pile), un interrupteur, un récepteur (ampoule) pour mettre en évidence la circulation du courant électrique.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.1.4.ce1.02",
+         "texte": "Tester des matériaux pour déterminer leur caractère isolant ou conducteur.",
+         "niveau": "CE1"
+        }
+       ]
+      },
+      {
+       "id": "ST.SD1.CG5",
+       "titre": "Masse, volumes et mesure du temps",
+       "competences": [
+        {
+         "id": "c2.ST.1.5.ce2.01",
+         "texte": "Convertir des unités de masse.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.1.5.ce2.02",
+         "texte": "Comparer les contenances de différents objets.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.1.5.ce2.03",
+         "texte": "Comparer des volumes de liquide en utilisant un verre gradué ou en utilisant un récipient de contenance connue comme une bouteille d’un litre ou d’un demi-litre.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.1.5.ce2.04",
+         "texte": "Comparer, estimer, mesurer des durées.",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "ST.SD2",
+     "titre": "Les êtres vivants dans leur environnement",
+     "competencesGenerales": [
+      {
+       "id": "ST.SD2.CG1",
+       "titre": "Unité et diversité du vivant",
+       "competences": [
+        {
+         "id": "c2.ST.2.1.cp.01",
+         "texte": "Caractériser et justifier à l’aide de critères simples ce qui est vivant, non vivant ou élaboré par des êtres vivants.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.ST.2.1.ce2.01",
+         "texte": "Décrire les caractéristiques des êtres vivants (biologie, écologie, classification).",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "ST.SD2.CG2",
+       "titre": "Observer et décrire son environnement proche",
+       "competences": [
+        {
+         "id": "c2.ST.2.2.cp.01",
+         "texte": "Observer son environnement proche : décrire les êtres vivants qui y vivent et les caractéristiques du milieu de vie.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.ST.2.2.cp.02",
+         "texte": "Se repérer dans son environnement proche.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.ST.2.2.ce1.01",
+         "texte": "Observer le changement de peuplement de l’environnement proche au cours des saisons.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.2.2.ce1.02",
+         "texte": "Relier la présence d’espèces avec les caractéristiques de l’environnement.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.2.2.ce1.03",
+         "texte": "Catégoriser différentes relations entre les êtres vivants.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.2.2.ce2.01",
+         "texte": "Observer des environnements variés pour élargir la connaissance des êtres vivants, de leurs interactions et de leurs milieux de vie.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.2.2.ce2.02",
+         "texte": "Élaborer une courte chaine alimentaire.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.2.2.ce2.03",
+         "texte": "Envisager le sol comme un milieu vivant et observer la diversité des êtres vivants qui le composent (dont les animaux et les champignons).",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "ST.SD2.CG3",
+       "titre": "Agir pour protéger l’environnement",
+       "competences": [
+        {
+         "id": "c2.ST.2.3.cp.01",
+         "texte": "Constater quelques modifications de l’environnement proche par des activités humaines.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.ST.2.3.cp.02",
+         "texte": "Identifier et mettre en œuvre quelques gestes simples favorables à la protection de l’environnement proche de l’école.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.ST.2.3.cp.03",
+         "texte": "Développer un rapport sensible à la nature.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.ST.2.3.cp.04",
+         "texte": "Prendre conscience des possibilités d’agir, tant individuellement que collectivement, pour protéger l’environnement.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.ST.2.3.ce1.01",
+         "texte": "S’impliquer dans une action de préservation d environnement proche de l’écol Développer un rapport sensible à la nature.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.2.3.ce1.02",
+         "texte": "Prendre conscience de la nécessité et des possibilités d’agir, tant individuellement que collectivement, pour protéger l’environnement.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.2.3.ce2.01",
+         "texte": "Identifier les conséquences positives et négatives de certaines activités humaines sur un environnement.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.2.3.ce2.02",
+         "texte": "S’impliquer dans un projet collectif de préservation de l’environnement en lien avec la transition écologique.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.2.3.ce2.03",
+         "texte": "Développer un rapport sensible à la nature.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.2.3.ce2.04",
+         "texte": "Prendre conscience de la nécessité et des possibilités d’agir, tant individuellement que collectivement, pour protéger l’environnement.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "ST.SD2.CG4",
+       "titre": "Nutrition des êtres vivants",
+       "competences": [
+        {
+         "id": "c2.ST.2.4.ce1.01",
+         "texte": "Déterminer des besoins essentiels pour la croissance d’une plante (eau et lumière) par une démarche expérimentale.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.2.4.ce1.02",
+         "texte": "Décrire les différents organes végétatifs d’une plante (racine, tige, feuille).",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.2.4.ce1.03",
+         "texte": "Identifier le régime alimentaire d’animaux.",
+         "niveau": "CE1"
+        }
+       ]
+      },
+      {
+       "id": "ST.SD2.CG5",
+       "titre": "Sens et perception chez les animaux",
+       "competences": [
+        {
+         "id": "c2.ST.2.5.ce1.01",
+         "texte": "Associer des organes sensoriels et la perception du milieu chez les animaux (vision, audition, odorat, gout, équilibre, toucher).",
+         "niveau": "CE1"
+        }
+       ]
+      },
+      {
+       "id": "ST.SD2.CG6",
+       "titre": "Reproduction, croissance et développement",
+       "competences": [
+        {
+         "id": "c2.ST.2.6.ce2.01",
+         "texte": "Ordonner les étapes de la vie d’une plante à fleurs : de la graine à la plante, de la fleur au fruit (germination de la graine, croissance, formation de la fleur, formation du fruit contenant des graines, dispersion des graines).",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.2.6.ce2.02",
+         "texte": "Mesurer la croissance d’un être vivant (plante ou animal) au cours du temps.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.2.6.ce2.03",
+         "texte": "Distinguer chez les animaux les formes juvénile, larvaire et adulte, à partir d’exemples. Distinguer les modalités de croissance continue (sans mue) et discontinue (avec des mues).",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "ST.SD2.CG7",
+       "titre": "Locomotion chez les animaux",
+       "competences": [
+        {
+         "id": "c2.ST.2.7.ce2.01",
+         "texte": "Décrire les organes locomoteurs et les associer à un mode de locomotion.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.2.7.ce2.02",
+         "texte": "Décrire les similitudes de forme entre les structures locomotrices et les relier au mode de déplacement dans un milieu de vie donné.",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "ST.SD3",
+     "titre": "Le corps humain et la santé",
+     "competencesGenerales": [
+      {
+       "id": "ST.SD3.CG1",
+       "titre": "Alimentation",
+       "competences": [
+        {
+         "id": "c2.ST.3.1.cp.01",
+         "texte": "Découvrir et nommer les catégories d’aliments et leur origine, en utilisant le vocabulaire associé.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.ST.3.1.ce1.01",
+         "texte": "Identifier les apports spécifiques des aliments : sources d’énergie, d’eau, de minéraux, de matière.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.3.1.ce1.02",
+         "texte": "Établir la notion d’équilibre alimentaire.",
+         "niveau": "CE1"
+        }
+       ]
+      },
+      {
+       "id": "ST.SD3.CG2",
+       "titre": "Croissance et mouvement",
+       "competences": [
+        {
+         "id": "c2.ST.3.2.cp.01",
+         "texte": "Décrire le schéma corporel et nommer les principales articulations et quelques os associés du squelette, en enrichissant le vocabulaire anatomique.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.ST.3.2.cp.02",
+         "texte": "Repérer sur soi et sur une maquette simple les éléments permettant la réalisation d’un mouvement corporel.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.ST.3.2.ce1.01",
+         "texte": "Utiliser des instruments de mesure pour suivre la croissance du corps, en particulier du squelette (os).",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.3.2.ce1.02",
+         "texte": "Comparer la croissance de différentes personnes (taille, masse, pointure) pour prendre conscience de la diversité morphologique humaine et respecter les différences.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.3.2.ce1.03",
+         "texte": "Observer les modifications de la dentition au cours de la croissance.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.3.2.ce2.01",
+         "texte": "Modéliser un mouvement de flexion/extension pour identifier le rôle des muscles et des articulations.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.3.2.ce2.02",
+         "texte": "Observer les changements corporels pendant l’activité physique, en lien avec l’enseignement physique et sportif.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.3.2.ce2.03",
+         "texte": "Relier l’activité physique avec la variation du rythme respiratoire (inspiration, expiration) et du rythme cardiaque par la mesure du pouls.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "ST.SD3.CG3",
+       "titre": "Santé et hygiène de vie",
+       "competences": [
+        {
+         "id": "c2.ST.3.3.cp.01",
+         "texte": "Observer son rythme d’activité quotidien (sommeil, activité physique, activité intellectuelle, repos et relaxation).",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.ST.3.3.cp.02",
+         "texte": "Identifier quelques règles d’hygiène de vie au quotidien et les relier à sa santé (sommeil, variété alimentaire, activité physique régulière, repos, lavage des mains et du corps, brossage des dents, limitation des temps d’écran).",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.ST.3.3.ce1.01",
+         "texte": "Identifier quelques règles d’hygiène de vie au quotidien et les relier à sa santé.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.3.3.ce1.02",
+         "texte": "Prendre conscience du rôle que joue l’attention cognitive dans les apprentissages.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.3.3.ce2.01",
+         "texte": "Constater le lien entre la pratique physique régulière et le bien-être.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.3.3.ce2.02",
+         "texte": "Se familiariser avec quelques notions sur le fonctionnement du cerveau pour mieux apprendre.",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "ST.SD4",
+     "titre": "Les objets techniques au cœur de la société",
+     "competencesGenerales": [
+      {
+       "id": "ST.SD4.CG1",
+       "titre": "Les objets techniques au cœur de la société",
+       "competences": [
+        {
+         "id": "c2.ST.4.1.cp.01",
+         "texte": "Identifier qu’un objet technique est obtenu par intervention des êtres humains.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.ST.4.1.cp.02",
+         "texte": "Identifier des activités de la vie quotidienne faisant appel à des objets techniques répondant à un besoin.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.ST.4.1.ce1.01",
+         "texte": "Identifier les différentes parties d’un objet technique en les caractérisant par leur forme, leur matériau et leur fonction.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.4.1.ce1.02",
+         "texte": "Différencier les objets selon qu’ils utilisent ou non une source d’énergie électrique. Identifier le cas échéant l’intérêt de l’utilisation de l’énergie électrique.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.4.1.ce1.03",
+         "texte": "Réaliser une maquette simple avec un circuit électrique.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.4.1.ce1.04",
+         "texte": "Identifier les composants et leurs fonctions.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.4.1.ce1.05",
+         "texte": "Commander un robot avec des consignes simples en programmant un déplacement.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.ST.4.1.ce2.01",
+         "texte": "Identifier les dispositifs permettant la saisie, le traitement et la restitution d’informations (clavier, processeur, écran, etc.).",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.4.1.ce2.02",
+         "texte": "Utiliser un ordinateur ou tablette numérique, pour saisir un texte.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.4.1.ce2.03",
+         "texte": "Utiliser un moteur de recherche.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.4.1.ce2.04",
+         "texte": "Comprendre qu’un objet technique peut être un assemblage de pièces.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.4.1.ce2.05",
+         "texte": "Identifier les différentes pièces d’un objet technique en réalisant des assemblages simples.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.4.1.ce2.06",
+         "texte": "Comprendre que, pour un besoin identifié, il existe une diversité d’objets y répondant.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.ST.4.1.ce2.07",
+         "texte": "Initier à la programmation d’objets techniques par des algorithmes simples.",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "HG",
+   "titre": "Histoire-géographie",
+   "sousDomaines": [
+    {
+     "id": "HG.SD1",
+     "titre": "Histoire",
+     "competencesGenerales": [
+      {
+       "id": "HG.SD1.CG1",
+       "titre": "Thème 1 : Les manifestations naturelles du temps",
+       "competences": [
+        {
+         "id": "c2.HG.1.1.cp.01",
+         "texte": "Expliquer l’alternance du jour et de la nuit en manipulant un globe terrestre.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.HG.1.1.cp.02",
+         "texte": "Nommer les saisons, donner leurs caractéristiques.",
+         "niveau": "CP"
+        }
+       ]
+      },
+      {
+       "id": "HG.SD1.CG2",
+       "titre": "Thème 2 : Les représentations humaines du temps",
+       "competences": [
+        {
+         "id": "c2.HG.1.2.cp.01",
+         "texte": "Savoir que l’année est divisée en mois, le mois en semaines, la semaine en jours, la journée en heures.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.HG.1.2.cp.02",
+         "texte": "Repérer, ordonner et nommer les jours de la semaine.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.HG.1.2.cp.03",
+         "texte": "Utiliser divers types de calendriers : emploi du temps de la journée, éphéméride, calendrier, roue des jours.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.HG.1.2.cp.04",
+         "texte": "Observer et utiliser des outils de mesure du temps : sablier, pendule, montre et réveil (analogiques et numériques).",
+         "niveau": "CP"
+        }
+       ]
+      },
+      {
+       "id": "HG.SD1.CG3",
+       "titre": "Thème 3 : Situer des évènements dans le temps",
+       "competences": [
+        {
+         "id": "c2.HG.1.3.cp.01",
+         "texte": "Situer et planifier sur un calendrier des évènements particuliers ou récurrents en utilisant les temps verbaux adaptés (passé, présent, futur) et les marqueurs temporels adaptés (hier, avant-hier, il y a un mois, etc. / demain, après-demain, dans un mois, etc.).",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.HG.1.3.cp.02",
+         "texte": "Se repérer au travers des différentes générations à partir d’exemples d’arbres généalogiques.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.HG.1.3.cp.03",
+         "texte": "Compléter une frise chronologique de la journée, de la vie de l’élève, voire générationnelle.",
+         "niveau": "CP"
+        }
+       ]
+      },
+      {
+       "id": "HG.SD1.CG4",
+       "titre": "Thème 1 : Du passé proche au passé lointain",
+       "competences": [
+        {
+         "id": "c2.HG.1.4.ce1.01",
+         "texte": "Employer le lexique relatif au temps (hier, autrefois, il y a dix jours, dix ans, cent ans, etc.).",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.HG.1.4.ce1.02",
+         "texte": "Identifier et positionner sur une frise chronologique des évènements récents et des évènements qui appartiennent à des périodes plus anciennes (éléments temporels proches et lointains de la vie de l’élève par exemple).",
+         "niveau": "CE1"
+        }
+       ]
+      },
+      {
+       "id": "HG.SD1.CG5",
+       "titre": "Thème 2 : Les grandes périodes de l’histoire",
+       "competences": [
+        {
+         "id": "c2.HG.1.5.ce1.01",
+         "texte": "Situer sur une frise chronologique des figures de chaque période historique.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.HG.1.5.ce1.02",
+         "texte": "Repérer et mémoriser sur une frise les grandes périodes de l’histoire.",
+         "niveau": "CE1"
+        }
+       ]
+      },
+      {
+       "id": "HG.SD1.CG6",
+       "titre": "Thème 3 : Les traces du passé",
+       "competences": [
+        {
+         "id": "c2.HG.1.6.ce1.01",
+         "texte": "Identifier et situer dans le temps les traces du passé issues de l’environnement proche de l’élève ou au travers de documents de différentes natures : fossiles ; ossements ; grottes (préhistoire) ; ruines ; monuments ; objets ; écrits ; images ; œuvres d’art ; témoignages.",
+         "niveau": "CE1"
+        }
+       ]
+      },
+      {
+       "id": "HG.SD1.CG7",
+       "titre": "Thème 1 : La vie des femmes et des hommes au Paléolithique et au Néolithique (environ 3 millions d’années à 3000 av. J.-C.)",
+       "competences": [
+        {
+         "id": "c2.HG.1.7.ce2.01",
+         "texte": "Décrire le mode de vie des chasseurs-cueilleurs au Paléolithique.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.HG.1.7.ce2.02",
+         "texte": "Décrire une peinture pariétale ou une gravure rupestre.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.HG.1.7.ce2.03",
+         "texte": "Expliquer les différences de mode de vie des femmes et des hommes entre le Paléolithique et le Néolithique.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "HG.SD1.CG8",
+       "titre": "Thème 2 : Vivre à Rome et en Gaule romaine du Ier siècle avant J.-C. au IIe siècle après J.-C.",
+       "competences": [
+        {
+         "id": "c2.HG.1.8.ce2.01",
+         "texte": "Définir l’usage d’un monument ou d’un aménagement caractéristique de la ville de Rome.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.HG.1.8.ce2.02",
+         "texte": "Repérer sur une carte l’étendue de l’empire romain à son apogée.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.HG.1.8.ce2.03",
+         "texte": "Localiser la Gaule dans l’empire.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.HG.1.8.ce2.04",
+         "texte": "Expliquer que le monde gallo-romain mêle les cultures gauloise et romaine.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "HG.SD1.CG9",
+       "titre": "Thème 3 : La construction du royaume de France (Xe – XVe siècles)",
+       "competences": [
+        {
+         "id": "c2.HG.1.9.ce2.01",
+         "texte": "Repérer les grandes étapes de la construction du royaume de France à partir de cartes.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.HG.1.9.ce2.02",
+         "texte": "Décrire la cérémonie du sacre.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.HG.1.9.ce2.03",
+         "texte": "Citer les moyens utilisés par les rois de France pour affirmer leur autorité sur leur royaume.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.HG.1.9.ce2.04",
+         "texte": "Nommer et situer sur une frise chronologique les dynasties royales : Capétiens, Valois, quelques rois (Philippe Auguste, etc.) et quelques grandes figures féminines (Aliénor d’Aquitaine, Blanche de Castille, etc.)",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "HG.SD2",
+     "titre": "Géographie",
+     "competencesGenerales": [
+      {
+       "id": "HG.SD2.CG1",
+       "titre": "Thème 1 : Autour de l’école",
+       "competences": [
+        {
+         "id": "c2.HG.2.1.cp.01",
+         "texte": "Nommer les éléments d’organisation de la classe et les situer les uns par rapport aux autres.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.HG.2.1.cp.02",
+         "texte": "Faire le plan de la classe et le comparer à celui d’une autre classe.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.HG.2.1.cp.03",
+         "texte": "Se déplacer dans l’école en s’orientant et en utilisant un plan.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.HG.2.1.cp.04",
+         "texte": "Décrire l’usage des différents lieux de l’école.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.HG.2.1.cp.05",
+         "texte": "Décrire et/ou représenter un trajet, par exemple entre un lieu de l’espace proche (domicile, bâtiment public, équipement sportif, etc.) et l’école.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.HG.2.1.cp.06",
+         "texte": "Reconnaitre des lieux familiers représentés sous différents angles de vue.",
+         "niveau": "CP"
+        }
+       ]
+      },
+      {
+       "id": "HG.SD2.CG2",
+       "titre": "Thème 2 : Des représentations du monde",
+       "competences": [
+        {
+         "id": "c2.HG.2.2.cp.01",
+         "texte": "Reconnaitre un planisphère.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.HG.2.2.cp.02",
+         "texte": "Reconnaitre et localiser les continents et les océans sur un planisphère.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.HG.2.2.cp.03",
+         "texte": "Comprendre la continuité entre les océans et identifier les continents par la manipulation d’un globe terrestre / le planisphère.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.HG.2.2.cp.04",
+         "texte": "Situer la France.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.HG.2.2.cp.05",
+         "texte": "Localiser les grands foyers de peuplement.",
+         "niveau": "CP"
+        }
+       ]
+      },
+      {
+       "id": "HG.SD2.CG3",
+       "titre": "Thème 1 : La Terre est peuplée",
+       "competences": [
+        {
+         "id": "c2.HG.2.3.ce1.01",
+         "texte": "Localiser les grands foyers de peuplement sur un planisphère.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.HG.2.3.ce1.02",
+         "texte": "Mémoriser et localiser les principales villes à l’échelle mondiale.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.HG.2.3.ce1.03",
+         "texte": "Expliquer la différence entre ville et village.",
+         "niveau": "CE1"
+        }
+       ]
+      },
+      {
+       "id": "HG.SD2.CG4",
+       "titre": "Thème 2 : Découvrir les lieux où vivent les êtres humains",
+       "competences": [
+        {
+         "id": "c2.HG.2.4.ce1.01",
+         "texte": "Caractériser : les trois principales zones climatiques ; les grands types de végétation ; les différents types de relief.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.HG.2.4.ce1.02",
+         "texte": "Sur un planisphère, localiser et nommer : les trois principales zones climatiques ; les grandes chaines de montagne ; les principaux déserts ; quelques grands fleuves.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.HG.2.4.ce1.03",
+         "texte": "Reconnaitre une forêt tempérée et une forêt tropicale, un désert chaud et un désert froid, une prairie et une savane.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.HG.2.4.ce1.04",
+         "texte": "Décrire un paysage à partir d’une photographie ou d’une observation directe, à l’oral et/ou avec une production graphique.",
+         "niveau": "CE1"
+        }
+       ]
+      },
+      {
+       "id": "HG.SD2.CG5",
+       "titre": "Thème 1 : L’inégale répartition de la population en France",
+       "competences": [
+        {
+         "id": "c2.HG.2.5.ce2.01",
+         "texte": "Localiser les espaces de fortes et de faibles densités.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.HG.2.5.ce2.02",
+         "texte": "Localiser et nommer les cinq principales agglomérations à l’échelle nationale et, le cas échéant, la principale agglomération à proximité de l’école.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.HG.2.5.ce2.03",
+         "texte": "Localiser et nommer les grandes chaines de montagne et quelques grands fleuves.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "HG.SD2.CG6",
+       "titre": "Thème 2 : Se loger en France",
+       "competences": [
+        {
+         "id": "c2.HG.2.6.ce2.01",
+         "texte": "Reconnaitre et décrire les éléments constitutifs des espaces résidentiels.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "HG.SD2.CG7",
+       "titre": "Thème 3 : Travailler en France",
+       "competences": [
+        {
+         "id": "c2.HG.2.7.ce2.01",
+         "texte": "Reconnaitre et décrire un paysage : industriel ; agricole ; d’activité commerciale ; de quartier d’affaires ; de station touristique.",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "EMC",
+   "titre": "Enseignement moral et civique",
+   "sousDomaines": [
+    {
+     "id": "EMC.SD1",
+     "titre": "CP : Se reconnaitre comme individu et élève",
+     "competencesGenerales": [
+      {
+       "id": "EMC.SD1.CG1",
+       "titre": "Connaissance et maîtrise de soi",
+       "competences": [
+        {
+         "id": "c2.EMC.1.1.cp.01",
+         "texte": "Comprendre ses émotions et ses sentiments : leur origine et leurs manifestations",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EMC.1.1.cp.02",
+         "texte": "Trouver les réponses appropriées aux besoins exprimés",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EMC.1.1.cp.03",
+         "texte": "Consolider sa confiance en soi",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EMC.1.1.cp.04",
+         "texte": "Acquérir une estime de soi.",
+         "niveau": "CP"
+        }
+       ]
+      },
+      {
+       "id": "EMC.SD1.CG2",
+       "titre": "Les règles collectives et l’autonomie",
+       "competences": [
+        {
+         "id": "c2.EMC.1.2.cp.01",
+         "texte": "S’approprier les règles de l’école (droits et devoirs), pour soi-même (son propre bien-être et sa propre sécurité)",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EMC.1.2.cp.02",
+         "texte": "Respecter les différents adultes de l’école en identifiant leur rôle",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EMC.1.2.cp.03",
+         "texte": "Développer son autonomie",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EMC.1.2.cp.04",
+         "texte": "Prendre des initiatives personnelles et faire des choix sans craindre de se tromper",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EMC.1.2.cp.05",
+         "texte": "Identifier les risques et les dangers de son environnement immédiat et adopter un comportement adapté",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EMC.1.2.cp.06",
+         "texte": "Respecter les équipements de la collectivité, condition du partage de biens communs",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EMC.1.2.cp.07",
+         "texte": "Savoir que les enfants ont des droits (Convention internationale des droits de l’enfant, 1989).",
+         "niveau": "CP"
+        }
+       ]
+      },
+      {
+       "id": "EMC.SD1.CG3",
+       "titre": "Règles d’hygiène et exigence d’intimité",
+       "competences": [
+        {
+         "id": "c2.EMC.1.3.cp.01",
+         "texte": "Avoir conscience de son intégrité",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EMC.1.3.cp.02",
+         "texte": "Connaître et appliquer les règles élémentaires d’hygiène personnelle",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EMC.1.3.cp.03",
+         "texte": "Connaître et respecter les règles élémentaires de l’intimité personnelle.",
+         "niveau": "CP"
+        }
+       ]
+      },
+      {
+       "id": "EMC.SD1.CG4",
+       "titre": "Être élève à l’école de la République",
+       "competences": [
+        {
+         "id": "c2.EMC.1.4.cp.01",
+         "texte": "Identifier le drapeau français",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EMC.1.4.cp.02",
+         "texte": "Reconnaitre La Marseillaise.",
+         "niveau": "CP"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "EMC.SD2",
+     "titre": "CE1 : Respecter les autres",
+     "competencesGenerales": [
+      {
+       "id": "EMC.SD2.CG1",
+       "titre": "Altérité et sociabilité",
+       "competences": [
+        {
+         "id": "c2.EMC.2.1.ce1.01",
+         "texte": "Reconnaitre et prendre en compte les émotions et les sentiments d’autrui",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EMC.2.1.ce1.02",
+         "texte": "Développer sa capacité d’empathie",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EMC.2.1.ce1.03",
+         "texte": "S’entraider et partager avec les autres",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EMC.2.1.ce1.04",
+         "texte": "Reconnaitre la diversité comme richesse et ne pas faire des différences (sociales, physiques, culturelles, de genre) un motif de violence",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EMC.2.1.ce1.05",
+         "texte": "Faire comprendre que la solidarité et l’entraide, en lien avec la notion de fraternité, permettent un renforcement de la notion d’égalité entre les personnes.",
+         "niveau": "CE1"
+        }
+       ]
+      },
+      {
+       "id": "EMC.SD2.CG2",
+       "titre": "Règles collectives et prise d’initiative",
+       "competences": [
+        {
+         "id": "c2.EMC.2.2.ce1.01",
+         "texte": "Connaître et appliquer les règles élémentaires de vie, de communication et d’échange en collectivité : l’idée de civilité",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EMC.2.2.ce1.02",
+         "texte": "Identifier les dangers au sein des situations dans lesquelles on se trouve",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EMC.2.2.ce1.03",
+         "texte": "Prendre des initiatives (faire des choix, les justifier).",
+         "niveau": "CE1"
+        }
+       ]
+      },
+      {
+       "id": "EMC.SD2.CG3",
+       "titre": "Principes et symboles de la République",
+       "competences": [
+        {
+         "id": "c2.EMC.2.3.ce1.01",
+         "texte": "Identifier les symboles républicains",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EMC.2.3.ce1.02",
+         "texte": "Apprendre à chanter le 1er couplet et le refrain de La Marseillaise",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EMC.2.3.ce1.03",
+         "texte": "Comprendre la devise « Liberté, Égalité, Fraternité »",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EMC.2.3.ce1.04",
+         "texte": "Aborder le principe de la liberté de conscience",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EMC.2.3.ce1.05",
+         "texte": "Savoir que le français est la langue de la République.",
+         "niveau": "CE1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "EMC.SD3",
+     "titre": "CE2 : Apprendre ensemble et vivre ensemble",
+     "competencesGenerales": [
+      {
+       "id": "EMC.SD3.CG1",
+       "titre": "L’engagement pour le bien commun",
+       "competences": [
+        {
+         "id": "c2.EMC.3.1.ce2.01",
+         "texte": "Sensibiliser à la notion de bien commun et amener les élèves à prendre conscience que les actions individuelles doivent tenir compte de l’intérêt collectif",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.EMC.3.1.ce2.02",
+         "texte": "Savoir qu’il existe des institutions et des associations au service du bien commun",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.EMC.3.1.ce2.03",
+         "texte": "Aborder des enjeux d’intérêt collectif : l’éducation pour tous, l’environnement, la sécurité, l’information.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "EMC.SD3.CG2",
+       "titre": "La République et son fonctionnement",
+       "competences": [
+        {
+         "id": "c2.EMC.3.2.ce2.01",
+         "texte": "Savoir qu’en France le chef de l’État est le président de la République et qu’il est élu",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.EMC.3.2.ce2.02",
+         "texte": "Savoir que le maire est un élu local, et le représentant de l’État dans la commune ; connaître son rôle à la tête de la collectivité (état civil, école, environnement)",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.EMC.3.2.ce2.03",
+         "texte": "Approfondir la compréhension de la devise « Liberté, Égalité, Fraternité ».",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "EPS",
+   "titre": "Éducation physique et sportive",
+   "sousDomaines": [
+    {
+     "id": "EPS.SD1",
+     "titre": "Se déplacer pour agir dans l’espace et sur une durée",
+     "competencesGenerales": [
+      {
+       "id": "EPS.SD1.CG1",
+       "titre": "Se déplacer le plus vite ou le plus longtemps possible",
+       "competences": [
+        {
+         "id": "c2.EPS.1.1.cp.01",
+         "texte": "Découvrir une diversité de signaux de départ.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.1.1.cp.02",
+         "texte": "Courir vite de façon équilibrée.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.1.1.cp.03",
+         "texte": "Courir et franchir sans ralentir des obstacles horizontaux.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.1.1.cp.04",
+         "texte": "Courir longtemps en limitant les arrêts.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.1.1.ce1.01",
+         "texte": "Se préparer au signal de départ.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.1.1.ce1.02",
+         "texte": "Courir vite et de façon coordonnée.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.1.1.ce1.03",
+         "texte": "Courir et franchir sans ralentir des obstacles verticaux.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.1.1.ce1.04",
+         "texte": "Courir longtemps sans s’arrêter.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.1.1.ce2.01",
+         "texte": "Réagir vite au signal de départ.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.EPS.1.1.ce2.02",
+         "texte": "Courir vite et de façon coordonnée.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.EPS.1.1.ce2.03",
+         "texte": "Courir et franchir sans ralentir des obstacles verticaux.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.EPS.1.1.ce2.04",
+         "texte": "Courir longtemps sans s’arrêter.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "EPS.SD1.CG2",
+       "titre": "Se déplacer pour sauter le plus haut ou le plus loin possible",
+       "competences": [
+        {
+         "id": "c2.EPS.1.2.cp.01",
+         "texte": "Varier les impulsions pour sauter loin ou haut.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.1.2.ce1.01",
+         "texte": "Construire une impulsion avec un pied d’appel pour sauter loin ou haut.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.1.2.ce2.01",
+         "texte": "Construire une impulsion avec un pied d’appel pour sauter loin ou haut.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "EPS.SD1.CG3",
+       "titre": "Se déplacer pour lancer le plus loin possible",
+       "competences": [
+        {
+         "id": "c2.EPS.1.3.cp.01",
+         "texte": "Lancer loin et de manière variée différents objets",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.1.3.ce1.01",
+         "texte": "Lancer loin et dans l’axe différents objets.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.1.3.ce2.01",
+         "texte": "Lancer loin et dans l’axe différents objets.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "EPS.SD1.CG4",
+       "titre": "Se déplacer pour s’orienter dans l’espace",
+       "competences": [
+        {
+         "id": "c2.EPS.1.4.cp.01",
+         "texte": "Repérer des éléments visibles pour se situer dans un espace connu.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.1.4.ce1.01",
+         "texte": "Repérer des éléments visibles pour s’orienter dans un espace connu.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.1.4.ce2.01",
+         "texte": "Repérer des éléments visibles pour s’orienter dans un espace connu.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "EPS.SD1.CG5",
+       "titre": "Recueillir et apprécier des résultats",
+       "competences": [
+        {
+         "id": "c2.EPS.1.5.cp.01",
+         "texte": "Explorer et utiliser des outils de mesure concrets.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.1.5.ce1.01",
+         "texte": "Identifier la mesure d’un résultat pour progresser.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.1.5.ce2.01",
+         "texte": "Identifier la mesure d’un résultat pour progresser.",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "EPS.SD2",
+     "titre": "Construire des équilibres pour s’adapter à des environnements inhabituels",
+     "competencesGenerales": [
+      {
+       "id": "EPS.SD2.CG1",
+       "titre": "Construire des équilibres dans des environnements terrestres",
+       "competences": [
+        {
+         "id": "c2.EPS.2.1.cp.01",
+         "texte": "Explorer un nouvel équilibre avec le corps qui roule vers l’avant.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.2.1.cp.02",
+         "texte": "Explorer un nouvel équilibre de suspension en l’air avec le corps droit.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.2.1.cp.03",
+         "texte": "Explorer un nouvel équilibre avec le corps qui se renverse.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.2.1.cp.04",
+         "texte": "Explorer un nouvel équilibre avec le corps en mouvement sur une surface réduite.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.2.1.cp.05",
+         "texte": "Explorer un nouvel équilibre vertical en se déplaçant sur un support vertical (espalier, mur, mur d’escalade, corde, etc.).",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.2.1.ce1.01",
+         "texte": "Construire un nouvel équilibre avec le corps qui roule vers l’avant.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.2.1.ce1.02",
+         "texte": "Construire un nouvel équilibre de suspension en l’air avec le corps droit.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.2.1.ce1.03",
+         "texte": "Construire un nouvel équilibre avec le corps qui se renverse.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.2.1.ce1.04",
+         "texte": "Construire un nouvel équilibre avec le corps en mouvement sur une surface réduite.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.2.1.ce1.05",
+         "texte": "Construire un nouvel équilibre vertical en se déplaçant sur un support vertical.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.2.1.ce2.01",
+         "texte": "Construire un nouvel équilibre avec le corps qui roule vers l’avant.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.EPS.2.1.ce2.02",
+         "texte": "Construire un nouvel équilibre de suspension en l’air avec le corps droit.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.EPS.2.1.ce2.03",
+         "texte": "Construire un nouvel équilibre avec le corps qui se renverse.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.EPS.2.1.ce2.04",
+         "texte": "Construire un nouvel équilibre avec le corps en mouvement sur une surface réduite.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.EPS.2.1.ce2.05",
+         "texte": "Construire un nouvel équilibre vertical en se déplaçant sur un support vertical.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "EPS.SD2.CG2",
+       "titre": "Construire des équilibres avec un moyen de locomotion",
+       "competences": [
+        {
+         "id": "c2.EPS.2.2.cp.01",
+         "texte": "Rouler et glisser, avec un moyen de locomotion, en ligne droite.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.2.2.ce1.01",
+         "texte": "Rouler et glisser, avec un moyen de locomotion, dans des situations variées.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.2.2.ce2.01",
+         "texte": "Rouler et glisser, avec un moyen de locomotion, dans des situations variées.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "EPS.SD2.CG3",
+       "titre": "Construire des équilibres dans un environnement aquatique",
+       "competences": [
+        {
+         "id": "c2.EPS.2.3.cp.01",
+         "texte": "Explorer le milieu aquatique et découvrir une nouvelle locomotion.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.2.3.ce1.01",
+         "texte": "Accepter l’action de l’eau sur son corps et construire un nouvel équilibre horizontal.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.2.3.ce2.01",
+         "texte": "Accepter l’action de l’eau sur son corps et construire un nouvel équilibre horizontal.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "EPS.SD2.CG4",
+       "titre": "Agir en toute sécurité",
+       "competences": [
+        {
+         "id": "c2.EPS.2.4.cp.01",
+         "texte": "Respecter les règles pour ne pas se mettre en danger.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.2.4.ce1.01",
+         "texte": "Identifier les dangers propres à l’activité et adapter son comportement.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.2.4.ce2.01",
+         "texte": "Identifier les dangers propres à l’activité et adapter son comportement.",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "EPS.SD3",
+     "titre": "S’exprimer avec son corps pour éprouver et partager des émotions",
+     "competencesGenerales": [
+      {
+       "id": "EPS.SD3.CG1",
+       "titre": "Développer une motricité à visée artistique",
+       "competences": [
+        {
+         "id": "c2.EPS.3.1.cp.01",
+         "texte": "Explorer des actions à visée artistique",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.3.1.cp.02",
+         "texte": "Explorer l’espace scénique.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.3.1.ce1.01",
+         "texte": "Reproduire des actions à visée artistique.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.3.1.ce1.02",
+         "texte": "Varier ses actions dans l’espace scénique.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.3.1.ce2.01",
+         "texte": "Reproduire des actions à visée artistique.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.EPS.3.1.ce2.02",
+         "texte": "Varier ses actions dans l’espace scénique.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "EPS.SD3.CG2",
+       "titre": "Créer des enchainements simples et mémorisés",
+       "competences": [
+        {
+         "id": "c2.EPS.3.2.cp.01",
+         "texte": "Reproduire un enchainement artistique.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.3.2.ce1.01",
+         "texte": "S’approprier un enchainement artistique.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.3.2.ce2.01",
+         "texte": "S’approprier un enchainement artistique.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "EPS.SD3.CG3",
+       "titre": "Éprouver et exprimer des émotions",
+       "competences": [
+        {
+         "id": "c2.EPS.3.3.cp.01",
+         "texte": "Explorer la posture d’artiste.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.3.3.cp.02",
+         "texte": "Apprécier et décrire une prestation à l’aide d’un vocabulaire approprié.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.3.3.ce1.01",
+         "texte": "Construire une posture d’artiste.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.3.3.ce1.02",
+         "texte": "Apprécier une prestation selon deux ou trois critères.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.3.3.ce2.01",
+         "texte": "Construire une posture d’artiste.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.EPS.3.3.ce2.02",
+         "texte": "Apprécier une prestation selon deux ou trois critères.",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "EPS.SD4",
+     "titre": "Coopérer et s’opposer pour apprendre à jouer en respectant les règles et les autres",
+     "competencesGenerales": [
+      {
+       "id": "EPS.SD4.CG1",
+       "titre": "Développer des habiletés motrices dans des situations d’opposition individuelles et collectives",
+       "competences": [
+        {
+         "id": "c2.EPS.4.1.cp.01",
+         "texte": "Maitriser des actions d’opposition simples.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.4.1.cp.02",
+         "texte": "Explorer la zone de jeu dans toutes ses dimensions.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.4.1.ce1.01",
+         "texte": "Maitriser et contrôler des actions d’opposition simples.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.4.1.ce1.02",
+         "texte": "S’adapter à la zone de jeu.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.4.1.ce2.01",
+         "texte": "Maitriser et contrôler des actions d’opposition simples.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.EPS.4.1.ce2.02",
+         "texte": "S’adapter à la zone de jeu.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "EPS.SD4.CG2",
+       "titre": "Faire des choix pour marquer",
+       "competences": [
+        {
+         "id": "c2.EPS.4.2.cp.01",
+         "texte": "Se situer pour agir seul ou à plusieurs.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.4.2.ce1.01",
+         "texte": "Prendre des repères au service d’un projet d’action individuel ou collectif.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.4.2.ce2.01",
+         "texte": "Prendre des repères au service d’un projet d’action individuel ou collectif.",
+         "niveau": "CE2"
+        }
+       ]
+      },
+      {
+       "id": "EPS.SD4.CG3",
+       "titre": "Respecter les règles du jeu, les partenaires et les adversaires",
+       "competences": [
+        {
+         "id": "c2.EPS.4.3.cp.01",
+         "texte": "Explorer les règles du jeu.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.4.3.cp.02",
+         "texte": "Explorer les interactions dans le jeu.",
+         "niveau": "CP"
+        },
+        {
+         "id": "c2.EPS.4.3.ce1.01",
+         "texte": "Comprendre et respecter les règles du jeu.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.4.3.ce1.02",
+         "texte": "Accepter l’opposition tout en respectant l’autre.",
+         "niveau": "CE1"
+        },
+        {
+         "id": "c2.EPS.4.3.ce2.01",
+         "texte": "Comprendre et respecter les règles du jeu.",
+         "niveau": "CE2"
+        },
+        {
+         "id": "c2.EPS.4.3.ce2.02",
+         "texte": "Accepter l’opposition tout en respectant l’autre.",
+         "niveau": "CE2"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "EA",
+   "titre": "Enseignements artistiques",
+   "sousDomaines": [
+    {
+     "id": "EA.SD1",
+     "titre": "Arts plastiques",
+     "competencesGenerales": [
+      {
+       "id": "EA.SD1.CG1",
+       "titre": "Expérimenter, produire, créer",
+       "competences": [
+        {
+         "id": "c2.EA.1.1.cycle.01",
+         "texte": "S’approprier par les sens les éléments du langage plastique : matière, support, couleur…",
+         "niveau": ""
+        },
+        {
+         "id": "c2.EA.1.1.cycle.02",
+         "texte": "Observer les effets produits par ses gestes, par les outils utilisés.",
+         "niveau": ""
+        },
+        {
+         "id": "c2.EA.1.1.cycle.03",
+         "texte": "Tirer parti de trouvailles fortuites, saisir les effets du hasard.",
+         "niveau": ""
+        },
+        {
+         "id": "c2.EA.1.1.cycle.04",
+         "texte": "Représenter le monde environnant ou donner forme à son imaginaire en explorant la diversité des domaines (dessin, collage, modelage, sculpture, photographie…).",
+         "niveau": ""
+        }
+       ]
+      },
+      {
+       "id": "EA.SD1.CG2",
+       "titre": "Mettre en œuvre un projet artistique",
+       "competences": [
+        {
+         "id": "c2.EA.1.2.cycle.01",
+         "texte": "Respecter l’espace, les outils et les matériaux partagés.",
+         "niveau": ""
+        },
+        {
+         "id": "c2.EA.1.2.cycle.02",
+         "texte": "Mener à terme une production individuelle dans le cadre d’un projet accompagné par le professeur.",
+         "niveau": ""
+        },
+        {
+         "id": "c2.EA.1.2.cycle.03",
+         "texte": "Montrer sans réticence ses productions et regarder celles des autres.",
+         "niveau": ""
+        }
+       ]
+      },
+      {
+       "id": "EA.SD1.CG3",
+       "titre": "S’exprimer, analyser sa pratique, celle de ses pairs ; établir une relation avec celle des artistes, s’ouvrir à l’altérité",
+       "competences": [
+        {
+         "id": "c2.EA.1.3.cycle.01",
+         "texte": "Prendre la parole devant un groupe pour partager ses trouvailles, s’intéresser à celles découvertes dans des œuvres d’art.",
+         "niveau": ""
+        },
+        {
+         "id": "c2.EA.1.3.cycle.02",
+         "texte": "Formuler ses émotions, entendre et respecter celles des autres.",
+         "niveau": ""
+        },
+        {
+         "id": "c2.EA.1.3.cycle.03",
+         "texte": "Repérer les éléments du langage plastique dans une production : couleurs, formes, matières, support…",
+         "niveau": ""
+        }
+       ]
+      },
+      {
+       "id": "EA.SD1.CG4",
+       "titre": "Se repérer dans les domaines liés aux arts plastiques, être sensible aux questions de l’art",
+       "competences": [
+        {
+         "id": "c2.EA.1.4.cycle.01",
+         "texte": "Effectuer des choix parmi les images rencontrées, établir un premier lien entre son univers visuel et la culture artistique.",
+         "niveau": ""
+        },
+        {
+         "id": "c2.EA.1.4.cycle.02",
+         "texte": "Exprimer ses émotions lors de la rencontre avec des œuvres d’art, manifester son intérêt pour la rencontre directe avec des œuvres.",
+         "niveau": ""
+        },
+        {
+         "id": "c2.EA.1.4.cycle.03",
+         "texte": "S’approprier quelques œuvres de domaines et d’époques variés appartenant au patrimoine national et mondial.",
+         "niveau": ""
+        },
+        {
+         "id": "c2.EA.1.4.cycle.04",
+         "texte": "S’ouvrir à la diversité des pratiques et des cultures artistiques.",
+         "niveau": ""
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "EA.SD2",
+     "titre": "Éducation musicale",
+     "competencesGenerales": [
+      {
+       "id": "EA.SD2.CG1",
+       "titre": "Chanter",
+       "competences": [
+        {
+         "id": "c2.EA.2.1.cycle.01",
+         "texte": "Chanter une mélodie simple avec une intonation juste, chanter une comptine ou un chant par imitation.",
+         "niveau": ""
+        },
+        {
+         "id": "c2.EA.2.1.cycle.02",
+         "texte": "Interpréter un chant avec expressivité.",
+         "niveau": ""
+        }
+       ]
+      },
+      {
+       "id": "EA.SD2.CG2",
+       "titre": "Écouter, comparer",
+       "competences": [
+        {
+         "id": "c2.EA.2.2.cycle.01",
+         "texte": "Décrire et comparer des éléments sonores de toute nature.",
+         "niveau": ""
+        },
+        {
+         "id": "c2.EA.2.2.cycle.02",
+         "texte": "Comparer des musiques et identifier des ressemblances et des différences.",
+         "niveau": ""
+        }
+       ]
+      },
+      {
+       "id": "EA.SD2.CG3",
+       "titre": "Explorer et imaginer",
+       "competences": [
+        {
+         "id": "c2.EA.2.3.cycle.01",
+         "texte": "Imaginer des représentations graphiques ou corporelles de la musique.",
+         "niveau": ""
+        },
+        {
+         "id": "c2.EA.2.3.cycle.02",
+         "texte": "Inventer une organisation simple à partir de différents éléments sonores.",
+         "niveau": ""
+        }
+       ]
+      },
+      {
+       "id": "EA.SD2.CG4",
+       "titre": "Échanger, partager",
+       "competences": [
+        {
+         "id": "c2.EA.2.4.cycle.01",
+         "texte": "Exprimer ses émotions, ses sentiments et ses préférences.",
+         "niveau": ""
+        },
+        {
+         "id": "c2.EA.2.4.cycle.02",
+         "texte": "Écouter et respecter l’avis des autres et l’expression de leur sensibilité.",
+         "niveau": ""
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "LVE",
+   "titre": "Langues vivantes étrangères et régionales",
+   "sousDomaines": [
+    {
+     "id": "LVE.SD1",
+     "titre": "Compréhension de l’oral : écouter et comprendre (CO)",
+     "competences": [
+      {
+       "id": "c2.LVE.1.1.cpce2.01",
+       "texte": "Comprendre quelques mots familiers et expressions très courantes",
+       "niveau": "CP-CE2"
+      },
+      {
+       "id": "c2.LVE.1.1.cpce2.02",
+       "texte": "Suivre le fil d’une histoire adaptée à l’âge des élèves et suffisamment étayée",
+       "niveau": "CP-CE2"
+      },
+      {
+       "id": "c2.LVE.1.1.cpce2.03",
+       "texte": "Comprendre et agir",
+       "niveau": "CP-CE2"
+      }
+     ]
+    },
+    {
+     "id": "LVE.SD2",
+     "titre": "Expression orale en continu : parler en continu (EOC)",
+     "competences": [
+      {
+       "id": "c2.LVE.2.1.cpce2.01",
+       "texte": "Repères phonologiques",
+       "niveau": "CP-CE2"
+      },
+      {
+       "id": "c2.LVE.2.1.cpce2.02",
+       "texte": "Reproduire un modèle oral",
+       "niveau": "CP-CE2"
+      },
+      {
+       "id": "c2.LVE.2.1.cpce2.03",
+       "texte": "Raconter",
+       "niveau": "CP-CE2"
+      },
+      {
+       "id": "c2.LVE.2.1.cpce1.01",
+       "texte": "Se décrire en utilisant des expressions courtes ou proches des modèles rencontrés lors des apprentissages",
+       "niveau": "CP-CE1"
+      },
+      {
+       "id": "c2.LVE.2.1.ce2.01",
+       "texte": "Décrire ou se décrire en utilisant des expressions courtes ou proches des modèles rencontrés lors des apprentissages",
+       "niveau": "CE2"
+      }
+     ]
+    },
+    {
+     "id": "LVE.SD3",
+     "titre": "Expression orale en interaction : réagir et dialoguer (EOI)",
+     "competences": [
+      {
+       "id": "c2.LVE.3.1.cpce2.01",
+       "texte": "Échanger des informations simples",
+       "niveau": "CP-CE2"
+      },
+      {
+       "id": "c2.LVE.3.1.cpce2.02",
+       "texte": "Exprimer des émotions et formuler des souhaits élémentaires",
+       "niveau": "CP-CE2"
+      },
+      {
+       "id": "c2.LVE.3.1.cpce2.03",
+       "texte": "Clarifier ou faire clarifier un point",
+       "niveau": "CP-CE2"
+      },
+      {
+       "id": "c2.LVE.3.1.cpce2.04",
+       "texte": "Utiliser des procédés très simples pour commencer, poursuivre et terminer une conversation brève",
+       "niveau": "CP-CE2"
+      }
+     ]
+    },
+    {
+     "id": "LVE.SD4",
+     "titre": "Compréhension de l’écrit : lire et comprendre (CE)",
+     "competences": [
+      {
+       "id": "c2.LVE.4.1.ce2.01",
+       "texte": "Reconnaitre des mots ou des messages écrits familiers",
+       "niveau": "CE2"
+      },
+      {
+       "id": "c2.LVE.4.1.ce2.02",
+       "texte": "Trouver des informations dans des écrits très simples",
+       "niveau": "CE2"
+      }
+     ]
+    },
+    {
+     "id": "LVE.SD5",
+     "titre": "Expression écrite : écrire et réagir à l’écrit (EE)",
+     "competences": [
+      {
+       "id": "c2.LVE.5.1.ce2.01",
+       "texte": "Épeler, recopier ou écrire des éléments connus",
+       "niveau": "CE2"
+      }
+     ]
+    },
+    {
+     "id": "LVE.SD6",
+     "titre": "Médiation (M)",
+     "competences": [
+      {
+       "id": "c2.LVE.6.1.cpce2.01",
+       "texte": "Identifier les repères culturels",
+       "niveau": "CP-CE2"
+      },
+      {
+       "id": "c2.LVE.6.1.ce1ce2.01",
+       "texte": "Expliciter un message, une situation, un document pour autrui",
+       "niveau": "CE1-CE2"
+      },
+      {
+       "id": "c2.LVE.6.1.cpce2.02",
+       "texte": "Animer un travail collectif, coopérer et contribuer à des échanges interculturels",
+       "niveau": "CP-CE2"
+      }
+     ]
+    }
+   ]
+  }
+ ]
 }
