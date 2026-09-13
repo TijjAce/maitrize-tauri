@@ -27,7 +27,9 @@ describe("catalogue Éduscol", () => {
   });
 
   it("ne pointe que vers des domaines officiels", () => {
-    const permis = ["eduscol.education.fr", "eduscol.education.gouv.fr", "www.education.gouv.fr"];
+    // cache.media : l'ancien hébergement du ministère, où éduscol envoie encore
+    // pour le programme 2020 du cycle 2.
+    const permis = ["eduscol.education.fr", "eduscol.education.gouv.fr", "www.education.gouv.fr", "cache.media.education.gouv.fr"];
     const intrus = DOCS.filter((d) => !permis.some((h) => d.url.startsWith(`https://${h}/`)))
       .map((d) => `${d.titre} → ${d.url}`);
     expect(intrus).toEqual([]);
@@ -44,6 +46,22 @@ describe("catalogue Éduscol", () => {
   it("ne répète pas un titre dans une même rubrique", () => {
     const cles = DOCS.map((d) => `${d.categorie}|${d.sousCategorie}|${d.titre}`);
     expect(cles.filter((c, i) => cles.indexOf(c) !== i)).toEqual([]);
+  });
+
+  it("donne les programmes en vigueur à la rentrée 2026 dans chaque cycle", () => {
+    const programmes = (cycle: string) => DOCS.filter((d) => d.categorie === cycle && d.sousCategorie === "Programmes & références");
+    // Maternelle : programme du BO n° 19 du 7 mai 2026, et sa version consolidée.
+    expect(programmes("Cycle 1").some((d) => d.url.includes("programme-cycle-1-consolide"))).toBe(true);
+    expect(programmes("Cycle 1").some((d) => d.url.includes("ecole-maternelle-cycle-1-516107"))).toBe(true);
+    // Élémentaire : les annexes 2026 de sciences, d'histoire-géographie, d'EPS et de langues.
+    for (const [cycle, fichiers] of [
+      ["Cycle 2", ["cycle-2-519020", "histoire-geographie-cycle-2", "sportive-cycle-2", "cycle%202%20-481187"]],
+      ["Cycle 3", ["cycle-3-519023", "histoire-geographie-cycle-3", "sportive-cycle-3", "cycle%203%29-481190"]],
+    ] as const) {
+      for (const f of fichiers) expect(programmes(cycle).some((d) => d.url.includes(f)), `${cycle} : ${f}`).toBe(true);
+    }
+    // Les programmes abrogés n'y figurent plus.
+    expect(DOCS.some((d) => /document\/(20062|7883)\/download/.test(d.url))).toBe(false);
   });
 
   it("couvre les dispositifs de scolarisation adaptée", () => {

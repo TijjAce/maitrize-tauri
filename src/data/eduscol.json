@@ -1,1029 +1,1340 @@
 [
   {
-    "titre": "Programme de l'école maternelle — BO (2021)",
-    "url": "https://eduscol.education.fr/document/20062/download",
+    "titre": "Programme de l'école maternelle — version consolidée",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/programme-cycle-1-consolide-127565.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Programmes & références"
+    "sousCategorie": "Programmes & références",
+    "source": "D'après le BO n° 41 du 31 octobre 2024 et le BO n° 19 du 7 mai 2026 · en vigueur à la rentrée 2026"
   },
   {
-    "titre": "Programme maternelle 2021 — Version consolidée",
-    "url": "https://eduscol.education.fr/document/7883/download",
+    "titre": "Programme d'enseignement de l'école maternelle (annexe du BO)",
+    "url": "https://www.education.gouv.fr/sites/default/files/document/annexe-programme-d-enseignement-de-l-ecole-maternelle-cycle-1-516107.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Programmes & références"
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 19 du 7 mai 2026 · arrêté du 16 avril 2026 · en vigueur à la rentrée 2026"
   },
   {
-    "titre": "Programme — Acquisition des premiers outils mathématiques (Domaine 4, 2025)",
+    "titre": "Programme — Développement et structuration du langage oral et écrit",
+    "url": "https://www.education.gouv.fr/sites/default/files/document/Annexe%201%20%E2%80%93%20Programme%20d%E2%80%98enseignement%20pour%20le%20d%C3%A9veloppement%20et%20la%20structuration%20du%20langage%20oral%20et%20%C3%A9crit%20du%20cycle%201-403812.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 41 du 31 octobre 2024 · repris dans le programme consolidé"
+  },
+  {
+    "titre": "Programme — Acquisition des premiers outils mathématiques",
     "url": "https://www.education.gouv.fr/sites/default/files/document/Annexe%202%20%E2%80%93%20Programme%20d%E2%80%99enseignement%20pour%20l%E2%80%99acquisition%20des%20premiers%20outils%20math%C3%A9matiques%20du%20cycle%201-403815.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Programmes & références"
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 41 du 31 octobre 2024 · repris dans le programme consolidé"
   },
   {
-    "titre": "Observables et indicateurs de progrès — Cycle 1",
-    "url": "https://eduscol.education.fr/document/5641/download",
+    "titre": "Programme d'éducation à la vie affective et relationnelle à l'école maternelle",
+    "url": "https://www.education.gouv.fr/sites/default/files/document/Programme%20d%E2%80%99%C3%A9ducation%20%C3%A0%20la%20vie%20affective%20et%20relationnelle%20%C3%A0%20l%E2%80%99%C3%A9cole%20maternelle-405258.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Programmes & références"
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 6 du 6 février 2025"
   },
   {
-    "titre": "Pour préparer l'apprentissage de la lecture — Maternelle",
-    "url": "https://eduscol.education.fr/document/301/download",
+    "titre": "Enseigner au cycle 1",
+    "url": "https://eduscol.education.gouv.fr/4341/enseigner-au-cycle-1",
     "categorie": "Cycle 1",
-    "sousCategorie": "Langage"
+    "sousCategorie": "Programmes & références",
+    "source": "Page éduscol : programmes et ressources du cycle"
   },
   {
-    "titre": "Livret — Langage oral et écrit au cycle 1 (2025)",
-    "url": "https://eduscol.education.fr/document/66051/download",
+    "titre": "Guides fondamentaux pour l'enseignement",
+    "url": "https://eduscol.education.gouv.fr/6681/les-guides-fondamentaux-pour-l-enseignement",
     "categorie": "Cycle 1",
-    "sousCategorie": "Langage"
+    "sousCategorie": "Programmes & références",
+    "source": "Page éduscol : la collection complète"
   },
   {
-    "titre": "Livret — Développement et structuration du langage (2025)",
-    "url": "https://eduscol.education.fr/document/68989/download",
+    "titre": "Langage oral et écrit avant 4 ans — livret d'accompagnement",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2025livretaccompagnementfrancaisavant4ansv3pdf-111942.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Langage"
+    "sousCategorie": "Langage",
+    "source": "Éduscol · livret d'accompagnement du programme"
   },
   {
-    "titre": "Livret — Développement et structuration du langage (2024)",
-    "url": "https://eduscol.education.fr/document/69031/download",
+    "titre": "Langage oral et écrit à partir de 4 ans — livret d'accompagnement",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2025livretaccompagnementfraapartirde4anspdf-122680.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Langage"
+    "sousCategorie": "Langage",
+    "source": "Éduscol · livret d'accompagnement du programme"
   },
   {
-    "titre": "Livret — Langage oral et écrit à partir de 5 ans (2025)",
+    "titre": "Langage oral et écrit à partir de 5 ans — livret d'accompagnement",
     "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2025livretaccompagnementfraapartirde5anspdf-123043.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Langage"
+    "sousCategorie": "Langage",
+    "source": "Éduscol · livret d'accompagnement du programme"
   },
   {
-    "titre": "Conscience phonologique — Ressources maternelle",
-    "url": "https://eduscol.education.fr/document/13873/download",
+    "titre": "Guide « Pour enseigner le vocabulaire à l'école maternelle »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/guide-pour-enseigner-le-vocabulaire-l-ecole-maternelle-67695.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Langage"
+    "sousCategorie": "Langage",
+    "source": "Guide fondamental"
   },
   {
-    "titre": "Graphisme et écriture — L'écriture à l'école maternelle",
-    "url": "https://eduscol.education.fr/document/13561/download",
+    "titre": "Guide « Pour préparer l'apprentissage de la lecture et de l'écriture à l'école maternelle »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/guide-pour-preparer-l-apprentissage-de-la-lecture-et-de-l-ecriture-l-ecole-maternelle-67698.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Langage"
+    "sousCategorie": "Langage",
+    "source": "Guide fondamental"
   },
   {
-    "titre": "Activités phonologiques — Ressources maternelle",
-    "url": "https://eduscol.education.fr/document/13363/download",
+    "titre": "Guide pour l'éveil à la diversité linguistique en maternelle",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/guide-pour-l-eveil-la-diversite-linguistique-en-maternelle-100770.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Langage"
+    "sousCategorie": "Langage",
+    "source": "Éduscol"
   },
   {
-    "titre": "Développement et structuration du langage — Maternelle",
-    "url": "https://eduscol.education.fr/document/65310/download",
+    "titre": "Enrichir le vocabulaire — Rencontrer, comprendre et mémoriser le sens des mots",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/decouvrircomprendrelesensdesmotsaucycle-1pdf-102675.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Langage"
+    "sousCategorie": "Langage",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Mobiliser le langage — Ressources maternelle",
-    "url": "https://eduscol.education.fr/document/13327/download",
+    "titre": "Enrichir le vocabulaire — Catégoriser : des objets aux mots",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/fichevocabulairecategoriserau-cycle-1pdf-102678.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Langage"
+    "sousCategorie": "Langage",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Livret — Acquisition des premiers outils mathématiques (2024)",
-    "url": "https://eduscol.education.fr/document/68964/download",
+    "titre": "Enrichir le vocabulaire — Acquérir un vocabulaire précis, spécifique et adapté",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/acquerir-et-developper-le-vocabulaire-specifique-au-cycle-1pdf-102672.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Langage",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Livret — Acquisition des premiers outils mathématiques",
-    "url": "https://eduscol.education.fr/document/65307/download",
+    "titre": "Syntaxe — Du mot-phrase à la phrase",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/acquerir-et-developper-la-syntaxecomplexifier-ses-phrases-au-cycle-1pdf-102663.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Langage",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Livret — Acquisition des premiers outils mathématiques (2025)",
-    "url": "https://eduscol.education.fr/document/65869/download",
+    "titre": "Syntaxe — S'approprier les premières structures syntaxiques",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/sappropier-et-comprendre-les-1eres-structures-synta-au-cycle-1pdf-102681.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Langage",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Livret — Mathématiques cycle 1 (2025)",
-    "url": "https://eduscol.education.fr/document/65383/download",
+    "titre": "Syntaxe — Diversifier l'emploi des pronoms",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/acquerir-et-developper-la-syntaxe-diversifier-lemploi-des-pronoms-au-cycle-1pdf-102660.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Langage",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Livret — Maths Cycle 1 à partir de 4 ans (2025)",
+    "titre": "Syntaxe — Types et formes de phrases",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/acquerir-et-developper-la-syntaxecomprendre-et-employer-des-types-phrases-au-cycle-1pdf-102666.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Langage",
+    "source": "Éduscol · ressource d'accompagnement"
+  },
+  {
+    "titre": "Syntaxe — Construire le sens des temps",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/acquerir-et-developper-la-syntaxesystemetemps-au-cycle-1pdf-102669.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Langage",
+    "source": "Éduscol · ressource d'accompagnement"
+  },
+  {
+    "titre": "Le développement et la structuration du langage oral et écrit au cycle 1",
+    "url": "https://eduscol.education.gouv.fr/4698/le-developpement-et-la-structuration-du-langage-oral-et-ecrit-au-cycle-1",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Langage",
+    "source": "Page éduscol : toutes les ressources"
+  },
+  {
+    "titre": "Mathématiques avant 4 ans — livret d'accompagnement",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2025livretaccompagnementmathavant4ans-111939.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Mathématiques",
+    "source": "Éduscol · livret d'accompagnement du programme"
+  },
+  {
+    "titre": "Mathématiques à partir de 4 ans — livret d'accompagnement",
     "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2025livretaccompagnementmathapartirde4anspdf-112368.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Mathématiques",
+    "source": "Éduscol · livret d'accompagnement du programme"
   },
   {
-    "titre": "Guide fondamental — La construction du nombre à l'école maternelle",
-    "url": "https://eduscol.education.fr/document/50924/download",
+    "titre": "Mathématiques à partir de 5 ans — livret d'accompagnement",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2025livretaccompagnementmathapartirde5anspdf-123112.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Mathématiques",
+    "source": "Éduscol · livret d'accompagnement du programme"
   },
   {
-    "titre": "Exemples de mise en œuvre — Résolution de problèmes",
-    "url": "https://eduscol.education.fr/document/65190/download",
+    "titre": "Guide « Pour enseigner la construction du nombre à l'école maternelle »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/guide-pour-enseigner-la-construction-du-nombre-l-ecole-maternelle-100773.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Mathématiques",
+    "source": "Guide fondamental"
   },
   {
-    "titre": "Grandeurs et mesures — Cycles 1 et 2",
-    "url": "https://eduscol.education.fr/document/17293/download",
+    "titre": "Utiliser le nombre pour comparer deux quantités",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/construire-le-nombre-pour-exprimer-les-quantites-1pdf-99096.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Mathématiques",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Mathématiques — Informer et accompagner les professionnels",
-    "url": "https://eduscol.education.fr/document/36989/download",
+    "titre": "Utiliser le nombre pour mémoriser des quantités",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/le-nombre-pour-memoriser-quantites-1pdf-99099.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Mathématiques",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Livret — EMC cycle 1 (2025)",
-    "url": "https://eduscol.education.fr/document/65051/download",
+    "titre": "Reconnaître et réaliser une collection de 1 à 10",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/stabiliserconnaissancepetitsnombresrealiser-1pdf-99120.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "EMC"
+    "sousCategorie": "Mathématiques",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Enseignement moral et civique — Ressources générales",
-    "url": "https://eduscol.education.fr/document/6031/download",
+    "titre": "Décomposer et composer les nombres jusqu'à dix",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/stabiliser-connaissances-decomposer-1pdf-99117.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "EMC"
+    "sousCategorie": "Mathématiques",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "EMC — Vivre ensemble de la maternelle au CM2",
-    "url": "https://eduscol.education.fr/document/42928/download",
+    "titre": "Utiliser le nombre pour désigner un rang, une position",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/rang-et-position-1pdf-99105.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "EMC"
+    "sousCategorie": "Mathématiques",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "EVAR — Éduquer à la vie affective et relationnelle à l'école maternelle",
-    "url": "https://eduscol.education.fr/document/67323/download",
+    "titre": "Résoudre des problèmes d'ajout ou de retrait",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/resoudre-des-problemes-ajout-retrait-cycle1pdf-99108.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "EVAR"
+    "sousCategorie": "Mathématiques",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "EVAR — Livret d'accompagnement de programme",
-    "url": "https://eduscol.education.fr/document/67801/download",
+    "titre": "Résoudre des problèmes de composition de deux collections",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/resoudre-des-problemes-composition-cycle1pdf-99111.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "EVAR"
+    "sousCategorie": "Mathématiques",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Explorer le monde du vivant, des objets et de la matière",
-    "url": "https://eduscol.education.fr/document/13516/download",
+    "titre": "Résoudre des problèmes de produit et de partage",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/resoudre-des-problemes-produitpartage-cycle1pdf-99114.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Explorer le monde"
+    "sousCategorie": "Mathématiques",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Éducation au développement durable — Du cycle 1 au cycle 3",
-    "url": "https://eduscol.education.fr/document/52578/download",
+    "titre": "Construire des premiers savoirs et savoir-faire avec rigueur",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/premiers-savoirs-et-savoir-faire-1pdf-99102.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "Explorer le monde"
+    "sousCategorie": "Mathématiques",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Agir, s'exprimer, comprendre — Activité physique cycle 1",
-    "url": "https://eduscol.education.fr/document/15004/download",
+    "titre": "Acquérir les premiers outils mathématiques au cycle 1",
+    "url": "https://eduscol.education.gouv.fr/4674/acquerir-les-premiers-outils-mathematiques-cycle-1",
     "categorie": "Cycle 1",
-    "sousCategorie": "EPS & Arts"
+    "sousCategorie": "Mathématiques",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Agir, s'exprimer, comprendre — Ressources maternelle",
-    "url": "https://eduscol.education.fr/document/13447/download",
+    "titre": "Créer une dynamique d'apprentissage",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ressc1agircreer-dynamique456441pdf-74130.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "EPS & Arts"
+    "sousCategorie": "Activités physiques",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
     "titre": "Agir dans l'espace, dans la durée et sur les objets",
-    "url": "https://eduscol.education.fr/document/13441/download",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ressc1agirobj1456443pdf-74133.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "EPS & Arts"
+    "sousCategorie": "Activités physiques",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Arts plastiques — Cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/14173/download",
+    "titre": "Adapter ses équilibres et ses déplacements à des environnements variés",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ressc1agirobj2456445pdf-74136.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "EPS & Arts"
+    "sousCategorie": "Activités physiques",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Arts plastiques — Enjeux et positionnement",
-    "url": "https://eduscol.education.fr/document/18277/download",
+    "titre": "Communiquer avec les autres à travers des actions à visée expressive ou artistique",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ressc1agirobj3456447pdf-74139.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "EPS & Arts"
+    "sousCategorie": "Activités physiques",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Jouer et apprendre — Cadrage général maternelle",
-    "url": "https://eduscol.education.fr/document/13528/download",
+    "titre": "Collaborer, coopérer, s'opposer",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ressc1agirobj4456449pdf-74142.pdf",
     "categorie": "Cycle 1",
-    "sousCategorie": "EPS & Arts"
+    "sousCategorie": "Activités physiques",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Accompagner les professionnels — Cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/14116/download",
+    "titre": "Agir, s'exprimer, comprendre à travers l'activité physique au cycle 1",
+    "url": "https://eduscol.education.gouv.fr/4680/agir-s-exprimer-comprendre-travers-l-activite-physique-au-cycle-1",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Activités physiques",
+    "source": "Page éduscol : toutes les ressources"
+  },
+  {
+    "titre": "Vademecum « Enseigner les sciences et la technologie à l'école primaire »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/vademecum-enseigner-les-sciences-et-la-technologie-l-ecole-primaire-100224.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Explorer le monde",
+    "source": "Éduscol · vademecum"
+  },
+  {
+    "titre": "Connaître le corps humain",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ra23c1corps-humainpdf-100242.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Explorer le monde",
+    "source": "Éduscol · ressource d'accompagnement"
+  },
+  {
+    "titre": "Découvrir le monde du vivant, de la matière et des objets au cycle 1",
+    "url": "https://eduscol.education.gouv.fr/7052/decouvrir-le-monde-du-vivant-de-la-matiere-et-des-objets-au-cycle-1",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Explorer le monde",
+    "source": "Page éduscol : toutes les ressources"
+  },
+  {
+    "titre": "Se repérer dans l'espace — À propos d'architecture",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ra21c1c1sereperertempsespaceexplorerarchitecturepdf-72279.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Explorer le monde",
+    "source": "Éduscol · ressource d'accompagnement"
+  },
+  {
+    "titre": "Se repérer dans le temps et l'espace au cycle 1",
+    "url": "https://eduscol.education.gouv.fr/4701/se-reperer-dans-le-temps-et-l-espace-au-cycle-1",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Explorer le monde",
+    "source": "Page éduscol : toutes les ressources"
+  },
+  {
+    "titre": "Le cadre général — Jouer et apprendre",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ressc1jouerjouerapprendre458303pdf-74220.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Jouer et apprendre",
+    "source": "Éduscol · ressource d'accompagnement"
+  },
+  {
+    "titre": "Les jeux d'exploration",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ressc1jouerexploration474564pdf-74223.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Jouer et apprendre",
+    "source": "Éduscol · ressource d'accompagnement"
+  },
+  {
+    "titre": "Les jeux symboliques",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ressc1jouersymbolique474560pdf-74226.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Jouer et apprendre",
+    "source": "Éduscol · ressource d'accompagnement"
+  },
+  {
+    "titre": "Les jeux de construction",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ressc1jouerconstruction474562pdf-74229.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Jouer et apprendre",
+    "source": "Éduscol · ressource d'accompagnement"
+  },
+  {
+    "titre": "Les jeux à règles",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ressc1jouerregles459146pdf-74232.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Jouer et apprendre",
+    "source": "Éduscol · ressource d'accompagnement"
+  },
+  {
+    "titre": "Jouer et apprendre au cycle 1",
+    "url": "https://eduscol.education.gouv.fr/4689/jouer-et-apprendre-au-cycle-1",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Jouer et apprendre",
+    "source": "Page éduscol : toutes les ressources"
+  },
+  {
+    "titre": "Suivi et évaluation des apprentissages — guide de présentation des ressources",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ressc1evalpresentationpdf-69729.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Suivi et évaluation",
+    "source": "Éduscol"
+  },
+  {
+    "titre": "Suivi et évaluation des apprentissages — points de vigilance",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ressc1evalpointsvigilancepdf-69735.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Suivi et évaluation",
+    "source": "Éduscol"
+  },
+  {
+    "titre": "Suivi et évaluation des apprentissages des élèves à l'école maternelle",
+    "url": "https://eduscol.education.gouv.fr/4671/suivi-et-evaluation-des-apprentissages-des-eleves-l-ecole-maternelle",
+    "categorie": "Cycle 1",
+    "sousCategorie": "Suivi et évaluation",
+    "source": "Page éduscol : carnet de suivi, synthèse des acquis de GS"
+  },
+  {
+    "titre": "EVAR avant 4 ans — livret d'accompagnement",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2025livretaccompagnementevaravant4anspdf-112857.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "EVAR",
+    "source": "Éduscol · livret d'accompagnement du programme"
+  },
+  {
+    "titre": "Repères pour la mise en œuvre du programme dans le premier degré",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/reperes-mise-en-oeuvre-du-programme-evarpdf-112860.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "EVAR",
+    "source": "Éduscol"
+  },
+  {
+    "titre": "Éduquer à la vie affective et relationnelle à l'école maternelle — dépliant",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2025evar4pagesa5maternellepdf-113340.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "EVAR",
+    "source": "Éduscol · 4 pages A5"
+  },
+  {
+    "titre": "EVAR et EVARS — foire aux questions",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/evar-et-evars-foire-aux-questions-octobre-2025pdf-111222.pdf",
+    "categorie": "Cycle 1",
+    "sousCategorie": "EVAR",
+    "source": "Éduscol · octobre 2025"
+  },
+  {
+    "titre": "Mettre en œuvre le programme EVAR/EVARS",
+    "url": "https://eduscol.education.gouv.fr/5916/mettre-en-oeuvre-le-programme-evarevars",
+    "categorie": "Cycle 1",
+    "sousCategorie": "EVAR",
+    "source": "Page éduscol : toutes les ressources"
+  },
+  {
+    "titre": "Français — programme du cycle 2",
+    "url": "https://www.education.gouv.fr/sites/default/files/document/Annexe%203%20%E2%80%93%20Programme%20de%20fran%C3%A7ais%20du%20cycle%202-403818.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Programmes & références"
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 41 du 31 octobre 2024 · CP, CE1, CE2"
   },
   {
-    "titre": "Attendus de fin d'année — CP à CM2",
-    "url": "https://eduscol.education.fr/document/14182/download",
+    "titre": "Mathématiques — programme du cycle 2",
+    "url": "https://www.education.gouv.fr/sites/default/files/document/Annexe%204%20%E2%80%93%20Programme%20de%20math%C3%A9matiques%20du%20cycle%202-403821.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Programmes & références"
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 41 du 31 octobre 2024 · CP, CE1, CE2"
   },
   {
-    "titre": "Repères annuels de progression — Français Cycle 2",
-    "url": "https://eduscol.education.fr/document/13966/download",
+    "titre": "Sciences et technologie — programme du cycle 2",
+    "url": "https://www.education.gouv.fr/sites/default/files/document/annexe-1-programme-de-sciences-et-technologie-du-cycle-2-519020.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Français"
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 24 du 11 juin 2026 · nouveau en CP à la rentrée 2026, en CE1-CE2 en 2027"
   },
   {
-    "titre": "Livret — Français CP (2025)",
+    "titre": "Histoire-géographie — programme du cycle 2",
+    "url": "https://www.education.gouv.fr/sites/default/files/document/annexe-3-programme-d-histoire-geographie-cycle-2-516776.pdf",
+    "categorie": "Cycle 2",
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 22 du 28 mai 2026 · nouveau en CP à la rentrée 2026, en CE1-CE2 en 2027"
+  },
+  {
+    "titre": "Éducation physique et sportive — programme du cycle 2",
+    "url": "https://www.education.gouv.fr/sites/default/files/document/annexe-1-programme-d-education-physique-et-sportive-cycle-2-516770.pdf",
+    "categorie": "Cycle 2",
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 22 du 28 mai 2026 · nouveau en CP à la rentrée 2026, en CE1-CE2 en 2027"
+  },
+  {
+    "titre": "Langues vivantes étrangères et régionales — programme du cycle 2",
+    "url": "https://www.education.gouv.fr/sites/default/files/document/Annexe%201%20%E2%80%93%20Programme%20de%20langues%20vivantes%20%C3%A9trang%C3%A8res%20et%20r%C3%A9gionales%20pour%20le%20cycle%202%20-481187.pdf",
+    "categorie": "Cycle 2",
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 12 du 19 mars 2026 · nouveau en CP à la rentrée 2026, en CE1-CE2 en 2027"
+  },
+  {
+    "titre": "Enseignement moral et civique — programme du CP à la terminale",
+    "url": "https://www.education.gouv.fr/sites/default/files/document/Annexe%20%E2%80%94%20Programme%20d%E2%80%99enseignement%20moral%20et%20civique%20du%20cours%20pr%C3%A9paratoire%20%C3%A0%20la%20classe%20terminale%20des%20voies%20g%C3%A9n%C3%A9rale%2C%20technologique%20et%20professionnelle%20et%20des%20classes%20pr%C3%A9parant%20au%20CAP-402159.pdf",
+    "categorie": "Cycle 2",
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 24 du 13 juin 2024 · nouveau en CE2 à la rentrée 2026"
+  },
+  {
+    "titre": "Éducation à la vie affective et relationnelle — programme de l'école élémentaire",
+    "url": "https://www.education.gouv.fr/sites/default/files/document/Programme%20d%E2%80%99%C3%A9ducation%20%C3%A0%20la%20vie%20affective%20et%20relationnelle%20%C3%A0%20l%E2%80%99%C3%A9cole%20%C3%A9l%C3%A9mentaire-405261.pdf",
+    "categorie": "Cycle 2",
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 6 du 6 février 2025"
+  },
+  {
+    "titre": "Programme du cycle 2 de 2020 — arts ; en CE1-CE2 : EPS, questionner le monde, langues vivantes",
+    "url": "https://cache.media.education.gouv.fr/file/31/88/5/ensel714_annexe1_1312885.pdf",
+    "categorie": "Cycle 2",
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 31 du 30 juillet 2020 · encore en vigueur pour ces enseignements"
+  },
+  {
+    "titre": "Enseigner au cycle 2",
+    "url": "https://eduscol.education.gouv.fr/4347/enseigner-au-cycle-2",
+    "categorie": "Cycle 2",
+    "sousCategorie": "Programmes & références",
+    "source": "Page éduscol : tableau des programmes par classe"
+  },
+  {
+    "titre": "Guides fondamentaux pour l'enseignement",
+    "url": "https://eduscol.education.gouv.fr/6681/les-guides-fondamentaux-pour-l-enseignement",
+    "categorie": "Cycle 2",
+    "sousCategorie": "Programmes & références",
+    "source": "Page éduscol : la collection complète"
+  },
+  {
+    "titre": "Français CP — livret d'accompagnement du programme",
     "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2025livretaccompagnementfrancaiscp-112431_0.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Français"
+    "sousCategorie": "Français",
+    "source": "Éduscol · livret d'accompagnement"
   },
   {
-    "titre": "Livret — Français CE1 (2026)",
+    "titre": "Français CE1 — livret d'accompagnement du programme",
     "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2026livretaccompagnementfrace1pdf-123917.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Français"
+    "sousCategorie": "Français",
+    "source": "Éduscol · livret d'accompagnement"
   },
   {
-    "titre": "Guide fondamental — Lecture et écriture CP",
-    "url": "https://eduscol.education.fr/document/1508/download",
+    "titre": "Français CE2 — livret d'accompagnement du programme",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/livret-accompagnement-programme-francais-ce2-127643.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Français"
+    "sousCategorie": "Français",
+    "source": "Éduscol · livret d'accompagnement"
   },
   {
-    "titre": "Guide fondamental — Lecture et écriture CE1",
-    "url": "https://eduscol.education.fr/document/1509/download",
+    "titre": "Guide « Pour enseigner la lecture et l'écriture au CP »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/guide-pour-enseigner-la-lecture-et-l-ecriture-au-cp-67854.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Français"
+    "sousCategorie": "Français",
+    "source": "Guide fondamental"
   },
   {
-    "titre": "Ressources Français — Cycle 2",
-    "url": "https://eduscol.education.fr/document/14251/download",
+    "titre": "Guide « Pour enseigner la lecture et l'écriture au CE1 »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/guide-pour-enseigner-la-lecture-et-l-ecriture-au-ce1-67857.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Français"
+    "sousCategorie": "Français",
+    "source": "Guide fondamental"
   },
   {
-    "titre": "Lecture et compréhension de l'écrit — Activités cycle 2",
-    "url": "https://eduscol.education.fr/document/16354/download",
+    "titre": "Guide « La grammaire du français du CP à la 6e »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/guide-la-grammaire-du-francais-du-cp-la-6e-97251.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Français"
+    "sousCategorie": "Français",
+    "source": "Guide fondamental"
   },
   {
-    "titre": "Ressources vocabulaire — Cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/15607/download",
+    "titre": "Guide « La grammaire du français — Terminologie grammaticale »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/guide-la-grammaire-du-francais-terminologie-grammaticale-67998.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Français"
+    "sousCategorie": "Français",
+    "source": "Guide fondamental"
   },
   {
-    "titre": "Français — Accompagnement cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/14233/download",
+    "titre": "Ressources d'accompagnement du programme de français au cycle 2",
+    "url": "https://eduscol.education.gouv.fr/4740/ressources-d-accompagnement-du-programme-de-francais-au-cycle-2",
     "categorie": "Cycle 2",
-    "sousCategorie": "Français"
+    "sousCategorie": "Français",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "L'écriture au cycle 2 — Ressources",
-    "url": "https://eduscol.education.fr/document/14371/download",
+    "titre": "Étude de la langue aux cycles 2 et 3",
+    "url": "https://eduscol.education.gouv.fr/4809/ressources-d-accompagnement-du-programme-de-francais-aux-cycles-2-et-3-etude-de-la-langue",
     "categorie": "Cycle 2",
-    "sousCategorie": "Français"
+    "sousCategorie": "Français",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "La rédaction de textes — Les écrits courts",
-    "url": "https://eduscol.education.fr/document/14416/download",
+    "titre": "Mathématiques CP — livret d'accompagnement du programme",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2025livretaccompagnementmathcppdf-111984.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Français"
+    "sousCategorie": "Mathématiques",
+    "source": "Éduscol · livret d'accompagnement"
   },
   {
-    "titre": "La production d'écrit — Cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/18136/download",
-    "categorie": "Cycle 2",
-    "sousCategorie": "Français"
-  },
-  {
-    "titre": "La grammaire du français du CP à la 6e (2022)",
-    "url": "https://eduscol.education.fr/document/45262/download",
-    "categorie": "Cycle 2",
-    "sousCategorie": "Français"
-  },
-  {
-    "titre": "Étude de la langue — Français cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/18124/download",
-    "categorie": "Cycle 2",
-    "sousCategorie": "Français"
-  },
-  {
-    "titre": "Évaluation en début de CE1 — Français",
-    "url": "https://eduscol.education.fr/document/42766/download",
-    "categorie": "Cycle 2",
-    "sousCategorie": "Français"
-  },
-  {
-    "titre": "Maîtriser la relation entre l'oral et l'écrit",
-    "url": "https://eduscol.education.fr/document/16474/download",
-    "categorie": "Cycle 2",
-    "sousCategorie": "Français"
-  },
-  {
-    "titre": "L'oral à apprendre — Du premier essai à l'oral formalisé",
-    "url": "https://eduscol.education.fr/document/14254/download",
-    "categorie": "Cycle 2",
-    "sousCategorie": "Français"
-  },
-  {
-    "titre": "Français — Informer et accompagner cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/14218/download",
-    "categorie": "Cycle 2",
-    "sousCategorie": "Français"
-  },
-  {
-    "titre": "Français — Cycles 2, 3, 4 (ressources complètes)",
-    "url": "https://eduscol.education.fr/document/14527/download",
-    "categorie": "Cycle 2",
-    "sousCategorie": "Français"
-  },
-  {
-    "titre": "Français — Cycles 2, 3, 4 — Vocabulaire",
-    "url": "https://eduscol.education.fr/document/15625/download",
-    "categorie": "Cycle 2",
-    "sousCategorie": "Français"
-  },
-  {
-    "titre": "Repères annuels de progression — Mathématiques Cycle 2",
-    "url": "https://eduscol.education.fr/document/13972/download",
-    "categorie": "Cycle 2",
-    "sousCategorie": "Mathématiques"
-  },
-  {
-    "titre": "Guide fondamental — Nombres, calcul et résolution de problèmes",
-    "url": "https://eduscol.education.fr/document/3738/download",
-    "categorie": "Cycle 2",
-    "sousCategorie": "Mathématiques"
-  },
-  {
-    "titre": "Livret — Mathématiques accompagnement programme 2025",
-    "url": "https://eduscol.education.fr/document/67770/download",
-    "categorie": "Cycle 2",
-    "sousCategorie": "Mathématiques"
-  },
-  {
-    "titre": "Livret — Maths CE1 (2025)",
+    "titre": "Mathématiques CE1 — livret d'accompagnement du programme",
     "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2025livretaccompagnementmathce1pdf-116325.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Mathématiques",
+    "source": "Éduscol · livret d'accompagnement"
   },
   {
-    "titre": "Grandeurs et mesures — Ressources cycle 2",
-    "url": "https://eduscol.education.fr/document/15406/download",
+    "titre": "Mathématiques CE2 — livret d'accompagnement du programme",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2025livretaccompagnementmathce2pdf-122974.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Mathématiques",
+    "source": "Éduscol · livret d'accompagnement"
   },
   {
-    "titre": "Le calcul aux cycles 2 et 3",
-    "url": "https://eduscol.education.fr/document/16504/download",
+    "titre": "Guide « Pour enseigner les nombres, le calcul et la résolution de problèmes au CP »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/guide-pour-enseigner-les-nombres-le-calcul-et-la-resolution-de-problemes-au-cp-68664.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Mathématiques",
+    "source": "Guide fondamental"
   },
   {
-    "titre": "Le calcul en ligne au cycle 2",
-    "url": "https://eduscol.education.fr/document/15403/download",
+    "titre": "Ressources d'accompagnement du programme de mathématiques au cycle 2",
+    "url": "https://eduscol.education.gouv.fr/4746/ressources-d-accompagnement-du-programme-de-mathematiques-au-cycle-2",
     "categorie": "Cycle 2",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Mathématiques",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Compétences mathématiques — Ressources",
-    "url": "https://eduscol.education.fr/document/18478/download",
+    "titre": "Vademecum « Enseigner les sciences et la technologie à l'école primaire »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/vademecum-enseigner-les-sciences-et-la-technologie-l-ecole-primaire-100224.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Sciences",
+    "source": "Éduscol · vademecum"
   },
   {
-    "titre": "Grandeurs et mesures — Accompagnement",
-    "url": "https://eduscol.education.fr/document/36653/download",
+    "titre": "Progression des attendus de fin de cycle 2 — la matière",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ra23c2progressionintercyclesmatierepdf-100515.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Sciences",
+    "source": "Éduscol · proposition de progression"
   },
   {
-    "titre": "Évaluation en début de CE1 — Mathématiques",
-    "url": "https://eduscol.education.fr/document/42796/download",
+    "titre": "Progression des attendus de fin de cycle 2 — le vivant",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ra23c2progressionintercyclesvivantpdf-100509.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Sciences",
+    "source": "Éduscol · proposition de progression"
   },
   {
-    "titre": "Évaluation en début de CP — Mathématiques",
-    "url": "https://eduscol.education.fr/document/42832/download",
+    "titre": "Progression des attendus de fin de cycle 2 — les objets techniques",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ra23c2progressionintercyclesobjetstechniquespdf-100512.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Sciences",
+    "source": "Éduscol · proposition de progression"
   },
   {
-    "titre": "Fiche d'intervention — Évaluations nationales CE2",
-    "url": "https://eduscol.education.fr/document/61144/download",
+    "titre": "Le circuit électrique",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ra23c2circuitelectriquepdf-100245.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Sciences",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "EVAR — Éduquer à la vie affective et relationnelle du CP au CE2",
-    "url": "https://eduscol.education.fr/document/67326/download",
+    "titre": "Les changements d'états de l'eau",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ra23c2les-changements-d-etats-de-l-eaupdf-100248.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "EVAR"
+    "sousCategorie": "Sciences",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "EVAR — Foire aux questions (Dec 2025)",
-    "url": "https://eduscol.education.fr/document/64469/download",
+    "titre": "Ressources d'accompagnement en sciences et technologie au cycle 2",
+    "url": "https://eduscol.education.gouv.fr/7055/ressources-d-accompagnement-pour-questionner-le-monde-du-vivant-de-la-matiere-et-des-objets-sciences-et-technologie-au-cycle-2",
     "categorie": "Cycle 2",
-    "sousCategorie": "EVAR"
+    "sousCategorie": "Sciences",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Repères annuels de progression — EMC Cycle 2",
-    "url": "https://eduscol.education.fr/document/13978/download",
+    "titre": "Ressources cartographiques des cycles 2 et 3 — fiche de présentation",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/fichehgcartoc2c32026-127502.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "EMC"
+    "sousCategorie": "Histoire-Géographie",
+    "source": "Éduscol · 2026"
   },
   {
-    "titre": "Laïcité — Thème 2 : ressources pédagogiques",
-    "url": "https://eduscol.education.fr/document/25663/download",
+    "titre": "Planisphère pour la classe (avec pays)",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/planisphere-equalearth-jbbouron-6feuilles-127484.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "EMC"
+    "sousCategorie": "Histoire-Géographie",
+    "source": "Éduscol · 2026"
   },
   {
-    "titre": "Outils pédagogiques — Journée de la laïcité",
-    "url": "https://eduscol.education.fr/document/31459/download",
+    "titre": "Planisphère pour le cahier des élèves — CP",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/cp-th2-planisphere-eleve-127487.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "EMC"
+    "sousCategorie": "Histoire-Géographie",
+    "source": "Éduscol · 2026"
   },
   {
-    "titre": "Questionner le monde — Logique de cycle",
-    "url": "https://eduscol.education.fr/document/15094/download",
+    "titre": "Planisphère pour le cahier des élèves — CE1",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ce1-planisphere-eleve-nb-129316.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Sciences"
+    "sousCategorie": "Histoire-Géographie",
+    "source": "Éduscol · 2026"
   },
   {
-    "titre": "Questionner le monde — Vivant, matière, objets",
-    "url": "https://eduscol.education.fr/document/15106/download",
+    "titre": "Ressources d'accompagnement en histoire-géographie au cycle 2",
+    "url": "https://eduscol.education.gouv.fr/4770/ressources-d-accompagnement-pour-questionner-l-espace-et-le-temps-histoire-geographie-au-cycle-2",
     "categorie": "Cycle 2",
-    "sousCategorie": "Sciences"
+    "sousCategorie": "Histoire-Géographie",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Questionner le monde — Ressources complémentaires",
-    "url": "https://eduscol.education.fr/document/15112/download",
+    "titre": "Exemples pour la mise en œuvre du programme d'EPS au cycle 2",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/exemples-mise-en-oeuvre-programme-eps-cycle2-127346.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Sciences"
+    "sousCategorie": "EPS",
+    "source": "Éduscol · 2026"
   },
   {
-    "titre": "Science et technologie — Cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/15211/download",
+    "titre": "Exemples pour la mise en œuvre du programme d'EPS à l'école élémentaire",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/exemples-miseenoeuvre-eps-elementaire-127511.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Sciences"
+    "sousCategorie": "EPS",
+    "source": "Éduscol · 2026"
   },
   {
-    "titre": "Repères annuels de progression — EPS Cycle 2",
-    "url": "https://eduscol.education.fr/document/13984/download",
+    "titre": "Ressources d'accompagnement pour l'EPS au cycle 2",
+    "url": "https://eduscol.education.gouv.fr/4725/ressources-d-accompagnement-pour-l-education-physique-et-sportive-au-cycle-2",
     "categorie": "Cycle 2",
-    "sousCategorie": "EPS"
+    "sousCategorie": "EPS",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "EPS — Ressources cycle 2",
-    "url": "https://eduscol.education.fr/document/15040/download",
+    "titre": "Exemples pour la mise en œuvre du programme de langues vivantes au cycle 2",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/exemples-mise-en-oeuvre-c2-lver-126512.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "EPS"
+    "sousCategorie": "Langues vivantes",
+    "source": "Éduscol · 2026"
   },
   {
-    "titre": "EPS — Concevoir et mettre en œuvre au cycle 2",
-    "url": "https://eduscol.education.fr/document/15010/download",
+    "titre": "Guide pour l'enseignement des langues vivantes à l'école",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/guide-pour-l-enseignement-des-langues-vivantes-l-ecole-67713.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "EPS"
+    "sousCategorie": "Langues vivantes",
+    "source": "Guide"
   },
   {
-    "titre": "EPS — Programme cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/3286/download",
+    "titre": "Ressources d'accompagnement pour les langues vivantes à l'école élémentaire",
+    "url": "https://eduscol.education.gouv.fr/7058/ressources-d-accompagnement-pour-les-langues-vivantes-etrangeres-et-regionales-l-ecole-elementaire",
     "categorie": "Cycle 2",
-    "sousCategorie": "EPS"
+    "sousCategorie": "Langues vivantes",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Repères annuels de progression — Arts plastiques Cycle 2",
-    "url": "https://eduscol.education.fr/document/13990/download",
+    "titre": "Enseignement moral et civique CP — livret d'accompagnement",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2025livretaccompagnementemccp-111693.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Arts"
+    "sousCategorie": "EMC",
+    "source": "Éduscol · livret d'accompagnement"
   },
   {
-    "titre": "Arts plastiques — Principes et objectifs cycles 2 et 3",
-    "url": "https://eduscol.education.fr/document/14110/download",
+    "titre": "Enseignement moral et civique CE1 — livret d'accompagnement",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2026livretaccompagnementemcce1-127535.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Arts"
+    "sousCategorie": "EMC",
+    "source": "Éduscol · livret d'accompagnement"
   },
   {
-    "titre": "Arts plastiques — Cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/14173/download",
+    "titre": "Ressources d'accompagnement pour l'EMC à l'école élémentaire",
+    "url": "https://eduscol.education.gouv.fr/7064/ressources-d-accompagnement-pour-l-enseignement-moral-et-civique-l-ecole-elementaire",
     "categorie": "Cycle 2",
-    "sousCategorie": "Arts"
+    "sousCategorie": "EMC",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Arts plastiques — Accompagnement cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/14161/download",
+    "titre": "EVAR CP — livret d'accompagnement",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2026livretaccompagnementevarcp-126299.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Arts"
+    "sousCategorie": "EVAR",
+    "source": "Éduscol · livret d'accompagnement"
   },
   {
-    "titre": "Éducation musicale — Cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/14305/download",
+    "titre": "EVAR CE1 — livret d'accompagnement",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2026livretaccompagnementevarce1-127397.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Arts"
+    "sousCategorie": "EVAR",
+    "source": "Éduscol · livret d'accompagnement"
   },
   {
-    "titre": "Histoire des arts — Ressources cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/14134/download",
+    "titre": "EVAR CE2 — livret d'accompagnement",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2026livretaccompagnementevarce2-128761.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Arts"
+    "sousCategorie": "EVAR",
+    "source": "Éduscol · livret d'accompagnement"
   },
   {
-    "titre": "Guide enseignant — Évaluations CP (2024)",
-    "url": "https://eduscol.education.fr/document/60414/download",
+    "titre": "Repères pour la mise en œuvre du programme dans le premier degré",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/reperes-mise-en-oeuvre-du-programme-evarpdf-112860.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Évaluations"
+    "sousCategorie": "EVAR",
+    "source": "Éduscol"
   },
   {
-    "titre": "Évaluations Repères CP-CE1-CE2 (2024)",
-    "url": "https://eduscol.education.fr/document/60548/download",
+    "titre": "Éduquer à la vie affective et relationnelle du CP au CE2 — dépliant",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2025evar4pagesa5cpce2pdf-113343.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Évaluations"
+    "sousCategorie": "EVAR",
+    "source": "Éduscol · 4 pages A5"
   },
   {
-    "titre": "Évaluations Repères 2025 — CP à CM2",
-    "url": "https://eduscol.education.fr/document/66836/download",
+    "titre": "EVAR et EVARS — foire aux questions",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/evar-et-evars-foire-aux-questions-octobre-2025pdf-111222.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Évaluations"
+    "sousCategorie": "EVAR",
+    "source": "Éduscol · octobre 2025"
   },
   {
-    "titre": "Repères CP 2025 — Guide pour le professeur",
-    "url": "https://eduscol.education.fr/document/65536/download",
+    "titre": "Mettre en œuvre le programme EVAR/EVARS",
+    "url": "https://eduscol.education.gouv.fr/5916/mettre-en-oeuvre-le-programme-evarevars",
     "categorie": "Cycle 2",
-    "sousCategorie": "Évaluations"
+    "sousCategorie": "EVAR",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Repères CE1 2025 — Guide pour le professeur",
-    "url": "https://eduscol.education.fr/document/65618/download",
+    "titre": "Arts plastiques — enjeux des trois questions au programme du cycle 2",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ra16c2apenjeuxtroisquestions739771pdf-74727.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Évaluations"
+    "sousCategorie": "Arts",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Repères CE2 — Guide pour le professeur (2025)",
-    "url": "https://eduscol.education.fr/document/65649/download",
+    "titre": "Arts plastiques — la dynamique des compétences",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/3rac2c3dynamique-competences-arts-plastiques570435pdf-74724.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Évaluations"
+    "sousCategorie": "Arts",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Évaluation Repères CP — Guide des scores (2025)",
-    "url": "https://eduscol.education.fr/document/66831/download",
+    "titre": "L'évaluation en arts plastiques au cycle 2",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ev16c2earteval-ap-c2-dm613818pdf-74763.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Évaluations"
+    "sousCategorie": "Arts",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Évaluation Repères CE1 — Guide des scores (2024)",
-    "url": "https://eduscol.education.fr/document/60575/download",
+    "titre": "Éducation musicale — le chant : principes de mise en œuvre",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ra16c2c3emchantprincipesmiseenoeuvre743233pdf-74925.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Évaluations"
+    "sousCategorie": "Arts",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Évaluation Repères CE2 — Guide des scores (2025)",
-    "url": "https://eduscol.education.fr/document/66858/download",
+    "titre": "Éducation musicale — apprendre un chant",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ra16c2c3emchantapprendre743235pdf-74931.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Évaluations"
+    "sousCategorie": "Arts",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Évaluation Repères CE2 — Guide des scores (2024)",
-    "url": "https://eduscol.education.fr/document/61001/download",
+    "titre": "Éducation musicale — l'écoute : principes de mise en œuvre",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ra16c2c3eart2ecouteprincipes664603pdf-74937.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Évaluations"
+    "sousCategorie": "Arts",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Guide accès enseignant — Évaluations Repères (2024)",
-    "url": "https://eduscol.education.fr/document/60571/download",
+    "titre": "L'évaluation en éducation musicale",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ra16c2c3educmusicaleevalv2668674pdf-74922.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Évaluations"
+    "sousCategorie": "Arts",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Point d'étape CP — Guide pour le professeur (2025)",
-    "url": "https://eduscol.education.fr/document/63954/download",
+    "titre": "Vademecum « Connaître le patrimoine de proximité »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/vademecum-connaitre-le-patrimoine-de-proximite-67707.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Évaluations"
+    "sousCategorie": "Arts",
+    "source": "Éduscol · vademecum"
   },
   {
-    "titre": "Point d'étape CP — Guide des scores (2025)",
-    "url": "https://eduscol.education.fr/document/64063/download",
+    "titre": "Vademecum « La chorale à l'école, au collège et au lycée »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/vademecum-la-chorale-l-ecole-au-college-et-au-lycee-67710.pdf",
     "categorie": "Cycle 2",
-    "sousCategorie": "Évaluations"
+    "sousCategorie": "Arts",
+    "source": "Éduscol · vademecum"
   },
   {
-    "titre": "Point d'étape CP — Guide des scores (2024)",
-    "url": "https://eduscol.education.fr/document/55902/download",
+    "titre": "Ressources d'accompagnement en arts plastiques aux cycles 2 et 3",
+    "url": "https://eduscol.education.gouv.fr/4731/ressources-d-accompagnement-des-enseignements-en-arts-plastiques-aux-cycles-2-et-3",
     "categorie": "Cycle 2",
-    "sousCategorie": "Évaluations"
+    "sousCategorie": "Arts",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Évaluations nationales — Point d'étape CP janvier 2025",
-    "url": "https://eduscol.education.fr/document/64057/download",
+    "titre": "Ressources d'accompagnement en éducation musicale aux cycles 2 et 3",
+    "url": "https://eduscol.education.gouv.fr/4737/ressources-d-accompagnement-des-enseignements-en-education-musicale-aux-cycles-2-et-3",
     "categorie": "Cycle 2",
-    "sousCategorie": "Évaluations"
+    "sousCategorie": "Arts",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Programme du cycle 3",
-    "url": "https://eduscol.education.fr/document/50990/download",
+    "titre": "Évaluations de début d'année 2026 — diaporama de présentation",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/educationnationalereperes26diaporama-de-presentation-128812.pdf",
+    "categorie": "Cycle 2",
+    "sousCategorie": "Évaluations",
+    "source": "Repères 2026 · CP, CE1, CE2, CM1"
+  },
+  {
+    "titre": "Début de CP 2026 — guide pour le professeur",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/26cpp-128800.pdf",
+    "categorie": "Cycle 2",
+    "sousCategorie": "Évaluations",
+    "source": "Repères 2026"
+  },
+  {
+    "titre": "Début de CE1 2026 — guide pour le professeur",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/26ce1p-128848.pdf",
+    "categorie": "Cycle 2",
+    "sousCategorie": "Évaluations",
+    "source": "Repères 2026"
+  },
+  {
+    "titre": "Début de CE2 2026 — guide pour le professeur",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/26ce2p-128881.pdf",
+    "categorie": "Cycle 2",
+    "sousCategorie": "Évaluations",
+    "source": "Repères 2026"
+  },
+  {
+    "titre": "Guide pour l'accompagnement des élèves à besoins éducatifs particuliers",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/guide-accompagnement-des-eleves-besoins-particuliers-2026-128821.pdf",
+    "categorie": "Cycle 2",
+    "sousCategorie": "Évaluations",
+    "source": "Repères 2026 · adaptations des passations"
+  },
+  {
+    "titre": "Guide pour l'accès enseignant au portail",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/educationnationalereperes26guideportailenseignant-128818.pdf",
+    "categorie": "Cycle 2",
+    "sousCategorie": "Évaluations",
+    "source": "Repères 2026"
+  },
+  {
+    "titre": "Évaluations des acquis et besoins des élèves au CE2",
+    "url": "https://eduscol.education.gouv.fr/5283/evaluations-des-acquis-et-besoins-des-eleves-au-ce2",
+    "categorie": "Cycle 2",
+    "sousCategorie": "Évaluations",
+    "source": "Page éduscol : cahiers, guides adaptés, fiches d'intervention"
+  },
+  {
+    "titre": "Évaluations des acquis et besoins des élèves au CP",
+    "url": "https://eduscol.education.gouv.fr/5274/evaluations-des-acquis-et-besoins-des-eleves-au-cp",
+    "categorie": "Cycle 2",
+    "sousCategorie": "Évaluations",
+    "source": "Page éduscol : cahiers, guides adaptés"
+  },
+  {
+    "titre": "Évaluations des acquis et besoins des élèves au CE1",
+    "url": "https://eduscol.education.gouv.fr/5289/evaluations-des-acquis-et-besoins-des-eleves-au-ce1",
+    "categorie": "Cycle 2",
+    "sousCategorie": "Évaluations",
+    "source": "Page éduscol : cahiers, guides adaptés"
+  },
+  {
+    "titre": "Français — programme du cycle 3",
+    "url": "https://www.education.gouv.fr/sites/default/files/programme-de-fran-ais-pour-le-cycle-3-439824.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Programmes & références"
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 16 du 17 avril 2025 · CM1, et CM2 à la rentrée 2026"
   },
   {
-    "titre": "Livret d'accompagnement de programme — Cycle 3 (2025)",
-    "url": "https://eduscol.education.fr/document/66844/download",
+    "titre": "Mathématiques — programme du cycle 3",
+    "url": "https://www.education.gouv.fr/sites/default/files/programme-de-math-matiques-pour-le-cycle-3-439827.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Programmes & références"
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 16 du 17 avril 2025 · CM1, et CM2 à la rentrée 2026"
   },
   {
-    "titre": "Attendus de fin d'année — CP à CM2 (cycle 3)",
-    "url": "https://eduscol.education.fr/document/15895/download",
+    "titre": "Sciences et technologie — programme du cycle 3",
+    "url": "https://www.education.gouv.fr/sites/default/files/document/annexe-2-programme-de-sciences-et-technologie-du-cycle-3-519023.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Programmes & références"
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 24 du 11 juin 2026 · nouveau en CM1 à la rentrée 2026, en CM2 en 2027"
   },
   {
-    "titre": "Repères annuels de progression — Français Cycle 3",
-    "url": "https://eduscol.education.fr/document/14020/download",
+    "titre": "Histoire-géographie — programme du cycle 3",
+    "url": "https://www.education.gouv.fr/sites/default/files/document/annexe-4-programme-d-histoire-geographie-cycle-3-516779.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Français"
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 22 du 28 mai 2026 · nouveau en CM1 à la rentrée 2026, en CM2 en 2027"
   },
   {
-    "titre": "Livret — Français accompagnement de programme 2026",
-    "url": "https://eduscol.education.fr/document/69507/download",
+    "titre": "Éducation physique et sportive — programme du cycle 3",
+    "url": "https://www.education.gouv.fr/sites/default/files/document/annexe-2-programme-d-education-physique-et-sportive-cycle-3-516773.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Français"
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 22 du 28 mai 2026 · nouveau en CM1 à la rentrée 2026, en CM2 en 2027"
   },
   {
-    "titre": "Guide fondamental — La compréhension au cours moyen",
-    "url": "https://eduscol.education.fr/document/33593/download",
+    "titre": "Langues vivantes étrangères et régionales — programme du cours moyen",
+    "url": "https://www.education.gouv.fr/sites/default/files/document/Annexe%202%20%E2%80%93%20Programme%20de%20langues%20vivantes%20%C3%A9trang%C3%A8res%20et%20r%C3%A9gionales%20pour%20les%20classes%20de%20cours%20moyen%20%28cycle%203%29-481190.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Français"
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 12 du 19 mars 2026 · nouveau en CM1 à la rentrée 2026, en CM2 en 2027"
   },
   {
-    "titre": "Enseigner l'écriture au cycle 3",
-    "url": "https://eduscol.education.fr/document/16405/download",
+    "titre": "Enseignement moral et civique — programme du CP à la terminale",
+    "url": "https://www.education.gouv.fr/sites/default/files/document/Annexe%20%E2%80%94%20Programme%20d%E2%80%99enseignement%20moral%20et%20civique%20du%20cours%20pr%C3%A9paratoire%20%C3%A0%20la%20classe%20terminale%20des%20voies%20g%C3%A9n%C3%A9rale%2C%20technologique%20et%20professionnelle%20et%20des%20classes%20pr%C3%A9parant%20au%20CAP-402159.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Français"
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 24 du 13 juin 2024"
   },
   {
-    "titre": "Organiser l'étude de la langue au cycle 3",
-    "url": "https://eduscol.education.fr/document/16465/download",
+    "titre": "Éducation à la vie affective et relationnelle — programme de l'école élémentaire",
+    "url": "https://www.education.gouv.fr/sites/default/files/document/Programme%20d%E2%80%99%C3%A9ducation%20%C3%A0%20la%20vie%20affective%20et%20relationnelle%20%C3%A0%20l%E2%80%99%C3%A9cole%20%C3%A9l%C3%A9mentaire-405261.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Français"
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 6 du 6 février 2025"
   },
   {
-    "titre": "La grammaire du français du CP à la 6e (2022)",
-    "url": "https://eduscol.education.fr/document/45262/download",
+    "titre": "Programme du cycle 3 en vigueur à la rentrée 2023 — arts ; en CM2 : EPS, histoire-géographie, langues vivantes, sciences",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/programme-d-enseignement-du-cycle-3-2023-100806.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Français"
+    "sousCategorie": "Programmes & références",
+    "source": "BO n° 31 du 30 juillet 2020, sciences BO n° 25 du 22 juin 2023 · encore en vigueur pour ces enseignements"
   },
   {
-    "titre": "Français — Étude de la langue cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/14269/download",
+    "titre": "Enseigner au cycle 3",
+    "url": "https://eduscol.education.gouv.fr/4356/enseigner-au-cycle-3",
     "categorie": "Cycle 3",
-    "sousCategorie": "Français"
+    "sousCategorie": "Programmes & références",
+    "source": "Page éduscol : tableau des programmes par classe"
   },
   {
-    "titre": "Ressources vocabulaire — Cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/15607/download",
+    "titre": "Guides fondamentaux pour l'enseignement",
+    "url": "https://eduscol.education.gouv.fr/6681/les-guides-fondamentaux-pour-l-enseignement",
     "categorie": "Cycle 3",
-    "sousCategorie": "Français"
+    "sousCategorie": "Programmes & références",
+    "source": "Page éduscol : la collection complète"
   },
   {
-    "titre": "Stratégies de compréhension — Français cycle 3",
-    "url": "https://eduscol.education.fr/document/16315/download",
+    "titre": "Exemples pour la mise en œuvre du programme de français — CM1",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/exemplesmiseenoeuvrecm1-francaispdf-111546.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Français"
+    "sousCategorie": "Français",
+    "source": "Éduscol"
   },
   {
-    "titre": "Travailler et évaluer la compréhension — Français",
-    "url": "https://eduscol.education.fr/document/16327/download",
+    "titre": "Exemples pour la mise en œuvre du programme de français — CM2",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/exemplesmiseenoeuvrecm2francaispdf-111540.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Français"
+    "sousCategorie": "Français",
+    "source": "Éduscol"
   },
   {
-    "titre": "Comprendre différents types de textes — Français",
-    "url": "https://eduscol.education.fr/document/16324/download",
+    "titre": "Guide « La compréhension au cours moyen »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/guide-la-comprehension-au-cours-moyen-91725.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Français"
+    "sousCategorie": "Français",
+    "source": "Guide fondamental"
   },
   {
-    "titre": "La compréhension des textes narratifs — Français",
-    "url": "https://eduscol.education.fr/document/16321/download",
+    "titre": "Guide « La grammaire du français du CP à la 6e »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/guide-la-grammaire-du-francais-du-cp-la-6e-97251.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Français"
+    "sousCategorie": "Français",
+    "source": "Guide fondamental"
   },
   {
-    "titre": "Différencier — Lecture et compréhension de l'écrit",
-    "url": "https://eduscol.education.fr/document/16345/download",
+    "titre": "Guide « La grammaire du français — Terminologie grammaticale »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/guide-la-grammaire-du-francais-terminologie-grammaticale-67998.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Français"
+    "sousCategorie": "Français",
+    "source": "Guide fondamental"
   },
   {
-    "titre": "Français — Cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/14515/download",
+    "titre": "Ressources d'accompagnement du programme de français au cycle 3",
+    "url": "https://eduscol.education.gouv.fr/4800/ressources-d-accompagnement-du-programme-de-francais-au-cycle-3",
     "categorie": "Cycle 3",
-    "sousCategorie": "Français"
+    "sousCategorie": "Français",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Repères annuels de progression — Mathématiques Cycle 3",
-    "url": "https://eduscol.education.fr/document/14026/download",
+    "titre": "Étude de la langue aux cycles 2 et 3",
+    "url": "https://eduscol.education.gouv.fr/4809/ressources-d-accompagnement-du-programme-de-francais-aux-cycles-2-et-3-etude-de-la-langue",
     "categorie": "Cycle 3",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Français",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Livret — Mathématiques accompagnement programme 2025",
-    "url": "https://eduscol.education.fr/document/69017/download",
+    "titre": "Mathématiques CM1 — livret d'accompagnement du programme",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2026livretaccompagnementmathematiquescm1-129268.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Mathématiques",
+    "source": "Éduscol · livret d'accompagnement 2026"
   },
   {
-    "titre": "Espace et géométrie au cycle 3",
-    "url": "https://eduscol.education.fr/document/16516/download",
+    "titre": "Mathématiques CM2 — livret d'accompagnement du programme",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2026-livret-accompagnement-mathematiques-cm2-128556.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Mathématiques",
+    "source": "Éduscol · livret d'accompagnement 2026"
   },
   {
-    "titre": "Espace et géométrie — Accompagnement",
-    "url": "https://eduscol.education.fr/document/17305/download",
+    "titre": "Guide « Résolution de problèmes — cours moyen »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/guide-resolution-de-problemes-cours-moyen-90990.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Mathématiques",
+    "source": "Guide fondamental"
   },
   {
-    "titre": "Grandeurs et mesures au cycle 3",
-    "url": "https://eduscol.education.fr/document/16513/download",
+    "titre": "Ressources d'accompagnement du programme de mathématiques au cycle 3",
+    "url": "https://eduscol.education.gouv.fr/5712/ressources-d-accompagnement-du-programme-de-mathematiques-au-cycle-3",
     "categorie": "Cycle 3",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Mathématiques",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Mathématiques — Ressources cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/16528/download",
+    "titre": "Vademecum « Enseigner les sciences et la technologie à l'école primaire »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/vademecum-enseigner-les-sciences-et-la-technologie-l-ecole-primaire-100224.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Sciences",
+    "source": "Éduscol · vademecum"
   },
   {
-    "titre": "Fiche d'intervention mathématiques — Septembre 2025",
-    "url": "https://eduscol.education.fr/document/52401/download",
+    "titre": "Ressources d'accompagnement du programme de sciences et technologie au cycle 3",
+    "url": "https://eduscol.education.gouv.fr/6878/ressources-d-accompagnement-du-programme-de-sciences-et-technologie-au-cycle-3",
     "categorie": "Cycle 3",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Sciences",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Fractions et nombres décimaux au cycle 3",
-    "url": "https://eduscol.education.fr/document/16510/download",
+    "titre": "Ressources cartographiques des cycles 2 et 3 — fiche de présentation",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/fichehgcartoc2c32026-127502.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Histoire-Géographie",
+    "source": "Éduscol · 2026"
   },
   {
-    "titre": "Utiliser les nombres — Comparer, calculer et résoudre",
-    "url": "https://eduscol.education.fr/document/17239/download",
+    "titre": "Ressources d'accompagnement du programme d'histoire et géographie au cycle 3",
+    "url": "https://eduscol.education.gouv.fr/4791/ressources-d-accompagnement-du-programme-d-histoire-et-geographie-au-cycle-3",
     "categorie": "Cycle 3",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "Histoire-Géographie",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Résolution de problèmes — Ressources cycle 3",
-    "url": "https://eduscol.education.fr/document/52647/download",
+    "titre": "Exemples pour la mise en œuvre du programme d'EPS au cycle 3",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/exemples-mise-en-oeuvre-programme-eps-cycle3-127343.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "EPS",
+    "source": "Éduscol · 2026"
   },
   {
-    "titre": "Proportionnalité au cycle 3",
-    "url": "https://eduscol.education.fr/document/18493/download",
+    "titre": "Exemples pour la mise en œuvre du programme d'EPS à l'école élémentaire",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/exemples-miseenoeuvre-eps-elementaire-127511.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Mathématiques"
+    "sousCategorie": "EPS",
+    "source": "Éduscol · 2026"
   },
   {
-    "titre": "Repères annuels de progression — EMC Cycle 3",
-    "url": "https://eduscol.education.fr/document/14032/download",
+    "titre": "EPS — ressources pour le cycle 3",
+    "url": "https://eduscol.education.gouv.fr/4773/education-physique-et-sportive-ressources-pour-le-cycle-3",
     "categorie": "Cycle 3",
-    "sousCategorie": "EMC"
+    "sousCategorie": "EPS",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Livret — EMC accompagnement de programme 2025",
-    "url": "https://eduscol.education.fr/document/65491/download",
+    "titre": "Exemples pour la mise en œuvre du programme de langues vivantes — CM1-CM2",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/exemples-mise-en-oeuvre-cm1-cm2-lver-126515.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "EMC"
+    "sousCategorie": "Langues vivantes",
+    "source": "Éduscol · 2026"
   },
   {
-    "titre": "Livret — EMC accompagnement de programme 2025 (CM1)",
-    "url": "https://eduscol.education.fr/document/68404/download",
+    "titre": "Guide pour l'enseignement des langues vivantes à l'école",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/guide-pour-l-enseignement-des-langues-vivantes-l-ecole-67713.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "EMC"
+    "sousCategorie": "Langues vivantes",
+    "source": "Guide"
   },
   {
-    "titre": "Laïcité — Ressources pédagogiques cycle 3",
-    "url": "https://eduscol.education.fr/document/25663/download",
+    "titre": "Ressources d'accompagnement pour les langues vivantes à l'école élémentaire",
+    "url": "https://eduscol.education.gouv.fr/7058/ressources-d-accompagnement-pour-les-langues-vivantes-etrangeres-et-regionales-l-ecole-elementaire",
     "categorie": "Cycle 3",
-    "sousCategorie": "EMC"
+    "sousCategorie": "Langues vivantes",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "EVAR — Éduquer à la vie affective et relationnelle CM1-CM2 (2025)",
+    "titre": "Enseignement moral et civique CM1 — livret d'accompagnement",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2025livretaccompagnementemccm1-112047.pdf",
+    "categorie": "Cycle 3",
+    "sousCategorie": "EMC",
+    "source": "Éduscol · livret d'accompagnement"
+  },
+  {
+    "titre": "Enseignement moral et civique CM2 — livret d'accompagnement",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2026livretaccompagnementemccm2-127538.pdf",
+    "categorie": "Cycle 3",
+    "sousCategorie": "EMC",
+    "source": "Éduscol · livret d'accompagnement"
+  },
+  {
+    "titre": "Ressources d'accompagnement pour l'EMC à l'école élémentaire",
+    "url": "https://eduscol.education.gouv.fr/7064/ressources-d-accompagnement-pour-l-enseignement-moral-et-civique-l-ecole-elementaire",
+    "categorie": "Cycle 3",
+    "sousCategorie": "EMC",
+    "source": "Page éduscol : toutes les ressources"
+  },
+  {
+    "titre": "EVAR CM2 — livret d'accompagnement",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2025livretaccompagnementevarcm2pdf-116355.pdf",
+    "categorie": "Cycle 3",
+    "sousCategorie": "EVAR",
+    "source": "Éduscol · livret d'accompagnement"
+  },
+  {
+    "titre": "Repères pour la mise en œuvre du programme dans le premier degré",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/reperes-mise-en-oeuvre-du-programme-evarpdf-112860.pdf",
+    "categorie": "Cycle 3",
+    "sousCategorie": "EVAR",
+    "source": "Éduscol"
+  },
+  {
+    "titre": "Éduquer à la vie affective et relationnelle en CM1-CM2 — dépliant",
     "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2025evar4pagesa5cm1cm2pdf-113346.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "EVAR"
+    "sousCategorie": "EVAR",
+    "source": "Éduscol · 4 pages A5"
   },
   {
-    "titre": "Repères annuels de progression — Histoire-Géographie Cycle 3",
-    "url": "https://eduscol.education.fr/document/14044/download",
+    "titre": "EVAR et EVARS — foire aux questions",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/evar-et-evars-foire-aux-questions-octobre-2025pdf-111222.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Histoire-Géographie"
+    "sousCategorie": "EVAR",
+    "source": "Éduscol · octobre 2025"
   },
   {
-    "titre": "Histoire-Géographie — Ressources pédagogiques cycle 3",
-    "url": "https://eduscol.education.fr/document/16795/download",
+    "titre": "Mettre en œuvre le programme EVAR/EVARS",
+    "url": "https://eduscol.education.gouv.fr/5916/mettre-en-oeuvre-le-programme-evarevars",
     "categorie": "Cycle 3",
-    "sousCategorie": "Histoire-Géographie"
+    "sousCategorie": "EVAR",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Histoire-Géographie — Programme et ressources cycle 3",
-    "url": "https://eduscol.education.fr/document/16810/download",
+    "titre": "Arts plastiques — enjeux des trois questions au programme du cycle 3",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ra16c3apenjeuxtroisquestions743230pdf-74730.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Histoire-Géographie"
+    "sousCategorie": "Arts",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Histoire-Géographie — Cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/17896/download",
+    "titre": "L'évaluation en arts plastiques au cycle 3",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ev16c3eartaplaeval-dm613812pdf-74766.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Histoire-Géographie"
+    "sousCategorie": "Arts",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Histoire-Géo Thème 3 — Mieux habiter",
-    "url": "https://eduscol.education.fr/document/16774/download",
+    "titre": "La rencontre avec les œuvres dans la formation de l'élève au cycle 3",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/new15rac2c3rencontreaveclesoeuvresapc3-dm613376pdf-74775.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Histoire-Géographie"
+    "sousCategorie": "Arts",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Histoire-Géo Thème 3 — Consommer en France",
-    "url": "https://eduscol.education.fr/document/16765/download",
+    "titre": "Construire une séquence d'enseignement en éducation musicale au cycle 3",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ra16c3eartemusconstruire-sequence-dm613816pdf-74919.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Histoire-Géographie"
+    "sousCategorie": "Arts",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Histoire-Géo Thème 3 — Françaises et Français dans la République",
-    "url": "https://eduscol.education.fr/document/17866/download",
+    "titre": "Éducation musicale — le chant : principes de mise en œuvre",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/ra16c2c3emchantprincipesmiseenoeuvre743233pdf-74925.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Histoire-Géographie"
+    "sousCategorie": "Arts",
+    "source": "Éduscol · ressource d'accompagnement"
   },
   {
-    "titre": "Histoire-Géo Thème 3 — Transformations de l'Europe",
-    "url": "https://eduscol.education.fr/document/17848/download",
+    "titre": "Vademecum « Connaître le patrimoine de proximité »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/vademecum-connaitre-le-patrimoine-de-proximite-67707.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Histoire-Géographie"
+    "sousCategorie": "Arts",
+    "source": "Éduscol · vademecum"
   },
   {
-    "titre": "Repères annuels de progression — Sciences Cycle 3",
-    "url": "https://eduscol.education.fr/document/14038/download",
+    "titre": "Vademecum « La chorale à l'école, au collège et au lycée »",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/vademecum-la-chorale-l-ecole-au-college-et-au-lycee-67710.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Sciences"
+    "sousCategorie": "Arts",
+    "source": "Éduscol · vademecum"
   },
   {
-    "titre": "Sciences et technologie — Ressources cycle 3",
-    "url": "https://eduscol.education.fr/document/16966/download",
+    "titre": "Ressources d'accompagnement en arts plastiques aux cycles 2 et 3",
+    "url": "https://eduscol.education.gouv.fr/4731/ressources-d-accompagnement-des-enseignements-en-arts-plastiques-aux-cycles-2-et-3",
     "categorie": "Cycle 3",
-    "sousCategorie": "Sciences"
+    "sousCategorie": "Arts",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Matière, mouvement, énergie — Sciences cycle 3",
-    "url": "https://eduscol.education.fr/document/16855/download",
+    "titre": "Ressources d'accompagnement en éducation musicale aux cycles 2 et 3",
+    "url": "https://eduscol.education.gouv.fr/4737/ressources-d-accompagnement-des-enseignements-en-education-musicale-aux-cycles-2-et-3",
     "categorie": "Cycle 3",
-    "sousCategorie": "Sciences"
+    "sousCategorie": "Arts",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Le programme de sciences en cycle 3 — Ressources 2023",
-    "url": "https://eduscol.education.fr/document/53991/download",
+    "titre": "Ressources d'accompagnement du programme d'histoire des arts au cycle 3",
+    "url": "https://eduscol.education.gouv.fr/4785/ressources-d-accompagnement-du-programme-d-histoire-des-arts-au-cycle-3",
     "categorie": "Cycle 3",
-    "sousCategorie": "Sciences"
+    "sousCategorie": "Arts",
+    "source": "Page éduscol : toutes les ressources"
   },
   {
-    "titre": "Éducation au développement durable — Cycle 3",
-    "url": "https://eduscol.education.fr/document/61223/download",
+    "titre": "Évaluations de début d'année 2026 — diaporama de présentation",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/educationnationalereperes26diaporama-de-presentation-128812.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Sciences"
+    "sousCategorie": "Évaluations",
+    "source": "Repères 2026 · CP, CE1, CE2, CM1"
   },
   {
-    "titre": "Sciences et technologie — Place du cycle 3",
-    "url": "https://eduscol.education.fr/document/16984/download",
+    "titre": "Début de CM1 2026 — guide pour le professeur",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/26cm1p-128914.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Sciences"
+    "sousCategorie": "Évaluations",
+    "source": "Repères 2026"
   },
   {
-    "titre": "Progression des apprentissages au cycle 3 — Sciences",
-    "url": "https://eduscol.education.fr/document/16963/download",
+    "titre": "Guide pour l'accompagnement des élèves à besoins éducatifs particuliers",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/guide-accompagnement-des-eleves-besoins-particuliers-2026-128821.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Sciences"
+    "sousCategorie": "Évaluations",
+    "source": "Repères 2026 · adaptations des passations"
   },
   {
-    "titre": "Sciences de la vie et de la Terre — Idées-clés",
-    "url": "https://eduscol.education.fr/document/17695/download",
+    "titre": "Guide pour l'accès enseignant au portail",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/educationnationalereperes26guideportailenseignant-128818.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Sciences"
+    "sousCategorie": "Évaluations",
+    "source": "Repères 2026"
   },
   {
-    "titre": "Corps humain — Sciences de la vie et de la Terre",
-    "url": "https://eduscol.education.fr/document/17431/download",
+    "titre": "Début de CM1 2026 — fiche d'intervention : résoudre des problèmes",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2026evaluationdebutcm1mathematiquesficheinterventionresoudreproblemes-129517.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Sciences"
+    "sousCategorie": "Évaluations",
+    "source": "Repères 2026 · mathématiques"
   },
   {
-    "titre": "Sciences et technologie — Ressources complémentaires",
-    "url": "https://eduscol.education.fr/document/16990/download",
+    "titre": "Début de CM1 2026 — fiche d'intervention : mémoriser des faits numériques et des procédures",
+    "url": "https://eduscol.education.gouv.fr/sites/default/files/document/2026evaluationdebutcm1mathematiquesficheinterventionmemoriserfaitsnumeriquesprocedures-129508.pdf",
     "categorie": "Cycle 3",
-    "sousCategorie": "Sciences"
+    "sousCategorie": "Évaluations",
+    "source": "Repères 2026 · mathématiques"
   },
   {
-    "titre": "Vivant, matière, objets — Ressources sciences cycle 3",
-    "url": "https://eduscol.education.fr/document/16978/download",
+    "titre": "Évaluations des acquis et besoins des élèves au CM1",
+    "url": "https://eduscol.education.gouv.fr/5280/evaluations-des-acquis-et-besoins-des-eleves-au-cm1",
     "categorie": "Cycle 3",
-    "sousCategorie": "Sciences"
-  },
-  {
-    "titre": "EPS — Ressources cycle 3",
-    "url": "https://eduscol.education.fr/document/15016/download",
-    "categorie": "Cycle 3",
-    "sousCategorie": "EPS"
-  },
-  {
-    "titre": "Fiches APSA — Activités physiques sportives et artistiques",
-    "url": "https://eduscol.education.fr/document/25588/download",
-    "categorie": "Cycle 3",
-    "sousCategorie": "EPS"
-  },
-  {
-    "titre": "EPS — Progressivité des apprentissages cycle 3",
-    "url": "https://eduscol.education.fr/document/16618/download",
-    "categorie": "Cycle 3",
-    "sousCategorie": "EPS"
-  },
-  {
-    "titre": "Arts plastiques — Principes et objectifs cycles 2 et 3",
-    "url": "https://eduscol.education.fr/document/14110/download",
-    "categorie": "Cycle 3",
-    "sousCategorie": "Arts"
-  },
-  {
-    "titre": "Arts plastiques — Accompagnement cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/18169/download",
-    "categorie": "Cycle 3",
-    "sousCategorie": "Arts"
-  },
-  {
-    "titre": "Éducation musicale — Cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/14305/download",
-    "categorie": "Cycle 3",
-    "sousCategorie": "Arts"
-  },
-  {
-    "titre": "Arts plastiques — Repères de progressivité cycle 3",
-    "url": "https://eduscol.education.fr/document/16606/download",
-    "categorie": "Cycle 3",
-    "sousCategorie": "Arts"
-  },
-  {
-    "titre": "Arts plastiques — Idées et pratiques créatives",
-    "url": "https://eduscol.education.fr/document/18034/download",
-    "categorie": "Cycle 3",
-    "sousCategorie": "Arts"
-  },
-  {
-    "titre": "Histoire des arts — Repères cycle 3",
-    "url": "https://eduscol.education.fr/document/14170/download",
-    "categorie": "Cycle 3",
-    "sousCategorie": "Arts"
-  },
-  {
-    "titre": "Évaluations nationales CP–CM2 (2024)",
-    "url": "https://eduscol.education.fr/document/60568/download",
-    "categorie": "Cycle 3",
-    "sousCategorie": "Évaluations"
-  },
-  {
-    "titre": "Évaluations Repères 2025 — CP à CM2",
-    "url": "https://eduscol.education.fr/document/66836/download",
-    "categorie": "Cycle 3",
-    "sousCategorie": "Évaluations"
-  },
-  {
-    "titre": "Évaluations nationales Repères — Septembre 2025",
-    "url": "https://eduscol.education.fr/document/66832/download",
-    "categorie": "Cycle 3",
-    "sousCategorie": "Évaluations"
-  },
-  {
-    "titre": "Repères CM1 2025 — Guide pour le professeur",
-    "url": "https://eduscol.education.fr/document/65715/download",
-    "categorie": "Cycle 3",
-    "sousCategorie": "Évaluations"
-  },
-  {
-    "titre": "Évaluation Repères CM1 — Guide des scores 2025",
-    "url": "https://eduscol.education.fr/document/67141/download",
-    "categorie": "Cycle 3",
-    "sousCategorie": "Évaluations"
-  },
-  {
-    "titre": "Évaluation Repères — Guide des scores 2025 (CM2)",
-    "url": "https://eduscol.education.fr/document/66862/download",
-    "categorie": "Cycle 3",
-    "sousCategorie": "Évaluations"
+    "sousCategorie": "Évaluations",
+    "source": "Page éduscol : cahiers, guides adaptés, fiches"
   },
   {
     "titre": "Climat scolaire — Impliquer les collectifs d'élèves",
@@ -1032,52 +1343,22 @@
     "sousCategorie": "Différenciation"
   },
   {
-    "titre": "Apprendre à apprendre — Ressources pour les enseignants",
-    "url": "https://eduscol.education.fr/document/24400/download",
-    "categorie": "Pédagogie",
-    "sousCategorie": "Apprentissages"
-  },
-  {
     "titre": "Le développement affectif, social et cognitif de l'enfant",
     "url": "https://eduscol.education.fr/document/18799/download",
     "categorie": "Pédagogie",
     "sousCategorie": "Apprentissages"
   },
   {
-    "titre": "Accompagner les professionnels — Cycles 2, 3, 4",
-    "url": "https://eduscol.education.fr/document/14116/download",
-    "categorie": "Pédagogie",
-    "sousCategorie": "Accompagnement"
-  },
-  {
-    "titre": "Ressources transversales — Mathématiques cycles 2, 3, 4",
+    "titre": "Mathématiques cycles 2, 3, 4 — la différenciation pédagogique",
     "url": "https://eduscol.education.fr/document/17197/download",
     "categorie": "Pédagogie",
     "sousCategorie": "Accompagnement"
-  },
-  {
-    "titre": "Le langage à l'école maternelle — Ressources",
-    "url": "https://eduscol.education.fr/document/7862/download",
-    "categorie": "Rituels",
-    "sousCategorie": "Langage"
   },
   {
     "titre": "Mobiliser le langage dans toutes ses dimensions — Maternelle",
     "url": "https://eduscol.education.fr/document/13351/download",
     "categorie": "Rituels",
     "sousCategorie": "Langage"
-  },
-  {
-    "titre": "Explorer le monde — Découvrir le monde du vivant",
-    "url": "https://eduscol.education.fr/document/9491/download",
-    "categorie": "Rituels",
-    "sousCategorie": "Organisation de classe"
-  },
-  {
-    "titre": "Les sciences cognitives et les apprentissages",
-    "url": "https://eduscol.education.fr/document/24418/download",
-    "categorie": "Universalité des apprentissages",
-    "sousCategorie": "Sciences cognitives"
   },
   {
     "titre": "Processus d'apprentissage et sciences cognitives (2024)",
@@ -1098,28 +1379,10 @@
     "sousCategorie": "Sciences cognitives"
   },
   {
-    "titre": "Évaluations Repères — Livret enseignant CM1 (2024)",
-    "url": "https://eduscol.education.fr/document/60520/download",
-    "categorie": "Évaluation",
-    "sousCategorie": "Cycle 3"
-  },
-  {
     "titre": "Compétences du socle commun — Évaluation",
     "url": "https://eduscol.education.fr/document/49691/download",
     "categorie": "Évaluation",
     "sousCategorie": "Cycle 3"
-  },
-  {
-    "titre": "Guide de l'évaluation des apprentissages et des acquis",
-    "url": "https://eduscol.education.fr/document/5470/download",
-    "categorie": "Évaluation",
-    "sousCategorie": "Démarches"
-  },
-  {
-    "titre": "L'évaluation bienveillante au service des apprentissages",
-    "url": "https://eduscol.education.fr/document/24430/download",
-    "categorie": "Évaluation",
-    "sousCategorie": "Démarches"
   },
   {
     "titre": "Guide auto-évaluation pour une école inclusive",
@@ -1160,12 +1423,6 @@
   {
     "titre": "Intégrer les élèves à besoins éducatifs particuliers",
     "url": "https://eduscol.education.fr/document/5372/download",
-    "categorie": "Inclusion",
-    "sousCategorie": "Besoins particuliers"
-  },
-  {
-    "titre": "Besoins éducatifs particuliers — Ressources pédagogiques",
-    "url": "https://eduscol.education.fr/document/24445/download",
     "categorie": "Inclusion",
     "sousCategorie": "Besoins particuliers"
   },
@@ -1212,20 +1469,8 @@
     "sousCategorie": "EMI"
   },
   {
-    "titre": "EMI — S'informer, informer",
-    "url": "https://eduscol.education.fr/document/8117/download",
-    "categorie": "Numérique",
-    "sousCategorie": "EMI"
-  },
-  {
     "titre": "EMI — Informer et accompagner les professionnels",
     "url": "https://eduscol.education.fr/document/21886/download",
-    "categorie": "Numérique",
-    "sousCategorie": "EMI"
-  },
-  {
-    "titre": "Éducation aux médias et à l'information — Cycles 2 et 3",
-    "url": "https://eduscol.education.fr/document/24460/download",
     "categorie": "Numérique",
     "sousCategorie": "EMI"
   },
@@ -1254,31 +1499,31 @@
     "sousCategorie": "Ressources générales"
   },
   {
-    "titre": "Langues vivantes — Ressources cycles 2, 3, 4",
+    "titre": "Anglais cycle 2 — déclinaison culturelle",
     "url": "https://eduscol.education.fr/document/14650/download",
     "categorie": "Langues vivantes",
     "sousCategorie": "Ressources générales"
   },
   {
-    "titre": "Langues vivantes — Déclinaisons culturelles",
+    "titre": "Anglais cycle 3 — déclinaison culturelle",
     "url": "https://eduscol.education.fr/document/14671/download",
     "categorie": "Langues vivantes",
     "sousCategorie": "Ressources générales"
   },
   {
-    "titre": "Langues vivantes — Ressources pédagogiques",
+    "titre": "Croiser les enseignements et les pratiques (cycles 2, 3 et 4)",
     "url": "https://eduscol.education.fr/document/14716/download",
     "categorie": "Langues vivantes",
     "sousCategorie": "Ressources générales"
   },
   {
-    "titre": "Langues vivantes — Informer et accompagner",
+    "titre": "Anglais cycle 2 — repères de progressivité linguistique",
     "url": "https://eduscol.education.fr/document/14557/download",
     "categorie": "Langues vivantes",
     "sousCategorie": "Ressources générales"
   },
   {
-    "titre": "Langues vivantes — Communication langagière",
+    "titre": "Anglais cycle 3 — repères de progressivité linguistique",
     "url": "https://eduscol.education.fr/document/14584/download",
     "categorie": "Langues vivantes",
     "sousCategorie": "Ressources générales"
@@ -1290,49 +1535,31 @@
     "sousCategorie": "Ressources générales"
   },
   {
-    "titre": "Langues vivantes cycles 2, 3 et 4",
+    "titre": "Évaluer l'oral en anglais au cycle 2 — préambule",
     "url": "https://eduscol.education.fr/document/14782/download",
     "categorie": "Langues vivantes",
     "sousCategorie": "Ressources générales"
   },
   {
-    "titre": "Langues vivantes — Accompagnement programme",
+    "titre": "Élaborer une progression cohérente (cycles 2, 3 et 4)",
     "url": "https://eduscol.education.fr/document/14551/download",
     "categorie": "Langues vivantes",
     "sousCategorie": "Ressources générales"
   },
   {
-    "titre": "Langues vivantes — Progressivité des apprentissages",
+    "titre": "Créer un environnement propice à l'apprentissage des langues (cycles 2, 3 et 4)",
     "url": "https://eduscol.education.fr/document/14548/download",
     "categorie": "Langues vivantes",
     "sousCategorie": "Ressources générales"
   },
   {
-    "titre": "Repères annuels de progression — Langues vivantes Cycle 2",
-    "url": "https://eduscol.education.fr/document/14002/download",
-    "categorie": "Langues vivantes",
-    "sousCategorie": "Cycle 2"
-  },
-  {
-    "titre": "Langues vivantes Cycle 2 — Ressources",
+    "titre": "Repères annuels de progression en langues vivantes — cycle 2",
     "url": "https://eduscol.education.fr/document/57654/download",
     "categorie": "Langues vivantes",
     "sousCategorie": "Cycle 2"
   },
   {
-    "titre": "Choix et évaluation des langues vivantes — Guide",
-    "url": "https://eduscol.education.fr/document/61194/download",
-    "categorie": "Langues vivantes",
-    "sousCategorie": "Cycle 2"
-  },
-  {
-    "titre": "Repères annuels de progression — Langues vivantes Cycle 3",
-    "url": "https://eduscol.education.fr/document/14008/download",
-    "categorie": "Langues vivantes",
-    "sousCategorie": "Cycle 3"
-  },
-  {
-    "titre": "Langues vivantes Cycle 3 — Repères annuels de progression",
+    "titre": "Repères annuels de progression en langues vivantes — cycle 3",
     "url": "https://eduscol.education.fr/document/56031/download",
     "categorie": "Langues vivantes",
     "sousCategorie": "Cycle 3"
