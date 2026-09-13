@@ -512,3 +512,56 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .comp-travaillee { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--border); }
 .comp-travaillee-texte { font-size: 14px; line-height: 1.45; }
 .comp-travaillee .meta { font-size: 12px; color: var(--text-2); margin: 2px 0 6px; }
+
+/* ── Éditeur de texte mis en forme ── */
+.editeur-riche { display: flex; flex-direction: column; gap: 10px; }
+.editeur-riche-barre { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; padding: 6px 8px; border: 1px solid var(--border);
+  border-radius: 10px; background: var(--panel-2); position: sticky; top: 0; z-index: 3; }
+.editeur-riche-barre .outil { min-width: 32px; height: 32px; padding: 0 7px; border: none; background: transparent; border-radius: 7px;
+  cursor: pointer; color: var(--text); font: inherit; font-size: 14px; }
+.editeur-riche-barre .outil:hover { background: var(--panel); }
+.editeur-riche-barre .outil[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.editeur-riche-barre .outil-select { height: 32px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel);
+  color: var(--text); font: inherit; font-size: 13px; padding: 0 6px; margin-right: 4px; }
+.editeur-riche-sep { width: 1px; height: 22px; background: var(--border); margin: 0 5px; }
+.editeur-riche-mots { margin-left: auto; font-size: 12px; color: var(--text-2); padding: 0 4px; }
+.editeur-riche-feuille { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 26px 34px;
+  outline: none; font-size: 15px; line-height: 1.65; color: var(--text); overflow-wrap: anywhere; cursor: text; }
+.editeur-riche-feuille:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.editeur-riche-feuille h1 { font-size: 1.55em; margin: .5em 0 .3em; line-height: 1.25; }
+.editeur-riche-feuille h2 { font-size: 1.28em; margin: .8em 0 .3em; line-height: 1.3; }
+.editeur-riche-feuille h3 { font-size: 1.08em; margin: .8em 0 .25em; }
+.editeur-riche-feuille p, .editeur-riche-feuille div { margin: 0 0 .55em; }
+.editeur-riche-feuille ul, .editeur-riche-feuille ol { margin: 0 0 .6em; padding-left: 1.5em; }
+.editeur-riche-feuille blockquote { margin: .6em 0; padding: 8px 14px; border-left: 4px solid var(--accent); background: var(--accent-soft); border-radius: 0 8px 8px 0; }
+.editeur-riche-feuille table { border-collapse: collapse; width: 100%; margin: .5em 0 .9em; font-size: 13.5px; }
+.editeur-riche-feuille th, .editeur-riche-feuille td { border: 1px solid var(--border); padding: 5px 7px; text-align: left; vertical-align: top; }
+.editeur-riche-feuille th { background: var(--panel-2); }
+.editeur-riche-placeholder { position: absolute; top: 27px; left: 35px; color: var(--text-2); font-size: 15px; pointer-events: none; }
+.editeur-riche-bulle { position: fixed; z-index: 400; background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: var(--shadow); padding: 5px; }
+.editeur-riche-menu { position: absolute; top: calc(100% + 4px); left: 0; z-index: 401; min-width: 280px; background: var(--panel);
+  border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); padding: 5px; display: flex; flex-direction: column; }
+.editeur-riche-menu button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; border: none;
+  background: none; color: var(--text); font: inherit; padding: 6px 9px; border-radius: 7px; cursor: pointer; }
+.editeur-riche-menu button:hover { background: var(--panel-2); }
+.editeur-riche-menu button b { font-size: 13px; }
+.editeur-riche-menu button span { font-size: 11.5px; color: var(--text-2); }
+.editeur-riche-menu-note { font-size: 11px; color: var(--text-2); padding: 5px 9px 3px; border-top: 1px solid var(--border); margin-top: 3px; }
+.editeur-riche-proposition { display: flex; flex-direction: column; gap: 7px; padding: 10px 12px; border: 1.5px solid var(--accent);
+  border-radius: 10px; background: var(--panel-2); }
+.editeur-riche-source { font-size: 12.5px; color: var(--text-2); font-style: italic; }
+.modal.editeur-plein { max-width: min(1100px, 96vw); width: 96vw; height: 92vh; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; }
+.editeur-plein-corps { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 20px 20px; }
+.editeur-plein-corps .editeur-riche-feuille { max-width: 820px; margin: 0 auto; width: 100%; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+
+/* ── Organisation → Informations ── */
+.informations { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 16px; align-items: start; }
+.informations-liste { display: flex; flex-direction: column; gap: 6px; position: sticky; top: 8px; }
+.informations-feuille { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; width: 100%;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text); font: inherit; border-radius: 9px; padding: 8px 10px; cursor: pointer; }
+.informations-feuille:hover { background: var(--panel-2); }
+.informations-feuille.active { border-color: var(--accent); background: var(--accent-soft); }
+.informations-feuille-titre { font-size: 13.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.informations-feuille-date { font-size: 11.5px; color: var(--text-2); }
+@media (max-width: 860px) { .informations { grid-template-columns: 1fr; } .informations-liste { position: static; } }
