@@ -330,6 +330,18 @@ pub(crate) fn migrate(conn: &Connection) {
         -- Jeux de la classe : ludothèque. Comme les ateliers, mais avec ce
         -- qu'on cherche quand on choisit un jeu — nombre de joueurs, durée,
         -- âge, et surtout où il est rangé.
+        -- Fichiers texte du plan de travail : des notes libres, rangées dans
+        -- les dossiers comme le reste. Le contenu fusionne caractère par
+        -- caractère entre deux machines.
+        CREATE TABLE IF NOT EXISTS textes (
+            id TEXT PRIMARY KEY,
+            titre TEXT NOT NULL DEFAULT '',
+            contenu TEXT NOT NULL DEFAULT '',
+            dossier TEXT NOT NULL DEFAULT '',
+            date_creation TEXT NOT NULL,
+            date_modification TEXT NOT NULL DEFAULT ''
+        );
+
         CREATE TABLE IF NOT EXISTS jeux (
             id TEXT PRIMARY KEY,
             titre TEXT NOT NULL DEFAULT '',
