@@ -126,6 +126,12 @@ export interface MaterielItem {
   coffreJson: string;
 }
 
+/** Un fichier texte du plan de travail. */
+export interface Texte {
+  id: string; titre: string; contenu: string; dossier: string;
+  dateCreation: string; dateModification: string;
+}
+
 export interface PapierEleve {
   id: string; intitule: string; eleveId: string; type: string; nomFichier: string;
   note: string; dateAjout: string;
@@ -309,6 +315,9 @@ export const api = {
   noteEleveDelete: (id: string) => invoke<void>("note_eleve_delete", { id }),
 
   // Matériel
+  textesList: () => invoke<Texte[]>("textes_list"),
+  texteSave: (texte: Texte) => invoke<Texte>("texte_save", { texte }),
+  texteDelete: (id: string) => invoke<void>("texte_delete", { id }),
   materielList: () => invoke<MaterielItem[]>("materiel_list"),
   materielSave: (materiel: MaterielItem) => invoke<MaterielItem>("materiel_save", { materiel }),
   materielDelete: (id: string) => invoke<void>("materiel_delete", { id }),

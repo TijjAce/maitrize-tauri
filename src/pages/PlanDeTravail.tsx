@@ -1,13 +1,14 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
-import { api, Sequence, MaterielItem, couleurHex, couleurPourMatiere, newId, nowIso } from "../api";
+import { api, Sequence, MaterielItem, Texte, couleurHex, couleurPourMatiere, newId, nowIso } from "../api";
 import { Input, Confirm, Demander, Modal, ColorPicker, useAsync } from "../components/ui";
 import { VignettePdf } from "../components/VignettePdf";
 import { toast } from "../components/Toaster";
 import { openCtx } from "../components/ctxmenu";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { FormMateriel } from "../components/FormMateriel";
+import { EditeurTexte } from "../components/EditeurTexte";
 import { contenuDirect, nature } from "../bureau";
 import { lireVideos, lireLien, vignetteYoutube } from "../videos";
 import { useFileDropZone, estPdf, estImage, fichierEnBase64 } from "../dragdrop";
@@ -33,7 +34,15 @@ import {
 
 type Element =
   | { genre: "sequence"; id: string; titre: string; dossier: string; seq: Sequence }
-  | { genre: "materiel"; id: string; titre: string; dossier: string; mat: MaterielItem };
+  | { genre: "materiel"; id: string; titre: string; dossier: string; mat: MaterielItem }
+  | { genre: "texte"; id: string; titre: string; dossier: string; txt: Texte };
+
+/** Range un élément dans un dossier, quel que soit son genre. */
+function enregistrerDossier(e: Element, dossier: string) {
+  if (e.genre === "sequence") return api.sequenceSave({ ...e.seq, dossier });
+  if (e.genre === "materiel") return api.materielSave({ ...e.mat, dossier });
+  return api.texteSave({ ...e.txt, dossier });
+}
 
 /**
  * Un élément glissé depuis le bureau lui-même porte notre format : il se range
@@ -111,7 +120,9 @@ export default function PlanDeTravail() {
   const nav = useNavigate();
   const { data: sequences, reload: rS } = useAsync(() => api.sequencesList(), []);
   const { data: materiels, reload: rM } = useAsync(() => api.materielList(), []);
-  const recharger = () => { rS(); rM(); };
+  const { data: textes, reload: rT } = useAsync(() => api.textesList(), []);
+  const recharger = () => { rS(); rM(); rT(); };
+  const [texteOuvert, setTexteOuvert] = React.useState<Texte | null>(null);
 
   const [dossier, setDossier] = React.useState("");
   const [q, setQ] = React.useState("");
@@ -144,22 +155,24 @@ export default function PlanDeTravail() {
   const elements: Element[] = React.useMemo(() => [
     ...(sequences ?? []).map((s): Element => ({ genre: "sequence", id: s.id, titre: s.titre || "Sans titre", dossier: s.dossier, seq: s })),
     ...(materiels ?? []).map((m): Element => ({ genre: "materiel", id: m.id, titre: m.titre || "Sans titre", dossier: m.dossier, mat: m })),
-  ], [sequences, materiels]);
+    ...(textes ?? []).map((x): Element => ({ genre: "texte", id: x.id, titre: x.titre || "Sans titre", dossier: x.dossier, txt: x })),
+  ], [sequences, materiels, textes]);
 
   const filtre = q.trim().toLowerCase();
   const dossiers = filtre ? [] : sousDossiers(elements, dossier);
   // Une recherche regarde partout : sinon il faudrait deviner où se trouve ce
   // qu'on cherche avant de le chercher.
   const ici = elements
-    .filter((e) => (filtre ? e.titre.toLowerCase().includes(filtre) : normaliser(e.dossier) === dossier))
+    .filter((e) => (filtre
+      ? e.titre.toLowerCase().includes(filtre) || (e.genre === "texte" && e.txt.contenu.toLowerCase().includes(filtre))
+      : normaliser(e.dossier) === dossier))
     .sort((a, b) => a.titre.localeCompare(b.titre, "fr"));
 
   // ── Déplacements et dépôts ──
   const ranger = async (e: Element, vers: string) => {
     const cible = normaliser(vers);
     if (normaliser(e.dossier) === cible) return;
-    if (e.genre === "sequence") await api.sequenceSave({ ...e.seq, dossier: cible });
-    else await api.materielSave({ ...e.mat, dossier: cible });
+    await enregistrerDossier(e, cible);
     recharger();
     toast(cible ? `Rangé dans ${cible}` : "Sorti sur le bureau", { icone: "📂" });
   };
@@ -205,8 +218,7 @@ export default function PlanDeTravail() {
     const touches = elements.filter((e) => estDans(normaliser(e.dossier), chemin));
     for (const e of touches) {
       const nouveau = renommerChemin(normaliser(e.dossier), chemin, arrivee);
-      if (e.genre === "sequence") await api.sequenceSave({ ...e.seq, dossier: nouveau });
-      else await api.materielSave({ ...e.mat, dossier: nouveau });
+      await enregistrerDossier(e, nouveau);
     }
     await ecrireCouleurs(reporterCouleurs(couleurs, chemin, arrivee));
     // On regardait l'intérieur du dossier déplacé : on le suit.
@@ -243,8 +255,7 @@ export default function PlanDeTravail() {
     const touches = elements.filter((e) => estDans(normaliser(e.dossier), d.chemin));
     for (const e of touches) {
       const chemin = renommerChemin(normaliser(e.dossier), d.chemin, nouveau);
-      if (e.genre === "sequence") await api.sequenceSave({ ...e.seq, dossier: chemin });
-      else await api.materielSave({ ...e.mat, dossier: chemin });
+      await enregistrerDossier(e, chemin);
     }
     recharger();
     toast(`Dossier renommé (${touches.length} élément(s))`, { icone: "✏️" });
@@ -255,8 +266,7 @@ export default function PlanDeTravail() {
     const touches = elements.filter((e) => estDans(normaliser(e.dossier), d.chemin));
     for (const e of touches) {
       const chemin = renommerChemin(normaliser(e.dossier), d.chemin, parent(d.chemin));
-      if (e.genre === "sequence") await api.sequenceSave({ ...e.seq, dossier: chemin });
-      else await api.materielSave({ ...e.mat, dossier: chemin });
+      await enregistrerDossier(e, chemin);
     }
     // Le dossier disparaît avec sa couleur ; ses sous-dossiers remontent avec la leur.
     const { [d.chemin]: couleurRetiree, ...autres } = couleurs;
@@ -297,9 +307,17 @@ export default function PlanDeTravail() {
     setMaterielOuvert(m);
   };
 
+  const creerTexte = async () => {
+    const x: Texte = { id: newId(), titre: "Nouveau texte", contenu: "", dossier, dateCreation: nowIso(), dateModification: "" };
+    await api.texteSave(x);
+    recharger();
+    setTexteOuvert(x);
+  };
+
   /** Double-clic : un dépôt simple s'ouvre tel quel, le reste en fiche. */
   const ouvrir = (e: Element) => {
     if (e.genre === "sequence") { nav(`/sequences/${e.id}`); return; }
+    if (e.genre === "texte") { setTexteOuvert(e.txt); return; }
     const c = contenuDirect(e.mat);
     if (!c) { setMaterielOuvert(e.mat); return; }
     // Dans le navigateur : l'intégration YouTube exige un référent que la
@@ -310,6 +328,7 @@ export default function PlanDeTravail() {
 
   const supprimer = async (e: Element) => {
     if (e.genre === "sequence") await api.sequenceDelete(e.id);
+    else if (e.genre === "texte") await api.texteDelete(e.id);
     else await api.materielDelete(e.id);
     setASupprimer(null);
     recharger();
@@ -370,6 +389,7 @@ export default function PlanDeTravail() {
           if ((e.target as HTMLElement).closest("[draggable]")) return;
           openCtx(e, [
             { label: "Nouveau dossier", icon: "📁", onClick: creerDossier },
+            { label: "Nouveau texte", icon: "📝", onClick: creerTexte },
             { label: "Nouvelle séquence", icon: "📚", sep: true, onClick: creerSequence },
             { label: "Nouveau matériel", icon: "🧰", onClick: creerMateriel },
           ]);
@@ -390,7 +410,7 @@ export default function PlanDeTravail() {
             {!filtre && (
               <div style={{ fontSize: 13, marginTop: 6 }}>
                 Déposez ici un lien YouTube, un PDF ou une image.<br />
-                Clic droit pour créer un dossier ou une séquence.
+                Clic droit pour créer un dossier, un texte ou une séquence.
               </div>
             )}
           </div>
@@ -441,6 +461,10 @@ export default function PlanDeTravail() {
             ecrireCouleurs({ [PREFIXE_COULEUR + aColorer.chemin]: c }); setAColorer(null);
           }} />
         </Modal>
+      )}
+
+      {texteOuvert && (
+        <EditeurTexte texte={texteOuvert} onClose={() => { setTexteOuvert(null); recharger(); }} />
       )}
 
       {materielOuvert && (
@@ -564,6 +588,8 @@ function TuileElement({ element, onOuvrir, onModifier, onRanger, onSupprimer, on
           <ApercuFichier nom={image} />
         ) : pdf ? (
           <VignettePdf nom={pdf} />
+        ) : element.genre === "texte" ? (
+          <ApercuTexte contenu={element.txt.contenu} />
         ) : (
           <span style={{ fontSize: 40 }}>{element.genre === "sequence" ? "📚" : "🧰"}</span>
         )}
@@ -583,8 +609,23 @@ function TuileElement({ element, onOuvrir, onModifier, onRanger, onSupprimer, on
         textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {element.genre === "sequence"
           ? [seq!.matiere, seq!.cycle].filter(Boolean).join(" · ") || "Séquence"
-          : nature(element.mat)}
+          : element.genre === "texte" ? "Texte" : nature(element.mat)}
       </div>
+    </div>
+  );
+}
+
+/** Les premières lignes d'un texte, posées comme sur une feuille. */
+function ApercuTexte({ contenu }: { contenu: string }) {
+  const debut = contenu.split("\n").slice(0, 14).join("\n").slice(0, 600);
+  return (
+    <div aria-hidden="true" style={{
+      width: "72%", height: "86%", background: "#fff", borderRadius: 2, padding: "8px 8px",
+      boxShadow: "0 1px 2px rgba(0,0,0,.18), 0 3px 10px rgba(0,0,0,.12)", overflow: "hidden",
+      textAlign: "left", fontSize: 6.5, lineHeight: 1.35, color: "#4b5563",
+      whiteSpace: "pre-wrap", wordBreak: "break-word",
+    }}>
+      {debut.trim() ? debut : <span style={{ color: "#c4c9d1", fontSize: 9 }}>Vide</span>}
     </div>
   );
 }

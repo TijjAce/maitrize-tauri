@@ -272,6 +272,37 @@ impl Espace {
     }
 }
 
+/// Un fichier texte posé sur le plan de travail.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Texte {
+    #[serde(default = "new_id")]
+    pub id: String,
+    #[serde(default)]
+    pub titre: String,
+    #[serde(default)]
+    pub contenu: String,
+    #[serde(default)]
+    pub dossier: String,
+    #[serde(default = "now_iso")]
+    pub date_creation: String,
+    #[serde(default)]
+    pub date_modification: String,
+}
+
+impl Texte {
+    pub fn from_row(r: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: r.get("id")?,
+            titre: r.get("titre")?,
+            contenu: r.get("contenu")?,
+            dossier: r.get("dossier")?,
+            date_creation: r.get("date_creation")?,
+            date_modification: r.get("date_modification")?,
+        })
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Jeu {

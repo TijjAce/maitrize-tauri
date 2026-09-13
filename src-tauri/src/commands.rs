@@ -150,6 +150,45 @@ pub fn espace_delete(db: State<Db>, id: String) -> R<()> {
 
 // ── Jeux (ludothèque de la classe) ───────────────────────────────────────
 
+// ============================================================
+// TEXTES (fichiers texte du plan de travail)
+// ============================================================
+
+#[tauri::command]
+pub fn textes_list(db: State<Db>) -> R<Vec<Texte>> {
+    let c = db.0.lock().map_err(e)?;
+    lire_textes(&c)
+}
+
+pub(crate) fn lire_textes(c: &rusqlite::Connection) -> R<Vec<Texte>> {
+    let mut st = c.prepare("SELECT * FROM textes ORDER BY titre").map_err(e)?;
+    let rows = st.query_map([], Texte::from_row).map_err(e)?;
+    rows.collect::<rusqlite::Result<_>>().map_err(e)
+}
+
+#[tauri::command]
+pub fn texte_save(db: State<Db>, texte: Texte) -> R<Texte> {
+    let c = db.0.lock().map_err(e)?;
+    ecrire_texte(&c, texte)
+}
+
+pub(crate) fn ecrire_texte(c: &rusqlite::Connection, mut texte: Texte) -> R<Texte> {
+    texte.date_modification = chrono::Utc::now().to_rfc3339();
+    c.execute(
+        "INSERT OR REPLACE INTO textes (id,titre,contenu,dossier,date_creation,date_modification)
+         VALUES (?1,?2,?3,?4,?5,?6)",
+        params![texte.id, texte.titre, texte.contenu, texte.dossier, texte.date_creation, texte.date_modification],
+    ).map_err(e)?;
+    Ok(texte)
+}
+
+#[tauri::command]
+pub fn texte_delete(db: State<Db>, id: String) -> R<()> {
+    let c = db.0.lock().map_err(e)?;
+    c.execute("DELETE FROM textes WHERE id=?1", params![id]).map_err(e)?;
+    Ok(())
+}
+
 #[tauri::command]
 pub fn jeux_list(db: State<Db>) -> R<Vec<Jeu>> {
     let c = db.0.lock().map_err(e)?;
@@ -1567,7 +1606,7 @@ const TABLES_EXPORT: &[&str] = &[
     "commentaires_eleve", "evaluations", "notes_eleve", "pieces_jointes",
     "materiel_items", "papiers_eleve", "notes_competence", "progressions_annuelle",
     "programmations_finale", "edt_typique", "pilote_conversations",
-    "referentiels", "documents_coffre", "settings",
+    "referentiels", "documents_coffre", "textes", "settings",
 ];
 
 fn rusqlite_value_to_json(v: rusqlite::types::Value) -> serde_json::Value {
@@ -1842,6 +1881,33 @@ fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests_textes {
+    use crate::models::Texte;
+
+    /// Un texte s'enregistre sur la base réelle, se relit, et son écriture est
+    /// journalisée — sans quoi il ne passerait jamais sur l'autre machine.
+    #[test]
+    fn un_texte_senregistre_et_voyage() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        crate::journal::creer_table(&c);
+        crate::journal::poser_declencheurs(&c, "machine-test");
+        let t = Texte {
+            id: "t1".into(), titre: "Compte rendu".into(), contenu: "Apolline a lu seule.".into(),
+            dossier: "Réunions".into(), date_creation: "2026-09-13T10:00:00Z".into(), date_modification: String::new(),
+        };
+        let enregistre = super::ecrire_texte(&c, t).unwrap();
+        assert!(!enregistre.date_modification.is_empty(), "la date de modification n'est pas posée");
+        let lus = super::lire_textes(&c).unwrap();
+        assert_eq!(lus.len(), 1);
+        assert_eq!(lus[0].contenu, "Apolline a lu seule.");
+        assert_eq!(lus[0].dossier, "Réunions");
+        let n: i64 = c.query_row("SELECT count(*) FROM changements WHERE table_nom = 'textes'", [], |r| r.get(0)).unwrap();
+        assert_eq!(n, 1, "l'écriture d'un texte n'est pas journalisée");
+    }
 }
 
 #[cfg(test)]

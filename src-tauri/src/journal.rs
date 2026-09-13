@@ -36,7 +36,7 @@ pub const TABLES_SYNC: &[&str] = &[
     "commentaires_eleve", "evaluations", "notes_eleve", "pieces_jointes",
     "materiel_items", "papiers_eleve", "notes_competence", "progressions_annuelle",
     "programmations_finale", "edt_typique", "documents_coffre", "documents_eleve",
-    "jeux", "pilote_conversations",
+    "jeux", "pilote_conversations", "textes",
 ];
 
 /// Tables de liaison, sans colonne `id`.
