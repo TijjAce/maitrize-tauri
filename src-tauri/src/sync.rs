@@ -836,15 +836,56 @@ pub async fn sauvegarde_pull(db: State<'_, Db>, cle: Option<String>) -> R<String
     let clair = dechiffrer_sauvegarde(&phrase, bytes.as_ref())
         .map_err(|_| "Déchiffrement impossible — la phrase secrète ne correspond pas.".to_string())?;
     let json = String::from_utf8(clair).map_err(|_| "Sauvegarde corrompue.".to_string())?;
+    let copie;
     {
         let c = db.0.lock().map_err(e)?;
+        copie = crate::db::copie_de_securite(&c, "avant-restauration")?;
         crate::commands::import_json(&c, &json)?;
         // L'import réécrit les réglages : le repère de synchro se pose après,
         // sinon il serait remplacé par celui de la machine d'origine.
         let horodatage = cible.trim_start_matches(PREFIXE_SAUVEGARDE).trim_end_matches(".enc");
         set_setting(&c, CLE_DERNIERE_SYNC, horodatage)?;
     }
-    Ok("✅ Sauvegarde restaurée. Rechargez l'application pour voir les données.".into())
+    Ok(format!("✅ Sauvegarde restaurée. Rechargez l'application pour voir les données. \
+                Vos données d'avant sont gardées dans la copie « {copie} »."))
+}
+
+/// Supprime une sauvegarde du stockage.
+///
+/// Seules les sauvegardes sont concernées : les fichiers de synchronisation
+/// vivent dans le même stockage et ne doivent jamais partir par ce chemin.
+#[tauri::command]
+pub async fn sauvegarde_supprimer(db: State<'_, Db>, cle: String) -> R<String> {
+    if !cle_de_sauvegarde(&cle) {
+        return Err("Ce fichier n'est pas une sauvegarde : suppression refusée.".into());
+    }
+    let cfg = { let c = db.0.lock().map_err(e)?; lire_cfg(&c)? };
+    client(&cfg)
+        .delete_object()
+        .bucket(&cfg.bucket)
+        .key(&cle)
+        .send()
+        .await
+        .map_err(|err| format!("Suppression impossible : {err}"))?;
+    Ok("🗑 Sauvegarde supprimée du stockage.".into())
+}
+
+/// Vrai pour une clé de sauvegarde (actuelle ou ancienne formule), faux pour tout le reste.
+fn cle_de_sauvegarde(cle: &str) -> bool {
+    cle == OBJET_SAUVEGARDE_V1
+        || (cle.starts_with(PREFIXE_SAUVEGARDE) && cle.ends_with(".enc") && !cle[PREFIXE_SAUVEGARDE.len()..].contains('/'))
+}
+
+#[cfg(test)]
+mod tests_suppression {
+    #[test]
+    fn seules_les_sauvegardes_se_suppriment() {
+        assert!(super::cle_de_sauvegarde("maitrize/sauvegarde-2026-09-13-141805.enc"));
+        assert!(!super::cle_de_sauvegarde("maitrize/deltas/20260913121751829-f1c0f4ac.enc"));
+        assert!(!super::cle_de_sauvegarde("maitrize/fichiers/photo.jpg"));
+        assert!(!super::cle_de_sauvegarde("maitrize/sauvegarde-../deltas/x.enc"));
+        assert!(!super::cle_de_sauvegarde(""));
+    }
 }
 
 #[cfg(test)]

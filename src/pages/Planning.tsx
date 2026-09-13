@@ -6,6 +6,7 @@ import { api, Creneau, Seance, Sequence, Eleve, MATIERES, couleurHex, couleurPou
 import { Modal, Field, Input, Select, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
 import { toast } from "../components/Toaster";
+import { confirmer } from "../components/confirmer";
 import { SeanceReadView } from "./SequenceDetail";
 import { printHTML, escapeHtml } from "../print";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
@@ -166,8 +167,8 @@ export default function Planning() {
     let slots: { jour: string; heureDebut: string; heureFin: string; titre: string; eleves?: string[] }[] = [];
     try { slots = JSON.parse(edt.slotsJson); } catch { /* */ }
     if (slots.length === 0) { toast(`${nomSource[0].toUpperCase()}${nomSource.slice(1)} est vide.`, { icone: "⚠️" }); return; }
-    if (!confirm(jour ? `Remplir les créneaux libres de ce jour depuis ${nomSource} ?`
-                      : `Remplir les créneaux libres de la semaine depuis ${nomSource} ?`)) return;
+    if (!(await confirmer(jour ? `Remplir les créneaux libres de ce jour depuis ${nomSource} ?`
+                              : `Remplir les créneaux libres de la semaine depuis ${nomSource} ?`, { oui: "Remplir" }))) return;
     const chevauche = (date: string, d: string, f: string) => (creneaux ?? []).some((c) =>
       c.date.slice(0, 10) === date && toMin(d) < toMin(c.heureFin) && toMin(c.heureDebut) < toMin(f));
     const ancreDi = ancre.getDay() - 1; // Lundi = 0 … Vendredi = 4 (week-end : hors plage)

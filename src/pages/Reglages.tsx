@@ -3,6 +3,7 @@ import { Page } from "../App";
 import { api, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, getMatiereOverrides, setMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo } from "../api";
 import { Field, Input, Select, Modal, Confirm, useAsync } from "../components/ui";
 import { MesAppareils } from "../components/MesAppareils";
+import { confirmer } from "../components/confirmer";
 import { applyTheme, MODES, ACCENTS, STYLES } from "../theme";
 import { lireAcceptationCgu, CguAcceptation } from "../components/CGU";
 import { getVersion } from "@tauri-apps/api/app";
@@ -67,11 +68,11 @@ export default function Reglages() {
   };
 
   const importer = async (file: File) => {
-    if (!confirm("Restaurer cette sauvegarde remplacera vos données actuelles. Continuer ?")) return;
+    if (!(await confirmer("Restaurer cette sauvegarde remplacera vos données actuelles.\nUne copie de sécurité de vos données sera faite avant.", { oui: "Restaurer", danger: true }))) return;
     try {
       const txt = await file.text();
-      await api.importData(txt);
-      setDataMsg("✅ Restauration terminée — rechargez l'app");
+      const copie = await api.importData(txt);
+      setDataMsg(`✅ Restauration terminée — rechargez l'app. Vos données d'avant sont gardées dans « ${copie} ».`);
     } catch (e: any) { setDataMsg("❌ " + String(e)); }
   };
 
@@ -455,8 +456,17 @@ function SauvegardeS3Card() {
                       {v.travailLocalPlusRecent && " · ⚠️ vous avez travaillé ici depuis"}
                     </div>
                   </span>
-                  <button className="btn danger sm" disabled={!!busy}
+                  <button className="btn sm" disabled={!!busy}
                     onClick={() => setARestaurer(v)}>Restaurer</button>
+                  <button className="btn ghost sm" disabled={!!busy} aria-label="Supprimer cette sauvegarde"
+                    onClick={async () => {
+                      const quand = v.date ? formatDateSauvegarde(v.date) : "(sans date)";
+                      if (!(await confirmer(`Supprimer définitivement la sauvegarde du ${quand} de votre stockage ?`, { oui: "Supprimer", danger: true }))) return;
+                      setBusy("suppr");
+                      try { setMsg(await api.sauvegardeSupprimer(v.cle)); setVersions((vs) => (vs ?? []).filter((x) => x.cle !== v.cle)); }
+                      catch (e: any) { setMsg("❌ " + String(e)); }
+                      finally { setBusy(""); }
+                    }}>🗑</button>
                 </div>
               ))}
             </>
@@ -466,7 +476,7 @@ function SauvegardeS3Card() {
 
       {aRestaurer && (
         <Confirm
-          message={`Restaurer la sauvegarde du ${aRestaurer.date ? formatDateSauvegarde(aRestaurer.date) : "(sans date)"} ? Vos données locales actuelles seront remplacées.${aRestaurer.travailLocalPlusRecent ? " Attention : vous avez modifié des données sur cet ordinateur APRÈS cette sauvegarde — ce travail sera perdu." : ""} Les copies quotidiennes de votre disque ne sont pas touchées.`}
+          message={`Restaurer la sauvegarde du ${aRestaurer.date ? formatDateSauvegarde(aRestaurer.date) : "(sans date)"} ? Toutes vos données actuelles seront remplacées par celles de cette sauvegarde, sur cet ordinateur.${aRestaurer.travailLocalPlusRecent ? " Attention : vous avez modifié des données sur cet ordinateur APRÈS cette sauvegarde." : ""} Une copie de sécurité de vos données actuelles est faite juste avant.`}
           onYes={() => { const v = aRestaurer; setARestaurer(null); action("pull", () => api.sauvegardePull(v.cle)); }}
           onClose={() => setARestaurer(null)} />
       )}

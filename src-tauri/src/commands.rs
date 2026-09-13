@@ -1834,9 +1834,11 @@ pub fn export_json(c: &rusqlite::Connection) -> R<String> {
 
 /// Restaure depuis un JSON produit par export_data (remplace les données).
 #[tauri::command]
-pub fn import_data(db: State<Db>, json: String) -> R<()> {
+pub fn import_data(db: State<Db>, json: String) -> R<String> {
     let c = db.0.lock().map_err(e)?;
-    import_json(&c, &json)
+    let copie = crate::db::copie_de_securite(&c, "avant-import")?;
+    import_json(&c, &json)?;
+    Ok(copie)
 }
 
 /// Restaure depuis un JSON d'export, sur une connexion (réutilisable, sous verrou).

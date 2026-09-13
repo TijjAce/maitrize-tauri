@@ -13,6 +13,7 @@ import { COULEURS } from "../api";
 import { printHTML, escapeHtml } from "../print";
 import { PlanSalleTab } from "./PlanSalle";
 import { ProjetPedagogiqueTab } from "./ProjetPedagogique";
+import { confirmer } from "../components/confirmer";
 
 // Couleurs officielles des périodes (miroir couleursPeriodes).
 const COULEUR_PERIODE: Record<number, string> = { 1: "#2e73d9", 2: "#d94033", 3: "#4d4d4d", 4: "#d97319", 5: "#269950" };
@@ -324,7 +325,7 @@ function Programmation({ annee, setAnnee }: AnneeProps) {
       const b = JSON.parse(await file.text());
       const ls = b.lignes as Ligne[] | undefined;
       if (!Array.isArray(ls)) throw new Error();
-      if (lignes.length > 0 && !confirm("Remplacer la programmation actuelle ?")) return;
+      if (lignes.length > 0 && !(await confirmer("Remplacer la programmation actuelle ?", { oui: "Remplacer", danger: true }))) return;
       persister(ls.map((l) => ({ ...l, id: newId() })));
     } catch { toast("Fichier de programmation invalide.", { icone: "⚠️" }); }
   };
