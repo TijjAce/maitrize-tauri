@@ -4,6 +4,7 @@ import { Page } from "../App";
 import { Input, Select, Empty, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { api, DocumentCoffre, newId, nowIso, couleurHex } from "../api";
 import { PdfViewer } from "../components/PdfViewer";
+import { ProgrammesPourLeCoffre } from "../components/CiterCompetences";
 import eduscol from "../data/eduscol.json";
 import videos from "../data/videos.json";
 import outils from "../data/outils.json";
@@ -63,6 +64,7 @@ function CoffreFort() {
   const { data: docs, reload } = useAsync(() => api.coffreList(), []);
   const [del, setDel] = React.useState<DocumentCoffre | null>(null);
   const [ouvert, setOuvert] = React.useState<DocumentCoffre | null>(null);
+  const [programmes, setProgrammes] = React.useState(false);
   const input = React.useRef<HTMLInputElement>(null);
 
   const importer = async (file: File) => {
@@ -79,9 +81,20 @@ function CoffreFort() {
         <div className="spacer" />
         <input ref={input} type="file" accept="application/pdf" multiple style={{ display: "none" }}
           onChange={(e) => { Array.from(e.target.files ?? []).forEach((f) => importer(f)); e.target.value = ""; }} />
+        <button className="btn" onClick={() => setProgrammes((v) => !v)}>{programmes ? "Masquer les programmes" : "📥 Programmes officiels"}</button>
         <button className="btn primary" onClick={() => input.current?.click()}>＋ Ajouter un PDF</button>
       </div>
-      {(docs?.length ?? 0) === 0 ? <Empty icone="🗄️" titre="Coffre-fort vide" sous="Importez vos PDF pour les consulter et en citer des passages." /> :
+      {programmes && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <h3 style={{ marginTop: 0 }}>📥 Programmes officiels en vigueur</h3>
+          <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 0 }}>
+            Les textes du BO d’où viennent les référentiels de l’application. Enregistrés ici, ils se consultent hors ligne
+            et on y surligne les compétences à citer pour chaque élève (Élèves → Progressions).
+          </p>
+          <ProgrammesPourLeCoffre docs={docs ?? []} onAjoute={() => reload()} onOuvrir={setOuvert} />
+        </div>
+      )}
+      {(docs?.length ?? 0) === 0 ? <Empty icone="🗄️" titre="Coffre-fort vide" sous="Importez vos PDF ou enregistrez les programmes officiels pour les consulter et en citer des passages." /> :
         docs!.map((d) => (
           <div key={d.id} className="list-row" style={{ cursor: "pointer" }} onClick={() => setOuvert(d)}>
             <span style={{ fontSize: 20 }}>📕</span>

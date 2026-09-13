@@ -14,6 +14,7 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "🧾", label: "Dispositifs (PPS, PAP, PAI, PPRE)", to: "/eleves", page: "eleves", onglet: "dispositifs", sous: "Élèves · mode IME" },
   { ico: "📋", label: "GEVA-Sco", to: "/eleves", page: "eleves", onglet: "gevasco", sous: "Élèves · mode IME" },
   { ico: "📈", label: "Progressions par élève", to: "/eleves", page: "eleves", onglet: "progressions", sous: "Élèves" },
+  { ico: "📚", label: "Compétences travaillées par élève (BO)", to: "/eleves", page: "eleves", onglet: "progressions", sous: "Élèves" },
   { ico: "🧩", label: "Ateliers", to: "/ateliers", page: "ateliers", onglet: "ateliers", sous: "Ateliers & Espaces" },
   { ico: "🪑", label: "Espaces", to: "/ateliers", page: "ateliers", onglet: "espaces", sous: "Ateliers & Espaces" },
   { ico: "🎲", label: "Jeux", to: "/ateliers", page: "ateliers", onglet: "jeux", sous: "Ateliers & Espaces" },

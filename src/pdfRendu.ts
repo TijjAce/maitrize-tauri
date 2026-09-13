@@ -160,3 +160,54 @@ export async function vignettePdf(octets: Uint8Array, largeur = 220): Promise<st
     doc.destroy();
   }
 }
+
+export type DocumentPdf = pdfjs.PDFDocumentProxy;
+
+/** Ouvre un PDF pour le parcourir page à page. Le refermer avec `destroy()`. */
+export function ouvrirPdf(octets: Uint8Array): Promise<DocumentPdf> {
+  return pdfjs.getDocument({ data: copie(octets) }).promise;
+}
+
+/** Proportions de la première page (hauteur / largeur), pour réserver la place des suivantes. */
+export async function proportionPdf(doc: DocumentPdf): Promise<number> {
+  const v = (await doc.getPage(1)).getViewport({ scale: 1 });
+  return v.height / v.width;
+}
+
+/**
+ * Dessine une page et pose dessus son texte, transparent mais sélectionnable,
+ * comme dans un lecteur PDF : on surligne à la souris ce qu'on veut citer.
+ *
+ * Renvoie la hauteur affichée et le nombre de morceaux de texte — zéro pour une
+ * page scannée, où il n'y a rien à sélectionner.
+ */
+export async function rendrePageSelectionnable(
+  doc: DocumentPdf, numero: number, largeur: number, toile: HTMLCanvasElement, calque: HTMLDivElement,
+): Promise<{ hauteur: number; morceaux: number }> {
+  const page = await doc.getPage(numero);
+  const base = page.getViewport({ scale: 1 });
+  const viewport = page.getViewport({ scale: largeur / base.width });
+  // Rendu à la densité de l'écran (plafonnée) : net sur un écran Retina sans
+  // faire exploser la mémoire sur un programme de cent pages.
+  const densite = Math.min(2, window.devicePixelRatio || 1);
+  toile.width = Math.round(viewport.width * densite);
+  toile.height = Math.round(viewport.height * densite);
+  toile.style.width = `${viewport.width}px`;
+  toile.style.height = `${viewport.height}px`;
+  const ctx = toile.getContext("2d");
+  if (!ctx) throw new Error("Rendu impossible dans cette fenêtre.");
+  await page.render({ canvasContext: ctx, viewport, canvas: toile,
+    transform: densite === 1 ? undefined : [densite, 0, 0, densite, 0, 0] } as any).promise;
+
+  const contenu = await page.getTextContent();
+  calque.replaceChildren();
+  calque.style.setProperty("--scale-factor", String(viewport.scale));
+  await new pdfjs.TextLayer({ textContentSource: contenu, container: calque, viewport }).render();
+  return { hauteur: viewport.height, morceaux: contenu.items.length };
+}
+
+/** Texte brut d'une page, pour la recherche. */
+export async function textePage(doc: DocumentPdf, numero: number): Promise<string> {
+  const contenu = await (await doc.getPage(numero)).getTextContent();
+  return contenu.items.map((it) => ("str" in it ? it.str + (it.hasEOL ? "\n" : " ") : "")).join("");
+}

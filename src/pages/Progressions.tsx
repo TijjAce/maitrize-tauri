@@ -3,12 +3,19 @@ import { api, Eleve, newId } from "../api";
 import { Field, Input, Select, Modal, Empty, Confirm, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { printHTML, escapeHtml } from "../print";
+import { CiterCompetences } from "../components/CiterCompetences";
+import {
+  CompetenceTravaillee, TYPE_DOC_COMPETENCES, ajouterCompetences, lireCompetences, parSource,
+} from "../competencesTravaillees";
 
 // ── Progressions individuelles ────────────────────────────────────────────
 // Chaque élève suit sa propre trajectoire, indépendante du groupe : une
 // progression = une suite d'étapes ordonnées dans un domaine. Complète le PPI
 // (qui dit où l'on va) en décrivant par quelles étapes on y passe.
-// Stockage par élève dans les réglages (clé `progressions:{eleveId}`).
+// Stockage par élève dans ses documents (type « progressions »).
+//
+// Au-dessus des progressions : les compétences du BO travaillées avec l'élève,
+// citées depuis les programmes officiels ou un PDF du coffre-fort.
 
 type StatutEtape = "nonabordee" | "encours" | "acquise";
 interface Etape { id: string; intitule: string; statut: StatutEtape; date: string; notes: string }
@@ -50,15 +57,57 @@ export function ProgressionsTab() {
   const [progs, setProgs] = React.useState<Progression[]>([]);
   const [copier, setCopier] = React.useState<Progression | null>(null);
   const [supprimer, setSupprimer] = React.useState<Progression | null>(null);
+  const [competences, setCompetences] = React.useState<CompetenceTravaillee[]>([]);
+  const [citer, setCiter] = React.useState<null | "programmes" | "coffre">(null);
 
   React.useEffect(() => { if (!eleveId && eleves?.[0]) setEleveId(eleves[0].id); }, [eleves, eleveId]);
 
+  // Changer vite d'élève ne doit pas afficher les données du précédent.
   React.useEffect(() => {
     if (!eleveId) return;
+    let actif = true;
     api.documentEleveGet(eleveId, "progressions").then((v) => {
+      if (!actif) return;
       try { setProgs(v ? JSON.parse(v) : []); } catch { setProgs([]); }
     });
+    api.documentEleveGet(eleveId, TYPE_DOC_COMPETENCES).then((v) => { if (actif) setCompetences(lireCompetences(v)); });
+    return () => { actif = false; };
   }, [eleveId]);
+
+  const persisterCompetences = (l: CompetenceTravaillee[]) => {
+    setCompetences(l);
+    if (eleveId) api.documentEleveSet(eleveId, TYPE_DOC_COMPETENCES, JSON.stringify(l));
+  };
+  const upCompetence = (id: string, patch: Partial<CompetenceTravaillee>) =>
+    persisterCompetences(competences.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  const statutCompetence = (c: CompetenceTravaillee, k: StatutEtape) =>
+    upCompetence(c.id, { statut: k, date: k === "acquise" ? (c.date || todayIso()) : "" });
+
+  // Citées pour un ou plusieurs élèves d'un coup : en IME, un même objectif
+  // se travaille souvent avec plusieurs jeunes.
+  const citerPour = async (nouvelles: CompetenceTravaillee[], ids: string[]) => {
+    try {
+      const parEleve: number[] = [];
+      for (const id of ids) {
+        const actuelles = id === eleveId ? competences : lireCompetences(await api.documentEleveGet(id, TYPE_DOC_COMPETENCES));
+        const r = ajouterCompetences(actuelles, nouvelles.map((c) => ({ ...c, id: newId() })));
+        parEleve.push(r.ajoutees);
+        if (r.ajoutees === 0) continue;
+        await api.documentEleveSet(id, TYPE_DOC_COMPETENCES, JSON.stringify(r.liste));
+        if (id === eleveId) setCompetences(r.liste);
+      }
+      setCiter(null);
+      const total = parEleve.reduce((a, b) => a + b, 0);
+      const pl = (n: number) => (n > 1 ? "s" : "");
+      toast(total === 0 ? "Ces compétences étaient déjà citées."
+        : parEleve.every((n) => n === nouvelles.length)
+          ? `${nouvelles.length} compétence${pl(nouvelles.length)} citée${pl(nouvelles.length)}${ids.length > 1 ? ` pour ${ids.length} élèves` : ""}.`
+          : `${total} ajout${pl(total)} ; celles déjà citées n’ont pas été doublées.`,
+        { icone: total ? "✅" : "ℹ️" });
+    } catch (e) {
+      toast(`Enregistrement impossible : ${e}`, { icone: "⚠️", duree: 7000 });
+    }
+  };
 
   const persister = (p: Progression[]) => { setProgs(p); if (eleveId) api.documentEleveSet(eleveId, "progressions", JSON.stringify(p)); };
   const upProg = (id: string, patch: Partial<Progression>) => persister(progs.map((p) => p.id === id ? { ...p, ...patch } : p));
@@ -115,8 +164,13 @@ export function ProgressionsTab() {
         ${p.etapes.map((e) => `<tr><td>${escapeHtml(e.intitule)}</td><td>${escapeHtml(stat(e.statut).label)}</td><td>${escapeHtml(fmtFr(e.date))}</td><td>${escapeHtml(e.notes)}</td></tr>`).join("")}
         </table>`;
     }).join("");
+    const comps = competences.length === 0 ? "" : `<h2>Compétences travaillées</h2>` + parSource(competences).map(([source, liste]) =>
+      `<h3 style="font-size:13px;margin:10px 0 4px">${escapeHtml(source)}</h3>
+        <table><tr><th style="width:56%">Compétence</th><th style="width:14%">Statut</th><th style="width:12%">Date</th><th>Notes</th></tr>
+        ${liste.map((c) => `<tr><td>${c.niveau ? `[${escapeHtml(c.niveau)}] ` : ""}${escapeHtml(c.texte)}${c.page ? ` <span style="color:#687087">(p. ${escapeHtml(c.page)})</span>` : ""}</td><td>${escapeHtml(stat(c.statut).label)}</td><td>${escapeHtml(fmtFr(c.date))}</td><td>${escapeHtml(c.notes)}</td></tr>`).join("")}
+        </table>`).join("");
     printHTML(`Progressions — ${eleve.nom}`,
-      `<h1>Progressions individuelles</h1><div class="meta">${escapeHtml(eleve.nom)} — édité le ${fmtFr(todayIso())}</div>${corps || "<p>Aucune progression.</p>"}`);
+      `<h1>Progressions individuelles</h1><div class="meta">${escapeHtml(eleve.nom)} — édité le ${fmtFr(todayIso())}</div>${comps}${corps || (comps ? "" : "<p>Aucune progression.</p>")}`);
   };
 
   if (!eleve) return <Empty icone="📈" titre="Aucun élève" sous="Ajoutez vos élèves dans l'onglet Classe." />;
@@ -128,7 +182,7 @@ export function ProgressionsTab() {
           {eleves?.map((e) => <option key={e.id} value={e.id}>{e.nom}</option>)}
         </Select>
         <div className="spacer" />
-        <button className="btn sm" onClick={imprimer} disabled={progs.length === 0}>🖨 Imprimer</button>
+        <button className="btn sm" onClick={imprimer} disabled={progs.length === 0 && competences.length === 0}>🖨 Imprimer</button>
         <button className="btn primary sm" onClick={ajouterProg}>+ Progression</button>
       </div>
 
@@ -141,6 +195,58 @@ export function ProgressionsTab() {
               `${progs.length} progression${progs.length > 1 ? "s" : ""} · ${progs.reduce((n, p) => n + p.etapes.filter((e) => e.statut === "acquise").length, 0)} étape(s) acquise(s)`}
           </div>
         </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <h3 style={{ margin: 0, fontSize: 15 }}>📚 Compétences travaillées</h3>
+          <span style={{ fontSize: 12, color: "var(--text-2)" }}>
+            {competences.length === 0 ? "Programmes officiels (BO)"
+              : `${competences.length} citée${competences.length > 1 ? "s" : ""} · ${competences.filter((c) => c.statut === "acquise").length} acquise(s)`}
+          </span>
+          <div className="spacer" />
+          <button className="btn sm" onClick={() => setCiter("coffre")}>🗄️ Citer un PDF du coffre-fort</button>
+          <button className="btn primary sm" onClick={() => setCiter("programmes")}>❝ Citer des compétences</button>
+        </div>
+        {competences.length === 0 ? (
+          <p style={{ fontSize: 13, color: "var(--text-2)", margin: "10px 0 0" }}>
+            Citez les compétences travaillées avec {(eleve.nom || "").split(" ")[0]} : cochez-les dans les programmes officiels,
+            ou surlignez-les dans un programme enregistré au coffre-fort.
+          </p>
+        ) : parSource(competences).map(([source, liste]) => (
+          <div key={source} style={{ marginTop: 12 }}>
+            <div className="comp-source">{source}</div>
+            {liste.map((c) => (
+              <div key={c.id} className="comp-travaillee">
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="comp-travaillee-texte">
+                    {c.niveau && <span className="badge" style={{ marginRight: 6 }}>{c.niveau}</span>}« {c.texte} »
+                  </div>
+                  <div className="meta">
+                    {[c.chemin, c.page && `p. ${c.page}`, c.citeeLe && `citée le ${fmtFr(c.citeeLe)}`].filter(Boolean).join(" · ")}
+                  </div>
+                  <div className="row">
+                    <Input value={c.notes} onChange={(ev) => upCompetence(c.id, { notes: ev.target.value })} placeholder="Notes, aide apportée…" />
+                    {c.statut === "acquise" && (
+                      <Input type="date" value={c.date} onChange={(ev) => upCompetence(c.id, { date: ev.target.value })} style={{ maxWidth: 165 }}
+                        aria-label="Date d'acquisition" />
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 4, flexShrink: 0, paddingTop: 2 }}>
+                  {STATUTS.map((st) => (
+                    <button key={st.k} title={st.label} aria-label={st.label} aria-pressed={c.statut === st.k} onClick={() => statutCompetence(c, st.k)}
+                      style={{ width: 30, height: 30, borderRadius: 6, border: "none", cursor: "pointer", fontWeight: 700,
+                        background: c.statut === st.k ? st.couleur : "var(--panel-2)",
+                        color: c.statut === st.k && st.k !== "nonabordee" ? "#fff" : "var(--text-2)" }}>{st.court}</button>
+                  ))}
+                  <button className="btn ghost sm" aria-label="Retirer la compétence"
+                    onClick={() => persisterCompetences(competences.filter((x) => x.id !== c.id))}>🗑</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
 
       {progs.length === 0 && (
@@ -211,6 +317,10 @@ export function ProgressionsTab() {
       })}
       <datalist id="prog-domaines">{DOMAINES.map((d) => <option key={d} value={d} />)}</datalist>
 
+      {citer && (
+        <CiterCompetences eleves={eleves ?? []} eleveId={eleveId} ongletInitial={citer}
+          onClose={() => setCiter(null)} onValider={citerPour} />
+      )}
       {copier && (
         <CopierVersModal progression={copier} eleves={(eleves ?? []).filter((e) => e.id !== eleveId)}
           onClose={() => setCopier(null)} onCopier={(cibles) => copierVers(copier, cibles)} />
