@@ -1,5 +1,5 @@
 import React from "react";
-import { ChipObservation } from "../components/TypeObservation";
+import { ChipObservation, couleurObservation } from "../components/TypeObservation";
 import { api, Eleve, TYPE_AXE } from "../api";
 import { Select, Empty, useAsync, ouvrirOnglet } from "../components/ui";
 import { printHTML, escapeHtml } from "../print";
@@ -223,9 +223,13 @@ function imprimer(d: Dossier) {
             ? "renseignée" + (p.dateMaj ? ` le ${new Date(p.dateMaj).toLocaleDateString("fr-FR")}` : "")
             : "à remplir"}</td></tr>`).join("")}</table>`)}
 
-     ${d.observations.parType.map((g) =>
-        section(`Observations — ${g.type}`, liste(g.items.map((c) =>
-          `${escapeHtml(c.texte)} <span class="meta">(${new Date(c.date).toLocaleDateString("fr-FR")})</span>`)))).join("")}
+     ${d.observations.parType.map((g) => {
+        // La couleur de la catégorie, comme à l'écran.
+        const c = couleurObservation(g.type);
+        return g.items.length ? `<h2 style="border-bottom-color:${c}"><span class="chip" style="background:${c}1f;color:${c};border:1px solid ${c}55;font-size:13px">${escapeHtml(g.type)}</span> Observations</h2>
+          <ul style="border-left:4px solid ${c};padding-left:22px;margin-left:2px">${g.items.map((o) =>
+            `<li>${escapeHtml(o.texte)} <span class="meta">(${new Date(o.date).toLocaleDateString("fr-FR")})</span></li>`).join("")}</ul>` : "";
+      }).join("")}
 
      ${section("Évaluations", d.notes.length
         ? `<table><tr><th>Évaluation</th><th>Date</th><th>Note</th></tr>${d.notes.map((l) =>

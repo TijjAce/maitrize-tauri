@@ -12,6 +12,10 @@ const STYLE = `
      le thème du système. Sans ces deux lignes, l'aperçu d'un navigateur en
      mode sombre montre du texte foncé sur fond foncé. */
   :root { color-scheme: light; }
+  /* Couleurs gardées à l'impression et dans le PDF : sans cette consigne, les
+     navigateurs retirent les fonds (blocs de l'emploi du temps, étiquettes,
+     surlignages) pour économiser l'encre. */
+  html, body, * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     color: #1c2233; background: #fff; margin: 0; padding: 28px 32px; font-size: 13px; line-height: 1.5; }
   h1 { font-size: 22px; margin: 0 0 4px; }
@@ -39,10 +43,15 @@ const STYLE = `
  * `styleExtra` est ajouté après la feuille commune, donc il la surcharge :
  * de quoi resserrer un document dense sans toucher aux autres impressions.
  */
-export function printHTML(title: string, bodyHtml: string, styleExtra = "") {
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${STYLE}
+/** Le document autonome qu'on ouvre pour l'imprimer ou l'enregistrer en PDF. */
+export function documentImprimable(title: string, bodyHtml: string, styleExtra = ""): string {
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${STYLE}
     @media screen { body { max-width: 820px; margin: 0 auto; } }
     ${styleExtra}</style></head><body>${bodyHtml}</body></html>`;
+}
+
+export function printHTML(title: string, bodyHtml: string, styleExtra = "") {
+  const html = documentImprimable(title, bodyHtml, styleExtra);
   // Import dynamique pour éviter tout cycle d'import au chargement.
   import("./api").then(({ api }) => { void api.ouvrirHtml(html); });
 }

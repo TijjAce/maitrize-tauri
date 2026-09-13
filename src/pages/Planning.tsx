@@ -272,7 +272,7 @@ export default function Planning() {
     }).join("");
 
     const css = `
-      *{box-sizing:border-box} body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#1c2233;margin:0;padding:22px 26px}
+      *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact} body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#1c2233;margin:0;padding:22px 26px}
       h1{font-size:22px;margin:0 0 2px;color:#23527c} .sub{color:#687087;font-size:11px;text-transform:uppercase;letter-spacing:1.2px;font-weight:600;margin-bottom:16px}
       .jour{border-bottom:1px solid #cfd6e4}
       .row{display:flex;border-top:1px solid #cfd6e4;page-break-inside:avoid}
