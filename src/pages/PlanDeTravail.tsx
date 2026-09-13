@@ -15,7 +15,8 @@ import { lireVideos, lireLien, vignetteYoutube } from "../videos";
 import { useFileDropZone, estPdf, estImage, estDocument, typeDocument, fichierEnBase64 } from "../dragdrop";
 import {
   sousDossiers, filDAriane, normaliser, parent, estDans, renommerChemin, SousDossier,
-  destinationDossier, reporterCouleurs, lireCouleurs, PREFIXE_COULEUR,
+  destinationDossier, reporterCouleurs, lireCouleurs, PREFIXE_COULEUR, SANS_COULEUR, couleurDe,
+  materielsDeCreationDeDossier,
 } from "../dossiers";
 
 // ── Le bureau ──────────────────────────────────────────────────────────────
@@ -135,7 +136,10 @@ export default function PlanDeTravail() {
   const [materielOuvert, setMaterielOuvert] = React.useState<MaterielItem | null>(null);
   const [couleurs, setCouleurs] = React.useState<Record<string, string>>({});
   const [aColorer, setAColorer] = React.useState<SousDossier | null>(null);
-  React.useEffect(() => { api.settingsAll().then((r) => setCouleurs(lireCouleurs(r))).catch(() => {}); }, []);
+  const [couleursLues, setCouleursLues] = React.useState(false);
+  React.useEffect(() => {
+    api.settingsAll().then((r) => { setCouleurs(lireCouleurs(r)); setCouleursLues(true); }).catch(() => {});
+  }, []);
 
   /** Applique des réécritures de couleurs, en base puis à l'écran. */
   const ecrireCouleurs = async (ecritures: Record<string, string>) => {
@@ -160,8 +164,29 @@ export default function PlanDeTravail() {
     ...(textes ?? []).map((x): Element => ({ genre: "texte", id: x.id, titre: x.titre || "Sans titre", dossier: x.dossier, txt: x })),
   ], [sequences, materiels, textes]);
 
+  // Les anciennes créations de dossier y déposaient un « Nouveau matériel »
+  // vide pour que le dossier tienne. On le retire, le dossier reste.
+  const menage = React.useRef(false);
+  React.useEffect(() => {
+    if (menage.current || !couleursLues || !materiels || !sequences || !textes) return;
+    menage.current = true;
+    const vides = materielsDeCreationDeDossier(materiels, elements);
+    if (!vides.length) return;
+    (async () => {
+      const marques: Record<string, string> = {};
+      for (const m of vides) {
+        const chemin = normaliser(m.dossier);
+        if (!couleurs[chemin]) marques[PREFIXE_COULEUR + chemin] = SANS_COULEUR;
+      }
+      await ecrireCouleurs(marques);
+      for (const m of vides) await api.materielDelete(m.id);
+      recharger();
+      toast(`${vides.length} « Nouveau matériel » vide${vides.length > 1 ? "s" : ""} retiré${vides.length > 1 ? "s" : ""} : les dossiers restent.`, { icone: "🧹" });
+    })().catch(() => {});
+  }, [couleursLues, materiels, sequences, textes]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const filtre = q.trim().toLowerCase();
-  const dossiers = filtre ? [] : sousDossiers(elements, dossier);
+  const dossiers = filtre ? [] : sousDossiers(elements, dossier, Object.keys(couleurs));
   // Une recherche regarde partout : sinon il faudrait deviner où se trouve ce
   // qu'on cherche avant de le chercher.
   const ici = elements
@@ -238,11 +263,13 @@ export default function PlanDeTravail() {
 
   const creerDossier = () => setDemande({
     titre: "Nouveau dossier", label: "Nom du dossier", placeholder: "Lecture, Rituels…",
-    sur: (nom) => {
-      // Un dossier n'existe qu'habité : on le crée avec un matériel dedans,
-      // sinon il disparaîtrait au rechargement suivant.
+    sur: async (nom) => {
+      // Le dossier est noté dans les réglages : il existe vide, sans qu'on y
+      // dépose un matériel que personne n'a demandé.
       const chemin = normaliser(dossier ? `${dossier}/${nom}` : nom);
-      api.materielSave({ ...materielVierge(chemin) }).then(() => { recharger(); setDossier(chemin); });
+      if (!chemin) return;
+      if (!couleurs[chemin]) await ecrireCouleurs({ [PREFIXE_COULEUR + chemin]: SANS_COULEUR });
+      setDossier(chemin);
     },
   });
 
@@ -301,12 +328,9 @@ export default function PlanDeTravail() {
     return () => window.removeEventListener("maitrize:nouvelle-sequence", h);
   }, []);
 
-  const creerMateriel = async () => {
-    const m = materielVierge(dossier);
-    await api.materielSave(m);
-    recharger();
-    setMaterielOuvert(m);
-  };
+  // La fiche d'abord : le matériel n'existe qu'une fois enregistré. Annuler ne
+  // laisse plus de « Nouveau matériel » vide sur le bureau.
+  const creerMateriel = () => setMaterielOuvert({ ...materielVierge(dossier), titre: "" });
 
   const creerTexte = async () => {
     const x: Texte = { id: newId(), titre: "Nouveau texte", contenu: "", dossier, dateCreation: nowIso(), dateModification: "" };
@@ -419,7 +443,7 @@ export default function PlanDeTravail() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(128px, 1fr))", gap: 14 }}>
             {dossiers.map((d) => (
               <TuileDossier key={d.chemin} dossier={d} survole={survol === d.chemin}
-                couleur={couleurHex[couleurs[d.chemin]] ?? COULEUR_DOSSIER}
+                couleur={couleurHex[couleurDe(couleurs[d.chemin]) ?? ""] ?? COULEUR_DOSSIER}
                 onOuvrir={() => setDossier(d.chemin)}
                 onSurvol={setSurvol}
                 onDepose={(dt) => deposerSur(dt, d.chemin)}
@@ -455,11 +479,12 @@ export default function PlanDeTravail() {
         <Modal titre={`Couleur de « ${aColorer.nom} »`} onClose={() => setAColorer(null)}
           footer={<>
             <button className="btn" onClick={() => {
-              ecrireCouleurs({ [PREFIXE_COULEUR + aColorer.chemin]: "" }); setAColorer(null);
+              // Sans couleur, le dossier reste là, même vide.
+              ecrireCouleurs({ [PREFIXE_COULEUR + aColorer.chemin]: SANS_COULEUR }); setAColorer(null);
             }}>Sans couleur</button>
             <button className="btn primary" onClick={() => setAColorer(null)}>Fermer</button>
           </>}>
-          <ColorPicker value={couleurs[aColorer.chemin] ?? ""} onChange={(c) => {
+          <ColorPicker value={couleurDe(couleurs[aColorer.chemin]) ?? ""} onChange={(c) => {
             ecrireCouleurs({ [PREFIXE_COULEUR + aColorer.chemin]: c }); setAColorer(null);
           }} />
         </Modal>
