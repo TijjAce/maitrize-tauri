@@ -1790,6 +1790,12 @@ pub fn exporter_base(db: State<Db>, chemin: String) -> R<()> {
     Ok(())
 }
 
+/// Un réglage part-il dans une sauvegarde ? Ni la clé API, ni ce qui
+/// appartient à ce poste : son identifiant, ses repères de synchronisation.
+fn reglage_exportable(cle: &str) -> bool {
+    cle != "mistralApiKey" && !crate::journal::REGLAGES_DU_POSTE.contains(&cle)
+}
+
 /// Sérialise toutes les données utilisateur en un JSON unique (sauvegarde).
 #[tauri::command]
 pub fn export_data(db: State<Db>) -> R<String> {
@@ -1806,7 +1812,7 @@ pub fn export_json(c: &rusqlite::Connection) -> R<String> {
         // settings : on n'exporte pas la clé API (sensible).
         let rows = table_to_json(&c, t)?;
         let rows = if *t == "settings" {
-            rows.into_iter().filter(|r| r.get("cle").and_then(|v| v.as_str()) != Some("mistralApiKey")).collect()
+            rows.into_iter().filter(|r| reglage_exportable(r.get("cle").and_then(|v| v.as_str()).unwrap_or_default())).collect()
         } else if *t == "referentiels" {
             // N'exporte que les référentiels personnalisés (les intégrés sont re-seedés).
             rows.into_iter().filter(|r| r.get("est_integre").and_then(|v| v.as_i64()) != Some(1)).collect()
@@ -1865,7 +1871,12 @@ fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<()> {
         // Ne pas vider les référentiels intégrés (table non listée). Pour
         // settings on garde la clé API existante.
         if *t == "settings" {
-            c.execute("DELETE FROM settings WHERE cle != 'mistralApiKey'", []).map_err(e)?;
+            // La clé API et les réglages du poste restent ceux d'ici : une
+            // sauvegarde faite sur un autre ordinateur (ou avant ce correctif)
+            // porte les siens, qui donneraient à ce poste l'identité de l'autre.
+            let du_poste = crate::journal::REGLAGES_DU_POSTE.iter().map(|k| format!("'{k}'")).collect::<Vec<_>>().join(", ");
+            c.execute(&format!("DELETE FROM settings WHERE cle != 'mistralApiKey' AND cle NOT IN ({du_poste})"), [])
+                .map_err(e)?;
         } else if *t == "referentiels" {
             // Ne touche pas aux référentiels intégrés (seedés au démarrage).
             c.execute("DELETE FROM referentiels WHERE est_integre=0", []).map_err(e)?;
@@ -1874,6 +1885,10 @@ fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<()> {
         }
         for row in arr {
             let Some(o) = row.as_object() else { continue };
+            if *t == "settings" && o.get("cle").and_then(|v| v.as_str())
+                .is_some_and(|k| crate::journal::REGLAGES_DU_POSTE.contains(&k)) {
+                continue;
+            }
             let cols: Vec<&String> = o.keys().collect();
             if cols.is_empty() { continue; }
             let placeholders: Vec<String> = (1..=cols.len()).map(|i| format!("?{i}")).collect();
@@ -1941,6 +1956,50 @@ mod tests_cahier_journal {
         let ancien: Creneau = serde_json::from_value(serde_json::json!({"id": "cr2", "date": "2026-09-14"})).unwrap();
         assert_eq!(ancien.nature, "classe");
         assert_eq!(ancien.prevu, "");
+    }
+}
+
+#[cfg(test)]
+mod tests_restauration {
+    fn poste(id: &str, repere: &str) -> rusqlite::Connection {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        crate::journal::creer_table(&c);
+        c.execute("INSERT INTO settings (cle, valeur) VALUES ('identifiantMachine', ?1), ('syncSeqEnvoyee', ?2), ('ecole', 'École d''ici')",
+                  [id, repere]).unwrap();
+        c
+    }
+
+    fn reglage(c: &rusqlite::Connection, cle: &str) -> String {
+        c.query_row("SELECT valeur FROM settings WHERE cle = ?1", [cle], |r| r.get(0)).unwrap()
+    }
+
+    /// Le défaut réel : restaurer la sauvegarde faite sur l'autre ordinateur
+    /// lui prenait son identifiant et son repère d'envoi. Les deux machines
+    /// s'ignoraient ensuite, et plus rien de ce qui s'écrivait ici ne partait.
+    /// Les sauvegardes déjà sur le stockage portent encore ces réglages.
+    #[test]
+    fn une_restauration_garde_lidentite_du_poste() {
+        let mac = poste("id-du-mac", "913");
+        let sauvegarde_du_pc = r#"{"_format":"maitrize-backup-v1","settings":[
+            {"cle":"identifiantMachine","valeur":"id-du-pc"},
+            {"cle":"syncSeqEnvoyee","valeur":"3003"},
+            {"cle":"syncDeltasVus","valeur":"[]"},
+            {"cle":"ecole","valeur":"École restaurée"}]}"#;
+        super::import_json(&mac, sauvegarde_du_pc).unwrap();
+        assert_eq!(reglage(&mac, "identifiantMachine"), "id-du-mac");
+        assert_eq!(reglage(&mac, "syncSeqEnvoyee"), "913");
+        assert_eq!(reglage(&mac, "ecole"), "École restaurée", "les données, elles, sont restaurées");
+    }
+
+    #[test]
+    fn une_sauvegarde_nemporte_pas_lidentite_du_poste() {
+        for cle in ["identifiantMachine", "syncSeqEnvoyee", "syncDeltasVus", "derniereSync", "nomMachine", "mistralApiKey"] {
+            assert!(!super::reglage_exportable(cle), "« {cle} » part dans la sauvegarde");
+        }
+        for cle in ["ecole", "enseignantNom", "edt:mode", "bureau:", "sync_endpoint", "sauvegarde_phrase"] {
+            assert!(super::reglage_exportable(cle), "« {cle} » manque à la sauvegarde");
+        }
     }
 }
 

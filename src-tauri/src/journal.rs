@@ -71,6 +71,19 @@ const REGLAGES_PARTAGES: &[&str] = &[
 /// d'affichage.
 const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:", "dossier:", "bureau:"];
 
+/// Réglages qui appartiennent à l'ordinateur lui-même, pas aux données.
+///
+/// Ni la synchronisation, ni une sauvegarde, ni une restauration ne doivent
+/// les faire passer d'un poste à l'autre. Une restauration les copiait : le
+/// second ordinateur prenait l'identifiant du premier, et chacun écartait
+/// ensuite ce que l'autre envoyait en le croyant sien — plus rien ne passait.
+/// Le repère d'envoi copié, lui, dépassait le journal local : plus aucune
+/// modification ne partait.
+pub const REGLAGES_DU_POSTE: &[&str] = &[
+    "identifiantMachine", "nomMachine", "derniereSync", "derniereSauvegardeAuto",
+    "syncSeqEnvoyee", "syncDeltasVus",
+];
+
 /// Ce qui ne doit jamais partir, quoi qu'il arrive.
 ///
 /// `identifiantMachine` en particulier : c'est lui qui départage deux
@@ -79,11 +92,9 @@ const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:", "dossier:", "bure
 /// où il sert.
 pub fn reglage_partage(cle: &str) -> bool {
     const JAMAIS: &[&str] = &[
-        "mistralApiKey", "sauvegarde_phrase", "identifiantMachine", "nomMachine",
-        "derniereSync", "derniereSauvegardeAuto", "syncSeqEnvoyee", "syncDeltasVus",
-        "cgu", "onboardingVu", "vacancesCache",
+        "mistralApiKey", "sauvegarde_phrase", "cgu", "onboardingVu", "vacancesCache",
     ];
-    if JAMAIS.contains(&cle) || cle.starts_with("sync_") {
+    if JAMAIS.contains(&cle) || REGLAGES_DU_POSTE.contains(&cle) || cle.starts_with("sync_") {
         return false;
     }
     REGLAGES_PARTAGES.contains(&cle) || PREFIXES_PARTAGES.iter().any(|p| cle.starts_with(p))
@@ -645,6 +656,22 @@ pub fn dernier_seq(conn: &Connection) -> i64 {
         .unwrap_or(0)
 }
 
+/// Le repère d'où reprendre l'envoi des changements locaux.
+///
+/// Un repère au-delà du journal vient d'une autre base : une restauration
+/// l'avait copié. Tel quel, plus aucune modification faite ici ne partait tant
+/// que le journal ne l'avait pas rattrapé — des centaines d'écritures plus
+/// tard. On repart alors de la dernière écriture reçue ou restaurée : ce qui
+/// la suit est du travail neuf ; ce qui la précède est déjà parti, ou a été
+/// remplacé par la restauration.
+pub fn repere_envoi(conn: &Connection, repere: i64) -> i64 {
+    if repere <= dernier_seq(conn) {
+        return repere;
+    }
+    conn.query_row("SELECT COALESCE(MAX(seq), 0) FROM changements WHERE distant = 1", [], |r| r.get(0))
+        .unwrap_or(0)
+}
+
 /// Élague le journal, qui n'a pas vocation à grandir sans fin.
 pub fn elaguer(conn: &Connection, avant: i64) {
     conn.execute("DELETE FROM changements WHERE seq <= ?1", params![avant]).ok();
@@ -1053,6 +1080,26 @@ mod tests {
         let (rien, repere) = changements_locaux(&b, 0).unwrap();
         assert!(rien.is_empty());
         assert!(repere > 0, "le repère doit dépasser les lignes distantes");
+    }
+
+    /// Le défaut réel : une restauration avait copié le repère d'envoi d'une
+    /// base plus longue. Plus rien de ce qui s'écrivait ici ne partait.
+    #[test]
+    fn un_repere_venu_dune_autre_base_ne_bloque_plus_lenvoi() {
+        let c = machine();
+        ajouter(&c, "e1", "Quang");
+        // La restauration : ses écritures sont marquées distantes.
+        let avant = dernier_seq(&c);
+        ajouter(&c, "e2", "Lina");
+        marquer_distants(&c, avant);
+        // Du travail neuf après la restauration.
+        ajouter(&c, "e3", "Apolline");
+
+        assert_eq!(repere_envoi(&c, 1), 1, "un repère valable ne bouge pas");
+        let repere = repere_envoi(&c, 3003);
+        let (a_envoyer, _) = changements_locaux(&c, repere).unwrap();
+        assert_eq!(a_envoyer.len(), 1, "seul le travail d'après la restauration part : {a_envoyer:?}");
+        assert!(a_envoyer[0].donnees.contains("Apolline"));
     }
 
     #[test]
