@@ -29,9 +29,9 @@ export function ajouterDictee(texte: string, dicte: string): string {
   return texte.replace(/\s+$/, "") + (/[.!?…:]$/.test(texte.trim()) ? " " : ". ") + d;
 }
 
-export function CahierJournal({ dateIso, creneaux, seances, eleves, onGenerer, onModifier }: {
+export function CahierJournal({ dateIso, creneaux, seances, eleves, onModifier }: {
   dateIso: string; creneaux: Creneau[]; seances: Seance[]; eleves: Eleve[];
-  onGenerer: () => void; onModifier: (c: Creneau) => void;
+  onModifier: (c: Creneau) => void;
 }) {
   const duJour = React.useMemo(
     () => creneaux.filter((c) => c.date.slice(0, 10) === dateIso).sort((a, b) => a.heureDebut.localeCompare(b.heureDebut)),
@@ -117,10 +117,10 @@ export function CahierJournal({ dateIso, creneaux, seances, eleves, onGenerer, o
       <div className="card" style={{ textAlign: "center", padding: "30px 18px" }}>
         <div style={{ fontSize: 34, marginBottom: 6 }}>📓</div>
         <div style={{ fontWeight: 700, marginBottom: 4 }}>Cahier journal</div>
-        <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 12 }}>
-          Aucun créneau ce jour. Posez ceux de l’emploi du temps pour écrire ce qui est prévu et ce qui a été fait.
+        <div style={{ fontSize: 13, color: "var(--text-2)" }}>
+          Aucun créneau ce jour. Posez ceux de l’emploi du temps avec « ⚡ Générer le jour » en haut de la page,
+          puis écrivez ici ce qui est prévu et ce qui a été fait.
         </div>
-        <button className="btn primary" onClick={onGenerer}>⚡ Générer le jour</button>
       </div>
     );
   }

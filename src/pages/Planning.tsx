@@ -11,7 +11,8 @@ import { SeanceReadView } from "./SequenceDetail";
 import { printHTML, escapeHtml } from "../print";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
 import { CahierJournal } from "../components/CahierJournal";
-import { minutesParNature, duree, natureDepuisTitre, natureDe } from "../heures";
+import { minutesParNature, duree, natureDe } from "../heures";
+import { organisationPour, natureDuSlot, type SlotEdt } from "../organisation";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const JOURS7 = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -76,7 +77,6 @@ export default function Planning() {
   const heuresSemaine = React.useMemo(() => minutesParNature(creneauxSemaine ?? []), [creneauxSemaine]);
   const { data: seances } = useAsync(() => api.seancesList(), []);
   const { data: sequences } = useAsync(() => api.sequencesList(), []);
-  const { data: edts } = useAsync(() => api.edtTypiqueList(), []);
   const { data: eleves } = useAsync(() => api.elevesList(), []);
 
   // Anniversaires indexés par « MM-JJ » (toutes années confondues).
@@ -144,29 +144,25 @@ export default function Planning() {
     setAncre(d);
   };
 
-  // Remplit les créneaux libres à partir de l'organisation choisie dans les
-  // Réglages : la trame annuelle en classe ordinaire, ou l'organisation IME de
-  // la semaine concernée (qui porte en plus les élèves présents).
+  // Remplit les créneaux libres à partir de l'emploi du temps de l'année :
+  // l'organisation IME (créneaux avec les élèves présents) ou la trame de
+  // classe ordinaire, selon ce qui est choisi dans Organisation → EDT type.
   const generer = async () => {
     const jour = vue === "jour";
     const l = lundiDe(ancre);
     const semJours = JOURS.map((_, i) => { const d = new Date(l); d.setDate(d.getDate() + i); return d; });
     const refDate = jour ? ancre : l;
-    const ime = (await api.settingGet("typeStructure")) === "ime";
-    // En IME, la source est la semaine du jour visé, pas l'année.
-    const source = ime ? `IME:${iso(lundiDe(refDate))}` : (() => {
-      const y = refDate.getFullYear(); return refDate.getMonth() >= 7 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
-    })();
-    const edt = (edts ?? []).find((e) => e.annee === source) ?? (ime ? undefined : (edts ?? []).find((e) => !e.annee.startsWith("IME:")));
-    const nomSource = ime ? "l'organisation IME de cette semaine" : "l'EDT type";
-    if (!edt) {
-      toast(ime ? "Aucune organisation IME pour cette semaine. Créez-la dans Organisation → EDT type → Organisation IME."
-                : "Aucun EDT type défini. Créez-le dans Organisation → EDT type.", { icone: "⚠️", duree: 6000 });
+    const [structure, modeEdt, edtsFrais] = await Promise.all([
+      api.settingGet("typeStructure"), api.settingGet("edt:mode"), api.edtTypiqueList()]);
+    const trouve = organisationPour(edtsFrais, refDate, structure === "ime" || modeEdt === "ime");
+    if (!trouve) {
+      toast(`Aucun emploi du temps pour ${anneeDe(iso(refDate))}. Créez-le dans Organisation → EDT type.`,
+        { icone: "⚠️", duree: 6000 });
       return;
     }
-    let slots: { jour: string; heureDebut: string; heureFin: string; titre: string; eleves?: string[] }[] = [];
-    try { slots = JSON.parse(edt.slotsJson); } catch { /* */ }
-    if (slots.length === 0) { toast(`${nomSource[0].toUpperCase()}${nomSource.slice(1)} est vide.`, { icone: "⚠️" }); return; }
+    const nomSource = trouve.source === "ime" ? "l'organisation IME" : "l'EDT type";
+    let slots: SlotEdt[] = [];
+    try { slots = JSON.parse(trouve.edt.slotsJson); } catch { /* */ }
     if (!(await confirmer(jour ? `Remplir les créneaux libres de ce jour depuis ${nomSource} ?`
                               : `Remplir les créneaux libres de la semaine depuis ${nomSource} ?`, { oui: "Remplir" }))) return;
     const chevauche = (date: string, d: string, f: string) => (creneaux ?? []).some((c) =>
@@ -180,7 +176,7 @@ export default function Planning() {
       if (feries[date] || vacanceDe(date) || chevauche(date, s.heureDebut, s.heureFin)) continue;
       await api.creneauSave({ id: newId(), date, heureDebut: s.heureDebut, heureFin: s.heureFin,
         matiere: s.titre, couleur: couleurPourMatiere(s.titre), seanceId: null, atelierId: null, espaceId: null,
-        elevesJson: JSON.stringify(s.eleves ?? []), nature: natureDepuisTitre(s.titre), prevu: "", bilan: "" });
+        elevesJson: JSON.stringify(s.eleves ?? []), nature: natureDuSlot(s), prevu: "", bilan: "" });
       poses++;
     }
     reload();
@@ -388,7 +384,7 @@ export default function Planning() {
               <GrilleHoraire jours={jours} creneaux={creneaux ?? []} seances={seances ?? []} eleves={eleves ?? []} feries={feries} vacanceDe={vacanceDe}
                 deplacable={deplacer} onEdit={setEdit} onTap={ouvrirCreneau} onReload={reload} />
               <CahierJournal dateIso={iso(ancre)} creneaux={creneaux ?? []} seances={seances ?? []} eleves={eleves ?? []}
-                onGenerer={generer} onModifier={setEdit} />
+                onModifier={setEdit} />
             </div>
           : <GrilleHoraire jours={jours} creneaux={creneaux ?? []} seances={seances ?? []} eleves={eleves ?? []} feries={feries} vacanceDe={vacanceDe}
               deplacable={deplacer} onEdit={setEdit} onTap={ouvrirCreneau} onReload={reload} />}
