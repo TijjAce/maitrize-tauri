@@ -27,6 +27,7 @@ import { bootTheme } from "./theme";
 import { raccourci, isMac } from "./api";
 import { getVersion } from "@tauri-apps/api/app";
 import { Toaster, toast } from "./components/Toaster";
+import { ConfirmerHost } from "./components/confirmer";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { releverBoiteAuxLettres, messageRecu } from "./inbox";
 
@@ -211,6 +212,7 @@ export default function App() {
         <KeepAliveHost pathname={location.pathname} />
       </main>
       <Toaster />
+      <ConfirmerHost />
       <UpdateBanner />
       <NotesPanel />
       <CommandPalette />

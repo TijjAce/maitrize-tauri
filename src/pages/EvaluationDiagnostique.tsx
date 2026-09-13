@@ -1,4 +1,5 @@
 import React from "react";
+import { confirmer } from "../components/confirmer";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { api } from "../api";
 import { Field, Input, Select, Textarea, useAsync } from "../components/ui";
@@ -137,8 +138,8 @@ export function EvaluationDiagnostiqueTab() {
     majBloc(blocId, { ...(vRef.current[blocId] ?? {}), [champId]: texte });
   };
 
-  const vider = () => {
-    if (!confirm(`Effacer la grille « ${grille.nom} » de ${eleve?.nom ?? "cet élève"} ?`)) return;
+  const vider = async () => {
+    if (!(await confirmer(`Effacer la grille « ${grille.nom} » de ${eleve?.nom ?? "cet élève"} ?`, { oui: "Effacer", danger: true }))) return;
     persister({});
     toast("Grille vidée.", { icone: "🗑" });
   };

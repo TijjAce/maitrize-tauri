@@ -422,7 +422,7 @@ export const api = {
 
   // Export / Import (sauvegarde)
   exportData: () => invoke<string>("export_data"),
-  importData: (json: string) => invoke<void>("import_data", { json }),
+  importData: (json: string) => invoke<string>("import_data", { json }),
   exporterBase: (chemin: string) => invoke<void>("exporter_base", { chemin }),
   sauvegardesAutoList: () => invoke<SauvegardeAuto[]>("sauvegardes_auto_list"),
   sauvegardesAutoOuvrir: () => invoke<void>("sauvegardes_auto_ouvrir"),
@@ -481,6 +481,7 @@ export const api = {
   sauvegardePush: () => invoke<string>("sauvegarde_push"),
   sauvegardePull: (cle?: string) => invoke<string>("sauvegarde_pull", { cle: cle ?? null }),
   sauvegardeListe: () => invoke<SauvegardeDistante[]>("sauvegarde_liste"),
+  sauvegardeSupprimer: (cle: string) => invoke<string>("sauvegarde_supprimer", { cle }),
   syncEtat: () => invoke<EtatSync>("sync_etat"),
   syncDeltas: () => invoke<ResultatSync>("sync_deltas"),
   syncFichiers: () => invoke<ResultatFichiers>("sync_fichiers"),

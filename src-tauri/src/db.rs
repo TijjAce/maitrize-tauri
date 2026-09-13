@@ -177,6 +177,20 @@ pub fn sauvegarde_auto(conn: &Connection) {
     purger_sauvegardes(&dir);
 }
 
+/// Copie de la base avant une opération qui la remplace (restauration).
+///
+/// Une restauration écrase tout : si la sauvegarde choisie était la mauvaise,
+/// il ne restait aucun moyen de revenir en arrière. Cette copie, rangée avec
+/// les copies quotidiennes, est ce moyen. En cas d'échec, l'opération ne doit
+/// pas avoir lieu.
+pub fn copie_de_securite(conn: &Connection, motif: &str) -> Result<String, String> {
+    let nom = format!("maitrize-{}-{motif}-{}.sqlite3", jour_iso(), chrono::Local::now().format("%H%M%S"));
+    let cible = sauvegardes_dir().join(&nom);
+    conn.execute("VACUUM INTO ?1", [cible.to_string_lossy().as_ref()])
+        .map_err(|err| format!("Copie de sécurité impossible, restauration annulée : {err}"))?;
+    Ok(nom)
+}
+
 /// Ne garde que les copies les plus récentes.
 fn purger_sauvegardes(dir: &std::path::Path) {
     let Ok(entrees) = std::fs::read_dir(dir) else { return };
