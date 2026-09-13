@@ -43,11 +43,6 @@ export function anneeScolaireActuelle(): string {
 // ============================================================
 // TYPES
 // ============================================================
-export interface Projet {
-  id: string; titre: string; descriptif: string; couleur: string;
-  dateCreation: string; annee: string; imageNom: string | null;
-}
-
 export interface Sequence {
   id: string; titre: string; matiere: string; cycle: string; objectifs: string;
   competences: string; competenceVisee: string; imageNom: string | null;
@@ -212,11 +207,6 @@ export interface SauvegardeAuto { nom: string; jour: string; octets: number }
 // ============================================================
 // FABRIQUES (valeurs par défaut)
 // ============================================================
-export const nouveauProjet = (): Projet => ({
-  id: newId(), titre: "", descriptif: "", couleur: "indigo",
-  dateCreation: nowIso(), annee: anneeScolaireActuelle(), imageNom: null,
-});
-
 export const nouvelleSequence = (): Sequence => ({
   id: newId(), titre: "", matiere: "", cycle: "", objectifs: "", competences: "",
   competenceVisee: "", imageNom: null, couleur: "blue", dateCreation: nowIso(),
@@ -259,11 +249,6 @@ export const nouvelleEvaluation = (): Evaluation => ({
 // API
 // ============================================================
 export const api = {
-  // Projets
-  projetsList: () => invoke<Projet[]>("projets_list"),
-  projetSave: (projet: Projet) => invoke<Projet>("projet_save", { projet }),
-  projetDelete: (id: string) => invoke<void>("projet_delete", { id }),
-
   // Séquences
   sequencesList: () => invoke<Sequence[]>("sequences_list"),
   sequenceSave: (sequence: Sequence) => invoke<Sequence>("sequence_save", { sequence }),
@@ -493,7 +478,6 @@ export const api = {
   syncRelever: (amiId: string) => invoke<SyncMessage[]>("sync_relever", { amiId }),
   sequencePartager: (amiId: string, sequenceId: string) => invoke<void>("sequence_partager", { amiId, sequenceId }),
   programmationPartager: (amiId: string, annee: string) => invoke<void>("programmation_partager", { amiId, annee }),
-  projetPartager: (amiId: string, projetId: string) => invoke<void>("projet_partager", { amiId, projetId }),
   // Boîte de réception : relever (met en attente), lister, récupérer (importer), jeter.
   boiteRelever: (amiId: string) => invoke<BoiteItem[]>("boite_relever", { amiId }),
   boiteListe: () => invoke<BoiteItem[]>("boite_liste"),

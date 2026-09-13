@@ -13,7 +13,7 @@
 //!   chiffrement et l'aller-retour de bout en bout.
 
 use crate::db::{fichiers_dir, Db};
-use crate::models::{ProgrammationFinale, Projet, Seance, Sequence};
+use crate::models::{ProgrammationFinale, Seance, Sequence};
 use aws_sdk_s3::{config::{BehaviorVersion, Credentials, Region}, primitives::ByteStream, Client};
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use chacha20poly1305::{aead::{Aead, KeyInit}, Key, XChaCha20Poly1305, XNonce};
@@ -55,16 +55,21 @@ struct EnvSeq {
 #[derive(Serialize, Deserialize)]
 struct EnvProg { de: String, nom: String, ts: String, kind: String, programmation: ProgrammationFinale }
 
-/// Une séquence empaquetée (utilisée dans un projet partagé).
+/// Une séquence empaquetée (dans un projet partagé par une ancienne version).
 #[derive(Serialize, Deserialize)]
 struct SeqBundle { sequence: Sequence, seances: Vec<Seance>, #[serde(default)] image_b64: Option<String> }
 
-/// Enveloppe d'un projet partagé (projet + son image + toutes ses séquences).
-#[derive(Serialize, Deserialize)]
+/// Enveloppe d'un projet partagé.
+///
+/// Les projets ont disparu, mais un ami resté sur une ancienne version peut
+/// encore en envoyer : on en garde les séquences, seul le regroupement se perd.
+#[derive(Deserialize)]
 struct EnvProjet {
-    de: String, nom: String, ts: String, kind: String,
-    projet: Projet, #[serde(default)] projet_image_b64: Option<String>, sequences: Vec<SeqBundle>,
+    projet: ProjetRecu, sequences: Vec<SeqBundle>,
 }
+
+#[derive(Deserialize)]
+struct ProjetRecu { #[serde(default)] titre: String }
 
 struct Ctx { priv_: [u8; 32], pub_: [u8; 32], nom: String, ami_pub: [u8; 32], mid: String, cfg: S3Cfg }
 
@@ -493,71 +498,12 @@ fn importer_programmation(c: &Connection, env: EnvProg) -> R<String> {
     Ok(annee)
 }
 
-// ── Partage de projets (projet + ses séquences) ─────────────────────────────
-
-fn lire_image_fichier(nom: &Option<String>) -> Option<String> {
-    let n = nom.as_deref().filter(|n| !n.is_empty())?;
-    std::fs::read(fichiers_dir().join(n)).ok().map(|b| STANDARD.encode(b))
-}
-
-fn lire_projet(c: &Connection, projet_id: &str) -> R<(Projet, Vec<SeqBundle>)> {
-    let projet = c.query_row("SELECT * FROM projets WHERE id = ?1", [projet_id], Projet::from_row)
-        .map_err(|_| "Projet introuvable.".to_string())?;
-    let mut st = c.prepare("SELECT * FROM sequences WHERE projet_id = ?1").map_err(e)?;
-    let seqs: Vec<Sequence> = st.query_map([projet_id], Sequence::from_row).map_err(e)?
-        .collect::<rusqlite::Result<Vec<_>>>().map_err(e)?;
-    drop(st);
-    let mut bundles = Vec::new();
-    for seq in seqs {
-        let mut sts = c.prepare("SELECT * FROM seances WHERE sequence_id = ?1 ORDER BY numero").map_err(e)?;
-        let seances: Vec<Seance> = sts.query_map([&seq.id], Seance::from_row).map_err(e)?
-            .collect::<rusqlite::Result<Vec<_>>>().map_err(e)?;
-        drop(sts);
-        let image_b64 = lire_image_fichier(&seq.image_nom);
-        bundles.push(SeqBundle { sequence: seq, seances, image_b64 });
-    }
-    Ok((projet, bundles))
-}
-
-#[tauri::command]
-pub async fn projet_partager(db: State<'_, Db>, ami_id: String, projet_id: String) -> R<()> {
-    let ctx = contexte(&db, &ami_id)?;
-    let (projet, sequences) = { let c = db.0.lock().map_err(e)?; lire_projet(&c, &projet_id)? };
-    let projet_image_b64 = lire_image_fichier(&projet.image_nom);
-    let key = cle_paire(ctx.priv_, ctx.ami_pub, &ctx.mid);
-    let env = EnvProjet {
-        de: STANDARD.encode(ctx.pub_), nom: ctx.nom.clone(),
-        ts: chrono::Utc::now().to_rfc3339(), kind: "projet".into(),
-        projet, projet_image_b64, sequences,
-    };
-    let blob = chiffrer(&key, &serde_json::to_vec(&env).map_err(e)?)?;
-    let nom_objet = format!("mailbox/{}/projet-{}-{}.bin", ctx.mid, chrono::Utc::now().timestamp_millis(), uuid::Uuid::new_v4());
-    client(&ctx.cfg)
-        .put_object().bucket(&ctx.cfg.bucket).key(&nom_objet).body(ByteStream::from(blob)).send().await
-        .map_err(|er| format!("Partage : {er}"))?;
-    Ok(())
-}
-
-/// Importe un projet reçu : nouveau projet + ses séquences rattachées.
+/// Importe un projet reçu d'une ancienne version : ses séquences seules.
 fn importer_projet(c: &Connection, env: EnvProjet) -> R<String> {
-    let mut p = env.projet;
-    let titre = p.titre.clone();
-    let new_projet = uuid::Uuid::new_v4().to_string();
-    p.id = new_projet.clone();
-    p.date_creation = chrono::Utc::now().to_rfc3339();
-    let ext = p.image_nom.as_deref()
-        .and_then(|n| std::path::Path::new(n).extension().and_then(|x| x.to_str()))
-        .unwrap_or("png").to_string();
-    p.image_nom = env.projet_image_b64.and_then(|b| ecrire_image(&b, &ext));
-    c.execute(
-        "INSERT OR REPLACE INTO projets (id,titre,descriptif,couleur,date_creation,annee,image_nom)
-         VALUES (?1,?2,?3,?4,?5,?6,?7)",
-        params![p.id, p.titre, p.descriptif, p.couleur, p.date_creation, p.annee, p.image_nom],
-    ).map_err(e)?;
     for b in env.sequences {
-        inserer_sequence(c, b.sequence, b.seances, b.image_b64, Some(new_projet.clone()))?;
+        inserer_sequence(c, b.sequence, b.seances, b.image_b64, None)?;
     }
-    Ok(titre)
+    Ok(env.projet.titre)
 }
 
 // ── Sauvegarde personnelle chiffrée sur S3/MinIO ─────────────────────

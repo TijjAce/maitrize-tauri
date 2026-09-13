@@ -3,7 +3,6 @@ import { NavLink, Route, Routes, Navigate, useNavigate, useLocation } from "reac
 import logo from "./assets/logo.png";
 import Dashboard from "./pages/Dashboard";
 import SequenceDetail from "./pages/SequenceDetail";
-import Projets from "./pages/Projets";
 import Ateliers from "./pages/Ateliers";
 import Planning from "./pages/Planning";
 import Organisation from "./pages/Organisation";
@@ -35,7 +34,6 @@ const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: t
   { to: "/", ico: "🏠", label: "Tableau de bord", end: true },
   { sep: true },
   { to: "/plan", ico: "🗂", label: "Plan de travail" },
-  { to: "/projets", ico: "📁", label: "Projets" },
   { to: "/ateliers", ico: "🧩", label: "Ateliers & Espaces" },
   { to: "/planning", ico: "🗓️", label: "Planning" },
   { to: "/organisation", ico: "🗂️", label: "Organisation" },
@@ -58,7 +56,6 @@ const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: t
 const KEEP_ALIVE: { path: string; element: React.ReactNode }[] = [
   { path: "/", element: <Dashboard /> },
   { path: "/plan", element: <PlanDeTravail /> },
-  { path: "/projets", element: <Projets /> },
   { path: "/ateliers", element: <Ateliers /> },
   { path: "/organisation", element: <Organisation /> },
   { path: "/eleves", element: <Eleves /> },
@@ -105,6 +102,7 @@ function KeepAliveHost({ pathname }: { pathname: string }) {
                   mort vaudrait moins qu'une redirection. */}
               <Route path="/sequences" element={<Navigate to="/plan" replace />} />
               <Route path="/materiel" element={<Navigate to="/plan" replace />} />
+              <Route path="/projets" element={<Navigate to="/plan" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </ErrorBoundary>
