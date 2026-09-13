@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   estDans, filDAriane, normaliser, parent, renommerChemin, sousDossiers,
-  destinationDossier, reporterCouleurs, lireCouleurs,
+  destinationDossier, reporterCouleurs, lireCouleurs, SANS_COULEUR, couleurDe, materielsDeCreationDeDossier,
 } from "./dossiers";
 
 const el = (dossier: string, id = dossier + Math.random()) => ({ id, dossier });
@@ -109,5 +109,49 @@ describe("couleurs des dossiers", () => {
   });
   it("se lisent dans les réglages, sans les couleurs retirées", () => {
     expect(lireCouleurs({ "dossier:A": "blue", "dossier:B": "", "theme": "sombre" })).toEqual({ A: "blue" });
+  });
+});
+
+describe("dossiers créés à la main", () => {
+  it("paraissent même vides, à leur place dans l'arbre", () => {
+    const elements = [el("Maths")];
+    const crees = ["Lecture", "Français/Poésie"];
+    expect(sousDossiers(elements, "", crees).map((d) => [d.nom, d.total])).toEqual([["Français", 0], ["Lecture", 0], ["Maths", 1]]);
+    expect(sousDossiers(elements, "Français", crees).map((d) => d.nom)).toEqual(["Poésie"]);
+    expect(sousDossiers(elements, "Lecture", crees)).toEqual([]);
+  });
+
+  it("ne comptent pas deux fois un dossier qui a aussi du contenu", () => {
+    expect(sousDossiers([el("Maths"), el("Maths")], "", ["Maths"])).toEqual([{ chemin: "Maths", nom: "Maths", total: 2 }]);
+  });
+
+  it("gardent leur place sans couleur, et suivent un déplacement", () => {
+    expect(couleurDe(SANS_COULEUR)).toBeUndefined();
+    expect(couleurDe("blue")).toBe("blue");
+    expect(lireCouleurs({ "dossier:Lecture": SANS_COULEUR })).toEqual({ Lecture: SANS_COULEUR });
+    expect(reporterCouleurs({ Lecture: SANS_COULEUR }, "Lecture", "Français/Lecture"))
+      .toEqual({ "dossier:Lecture": "", "dossier:Français/Lecture": SANS_COULEUR });
+  });
+});
+
+describe("matériels vides déposés à la création d'un dossier", () => {
+  const mat = (p: Partial<Parameters<typeof materielsDeCreationDeDossier>[0][number]>) => ({
+    id: Math.random().toString(), dossier: "Lecture", titre: "Nouveau matériel", descriptionMateriel: "", competenceId: "",
+    imagesJson: "[]", pdfsJson: "[]", videosJson: "[]", coffreJson: "[]", seanceId: null, sequenceId: null, ...p,
+  });
+
+  it("repère le matériel vide, seul dans son dossier", () => {
+    const m = mat({});
+    expect(materielsDeCreationDeDossier([m], [m])).toEqual([m]);
+  });
+
+  it("laisse tout matériel rempli, renommé, à la racine ou accompagné", () => {
+    const seul = (x: ReturnType<typeof mat>) => materielsDeCreationDeDossier([x], [x]);
+    expect(seul(mat({ titre: "Loto des animaux" }))).toEqual([]);
+    expect(seul(mat({ descriptionMateriel: "À plastifier" }))).toEqual([]);
+    expect(seul(mat({ pdfsJson: '["fiche.pdf"]' }))).toEqual([]);
+    expect(seul(mat({ dossier: "" }))).toEqual([]);
+    const m = mat({});
+    expect(materielsDeCreationDeDossier([m], [m, el("Lecture")])).toEqual([]);
   });
 });

@@ -5,8 +5,9 @@
 // sans rien à créer, renommer ou supprimer en base — un dossier existe tant
 // que quelque chose s'y trouve, et disparaît quand on le vide.
 //
-// La contrepartie est qu'un dossier vide ne se garde pas. C'est assumé : sur
-// un bureau, un dossier vide qu'on a oublié de remplir est du bruit.
+// Un dossier créé à la main existe pourtant avant d'avoir un contenu : il est
+// noté dans les réglages, sous la même clé que sa couleur (voir SANS_COULEUR).
+// On ne dépose plus un « Nouveau matériel » vide pour le faire tenir.
 
 /** Un élément rangeable : séquence ou matériel. */
 export interface Rangeable {
@@ -66,9 +67,16 @@ export interface SousDossier {
  * « Français » — mais il compte les trois niveaux dans son total, sinon un
  * dossier plein paraîtrait vide.
  */
-export function sousDossiers(elements: Rangeable[], courant: string): SousDossier[] {
+export function sousDossiers(elements: Rangeable[], courant: string, crees: Iterable<string> = []): SousDossier[] {
   const prefixe = courant ? courant + SEPARATEUR : "";
   const totaux = new Map<string, number>();
+  // Les dossiers créés à la main paraissent même vides.
+  for (const c of crees) {
+    const chemin = normaliser(c);
+    if (!chemin || !chemin.startsWith(prefixe) || chemin === courant) continue;
+    const complet = prefixe + chemin.slice(prefixe.length).split(SEPARATEUR)[0];
+    if (!totaux.has(complet)) totaux.set(complet, 0);
+  }
   for (const e of elements) {
     const chemin = normaliser(e.dossier);
     if (!chemin || !chemin.startsWith(prefixe) || chemin === courant) continue;
@@ -111,6 +119,44 @@ export function destinationDossier(chemin: string, vers: string): string | null 
 
 /** Préfixe des réglages qui gardent la couleur d'un dossier. */
 export const PREFIXE_COULEUR = "dossier:";
+
+/**
+ * Valeur du réglage d'un dossier qui existe sans couleur.
+ *
+ * La clé d'un dossier dit qu'il existe ; sa valeur, sa couleur. Un dossier
+ * créé à la main, ou dont on a retiré la couleur, garde ainsi sa place même
+ * vide — et suit, comme une couleur, les renommages et les déplacements.
+ */
+export const SANS_COULEUR = "aucune";
+
+/** La couleur à peindre, ou rien. */
+export const couleurDe = (valeur: string | undefined) => (valeur && valeur !== SANS_COULEUR ? valeur : undefined);
+
+/** Ce que doit contenir un matériel pour être autre chose qu'un matériel vide. */
+export interface MaterielRangeable extends Rangeable {
+  titre: string; descriptionMateriel: string; competenceId: string;
+  imagesJson: string; pdfsJson: string; videosJson: string; coffreJson: string;
+  seanceId: string | null; sequenceId: string | null;
+}
+
+const vide = (json: string) => { try { return !(JSON.parse(json || "[]") as unknown[]).length; } catch { return !json; } };
+
+/**
+ * Les « Nouveau matériel » vides qu'une création de dossier déposait pour que
+ * le dossier tienne : seuls dans leur dossier, jamais remplis.
+ *
+ * On les retire en gardant le dossier (voir SANS_COULEUR). Un matériel vide
+ * posé à côté d'autres éléments reste : celui-là, on l'a peut-être voulu.
+ */
+export function materielsDeCreationDeDossier(materiels: MaterielRangeable[], elements: Rangeable[]): MaterielRangeable[] {
+  return materiels.filter((m) => {
+    const chemin = normaliser(m.dossier);
+    return chemin && m.titre === "Nouveau matériel" && !m.descriptionMateriel.trim() && !m.competenceId
+      && vide(m.imagesJson) && vide(m.pdfsJson) && vide(m.videosJson) && vide(m.coffreJson)
+      && !m.seanceId && !m.sequenceId
+      && !elements.some((e) => e.id !== m.id && normaliser(e.dossier) === chemin);
+  });
+}
 
 /**
  * Les couleurs à réécrire quand `ancien` devient `nouveau`.
