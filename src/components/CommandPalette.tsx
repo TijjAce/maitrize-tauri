@@ -10,7 +10,7 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "👀", label: "Observations", to: "/eleves", page: "eleves", onglet: "observations", sous: "Élèves" },
   { ico: "📝", label: "Évaluations", to: "/eleves", page: "eleves", onglet: "evaluations", sous: "Élèves" },
   { ico: "📄", label: "Papiers des élèves", to: "/eleves", page: "eleves", onglet: "papiers", sous: "Élèves" },
-  { ico: "🎓", label: "Synthèse GS", to: "/eleves", page: "eleves", onglet: "synthese", sous: "Élèves" },
+  { ico: "🎓", label: "Synthèse GS", to: "/eleves", page: "eleves", onglet: "synthese", sous: "Élèves · Évaluation sommative" },
   { ico: "🧾", label: "Dispositifs (PPS, PAP, PAI, PPRE)", to: "/eleves", page: "eleves", onglet: "dispositifs", sous: "Élèves · mode IME" },
   { ico: "📋", label: "GEVA-Sco", to: "/eleves", page: "eleves", onglet: "gevasco", sous: "Élèves · mode IME" },
   { ico: "📈", label: "Progressions par élève", to: "/eleves", page: "eleves", onglet: "progressions", sous: "Élèves" },
