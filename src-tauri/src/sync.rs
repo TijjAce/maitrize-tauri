@@ -1091,6 +1091,22 @@ mod tests_sauvegarde {
     }
 
     #[test]
+    fn un_double_se_reconnait_a_sa_fiche_de_presence() {
+        let fiche = |plateforme: &str, poste: &str| Machine {
+            id: "f1c0f4ac".into(), nom: "Classe".into(), plateforme: plateforme.into(),
+            poste: poste.into(), vue_le: String::new(), moi: false,
+        };
+        assert!(!est_un_autre_poste(&fiche("macOS", "MacBook"), "macOS", "MacBook"), "notre propre fiche");
+        assert!(est_un_autre_poste(&fiche("Windows", "PC-CLASSE"), "macOS", "MacBook"), "le PC sous notre identifiant");
+        assert!(est_un_autre_poste(&fiche("macOS", "iMac"), "macOS", "MacBook"), "deux Mac se distinguent par leur nom");
+        // Fiche publiée par une version qui n'inscrivait pas le poste.
+        let ancienne: Machine = serde_json::from_str(
+            r#"{"id":"f1c0f4ac","nom":"Classe","plateforme":"macOS","vueLe":"2026-09-13-230000"}"#).unwrap();
+        assert!(!est_un_autre_poste(&ancienne, "macOS", "MacBook"));
+        assert!(est_un_autre_poste(&ancienne, "Windows", "PC-CLASSE"));
+    }
+
+    #[test]
     fn la_plateforme_est_nommee_lisiblement() {
         assert!(["Windows", "macOS", "Linux"].contains(&plateforme()));
     }
@@ -1161,7 +1177,7 @@ fn noter_vus(c: &Connection, vus: &std::collections::HashSet<String>) -> R<()> {
 /// copie. Rien ne s'écrase — chaque machine ajoute au journal partagé.
 #[tauri::command]
 pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
-    let (cfg, phrase, machine, repere, vus, lot) = {
+    let (cfg, phrase, mut machine, repere, vus, mut lot) = {
         let c = db.lock();
         let phrase = get_setting(&c, "sauvegarde_phrase");
         if phrase.trim().is_empty() {
@@ -1171,7 +1187,7 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
             return Ok(ResultatSync { message: "Stockage non configuré.".into(), ..Default::default() });
         };
         let machine = crate::db::identifiant_machine(&c);
-        let depuis: i64 = get_setting(&c, CLE_SEQ_ENVOYEE).parse().unwrap_or(0);
+        let depuis = crate::journal::repere_envoi(&c, get_setting(&c, CLE_SEQ_ENVOYEE).parse().unwrap_or(0));
         let (changements, repere) = crate::journal::changements_locaux(&c, depuis).map_err(e)?;
         (cfg, phrase.trim().to_string(), machine.clone(), repere, deltas_vus(&c),
          Lot { machine, changements })
@@ -1179,6 +1195,13 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
 
     let cl = client(&cfg);
     let mut res = ResultatSync::default();
+
+    // 0. Un autre ordinateur sous notre identifiant ? Avant tout dépôt, pour
+    // que ce passage parte déjà sous le nouveau.
+    if let Some(nouveau) = separer_si_double(&db, &cl, &cfg, &phrase, &machine).await {
+        lot.machine = nouveau.clone();
+        machine = nouveau;
+    }
 
     // 1. Déposer nos changements, s'il y en a.
     if !lot.changements.is_empty() {
@@ -1242,6 +1265,7 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
                 id: machine.clone(),
                 nom: nom_machine(&c),
                 plateforme: plateforme().into(),
+                poste: poste().into(),
                 vue_le: chrono::Local::now().format("%Y-%m-%d-%H%M%S").to_string(),
                 moi: false,
             }
@@ -1380,6 +1404,11 @@ pub struct Machine {
     pub id: String,
     pub nom: String,
     pub plateforme: String,
+    /// Nom réseau de l'ordinateur, tel que le système le donne. Contrairement
+    /// au nom choisi dans les réglages, aucune restauration ne le copie : c'est
+    /// lui qui trahit deux ordinateurs sous le même identifiant.
+    #[serde(default)]
+    pub poste: String,
     /// Dernière synchronisation, au format lisible.
     pub vue_le: String,
     #[serde(default)]
@@ -1392,7 +1421,53 @@ fn nom_machine(c: &Connection) -> String {
         return nom;
     }
     // À défaut, le nom réseau de l'ordinateur : plus parlant qu'un UUID.
-    hostname().unwrap_or_else(|| "Cet ordinateur".into())
+    if poste().is_empty() { "Cet ordinateur".into() } else { poste().into() }
+}
+
+/// Le nom réseau de cet ordinateur, lu une fois : sur macOS, il faut lancer
+/// une commande pour l'obtenir.
+fn poste() -> &'static str {
+    static POSTE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    POSTE.get_or_init(|| hostname().unwrap_or_default())
+}
+
+/// La fiche de présence publiée sous notre identifiant vient-elle d'un autre
+/// ordinateur ?
+fn est_un_autre_poste(fiche: &Machine, plateforme_ici: &str, poste_ici: &str) -> bool {
+    fiche.plateforme != plateforme_ici
+        || (!fiche.poste.is_empty() && !poste_ici.is_empty() && fiche.poste != poste_ici)
+}
+
+/// Sépare deux ordinateurs qui portent le même identifiant.
+///
+/// Une restauration faite avant ce correctif copiait l'identifiant de la
+/// machine qui avait fait la sauvegarde. Les deux ordinateurs s'ignoraient
+/// ensuite sans rien dire : chacun écartait ce que l'autre déposait, en le
+/// croyant sien. La fiche de présence les trahit — l'autre y a inscrit sa
+/// plateforme ou son nom de poste. Celui qui s'en aperçoit prend un nouvel
+/// identifiant, et la synchronisation reprend dans les deux sens.
+async fn separer_si_double(db: &State<'_, Db>, cl: &Client, cfg: &S3Cfg, phrase: &str, machine: &str) -> Option<String> {
+    let obj = cl.get_object().bucket(&cfg.bucket).key(format!("{PREFIXE_MACHINE}{machine}.enc")).send().await.ok()?;
+    let corps = obj.body.collect().await.ok()?;
+    let clair = dechiffrer_sauvegarde(phrase, corps.into_bytes().as_ref()).ok()?;
+    let fiche: Machine = serde_json::from_slice(&clair).ok()?;
+    if !est_un_autre_poste(&fiche, plateforme(), poste()) {
+        return None;
+    }
+    let nouveau = uuid::Uuid::new_v4().to_string();
+    let c = db.lock();
+    set_setting(&c, "identifiantMachine", &nouveau).ok()?;
+    // Le nom choisi avait voyagé avec : on le rend à l'autre, ce poste
+    // reprend son nom réseau.
+    if !fiche.nom.trim().is_empty() && get_setting(&c, "nomMachine") == fiche.nom {
+        set_setting(&c, "nomMachine", "").ok();
+    }
+    crate::journal::poser_declencheurs(&c, &nouveau);
+    crate::commands::diag_ecrire(format!(
+        "SYNCHRO identifiant partagé avec « {} » ({}) : cet ordinateur en prend un nouveau",
+        fiche.nom, fiche.plateforme
+    ));
+    Some(nouveau)
 }
 
 fn hostname() -> Option<String> {
@@ -1435,6 +1510,7 @@ pub async fn machines_liste(db: State<'_, Db>) -> R<Vec<Machine>> {
             id: crate::db::identifiant_machine(&c),
             nom: nom_machine(&c),
             plateforme: plateforme().into(),
+            poste: poste().into(),
             vue_le: get_setting(&c, CLE_DERNIERE_SYNC),
             moi: true,
         };
