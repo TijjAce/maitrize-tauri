@@ -95,7 +95,7 @@ fn quota_minute(entetes: &reqwest::header::HeaderMap) -> Option<u64> {
 }
 
 fn cle_mistral(db: &State<Db>) -> Result<String, String> {
-    let c = db.0.lock().map_err(|e| e.to_string())?;
+    let c = db.lock();
     let cle: Option<String> = c
         .query_row("SELECT valeur FROM settings WHERE cle='mistralApiKey'", params![],
                    |r| r.get(0))
@@ -261,7 +261,7 @@ pub struct ReponseWeb {
 /// Récupère l'agent de recherche, ou le crée à la première utilisation.
 async fn agent_recherche(db: &State<'_, Db>, cle: &str) -> Result<String, String> {
     {
-        let c = db.0.lock().map_err(|e| e.to_string())?;
+        let c = db.lock();
         let existant: Option<String> = c
             .query_row("SELECT valeur FROM settings WHERE cle='agentRechercheId'", params![], |r| r.get(0))
             .ok()
@@ -296,7 +296,7 @@ async fn agent_recherche(db: &State<'_, Db>, cle: &str) -> Result<String, String
     if id.is_empty() {
         return Err("Mistral n'a pas renvoyé d'agent.".into());
     }
-    let c = db.0.lock().map_err(|e| e.to_string())?;
+    let c = db.lock();
     c.execute(
         "INSERT OR REPLACE INTO settings (cle, valeur) VALUES ('agentRechercheId', ?1)",
         params![id],

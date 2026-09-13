@@ -371,7 +371,9 @@ pub fn enrichir_textes(c: &Connection, ch: &mut Changement) {
             continue;
         }
         let etat = etat_crdt(c, &ch.table_nom, &ch.ligne_id, champ);
-        let nouvel = crate::texte_crdt::enregistrer_edition(&etat, vieux, neuf);
+        let Some(nouvel) = sans_panique(|| crate::texte_crdt::enregistrer_edition(&etat, vieux, neuf)) else {
+            continue; // le champ voyage sans son état, en fusion champ par champ
+        };
         poser_crdt(c, &ch.table_nom, &ch.ligne_id, champ, &nouvel);
         ch.textes.insert(
             champ.clone(),
@@ -390,11 +392,24 @@ fn fusionner_textes(
     for (champ, b64) in &ch.textes {
         let Ok(entrant) = base64::engine::general_purpose::STANDARD.decode(b64) else { continue };
         let local = etat_crdt(c, &ch.table_nom, &ch.ligne_id, champ);
-        let (fusionne, texte) = crate::texte_crdt::fusionner(&local, &entrant);
+        let Some((fusionne, texte)) = sans_panique(|| crate::texte_crdt::fusionner(&local, &entrant)) else {
+            continue; // la valeur que porte la ligne s'applique, champ par champ
+        };
         poser_crdt(c, &ch.table_nom, &ch.ligne_id, champ, &fusionne);
         sortie.insert(champ.clone(), texte);
     }
     sortie
+}
+
+/// Un calcul de fusion de texte, sans laisser une panique remonter.
+///
+/// Ces calculs tournent pendant que la synchronisation tient la base. Une
+/// panique de `yrs` y « empoisonnait » le verrou : toutes les commandes
+/// suivantes échouaient (« poisoned lock ») jusqu'au redémarrage, et le
+/// changement fautif, jamais envoyé, recommençait au passage suivant. Mieux
+/// vaut perdre la fusion fine d'un champ que l'usage de l'application.
+fn sans_panique<T>(calcul: impl FnOnce() -> T) -> Option<T> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(calcul)).ok()
 }
 
 /// Les champs qu'une écriture a réellement modifiés.
@@ -848,6 +863,45 @@ mod tests {
         assert!(tb.contains("rituel"), "l'ajout de A doit survivre chez B : {tb}");
         assert!(tb.contains("ateliers"), "celui de B doit rester : {tb}");
         assert_eq!(ta, tb, "les deux machines doivent afficher le même texte");
+    }
+
+    /// Un déroulé rédigé avant la synchronisation : ni trace dans le journal,
+    /// ni état CRDT, des deux côtés. Le raccourcir faisait paniquer la
+    /// synchronisation, base verrouillée — et toute l'application échouait
+    /// ensuite sur « poisoned lock ».
+    #[test]
+    fn un_texte_ecrit_avant_la_synchronisation_voyage() {
+        let ancienne = |nom: &str| {
+            let c = Connection::open_in_memory().unwrap();
+            c.execute_batch(
+                "CREATE TABLE seances (id TEXT PRIMARY KEY, titre TEXT, deroulement TEXT);
+                 INSERT INTO seances VALUES ('s1', 'Lecture', 'Phase 1.\nPhase 2.\nPhase 3.');",
+            ).unwrap();
+            creer_table(&c);
+            poser_declencheurs(&c, nom);
+            c
+        };
+        let lire = |c: &Connection| -> String {
+            c.query_row("SELECT deroulement FROM seances WHERE id='s1'", [], |r| r.get(0)).unwrap()
+        };
+        let mut a = ancienne("A");
+        let mut b = ancienne("B");
+
+        std::thread::sleep(std::time::Duration::from_millis(3));
+        // A retire la phase 3, B complète la phase 2.
+        a.execute("UPDATE seances SET deroulement='Phase 1.\nPhase 2.' WHERE id='s1'", []).unwrap();
+        b.execute("UPDATE seances SET deroulement='Phase 1.\nPhase 2 : ateliers.\nPhase 3.' WHERE id='s1'", []).unwrap();
+
+        let (de_a, _) = changements_locaux(&a, 0).unwrap();
+        let (de_b, _) = changements_locaux(&b, 0).unwrap();
+        assert!(!de_a[0].textes.is_empty(), "l'état CRDT doit accompagner le changement");
+
+        appliquer(&mut b, &de_a).unwrap();
+        appliquer(&mut a, &de_b).unwrap();
+        let (ta, tb) = (lire(&a), lire(&b));
+        assert_eq!(ta, tb, "les deux machines doivent afficher le même texte");
+        assert_eq!(ta, "Phase 1.\nPhase 2 : ateliers.",
+                   "chacun garde sa modification, sans doublon de l'ancien texte");
     }
 
     #[test]

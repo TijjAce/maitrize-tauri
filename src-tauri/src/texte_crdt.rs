@@ -59,14 +59,48 @@ const RACINE: &str = "t";
 
 fn doc_depuis(etat: &[u8]) -> Doc {
     let doc = Doc::new();
-    if !etat.is_empty() {
-        if let Ok(maj) = Update::decode_v1(etat) {
-            if let Ok(mut tx) = doc.try_transact_mut() {
-                let _ = tx.apply_update(maj);
-            }
+    integrer(&doc, etat);
+    doc
+}
+
+/// Intègre un état au document ; un état illisible est ignoré.
+fn integrer(doc: &Doc, etat: &[u8]) {
+    if etat.is_empty() {
+        return;
+    }
+    if let Ok(maj) = Update::decode_v1(etat) {
+        if let Ok(mut tx) = doc.try_transact_mut() {
+            let _ = tx.apply_update(maj);
         }
     }
-    doc
+}
+
+/// L'état d'un document qui ne contient que `texte`, écrit sous un auteur tiré
+/// du texte lui-même.
+///
+/// Sert à amorcer un texte rédigé avant que le CRDT ne le suive. Sous l'auteur
+/// aléatoire de chaque machine, deux amorces du même texte seraient deux
+/// insertions distinctes, et la fusion le mettrait deux fois bout à bout.
+/// Tirées du texte, ce sont la même opération partout, que la fusion reconnaît.
+/// Le document d'amorce est jeté aussitôt : cet auteur n'écrit jamais rien d'autre.
+fn amorce(texte: &str) -> Vec<u8> {
+    use sha2::{Digest, Sha256};
+    let empreinte = Sha256::new()
+        .chain_update(b"maitrize-amorce-v1\0")
+        .chain_update(texte.as_bytes())
+        .finalize();
+    let mut octets = [0u8; 8];
+    octets.copy_from_slice(&empreinte[..8]);
+    // Les auteurs Yjs tiennent sur 53 bits.
+    let auteur = (u64::from_le_bytes(octets) & ((1u64 << 53) - 1)).max(1);
+    let doc = Doc::with_client_id(auteur);
+    let racine: TextRef = doc.get_or_insert_text(RACINE);
+    {
+        let mut tx = doc.transact_mut();
+        racine.insert(&mut tx, 0, texte);
+    }
+    let etat = doc.transact().encode_state_as_update_v1(&StateVector::default());
+    etat
 }
 
 fn texte_de(doc: &Doc) -> String {
@@ -85,34 +119,39 @@ fn texte_de(doc: &Doc) -> String {
 /// celui que la fusion doit préserver.
 pub fn enregistrer_edition(etat: &[u8], avant: &str, apres: &str) -> Vec<u8> {
     let doc = doc_depuis(etat);
-    let avant_doc = texte_de(&doc);
-    // Le document fait foi ; si l'état local a divergé, on part de lui.
-    let base = if avant_doc.is_empty() && !avant.is_empty() { avant } else { &avant_doc };
-    if base == apres {
-        return etat.to_vec();
+    // Texte rédigé avant que le CRDT ne le suive — ou avant que la
+    // synchronisation soit réglée : le champ avait un contenu, le document
+    // aucun. On y pose d'abord ce contenu.
+    if texte_de(&doc).is_empty() && !avant.is_empty() {
+        integrer(&doc, &amorce(avant));
     }
+    // Le document fait foi : les positions se comptent sur son texte, jamais
+    // sur `avant`, qui peut en différer. Une position qui sort du texte fait
+    // paniquer `yrs` — et la panique, survenue pendant la synchronisation,
+    // bloquait toute l'application (« poisoned lock »).
+    let base = texte_de(&doc);
+    if base != apres {
+        // Positions en octets : c'est l'unité de `yrs` par défaut. Compter en
+        // caractères décalerait tout d'un octet par lettre accentuée — « à
+        // garder » devenait « à gardeer ».
+        let (prefixe, suffixe) = bornes_communes(&base, apres);
+        let supprimes = base.len().saturating_sub(prefixe + suffixe);
+        let insere = &apres[prefixe..apres.len().saturating_sub(suffixe)];
 
-    // Positions en octets : c'est l'unité de `yrs` par défaut. Compter en
-    // caractères décalerait tout d'un octet par lettre accentuée — « à garder »
-    // devenait « à gardeer ».
-    let (prefixe, suffixe) = bornes_communes(base, apres);
-    let supprimes = base.len().saturating_sub(prefixe + suffixe);
-    let insere = &apres[prefixe..apres.len().saturating_sub(suffixe)];
-
-    // La racine s'obtient du document, pas de la transaction ; elle doit
-    // vivre aussi longtemps que lui, d'où sa création avant la transaction.
-    let texte: TextRef = doc.get_or_insert_text(RACINE);
-    {
-        let mut tx = doc.transact_mut();
-        if supprimes > 0 {
-            texte.remove_range(&mut tx, prefixe as u32, supprimes as u32);
-        }
-        if !insere.is_empty() {
-            texte.insert(&mut tx, prefixe as u32, insere);
+        // La racine s'obtient du document, pas de la transaction ; elle doit
+        // vivre aussi longtemps que lui, d'où sa création avant la transaction.
+        let texte: TextRef = doc.get_or_insert_text(RACINE);
+        {
+            let mut tx = doc.transact_mut();
+            if supprimes > 0 {
+                texte.remove_range(&mut tx, prefixe as u32, supprimes as u32);
+            }
+            if !insere.is_empty() {
+                texte.insert(&mut tx, prefixe as u32, insere);
+            }
         }
     }
     let sortie = doc.transact().encode_state_as_update_v1(&StateVector::default());
-    drop(texte);
     sortie
 }
 
@@ -146,13 +185,7 @@ fn bornes_communes(a: &str, b: &str) -> (usize, usize) {
 /// machines aboutissent au même texte sans se parler.
 pub fn fusionner(a: &[u8], b: &[u8]) -> (Vec<u8>, String) {
     let doc = doc_depuis(a);
-    if !b.is_empty() {
-        if let Ok(maj) = Update::decode_v1(b) {
-            if let Ok(mut tx) = doc.try_transact_mut() {
-                let _ = tx.apply_update(maj);
-            }
-        }
-    }
+    integrer(&doc, b);
     let etat = doc.transact().encode_state_as_update_v1(&StateVector::default());
     (etat, texte_de(&doc))
 }
@@ -230,6 +263,59 @@ mod tests {
         let e1 = enregistrer_edition(&[], "", "élève très éveillé");
         let e2 = enregistrer_edition(&e1, "élève très éveillé", "élève très éveillé et curieux");
         assert_eq!(texte(&e2), "élève très éveillé et curieux");
+    }
+
+    /// Le défaut réel : un texte écrit avant que le CRDT ne le suive n'a pas
+    /// d'état. Les positions se comptaient sur l'ancien texte mais
+    /// s'appliquaient au document vide — raccourcir le texte faisait paniquer
+    /// `yrs` pendant la synchronisation, et l'application entière restait
+    /// bloquée (« poisoned lock »). Allonger le texte, lui, ne gardait que l'ajout.
+    #[test]
+    fn un_texte_anterieur_au_crdt_se_modifie() {
+        for (avant, apres) in [
+            ("Bonjour la classe", "Bonjour"),
+            ("Bonjour", "Bonjour la classe"),
+            ("classe", "La classe"),
+            ("élève très éveillé", "élève éveillé"),
+            ("Phase 1.\nPhase 2.", ""),
+        ] {
+            let etat = std::panic::catch_unwind(|| enregistrer_edition(&[], avant, apres))
+                .unwrap_or_else(|_| panic!("« {avant} » → « {apres} » a paniqué"));
+            assert_eq!(texte(&etat), apres, "« {avant} » → « {apres} »");
+        }
+    }
+
+    #[test]
+    fn deux_machines_amorcent_le_meme_texte_sans_le_doubler() {
+        // Le même texte ancien, sans état, modifié de chaque côté : l'amorce
+        // doit être reconnue comme une seule, et les deux ajouts coexister.
+        let ancien = "Phase 1.\nPhase 2.";
+        let bureau = enregistrer_edition(&[], ancien, "Phase 1 : rituel.\nPhase 2.");
+        let portable = enregistrer_edition(&[], ancien, "Phase 1.\nPhase 2 : ateliers.");
+        let (_, ab) = fusionner(&bureau, &portable);
+        let (_, ba) = fusionner(&portable, &bureau);
+        assert_eq!(ab, "Phase 1 : rituel.\nPhase 2 : ateliers.");
+        assert_eq!(ab, ba);
+    }
+
+    #[test]
+    fn un_document_vide_par_effacement_repart_du_champ() {
+        // Tout effacé ici, puis le champ remis d'ailleurs sans état : on repart
+        // de ce que dit le champ, sans paniquer.
+        let e1 = enregistrer_edition(&[], "", "abc");
+        let e2 = enregistrer_edition(&e1, "abc", "");
+        assert_eq!(texte(&e2), "");
+        let e3 = enregistrer_edition(&e2, "texte revenu", "texte");
+        assert_eq!(texte(&e3), "texte");
+    }
+
+    #[test]
+    fn un_etat_divergent_fait_foi() {
+        // Le champ disait autre chose que le document : les positions se
+        // comptent sur le document, et le résultat est bien le texte voulu.
+        let e1 = enregistrer_edition(&[], "", "version du document");
+        let e2 = enregistrer_edition(&e1, "version du champ, plus longue", "version finale");
+        assert_eq!(texte(&e2), "version finale");
     }
 
     #[test]

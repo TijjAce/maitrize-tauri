@@ -112,7 +112,7 @@ fn lire_cfg(c: &Connection) -> R<S3Cfg> {
 /// Lit identité + ami + config en une fois, puis relâche le verrou (rien d'async
 /// ne doit conserver le MutexGuard).
 fn contexte(db: &State<Db>, ami_id: &str) -> R<Ctx> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let (pv, pb): (Vec<u8>, Vec<u8>) = c
         .query_row("SELECT cle_privee, cle_publique FROM identite WHERE id = 1", [], |r| Ok((r.get(0)?, r.get(1)?)))
         .map_err(|_| "Identité absente — ouvrez la page Amis d'abord.".to_string())?;
@@ -170,7 +170,7 @@ fn dechiffrer(key: &[u8; 32], blob: &[u8]) -> R<Vec<u8>> {
 
 #[tauri::command]
 pub fn sync_config_get(db: State<Db>) -> R<SyncConfig> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     Ok(SyncConfig {
         endpoint: get_setting(&c, "sync_endpoint"),
         region: get_setting(&c, "sync_region"),
@@ -182,7 +182,7 @@ pub fn sync_config_get(db: State<Db>) -> R<SyncConfig> {
 
 #[tauri::command]
 pub fn sync_config_set(db: State<Db>, endpoint: String, region: String, bucket: String, access: String, secret: Option<String>) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     ecrire_cfg(&c, &endpoint, &region, &bucket, &access, secret.as_deref())
 }
 
@@ -204,7 +204,7 @@ fn ecrire_cfg(c: &Connection, endpoint: &str, region: &str, bucket: &str,
 
 #[tauri::command]
 pub async fn sync_test(db: State<'_, Db>) -> R<String> {
-    let cfg = { let c = db.0.lock().map_err(e)?; lire_cfg(&c)? };
+    let cfg = { let c = db.lock(); lire_cfg(&c)? };
     let cl = client(&cfg);
     cl.list_objects_v2().bucket(&cfg.bucket).max_keys(1).send().await
         .map_err(|er| format!("Échec connexion S3 : {er}"))?;
@@ -325,7 +325,7 @@ fn importer_sequence(c: &Connection, env: EnvSeq) -> R<String> {
 #[tauri::command]
 pub async fn sequence_partager(db: State<'_, Db>, ami_id: String, sequence_id: String) -> R<()> {
     let ctx = contexte(&db, &ami_id)?;
-    let (sequence, seances) = { let c = db.0.lock().map_err(e)?; lire_sequence(&c, &sequence_id)? };
+    let (sequence, seances) = { let c = db.lock(); lire_sequence(&c, &sequence_id)? };
     // Image de couverture : on lit ses octets pour les transmettre avec la séquence.
     let image_b64 = sequence.image_nom.as_deref()
         .filter(|n| !n.is_empty())
@@ -383,7 +383,7 @@ pub async fn boite_relever(db: State<'_, Db>, ami_id: String) -> R<Vec<BoiteItem
     let ctx = contexte(&db, &ami_id)?;
     let key = cle_paire(ctx.priv_, ctx.ami_pub, &ctx.mid);
     let mon_pub = STANDARD.encode(ctx.pub_);
-    let deja = { let c = db.0.lock().map_err(e)?; lire_recus(&c)? };
+    let deja = { let c = db.lock(); lire_recus(&c)? };
 
     let cl = client(&ctx.cfg);
     let prefix = format!("mailbox/{}/", ctx.mid);
@@ -407,7 +407,7 @@ pub async fn boite_relever(db: State<'_, Db>, ami_id: String) -> R<Vec<BoiteItem
     }
 
     let mut out = Vec::new();
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let now = chrono::Utc::now().to_rfc3339();
     for (k, kind, de_nom, titre, ts, payload) in recues {
         let id = uuid::Uuid::new_v4().to_string();
@@ -424,7 +424,7 @@ pub async fn boite_relever(db: State<'_, Db>, ami_id: String) -> R<Vec<BoiteItem
 /// Liste les éléments en attente dans la boîte de réception.
 #[tauri::command]
 pub fn boite_liste(db: State<Db>) -> R<Vec<BoiteItem>> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let mut st = c.prepare("SELECT id, type, de_nom, titre, ts FROM boite_recue ORDER BY recu_le DESC").map_err(e)?;
     let rows = st.query_map([], |r| Ok(BoiteItem {
         id: r.get(0)?, kind: r.get(1)?, de_nom: r.get(2)?, titre: r.get(3)?, ts: r.get(4)?,
@@ -435,7 +435,7 @@ pub fn boite_liste(db: State<Db>) -> R<Vec<BoiteItem>> {
 /// Récupère (importe) un élément en attente puis le retire de la boîte.
 #[tauri::command]
 pub fn boite_recuperer(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let (kind, payload): (String, String) = c
         .query_row("SELECT type, payload FROM boite_recue WHERE id = ?1", [&id], |r| Ok((r.get(0)?, r.get(1)?)))
         .map_err(|_| "Élément introuvable.".to_string())?;
@@ -452,7 +452,7 @@ pub fn boite_recuperer(db: State<Db>, id: String) -> R<()> {
 /// Jette un élément en attente sans l'importer.
 #[tauri::command]
 pub fn boite_supprimer(db: State<Db>, id: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     c.execute("DELETE FROM boite_recue WHERE id = ?1", [&id]).map_err(e)?;
     Ok(())
 }
@@ -468,7 +468,7 @@ fn lire_programmation(c: &Connection, annee: &str) -> R<ProgrammationFinale> {
 #[tauri::command]
 pub async fn programmation_partager(db: State<'_, Db>, ami_id: String, annee: String) -> R<()> {
     let ctx = contexte(&db, &ami_id)?;
-    let prog = { let c = db.0.lock().map_err(e)?; lire_programmation(&c, &annee)? };
+    let prog = { let c = db.lock(); lire_programmation(&c, &annee)? };
     let key = cle_paire(ctx.priv_, ctx.ami_pub, &ctx.mid);
     let env = EnvProg {
         de: STANDARD.encode(ctx.pub_), nom: ctx.nom.clone(),
@@ -636,7 +636,7 @@ fn decider(locale: &str, derniere_sync: &str, distante: &str) -> (bool, bool) {
 #[tauri::command]
 pub async fn sync_etat(db: State<'_, Db>) -> R<EtatSync> {
     let (cfg, derniere_sync) = {
-        let c = db.0.lock().map_err(e)?;
+        let c = db.lock();
         let derniere = get_setting(&c, CLE_DERNIERE_SYNC);
         match lire_cfg(&c) {
             Ok(cfg) => (cfg, derniere),
@@ -698,7 +698,7 @@ pub struct SauvegardeDistante {
 #[tauri::command]
 pub async fn sauvegarde_push(db: State<'_, Db>) -> R<String> {
     let (cfg, phrase, json) = {
-        let c = db.0.lock().map_err(e)?;
+        let c = db.lock();
         let phrase = get_setting(&c, "sauvegarde_phrase");
         if phrase.trim().is_empty() {
             return Err("Définissez d'abord une phrase secrète de sauvegarde.".into());
@@ -722,7 +722,7 @@ pub async fn sauvegarde_push(db: State<'_, Db>) -> R<String> {
     // Purge après coup : si elle échoue, la sauvegarde qu'on vient d'envoyer
     // est déjà en place. L'inverse aurait pu supprimer sans rien déposer.
     {
-        let c = db.0.lock().map_err(e)?;
+        let c = db.lock();
         let horodatage = cle.trim_start_matches(PREFIXE_SAUVEGARDE).trim_end_matches(".enc");
         set_setting(&c, CLE_DERNIERE_SYNC, horodatage)?;
     }
@@ -778,7 +778,7 @@ async fn lister_distantes(cl: &Client, cfg: &S3Cfg) -> R<Vec<SauvegardeDistante>
 
 #[tauri::command]
 pub async fn sauvegarde_liste(db: State<'_, Db>) -> R<Vec<SauvegardeDistante>> {
-    let cfg = { let c = db.0.lock().map_err(e)?; lire_cfg(&c)? };
+    let cfg = { let c = db.lock(); lire_cfg(&c)? };
     lister_distantes(&client(&cfg), &cfg).await
 }
 
@@ -808,7 +808,7 @@ async fn purger_distantes(cl: &Client, cfg: &S3Cfg) -> usize {
 #[tauri::command]
 pub async fn sauvegarde_pull(db: State<'_, Db>, cle: Option<String>) -> R<String> {
     let (cfg, phrase) = {
-        let c = db.0.lock().map_err(e)?;
+        let c = db.lock();
         let phrase = get_setting(&c, "sauvegarde_phrase");
         if phrase.trim().is_empty() {
             return Err("Renseignez la phrase secrète de sauvegarde.".into());
@@ -838,7 +838,7 @@ pub async fn sauvegarde_pull(db: State<'_, Db>, cle: Option<String>) -> R<String
     let json = String::from_utf8(clair).map_err(|_| "Sauvegarde corrompue.".to_string())?;
     let copie;
     {
-        let c = db.0.lock().map_err(e)?;
+        let c = db.lock();
         copie = crate::db::copie_de_securite(&c, "avant-restauration")?;
         crate::commands::import_json(&c, &json)?;
         // L'import réécrit les réglages : le repère de synchro se pose après,
@@ -859,7 +859,7 @@ pub async fn sauvegarde_supprimer(db: State<'_, Db>, cle: String) -> R<String> {
     if !cle_de_sauvegarde(&cle) {
         return Err("Ce fichier n'est pas une sauvegarde : suppression refusée.".into());
     }
-    let cfg = { let c = db.0.lock().map_err(e)?; lire_cfg(&c)? };
+    let cfg = { let c = db.lock(); lire_cfg(&c)? };
     client(&cfg)
         .delete_object()
         .bucket(&cfg.bucket)
@@ -1162,7 +1162,7 @@ fn noter_vus(c: &Connection, vus: &std::collections::HashSet<String>) -> R<()> {
 #[tauri::command]
 pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
     let (cfg, phrase, machine, repere, vus, lot) = {
-        let c = db.0.lock().map_err(e)?;
+        let c = db.lock();
         let phrase = get_setting(&c, "sauvegarde_phrase");
         if phrase.trim().is_empty() {
             return Ok(ResultatSync { message: "Phrase secrète non définie.".into(), ..Default::default() });
@@ -1195,7 +1195,7 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
             .map_err(|err| format!("Envoi impossible : {err}"))?;
         // Le repère n'avance qu'après un dépôt réussi : une coupure fait
         // renvoyer, jamais perdre.
-        let c = db.0.lock().map_err(e)?;
+        let c = db.lock();
         set_setting(&c, CLE_SEQ_ENVOYEE, &repere.to_string())?;
     }
 
@@ -1224,7 +1224,7 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
     res.recus = a_appliquer.len();
 
     if !a_appliquer.is_empty() || !cles.is_empty() {
-        let mut c = db.0.lock().map_err(e)?;
+        let mut c = db.lock();
         if !a_appliquer.is_empty() {
             res.appliques = crate::journal::appliquer(&mut c, &a_appliquer).map_err(e)?;
         }
@@ -1237,7 +1237,7 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
     // dans les réglages, et une configuration erronée repérable.
     {
         let m = {
-            let c = db.0.lock().map_err(e)?;
+            let c = db.lock();
             Machine {
                 id: machine.clone(),
                 nom: nom_machine(&c),
@@ -1307,7 +1307,7 @@ fn fichiers_locaux() -> std::collections::HashSet<String> {
 #[tauri::command]
 pub async fn sync_fichiers(db: State<'_, Db>) -> R<ResultatFichiers> {
     let (cfg, phrase) = {
-        let c = db.0.lock().map_err(e)?;
+        let c = db.lock();
         let phrase = get_setting(&c, "sauvegarde_phrase");
         if phrase.trim().is_empty() {
             return Ok(ResultatFichiers { message: "Phrase secrète non définie.".into(), ..Default::default() });
@@ -1429,7 +1429,7 @@ async fn publier_presence(cl: &Client, cfg: &S3Cfg, phrase: &str, m: &Machine) {
 #[tauri::command]
 pub async fn machines_liste(db: State<'_, Db>) -> R<Vec<Machine>> {
     let (cfg, phrase, moi) = {
-        let c = db.0.lock().map_err(e)?;
+        let c = db.lock();
         let phrase = get_setting(&c, "sauvegarde_phrase");
         let moi = Machine {
             id: crate::db::identifiant_machine(&c),
@@ -1468,7 +1468,7 @@ pub async fn machines_liste(db: State<'_, Db>) -> R<Vec<Machine>> {
 
 #[tauri::command]
 pub fn machine_nom_set(db: State<Db>, nom: String) -> R<()> {
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     set_setting(&c, "nomMachine", nom.trim())
 }
 
@@ -1495,7 +1495,7 @@ struct CodeAppairage {
 #[tauri::command]
 pub fn appairage_code(db: State<Db>) -> R<String> {
     use base64::Engine;
-    let c = db.0.lock().map_err(e)?;
+    let c = db.lock();
     let cfg = lire_cfg(&c)?;
     let phrase = get_setting(&c, "sauvegarde_phrase");
     if phrase.trim().is_empty() {
@@ -1518,7 +1518,7 @@ pub fn appairage_appliquer(db: State<Db>, code: String) -> R<()> {
         .map_err(|_| "Ce code est incomplet ou mal recopié.".to_string())?;
     let c: CodeAppairage = serde_json::from_slice(&octets)
         .map_err(|_| "Ce code ne vient pas de Maitrize.".to_string())?;
-    let conn = db.0.lock().map_err(e)?;
+    let conn = db.lock();
     ecrire_cfg(&conn, &c.endpoint, &c.region, &c.bucket, &c.access, Some(&c.secret))?;
     set_setting(&conn, "sauvegarde_phrase", &c.phrase)
 }

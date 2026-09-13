@@ -17,7 +17,7 @@ use crate::db::data_dir;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Mutex, PoisonError};
 use tauri::{AppHandle, Emitter};
 
 const API_METADATA: &str = "https://api.arasaac.org/api/pictograms/all/fr";
@@ -106,7 +106,7 @@ fn mot_principal(p: &PictoBrut) -> Option<String> {
 fn charger_index(etat: &BanqueArasaac) -> Result<std::sync::MutexGuard<'_, Index>, String> {
     let chemin = metadata_path();
     let sig = signature_fichier(&chemin);
-    let mut index = etat.0.lock().map_err(|e| e.to_string())?;
+    let mut index = etat.0.lock().unwrap_or_else(PoisonError::into_inner);
     if index.signature == sig && !index.pictos.is_empty() {
         return Ok(index);
     }
@@ -262,7 +262,8 @@ pub async fn arasaac_telecharger(
     while taches.join_next().await.is_some() {}
 
     // L'index en mémoire décrit l'ancienne banque : on le force à se relire.
-    if let Ok(mut i) = etat.0.lock() {
+    {
+        let mut i = etat.0.lock().unwrap_or_else(PoisonError::into_inner);
         i.signature = (0, 0);
         i.pictos.clear();
     }
