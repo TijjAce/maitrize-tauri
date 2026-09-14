@@ -1080,6 +1080,11 @@ pub struct PlanningCreneau {
     pub objectifs: String,
     #[serde(default)]
     pub deroulement: String, // texte nettoyé (sans marqueurs image/citation)
+    /// Cahier journal : ce qui est prévu, ce qui a été fait.
+    #[serde(default)]
+    pub prevu: String,
+    #[serde(default)]
+    pub bilan: String,
 }
 #[derive(serde::Deserialize)]
 pub struct PlanningJour {
@@ -1123,15 +1128,26 @@ fn wrap_texte(s: &str, max: usize) -> Vec<String> {
 /// impression AirPrint et sauvegarde.
 #[tauri::command]
 pub fn imprimer_planning(titre: String, jours: Vec<PlanningJour>) -> R<()> {
+    let octets = construire_planning_pdf(&titre, &jours)?;
+    let nom = format!(
+        "planning-{}.pdf",
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
+    );
+    let path = std::env::temp_dir().join(nom);
+    std::fs::write(&path, octets).map_err(e)?;
+    tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
+    Ok(())
+}
+
+/// Le PDF du planning, sans l'ouvrir : de quoi le vérifier.
+fn construire_planning_pdf(titre: &str, jours: &[PlanningJour]) -> R<Vec<u8>> {
     use printpdf::path::PaintMode;
     use printpdf::*;
-    use std::fs::File;
-    use std::io::BufWriter;
 
     let semaine = jours.len() > 1;
     // Jour : A4 portrait. Semaine : A4 paysage.
     let (lw, lh) = if semaine { (297.0f32, 210.0f32) } else { (210.0f32, 297.0f32) };
-    let (doc, page1, layer1) = PdfDocument::new(&titre, Mm(lw), Mm(lh), "Calque 1");
+    let (doc, page1, layer1) = PdfDocument::new(titre, Mm(lw), Mm(lh), "Calque 1");
     let font = doc.add_builtin_font(BuiltinFont::Helvetica).map_err(e)?;
     let gras = doc.add_builtin_font(BuiltinFont::HelveticaBold).map_err(e)?;
     let mut layer = doc.get_page(page1).get_layer(layer1);
@@ -1262,12 +1278,14 @@ pub fn imprimer_planning(titre: String, jours: Vec<PlanningJour>) -> R<()> {
             }
         }
 
-        // ── Détail des séances (objectifs + déroulement) ─────────────────
+        // ── Détail des séances (objectifs, déroulement, cahier journal) ──
+        // Un créneau sans séance mais au cahier journal rempli a aussi son
+        // détail : sinon ce qu'on y a écrit n'apparaissait nulle part.
         let details: Vec<&PlanningCreneau> = jour
             .rangs
             .iter()
             .flatten()
-            .filter(|c| !c.objectifs.trim().is_empty() || !c.deroulement.trim().is_empty())
+            .filter(|c| [&c.objectifs, &c.deroulement, &c.prevu, &c.bilan].iter().any(|t| !t.trim().is_empty()))
             .collect();
         if !details.is_empty() {
             macro_rules! saut {
@@ -1302,6 +1320,16 @@ pub fn imprimer_planning(titre: String, jours: Vec<PlanningJour>) -> R<()> {
                     if texte.trim().is_empty() {
                         return;
                     }
+                    // Un texte long continue sur la page suivante au lieu de
+                    // sortir par le bas de la feuille.
+                    let page_suivante = |layer: &mut PdfLayerReference, y: &mut f32| {
+                        let (p, l) = doc.add_page(Mm(lw), Mm(lh), "Calque 1");
+                        *layer = doc.get_page(p).get_layer(l);
+                        *y = lh - marge;
+                    };
+                    if *y < 24.0 {
+                        page_suivante(layer, y);
+                    }
                     layer.set_fill_color(gris.clone());
                     layer.use_text(intitule, 8.0, Mm(gauche + 5.0), Mm(*y), &gras);
                     *y -= 5.0;
@@ -1309,17 +1337,20 @@ pub fn imprimer_planning(titre: String, jours: Vec<PlanningJour>) -> R<()> {
                     for para in texte.split('\n') {
                         let lignes = if para.trim().is_empty() { vec![String::new()] } else { wrap_texte(para, max_car) };
                         for ln in lignes {
+                            if *y < 16.0 {
+                                page_suivante(layer, y);
+                                layer.set_fill_color(noir.clone());
+                            }
                             layer.use_text(&ln, 10.0, Mm(gauche + 7.0), Mm(*y), &font);
                             *y -= 4.6;
                         }
                     }
                     *y -= 2.0;
                 };
-                // Objectifs puis déroulement ; saut de page géré entre les blocs.
-                saut!(24.0);
                 bloc("OBJECTIFS", &c.objectifs, &mut layer, &mut y);
-                saut!(24.0);
                 bloc("DÉROULEMENT", &c.deroulement, &mut layer, &mut y);
+                bloc("PRÉVU", &c.prevu, &mut layer, &mut y);
+                bloc("FAIT · BILAN", &c.bilan, &mut layer, &mut y);
                 y -= 4.0;
             }
         }
@@ -1330,14 +1361,37 @@ pub fn imprimer_planning(titre: String, jours: Vec<PlanningJour>) -> R<()> {
     let pied = format!("Maitrize V2 · imprimé le {}", chrono::Local::now().format("%d/%m/%Y %H:%M"));
     layer.use_text(&pied, 8.0, Mm(marge), Mm(10.0), &font);
 
-    let nom = format!(
-        "planning-{}.pdf",
-        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
-    );
-    let path = std::env::temp_dir().join(nom);
-    doc.save(&mut BufWriter::new(File::create(&path).map_err(e)?)).map_err(e)?;
-    tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
-    Ok(())
+    doc.save_to_bytes().map_err(e)
+}
+
+#[cfg(test)]
+mod tests_planning_pdf {
+    use super::*;
+
+    fn creneau(matiere: &str, prevu: &str) -> PlanningCreneau {
+        PlanningCreneau {
+            heure_debut: "15:00".into(), heure_fin: "16:00".into(), matiere: matiere.into(),
+            seance: String::new(), couleur: "#f59e0b".into(), objectifs: String::new(), deroulement: String::new(),
+            prevu: prevu.into(), bilan: String::new(),
+        }
+    }
+
+    /// Le défaut signalé : un créneau sans séance, au cahier journal rempli,
+    /// sortait vide à l'impression.
+    #[test]
+    fn le_cahier_journal_sort_a_limpression() {
+        let long = "Écriture d'un court texte à partir d'un corpus de mots. ".repeat(160);
+        // Le détail des créneaux est celui de la page d'un jour.
+        let jours = vec![PlanningJour {
+            jour: "mardi 15 septembre".into(),
+            rangs: vec![vec![creneau("Yolanda", &long)], vec![creneau("Ethan", "évaluation diagnostique CM2 · vitesses et durées")]],
+        }];
+        let pdf = construire_planning_pdf("Planning — mardi 15 septembre", &jours).expect("le PDF se construit");
+        let texte = String::from_utf8_lossy(&pdf);
+        // Un texte long continue sur d'autres pages au lieu de sortir de la feuille.
+        assert!(texte.matches("/Type/Page/").count() + texte.matches("/Type/Page>").count() > 2,
+                "le texte long doit tenir sur plusieurs pages");
+    }
 }
 
 /// Exporte la "Synthèse des acquis fin GS" en reconstruisant le tableau (mise

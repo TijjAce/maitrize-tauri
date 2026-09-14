@@ -29,6 +29,20 @@ export function ajouterDictee(texte: string, dicte: string): string {
   return texte.replace(/\s+$/, "") + (/[.!?…:]$/.test(texte.trim()) ? " " : ". ") + d;
 }
 
+/**
+ * Écritures du cahier journal qui attendent encore leur enregistrement
+ * (on n'écrit qu'après une pause de frappe).
+ */
+const enAttente = new Map<string, () => Promise<void>>();
+
+/**
+ * Enregistre tout de suite ce qui est tapé et pas encore écrit. Une impression
+ * lancée juste après la frappe partait sans les derniers mots.
+ */
+export async function ecrireLeCahierJournal(): Promise<void> {
+  await Promise.all([...enAttente.values()].map((ecrire) => ecrire()));
+}
+
 export function CahierJournal({ dateIso, creneaux, seances, eleves, onModifier }: {
   dateIso: string; creneaux: Creneau[]; seances: Seance[]; eleves: Eleve[];
   onModifier: (c: Creneau) => void;
@@ -80,11 +94,18 @@ export function CahierJournal({ dateIso, creneaux, seances, eleves, onModifier }
     aEcrire.current = { ...aEcrire.current, [id]: b };
     setBrouillons((avant) => ({ ...avant, [id]: b }));
     window.clearTimeout(minuteurs.current[id]);
-    minuteurs.current[id] = window.setTimeout(() => enregistrer(id, b), immediat ? 0 : 800);
+    const ecrire = () => {
+      window.clearTimeout(minuteurs.current[id]);
+      if (enAttente.get(id) === ecrire) enAttente.delete(id);
+      return enregistrer(id, b);
+    };
+    enAttente.set(id, ecrire);
+    minuteurs.current[id] = window.setTimeout(ecrire, immediat ? 0 : 800);
   };
   React.useEffect(() => () => {
     for (const [id, t] of Object.entries(minuteurs.current)) {
       window.clearTimeout(t);
+      enAttente.delete(id);
       const b = aEcrire.current[id], e = enregistres.current[id];
       if (b && (!e || b.prevu !== e.prevu || b.bilan !== e.bilan)) api.creneauJournalSave(id, b.prevu, b.bilan).catch(() => {});
     }
