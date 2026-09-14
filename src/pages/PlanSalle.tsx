@@ -1,5 +1,5 @@
 import React from "react";
-import { api, Creneau, Eleve, couleurHex, couleurPourMatiere, newId } from "../api";
+import { api, Creneau, Eleve, teinteCreneau, newId } from "../api";
 import { Field, Input, Select, Modal, Empty, Confirm, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { openCtx } from "../components/ctxmenu";
@@ -120,7 +120,7 @@ const AGENCEMENTS: { id: string; nom: string; ico: string; sous: string; build: 
 ];
 const iso = isoJour;
 const fmtJour = (d: Date) => d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
-const teinte = (c: Creneau) => couleurHex[c.couleur] || couleurHex[couleurPourMatiere(c.matiere)] || couleurHex.blue;
+const teinte = (c: Creneau) => teinteCreneau(c);
 /**
  * Élèves présents sur un créneau : la liste restreinte s'il y en a une,
  * sinon toute la classe (cas de la classe ordinaire, où personne n'est coché).

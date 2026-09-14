@@ -9,7 +9,7 @@ import { Empty, Input, Select, Modal, ColorPicker, useAsync, useSegmentNav, useH
 import { openCtx } from "../components/ctxmenu";
 import { toast } from "../components/Toaster";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
-import { COULEURS } from "../api";
+import { COULEURS, choisirCouleurMatiere } from "../api";
 import { printHTML, escapeHtml } from "../print";
 import { PlanSalleTab } from "./PlanSalle";
 import { ProjetPedagogiqueTab } from "./ProjetPedagogique";
@@ -616,6 +616,20 @@ function SlotForm({ slot, onClose, onSave, onDelete, ime, eleves, intitules }: {
 }) {
   const [s, setS] = React.useState<Slot>(slot);
   const up = (p: Partial<Slot>) => setS((c) => ({ ...c, ...p }));
+  // La couleur appartient à l'intitulé : tous ses créneaux la partagent, ici et
+  // dans le planning. Tant que l'enseignant n'en choisit pas, elle suit l'intitulé tapé.
+  const [couleur, setCouleur] = React.useState(() => couleurPourMatiere(slot.titre));
+  const [couleurChoisie, setCouleurChoisie] = React.useState(false);
+  const changerTitre = (titre: string) => {
+    up({ titre });
+    if (!couleurChoisie) setCouleur(couleurPourMatiere(titre));
+  };
+  const enregistrer = () => {
+    if (couleurChoisie && s.titre.trim()) {
+      choisirCouleurMatiere(s.titre, couleur).catch((e) => toast(`Couleur non enregistrée : ${e}`, { icone: "⚠️" }));
+    }
+    onSave({ ...s, couleur });
+  };
   const presents = s.eleves ?? [];
   const basculer = (id: string) =>
     up({ eleves: presents.includes(id) ? presents.filter((x) => x !== id) : [...presents, id] });
@@ -625,7 +639,7 @@ function SlotForm({ slot, onClose, onSave, onDelete, ime, eleves, intitules }: {
         <button className="btn danger" onClick={onDelete}>Supprimer</button>
         <div className="spacer" />
         <button className="btn" onClick={onClose}>Annuler</button>
-        <button className="btn primary" onClick={() => onSave(s)}>Enregistrer</button>
+        <button className="btn primary" onClick={enregistrer}>Enregistrer</button>
       </>}>
       <div className="row">
         <div className="field"><label>Jour</label>
@@ -637,9 +651,11 @@ function SlotForm({ slot, onClose, onSave, onDelete, ime, eleves, intitules }: {
         <>
           <div className="field"><label>Intitulé</label>
             <Input list="edt-intitules" value={s.titre} placeholder="Scolarité, Piscine, Atelier artistique…"
-              onChange={(e) => up({ titre: e.target.value, couleur: couleurPourMatiere(e.target.value) })} />
+              onChange={(e) => changerTitre(e.target.value)} />
             <datalist id="edt-intitules">{intitules.map((t) => <option key={t} value={t} />)}</datalist>
           </div>
+          <ChoixCouleur titre={s.titre} couleur={couleur} onChange={(c) => { setCouleur(c); setCouleurChoisie(true); }}
+            portee={(t) => `Pour tous les créneaux « ${t} », ici et dans le planning.`} />
           <div className="field"><label>Nature du temps</label>
             <div className="seg" role="radiogroup" aria-label="Nature du temps">
               {([["classe", "🧑‍🏫 Temps de classe"], ["reunion", "🗣️ Réunion ou formation"]] as const).map(([n, libelle]) => (
@@ -679,11 +695,36 @@ function SlotForm({ slot, onClose, onSave, onDelete, ime, eleves, intitules }: {
         </>
       ) : (
         <div className="field"><label>Matière</label>
-          <Select value={s.titre} onChange={(e) => up({ titre: e.target.value, couleur: couleurPourMatiere(e.target.value) })}>
+          <Select value={s.titre} onChange={(e) => changerTitre(e.target.value)}>
             {MATIERES.map((m) => <option key={m}>{m}</option>)}
           </Select></div>
       )}
+      {!ime && (
+        <ChoixCouleur titre={s.titre} couleur={couleur} onChange={(c) => { setCouleur(c); setCouleurChoisie(true); }}
+          portee={(t) => `Pour toute la matière « ${t} », dans toute l'application.`} />
+      )}
     </Modal>
+  );
+}
+
+/** Le choix de la couleur d'un intitulé ou d'une matière, avec un aperçu du créneau. */
+function ChoixCouleur({ titre, couleur, onChange, portee }: {
+  titre: string; couleur: string; onChange: (c: string) => void; portee: (titre: string) => string;
+}) {
+  return (
+    <div className="field">
+      <label>Couleur</label>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <ColorPicker value={couleur} onChange={onChange} />
+        <span style={{ background: couleurHex[couleur] || couleurHex.blue, color: "#fff", borderRadius: 7, padding: "4px 10px",
+          fontSize: 12, fontWeight: 700, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {titre.trim() || "Aperçu"}
+        </span>
+      </div>
+      <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 4 }}>
+        {titre.trim() ? portee(titre.trim()) : "Donnez un intitulé : la couleur s'y attache."}
+      </div>
+    </div>
   );
 }
 
@@ -756,7 +797,7 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
     const intervalles = [...ivMap.values()].sort((a, b) => a.debut.localeCompare(b.debut) || a.fin.localeCompare(b.fin));
 
     const bloc = (s: Slot) =>
-      `<div style="background:${hex(s.couleur)}2b;border-radius:6px;padding:6px 4px;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;line-height:1.25;color:#1f2937">${escapeHtml(s.titre)}</div>`;
+      `<div style="background:${hex(couleurPourMatiere(s.titre))}2b;border-radius:6px;padding:6px 4px;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;line-height:1.25;color:#1f2937">${escapeHtml(s.titre)}</div>`;
     const cell = (jour: string, iv: { debut: string; fin: string }) => {
       const ss = slots.filter((s) => s.jour === jour && s.heureDebut === iv.debut && s.heureFin === iv.fin).sort((a, b) => a.titre.localeCompare(b.titre));
       if (ss.length === 0) return `<td></td>`;
@@ -770,7 +811,7 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
 
     // Légende : durée totale par intitulé, avec sa couleur.
     const couleurTitre: Record<string, string> = {};
-    for (const s of slots) couleurTitre[s.titre] = s.couleur;
+    for (const s of slots) couleurTitre[s.titre] = couleurPourMatiere(s.titre);
     const legende = Object.entries(minutesParMatiere).sort((a, b) => b[1] - a[1])
       .map(([titre, min]) => `<span style="display:inline-block;background:${hex(couleurTitre[titre] || "blue")}2b;border:1px solid ${hex(couleurTitre[titre] || "blue")};border-radius:12px;padding:3px 10px;margin:3px;font-size:12px;color:#1f2937">${escapeHtml(titre)} (${fmtD(min)})</span>`).join(" ");
 

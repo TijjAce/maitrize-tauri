@@ -590,7 +590,7 @@ export const TYPES_JEU = [
   "Symbolique", "Motricité", "Sensoriel", "Numérique", "Fabrication maison",
 ];
 
-export const COULEURS = ["blue", "indigo", "purple", "teal", "green", "orange", "red", "pink", "gray"];
+export const COULEURS = ["blue", "indigo", "purple", "teal", "cyan", "green", "orange", "brown", "red", "pink", "gray"];
 
 /**
  * Natures d'observation sur un élève.
@@ -701,18 +701,51 @@ const COULEURS_MATIERES: Record<string, string> = {
   "APC": "brown", "Temps calme": "teal", "Autre": "gray",
 };
 
-// Surcharges utilisateur des couleurs de matière (chargées des réglages au démarrage).
+// Couleurs choisies par l'enseignant, par matière ou par intitulé d'emploi du
+// temps (chargées des réglages au démarrage, partagées entre ses ordinateurs).
+export const CLE_COULEURS_MATIERES = "matiereCouleursOverride";
 let _matiereOverrides: Record<string, string> = {};
 export function setMatiereOverrides(o: Record<string, string>) { _matiereOverrides = o || {}; }
 export function getMatiereOverrides(): Record<string, string> { return _matiereOverrides; }
 
-export function couleurPourMatiere(matiere: string): string {
-  if (_matiereOverrides[matiere]) return _matiereOverrides[matiere];
+/** Couleur d'une matière ou d'un intitulé, hors choix de l'enseignant. */
+export function couleurParDefaut(matiere: string): string {
   if (COULEURS_MATIERES[matiere]) return COULEURS_MATIERES[matiere];
   const palette = ["blue", "green", "orange", "purple", "red", "indigo", "teal", "pink", "cyan", "brown"];
   let h = 0;
   for (const ch of matiere) h = (h + ch.charCodeAt(0)) & 0x7fffffff;
   return palette[h % palette.length];
+}
+
+export function couleurPourMatiere(matiere: string): string {
+  return _matiereOverrides[matiere] || couleurParDefaut(matiere);
+}
+
+/** Les choix de couleurs après en avoir choisi une pour `matiere` ; revenir à la couleur par défaut efface le choix. */
+export function avecCouleurChoisie(choix: Record<string, string>, matiere: string, couleur: string): Record<string, string> {
+  const suite = { ...choix };
+  if (!couleur || couleur === couleurParDefaut(matiere)) delete suite[matiere];
+  else suite[matiere] = couleur;
+  return suite;
+}
+
+/**
+ * Retient la couleur d'une matière ou d'un intitulé : tous ses créneaux la
+ * prennent, dans l'emploi du temps comme dans le planning.
+ */
+export function choisirCouleurMatiere(matiere: string, couleur: string): Promise<void> {
+  _matiereOverrides = avecCouleurChoisie(_matiereOverrides, matiere, couleur);
+  return api.settingSet(CLE_COULEURS_MATIERES, JSON.stringify(_matiereOverrides));
+}
+
+/**
+ * La teinte d'un créneau : celle de sa matière ou de son intitulé, choix de
+ * l'enseignant compris. La couleur enregistrée sur le créneau ne sert qu'à
+ * défaut de matière : elle date de sa création et ignorerait un choix fait
+ * depuis.
+ */
+export function teinteCreneau(c: { matiere: string; couleur?: string }): string {
+  return (c.matiere ? couleurHex[couleurPourMatiere(c.matiere)] : couleurHex[c.couleur ?? ""]) || couleurHex.blue;
 }
 
 // ── Téléchargement d'un fichier texte (JSON) via dialog "Enregistrer sous" ──

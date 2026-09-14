@@ -1,9 +1,10 @@
 import React from "react";
 import { Page } from "../App";
-import { api, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, getMatiereOverrides, setMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo } from "../api";
+import { api, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo } from "../api";
 import { Field, Input, Select, Modal, Confirm, useAsync } from "../components/ui";
 import { MesAppareils } from "../components/MesAppareils";
 import { confirmer } from "../components/confirmer";
+import { toast } from "../components/Toaster";
 import { applyTheme, MODES, ACCENTS, STYLES } from "../theme";
 import { lireAcceptationCgu, CguAcceptation } from "../components/CGU";
 import { getVersion } from "@tauri-apps/api/app";
@@ -344,14 +345,27 @@ export default function Reglages() {
 // Carte « Développement » : génère des données factices pour tester rapidement.
 function CouleursMatieresModal({ onClose }: { onClose: () => void }) {
   const [over, setOver] = React.useState<Record<string, string>>(() => ({ ...getMatiereOverrides() }));
+  // Les intitulés de l'emploi du temps (organisation IME) dont la couleur a été choisie.
+  const [intitules] = React.useState(() => Object.keys(getMatiereOverrides()).filter((m) => !MATIERES.includes(m))
+    .sort((a, b) => a.localeCompare(b, "fr")));
 
   const choisir = (m: string, c: string) => {
-    const next = { ...over };
-    if (c === "") delete next[m]; else next[m] = c;
-    setOver(next);
-    setMatiereOverrides(next);
-    api.settingSet("matiereCouleursOverride", JSON.stringify(next));
+    choisirCouleurMatiere(m, c).catch((e) => toast(`Couleur non enregistrée : ${e}`, { icone: "⚠️" }));
+    setOver({ ...getMatiereOverrides() });
   };
+  const ligne = (m: string) => (
+    <div key={m} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
+      <div style={{ flex: 1, fontSize: 13.5 }}>{m}</div>
+      <div style={{ display: "flex", gap: 5 }}>
+        {COULEURS.map((c) => (
+          <button key={c} title={c} onClick={() => choisir(m, c)}
+            style={{ width: 20, height: 20, borderRadius: 5, background: couleurHex[c], cursor: "pointer",
+              border: couleurPourMatiere(m) === c ? "2.5px solid var(--text)" : "2px solid transparent" }} />
+        ))}
+        {over[m] && <button className="btn ghost sm" onClick={() => choisir(m, "")}>défaut</button>}
+      </div>
+    </div>
+  );
 
   return (
     <Modal large titre="🎨 Couleurs des matières" onClose={onClose}
@@ -359,19 +373,16 @@ function CouleursMatieresModal({ onClose }: { onClose: () => void }) {
       <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
         Personnalisez la couleur de chaque matière (utilisée dans le planning, les séquences, etc.).
       </p>
-      {MATIERES.map((m) => (
-        <div key={m} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
-          <div style={{ flex: 1, fontSize: 13.5 }}>{m}</div>
-          <div style={{ display: "flex", gap: 5 }}>
-            {COULEURS.map((c) => (
-              <button key={c} title={c} onClick={() => choisir(m, c)}
-                style={{ width: 20, height: 20, borderRadius: 5, background: couleurHex[c], cursor: "pointer",
-                  border: over[m] === c ? "2.5px solid var(--text)" : "2px solid transparent" }} />
-            ))}
-            {over[m] && <button className="btn ghost sm" onClick={() => choisir(m, "")}>défaut</button>}
-          </div>
-        </div>
-      ))}
+      {MATIERES.map(ligne)}
+      {intitules.length > 0 && (
+        <>
+          <h4 style={{ margin: "16px 0 2px" }}>Intitulés de l'emploi du temps</h4>
+          <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 12.5 }}>
+            Couleurs choisies dans Organisation, sur un créneau.
+          </p>
+          {intitules.map(ligne)}
+        </>
+      )}
     </Modal>
   );
 }

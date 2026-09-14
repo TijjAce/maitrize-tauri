@@ -63,6 +63,8 @@ const REGLAGES_PARTAGES: &[&str] = &[
     "enseignantNom", "ecole", "anneeCourante", "typeStructure", "zoneVacances",
     "notesRapides", "mistralModel", "iaContexte",
     "apparence", "accent", "styleInterface", "liseret",
+    // Couleurs choisies des matières et des intitulés de l'emploi du temps.
+    "matiereCouleursOverride",
 ];
 
 /// Familles de réglages qui voyagent, par préfixe : emploi du temps, plan de
@@ -992,7 +994,7 @@ mod tests {
         for cle in ["enseignantNom", "ecole", "anneeCourante", "typeStructure",
                     "notesRapides", "edt:mode", "edt:horaires:2025-2026",
                     "salle:profils", "tla:gabarits", "dossier:Lecture", "bureau:", "bureau:Français/Lecture",
-                    "fabriquer:presentations"] {
+                    "fabriquer:presentations", "matiereCouleursOverride"] {
             assert!(reglage_partage(cle), "« {cle} » devrait voyager");
         }
     }

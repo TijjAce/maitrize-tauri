@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import { isoJour, lundiDe, jourPlanningInitial, anneeDe, toMin, minToHHMM } from "../dates";
-import { api, Creneau, Seance, Sequence, Eleve, MATIERES, couleurHex, couleurPourMatiere, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance } from "../api";
+import { api, Creneau, Seance, Sequence, Eleve, MATIERES, couleurPourMatiere, teinteCreneau, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance } from "../api";
 import { Modal, Field, Input, Select, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
 import { toast } from "../components/Toaster";
@@ -227,7 +227,7 @@ export default function Planning() {
     const rendreCol = (c: Creneau) => {
       const s = seqDe(c);
       const seq = s ? (sequences ?? []).find((q) => q.id === s.sequenceId) : undefined;
-      const teinte = couleurHex[c.couleur] || couleurHex[couleurPourMatiere(c.matiere)] || couleurHex.blue;
+      const teinte = teinteCreneau(c);
       const titre = s?.titre || c.matiere || "Créneau";
       const dur = dureeTxt(c.heureDebut, c.heureFin);
       const chips = `${c.matiere ? `<span class="chip" style="background:${teinte}26;color:${teinte}">${escapeHtml(c.matiere)}</span>` : ""}${natureDe(c) === "reunion" ? `<span class="chip dur">Réunion · formation</span>` : ""}${dur ? `<span class="chip dur">⏱ ${dur}</span>` : ""}`;
@@ -310,7 +310,7 @@ export default function Planning() {
       return {
         heureDebut: c.heureDebut, heureFin: c.heureFin,
         matiere: c.matiere || "Créneau", seance: s?.titre ?? "",
-        couleur: couleurHex[c.couleur] || couleurHex[couleurPourMatiere(c.matiere)] || couleurHex.blue,
+        couleur: teinteCreneau(c),
         objectifs: nettoie(s?.objectifs ?? ""),
         deroulement: nettoie(s?.deroulement ?? ""),
       };
@@ -508,7 +508,7 @@ function GrilleHoraire({ jours, creneaux, seances, eleves, feries, vacanceDe, de
                   const h = Math.max(20, durMin / 60 * hpx);
                   const seance = seances.find((x) => x.id === c.seanceId);
                   const { lane, lanes } = (!dragged && lay.get(c.id)) || { lane: 0, lanes: 1 };
-                  const teinte = couleurHex[couleurPourMatiere(c.matiere)] || couleurHex.blue;
+                  const teinte = teinteCreneau(c);
                   const compact = h < 44;
                   return (
                     <div key={c.id} className="cren-block"
@@ -612,7 +612,7 @@ function VueMois({ ancre, creneaux, feries, vacanceDe, anniversaires, onJour }: 
                   </div>
                 ))}
                 {crs.slice(0, 4).map((c) => (
-                  <div key={c.id} style={{ marginTop: 2, fontSize: 10, color: "#fff", background: couleurHex[couleurPourMatiere(c.matiere)] || couleurHex.blue, borderRadius: 4, padding: "1px 4px", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+                  <div key={c.id} style={{ marginTop: 2, fontSize: 10, color: "#fff", background: teinteCreneau(c), borderRadius: 4, padding: "1px 4px", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
                     {c.heureDebut} {c.matiere}
                   </div>
                 ))}

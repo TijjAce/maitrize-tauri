@@ -1,6 +1,7 @@
 // Moteur de thème : applique Mode / Accent / Style d'interface aux variables
 // CSS, + charge les surcharges de couleurs de matière. Réglages persistés en DB.
-import { api, setMatiereOverrides } from "./api";
+import { api, setMatiereOverrides, CLE_COULEURS_MATIERES } from "./api";
+import { EVT_DONNEES_DISTANTES } from "./components/ui";
 
 export const MODES = [
   { id: "clair", label: "Clair" },
@@ -52,6 +53,16 @@ export async function bootTheme() {
   try {
     const s = await api.settingsAll();
     applyTheme(s);
-    try { setMatiereOverrides(JSON.parse(s.matiereCouleursOverride || "{}")); } catch { /* ignore */ }
+    try { setMatiereOverrides(JSON.parse(s[CLE_COULEURS_MATIERES] || "{}")); } catch { /* ignore */ }
   } catch { /* ignore */ }
+  // Les couleurs choisies sur l'autre ordinateur arrivent avec la synchronisation.
+  if (!ecouteCouleurs) {
+    ecouteCouleurs = true;
+    window.addEventListener(EVT_DONNEES_DISTANTES, () => {
+      api.settingGet(CLE_COULEURS_MATIERES).then((v) => {
+        try { setMatiereOverrides(JSON.parse(v || "{}")); } catch { /* ignore */ }
+      }).catch(() => {});
+    });
+  }
 }
+let ecouteCouleurs = false;
