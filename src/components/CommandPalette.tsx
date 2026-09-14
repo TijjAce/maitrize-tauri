@@ -20,6 +20,8 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "🧩", label: "Ateliers", to: "/ateliers", page: "ateliers", onglet: "ateliers", sous: "Ateliers & Espaces" },
   { ico: "🪑", label: "Espaces", to: "/ateliers", page: "ateliers", onglet: "espaces", sous: "Ateliers & Espaces" },
   { ico: "🎲", label: "Jeux", to: "/ateliers", page: "ateliers", onglet: "jeux", sous: "Ateliers & Espaces" },
+  { ico: "➕", label: "Problèmes partie-tout (schémas en barres)", to: "/jeux", page: "jeux", onglet: "partieTout", sous: "Fabriquer" },
+  { ico: "✖️", label: "Problèmes multiplicatifs (schémas en barres)", to: "/jeux", page: "jeux", onglet: "multiplicatifs", sous: "Fabriquer" },
   { ico: "🗒", label: "Programmation", to: "/organisation", page: "organisation", onglet: "prog", sous: "Organisation" },
   { ico: "📉", label: "Progression annuelle", to: "/organisation", page: "organisation", onglet: "annuelle", sous: "Organisation" },
   { ico: "🕘", label: "EDT type", to: "/organisation", page: "organisation", onglet: "edt", sous: "Organisation" },

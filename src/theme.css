@@ -571,3 +571,13 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .bureau-case { position: absolute; padding: 0 4px; box-sizing: border-box; transition: left .18s ease, top .18s ease; }
 .bureau-case-visee { position: absolute; border: 2px dashed var(--accent); border-radius: 12px; background: var(--accent-soft);
   pointer-events: none; box-sizing: border-box; }
+
+/* ── Fabriquer : aperçu des problèmes en barres ── */
+/* Une feuille de papier : fond blanc quel que soit le thème. */
+.pb-apercu { background: #fff; color: #1c2233; border-radius: 10px; padding: 14px; border: 1px solid var(--border);
+  max-height: calc(100vh - 230px); overflow: auto; }
+.pb-apercu-probleme { position: relative; }
+.pb-apercu-probleme .pb-probleme { padding-right: 46px; }
+.pb-apercu-probleme .pb-retirer { position: absolute; top: 8px; right: 8px; opacity: .55; }
+.pb-apercu-probleme:hover .pb-retirer, .pb-apercu-probleme .pb-retirer:focus-visible { opacity: 1; }
+
