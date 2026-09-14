@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   genererPartieTout, genererMultiplicatifs, problemePartieTout, problemeMultiplicatif, schemaSvg, largeurs,
-  feuilleProblemes, blocProbleme, de, nombre, lirePrenoms,
-  type ReglagesPartieTout, type ReglagesMultiplicatifs, type Probleme, type OptionsFeuille, type Schema,
+  feuilleProblemes, blocProbleme, de, nombre, lirePrenoms, redigerPartieTout, retoucheDe, retoucher,
+  styleSchema, normaliserPresentation, memePresentation, decouperEnPages, PRESENTATION_COMPLETE, PRESENTATION_MODELE_SEUL,
+  type ReglagesPartieTout, type ReglagesMultiplicatifs, type Probleme, type Presentation, type Schema,
 } from "./problemesBarres";
 
 const partieTout = (p: Partial<ReglagesPartieTout> = {}): ReglagesPartieTout => ({
@@ -11,7 +12,7 @@ const partieTout = (p: Partial<ReglagesPartieTout> = {}): ReglagesPartieTout => 
 const multiplicatifs = (p: Partial<ReglagesMultiplicatifs> = {}): ReglagesMultiplicatifs => ({
   nombre: 10, types: ["tout", "part", "nombre", "grand", "petit"], table: 10, enonces: true, prenoms: [], ...p,
 });
-const feuilleParDefaut: OptionsFeuille = { titre: "Problèmes", schema: "nombres", corrige: true, grandTexte: false, majuscules: false };
+const complete = (p: Partial<Presentation> = {}): Presentation => ({ ...PRESENTATION_COMPLETE, ...p });
 
 /** Les nombres écrits dans un texte (« 1 000 » compris). */
 const nombresDe = (texte: string) =>
@@ -192,7 +193,7 @@ describe("schémas en barres", () => {
 
   it("dessine le tout et ses parties comme en classe", () => {
     const svg = schemaSvg(parties, "nombres");
-    expect(textes(svg)).toEqual(["TOUT", "12", "8", "PARTIE", "?", "PARTIE"]);
+    expect(textes(svg)).toEqual(["12", "TOUT", "8", "PARTIE", "?", "PARTIE"]);
     // 8 et 4 : la première partie est deux fois plus longue que la seconde.
     const l = [...svg.matchAll(/<rect[^>]* width="([\d.]+)"/g)].map((m) => Number(m[1]));
     expect(l[1] / l[2]).toBeCloseTo(2, 1);
@@ -201,7 +202,7 @@ describe("schémas en barres", () => {
   it("laisse les cases vides à compléter, et remplit le corrigé", () => {
     expect(textes(schemaSvg(parties, "vide"))).toEqual(["TOUT", "PARTIE", "PARTIE"]);
     const corrige = schemaSvg(parties, "corrige");
-    expect(textes(corrige)).toEqual(["TOUT", "12", "8", "PARTIE", "4", "PARTIE"]);
+    expect(textes(corrige)).toEqual(["12", "TOUT", "8", "PARTIE", "4", "PARTIE"]);
     expect(corrige).toContain('font-weight="700"');
   });
 
@@ -229,40 +230,176 @@ describe("schémas en barres", () => {
   it("aligne les deux quantités d'une comparaison", () => {
     const s: Schema = { forme: "comparaison", petit: { valeur: 4, connue: true }, grand: { valeur: 12, connue: false }, fois: 3, noms: ["Tom", "<Léa>"] };
     const svg = schemaSvg(s, "nombres");
-    expect(textes(svg)).toEqual(["Tom", "4", "&lt;Léa&gt;", "?", "× 3"]);
+    expect(textes(svg)).toEqual(["4", "Tom", "&lt;Léa&gt;", "?", "× 3"]);
   });
 });
 
-describe("feuille à imprimer", () => {
+describe("nombres au choix", () => {
+  it("respecte une plage personnalisée, parties de 1 comprises", () => {
+    const vus = new Set<number>();
+    for (let g = 0; g < 200; g++) {
+      const p = problemePartieTout(partieTout({ max: 6, min: 3, partMin: 1, parties: 2 }), g, g);
+      if (p.schema.forme !== "parties") throw new Error("forme");
+      expect(p.schema.tout.valeur).toBeGreaterThanOrEqual(3);
+      expect(p.schema.tout.valeur).toBeLessThanOrEqual(6);
+      p.schema.parties.forEach((c) => vus.add(c.valeur));
+    }
+    expect(vus.has(1)).toBe(true);
+  });
+
+  it("accorde au singulier quand un nombre vaut 1", () => {
+    const situation = { forme: "parties" as const, contexte: 0, categories: [0, 1], qui: "Léa" };
+    const tout = redigerPartieTout(situation, [1, 4], -1, true);
+    expect(tout.enonce).toBe("Léa a 1 bille rouge et 4 billes bleues. Combien de billes a Léa en tout ?");
+    const partie = redigerPartieTout(situation, [1, 1], 1, true);
+    expect(partie.enonce).toBe("Léa a 2 billes. 1 bille est rouge, les autres sont bleues. Combien de billes bleues a Léa ?");
+    expect(partie.phrase).toBe("Léa a 1 bille bleue.");
+    const pre = redigerPartieTout({ forme: "parties", contexte: 7, categories: [0, 1, 2], qui: "" }, [3, 1, 2], 2, true);
+    expect(pre.enonce).toBe("Dans le pré, il y a 6 animaux. 3 animaux sont des moutons, 1 est une vache, les autres sont des chèvres. Combien y a-t-il de chèvres ?");
+  });
+
+  it("fait des tables personnalisées : la table de 5 seulement", () => {
+    for (let g = 0; g < 40; g++) {
+      const p = problemeMultiplicatif(multiplicatifs({ types: ["tout"], parts: [2, 10], valeurs: [5, 5] }), g, 0);
+      if (p.schema.forme !== "parts-egales") throw new Error("forme");
+      expect(p.schema.part.valeur).toBe(5);
+    }
+    const un = problemeMultiplicatif(multiplicatifs({ types: ["tout"], parts: [3, 3], valeurs: [1, 1] }), 1, 0);
+    expect(un.enonce).not.toMatch(/\b1 (crayons|billes|fleurs|gâteaux|images|élèves|chaises)\b/);
+  });
+});
+
+describe("retoucher un problème", () => {
+  it("garde la situation et réécrit l'énoncé avec les nombres choisis", () => {
+    const p = problemePartieTout(partieTout({ inconnue: "tout" }), 12, 0);
+    const r = retoucheDe(p);
+    if (r.forme !== "parties") throw new Error("forme");
+    const q = retoucher(p, { ...r, valeurs: [8, 4] }, true);
+    expect(q.calcul).toBe("8 + 4 = 12");
+    expect(nombresDe(q.enonce).sort((a, b) => a - b)).toEqual([4, 8]);
+    expect(q.situation).toMatchObject({ forme: "parties", qui: (p.situation as { qui: string }).qui });
+  });
+
+  it("place la partie cherchée en dernier, dans l'énoncé comme sur le schéma", () => {
+    const p = problemePartieTout(partieTout({ inconnue: "tout", parties: 3 }), 3, 0);
+    const q = retoucher(p, { forme: "parties", valeurs: [5, 7, 2], inconnue: 0 }, true);
+    if (q.schema.forme !== "parties") throw new Error("forme");
+    expect(q.schema.parties.map((c) => c.valeur)).toEqual([7, 2, 5]);
+    expect(q.schema.parties[2].connue).toBe(false);
+    expect(q.reponse).toBe(5);
+    expect(q.calcul).toBe("14 − 7 − 2 = 5");
+  });
+
+  it("change la case à trouver d'un problème multiplicatif", () => {
+    const p = problemeMultiplicatif(multiplicatifs({ types: ["tout"] }), 4, 0);
+    const q = retoucher(p, { forme: "parts-egales", type: "nombre", parts: 3, valeur: 6 }, true);
+    expect(q.calcul).toBe("18 : 6 = 3");
+    expect(q.reponse).toBe(3);
+    const c = problemeMultiplicatif(multiplicatifs({ types: ["grand"] }), 4, 0);
+    expect(retoucher(c, { forme: "comparaison", type: "petit", petit: 4, fois: 3 }, true).calcul).toBe("12 : 3 = 4");
+    // Une retouche d'une autre forme ne s'applique pas.
+    expect(retoucher(p, { forme: "comparaison", type: "petit", petit: 4, fois: 3 }, true)).toBe(p);
+  });
+});
+
+describe("présentation", () => {
   const probleme = (p: Partial<Probleme> = {}): Probleme => ({
     schema: { forme: "parties", tout: { valeur: 12, connue: false }, parties: [{ valeur: 8, connue: true }, { valeur: 4, connue: true }] },
+    situation: { forme: "parties", contexte: 0, categories: [0, 1], qui: "<Léa>" },
     enonce: "<Léa> a 8 billes rouges et 4 billes bleues. Combien de billes a <Léa> en tout ?",
     calcul: "8 + 4 = 12", reponse: 12, phrase: "<Léa> a 12 billes en tout.", ...p,
   });
+  const textes = (html: string) => [...html.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]);
 
   it("échappe ce que l'enseignant a saisi", () => {
-    const html = feuilleProblemes([probleme()], { ...feuilleParDefaut, titre: "<b>Titre</b>" });
+    const html = feuilleProblemes([probleme()], "<b>Titre</b>", complete({ motTout: "<i>" }));
     expect(html).not.toContain("<Léa>");
     expect(html).not.toContain("<b>Titre</b>");
+    expect(html).not.toContain("<i>");
     expect(html).toContain("&lt;Léa&gt; a 8 billes");
   });
 
+  it("ne garde que le modèle en barres et ses nombres", () => {
+    const html = feuilleProblemes([probleme(), probleme()], "Problèmes", { ...PRESENTATION_MODELE_SEUL, corrige: false });
+    expect(html).not.toContain("<h1");
+    expect(html).not.toContain("Prénom");
+    expect(html).not.toContain("pb-numero");
+    expect(html).not.toContain("pb-enonce");
+    expect(html).not.toMatch(/Calcul|Réponse/);
+    expect(html).toContain("pb-sans-cadre");
+    expect(textes(html)).toEqual(["?", "8", "4", "?", "8", "4"]);
+  });
+
+  it("règle chaque élément séparément", () => {
+    const p = probleme();
+    expect(blocProbleme(p, 0, complete({ calcul: false }))).not.toContain("Calcul");
+    expect(blocProbleme(p, 0, complete({ calcul: false }))).toContain("Réponse");
+    expect(blocProbleme(p, 0, complete({ schema: "sans" }))).toContain("pb-cadre");
+    expect(blocProbleme(p, 0, complete({ schema: "vide" }))).not.toMatch(/>8<|>\?</);
+    // Sans énoncé, le schéma porte forcément les nombres.
+    expect(textes(blocProbleme(p, 0, complete({ enonce: false, schema: "vide" })))).toContain("8");
+    expect(feuilleProblemes([p], "Titre", complete({ titre: false }))).toContain("Prénom");
+    expect(feuilleProblemes([p], "Titre", complete({ nomDate: false }))).not.toContain("Prénom");
+  });
+
+  it("marque la case à trouver par « ? », par une case vide ou surlignée", () => {
+    const s = probleme().schema;
+    expect(textes(schemaSvg(s, "nombres", styleSchema(complete({ inconnue: "vide" }))))).not.toContain("?");
+    const surlignee = schemaSvg(s, "nombres", styleSchema(complete({ inconnue: "surlignee" })));
+    expect(textes(surlignee)).not.toContain("?");
+    expect(surlignee).toContain("#fff1a6");
+  });
+
+  it("met les mots choisis, ou aucun", () => {
+    const s = probleme().schema;
+    expect(textes(schemaSvg(s, "nombres", styleSchema(complete({ motTout: "Le tout", motPartie: "Une partie" }))))).toEqual(["?", "Le tout", "8", "Une partie", "4", "Une partie"]);
+    expect(textes(schemaSvg(s, "nombres", styleSchema(complete({ etiquettes: false }))))).toEqual(["?", "8", "4"]);
+  });
+
+  it("dessine en noir, aux couleurs choisies, avec des traits épais", () => {
+    const s = probleme().schema;
+    const noir = schemaSvg(s, "nombres", styleSchema(complete({ couleurs: "noir" })));
+    expect(noir).not.toContain("#2438d6");
+    const perso = schemaSvg(s, "nombres", styleSchema(complete({ couleurs: "perso", couleurTout: "#00aa00", epaisseur: "epais" })));
+    expect(perso).toContain('stroke="#00aa00"');
+    expect(perso).toContain('stroke-width="5"');
+  });
+
+  it("place le tout sous les parties, et peut couper des parts égales", () => {
+    const s = probleme().schema;
+    const bas = schemaSvg(s, "nombres", styleSchema(complete({ toutEnBas: true, etiquettes: false })));
+    const y = [...bas.matchAll(/<rect x="[\d.]+" y="([\d.]+)" width="([\d.]+)"/g)].map((m) => ({ y: Number(m[1]), l: Number(m[2]) }));
+    expect(y[0].l).toBe(500);
+    expect(y[0].y).toBeGreaterThan(y[1].y);
+    const egales = schemaSvg(s, "nombres", styleSchema(complete({ proportionnel: false })));
+    const l = [...egales.matchAll(/<rect[^>]* width="([\d.]+)"/g)].map((m) => Number(m[1]));
+    expect(l[1]).toBe(l[2]);
+  });
+
+  it("répartit les problèmes par page", () => {
+    expect(decouperEnPages([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]]);
+    expect(decouperEnPages([1, 2, 3], 0)).toEqual([[1, 2, 3]]);
+    const html = feuilleProblemes([probleme(), probleme(), probleme()], "T", complete({ parPage: 1, corrige: false }));
+    expect(html.match(/pb-saut/g)).toHaveLength(2);
+  });
+
   it("ajoute le corrigé sur une nouvelle page, seulement si on le demande", () => {
-    expect(feuilleProblemes([probleme()], feuilleParDefaut)).toContain("pb-corrige");
-    expect(feuilleProblemes([probleme()], { ...feuilleParDefaut, corrige: false })).not.toContain("pb-corrige");
-    expect(feuilleProblemes([probleme()], feuilleParDefaut)).toContain("8 + 4 = 12");
+    expect(feuilleProblemes([probleme()], "T", complete())).toContain("pb-corrige");
+    expect(feuilleProblemes([probleme()], "T", complete({ corrige: false }))).not.toContain("pb-corrige");
+    // Le corrigé reste numéroté et complet, même pour une feuille épurée.
+    const epure = feuilleProblemes([probleme()], "T", PRESENTATION_MODELE_SEUL);
+    expect(epure).toContain("8 + 4 = 12");
+    expect(epure.split("pb-corrige")[1]).toContain("pb-numero");
   });
 
-  it("propose un cadre pour dessiner quand le schéma n'est pas fourni", () => {
-    const html = blocProbleme(probleme(), 0, { ...feuilleParDefaut, schema: "sans" });
-    expect(html).toContain("pb-cadre");
-    expect(html).not.toContain("<svg");
-  });
-
-  it("range les schémas seuls en deux colonnes", () => {
-    const html = feuilleProblemes([probleme({ enonce: "", phrase: "" }), probleme({ enonce: "", phrase: "" })], feuilleParDefaut);
-    expect(html).toContain("pb-grille");
-    expect(html).not.toContain("Réponse :");
+  it("répare une présentation abîmée ou d'une ancienne version", () => {
+    const p = normaliserPresentation({ enonce: false, couleurs: "fluo", couleurTout: "red; onload=x", parPage: 5, motTout: "x".repeat(99) });
+    expect(p.enonce).toBe(false);
+    expect(p.couleurs).toBe("classe");
+    expect(p.couleurTout).toBe(PRESENTATION_COMPLETE.couleurTout);
+    expect(p.parPage).toBe(0);
+    expect(p.motTout).toHaveLength(30);
+    expect(memePresentation(normaliserPresentation(undefined), PRESENTATION_COMPLETE)).toBe(true);
   });
 
   it("choisit « de » ou « d' » selon le mot", () => {

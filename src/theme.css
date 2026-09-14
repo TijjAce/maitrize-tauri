@@ -573,11 +573,21 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
   pointer-events: none; box-sizing: border-box; }
 
 /* ── Fabriquer : aperçu des problèmes en barres ── */
-/* Une feuille de papier : fond blanc quel que soit le thème. */
-.pb-apercu { background: #fff; color: #1c2233; border-radius: 10px; padding: 14px; border: 1px solid var(--border);
-  max-height: calc(100vh - 230px); overflow: auto; }
+/* Des feuilles de papier : fond blanc quel que soit le thème. */
+.pb-apercu { display: flex; flex-direction: column; gap: 14px; max-height: calc(100vh - 200px); overflow: auto; padding: 2px; }
+.pb-apercu-page { background: #fff; color: #1c2233; border-radius: 8px; padding: 16px; border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
 .pb-apercu-probleme { position: relative; }
-.pb-apercu-probleme .pb-probleme { padding-right: 46px; }
-.pb-apercu-probleme .pb-retirer { position: absolute; top: 8px; right: 8px; opacity: .55; }
-.pb-apercu-probleme:hover .pb-retirer, .pb-apercu-probleme .pb-retirer:focus-visible { opacity: 1; }
-
+.pb-apercu .pb-apercu-probleme .pb-probleme { padding-right: 84px; }
+.pb-apercu-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; opacity: .55; }
+.pb-apercu-probleme:hover .pb-apercu-actions, .pb-apercu-actions:focus-within { opacity: 1; }
+.pb-plage { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 8px; }
+.pb-plage-4 { grid-template-columns: 1.6fr 1fr; }
+.pb-groupe { border-top: 1px solid var(--border); padding: 8px 0 2px; }
+.pb-groupe > summary { cursor: pointer; font-weight: 700; font-size: 13.5px; padding: 4px 0; list-style-position: inside; }
+.pb-groupe-corps { padding: 6px 0 4px; }
+.pb-coche { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; margin: 5px 0; cursor: pointer; }
+.pb-coche input { margin-top: 2px; }
+.pb-couleurs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin: -4px 0 12px; }
+.pb-couleur { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.pb-couleur input[type="color"] { width: 34px; height: 26px; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: none; cursor: pointer; }
