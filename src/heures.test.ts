@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { minutesParNature, natureDepuisTitre, duree } from "./heures";
+import { minutesParNature, natureDepuisTitre, duree, plageGrille } from "./heures";
 
 describe("minutesParNature", () => {
   it("additionne les créneaux de classe et de réunion séparément", () => {
@@ -51,3 +51,18 @@ describe("duree", () => {
     expect(duree(0)).toBe("0 h");
   });
 });
+
+describe("plageGrille", () => {
+  it("va de 8h à 20h par défaut", () => {
+    expect(plageGrille([])).toEqual({ debut: 8, fin: 20 });
+    expect(plageGrille([{ heureDebut: "17:00", heureFin: "18:30" }])).toEqual({ debut: 8, fin: 20 });
+  });
+
+  it("s'élargit pour qu'aucun créneau ne déborde", () => {
+    expect(plageGrille([{ heureDebut: "19:30", heureFin: "20:15" }])).toEqual({ debut: 8, fin: 21 });
+    expect(plageGrille([{ heureDebut: "07:45", heureFin: "08:30" }])).toEqual({ debut: 7, fin: 20 });
+    // Un créneau mal saisi (fin avant le début) n'étire rien.
+    expect(plageGrille([{ heureDebut: "23:00", heureFin: "01:00" }])).toEqual({ debut: 8, fin: 20 });
+  });
+});
+

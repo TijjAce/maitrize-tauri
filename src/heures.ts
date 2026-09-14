@@ -28,6 +28,26 @@ export function natureDepuisTitre(titre: string): Nature {
     .test(titre) ? "reunion" : "classe";
 }
 
+/** Première et dernière heure d'une grille d'emploi du temps, par défaut. */
+export const GRILLE_DEBUT = 8;
+export const GRILLE_FIN = 20;
+
+/**
+ * Les heures qu'affiche une grille : de 8h à 20h, élargies si un créneau
+ * commence plus tôt ou finit plus tard. Une grille fixe laissait déborder un
+ * créneau en fin de journée — une synthèse jusqu'à 18h30 sortait du cadre.
+ */
+export function plageGrille(creneaux: { heureDebut: string; heureFin: string }[]): { debut: number; fin: number } {
+  let debut = GRILLE_DEBUT, fin = GRILLE_FIN;
+  for (const c of creneaux) {
+    const d = enMinutes(c.heureDebut), f = enMinutes(c.heureFin);
+    if (f <= d) continue;
+    debut = Math.min(debut, Math.floor(d / 60));
+    fin = Math.max(fin, Math.ceil(f / 60));
+  }
+  return { debut: Math.max(0, debut), fin: Math.min(24, fin) };
+}
+
 /** Minutes couvertes par nature, chevauchements fusionnés jour par jour. */
 export function minutesParNature(plages: Plage[]): Record<Nature, number> {
   const groupes = new Map<string, [number, number][]>();

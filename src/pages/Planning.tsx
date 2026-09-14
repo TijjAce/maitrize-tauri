@@ -11,12 +11,12 @@ import { SeanceReadView } from "./SequenceDetail";
 import { printHTML, escapeHtml } from "../print";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
 import { CahierJournal } from "../components/CahierJournal";
-import { minutesParNature, duree, natureDe } from "../heures";
+import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
 import { organisationPour, natureDuSlot, type SlotEdt } from "../organisation";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const JOURS7 = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-const H_DEBUT = 8, H_FIN = 18, H_PX = 56;
+const H_PX = 56;
 
 const iso = isoJour;
 const fmtDateLongueFr = (dateIso: string) => new Date(dateIso).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -407,6 +407,8 @@ function GrilleHoraire({ jours, creneaux, seances, eleves, feries, vacanceDe, de
   onReload: () => void;
 }) {
   const todayIso = iso(new Date());
+  // De 8h à 20h, plus si un créneau déborde.
+  const { debut: H_DEBUT, fin: H_FIN } = plageGrille(creneaux);
   const heures = Array.from({ length: H_FIN - H_DEBUT + 1 }, (_, i) => H_DEBUT + i);
   const [zoom, setZoom] = React.useState(() => { const v = Number(localStorage.getItem("planning-zoom")); return v >= 0.6 && v <= 2.5 ? v : 1; });
   const majZoom = (v: number) => { const z = Math.max(0.6, Math.min(2.5, v)); setZoom(z); localStorage.setItem("planning-zoom", String(z)); };
@@ -441,7 +443,7 @@ function GrilleHoraire({ jours, creneaux, seances, eleves, feries, vacanceDe, de
       const cur = dragRef.current; const box = colsRef.current?.getBoundingClientRect();
       if (!cur || !box) return;
       const di = Math.max(0, Math.min(n - 1, Math.floor((ev.clientX - box.left) / (box.width / n))));
-      // La grille commence à H_DEBUT (8h) : on convertit la position en minute
+      // La grille commence à H_DEBUT : on convertit la position en minute
       // absolue de la journée, sinon tout retombe à 08:00 (clamp Math.max).
       const yMin = H_DEBUT * 60 + (ev.clientY - box.top) / hpx * 60 - cur.grabOffMin;
       const start = Math.max(H_DEBUT * 60, Math.min(H_FIN * 60 - cur.durMin, Math.round(yMin / 15) * 15));
@@ -486,7 +488,7 @@ function GrilleHoraire({ jours, creneaux, seances, eleves, feries, vacanceDe, de
       </div>
       <div style={{ display: "grid", gridTemplateColumns: `44px 1fr` }}>
         <div style={{ position: "relative", height: hauteur }}>
-          {heures.map((h, i) => <div key={h} style={{ position: "absolute", top: i * hpx - 7, right: 6, fontSize: 11, color: "var(--text-2)" }}>{h}h</div>)}
+          {heures.map((h, i) => <div key={h} style={{ position: "absolute", top: Math.min(i * hpx - 7, hauteur - 14), right: 6, fontSize: 11, color: "var(--text-2)" }}>{h}h</div>)}
         </div>
         <div ref={colsRef} style={{ display: "grid", gridTemplateColumns: `repeat(${n}, 1fr)` }}>
           {jours.map((d, di) => {
