@@ -16,7 +16,7 @@ import { ProjetPedagogiqueTab } from "./ProjetPedagogique";
 import { InformationsTab } from "./Informations";
 import { confirmer } from "../components/confirmer";
 import { tempsDeLaSemaineType, natureDuSlot, type SlotEdt } from "../organisation";
-import { duree } from "../heures";
+import { duree, plageGrille } from "../heures";
 
 // Couleurs officielles des périodes (miroir couleursPeriodes).
 const COULEUR_PERIODE: Record<number, string> = { 1: "#2e73d9", 2: "#d94033", 3: "#4d4d4d", 4: "#d97319", 5: "#269950" };
@@ -586,7 +586,7 @@ type Slot = SlotEdt;
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const toMin = (s: string) => { const [h, m] = s.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
 const minHHMM = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
-const EDT_H_DEBUT = 8, EDT_H_FIN = 18, EDT_H_PX = 56;
+const EDT_H_PX = 56;
 
 // Répartit en colonnes (lanes) les slots qui se chevauchent dans un jour.
 function layoutSlots(ss: Slot[]): Map<string, { lane: number; lanes: number }> {
@@ -783,6 +783,8 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
     printHTML(`EDT ${annee}`, html);
   };
 
+  // De 8h à 20h, plus si un créneau déborde.
+  const { debut: EDT_H_DEBUT, fin: EDT_H_FIN } = plageGrille(slots);
   const heures = Array.from({ length: EDT_H_FIN - EDT_H_DEBUT + 1 }, (_, i) => EDT_H_DEBUT + i);
   const [zoom, setZoom] = React.useState(() => { const v = Number(localStorage.getItem("edt-zoom")); return v >= 0.6 && v <= 2.5 ? v : 1; });
   const majZoom = (v: number) => { const z = Math.max(0.6, Math.min(2.5, v)); setZoom(z); localStorage.setItem("edt-zoom", String(z)); };
@@ -889,7 +891,7 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
         {/* Grille */}
         <div ref={colsRef} style={{ display: "grid", gridTemplateColumns: `44px repeat(5, 1fr)` }}>
           <div style={{ position: "relative", height: hauteur }}>
-            {heures.map((h, i) => <div key={h} style={{ position: "absolute", top: i * hpx - 7, right: 6, fontSize: 11, color: "var(--text-2)" }}>{h}h</div>)}
+            {heures.map((h, i) => <div key={h} style={{ position: "absolute", top: Math.min(i * hpx - 7, hauteur - 14), right: 6, fontSize: 11, color: "var(--text-2)" }}>{h}h</div>)}
           </div>
           {JOURS.map((j, ji) => {
             const dayNormal = slots.filter((s) => s.jour === j && s.id !== drag?.id);
