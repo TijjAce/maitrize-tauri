@@ -10,7 +10,7 @@ import { confirmer } from "../components/confirmer";
 import { SeanceReadView } from "./SequenceDetail";
 import { printHTML, escapeHtml } from "../print";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
-import { CahierJournal } from "../components/CahierJournal";
+import { CahierJournal, ecrireLeCahierJournal } from "../components/CahierJournal";
 import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
 import { organisationPour, natureDuSlot, type SlotEdt } from "../organisation";
 
@@ -191,8 +191,8 @@ export default function Planning() {
 
   // Vue jour : rendu riche (grille horaire + contenu des séances) en HTML,
   // ouvert dans le navigateur (imprimable / PDF natif via ⌘P).
-  const imprimerJourRiche = async () => {
-    const jourCreneaux = (creneaux ?? []).filter((c) => c.date === iso(ancre)).sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
+  const imprimerJourRiche = async (liste: Creneau[]) => {
+    const jourCreneaux = liste.filter((c) => c.date === iso(ancre)).sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
     const reImg = /\[img:([^\]]+)\]/g;
 
     // Collecte toutes les images référencées, puis les lit en data URL.
@@ -303,7 +303,13 @@ export default function Planning() {
 
   // Impression du planning : jour = HTML riche ; semaine = PDF natif (Aperçu).
   const imprimer = async () => {
-    if (vue === "jour") { await imprimerJourRiche(); return; }
+    // Ce qui vient d'être tapé dans le cahier journal, puis les créneaux tels
+    // qu'ils sont en base : ceux chargés à l'ouverture ignoraient tout ce qui a
+    // été écrit depuis — l'impression montrait des créneaux vides.
+    await ecrireLeCahierJournal();
+    const liste = await api.creneauxList(debut, fin).catch(() => creneaux ?? []);
+    reload();
+    if (vue === "jour") { await imprimerJourRiche(liste); return; }
     const nettoie = (t: string) => (t || "").replace(/\[(img|cite):[^\]]+\]/g, "").replace(/\n{3,}/g, "\n\n").trim();
     const info = (c: Creneau) => {
       const s = (seances ?? []).find((x) => x.id === c.seanceId);
@@ -313,6 +319,8 @@ export default function Planning() {
         couleur: teinteCreneau(c),
         objectifs: nettoie(s?.objectifs ?? ""),
         deroulement: nettoie(s?.deroulement ?? ""),
+        prevu: (c.prevu ?? "").trim(),
+        bilan: (c.bilan ?? "").trim(),
       };
     };
     // Regroupe les créneaux qui se chevauchent (même horaire) → affichés côte à côte.
@@ -332,7 +340,7 @@ export default function Planning() {
     const ds = jours; // ici : vue semaine (le jour est traité plus haut)
     const data = ds.map((d) => ({
       jour: d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }),
-      rangs: grouper((creneaux ?? [])
+      rangs: grouper(liste
         .filter((c) => c.date === iso(d))
         .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut))
         .map(info)),
@@ -343,7 +351,7 @@ export default function Planning() {
       // Repli (hors macOS) : impression via la webview.
       const rows = data.flatMap((j) => [
         ds.length > 1 ? `<tr><th colspan="2">${escapeHtml(j.jour)}</th></tr>` : "",
-        ...(j.rangs.flat().length ? j.rangs.flat().map((x) => `<tr><td style="white-space:nowrap"><b>${escapeHtml(x.heureDebut)}–${escapeHtml(x.heureFin)}</b></td><td>${escapeHtml(x.matiere)}${x.seance ? ` — <span style="color:#687087">${escapeHtml(x.seance)}</span>` : ""}</td></tr>`) : [`<tr><td colspan="2" style="color:#687087">Aucun créneau.</td></tr>`]),
+        ...(j.rangs.flat().length ? j.rangs.flat().map((x) => `<tr><td style="white-space:nowrap"><b>${escapeHtml(x.heureDebut)}–${escapeHtml(x.heureFin)}</b></td><td>${escapeHtml(x.matiere)}${x.seance ? ` — <span style="color:#687087">${escapeHtml(x.seance)}</span>` : ""}${x.prevu ? `<div class="pre"><b>Prévu :</b> ${escapeHtml(x.prevu)}</div>` : ""}${x.bilan ? `<div class="pre"><b>Fait · bilan :</b> ${escapeHtml(x.bilan)}</div>` : ""}</td></tr>`) : [`<tr><td colspan="2" style="color:#687087">Aucun créneau.</td></tr>`]),
       ]).join("");
       printHTML(`Planning — ${titre}`, `<h1>Planning — ${escapeHtml(titre)}</h1><table>${rows}</table>`);
     }
