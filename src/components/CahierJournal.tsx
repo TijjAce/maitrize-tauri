@@ -1,5 +1,5 @@
 import React from "react";
-import { api, Creneau, Seance, Eleve, couleurHex, couleurPourMatiere, texteErreur } from "../api";
+import { api, Creneau, Seance, Eleve, teinteCreneau, texteErreur } from "../api";
 import { toast } from "./Toaster";
 import { useDictee, mmss } from "../dictee";
 import { natureDe } from "../heures";
@@ -135,7 +135,7 @@ export function CahierJournal({ dateIso, creneaux, seances, eleves, onModifier }
       </div>
       {duJour.map((c) => {
         const b = brouillons[c.id] ?? { prevu: c.prevu ?? "", bilan: c.bilan ?? "" };
-        const teinte = couleurHex[couleurPourMatiere(c.matiere)] || couleurHex.blue;
+        const teinte = teinteCreneau(c);
         const seance = seances.find((s) => s.id === c.seanceId);
         let ids: string[] = [];
         try { ids = JSON.parse(c.elevesJson || "[]"); } catch { ids = []; }
