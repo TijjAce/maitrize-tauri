@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
-import { api, Sequence, MaterielItem, Texte, couleurHex, couleurPourMatiere, newId, nowIso } from "../api";
+import { api, Sequence, MaterielItem, Texte, couleurHex, couleurPourMatiere, newId, nowIso, texteErreur } from "../api";
 import { Input, Confirm, Demander, Modal, ColorPicker, useAsync } from "../components/ui";
 import { VignettePdf } from "../components/VignettePdf";
 import { toast } from "../components/Toaster";
@@ -14,7 +14,7 @@ import { EditeurTexte } from "../components/EditeurTexte";
 import { FormSequence } from "../components/FormSequence";
 import { contenuDirect, nature } from "../bureau";
 import { lireVideos, lireLien, vignetteYoutube } from "../videos";
-import { useFileDropZone, estPdf, estImage, estDocument, typeDocument, fichierEnBase64 } from "../dragdrop";
+import { useFileDropZone, estPdf, estImage, estDocument, typeDocument, fichierEnBase64, EXTENSIONS_DOCUMENTS } from "../dragdrop";
 import {
   sousDossiers, filDAriane, normaliser, parent, estDans, renommerChemin, SousDossier,
   destinationDossier, reporterCouleurs, lireCouleurs, PREFIXE_COULEUR, SANS_COULEUR, couleurDe,
@@ -300,26 +300,60 @@ export default function PlanDeTravail() {
     return true;
   };
 
-  const deposerFichiers = async (fichiers: File[]) => {
-    let n = 0;
+  /**
+   * Pose des fichiers sur le bureau : PDF, Word, Excel, PowerPoint, LibreOffice,
+   * images. Chacun devient une tuile, qui s'ouvre d'un double-clic dans son
+   * application. `dans` : lâchés sur un dossier, ils y entrent ; sinon ils se
+   * posent à la case visée, les suivants à côté.
+   */
+  const deposerFichiers = async (fichiers: File[], ou: { dans?: string; caseDepot?: Case | null } = {}) => {
+    const cible = ou.dans ?? dossier;
+    const cles: string[] = [];
     for (const f of fichiers) {
-      const nom = await api.fichierSave(f.name, await fichierEnBase64(f));
-      const image = estImage(f.name);
-      await api.materielSave({
-        ...materielVierge(dossier),
-        titre: f.name.replace(/\.[^.]+$/, ""),
-        imagesJson: image ? JSON.stringify([nom]) : "[]",
-        pdfsJson: image ? "[]" : JSON.stringify([nom]),
-      });
-      n++;
+      try {
+        const nom = await api.fichierSave(f.name, await fichierEnBase64(f));
+        const image = estImage(f.name);
+        const m: MaterielItem = {
+          ...materielVierge(cible),
+          titre: f.name.replace(/\.[^.]+$/, ""),
+          imagesJson: image ? JSON.stringify([nom]) : "[]",
+          pdfsJson: image ? "[]" : JSON.stringify([nom]),
+        };
+        await api.materielSave(m);
+        cles.push(`m:${m.id}`);
+      } catch (err) {
+        toast(`« ${f.name} » n'a pas pu être ajouté : ${texteErreur(err)}`, { icone: "⚠️", duree: 6000 });
+      }
     }
-    if (n) { recharger(); toast(`${n} fichier(s) ajouté(s)`, { icone: "📥" }); }
+    if (!cles.length) return;
+    if (ou.caseDepot && cible === dossier && !filtre) {
+      let dispo = disposition;
+      let positions: Positions = {};
+      for (const cle of cles) {
+        positions = poser(dispo, cle, ou.caseDepot, nbCols);
+        dispo = Object.fromEntries(Object.entries(positions).map(([k, [col, rang]]) => [k, { col, rang }]));
+      }
+      await ecrireDispositions({ [PREFIXE_BUREAU + dossier]: JSON.stringify(positions) });
+    }
+    recharger();
+    const combien = cles.length > 1 ? `${cles.length} fichiers ajoutés` : "Fichier ajouté";
+    toast(cible !== dossier ? `${combien} dans ${cible.slice(cible.lastIndexOf("/") + 1)}` : combien, { icone: "📥" });
   };
 
   const { ref: zoneFichiers, actif: survolFichiers } = useFileDropZone({
     accept: (c) => estDocument(c) || estImage(c),
-    onFiles: deposerFichiers,
+    onFiles: (fichiers, e) => {
+      const surDossier = (e.target as HTMLElement | null)?.closest<HTMLElement>("[data-chemin]")?.dataset.chemin;
+      if (surDossier) deposerFichiers(fichiers, { dans: surDossier });
+      else deposerFichiers(fichiers, { caseDepot: caseSous(e.clientX, e.clientY) });
+    },
+    onRefus: (noms) => toast(`${noms.map((n) => `« ${n} »`).join(", ")} : ce type de fichier ne se pose pas sur le bureau. `
+      + "Il accepte PDF, Word, Excel, PowerPoint, LibreOffice et images.", { icone: "⚠️", duree: 7000 }),
   });
+  // Importer par le sélecteur de fichiers, depuis le clic droit : les fichiers
+  // se posent là où l'on a cliqué.
+  const choixFichiers = React.useRef<HTMLInputElement>(null);
+  const caseImport = React.useRef<Case | null>(null);
 
   // ── Dossiers ──
   const deplacerDossier = async (chemin: string, vers: string) => {
@@ -494,6 +528,14 @@ export default function PlanDeTravail() {
           onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 220 }} />
       </div>
 
+      <input ref={choixFichiers} type="file" multiple hidden accept={`${EXTENSIONS_DOCUMENTS},image/*`}
+        onChange={(e) => {
+          const fichiers = Array.from(e.target.files ?? []);
+          e.target.value = ""; // choisir deux fois le même fichier doit encore marcher
+          if (fichiers.length) deposerFichiers(fichiers, { caseDepot: caseImport.current });
+          caseImport.current = null;
+        }} />
+
       {/* ── La surface ── */}
       <div ref={zoneFichiers}
         onDragOver={(e) => {
@@ -538,6 +580,10 @@ export default function PlanDeTravail() {
             { label: "Nouveau texte", icon: "📝", onClick: avecCase(creerTexte) },
             { label: "Nouvelle séquence", icon: "📚", sep: true, onClick: avecCase(creerSequence) },
             { label: "Nouveau matériel", icon: "🧰", onClick: creerMateriel },
+            { label: "Importer des fichiers… (PDF, Word, Excel…)", icon: "📥", sep: true, onClick: () => {
+              caseImport.current = caseClic;
+              choixFichiers.current?.click();
+            } },
             ...(!filtre && dispositions[dossier] ? [{ label: "Ranger par nom", icon: "🔤", sep: true, onClick: rangerParNom }] : []),
           ]);
         }}
@@ -556,8 +602,8 @@ export default function PlanDeTravail() {
             </div>
             {!filtre && (
               <div style={{ fontSize: 13, marginTop: 6 }}>
-                Déposez ici un lien YouTube, un PDF, un document Word ou LibreOffice, une image.<br />
-                Clic droit pour créer un dossier, un texte ou une séquence.
+                Déposez ici un lien YouTube, un PDF, un document Word, Excel ou LibreOffice, une image.<br />
+                Clic droit pour créer un dossier, un texte, une séquence, ou importer des fichiers.
               </div>
             )}
           </div>
@@ -668,7 +714,7 @@ function TuileDossier({ dossier, survole, couleur, onOuvrir, onSurvol, onDepose,
   estSaisi?: () => boolean;
 }) {
   return (
-    <div draggable
+    <div draggable data-chemin={dossier.chemin}
       onDragStart={(e) => { e.dataTransfer.setData(TYPE_DOSSIER, dossier.chemin); e.dataTransfer.effectAllowed = "move"; onGlisser?.(e); }}
       onDragEnd={onFinGlisser}
       onDoubleClick={onOuvrir}
