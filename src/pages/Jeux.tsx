@@ -2,10 +2,11 @@ import React from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Page } from "../App";
 import { api, EtatBanque, PictoArasaac, OptionsJeu } from "../api";
-import { Field, Input, Select, Empty, useAsync } from "../components/ui";
+import { Field, Input, Select, Empty, useAsync, useOngletDemande } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
 import { TlaTab } from "./Tla";
+import { PartieToutTab, MultiplicatifsTab } from "./ProblemesBarres";
 import { completer, candidatsNecessaires } from "../tirage";
 
 // ── Générateur de jeux ARASAAC ─────────────────────────────────────────────
@@ -19,10 +20,25 @@ import { completer, candidatsNecessaires } from "../tirage";
 const OCTETS = (n: number) =>
   n > 1e9 ? `${(n / 1e9).toFixed(1)} Go` : n > 1e6 ? `${Math.round(n / 1e6)} Mo` : `${Math.round(n / 1e3)} ko`;
 
-const ONGLETS = ["jeux", "tla"] as const;
+const ONGLETS = ["jeux", "tla", "partieTout", "multiplicatifs"] as const;
+type Onglet = typeof ONGLETS[number];
+
+const ONGLET_MEMORISE = "fabriquer:onglet";
 
 export default function Jeux() {
-  const [onglet, setOnglet] = React.useState<typeof ONGLETS[number]>("jeux");
+  const [onglet, setOngletBrut] = React.useState<Onglet>(() => {
+    try {
+      const lu = localStorage.getItem(ONGLET_MEMORISE);
+      return ONGLETS.includes(lu as Onglet) ? (lu as Onglet) : "jeux";
+    } catch {
+      return "jeux";
+    }
+  });
+  const setOnglet = React.useCallback((o: Onglet) => {
+    setOngletBrut(o);
+    try { localStorage.setItem(ONGLET_MEMORISE, o); } catch { /* stockage indisponible */ }
+  }, []);
+  useOngletDemande("jeux", ONGLETS, setOnglet);
   const [etat, setEtat] = React.useState<EtatBanque | null>(null);
   const [progression, setProgression] = React.useState<{ etape: string; faits: number; total: number } | null>(null);
   const rafraichir = React.useCallback(() => { api.arasaacEtat().then(setEtat).catch(() => {}); }, []);
@@ -45,27 +61,24 @@ export default function Jeux() {
     }
   };
 
-  if (!etat) return <Page titre="Fabriquer"><div /></Page>;
-
   // La banque est commune aux jeux et aux tableaux : tant qu'elle n'est pas
-  // là, aucun des deux onglets n'a de quoi travailler.
-  if (!etat.installee) {
-    return (
-      <Page titre="Fabriquer" sous="À partir des pictogrammes ARASAAC">
-        <Banque progression={progression} onTelecharger={telecharger} />
-      </Page>
-    );
-  }
+  // là, ces deux onglets n'ont de quoi travailler. Les problèmes en barres,
+  // eux, n'en ont pas besoin.
+  const avecPictos = (contenu: React.ReactNode) =>
+    !etat ? <div /> : !etat.installee ? <Banque progression={progression} onTelecharger={telecharger} /> : contenu;
 
   return (
-    <Page titre="Fabriquer" sous="Jeux et tableaux de langage, à partir des pictogrammes ARASAAC">
+    <Page titre="Fabriquer" sous="Jeux et tableaux de langage à partir des pictogrammes ARASAAC, problèmes en barres">
       <div className="seg" style={{ marginBottom: 14 }}>
         <button className={onglet === "jeux" ? "active" : ""} onClick={() => setOnglet("jeux")}>🎲 Jeux</button>
         <button className={onglet === "tla" ? "active" : ""} onClick={() => setOnglet("tla")}>🗣 Tableaux de langage</button>
+        <button className={onglet === "partieTout" ? "active" : ""} onClick={() => setOnglet("partieTout")}>➕ Problèmes partie-tout</button>
+        <button className={onglet === "multiplicatifs" ? "active" : ""} onClick={() => setOnglet("multiplicatifs")}>✖️ Problèmes multiplicatifs</button>
       </div>
-      {onglet === "jeux"
-        ? <Generateur etat={etat} progression={progression} onTelecharger={telecharger} />
-        : <TlaTab />}
+      {onglet === "partieTout" ? <PartieToutTab />
+        : onglet === "multiplicatifs" ? <MultiplicatifsTab />
+        : onglet === "jeux" ? avecPictos(etat && <Generateur etat={etat} progression={progression} onTelecharger={telecharger} />)
+        : avecPictos(<TlaTab />)}
     </Page>
   );
 }
