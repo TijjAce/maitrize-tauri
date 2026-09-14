@@ -40,7 +40,10 @@ export const nomDeChemin = (chemin: string) => chemin.split(/[\\/]/).pop() || ch
  */
 export function useFileDropZone(opts: {
   accept: (nom: string) => boolean;
-  onFiles: (fichiers: File[]) => void;
+  /** Reçoit aussi l'événement : où l'on a lâché, sur quoi. */
+  onFiles: (fichiers: File[], evenement: DragEvent) => void;
+  /** Les fichiers écartés, pour dire pourquoi rien ne se passe. */
+  onRefus?: (noms: string[]) => void;
 }) {
   const ref = React.useRef<HTMLDivElement>(null);
   const [actif, setActif] = React.useState(false);
@@ -76,9 +79,11 @@ export function useFileDropZone(opts: {
       if (!porteDesFichiers(e)) return;
       e.preventDefault();
       profondeur = 0; setActif(false);
-      const fichiers = Array.from(e.dataTransfer?.files ?? [])
-        .filter((f) => optsRef.current.accept(f.name));
-      if (fichiers.length) optsRef.current.onFiles(fichiers);
+      const tous = Array.from(e.dataTransfer?.files ?? []);
+      const fichiers = tous.filter((f) => optsRef.current.accept(f.name));
+      const refuses = tous.filter((f) => !optsRef.current.accept(f.name)).map((f) => f.name);
+      if (refuses.length) optsRef.current.onRefus?.(refuses);
+      if (fichiers.length) optsRef.current.onFiles(fichiers, e);
     };
 
     el.addEventListener("dragenter", entree);
