@@ -83,8 +83,91 @@ const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:", "dossier:", "bure
 /// modification ne partait.
 pub const REGLAGES_DU_POSTE: &[&str] = &[
     "identifiantMachine", "nomMachine", "derniereSync", "derniereSauvegardeAuto",
-    "syncSeqEnvoyee", "syncDeltasVus",
+    "syncSeqEnvoyee", "syncDeltasVus", CLE_DOSSIERS_ANNONCES,
 ];
+
+// ── Dossiers du plan de travail ────────────────────────────────────────────
+//
+// Un dossier n'est pas une ligne : il existe par le chemin de ce qu'il
+// contient, ou par son réglage « dossier:<chemin> » (sa couleur, ou « aucune »
+// pour un dossier créé vide). Deux façons de le perdre en passant d'un
+// ordinateur à l'autre : une restauration remplace les réglages et le contenu
+// par ceux de l'autre poste ; et, tant que les deux postes portaient le même
+// identifiant, un dossier créé d'un côté n'arrivait jamais de l'autre.
+
+const PREFIXE_DOSSIER: &str = "dossier:";
+/// Valeur d'un dossier qui existe sans couleur (`SANS_COULEUR` côté fenêtre).
+const SANS_COULEUR: &str = "aucune";
+/// Tables dont les éléments se rangent dans les dossiers du plan de travail.
+const TABLES_RANGEES: &[&str] = &["sequences", "materiel_items", "textes"];
+/// Repère du poste : ses dossiers ont été annoncés à l'autre ordinateur.
+pub const CLE_DOSSIERS_ANNONCES: &str = "syncDossiersAnnonces";
+
+fn normaliser_chemin(chemin: &str) -> String {
+    chemin.split('/').map(str::trim).filter(|s| !s.is_empty()).collect::<Vec<_>>().join("/")
+}
+
+/// Les réglages qui font exister les dossiers du plan de travail ici : ceux
+/// des dossiers créés (couleur ou « aucune ») et la disposition de leur bureau,
+/// plus « aucune » pour chaque dossier qui ne tient que par son contenu.
+pub fn reglages_des_dossiers(conn: &Connection) -> Vec<(String, String)> {
+    let mut sortie = std::collections::BTreeMap::new();
+    for table in TABLES_RANGEES {
+        let Ok(mut st) = conn.prepare(&format!("SELECT DISTINCT dossier FROM {table} WHERE dossier <> ''")) else { continue };
+        let chemins: Vec<String> = st.query_map([], |r| r.get(0)).map(|it| it.flatten().collect()).unwrap_or_default();
+        for chemin in chemins.iter().map(|c| normaliser_chemin(c)) {
+            // « @… » : dossiers réservés, hors du bureau.
+            if !chemin.is_empty() && !chemin.starts_with('@') {
+                sortie.entry(format!("{PREFIXE_DOSSIER}{chemin}")).or_insert_with(|| SANS_COULEUR.to_string());
+            }
+        }
+    }
+    if let Ok(mut st) = conn.prepare(
+        "SELECT cle, valeur FROM settings WHERE (cle LIKE 'dossier:%' OR cle LIKE 'bureau:%') AND valeur <> ''",
+    ) {
+        let lignes: Vec<(String, String)> = st.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+            .map(|it| it.flatten().collect()).unwrap_or_default();
+        sortie.extend(lignes);
+    }
+    sortie.into_iter().collect()
+}
+
+/// Remet, après une restauration, les dossiers d'ici que la sauvegarde ne
+/// connaissait pas — vides si leur contenu n'y était pas. Ce que la sauvegarde
+/// dit d'un dossier (sa couleur, sa disposition, sa suppression) l'emporte.
+pub fn retablir_dossiers(conn: &Connection, reglages: &[(String, String)]) -> rusqlite::Result<usize> {
+    let mut n = 0;
+    for (cle, valeur) in reglages {
+        n += conn.execute("INSERT OR IGNORE INTO settings (cle, valeur) VALUES (?1, ?2)", params![cle, valeur])?;
+    }
+    Ok(n)
+}
+
+/// Annonce une fois les dossiers d'ici à l'autre ordinateur.
+///
+/// Ceux créés pendant que les deux postes portaient le même identifiant n'y
+/// sont jamais arrivés. L'annonce n'y crée que ce qui manque : elle n'écrase ni
+/// une couleur choisie là-bas, ni un dossier qu'on y a supprimé.
+pub fn annoncer_dossiers(conn: &Connection, machine: &str) {
+    let deja: String = conn
+        .query_row("SELECT valeur FROM settings WHERE cle = ?1", params![CLE_DOSSIERS_ANNONCES], |r| r.get(0))
+        .unwrap_or_default();
+    if deja == "1" {
+        return;
+    }
+    for (cle, valeur) in reglages_des_dossiers(conn) {
+        if !cle.starts_with(PREFIXE_DOSSIER) {
+            continue; // la disposition d'un bureau ne s'impose pas à l'autre poste
+        }
+        conn.execute(
+            "INSERT INTO changements (table_nom, ligne_id, operation, donnees, avant, horodatage, origine)
+             VALUES ('settings', ?1, 'annonce', json_object('cle', ?1, 'valeur', ?2), '',
+                     strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?3)",
+            params![cle, valeur, machine],
+        ).ok();
+    }
+    conn.execute("INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, '1')", params![CLE_DOSSIERS_ANNONCES]).ok();
+}
 
 /// Ce qui ne doit jamais partir, quoi qu'il arrive.
 ///
@@ -504,11 +587,13 @@ pub fn appliquer(conn: &mut Connection, recus: &[Changement]) -> rusqlite::Resul
                 .ok()
                 .and_then(|v| v.get("valeur").and_then(|x| x.as_str()).map(str::to_string));
             if let Some(v) = valeur {
-                tx.execute(
-                    "INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)",
-                    params![c.ligne_id, v],
-                )?;
-                n += 1;
+                // Une annonce ne crée que ce qui manque ici (voir `annoncer_dossiers`).
+                let sql = if c.operation == "annonce" {
+                    "INSERT OR IGNORE INTO settings (cle, valeur) VALUES (?1, ?2)"
+                } else {
+                    "INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)"
+                };
+                n += tx.execute(sql, params![c.ligne_id, v])?;
             }
             continue;
         }
@@ -1103,6 +1188,42 @@ mod tests {
         let (a_envoyer, _) = changements_locaux(&c, repere).unwrap();
         assert_eq!(a_envoyer.len(), 1, "seul le travail d'après la restauration part : {a_envoyer:?}");
         assert!(a_envoyer[0].donnees.contains("Apolline"));
+    }
+
+    /// Des dossiers créés pendant que les deux postes se confondaient ne sont
+    /// jamais passés : ils sont annoncés une fois, sans rien écraser là-bas.
+    #[test]
+    fn les_dossiers_dici_sont_annonces_une_fois_sans_rien_ecraser() {
+        let neuve = |nom: &str| {
+            let c = Connection::open_in_memory().unwrap();
+            c.execute_batch("CREATE TABLE settings (cle TEXT PRIMARY KEY, valeur TEXT);").unwrap();
+            creer_table(&c);
+            poser_declencheurs(&c, nom);
+            c
+        };
+        let valeur = |c: &Connection, cle: &str| -> Option<String> {
+            c.query_row("SELECT valeur FROM settings WHERE cle = ?1", [cle], |r| r.get(0)).ok()
+        };
+        let a = neuve("A");
+        let mut b = neuve("B");
+        a.execute_batch("INSERT INTO settings VALUES ('dossier:Évaluations','aucune'), ('dossier:Lecture','green'), ('dossier:Sons','aucune');").unwrap();
+        b.execute_batch("INSERT INTO settings VALUES ('dossier:Lecture','red'), ('dossier:Sons','');").unwrap();
+        // Déjà « envoyés » du temps où rien ne passait.
+        let (_, repere) = changements_locaux(&a, 0).unwrap();
+
+        annoncer_dossiers(&a, "A");
+        let (annonces, repere2) = changements_locaux(&a, repere).unwrap();
+        assert_eq!(annonces.len(), 3);
+        assert!(annonces.iter().all(|c| c.operation == "annonce"));
+        appliquer(&mut b, &annonces).unwrap();
+
+        assert_eq!(valeur(&b, "dossier:Évaluations").as_deref(), Some("aucune"), "le dossier manquant arrive");
+        assert_eq!(valeur(&b, "dossier:Lecture").as_deref(), Some("red"), "la couleur choisie là-bas reste");
+        assert_eq!(valeur(&b, "dossier:Sons").as_deref(), Some(""), "un dossier supprimé là-bas ne revient pas");
+
+        annoncer_dossiers(&a, "A");
+        assert!(changements_locaux(&a, repere2).unwrap().0.is_empty(), "une seule annonce");
+        assert!(!reglage_partage(CLE_DOSSIERS_ANNONCES), "le repère reste propre au poste");
     }
 
     #[test]

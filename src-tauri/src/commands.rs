@@ -1857,8 +1857,16 @@ pub fn import_data(db: State<Db>, json: String) -> R<String> {
 /// produit — ce n'est pas du travail neuf, c'est une remise en état.
 pub fn import_json(c: &rusqlite::Connection, json: &str) -> R<()> {
     let avant = crate::journal::dernier_seq(c);
+    // Les dossiers du plan de travail d'ici : une sauvegarde de l'autre
+    // ordinateur les ferait disparaître, même vides.
+    let dossiers = crate::journal::reglages_des_dossiers(c);
     let resultat = import_json_brut(c, json);
     crate::journal::marquer_distants(c, avant);
+    // Remis après le marquage : ce sont des dossiers d'ici que l'autre
+    // ordinateur ne connaît pas, ils doivent partir vers lui.
+    if resultat.is_ok() {
+        crate::journal::retablir_dossiers(c, &dossiers).map_err(e)?;
+    }
     resultat
 }
 
@@ -1990,6 +1998,38 @@ mod tests_restauration {
         assert_eq!(reglage(&mac, "identifiantMachine"), "id-du-mac");
         assert_eq!(reglage(&mac, "syncSeqEnvoyee"), "913");
         assert_eq!(reglage(&mac, "ecole"), "École restaurée", "les données, elles, sont restaurées");
+    }
+
+    /// Le défaut signalé : passer d'un ordinateur à l'autre effaçait les
+    /// dossiers du plan de travail, même vides.
+    #[test]
+    fn une_restauration_garde_les_dossiers_dici() {
+        let ici = poste("id-ici", "0");
+        ici.execute_batch(
+            "INSERT INTO settings (cle, valeur) VALUES
+                ('dossier:Évaluations', 'aucune'), ('dossier:Lecture', 'green'), ('dossier:Sons', 'aucune'),
+                ('bureau:', '{\"d:Évaluations\":[3,0]}');
+             INSERT INTO materiel_items (id, titre, dossier, date_creation) VALUES ('m1', 'Fiche', 'Maths / Géométrie', '2026-09-14');",
+        ).unwrap();
+        crate::journal::creer_table(&ici);
+        crate::journal::poser_declencheurs(&ici, "id-ici");
+
+        // La sauvegarde de l'autre poste : « Lecture » y est rouge, « Sons » y a
+        // été supprimé, et elle ne connaît ni « Évaluations » ni la fiche.
+        let sauvegarde = r#"{"_format":"maitrize-backup-v1",
+            "materiel_items":[],
+            "settings":[{"cle":"dossier:Lecture","valeur":"red"},{"cle":"dossier:Sons","valeur":""},{"cle":"ecole","valeur":"École"}]}"#;
+        super::import_json(&ici, sauvegarde).unwrap();
+
+        assert_eq!(reglage(&ici, "dossier:Évaluations"), "aucune", "le dossier vide d'ici doit rester");
+        assert_eq!(reglage(&ici, "bureau:"), "{\"d:Évaluations\":[3,0]}", "sa place sur le bureau aussi");
+        assert_eq!(reglage(&ici, "dossier:Maths/Géométrie"), "aucune", "un dossier qui ne tenait que par son contenu reste, vide");
+        assert_eq!(reglage(&ici, "dossier:Lecture"), "red", "ce que la sauvegarde dit d'un dossier l'emporte");
+        assert_eq!(reglage(&ici, "dossier:Sons"), "", "une suppression faite là-bas aussi");
+        // Ces dossiers d'ici doivent partir vers l'autre ordinateur.
+        let a_envoyer: i64 = ici.query_row(
+            "SELECT COUNT(*) FROM changements WHERE ligne_id = 'dossier:Évaluations' AND distant = 0", [], |r| r.get(0)).unwrap();
+        assert_eq!(a_envoyer, 1);
     }
 
     #[test]

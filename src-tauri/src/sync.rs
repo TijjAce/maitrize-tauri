@@ -1187,6 +1187,7 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
             return Ok(ResultatSync { message: "Stockage non configuré.".into(), ..Default::default() });
         };
         let machine = crate::db::identifiant_machine(&c);
+        crate::journal::annoncer_dossiers(&c, &machine);
         let depuis = crate::journal::repere_envoi(&c, get_setting(&c, CLE_SEQ_ENVOYEE).parse().unwrap_or(0));
         let (changements, repere) = crate::journal::changements_locaux(&c, depuis).map_err(e)?;
         (cfg, phrase.trim().to_string(), machine.clone(), repere, deltas_vus(&c),
@@ -1457,6 +1458,9 @@ async fn separer_si_double(db: &State<'_, Db>, cl: &Client, cfg: &S3Cfg, phrase:
     let nouveau = uuid::Uuid::new_v4().to_string();
     let c = db.lock();
     set_setting(&c, "identifiantMachine", &nouveau).ok()?;
+    // Ce qui a été créé pendant qu'ils se confondaient n'est pas passé : on
+    // annoncera de nouveau les dossiers au prochain passage.
+    set_setting(&c, crate::journal::CLE_DOSSIERS_ANNONCES, "").ok();
     // Le nom choisi avait voyagé avec : on le rend à l'autre, ce poste
     // reprend son nom réseau.
     if !fiche.nom.trim().is_empty() && get_setting(&c, "nomMachine") == fiche.nom {

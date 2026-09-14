@@ -151,9 +151,15 @@ export default function PlanDeTravail() {
   const [aColorer, setAColorer] = React.useState<SousDossier | null>(null);
   const [couleursLues, setCouleursLues] = React.useState(false);
   const [dispositions, setDispositions] = React.useState<Record<string, Positions>>({});
+  // Relus aussi quand des données arrivent de l'autre ordinateur : un dossier
+  // créé là-bas, même vide, doit paraître ici sans rouvrir le plan de travail.
+  const { data: reglages } = useAsync(() => api.settingsAll(), []);
   React.useEffect(() => {
-    api.settingsAll().then((r) => { setCouleurs(lireCouleurs(r)); setDispositions(lireDispositions(r)); setCouleursLues(true); }).catch(() => {});
-  }, []);
+    if (!reglages) return;
+    setCouleurs(lireCouleurs(reglages));
+    setDispositions(lireDispositions(reglages));
+    setCouleursLues(true);
+  }, [reglages]);
 
   /** Applique des réécritures de dispositions, en base puis à l'écran. */
   const ecrireDispositions = async (ecritures: Record<string, string>) => {
