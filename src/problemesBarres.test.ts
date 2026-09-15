@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   genererPartieTout, genererMultiplicatifs, problemePartieTout, problemeMultiplicatif, schemaSvg, largeurs,
   feuilleProblemes, blocProbleme, de, nombre, lirePrenoms, redigerPartieTout, retoucheDe, retoucher,
-  styleSchema, normaliserPresentation, memePresentation, decouperEnPages, PRESENTATION_COMPLETE, PRESENTATION_MODELE_SEUL,
+  styleSchema, normaliserPresentation, memePresentation, decouperEnPages, rangementObjets, PRESENTATION_COMPLETE, PRESENTATION_MODELE_SEUL,
   type ReglagesPartieTout, type ReglagesMultiplicatifs, type Probleme, type Presentation, type Schema,
 } from "./problemesBarres";
 
@@ -407,5 +407,71 @@ describe("présentation", () => {
     expect(de("animaux")).toBe("d'animaux");
     expect(de("œufs")).toBe("d'œufs");
     expect(de("élèves")).toBe("d'élèves");
+  });
+});
+
+describe("images dans les cases", () => {
+  const avec = (p: Partial<Presentation> = {}) => styleSchema(complete({ images: "oui", ...p }));
+  const objets = (svg: string) => (svg.match(/class="pb-objet"/g) ?? []).length;
+  const textes = (svg: string) => [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]);
+  const billes: Schema = {
+    forme: "parties", tout: { valeur: 12, connue: true },
+    parties: [{ valeur: 8, connue: true }, { valeur: 4, connue: false }],
+    objets: [{ forme: "bille", couleur: "#e53935" }, { forme: "bille", couleur: "#1e88e5" }],
+  };
+
+  it("dessine autant d'objets que la valeur, et garde « ? » pour la case à trouver", () => {
+    const svg = schemaSvg(billes, "nombres", avec({ etiquettes: false }));
+    expect(objets(svg)).toBe(12 + 8);
+    expect(textes(svg)).toEqual(["?"]);
+  });
+
+  it("grise les objets du tout tant qu'une partie est à trouver, les colore au corrigé", () => {
+    const svg = schemaSvg(billes, "nombres", avec({ etiquettes: false }));
+    const tout = svg.split('<rect')[1];
+    expect(svg).toContain("#9e9e9e");
+    expect((svg.match(/fill="#1e88e5"/g) ?? []).length).toBe(0); // les billes bleues ne se voient pas
+    expect(tout).toBeDefined();
+    const corrige = schemaSvg(billes, "corrige", avec({ etiquettes: false }));
+    expect(objets(corrige)).toBe(12 + 8 + 4);
+    expect((corrige.match(/fill="#1e88e5"/g) ?? []).length).toBe(4 + 4);
+  });
+
+  it("écrit le nombre quand il y a trop d'objets pour les compter", () => {
+    const grand: Schema = { ...billes, tout: { valeur: 30, connue: true }, parties: [{ valeur: 22, connue: true }, { valeur: 8, connue: false }] };
+    const svg = schemaSvg(grand, "nombres", avec({ etiquettes: false }));
+    expect(textes(svg)).toContain("30");
+    expect(textes(svg)).toContain("22");
+    expect(rangementObjets(21, 500, 56)).toBeNull();
+    // Une case large les aligne, une case étroite les empile.
+    expect(rangementObjets(12, 500, 56)?.lignes).toBe(1);
+    expect(rangementObjets(8, 150, 56)?.lignes).toBe(2);
+  });
+
+  it("peut garder les nombres à côté des objets, ou mettre des ronds", () => {
+    const svg = schemaSvg(billes, "nombres", avec({ images: "avec-nombres", etiquettes: false }));
+    expect(textes(svg)).toEqual(["12", "8", "?"]);
+    expect(objets(svg)).toBe(20);
+    expect(schemaSvg(billes, "nombres", avec({ formeImages: "ronds", etiquettes: false }))).not.toContain('opacity=".55"');
+  });
+
+  it("ne dessine rien dans des cases à compléter", () => {
+    expect(objets(schemaSvg(billes, "vide", avec()))).toBe(0);
+  });
+
+  it("donne aux problèmes les objets de leur énoncé", () => {
+    const situation = { forme: "parties" as const, contexte: 0, categories: [0, 1], qui: "Léa" };
+    const p = redigerPartieTout(situation, [8, 4], -1, true);
+    expect(p.schema.objets).toEqual([{ forme: "bille", couleur: "#e53935" }, { forme: "bille", couleur: "#1e88e5" }]);
+    const m = problemeMultiplicatif(multiplicatifs({ types: ["tout"] }), 3, 0);
+    expect(m.schema.objets?.length).toBe(1);
+    // Une comparaison dessine aussi la petite quantité dans chaque morceau de la grande barre.
+    const c = problemeMultiplicatif(multiplicatifs({ types: ["grand"], parts: [3, 3], valeurs: [2, 2] }), 1, 0);
+    expect(objets(schemaSvg(c.schema, "nombres", avec({ etiquettes: false })))).toBe(2 + 3 * 2);
+  });
+
+  it("garde le réglage des images d'une visite à l'autre", () => {
+    expect(normaliserPresentation({ images: "avec-nombres", formeImages: "ronds" })).toMatchObject({ images: "avec-nombres", formeImages: "ronds" });
+    expect(normaliserPresentation({ images: "beaucoup" }).images).toBe("non");
   });
 });
