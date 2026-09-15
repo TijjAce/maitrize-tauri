@@ -3,6 +3,9 @@ import { api, Creneau, Seance, Eleve, teinteCreneau, texteErreur } from "../api"
 import { toast } from "./Toaster";
 import { useDictee, mmss } from "../dictee";
 import { natureDe } from "../heures";
+import { isoJour, plusJours } from "../dates";
+import { creneauDeLaSemainePrecedente, reprendrePrevu } from "../cahierJournal";
+import { PorterAuDossier } from "./PorterAuDossier";
 
 // ── Cahier journal du jour ────────────────────────────────────────────────
 //
@@ -130,6 +133,40 @@ export function CahierJournal({ dateIso, creneaux, seances, eleves, onModifier }
     modifier(id, champ, ajouterDictee(actuel, texte), true);
   };
 
+  // ── Le prévu de la semaine dernière ──
+  const reprendre = async (c: Creneau) => {
+    const jour = plusJours(new Date(`${c.date.slice(0, 10)}T12:00:00`), -7);
+    const nomJour = jour.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+    try {
+      const avant = creneauDeLaSemainePrecedente(c, await api.creneauxList(isoJour(jour), isoJour(jour)));
+      if (!avant) {
+        toast(`Rien n'était prévu sur ce créneau le ${nomJour}.`, { icone: "ℹ️" });
+        return;
+      }
+      const actuel = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
+      const suite = reprendrePrevu(actuel, avant.prevu ?? "");
+      if (suite === actuel) {
+        toast("Le prévu de la semaine dernière est déjà là.", { icone: "ℹ️" });
+        return;
+      }
+      modifier(c.id, "prevu", suite, true);
+      toast(actuel.trim() ? `Prévu du ${nomJour} ajouté à la suite.` : `Prévu du ${nomJour} repris.`, { icone: "↩️" });
+    } catch (err) {
+      toast("Semaine dernière illisible : " + texteErreur(err), { icone: "⚠️" });
+    }
+  };
+
+  // ── Du bilan au dossier des élèves ──
+  const zones = React.useRef<Record<string, HTMLTextAreaElement | null>>({});
+  const [versDossier, setVersDossier] = React.useState<{ creneau: Creneau; texte: string; presents: string[] } | null>(null);
+  const porterAuDossier = (c: Creneau, presents: string[]) => {
+    const zone = zones.current[c.id];
+    const bilan = aEcrire.current[c.id]?.bilan ?? c.bilan ?? "";
+    // Le passage sélectionné s'il y en a un : un bilan parle souvent de plusieurs élèves.
+    const selection = zone && zone.selectionEnd > zone.selectionStart ? bilan.slice(zone.selectionStart, zone.selectionEnd) : "";
+    setVersDossier({ creneau: c, texte: (selection.trim() || bilan).trim(), presents });
+  };
+
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const passe = dateIso < aujourdhui;
 
@@ -190,8 +227,16 @@ export function CahierJournal({ dateIso, creneaux, seances, eleves, onModifier }
                       {actif && dictee.etat === "enregistrement" ? `⏹ ${mmss(dictee.secondes)}`
                         : actif && dictee.etat === "transcription" ? "Transcription…" : "🎙"}
                     </button>
+                    {champ === "prevu" ? (
+                      <button className="btn ghost sm" onClick={() => reprendre(c)}
+                        title="Reprendre ce qui était prévu sur ce créneau la semaine dernière">↩ Semaine dernière</button>
+                    ) : (
+                      <button className="btn ghost sm" disabled={!b.bilan.trim() || reunion} onClick={() => porterAuDossier(c, ids)}
+                        title="Faire du bilan, ou du passage sélectionné, une observation dans le dossier des élèves">📋 Au dossier</button>
+                    )}
                   </div>
                   <textarea className="textarea" value={b[champ]} placeholder={LIBELLES[champ].aide}
+                    ref={champ === "bilan" ? (el) => { zones.current[c.id] = el; } : undefined}
                     rows={Math.min(8, Math.max(2, b[champ].split("\n").length))}
                     onChange={(e) => modifier(c.id, champ, e.target.value)}
                     aria-label={`${LIBELLES[champ].titre} — ${c.heureDebut} ${c.matiere}`}
@@ -202,6 +247,10 @@ export function CahierJournal({ dateIso, creneaux, seances, eleves, onModifier }
           </div>
         );
       })}
+      {versDossier && (
+        <PorterAuDossier creneau={versDossier.creneau} texte={versDossier.texte} presents={versDossier.presents}
+          eleves={eleves} onClose={() => setVersDossier(null)} />
+      )}
     </div>
   );
 }
