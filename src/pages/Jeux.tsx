@@ -7,6 +7,7 @@ import { toast } from "../components/Toaster";
 import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
 import { TlaTab } from "./Tla";
 import { PartieToutTab, MultiplicatifsTab } from "./ProblemesBarres";
+import { SupportsVisuelsTab, retenirSupport } from "./SupportsVisuels";
 import { completer, candidatsNecessaires } from "../tirage";
 
 // ── Générateur de jeux ARASAAC ─────────────────────────────────────────────
@@ -20,7 +21,7 @@ import { completer, candidatsNecessaires } from "../tirage";
 const OCTETS = (n: number) =>
   n > 1e9 ? `${(n / 1e9).toFixed(1)} Go` : n > 1e6 ? `${Math.round(n / 1e6)} Mo` : `${Math.round(n / 1e3)} ko`;
 
-const ONGLETS = ["jeux", "tla", "partieTout", "multiplicatifs"] as const;
+const ONGLETS = ["jeux", "tla", "supports", "partieTout", "multiplicatifs"] as const;
 type Onglet = typeof ONGLETS[number];
 
 const ONGLET_MEMORISE = "fabriquer:onglet";
@@ -38,7 +39,8 @@ export default function Jeux() {
     setOngletBrut(o);
     try { localStorage.setItem(ONGLET_MEMORISE, o); } catch { /* stockage indisponible */ }
   }, []);
-  useOngletDemande("jeux", ONGLETS, setOnglet);
+  // Un support demandé par la palette (« minuteur »…) ouvre son onglet.
+  useOngletDemande("jeux", ONGLETS, setOnglet, (o) => { if (retenirSupport(o)) setOnglet("supports"); });
   const [etat, setEtat] = React.useState<EtatBanque | null>(null);
   const [progression, setProgression] = React.useState<{ etape: string; faits: number; total: number } | null>(null);
   const rafraichir = React.useCallback(() => { api.arasaacEtat().then(setEtat).catch(() => {}); }, []);
@@ -62,20 +64,22 @@ export default function Jeux() {
   };
 
   // La banque est commune aux jeux et aux tableaux : tant qu'elle n'est pas
-  // là, ces deux onglets n'ont de quoi travailler. Les problèmes en barres,
-  // eux, n'en ont pas besoin.
+  // là, ces deux onglets n'ont de quoi travailler. Les supports visuels s'en
+  // passent (ils portent alors le mot seul), les problèmes en barres aussi.
   const avecPictos = (contenu: React.ReactNode) =>
     !etat ? <div /> : !etat.installee ? <Banque progression={progression} onTelecharger={telecharger} /> : contenu;
 
   return (
-    <Page titre="Fabriquer" sous="Jeux et tableaux de langage à partir des pictogrammes ARASAAC, problèmes en barres">
+    <Page titre="Fabriquer" sous="Jeux, tableaux de langage et supports visuels à partir des pictogrammes ARASAAC, problèmes en barres">
       <div className="seg" style={{ marginBottom: 14 }}>
         <button className={onglet === "jeux" ? "active" : ""} onClick={() => setOnglet("jeux")}>🎲 Jeux</button>
         <button className={onglet === "tla" ? "active" : ""} onClick={() => setOnglet("tla")}>🗣 Tableaux de langage</button>
+        <button className={onglet === "supports" ? "active" : ""} onClick={() => setOnglet("supports")}>🖼 Supports visuels</button>
         <button className={onglet === "partieTout" ? "active" : ""} onClick={() => setOnglet("partieTout")}>➕ Problèmes partie-tout</button>
         <button className={onglet === "multiplicatifs" ? "active" : ""} onClick={() => setOnglet("multiplicatifs")}>✖️ Problèmes multiplicatifs</button>
       </div>
-      {onglet === "partieTout" ? <PartieToutTab />
+      {onglet === "supports" ? <SupportsVisuelsTab banque={Boolean(etat?.installee)} />
+        : onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />
         : onglet === "jeux" ? avecPictos(etat && <Generateur etat={etat} progression={progression} onTelecharger={telecharger} />)
         : avecPictos(<TlaTab />)}
