@@ -440,6 +440,15 @@ function ReglagesPresentation({ p, set }: { p: Presentation; set: (p: Presentati
         {p.enonce && choix("schema", "Dans le schéma", [
           ["nombres", "Les nombres de l'énoncé"], ["vide", "Cases vides, l'élève les remplit"], ["sans", "Pas de schéma : un cadre pour le dessiner"],
         ])}
+        {choix("images", "Dans les cases", [["non", "Les nombres"], ["oui", "Des images à compter"], ["avec-nombres", "Des images et les nombres"]])}
+        {p.images !== "non" && (
+          <>
+            {choix("formeImages", "Les images", [["enonce", "Celles de l'énoncé : billes, pommes, fleurs…"], ["ronds", "Des ronds de couleur"]])}
+            <p style={{ fontSize: 12, color: "var(--text-2)", margin: "-6px 0 10px" }}>
+              Jusqu'à 20 objets par case : au-delà, ou dans une case trop étroite, le nombre reste écrit.
+            </p>
+          </>
+        )}
         {choix("inconnue", "La case à trouver", [["?", "Un « ? »"], ["vide", "Vide"], ["surlignee", "Vide et surlignée en jaune"]])}
         {coche("etiquettes", "Mots sur le schéma", "« TOUT », « PARTIE », prénoms des comparaisons.")}
         {p.etiquettes && (

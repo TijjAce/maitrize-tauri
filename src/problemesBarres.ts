@@ -84,10 +84,16 @@ export function lirePrenoms(saisie: string): string[] {
 /** Une case du schéma : sa valeur, et si l'énoncé la donne. */
 export interface Case { valeur: number; connue: boolean }
 
+/** Ce qu'on dessine dans les cases pour un élève non lecteur : des billes rouges, des pommes… */
+export type FormeObjet = "bille" | "pomme" | "fleur" | "poisson" | "etoile" | "carte" | "crayon" | "livre"
+  | "voiture" | "gateau" | "personne" | "animal" | "chaise" | "rond";
+export interface Objet { forme: FormeObjet; couleur: string }
+
+/** `objets` : ce que représente chaque partie (ou la part, ou la quantité comparée), dans l'ordre. */
 export type Schema =
-  | { forme: "parties"; tout: Case; parties: Case[] }
-  | { forme: "parts-egales"; tout: Case; part: Case; nombre: Case }
-  | { forme: "comparaison"; petit: Case; grand: Case; fois: number; noms: [string, string] };
+  | { forme: "parties"; tout: Case; parties: Case[]; objets?: Objet[] }
+  | { forme: "parts-egales"; tout: Case; part: Case; nombre: Case; objets?: Objet[] }
+  | { forme: "comparaison"; petit: Case; grand: Case; fois: number; noms: [string, string]; objets?: Objet[] };
 
 /** Ce qui ne dépend pas des nombres : la situation racontée, les prénoms. */
 export type Situation =
@@ -127,7 +133,7 @@ function feuille(
 // ── Problèmes additifs : parties et tout ───────────────────────────────────
 
 interface Partie { groupe: Accord; attribut: Accord }
-interface ContexteParties { tout: Accord; lieu?: string; parties: Partie[] }
+interface ContexteParties { tout: Accord; lieu?: string; parties: Partie[]; objet: FormeObjet }
 
 const couleurs = (nom: Accord, adjectifs: Accord[]): Partie[] =>
   adjectifs.map(([s, p]) => ({ groupe: [`${nom[0]} ${s}`, `${nom[1]} ${p}`], attribut: [s, p] }));
@@ -136,29 +142,43 @@ const sorte = (singulier: string, pluriel: string, article: "un" | "une"): Parti
 
 /** Situations : une personne possède (« Léa a… ») ou un lieu contient (« Dans le pré, il y a… »). */
 export const CONTEXTES_PARTIES: ContexteParties[] = [
-  { tout: ["bille", "billes"], parties: couleurs(["bille", "billes"], [["rouge", "rouges"], ["bleue", "bleues"], ["verte", "vertes"]]) },
-  { tout: ["crayon", "crayons"], parties: couleurs(["crayon", "crayons"], [["rouge", "rouges"], ["bleu", "bleus"], ["vert", "verts"]]) },
-  { tout: ["carte", "cartes"], parties: couleurs(["carte", "cartes"], [["rouge", "rouges"], ["bleue", "bleues"], ["jaune", "jaunes"]]) },
-  { tout: ["voiture", "voitures"], parties: couleurs(["voiture", "voitures"], [["rouge", "rouges"], ["bleue", "bleues"], ["noire", "noires"]]) },
-  { tout: ["pomme", "pommes"], lieu: "Dans le panier", parties: couleurs(["pomme", "pommes"], [["rouge", "rouges"], ["verte", "vertes"], ["jaune", "jaunes"]]) },
-  { tout: ["poisson", "poissons"], lieu: "Dans l'aquarium", parties: couleurs(["poisson", "poissons"], [["rouge", "rouges"], ["jaune", "jaunes"], ["bleu", "bleus"]]) },
-  { tout: ["fleur", "fleurs"], lieu: "Dans le jardin", parties: couleurs(["fleur", "fleurs"], [["rouge", "rouges"], ["jaune", "jaunes"], ["blanche", "blanches"]]) },
-  { tout: ["animal", "animaux"], lieu: "Dans le pré", parties: [sorte("mouton", "moutons", "un"), sorte("vache", "vaches", "une"), sorte("chèvre", "chèvres", "une")] },
-  { tout: ["véhicule", "véhicules"], lieu: "Sur le parking", parties: [sorte("voiture", "voitures", "une"), sorte("camion", "camions", "un"), sorte("moto", "motos", "une")] },
+  { tout: ["bille", "billes"], objet: "bille", parties: couleurs(["bille", "billes"], [["rouge", "rouges"], ["bleue", "bleues"], ["verte", "vertes"]]) },
+  { tout: ["crayon", "crayons"], objet: "crayon", parties: couleurs(["crayon", "crayons"], [["rouge", "rouges"], ["bleu", "bleus"], ["vert", "verts"]]) },
+  { tout: ["carte", "cartes"], objet: "carte", parties: couleurs(["carte", "cartes"], [["rouge", "rouges"], ["bleue", "bleues"], ["jaune", "jaunes"]]) },
+  { tout: ["voiture", "voitures"], objet: "voiture", parties: couleurs(["voiture", "voitures"], [["rouge", "rouges"], ["bleue", "bleues"], ["noire", "noires"]]) },
+  { tout: ["pomme", "pommes"], lieu: "Dans le panier", objet: "pomme", parties: couleurs(["pomme", "pommes"], [["rouge", "rouges"], ["verte", "vertes"], ["jaune", "jaunes"]]) },
+  { tout: ["poisson", "poissons"], lieu: "Dans l'aquarium", objet: "poisson", parties: couleurs(["poisson", "poissons"], [["rouge", "rouges"], ["jaune", "jaunes"], ["bleu", "bleus"]]) },
+  { tout: ["fleur", "fleurs"], lieu: "Dans le jardin", objet: "fleur", parties: couleurs(["fleur", "fleurs"], [["rouge", "rouges"], ["jaune", "jaunes"], ["blanche", "blanches"]]) },
+  { tout: ["animal", "animaux"], lieu: "Dans le pré", objet: "animal", parties: [sorte("mouton", "moutons", "un"), sorte("vache", "vaches", "une"), sorte("chèvre", "chèvres", "une")] },
+  { tout: ["véhicule", "véhicules"], lieu: "Sur le parking", objet: "voiture", parties: [sorte("voiture", "voitures", "une"), sorte("camion", "camions", "un"), sorte("moto", "motos", "une")] },
   {
-    tout: ["livre", "livres"], lieu: "Dans la bibliothèque de la classe",
+    tout: ["livre", "livres"], lieu: "Dans la bibliothèque de la classe", objet: "livre",
     parties: [sorte("album", "albums", "un"), sorte("bande dessinée", "bandes dessinées", "une"), sorte("documentaire", "documentaires", "un")],
   },
   {
-    tout: ["gâteau", "gâteaux"], lieu: "Sur la table", parties: [
+    tout: ["gâteau", "gâteaux"], lieu: "Sur la table", objet: "gateau", parties: [
       { groupe: ["gâteau au chocolat", "gâteaux au chocolat"], attribut: ["au chocolat", "au chocolat"] },
       { groupe: ["gâteau à la fraise", "gâteaux à la fraise"], attribut: ["à la fraise", "à la fraise"] },
       { groupe: ["gâteau à la vanille", "gâteaux à la vanille"], attribut: ["à la vanille", "à la vanille"] },
     ],
   },
-  { tout: ["élève", "élèves"], lieu: "Dans la classe", parties: [sorte("fille", "filles", "une"), sorte("garçon", "garçons", "un")] },
-  { tout: ["personne", "personnes"], lieu: "Dans le bus", parties: [sorte("enfant", "enfants", "un"), sorte("adulte", "adultes", "un")] },
+  { tout: ["élève", "élèves"], lieu: "Dans la classe", objet: "personne", parties: [sorte("fille", "filles", "une"), sorte("garçon", "garçons", "un")] },
+  { tout: ["personne", "personnes"], lieu: "Dans le bus", objet: "personne", parties: [sorte("enfant", "enfants", "un"), sorte("adulte", "adultes", "un")] },
 ];
+
+/** Couleur dessinée d'après les mots d'une partie : « rouges », « au chocolat »… */
+const COULEURS_DES_MOTS: [RegExp, string][] = [
+  [/rouge/, "#e53935"], [/bleu/, "#1e88e5"], [/vert/, "#43a047"], [/jaune/, "#fdd835"], [/noir/, "#455a64"],
+  [/blanc/, "#ffffff"], [/chocolat/, "#6d4c41"], [/fraise/, "#f06292"], [/vanille/, "#fff3c4"],
+];
+/** À défaut de couleur dans les mots (moutons, vaches, chèvres), une par catégorie. */
+const COULEURS_DES_SORTES = ["#8d6e63", "#fb8c00", "#7e57c2"];
+
+function objetDeLaPartie(contexte: ContexteParties, categorie: number): Objet {
+  const partie = contexte.parties[categorie % contexte.parties.length];
+  const trouvee = COULEURS_DES_MOTS.find(([motif]) => motif.test(partie.attribut[1]));
+  return { forme: contexte.objet, couleur: trouvee?.[1] ?? COULEURS_DES_SORTES[categorie % COULEURS_DES_SORTES.length] };
+}
 
 export type InconnuePartieTout = "tout" | "partie" | "melange";
 
@@ -254,6 +274,7 @@ export function redigerPartieTout(situation: Extract<Situation, { forme: "partie
     forme: "parties",
     tout: { valeur: tout, connue: !chercheTout },
     parties: valeurs.map((v, k) => ({ valeur: v, connue: chercheTout || k < derniere })),
+    objets: ordre.map((k) => objetDeLaPartie(contexte, k)),
   };
   const base = { schema, situation: { ...situation, categories: ordre } };
 
@@ -322,7 +343,7 @@ export interface ReglagesMultiplicatifs {
 }
 
 type Phrases = (qui: string, n: number, p: number, tout: number) => [string, string];
-interface ContexteGroupes { plafond?: number; tout: Phrases; part: Phrases; nombre: Phrases }
+interface ContexteGroupes { plafond?: number; objet: Objet; tout: Phrases; part: Phrases; nombre: Phrases }
 
 const CRAYON: Accord = ["crayon", "crayons"];
 const BOITE: Accord = ["boîte", "boîtes"];
@@ -342,42 +363,56 @@ const TABLE: Accord = ["table", "tables"];
 /** Des parts égales : chaque contexte dit les trois problèmes, énoncé puis phrase réponse. */
 export const CONTEXTES_GROUPES: ContexteGroupes[] = [
   {
+    objet: { forme: "crayon", couleur: "#1e88e5" },
     tout: (q, n, p, t) => [`${q} a ${quantite(n, BOITE)} de crayons. Dans chaque boîte, il y a ${quantite(p, CRAYON)}. Combien de crayons a ${q} en tout ?`, `${q} a ${quantite(t, CRAYON)} en tout.`],
     part: (q, n, p, t) => [`${q} range ${quantite(t, CRAYON)} dans ${quantite(n, BOITE)}. Chaque boîte contient le même nombre de crayons. Combien de crayons y a-t-il dans chaque boîte ?`, `Il y a ${quantite(p, CRAYON)} dans chaque boîte.`],
     nombre: (q, n, p, t) => [`${q} range ${quantite(t, CRAYON)} dans des boîtes. Chaque boîte contient ${quantite(p, CRAYON)}. Combien de boîtes remplit ${q} ?`, `${q} remplit ${quantite(n, BOITE)}.`],
   },
   {
+    objet: { forme: "bille", couleur: "#e53935" },
     tout: (q, n, p, t) => [`${q} a ${quantite(n, SAC)} de billes. Dans chaque sac, il y a ${quantite(p, BILLE)}. Combien de billes a ${q} en tout ?`, `${q} a ${quantite(t, BILLE)} en tout.`],
     part: (q, n, p, t) => [`${q} met ${quantite(t, BILLE)} dans ${quantite(n, SAC)}. Chaque sac contient le même nombre de billes. Combien de billes y a-t-il dans chaque sac ?`, `Il y a ${quantite(p, BILLE)} dans chaque sac.`],
     nombre: (q, n, p, t) => [`${q} met ${quantite(t, BILLE)} dans des sacs. Chaque sac contient ${quantite(p, BILLE)}. Combien de sacs remplit ${q} ?`, `${q} remplit ${quantite(n, SAC)}.`],
   },
   {
+    objet: { forme: "fleur", couleur: "#f06292" },
     tout: (q, n, p, t) => [`${q} fait ${quantite(n, BOUQUET)}. Dans chaque bouquet, il y a ${quantite(p, FLEUR)}. Combien de fleurs utilise ${q} ?`, `${q} utilise ${quantite(t, FLEUR)}.`],
     part: (q, n, p, t) => [`${q} fait ${quantite(n, BOUQUET)} avec ${quantite(t, FLEUR)}. Tous les bouquets ont le même nombre de fleurs. Combien de fleurs y a-t-il dans chaque bouquet ?`, `Il y a ${quantite(p, FLEUR)} dans chaque bouquet.`],
     nombre: (q, n, p, t) => [`Avec ${quantite(t, FLEUR)}, ${q} fait des bouquets de ${quantite(p, FLEUR)}. Combien de bouquets fait ${q} ?`, `${q} fait ${quantite(n, BOUQUET)}.`],
   },
   {
+    objet: { forme: "gateau", couleur: "#6d4c41" },
     tout: (_q, n, p, t) => [`Sur la table, il y a ${quantite(n, ASSIETTE)}. Sur chaque assiette, il y a ${quantite(p, GATEAU)}. Combien y a-t-il de gâteaux en tout ?`, `Il y a ${quantite(t, GATEAU)} en tout.`],
     part: (q, n, p, t) => [`${q} pose ${quantite(t, GATEAU)} sur ${quantite(n, ASSIETTE)}. Chaque assiette a le même nombre de gâteaux. Combien de gâteaux y a-t-il sur chaque assiette ?`, `Il y a ${quantite(p, GATEAU)} sur chaque assiette.`],
     nombre: (q, n, p, t) => [`${q} pose ${quantite(t, GATEAU)} sur des assiettes, ${quantite(p, GATEAU)} par assiette. Combien d'assiettes faut-il ?`, `Il faut ${quantite(n, ASSIETTE)}.`],
   },
   {
+    objet: { forme: "carte", couleur: "#fb8c00" },
     tout: (q, n, p, t) => [`${q} colle des images dans son album : ${quantite(n, PAGE)}, avec ${quantite(p, IMAGE)} sur chaque page. Combien d'images colle ${q} ?`, `${q} colle ${quantite(t, IMAGE)}.`],
     part: (q, n, p, t) => [`${q} colle ${quantite(t, IMAGE)} sur ${quantite(n, PAGE)} de son album. Chaque page a le même nombre d'images. Combien d'images y a-t-il sur chaque page ?`, `Il y a ${quantite(p, IMAGE)} sur chaque page.`],
     nombre: (q, n, p, t) => [`${q} colle ${quantite(t, IMAGE)} dans son album, ${quantite(p, IMAGE)} par page. Combien de pages remplit ${q} ?`, `${q} remplit ${quantite(n, PAGE)}.`],
   },
   {
+    objet: { forme: "personne", couleur: "#7e57c2" },
     plafond: 30,
     tout: (_q, n, p, t) => [`Pour le sport, la classe fait ${quantite(n, EQUIPE)}. Dans chaque équipe, il y a ${quantite(p, ELEVE)}. Combien y a-t-il d'élèves en tout ?`, `Il y a ${quantite(t, ELEVE)} en tout.`],
     part: (_q, n, p, t) => [`Pour le sport, ${quantite(t, ELEVE)} forment ${quantite(n, EQUIPE)}. Toutes les équipes ont le même nombre d'élèves. Combien y a-t-il d'élèves dans chaque équipe ?`, `Il y a ${quantite(p, ELEVE)} dans chaque équipe.`],
     nombre: (_q, n, p, t) => [`Pour le sport, ${quantite(t, ELEVE)} forment des équipes de ${quantite(p, ELEVE)}. Combien d'équipes y a-t-il ?`, `Il y a ${quantite(n, EQUIPE)}.`],
   },
   {
+    objet: { forme: "chaise", couleur: "#8d6e63" },
     plafond: 60,
     tout: (_q, n, p, t) => [`Dans la salle, il y a ${quantite(n, TABLE)}. Autour de chaque table, il y a ${quantite(p, CHAISE)}. Combien y a-t-il de chaises en tout ?`, `Il y a ${quantite(t, CHAISE)} en tout.`],
     part: (_q, n, p, t) => [`Dans la salle, ${quantite(t, CHAISE)} sont placées autour de ${quantite(n, TABLE)}, le même nombre autour de chaque table. Combien y a-t-il de chaises autour de chaque table ?`, `Il y a ${quantite(p, CHAISE)} autour de chaque table.`],
     nombre: (_q, n, p, t) => [`Dans la salle, on place ${quantite(p, CHAISE)} autour de chaque table. Il y a ${quantite(t, CHAISE)}. Combien de tables faut-il ?`, `Il faut ${quantite(n, TABLE)}.`],
   },
+];
+
+/** Ce qu'on dessine pour chaque objet comparé, dans le même ordre. */
+export const OBJETS_COMPARES_DESSINES: Objet[] = [
+  { forme: "bille", couleur: "#e53935" }, { forme: "carte", couleur: "#fb8c00" }, { forme: "carte", couleur: "#1e88e5" },
+  { forme: "livre", couleur: "#43a047" }, { forme: "etoile", couleur: "#fdd835" }, { forme: "carte", couleur: "#7e57c2" },
+  { forme: "rond", couleur: "#f06292" },
 ];
 
 /** Ce qu'on compare. */
@@ -443,6 +478,7 @@ export function redigerMultiplicatif(situation: Extract<Situation, { forme: "par
       petit: { valeur, connue: type === "grand" },
       grand: { valeur: grand, connue: type === "petit" },
       noms: enonces ? [a, b] : ["A", "B"],
+      objets: [OBJETS_COMPARES_DESSINES[situation.objets] ?? OBJETS_COMPARES_DESSINES[0]],
     };
     if (type === "grand") {
       return {
@@ -467,6 +503,7 @@ export function redigerMultiplicatif(situation: Extract<Situation, { forme: "par
     nombre: { valeur: fois, connue: type !== "nombre" },
   };
   const contexte = CONTEXTES_GROUPES[situation.contexte] ?? CONTEXTES_GROUPES[0];
+  schema.objets = [contexte.objet];
   const [enonce, phrase] = contexte[type](situation.qui, fois, valeur, tout);
   return {
     schema, situation,
@@ -524,6 +561,9 @@ export type MarqueInconnue = "?" | "vide" | "surlignee";
 export type Palette = "classe" | "noir" | "perso";
 export type Epaisseur = "fin" | "normal" | "epais";
 export type TailleSchema = "moyen" | "grand" | "pleine";
+/** Dans les cases : les nombres, des objets dessinés, ou les deux. */
+export type ImagesCases = "non" | "oui" | "avec-nombres";
+export type FormeImages = "enonce" | "ronds";
 
 /** Tout ce qui paraît sur la feuille, élément par élément. */
 export interface Presentation {
@@ -560,6 +600,8 @@ export interface Presentation {
   toutEnBas: boolean;
   epaisseur: Epaisseur;
   tailleSchema: TailleSchema;
+  images: ImagesCases;
+  formeImages: FormeImages;
 }
 
 const BLEU = "#2438d6";
@@ -574,6 +616,7 @@ export const PRESENTATION_COMPLETE: Presentation = {
   schema: "nombres", inconnue: "?", etiquettes: true, motTout: "TOUT", motPartie: "PARTIE", aides: true,
   couleurs: "classe", couleurTout: BLEU, couleurPartie1: ROUGE, couleurPartie2: PRUNE, couleurPartie3: VERT_PARTIE,
   proportionnel: true, toutEnBas: false, epaisseur: "normal", tailleSchema: "moyen",
+  images: "non", formeImages: "enonce",
 };
 
 /** Le modèle en barres et ses nombres, rien d'autre. */
@@ -593,6 +636,8 @@ const CHOIX: Partial<Record<keyof Presentation, readonly unknown[]>> = {
   couleurs: ["classe", "noir", "perso"],
   epaisseur: ["fin", "normal", "epais"],
   tailleSchema: ["moyen", "grand", "pleine"],
+  images: ["non", "oui", "avec-nombres"],
+  formeImages: ["enonce", "ronds"],
 };
 
 /** Une présentation lue d'ailleurs (réglages, ancienne version) : ce qui est invalide reprend sa valeur par défaut. */
@@ -632,6 +677,9 @@ export interface StyleSchema {
   toutEnBas: boolean;
   epaisseur: number;
   police: string;
+  images: ImagesCases;
+  /** Des ronds de couleur plutôt que les objets de l'énoncé. */
+  ronds: boolean;
 }
 
 const POLICES: Record<Police, string> = {
@@ -652,6 +700,7 @@ export function styleSchema(p: Presentation): StyleSchema {
     etiquettes: p.etiquettes, motTout: p.motTout.trim(), motPartie: p.motPartie.trim(), aides: p.aides,
     inconnue: p.inconnue, proportionnel: p.proportionnel, toutEnBas: p.toutEnBas,
     epaisseur: { fin: 2, normal: 3, epais: 5 }[p.epaisseur], police: POLICES[p.police],
+    images: p.images, ronds: p.formeImages === "ronds",
   };
 }
 
@@ -683,6 +732,93 @@ export function largeurs(valeurs: number[], total: number, mini: number): number
   }
 }
 
+// ── Objets dessinés dans les cases ──
+//
+// Pour un élève qui ne lit pas encore les nombres : 8 billes rouges dans la
+// case de 8. Au-delà de LIMITE_OBJETS, ou dans une case trop étroite, le
+// nombre reste écrit — des objets minuscules ne se comptent pas.
+
+export const LIMITE_OBJETS = 20;
+const GRIS_OBJET = "#9e9e9e";
+
+/** Le dessin d'un objet, dans un carré de 20 × 20. */
+function traceObjet(forme: FormeObjet, c: string): string {
+  const t = `stroke="#3a3a3a" stroke-width="1" stroke-linejoin="round"`;
+  switch (forme) {
+    case "bille":
+      return `<circle cx="10" cy="10" r="8" fill="${c}" ${t}/><circle cx="7.2" cy="7" r="2.3" fill="#fff" opacity=".55"/>`;
+    case "pomme":
+      return `<path d="M10 6.5C6.2 3.5 2 6 2.6 11.2 3.2 16 7 19 10 17.2 13 19 16.8 16 17.4 11.2 18 6 13.8 3.5 10 6.5Z" fill="${c}" ${t}/>`
+        + `<path d="M10 6.3C10 4.2 10.8 2.8 12.2 2.1" fill="none" stroke="#5d4037" stroke-width="1.4" stroke-linecap="round"/>`
+        + `<path d="M11 4.2C12.8 2.2 15.4 2.4 16.2 3.4 14.4 5.2 12.6 5.3 11 4.2Z" fill="#43a047"/>`;
+    case "fleur":
+      return [[10, 4.8], [15, 8.4], [13.1, 14.3], [6.9, 14.3], [5, 8.4]]
+        .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.7" fill="${c}" ${t}/>`).join("")
+        + `<circle cx="10" cy="10" r="2.9" fill="#fdd835" ${t}/>`;
+    case "poisson":
+      return `<path d="M13.6 10 18.6 5.8V14.2Z" fill="${c}" ${t}/><path d="M1.6 10C4.4 4.6 10.6 4.4 14.6 10 10.6 15.6 4.4 15.4 1.6 10Z" fill="${c}" ${t}/>`
+        + `<circle cx="5.4" cy="9" r="1.1" fill="#3a3a3a"/>`;
+    case "etoile":
+      return `<path d="M10 1.6 12.5 7.1 18.4 7.6 13.9 11.6 15.3 17.6 10 14.5 4.7 17.6 6.1 11.6 1.6 7.6 7.5 7.1Z" fill="${c}" ${t}/>`;
+    case "carte":
+      return `<rect x="4.2" y="2.4" width="11.6" height="15.2" rx="1.8" fill="${c}" ${t}/><rect x="6.4" y="4.8" width="7.2" height="10.4" rx="1" fill="#fff" opacity=".35"/>`;
+    case "crayon":
+      return `<path d="M5.5 16.8 3.4 17.6 4.2 15.4 13.8 5.8 15.2 7.2Z" fill="#f5deb3" ${t}/><path d="M6.6 14.8 14.2 4.2 17.2 7.2 7.8 16.6Z" fill="${c}" ${t}/>`;
+    case "livre":
+      return `<rect x="3.6" y="2.8" width="12.8" height="14.4" rx="1.2" fill="${c}" ${t}/><path d="M6.4 2.8V17.2" stroke="#fff" stroke-width="1.3" opacity=".6"/>`;
+    case "voiture":
+      return `<path d="M1.8 13 3.6 8.6C4.2 7.2 5.2 6.6 6.8 6.6H13.2C14.8 6.6 15.8 7.2 16.4 8.6L18.2 13V15.6H1.8Z" fill="${c}" ${t}/>`
+        + `<rect x="5.6" y="8.2" width="8.8" height="3" rx=".8" fill="#fff" opacity=".6"/>`
+        + `<circle cx="5.8" cy="15.6" r="2.2" fill="#3a3a3a"/><circle cx="14.2" cy="15.6" r="2.2" fill="#3a3a3a"/>`;
+    case "gateau":
+      return `<path d="M3 10.6H17V17.2H3Z" fill="${c}" ${t}/><path d="M3 10.8Q5 8 7 10.8 9 8 11 10.8 13 8 15 10.8 16 9.2 17 10.8" fill="#fff" ${t}/>`
+        + `<circle cx="10" cy="6.2" r="2.1" fill="#e53935" ${t}/>`;
+    case "personne":
+      return `<circle cx="10" cy="5.4" r="3.4" fill="${c}" ${t}/><path d="M3.8 18.4C3.8 12.8 6.4 10 10 10S16.2 12.8 16.2 18.4Z" fill="${c}" ${t}/>`;
+    case "animal":
+      return `<ellipse cx="9.4" cy="11" rx="6.8" ry="4.6" fill="${c}" ${t}/><circle cx="16" cy="8.2" r="2.8" fill="${c}" ${t}/>`
+        + `<path d="M5 15V18.4M8.2 15.4V18.4M11.4 15.4V18.4M14.2 14.6V18.4" stroke="#3a3a3a" stroke-width="1.5" stroke-linecap="round"/>`;
+    case "chaise":
+      return `<path d="M5 2.8H8V10H15V13H8V18H5Z" fill="${c}" ${t}/><path d="M13 13V18" stroke="#3a3a3a" stroke-width="2" stroke-linecap="round"/>`;
+    default:
+      return `<circle cx="10" cy="10" r="8" fill="${c}" ${t}/>`;
+  }
+}
+
+/** Le meilleur rangement de `n` objets dans une case : lignes, colonnes, taille. */
+export function rangementObjets(n: number, l: number, h: number): { lignes: number; colonnes: number; cote: number } | null {
+  if (n <= 0 || n > LIMITE_OBJETS) return null;
+  let meilleur: { lignes: number; colonnes: number; cote: number } | null = null;
+  for (let lignes = 1; lignes <= 4; lignes++) {
+    const colonnes = Math.ceil(n / lignes);
+    if (colonnes * (lignes - 1) >= n) continue; // une ligne vide
+    const cote = Math.min((l - 8) / colonnes, (h - 6) / lignes);
+    if (!meilleur || cote > meilleur.cote) meilleur = { lignes, colonnes, cote };
+  }
+  return meilleur && meilleur.cote >= 11 ? meilleur : null;
+}
+
+/** Des objets rangés dans une case, groupe après groupe (8 rouges puis 4 bleus). */
+function objetsDansLaCase(x: number, y: number, l: number, h: number, groupes: { objet: Objet; n: number }[], st: StyleSchema): string | null {
+  const total = groupes.reduce((s, g) => s + g.n, 0);
+  const r = rangementObjets(total, l, h);
+  if (!r) return null;
+  const x0 = x + (l - r.colonnes * r.cote) / 2;
+  const y0 = y + (h - r.lignes * r.cote) / 2;
+  const taille = r.cote * 0.88;
+  let k = 0, sortie = "";
+  for (const g of groupes) {
+    const forme = st.ronds ? "rond" : g.objet.forme;
+    for (let i = 0; i < g.n; i++, k++) {
+      const cx = x0 + (k % r.colonnes) * r.cote + r.cote / 2;
+      const cy = y0 + Math.floor(k / r.colonnes) * r.cote + r.cote / 2;
+      sortie += `<g class="pb-objet" transform="translate(${arrondi(cx - taille / 2)} ${arrondi(cy - taille / 2)}) scale(${arrondi(taille / 20 * 100) / 100})">`
+        + `${traceObjet(forme, escapeHtml(g.objet.couleur))}</g>`;
+    }
+  }
+  return sortie;
+}
+
 /** Ce qu'affiche une case, selon le mode et la marque choisie pour la case à trouver. */
 function contenu(c: Case, mode: ModeSchema, st: StyleSchema): { texte: string; fond?: string; encre?: string; gras?: boolean } {
   if (mode === "corrige") return c.connue ? { texte: nombre(c.valeur) } : { texte: nombre(c.valeur), fond: VERT_FOND, encre: VERT, gras: true };
@@ -697,13 +833,29 @@ function texte(x: number, y: number, valeur: string, taille: number, couleur: st
     + `font-size="${arrondi(taille)}" fill="${escapeHtml(couleur)}"${extra}>${escapeHtml(valeur)}</text>`;
 }
 
-/** Une case : son cadre et, selon le mode, son nombre, « ? » ou rien. */
+/**
+ * Une case : son cadre et, selon le mode, son nombre, « ? » ou rien. Avec des
+ * `objets`, une valeur visible se dessine en objets à compter.
+ */
 function boite(x: number, y: number, l: number, h: number, trait: string, c: Case | null, mode: ModeSchema, st: StyleSchema,
-  { taille = 30, encre = trait, pointille = false }: { taille?: number; encre?: string; pointille?: boolean } = {}): string {
+  { taille = 30, encre = trait, pointille = false, objets }: {
+    taille?: number; encre?: string; pointille?: boolean; objets?: { objet: Objet; n: number }[];
+  } = {}): string {
   const vu = c ? contenu(c, mode, st) : { texte: "" };
   const cadre = `<rect x="${arrondi(x)}" y="${arrondi(y)}" width="${arrondi(l)}" height="${h}" fill="${vu.fond ?? "#fff"}" `
     + `stroke="${escapeHtml(trait)}" stroke-width="${st.epaisseur}"${pointille ? ' stroke-dasharray="8 6"' : ""}/>`;
   if (!vu.texte) return cadre;
+  const visible = !!c && (mode === "corrige" || c.connue);
+  if (visible && objets && st.images !== "non") {
+    const avecNombre = st.images === "avec-nombres";
+    const dessin = objetsDansLaCase(x, y, avecNombre ? l - 26 : l, h, objets, st);
+    if (dessin) {
+      if (!avecNombre) return cadre + dessin;
+      const pastille = `<circle cx="${arrondi(x + l - 14)}" cy="${arrondi(y + 14)}" r="11" fill="${vu.fond ?? "#fff"}" stroke="${escapeHtml(vu.encre ?? encre)}" stroke-width="1.5"/>`
+        + texte(x + l - 14, y + 15, vu.texte, vu.texte.length > 1 ? 11 : 13, vu.encre ?? encre, st, ' font-weight="700"');
+      return cadre + dessin + pastille;
+    }
+  }
   const place = Math.min(taille, (l - 10) / Math.max(1, vu.texte.length * 0.58));
   return cadre + texte(x + l / 2, y + h / 2 + 1, vu.texte, place, vu.encre ?? encre, st, vu.gras ? ' font-weight="700"' : "");
 }
@@ -732,11 +884,18 @@ function schemaParties(s: Extract<Schema, { forme: "parties" }>, mode: ModeSchem
   const yParties = st.toutEnBas ? yHaut : yBas;
   const valeurs = s.parties.map((p) => p.valeur);
   const tailles = st.proportionnel ? largeurs(valeurs, l, 70) : valeurs.map(() => l / valeurs.length);
-  let corps = boite(x0, yTout, l, h, st.trait, s.tout, mode, st, { taille: 32, encre: st.encreTout });
+  const objet = (k: number): Objet => s.objets?.[k] ?? { forme: "rond", couleur: st.parties[k % 3] };
+  // Dans le tout, les objets de chaque partie à la suite. Tant qu'une partie
+  // est à trouver, ils sont gris : leurs couleurs donneraient la réponse à compter.
+  const partieCachee = mode !== "corrige" && s.parties.some((p) => !p.connue);
+  const objetsDuTout = s.parties.map((p, k) => ({
+    objet: partieCachee ? { forme: objet(0).forme, couleur: GRIS_OBJET } : objet(k), n: p.valeur,
+  }));
+  let corps = boite(x0, yTout, l, h, st.trait, s.tout, mode, st, { taille: 32, encre: st.encreTout, objets: objetsDuTout });
   if (st.etiquettes && st.motTout) corps += etiquette(LARGEUR / 2, st.toutEnBas ? yTout + h + 17 : yTout - 16, st.motTout, tailleMot(st.motTout, l), st);
   let x = x0;
   s.parties.forEach((p, k) => {
-    corps += boite(x, yParties, tailles[k], h, st.parties[k % 3], p, mode, st);
+    corps += boite(x, yParties, tailles[k], h, st.parties[k % 3], p, mode, st, { objets: [{ objet: objet(k), n: p.valeur }] });
     if (st.etiquettes && st.motPartie) {
       corps += etiquette(x + tailles[k] / 2, st.toutEnBas ? yParties - 16 : yParties + h + 17, st.motPartie, tailleMot(st.motPartie, tailles[k]), st);
     }
@@ -748,6 +907,8 @@ function schemaParties(s: Extract<Schema, { forme: "parties" }>, mode: ModeSchem
 function schemaPartsEgales(s: Extract<Schema, { forme: "parts-egales" }>, mode: ModeSchema, st: StyleSchema): string {
   const x0 = 10, l = LARGEUR - 20, h = 56, ecart = 16;
   const couleur = st.parties[0];
+  const objet: Objet = s.objets?.[0] ?? { forme: "rond", couleur };
+  const dansUnePart = [{ objet, n: s.part.valeur }];
   const margeTout = st.etiquettes && st.motTout ? 32 : 6;
   const margeAide = st.aides ? 50 : 6;
   const yPremier = st.toutEnBas ? margeAide : margeTout;
@@ -755,7 +916,7 @@ function schemaPartsEgales(s: Extract<Schema, { forme: "parts-egales" }>, mode: 
   const yParts = st.toutEnBas ? yPremier : yPremier + h + ecart;
   const hauteur = yPremier + 2 * h + ecart + (st.toutEnBas ? margeTout : margeAide);
 
-  let corps = boite(x0, yTout, l, h, st.trait, s.tout, mode, st, { taille: 32, encre: st.encreTout });
+  let corps = boite(x0, yTout, l, h, st.trait, s.tout, mode, st, { taille: 32, encre: st.encreTout, objets: [{ objet, n: s.tout.valeur }] });
   if (st.etiquettes && st.motTout) corps += etiquette(LARGEUR / 2, st.toutEnBas ? yTout + h + 17 : yTout - 16, st.motTout, tailleMot(st.motTout, l), st);
 
   const nombreVisible = s.nombre.connue || mode === "corrige";
@@ -765,14 +926,14 @@ function schemaPartsEgales(s: Extract<Schema, { forme: "parts-egales" }>, mode: 
       // La valeur cherchée n'est marquée que dans la première part : une
       // rangée de « ? » se lirait comme autant de nombres différents.
       const montree = s.part.connue || mode === "corrige" || k === 0 ? s.part : null;
-      corps += boite(x0 + k * largeur, yParts, largeur, h, couleur, montree, mode, st, { taille: 28 });
+      corps += boite(x0 + k * largeur, yParts, largeur, h, couleur, montree, mode, st, { taille: 28, objets: dansUnePart });
     }
   } else {
     // Nombre de parts inconnu : deux parts, puis la suite en pointillés. Les
     // dessiner toutes donnerait la réponse à compter.
     const largeur = Math.min((l * s.part.valeur) / Math.max(1, s.tout.valeur), l / 3);
-    corps += boite(x0, yParts, largeur, h, couleur, s.part, mode, st, { taille: 28 })
-      + boite(x0 + largeur, yParts, largeur, h, couleur, s.part, mode, st, { taille: 28 })
+    corps += boite(x0, yParts, largeur, h, couleur, s.part, mode, st, { taille: 28, objets: dansUnePart })
+      + boite(x0 + largeur, yParts, largeur, h, couleur, s.part, mode, st, { taille: 28, objets: dansUnePart })
       + boite(x0 + 2 * largeur, yParts, l - 2 * largeur, h, couleur, null, mode, st, { pointille: true })
       + texte(x0 + 2 * largeur + (l - 2 * largeur) / 2, yParts + h / 2, "…", 30, couleur, st);
   }
@@ -809,8 +970,17 @@ function schemaComparaison(s: Extract<Schema, { forme: "comparaison" }>, mode: M
   const nom = (y: number, valeur: string) =>
     `<text x="10" y="${y}" dominant-baseline="central" font-family="${escapeHtml(st.police)}" font-size="18" font-weight="700" fill="#222"`
     + `${valeur.length > 8 ? ' textLength="92" lengthAdjust="spacingAndGlyphs"' : ""}>${escapeHtml(valeur)}</text>`;
-  let corps = boite(xBarres, y1, unite, h, st.parties[0], s.petit, mode, st, { taille: 26 });
-  for (let k = 0; k < s.fois; k++) corps += boite(xBarres + k * unite, y2, unite, h, st.parties[1], null, mode, st);
+  const objet: Objet = s.objets?.[0] ?? { forme: "rond", couleur: st.parties[0] };
+  const dansLePetit = [{ objet, n: s.petit.valeur }];
+  let corps = boite(xBarres, y1, unite, h, st.parties[0], s.petit, mode, st, { taille: 26, objets: dansLePetit });
+  // Chaque morceau de la grande barre vaut la petite : ses objets s'y
+  // dessinent aussi, sauf si la petite quantité est justement à trouver.
+  const petitVisible = mode === "corrige" || s.petit.connue;
+  for (let k = 0; k < s.fois; k++) {
+    const dessin = st.images !== "non" && petitVisible
+      ? objetsDansLaCase(xBarres + k * unite, y2, unite, h, dansLePetit, st) : null;
+    corps += boite(xBarres + k * unite, y2, unite, h, st.parties[1], null, mode, st) + (dessin ?? "");
+  }
   if (st.etiquettes) corps += nom(y1 + h / 2, s.noms[0]) + nom(y2 + h / 2, s.noms[1]);
   const fin = xBarres + s.fois * unite;
   // L'accolade et la grande quantité restent toujours : sans elles, le schéma
