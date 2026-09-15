@@ -4,6 +4,7 @@ import { Field, Input, Modal, Select } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { printHTML } from "../print";
+import { useMemoire, useReglages } from "../components/useMemoire";
 import {
   genererPartieTout, genererMultiplicatifs, blocProbleme, blocCorrige, enteteFeuille, feuilleProblemes, classesFeuille,
   decouperEnPages, lirePrenoms, retoucheDe, retoucher, schemaSvg, styleSchema, normaliserPresentation, memePresentation,
@@ -19,30 +20,6 @@ import {
 // problème, et l'on imprime la feuille et son corrigé.
 
 const nouvelleGraine = () => Math.floor(Math.random() * 2 ** 31);
-
-/** Réglages gardés d'une visite à l'autre sur cet ordinateur. */
-function useMemoire<T>(cle: string, lire: (brut: unknown) => T): [T, (v: T) => void] {
-  const [valeur, setValeur] = React.useState<T>(() => {
-    try {
-      const brut = localStorage.getItem(`fabriquer:${cle}`);
-      return lire(brut ? JSON.parse(brut) : undefined);
-    } catch {
-      return lire(undefined);
-    }
-  });
-  const ecrire = React.useCallback((v: T) => {
-    setValeur(v);
-    try { localStorage.setItem(`fabriquer:${cle}`, JSON.stringify(v)); } catch { /* stockage indisponible */ }
-  }, [cle]);
-  return [valeur, ecrire];
-}
-
-function useReglages<T extends object>(cle: string, defaut: T): [T, (maj: Partial<T>) => void] {
-  const [valeur, ecrire] = useMemoire<T>(cle, (brut) => ({ ...defaut, ...(brut && typeof brut === "object" ? brut : {}) }));
-  const ref = React.useRef(valeur);
-  ref.current = valeur;
-  return [valeur, React.useCallback((m: Partial<T>) => ecrire({ ...ref.current, ...m }), [ecrire])];
-}
 
 /** La feuille tirée : sa graine, les problèmes remplacés et ceux dont l'enseignant a choisi les nombres. */
 function useTirage(structure: string) {
