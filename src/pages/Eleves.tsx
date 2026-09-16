@@ -13,6 +13,13 @@ import { DispositifsTab } from "./Dispositifs";
 import { ProgressionsTab } from "./Progressions";
 import { GevaScoTab } from "./GevaSco";
 import { DicteeAtelier } from "../components/DicteeAtelier";
+import { age, libelleAge } from "../dossier";
+
+/** « 12 ans », ou rien sans date de naissance. */
+const ageDe = (e: Eleve) => {
+  const ans = age(e.dateNaissance);
+  return ans === undefined ? "" : libelleAge(ans);
+};
 import { ChipObservation, ChoixTypeObservation, couleurObservation } from "../components/TypeObservation";
 import { DossierTab } from "./DossierEleve";
 import { EvaluationDiagnostiqueTab } from "./EvaluationDiagnostique";
@@ -93,7 +100,9 @@ function ListeEleves() {
             <Avatar eleve={e} />
             <div style={{ flex: 1 }}>
               <div className="title">{e.nom}</div>
-              <div className="meta">{e.niveau}{e.dateNaissance ? " · né(e) le " + e.dateNaissance : ""}{e.ine ? " · INE " + e.ine : ""}</div>
+              <div className="meta">
+                {[e.niveau, ageDe(e), e.ine && `INE ${e.ine}`].filter(Boolean).join(" · ")}
+              </div>
             </div>
             <button className="btn ghost sm" onClick={() => setEdit(e)} aria-label="Modifier">✏️</button>
             <button className="btn ghost sm" onClick={() => setDel(e)} aria-label="Supprimer">🗑</button>

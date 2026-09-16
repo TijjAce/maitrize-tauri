@@ -170,6 +170,9 @@ export function age(dateNaissance: string, aujourdhui = new Date()): number | un
   return a >= 0 && a < 130 ? a : undefined;
 }
 
+/** « 9 ans », « 1 an ». */
+export const libelleAge = (ans: number) => `${ans} an${ans > 1 ? "s" : ""}`;
+
 export function construire(
   eleve: Eleve,
   commentaires: CommentaireEleve[],

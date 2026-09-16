@@ -3,7 +3,7 @@ import { ChipObservation, couleurObservation } from "../components/TypeObservati
 import { api, Eleve, TYPE_AXE } from "../api";
 import { Select, Empty, useAsync, ouvrirOnglet } from "../components/ui";
 import { printHTML, escapeHtml } from "../print";
-import { construire, Dossier, Piece } from "../dossier";
+import { construire, libelleAge, Dossier, Piece } from "../dossier";
 
 // ── Dossier de l'élève ─────────────────────────────────────────────────────
 //
@@ -176,9 +176,7 @@ function Identite({ eleve, age }: { eleve: Eleve; age?: number }) {
       <div>
         <div style={{ fontSize: 18, fontWeight: 600 }}>{eleve.nom}</div>
         <div style={{ fontSize: 13, color: "var(--text-2)" }}>
-          {[eleve.niveau, age !== undefined && `${age} ans`,
-            eleve.dateNaissance && `né(e) le ${new Date(eleve.dateNaissance).toLocaleDateString("fr-FR")}`,
-            eleve.ine && `INE ${eleve.ine}`].filter(Boolean).join(" · ")}
+          {[eleve.niveau, age !== undefined && libelleAge(age), eleve.ine && `INE ${eleve.ine}`].filter(Boolean).join(" · ")}
         </div>
       </div>
     </div>
