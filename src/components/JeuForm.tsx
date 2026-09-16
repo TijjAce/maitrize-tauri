@@ -6,6 +6,21 @@ import { FichierImg } from "./Deroulement";
 import { fileToBase64 } from "./SeanceParts";
 import { toast } from "./Toaster";
 import { questionRegle, texteSimple } from "../jeuxCites";
+import { CompetenceTree, labelCourt, type CompetenceSelectionnee } from "./CompetenceTree";
+
+/** Les compétences du BO d'un jeu. */
+export function competencesBoDu(jeu: Pick<Jeu, "competencesBo">): CompetenceSelectionnee[] {
+  try {
+    const v = JSON.parse(jeu.competencesBo || "[]");
+    return Array.isArray(v) ? v.filter((c) => c && typeof c.competenceTitre === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+const memeCompetence = (a: CompetenceSelectionnee, b: CompetenceSelectionnee) =>
+  a.referentielNom === b.referentielNom && a.sousDomaineTitre === b.sousDomaineTitre
+  && (a.competenceRefId ?? a.competenceTitre) === (b.competenceRefId ?? b.competenceTitre);
 
 /** Un jeu de la ludothèque, à créer ou à modifier — depuis la ludothèque ou le cahier journal. */
 export function JeuForm({ j, nouveau = !j.titre, onClose, onSaved }: {
@@ -16,6 +31,16 @@ export function JeuForm({ j, nouveau = !j.titre, onClose, onSaved }: {
 }) {
   const [v, setV] = React.useState<Jeu>(j);
   const up = (p: Partial<Jeu>) => setV((x) => ({ ...x, ...p }));
+
+  // Les compétences du BO, cochées dans les programmes officiels.
+  const bo = competencesBoDu(v);
+  const [choixBo, setChoixBo] = React.useState(false);
+  const [filtreBo, setFiltreBo] = React.useState("");
+  const basculer = (c: CompetenceSelectionnee) => setV((x) => {
+    const liste = competencesBoDu(x);
+    const suite = liste.some((y) => memeCompetence(y, c)) ? liste.filter((y) => !memeCompetence(y, c)) : [...liste, c];
+    return { ...x, competencesBo: JSON.stringify(suite) };
+  });
   // Le maximum ne peut pas passer sous le minimum, et inversement : sinon le
   // jeu n'apparaît sous aucun effectif dans le filtre.
   const setMin = (n: number) => setV((x) => ({ ...x, nbJoueursMin: n, nbJoueursMax: Math.max(n, x.nbJoueursMax) }));
@@ -53,7 +78,7 @@ export function JeuForm({ j, nouveau = !j.titre, onClose, onSaved }: {
   };
 
   return (
-    <Modal titre={nouveau ? "Nouveau jeu" : "Modifier le jeu"} onClose={onClose}
+    <Modal titre={nouveau ? "Nouveau jeu" : "Modifier le jeu"} onClose={onClose} large
       footer={<><button className="btn" onClick={onClose}>Annuler</button>
         <button className="btn primary" disabled={!v.titre.trim() || enregistrement} onClick={enregistrer}>Enregistrer</button></>}>
       <Field label="Nom du jeu"><Input autoFocus value={v.titre} onChange={(e) => up({ titre: e.target.value })} /></Field>
@@ -71,8 +96,41 @@ export function JeuForm({ j, nouveau = !j.titre, onClose, onSaved }: {
       <Field label="Ce que le jeu travaille">
         <Textarea value={v.competences} placeholder="Attendre son tour, dénombrer jusqu'à 10, langage oral…"
           onChange={(e) => up({ competences: e.target.value })} />
+        {bo.length > 0 && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+            {bo.map((c) => (
+              <span key={`${c.referentielNom}|${c.sousDomaineTitre}|${c.competenceRefId ?? c.competenceTitre}`} className="chip"
+                title={[c.referentielNom, c.domaineTitre, c.sousDomaineTitre].filter(Boolean).join(" › ")}
+                style={{ background: "var(--accent-soft)", color: "var(--accent)", maxWidth: "100%" }}>
+                🎯 {labelCourt(c)}
+                <button className="btn ghost sm" style={{ padding: 0, marginLeft: 4 }} onClick={() => basculer(c)}
+                  aria-label={`Retirer « ${labelCourt(c)} »`}>✕</button>
+              </span>
+            ))}
+          </div>
+        )}
+        <button type="button" className="btn sm" style={{ marginTop: 8 }} onClick={() => setChoixBo((x) => !x)} aria-expanded={choixBo}>
+          {choixBo ? "Fermer les programmes" : `🎯 Choisir des compétences du BO${bo.length ? ` (${bo.length})` : ""}`}
+        </button>
+        {choixBo && (
+          <div className="jeu-choix-bo">
+            <input className="input" value={filtreBo} onChange={(e) => setFiltreBo(e.target.value)} autoFocus
+              placeholder="Chercher une compétence (ex. : nombres jusqu'à 30, attendre son tour…)" aria-label="Chercher une compétence du BO" />
+            <div className="jeu-choix-bo-liste">
+              <CompetenceTree mode="multi" selection={bo} onToggle={basculer} recherche={filtreBo} />
+            </div>
+          </div>
+        )}
       </Field>
-      <Field label="Description"><Textarea value={v.descriptionJeu} onChange={(e) => up({ descriptionJeu: e.target.value })} /></Field>
+      {/* Le champ Description a disparu ; un jeu qui en avait une la garde sous les yeux, pour la déplacer ou la vider. */}
+      {j.descriptionJeu.trim() !== "" && (
+        <Field label="Description (ancien champ)">
+          <Textarea value={v.descriptionJeu} onChange={(e) => up({ descriptionJeu: e.target.value })} />
+          <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 4 }}>
+            Ce champ n'existe plus pour les nouveaux jeux : déplacez ce texte dans la règle ou dans « Ce que le jeu travaille », puis videz-le.
+          </div>
+        </Field>
+      )}
       <Field label="Règle du jeu / variantes">
         <Textarea value={v.regles} rows={Math.min(12, Math.max(4, v.regles.split("\n").length + 1))}
           placeholder="Règle simplifiée, adaptations pour certains élèves… Elle s'affiche dans le cahier journal et le PDF du jour quand le jeu y est cité."
