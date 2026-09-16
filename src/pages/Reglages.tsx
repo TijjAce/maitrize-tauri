@@ -1,6 +1,6 @@
 import React from "react";
 import { Page } from "../App";
-import { api, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo } from "../api";
+import { api, isMac, texteErreur, type InfoCopie, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo } from "../api";
 import { Field, Input, Select, Modal, Confirm, useAsync } from "../components/ui";
 import { MesAppareils } from "../components/MesAppareils";
 import { confirmer } from "../components/confirmer";
@@ -8,6 +8,7 @@ import { toast } from "../components/Toaster";
 import { applyTheme, MODES, ACCENTS, STYLES } from "../theme";
 import { lireAcceptationCgu, CguAcceptation } from "../components/CGU";
 import { getVersion } from "@tauri-apps/api/app";
+import { copierLeBureau, suivreLaCopie } from "../components/CopieDuBureau";
 
 const ONGLETS = [
   ["general", "Général"],
@@ -267,6 +268,7 @@ export default function Reglages() {
           l'emplacement des fichiers et l'export de secours à la fin. */}
       <MesAppareils />
       <SauvegardeS3Card />
+      <CopieDuBureauCard />
       <CopiesAutomatiques />
       <DossierDesDonnees />
       <JournalIncidents />
@@ -546,6 +548,143 @@ function DossierDesDonnees() {
         <button className="btn" onClick={changer}>Choisir un autre dossier…</button>
         {d.personnalise && <button className="btn" onClick={revenir}>Revenir au dossier par défaut</button>}
       </div>
+      {msg && <p style={{ fontSize: 13, marginBottom: 0 }}>{msg}</p>}
+    </div>
+  );
+}
+
+/** « aujourd'hui à 14:32 », « hier à 9:05 », « le 12/09 à 14:32 ». */
+function quandCopie(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const heure = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  const jour = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const ecart = Math.round((jour(new Date()) - jour(d)) / 86_400_000);
+  if (ecart === 0) return `aujourd'hui à ${heure}`;
+  if (ecart === 1) return `hier à ${heure}`;
+  return `le ${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })} à ${heure}`;
+}
+
+/**
+ * La copie du bureau dans un vrai dossier de l'ordinateur : de vrais fichiers,
+ * qui restent là si les données de Maitrize venaient à manquer.
+ */
+function CopieDuBureauCard() {
+  const [info, setInfo] = React.useState<InfoCopie | null>(null);
+  const [msg, setMsg] = React.useState("");
+  const [occupe, setOccupe] = React.useState(false);
+  const relire = React.useCallback(() => { api.copieBureauInfo().then(setInfo).catch(() => {}); }, []);
+  React.useEffect(() => {
+    relire();
+    return suivreLaCopie(relire);
+  }, [relire]);
+
+  const regler = async (active: boolean, emplacement?: string) => {
+    setMsg("");
+    try {
+      setInfo(await api.copieBureauRegler(active, emplacement));
+      if (active) copierLeBureau().then(relire).catch(() => {});
+    } catch (e) { setMsg("❌ " + texteErreur(e)); }
+  };
+  const choisir = async () => {
+    const { open } = await import("@tauri-apps/plugin-dialog");
+    const choix = await open({ directory: true, multiple: false, title: "Où poser la copie du bureau ?" });
+    if (typeof choix === "string") await regler(true, choix);
+  };
+  const copierMaintenant = async () => {
+    setOccupe(true);
+    setMsg("");
+    try {
+      const r = await copierLeBureau();
+      if (r.aJour) setMsg("✅ La copie est déjà à jour.");
+      else if (r.bilan) {
+        const b = r.bilan;
+        setMsg(b.erreurs.length
+          ? `⚠️ Copie faite, avec ${b.erreurs.length} fichier${b.erreurs.length > 1 ? "s" : ""} en erreur.`
+          : `✅ Copie à jour : ${b.ecrits} fichier${b.ecrits > 1 ? "s" : ""} écrit${b.ecrits > 1 ? "s" : ""}`
+            + (b.archives ? `, ${b.archives} ancienne${b.archives > 1 ? "s" : ""} version${b.archives > 1 ? "s" : ""} rangée${b.archives > 1 ? "s" : ""}.` : "."));
+      }
+      relire();
+    } catch (e) {
+      setMsg("❌ " + texteErreur(e));
+    } finally {
+      setOccupe(false);
+    }
+  };
+
+  if (!info) return null;
+  const d = info.derniere;
+  return (
+    <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <h3 style={{ margin: 0 }}>🖥 Copie du bureau sur l'ordinateur</h3>
+        {info.active && (
+          <span style={{ fontSize: 12, color: d?.erreurs.length ? "var(--danger, #ef4444)" : "var(--text-2)" }}>
+            {d ? `dernière : ${quandCopie(d.date)}` : "pas encore faite"}
+          </span>
+        )}
+      </div>
+      <p style={{ color: "var(--text-2)", fontSize: 13, margin: "6px 0 10px" }}>
+        Le plan de travail est recopié dans un vrai dossier, avec de vrais fichiers : les documents tels
+        que vous les avez déposés, les textes et les séquences en pages web, les liens en raccourcis. Si
+        les données de Maitrize venaient à manquer, votre travail reste là. La copie se met à jour toute
+        seule, au plus deux minutes après un changement. Rien n'est effacé sans filet : ce qui est
+        remplacé ou supprimé part dans « Anciennes versions », où cela reste trois mois.
+      </p>
+      <label className="pb-coche" style={{ marginBottom: 8 }}>
+        <input type="checkbox" checked={info.active} onChange={(e) => regler(e.target.checked)} />
+        <span>Faire la copie sur cet ordinateur</span>
+      </label>
+      {info.active && <>
+        <div style={{ fontSize: 13, fontFamily: "ui-monospace, monospace", wordBreak: "break-all",
+          background: "var(--panel-2)", padding: "6px 8px", borderRadius: 6 }}>
+          {info.racine}
+        </div>
+        <div style={{ fontSize: 12, color: "var(--text-2)", margin: "6px 0 10px" }}>
+          {info.parDefaut ? "Sur le Bureau" : "Emplacement choisi"}
+          {d && ` · ${d.fichiers} fichier${d.fichiers > 1 ? "s" : ""} dans la copie`}
+        </div>
+        {d?.autorisationRefusee && (
+          <p style={{ fontSize: 13, color: "var(--danger, #ef4444)", margin: "0 0 10px" }}>
+            {isMac
+              ? "macOS refuse à Maitrize l'accès à ce dossier. Ouvrez Réglages Système → Confidentialité et sécurité → Fichiers et dossiers, et cochez « Dossier Bureau » sous Maitrize ; ou choisissez un autre emplacement."
+              : "Windows refuse l'écriture dans ce dossier (dossier protégé ou en lecture seule) : choisissez un autre emplacement."}
+          </p>
+        )}
+        {d && (d.manquants?.length ?? 0) > 0 && (
+          <details style={{ fontSize: 12.5, margin: "0 0 10px", color: "var(--text-2)" }}>
+            <summary style={{ cursor: "pointer" }}>
+              {d.manquants.length} document{d.manquants.length > 1 ? "s" : ""} absent{d.manquants.length > 1 ? "s" : ""} de Maitrize, donc non copié{d.manquants.length > 1 ? "s" : ""}
+            </summary>
+            <div style={{ margin: "4px 0" }}>
+              Le bureau les cite, mais leur fichier n'est pas sur cet ordinateur : pas encore arrivé de l'autre
+              ordinateur, ou perdu. La copie les prendra dès qu'ils seront là.
+            </div>
+            <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>{d.manquants.map((x, i) => <li key={i}>{x}</li>)}</ul>
+          </details>
+        )}
+        {d && d.erreurs.length > 0 && !d.autorisationRefusee && (
+          <details style={{ fontSize: 12.5, margin: "0 0 10px" }}>
+            <summary style={{ cursor: "pointer", color: "var(--danger, #ef4444)" }}>
+              {d.erreurs.length} problème{d.erreurs.length > 1 ? "s" : ""} lors de la dernière copie
+            </summary>
+            <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>{d.erreurs.map((x, i) => <li key={i}>{x}</li>)}</ul>
+          </details>
+        )}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="btn primary" disabled={occupe} onClick={copierMaintenant}>
+            {occupe ? "Copie en cours…" : "Copier maintenant"}
+          </button>
+          <button className="btn" onClick={() => api.copieBureauOuvrir().catch((e) => setMsg("❌ " + texteErreur(e)))}>📂 Ouvrir le dossier</button>
+          <button className="btn" onClick={choisir}>Choisir un autre emplacement…</button>
+          {!info.parDefaut && <button className="btn" onClick={() => regler(true, "")}>Revenir au Bureau</button>}
+        </div>
+        <p style={{ fontSize: 12, color: "var(--text-2)", margin: "8px 0 0" }}>
+          Chaque ordinateur fait sa propre copie : choisissez un dossier propre à cet ordinateur, pas un
+          dossier partagé avec l'autre. Ce que vous modifiez dans la copie ne revient pas dans Maitrize.
+          Changer d'emplacement laisse l'ancienne copie où elle est.
+        </p>
+      </>}
       {msg && <p style={{ fontSize: 13, marginBottom: 0 }}>{msg}</p>}
     </div>
   );
