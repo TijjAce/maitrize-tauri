@@ -8,7 +8,7 @@ import { openCtx } from "../components/ctxmenu";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { SeanceReadView } from "./SequenceDetail";
-import { printHTML, escapeHtml } from "../print";
+import { printHTML, escapeHtml, dataUrlImage } from "../print";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
 import { CahierJournal, ecrireLeCahierJournal } from "../components/CahierJournal";
 import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
@@ -207,9 +207,9 @@ export default function Planning() {
     }
     const urls: Record<string, string> = {};
     await Promise.all([...noms].map(async (n) => {
-      try { const ext = (n.split(".").pop() || "png").toLowerCase(); urls[n] = `data:image/${ext};base64,${await api.fichierRead(n)}`; } catch { /* */ }
+      try { urls[n] = dataUrlImage(n, await api.fichierRead(n)); } catch { /* */ }
     }));
-    const imgTag = (nom: string) => urls[nom] ? `<img alt="" src="" />` : "";
+    const imgTag = (nom: string) => urls[nom] ? `<img alt="" src="${urls[nom]}" />` : "";
     const rendreCell = (cell: string) => {
       let out = "", last = 0, m: RegExpExecArray | null; const re = /\[img:([^\]]+)\]/g;
       while ((m = re.exec(cell))) { out += escapeHtml(cell.slice(last, m.index)) + imgTag(m[1]); last = m.index + m[0].length; }
