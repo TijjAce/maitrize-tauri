@@ -1,6 +1,13 @@
 // Impression / export PDF : écrit un document HTML autonome dans un iframe
 // caché puis déclenche l'impression système (→ « Enregistrer en PDF »).
 
+/** Une image lue en base64, prête pour `<img src>` : le type vient de l'extension du fichier. */
+export function dataUrlImage(nom: string, base64: string): string {
+  const ext = /\.([a-z0-9]+)$/i.exec(nom)?.[1].toLowerCase() ?? "png";
+  const type = ext === "jpg" ? "jpeg" : ext === "svg" ? "svg+xml" : ext;
+  return `data:image/${type};base64,${base64}`;
+}
+
 export function escapeHtml(s: string): string {
   return (s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
