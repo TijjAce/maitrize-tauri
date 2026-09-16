@@ -7,7 +7,7 @@ import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../component
 import { TableauEditor, MaterielSeance, imageDuPresse, fileToBase64 } from "../components/SeanceParts";
 import { IllustrationsEditor, DeroulementRead, CelluleContenu, FichierImg, CitationButton } from "../components/Deroulement";
 import { fichierToBlobUrl } from "../components/PdfViewer";
-import { printHTML, escapeHtml } from "../print";
+import { printHTML, escapeHtml, dataUrlImage } from "../print";
 import { openCtx } from "../components/ctxmenu";
 import { PhotoTelephone } from "../components/PhotoTelephone";
 import { useFileDropZone, estDocument, estImage, fichierEnBase64 } from "../dragdrop";
@@ -246,7 +246,7 @@ async function imprimerSequence(seq: Sequence, seances: Seance[]) {
   }
   const dataUrls: Record<string, string> = {};
   await Promise.all([...noms].map(async (n) => {
-    try { dataUrls[n] = `data:image;base64,${await api.fichierRead(n)}`; } catch { /* ignore */ }
+    try { dataUrls[n] = dataUrlImage(n, await api.fichierRead(n)); } catch { /* ignore */ }
   }));
 
   const rendreTexte = (txt: string) => {
@@ -254,7 +254,7 @@ async function imprimerSequence(seq: Sequence, seances: Seance[]) {
     let out = "", last = 0, m: RegExpExecArray | null;
     while ((m = re.exec(txt))) {
       out += escapeHtml(txt.slice(last, m.index));
-      if (m[1] === "img" && dataUrls[m[2]]) out += `<img alt="" src="">`;
+      if (m[1] === "img" && dataUrls[m[2]]) out += `<img alt="" src="${dataUrls[m[2]]}">`;
       else if (m[1] === "cite") {
         try { const c = JSON.parse(decodeURIComponent(escape(atob(m[2])))); out += `<blockquote>« ${escapeHtml(c.texte)} »${c.source || c.page ? `<div style="font-size:11px;color:#687087">— ${escapeHtml(c.source)}${c.page ? ", p. " + escapeHtml(c.page) : ""}</div>` : ""}</blockquote>`; } catch { /* ignore */ }
       }
@@ -281,9 +281,9 @@ async function imprimerSequence(seq: Sequence, seances: Seance[]) {
       ${comps.length ? `<div class="label">Compétences</div>${comps.map((c) => `<span class="chip">${escapeHtml(labelCourt(c))}</span>`).join("")}` : ""}
       ${s.deroulement ? `<div class="label">Déroulement</div>${rendreTexte(s.deroulement)}` : ""}
       ${grid.length ? `<table>${grid.map((row, r) => `<tr>${row.map((c) => r === 0 ? `<th>${escapeHtml(c)}</th>` : `<td>${rendreTexte(c)}</td>`).join("")}</tr>`).join("")}</table>` : ""}
-      ${illus.map((f) => dataUrls[f] ? `<img alt="" src="">` : "").join("")}
+      ${illus.map((f) => dataUrls[f] ? `<img alt="" src="${dataUrls[f]}">` : "").join("")}
       ${s.materiel ? `<div class="label">Matériel</div><div class="pre">${escapeHtml(s.materiel)}</div>` : ""}
-      ${pj.map((f) => dataUrls[f] ? `<img alt="" src="">` : "").join("")}
+      ${pj.map((f) => dataUrls[f] ? `<img alt="" src="${dataUrls[f]}">` : "").join("")}
       ${s.bilan ? `<div class="label">Bilan</div><div class="pre">${escapeHtml(s.bilan)}</div>` : ""}
     </div>`;
   }).join("");
