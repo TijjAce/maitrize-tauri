@@ -1,11 +1,14 @@
 import React from "react";
-import { api, Creneau, Seance, Eleve, teinteCreneau, texteErreur } from "../api";
+import { api, Creneau, Seance, Eleve, Jeu, nouveauJeu, teinteCreneau, texteErreur } from "../api";
 import { toast } from "./Toaster";
 import { useDictee, mmss } from "../dictee";
 import { natureDe } from "../heures";
 import { isoJour, plusJours } from "../dates";
 import { creneauDeLaSemainePrecedente, reprendrePrevu } from "../cahierJournal";
 import { PorterAuDossier } from "./PorterAuDossier";
+import { JeuForm } from "./JeuForm";
+import { ReglesDesJeux, useJeuxCites, useLudotheque } from "./ReglesDesJeux";
+import { jeuxCites, nomSousLeCurseur } from "../jeuxCites";
 
 // ── Cahier journal du jour ────────────────────────────────────────────────
 //
@@ -15,6 +18,8 @@ import { PorterAuDossier } from "./PorterAuDossier";
 //
 // Tout s'enregistre seul. Seuls le prévu et le bilan sont écrits : un créneau
 // déplacé entre-temps dans la grille garde sa nouvelle place.
+//
+// Un jeu de la ludothèque nommé dans le prévu montre sa règle juste dessous.
 
 type Champ = "prevu" | "bilan";
 interface Brouillon { prevu: string; bilan: string }
@@ -167,6 +172,22 @@ export function CahierJournal({ dateIso, creneaux, seances, eleves, onModifier }
     setVersDossier({ creneau: c, texte: (selection.trim() || bilan).trim(), presents });
   };
 
+  // ── Les jeux cités dans le prévu, et leur règle ──
+  const { jeux, recharger: rechargerJeux } = useLudotheque();
+  const citesDans = useJeuxCites(jeux);
+  const [jeuEdite, setJeuEdite] = React.useState<{ jeu: Jeu; nouveau: boolean } | null>(null);
+  // Le bouton 🎲 lit le jeu là où l'on écrivait : la zone garde sa sélection
+  // quand on la quitte. Une zone jamais ouverte n'a pas de curseur à lire.
+  const zonesPrevu = React.useRef<Record<string, HTMLTextAreaElement | null>>({});
+  const ouvertes = React.useRef(new Set<string>());
+  const ajouterJeu = (c: Creneau) => {
+    const prevu = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
+    const zone = zonesPrevu.current[c.id];
+    const nom = zone && ouvertes.current.has(c.id) ? nomSousLeCurseur(prevu, zone.selectionStart, zone.selectionEnd) : "";
+    const connu = nom ? jeuxCites(nom, jeux)[0] : undefined;
+    setJeuEdite(connu ? { jeu: connu, nouveau: false } : { jeu: { ...nouveauJeu(), titre: nom }, nouveau: true });
+  };
+
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const passe = dateIso < aujourdhui;
 
@@ -228,25 +249,42 @@ export function CahierJournal({ dateIso, creneaux, seances, eleves, onModifier }
                         : actif && dictee.etat === "transcription" ? "Transcription…" : "🎙"}
                     </button>
                     {champ === "prevu" ? (
-                      <button className="btn ghost sm" onClick={() => reprendre(c)}
-                        title="Reprendre ce qui était prévu sur ce créneau la semaine dernière">↩ Semaine dernière</button>
+                      <>
+                        <button className="btn ghost sm" onClick={() => reprendre(c)}
+                          title="Reprendre ce qui était prévu sur ce créneau la semaine dernière">↩ Semaine dernière</button>
+                        <button className="btn ghost sm" onClick={() => ajouterJeu(c)}
+                          title="Ajouter à la ludothèque le jeu écrit sur la ligne du curseur, avec sa règle : elle s'affichera ici dès qu'il est cité">
+                          🎲 Règle d'un jeu</button>
+                      </>
                     ) : (
                       <button className="btn ghost sm" disabled={!b.bilan.trim() || reunion} onClick={() => porterAuDossier(c, ids)}
                         title="Faire du bilan, ou du passage sélectionné, une observation dans le dossier des élèves">📋 Au dossier</button>
                     )}
                   </div>
                   <textarea className="textarea" value={b[champ]} placeholder={LIBELLES[champ].aide}
-                    ref={champ === "bilan" ? (el) => { zones.current[c.id] = el; } : undefined}
+                    ref={(el) => { (champ === "bilan" ? zones : zonesPrevu).current[c.id] = el; }}
                     rows={Math.min(8, Math.max(2, b[champ].split("\n").length))}
                     onChange={(e) => modifier(c.id, champ, e.target.value)}
+                    onFocus={champ === "prevu" ? () => ouvertes.current.add(c.id) : undefined}
                     aria-label={`${LIBELLES[champ].titre} — ${c.heureDebut} ${c.matiere}`}
                     style={{ width: "100%", resize: "vertical", fontSize: 13.5, lineHeight: 1.45 }} />
+                  {champ === "prevu" && (
+                    <ReglesDesJeux jeux={citesDans(b.prevu)} onModifier={(jeu) => setJeuEdite({ jeu, nouveau: false })} />
+                  )}
                 </div>
               );
             })}
           </div>
         );
       })}
+      {jeuEdite && (
+        <JeuForm j={jeuEdite.jeu} nouveau={jeuEdite.nouveau} onClose={() => setJeuEdite(null)}
+          onSaved={(jeu) => {
+            setJeuEdite(null);
+            rechargerJeux();
+            toast(`« ${jeu.titre} » est dans la ludothèque${jeu.regles.trim() ? " : sa règle s'affiche là où il est cité" : ""}.`, { icone: "🎲" });
+          }} />
+      )}
       {versDossier && (
         <PorterAuDossier creneau={versDossier.creneau} texte={versDossier.texte} presents={versDossier.presents}
           eleves={eleves} onClose={() => setVersDossier(null)} />
