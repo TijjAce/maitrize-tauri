@@ -537,7 +537,14 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .editeur-riche-feuille table { border-collapse: collapse; width: 100%; margin: .5em 0 .9em; font-size: 13.5px; }
 .editeur-riche-feuille th, .editeur-riche-feuille td { border: 1px solid var(--border); padding: 5px 7px; text-align: left; vertical-align: top; }
 .editeur-riche-feuille th { background: var(--panel-2); }
-.editeur-riche-placeholder { position: absolute; top: 27px; left: 35px; color: var(--text-2); font-size: 15px; pointer-events: none; }
+/* La feuille et son texte d'aide se centrent ensemble : sinon, dans une grande fenêtre, le texte d'aide restait
+   calé à gauche et passait sous le bord de la feuille. */
+.editeur-riche-page { position: relative; }
+.editeur-riche-placeholder { position: absolute; top: 27px; left: 37px; right: 35px; color: var(--text-2); font-size: 15px;
+  line-height: 1.65; pointer-events: none; }
+.editeur-riche-feuille img { max-width: 100%; height: auto; border-radius: 6px; vertical-align: bottom; }
+.editeur-riche-collage { position: absolute; top: 8px; right: 10px; z-index: 1; font-size: 12px; color: var(--text-2);
+  background: var(--panel-2); border-radius: 100px; padding: 2px 10px; pointer-events: none; }
 .editeur-riche-bulle { position: fixed; z-index: 400; background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
   box-shadow: var(--shadow); padding: 5px; }
 .editeur-riche-menu { position: absolute; top: calc(100% + 4px); left: 0; z-index: 401; min-width: 280px; background: var(--panel);
@@ -553,7 +560,8 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .editeur-riche-source { font-size: 12.5px; color: var(--text-2); font-style: italic; }
 .modal.editeur-plein { max-width: min(1100px, 96vw); width: 96vw; height: 92vh; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; }
 .editeur-plein-corps { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 20px 20px; }
-.editeur-plein-corps .editeur-riche-feuille { max-width: 820px; margin: 0 auto; width: 100%; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.editeur-plein-corps .editeur-riche-page { max-width: 820px; margin: 0 auto; width: 100%; }
+.editeur-plein-corps .editeur-riche-feuille { box-shadow: 0 1px 3px rgba(0,0,0,.08); }
 
 /* ── Organisation → Informations ── */
 .informations { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 16px; align-items: start; }

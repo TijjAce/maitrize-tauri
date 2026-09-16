@@ -102,7 +102,7 @@ export function useFileDropZone(opts: {
 }
 
 /** Lit un fichier déposé en base64, prêt pour `api.fichierSave`. */
-export function fichierEnBase64(f: File): Promise<string> {
+export function fichierEnBase64(f: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => {
