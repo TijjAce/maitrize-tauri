@@ -11,6 +11,7 @@ import { FormMateriel } from "../components/FormMateriel";
 import { texteBrut } from "../texteRiche";
 import { disposer, poser, lireDispositions, lirePositions, reporterDispositions, PREFIXE_BUREAU, type Case, type Positions } from "../disposition";
 import { EditeurTexte } from "../components/EditeurTexte";
+import { copierLeBureau } from "../components/CopieDuBureau";
 import { FormSequence } from "../components/FormSequence";
 import { contenuDirect, nature } from "../bureau";
 import { lireVideos, lireLien, vignetteYoutube } from "../videos";
@@ -136,6 +137,12 @@ export default function PlanDeTravail() {
   const { data: sequences, reload: rS } = useAsync(() => api.sequencesList(), []);
   const { data: materiels, reload: rM } = useAsync(() => api.materielList(), []);
   const { data: textes, reload: rT } = useAsync(() => api.textesList(), []);
+  // La copie de ce bureau dans un vrai dossier de l'ordinateur (voir CopieDuBureau).
+  const { data: copie } = useAsync(() => api.copieBureauInfo(), []);
+  const ouvrirCopie = () => {
+    copierLeBureau().catch(() => {});
+    api.copieBureauOuvrir().catch((e) => toast("Copie introuvable : " + texteErreur(e), { icone: "⚠️" }));
+  };
   const recharger = () => { rS(); rM(); rT(); };
   const [texteOuvert, setTexteOuvert] = React.useState<Texte | null>(null);
   const [sequenceFiche, setSequenceFiche] = React.useState<{ sequence: Sequence; nouvelle: boolean } | null>(null);
@@ -532,6 +539,10 @@ export default function PlanDeTravail() {
         </div>
         <Input className="search" placeholder="Rechercher partout…" value={q}
           onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 220 }} />
+        {copie?.active && (
+          <button className="btn ghost sm" onClick={ouvrirCopie}
+            title={`Ouvrir la copie de ce bureau sur l'ordinateur : ${copie.racine}`}>🗂 Copie sur l'ordinateur</button>
+        )}
       </div>
 
       <input ref={choixFichiers} type="file" multiple hidden accept={`${EXTENSIONS_DOCUMENTS},image/*`}

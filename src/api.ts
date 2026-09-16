@@ -213,6 +213,25 @@ export interface DossierDonnees {
   chemin: string; parDefaut: string; personnalise: boolean; octets: number;
 }
 
+/** Un passage de la copie du bureau sur l'ordinateur. */
+export interface BilanCopie {
+  date: string; fichiers: number; ecrits: number; archives: number; erreurs: string[];
+  /** Documents cités par le bureau mais absents de Maitrize : rien à recopier. */
+  manquants: string[];
+  /** Le système a refusé l'écriture (sur Mac : accès au Bureau non accordé). */
+  autorisationRefusee: boolean;
+}
+export interface InfoCopie {
+  active: boolean;
+  /** Où se trouve la copie : le Bureau, par défaut. */
+  emplacement: string; parDefaut: boolean;
+  /** Le dossier de la copie elle-même. */
+  racine: string;
+  derniere: BilanCopie | null;
+}
+/** Un fichier de la copie, tel qu'envoyé au backend. */
+export interface EntreeCopie { chemin: string; empreinte: string; fichier?: string; contenu?: string }
+
 /** Copie quotidienne automatique de la base. */
 export interface SauvegardeAuto { nom: string; jour: string; octets: number }
 
@@ -426,6 +445,15 @@ export const api = {
   exporterBase: (chemin: string) => invoke<void>("exporter_base", { chemin }),
   sauvegardesAutoList: () => invoke<SauvegardeAuto[]>("sauvegardes_auto_list"),
   sauvegardesAutoOuvrir: () => invoke<void>("sauvegardes_auto_ouvrir"),
+  // Copie du bureau dans un vrai dossier de l'ordinateur
+  copieBureauInfo: () => invoke<InfoCopie>("copie_bureau_info"),
+  copieBureauRegler: (active: boolean, emplacement?: string) =>
+    invoke<InfoCopie>("copie_bureau_regler", { active, emplacement: emplacement ?? null }),
+  copieBureauPreparer: (entrees: EntreeCopie[], dossiers: string[]) =>
+    invoke<{ aEcrire: string[]; travail: boolean }>("copie_bureau_preparer", { entrees, dossiers }),
+  copieBureauAppliquer: (entrees: EntreeCopie[], dossiers: string[]) =>
+    invoke<BilanCopie>("copie_bureau_appliquer", { entrees, dossiers }),
+  copieBureauOuvrir: () => invoke<void>("copie_bureau_ouvrir"),
 
   // Vacances scolaires
   vacancesScolaires: (zone: string) => invoke<VacancePeriode[]>("vacances_scolaires", { zone }),

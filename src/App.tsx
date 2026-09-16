@@ -29,6 +29,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { Toaster, toast } from "./components/Toaster";
 import { ConfirmerHost } from "./components/confirmer";
 import { UpdateBanner } from "./components/UpdateBanner";
+import { CopieDuBureau } from "./components/CopieDuBureau";
 import { releverBoiteAuxLettres, messageRecu } from "./inbox";
 
 const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: true })[] = [
@@ -218,6 +219,7 @@ export default function App() {
       <CommandPalette />
       <Onboarding />
       <ContextMenuHost />
+      <CopieDuBureau />
     </div>
     </CguGate>
   );
