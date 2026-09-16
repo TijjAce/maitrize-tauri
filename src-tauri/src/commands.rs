@@ -218,6 +218,42 @@ pub(crate) fn ecrire_jeu(c: &rusqlite::Connection, jeu: Jeu) -> R<Jeu> {
     Ok(jeu)
 }
 
+// ── Outils pour l'élève et affichages ──────────────────────────────────────
+
+#[tauri::command]
+pub fn outils_classe_list(db: State<Db>) -> R<Vec<OutilClasse>> {
+    let c = db.lock();
+    let mut st = c.prepare("SELECT * FROM outils_classe ORDER BY titre").map_err(e)?;
+    let rows = st.query_map([], OutilClasse::from_row).map_err(e)?;
+    rows.collect::<rusqlite::Result<_>>().map_err(e)
+}
+
+#[tauri::command]
+pub fn outil_classe_save(db: State<Db>, outil: OutilClasse) -> R<OutilClasse> {
+    ecrire_outil_classe(&db.lock(), outil)
+}
+
+pub(crate) fn ecrire_outil_classe(c: &rusqlite::Connection, o: OutilClasse) -> R<OutilClasse> {
+    if o.genre != "outil" && o.genre != "affichage" {
+        return Err("Genre inconnu.".into());
+    }
+    c.execute(
+        "INSERT INTO outils_classe (id,genre,titre,categorie,usage,competences_bo,consignes,lieu,periode,eleves_json,
+          documents_json,image_nom,couleur,dossier,date_creation)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15) ON CONFLICT(id) DO UPDATE SET genre = excluded.genre, titre = excluded.titre, categorie = excluded.categorie, usage = excluded.usage, competences_bo = excluded.competences_bo, consignes = excluded.consignes, lieu = excluded.lieu, periode = excluded.periode, eleves_json = excluded.eleves_json, documents_json = excluded.documents_json, image_nom = excluded.image_nom, couleur = excluded.couleur, dossier = excluded.dossier, date_creation = excluded.date_creation",
+        params![o.id, o.genre, o.titre, o.categorie, o.usage, o.competences_bo, o.consignes, o.lieu, o.periode,
+                o.eleves_json, o.documents_json, o.image_nom, o.couleur, o.dossier, o.date_creation],
+    ).map_err(e)?;
+    Ok(o)
+}
+
+#[tauri::command]
+pub fn outil_classe_delete(db: State<Db>, id: String) -> R<()> {
+    let c = db.lock();
+    c.execute("DELETE FROM outils_classe WHERE id=?1", params![id]).map_err(e)?;
+    Ok(())
+}
+
 #[tauri::command]
 pub fn jeu_delete(db: State<Db>, id: String) -> R<()> {
     let c = db.lock();
@@ -1685,7 +1721,7 @@ pub async fn vacances_scolaires(zone: String) -> R<Vec<VacancePeriode>> {
 
 // Tables exportées (les référentiels intégrés sont exclus : re-seedés).
 const TABLES_EXPORT: &[&str] = &[
-    "projets", "sequences", "seances", "ateliers", "espaces", "atelier_espace", "jeux",
+    "projets", "sequences", "seances", "ateliers", "espaces", "atelier_espace", "jeux", "outils_classe",
     "progressions_eleve", "creneaux", "eleves", "documents_eleve", "appels_journalier",
     "commentaires_eleve", "evaluations", "notes_eleve", "pieces_jointes",
     "materiel_items", "papiers_eleve", "notes_competence", "progressions_annuelle",

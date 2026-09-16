@@ -668,3 +668,8 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 /* Fiche d'un jeu : les compétences du BO */
 .jeu-choix-bo { margin-top: 8px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); }
 .jeu-choix-bo-liste { max-height: 340px; overflow-y: auto; margin-top: 8px; }
+
+/* Fiche d'un outil pour l'élève ou d'un affichage */
+.outil-eleves { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 2px 8px; max-height: 200px; overflow-y: auto; }
+.outil-eleve { display: flex; align-items: center; gap: 6px; font-size: 13px; padding: 3px 2px; cursor: pointer; }
+.outil-document { display: flex; align-items: center; gap: 6px; font-size: 13px; }

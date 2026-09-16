@@ -20,6 +20,8 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "🧩", label: "Ateliers", to: "/ateliers", page: "ateliers", onglet: "ateliers", sous: "Ateliers & Espaces" },
   { ico: "🪑", label: "Espaces", to: "/ateliers", page: "ateliers", onglet: "espaces", sous: "Ateliers & Espaces" },
   { ico: "🎲", label: "Jeux", to: "/ateliers", page: "ateliers", onglet: "jeux", sous: "Ateliers & Espaces" },
+  { ico: "🧰", label: "Outils pour l'élève", to: "/ateliers", page: "ateliers", onglet: "outils", sous: "Ateliers & Espaces" },
+  { ico: "🖼", label: "Affichages de la classe", to: "/ateliers", page: "ateliers", onglet: "affichages", sous: "Ateliers & Espaces" },
   { ico: "🪙", label: "Tableau d'économie de jetons", to: "/jeux", page: "jeux", onglet: "jetons", sous: "Fabriquer · Supports visuels" },
   { ico: "➡️", label: "D'abord / ensuite", to: "/jeux", page: "jeux", onglet: "dabord", sous: "Fabriquer · Supports visuels" },
   { ico: "📖", label: "Scénario social", to: "/jeux", page: "jeux", onglet: "scenario", sous: "Fabriquer · Supports visuels" },

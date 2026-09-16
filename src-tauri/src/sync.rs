@@ -1094,7 +1094,7 @@ mod tests_sauvegarde {
     fn un_double_se_reconnait_a_sa_fiche_de_presence() {
         let fiche = |plateforme: &str, poste: &str| Machine {
             id: "f1c0f4ac".into(), nom: "Classe".into(), plateforme: plateforme.into(),
-            poste: poste.into(), vue_le: String::new(), moi: false,
+            poste: poste.into(), vue_le: String::new(), moi: false, tables: vec![],
         };
         assert!(!est_un_autre_poste(&fiche("macOS", "MacBook"), "macOS", "MacBook"), "notre propre fiche");
         assert!(est_un_autre_poste(&fiche("Windows", "PC-CLASSE"), "macOS", "MacBook"), "le PC sous notre identifiant");
@@ -1177,6 +1177,18 @@ fn noter_vus(c: &Connection, vus: &std::collections::HashSet<String>) -> R<()> {
 /// copie. Rien ne s'écrase — chaque machine ajoute au journal partagé.
 #[tauri::command]
 pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
+    // Les tables que connaissent les autres ordinateurs : une table récente
+    // leur est annoncée dès qu'ils la connaissent (voir `annoncer_tables`).
+    let autres = {
+        let (phrase, cfg, moi) = {
+            let c = db.lock();
+            (get_setting(&c, "sauvegarde_phrase"), lire_cfg(&c).ok(), crate::db::identifiant_machine(&c))
+        };
+        match cfg {
+            Some(cfg) if !phrase.trim().is_empty() => tables_des_autres(&client(&cfg), &cfg, phrase.trim(), &moi).await,
+            _ => Vec::new(),
+        }
+    };
     let (cfg, phrase, mut machine, repere, vus, mut lot) = {
         let c = db.lock();
         let phrase = get_setting(&c, "sauvegarde_phrase");
@@ -1188,6 +1200,7 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
         };
         let machine = crate::db::identifiant_machine(&c);
         crate::journal::annoncer_dossiers(&c, &machine);
+        crate::journal::annoncer_tables(&c, &machine, &autres);
         let depuis = crate::journal::repere_envoi(&c, get_setting(&c, CLE_SEQ_ENVOYEE).parse().unwrap_or(0));
         let (changements, repere) = crate::journal::changements_locaux(&c, depuis).map_err(e)?;
         (cfg, phrase.trim().to_string(), machine.clone(), repere, deltas_vus(&c),
@@ -1269,6 +1282,7 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
                 poste: poste().into(),
                 vue_le: chrono::Local::now().format("%Y-%m-%d-%H%M%S").to_string(),
                 moi: false,
+                tables: crate::journal::TABLES_SYNC.iter().map(|t| t.to_string()).collect(),
             }
         };
         publier_presence(&cl, &cfg, &phrase, &m).await;
@@ -1414,6 +1428,10 @@ pub struct Machine {
     pub vue_le: String,
     #[serde(default)]
     pub moi: bool,
+    /// Tables que sa version synchronise : vide pour une version d'avant les
+    /// annonces (voir `journal::TABLES_ANNONCEES`).
+    #[serde(default)]
+    pub tables: Vec<String>,
 }
 
 fn nom_machine(c: &Connection) -> String {
@@ -1497,6 +1515,28 @@ fn plateforme() -> &'static str {
 }
 
 /// Signale à l'autre machine qu'on est passé par là.
+/// Pour chaque autre ordinateur du stockage, les tables que sa version connaît.
+async fn tables_des_autres(cl: &Client, cfg: &S3Cfg, phrase: &str, moi: &str) -> Vec<(String, Vec<String>)> {
+    let Ok(liste) = cl.list_objects_v2().bucket(&cfg.bucket).prefix(PREFIXE_MACHINE).send().await else {
+        return Vec::new();
+    };
+    let mut sortie = Vec::new();
+    for o in liste.contents() {
+        let Some(id) = o.key().and_then(|k| k.strip_prefix(PREFIXE_MACHINE)).and_then(|k| k.strip_suffix(".enc")) else { continue };
+        if id == moi {
+            continue;
+        }
+        let Ok(obj) = cl.get_object().bucket(&cfg.bucket).key(format!("{PREFIXE_MACHINE}{id}.enc")).send().await else { continue };
+        let Ok(corps) = obj.body.collect().await else { continue };
+        let Ok(clair) = dechiffrer_sauvegarde(phrase, corps.into_bytes().as_ref()) else { continue };
+        let Ok(fiche) = serde_json::from_slice::<Machine>(&clair) else { continue };
+        if !fiche.tables.is_empty() {
+            sortie.push((fiche.id, fiche.tables));
+        }
+    }
+    sortie
+}
+
 async fn publier_presence(cl: &Client, cfg: &S3Cfg, phrase: &str, m: &Machine) {
     let Ok(json) = serde_json::to_string(m) else { return };
     let Ok(blob) = chiffrer_sauvegarde(phrase, json.as_bytes()) else { return };
@@ -1517,6 +1557,7 @@ pub async fn machines_liste(db: State<'_, Db>) -> R<Vec<Machine>> {
             poste: poste().into(),
             vue_le: get_setting(&c, CLE_DERNIERE_SYNC),
             moi: true,
+            tables: crate::journal::TABLES_SYNC.iter().map(|t| t.to_string()).collect(),
         };
         if phrase.trim().is_empty() {
             return Ok(vec![moi]);
