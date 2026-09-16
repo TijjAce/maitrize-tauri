@@ -2,12 +2,12 @@ import React from "react";
 import { Page } from "../App";
 import {
   api, Atelier, Espace, Jeu, Eleve, ProgressionEleve, nouvelAtelier, nouvelEspace, nouveauJeu,
-  MATIERES, TYPES_JEU, couleurHex, couleurPourMatiere, newId,
+  MATIERES, couleurHex, couleurPourMatiere, newId,
 } from "../api";
 import { Modal, Field, Input, Textarea, Select, Empty, ColorPicker, Confirm, useAsync, useSegmentNav, useOngletDemande } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
 import { FichierImg } from "../components/Deroulement";
-import { fileToBase64 } from "../components/SeanceParts";
+import { JeuForm, VignetteUpload } from "../components/JeuForm";
 
 /**
  * Un jeu passe-t-il les filtres de la ludothèque ?
@@ -232,57 +232,6 @@ function AtelierForm({ a, onClose, onSaved }: { a: Atelier; onClose: () => void;
   );
 }
 
-function JeuForm({ j, onClose, onSaved }: { j: Jeu; onClose: () => void; onSaved: () => void }) {
-  const [v, setV] = React.useState<Jeu>(j);
-  const up = (p: Partial<Jeu>) => setV({ ...v, ...p });
-  // Le maximum ne peut pas passer sous le minimum, et inversement : sinon le
-  // jeu n'apparaît sous aucun effectif dans le filtre.
-  const setMin = (n: number) => up({ nbJoueursMin: n, nbJoueursMax: Math.max(n, v.nbJoueursMax) });
-  const setMax = (n: number) => up({ nbJoueursMax: n, nbJoueursMin: Math.min(n, v.nbJoueursMin) });
-
-  return (
-    <Modal titre={j.titre ? "Modifier le jeu" : "Nouveau jeu"} onClose={onClose}
-      footer={<><button className="btn" onClick={onClose}>Annuler</button>
-        <button className="btn primary" disabled={!v.titre.trim()} onClick={() => api.jeuSave(v).then(onSaved)}>Enregistrer</button></>}>
-      <Field label="Nom du jeu"><Input autoFocus value={v.titre} onChange={(e) => up({ titre: e.target.value })} /></Field>
-      <div className="row">
-        <Field label="Type"><Select value={v.typeJeu} onChange={(e) => up({ typeJeu: e.target.value })}>
-          {TYPES_JEU.map((ty) => <option key={ty}>{ty}</option>)}</Select></Field>
-        <Field label="Joueurs (min)"><Input type="number" min={1} value={v.nbJoueursMin} onChange={(e) => setMin(+e.target.value)} /></Field>
-        <Field label="Joueurs (max)"><Input type="number" min={1} value={v.nbJoueursMax} onChange={(e) => setMax(+e.target.value)} /></Field>
-      </div>
-      <div className="row">
-        <Field label="Durée (min)"><Input type="number" value={v.duree} onChange={(e) => up({ duree: +e.target.value })} /></Field>
-        <Field label="Âge minimum"><Input type="number" value={v.ageMin} onChange={(e) => up({ ageMin: +e.target.value })} /></Field>
-        <Field label="Rangement"><Input value={v.rangement} placeholder="ex. Armoire du fond, bac 3" onChange={(e) => up({ rangement: e.target.value })} /></Field>
-      </div>
-      <Field label="Ce que le jeu travaille">
-        <Textarea value={v.competences} placeholder="Attendre son tour, dénombrer jusqu'à 10, langage oral…"
-          onChange={(e) => up({ competences: e.target.value })} />
-      </Field>
-      <Field label="Description"><Textarea value={v.descriptionJeu} onChange={(e) => up({ descriptionJeu: e.target.value })} /></Field>
-      <Field label="Règle du jeu / variantes">
-        <Textarea value={v.regles} placeholder="Règle simplifiée, adaptations pour certains élèves…"
-          onChange={(e) => up({ regles: e.target.value })} />
-      </Field>
-      <div className="field">
-        <label>Vignette (photo de la boîte)</label>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {v.imageNom
-            ? <FichierImg nom={v.imageNom} style={{ width: 96, height: 72, objectFit: "cover", border: "1px solid var(--border)" }} />
-            : <div style={{ width: 96, height: 72, borderRadius: 8, background: "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>🎲</div>}
-          <VignetteUpload onUploaded={(nom) => up({ imageNom: nom })} />
-          {v.imageNom && <button className="btn ghost sm" onClick={() => up({ imageNom: null })}>Retirer</button>}
-        </div>
-      </div>
-      <div className="row">
-        <Field label="Dossier (optionnel)"><Input value={v.dossier} placeholder="ex. Jeux de langage" onChange={(e) => up({ dossier: e.target.value })} /></Field>
-        <Field label="Couleur"><ColorPicker value={v.couleur} onChange={(c) => up({ couleur: c })} /></Field>
-      </div>
-    </Modal>
-  );
-}
-
 function EspaceForm({ e, ateliers, liens, onClose, onSaved }: {
   e: Espace; ateliers: Atelier[]; liens: [string, string][]; onClose: () => void; onSaved: () => void;
 }) {
@@ -352,22 +301,5 @@ function SuiviEspace({ espace, onClose }: { espace: Espace; onClose: () => void 
           );
         })}
     </Modal>
-  );
-}
-
-function VignetteUpload({ onUploaded }: { onUploaded: (nom: string) => void }) {
-  const ref = React.useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = React.useState(false);
-  const up = async (file: File) => {
-    setBusy(true);
-    try { onUploaded(await api.fichierSave(file.name, await fileToBase64(file))); }
-    finally { setBusy(false); }
-  };
-  return (
-    <>
-      <input ref={ref} type="file" accept="image/*" style={{ display: "none" }}
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) up(f); e.target.value = ""; }} />
-      <button className="btn" style={{ flex: "none" }} disabled={busy} onClick={() => ref.current?.click()}>{busy ? "…" : "📷 Choisir une image"}</button>
-    </>
   );
 }
