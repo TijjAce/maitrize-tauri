@@ -95,6 +95,29 @@ export interface Jeu {
   imageNom: string | null; dossier: string;
 }
 
+/** Un outil pour l'élève (bande numérique, casque…) ou un affichage de la classe. */
+export interface OutilClasse {
+  id: string;
+  genre: "outil" | "affichage";
+  titre: string; categorie: string;
+  /** À quoi il sert, ce qu'il travaille. */
+  usage: string;
+  /** Compétences des programmes officiels (BO), en JSON. */
+  competencesBo: string;
+  /** Comment s'en servir (outil), ce qu'il faut savoir (affichage). */
+  consignes: string;
+  /** Où il est rangé (outil), où il est affiché (affichage). */
+  lieu: string;
+  /** Quand l'affichage est au mur. */
+  periode: string;
+  /** Identifiants des élèves qui s'en servent, en JSON. */
+  elevesJson: string;
+  /** Documents à imprimer, en JSON : DocumentOutil[]. */
+  documentsJson: string;
+  imageNom: string | null; couleur: string; dossier: string; dateCreation: string;
+}
+export interface DocumentOutil { nom: string; fichier: string }
+
 export interface ProgressionEleve {
   id: string; nomEleve: string; eleveId: string | null; fait: boolean; espaceId: string | null;
 }
@@ -270,6 +293,24 @@ export const nouveauJeu = (): Jeu => ({
   couleur: "purple", dateCreation: nowIso(), imageNom: null, dossier: "",
 });
 
+export const CATEGORIES_OUTIL = [
+  "Lecture et écriture", "Mathématiques", "Organisation et autonomie", "Communication",
+  "Régulation et sensoriel", "Motricité", "Autre",
+];
+export const CATEGORIES_AFFICHAGE = [
+  "Référentiel", "Règles de vie", "Emploi du temps et rituels", "Affiche de leçon", "Travaux d'élèves", "Autre",
+];
+export const PERIODES_AFFICHAGE = [
+  "Toute l'année", "Période 1", "Période 2", "Période 3", "Période 4", "Période 5", "Rangé (plus affiché)",
+];
+
+export const nouvelOutil = (genre: OutilClasse["genre"]): OutilClasse => ({
+  id: newId(), genre, titre: "", categorie: (genre === "outil" ? CATEGORIES_OUTIL : CATEGORIES_AFFICHAGE)[0],
+  usage: "", competencesBo: "[]", consignes: "", lieu: "", periode: genre === "affichage" ? PERIODES_AFFICHAGE[0] : "",
+  elevesJson: "[]", documentsJson: "[]", imageNom: null, couleur: genre === "outil" ? "teal" : "orange",
+  dossier: "", dateCreation: nowIso(),
+});
+
 export const nouvelEleve = (niveau = ""): Eleve => ({
   id: newId(), nom: "", niveau, present: true, ine: "", dateNaissance: "", photoFichier: null,
 });
@@ -313,6 +354,10 @@ export const api = {
   jeuxList: () => invoke<Jeu[]>("jeux_list"),
   jeuSave: (jeu: Jeu) => invoke<Jeu>("jeu_save", { jeu }),
   jeuDelete: (id: string) => invoke<void>("jeu_delete", { id }),
+  // Outils pour l'élève et affichages
+  outilsClasseList: () => invoke<OutilClasse[]>("outils_classe_list"),
+  outilClasseSave: (outil: OutilClasse) => invoke<OutilClasse>("outil_classe_save", { outil }),
+  outilClasseDelete: (id: string) => invoke<void>("outil_classe_delete", { id }),
 
   // Planning
   creneauxList: (debut?: string, fin?: string) =>

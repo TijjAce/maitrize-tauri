@@ -925,3 +925,72 @@ impl PiloteConversation {
         })
     }
 }
+
+/// Un outil pour l'élève (bande numérique, sous-main, casque…) ou un affichage
+/// de la classe (référentiel, règles de vie…).
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OutilClasse {
+    #[serde(default = "new_id")]
+    pub id: String,
+    /// « outil » ou « affichage ».
+    #[serde(default = "genre_outil")]
+    pub genre: String,
+    #[serde(default)]
+    pub titre: String,
+    #[serde(default)]
+    pub categorie: String,
+    /// À quoi il sert, ce qu'il travaille.
+    #[serde(default)]
+    pub usage: String,
+    /// Compétences des programmes officiels (BO), en JSON.
+    #[serde(default = "vide_arr")]
+    pub competences_bo: String,
+    /// Comment s'en servir, ou ce qu'il faut savoir de l'affichage.
+    #[serde(default)]
+    pub consignes: String,
+    /// Où il est rangé (outil), où il est affiché (affichage).
+    #[serde(default)]
+    pub lieu: String,
+    /// Quand l'affichage est au mur.
+    #[serde(default)]
+    pub periode: String,
+    /// Élèves qui s'en servent, en JSON.
+    #[serde(default = "vide_arr")]
+    pub eleves_json: String,
+    /// Documents à imprimer : [{ nom, fichier }], en JSON.
+    #[serde(default = "vide_arr")]
+    pub documents_json: String,
+    #[serde(default)]
+    pub image_nom: Option<String>,
+    #[serde(default = "couleur_teal")]
+    pub couleur: String,
+    #[serde(default)]
+    pub dossier: String,
+    #[serde(default = "now_iso")]
+    pub date_creation: String,
+}
+fn genre_outil() -> String { "outil".into() }
+fn couleur_teal() -> String { "teal".into() }
+
+impl OutilClasse {
+    pub fn from_row(r: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: r.get("id")?,
+            genre: r.get("genre")?,
+            titre: r.get("titre")?,
+            categorie: r.get("categorie")?,
+            usage: r.get("usage")?,
+            competences_bo: r.get("competences_bo")?,
+            consignes: r.get("consignes")?,
+            lieu: r.get("lieu")?,
+            periode: r.get("periode")?,
+            eleves_json: r.get("eleves_json")?,
+            documents_json: r.get("documents_json")?,
+            image_nom: r.get("image_nom")?,
+            couleur: r.get("couleur")?,
+            dossier: r.get("dossier")?,
+            date_creation: r.get("date_creation")?,
+        })
+    }
+}

@@ -43,6 +43,8 @@ pub const CHAMPS_TEXTE: &[(&str, &str)] = &[
     ("espaces", "description_espace"),
     ("jeux", "description_jeu"),
     ("jeux", "regles"),
+    ("outils_classe", "usage"),
+    ("outils_classe", "consignes"),
     ("materiel_items", "description_materiel"),
     ("papiers_eleve", "note"),
     ("textes", "contenu"),
