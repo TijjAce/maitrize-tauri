@@ -84,6 +84,8 @@ const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:", "dossier:", "bure
 pub const REGLAGES_DU_POSTE: &[&str] = &[
     "identifiantMachine", "nomMachine", "derniereSync", "derniereSauvegardeAuto",
     "syncSeqEnvoyee", "syncDeltasVus", CLE_DOSSIERS_ANNONCES,
+    // La copie du bureau vit dans un dossier de cet ordinateur-ci.
+    crate::copie_bureau::CLE_ACTIVE, crate::copie_bureau::CLE_EMPLACEMENT,
 ];
 
 // ── Dossiers du plan de travail ────────────────────────────────────────────

@@ -5,5 +5,9 @@
     <!-- Texte affiché par macOS lors de la demande d'accès au micro. -->
     <key>NSMicrophoneUsageDescription</key>
     <string>Maitrize utilise le micro uniquement quand vous lancez une dictée d'atelier, pour transcrire vos observations. Aucun enregistrement n'est conservé.</string>
+    <!-- Texte affiché lors de la demande d'accès au Bureau : la copie du plan de
+         travail y pose son dossier (voir copie_bureau.rs). -->
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>Maitrize recopie votre plan de travail dans le dossier « Maitrize — copie du bureau » sur le Bureau : de vrais fichiers, qui restent là même sans l'application.</string>
 </dict>
 </plist>

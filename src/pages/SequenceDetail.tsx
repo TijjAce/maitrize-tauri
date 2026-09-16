@@ -7,7 +7,7 @@ import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../component
 import { TableauEditor, MaterielSeance, imageDuPresse, fileToBase64 } from "../components/SeanceParts";
 import { IllustrationsEditor, DeroulementRead, CelluleContenu, FichierImg, CitationButton } from "../components/Deroulement";
 import { fichierToBlobUrl } from "../components/PdfViewer";
-import { printHTML, escapeHtml, dataUrlImage } from "../print";
+import { printHTML, dataUrlImage } from "../print";
 import { openCtx } from "../components/ctxmenu";
 import { PhotoTelephone } from "../components/PhotoTelephone";
 import { useFileDropZone, estDocument, estImage, fichierEnBase64 } from "../dragdrop";
@@ -15,7 +15,8 @@ import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { FormSequence } from "../components/FormSequence";
 import { ReglesCitees, useLudotheque } from "../components/ReglesDesJeux";
-import { jeuxCites, reglesImprimees, sansMarqueurs, STYLE_REGLES } from "../jeuxCites";
+import { sansMarqueurs, STYLE_REGLES } from "../jeuxCites";
+import { htmlDeLaSequence, imagesDeLaSequence } from "../sequenceHtml";
 
 export default function SequenceDetail() {
   const { id } = useParams();
@@ -231,74 +232,14 @@ async function exporterSequence(seq: Sequence, seances: Seance[]) {
 }
 
 async function imprimerSequence(seq: Sequence, seances: Seance[]) {
-  // Collecte tous les fichiers image référencés, les lit en data URL.
-  const noms = new Set<string>();
-  const refImg = (txt: string) => { const re = /\[img:([^\]]+)\]/g; let m; while ((m = re.exec(txt))) noms.add(m[1]); };
-  for (const s of seances) {
-    refImg(s.deroulement);
-    try { (JSON.parse(s.imagesDeroulement || "[]") as string[]).forEach((f) => noms.add(f)); } catch { /* ignore */ }
-    try { (JSON.parse(s.tableauDeroulement || "[]") as string[][]).forEach((row) => row.forEach(refImg)); } catch { /* ignore */ }
-  }
-  // Pièces jointes images par séance.
-  const pjParSeance: Record<string, string[]> = {};
-  for (const s of seances) {
-    const pjs = await api.piecesJointesList(s.id);
-    pjParSeance[s.id] = pjs.filter((p) => p.type === "image").map((p) => p.nomFichier);
-    pjs.forEach((p) => { if (p.type === "image") noms.add(p.nomFichier); });
-  }
+  const pieces = (await Promise.all(seances.map((s) => api.piecesJointesList(s.id)))).flat();
   const jeux = await api.jeuxList().catch((): Jeu[] => []);
+  // Les images lues une fois, puis intégrées à la page.
   const dataUrls: Record<string, string> = {};
-  await Promise.all([...noms].map(async (n) => {
+  await Promise.all(imagesDeLaSequence(seances, pieces).map(async (n) => {
     try { dataUrls[n] = dataUrlImage(n, await api.fichierRead(n)); } catch { /* ignore */ }
   }));
-
-  const rendreTexte = (txt: string) => {
-    const re = /\[(img|cite):([^\]]+)\]/g;
-    let out = "", last = 0, m: RegExpExecArray | null;
-    while ((m = re.exec(txt))) {
-      out += escapeHtml(txt.slice(last, m.index));
-      if (m[1] === "img" && dataUrls[m[2]]) out += `<img alt="" src="${dataUrls[m[2]]}">`;
-      else if (m[1] === "cite") {
-        try { const c = JSON.parse(decodeURIComponent(escape(atob(m[2])))); out += `<blockquote>« ${escapeHtml(c.texte)} »${c.source || c.page ? `<div style="font-size:11px;color:#687087">— ${escapeHtml(c.source)}${c.page ? ", p. " + escapeHtml(c.page) : ""}</div>` : ""}</blockquote>`; } catch { /* ignore */ }
-      }
-      last = m.index + m[0].length;
-    }
-    out += escapeHtml(txt.slice(last));
-    return `<div class="pre">${out}</div>`;
-  };
-
-  let comp = "";
-  try { const c = seq.competenceVisee ? JSON.parse(seq.competenceVisee) : null; if (c) comp = labelCourt(c); } catch { /* ignore */ }
-
-  const seancesHtml = seances.map((s) => {
-    let comps: CompetenceSelectionnee[] = [];
-    try { comps = s.competences ? JSON.parse(s.competences) : []; } catch { /* ignore */ }
-    let grid: string[][] = [];
-    try { grid = JSON.parse(s.tableauDeroulement || "[]"); } catch { /* ignore */ }
-    const illus = (() => { try { return JSON.parse(s.imagesDeroulement || "[]") as string[]; } catch { return []; } })();
-    const pj = pjParSeance[s.id] ?? [];
-    return `<div class="seance">
-      <h3>Séance ${s.numero} — ${escapeHtml(s.titre)}</h3>
-      <div class="meta">${formatDuree(s.duree)}${s.date ? " · " + new Date(s.date).toLocaleDateString("fr-FR") : ""}</div>
-      ${s.objectifs ? `<div class="label">Objectifs</div><div class="pre">${escapeHtml(s.objectifs)}</div>` : ""}
-      ${comps.length ? `<div class="label">Compétences</div>${comps.map((c) => `<span class="chip">${escapeHtml(labelCourt(c))}</span>`).join("")}` : ""}
-      ${s.deroulement ? `<div class="label">Déroulement</div>${rendreTexte(s.deroulement)}${reglesImprimees(jeuxCites(sansMarqueurs(s.deroulement), jeux))}` : ""}
-      ${grid.length ? `<table>${grid.map((row, r) => `<tr>${row.map((c) => r === 0 ? `<th>${escapeHtml(c)}</th>` : `<td>${rendreTexte(c)}</td>`).join("")}</tr>`).join("")}</table>` : ""}
-      ${illus.map((f) => dataUrls[f] ? `<img alt="" src="${dataUrls[f]}">` : "").join("")}
-      ${s.materiel ? `<div class="label">Matériel</div><div class="pre">${escapeHtml(s.materiel)}</div>` : ""}
-      ${pj.map((f) => dataUrls[f] ? `<img alt="" src="${dataUrls[f]}">` : "").join("")}
-      ${s.bilan ? `<div class="label">Bilan</div><div class="pre">${escapeHtml(s.bilan)}</div>` : ""}
-    </div>`;
-  }).join("");
-
-  const html = `
-    <h1>${escapeHtml(seq.titre)}</h1>
-    <div class="meta">${[seq.matiere, seq.cycle, "Période " + seq.periode, seq.annee].filter(Boolean).map(escapeHtml).join(" · ")}</div>
-    ${comp ? `<div class="chip">🎯 ${escapeHtml(comp)}</div>` : ""}
-    ${seq.objectifs ? `<div class="label">Objectifs / notes</div><div class="pre">${escapeHtml(seq.objectifs)}</div>` : ""}
-    <h2>Séances (${seances.length})</h2>
-    ${seancesHtml || "<div class='meta'>Aucune séance.</div>"}`;
-  printHTML(seq.titre || "Séquence", html, STYLE_REGLES);
+  printHTML(seq.titre || "Séquence", htmlDeLaSequence(seq, seances, pieces, jeux, (n) => dataUrls[n]), STYLE_REGLES);
 }
 
 // Vidéo explicative : YouTube (iframe), lien direct, ou fichier importé.
