@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  age, construire, documentRempli, notes, observations, pieces, piecesAttendues,
+  age, libelleAge, construire, documentRempli, notes, observations, pieces, piecesAttendues,
 } from "./dossier";
 import type { CommentaireEleve, DocumentEleve, Eleve, Evaluation, NoteEleve,
               PapierEleve, ProgressionEleve } from "./api";
@@ -138,6 +138,8 @@ describe("âge", () => {
 
   it("se tait plutôt que d'inventer", () => {
     expect(age("")).toBeUndefined();
+    expect(libelleAge(1)).toBe("1 an");
+    expect(libelleAge(17)).toBe("17 ans");
     expect(age("pas une date")).toBeUndefined();
     expect(age("2080-01-01", new Date("2026-09-11"))).toBeUndefined();
   });
