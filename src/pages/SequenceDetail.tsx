@@ -1,7 +1,7 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Page } from "../App";
-import { api, Sequence, Seance, MaterielItem, nouvelleSeance, couleurHex, nowIso, newId, DUREES, formatDuree, telechargerTexte } from "../api";
+import { api, Sequence, Seance, MaterielItem, Jeu, nouvelleSeance, couleurHex, nowIso, newId, DUREES, formatDuree, telechargerTexte } from "../api";
 import { Modal, Field, Input, Textarea, Select, Stars, Empty, Confirm, useAsync } from "../components/ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
 import { TableauEditor, MaterielSeance, imageDuPresse, fileToBase64 } from "../components/SeanceParts";
@@ -14,6 +14,8 @@ import { useFileDropZone, estDocument, estImage, fichierEnBase64 } from "../drag
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { FormSequence } from "../components/FormSequence";
+import { ReglesCitees, useLudotheque } from "../components/ReglesDesJeux";
+import { jeuxCites, reglesImprimees, sansMarqueurs, STYLE_REGLES } from "../jeuxCites";
 
 export default function SequenceDetail() {
   const { id } = useParams();
@@ -244,6 +246,7 @@ async function imprimerSequence(seq: Sequence, seances: Seance[]) {
     pjParSeance[s.id] = pjs.filter((p) => p.type === "image").map((p) => p.nomFichier);
     pjs.forEach((p) => { if (p.type === "image") noms.add(p.nomFichier); });
   }
+  const jeux = await api.jeuxList().catch((): Jeu[] => []);
   const dataUrls: Record<string, string> = {};
   await Promise.all([...noms].map(async (n) => {
     try { dataUrls[n] = dataUrlImage(n, await api.fichierRead(n)); } catch { /* ignore */ }
@@ -279,7 +282,7 @@ async function imprimerSequence(seq: Sequence, seances: Seance[]) {
       <div class="meta">${formatDuree(s.duree)}${s.date ? " · " + new Date(s.date).toLocaleDateString("fr-FR") : ""}</div>
       ${s.objectifs ? `<div class="label">Objectifs</div><div class="pre">${escapeHtml(s.objectifs)}</div>` : ""}
       ${comps.length ? `<div class="label">Compétences</div>${comps.map((c) => `<span class="chip">${escapeHtml(labelCourt(c))}</span>`).join("")}` : ""}
-      ${s.deroulement ? `<div class="label">Déroulement</div>${rendreTexte(s.deroulement)}` : ""}
+      ${s.deroulement ? `<div class="label">Déroulement</div>${rendreTexte(s.deroulement)}${reglesImprimees(jeuxCites(sansMarqueurs(s.deroulement), jeux))}` : ""}
       ${grid.length ? `<table>${grid.map((row, r) => `<tr>${row.map((c) => r === 0 ? `<th>${escapeHtml(c)}</th>` : `<td>${rendreTexte(c)}</td>`).join("")}</tr>`).join("")}</table>` : ""}
       ${illus.map((f) => dataUrls[f] ? `<img alt="" src="${dataUrls[f]}">` : "").join("")}
       ${s.materiel ? `<div class="label">Matériel</div><div class="pre">${escapeHtml(s.materiel)}</div>` : ""}
@@ -295,7 +298,7 @@ async function imprimerSequence(seq: Sequence, seances: Seance[]) {
     ${seq.objectifs ? `<div class="label">Objectifs / notes</div><div class="pre">${escapeHtml(seq.objectifs)}</div>` : ""}
     <h2>Séances (${seances.length})</h2>
     ${seancesHtml || "<div class='meta'>Aucune séance.</div>"}`;
-  printHTML(seq.titre || "Séquence", html);
+  printHTML(seq.titre || "Séquence", html, STYLE_REGLES);
 }
 
 // Vidéo explicative : YouTube (iframe), lien direct, ou fichier importé.
@@ -340,6 +343,7 @@ function Card({ titre, children, right }: { titre: string; children: React.React
 
 function SeanceForm({ seance, cycle = "", onClose, onSaved }: { seance: Seance; cycle?: string; onClose: () => void; onSaved: () => void }) {
   const [s, setS] = React.useState<Seance>(seance);
+  const { jeux, recharger: rechargerJeux } = useLudotheque();
   const up = (p: Partial<Seance>) => setS((cur) => ({ ...cur, ...p }));
   const [dateActive, setDateActive] = React.useState(!!seance.date);
   // Dernière position du curseur dans le déroulement (pour insérer une image au bon endroit).
@@ -428,6 +432,7 @@ function SeanceForm({ seance, cycle = "", onClose, onSaved }: { seance: Seance; 
             const next = (t.slice(0, pos).trimEnd() + `\n[img:${nom}]\n` + t.slice(pos).trimStart()).replace(/^\n/, "");
             up({ deroulement: next, imagesDeroulement: JSON.stringify([...illustrations, nom]) });
           }} />
+        <ReglesCitees texte={sansMarqueurs(s.deroulement)} jeux={jeux} onJeuModifie={rechargerJeux} />
         <div style={{ marginTop: 8 }}>
           <CitationButton onInsert={(mq) => up({ deroulement: (s.deroulement.trimEnd() + "\n" + mq + "\n").trimStart() })} />
         </div>
@@ -464,6 +469,7 @@ export function SeanceReadView({ seance: s, onClose, onEdit }: { seance: Seance;
   let grid: string[][] = [];
   try { grid = JSON.parse(s.tableauDeroulement || "[]"); } catch { /* ignore */ }
   const { data: materiels } = useAsync(() => api.materielList().then((all) => all.filter((m) => m.seanceId === s.id)), [s.id]);
+  const { jeux, recharger: rechargerJeux } = useLudotheque();
 
   const Section = ({ titre, children }: { titre: string; children: React.ReactNode }) => (
     <div style={{ marginBottom: 16 }}>
@@ -486,6 +492,11 @@ export function SeanceReadView({ seance: s, onClose, onEdit }: { seance: Seance;
         </div>
       </Section>}
       {s.deroulement && <Section titre="Déroulement"><DeroulementRead texte={s.deroulement} /></Section>}
+      {s.deroulement && (
+        <div style={{ marginTop: -10, marginBottom: 16 }}>
+          <ReglesCitees texte={sansMarqueurs(s.deroulement)} jeux={jeux} onJeuModifie={rechargerJeux} />
+        </div>
+      )}
       {grid.length > 0 && <Section titre="Tableau">
         <div style={{ overflowX: "auto" }}>
           <table className="tbl" style={{ tableLayout: "fixed", width: "100%" }}>

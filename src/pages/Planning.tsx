@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import { isoJour, lundiDe, jourPlanningInitial, anneeDe, toMin, minToHHMM } from "../dates";
-import { api, Creneau, Seance, Sequence, Eleve, MATIERES, couleurPourMatiere, teinteCreneau, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance } from "../api";
+import { api, Creneau, Seance, Sequence, Eleve, Jeu, MATIERES, couleurPourMatiere, teinteCreneau, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance } from "../api";
 import { Modal, Field, Input, Select, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
 import { toast } from "../components/Toaster";
@@ -11,6 +11,7 @@ import { SeanceReadView } from "./SequenceDetail";
 import { printHTML, escapeHtml, dataUrlImage } from "../print";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
 import { CahierJournal, ecrireLeCahierJournal } from "../components/CahierJournal";
+import { jeuxCites, reglesImprimees, STYLE_REGLES } from "../jeuxCites";
 import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
 import { organisationPour, natureDuSlot, type SlotEdt } from "../organisation";
 
@@ -205,6 +206,8 @@ export default function Planning() {
       while ((m = reImg.exec(s.deroulement || ""))) noms.add(m[1]);
       try { (JSON.parse(s.tableauDeroulement || "[]") as string[][]).forEach((row) => row.forEach((cell) => { let mm: RegExpExecArray | null; const re = /\[img:([^\]]+)\]/g; while ((mm = re.exec(cell))) noms.add(mm[1]); })); } catch { /* */ }
     }
+    // La ludothèque : la règle des jeux cités suit le prévu du créneau.
+    const jeux = await api.jeuxList().catch((): Jeu[] => []);
     const urls: Record<string, string> = {};
     await Promise.all([...noms].map(async (n) => {
       try { urls[n] = dataUrlImage(n, await api.fichierRead(n)); } catch { /* */ }
@@ -248,6 +251,7 @@ export default function Planning() {
         grid.length ? `<div class="fl" style="margin-top:4px">Tableau :</div><table>${grid.map((row, r) => `<tr>${row.map((cell) => r === 0 ? `<th>${escapeHtml(cell)}</th>` : `<td>${rendreCell(cell)}</td>`).join("")}</tr>`).join("")}</table>` : "",
         illus.length ? `<div class="imgs">${illus.map(imgTag).join("")}</div>` : "",
         c.prevu?.trim() ? `<div class="f"><span class="fl">Prévu :</span></div><div class="txt">${escapeHtml(c.prevu.trim())}</div>` : "",
+        reglesImprimees(jeuxCites(`${c.prevu ?? ""}\n${deroul}`, jeux)),
         c.bilan?.trim() ? `<div class="f"><span class="fl">Fait · bilan :</span></div><div class="txt">${escapeHtml(c.bilan.trim())}</div>` : "",
       ].join("");
       return `<div class="col">${head}${body ? `<div class="body">${body}</div>` : ""}</div>`;
@@ -272,7 +276,8 @@ export default function Planning() {
     }).join("");
 
     const css = `
-      *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact} body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#1c2233;margin:0;padding:22px 26px}
+      :root{color-scheme:light}
+      *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact} body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#1c2233;background:#fff;margin:0;padding:22px 26px}
       h1{font-size:22px;margin:0 0 2px;color:#23527c} .sub{color:#687087;font-size:11px;text-transform:uppercase;letter-spacing:1.2px;font-weight:600;margin-bottom:16px}
       .jour{border-bottom:1px solid #cfd6e4}
       .row{display:flex;border-top:1px solid #cfd6e4;page-break-inside:avoid}
@@ -293,6 +298,7 @@ export default function Planning() {
       .imgs{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px} img{max-width:100%;max-height:150px;border-radius:5px;object-fit:contain}
       td img{max-height:110px}
       @media print{@page{margin:11mm}}
+      ${STYLE_REGLES}
     `;
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Planning — ${escapeHtml(titre)}</title><style>${css}</style></head>
       <body><h1>${escapeHtml(titre)}</h1><div class="sub">Cahier journal</div>
