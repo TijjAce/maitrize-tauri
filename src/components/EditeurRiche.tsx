@@ -2,7 +2,9 @@ import React from "react";
 import { texteErreur } from "../api";
 import { toast } from "./Toaster";
 import { reformuler, STYLES, Style } from "../reformulation";
-import { nettoyerHtml, versHtml, texteVersHtmlEnLigne } from "../texteRiche";
+import { nettoyerHtml, versHtml, texteVersHtmlEnLigne, imagesEnAttente } from "../texteRiche";
+import { api } from "../api";
+import { chargerImage, preparerImage } from "./imagesTexte";
 
 // Éditeur de texte mis en forme, façon traitement de texte : titres, gras,
 // listes, alignement, surlignage — et reformulation par l'IA du seul passage
@@ -14,6 +16,9 @@ import { nettoyerHtml, versHtml, texteVersHtmlEnLigne } from "../texteRiche";
 //
 // Mise en forme par `document.execCommand` : ancienne mais présente dans les
 // webviews de macOS et de Windows, et elle garde l'historique d'annulation.
+//
+// Une photo collée (capture d'écran, photo copiée) est réduite, enregistrée
+// comme fichier de Maitrize et posée à l'endroit du curseur.
 
 export interface EditeurRicheHandle {
   /** Insère du HTML à l'endroit du curseur (ou à la fin). */
@@ -78,9 +83,43 @@ export const EditeurRiche = React.forwardRef<EditeurRicheHandle, {
   // Le contenu n'est posé qu'au montage : le réécrire à chaque frappe ferait
   // sauter le curseur. Changer de document, c'est remonter l'éditeur (key).
   React.useLayoutEffect(() => {
-    if (zone.current) zone.current.innerHTML = versHtml(valeur);
+    if (zone.current) zone.current.innerHTML = imagesEnAttente(versHtml(valeur));
+    afficherImages();
     compter();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Les images du texte n'ont que leur nom de fichier : on les lit et on les montre. */
+  const afficherImages = () => {
+    zone.current?.querySelectorAll<HTMLImageElement>("img[data-fichier]:not([src])").forEach((img) => {
+      chargerImage(img.dataset.fichier ?? "").then((src) => { img.src = src; }).catch(() => { img.alt = "Image introuvable"; });
+    });
+  };
+
+  const [collage, setCollage] = React.useState(false);
+  /** Pose les photos collées là où était le curseur. */
+  const collerImages = async (fichiers: File[], plage: Range | null) => {
+    setCollage(true);
+    try {
+      let html = "";
+      for (const f of fichiers) {
+        const { base64, ext } = await preparerImage(f);
+        const nom = await api.fichierSave(`photo.${ext}`, base64);
+        html += `<img src="data:image/${ext === "jpg" ? "jpeg" : ext};base64,${base64}" data-fichier="${nom}" alt="">`;
+      }
+      agir(() => {
+        const sel = window.getSelection();
+        if (sel && plage && dansLaZone(plage.commonAncestorContainer)) {
+          sel.removeAllRanges();
+          sel.addRange(plage);
+        }
+        document.execCommand("insertHTML", false, html);
+      });
+    } catch (e) {
+      toast("Photo non collée : " + texteErreur(e), { icone: "⚠️", duree: 6000 });
+    } finally {
+      setCollage(false);
+    }
+  };
 
   const compter = () => {
     const t = zone.current?.innerText ?? "";
@@ -248,15 +287,26 @@ export const EditeurRiche = React.forwardRef<EditeurRicheHandle, {
         </div>
       )}
 
-      <div style={{ position: "relative" }}>
+      <div className="editeur-riche-page">
         {vide && <div className="editeur-riche-placeholder" aria-hidden="true">{placeholder}</div>}
+        {collage && <div className="editeur-riche-collage" role="status">Photo en cours d'ajout…</div>}
         <div ref={zone} className="editeur-riche-feuille" contentEditable suppressContentEditableWarning
           role="textbox" aria-multiline="true" aria-label="Texte" spellCheck
           style={{ minHeight: minHauteur }}
           onInput={publier}
           onPaste={(e) => {
-            // Collé sans la mise en forme d'origine (polices, couleurs, liens) : le texte, proprement.
             e.preventDefault();
+            // Une photo (capture d'écran, image copiée) : réduite puis posée au curseur.
+            const photos = Array.from(e.clipboardData.items)
+              .filter((i) => i.kind === "file" && i.type.startsWith("image/"))
+              .map((i) => i.getAsFile())
+              .filter((f): f is File => f !== null);
+            if (photos.length) {
+              const sel = window.getSelection();
+              void collerImages(photos, sel && sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null);
+              return;
+            }
+            // Collé sans la mise en forme d'origine (polices, couleurs, liens) : le texte, proprement.
             const t = e.clipboardData.getData("text/plain");
             document.execCommand("insertHTML", false, texteVersHtmlEnLigne(t));
           }} />

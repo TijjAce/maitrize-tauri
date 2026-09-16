@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { estHtml, nettoyerHtml, versHtml, texteBrut, texteVersHtmlEnLigne } from "./texteRiche";
+import { avecSourcesImages, estHtml, imagesDuTexte, imagesEnAttente, nettoyerHtml, versHtml, texteBrut, texteVersHtmlEnLigne } from "./texteRiche";
 
 describe("nettoyerHtml", () => {
   it("garde la mise en forme simple", () => {
@@ -7,7 +7,7 @@ describe("nettoyerHtml", () => {
     expect(nettoyerHtml(html)).toBe(html);
   });
 
-  it("retire scripts, gestionnaires, liens et images", () => {
+  it("retire scripts, gestionnaires, liens et images venues d'ailleurs", () => {
     expect(nettoyerHtml('<p onclick="alert(1)">a</p><script>alert(2)</script><img src=x onerror=alert(3)><a href="javascript:x">b</a>'))
       .toBe("<p>a</p>b");
     expect(nettoyerHtml("<style>p{}</style><iframe src='x'></iframe><svg><script>1</script></svg>c")).toBe("c");
@@ -23,6 +23,35 @@ describe("nettoyerHtml", () => {
 
   it("neutralise un chevron isolé", () => {
     expect(nettoyerHtml("3 < 5 et 5 > 3")).toBe("3 &lt; 5 et 5 &gt; 3");
+  });
+});
+
+describe("images collées", () => {
+  it("ne garde d'une image de Maitrize que son nom de fichier", () => {
+    expect(nettoyerHtml('<p>avant<img data-fichier="a1-b2.png" src="data:image/png;base64,iVBOR" onerror="x" style="width:9px">après</p>'))
+      .toBe('<p>avant<img src="maitrize-fichier:a1-b2.png">après</p>');
+    expect(nettoyerHtml('<img src="maitrize-fichier:photo.jpg">')).toBe('<img src="maitrize-fichier:photo.jpg">');
+  });
+
+  it("refuse les images d'ailleurs et les noms qui sortent du dossier des fichiers", () => {
+    expect(nettoyerHtml('<img src="data:image/png;base64,AAAA"><img src="https://exemple.fr/x.png">')).toBe("");
+    expect(nettoyerHtml('<img data-fichier="../secret.png"><img src="maitrize-fichier:.cache"><img src="maitrize-fichier:a b.png">')).toBe("");
+    expect(nettoyerHtml('<img src="javascript:alert(1)" data-fichier="x.png">')).toBe('<img src="maitrize-fichier:x.png">');
+  });
+
+  it("reconnaît un contenu fait d'une seule image, sans texte", () => {
+    const contenu = '<img src="maitrize-fichier:photo.jpg">';
+    expect(estHtml(contenu)).toBe(true);
+    expect(versHtml(contenu)).toBe(contenu);
+    expect(texteBrut(`<p>Sortie</p>${contenu}`)).toBe("Sortie");
+  });
+
+  it("donne leur source aux images, pour l'éditeur et l'impression", () => {
+    const html = '<p>a</p><img src="maitrize-fichier:un.png"><img src="maitrize-fichier:absent.png"><img src="maitrize-fichier:un.png">';
+    expect(imagesDuTexte(html)).toEqual(["un.png", "absent.png"]);
+    expect(avecSourcesImages(html, (n) => (n === "un.png" ? "data:image/png;base64,QQ==" : undefined)))
+      .toBe('<p>a</p><img src="data:image/png;base64,QQ==" alt=""><img src="data:image/png;base64,QQ==" alt="">');
+    expect(imagesEnAttente(html)).toBe('<p>a</p><img data-fichier="un.png" alt=""><img data-fichier="absent.png" alt=""><img data-fichier="un.png" alt="">');
   });
 });
 

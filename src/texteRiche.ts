@@ -22,8 +22,51 @@ export const echapper = (t: string) =>
 
 /** Vrai si le contenu est déjà du HTML mis en forme (et non un ancien texte brut). */
 export function estHtml(contenu: string): boolean {
-  return /<(p|br|div|h[1-3]|ul|ol|li|b|strong|i|em|u|s|span|mark|blockquote|table)\b[^>]*>/i.test(contenu);
+  return /<(p|br|div|h[1-3]|ul|ol|li|b|strong|i|em|u|s|span|mark|blockquote|table|img)\b[^>]*>/i.test(contenu);
 }
+
+// ── Images collées ──
+//
+// Une photo collée devient un fichier de Maitrize, comme une pièce jointe :
+// synchronisée une fois, sans alourdir le texte à chaque enregistrement. Le
+// texte ne garde que son nom — `<img src="maitrize-fichier:NOM">` —, que
+// l'éditeur, l'impression et la copie du bureau remplacent par l'image.
+
+export const MARQUE_FICHIER = "maitrize-fichier:";
+const NOM_FICHIER = /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/;
+
+/** Le fichier d'une balise image, s'il vient de Maitrize. */
+function fichierDeLImage(attributs: string): string | null {
+  const lu = /\bdata-fichier\s*=\s*["']([^"']*)["']/i.exec(attributs)?.[1]
+    ?? new RegExp(`\\bsrc\\s*=\\s*["']${MARQUE_FICHIER}([^"']*)["']`, "i").exec(attributs)?.[1];
+  return lu && NOM_FICHIER.test(lu) ? lu : null;
+}
+
+/** Les fichiers des images d'un contenu. */
+export function imagesDuTexte(html: string): string[] {
+  const noms = new Set<string>();
+  for (const m of (html ?? "").matchAll(/<img\b([^<>]*)>/gi)) {
+    const nom = fichierDeLImage(m[1]);
+    if (nom) noms.add(nom);
+  }
+  return [...noms];
+}
+
+/** Donne à chaque image sa source (l'image lue) ; une image introuvable est retirée. */
+export function avecSourcesImages(html: string, source: (nom: string) => string | undefined): string {
+  return (html ?? "").replace(/<img\b([^<>]*)>/gi, (_, attributs: string) => {
+    const nom = fichierDeLImage(attributs);
+    const src = nom ? source(nom) : undefined;
+    return src ? `<img src="${src}" alt="">` : "";
+  });
+}
+
+/** Pour l'éditeur : les images portent leur fichier, leur source vient ensuite. */
+export const imagesEnAttente = (html: string) =>
+  (html ?? "").replace(/<img\b([^<>]*)>/gi, (_, attributs: string) => {
+    const nom = fichierDeLImage(attributs);
+    return nom ? `<img data-fichier="${nom}" alt="">` : "";
+  });
 
 /** Ne garde que les balises autorisées, sans leurs attributs (sauf alignement et surlignage). */
 export function nettoyerHtml(html: string): string {
@@ -34,6 +77,11 @@ export function nettoyerHtml(html: string): string {
   return sans.replace(/<\/?([a-zA-Z][a-zA-Z0-9]*)\b([^<>]*)>|<|>/g, (tout, nom?: string, attributs?: string) => {
     if (!nom) return tout === "<" ? "&lt;" : "&gt;";
     const n = nom.toLowerCase();
+    // Une image n'est gardée que si elle vient de Maitrize, réduite à son nom de fichier.
+    if (n === "img") {
+      const fichier = tout.startsWith("</") ? null : fichierDeLImage(attributs ?? "");
+      return fichier ? `<img src="${MARQUE_FICHIER}${fichier}">` : "";
+    }
     if (!BALISES.has(n)) return "";
     if (tout.startsWith("</")) return n === "br" || n === "hr" ? "" : `</${n}>`;
     const style = /\bstyle\s*=\s*"([^"]*)"/i.exec(attributs ?? "")?.[1] ?? /\bstyle\s*=\s*'([^']*)'/i.exec(attributs ?? "")?.[1];

@@ -8,6 +8,7 @@ import { EditeurRiche, EditeurRicheHandle } from "../components/EditeurRiche";
 import { useTexteAutosave, LIBELLE_ENREGISTREMENT } from "../components/useTexteAutosave";
 import { printHTML } from "../print";
 import { nettoyerHtml } from "../texteRiche";
+import { avecImages } from "../components/imagesTexte";
 import { documentRempli } from "../dossier";
 import { organisationPour } from "../organisation";
 import { BLOCS_REMPLACANT, DOSSIER_INFORMATIONS, feuilleRemplacant, type DonneesClasse } from "../remplacant";
@@ -148,7 +149,7 @@ function EditeurFeuille({ feuille, annee, onEnregistre, onDupliquer, onSupprimer
 
   const imprimer = async () => {
     await sauver();
-    printHTML(titre || "Informations", nettoyerHtml(contenu),
+    printHTML(titre || "Informations", await avecImages(nettoyerHtml(contenu)),
       "h1 { font-size: 20px; } h2 { page-break-after: avoid; } table { page-break-inside: auto; } tr { page-break-inside: avoid; }");
   };
 

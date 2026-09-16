@@ -3,6 +3,7 @@ import { EditeurRiche } from "./EditeurRiche";
 import { useTexteAutosave, LIBELLE_ENREGISTREMENT } from "./useTexteAutosave";
 import { printHTML, escapeHtml } from "../print";
 import { nettoyerHtml } from "../texteRiche";
+import { avecImages } from "./imagesTexte";
 
 // Fichier texte du plan de travail, ouvert comme dans un traitement de texte :
 // grande feuille, mise en forme, reformulation par l'IA du passage sélectionné.
@@ -13,7 +14,7 @@ export function EditeurTexte({ texte, onClose }: { texte: Texte; onClose: () => 
   const fermer = async () => { await sauver(); onClose(); };
   const imprimer = async () => {
     await sauver();
-    printHTML(titre || "Texte", `<h1>${escapeHtml(titre || "Sans titre")}</h1>${nettoyerHtml(contenu)}`);
+    printHTML(titre || "Texte", `<h1>${escapeHtml(titre || "Sans titre")}</h1>${await avecImages(nettoyerHtml(contenu))}`);
   };
 
   return (
