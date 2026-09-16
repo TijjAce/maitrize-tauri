@@ -7,7 +7,8 @@ import {
 import { Modal, Field, Input, Textarea, Select, Empty, ColorPicker, Confirm, useAsync, useSegmentNav, useOngletDemande } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
 import { FichierImg } from "../components/Deroulement";
-import { JeuForm, VignetteUpload } from "../components/JeuForm";
+import { JeuForm, VignetteUpload, competencesBoDu } from "../components/JeuForm";
+import { labelCourt } from "../components/CompetenceTree";
 
 /**
  * Un jeu passe-t-il les filtres de la ludothèque ?
@@ -179,6 +180,20 @@ export default function Ateliers() {
                       {j.dossier && <span className="chip">📁 {j.dossier}</span>}
                     </div>
                     {j.competences && <div style={{ fontSize: 13, color: "var(--text-2)", marginTop: 8 }}>🎯 {j.competences.slice(0, 90)}</div>}
+                    {(() => {
+                      const bo = competencesBoDu(j);
+                      return bo.length > 0 && (
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
+                          {bo.slice(0, 3).map((c, i) => (
+                            <span key={i} className="chip" title={`${c.referentielNom} › ${labelCourt(c)}`}
+                              style={{ maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>
+                              📘 {labelCourt(c)}
+                            </span>
+                          ))}
+                          {bo.length > 3 && <span className="chip">+{bo.length - 3}</span>}
+                        </div>
+                      );
+                    })()}
                     {j.rangement && <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 6 }}>📦 {j.rangement}</div>}
                   </div>
                 ))}

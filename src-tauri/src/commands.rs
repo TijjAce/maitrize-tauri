@@ -203,14 +203,17 @@ pub fn jeux_list(db: State<Db>) -> R<Vec<Jeu>> {
 
 #[tauri::command]
 pub fn jeu_save(db: State<Db>, jeu: Jeu) -> R<Jeu> {
-    let c = db.lock();
+    ecrire_jeu(&db.lock(), jeu)
+}
+
+pub(crate) fn ecrire_jeu(c: &rusqlite::Connection, jeu: Jeu) -> R<Jeu> {
     c.execute(
         "INSERT INTO jeux (id,titre,type_jeu,description_jeu,regles,competences,nb_joueurs_min,nb_joueurs_max,
-          duree,age_min,rangement,couleur,date_creation,image_nom,dossier)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, type_jeu = excluded.type_jeu, description_jeu = excluded.description_jeu, regles = excluded.regles, competences = excluded.competences, nb_joueurs_min = excluded.nb_joueurs_min, nb_joueurs_max = excluded.nb_joueurs_max, duree = excluded.duree, age_min = excluded.age_min, rangement = excluded.rangement, couleur = excluded.couleur, date_creation = excluded.date_creation, image_nom = excluded.image_nom, dossier = excluded.dossier",
+          duree,age_min,rangement,couleur,date_creation,image_nom,dossier,competences_bo)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, type_jeu = excluded.type_jeu, description_jeu = excluded.description_jeu, regles = excluded.regles, competences = excluded.competences, nb_joueurs_min = excluded.nb_joueurs_min, nb_joueurs_max = excluded.nb_joueurs_max, duree = excluded.duree, age_min = excluded.age_min, rangement = excluded.rangement, couleur = excluded.couleur, date_creation = excluded.date_creation, image_nom = excluded.image_nom, dossier = excluded.dossier, competences_bo = excluded.competences_bo",
         params![jeu.id, jeu.titre, jeu.type_jeu, jeu.description_jeu, jeu.regles, jeu.competences,
                 jeu.nb_joueurs_min, jeu.nb_joueurs_max, jeu.duree, jeu.age_min, jeu.rangement,
-                jeu.couleur, jeu.date_creation, jeu.image_nom, jeu.dossier],
+                jeu.couleur, jeu.date_creation, jeu.image_nom, jeu.dossier, jeu.competences_bo],
     ).map_err(e)?;
     Ok(jeu)
 }
@@ -1987,6 +1990,34 @@ fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests_jeux {
+    use crate::models::Jeu;
+
+    /// Les compétences du BO d'un jeu survivent à l'enregistrement ; un jeu
+    /// venu d'une version plus ancienne, sans elles, n'en a aucune.
+    #[test]
+    fn les_competences_du_bo_d_un_jeu_sont_gardees() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        let bo = r#"[{"id":"c1","referentielNom":"Cycle 2","competenceTitre":"Dénombrer jusqu'à 30"}]"#;
+        let jeu: Jeu = serde_json::from_value(serde_json::json!({
+            "id": "j1", "titre": "Loto des nombres", "competences": "Reconnaissance verbale des nombres", "competencesBo": bo
+        })).unwrap();
+        super::ecrire_jeu(&c, jeu).unwrap();
+        let lu = c.query_row("SELECT * FROM jeux WHERE id='j1'", [], Jeu::from_row).unwrap();
+        assert_eq!(lu.competences_bo, bo);
+        assert_eq!(lu.competences, "Reconnaissance verbale des nombres");
+
+        // Ligne écrite sans la colonne (synchronisation depuis une version plus ancienne).
+        c.execute("INSERT INTO jeux (id, titre, date_creation) VALUES ('j2', 'Memory', '2026-01-01')", []).unwrap();
+        let ancien = c.query_row("SELECT * FROM jeux WHERE id='j2'", [], Jeu::from_row).unwrap();
+        assert_eq!(ancien.competences_bo, "[]");
+        let sans: Jeu = serde_json::from_value(serde_json::json!({"id": "j3", "titre": "Uno"})).unwrap();
+        assert_eq!(sans.competences_bo, "[]");
+    }
 }
 
 #[cfg(test)]

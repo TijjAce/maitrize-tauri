@@ -648,6 +648,9 @@ pub(crate) fn migrate(conn: &Connection) {
     conn.execute("ALTER TABLE creneaux ADD COLUMN nature TEXT NOT NULL DEFAULT 'classe'", []).ok();
     conn.execute("ALTER TABLE creneaux ADD COLUMN prevu TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE creneaux ADD COLUMN bilan TEXT NOT NULL DEFAULT ''", []).ok();
+    // Compétences du BO d'un jeu. Sans NOT NULL : une ligne créée sur un
+    // ordinateur pas encore mis à jour arrive sans cette colonne.
+    conn.execute("ALTER TABLE jeux ADD COLUMN competences_bo TEXT", []).ok();
     // Matériel : rangement en dossiers, liens vidéo, et renvois vers le coffre.
     conn.execute("ALTER TABLE materiel_items ADD COLUMN dossier TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE materiel_items ADD COLUMN videos_json TEXT NOT NULL DEFAULT '[]'", []).ok();

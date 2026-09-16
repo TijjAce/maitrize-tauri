@@ -87,7 +87,10 @@ export interface Espace {
 /** Un jeu de la ludothèque de classe. */
 export interface Jeu {
   id: string; titre: string; typeJeu: string; descriptionJeu: string; regles: string;
-  competences: string; nbJoueursMin: number; nbJoueursMax: number; duree: number;
+  competences: string;
+  /** Compétences des programmes officiels (BO) travaillées, en JSON. */
+  competencesBo: string;
+  nbJoueursMin: number; nbJoueursMax: number; duree: number;
   ageMin: number; rangement: string; couleur: string; dateCreation: string;
   imageNom: string | null; dossier: string;
 }
@@ -262,7 +265,7 @@ export const nouvelEspace = (): Espace => ({
 });
 
 export const nouveauJeu = (): Jeu => ({
-  id: newId(), titre: "", typeJeu: TYPES_JEU[0], descriptionJeu: "", regles: "", competences: "",
+  id: newId(), titre: "", typeJeu: TYPES_JEU[0], descriptionJeu: "", regles: "", competences: "", competencesBo: "[]",
   nbJoueursMin: 2, nbJoueursMax: 4, duree: 20, ageMin: 3, rangement: "",
   couleur: "purple", dateCreation: nowIso(), imageNom: null, dossier: "",
 });

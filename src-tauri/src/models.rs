@@ -331,6 +331,9 @@ pub struct Jeu {
     pub regles: String,
     #[serde(default)]
     pub competences: String,
+    /// Compétences des programmes officiels (BO) que le jeu travaille, en JSON.
+    #[serde(default = "vide_arr")]
+    pub competences_bo: String,
     #[serde(default = "deux")]
     pub nb_joueurs_min: i64,
     #[serde(default = "quatre")]
@@ -366,6 +369,9 @@ impl Jeu {
             description_jeu: r.get("description_jeu")?,
             regles: r.get("regles")?,
             competences: r.get("competences")?,
+            // Colonne sans contrainte : une ligne venue d'une version plus
+            // ancienne (synchronisation, restauration) n'en porte pas.
+            competences_bo: r.get::<_, Option<String>>("competences_bo").ok().flatten().unwrap_or_else(|| "[]".into()),
             nb_joueurs_min: r.get("nb_joueurs_min")?,
             nb_joueurs_max: r.get("nb_joueurs_max")?,
             duree: r.get("duree")?,
