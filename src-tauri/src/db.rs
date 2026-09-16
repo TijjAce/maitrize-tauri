@@ -396,6 +396,26 @@ pub(crate) fn migrate(conn: &Connection) {
             dossier TEXT NOT NULL DEFAULT ''
         );
 
+        -- Outils pour l'élève et affichages de la classe : une même fiche,
+        -- distinguée par son genre (« outil » ou « affichage »).
+        CREATE TABLE IF NOT EXISTS outils_classe (
+            id TEXT PRIMARY KEY,
+            genre TEXT NOT NULL DEFAULT 'outil',
+            titre TEXT NOT NULL DEFAULT '',
+            categorie TEXT NOT NULL DEFAULT '',
+            usage TEXT NOT NULL DEFAULT '',
+            competences_bo TEXT NOT NULL DEFAULT '[]',
+            consignes TEXT NOT NULL DEFAULT '',
+            lieu TEXT NOT NULL DEFAULT '',
+            periode TEXT NOT NULL DEFAULT '',
+            eleves_json TEXT NOT NULL DEFAULT '[]',
+            documents_json TEXT NOT NULL DEFAULT '[]',
+            image_nom TEXT,
+            couleur TEXT NOT NULL DEFAULT 'teal',
+            dossier TEXT NOT NULL DEFAULT '',
+            date_creation TEXT NOT NULL DEFAULT ''
+        );
+
         CREATE TABLE IF NOT EXISTS atelier_espace (
             atelier_id TEXT NOT NULL REFERENCES ateliers(id) ON DELETE CASCADE,
             espace_id TEXT NOT NULL REFERENCES espaces(id) ON DELETE CASCADE,

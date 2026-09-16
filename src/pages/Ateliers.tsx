@@ -1,14 +1,15 @@
 import React from "react";
 import { Page } from "../App";
 import {
-  api, Atelier, Espace, Jeu, Eleve, ProgressionEleve, nouvelAtelier, nouvelEspace, nouveauJeu,
-  MATIERES, couleurHex, couleurPourMatiere, newId,
+  api, Atelier, Espace, Jeu, Eleve, OutilClasse, ProgressionEleve, nouvelAtelier, nouvelEspace, nouveauJeu, nouvelOutil,
+  MATIERES, couleurHex, couleurPourMatiere, newId, nowIso,
 } from "../api";
 import { Modal, Field, Input, Textarea, Select, Empty, ColorPicker, Confirm, useAsync, useSegmentNav, useOngletDemande } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
 import { FichierImg } from "../components/Deroulement";
-import { JeuForm, VignetteUpload, competencesBoDu } from "../components/JeuForm";
-import { labelCourt } from "../components/CompetenceTree";
+import { JeuForm, VignetteUpload } from "../components/JeuForm";
+import { EtiquettesBo } from "../components/ChoixCompetencesBo";
+import { CarteOutil, OutilForm, elevesDe } from "../components/OutilForm";
 
 /**
  * Un jeu passe-t-il les filtres de la ludothèque ?
@@ -27,7 +28,7 @@ export function jeuAccepte(j: Jeu, f: { typeJeu?: string; joueurs?: string; doss
   return true;
 }
 
-const ATELIERS_TABS = ["ateliers", "espaces", "jeux"] as const;
+const ATELIERS_TABS = ["ateliers", "espaces", "jeux", "outils", "affichages"] as const;
 export default function Ateliers() {
   const [onglet, setOnglet] = React.useState<typeof ATELIERS_TABS[number]>("ateliers");
   useSegmentNav(ATELIERS_TABS, onglet, setOnglet);
@@ -36,6 +37,15 @@ export default function Ateliers() {
   const { data: espaces, reload: rE } = useAsync(() => api.espacesList(), []);
   const { data: liens, reload: rL } = useAsync(() => api.atelierEspaceList(), []);
   const { data: jeux, reload: rJ } = useAsync(() => api.jeuxList(), []);
+  const { data: outilsClasse, reload: rO } = useAsync(() => api.outilsClasseList(), []);
+  const { data: eleves } = useAsync(() => api.elevesList(), []);
+  const outils = (outilsClasse ?? []).filter((o) => o.genre === "outil");
+  const affichages = (outilsClasse ?? []).filter((o) => o.genre === "affichage");
+  const [editO, setEditO] = React.useState<OutilClasse | null>(null);
+  const [delO, setDelO] = React.useState<OutilClasse | null>(null);
+  // Filtres des outils et affichages : la catégorie, et pour les outils l'élève.
+  const [categorie, setCategorie] = React.useState("");
+  const [pourEleve, setPourEleve] = React.useState("");
   const [editA, setEditA] = React.useState<Atelier | null>(null);
   const [editE, setEditE] = React.useState<Espace | null>(null);
   const [delA, setDelA] = React.useState<Atelier | null>(null);
@@ -49,22 +59,30 @@ export default function Ateliers() {
   const [joueurs, setJoueurs] = React.useState("");
 
   const dossiers = (liste: { dossier: string }[]) => Array.from(new Set(liste.map((x) => x.dossier).filter(Boolean)));
-  const courant = onglet === "ateliers" ? (ateliers ?? []) : onglet === "espaces" ? (espaces ?? []) : (jeux ?? []);
+  const courant = onglet === "ateliers" ? (ateliers ?? []) : onglet === "espaces" ? (espaces ?? [])
+    : onglet === "outils" ? outils : onglet === "affichages" ? affichages : (jeux ?? []);
+  const changerOnglet = (o: typeof ATELIERS_TABS[number]) => { setOnglet(o); setDossier(""); setCategorie(""); setPourEleve(""); };
   const dossiersDispo = dossiers(courant);
   const filtrer = <T extends { dossier: string }>(l: T[]) => dossier ? l.filter((x) => x.dossier === dossier) : l;
 
   return (
-    <Page titre="Ateliers & Espaces" sous="Activités en autonomie et stations de classe"
+    <Page titre="Ateliers & Espaces" sous="Activités en autonomie, stations de classe, jeux, outils des élèves et affichages"
       actions={onglet === "ateliers"
         ? <button className="btn primary" onClick={() => setEditA(nouvelAtelier())}>+ Atelier</button>
         : onglet === "espaces"
         ? <button className="btn primary" onClick={() => setEditE(nouvelEspace())}>+ Espace</button>
+        : onglet === "outils"
+        ? <button className="btn primary" onClick={() => setEditO(nouvelOutil("outil"))}>+ Outil</button>
+        : onglet === "affichages"
+        ? <button className="btn primary" onClick={() => setEditO(nouvelOutil("affichage"))}>+ Affichage</button>
         : <button className="btn primary" onClick={() => setEditJ(nouveauJeu())}>+ Jeu</button>}>
       <div className="toolbar">
         <div className="seg">
           <button className={onglet === "ateliers" ? "active" : ""} onClick={() => { setOnglet("ateliers"); setDossier(""); }}>Ateliers ({ateliers?.length ?? 0})</button>
           <button className={onglet === "espaces" ? "active" : ""} onClick={() => { setOnglet("espaces"); setDossier(""); }}>Espaces ({espaces?.length ?? 0})</button>
           <button className={onglet === "jeux" ? "active" : ""} onClick={() => { setOnglet("jeux"); setDossier(""); }}>Jeux ({jeux?.length ?? 0})</button>
+          <button className={onglet === "outils" ? "active" : ""} onClick={() => changerOnglet("outils")}>Outils pour l'élève ({outils.length})</button>
+          <button className={onglet === "affichages" ? "active" : ""} onClick={() => changerOnglet("affichages")}>Affichages ({affichages.length})</button>
         </div>
         <div className="spacer" />
         {onglet === "jeux" && (jeux?.length ?? 0) > 0 && <>
@@ -76,6 +94,21 @@ export default function Ateliers() {
           <Select value={typeJeu} onChange={(e) => setTypeJeu(e.target.value)} style={{ maxWidth: 160 }}>
             <option value="">Tous les types</option>
             {Array.from(new Set((jeux ?? []).map((j) => j.typeJeu).filter(Boolean))).map((ty) => <option key={ty}>{ty}</option>)}
+          </Select>
+        </>}
+        {(onglet === "outils" || onglet === "affichages") && courant.length > 0 && <>
+          {onglet === "outils" && (eleves ?? []).some((e) => outils.some((o) => elevesDe(o).includes(e.id))) && (
+            <Select value={pourEleve} onChange={(e) => setPourEleve(e.target.value)} style={{ maxWidth: 170 }}
+              title="Les outils dont se sert cet élève">
+              <option value="">Tous les élèves</option>
+              {(eleves ?? []).filter((e) => outils.some((o) => elevesDe(o).includes(e.id)))
+                .map((e) => <option key={e.id} value={e.id}>Pour {e.nom.split(" ")[0]}</option>)}
+            </Select>
+          )}
+          <Select value={categorie} onChange={(e) => setCategorie(e.target.value)} style={{ maxWidth: 190 }}>
+            <option value="">Toutes les catégories</option>
+            {Array.from(new Set((onglet === "outils" ? outils : affichages).map((o) => o.categorie).filter(Boolean)))
+              .map((c) => <option key={c}>{c}</option>)}
           </Select>
         </>}
         {dossiersDispo.length > 0 && (
@@ -180,20 +213,7 @@ export default function Ateliers() {
                       {j.dossier && <span className="chip">📁 {j.dossier}</span>}
                     </div>
                     {j.competences && <div style={{ fontSize: 13, color: "var(--text-2)", marginTop: 8 }}>🎯 {j.competences.slice(0, 90)}</div>}
-                    {(() => {
-                      const bo = competencesBoDu(j);
-                      return bo.length > 0 && (
-                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
-                          {bo.slice(0, 3).map((c, i) => (
-                            <span key={i} className="chip" title={`${c.referentielNom} › ${labelCourt(c)}`}
-                              style={{ maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>
-                              📘 {labelCourt(c)}
-                            </span>
-                          ))}
-                          {bo.length > 3 && <span className="chip">+{bo.length - 3}</span>}
-                        </div>
-                      );
-                    })()}
+                    <EtiquettesBo valeur={j.competencesBo} />
                     {j.rangement && <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 6 }}>📦 {j.rangement}</div>}
                   </div>
                 ))}
@@ -201,6 +221,30 @@ export default function Ateliers() {
             );
           })()
       )}
+
+      {(onglet === "outils" || onglet === "affichages") && (() => {
+        const genre = onglet === "outils" ? "outil" : "affichage";
+        const tous = genre === "outil" ? outils : affichages;
+        if (tous.length === 0) {
+          return genre === "outil"
+            ? <Empty icone="🧰" titre="Aucun outil"
+                sous="Recensez les outils des élèves : bande numérique, sous-main, casque anti-bruit, time timer… À quoi ils servent, où ils sont rangés, qui s'en sert." />
+            : <Empty icone="🖼" titre="Aucun affichage"
+                sous="Recensez les affichages de la classe : référentiels, règles de vie, emploi du temps visuel… Où ils sont, quand ils sont au mur, et le fichier pour les réimprimer." />;
+        }
+        const retenus = filtrer(tous)
+          .filter((o) => !categorie || o.categorie === categorie)
+          .filter((o) => !pourEleve || elevesDe(o).includes(pourEleve));
+        if (retenus.length === 0) return <Empty icone="🔍" titre="Rien ne correspond" sous="Changez de catégorie, d'élève ou de dossier." />;
+        return (
+          <div className="grid cols">
+            {retenus.map((o) => (
+              <CarteOutil key={o.id} o={o} eleves={eleves ?? []} onOuvrir={() => setEditO(o)} onSupprimer={() => setDelO(o)}
+                onDupliquer={() => api.outilClasseSave({ ...o, id: newId(), titre: o.titre + " (copie)", dateCreation: nowIso() }).then(rO)} />
+            ))}
+          </div>
+        );
+      })()}
 
       {editA && <AtelierForm a={editA} onClose={() => setEditA(null)} onSaved={() => { setEditA(null); rA(); }} />}
       {editE && <EspaceForm e={editE} ateliers={ateliers ?? []} liens={liens ?? []}
@@ -210,6 +254,9 @@ export default function Ateliers() {
       {delE && <Confirm message={`Supprimer l'espace « ${delE.titre} » ?`} onYes={() => api.espaceDelete(delE.id).then(rE)} onClose={() => setDelE(null)} />}
       {editJ && <JeuForm j={editJ} onClose={() => setEditJ(null)} onSaved={() => { setEditJ(null); rJ(); }} />}
       {delJ && <Confirm message={`Supprimer le jeu « ${delJ.titre} » ?`} onYes={() => api.jeuDelete(delJ.id).then(rJ)} onClose={() => setDelJ(null)} />}
+      {editO && <OutilForm o={editO} onClose={() => setEditO(null)} onSaved={() => { setEditO(null); rO(); }} />}
+      {delO && <Confirm message={`Supprimer ${delO.genre === "outil" ? "l'outil" : "l'affichage"} « ${delO.titre} » ?`}
+        onYes={() => api.outilClasseDelete(delO.id).then(rO)} onClose={() => setDelO(null)} />}
     </Page>
   );
 }

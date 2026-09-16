@@ -36,8 +36,21 @@ pub const TABLES_SYNC: &[&str] = &[
     "commentaires_eleve", "evaluations", "notes_eleve", "pieces_jointes",
     "materiel_items", "papiers_eleve", "notes_competence", "progressions_annuelle",
     "programmations_finale", "edt_typique", "documents_coffre", "documents_eleve",
-    "jeux", "pilote_conversations", "textes",
+    "jeux", "pilote_conversations", "textes", "outils_classe",
 ];
+
+/// Tables apparues après les versions qui ignoraient les annonces (1.6.9 et
+/// avant).
+///
+/// Un ordinateur pas encore mis à jour jette en silence les changements d'une
+/// table qu'il ne connaît pas, et ne les reverra jamais : l'autre ordinateur
+/// lui annonce donc une fois toutes les lignes de la table dès que sa fiche de
+/// présence montre qu'il la connaît (voir `annoncer_tables`).
+///
+/// N'y mettre qu'une table inconnue des versions sans annonces : une version
+/// ancienne qui connaîtrait la table prendrait l'annonce pour une
+/// modification, et écraserait un travail plus récent.
+pub const TABLES_ANNONCEES: &[&str] = &["outils_classe"];
 
 /// Tables de liaison, sans colonne `id`.
 ///
@@ -169,6 +182,48 @@ pub fn annoncer_dossiers(conn: &Connection, machine: &str) {
         ).ok();
     }
     conn.execute("INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, '1')", params![CLE_DOSSIERS_ANNONCES]).ok();
+}
+
+/// Annonce les lignes des tables récentes aux ordinateurs qui viennent de les
+/// connaître, une fois par ordinateur. `autres` donne, pour chaque autre
+/// ordinateur, les tables que sa version connaît.
+///
+/// L'annonce ne crée là-bas que les lignes absentes : elle n'écrase rien et
+/// ne ressuscite pas une ligne supprimée (voir `appliquer`).
+pub fn annoncer_tables(conn: &Connection, machine: &str, autres: &[(String, Vec<String>)]) -> usize {
+    let mut n = 0;
+    for (autre, tables) in autres {
+        for table in TABLES_ANNONCEES {
+            if !tables.iter().any(|t| t == table) {
+                continue; // pas encore à jour : on attendra qu'il la connaisse
+            }
+            let cle = format!("sync_annonce_{table}_{autre}");
+            let deja: String = conn
+                .query_row("SELECT valeur FROM settings WHERE cle = ?1", params![cle], |r| r.get(0))
+                .unwrap_or_default();
+            if deja == "1" {
+                continue;
+            }
+            let cols = colonnes(conn, table);
+            if !cols.iter().any(|c| c == "id") {
+                continue;
+            }
+            let objet = cols.iter().map(|c| format!("'{c}', \"{c}\"")).collect::<Vec<_>>().join(", ");
+            let Ok(ecrites) = conn.execute(
+                &format!(
+                    "INSERT INTO changements (table_nom, ligne_id, operation, donnees, avant, horodatage, origine)
+                     SELECT '{table}', id, 'annonce', json_object({objet}), '', strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?1
+                       FROM {table}"
+                ),
+                params![machine],
+            ) else {
+                continue;
+            };
+            n += ecrites;
+            conn.execute("INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, '1')", params![cle]).ok();
+        }
+    }
+    n
 }
 
 /// Ce qui ne doit jamais partir, quoi qu'il arrive.
@@ -423,7 +478,7 @@ pub fn changements_locaux(
     drop(st);
     let mut lignes = lignes;
     for ch in &mut lignes {
-        if ch.operation == "maj" {
+        if ch.operation == "maj" || ch.operation == "annonce" {
             enrichir_textes(conn, ch);
         }
     }
@@ -602,12 +657,34 @@ pub fn appliquer(conn: &mut Connection, recus: &[Changement]) -> rusqlite::Resul
         if !TABLES_SYNC.contains(&c.table_nom.as_str()) {
             continue;
         }
+        if c.operation == "annonce" {
+            // Une annonce ne crée que ce qui manque ici, et jamais une ligne
+            // qu'on y a supprimée.
+            if !TABLES_ANNONCEES.contains(&c.table_nom.as_str()) {
+                continue;
+            }
+            let existe = tx
+                .query_row(&format!("SELECT 1 FROM {} WHERE id = ?1", c.table_nom), params![c.ligne_id], |_| Ok(()))
+                .is_ok();
+            let supprimee = tx
+                .query_row(
+                    "SELECT 1 FROM changements WHERE table_nom = ?1 AND ligne_id = ?2 AND operation = 'suppr' LIMIT 1",
+                    params![c.table_nom, c.ligne_id],
+                    |_| Ok(()),
+                )
+                .is_ok();
+            if existe || supprimee {
+                continue;
+            }
+        }
         // Qui l'emporte sur les champs disputés — et ce que nous avons
         // nous-même modifié depuis, pour ne pas l'écraser.
         let local: Option<(String, String, String, String)> = tx
             .query_row(
+                // Nos annonces ne sont pas des modifications : elles ne
+                // doivent pas l'emporter sur un travail fait là-bas.
                 "SELECT horodatage, origine, donnees, avant FROM changements
-                  WHERE table_nom = ?1 AND ligne_id = ?2
+                  WHERE table_nom = ?1 AND ligne_id = ?2 AND operation <> 'annonce'
                   ORDER BY horodatage DESC, origine DESC LIMIT 1",
                 params![c.table_nom, c.ligne_id],
                 |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
@@ -1142,6 +1219,78 @@ mod tests {
         assert_eq!(appliquer(&mut b, &[intrus]).unwrap(), 0);
         let n: i64 = b.query_row("SELECT COUNT(*) FROM settings", [], |r| r.get(0)).unwrap();
         assert_eq!(n, 0);
+    }
+
+    /// Deux machines qui connaissent la table des outils, avec les réglages.
+    fn machine_avec_outils(nom: &str) -> Connection {
+        let c = machine_nommee(nom);
+        c.execute_batch(
+            "CREATE TABLE settings (cle TEXT PRIMARY KEY, valeur TEXT);
+             CREATE TABLE outils_classe (id TEXT PRIMARY KEY, genre TEXT NOT NULL DEFAULT 'outil', titre TEXT NOT NULL DEFAULT '');",
+        )
+        .unwrap();
+        poser_declencheurs(&c, nom);
+        c
+    }
+
+    fn titres_outils(c: &Connection) -> Vec<String> {
+        let mut st = c.prepare("SELECT titre FROM outils_classe ORDER BY titre").unwrap();
+        st.query_map([], |r| r.get(0)).unwrap().flatten().collect()
+    }
+
+    /// Le défaut évité : un ordinateur pas encore à jour jetait les outils
+    /// créés sur l'autre, et ne les revoyait jamais après sa mise à jour.
+    #[test]
+    fn une_table_recente_est_annoncee_quand_l_autre_ordinateur_la_connait() {
+        let a = machine_avec_outils("A");
+        let mut b = machine_avec_outils("B");
+        a.execute("INSERT INTO outils_classe (id, titre) VALUES ('o1', 'Bande numérique')", []).unwrap();
+        a.execute("INSERT INTO outils_classe (id, titre) VALUES ('o2', 'Casque anti-bruit')", []).unwrap();
+        // B était encore à l'ancienne version : il n'a rien gardé de ces envois.
+        let (envoyes, repere) = changements_locaux(&a, 0).unwrap();
+        assert_eq!(envoyes.len(), 2);
+
+        // Tant que B ne connaît pas la table, rien n'est annoncé.
+        let ancien = vec![("B".to_string(), vec!["eleves".to_string()])];
+        assert_eq!(annoncer_tables(&a, "A", &ancien), 0);
+
+        // B est à jour : A annonce ses lignes, une seule fois.
+        let a_jour = vec![("B".to_string(), vec!["eleves".to_string(), "outils_classe".to_string()])];
+        assert_eq!(annoncer_tables(&a, "A", &a_jour), 2);
+        assert_eq!(annoncer_tables(&a, "A", &a_jour), 0);
+        let (annonces, _) = changements_locaux(&a, repere).unwrap();
+        assert!(annonces.iter().all(|c| c.operation == "annonce"));
+
+        // B avait entre-temps supprimé o2 ? Il n'est pas ressuscité. Et un
+        // outil déjà là n'est pas écrasé.
+        b.execute("INSERT INTO outils_classe (id, titre) VALUES ('o2', 'x')", []).unwrap();
+        b.execute("DELETE FROM outils_classe WHERE id = 'o2'", []).unwrap();
+        b.execute("INSERT INTO outils_classe (id, titre) VALUES ('o1', 'Bande numérique jusqu''à 30')", []).unwrap();
+        appliquer(&mut b, &annonces).unwrap();
+        assert_eq!(titres_outils(&b), vec!["Bande numérique jusqu'à 30"]);
+
+        // Sur une machine vierge, tout arrive.
+        let mut c = machine_avec_outils("C");
+        appliquer(&mut c, &annonces).unwrap();
+        assert_eq!(titres_outils(&c), vec!["Bande numérique", "Casque anti-bruit"]);
+    }
+
+    /// Une annonce ne compte pas comme une modification : une retouche faite
+    /// sur l'autre ordinateur, même datée d'avant l'annonce, n'est pas rejetée.
+    #[test]
+    fn une_annonce_ne_l_emporte_pas_sur_une_retouche() {
+        let mut a = machine_avec_outils("A");
+        let mut b = machine_avec_outils("B");
+        a.execute("INSERT INTO outils_classe (id, titre) VALUES ('o1', 'Bande numérique')", []).unwrap();
+        let (creation, _) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut b, &creation).unwrap();
+        b.execute("UPDATE outils_classe SET titre = 'Bande numérique jusqu''à 30' WHERE id = 'o1'", []).unwrap();
+        let (de_b, _) = changements_locaux(&b, 0).unwrap();
+        // A annonce ensuite ses lignes, bien après la retouche de B.
+        assert_eq!(annoncer_tables(&a, "A", &[("B".to_string(), vec!["outils_classe".to_string()])]), 1);
+        a.execute("UPDATE changements SET horodatage = '2099-01-01T00:00:00.000Z' WHERE operation = 'annonce'", []).unwrap();
+        appliquer(&mut a, &de_b).unwrap();
+        assert_eq!(titres_outils(&a), vec!["Bande numérique jusqu'à 30"]);
     }
 
     #[test]
