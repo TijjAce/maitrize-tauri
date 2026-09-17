@@ -30,6 +30,16 @@ describe("séquences citées dans le prévu", () => {
     expect(decrire(sequencesCitees("Organiser les mots en réseau : réinvestir le corpus de mots", toutes, seances))).toEqual(["s1/2"]);
   });
 
+  it("reconnaît toujours la ligne du bouton, même pour un titre court, et une seule séquence par ligne", () => {
+    expect(decrire(sequencesCitees(ligneDeSequence(courte), toutes, seances))).toEqual(["s4"]);
+    expect(decrire(sequencesCitees(ligneDeSequence(fractionsDecimales), toutes, seances))).toEqual(["s3"]);
+    // Le titre d'une séance qui contient celui d'une autre séquence ne la cite pas.
+    const album = seance("d", "s2", 2, "Lire les fractions décimales");
+    expect(decrire(sequencesCitees(ligneDeSequence(fractions, album), toutes, [...seances, album]))).toEqual(["s2/2"]);
+    // Un 📚 écrit à la main devant autre chose : la séquence se cherche comme ailleurs.
+    expect(decrire(sequencesCitees("📚 révisions : organiser les mots en réseau", toutes, seances))).toEqual(["s1"]);
+  });
+
   it("préfère le titre le plus long, ignore les titres trop courts et ne cite chaque séance qu'une fois", () => {
     expect(decrire(sequencesCitees("les fractions décimales", toutes, seances))).toEqual(["s3"]);
     expect(decrire(sequencesCitees("Lire un album", toutes, seances))).toEqual([]);
