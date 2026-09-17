@@ -88,8 +88,14 @@ jobs:
       - name: Dépendances front
         run: npm install
 
+      # tauri-action v1 : la v0 renommait les fichiers contenant une espace en
+      # passant par un dossier temporaire, et cette copie échouait sur les
+      # runners macOS (« Error creating asset temp dir ») — trois fois de suite,
+      # après une compilation et une notarisation pourtant réussies. La v1 a
+      # supprimé ce détour, et `retryAttempts` couvre les envois qui retombent
+      # sur une erreur passagère de GitHub.
       - name: Build + signature updater + Release
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Signature des artefacts de mise à jour (clé minisign Tauri)
@@ -107,6 +113,7 @@ jobs:
           releaseName: "Maitrize V2 ${{ github.ref_name }}"
           releaseDraft: true
           prerelease: false
+          retryAttempts: 3
           args: ${{ matrix.args }}
 
   # ─────────────────────────────────────────────────────────────────────────
