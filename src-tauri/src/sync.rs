@@ -1282,7 +1282,7 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
                 poste: poste().into(),
                 vue_le: chrono::Local::now().format("%Y-%m-%d-%H%M%S").to_string(),
                 moi: false,
-                tables: crate::journal::TABLES_SYNC.iter().map(|t| t.to_string()).collect(),
+                tables: crate::journal::tables_connues(),
             }
         };
         publier_presence(&cl, &cfg, &phrase, &m).await;
@@ -1557,7 +1557,7 @@ pub async fn machines_liste(db: State<'_, Db>) -> R<Vec<Machine>> {
             poste: poste().into(),
             vue_le: get_setting(&c, CLE_DERNIERE_SYNC),
             moi: true,
-            tables: crate::journal::TABLES_SYNC.iter().map(|t| t.to_string()).collect(),
+            tables: crate::journal::tables_connues(),
         };
         if phrase.trim().is_empty() {
             return Ok(vec![moi]);

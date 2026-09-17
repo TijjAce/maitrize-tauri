@@ -32,10 +32,10 @@ export function lirePositions(valeur: string | null | undefined): Positions {
 }
 
 /** Les dispositions de tous les dossiers, lues dans l'ensemble des réglages. */
-export function lireDispositions(reglages: Record<string, string>): Record<string, Positions> {
+export function lireDispositions(reglages: Record<string, string>, prefixe = PREFIXE_BUREAU): Record<string, Positions> {
   const res: Record<string, Positions> = {};
   for (const [cle, valeur] of Object.entries(reglages)) {
-    if (cle.startsWith(PREFIXE_BUREAU) && valeur) res[cle.slice(PREFIXE_BUREAU.length)] = lirePositions(valeur);
+    if (cle.startsWith(prefixe) && valeur) res[cle.slice(prefixe.length)] = lirePositions(valeur);
   }
   return res;
 }
@@ -113,15 +113,15 @@ const nomDe = (chemin: string) => chemin.slice(chemin.lastIndexOf(SEPARATEUR) + 
  * `nouveau` vide avec `vider` : le dossier disparaît, ses sous-dossiers remontent.
  */
 export function reporterDispositions(
-  dispositions: Record<string, Positions>, ancien: string, nouveau: string, vider = false,
+  dispositions: Record<string, Positions>, ancien: string, nouveau: string, vider = false, prefixe = PREFIXE_BUREAU,
 ): Record<string, string> {
   const ecritures: Record<string, string> = {};
   for (const [chemin, pos] of Object.entries(dispositions)) {
     if (!chemin || !estDans(chemin, ancien)) continue;
-    ecritures[PREFIXE_BUREAU + chemin] = ecritures[PREFIXE_BUREAU + chemin] ?? "";
+    ecritures[prefixe + chemin] = ecritures[prefixe + chemin] ?? "";
     if (vider && chemin === ancien) continue; // son contenu remonte et prend les cases libres du parent
     const arrivee = renommerChemin(chemin, ancien, nouveau);
-    if (arrivee !== chemin || !vider) ecritures[PREFIXE_BUREAU + arrivee] = JSON.stringify(pos);
+    if (arrivee !== chemin || !vider) ecritures[prefixe + arrivee] = JSON.stringify(pos);
   }
   // Sa case dans le dossier parent, sous son nouveau nom s'il y reste.
   const parentAncien = parent(ancien);
@@ -132,7 +132,7 @@ export function reporterDispositions(
     const garde = suite[cleAncienne];
     delete suite[cleAncienne];
     if (!vider && parent(nouveau) === parentAncien) suite[`d:${nomDe(nouveau)}`] = garde;
-    const cle = PREFIXE_BUREAU + parentAncien;
+    const cle = prefixe + parentAncien;
     ecritures[cle] = JSON.stringify(suite);
   }
   return ecritures;

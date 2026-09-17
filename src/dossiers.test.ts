@@ -155,3 +155,20 @@ describe("matériels vides déposés à la création d'un dossier", () => {
     expect(materielsDeCreationDeDossier([m], [m, el("Lecture")])).toEqual([]);
   });
 });
+
+describe("dossiers des onglets rangés comme le bureau", () => {
+  it("lisent et déplacent leurs couleurs sous leur propre préfixe, sans toucher au bureau", () => {
+    const reglages = { "dossier:Français": "#ff0000", "rangement:jeux:dossier:Maths": "aucune", "rangement:jeux:dossier:Maths/Nombres": "#00ff00" };
+    const couleurs = lireCouleurs(reglages, "rangement:jeux:dossier:");
+    expect(couleurs).toEqual({ Maths: "aucune", "Maths/Nombres": "#00ff00" });
+    expect(lireCouleurs(reglages)).toEqual({ Français: "#ff0000" });
+    expect(reporterCouleurs(couleurs, "Maths", "Mathématiques", "rangement:jeux:dossier:")).toEqual({
+      "rangement:jeux:dossier:Maths": "", "rangement:jeux:dossier:Mathématiques": "aucune",
+      "rangement:jeux:dossier:Maths/Nombres": "", "rangement:jeux:dossier:Mathématiques/Nombres": "#00ff00",
+    });
+  });
+
+  it("nomment la racine du fil d'Ariane", () => {
+    expect(filDAriane("Maths/Nombres", "Jeux").map((x) => x.nom)).toEqual(["Jeux", "Maths", "Nombres"]);
+  });
+});
