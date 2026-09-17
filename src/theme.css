@@ -673,3 +673,19 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .outil-eleves { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 2px 8px; max-height: 200px; overflow-y: auto; }
 .outil-eleve { display: flex; align-items: center; gap: 6px; font-size: 13px; padding: 3px 2px; cursor: pointer; }
 .outil-document { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+
+/* Loto : les images à cocher */
+.loto-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-top: 10px; }
+.loto-tuile { position: relative; }
+.loto-tuile-bouton { width: 100%; border: 2px solid var(--border); border-radius: 10px; background: #fff; padding: 4px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; position: relative; }
+.loto-tuile-bouton:hover { border-color: var(--accent); }
+.loto-tuile.choisie .loto-tuile-bouton { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.loto-tuile-bouton img, .loto-tuile-vide { width: 100%; aspect-ratio: 1; object-fit: contain; }
+.loto-tuile-mot { font-size: 11px; color: #444; text-align: center; line-height: 1.15; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; max-width: 100%; }
+.loto-coche { position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent);
+  color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.loto-nb-variantes { position: absolute; top: 4px; right: 4px; font-size: 10px; font-weight: 700; color: #5b6275; background: #eef0f5;
+  border-radius: 100px; padding: 1px 5px; }
+.loto-variantes { position: absolute; top: 2px; right: 2px; padding: 1px 5px !important; font-size: 12px; opacity: .85; }
