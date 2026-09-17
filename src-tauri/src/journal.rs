@@ -448,16 +448,24 @@ fn poser_declencheurs_reglages(conn: &Connection, machine: &str) {
         .collect::<Vec<_>>()
         .join(" OR ");
     let condition = format!("NEW.cle IN ({noms}) OR {prefixes}");
-    let insertion = format!(
-        "INSERT INTO changements (table_nom, ligne_id, operation, donnees, avant, horodatage, origine)
-         VALUES ('settings', NEW.cle, 'maj', json_object('cle', NEW.cle, 'valeur', NEW.valeur), '',
-                 strftime('%Y-%m-%dT%H:%M:%fZ','now'), '{machine}');"
-    );
+    // La valeur d'avant voyage avec la nouvelle : elle seule dit ce que l'autre
+    // ordinateur a ajouté ou retiré. Sans elle, un réglage qui contient une
+    // liste — tous les tableaux de langage, tous les plans de salle — ne peut
+    // que s'écraser en bloc.
+    let insertion = |avant: &str| {
+        format!(
+            "INSERT INTO changements (table_nom, ligne_id, operation, donnees, avant, horodatage, origine)
+             VALUES ('settings', NEW.cle, 'maj', json_object('cle', NEW.cle, 'valeur', NEW.valeur), {avant},
+                     strftime('%Y-%m-%dT%H:%M:%fZ','now'), '{machine}');"
+        )
+    };
     let sql = format!(
         "DROP TRIGGER IF EXISTS jrn_settings_i;
          DROP TRIGGER IF EXISTS jrn_settings_u;
-         CREATE TRIGGER jrn_settings_i AFTER INSERT ON settings WHEN {condition} BEGIN {insertion} END;
-         CREATE TRIGGER jrn_settings_u AFTER UPDATE ON settings WHEN {condition} BEGIN {insertion} END;"
+         CREATE TRIGGER jrn_settings_i AFTER INSERT ON settings WHEN {condition} BEGIN {} END;
+         CREATE TRIGGER jrn_settings_u AFTER UPDATE ON settings WHEN {condition} BEGIN {} END;",
+        insertion("''"),
+        insertion("OLD.valeur"),
     );
     conn.execute_batch(&sql).ok();
 }
@@ -704,6 +712,107 @@ fn completer(conn: &Connection, table: &str, ligne: &mut serde_json::Value) {
     }
 }
 
+/// La dernière écriture connue ici pour cette ligne ou ce réglage, hors annonces.
+///
+/// Nos annonces ne sont pas des modifications : elles ne doivent pas l'emporter
+/// sur un travail fait là-bas.
+fn dernier_changement(tx: &Connection, table: &str, ligne_id: &str) -> Option<(String, String, String, String)> {
+    tx.query_row(
+        "SELECT horodatage, origine, donnees, avant FROM changements
+          WHERE table_nom = ?1 AND ligne_id = ?2 AND operation <> 'annonce'
+          ORDER BY horodatage DESC, origine DESC LIMIT 1",
+        params![table, ligne_id],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+    )
+    .ok()
+}
+
+/// Un réglage lu comme une suite d'éléments identifiés : liste ou dictionnaire.
+fn en_table(v: &serde_json::Value) -> Option<Vec<(String, serde_json::Value)>> {
+    match v {
+        serde_json::Value::Array(xs) => xs
+            .iter()
+            .map(|x| x.get("id").and_then(|i| i.as_str()).map(|i| (i.to_string(), x.clone())))
+            .collect(),
+        serde_json::Value::Object(o) => Some(o.iter().map(|(k, v)| (k.clone(), v.clone())).collect()),
+        _ => None,
+    }
+}
+
+/// Fusionne deux versions d'un réglage qui contient une collection.
+///
+/// Un réglage voyage d'un bloc : **tous** les tableaux de langage tiennent dans
+/// une seule valeur, comme tous les plans de salle ou tout le rangement du
+/// bureau. Le dernier arrivé écrasait donc le travail de l'autre ordinateur —
+/// un tableau créé ici disparaissait parce qu'on en avait créé un autre là-bas,
+/// sans que rien ne le dise.
+///
+/// On fusionne donc élément par élément, comme on fusionne les champs d'une
+/// ligne, en s'appuyant sur la valeur d'avant : ce que l'autre a ajouté entre,
+/// ce qu'il a retiré s'en va, et ce que les deux ont touché revient au plus
+/// récent. Rend `None` quand les deux valeurs ne sont pas des collections de
+/// même forme : l'appelant tranche alors en bloc.
+fn fusionner_reglage(ici: &str, avant: &str, entrant: &str, entrant_gagne: bool) -> Option<String> {
+    let locale: serde_json::Value = serde_json::from_str(ici).ok()?;
+    let recue: serde_json::Value = serde_json::from_str(entrant).ok()?;
+    if std::mem::discriminant(&locale) != std::mem::discriminant(&recue) {
+        return None;
+    }
+    let (nos, leurs) = (en_table(&locale)?, en_table(&recue)?);
+    let socle: std::collections::HashMap<String, serde_json::Value> = serde_json::from_str(avant)
+        .ok()
+        .as_ref()
+        .and_then(en_table)
+        .unwrap_or_default()
+        .into_iter()
+        .collect();
+    let chez_eux: std::collections::HashMap<&String, &serde_json::Value> =
+        leurs.iter().map(|(k, v)| (k, v)).collect();
+    let chez_nous: std::collections::HashSet<&String> = nos.iter().map(|(k, _)| k).collect();
+
+    let mut sortie: Vec<(String, serde_json::Value)> = Vec::new();
+    for (cle, notre) in &nos {
+        let base = socle.get(cle);
+        let touche_ici = base.map(|b| b != notre).unwrap_or(true);
+        match chez_eux.get(cle) {
+            Some(leur) => {
+                let touche_la_bas = base.map(|b| b != *leur).unwrap_or(true);
+                let a_eux = touche_la_bas && (!touche_ici || entrant_gagne);
+                sortie.push((cle.clone(), if a_eux { (*leur).clone() } else { notre.clone() }));
+            }
+            // Absent là-bas : ils l'ont retiré s'ils l'avaient, sinon ils ne
+            // l'ont jamais eu — et ce qu'on vient de créer ici doit rester.
+            None => {
+                let retire_la_bas = base.is_some();
+                if !(retire_la_bas && (!touche_ici || entrant_gagne)) {
+                    sortie.push((cle.clone(), notre.clone()));
+                }
+            }
+        }
+    }
+    for (cle, leur) in &leurs {
+        if chez_nous.contains(cle) {
+            continue;
+        }
+        match socle.get(cle) {
+            // On l'avait et on ne l'a plus : retiré ici. Il ne revient que
+            // s'ils l'ont retouché depuis et que le plus récent est à eux.
+            Some(base) => {
+                if base != leur && entrant_gagne {
+                    sortie.push((cle.clone(), leur.clone()));
+                }
+            }
+            None => sortie.push((cle.clone(), leur.clone())),
+        }
+    }
+    Some(match locale {
+        serde_json::Value::Array(_) => {
+            serde_json::Value::Array(sortie.into_iter().map(|(_, v)| v).collect()).to_string()
+        }
+        _ => serde_json::Value::Object(sortie.into_iter().collect()).to_string(),
+    })
+}
+
 /// Ce qu'une ligne reçue a produit ici.
 enum Effet {
     /// Écartée volontairement : table inconnue, annonce déjà connue, suppression perdante.
@@ -730,17 +839,42 @@ fn appliquer_un(tx: &Connection, c: &Changement) -> rusqlite::Result<Effet> {
         let valeur: Option<String> = serde_json::from_str::<serde_json::Value>(&c.donnees)
             .ok()
             .and_then(|v| v.get("valeur").and_then(|x| x.as_str()).map(str::to_string));
-        let mut ecrits = 0;
-        if let Some(v) = valeur {
+        let Some(recue) = valeur else { return Ok(Effet::Ignoree) };
+        if c.operation == "annonce" {
             // Une annonce ne crée que ce qui manque ici (voir `annoncer_dossiers`).
-            let sql = if c.operation == "annonce" {
-                "INSERT OR IGNORE INTO settings (cle, valeur) VALUES (?1, ?2)"
-            } else {
-                "INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)"
-            };
-            ecrits += tx.execute(sql, params![c.ligne_id, v])?;
+            let ecrits = tx.execute(
+                "INSERT OR IGNORE INTO settings (cle, valeur) VALUES (?1, ?2)",
+                params![c.ligne_id, recue],
+            )?;
+            return Ok(if ecrits > 0 { Effet::Ecrite } else { Effet::Ignoree });
         }
-        return Ok(Effet::EcriteSansTrace(ecrits));
+        let ici: Option<String> = tx
+            .query_row("SELECT valeur FROM settings WHERE cle = ?1", params![c.ligne_id], |r| r.get(0))
+            .ok();
+        let a_ecrire = match &ici {
+            // Jamais vu ici : rien à arbitrer.
+            None => recue,
+            Some(actuelle) => {
+                // Même arbitrage que pour les lignes : un réglage reçu écrasait
+                // le nôtre même en étant plus ancien. Un ordinateur resté
+                // éteint trois jours remplaçait alors, en revenant, le travail
+                // fait depuis sur l'autre.
+                let entrant_gagne = match dernier_changement(tx, "settings", &c.ligne_id) {
+                    Some((h, o, _, _)) => !gagne((&h, &o), (&c.horodatage, &c.origine)),
+                    None => true,
+                };
+                fusionner_reglage(actuelle, &c.avant, &recue, entrant_gagne)
+                    .unwrap_or(if entrant_gagne { recue } else { actuelle.clone() })
+            }
+        };
+        if ici.as_deref() == Some(a_ecrire.as_str()) {
+            return Ok(Effet::Ignoree);
+        }
+        tx.execute(
+            "INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)",
+            params![c.ligne_id, a_ecrire],
+        )?;
+        return Ok(Effet::Ecrite);
     }
     if !TABLES_SYNC.contains(&c.table_nom.as_str()) {
         return Ok(Effet::Ignoree);
@@ -767,17 +901,7 @@ fn appliquer_un(tx: &Connection, c: &Changement) -> rusqlite::Result<Effet> {
     }
     // Qui l'emporte sur les champs disputés — et ce que nous avons
     // nous-même modifié depuis, pour ne pas l'écraser.
-    let local: Option<(String, String, String, String)> = tx
-        .query_row(
-            // Nos annonces ne sont pas des modifications : elles ne
-            // doivent pas l'emporter sur un travail fait là-bas.
-            "SELECT horodatage, origine, donnees, avant FROM changements
-              WHERE table_nom = ?1 AND ligne_id = ?2 AND operation <> 'annonce'
-              ORDER BY horodatage DESC, origine DESC LIMIT 1",
-            params![c.table_nom, c.ligne_id],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
-        )
-        .ok();
+    let local = dernier_changement(tx, &c.table_nom, &c.ligne_id);
     let entrant_gagne = match &local {
         Some((h, o, _, _)) => !gagne((h, o), (&c.horodatage, &c.origine)),
         None => true,
@@ -1550,6 +1674,138 @@ mod tests {
         // Liste blanche : ce qu'on n'a pas nommé ne part pas. Un oubli fait
         // rester une donnée sur place ; l'inverse ferait fuiter un secret.
         assert!(!reglage_partage("nouveauReglageAjouteDemain"));
+    }
+
+    /// Deux ordinateurs qui partagent leurs réglages.
+    fn machine_reglages(nom: &str) -> Connection {
+        let c = Connection::open_in_memory().unwrap();
+        c.execute_batch("CREATE TABLE settings (cle TEXT PRIMARY KEY, valeur TEXT);").unwrap();
+        creer_table(&c);
+        poser_declencheurs(&c, nom);
+        c
+    }
+
+    fn reglage(c: &Connection, cle: &str, valeur: &str) {
+        c.execute(
+            "INSERT INTO settings (cle, valeur) VALUES (?1, ?2)
+             ON CONFLICT(cle) DO UPDATE SET valeur = excluded.valeur",
+            params![cle, valeur],
+        )
+        .unwrap();
+    }
+
+    fn lire_reglage(c: &Connection, cle: &str) -> String {
+        c.query_row("SELECT valeur FROM settings WHERE cle = ?1", params![cle], |r| r.get(0))
+            .unwrap_or_default()
+    }
+
+    const TLA: &str = "tla:gabarits";
+
+    #[test]
+    fn deux_tableaux_crees_chacun_de_son_cote_se_gardent_tous_les_deux() {
+        // Tous les tableaux de langage tiennent dans un seul réglage : en
+        // s'écrasant d'un bloc, celui créé ici disparaissait sans un mot.
+        let mut a = machine_reglages("A");
+        let mut b = machine_reglages("B");
+        reglage(&a, TLA, r#"[{"id":"g1","nom":"Récréation"}]"#);
+        let (depart, seq) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut b, &depart).unwrap();
+
+        reglage(&a, TLA, r#"[{"id":"g1","nom":"Récréation"},{"id":"g2","nom":"Repas"}]"#);
+        std::thread::sleep(std::time::Duration::from_millis(3));
+        reglage(&b, TLA, r#"[{"id":"g1","nom":"Récréation"},{"id":"g3","nom":"Bain"}]"#);
+        let (de_a, _) = changements_locaux(&a, seq).unwrap();
+        let (de_b, _) = changements_locaux(&b, 0).unwrap();
+        appliquer(&mut b, &de_a).unwrap();
+        appliquer(&mut a, &de_b).unwrap();
+
+        for (poste, c) in [("A", &a), ("B", &b)] {
+            let v = lire_reglage(c, TLA);
+            for id in ["g1", "g2", "g3"] {
+                assert!(v.contains(id), "{poste} a perdu {id} : {v}");
+            }
+        }
+    }
+
+    #[test]
+    fn un_reglage_plus_ancien_n_ecrase_plus_le_plus_recent() {
+        // L'ordinateur resté éteint revient avec sa vieille version : elle ne
+        // doit pas remplacer ce qui a été écrit depuis.
+        let a = machine_reglages("A");
+        let mut b = machine_reglages("B");
+        reglage(&a, "notesRapides", "penser aux photos");
+        let (de_a, _) = changements_locaux(&a, 0).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(3));
+        reglage(&b, "notesRapides", "appeler le SESSAD");
+        appliquer(&mut b, &de_a).unwrap();
+        assert_eq!(lire_reglage(&b, "notesRapides"), "appeler le SESSAD");
+        // Et l'inverse passe toujours : le plus récent arrive bien.
+        let mut c = machine_reglages("C");
+        reglage(&c, "notesRapides", "vieille note");
+        std::thread::sleep(std::time::Duration::from_millis(3));
+        reglage(&a, "notesRapides", "note fraîche");
+        let (encore, _) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut c, &encore).unwrap();
+        assert_eq!(lire_reglage(&c, "notesRapides"), "note fraîche");
+    }
+
+    #[test]
+    fn le_tableau_supprime_ne_revient_pas_par_la_fusion() {
+        let a = machine_reglages("A");
+        let mut b = machine_reglages("B");
+        reglage(&a, TLA, r#"[{"id":"g1","nom":"Récréation"},{"id":"g2","nom":"Repas"}]"#);
+        let (depart, seq) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut b, &depart).unwrap();
+        reglage(&a, TLA, r#"[{"id":"g1","nom":"Récréation"}]"#);
+        let (suite, _) = changements_locaux(&a, seq).unwrap();
+        appliquer(&mut b, &suite).unwrap();
+        let v = lire_reglage(&b, TLA);
+        assert!(v.contains("g1"), "{v}");
+        assert!(!v.contains("g2"), "la suppression doit traverser : {v}");
+    }
+
+    #[test]
+    fn deux_rangements_du_bureau_se_fusionnent_case_par_case() {
+        // Un réglage en dictionnaire : chacun déplace son icône de son côté.
+        let cle = "rangement:jeux:place:";
+        let mut a = machine_reglages("A");
+        let mut b = machine_reglages("B");
+        reglage(&a, cle, r#"{"loto":{"col":0,"rang":0}}"#);
+        let (depart, seq) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut b, &depart).unwrap();
+        reglage(&a, cle, r#"{"loto":{"col":0,"rang":0},"memory":{"col":1,"rang":0}}"#);
+        std::thread::sleep(std::time::Duration::from_millis(3));
+        reglage(&b, cle, r#"{"loto":{"col":0,"rang":0},"dobble":{"col":2,"rang":1}}"#);
+        let (de_a, _) = changements_locaux(&a, seq).unwrap();
+        let (de_b, _) = changements_locaux(&b, 0).unwrap();
+        appliquer(&mut b, &de_a).unwrap();
+        appliquer(&mut a, &de_b).unwrap();
+        for (poste, c) in [("A", &a), ("B", &b)] {
+            let v = lire_reglage(c, cle);
+            for jeu in ["loto", "memory", "dobble"] {
+                assert!(v.contains(jeu), "{poste} a perdu {jeu} : {v}");
+            }
+        }
+    }
+
+    #[test]
+    fn un_meme_tableau_retouche_des_deux_cotes_revient_au_plus_recent() {
+        let mut a = machine_reglages("A");
+        let mut b = machine_reglages("B");
+        reglage(&a, TLA, r#"[{"id":"g1","nom":"Récréation"}]"#);
+        let (depart, seq) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut b, &depart).unwrap();
+        reglage(&a, TLA, r#"[{"id":"g1","nom":"Cour de récréation"}]"#);
+        std::thread::sleep(std::time::Duration::from_millis(3));
+        reglage(&b, TLA, r#"[{"id":"g1","nom":"Récré du matin"}]"#);
+        let (de_a, _) = changements_locaux(&a, seq).unwrap();
+        let (de_b, _) = changements_locaux(&b, 0).unwrap();
+        appliquer(&mut b, &de_a).unwrap();
+        appliquer(&mut a, &de_b).unwrap();
+        for (poste, c) in [("A", &a), ("B", &b)] {
+            let v = lire_reglage(c, TLA);
+            assert!(v.contains("Récré du matin"), "{poste} : le plus récent doit l'emporter — {v}");
+        }
     }
 
     #[test]
