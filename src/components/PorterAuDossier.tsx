@@ -5,6 +5,7 @@ import { toast } from "./Toaster";
 import { ChoixTypeObservation } from "./TypeObservation";
 import { DicteeAtelier } from "./DicteeAtelier";
 import { dateObservation, elevesCites } from "../cahierJournal";
+import { basculerLien, ecrireLiens, LienObjectif, REUSSITES, Reussite } from "../objectifsPpi";
 
 // ── Du cahier journal au dossier de l'élève ────────────────────────────────
 //
@@ -13,6 +14,66 @@ import { dateObservation, elevesCites } from "../cahierJournal";
 // l'enseignant ait relu le texte et choisi les élèves.
 
 const prenom = (e: Eleve) => e.nom.split(/\s+/)[0] ?? e.nom;
+
+/** Un objectif du PPI, tel que la page PPI l'enregistre. */
+interface ObjectifPpi { id: string; domaine: string; intitule: string }
+
+const objectifsDuPpi = (json: string | null): ObjectifPpi[] => {
+  try {
+    const d = json ? JSON.parse(json) : null;
+    return Array.isArray(d?.objectifs)
+      ? d.objectifs
+          .filter((o: any) => o?.id && String(o.intitule ?? "").trim())
+          .map((o: any) => ({ id: String(o.id), domaine: String(o.domaine ?? ""), intitule: String(o.intitule) }))
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Les objectifs du PPI travaillés par cette observation.
+ *
+ * Cocher ici, c'est ce qui remplit le suivi tout seul : au bilan, l'objectif
+ * porte ses preuves datées au lieu d'un souvenir. Trois appréciations
+ * suffisent — davantage ferait hésiter au moment où l'on est pressé.
+ */
+function ObjectifsTravailles({ eleve, objectifs, liens, onChange }: {
+  eleve: Eleve; objectifs: ObjectifPpi[];
+  liens: LienObjectif[]; onChange: (l: LienObjectif[]) => void;
+}) {
+  return (
+    <div style={{ marginTop: 6 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 4 }}>{prenom(eleve)}</div>
+      {objectifs.map((o) => {
+        const choisi = liens.find((l) => l.id === o.id);
+        return (
+          <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0", flexWrap: "wrap" }}>
+            <span style={{ flex: 1, minWidth: 160, fontSize: 13, opacity: choisi ? 1 : 0.75 }}>
+              {o.domaine && <span style={{ color: "var(--text-2)" }}>{o.domaine} · </span>}
+              {o.intitule}
+            </span>
+            <div style={{ display: "flex", gap: 4 }}>
+              {REUSSITES.map((r) => (
+                <button key={r.k} type="button" title={r.label}
+                  aria-pressed={choisi?.reussite === r.k}
+                  onClick={() => onChange(basculerLien(liens, o.id, r.k as Reussite))}
+                  style={{
+                    border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, padding: "4px 8px",
+                    background: choisi?.reussite === r.k ? r.couleur : "var(--panel-2)",
+                    filter: choisi?.reussite === r.k ? "none" : "grayscale(1)",
+                    opacity: choisi?.reussite === r.k ? 1 : 0.7,
+                  }}>
+                  {r.icone}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export function PorterAuDossier({ creneau, texte, eleves, presents, onClose }: {
   creneau: Creneau; texte: string; eleves: Eleve[];
@@ -26,16 +87,36 @@ export function PorterAuDossier({ creneau, texte, eleves, presents, onClose }: {
   const [touteLaClasse, setTouteLaClasse] = React.useState(presents.length === 0);
   const [repartir, setRepartir] = React.useState(false);
   const [occupe, setOccupe] = React.useState(false);
+  // Les objectifs du PPI des élèves cochés, et ce qu'on coche pour chacun.
+  const [objectifs, setObjectifs] = React.useState<Record<string, ObjectifPpi[]>>({});
+  const [liens, setLiens] = React.useState<Record<string, LienObjectif[]>>({});
+
+  React.useEffect(() => {
+    let vivant = true;
+    for (const id of choisis) {
+      if (objectifs[id]) continue;
+      api.documentEleveGet(id, "ppi")
+        .then((v) => { if (vivant) setObjectifs((o) => ({ ...o, [id]: objectifsDuPpi(v) })); })
+        .catch(() => { if (vivant) setObjectifs((o) => ({ ...o, [id]: [] })); });
+    }
+    return () => { vivant = false; };
+  }, [choisis, objectifs]);
 
   const proposes = touteLaClasse ? eleves : eleves.filter((e) => presents.includes(e.id));
   const basculer = (id: string) => setChoisis((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
   const jour = new Date(`${creneau.date.slice(0, 10)}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  // Seuls les élèves cochés qui ont vraiment des objectifs : sinon la fenêtre
+  // s'allonge d'une section vide à chaque bilan.
+  const avecObjectifs = eleves.filter((e) => choisis.includes(e.id) && (objectifs[e.id]?.length ?? 0) > 0);
 
   const enregistrer = async () => {
     setOccupe(true);
     try {
       for (const eleveId of choisis) {
-        await api.commentaireSave({ id: newId(), date: dateObservation(creneau), texte: observation.trim(), type, eleveId });
+        await api.commentaireSave({
+          id: newId(), date: dateObservation(creneau), texte: observation.trim(), type, eleveId,
+          objectifs: ecrireLiens(liens[eleveId] ?? []),
+        });
       }
       const noms = eleves.filter((e) => choisis.includes(e.id)).map(prenom);
       toast(`Observation ajoutée au dossier de ${noms.join(", ")}.`, { icone: "📋" });
@@ -99,6 +180,21 @@ export function PorterAuDossier({ creneau, texte, eleves, presents, onClose }: {
           </label>
         )}
       </Field>
+      {avecObjectifs.length > 0 && (
+        <Field label="Objectifs du PPI travaillés (facultatif)">
+          <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 2 }}>
+            ✅ réussi seul · 🤝 avec aide · 🔁 pas encore. Ce qui est coché ici se retrouve sous
+            l'objectif, daté, dans le PPI de l'élève.
+          </div>
+          <div style={{ maxHeight: 220, overflowY: "auto" }}>
+            {avecObjectifs.map((e) => (
+              <ObjectifsTravailles key={e.id} eleve={e} objectifs={objectifs[e.id] ?? []}
+                liens={liens[e.id] ?? []}
+                onChange={(l) => setLiens((x) => ({ ...x, [e.id]: l }))} />
+            ))}
+          </div>
+        </Field>
+      )}
     </Modal>
   );
 }

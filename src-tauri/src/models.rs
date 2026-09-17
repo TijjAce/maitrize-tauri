@@ -484,6 +484,12 @@ pub struct CommentaireEleve {
     pub r#type: String,
     #[serde(default)]
     pub eleve_id: Option<String>,
+    /// Objectifs du PPI travaillés, en JSON : `[{"id":"…","reussite":"aide"}]`.
+    ///
+    /// Colonne ajoutée après coup, donc facultative : une base d'une version
+    /// plus ancienne n'a rien à y mettre.
+    #[serde(default)]
+    pub objectifs: String,
 }
 fn divers() -> String { "divers".into() }
 
@@ -495,6 +501,7 @@ impl CommentaireEleve {
             texte: r.get("texte")?,
             r#type: r.get("type")?,
             eleve_id: r.get("eleve_id")?,
+            objectifs: r.get::<_, Option<String>>("objectifs").unwrap_or_default().unwrap_or_default(),
         })
     }
 }
