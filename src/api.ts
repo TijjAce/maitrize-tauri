@@ -204,7 +204,15 @@ export interface DocumentCoffre {
 }
 
 export interface ChatMessage { role: "system" | "user" | "assistant"; content: string; }
-export interface ResultatRecherche { kind: string; id: string; titre: string; sousTitre: string; }
+export interface ResultatRecherche {
+  kind: string; id: string; titre: string; sousTitre: string;
+  /** La ligne où les mots ont été trouvés, telle qu'elle est écrite. */
+  extrait: string;
+  /** Date de ce qu'on a trouvé, pour situer et pour trier. */
+  date: string;
+  /** Ce dont ça dépend : la séquence d'une séance, l'élève d'une observation, le jour d'un créneau. */
+  parent: string;
+}
 export interface VacancePeriode { description: string; debut: string; fin: string; }
 /** Un document du dossier d'un élève (synthèse GS, PPI, GEVA-Sco, dispositif…). */
 export interface DocumentEleve {

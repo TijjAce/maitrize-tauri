@@ -11,6 +11,7 @@ import { SeanceReadView } from "./SequenceDetail";
 import { printHTML, escapeHtml, dataUrlImage } from "../print";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
 import { CahierJournal, ecrireLeCahierJournal } from "../components/CahierJournal";
+import { EVT_JOUR } from "../components/CommandPalette";
 import { jeuxCites, reglesImprimees, STYLE_REGLES } from "../jeuxCites";
 import { sequencesCitees, sequencesImprimees, STYLE_SEQUENCES } from "../sequencesCitees";
 import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
@@ -53,6 +54,18 @@ type Vue = typeof VUES[number];
 export default function Planning() {
   const [vue, setVue] = React.useState<Vue>("jour");
   const [ancre, setAncre] = React.useState(jourPlanningInitial);
+
+  // Un résultat de recherche ouvre le cahier journal au bon jour : la date
+  // n'est pas dans l'URL, elle arrive donc par un signal.
+  React.useEffect(() => {
+    const aller = (e: Event) => {
+      const iso = String((e as CustomEvent).detail ?? "").slice(0, 10);
+      const d = new Date(`${iso}T12:00:00`);
+      if (!Number.isNaN(d.getTime())) setAncre(d);
+    };
+    window.addEventListener(EVT_JOUR, aller);
+    return () => window.removeEventListener(EVT_JOUR, aller);
+  }, []);
   useSegmentNav(VUES, vue, setVue);
 
   // Plage de données chargée selon la vue.
