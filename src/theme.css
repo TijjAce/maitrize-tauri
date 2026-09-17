@@ -705,3 +705,11 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .rangement-tuile-titre { font-size: 12.5px; font-weight: 600; margin-top: 5px; line-height: 1.2; overflow: hidden;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .rangement-tuile-sous { font-size: 10.5px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Séquences citées dans le prévu, et leur choix */
+.sequence-app { border: 1px solid color-mix(in srgb, #2563eb 22%, var(--border)); background: color-mix(in srgb, #2563eb 6%, var(--panel));
+  border-radius: 8px; padding: 4px 8px 6px; }
+.choix-sequence-liste { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; max-height: 55vh; overflow-y: auto; }
+.choix-sequence { border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; }
+.choix-sequence-tete { display: flex; align-items: center; gap: 8px; }
+.choix-sequence-seance { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 38px; font-size: 13px; border-top: 1px dashed var(--border); margin-top: 4px; }
