@@ -5,7 +5,7 @@ import { Field, Input, Select, Modal, Confirm, useAsync } from "../components/ui
 import { MesAppareils } from "../components/MesAppareils";
 import { confirmer } from "../components/confirmer";
 import { toast } from "../components/Toaster";
-import { applyTheme, MODES, ACCENTS, STYLES } from "../theme";
+import { applyTheme, MODES, ACCENTS, STYLES, TAILLES } from "../theme";
 import { lireAcceptationCgu, CguAcceptation } from "../components/CGU";
 import { getVersion } from "@tauri-apps/api/app";
 import { copierLeBureau, suivreLaCopie } from "../components/CopieDuBureau";
@@ -198,6 +198,19 @@ export default function Reglages() {
                 </button>
               );
             })}
+          </div>
+        </Field>
+
+        <Field label="Taille du texte">
+          <div className="seg">
+            {TAILLES.map((o) => (
+              <button key={o.id} className={(s.tailleTexte || "normal") === o.id ? "active" : ""}
+                onClick={() => set("tailleTexte", o.id)}>{o.label}</button>
+            ))}
+          </div>
+          <div style={{ fontSize: 11.5, color: "var(--text-2)", marginTop: 6 }}>
+            Agrandit toute l'application — texte, boutons et images. Le choix reste sur cet
+            ordinateur : l'écran du portable et celui du bureau n'ont pas la même taille.
           </div>
         </Field>
 

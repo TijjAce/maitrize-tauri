@@ -12,6 +12,7 @@ import { EtiquettesBo } from "../components/ChoixCompetencesBo";
 import { CarteOutil, OutilForm, elevesDe } from "../components/OutilForm";
 import { Rangement, type ElementRange } from "../components/Rangement";
 import type { CtxItem } from "../components/ctxmenu";
+import { toastAnnulable } from "../components/Toaster";
 
 /**
  * Un jeu passe-t-il les filtres de la ludothèque ?
@@ -44,17 +45,32 @@ export default function Ateliers() {
   const outils = (outilsClasse ?? []).filter((o) => o.genre === "outil");
   const affichages = (outilsClasse ?? []).filter((o) => o.genre === "affichage");
   const [editO, setEditO] = React.useState<OutilClasse | null>(null);
-  const [delO, setDelO] = React.useState<OutilClasse | null>(null);
   // Filtres des outils et affichages : la catégorie, et pour les outils l'élève.
   const [categorie, setCategorie] = React.useState("");
   const [pourEleve, setPourEleve] = React.useState("");
   const [editA, setEditA] = React.useState<Atelier | null>(null);
   const [editE, setEditE] = React.useState<Espace | null>(null);
   const [delA, setDelA] = React.useState<Atelier | null>(null);
+
+  // Supprimer tout de suite, et laisser dix secondes pour revenir en arrière.
+  // Un jeu, un outil ou un affichage se recrée tel quel : il n'emporte rien
+  // d'autre avec lui, contrairement à un atelier ou à une séquence.
+  const supprimerJeu = async (j: Jeu) => {
+    await api.jeuDelete(j.id);
+    rJ();
+    toastAnnulable(`« ${j.titre} » supprimé.`, async () => { await api.jeuSave(j); rJ(); });
+  };
+  const supprimerOutil = async (o: OutilClasse) => {
+    await api.outilClasseDelete(o.id);
+    rO();
+    const quoi = o.genre === "outil" ? "outil" : "affichage";
+    toastAnnulable(`${quoi === "outil" ? "L'outil" : "L'affichage"} « ${o.titre} » supprimé.`,
+      async () => { await api.outilClasseSave(o); rO(); });
+  };
+
   const [delE, setDelE] = React.useState<Espace | null>(null);
   const [suivi, setSuivi] = React.useState<Espace | null>(null);
   const [editJ, setEditJ] = React.useState<Jeu | null>(null);
-  const [delJ, setDelJ] = React.useState<Jeu | null>(null);
   // Filtre propre aux jeux : on cherche d'abord « à combien » et « quel type ».
   const [typeJeu, setTypeJeu] = React.useState("");
   const [joueurs, setJoueurs] = React.useState("");
@@ -176,7 +192,7 @@ export default function Ateliers() {
             sousTitre: [j.typeJeu, `👥 ${joueursDe(j)}`].filter(Boolean).join(" · "), couleur: couleurHex[j.couleur], apercu: apercu(j.imageNom, "🎲") })),
           ouvrir: (id) => { const j = trouver(jeux, id); if (j) setEditJ(j); },
           ranger: async (id, d) => { const j = trouver(jeux, id); if (j) await api.jeuSave({ ...j, dossier: d }); },
-          supprimer: (id) => { const j = trouver(jeux, id); if (j) setDelJ(j); },
+          supprimer: (id) => { const j = trouver(jeux, id); if (j) void supprimerJeu(j); },
           recharger: rJ,
           actions: (id) => [{ label: "Dupliquer", icon: "📑", onClick: () => { const j = trouver(jeux, id); if (j) api.jeuSave({ ...j, id: newId(), titre: j.titre + " (copie)" }).then(rJ); } }],
           creation: { label: "Nouveau jeu", icon: "🎲", onClick: () => setEditJ({ ...nouveauJeu(), dossier }) },
@@ -188,7 +204,7 @@ export default function Ateliers() {
             apercu: apercu(o.imageNom, onglet === "outils" ? "🧰" : "🖼") })),
           ouvrir: (id) => { const o = trouver(outilsClasse, id); if (o) setEditO(o); },
           ranger: async (id, d) => { const o = trouver(outilsClasse, id); if (o) await api.outilClasseSave({ ...o, dossier: d }); },
-          supprimer: (id) => { const o = trouver(outilsClasse, id); if (o) setDelO(o); },
+          supprimer: (id) => { const o = trouver(outilsClasse, id); if (o) void supprimerOutil(o); },
           recharger: rO,
           actions: (id) => [{ label: "Dupliquer", icon: "📑", onClick: () => { const o = trouver(outilsClasse, id); if (o) api.outilClasseSave({ ...o, id: newId(), titre: o.titre + " (copie)", dateCreation: nowIso() }).then(rO); } }],
           creation: onglet === "outils"
@@ -283,13 +299,13 @@ export default function Ateliers() {
                     onContextMenu={(ev) => openCtx(ev, [
                       { label: "Ouvrir", icon: "📂", onClick: () => setEditJ(j) },
                       { label: "Dupliquer", icon: "📑", onClick: () => api.jeuSave({ ...j, id: newId(), titre: j.titre + " (copie)" }).then(rJ) },
-                      { label: "Supprimer", icon: "🗑", danger: true, sep: true, onClick: () => setDelJ(j) },
+                      { label: "Supprimer", icon: "🗑", danger: true, sep: true, onClick: () => void supprimerJeu(j) },
                     ])}>
                     {j.imageNom && <FichierImg nom={j.imageNom} style={{ width: "100%", height: 110, objectFit: "cover", marginBottom: 8 }} />}
                     <div style={{ display: "flex", alignItems: "start" }}>
                       <div style={{ fontWeight: 700, flex: 1 }}>{j.titre}</div>
                       <button className="btn ghost sm" onClick={(ev) => { ev.stopPropagation(); setEditJ(j); }} aria-label="Modifier">✏️</button>
-                      <button className="btn ghost sm" onClick={(ev) => { ev.stopPropagation(); setDelJ(j); }} aria-label="Supprimer">🗑</button>
+                      <button className="btn ghost sm" onClick={(ev) => { ev.stopPropagation(); void supprimerJeu(j); }} aria-label="Supprimer">🗑</button>
                     </div>
                     <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
                       {j.typeJeu && <span className="chip">{j.typeJeu}</span>}
@@ -325,7 +341,7 @@ export default function Ateliers() {
         return (
           <div className="grid cols">
             {retenus.map((o) => (
-              <CarteOutil key={o.id} o={o} eleves={eleves ?? []} onOuvrir={() => setEditO(o)} onSupprimer={() => setDelO(o)}
+              <CarteOutil key={o.id} o={o} eleves={eleves ?? []} onOuvrir={() => setEditO(o)} onSupprimer={() => void supprimerOutil(o)}
                 onDupliquer={() => api.outilClasseSave({ ...o, id: newId(), titre: o.titre + " (copie)", dateCreation: nowIso() }).then(rO)} />
             ))}
           </div>
@@ -339,10 +355,9 @@ export default function Ateliers() {
       {delA && <Confirm message={`Supprimer l'atelier « ${delA.titre} » ?`} onYes={() => api.atelierDelete(delA.id).then(rA)} onClose={() => setDelA(null)} />}
       {delE && <Confirm message={`Supprimer l'espace « ${delE.titre} » ?`} onYes={() => api.espaceDelete(delE.id).then(rE)} onClose={() => setDelE(null)} />}
       {editJ && <JeuForm j={editJ} onClose={() => setEditJ(null)} onSaved={() => { setEditJ(null); rJ(); }} />}
-      {delJ && <Confirm message={`Supprimer le jeu « ${delJ.titre} » ?`} onYes={() => api.jeuDelete(delJ.id).then(rJ)} onClose={() => setDelJ(null)} />}
+
       {editO && <OutilForm o={editO} onClose={() => setEditO(null)} onSaved={() => { setEditO(null); rO(); }} />}
-      {delO && <Confirm message={`Supprimer ${delO.genre === "outil" ? "l'outil" : "l'affichage"} « ${delO.titre} » ?`}
-        onYes={() => api.outilClasseDelete(delO.id).then(rO)} onClose={() => setDelO(null)} />}
+
     </Page>
   );
 }

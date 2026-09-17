@@ -27,6 +27,23 @@ export const STYLES = [
   { id: "contraste", label: "Contrasté", desc: "Coins nets et bordures marquées" },
 ];
 
+/**
+ * Taille du texte, appliquée en agrandissant toute la fenêtre.
+ *
+ * L'application est dessinée en pixels : grossir la seule police laisserait
+ * les cadres à leur taille et couperait les mots. Le zoom agrandit tout —
+ * texte, boutons, images — ce qui est exactement ce qu'on veut quand on est
+ * penché sur l'écran avec un élève, ou en visio d'ESS.
+ *
+ * Le choix reste sur cet ordinateur : l'écran du portable et celui du bureau
+ * n'ont pas la même taille.
+ */
+export const TAILLES = [
+  { id: "normal", label: "Normale", zoom: 1 },
+  { id: "grand", label: "Grande", zoom: 1.15 },
+  { id: "tresgrand", label: "Très grande", zoom: 1.3 },
+];
+
 export function applyTheme(s: Record<string, string>) {
   const root = document.documentElement;
   let mode = s.apparence || "clair";
@@ -43,6 +60,9 @@ export function applyTheme(s: Record<string, string>) {
   const accent = ACCENTS.find((a) => a.id === (s.accent || "indigo"))?.hex || "#6366f1";
   root.style.setProperty("--accent", accent);
   root.style.setProperty("--accent-soft", accent + "26"); // ~15% alpha
+
+  const taille = TAILLES.find((x) => x.id === (s.tailleTexte || "normal")) ?? TAILLES[0];
+  root.style.setProperty("zoom", taille.zoom === 1 ? "" : String(taille.zoom));
 
   // Liseré lumineux animé autour de la fenêtre (activé par défaut)
   root.setAttribute("data-neon", s.liseret === "off" ? "off" : "on");
