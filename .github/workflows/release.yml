@@ -12,7 +12,48 @@ permissions:
   contents: write # nécessaire pour créer la Release et y attacher les binaires
 
 jobs:
+  # Rien ne se publie sans que les tests passent. Le workflow « Tests » tourne à
+  # chaque poussée sur main, mais un tag peut être posé sur autre chose, ou
+  # poussé avant que les tests aient fini : on revérifie ici, et la compilation
+  # n'a lieu que si ce garde-fou est vert.
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Dépendances système
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - name: Dépendances front
+        run: npm install
+
+      - name: Types
+        run: npx tsc --noEmit
+
+      - name: Tests front
+        run: npm test
+
+      - name: Tests Rust
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
   build:
+    needs: tests
     strategy:
       fail-fast: false
       matrix:

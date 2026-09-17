@@ -1,4 +1,5 @@
 import React from "react";
+import { journal } from "../api";
 
 // Capture les erreurs de rendu d'une page pour éviter l'écran blanc complet et
 // afficher un message exploitable (au lieu de planter toute l'application).
@@ -11,6 +12,9 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode; 
 
   componentDidCatch(err: Error, info: React.ErrorInfo) {
     console.error("[ErrorBoundary]", err, info.componentStack);
+    // La console n'existe pas dans la fenêtre de l'application : sans cette
+    // ligne, un écran planté ne laisse aucune trace à relire après coup.
+    journal(`ÉCRAN ${err.message} @ ${(info.componentStack ?? "").split("\n")[1]?.trim() ?? "?"}`);
   }
 
   componentDidUpdate(prev: { resetKey?: string }) {
