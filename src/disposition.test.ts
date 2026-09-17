@@ -83,3 +83,16 @@ describe("réglages", () => {
     });
   });
 });
+
+describe("disposition des onglets rangés comme le bureau", () => {
+  it("se lit et suit un dossier renommé sous son propre préfixe", () => {
+    const reglages = { "bureau:": '{"d:A":[0,1]}', "rangement:jeux:place:": '{"d:Maths":[2,0]}', "rangement:jeux:place:Maths": '{"j1":[0,0]}' };
+    const dispositions = lireDispositions(reglages, "rangement:jeux:place:");
+    expect(dispositions).toEqual({ "": { "d:Maths": [2, 0] }, Maths: { j1: [0, 0] } });
+    expect(reporterDispositions(dispositions, "Maths", "Mathématiques", false, "rangement:jeux:place:")).toEqual({
+      "rangement:jeux:place:Maths": "",
+      "rangement:jeux:place:Mathématiques": '{"j1":[0,0]}',
+      "rangement:jeux:place:": '{"d:Mathématiques":[2,0]}',
+    });
+  });
+});

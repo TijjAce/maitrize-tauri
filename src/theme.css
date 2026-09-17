@@ -689,3 +689,19 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .loto-nb-variantes { position: absolute; top: 4px; right: 4px; font-size: 10px; font-weight: 700; color: #5b6275; background: #eef0f5;
   border-radius: 100px; padding: 1px 5px; }
 .loto-variantes { position: absolute; top: 2px; right: 2px; padding: 1px 5px !important; font-size: 12px; opacity: .85; }
+
+/* Ateliers & Espaces rangés comme le bureau */
+.rangement-fil { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; margin: 4px 0 6px; }
+.rangement-fil-etape { border: none; background: transparent; color: var(--text-2); font: inherit; padding: 3px 7px; border-radius: 6px; cursor: pointer; }
+.rangement-fil-etape.courante { color: var(--text); font-weight: 700; }
+.rangement-fil-etape.survol { background: var(--accent); color: #fff; }
+.rangement-zone { min-height: 50vh; border-radius: 12px; padding: 10px 4px; }
+.rangement-tuile { cursor: pointer; text-align: center; padding: 8px; border-radius: 10px; transition: background .12s; }
+.rangement-tuile:hover { background: var(--panel-2); }
+.rangement-tuile.survol { background: var(--accent); color: #fff; }
+.rangement-tuile.survol .rangement-tuile-sous { color: #fff; }
+.rangement-apercu { position: relative; width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; }
+.rangement-tuile-titre { font-size: 12.5px; font-weight: 600; margin-top: 5px; line-height: 1.2; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.rangement-tuile-sous { font-size: 10.5px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

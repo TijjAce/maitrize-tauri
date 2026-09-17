@@ -92,8 +92,8 @@ export function sousDossiers(elements: Rangeable[], courant: string, crees: Iter
 }
 
 /** Le fil d'Ariane d'un chemin : chaque ancêtre, racine comprise. */
-export function filDAriane(chemin: string): { chemin: string; nom: string }[] {
-  const fil = [{ chemin: "", nom: "Bureau" }];
+export function filDAriane(chemin: string, racine = "Bureau"): { chemin: string; nom: string }[] {
+  const fil = [{ chemin: "", nom: racine }];
   let courant = "";
   for (const segment of normaliser(chemin).split(SEPARATEUR).filter(Boolean)) {
     courant = courant ? `${courant}${SEPARATEUR}${segment}` : segment;
@@ -167,24 +167,24 @@ export function materielsDeCreationDeDossier(materiels: MaterielRangeable[], ele
  * nouvelles clés, et les anciennes vidées.
  */
 export function reporterCouleurs(
-  couleurs: Record<string, string>, ancien: string, nouveau: string,
+  couleurs: Record<string, string>, ancien: string, nouveau: string, prefixe = PREFIXE_COULEUR,
 ): Record<string, string> {
   const ecritures: Record<string, string> = {};
   for (const [chemin, couleur] of Object.entries(couleurs)) {
     if (!couleur || !estDans(chemin, ancien)) continue;
     const arrivee = renommerChemin(chemin, ancien, nouveau);
     if (arrivee === chemin) continue;
-    ecritures[PREFIXE_COULEUR + chemin] = ecritures[PREFIXE_COULEUR + chemin] ?? "";
-    ecritures[PREFIXE_COULEUR + arrivee] = couleur;
+    ecritures[prefixe + chemin] = ecritures[prefixe + chemin] ?? "";
+    ecritures[prefixe + arrivee] = couleur;
   }
   return ecritures;
 }
 
 /** Les couleurs des dossiers, lues dans l'ensemble des réglages. */
-export function lireCouleurs(reglages: Record<string, string>): Record<string, string> {
+export function lireCouleurs(reglages: Record<string, string>, prefixe = PREFIXE_COULEUR): Record<string, string> {
   const couleurs: Record<string, string> = {};
   for (const [cle, valeur] of Object.entries(reglages)) {
-    if (cle.startsWith(PREFIXE_COULEUR) && valeur) couleurs[cle.slice(PREFIXE_COULEUR.length)] = valeur;
+    if (cle.startsWith(prefixe) && valeur) couleurs[cle.slice(prefixe.length)] = valeur;
   }
   return couleurs;
 }

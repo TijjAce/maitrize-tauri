@@ -10,6 +10,8 @@ import { FichierImg } from "../components/Deroulement";
 import { JeuForm, VignetteUpload } from "../components/JeuForm";
 import { EtiquettesBo } from "../components/ChoixCompetencesBo";
 import { CarteOutil, OutilForm, elevesDe } from "../components/OutilForm";
+import { Rangement, type ElementRange } from "../components/Rangement";
+import type { CtxItem } from "../components/ctxmenu";
 
 /**
  * Un jeu passe-t-il les filtres de la ludothèque ?
@@ -53,38 +55,55 @@ export default function Ateliers() {
   const [suivi, setSuivi] = React.useState<Espace | null>(null);
   const [editJ, setEditJ] = React.useState<Jeu | null>(null);
   const [delJ, setDelJ] = React.useState<Jeu | null>(null);
-  const [dossier, setDossier] = React.useState("");
   // Filtre propre aux jeux : on cherche d'abord « à combien » et « quel type ».
   const [typeJeu, setTypeJeu] = React.useState("");
   const [joueurs, setJoueurs] = React.useState("");
+  const [recherche, setRecherche] = React.useState("");
 
-  const dossiers = (liste: { dossier: string }[]) => Array.from(new Set(liste.map((x) => x.dossier).filter(Boolean)));
+  // Chaque onglet se range comme le bureau, dans ses propres dossiers ; la
+  // vue en cartes montre tout d'un coup d'œil, et une recherche ou un filtre
+  // y bascule d'office.
+  const [vue, setVueBrute] = React.useState<"bureau" | "cartes">(() => {
+    try { return localStorage.getItem("ateliers:vue") === "cartes" ? "cartes" : "bureau"; } catch { return "bureau"; }
+  });
+  const setVue = (v: "bureau" | "cartes") => {
+    setVueBrute(v);
+    try { localStorage.setItem("ateliers:vue", v); } catch { /* stockage indisponible */ }
+  };
+  const [dossiersOuverts, setDossiersOuverts] = React.useState<Record<string, string>>({});
+  const dossier = dossiersOuverts[onglet] ?? "";
+  const setDossier = (d: string) => setDossiersOuverts((x) => ({ ...x, [onglet]: d }));
+
   const courant = onglet === "ateliers" ? (ateliers ?? []) : onglet === "espaces" ? (espaces ?? [])
     : onglet === "outils" ? outils : onglet === "affichages" ? affichages : (jeux ?? []);
-  const changerOnglet = (o: typeof ATELIERS_TABS[number]) => { setOnglet(o); setDossier(""); setCategorie(""); setPourEleve(""); };
-  const dossiersDispo = dossiers(courant);
-  const filtrer = <T extends { dossier: string }>(l: T[]) => dossier ? l.filter((x) => x.dossier === dossier) : l;
+  const changerOnglet = (o: typeof ATELIERS_TABS[number]) => { setOnglet(o); setCategorie(""); setPourEleve(""); };
+  const cherche = recherche.trim().toLowerCase();
+  const filtrer = <T extends { titre: string }>(l: T[]) => (cherche ? l.filter((x) => x.titre.toLowerCase().includes(cherche)) : l);
+  const filtreActif = Boolean(cherche) || (onglet === "jeux" && Boolean(joueurs || typeJeu))
+    || ((onglet === "outils" || onglet === "affichages") && Boolean(categorie || pourEleve));
+  const enBureau = vue === "bureau" && !filtreActif;
 
   return (
     <Page titre="Ateliers & Espaces" sous="Activités en autonomie, stations de classe, jeux, outils des élèves et affichages"
       actions={onglet === "ateliers"
-        ? <button className="btn primary" onClick={() => setEditA(nouvelAtelier())}>+ Atelier</button>
+        ? <button className="btn primary" onClick={() => setEditA({ ...nouvelAtelier(), dossier: enBureau ? dossier : "" })}>+ Atelier</button>
         : onglet === "espaces"
-        ? <button className="btn primary" onClick={() => setEditE(nouvelEspace())}>+ Espace</button>
+        ? <button className="btn primary" onClick={() => setEditE({ ...nouvelEspace(), dossier: enBureau ? dossier : "" })}>+ Espace</button>
         : onglet === "outils"
-        ? <button className="btn primary" onClick={() => setEditO(nouvelOutil("outil"))}>+ Outil</button>
+        ? <button className="btn primary" onClick={() => setEditO({ ...nouvelOutil("outil"), dossier: enBureau ? dossier : "" })}>+ Outil</button>
         : onglet === "affichages"
-        ? <button className="btn primary" onClick={() => setEditO(nouvelOutil("affichage"))}>+ Affichage</button>
-        : <button className="btn primary" onClick={() => setEditJ(nouveauJeu())}>+ Jeu</button>}>
+        ? <button className="btn primary" onClick={() => setEditO({ ...nouvelOutil("affichage"), dossier: enBureau ? dossier : "" })}>+ Affichage</button>
+        : <button className="btn primary" onClick={() => setEditJ({ ...nouveauJeu(), dossier: enBureau ? dossier : "" })}>+ Jeu</button>}>
       <div className="toolbar">
         <div className="seg">
-          <button className={onglet === "ateliers" ? "active" : ""} onClick={() => { setOnglet("ateliers"); setDossier(""); }}>Ateliers ({ateliers?.length ?? 0})</button>
-          <button className={onglet === "espaces" ? "active" : ""} onClick={() => { setOnglet("espaces"); setDossier(""); }}>Espaces ({espaces?.length ?? 0})</button>
-          <button className={onglet === "jeux" ? "active" : ""} onClick={() => { setOnglet("jeux"); setDossier(""); }}>Jeux ({jeux?.length ?? 0})</button>
+          <button className={onglet === "ateliers" ? "active" : ""} onClick={() => changerOnglet("ateliers")}>Ateliers ({ateliers?.length ?? 0})</button>
+          <button className={onglet === "espaces" ? "active" : ""} onClick={() => changerOnglet("espaces")}>Espaces ({espaces?.length ?? 0})</button>
+          <button className={onglet === "jeux" ? "active" : ""} onClick={() => changerOnglet("jeux")}>Jeux ({jeux?.length ?? 0})</button>
           <button className={onglet === "outils" ? "active" : ""} onClick={() => changerOnglet("outils")}>Outils pour l'élève ({outils.length})</button>
           <button className={onglet === "affichages" ? "active" : ""} onClick={() => changerOnglet("affichages")}>Affichages ({affichages.length})</button>
         </div>
         <div className="spacer" />
+        <Input className="search" placeholder="Rechercher…" value={recherche} onChange={(e) => setRecherche(e.target.value)} style={{ maxWidth: 170 }} />
         {onglet === "jeux" && (jeux?.length ?? 0) > 0 && <>
           <Select value={joueurs} onChange={(e) => setJoueurs(e.target.value)} style={{ maxWidth: 150 }}
             title="Jeux jouables à ce nombre de joueurs">
@@ -111,15 +130,82 @@ export default function Ateliers() {
               .map((c) => <option key={c}>{c}</option>)}
           </Select>
         </>}
-        {dossiersDispo.length > 0 && (
-          <Select value={dossier} onChange={(e) => setDossier(e.target.value)} style={{ maxWidth: 180 }}>
-            <option value="">Tous les dossiers</option>
-            {dossiersDispo.map((d) => <option key={d}>{d}</option>)}
-          </Select>
-        )}
+        <div className="seg" title={filtreActif ? "Une recherche ou un filtre montre les cartes" : undefined}>
+          <button className={enBureau ? "active" : ""} disabled={filtreActif} onClick={() => setVue("bureau")}
+            aria-label="Ranger comme sur le bureau">🗂 Bureau</button>
+          <button className={!enBureau ? "active" : ""} onClick={() => setVue("cartes")} aria-label="Voir en cartes">▦ Cartes</button>
+        </div>
       </div>
 
-      {onglet === "ateliers" && (
+      {enBureau && (() => {
+        const apercu = (image: string | null, emoji: string) => image
+          ? <FichierImg nom={image} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          : <span style={{ fontSize: 40 }}>{emoji}</span>;
+        const joueursDe = (j: Jeu) => (j.nbJoueursMin === j.nbJoueursMax ? `${j.nbJoueursMin}` : `${j.nbJoueursMin}–${j.nbJoueursMax}`);
+        type Reglage = {
+          racine: string; elements: ElementRange[]; ouvrir: (id: string) => void; ranger: (id: string, d: string) => Promise<unknown>;
+          supprimer: (id: string) => void; recharger: () => void; actions?: (id: string) => CtxItem[];
+          creation: { label: string; icon: string; onClick: () => void }; vide: { icone: string; titre: string; sous: string };
+        };
+        const trouver = <T extends { id: string }>(l: T[] | null | undefined, id: string) => (l ?? []).find((x) => x.id === id);
+        const r: Reglage = onglet === "ateliers" ? {
+          racine: "Ateliers",
+          elements: (ateliers ?? []).map((a) => ({ cle: a.id, titre: a.titre || "Sans titre", dossier: a.dossier,
+            sousTitre: [a.matiere, `👥 ${a.nbElevesMax}`].filter(Boolean).join(" · "), couleur: couleurHex[a.couleur], apercu: apercu(a.imageNom, "🧩") })),
+          ouvrir: (id) => { const a = trouver(ateliers, id); if (a) setEditA(a); },
+          ranger: async (id, d) => { const a = trouver(ateliers, id); if (a) await api.atelierSave({ ...a, dossier: d }); },
+          supprimer: (id) => { const a = trouver(ateliers, id); if (a) setDelA(a); },
+          recharger: rA,
+          actions: (id) => [{ label: "Dupliquer", icon: "📑", onClick: () => { const a = trouver(ateliers, id); if (a) api.atelierSave({ ...a, id: newId(), titre: a.titre + " (copie)" }).then(rA); } }],
+          creation: { label: "Nouvel atelier", icon: "🧩", onClick: () => setEditA({ ...nouvelAtelier(), dossier }) },
+          vide: { icone: "🧩", titre: "Aucun atelier", sous: "Créez vos ateliers en autonomie avec « + Atelier »." },
+        } : onglet === "espaces" ? {
+          racine: "Espaces",
+          elements: (espaces ?? []).map((e) => ({ cle: e.id, titre: e.titre || "Sans titre", dossier: e.dossier,
+            sousTitre: `👥 ${e.nbElevesMax}`, couleur: couleurHex[e.couleur], apercu: apercu(e.imageNom, "🪑") })),
+          ouvrir: (id) => { const e = trouver(espaces, id); if (e) setEditE(e); },
+          ranger: async (id, d) => { const e = trouver(espaces, id); if (e) await api.espaceSave({ ...e, dossier: d }); },
+          supprimer: (id) => { const e = trouver(espaces, id); if (e) setDelE(e); },
+          recharger: rE,
+          actions: (id) => [{ label: "Suivi des élèves", icon: "📋", onClick: () => { const e = trouver(espaces, id); if (e) setSuivi(e); } }],
+          creation: { label: "Nouvel espace", icon: "🪑", onClick: () => setEditE({ ...nouvelEspace(), dossier }) },
+          vide: { icone: "🪑", titre: "Aucun espace", sous: "Créez les stations de la classe avec « + Espace »." },
+        } : onglet === "jeux" ? {
+          racine: "Jeux",
+          elements: (jeux ?? []).map((j) => ({ cle: j.id, titre: j.titre || "Sans titre", dossier: j.dossier,
+            sousTitre: [j.typeJeu, `👥 ${joueursDe(j)}`].filter(Boolean).join(" · "), couleur: couleurHex[j.couleur], apercu: apercu(j.imageNom, "🎲") })),
+          ouvrir: (id) => { const j = trouver(jeux, id); if (j) setEditJ(j); },
+          ranger: async (id, d) => { const j = trouver(jeux, id); if (j) await api.jeuSave({ ...j, dossier: d }); },
+          supprimer: (id) => { const j = trouver(jeux, id); if (j) setDelJ(j); },
+          recharger: rJ,
+          actions: (id) => [{ label: "Dupliquer", icon: "📑", onClick: () => { const j = trouver(jeux, id); if (j) api.jeuSave({ ...j, id: newId(), titre: j.titre + " (copie)" }).then(rJ); } }],
+          creation: { label: "Nouveau jeu", icon: "🎲", onClick: () => setEditJ({ ...nouveauJeu(), dossier }) },
+          vide: { icone: "🎲", titre: "Aucun jeu", sous: "Recensez les jeux de la classe avec « + Jeu »." },
+        } : {
+          racine: onglet === "outils" ? "Outils" : "Affichages",
+          elements: (onglet === "outils" ? outils : affichages).map((o) => ({ cle: o.id, titre: o.titre || "Sans titre", dossier: o.dossier,
+            sousTitre: onglet === "affichages" && o.periode ? o.periode : o.categorie, couleur: couleurHex[o.couleur],
+            apercu: apercu(o.imageNom, onglet === "outils" ? "🧰" : "🖼") })),
+          ouvrir: (id) => { const o = trouver(outilsClasse, id); if (o) setEditO(o); },
+          ranger: async (id, d) => { const o = trouver(outilsClasse, id); if (o) await api.outilClasseSave({ ...o, dossier: d }); },
+          supprimer: (id) => { const o = trouver(outilsClasse, id); if (o) setDelO(o); },
+          recharger: rO,
+          actions: (id) => [{ label: "Dupliquer", icon: "📑", onClick: () => { const o = trouver(outilsClasse, id); if (o) api.outilClasseSave({ ...o, id: newId(), titre: o.titre + " (copie)", dateCreation: nowIso() }).then(rO); } }],
+          creation: onglet === "outils"
+            ? { label: "Nouvel outil", icon: "🧰", onClick: () => setEditO({ ...nouvelOutil("outil"), dossier }) }
+            : { label: "Nouvel affichage", icon: "🖼", onClick: () => setEditO({ ...nouvelOutil("affichage"), dossier }) },
+          vide: onglet === "outils"
+            ? { icone: "🧰", titre: "Aucun outil", sous: "Recensez les outils des élèves avec « + Outil »." }
+            : { icone: "🖼", titre: "Aucun affichage", sous: "Recensez les affichages de la classe avec « + Affichage »." },
+        };
+        return (
+          <Rangement key={onglet} espace={onglet} racine={r.racine} elements={r.elements} dossier={dossier} setDossier={setDossier}
+            onOuvrir={r.ouvrir} onRanger={r.ranger} onSupprimer={r.supprimer} onRecharger={r.recharger}
+            actions={r.actions} creations={[r.creation]} vide={r.vide} />
+        );
+      })()}
+
+      {!enBureau && onglet === "ateliers" && (
         (ateliers?.length ?? 0) === 0 ? <Empty icone="🧩" titre="Aucun atelier" /> :
         <div className="grid cols">
           {filtrer(ateliers!).map((a) => (
@@ -148,7 +234,7 @@ export default function Ateliers() {
         </div>
       )}
 
-      {onglet === "espaces" && (
+      {!enBureau && onglet === "espaces" && (
         (espaces?.length ?? 0) === 0 ? <Empty icone="🪑" titre="Aucun espace" /> :
         <div className="grid cols">
           {filtrer(espaces!).map((e) => {
@@ -179,12 +265,12 @@ export default function Ateliers() {
         </div>
       )}
 
-      {onglet === "jeux" && (
+      {!enBureau && onglet === "jeux" && (
         (jeux?.length ?? 0) === 0
           ? <Empty icone="🎲" titre="Aucun jeu"
               sous="Recensez les jeux de la classe : à combien on y joue, combien de temps, ce qu'ils travaillent et où ils sont rangés." />
           : (() => {
-            const liste = jeux!.filter((j) => jeuAccepte(j, { typeJeu, joueurs, dossier }));
+            const liste = filtrer(jeux!.filter((j) => jeuAccepte(j, { typeJeu, joueurs })));
             if (liste.length === 0) {
               return <Empty icone="🔍" titre="Aucun jeu ne correspond"
                 sous="Élargissez le nombre de joueurs ou le type." />;
@@ -222,7 +308,7 @@ export default function Ateliers() {
           })()
       )}
 
-      {(onglet === "outils" || onglet === "affichages") && (() => {
+      {!enBureau && (onglet === "outils" || onglet === "affichages") && (() => {
         const genre = onglet === "outils" ? "outil" : "affichage";
         const tous = genre === "outil" ? outils : affichages;
         if (tous.length === 0) {
