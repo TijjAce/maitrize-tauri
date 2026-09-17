@@ -1720,7 +1720,7 @@ pub async fn vacances_scolaires(zone: String) -> R<Vec<VacancePeriode>> {
 // ============================================================
 
 // Tables exportées (les référentiels intégrés sont exclus : re-seedés).
-const TABLES_EXPORT: &[&str] = &[
+pub(crate) const TABLES_EXPORT: &[&str] = &[
     "projets", "sequences", "seances", "ateliers", "espaces", "atelier_espace", "jeux", "outils_classe",
     "progressions_eleve", "creneaux", "eleves", "documents_eleve", "appels_journalier",
     "commentaires_eleve", "evaluations", "notes_eleve", "pieces_jointes",

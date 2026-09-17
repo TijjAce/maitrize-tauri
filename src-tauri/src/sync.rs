@@ -855,6 +855,180 @@ pub async fn sauvegarde_pull(db: State<'_, Db>, cle: Option<String>) -> R<String
                 Vos données d'avant sont gardées dans la copie « {copie} »."))
 }
 
+/// Ce qu'un essai de restauration a trouvé dans une sauvegarde.
+///
+/// Une sauvegarde jamais relue n'est pas une sauvegarde : qu'elle soit vide,
+/// abîmée ou chiffrée avec une autre phrase, on ne le découvrait que le jour où
+/// l'on en avait besoin — c'est-à-dire le pire jour. L'essai ouvre la vraie
+/// sauvegarde, sans toucher à la base, et dit ce qu'elle contient.
+#[derive(Serialize, Deserialize, Default, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct VerifSauvegarde {
+    pub cle: String,
+    /// Horodatage tiré du nom : « 2026-09-16-073102 ».
+    pub sauvegarde: String,
+    /// Quand l'essai a eu lieu.
+    pub essai: String,
+    pub octets: i64,
+    pub lisible: bool,
+    /// Ce qu'on a compté dedans, les tables les plus garnies d'abord.
+    pub lignes: Vec<(String, usize)>,
+    pub fichiers: usize,
+    /// Ce qui mérite un regard, en clair.
+    pub alertes: Vec<String>,
+    pub message: String,
+}
+
+const CLE_VERIF: &str = "verifSauvegarde";
+
+/// Tables dont l'absence se remarquerait tout de suite, avec leur nom en clair.
+const TABLES_PARLANTES: &[(&str, &str)] = &[
+    ("eleves", "élèves"),
+    ("sequences", "séquences"),
+    ("seances", "séances"),
+    ("creneaux", "créneaux du cahier journal"),
+    ("jeux", "jeux"),
+    ("commentaires_eleve", "observations"),
+    ("documents_eleve", "documents d'élèves"),
+];
+
+/// Depuis combien de jours cette sauvegarde a-t-elle été déposée ?
+fn age_sauvegarde(horodatage: &str, maintenant: chrono::NaiveDate) -> Option<i64> {
+    let jour = chrono::NaiveDate::parse_from_str(horodatage.get(..10)?, "%Y-%m-%d").ok()?;
+    Some((maintenant - jour).num_days())
+}
+
+/// Lit le contenu d'une sauvegarde déchiffrée et le compare à la base d'ici.
+///
+/// Séparé du réseau et du déchiffrement pour être vérifiable : c'est cette
+/// lecture qui, en se trompant, rassurerait à tort.
+fn analyser_sauvegarde(
+    json: &serde_json::Value,
+    ici: &std::collections::HashMap<String, usize>,
+    horodatage: &str,
+    aujourdhui: chrono::NaiveDate,
+) -> (Vec<(String, usize)>, usize, Vec<String>) {
+    let dedans = |table: &str| {
+        json.get(table).and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(0)
+    };
+    let mut lignes: Vec<(String, usize)> = crate::commands::TABLES_EXPORT
+        .iter()
+        .map(|t| ((*t).to_string(), dedans(t)))
+        .filter(|(_, n)| *n > 0)
+        .collect();
+    lignes.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+    let fichiers = json.get("_fichiers").and_then(|v| v.as_object()).map(|o| o.len()).unwrap_or(0);
+
+    let mut alertes = Vec::new();
+    if json.get("_format").and_then(|x| x.as_str()) != Some("maitrize-backup-v1") {
+        alertes.push("Le format de cette sauvegarde n'est pas celui attendu.".to_string());
+    }
+    for (table, nom) in TABLES_PARLANTES {
+        let (dans, base) = (dedans(table), ici.get(*table).copied().unwrap_or(0));
+        if base > 0 && dans == 0 {
+            alertes.push(format!("Aucun(e) {nom} dans la sauvegarde, alors que la base en compte {base}."));
+        } else if base >= 10 && dans * 2 < base {
+            alertes.push(format!("{nom} : {dans} dans la sauvegarde contre {base} ici."));
+        }
+    }
+    if let Some(jours) = age_sauvegarde(horodatage, aujourdhui) {
+        if jours > 15 {
+            alertes.push(format!("Cette sauvegarde date de {jours} jours."));
+        }
+    }
+    (lignes, fichiers, alertes)
+}
+
+fn noter_verif(db: &State<'_, Db>, v: &VerifSauvegarde) {
+    if let Ok(json) = serde_json::to_string(v) {
+        let c = db.lock();
+        set_setting(&c, CLE_VERIF, &json).ok();
+    }
+}
+
+/// Essaie de relire une sauvegarde, sans rien remplacer.
+#[tauri::command]
+pub async fn sauvegarde_verifier(db: State<'_, Db>, cle: Option<String>) -> R<VerifSauvegarde> {
+    let (cfg, phrase) = {
+        let c = db.lock();
+        let phrase = get_setting(&c, "sauvegarde_phrase");
+        if phrase.trim().is_empty() {
+            return Err("Renseignez la phrase secrète de sauvegarde.".into());
+        }
+        (lire_cfg(&c)?, phrase.trim().to_string())
+    };
+    let cl = client(&cfg);
+    let cible = match cle {
+        Some(k) if !k.trim().is_empty() => k,
+        _ => lister_distantes(&cl, &cfg)
+            .await?
+            .into_iter()
+            .next()
+            .map(|s| s.cle)
+            .ok_or_else(|| "Aucune sauvegarde sur le stockage.".to_string())?,
+    };
+    let resp = cl
+        .get_object()
+        .bucket(&cfg.bucket)
+        .key(&cible)
+        .send()
+        .await
+        .map_err(|_| format!("Sauvegarde « {cible} » introuvable (ou accès refusé)."))?;
+    let bytes = resp.body.collect().await.map_err(e)?.into_bytes();
+
+    let mut v = VerifSauvegarde {
+        sauvegarde: cible.trim_start_matches(PREFIXE_SAUVEGARDE).trim_end_matches(".enc").to_string(),
+        cle: cible,
+        essai: chrono::Local::now().to_rfc3339(),
+        octets: bytes.len() as i64,
+        ..Default::default()
+    };
+    let Ok(clair) = dechiffrer_sauvegarde(&phrase, bytes.as_ref()) else {
+        v.message = "Illisible : la phrase secrète ne correspond pas à cette sauvegarde. \
+                     En l'état, elle ne pourrait pas vous être rendue."
+            .into();
+        noter_verif(&db, &v);
+        return Ok(v);
+    };
+    let Ok(json) = serde_json::from_slice::<serde_json::Value>(&clair) else {
+        v.message = "Déchiffrée, mais son contenu est abîmé : ce n'est pas une sauvegarde lisible.".into();
+        noter_verif(&db, &v);
+        return Ok(v);
+    };
+    let ici: std::collections::HashMap<String, usize> = {
+        let c = db.lock();
+        crate::commands::TABLES_EXPORT
+            .iter()
+            .filter_map(|t| {
+                c.query_row(&format!("SELECT COUNT(*) FROM {t}"), [], |r| r.get::<_, i64>(0))
+                    .ok()
+                    .map(|n| ((*t).to_string(), n as usize))
+            })
+            .collect()
+    };
+    let (lignes, fichiers, alertes) =
+        analyser_sauvegarde(&json, &ici, &v.sauvegarde, chrono::Local::now().date_naive());
+    let total: usize = lignes.iter().map(|(_, n)| n).sum();
+    v.lisible = true;
+    v.message = format!(
+        "Relue sans erreur : {total} lignes et {fichiers} fichier{} joint{}.",
+        if fichiers > 1 { "s" } else { "" },
+        if fichiers > 1 { "s" } else { "" }
+    );
+    v.lignes = lignes;
+    v.fichiers = fichiers;
+    v.alertes = alertes;
+    noter_verif(&db, &v);
+    Ok(v)
+}
+
+/// Le dernier essai de restauration, s'il y en a eu un.
+#[tauri::command]
+pub fn sauvegarde_verif_derniere(db: State<'_, Db>) -> R<Option<VerifSauvegarde>> {
+    let c = db.lock();
+    Ok(serde_json::from_str(&get_setting(&c, CLE_VERIF)).ok())
+}
+
 /// Supprime une sauvegarde du stockage.
 ///
 /// Seules les sauvegardes sont concernées : les fichiers de synchronisation
@@ -879,6 +1053,74 @@ pub async fn sauvegarde_supprimer(db: State<'_, Db>, cle: String) -> R<String> {
 fn cle_de_sauvegarde(cle: &str) -> bool {
     cle == OBJET_SAUVEGARDE_V1
         || (cle.starts_with(PREFIXE_SAUVEGARDE) && cle.ends_with(".enc") && !cle[PREFIXE_SAUVEGARDE.len()..].contains('/'))
+}
+
+#[cfg(test)]
+mod tests_verif_sauvegarde {
+    use super::{age_sauvegarde, analyser_sauvegarde};
+    use std::collections::HashMap;
+
+    fn jour(a: i32, m: u32, j: u32) -> chrono::NaiveDate {
+        chrono::NaiveDate::from_ymd_opt(a, m, j).unwrap()
+    }
+
+    fn base() -> HashMap<String, usize> {
+        [("eleves", 84usize), ("sequences", 12), ("seances", 30), ("creneaux", 400)]
+            .into_iter()
+            .map(|(t, n)| (t.to_string(), n))
+            .collect()
+    }
+
+    fn sauvegarde(eleves: usize, seances: usize) -> serde_json::Value {
+        let lignes = |n: usize| (0..n).map(|i| serde_json::json!({ "id": i })).collect::<Vec<_>>();
+        serde_json::json!({
+            "_format": "maitrize-backup-v1",
+            "eleves": lignes(eleves),
+            "sequences": lignes(12),
+            "seances": lignes(seances),
+            "creneaux": lignes(400),
+            "_fichiers": { "photo.jpg": "…", "fiche.pdf": "…" },
+        })
+    }
+
+    #[test]
+    fn une_sauvegarde_fidele_et_recente_ne_dit_rien_d_inquietant() {
+        let (lignes, fichiers, alertes) =
+            analyser_sauvegarde(&sauvegarde(84, 30), &base(), "2026-09-16-073102", jour(2026, 9, 17));
+        assert_eq!(fichiers, 2);
+        assert_eq!(lignes.first().unwrap(), &("creneaux".to_string(), 400));
+        assert!(alertes.is_empty(), "{alertes:?}");
+    }
+
+    #[test]
+    fn une_sauvegarde_amputee_se_signale_avant_qu_on_en_ait_besoin() {
+        // Le cas qui coûte cher : la sauvegarde tourne, mais elle est vide.
+        let (_, _, alertes) =
+            analyser_sauvegarde(&sauvegarde(0, 4), &base(), "2026-09-16-073102", jour(2026, 9, 17));
+        assert!(alertes.iter().any(|a| a.contains("Aucun(e) élèves")), "{alertes:?}");
+        assert!(alertes.iter().any(|a| a.contains("séances : 4")), "{alertes:?}");
+    }
+
+    #[test]
+    fn une_sauvegarde_ancienne_ou_d_un_autre_format_se_signale_aussi() {
+        let (_, _, vieille) =
+            analyser_sauvegarde(&sauvegarde(84, 30), &base(), "2026-08-01-073102", jour(2026, 9, 17));
+        assert!(vieille.iter().any(|a| a.contains("47 jours")), "{vieille:?}");
+        let (_, _, etrange) = analyser_sauvegarde(
+            &serde_json::json!({ "eleves": [] }),
+            &HashMap::new(),
+            "2026-09-17-000000",
+            jour(2026, 9, 17),
+        );
+        assert!(etrange.iter().any(|a| a.contains("format")), "{etrange:?}");
+    }
+
+    #[test]
+    fn l_age_se_lit_sur_le_nom_et_ne_se_devine_pas() {
+        assert_eq!(age_sauvegarde("2026-09-10-120000", jour(2026, 9, 17)), Some(7));
+        assert_eq!(age_sauvegarde("", jour(2026, 9, 17)), None);
+        assert_eq!(age_sauvegarde("ancienne-sauvegarde", jour(2026, 9, 17)), None);
+    }
 }
 
 #[cfg(test)]
