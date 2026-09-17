@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   disposer, caseLibreLaPlusProche, poser, lirePositions, lireDispositions, reporterDispositions,
+  type Positions,
 } from "./disposition";
 
 describe("disposer", () => {
@@ -24,6 +25,26 @@ describe("disposer", () => {
     const doublon = disposer(["d:A", "d:B"], { "d:A": [1, 1], "d:B": [1, 1] }, 3);
     expect(doublon["d:A"]).toEqual({ col: 1, rang: 1 });
     expect(doublon["d:B"]).toEqual({ col: 0, rang: 0 });
+  });
+});
+
+describe("ranger", () => {
+  it("le trou laissé par des éléments rangés en dossier se referme", () => {
+    // Le bureau de la ludothèque : deux dossiers à gauche, deux jeux restés
+    // loin à droite parce que ceux du milieu sont partis dans les dossiers.
+    const cles = ["d:cycle 1", "d:cycle 2 et 3", "j:skyjo", "j:triomino"];
+    const positions = { "d:cycle 1": [0, 0], "d:cycle 2 et 3": [1, 0], "j:skyjo": [5, 0], "j:triomino": [6, 0] } as Positions;
+    const avant = disposer(cles, positions, 8);
+    expect(avant["j:skyjo"]).toEqual({ col: 5, rang: 0 });
+
+    // « Ranger » oublie les places gardées : tout se retasse dans l'ordre.
+    const apres = disposer(cles, {}, 8);
+    expect(apres).toEqual({
+      "d:cycle 1": { col: 0, rang: 0 },
+      "d:cycle 2 et 3": { col: 1, rang: 0 },
+      "j:skyjo": { col: 2, rang: 0 },
+      "j:triomino": { col: 3, rang: 0 },
+    });
   });
 });
 

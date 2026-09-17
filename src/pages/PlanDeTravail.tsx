@@ -527,6 +527,14 @@ export default function PlanDeTravail() {
               </button>
             </React.Fragment>
           ))}
+          <div style={{ flex: 1 }} />
+          <button type="button" className="btn ghost sm" disabled={!!filtre || !dispositions[dossier]}
+            title={dispositions[dossier]
+              ? "Remettre les icônes en ordre : les dossiers d'abord, puis par nom"
+              : "Déjà rangé : les icônes suivent l'ordre des noms"}
+            onClick={rangerParNom}>
+            🧹 Ranger
+          </button>
         </div>
         <Input className="search" placeholder="Rechercher partout…" value={q}
           onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 220 }} />
