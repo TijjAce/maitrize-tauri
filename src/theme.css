@@ -284,10 +284,18 @@ input, textarea, select { font-family: inherit; font-size: 14px; }
 .star { color: #d3d6e0; font-size: 16px; }
 .star.on { color: var(--orange); }
 
-.seg { display: inline-flex; background: var(--panel-2); border-radius: 9px; padding: 3px; gap: 2px; }
-.seg button { border: none; background: none; padding: 6px 12px; border-radius: 7px;
-  font-weight: 600; color: var(--text-2); font-size: 13px; }
-.seg button.active { background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
+.seg, .onglets { display: inline-flex; background: var(--panel-2); border-radius: 9px; padding: 3px; gap: 2px; }
+.seg button, .onglets button { border: none; background: none; padding: 0 12px; border-radius: 7px;
+  font-weight: 600; color: var(--text-2); font-size: 13px;
+  /* Hauteur fixe : une barre d'onglets ne doit pas changer de taille d'une
+     page à l'autre, ni selon qu'elle est seule ou dans une barre d'outils. */
+  height: 29px; display: inline-flex; align-items: center; justify-content: center; }
+.seg button.active, .onglets button.active { background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
+
+/* Barre d'onglets d'une page : même place et même écart partout, sous le titre
+   et au-dessus des outils de la page. Elle passe à la ligne quand la fenêtre
+   est étroite plutôt que de déborder. */
+.onglets { margin-bottom: 18px; flex-wrap: wrap; }
 
 table.tbl { width: 100%; border-collapse: collapse; }
 table.tbl th, table.tbl td { padding: 9px 10px; border-bottom: 1px solid var(--border); text-align: left; }

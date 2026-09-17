@@ -40,7 +40,7 @@ export default function Ressources() {
   useSegmentNav(TABS, onglet, setOnglet);
   return (
     <Page titre="Ressources" sous="Éduscol, publications académiques, outils, vidéothèque et coffre-fort de PDF">
-      <div className="seg" style={{ marginBottom: 18, flexWrap: "wrap" }}>
+      <div className="onglets">
         <button className={onglet === "docs" ? "active" : ""} onClick={() => setOnglet("docs")}>Documents Éduscol ({(eduscol as Doc[]).length})</button>
         <button className={onglet === "academies" ? "active" : ""} onClick={() => setOnglet("academies")}>Documents académiques ({(academies as Doc[]).length})</button>
         <button className={onglet === "outils" ? "active" : ""} onClick={() => setOnglet("outils")}>Outils de l'enseignant ({(outils as Outil[]).length})</button>
