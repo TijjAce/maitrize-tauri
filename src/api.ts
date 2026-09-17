@@ -4,11 +4,23 @@ import { invoke as invokeTauri } from "@tauri-apps/api/core";
 // La fenêtre de l'application n'a pas de console visible : quand une action
 // « ne fait rien », il ne reste aucune trace. Toute commande qui échoue est
 // donc écrite dans diagnostic.log (Réglages ▸ Données ▸ Journal d'incidents).
+/** Au-delà, une commande n'est plus lente : elle ne répondra sans doute jamais. */
+const SANS_REPONSE_MS = 45_000;
+
 function invoke<T>(cmd: string, ...args: unknown[]): Promise<T> {
-  return (invokeTauri as (c: string, ...a: unknown[]) => Promise<T>)(cmd, ...args).catch((err) => {
-    if (cmd !== "diag_ecrire") journal(`ÉCHEC ${cmd} : ${texteErreur(err)}`);
-    throw err;
-  });
+  // Une commande partie en boucle ne rend jamais la main : la fenêtre paraît
+  // simplement inerte. On ne l'interrompt pas — certaines sont longues pour de
+  // bonnes raisons — mais elle finit par le dire dans le journal d'incidents.
+  const guet =
+    cmd === "diag_ecrire"
+      ? 0
+      : setTimeout(() => journal(`SANS RÉPONSE ${cmd} : plus de ${SANS_REPONSE_MS / 1000} s`), SANS_REPONSE_MS);
+  return (invokeTauri as (c: string, ...a: unknown[]) => Promise<T>)(cmd, ...args)
+    .catch((err) => {
+      if (cmd !== "diag_ecrire") journal(`ÉCHEC ${cmd} : ${texteErreur(err)}`);
+      throw err;
+    })
+    .finally(() => clearTimeout(guet));
 }
 
 /** Message lisible : une erreur Tauri est parfois une chaîne, parfois un objet. */

@@ -19,6 +19,7 @@ import { PageVisibleContext } from "./components/ui";
 import { demarrerSyncAuto } from "./syncAuto";
 import { verifierLaSauvegarde } from "./verifSauvegarde";
 import { QuoiDeNeuf } from "./components/QuoiDeNeuf";
+import { demarrerLaVeille } from "./veille";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { NotesPanel } from "./components/NotesPanel";
 import { CommandPalette } from "./components/CommandPalette";
@@ -125,6 +126,8 @@ export default function App() {
   // Synchronisation de fond : rien à cliquer, les écrans se relisent d'eux-mêmes
   // quand des données arrivent de l'autre machine.
   React.useEffect(() => demarrerSyncAuto(), []);
+  // Une fenêtre figée ne dit rien d'elle-même : la veille en laisse une trace.
+  React.useEffect(() => demarrerLaVeille(), []);
 
   // Liseré lumineux : met l'animation en pause quand la fenêtre perd le focus
   // (économie de batterie). L'attribut est lu par le CSS [data-winfocus].
