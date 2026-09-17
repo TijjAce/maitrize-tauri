@@ -3,7 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { api, ResultatRecherche, joursFeriesFR, anneeScolaireActuelle, raccourci } from "../api";
 import { ouvrirOnglet } from "./ui";
 
-interface Cmd { id: string; ico: string; label: string; sous?: string; run: () => void | Promise<void>; }
+interface Cmd {
+  id: string; ico: string; label: string; sous?: string;
+  /** Le passage trouvé, pour reconnaître le bon résultat sans l'ouvrir. */
+  extrait?: string;
+  quand?: string;
+  run: () => void | Promise<void>;
+}
+
+/** « 2026-09-15T08:00 » → « 15/09 ». */
+const jourCourt = (iso: string) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? "");
+  return m ? `${m[3]}/${m[2]}` : "";
+};
+
+/** Demande au planning d'aller sur ce jour (il n'est pas dans l'URL). */
+export const EVT_JOUR = "maitrize:aller-au-jour";
 
 /** Sous-onglets, invisibles depuis la barre latérale. */
 const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; onglet: string; sous: string }[] = [
@@ -50,11 +65,43 @@ const NAV: { ico: string; label: string; to: string }[] = [
   { ico: "⚙️", label: "Réglages", to: "/reglages" },
 ];
 
-const KIND_TO: Record<string, (id: string) => string> = {
-  sequence: (id) => `/sequences/${id}`, atelier: () => "/ateliers", espace: () => "/ateliers",
-  eleve: () => "/eleves", materiel: () => "/plan",
+const KIND_ICO: Record<string, string> = {
+  sequence: "📚", seance: "📄", creneau: "🗓️", observation: "👀", atelier: "🧩",
+  espace: "🪑", jeu: "🎲", outil: "🧰", texte: "📝", eleve: "👧", materiel: "🧰",
 };
-const KIND_ICO: Record<string, string> = { sequence: "📚", atelier: "🧩", espace: "🪑", eleve: "👧", materiel: "🧰" };
+
+/** Le nom de ce qu'on a trouvé, dit en français. */
+const KIND_NOM: Record<string, string> = {
+  sequence: "Séquence", seance: "Séance", creneau: "Cahier journal", observation: "Observation",
+  atelier: "Atelier", espace: "Espace", jeu: "Jeu", outil: "Outil ou affichage",
+  texte: "Texte", eleve: "Élève", materiel: "Matériel",
+};
+
+/**
+ * Où mène un résultat.
+ *
+ * Trouver sans pouvoir y aller ne sert à rien : un créneau ouvre le cahier
+ * journal **au bon jour**, une séance sa séquence, une observation l'onglet
+ * qui la contient.
+ */
+function allerVers(r: ResultatRecherche, nav: (to: string) => void) {
+  const onglet = (page: string, tab: string) => setTimeout(() => ouvrirOnglet(page, tab), 140);
+  switch (r.kind) {
+    case "sequence": return nav(`/sequences/${r.id}`);
+    case "seance": return nav(r.parent ? `/sequences/${r.parent}` : "/plan");
+    case "creneau":
+      nav("/planning");
+      if (r.parent) setTimeout(() => window.dispatchEvent(new CustomEvent(EVT_JOUR, { detail: r.parent })), 120);
+      return;
+    case "observation": nav("/eleves"); return onglet("eleves", "observations");
+    case "atelier": nav("/ateliers"); return onglet("ateliers", "ateliers");
+    case "espace": nav("/ateliers"); return onglet("ateliers", "espaces");
+    case "jeu": nav("/ateliers"); return onglet("ateliers", "jeux");
+    case "outil": nav("/ateliers"); return onglet("ateliers", r.parent === "affichage" ? "affichages" : "outils");
+    case "eleve": nav("/eleves"); return onglet("eleves", "liste");
+    default: return nav("/plan");
+  }
+}
 
 const isoDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const toMin = (s: string) => { const [h, m] = (s || "").split(":").map(Number); return (h || 0) * 60 + (m || 0); };
@@ -240,7 +287,15 @@ export function CommandPalette() {
     run: () => { setOpen(false); nav(s.to); setTimeout(() => ouvrirOnglet(s.page, s.onglet), 140); },
   }));
   const actionCmds = ACTIONS.filter((a) => match(a.label) || match(a.sous ?? ""));
-  const rechCmds: Cmd[] = res.map((r) => ({ id: r.kind + r.id, ico: KIND_ICO[r.kind] ?? "•", label: r.titre, sous: r.sousTitre, run: () => { setOpen(false); nav((KIND_TO[r.kind] ?? (() => "/"))(r.id)); } }));
+  const rechCmds: Cmd[] = res.map((r) => ({
+    id: r.kind + r.id,
+    ico: KIND_ICO[r.kind] ?? "•",
+    label: r.titre,
+    sous: [KIND_NOM[r.kind] ?? "", r.sousTitre].filter(Boolean).join(" · "),
+    extrait: r.extrait,
+    quand: jourCourt(r.date),
+    run: () => { setOpen(false); allerVers(r, nav); },
+  }));
   const cmds = [...actionCmds, ...navCmds, ...sousCmds, ...rechCmds];
   const clamped = Math.min(sel, Math.max(0, cmds.length - 1));
 
@@ -254,7 +309,7 @@ export function CommandPalette() {
         if (e.key === "Enter" && cmds[clamped]) { e.preventDefault(); cmds[clamped].run(); }
       }}>
         <input className="palette-input" autoFocus aria-label="Commande, action ou recherche"
-          placeholder="Commande, action, ou recherche (séquences, élèves…)"
+          placeholder="Commande, action, ou recherche (séance, bilan, élève, jeu…)"
           value={q} onChange={(e) => { setQ(e.target.value); setSel(0); }} />
         {bulle && (
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", background: "var(--accent-soft)" }}>
@@ -268,8 +323,17 @@ export function CommandPalette() {
               <button key={c.id} className={"palette-item" + (i === clamped ? " on" : "")}
                 onMouseEnter={() => setSel(i)} onClick={() => c.run()}>
                 <span style={{ fontSize: 16 }}>{c.ico}</span>
-                <span style={{ flex: 1 }}>{c.label}</span>
-                {c.sous && <span style={{ fontSize: 12, color: "var(--text-2)" }}>{c.sous}</span>}
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.label}</span>
+                    {c.sous && <span style={{ fontSize: 12, color: "var(--text-2)", whiteSpace: "nowrap" }}>{c.sous}</span>}
+                    {c.quand && <span style={{ fontSize: 12, color: "var(--text-2)", whiteSpace: "nowrap" }}>{c.quand}</span>}
+                  </span>
+                  {c.extrait && (
+                    <span style={{ display: "block", fontSize: 12, color: "var(--text-2)", overflow: "hidden",
+                      textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>{c.extrait}</span>
+                  )}
+                </span>
               </button>
             ))}
         </div>
