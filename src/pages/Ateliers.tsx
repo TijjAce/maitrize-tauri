@@ -110,15 +110,18 @@ export default function Ateliers() {
         : onglet === "affichages"
         ? <button className="btn primary" onClick={() => setEditO({ ...nouvelOutil("affichage"), dossier: enBureau ? dossier : "" })}>+ Affichage</button>
         : <button className="btn primary" onClick={() => setEditJ({ ...nouveauJeu(), dossier: enBureau ? dossier : "" })}>+ Jeu</button>}>
+      {/* Les onglets sur leur propre ligne, comme sur toutes les autres pages :
+          dans la barre d'outils, ils n'avaient ni la même hauteur ni le même
+          écart qu'ailleurs. */}
+      <div className="onglets">
+        <button className={onglet === "ateliers" ? "active" : ""} onClick={() => changerOnglet("ateliers")}>Ateliers ({ateliers?.length ?? 0})</button>
+        <button className={onglet === "espaces" ? "active" : ""} onClick={() => changerOnglet("espaces")}>Espaces ({espaces?.length ?? 0})</button>
+        <button className={onglet === "jeux" ? "active" : ""} onClick={() => changerOnglet("jeux")}>Jeux ({jeux?.length ?? 0})</button>
+        <button className={onglet === "outils" ? "active" : ""} onClick={() => changerOnglet("outils")}>Outils pour l'élève ({outils.length})</button>
+        <button className={onglet === "affichages" ? "active" : ""} onClick={() => changerOnglet("affichages")}>Affichages ({affichages.length})</button>
+      </div>
+
       <div className="toolbar">
-        <div className="seg">
-          <button className={onglet === "ateliers" ? "active" : ""} onClick={() => changerOnglet("ateliers")}>Ateliers ({ateliers?.length ?? 0})</button>
-          <button className={onglet === "espaces" ? "active" : ""} onClick={() => changerOnglet("espaces")}>Espaces ({espaces?.length ?? 0})</button>
-          <button className={onglet === "jeux" ? "active" : ""} onClick={() => changerOnglet("jeux")}>Jeux ({jeux?.length ?? 0})</button>
-          <button className={onglet === "outils" ? "active" : ""} onClick={() => changerOnglet("outils")}>Outils pour l'élève ({outils.length})</button>
-          <button className={onglet === "affichages" ? "active" : ""} onClick={() => changerOnglet("affichages")}>Affichages ({affichages.length})</button>
-        </div>
-        <div className="spacer" />
         <Input className="search" placeholder="Rechercher…" value={recherche} onChange={(e) => setRecherche(e.target.value)} style={{ maxWidth: 170 }} />
         {onglet === "jeux" && (jeux?.length ?? 0) > 0 && <>
           <Select value={joueurs} onChange={(e) => setJoueurs(e.target.value)} style={{ maxWidth: 150 }}
@@ -146,6 +149,7 @@ export default function Ateliers() {
               .map((c) => <option key={c}>{c}</option>)}
           </Select>
         </>}
+        <div className="spacer" />
         <div className="seg" title={filtreActif ? "Une recherche ou un filtre montre les cartes" : undefined}>
           <button className={enBureau ? "active" : ""} disabled={filtreActif} onClick={() => setVue("bureau")}
             aria-label="Ranger comme sur le bureau">🗂 Bureau</button>
