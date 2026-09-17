@@ -1,5 +1,6 @@
 import React from "react";
-import { api, Creneau, Seance, Eleve, Jeu, nouveauJeu, teinteCreneau, texteErreur } from "../api";
+import { useNavigate } from "react-router-dom";
+import { api, Creneau, Seance, Sequence, Eleve, Jeu, nouveauJeu, teinteCreneau, texteErreur } from "../api";
 import { toast } from "./Toaster";
 import { useDictee, mmss } from "../dictee";
 import { natureDe } from "../heures";
@@ -9,6 +10,9 @@ import { PorterAuDossier } from "./PorterAuDossier";
 import { JeuForm } from "./JeuForm";
 import { ReglesDesJeux, useJeuxCites, useLudotheque } from "./ReglesDesJeux";
 import { jeuxCites, nomSousLeCurseur } from "../jeuxCites";
+import { ChoixSequence, SequencesCitees } from "./SequencesCitees";
+import { insererLigne, ligneDeSequence, sequencesCitees } from "../sequencesCitees";
+import { SeanceReadView } from "../pages/SequenceDetail";
 
 // ── Cahier journal du jour ────────────────────────────────────────────────
 //
@@ -19,7 +23,8 @@ import { jeuxCites, nomSousLeCurseur } from "../jeuxCites";
 // Tout s'enregistre seul. Seuls le prévu et le bilan sont écrits : un créneau
 // déplacé entre-temps dans la grille garde sa nouvelle place.
 //
-// Un jeu de la ludothèque nommé dans le prévu montre sa règle juste dessous.
+// Un jeu de la ludothèque nommé dans le prévu montre sa règle juste dessous ;
+// une séquence citée, ses objectifs et le déroulement de sa séance.
 
 type Champ = "prevu" | "bilan";
 interface Brouillon { prevu: string; bilan: string }
@@ -51,10 +56,11 @@ export async function ecrireLeCahierJournal(): Promise<void> {
   await Promise.all([...enAttente.values()].map((ecrire) => ecrire()));
 }
 
-export function CahierJournal({ dateIso, creneaux, seances, eleves, onModifier }: {
-  dateIso: string; creneaux: Creneau[]; seances: Seance[]; eleves: Eleve[];
+export function CahierJournal({ dateIso, creneaux, seances, sequences = [], eleves, onModifier }: {
+  dateIso: string; creneaux: Creneau[]; seances: Seance[]; sequences?: Sequence[]; eleves: Eleve[];
   onModifier: (c: Creneau) => void;
 }) {
+  const navigate = useNavigate();
   const duJour = React.useMemo(
     () => creneaux.filter((c) => c.date.slice(0, 10) === dateIso).sort((a, b) => a.heureDebut.localeCompare(b.heureDebut)),
     [creneaux, dateIso]);
@@ -188,6 +194,17 @@ export function CahierJournal({ dateIso, creneaux, seances, eleves, onModifier }
     setJeuEdite(connu ? { jeu: connu, nouveau: false } : { jeu: { ...nouveauJeu(), titre: nom }, nouveau: true });
   };
 
+  // ── Les séquences citées dans le prévu ──
+  const [sequencePour, setSequencePour] = React.useState<Creneau | null>(null);
+  const [seanceVue, setSeanceVue] = React.useState<Seance | null>(null);
+  const poserSequence = (c: Creneau, sequence: Sequence, seance: Seance | null) => {
+    const prevu = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
+    const zone = zonesPrevu.current[c.id];
+    const curseur = zone && ouvertes.current.has(c.id) ? zone.selectionEnd : null;
+    modifier(c.id, "prevu", insererLigne(prevu, ligneDeSequence(sequence, seance), curseur), true);
+    setSequencePour(null);
+  };
+
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const passe = dateIso < aujourdhui;
 
@@ -255,6 +272,9 @@ export function CahierJournal({ dateIso, creneaux, seances, eleves, onModifier }
                         <button className="btn ghost sm" onClick={() => ajouterJeu(c)}
                           title="Ajouter à la ludothèque le jeu écrit sur la ligne du curseur, avec sa règle : elle s'affichera ici dès qu'il est cité">
                           🎲 Règle d'un jeu</button>
+                        <button className="btn ghost sm" onClick={() => setSequencePour(c)} disabled={!sequences.length}
+                          title={sequences.length ? "Poser une séquence ou une séance dans le prévu : ses objectifs et son déroulement s'afficheront ici" : "Aucune séquence pour l'instant"}>
+                          📚 Séquence</button>
                       </>
                     ) : (
                       <button className="btn ghost sm" disabled={!b.bilan.trim() || reunion} onClick={() => porterAuDossier(c, ids)}
@@ -269,7 +289,11 @@ export function CahierJournal({ dateIso, creneaux, seances, eleves, onModifier }
                     aria-label={`${LIBELLES[champ].titre} — ${c.heureDebut} ${c.matiere}`}
                     style={{ width: "100%", resize: "vertical", fontSize: 13.5, lineHeight: 1.45 }} />
                   {champ === "prevu" && (
-                    <ReglesDesJeux jeux={citesDans(b.prevu)} onModifier={(jeu) => setJeuEdite({ jeu, nouveau: false })} />
+                    <>
+                      <ReglesDesJeux jeux={citesDans(b.prevu)} onModifier={(jeu) => setJeuEdite({ jeu, nouveau: false })} />
+                      <SequencesCitees citations={sequencesCitees(b.prevu, sequences, seances)} seances={seances}
+                        onOuvrir={(s) => navigate(`/sequences/${s.id}`)} onVoirSeance={setSeanceVue} />
+                    </>
                   )}
                 </div>
               );
@@ -277,6 +301,14 @@ export function CahierJournal({ dateIso, creneaux, seances, eleves, onModifier }
           </div>
         );
       })}
+      {sequencePour && (
+        <ChoixSequence sequences={sequences} seances={seances} matiere={sequencePour.matiere}
+          onClose={() => setSequencePour(null)} onChoisir={(s, seance) => poserSequence(sequencePour, s, seance)} />
+      )}
+      {seanceVue && (
+        <SeanceReadView seance={seanceVue} onClose={() => setSeanceVue(null)}
+          onEdit={() => { const sid = seanceVue.sequenceId; setSeanceVue(null); if (sid) navigate(`/sequences/${sid}`); }} />
+      )}
       {jeuEdite && (
         <JeuForm j={jeuEdite.jeu} nouveau={jeuEdite.nouveau} onClose={() => setJeuEdite(null)}
           onSaved={(jeu) => {
