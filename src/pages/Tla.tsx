@@ -4,7 +4,7 @@ import { Modal, Field, Input, Select, Empty, Confirm, useAsync } from "../compon
 import { toast } from "../components/Toaster";
 import {
   NATURES, couleurNature, nouveauGabarit, redimensionner,
-  casesPerdues, poser, remplies, verifier, lireGabarit, tableauSurTheme,
+  casesPerdues, poser, echanger, remplies, verifier, lireGabarit, tableauSurTheme,
 } from "../tla";
 import { SQUELETTES, squelettePour, placesDuTheme, motsDuNoyau } from "../squelettes";
 import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
@@ -20,6 +20,8 @@ import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac"
 // qu'à trouver le pictogramme que l'enseignant a décidé de poser.
 
 const CLE = "tla:gabarits";
+/** Le type du glisser d'une case : seules les cases de la grille s'y déposent. */
+const TYPE_CASE = "application/x-maitrize-case-tla";
 
 export function TlaTab() {
   const [gabarits, setGabarits] = React.useState<Gabarit[]>([]);
@@ -135,6 +137,14 @@ function Editeur({ gabarit, onChange, onFermer }: {
   const [redim, setRedim] = React.useState<{ colonnes: number; lignes: number } | null>(null);
   const [occupe, setOccupe] = React.useState(false);
 
+  // Glisser une case sur une autre les échange. La case saisie vit dans une
+  // référence : pendant le survol, le navigateur ne laisse pas lire les
+  // données du glisser.
+  const saisie = React.useRef<number | null>(null);
+  const [glissee, setGlissee] = React.useState<number | null>(null);
+  const [visee, setVisee] = React.useState<number | null>(null);
+  const finirGlisser = () => { saisie.current = null; setGlissee(null); setVisee(null); };
+
   const changerTaille = (colonnes: number, lignes: number) => {
     const perdues = casesPerdues(gabarit, colonnes, lignes);
     if (perdues > 0) setRedim({ colonnes, lignes });
@@ -210,9 +220,10 @@ function Editeur({ gabarit, onChange, onFermer }: {
 
       <div className="card">
         <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--text-2)" }}>
-          Cliquez sur une case pour y poser un mot. Changer la taille de la
-          grille ne déplace jamais les cases déjà posées : elles gardent leurs
-          coordonnées.
+          Cliquez sur une case pour y poser un mot. <b>Glissez un pictogramme
+          sur un autre pour les échanger</b> ; sur une case vide, il s'y déplace.
+          Changer la taille de la grille ne déplace jamais les cases déjà
+          posées : elles gardent leurs coordonnées.
         </p>
         <div style={{
           display: "grid",
@@ -221,7 +232,30 @@ function Editeur({ gabarit, onChange, onFermer }: {
           maxWidth: gabarit.paysage ? "100%" : 620,
         }}>
           {gabarit.cases.map((c, i) => (
-            <CaseBouton key={i} valeur={c} onClick={() => setCaseEditee(i)} />
+            <CaseBouton key={i} valeur={c} onClick={() => setCaseEditee(i)}
+              glissee={glissee === i} visee={visee === i && glissee !== i}
+              onDragStart={(e) => {
+                e.dataTransfer.setData(TYPE_CASE, String(i));
+                e.dataTransfer.effectAllowed = "move";
+                saisie.current = i; setGlissee(i);
+              }}
+              onDragOver={(e) => {
+                if (saisie.current === null) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                if (visee !== i) setVisee(i);
+              }}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setVisee((v) => (v === i ? null : v));
+              }}
+              onDrop={(e) => {
+                const depart = saisie.current;
+                if (depart === null) return;
+                e.preventDefault();
+                finirGlisser();
+                if (depart !== i) onChange(echanger(gabarit, depart, i));
+              }}
+              onDragEnd={finirGlisser} />
           ))}
         </div>
       </div>
@@ -242,7 +276,15 @@ function Editeur({ gabarit, onChange, onFermer }: {
   );
 }
 
-function CaseBouton({ valeur, onClick }: { valeur: CaseTla; onClick: () => void }) {
+type GlisserCase = Pick<React.HTMLAttributes<HTMLDivElement>, "onDragStart" | "onDragOver" | "onDragLeave" | "onDrop" | "onDragEnd">;
+
+function CaseBouton({ valeur, onClick, glissee, visee, ...glisser }: {
+  valeur: CaseTla; onClick: () => void;
+  /** La case qu'on est en train de glisser. */
+  glissee: boolean;
+  /** La case au-dessus de laquelle on la tient : c'est avec elle qu'elle s'échangera. */
+  visee: boolean;
+} & GlisserCase) {
   const [src, setSrc] = React.useState("");
   React.useEffect(() => {
     if (valeur.pictoId === null) { setSrc(""); return; }
@@ -251,24 +293,41 @@ function CaseBouton({ valeur, onClick }: { valeur: CaseTla; onClick: () => void 
     return () => { vivant = false; };
   }, [valeur.pictoId]);
   const vide = valeur.pictoId === null;
+  // Une case glissable n'est pas un <button> : WebKit ne fait pas glisser les boutons.
   return (
-    <button onClick={onClick} title={vide ? "Poser un mot" : valeur.mot}
+    <div role="button" tabIndex={0} draggable={!vide} {...glisser}
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+      title={vide ? "Poser un mot" : valeur.mot}
+      aria-label={vide ? "Case vide : poser un mot" : `${valeur.mot} : changer le mot, ou glisser pour échanger`}
       style={{
+        position: "relative",
         background: vide ? "#fff" : couleurNature(valeur.nature),
-        border: "none", borderRadius: 3, aspectRatio: "1", cursor: "pointer",
+        border: "none", borderRadius: 3, aspectRatio: "1", cursor: vide ? "pointer" : "grab",
         display: "flex", flexDirection: "column", alignItems: "center",
         justifyContent: "center", padding: 3, gap: 2, minHeight: 60,
+        userSelect: "none", WebkitUserSelect: "none",
+        opacity: glissee ? 0.35 : 1, transition: "opacity .12s",
+        outline: visee ? "3px solid var(--accent)" : undefined, outlineOffset: -3,
       }}>
+      {/* Sans événements : le survol reste celui de la case, et l'image ne se glisse pas seule. */}
       {src
-        ? <img src={src} alt="" style={{ width: "100%", flex: 1, objectFit: "contain", minHeight: 0 }} />
-        : <span style={{ flex: 1, display: "flex", alignItems: "center", color: "#bbb", fontSize: 18 }}>+</span>}
+        ? <img src={src} alt="" draggable={false} style={{ width: "100%", flex: 1, objectFit: "contain", minHeight: 0, pointerEvents: "none" }} />
+        : <span style={{ flex: 1, display: "flex", alignItems: "center", color: "#bbb", fontSize: 18, pointerEvents: "none" }}>+</span>}
       {!vide && (
-        <span style={{ fontSize: 10, color: "#333", lineHeight: 1.1, textAlign: "center",
+        <span style={{ fontSize: 10, color: "#333", lineHeight: 1.1, textAlign: "center", pointerEvents: "none",
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
           {valeur.mot}
         </span>
       )}
-    </button>
+      {visee && (
+        <span aria-hidden="true" style={{
+          position: "absolute", top: 4, right: 4, pointerEvents: "none",
+          background: "var(--accent)", color: "#fff", borderRadius: 999,
+          fontSize: 12, lineHeight: 1, padding: "3px 6px", fontWeight: 700,
+        }}>⇄</span>
+      )}
+    </div>
   );
 }
 
