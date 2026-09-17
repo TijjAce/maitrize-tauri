@@ -1,6 +1,6 @@
 import React from "react";
 import { Page } from "../App";
-import { api, isMac, texteErreur, type InfoCopie, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo } from "../api";
+import { api, isMac, texteErreur, type InfoCopie, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo, type VerifSauvegarde } from "../api";
 import { Field, Input, Select, Modal, Confirm, useAsync } from "../components/ui";
 import { MesAppareils } from "../components/MesAppareils";
 import { confirmer } from "../components/confirmer";
@@ -270,6 +270,7 @@ export default function Reglages() {
       <SauvegardeS3Card />
       <CopieDuBureauCard />
       <CopiesAutomatiques />
+      <EssaiDeRestauration />
       <DossierDesDonnees />
       <JournalIncidents />
 
@@ -694,6 +695,83 @@ function CopieDuBureauCard() {
 function formatDateSauvegarde(brut: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})/.exec(brut);
   return m ? `${m[3]}/${m[2]}/${m[1]} à ${m[4]}:${m[5]}` : brut;
+}
+
+/** Noms en clair des tables, pour un compte-rendu lisible. */
+const NOM_TABLE: Record<string, string> = {
+  eleves: "élèves", sequences: "séquences", seances: "séances", creneaux: "créneaux",
+  jeux: "jeux", commentaires_eleve: "observations", documents_eleve: "documents d'élèves",
+  evaluations: "évaluations", notes_eleve: "notes", textes: "textes", settings: "réglages",
+  ateliers: "ateliers", espaces: "espaces", outils_classe: "outils", papiers_eleve: "papiers",
+  pieces_jointes: "pièces jointes", materiel_items: "matériel", projets: "projets",
+  appels_journalier: "appels", edt_typique: "emploi du temps type", referentiels: "référentiels",
+  documents_coffre: "documents du coffre", progressions_eleve: "progressions",
+};
+
+/**
+ * Essai de restauration : la sauvegarde est-elle vraiment relisible ?
+ *
+ * Sauvegarder est facile ; ce qui compte est de pouvoir revenir. L'essai ouvre
+ * la dernière sauvegarde en ligne — déchiffrement compris — et compte ce
+ * qu'elle contient, sans rien remplacer ici.
+ */
+function EssaiDeRestauration() {
+  const [verif, setVerif] = React.useState<VerifSauvegarde | null>(null);
+  const [occupe, setOccupe] = React.useState(false);
+  const [erreur, setErreur] = React.useState("");
+
+  React.useEffect(() => { api.sauvegardeVerifDerniere().then(setVerif).catch(() => {}); }, []);
+
+  const lancer = async () => {
+    setOccupe(true); setErreur("");
+    try { setVerif(await api.sauvegardeVerifier()); }
+    catch (e) { setErreur(texteErreur(e)); }
+    finally { setOccupe(false); }
+  };
+
+  const quand = verif?.essai ? new Date(verif.essai).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "";
+  const souci = verif && (!verif.lisible || verif.alertes.length > 0);
+
+  return (
+    <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <h3 style={{ margin: 0 }}>🧪 Essai de restauration</h3>
+        <span style={{ fontSize: 12, color: souci ? "var(--danger, #ef4444)" : "var(--text-2)" }}>
+          {verif ? `dernier essai le ${quand}` : "jamais fait"}
+        </span>
+        <div className="spacer" />
+        <button className="btn sm" disabled={occupe} onClick={lancer}>
+          {occupe ? "Lecture…" : "Relire la sauvegarde"}
+        </button>
+      </div>
+      <p style={{ color: "var(--text-2)", fontSize: 12, margin: "6px 0 0" }}>
+        Sauvegarder est facile ; ce qui compte est de pouvoir revenir. L'app ouvre pour de vrai
+        la dernière sauvegarde en ligne, phrase secrète comprise, et compte ce qu'elle contient —
+        sans rien remplacer ici. Elle le refait toute seule une fois par mois.
+      </p>
+      {erreur && <p style={{ fontSize: 13, color: "var(--danger, #ef4444)", marginBottom: 0 }}>{erreur}</p>}
+      {verif && (
+        <div style={{ marginTop: 10, fontSize: 13 }}>
+          <div style={{ fontWeight: 600 }}>
+            {verif.lisible && !verif.alertes.length ? "✅" : "⚠️"} Sauvegarde du {formatDateSauvegarde(verif.sauvegarde)} — {verif.message}
+          </div>
+          {verif.lisible && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+              {verif.lignes.slice(0, 8).map(([table, n]) => (
+                <span key={table} className="chip" style={{ fontSize: 12 }}>
+                  {n} {NOM_TABLE[table] ?? table}
+                </span>
+              ))}
+              {verif.fichiers > 0 && <span className="chip" style={{ fontSize: 12 }}>{verif.fichiers} fichiers joints</span>}
+            </div>
+          )}
+          {verif.alertes.map((a) => (
+            <div key={a} style={{ color: "var(--danger, #ef4444)", marginTop: 6 }}>⚠️ {a}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** Copies quotidiennes de la base, faites au lancement de l'app. */
