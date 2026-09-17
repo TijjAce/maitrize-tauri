@@ -1637,39 +1637,252 @@ pub fn fichier_delete(nom: String) -> R<()> {
 // RECHERCHE transversale (simple LIKE multi-tables)
 // ============================================================
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ResultatRecherche {
-    pub kind: String,   // "sequence" | "atelier" | "espace" | "eleve" | "materiel"
+    /// « sequence », « seance », « creneau », « observation », « jeu »…
+    pub kind: String,
     pub id: String,
     pub titre: String,
     pub sous_titre: String,
+    /// La ligne où les mots ont été trouvés, telle qu'elle est écrite.
+    pub extrait: String,
+    /// Date de ce qu'on a trouvé, pour situer et pour trier.
+    pub date: String,
+    /// Ce dont ça dépend : la séquence d'une séance, l'élève d'une observation.
+    pub parent: String,
+}
+
+/// Forme comparable : minuscules, sans accents.
+///
+/// Chercher « recre » doit trouver « récré » : personne ne tape les accents
+/// dans une barre de recherche, et l'enseignant cherche en classe, vite.
+fn normaliser(t: &str) -> String {
+    let mut s = String::with_capacity(t.len());
+    for c in t.to_lowercase().chars() {
+        s.push_str(match c {
+            'à' | 'â' | 'ä' | 'á' | 'ã' | 'å' => "a",
+            'ç' => "c",
+            'é' | 'è' | 'ê' | 'ë' => "e",
+            'î' | 'ï' | 'í' | 'ì' => "i",
+            'ô' | 'ö' | 'ó' | 'ò' | 'õ' => "o",
+            'ù' | 'û' | 'ü' | 'ú' => "u",
+            'ÿ' | 'ý' => "y",
+            'ñ' => "n",
+            'œ' => "oe",
+            'æ' => "ae",
+            _ => {
+                s.push(c);
+                continue;
+            }
+        });
+    }
+    s
+}
+
+/// Les mots cherchés : tous doivent se trouver, dans n'importe quel ordre.
+fn mots_cherches(q: &str) -> Vec<String> {
+    normaliser(q)
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|m| !m.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
+/// La ligne où les mots ont été trouvés, coupée à une longueur lisible.
+///
+/// Montrer le passage évite d'ouvrir trois fiches pour savoir laquelle est la
+/// bonne : c'est la moitié de ce qu'on demande à une recherche.
+fn extrait(texte: &str, mots: &[String]) -> String {
+    let couper = |l: &str| {
+        let l = l.trim();
+        if l.chars().count() <= 160 {
+            l.to_string()
+        } else {
+            format!("{}…", l.chars().take(160).collect::<String>().trim_end())
+        }
+    };
+    for ligne in texte.split('\n') {
+        if ligne.trim().is_empty() {
+            continue;
+        }
+        let n = normaliser(ligne);
+        if mots.iter().any(|m| n.contains(m.as_str())) {
+            return couper(ligne);
+        }
+    }
+    texte.split('\n').find(|l| !l.trim().is_empty()).map(couper).unwrap_or_default()
+}
+
+/// Où chercher : le genre, puis id, titre, sous-titre, texte, date, parent.
+///
+/// La recherche ne trouvait ni les séances, ni le cahier journal, ni les
+/// observations — c'est-à-dire presque tout ce qu'on écrit. Elle les lit
+/// maintenant toutes, et les tables absentes d'une base plus ancienne sont
+/// simplement sautées.
+const SOURCES: &[(&str, &str)] = &[
+    ("sequence", "SELECT id, COALESCE(NULLIF(titre,''),'Séquence'), COALESCE(matiere,''),
+                  COALESCE(objectifs,'') || '\n' || COALESCE(competence_visee,''),
+                  COALESCE(date_creation,''), '' FROM sequences"),
+    ("seance", "SELECT s.id, COALESCE(NULLIF(s.titre,''), 'Séance ' || s.numero),
+                'Séance ' || s.numero || COALESCE(' · ' || NULLIF(q.titre,''), ''),
+                COALESCE(s.objectifs,'') || '\n' || COALESCE(s.deroulement,'') || '\n' || COALESCE(s.materiel,'') || '\n' || COALESCE(s.bilan,''),
+                COALESCE(s.date,''), COALESCE(s.sequence_id,'')
+                FROM seances s LEFT JOIN sequences q ON q.id = s.sequence_id"),
+    ("creneau", "SELECT id, COALESCE(NULLIF(matiere,''),'Créneau'),
+                 COALESCE(heure_debut,'') || '–' || COALESCE(heure_fin,''),
+                 COALESCE(prevu,'') || '\n' || COALESCE(bilan,''), COALESCE(date,''), COALESCE(date,'')
+                 FROM creneaux"),
+    ("observation", "SELECT c.id, COALESCE(NULLIF(e.nom,''),'Observation'), COALESCE(c.type,''),
+                     COALESCE(c.texte,''), COALESCE(c.date,''), COALESCE(c.eleve_id,'')
+                     FROM commentaires_eleve c LEFT JOIN eleves e ON e.id = c.eleve_id"),
+    ("atelier", "SELECT id, COALESCE(NULLIF(titre,''),'Atelier'), COALESCE(matiere,''),
+                 COALESCE(objectifs,'') || '\n' || COALESCE(materiel,''), '', '' FROM ateliers"),
+    ("espace", "SELECT id, COALESCE(NULLIF(titre,''),'Espace'), '',
+                COALESCE(description_espace,''), '', '' FROM espaces"),
+    ("jeu", "SELECT id, COALESCE(NULLIF(titre,''),'Jeu'), COALESCE(type_jeu,''),
+             COALESCE(regles,'') || '\n' || COALESCE(description_jeu,'') || '\n' || COALESCE(competences,''),
+             COALESCE(date_creation,''), '' FROM jeux"),
+    ("outil", "SELECT id, COALESCE(NULLIF(titre,''),'Outil'), COALESCE(genre,'') || COALESCE(' · ' || NULLIF(categorie,''),''),
+               COALESCE(usage,'') || '\n' || COALESCE(consignes,''), COALESCE(date_creation,''), COALESCE(genre,'') FROM outils_classe"),
+    ("texte", "SELECT id, COALESCE(NULLIF(titre,''),'Texte'), COALESCE(dossier,''), COALESCE(contenu,''),
+               COALESCE(NULLIF(date_modification,''), date_creation), '' FROM textes"),
+    ("eleve", "SELECT id, COALESCE(NULLIF(nom,''),'Élève'), COALESCE(niveau,''), COALESCE(notes,''), '', '' FROM eleves"),
+    ("materiel", "SELECT id, COALESCE(NULLIF(titre,''),'Matériel'), COALESCE(competence_titre,''),
+                  COALESCE(description_materiel,''), '', '' FROM materiel_items"),
+];
+
+/// Combien de résultats on rend : au-delà, on ne lit plus, on fouille.
+const RESULTATS_MAX: usize = 40;
+
+/// Cherche dans tout ce qui est écrit dans l'application.
+pub fn chercher(c: &rusqlite::Connection, q: &str) -> Vec<ResultatRecherche> {
+    let mots = mots_cherches(q);
+    if mots.is_empty() {
+        return Vec::new();
+    }
+    // Rang : 0 le titre lui-même, 1 ce qui l'accompagne, 2 le corps du texte.
+    // Puis la date, la plus récente d'abord — chercher, c'est d'abord retrouver
+    // ce qu'on vient d'écrire.
+    let mut trouves: Vec<(u8, String, ResultatRecherche)> = Vec::new();
+    for (kind, sql) in SOURCES {
+        let Ok(mut st) = c.prepare(sql) else { continue };
+        let Ok(lignes) = st.query_map([], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, String>(3)?,
+                r.get::<_, String>(4)?,
+                r.get::<_, String>(5)?,
+            ))
+        }) else { continue };
+        for (id, titre, sous_titre, texte, date, parent) in lignes.flatten() {
+            let tous = |champ: &str| {
+                let n = normaliser(champ);
+                mots.iter().all(|m| n.contains(m.as_str()))
+            };
+            let rang = if tous(&titre) {
+                0
+            } else if tous(&format!("{titre} {sous_titre}")) {
+                1
+            } else if tous(&format!("{titre} {sous_titre} {texte}")) {
+                2
+            } else {
+                continue;
+            };
+            trouves.push((
+                rang,
+                date.clone(),
+                ResultatRecherche {
+                    kind: (*kind).to_string(),
+                    id,
+                    titre,
+                    sous_titre,
+                    extrait: extrait(&texte, &mots),
+                    date,
+                    parent,
+                },
+            ));
+        }
+    }
+    trouves.sort_by(|a, b| a.0.cmp(&b.0).then(b.1.cmp(&a.1)));
+    trouves.into_iter().take(RESULTATS_MAX).map(|(_, _, r)| r).collect()
 }
 
 #[tauri::command]
 pub fn recherche(db: State<Db>, q: String) -> R<Vec<ResultatRecherche>> {
     let c = db.lock();
-    let like = format!("%{}%", q);
-    let mut out = Vec::new();
+    Ok(chercher(&c, &q))
+}
 
-    let mut push = |sql: &str, kind: &str| -> R<()> {
-        let mut st = c.prepare(sql).map_err(e)?;
-        let rows = st.query_map(params![like], |r| {
-            Ok(ResultatRecherche {
-                kind: kind.to_string(),
-                id: r.get(0)?, titre: r.get(1)?, sous_titre: r.get(2)?,
-            })
-        }).map_err(e)?;
-        for row in rows { out.push(row.map_err(e)?); }
-        Ok(())
-    };
+#[cfg(test)]
+mod tests_recherche {
+    use super::{chercher, extrait, mots_cherches, normaliser};
+    use rusqlite::Connection;
 
-    push("SELECT id,titre,matiere FROM sequences WHERE titre LIKE ?1 OR objectifs LIKE ?1", "sequence")?;
-    push("SELECT id,titre,matiere FROM ateliers WHERE titre LIKE ?1 OR objectifs LIKE ?1", "atelier")?;
-    push("SELECT id,titre,description_espace FROM espaces WHERE titre LIKE ?1", "espace")?;
-    push("SELECT id,nom,niveau FROM eleves WHERE nom LIKE ?1", "eleve")?;
-    push("SELECT id,titre,competence_titre FROM materiel_items WHERE titre LIKE ?1", "materiel")?;
-    Ok(out)
+    fn base() -> Connection {
+        let c = Connection::open_in_memory().unwrap();
+        c.execute_batch(
+            "CREATE TABLE sequences (id TEXT PRIMARY KEY, titre TEXT, matiere TEXT, objectifs TEXT,
+                 competence_visee TEXT, date_creation TEXT);
+             CREATE TABLE seances (id TEXT PRIMARY KEY, titre TEXT, numero INTEGER, objectifs TEXT,
+                 deroulement TEXT, materiel TEXT, bilan TEXT, date TEXT, sequence_id TEXT);
+             CREATE TABLE creneaux (id TEXT PRIMARY KEY, date TEXT, heure_debut TEXT, heure_fin TEXT,
+                 matiere TEXT, prevu TEXT, bilan TEXT);
+             INSERT INTO sequences VALUES ('q1','Les fractions','Maths','Partager','','2026-09-01');
+             INSERT INTO seances VALUES ('s1','Partager une pizza',1,'Comprendre le demi',
+                 'On découpe une pizza en parts égales.','Pizza en carton','','2026-09-12','q1');
+             INSERT INTO creneaux VALUES ('c1','2026-09-15','09:00','10:00','Atelier cuisine',
+                 'Récré puis pâte à modeler','Aurélien a demandé de l''aide');",
+        )
+        .unwrap();
+        c
+    }
+
+    #[test]
+    fn la_recherche_trouve_ce_qui_est_ecrit_dans_les_seances_et_le_cahier_journal() {
+        let c = base();
+        // Ce que l'ancienne recherche ne trouvait pas : le déroulement d'une séance.
+        let r = chercher(&c, "pizza");
+        assert!(r.iter().any(|x| x.kind == "seance" && x.id == "s1"), "{:?}", r.iter().map(|x| &x.id).collect::<Vec<_>>());
+        // Ni le prévu du cahier journal.
+        let r = chercher(&c, "pâte à modeler");
+        assert_eq!(r.first().map(|x| x.kind.as_str()), Some("creneau"));
+        assert!(r[0].extrait.contains("pâte à modeler"), "{}", r[0].extrait);
+        assert_eq!(r[0].date, "2026-09-15");
+        // Ni le bilan.
+        assert!(chercher(&c, "aurelien").iter().any(|x| x.kind == "creneau"));
+    }
+
+    #[test]
+    fn elle_se_moque_des_accents_et_veut_tous_les_mots() {
+        let c = base();
+        assert!(!chercher(&c, "recre").is_empty(), "sans accent, « récré » doit se trouver");
+        assert!(!chercher(&c, "pizza parts").is_empty(), "les mots peuvent être dans le désordre");
+        assert!(chercher(&c, "pizza tricot").is_empty(), "tous les mots doivent y être");
+        assert!(chercher(&c, "  ").is_empty());
+    }
+
+    #[test]
+    fn un_titre_passe_devant_le_corps_du_texte_et_la_seance_sait_d_où_elle_vient() {
+        let c = base();
+        let r = chercher(&c, "fractions");
+        assert_eq!(r.first().map(|x| x.kind.as_str()), Some("sequence"), "{r:?}");
+        let s = chercher(&c, "demi").into_iter().find(|x| x.kind == "seance").unwrap();
+        assert_eq!(s.parent, "q1", "la séance doit ramener à sa séquence");
+        assert_eq!(s.sous_titre, "Séance 1 · Les fractions");
+    }
+
+    #[test]
+    fn l_extrait_montre_la_ligne_trouvee_et_ne_s_étale_pas() {
+        let mots = mots_cherches("Pâté");
+        assert_eq!(mots, vec!["pate"]);
+        assert_eq!(extrait("Une ligne\nla ligne au pâté\nune autre", &mots), "la ligne au pâté");
+        let long = format!("début {}", "a".repeat(300));
+        assert!(extrait(&long, &mots_cherches("debut")).chars().count() <= 161);
+        assert_eq!(normaliser("Cœur ÉLÈVE"), "coeur eleve");
+    }
 }
 
 // ============================================================
