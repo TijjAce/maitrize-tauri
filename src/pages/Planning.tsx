@@ -12,6 +12,7 @@ import { printHTML, escapeHtml, dataUrlImage } from "../print";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
 import { CahierJournal, ecrireLeCahierJournal } from "../components/CahierJournal";
 import { jeuxCites, reglesImprimees, STYLE_REGLES } from "../jeuxCites";
+import { sequencesCitees, sequencesImprimees, STYLE_SEQUENCES } from "../sequencesCitees";
 import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
 import { organisationPour, natureDuSlot, type SlotEdt } from "../organisation";
 
@@ -252,6 +253,7 @@ export default function Planning() {
         illus.length ? `<div class="imgs">${illus.map(imgTag).join("")}</div>` : "",
         c.prevu?.trim() ? `<div class="f"><span class="fl">Prévu :</span></div><div class="txt">${escapeHtml(c.prevu.trim())}</div>` : "",
         reglesImprimees(jeuxCites(`${c.prevu ?? ""}\n${deroul}`, jeux)),
+        sequencesImprimees(sequencesCitees(c.prevu ?? "", sequences ?? [], seances ?? [])),
         c.bilan?.trim() ? `<div class="f"><span class="fl">Fait · bilan :</span></div><div class="txt">${escapeHtml(c.bilan.trim())}</div>` : "",
       ].join("");
       return `<div class="col">${head}${body ? `<div class="body">${body}</div>` : ""}</div>`;
@@ -299,6 +301,7 @@ export default function Planning() {
       td img{max-height:110px}
       @media print{@page{margin:11mm}}
       ${STYLE_REGLES}
+      ${STYLE_SEQUENCES}
     `;
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Planning — ${escapeHtml(titre)}</title><style>${css}</style></head>
       <body><h1>${escapeHtml(titre)}</h1><div class="sub">Cahier journal</div>
@@ -397,7 +400,7 @@ export default function Planning() {
           ? <div className="planning-jour">
               <GrilleHoraire jours={jours} creneaux={creneaux ?? []} seances={seances ?? []} eleves={eleves ?? []} feries={feries} vacanceDe={vacanceDe}
                 deplacable={deplacer} onEdit={setEdit} onTap={ouvrirCreneau} onReload={reload} />
-              <CahierJournal dateIso={iso(ancre)} creneaux={creneaux ?? []} seances={seances ?? []} eleves={eleves ?? []}
+              <CahierJournal dateIso={iso(ancre)} creneaux={creneaux ?? []} seances={seances ?? []} sequences={sequences ?? []} eleves={eleves ?? []}
                 onModifier={setEdit} />
             </div>
           : <GrilleHoraire jours={jours} creneaux={creneaux ?? []} seances={seances ?? []} eleves={eleves ?? []} feries={feries} vacanceDe={vacanceDe}
