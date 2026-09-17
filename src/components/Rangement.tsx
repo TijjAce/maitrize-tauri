@@ -250,6 +250,17 @@ export function Rangement({ espace, racine, elements, dossier, setDossier, onOuv
             </button>
           </React.Fragment>
         ))}
+        <div style={{ flex: 1 }} />
+        {/* Ranger était caché dans un clic droit : personne ne le trouvait, et
+            un bureau qui garde les trous d'un élément déplacé finit par
+            ressembler à un désordre qu'on ne sait pas défaire. */}
+        <button type="button" className="btn ghost sm" disabled={!dispositions[dossier]}
+          title={dispositions[dossier]
+            ? "Remettre les icônes en ordre : les dossiers d'abord, puis par nom"
+            : "Déjà rangé : les icônes suivent l'ordre des noms"}
+          onClick={() => { void ecrire({ [prefixePlace + dossier]: "" }); }}>
+          🧹 Ranger
+        </button>
       </div>
 
       <div
