@@ -232,6 +232,8 @@ export interface Machine {
 export interface EtatSync {
   configure: boolean; aEnvoyer: boolean; aRecuperer: boolean; conflit: boolean;
   derniereSync: string; derniereDistante: string; horsLigne: string;
+  /** Lignes reçues qui attendent encore : elles seront reprises toutes seules. */
+  enAttente: number;
 }
 
 /** Emplacement des données de l'application. */

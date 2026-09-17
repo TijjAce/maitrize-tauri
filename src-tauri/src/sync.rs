@@ -608,6 +608,8 @@ pub struct EtatSync {
     pub derniere_distante: String,
     /// Renseigné quand le stockage n'a pas répondu : on ne prétend pas savoir.
     pub hors_ligne: String,
+    /// Lignes reçues que cette version n'a pas encore su écrire, et qui seront retentées.
+    pub en_attente: usize,
 }
 
 /// Décide, à partir de trois horodatages, dans quel sens va la copie.
@@ -656,12 +658,14 @@ pub async fn sync_etat(db: State<'_, Db>) -> R<EtatSync> {
                 a_envoyer,
                 derniere_sync,
                 hors_ligne: format!("Stockage injoignable : {err}"),
+                en_attente: crate::journal::compte_attente(&db.lock()),
                 ..Default::default()
             })
         }
     };
     let derniere_distante = distantes.first().map(|s| s.date.clone()).unwrap_or_default();
     let (a_envoyer, a_recuperer) = decider(&locale, &derniere_sync, &derniere_distante);
+    let en_attente = crate::journal::compte_attente(&db.lock());
 
     Ok(EtatSync {
         configure: true,
@@ -671,6 +675,7 @@ pub async fn sync_etat(db: State<'_, Db>) -> R<EtatSync> {
         derniere_sync,
         derniere_distante,
         hors_ligne: String::new(),
+        en_attente,
     })
 }
 
