@@ -75,6 +75,20 @@ export function poser(g: Gabarit, index: number, valeur: CaseTla): Gabarit {
 }
 
 /**
+ * Échange deux cases de place, sans toucher aux autres.
+ *
+ * C'est l'enseignant qui décide où va chaque mot, avant d'imprimer : il glisse
+ * une case sur une autre. Glissé sur une case vide, le mot s'y déplace et
+ * laisse sa place libre.
+ */
+export function echanger(g: Gabarit, a: number, b: number): Gabarit {
+  if (a === b || !g.cases[a] || !g.cases[b]) return g;
+  const cases = g.cases.slice();
+  [cases[a], cases[b]] = [cases[b], cases[a]];
+  return { ...g, cases };
+}
+
+/**
  * Contrôle qu'un gabarit est cohérent avant impression ou après import.
  *
  * Un tableau dont la grille et les cases se contredisent s'imprimerait décalé,

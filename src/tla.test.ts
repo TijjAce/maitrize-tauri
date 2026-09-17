@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   NATURES, couleurNature, nouveauGabarit, redimensionner,
-  casesPerdues, poser, remplies, verifier, lireGabarit,
+  casesPerdues, poser, remplies, verifier, lireGabarit, echanger,
 } from "./tla";
 import type { CaseTla, Gabarit } from "./api";
 
@@ -27,6 +27,27 @@ describe("gabarit de tableau de langage", () => {
     const g = nouveauGabarit(6, 5);
     expect(g.cases).toHaveLength(30);
     expect(g.cases.every((c) => c.pictoId === null)).toBe(true);
+  });
+
+  it("échange deux cases glissées l'une sur l'autre, sans toucher aux autres", () => {
+    const avant = garni();
+    const apres = echanger(avant, 0, 9);
+    expect(coord(apres, 0, 0).mot).toBe("fini");
+    expect(coord(apres, 1, 2).mot).toBe("je");
+    expect(coord(apres, 3, 0).mot).toBe("encore");
+    expect(remplies(apres)).toBe(3);
+    // Le gabarit d'origine reste intact.
+    expect(coord(avant, 0, 0).mot).toBe("je");
+  });
+
+  it("déplace un mot glissé sur une case vide, et ignore un glisser sans effet", () => {
+    const avant = garni();
+    const apres = echanger(avant, 3, 1);
+    expect(coord(apres, 1, 0).mot).toBe("encore");
+    expect(coord(apres, 3, 0).pictoId).toBeNull();
+    expect(echanger(avant, 2, 2)).toBe(avant);
+    expect(echanger(avant, 0, 99)).toBe(avant);
+    expect(echanger(avant, -1, 0)).toBe(avant);
   });
 
   it("agrandir ne déplace aucune case posée", () => {
