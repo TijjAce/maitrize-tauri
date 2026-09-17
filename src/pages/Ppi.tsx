@@ -1,7 +1,8 @@
 import React from "react";
-import { api, newId } from "../api";
+import { api, newId, type CommentaireEleve } from "../api";
 import { Field, Input, Select, Empty, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
+import { infosReussite, resumeSuivi, REUSSITES, sansNouvelles, suivreObjectif } from "../objectifsPpi";
 
 // ── PPI (Projet Personnalisé Individualisé) — mode IME/ULIS/inclusion ──────
 // Données stockées par élève dans les réglages (clé `ppi:{eleveId}`), comme la
@@ -37,6 +38,47 @@ const fmtDateFr = (iso?: string) => {
   return y && m && d ? `${d}/${m}/${y}` : iso;
 };
 
+/**
+ * Ce que le quotidien a dit de cet objectif.
+ *
+ * Un objectif sans preuves reste une intention : au bilan ou à l'ESS, on
+ * cherchait dans toutes les observations, et l'on ne voyait pas qu'un objectif
+ * n'avait plus été travaillé depuis six semaines. Les observations cochées
+ * depuis le cahier journal viennent se ranger ici, datées.
+ */
+function SuiviDeLObjectif({ objectifId, commentaires }: { objectifId: string; commentaires: CommentaireEleve[] }) {
+  const [ouvert, setOuvert] = React.useState(false);
+  const suivi = React.useMemo(() => suivreObjectif(objectifId, commentaires), [objectifId, commentaires]);
+  const alerte = sansNouvelles(suivi);
+  return (
+    <div style={{ marginTop: 10, borderTop: "1px dashed var(--border)", paddingTop: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12.5 }}>
+        <span style={{ color: alerte ? "var(--danger, #ef4444)" : "var(--text-2)" }}>
+          📋 {resumeSuivi(suivi)}{alerte ? " — à remettre au programme" : ""}
+        </span>
+        {REUSSITES.filter((r) => suivi.compte[r.k] > 0).map((r) => (
+          <span key={r.k} title={r.label} style={{
+            background: `${r.couleur}22`, color: r.couleur, border: `1px solid ${r.couleur}55`,
+            borderRadius: 999, padding: "1px 7px", fontWeight: 600,
+          }}>{r.icone} {suivi.compte[r.k]}</span>
+        ))}
+        {suivi.total > 0 && (
+          <button className="lien" onClick={() => setOuvert(!ouvert)}>
+            {ouvert ? "Masquer" : "Voir les observations"}
+          </button>
+        )}
+      </div>
+      {ouvert && suivi.preuves.slice(0, 12).map((p) => (
+        <div key={p.commentaire.id} style={{ display: "flex", gap: 6, fontSize: 12.5, marginTop: 5 }}>
+          <span title={infosReussite(p.reussite).label}>{infosReussite(p.reussite).icone}</span>
+          <span style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtDateFr(p.commentaire.date.slice(0, 10))}</span>
+          <span style={{ flex: 1, whiteSpace: "pre-wrap" }}>{p.commentaire.texte}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function PpiTab() {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   const [eleveId, setEleveId] = React.useState("");
@@ -54,6 +96,12 @@ export function PpiTab() {
   React.useEffect(() => {
     if (!eleveId && eleves?.[0]) setEleveId(eleves[0].id);
   }, [eleves, eleveId]);
+
+  // Les observations de l'élève : ce sont elles qui portent les objectifs cochés.
+  const { data: commentaires } = useAsync(
+    () => (eleveId ? api.commentairesList(eleveId) : Promise.resolve([] as CommentaireEleve[])),
+    [eleveId],
+  );
 
   React.useEffect(() => {
     if (!eleveId) return;
@@ -205,6 +253,7 @@ export function PpiTab() {
                 <Input value={o.notes} onChange={(e) => upObjectif(o.id, { notes: e.target.value })} placeholder="Observations, adaptations…" />
               </Field>
             </div>
+            <SuiviDeLObjectif objectifId={o.id} commentaires={commentaires ?? []} />
           </div>
         ))}
         <datalist id="ppi-domaines">{DOMAINES_SUGGERES.map((d) => <option key={d} value={d} />)}</datalist>

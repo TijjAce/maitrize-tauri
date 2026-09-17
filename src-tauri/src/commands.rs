@@ -608,10 +608,11 @@ pub fn commentaires_list(db: State<Db>, eleve_id: Option<String>) -> R<Vec<Comme
 pub fn commentaire_save(db: State<Db>, commentaire: CommentaireEleve) -> R<CommentaireEleve> {
     let c = db.lock();
     c.execute(
-        "INSERT INTO commentaires_eleve (id,date,texte,type,eleve_id)
-         VALUES (?1,?2,?3,?4,?5) ON CONFLICT(id) DO UPDATE SET date = excluded.date, texte = excluded.texte, type = excluded.type, eleve_id = excluded.eleve_id",
+        "INSERT INTO commentaires_eleve (id,date,texte,type,eleve_id,objectifs)
+         VALUES (?1,?2,?3,?4,?5,?6) ON CONFLICT(id) DO UPDATE SET date = excluded.date, texte = excluded.texte,
+                type = excluded.type, eleve_id = excluded.eleve_id, objectifs = excluded.objectifs",
         params![commentaire.id, commentaire.date, commentaire.texte, commentaire.r#type,
-                commentaire.eleve_id],
+                commentaire.eleve_id, commentaire.objectifs],
     ).map_err(e)?;
     Ok(commentaire)
 }
