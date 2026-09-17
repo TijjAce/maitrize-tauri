@@ -123,7 +123,7 @@ export default function Reglages() {
 
   return (
     <Page titre="Réglages">
-      <div className="seg" style={{ marginBottom: 18 }}>
+      <div className="onglets">
         {ONGLETS.map(([k, l]) => (
           <button key={k} className={onglet === k ? "active" : ""} onClick={() => setOnglet(k as Onglet)}>{l}</button>
         ))}

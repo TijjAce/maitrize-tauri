@@ -50,7 +50,7 @@ export default function Eleves() {
   });
   return (
     <Page titre="Élèves" sous="Classe, observations et évaluations">
-      <div className="seg" style={{ marginBottom: 18, flexWrap: "wrap" }}>
+      <div className="onglets">
         {[["liste", "Classe"], ["dossier", "Dossier"], ["observations", "Observations"], ["evaluations", "Évaluations"], ["papiers", "Papiers"], ...(ime ? [["dispositifs", "Dispositifs"], ["gevasco", "GEVA-Sco"]] : []), ["progressions", "Progressions"]]
           .map(([k, l]) => <button key={k} className={onglet === k ? "active" : ""} onClick={() => setOnglet(k as any)}>{l}</button>)}
       </div>

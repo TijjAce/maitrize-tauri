@@ -72,7 +72,7 @@ export default function Jeux() {
 
   return (
     <Page titre="Fabriquer" sous="Lotos, tableaux de langage et supports visuels à partir des pictogrammes ARASAAC, problèmes en barres">
-      <div className="seg" style={{ marginBottom: 14 }}>
+      <div className="onglets">
         <button className={onglet === "jeux" ? "active" : ""} onClick={() => setOnglet("jeux")}>🎲 Loto</button>
         <button className={onglet === "tla" ? "active" : ""} onClick={() => setOnglet("tla")}>🗣 Tableaux de langage</button>
         <button className={onglet === "supports" ? "active" : ""} onClick={() => setOnglet("supports")}>🖼 Supports visuels</button>

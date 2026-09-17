@@ -38,7 +38,7 @@ export function SupportsVisuelsTab({ banque }: { banque: boolean }) {
   useOngletDemande("jeux", SUPPORTS, setSupport);
   return (
     <>
-      <div className="seg" style={{ marginBottom: 14 }}>
+      <div className="onglets">
         <button className={support === "jetons" ? "active" : ""} onClick={() => setSupport("jetons")}>🪙 Économie de jetons</button>
         <button className={support === "dabord" ? "active" : ""} onClick={() => setSupport("dabord")}>➡️ D'abord / ensuite</button>
         <button className={support === "scenario" ? "active" : ""} onClick={() => setSupport("scenario")}>📖 Scénario social</button>

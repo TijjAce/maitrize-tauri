@@ -135,7 +135,7 @@ export default function Organisation() {
   const props = { annee, setAnnee };
   return (
     <Page titre="Organisation" sous={SOUS_TITRE}>
-      <div className="seg" style={{ marginBottom: 18, flexWrap: "wrap" }}>
+      <div className="onglets">
         {segments.map((s) => <button key={s.id} className={onglet === s.id ? "active" : ""} onClick={() => setOnglet(s.id)}>{s.label}</button>)}
       </div>
       {onglet === "prog" ? <Programmation {...props} />
