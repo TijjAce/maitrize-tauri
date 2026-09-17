@@ -17,6 +17,7 @@ import Amis from "./pages/Amis";
 import Reglages from "./pages/Reglages";
 import { PageVisibleContext } from "./components/ui";
 import { demarrerSyncAuto } from "./syncAuto";
+import { verifierLaSauvegarde } from "./verifSauvegarde";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { NotesPanel } from "./components/NotesPanel";
 import { CommandPalette } from "./components/CommandPalette";
@@ -144,6 +145,14 @@ export default function App() {
     window.addEventListener("dragover", stop);
     window.addEventListener("drop", stop);
     return () => { window.removeEventListener("dragover", stop); window.removeEventListener("drop", stop); };
+  }, []);
+
+  // Essai de restauration : une fois par mois, l'app relit pour de vrai la
+  // dernière sauvegarde. Vingt secondes après l'ouverture, pour ne pas
+  // disputer le réseau au démarrage.
+  React.useEffect(() => {
+    const id = window.setTimeout(() => { verifierLaSauvegarde().catch(() => {}); }, 20000);
+    return () => window.clearTimeout(id);
   }, []);
 
   // Boîte aux lettres : relève automatique au démarrage puis toutes les 2 min.

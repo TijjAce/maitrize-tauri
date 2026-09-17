@@ -236,6 +236,13 @@ export interface EtatSync {
   enAttente: number;
 }
 
+/** Ce qu'un essai de restauration a trouvé dans une sauvegarde. */
+export interface VerifSauvegarde {
+  cle: string; sauvegarde: string; essai: string; octets: number;
+  lisible: boolean; lignes: [string, number][]; fichiers: number;
+  alertes: string[]; message: string;
+}
+
 /** Emplacement des données de l'application. */
 export interface DossierDonnees {
   chemin: string; parDefaut: string; personnalise: boolean; octets: number;
@@ -558,6 +565,8 @@ export const api = {
   // Sauvegarde chiffrée de toute la base sur le stockage S3/MinIO.
   sauvegardePush: () => invoke<string>("sauvegarde_push"),
   sauvegardePull: (cle?: string) => invoke<string>("sauvegarde_pull", { cle: cle ?? null }),
+  sauvegardeVerifier: (cle?: string) => invoke<VerifSauvegarde>("sauvegarde_verifier", { cle: cle ?? null }),
+  sauvegardeVerifDerniere: () => invoke<VerifSauvegarde | null>("sauvegarde_verif_derniere"),
   sauvegardeListe: () => invoke<SauvegardeDistante[]>("sauvegarde_liste"),
   sauvegardeSupprimer: (cle: string) => invoke<string>("sauvegarde_supprimer", { cle }),
   syncEtat: () => invoke<EtatSync>("sync_etat"),
