@@ -22,7 +22,7 @@
 //! synchroniser ferait voyager des secrets et imposerait à une machine les
 //! chemins de l'autre. Même chose pour l'identité et les amis.
 
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, Transaction};
 use serde::{Deserialize, Serialize};
 
 /// Tables dont les lignes voyagent d'une machine à l'autre.
@@ -653,198 +653,414 @@ fn fusionner_champs(
     serde_json::Value::Object(sortie)
 }
 
+/// Les colonnes d'une table, avec ce qu'elles exigent.
+struct Colonne {
+    nom: String,
+    declare: String,
+    obligatoire: bool,
+    defaut: bool,
+}
+
+fn colonnes_info(conn: &Connection, table: &str) -> Vec<Colonne> {
+    let Ok(mut st) = conn.prepare(&format!("PRAGMA table_info({table})")) else {
+        return Vec::new();
+    };
+    st.query_map([], |r| {
+        Ok(Colonne {
+            nom: r.get(1)?,
+            declare: r.get::<_, String>(2).unwrap_or_default(),
+            obligatoire: r.get::<_, i64>(3).unwrap_or(0) != 0,
+            defaut: r.get::<_, Option<String>>(4).unwrap_or(None).is_some(),
+        })
+    })
+    .map(|it| it.flatten().collect())
+    .unwrap_or_default()
+}
+
+/// Complète une ligne reçue des colonnes que cette base exige et qu'elle ignore.
+///
+/// L'ordinateur resté sur l'ancienne version envoie ses lignes sans les
+/// colonnes ajoutées depuis. Faute de valeur, l'insertion échouait — et avec
+/// elle tout l'envoi. On pose donc une valeur neutre, vide pour un texte et
+/// zéro pour un nombre : la ligne entre, et ce qui manque se remplit à l'usage.
+fn completer(conn: &Connection, table: &str, ligne: &mut serde_json::Value) {
+    let Some(o) = ligne.as_object_mut() else { return };
+    for col in colonnes_info(conn, table) {
+        if !col.obligatoire || col.defaut {
+            continue;
+        }
+        if o.get(&col.nom).map(|v| !v.is_null()).unwrap_or(false) {
+            continue;
+        }
+        let t = col.declare.to_uppercase();
+        let neutre = if t.contains("INT") {
+            serde_json::json!(0)
+        } else if t.contains("REAL") || t.contains("FLOA") || t.contains("DOUB") {
+            serde_json::json!(0.0)
+        } else {
+            serde_json::json!("")
+        };
+        o.insert(col.nom.clone(), neutre);
+    }
+}
+
+/// Ce qu'une ligne reçue a produit ici.
+enum Effet {
+    /// Écartée volontairement : table inconnue, annonce déjà connue, suppression perdante.
+    Ignoree,
+    /// Écrite : les traces qu'elle vient de laisser doivent être rendues à leur auteur.
+    Ecrite,
+    /// Écrite aussi, mais ses traces sont couvertes par le filet de fin d'application.
+    EcriteSansTrace(usize),
+}
+
+/// Applique **une** ligne reçue.
+///
+/// Toute erreur remonte telle quelle : l'appelant travaille sur un point de
+/// reprise, la base reste intacte et la ligne part en attente.
+fn appliquer_un(tx: &Connection, c: &Changement) -> rusqlite::Result<Effet> {
+    // Table inconnue : on ignore plutôt que d'écrire au hasard.
+    if c.table_nom == "settings" {
+        // Deuxième contrôle à l'arrivée : une machine mal réglée, ou une
+        // version plus ancienne, ne doit pas pouvoir nous imposer une clé
+        // que nous considérons comme un secret.
+        if !reglage_partage(&c.ligne_id) {
+            return Ok(Effet::Ignoree);
+        }
+        let valeur: Option<String> = serde_json::from_str::<serde_json::Value>(&c.donnees)
+            .ok()
+            .and_then(|v| v.get("valeur").and_then(|x| x.as_str()).map(str::to_string));
+        let mut ecrits = 0;
+        if let Some(v) = valeur {
+            // Une annonce ne crée que ce qui manque ici (voir `annoncer_dossiers`).
+            let sql = if c.operation == "annonce" {
+                "INSERT OR IGNORE INTO settings (cle, valeur) VALUES (?1, ?2)"
+            } else {
+                "INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)"
+            };
+            ecrits += tx.execute(sql, params![c.ligne_id, v])?;
+        }
+        return Ok(Effet::EcriteSansTrace(ecrits));
+    }
+    if !TABLES_SYNC.contains(&c.table_nom.as_str()) {
+        return Ok(Effet::Ignoree);
+    }
+    if c.operation == "annonce" {
+        // Une annonce ne crée que ce qui manque ici, et jamais une ligne
+        // qu'on y a supprimée.
+        if !TABLES_ANNONCEES.contains(&c.table_nom.as_str()) {
+            return Ok(Effet::Ignoree);
+        }
+        let existe = tx
+            .query_row(&format!("SELECT 1 FROM {} WHERE id = ?1", c.table_nom), params![c.ligne_id], |_| Ok(()))
+            .is_ok();
+        let supprimee = tx
+            .query_row(
+                "SELECT 1 FROM changements WHERE table_nom = ?1 AND ligne_id = ?2 AND operation = 'suppr' LIMIT 1",
+                params![c.table_nom, c.ligne_id],
+                |_| Ok(()),
+            )
+            .is_ok();
+        if existe || supprimee {
+            return Ok(Effet::Ignoree);
+        }
+    }
+    // Qui l'emporte sur les champs disputés — et ce que nous avons
+    // nous-même modifié depuis, pour ne pas l'écraser.
+    let local: Option<(String, String, String, String)> = tx
+        .query_row(
+            // Nos annonces ne sont pas des modifications : elles ne
+            // doivent pas l'emporter sur un travail fait là-bas.
+            "SELECT horodatage, origine, donnees, avant FROM changements
+              WHERE table_nom = ?1 AND ligne_id = ?2 AND operation <> 'annonce'
+              ORDER BY horodatage DESC, origine DESC LIMIT 1",
+            params![c.table_nom, c.ligne_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+        )
+        .ok();
+    let entrant_gagne = match &local {
+        Some((h, o, _, _)) => !gagne((h, o), (&c.horodatage, &c.origine)),
+        None => true,
+    };
+
+    if c.operation == "suppr" {
+        // Une suppression est totale : elle ne se fusionne pas. Elle ne
+        // s'applique donc que si elle l'emporte, sinon une suppression
+        // ancienne effacerait un travail plus récent.
+        if entrant_gagne {
+            if let Some((_, a, b)) = LIAISONS.iter().find(|(t, _, _)| *t == c.table_nom) {
+                let Some((ga, gb)) = c.ligne_id.split_once('|') else { return Ok(Effet::Ignoree) };
+                tx.execute(
+                    &format!("DELETE FROM {} WHERE \"{a}\" = ?1 AND \"{b}\" = ?2", c.table_nom),
+                    params![ga, gb],
+                )?;
+                return Ok(Effet::EcriteSansTrace(1));
+            }
+            tx.execute(
+                &format!("DELETE FROM {} WHERE id = ?1", c.table_nom),
+                params![c.ligne_id],
+            )?;
+        } else {
+            return Ok(Effet::Ignoree);
+        }
+    } else if LIAISONS.iter().any(|(t, _, _)| *t == c.table_nom) {
+        // Une liaison n'a pas de champ à fusionner : elle existe ou non.
+        let cols = colonnes(tx, &c.table_nom);
+        let noms = cols.iter().map(|x| format!("\"{x}\"")).collect::<Vec<_>>().join(", ");
+        let valeurs = cols.iter().map(|x| format!("json_extract(?1, '$.{x}')")).collect::<Vec<_>>().join(", ");
+        let mut ligne: serde_json::Value =
+            serde_json::from_str(&c.donnees).unwrap_or(serde_json::Value::Null);
+        completer(tx, &c.table_nom, &mut ligne);
+        tx.execute(
+            &format!("INSERT OR REPLACE INTO {} ({noms}) VALUES ({valeurs})", c.table_nom),
+            params![ligne.to_string()],
+        )?;
+    } else {
+        let cols = colonnes(tx, &c.table_nom);
+        if cols.is_empty() {
+            return Ok(Effet::Ignoree);
+        }
+        let ch_a_des_textes = !c.textes.is_empty();
+        let entrant: serde_json::Value =
+            serde_json::from_str(&c.donnees).unwrap_or(serde_json::Value::Null);
+        let objet = cols.iter().map(|x| format!("'{x}', \"{x}\"")).collect::<Vec<_>>().join(", ");
+        let ici: Option<serde_json::Value> = tx
+            .query_row(
+                &format!("SELECT json_object({objet}) FROM {} WHERE id = ?1", c.table_nom),
+                params![c.ligne_id],
+                |r| r.get::<_, String>(0),
+            )
+            .ok()
+            .and_then(|s| serde_json::from_str(&s).ok());
+
+        // Les champs de prose passent par le CRDT : leur valeur fusionnée
+        // remplace celle que transporte la ligne, laquelle ne représente
+        // que la vue de l'expéditeur.
+        let textes = if ch_a_des_textes { fusionner_textes(tx, c) } else { Default::default() };
+
+        let a_ecrire = match ici {
+            Some(locale) => {
+                let touches_entrant = champs_touches(&c.avant, &entrant);
+                let touches_local = local
+                    .as_ref()
+                    .map(|(_, _, d, a)| {
+                        let apres: serde_json::Value =
+                            serde_json::from_str(d).unwrap_or(serde_json::Value::Null);
+                        champs_touches(a, &apres)
+                    })
+                    .unwrap_or_default();
+                fusionner_champs(&locale, &entrant, &touches_entrant, &touches_local, entrant_gagne)
+            }
+            // Ligne absente ici : rien à fusionner, on la crée.
+            None => entrant,
+        };
+        let mut a_ecrire = a_ecrire;
+        if let Some(o) = a_ecrire.as_object_mut() {
+            for (champ, texte) in &textes {
+                o.insert(champ.clone(), serde_json::Value::String(texte.clone()));
+            }
+        }
+        completer(tx, &c.table_nom, &mut a_ecrire);
+        let json = a_ecrire.to_string();
+        let noms = cols.iter().map(|x| format!("\"{x}\"")).collect::<Vec<_>>().join(", ");
+        let valeurs = cols
+            .iter()
+            .map(|x| format!("json_extract(?1, '$.{x}')"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        // Mise à jour sur place, jamais « remplacer » : pour SQLite, remplacer
+        // une ligne, c'est la supprimer puis la recréer — et la suppression
+        // emporte en cascade tout ce qui en dépend (les séances d'une
+        // séquence, les documents d'un élève, les notes d'une évaluation).
+        let maj = cols
+            .iter()
+            .filter(|x| x.as_str() != "id")
+            .map(|x| format!("\"{x}\" = excluded.\"{x}\""))
+            .collect::<Vec<_>>()
+            .join(", ");
+        tx.execute(
+            &format!(
+                "INSERT INTO {} ({noms}) VALUES ({valeurs}) ON CONFLICT(id) DO UPDATE SET {maj}",
+                c.table_nom
+            ),
+            params![json],
+        )?;
+    }
+    Ok(Effet::Ecrite)
+}
+
+/// Écrit une ligne reçue sur un point de reprise.
+///
+/// Le point de reprise est ce qui empêche une seule ligne rétive d'emporter
+/// l'envoi entier : elle seule est annulée, les autres restent écrites.
+fn ecrire_une(tx: &mut Transaction, c: &Changement) -> rusqlite::Result<usize> {
+    let sp = tx.savepoint()?;
+    // Repère avant écriture : les traces que nos propres déclencheurs vont
+    // laisser doivent porter la provenance réelle du changement, pas la nôtre.
+    // Sans cela, une modification reçue paraîtrait écrite ici et maintenant,
+    // donc plus récente que les changements suivants du même envoi — qui
+    // seraient alors rejetés.
+    let avant_ligne: i64 = sp
+        .query_row("SELECT COALESCE(MAX(seq), 0) FROM changements", [], |r| r.get(0))
+        .unwrap_or(0);
+    let n = match appliquer_un(&sp, c)? {
+        Effet::Ignoree => 0,
+        Effet::EcriteSansTrace(k) => k,
+        Effet::Ecrite => {
+            // Réattribuer la trace qu'on vient de produire à son véritable auteur.
+            sp.execute(
+                "UPDATE changements SET horodatage = ?1, origine = ?2, distant = 1
+                  WHERE seq > ?3",
+                params![c.horodatage, c.origine, avant_ligne],
+            )?;
+            1
+        }
+    };
+    sp.commit()?;
+    Ok(n)
+}
+
+/// Combien de lignes la boîte d'attente garde au plus.
+const ATTENTE_MAX: usize = 500;
+
+/// La boîte d'attente : ce que cette base n'a pas su écrire, gardé pour plus tard.
+///
+/// Une ligne venue d'une version plus récente, ou reçue avant celle dont elle
+/// dépend, faisait échouer l'application entière : plus rien ne passait, et ce
+/// qui avait été écrit sur l'autre ordinateur était perdu sans un mot. On la
+/// met de côté et on la retente à chaque synchronisation ; elle finit par
+/// entrer, après la mise à jour ou une fois sa ligne porteuse arrivée.
+fn creer_attente(conn: &Connection) {
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS changements_en_attente (
+             cle TEXT PRIMARY KEY,
+             recu_le TEXT NOT NULL,
+             essais INTEGER NOT NULL,
+             erreur TEXT NOT NULL,
+             donnees TEXT NOT NULL
+         )",
+        [],
+    )
+    .ok();
+}
+
+/// Combien de lignes reçues attendent encore leur tour.
+pub fn compte_attente(conn: &Connection) -> usize {
+    conn.query_row("SELECT COUNT(*) FROM changements_en_attente", [], |r| r.get::<_, i64>(0))
+        .unwrap_or(0)
+        .max(0) as usize
+}
+
+fn cle_attente(c: &Changement) -> String {
+    format!("{}|{}|{}|{}", c.table_nom, c.ligne_id, c.origine, c.horodatage)
+}
+
+/// Ce qui attendait, dans l'ordre où c'est arrivé.
+fn reprendre_attente(conn: &Connection) -> Vec<Changement> {
+    let Ok(mut st) = conn.prepare("SELECT donnees FROM changements_en_attente ORDER BY recu_le, cle")
+    else {
+        return Vec::new();
+    };
+    let lignes: Vec<String> = st
+        .query_map([], |r| r.get::<_, String>(0))
+        .map(|it| it.flatten().collect())
+        .unwrap_or_default();
+    lignes
+        .iter()
+        .filter_map(|s| serde_json::from_str::<Changement>(s).ok())
+        .collect()
+}
+
+/// Remet de côté ce qui résiste encore, en comptant les essais.
+fn mettre_en_attente(conn: &Connection, restent: &[(Changement, String)]) {
+    let anciens: std::collections::HashMap<String, i64> = conn
+        .prepare("SELECT cle, essais FROM changements_en_attente")
+        .and_then(|mut st| {
+            st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))
+                .map(|it| it.flatten().collect())
+        })
+        .unwrap_or_default();
+    conn.execute("DELETE FROM changements_en_attente", []).ok();
+    let maintenant = chrono::Utc::now().to_rfc3339();
+    // Bornée : une boîte qui grandit sans fin finirait par coûter plus qu'elle
+    // ne sauve. Les plus anciennes partent les premières.
+    let debut = restent.len().saturating_sub(ATTENTE_MAX);
+    for (c, erreur) in &restent[debut..] {
+        let Ok(json) = serde_json::to_string(c) else { continue };
+        let cle = cle_attente(c);
+        let essais = anciens.get(&cle).copied().unwrap_or(0) + 1;
+        conn.execute(
+            "INSERT OR REPLACE INTO changements_en_attente (cle, recu_le, essais, erreur, donnees)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![cle, maintenant, essais, erreur, json],
+        )
+        .ok();
+    }
+}
+
 /// Applique des changements venus d'ailleurs.
 ///
 /// Règle : la ligne est fusionnée champ par champ. Chacun garde ce qu'il est
 /// seul à avoir modifié ; un champ touché des deux côtés revient au plus
 /// récent, départagé par la machine.
+///
+/// Ce que cette base ne sait pas écrire ne fait plus échouer le reste : la
+/// ligne attend son heure dans `changements_en_attente` et revient au prochain
+/// passage.
 pub fn appliquer(conn: &mut Connection, recus: &[Changement]) -> rusqlite::Result<usize> {
     let avant_tout = dernier_seq(conn);
-    let tx = conn.transaction()?;
+    creer_attente(conn);
+    // Ce qui attendait repasse en tête : la mise à jour, ou la ligne qui lui
+    // manquait, est peut-être arrivée depuis.
+    let attendaient = reprendre_attente(conn);
+    let mut lot: Vec<Changement> = attendaient.clone();
+    lot.extend(recus.iter().cloned());
+
+    let mut tx = conn.transaction()?;
     let mut n = 0;
-    for c in recus {
-        // Repère avant écriture : les traces que nos propres déclencheurs vont
-        // laisser doivent porter la provenance réelle du changement, pas la
-        // nôtre. Sans cela, une modification reçue paraîtrait écrite ici et
-        // maintenant, donc plus récente que les changements suivants du même
-        // envoi — qui seraient alors rejetés.
-        let avant_ligne: i64 = tx
-            .query_row("SELECT COALESCE(MAX(seq), 0) FROM changements", [], |r| r.get(0))
-            .unwrap_or(0);
-        // Table inconnue : on ignore plutôt que d'écrire au hasard.
-        if c.table_nom == "settings" {
-            // Deuxième contrôle à l'arrivée : une machine mal réglée, ou une
-            // version plus ancienne, ne doit pas pouvoir nous imposer une clé
-            // que nous considérons comme un secret.
-            if !reglage_partage(&c.ligne_id) {
-                continue;
-            }
-            let valeur: Option<String> = serde_json::from_str::<serde_json::Value>(&c.donnees)
-                .ok()
-                .and_then(|v| v.get("valeur").and_then(|x| x.as_str()).map(str::to_string));
-            if let Some(v) = valeur {
-                // Une annonce ne crée que ce qui manque ici (voir `annoncer_dossiers`).
-                let sql = if c.operation == "annonce" {
-                    "INSERT OR IGNORE INTO settings (cle, valeur) VALUES (?1, ?2)"
-                } else {
-                    "INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)"
-                };
-                n += tx.execute(sql, params![c.ligne_id, v])?;
-            }
-            continue;
+    let mut refuses: Vec<(Changement, String)> = Vec::new();
+    for c in &lot {
+        match ecrire_une(&mut tx, c) {
+            Ok(k) => n += k,
+            Err(err) => refuses.push((c.clone(), err.to_string())),
         }
-        if !TABLES_SYNC.contains(&c.table_nom.as_str()) {
-            continue;
+    }
+    // Deuxième passage : une ligne a pu manquer de celle dont elle dépend — une
+    // séance reçue avant sa séquence — arrivée plus loin dans le même envoi.
+    let mut restent: Vec<(Changement, String)> = Vec::new();
+    for (c, err) in refuses {
+        match ecrire_une(&mut tx, &c) {
+            Ok(k) => n += k,
+            Err(_) => restent.push((c, err)),
         }
-        if c.operation == "annonce" {
-            // Une annonce ne crée que ce qui manque ici, et jamais une ligne
-            // qu'on y a supprimée.
-            if !TABLES_ANNONCEES.contains(&c.table_nom.as_str()) {
-                continue;
-            }
-            let existe = tx
-                .query_row(&format!("SELECT 1 FROM {} WHERE id = ?1", c.table_nom), params![c.ligne_id], |_| Ok(()))
-                .is_ok();
-            let supprimee = tx
-                .query_row(
-                    "SELECT 1 FROM changements WHERE table_nom = ?1 AND ligne_id = ?2 AND operation = 'suppr' LIMIT 1",
-                    params![c.table_nom, c.ligne_id],
-                    |_| Ok(()),
-                )
-                .is_ok();
-            if existe || supprimee {
-                continue;
-            }
-        }
-        // Qui l'emporte sur les champs disputés — et ce que nous avons
-        // nous-même modifié depuis, pour ne pas l'écraser.
-        let local: Option<(String, String, String, String)> = tx
-            .query_row(
-                // Nos annonces ne sont pas des modifications : elles ne
-                // doivent pas l'emporter sur un travail fait là-bas.
-                "SELECT horodatage, origine, donnees, avant FROM changements
-                  WHERE table_nom = ?1 AND ligne_id = ?2 AND operation <> 'annonce'
-                  ORDER BY horodatage DESC, origine DESC LIMIT 1",
-                params![c.table_nom, c.ligne_id],
-                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
-            )
-            .ok();
-        let entrant_gagne = match &local {
-            Some((h, o, _, _)) => !gagne((h, o), (&c.horodatage, &c.origine)),
-            None => true,
-        };
-
-        if c.operation == "suppr" {
-            // Une suppression est totale : elle ne se fusionne pas. Elle ne
-            // s'applique donc que si elle l'emporte, sinon une suppression
-            // ancienne effacerait un travail plus récent.
-            if entrant_gagne {
-                if let Some((_, a, b)) = LIAISONS.iter().find(|(t, _, _)| *t == c.table_nom) {
-                    let Some((ga, gb)) = c.ligne_id.split_once('|') else { continue };
-                    tx.execute(
-                        &format!("DELETE FROM {} WHERE \"{a}\" = ?1 AND \"{b}\" = ?2", c.table_nom),
-                        params![ga, gb],
-                    )?;
-                    n += 1;
-                    continue;
-                }
-                tx.execute(
-                    &format!("DELETE FROM {} WHERE id = ?1", c.table_nom),
-                    params![c.ligne_id],
-                )?;
-            } else {
-                continue;
-            }
-        } else if LIAISONS.iter().any(|(t, _, _)| *t == c.table_nom) {
-            // Une liaison n'a pas de champ à fusionner : elle existe ou non.
-            let cols = colonnes(&tx, &c.table_nom);
-            let noms = cols.iter().map(|x| format!("\"{x}\"")).collect::<Vec<_>>().join(", ");
-            let valeurs = cols.iter().map(|x| format!("json_extract(?1, '$.{x}')")).collect::<Vec<_>>().join(", ");
-            tx.execute(
-                &format!("INSERT OR REPLACE INTO {} ({noms}) VALUES ({valeurs})", c.table_nom),
-                params![c.donnees],
-            )?;
-        } else {
-            let cols = colonnes(&tx, &c.table_nom);
-            if cols.is_empty() {
-                continue;
-            }
-            let ch_a_des_textes = !c.textes.is_empty();
-            let entrant: serde_json::Value =
-                serde_json::from_str(&c.donnees).unwrap_or(serde_json::Value::Null);
-            let objet = cols.iter().map(|x| format!("'{x}', \"{x}\"")).collect::<Vec<_>>().join(", ");
-            let ici: Option<serde_json::Value> = tx
-                .query_row(
-                    &format!("SELECT json_object({objet}) FROM {} WHERE id = ?1", c.table_nom),
-                    params![c.ligne_id],
-                    |r| r.get::<_, String>(0),
-                )
-                .ok()
-                .and_then(|s| serde_json::from_str(&s).ok());
-
-            // Les champs de prose passent par le CRDT : leur valeur fusionnée
-            // remplace celle que transporte la ligne, laquelle ne représente
-            // que la vue de l'expéditeur.
-            let textes = if ch_a_des_textes { fusionner_textes(&tx, c) } else { Default::default() };
-
-            let a_ecrire = match ici {
-                Some(locale) => {
-                    let touches_entrant = champs_touches(&c.avant, &entrant);
-                    let touches_local = local
-                        .as_ref()
-                        .map(|(_, _, d, a)| {
-                            let apres: serde_json::Value =
-                                serde_json::from_str(d).unwrap_or(serde_json::Value::Null);
-                            champs_touches(a, &apres)
-                        })
-                        .unwrap_or_default();
-                    fusionner_champs(&locale, &entrant, &touches_entrant, &touches_local, entrant_gagne)
-                }
-                // Ligne absente ici : rien à fusionner, on la crée.
-                None => entrant,
-            };
-            let mut a_ecrire = a_ecrire;
-            if let Some(o) = a_ecrire.as_object_mut() {
-                for (champ, texte) in &textes {
-                    o.insert(champ.clone(), serde_json::Value::String(texte.clone()));
-                }
-            }
-            let json = a_ecrire.to_string();
-            let noms = cols.iter().map(|x| format!("\"{x}\"")).collect::<Vec<_>>().join(", ");
-            let valeurs = cols
-                .iter()
-                .map(|x| format!("json_extract(?1, '$.{x}')"))
-                .collect::<Vec<_>>()
-                .join(", ");
-            // Mise à jour sur place, jamais « remplacer » : pour SQLite, remplacer
-            // une ligne, c'est la supprimer puis la recréer — et la suppression
-            // emporte en cascade tout ce qui en dépend (les séances d'une
-            // séquence, les documents d'un élève, les notes d'une évaluation).
-            let maj = cols
-                .iter()
-                .filter(|x| x.as_str() != "id")
-                .map(|x| format!("\"{x}\" = excluded.\"{x}\""))
-                .collect::<Vec<_>>()
-                .join(", ");
-            tx.execute(
-                &format!(
-                    "INSERT INTO {} ({noms}) VALUES ({valeurs}) ON CONFLICT(id) DO UPDATE SET {maj}",
-                    c.table_nom
-                ),
-                params![json],
-            )?;
-        }
-        // Réattribuer la trace qu'on vient de produire à son véritable auteur.
-        tx.execute(
-            "UPDATE changements SET horodatage = ?1, origine = ?2, distant = 1
-              WHERE seq > ?3",
-            params![c.horodatage, c.origine, avant_ligne],
-        )?;
-        n += 1;
     }
     tx.commit()?;
-    // Filet : toute trace restante produite pendant l'application est
-    // distante et ne doit pas repartir d'où elle vient.
+
+    mettre_en_attente(conn, &restent);
+    if !cfg!(test) {
+        let bloquees: std::collections::HashSet<String> =
+            restent.iter().map(|(c, _)| cle_attente(c)).collect();
+        let reprises = attendaient
+            .iter()
+            .filter(|c| !bloquees.contains(&cle_attente(c)))
+            .count();
+        if reprises > 0 {
+            crate::commands::diag_ecrire(format!("SYNCHRO {reprises} ligne(s) en attente reprise(s)"));
+        }
+        if !restent.is_empty() {
+            let exemples = restent
+                .iter()
+                .take(3)
+                .map(|(c, e)| format!("{} {} — {e}", c.table_nom, c.ligne_id))
+                .collect::<Vec<_>>()
+                .join(" | ");
+            crate::commands::diag_ecrire(format!(
+                "SYNCHRO {} ligne(s) mise(s) de côté, retentées au prochain passage : {exemples}",
+                restent.len()
+            ));
+        }
+    }
+
     marquer_distants(conn, avant_tout);
     Ok(n)
 }
@@ -901,6 +1117,39 @@ mod tests {
         c
     }
 
+    /// Une machine dont la table a une colonne de plus, comme après une mise à jour.
+    fn machine_version_suivante(nom: &str) -> Connection {
+        let c = Connection::open_in_memory().unwrap();
+        c.execute_batch(
+            "CREATE TABLE eleves (id TEXT PRIMARY KEY, nom TEXT, niveau TEXT, classe TEXT NOT NULL);
+             CREATE TABLE commentaires_eleve (id TEXT PRIMARY KEY, texte TEXT, eleve_id TEXT);",
+        )
+        .unwrap();
+        creer_table(&c);
+        poser_declencheurs(&c, nom);
+        c
+    }
+
+    /// Une machine où un commentaire exige l'élève auquel il se rapporte.
+    fn machine_liee(nom: &str) -> Connection {
+        let c = Connection::open_in_memory().unwrap();
+        c.execute_batch(
+            "CREATE TABLE eleves (id TEXT PRIMARY KEY, nom TEXT, niveau TEXT);
+             CREATE TABLE commentaires_eleve (id TEXT PRIMARY KEY, texte TEXT,
+                 eleve_id TEXT NOT NULL REFERENCES eleves(id));",
+        )
+        .unwrap();
+        c.pragma_update(None, "foreign_keys", "ON").unwrap();
+        creer_table(&c);
+        poser_declencheurs(&c, nom);
+        c
+    }
+
+    fn en_attente(c: &Connection) -> i64 {
+        c.query_row("SELECT COUNT(*) FROM changements_en_attente", [], |r| r.get(0))
+            .unwrap_or(0)
+    }
+
     fn ajouter(c: &Connection, id: &str, nom: &str) {
         c.execute("INSERT INTO eleves (id, nom, niveau) VALUES (?1, ?2, 'CE2')", params![id, nom])
             .unwrap();
@@ -909,6 +1158,100 @@ mod tests {
     fn noms(c: &Connection) -> Vec<String> {
         let mut st = c.prepare("SELECT nom FROM eleves ORDER BY nom").unwrap();
         st.query_map([], |r| r.get(0)).unwrap().flatten().collect()
+    }
+
+    #[test]
+    fn une_colonne_ajoutee_depuis_ne_bloque_plus_la_ligne_recue() {
+        // L'autre ordinateur est resté sur l'ancienne version : ses lignes
+        // ignorent la colonne ajoutée ici. Sans valeur neutre, l'insertion
+        // échouait et tout l'envoi échouait avec elle.
+        let a = machine();
+        let mut b = machine_version_suivante("B");
+        ajouter(&a, "e1", "Quang");
+        let (de_a, _) = changements_locaux(&a, 0).unwrap();
+        assert_eq!(appliquer(&mut b, &de_a).unwrap(), 1);
+        let (nom, classe): (String, String) = b
+            .query_row("SELECT nom, classe FROM eleves WHERE id='e1'", [], |r| Ok((r.get(0)?, r.get(1)?)))
+            .unwrap();
+        assert_eq!(nom, "Quang");
+        assert_eq!(classe, "", "la colonne inconnue là-bas prend une valeur neutre");
+        assert_eq!(en_attente(&b), 0);
+    }
+
+    #[test]
+    fn ce_que_l_autre_version_ignore_ne_s_efface_pas_quand_il_renvoie_la_ligne() {
+        // Fenêtre de mise à jour : la ligne fait l'aller-retour par l'ancienne
+        // version, qui ne connaît pas la colonne. Elle ne doit pas la vider.
+        let mut a = machine_version_suivante("A");
+        let mut b = machine();
+        a.execute("INSERT INTO eleves (id, nom, niveau, classe) VALUES ('e1', 'Quang', 'CE2', 'ULIS')", [])
+            .unwrap();
+        let (de_a, seq) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut b, &de_a).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(3));
+        b.execute("UPDATE eleves SET nom='Quang N.' WHERE id='e1'", []).unwrap();
+        let (de_b, _) = changements_locaux(&b, 0).unwrap();
+        appliquer(&mut a, &de_b).unwrap();
+        let (nom, classe): (String, String) = a
+            .query_row("SELECT nom, classe FROM eleves WHERE id='e1'", [], |r| Ok((r.get(0)?, r.get(1)?)))
+            .unwrap();
+        assert_eq!(nom, "Quang N.", "la correction de l'autre poste arrive");
+        assert_eq!(classe, "ULIS", "ce qu'il ne connaît pas reste intact");
+        assert!(seq > 0);
+    }
+
+    #[test]
+    fn une_ligne_impossible_n_emporte_plus_tout_l_envoi() {
+        // Un commentaire arrive sans son élève : il ne peut pas s'écrire ici.
+        // Le reste de l'envoi doit entrer quand même.
+        let a = machine();
+        let mut b = machine_liee("B");
+        ajouter(&a, "e1", "Quang");
+        a.execute("INSERT INTO commentaires_eleve (id, texte, eleve_id) VALUES ('c1', 'progrès', 'inconnu')", [])
+            .unwrap();
+        ajouter(&a, "e2", "Lina");
+        let (de_a, _) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut b, &de_a).unwrap();
+        assert_eq!(noms(&b), vec!["Lina", "Quang"], "les deux élèves passent");
+        assert_eq!(en_attente(&b), 1, "le commentaire orphelin attend son tour");
+    }
+
+    #[test]
+    fn la_ligne_mise_de_cote_revient_et_finit_par_entrer() {
+        let a = machine();
+        let mut b = machine_liee("B");
+        a.execute("INSERT INTO commentaires_eleve (id, texte, eleve_id) VALUES ('c1', 'progrès', 'e9')", [])
+            .unwrap();
+        let (premier, seq) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut b, &premier).unwrap();
+        assert_eq!(en_attente(&b), 1);
+        // L'élève arrive au passage suivant : le commentaire mis de côté entre enfin.
+        ajouter(&a, "e9", "Aurélien");
+        let (ensuite, _) = changements_locaux(&a, seq).unwrap();
+        appliquer(&mut b, &ensuite).unwrap();
+        let texte: String = b
+            .query_row("SELECT texte FROM commentaires_eleve WHERE id='c1'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(texte, "progrès");
+        assert_eq!(en_attente(&b), 0, "la boîte d'attente se vide de ce qui est passé");
+    }
+
+    #[test]
+    fn une_ligne_recue_avant_celle_dont_elle_depend_entre_au_second_passage() {
+        // Dans le même envoi, le commentaire précède son élève.
+        let a = machine();
+        let mut b = machine_liee("B");
+        ajouter(&a, "e9", "Aurélien");
+        a.execute("INSERT INTO commentaires_eleve (id, texte, eleve_id) VALUES ('c1', 'progrès', 'e9')", [])
+            .unwrap();
+        let (mut de_a, _) = changements_locaux(&a, 0).unwrap();
+        de_a.reverse();
+        appliquer(&mut b, &de_a).unwrap();
+        assert_eq!(en_attente(&b), 0);
+        assert_eq!(
+            b.query_row("SELECT COUNT(*) FROM commentaires_eleve", [], |r| r.get::<_, i64>(0)).unwrap(),
+            1
+        );
     }
 
     #[test]
