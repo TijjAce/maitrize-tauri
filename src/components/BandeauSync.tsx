@@ -26,16 +26,32 @@ export function BandeauSync() {
   React.useEffect(() => { if (visible) relire(); }, [visible, relire]);
 
   if (!etat?.configure) return null;
+  // Des lignes reçues que cette version n'a pas su écrire : elles ne sont pas
+  // perdues, elles repassent à chaque synchronisation. Le dire évite de croire
+  // que le travail de l'autre ordinateur a disparu.
+  const attente = etat.enAttente > 0 && (
+    <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 12 }}>
+      ⏳ {etat.enAttente} élément{etat.enAttente > 1 ? "s" : ""} reçu{etat.enAttente > 1 ? "s" : ""}
+      {etat.enAttente > 1 ? " attendent leur tour : ils entreront" : " attend son tour : il entrera"} tout
+      seul{etat.enAttente > 1 ? "s" : ""} — le plus souvent, l'autre ordinateur n'a pas encore la même version.
+    </div>
+  );
   if (etat.horsLigne) {
     return (
-      <div className="card" style={{ marginBottom: 14, borderLeft: "3px solid #c2591f", fontSize: 13, color: "var(--text-2)" }}>
-        ☁️ {etat.horsLigne} — vos changements partiront dès que le stockage répondra.
-      </div>
+      <>
+        <div className="card" style={{ marginBottom: 14, borderLeft: "3px solid #c2591f", fontSize: 13, color: "var(--text-2)" }}>
+          ☁️ {etat.horsLigne} — vos changements partiront dès que le stockage répondra.
+        </div>
+        {attente}
+      </>
     );
   }
   return (
-    <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 12 }}>
-      ☁️ Synchronisation automatique active{etat.derniereSync && ` · dernière sauvegarde le ${lisible(etat.derniereSync)}`}
-    </div>
+    <>
+      <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 12 }}>
+        ☁️ Synchronisation automatique active{etat.derniereSync && ` · dernière sauvegarde le ${lisible(etat.derniereSync)}`}
+      </div>
+      {attente}
+    </>
   );
 }
