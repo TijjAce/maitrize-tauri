@@ -18,6 +18,7 @@ import Reglages from "./pages/Reglages";
 import { PageVisibleContext } from "./components/ui";
 import { demarrerSyncAuto } from "./syncAuto";
 import { verifierLaSauvegarde } from "./verifSauvegarde";
+import { QuoiDeNeuf } from "./components/QuoiDeNeuf";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { NotesPanel } from "./components/NotesPanel";
 import { CommandPalette } from "./components/CommandPalette";
@@ -221,6 +222,7 @@ export default function App() {
       <main className="main">
         <KeepAliveHost pathname={location.pathname} />
       </main>
+      <QuoiDeNeuf />
       <Toaster />
       <ConfirmerHost />
       <UpdateBanner />

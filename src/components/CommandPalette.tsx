@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ResultatRecherche, joursFeriesFR, anneeScolaireActuelle, raccourci } from "../api";
 import { ouvrirOnglet } from "./ui";
+import { montrerLesNouveautes } from "./QuoiDeNeuf";
 
 interface Cmd {
   id: string; ico: string; label: string; sous?: string;
@@ -265,6 +266,7 @@ export function CommandPalette() {
     { id: "a-newseq", ico: "➕", label: "Nouvelle séquence", sous: "Action · créer", run: goAction("/plan", "maitrize:nouvelle-sequence") },
     { id: "a-genia", ico: "✨", label: "Générer une séquence (IA)", sous: "Action · assistant", run: goAction("/assistant", "maitrize:generer-sequence") },
     { id: "a-assist", ico: "🪄", label: "Ouvrir l'assistant IA", sous: "Action", run: goNav("/assistant") },
+    { id: "a-neuf", ico: "✨", label: "Quoi de neuf", sous: "Action · ce qui a changé dans l'app", run: () => { setOpen(false); montrerLesNouveautes(); } },
     { id: "r-demain", ico: "🌅", label: "Préparer pour demain", sous: "Réponse directe", run: repondre("Préparer pour demain", preparerDemain) },
     { id: "r-jour", ico: "📅", label: "Planning d'aujourd'hui", sous: "Réponse directe", run: repondre("Planning d'aujourd'hui", () => planningJour("today")) },
     { id: "r-listseq", ico: "📋", label: "Lister mes séquences", sous: "Réponse directe", run: repondre("Mes séquences", listerSequences) },
