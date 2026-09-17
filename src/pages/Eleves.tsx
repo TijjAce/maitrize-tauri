@@ -8,7 +8,7 @@ import {
 import { Modal, Field, Input, Select, Empty, Confirm, useAsync, useSegmentNav, useOngletDemande } from "../components/ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
 import { openCtx } from "../components/ctxmenu";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 import { DispositifsTab } from "./Dispositifs";
 import { ProgressionsTab } from "./Progressions";
 import { GevaScoTab } from "./GevaSco";
@@ -216,7 +216,12 @@ function Observations() {
           <div key={c.id} className="list-row" style={{ borderLeft: `4px solid ${couleurObservation(c.type)}` }}>
             <ChipObservation type={c.type} />
             <div style={{ flex: 1 }}>{c.texte}<div className="meta">{new Date(c.date).toLocaleDateString("fr-FR")}</div></div>
-            <button className="btn ghost sm" onClick={() => api.commentaireDelete(c.id).then(reload)} aria-label="Supprimer">🗑</button>
+            <button className="btn ghost sm" aria-label="Supprimer"
+              onClick={async () => {
+                await api.commentaireDelete(c.id);
+                reload();
+                toastAnnulable("Observation supprimée.", async () => { await api.commentaireSave(c); reload(); });
+              }}>🗑</button>
           </div>
         ))}
     </>
