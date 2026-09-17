@@ -82,7 +82,9 @@ export default function Reglages() {
     const next = { ...s, [cle]: valeur };
     setS(next);
     api.settingSet(cle, valeur);
-    if (cle === "apparence" || cle === "accent" || cle === "styleInterface" || cle === "liseret") applyTheme(next);
+    // Tout ce qui se voit doit se voir tout de suite : sinon on clique, rien ne
+    // bouge, et l'on croit le réglage cassé.
+    if (["apparence", "accent", "styleInterface", "liseret", "tailleTexte"].includes(cle)) applyTheme(next);
   };
 
   const tester = async () => {

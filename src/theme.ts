@@ -44,6 +44,22 @@ export const TAILLES = [
   { id: "tresgrand", label: "Très grande", zoom: 1.3 },
 ];
 
+/**
+ * Agrandit la fenêtre entière, comme ⌘+ dans un navigateur.
+ *
+ * Le zoom du webview vaut mieux que la propriété CSS : il agrandit aussi ce
+ * que l'application fixe en pixels, et la fenêtre reste cohérente (menus,
+ * fenêtres modales, impression). Hors de l'application — tests, maquettes —
+ * on retombe sur le zoom CSS, qui suffit à vérifier le reste.
+ */
+function appliquerZoom(facteur: number) {
+  const parLeCss = () =>
+    document.documentElement.style.setProperty("zoom", facteur === 1 ? "" : String(facteur));
+  import("@tauri-apps/api/webview")
+    .then(({ getCurrentWebview }) => getCurrentWebview().setZoom(facteur).catch(parLeCss))
+    .catch(parLeCss);
+}
+
 export function applyTheme(s: Record<string, string>) {
   const root = document.documentElement;
   let mode = s.apparence || "clair";
@@ -61,8 +77,7 @@ export function applyTheme(s: Record<string, string>) {
   root.style.setProperty("--accent", accent);
   root.style.setProperty("--accent-soft", accent + "26"); // ~15% alpha
 
-  const taille = TAILLES.find((x) => x.id === (s.tailleTexte || "normal")) ?? TAILLES[0];
-  root.style.setProperty("zoom", taille.zoom === 1 ? "" : String(taille.zoom));
+  appliquerZoom(TAILLES.find((x) => x.id === (s.tailleTexte || "normal"))?.zoom ?? 1);
 
   // Liseré lumineux animé autour de la fenêtre (activé par défaut)
   root.setAttribute("data-neon", s.liseret === "off" ? "off" : "on");
