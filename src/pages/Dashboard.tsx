@@ -4,6 +4,7 @@ import { Page } from "../App";
 import { api, couleurHex, raccourci } from "../api";
 import { useAsync } from "../components/ui";
 import { BandeauSync } from "../components/BandeauSync";
+import { EVT_JOUR } from "../components/CommandPalette";
 
 export default function Dashboard() {
   const nav = useNavigate();
@@ -20,6 +21,20 @@ export default function Dashboard() {
     return d;
   })();
   const { data: creneaux } = useAsync(() => api.creneauxList(today, today), []);
+
+  // Le cahier journal s'ouvre au bon jour : la date n'est pas dans l'URL.
+  const ouvrirLeJournal = (iso: string) => {
+    nav("/planning");
+    setTimeout(() => window.dispatchEvent(new CustomEvent(EVT_JOUR, { detail: iso })), 120);
+  };
+
+  // Première ligne du prévu : de quoi reconnaître le créneau sans l'ouvrir.
+  const apercu = (texte: string) =>
+    (texte ?? "").split("\n").map((l) => l.replace(/^[-•*\s]+/, "").trim()).find(Boolean) ?? "";
+
+  const maintenant = new Date().toTimeString().slice(0, 5);
+  const jourDeClasse = (creneaux?.length ?? 0) > 0;
+  const sansBilan = (creneaux ?? []).filter((c) => !(c.bilan ?? "").trim() && c.heureFin <= maintenant);
 
   const stats = [
     { label: "Séquences", val: sequences?.length ?? 0, ico: "📚", to: "/plan" },
@@ -44,16 +59,49 @@ export default function Dashboard() {
 
       <div className="row" style={{ alignItems: "flex-start" }}>
         <div className="card" style={{ flex: 1 }}>
-          <h3 style={{ marginTop: 0 }}>🗓️ Aujourd'hui</h3>
-          {(creneaux?.length ?? 0) === 0 ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <h3 style={{ margin: 0 }}>🗓️ Aujourd'hui</h3>
+            <div className="spacer" />
+            {jourDeClasse && (
+              <button className="btn sm" onClick={() => ouvrirLeJournal(today)}>Ouvrir le cahier journal</button>
+            )}
+          </div>
+          {!jourDeClasse ? (
             <p style={{ color: "var(--text-2)" }}>Aucun créneau prévu. <a style={{ color: "var(--accent)", cursor: "pointer" }} onClick={() => nav("/planning")}>Ouvrir le planning →</a></p>
           ) : (
-            creneaux!.sort((a, b) => a.heureDebut.localeCompare(b.heureDebut)).map((c) => (
-              <div key={c.id} className="list-row" style={{ marginBottom: 6 }}>
-                <span className="badge">{c.heureDebut}</span>
-                <span style={{ flex: 1 }}>{c.matiere}</span>
-              </div>
-            ))
+            <div style={{ marginTop: 8 }}>
+              {[...creneaux!].sort((a, b) => a.heureDebut.localeCompare(b.heureDebut)).map((c) => {
+                // Le créneau en cours se repère d'un coup d'œil : c'est celui
+                // sur lequel on écrit, souvent entre deux activités.
+                const enCours = c.heureDebut <= maintenant && maintenant < c.heureFin;
+                const fini = c.heureFin <= maintenant;
+                const texte = apercu(c.prevu ?? "");
+                return (
+                  <div key={c.id} className="list-row" role="button" tabIndex={0}
+                    onClick={() => ouvrirLeJournal(today)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ouvrirLeJournal(today); } }}
+                    title="Ouvrir le cahier journal de ce jour"
+                    style={{
+                      marginBottom: 6, cursor: "pointer", alignItems: "flex-start",
+                      borderLeft: enCours ? "3px solid var(--accent)" : "3px solid transparent",
+                      paddingLeft: 7, opacity: fini && !enCours ? 0.75 : 1,
+                    }}>
+                    <span className="badge">{c.heureDebut}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="title">{c.matiere || "Créneau"}</div>
+                      {texte && <div className="meta" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{texte}</div>}
+                    </div>
+                    {fini && !(c.bilan ?? "").trim() && <span className="meta" title="Bilan à écrire">✍️</span>}
+                    {(c.bilan ?? "").trim() && <span className="meta" title="Bilan écrit">✓</span>}
+                  </div>
+                );
+              })}
+              {sansBilan.length > 0 && (
+                <button className="btn sm" style={{ marginTop: 4 }} onClick={() => ouvrirLeJournal(today)}>
+                  ✍️ {sansBilan.length} créneau{sansBilan.length > 1 ? "x" : ""} sans bilan
+                </button>
+              )}
+            </div>
           )}
         </div>
         <div className="card" style={{ flex: 1 }}>
