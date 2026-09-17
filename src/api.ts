@@ -133,6 +133,8 @@ export interface AppelJournalier {
 
 export interface CommentaireEleve {
   id: string; date: string; texte: string; type: string; eleveId: string | null;
+  /** Objectifs du PPI travaillés, en JSON (voir `objectifsPpi.ts`). */
+  objectifs?: string;
 }
 
 export interface Evaluation {

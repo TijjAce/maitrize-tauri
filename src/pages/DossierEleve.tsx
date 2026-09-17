@@ -1,5 +1,6 @@
 import React from "react";
 import { ChipObservation, couleurObservation } from "../components/TypeObservation";
+import { infosReussite, intitulesDesObjectifs, lireLiens } from "../objectifsPpi";
 import { api, Eleve, TYPE_AXE } from "../api";
 import { Select, Empty, useAsync, ouvrirOnglet } from "../components/ui";
 import { printHTML, escapeHtml } from "../print";
@@ -23,6 +24,10 @@ export function DossierTab() {
 
   React.useEffect(() => { if (!eleveId && eleves?.[0]) setEleveId(eleves[0].id); }, [eleves, eleveId]);
 
+  // Intitulés des objectifs du PPI, pour dire sous une observation ce qu'elle
+  // a travaillé : sans le nom, un identifiant ne raconte rien.
+  const [objectifs, setObjectifs] = React.useState<Record<string, string>>({});
+
   const { data } = useAsync(async () => {
     if (!eleveId) return null;
     const eleve = (eleves ?? []).find((e) => e.id === eleveId);
@@ -37,6 +42,7 @@ export function DossierTab() {
       api.papiersList(),
       api.progressionsEleveList(),
     ]);
+    setObjectifs(intitulesDesObjectifs(await api.documentEleveGet(eleveId, "ppi").catch(() => null)));
     return construire(eleve, commentaires, notes, evaluations, docs, papiers, progressions, ime);
   }, [eleveId, eleves, ime]);
 
@@ -51,14 +57,14 @@ export function DossierTab() {
           {eleves.map((e) => <option key={e.id} value={e.id}>{e.nom}</option>)}
         </Select>
         <div className="spacer" />
-        {data && <button className="btn" onClick={() => imprimer(data)}>🖨 Imprimer le dossier</button>}
+        {data && <button className="btn" onClick={() => imprimer(data, objectifs)}>🖨 Imprimer le dossier</button>}
       </div>
-      {data && <Contenu dossier={data} />}
+      {data && <Contenu dossier={data} objectifs={objectifs} />}
     </>
   );
 }
 
-function Contenu({ dossier: d }: { dossier: Dossier }) {
+function Contenu({ dossier: d, objectifs }: { dossier: Dossier; objectifs: Record<string, string> }) {
   return (
     <>
       <Identite eleve={d.eleve} age={d.age} />
@@ -106,6 +112,12 @@ function Contenu({ dossier: d }: { dossier: Dossier }) {
                 <div key={c.id} style={{ fontSize: 13, marginTop: 3 }}>
                   {c.texte}
                   <span className="meta"> · {new Date(c.date).toLocaleDateString("fr-FR")}</span>
+                  {lireLiens(c.objectifs).filter((l) => objectifs[l.id]).map((l) => (
+                    <span key={l.id} className="meta" title={infosReussite(l.reussite).label}
+                      style={{ marginLeft: 6, color: infosReussite(l.reussite).couleur }}>
+                      🎯 {objectifs[l.id]} {infosReussite(l.reussite).icone}
+                    </span>
+                  ))}
                 </div>
               ))}
               {g.items.length > 3 && (
@@ -200,7 +212,7 @@ function LignePiece({ piece }: { piece: Piece }) {
   );
 }
 
-function imprimer(d: Dossier) {
+function imprimer(d: Dossier, objectifs: Record<string, string>) {
   const section = (titre: string, corps: string) =>
     corps ? `<h2>${escapeHtml(titre)}</h2>${corps}` : "";
   const liste = (items: string[]) =>
@@ -225,8 +237,15 @@ function imprimer(d: Dossier) {
         // La couleur de la catégorie, comme à l'écran.
         const c = couleurObservation(g.type);
         return g.items.length ? `<h2 style="border-bottom-color:${c}"><span class="chip" style="background:${c}1f;color:${c};border:1px solid ${c}55;font-size:13px">${escapeHtml(g.type)}</span> Observations</h2>
-          <ul style="border-left:4px solid ${c};padding-left:22px;margin-left:2px">${g.items.map((o) =>
-            `<li>${escapeHtml(o.texte)} <span class="meta">(${new Date(o.date).toLocaleDateString("fr-FR")})</span></li>`).join("")}</ul>` : "";
+          <ul style="border-left:4px solid ${c};padding-left:22px;margin-left:2px">${g.items.map((o) => {
+            // L'objectif travaillé accompagne l'observation : c'est ce qui rend
+            // le dossier utilisable en ESS, où l'on demande des preuves datées.
+            const vises = lireLiens(o.objectifs).filter((l) => objectifs[l.id]);
+            const cible = vises.length
+              ? ` <span class="meta">🎯 ${vises.map((l) => `${escapeHtml(objectifs[l.id])} ${infosReussite(l.reussite).icone}`).join(" · ")}</span>`
+              : "";
+            return `<li>${escapeHtml(o.texte)} <span class="meta">(${new Date(o.date).toLocaleDateString("fr-FR")})</span>${cible}</li>`;
+          }).join("")}</ul>` : "";
       }).join("")}
 
      ${section("Évaluations", d.notes.length
