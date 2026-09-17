@@ -11,6 +11,7 @@ import { FormMateriel } from "../components/FormMateriel";
 import { texteBrut } from "../texteRiche";
 import { disposer, poser, lireDispositions, lirePositions, reporterDispositions, PREFIXE_BUREAU, type Case, type Positions } from "../disposition";
 import { EditeurTexte } from "../components/EditeurTexte";
+import { IconeDossier, COULEUR_DOSSIER } from "../components/IconeDossier";
 import { copierLeBureau } from "../components/CopieDuBureau";
 import { FormSequence } from "../components/FormSequence";
 import { contenuDirect, nature } from "../bureau";
@@ -76,16 +77,6 @@ function lireDepotInterne(dt: DataTransfer): { element?: Element; dossier?: stri
 /** Clés des tuiles dans la disposition d'un dossier. */
 const cleDossier = (d: SousDossier) => `d:${d.nom}`;
 const cleElement = (e: Element) => `${e.genre === "sequence" ? "s" : e.genre === "materiel" ? "m" : "t"}:${e.id}`;
-
-/** Couleur d'un dossier sans couleur choisie : le bleu doux d'un dossier ordinaire. */
-const COULEUR_DOSSIER = "#6fa8e6";
-
-/** Assombrit une couleur #rrggbb, pour l'onglet du dossier. */
-function assombrir(hex: string, part: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  const f = (d: number) => Math.round(((n >> d) & 255) * (1 - part)).toString(16).padStart(2, "0");
-  return `#${f(16)}${f(8)}${f(0)}`;
-}
 
 /**
  * Le texte d'un dépôt, quel que soit le type employé par la plateforme.
@@ -766,19 +757,6 @@ function TuileDossier({ dossier, survole, couleur, onOuvrir, onSurvol, onDepose,
         {dossier.total} élément{dossier.total > 1 ? "s" : ""}
       </div>
     </div>
-  );
-}
-
-/** Un dossier dessiné, pour pouvoir le teinter — un émoji ne se colore pas. */
-function IconeDossier({ couleur, ouvert }: { couleur: string; ouvert: boolean }) {
-  const onglet = assombrir(couleur, 0.16);
-  return (
-    <svg viewBox="0 0 64 52" width="76" height="62" aria-hidden="true" style={{ display: "block", margin: "0 auto" }}>
-      <path d="M3 9a5 5 0 0 1 5-5h15.2a5 5 0 0 1 3.9 1.9L30 10h26a5 5 0 0 1 5 5v5H3z" fill={onglet} />
-      <path d={ouvert ? "M1 22a4 4 0 0 1 4-4h56a3 3 0 0 1 3 3.6l-3.6 24A5 5 0 0 1 55.5 50h-47a5 5 0 0 1-4.9-4.3z"
-        : "M3 19a4 4 0 0 1 4-4h50a4 4 0 0 1 4 4v26a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5z"} fill={couleur} />
-      <path d="M3 19a4 4 0 0 1 4-4h50a4 4 0 0 1 4 4v2H3z" fill="#fff" opacity={ouvert ? 0 : 0.22} />
-    </svg>
   );
 }
 

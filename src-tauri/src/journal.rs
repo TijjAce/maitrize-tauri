@@ -52,6 +52,20 @@ pub const TABLES_SYNC: &[&str] = &[
 /// modification, et écraserait un travail plus récent.
 pub const TABLES_ANNONCEES: &[&str] = &["outils_classe"];
 
+/// Préfixes de réglages apparus après les versions sans annonces : même
+/// traitement que `TABLES_ANNONCEES`. Les dossiers et la disposition des
+/// onglets d'Ateliers & Espaces (« rangement: ») n'arrivaient pas sur un
+/// ordinateur pas encore à jour.
+pub const REGLAGES_ANNONCES: &[&str] = &["rangement:"];
+
+/// Ce que cette version synchronise, tel que la fiche de présence l'annonce :
+/// les tables, et les préfixes de réglages récents (« reglages:<préfixe> »).
+pub fn tables_connues() -> Vec<String> {
+    TABLES_SYNC.iter().map(|t| t.to_string())
+        .chain(REGLAGES_ANNONCES.iter().map(|p| format!("reglages:{p}")))
+        .collect()
+}
+
 /// Tables de liaison, sans colonne `id`.
 ///
 /// `atelier_espace` associe un atelier à un espace par un couple de clés. Les
@@ -84,7 +98,7 @@ const REGLAGES_PARTAGES: &[&str] = &[
 /// salle, tableaux de langage, couleurs des dossiers, disposition du bureau
 /// du plan de travail et présentations enregistrées de Fabriquer. Ce sont des
 /// données de travail, pas des préférences d'affichage.
-const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:", "dossier:", "bureau:", "fabriquer:"];
+const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:", "dossier:", "bureau:", "fabriquer:", "rangement:"];
 
 /// Réglages qui appartiennent à l'ordinateur lui-même, pas aux données.
 ///
@@ -216,6 +230,31 @@ pub fn annoncer_tables(conn: &Connection, machine: &str, autres: &[(String, Vec<
                        FROM {table}"
                 ),
                 params![machine],
+            ) else {
+                continue;
+            };
+            n += ecrites;
+            conn.execute("INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, '1')", params![cle]).ok();
+        }
+        for prefixe in REGLAGES_ANNONCES {
+            let marque = format!("reglages:{prefixe}");
+            if !tables.iter().any(|t| *t == marque) {
+                continue;
+            }
+            let cle = format!("sync_annonce_{marque}_{autre}");
+            let deja: String = conn
+                .query_row("SELECT valeur FROM settings WHERE cle = ?1", params![cle], |r| r.get(0))
+                .unwrap_or_default();
+            if deja == "1" {
+                continue;
+            }
+            // Comme `annoncer_dossiers` : là-bas, l'annonce ne crée que ce qui manque.
+            let Ok(ecrites) = conn.execute(
+                "INSERT INTO changements (table_nom, ligne_id, operation, donnees, avant, horodatage, origine)
+                 SELECT 'settings', cle, 'annonce', json_object('cle', cle, 'valeur', valeur), '',
+                        strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?2
+                   FROM settings WHERE substr(cle, 1, length(?1)) = ?1 AND valeur <> ''",
+                params![prefixe, machine],
             ) else {
                 continue;
             };
@@ -1277,6 +1316,30 @@ mod tests {
 
     /// Une annonce ne compte pas comme une modification : une retouche faite
     /// sur l'autre ordinateur, même datée d'avant l'annonce, n'est pas rejetée.
+    #[test]
+    fn les_reglages_de_rangement_sont_annonces_quand_l_autre_ordinateur_les_connait() {
+        let a = machine_avec_outils("A");
+        let mut b = machine_avec_outils("B");
+        poser_declencheurs(&b, "B");
+        a.execute("INSERT INTO settings (cle, valeur) VALUES ('rangement:jeux:dossier:Maths', 'aucune')", []).unwrap();
+        a.execute("INSERT INTO settings (cle, valeur) VALUES ('rangement:jeux:place:', '{\"j:1\":[0,0]}')", []).unwrap();
+        a.execute("INSERT INTO settings (cle, valeur) VALUES ('mistralApiKey', 'secret')", []).unwrap();
+        let (_, repere) = changements_locaux(&a, 0).unwrap();
+        // Une version sans le marqueur n'en reçoit rien.
+        assert_eq!(annoncer_tables(&a, "A", &[("B".to_string(), vec!["outils_classe".to_string()])]), 0);
+        let a_jour = vec![("B".to_string(), tables_connues())];
+        assert_eq!(annoncer_tables(&a, "A", &a_jour), 2, "les deux réglages de rangement, pas le secret");
+        assert_eq!(annoncer_tables(&a, "A", &a_jour), 0);
+        // B a déjà choisi une couleur pour « Maths » : elle reste.
+        b.execute("INSERT INTO settings (cle, valeur) VALUES ('rangement:jeux:dossier:Maths', '#ff0000')", []).unwrap();
+        let (annonces, _) = changements_locaux(&a, repere).unwrap();
+        appliquer(&mut b, &annonces).unwrap();
+        let lire = |c: &Connection, cle: &str| c.query_row("SELECT valeur FROM settings WHERE cle = ?1", params![cle], |r| r.get::<_, String>(0)).ok();
+        assert_eq!(lire(&b, "rangement:jeux:dossier:Maths").as_deref(), Some("#ff0000"));
+        assert_eq!(lire(&b, "rangement:jeux:place:").as_deref(), Some("{\"j:1\":[0,0]}"));
+        assert_eq!(lire(&b, "mistralApiKey"), None);
+    }
+
     #[test]
     fn une_annonce_ne_l_emporte_pas_sur_une_retouche() {
         let mut a = machine_avec_outils("A");
