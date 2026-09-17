@@ -23,17 +23,21 @@ const LONGUEUR_TITRE = 8;
 
 /** Les séquences citées dans un texte, avec leur séance si elle est précisée, dans l'ordre du texte. */
 export function sequencesCitees(texte: string, sequences: Sequence[], seances: Seance[]): CitationSequence[] {
-  const candidates = sequences
+  const titres = sequences
     .map((s) => ({ s, titre: forme(s.titre) }))
-    .filter((x) => x.titre.trim().length >= LONGUEUR_TITRE)
+    .filter((x) => x.titre.trim())
     // Le titre le plus long d'abord : « Les fractions (2) » avant « Les fractions ».
     .sort((a, b) => b.titre.length - a.titre.length);
+  const candidates = titres.filter((x) => x.titre.trim().length >= LONGUEUR_TITRE);
   const sortie: CitationSequence[] = [];
   const vues = new Set<string>();
   for (const ligne of (texte ?? "").split(/\n/)) {
     let reste = forme(ligne);
     const trouvees: { s: Sequence; position: number }[] = [];
-    for (const { s, titre } of candidates) {
+    // La ligne du bouton : une seule séquence, en tête, même au titre court.
+    const posee = ligne.trim().startsWith("📚") ? titres.find((x) => reste.startsWith(x.titre)) : undefined;
+    if (posee) trouvees.push({ s: posee.s, position: 0 });
+    else for (const { s, titre } of candidates) {
       const i = reste.indexOf(titre);
       if (i < 0) continue;
       trouvees.push({ s, position: i });
