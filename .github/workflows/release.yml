@@ -116,6 +116,43 @@ jobs:
           retryAttempts: 3
           args: ${{ matrix.args }}
 
+  # Le manifeste de mise à jour (latest.json) est écrit pendant que la version
+  # est encore un brouillon : tauri-action v1 y met alors des adresses d'API,
+  # que la mise à jour automatique des ordinateurs n'est pas assurée de savoir
+  # suivre. On les remplace par les liens publics de téléchargement — ceux des
+  # versions précédentes, éprouvés — une fois les deux plateformes envoyées.
+  manifeste:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Liens publics dans latest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$REPO/releases" --paginate \
+            --jq ".[] | select(.draft and .tag_name == \"$TAG\")" > release.json
+          test -s release.json
+          asset=$(python3 -c "import json; d = json.load(open('release.json')); print([a['id'] for a in d['assets'] if a['name'] == 'latest.json'][0])")
+          gh api "repos/$REPO/releases/assets/$asset" -H "Accept: application/octet-stream" > latest.json
+          python3 - <<'PY'
+          import json, os, re
+          d = json.load(open("latest.json"))
+          noms = {str(a["id"]): a["name"] for a in json.load(open("release.json"))["assets"]}
+          base = f"https://github.com/{os.environ['REPO']}/releases/download/{os.environ['TAG']}/"
+          n = 0
+          for v in d.get("platforms", {}).values():
+              m = re.search(r"/releases/assets/(\d+)$", v.get("url", ""))
+              if m and m.group(1) in noms:
+                  v["url"] = base + noms[m.group(1)]
+                  n += 1
+          json.dump(d, open("latest.json", "w"), ensure_ascii=False)
+          print(f"{n} lien(s) réécrit(s) pour {len(d.get('platforms', {}))} plateforme(s)")
+          PY
+          gh release upload "$TAG" latest.json --clobber -R "$REPO"
+
   # ─────────────────────────────────────────────────────────────────────────
   # TODO (étape suivante) : signature de code Windows via SignPath.
   # Une fois le projet validé dans le programme open source de SignPath, ajouter
