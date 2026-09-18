@@ -21,7 +21,7 @@ export const NOUVEAUTES: Nouveaute[] = [
     version: "1.6.11",
     titre: "Un seul bureau pour les ateliers, les jeux, les outils et les affichages",
     points: [
-      { quoi: "Ateliers, espaces, jeux, outils et affichages se rangent sur un même bureau : un dossier « cycle 1 » peut réunir un jeu, l'outil qui va avec et l'affichage du coin. Les onglets ne font plus que filtrer ce qu'on voit, et « Tout » montre le bureau entier.", ou: "Ateliers & Espaces" },
+      { quoi: "Ateliers, espaces, jeux, outils et affichages se rangent sur un même bureau : un dossier « cycle 1 » peut réunir un jeu, l'outil qui va avec et l'affichage du coin. Plus d'onglets : la recherche et les filtres (nombre de joueurs, catégorie, élève) suffisent.", ou: "Ateliers & Espaces" },
       { quoi: "Les barres d'onglets ont la même taille et la même place sur toutes les pages." },
     ],
   },

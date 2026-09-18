@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api, ResultatRecherche, joursFeriesFR, anneeScolaireActuelle, raccourci } from "../api";
 import { ouvrirOnglet } from "./ui";
 import { montrerLesNouveautes } from "./QuoiDeNeuf";
+import { EVT_CHERCHER_ATELIERS } from "../bureauAteliers";
 
 interface Cmd {
   id: string; ico: string; label: string; sous?: string;
@@ -33,11 +34,7 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "📋", label: "GEVA-Sco", to: "/eleves", page: "eleves", onglet: "gevasco", sous: "Élèves · mode IME" },
   { ico: "📈", label: "Progressions par élève", to: "/eleves", page: "eleves", onglet: "progressions", sous: "Élèves" },
   { ico: "📚", label: "Compétences travaillées par élève (BO)", to: "/eleves", page: "eleves", onglet: "progressions", sous: "Élèves" },
-  { ico: "🧩", label: "Ateliers", to: "/ateliers", page: "ateliers", onglet: "ateliers", sous: "Ateliers & Espaces" },
-  { ico: "🪑", label: "Espaces", to: "/ateliers", page: "ateliers", onglet: "espaces", sous: "Ateliers & Espaces" },
-  { ico: "🎲", label: "Jeux", to: "/ateliers", page: "ateliers", onglet: "jeux", sous: "Ateliers & Espaces" },
-  { ico: "🧰", label: "Outils pour l'élève", to: "/ateliers", page: "ateliers", onglet: "outils", sous: "Ateliers & Espaces" },
-  { ico: "🖼", label: "Affichages de la classe", to: "/ateliers", page: "ateliers", onglet: "affichages", sous: "Ateliers & Espaces" },
+  { ico: "🧩", label: "Jeux, outils et affichages", to: "/ateliers", page: "ateliers", onglet: "", sous: "Ateliers & Espaces · le bureau" },
   { ico: "🎲", label: "Loto (pictogrammes)", to: "/jeux", page: "jeux", onglet: "jeux", sous: "Fabriquer" },
   { ico: "🪙", label: "Tableau d'économie de jetons", to: "/jeux", page: "jeux", onglet: "jetons", sous: "Fabriquer · Supports visuels" },
   { ico: "➡️", label: "D'abord / ensuite", to: "/jeux", page: "jeux", onglet: "dabord", sous: "Fabriquer · Supports visuels" },
@@ -95,10 +92,11 @@ function allerVers(r: ResultatRecherche, nav: (to: string) => void) {
       if (r.parent) setTimeout(() => window.dispatchEvent(new CustomEvent(EVT_JOUR, { detail: r.parent })), 120);
       return;
     case "observation": nav("/eleves"); return onglet("eleves", "observations");
-    case "atelier": nav("/ateliers"); return onglet("ateliers", "ateliers");
-    case "espace": nav("/ateliers"); return onglet("ateliers", "espaces");
-    case "jeu": nav("/ateliers"); return onglet("ateliers", "jeux");
-    case "outil": nav("/ateliers"); return onglet("ateliers", r.parent === "affichage" ? "affichages" : "outils");
+    // Ateliers & Espaces n'a plus d'onglets : on y cherche l'élément trouvé.
+    case "atelier": case "espace": case "jeu": case "outil":
+      nav("/ateliers");
+      setTimeout(() => window.dispatchEvent(new CustomEvent(EVT_CHERCHER_ATELIERS, { detail: r.titre })), 140);
+      return;
     case "eleve": nav("/eleves"); return onglet("eleves", "liste");
     default: return nav("/plan");
   }
