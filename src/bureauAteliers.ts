@@ -3,13 +3,22 @@
 // Chaque onglet avait son propre bureau : ses dossiers, ses places. Or un
 // dossier « cycle 1 » a vocation à réunir un jeu, l'outil qui va avec et
 // l'affichage du coin lecture — ce que cinq bureaux séparés interdisaient.
-// Tout se range donc sur un bureau commun, et les onglets ne font plus que
-// filtrer ce qu'on y voit.
+// Tout se range donc sur un bureau commun, sans onglets : la recherche et les
+// filtres propres à chaque sorte (nombre de joueurs, catégorie, élève)
+// suffisent à retrouver ce qu'on cherche.
 //
 // Les dossiers vivent déjà sur chaque fiche (son champ `dossier`) : ils se
 // retrouvent d'eux-mêmes. Seuls leurs réglages — la couleur d'un dossier, et
 // donc l'existence d'un dossier encore vide — étaient rangés par onglet ; ils
 // sont repris une fois dans l'espace commun.
+
+/**
+ * Ouvrir la page sur un élément précis, en le cherchant.
+ *
+ * La page n'a plus d'onglets où envoyer quelqu'un : depuis ⌘K, c'est la
+ * recherche de la page qui mène jusqu'à l'élément trouvé.
+ */
+export const EVT_CHERCHER_ATELIERS = "maitrize:ateliers-chercher";
 
 /** L'espace de réglages du bureau commun : « rangement:atelier:… ». */
 export const ESPACE_COMMUN = "atelier";

@@ -4,7 +4,7 @@ import {
   api, Atelier, Espace, Jeu, Eleve, OutilClasse, ProgressionEleve, nouvelAtelier, nouvelEspace, nouveauJeu, nouvelOutil,
   MATIERES, couleurHex, couleurPourMatiere, newId, nowIso,
 } from "../api";
-import { Modal, Field, Input, Textarea, Select, Empty, ColorPicker, Confirm, useAsync, useSegmentNav, useOngletDemande } from "../components/ui";
+import { Modal, Field, Input, Textarea, Select, Empty, ColorPicker, Confirm, useAsync } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
 import { FichierImg } from "../components/Deroulement";
 import { JeuForm, VignetteUpload } from "../components/JeuForm";
@@ -13,7 +13,7 @@ import { CarteOutil, OutilForm, elevesDe } from "../components/OutilForm";
 import { Rangement, type ElementRange } from "../components/Rangement";
 import type { CtxItem } from "../components/ctxmenu";
 import { toastAnnulable } from "../components/Toaster";
-import { ESPACE_COMMUN, cleDe, decouper, reprendreLesDossiers, type Sorte } from "../bureauAteliers";
+import { ESPACE_COMMUN, EVT_CHERCHER_ATELIERS, cleDe, decouper, reprendreLesDossiers, type Sorte } from "../bureauAteliers";
 
 /**
  * Un jeu passe-t-il les filtres de la ludothèque ?
@@ -32,13 +32,9 @@ export function jeuAccepte(j: Jeu, f: { typeJeu?: string; joueurs?: string; doss
   return true;
 }
 
-const ATELIERS_TABS = ["tout", "ateliers", "espaces", "jeux", "outils", "affichages"] as const;
-type Onglet = typeof ATELIERS_TABS[number];
+type SorteVue = "ateliers" | "espaces" | "jeux" | "outils" | "affichages";
+
 export default function Ateliers() {
-  // Un seul bureau pour toute la page : les onglets filtrent ce qu'on y voit.
-  const [onglet, setOnglet] = React.useState<Onglet>("tout");
-  useSegmentNav(ATELIERS_TABS, onglet, setOnglet);
-  useOngletDemande("ateliers", ATELIERS_TABS, setOnglet);
   const { data: ateliers, reload: rA } = useAsync(() => api.ateliersList(), []);
   const { data: espaces, reload: rE } = useAsync(() => api.espacesList(), []);
   const { data: liens, reload: rL } = useAsync(() => api.atelierEspaceList(), []);
@@ -79,9 +75,9 @@ export default function Ateliers() {
   const [joueurs, setJoueurs] = React.useState("");
   const [recherche, setRecherche] = React.useState("");
 
-  // Chaque onglet se range comme le bureau, dans ses propres dossiers ; la
-  // vue en cartes montre tout d'un coup d'œil, et une recherche ou un filtre
-  // y bascule d'office.
+  // Le bureau se range comme celui du plan de travail ; la vue en cartes
+  // montre tout d'un coup d'œil, et une recherche ou un filtre y bascule
+  // d'office.
   const [vue, setVueBrute] = React.useState<"bureau" | "cartes">(() => {
     try { return localStorage.getItem("ateliers:vue") === "cartes" ? "cartes" : "bureau"; } catch { return "bureau"; }
   });
@@ -89,7 +85,7 @@ export default function Ateliers() {
     setVueBrute(v);
     try { localStorage.setItem("ateliers:vue", v); } catch { /* stockage indisponible */ }
   };
-  // Le dossier ouvert est celui du bureau commun : changer de filtre n'en sort pas.
+  // Le dossier ouvert sur le bureau commun.
   const [dossier, setDossier] = React.useState("");
 
   // Les dossiers des anciens bureaux d'onglet sont repris une fois dans le
@@ -107,51 +103,46 @@ export default function Ateliers() {
     return () => { vivant = false; };
   }, []);
 
-  const courant = onglet === "ateliers" ? (ateliers ?? []) : onglet === "espaces" ? (espaces ?? [])
-    : onglet === "outils" ? outils : onglet === "affichages" ? affichages : onglet === "jeux" ? (jeux ?? []) : [];
-  const changerOnglet = (o: Onglet) => { setOnglet(o); setCategorie(""); setPourEleve(""); };
-  /** Cette sorte d'élément est-elle montrée par l'onglet choisi ? */
-  const montre = (o: Exclude<Onglet, "tout">) => onglet === "tout" || onglet === o;
-  const total = (ateliers?.length ?? 0) + (espaces?.length ?? 0) + (jeux?.length ?? 0) + (outilsClasse?.length ?? 0);
+  // Plus d'onglets : il n'y a qu'un bureau, et il montre tout. Seuls les
+  // filtres propres à une sorte — le nombre de joueurs d'un jeu, la catégorie
+  // d'un outil — la font passer au premier plan, en cartes.
+  const filtreJeux = Boolean(joueurs || typeJeu);
+  const filtreOutils = Boolean(categorie || pourEleve);
+  /** Cette sorte est-elle montrée, compte tenu des filtres ? */
+  const montre = (o: SorteVue) => (!filtreJeux && !filtreOutils)
+    || (o === "jeux" && filtreJeux) || ((o === "outils" || o === "affichages") && filtreOutils);
+
+  // ⌘K ouvre la page sur un élément précis en le cherchant : sans onglets,
+  // c'est la recherche qui mène jusqu'à lui.
+  React.useEffect(() => {
+    const chercher = (e: Event) => setRecherche(String((e as CustomEvent).detail ?? ""));
+    window.addEventListener(EVT_CHERCHER_ATELIERS, chercher);
+    return () => window.removeEventListener(EVT_CHERCHER_ATELIERS, chercher);
+  }, []);
 
   const cherche = recherche.trim().toLowerCase();
   const filtrer = <T extends { titre: string }>(l: T[]) => (cherche ? l.filter((x) => x.titre.toLowerCase().includes(cherche)) : l);
-  const filtreActif = Boolean(cherche) || (onglet === "jeux" && Boolean(joueurs || typeJeu))
-    || ((onglet === "outils" || onglet === "affichages") && Boolean(categorie || pourEleve));
+  const filtreActif = Boolean(cherche) || filtreJeux || filtreOutils;
   const enBureau = vue === "bureau" && !filtreActif;
 
-  // Ce qu'on peut créer, là où l'on est : sur « Tout », les cinq sortes.
+  // Ce qu'on peut créer, dans le dossier ouvert : les cinq sortes.
   const creations = [
-    { onglet: "ateliers" as const, court: "Atelier", label: "Nouvel atelier", icon: "🧩", onClick: () => setEditA({ ...nouvelAtelier(), dossier: enBureau ? dossier : "" }) },
-    { onglet: "espaces" as const, court: "Espace", label: "Nouvel espace", icon: "🪑", onClick: () => setEditE({ ...nouvelEspace(), dossier: enBureau ? dossier : "" }) },
-    { onglet: "jeux" as const, court: "Jeu", label: "Nouveau jeu", icon: "🎲", onClick: () => setEditJ({ ...nouveauJeu(), dossier: enBureau ? dossier : "" }) },
-    { onglet: "outils" as const, court: "Outil", label: "Nouvel outil", icon: "🧰", onClick: () => setEditO({ ...nouvelOutil("outil"), dossier: enBureau ? dossier : "" }) },
-    { onglet: "affichages" as const, court: "Affichage", label: "Nouvel affichage", icon: "🖼", onClick: () => setEditO({ ...nouvelOutil("affichage"), dossier: enBureau ? dossier : "" }) },
-  ].filter((c) => montre(c.onglet));
+    { court: "Atelier", label: "Nouvel atelier", icon: "🧩", onClick: () => setEditA({ ...nouvelAtelier(), dossier: enBureau ? dossier : "" }) },
+    { court: "Espace", label: "Nouvel espace", icon: "🪑", onClick: () => setEditE({ ...nouvelEspace(), dossier: enBureau ? dossier : "" }) },
+    { court: "Jeu", label: "Nouveau jeu", icon: "🎲", onClick: () => setEditJ({ ...nouveauJeu(), dossier: enBureau ? dossier : "" }) },
+    { court: "Outil", label: "Nouvel outil", icon: "🧰", onClick: () => setEditO({ ...nouvelOutil("outil"), dossier: enBureau ? dossier : "" }) },
+    { court: "Affichage", label: "Nouvel affichage", icon: "🖼", onClick: () => setEditO({ ...nouvelOutil("affichage"), dossier: enBureau ? dossier : "" }) },
+  ];
 
   return (
     <Page titre="Ateliers & Espaces" sous="Activités en autonomie, stations de classe, jeux, outils des élèves et affichages"
-      actions={onglet === "tout"
-        ? <button className="btn primary"
-            onClick={(e) => openCtx(e, creations.map((c) => ({ label: c.label, icon: c.icon, onClick: c.onClick })))}>
-            + Ajouter
-          </button>
-        : <button className="btn primary" onClick={creations[0].onClick}>+ {creations[0].court}</button>}>
-      {/* Les onglets sur leur propre ligne, comme sur toutes les autres pages :
-          dans la barre d'outils, ils n'avaient ni la même hauteur ni le même
-          écart qu'ailleurs. */}
-      <div className="onglets">
-        <button className={onglet === "tout" ? "active" : ""} onClick={() => changerOnglet("tout")}>Tout ({total})</button>
-        <button className={onglet === "ateliers" ? "active" : ""} onClick={() => changerOnglet("ateliers")}>Ateliers ({ateliers?.length ?? 0})</button>
-        <button className={onglet === "espaces" ? "active" : ""} onClick={() => changerOnglet("espaces")}>Espaces ({espaces?.length ?? 0})</button>
-        <button className={onglet === "jeux" ? "active" : ""} onClick={() => changerOnglet("jeux")}>Jeux ({jeux?.length ?? 0})</button>
-        <button className={onglet === "outils" ? "active" : ""} onClick={() => changerOnglet("outils")}>Outils pour l'élève ({outils.length})</button>
-        <button className={onglet === "affichages" ? "active" : ""} onClick={() => changerOnglet("affichages")}>Affichages ({affichages.length})</button>
-      </div>
-
+      actions={<button className="btn primary"
+        onClick={(e) => openCtx(e, creations.map((c) => ({ label: c.label, icon: c.icon, onClick: c.onClick })))}>
+        + Ajouter
+      </button>}>
       <div className="toolbar">
         <Input className="search" placeholder="Rechercher…" value={recherche} onChange={(e) => setRecherche(e.target.value)} style={{ maxWidth: 170 }} />
-        {onglet === "jeux" && (jeux?.length ?? 0) > 0 && <>
+        {(jeux?.length ?? 0) > 0 && <>
           <Select value={joueurs} onChange={(e) => setJoueurs(e.target.value)} style={{ maxWidth: 150 }}
             title="Jeux jouables à ce nombre de joueurs">
             <option value="">Tous les effectifs</option>
@@ -162,8 +153,8 @@ export default function Ateliers() {
             {Array.from(new Set((jeux ?? []).map((j) => j.typeJeu).filter(Boolean))).map((ty) => <option key={ty}>{ty}</option>)}
           </Select>
         </>}
-        {(onglet === "outils" || onglet === "affichages") && courant.length > 0 && <>
-          {onglet === "outils" && (eleves ?? []).some((e) => outils.some((o) => elevesDe(o).includes(e.id))) && (
+        {(outilsClasse?.length ?? 0) > 0 && <>
+          {(eleves ?? []).some((e) => outils.some((o) => elevesDe(o).includes(e.id))) && (
             <Select value={pourEleve} onChange={(e) => setPourEleve(e.target.value)} style={{ maxWidth: 170 }}
               title="Les outils dont se sert cet élève">
               <option value="">Tous les élèves</option>
@@ -173,7 +164,7 @@ export default function Ateliers() {
           )}
           <Select value={categorie} onChange={(e) => setCategorie(e.target.value)} style={{ maxWidth: 190 }}>
             <option value="">Toutes les catégories</option>
-            {Array.from(new Set((onglet === "outils" ? outils : affichages).map((o) => o.categorie).filter(Boolean)))
+            {Array.from(new Set((outilsClasse ?? []).map((o) => o.categorie).filter(Boolean)))
               .map((c) => <option key={c}>{c}</option>)}
           </Select>
         </>}
@@ -243,7 +234,7 @@ export default function Ateliers() {
             couleur: couleurHex[o.couleur], apercu: apercu(o.imageNom, o.genre === "outil" ? "🧰" : "🖼") })),
         ];
         return (
-          <Rangement key={ESPACE_COMMUN} espace={ESPACE_COMMUN} racine="Ateliers & Espaces" elements={elements} filtre={onglet !== "tout"}
+          <Rangement key={ESPACE_COMMUN} espace={ESPACE_COMMUN} racine="Ateliers & Espaces" elements={elements}
             dossier={dossier} setDossier={setDossier}
             onOuvrir={(cle) => { const a = aiguiller(cle); a?.g.ouvrir(a.id); }}
             onRanger={async (cle, d) => { const a = aiguiller(cle); if (a) await a.g.ranger(a.id, d); }}
@@ -251,22 +242,20 @@ export default function Ateliers() {
             onRecharger={() => { rA(); rE(); rJ(); rO(); }}
             actions={(cle) => { const a = aiguiller(cle); return a ? a.g.actions(a.id) : []; }}
             creations={creations.map(({ label, icon, onClick }) => ({ label, icon, onClick }))}
-            vide={onglet === "tout"
-              ? { icone: "🗂", titre: "Le bureau est vide", sous: "Clic droit sur le bureau, ou « + Ajouter », pour y poser un atelier, un espace, un jeu, un outil ou un affichage." }
-              : { icone: creations[0]?.icon ?? "🗂", titre: "Rien de ce genre ici", sous: `Créez-en un avec « + ${creations[0]?.court ?? ""} », ou revenez sur « Tout ».` }} />
+            vide={{ icone: "🗂", titre: "Le bureau est vide", sous: "Clic droit sur le bureau, ou « + Ajouter », pour y poser un atelier, un espace, un jeu, un outil ou un affichage." }} />
         );
       })()}
 
       {/* En cartes, « Tout » montre chaque sorte à la suite, sous son titre ;
           une sorte vide se tait au lieu d'afficher son « Aucun… ». */}
-      {!enBureau && onglet === "tout"
+      {!enBureau
         && filtrer<{ titre: string }>([...(ateliers ?? []), ...(espaces ?? []), ...(jeux ?? []), ...(outilsClasse ?? [])]).length === 0 && (
         <Empty icone="🔍" titre={cherche ? "Rien ne correspond" : "Rien pour l'instant"}
           sous={cherche ? "Essayez un autre mot." : "Ajoutez un atelier, un espace, un jeu, un outil ou un affichage avec « + Ajouter »."} />
       )}
 
-      {!enBureau && onglet === "tout" && filtrer(ateliers ?? []).length > 0 && <h3 className="titre-sorte">🧩 Ateliers</h3>}
-      {!enBureau && montre("ateliers") && (onglet !== "tout" || filtrer(ateliers ?? []).length > 0) && (
+      {!enBureau && montre("ateliers") && filtrer(ateliers ?? []).length > 0 && <h3 className="titre-sorte">🧩 Ateliers</h3>}
+      {!enBureau && montre("ateliers") && filtrer(ateliers ?? []).length > 0 && (
         (ateliers?.length ?? 0) === 0 ? <Empty icone="🧩" titre="Aucun atelier" /> :
         <div className="grid cols">
           {filtrer(ateliers!).map((a) => (
@@ -295,8 +284,8 @@ export default function Ateliers() {
         </div>
       )}
 
-      {!enBureau && onglet === "tout" && filtrer(espaces ?? []).length > 0 && <h3 className="titre-sorte">🪑 Espaces</h3>}
-      {!enBureau && montre("espaces") && (onglet !== "tout" || filtrer(espaces ?? []).length > 0) && (
+      {!enBureau && montre("espaces") && filtrer(espaces ?? []).length > 0 && <h3 className="titre-sorte">🪑 Espaces</h3>}
+      {!enBureau && montre("espaces") && filtrer(espaces ?? []).length > 0 && (
         (espaces?.length ?? 0) === 0 ? <Empty icone="🪑" titre="Aucun espace" /> :
         <div className="grid cols">
           {filtrer(espaces!).map((e) => {
@@ -327,8 +316,8 @@ export default function Ateliers() {
         </div>
       )}
 
-      {!enBureau && onglet === "tout" && filtrer(jeux ?? []).length > 0 && <h3 className="titre-sorte">🎲 Jeux</h3>}
-      {!enBureau && montre("jeux") && (onglet !== "tout" || filtrer(jeux ?? []).length > 0) && (
+      {!enBureau && montre("jeux") && filtrer(jeux ?? []).length > 0 && <h3 className="titre-sorte">🎲 Jeux</h3>}
+      {!enBureau && montre("jeux") && filtrer(jeux ?? []).length > 0 && (
         (jeux?.length ?? 0) === 0
           ? <Empty icone="🎲" titre="Aucun jeu"
               sous="Recensez les jeux de la classe : à combien on y joue, combien de temps, ce qu'ils travaillent et où ils sont rangés." />
@@ -373,9 +362,9 @@ export default function Ateliers() {
 
       {!enBureau && (["outil", "affichage"] as const)
         .filter((genre) => montre(genre === "outil" ? "outils" : "affichages"))
-        .filter((genre) => onglet !== "tout" || filtrer(genre === "outil" ? outils : affichages).length > 0)
+        .filter((genre) => filtrer(genre === "outil" ? outils : affichages).length > 0)
         .map((genre) => <React.Fragment key={genre}>
-        {onglet === "tout" && <h3 className="titre-sorte">{genre === "outil" ? "🧰 Outils pour l'élève" : "🖼 Affichages"}</h3>}
+        <h3 className="titre-sorte">{genre === "outil" ? "🧰 Outils pour l'élève" : "🖼 Affichages"}</h3>
         {(() => {
         const tous = genre === "outil" ? outils : affichages;
         if (tous.length === 0) {
