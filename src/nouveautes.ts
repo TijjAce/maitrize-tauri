@@ -18,6 +18,14 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.11",
+    titre: "Un seul bureau pour les ateliers, les jeux, les outils et les affichages",
+    points: [
+      { quoi: "Ateliers, espaces, jeux, outils et affichages se rangent sur un même bureau : un dossier « cycle 1 » peut réunir un jeu, l'outil qui va avec et l'affichage du coin. Les onglets ne font plus que filtrer ce qu'on voit, et « Tout » montre le bureau entier.", ou: "Ateliers & Espaces" },
+      { quoi: "Les barres d'onglets ont la même taille et la même place sur toutes les pages." },
+    ],
+  },
+  {
     version: "1.6.10",
     titre: "Retrouver ce qu'on a écrit, et ne plus rien perdre entre les deux ordinateurs",
     points: [
@@ -32,6 +40,8 @@ export const NOUVEAUTES: Nouveaute[] = [
       { quoi: "Le bureau se recopie dans un vrai dossier du Bureau de l'ordinateur, lisible sans l'app.", ou: "Réglages · Données" },
       { quoi: "Synchronisation : une ligne qu'une version ne sait pas écrire n'annule plus tout l'envoi, et deux tableaux créés chacun de son côté se gardent tous les deux." },
       { quoi: "Une fois par mois, l'app relit pour de vrai la dernière sauvegarde et prévient si elle n'est pas restaurable.", ou: "Réglages · Données" },
+      { quoi: "Un bouton « Ranger » remet les icônes en ordre, dossiers d'abord puis par nom, là où un déplacement a laissé des trous.", ou: "Ateliers & Espaces · Plan de travail" },
+      { quoi: "Une fenêtre figée ou une commande qui ne répond plus laisse une trace dans le journal d'incidents, pour qu'on puisse comprendre ce qui s'est passé.", ou: "Réglages · Données" },
     ],
   },
 ];

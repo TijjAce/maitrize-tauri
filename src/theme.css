@@ -297,6 +297,10 @@ input, textarea, select { font-family: inherit; font-size: 14px; }
    est étroite plutôt que de déborder. */
 .onglets { margin-bottom: 18px; flex-wrap: wrap; }
 
+/* En cartes sur « Tout » : le titre de chaque sorte, discret, au-dessus de sa grille. */
+.titre-sorte { font-size: 14px; font-weight: 700; color: var(--text-2); margin: 20px 0 10px; }
+.titre-sorte:first-of-type { margin-top: 4px; }
+
 table.tbl { width: 100%; border-collapse: collapse; }
 table.tbl th, table.tbl td { padding: 9px 10px; border-bottom: 1px solid var(--border); text-align: left; }
 table.tbl th { font-size: 12px; color: var(--text-2); text-transform: uppercase; letter-spacing: .4px; }
