@@ -39,7 +39,7 @@ export interface ElementRange {
   apercu: React.ReactNode;
 }
 
-export function Rangement({ espace, racine, elements, dossier, setDossier, onOuvrir, onRanger, onSupprimer, onRecharger, actions, creations, vide }: {
+export function Rangement({ espace, racine, elements, dossier, setDossier, onOuvrir, onRanger, onSupprimer, onRecharger, actions, creations, vide, filtre = false }: {
   /** Nom de l'onglet, pour ses réglages : « jeux », « espaces »… */
   espace: string;
   /** Nom de la racine dans le fil d'Ariane. */
@@ -57,6 +57,12 @@ export function Rangement({ espace, racine, elements, dossier, setDossier, onOuv
   /** Ce qu'on crée d'un clic droit sur la surface, dans le dossier courant. */
   creations: { label: string; icon: string; onClick: () => void }[];
   vide: { icone: string; titre: string; sous: string };
+  /**
+   * Le bureau ne montre qu'une partie de ce qu'il contient (un onglet filtre).
+   * Un dossier qui ne contient rien de ce qu'on regarde s'efface alors : sans
+   * cela, chaque filtre traînerait les dossiers vides des autres.
+   */
+  filtre?: boolean;
 }) {
   const prefixeDossier = `rangement:${espace}:dossier:`;
   const prefixePlace = `rangement:${espace}:place:`;
@@ -97,7 +103,7 @@ export function Rangement({ espace, racine, elements, dossier, setDossier, onOuv
     });
   };
 
-  const dossiers = sousDossiers(elements.map((e) => ({ id: e.cle, dossier: e.dossier })), dossier, Object.keys(couleurs));
+  const dossiers = sousDossiers(elements.map((e) => ({ id: e.cle, dossier: e.dossier })), dossier, filtre ? [] : Object.keys(couleurs));
   const ici = elements.filter((e) => normaliser(e.dossier) === dossier).sort((a, b) => a.titre.localeCompare(b.titre, "fr"));
   const cleDossier = (d: SousDossier) => `d:${d.nom}`;
 
@@ -130,6 +136,9 @@ export function Rangement({ espace, racine, elements, dossier, setDossier, onOuv
     const gauche = x - r.left - decalage.dx + CASE_L / 2, haut = y - r.top - decalage.dy + CASE_H / 2;
     return { col: Math.min(nbCols - 1, Math.max(0, Math.floor(gauche / CASE_L))), rang: Math.max(0, Math.floor(haut / CASE_H)) };
   };
+  // Un filtre masque une partie du bureau : ce qu'on n'y voit pas garde sa
+  // place quand on en déplace un autre, au lieu de l'oublier à chaque geste.
+  const placesGardees = (visibles: Positions): Positions => ({ ...(dispositions[dossier] ?? {}), ...visibles });
   const commencerGlisser = (cle: string, e: React.DragEvent<HTMLElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
     glisse.current = { cle, dx: e.clientX - r.left, dy: e.clientY - r.top };
@@ -142,7 +151,7 @@ export function Rangement({ espace, racine, elements, dossier, setDossier, onOuv
     if (!g || !c || !disposition[g.cle]) return;
     const actuelle = disposition[g.cle];
     if (actuelle.col === c.col && actuelle.rang === c.rang) return;
-    await ecrire({ [prefixePlace + dossier]: JSON.stringify(poser(disposition, g.cle, c, nbCols)) });
+    await ecrire({ [prefixePlace + dossier]: JSON.stringify(placesGardees(poser(disposition, g.cle, c, nbCols))) });
   };
   const caseCreation = React.useRef<Case | null>(null);
 
@@ -201,7 +210,7 @@ export function Rangement({ espace, racine, elements, dossier, setDossier, onOuv
       if (!couleurs[chemin]) ecritures[prefixeDossier + chemin] = SANS_COULEUR;
       const c = caseCreation.current;
       caseCreation.current = null;
-      if (c) ecritures[prefixePlace + dossier] = JSON.stringify(poser(disposition, `d:${chemin.slice(chemin.lastIndexOf("/") + 1)}`, c, nbCols));
+      if (c) ecritures[prefixePlace + dossier] = JSON.stringify(placesGardees(poser(disposition, `d:${chemin.slice(chemin.lastIndexOf("/") + 1)}`, c, nbCols)));
       await ecrire(ecritures);
     },
   });
