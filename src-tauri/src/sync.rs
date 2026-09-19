@@ -30,7 +30,7 @@ type R<T> = Result<T, String>;
 fn e<E: std::fmt::Display>(err: E) -> String { err.to_string() }
 
 #[derive(Clone)]
-struct S3Cfg { endpoint: String, region: String, bucket: String, access: String, secret: String }
+pub(crate) struct S3Cfg { pub(crate) endpoint: String, pub(crate) region: String, pub(crate) bucket: String, pub(crate) access: String, pub(crate) secret: String }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -77,7 +77,7 @@ fn vers_32(v: Vec<u8>) -> R<[u8; 32]> {
     <[u8; 32]>::try_from(v.as_slice()).map_err(|_| "clé de taille invalide".to_string())
 }
 
-fn set_setting(c: &Connection, cle: &str, valeur: &str) -> R<()> {
+pub(crate) fn set_setting(c: &Connection, cle: &str, valeur: &str) -> R<()> {
     c.execute(
         "INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)",
         params![cle, valeur],
@@ -85,7 +85,7 @@ fn set_setting(c: &Connection, cle: &str, valeur: &str) -> R<()> {
     Ok(())
 }
 
-fn get_setting(c: &Connection, cle: &str) -> String {
+pub(crate) fn get_setting(c: &Connection, cle: &str) -> String {
     c.query_row("SELECT valeur FROM settings WHERE cle = ?1", [cle], |r| r.get(0))
         .optional().ok().flatten().unwrap_or_default()
 }
@@ -124,7 +124,7 @@ fn contexte(db: &State<Db>, ami_id: &str) -> R<Ctx> {
     Ok(Ctx { priv_: vers_32(pv)?, pub_: vers_32(pb)?, nom, ami_pub: vers_32(apub)?, mid, cfg })
 }
 
-fn client(cfg: &S3Cfg) -> Client {
+pub(crate) fn client(cfg: &S3Cfg) -> Client {
     let creds = Credentials::new(cfg.access.clone(), cfg.secret.clone(), None, None, "maitrize");
     let conf = aws_sdk_s3::Config::builder()
         .behavior_version(BehaviorVersion::latest())
@@ -147,7 +147,7 @@ fn cle_paire(priv32: [u8; 32], pub32: [u8; 32], mid: &str) -> [u8; 32] {
     okm
 }
 
-fn chiffrer(key: &[u8; 32], data: &[u8]) -> R<Vec<u8>> {
+pub(crate) fn chiffrer(key: &[u8; 32], data: &[u8]) -> R<Vec<u8>> {
     let cipher = XChaCha20Poly1305::new(Key::from_slice(key));
     let mut nonce = [0u8; 24];
     OsRng.fill_bytes(&mut nonce);
@@ -157,7 +157,7 @@ fn chiffrer(key: &[u8; 32], data: &[u8]) -> R<Vec<u8>> {
     Ok(out)
 }
 
-fn dechiffrer(key: &[u8; 32], blob: &[u8]) -> R<Vec<u8>> {
+pub(crate) fn dechiffrer(key: &[u8; 32], blob: &[u8]) -> R<Vec<u8>> {
     if blob.len() < 24 { return Err("blob trop court".into()); }
     let (nonce, ct) = blob.split_at(24);
     let cipher = XChaCha20Poly1305::new(Key::from_slice(key));

@@ -22,6 +22,8 @@ import { OutilForm } from "../components/OutilForm";
 import { AtelierForm, EspaceForm, SuiviEspace } from "./Ateliers";
 import { CLE_FUSION, EVT_CHERCHER_BUREAU, fusionnerDansLePlanDeTravail } from "../bureauAteliers";
 import type { CtxItem } from "../components/ctxmenu";
+import { BureauCommun, deposerSurLeBureauCommun } from "../components/BureauCommun";
+import { confirmer } from "../components/confirmer";
 import { contenuDirect, nature } from "../bureau";
 import { lireVideos, lireLien, vignetteYoutube } from "../videos";
 import { useFileDropZone, estPdf, estImage, estDocument, typeDocument, fichierEnBase64, EXTENSIONS_DOCUMENTS } from "../dragdrop";
@@ -197,7 +199,8 @@ export default function PlanDeTravail() {
   const [dispositions, setDispositions] = React.useState<Record<string, Positions>>({});
   // Relus aussi quand des données arrivent de l'autre ordinateur : un dossier
   // créé là-bas, même vide, doit paraître ici sans rouvrir le plan de travail.
-  const { data: reglages } = useAsync(() => api.settingsAll(), []);
+  const { data: reglages, reload: rReglages } = useAsync(() => api.settingsAll(), []);
+  const [communOuvert, setCommunOuvert] = React.useState(false);
   React.useEffect(() => {
     if (!reglages) return;
     setCouleurs(lireCouleurs(reglages));
@@ -502,6 +505,29 @@ export default function PlanDeTravail() {
     toast(`${touches.length} élément(s) remonté(s) d'un dossier`, { icone: "📂" });
   };
 
+  // ── Bureau commun ──
+  // Un dossier part entier, sous-dossiers et fichiers compris. C'est une
+  // publication vers des collègues : on la confirme, en disant ce qui ne part pas.
+  const deposerAuCommun = async (d: SousDossier) => {
+    const info = await api.communInfo().catch(() => null);
+    if (!info) {
+      setCommunOuvert(true);
+      toast("Créez ou rejoignez d'abord un bureau commun.", { icone: "🤝" });
+      return;
+    }
+    if (!(await confirmer(
+      `Déposer « ${d.nom} » (${d.total} élément${d.total > 1 ? "s" : ""}) sur le bureau commun « ${info.nom} » ? `
+      + "Vos collègues pourront le récupérer. Les bilans de séance et les élèves associés aux outils ne partent pas ; "
+      + "les textes et documents partent tels qu'ils sont écrits.", { oui: "Déposer" }))) return;
+    toast(`Dépôt de « ${d.nom} »…`, { icone: "📤", duree: 4000 });
+    try {
+      const depot = await deposerSurLeBureauCommun(d.chemin);
+      toast(`« ${d.nom} » est sur le bureau commun (${depot.elements} élément${depot.elements > 1 ? "s" : ""}).`, { icone: "🤝" });
+    } catch (e) {
+      toast("Dépôt impossible : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
+    }
+  };
+
   // ── Créations ──
   const creerSequence = async () => {
     const s: Sequence = {
@@ -631,6 +657,8 @@ export default function PlanDeTravail() {
             pour quel élève — qu'un bureau ne saurait pas offrir. */}
         <button className="btn ghost sm" onClick={() => nav("/ateliers")}
           title="Ateliers, espaces, jeux, outils et affichages en fiches, avec leurs filtres">▦ Fiches</button>
+        <button className="btn ghost sm" onClick={() => setCommunOuvert(true)}
+          title="Partager des dossiers entiers avec des collègues, et récupérer les leurs">🤝 Bureau commun</button>
         {copie?.active && (
           <button className="btn ghost sm" onClick={ouvrirCopie}
             title={`Ouvrir la copie de ce bureau sur l'ordinateur : ${copie.racine}`}>🗂 Copie sur l'ordinateur</button>
@@ -745,6 +773,7 @@ export default function PlanDeTravail() {
                       onColorer={() => setAColorer(d)}
                       onRenommer={() => renommerDossier(d)}
                       onVider={() => setDossierASupprimer(d)}
+                      onDeposer={() => { void deposerAuCommun(d); }}
                       onGlisser={(e) => commencerGlisser(cleDossier(d), e)} onFinGlisser={finirGlisser}
                       estSaisi={() => glisse.current?.cle === cleDossier(d)} />
                   </div>
@@ -799,6 +828,12 @@ export default function PlanDeTravail() {
       {texteOuvert && (
         <EditeurTexte texte={texteOuvert} onClose={() => { setTexteOuvert(null); recharger(); }} />
       )}
+      {communOuvert && (
+        <BureauCommun
+          dossiersPris={new Set(sousDossiers(elements, "", Object.keys(couleurs)).map((d) => d.chemin.toLowerCase()))}
+          onClose={() => setCommunOuvert(false)}
+          onRecupere={(ou) => { recharger(); rReglages(); setQ(""); setDossier(""); void ou; }} />
+      )}
       {editA && <AtelierForm a={editA} onClose={() => setEditA(null)} onSaved={() => { setEditA(null); recharger(); }} />}
       {editE && <EspaceForm e={editE} ateliers={ateliers ?? []} liens={liens ?? []}
         onClose={() => setEditE(null)} onSaved={() => { setEditE(null); recharger(); rL(); }} />}
@@ -825,10 +860,12 @@ export default function PlanDeTravail() {
 }
 
 /** Un dossier posé sur le bureau : on y entre, on y dépose. */
-function TuileDossier({ dossier, survole, couleur, onOuvrir, onSurvol, onDepose, onColorer, onRenommer, onVider, onGlisser, onFinGlisser, estSaisi }: {
+function TuileDossier({ dossier, survole, couleur, onOuvrir, onSurvol, onDepose, onColorer, onRenommer, onVider, onDeposer, onGlisser, onFinGlisser, estSaisi }: {
   dossier: SousDossier; survole: boolean; couleur: string; onOuvrir: () => void;
   onSurvol: (c: string | null) => void; onDepose: (dt: DataTransfer) => void;
   onColorer: () => void; onRenommer: () => void; onVider: () => void;
+  /** Partager ce dossier, entier, sur le bureau commun avec des collègues. */
+  onDeposer?: () => void;
   onGlisser?: (e: React.DragEvent<HTMLElement>) => void; onFinGlisser?: () => void;
   /** Vrai quand c'est ce dossier même qu'on déplace : il ne se reçoit pas, il se pose ailleurs. */
   estSaisi?: () => boolean;
@@ -854,6 +891,7 @@ function TuileDossier({ dossier, survole, couleur, onOuvrir, onSurvol, onDepose,
         { label: "Ouvrir", icon: "📂", onClick: onOuvrir },
         { label: "Renommer", icon: "✏️", onClick: onRenommer },
         { label: "Couleur…", icon: "🎨", onClick: onColorer },
+        ...(onDeposer ? [{ label: "Déposer sur le bureau commun", icon: "🤝", sep: true, onClick: onDeposer }] : []),
         { label: "Supprimer le dossier", icon: "🗑", danger: true, sep: true, onClick: onVider },
       ])}
       title={`${dossier.nom} — ${dossier.total} élément(s)`}
