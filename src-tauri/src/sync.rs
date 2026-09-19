@@ -30,7 +30,7 @@ type R<T> = Result<T, String>;
 fn e<E: std::fmt::Display>(err: E) -> String { err.to_string() }
 
 #[derive(Clone)]
-pub(crate) struct S3Cfg { pub(crate) endpoint: String, pub(crate) region: String, pub(crate) bucket: String, pub(crate) access: String, pub(crate) secret: String }
+struct S3Cfg { endpoint: String, region: String, bucket: String, access: String, secret: String }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -90,7 +90,7 @@ pub(crate) fn get_setting(c: &Connection, cle: &str) -> String {
         .optional().ok().flatten().unwrap_or_default()
 }
 
-pub(crate) fn lire_cfg(c: &Connection) -> R<S3Cfg> {
+fn lire_cfg(c: &Connection) -> R<S3Cfg> {
     let region = { let r = get_setting(c, "sync_region"); if r.is_empty() { "us-east-1".into() } else { r } };
     let cfg = S3Cfg {
         endpoint: get_setting(c, "sync_endpoint"),
@@ -124,7 +124,7 @@ fn contexte(db: &State<Db>, ami_id: &str) -> R<Ctx> {
     Ok(Ctx { priv_: vers_32(pv)?, pub_: vers_32(pb)?, nom, ami_pub: vers_32(apub)?, mid, cfg })
 }
 
-pub(crate) fn client(cfg: &S3Cfg) -> Client {
+fn client(cfg: &S3Cfg) -> Client {
     let creds = Credentials::new(cfg.access.clone(), cfg.secret.clone(), None, None, "maitrize");
     let conf = aws_sdk_s3::Config::builder()
         .behavior_version(BehaviorVersion::latest())
@@ -147,7 +147,7 @@ fn cle_paire(priv32: [u8; 32], pub32: [u8; 32], mid: &str) -> [u8; 32] {
     okm
 }
 
-pub(crate) fn chiffrer(key: &[u8; 32], data: &[u8]) -> R<Vec<u8>> {
+fn chiffrer(key: &[u8; 32], data: &[u8]) -> R<Vec<u8>> {
     let cipher = XChaCha20Poly1305::new(Key::from_slice(key));
     let mut nonce = [0u8; 24];
     OsRng.fill_bytes(&mut nonce);
@@ -157,7 +157,7 @@ pub(crate) fn chiffrer(key: &[u8; 32], data: &[u8]) -> R<Vec<u8>> {
     Ok(out)
 }
 
-pub(crate) fn dechiffrer(key: &[u8; 32], blob: &[u8]) -> R<Vec<u8>> {
+fn dechiffrer(key: &[u8; 32], blob: &[u8]) -> R<Vec<u8>> {
     if blob.len() < 24 { return Err("blob trop court".into()); }
     let (nonce, ct) = blob.split_at(24);
     let cipher = XChaCha20Poly1305::new(Key::from_slice(key));
