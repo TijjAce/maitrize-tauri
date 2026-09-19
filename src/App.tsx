@@ -9,6 +9,7 @@ import Organisation from "./pages/Organisation";
 import Eleves from "./pages/Eleves";
 import Referentiels from "./pages/Referentiels";
 import PlanDeTravail from "./pages/PlanDeTravail";
+import BureauxCommuns from "./pages/BureauxCommuns";
 import Jeux from "./pages/Jeux";
 import Adapter from "./pages/Adapter";
 import Ressources from "./pages/Ressources";
@@ -101,6 +102,7 @@ function KeepAliveHost({ pathname }: { pathname: string }) {
             <Routes>
               <Route path="/planning" element={<Planning />} />
               <Route path="/sequences/:id" element={<SequenceDetail />} />
+              <Route path="/commun" element={<BureauxCommuns />} />
               {/* Les anciens chemins restent valides : la palette ⌘K, le
                   tableau de bord et l'accueil y renvoient encore, et un lien
                   mort vaudrait moins qu'une redirection. */}

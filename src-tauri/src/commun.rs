@@ -1,477 +1,456 @@
-//! Le bureau commun : des dossiers qu'on partage avec des collègues.
+//! Les bureaux communs : des dossiers partagés avec des collègues.
 //!
-//! Chacun garde son propre bureau. Le bureau commun reçoit des dossiers entiers
-//! — séquences, matériel, jeux, outils, avec leurs fichiers — que chacun peut
-//! déposer et récupérer, dans les deux sens. Déposer à nouveau un dossier du
-//! même nom remplace le précédent dépôt de la même personne.
+//! Un bureau commun est un dossier de l'ordinateur, choisi par l'enseignant,
+//! que son service de stockage — Nuage (apps.education.fr), OneDrive, Google
+//! Drive, un Nextcloud… — partage et synchronise avec ses collègues. Maitrize
+//! n'y fait que lire et écrire des fichiers. Le transport, les comptes, qui a
+//! le droit d'y entrer : tout cela relève du service, où l'enseignant décide
+//! de chaque partage, personne par personne. Maitrize ne garde aucune clé.
 //!
-//! Il vit sur le **même bucket** que le reste — sauvegardes, synchronisation —,
-//! dans son propre dossier `maitrize-commun/<id>/`. Rien n'oblige à y ranger
-//! autre chose : un collègue qui rejoint le bureau commun n'a pas à y mettre
-//! ses sauvegardes. Et chacun n'y lit que ce qui est partagé :
+//! Plusieurs bureaux communs peuvent coexister — l'équipe de l'IME, les
+//! collègues de la circonscription, un binôme… Leur liste reste sur cet
+//! ordinateur : le chemin du dossier partagé n'est pas le même sur un Mac et
+//! sur un PC.
 //!
-//! - tout y est chiffré, chaque chose avec sa clé : le bureau commun avec la
-//!   sienne (XChaCha20-Poly1305), les sauvegardes avec la phrase de chacun,
-//!   la synchronisation avec la sienne. Un collègue qui aurait la même clé
-//!   d'accès au bucket ne pourrait lire que le bureau commun ;
-//! - mieux, on peut donner aux collègues une **clé d'accès limitée** au dossier
-//!   `maitrize-commun/` (réglée chez l'hébergeur) : ils ne voient alors même
-//!   pas passer le reste, et ne peuvent rien y effacer.
-//!
-//! La clé du bureau voyage dans son **code**, avec l'accès au bucket — qui a le
-//! code peut lire et déposer, comme on confie une clé de salle. Il se transmet
-//! en main propre ou par un message privé, et se colle sur chaque ordinateur.
-//!
-//! Le paquet d'un dossier est fabriqué et relu par l'interface, qui connaît les
-//! fiches ; ce module ne fait que le chiffrer, le poser et le reprendre.
+//! Chaque commande désigne un bureau par son identifiant et un chemin
+//! **relatif** à son dossier : rien ne peut lire ni écrire en dehors.
 
 use crate::db::Db;
-use crate::sync::{chiffrer, client, dechiffrer, S3Cfg};
-use aws_sdk_s3::primitives::ByteStream;
-use base64::{engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD}, Engine as _};
-use rand_core::{OsRng, RngCore};
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
+use std::path::{Component, Path, PathBuf};
 use tauri::State;
 
 type R<T> = Result<T, String>;
 fn e<E: std::fmt::Display>(err: E) -> String { err.to_string() }
 
-/// Le réglage où l'ordinateur garde le bureau commun. Il ne voyage pas, ni par
-/// la synchronisation ni dans une sauvegarde : c'est une clé (voir journal.rs).
-pub const CLE_COMMUN: &str = "commun";
+/// Le réglage qui garde la liste des bureaux communs de cet ordinateur.
+pub const CLE_BUREAUX: &str = "bureauxCommuns";
 
-/// Préfixe d'un code de bureau commun, pour le reconnaître d'un coup d'œil.
-const PREFIXE_CODE: &str = "MZC1.";
-
-/// Ce que contient le code d'un bureau commun : son nom, sa clé, son stockage.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct Commun {
-    pub v: u8,
-    pub id: String,
-    pub nom: String,
-    /// Clé de chiffrement du bureau, 32 octets en base64.
-    pub cle: String,
-    pub endpoint: String,
-    pub region: String,
-    pub bucket: String,
-    pub access: String,
-    pub secret: String,
-}
-
-impl Commun {
-    fn cle_32(&self) -> R<[u8; 32]> {
-        let octets = STANDARD.decode(&self.cle).map_err(|_| "Clé du bureau commun illisible.".to_string())?;
-        <[u8; 32]>::try_from(octets.as_slice()).map_err(|_| "Clé du bureau commun de taille invalide.".to_string())
-    }
-    fn stockage(&self) -> S3Cfg {
-        S3Cfg {
-            endpoint: self.endpoint.clone(),
-            region: self.region.clone(),
-            bucket: self.bucket.clone(),
-            access: self.access.clone(),
-            secret: self.secret.clone(),
-        }
-    }
-    /// Le dossier du stockage qui appartient à ce bureau commun.
-    fn racine(&self) -> String {
-        format!("maitrize-commun/{}/", self.id)
-    }
-}
-
-/// Le code à transmettre aux collègues.
-pub fn encoder(c: &Commun) -> String {
-    let json = serde_json::to_vec(c).unwrap_or_default();
-    format!("{PREFIXE_CODE}{}", URL_SAFE_NO_PAD.encode(json))
-}
-
-/// Relit un code collé. Un code abîmé est refusé clairement, jamais « réparé ».
-pub fn decoder(code: &str) -> R<Commun> {
-    let brut = code.trim();
-    let corps = brut
-        .strip_prefix(PREFIXE_CODE)
-        .ok_or_else(|| "Ce n'est pas un code de bureau commun : il commence par « MZC1. ».".to_string())?;
-    let json = URL_SAFE_NO_PAD
-        .decode(corps.trim())
-        .map_err(|_| "Code incomplet : copiez-le en entier, sans espace ni retour à la ligne.".to_string())?;
-    let c: Commun = serde_json::from_slice(&json).map_err(|_| "Code illisible.".to_string())?;
-    if c.v != 1 {
-        return Err("Ce code vient d'une version plus récente de Maitrize : mettez l'application à jour.".into());
-    }
-    if c.id.trim().is_empty() || c.endpoint.trim().is_empty() || c.bucket.trim().is_empty()
-        || c.access.trim().is_empty() || c.secret.trim().is_empty()
-    {
-        return Err("Code incomplet : il manque l'accès au stockage.".into());
-    }
-    c.cle_32()?;
-    Ok(c)
-}
-
-/// L'identifiant d'un dépôt : le même dossier déposé par la même personne
-/// remplace le précédent, deux personnes ne s'écrasent pas.
-pub fn identifiant_depot(bureau: &str, auteur: &str, dossier: &str) -> String {
-    let normal = |s: &str| s.trim().to_lowercase();
-    let mut h = Sha256::new();
-    h.update(format!("{bureau}\u{1f}{}\u{1f}{}", normal(auteur), normal(dossier)).as_bytes());
-    h.finalize().iter().take(12).map(|b| format!("{b:02x}")).collect()
-}
-
-/// Ce qu'on sait d'un dossier déposé, sans en télécharger le contenu.
+/// Un bureau commun : un nom, et le dossier partagé qui le porte.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct Depot {
+pub struct BureauCommun {
     pub id: String,
-    pub dossier: String,
-    pub auteur: String,
-    pub date: String,
-    pub elements: usize,
-    pub octets: usize,
-}
-
-/// Ce que l'interface montre du bureau commun : jamais la clé seule, mais le
-/// code entier, pour qu'on puisse le transmettre.
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct InfoCommun {
     pub nom: String,
-    pub code: String,
-    pub endpoint: String,
-    pub bucket: String,
+    pub chemin: String,
+    /// Le dossier est-il là ? (le service de stockage peut ne pas l'avoir encore synchronisé)
+    #[serde(default)]
+    pub present: bool,
 }
 
-fn info(c: &Commun) -> InfoCommun {
-    InfoCommun { nom: c.nom.clone(), code: encoder(c), endpoint: c.endpoint.clone(), bucket: c.bucket.clone() }
+/// Un élément d'un bureau commun : un dossier ou un fichier.
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct EntreeCommune {
+    pub nom: String,
+    /// Chemin relatif au bureau commun, avec des « / ».
+    pub chemin: String,
+    pub dossier: bool,
+    pub octets: u64,
+    /// Dernière modification, pour montrer ce qui vient d'arriver.
+    pub modifie: String,
+    /// Pour un dossier : combien d'éléments il contient.
+    pub elements: usize,
 }
 
-fn lire(db: &State<'_, Db>) -> R<Commun> {
+fn lire_bureaux(db: &State<'_, Db>) -> Vec<BureauCommun> {
     let c = db.lock();
-    let brut = crate::sync::get_setting(&c, CLE_COMMUN);
-    if brut.trim().is_empty() {
-        return Err("Aucun bureau commun sur cet ordinateur : créez-en un, ou collez le code reçu.".into());
-    }
-    serde_json::from_str(&brut).map_err(|_| "Réglage du bureau commun illisible : collez de nouveau le code.".to_string())
+    serde_json::from_str(&crate::sync::get_setting(&c, CLE_BUREAUX)).unwrap_or_default()
 }
 
-fn noter(db: &State<'_, Db>, c: &Commun) -> R<()> {
-    let json = serde_json::to_string(c).map_err(e)?;
-    let conn = db.lock();
-    crate::sync::set_setting(&conn, CLE_COMMUN, &json)
-}
-
-/// Vérifie qu'on atteint bien le stockage, pour échouer tout de suite plutôt
-/// qu'au premier dépôt.
-async fn essayer(c: &Commun) -> R<()> {
-    client(&c.stockage())
-        .list_objects_v2()
-        .bucket(&c.bucket)
-        .prefix(c.racine())
-        .max_keys(1)
-        .send()
-        .await
-        .map(|_| ())
-        .map_err(|err| format!("Stockage injoignable avec ces accès : {err}"))
-}
-
-#[tauri::command]
-pub fn commun_info(db: State<'_, Db>) -> R<Option<InfoCommun>> {
-    Ok(lire(&db).ok().map(|c| info(&c)))
-}
-
-/// Le stockage et la clé du bureau commun : ce qui est donné, sinon le stockage
-/// déjà réglé — un seul bucket pour tout.
-///
-/// La clé va par paire : une clé d'accès sans son secret ne remplace rien, pour
-/// ne jamais mêler la clé limitée d'un côté et le secret complet de l'autre.
-pub(crate) fn choisir_stockage(principal: Option<&S3Cfg>, donne: S3Cfg) -> S3Cfg {
-    let repli = |v: String, p: fn(&S3Cfg) -> &str| {
-        let v = v.trim().to_string();
-        if !v.is_empty() { v } else { principal.map(|x| p(x).to_string()).unwrap_or_default() }
-    };
-    let (access, secret) = if !donne.access.trim().is_empty() && !donne.secret.trim().is_empty() {
-        (donne.access.trim().to_string(), donne.secret.trim().to_string())
-    } else {
-        (repli(String::new(), |p| &p.access), repli(String::new(), |p| &p.secret))
-    };
-    S3Cfg {
-        endpoint: repli(donne.endpoint, |p| &p.endpoint),
-        region: repli(donne.region, |p| &p.region),
-        bucket: repli(donne.bucket, |p| &p.bucket),
-        access,
-        secret,
-    }
-}
-
-/// Crée un bureau commun.
-///
-/// Par défaut sur le stockage déjà réglé : un seul bucket pour tout. Une clé
-/// d'accès fournie ici (limitée au dossier du partage, idéalement) remplace
-/// celle du stockage dans le bureau commun et dans son code ; un stockage
-/// entièrement renseigné sert quand aucun n'est encore réglé.
-#[tauri::command]
-pub async fn commun_creer(
-    db: State<'_, Db>,
-    nom: String,
-    endpoint: String,
-    region: String,
-    bucket: String,
-    access: String,
-    secret: String,
-) -> R<InfoCommun> {
-    let principal = { let conn = db.lock(); crate::sync::lire_cfg(&conn).ok() };
-    let S3Cfg { endpoint, region, bucket, access, secret } =
-        choisir_stockage(principal.as_ref(), S3Cfg { endpoint, region, bucket, access, secret });
-    let mut cle = [0u8; 32];
-    OsRng.fill_bytes(&mut cle);
-    let c = Commun {
-        v: 1,
-        id: uuid::Uuid::new_v4().to_string(),
-        nom: if nom.trim().is_empty() { "Bureau commun".into() } else { nom.trim().to_string() },
-        cle: STANDARD.encode(cle),
-        endpoint: endpoint.trim().to_string(),
-        region: if region.trim().is_empty() { "us-east-1".into() } else { region.trim().to_string() },
-        bucket: bucket.trim().to_string(),
-        access: access.trim().to_string(),
-        secret: secret.trim().to_string(),
-    };
-    if c.endpoint.is_empty() || c.bucket.is_empty() || c.access.is_empty() || c.secret.is_empty() {
-        return Err("Aucun stockage réglé : renseignez l'adresse, le bucket et les deux clés, \
-                    ou réglez d'abord votre stockage dans Réglages › Données & synchro.".into());
-    }
-    essayer(&c).await?;
-    noter(&db, &c)?;
-    Ok(info(&c))
-}
-
-/// Rejoint un bureau commun avec le code reçu d'un collègue.
-#[tauri::command]
-pub async fn commun_rejoindre(db: State<'_, Db>, code: String) -> R<InfoCommun> {
-    let c = decoder(&code)?;
-    essayer(&c).await?;
-    noter(&db, &c)?;
-    Ok(info(&c))
-}
-
-/// Oublie le bureau commun sur cet ordinateur. Rien n'est effacé du stockage.
-#[tauri::command]
-pub fn commun_quitter(db: State<'_, Db>) -> R<()> {
+fn ecrire_bureaux(db: &State<'_, Db>, liste: &[BureauCommun]) -> R<()> {
+    let json = serde_json::to_string(liste).map_err(e)?;
     let c = db.lock();
-    c.execute("DELETE FROM settings WHERE cle = ?1", [CLE_COMMUN]).map_err(e)?;
-    Ok(())
+    crate::sync::set_setting(&c, CLE_BUREAUX, &json)
 }
 
-/// Les dossiers déposés, du plus récent au plus ancien.
-#[tauri::command]
-pub async fn commun_lister(db: State<'_, Db>) -> R<Vec<Depot>> {
-    let c = lire(&db)?;
-    let cle = c.cle_32()?;
-    let cl = client(&c.stockage());
-    let prefixe = format!("{}index/", c.racine());
-    let mut depots = Vec::new();
-    let mut suite: Option<String> = None;
-    loop {
-        let mut req = cl.list_objects_v2().bucket(&c.bucket).prefix(&prefixe);
-        if let Some(s) = &suite {
-            req = req.continuation_token(s);
+/// Le dossier d'un bureau commun, tel qu'il est sur le disque.
+fn racine(db: &State<'_, Db>, id: &str) -> R<PathBuf> {
+    let b = lire_bureaux(db)
+        .into_iter()
+        .find(|b| b.id == id)
+        .ok_or_else(|| "Bureau commun inconnu sur cet ordinateur.".to_string())?;
+    let p = PathBuf::from(&b.chemin);
+    if !p.is_dir() {
+        return Err(format!(
+            "Le dossier de « {} » est introuvable : le service de stockage l'a-t-il synchronisé sur cet ordinateur ?",
+            b.nom
+        ));
+    }
+    p.canonicalize().map_err(e)
+}
+
+/// Un chemin relatif sûr : pas de remontée, pas de chemin absolu, pas de
+/// séparateur étranger. Seuls des noms simples, séparés par « / ».
+pub fn segments(relatif: &str) -> R<Vec<String>> {
+    let mut sortie = Vec::new();
+    for seg in relatif.split('/').filter(|s| !s.is_empty()) {
+        let refuse = seg == "." || seg == ".." || seg.contains('\\') || seg.contains(':')
+            || seg.chars().any(|c| c.is_control());
+        if refuse {
+            return Err("Chemin refusé.".into());
         }
-        let page = req.send().await.map_err(|err| format!("Bureau commun injoignable : {err}"))?;
-        for objet in page.contents() {
-            let Some(nom) = objet.key() else { continue };
-            let Ok(reponse) = cl.get_object().bucket(&c.bucket).key(nom).send().await else { continue };
-            let Ok(corps) = reponse.body.collect().await else { continue };
-            // Un dépôt illisible (autre clé, fichier abîmé) est ignoré, pas fatal.
-            let Ok(clair) = dechiffrer(&cle, corps.into_bytes().as_ref()) else { continue };
-            if let Ok(d) = serde_json::from_slice::<Depot>(&clair) {
-                depots.push(d);
-            }
+        sortie.push(seg.to_string());
+    }
+    Ok(sortie)
+}
+
+/// Le chemin, sous la racine, d'un élément désigné par son chemin relatif.
+fn dans(racine: &Path, relatif: &str) -> R<PathBuf> {
+    let mut p = racine.to_path_buf();
+    for seg in segments(relatif)? {
+        p.push(seg);
+    }
+    // Un lien symbolique ne doit pas faire sortir du dossier partagé : on
+    // vérifie le plus proche ancêtre qui existe — le chemin lui-même, s'il
+    // existe. Ce qui reste à créer dessous n'est fait que de noms simples.
+    let existant = p.ancestors().find(|a| a.exists()).unwrap_or(racine);
+    let verifie = existant.canonicalize().map_err(e)?;
+    if !verifie.starts_with(racine) {
+        return Err("Chemin refusé.".into());
+    }
+    Ok(p)
+}
+
+/// Ce qu'un service de synchronisation ou un système laisse traîner, et
+/// qu'on ne montre pas : fichiers cachés, verrous, téléchargements en cours.
+pub fn est_parasite(nom: &str) -> bool {
+    let n = nom.to_lowercase();
+    nom.starts_with('.') || nom.starts_with("~$") || n == "desktop.ini" || n == "thumbs.db"
+        || n.ends_with(".part") || n.ends_with(".tmp") || n.ends_with(".crdownload")
+        || n.ends_with(".icloud")
+}
+
+/// Un nom libre dans le dossier : « nom.ext », sinon « nom (2).ext »…
+pub fn nom_libre(dossier: &Path, nom: &str) -> String {
+    if !dossier.join(nom).exists() {
+        return nom.to_string();
+    }
+    let (base, ext) = match nom.rfind('.') {
+        Some(i) if i > 0 => (&nom[..i], &nom[i..]),
+        _ => (nom, ""),
+    };
+    (2..)
+        .map(|i| format!("{base} ({i}){ext}"))
+        .find(|n| !dossier.join(n).exists())
+        .unwrap_or_else(|| nom.to_string())
+}
+
+fn relatif(racine: &Path, p: &Path) -> String {
+    p.strip_prefix(racine)
+        .unwrap_or(p)
+        .components()
+        .filter_map(|c| match c { Component::Normal(s) => s.to_str(), _ => None })
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+/// Les éléments d'un dossier d'un bureau commun, dossiers d'abord puis par nom.
+pub fn lister_dossier(racine: &Path, dossier: &Path) -> R<Vec<EntreeCommune>> {
+    let mut sortie = Vec::new();
+    for entree in std::fs::read_dir(dossier).map_err(e)?.flatten() {
+        let nom = entree.file_name().to_string_lossy().to_string();
+        if est_parasite(&nom) {
+            continue;
         }
-        if page.is_truncated() == Some(true) {
-            suite = page.next_continuation_token().map(str::to_string);
-            if suite.is_none() {
-                break;
-            }
+        // Les liens symboliques ne sont pas montrés : ils mènent ailleurs.
+        let Ok(meta) = entree.metadata() else { continue };
+        if meta.file_type().is_symlink() {
+            continue;
+        }
+        let modifie = meta
+            .modified()
+            .ok()
+            .map(|t| chrono::DateTime::<chrono::Local>::from(t).to_rfc3339())
+            .unwrap_or_default();
+        let elements = if meta.is_dir() {
+            std::fs::read_dir(entree.path())
+                .map(|it| it.flatten().filter(|x| !est_parasite(&x.file_name().to_string_lossy())).count())
+                .unwrap_or(0)
         } else {
-            break;
+            0
+        };
+        sortie.push(EntreeCommune {
+            chemin: relatif(racine, &entree.path()),
+            nom,
+            dossier: meta.is_dir(),
+            octets: if meta.is_dir() { 0 } else { meta.len() },
+            modifie,
+            elements,
+        });
+    }
+    sortie.sort_by(|a, b| b.dossier.cmp(&a.dossier).then_with(|| a.nom.to_lowercase().cmp(&b.nom.to_lowercase())));
+    Ok(sortie)
+}
+
+/// Tous les fichiers d'un dossier, sous-dossiers compris, en chemins relatifs.
+pub fn fichiers_du_dossier(racine: &Path, dossier: &Path) -> Vec<String> {
+    let mut sortie = Vec::new();
+    let mut a_voir = vec![dossier.to_path_buf()];
+    while let Some(d) = a_voir.pop() {
+        let Ok(it) = std::fs::read_dir(&d) else { continue };
+        for x in it.flatten() {
+            let nom = x.file_name().to_string_lossy().to_string();
+            if est_parasite(&nom) {
+                continue;
+            }
+            // Sans suivre les liens symboliques : un lien vers un dossier
+            // parent ferait tourner en rond.
+            let Ok(genre) = x.file_type() else { continue };
+            if genre.is_dir() {
+                a_voir.push(x.path());
+            } else if genre.is_file() {
+                sortie.push(relatif(racine, &x.path()));
+            }
         }
     }
-    depots.sort_by(|a, b| b.date.cmp(&a.date));
-    Ok(depots)
+    sortie.sort();
+    sortie
 }
 
-/// Pose (ou remplace) un dossier sur le bureau commun.
-///
-/// `paquet` est le dossier entier, fichiers compris, tel que l'interface l'a
-/// empaqueté. Le contenu part d'abord, l'annonce ensuite : un collègue ne voit
-/// jamais un dépôt dont le contenu manquerait.
+// ── Les commandes ─────────────────────────────────────────────────────────
+
+/// Les bureaux communs de cet ordinateur.
 #[tauri::command]
-pub async fn commun_deposer(
-    db: State<'_, Db>,
-    dossier: String,
-    auteur: String,
-    elements: usize,
-    paquet: String,
-) -> R<Depot> {
-    let c = lire(&db)?;
-    let cle = c.cle_32()?;
-    let cl = client(&c.stockage());
-    let id = identifiant_depot(&c.id, &auteur, &dossier);
-    let contenu = chiffrer(&cle, paquet.as_bytes())?;
-    let depot = Depot {
-        id: id.clone(),
-        dossier: dossier.trim().to_string(),
-        auteur: auteur.trim().to_string(),
-        date: chrono::Utc::now().to_rfc3339(),
-        elements,
-        octets: paquet.len(),
-    };
-    cl.put_object()
-        .bucket(&c.bucket)
-        .key(format!("{}dossiers/{id}.enc", c.racine()))
-        .body(ByteStream::from(contenu))
-        .send()
-        .await
-        .map_err(|err| format!("Dépôt échoué : {err}"))?;
-    let annonce = chiffrer(&cle, &serde_json::to_vec(&depot).map_err(e)?)?;
-    cl.put_object()
-        .bucket(&c.bucket)
-        .key(format!("{}index/{id}.enc", c.racine()))
-        .body(ByteStream::from(annonce))
-        .send()
-        .await
-        .map_err(|err| format!("Dépôt échoué : {err}"))?;
-    Ok(depot)
+pub fn communs_liste(db: State<'_, Db>) -> R<Vec<BureauCommun>> {
+    Ok(lire_bureaux(&db)
+        .into_iter()
+        .map(|mut b| {
+            b.present = Path::new(&b.chemin).is_dir();
+            b
+        })
+        .collect())
 }
 
-/// Reprend le contenu d'un dossier déposé, pour le poser sur son propre bureau.
+/// Ajoute un bureau commun : un nom, et le dossier partagé choisi.
 #[tauri::command]
-pub async fn commun_recuperer(db: State<'_, Db>, id: String) -> R<String> {
-    let c = lire(&db)?;
-    let cle = c.cle_32()?;
-    let cl = client(&c.stockage());
-    let reponse = cl
-        .get_object()
-        .bucket(&c.bucket)
-        .key(format!("{}dossiers/{}.enc", c.racine(), nettoyer(&id)?))
-        .send()
-        .await
-        .map_err(|_| "Ce dossier n'est plus sur le bureau commun.".to_string())?;
-    let corps = reponse.body.collect().await.map_err(e)?.into_bytes();
-    let clair = dechiffrer(&cle, corps.as_ref())
-        .map_err(|_| "Contenu illisible : il a été déposé avec un autre code.".to_string())?;
-    String::from_utf8(clair).map_err(|_| "Contenu abîmé.".to_string())
-}
-
-/// Retire un dépôt du bureau commun (son annonce d'abord, puis son contenu).
-#[tauri::command]
-pub async fn commun_retirer(db: State<'_, Db>, id: String) -> R<()> {
-    let c = lire(&db)?;
-    let cl = client(&c.stockage());
-    let id = nettoyer(&id)?;
-    for partie in ["index", "dossiers"] {
-        cl.delete_object()
-            .bucket(&c.bucket)
-            .key(format!("{}{partie}/{id}.enc", c.racine()))
-            .send()
-            .await
-            .map_err(|err| format!("Retrait échoué : {err}"))?;
+pub fn commun_ajouter(db: State<'_, Db>, nom: String, chemin: String) -> R<BureauCommun> {
+    let p = PathBuf::from(chemin.trim());
+    if !p.is_dir() {
+        return Err("Ce dossier n'existe pas sur cet ordinateur.".into());
     }
-    Ok(())
-}
-
-/// Un identifiant de dépôt ne peut désigner que ce qu'il désigne.
-fn nettoyer(id: &str) -> R<&str> {
-    if !id.is_empty() && id.len() <= 64 && id.chars().all(|c| c.is_ascii_hexdigit()) {
-        Ok(id)
+    // Le dossier des données de Maitrize n'est pas un dossier à partager.
+    let donnees = crate::db::data_dir().canonicalize().unwrap_or_else(|_| crate::db::data_dir());
+    let choisi = p.canonicalize().map_err(e)?;
+    if choisi.starts_with(&donnees) || donnees.starts_with(&choisi) {
+        return Err("Choisissez un dossier partagé, pas le dossier des données de Maitrize.".into());
+    }
+    let mut liste = lire_bureaux(&db);
+    if liste.iter().any(|b| PathBuf::from(&b.chemin).canonicalize().ok().as_ref() == Some(&choisi)) {
+        return Err("Ce dossier est déjà un de vos bureaux communs.".into());
+    }
+    let nom = if nom.trim().is_empty() {
+        choisi.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "Bureau commun".into())
     } else {
-        Err("Dépôt inconnu.".into())
+        nom.trim().to_string()
+    };
+    let b = BureauCommun {
+        id: uuid::Uuid::new_v4().to_string(),
+        nom,
+        chemin: choisi.to_string_lossy().to_string(),
+        present: true,
+    };
+    liste.push(b.clone());
+    ecrire_bureaux(&db, &liste)?;
+    Ok(b)
+}
+
+/// Renomme un bureau commun dans Maitrize (le dossier, lui, garde son nom).
+#[tauri::command]
+pub fn commun_renommer(db: State<'_, Db>, id: String, nom: String) -> R<()> {
+    let mut liste = lire_bureaux(&db);
+    if let Some(b) = liste.iter_mut().find(|b| b.id == id) {
+        if !nom.trim().is_empty() {
+            b.nom = nom.trim().to_string();
+        }
     }
+    ecrire_bureaux(&db, &liste)
+}
+
+/// Oublie un bureau commun sur cet ordinateur. Le dossier partagé, et tout ce
+/// qu'il contient, restent en place.
+#[tauri::command]
+pub fn commun_oublier(db: State<'_, Db>, id: String) -> R<()> {
+    let liste: Vec<BureauCommun> = lire_bureaux(&db).into_iter().filter(|b| b.id != id).collect();
+    ecrire_bureaux(&db, &liste)
+}
+
+/// Ce que contient un dossier d'un bureau commun ("" : sa racine).
+#[tauri::command]
+pub fn commun_lister(db: State<'_, Db>, bureau: String, dossier: String) -> R<Vec<EntreeCommune>> {
+    let r = racine(&db, &bureau)?;
+    let d = dans(&r, &dossier)?;
+    if !d.is_dir() {
+        return Err("Ce dossier n'est plus sur le bureau commun.".into());
+    }
+    lister_dossier(&r, &d)
+}
+
+/// Tous les fichiers d'un dossier du bureau commun, pour le récupérer entier.
+#[tauri::command]
+pub fn commun_fichiers(db: State<'_, Db>, bureau: String, dossier: String) -> R<Vec<String>> {
+    let r = racine(&db, &bureau)?;
+    let d = dans(&r, &dossier)?;
+    Ok(fichiers_du_dossier(&r, &d))
+}
+
+/// Le contenu d'un fichier du bureau commun, en base64.
+#[tauri::command]
+pub fn commun_lire(db: State<'_, Db>, bureau: String, chemin: String) -> R<String> {
+    let r = racine(&db, &bureau)?;
+    let p = dans(&r, &chemin)?;
+    let octets = std::fs::read(&p).map_err(|_| "Ce fichier n'est plus sur le bureau commun.".to_string())?;
+    Ok(STANDARD.encode(octets))
+}
+
+/// Pose un fichier sur le bureau commun, dans `dossier` (créé au besoin).
+/// Sans `remplacer`, un nom déjà pris devient « nom (2) ». Rend le chemin écrit.
+#[tauri::command]
+pub fn commun_ecrire(
+    db: State<'_, Db>,
+    bureau: String,
+    dossier: String,
+    nom: String,
+    base64: String,
+    remplacer: bool,
+) -> R<String> {
+    let r = racine(&db, &bureau)?;
+    let d = dans(&r, &dossier)?;
+    let nom = segments(&nom)?.pop().ok_or_else(|| "Nom de fichier vide.".to_string())?;
+    std::fs::create_dir_all(&d).map_err(e)?;
+    let nom = if remplacer { nom } else { nom_libre(&d, &nom) };
+    let p = dans(&r, &format!("{dossier}/{nom}"))?;
+    let octets = STANDARD.decode(base64.trim()).map_err(|_| "Fichier illisible.".to_string())?;
+    // Écrit à côté puis renomme : le service de synchronisation ne doit jamais
+    // envoyer à vos collègues un fichier à moitié écrit.
+    let provisoire = d.join(format!(".maitrize-{}.tmp", uuid::Uuid::new_v4()));
+    std::fs::write(&provisoire, octets).map_err(e)?;
+    std::fs::rename(&provisoire, &p).map_err(|err| {
+        let _ = std::fs::remove_file(&provisoire);
+        e(err)
+    })?;
+    Ok(relatif(&r, &p))
+}
+
+/// Crée un dossier sur le bureau commun. Rend son chemin.
+#[tauri::command]
+pub fn commun_creer_dossier(db: State<'_, Db>, bureau: String, dossier: String, nom: String) -> R<String> {
+    let r = racine(&db, &bureau)?;
+    let d = dans(&r, &dossier)?;
+    let nom = segments(&nom)?.pop().ok_or_else(|| "Nom de dossier vide.".to_string())?;
+    let nom = nom_libre(&d, &nom);
+    let p = dans(&r, &format!("{dossier}/{nom}"))?;
+    std::fs::create_dir_all(&p).map_err(e)?;
+    Ok(relatif(&r, &p))
+}
+
+/// Supprime un fichier ou un dossier du bureau commun — pour tout le monde.
+/// L'interface le confirme ; le service de stockage en garde souvent une copie
+/// dans sa corbeille (40 jours pour Nuage).
+#[tauri::command]
+pub fn commun_supprimer(db: State<'_, Db>, bureau: String, chemin: String) -> R<()> {
+    let r = racine(&db, &bureau)?;
+    if segments(&chemin)?.is_empty() {
+        return Err("Le bureau commun lui-même ne se supprime pas d'ici.".into());
+    }
+    let p = dans(&r, &chemin)?;
+    if p.is_dir() { std::fs::remove_dir_all(&p).map_err(e) } else { std::fs::remove_file(&p).map_err(e) }
+}
+
+/// Ouvre un fichier dans son application, ou un dossier dans le Finder ou l'Explorateur.
+#[tauri::command]
+pub fn commun_ouvrir(db: State<'_, Db>, bureau: String, chemin: String) -> R<()> {
+    let r = racine(&db, &bureau)?;
+    let p = dans(&r, &chemin)?;
+    tauri_plugin_opener::open_path(&p, None::<&str>).map_err(e)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn exemple() -> Commun {
-        Commun {
-            v: 1,
-            id: "b1".into(),
-            nom: "Collègues de l'IME".into(),
-            cle: STANDARD.encode([7u8; 32]),
-            endpoint: "https://s3.fr-par.scw.cloud".into(),
-            region: "fr-par".into(),
-            bucket: "partages".into(),
-            access: "AKIA".into(),
-            secret: "chut".into(),
+    fn dossier_d_essai() -> PathBuf {
+        let d = std::env::temp_dir().join(format!("maitrize-commun-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&d).unwrap();
+        d.canonicalize().unwrap()
+    }
+
+    #[test]
+    fn rien_ne_sort_du_dossier_partage() {
+        assert_eq!(segments("cycle 1/Maths").unwrap(), vec!["cycle 1", "Maths"]);
+        assert!(segments("").unwrap().is_empty());
+        assert!(segments("../Documents").is_err());
+        assert!(segments("cycle 1/../../etc").is_err());
+        assert!(segments("C:/Windows").is_err());
+        assert!(segments("a\\..\\b").is_err());
+        let r = dossier_d_essai();
+        assert!(dans(&r, "cycle 1/fiche.pdf").unwrap().starts_with(&r));
+        assert!(dans(&r, "../dehors").is_err());
+        std::fs::remove_dir_all(&r).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn un_lien_symbolique_ne_fait_ni_sortir_ni_tourner_en_rond() {
+        use std::os::unix::fs::symlink;
+        let r = dossier_d_essai();
+        let dehors = dossier_d_essai();
+        symlink(&dehors, r.join("dehors")).unwrap();
+        std::fs::create_dir(r.join("Maths")).unwrap();
+        std::fs::write(r.join("Maths/exo.pdf"), b"x").unwrap();
+        symlink(&r, r.join("Maths/boucle")).unwrap();
+        // Ni pour lire, ni pour écrire, même sous des dossiers encore à créer.
+        assert!(dans(&r, "dehors").is_err());
+        assert!(dans(&r, "dehors/a/b/fiche.pdf").is_err());
+        assert!(dans(&r, "Maths/nouveau/fiche.pdf").is_ok());
+        // La liste des fichiers s'arrête, et les liens n'y sont pas.
+        assert_eq!(fichiers_du_dossier(&r, &r), vec!["Maths/exo.pdf"]);
+        let noms: Vec<String> = lister_dossier(&r, &r).unwrap().into_iter().map(|x| x.nom).collect();
+        assert_eq!(noms, vec!["Maths"]);
+        std::fs::remove_dir_all(&r).ok();
+        std::fs::remove_dir_all(&dehors).ok();
+    }
+
+    #[test]
+    fn un_nom_pris_devient_nom_2() {
+        let r = dossier_d_essai();
+        std::fs::write(r.join("fiche.pdf"), b"a").unwrap();
+        std::fs::write(r.join("fiche (2).pdf"), b"b").unwrap();
+        assert_eq!(nom_libre(&r, "fiche.pdf"), "fiche (3).pdf");
+        assert_eq!(nom_libre(&r, "autre.pdf"), "autre.pdf");
+        std::fs::create_dir(r.join("cycle 1")).unwrap();
+        assert_eq!(nom_libre(&r, "cycle 1"), "cycle 1 (2)");
+        std::fs::remove_dir_all(&r).ok();
+    }
+
+    #[test]
+    fn la_liste_montre_dossiers_puis_fichiers_sans_les_parasites() {
+        let r = dossier_d_essai();
+        std::fs::create_dir(r.join("Maths")).unwrap();
+        std::fs::write(r.join("Maths/exo.pdf"), b"x").unwrap();
+        std::fs::write(r.join("Maths/.DS_Store"), b"x").unwrap();
+        std::fs::write(r.join("bilan.docx"), b"xy").unwrap();
+        std::fs::write(r.join("~$bilan.docx"), b"verrou").unwrap();
+        std::fs::write(r.join("video.mp4.part"), b"...").unwrap();
+        std::fs::write(r.join("cycle 1 (Clément).maitrize"), b"{}").unwrap();
+        let l = lister_dossier(&r, &r).unwrap();
+        let noms: Vec<&str> = l.iter().map(|x| x.nom.as_str()).collect();
+        assert_eq!(noms, vec!["Maths", "bilan.docx", "cycle 1 (Clément).maitrize"]);
+        assert!(l[0].dossier && l[0].elements == 1);
+        assert_eq!(l[1].octets, 2);
+        assert_eq!(l[0].chemin, "Maths");
+        assert_eq!(fichiers_du_dossier(&r, &r.join("Maths")), vec!["Maths/exo.pdf"]);
+        std::fs::remove_dir_all(&r).ok();
+    }
+
+    #[test]
+    fn les_parasites_des_services_de_synchronisation_sont_reconnus() {
+        for p in [".DS_Store", "~$fiche.docx", "desktop.ini", "Thumbs.db", "a.part", "b.tmp", "c.crdownload", ".~lock.x#"] {
+            assert!(est_parasite(p), "{p}");
         }
-    }
-
-    fn stockage(access: &str, secret: &str) -> S3Cfg {
-        S3Cfg { endpoint: "https://s3".into(), region: "fr-par".into(), bucket: "maitrize".into(), access: access.into(), secret: secret.into() }
-    }
-    fn rien(access: &str, secret: &str) -> S3Cfg {
-        S3Cfg { endpoint: String::new(), region: String::new(), bucket: String::new(), access: access.into(), secret: secret.into() }
-    }
-
-    #[test]
-    fn un_seul_bucket_par_defaut_et_la_cle_limitee_si_on_la_donne() {
-        let principal = stockage("CLE-COMPLETE", "SECRET-COMPLET");
-        // Rien de donné : le stockage déjà réglé, entier.
-        let c = choisir_stockage(Some(&principal), rien("", ""));
-        assert_eq!((c.bucket.as_str(), c.access.as_str(), c.secret.as_str()), ("maitrize", "CLE-COMPLETE", "SECRET-COMPLET"));
-        // Une clé limitée : même bucket, mais c'est elle qui part dans le code.
-        let c = choisir_stockage(Some(&principal), rien("CLE-LIMITEE", "SECRET-LIMITE"));
-        assert_eq!((c.bucket.as_str(), c.access.as_str(), c.secret.as_str()), ("maitrize", "CLE-LIMITEE", "SECRET-LIMITE"));
-        // Une moitié de clé ne se mélange jamais à l'autre moitié.
-        let c = choisir_stockage(Some(&principal), rien("CLE-LIMITEE", ""));
-        assert_eq!((c.access.as_str(), c.secret.as_str()), ("CLE-COMPLETE", "SECRET-COMPLET"));
-        // Aucun stockage réglé : ce qui est donné, ou rien.
-        let c = choisir_stockage(None, stockage("A", "S"));
-        assert_eq!((c.endpoint.as_str(), c.access.as_str()), ("https://s3", "A"));
-        assert!(choisir_stockage(None, rien("", "")).bucket.is_empty());
-    }
-
-    #[test]
-    fn un_code_se_relit_a_l_identique() {
-        let c = exemple();
-        let code = encoder(&c);
-        assert!(code.starts_with("MZC1."));
-        assert_eq!(decoder(&code).unwrap(), c);
-        // Collé avec des espaces autour, il passe encore.
-        assert_eq!(decoder(&format!("  {code}\n")).unwrap(), c);
-    }
-
-    #[test]
-    fn un_code_abime_est_refuse_clairement() {
-        assert!(decoder("MZ1.abc").unwrap_err().contains("MZC1."));
-        assert!(decoder("MZC1.!!!").is_err());
-        let mut sans_acces = exemple();
-        sans_acces.secret = String::new();
-        assert!(decoder(&encoder(&sans_acces)).unwrap_err().contains("stockage"));
-        let mut mauvaise_cle = exemple();
-        mauvaise_cle.cle = STANDARD.encode([1u8; 5]);
-        assert!(decoder(&encoder(&mauvaise_cle)).is_err());
-        let mut futur = exemple();
-        futur.v = 2;
-        assert!(decoder(&encoder(&futur)).unwrap_err().contains("mettez l'application à jour"));
-    }
-
-    #[test]
-    fn redeposer_remplace_son_propre_depot_sans_toucher_a_celui_des_autres() {
-        let a = identifiant_depot("b1", "Clément", "cycle 1");
-        assert_eq!(a, identifiant_depot("b1", " clément ", "Cycle 1"));
-        assert_ne!(a, identifiant_depot("b1", "Louise", "cycle 1"));
-        assert_ne!(a, identifiant_depot("b1", "Clément", "cycle 2"));
-        assert_ne!(a, identifiant_depot("b2", "Clément", "cycle 1"));
-        assert!(nettoyer(&a).is_ok());
-        assert!(nettoyer("../sauvegarde").is_err());
-    }
-
-    #[test]
-    fn un_paquet_ne_se_relit_qu_avec_la_cle_du_bureau() {
-        let c = exemple();
-        let cle = c.cle_32().unwrap();
-        let clair: &[u8] = br#"{"dossier":"cycle 1"}"#;
-        let chiffre = chiffrer(&cle, clair).unwrap();
-        assert_eq!(dechiffrer(&cle, &chiffre).unwrap(), clair);
-        assert!(dechiffrer(&[9u8; 32], &chiffre).is_err());
+        for ok in ["fiche.pdf", "cycle 1", "Loto (2).maitrize"] {
+            assert!(!est_parasite(ok), "{ok}");
+        }
     }
 }

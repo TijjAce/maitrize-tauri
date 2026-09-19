@@ -1,5 +1,11 @@
 // Le bureau commun : empaqueter un dossier pour le déposer, le déballer chez soi.
 //
+// Un bureau commun est un dossier partagé par un service de stockage (Nuage,
+// OneDrive, Google Drive…). On y glisse des fichiers ordinaires — PDF, images,
+// documents —, qui restent lisibles par tous, même sans Maitrize ; et des
+// dossiers Maitrize, qui partent en un seul fichier « .maitrize » pour garder
+// tout ce qui fait une séquence ou un jeu.
+//
 // Un dossier part entier — séquences et leurs séances, pièces jointes,
 // matériel, textes, jeux, outils, affichages, ateliers, espaces — avec ses
 // sous-dossiers et ses fichiers. Chez le collègue, il devient une copie à lui :
@@ -34,6 +40,55 @@ export interface Paquet {
   couleurs: Record<string, string>;
   /** Les fichiers, par nom : leur contenu en base64. */
   fichiers: Record<string, string>;
+}
+
+/** L'extension d'un dossier Maitrize posé sur un bureau commun. */
+export const EXTENSION_PAQUET = ".maitrize";
+
+export const estPaquet = (nom: string) => nom.toLowerCase().endsWith(EXTENSION_PAQUET);
+
+/** Le titre d'un dossier Maitrize, sans son extension. */
+export const titreDuPaquet = (nom: string) => (estPaquet(nom) ? nom.slice(0, -EXTENSION_PAQUET.length) : nom);
+
+/**
+ * Un nom de fichier que Windows et macOS acceptent, et que le bureau commun
+ * n'interprète pas comme un chemin.
+ */
+export function nomDeFichierSur(brut: string, secours = "Sans titre"): string {
+  const n = [...(brut ?? "").normalize("NFC")]
+    .map((c) => (c.charCodeAt(0) < 32 || '<>:"/\\|?*'.includes(c) ? " " : c))
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^[.\s]+/, "")
+    .replace(/[.\s]+$/, "")
+    .slice(0, 100)
+    .trim();
+  return n || secours;
+}
+
+/**
+ * Le fichier d'un dossier Maitrize déposé : « cycle 1 (Clément).maitrize ».
+ * Le nom de l'auteur y est : deux collègues peuvent déposer chacun leur
+ * « cycle 1 », et redéposer le sien le remplace.
+ */
+export const nomDuPaquet = (dossier: string, auteur: string) =>
+  `${nomDeFichierSur(dossier)} (${nomDeFichierSur(auteur, "Un collègue")})${EXTENSION_PAQUET}`;
+
+/** Du texte en base64, sans rien perdre des accents. */
+export function texteEnBase64(texte: string): string {
+  const octets = new TextEncoder().encode(texte);
+  let binaire = "";
+  for (let i = 0; i < octets.length; i += 0x8000) binaire += String.fromCharCode(...octets.subarray(i, i + 0x8000));
+  return btoa(binaire);
+}
+
+/** Le texte d'un contenu en base64. */
+export function base64EnTexte(b64: string): string {
+  const binaire = atob(b64);
+  const octets = new Uint8Array(binaire.length);
+  for (let i = 0; i < binaire.length; i++) octets[i] = binaire.charCodeAt(i);
+  return new TextDecoder().decode(octets);
 }
 
 /** Au-delà, un dépôt serait long à envoyer et à récupérer : mieux vaut des sous-dossiers. */

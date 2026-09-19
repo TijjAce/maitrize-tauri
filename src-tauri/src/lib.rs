@@ -128,8 +128,9 @@ pub fn run() {
             sync::boite_relever, sync::boite_liste, sync::boite_recuperer, sync::boite_supprimer,
             // Sauvegarde chiffrée sur stockage S3/MinIO
             sync::sauvegarde_push, sync::sauvegarde_verifier, sync::sauvegarde_verif_derniere,
-            commun::commun_info, commun::commun_creer, commun::commun_rejoindre, commun::commun_quitter,
-            commun::commun_lister, commun::commun_deposer, commun::commun_recuperer, commun::commun_retirer, sync::sauvegarde_pull, sync::sauvegarde_liste, sync::sauvegarde_supprimer, sync::sync_etat, sync::sync_deltas, sync::sync_fichiers, sync::machines_liste, sync::machine_nom_set,
+            commun::communs_liste, commun::commun_ajouter, commun::commun_renommer, commun::commun_oublier,
+            commun::commun_lister, commun::commun_fichiers, commun::commun_lire, commun::commun_ecrire,
+            commun::commun_creer_dossier, commun::commun_supprimer, commun::commun_ouvrir, sync::sauvegarde_pull, sync::sauvegarde_liste, sync::sauvegarde_supprimer, sync::sync_etat, sync::sync_deltas, sync::sync_fichiers, sync::machines_liste, sync::machine_nom_set,
             sync::appairage_code, sync::appairage_appliquer,
             // Version portable (serveur local WiFi + QR)
             portable::portable_demarrer, portable::portable_arreter,
