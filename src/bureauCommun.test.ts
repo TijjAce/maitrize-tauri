@@ -3,8 +3,8 @@ import {
   nouveauJeu, nouvelOutil, nouvelleSeance, nouvelleSequence, type MaterielItem, type PieceJointe, type Texte,
 } from "./api";
 import {
-  compter, contenuDuDossier, couleursDeballees, couleursDuDossier, deballer, destinationLibre, fichiersDe,
-  type Contenu, type Paquet,
+  base64EnTexte, compter, contenuDuDossier, couleursDeballees, couleursDuDossier, deballer, destinationLibre, estPaquet,
+  fichiersDe, nomDeFichierSur, nomDuPaquet, texteEnBase64, titreDuPaquet, type Contenu, type Paquet,
 } from "./bureauCommun";
 
 const materiel = (p: Partial<MaterielItem>): MaterielItem => ({
@@ -96,5 +96,37 @@ describe("récupérer un dossier sur son bureau", () => {
     expect(destinationLibre("cycle 1", "Louise", new Set())).toBe("cycle 1");
     expect(destinationLibre("cycle 1", "Louise", new Set(["cycle 1"]))).toBe("cycle 1 (Louise)");
     expect(destinationLibre("cycle 1", "Louise", new Set(["cycle 1", "cycle 1 (louise)"]))).toBe("cycle 1 (Louise) 2");
+  });
+});
+
+describe("sur le dossier partagé", () => {
+  it("nomme le fichier d'un dossier Maitrize avec son auteur", () => {
+    expect(nomDuPaquet("cycle 1", "Clément")).toBe("cycle 1 (Clément).maitrize");
+    expect(nomDuPaquet("Maths/Géométrie : figures?", "")).toBe("Maths Géométrie figures (Un collègue).maitrize");
+    expect(estPaquet("cycle 1 (Clément).MAITRIZE")).toBe(true);
+    expect(estPaquet("fiche.pdf")).toBe(false);
+    expect(titreDuPaquet("cycle 1 (Clément).maitrize")).toBe("cycle 1 (Clément)");
+  });
+
+  it("ne laisse pas un nom devenir un chemin", () => {
+    expect(nomDeFichierSur("../../etc/passwd")).toBe("etc passwd");
+    expect(nomDeFichierSur("C:\\Windows")).toBe("C Windows");
+    expect(nomDeFichierSur("   ")).toBe("Sans titre");
+  });
+
+  it("garde les accents d'un dossier empaqueté", () => {
+    const texte = JSON.stringify({ titre: "Séquence « à côté » — œuvre" });
+    expect(base64EnTexte(texteEnBase64(texte))).toBe(texte);
+  });
+});
+
+describe("poser des fichiers du Finder", () => {
+  it("donne un nom valable chez tous les collègues, extension gardée", async () => {
+    const { nomPosable } = await import("./partageCommun");
+    expect(nomPosable("Séance 1: les nombres.pdf")).toBe("Séance 1 les nombres.pdf");
+    expect(nomPosable("Qui est-ce ?.docx")).toBe("Qui est-ce.docx");
+    expect(nomPosable(`${"a".repeat(140)}.pdf`)).toBe(`${"a".repeat(100)}.pdf`);
+    expect(nomPosable("Lisez-moi")).toBe("Lisez-moi");
+    expect(nomPosable(".bashrc")).toBe("bashrc");
   });
 });

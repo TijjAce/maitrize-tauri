@@ -673,6 +673,9 @@ pub(crate) fn migrate(conn: &Connection) {
     conn.execute("ALTER TABLE jeux ADD COLUMN competences_bo TEXT", []).ok();
     // Les objectifs du PPI travaillés, et comment ça s'est passé.
     conn.execute("ALTER TABLE commentaires_eleve ADD COLUMN objectifs TEXT", []).ok();
+    // Le bureau commun sur S3, essayé avant les dossiers partagés, gardait ici
+    // un accès au stockage : on ne laisse pas traîner de clé devenue inutile.
+    conn.execute("DELETE FROM settings WHERE cle = 'commun'", []).ok();
     // Matériel : rangement en dossiers, liens vidéo, et renvois vers le coffre.
     conn.execute("ALTER TABLE materiel_items ADD COLUMN dossier TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE materiel_items ADD COLUMN videos_json TEXT NOT NULL DEFAULT '[]'", []).ok();
