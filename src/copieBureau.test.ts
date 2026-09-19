@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { nouveauJeu, nouvelleSeance, nouvelleSequence, type DocumentCoffre, type MaterielItem, type Texte } from "./api";
+import {
+  nouveauJeu, nouvelAtelier, nouvelEspace, nouvelOutil, nouvelleSeance, nouvelleSequence,
+  type DocumentCoffre, type MaterielItem, type Texte,
+} from "./api";
 import { empreinte, nomSur, planDeCopie, type DonneesBureau, type FichierCopie } from "./copieBureau";
 
 const materiel = (p: Partial<MaterielItem>): MaterielItem => ({
@@ -95,6 +98,8 @@ describe("le plan de la copie", () => {
     }), "mac");
     expect(chemins(plan.fichiers)).toEqual([
       "Bilan période.html", "Maths/Les fractions (séquence) - documents/Fiche élève.pdf", "Maths/Les fractions (séquence).html",
+      // Le jeu cité a aussi sa page : il est sur le même bureau.
+      "Skyjo (jeu).html",
     ]);
     const page = contenuDe(trouver(plan.fichiers, "Maths/Les fractions (séquence).html"));
     expect(page).toContain("<h1>Les fractions</h1>");
@@ -149,5 +154,36 @@ describe("le plan de la copie", () => {
       expect(segments.every((s) => s && s !== "." && s !== ".." && !/[:\\]/.test(s)), chemin).toBe(true);
       expect(["anciennes versions", "à lire.txt", ".maitrize-copie.json"]).not.toContain(segments[0].toLowerCase());
     }
+  });
+
+  it("donne une page aux jeux, outils, affichages, ateliers et espaces, rangés dans leurs dossiers", () => {
+    const plan = planDeCopie(donnees({
+      jeux: [{ ...nouveauJeu(), id: "j1", titre: "Loto des animaux", dossier: "cycle 1", regles: "Tirer une carte.", imageNom: "loto.png" }],
+      outils: [
+        { ...nouvelOutil("outil"), id: "o1", titre: "Bande numérique", dossier: "cycle 1", usage: "Compter jusqu'à 20.",
+          documentsJson: JSON.stringify([{ nom: "Bande à imprimer.pdf", fichier: "abc.pdf" }]) },
+        { ...nouvelOutil("affichage"), id: "o2", titre: "Règles de vie", dossier: "" },
+      ],
+      ateliers: [{ ...nouvelAtelier(), id: "a1", titre: "Pâte à modeler", dossier: "", objectifs: "Modeler une forme." }],
+      espaces: [{ ...nouvelEspace(), id: "e1", titre: "Coin lecture", dossier: "" }],
+    }), "windows");
+    expect(chemins(plan.fichiers)).toEqual([
+      "Coin lecture (espace).html",
+      "Pâte à modeler (atelier).html",
+      "Règles de vie (affichage).html",
+      "cycle 1/Bande numérique (outil) - documents/Bande à imprimer.pdf",
+      "cycle 1/Bande numérique (outil).html",
+      "cycle 1/Loto des animaux (jeu).html",
+    ]);
+    expect(plan.dossiers).toContain("cycle 1");
+    const loto = contenuDe(trouver(plan.fichiers, "cycle 1/Loto des animaux (jeu).html"));
+    expect(loto).toContain("Tirer une carte.");
+    expect(loto).toContain('src="maitrize-fichier:loto.png"');
+    expect(contenuDe(trouver(plan.fichiers, "Pâte à modeler (atelier).html"))).toContain("Modeler une forme.");
+    // Ranger un jeu ailleurs le déplace sans le réécrire : même empreinte.
+    const ailleurs = planDeCopie(donnees({
+      jeux: [{ ...nouveauJeu(), id: "j1", titre: "Loto des animaux", dossier: "", regles: "Tirer une carte.", imageNom: "loto.png" }],
+    }), "windows");
+    expect(ailleurs.fichiers[0].empreinte).toBe(trouver(plan.fichiers, "cycle 1/Loto des animaux (jeu).html").empreinte);
   });
 });

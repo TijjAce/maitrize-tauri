@@ -1,7 +1,10 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
-import { api, Sequence, MaterielItem, Texte, couleurHex, couleurPourMatiere, newId, nowIso, texteErreur } from "../api";
+import {
+  api, Sequence, MaterielItem, Texte, Atelier, Espace, Jeu, OutilClasse, couleurHex, couleurPourMatiere, newId, nowIso,
+  texteErreur, nouvelAtelier, nouvelEspace, nouveauJeu, nouvelOutil,
+} from "../api";
 import { Input, Confirm, Demander, Modal, ColorPicker, useAsync } from "../components/ui";
 import { VignettePdf } from "../components/VignettePdf";
 import { toast } from "../components/Toaster";
@@ -14,6 +17,11 @@ import { EditeurTexte } from "../components/EditeurTexte";
 import { IconeDossier, COULEUR_DOSSIER } from "../components/IconeDossier";
 import { copierLeBureau } from "../components/CopieDuBureau";
 import { FormSequence } from "../components/FormSequence";
+import { JeuForm } from "../components/JeuForm";
+import { OutilForm } from "../components/OutilForm";
+import { AtelierForm, EspaceForm, SuiviEspace } from "./Ateliers";
+import { CLE_FUSION, EVT_CHERCHER_BUREAU, fusionnerDansLePlanDeTravail } from "../bureauAteliers";
+import type { CtxItem } from "../components/ctxmenu";
 import { contenuDirect, nature } from "../bureau";
 import { lireVideos, lireLien, vignetteYoutube } from "../videos";
 import { useFileDropZone, estPdf, estImage, estDocument, typeDocument, fichierEnBase64, EXTENSIONS_DOCUMENTS } from "../dragdrop";
@@ -45,16 +53,41 @@ import {
 /** Taille d'une case du bureau, en pixels. */
 const CASE_L = 136, CASE_H = 186;
 
+// Il n'y a qu'un bureau dans l'application : les ateliers, espaces, jeux,
+// outils et affichages y côtoient séquences, matériel et textes, et partagent
+// leurs dossiers — « cycle 1 » peut réunir une séquence et ses jeux.
 type Element =
   | { genre: "sequence"; id: string; titre: string; dossier: string; seq: Sequence }
   | { genre: "materiel"; id: string; titre: string; dossier: string; mat: MaterielItem }
-  | { genre: "texte"; id: string; titre: string; dossier: string; txt: Texte };
+  | { genre: "texte"; id: string; titre: string; dossier: string; txt: Texte }
+  | { genre: "atelier"; id: string; titre: string; dossier: string; at: Atelier }
+  | { genre: "espace"; id: string; titre: string; dossier: string; esp: Espace }
+  | { genre: "jeu"; id: string; titre: string; dossier: string; jeu: Jeu }
+  | { genre: "outil"; id: string; titre: string; dossier: string; outil: OutilClasse };
 
 /** Range un élément dans un dossier, quel que soit son genre. */
-function enregistrerDossier(e: Element, dossier: string) {
-  if (e.genre === "sequence") return api.sequenceSave({ ...e.seq, dossier });
-  if (e.genre === "materiel") return api.materielSave({ ...e.mat, dossier });
-  return api.texteSave({ ...e.txt, dossier });
+function enregistrerDossier(e: Element, dossier: string): Promise<unknown> {
+  switch (e.genre) {
+    case "sequence": return api.sequenceSave({ ...e.seq, dossier });
+    case "materiel": return api.materielSave({ ...e.mat, dossier });
+    case "texte": return api.texteSave({ ...e.txt, dossier });
+    case "atelier": return api.atelierSave({ ...e.at, dossier });
+    case "espace": return api.espaceSave({ ...e.esp, dossier });
+    case "jeu": return api.jeuSave({ ...e.jeu, dossier });
+    case "outil": return api.outilClasseSave({ ...e.outil, dossier });
+  }
+}
+
+/** Ce qu'une recherche lit, en plus du titre. */
+function texteCherche(e: Element): string {
+  switch (e.genre) {
+    case "texte": return texteBrut(e.txt.contenu);
+    case "atelier": return `${e.at.objectifs} ${e.at.materiel}`;
+    case "espace": return e.esp.descriptionEspace;
+    case "jeu": return `${e.jeu.regles} ${e.jeu.competences} ${e.jeu.typeJeu}`;
+    case "outil": return `${e.outil.usage} ${e.outil.consignes} ${e.outil.categorie}`;
+    default: return "";
+  }
 }
 
 /**
@@ -76,7 +109,10 @@ function lireDepotInterne(dt: DataTransfer): { element?: Element; dossier?: stri
 
 /** Clés des tuiles dans la disposition d'un dossier. */
 const cleDossier = (d: SousDossier) => `d:${d.nom}`;
-const cleElement = (e: Element) => `${e.genre === "sequence" ? "s" : e.genre === "materiel" ? "m" : "t"}:${e.id}`;
+const PREFIXE_GENRE: Record<Element["genre"], string> = {
+  sequence: "s", materiel: "m", texte: "t", atelier: "a", espace: "e", jeu: "j", outil: "o",
+};
+const cleElement = (e: Element) => `${PREFIXE_GENRE[e.genre]}:${e.id}`;
 
 /**
  * Le texte d'un dépôt, quel que soit le type employé par la plateforme.
@@ -128,14 +164,24 @@ export default function PlanDeTravail() {
   const { data: sequences, reload: rS } = useAsync(() => api.sequencesList(), []);
   const { data: materiels, reload: rM } = useAsync(() => api.materielList(), []);
   const { data: textes, reload: rT } = useAsync(() => api.textesList(), []);
+  const { data: ateliers, reload: rA } = useAsync(() => api.ateliersList(), []);
+  const { data: espaces, reload: rE } = useAsync(() => api.espacesList(), []);
+  const { data: liens, reload: rL } = useAsync(() => api.atelierEspaceList(), []);
+  const { data: jeux, reload: rJ } = useAsync(() => api.jeuxList(), []);
+  const { data: outilsClasse, reload: rO } = useAsync(() => api.outilsClasseList(), []);
   // La copie de ce bureau dans un vrai dossier de l'ordinateur (voir CopieDuBureau).
   const { data: copie } = useAsync(() => api.copieBureauInfo(), []);
   const ouvrirCopie = () => {
     copierLeBureau().catch(() => {});
     api.copieBureauOuvrir().catch((e) => toast("Copie introuvable : " + texteErreur(e), { icone: "⚠️" }));
   };
-  const recharger = () => { rS(); rM(); rT(); };
+  const recharger = () => { rS(); rM(); rT(); rA(); rE(); rJ(); rO(); };
   const [texteOuvert, setTexteOuvert] = React.useState<Texte | null>(null);
+  const [editA, setEditA] = React.useState<Atelier | null>(null);
+  const [editE, setEditE] = React.useState<Espace | null>(null);
+  const [editJ, setEditJ] = React.useState<Jeu | null>(null);
+  const [editO, setEditO] = React.useState<OutilClasse | null>(null);
+  const [suivi, setSuivi] = React.useState<Espace | null>(null);
   const [sequenceFiche, setSequenceFiche] = React.useState<{ sequence: Sequence; nouvelle: boolean } | null>(null);
 
   const [dossier, setDossier] = React.useState("");
@@ -158,6 +204,25 @@ export default function PlanDeTravail() {
     setDispositions(lireDispositions(reglages));
     setCouleursLues(true);
   }, [reglages]);
+
+  // Les dossiers de l'ancien bureau des ateliers (couleurs, dossiers vides)
+  // rejoignent une fois ceux du plan de travail : il n'y a plus qu'un bureau.
+  React.useEffect(() => {
+    if (!reglages) return;
+    const { [CLE_FUSION]: marque, ...verses } = fusionnerDansLePlanDeTravail(reglages);
+    if (!marque) return;
+    (async () => {
+      await ecrireCouleurs(verses);
+      await api.settingSet(CLE_FUSION, marque);
+    })().catch(() => {});
+  }, [reglages]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Depuis ⌘K : un jeu, un outil, un atelier trouvé s'ouvre ici, par la recherche.
+  React.useEffect(() => {
+    const chercher = (e: Event) => { setDossier(""); setQ(String((e as CustomEvent).detail ?? "")); };
+    window.addEventListener(EVT_CHERCHER_BUREAU, chercher);
+    return () => window.removeEventListener(EVT_CHERCHER_BUREAU, chercher);
+  }, []);
 
   /** Applique des réécritures de dispositions, en base puis à l'écran. */
   const ecrireDispositions = async (ecritures: Record<string, string>) => {
@@ -195,7 +260,11 @@ export default function PlanDeTravail() {
     // Les dossiers « @… » sont réservés (feuilles d'informations d'Organisation) : pas sur le bureau.
     ...(textes ?? []).filter((x) => !x.dossier.startsWith("@"))
       .map((x): Element => ({ genre: "texte", id: x.id, titre: x.titre || "Sans titre", dossier: x.dossier, txt: x })),
-  ], [sequences, materiels, textes]);
+    ...(ateliers ?? []).map((a): Element => ({ genre: "atelier", id: a.id, titre: a.titre || "Sans titre", dossier: a.dossier, at: a })),
+    ...(espaces ?? []).map((e): Element => ({ genre: "espace", id: e.id, titre: e.titre || "Sans titre", dossier: e.dossier, esp: e })),
+    ...(jeux ?? []).map((j): Element => ({ genre: "jeu", id: j.id, titre: j.titre || "Sans titre", dossier: j.dossier, jeu: j })),
+    ...(outilsClasse ?? []).map((o): Element => ({ genre: "outil", id: o.id, titre: o.titre || "Sans titre", dossier: o.dossier, outil: o })),
+  ], [sequences, materiels, textes, ateliers, espaces, jeux, outilsClasse]);
 
   // Les anciennes créations de dossier y déposaient un « Nouveau matériel »
   // vide pour que le dossier tienne. On le retire, le dossier reste.
@@ -224,7 +293,7 @@ export default function PlanDeTravail() {
   // qu'on cherche avant de le chercher.
   const ici = elements
     .filter((e) => (filtre
-      ? e.titre.toLowerCase().includes(filtre) || (e.genre === "texte" && texteBrut(e.txt.contenu).toLowerCase().includes(filtre))
+      ? e.titre.toLowerCase().includes(filtre) || texteCherche(e).toLowerCase().includes(filtre)
       : normaliser(e.dossier) === dossier))
     .sort((a, b) => a.titre.localeCompare(b.titre, "fr"));
 
@@ -469,6 +538,10 @@ export default function PlanDeTravail() {
   const ouvrir = (e: Element) => {
     if (e.genre === "sequence") { nav(`/sequences/${e.id}`); return; }
     if (e.genre === "texte") { setTexteOuvert(e.txt); return; }
+    if (e.genre === "atelier") { setEditA(e.at); return; }
+    if (e.genre === "espace") { setEditE(e.esp); return; }
+    if (e.genre === "jeu") { setEditJ(e.jeu); return; }
+    if (e.genre === "outil") { setEditO(e.outil); return; }
     const c = contenuDirect(e.mat);
     if (!c) { setMaterielOuvert(e.mat); return; }
     // Dans le navigateur : l'intégration YouTube exige un référent que la
@@ -480,6 +553,10 @@ export default function PlanDeTravail() {
   const supprimer = async (e: Element) => {
     if (e.genre === "sequence") await api.sequenceDelete(e.id);
     else if (e.genre === "texte") await api.texteDelete(e.id);
+    else if (e.genre === "atelier") await api.atelierDelete(e.id);
+    else if (e.genre === "espace") await api.espaceDelete(e.id);
+    else if (e.genre === "jeu") await api.jeuDelete(e.id);
+    else if (e.genre === "outil") await api.outilClasseDelete(e.id);
     else await api.materielDelete(e.id);
     setASupprimer(null);
     recharger();
@@ -487,8 +564,20 @@ export default function PlanDeTravail() {
 
   const fil = filDAriane(dossier);
 
+  /** Les gestes propres à un genre, ajoutés au menu de sa tuile. */
+  const actionsDe = (e: Element): CtxItem[] => {
+    const copie = { id: newId(), titre: `${e.titre} (copie)` };
+    switch (e.genre) {
+      case "atelier": return [{ label: "Dupliquer", icon: "📑", onClick: () => { api.atelierSave({ ...e.at, ...copie }).then(recharger); } }];
+      case "jeu": return [{ label: "Dupliquer", icon: "📑", onClick: () => { api.jeuSave({ ...e.jeu, ...copie }).then(recharger); } }];
+      case "outil": return [{ label: "Dupliquer", icon: "📑", onClick: () => { api.outilClasseSave({ ...e.outil, ...copie, dateCreation: nowIso() }).then(recharger); } }];
+      case "espace": return [{ label: "Suivi des élèves", icon: "📋", onClick: () => setSuivi(e.esp) }];
+      default: return [];
+    }
+  };
+
   const tuileElement = (e: Element) => (
-    <TuileElement key={e.genre + e.id} element={e}
+    <TuileElement key={e.genre + e.id} element={e} actions={actionsDe(e)}
       onOuvrir={() => ouvrir(e)}
       onModifier={e.genre === "materiel" && contenuDirect(e.mat) ? () => setMaterielOuvert(e.mat)
         : e.genre === "sequence" ? () => setSequenceFiche({ sequence: e.seq, nouvelle: false }) : undefined}
@@ -503,7 +592,7 @@ export default function PlanDeTravail() {
   );
 
   return (
-    <Page titre="Plan de travail" sous="Votre bureau : séquences, matériel, documents">
+    <Page titre="Plan de travail" sous="Votre bureau : séquences, matériel, documents, ateliers, jeux, outils, affichages">
 
       <div className="toolbar">
         {/* Fil d'Ariane : on remonte en cliquant, et l'on peut y déposer pour
@@ -538,6 +627,10 @@ export default function PlanDeTravail() {
         </div>
         <Input className="search" placeholder="Rechercher partout…" value={q}
           onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 220 }} />
+        {/* Les fiches gardent leurs filtres — à combien on joue, quelle catégorie,
+            pour quel élève — qu'un bureau ne saurait pas offrir. */}
+        <button className="btn ghost sm" onClick={() => nav("/ateliers")}
+          title="Ateliers, espaces, jeux, outils et affichages en fiches, avec leurs filtres">▦ Fiches</button>
         {copie?.active && (
           <button className="btn ghost sm" onClick={ouvrirCopie}
             title={`Ouvrir la copie de ce bureau sur l'ordinateur : ${copie.racine}`}>🗂 Copie sur l'ordinateur</button>
@@ -596,6 +689,11 @@ export default function PlanDeTravail() {
             { label: "Nouveau texte", icon: "📝", onClick: avecCase(creerTexte) },
             { label: "Nouvelle séquence", icon: "📚", sep: true, onClick: avecCase(creerSequence) },
             { label: "Nouveau matériel", icon: "🧰", onClick: creerMateriel },
+            { label: "Nouvel atelier", icon: "🧩", sep: true, onClick: () => setEditA({ ...nouvelAtelier(), dossier }) },
+            { label: "Nouvel espace", icon: "🪑", onClick: () => setEditE({ ...nouvelEspace(), dossier }) },
+            { label: "Nouveau jeu", icon: "🎲", onClick: () => setEditJ({ ...nouveauJeu(), dossier }) },
+            { label: "Nouvel outil", icon: "🧰", onClick: () => setEditO({ ...nouvelOutil("outil"), dossier }) },
+            { label: "Nouvel affichage", icon: "🖼", onClick: () => setEditO({ ...nouvelOutil("affichage"), dossier }) },
             { label: "Importer des fichiers… (PDF, Word, Excel…)", icon: "📥", sep: true, onClick: () => {
               caseImport.current = caseClic;
               choixFichiers.current?.click();
@@ -701,6 +799,12 @@ export default function PlanDeTravail() {
       {texteOuvert && (
         <EditeurTexte texte={texteOuvert} onClose={() => { setTexteOuvert(null); recharger(); }} />
       )}
+      {editA && <AtelierForm a={editA} onClose={() => setEditA(null)} onSaved={() => { setEditA(null); recharger(); }} />}
+      {editE && <EspaceForm e={editE} ateliers={ateliers ?? []} liens={liens ?? []}
+        onClose={() => setEditE(null)} onSaved={() => { setEditE(null); recharger(); rL(); }} />}
+      {suivi && <SuiviEspace espace={suivi} onClose={() => setSuivi(null)} />}
+      {editJ && <JeuForm j={editJ} onClose={() => setEditJ(null)} onSaved={() => { setEditJ(null); recharger(); }} />}
+      {editO && <OutilForm o={editO} onClose={() => setEditO(null)} onSaved={() => { setEditO(null); recharger(); }} />}
 
       {materielOuvert && (
         <FormMateriel m={materielOuvert} onClose={() => setMaterielOuvert(null)}
@@ -774,18 +878,50 @@ function TuileDossier({ dossier, survole, couleur, onOuvrir, onSurvol, onDepose,
  * L'aperçu passe avant le nom : on reconnaît un document à son allure avant
  * de le lire.
  */
-function TuileElement({ element, onOuvrir, onModifier, onRanger, onSupprimer, onDuplique, onGlisser, onFinGlisser }: {
+/** La fiche d'un atelier, d'un espace, d'un jeu ou d'un outil, quand l'élément en est une. */
+const ficheDe = (e: Element) =>
+  e.genre === "atelier" ? e.at : e.genre === "espace" ? e.esp : e.genre === "jeu" ? e.jeu : e.genre === "outil" ? e.outil : null;
+
+/** Ce qu'on lit sous le nom : de quoi il s'agit, en deux ou trois mots. */
+function sousTitreDe(e: Element): string {
+  switch (e.genre) {
+    case "sequence": return [e.seq.matiere, e.seq.cycle].filter(Boolean).join(" · ") || "Séquence";
+    case "texte": return "Texte";
+    case "materiel": return nature(e.mat);
+    case "atelier": return ["Atelier", e.at.matiere].filter(Boolean).join(" · ");
+    case "espace": return `Espace · 👥 ${e.esp.nbElevesMax}`;
+    case "jeu": {
+      const n = e.jeu.nbJoueursMin === e.jeu.nbJoueursMax ? `${e.jeu.nbJoueursMin}` : `${e.jeu.nbJoueursMin}–${e.jeu.nbJoueursMax}`;
+      return ["Jeu", e.jeu.typeJeu, `👥 ${n}`].filter(Boolean).join(" · ");
+    }
+    case "outil": return e.outil.genre === "affichage"
+      ? ["Affichage", e.outil.periode].filter(Boolean).join(" · ")
+      : ["Outil", e.outil.categorie].filter(Boolean).join(" · ");
+  }
+}
+
+/** L'icône d'un élément sans image. */
+const EMOJI: Record<Element["genre"], string> = {
+  sequence: "📚", materiel: "🧰", texte: "📝", atelier: "🧩", espace: "🪑", jeu: "🎲", outil: "🧰",
+};
+const emojiDe = (e: Element) => (e.genre === "outil" && e.outil.genre === "affichage" ? "🖼" : EMOJI[e.genre]);
+
+function TuileElement({ element, actions = [], onOuvrir, onModifier, onRanger, onSupprimer, onDuplique, onGlisser, onFinGlisser }: {
   element: Element; onOuvrir: () => void; onRanger: () => void;
+  /** Les gestes propres à son genre : dupliquer un jeu, suivre les élèves d'un espace… */
+  actions?: CtxItem[];
   /** Présent pour un dépôt simple, qui s'ouvre sans passer par sa fiche. */
   onModifier?: () => void;
   onSupprimer: () => void; onDuplique: () => void;
   onGlisser?: (e: React.DragEvent<HTMLElement>) => void; onFinGlisser?: () => void;
 }) {
   const seq = element.genre === "sequence" ? element.seq : null;
-  const t = seq ? (couleurHex[couleurPourMatiere(seq.matiere)] ?? couleurHex.gray) : couleurHex.gray;
+  const fiche = ficheDe(element);
+  const t = seq ? (couleurHex[couleurPourMatiere(seq.matiere)] ?? couleurHex.gray)
+    : fiche ? (couleurHex[fiche.couleur] ?? couleurHex.gray) : couleurHex.gray;
   const videos = element.genre === "materiel" ? lireVideos(element.mat.videosJson) : [];
   const apercuVideo = videos.find((v) => v.youtubeId);
-  const image = element.genre === "materiel" ? liste(element.mat.imagesJson)[0] : seq?.imageNom;
+  const image = element.genre === "materiel" ? liste(element.mat.imagesJson)[0] : seq ? seq.imageNom : fiche?.imageNom;
   const pdf = element.genre === "materiel" ? liste(element.mat.pdfsJson)[0] : undefined;
 
   return (
@@ -798,6 +934,7 @@ function TuileElement({ element, onOuvrir, onModifier, onRanger, onSupprimer, on
         ...(onModifier ? [{ label: "Modifier…", icon: "✏️", onClick: onModifier }] : []),
         ...(element.genre === "sequence" ? [{ label: "Dupliquer", icon: "📑",
           onClick: () => dupliquerSequence(element.seq).then(onDuplique) }] : []),
+        ...actions,
         { label: "Ranger dans…", icon: "📂", onClick: onRanger },
         { label: "Supprimer", icon: "🗑", danger: true, sep: true, onClick: onSupprimer },
       ])}
@@ -824,7 +961,7 @@ function TuileElement({ element, onOuvrir, onModifier, onRanger, onSupprimer, on
         ) : element.genre === "texte" ? (
           <ApercuTexte contenu={element.txt.contenu} />
         ) : (
-          <span style={{ fontSize: 40 }}>{element.genre === "sequence" ? "📚" : "🧰"}</span>
+          <span style={{ fontSize: 40 }}>{emojiDe(element)}</span>
         )}
         {element.genre === "materiel" && (
           <div style={{ position: "absolute", bottom: 3, right: 3, display: "flex", gap: 3 }}>
@@ -840,9 +977,7 @@ function TuileElement({ element, onOuvrir, onModifier, onRanger, onSupprimer, on
       </div>
       <div style={{ fontSize: 10.5, color: "var(--text-2)", overflow: "hidden",
         textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {element.genre === "sequence"
-          ? [seq!.matiere, seq!.cycle].filter(Boolean).join(" · ") || "Séquence"
-          : element.genre === "texte" ? "Texte" : nature(element.mat)}
+        {sousTitreDe(element)}
       </div>
     </div>
   );

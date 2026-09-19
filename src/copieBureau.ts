@@ -10,7 +10,7 @@
 // Les noms doivent passer sur macOS comme sur Windows, et rester les mêmes
 // d'un passage à l'autre : sinon chaque copie déplacerait tout.
 
-import type { DocumentCoffre, Jeu, MaterielItem, PieceJointe, Seance, Sequence, Texte } from "./api";
+import type { Atelier, DocumentCoffre, DocumentOutil, Espace, Jeu, MaterielItem, OutilClasse, PieceJointe, Seance, Sequence, Texte } from "./api";
 import { documentImprimable, escapeHtml } from "./print";
 import { normaliser, PREFIXE_COULEUR } from "./dossiers";
 import { versHtml } from "./texteRiche";
@@ -30,6 +30,28 @@ export interface DonneesBureau {
   coffre: DocumentCoffre[];
   reglages: Record<string, string>;
   jeux: Jeu[];
+  /** Ce qui a rejoint le bureau du plan de travail : chacun y a sa page. */
+  ateliers?: Atelier[];
+  espaces?: Espace[];
+  outils?: OutilClasse[];
+}
+
+/** Une ligne « Libellé : valeur » de fiche, ou rien si la valeur est vide. */
+const ligneDeFiche = (libelle: string, valeur: string | number | null | undefined) =>
+  valeur === null || valeur === undefined || String(valeur).trim() === ""
+    ? "" : `<p><b>${escapeHtml(libelle)} :</b> ${escapeHtml(String(valeur))}</p>`;
+
+/** Un paragraphe de texte libre, sous son intertitre, ou rien s'il est vide. */
+const blocDeFiche = (intertitre: string, texte: string | null | undefined) =>
+  (texte ?? "").trim() ? `<h2>${escapeHtml(intertitre)}</h2><p style="white-space:pre-wrap">${escapeHtml(texte!.trim())}</p>` : "";
+
+/**
+ * La page d'une fiche — jeu, outil, affichage, atelier, espace — telle qu'on
+ * la relit sans l'application : son image, ses caractéristiques, ses textes.
+ */
+function pageDeFiche(titre: string, sorte: string, image: string | null, lignes: string[], blocs: string[]): string {
+  const img = image ? `<img src="maitrize-fichier:${escapeHtml(image)}" alt="" style="max-width:240px;max-height:240px;float:right;margin:0 0 12px 16px;border-radius:8px">` : "";
+  return `${img}<h1>${escapeHtml(titre)}</h1><p style="color:#6b7280">${escapeHtml(sorte)}</p>${lignes.join("")}${blocs.join("")}`;
 }
 
 export type Plateforme = "mac" | "windows";
@@ -144,7 +166,9 @@ export function planDeCopie(d: DonneesBureau, plateforme: Plateforme): PlanDeCop
     const segments = normaliser(brut).split("/").filter(Boolean);
     segments.forEach((_, i) => chemins.add(segments.slice(0, i + 1).join("/")));
   };
-  [...d.sequences, ...d.materiels, ...textes].forEach((e) => ajouterChemin(e.dossier ?? ""));
+  const ateliers = d.ateliers ?? [], espaces = d.espaces ?? [], outils = d.outils ?? [];
+  [...d.sequences, ...d.materiels, ...textes, ...d.jeux, ...ateliers, ...espaces, ...outils]
+    .forEach((e) => ajouterChemin(e.dossier ?? ""));
   Object.entries(d.reglages).forEach(([cle, valeur]) => { if (cle.startsWith(PREFIXE_COULEUR) && valeur) ajouterChemin(cle.slice(PREFIXE_COULEUR.length)); });
 
   // Le chemin de chaque dossier du bureau dans la copie, parents d'abord.
@@ -255,6 +279,61 @@ export function planDeCopie(d: DonneesBureau, plateforme: Plateforme): PlanDeCop
         contenu(noms.reserver(sous, nom, r.ext), `lien|${lien.url}`, () => r.contenu);
       }
     } });
+  }
+
+  // ── Les fiches venues des ateliers : une page chacune, et les documents
+  // d'un outil ou d'un affichage à côté. Le dossier n'entre pas dans
+  // l'empreinte : une fiche rangée ailleurs est déplacée, pas réécrite. ──
+  const fiche = (id: string, date: string, dossierBrut: string, titreBrut: string, sorte: string,
+    corps: () => string, cle: unknown) => {
+    elements.push({ date, id, placer: () => {
+      const titre = titreBrut.trim() || "Sans titre";
+      const chemin = noms.reserver(dossierDe(dossierBrut), `${nomSur(titre)} (${sorte.toLowerCase()})`, ".html");
+      contenu(chemin, `${sorte}|${JSON.stringify(cle)}`, () => documentImprimable(titre, corps()));
+    } });
+  };
+
+  for (const j of d.jeux) {
+    const joueurs = j.nbJoueursMin === j.nbJoueursMax ? `${j.nbJoueursMin}` : `${j.nbJoueursMin} à ${j.nbJoueursMax}`;
+    fiche(j.id, j.dateCreation, j.dossier, j.titre, "Jeu", () => pageDeFiche(j.titre.trim() || "Sans titre", ["Jeu", j.typeJeu].filter(Boolean).join(" · "), j.imageNom, [
+      ligneDeFiche("Joueurs", joueurs), ligneDeFiche("Durée", j.duree ? `${j.duree} min` : ""),
+      ligneDeFiche("Dès", j.ageMin ? `${j.ageMin} ans` : ""), ligneDeFiche("Rangé", j.rangement),
+    ], [blocDeFiche("Ce que le jeu travaille", j.competences), blocDeFiche("Règle", j.regles)]),
+    { ...j, dossier: "" });
+  }
+  for (const a of ateliers) {
+    fiche(a.id, a.dateCreation, a.dossier, a.titre, "Atelier", () => pageDeFiche(a.titre.trim() || "Sans titre", ["Atelier", a.matiere].filter(Boolean).join(" · "), a.imageNom, [
+      ligneDeFiche("Élèves", a.nbElevesMax), ligneDeFiche("Durée", a.duree ? `${a.duree} min` : ""),
+    ], [blocDeFiche("Objectifs", a.objectifs), blocDeFiche("Matériel", a.materiel)]),
+    { ...a, dossier: "" });
+  }
+  for (const e of espaces) {
+    fiche(e.id, e.dateCreation, e.dossier, e.titre, "Espace", () => pageDeFiche(e.titre.trim() || "Sans titre", "Espace", e.imageNom, [
+      ligneDeFiche("Élèves", e.nbElevesMax),
+    ], [blocDeFiche("Description", e.descriptionEspace)]),
+    { ...e, dossier: "" });
+  }
+  for (const o of outils) {
+    const sorte = o.genre === "affichage" ? "Affichage" : "Outil";
+    fiche(o.id, o.dateCreation, o.dossier, o.titre, sorte, () => pageDeFiche(o.titre.trim() || "Sans titre", [sorte, o.categorie].filter(Boolean).join(" · "), o.imageNom, [
+      ligneDeFiche(o.genre === "affichage" ? "Affiché" : "Rangé", o.lieu), ligneDeFiche("Période", o.periode),
+    ], [blocDeFiche(o.genre === "affichage" ? "À quoi il sert" : "Usage", o.usage), blocDeFiche("Consignes", o.consignes)]),
+    { ...o, dossier: "" });
+    // Ses documents à imprimer, dans un dossier à côté de sa page.
+    const documents = liste<DocumentOutil>(o.documentsJson).filter((x) => x && typeof x.fichier === "string" && x.fichier);
+    if (documents.length) {
+      elements.push({ date: o.dateCreation, id: `${o.id}#documents`, placer: () => {
+        const sous = noms.reserver(dossierDe(o.dossier), `${nomSur(o.titre.trim() || "Sans titre")} (${sorte.toLowerCase()}) - documents`, "");
+        dossiersCopie.add(sous);
+        for (const doc of documents) {
+          const ext = extensionDe(doc.fichier);
+          fichiers.push({
+            chemin: noms.reserver(sous, nomSur(sansExtension(doc.nom || o.titre, ext), "Document"), ext),
+            empreinte: doc.fichier, source: { genre: "fichier", nom: doc.fichier },
+          });
+        }
+      } });
+    }
   }
 
   elements
