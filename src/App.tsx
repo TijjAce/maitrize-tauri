@@ -39,7 +39,6 @@ const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: t
   { to: "/", ico: "🏠", label: "Tableau de bord", end: true },
   { sep: true },
   { to: "/plan", ico: "🗂", label: "Plan de travail" },
-  { to: "/ateliers", ico: "🧩", label: "Ateliers & Espaces" },
   { to: "/planning", ico: "🗓️", label: "Planning" },
   { to: "/organisation", ico: "🗂️", label: "Organisation" },
   { sep: true },

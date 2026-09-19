@@ -17,11 +17,12 @@ const INTERVALLE = 2 * 60_000;
 export interface ResultatCopie { bilan: BilanCopie | null; aJour: boolean; desactivee: boolean }
 
 async function lireBureau(): Promise<DonneesBureau> {
-  const [sequences, seances, piecesJointes, materiels, textes, coffre, reglages, jeux] = await Promise.all([
+  const [sequences, seances, piecesJointes, materiels, textes, coffre, reglages, jeux, ateliers, espaces, outils] = await Promise.all([
     api.sequencesList(), api.seancesList(), api.piecesJointesList(), api.materielList(),
     api.textesList(), api.coffreList(), api.settingsAll(), api.jeuxList(),
+    api.ateliersList(), api.espacesList(), api.outilsClasseList(),
   ]);
-  return { sequences, seances, piecesJointes, materiels, textes, coffre, reglages, jeux };
+  return { sequences, seances, piecesJointes, materiels, textes, coffre, reglages, jeux, ateliers, espaces, outils };
 }
 
 let enCours: Promise<ResultatCopie> | null = null;

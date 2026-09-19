@@ -10,10 +10,8 @@ import { FichierImg } from "../components/Deroulement";
 import { JeuForm, VignetteUpload } from "../components/JeuForm";
 import { EtiquettesBo } from "../components/ChoixCompetencesBo";
 import { CarteOutil, OutilForm, elevesDe } from "../components/OutilForm";
-import { Rangement, type ElementRange } from "../components/Rangement";
-import type { CtxItem } from "../components/ctxmenu";
 import { toastAnnulable } from "../components/Toaster";
-import { ESPACE_COMMUN, EVT_CHERCHER_ATELIERS, cleDe, decouper, reprendreLesDossiers, type Sorte } from "../bureauAteliers";
+import { useNavigate } from "react-router-dom";
 
 /**
  * Un jeu passe-t-il les filtres de la ludothèque ?
@@ -75,71 +73,38 @@ export default function Ateliers() {
   const [joueurs, setJoueurs] = React.useState("");
   const [recherche, setRecherche] = React.useState("");
 
-  // Le bureau se range comme celui du plan de travail ; la vue en cartes
-  // montre tout d'un coup d'œil, et une recherche ou un filtre y bascule
-  // d'office.
-  const [vue, setVueBrute] = React.useState<"bureau" | "cartes">(() => {
-    try { return localStorage.getItem("ateliers:vue") === "cartes" ? "cartes" : "bureau"; } catch { return "bureau"; }
-  });
-  const setVue = (v: "bureau" | "cartes") => {
-    setVueBrute(v);
-    try { localStorage.setItem("ateliers:vue", v); } catch { /* stockage indisponible */ }
-  };
-  // Le dossier ouvert sur le bureau commun.
-  const [dossier, setDossier] = React.useState("");
+  const nav = useNavigate();
 
-  // Les dossiers des anciens bureaux d'onglet sont repris une fois dans le
-  // bureau commun avant de l'afficher, pour qu'aucun dossier vide ne manque.
-  const [bureauPret, setBureauPret] = React.useState(false);
-  React.useEffect(() => {
-    let vivant = true;
-    (async () => {
-      try {
-        const ecritures = reprendreLesDossiers(await api.settingsAll());
-        for (const [cle, valeur] of Object.entries(ecritures)) await api.settingSet(cle, valeur);
-      } catch { /* le bureau s'affiche quand même */ }
-      if (vivant) setBureauPret(true);
-    })();
-    return () => { vivant = false; };
-  }, []);
-
-  // Plus d'onglets : il n'y a qu'un bureau, et il montre tout. Seuls les
-  // filtres propres à une sorte — le nombre de joueurs d'un jeu, la catégorie
-  // d'un outil — la font passer au premier plan, en cartes.
+  // Les fiches : tout, sauf quand un filtre propre à une sorte — le nombre de
+  // joueurs d'un jeu, la catégorie d'un outil — la met au premier plan. Le
+  // rangement en dossiers, lui, se fait sur le bureau du plan de travail.
   const filtreJeux = Boolean(joueurs || typeJeu);
   const filtreOutils = Boolean(categorie || pourEleve);
   /** Cette sorte est-elle montrée, compte tenu des filtres ? */
   const montre = (o: SorteVue) => (!filtreJeux && !filtreOutils)
     || (o === "jeux" && filtreJeux) || ((o === "outils" || o === "affichages") && filtreOutils);
 
-  // ⌘K ouvre la page sur un élément précis en le cherchant : sans onglets,
-  // c'est la recherche qui mène jusqu'à lui.
-  React.useEffect(() => {
-    const chercher = (e: Event) => setRecherche(String((e as CustomEvent).detail ?? ""));
-    window.addEventListener(EVT_CHERCHER_ATELIERS, chercher);
-    return () => window.removeEventListener(EVT_CHERCHER_ATELIERS, chercher);
-  }, []);
-
   const cherche = recherche.trim().toLowerCase();
   const filtrer = <T extends { titre: string }>(l: T[]) => (cherche ? l.filter((x) => x.titre.toLowerCase().includes(cherche)) : l);
-  const filtreActif = Boolean(cherche) || filtreJeux || filtreOutils;
-  const enBureau = vue === "bureau" && !filtreActif;
 
-  // Ce qu'on peut créer, dans le dossier ouvert : les cinq sortes.
+  // Ce qu'on peut créer : les cinq sortes, posées à la racine du bureau.
   const creations = [
-    { court: "Atelier", label: "Nouvel atelier", icon: "🧩", onClick: () => setEditA({ ...nouvelAtelier(), dossier: enBureau ? dossier : "" }) },
-    { court: "Espace", label: "Nouvel espace", icon: "🪑", onClick: () => setEditE({ ...nouvelEspace(), dossier: enBureau ? dossier : "" }) },
-    { court: "Jeu", label: "Nouveau jeu", icon: "🎲", onClick: () => setEditJ({ ...nouveauJeu(), dossier: enBureau ? dossier : "" }) },
-    { court: "Outil", label: "Nouvel outil", icon: "🧰", onClick: () => setEditO({ ...nouvelOutil("outil"), dossier: enBureau ? dossier : "" }) },
-    { court: "Affichage", label: "Nouvel affichage", icon: "🖼", onClick: () => setEditO({ ...nouvelOutil("affichage"), dossier: enBureau ? dossier : "" }) },
+    { court: "Atelier", label: "Nouvel atelier", icon: "🧩", onClick: () => setEditA({ ...nouvelAtelier() }) },
+    { court: "Espace", label: "Nouvel espace", icon: "🪑", onClick: () => setEditE({ ...nouvelEspace() }) },
+    { court: "Jeu", label: "Nouveau jeu", icon: "🎲", onClick: () => setEditJ({ ...nouveauJeu() }) },
+    { court: "Outil", label: "Nouvel outil", icon: "🧰", onClick: () => setEditO({ ...nouvelOutil("outil") }) },
+    { court: "Affichage", label: "Nouvel affichage", icon: "🖼", onClick: () => setEditO({ ...nouvelOutil("affichage") }) },
   ];
 
   return (
-    <Page titre="Ateliers & Espaces" sous="Activités en autonomie, stations de classe, jeux, outils des élèves et affichages"
-      actions={<button className="btn primary"
-        onClick={(e) => openCtx(e, creations.map((c) => ({ label: c.label, icon: c.icon, onClick: c.onClick })))}>
-        + Ajouter
-      </button>}>
+    <Page titre="Fiches" sous="Ateliers, espaces, jeux, outils et affichages — rangés sur le bureau du plan de travail"
+      actions={<>
+        <button className="btn" onClick={() => nav("/plan")} title="Revenir au bureau, où tout se range en dossiers">← Bureau</button>
+        <button className="btn primary"
+          onClick={(e) => openCtx(e, creations.map((c) => ({ label: c.label, icon: c.icon, onClick: c.onClick })))}>
+          + Ajouter
+        </button>
+      </>}>
       <div className="toolbar">
         <Input className="search" placeholder="Rechercher…" value={recherche} onChange={(e) => setRecherche(e.target.value)} style={{ maxWidth: 170 }} />
         {(jeux?.length ?? 0) > 0 && <>
@@ -168,94 +133,18 @@ export default function Ateliers() {
               .map((c) => <option key={c}>{c}</option>)}
           </Select>
         </>}
-        <div className="spacer" />
-        <div className="seg" title={filtreActif ? "Une recherche ou un filtre montre les cartes" : undefined}>
-          <button className={enBureau ? "active" : ""} disabled={filtreActif} onClick={() => setVue("bureau")}
-            aria-label="Ranger comme sur le bureau">🗂 Bureau</button>
-          <button className={!enBureau ? "active" : ""} onClick={() => setVue("cartes")} aria-label="Voir en cartes">▦ Cartes</button>
-        </div>
+
       </div>
-
-      {enBureau && bureauPret && (() => {
-        const apercu = (image: string | null, emoji: string) => image
-          ? <FichierImg nom={image} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          : <span style={{ fontSize: 40 }}>{emoji}</span>;
-        const joueursDe = (j: Jeu) => (j.nbJoueursMin === j.nbJoueursMax ? `${j.nbJoueursMin}` : `${j.nbJoueursMin}–${j.nbJoueursMax}`);
-        const trouver = <T extends { id: string }>(l: T[] | null | undefined, id: string) => (l ?? []).find((x) => x.id === id);
-
-        // Chaque sorte garde ses gestes — ouvrir, ranger, supprimer — mais le
-        // bureau, ses dossiers et ses places sont communs à toutes.
-        type Gestes = {
-          ouvrir: (id: string) => void; ranger: (id: string, d: string) => Promise<unknown>;
-          supprimer: (id: string) => void; recharger: () => void; actions: (id: string) => CtxItem[];
-        };
-        const gestes: Record<Sorte, Gestes> = {
-          atelier: {
-            ouvrir: (id) => { const a = trouver(ateliers, id); if (a) setEditA(a); },
-            ranger: async (id, d) => { const a = trouver(ateliers, id); if (a) await api.atelierSave({ ...a, dossier: d }); },
-            supprimer: (id) => { const a = trouver(ateliers, id); if (a) setDelA(a); },
-            recharger: rA,
-            actions: (id) => [{ label: "Dupliquer", icon: "📑", onClick: () => { const a = trouver(ateliers, id); if (a) api.atelierSave({ ...a, id: newId(), titre: a.titre + " (copie)" }).then(rA); } }],
-          },
-          espace: {
-            ouvrir: (id) => { const e = trouver(espaces, id); if (e) setEditE(e); },
-            ranger: async (id, d) => { const e = trouver(espaces, id); if (e) await api.espaceSave({ ...e, dossier: d }); },
-            supprimer: (id) => { const e = trouver(espaces, id); if (e) setDelE(e); },
-            recharger: rE,
-            actions: (id) => [{ label: "Suivi des élèves", icon: "📋", onClick: () => { const e = trouver(espaces, id); if (e) setSuivi(e); } }],
-          },
-          jeu: {
-            ouvrir: (id) => { const j = trouver(jeux, id); if (j) setEditJ(j); },
-            ranger: async (id, d) => { const j = trouver(jeux, id); if (j) await api.jeuSave({ ...j, dossier: d }); },
-            supprimer: (id) => { const j = trouver(jeux, id); if (j) void supprimerJeu(j); },
-            recharger: rJ,
-            actions: (id) => [{ label: "Dupliquer", icon: "📑", onClick: () => { const j = trouver(jeux, id); if (j) api.jeuSave({ ...j, id: newId(), titre: j.titre + " (copie)" }).then(rJ); } }],
-          },
-          outil: {
-            ouvrir: (id) => { const o = trouver(outilsClasse, id); if (o) setEditO(o); },
-            ranger: async (id, d) => { const o = trouver(outilsClasse, id); if (o) await api.outilClasseSave({ ...o, dossier: d }); },
-            supprimer: (id) => { const o = trouver(outilsClasse, id); if (o) void supprimerOutil(o); },
-            recharger: rO,
-            actions: (id) => [{ label: "Dupliquer", icon: "📑", onClick: () => { const o = trouver(outilsClasse, id); if (o) api.outilClasseSave({ ...o, id: newId(), titre: o.titre + " (copie)", dateCreation: nowIso() }).then(rO); } }],
-          },
-        };
-        const aiguiller = (cle: string) => { const d = decouper(cle); return d ? { g: gestes[d.sorte], id: d.id } : null; };
-
-        const elements: ElementRange[] = [
-          ...(montre("ateliers") ? (ateliers ?? []).map((a) => ({ cle: cleDe("atelier", a.id), titre: a.titre || "Sans titre", dossier: a.dossier,
-            sousTitre: [a.matiere, `👥 ${a.nbElevesMax}`].filter(Boolean).join(" · "), couleur: couleurHex[a.couleur], apercu: apercu(a.imageNom, "🧩") })) : []),
-          ...(montre("espaces") ? (espaces ?? []).map((e) => ({ cle: cleDe("espace", e.id), titre: e.titre || "Sans titre", dossier: e.dossier,
-            sousTitre: `Espace · 👥 ${e.nbElevesMax}`, couleur: couleurHex[e.couleur], apercu: apercu(e.imageNom, "🪑") })) : []),
-          ...(montre("jeux") ? (jeux ?? []).map((j) => ({ cle: cleDe("jeu", j.id), titre: j.titre || "Sans titre", dossier: j.dossier,
-            sousTitre: [j.typeJeu, `👥 ${joueursDe(j)}`].filter(Boolean).join(" · "), couleur: couleurHex[j.couleur], apercu: apercu(j.imageNom, "🎲") })) : []),
-          ...(outilsClasse ?? []).filter((o) => montre(o.genre === "outil" ? "outils" : "affichages")).map((o) => ({
-            cle: cleDe("outil", o.id), titre: o.titre || "Sans titre", dossier: o.dossier,
-            sousTitre: o.genre === "affichage" ? ["Affichage", o.periode].filter(Boolean).join(" · ") : ["Outil", o.categorie].filter(Boolean).join(" · "),
-            couleur: couleurHex[o.couleur], apercu: apercu(o.imageNom, o.genre === "outil" ? "🧰" : "🖼") })),
-        ];
-        return (
-          <Rangement key={ESPACE_COMMUN} espace={ESPACE_COMMUN} racine="Ateliers & Espaces" elements={elements}
-            dossier={dossier} setDossier={setDossier}
-            onOuvrir={(cle) => { const a = aiguiller(cle); a?.g.ouvrir(a.id); }}
-            onRanger={async (cle, d) => { const a = aiguiller(cle); if (a) await a.g.ranger(a.id, d); }}
-            onSupprimer={(cle) => { const a = aiguiller(cle); a?.g.supprimer(a.id); }}
-            onRecharger={() => { rA(); rE(); rJ(); rO(); }}
-            actions={(cle) => { const a = aiguiller(cle); return a ? a.g.actions(a.id) : []; }}
-            creations={creations.map(({ label, icon, onClick }) => ({ label, icon, onClick }))}
-            vide={{ icone: "🗂", titre: "Le bureau est vide", sous: "Clic droit sur le bureau, ou « + Ajouter », pour y poser un atelier, un espace, un jeu, un outil ou un affichage." }} />
-        );
-      })()}
 
       {/* En cartes, « Tout » montre chaque sorte à la suite, sous son titre ;
           une sorte vide se tait au lieu d'afficher son « Aucun… ». */}
-      {!enBureau
-        && filtrer<{ titre: string }>([...(ateliers ?? []), ...(espaces ?? []), ...(jeux ?? []), ...(outilsClasse ?? [])]).length === 0 && (
+      {filtrer<{ titre: string }>([...(ateliers ?? []), ...(espaces ?? []), ...(jeux ?? []), ...(outilsClasse ?? [])]).length === 0 && (
         <Empty icone="🔍" titre={cherche ? "Rien ne correspond" : "Rien pour l'instant"}
           sous={cherche ? "Essayez un autre mot." : "Ajoutez un atelier, un espace, un jeu, un outil ou un affichage avec « + Ajouter »."} />
       )}
 
-      {!enBureau && montre("ateliers") && filtrer(ateliers ?? []).length > 0 && <h3 className="titre-sorte">🧩 Ateliers</h3>}
-      {!enBureau && montre("ateliers") && filtrer(ateliers ?? []).length > 0 && (
+      {montre("ateliers") && filtrer(ateliers ?? []).length > 0 && <h3 className="titre-sorte">🧩 Ateliers</h3>}
+      {montre("ateliers") && filtrer(ateliers ?? []).length > 0 && (
         (ateliers?.length ?? 0) === 0 ? <Empty icone="🧩" titre="Aucun atelier" /> :
         <div className="grid cols">
           {filtrer(ateliers!).map((a) => (
@@ -284,8 +173,8 @@ export default function Ateliers() {
         </div>
       )}
 
-      {!enBureau && montre("espaces") && filtrer(espaces ?? []).length > 0 && <h3 className="titre-sorte">🪑 Espaces</h3>}
-      {!enBureau && montre("espaces") && filtrer(espaces ?? []).length > 0 && (
+      {montre("espaces") && filtrer(espaces ?? []).length > 0 && <h3 className="titre-sorte">🪑 Espaces</h3>}
+      {montre("espaces") && filtrer(espaces ?? []).length > 0 && (
         (espaces?.length ?? 0) === 0 ? <Empty icone="🪑" titre="Aucun espace" /> :
         <div className="grid cols">
           {filtrer(espaces!).map((e) => {
@@ -316,8 +205,8 @@ export default function Ateliers() {
         </div>
       )}
 
-      {!enBureau && montre("jeux") && filtrer(jeux ?? []).length > 0 && <h3 className="titre-sorte">🎲 Jeux</h3>}
-      {!enBureau && montre("jeux") && filtrer(jeux ?? []).length > 0 && (
+      {montre("jeux") && filtrer(jeux ?? []).length > 0 && <h3 className="titre-sorte">🎲 Jeux</h3>}
+      {montre("jeux") && filtrer(jeux ?? []).length > 0 && (
         (jeux?.length ?? 0) === 0
           ? <Empty icone="🎲" titre="Aucun jeu"
               sous="Recensez les jeux de la classe : à combien on y joue, combien de temps, ce qu'ils travaillent et où ils sont rangés." />
@@ -360,7 +249,7 @@ export default function Ateliers() {
           })()
       )}
 
-      {!enBureau && (["outil", "affichage"] as const)
+      {(["outil", "affichage"] as const)
         .filter((genre) => montre(genre === "outil" ? "outils" : "affichages"))
         .filter((genre) => filtrer(genre === "outil" ? outils : affichages).length > 0)
         .map((genre) => <React.Fragment key={genre}>
@@ -403,7 +292,7 @@ export default function Ateliers() {
   );
 }
 
-function AtelierForm({ a, onClose, onSaved }: { a: Atelier; onClose: () => void; onSaved: () => void }) {
+export function AtelierForm({ a, onClose, onSaved }: { a: Atelier; onClose: () => void; onSaved: () => void }) {
   const [v, setV] = React.useState<Atelier>(a);
   const up = (p: Partial<Atelier>) => setV({ ...v, ...p });
   return (
@@ -436,7 +325,7 @@ function AtelierForm({ a, onClose, onSaved }: { a: Atelier; onClose: () => void;
   );
 }
 
-function EspaceForm({ e, ateliers, liens, onClose, onSaved }: {
+export function EspaceForm({ e, ateliers, liens, onClose, onSaved }: {
   e: Espace; ateliers: Atelier[]; liens: [string, string][]; onClose: () => void; onSaved: () => void;
 }) {
   const [v, setV] = React.useState<Espace>(e);
@@ -477,7 +366,7 @@ function EspaceForm({ e, ateliers, liens, onClose, onSaved }: {
   );
 }
 
-function SuiviEspace({ espace, onClose }: { espace: Espace; onClose: () => void }) {
+export function SuiviEspace({ espace, onClose }: { espace: Espace; onClose: () => void }) {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   const { data: progs, reload } = useAsync(() => api.progressionsEleveList(espace.id), [espace.id]);
 
