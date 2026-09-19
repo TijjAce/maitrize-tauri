@@ -5,15 +5,22 @@
 //! déposer et récupérer, dans les deux sens. Déposer à nouveau un dossier du
 //! même nom remplace le précédent dépôt de la même personne.
 //!
-//! Il vit sur un stockage S3 **à part**, distinct de celui des sauvegardes :
-//! les amis y ont accès, et ne doivent jamais avoir celui de l'endroit où
-//! dorment les sauvegardes de chacun.
+//! Il vit sur le **même bucket** que le reste — sauvegardes, synchronisation —,
+//! dans son propre dossier `maitrize-commun/<id>/`. Rien n'oblige à y ranger
+//! autre chose : un collègue qui rejoint le bureau commun n'a pas à y mettre
+//! ses sauvegardes. Et chacun n'y lit que ce qui est partagé :
 //!
-//! Tout y est chiffré avec la clé du bureau commun (XChaCha20-Poly1305) : le
-//! stockage ne voit que du bruit. La clé voyage dans le **code** du bureau
-//! commun, avec l'accès au stockage — qui a le code peut lire et déposer, comme
-//! on confie une clé de salle. Il se transmet en main propre ou par un message
-//! privé, et se colle sur chaque ordinateur.
+//! - tout y est chiffré, chaque chose avec sa clé : le bureau commun avec la
+//!   sienne (XChaCha20-Poly1305), les sauvegardes avec la phrase de chacun,
+//!   la synchronisation avec la sienne. Un collègue qui aurait la même clé
+//!   d'accès au bucket ne pourrait lire que le bureau commun ;
+//! - mieux, on peut donner aux collègues une **clé d'accès limitée** au dossier
+//!   `maitrize-commun/` (réglée chez l'hébergeur) : ils ne voient alors même
+//!   pas passer le reste, et ne peuvent rien y effacer.
+//!
+//! La clé du bureau voyage dans son **code**, avec l'accès au bucket — qui a le
+//! code peut lire et déposer, comme on confie une clé de salle. Il se transmet
+//! en main propre ou par un message privé, et se colle sur chaque ordinateur.
 //!
 //! Le paquet d'un dossier est fabriqué et relu par l'interface, qui connaît les
 //! fiches ; ce module ne fait que le chiffrer, le poser et le reprendre.
@@ -170,7 +177,36 @@ pub fn commun_info(db: State<'_, Db>) -> R<Option<InfoCommun>> {
     Ok(lire(&db).ok().map(|c| info(&c)))
 }
 
-/// Crée un bureau commun sur un stockage à part.
+/// Le stockage et la clé du bureau commun : ce qui est donné, sinon le stockage
+/// déjà réglé — un seul bucket pour tout.
+///
+/// La clé va par paire : une clé d'accès sans son secret ne remplace rien, pour
+/// ne jamais mêler la clé limitée d'un côté et le secret complet de l'autre.
+pub(crate) fn choisir_stockage(principal: Option<&S3Cfg>, donne: S3Cfg) -> S3Cfg {
+    let repli = |v: String, p: fn(&S3Cfg) -> &str| {
+        let v = v.trim().to_string();
+        if !v.is_empty() { v } else { principal.map(|x| p(x).to_string()).unwrap_or_default() }
+    };
+    let (access, secret) = if !donne.access.trim().is_empty() && !donne.secret.trim().is_empty() {
+        (donne.access.trim().to_string(), donne.secret.trim().to_string())
+    } else {
+        (repli(String::new(), |p| &p.access), repli(String::new(), |p| &p.secret))
+    };
+    S3Cfg {
+        endpoint: repli(donne.endpoint, |p| &p.endpoint),
+        region: repli(donne.region, |p| &p.region),
+        bucket: repli(donne.bucket, |p| &p.bucket),
+        access,
+        secret,
+    }
+}
+
+/// Crée un bureau commun.
+///
+/// Par défaut sur le stockage déjà réglé : un seul bucket pour tout. Une clé
+/// d'accès fournie ici (limitée au dossier du partage, idéalement) remplace
+/// celle du stockage dans le bureau commun et dans son code ; un stockage
+/// entièrement renseigné sert quand aucun n'est encore réglé.
 #[tauri::command]
 pub async fn commun_creer(
     db: State<'_, Db>,
@@ -181,6 +217,9 @@ pub async fn commun_creer(
     access: String,
     secret: String,
 ) -> R<InfoCommun> {
+    let principal = { let conn = db.lock(); crate::sync::lire_cfg(&conn).ok() };
+    let S3Cfg { endpoint, region, bucket, access, secret } =
+        choisir_stockage(principal.as_ref(), S3Cfg { endpoint, region, bucket, access, secret });
     let mut cle = [0u8; 32];
     OsRng.fill_bytes(&mut cle);
     let c = Commun {
@@ -195,7 +234,8 @@ pub async fn commun_creer(
         secret: secret.trim().to_string(),
     };
     if c.endpoint.is_empty() || c.bucket.is_empty() || c.access.is_empty() || c.secret.is_empty() {
-        return Err("Renseignez l'adresse, le bucket et les deux clés du stockage partagé.".into());
+        return Err("Aucun stockage réglé : renseignez l'adresse, le bucket et les deux clés, \
+                    ou réglez d'abord votre stockage dans Réglages › Données & synchro.".into());
     }
     essayer(&c).await?;
     noter(&db, &c)?;
@@ -362,6 +402,31 @@ mod tests {
             access: "AKIA".into(),
             secret: "chut".into(),
         }
+    }
+
+    fn stockage(access: &str, secret: &str) -> S3Cfg {
+        S3Cfg { endpoint: "https://s3".into(), region: "fr-par".into(), bucket: "maitrize".into(), access: access.into(), secret: secret.into() }
+    }
+    fn rien(access: &str, secret: &str) -> S3Cfg {
+        S3Cfg { endpoint: String::new(), region: String::new(), bucket: String::new(), access: access.into(), secret: secret.into() }
+    }
+
+    #[test]
+    fn un_seul_bucket_par_defaut_et_la_cle_limitee_si_on_la_donne() {
+        let principal = stockage("CLE-COMPLETE", "SECRET-COMPLET");
+        // Rien de donné : le stockage déjà réglé, entier.
+        let c = choisir_stockage(Some(&principal), rien("", ""));
+        assert_eq!((c.bucket.as_str(), c.access.as_str(), c.secret.as_str()), ("maitrize", "CLE-COMPLETE", "SECRET-COMPLET"));
+        // Une clé limitée : même bucket, mais c'est elle qui part dans le code.
+        let c = choisir_stockage(Some(&principal), rien("CLE-LIMITEE", "SECRET-LIMITE"));
+        assert_eq!((c.bucket.as_str(), c.access.as_str(), c.secret.as_str()), ("maitrize", "CLE-LIMITEE", "SECRET-LIMITE"));
+        // Une moitié de clé ne se mélange jamais à l'autre moitié.
+        let c = choisir_stockage(Some(&principal), rien("CLE-LIMITEE", ""));
+        assert_eq!((c.access.as_str(), c.secret.as_str()), ("CLE-COMPLETE", "SECRET-COMPLET"));
+        // Aucun stockage réglé : ce qui est donné, ou rien.
+        let c = choisir_stockage(None, stockage("A", "S"));
+        assert_eq!((c.endpoint.as_str(), c.access.as_str()), ("https://s3", "A"));
+        assert!(choisir_stockage(None, rien("", "")).bucket.is_empty());
     }
 
     #[test]

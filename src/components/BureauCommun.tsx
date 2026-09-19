@@ -1,5 +1,5 @@
 import React from "react";
-import { api, newId, texteErreur, type DepotCommun, type InfoCommun } from "../api";
+import { api, newId, texteErreur, type DepotCommun, type InfoCommun, type SyncConfig } from "../api";
 import { Field, Input, Modal, Textarea } from "./ui";
 import { toast } from "./Toaster";
 import { confirmer } from "./confirmer";
@@ -12,8 +12,9 @@ import {
 // ── Le bureau commun ───────────────────────────────────────────────────────
 //
 // Chacun garde son bureau ; le bureau commun reçoit des dossiers entiers,
-// qu'on y dépose et qu'on en récupère. Il vit sur un stockage à part, que
-// seuls les collègues du bureau connaissent — jamais celui des sauvegardes.
+// qu'on y dépose et qu'on en récupère. Il vit sur le même bucket que le reste,
+// dans son propre dossier : chacun n'y lit que ce qui est partagé, car tout y
+// est chiffré, chaque chose avec sa clé.
 
 /** Le nom sous lequel on dépose : celui de l'enseignant, sinon une formule neutre. */
 async function auteur(): Promise<string> {
@@ -206,19 +207,33 @@ function Creation({ occupe, faire, onPret }: {
   onPret: () => void;
 }) {
   const [code, setCode] = React.useState("");
+  const [stockage, setStockage] = React.useState<SyncConfig | null | undefined>(undefined);
   const [s, setS] = React.useState({ nom: "", endpoint: "", region: "", bucket: "", access: "", secret: "" });
+  const [cleLimitee, setCleLimitee] = React.useState(false);
   const up = (k: keyof typeof s) => (e: React.ChangeEvent<HTMLInputElement>) => setS({ ...s, [k]: e.target.value });
+
+  React.useEffect(() => {
+    api.syncConfigGet().then(setStockage).catch(() => setStockage(null));
+  }, []);
+  // Un seul bucket : celui déjà réglé pour les sauvegardes, s'il l'est.
+  const dejaRegle = Boolean(stockage?.endpoint && stockage?.bucket && stockage?.access && stockage?.aSecret);
+  const pret = dejaRegle
+    ? (!cleLimitee || (s.access.trim() && s.secret.trim()))
+    : (s.endpoint.trim() && s.bucket.trim() && s.access.trim() && s.secret.trim());
 
   return (
     <>
       <p style={{ marginTop: 0, fontSize: 13, color: "var(--text-2)" }}>
         Un bureau commun partage des dossiers entiers avec des collègues : chacun y dépose les siens et récupère
-        ceux des autres, en copie. Tout y est chiffré. Il vit sur <b>un stockage à part</b>, que vous confiez à vos
-        collègues — jamais celui de vos sauvegardes.
+        ceux des autres, en copie. Il se range sur le même bucket que le reste, dans son propre dossier, et
+        chacun n'y lit <b>que ce qui est partagé</b> : tout y est chiffré, chaque chose avec sa clé.
       </p>
 
       <div className="card" style={{ marginBottom: 12 }}>
         <h3 style={{ marginTop: 0 }}>Rejoindre avec un code</h3>
+        <p style={{ marginTop: 0, fontSize: 12.5, color: "var(--text-2)" }}>
+          Le code suffit : pas besoin d'y ranger vos propres sauvegardes.
+        </p>
         <Textarea rows={3} placeholder="MZC1.…" value={code} onChange={(e) => setCode(e.target.value)}
           style={{ fontFamily: "ui-monospace, monospace", fontSize: 11.5 }} />
         <button className="btn primary" style={{ marginTop: 8 }} disabled={!code.trim() || !!occupe}
@@ -230,17 +245,54 @@ function Creation({ occupe, faire, onPret }: {
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Ou créer le bureau commun</h3>
         <Field label="Nom"><Input placeholder="Collègues de l'IME" value={s.nom} onChange={up("nom")} /></Field>
-        <div className="row">
-          <Field label="Adresse du stockage (endpoint)"><Input placeholder="https://s3.fr-par.scw.cloud" value={s.endpoint} onChange={up("endpoint")} /></Field>
-          <Field label="Région"><Input placeholder="fr-par" value={s.region} onChange={up("region")} /></Field>
-        </div>
-        <Field label="Bucket (à part, pas celui des sauvegardes)"><Input placeholder="partages-classe" value={s.bucket} onChange={up("bucket")} /></Field>
-        <div className="row">
-          <Field label="Clé d'accès"><Input value={s.access} onChange={up("access")} /></Field>
-          <Field label="Clé secrète"><Input type="password" value={s.secret} onChange={up("secret")} /></Field>
-        </div>
-        <button className="btn primary" disabled={!s.endpoint.trim() || !s.bucket.trim() || !s.access.trim() || !s.secret.trim() || !!occupe}
-          onClick={() => faire("creer", async () => { await api.communCreer(s); onPret(); })}>
+        {stockage === undefined ? null : dejaRegle ? (
+          <>
+            <p style={{ fontSize: 13, margin: "4px 0 8px" }}>
+              Sur votre stockage : <b>{stockage!.bucket}</b> <span style={{ color: "var(--text-2)" }}>({stockage!.endpoint})</span>
+            </p>
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13, cursor: "pointer" }}>
+              <input type="checkbox" checked={cleLimitee} onChange={(e) => setCleLimitee(e.target.checked)} style={{ marginTop: 3 }} />
+              <span>
+                Donner à mes collègues une clé limitée au partage
+                <span style={{ display: "block", fontSize: 12, color: "var(--text-2)" }}>
+                  Sans elle, ils reçoivent votre clé : ils ne pourront pas lire vos sauvegardes, chiffrées, mais pourraient
+                  les voir passer ou les effacer. Créez chez votre hébergeur une clé limitée au dossier
+                  « maitrize-commun/ » du bucket, et saisissez-la ici.
+                </span>
+              </span>
+            </label>
+            {cleLimitee && (
+              <div className="row" style={{ marginTop: 8 }}>
+                <Field label="Clé d'accès limitée"><Input value={s.access} onChange={up("access")} /></Field>
+                <Field label="Clé secrète limitée"><Input type="password" value={s.secret} onChange={up("secret")} /></Field>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <p style={{ fontSize: 12.5, color: "var(--text-2)", margin: "4px 0 8px" }}>
+              Aucun stockage n'est encore réglé. Celui-ci servira au partage ; y ranger aussi vos sauvegardes reste
+              facultatif (Réglages › Données & synchro).
+            </p>
+            <div className="row">
+              <Field label="Adresse du stockage (endpoint)"><Input placeholder="https://s3.fr-par.scw.cloud" value={s.endpoint} onChange={up("endpoint")} /></Field>
+              <Field label="Région"><Input placeholder="fr-par" value={s.region} onChange={up("region")} /></Field>
+            </div>
+            <Field label="Bucket"><Input placeholder="maitrize" value={s.bucket} onChange={up("bucket")} /></Field>
+            <div className="row">
+              <Field label="Clé d'accès"><Input value={s.access} onChange={up("access")} /></Field>
+              <Field label="Clé secrète"><Input type="password" value={s.secret} onChange={up("secret")} /></Field>
+            </div>
+          </>
+        )}
+        <button className="btn primary" style={{ marginTop: 8 }} disabled={!pret || !!occupe}
+          onClick={() => faire("creer", async () => {
+            // Stockage réglé : seule la clé limitée, si on en donne une, part avec le nom.
+            await api.communCreer(dejaRegle
+              ? { nom: s.nom, endpoint: "", region: "", bucket: "", access: cleLimitee ? s.access : "", secret: cleLimitee ? s.secret : "" }
+              : s);
+            onPret();
+          })}>
           {occupe === "creer" ? "Vérification du stockage…" : "Créer le bureau commun"}
         </button>
       </div>

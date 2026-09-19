@@ -24,7 +24,7 @@ export const NOUVEAUTES: Nouveaute[] = [
       { quoi: "Ateliers, espaces, jeux, outils et affichages rejoignent le bureau du plan de travail : un dossier « cycle 1 » peut réunir une séquence, ses jeux et l'outil qui va avec. Clic droit sur le bureau pour en créer, double-clic pour ouvrir leur fiche.", ou: "Plan de travail" },
       { quoi: "« Ateliers & Espaces » quitte le menu. Les fiches et leurs filtres — nombre de joueurs, catégorie, élève — restent à portée de main par le bouton « ▦ Fiches » du bureau.", ou: "Plan de travail · ▦ Fiches" },
       { quoi: "Les dossiers créés dans l'ancien bureau des ateliers sont versés dans le plan de travail ; deux dossiers du même nom n'en font plus qu'un." },
-      { quoi: "Le bureau commun : partagez des dossiers entiers avec des collègues — séquences, matériel, jeux, outils, fichiers compris. Clic droit sur un dossier › Déposer sur le bureau commun ; vos collègues le récupèrent en copie sur leur bureau. Tout est chiffré, sur un stockage à part de vos sauvegardes, et ce qui touche aux élèves ne part pas.", ou: "Plan de travail · 🤝 Bureau commun" },
+      { quoi: "Le bureau commun : partagez des dossiers entiers avec des collègues — séquences, matériel, jeux, outils, fichiers compris. Clic droit sur un dossier › Déposer sur le bureau commun ; vos collègues le récupèrent en copie sur leur bureau. Il se range sur le même stockage que vos sauvegardes, dans son propre dossier : tout est chiffré, et vos collègues n'y lisent que ce qui est partagé. Ce qui touche aux élèves ne part pas.", ou: "Plan de travail · 🤝 Bureau commun" },
     ],
   },
   {

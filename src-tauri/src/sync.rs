@@ -90,7 +90,7 @@ pub(crate) fn get_setting(c: &Connection, cle: &str) -> String {
         .optional().ok().flatten().unwrap_or_default()
 }
 
-fn lire_cfg(c: &Connection) -> R<S3Cfg> {
+pub(crate) fn lire_cfg(c: &Connection) -> R<S3Cfg> {
     let region = { let r = get_setting(c, "sync_region"); if r.is_empty() { "us-east-1".into() } else { r } };
     let cfg = S3Cfg {
         endpoint: get_setting(c, "sync_endpoint"),
