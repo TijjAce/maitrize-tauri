@@ -157,8 +157,11 @@ describe("le plan de la copie", () => {
   });
 
   it("donne une page aux jeux, outils, affichages, ateliers et espaces, rangés dans leurs dossiers", () => {
+    // Un seul jeu, réutilisé : `nouveauJeu()` date chaque création à la
+    // milliseconde, et deux créations n'auraient pas la même empreinte.
+    const jeu = { ...nouveauJeu(), id: "j1", titre: "Loto des animaux", dossier: "cycle 1", regles: "Tirer une carte.", imageNom: "loto.png" };
     const plan = planDeCopie(donnees({
-      jeux: [{ ...nouveauJeu(), id: "j1", titre: "Loto des animaux", dossier: "cycle 1", regles: "Tirer une carte.", imageNom: "loto.png" }],
+      jeux: [jeu],
       outils: [
         { ...nouvelOutil("outil"), id: "o1", titre: "Bande numérique", dossier: "cycle 1", usage: "Compter jusqu'à 20.",
           documentsJson: JSON.stringify([{ nom: "Bande à imprimer.pdf", fichier: "abc.pdf" }]) },
@@ -181,9 +184,7 @@ describe("le plan de la copie", () => {
     expect(loto).toContain('src="maitrize-fichier:loto.png"');
     expect(contenuDe(trouver(plan.fichiers, "Pâte à modeler (atelier).html"))).toContain("Modeler une forme.");
     // Ranger un jeu ailleurs le déplace sans le réécrire : même empreinte.
-    const ailleurs = planDeCopie(donnees({
-      jeux: [{ ...nouveauJeu(), id: "j1", titre: "Loto des animaux", dossier: "", regles: "Tirer une carte.", imageNom: "loto.png" }],
-    }), "windows");
+    const ailleurs = planDeCopie(donnees({ jeux: [{ ...jeu, dossier: "" }] }), "windows");
     expect(ailleurs.fichiers[0].empreinte).toBe(trouver(plan.fichiers, "cycle 1/Loto des animaux (jeu).html").empreinte);
   });
 });
