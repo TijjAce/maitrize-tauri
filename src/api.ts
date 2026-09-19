@@ -258,6 +258,11 @@ export interface EtatSync {
   enAttente: number;
 }
 
+/** Le bureau commun avec des collègues, tel que cet ordinateur le connaît. */
+export interface InfoCommun { nom: string; code: string; endpoint: string; bucket: string }
+/** Un dossier déposé sur le bureau commun. */
+export interface DepotCommun { id: string; dossier: string; auteur: string; date: string; elements: number; octets: number }
+
 /** Ce qu'un essai de restauration a trouvé dans une sauvegarde. */
 export interface VerifSauvegarde {
   cle: string; sauvegarde: string; essai: string; octets: number;
@@ -587,6 +592,16 @@ export const api = {
   // Sauvegarde chiffrée de toute la base sur le stockage S3/MinIO.
   sauvegardePush: () => invoke<string>("sauvegarde_push"),
   sauvegardePull: (cle?: string) => invoke<string>("sauvegarde_pull", { cle: cle ?? null }),
+  communInfo: () => invoke<InfoCommun | null>("commun_info"),
+  communCreer: (a: { nom: string; endpoint: string; region: string; bucket: string; access: string; secret: string }) =>
+    invoke<InfoCommun>("commun_creer", a),
+  communRejoindre: (code: string) => invoke<InfoCommun>("commun_rejoindre", { code }),
+  communQuitter: () => invoke<void>("commun_quitter"),
+  communLister: () => invoke<DepotCommun[]>("commun_lister"),
+  communDeposer: (a: { dossier: string; auteur: string; elements: number; paquet: string }) =>
+    invoke<DepotCommun>("commun_deposer", a),
+  communRecuperer: (id: string) => invoke<string>("commun_recuperer", { id }),
+  communRetirer: (id: string) => invoke<void>("commun_retirer", { id }),
   sauvegardeVerifier: (cle?: string) => invoke<VerifSauvegarde>("sauvegarde_verifier", { cle: cle ?? null }),
   sauvegardeVerifDerniere: () => invoke<VerifSauvegarde | null>("sauvegarde_verif_derniere"),
   sauvegardeListe: () => invoke<SauvegardeDistante[]>("sauvegarde_liste"),

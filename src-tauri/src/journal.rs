@@ -113,6 +113,8 @@ pub const REGLAGES_DU_POSTE: &[&str] = &[
     "syncSeqEnvoyee", "syncDeltasVus", CLE_DOSSIERS_ANNONCES,
     // La copie du bureau vit dans un dossier de cet ordinateur-ci.
     crate::copie_bureau::CLE_ACTIVE, crate::copie_bureau::CLE_EMPLACEMENT,
+    // Le bureau commun avec les collègues : c'est une clé, elle ne voyage pas.
+    crate::commun::CLE_COMMUN,
 ];
 
 // ── Dossiers du plan de travail ────────────────────────────────────────────
