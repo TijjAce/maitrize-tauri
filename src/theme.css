@@ -587,6 +587,12 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .editeur-plein-corps .editeur-riche-feuille { box-shadow: 0 1px 3px rgba(0,0,0,.08); }
 
 /* ── Organisation → Informations ── */
+/* Le bureau scindé : le sien à gauche, le bureau commun à droite. */
+.bureau-scinde { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 38%); gap: 14px; align-items: start; }
+.commun-panneau { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--panel);
+  position: sticky; top: 8px; }
+@media (max-width: 900px) { .bureau-scinde { grid-template-columns: 1fr; } .commun-panneau { position: static; } }
+
 .informations { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 16px; align-items: start; }
 .informations-liste { display: flex; flex-direction: column; gap: 6px; position: sticky; top: 8px; }
 .informations-feuille { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; width: 100%;
