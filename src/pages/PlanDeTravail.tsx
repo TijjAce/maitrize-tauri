@@ -22,7 +22,9 @@ import { OutilForm } from "../components/OutilForm";
 import { AtelierForm, EspaceForm, SuiviEspace } from "./Ateliers";
 import { CLE_FUSION, EVT_CHERCHER_BUREAU, fusionnerDansLePlanDeTravail } from "../bureauAteliers";
 import type { CtxItem } from "../components/ctxmenu";
-import { deposerDossier } from "../partageCommun";
+import { deposerDossier, dossiersPris, recupererDossier, recupererFichier, recupererPaquet } from "../partageCommun";
+import { PanneauCommun, TYPE_COMMUN, lireDepotCommun } from "../components/PanneauCommun";
+import { estPaquet, titreDuPaquet } from "../bureauCommun";
 import { confirmer } from "../components/confirmer";
 import { contenuDirect, nature } from "../bureau";
 import { lireVideos, lireLien, vignetteYoutube } from "../videos";
@@ -97,10 +99,16 @@ function texteCherche(e: Element): string {
  * dans un dossier, il ne crée rien.
  */
 const vientDuBureau = (e: React.DragEvent) =>
-  Array.from(e.dataTransfer.types).some((t) => t === "application/json" || t === TYPE_DOSSIER);
+  Array.from(e.dataTransfer.types).some((t) => t === "application/json" || t === TYPE_DOSSIER || t === TYPE_COMMUN);
+
+/** Ce qui arrive du bureau commun : à récupérer, pas à déplacer. */
+const vientDuCommun = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes(TYPE_COMMUN);
 
 /** Type de glisser propre aux dossiers : son contenu est un chemin. */
 const TYPE_DOSSIER = "application/x-maitrize-dossier";
+
+/** Le bureau reste-t-il scindé avec un bureau commun ? */
+const CLE_SCINDE = "bureau:scinde";
 
 /** Ce qu'on lâche sur un dossier ou le fil d'Ariane : un élément, ou un dossier. */
 function lireDepotInterne(dt: DataTransfer): { element?: Element; dossier?: string } {
@@ -202,6 +210,15 @@ export default function PlanDeTravail() {
   const { data: reglages } = useAsync(() => api.settingsAll(), []);
   // Les bureaux communs de cet ordinateur : on peut y déposer un dossier d'un clic droit.
   const { data: bureauxCommuns } = useAsync(() => api.communsListe().catch(() => []), []);
+  // Le bureau se scinde en deux : le sien à gauche, le bureau commun à droite,
+  // et l'on fait glisser de l'un à l'autre. L'état tient d'une visite à l'autre.
+  const [scinde, setScindeBrut] = React.useState(() => {
+    try { return localStorage.getItem(CLE_SCINDE) === "1"; } catch { return false; }
+  });
+  const setScinde = (v: boolean) => {
+    setScindeBrut(v);
+    try { localStorage.setItem(CLE_SCINDE, v ? "1" : "0"); } catch { /* stockage indisponible */ }
+  };
   React.useEffect(() => {
     if (!reglages) return;
     setCouleurs(lireCouleurs(reglages));
@@ -451,9 +468,36 @@ export default function PlanDeTravail() {
 
   /** Ce qu'on lâche sur un dossier : un élément s'y range, un dossier y entre. */
   const deposerSur = (dt: DataTransfer, cible: string) => {
+    if (Array.from(dt.types).includes(TYPE_COMMUN)) { void recupererDuCommun(dt, cible); return; }
     const { element, dossier: d } = lireDepotInterne(dt);
     if (d) deplacerDossier(d, cible);
     else if (element) ranger(element, cible);
+  };
+
+  /** Ce qu'on tire du bureau commun vers le sien : une copie, dans le dossier visé. */
+  const recupererDuCommun = async (dt: DataTransfer, cible: string) => {
+    const depot = lireDepotCommun(dt);
+    if (!depot) return;
+    const bureaux = bureauxCommuns ?? [];
+    const bureau = bureaux.find((b) => b.id === depot.bureau);
+    if (!bureau) { toast("Ce bureau commun n'est plus sur cet ordinateur.", { icone: "⚠️" }); return; }
+    toast(`Récupération de « ${depot.nom} »…`, { icone: "📥", duree: 3000 });
+    try {
+      const pris = await dossiersPris();
+      if (depot.dossier) {
+        const ou = await recupererDossier(bureau, depot.chemin, pris);
+        toast(`« ${depot.nom} » est sur votre bureau, dans « ${ou} ».`, { icone: "📥" });
+      } else if (estPaquet(depot.nom)) {
+        const ou = await recupererPaquet(bureau, depot.chemin, pris);
+        toast(`« ${titreDuPaquet(depot.nom)} » est sur votre bureau, dans « ${ou} ».`, { icone: "📥" });
+      } else {
+        await recupererFichier(bureau, depot.chemin, cible);
+        toast(`« ${depot.nom} » est sur votre bureau${cible ? `, dans « ${cible} »` : ""}.`, { icone: "📥" });
+      }
+      recharger();
+    } catch (e) {
+      toast("Récupération impossible : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
+    }
   };
 
   const creerDossier = () => setDemande({
@@ -664,8 +708,9 @@ export default function PlanDeTravail() {
             pour quel élève — qu'un bureau ne saurait pas offrir. */}
         <button className="btn ghost sm" onClick={() => nav("/ateliers")}
           title="Ateliers, espaces, jeux, outils et affichages en fiches, avec leurs filtres">▦ Fiches</button>
-        <button className="btn ghost sm" onClick={() => nav("/commun")}
-          title="Des dossiers partagés avec vos collègues : y déposer, y récupérer">🤝 Bureaux communs</button>
+        <button className={`btn sm${scinde ? " primary" : " ghost"}`} onClick={() => setScinde(!scinde)}
+          title={scinde ? "Refermer le bureau commun" : "Ouvrir le bureau commun à côté : glisser d'un bureau à l'autre"}>
+          🤝 Bureaux communs</button>
         {copie?.active && (
           <button className="btn ghost sm" onClick={ouvrirCopie}
             title={`Ouvrir la copie de ce bureau sur l'ordinateur : ${copie.racine}`}>🗂 Copie sur l'ordinateur</button>
@@ -680,9 +725,15 @@ export default function PlanDeTravail() {
           caseImport.current = null;
         }} />
 
+      <div className={scinde ? "bureau-scinde" : undefined}>
       {/* ── La surface ── */}
       <div ref={zoneFichiers}
         onDragOver={(e) => {
+          if (vientDuCommun(e)) {
+            // Une copie arrive du bureau commun : pas de case à viser.
+            e.preventDefault(); e.dataTransfer.dropEffect = "copy"; setSurvolBureau(true);
+            return;
+          }
           if (vientDuBureau(e)) {
             // Une tuile du bureau qu'on déplace : on montre la case où elle arrivera.
             if (!glisse.current || filtre) return;
@@ -703,6 +754,11 @@ export default function PlanDeTravail() {
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setCaseVisee(null);
         }}
         onDrop={async (e) => {
+          if (vientDuCommun(e)) {
+            e.preventDefault(); setSurvolBureau(false);
+            await recupererDuCommun(e.dataTransfer, dossier);
+            return;
+          }
           if (vientDuBureau(e)) {
             e.preventDefault();
             if (glisse.current && !filtre) await poserSurLeBureau(e);
@@ -804,6 +860,9 @@ export default function PlanDeTravail() {
             </div>
           )
         )}
+      </div>
+      {/* Le bureau commun, à droite : on glisse d'un bureau à l'autre. */}
+      {scinde && <PanneauCommun compact onFermer={() => setScinde(false)} onRecupere={recharger} />}
       </div>
 
       {demande && (
