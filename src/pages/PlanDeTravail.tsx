@@ -550,6 +550,34 @@ export default function PlanDeTravail() {
     toast(`${touches.length} élément(s) remonté(s) d'un dossier`, { icone: "📂" });
   };
 
+  /**
+   * Supprime un dossier **et tout ce qu'il contient**, sous-dossiers compris.
+   *
+   * Sans retour en arrière : supprimer une séquence emporte ses séances et
+   * ses pièces jointes, que rien ne saurait recoudre. La question posée avant
+   * dit donc exactement ce qui va disparaître.
+   */
+  const supprimerDossier = async (d: SousDossier) => {
+    const touches = elements.filter((e) => estDans(normaliser(e.dossier), d.chemin));
+    setDossierASupprimer(null);
+    toast(`Suppression de « ${d.nom} »…`, { icone: "🗑", duree: 4000 });
+    try {
+      for (const e of touches) await effacer(e);
+      // Les couleurs et les dispositions du dossier et de ses sous-dossiers s'en vont avec lui.
+      const dedans = (chemins: string[]) => chemins.filter((c) => c && estDans(c, d.chemin));
+      await ecrireCouleurs(Object.fromEntries(dedans(Object.keys(couleurs)).map((c) => [PREFIXE_COULEUR + c, ""])));
+      await ecrireDispositions({
+        ...Object.fromEntries(dedans(Object.keys(dispositions)).map((c) => [PREFIXE_BUREAU + c, ""])),
+        ...reporterDispositions(dispositions, d.chemin, parent(d.chemin), true),
+      });
+      recharger();
+      toast(`« ${d.nom} » et ${touches.length} élément${touches.length > 1 ? "s" : ""} supprimés.`, { icone: "🗑" });
+    } catch (e) {
+      recharger();
+      toast("Suppression interrompue : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
+    }
+  };
+
   // ── Bureaux communs ──
   // Un dossier part entier, sous-dossiers et fichiers compris. C'est une
   // publication vers des collègues : on la confirme, en disant ce qui ne part pas.
@@ -627,7 +655,8 @@ export default function PlanDeTravail() {
     else api.fichierOuvrir(c.nom).catch((err) => toast(String(err), { icone: "⚠️" }));
   };
 
-  const supprimer = async (e: Element) => {
+  /** Efface un élément, sans rien rafraîchir : les suppressions en chaîne s'en servent. */
+  const effacer = async (e: Element) => {
     if (e.genre === "sequence") await api.sequenceDelete(e.id);
     else if (e.genre === "texte") await api.texteDelete(e.id);
     else if (e.genre === "atelier") await api.atelierDelete(e.id);
@@ -635,6 +664,10 @@ export default function PlanDeTravail() {
     else if (e.genre === "jeu") await api.jeuDelete(e.id);
     else if (e.genre === "outil") await api.outilClasseDelete(e.id);
     else await api.materielDelete(e.id);
+  };
+
+  const supprimer = async (e: Element) => {
+    await effacer(e);
     setASupprimer(null);
     recharger();
   };
@@ -843,6 +876,7 @@ export default function PlanDeTravail() {
                       onColorer={() => setAColorer(d)}
                       onRenommer={() => renommerDossier(d)}
                       onVider={() => setDossierASupprimer(d)}
+                      onSortir={d.total ? () => { void viderDossier(d); } : undefined}
                       partages={deposesPossibles(d)}
                       onGlisser={(e) => commencerGlisser(cleDossier(d), e)} onFinGlisser={finirGlisser}
                       estSaisi={() => glisse.current?.cle === cleDossier(d)} />
@@ -862,7 +896,7 @@ export default function PlanDeTravail() {
         )}
       </div>
       {/* Le bureau commun, à droite : on glisse d'un bureau à l'autre. */}
-      {scinde && <PanneauCommun compact onFermer={() => setScinde(false)} onRecupere={recharger} />}
+      {scinde && <PanneauCommun compact onFermer={() => setScinde(false)} />}
       </div>
 
       {demande && (
@@ -918,8 +952,10 @@ export default function PlanDeTravail() {
       )}
       {dossierASupprimer && (
         <Confirm
-          message={`Supprimer le dossier « ${dossierASupprimer.nom} » ? Son contenu (${dossierASupprimer.total} élément(s)) ne sera pas effacé : il remontera d'un cran.`}
-          onYes={() => viderDossier(dossierASupprimer)}
+          message={dossierASupprimer.total
+            ? `Supprimer « ${dossierASupprimer.nom} » et les ${dossierASupprimer.total} élément${dossierASupprimer.total > 1 ? "s" : ""} qu'il contient, sous-dossiers compris ? Les séances et les pièces jointes des séquences partent avec elles. Rien ne pourra être récupéré.`
+            : `Supprimer le dossier vide « ${dossierASupprimer.nom} » ?`}
+          onYes={() => supprimerDossier(dossierASupprimer)}
           onClose={() => setDossierASupprimer(null)} />
       )}
     </Page>
@@ -927,10 +963,12 @@ export default function PlanDeTravail() {
 }
 
 /** Un dossier posé sur le bureau : on y entre, on y dépose. */
-function TuileDossier({ dossier, survole, couleur, onOuvrir, onSurvol, onDepose, onColorer, onRenommer, onVider, partages = [], onGlisser, onFinGlisser, estSaisi }: {
+function TuileDossier({ dossier, survole, couleur, onOuvrir, onSurvol, onDepose, onColorer, onRenommer, onVider, onSortir, partages = [], onGlisser, onFinGlisser, estSaisi }: {
   dossier: SousDossier; survole: boolean; couleur: string; onOuvrir: () => void;
   onSurvol: (c: string | null) => void; onDepose: (dt: DataTransfer) => void;
   onColorer: () => void; onRenommer: () => void; onVider: () => void;
+  /** Garder le contenu, mais plus le dossier : tout remonte d'un cran. */
+  onSortir?: () => void;
   /** Déposer ce dossier, entier, sur un bureau commun : une entrée par bureau. */
   partages?: CtxItem[];
   onGlisser?: (e: React.DragEvent<HTMLElement>) => void; onFinGlisser?: () => void;
@@ -959,7 +997,8 @@ function TuileDossier({ dossier, survole, couleur, onOuvrir, onSurvol, onDepose,
         { label: "Renommer", icon: "✏️", onClick: onRenommer },
         { label: "Couleur…", icon: "🎨", onClick: onColorer },
         ...partages.map((p, i) => ({ ...p, sep: i === 0 })),
-        { label: "Supprimer le dossier", icon: "🗑", danger: true, sep: true, onClick: onVider },
+        ...(onSortir ? [{ label: "Sortir le contenu, garder les éléments", icon: "📤", sep: true, onClick: onSortir }] : []),
+        { label: "Supprimer le dossier et son contenu", icon: "🗑", danger: true, sep: !onSortir, onClick: onVider },
       ])}
       title={`${dossier.nom} — ${dossier.total} élément(s)`}
       style={{ cursor: "pointer", textAlign: "center", padding: 8, borderRadius: 10,

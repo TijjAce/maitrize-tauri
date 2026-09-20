@@ -9,8 +9,7 @@ import { IconeDossier, COULEUR_DOSSIER } from "./IconeDossier";
 import { typeDocument, estImage } from "../dragdrop";
 import { descriptionDuResume, estPaquet, titreDuPaquet, titreSansAuteur, type Resume } from "../bureauCommun";
 import {
-  deposerDossier, deposerElement, dossiersDeMonBureau, dossiersPris, entreesDuDepot, poserFichiers,
-  recupererDossier, recupererFichier, recupererPaquet, resumeDuPaquet,
+  deposerDossier, deposerElement, dossiersDeMonBureau, entreesDuDepot, poserFichiers, resumeDuPaquet,
 } from "../partageCommun";
 import type { GenreElement } from "../bureauCommun";
 
@@ -65,13 +64,11 @@ export function lireDepotCommun(dt: DataTransfer): DepotCommun | null {
   }
 }
 
-export function PanneauCommun({ compact = false, onFermer, onRecupere }: {
+export function PanneauCommun({ compact = false, onFermer }: {
   /** Serré : à droite du bureau, plutôt qu'en pleine page. */
   compact?: boolean;
   /** Bouton de fermeture du panneau (bureau scindé). */
   onFermer?: () => void;
-  /** Après une récupération : le bureau se recharge. */
-  onRecupere?: () => void;
 }) {
   const nav = useNavigate();
   const [bureaux, setBureaux] = React.useState<BureauCommun[] | null>(null);
@@ -117,25 +114,22 @@ export function PanneauCommun({ compact = false, onFermer, onRecupere }: {
     try { await f(); } catch (e) { toast(texteErreur(e), { icone: "⚠️", duree: 8000 }); } finally { setOccupe(""); }
   };
 
-  // ── Récupérer sur mon bureau ──
-  const recuperer = (e: EntreeCommune) => faire(e.chemin, async () => {
-    if (!actif) return;
-    if (e.dossier) {
-      const ou = await recupererDossier(actif, e.chemin, await dossiersPris());
-      toast(`« ${e.nom} » est sur votre bureau, dans le dossier « ${ou} ».`, { icone: "📥" });
-    } else if (estPaquet(e.nom)) {
-      const ou = await recupererPaquet(actif, e.chemin, await dossiersPris());
-      toast(`« ${titreDuPaquet(e.nom)} » est sur votre bureau, dans le dossier « ${ou} ».`, { icone: "📥" });
-    } else {
-      await recupererFichier(actif, e.chemin, "");
-      toast(`« ${e.nom} » est sur votre bureau.`, { icone: "📥" });
-    }
-    onRecupere?.();
-  });
+  /**
+   * Prendre une copie, c'est glisser : on tire la tuile vers son bureau.
+   *
+   * Un geste, toujours le même, dans les deux sens — plutôt qu'un menu d'un
+   * côté et un glisser de l'autre.
+   */
+  const direCommentRecuperer = () => {
+    toast(compact
+      ? "Glissez-le sur votre bureau, à gauche, pour en prendre une copie."
+      : "Pour récupérer, ouvrez le bureau commun à côté du vôtre : Plan de travail › 🤝 Bureaux communs, puis glissez.",
+      { icone: "📥", duree: 7000 });
+  };
 
   const ouvrir = (e: EntreeCommune) => {
     if (e.dossier) { setDossier(e.chemin); return; }
-    if (estPaquet(e.nom)) { void recuperer(e); return; }
+    if (estPaquet(e.nom)) { direCommentRecuperer(); return; }
     if (actif) api.communOuvrir(actif.id, e.chemin).catch((err) => toast(texteErreur(err), { icone: "⚠️" }));
   };
 
@@ -322,7 +316,8 @@ export function PanneauCommun({ compact = false, onFermer, onRecupere }: {
                   <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text)" }}>{dossier ? "Dossier vide" : "Rien pour l'instant"}</div>
                   <div style={{ fontSize: 13, marginTop: 6 }}>
                     Glissez ici un dossier ou un élément de votre bureau, à gauche,<br />
-                    ou des fichiers depuis le Finder ou l'Explorateur.
+                    ou des fichiers depuis le Finder ou l'Explorateur.<br />
+                    Pour prendre une copie de ce qu'un collègue a posé, glissez-la vers votre bureau.
                   </div>
                 </div>
               ) : (
@@ -331,8 +326,8 @@ export function PanneauCommun({ compact = false, onFermer, onRecupere }: {
                     <Tuile key={e.chemin} entree={e} bureau={actif} occupe={occupe === e.chemin} compact={compact}
                       onOuvrir={() => ouvrir(e)}
                       onMenu={(ev) => openCtx(ev, [
-                        { label: e.dossier ? "Ouvrir" : estPaquet(e.nom) ? "Récupérer sur mon bureau" : "Ouvrir", icon: "↗", onClick: () => ouvrir(e) },
-                        ...(!estPaquet(e.nom) ? [{ label: "Récupérer sur mon bureau", icon: "📥", onClick: () => { void recuperer(e); } }] : []),
+                        ...(estPaquet(e.nom) ? [] : [{ label: "Ouvrir", icon: "↗", onClick: () => ouvrir(e) }]),
+                        { label: "Récupérer : glissez-le sur votre bureau", icon: "📥", onClick: () => direCommentRecuperer() },
                         { label: "Supprimer du bureau commun", icon: "🗑", danger: true, sep: true, onClick: () => { void supprimer(e); } },
                       ])} />
                   ))}
