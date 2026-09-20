@@ -22,11 +22,43 @@ type R<T> = Result<T, String>;
 pub struct Acces {
     /// L'adresse du serveur, sans barre finale : « https://nuage03.apps.education.fr ».
     pub serveur: String,
+    /// L'identifiant du compte, ou le jeton du lien de partage.
     pub utilisateur: String,
-    /// Le mot de passe d'application. Il ne quitte pas cet ordinateur.
+    /// Le mot de passe d'application, ou celui du lien. Il ne quitte pas cet ordinateur.
     pub mot_de_passe: String,
-    /// Le dossier partagé, relatif à la racine des fichiers ("" : toute la racine).
+    /// Le dossier partagé, relatif à la racine atteinte ("" : toute la racine).
     pub racine: String,
+    /// Le chemin WebDAV de départ : les fichiers d'un compte, ou un lien partagé.
+    pub base: String,
+}
+
+/// Le chemin WebDAV des fichiers d'un compte.
+pub fn base_compte(utilisateur: &str) -> String {
+    format!("remote.php/dav/files/{}", encoder(utilisateur))
+}
+
+/// Les deux chemins qu'un lien de partage peut prendre, du plus récent au plus
+/// ancien : Nextcloud a changé d'adresse en cours de route, et les serveurs de
+/// l'Éducation nationale ne sont pas tous à la même version.
+pub fn bases_lien(jeton: &str) -> Vec<String> {
+    vec![format!("public.php/dav/files/{}", encoder(jeton)), "public.php/webdav".to_string()]
+}
+
+/// Le serveur et le jeton d'un lien de partage collé par un collègue.
+///
+/// « https://nuage03.apps.education.fr/s/aBcD1234 », avec ou sans « /download »,
+/// avec ou sans barre finale.
+pub fn lien_partage(brut: &str) -> R<(String, String)> {
+    let t = brut.trim();
+    let sans_protocole = t.trim_start_matches("https://").trim_start_matches("http://");
+    let (hote, reste) = sans_protocole.split_once("/s/")
+        .ok_or_else(|| "Ce n'est pas un lien de partage Nuage (il doit contenir « /s/ »).".to_string())?;
+    let jeton: String = reste.split(['/', '?', '#']).next().unwrap_or("").trim().to_string();
+    if hote.is_empty() || jeton.is_empty() {
+        return Err("Ce lien de partage est incomplet.".into());
+    }
+    let protocole = if t.starts_with("http://") { "http://" } else { "https://" };
+    Ok((format!("{protocole}{}", hote.trim_end_matches('/')), jeton))
 }
 
 /// Les caractères qu'une adresse accepte tels quels ; les autres s'écrivent « %XX ».
@@ -56,9 +88,9 @@ pub fn serveur_propre(brut: &str) -> String {
     }
 }
 
-/// Le chemin WebDAV des fichiers d'un utilisateur, sans le serveur.
+/// Le chemin WebDAV d'un élément, sans le serveur.
 fn chemin_dav(acces: &Acces, relatif: &str) -> String {
-    let mut segments: Vec<String> = vec!["remote.php".into(), "dav".into(), "files".into(), encoder(&acces.utilisateur)];
+    let mut segments: Vec<String> = acces.base.split('/').filter(|s| !s.is_empty()).map(String::from).collect();
     for s in acces.racine.split('/').chain(relatif.split('/')).filter(|s| !s.is_empty()) {
         segments.push(encoder(s));
     }
@@ -72,6 +104,10 @@ pub fn url_de(acces: &Acces, relatif: &str) -> String {
 
 /// L'adresse de la page web de Nuage qui montre ce dossier.
 pub fn url_web(acces: &Acces, relatif: &str) -> String {
+    if acces.base.starts_with("public.php") {
+        // Un lien de partage se rouvre tel quel, dans le navigateur.
+        return format!("{}/s/{}", acces.serveur, encoder(&acces.utilisateur));
+    }
     let chemin: Vec<String> = acces.racine.split('/').chain(relatif.split('/'))
         .filter(|s| !s.is_empty()).map(encoder).collect();
     format!("{}/apps/files/?dir=/{}", acces.serveur, chemin.join("/"))
@@ -93,7 +129,7 @@ fn autorisation(acces: &Acces) -> String {
 fn erreur_http(statut: reqwest::StatusCode, quoi: &str) -> String {
     match statut.as_u16() {
         401 => "Nuage refuse l'identifiant ou le mot de passe d'application.".into(),
-        403 => "Nuage refuse l'accès à ce dossier (droits insuffisants).".into(),
+        403 => "Nuage refuse : ce lien de partage ou ce compte n'a pas le droit d'écrire ici.".into(),
         404 => format!("Introuvable sur Nuage : {quoi}."),
         405 => format!("Ce nom existe déjà sur Nuage : {quoi}."),
         507 => "L'espace de stockage de Nuage est plein.".into(),
@@ -351,9 +387,85 @@ pub async fn est_dossier(acces: &Acces, chemin: &str) -> R<bool> {
     Ok(analyser_propfind(&xml)?.first().map(|t| t.dossier).unwrap_or(false))
 }
 
+/**
+ * Crée un **lien de partage** sur le dossier du bureau commun, et rend son
+ * adresse.
+ *
+ * C'est la réponse à « je ne veux pas donner mon mot de passe » : le lien
+ * ouvre ce seul dossier, porte son propre mot de passe, et se révoque dans
+ * Nuage quand on veut. Il passe par l'API de Nextcloud, pas par WebDAV.
+ */
+pub async fn creer_lien(acces: &Acces, mot_de_passe: &str, ecriture: bool) -> R<String> {
+    if acces.base.starts_with("public.php") {
+        return Err("Ce bureau commun est déjà ouvert par un lien : c'est à son propriétaire d'en créer d'autres.".into());
+    }
+    let chemin = format!("/{}", acces.racine.trim_matches('/'));
+    let mut form: Vec<(&str, String)> = vec![
+        ("path", chemin),
+        ("shareType", "3".into()),
+        // 15 : lire, créer, modifier, supprimer — de quoi déposer à plusieurs.
+        ("permissions", if ecriture { "15".into() } else { "1".into() }),
+    ];
+    if !mot_de_passe.trim().is_empty() {
+        form.push(("password", mot_de_passe.trim().to_string()));
+    }
+    let rep = client()?
+        .post(format!("{}/ocs/v2.php/apps/files_sharing/api/v1/shares", acces.serveur))
+        .header("Authorization", autorisation(acces))
+        .header("OCS-APIRequest", "true")
+        .header("Accept", "application/json")
+        .form(&form)
+        .send()
+        .await
+        .map_err(|e| format!("Nuage injoignable : {e}"))?;
+    let statut = rep.status();
+    let corps = rep.text().await.unwrap_or_default();
+    if !statut.is_success() {
+        return Err(match statut.as_u16() {
+            401 => "Nuage refuse l'identifiant ou le mot de passe d'application.".to_string(),
+            403 => "Nuage n'autorise pas les liens de partage sur ce compte.".to_string(),
+            404 => "Ce dossier est introuvable sur Nuage.".to_string(),
+            _ => format!("Nuage a refusé de créer le lien ({statut})."),
+        });
+    }
+    // La réponse est un JSON d'OCS : l'adresse du lien est dans « data.url ».
+    let v: serde_json::Value = serde_json::from_str(&corps)
+        .map_err(|_| "Réponse de Nuage illisible.".to_string())?;
+    let donnees = &v["ocs"]["data"];
+    if let Some(url) = donnees["url"].as_str() {
+        return Ok(url.to_string());
+    }
+    let message = v["ocs"]["meta"]["message"].as_str().unwrap_or("").trim().to_string();
+    Err(if message.is_empty() {
+        "Nuage n'a pas rendu d'adresse pour ce lien.".to_string()
+    } else if message.contains("password") || message.contains("mot de passe") {
+        format!("Nuage demande un mot de passe pour ce lien : {message}")
+    } else {
+        format!("Nuage : {message}")
+    })
+}
+
 /// La connexion répond-elle, et le dossier existe-t-il ?
 pub async fn tester(acces: &Acces) -> R<()> {
     propfind(acces, "", "0").await.map(|_| ())
+}
+
+/**
+ * Essaie les adresses possibles d'un lien de partage et rend celle qui
+ * répond : la base à enregistrer, pour ne plus chercher ensuite.
+ */
+pub async fn base_qui_repond(acces: &Acces, bases: &[String]) -> R<String> {
+    let mut derniere = "Nuage n'a pas répondu.".to_string();
+    for base in bases {
+        let essai = Acces { base: base.clone(), ..acces.clone() };
+        match tester(&essai).await {
+            Ok(()) => return Ok(base.clone()),
+            // Un refus d'identité ne se règle pas en changeant d'adresse.
+            Err(e) if e.contains("refuse l'identifiant") => return Err(e),
+            Err(e) => derniere = e,
+        }
+    }
+    Err(derniere)
 }
 
 #[cfg(test)]
@@ -366,6 +478,7 @@ mod tests {
             utilisateur: "clement.titet".into(),
             mot_de_passe: "secret".into(),
             racine: "Équipe IME".into(),
+            base: base_compte("clement.titet"),
         }
     }
 
@@ -384,6 +497,24 @@ mod tests {
         assert_eq!(serveur_propre("  https://exemple.fr  "), "https://exemple.fr");
         assert_eq!(serveur_propre(""), "");
         assert!(url_web(&acces(), "cycle 1").ends_with("/apps/files/?dir=/%C3%89quipe%20IME/cycle%201"));
+    }
+
+    #[test]
+    fn un_lien_de_partage_se_lit_tel_qu_on_le_colle() {
+        let attendu = ("https://nuage03.apps.education.fr".to_string(), "aBcD1234".to_string());
+        assert_eq!(lien_partage("https://nuage03.apps.education.fr/s/aBcD1234").unwrap(), attendu);
+        assert_eq!(lien_partage("  https://nuage03.apps.education.fr/s/aBcD1234/  ").unwrap(), attendu);
+        assert_eq!(lien_partage("nuage03.apps.education.fr/s/aBcD1234/download").unwrap(), attendu);
+        assert!(lien_partage("https://nuage03.apps.education.fr/apps/files").is_err());
+        assert!(lien_partage("https://nuage03.apps.education.fr/s/").is_err());
+        // Le lien mène au dossier partagé : pas de compte, pas d'identifiant.
+        let a = Acces { base: bases_lien("aBcD1234")[0].clone(), utilisateur: "aBcD1234".into(),
+            racine: String::new(), ..acces() };
+        assert_eq!(url_de(&a, "Maths/exo.pdf"),
+            "https://nuage03.apps.education.fr/public.php/dav/files/aBcD1234/Maths/exo.pdf");
+        assert_eq!(url_web(&a, "Maths"), "https://nuage03.apps.education.fr/s/aBcD1234");
+        // L'adresse d'avant reste proposée aux serveurs plus anciens.
+        assert_eq!(bases_lien("x")[1], "public.php/webdav");
     }
 
     #[test]
