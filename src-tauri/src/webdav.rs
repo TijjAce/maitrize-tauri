@@ -75,17 +75,61 @@ fn encoder(segment: &str) -> String {
     sortie
 }
 
-/// L'adresse normalisée d'un serveur : sans barre finale, en https par défaut.
+/// Les morceaux de chemin qui appartiennent à la page web de Nextcloud, et
+/// non au serveur : tout ce qui suit est à jeter.
+const PAGES_WEB: &[&str] = &["/index.php", "/apps/", "/remote.php", "/public.php", "/login", "/settings", "/s/", "/f/"];
+
+/**
+ * L'adresse d'un serveur, telle qu'on peut la coller.
+ *
+ * L'enseignant copie souvent l'adresse de la page qu'il a sous les yeux —
+ * « https://nuage17.apps.education.fr/index.php/apps/files/files/1167348?dir=/… ».
+ * On n'en garde que le serveur, avec son éventuel sous-chemin
+ * (« https://exemple.fr/nextcloud »), sans la page ni ses paramètres.
+ */
 pub fn serveur_propre(brut: &str) -> String {
-    let t = brut.trim().trim_end_matches('/');
+    let t = brut.trim();
     if t.is_empty() {
         return String::new();
     }
-    if t.starts_with("http://") || t.starts_with("https://") {
+    let avec_protocole = if t.starts_with("http://") || t.starts_with("https://") {
         t.to_string()
     } else {
         format!("https://{t}")
+    };
+    // Ni ancre, ni paramètres : ils décrivent la page, pas le serveur.
+    let sans_suite = avec_protocole.split(['?', '#']).next().unwrap_or("").to_string();
+    let debut = sans_suite.find("://").map(|i| i + 3).unwrap_or(0);
+    let (protocole, reste) = sans_suite.split_at(debut);
+    let mut chemin = reste.to_string();
+    for marque in PAGES_WEB {
+        // La marque se cherche après l'hôte : « /apps/ » ne peut pas être un domaine.
+        if let Some(i) = chemin.find(marque) {
+            if i > 0 {
+                chemin.truncate(i);
+            }
+        }
     }
+    format!("{protocole}{}", chemin.trim_end_matches('/'))
+}
+
+/**
+ * Le dossier que désigne une adresse de page web : « ?dir=/Équipe IME ».
+ *
+ * Coller l'adresse du dossier qu'on regarde suffit alors à le désigner.
+ */
+pub fn dossier_de_l_adresse(brut: &str) -> String {
+    let apres = match brut.split_once('?') {
+        Some((_, q)) => q,
+        None => return String::new(),
+    };
+    for parametre in apres.split(['&', '#']) {
+        if let Some(valeur) = parametre.strip_prefix("dir=") {
+            let chemin = decoder(&valeur.replace('+', " "));
+            return chemin.trim_matches('/').to_string();
+        }
+    }
+    String::new()
 }
 
 /// Le chemin WebDAV d'un élément, sans le serveur.
@@ -161,7 +205,14 @@ async fn propfind(acces: &Acces, relatif: &str, profondeur: &str) -> R<String> {
         .await
         .map_err(|e| format!("Nuage injoignable : {e}"))?;
     if !rep.status().is_success() {
-        return Err(erreur_http(rep.status(), if relatif.is_empty() { "le dossier partagé" } else { relatif }));
+        let statut = rep.status();
+        return Err(match statut.as_u16() {
+            // PROPFIND n'a de sens que sur une adresse WebDAV : ailleurs, le
+            // serveur répond « méthode interdite ».
+            405 | 501 => "Cette adresse n'est pas celle d'un serveur Nuage. Gardez seulement le début, par exemple « nuage17.apps.education.fr ».".to_string(),
+            404 if relatif.is_empty() => "Ce dossier n'existe pas dans votre Nuage : vérifiez son nom, accents et majuscules compris.".to_string(),
+            _ => erreur_http(statut, if relatif.is_empty() { "le dossier partagé" } else { relatif }),
+        });
     }
     rep.text().await.map_err(|e| e.to_string())
 }
@@ -493,10 +544,23 @@ mod tests {
             url_de(&acces(), ""),
             "https://nuage03.apps.education.fr/remote.php/dav/files/clement.titet/%C3%89quipe%20IME"
         );
+        assert!(url_web(&acces(), "cycle 1").ends_with("/apps/files/?dir=/%C3%89quipe%20IME/cycle%201"));
+    }
+
+    #[test]
+    fn l_adresse_collee_depuis_le_navigateur_se_ramene_au_serveur() {
+        // Ce que l'on copie en regardant son dossier dans Nuage.
+        let collee = "https://nuage17.apps.education.fr/index.php/apps/files/files/1167348?dir=/fichier%20commun&openfile=true";
+        assert_eq!(serveur_propre(collee), "https://nuage17.apps.education.fr");
+        assert_eq!(dossier_de_l_adresse(collee), "fichier commun");
+        // Un Nextcloud installé dans un sous-dossier garde le sien.
+        assert_eq!(serveur_propre("https://exemple.fr/nextcloud/index.php/apps/files"), "https://exemple.fr/nextcloud");
+        // Et l'adresse simple reste simple.
         assert_eq!(serveur_propre("nuage03.apps.education.fr/"), "https://nuage03.apps.education.fr");
         assert_eq!(serveur_propre("  https://exemple.fr  "), "https://exemple.fr");
         assert_eq!(serveur_propre(""), "");
-        assert!(url_web(&acces(), "cycle 1").ends_with("/apps/files/?dir=/%C3%89quipe%20IME/cycle%201"));
+        assert_eq!(dossier_de_l_adresse("https://nuage17.apps.education.fr/apps/files"), "");
+        assert_eq!(dossier_de_l_adresse("https://n.fr/apps/files?dir=/&x=1"), "");
     }
 
     #[test]

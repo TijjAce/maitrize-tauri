@@ -298,11 +298,15 @@ pub fn communs_liste(db: State<'_, Db>) -> R<Vec<BureauCommun>> {
 pub async fn commun_ajouter_nuage(
     db: State<'_, Db>, nom: String, serveur: String, utilisateur: String, mot_de_passe: String, dossier: String,
 ) -> R<BureauCommun> {
+    // L'adresse collée depuis le navigateur porte souvent le dossier regardé :
+    // on le reprend plutôt que de le faire retaper.
+    let devine = crate::webdav::dossier_de_l_adresse(&serveur);
     let serveur = crate::webdav::serveur_propre(&serveur);
     if serveur.is_empty() || utilisateur.trim().is_empty() || mot_de_passe.trim().is_empty() {
         return Err("Il manque l'adresse de Nuage, l'identifiant ou le mot de passe d'application.".into());
     }
-    let dossier_distant = segments(dossier.trim())?.join("/");
+    let voulu = if dossier.trim().is_empty() { devine } else { dossier.trim().to_string() };
+    let dossier_distant = segments(&voulu)?.join("/");
     let b = BureauCommun {
         id: uuid::Uuid::new_v4().to_string(),
         nom: if nom.trim().is_empty() {
