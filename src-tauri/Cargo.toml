@@ -52,4 +52,5 @@ aws-sdk-s3 = "1"
 tiny_http = "0.12"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 yrs = "0.27.4"
+quick-xml = "0.36"
 

@@ -259,7 +259,12 @@ export interface EtatSync {
 }
 
 /** Un bureau commun : un dossier partagé avec des collègues par un service de stockage. */
-export interface BureauCommun { id: string; nom: string; chemin: string; present: boolean }
+export interface BureauCommun {
+  id: string; nom: string; chemin: string; present: boolean;
+  /** « dossier » (cet ordinateur) ou « nuage » (connexion directe à Nextcloud). */
+  sorte?: string;
+  serveur?: string; utilisateur?: string; dossierDistant?: string;
+}
 /** Un dossier ou un fichier d'un bureau commun. */
 export interface EntreeCommune { nom: string; chemin: string; dossier: boolean; octets: number; modifie: string; elements: number }
 
@@ -604,6 +609,9 @@ export const api = {
   sauvegardePull: (cle?: string) => invoke<string>("sauvegarde_pull", { cle: cle ?? null }),
   communsListe: () => invoke<BureauCommun[]>("communs_liste"),
   communAjouter: (nom: string, chemin: string) => invoke<BureauCommun>("commun_ajouter", { nom, chemin }),
+  /** Un bureau commun posé sur Nuage : le mot de passe d'application ne revient jamais. */
+  communAjouterNuage: (nom: string, serveur: string, utilisateur: string, motDePasse: string, dossier: string) =>
+    invoke<BureauCommun>("commun_ajouter_nuage", { nom, serveur, utilisateur, motDePasse, dossier }),
   communRenommer: (id: string, nom: string) => invoke<void>("commun_renommer", { id, nom }),
   communOublier: (id: string) => invoke<void>("commun_oublier", { id }),
   communLister: (bureau: string, dossier: string) => invoke<EntreeCommune[]>("commun_lister", { bureau, dossier }),
