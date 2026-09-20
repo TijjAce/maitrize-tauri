@@ -525,7 +525,11 @@ function AjoutBureau({ onClose, onAjoute }: { onClose: () => void; onAjoute: (b:
             bureau commun).
           </p>
           <Field label="Adresse de Nuage">
-            <Input placeholder="nuage03.apps.education.fr" value={serveur} onChange={(e) => setServeur(e.target.value)} />
+            <Input placeholder="nuage17.apps.education.fr" value={serveur} onChange={(e) => setServeur(e.target.value)} />
+            <div style={{ fontSize: 12.5, color: "var(--text-2)", marginTop: 4 }}>
+              Le début de l'adresse suffit. Vous pouvez aussi coller l'adresse complète de la page que vous regardez dans
+              Nuage : Maitrize en tirera le serveur, et le dossier s'il y figure.
+            </div>
           </Field>
           <div className="row">
             <Field label="Identifiant">
@@ -537,6 +541,9 @@ function AjoutBureau({ onClose, onAjoute }: { onClose: () => void; onAjoute: (b:
           </div>
           <Field label="Dossier partagé dans Nuage (facultatif)">
             <Input placeholder="Équipe IME" value={dossierDistant} onChange={(e) => setDossierDistant(e.target.value)} />
+            <div style={{ fontSize: 12.5, color: "var(--text-2)", marginTop: 4 }}>
+              Son nom exact, accents et majuscules compris. Vide : tout votre Nuage devient le bureau commun.
+            </div>
           </Field>
           <Field label="Nom du bureau commun">
             <Input placeholder="Équipe de l'IME" value={nom} onChange={(e) => setNom(e.target.value)} />
