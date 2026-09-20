@@ -396,8 +396,9 @@ pub(crate) fn migrate(conn: &Connection) {
             dossier TEXT NOT NULL DEFAULT ''
         );
 
-        -- Outils pour l'élève et affichages de la classe : une même fiche,
-        -- distinguée par son genre (« outil » ou « affichage »).
+        -- Outils pour l'élève, affichages de la classe et évaluations d'une
+        -- compétence : une même fiche, distinguée par son genre
+        -- (« outil », « affichage » ou « evaluation »).
         CREATE TABLE IF NOT EXISTS outils_classe (
             id TEXT PRIMARY KEY,
             genre TEXT NOT NULL DEFAULT 'outil',

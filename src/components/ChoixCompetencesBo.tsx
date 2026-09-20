@@ -27,7 +27,11 @@ export function basculerCompetence(json: string, c: CompetenceSelectionnee): str
 }
 
 /** Les compétences choisies en étiquettes, et la liste des programmes à ouvrir. */
-export function ChoixCompetencesBo({ valeur, onChange }: { valeur: string; onChange: (json: string) => void }) {
+export function ChoixCompetencesBo({ valeur, onChange, bouton = "🎯 Choisir des compétences du BO" }: {
+  valeur: string; onChange: (json: string) => void;
+  /** Ce que dit le bouton : une évaluation en vise une, un jeu en travaille plusieurs. */
+  bouton?: string;
+}) {
   const choisies = lireCompetencesBo(valeur);
   const [ouvert, setOuvert] = React.useState(false);
   const [filtre, setFiltre] = React.useState("");
@@ -54,7 +58,7 @@ export function ChoixCompetencesBo({ valeur, onChange }: { valeur: string; onCha
         </div>
       )}
       <button type="button" className="btn sm" style={{ marginTop: 8 }} onClick={() => setOuvert((x) => !x)} aria-expanded={ouvert}>
-        {ouvert ? "Fermer les programmes" : `🎯 Choisir des compétences du BO${choisies.length ? ` (${choisies.length})` : ""}`}
+        {ouvert ? "Fermer les programmes" : `${bouton}${choisies.length ? ` (${choisies.length})` : ""}`}
       </button>
       {ouvert && (
         <div className="jeu-choix-bo">

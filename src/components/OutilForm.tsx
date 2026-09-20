@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  api, CATEGORIES_AFFICHAGE, CATEGORIES_OUTIL, PERIODES_AFFICHAGE, couleurHex, texteErreur,
+  api, categoriesDuGenre, PERIODES_AFFICHAGE, couleurHex, texteErreur,
   type DocumentOutil, type Eleve, type OutilClasse,
 } from "../api";
 import { Modal, Field, Input, Textarea, Select, ColorPicker } from "./ui";
@@ -11,13 +11,15 @@ import { toast } from "./Toaster";
 import { fichierEnBase64 } from "../dragdrop";
 import { openCtx } from "./ctxmenu";
 
-// ── Outils pour l'élève et affichages ──────────────────────────────────────
+// ── Outils pour l'élève, affichages et évaluations ─────────────────────────
 //
-// Deux inventaires de la classe, sur une même fiche : les outils dont les
+// Trois inventaires de la classe, sur une même fiche : les outils dont les
 // élèves se servent (bande numérique, sous-main, casque anti-bruit…) — à quoi
-// ils servent, où ils sont rangés, qui s'en sert ; et les affichages
+// ils servent, où ils sont rangés, qui s'en sert ; les affichages
 // (référentiels, règles de vie, emploi du temps visuel…) — où ils sont, quand
-// ils sont au mur, et le fichier pour les réimprimer.
+// ils sont au mur, et le fichier pour les réimprimer ; et les évaluations —
+// quelle compétence elles évaluent, comment les faire passer, et le sujet à
+// imprimer.
 
 const liste = <T,>(json: string): T[] => {
   try { const v = JSON.parse(json || "[]"); return Array.isArray(v) ? v : []; } catch { return []; }
@@ -31,17 +33,25 @@ const prenom = (e: Eleve) => e.nom.trim().split(/\s+/)[0] ?? e.nom;
 const MOTS = {
   outil: {
     nouveau: "Nouvel outil", modifier: "Modifier l'outil", titre: "Nom de l'outil", lieu: "Rangement",
-    lieuExemple: "ex. Bac bleu du coin maths", usage: "À quoi il sert",
+    lieuExemple: "ex. Bac bleu du coin maths", categorie: "Catégorie", usage: "À quoi il sert",
     usageExemple: "Se repérer dans la suite des nombres, compter en avançant…",
     consignes: "Comment s'en servir", consignesExemple: "Le poser à gauche du cahier ; l'élève montre du doigt…",
-    documents: "Documents à imprimer",
+    documents: "Documents à imprimer", ajouter: "📎 Ajouter un document", icone: "🧰",
   },
   affichage: {
     nouveau: "Nouvel affichage", modifier: "Modifier l'affichage", titre: "Titre de l'affichage", lieu: "Où il est affiché",
-    lieuExemple: "ex. Au-dessus du tableau", usage: "Ce qu'il apporte aux élèves",
+    lieuExemple: "ex. Au-dessus du tableau", categorie: "Catégorie", usage: "Ce qu'il apporte aux élèves",
     usageExemple: "Retrouver les sons étudiés, se rappeler les étapes d'une technique…",
     consignes: "À savoir", consignesExemple: "À compléter à chaque nouveau son ; à montrer pendant la dictée…",
-    documents: "Fichier pour le réimprimer",
+    documents: "Fichier pour le réimprimer", ajouter: "📎 Ajouter un fichier", icone: "🖼",
+  },
+  evaluation: {
+    nouveau: "Nouvelle évaluation", modifier: "Modifier l'évaluation", titre: "Nom de l'évaluation",
+    lieu: "Rangement", lieuExemple: "ex. Classeur des évaluations", categorie: "Sorte d'évaluation",
+    usage: "Ce qu'elle évalue", usageExemple: "Lire les nombres jusqu'à 100, écrire une phrase dictée…",
+    consignes: "Comment la faire passer",
+    consignesExemple: "En individuel, la consigne lue à voix haute, sans limite de temps ; réussi si 8 items sur 10…",
+    documents: "Le sujet à imprimer (PDF)", ajouter: "📎 Ajouter un PDF", icone: "📋",
   },
 } as const;
 
@@ -50,7 +60,8 @@ export function OutilForm({ o, onClose, onSaved }: { o: OutilClasse; onClose: ()
   const up = (p: Partial<OutilClasse>) => setV((x) => ({ ...x, ...p }));
   const mots = MOTS[v.genre];
   const outil = v.genre === "outil";
-  const categories: readonly string[] = outil ? CATEGORIES_OUTIL : CATEGORIES_AFFICHAGE;
+  const evaluation = v.genre === "evaluation";
+  const categories = categoriesDuGenre(v.genre);
   const [eleves, setEleves] = React.useState<Eleve[]>([]);
   React.useEffect(() => { if (outil) api.elevesList().then(setEleves).catch(() => {}); }, [outil]);
 
@@ -92,14 +103,21 @@ export function OutilForm({ o, onClose, onSaved }: { o: OutilClasse; onClose: ()
       footer={<><button className="btn" onClick={onClose}>Annuler</button>
         <button className="btn primary" disabled={!v.titre.trim() || enregistrement || ajout} onClick={enregistrer}>Enregistrer</button></>}>
       <Field label={mots.titre}><Input autoFocus value={v.titre} onChange={(e) => up({ titre: e.target.value })} /></Field>
+      {evaluation && (
+        // Une évaluation évalue une compétence : elle passe avant le reste.
+        <Field label="Compétence évaluée">
+          <ChoixCompetencesBo valeur={v.competencesBo} onChange={(competencesBo) => up({ competencesBo })}
+            bouton="🎯 Choisir la compétence évaluée" />
+        </Field>
+      )}
       <div className="row">
-        <Field label="Catégorie">
+        <Field label={mots.categorie}>
           <Select value={v.categorie} onChange={(e) => up({ categorie: e.target.value })}>
             {(categories.includes(v.categorie) || !v.categorie ? categories : [v.categorie, ...categories]).map((c) => <option key={c}>{c}</option>)}
           </Select>
         </Field>
         <Field label={mots.lieu}><Input value={v.lieu} placeholder={mots.lieuExemple} onChange={(e) => up({ lieu: e.target.value })} /></Field>
-        {!outil && (
+        {v.genre === "affichage" && (
           <Field label="Quand">
             <Select value={v.periode} onChange={(e) => up({ periode: e.target.value })}>
               {PERIODES_AFFICHAGE.map((p) => <option key={p}>{p}</option>)}
@@ -109,7 +127,7 @@ export function OutilForm({ o, onClose, onSaved }: { o: OutilClasse; onClose: ()
       </div>
       <Field label={mots.usage}>
         <Textarea value={v.usage} placeholder={mots.usageExemple} onChange={(e) => up({ usage: e.target.value })} />
-        <ChoixCompetencesBo valeur={v.competencesBo} onChange={(competencesBo) => up({ competencesBo })} />
+        {!evaluation && <ChoixCompetencesBo valeur={v.competencesBo} onChange={(competencesBo) => up({ competencesBo })} />}
       </Field>
       <Field label={mots.consignes}>
         <Textarea value={v.consignes} placeholder={mots.consignesExemple} rows={Math.min(10, Math.max(3, v.consignes.split("\n").length + 1))}
@@ -148,7 +166,7 @@ export function OutilForm({ o, onClose, onSaved }: { o: OutilClasse; onClose: ()
         <input ref={choixDocuments} type="file" multiple hidden
           onChange={(e) => { const f = Array.from(e.target.files ?? []); e.target.value = ""; if (f.length) void ajouterDocuments(f); }} />
         <button type="button" className="btn sm" disabled={ajout} onClick={() => choixDocuments.current?.click()}>
-          {ajout ? "Ajout…" : "📎 Ajouter un document"}
+          {ajout ? "Ajout…" : mots.ajouter}
         </button>
       </Field>
       <div className="field">
@@ -157,7 +175,7 @@ export function OutilForm({ o, onClose, onSaved }: { o: OutilClasse; onClose: ()
           {v.imageNom
             ? <FichierImg nom={v.imageNom} style={{ width: 96, height: 72, objectFit: "cover", border: "1px solid var(--border)" }} />
             : <div style={{ width: 96, height: 72, borderRadius: 8, background: "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
-                {outil ? "🧰" : "🖼"}
+                {mots.icone}
               </div>}
           <VignetteUpload onUploaded={(nom) => up({ imageNom: nom })} />
           {v.imageNom && <button className="btn ghost sm" onClick={() => up({ imageNom: null })}>Retirer</button>}
@@ -171,12 +189,11 @@ export function OutilForm({ o, onClose, onSaved }: { o: OutilClasse; onClose: ()
   );
 }
 
-/** La carte d'un outil ou d'un affichage, dans son onglet. */
+/** La carte d'un outil, d'un affichage ou d'une évaluation, dans son onglet. */
 export function CarteOutil({ o, eleves, onOuvrir, onDupliquer, onSupprimer }: {
   o: OutilClasse; eleves: Eleve[];
   onOuvrir: () => void; onDupliquer: () => void; onSupprimer: () => void;
 }) {
-  const outil = o.genre === "outil";
   const qui = elevesDe(o).map((id) => eleves.find((e) => e.id === id)).filter((e): e is Eleve => !!e).map(prenom);
   const documents = documentsDe(o);
   return (
@@ -195,8 +212,8 @@ export function CarteOutil({ o, eleves, onOuvrir, onDupliquer, onSupprimer }: {
       </div>
       <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
         {o.categorie && <span className="chip">{o.categorie}</span>}
-        {o.lieu && <span className="chip">{outil ? "📦" : "📍"} {o.lieu}</span>}
-        {!outil && o.periode && <span className="chip">🗓 {o.periode}</span>}
+        {o.lieu && <span className="chip">{o.genre === "affichage" ? "📍" : "📦"} {o.lieu}</span>}
+        {o.genre === "affichage" && o.periode && <span className="chip">🗓 {o.periode}</span>}
         {qui.length > 0 && <span className="chip" title={qui.join(", ")}>👥 {qui.length > 3 ? `${qui.slice(0, 3).join(", ")} +${qui.length - 3}` : qui.join(", ")}</span>}
         {documents.length > 0 && <span className="chip">📄 {documents.length}</span>}
         {o.dossier && <span className="chip">📁 {o.dossier}</span>}

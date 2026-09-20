@@ -234,7 +234,7 @@ pub fn outil_classe_save(db: State<Db>, outil: OutilClasse) -> R<OutilClasse> {
 }
 
 pub(crate) fn ecrire_outil_classe(c: &rusqlite::Connection, o: OutilClasse) -> R<OutilClasse> {
-    if o.genre != "outil" && o.genre != "affichage" {
+    if !matches!(o.genre.as_str(), "outil" | "affichage" | "evaluation") {
         return Err("Genre inconnu.".into());
     }
     c.execute(
@@ -1743,7 +1743,9 @@ const SOURCES: &[(&str, &str)] = &[
     ("jeu", "SELECT id, COALESCE(NULLIF(titre,''),'Jeu'), COALESCE(type_jeu,''),
              COALESCE(regles,'') || '\n' || COALESCE(description_jeu,'') || '\n' || COALESCE(competences,''),
              COALESCE(date_creation,''), '' FROM jeux"),
-    ("outil", "SELECT id, COALESCE(NULLIF(titre,''),'Outil'), COALESCE(genre,'') || COALESCE(' · ' || NULLIF(categorie,''),''),
+    ("outil", "SELECT id, COALESCE(NULLIF(titre,''),'Outil'),
+               CASE genre WHEN 'affichage' THEN 'Affichage' WHEN 'evaluation' THEN 'Évaluation' ELSE 'Outil' END
+               || COALESCE(' · ' || NULLIF(categorie,''),''),
                COALESCE(usage,'') || '\n' || COALESCE(consignes,''), COALESCE(date_creation,''), COALESCE(genre,'') FROM outils_classe"),
     ("texte", "SELECT id, COALESCE(NULLIF(titre,''),'Texte'), COALESCE(dossier,''), COALESCE(contenu,''),
                COALESCE(NULLIF(date_modification,''), date_creation), '' FROM textes"),
@@ -2240,6 +2242,36 @@ fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests_fiches_de_classe {
+    use crate::models::OutilClasse;
+
+    /// Outils, affichages et évaluations partagent une table : une évaluation
+    /// doit y entrer, avec sa compétence et son sujet, et un genre inventé
+    /// doit être refusé plutôt qu'écrit en silence.
+    #[test]
+    fn une_evaluation_s_enregistre_comme_un_outil() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        let bo = r#"[{"id":"c1","referentielNom":"Cycle 2","competenceTitre":"Lire les nombres jusqu'à 100"}]"#;
+        let sujet = r#"[{"nom":"Sujet.pdf","fichier":"sujet-1.pdf"}]"#;
+        let ev: OutilClasse = serde_json::from_value(serde_json::json!({
+            "id": "ev1", "genre": "evaluation", "titre": "Lire les nombres jusqu'à 100",
+            "competencesBo": bo, "documentsJson": sujet, "categorie": "Bilan de fin de séquence",
+        })).unwrap();
+        super::ecrire_outil_classe(&c, ev).unwrap();
+        let lu = c.query_row("SELECT * FROM outils_classe WHERE id='ev1'", [], OutilClasse::from_row).unwrap();
+        assert_eq!(lu.genre, "evaluation");
+        assert_eq!(lu.competences_bo, bo);
+        assert_eq!(lu.documents_json, sujet);
+
+        let inconnu: OutilClasse = serde_json::from_value(serde_json::json!({
+            "id": "x1", "genre": "chose", "titre": "?"
+        })).unwrap();
+        assert!(super::ecrire_outil_classe(&c, inconnu).is_err());
+    }
 }
 
 #[cfg(test)]
