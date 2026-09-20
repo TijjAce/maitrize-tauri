@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { imagesDuTexte, ligneDeManuel, ligneDuManuel, marqueurImage, poserImage, retirerImage } from "./cahierJournal";
+import {
+  imagesDuTexte, ligneDeCompetence, ligneDeManuel, ligneDuManuel, marqueurImage, poserImage, retirerImage,
+} from "./cahierJournal";
 
 describe("citer un manuel dans le prévu", () => {
   it("écrit le manuel et sa page, et le passage s'il est surligné", () => {
@@ -34,5 +36,13 @@ describe("citer un manuel dans le prévu", () => {
     expect(ligneDuManuel(avecPassage, "Cap Maths CE1", 42)).toBe(ligneDeManuel("Cap Maths CE1", 42, "Compare les nombres"));
     expect(ligneDuManuel(avecPassage, "Cap Maths CE1", 43)).toBeNull();
     expect(ligneDuManuel("Rituels", "Cap Maths CE1", 42)).toBeNull();
+  });
+});
+
+describe("poser une compétence dans le prévu", () => {
+  it("écrit la compétence, son niveau et son référentiel", () => {
+    expect(ligneDeCompetence("Lire les nombres jusqu'à 100", "Cycle 2")).toBe("🎯 Lire les nombres jusqu'à 100 (Cycle 2)");
+    expect(ligneDeCompetence("  Compter   en avançant ", "", "CP")).toBe("🎯 [CP] Compter en avançant");
+    expect(ligneDeCompetence("   ", "Cycle 2")).toBe("");
   });
 });
