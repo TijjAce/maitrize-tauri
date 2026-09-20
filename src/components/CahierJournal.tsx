@@ -6,7 +6,8 @@ import { useDictee, mmss } from "../dictee";
 import { natureDe } from "../heures";
 import { isoJour, plusJours } from "../dates";
 import {
-  creneauDeLaSemainePrecedente, imagesDuTexte, ligneDeManuel, ligneDuManuel, poserImage, reprendrePrevu, retirerImage,
+  creneauDeLaSemainePrecedente, imagesDuTexte, ligneDeCompetence, ligneDeManuel, ligneDuManuel, poserImage,
+  reprendrePrevu, retirerImage,
 } from "../cahierJournal";
 import { PorterAuDossier } from "./PorterAuDossier";
 import { JeuForm } from "./JeuForm";
@@ -16,6 +17,8 @@ import { ChoixSequence, SequencesCitees } from "./SequencesCitees";
 import { insererLigne, ligneDeSequence, sequencesCitees } from "../sequencesCitees";
 import { SeanceReadView } from "../pages/SequenceDetail";
 import { ManuelDuJournal } from "./ManuelDuJournal";
+import { ChoixCompetence } from "./ChoixCompetence";
+import type { CompetenceSelectionnee } from "./CompetenceTree";
 import { FichierImg } from "./Deroulement";
 
 // ── Cahier journal du jour ────────────────────────────────────────────────
@@ -30,7 +33,8 @@ import { FichierImg } from "./Deroulement";
 // Un jeu de la ludothèque nommé dans le prévu montre sa règle juste dessous ;
 // une séquence citée, ses objectifs et le déroulement de sa séance. Un manuel
 // du coffre-fort se cite de même, et l'exercice qu'on y découpe se pose dans
-// le prévu, à l'écran comme dans le PDF du jour.
+// le prévu, à l'écran comme dans le PDF du jour. Une compétence des
+// référentiels s'y pose aussi, en une ligne.
 
 type Champ = "prevu" | "bilan";
 interface Brouillon { prevu: string; bilan: string }
@@ -213,6 +217,14 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
 
   // ── Les manuels cités, et leurs images ──
   const [manuelPour, setManuelPour] = React.useState<Creneau | null>(null);
+  // ── Une compétence posée dans le prévu, prise dans les référentiels ──
+  const [competencePour, setCompetencePour] = React.useState<Creneau | null>(null);
+  const poserCompetence = (c: Creneau, comp: CompetenceSelectionnee) => {
+    const prevu = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
+    const ligne = ligneDeCompetence(comp.competenceTitre, comp.referentielNom, comp.niveau ?? "");
+    if (ligne) modifier(c.id, "prevu", insererLigne(prevu, ligne, curseurDe(c)), true);
+    setCompetencePour(null);
+  };
   /** Où écrire dans le prévu : là où était le curseur, sinon à la fin. */
   const curseurDe = (c: Creneau) => {
     const zone = zonesPrevu.current[c.id];
@@ -286,7 +298,8 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
               const occupe = dictee.etat !== "repos" && !actif;
               return (
                 <div key={champ} style={{ marginTop: champ === "bilan" ? 8 : 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                  {/* Six boutons ne tiennent pas sur une ligne étroite : ils s'y replient. */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>{LIBELLES[champ].titre}</span>
                     <button className="btn ghost sm" disabled={occupe || dictee.etat === "transcription"}
                       onClick={() => basculerDictee(c.id, champ)}
@@ -308,6 +321,9 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                         <button className="btn ghost sm" onClick={() => setManuelPour(c)}
                           title="Citer une page d'un manuel du coffre-fort, et y découper l'exercice : son image se pose dans le prévu et s'imprime avec le jour">
                           📖 Manuel</button>
+                        <button className="btn ghost sm" onClick={() => setCompetencePour(c)}
+                          title="Poser une compétence des référentiels dans le prévu">
+                          🎯 Compétence</button>
                       </>
                     ) : (
                       <button className="btn ghost sm" disabled={!b.bilan.trim() || reunion} onClick={() => porterAuDossier(c, ids)}
@@ -354,6 +370,9 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
       {versDossier && (
         <PorterAuDossier creneau={versDossier.creneau} texte={versDossier.texte} presents={versDossier.presents}
           eleves={eleves} onClose={() => setVersDossier(null)} />
+      )}
+      {competencePour && (
+        <ChoixCompetence onClose={() => setCompetencePour(null)} onChoisir={(comp) => poserCompetence(competencePour, comp)} />
       )}
       {manuelPour && (
         <ManuelDuJournal onClose={() => setManuelPour(null)}

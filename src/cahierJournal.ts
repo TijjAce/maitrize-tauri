@@ -79,6 +79,17 @@ export function ligneDuManuel(texte: string, manuel: string, page: number): stri
   return (texte ?? "").split("\n").find((l) => l.trim() === debut || l.trim().startsWith(`${debut} —`)) ?? null;
 }
 
+/**
+ * La ligne qui pose une compétence travaillée : « 🎯 Lire les nombres jusqu'à
+ * 100 (Cycle 2) ». Le référentiel entre parenthèses dit d'où elle vient.
+ */
+export function ligneDeCompetence(titre: string, referentiel = "", niveau = ""): string {
+  const quoi = (niveau.trim() ? `[${niveau.trim()}] ` : "") + (titre ?? "").replace(/\s+/g, " ").trim();
+  if (!quoi) return "";
+  const ou = referentiel.trim();
+  return `🎯 ${quoi}${ou ? ` (${ou})` : ""}`;
+}
+
 /** Les images posées dans un texte, dans l'ordre, sans doublon. */
 export function imagesDuTexte(texte: string): string[] {
   const vues = new Set<string>();
