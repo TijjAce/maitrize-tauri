@@ -33,6 +33,8 @@ import type { GenreElement } from "../bureauCommun";
 const CLE_ACTIF = "communs:actif";
 /** Tant que la page est ouverte, on regarde ce que les collègues ont déposé. */
 const RELECTURE_MS = 5000;
+/** Sur Nuage, chaque relecture est une requête : on espace. */
+const RELECTURE_NUAGE_MS = 20000;
 /** « Nouveau » pendant trois jours. */
 const RECENT_MS = 3 * 86_400_000;
 /** Au-delà, une image se montre par son icône : l'aperçu la chargerait entière. */
@@ -99,11 +101,12 @@ export function PanneauCommun({ compact = false, onFermer, onRecupere }: {
   // Les dépôts des collègues arrivent par le service de stockage : on relit
   // régulièrement, et quand on revient sur la fenêtre.
   React.useEffect(() => {
-    const id = window.setInterval(() => { if (!document.hidden) void relire(); }, RELECTURE_MS);
+    const id = window.setInterval(() => { if (!document.hidden) void relire(); },
+      actif?.sorte === "nuage" ? RELECTURE_NUAGE_MS : RELECTURE_MS);
     const auRetour = () => { void relire(); };
     window.addEventListener("focus", auRetour);
     return () => { window.clearInterval(id); window.removeEventListener("focus", auRetour); };
-  }, [relire]);
+  }, [relire, actif?.sorte]);
 
   const faire = async (quoi: string, f: () => Promise<void>) => {
     setOccupe(quoi);
@@ -159,6 +162,8 @@ export function PanneauCommun({ compact = false, onFermer, onRecupere }: {
   /** Ce qui vient d'être déposé peut repartir aussitôt : un geste se rattrape. */
   const deposeAnnulable = async (quoi: string, depot: () => Promise<{ nom: string; elements: number }>) => {
     if (!actif) return;
+    // Vers Nuage, l'envoi prend le temps du réseau : on ne laisse pas l'écran muet.
+    if (actif.sorte === "nuage") toast(`Envoi de « ${quoi} » vers « ${actif.nom} »…`, { icone: "☁️", duree: 4000 });
     const r = await depot();
     await relire();
     toastAnnulable(`« ${quoi} » est sur « ${actif.nom} » (${r.elements} élément${r.elements > 1 ? "s" : ""}).`,
@@ -243,8 +248,10 @@ export function PanneauCommun({ compact = false, onFermer, onRecupere }: {
               titre: "Nouveau dossier", label: "Nom du dossier",
               sur: (nom) => faire("dossier", async () => { await api.communCreerDossier(actif.id, dossier, nom); await relire(); }),
             })}>{compact ? "📁" : "📁 Nouveau dossier"}</button>
-            <button className="btn ghost sm" disabled={!actif.present} title="Ouvrir ce dossier dans le Finder ou l'Explorateur"
-              onClick={() => api.communOuvrir(actif.id, dossier).catch((e) => toast(texteErreur(e), { icone: "⚠️" }))}>📂</button>
+            <button className="btn ghost sm" disabled={!actif.present}
+              title={actif.sorte === "nuage" ? "Ouvrir ce dossier dans Nuage, dans le navigateur" : "Ouvrir ce dossier dans le Finder ou l'Explorateur"}
+              onClick={() => api.communOuvrir(actif.id, dossier).catch((e) => toast(texteErreur(e), { icone: "⚠️" }))}>
+              {actif.sorte === "nuage" ? "☁️" : "📂"}</button>
             <button className="btn ghost sm" title="Renommer, oublier…" onClick={(e) => openCtx(e, [
               { label: "Renommer ce bureau commun", icon: "✏️", onClick: () => setDemande({
                 titre: "Renommer", label: "Nom du bureau commun", valeur: actif.nom,
@@ -261,7 +268,8 @@ export function PanneauCommun({ compact = false, onFermer, onRecupere }: {
           {!actif.present ? (
             <div className="card" style={{ color: "var(--text-2)" }}>
               Le dossier de « {actif.nom} » n'est pas sur cet ordinateur ({actif.chemin}). Le service de stockage l'a-t-il
-              synchronisé ? Sinon, oubliez ce bureau commun ici et ajoutez-le de nouveau en choisissant le bon dossier.
+              synchronisé ? Sinon, oubliez ce bureau commun ici et ajoutez-le de nouveau — en le posant sur Nuage, par
+              exemple, où rien n'est à installer.
             </div>
           ) : (
             <div
@@ -413,9 +421,11 @@ function PremiersPas({ onAjouter, compact = false }: { onAjouter: () => void; co
         vous-même, personne par personne, qui y a accès. Maitrize ne garde aucune clé.
       </p>
       <ol style={{ fontSize: 13.5, lineHeight: 1.7, paddingLeft: 20 }}>
-        <li>Dans <b>Nuage</b> (apps.education.fr), OneDrive ou Google Drive, créez un dossier et <b>partagez-le</b> avec vos collègues.</li>
-        <li>Installez l'<b>application de synchronisation</b> du service, pour que ce dossier soit aussi sur votre ordinateur.</li>
-        <li>Ici, <b>« Ajouter un bureau commun »</b> et choisissez ce dossier. Vos collègues font de même de leur côté.</li>
+        <li>Dans <b>Nuage</b> (apps.education.fr), créez un dossier et <b>partagez-le</b> avec vos collègues.</li>
+        <li>Toujours dans Nuage : <b>Paramètres › Sécurité</b>, créez un <b>mot de passe d'application</b> pour Maitrize.</li>
+        <li>Ici, <b>« Ajouter un bureau commun »</b> : choisissez Nuage, collez ce mot de passe, et le dossier partagé
+          apparaît — sur le Mac comme sur le PC, sans rien installer. (Un dossier synchronisé par OneDrive ou Google Drive
+          sur cet ordinateur reste possible.)</li>
       </ol>
       <button className="btn primary" onClick={onAjouter}>+ Ajouter un bureau commun</button>
     </div>
@@ -424,9 +434,19 @@ function PremiersPas({ onAjouter, compact = false }: { onAjouter: () => void; co
 
 /** Ajouter un bureau commun : choisir le dossier partagé, lui donner un nom. */
 function AjoutBureau({ onClose, onAjoute }: { onClose: () => void; onAjoute: (b: BureauCommun) => void }) {
+  // Deux façons d'atteindre le dossier partagé : Nuage directement — rien à
+  // installer, et le Mac comme le PC y voient la même chose —, ou un dossier
+  // de cet ordinateur, tenu à jour par l'application du service.
+  const [sorte, setSorte] = React.useState<"nuage" | "dossier">("nuage");
   const [chemin, setChemin] = React.useState("");
   const [nom, setNom] = React.useState("");
+  const [serveur, setServeur] = React.useState("");
+  const [utilisateur, setUtilisateur] = React.useState("");
+  const [motDePasse, setMotDePasse] = React.useState("");
+  const [dossierDistant, setDossierDistant] = React.useState("");
   const [erreur, setErreur] = React.useState("");
+  const [essai, setEssai] = React.useState(false);
+
   const choisir = async () => {
     const { open } = await import("@tauri-apps/plugin-dialog");
     const choix = await open({ directory: true, multiple: false, title: "Le dossier partagé avec vos collègues" });
@@ -435,24 +455,79 @@ function AjoutBureau({ onClose, onAjoute }: { onClose: () => void; onAjoute: (b:
       if (!nom.trim()) setNom(choix.split(/[\\/]/).filter(Boolean).pop() ?? "");
     }
   };
+
+  const ajouter = async () => {
+    setErreur(""); setEssai(true);
+    try {
+      onAjoute(sorte === "nuage"
+        ? await api.communAjouterNuage(nom, serveur, utilisateur, motDePasse, dossierDistant)
+        : await api.communAjouter(nom, chemin));
+    } catch (e) {
+      setErreur(texteErreur(e));
+    } finally {
+      setEssai(false);
+    }
+  };
+
+  const pret = sorte === "nuage" ? !!(serveur.trim() && utilisateur.trim() && motDePasse.trim()) : !!chemin;
   return (
     <Modal titre="Ajouter un bureau commun" onClose={onClose}
       footer={<>
         <button className="btn" onClick={onClose}>Annuler</button>
-        <button className="btn primary" disabled={!chemin}
-          onClick={() => api.communAjouter(nom, chemin).then(onAjoute).catch((e) => setErreur(texteErreur(e)))}>Ajouter</button>
+        <button className="btn primary" disabled={!pret || essai} onClick={() => { void ajouter(); }}>
+          {essai ? "Connexion…" : sorte === "nuage" ? "Se connecter" : "Ajouter"}
+        </button>
       </>}>
-      <p style={{ marginTop: 0, fontSize: 13, color: "var(--text-2)" }}>
-        Choisissez le dossier que votre service de stockage (Nuage, OneDrive, Google Drive…) partage avec vos collègues
-        et synchronise sur cet ordinateur.
-      </p>
-      <Field label="Dossier partagé">
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button className="btn" onClick={() => { void choisir(); }}>Choisir le dossier…</button>
-          <span style={{ fontSize: 12.5, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{chemin || "Aucun"}</span>
+      <Field label="Où est le dossier partagé ?">
+        <div className="seg" style={{ flexWrap: "wrap" }}>
+          <button className={sorte === "nuage" ? "active" : ""} onClick={() => setSorte("nuage")}>☁️ Nuage (ou autre Nextcloud)</button>
+          <button className={sorte === "dossier" ? "active" : ""} onClick={() => setSorte("dossier")}>💻 Un dossier de cet ordinateur</button>
         </div>
       </Field>
-      <Field label="Nom"><Input placeholder="Équipe de l'IME" value={nom} onChange={(e) => setNom(e.target.value)} /></Field>
+
+      {sorte === "nuage" ? (
+        <>
+          <p style={{ marginTop: 0, fontSize: 13, color: "var(--text-2)" }}>
+            Maitrize se connecte à Nuage : le bureau commun <b>est</b> votre dossier Nuage, identique sur le Mac et sur le PC,
+            sans rien installer. Dans Nuage, allez dans <b>Paramètres › Sécurité › Mot de passe d'application</b>,
+            créez-en un pour Maitrize, et recopiez-le ici. Vous pourrez le révoquer là-bas quand vous voudrez.
+          </p>
+          <Field label="Adresse de Nuage">
+            <Input placeholder="nuage03.apps.education.fr" value={serveur} onChange={(e) => setServeur(e.target.value)} />
+          </Field>
+          <div className="row">
+            <Field label="Identifiant">
+              <Input placeholder="prenom.nom" value={utilisateur} onChange={(e) => setUtilisateur(e.target.value)} />
+            </Field>
+            <Field label="Mot de passe d'application">
+              <Input type="password" autoComplete="off" value={motDePasse} onChange={(e) => setMotDePasse(e.target.value)} />
+            </Field>
+          </div>
+          <Field label="Dossier partagé dans Nuage (facultatif)">
+            <Input placeholder="Équipe IME" value={dossierDistant} onChange={(e) => setDossierDistant(e.target.value)} />
+          </Field>
+          <Field label="Nom du bureau commun">
+            <Input placeholder="Équipe de l'IME" value={nom} onChange={(e) => setNom(e.target.value)} />
+          </Field>
+          <p style={{ fontSize: 12.5, color: "var(--text-2)" }}>
+            Le mot de passe d'application reste sur cet ordinateur : il ne part ni dans la synchronisation, ni dans les sauvegardes.
+          </p>
+        </>
+      ) : (
+        <>
+          <p style={{ marginTop: 0, fontSize: 13, color: "var(--text-2)" }}>
+            Choisissez le dossier que l'application de votre service de stockage (Nuage, OneDrive, Google Drive…) synchronise
+            sur cet ordinateur.
+          </p>
+          <Field label="Dossier partagé">
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button className="btn" onClick={() => { void choisir(); }}>Choisir le dossier…</button>
+              <span style={{ fontSize: 12.5, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{chemin || "Aucun"}</span>
+            </div>
+          </Field>
+          <Field label="Nom"><Input placeholder="Équipe de l'IME" value={nom} onChange={(e) => setNom(e.target.value)} /></Field>
+        </>
+      )}
       {erreur && <p style={{ color: "var(--danger, #ef4444)", fontSize: 13, marginBottom: 0 }}>{erreur}</p>}
     </Modal>
   );
