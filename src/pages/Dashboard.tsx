@@ -5,6 +5,7 @@ import { api, couleurHex, raccourci } from "../api";
 import { useAsync } from "../components/ui";
 import { BandeauSync } from "../components/BandeauSync";
 import { EVT_JOUR } from "../components/CommandPalette";
+import { isoJour, lundiDe, plusJours } from "../dates";
 
 export default function Dashboard() {
   const nav = useNavigate();
@@ -20,7 +21,14 @@ export default function Dashboard() {
     const d = new Date().toISOString().slice(0, 10);
     return d;
   })();
-  const { data: creneaux } = useAsync(() => api.creneauxList(today, today), []);
+  // La semaine, pas seulement le jour : on prépare la suite autant qu'on
+  // remplit le jour même, et un lundi soir on regarde déjà mardi.
+  const lundi = React.useMemo(() => lundiDe(new Date()), []);
+  // Du lundi au dimanche : un créneau posé un samedi se verrait aussi. Seuls
+  // les jours qui portent quelque chose s'affichent, la carte reste courte.
+  const jours = React.useMemo(
+    () => Array.from({ length: 7 }, (_, i) => isoJour(plusJours(lundi, i))), [lundi]);
+  const { data: creneaux } = useAsync(() => api.creneauxList(jours[0], jours[6]), [jours[0]]);
 
   // Le cahier journal s'ouvre au bon jour : la date n'est pas dans l'URL.
   const ouvrirLeJournal = (iso: string) => {
@@ -34,8 +42,23 @@ export default function Dashboard() {
     (texte ?? "").split("\n").map((l) => l.replace(/\[img:[^\]]+\]/g, "").replace(/^[-•*\s]+/, "").trim()).find(Boolean) ?? "";
 
   const maintenant = new Date().toTimeString().slice(0, 5);
-  const jourDeClasse = (creneaux?.length ?? 0) > 0;
-  const sansBilan = (creneaux ?? []).filter((c) => !(c.bilan ?? "").trim() && c.heureFin <= maintenant);
+  const semaine = (creneaux ?? []).filter((c) => (c.date ?? "").slice(0, 10) >= jours[0]);
+  const duJour = (iso: string) => semaine
+    .filter((c) => (c.date ?? "").slice(0, 10) === iso)
+    .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
+  // Les jours de la semaine qui portent quelque chose, et aujourd'hui même vide.
+  const joursMontres = [...new Set([...jours.filter((j) => duJour(j).length), today])]
+    .filter((j) => jours.includes(j))
+    .sort();
+  const jourDeClasse = semaine.length > 0;
+  /** Ce qui est passé sans bilan : ce qu'il reste à écrire de la semaine. */
+  const sansBilan = semaine.filter((c) => !(c.bilan ?? "").trim()
+    && ((c.date ?? "").slice(0, 10) < today || ((c.date ?? "").slice(0, 10) === today && c.heureFin <= maintenant)));
+  const nomDuJour = (iso: string) => {
+    const d = new Date(`${iso}T12:00:00`);
+    const texte = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric" });
+    return texte.charAt(0).toUpperCase() + texte.slice(1);
+  };
 
   const stats = [
     { label: "Séquences", val: sequences?.length ?? 0, ico: "📚", to: "/plan" },
@@ -61,44 +84,61 @@ export default function Dashboard() {
       <div className="row" style={{ alignItems: "flex-start" }}>
         <div className="card" style={{ flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <h3 style={{ margin: 0 }}>🗓️ Aujourd'hui</h3>
+            <h3 style={{ margin: 0 }}>🗓️ Cette semaine</h3>
             <div className="spacer" />
             {jourDeClasse && (
               <button className="btn sm" onClick={() => ouvrirLeJournal(today)}>Ouvrir le cahier journal</button>
             )}
           </div>
           {!jourDeClasse ? (
-            <p style={{ color: "var(--text-2)" }}>Aucun créneau prévu. <a style={{ color: "var(--accent)", cursor: "pointer" }} onClick={() => nav("/planning")}>Ouvrir le planning →</a></p>
+            <p style={{ color: "var(--text-2)" }}>Aucun créneau cette semaine. <a style={{ color: "var(--accent)", cursor: "pointer" }} onClick={() => nav("/planning")}>Ouvrir le planning →</a></p>
           ) : (
             <div style={{ marginTop: 8 }}>
-              {[...creneaux!].sort((a, b) => a.heureDebut.localeCompare(b.heureDebut)).map((c) => {
-                // Le créneau en cours se repère d'un coup d'œil : c'est celui
-                // sur lequel on écrit, souvent entre deux activités.
-                const enCours = c.heureDebut <= maintenant && maintenant < c.heureFin;
-                const fini = c.heureFin <= maintenant;
-                const texte = apercu(c.prevu ?? "");
+              {joursMontres.map((jour) => {
+                const duJourLa = duJour(jour);
+                const cest = jour === today;
                 return (
-                  <div key={c.id} className="list-row" role="button" tabIndex={0}
-                    onClick={() => ouvrirLeJournal(today)}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ouvrirLeJournal(today); } }}
-                    title="Ouvrir le cahier journal de ce jour"
-                    style={{
-                      marginBottom: 6, cursor: "pointer", alignItems: "flex-start",
-                      borderLeft: enCours ? "3px solid var(--accent)" : "3px solid transparent",
-                      paddingLeft: 7, opacity: fini && !enCours ? 0.75 : 1,
-                    }}>
-                    <span className="badge">{c.heureDebut}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="title">{c.matiere || "Créneau"}</div>
-                      {texte && <div className="meta" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{texte}</div>}
-                    </div>
-                    {fini && !(c.bilan ?? "").trim() && <span className="meta" title="Bilan à écrire">✍️</span>}
-                    {(c.bilan ?? "").trim() && <span className="meta" title="Bilan écrit">✓</span>}
+                  <div key={jour} style={{ marginBottom: 10 }}>
+                    <button onClick={() => ouvrirLeJournal(jour)} title="Ouvrir le cahier journal de ce jour"
+                      style={{ fontSize: 12.5, fontWeight: cest ? 700 : 600, color: cest ? "var(--accent)" : "var(--text-2)",
+                        background: "none", border: "none", padding: 0, cursor: "pointer", marginBottom: 4, display: "block" }}>
+                      {nomDuJour(jour)}{cest ? " · aujourd'hui" : ""}
+                    </button>
+                    {!duJourLa.length && <div className="meta" style={{ paddingLeft: 7 }}>Aucun créneau.</div>}
+                    {duJourLa.map((c) => {
+                      // Le créneau en cours se repère d'un coup d'œil : c'est celui
+                      // sur lequel on écrit, souvent entre deux activités.
+                      const enCours = cest && c.heureDebut <= maintenant && maintenant < c.heureFin;
+                      const passe = jour < today || (cest && c.heureFin <= maintenant);
+                      // Le détail du prévu n'encombre que le jour même : les autres
+                      // jours se lisent d'un coup d'œil, horaires et intitulés.
+                      const texte = cest ? apercu(c.prevu ?? "") : "";
+                      return (
+                        <div key={c.id} className="list-row" role="button" tabIndex={0}
+                          onClick={() => ouvrirLeJournal(jour)}
+                          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ouvrirLeJournal(jour); } }}
+                          title="Ouvrir le cahier journal de ce jour"
+                          style={{
+                            marginBottom: 6, cursor: "pointer", alignItems: "flex-start",
+                            borderLeft: enCours ? "3px solid var(--accent)" : "3px solid transparent",
+                            paddingLeft: 7, opacity: passe && !enCours ? 0.75 : 1,
+                          }}>
+                          <span className="badge">{c.heureDebut}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div className="title">{c.matiere || "Créneau"}</div>
+                            {texte && <div className="meta" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{texte}</div>}
+                          </div>
+                          {passe && !(c.bilan ?? "").trim() && <span className="meta" title="Bilan à écrire">✍️</span>}
+                          {(c.bilan ?? "").trim() && <span className="meta" title="Bilan écrit">✓</span>}
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
               {sansBilan.length > 0 && (
-                <button className="btn sm" style={{ marginTop: 4 }} onClick={() => ouvrirLeJournal(today)}>
+                <button className="btn sm" style={{ marginTop: 4 }}
+                  onClick={() => ouvrirLeJournal((sansBilan[0].date ?? today).slice(0, 10))}>
                   ✍️ {sansBilan.length} créneau{sansBilan.length > 1 ? "x" : ""} sans bilan
                 </button>
               )}
