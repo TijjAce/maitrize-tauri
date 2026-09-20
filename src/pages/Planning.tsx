@@ -8,7 +8,7 @@ import { openCtx } from "../components/ctxmenu";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { SeanceReadView } from "./SequenceDetail";
-import { printHTML, escapeHtml, dataUrlImage } from "../print";
+import { printHTML, escapeHtml, dataUrlImage, logoImprimable, piedMaitrize, STYLE_PIED } from "../print";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
 import { CahierJournal, ecrireLeCahierJournal } from "../components/CahierJournal";
 import { EVT_JOUR } from "../components/CommandPalette";
@@ -320,10 +320,14 @@ export default function Planning() {
       @media print{@page{margin:11mm}}
       ${STYLE_REGLES}
       ${STYLE_SEQUENCES}
+      ${STYLE_PIED}
     `;
+    // Le logo se réduit ici : sans lui, le pied garde l'adresse.
+    const logo = await logoImprimable().catch(() => "");
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Planning — ${escapeHtml(titre)}</title><style>${css}</style></head>
       <body><h1>${escapeHtml(titre)}</h1><div class="sub">Cahier journal</div>
       <div class="jour">${rangs || '<div class="row"><div style="padding:20px;color:#687087">Aucun créneau ce jour-là.</div></div>'}</div>
+      ${piedMaitrize(logo)}
       </body></html>`;
     await api.ouvrirHtml(html);
   };

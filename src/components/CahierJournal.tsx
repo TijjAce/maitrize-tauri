@@ -7,8 +7,9 @@ import { natureDe } from "../heures";
 import { isoJour, plusJours } from "../dates";
 import {
   creneauDeLaSemainePrecedente, imagesDuTexte, ligneDeCompetence, ligneDeManuel, ligneDuManuel, poserImage,
-  reprendrePrevu, retirerImage,
+  protegerImages, reprendrePrevu, restaurerImages, retirerImage,
 } from "../cahierJournal";
+import { reformuler } from "../reformulation";
 import { PorterAuDossier } from "./PorterAuDossier";
 import { JeuForm } from "./JeuForm";
 import { ReglesDesJeux, useJeuxCites, useLudotheque } from "./ReglesDesJeux";
@@ -215,6 +216,57 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
     setSequencePour(null);
   };
 
+  // ── Corriger les fautes, sans rien écraser ──
+  //
+  // L'IA relit l'orthographe et la grammaire, sans reformuler : la
+  // proposition s'affiche sous le champ, et c'est l'enseignant qui la prend.
+  const [correction, setCorrection] = React.useState<
+    { id: string; champ: Champ; avant: string; apres: string; zone: { debut: number; fin: number } | null } | null>(null);
+  const [corrigeant, setCorrigeant] = React.useState("");
+
+  const corriger = async (c: Creneau, champ: Champ) => {
+    const zone = (champ === "bilan" ? zones : zonesPrevu).current[c.id];
+    const texte = aEcrire.current[c.id]?.[champ] ?? c[champ] ?? "";
+    // Un passage surligné se corrige seul ; sinon, tout le champ.
+    const surligne = zone && zone.selectionEnd > zone.selectionStart
+      ? { debut: zone.selectionStart, fin: zone.selectionEnd } : null;
+    const source = (surligne ? texte.slice(surligne.debut, surligne.fin) : texte).trim();
+    if (!source) { toast("Il n'y a rien à corriger ici.", { icone: "✨" }); return; }
+    setCorrigeant(`${c.id}|${champ}`);
+    setCorrection(null);
+    try {
+      // Les images posées dans le prévu ne partent pas à l'IA : elles reviennent après.
+      const { texte: sansImages, images } = protegerImages(source);
+      const p = await reformuler(sansImages, "corriger");
+      const propre = restaurerImages(p.texte, images);
+      if (propre.trim() === source.trim()) { toast("Rien à corriger : le texte est bon.", { icone: "✨" }); return; }
+      setCorrection({ id: c.id, champ, avant: source, apres: propre, zone: surligne });
+    } catch (e) {
+      toast("Correction impossible : " + texteErreur(e), { icone: "⚠️", duree: 7000 });
+    } finally {
+      setCorrigeant("");
+    }
+  };
+
+  const appliquerCorrection = () => {
+    if (!correction) return;
+    const { id, champ, avant, apres, zone } = correction;
+    const texte = aEcrire.current[id]?.[champ] ?? "";
+    let suite: string;
+    if (zone && texte.slice(zone.debut, zone.fin).trim() === avant.trim()) {
+      suite = texte.slice(0, zone.debut) + apres + texte.slice(zone.fin);
+    } else if (texte.trim() === avant.trim()) {
+      suite = apres;
+    } else {
+      // Le texte a changé pendant la correction : on ne devine pas où la mettre.
+      toast("Le texte a changé entre-temps : la correction n'a pas été appliquée.", { icone: "ℹ️", duree: 7000 });
+      setCorrection(null);
+      return;
+    }
+    modifier(id, champ, suite, true);
+    setCorrection(null);
+  };
+
   // ── Les manuels cités, et leurs images ──
   const [manuelPour, setManuelPour] = React.useState<Creneau | null>(null);
   // ── Une compétence posée dans le prévu, prise dans les référentiels ──
@@ -308,6 +360,11 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                       {actif && dictee.etat === "enregistrement" ? `⏹ ${mmss(dictee.secondes)}`
                         : actif && dictee.etat === "transcription" ? "Transcription…" : "🎙"}
                     </button>
+                    <button className="btn ghost sm" disabled={corrigeant === `${c.id}|${champ}`}
+                      onClick={() => { void corriger(c, champ); }}
+                      title="Corriger l'orthographe et la grammaire avec l'IA, sans reformuler. Surlignez un passage pour ne corriger que lui.">
+                      {corrigeant === `${c.id}|${champ}` ? "Correction…" : "✨ Corriger"}
+                    </button>
                     {champ === "prevu" ? (
                       <>
                         <button className="btn ghost sm" onClick={() => reprendre(c)}
@@ -337,6 +394,18 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                     onFocus={champ === "prevu" ? () => ouvertes.current.add(c.id) : undefined}
                     aria-label={`${LIBELLES[champ].titre} — ${c.heureDebut} ${c.matiere}`}
                     style={{ width: "100%", resize: "vertical", fontSize: 13.5, lineHeight: 1.45 }} />
+                  {correction?.id === c.id && correction.champ === champ && (
+                    <div className="card" style={{ marginTop: 6, padding: "8px 10px", background: "var(--panel-2)" }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
+                        ✨ Correction proposée{correction.zone ? " (passage surligné)" : ""}
+                      </div>
+                      <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, lineHeight: 1.45 }}>{correction.apres}</div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                        <button className="btn primary sm" onClick={appliquerCorrection}>Remplacer</button>
+                        <button className="btn sm" onClick={() => setCorrection(null)}>Laisser comme ça</button>
+                      </div>
+                    </div>
+                  )}
                   {champ === "prevu" && (
                     <>
                       <ImagesDuPrevu prevu={b.prevu} onRetirer={(nom) => modifier(c.id, "prevu", retirerImage(b.prevu, nom), true)} />
