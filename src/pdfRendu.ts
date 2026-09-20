@@ -206,6 +206,52 @@ export async function rendrePageSelectionnable(
   return { hauteur: viewport.height, morceaux: contenu.items.length };
 }
 
+/**
+ * Une page, ou une portion de page, en PNG base64 : ce qu'on découpe dans un
+ * manuel pour le poser dans le cahier journal.
+ *
+ * `zone` est donnée en fractions de la page (0 à 1), indépendantes du zoom
+ * d'affichage. Le rendu vise `largeurCible` pixels pour la portion retenue :
+ * un exercice pris dans un coin de page reste lisible à l'impression.
+ */
+export async function imageDeLaPage(
+  doc: DocumentPdf, numero: number, zone?: { x: number; y: number; l: number; h: number }, largeurCible = 1400,
+): Promise<{ base64: string; largeur: number; hauteur: number }> {
+  const z = {
+    x: Math.min(Math.max(zone?.x ?? 0, 0), 1), y: Math.min(Math.max(zone?.y ?? 0, 0), 1),
+    l: Math.min(Math.max(zone?.l ?? 1, 0.01), 1), h: Math.min(Math.max(zone?.h ?? 1, 0.01), 1),
+  };
+  z.l = Math.min(z.l, 1 - z.x);
+  z.h = Math.min(z.h, 1 - z.y);
+  const page = await doc.getPage(numero);
+  const base = page.getViewport({ scale: 1 });
+  // Assez de pixels pour la portion voulue, sans dépasser une page à 3000 px.
+  const echelle = Math.min(3000 / base.width, largeurCible / (base.width * z.l));
+  const viewport = page.getViewport({ scale: echelle });
+  const entiere = document.createElement("canvas");
+  entiere.width = Math.round(viewport.width);
+  entiere.height = Math.round(viewport.height);
+  const ctx = entiere.getContext("2d");
+  if (!ctx) throw new Error("Rendu impossible dans cette fenêtre.");
+  // Fond blanc : un PDF transparent donnerait une image noire une fois aplatie.
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, entiere.width, entiere.height);
+  await page.render({ canvasContext: ctx, viewport, canvas: entiere } as any).promise;
+
+  const l = Math.max(1, Math.round(entiere.width * z.l));
+  const h = Math.max(1, Math.round(entiere.height * z.h));
+  const sortie = document.createElement("canvas");
+  sortie.width = l;
+  sortie.height = h;
+  const sctx = sortie.getContext("2d");
+  if (!sctx) throw new Error("Rendu impossible dans cette fenêtre.");
+  sctx.fillStyle = "#fff";
+  sctx.fillRect(0, 0, l, h);
+  sctx.drawImage(entiere, Math.round(entiere.width * z.x), Math.round(entiere.height * z.y), l, h, 0, 0, l, h);
+  const url = sortie.toDataURL("image/png");
+  return { base64: url.slice(url.indexOf(",") + 1), largeur: l, hauteur: h };
+}
+
 /** Texte brut d'une page, pour la recherche. */
 export async function textePage(doc: DocumentPdf, numero: number): Promise<string> {
   const contenu = await (await doc.getPage(numero)).getTextContent();
