@@ -360,7 +360,11 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .ctx-item:hover { background: var(--accent-soft); color: var(--accent); }
 .ctx-item.danger { color: var(--danger); }
 .ctx-item.danger:hover { background: color-mix(in srgb, var(--danger) 12%, var(--panel)); }
+.ctx-item.ouvert { background: var(--accent-soft); color: var(--accent); }
 .ctx-ico { width: 18px; text-align: center; }
+/* La flèche d'un item qui mène à un sous-menu, poussée contre le bord. */
+.ctx-fleche { margin-left: auto; padding-left: 12px; color: var(--text-2); font-size: 15px; line-height: 1; }
+.ctx-item:hover .ctx-fleche, .ctx-item.ouvert .ctx-fleche { color: inherit; }
 .ctx-sep { height: 1px; background: var(--border); margin: 4px 6px; }
 
 /* ── Arbre de compétences ─────────────────────────────── */
