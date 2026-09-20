@@ -36,6 +36,18 @@ export function journal(ligne: string): void {
   catch { /* hors application */ }
 }
 
+/**
+ * Le battement de la fenêtre, envoyé au backend.
+ *
+ * Il ne sert à rien tant que tout va bien ; son absence, elle, dit que la
+ * fenêtre est bloquée — et c'est le backend qui l'écrit, puisqu'elle ne le
+ * peut plus.
+ */
+export function battement(ou: string): void {
+  try { (invokeTauri as (c: string, a: unknown) => Promise<void>)("diag_battement", { ou }).catch(() => {}); }
+  catch { /* hors application */ }
+}
+
 // Touche de modification selon l'OS : ⌘ sur macOS, Ctrl sur Windows/Linux.
 export const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent);
 /** Libellé de raccourci adaptatif, ex. raccourci("K") → "⌘K" (Mac) ou "Ctrl+K" (Windows). */
@@ -644,6 +656,8 @@ export const api = {
   appairageCode: () => invoke<string>("appairage_code"),
   appairageAppliquer: (code: string) => invoke<void>("appairage_appliquer", { code }),
   diagOuvrir: () => invoke<void>("diag_ouvrir"),
+  /** Le rapport à envoyer quand une fenêtre se fige : les dernières lignes du journal. */
+  diagRapport: (lignes = 200) => invoke<string>("diag_rapport", { lignes }),
   dossierDonneesGet: () => invoke<DossierDonnees>("dossier_donnees_get"),
   dossierDonneesSet: (chemin: string | null) => invoke<DossierDonnees>("dossier_donnees_set", { chemin }),
   syncEnvoyer: (amiId: string, texte: string) => invoke<void>("sync_envoyer", { amiId, texte }),

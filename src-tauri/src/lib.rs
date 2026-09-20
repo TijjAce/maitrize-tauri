@@ -7,6 +7,7 @@ mod tla_pdf;
 mod amis;
 mod commands;
 mod commun;
+mod veille;
 mod webdav;
 mod copie_bureau;
 mod db;
@@ -32,6 +33,12 @@ pub fn run() {
         commands::diag_ecrire(format!("PANIQUE {}", info.to_string().replace('\n', " — ")));
         habituel(info);
     }));
+
+    // Le journal dit quand une session commence, et si la précédente a été
+    // tuée : c'est ce qui distingue un plantage d'une fermeture ordinaire.
+    commands::diag_demarrage(env!("CARGO_PKG_VERSION"));
+    // Une fenêtre figée ne peut rien écrire : c'est le backend qui le voit.
+    veille::surveiller();
 
     let conn = db::open();
 
@@ -112,7 +119,8 @@ pub fn run() {
             arasaac::arasaac_chercher, arasaac::arasaac_nature,
             commands::jeu_generer, commands::tla_generer,
             commands::dossier_donnees_get, commands::dossier_donnees_set,
-            commands::diag_ecrire, commands::diag_ouvrir, commands::fichier_ouvrir,
+            commands::diag_ecrire, commands::diag_ouvrir, commands::diag_rapport,
+            veille::diag_battement, commands::fichier_ouvrir,
             commands::creneau_journal_save,
             // Copie du bureau dans un vrai dossier de l'ordinateur
             copie_bureau::copie_bureau_info, copie_bureau::copie_bureau_regler,
@@ -142,6 +150,13 @@ pub fn run() {
             // Capture photo depuis le téléphone
             portable::photo_capture_demarrer, portable::photo_capture_arreter,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(|_app, evenement| {
+            // Une fermeture normale laisse sa marque : sans elle, la session
+            // suivante conclura à un plantage.
+            if matches!(evenement, tauri::RunEvent::Exit) {
+                commands::diag_arret();
+            }
+        });
 }

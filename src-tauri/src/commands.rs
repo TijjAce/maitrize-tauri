@@ -2056,6 +2056,58 @@ pub fn diag_ecrire(ligne: String) {
     }
 }
 
+/// Le fichier du journal d'incidents.
+pub(crate) fn diag_chemin() -> std::path::PathBuf {
+    crate::db::data_dir().join("diagnostic.log")
+}
+
+/**
+ * Marque le début d'une session, et dit si la précédente s'est mal terminée.
+ *
+ * Une fermeture normale écrit « ARRÊT ». Si la dernière ligne du journal n'en
+ * est pas une, c'est que l'application a été tuée ou qu'elle a planté : on le
+ * note, car c'est justement ce qu'on cherche après coup.
+ */
+pub fn diag_demarrage(version: &str) {
+    let precedente_interrompue = std::fs::read_to_string(diag_chemin())
+        .ok()
+        .and_then(|t| t.lines().rev().find(|l| l.contains("DÉMARRAGE") || l.contains("ARRÊT")).map(|l| l.to_string()))
+        .map(|derniere| derniere.contains("DÉMARRAGE"))
+        .unwrap_or(false);
+    if precedente_interrompue {
+        diag_ecrire("SESSION PRÉCÉDENTE INTERROMPUE (plantage, arrêt forcé ou coupure)".into());
+    }
+    diag_ecrire(format!("DÉMARRAGE v{version} {} {}", std::env::consts::OS, std::env::consts::ARCH));
+}
+
+/// Marque une fermeture normale : la session suivante saura qu'il n'y a rien eu.
+pub fn diag_arret() {
+    diag_ecrire("ARRÊT".into());
+}
+
+/**
+ * Le rapport à envoyer : de quoi aider quelqu'un dont la fenêtre s'est figée.
+ *
+ * Les dernières lignes du journal, précédées de ce qui situe la machine. Rien
+ * d'un élève n'y figure : le journal ne contient que des messages techniques.
+ */
+#[tauri::command]
+pub fn diag_rapport(lignes: usize) -> R<String> {
+    let chemin = diag_chemin();
+    let contenu = std::fs::read_to_string(&chemin).unwrap_or_default();
+    let n = lignes.clamp(20, 2000);
+    let dernieres: Vec<&str> = contenu.lines().rev().take(n).collect();
+    let corps = dernieres.into_iter().rev().collect::<Vec<_>>().join("\n");
+    Ok(format!(
+        "Rapport Maitrize — {}\nSystème : {} {}\nJournal : {}\n\n{}",
+        chrono::Local::now().format("%d/%m/%Y %H:%M"),
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+        chemin.display(),
+        if corps.trim().is_empty() { "(aucun incident enregistré)".to_string() } else { corps },
+    ))
+}
+
 /// Ouvre le journal de diagnostic dans l'application par défaut.
 #[tauri::command]
 pub fn diag_ouvrir() -> R<()> {
