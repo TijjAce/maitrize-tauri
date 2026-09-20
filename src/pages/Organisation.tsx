@@ -14,6 +14,7 @@ import { printHTML, escapeHtml } from "../print";
 import { PlanSalleTab } from "./PlanSalle";
 import { ProjetPedagogiqueTab } from "./ProjetPedagogique";
 import { InformationsTab } from "./Informations";
+import { PagesDeGardeTab } from "./PagesDeGarde";
 import { confirmer } from "../components/confirmer";
 import { tempsDeLaSemaineType, natureDuSlot, type SlotEdt } from "../organisation";
 import { duree, plageGrille } from "../heures";
@@ -100,6 +101,7 @@ const SEGMENTS = [
   { id: "salle", label: "Plan de salle" },
   { id: "projet", label: "Projet pédagogique" },
   { id: "infos", label: "Informations" },
+  { id: "garde", label: "Pages de garde" },
 ] as const;
 type SegId = typeof SEGMENTS[number]["id"];
 
@@ -144,6 +146,7 @@ export default function Organisation() {
         : onglet === "salle" ? <PlanSalleTab />
         : onglet === "projet" ? <ProjetPedagogiqueTab annee={annee} />
         : onglet === "infos" ? <InformationsTab annee={annee} />
+        : onglet === "garde" ? <PagesDeGardeTab annee={annee} />
         : <TravailDeCycle {...props} />}
     </Page>
   );

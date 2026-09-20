@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { blocClasse, blocEmploiDuTemps, blocEleves, blocSecurite, feuilleRemplacant, BLOCS_REMPLACANT, type DonneesClasse } from "./remplacant";
+import {
+  blocClasse, blocContacts, blocEmploiDuTemps, blocEleves, blocMateriel, blocSecurite, feuilleRemplacant,
+  BLOCS_REMPLACANT, type DonneesClasse,
+} from "./remplacant";
+import { lireEtablissement } from "./etablissement";
 import { nettoyerHtml } from "./texteRiche";
 
 const donnees = (p: Partial<DonneesClasse> = {}): DonneesClasse => ({
@@ -45,6 +49,31 @@ describe("feuille pour le remplaçant", () => {
 
   it("laisse des lignes à compléter quand l'application ne sait pas", () => {
     expect(blocEmploiDuTemps(donnees({ edt: [], sourceEdt: null }))).toBe("<h2>Emploi du temps</h2><p>…</p>");
+  });
+
+  it("reprend les contacts et les repères des réglages, et laisse le reste à compléter", () => {
+    const etablissement = lireEtablissement({
+      "etab:telephone": "01 85 74 27 87",
+      "etab:direction": "Mme Martin",
+      "etab:cahiers": "Armoire, étagère du milieu <gauche>",
+      "etab:cles": "   ",
+    });
+    const d = donnees({ etablissement });
+    const contacts = blocContacts(d);
+    expect(contacts).toContain("<b>Téléphone de l'établissement :</b> 01 85 74 27 87");
+    expect(contacts).toContain("<b>Direction :</b> Mme Martin");
+    expect(contacts).toContain("<b>Secrétariat :</b> …");
+    const materiel = blocMateriel(d);
+    expect(materiel).toContain("Armoire, étagère du milieu &lt;gauche&gt;");
+    // Un champ laissé vide reste une ligne à remplir à la main.
+    expect(materiel).toContain("<b>Clés et badges :</b> …");
+    // Sans rien dans les réglages, la feuille est celle d'avant.
+    expect(blocContacts(donnees())).toContain("<b>Direction :</b> …");
+  });
+
+  it("signe avec la fonction de l'enseignant quand elle est renseignée", () => {
+    expect(blocClasse(donnees({ fonction: "Professeur des écoles spécialisé" }), "14/09/2026"))
+      .toContain("<b>Enseignant·e :</b> C. Martin — Professeur des écoles spécialisé");
   });
 
   it("assemble une feuille complète que l'éditeur garde intacte", () => {
