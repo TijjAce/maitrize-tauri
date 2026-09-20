@@ -36,20 +36,15 @@ export default function Dashboard() {
     setTimeout(() => window.dispatchEvent(new CustomEvent(EVT_JOUR, { detail: iso })), 120);
   };
 
-  // Première ligne du prévu : de quoi reconnaître le créneau sans l'ouvrir.
-  const apercu = (texte: string) =>
-    // Une ligne qui ne portait qu'une image découpée n'a rien à dire ici.
-    (texte ?? "").split("\n").map((l) => l.replace(/\[img:[^\]]+\]/g, "").replace(/^[-•*\s]+/, "").trim()).find(Boolean) ?? "";
-
   const maintenant = new Date().toTimeString().slice(0, 5);
   const semaine = (creneaux ?? []).filter((c) => (c.date ?? "").slice(0, 10) >= jours[0]);
   const duJour = (iso: string) => semaine
     .filter((c) => (c.date ?? "").slice(0, 10) === iso)
     .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
-  // Les jours de la semaine qui portent quelque chose, et aujourd'hui même vide.
-  const joursMontres = [...new Set([...jours.filter((j) => duJour(j).length), today])]
-    .filter((j) => jours.includes(j))
-    .sort();
+  // Du lundi au vendredi toujours — on ouvre aussi un jour vide pour le
+  // préparer — plus le week-end s'il porte quelque chose, ou si c'est
+  // aujourd'hui.
+  const joursMontres = jours.filter((j, i) => i < 5 || duJour(j).length || j === today);
   const jourDeClasse = semaine.length > 0;
   /** Ce qui est passé sans bilan : ce qu'il reste à écrire de la semaine. */
   const sansBilan = semaine.filter((c) => !(c.bilan ?? "").trim()
@@ -93,49 +88,29 @@ export default function Dashboard() {
           {!jourDeClasse ? (
             <p style={{ color: "var(--text-2)" }}>Aucun créneau cette semaine. <a style={{ color: "var(--accent)", cursor: "pointer" }} onClick={() => nav("/planning")}>Ouvrir le planning →</a></p>
           ) : (
-            <div style={{ marginTop: 8 }}>
+            <>
+            <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {/* Un bouton par jour : on va à son cahier journal d'un clic,
+                  sans dérouler les créneaux de toute la semaine. */}
               {joursMontres.map((jour) => {
                 const duJourLa = duJour(jour);
                 const cest = jour === today;
+                const aEcrire = duJourLa.filter((c) => !(c.bilan ?? "").trim()
+                  && (jour < today || (cest && c.heureFin <= maintenant))).length;
                 return (
-                  <div key={jour} style={{ marginBottom: 10 }}>
-                    <button onClick={() => ouvrirLeJournal(jour)} title="Ouvrir le cahier journal de ce jour"
-                      style={{ fontSize: 12.5, fontWeight: cest ? 700 : 600, color: cest ? "var(--accent)" : "var(--text-2)",
-                        background: "none", border: "none", padding: 0, cursor: "pointer", marginBottom: 4, display: "block" }}>
-                      {nomDuJour(jour)}{cest ? " · aujourd'hui" : ""}
-                    </button>
-                    {!duJourLa.length && <div className="meta" style={{ paddingLeft: 7 }}>Aucun créneau.</div>}
-                    {duJourLa.map((c) => {
-                      // Le créneau en cours se repère d'un coup d'œil : c'est celui
-                      // sur lequel on écrit, souvent entre deux activités.
-                      const enCours = cest && c.heureDebut <= maintenant && maintenant < c.heureFin;
-                      const passe = jour < today || (cest && c.heureFin <= maintenant);
-                      // Le détail du prévu n'encombre que le jour même : les autres
-                      // jours se lisent d'un coup d'œil, horaires et intitulés.
-                      const texte = cest ? apercu(c.prevu ?? "") : "";
-                      return (
-                        <div key={c.id} className="list-row" role="button" tabIndex={0}
-                          onClick={() => ouvrirLeJournal(jour)}
-                          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ouvrirLeJournal(jour); } }}
-                          title="Ouvrir le cahier journal de ce jour"
-                          style={{
-                            marginBottom: 6, cursor: "pointer", alignItems: "flex-start",
-                            borderLeft: enCours ? "3px solid var(--accent)" : "3px solid transparent",
-                            paddingLeft: 7, opacity: passe && !enCours ? 0.75 : 1,
-                          }}>
-                          <span className="badge">{c.heureDebut}</span>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div className="title">{c.matiere || "Créneau"}</div>
-                            {texte && <div className="meta" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{texte}</div>}
-                          </div>
-                          {passe && !(c.bilan ?? "").trim() && <span className="meta" title="Bilan à écrire">✍️</span>}
-                          {(c.bilan ?? "").trim() && <span className="meta" title="Bilan écrit">✓</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <button key={jour} className={`btn${cest ? " primary" : ""}`} onClick={() => ouvrirLeJournal(jour)}
+                    title={`Ouvrir le cahier journal du ${nomDuJour(jour).toLowerCase()}`}
+                    style={{ flexDirection: "column", alignItems: "flex-start", gap: 2, minWidth: 104, padding: "8px 12px" }}>
+                    <span style={{ fontWeight: 700, fontSize: 13 }}>{nomDuJour(jour)}</span>
+                    <span style={{ fontSize: 11.5, opacity: .8 }}>
+                      {duJourLa.length ? `${duJourLa.length} créneau${duJourLa.length > 1 ? "x" : ""}` : "—"}
+                      {aEcrire > 0 && ` · ✍️ ${aEcrire}`}
+                    </span>
+                  </button>
                 );
               })}
+            </div>
+            <div style={{ marginTop: 8 }}>
               {sansBilan.length > 0 && (
                 <button className="btn sm" style={{ marginTop: 4 }}
                   onClick={() => ouvrirLeJournal((sansBilan[0].date ?? today).slice(0, 10))}>
@@ -143,6 +118,7 @@ export default function Dashboard() {
                 </button>
               )}
             </div>
+            </>
           )}
         </div>
         <div className="card" style={{ flex: 1 }}>
