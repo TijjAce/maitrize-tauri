@@ -87,16 +87,29 @@ export function PanneauCommun({ compact = false, onFermer }: {
   const [survol, setSurvol] = React.useState(false);
   const [demande, setDemande] = React.useState<{ titre: string; label: string; valeur?: string; sur: (v: string) => void } | null>(null);
   const [invitation, setInvitation] = React.useState(false);
+  const [verif, setVerif] = React.useState(false);
 
   const relireBureaux = React.useCallback(async () => {
     try { setBureaux(await api.communsListe()); } catch (e) { setErreur(texteErreur(e)); setBureaux([]); }
   }, []);
   React.useEffect(() => { void relireBureaux(); }, [relireBureaux]);
 
+  const [luA, setLuA] = React.useState<Date | null>(null);
+  // Ce que la dernière lecture a rendu, lisible tout de suite après elle.
+  const entreesRef = React.useRef<EntreeCommune[] | null>(null);
   const relire = React.useCallback(async () => {
     if (!actif?.present) { setEntrees(null); return; }
-    try { setEntrees(await api.communLister(actif.id, dossier)); setErreur(""); }
-    catch (e) { setErreur(texteErreur(e)); setEntrees([]); }
+    try {
+      const lues = await api.communLister(actif.id, dossier);
+      entreesRef.current = lues;
+      setEntrees(lues);
+      setErreur("");
+    } catch (e) {
+      entreesRef.current = [];
+      setErreur(texteErreur(e));
+      setEntrees([]);
+    }
+    finally { setLuA(new Date()); }
   }, [actif?.id, actif?.present, dossier]); // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => { setEntrees(null); void relire(); }, [relire]);
   // Les dépôts des collègues arrivent par le service de stockage : on relit
@@ -246,6 +259,14 @@ export function PanneauCommun({ compact = false, onFermer }: {
               titre: "Nouveau dossier", label: "Nom du dossier",
               sur: (nom) => faire("dossier", async () => { await api.communCreerDossier(actif.id, dossier, nom); await relire(); }),
             })}>{compact ? "📁" : "📁 Nouveau dossier"}</button>
+            <button className="btn ghost sm" disabled={!actif.present || !!occupe}
+              title={luA ? `Relire maintenant (dernière lecture à ${luA.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })})`
+                : "Relire maintenant"}
+              onClick={() => faire("lecture", async () => {
+                await relire();
+                const n = entreesRef.current?.length ?? 0;
+                toast(n ? `${n} élément${n > 1 ? "s" : ""} ici.` : "Ce dossier est vide.", { icone: "🔄" });
+              })}>🔄</button>
             <button className="btn ghost sm" disabled={!actif.present}
               title={distant(actif) ? "Ouvrir dans Nuage, dans le navigateur" : "Ouvrir ce dossier dans le Finder ou l'Explorateur"}
               onClick={() => api.communOuvrir(actif.id, dossier).catch((e) => toast(texteErreur(e), { icone: "⚠️" }))}>
@@ -254,6 +275,7 @@ export function PanneauCommun({ compact = false, onFermer }: {
               ...(actif.sorte === "nuage"
                 ? [{ label: "Inviter un ami : créer un lien", icon: "🔗", onClick: () => setInvitation(true) }]
                 : []),
+              { label: "Vérifier la connexion", icon: "🩺", onClick: () => setVerif(true) },
               { label: "Renommer ce bureau commun", icon: "✏️", onClick: () => setDemande({
                 titre: "Renommer", label: "Nom du bureau commun", valeur: actif.nom,
                 sur: (nom) => faire("nom", async () => { await api.communRenommer(actif.id, nom); await relireBureaux(); }),
@@ -339,6 +361,10 @@ export function PanneauCommun({ compact = false, onFermer }: {
       )}
 
       {invitation && actif && <Invitation bureau={actif} dossier={dossier} onClose={() => setInvitation(false)} />}
+      {verif && actif && (
+        <Verification bureau={actif} dossier={dossier} entrees={entrees} erreur={erreur} luA={luA}
+          onRelire={relire} onClose={() => setVerif(false)} />
+      )}
       {ajout && <AjoutBureau onClose={() => setAjout(false)} onAjoute={(b) => { setAjout(false); void relireBureaux(); setActifId(b.id); }} />}
       {choixDepot && <ChoixDossier onClose={() => setChoixDepot(false)} onChoisir={(c) => { void deposerDeMonBureau(c); }} />}
       {demande && (
@@ -653,6 +679,58 @@ function Invitation({ bureau, dossier, onClose }: { bureau: BureauCommun; dossie
           {erreur && <p style={{ color: "var(--danger, #ef4444)", fontSize: 13 }}>{erreur}</p>}
         </>
       )}
+    </Modal>
+  );
+}
+
+/**
+ * Ce que l'application regarde, en toutes lettres.
+ *
+ * « Mon collègue a déposé un fichier et je ne le vois pas » se règle presque
+ * toujours ici : ce n'est pas le même dossier, ou pas le même compte.
+ */
+function Verification({ bureau, dossier, entrees, erreur, luA, onRelire, onClose }: {
+  bureau: BureauCommun; dossier: string; entrees: EntreeCommune[] | null; erreur: string;
+  luA: Date | null; onRelire: () => Promise<void>; onClose: () => void;
+}) {
+  const [occupe, setOccupe] = React.useState(false);
+  const lignes: [string, string][] = [
+    ["Sorte", bureau.sorte === "nuage" ? "Connexion à Nuage (votre compte)"
+      : bureau.sorte === "lien" ? "Lien de partage"
+      : "Dossier de cet ordinateur"],
+    ...(bureau.sorte === "dossier" ? [["Dossier", bureau.chemin] as [string, string]] : [
+      ["Serveur", bureau.serveur ?? ""] as [string, string],
+      [bureau.sorte === "lien" ? "Jeton du lien" : "Identifiant", bureau.utilisateur ?? ""] as [string, string],
+      ["Dossier partagé", bureau.dossierDistant || "(toute la racine)"] as [string, string],
+    ]),
+    ["Dossier ouvert ici", dossier || "(racine du bureau commun)"],
+    ["Éléments vus", entrees === null ? "lecture en cours…" : String(entrees.length)],
+    ["Dernière lecture", luA ? luA.toLocaleTimeString("fr-FR") : "—"],
+  ];
+  return (
+    <Modal titre="🩺 Vérifier la connexion" onClose={onClose}
+      footer={<>
+        <button className="btn" onClick={onClose}>Fermer</button>
+        <button className="btn primary" disabled={occupe} onClick={async () => {
+          setOccupe(true);
+          try { await onRelire(); } finally { setOccupe(false); }
+        }}>{occupe ? "Lecture…" : "🔄 Relire maintenant"}</button>
+      </>}>
+      <table style={{ width: "100%", fontSize: 13 }}>
+        <tbody>
+          {lignes.map(([k, v]) => (
+            <tr key={k}>
+              <td style={{ color: "var(--text-2)", padding: "3px 10px 3px 0", whiteSpace: "nowrap", verticalAlign: "top" }}>{k}</td>
+              <td style={{ padding: "3px 0", wordBreak: "break-word" }}>{v || "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {erreur && <p style={{ color: "var(--danger, #ef4444)", fontSize: 13 }}>{erreur}</p>}
+      <p style={{ fontSize: 12.5, color: "var(--text-2)", marginBottom: 0 }}>
+        Un collègue a déposé quelque chose et vous ne le voyez pas ? Vérifiez que vous regardez <b>le même dossier</b> :
+        le sien doit être celui-ci, partagé avec vous. Ouvrez-le dans Nuage (bouton ☁️) pour comparer.
+      </p>
     </Modal>
   );
 }
