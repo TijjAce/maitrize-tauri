@@ -487,6 +487,69 @@ pub async fn commun_lire(db: State<'_, Db>, bureau: String, chemin: String) -> R
     Ok(STANDARD.encode(octets))
 }
 
+/// Ce qu'on lit en tête d'un dossier Maitrize pour savoir ce qu'il contient.
+const TETE_PAQUET: usize = 8192;
+
+/**
+ * Le résumé écrit en tête d'un dossier Maitrize, sans ouvrir le reste.
+ *
+ * Rend le JSON du résumé, ou une chaîne vide si le paquet n'en porte pas
+ * (déposé par une version plus ancienne) : l'interface se rabat alors sur ce
+ * qu'elle sait.
+ */
+#[tauri::command]
+pub async fn commun_resume(db: State<'_, Db>, bureau: String, chemin: String) -> R<String> {
+    let b = bureau_de(&db, &bureau)?;
+    let tete = if b.sur_nuage() {
+        crate::webdav::lire_debut(&b.acces(), &relatif_sur(&chemin)?, TETE_PAQUET).await?
+    } else {
+        let r = racine_de(&b)?;
+        let p = dans(&r, &chemin)?;
+        let mut f = std::fs::File::open(&p).map_err(|_| "Ce fichier n'est plus sur le bureau commun.".to_string())?;
+        let mut tampon = vec![0u8; TETE_PAQUET];
+        let lus = std::io::Read::read(&mut f, &mut tampon).map_err(e)?;
+        tampon.truncate(lus);
+        tampon
+    };
+    Ok(resume_dans(&String::from_utf8_lossy(&tete)))
+}
+
+/**
+ * Extrait l'objet `"resume": { … }` d'un début de JSON.
+ *
+ * On ne peut pas analyser un JSON coupé en deux : on suit donc les accolades,
+ * en sautant ce qui est entre guillemets, jusqu'à refermer celle du résumé.
+ */
+pub fn resume_dans(debut: &str) -> String {
+    let Some(i) = debut.find("\"resume\"") else { return String::new() };
+    let Some(ouvrante) = debut[i..].find('{').map(|j| i + j) else { return String::new() };
+    let octets = debut.as_bytes();
+    let mut profondeur = 0i32;
+    let mut dans_texte = false;
+    let mut echappe = false;
+    for (k, o) in octets.iter().enumerate().skip(ouvrante) {
+        if dans_texte {
+            if echappe { echappe = false; }
+            else if *o == b'\\' { echappe = true; }
+            else if *o == b'"' { dans_texte = false; }
+            continue;
+        }
+        match o {
+            b'"' => dans_texte = true,
+            b'{' => profondeur += 1,
+            b'}' => {
+                profondeur -= 1;
+                if profondeur == 0 {
+                    return debut[ouvrante..=k].to_string();
+                }
+            }
+            _ => {}
+        }
+    }
+    // Le résumé dépasse ce qu'on a lu : mieux vaut rien qu'un JSON coupé.
+    String::new()
+}
+
 /// Pose un fichier sur le bureau commun, dans `dossier` (créé au besoin).
 /// Sans `remplacer`, un nom déjà pris devient « nom (2) ». Rend le chemin écrit.
 #[tauri::command]
@@ -646,6 +709,21 @@ mod tests {
         assert_eq!(noms, vec!["Maths"]);
         std::fs::remove_dir_all(&r).ok();
         std::fs::remove_dir_all(&dehors).ok();
+    }
+
+    #[test]
+    fn le_resume_se_lit_en_tete_sans_ouvrir_le_reste() {
+        let paquet = r#"{"v":1,"resume":{"auteur":"Clément","depose":"2026-09-21","compte":{"sequences":1},"seances":4,"fichiers":2},"dossier":"cycle 1","contenu":{"#;
+        let lu = resume_dans(paquet);
+        assert!(lu.starts_with('{') && lu.ends_with('}'));
+        assert!(lu.contains("\"seances\":4"));
+        // Une accolade dans un nom ne trompe pas la lecture.
+        let piege = r#"{"resume":{"auteur":"Clé{ment}","compte":{"jeux":2}},"dossier":"x"}"#;
+        assert_eq!(resume_dans(piege), r#"{"auteur":"Clé{ment}","compte":{"jeux":2}}"#);
+        // Un paquet d'avant, ou un résumé coupé : rien, plutôt qu'un JSON faux.
+        assert_eq!(resume_dans(r#"{"v":1,"dossier":"cycle 1"}"#), "");
+        assert_eq!(resume_dans(r#"{"resume":{"auteur":"Clément","#), "");
+        assert_eq!(resume_dans(""), "");
     }
 
     #[test]

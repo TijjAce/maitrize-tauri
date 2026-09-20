@@ -7,10 +7,10 @@ import { confirmer } from "./confirmer";
 import { openCtx } from "./ctxmenu";
 import { IconeDossier, COULEUR_DOSSIER } from "./IconeDossier";
 import { typeDocument, estImage } from "../dragdrop";
-import { estPaquet, titreDuPaquet } from "../bureauCommun";
+import { descriptionDuResume, estPaquet, titreDuPaquet, titreSansAuteur, type Resume } from "../bureauCommun";
 import {
   deposerDossier, deposerElement, dossiersDeMonBureau, dossiersPris, entreesDuDepot, poserFichiers,
-  recupererDossier, recupererFichier, recupererPaquet,
+  recupererDossier, recupererFichier, recupererPaquet, resumeDuPaquet,
 } from "../partageCommun";
 import type { GenreElement } from "../bureauCommun";
 
@@ -361,6 +361,18 @@ function Tuile({ entree: e, bureau, occupe, compact = false, onOuvrir, onMenu }:
 }) {
   const recent = e.modifie && Date.now() - new Date(e.modifie).getTime() < RECENT_MS;
   const paquet = !e.dossier && estPaquet(e.nom);
+  // Ce que le paquet contient : lu dans son en-tête, sans tirer le reste.
+  const [resume, setResume] = React.useState<Resume | null>(null);
+  React.useEffect(() => {
+    if (!paquet) return;
+    let vivant = true;
+    resumeDuPaquet(bureau, e).then((r) => { if (vivant) setResume(r); }).catch(() => {});
+    return () => { vivant = false; };
+  }, [paquet, bureau, e]);
+  const dit = descriptionDuResume(resume);
+  const auteur = resume?.auteur?.trim() ?? "";
+  const titre = paquet ? titreSansAuteur(e.nom, auteur) : e.nom;
+  const depose = resume?.depose ? new Date(resume.depose) : null;
   return (
     <div data-entree draggable
       onDragStart={(ev) => {
@@ -368,7 +380,10 @@ function Tuile({ entree: e, bureau, occupe, compact = false, onOuvrir, onMenu }:
         ev.dataTransfer.setData(TYPE_COMMUN, JSON.stringify(depot));
         ev.dataTransfer.effectAllowed = "copy";
       }}
-      onDoubleClick={onOuvrir} onContextMenu={onMenu} title={e.nom}
+      onDoubleClick={onOuvrir} onContextMenu={onMenu}
+      title={paquet && auteur
+        ? `${e.nom}\nDéposé par ${auteur}${depose && !Number.isNaN(depose.getTime()) ? ` le ${depose.toLocaleDateString("fr-FR")}` : ""}`
+        : e.nom}
       style={{ cursor: "pointer", textAlign: "center", padding: 8, borderRadius: 10, position: "relative", opacity: occupe ? 0.5 : 1 }}
       onMouseEnter={(ev) => (ev.currentTarget.style.background = "var(--panel-2)")}
       onMouseLeave={(ev) => (ev.currentTarget.style.background = "transparent")}>
@@ -377,7 +392,7 @@ function Tuile({ entree: e, bureau, occupe, compact = false, onOuvrir, onMenu }:
       ) : (
         <div style={{ width: "100%", aspectRatio: "1", borderRadius: 8, overflow: "hidden", background: "var(--panel-2)",
           display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)" }}>
-          {paquet ? <span style={{ fontSize: compact ? 30 : 40 }}>📦</span>
+          {paquet ? <span style={{ fontSize: compact ? 30 : 40 }}>{dit.icone}</span>
             : estImage(e.nom) && e.octets <= APERCU_MAX ? <Apercu bureau={bureau} chemin={e.chemin} />
             : <span style={{ fontSize: compact ? 30 : 40 }}>{typeDocument(e.nom).icone}</span>}
         </div>
@@ -388,11 +403,16 @@ function Tuile({ entree: e, bureau, occupe, compact = false, onOuvrir, onMenu }:
       )}
       <div style={{ fontSize: compact ? 11.5 : 12.5, fontWeight: 600, marginTop: 5, lineHeight: 1.2, overflow: "hidden",
         display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-        {paquet ? titreDuPaquet(e.nom) : e.nom}
+        {titre}
       </div>
-      <div style={{ fontSize: 10.5, color: "var(--text-2)" }}>
-        {occupe ? "Récupération…" : e.dossier ? `${e.elements} élément${e.elements > 1 ? "s" : ""}` : paquet ? "Dossier Maitrize" : taille(e.octets)}
+      <div style={{ fontSize: 10.5, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {occupe ? "Récupération…" : e.dossier ? `${e.elements} élément${e.elements > 1 ? "s" : ""}` : paquet ? dit.texte : taille(e.octets)}
       </div>
+      {paquet && auteur && !occupe && (
+        <div style={{ fontSize: 10, color: "var(--text-2)", opacity: .8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          par {auteur}
+        </div>
+      )}
     </div>
   );
 }

@@ -618,6 +618,8 @@ export const api = {
   /** Crée un lien de partage sur ce bureau commun, à donner à un collègue. */
   communCreerLien: (bureau: string, motDePasse: string, ecriture: boolean) =>
     invoke<string>("commun_creer_lien", { bureau, motDePasse, ecriture }),
+  /** Ce qu'un dossier Maitrize contient, lu dans son en-tête (JSON, ou ""). */
+  communResume: (bureau: string, chemin: string) => invoke<string>("commun_resume", { bureau, chemin }),
   communRenommer: (id: string, nom: string) => invoke<void>("commun_renommer", { id, nom }),
   communOublier: (id: string) => invoke<void>("commun_oublier", { id }),
   communLister: (bureau: string, dossier: string) => invoke<EntreeCommune[]>("commun_lister", { bureau, dossier }),
