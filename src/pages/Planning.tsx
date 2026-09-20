@@ -214,6 +214,9 @@ export default function Planning() {
     const noms = new Set<string>();
     const seqDe = (c: Creneau) => (seances ?? []).find((s) => s.id === c.seanceId);
     for (const c of jourCreneaux) {
+      // Les images posées dans le prévu (un exercice découpé dans un manuel).
+      let p: RegExpExecArray | null; reImg.lastIndex = 0;
+      while ((p = reImg.exec(c.prevu || ""))) noms.add(p[1]);
       const s = seqDe(c); if (!s) continue;
       try { (JSON.parse(s.imagesDeroulement || "[]") as string[]).forEach((f) => noms.add(f)); } catch { /* */ }
       let m: RegExpExecArray | null; reImg.lastIndex = 0;
@@ -264,7 +267,7 @@ export default function Planning() {
         comps.length ? champ("Compétences", comps.map((x) => escapeHtml(labelCourt(x))).join("<br>")) : "",
         grid.length ? `<div class="fl" style="margin-top:4px">Tableau :</div><table>${grid.map((row, r) => `<tr>${row.map((cell) => r === 0 ? `<th>${escapeHtml(cell)}</th>` : `<td>${rendreCell(cell)}</td>`).join("")}</tr>`).join("")}</table>` : "",
         illus.length ? `<div class="imgs">${illus.map(imgTag).join("")}</div>` : "",
-        c.prevu?.trim() ? `<div class="f"><span class="fl">Prévu :</span></div><div class="txt">${escapeHtml(c.prevu.trim())}</div>` : "",
+        c.prevu?.trim() ? `<div class="f"><span class="fl">Prévu :</span></div><div class="txt prevu">${rendreCell(c.prevu.trim())}</div>` : "",
         reglesImprimees(jeuxCites(`${c.prevu ?? ""}\n${deroul}`, jeux)),
         sequencesImprimees(sequencesCitees(c.prevu ?? "", sequences ?? [], seances ?? [])),
         c.bilan?.trim() ? `<div class="f"><span class="fl">Fait · bilan :</span></div><div class="txt">${escapeHtml(c.bilan.trim())}</div>` : "",
@@ -311,6 +314,8 @@ export default function Planning() {
       .txt{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;margin-top:1px}
       table{border-collapse:collapse;width:100%;margin-top:3px;table-layout:fixed} th,td{border:1px solid #d7dbe6;padding:3px 5px;font-size:9.5px;vertical-align:top;text-align:left;overflow-wrap:anywhere;word-break:break-word} th{background:#f0f2f8}
       .imgs{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px} img{max-width:100%;max-height:150px;border-radius:5px;object-fit:contain}
+      /* Un exercice découpé dans un manuel doit rester lisible sur le papier. */
+      .prevu img{display:block;max-height:340px;margin:4px 0}
       td img{max-height:110px}
       @media print{@page{margin:11mm}}
       ${STYLE_REGLES}

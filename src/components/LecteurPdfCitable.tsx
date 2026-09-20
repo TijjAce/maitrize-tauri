@@ -1,6 +1,6 @@
 import React from "react";
 import { api } from "../api";
-import { ouvrirPdf, proportionPdf, rendrePageSelectionnable, textePage, type DocumentPdf } from "../pdfRendu";
+import { imageDeLaPage, ouvrirPdf, proportionPdf, rendrePageSelectionnable, textePage, type DocumentPdf } from "../pdfRendu";
 import { correspond, nettoyerExtrait, normaliser } from "../competencesTravaillees";
 
 // Lecteur d'un PDF du coffre-fort où l'on surligne à la souris le passage à
@@ -10,6 +10,10 @@ import { correspond, nettoyerExtrait, normaliser } from "../competencesTravaille
 // d'y lire la sélection, il fallait recopier le passage et sa page à la main.
 // Ici pdf.js pose le texte de chaque page, transparent, sur son image : la
 // sélection se lit directement, avec le numéro de la page où elle commence.
+//
+// Avec `onImage`, un second mode : on trace un cadre sur la page et l'on en
+// prend l'image — l'exercice du manuel part alors dans le cahier journal, où
+// il s'affiche et s'imprime.
 
 const octetsDe = (b64: string) => {
   const bin = atob(b64);
@@ -20,9 +24,14 @@ const octetsDe = (b64: string) => {
 
 interface Resultat { page: number; extrait: string; nombre: number }
 
-export function LecteurPdfCitable({ nomFichier, onCiter }: {
+/** Un cadre tracé sur une page, en fractions de la page (0 à 1). */
+export interface ZonePage { page: number; x: number; y: number; l: number; h: number }
+
+export function LecteurPdfCitable({ nomFichier, onCiter, onImage }: {
   nomFichier: string;
   onCiter: (texte: string, page: number) => void;
+  /** Quand elle est là, on peut aussi prendre l'image d'une page ou d'un cadre. */
+  onImage?: (image: { base64: string; page: number }) => void | Promise<void>;
 }) {
   const [doc, setDoc] = React.useState<DocumentPdf | null>(null);
   const [erreur, setErreur] = React.useState("");
@@ -33,6 +42,9 @@ export function LecteurPdfCitable({ nomFichier, onCiter }: {
   const [cherchee, setCherchee] = React.useState("");
   const [resultats, setResultats] = React.useState<Resultat[] | null>(null);
   const [recherchant, setRecherchant] = React.useState(false);
+  const [mode, setMode] = React.useState<"texte" | "image">("texte");
+  const [cadre, setCadre] = React.useState<ZonePage | null>(null);
+  const [prise, setPrise] = React.useState(false);
   const zone = React.useRef<HTMLDivElement>(null);
   const textes = React.useRef(new Map<number, string>());
 
@@ -85,6 +97,21 @@ export function LecteurPdfCitable({ nomFichier, onCiter }: {
     setSelection(null);
   };
 
+  // ── Prendre l'image d'un cadre, ou d'une page entière ──
+  const prendre = async (z: ZonePage) => {
+    if (!doc || !onImage || prise) return;
+    setPrise(true);
+    try {
+      const { base64 } = await imageDeLaPage(doc, z.page, z);
+      await onImage({ base64, page: z.page });
+      setCadre(null);
+    } catch (e) {
+      setErreur(String((e as Error)?.message ?? e));
+    } finally {
+      setPrise(false);
+    }
+  };
+
   const chercher = async () => {
     const q = recherche.trim();
     if (!doc || q.length < 2) { setResultats(null); setCherchee(""); return; }
@@ -119,7 +146,19 @@ export function LecteurPdfCitable({ nomFichier, onCiter }: {
           {recherchant ? "Recherche…" : "🔍 Chercher"}
         </button>
         <div className="spacer" />
-        {selection
+        {onImage && (
+          <div className="seg" role="group" aria-label="Ce que l'on prend dans le document">
+            <button className={mode === "texte" ? "active" : ""} onClick={() => { setMode("texte"); setCadre(null); }}>❝ Texte</button>
+            <button className={mode === "image" ? "active" : ""}
+              onClick={() => { setMode("image"); window.getSelection()?.removeAllRanges(); setSelection(null); }}>🖼 Image</button>
+          </div>
+        )}
+        {mode === "image" ? (
+          cadre
+            ? <button className="btn primary sm" disabled={prise} onClick={() => { void prendre(cadre); }}>
+                {prise ? "Découpe…" : `🖼 Prendre cette image (p. ${cadre.page})`}</button>
+            : <span style={{ fontSize: 12, color: "var(--text-2)" }}>Tracez un cadre sur la page, ou prenez-la entière.</span>
+        ) : selection
           ? <button className="btn primary sm" onMouseDown={(e) => e.preventDefault()} onClick={citer}
               title={selection.texte}>❝ Citer la sélection{selection.page ? ` (p. ${selection.page})` : ""}</button>
           : <span style={{ fontSize: 12, color: "var(--text-2)" }}>Surlignez à la souris le passage à citer.</span>}
@@ -138,21 +177,28 @@ export function LecteurPdfCitable({ nomFichier, onCiter }: {
         </div>
       )}
 
-      <div ref={zone} className="pdf-citable">
+      <div ref={zone} className={`pdf-citable${mode === "image" ? " en-image" : ""}`}>
         {erreur && <div style={{ color: "#fff", padding: 20 }}>Lecture du PDF impossible : {erreur}</div>}
         {!erreur && !doc && <div style={{ color: "#fff", padding: 20 }}>Chargement du document…</div>}
         {doc && largeur > 0 && Array.from({ length: doc.numPages }, (_, i) => (
           <PageCitable key={`${i + 1}-${largeur}`} doc={doc} numero={i + 1} largeur={largeur}
-            proportion={proportion} racine={zone} surligne={cherchee} />
+            proportion={proportion} racine={zone} surligne={cherchee}
+            image={mode === "image"} cadre={cadre?.page === i + 1 ? cadre : null} onCadre={setCadre}
+            onPage={() => { void prendre({ page: i + 1, x: 0, y: 0, l: 1, h: 1 }); }} />
         ))}
       </div>
     </div>
   );
 }
 
-function PageCitable({ doc, numero, largeur, proportion, racine, surligne }: {
+function PageCitable({ doc, numero, largeur, proportion, racine, surligne, image = false, cadre = null, onCadre, onPage }: {
   doc: DocumentPdf; numero: number; largeur: number; proportion: number;
   racine: React.RefObject<HTMLDivElement | null>; surligne: string;
+  /** Mode image : on trace un cadre au lieu de surligner du texte. */
+  image?: boolean;
+  cadre?: ZonePage | null;
+  onCadre?: (z: ZonePage | null) => void;
+  onPage?: () => void;
 }) {
   const boite = React.useRef<HTMLDivElement>(null);
   const toile = React.useRef<HTMLCanvasElement>(null);
@@ -188,10 +234,50 @@ function PageCitable({ doc, numero, largeur, proportion, racine, surligne }: {
     }
   }, [etat, surligne]);
 
+  // Le cadre se trace à la souris, en fractions de la page : le zoom de
+  // l'affichage ne change rien à ce qui sera découpé.
+  const depart = React.useRef<{ x: number; y: number } | null>(null);
+  const fractions = (e: React.PointerEvent) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+  };
+  const borne = (v: number) => Math.min(Math.max(v, 0), 1);
+  const tracer = (e: React.PointerEvent) => {
+    if (!depart.current) return;
+    const p = fractions(e);
+    const x = borne(Math.min(depart.current.x, p.x)), y = borne(Math.min(depart.current.y, p.y));
+    onCadre?.({ page: numero, x, y, l: borne(Math.max(depart.current.x, p.x)) - x, h: borne(Math.max(depart.current.y, p.y)) - y });
+  };
+
   return (
     <div ref={boite} className="pdf-page" data-page={numero} style={{ width: largeur, height: hauteur }}>
       <canvas ref={toile} aria-label={`Page ${numero}`} />
       <div ref={calque} className="textLayer" />
+      {image && (
+        <div className="pdf-page-cadreur"
+          onPointerDown={(e) => {
+            if (e.button !== 0) return;
+            e.currentTarget.setPointerCapture(e.pointerId);
+            depart.current = fractions(e);
+            onCadre?.({ page: numero, ...depart.current, l: 0, h: 0 });
+          }}
+          onPointerMove={(e) => { if (depart.current) tracer(e); }}
+          onPointerUp={(e) => {
+            if (!depart.current) return;
+            tracer(e);
+            depart.current = null;
+            // Un simple clic n'est pas un cadre : il n'en reste rien.
+            if (cadre && (cadre.l < 0.02 || cadre.h < 0.02)) onCadre?.(null);
+          }}>
+          {cadre && cadre.l > 0 && cadre.h > 0 && (
+            <div className="pdf-page-zone" style={{
+              left: `${cadre.x * 100}%`, top: `${cadre.y * 100}%`,
+              width: `${cadre.l * 100}%`, height: `${cadre.h * 100}%`,
+            }} />
+          )}
+          <button className="btn sm pdf-page-entiere" onPointerDown={(e) => e.stopPropagation()} onClick={onPage}>⬚ Toute la page</button>
+        </div>
+      )}
       <span className="pdf-page-num">{numero}</span>
       {etat === "erreur" && <div className="pdf-page-image">Cette page n’a pas pu être affichée.</div>}
       {sansTexte && (
