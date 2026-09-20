@@ -32,4 +32,18 @@ describe("veille", () => {
     expect(lignes).toHaveLength(1);
     vi.useRealTimers();
   });
+
+  it("envoie le battement au backend à chaque tour, avec l'écran", () => {
+    vi.useFakeTimers();
+    const lignes: string[] = [];
+    const battements: string[] = [];
+    const arret = demarrerLaVeille((l) => lignes.push(l), (ou) => battements.push(ou));
+    vi.advanceTimersByTime(BATTEMENT_MS * 3);
+    expect(battements.length).toBe(3);
+    // Hors fenêtre, il n'y a pas d'écran à nommer : le battement part quand même.
+    expect(battements[0]).toBe("");
+    expect(lignes).toEqual([]);
+    arret();
+    vi.useRealTimers();
+  });
 });

@@ -883,21 +883,62 @@ function CopiesAutomatiques() {
  * échouait ne laissait aucune trace et ne se distinguait pas d'un bouton mort.
  * Chaque échec est désormais écrit sur le disque, horodaté.
  */
-function JournalIncidents() {
+export function JournalIncidents() {
   const [msg, setMsg] = React.useState("");
+  const [rapport, setRapport] = React.useState("");
+  const [occupe, setOccupe] = React.useState(false);
+
   const ouvrir = async () => {
     setMsg("");
     try { await api.diagOuvrir(); }
     catch (e: any) { setMsg(String(e)); }
   };
+
+  /** Le rapport n'est lu qu'à la demande : il ne sert qu'en cas de pépin. */
+  const lire = async (): Promise<string> => {
+    const texte = await api.diagRapport(300);
+    setRapport(texte);
+    return texte;
+  };
+
+  const faire = async (quoi: (texte: string) => Promise<void> | void) => {
+    setMsg(""); setOccupe(true);
+    try { await quoi(await lire()); }
+    catch (e) { setMsg(texteErreur(e)); }
+    finally { setOccupe(false); }
+  };
+
   return (
     <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
       <h3 style={{ marginTop: 0 }}>🩺 Journal d'incidents</h3>
       <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
-        Si une action semble ne rien faire, ce fichier dit pourquoi. À ouvrir
-        avant de signaler un problème — il ne contient aucune donnée d'élève.
+        Si une action semble ne rien faire, ou si la fenêtre s'est figée, ce fichier dit ce qui s'est passé : erreurs,
+        blocages (avec leur durée et l'écran), plantages et arrêts forcés. Il s'écrit tout seul, au fil de l'eau, et ne
+        contient aucune donnée d'élève.
       </p>
-      <button className="btn" onClick={ouvrir}>Ouvrir le journal</button>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button className="btn" onClick={ouvrir}>Ouvrir le journal</button>
+        <button className="btn" disabled={occupe} onClick={() => faire(() => { /* lecture seule */ })}>
+          {occupe ? "Lecture…" : "Voir les dernières lignes"}
+        </button>
+        <button className="btn" disabled={occupe} onClick={() => faire(async (texte) => {
+          await navigator.clipboard.writeText(texte);
+          setMsg("Rapport copié : collez-le dans votre message.");
+        })}>📋 Copier le rapport</button>
+        <button className="btn" disabled={occupe} onClick={() => faire(async (texte) => {
+          const jour = new Date().toISOString().slice(0, 10);
+          if (await telechargerTexte(`maitrize-rapport-${jour}.txt`, texte)) setMsg("Rapport enregistré.");
+        })}>💾 Enregistrer le rapport…</button>
+      </div>
+      <p style={{ color: "var(--text-2)", fontSize: 12.5, marginBottom: 0 }}>
+        <b>Pour aider un collègue dont la fenêtre se bloque :</b> demandez-lui d'ouvrir Réglages › Journal d'incidents,
+        de cliquer « 📋 Copier le rapport » et de vous l'envoyer. Si l'application ne répond plus du tout, elle a quand
+        même écrit le blocage sur son disque : le rapport le montrera au prochain démarrage.
+      </p>
+      {rapport && (
+        <pre style={{ marginTop: 10, marginBottom: 0, maxHeight: 220, overflow: "auto", fontSize: 11.5,
+          whiteSpace: "pre-wrap", background: "var(--panel-2)", padding: 10, borderRadius: 8 }}>{rapport}</pre>
+      )}
       {msg && <p style={{ fontSize: 13, marginBottom: 0, color: "var(--text-2)" }}>{msg}</p>}
     </div>
   );
