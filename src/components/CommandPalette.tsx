@@ -30,6 +30,7 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "🎓", label: "Synthèse GS", to: "/eleves", page: "eleves", onglet: "synthese", sous: "Élèves · Évaluation sommative" },
   { ico: "📋", label: "Synthèse d'un élève", to: "/eleves", page: "eleves", onglet: "syntheseEleve", sous: "Élèves · Évaluation sommative" },
   { ico: "🗒️", label: "Informations pour un remplaçant", to: "/organisation", page: "organisation", onglet: "infos", sous: "Organisation" },
+  { ico: "📘", label: "Pages de garde, mot aux familles, fournitures", to: "/organisation", page: "organisation", onglet: "garde", sous: "Organisation · rentrée" },
   { ico: "🧾", label: "Dispositifs (PPS, PAP, PAI, PPRE)", to: "/eleves", page: "eleves", onglet: "dispositifs", sous: "Élèves · mode IME" },
   { ico: "📋", label: "GEVA-Sco", to: "/eleves", page: "eleves", onglet: "gevasco", sous: "Élèves · mode IME" },
   { ico: "📈", label: "Progressions par élève", to: "/eleves", page: "eleves", onglet: "progressions", sous: "Élèves" },

@@ -7,10 +7,13 @@
 
 import { echapper } from "./texteRiche";
 import { JOURS_EDT, type SlotEdt } from "./organisation";
+import { CONTACTS, REPERES, type Etablissement } from "./etablissement";
 
 export interface DonneesClasse {
   ecole: string;
   enseignant: string;
+  /** « Professeur des écoles spécialisé », tel qu'il signe. */
+  fonction?: string;
   niveau: string;
   ime: boolean;
   annee: string;
@@ -19,6 +22,8 @@ export interface DonneesClasse {
   sourceEdt: "ime" | "classe" | null;
   ateliers: { titre: string; matiere: string }[];
   espaces: { titre: string; description: string }[];
+  /** Contacts et repères renseignés dans les réglages ; absents, ils restent à compléter. */
+  etablissement?: Etablissement;
 }
 
 const aCompleter = "…";
@@ -28,7 +33,7 @@ export function blocClasse(d: DonneesClasse, aujourdhui: string): string {
   const lignes = [
     ["École ou établissement", d.ecole || aCompleter],
     ["Classe", [d.ime ? "Unité d'enseignement (IME)" : "", d.niveau].filter(Boolean).join(" · ") || aCompleter],
-    ["Enseignant·e", d.enseignant || aCompleter],
+    ["Enseignant·e", [d.enseignant, d.fonction].filter(Boolean).join(" — ") || aCompleter],
     ["Effectif", d.eleves.length ? `${d.eleves.length} élève${d.eleves.length > 1 ? "s" : ""}` : aCompleter],
     ["Année scolaire", d.annee],
   ];
@@ -91,10 +96,12 @@ export function blocSecurite(d: DonneesClasse): string {
     + `</ul>`;
 }
 
-export function blocContacts(): string {
+export function blocContacts(d?: DonneesClasse): string {
+  const connus = d?.etablissement?.contacts ?? {};
+  const tel = d?.etablissement?.telephone ?? "";
   return `<h2>Contacts utiles</h2><ul>`
-    + ["Direction", "Coordination ou chef de service", "Collègues de l'équipe", "AESH, éducateurs, soignants", "Secrétariat"]
-      .map((t) => `<li><b>${t} :</b> ${aCompleter}</li>`).join("")
+    + (tel ? `<li><b>Téléphone de l'établissement :</b> ${echapper(tel)}</li>` : "")
+    + CONTACTS.map((c) => `<li><b>${c.libelle} :</b> ${connus[c.id] ? echapper(connus[c.id]!) : aCompleter}</li>`).join("")
     + `</ul>`;
 }
 
@@ -106,10 +113,10 @@ export function blocAteliers(d: DonneesClasse): string {
     + `</ul>`;
 }
 
-export function blocMateriel(): string {
+export function blocMateriel(d?: DonneesClasse): string {
+  const connus = d?.etablissement?.materiel ?? {};
   return `<h2>Où trouver le matériel</h2><ul>`
-    + ["Cahiers et classeurs des élèves", "Matériel de manipulation", "Outils de communication (pictogrammes, CAA)", "Clés et badges"]
-      .map((t) => `<li><b>${t} :</b> ${aCompleter}</li>`).join("")
+    + REPERES.map((r) => `<li><b>${r.libelle} :</b> ${connus[r.id] ? echapper(connus[r.id]!) : aCompleter}</li>`).join("")
     + `</ul>`;
 }
 
@@ -126,8 +133,8 @@ export const BLOCS_REMPLACANT: { id: string; libelle: string; icone: string; htm
   { id: "regles", libelle: "Règles de vie et comportement", icone: "🤝", html: () => blocRegles() },
   { id: "securite", libelle: "Sécurité et santé", icone: "🩹", html: (d) => blocSecurite(d) },
   { id: "ateliers", libelle: "Ateliers et espaces", icone: "🧩", html: (d) => blocAteliers(d) },
-  { id: "materiel", libelle: "Où trouver le matériel", icone: "🧰", html: () => blocMateriel() },
-  { id: "contacts", libelle: "Contacts utiles", icone: "📞", html: () => blocContacts() },
+  { id: "materiel", libelle: "Où trouver le matériel", icone: "🧰", html: (d) => blocMateriel(d) },
+  { id: "contacts", libelle: "Contacts utiles", icone: "📞", html: (d) => blocContacts(d) },
   { id: "travail", libelle: "Travail prévu", icone: "📝", html: () => blocTravail() },
 ];
 
