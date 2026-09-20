@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { jeuAccepte } from "./Ateliers";
-import { nouveauJeu, type Jeu } from "../api";
+import { CATEGORIES_EVALUATION, CATEGORIES_OUTIL, categoriesDuGenre, nouveauJeu, nouvelOutil, type Jeu } from "../api";
 
 const jeu = (p: Partial<Jeu>): Jeu => ({ ...nouveauJeu(), ...p });
 
@@ -61,5 +61,25 @@ describe("nouveauJeu", () => {
   it("est retenu par le filtre à son effectif minimum", () => {
     const j = nouveauJeu();
     expect(jeuAccepte(j, { joueurs: String(j.nbJoueursMin) })).toBe(true);
+  });
+});
+
+describe("les trois sortes de fiches de classe", () => {
+  it("part d'une évaluation vide, sans élève ni période", () => {
+    const ev = nouvelOutil("evaluation");
+    expect(ev.genre).toBe("evaluation");
+    expect(ev.categorie).toBe(CATEGORIES_EVALUATION[0]);
+    // La période est propre aux affichages ; les élèves aux outils.
+    expect(ev.periode).toBe("");
+    expect(ev.elevesJson).toBe("[]");
+    // La compétence et le sujet, vides, attendent d'être choisis.
+    expect(ev.competencesBo).toBe("[]");
+    expect(ev.documentsJson).toBe("[]");
+  });
+
+  it("propose à chaque sorte ses propres catégories", () => {
+    expect(categoriesDuGenre("outil")).toEqual(CATEGORIES_OUTIL);
+    expect(categoriesDuGenre("evaluation")).toEqual(CATEGORIES_EVALUATION);
+    expect(nouvelOutil("outil").couleur).not.toBe(nouvelOutil("evaluation").couleur);
   });
 });

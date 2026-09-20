@@ -314,10 +314,11 @@ export function planDeCopie(d: DonneesBureau, plateforme: Plateforme): PlanDeCop
     { ...e, dossier: "" });
   }
   for (const o of outils) {
-    const sorte = o.genre === "affichage" ? "Affichage" : "Outil";
+    const sorte = o.genre === "affichage" ? "Affichage" : o.genre === "evaluation" ? "Évaluation" : "Outil";
     fiche(o.id, o.dateCreation, o.dossier, o.titre, sorte, () => pageDeFiche(o.titre.trim() || "Sans titre", [sorte, o.categorie].filter(Boolean).join(" · "), o.imageNom, [
       ligneDeFiche(o.genre === "affichage" ? "Affiché" : "Rangé", o.lieu), ligneDeFiche("Période", o.periode),
-    ], [blocDeFiche(o.genre === "affichage" ? "À quoi il sert" : "Usage", o.usage), blocDeFiche("Consignes", o.consignes)]),
+    ], [blocDeFiche(o.genre === "affichage" ? "À quoi il sert" : o.genre === "evaluation" ? "Ce qu'elle évalue" : "Usage", o.usage),
+        blocDeFiche(o.genre === "evaluation" ? "Passation" : "Consignes", o.consignes)]),
     { ...o, dossier: "" });
     // Ses documents à imprimer, dans un dossier à côté de sa page.
     const documents = liste<DocumentOutil>(o.documentsJson).filter((x) => x && typeof x.fichier === "string" && x.fichier);

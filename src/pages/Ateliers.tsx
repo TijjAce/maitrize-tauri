@@ -30,7 +30,13 @@ export function jeuAccepte(j: Jeu, f: { typeJeu?: string; joueurs?: string; doss
   return true;
 }
 
-type SorteVue = "ateliers" | "espaces" | "jeux" | "outils" | "affichages";
+type SorteVue = "ateliers" | "espaces" | "jeux" | "outils" | "affichages" | "evaluations";
+
+/** Ce que disent les trois sortes de fiches qui partagent le même formulaire. */
+const SORTE_DU_GENRE = { outil: "outils", affichage: "affichages", evaluation: "evaluations" } as const;
+const TITRE_DU_GENRE = {
+  outil: "🧰 Outils pour l'élève", affichage: "🖼 Affichages", evaluation: "📋 Évaluations",
+} as const;
 
 export default function Ateliers() {
   const { data: ateliers, reload: rA } = useAsync(() => api.ateliersList(), []);
@@ -41,6 +47,7 @@ export default function Ateliers() {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   const outils = (outilsClasse ?? []).filter((o) => o.genre === "outil");
   const affichages = (outilsClasse ?? []).filter((o) => o.genre === "affichage");
+  const evaluations = (outilsClasse ?? []).filter((o) => o.genre === "evaluation");
   const [editO, setEditO] = React.useState<OutilClasse | null>(null);
   // Filtres des outils et affichages : la catégorie, et pour les outils l'élève.
   const [categorie, setCategorie] = React.useState("");
@@ -60,8 +67,8 @@ export default function Ateliers() {
   const supprimerOutil = async (o: OutilClasse) => {
     await api.outilClasseDelete(o.id);
     rO();
-    const quoi = o.genre === "outil" ? "outil" : "affichage";
-    toastAnnulable(`${quoi === "outil" ? "L'outil" : "L'affichage"} « ${o.titre} » supprimé.`,
+    const quoi = { outil: "L'outil", affichage: "L'affichage", evaluation: "L'évaluation" }[o.genre];
+    toastAnnulable(`${quoi} « ${o.titre} » supprimé${o.genre === "evaluation" ? "e" : ""}.`,
       async () => { await api.outilClasseSave(o); rO(); });
   };
 
@@ -82,10 +89,22 @@ export default function Ateliers() {
   const filtreOutils = Boolean(categorie || pourEleve);
   /** Cette sorte est-elle montrée, compte tenu des filtres ? */
   const montre = (o: SorteVue) => (!filtreJeux && !filtreOutils)
-    || (o === "jeux" && filtreJeux) || ((o === "outils" || o === "affichages") && filtreOutils);
+    || (o === "jeux" && filtreJeux) || (o !== "jeux" && o !== "ateliers" && o !== "espaces" && filtreOutils);
 
   const cherche = recherche.trim().toLowerCase();
   const filtrer = <T extends { titre: string }>(l: T[]) => (cherche ? l.filter((x) => x.titre.toLowerCase().includes(cherche)) : l);
+  const fichesDuGenre = (genre: OutilClasse["genre"]) =>
+    genre === "outil" ? outils : genre === "affichage" ? affichages : evaluations;
+  /** Les fiches de chaque sorte, une fois la recherche et les filtres passés. */
+  const sections = (["outil", "affichage", "evaluation"] as const)
+    .filter((genre) => montre(SORTE_DU_GENRE[genre]))
+    .map((genre) => ({
+      genre,
+      retenus: filtrer(fichesDuGenre(genre))
+        .filter((o) => !categorie || o.categorie === categorie)
+        .filter((o) => !pourEleve || elevesDe(o).includes(pourEleve)),
+    }))
+    .filter((s) => s.retenus.length > 0);
 
   // Ce qu'on peut créer : les cinq sortes, posées à la racine du bureau.
   const creations = [
@@ -94,10 +113,11 @@ export default function Ateliers() {
     { court: "Jeu", label: "Nouveau jeu", icon: "🎲", onClick: () => setEditJ({ ...nouveauJeu() }) },
     { court: "Outil", label: "Nouvel outil", icon: "🧰", onClick: () => setEditO({ ...nouvelOutil("outil") }) },
     { court: "Affichage", label: "Nouvel affichage", icon: "🖼", onClick: () => setEditO({ ...nouvelOutil("affichage") }) },
+    { court: "Évaluation", label: "Nouvelle évaluation", icon: "📋", onClick: () => setEditO({ ...nouvelOutil("evaluation") }) },
   ];
 
   return (
-    <Page titre="Fiches" sous="Ateliers, espaces, jeux, outils et affichages — rangés sur le bureau du plan de travail"
+    <Page titre="Fiches" sous="Ateliers, espaces, jeux, outils, affichages et évaluations — rangés sur le bureau du plan de travail"
       actions={<>
         <button className="btn" onClick={() => nav("/plan")} title="Revenir au bureau, où tout se range en dossiers">← Bureau</button>
         <button className="btn primary"
@@ -140,7 +160,7 @@ export default function Ateliers() {
           une sorte vide se tait au lieu d'afficher son « Aucun… ». */}
       {filtrer<{ titre: string }>([...(ateliers ?? []), ...(espaces ?? []), ...(jeux ?? []), ...(outilsClasse ?? [])]).length === 0 && (
         <Empty icone="🔍" titre={cherche ? "Rien ne correspond" : "Rien pour l'instant"}
-          sous={cherche ? "Essayez un autre mot." : "Ajoutez un atelier, un espace, un jeu, un outil ou un affichage avec « + Ajouter »."} />
+          sous={cherche ? "Essayez un autre mot." : "Ajoutez un atelier, un espace, un jeu, un outil, un affichage ou une évaluation avec « + Ajouter »."} />
       )}
 
       {montre("ateliers") && filtrer(ateliers ?? []).length > 0 && <h3 className="titre-sorte">🧩 Ateliers</h3>}
@@ -249,34 +269,22 @@ export default function Ateliers() {
           })()
       )}
 
-      {(["outil", "affichage"] as const)
-        .filter((genre) => montre(genre === "outil" ? "outils" : "affichages"))
-        .filter((genre) => filtrer(genre === "outil" ? outils : affichages).length > 0)
-        .map((genre) => <React.Fragment key={genre}>
-        <h3 className="titre-sorte">{genre === "outil" ? "🧰 Outils pour l'élève" : "🖼 Affichages"}</h3>
-        {(() => {
-        const tous = genre === "outil" ? outils : affichages;
-        if (tous.length === 0) {
-          return genre === "outil"
-            ? <Empty icone="🧰" titre="Aucun outil"
-                sous="Recensez les outils des élèves : bande numérique, sous-main, casque anti-bruit, time timer… À quoi ils servent, où ils sont rangés, qui s'en sert." />
-            : <Empty icone="🖼" titre="Aucun affichage"
-                sous="Recensez les affichages de la classe : référentiels, règles de vie, emploi du temps visuel… Où ils sont, quand ils sont au mur, et le fichier pour les réimprimer." />;
-        }
-        const retenus = filtrer(tous)
-          .filter((o) => !categorie || o.categorie === categorie)
-          .filter((o) => !pourEleve || elevesDe(o).includes(pourEleve));
-        if (retenus.length === 0) return <Empty icone="🔍" titre="Rien ne correspond" sous="Changez de catégorie, d'élève ou de dossier." />;
-        return (
+      {/* Une sorte ne prend la parole que si elle a quelque chose à montrer :
+          trois titres suivis de « Rien ne correspond » ne renseignent personne. */}
+      {sections.map(({ genre, retenus }) => (
+        <React.Fragment key={genre}>
+          <h3 className="titre-sorte">{TITRE_DU_GENRE[genre]}</h3>
           <div className="grid cols">
             {retenus.map((o) => (
               <CarteOutil key={o.id} o={o} eleves={eleves ?? []} onOuvrir={() => setEditO(o)} onSupprimer={() => void supprimerOutil(o)}
                 onDupliquer={() => api.outilClasseSave({ ...o, id: newId(), titre: o.titre + " (copie)", dateCreation: nowIso() }).then(rO)} />
             ))}
           </div>
-        );
-      })()}
-        </React.Fragment>)}
+        </React.Fragment>
+      ))}
+      {filtreOutils && sections.length === 0 && (outilsClasse?.length ?? 0) > 0 && (
+        <Empty icone="🔍" titre="Rien ne correspond" sous="Changez de catégorie ou d'élève." />
+      )}
 
       {editA && <AtelierForm a={editA} onClose={() => setEditA(null)} onSaved={() => { setEditA(null); rA(); }} />}
       {editE && <EspaceForm e={editE} ateliers={ateliers ?? []} liens={liens ?? []}

@@ -87,7 +87,7 @@ function texteCherche(e: Element): string {
     case "atelier": return `${e.at.objectifs} ${e.at.materiel}`;
     case "espace": return e.esp.descriptionEspace;
     case "jeu": return `${e.jeu.regles} ${e.jeu.competences} ${e.jeu.typeJeu}`;
-    case "outil": return `${e.outil.usage} ${e.outil.consignes} ${e.outil.categorie}`;
+    case "outil": return `${e.outil.usage} ${e.outil.consignes} ${e.outil.categorie} ${e.outil.competencesBo}`;
     default: return "";
   }
 }
@@ -621,7 +621,7 @@ export default function PlanDeTravail() {
   );
 
   return (
-    <Page titre="Plan de travail" sous="Votre bureau : séquences, matériel, documents, ateliers, jeux, outils, affichages">
+    <Page titre="Plan de travail" sous="Votre bureau : séquences, matériel, documents, ateliers, jeux, outils, affichages, évaluations">
 
       <div className="toolbar">
         {/* Fil d'Ariane : on remonte en cliquant, et l'on peut y déposer pour
@@ -725,6 +725,7 @@ export default function PlanDeTravail() {
             { label: "Nouveau jeu", icon: "🎲", onClick: () => setEditJ({ ...nouveauJeu(), dossier }) },
             { label: "Nouvel outil", icon: "🧰", onClick: () => setEditO({ ...nouvelOutil("outil"), dossier }) },
             { label: "Nouvel affichage", icon: "🖼", onClick: () => setEditO({ ...nouvelOutil("affichage"), dossier }) },
+            { label: "Nouvelle évaluation", icon: "📋", onClick: () => setEditO({ ...nouvelOutil("evaluation"), dossier }) },
             { label: "Importer des fichiers… (PDF, Word, Excel…)", icon: "📥", sep: true, onClick: () => {
               caseImport.current = caseClic;
               choixFichiers.current?.click();
@@ -931,7 +932,7 @@ function sousTitreDe(e: Element): string {
     }
     case "outil": return e.outil.genre === "affichage"
       ? ["Affichage", e.outil.periode].filter(Boolean).join(" · ")
-      : ["Outil", e.outil.categorie].filter(Boolean).join(" · ");
+      : [e.outil.genre === "evaluation" ? "Évaluation" : "Outil", e.outil.categorie].filter(Boolean).join(" · ");
   }
 }
 
@@ -939,7 +940,9 @@ function sousTitreDe(e: Element): string {
 const EMOJI: Record<Element["genre"], string> = {
   sequence: "📚", materiel: "🧰", texte: "📝", atelier: "🧩", espace: "🪑", jeu: "🎲", outil: "🧰",
 };
-const emojiDe = (e: Element) => (e.genre === "outil" && e.outil.genre === "affichage" ? "🖼" : EMOJI[e.genre]);
+/** Outils, affichages et évaluations partagent une fiche : leur icône les distingue. */
+const EMOJI_FICHE: Record<OutilClasse["genre"], string> = { outil: "🧰", affichage: "🖼", evaluation: "📋" };
+const emojiDe = (e: Element) => (e.genre === "outil" ? EMOJI_FICHE[e.outil.genre] : EMOJI[e.genre]);
 
 function TuileElement({ element, actions = [], onOuvrir, onModifier, onRanger, onSupprimer, onDuplique, onGlisser, onFinGlisser }: {
   element: Element; onOuvrir: () => void; onRanger: () => void;
