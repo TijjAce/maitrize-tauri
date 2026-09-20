@@ -465,13 +465,20 @@ pub async fn est_dossier(acces: &Acces, chemin: &str) -> R<bool> {
  * ouvre ce seul dossier, porte son propre mot de passe, et se révoque dans
  * Nuage quand on veut. Il passe par l'API de Nextcloud, pas par WebDAV.
  */
-pub async fn creer_lien(acces: &Acces, mot_de_passe: &str, ecriture: bool) -> R<String> {
+pub async fn creer_lien(acces: &Acces, sous_dossier: &str, mot_de_passe: &str, ecriture: bool) -> R<String> {
     if acces.base.starts_with("public.php") {
         return Err("Ce bureau commun est déjà ouvert par un lien : c'est à son propriétaire d'en créer d'autres.".into());
     }
-    let chemin = format!("/{}", acces.racine.trim_matches('/'));
+    // Le dossier partagé, et celui qu'on regarde : on partage ce qu'on voit.
+    let chemin: String = acces.racine.split('/').chain(sous_dossier.split('/'))
+        .filter(|s| !s.is_empty()).collect::<Vec<_>>().join("/");
+    if chemin.is_empty() {
+        return Err(
+            "Nuage ne partage pas la racine de votre espace. Entrez dans un dossier du bureau commun (ou ajoutez-le en \
+             précisant un dossier), puis créez le lien de là.".into());
+    }
     let mut form: Vec<(&str, String)> = vec![
-        ("path", chemin),
+        ("path", format!("/{chemin}")),
         ("shareType", "3".into()),
         // 15 : lire, créer, modifier, supprimer — de quoi déposer à plusieurs.
         ("permissions", if ecriture { "15".into() } else { "1".into() }),
@@ -480,7 +487,8 @@ pub async fn creer_lien(acces: &Acces, mot_de_passe: &str, ecriture: bool) -> R<
         form.push(("password", mot_de_passe.trim().to_string()));
     }
     let rep = client()?
-        .post(format!("{}/ocs/v2.php/apps/files_sharing/api/v1/shares", acces.serveur))
+        // « format=json » : certains serveurs ignorent l'en-tête Accept.
+        .post(format!("{}/ocs/v2.php/apps/files_sharing/api/v1/shares?format=json", acces.serveur))
         .header("Authorization", autorisation(acces))
         .header("OCS-APIRequest", "true")
         .header("Accept", "application/json")
@@ -493,7 +501,11 @@ pub async fn creer_lien(acces: &Acces, mot_de_passe: &str, ecriture: bool) -> R<
     if !statut.is_success() {
         return Err(match statut.as_u16() {
             401 => "Nuage refuse l'identifiant ou le mot de passe d'application.".to_string(),
-            403 => "Nuage n'autorise pas les liens de partage sur ce compte.".to_string(),
+            // Deux causes possibles, et l'enseignant ne peut agir que sur la seconde.
+            403 => "Nuage a refusé : soit les liens de partage sont désactivés pour ce compte, soit le mot de passe \
+                    d'application est limité au seul accès aux fichiers. Dans Nuage › Paramètres › Sécurité, \
+                    recréez-en un sans cocher cette limite."
+                .to_string(),
             404 => "Ce dossier est introuvable sur Nuage.".to_string(),
             _ => format!("Nuage a refusé de créer le lien ({statut})."),
         });

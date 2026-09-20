@@ -309,10 +309,12 @@ pub async fn commun_ajouter_nuage(
     let dossier_distant = segments(&voulu)?.join("/");
     let b = BureauCommun {
         id: uuid::Uuid::new_v4().to_string(),
-        nom: if nom.trim().is_empty() {
-            dossier_distant.rsplit('/').next().unwrap_or("Bureau commun").to_string()
-        } else {
+        nom: if !nom.trim().is_empty() {
             nom.trim().to_string()
+        } else {
+            // Le dernier dossier du chemin, ou, à la racine, le nom du serveur.
+            dossier_distant.rsplit('/').find(|x| !x.is_empty()).map(String::from)
+                .unwrap_or_else(|| serveur.replace("https://", "").replace("http://", ""))
         },
         chemin: String::new(),
         present: true,
@@ -417,13 +419,13 @@ pub async fn commun_ajouter_lien(
  */
 #[tauri::command]
 pub async fn commun_creer_lien(
-    db: State<'_, Db>, bureau: String, mot_de_passe: String, ecriture: bool,
+    db: State<'_, Db>, bureau: String, dossier: String, mot_de_passe: String, ecriture: bool,
 ) -> R<String> {
     let b = bureau_de(&db, &bureau)?;
     if !b.sur_nuage() {
         return Err("Ce bureau commun est un dossier de cet ordinateur : le partage se fait dans votre service de stockage.".into());
     }
-    crate::webdav::creer_lien(&b.acces(), &mot_de_passe, ecriture).await
+    crate::webdav::creer_lien(&b.acces(), &relatif_sur(&dossier)?, &mot_de_passe, ecriture).await
 }
 
 /// Renomme un bureau commun dans Maitrize (le dossier, lui, garde son nom).
