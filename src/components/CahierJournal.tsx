@@ -15,7 +15,7 @@ import { JeuForm } from "./JeuForm";
 import { ReglesDesJeux, useJeuxCites, useLudotheque } from "./ReglesDesJeux";
 import { jeuxCites, nomSousLeCurseur } from "../jeuxCites";
 import { ChoixSequence, SequencesCitees } from "./SequencesCitees";
-import { insererLigne, ligneDeSequence, sequencesCitees } from "../sequencesCitees";
+import { insererLigne, ligneDeSequence, sequencesCitees, totalDesSeances } from "../sequencesCitees";
 import { SeanceReadView } from "../pages/SequenceDetail";
 import { ManuelDuJournal } from "./ManuelDuJournal";
 import { ChoixCompetence } from "./ChoixCompetence";
@@ -212,7 +212,8 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
     const prevu = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
     const zone = zonesPrevu.current[c.id];
     const curseur = zone && ouvertes.current.has(c.id) ? zone.selectionEnd : null;
-    modifier(c.id, "prevu", insererLigne(prevu, ligneDeSequence(sequence, seance), curseur), true);
+    // « séance 3/6 » : on sait tout de suite où l'on en est dans la séquence.
+    modifier(c.id, "prevu", insererLigne(prevu, ligneDeSequence(sequence, seance, totalDesSeances(sequence, seances)), curseur), true);
     setSequencePour(null);
   };
 

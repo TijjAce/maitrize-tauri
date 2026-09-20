@@ -282,7 +282,7 @@ export default function Planning() {
         illus.length ? `<div class="imgs">${illus.map(imgTag).join("")}</div>` : "",
         c.prevu?.trim() ? `<div class="f"><span class="fl">Prévu :</span></div><div class="txt prevu">${rendreCell(c.prevu.trim())}</div>` : "",
         reglesImprimees(jeuxCites(`${c.prevu ?? ""}\n${deroul}`, jeux)),
-        sequencesImprimees(sequencesCitees(c.prevu ?? "", sequences ?? [], seances ?? [])),
+        sequencesImprimees(sequencesCitees(c.prevu ?? "", sequences ?? [], seances ?? []), seances ?? []),
         c.bilan?.trim() ? `<div class="f"><span class="fl">Fait · bilan :</span></div><div class="txt">${escapeHtml(c.bilan.trim())}</div>` : "",
       ].join("");
       return `<div class="col">${head}${body ? `<div class="body">${body}</div>` : ""}</div>`;

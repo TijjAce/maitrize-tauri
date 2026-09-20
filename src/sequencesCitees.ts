@@ -62,10 +62,29 @@ export function sequencesCitees(texte: string, sequences: Sequence[], seances: S
 }
 
 /** La ligne que pose le bouton 📚 dans le prévu. */
-export function ligneDeSequence(sequence: Sequence, seance?: Seance | null): string {
+export function ligneDeSequence(sequence: Sequence, seance?: Seance | null, total = 0): string {
   const titre = sequence.titre.trim() || "Séquence sans titre";
   if (!seance) return `📚 ${titre}`;
-  return `📚 ${titre} · séance ${seance.numero}${seance.titre.trim() ? ` : ${seance.titre.trim()}` : ""}`;
+  return `📚 ${titre} · ${rangDeLaSeance(seance, total)}${seance.titre.trim() ? ` : ${seance.titre.trim()}` : ""}`;
+}
+
+/**
+ * « séance 3/6 » quand la séquence dit combien elle en prévoit, « séance 3 »
+ * sinon. Savoir où l'on en est vaut mieux que de compter dans sa tête.
+ */
+export function rangDeLaSeance(seance: Seance, total = 0): string {
+  return `séance ${seance.numero}${total > 0 && total >= seance.numero ? `/${total}` : ""}`;
+}
+
+/**
+ * Combien de séances compter : celles que la séquence prévoit, sinon celles
+ * qui existent — mais seulement s'il y en a plusieurs. « Séance 1/1 » ne
+ * renseignerait personne.
+ */
+export function totalDesSeances(sequence: Sequence, seances: Seance[]): number {
+  if (sequence.nbSeancesPrevu > 0) return sequence.nbSeancesPrevu;
+  const existantes = seances.filter((x) => x.sequenceId === sequence.id).length;
+  return existantes > 1 ? existantes : 0;
 }
 
 /** Pose une ligne après celle du curseur (ou à la fin), sans la doubler. */
@@ -82,11 +101,12 @@ export function insererLigne(texte: string, ligne: string, curseur: number | nul
 export const texteDeSeance = (texte: string) => (texte ?? "").replace(/\[(img|cite):[^\]]+\]/g, "").replace(/\n{3,}/g, "\n\n").trim();
 
 /** Les séquences citées, pour le PDF du jour. */
-export function sequencesImprimees(citations: CitationSequence[]): string {
+export function sequencesImprimees(citations: CitationSequence[], seances: Seance[] = []): string {
   if (!citations.length) return "";
   return `<div class="sequences-citees">${citations.map(({ sequence: s, seance }) => {
     const infos = [s.matiere, s.periode ? `période ${s.periode}` : ""].filter(Boolean).join(" · ");
-    const titre = `📚 ${escapeHtml(s.titre)}${seance ? ` — séance ${seance.numero}${seance.titre ? ` : ${escapeHtml(seance.titre)}` : ""}` : ""}`;
+    const rang = seance ? rangDeLaSeance(seance, totalDesSeances(s, seances)) : "";
+    const titre = `📚 ${escapeHtml(s.titre)}${seance ? ` — ${rang}${seance.titre ? ` : ${escapeHtml(seance.titre)}` : ""}` : ""}`;
     const objectifs = (seance?.objectifs || s.objectifs || "").trim();
     const deroulement = seance ? texteDeSeance(seance.deroulement) : "";
     return `<div class="sequence-citee"><div class="sequence-citee-titre">${titre}`

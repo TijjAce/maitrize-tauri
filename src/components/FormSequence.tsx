@@ -51,6 +51,11 @@ export function FormSequence({ sequence, onClose, onSaved }: {
           </div>
         </Field>
         <Field label="Année"><Input value={s.annee} placeholder="2026-2027" onChange={(e) => up({ annee: e.target.value })} /></Field>
+        <Field label="Séances prévues">
+          <Input type="number" min={0} max={99} value={s.nbSeancesPrevu || ""} placeholder="—"
+            title="Combien de séances la séquence prévoit : le cahier journal écrira « séance 3/6 »."
+            onChange={(e) => up({ nbSeancesPrevu: Math.max(0, Math.min(99, Math.round(Number(e.target.value) || 0))) })} />
+        </Field>
       </div>
 
       <div className="field">
