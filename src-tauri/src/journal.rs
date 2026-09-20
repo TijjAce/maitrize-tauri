@@ -87,7 +87,7 @@ const LIAISONS: &[(&str, &str, &str)] = &[("atelier_espace", "atelier_id", "espa
 /// partira pas tant qu'on ne l'aura pas nommé. L'oubli fait rester une donnée
 /// sur place — ennuyeux ; l'inverse ferait fuiter un secret — grave.
 const REGLAGES_PARTAGES: &[&str] = &[
-    "enseignantNom", "ecole", "anneeCourante", "typeStructure", "zoneVacances",
+    "enseignantNom", "enseignantFonction", "ecole", "anneeCourante", "typeStructure", "zoneVacances",
     "notesRapides", "mistralModel", "iaContexte",
     "apparence", "accent", "styleInterface", "liseret",
     // Couleurs choisies des matières et des intitulés de l'emploi du temps.
@@ -96,9 +96,10 @@ const REGLAGES_PARTAGES: &[&str] = &[
 
 /// Familles de réglages qui voyagent, par préfixe : emploi du temps, plan de
 /// salle, tableaux de langage, couleurs des dossiers, disposition du bureau
-/// du plan de travail et présentations enregistrées de Fabriquer. Ce sont des
-/// données de travail, pas des préférences d'affichage.
-const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:", "dossier:", "bureau:", "fabriquer:", "rangement:"];
+/// du plan de travail, présentations enregistrées de Fabriquer et repères de
+/// l'établissement (contacts, où est le matériel). Ce sont des données de
+/// travail, pas des préférences d'affichage.
+const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:", "dossier:", "bureau:", "fabriquer:", "rangement:", "etab:"];
 
 /// Réglages qui appartiennent à l'ordinateur lui-même, pas aux données.
 ///

@@ -12,6 +12,7 @@ import { avecImages } from "../components/imagesTexte";
 import { documentRempli } from "../dossier";
 import { organisationPour } from "../organisation";
 import { BLOCS_REMPLACANT, DOSSIER_INFORMATIONS, feuilleRemplacant, type DonneesClasse } from "../remplacant";
+import { lireEtablissement } from "../etablissement";
 
 // ── Organisation → Informations ────────────────────────────────────────────
 // Des feuilles à imprimer pour la personne qui remplace : l'application y
@@ -34,7 +35,8 @@ async function lireDonneesClasse(annee: string): Promise<DonneesClasse> {
   let edt: DonneesClasse["edt"] = [];
   try { edt = trouve ? JSON.parse(trouve.edt.slotsJson) : []; } catch { /* organisation illisible */ }
   return {
-    ecole: reglages.ecole ?? "", enseignant: reglages.enseignantNom ?? "", niveau: reglages.niveauClasse ?? "", ime, annee,
+    ecole: reglages.ecole ?? "", enseignant: reglages.enseignantNom ?? "", fonction: reglages.enseignantFonction ?? "",
+    niveau: reglages.niveauClasse ?? "", ime, annee, etablissement: lireEtablissement(reglages),
     eleves: eleves.map((e) => {
       const axes = observations.filter((o) => o.eleveId === e.id && o.type === TYPE_AXE).sort((a, b) => b.date.localeCompare(a.date));
       const axe = axes[0]?.texte.trim() ?? "";

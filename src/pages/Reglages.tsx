@@ -9,6 +9,7 @@ import { applyTheme, MODES, ACCENTS, STYLES, TAILLES } from "../theme";
 import { lireAcceptationCgu, CguAcceptation } from "../components/CGU";
 import { getVersion } from "@tauri-apps/api/app";
 import { copierLeBureau, suivreLaCopie } from "../components/CopieDuBureau";
+import { CONTACTS, REPERES, cleEtab } from "../etablissement";
 
 const ONGLETS = [
   ["general", "Général"],
@@ -132,6 +133,10 @@ export default function Reglages() {
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
         <h3 style={{ marginTop: 0 }}>👤 Identité enseignant</h3>
         <Field label="Nom"><Input value={s.enseignantNom ?? ""} onChange={(e) => set("enseignantNom", e.target.value)} /></Field>
+        <Field label="Fonction">
+          <Input value={s.enseignantFonction ?? ""} placeholder="ex. Professeur des écoles spécialisé"
+            onChange={(e) => set("enseignantFonction", e.target.value)} />
+        </Field>
         <Field label="École"><Input value={s.ecole ?? ""} onChange={(e) => set("ecole", e.target.value)} /></Field>
         <div className="row">
           <Field label="Niveau de la classe">
@@ -157,6 +162,35 @@ export default function Reglages() {
             et l'<b>organisation IME par semaine</b> dans l'emploi du temps, dont « Générer le jour » tient compte.
           </div>
         )}
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
+        <h3 style={{ marginTop: 0 }}>🏫 Établissement : contacts et repères</h3>
+        <p style={{ fontSize: 12.5, color: "var(--text-2)", marginTop: 0 }}>
+          Renseignés une fois, ils remplissent d'eux-mêmes la feuille pour un remplaçant (Organisation › Informations)
+          et les pages de garde. Laissez vide ce que vous préférez écrire au cas par cas.
+        </p>
+        <div className="row">
+          <Field label="Téléphone de l'établissement">
+            <Input value={s[cleEtab("telephone")] ?? ""} placeholder="01 23 45 67 89"
+              onChange={(e) => set(cleEtab("telephone"), e.target.value)} />
+          </Field>
+          <Field label="Adresse">
+            <Input value={s[cleEtab("adresse")] ?? ""} placeholder="12 rue des Écoles, 92340 Bourg-la-Reine"
+              onChange={(e) => set(cleEtab("adresse"), e.target.value)} />
+          </Field>
+        </div>
+        {CONTACTS.map((c) => (
+          <Field key={c.id} label={c.libelle}>
+            <Input value={s[cleEtab(c.id)] ?? ""} placeholder={c.exemple} onChange={(e) => set(cleEtab(c.id), e.target.value)} />
+          </Field>
+        ))}
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-2)", margin: "14px 0 6px" }}>Où trouver le matériel</div>
+        {REPERES.map((r) => (
+          <Field key={r.id} label={r.libelle}>
+            <Input value={s[cleEtab(r.id)] ?? ""} placeholder={r.exemple} onChange={(e) => set(cleEtab(r.id), e.target.value)} />
+          </Field>
+        ))}
       </div>
 
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
