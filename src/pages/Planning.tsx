@@ -225,6 +225,15 @@ export default function Planning() {
     }
     // La ludothèque : la règle des jeux cités suit le prévu du créneau.
     const jeux = await api.jeuxList().catch((): Jeu[] => []);
+    // Qui était là : le cahier journal dit avec quels élèves le créneau se fait.
+    // Les prénoms seuls, comme à l'écran — un cahier journal circule.
+    const prenomsDe = (c: Creneau) => {
+      let ids: string[] = [];
+      try { ids = JSON.parse(c.elevesJson || "[]"); } catch { ids = []; }
+      return ids
+        .map((id) => (eleves ?? []).find((e) => e.id === id)?.nom.trim().split(/\s+/)[0])
+        .filter((x): x is string => Boolean(x));
+    };
     const urls: Record<string, string> = {};
     await Promise.all([...noms].map(async (n) => {
       try { urls[n] = dataUrlImage(n, await api.fichierRead(n)); } catch { /* */ }
@@ -252,7 +261,9 @@ export default function Planning() {
       const dur = dureeTxt(c.heureDebut, c.heureFin);
       const chips = `${c.matiere ? `<span class="chip" style="background:${teinte}26;color:${teinte}">${escapeHtml(c.matiere)}</span>` : ""}${natureDe(c) === "reunion" ? `<span class="chip dur">Réunion · formation</span>` : ""}${dur ? `<span class="chip dur">⏱ ${dur}</span>` : ""}`;
       const head = `<div class="head"><span class="ttl">${escapeHtml(titre)}</span><span class="chips">${chips}</span></div>`;
-      if (!s && estPause(c.matiere) && !c.prevu?.trim() && !c.bilan?.trim()) return `<div class="col">${head}</div>`;
+      if (!s && estPause(c.matiere) && !c.prevu?.trim() && !c.bilan?.trim() && !prenomsDe(c).length) {
+        return `<div class="col">${head}</div>`;
+      }
       let comps: CompetenceSelectionnee[] = [];
       try { comps = s?.competences ? JSON.parse(s.competences) : []; } catch { /* */ }
       let grid: string[][] = [];
@@ -260,7 +271,9 @@ export default function Planning() {
       let illus: string[] = [];
       try { illus = s?.imagesDeroulement ? JSON.parse(s.imagesDeroulement) : []; } catch { /* */ }
       const deroul = (s?.deroulement || "").replace(reImg, "").replace(/\[cite:[^\]]+\]/g, "").trim();
+      const prenoms = prenomsDe(c);
       const body = [
+        prenoms.length ? champ("Élèves", escapeHtml(prenoms.join(", "))) : "",
         seq ? champ("Séquence", escapeHtml([seq.titre, seq.annee, seq.periode ? "P" + seq.periode : ""].filter(Boolean).join(" · "))) : "",
         s?.objectifs ? champ("Objectifs", escapeHtml(s.objectifs)) : "",
         deroul ? `<div class="f"><span class="fl">Activités :</span></div><div class="txt">${escapeHtml(deroul)}</div>` : "",
