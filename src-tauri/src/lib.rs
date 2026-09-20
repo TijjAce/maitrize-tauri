@@ -34,9 +34,6 @@ pub fn run() {
         habituel(info);
     }));
 
-    // Le journal dit quand une session commence, et si la précédente a été
-    // tuée : c'est ce qui distingue un plantage d'une fermeture ordinaire.
-    commands::diag_demarrage(env!("CARGO_PKG_VERSION"));
     // Une fenêtre figée ne peut rien écrire : c'est le backend qui le voit.
     veille::surveiller();
 
@@ -48,6 +45,10 @@ pub fn run() {
         // Fenêtre opaque standard (pas d'API privée macOS) → compatible
         // Mac App Store / Microsoft Store.
         .setup(|app| {
+            // Le journal dit quand une session commence, avec la version de
+            // l'application, et si la précédente a été tuée : c'est ce qui
+            // distingue un plantage d'une fermeture ordinaire.
+            commands::diag_demarrage(&app.package_info().version.to_string());
             // Mises à jour automatiques (distribution directe hors stores).
             // Plugins desktop uniquement.
             #[cfg(desktop)]

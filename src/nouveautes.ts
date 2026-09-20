@@ -19,7 +19,7 @@ export interface Nouveaute {
 export const NOUVEAUTES: Nouveaute[] = [
   {
     version: "1.6.12",
-    titre: "Un seul bureau dans toute l'application",
+    titre: "Partager par Nuage, et un cahier journal plus complet",
     points: [
       { quoi: "Ateliers, espaces, jeux, outils et affichages rejoignent le bureau du plan de travail : un dossier « cycle 1 » peut réunir une séquence, ses jeux et l'outil qui va avec. Clic droit sur le bureau pour en créer, double-clic pour ouvrir leur fiche.", ou: "Plan de travail" },
       { quoi: "« Ateliers & Espaces » quitte le menu. Les fiches et leurs filtres — nombre de joueurs, catégorie, élève — restent à portée de main par le bouton « ▦ Fiches » du bureau.", ou: "Plan de travail · ▦ Fiches" },
