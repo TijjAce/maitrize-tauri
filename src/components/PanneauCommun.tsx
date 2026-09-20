@@ -338,7 +338,7 @@ export function PanneauCommun({ compact = false, onFermer }: {
         </>
       )}
 
-      {invitation && actif && <Invitation bureau={actif} onClose={() => setInvitation(false)} />}
+      {invitation && actif && <Invitation bureau={actif} dossier={dossier} onClose={() => setInvitation(false)} />}
       {ajout && <AjoutBureau onClose={() => setAjout(false)} onAjoute={(b) => { setAjout(false); void relireBureaux(); setActifId(b.id); }} />}
       {choixDepot && <ChoixDossier onClose={() => setChoixDepot(false)} onChoisir={(c) => { void deposerDeMonBureau(c); }} />}
       {demande && (
@@ -591,7 +591,7 @@ function AjoutBureau({ onClose, onAjoute }: { onClose: () => void; onAjoute: (b:
  * Inviter un collègue sans lui donner quoi que ce soit de personnel : Nuage
  * fabrique un lien qui n'ouvre que ce dossier, avec son propre mot de passe.
  */
-function Invitation({ bureau, onClose }: { bureau: BureauCommun; onClose: () => void }) {
+function Invitation({ bureau, dossier, onClose }: { bureau: BureauCommun; dossier: string; onClose: () => void }) {
   const [ecriture, setEcriture] = React.useState(true);
   const [motDePasse, setMotDePasse] = React.useState("");
   const [lien, setLien] = React.useState("");
@@ -601,7 +601,7 @@ function Invitation({ bureau, onClose }: { bureau: BureauCommun; onClose: () => 
   const creer = async () => {
     setErreur(""); setOccupe(true);
     try {
-      setLien(await api.communCreerLien(bureau.id, motDePasse, ecriture));
+      setLien(await api.communCreerLien(bureau.id, dossier, motDePasse, ecriture));
     } catch (e) {
       setErreur(texteErreur(e));
     } finally {
@@ -637,7 +637,8 @@ function Invitation({ bureau, onClose }: { bureau: BureauCommun; onClose: () => 
         <>
           <p style={{ marginTop: 0, fontSize: 13.5, color: "var(--text-2)" }}>
             Votre ami n'a besoin d'aucun compte, et vous ne lui donnez pas votre mot de passe : Nuage fabrique un lien
-            qui n'ouvre que le dossier « {bureau.nom} ».
+            qui n'ouvre que le dossier <b>{dossier || bureau.dossierDistant || bureau.nom}</b>
+            {dossier ? " — celui que vous regardez." : "."}
           </p>
           <Field label="Ce que le lien permet">
             <div className="seg" style={{ flexWrap: "wrap" }}>
