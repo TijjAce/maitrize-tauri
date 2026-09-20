@@ -51,6 +51,68 @@ export function elevesCites(texte: string, eleves: Eleve[], presents: string[]):
     .map((e) => e.id);
 }
 
+// ── Manuels cités, et images posées dans le prévu ─────────────────────────
+//
+// Un manuel du coffre-fort se cite comme un jeu ou une séquence : une ligne
+// « 📖 Cap Maths CE1 · p. 42 », et, si l'on a découpé l'exercice, son image
+// juste dessous. L'image est un fichier de Maitrize, dont le texte ne garde
+// que le nom, comme dans le déroulement d'une séance.
+
+/** Le marqueur d'une image dans un texte du cahier journal. */
+export const marqueurImage = (nom: string) => `[img:${nom}]`;
+const RE_IMAGE = /\[img:([^\]]+)\]/g;
+
+/** La ligne qui cite un manuel, avec sa page et, s'il y en a un, le passage. */
+export function ligneDeManuel(manuel: string, page: number, passage = ""): string {
+  const titre = (manuel ?? "").trim() || "Manuel";
+  const p = Number.isFinite(page) && page > 0 ? ` · p. ${Math.round(page)}` : "";
+  const dit = passage.replace(/\s+/g, " ").trim();
+  return `📖 ${titre}${p}${dit ? ` — « ${dit} »` : ""}`;
+}
+
+/**
+ * La ligne qui cite déjà ce manuel à cette page, passage compris. L'image
+ * découpée s'y accroche, plutôt que d'ajouter une seconde ligne identique.
+ */
+export function ligneDuManuel(texte: string, manuel: string, page: number): string | null {
+  const debut = ligneDeManuel(manuel, page);
+  return (texte ?? "").split("\n").find((l) => l.trim() === debut || l.trim().startsWith(`${debut} —`)) ?? null;
+}
+
+/** Les images posées dans un texte, dans l'ordre, sans doublon. */
+export function imagesDuTexte(texte: string): string[] {
+  const vues = new Set<string>();
+  for (const m of (texte ?? "").matchAll(RE_IMAGE)) vues.add(m[1]);
+  return [...vues];
+}
+
+/** Retire une image du texte, sans laisser de ligne vide à sa place. */
+export function retirerImage(texte: string, nom: string): string {
+  const marqueur = marqueurImage(nom);
+  const sortie: string[] = [];
+  for (const ligne of (texte ?? "").split("\n")) {
+    if (!ligne.includes(marqueur)) { sortie.push(ligne); continue; }
+    const reste = ligne.split(marqueur).join("").replace(/[ \t]+$/, "");
+    // Une ligne qui ne portait que cette image disparaît ; sinon son texte reste.
+    if (reste.trim()) sortie.push(reste);
+  }
+  return sortie.join("\n");
+}
+
+/**
+ * Pose une image à la suite d'une ligne (celle du manuel, en général), ou à la
+ * fin du texte.
+ */
+export function poserImage(texte: string, nom: string, apres = ""): string {
+  const marqueur = marqueurImage(nom);
+  if ((texte ?? "").includes(marqueur)) return texte;
+  const lignes = (texte ?? "").split("\n");
+  const i = apres ? lignes.findIndex((l) => l.trim() === apres.trim()) : -1;
+  if (i < 0) return `${(texte ?? "").replace(/\s+$/, "")}${texte.trim() ? "\n" : ""}${marqueur}`;
+  lignes.splice(i + 1, 0, marqueur);
+  return lignes.join("\n");
+}
+
 /** Date d'une observation tirée d'un créneau : la fin du créneau, ce jour-là. */
 export function dateObservation(c: Pick<Creneau, "date" | "heureFin">): string {
   const heure = /^\d\d:\d\d$/.test(c.heureFin) ? c.heureFin : "12:00";

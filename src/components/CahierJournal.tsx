@@ -5,7 +5,9 @@ import { toast } from "./Toaster";
 import { useDictee, mmss } from "../dictee";
 import { natureDe } from "../heures";
 import { isoJour, plusJours } from "../dates";
-import { creneauDeLaSemainePrecedente, reprendrePrevu } from "../cahierJournal";
+import {
+  creneauDeLaSemainePrecedente, imagesDuTexte, ligneDeManuel, ligneDuManuel, poserImage, reprendrePrevu, retirerImage,
+} from "../cahierJournal";
 import { PorterAuDossier } from "./PorterAuDossier";
 import { JeuForm } from "./JeuForm";
 import { ReglesDesJeux, useJeuxCites, useLudotheque } from "./ReglesDesJeux";
@@ -13,6 +15,8 @@ import { jeuxCites, nomSousLeCurseur } from "../jeuxCites";
 import { ChoixSequence, SequencesCitees } from "./SequencesCitees";
 import { insererLigne, ligneDeSequence, sequencesCitees } from "../sequencesCitees";
 import { SeanceReadView } from "../pages/SequenceDetail";
+import { ManuelDuJournal } from "./ManuelDuJournal";
+import { FichierImg } from "./Deroulement";
 
 // ── Cahier journal du jour ────────────────────────────────────────────────
 //
@@ -24,7 +28,9 @@ import { SeanceReadView } from "../pages/SequenceDetail";
 // déplacé entre-temps dans la grille garde sa nouvelle place.
 //
 // Un jeu de la ludothèque nommé dans le prévu montre sa règle juste dessous ;
-// une séquence citée, ses objectifs et le déroulement de sa séance.
+// une séquence citée, ses objectifs et le déroulement de sa séance. Un manuel
+// du coffre-fort se cite de même, et l'exercice qu'on y découpe se pose dans
+// le prévu, à l'écran comme dans le PDF du jour.
 
 type Champ = "prevu" | "bilan";
 interface Brouillon { prevu: string; bilan: string }
@@ -205,6 +211,30 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
     setSequencePour(null);
   };
 
+  // ── Les manuels cités, et leurs images ──
+  const [manuelPour, setManuelPour] = React.useState<Creneau | null>(null);
+  /** Où écrire dans le prévu : là où était le curseur, sinon à la fin. */
+  const curseurDe = (c: Creneau) => {
+    const zone = zonesPrevu.current[c.id];
+    return zone && ouvertes.current.has(c.id) ? zone.selectionEnd : null;
+  };
+  const citerManuel = (c: Creneau, manuel: string, page: number, passage: string) => {
+    const prevu = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
+    modifier(c.id, "prevu", insererLigne(prevu, ligneDeManuel(manuel, page, passage), curseurDe(c)), true);
+  };
+  const poserImageDuManuel = async (c: Creneau, manuel: string, page: number, base64: string) => {
+    try {
+      const nom = await api.fichierSave(`manuel-p${page || 1}.png`, base64);
+      const prevu = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
+      // L'image se range sous la ligne qui cite déjà cette page, sinon sous une
+      // nouvelle : on sait toujours d'où elle vient, sans se répéter.
+      const ligne = ligneDuManuel(prevu, manuel, page) ?? ligneDeManuel(manuel, page);
+      modifier(c.id, "prevu", poserImage(insererLigne(prevu, ligne, curseurDe(c)), nom, ligne), true);
+    } catch (err) {
+      toast("Image non ajoutée : " + texteErreur(err), { icone: "⚠️", duree: 6000 });
+    }
+  };
+
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const passe = dateIso < aujourdhui;
 
@@ -275,6 +305,9 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                         <button className="btn ghost sm" onClick={() => setSequencePour(c)} disabled={!sequences.length}
                           title={sequences.length ? "Poser une séquence ou une séance dans le prévu : ses objectifs et son déroulement s'afficheront ici" : "Aucune séquence pour l'instant"}>
                           📚 Séquence</button>
+                        <button className="btn ghost sm" onClick={() => setManuelPour(c)}
+                          title="Citer une page d'un manuel du coffre-fort, et y découper l'exercice : son image se pose dans le prévu et s'imprime avec le jour">
+                          📖 Manuel</button>
                       </>
                     ) : (
                       <button className="btn ghost sm" disabled={!b.bilan.trim() || reunion} onClick={() => porterAuDossier(c, ids)}
@@ -290,6 +323,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                     style={{ width: "100%", resize: "vertical", fontSize: 13.5, lineHeight: 1.45 }} />
                   {champ === "prevu" && (
                     <>
+                      <ImagesDuPrevu prevu={b.prevu} onRetirer={(nom) => modifier(c.id, "prevu", retirerImage(b.prevu, nom), true)} />
                       <ReglesDesJeux jeux={citesDans(b.prevu)} onModifier={(jeu) => setJeuEdite({ jeu, nouveau: false })} />
                       <SequencesCitees citations={sequencesCitees(b.prevu, sequences, seances)} seances={seances}
                         onOuvrir={(s) => navigate(`/sequences/${s.id}`)} onVoirSeance={setSeanceVue} />
@@ -321,6 +355,29 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
         <PorterAuDossier creneau={versDossier.creneau} texte={versDossier.texte} presents={versDossier.presents}
           eleves={eleves} onClose={() => setVersDossier(null)} />
       )}
+      {manuelPour && (
+        <ManuelDuJournal onClose={() => setManuelPour(null)}
+          onCiter={(manuel, page, passage) => citerManuel(manuelPour, manuel, page, passage)}
+          onImage={(manuel, page, base64) => poserImageDuManuel(manuelPour, manuel, page, base64)} />
+      )}
+    </div>
+  );
+}
+
+/** Les images posées dans le prévu : ce qu'on y a découpé, et de quoi le retirer. */
+function ImagesDuPrevu({ prevu, onRetirer }: { prevu: string; onRetirer: (nom: string) => void }) {
+  const images = imagesDuTexte(prevu);
+  if (!images.length) return null;
+  return (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+      {images.map((nom) => (
+        <div key={nom} style={{ position: "relative" }}>
+          <FichierImg nom={nom} alt="Image du prévu"
+            style={{ maxWidth: 220, maxHeight: 150, objectFit: "contain", border: "1px solid var(--border)", background: "#fff" }} />
+          <button className="btn ghost sm" onClick={() => onRetirer(nom)} aria-label="Retirer cette image du prévu"
+            style={{ position: "absolute", top: 2, right: 2, background: "rgba(0,0,0,.55)", color: "#fff" }}>✕</button>
+        </div>
+      ))}
     </div>
   );
 }

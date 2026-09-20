@@ -30,7 +30,8 @@ export default function Dashboard() {
 
   // Première ligne du prévu : de quoi reconnaître le créneau sans l'ouvrir.
   const apercu = (texte: string) =>
-    (texte ?? "").split("\n").map((l) => l.replace(/^[-•*\s]+/, "").trim()).find(Boolean) ?? "";
+    // Une ligne qui ne portait qu'une image découpée n'a rien à dire ici.
+    (texte ?? "").split("\n").map((l) => l.replace(/\[img:[^\]]+\]/g, "").replace(/^[-•*\s]+/, "").trim()).find(Boolean) ?? "";
 
   const maintenant = new Date().toTimeString().slice(0, 5);
   const jourDeClasse = (creneaux?.length ?? 0) > 0;
