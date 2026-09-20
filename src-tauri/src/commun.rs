@@ -27,16 +27,50 @@ fn e<E: std::fmt::Display>(err: E) -> String { err.to_string() }
 /// Le réglage qui garde la liste des bureaux communs de cet ordinateur.
 pub const CLE_BUREAUX: &str = "bureauxCommuns";
 
-/// Un bureau commun : un nom, et le dossier partagé qui le porte.
+/// Un bureau commun : un nom, et le dossier partagé qui le porte — sur cet
+/// ordinateur, ou sur Nuage.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct BureauCommun {
     pub id: String,
     pub nom: String,
+    /// Le dossier sur cet ordinateur ; vide pour un bureau sur Nuage.
+    #[serde(default)]
     pub chemin: String,
     /// Le dossier est-il là ? (le service de stockage peut ne pas l'avoir encore synchronisé)
     #[serde(default)]
     pub present: bool,
+    /// « dossier » (cet ordinateur) ou « nuage » (connexion directe).
+    #[serde(default = "sorte_dossier")]
+    pub sorte: String,
+    /// Nuage : l'adresse du serveur, l'identifiant, le dossier partagé.
+    #[serde(default)]
+    pub serveur: String,
+    #[serde(default)]
+    pub utilisateur: String,
+    #[serde(default)]
+    pub dossier_distant: String,
+    /// Le mot de passe d'application. Il reste sur cet ordinateur : la liste
+    /// des bureaux ne se synchronise pas, ne s'exporte pas, et l'interface ne
+    /// le reçoit jamais (voir `communs_liste`).
+    #[serde(default)]
+    pub mot_de_passe: String,
+}
+
+fn sorte_dossier() -> String { "dossier".into() }
+
+impl BureauCommun {
+    pub fn sur_nuage(&self) -> bool { self.sorte == "nuage" }
+
+    /// De quoi joindre Nuage, à partir de ce qui est enregistré.
+    fn acces(&self) -> crate::webdav::Acces {
+        crate::webdav::Acces {
+            serveur: self.serveur.clone(),
+            utilisateur: self.utilisateur.clone(),
+            mot_de_passe: self.mot_de_passe.clone(),
+            racine: self.dossier_distant.clone(),
+        }
+    }
 }
 
 /// Un élément d'un bureau commun : un dossier ou un fichier.
@@ -65,12 +99,16 @@ fn ecrire_bureaux(db: &State<'_, Db>, liste: &[BureauCommun]) -> R<()> {
     crate::sync::set_setting(&c, CLE_BUREAUX, &json)
 }
 
-/// Le dossier d'un bureau commun, tel qu'il est sur le disque.
-fn racine(db: &State<'_, Db>, id: &str) -> R<PathBuf> {
-    let b = lire_bureaux(db)
+/// Le bureau commun désigné, avec ce qu'il faut pour l'atteindre.
+fn bureau_de(db: &State<'_, Db>, id: &str) -> R<BureauCommun> {
+    lire_bureaux(db)
         .into_iter()
         .find(|b| b.id == id)
-        .ok_or_else(|| "Bureau commun inconnu sur cet ordinateur.".to_string())?;
+        .ok_or_else(|| "Bureau commun inconnu sur cet ordinateur.".to_string())
+}
+
+/// Le dossier d'un bureau commun, tel qu'il est sur le disque.
+fn racine_de(b: &BureauCommun) -> R<PathBuf> {
     let p = PathBuf::from(&b.chemin);
     if !p.is_dir() {
         return Err(format!(
@@ -79,6 +117,11 @@ fn racine(db: &State<'_, Db>, id: &str) -> R<PathBuf> {
         ));
     }
     p.canonicalize().map_err(e)
+}
+
+/// Le chemin relatif, vérifié, tel que Nuage l'attend.
+fn relatif_sur(chemin: &str) -> R<String> {
+    Ok(segments(chemin)?.join("/"))
 }
 
 /// Un chemin relatif sûr : pas de remontée, pas de chemin absolu, pas de
@@ -134,6 +177,22 @@ pub fn nom_libre(dossier: &Path, nom: &str) -> String {
     (2..)
         .map(|i| format!("{base} ({i}){ext}"))
         .find(|n| !dossier.join(n).exists())
+        .unwrap_or_else(|| nom.to_string())
+}
+
+/// Un nom libre parmi ceux déjà pris : « nom.ext », sinon « nom (2).ext »…
+pub fn nom_libre_parmi(pris: &[String], nom: &str) -> String {
+    let existe = |n: &str| pris.iter().any(|x| x.eq_ignore_ascii_case(n));
+    if !existe(nom) {
+        return nom.to_string();
+    }
+    let (base, ext) = match nom.rfind('.') {
+        Some(i) if i > 0 => (&nom[..i], &nom[i..]),
+        _ => (nom, ""),
+    };
+    (2..)
+        .map(|i| format!("{base} ({i}){ext}"))
+        .find(|n| !existe(n))
         .unwrap_or_else(|| nom.to_string())
 }
 
@@ -217,10 +276,52 @@ pub fn communs_liste(db: State<'_, Db>) -> R<Vec<BureauCommun>> {
     Ok(lire_bureaux(&db)
         .into_iter()
         .map(|mut b| {
-            b.present = Path::new(&b.chemin).is_dir();
+            // Un bureau sur Nuage est « présent » tant que le réseau répond :
+            // c'est chaque geste qui le dira, pas cette liste.
+            b.present = if b.sur_nuage() { true } else { Path::new(&b.chemin).is_dir() };
+            b.mot_de_passe = String::new();
             b
         })
         .collect())
+}
+
+/// Ajoute un bureau commun posé sur Nuage (ou un autre Nextcloud). La
+/// connexion est essayée avant d'enregistrer quoi que ce soit : un identifiant
+/// erroné se voit tout de suite, pas au premier dépôt.
+#[tauri::command]
+pub async fn commun_ajouter_nuage(
+    db: State<'_, Db>, nom: String, serveur: String, utilisateur: String, mot_de_passe: String, dossier: String,
+) -> R<BureauCommun> {
+    let serveur = crate::webdav::serveur_propre(&serveur);
+    if serveur.is_empty() || utilisateur.trim().is_empty() || mot_de_passe.trim().is_empty() {
+        return Err("Il manque l'adresse de Nuage, l'identifiant ou le mot de passe d'application.".into());
+    }
+    let dossier_distant = segments(dossier.trim())?.join("/");
+    let b = BureauCommun {
+        id: uuid::Uuid::new_v4().to_string(),
+        nom: if nom.trim().is_empty() {
+            dossier_distant.rsplit('/').next().unwrap_or("Bureau commun").to_string()
+        } else {
+            nom.trim().to_string()
+        },
+        chemin: String::new(),
+        present: true,
+        sorte: "nuage".into(),
+        serveur,
+        utilisateur: utilisateur.trim().to_string(),
+        dossier_distant,
+        mot_de_passe: mot_de_passe.trim().to_string(),
+    };
+    crate::webdav::tester(&b.acces()).await?;
+    let mut liste = lire_bureaux(&db);
+    if liste.iter().any(|x| x.sur_nuage() && x.serveur == b.serveur && x.utilisateur == b.utilisateur && x.dossier_distant == b.dossier_distant) {
+        return Err("Ce dossier de Nuage est déjà un de vos bureaux communs.".into());
+    }
+    liste.push(b.clone());
+    ecrire_bureaux(&db, &liste)?;
+    let mut vu = b;
+    vu.mot_de_passe = String::new();
+    Ok(vu)
 }
 
 /// Ajoute un bureau commun : un nom, et le dossier partagé choisi.
@@ -250,6 +351,11 @@ pub fn commun_ajouter(db: State<'_, Db>, nom: String, chemin: String) -> R<Burea
         nom,
         chemin: choisi.to_string_lossy().to_string(),
         present: true,
+        sorte: "dossier".into(),
+        serveur: String::new(),
+        utilisateur: String::new(),
+        dossier_distant: String::new(),
+        mot_de_passe: String::new(),
     };
     liste.push(b.clone());
     ecrire_bureaux(&db, &liste)?;
@@ -278,8 +384,12 @@ pub fn commun_oublier(db: State<'_, Db>, id: String) -> R<()> {
 
 /// Ce que contient un dossier d'un bureau commun ("" : sa racine).
 #[tauri::command]
-pub fn commun_lister(db: State<'_, Db>, bureau: String, dossier: String) -> R<Vec<EntreeCommune>> {
-    let r = racine(&db, &bureau)?;
+pub async fn commun_lister(db: State<'_, Db>, bureau: String, dossier: String) -> R<Vec<EntreeCommune>> {
+    let b = bureau_de(&db, &bureau)?;
+    if b.sur_nuage() {
+        return crate::webdav::lister(&b.acces(), &relatif_sur(&dossier)?).await;
+    }
+    let r = racine_de(&b)?;
     let d = dans(&r, &dossier)?;
     if !d.is_dir() {
         return Err("Ce dossier n'est plus sur le bureau commun.".into());
@@ -289,16 +399,25 @@ pub fn commun_lister(db: State<'_, Db>, bureau: String, dossier: String) -> R<Ve
 
 /// Tous les fichiers d'un dossier du bureau commun, pour le récupérer entier.
 #[tauri::command]
-pub fn commun_fichiers(db: State<'_, Db>, bureau: String, dossier: String) -> R<Vec<String>> {
-    let r = racine(&db, &bureau)?;
+pub async fn commun_fichiers(db: State<'_, Db>, bureau: String, dossier: String) -> R<Vec<String>> {
+    let b = bureau_de(&db, &bureau)?;
+    if b.sur_nuage() {
+        return crate::webdav::fichiers(&b.acces(), &relatif_sur(&dossier)?).await;
+    }
+    let r = racine_de(&b)?;
     let d = dans(&r, &dossier)?;
     Ok(fichiers_du_dossier(&r, &d))
 }
 
 /// Le contenu d'un fichier du bureau commun, en base64.
 #[tauri::command]
-pub fn commun_lire(db: State<'_, Db>, bureau: String, chemin: String) -> R<String> {
-    let r = racine(&db, &bureau)?;
+pub async fn commun_lire(db: State<'_, Db>, bureau: String, chemin: String) -> R<String> {
+    let b = bureau_de(&db, &bureau)?;
+    if b.sur_nuage() {
+        let octets = crate::webdav::lire(&b.acces(), &relatif_sur(&chemin)?).await?;
+        return Ok(STANDARD.encode(octets));
+    }
+    let r = racine_de(&b)?;
     let p = dans(&r, &chemin)?;
     let octets = std::fs::read(&p).map_err(|_| "Ce fichier n'est plus sur le bureau commun.".to_string())?;
     Ok(STANDARD.encode(octets))
@@ -307,7 +426,7 @@ pub fn commun_lire(db: State<'_, Db>, bureau: String, chemin: String) -> R<Strin
 /// Pose un fichier sur le bureau commun, dans `dossier` (créé au besoin).
 /// Sans `remplacer`, un nom déjà pris devient « nom (2) ». Rend le chemin écrit.
 #[tauri::command]
-pub fn commun_ecrire(
+pub async fn commun_ecrire(
     db: State<'_, Db>,
     bureau: String,
     dossier: String,
@@ -315,13 +434,33 @@ pub fn commun_ecrire(
     base64: String,
     remplacer: bool,
 ) -> R<String> {
-    let r = racine(&db, &bureau)?;
+    let b = bureau_de(&db, &bureau)?;
+    let octets = STANDARD.decode(base64.trim()).map_err(|_| "Fichier illisible.".to_string())?;
+    if b.sur_nuage() {
+        let acces = b.acces();
+        let d = relatif_sur(&dossier)?;
+        let nom = segments(&nom)?.pop().ok_or_else(|| "Nom de fichier vide.".to_string())?;
+        if !d.is_empty() {
+            crate::webdav::creer_dossiers(&acces, &d).await?;
+        }
+        let nom = if remplacer {
+            nom
+        } else {
+            // Un nom déjà pris devient « nom (2) » : on regarde ce qui est là.
+            let pris: Vec<String> = crate::webdav::lister(&acces, &d).await.unwrap_or_default()
+                .into_iter().map(|x| x.nom).collect();
+            nom_libre_parmi(&pris, &nom)
+        };
+        let chemin = [d.as_str(), nom.as_str()].iter().filter(|x| !x.is_empty()).cloned().collect::<Vec<_>>().join("/");
+        crate::webdav::ecrire(&acces, &chemin, octets).await?;
+        return Ok(chemin);
+    }
+    let r = racine_de(&b)?;
     let d = dans(&r, &dossier)?;
     let nom = segments(&nom)?.pop().ok_or_else(|| "Nom de fichier vide.".to_string())?;
     std::fs::create_dir_all(&d).map_err(e)?;
     let nom = if remplacer { nom } else { nom_libre(&d, &nom) };
     let p = dans(&r, &format!("{dossier}/{nom}"))?;
-    let octets = STANDARD.decode(base64.trim()).map_err(|_| "Fichier illisible.".to_string())?;
     // Écrit à côté puis renomme : le service de synchronisation ne doit jamais
     // envoyer à vos collègues un fichier à moitié écrit.
     let provisoire = d.join(format!(".maitrize-{}.tmp", uuid::Uuid::new_v4()));
@@ -335,8 +474,20 @@ pub fn commun_ecrire(
 
 /// Crée un dossier sur le bureau commun. Rend son chemin.
 #[tauri::command]
-pub fn commun_creer_dossier(db: State<'_, Db>, bureau: String, dossier: String, nom: String) -> R<String> {
-    let r = racine(&db, &bureau)?;
+pub async fn commun_creer_dossier(db: State<'_, Db>, bureau: String, dossier: String, nom: String) -> R<String> {
+    let b = bureau_de(&db, &bureau)?;
+    if b.sur_nuage() {
+        let acces = b.acces();
+        let d = relatif_sur(&dossier)?;
+        let nom = segments(&nom)?.pop().ok_or_else(|| "Nom de dossier vide.".to_string())?;
+        let pris: Vec<String> = crate::webdav::lister(&acces, &d).await.unwrap_or_default()
+            .into_iter().map(|x| x.nom).collect();
+        let nom = nom_libre_parmi(&pris, &nom);
+        let chemin = [d.as_str(), nom.as_str()].iter().filter(|x| !x.is_empty()).cloned().collect::<Vec<_>>().join("/");
+        crate::webdav::creer_dossiers(&acces, &chemin).await?;
+        return Ok(chemin);
+    }
+    let r = racine_de(&b)?;
     let d = dans(&r, &dossier)?;
     let nom = segments(&nom)?.pop().ok_or_else(|| "Nom de dossier vide.".to_string())?;
     let nom = nom_libre(&d, &nom);
@@ -349,19 +500,40 @@ pub fn commun_creer_dossier(db: State<'_, Db>, bureau: String, dossier: String, 
 /// L'interface le confirme ; le service de stockage en garde souvent une copie
 /// dans sa corbeille (40 jours pour Nuage).
 #[tauri::command]
-pub fn commun_supprimer(db: State<'_, Db>, bureau: String, chemin: String) -> R<()> {
-    let r = racine(&db, &bureau)?;
+pub async fn commun_supprimer(db: State<'_, Db>, bureau: String, chemin: String) -> R<()> {
+    let b = bureau_de(&db, &bureau)?;
     if segments(&chemin)?.is_empty() {
         return Err("Le bureau commun lui-même ne se supprime pas d'ici.".into());
     }
+    if b.sur_nuage() {
+        return crate::webdav::supprimer(&b.acces(), &relatif_sur(&chemin)?).await;
+    }
+    let r = racine_de(&b)?;
     let p = dans(&r, &chemin)?;
     if p.is_dir() { std::fs::remove_dir_all(&p).map_err(e) } else { std::fs::remove_file(&p).map_err(e) }
 }
 
 /// Ouvre un fichier dans son application, ou un dossier dans le Finder ou l'Explorateur.
 #[tauri::command]
-pub fn commun_ouvrir(db: State<'_, Db>, bureau: String, chemin: String) -> R<()> {
-    let r = racine(&db, &bureau)?;
+pub async fn commun_ouvrir(db: State<'_, Db>, bureau: String, chemin: String) -> R<()> {
+    let b = bureau_de(&db, &bureau)?;
+    if b.sur_nuage() {
+        let acces = b.acces();
+        let relatif = relatif_sur(&chemin)?;
+        let nom = relatif.rsplit('/').next().unwrap_or("").to_string();
+        // Un dossier s'ouvre dans Nuage, sur le web ; un fichier se télécharge
+        // et s'ouvre dans son application, en copie de travail.
+        if nom.is_empty() || crate::webdav::est_dossier(&acces, &relatif).await.unwrap_or(false) {
+            return tauri_plugin_opener::open_url(crate::webdav::url_web(&acces, &relatif), None::<&str>).map_err(e);
+        }
+        let octets = crate::webdav::lire(&acces, &relatif).await?;
+        let dossier = std::env::temp_dir().join("maitrize-nuage");
+        std::fs::create_dir_all(&dossier).map_err(e)?;
+        let fichier = dossier.join(&nom);
+        std::fs::write(&fichier, octets).map_err(e)?;
+        return tauri_plugin_opener::open_path(&fichier, None::<&str>).map_err(e);
+    }
+    let r = racine_de(&b)?;
     let p = dans(&r, &chemin)?;
     tauri_plugin_opener::open_path(&p, None::<&str>).map_err(e)
 }
