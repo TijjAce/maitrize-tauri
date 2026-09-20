@@ -63,6 +63,8 @@ export interface Sequence {
   ratingDateMaj: string | null; projetId: string | null; video: string;
   /** Chemin de rangement dans le plan de travail : « Français/Lecture ». */
   dossier: string;
+  /** Combien de séances la séquence prévoit (0 : non précisé) — « séance 3/6 ». */
+  nbSeancesPrevu: number;
 }
 
 export interface Seance {
@@ -309,7 +311,7 @@ export const nouvelleSequence = (): Sequence => ({
   id: newId(), titre: "", matiere: "", cycle: "", objectifs: "", competences: "",
   competenceVisee: "", imageNom: null, couleur: "blue", dateCreation: nowIso(),
   periode: 1, annee: anneeScolaireActuelle(), ratingEngagement: 0, ratingFacilite: 0,
-  ratingApprentissage: 0, ratingDateMaj: null, projetId: null, video: "", dossier: "",
+  ratingApprentissage: 0, ratingDateMaj: null, projetId: null, video: "", dossier: "", nbSeancesPrevu: 0,
 });
 
 export const nouvelleSeance = (sequenceId: string, numero: number): Seance => ({

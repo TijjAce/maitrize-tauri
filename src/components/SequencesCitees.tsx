@@ -1,7 +1,7 @@
 import React from "react";
 import type { Seance, Sequence } from "../api";
 import { Input, Modal } from "./ui";
-import { texteDeSeance, type CitationSequence } from "../sequencesCitees";
+import { rangDeLaSeance, texteDeSeance, totalDesSeances, type CitationSequence } from "../sequencesCitees";
 
 // ── Séquences citées dans le prévu ─────────────────────────────────────────
 //
@@ -33,7 +33,7 @@ function SequenceCitee({ citation, seances, onOuvrir, onVoirSeance }: {
       <div className="regle-app-tete">
         <button className="regle-app-titre" onClick={basculer} aria-expanded={!replie} title={replie ? "Afficher" : "Replier"}>
           <span aria-hidden="true" className="regle-app-fleche">{replie ? "▸" : "▾"}</span>
-          📚 {s.titre}{seance ? ` — séance ${seance.numero}${seance.titre ? ` : ${seance.titre}` : ""}` : ""}
+          📚 {s.titre}{seance ? ` — ${rangDeLaSeance(seance, totalDesSeances(s, seances))}${seance.titre ? ` : ${seance.titre}` : ""}` : ""}
         </button>
         <span className="regle-app-infos">{[s.matiere, s.periode ? `période ${s.periode}` : ""].filter(Boolean).join(" · ")}</span>
         {seance && <button className="btn ghost sm" onClick={() => onVoirSeance(seance)} title="Voir toute la séance">👁</button>}
@@ -49,7 +49,9 @@ function SequenceCitee({ citation, seances, onOuvrir, onVoirSeance }: {
           <div className="regle-app-texte">
             {siennes.map((x) => (
               <div key={x.id}>
-                <button className="lien" onClick={() => onVoirSeance(x)}>Séance {x.numero}{x.titre ? ` : ${x.titre}` : ""}</button>
+                <button className="lien" onClick={() => onVoirSeance(x)}>
+                  {rangDeLaSeance(x, totalDesSeances(s, seances))}{x.titre ? ` : ${x.titre}` : ""}
+                </button>
               </div>
             ))}
           </div>
@@ -83,7 +85,6 @@ export function ChoixSequence({ sequences, seances, matiere, onClose, onChoisir 
   onChoisir: (s: Sequence, seance: Seance | null) => void;
 }) {
   const [q, setQ] = React.useState("");
-  const [ouverte, setOuverte] = React.useState<string | null>(null);
   const cle = (t: string) => (t ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const cherche = cle(q.trim());
   const proche = cle(matiere ?? "");
@@ -103,26 +104,37 @@ export function ChoixSequence({ sequences, seances, matiere, onClose, onChoisir 
         {!liste.length && <div style={{ fontSize: 13, color: "var(--text-2)", padding: 8 }}>Aucune séquence.</div>}
         {liste.map((s) => {
           const siennes = seances.filter((x) => x.sequenceId === s.id).sort((a, b) => a.numero - b.numero);
-          const deplie = ouverte === s.id || (Boolean(cherche) && siennes.some((x) => cle(x.titre).includes(cherche)));
+          const total = totalDesSeances(s, seances);
+          const compte = s.nbSeancesPrevu > 0
+            ? `${siennes.length}/${s.nbSeancesPrevu} séance${s.nbSeancesPrevu > 1 ? "s" : ""}`
+            : `${siennes.length} séance${siennes.length > 1 ? "s" : ""}`;
           return (
             <div key={s.id} className="choix-sequence">
               <div className="choix-sequence-tete">
-                <button className="btn ghost sm" onClick={() => setOuverte(deplie ? null : s.id)} aria-expanded={deplie}
-                  disabled={!siennes.length} title={siennes.length ? "Voir les séances" : "Aucune séance"}>{deplie ? "▾" : "▸"}</button>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600 }}>{s.titre || "Sans titre"}</div>
                   <div style={{ fontSize: 12, color: "var(--text-2)" }}>
-                    {[s.matiere, s.periode ? `période ${s.periode}` : "", `${siennes.length} séance${siennes.length > 1 ? "s" : ""}`].filter(Boolean).join(" · ")}
+                    {[s.matiere, s.periode ? `période ${s.periode}` : "", compte].filter(Boolean).join(" · ")}
                   </div>
                 </div>
-                <button className="btn sm" onClick={() => onChoisir(s, null)}>Choisir la séquence</button>
+                <button className="btn sm" onClick={() => onChoisir(s, null)}
+                  title="Poser la séquence seule : ses objectifs et la liste de ses séances">La séquence entière</button>
               </div>
-              {deplie && siennes.map((x) => (
+              {/* C'est la séance qui porte le contenu du jour : elle se choisit
+                  d'un clic, sans avoir à déplier quoi que ce soit. */}
+              {siennes.map((x) => (
                 <div key={x.id} className="choix-sequence-seance">
-                  <span style={{ flex: 1, minWidth: 0 }}>Séance {x.numero}{x.titre ? ` : ${x.titre}` : ""}</span>
-                  <button className="btn sm primary" onClick={() => onChoisir(s, x)}>Choisir</button>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    {rangDeLaSeance(x, total)}{x.titre ? ` : ${x.titre}` : ""}
+                  </span>
+                  <button className="btn sm primary" onClick={() => onChoisir(s, x)}>Choisir cette séance</button>
                 </div>
               ))}
+              {!siennes.length && (
+                <div className="choix-sequence-seance" style={{ color: "var(--text-2)", fontSize: 12.5 }}>
+                  Aucune séance pour l'instant.
+                </div>
+              )}
             </div>
           );
         })}

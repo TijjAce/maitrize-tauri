@@ -674,6 +674,8 @@ pub(crate) fn migrate(conn: &Connection) {
     conn.execute("ALTER TABLE jeux ADD COLUMN competences_bo TEXT", []).ok();
     // Les objectifs du PPI travaillés, et comment ça s'est passé.
     conn.execute("ALTER TABLE commentaires_eleve ADD COLUMN objectifs TEXT", []).ok();
+    // Combien de séances une séquence prévoit : « séance 3/6 » dans le cahier journal.
+    conn.execute("ALTER TABLE sequences ADD COLUMN nb_seances_prevu INTEGER NOT NULL DEFAULT 0", []).ok();
     // Le bureau commun sur S3, essayé avant les dossiers partagés, gardait ici
     // un accès au stockage : on ne laisse pas traîner de clé devenue inutile.
     conn.execute("DELETE FROM settings WHERE cle = 'commun'", []).ok();

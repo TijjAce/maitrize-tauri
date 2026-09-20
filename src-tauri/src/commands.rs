@@ -31,14 +31,14 @@ pub(crate) fn ecrire_sequence(c: &rusqlite::Connection, sequence: Sequence) -> R
     c.execute(
         "INSERT INTO sequences (id,titre,matiere,cycle,objectifs,competences,competence_visee,image_nom,couleur,
           date_creation,periode,annee,rating_engagement,rating_facilite,rating_apprentissage,
-          rating_date_maj,projet_id,video,dossier)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, matiere = excluded.matiere, cycle = excluded.cycle, objectifs = excluded.objectifs, competences = excluded.competences, competence_visee = excluded.competence_visee, image_nom = excluded.image_nom, couleur = excluded.couleur, date_creation = excluded.date_creation, periode = excluded.periode, annee = excluded.annee, rating_engagement = excluded.rating_engagement, rating_facilite = excluded.rating_facilite, rating_apprentissage = excluded.rating_apprentissage, rating_date_maj = excluded.rating_date_maj, projet_id = excluded.projet_id, video = excluded.video, dossier = excluded.dossier",
+          rating_date_maj,projet_id,video,dossier,nb_seances_prevu)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, matiere = excluded.matiere, cycle = excluded.cycle, objectifs = excluded.objectifs, competences = excluded.competences, competence_visee = excluded.competence_visee, image_nom = excluded.image_nom, couleur = excluded.couleur, date_creation = excluded.date_creation, periode = excluded.periode, annee = excluded.annee, rating_engagement = excluded.rating_engagement, rating_facilite = excluded.rating_facilite, rating_apprentissage = excluded.rating_apprentissage, rating_date_maj = excluded.rating_date_maj, projet_id = excluded.projet_id, video = excluded.video, dossier = excluded.dossier, nb_seances_prevu = excluded.nb_seances_prevu",
         params![sequence.id, sequence.titre, sequence.matiere, sequence.cycle,
                 sequence.objectifs, sequence.competences, sequence.competence_visee,
                 sequence.image_nom, sequence.couleur, sequence.date_creation, sequence.periode,
                 sequence.annee, sequence.rating_engagement, sequence.rating_facilite,
                 sequence.rating_apprentissage, sequence.rating_date_maj, sequence.projet_id,
-                sequence.video, sequence.dossier],
+                sequence.video, sequence.dossier, sequence.nb_seances_prevu],
     ).map_err(e)?;
     Ok(sequence)
 }
@@ -2242,6 +2242,29 @@ fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests_sequences {
+    use crate::models::Sequence;
+
+    /// Le nombre de séances prévu doit survivre à l'enregistrement : c'est lui
+    /// qui fait écrire « séance 3/6 » dans le cahier journal.
+    #[test]
+    fn le_nombre_de_seances_prevu_est_garde() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        let seq: Sequence = serde_json::from_value(serde_json::json!({
+            "id": "q1", "titre": "Loto des animaux", "nbSeancesPrevu": 6
+        })).unwrap();
+        super::ecrire_sequence(&c, seq).unwrap();
+        let lu = c.query_row("SELECT * FROM sequences WHERE id='q1'", [], Sequence::from_row).unwrap();
+        assert_eq!(lu.nb_seances_prevu, 6);
+        // Une séquence d'une version plus ancienne n'en annonce aucune.
+        c.execute("INSERT INTO sequences (id, titre, date_creation) VALUES ('q2', 'Avant', '2026-01-01')", []).unwrap();
+        let ancienne = c.query_row("SELECT * FROM sequences WHERE id='q2'", [], Sequence::from_row).unwrap();
+        assert_eq!(ancienne.nb_seances_prevu, 0);
+    }
 }
 
 #[cfg(test)]
