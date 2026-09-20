@@ -110,15 +110,15 @@ export interface Jeu {
 /** Un outil pour l'élève (bande numérique, casque…) ou un affichage de la classe. */
 export interface OutilClasse {
   id: string;
-  genre: "outil" | "affichage";
+  genre: "outil" | "affichage" | "evaluation";
   titre: string; categorie: string;
   /** À quoi il sert, ce qu'il travaille. */
   usage: string;
   /** Compétences des programmes officiels (BO), en JSON. */
   competencesBo: string;
-  /** Comment s'en servir (outil), ce qu'il faut savoir (affichage). */
+  /** Comment s'en servir (outil), ce qu'il faut savoir (affichage), comment la faire passer (évaluation). */
   consignes: string;
-  /** Où il est rangé (outil), où il est affiché (affichage). */
+  /** Où il est rangé (outil), où il est affiché (affichage), où elle est rangée (évaluation). */
   lieu: string;
   /** Quand l'affichage est au mur. */
   periode: string;
@@ -336,14 +336,24 @@ export const CATEGORIES_OUTIL = [
 export const CATEGORIES_AFFICHAGE = [
   "Référentiel", "Règles de vie", "Emploi du temps et rituels", "Affiche de leçon", "Travaux d'élèves", "Autre",
 ];
+export const CATEGORIES_EVALUATION = [
+  "Diagnostique (avant d'apprendre)", "En cours d'apprentissage", "Bilan de fin de séquence",
+  "Positionnement (livret, PPI)", "Autre",
+];
 export const PERIODES_AFFICHAGE = [
   "Toute l'année", "Période 1", "Période 2", "Période 3", "Période 4", "Période 5", "Rangé (plus affiché)",
 ];
 
+/** Les catégories proposées, selon la sorte de fiche. */
+export const categoriesDuGenre = (genre: OutilClasse["genre"]): readonly string[] =>
+  genre === "outil" ? CATEGORIES_OUTIL : genre === "affichage" ? CATEGORIES_AFFICHAGE : CATEGORIES_EVALUATION;
+
+const COULEUR_DU_GENRE: Record<OutilClasse["genre"], string> = { outil: "teal", affichage: "orange", evaluation: "indigo" };
+
 export const nouvelOutil = (genre: OutilClasse["genre"]): OutilClasse => ({
-  id: newId(), genre, titre: "", categorie: (genre === "outil" ? CATEGORIES_OUTIL : CATEGORIES_AFFICHAGE)[0],
+  id: newId(), genre, titre: "", categorie: categoriesDuGenre(genre)[0],
   usage: "", competencesBo: "[]", consignes: "", lieu: "", periode: genre === "affichage" ? PERIODES_AFFICHAGE[0] : "",
-  elevesJson: "[]", documentsJson: "[]", imageNom: null, couleur: genre === "outil" ? "teal" : "orange",
+  elevesJson: "[]", documentsJson: "[]", imageNom: null, couleur: COULEUR_DU_GENRE[genre],
   dossier: "", dateCreation: nowIso(),
 });
 

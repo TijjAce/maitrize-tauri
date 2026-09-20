@@ -7,7 +7,7 @@
 // tout ce qui fait une séquence ou un jeu.
 //
 // Un dossier part entier — séquences et leurs séances, pièces jointes,
-// matériel, textes, jeux, outils, affichages, ateliers, espaces — avec ses
+// matériel, textes, jeux, outils, affichages, évaluations, ateliers, espaces — avec ses
 // sous-dossiers et ses fichiers. Chez le collègue, il devient une copie à lui :
 // nouveaux identifiants, nouveaux noms de fichiers, rangée dans un dossier de
 // son bureau. Rien ne relie ensuite les deux copies, et c'est voulu : chacun

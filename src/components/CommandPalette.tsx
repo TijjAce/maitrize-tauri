@@ -34,7 +34,7 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "📋", label: "GEVA-Sco", to: "/eleves", page: "eleves", onglet: "gevasco", sous: "Élèves · mode IME" },
   { ico: "📈", label: "Progressions par élève", to: "/eleves", page: "eleves", onglet: "progressions", sous: "Élèves" },
   { ico: "📚", label: "Compétences travaillées par élève (BO)", to: "/eleves", page: "eleves", onglet: "progressions", sous: "Élèves" },
-  { ico: "▦", label: "Fiches : ateliers, espaces, jeux, outils, affichages", to: "/ateliers", page: "ateliers", onglet: "", sous: "Plan de travail · avec les filtres" },
+  { ico: "▦", label: "Fiches : ateliers, espaces, jeux, outils, affichages, évaluations", to: "/ateliers", page: "ateliers", onglet: "", sous: "Plan de travail · avec les filtres" },
   { ico: "🤝", label: "Bureaux communs", to: "/commun", page: "commun", onglet: "", sous: "Plan de travail · partager avec des collègues" },
   { ico: "🎲", label: "Loto (pictogrammes)", to: "/jeux", page: "jeux", onglet: "jeux", sous: "Fabriquer" },
   { ico: "🪙", label: "Tableau d'économie de jetons", to: "/jeux", page: "jeux", onglet: "jetons", sous: "Fabriquer · Supports visuels" },
@@ -72,7 +72,7 @@ const KIND_ICO: Record<string, string> = {
 /** Le nom de ce qu'on a trouvé, dit en français. */
 const KIND_NOM: Record<string, string> = {
   sequence: "Séquence", seance: "Séance", creneau: "Cahier journal", observation: "Observation",
-  atelier: "Atelier", espace: "Espace", jeu: "Jeu", outil: "Outil ou affichage",
+  atelier: "Atelier", espace: "Espace", jeu: "Jeu", outil: "Fiche de classe",
   texte: "Texte", eleve: "Élève", materiel: "Matériel",
 };
 
