@@ -612,6 +612,12 @@ export const api = {
   /** Un bureau commun posé sur Nuage : le mot de passe d'application ne revient jamais. */
   communAjouterNuage: (nom: string, serveur: string, utilisateur: string, motDePasse: string, dossier: string) =>
     invoke<BureauCommun>("commun_ajouter_nuage", { nom, serveur, utilisateur, motDePasse, dossier }),
+  /** Un bureau commun ouvert par un lien de partage : aucun compte nécessaire. */
+  communAjouterLien: (nom: string, lien: string, motDePasse: string, dossier: string) =>
+    invoke<BureauCommun>("commun_ajouter_lien", { nom, lien, motDePasse, dossier }),
+  /** Crée un lien de partage sur ce bureau commun, à donner à un collègue. */
+  communCreerLien: (bureau: string, motDePasse: string, ecriture: boolean) =>
+    invoke<string>("commun_creer_lien", { bureau, motDePasse, ecriture }),
   communRenommer: (id: string, nom: string) => invoke<void>("commun_renommer", { id, nom }),
   communOublier: (id: string) => invoke<void>("commun_oublier", { id }),
   communLister: (bureau: string, dossier: string) => invoke<EntreeCommune[]>("commun_lister", { bureau, dossier }),

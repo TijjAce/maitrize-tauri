@@ -50,6 +50,9 @@ pub struct BureauCommun {
     pub utilisateur: String,
     #[serde(default)]
     pub dossier_distant: String,
+    /// Le chemin WebDAV de départ : les fichiers d'un compte, ou un lien partagé.
+    #[serde(default)]
+    pub base: String,
     /// Le mot de passe d'application. Il reste sur cet ordinateur : la liste
     /// des bureaux ne se synchronise pas, ne s'exporte pas, et l'interface ne
     /// le reçoit jamais (voir `communs_liste`).
@@ -60,7 +63,8 @@ pub struct BureauCommun {
 fn sorte_dossier() -> String { "dossier".into() }
 
 impl BureauCommun {
-    pub fn sur_nuage(&self) -> bool { self.sorte == "nuage" }
+    /// Un bureau distant : un compte Nuage, ou un lien de partage.
+    pub fn sur_nuage(&self) -> bool { self.sorte == "nuage" || self.sorte == "lien" }
 
     /// De quoi joindre Nuage, à partir de ce qui est enregistré.
     fn acces(&self) -> crate::webdav::Acces {
@@ -69,6 +73,8 @@ impl BureauCommun {
             utilisateur: self.utilisateur.clone(),
             mot_de_passe: self.mot_de_passe.clone(),
             racine: self.dossier_distant.clone(),
+            // Les bureaux d'avant les liens de partage n'ont pas de base écrite.
+            base: if self.base.is_empty() { crate::webdav::base_compte(&self.utilisateur) } else { self.base.clone() },
         }
     }
 }
@@ -310,6 +316,7 @@ pub async fn commun_ajouter_nuage(
         serveur,
         utilisateur: utilisateur.trim().to_string(),
         dossier_distant,
+        base: crate::webdav::base_compte(utilisateur.trim()),
         mot_de_passe: mot_de_passe.trim().to_string(),
     };
     crate::webdav::tester(&b.acces()).await?;
@@ -355,11 +362,64 @@ pub fn commun_ajouter(db: State<'_, Db>, nom: String, chemin: String) -> R<Burea
         serveur: String::new(),
         utilisateur: String::new(),
         dossier_distant: String::new(),
+        base: String::new(),
         mot_de_passe: String::new(),
     };
     liste.push(b.clone());
     ecrire_bureaux(&db, &liste)?;
     Ok(b)
+}
+
+/**
+ * Ajoute un bureau commun ouvert par un **lien de partage** : le collègue n'a
+ * besoin d'aucun compte, et personne ne donne son mot de passe. Le lien seul
+ * — avec le mot de passe que le partage porte, s'il y en a un — suffit.
+ */
+#[tauri::command]
+pub async fn commun_ajouter_lien(
+    db: State<'_, Db>, nom: String, lien: String, mot_de_passe: String, dossier: String,
+) -> R<BureauCommun> {
+    let (serveur, jeton) = crate::webdav::lien_partage(&lien)?;
+    let dossier_distant = segments(dossier.trim())?.join("/");
+    let mut b = BureauCommun {
+        id: uuid::Uuid::new_v4().to_string(),
+        nom: if nom.trim().is_empty() { "Bureau partagé".into() } else { nom.trim().to_string() },
+        chemin: String::new(),
+        present: true,
+        sorte: "lien".into(),
+        serveur,
+        utilisateur: jeton.clone(),
+        dossier_distant,
+        base: String::new(),
+        mot_de_passe: mot_de_passe.trim().to_string(),
+    };
+    // Le serveur choisit son adresse : on garde celle qui a répondu.
+    let bases = crate::webdav::bases_lien(&jeton);
+    b.base = crate::webdav::base_qui_repond(&b.acces(), &bases).await?;
+    let mut liste = lire_bureaux(&db);
+    if liste.iter().any(|x| x.utilisateur == b.utilisateur && x.serveur == b.serveur && x.dossier_distant == b.dossier_distant) {
+        return Err("Ce lien de partage est déjà un de vos bureaux communs.".into());
+    }
+    liste.push(b.clone());
+    ecrire_bureaux(&db, &liste)?;
+    let mut vu = b;
+    vu.mot_de_passe = String::new();
+    Ok(vu)
+}
+
+/**
+ * Crée un lien de partage sur ce bureau commun, à donner à un collègue. Il
+ * n'aura besoin d'aucun compte : le lien, et son mot de passe s'il en a un.
+ */
+#[tauri::command]
+pub async fn commun_creer_lien(
+    db: State<'_, Db>, bureau: String, mot_de_passe: String, ecriture: bool,
+) -> R<String> {
+    let b = bureau_de(&db, &bureau)?;
+    if !b.sur_nuage() {
+        return Err("Ce bureau commun est un dossier de cet ordinateur : le partage se fait dans votre service de stockage.".into());
+    }
+    crate::webdav::creer_lien(&b.acces(), &mot_de_passe, ecriture).await
 }
 
 /// Renomme un bureau commun dans Maitrize (le dossier, lui, garde son nom).

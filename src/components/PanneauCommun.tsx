@@ -35,6 +35,9 @@ const CLE_ACTIF = "communs:actif";
 const RELECTURE_MS = 5000;
 /** Sur Nuage, chaque relecture est une requête : on espace. */
 const RELECTURE_NUAGE_MS = 20000;
+
+/** Ce bureau commun est-il chez Nuage (compte ou lien de partage) ? */
+const distant = (b: BureauCommun | null) => !!b && (b.sorte === "nuage" || b.sorte === "lien");
 /** « Nouveau » pendant trois jours. */
 const RECENT_MS = 3 * 86_400_000;
 /** Au-delà, une image se montre par son icône : l'aperçu la chargerait entière. */
@@ -86,6 +89,7 @@ export function PanneauCommun({ compact = false, onFermer, onRecupere }: {
   const [choixDepot, setChoixDepot] = React.useState(false);
   const [survol, setSurvol] = React.useState(false);
   const [demande, setDemande] = React.useState<{ titre: string; label: string; valeur?: string; sur: (v: string) => void } | null>(null);
+  const [invitation, setInvitation] = React.useState(false);
 
   const relireBureaux = React.useCallback(async () => {
     try { setBureaux(await api.communsListe()); } catch (e) { setErreur(texteErreur(e)); setBureaux([]); }
@@ -102,7 +106,7 @@ export function PanneauCommun({ compact = false, onFermer, onRecupere }: {
   // régulièrement, et quand on revient sur la fenêtre.
   React.useEffect(() => {
     const id = window.setInterval(() => { if (!document.hidden) void relire(); },
-      actif?.sorte === "nuage" ? RELECTURE_NUAGE_MS : RELECTURE_MS);
+      actif && actif.sorte !== "dossier" && actif.sorte ? RELECTURE_NUAGE_MS : RELECTURE_MS);
     const auRetour = () => { void relire(); };
     window.addEventListener("focus", auRetour);
     return () => { window.clearInterval(id); window.removeEventListener("focus", auRetour); };
@@ -163,7 +167,7 @@ export function PanneauCommun({ compact = false, onFermer, onRecupere }: {
   const deposeAnnulable = async (quoi: string, depot: () => Promise<{ nom: string; elements: number }>) => {
     if (!actif) return;
     // Vers Nuage, l'envoi prend le temps du réseau : on ne laisse pas l'écran muet.
-    if (actif.sorte === "nuage") toast(`Envoi de « ${quoi} » vers « ${actif.nom} »…`, { icone: "☁️", duree: 4000 });
+    if (distant(actif)) toast(`Envoi de « ${quoi} » vers « ${actif.nom} »…`, { icone: "☁️", duree: 4000 });
     const r = await depot();
     await relire();
     toastAnnulable(`« ${quoi} » est sur « ${actif.nom} » (${r.elements} élément${r.elements > 1 ? "s" : ""}).`,
@@ -249,10 +253,13 @@ export function PanneauCommun({ compact = false, onFermer, onRecupere }: {
               sur: (nom) => faire("dossier", async () => { await api.communCreerDossier(actif.id, dossier, nom); await relire(); }),
             })}>{compact ? "📁" : "📁 Nouveau dossier"}</button>
             <button className="btn ghost sm" disabled={!actif.present}
-              title={actif.sorte === "nuage" ? "Ouvrir ce dossier dans Nuage, dans le navigateur" : "Ouvrir ce dossier dans le Finder ou l'Explorateur"}
+              title={distant(actif) ? "Ouvrir dans Nuage, dans le navigateur" : "Ouvrir ce dossier dans le Finder ou l'Explorateur"}
               onClick={() => api.communOuvrir(actif.id, dossier).catch((e) => toast(texteErreur(e), { icone: "⚠️" }))}>
-              {actif.sorte === "nuage" ? "☁️" : "📂"}</button>
-            <button className="btn ghost sm" title="Renommer, oublier…" onClick={(e) => openCtx(e, [
+              {distant(actif) ? "☁️" : "📂"}</button>
+            <button className="btn ghost sm" title="Inviter, renommer, oublier…" onClick={(e) => openCtx(e, [
+              ...(actif.sorte === "nuage"
+                ? [{ label: "Inviter un ami : créer un lien", icon: "🔗", onClick: () => setInvitation(true) }]
+                : []),
               { label: "Renommer ce bureau commun", icon: "✏️", onClick: () => setDemande({
                 titre: "Renommer", label: "Nom du bureau commun", valeur: actif.nom,
                 sur: (nom) => faire("nom", async () => { await api.communRenommer(actif.id, nom); await relireBureaux(); }),
@@ -336,6 +343,7 @@ export function PanneauCommun({ compact = false, onFermer, onRecupere }: {
         </>
       )}
 
+      {invitation && actif && <Invitation bureau={actif} onClose={() => setInvitation(false)} />}
       {ajout && <AjoutBureau onClose={() => setAjout(false)} onAjoute={(b) => { setAjout(false); void relireBureaux(); setActifId(b.id); }} />}
       {choixDepot && <ChoixDossier onClose={() => setChoixDepot(false)} onChoisir={(c) => { void deposerDeMonBureau(c); }} />}
       {demande && (
@@ -437,9 +445,10 @@ function AjoutBureau({ onClose, onAjoute }: { onClose: () => void; onAjoute: (b:
   // Deux façons d'atteindre le dossier partagé : Nuage directement — rien à
   // installer, et le Mac comme le PC y voient la même chose —, ou un dossier
   // de cet ordinateur, tenu à jour par l'application du service.
-  const [sorte, setSorte] = React.useState<"nuage" | "dossier">("nuage");
+  const [sorte, setSorte] = React.useState<"nuage" | "lien" | "dossier">("nuage");
   const [chemin, setChemin] = React.useState("");
   const [nom, setNom] = React.useState("");
+  const [lien, setLien] = React.useState("");
   const [serveur, setServeur] = React.useState("");
   const [utilisateur, setUtilisateur] = React.useState("");
   const [motDePasse, setMotDePasse] = React.useState("");
@@ -459,8 +468,8 @@ function AjoutBureau({ onClose, onAjoute }: { onClose: () => void; onAjoute: (b:
   const ajouter = async () => {
     setErreur(""); setEssai(true);
     try {
-      onAjoute(sorte === "nuage"
-        ? await api.communAjouterNuage(nom, serveur, utilisateur, motDePasse, dossierDistant)
+      onAjoute(sorte === "nuage" ? await api.communAjouterNuage(nom, serveur, utilisateur, motDePasse, dossierDistant)
+        : sorte === "lien" ? await api.communAjouterLien(nom, lien, motDePasse, dossierDistant)
         : await api.communAjouter(nom, chemin));
     } catch (e) {
       setErreur(texteErreur(e));
@@ -469,28 +478,51 @@ function AjoutBureau({ onClose, onAjoute }: { onClose: () => void; onAjoute: (b:
     }
   };
 
-  const pret = sorte === "nuage" ? !!(serveur.trim() && utilisateur.trim() && motDePasse.trim()) : !!chemin;
+  const pret = sorte === "nuage" ? !!(serveur.trim() && utilisateur.trim() && motDePasse.trim())
+    : sorte === "lien" ? !!lien.trim()
+    : !!chemin;
   return (
     <Modal titre="Ajouter un bureau commun" onClose={onClose}
       footer={<>
         <button className="btn" onClick={onClose}>Annuler</button>
         <button className="btn primary" disabled={!pret || essai} onClick={() => { void ajouter(); }}>
-          {essai ? "Connexion…" : sorte === "nuage" ? "Se connecter" : "Ajouter"}
+          {essai ? "Connexion…" : sorte === "dossier" ? "Ajouter" : "Se connecter"}
         </button>
       </>}>
       <Field label="Où est le dossier partagé ?">
         <div className="seg" style={{ flexWrap: "wrap" }}>
-          <button className={sorte === "nuage" ? "active" : ""} onClick={() => setSorte("nuage")}>☁️ Nuage (ou autre Nextcloud)</button>
+          <button className={sorte === "nuage" ? "active" : ""} onClick={() => setSorte("nuage")}>☁️ Mon Nuage</button>
+          <button className={sorte === "lien" ? "active" : ""} onClick={() => setSorte("lien")}>🔗 Un lien de partage</button>
           <button className={sorte === "dossier" ? "active" : ""} onClick={() => setSorte("dossier")}>💻 Un dossier de cet ordinateur</button>
         </div>
       </Field>
 
-      {sorte === "nuage" ? (
+      {sorte === "lien" ? (
         <>
           <p style={{ marginTop: 0, fontSize: 13, color: "var(--text-2)" }}>
-            Maitrize se connecte à Nuage : le bureau commun <b>est</b> votre dossier Nuage, identique sur le Mac et sur le PC,
-            sans rien installer. Dans Nuage, allez dans <b>Paramètres › Sécurité › Mot de passe d'application</b>,
-            créez-en un pour Maitrize, et recopiez-le ici. Vous pourrez le révoquer là-bas quand vous voudrez.
+            Un collègue vous a envoyé un lien de partage ? Collez-le ici : vous n'avez besoin d'aucun compte, et personne
+            ne donne son mot de passe. Le lien n'ouvre que le dossier partagé.
+          </p>
+          <Field label="Lien de partage">
+            <Input placeholder="https://nuage03.apps.education.fr/s/aBcD1234" value={lien} onChange={(e) => setLien(e.target.value)} />
+          </Field>
+          <div className="row">
+            <Field label="Mot de passe du lien (s'il y en a un)">
+              <Input type="password" autoComplete="off" value={motDePasse} onChange={(e) => setMotDePasse(e.target.value)} />
+            </Field>
+            <Field label="Nom du bureau commun">
+              <Input placeholder="Équipe de l'IME" value={nom} onChange={(e) => setNom(e.target.value)} />
+            </Field>
+          </div>
+        </>
+      ) : sorte === "nuage" ? (
+        <>
+          <p style={{ marginTop: 0, fontSize: 13, color: "var(--text-2)" }}>
+            Pour <b>votre</b> Nuage. Maitrize s'y connecte : le bureau commun <b>est</b> votre dossier Nuage, identique sur le
+            Mac et sur le PC, sans rien installer. Dans Nuage, allez dans <b>Paramètres › Sécurité › Mot de passe
+            d'application</b>, créez-en un pour Maitrize, et recopiez-le ici — il ne se donne à personne, et se révoque
+            là-bas quand vous voulez. Pour inviter un collègue, vous lui enverrez un <b>lien de partage</b> (menu ⋯ du
+            bureau commun).
           </p>
           <Field label="Adresse de Nuage">
             <Input placeholder="nuage03.apps.education.fr" value={serveur} onChange={(e) => setServeur(e.target.value)} />
@@ -529,6 +561,75 @@ function AjoutBureau({ onClose, onAjoute }: { onClose: () => void; onAjoute: (b:
         </>
       )}
       {erreur && <p style={{ color: "var(--danger, #ef4444)", fontSize: 13, marginBottom: 0 }}>{erreur}</p>}
+    </Modal>
+  );
+}
+
+/**
+ * Inviter un collègue sans lui donner quoi que ce soit de personnel : Nuage
+ * fabrique un lien qui n'ouvre que ce dossier, avec son propre mot de passe.
+ */
+function Invitation({ bureau, onClose }: { bureau: BureauCommun; onClose: () => void }) {
+  const [ecriture, setEcriture] = React.useState(true);
+  const [motDePasse, setMotDePasse] = React.useState("");
+  const [lien, setLien] = React.useState("");
+  const [erreur, setErreur] = React.useState("");
+  const [occupe, setOccupe] = React.useState(false);
+
+  const creer = async () => {
+    setErreur(""); setOccupe(true);
+    try {
+      setLien(await api.communCreerLien(bureau.id, motDePasse, ecriture));
+    } catch (e) {
+      setErreur(texteErreur(e));
+    } finally {
+      setOccupe(false);
+    }
+  };
+
+  return (
+    <Modal titre="🔗 Inviter un ami sur ce bureau commun" onClose={onClose}
+      footer={<>
+        <button className="btn" onClick={onClose}>{lien ? "Terminé" : "Annuler"}</button>
+        {!lien && <button className="btn primary" disabled={occupe} onClick={() => { void creer(); }}>
+          {occupe ? "Création…" : "Créer le lien"}</button>}
+      </>}>
+      {lien ? (
+        <>
+          <p style={{ marginTop: 0, fontSize: 13.5 }}>
+            Voici le lien. Envoyez-le à votre ami{motDePasse ? ", avec le mot de passe que vous venez de choisir (par un autre moyen : SMS, de vive voix)" : ""}.
+            Dans son Maitrize : <b>Bureaux communs › Ajouter › 🔗 Un lien de partage</b>.
+          </p>
+          <Field label="Lien de partage">
+            <Input value={lien} readOnly onFocus={(e) => e.currentTarget.select()} />
+          </Field>
+          <button className="btn sm" onClick={() => {
+            navigator.clipboard?.writeText(lien).then(() => toast("Lien copié.", { icone: "🔗" })).catch(() => {});
+          }}>📋 Copier le lien</button>
+          <p style={{ fontSize: 12.5, color: "var(--text-2)" }}>
+            Ce lien n'ouvre que ce dossier : ni votre compte, ni le reste de votre Nuage. Vous pouvez le révoquer à tout
+            moment dans Nuage (onglet Partage du dossier).
+          </p>
+        </>
+      ) : (
+        <>
+          <p style={{ marginTop: 0, fontSize: 13.5, color: "var(--text-2)" }}>
+            Votre ami n'a besoin d'aucun compte, et vous ne lui donnez pas votre mot de passe : Nuage fabrique un lien
+            qui n'ouvre que le dossier « {bureau.nom} ».
+          </p>
+          <Field label="Ce que le lien permet">
+            <div className="seg" style={{ flexWrap: "wrap" }}>
+              <button className={ecriture ? "active" : ""} onClick={() => setEcriture(true)}>Déposer et modifier</button>
+              <button className={!ecriture ? "active" : ""} onClick={() => setEcriture(false)}>Lire seulement</button>
+            </div>
+          </Field>
+          <Field label="Mot de passe du lien (recommandé)">
+            <Input type="password" autoComplete="off" value={motDePasse} onChange={(e) => setMotDePasse(e.target.value)}
+              placeholder="un mot simple, donné de vive voix" />
+          </Field>
+          {erreur && <p style={{ color: "var(--danger, #ef4444)", fontSize: 13 }}>{erreur}</p>}
+        </>
+      )}
     </Modal>
   );
 }
