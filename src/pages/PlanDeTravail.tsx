@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import {
-  api, Sequence, MaterielItem, Texte, Atelier, Espace, Jeu, OutilClasse, couleurHex, couleurPourMatiere, newId, nowIso,
+  api, BureauCommun, Sequence, MaterielItem, Texte, Atelier, Espace, Jeu, OutilClasse, couleurHex, couleurPourMatiere, newId, nowIso,
   texteErreur, nouvelAtelier, nouvelEspace, nouveauJeu, nouvelOutil,
 } from "../api";
 import { Input, Confirm, Demander, Modal, ColorPicker, useAsync } from "../components/ui";
@@ -509,7 +509,7 @@ export default function PlanDeTravail() {
   // ── Bureaux communs ──
   // Un dossier part entier, sous-dossiers et fichiers compris. C'est une
   // publication vers des collègues : on la confirme, en disant ce qui ne part pas.
-  const deposerAuCommun = async (d: SousDossier, bureau: import("../api").BureauCommun) => {
+  const deposerAuCommun = async (d: SousDossier, bureau: BureauCommun) => {
     if (!(await confirmer(
       `Déposer « ${d.nom} » (${d.total} élément${d.total > 1 ? "s" : ""}) sur « ${bureau.nom} » ? `
       + "Vos collègues pourront le récupérer. Les bilans de séance et les élèves associés aux outils ne partent pas ; "
@@ -528,7 +528,11 @@ export default function PlanDeTravail() {
     if (!presents.length) {
       return [{ label: "Partager sur un bureau commun…", icon: "🤝", onClick: () => nav("/commun") }];
     }
-    return presents.map((b) => ({ label: `Déposer sur « ${b.nom} »`, icon: "🤝", onClick: () => { void deposerAuCommun(d, b); } }));
+    const vers = (b: BureauCommun) => ({ label: b.nom, icon: "🤝", onClick: () => { void deposerAuCommun(d, b); } });
+    // Plusieurs bureaux communs tiennent dans un sous-menu plutôt qu'en liste.
+    return presents.length === 1
+      ? [{ label: `Déposer sur « ${presents[0].nom} »`, icon: "🤝", onClick: () => { void deposerAuCommun(d, presents[0]); } }]
+      : [{ label: "Déposer sur un bureau commun", icon: "🤝", enfants: presents.map(vers) }];
   };
 
   // ── Créations ──
@@ -715,17 +719,23 @@ export default function PlanDeTravail() {
           // Ce qu'on crée d'un clic droit apparaît à l'endroit du clic.
           const caseClic = filtre || !surfaceEl.current ? null : caseSous(e.clientX, e.clientY);
           const avecCase = (f: () => void) => () => { caseCreation.current = caseClic; f(); };
+          // Dix créations d'affilée se lisaient mal : les supports d'un côté,
+          // l'organisation de la classe de l'autre, dans deux sous-menus.
           openCtx(e, [
             { label: "Nouveau dossier", icon: "📁", onClick: avecCase(creerDossier) },
             { label: "Nouveau texte", icon: "📝", onClick: avecCase(creerTexte) },
             { label: "Nouvelle séquence", icon: "📚", sep: true, onClick: avecCase(creerSequence) },
-            { label: "Nouveau matériel", icon: "🧰", onClick: creerMateriel },
-            { label: "Nouvel atelier", icon: "🧩", sep: true, onClick: () => setEditA({ ...nouvelAtelier(), dossier }) },
-            { label: "Nouvel espace", icon: "🪑", onClick: () => setEditE({ ...nouvelEspace(), dossier }) },
-            { label: "Nouveau jeu", icon: "🎲", onClick: () => setEditJ({ ...nouveauJeu(), dossier }) },
-            { label: "Nouvel outil", icon: "🧰", onClick: () => setEditO({ ...nouvelOutil("outil"), dossier }) },
-            { label: "Nouvel affichage", icon: "🖼", onClick: () => setEditO({ ...nouvelOutil("affichage"), dossier }) },
-            { label: "Nouvelle évaluation", icon: "📋", onClick: () => setEditO({ ...nouvelOutil("evaluation"), dossier }) },
+            { label: "Nouveau support", icon: "🧰", enfants: [
+              { label: "Matériel", icon: "🧰", onClick: creerMateriel },
+              { label: "Outil pour l'élève", icon: "🧰", onClick: () => setEditO({ ...nouvelOutil("outil"), dossier }) },
+              { label: "Jeu", icon: "🎲", onClick: () => setEditJ({ ...nouveauJeu(), dossier }) },
+              { label: "Évaluation", icon: "📋", onClick: () => setEditO({ ...nouvelOutil("evaluation"), dossier }) },
+              { label: "Affichage", icon: "🖼", onClick: () => setEditO({ ...nouvelOutil("affichage"), dossier }) },
+            ] },
+            { label: "Nouvel atelier ou espace", icon: "🧩", enfants: [
+              { label: "Atelier", icon: "🧩", onClick: () => setEditA({ ...nouvelAtelier(), dossier }) },
+              { label: "Espace", icon: "🪑", onClick: () => setEditE({ ...nouvelEspace(), dossier }) },
+            ] },
             { label: "Importer des fichiers… (PDF, Word, Excel…)", icon: "📥", sep: true, onClick: () => {
               caseImport.current = caseClic;
               choixFichiers.current?.click();
