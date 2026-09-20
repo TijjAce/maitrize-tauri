@@ -111,6 +111,36 @@ export function retirerImage(texte: string, nom: string): string {
 }
 
 /**
+ * Met les images de côté avant d'envoyer un texte à l'IA.
+ *
+ * « [img:a3f.png] » n'a aucun sens pour un modèle, qui le réécrirait ou le
+ * perdrait. On le remplace par un jeton court, qu'on lui demande de recopier
+ * tel quel, et on remet les images au retour.
+ */
+export function protegerImages(texte: string): { texte: string; images: string[] } {
+  const images: string[] = [];
+  const sortie = (texte ?? "").replace(/\[img:([^\]]+)\]/g, (_tout, nom: string) => {
+    images.push(nom);
+    return `[IMG${images.length}]`;
+  });
+  return { texte: sortie, images };
+}
+
+/** Remet les images à leur place ; celles que l'IA a perdues reviennent à la fin. */
+export function restaurerImages(texte: string, images: string[]): string {
+  if (!images.length) return texte ?? "";
+  const vues = new Set<number>();
+  const sortie = (texte ?? "").replace(/\[IMG(\d+)\]/gi, (_tout, n: string) => {
+    const i = Number(n) - 1;
+    if (i < 0 || i >= images.length) return "";
+    vues.add(i);
+    return marqueurImage(images[i]);
+  });
+  const oubliees = images.filter((_, i) => !vues.has(i)).map(marqueurImage);
+  return oubliees.length ? `${sortie.replace(/\s+$/, "")}\n${oubliees.join("\n")}` : sortie;
+}
+
+/**
  * Pose une image à la suite d'une ligne (celle du manuel, en général), ou à la
  * fin du texte.
  */

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  imagesDuTexte, ligneDeCompetence, ligneDeManuel, ligneDuManuel, marqueurImage, poserImage, retirerImage,
+  imagesDuTexte, ligneDeCompetence, ligneDeManuel, ligneDuManuel, marqueurImage, poserImage, protegerImages,
+  restaurerImages, retirerImage,
 } from "./cahierJournal";
 
 describe("citer un manuel dans le prévu", () => {
@@ -44,5 +45,22 @@ describe("poser une compétence dans le prévu", () => {
     expect(ligneDeCompetence("Lire les nombres jusqu'à 100", "Cycle 2")).toBe("🎯 Lire les nombres jusqu'à 100 (Cycle 2)");
     expect(ligneDeCompetence("  Compter   en avançant ", "", "CP")).toBe("🎯 [CP] Compter en avançant");
     expect(ligneDeCompetence("   ", "Cycle 2")).toBe("");
+  });
+});
+
+describe("corriger un prévu qui contient des images", () => {
+  it("met les images de côté, puis les remet à leur place", () => {
+    const avant = `Rituels ${marqueurImage("a3f.png")}\nCalcul ${marqueurImage("b7.png")}`;
+    const { texte, images } = protegerImages(avant);
+    expect(texte).toBe("Rituels [IMG1]\nCalcul [IMG2]");
+    expect(images).toEqual(["a3f.png", "b7.png"]);
+    expect(restaurerImages("Rituels [IMG1]\nCalculs [IMG2]", images))
+      .toBe(`Rituels ${marqueurImage("a3f.png")}\nCalculs ${marqueurImage("b7.png")}`);
+  });
+
+  it("rattrape une image que l'IA aurait perdue, et ignore un jeton inventé", () => {
+    expect(restaurerImages("Rituels", ["a.png"])).toBe(`Rituels\n${marqueurImage("a.png")}`);
+    expect(restaurerImages("Rituels [IMG9]", ["a.png"])).toBe(`Rituels\n${marqueurImage("a.png")}`);
+    expect(restaurerImages("Rien", [])).toBe("Rien");
   });
 });
