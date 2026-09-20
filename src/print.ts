@@ -8,6 +8,53 @@ export function dataUrlImage(nom: string, base64: string): string {
   return `data:image/${type};base64,${base64}`;
 }
 
+// ── Pied de page : le logo et l'adresse, en bas de chaque page ────────────
+//
+// Un cahier journal imprimé circule : il passe à un remplaçant, à un
+// collègue, à l'inspection. Le logo et l'adresse disent d'où il vient, sans
+// prendre la place du contenu.
+
+import logoUrl from "./assets/logo.png";
+
+/** Le logo réduit, en data URL : l'impression part sans dépendre de l'application. */
+let logoPret: Promise<string> | null = null;
+export function logoImprimable(hauteur = 48): Promise<string> {
+  if (!logoPret) {
+    logoPret = (async () => {
+      const blob = await fetch(logoUrl).then((r) => r.blob());
+      const bitmap = await createImageBitmap(blob);
+      const echelle = hauteur / bitmap.height;
+      const toile = document.createElement("canvas");
+      toile.width = Math.max(1, Math.round(bitmap.width * echelle));
+      toile.height = hauteur;
+      const ctx = toile.getContext("2d");
+      if (!ctx) throw new Error("rendu impossible");
+      ctx.drawImage(bitmap, 0, 0, toile.width, toile.height);
+      return toile.toDataURL("image/png");
+    })();
+    // Un échec ne doit pas empêcher d'imprimer : on réessaiera la fois d'après.
+    logoPret.catch(() => { logoPret = null; });
+  }
+  return logoPret;
+}
+
+/** Le style du pied de page, à ajouter à celui du document. */
+export const STYLE_PIED = `
+  .pied-maitrize { display: flex; align-items: center; justify-content: center; gap: 7px;
+    color: #8a8f9c; font-size: 10px; padding: 8px 0 2px; }
+  .pied-maitrize img { height: 13px; width: auto; }
+  @media print {
+    /* Fixe : les navigateurs le répètent en bas de chaque page imprimée. */
+    .pied-maitrize { position: fixed; left: 0; right: 0; bottom: 3mm; margin: 0; }
+    body { padding-bottom: 12mm; }
+  }
+`;
+
+/** Le pied lui-même. Sans logo lisible, l'adresse suffit. */
+export function piedMaitrize(logo: string): string {
+  return `<div class="pied-maitrize">${logo ? `<img alt="" src="${logo}">` : ""}<span>Maitrize · https://maitrize.com</span></div>`;
+}
+
 export function escapeHtml(s: string): string {
   return (s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
