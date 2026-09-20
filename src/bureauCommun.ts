@@ -148,6 +148,31 @@ export function contenuDuDossier(chemin: string, tout: Contenu): Contenu {
   };
 }
 
+/** Les genres d'éléments qu'un bureau peut porter, tels que le plan de travail les nomme. */
+export type GenreElement = "sequence" | "materiel" | "texte" | "jeu" | "atelier" | "espace" | "outil";
+
+/**
+ * Un seul élément, empaqueté comme un dossier qui ne contiendrait que lui :
+ * une séquence glissée sur un bureau commun part avec ses séances et ses
+ * pièces jointes, et sans ce qui touche aux élèves.
+ */
+export function contenuDUnElement(genre: GenreElement, id: string, tout: Contenu): Contenu {
+  const seul = <T extends { id: string }>(liste: T[], g: GenreElement) =>
+    (g === genre ? liste.filter((x) => x.id === id) : []).map((x) => ({ ...x, dossier: "" }));
+  return contenuDuDossier("", {
+    sequences: seul(tout.sequences, "sequence"),
+    // Séances et pièces suivent leur séquence : le filtrage commun s'en charge.
+    seances: tout.seances, pieces: tout.pieces,
+    materiels: seul(tout.materiels, "materiel"),
+    // Un texte rangé dans un dossier réservé (« @… ») n'est pas à partager.
+    textes: seul(tout.textes.filter((t) => !(t.dossier ?? "").startsWith("@")), "texte"),
+    jeux: seul(tout.jeux, "jeu"),
+    ateliers: seul(tout.ateliers, "atelier"),
+    espaces: seul(tout.espaces, "espace"),
+    outils: seul(tout.outils, "outil"),
+  });
+}
+
 /** Combien d'éléments un contenu compte (les séances et pièces vont avec leur séquence). */
 export const compter = (c: Contenu) =>
   c.sequences.length + c.materiels.length + c.textes.length + c.jeux.length + c.ateliers.length + c.espaces.length + c.outils.length;

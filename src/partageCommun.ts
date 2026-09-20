@@ -8,8 +8,9 @@ import { api, newId, nowIso, type BureauCommun, type MaterielItem } from "./api"
 import { lireCouleurs, normaliser, PREFIXE_COULEUR, SANS_COULEUR, sousDossiers } from "./dossiers";
 import { estImage, fichierEnBase64 } from "./dragdrop";
 import {
-  base64EnTexte, compter, contenuDuDossier, couleursDeballees, couleursDuDossier, deballer, destinationLibre, estPaquet,
-  fichiersDe, nomDeFichierSur, nomDuPaquet, TAILLE_MAX, texteEnBase64, titreDuPaquet, type Paquet,
+  base64EnTexte, compter, contenuDUnElement, contenuDuDossier, couleursDeballees, couleursDuDossier, deballer,
+  destinationLibre, estPaquet, fichiersDe, nomDeFichierSur, nomDuPaquet, TAILLE_MAX, texteEnBase64, titreDuPaquet,
+  type Contenu, type GenreElement, type Paquet,
 } from "./bureauCommun";
 
 /** Le nom sous lequel on dépose : celui de l'enseignant, sinon une formule neutre. */
@@ -44,32 +45,57 @@ export async function dossiersPris(): Promise<Set<string>> {
   return new Set(sousDossiers(elements, "", tous).map((d) => d.chemin.toLowerCase()));
 }
 
-/**
- * Dépose un dossier de mon bureau, entier, sur un bureau commun : un fichier
- * « .maitrize » à son nom et au mien. Le redéposer remplace le précédent.
- */
-export async function deposerDossier(chemin: string, bureau: BureauCommun, ou = ""): Promise<{ nom: string; elements: number }> {
+/** Tout ce qui est sur mon bureau, pour en empaqueter une part. */
+async function toutLeBureau() {
   const [sequences, seances, pieces, materiels, textes, jeux, ateliers, espaces, outils, reglages] = await Promise.all([
     api.sequencesList(), api.seancesList(), api.piecesJointesList(), api.materielList(), api.textesList(),
     api.jeuxList(), api.ateliersList(), api.espacesList(), api.outilsClasseList(), api.settingsAll(),
   ]);
-  const contenu = contenuDuDossier(chemin, { sequences, seances, pieces, materiels, textes, jeux, ateliers, espaces, outils });
-  if (!compter(contenu)) throw new Error("Ce dossier est vide : rien à déposer.");
+  return { tout: { sequences, seances, pieces, materiels, textes, jeux, ateliers, espaces, outils }, reglages };
+}
+
+/** Empaquette un contenu et le pose sur le bureau commun. */
+async function deposerContenu(
+  contenu: Contenu, titre: string, couleurs: Record<string, string>, bureau: BureauCommun, ou: string,
+): Promise<{ nom: string; elements: number }> {
+  if (!compter(contenu)) throw new Error("Il n'y a rien à déposer ici.");
   const fichiers: Record<string, string> = {};
   let taille = 0;
   for (const nom of fichiersDe(contenu)) {
     // Un fichier disparu du disque ne doit pas empêcher de déposer le reste.
     try { fichiers[nom] = await api.fichierRead(nom); taille += fichiers[nom].length; } catch { continue; }
-    if (taille > TAILLE_MAX) throw new Error("Ce dossier est trop lourd pour le bureau commun : déposez plutôt ses sous-dossiers.");
+    if (taille > TAILLE_MAX) throw new Error("C'est trop lourd pour le bureau commun : déposez plutôt les sous-dossiers un par un.");
   }
   const qui = await auteur();
   const paquet: Paquet = {
-    v: 1, dossier: dernier(normaliser(chemin)), auteur: qui, depose: new Date().toISOString(), contenu,
-    couleurs: couleursDuDossier(chemin, lireCouleurs(reglages)), fichiers,
+    v: 1, dossier: titre, auteur: qui, depose: new Date().toISOString(), contenu, couleurs, fichiers,
   };
-  const nom = nomDuPaquet(paquet.dossier, qui);
+  const nom = nomDuPaquet(titre, qui);
   await api.communEcrire(bureau.id, ou, nom, texteEnBase64(JSON.stringify(paquet)), true);
   return { nom, elements: compter(contenu) };
+}
+
+/**
+ * Dépose un dossier de mon bureau, entier, sur un bureau commun : un fichier
+ * « .maitrize » à son nom et au mien. Le redéposer remplace le précédent.
+ */
+export async function deposerDossier(chemin: string, bureau: BureauCommun, ou = ""): Promise<{ nom: string; elements: number }> {
+  const { tout, reglages } = await toutLeBureau();
+  const contenu = contenuDuDossier(chemin, tout);
+  return deposerContenu(contenu, dernier(normaliser(chemin)), couleursDuDossier(chemin, lireCouleurs(reglages)), bureau, ou);
+}
+
+/**
+ * Dépose un seul élément — une séquence, un jeu, un matériel… — glissé sur le
+ * bureau commun. Il part comme un dossier d'un seul objet.
+ */
+export async function deposerElement(
+  genre: GenreElement, id: string, titre: string, bureau: BureauCommun, ou = "",
+): Promise<{ nom: string; elements: number }> {
+  const { tout } = await toutLeBureau();
+  const contenu = contenuDUnElement(genre, id, tout);
+  if (!compter(contenu)) throw new Error("Cet élément n'est plus sur votre bureau.");
+  return deposerContenu(contenu, titre.trim() || "Sans titre", {}, bureau, ou);
 }
 
 /**

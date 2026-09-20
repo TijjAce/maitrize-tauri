@@ -3,8 +3,9 @@ import {
   nouveauJeu, nouvelOutil, nouvelleSeance, nouvelleSequence, type MaterielItem, type PieceJointe, type Texte,
 } from "./api";
 import {
-  base64EnTexte, compter, contenuDuDossier, couleursDeballees, couleursDuDossier, deballer, destinationLibre, estPaquet,
-  fichiersDe, nomDeFichierSur, nomDuPaquet, texteEnBase64, titreDuPaquet, type Contenu, type Paquet,
+  base64EnTexte, compter, contenuDUnElement, contenuDuDossier, couleursDeballees, couleursDuDossier, deballer,
+  destinationLibre, estPaquet, fichiersDe, nomDeFichierSur, nomDuPaquet, texteEnBase64, titreDuPaquet,
+  type Contenu, type Paquet,
 } from "./bureauCommun";
 
 const materiel = (p: Partial<MaterielItem>): MaterielItem => ({
@@ -63,6 +64,29 @@ describe("déposer un dossier sur le bureau commun", () => {
   it("garde la couleur des dossiers, relative au dossier déposé", () => {
     expect(couleursDuDossier("cycle 1", { "cycle 1": "#a855f7", "cycle 1/Maths": "#ff0000", "Français": "#00ff00" }))
       .toEqual({ "": "#a855f7", Maths: "#ff0000" });
+  });
+});
+
+describe("déposer un seul élément, glissé sur le bureau commun", () => {
+  it("emporte la séquence avec ses séances et ses pièces, à la racine du paquet", () => {
+    const c = contenuDUnElement("sequence", "q1", bureau());
+    expect(c.sequences.map((s) => [s.titre, s.dossier])).toEqual([["Les fractions", ""]]);
+    expect(c.seances.map((s) => s.id)).toEqual(["s1"]);
+    expect(c.pieces.map((p) => p.id)).toEqual(["pj1"]);
+    // Rien d'autre du bureau ne part avec lui.
+    expect(compter(c)).toBe(1);
+    expect(c.jeux).toEqual([]);
+    // Et toujours rien des élèves.
+    expect(c.seances[0].bilan).toBe("");
+  });
+
+  it("emporte un jeu seul, et ignore un élément qui n'existe pas", () => {
+    expect(contenuDUnElement("jeu", "j1", bureau()).jeux.map((j) => j.titre)).toEqual(["Loto"]);
+    expect(compter(contenuDUnElement("jeu", "inconnu", bureau()))).toBe(0);
+    // Un texte d'un dossier réservé ne part pas.
+    const tout = bureau();
+    tout.textes[0].dossier = "@informations";
+    expect(compter(contenuDUnElement("texte", "t1", tout))).toBe(0);
   });
 });
 
