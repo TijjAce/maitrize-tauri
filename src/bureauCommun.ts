@@ -28,8 +28,27 @@ export interface Contenu {
 }
 
 /** Un dossier empaqueté, tel qu'il est posé sur le bureau commun. */
+/**
+ * Ce qu'un dossier Maitrize contient, dit en quelques nombres.
+ *
+ * Il ouvre le fichier : une tuile peut ainsi annoncer « Séquence · 4 séances »
+ * sans télécharger les mégaoctets qui suivent.
+ */
+export interface Resume {
+  auteur: string;
+  depose: string;
+  /** Combien de chaque sorte : « sequences », « jeux », « materiels »… */
+  compte: Record<string, number>;
+  /** Les séances des séquences emportées. */
+  seances: number;
+  /** Les fichiers joints. */
+  fichiers: number;
+}
+
 export interface Paquet {
   v: 1;
+  /** Écrit en premier : il se lit sans ouvrir tout le fichier. */
+  resume?: Resume;
   /** Le nom du dossier déposé. */
   dossier: string;
   auteur: string;
@@ -42,6 +61,56 @@ export interface Paquet {
   fichiers: Record<string, string>;
 }
 
+/** Le résumé d'un contenu, tel qu'il s'écrit en tête du paquet. */
+export function resumeDe(contenu: Contenu, auteur: string, depose: string, fichiers: number): Resume {
+  const compte: Record<string, number> = {};
+  const ajouter = (cle: string, n: number) => { if (n) compte[cle] = n; };
+  ajouter("sequences", contenu.sequences.length);
+  ajouter("materiels", contenu.materiels.length);
+  ajouter("textes", contenu.textes.length);
+  ajouter("jeux", contenu.jeux.length);
+  ajouter("ateliers", contenu.ateliers.length);
+  ajouter("espaces", contenu.espaces.length);
+  ajouter("outils", contenu.outils.filter((o) => o.genre === "outil").length);
+  ajouter("affichages", contenu.outils.filter((o) => o.genre === "affichage").length);
+  ajouter("evaluations", contenu.outils.filter((o) => o.genre === "evaluation").length);
+  return { auteur, depose, compte, seances: contenu.seances.length, fichiers };
+}
+
+/** Le mot d'une sorte, au singulier et au pluriel, avec son icône. */
+const SORTES_RESUME: Record<string, { icone: string; un: string; des: string }> = {
+  sequences: { icone: "📚", un: "séquence", des: "séquences" },
+  materiels: { icone: "🧰", un: "matériel", des: "matériels" },
+  textes: { icone: "📝", un: "texte", des: "textes" },
+  jeux: { icone: "🎲", un: "jeu", des: "jeux" },
+  ateliers: { icone: "🧩", un: "atelier", des: "ateliers" },
+  espaces: { icone: "🪑", un: "espace", des: "espaces" },
+  outils: { icone: "🧰", un: "outil", des: "outils" },
+  affichages: { icone: "🖼", un: "affichage", des: "affichages" },
+  evaluations: { icone: "📋", un: "évaluation", des: "évaluations" },
+};
+
+/**
+ * Ce qu'une tuile montre d'un dossier Maitrize : une icône, et ce qu'il y a
+ * dedans en toutes lettres.
+ */
+export function descriptionDuResume(r: Resume | null): { icone: string; texte: string } {
+  const entrees = Object.entries(r?.compte ?? {}).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+  if (!entrees.length) return { icone: "📦", texte: "Dossier Maitrize" };
+  const mot = ([cle, n]: [string, number]) => {
+    const s = SORTES_RESUME[cle] ?? { icone: "📦", un: cle, des: cle };
+    return `${n} ${n > 1 ? s.des : s.un}`;
+  };
+  const icone = SORTES_RESUME[entrees[0][0]]?.icone ?? "📦";
+  // Une seule séquence : dire ses séances en dit plus que de la compter.
+  if (entrees.length === 1 && entrees[0][0] === "sequences" && entrees[0][1] === 1) {
+    return { icone, texte: r!.seances ? `Séquence · ${r!.seances} séance${r!.seances > 1 ? "s" : ""}` : "Séquence" };
+  }
+  const dits = entrees.slice(0, 2).map(mot);
+  if (entrees.length > 2) dits.push("…");
+  return { icone, texte: dits.join(" · ") };
+}
+
 /** L'extension d'un dossier Maitrize posé sur un bureau commun. */
 export const EXTENSION_PAQUET = ".maitrize";
 
@@ -49,6 +118,16 @@ export const estPaquet = (nom: string) => nom.toLowerCase().endsWith(EXTENSION_P
 
 /** Le titre d'un dossier Maitrize, sans son extension. */
 export const titreDuPaquet = (nom: string) => (estPaquet(nom) ? nom.slice(0, -EXTENSION_PAQUET.length) : nom);
+
+/**
+ * Le titre sans le nom de l'auteur, quand on sait qui c'est : la tuile le dit
+ * en dessous, et « cycle 1 » se lit mieux que « cycle 1 (Clément Titet) ».
+ */
+export function titreSansAuteur(nom: string, auteur: string): string {
+  const titre = titreDuPaquet(nom);
+  const suffixe = ` (${(auteur ?? "").trim()})`;
+  return auteur?.trim() && titre.endsWith(suffixe) ? titre.slice(0, -suffixe.length) : titre;
+}
 
 /**
  * Un nom de fichier que Windows et macOS acceptent, et que le bureau commun

@@ -4,8 +4,8 @@ import {
 } from "./api";
 import {
   base64EnTexte, compter, contenuDUnElement, contenuDuDossier, couleursDeballees, couleursDuDossier, deballer,
-  destinationLibre, estPaquet, fichiersDe, nomDeFichierSur, nomDuPaquet, texteEnBase64, titreDuPaquet,
-  type Contenu, type Paquet,
+  descriptionDuResume, destinationLibre, estPaquet, fichiersDe, nomDeFichierSur, nomDuPaquet, resumeDe, texteEnBase64,
+  titreDuPaquet, titreSansAuteur, type Contenu, type Paquet,
 } from "./bureauCommun";
 
 const materiel = (p: Partial<MaterielItem>): MaterielItem => ({
@@ -152,5 +152,38 @@ describe("poser des fichiers du Finder", () => {
     expect(nomPosable(`${"a".repeat(140)}.pdf`)).toBe(`${"a".repeat(100)}.pdf`);
     expect(nomPosable("Lisez-moi")).toBe("Lisez-moi");
     expect(nomPosable(".bashrc")).toBe("bashrc");
+  });
+});
+
+describe("dire ce qu'un dossier Maitrize contient", () => {
+  const resume = (c: Contenu) => resumeDe(c, "Clément Titet", "2026-09-21T10:00:00Z", 3);
+
+  it("compte chaque sorte, séances et fichiers compris", () => {
+    const r = resume(contenuDuDossier("cycle 1", bureau()));
+    expect(r.compte).toEqual({ sequences: 1, materiels: 1, textes: 1, jeux: 1, outils: 1 });
+    expect(r.seances).toBe(1);
+    expect(r.fichiers).toBe(3);
+    expect(r.auteur).toBe("Clément Titet");
+  });
+
+  it("annonce une séquence seule par ses séances", () => {
+    const r = resume(contenuDUnElement("sequence", "q1", bureau()));
+    expect(descriptionDuResume(r)).toEqual({ icone: "📚", texte: "Séquence · 1 séance" });
+  });
+
+  it("annonce un dossier mêlé par ses deux sortes principales", () => {
+    const dit = descriptionDuResume(resume(contenuDuDossier("cycle 1", bureau())));
+    expect(dit.icone).toBe("📚");
+    expect(dit.texte).toBe("1 séquence · 1 matériel · …");
+    // Un jeu seul se dit d'un mot.
+    expect(descriptionDuResume(resume(contenuDUnElement("jeu", "j1", bureau())))).toEqual({ icone: "🎲", texte: "1 jeu" });
+    // Sans résumé — un paquet d'avant —, la tuile reste muette mais correcte.
+    expect(descriptionDuResume(null)).toEqual({ icone: "📦", texte: "Dossier Maitrize" });
+  });
+
+  it("retire le nom de l'auteur du titre, quand on sait qui c'est", () => {
+    expect(titreSansAuteur("cycle 1 (Clément Titet).maitrize", "Clément Titet")).toBe("cycle 1");
+    expect(titreSansAuteur("cycle 1 (Clément Titet).maitrize", "Louise")).toBe("cycle 1 (Clément Titet)");
+    expect(titreSansAuteur("cycle 1 (Clément Titet).maitrize", "")).toBe("cycle 1 (Clément Titet)");
   });
 });

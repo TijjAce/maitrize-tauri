@@ -382,6 +382,25 @@ pub async fn lire(acces: &Acces, chemin: &str) -> R<Vec<u8>> {
     Ok(rep.bytes().await.map_err(|e| e.to_string())?.to_vec())
 }
 
+/// Le début d'un fichier seulement : de quoi lire l'en-tête d'un paquet sans
+/// tirer les mégaoctets qui suivent.
+pub async fn lire_debut(acces: &Acces, chemin: &str, octets: usize) -> R<Vec<u8>> {
+    let rep = client()?
+        .get(url_de(acces, chemin))
+        .header("Authorization", autorisation(acces))
+        .header("Range", format!("bytes=0-{}", octets.saturating_sub(1)))
+        .send()
+        .await
+        .map_err(|e| format!("Nuage injoignable : {e}"))?;
+    if !rep.status().is_success() {
+        return Err(erreur_http(rep.status(), chemin));
+    }
+    // Un serveur qui ignore « Range » renvoie tout : on ne garde que le début.
+    let mut corps = rep.bytes().await.map_err(|e| e.to_string())?.to_vec();
+    corps.truncate(octets);
+    Ok(corps)
+}
+
 /// Pose un fichier (il remplace celui qui porterait le même nom).
 pub async fn ecrire(acces: &Acces, chemin: &str, octets: Vec<u8>) -> R<()> {
     let rep = client()?

@@ -4,13 +4,13 @@
 // module n'y lit et n'y écrit que par les commandes du backend, qui
 // l'enferment dans ce dossier ; il fabrique les paquets et les déballe.
 
-import { api, newId, nowIso, type BureauCommun, type MaterielItem } from "./api";
+import { api, newId, nowIso, type BureauCommun, type EntreeCommune, type MaterielItem } from "./api";
 import { lireCouleurs, normaliser, PREFIXE_COULEUR, SANS_COULEUR, sousDossiers } from "./dossiers";
 import { estImage, fichierEnBase64 } from "./dragdrop";
 import {
   base64EnTexte, compter, contenuDUnElement, contenuDuDossier, couleursDeballees, couleursDuDossier, deballer,
-  destinationLibre, estPaquet, fichiersDe, nomDeFichierSur, nomDuPaquet, TAILLE_MAX, texteEnBase64, titreDuPaquet,
-  type Contenu, type GenreElement, type Paquet,
+  destinationLibre, estPaquet, fichiersDe, nomDeFichierSur, nomDuPaquet, resumeDe, TAILLE_MAX, texteEnBase64, titreDuPaquet,
+  type Contenu, type GenreElement, type Paquet, type Resume,
 } from "./bureauCommun";
 
 /** Le nom sous lequel on dépose : celui de l'enseignant, sinon une formule neutre. */
@@ -67,8 +67,11 @@ async function deposerContenu(
     if (taille > TAILLE_MAX) throw new Error("C'est trop lourd pour le bureau commun : déposez plutôt les sous-dossiers un par un.");
   }
   const qui = await auteur();
+  const depose = new Date().toISOString();
+  // Le résumé vient avant tout le reste : il se lit sans ouvrir les fichiers.
   const paquet: Paquet = {
-    v: 1, dossier: titre, auteur: qui, depose: new Date().toISOString(), contenu, couleurs, fichiers,
+    v: 1, resume: resumeDe(contenu, qui, depose, Object.keys(fichiers).length),
+    dossier: titre, auteur: qui, depose, contenu, couleurs, fichiers,
   };
   const nom = nomDuPaquet(titre, qui);
   await api.communEcrire(bureau.id, ou, nom, texteEnBase64(JSON.stringify(paquet)), true);
@@ -107,6 +110,40 @@ export function nomPosable(nom: string): string {
   const ext = i > 0 ? nomDeFichierSur(nom.slice(i + 1), "") : "";
   const base = nomDeFichierSur(i > 0 ? nom.slice(0, i) : nom);
   return ext ? `${base}.${ext}` : base;
+}
+
+/** Au-delà, on ne relit pas tout un paquet pour deviner ce qu'il contient. */
+const RELECTURE_MAX = 2 * 1024 * 1024;
+
+/** Ce qu'on a déjà appris d'un paquet, tant qu'il n'a pas changé. */
+const RESUMES = new Map<string, Promise<Resume | null>>();
+
+/**
+ * Ce que contient un dossier Maitrize posé sur un bureau commun.
+ *
+ * Le résumé est écrit en tête du fichier : on n'en lit que les premiers
+ * octets. Les paquets déposés avant cette écriture n'en ont pas ; on les
+ * relit alors en entier, mais seulement s'ils sont légers.
+ */
+export function resumeDuPaquet(bureau: BureauCommun, entree: EntreeCommune): Promise<Resume | null> {
+  const cle = `${bureau.id}|${entree.chemin}|${entree.modifie}`;
+  let p = RESUMES.get(cle);
+  if (!p) {
+    p = (async () => {
+      const tete = await api.communResume(bureau.id, entree.chemin).catch(() => "");
+      if (tete) {
+        try { return JSON.parse(tete) as Resume; } catch { /* en-tête abîmé */ }
+      }
+      if (entree.octets > RELECTURE_MAX) return null;
+      const paquet = JSON.parse(base64EnTexte(await api.communLire(bureau.id, entree.chemin))) as Paquet;
+      if (paquet?.resume) return paquet.resume;
+      if (!paquet?.contenu) return null;
+      return resumeDe(paquet.contenu, paquet.auteur ?? "", paquet.depose ?? "", Object.keys(paquet.fichiers ?? {}).length);
+    })();
+    p.catch(() => RESUMES.delete(cle));
+    RESUMES.set(cle, p);
+  }
+  return p;
 }
 
 /**
