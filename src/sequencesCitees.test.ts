@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { nouvelleSeance, nouvelleSequence, type Seance, type Sequence } from "./api";
-import { insererLigne, ligneDeSequence, sequencesCitees, sequencesImprimees } from "./sequencesCitees";
+import {
+  insererLigne, ligneDeSequence, rangDeLaSeance, sequencesCitees, sequencesImprimees, totalDesSeances,
+} from "./sequencesCitees";
 
 const sequence = (id: string, titre: string, p: Partial<Sequence> = {}): Sequence => ({ ...nouvelleSequence(), id, titre, ...p });
 const seance = (id: string, sequenceId: string, numero: number, titre: string, p: Partial<Seance> = {}): Seance =>
@@ -74,5 +76,32 @@ describe("le PDF du jour", () => {
     expect(sequencesImprimees([])).toBe("");
     // Sans séance précisée : les objectifs de la séquence.
     expect(sequencesImprimees(sequencesCitees("organiser les mots en réseau", toutes, seances))).toContain("Catégoriser le vocabulaire.");
+  });
+});
+
+describe("dire où l'on en est dans la séquence", () => {
+  it("écrit « séance 3/6 » quand la séquence dit combien elle en prévoit", () => {
+    const seance = { ...seances[0], numero: 3 };
+    expect(rangDeLaSeance(seance, 6)).toBe("séance 3/6");
+    // Sans total connu, ou incohérent, la séance se dit seule.
+    expect(rangDeLaSeance(seance)).toBe("séance 3");
+    expect(rangDeLaSeance(seance, 2)).toBe("séance 3");
+    expect(ligneDeSequence(reseau, seance, 6)).toContain("· séance 3/6 : ");
+  });
+
+  it("compte les séances prévues, sinon celles qui existent", () => {
+    expect(totalDesSeances({ ...reseau, nbSeancesPrevu: 6 }, seances)).toBe(6);
+    const siennes = seances.filter((x) => x.sequenceId === reseau.id);
+    expect(totalDesSeances({ ...reseau, nbSeancesPrevu: 0 }, [...siennes, { ...siennes[0], id: "autre", numero: 9 }]))
+      .toBe(siennes.length + 1);
+    // Une séquence d'une seule séance ne s'annonce pas « 1/1 ».
+    expect(totalDesSeances({ ...reseau, nbSeancesPrevu: 0 }, [siennes[0]])).toBe(0);
+  });
+
+  it("une ligne « séance 3/6 » se relit comme une citation de la séance 3", () => {
+    const trois = { ...seances[0], id: "s-trois", numero: 3, titre: "" };
+    const ligne = ligneDeSequence(reseau, trois, 6);
+    const [citation] = sequencesCitees(ligne, [reseau], [...seances, trois]);
+    expect(citation.seance?.numero).toBe(3);
   });
 });

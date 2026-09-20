@@ -613,7 +613,7 @@ export default function PlanDeTravail() {
       id: newId(), titre: "Nouvelle séquence", matiere: "", cycle: "", objectifs: "",
       competences: "[]", competenceVisee: "", imageNom: null, couleur: "indigo",
       dateCreation: nowIso(), periode: 1, annee: "", ratingEngagement: 0, ratingFacilite: 0,
-      ratingApprentissage: 0, ratingDateMaj: null, projetId: null, video: "", dossier,
+      ratingApprentissage: 0, ratingDateMaj: null, projetId: null, video: "", dossier, nbSeancesPrevu: 0,
     };
     // La fiche d'abord : on nomme la séquence avant d'y entrer.
     setSequenceFiche({ sequence: s, nouvelle: true });

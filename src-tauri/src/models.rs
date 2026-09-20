@@ -55,6 +55,10 @@ pub struct Sequence {
     pub video: String,
     #[serde(default)]
     pub dossier: String,
+    /// Combien de séances la séquence prévoit (0 : non précisé). Le cahier
+    /// journal écrit alors « séance 3/6 ».
+    #[serde(default)]
+    pub nb_seances_prevu: i64,
 }
 fn default_blue() -> String { "blue".into() }
 fn un() -> i64 { 1 }
@@ -81,6 +85,7 @@ impl Sequence {
             projet_id: r.get("projet_id")?,
             video: r.get("video")?,
             dossier: r.get("dossier").unwrap_or_default(),
+            nb_seances_prevu: r.get("nb_seances_prevu").unwrap_or_default(),
         })
     }
 }
