@@ -2,7 +2,7 @@ import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import { api, Sequence, Seance, MaterielItem, Jeu, nouvelleSeance, couleurHex, nowIso, newId, DUREES, formatDuree, telechargerTexte } from "../api";
-import { Modal, Field, Input, Textarea, Select, Stars, Empty, Confirm, useAsync } from "../components/ui";
+import { Modal, Field, Input, Textarea, TextareaAuto, Select, Stars, Empty, Confirm, useAsync } from "../components/ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
 import { TableauEditor, MaterielSeance, imageDuPresse, fileToBase64 } from "../components/SeanceParts";
 import { IllustrationsEditor, DeroulementRead, CelluleContenu, FichierImg, CitationButton } from "../components/Deroulement";
@@ -358,7 +358,7 @@ function SeanceForm({ seance, cycle = "", onClose, onSaved }: { seance: Seance; 
       </Card>
 
       <Card titre="Déroulement">
-        <Textarea style={{ minHeight: 130 }} value={s.deroulement} onChange={(e) => up({ deroulement: e.target.value })}
+        <TextareaAuto value={s.deroulement} onChange={(e) => up({ deroulement: e.target.value })}
           onSelect={(e) => { curseurDer.current = e.currentTarget.selectionStart; }}
           onKeyUp={(e) => { curseurDer.current = e.currentTarget.selectionStart; }}
           onClick={(e) => { curseurDer.current = e.currentTarget.selectionStart; }}
