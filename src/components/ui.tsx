@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { COULEURS, couleurHex } from "../api";
 
 export function Modal({ titre, onClose, children, footer, large }: {
@@ -31,7 +32,11 @@ export function Modal({ titre, onClose, children, footer, large }: {
     else if (!e.shiftKey && document.activeElement === dernier) { e.preventDefault(); premier.focus(); }
   };
 
-  return (
+  // Posée sur le corps de la page, jamais là où le bouton se trouve : une
+  // barre au flou d'arrière-plan (comme celle du haut) devient le repère des
+  // éléments « fixes » qu'elle contient, et la fenêtre partait alors se
+  // centrer sur la barre, moitié hors de l'écran.
+  return createPortal(
     <div className="overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div ref={ref} className="modal" role="dialog" aria-modal="true" aria-labelledby={titreId}
         tabIndex={-1} onKeyDown={onKeyDown} style={large ? { maxWidth: 880 } : undefined}>
@@ -43,7 +48,8 @@ export function Modal({ titre, onClose, children, footer, large }: {
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
