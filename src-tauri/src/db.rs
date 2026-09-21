@@ -589,6 +589,22 @@ pub(crate) fn migrate(conn: &Connection) {
             date_maj TEXT NOT NULL
         );
 
+        -- Réunions écoutées et résumées (ESS, conseil de cycle, équipe
+        -- éducative…). Les tranches gardent le texte ; l'audio n'est jamais
+        -- écrit sur le disque.
+        CREATE TABLE IF NOT EXISTS reunions (
+            id TEXT PRIMARY KEY,
+            titre TEXT NOT NULL DEFAULT '',
+            genre TEXT NOT NULL DEFAULT '',
+            date TEXT NOT NULL DEFAULT '',
+            participants TEXT NOT NULL DEFAULT '',
+            tranches_json TEXT NOT NULL DEFAULT '[]',
+            compte_rendu TEXT NOT NULL DEFAULT '',
+            duree_s INTEGER NOT NULL DEFAULT 0,
+            date_creation TEXT NOT NULL,
+            date_maj TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS documents_coffre (
             id TEXT PRIMARY KEY,
             nom TEXT NOT NULL DEFAULT '',

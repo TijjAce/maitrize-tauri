@@ -21,6 +21,8 @@ export const NOUVEAUTES: Nouveaute[] = [
     version: "1.6.12",
     titre: "Partager par Nuage, et un cahier journal plus complet",
     points: [
+      { quoi: "Un onglet « Réunions » : l'application écoute l'ESS, le conseil de cycle ou l'équipe éducative, et résume ce qui se dit toutes les cinq minutes. Vous suivez les résumés arriver pendant la réunion, vous les corrigez d'un clic, et « ✨ Rédiger le compte rendu » assemble le tout en points abordés, décisions et ce que vous avez à faire.", ou: "Réunions" },
+      { quoi: "Prévenez les participants avant d'enregistrer : l'écran le rappelle. L'audio n'est jamais écrit sur le disque, il disparaît après la transcription, et les prénoms d'élèves connus sont masqués avant le résumé. « 🧹 Effacer le mot à mot » ne garde que les résumés.", ou: "Réunions" },
       { quoi: "Ateliers, espaces, jeux, outils et affichages rejoignent le bureau du plan de travail : un dossier « cycle 1 » peut réunir une séquence, ses jeux et l'outil qui va avec. Clic droit sur le bureau pour en créer, double-clic pour ouvrir leur fiche.", ou: "Plan de travail" },
       { quoi: "« Ateliers & Espaces » quitte le menu. Les fiches et leurs filtres — nombre de joueurs, catégorie, élève — restent à portée de main par le bouton « ▦ Fiches » du bureau.", ou: "Plan de travail · ▦ Fiches" },
       { quoi: "Les dossiers créés dans l'ancien bureau des ateliers sont versés dans le plan de travail ; deux dossiers du même nom n'en font plus qu'un." },

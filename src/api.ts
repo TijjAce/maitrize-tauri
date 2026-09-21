@@ -225,6 +225,13 @@ export interface PiloteConversation {
   id: string; titre: string; messagesJson: string; dateCreation: string; dateMaj: string;
 }
 
+/** Une réunion écoutée et résumée (voir `reunion.ts`). */
+export interface Reunion {
+  id: string; titre: string; genre: string; date: string; participants: string;
+  tranchesJson: string; compteRendu: string; dureeS: number;
+  dateCreation: string; dateMaj: string;
+}
+
 export interface DocumentCoffre {
   id: string; nom: string; nomFichier: string; tailleOctets: number; dateAjout: string;
 }
@@ -496,6 +503,11 @@ export const api = {
   conversationSave: (conversation: PiloteConversation) =>
     invoke<PiloteConversation>("conversation_save", { conversation }),
   conversationDelete: (id: string) => invoke<void>("conversation_delete", { id }),
+
+  // Réunions écoutées
+  reunionsList: () => invoke<Reunion[]>("reunions_list"),
+  reunionSave: (reunion: Reunion) => invoke<Reunion>("reunion_save", { reunion }),
+  reunionDelete: (id: string) => invoke<void>("reunion_delete", { id }),
 
   // Coffre-fort
   coffreList: () => invoke<DocumentCoffre[]>("coffre_list"),

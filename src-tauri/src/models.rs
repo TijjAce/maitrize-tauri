@@ -938,6 +938,53 @@ impl PiloteConversation {
     }
 }
 
+/// Une réunion écoutée par l'application : ESS, équipe éducative, conseil de
+/// cycle… Les tranches de cinq minutes (texte transcrit et résumé) vivent dans
+/// `tranches_json` ; l'audio, lui, n'est jamais gardé.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Reunion {
+    #[serde(default = "new_id")]
+    pub id: String,
+    #[serde(default)]
+    pub titre: String,
+    /// La sorte de réunion, telle que l'enseignant l'a choisie (« ESS »…).
+    #[serde(default)]
+    pub genre: String,
+    #[serde(default)]
+    pub date: String,
+    #[serde(default)]
+    pub participants: String,
+    #[serde(default = "vide_arr")]
+    pub tranches_json: String,
+    #[serde(default)]
+    pub compte_rendu: String,
+    /// Durée écoutée, en secondes.
+    #[serde(default)]
+    pub duree_s: i64,
+    #[serde(default = "now_iso")]
+    pub date_creation: String,
+    #[serde(default = "now_iso")]
+    pub date_maj: String,
+}
+
+impl Reunion {
+    pub fn from_row(r: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: r.get("id")?,
+            titre: r.get("titre")?,
+            genre: r.get("genre")?,
+            date: r.get("date")?,
+            participants: r.get("participants")?,
+            tranches_json: r.get("tranches_json")?,
+            compte_rendu: r.get("compte_rendu")?,
+            duree_s: r.get("duree_s")?,
+            date_creation: r.get("date_creation")?,
+            date_maj: r.get("date_maj")?,
+        })
+    }
+}
+
 /// Un outil pour l'élève (bande numérique, sous-main, casque…) ou un affichage
 /// de la classe (référentiel, règles de vie…).
 #[derive(Serialize, Deserialize, Clone, Debug)]
