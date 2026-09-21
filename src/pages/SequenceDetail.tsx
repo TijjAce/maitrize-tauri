@@ -17,6 +17,7 @@ import { FormSequence } from "../components/FormSequence";
 import { ReglesCitees, useLudotheque } from "../components/ReglesDesJeux";
 import { sansMarqueurs, STYLE_REGLES } from "../jeuxCites";
 import { htmlDeLaSequence, imagesDeLaSequence } from "../sequenceHtml";
+import { useCorrecteur, ZoneCorrigeable } from "../components/CorrigerSelection";
 
 export default function SequenceDetail() {
   const { id } = useParams();
@@ -289,6 +290,11 @@ function SeanceForm({ seance, cycle = "", onClose, onSaved }: { seance: Seance; 
   const [dateActive, setDateActive] = React.useState(!!seance.date);
   // Dernière position du curseur dans le déroulement (pour insérer une image au bon endroit).
   const curseurDer = React.useRef<number | null>(null);
+  // Un passage surligné dans le déroulement se corrige d'un bouton.
+  const zoneDer = React.useRef<HTMLTextAreaElement | null>(null);
+  const correcteur = useCorrecteur({
+    valeur: s.deroulement, onChange: (deroulement) => up({ deroulement }), zone: zoneDer,
+  });
   // Insère le marqueur [img:nom] à la position du curseur (ou à la fin).
   const insererImage = (nom: string) => {
     const t = s.deroulement;
@@ -358,10 +364,12 @@ function SeanceForm({ seance, cycle = "", onClose, onSaved }: { seance: Seance; 
       </Card>
 
       <Card titre="Déroulement">
-        <TextareaAuto value={s.deroulement} onChange={(e) => up({ deroulement: e.target.value })}
-          onSelect={(e) => { curseurDer.current = e.currentTarget.selectionStart; }}
-          onKeyUp={(e) => { curseurDer.current = e.currentTarget.selectionStart; }}
-          onClick={(e) => { curseurDer.current = e.currentTarget.selectionStart; }}
+        <ZoneCorrigeable>
+        {correcteur.bulle}
+        <TextareaAuto ref={zoneDer} value={s.deroulement} onChange={(e) => up({ deroulement: e.target.value })}
+          onSelect={(e) => { curseurDer.current = e.currentTarget.selectionStart; correcteur.surSelection(); }}
+          onKeyUp={(e) => { curseurDer.current = e.currentTarget.selectionStart; correcteur.surSelection(); }}
+          onClick={(e) => { curseurDer.current = e.currentTarget.selectionStart; correcteur.surSelection(); }}
           placeholder="Phases de la séance, consignes, organisation… (collez une image directement)"
           onPaste={async (e) => {
             const file = imageDuPresse(e);
@@ -373,6 +381,7 @@ function SeanceForm({ seance, cycle = "", onClose, onSaved }: { seance: Seance; 
             const next = (t.slice(0, pos).trimEnd() + `\n[img:${nom}]\n` + t.slice(pos).trimStart()).replace(/^\n/, "");
             up({ deroulement: next, imagesDeroulement: JSON.stringify([...illustrations, nom]) });
           }} />
+        </ZoneCorrigeable>
         <ReglesCitees texte={sansMarqueurs(s.deroulement)} jeux={jeux} onJeuModifie={rechargerJeux} />
         <div style={{ marginTop: 8 }}>
           <CitationButton onInsert={(mq) => up({ deroulement: (s.deroulement.trimEnd() + "\n" + mq + "\n").trimStart() })} />
