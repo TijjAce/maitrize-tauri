@@ -22,8 +22,43 @@ import { usePictoImage } from "../components/ChoixPicto";
 const OCTETS = (n: number) =>
   n > 1e9 ? `${(n / 1e9).toFixed(1)} Go` : n > 1e6 ? `${Math.round(n / 1e6)} Mo` : `${Math.round(n / 1e3)} ko`;
 
-const ONGLETS = ["jeux", "tla", "supports", "partieTout", "multiplicatifs"] as const;
+const ONGLETS = ["jeux", "memory", "imagier", "tla", "supports", "partieTout", "multiplicatifs"] as const;
 type Onglet = typeof ONGLETS[number];
+
+/**
+ * Les générateurs, rangés par famille.
+ *
+ * Une rangée d'onglets s'allonge à chaque nouveau jeu et finit par ne plus
+ * rien dire : on choisit d'abord ce qu'on travaille — le langage, les
+ * mathématiques, l'autonomie —, puis l'outil.
+ */
+const FAMILLES: { id: string; libelle: string; aide: string; outils: { id: Onglet; libelle: string }[] }[] = [
+  {
+    id: "langage", libelle: "🗣 Langage", aide: "À partir des pictogrammes ARASAAC : vocabulaire, désignation, phrases.",
+    outils: [
+      { id: "jeux", libelle: "🎲 Loto" },
+      { id: "memory", libelle: "🃏 Mémory" },
+      { id: "imagier", libelle: "📖 Imagier" },
+      { id: "tla", libelle: "🗣 Tableaux de langage" },
+    ],
+  },
+  {
+    id: "maths", libelle: "🔢 Mathématiques", aide: "Des problèmes à la structure choisie, avec leur schéma en barres.",
+    outils: [
+      { id: "partieTout", libelle: "➕ Problèmes partie-tout" },
+      { id: "multiplicatifs", libelle: "✖️ Problèmes multiplicatifs" },
+    ],
+  },
+  {
+    id: "autonomie", libelle: "🧭 Autonomie et repères", aide: "Ce qui aide à suivre la journée : jetons, étapes, temps, scénarios.",
+    outils: [
+      { id: "supports", libelle: "🖼 Supports visuels" },
+    ],
+  },
+];
+
+/** La famille qui porte cet outil. */
+const familleDe = (o: Onglet) => FAMILLES.find((f) => f.outils.some((x) => x.id === o)) ?? FAMILLES[0];
 
 const ONGLET_MEMORISE = "fabriquer:onglet";
 
@@ -67,23 +102,35 @@ export default function Jeux() {
   // La banque est commune au loto et aux tableaux : tant qu'elle n'est pas
   // là, ces deux onglets n'ont de quoi travailler. Les supports visuels s'en
   // passent (ils portent alors le mot seul), les problèmes en barres aussi.
+  const famille = familleDe(onglet);
+
   const avecPictos = (contenu: React.ReactNode) =>
     !etat ? <div /> : !etat.installee ? <Banque progression={progression} onTelecharger={telecharger} /> : contenu;
 
   return (
-    <Page titre="Fabriquer" sous="Lotos, tableaux de langage et supports visuels à partir des pictogrammes ARASAAC, problèmes en barres">
+    <Page titre="Fabriquer" sous="Jeux et supports à imprimer : langage, mathématiques, autonomie">
+      {/* D'abord ce qu'on travaille, ensuite l'outil : la liste peut grandir
+          sans que la barre devienne illisible. */}
       <div className="onglets">
-        <button className={onglet === "jeux" ? "active" : ""} onClick={() => setOnglet("jeux")}>🎲 Loto</button>
-        <button className={onglet === "tla" ? "active" : ""} onClick={() => setOnglet("tla")}>🗣 Tableaux de langage</button>
-        <button className={onglet === "supports" ? "active" : ""} onClick={() => setOnglet("supports")}>🖼 Supports visuels</button>
-        <button className={onglet === "partieTout" ? "active" : ""} onClick={() => setOnglet("partieTout")}>➕ Problèmes partie-tout</button>
-        <button className={onglet === "multiplicatifs" ? "active" : ""} onClick={() => setOnglet("multiplicatifs")}>✖️ Problèmes multiplicatifs</button>
+        {FAMILLES.map((f) => (
+          <button key={f.id} className={famille.id === f.id ? "active" : ""} title={f.aide}
+            onClick={() => setOnglet(f.outils[0].id)}>{f.libelle}</button>
+        ))}
+      </div>
+      <div className="seg" style={{ margin: "10px 0 14px", flexWrap: "wrap" }}>
+        {famille.outils.map((o) => (
+          <button key={o.id} className={onglet === o.id ? "active" : ""} onClick={() => setOnglet(o.id)}>{o.libelle}</button>
+        ))}
+        <span style={{ alignSelf: "center", marginLeft: 10, fontSize: 12.5, color: "var(--text-2)" }}>{famille.aide}</span>
       </div>
       {onglet === "supports" ? <SupportsVisuelsTab banque={Boolean(etat?.installee)} />
         : onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />
-        : onglet === "jeux" ? avecPictos(etat && <Loto etat={etat} progression={progression} onTelecharger={telecharger} />)
-        : avecPictos(<TlaTab />)}
+        : onglet === "tla" ? avecPictos(<TlaTab />)
+        : avecPictos(etat && (
+          <Loto key={onglet} gen={GENERATEURS[onglet === "jeux" ? "loto" : onglet]} etat={etat}
+            progression={progression} onTelecharger={telecharger} />
+        ))}
     </Page>
   );
 }
@@ -131,7 +178,64 @@ function Banque({ progression, onTelecharger }: {
 type Mode = "theme" | "mots" | "recherche";
 const PAR_PAGE = 60;
 
-function Loto({ etat, progression, onTelecharger }: {
+/**
+ * Ce qui distingue un générateur d'un autre.
+ *
+ * Le choix des images est le même pour tous — thèmes, liste de mots,
+ * recherche —, et c'est le plus gros de l'écran. Seules changent les options
+ * d'impression et la façon de compter ce qu'il faut d'images.
+ */
+interface Generateur {
+  /** Le nom que le moteur attend. */
+  id: string;
+  quoi: string;
+  exemple: string;
+  /** Combien d'images il faut au minimum, vu les options. */
+  minimum: (o: OptionsJeu) => number;
+  /** Ce qu'on dit quand il en manque. */
+  manque: (o: OptionsJeu) => string;
+  grilles: [string, string][];
+  /** Les réglages montrés : tous n'ont pas de sens partout. */
+  montre: { planches?: boolean; cartes?: boolean; libelles?: boolean };
+  defauts: Partial<OptionsJeu>;
+  bouton: string;
+  icone: string;
+}
+
+export const GENERATEURS: Record<string, Generateur> = {
+  loto: {
+    id: "loto", quoi: "loto", exemple: "Loto de la famille",
+    minimum: (o) => o.colonnes * o.lignes,
+    manque: (o) => `Il faut au moins ${o.colonnes * o.lignes} images pour une planche ${o.colonnes} × ${o.lignes}.`,
+    grilles: [["2x2", "2 × 2 — quatre cases"], ["3x2", "3 × 2 — six cases"], ["3x3", "3 × 3 — neuf cases"], ["4x3", "4 × 3 — douze cases"]],
+    montre: { planches: true, cartes: true, libelles: true },
+    defauts: { colonnes: 3, lignes: 2, planches: 6, cartes: true },
+    bouton: "🖨 Créer le PDF du loto", icone: "🎲",
+  },
+  memory: {
+    id: "memory", quoi: "mémory", exemple: "Mémory des animaux",
+    // Une feuille de seize cartes, ce sont huit images, chacune en double.
+    minimum: (o) => Math.max(2, Math.floor((o.colonnes * o.lignes) / 2)),
+    manque: (o) => `Il faut au moins ${Math.max(2, Math.floor((o.colonnes * o.lignes) / 2))} images : chacune sort en double.`,
+    grilles: [["3x2", "6 cartes — 3 paires"], ["4x3", "12 cartes — 6 paires"], ["4x4", "16 cartes — 8 paires"]],
+    montre: { planches: true, libelles: true },
+    defauts: { colonnes: 4, lignes: 4, planches: 1, cartes: false },
+    bouton: "🖨 Créer le PDF du mémory", icone: "🃏",
+  },
+  imagier: {
+    id: "imagier", quoi: "imagier", exemple: "Imagier de la cuisine",
+    minimum: () => 1,
+    manque: () => "Choisissez au moins une image.",
+    grilles: [["1x2", "2 grandes fiches par page"], ["2x2", "4 fiches par page"], ["3x3", "9 petites fiches"]],
+    // Toutes les images choisies y passent : le nombre de pages en découle.
+    montre: { libelles: true },
+    defauts: { colonnes: 2, lignes: 2, planches: 1, cartes: false, libelles: true },
+    bouton: "🖨 Créer le PDF de l'imagier", icone: "📖",
+  },
+};
+
+function Loto({ gen, etat, progression, onTelecharger }: {
+  gen: Generateur;
   etat: EtatBanque; progression: { etape: string; faits: number; total: number } | null;
   onTelecharger: () => void;
 }) {
@@ -217,10 +321,15 @@ function Loto({ etat, progression, onTelecharger }: {
 
   // ── Impression ──
   const [options, setOptions] = React.useState<OptionsJeu>({
-    libelles: false, cartes: true, colonnes: 3, lignes: 2, planches: 6, graine: 0,
+    libelles: false, cartes: true, colonnes: 3, lignes: 2, planches: 6, graine: 0, ...gen.defauts,
   });
+  // Changer de générateur remet ses réglages : un imagier n'est pas un loto.
+  React.useEffect(() => {
+    setOptions((o) => ({ ...o, libelles: false, cartes: true, ...gen.defauts }));
+  }, [gen]);
   const [titre, setTitre] = React.useState("");
   const [occupe, setOccupe] = React.useState(false);
+  const minimum = gen.minimum(options);
   const parPlanche = options.colonnes * options.lignes;
   const conseille = imagesConseillees(parPlanche, options.planches);
   const [jusqua, setJusqua] = React.useState(12);
@@ -233,9 +342,9 @@ function Loto({ etat, progression, onTelecharger }: {
   const generer = async () => {
     setOccupe(true);
     try {
-      const nom = titre.trim() || themes.map(libelleCategorie).join(" + ") || "loto";
-      await api.jeuGenerer("loto", selection, { ...options, graine: Math.floor(Math.random() * 1e9) }, nom);
-      toast("Loto créé — le PDF s'ouvre.", { icone: "🎲" });
+      const nom = titre.trim() || themes.map(libelleCategorie).join(" + ") || gen.quoi;
+      await api.jeuGenerer(gen.id, selection, { ...options, graine: Math.floor(Math.random() * 1e9) }, nom);
+      toast(`${gen.quoi.charAt(0).toUpperCase()}${gen.quoi.slice(1)} créé — le PDF s'ouvre.`, { icone: gen.icone });
     } catch (e: any) { toast(String(e), { icone: "⚠️" }); }
     finally { setOccupe(false); }
   };
@@ -423,43 +532,48 @@ function Loto({ etat, progression, onTelecharger }: {
           <div className="card">
             <h3 style={{ marginTop: 0 }}>{mode === "mots" ? "3" : "4"}. Imprimer</h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
-              <Field label="Nom du loto">
-                <Input value={titre} placeholder={themes.map(libelleCategorie).join(" + ") || "Loto de la famille"} onChange={(e) => setTitre(e.target.value)} />
+              <Field label={`Nom du ${gen.quoi}`}>
+                <Input value={titre} placeholder={themes.map(libelleCategorie).join(" + ") || gen.exemple} onChange={(e) => setTitre(e.target.value)} />
               </Field>
-              <Field label="Grille">
+              <Field label={gen.id === "imagier" ? "Fiches par page" : "Grille"}>
                 <Select value={`${options.colonnes}x${options.lignes}`}
                   onChange={(e) => {
                     const [c, l] = e.target.value.split("x").map(Number);
                     setOptions((o) => ({ ...o, colonnes: c, lignes: l }));
                   }}>
-                  <option value="2x2">2 × 2 — quatre cases</option>
-                  <option value="3x2">3 × 2 — six cases</option>
-                  <option value="3x3">3 × 3 — neuf cases</option>
-                  <option value="4x3">4 × 3 — douze cases</option>
+                  {gen.grilles.map(([v, libelle]) => <option key={v} value={v}>{libelle}</option>)}
                 </Select>
               </Field>
-              <Field label="Nombre de planches">
-                <Input type="number" min={1} max={20} value={options.planches}
-                  onChange={(e) => setOptions((o) => ({ ...o, planches: Math.max(1, Math.min(20, Number(e.target.value) || 1)) }))} />
-              </Field>
+              {gen.montre.planches && (
+                <Field label={gen.id === "memory" ? "Nombre de feuilles" : "Nombre de planches"}>
+                  <Input type="number" min={1} max={20} value={options.planches}
+                    onChange={(e) => setOptions((o) => ({ ...o, planches: Math.max(1, Math.min(20, Number(e.target.value) || 1)) }))} />
+                </Field>
+              )}
             </div>
-            <label className="pb-coche">
-              <input type="checkbox" checked={options.libelles} onChange={(e) => setOptions((o) => ({ ...o, libelles: e.target.checked }))} />
-              <span><b>Écrire le mot sous l'image</b><br />
-                <span style={{ color: "var(--text-2)" }}>Pour un non-lecteur, le texte n'apporte rien et charge l'image.</span>
-              </span>
-            </label>
-            <label className="pb-coche">
-              <input type="checkbox" checked={options.cartes} onChange={(e) => setOptions((o) => ({ ...o, cartes: e.target.checked }))} />
-              <span><b>Ajouter les cartes à découper</b></span>
-            </label>
-            {selection.length > 0 && selection.length < parPlanche && (
-              <div style={{ marginTop: 10, fontSize: 13, color: "var(--danger, #b03030)" }}>
-                Il faut au moins {parPlanche} images pour une planche {options.colonnes} × {options.lignes}.
-              </div>
+            {gen.montre.libelles && (
+              <label className="pb-coche">
+                <input type="checkbox" checked={options.libelles} onChange={(e) => setOptions((o) => ({ ...o, libelles: e.target.checked }))} />
+                <span><b>Écrire le mot sous l'image</b><br />
+                  <span style={{ color: "var(--text-2)" }}>
+                    {gen.id === "imagier"
+                      ? "Un imagier sans mot devient un jeu de cartes : à vous de voir."
+                      : "Pour un non-lecteur, le texte n'apporte rien et charge l'image."}
+                  </span>
+                </span>
+              </label>
             )}
-            <button className="btn primary" style={{ marginTop: 12 }} disabled={occupe || selection.length < parPlanche} onClick={generer}>
-              {occupe ? "Création…" : "🖨 Créer le PDF du loto"}
+            {gen.montre.cartes && (
+              <label className="pb-coche">
+                <input type="checkbox" checked={options.cartes} onChange={(e) => setOptions((o) => ({ ...o, cartes: e.target.checked }))} />
+                <span><b>Ajouter les cartes à découper</b></span>
+              </label>
+            )}
+            {selection.length > 0 && selection.length < minimum && (
+              <div style={{ marginTop: 10, fontSize: 13, color: "var(--danger, #b03030)" }}>{gen.manque(options)}</div>
+            )}
+            <button className="btn primary" style={{ marginTop: 12 }} disabled={occupe || selection.length < minimum} onClick={generer}>
+              {occupe ? "Création…" : gen.bouton}
             </button>
             <p style={{ fontSize: 12, color: "var(--text-2)", marginTop: 12, marginBottom: 0 }}>
               Pictogrammes ARASAAC — auteur Sergio Palao, origine Gouvernement d'Aragon,
