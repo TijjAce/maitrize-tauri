@@ -141,9 +141,83 @@ impl Jeu for Loto {
     }
 }
 
+// ── Mémory ─────────────────────────────────────────────────────────────────
+
+/// Des paires à retrouver : chaque image sort deux fois, mêlées au hasard.
+///
+/// Une planche de mémory n'est pas une grille de jeu mais une feuille de
+/// cartes à découper : les deux cartes d'une paire ne doivent surtout pas
+/// tomber côte à côte, ce dont le mélange se charge.
+pub struct Memory;
+
+impl Jeu for Memory {
+    fn nom(&self) -> &'static str {
+        "mémory"
+    }
+
+    /// Une planche pleine fait la moitié de ses cases en paires.
+    fn minimum(&self, o: &Options) -> usize {
+        ((o.colonnes as usize) * (o.lignes as usize) / 2).max(2)
+    }
+
+    fn planches(&self, vivier: &[PictoChoisi], o: &Options) -> Vec<Planche> {
+        let par_planche = (o.colonnes as usize) * (o.lignes as usize);
+        let voulu = (par_planche * o.planches.max(1) as usize) / 2;
+        let mut tirage = Tirage::nouveau(o.graine);
+        let mut choix = vivier.to_vec();
+        tirage.melanger(&mut choix);
+        choix.truncate(voulu.max(self.minimum(o)));
+        // Chaque image en double, puis tout mêlé : les paires s'éparpillent.
+        let mut cartes: Vec<PictoChoisi> = choix.iter().chain(choix.iter()).cloned().collect();
+        tirage.melanger(&mut cartes);
+        cartes
+            .chunks(par_planche)
+            .map(|lot| Planche {
+                colonnes: o.colonnes,
+                lignes: o.lignes,
+                cases: lot.to_vec(),
+                paysage: o.colonnes > o.lignes,
+            })
+            .collect()
+    }
+}
+
+// ── Imagier ────────────────────────────────────────────────────────────────
+
+/// Des fiches de nomenclature : une image, son mot, dans l'ordre choisi.
+///
+/// Rien n'est mélangé ni tiré au sort : l'enseignant a rangé sa sélection, et
+/// l'imagier la suit. Le mot est toujours écrit — c'est tout l'objet.
+pub struct Imagier;
+
+impl Jeu for Imagier {
+    fn nom(&self) -> &'static str {
+        "imagier"
+    }
+
+    fn minimum(&self, _o: &Options) -> usize {
+        1
+    }
+
+    fn planches(&self, vivier: &[PictoChoisi], o: &Options) -> Vec<Planche> {
+        let par_page = ((o.colonnes as usize) * (o.lignes as usize)).max(1);
+        vivier
+            .chunks(par_page)
+            .map(|lot| Planche {
+                colonnes: o.colonnes,
+                lignes: o.lignes,
+                cases: lot.to_vec(),
+                paysage: o.colonnes > o.lignes,
+            })
+            .collect()
+    }
+}
+
 pub fn jeu(nom: &str) -> Option<Box<dyn Jeu>> {
     match nom {
         "loto" => Some(Box::new(Loto)),
+        "memory" => Some(Box::new(Memory)),
+        "imagier" => Some(Box::new(Imagier)),
         _ => None,
     }
 }
@@ -448,6 +522,45 @@ mod tests {
         for carte in p.iter().filter(|x| !x.paysage).flat_map(|x| x.cases.iter()) {
             assert!(sur_planches.contains(&carte.id), "carte {} sans planche", carte.id);
         }
+    }
+
+    #[test]
+    fn le_memory_sort_chaque_image_deux_fois_sans_les_coller() {
+        let mut o = options();
+        (o.colonnes, o.lignes, o.planches) = (4, 4, 2);
+        let planches = Memory.planches(&vivier(40), &o);
+        let cartes: Vec<i64> = planches.iter().flat_map(|p| p.cases.iter().map(|c| c.id)).collect();
+        assert_eq!(cartes.len(), 32);
+        // Chaque image apparaît exactement deux fois.
+        let mut compte = std::collections::HashMap::new();
+        for id in &cartes { *compte.entry(id).or_insert(0) += 1; }
+        assert!(compte.values().all(|n| *n == 2), "des images ne sont pas en paire");
+        assert_eq!(compte.len(), 16);
+        // Une paire côte à côte se verrait par transparence : le mélange l'évite.
+        assert!(cartes.windows(2).filter(|w| w[0] == w[1]).count() <= 1);
+    }
+
+    #[test]
+    fn le_memory_se_contente_de_ce_qu_il_a() {
+        let mut o = options();
+        (o.colonnes, o.lignes, o.planches) = (4, 4, 4);
+        // Six images seulement : on en fait six paires, pas trente-deux cartes.
+        let planches = Memory.planches(&vivier(6), &o);
+        let cartes: Vec<i64> = planches.iter().flat_map(|p| p.cases.iter().map(|c| c.id)).collect();
+        assert_eq!(cartes.len(), 12);
+    }
+
+    #[test]
+    fn l_imagier_garde_l_ordre_choisi_et_n_oublie_personne() {
+        let mut o = options();
+        (o.colonnes, o.lignes) = (2, 2);
+        let v = vivier(7);
+        let planches = Imagier.planches(&v, &o);
+        assert_eq!(planches.len(), 2);
+        let ordre: Vec<i64> = planches.iter().flat_map(|p| p.cases.iter().map(|c| c.id)).collect();
+        assert_eq!(ordre, v.iter().map(|p| p.id).collect::<Vec<_>>());
+        // La dernière page n'est pas complétée artificiellement.
+        assert_eq!(planches[1].cases.len(), 3);
     }
 
     #[test]
