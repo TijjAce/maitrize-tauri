@@ -943,6 +943,38 @@ pub fn conversation_delete(db: State<Db>, id: String) -> R<()> {
 }
 
 // ============================================================
+// RÉUNIONS ÉCOUTÉES (ESS, conseil de cycle…)
+// ============================================================
+
+#[tauri::command]
+pub fn reunions_list(db: State<Db>) -> R<Vec<Reunion>> {
+    let c = db.lock();
+    let mut st = c.prepare("SELECT * FROM reunions ORDER BY date DESC, date_creation DESC").map_err(e)?;
+    let rows = st.query_map([], Reunion::from_row).map_err(e)?;
+    rows.collect::<rusqlite::Result<_>>().map_err(e)
+}
+
+#[tauri::command]
+pub fn reunion_save(db: State<Db>, reunion: Reunion) -> R<Reunion> {
+    let c = db.lock();
+    c.execute(
+        "INSERT INTO reunions (id,titre,genre,date,participants,tranches_json,compte_rendu,duree_s,date_creation,date_maj)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, genre = excluded.genre, date = excluded.date, participants = excluded.participants, tranches_json = excluded.tranches_json, compte_rendu = excluded.compte_rendu, duree_s = excluded.duree_s, date_maj = excluded.date_maj",
+        params![reunion.id, reunion.titre, reunion.genre, reunion.date, reunion.participants,
+                reunion.tranches_json, reunion.compte_rendu, reunion.duree_s,
+                reunion.date_creation, reunion.date_maj],
+    ).map_err(e)?;
+    Ok(reunion)
+}
+
+#[tauri::command]
+pub fn reunion_delete(db: State<Db>, id: String) -> R<()> {
+    let c = db.lock();
+    c.execute("DELETE FROM reunions WHERE id=?1", params![id]).map_err(e)?;
+    Ok(())
+}
+
+// ============================================================
 // COFFRE-FORT (documents PDF)
 // ============================================================
 
@@ -1941,7 +1973,7 @@ pub(crate) const TABLES_EXPORT: &[&str] = &[
     "progressions_eleve", "creneaux", "eleves", "documents_eleve", "appels_journalier",
     "commentaires_eleve", "evaluations", "notes_eleve", "pieces_jointes",
     "materiel_items", "papiers_eleve", "notes_competence", "progressions_annuelle",
-    "programmations_finale", "edt_typique", "pilote_conversations",
+    "programmations_finale", "edt_typique", "pilote_conversations", "reunions",
     "referentiels", "documents_coffre", "textes", "settings",
 ];
 

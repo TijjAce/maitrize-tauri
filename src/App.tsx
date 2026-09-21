@@ -14,6 +14,7 @@ import Jeux from "./pages/Jeux";
 import Adapter from "./pages/Adapter";
 import Ressources from "./pages/Ressources";
 import Assistant from "./pages/Assistant";
+import Reunions from "./pages/Reunions";
 import Amis from "./pages/Amis";
 import Reglages from "./pages/Reglages";
 import { PageVisibleContext } from "./components/ui";
@@ -50,6 +51,7 @@ const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: t
   { to: "/ressources", ico: "🌐", label: "Ressources" },
   { sep: true },
   { to: "/assistant", ico: "✨", label: "Assistant IA" },
+  { to: "/reunions", ico: "🎧", label: "Réunions" },
   { to: "/amis", ico: "🤝", label: "Amis" },
   { to: "/reglages", ico: "⚙️", label: "Réglages" },
 ];
@@ -69,6 +71,8 @@ const KEEP_ALIVE: { path: string; element: React.ReactNode }[] = [
   { path: "/adapter", element: <Adapter /> },
   { path: "/ressources", element: <Ressources /> },
   { path: "/assistant", element: <Assistant /> },
+  // L'écoute d'une réunion continue quand on passe voir autre chose.
+  { path: "/reunions", element: <Reunions /> },
   { path: "/amis", element: <Amis /> },
   { path: "/reglages", element: <Reglages /> },
 ];

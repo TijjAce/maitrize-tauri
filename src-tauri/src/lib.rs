@@ -99,6 +99,7 @@ pub fn run() {
             pieces_jointes_list, piece_jointe_save, piece_jointe_delete,
             // Conversations IA
             conversations_list, conversation_save, conversation_delete,
+            reunions_list, reunion_save, reunion_delete,
             // Coffre-fort
             coffre_list, coffre_save, coffre_delete, coffre_download,
             // Réglages
