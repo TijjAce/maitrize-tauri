@@ -57,6 +57,33 @@ export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
 export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea className="textarea" {...props} />;
 }
+
+/**
+ * Une zone de texte qui grandit avec ce qu'on écrit.
+ *
+ * Un déroulement de séance fait vingt lignes : le lire par une fenêtre de six
+ * oblige à faire défiler pour rien. La zone suit donc le texte, entre un
+ * plancher et un plafond, et reste redimensionnable à la main.
+ */
+export function TextareaAuto({ minHauteur = 320, maxHauteur = "70vh", style, value, ...props }: {
+  minHauteur?: number;
+  maxHauteur?: number | string;
+} & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  const ref = React.useRef<HTMLTextAreaElement>(null);
+  const ajuster = React.useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Remettre à zéro d'abord : sans cela, la hauteur ne redescend jamais.
+    el.style.height = "auto";
+    el.style.height = `${Math.max(minHauteur, el.scrollHeight + 2)}px`;
+  }, [minHauteur]);
+  React.useLayoutEffect(ajuster, [ajuster, value]);
+  return (
+    <textarea ref={ref} className="textarea" value={value}
+      style={{ minHeight: minHauteur, maxHeight: maxHauteur, overflowY: "auto", resize: "vertical", ...style }}
+      {...props} />
+  );
+}
 export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return <select className="select" {...props} />;
 }
