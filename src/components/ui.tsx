@@ -65,25 +65,33 @@ export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
  * oblige à faire défiler pour rien. La zone suit donc le texte, entre un
  * plancher et un plafond, et reste redimensionnable à la main.
  */
-export function TextareaAuto({ minHauteur = 320, maxHauteur = "70vh", style, value, ...props }: {
+export const TextareaAuto = React.forwardRef<HTMLTextAreaElement, {
   minHauteur?: number;
   maxHauteur?: number | string;
-} & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  const ref = React.useRef<HTMLTextAreaElement>(null);
-  const ajuster = React.useCallback(() => {
-    const el = ref.current;
-    if (!el) return;
-    // Remettre à zéro d'abord : sans cela, la hauteur ne redescend jamais.
-    el.style.height = "auto";
-    el.style.height = `${Math.max(minHauteur, el.scrollHeight + 2)}px`;
-  }, [minHauteur]);
-  React.useLayoutEffect(ajuster, [ajuster, value]);
-  return (
-    <textarea ref={ref} className="textarea" value={value}
-      style={{ minHeight: minHauteur, maxHeight: maxHauteur, overflowY: "auto", resize: "vertical", ...style }}
-      {...props} />
-  );
-}
+} & React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
+  function TextareaAuto({ minHauteur = 320, maxHauteur = "70vh", style, value, ...props }, refExterne) {
+    const interne = React.useRef<HTMLTextAreaElement | null>(null);
+    // La zone se mesure ici ; qui la demande de dehors la reçoit aussi.
+    const poser = React.useCallback((el: HTMLTextAreaElement | null) => {
+      interne.current = el;
+      if (typeof refExterne === "function") refExterne(el);
+      else if (refExterne) refExterne.current = el;
+    }, [refExterne]);
+    const ajuster = React.useCallback(() => {
+      const el = interne.current;
+      if (!el) return;
+      // Remettre à zéro d'abord : sans cela, la hauteur ne redescend jamais.
+      el.style.height = "auto";
+      el.style.height = `${Math.max(minHauteur, el.scrollHeight + 2)}px`;
+    }, [minHauteur]);
+    React.useLayoutEffect(ajuster, [ajuster, value]);
+    return (
+      <textarea ref={poser} className="textarea" value={value}
+        style={{ minHeight: minHauteur, maxHeight: maxHauteur, overflowY: "auto", resize: "vertical", ...style }}
+        {...props} />
+    );
+  },
+);
 export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return <select className="select" {...props} />;
 }
