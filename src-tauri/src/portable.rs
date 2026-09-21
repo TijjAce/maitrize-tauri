@@ -445,9 +445,14 @@ function initPlanning() {
       const f = c.heureFin || c.heure_fin || '';
       const col = /^#[0-9a-fA-F]{3,8}$/.test(c.couleur || '') ? c.couleur : '#6366f1';
       const sea = seaById[c.seanceId || c.seance_id || ''];
+      const qui = prenomsDuCreneau(c);
       const head = '<div class="blk-head"><span class="bh">' + esc(hd(c)) + '<small>' + esc(f) + '</small></span><span class="bm">' + esc(c.matiere || '—')
+        + (qui ? '<small class="sub">👥 ' + esc(qui) + '</small>' : '')
         + (sea && sea.titre ? '<small class="sub">' + esc(sea.titre) + '</small>' : '') + '</span></div>';
-      if (sea) return '<div class="blk-card sea-item" style="border-left-color:' + col + '">' + head + '<div class="sea-body">' + seanceBody(sea) + '</div></div>';
+      // Le cahier journal, c'est le contenu du jour : il vient avant le reste.
+      const journal = journalDuCreneau(c);
+      const corps = journal + (sea ? seanceBody(sea) : '');
+      if (corps) return '<div class="blk-card sea-item" style="border-left-color:' + col + '">' + head + '<div class="sea-body">' + corps + '</div></div>';
       return '<div class="blk-card" style="border-left-color:' + col + '">' + head + '</div>';
     }).join('') || '<p class="vide">Pas de créneau ce jour-là.</p>';
     document.getElementById('dayview').innerHTML = '<div class="dhead' + (k === auj ? ' auj' : '') + '">' + fmtJour(k) + (k === auj ? ' · aujourd\'hui' : '') + '</div>' + blocs;
@@ -458,6 +463,25 @@ function initPlanning() {
   bar.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => renderJour(b.dataset.d)));
   const def = days.includes(auj) ? auj : (days.find(d => d >= auj) || days[0]);
   renderJour(def);
+}
+
+/** Les prénoms des élèves d'un créneau, comme sur l'ordinateur. */
+function prenomsDuCreneau(c) {
+  let ids = [];
+  try { ids = JSON.parse(c.elevesJson || c.eleves_json || '[]'); } catch (e) { ids = []; }
+  if (!ids.length) return '';
+  const par = {};
+  (DATA.eleves || []).forEach(e => { par[e.id] = (e.nom || '').trim().split(/\s+/)[0]; });
+  return ids.map(i => par[i]).filter(Boolean).join(', ');
+}
+
+/** Ce qui est écrit dans le cahier journal, sans les marqueurs d'images. */
+function journalDuCreneau(c) {
+  const sansImages = t => String(t || '').replace(/\[img:[^\]]+\]/g, '').replace(/\n{3,}/g, '\n\n').trim();
+  const prevu = sansImages(c.prevu);
+  const bilan = sansImages(c.bilan);
+  return (prevu ? '<div class="sd-l"><b>Prévu</b>' + nl(prevu) + '</div>' : '')
+    + (bilan ? '<div class="sd-l"><b>Fait · bilan</b>' + nl(bilan) + '</div>' : '');
 }
 
 function seanceBody(s) {
