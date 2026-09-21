@@ -8,7 +8,7 @@ import { openCtx } from "../components/ctxmenu";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { SeanceReadView } from "./SequenceDetail";
-import { printHTML, escapeHtml, dataUrlImage, logoImprimable, piedMaitrize, STYLE_PIED } from "../print";
+import { printHTML, escapeHtml, dataUrlImage, colonnesDuTableau, logoImprimable, piedMaitrize, STYLE_PIED } from "../print";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
 import { CahierJournal, ecrireLeCahierJournal } from "../components/CahierJournal";
 import { EVT_JOUR } from "../components/CommandPalette";
@@ -278,7 +278,7 @@ export default function Planning() {
         s?.objectifs ? champ("Objectifs", escapeHtml(s.objectifs)) : "",
         deroul ? `<div class="f"><span class="fl">Activités :</span></div><div class="txt">${escapeHtml(deroul)}</div>` : "",
         comps.length ? champ("Compétences", comps.map((x) => escapeHtml(labelCourt(x))).join("<br>")) : "",
-        grid.length ? `<div class="fl" style="margin-top:4px">Tableau :</div><table>${grid.map((row, r) => `<tr>${row.map((cell) => r === 0 ? `<th>${escapeHtml(cell)}</th>` : `<td>${rendreCell(cell)}</td>`).join("")}</tr>`).join("")}</table>` : "",
+        grid.length ? `<div class="fl" style="margin-top:4px">Tableau :</div><table>${colonnesDuTableau(grid[0])}${grid.map((row, r) => `<tr>${row.map((cell) => r === 0 ? `<th>${escapeHtml(cell)}</th>` : `<td>${rendreCell(cell)}</td>`).join("")}</tr>`).join("")}</table>` : "",
         illus.length ? `<div class="imgs">${illus.map(imgTag).join("")}</div>` : "",
         c.prevu?.trim() ? `<div class="f"><span class="fl">Prévu :</span></div><div class="txt prevu">${rendreCell(c.prevu.trim())}</div>` : "",
         reglesImprimees(jeuxCites(`${c.prevu ?? ""}\n${deroul}`, jeux)),
