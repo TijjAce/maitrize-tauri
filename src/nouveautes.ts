@@ -18,6 +18,15 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.14",
+    titre: "Deux agents : les programmes et la veille sur un élève",
+    points: [
+      { quoi: "« 🔎 Demander aux programmes » : posez votre question en français — « Que disent les programmes sur la numération en GS ? » — et l'application lit d'abord vos référentiels, puis les guides Éduscol. Les compétences citées viennent de vos référentiels, avec leur chemin exact, prêtes à recopier.", ou: "Référentiels · 🔎 Demander aux programmes" },
+      { quoi: "La synthèse d'un élève s'appuie maintenant sur tout ce que vous avez écrit sur lui : observations, phrases du cahier journal qui le nomment, comptes rendus de réunion. L'écran dit ce qui est arrivé depuis votre dernière rédaction, et « ✨ Rédiger la synthèse » écrit le bilan et les domaines concernés.", ou: "Élèves · Évaluations · Synthèse" },
+      { quoi: "D'un bilan de groupe, seules les phrases qui nomment l'élève sont reprises ; les camarades cités deviennent « un camarade », et son prénom est masqué avant l'envoi à l'IA. Vous pouvez relire la liste des écrits utilisés avant de rédiger.", ou: "Élèves · Évaluations · Synthèse" },
+    ],
+  },
+  {
     version: "1.6.13",
     titre: "Les réunions se résument toutes seules",
     points: [
