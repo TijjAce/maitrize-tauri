@@ -55,6 +55,34 @@ export function piedMaitrize(logo: string): string {
   return `<div class="pied-maitrize">${logo ? `<img alt="" src="${logo}">` : ""}<span>Maitrize · https://maitrize.com</span></div>`;
 }
 
+/**
+ * La largeur des colonnes d'un tableau de déroulement, d'après leur intitulé.
+ *
+ * « Durée » tient en trois chiffres, « Description » porte tout le texte :
+ * les répartir également donne un tableau illisible, où la description
+ * s'entasse sur dix lignes pendant que la durée occupe un quart de la page.
+ */
+const PARTS: [RegExp, number][] = [
+  [/duree|temps|minute|horaire/, 1],
+  [/phase|etape|moment|numero|n°/, 1.5],
+  [/description|deroulement|activite|consigne|tache|contenu|demarche/, 4.5],
+  [/posture|role|enseignant|maitre|adulte|materiel|organisation|modalite|remarque|observation/, 2],
+];
+
+/** La part d'une colonne, d'après son intitulé. */
+export function partDeColonne(entete: string): number {
+  const propre = (entete ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return PARTS.find(([quoi]) => quoi.test(propre))?.[1] ?? 2;
+}
+
+/** Le `<colgroup>` d'un tableau, pour donner sa place à chaque colonne. */
+export function colonnesDuTableau(entetes: string[]): string {
+  if (!entetes.length) return "";
+  const parts = entetes.map(partDeColonne);
+  const total = parts.reduce((a, b) => a + b, 0) || 1;
+  return `<colgroup>${parts.map((p) => `<col style="width:${((p / total) * 100).toFixed(1)}%">`).join("")}</colgroup>`;
+}
+
 export function escapeHtml(s: string): string {
   return (s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -81,6 +109,9 @@ const STYLE = `
   .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: #687087; margin-top: 10px; }
   .seance { page-break-inside: avoid; border: 1px solid #e3e6ef; border-radius: 10px; padding: 14px; margin: 12px 0; }
   table { width: 100%; border-collapse: collapse; margin: 6px 0; }
+  /* Un tableau qui annonce la largeur de ses colonnes veut qu'elle soit tenue :
+     sans « fixed », le contenu reprend la main et la durée s'étale. */
+  table.colonnes { table-layout: fixed; }
   th, td { border: 1px solid #cfd4e2; padding: 6px 8px; text-align: left; vertical-align: top;
     font-size: 11.5px; word-break: break-word; }
   th { background: #f0f2f8; }

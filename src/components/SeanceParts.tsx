@@ -1,4 +1,5 @@
 import React from "react";
+import { partDeColonne } from "../print";
 import { api, MaterielItem, newId, nowIso, raccourci } from "../api";
 import { FichierImg } from "./Deroulement";
 import { useFileDropZone, estPdf, estImage, estDocument, typeDocument, EXTENSIONS_DOCUMENTS, fichierEnBase64 } from "../dragdrop";
@@ -137,7 +138,16 @@ export function TableauEditor({ grid, onChange, illustrations = [] }: {
     <div>
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", minWidth: 520, borderCollapse: "separate", borderSpacing: 0 }}>
-          <colgroup>{grid[0].map((_, c) => <col key={c} style={{ width: `${100 / grid[0].length}%` }} />)}<col style={{ width: 30 }} /></colgroup>
+          {/* Chaque colonne à sa mesure, comme à l'impression : la description
+              a la place du texte, la durée celle de « 10 min ». */}
+          <colgroup>
+            {(() => {
+              const parts = grid[0].map((entete) => partDeColonne(entete));
+              const total = parts.reduce((a, b) => a + b, 0) || 1;
+              return parts.map((p, c) => <col key={c} style={{ width: `${(p / total) * 100}%` }} />);
+            })()}
+            <col style={{ width: 30 }} />
+          </colgroup>
           <tbody>
             {grid.map((row, r) => (
               <tr key={r}>
