@@ -39,22 +39,25 @@ export function SurLeTelephone({ label = "📱 Sur le téléphone" }: { label?: 
         <Modal titre="📱 Sur le téléphone" onClose={fermer}
           footer={<button className="btn" onClick={fermer}>Arrêter le partage</button>}>
           {erreur ? (
-            <p style={{ color: "var(--danger, #ef4444)" }}>{erreur}</p>
+            <p style={{ color: "var(--danger, #ef4444)", margin: 0 }}>{erreur}</p>
           ) : info ? (
-            <div style={{ textAlign: "center" }}>
-              <p style={{ marginTop: 0 }}>
-                Scannez ce QR code avec votre téléphone — il doit être sur <b>le même WiFi</b> que cet ordinateur.
-                Vous y retrouverez le planning jour par jour, ce qui est prévu et le bilan, les séquences et les élèves.
+            // Court et serré : la fenêtre doit tenir sur un écran d'ordinateur
+            // portable, QR compris, sans que rien ne sorte par le haut.
+            <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+              <p style={{ margin: 0, fontSize: 13.5 }}>
+                Scannez-le avec votre téléphone, sur <b>le même WiFi</b>.
               </p>
-              <div className="qr-portable" style={{ display: "inline-block" }} dangerouslySetInnerHTML={{ __html: info.qrSvg }} />
-              <p className="meta" style={{ marginTop: 12, wordBreak: "break-all" }}>{info.url}</p>
-              <p style={{ fontSize: 12.5, color: "var(--text-2)", marginBottom: 0 }}>
-                Lecture seule, sur le réseau local : rien ne passe par internet. Le partage s'arrête en fermant cette
-                fenêtre, et l'adresse ne vaut que pour cette fois.
+              <div className="qr-portable" style={{ display: "inline-block" }}
+                ref={(el) => { el?.querySelector("svg")?.setAttribute("style", "width:150px;height:150px;display:block"); }}
+                dangerouslySetInnerHTML={{ __html: info.qrSvg }} />
+              <p className="meta" style={{ margin: 0, fontSize: 11.5, wordBreak: "break-all" }}>{info.url}</p>
+              <p style={{ fontSize: 12, color: "var(--text-2)", margin: 0 }}>
+                Planning, prévu et bilan, séquences, élèves — en lecture seule, sur le réseau local.
+                Le partage s'arrête en fermant.
               </p>
             </div>
           ) : (
-            <p>Démarrage du partage…</p>
+            <p style={{ margin: 0 }}>Démarrage du partage…</p>
           )}
         </Modal>
       )}
