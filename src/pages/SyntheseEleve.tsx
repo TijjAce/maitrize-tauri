@@ -1,5 +1,5 @@
 import React from "react";
-import { api, anneeScolaireActuelle } from "../api";
+import { api, anneeScolaireActuelle, texteErreur } from "../api";
 import { Select, Empty, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
@@ -9,8 +9,11 @@ import { isoJour } from "../dates";
 import { lireCompetences, TYPE_DOC_COMPETENCES } from "../competencesTravaillees";
 import {
   SECTIONS_SYNTHESE, TYPE_DOC_SYNTHESE, Section, SyntheseEleve, Indice,
-  indicesDeLEleve, dansLaPeriode, comptes, preRemplirSynthese,
+  indicesDeLEleve, dansLaPeriode, comptes, preRemplirSynthese, brouillonDeSection,
 } from "../synthese";
+import {
+  nouveauxDepuis, poserLaRedaction, rassembler, redigerSyntheseSuivie, resumeDesEcrits, type Ecrit,
+} from "../veilleEleve";
 
 // ── Synthèse d'un élève (évaluation sommative) ─────────────────────────────
 // Un bilan par domaine ou matière, sur une période, rédigé d'après le suivi
@@ -53,6 +56,11 @@ export function SyntheseEleveTab() {
   const [avant, setAvant] = React.useState<Partial<Record<Section | "bilan", string>>>({});
   const [redaction, setRedaction] = React.useState<Section | "bilan" | null>(null);
   const aEcrire = React.useRef<{ id: string; json: string } | null>(null);
+  // La veille : tout ce qui a été écrit sur l'élève, où que ce soit.
+  const [ecrits, setEcrits] = React.useState<Ecrit[]>([]);
+  const [ecritsVisibles, setEcritsVisibles] = React.useState(false);
+  const [redigeant, setRedigeant] = React.useState(false);
+  const [avantTout, setAvantTout] = React.useState<SyntheseEleve | null>(null);
 
   React.useEffect(() => { if (!eleveId && eleves?.[0]) setEleveId(eleves[0].id); }, [eleves, eleveId]);
 
@@ -70,6 +78,7 @@ export function SyntheseEleveTab() {
     let actif = true;
     setCharge(false);
     setAvant({});
+    setAvantTout(null);
     Promise.all([api.documentEleveGet(eleveId, TYPE_DOC_SYNTHESE), lireSuivi(eleveId)]).then(([brut, ind]) => {
       if (!actif) return;
       setSynthese(lireSynthese(brut));
@@ -78,6 +87,25 @@ export function SyntheseEleveTab() {
     });
     return () => { actif = false; };
   }, [eleveId, lireSuivi]);
+
+  // Ce qui a été écrit sur l'élève pendant la période, partout dans l'app.
+  // Relu à chaque changement de période : une synthèse de trimestre et une
+  // synthèse d'année ne regardent pas les mêmes semaines.
+  const nomEleve = eleves?.find((e) => e.id === eleveId)?.nom ?? "";
+  React.useEffect(() => {
+    if (!eleveId || !nomEleve) { setEcrits([]); return; }
+    let actif = true;
+    Promise.all([
+      api.commentairesList(eleveId),
+      api.creneauxList(synthese.debut, synthese.fin).catch(() => []),
+      api.reunionsList().catch(() => []),
+    ]).then(([observations, creneaux, reunions]) => {
+      if (!actif) return;
+      const tout = rassembler({ observations, creneaux, reunions, eleveId, nom: nomEleve });
+      setEcrits(tout.filter((e) => (!synthese.debut || e.date >= synthese.debut) && (!synthese.fin || e.date <= synthese.fin)));
+    }).catch(() => { if (actif) setEcrits([]); });
+    return () => { actif = false; };
+  }, [eleveId, nomEleve, synthese.debut, synthese.fin]);
 
   // Enregistrement peu après la frappe, et en changeant d'élève ou d'écran.
   const ecrire = React.useCallback(() => {
@@ -137,6 +165,50 @@ export function SyntheseEleveTab() {
     }
   };
 
+  /**
+   * Rédige la synthèse à partir de tout ce qui a été écrit sur l'élève.
+   *
+   * Le suivi (compétences, évaluations) part sous forme de brouillon par
+   * domaine : c'est le même relevé que le pré-remplissage, mais c'est le
+   * modèle qui l'assemble avec les observations et les réunions.
+   */
+  const redigerLaSynthese = async () => {
+    if (!eleveId || !eleve || redigeant) return;
+    const dejaEcrit = synthese.bilan.trim() || SECTIONS_SYNTHESE.some((s) => (synthese.sections[s.id] ?? "").trim());
+    const remplacer = dejaEcrit
+      ? await confirmer("Une synthèse est déjà écrite. Remplacer le texte existant par la nouvelle rédaction ?",
+          { oui: "Remplacer" })
+      : true;
+    // Refuser de remplacer ne veut pas dire renoncer : les sections vides se
+    // remplissent quand même, et ce qui est écrit reste.
+    setRedigeant(true);
+    try {
+      const frais = await lireSuivi(eleveId);
+      setIndices(frais);
+      const periodeFraiche = dansLaPeriode(frais, synthese.debut, synthese.fin);
+      const suivi = SECTIONS_SYNTHESE
+        .map((s) => {
+          const texte = brouillonDeSection(periodeFraiche.filter((i) => i.section === s.id));
+          return texte ? `${s.titre} :\n${texte}` : "";
+        })
+        .filter(Boolean).join("\n\n");
+      const redige = await redigerSyntheseSuivie({
+        eleve: { id: eleveId, nom: eleve.nom },
+        autresEleves: autres,
+        ecrits,
+        suivi,
+        periode: `du ${fmtFr(synthese.debut)} au ${fmtFr(synthese.fin)}`,
+      });
+      setAvantTout(synthese);
+      modifier(poserLaRedaction(synthese, redige, remplacer));
+      const domaines = Object.keys(redige.sections).length;
+      toast(`Synthèse rédigée d'après ${ecrits.length} écrit(s)${domaines ? ` — ${domaines} domaine(s)` : ""}. À relire avant de l'imprimer.`,
+        { icone: "✨", duree: 7000 });
+    } catch (e) {
+      toast("Rédaction impossible : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
+    } finally { setRedigeant(false); }
+  };
+
   const revenir = (cle: Section | "bilan") => {
     const t = avant[cle];
     if (t == null) return;
@@ -161,6 +233,8 @@ export function SyntheseEleveTab() {
   if (!eleve) return <Empty icone="📋" titre="Aucun élève" sous="Ajoutez vos élèves dans l'onglet Classe." />;
 
   const c = comptes(periode);
+  const prenom = (eleve.nom || "").split(" ")[0];
+  const nouveaux = nouveauxDepuis(ecrits, synthese.vuLe);
   const outilsSection = (cle: Section | "bilan") => (
     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
       {avant[cle] != null && <button className="btn ghost sm" onClick={() => revenir(cle)}>↶ Revenir</button>}
@@ -194,6 +268,48 @@ export function SyntheseEleveTab() {
       <div style={{ fontSize: 12.5, color: "var(--text-2)", margin: "-4px 0 12px" }}>
         {charge ? `Sur la période : ${c.reussites} réussite${c.reussites > 1 ? "s" : ""}, ${c.enCours} en cours, ${c.aConsolider} à consolider, ${c.observations} observation${c.observations > 1 ? "s" : ""}.`
           : "Lecture du suivi…"} Les observations de santé ne sont jamais reprises.
+      </div>
+
+      {/* La veille : ce qui a été écrit sur l'élève depuis la dernière fois. */}
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <h3 style={{ margin: 0, fontSize: 15 }}>🔭 Ce qui est écrit sur {prenom}</h3>
+          <span style={{ fontSize: 12.5, color: "var(--text-2)", flex: 1, minWidth: 140 }}>
+            {ecrits.length === 0
+              ? "Rien pour l'instant sur cette période."
+              : `${resumeDesEcrits(ecrits)} sur la période${nouveaux.length && synthese.vuLe
+                  ? ` · ${nouveaux.length} depuis la dernière rédaction (${fmtFr((synthese.vuLe || "").slice(0, 10))})`
+                  : ""}.`}
+          </span>
+          {ecrits.length > 0 && (
+            <button className="btn ghost sm" onClick={() => setEcritsVisibles((v) => !v)}>
+              {ecritsVisibles ? "Masquer" : "Voir"}
+            </button>
+          )}
+          {avantTout && (
+            <button className="btn ghost sm" onClick={() => { modifier(avantTout); setAvantTout(null); }}>↶ Revenir</button>
+          )}
+          <button className="btn primary sm" disabled={redigeant || !charge || (ecrits.length === 0 && periode.length === 0)}
+            onClick={() => { void redigerLaSynthese(); }}
+            title="Rédiger la synthèse à partir des observations, du cahier journal, des réunions et du suivi">
+            {redigeant ? "Rédaction…" : "✨ Rédiger la synthèse"}
+          </button>
+        </div>
+        {ecritsVisibles && (
+          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6, maxHeight: 260, overflowY: "auto" }}>
+            {ecrits.map((e, i) => (
+              <div key={`${e.date}-${i}`} style={{ borderLeft: "3px solid var(--border)", paddingLeft: 8 }}>
+                <div className="meta" style={{ fontSize: 11.5 }}>{fmtFr(e.date)} · {e.source}</div>
+                <div style={{ fontSize: 12.5 }}>{e.texte}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="meta" style={{ fontSize: 11.5, margin: "8px 0 0", lineHeight: 1.5 }}>
+          Des bilans du cahier journal et des comptes rendus de réunion, seules les phrases
+          qui nomment {prenom} sont reprises. Les camarades cités deviennent « un camarade »,
+          et son prénom est masqué avant l'envoi à l'IA.
+        </p>
       </div>
 
       <div className="card" style={{ marginBottom: 12 }}>

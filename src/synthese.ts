@@ -30,6 +30,13 @@ export interface SyntheseEleve {
   fin: string;
   bilan: string;
   sections: Partial<Record<Section, string>>;
+  /**
+   * Quand la synthèse a été rédigée pour la dernière fois.
+   *
+   * C'est le repère de la veille (voir `veilleEleve.ts`) : ce qui a été écrit
+   * sur l'élève après cette date est « nouveau », et mérite d'être signalé.
+   */
+  vuLe?: string;
 }
 
 export const TYPE_DOC_SYNTHESE = "synthese";
