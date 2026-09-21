@@ -32,6 +32,7 @@ export const GENRES = [
   "Concertation",
   "Rencontre avec la famille",
   "Animation pédagogique",
+  "Formation",
   "Autre réunion",
 ] as const;
 
