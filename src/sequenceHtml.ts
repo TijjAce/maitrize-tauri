@@ -8,7 +8,7 @@
 
 import { formatDuree, type Jeu, type PieceJointe, type Seance, type Sequence } from "./api";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
-import { escapeHtml } from "./print";
+import { colonnesDuTableau, escapeHtml } from "./print";
 import { jeuxCites, reglesImprimees, sansMarqueurs } from "./jeuxCites";
 
 const liste = <T>(json: string | null | undefined): T[] => {
@@ -67,7 +67,7 @@ export function htmlDeLaSequence(
       ${s.objectifs ? `<div class="label">Objectifs</div><div class="pre">${escapeHtml(s.objectifs)}</div>` : ""}
       ${comps.length ? `<div class="label">Compétences</div>${comps.map((c) => `<span class="chip">${escapeHtml(labelCourt(c))}</span>`).join("")}` : ""}
       ${s.deroulement ? `<div class="label">Déroulement</div>${rendreTexte(s.deroulement)}${reglesImprimees(jeuxCites(sansMarqueurs(s.deroulement), jeux))}` : ""}
-      ${grid.length ? `<table>${grid.map((row, r) => `<tr>${row.map((c) => r === 0 ? `<th>${escapeHtml(c)}</th>` : `<td>${rendreTexte(c)}</td>`).join("")}</tr>`).join("")}</table>` : ""}
+      ${grid.length ? `<table class="colonnes">${colonnesDuTableau(grid[0])}${grid.map((row, r) => `<tr>${row.map((c) => r === 0 ? `<th>${escapeHtml(c)}</th>` : `<td>${rendreTexte(c)}</td>`).join("")}</tr>`).join("")}</table>` : ""}
       ${illus.map(img).join("")}
       ${s.materiel ? `<div class="label">Matériel</div><div class="pre">${escapeHtml(s.materiel)}</div>` : ""}
       ${pj.map(img).join("")}
