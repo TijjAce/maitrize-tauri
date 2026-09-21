@@ -18,11 +18,25 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
-    version: "1.6.12",
-    titre: "Partager par Nuage, et un cahier journal plus complet",
+    version: "1.6.13",
+    titre: "Les réunions se résument toutes seules",
     points: [
       { quoi: "Un onglet « Réunions » : l'application écoute l'ESS, le conseil de cycle ou l'équipe éducative, et résume ce qui se dit toutes les cinq minutes. Vous suivez les résumés arriver pendant la réunion, vous les corrigez d'un clic, et « ✨ Rédiger le compte rendu » assemble le tout en points abordés, décisions et ce que vous avez à faire.", ou: "Réunions" },
       { quoi: "Prévenez les participants avant d'enregistrer : l'écran le rappelle. L'audio n'est jamais écrit sur le disque, il disparaît après la transcription, et les prénoms d'élèves connus sont masqués avant le résumé. « 🧹 Effacer le mot à mot » ne garde que les résumés.", ou: "Réunions" },
+      { quoi: "Fabriquer range ses générateurs par famille — Langage, Mathématiques, Autonomie — et s'ouvre à de nouveaux jeux.", ou: "Fabriquer" },
+      { quoi: "Deux jeux de plus, à partir des mêmes pictogrammes : le mémory (chaque image en double, mêlées pour que les paires ne se touchent pas) et l'imagier (une image, son mot, dans l'ordre que vous avez choisi).", ou: "Fabriquer · Langage · 🃏 Mémory, 📖 Imagier" },
+      { quoi: "Un bouton « 📱 Téléphone » dans le planning : scannez le QR code et retrouvez le planning sur votre téléphone, jour par jour, avec ce qui est prévu, le bilan et les élèves de chaque créneau. Par le WiFi, en lecture seule, sans rien installer.", ou: "Planning · 📱 Téléphone" },
+      { quoi: "Dans le déroulement d'une séance, surligner un passage fait apparaître un bouton « ✨ Corriger » : l'IA en relit l'orthographe et la grammaire, remplace le passage, et le message qui suit permet de revenir en arrière.", ou: "Séance · Déroulement" },
+      { quoi: "Le déroulement d'une séance s'écrit dans un cadre à sa taille, et le tableau imprimé donne sa place à la description : phase, durée et posture se resserrent.", ou: "Séance · Déroulement" },
+      { quoi: "Le lien de partage d'un bureau commun porte sur le dossier que vous regardez, et non plus sur tout le compte : un collègue invité ne voit que ce que vous lui montrez. À la racine, l'application le dit au lieu de refuser sans expliquer.", ou: "Bureaux communs · 🔗 Inviter" },
+      { quoi: "Un bouton « 🔄 » relit le bureau commun sans attendre, et « Vérifier la connexion » montre l'adresse exacte que l'application interroge — de quoi comprendre pourquoi un dépôt n'arrive pas.", ou: "Bureaux communs" },
+      { quoi: "Les fenêtres qui s'ouvrent par-dessus l'application ne sortent plus de l'écran : le QR code du téléphone tient en entier, et une fenêtre ouverte depuis la barre du haut s'affiche au centre." },
+    ],
+  },
+  {
+    version: "1.6.12",
+    titre: "Partager par Nuage, et un cahier journal plus complet",
+    points: [
       { quoi: "Ateliers, espaces, jeux, outils et affichages rejoignent le bureau du plan de travail : un dossier « cycle 1 » peut réunir une séquence, ses jeux et l'outil qui va avec. Clic droit sur le bureau pour en créer, double-clic pour ouvrir leur fiche.", ou: "Plan de travail" },
       { quoi: "« Ateliers & Espaces » quitte le menu. Les fiches et leurs filtres — nombre de joueurs, catégorie, élève — restent à portée de main par le bouton « ▦ Fiches » du bureau.", ou: "Plan de travail · ▦ Fiches" },
       { quoi: "Les dossiers créés dans l'ancien bureau des ateliers sont versés dans le plan de travail ; deux dossiers du même nom n'en font plus qu'un." },
@@ -30,13 +44,9 @@ export const NOUVEAUTES: Nouveaute[] = [
       { quoi: "Réglages › Général : votre fonction, le téléphone de l'établissement, les contacts (direction, coordination, collègues, AESH et soignants, secrétariat) et les repères du matériel. La feuille « Informations pour un remplaçant » s'en remplit toute seule.", ou: "Réglages · Général · 🏫 Établissement" },
       { quoi: "Un onglet « Pages de garde » dans Organisation : la première page d'un cahier, le mot aux familles et la liste des fournitures. L'application pose l'établissement, votre nom et l'année ; l'IA rédige le texte si vous le demandez, sans rien recevoir sur vos élèves.", ou: "Organisation · Pages de garde" },
       { quoi: "Le cahier journal cite aussi les manuels : le bouton « 📖 Manuel » ouvre un PDF du coffre-fort, où l'on surligne un passage à citer, ou l'on trace un cadre autour d'un exercice. L'image découpée se pose dans le prévu et s'imprime avec le jour.", ou: "Planning · cahier journal · 📖 Manuel" },
-      { quoi: "Fabriquer range ses générateurs par famille — Langage, Mathématiques, Autonomie — et s'ouvre à de nouveaux jeux.", ou: "Fabriquer" },
-      { quoi: "Deux jeux de plus, à partir des mêmes pictogrammes : le mémory (chaque image en double, mêlées pour que les paires ne se touchent pas) et l'imagier (une image, son mot, dans l'ordre que vous avez choisi).", ou: "Fabriquer · Langage · 🃏 Mémory, 📖 Imagier" },
-      { quoi: "Un bouton « 📱 Téléphone » dans le planning : scannez le QR code et retrouvez le planning sur votre téléphone, jour par jour, avec ce qui est prévu, le bilan et les élèves de chaque créneau. Par le WiFi, en lecture seule, sans rien installer.", ou: "Planning · 📱 Téléphone" },
       { quoi: "Le tableau de bord montre la semaine, et non plus le seul jour : un bouton par journée, avec son nombre de créneaux et ce qui reste sans bilan. Un clic ouvre le cahier journal de ce jour-là.", ou: "Tableau de bord · 🗓️ Cette semaine" },
       { quoi: "Quand la fenêtre se fige, c'est maintenant l'application elle-même qui l'écrit sur le disque, pendant le blocage — même si vous la fermez de force. Le journal note aussi chaque démarrage et signale une session précédente interrompue.", ou: "Réglages · Données & synchro · 🩺 Journal d'incidents" },
       { quoi: "« 📋 Copier le rapport » et « 💾 Enregistrer le rapport… » : de quoi aider un collègue dont l'application se bloque — il copie, il vous l'envoie, vous lisez ce qui s'est passé. Le rapport ne contient aucune donnée d'élève.", ou: "Réglages · Données & synchro · 🩺 Journal d'incidents" },
-      { quoi: "Dans le déroulement d'une séance, surligner un passage fait apparaître un bouton « ✨ Corriger » : l'IA en relit l'orthographe et la grammaire, remplace le passage, et le message qui suit permet de revenir en arrière.", ou: "Séance · Déroulement" },
       { quoi: "Un bouton « ✨ Corriger » dans le prévu et dans le bilan : l'IA relit l'orthographe et la grammaire sans reformuler, et propose sa version sous le champ — c'est vous qui la prenez ou non. Surlignez un passage pour ne corriger que lui. Les prénoms des élèves sont masqués avant l'envoi.", ou: "Planning · cahier journal · ✨ Corriger" },
       { quoi: "Le PDF du jour porte le logo Maitrize et l'adresse maitrize.com en bas de chaque page.", ou: "Planning · 🖨 PDF" },
       { quoi: "« 📚 Séquence » montre maintenant les séances directement : un clic sur « Choisir cette séance » pose son contenu — objectifs et déroulement — dans le cahier journal, à l'écran comme à l'impression.", ou: "Planning · cahier journal · 📚 Séquence" },
