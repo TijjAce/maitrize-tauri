@@ -3,6 +3,7 @@ import { Page } from "../App";
 import { api, Referentiel, newId, nowIso } from "../api";
 import { Empty, Confirm, Input, useAsync } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
+import { Documentaliste } from "../components/Documentaliste";
 import { toast } from "../components/Toaster";
 
 interface RefComp { id: string; texte: string; niveau?: string; _ajoute?: boolean; _modifie?: boolean }
@@ -20,6 +21,8 @@ export default function Referentiels() {
   const [ouverts, setOuverts] = React.useState<Record<string, boolean>>({});
   const toggleDom = (id: string) => setOuverts((s) => ({ ...s, [id]: !s[id] }));
   const fileRef = React.useRef<HTMLInputElement>(null);
+  // Le documentaliste : on lui pose une question, il lit les référentiels.
+  const [demande, setDemande] = React.useState(false);
 
   const courant = refs?.find((r) => r.id === sel) ?? refs?.[0];
   const editable = courant ? !courant.estIntegre : false;
@@ -85,8 +88,11 @@ export default function Referentiels() {
       actions={<>
         <input ref={fileRef} type="file" accept=".json" style={{ display: "none" }}
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importer(f); e.target.value = ""; }} />
+        <button className="btn" onClick={() => setDemande(true)}
+          title="Chercher ce que disent les programmes sur un sujet">🔎 Demander aux programmes</button>
         <button className="btn primary" onClick={() => fileRef.current?.click()}>Importer (JSON)</button>
       </>}>
+      {demande && <Documentaliste onClose={() => setDemande(false)} />}
       {(refs?.length ?? 0) === 0 ? (
         <Empty icone="📖" titre="Aucun référentiel" sous="Importez un référentiel au format JSON." />
       ) : (
