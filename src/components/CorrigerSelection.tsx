@@ -17,13 +17,78 @@ import { reformuler } from "../reformulation";
 /** En dessous, il n'y a rien à corriger : un mot ou deux. */
 const MINIMUM = 12;
 
+/**
+ * Où se trouve un caractère dans une zone de texte, en pixels.
+ *
+ * Une zone de texte ne dit rien de ses lignes : on recopie donc ses styles
+ * dans un calque invisible, on y met le texte jusqu'au caractère voulu, et
+ * l'on mesure où le suivant commence. C'est la seule façon de poser quelque
+ * chose à côté d'un passage surligné.
+ */
+const STYLES_COPIES = [
+  "boxSizing", "width", "fontFamily", "fontSize", "fontWeight", "fontStyle", "fontVariant",
+  "letterSpacing", "lineHeight", "textTransform", "wordSpacing", "textIndent", "tabSize",
+  "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+  "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth",
+] as const;
+
+export function positionDansLaZone(zone: HTMLTextAreaElement, index: number): { x: number; y: number; ligne: number } {
+  const style = window.getComputedStyle(zone);
+  const miroir = document.createElement("div");
+  for (const p of STYLES_COPIES) miroir.style[p] = style[p];
+  miroir.style.position = "absolute";
+  miroir.style.visibility = "hidden";
+  miroir.style.top = "0";
+  miroir.style.left = "-9999px";
+  miroir.style.height = "auto";
+  miroir.style.whiteSpace = "pre-wrap";
+  miroir.style.overflowWrap = "break-word";
+  miroir.textContent = zone.value.slice(0, index);
+  // Un repère à la place du caractère : c'est lui qu'on mesure.
+  const marque = document.createElement("span");
+  marque.textContent = zone.value.slice(index, index + 1) || ".";
+  miroir.appendChild(marque);
+  document.body.appendChild(miroir);
+  const x = marque.offsetLeft;
+  const y = marque.offsetTop;
+  document.body.removeChild(miroir);
+  const ligne = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.3;
+  return { x, y, ligne };
+}
+
+/** La place de la bulle, au-dessus du passage — ou dessous s'il touche le haut. */
+export function placeDeLaBulle(
+  p: { x: number; y: number; ligne: number },
+  vue: { defilement: number; largeur: number; hauteur: number },
+  bulle = { largeur: 132, hauteur: 30 },
+): { gauche: number; haut: number } | null {
+  const yVu = p.y - vue.defilement;
+  // Le passage n'est plus à l'écran : la bulle n'a rien à y faire.
+  if (yVu + p.ligne < 0 || yVu > vue.hauteur) return null;
+  const auDessus = yVu - bulle.hauteur - 4;
+  const haut = auDessus >= 2 ? auDessus : Math.min(yVu + p.ligne + 4, vue.hauteur - bulle.hauteur - 2);
+  return {
+    gauche: Math.max(4, Math.min(p.x, vue.largeur - bulle.largeur - 4)),
+    haut: Math.max(2, haut),
+  };
+}
+
 export function useCorrecteur({ valeur, onChange, zone }: {
   valeur: string;
   onChange: (suite: string) => void;
   zone: React.RefObject<HTMLTextAreaElement | null>;
 }) {
   const [plage, setPlage] = React.useState<{ debut: number; fin: number } | null>(null);
+  const [place, setPlace] = React.useState<{ gauche: number; haut: number } | null>(null);
   const [occupe, setOccupe] = React.useState(false);
+
+  /** La bulle se pose au début du passage surligné, là où l'œil est déjà. */
+  const situer = React.useCallback((debut: number) => {
+    const el = zone.current;
+    if (!el) return;
+    setPlace(placeDeLaBulle(positionDansLaZone(el, debut),
+      { defilement: el.scrollTop, largeur: el.clientWidth, hauteur: el.clientHeight }));
+  }, [zone]);
 
   /** À appeler quand la sélection peut avoir changé (souris, clavier). */
   const surSelection = React.useCallback(() => {
@@ -31,8 +96,20 @@ export function useCorrecteur({ valeur, onChange, zone }: {
     if (!el) return;
     const { selectionStart: debut, selectionEnd: fin } = el;
     const assez = fin - debut >= MINIMUM && el.value.slice(debut, fin).trim().length >= MINIMUM;
-    setPlage(assez ? { debut, fin } : null);
-  }, [zone]);
+    if (!assez) { setPlage(null); setPlace(null); return; }
+    setPlage({ debut, fin });
+    situer(debut);
+  }, [zone, situer]);
+
+  // Le texte défile sous la bulle : elle suit, ou s'efface si le passage sort.
+  React.useEffect(() => {
+    const el = zone.current;
+    if (!el || !plage) return;
+    const suivre = () => situer(plage.debut);
+    el.addEventListener("scroll", suivre);
+    window.addEventListener("resize", suivre);
+    return () => { el.removeEventListener("scroll", suivre); window.removeEventListener("resize", suivre); };
+  }, [zone, plage, situer]);
 
   const corriger = async () => {
     if (!plage || occupe) return;
@@ -50,6 +127,7 @@ export function useCorrecteur({ valeur, onChange, zone }: {
       const avant = valeur;
       onChange(valeur.slice(0, plage.debut) + propre + valeur.slice(plage.fin));
       setPlage(null);
+      setPlace(null);
       toastAnnulable("Passage corrigé.", () => onChange(avant), "✨");
     } catch (e) {
       toast("Correction impossible : " + texteErreur(e), { icone: "⚠️", duree: 7000 });
@@ -58,15 +136,16 @@ export function useCorrecteur({ valeur, onChange, zone }: {
     }
   };
 
-  // La bulle se pose sur le champ, en bas à droite : là où la souris finit un
-  // surlignage, et jamais sur le texte qu'on vient de lire.
-  const bulle = plage ? (
+  // La bulle se pose juste au-dessus du passage surligné : on la trouve là où
+  // l'on regarde, et elle ne recouvre ni le texte ni les boutons du bas.
+  const bulle = plage && place ? (
     <button type="button" className="btn primary sm" disabled={occupe}
       // Sans cela, le champ perdrait sa sélection avant même le clic.
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => { void corriger(); }}
       title="Corriger l'orthographe et la grammaire du passage surligné, sans le reformuler"
-      style={{ position: "absolute", right: 12, bottom: 12, zIndex: 5, boxShadow: "var(--shadow)" }}>
+      style={{ position: "absolute", left: place.gauche, top: place.haut, zIndex: 5,
+        boxShadow: "var(--shadow)", whiteSpace: "nowrap" }}>
       {occupe ? "Correction…" : "✨ Corriger"}
     </button>
   ) : null;
