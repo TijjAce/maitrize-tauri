@@ -481,6 +481,12 @@ export default function Reunions() {
                   <Input value={courante.participants} placeholder="Directrice, psychologue, éducatrice, la famille…"
                     onChange={(e) => majReunion({ participants: e.target.value })} />
                 </Field>
+                {!vide && (
+                  <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
+                    <button className="btn sm" onClick={copier}>📋 Copier le compte rendu</button>
+                    <button className="btn sm" onClick={imprimer}>🖨 Imprimer</button>
+                  </div>
+                )}
               </div>
             ) : null}
 
@@ -535,21 +541,31 @@ export default function Reunions() {
                   <button className="btn sm" onClick={() => { void integrerSiBesoin(true); }}
                     title="Ranger tout de suite ce qui vient d'être dit">✨ Ranger</button>
                 )}
-                {!vide && <>
+                {!vide && (
                   <button className="btn sm" disabled={!!occupe} onClick={auPropre}
                     title="Relire l'ensemble d'un coup : redites, ordre, tournures">✍️ Au propre</button>
-                  <button className="btn sm" onClick={copier}>📋</button>
-                  <button className="btn sm" onClick={imprimer}>🖨</button>
-                </>}
-                <button className="btn ghost sm" onClick={basculerRelecture}
-                  title={relecture
-                    ? "Une seconde IA relit tout le compte rendu toutes les dix phrases et le resserre. Cliquez pour l'arrêter."
-                    : "La relecture de fond est arrêtée : le compte rendu se range au fil de l'eau, sans seconde lecture."}>
-                  {relecture ? "🔁 Relecture" : "🔁̸ Sans relecture"}
-                </button>
+                )}
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5 }}
+                  title="Une seconde IA relit tout le compte rendu et le resserre : elle voit les redites qu'un passage seul ne peut pas voir.">
+                  <input type="checkbox" checked={relecture} onChange={basculerRelecture} />
+                  Relecture
+                </label>
                 <button className="btn ghost sm" onClick={() => setEntete((v) => !v)}
                   title="Objet, type, date, participants">{entete ? "▴" : "▾"} Détails</button>
               </div>
+            )}
+
+            {/* Ce que la relecture implique, dit là où on la coche — et
+                d'autant plus net quand la transcription, elle, reste ici. */}
+            {relecture && !aExpliquer && (
+              <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: "var(--text-2)",
+                background: "var(--panel-2)", padding: "8px 10px", borderRadius: 8 }}>
+                ⚠️ <b>La relecture passe par l'IA en ligne</b> : le compte rendu part chez Mistral
+                toutes les {PHRASES_PAR_RELECTURE} phrases pour être resserré, prénoms d'élèves
+                masqués.{moteur === "local"
+                  ? " L'audio, lui, reste sur cet ordinateur. Décochez « Relecture » pour que rien ne sorte d'ici."
+                  : ""}
+              </p>
             )}
 
             {/* L'encadré, et rien d'autre : même feuille que l'éditeur de
