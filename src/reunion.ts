@@ -33,20 +33,30 @@ export const TRANCHE_S = 300;
 /**
  * Le morceau d'audio envoyé à la transcription.
  *
- * C'est le rythme auquel le texte s'écrit à l'écran : une minute et demie,
+ * C'est le rythme auquel le texte s'écrit à l'écran : trois quarts de minute,
  * assez court pour voir la réunion s'écrire, assez long pour qu'une phrase
  * coupée en deux reste rare.
  */
-export const MORCEAU_S = 90;
+export const MORCEAU_S = 45;
 
 /**
- * Un résumé toutes les dix phrases.
+ * Le rangement au fil de l'eau : dès deux phrases de plus.
  *
- * Le temps disait mal les choses : cinq minutes de tour de table valent une
- * ligne, cinq minutes de décisions en valent dix. Dix phrases, c'est une
- * quantité de propos — le résumé arrive quand il y a de quoi résumer.
+ * Il ne s'agit pas d'attendre d'avoir de quoi résumer, mais de ne jamais
+ * laisser traîner de parole brute à l'écran : ce qui est dit est rangé
+ * presque aussitôt, et l'enseignant lit un compte rendu, pas un verbatim.
  */
-export const PHRASES_PAR_RESUME = 10;
+export const PHRASES_PAR_RANGEMENT = 2;
+
+/**
+ * La relecture de fond : toutes les dix phrases.
+ *
+ * Ranger deux phrases à la fois fait un document juste mais bavard — les
+ * mêmes idées reviennent sous trois formulations, et les lignes s'allongent.
+ * Une seconde lecture reprend l'ensemble et resserre : elle voit ce qu'un
+ * passage seul ne peut pas voir.
+ */
+export const PHRASES_PAR_RELECTURE = 10;
 
 /** Les réunions d'un enseignant du premier degré, ESMS compris. */
 export const GENRES = [
@@ -199,8 +209,12 @@ export function phrasesEnAttente(texte: string, resumes: Resume[]): { de: number
   return { de, phrases: toutes.slice(de) };
 }
 
-/** Faut-il résumer maintenant ? */
-export const assezPourResumer = (attente: number, seuil = PHRASES_PAR_RESUME) => attente >= seuil;
+/** Faut-il ranger maintenant ? */
+export const assezPourResumer = (attente: number, seuil = PHRASES_PAR_RANGEMENT) => attente >= seuil;
+
+/** Faut-il relire l'ensemble ? */
+export const assezPourRelire = (depuisLaRelecture: number, seuil = PHRASES_PAR_RELECTURE) =>
+  depuisLaRelecture >= seuil;
 
 export function lireResumes(json: string): Resume[] {
   let brut: unknown;
@@ -531,6 +545,57 @@ export function repereDuResume(r: Resume): string {
   if (r.quand == null) return phrases;
   const m = Math.floor(r.quand / 60);
   return `${m} min · ${phrases}`;
+}
+
+/**
+ * La seconde lecture : celle qui voit ce qu'un passage seul ne voit pas.
+ *
+ * Le rangement au fil de l'eau ne connaît que le document et deux phrases :
+ * il ne peut pas savoir que la ligne qu'il ajoute redit, autrement, ce qui
+ * est écrit trois rubriques plus haut. La relecture, elle, a tout sous les
+ * yeux — c'est là qu'on resserre.
+ */
+export function promptRelecture(a: { genre: string; titre: string; document: string }) {
+  const quoi = [a.genre, a.titre].filter(Boolean).join(" — ") || "une réunion";
+  return [
+    {
+      role: "system" as const,
+      content: [
+        "Tu relis le compte rendu d'" + quoi + ", pendant qu'elle a lieu.",
+        "Il a été rangé au fil de l'eau, deux phrases à la fois : il contient donc des redites, des lignes trop longues et des points qui se recoupent.",
+        "Resserre-le, sans rien perdre : fusionne ce qui dit deux fois la même chose, regroupe ce qui va ensemble, raccourcis les tournures, jette ce qui n'a eu aucune suite.",
+        "Ne supprime jamais une décision, une échéance, un engagement, un chiffre ni un nom de dispositif.",
+        "Ne rajoute rien : aucune idée qui ne soit déjà écrite.",
+        "Rends le document **entier**, avec exactement ces quatre titres précédés de « ## » :",
+        RUBRIQUES.map((r) => `## ${r}`).join(", ") + ".",
+        "Sous chaque titre, des puces courtes commençant par « - ». Si une rubrique est vide, écris « - Rien à signaler ».",
+        "Les marqueurs entre crochets comme [P1] remplacent des prénoms : recopie-les exactement.",
+      ].join(" "),
+    },
+    { role: "user" as const, content: a.document },
+  ];
+}
+
+/**
+ * Relit et resserre le compte rendu.
+ *
+ * Une relecture qui perdrait la moitié du document serait pire qu'aucune :
+ * les rubriques revenues vides gardent donc leur contenu d'avant, comme au
+ * rangement.
+ */
+export async function relireLeDocument(
+  document: string,
+  contexte: { genre: string; titre: string },
+): Promise<string> {
+  if (planVide(lirePlan(document))) return document;
+  const { parts, table } = masquerTout([contexte.titre, document], await nomsDesEleves());
+  const [titre, docMasque] = parts;
+  const modele = await api.modeleActif(MODELE_TACHES);
+  const rep = await api.mistralChat(
+    promptRelecture({ genre: contexte.genre, titre, document: docMasque }), modele);
+  const fusionne = fusionnerPlan(lirePlan(docMasque), lirePlan(nettoyer(rep)));
+  if (planVide(fusionne)) throw new Error("La relecture n'a rien rendu d'exploitable.");
+  return restaurer(ecrirePlan(fusionne), table).texte;
 }
 
 /**
