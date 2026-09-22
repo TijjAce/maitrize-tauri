@@ -8,6 +8,7 @@ mod amis;
 mod commands;
 mod commun;
 mod veille;
+mod whisper;
 mod webdav;
 mod copie_bureau;
 mod db;
@@ -100,6 +101,7 @@ pub fn run() {
             // Conversations IA
             conversations_list, conversation_save, conversation_delete,
             reunions_list, reunion_save, reunion_delete,
+            whisper::transcrire_local, whisper::whisper_tester,
             // Coffre-fort
             coffre_list, coffre_save, coffre_delete, coffre_download,
             // Réglages

@@ -40,13 +40,13 @@ export const TRANCHE_S = 300;
 export const MORCEAU_S = 45;
 
 /**
- * Le rangement au fil de l'eau : dès deux phrases de plus.
+ * Le rangement au fil de l'eau : dès la phrase suivante.
  *
  * Il ne s'agit pas d'attendre d'avoir de quoi résumer, mais de ne jamais
  * laisser traîner de parole brute à l'écran : ce qui est dit est rangé
- * presque aussitôt, et l'enseignant lit un compte rendu, pas un verbatim.
+ * aussitôt, et l'enseignant lit un compte rendu, pas un verbatim.
  */
-export const PHRASES_PAR_RANGEMENT = 2;
+export const PHRASES_PAR_RANGEMENT = 1;
 
 /**
  * La relecture de fond : toutes les dix phrases.

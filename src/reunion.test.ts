@@ -44,8 +44,8 @@ describe("découper le texte en phrases", () => {
 });
 
 describe("le rythme des deux agents", () => {
-  it("range dès deux phrases : la parole brute ne traîne pas à l'écran", () => {
-    expect(assezPourResumer(1)).toBe(false);
+  it("range dès la première phrase : la parole brute ne traîne pas à l'écran", () => {
+    expect(assezPourResumer(0)).toBe(false);
     expect(assezPourResumer(PHRASES_PAR_RANGEMENT)).toBe(true);
     expect(assezPourResumer(12)).toBe(true);
   });
