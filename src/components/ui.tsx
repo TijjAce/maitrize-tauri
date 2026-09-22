@@ -72,7 +72,8 @@ export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
  * plancher et un plafond, et reste redimensionnable à la main.
  */
 export const TextareaAuto = React.forwardRef<HTMLTextAreaElement, {
-  minHauteur?: number;
+  /** Nombre : un plancher en pixels. Chaîne : une hauteur CSS (« 55vh »). */
+  minHauteur?: number | string;
   maxHauteur?: number | string;
 } & React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
   function TextareaAuto({ minHauteur = 320, maxHauteur = "70vh", style, value, ...props }, refExterne) {
@@ -86,9 +87,12 @@ export const TextareaAuto = React.forwardRef<HTMLTextAreaElement, {
     const ajuster = React.useCallback(() => {
       const el = interne.current;
       if (!el) return;
+      // Une hauteur en unités CSS est tenue par `min-height` : ici on ne
+      // gère que la croissance, et le plancher reste l'affaire du style.
+      const plancher = typeof minHauteur === "number" ? minHauteur : 0;
       // Remettre à zéro d'abord : sans cela, la hauteur ne redescend jamais.
       el.style.height = "auto";
-      el.style.height = `${Math.max(minHauteur, el.scrollHeight + 2)}px`;
+      el.style.height = `${Math.max(plancher, el.scrollHeight + 2)}px`;
     }, [minHauteur]);
     React.useLayoutEffect(ajuster, [ajuster, value]);
     return (

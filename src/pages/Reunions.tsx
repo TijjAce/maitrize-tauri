@@ -32,6 +32,9 @@ import {
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
 
+/** L'accord donné une fois, gardé sur ce poste : l'écoute part seule ensuite. */
+const CLE_CONSENTEMENT = "reunionsConsentement";
+
 /**
  * Le repos après lequel on résume, une fois les dix phrases atteintes.
  *
@@ -58,6 +61,12 @@ export default function Reunions() {
   const [compteRendu, setCompteRendu] = React.useState("");
   const [occupe, setOccupe] = React.useState("");
   const [consentementVu, setConsentementVu] = React.useState(false);
+  // L'en-tête (objet, type, date) ne sert qu'avant et après : pendant la
+  // réunion, c'est l'encadré qui doit avoir la place.
+  const [entete, setEntete] = React.useState(false);
+  // L'accord est donné une fois : ensuite l'écoute part d'elle-même, et il
+  // n'y a plus de bouton à chercher au moment où la réunion commence.
+  const dejaExplique = React.useRef(false);
   const [transcrit, setTranscrit] = React.useState(false);
 
   // Ce que les rappels du micro et des minuteurs doivent lire : ils vivent
@@ -78,6 +87,10 @@ export default function Reunions() {
   // Un booléen, pas l'objet : `courante` change à chaque enregistrement, et
   // en dépendre relancerait le minuteur du résumé sans arrêt.
   const ouverte = !!courante;
+
+  React.useEffect(() => {
+    api.settingGet(CLE_CONSENTEMENT).then((v) => { dejaExplique.current = v === "1"; }).catch(() => {});
+  }, []);
 
   const charger = React.useCallback(async () => {
     try { setListe(await api.reunionsList()); }
@@ -252,6 +265,21 @@ export default function Reunions() {
     resumesRef.current = []; setResumes([]);
     setCompteRendu("");
     setConsentementVu(false);
+    setEntete(false);
+    // Rien à cliquer : on pose l'ordinateur et ça écoute. L'écran d'accord
+    // ne revient que tant qu'il n'a pas été accepté une première fois.
+    if (dejaExplique.current) {
+      const erreur = await ecoute.demarrer(0);
+      if (erreur) toast(erreur, { icone: "🎙" });
+      else setConsentementVu(true);
+    }
+  };
+
+  /** Premier accord : on le retient, et l'écoute part dans la foulée. */
+  const accepterEtEcouter = async () => {
+    dejaExplique.current = true;
+    api.settingSet(CLE_CONSENTEMENT, "1").catch(() => {});
+    await demarrer();
   };
 
   const demarrer = async () => {
@@ -326,12 +354,15 @@ export default function Reunions() {
 
   const enCours = ecoute.etat !== "repos";
   const attente = phrasesEnAttente(texte, resumes).phrases.length;
-  const integres = resumes.filter((r) => r.etat === "fait").length;
+  const aDuTexte = !!texte.trim() || !!compteRendu.trim();
+  // L'écran d'accord ne s'affiche que tant qu'il n'a pas été accepté, et
+  // seulement sur une réunion qui n'a pas encore commencé.
+  const aExpliquer = !enCours && !aDuTexte && !consentementVu && !dejaExplique.current;
   const ratés = resumes.filter((r) => r.etat === "echec");
   const vide = planVide(lirePlan(compteRendu));
 
   return (
-    <Page titre="Réunions" sous="Le texte s'écrit pendant la réunion, et se résume toutes les 10 phrases"
+    <Page titre="Réunions" sous="Le texte s'écrit tout seul, et se range toutes les 10 phrases"
       actions={<button className="btn primary" onClick={creer}>＋ Nouvelle réunion</button>}>
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(190px, 240px) minmax(320px, 1fr)", gap: 14, alignItems: "start" }}>
@@ -364,131 +395,111 @@ export default function Reunions() {
             sous="Créez une réunion, posez l'ordinateur sur la table, et laissez l'application écrire : elle résume toutes les dix phrases." />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-            <div className="card">
-              <div className="row">
-                <Field label="Objet de la réunion">
-                  <Input value={courante.titre} placeholder="ESS de Camille, projet cirque…"
-                    onChange={(e) => majReunion({ titre: e.target.value })} />
-                </Field>
-                <Field label="Type">
-                  <Select value={courante.genre} onChange={(e) => majReunion({ genre: e.target.value }, true)}>
-                    {GENRES.map((g) => <option key={g}>{g}</option>)}
-                  </Select>
-                </Field>
-                <Field label="Date">
-                  <Input type="date" value={courante.date} onChange={(e) => majReunion({ date: e.target.value }, true)} />
+            {/* Pendant la réunion, l'écran s'efface : une bande de contrôle,
+                et l'encadré. L'en-tête ne sert qu'avant et après, il se
+                replie pour laisser la place au texte. */}
+            {(!enCours && !aDuTexte) || entete ? (
+              <div className="card">
+                <div className="row">
+                  <Field label="Objet de la réunion">
+                    <Input value={courante.titre} placeholder="ESS de Camille, projet cirque…"
+                      onChange={(e) => majReunion({ titre: e.target.value })} />
+                  </Field>
+                  <Field label="Type">
+                    <Select value={courante.genre} onChange={(e) => majReunion({ genre: e.target.value }, true)}>
+                      {GENRES.map((g) => <option key={g}>{g}</option>)}
+                    </Select>
+                  </Field>
+                  <Field label="Date">
+                    <Input type="date" value={courante.date} onChange={(e) => majReunion({ date: e.target.value }, true)} />
+                  </Field>
+                </div>
+                <Field label="Participants (facultatif)">
+                  <Input value={courante.participants} placeholder="Directrice, psychologue, éducatrice, la famille…"
+                    onChange={(e) => majReunion({ participants: e.target.value })} />
                 </Field>
               </div>
-              <Field label="Participants (facultatif)">
-                <Input value={courante.participants} placeholder="Directrice, psychologue, éducatrice, la famille…"
-                  onChange={(e) => majReunion({ participants: e.target.value })} />
-              </Field>
-            </div>
+            ) : null}
 
-            {/* L'écoute. Tant qu'elle tourne, c'est le seul endroit à regarder. */}
-            <div className="card">
-              {!enCours && !texte.trim() && !consentementVu ? (
-                <>
-                  <b style={{ fontSize: 14 }}>Avant de commencer</b>
-                  <ul style={{ fontSize: 13, lineHeight: 1.6, margin: "8px 0 0", paddingLeft: 18 }}>
-                    <li><b>Prévenez les participants</b> que vous enregistrez pour prendre des notes,
-                        et recueillez leur accord — en ESS ou devant une famille, cela se demande avant.</li>
-                    <li>L'audio part chez <b>Mistral</b> (serveurs en Europe) pour être transcrit, puis
-                        le texte pour être résumé. Les prénoms d'élèves connus de l'application sont
-                        masqués avant le résumé.</li>
-                    <li>L'audio n'est <b>jamais écrit sur le disque</b> et disparaît après la
-                        transcription : seuls les textes restent ici.</li>
-                    <li>Posez l'ordinateur au milieu de la table, et empêchez-le de se mettre en veille.</li>
-                  </ul>
-                  <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                    <button className="btn primary" onClick={demarrer}>🎧 J'ai compris, commencer à écouter</button>
-                    <button className="btn" onClick={() => setConsentementVu(true)}>
-                      ⌨️ Écrire moi-même
-                    </button>
-                  </div>
-                </>
-              ) : enCours ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-                  <div style={{ fontSize: 30 }}>{ecoute.etat === "pause" ? "⏸" : "🔴"}</div>
-                  <div style={{ minWidth: 150 }}>
-                    <div style={{ fontSize: 24, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{mmss(ecoute.secondes)}</div>
-                    <div className="meta" style={{ fontSize: 12 }}>
-                      {ecoute.etat === "pause" ? "en pause"
-                        : transcrit ? "le texte s'écrit…"
-                        : `${attente} phrase${attente > 1 ? "s" : ""} depuis le dernier rangement`}
-                    </div>
-                  </div>
-                  <div className="spacer" style={{ flex: 1 }} />
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {ecoute.etat === "ecoute" ? (
-                      <>
-                        <button className="btn" onClick={ecoute.couper} disabled={transcrit}
-                          title="Transcrire tout de suite ce qui vient d'être dit">⤓ Écrire maintenant</button>
-                        <button className="btn" onClick={ecoute.pause}>⏸ Pause</button>
-                      </>
-                    ) : (
-                      <button className="btn primary" onClick={ecoute.reprendre}>▶️ Reprendre</button>
-                    )}
-                    <button className="btn" onClick={terminer}>⏹ Terminer</button>
-                  </div>
+            {/* L'accord des participants se demande une fois, et l'écoute part
+                ensuite d'elle-même à chaque nouvelle réunion. */}
+            {aExpliquer ? (
+              <div className="card">
+                <b style={{ fontSize: 14 }}>Avant de commencer</b>
+                <ul style={{ fontSize: 13, lineHeight: 1.6, margin: "8px 0 0", paddingLeft: 18 }}>
+                  <li><b>Prévenez les participants</b> que vous enregistrez pour prendre des notes,
+                      et recueillez leur accord — en ESS ou devant une famille, cela se demande avant.</li>
+                  <li>L'audio part chez <b>Mistral</b> (serveurs en Europe) pour être transcrit, puis
+                      le texte pour être rangé. Les prénoms d'élèves connus de l'application sont
+                      masqués avant l'envoi.</li>
+                  <li>L'audio n'est <b>jamais écrit sur le disque</b> et disparaît après la
+                      transcription : seuls les textes restent ici.</li>
+                  <li>Une fois cet écran accepté, l'écoute démarrera d'elle-même à chaque nouvelle
+                      réunion. Le bouton Pause reste à portée de main.</li>
+                </ul>
+                <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                  <button className="btn primary" onClick={accepterEtEcouter}>🎧 J'ai compris, écouter</button>
+                  <button className="btn" onClick={() => setConsentementVu(true)}>⌨️ Écrire moi-même</button>
                 </div>
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                  <button className="btn primary" onClick={demarrer}>
-                    {texte.trim() ? "🎧 Reprendre l'écoute" : "🎧 Commencer à écouter"}
-                  </button>
-                  <span className="meta" style={{ fontSize: 12.5 }}>
-                    Le compte rendu se range toutes les {PHRASES_PAR_RESUME} phrases
-                    {courante.dureeS ? ` · ${dureeLisible(courante.dureeS)} écoutées` : ""}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Un seul encadré. Le texte s'y écrit tout seul, lettre après
-                lettre, et l'agent le range toutes les dix phrases. On peut y
-                mettre la main à tout moment : l'animation s'arrête, et
-                l'agent repart de ce qui est écrit. */}
-            <div className="card">
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-                <b style={{ fontSize: 14 }}>Compte rendu</b>
+              </div>
+            ) : (
+              <div className="toolbar" style={{ marginBottom: 0 }}>
+                <span style={{ fontSize: 18 }}>{enCours ? (ecoute.etat === "pause" ? "⏸" : "🔴") : "⏹"}</span>
+                <b style={{ fontSize: 15, fontVariantNumeric: "tabular-nums", minWidth: 54 }}>
+                  {mmss(enCours ? ecoute.secondes : courante.dureeS)}
+                </b>
                 <span className="meta" style={{ fontSize: 12 }}>
-                  {integres > 0 ? `${integres} rangement(s)` : "il s'écrira pendant la réunion"}
-                  {transcrit ? " · le texte s'écrit…"
-                    : attente > 0 && (assez ? " · rangement en cours…" : ` · ${PHRASES_PAR_RESUME - attente} phrases avant le prochain`)}
+                  {ecoute.etat === "pause" ? "en pause"
+                    : transcrit ? "le texte s'écrit…"
+                    : enCours ? (assez ? "rangement en cours…" : `${PHRASES_PAR_RESUME - attente} phrases avant le prochain rangement`)
+                    : "écoute arrêtée"}
                 </span>
                 <div className="spacer" style={{ flex: 1 }} />
-                <span className="meta" style={{ fontSize: 12 }}>{occupe}</span>
+                {enCours ? (
+                  <>
+                    {ecoute.etat === "ecoute"
+                      ? <button className="btn" onClick={ecoute.pause}>⏸ Pause</button>
+                      : <button className="btn primary" onClick={ecoute.reprendre}>▶️ Reprendre</button>}
+                    <button className="btn" onClick={terminer}>⏹ Terminer</button>
+                  </>
+                ) : (
+                  <button className="btn primary" onClick={demarrer}>🎧 Écouter</button>
+                )}
                 {attente > 0 && (
                   <button className="btn sm" onClick={() => { void integrerSiBesoin(true); }}
-                    title="Ranger tout de suite ce qui vient d'être dit">✨ Ranger maintenant</button>
+                    title="Ranger tout de suite ce qui vient d'être dit">✨ Ranger</button>
                 )}
                 {!vide && <>
-                  <button className="btn primary sm" disabled={!!occupe} onClick={auPropre}
-                    title="Relire l'ensemble d'un coup : redites, ordre, tournures">✍️ Mettre au propre</button>
-                  <button className="btn sm" onClick={copier}>📋 Copier</button>
-                  <button className="btn sm" onClick={imprimer}>🖨 Imprimer</button>
+                  <button className="btn sm" disabled={!!occupe} onClick={auPropre}
+                    title="Relire l'ensemble d'un coup : redites, ordre, tournures">✍️ Au propre</button>
+                  <button className="btn sm" onClick={copier}>📋</button>
+                  <button className="btn sm" onClick={imprimer}>🖨</button>
                 </>}
+                <button className="btn ghost sm" onClick={() => setEntete((v) => !v)}
+                  title="Objet, type, date, participants">{entete ? "▴" : "▾"} Détails</button>
               </div>
-              <ZoneVivante cible={compteRendu} minHauteur={320} anime={enCours || transcrit || assez}
-                onChange={(v) => { compteRenduRef.current = v; setCompteRendu(v); majReunion({ compteRendu: v }); }}
-                placeholder="Ce qui se dit s'écrira ici, tout seul — et se rangera en points abordés, décisions et choses à faire. Vous pouvez écrire dedans à tout moment." />
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
-                <span className="meta" style={{ fontSize: 11.5 }}>
-                  Le mot à mot est gardé à part ({decouperEnPhrases(texte).length} phrase(s)).
-                </span>
-                {texte.trim() && <button className="btn ghost sm" onClick={effacerTexte}>🧹 Effacer le mot à mot</button>}
-                {ratés.length > 0 && (
-                  <>
-                    <span style={{ fontSize: 11.5, color: "var(--danger, #ef4444)" }}>
-                      {ratés.length} rangement(s) raté(s).
-                    </span>
-                    <button className="btn ghost sm" onClick={() => { void refaire(ratés[0]); }}>↺ Réessayer</button>
-                  </>
-                )}
-              </div>
-            </div>
+            )}
 
+            {/* L'encadré, et rien d'autre : même feuille que l'éditeur de
+                textes, pour qu'on écrive ici comme on écrit là-bas. */}
+            <ZoneVivante cible={compteRendu} minHauteur="55vh" anime={enCours || transcrit || assez}
+              onChange={(v) => { compteRenduRef.current = v; setCompteRendu(v); majReunion({ compteRendu: v }); }}
+              placeholder="Ce qui se dit s'écrira ici, tout seul — et se rangera en points abordés, décisions et choses à faire. Vous pouvez écrire dedans à tout moment." />
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span className="meta" style={{ fontSize: 11.5 }}>
+                {occupe || `Mot à mot gardé à part (${decouperEnPhrases(texte).length} phrase(s))`}
+              </span>
+              {texte.trim() && <button className="btn ghost sm" onClick={effacerTexte}>🧹 Effacer le mot à mot</button>}
+              {ratés.length > 0 && (
+                <>
+                  <span style={{ fontSize: 11.5, color: "var(--danger, #ef4444)" }}>
+                    {ratés.length} rangement(s) raté(s).
+                  </span>
+                  <button className="btn ghost sm" onClick={() => { void refaire(ratés[0]); }}>↺ Réessayer</button>
+                </>
+              )}
+            </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button className="btn ghost sm" onClick={() => supprimer(courante)}>🗑 Supprimer cette réunion</button>

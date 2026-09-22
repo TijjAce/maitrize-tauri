@@ -61,12 +61,13 @@ export function prochainAffichage(affiche: string, cible: string, base = PAR_TIC
   return cible.slice(0, depart.length + parTic(reste, base));
 }
 
-export function ZoneVivante({ cible, onChange, minHauteur = 260, placeholder, style, anime = true }: {
+export function ZoneVivante({ cible, onChange, minHauteur = "55vh", placeholder, style, anime = true }: {
   /** Le texte visé : ce qui est enregistré, et vers quoi l'affichage court. */
   cible: string;
   /** Appelé quand l'enseignant écrit lui-même dans l'encadré. */
   onChange: (valeur: string) => void;
-  minHauteur?: number;
+  /** Nombre : un plancher en pixels. Chaîne : une hauteur CSS. */
+  minHauteur?: number | string;
   placeholder?: string;
   style?: React.CSSProperties;
   /** Faux : le texte s'affiche sans animation (relecture d'une vieille réunion). */
@@ -107,7 +108,10 @@ export function ZoneVivante({ cible, onChange, minHauteur = 260, placeholder, st
       value={affiche}
       minHauteur={minHauteur}
       placeholder={placeholder}
-      style={style}
+      // La feuille de l'éditeur de textes : même cadre, mêmes marges, même
+      // interligne — on écrit ici comme on écrit là-bas.
+      className="textarea editeur-riche-feuille"
+      style={{ resize: "vertical", ...style }}
       onFocus={prendreLaMain}
       onChange={(e) => {
         prendreLaMain();
