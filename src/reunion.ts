@@ -49,14 +49,18 @@ export const MORCEAU_S = 45;
 export const PHRASES_PAR_RANGEMENT = 1;
 
 /**
- * La relecture de fond : toutes les dix phrases.
+ * La relecture de fond : toutes les deux phrases.
  *
- * Ranger deux phrases à la fois fait un document juste mais bavard — les
- * mêmes idées reviennent sous trois formulations, et les lignes s'allongent.
- * Une seconde lecture reprend l'ensemble et resserre : elle voit ce qu'un
- * passage seul ne peut pas voir.
+ * Ranger une phrase à la fois fait un document juste mais bavard — les mêmes
+ * idées reviennent sous trois formulations, et les lignes s'allongent. Une
+ * seconde lecture reprend l'ensemble et resserre : elle voit ce qu'un passage
+ * seul ne peut pas voir.
+ *
+ * Deux phrases, c'est presque en continu, et cela se paie en appels : d'où le
+ * bouton qui l'arrête, et l'avertissement qui dit qu'elle passe en ligne même
+ * quand la transcription, elle, reste sur la machine.
  */
-export const PHRASES_PAR_RELECTURE = 10;
+export const PHRASES_PAR_RELECTURE = 2;
 
 /** Les réunions d'un enseignant du premier degré, ESMS compris. */
 export const GENRES = [

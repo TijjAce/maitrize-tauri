@@ -50,9 +50,10 @@ describe("le rythme des deux agents", () => {
     expect(assezPourResumer(12)).toBe(true);
   });
 
-  it("relit l'ensemble toutes les dix phrases, pas avant", () => {
-    expect(assezPourRelire(9)).toBe(false);
+  it("relit l'ensemble toutes les deux phrases, pas avant", () => {
+    expect(assezPourRelire(1)).toBe(false);
     expect(assezPourRelire(PHRASES_PAR_RELECTURE)).toBe(true);
+    // La relecture reste plus rare que le rangement : sinon elle le doublerait.
     expect(PHRASES_PAR_RELECTURE).toBeGreaterThan(PHRASES_PAR_RANGEMENT);
   });
 
