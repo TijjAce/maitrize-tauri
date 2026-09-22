@@ -102,6 +102,7 @@ pub fn run() {
             conversations_list, conversation_save, conversation_delete,
             reunions_list, reunion_save, reunion_delete,
             observations_list, observation_save, observation_delete,
+            dossiers_bureau,
             whisper::transcrire_local, whisper::whisper_tester,
             // Coffre-fort
             coffre_list, coffre_save, coffre_delete, coffre_download,
