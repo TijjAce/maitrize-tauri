@@ -52,8 +52,9 @@ export function SurLeTelephone({ label = "📱 Sur le téléphone" }: { label?: 
                 dangerouslySetInnerHTML={{ __html: info.qrSvg }} />
               <p className="meta" style={{ margin: 0, fontSize: 11.5, wordBreak: "break-all" }}>{info.url}</p>
               <p style={{ fontSize: 12, color: "var(--text-2)", margin: 0 }}>
-                Planning, prévu et bilan, séquences, élèves — en lecture seule, sur le réseau local.
-                Le partage s'arrête en fermant.
+                Planning, prévu et bilan, séquences, élèves — en lecture, sur le réseau local.
+                L'onglet <b>👁 Observer</b> se remplit depuis le téléphone : ce que vous y écrivez
+                revient sur l'ordinateur. Le partage s'arrête en fermant.
               </p>
             </div>
           ) : (
