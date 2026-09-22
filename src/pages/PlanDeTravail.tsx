@@ -737,10 +737,6 @@ export default function PlanDeTravail() {
         </div>
         <Input className="search" placeholder="Rechercher partout…" value={q}
           onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 220 }} />
-        {/* Les fiches gardent leurs filtres — à combien on joue, quelle catégorie,
-            pour quel élève — qu'un bureau ne saurait pas offrir. */}
-        <button className="btn ghost sm" onClick={() => nav("/ateliers")}
-          title="Ateliers, espaces, jeux, outils et affichages en fiches, avec leurs filtres">▦ Fiches</button>
         <button className={`btn sm${scinde ? " primary" : " ghost"}`} onClick={() => setScinde(!scinde)}
           title={scinde ? "Refermer le bureau commun" : "Ouvrir le bureau commun à côté : glisser d'un bureau à l'autre"}>
           🤝 Bureaux communs</button>
