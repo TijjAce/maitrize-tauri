@@ -16,10 +16,11 @@ vi.mock("./api", () => ({
 }));
 
 import {
-  PHRASES_PAR_RESUME, TRANCHE_S, ajouterAuTexte, assezPourResumer, convertirAnciennes,
-  decouperEnPhrases, dureeLisible, ecrireResumes, horodatage, lireResumes, lireTranches,
-  nettoyer, nomDeLaReunion, phrasesEnAttente, promptCompteRendu, promptPassage,
-  redigerCompteRendu, repereDuResume, resumerPassage, riendedit, texteACopier, type Resume,
+  PHRASES_PAR_RESUME, RUBRIQUES, TRANCHE_S, ajouterAuTexte, assezPourResumer, convertirAnciennes,
+  decouperEnPhrases, dureeLisible, ecrirePlan, ecrireResumes, fusionnerPlan, horodatage,
+  integrerAuPlan, lirePlan, lireResumes, lireTranches, mettreAuPropre, nettoyer, nomDeLaReunion,
+  phrasesEnAttente, planVide, promptCompteRendu, promptPassage, promptPlan, redigerCompteRendu,
+  repereDuResume, resumerPassage, riendedit, texteACopier, type Resume,
 } from "./reunion";
 
 const resume = (p: Partial<Resume> = {}): Resume => ({
@@ -210,22 +211,124 @@ describe("ce qu'on emporte", () => {
   });
 
   it("copie le compte rendu avec son en-tête", () => {
-    const t = texteACopier({ ...reunion, compteRendu: "## Décisions\n- Maintien en ULIS." }, []);
+    const t = texteACopier({ ...reunion, compteRendu: "## Décisions\n- Maintien en ULIS." });
     expect(t).toContain("ESS de Camille");
     expect(t).toContain("1 h 05");
     expect(t).toContain("Participants : Directrice");
     expect(t).toContain("- Maintien en ULIS.");
   });
 
-  it("à défaut de compte rendu, copie les résumés avec leur repère", () => {
-    const t = texteACopier(reunion, [resume({ quand: 300 }), resume({ id: "r2", rang: 2, de: 10, a: 20, texte: "—" })]);
-    expect(t).toContain("[5 min · phrases 1–10]");
-    expect(t).toContain("- Un point.");
-    expect(t).not.toContain("—\n");
+  it("à défaut de compte rendu, on emporte ce qui a été dit", () => {
+    const t = texteACopier({ ...reunion, texte: "Bonjour. On commence." });
+    expect(t).toContain("ESS de Camille");
+    expect(t).toContain("Bonjour. On commence.");
   });
 
   it("une réunion sans titre garde un nom dans la liste", () => {
     expect(nomDeLaReunion({ titre: "", genre: "Conseil d'école", date: "2026-09-21" })).toBe("Conseil d'école");
     expect(nomDeLaReunion({ titre: "  ", genre: "", date: "" })).toBe("Réunion");
+  });
+});
+
+describe("le compte rendu vivant", () => {
+  const PLAN = [
+    "## Points abordés",
+    "- La cantine du mardi.",
+    "## Décisions",
+    "- Rien à signaler",
+    "## Ce que je dois faire",
+    "- Prévenir la cantine.",
+    "## À revoir",
+    "- Rien à signaler",
+  ].join("\n");
+
+  it("se lit et se réécrit sans rien perdre", () => {
+    const plan = lirePlan(PLAN);
+    expect(plan["Points abordés"]).toEqual(["La cantine du mardi."]);
+    expect(plan["Ce que je dois faire"]).toEqual(["Prévenir la cantine."]);
+    // Réécrit, il garde les quatre rubriques, dans l'ordre.
+    const reecrit = ecrirePlan(plan);
+    for (const r of RUBRIQUES) expect(reecrit).toContain(`## ${r}`);
+    expect(lirePlan(reecrit)["Points abordés"]).toEqual(["La cantine du mardi."]);
+  });
+
+  it("ignore ce qui n'est pas une rubrique connue", () => {
+    const plan = lirePlan("## Divers\n- Hors sujet.\n## Décisions\n- Essai accepté.");
+    expect(plan["Divers"]).toBeUndefined();
+    expect(plan["Décisions"]).toEqual(["Essai accepté."]);
+  });
+
+  it("un compte rendu qui ne dit rien est reconnu comme vide", () => {
+    expect(planVide(lirePlan(ecrirePlan({})))).toBe(true);
+    expect(planVide(lirePlan(PLAN))).toBe(false);
+  });
+
+  it("une réponse tronquée n'efface pas la réunion", () => {
+    // Le modèle ne renvoie que « Décisions » : le reste doit survivre.
+    const fusion = fusionnerPlan(lirePlan(PLAN), lirePlan("## Décisions\n- Essai à la cantine."));
+    expect(fusion["Décisions"]).toEqual(["Essai à la cantine."]);
+    expect(fusion["Points abordés"]).toEqual(["La cantine du mardi."]);
+    expect(fusion["Ce que je dois faire"]).toEqual(["Prévenir la cantine."]);
+  });
+
+  it("une rubrique vidée exprès peut le rester quand elle était déjà vide", () => {
+    const fusion = fusionnerPlan(lirePlan(ecrirePlan({})), lirePlan("## Points abordés\n- Un point."));
+    expect(fusion["Points abordés"]).toEqual(["Un point."]);
+    expect(fusion["Décisions"]).toEqual([]);
+  });
+
+  it("la consigne demande de réagencer, pas d'empiler", () => {
+    const m = promptPlan({ genre: "ESS", titre: "Camille", plan: PLAN, passage: "On décide l'essai." });
+    expect(m[0].content).toContain("mis à jour");
+    expect(m[0].content).toContain("fusionne");
+    expect(m[0].content).toContain("déplace une ligne");
+    expect(m[0].content).toContain("N'invente rien");
+    expect(m[1].content).toContain("Compte rendu actuel :");
+    expect(m[1].content).toContain("On décide l'essai.");
+  });
+
+  it("intègre un passage, sans qu'aucun prénom ne sorte", async () => {
+    reponse = "## Points abordés\n- La cantine du mardi pour [P1].\n## Décisions\n- Essai accepté.\n## Ce que je dois faire\n- Prévenir la cantine.\n## À revoir\n- Rien à signaler";
+    const suite = await integrerAuPlan(
+      "## Points abordés\n- La cantine de Camille Bernard.\n## Décisions\n- Rien à signaler\n## Ce que je dois faire\n- Rien à signaler\n## À revoir\n- Rien à signaler",
+      "On accepte l'essai pour Camille Bernard.",
+      { genre: "ESS", titre: "ESS de Camille Bernard" },
+    );
+    const envoye = appels[0].messages.map((m) => m.content).join("\n");
+    expect(envoye).not.toContain("Camille");
+    expect(envoye).not.toContain("Bernard");
+    expect(suite).toContain("Camille");
+    expect(suite).toContain("Essai accepté.");
+    expect(suite).not.toMatch(/\[P\d+\]/);
+  });
+
+  it("un passage vide laisse le compte rendu tel quel, sans appeler l'IA", async () => {
+    const avant = PLAN;
+    expect(await integrerAuPlan(avant, "   ", { genre: "ESS", titre: "" })).toBe(avant);
+    expect(appels).toHaveLength(0);
+  });
+
+  it("une réponse inexploitable ne remplace pas le compte rendu", async () => {
+    reponse = "Bien sûr ! Voici le compte rendu mis à jour.";
+    await expect(integrerAuPlan(ecrirePlan({}), "On parle de la cantine.", { genre: "ESS", titre: "" }))
+      .rejects.toThrow(/exploitable/);
+  });
+
+  it("la mise au propre refuse un compte rendu encore vide", async () => {
+    await expect(mettreAuPropre(
+      { genre: "ESS", titre: "", date: "", participants: "" }, ecrirePlan({}),
+    )).rejects.toThrow(/vide/);
+    expect(appels).toHaveLength(0);
+  });
+
+  it("la mise au propre masque les prénoms et rend le texte relu", async () => {
+    reponse = "## Points abordés\n- Cantine du mardi pour [P1].";
+    const propre = await mettreAuPropre(
+      { genre: "ESS", titre: "ESS de Camille Bernard", date: "2026-09-22", participants: "Directrice" },
+      "## Points abordés\n- Cantine de Camille Bernard.\n## Décisions\n- Rien à signaler\n## Ce que je dois faire\n- Rien à signaler\n## À revoir\n- Rien à signaler",
+    );
+    const envoye = appels[0].messages.map((m) => m.content).join("\n");
+    expect(envoye).not.toContain("Bernard");
+    expect(propre).toContain("Camille");
   });
 });

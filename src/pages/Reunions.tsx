@@ -8,16 +8,19 @@ import { printHTML, escapeHtml } from "../print";
 import { useEcoute, type TrancheAudio } from "../ecoute";
 import {
   GENRES, MORCEAU_S, PHRASES_PAR_RESUME, ajouterAuTexte, assezPourResumer, convertirAnciennes,
-  decouperEnPhrases, dureeLisible, ecrireResumes, lireResumes, nomDeLaReunion, phrasesEnAttente,
-  redigerCompteRendu, repereDuResume, resumerPassage, riendedit, texteACopier, type Resume,
+  decouperEnPhrases, dureeLisible, ecrireResumes, integrerAuPlan, lirePlan, lireResumes,
+  mettreAuPropre, nomDeLaReunion, phrasesEnAttente, planVide, texteACopier, type Resume,
 } from "../reunion";
 
 // ── Réunions ──────────────────────────────────────────────────────────────
 //
 // En ESS, en conseil de cycle, en équipe éducative, on parle pendant une
 // heure et l'on note trois mots : au moment de rédiger, il ne reste rien.
-// Ici, l'application écrit ce qui se dit au fur et à mesure, et résume toutes
-// les dix phrases. À la fin, le compte rendu s'assemble à partir des résumés.
+// Ici, l'application écrit ce qui se dit au fur et à mesure, et un agent
+// range : toutes les dix phrases, il reprend le compte rendu et l'agence —
+// ce qui est nouveau va sous le bon titre, ce qui se répète fusionne, une
+// piste devenue décision change de rubrique. À la fin, le compte rendu est
+// déjà écrit ; il ne reste qu'à le mettre au propre.
 //
 // Le texte est modifiable, et l'on peut aussi y taper sans micro : une
 // réunion se prend parfois au clavier, et les résumés arrivent pareillement.
@@ -55,6 +58,9 @@ export default function Reunions() {
   const [occupe, setOccupe] = React.useState("");
   const [consentementVu, setConsentementVu] = React.useState(false);
   const [transcrit, setTranscrit] = React.useState(false);
+  // Le mot à mot est la source ; le document, c'est le compte rendu. On le
+  // garde sous la main, replié.
+  const [texteVisible, setTexteVisible] = React.useState(false);
 
   // Ce que les rappels du micro et des minuteurs doivent lire : ils vivent
   // plus longtemps qu'un rendu, et une valeur figée leur ferait résumer deux
@@ -65,6 +71,10 @@ export default function Reunions() {
   texteRef.current = texte;
   const resumesRef = React.useRef<Resume[]>([]);
   resumesRef.current = resumes;
+  // L'agent repart du compte rendu tel qu'il est — corrections de
+  // l'enseignant comprises : c'est lui l'état, il n'y en a pas d'autre.
+  const compteRenduRef = React.useRef("");
+  compteRenduRef.current = compteRendu;
   const resumeEnCours = React.useRef(false);
   const secondesRef = React.useRef(0);
   // Un booléen, pas l'objet : `courante` change à chaque enregistrement, et
@@ -117,12 +127,6 @@ export default function Reunions() {
     majReunion({ texte: suite }, tout_de_suite);
   }, [majReunion]);
 
-  const poserResumes = React.useCallback((suite: Resume[]) => {
-    resumesRef.current = suite;
-    setResumes(suite);
-    majReunion({ resumesJson: ecrireResumes(suite), texte: texteRef.current }, true);
-  }, [majReunion]);
-
   const majResume = React.useCallback((id: string, patch: Partial<Resume>, ecrire = false) => {
     const suite = resumesRef.current.map((r) => (r.id === id ? { ...r, ...patch } : r));
     resumesRef.current = suite;
@@ -133,10 +137,13 @@ export default function Reunions() {
   // ── Résumer ce qui attend ───────────────────────────────────────────────
 
   /**
-   * Résume les phrases en attente, s'il y en a assez — ou tout de suite si
-   * on le demande (bouton « Résumer maintenant », fin de la réunion).
+   * Fait relire le compte rendu à l'agent avec ce qui vient d'être dit.
+   *
+   * Rien n'est empilé : l'agent rend le document entier, réagencé. On repart
+   * toujours de la version affichée, pour qu'une correction de l'enseignant
+   * survive au passage suivant.
    */
-  const resumerSiBesoin = React.useCallback(async (force = false) => {
+  const integrerSiBesoin = React.useCallback(async (force = false) => {
     if (resumeEnCours.current) return;
     const { de, phrases } = phrasesEnAttente(texteRef.current, resumesRef.current);
     if (!phrases.length) return;
@@ -151,16 +158,19 @@ export default function Reunions() {
     resumesRef.current = avec;
     setResumes(avec);
     try {
-      const resume = await resumerPassage(phrases.join(" "), contexte.current);
-      majResume(id, { texte: resume, etat: "fait" }, true);
+      const suite = await integrerAuPlan(compteRenduRef.current, phrases.join(" "), contexte.current);
+      compteRenduRef.current = suite;
+      setCompteRendu(suite);
+      majResume(id, { etat: "fait" });
+      majReunion({ compteRendu: suite, resumesJson: ecrireResumes(resumesRef.current), texte: texteRef.current }, true);
     } catch (e) {
       majResume(id, { etat: "echec", erreur: texteErreur(e) }, true);
     } finally {
       resumeEnCours.current = false;
     }
-  }, [majResume]);
+  }, [majResume, majReunion]);
 
-  /** Un résumé raté se refait : le texte, lui, n'est pas perdu. */
+  /** Un passage mal intégré se rejoue : le texte, lui, n'est pas perdu. */
   const refaire = async (r: Resume) => {
     if (resumeEnCours.current) return;
     const phrases = decouperEnPhrases(texteRef.current).slice(r.de, r.a);
@@ -168,7 +178,11 @@ export default function Reunions() {
     resumeEnCours.current = true;
     majResume(r.id, { etat: "encours", erreur: undefined });
     try {
-      majResume(r.id, { texte: await resumerPassage(phrases.join(" "), contexte.current), etat: "fait" }, true);
+      const suite = await integrerAuPlan(compteRenduRef.current, phrases.join(" "), contexte.current);
+      compteRenduRef.current = suite;
+      setCompteRendu(suite);
+      majResume(r.id, { etat: "fait" });
+      majReunion({ compteRendu: suite, resumesJson: ecrireResumes(resumesRef.current), texte: texteRef.current }, true);
     } catch (e) {
       majResume(r.id, { etat: "echec", erreur: texteErreur(e) }, true);
     } finally { resumeEnCours.current = false; }
@@ -181,9 +195,9 @@ export default function Reunions() {
   const assez = assezPourResumer(phrasesEnAttente(texte, resumes).phrases.length);
   React.useEffect(() => {
     if (!ouverte || !assez) return;
-    const t = window.setTimeout(() => { void resumerSiBesoin(); }, REPOS_MS);
+    const t = window.setTimeout(() => { void integrerSiBesoin(); }, REPOS_MS);
     return () => window.clearTimeout(t);
-  }, [texte, ouverte, assez, resumerSiBesoin]);
+  }, [texte, ouverte, assez, integrerSiBesoin]);
 
   // ── L'écoute ────────────────────────────────────────────────────────────
 
@@ -250,26 +264,27 @@ export default function Reunions() {
     majReunion({ dureeS: ecoute.secondes }, true);
     // Ce qui reste sous les dix phrases mérite quand même son résumé, une
     // fois la dernière transcription arrivée.
-    window.setTimeout(() => { void resumerSiBesoin(true); }, 1500);
+    window.setTimeout(() => { void integrerSiBesoin(true); }, 1500);
   };
 
   // ── Le compte rendu ─────────────────────────────────────────────────────
 
-  const rediger = async () => {
+  const auPropre = async () => {
     if (!courante) return;
-    setOccupe("Rédaction du compte rendu…");
+    setOccupe("Mise au propre…");
     try {
-      const t = await redigerCompteRendu(courante, resumes);
+      const t = await mettreAuPropre(courante, compteRenduRef.current);
+      compteRenduRef.current = t;
       setCompteRendu(t);
       majReunion({ compteRendu: t }, true);
     } catch (e) {
-      toast("Compte rendu impossible : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
+      toast("Mise au propre impossible : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
     } finally { setOccupe(""); }
   };
 
   const copier = async () => {
     if (!courante) return;
-    await navigator.clipboard.writeText(texteACopier({ ...courante, compteRendu }, resumes));
+    await navigator.clipboard.writeText(texteACopier({ ...courante, compteRendu, texte }));
     toast("Compte rendu copié.", { icone: "📋" });
   };
 
@@ -282,10 +297,8 @@ export default function Reunions() {
       if (x.startsWith("- ")) return `<li>${escapeHtml(x.slice(2))}</li>`;
       return `<p>${escapeHtml(x)}</p>`;
     }).join("").replace(/(<li>.*?<\/li>)(?!<li>)/g, "<ul>$1</ul>").replace(/<\/ul><ul>/g, "");
-    const corps = compteRendu.trim()
-      ? lignes(compteRendu)
-      : resumes.filter((r) => !riendedit(r.texte))
-        .map((r) => `<h2>${escapeHtml(repereDuResume(r))}</h2>${lignes(r.texte)}`).join("");
+    // Sans compte rendu — réunion trop courte —, on imprime ce qui a été dit.
+    const corps = compteRendu.trim() ? lignes(compteRendu) : lignes(texte);
     printHTML(nomDeLaReunion(courante),
       `<h1>${escapeHtml(nomDeLaReunion(courante))}</h1>
        <div class="meta">${escapeHtml([courante.genre, courante.date,
@@ -311,7 +324,9 @@ export default function Reunions() {
 
   const enCours = ecoute.etat !== "repos";
   const attente = phrasesEnAttente(texte, resumes).phrases.length;
-  const utiles = resumes.filter((r) => !riendedit(r.texte)).length;
+  const integres = resumes.filter((r) => r.etat === "fait").length;
+  const ratés = resumes.filter((r) => r.etat === "echec");
+  const vide = planVide(lirePlan(compteRendu));
 
   return (
     <Page titre="Réunions" sous="Le texte s'écrit pendant la réunion, et se résume toutes les 10 phrases"
@@ -385,7 +400,11 @@ export default function Reunions() {
                   </ul>
                   <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
                     <button className="btn primary" onClick={demarrer}>🎧 J'ai compris, commencer à écouter</button>
-                    <button className="btn" onClick={() => { setConsentementVu(true); zoneTexte.current?.focus(); }}>
+                    <button className="btn" onClick={() => {
+                      setConsentementVu(true);
+                      setTexteVisible(true);
+                      window.setTimeout(() => zoneTexte.current?.focus(), 0);
+                    }}>
                       ⌨️ Écrire moi-même
                     </button>
                   </div>
@@ -398,7 +417,7 @@ export default function Reunions() {
                     <div className="meta" style={{ fontSize: 12 }}>
                       {ecoute.etat === "pause" ? "en pause"
                         : transcrit ? "le texte s'écrit…"
-                        : `${attente} phrase${attente > 1 ? "s" : ""} depuis le dernier résumé`}
+                        : `${attente} phrase${attente > 1 ? "s" : ""} depuis le dernier rangement`}
                     </div>
                   </div>
                   <div className="spacer" style={{ flex: 1 }} />
@@ -421,97 +440,72 @@ export default function Reunions() {
                     {texte.trim() ? "🎧 Reprendre l'écoute" : "🎧 Commencer à écouter"}
                   </button>
                   <span className="meta" style={{ fontSize: 12.5 }}>
-                    Un résumé toutes les {PHRASES_PAR_RESUME} phrases
+                    Le compte rendu se range toutes les {PHRASES_PAR_RESUME} phrases
                     {courante.dureeS ? ` · ${dureeLisible(courante.dureeS)} écoutées` : ""}
                   </span>
                 </div>
               )}
             </div>
 
-            {/* Le texte de la réunion : il s'écrit, et l'on peut y taper. */}
-            <div className="card">
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-                <b style={{ fontSize: 14 }}>Ce qui se dit</b>
-                <span className="meta" style={{ fontSize: 12 }}>
-                  {decouperEnPhrases(texte).length} phrase(s)
-                  {attente > 0 && (assez
-                    ? ` · ${attente} en attente de résumé`
-                    : ` · ${PHRASES_PAR_RESUME - attente} avant le prochain résumé`)}
-                </span>
-                <div className="spacer" style={{ flex: 1 }} />
-                {attente > 0 && (
-                  <button className="btn sm" onClick={() => { void resumerSiBesoin(true); }}
-                    title={`Résumer les ${attente} phrase(s) en attente`}>✂️ Résumer maintenant</button>
-                )}
-                {texte.trim() && <button className="btn ghost sm" onClick={effacerTexte}>🧹 Effacer</button>}
-              </div>
-              <TextareaAuto ref={zoneTexte} value={texte} minHauteur={180}
-                onChange={(e) => poserTexte(e.target.value)}
-                placeholder="Le texte de la réunion s'écrit ici au fil de l'écoute — vous pouvez aussi taper directement, et le résumé arrivera toutes les dix phrases." />
-            </div>
-
-            {/* Les résumés, dans l'ordre : on suit la réunion en les lisant. */}
-            {resumes.length > 0 && (
-              <div className="card">
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-                  <b style={{ fontSize: 14 }}>Au fil de la réunion</b>
-                  <span className="meta" style={{ fontSize: 12 }}>{resumes.length} résumé(s)</span>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {[...resumes].sort((a, b) => a.rang - b.rang).map((r) => (
-                    <div key={r.id} style={{ borderLeft: "3px solid var(--border)", paddingLeft: 10 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <b style={{ fontSize: 12.5, fontVariantNumeric: "tabular-nums" }}>{repereDuResume(r)}</b>
-                        {r.etat === "encours" && <span className="meta" style={{ fontSize: 11.5 }}>résumé…</span>}
-                        {r.etat === "echec" && <span className="meta" style={{ fontSize: 11.5 }}>échec</span>}
-                        <div className="spacer" style={{ flex: 1 }} />
-                        {r.etat === "echec" && (
-                          <button className="btn ghost sm" onClick={() => { void refaire(r); }}>↺ Réessayer</button>
-                        )}
-                      </div>
-                      {r.etat === "echec" ? (
-                        <p style={{ fontSize: 12.5, color: "var(--danger, #ef4444)", margin: "4px 0 0" }}>{r.erreur}</p>
-                      ) : r.etat === "encours" ? (
-                        <p className="meta" style={{ fontSize: 12.5, margin: "4px 0 0" }}>…</p>
-                      ) : riendedit(r.texte) ? (
-                        <p className="meta" style={{ fontSize: 12.5, margin: "4px 0 0", fontStyle: "italic" }}>
-                          Rien de notable dans ce passage.
-                        </p>
-                      ) : (
-                        <TextareaAuto value={r.texte} minHauteur={54}
-                          onChange={(e) => majResume(r.id, { texte: e.target.value })}
-                          onBlur={() => poserResumes(resumesRef.current)}
-                          style={{ fontSize: 13, marginTop: 4 }} />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Le compte rendu : ce qu'on emporte et qu'on envoie. */}
+            {/* Le compte rendu : il s'écrit pendant la réunion, et c'est lui
+                qu'on emporte. L'agent le reprend à chaque passage. */}
             <div className="card">
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
                 <b style={{ fontSize: 14 }}>Compte rendu</b>
+                <span className="meta" style={{ fontSize: 12 }}>
+                  {integres > 0 ? `${integres} passage(s) rangé(s)` : "il s'écrira pendant la réunion"}
+                  {attente > 0 && (assez ? " · rangement en cours…" : ` · ${PHRASES_PAR_RESUME - attente} phrases avant le prochain`)}
+                </span>
                 <div className="spacer" style={{ flex: 1 }} />
                 <span className="meta" style={{ fontSize: 12 }}>{occupe}</span>
-                <button className="btn primary sm" disabled={!!occupe || utiles === 0} onClick={rediger}>
-                  {compteRendu ? "✨ Reprendre la rédaction" : "✨ Rédiger le compte rendu"}
-                </button>
-                {compteRendu && <>
+                {attente > 0 && (
+                  <button className="btn sm" onClick={() => { void integrerSiBesoin(true); }}
+                    title={`Ranger tout de suite les ${attente} phrase(s) en attente`}>✨ Ranger maintenant</button>
+                )}
+                {!vide && <>
+                  <button className="btn primary sm" disabled={!!occupe} onClick={auPropre}
+                    title="Relire l'ensemble d'un coup : redites, ordre, tournures">✍️ Mettre au propre</button>
                   <button className="btn sm" onClick={copier}>📋 Copier</button>
                   <button className="btn sm" onClick={imprimer}>🖨 Imprimer</button>
                 </>}
               </div>
-              {compteRendu || utiles > 0 ? (
-                <TextareaAuto value={compteRendu} minHauteur={200}
-                  onChange={(e) => setCompteRendu(e.target.value)}
-                  onBlur={() => majReunion({ compteRendu }, true)}
-                  placeholder="Le compte rendu s'écrit ici à partir des résumés — relisez-le avant de l'envoyer." />
-              ) : (
+              {vide ? (
                 <p className="meta" style={{ fontSize: 12.5, margin: 0 }}>
-                  Le compte rendu s'écrira à partir des résumés, dès qu'il y en aura un.
+                  Dès les dix premières phrases, l'agent posera ici les points abordés,
+                  les décisions et ce que vous avez à faire — et les réagencera au fil de la réunion.
                 </p>
+              ) : (
+                <TextareaAuto value={compteRendu} minHauteur={240}
+                  onChange={(e) => { compteRenduRef.current = e.target.value; setCompteRendu(e.target.value); }}
+                  onBlur={() => majReunion({ compteRendu }, true)}
+                  placeholder="Le compte rendu s'écrit ici pendant la réunion — vos corrections sont conservées." />
+              )}
+              {ratés.length > 0 && (
+                <p style={{ fontSize: 12.5, color: "var(--danger, #ef4444)", margin: "8px 0 0" }}>
+                  {ratés.length} passage(s) n'ont pas pu être rangés.{" "}
+                  <button className="btn ghost sm" onClick={() => { void refaire(ratés[0]); }}>↺ Réessayer</button>
+                </p>
+              )}
+            </div>
+
+            {/* Ce qui a été dit, mot à mot : la source, qu'on garde sous la
+                main sans l'avoir sous les yeux. */}
+            <div className="card">
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <button className="btn ghost sm" onClick={() => setTexteVisible((v) => !v)}
+                  aria-expanded={texteVisible}>{texteVisible ? "▾" : "▸"} Ce qui se dit</button>
+                <span className="meta" style={{ fontSize: 12 }}>
+                  {decouperEnPhrases(texte).length} phrase(s)
+                  {transcrit && " · le texte s'écrit…"}
+                </span>
+                <div className="spacer" style={{ flex: 1 }} />
+                {texte.trim() && <button className="btn ghost sm" onClick={effacerTexte}>🧹 Effacer</button>}
+              </div>
+              {texteVisible && (
+                <TextareaAuto ref={zoneTexte} value={texte} minHauteur={160}
+                  onChange={(e) => poserTexte(e.target.value)}
+                  style={{ marginTop: 8 }}
+                  placeholder="Le texte de la réunion s'écrit ici au fil de l'écoute — vous pouvez aussi taper directement, paragraphe par paragraphe." />
               )}
             </div>
 
