@@ -45,11 +45,24 @@ export function parTic(retard: number, base = PAR_TIC): number {
 }
 
 /**
+ * La nouvelle cible n'est-elle qu'une suite de ce qui est affiché ?
+ *
+ * C'est le partage entre ce qui s'écrit et ce qui se range. La parole qui
+ * arrive s'ajoute à la fin : on la regarde s'écrire. L'agent, lui, réagence
+ * tout le document — le voir se retaper en entier donne le tournis et n'a
+ * rien à montrer. Ce travail-là se fait en arrière-plan : le texte est
+ * simplement là, rangé, au tic suivant.
+ */
+export function estUneSuite(affiche: string, cible: string): boolean {
+  return cible.startsWith(affiche);
+}
+
+/**
  * Le texte affiché au tic suivant.
  *
- * Quand la cible change ailleurs qu'à la fin — l'agent a réagencé le
- * document —, on garde le début commun et l'on retape la suite : c'est ce
- * qui donne l'impression que le texte se réécrit sous les yeux.
+ * Quand la cible change ailleurs qu'à la fin, on garde le début commun et
+ * l'on retape la suite — utile pour une correction locale, pas pour un
+ * réagencement complet, que l'appelant applique d'un coup.
  */
 export function prochainAffichage(affiche: string, cible: string, base = PAR_TIC): string {
   if (affiche === cible) return affiche;
@@ -86,6 +99,8 @@ export function ZoneVivante({ cible, onChange, minHauteur = "55vh", placeholder,
   React.useEffect(() => {
     if (!anime || aLaMain) { setAffiche(cible); return; }
     if (afficheRef.current === cible) return;
+    // Un rangement n'est pas une frappe : il se pose, il ne se tape pas.
+    if (!estUneSuite(afficheRef.current, cible)) { setAffiche(cible); return; }
     const id = window.setInterval(() => {
       const suite = prochainAffichage(afficheRef.current, cibleRef.current);
       afficheRef.current = suite;

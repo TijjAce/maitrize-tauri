@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PAR_TIC, parTic, prefixeCommun, prochainAffichage } from "./ZoneVivante";
+import { PAR_TIC, estUneSuite, parTic, prefixeCommun, prochainAffichage } from "./ZoneVivante";
 
 describe("ce qui n'a pas à être retapé", () => {
   it("trouve le début commun à deux textes", () => {
@@ -56,5 +56,22 @@ describe("le texte qui s'écrit", () => {
 
   it("un texte raccourci se ramène d'un coup, sans réécrire à l'envers", () => {
     expect(prochainAffichage("Bonjour à tous", "Bonjour")).toBe("Bonjour");
+  });
+});
+
+describe("ce qui s'écrit et ce qui se range", () => {
+  it("la parole qui arrive est une suite : elle s'écrit", () => {
+    expect(estUneSuite("Bonjour", "Bonjour à tous")).toBe(true);
+    expect(estUneSuite("", "Bonjour")).toBe(true);
+  });
+
+  it("un document réagencé n'est pas une suite : il se pose d'un coup", () => {
+    const avant = "## Points abordés\n- La cantine.\n\nOn accepte l'essai.";
+    const apres = "## Points abordés\n- La cantine.\n\n## Décisions\n- Essai accepté.";
+    expect(estUneSuite(avant, apres)).toBe(false);
+  });
+
+  it("un texte raccourci n'est pas une suite non plus", () => {
+    expect(estUneSuite("Bonjour à tous", "Bonjour")).toBe(false);
   });
 });
