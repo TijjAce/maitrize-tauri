@@ -322,7 +322,7 @@ export function promptPassage(genre: string, titre: string, passage: string) {
         "N'invente rien, n'interprète pas, n'ajoute aucun commentaire ni titre.",
         "Ignore les bavardages, les répétitions et ce qui n'a pas de suite.",
         "Si ce passage n'apporte rien (bavardage, hors sujet), réponds exactement : —",
-        "Les marqueurs entre crochets comme [P1] remplacent des prénoms : recopie-les exactement.",
+        "Les marqueurs entre crochets comme [P1] remplacent des prénoms : recopie-les exactement, et n'en invente aucun.",
       ].join(" "),
     },
     { role: "user" as const, content: passage },
@@ -352,7 +352,7 @@ export function promptCompteRendu(r: {
         "Sous « À revoir », mets ce qui est resté en suspens ou ce qui n'a pas été compris.",
         "Si une rubrique est vide, écris « - Rien à signaler ».",
         "N'invente rien : pas de nom, pas de date, pas de décision qui ne soit dans les résumés.",
-        "Les marqueurs entre crochets comme [P1] remplacent des prénoms : recopie-les exactement.",
+        "Les marqueurs entre crochets comme [P1] remplacent des prénoms : recopie-les exactement, et n'en invente aucun.",
       ].join(" "),
     },
     { role: "user" as const, content: `${entete}\n\nRésumés successifs :\n${r.resumes}` },
@@ -445,7 +445,7 @@ export function fusionnerPlan(ancien: Plan, nouveau: Plan): Plan {
  * suite, brut. L'agent reçoit donc ce document entier — rubriques déjà
  * rangées, puis la parole en vrac à la fin — et le rend rangé.
  */
-export function promptRangement(a: { genre: string; titre: string; document: string }) {
+export function promptRangement(a: { genre: string; titre: string; document: string; masques?: boolean }) {
   const quoi = [a.genre, a.titre].filter(Boolean).join(" — ") || "une réunion";
   return [
     {
@@ -463,7 +463,12 @@ export function promptRangement(a: { genre: string; titre: string; document: str
         "N'invente rien : aucune décision, aucune date, aucun nom qui ne soit dit.",
         "Ignore les bavardages et ce qui n'a pas de suite.",
         "Si une rubrique est vide, écris « - Rien à signaler ».",
-        "Les marqueurs entre crochets comme [P1] remplacent des prénoms : recopie-les exactement.",
+        // Ne rien dire des marqueurs quand il n'y en a pas : sinon le modèle
+        // en pose là où il croit voir un prénom, et « [P1] » finit dans le
+        // compte rendu — c'est arrivé.
+        ...(a.masques
+          ? ["Les marqueurs entre crochets comme [P1] remplacent des prénoms : recopie-les exactement, et n'en invente aucun."]
+          : ["N'écris jamais de marqueur entre crochets : les noms s'écrivent en clair ou pas du tout."]),
       ].join(" "),
     },
     { role: "user" as const, content: a.document },
@@ -487,10 +492,26 @@ export async function rangerLeDocument(
   const [titre, docMasque] = parts;
   const modele = await api.modeleActif(MODELE_TACHES);
   const rep = await api.mistralChat(
-    promptRangement({ genre: contexte.genre, titre, document: docMasque }), modele);
+    promptRangement({ genre: contexte.genre, titre, document: docMasque, masques: table.length > 0 }), modele);
   const fusionne = fusionnerPlan(lirePlan(docMasque), lirePlan(nettoyer(rep)));
   if (planVide(fusionne)) throw new Error("L'agent n'a rien rendu d'exploitable.");
-  return restaurer(ecrirePlan(fusionne), table).texte;
+  return sansMarqueursOrphelins(restaurer(ecrirePlan(fusionne), table).texte);
+}
+
+/**
+ * Retire les marqueurs que personne ne réclame.
+ *
+ * `restaurer` ne remet que les noms qu'il a masqués lui-même. Un modèle qui
+ * invente « [P1] » là où il croit voir un prénom laisse donc un marqueur nu
+ * dans le compte rendu — vu en vrai sur une réunion sans aucun élève cité.
+ * On préfère une tournure neutre à un code informatique.
+ */
+export function sansMarqueursOrphelins(texte: string): string {
+  return texte
+    // « - [P1] : préciser » → « - À préciser » : la puce reste lisible.
+    .replace(/^(\s*[-*•]\s*)\[P\d+\]\s*:\s*/gm, "$1")
+    .replace(/\[P\d+\]/g, "une personne")
+    .replace(/[ \t]{2,}/g, " ");
 }
 
 /** Ce que les modèles ajoutent parfois autour de la réponse. */
@@ -559,7 +580,7 @@ export function repereDuResume(r: Resume): string {
  * est écrit trois rubriques plus haut. La relecture, elle, a tout sous les
  * yeux — c'est là qu'on resserre.
  */
-export function promptRelecture(a: { genre: string; titre: string; document: string }) {
+export function promptRelecture(a: { genre: string; titre: string; document: string; masques?: boolean }) {
   const quoi = [a.genre, a.titre].filter(Boolean).join(" — ") || "une réunion";
   return [
     {
@@ -573,7 +594,12 @@ export function promptRelecture(a: { genre: string; titre: string; document: str
         "Rends le document **entier**, avec exactement ces quatre titres précédés de « ## » :",
         RUBRIQUES.map((r) => `## ${r}`).join(", ") + ".",
         "Sous chaque titre, des puces courtes commençant par « - ». Si une rubrique est vide, écris « - Rien à signaler ».",
-        "Les marqueurs entre crochets comme [P1] remplacent des prénoms : recopie-les exactement.",
+        // Ne rien dire des marqueurs quand il n'y en a pas : sinon le modèle
+        // en pose là où il croit voir un prénom, et « [P1] » finit dans le
+        // compte rendu — c'est arrivé.
+        ...(a.masques
+          ? ["Les marqueurs entre crochets comme [P1] remplacent des prénoms : recopie-les exactement, et n'en invente aucun."]
+          : ["N'écris jamais de marqueur entre crochets : les noms s'écrivent en clair ou pas du tout."]),
       ].join(" "),
     },
     { role: "user" as const, content: a.document },
@@ -596,10 +622,10 @@ export async function relireLeDocument(
   const [titre, docMasque] = parts;
   const modele = await api.modeleActif(MODELE_TACHES);
   const rep = await api.mistralChat(
-    promptRelecture({ genre: contexte.genre, titre, document: docMasque }), modele);
+    promptRelecture({ genre: contexte.genre, titre, document: docMasque, masques: table.length > 0 }), modele);
   const fusionne = fusionnerPlan(lirePlan(docMasque), lirePlan(nettoyer(rep)));
   if (planVide(fusionne)) throw new Error("La relecture n'a rien rendu d'exploitable.");
-  return restaurer(ecrirePlan(fusionne), table).texte;
+  return sansMarqueursOrphelins(restaurer(ecrirePlan(fusionne), table).texte);
 }
 
 /**
@@ -623,7 +649,7 @@ export async function mettreAuPropre(
   }), modele);
   const propre = nettoyer(rep);
   if (!propre) throw new Error("La réponse de l'IA est vide.");
-  return restaurer(propre, table).texte;
+  return sansMarqueursOrphelins(restaurer(propre, table).texte);
 }
 
 /** Rédige le compte rendu à partir des résumés déjà obtenus. */
@@ -645,7 +671,7 @@ export async function redigerCompteRendu(
   }), modele);
   const propre = nettoyer(rep);
   if (!propre) throw new Error("La réponse de l'IA est vide.");
-  return restaurer(propre, table).texte;
+  return sansMarqueursOrphelins(restaurer(propre, table).texte);
 }
 
 // ── Ce qu'on emporte : texte à copier, page à imprimer ────────────────────
