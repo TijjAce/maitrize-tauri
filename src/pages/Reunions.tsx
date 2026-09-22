@@ -11,7 +11,7 @@ import {
   moteurActif, paroleMinimale, plafondDuMorceau, sortieDeLAudio, transcrire, type Moteur,
 } from "../transcription";
 import {
-  GENRES, PHRASES_PAR_RELECTURE, ajouterAuDocument, ajouterAuTexte, assezPourResumer, convertirAnciennes,
+  GENRES, SECONDES_PAR_RELECTURE, ajouterAuDocument, ajouterAuTexte, assezPourResumer, convertirAnciennes,
   decouperEnPhrases, dureeLisible, ecrireResumes, lirePlan, lireResumes, mettreAuPropre,
   assezPourRelire, nomDeLaReunion, phrasesEnAttente, planVide, rangerLeDocument,
   relireLeDocument, texteACopier, type Resume,
@@ -100,10 +100,10 @@ export default function Reunions() {
   const moteurRef = React.useRef<Moteur>("ligne");
   moteurRef.current = moteur;
   const resumeEnCours = React.useRef(false);
-  // Où en était le texte à la dernière relecture de fond. Perdu au
-  // redémarrage, et ce n'est pas grave : la relecture arrivera un peu plus
-  // tard, c'est tout.
-  const phrasesRelues = React.useRef(0);
+  // Où en était la réunion, en secondes d'écoute, à la dernière relecture.
+  // Perdu au redémarrage, et ce n'est pas grave : la relecture arrivera un
+  // peu plus tard, c'est tout.
+  const secondesRelues = React.useRef(0);
   const secondesRef = React.useRef(0);
   // Un booléen, pas l'objet : `courante` change à chaque enregistrement, et
   // en dépendre relancerait le minuteur du résumé sans arrêt.
@@ -183,9 +183,9 @@ export default function Reunions() {
    */
   const relireSiBesoin = React.useCallback(async () => {
     if (!relectureRef.current) return;
-    const phrases = decouperEnPhrases(texteRef.current).length;
-    if (!assezPourRelire(phrases - phrasesRelues.current)) return;
-    phrasesRelues.current = phrases;
+    const maintenant = secondesRef.current;
+    if (!assezPourRelire(maintenant - secondesRelues.current)) return;
+    secondesRelues.current = maintenant;
     setRelit(true);
     try {
       const suite = await relireLeDocument(compteRenduRef.current, contexte.current);
@@ -311,7 +311,7 @@ export default function Reunions() {
     resumesRef.current = relu.resumes;
     setResumes(relu.resumes);
     setCompteRendu(r.compteRendu);
-    phrasesRelues.current = decouperEnPhrases(relu.texte).length;
+    secondesRelues.current = r.dureeS;
     setConsentementVu(false);
     if (ancienne) {
       void enregistrer({ ...r, texte: relu.texte, resumesJson: ecrireResumes(relu.resumes), dateMaj: nowIso() });
@@ -326,7 +326,7 @@ export default function Reunions() {
     texteRef.current = ""; setTexte("");
     resumesRef.current = []; setResumes([]);
     setCompteRendu("");
-    phrasesRelues.current = 0;
+    secondesRelues.current = 0;
     setConsentementVu(false);
     setEntete(false);
     // Rien à cliquer : on pose l'ordinateur et ça écoute. L'écran d'accord
@@ -522,7 +522,7 @@ export default function Reunions() {
                     : transcrit ? "le texte s'écrit…"
                     : enCours ? (assez ? "rangement en cours…"
                         : relecture
-                          ? `relecture dans ${Math.max(1, PHRASES_PAR_RELECTURE - (decouperEnPhrases(texte).length - phrasesRelues.current))} phrases`
+                          ? `relecture dans ${mmss(Math.max(0, SECONDES_PAR_RELECTURE - (ecoute.secondes - secondesRelues.current)))}`
                           : "rangement à chaque phrase")
                     : "écoute arrêtée"}
                 </span>
@@ -561,7 +561,7 @@ export default function Reunions() {
               <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: "var(--text-2)",
                 background: "var(--panel-2)", padding: "8px 10px", borderRadius: 8 }}>
                 ⚠️ <b>La relecture passe par l'IA en ligne</b> : le compte rendu part chez Mistral
-                toutes les {PHRASES_PAR_RELECTURE} phrases pour être resserré, prénoms d'élèves
+                toutes les {SECONDES_PAR_RELECTURE / 60} minutes pour être resserré, prénoms d'élèves
                 masqués.{moteur === "local"
                   ? " L'audio, lui, reste sur cet ordinateur. Décochez « Relecture » pour que rien ne sorte d'ici."
                   : ""}
