@@ -2085,7 +2085,9 @@ pub fn diag_ecrire(ligne: String) {
         std::fs::remove_file(&chemin).ok();
     }
     if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&chemin) {
-        let _ = writeln!(f, "{} {}", chrono::Local::now().format("%H:%M:%S"), ligne);
+        // Avec la date : le fichier garde plusieurs jours, et « 15:14 » ne dit
+        // pas lequel — ni si le gel d'hier s'est reproduit aujourd'hui.
+        let _ = writeln!(f, "{} {}", chrono::Local::now().format("%d/%m %H:%M:%S"), ligne);
     }
 }
 

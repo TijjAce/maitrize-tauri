@@ -7,6 +7,27 @@ import { invoke as invokeTauri } from "@tauri-apps/api/core";
 /** Au-delà, une commande n'est plus lente : elle ne répondra sans doute jamais. */
 const SANS_REPONSE_MS = 45_000;
 
+/**
+ * Les commandes parties et pas encore revenues.
+ *
+ * Quand la fenêtre se fige, savoir *sur quel écran* ne suffit pas : ce qu'on
+ * cherche, c'est ce qui était en train de tourner. La veille joint donc cette
+ * liste à ce qu'elle écrit, et au battement qu'elle envoie au backend — lequel
+ * pourra la citer pendant le blocage, quand la fenêtre, elle, ne peut plus
+ * rien écrire.
+ */
+const enVol = new Map<string, number>();
+
+/** Ce qui tourne en ce moment, du plus ancien au plus récent, pour le journal. */
+export function commandesEnCours(maximum = 3): string {
+  if (!enVol.size) return "";
+  return [...enVol.entries()]
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, maximum)
+    .map(([cmd, debut]) => `${cmd} ${Math.round((Date.now() - debut) / 1000)}s`)
+    .join(", ");
+}
+
 function invoke<T>(cmd: string, ...args: unknown[]): Promise<T> {
   // Une commande partie en boucle ne rend jamais la main : la fenêtre paraît
   // simplement inerte. On ne l'interrompt pas — certaines sont longues pour de
@@ -15,12 +36,16 @@ function invoke<T>(cmd: string, ...args: unknown[]): Promise<T> {
     cmd === "diag_ecrire"
       ? 0
       : setTimeout(() => journal(`SANS RÉPONSE ${cmd} : plus de ${SANS_REPONSE_MS / 1000} s`), SANS_REPONSE_MS);
+  // Le battement et l'écriture du journal ne comptent pas : ils sont là pour
+  // observer, ils n'ont pas à figurer dans ce qu'on observe.
+  const suivie = cmd !== "diag_ecrire" && cmd !== "diag_battement";
+  if (suivie && !enVol.has(cmd)) enVol.set(cmd, Date.now());
   return (invokeTauri as (c: string, ...a: unknown[]) => Promise<T>)(cmd, ...args)
     .catch((err) => {
       if (cmd !== "diag_ecrire") journal(`ÉCHEC ${cmd} : ${texteErreur(err)}`);
       throw err;
     })
-    .finally(() => clearTimeout(guet));
+    .finally(() => { clearTimeout(guet); if (suivie) enVol.delete(cmd); });
 }
 
 /** Message lisible : une erreur Tauri est parfois une chaîne, parfois un objet. */

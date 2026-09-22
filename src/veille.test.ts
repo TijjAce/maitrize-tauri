@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { BATTEMENT_MS, BLOCAGE_MS, demarrerLaVeille, messageDeBlocage, SOMMEIL_MS } from "./veille";
+import { BATTEMENT_MS, BLOCAGE_MS, demarrerLaVeille, messageDeBlocage, SOMMEIL_MS, ouEtQuoi } from "./veille";
 
 describe("veille", () => {
   it("ne signale qu'un vrai blocage", () => {
@@ -45,5 +45,15 @@ describe("veille", () => {
     expect(lignes).toEqual([]);
     arret();
     vi.useRealTimers();
+  });
+});
+
+describe("ce qui tournait au moment du blocage", () => {
+  it("joint les commandes en cours à l'écran, quand il y en a", () => {
+    expect(ouEtQuoi("/plan", "sync_deltas 46s")).toBe("/plan (sync_deltas 46s)");
+  });
+
+  it("sans rien en vol, la ligne reste celle d'avant", () => {
+    expect(ouEtQuoi("/plan", "")).toBe("/plan");
   });
 });
