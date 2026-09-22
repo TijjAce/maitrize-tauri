@@ -594,6 +594,10 @@ export const api = {
   /** Transcrit un enregistrement audio (base64) en texte, via Mistral. */
   transcrireAudio: (audioB64: string, nomFichier: string) =>
     invoke<string>("transcrire_audio", { audioB64, nomFichier }),
+  /** Transcrit sur cette machine (WAV 16 kHz), sans que l'audio en sorte. */
+  transcrireLocal: (audioB64: string) => invoke<string>("transcrire_local", { audioB64 }),
+  /** Vérifie que le moteur local est bien là, et le dit en clair. */
+  whisperTester: () => invoke<string>("whisper_tester"),
 
   // Export / Import (sauvegarde)
   exportData: () => invoke<string>("export_data"),

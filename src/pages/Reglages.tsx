@@ -10,6 +10,7 @@ import { lireAcceptationCgu, CguAcceptation } from "../components/CGU";
 import { getVersion } from "@tauri-apps/api/app";
 import { copierLeBureau, suivreLaCopie } from "../components/CopieDuBureau";
 import { CONTACTS, REPERES, cleEtab } from "../etablissement";
+import { CLE_MOTEUR } from "../transcription";
 
 const ONGLETS = [
   ["general", "Général"],
@@ -26,6 +27,10 @@ export default function Reglages() {
   const [testMsg, setTestMsg] = React.useState("");
   const [testEnCours, setTestEnCours] = React.useState(false);
   const [etats, setEtats] = React.useState<EtatModele[] | null>(null);
+  // L'essai du moteur local : il vaut mieux découvrir un chemin faux ici
+  // qu'au milieu d'une ESS.
+  const [whisperEnCours, setWhisperEnCours] = React.useState(false);
+  const [whisperMsg, setWhisperMsg] = React.useState("");
   const [dataMsg, setDataMsg] = React.useState("");
   const [showMatieres, setShowMatieres] = React.useState(false);
   const [cgu, setCgu] = React.useState<CguAcceptation | null>(null);
@@ -86,6 +91,14 @@ export default function Reglages() {
     // Tout ce qui se voit doit se voir tout de suite : sinon on clique, rien ne
     // bouge, et l'on croit le réglage cassé.
     if (["apparence", "accent", "styleInterface", "liseret", "tailleTexte"].includes(cle)) applyTheme(next);
+  };
+
+  const testerWhisper = async () => {
+    setWhisperEnCours(true);
+    setWhisperMsg("");
+    try { setWhisperMsg("✅ " + await api.whisperTester()); }
+    catch (e) { setWhisperMsg("❌ " + texteErreur(e)); }
+    finally { setWhisperEnCours(false); }
   };
 
   const tester = async () => {
@@ -308,6 +321,49 @@ export default function Reglages() {
             })}
           </ul>
         )}
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
+        <h3 style={{ marginTop: 0 }}>🎙 Transcription des réunions</h3>
+        <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13, lineHeight: 1.55 }}>
+          L'audio d'une réunion est ce qu'il y a de plus sensible : une famille qui parle
+          de son enfant. En local, il ne quitte pas cet ordinateur — au prix d'une
+          installation, et d'un peu de patience sur une machine modeste.
+        </p>
+        <Field label="Moteur">
+          <Select value={s[CLE_MOTEUR] === "local" ? "local" : "ligne"}
+            onChange={(e) => set(CLE_MOTEUR, e.target.value)}>
+            <option value="ligne">En ligne — Mistral (Voxtral), rien à installer</option>
+            <option value="local">Sur cet ordinateur — Whisper, l'audio ne sort pas</option>
+          </Select>
+        </Field>
+        {s[CLE_MOTEUR] === "local" && (
+          <>
+            <p style={{ color: "var(--text-2)", fontSize: 12.5, lineHeight: 1.55, margin: "4px 0 10px" }}>
+              Installez <b>whisper.cpp</b> (par exemple <code>brew install whisper-cpp</code> sur Mac),
+              puis téléchargez un modèle — <code>ggml-small.bin</code> suffit pour du français,
+              <code> ggml-medium.bin</code> est meilleur et plus lent.
+            </p>
+            <Field label="Programme whisper (chemin complet)">
+              <Input placeholder="/opt/homebrew/bin/whisper-cli" value={s.whisperBinaire ?? ""}
+                onChange={(e) => set("whisperBinaire", e.target.value)} />
+            </Field>
+            <Field label="Modèle (fichier .bin)">
+              <Input placeholder="/Users/moi/Modeles/ggml-small.bin" value={s.whisperModele ?? ""}
+                onChange={(e) => set("whisperModele", e.target.value)} />
+            </Field>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <button className="btn" disabled={whisperEnCours} onClick={testerWhisper}>
+                {whisperEnCours ? "Essai en cours…" : "Tester le moteur local"}
+              </button>
+              <span style={{ fontSize: 13 }}>{whisperMsg}</span>
+            </div>
+          </>
+        )}
+        <p style={{ color: "var(--text-2)", fontSize: 12, margin: "10px 0 0", lineHeight: 1.5 }}>
+          Le compte rendu, lui, est rangé par l'IA en ligne dans les deux cas : c'est du texte,
+          et les prénoms d'élèves y sont masqués avant l'envoi.
+        </p>
       </div>
 
       </>}

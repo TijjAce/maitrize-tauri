@@ -8,7 +8,10 @@ import { printHTML, escapeHtml } from "../print";
 import { useEcoute, type TrancheAudio } from "../ecoute";
 import { ZoneVivante } from "../components/ZoneVivante";
 import {
-  GENRES, MORCEAU_S, PHRASES_PAR_RELECTURE, ajouterAuDocument, ajouterAuTexte, assezPourResumer, convertirAnciennes,
+  formatDe, moteurActif, secondesParMorceau, sortieDeLAudio, transcrire, type Moteur,
+} from "../transcription";
+import {
+  GENRES, PHRASES_PAR_RELECTURE, ajouterAuDocument, ajouterAuTexte, assezPourResumer, convertirAnciennes,
   decouperEnPhrases, dureeLisible, ecrireResumes, lirePlan, lireResumes, mettreAuPropre,
   assezPourRelire, nomDeLaReunion, phrasesEnAttente, planVide, rangerLeDocument,
   relireLeDocument, texteACopier, type Resume,
@@ -35,6 +38,8 @@ const aujourdhui = () => new Date().toISOString().slice(0, 10);
 
 /** L'accord donné une fois, gardé sur ce poste : l'écoute part seule ensuite. */
 const CLE_CONSENTEMENT = "reunionsConsentement";
+/** La relecture de fond, qu'on peut couper : elle coûte un appel de plus. */
+const CLE_RELECTURE = "reunionsRelecture";
 
 /**
  * Le repos après lequel on résume, une fois les dix phrases atteintes.
@@ -70,6 +75,11 @@ export default function Reunions() {
   const dejaExplique = React.useRef(false);
   const [transcrit, setTranscrit] = React.useState(false);
   const [relit, setRelit] = React.useState(false);
+  // La relecture de fond est un choix : elle améliore le compte rendu, et
+  // elle consomme un appel de plus toutes les dix phrases.
+  const [relecture, setRelecture] = React.useState(true);
+  // Le moteur de transcription : en ligne, ou sur cette machine.
+  const [moteur, setMoteur] = React.useState<Moteur>("ligne");
 
   // Ce que les rappels du micro et des minuteurs doivent lire : ils vivent
   // plus longtemps qu'un rendu, et une valeur figée leur ferait résumer deux
@@ -84,6 +94,11 @@ export default function Reunions() {
   // l'enseignant comprises : c'est lui l'état, il n'y en a pas d'autre.
   const compteRenduRef = React.useRef("");
   compteRenduRef.current = compteRendu;
+  // Lue depuis les rappels, qui vivent plus longtemps qu'un rendu.
+  const relectureRef = React.useRef(true);
+  relectureRef.current = relecture;
+  const moteurRef = React.useRef<Moteur>("ligne");
+  moteurRef.current = moteur;
   const resumeEnCours = React.useRef(false);
   // Où en était le texte à la dernière relecture de fond. Perdu au
   // redémarrage, et ce n'est pas grave : la relecture arrivera un peu plus
@@ -96,7 +111,15 @@ export default function Reunions() {
 
   React.useEffect(() => {
     api.settingGet(CLE_CONSENTEMENT).then((v) => { dejaExplique.current = v === "1"; }).catch(() => {});
+    api.settingGet(CLE_RELECTURE).then((v) => setRelecture(v !== "0")).catch(() => {});
+    moteurActif().then(setMoteur).catch(() => {});
   }, []);
+
+  const basculerRelecture = () => {
+    const suite = !relecture;
+    setRelecture(suite);
+    api.settingSet(CLE_RELECTURE, suite ? "1" : "0").catch(() => {});
+  };
 
   const charger = React.useCallback(async () => {
     try { setListe(await api.reunionsList()); }
@@ -159,6 +182,7 @@ export default function Reunions() {
    * manque les deux dernières phrases n'aurait pas de sens.
    */
   const relireSiBesoin = React.useCallback(async () => {
+    if (!relectureRef.current) return;
     const phrases = decouperEnPhrases(texteRef.current).length;
     if (!assezPourRelire(phrases - phrasesRelues.current)) return;
     phrasesRelues.current = phrases;
@@ -251,7 +275,7 @@ export default function Reunions() {
         r.onerror = () => rej(new Error("Enregistrement illisible."));
         r.readAsDataURL(t.blob);
       });
-      const morceau = await api.transcrireAudio(b64, "reunion.webm");
+      const morceau = await transcrire(b64, moteurRef.current);
       // Deux endroits, un seul visible : la source garde le mot à mot, et
       // l'encadré reçoit la parole brute à la suite — c'est elle qu'on voit
       // s'écrire, et que l'agent rangera au prochain passage.
@@ -265,7 +289,11 @@ export default function Reunions() {
     } finally { setTranscrit(false); }
   }, [poserTexte]);
 
-  const ecoute = useEcoute({ onTranche: (t) => { void surMorceau(t); }, tranche: MORCEAU_S });
+  const ecoute = useEcoute({
+    onTranche: (t) => { void surMorceau(t); },
+    tranche: secondesParMorceau(moteur),
+    format: formatDe(moteur),
+  });
   // Où en est CETTE réunion : le compteur du micro tant qu'il tourne, la
   // durée déjà écoutée sinon. Sans cela, une réunion tapée au clavier
   // héritait des minutes de la précédente.
@@ -464,11 +492,10 @@ export default function Reunions() {
                 <ul style={{ fontSize: 13, lineHeight: 1.6, margin: "8px 0 0", paddingLeft: 18 }}>
                   <li><b>Prévenez les participants</b> que vous enregistrez pour prendre des notes,
                       et recueillez leur accord — en ESS ou devant une famille, cela se demande avant.</li>
-                  <li>L'audio part chez <b>Mistral</b> (serveurs en Europe) pour être transcrit, puis
-                      le texte pour être rangé. Les prénoms d'élèves connus de l'application sont
-                      masqués avant l'envoi.</li>
-                  <li>L'audio n'est <b>jamais écrit sur le disque</b> et disparaît après la
-                      transcription : seuls les textes restent ici.</li>
+                  <li>{sortieDeLAudio(moteur)} Les prénoms d'élèves connus de l'application
+                      sont masqués avant tout envoi de texte.</li>
+                  <li>Le compte rendu, lui, est rangé par l'IA en ligne dans les deux cas :
+                      c'est du texte, et les prénoms y sont masqués.</li>
                   <li>Une fois cet écran accepté, l'écoute démarrera d'elle-même à chaque nouvelle
                       réunion. Le bouton Pause reste à portée de main.</li>
                 </ul>
@@ -488,7 +515,9 @@ export default function Reunions() {
                     : relit ? "relecture de l'ensemble…"
                     : transcrit ? "le texte s'écrit…"
                     : enCours ? (assez ? "rangement en cours…"
-                        : `relecture de fond dans ${Math.max(1, PHRASES_PAR_RELECTURE - (decouperEnPhrases(texte).length - phrasesRelues.current))} phrases`)
+                        : relecture
+                          ? `relecture dans ${Math.max(1, PHRASES_PAR_RELECTURE - (decouperEnPhrases(texte).length - phrasesRelues.current))} phrases`
+                          : "rangement à chaque phrase")
                     : "écoute arrêtée"}
                 </span>
                 <div className="spacer" style={{ flex: 1 }} />
@@ -512,6 +541,12 @@ export default function Reunions() {
                   <button className="btn sm" onClick={copier}>📋</button>
                   <button className="btn sm" onClick={imprimer}>🖨</button>
                 </>}
+                <button className="btn ghost sm" onClick={basculerRelecture}
+                  title={relecture
+                    ? "Une seconde IA relit tout le compte rendu toutes les dix phrases et le resserre. Cliquez pour l'arrêter."
+                    : "La relecture de fond est arrêtée : le compte rendu se range au fil de l'eau, sans seconde lecture."}>
+                  {relecture ? "🔁 Relecture" : "🔁̸ Sans relecture"}
+                </button>
                 <button className="btn ghost sm" onClick={() => setEntete((v) => !v)}
                   title="Objet, type, date, participants">{entete ? "▴" : "▾"} Détails</button>
               </div>
