@@ -76,6 +76,38 @@ export function versWav(echantillons: Float32Array, debitEntree: number, debitSo
 /** Combien de secondes d'audio, à ce débit. */
 export const secondesDe = (echantillons: number, debit: number) => echantillons / debit;
 
+/** Le silence qui marque une fin de phrase, en secondes. */
+export const SILENCE_COUPE_S = 0.6;
+
+/**
+ * Faut-il couper la tranche maintenant ?
+ *
+ * C'est la décision qui fait toute la différence entre « le texte suit la
+ * parole » et « le texte arrive une minute plus tard ». Couper au bout d'un
+ * temps fixe, c'est attendre ce temps-là avant la première ligne — et couper
+ * au milieu d'un mot. Couper quand la personne se tait, c'est écrire à la fin
+ * de chaque phrase.
+ *
+ * Le plafond reste, pour qui parle sans respirer : au-delà, on coupe même en
+ * pleine phrase, sinon rien n'arriverait jamais.
+ */
+export function fautIlCouper(p: {
+  /** Secondes de parole accumulées dans la tranche (silences non comptés). */
+  parole: number;
+  /** Secondes de silence consécutif à l'instant présent. */
+  silence: number;
+  /** Secondes écoulées depuis le début de la tranche. */
+  total: number;
+  /** En dessous, on ne coupe pas : une tranche trop courte se transcrit mal. */
+  minimum: number;
+  /** Au-dessus, on coupe quoi qu'il arrive. */
+  plafond: number;
+}): boolean {
+  if (p.parole <= 0) return false;
+  if (p.total >= p.plafond) return true;
+  return p.parole >= p.minimum && p.silence >= SILENCE_COUPE_S;
+}
+
 /**
  * Le passage est-il silencieux ?
  *

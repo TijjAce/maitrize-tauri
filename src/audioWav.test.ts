@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  DEBIT_WHISPER, enteteWav, estSilencieux, reechantillonner, secondesDe, versPcm16,
+  DEBIT_WHISPER, SILENCE_COUPE_S, enteteWav, estSilencieux, fautIlCouper, reechantillonner,
+  secondesDe, versPcm16,
 } from "./audioWav";
 
 const sinus = (n: number, amplitude = 0.5) =>
@@ -71,5 +72,31 @@ describe("le silence", () => {
 
   it("un murmure n'est pas un silence", () => {
     expect(estSilencieux(sinus(1000, 0.05))).toBe(false);
+  });
+});
+
+describe("quand couper la tranche", () => {
+  const cas = (p: Partial<Parameters<typeof fautIlCouper>[0]>) =>
+    fautIlCouper({ parole: 0, silence: 0, total: 0, minimum: 2, plafond: 12, ...p });
+
+  it("coupe à la fin d'une phrase, dès qu'il y a de quoi transcrire", () => {
+    expect(cas({ parole: 3, silence: SILENCE_COUPE_S, total: 4 })).toBe(true);
+  });
+
+  it("ne coupe pas au milieu d'une phrase", () => {
+    expect(cas({ parole: 5, silence: 0.1, total: 5 })).toBe(false);
+  });
+
+  it("ne coupe pas sur un souffle après deux mots", () => {
+    // Une tranche d'une seconde se transcrit mal : on laisse venir.
+    expect(cas({ parole: 1, silence: 1, total: 2 })).toBe(false);
+  });
+
+  it("coupe quand même qui parle sans respirer", () => {
+    expect(cas({ parole: 12, silence: 0, total: 12 })).toBe(true);
+  });
+
+  it("ne coupe jamais une tranche sans parole : on n'envoie pas du silence", () => {
+    expect(cas({ parole: 0, silence: 30, total: 30 })).toBe(false);
   });
 });
