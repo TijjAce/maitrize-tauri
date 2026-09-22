@@ -291,9 +291,12 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
   // récupèrent le bilan, une fois qu'il est écrit.
   const [observerPour, setObserverPour] = React.useState<Creneau | null>(null);
   const observations = React.useRef<ObservationEleve[]>([]);
+  const [fiches, setFiches] = React.useState<ObservationEleve[]>([]);
   const relireObservations = React.useCallback(() => {
-    api.observationsList().then((l) => { observations.current = l; }).catch(() => {});
+    api.observationsList().then((l) => { observations.current = l; setFiches(l); }).catch(() => {});
   }, []);
+  const observationsDuCreneau = React.useCallback(
+    (creneauId: string) => fiches.filter((o) => o.creneauId === creneauId), [fiches]);
   React.useEffect(() => { relireObservations(); }, [relireObservations, dateIso]);
   const poserCompetence = (c: Creneau, comp: CompetenceSelectionnee) => {
     const prevu = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
@@ -367,8 +370,26 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
               <span style={{ marginLeft: "auto", fontSize: 11, color: etat === "erreur" ? "#c0392b" : "var(--text-2)" }}>
                 {etat === "enregistrement" ? "Enregistrement…" : etat === "ok" ? "✓ Enregistré" : etat === "erreur" ? "Non enregistré" : ""}
               </span>
+              <button className="btn ghost sm" disabled={reunion || !ids.length}
+                onClick={() => setObserverPour(c)}
+                title={ids.length
+                  ? "Poser un temps d'observation sur un axe de la grille Cap école inclusive : ce bilan viendra le nourrir"
+                  : "Cochez d'abord les élèves présents sur ce créneau"}>👁 Observer</button>
               <button className="btn ghost sm" onClick={() => onModifier(c)} title="Modifier le créneau" aria-label="Modifier le créneau">✏️</button>
             </div>
+
+            {/* Ce qu'on a décidé d'observer sur ce créneau : la ligne est là
+                pendant la séance, sous les yeux — c'est le seul moment où
+                elle sert. */}
+            {observationsDuCreneau(c.id).map((o) => (
+              <div key={o.id} style={{
+                fontSize: 12.5, background: "var(--panel-2)", borderRadius: 8,
+                padding: "6px 9px", marginBottom: 6, lineHeight: 1.5,
+              }}>
+                👁 <b>{eleves.find((e) => e.id === o.eleveId)?.nom.split(" ")[0] ?? "Élève"}</b> — {o.axe}
+                {o.domaine && <span className="meta" style={{ fontSize: 11 }}> · {o.domaine}</span>}
+              </div>
+            ))}
             {(["prevu", "bilan"] as Champ[]).map((champ) => {
               const actif = cible?.id === c.id && cible.champ === champ;
               const occupe = dictee.etat !== "repos" && !actif;
@@ -407,15 +428,8 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                           🎯 Compétence</button>
                       </>
                     ) : (
-                      <>
-                        <button className="btn ghost sm" disabled={reunion || !ids.length}
-                          onClick={() => setObserverPour(c)}
-                          title={ids.length
-                            ? "Poser un temps d'observation sur un axe de la grille Cap école inclusive : ce bilan viendra le nourrir"
-                            : "Cochez d'abord les élèves présents sur ce créneau"}>👁 Observer</button>
-                        <button className="btn ghost sm" disabled={!b.bilan.trim() || reunion} onClick={() => porterAuDossier(c, ids)}
-                          title="Faire du bilan, ou du passage sélectionné, une observation dans le dossier des élèves">📋 Au dossier</button>
-                      </>
+                      <button className="btn ghost sm" disabled={!b.bilan.trim() || reunion} onClick={() => porterAuDossier(c, ids)}
+                        title="Faire du bilan, ou du passage sélectionné, une observation dans le dossier des élèves">📋 Au dossier</button>
                     )}
                   </div>
                   <textarea className="textarea" value={b[champ]} placeholder={LIBELLES[champ].aide}
