@@ -20,7 +20,7 @@ import { FormSequence } from "../components/FormSequence";
 import { JeuForm } from "../components/JeuForm";
 import { OutilForm } from "../components/OutilForm";
 import { AtelierForm, EspaceForm, SuiviEspace } from "./Ateliers";
-import { CLE_FUSION, EVT_CHERCHER_BUREAU, fusionnerDansLePlanDeTravail } from "../bureauAteliers";
+import { CLE_FUSION, EVT_CHERCHER_BUREAU, fusionnerDansLePlanDeTravail, lireDemandeBureau } from "../bureauAteliers";
 import type { CtxItem } from "../components/ctxmenu";
 import { deposerDossier, dossiersPris, recupererDossier, recupererFichier, recupererPaquet } from "../partageCommun";
 import { PanneauCommun, TYPE_COMMUN, lireDepotCommun } from "../components/PanneauCommun";
@@ -195,6 +195,9 @@ export default function PlanDeTravail() {
   const [sequenceFiche, setSequenceFiche] = React.useState<{ sequence: Sequence; nouvelle: boolean } | null>(null);
 
   const [dossier, setDossier] = React.useState("");
+  // L'élément que ⌘K vient de désigner : signalé quelques secondes, le temps
+  // de poser l'œil dessus.
+  const [surligne, setSurligne] = React.useState("");
   const [q, setQ] = React.useState("");
   const [survol, setSurvol] = React.useState<string | null>(null);
   const [survolBureau, setSurvolBureau] = React.useState(false);
@@ -238,9 +241,28 @@ export default function PlanDeTravail() {
     })().catch(() => {});
   }, [reglages]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Depuis ⌘K : un jeu, un outil, un atelier trouvé s'ouvre ici, par la recherche.
+  // Depuis ⌘K : un jeu, une séquence, du matériel s'ouvre ici — dans son
+  // dossier, et surligné un instant. Retrouver quelque chose, c'est aussi
+  // voir où c'est rangé : la racine avec un filtre ne le disait pas.
+  const elementsRef = React.useRef<Element[]>([]);
   React.useEffect(() => {
-    const chercher = (e: Event) => { setDossier(""); setQ(String((e as CustomEvent).detail ?? "")); };
+    const chercher = (e: Event) => {
+      const demande = lireDemandeBureau((e as CustomEvent).detail);
+      const cible = demande.id
+        ? elementsRef.current.find((x) => x.id === demande.id)
+        : elementsRef.current.find((x) => normaliser(x.titre) === normaliser(demande.titre));
+      if (cible) {
+        setDossier(normaliser(cible.dossier));
+        setQ("");
+        setSurligne(cible.id);
+        window.setTimeout(() => setSurligne((s) => (s === cible.id ? "" : s)), 4000);
+        return;
+      }
+      // Élément introuvable — supprimé, ou demande d'une ancienne version :
+      // on retombe sur l'ancien comportement plutôt que sur rien.
+      setDossier("");
+      setQ(demande.titre);
+    };
     window.addEventListener(EVT_CHERCHER_BUREAU, chercher);
     return () => window.removeEventListener(EVT_CHERCHER_BUREAU, chercher);
   }, []);
@@ -309,6 +331,7 @@ export default function PlanDeTravail() {
   }, [couleursLues, materiels, sequences, textes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtre = q.trim().toLowerCase();
+  elementsRef.current = elements;
   const dossiers = filtre ? [] : sousDossiers(elements, dossier, Object.keys(couleurs));
   // Une recherche regarde partout : sinon il faudrait deviner où se trouve ce
   // qu'on cherche avant de le chercher.
@@ -687,7 +710,7 @@ export default function PlanDeTravail() {
   };
 
   const tuileElement = (e: Element) => (
-    <TuileElement key={e.genre + e.id} element={e} actions={actionsDe(e)}
+    <TuileElement key={e.genre + e.id} element={e} actions={actionsDe(e)} designe={surligne === e.id}
       onOuvrir={() => ouvrir(e)}
       onModifier={e.genre === "materiel" && contenuDirect(e.mat) ? () => setMaterielOuvert(e.mat)
         : e.genre === "sequence" ? () => setSequenceFiche({ sequence: e.seq, nouvelle: false }) : undefined}
@@ -1048,8 +1071,10 @@ const EMOJI: Record<Element["genre"], string> = {
 const EMOJI_FICHE: Record<OutilClasse["genre"], string> = { outil: "🧰", affichage: "🖼", evaluation: "📋" };
 const emojiDe = (e: Element) => (e.genre === "outil" ? EMOJI_FICHE[e.outil.genre] : EMOJI[e.genre]);
 
-function TuileElement({ element, actions = [], onOuvrir, onModifier, onRanger, onSupprimer, onDuplique, onGlisser, onFinGlisser }: {
+function TuileElement({ element, actions = [], onOuvrir, onModifier, onRanger, onSupprimer, onDuplique, onGlisser, onFinGlisser, designe = false }: {
   element: Element; onOuvrir: () => void; onRanger: () => void;
+  /** Vrai quand ⌘K vient de mener ici : la tuile se signale quelques secondes. */
+  designe?: boolean;
   /** Les gestes propres à son genre : dupliquer un jeu, suivre les élèves d'un espace… */
   actions?: CtxItem[];
   /** Présent pour un dépôt simple, qui s'ouvre sans passer par sa fiche. */
@@ -1081,9 +1106,13 @@ function TuileElement({ element, actions = [], onOuvrir, onModifier, onRanger, o
         { label: "Supprimer", icon: "🗑", danger: true, sep: true, onClick: onSupprimer },
       ])}
       title={element.titre}
-      style={{ cursor: "pointer", textAlign: "center", padding: 8, borderRadius: 10 }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--panel-2)")}
-      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+      ref={(el) => { if (designe) el?.scrollIntoView({ block: "center", behavior: "smooth" }); }}
+      style={{
+        cursor: "pointer", textAlign: "center", padding: 8, borderRadius: 10,
+        ...(designe ? { outline: "2px solid var(--accent)", outlineOffset: 2, background: "var(--accent-soft)" } : {}),
+      }}
+      onMouseEnter={(e) => { if (!designe) e.currentTarget.style.background = "var(--panel-2)"; }}
+      onMouseLeave={(e) => { if (!designe) e.currentTarget.style.background = "transparent"; }}>
       <div style={{ position: "relative", width: "100%", aspectRatio: "1", borderRadius: 8,
         overflow: "hidden", background: t + "1f", border: `1px solid ${t}44`,
         display: "flex", alignItems: "center", justifyContent: "center" }}>
