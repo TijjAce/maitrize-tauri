@@ -544,6 +544,9 @@ export const api = {
     invoke<PiloteConversation>("conversation_save", { conversation }),
   conversationDelete: (id: string) => invoke<void>("conversation_delete", { id }),
 
+  /** Les dossiers du bureau, chemins complets — pour que ⌘K puisse y mener. */
+  dossiersBureau: () => invoke<string[]>("dossiers_bureau"),
+
   // Temps d'observation (grille « Observer »)
   observationsList: (eleveId?: string) =>
     invoke<ObservationEleve[]>("observations_list", { eleveId: eleveId ?? null }),

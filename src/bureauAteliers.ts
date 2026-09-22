@@ -19,10 +19,12 @@
  */
 export const EVT_CHERCHER_BUREAU = "maitrize:bureau-chercher";
 
-/** Ce que ⌘K demande au bureau : cet élément-là, là où il est. */
+/** Ce que ⌘K demande au bureau : cet élément-là, ou ce dossier-là. */
 export interface DemandeBureau {
   /** L'identifiant de la ligne, quand on l'a : c'est lui qui situe le dossier. */
   id?: string;
+  /** Un dossier à ouvrir, chemin complet — sans élément à désigner. */
+  dossier?: string;
   /** À défaut, le titre — une vieille demande, ou un élément disparu. */
   titre: string;
 }
@@ -34,6 +36,7 @@ export function lireDemandeBureau(detail: unknown): DemandeBureau {
     const o = detail as Record<string, unknown>;
     return {
       id: typeof o.id === "string" ? o.id : undefined,
+      dossier: typeof o.dossier === "string" ? o.dossier : undefined,
       titre: typeof o.titre === "string" ? o.titre : "",
     };
   }

@@ -943,6 +943,141 @@ pub fn conversation_delete(db: State<Db>, id: String) -> R<()> {
 }
 
 // ============================================================
+// DOSSIERS DU BUREAU
+// ============================================================
+
+/**
+ * Les dossiers du plan de travail, chemins complets.
+ *
+ * Un dossier n'est pas une ligne : il existe par le chemin de ce qu'il
+ * contient, ou par un réglage quand il a été créé vide. Pour que ⌘K puisse y
+ * mener, il faut donc les rassembler — en une fois, plutôt qu'en sept
+ * requêtes depuis la fenêtre.
+ *
+ * Les parents sont ajoutés : « Langage/Vocabulaire » fait exister « Langage »,
+ * même si rien n'y est posé directement.
+ */
+#[tauri::command]
+pub fn dossiers_bureau(db: State<Db>) -> R<Vec<String>> {
+    const SOURCES: &[&str] = &[
+        "SELECT DISTINCT dossier FROM sequences",
+        "SELECT DISTINCT dossier FROM materiel_items",
+        "SELECT DISTINCT dossier FROM textes",
+        "SELECT DISTINCT dossier FROM ateliers",
+        "SELECT DISTINCT dossier FROM espaces",
+        "SELECT DISTINCT dossier FROM jeux",
+        "SELECT DISTINCT dossier FROM outils_classe",
+    ];
+    let c = db.lock();
+    let mut tous: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    let mut poser = |chemin: &str| {
+        let propre = chemin.trim().trim_matches('/');
+        if propre.is_empty() || propre.starts_with('@') {
+            return;
+        }
+        // Chaque parent existe aussi : on peut vouloir y aller.
+        let mut cumul = String::new();
+        for bout in propre.split('/') {
+            if bout.trim().is_empty() {
+                continue;
+            }
+            if !cumul.is_empty() {
+                cumul.push('/');
+            }
+            cumul.push_str(bout.trim());
+            tous.insert(cumul.clone());
+        }
+    };
+    for sql in SOURCES {
+        // Une table absente d'une vieille base ne doit pas vider la liste.
+        let Ok(mut st) = c.prepare(sql) else { continue };
+        let Ok(rows) = st.query_map([], |r| r.get::<_, String>(0)) else { continue };
+        for chemin in rows.flatten() {
+            poser(&chemin);
+        }
+    }
+    // Les dossiers créés à la main, qui vivent dans les réglages.
+    if let Ok(mut st) = c.prepare("SELECT cle FROM settings WHERE cle LIKE 'dossier:%'") {
+        if let Ok(rows) = st.query_map([], |r| r.get::<_, String>(0)) {
+            for cle in rows.flatten() {
+                poser(cle.trim_start_matches("dossier:"));
+            }
+        }
+    }
+    Ok(tous.into_iter().collect())
+}
+
+#[cfg(test)]
+mod tests_dossiers_bureau {
+    use rusqlite::Connection;
+
+    /// Le cœur de `dossiers_bureau`, sans la base : ce qui se range et ce qui
+    /// se jette. Recopié tel quel dans la commande, qui n'a que les requêtes
+    /// en plus.
+    fn poser(tous: &mut std::collections::BTreeSet<String>, chemin: &str) {
+        let propre = chemin.trim().trim_matches('/');
+        if propre.is_empty() || propre.starts_with('@') {
+            return;
+        }
+        let mut cumul = String::new();
+        for bout in propre.split('/') {
+            if bout.trim().is_empty() {
+                continue;
+            }
+            if !cumul.is_empty() {
+                cumul.push('/');
+            }
+            cumul.push_str(bout.trim());
+            tous.insert(cumul.clone());
+        }
+    }
+
+    fn dossiers(chemins: &[&str]) -> Vec<String> {
+        let mut tous = std::collections::BTreeSet::new();
+        for c in chemins {
+            poser(&mut tous, c);
+        }
+        tous.into_iter().collect()
+    }
+
+    #[test]
+    fn un_chemin_fait_exister_ses_parents() {
+        // Sans cela, « Langage » n'apparaissait pas tant que rien n'y était
+        // posé directement — et l'on ne pouvait pas y aller.
+        assert_eq!(dossiers(&["Langage/Vocabulaire/Loto"]),
+                   vec!["Langage", "Langage/Vocabulaire", "Langage/Vocabulaire/Loto"]);
+    }
+
+    #[test]
+    fn la_racine_et_les_espaces_reserves_ne_sont_pas_des_dossiers() {
+        assert_eq!(dossiers(&["", "   ", "/", "@garde", "@garde/Rentrée"]), Vec::<String>::new());
+    }
+
+    #[test]
+    fn deux_fois_le_meme_dossier_n_en_font_qu_un() {
+        assert_eq!(dossiers(&["Maths", "Maths/", " Maths "]), vec!["Maths"]);
+    }
+
+    #[test]
+    fn les_dossiers_crees_a_la_main_vivent_dans_les_reglages() {
+        let c = Connection::open_in_memory().unwrap();
+        c.execute_batch(
+            "CREATE TABLE settings (cle TEXT PRIMARY KEY, valeur TEXT);
+             INSERT INTO settings VALUES ('dossier:Arts/Peinture','aucune');
+             INSERT INTO settings VALUES ('mistralApiKey','secret');",
+        ).unwrap();
+        let mut st = c.prepare("SELECT cle FROM settings WHERE cle LIKE 'dossier:%'").unwrap();
+        let cles: Vec<String> = st.query_map([], |r| r.get(0)).unwrap().flatten().collect();
+        assert_eq!(cles, vec!["dossier:Arts/Peinture"]);
+        let mut tous = std::collections::BTreeSet::new();
+        for cle in &cles {
+            poser(&mut tous, cle.trim_start_matches("dossier:"));
+        }
+        assert_eq!(tous.into_iter().collect::<Vec<_>>(), vec!["Arts", "Arts/Peinture"]);
+    }
+}
+
+// ============================================================
 // TEMPS D'OBSERVATION (grille « Observer »)
 // ============================================================
 

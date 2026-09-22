@@ -248,6 +248,13 @@ export default function PlanDeTravail() {
   React.useEffect(() => {
     const chercher = (e: Event) => {
       const demande = lireDemandeBureau((e as CustomEvent).detail);
+      // Un dossier demandé s'ouvre tel quel : il n'y a rien à désigner dedans.
+      if (demande.dossier !== undefined) {
+        setDossier(normaliser(demande.dossier));
+        setQ("");
+        setSurligne("");
+        return;
+      }
       const cible = demande.id
         ? elementsRef.current.find((x) => x.id === demande.id)
         : elementsRef.current.find((x) => normaliser(x.titre) === normaliser(demande.titre));
