@@ -1,21 +1,24 @@
 import React from "react";
-import { versWav } from "./audioWav";
-import { MORCEAU_S } from "./reunion";
+import { estSilencieux, fautIlCouper, versWav } from "./audioWav";
 
-// ── Écouter longtemps, par morceaux ───────────────────────────────────────
+// ── Écouter, et écrire au rythme de la parole ─────────────────────────────
 //
 // La dictée (voir `dictee.ts`) enregistre d'un bloc et transcrit à la fin :
 // pour une réunion d'une heure, il faudrait attendre la fin pour avoir la
-// moindre ligne, et un envoi raté ferait tout perdre.
+// moindre ligne.
 //
-// Ici, l'enregistreur est refermé et rouvert régulièrement sur le même micro.
-// Chaque morceau est donc un fichier complet, transcriptible seul et tout de
-// suite : le texte de la réunion s'écrit pendant qu'elle a lieu. La coupe
-// laisse un trou de quelques millisecondes — le prix d'un fichier valide, un
-// mot n'y tient pas.
+// Découper toutes les N secondes ne suffit pas non plus : la première ligne
+// arrive au bout de N secondes, et la coupe tombe au milieu d'un mot. On
+// écoute donc le son lui-même, et l'on coupe **quand la personne se tait**.
+// Le texte arrive alors à la fin de chaque phrase, et chaque morceau est une
+// phrase entière — ce qui se transcrit mieux.
 //
-// L'audio ne touche jamais le disque : il part en mémoire vers la
-// transcription, puis disparaît.
+// Un plafond reste, pour qui parle sans respirer : au-delà, on coupe quand
+// même, sinon rien n'arriverait.
+//
+// Les échantillons sont pris au vol et le fichier WAV écrit ici : c'est le
+// seul format que lit un moteur local, et le service en ligne l'accepte
+// aussi. L'audio ne touche jamais le disque de ce côté-ci.
 
 export type EtatEcoute = "repos" | "ecoute" | "pause";
 
@@ -30,15 +33,13 @@ export interface Ecoute {
   etat: EtatEcoute;
   /** Secondes écoutées depuis le début (pauses non comptées). */
   secondes: number;
-  /** Secondes écoutées dans la tranche en cours. */
-  secondesTranche: number;
   /**
    * Ouvre le micro. `depuis` reprend le compte là où la réunion s'était
    * arrêtée, pour que les horodatages suivent au lieu de repartir de zéro.
    * Renvoie l'erreur à afficher, ou null.
    */
   demarrer: (depuis?: number) => Promise<string | null>;
-  /** Clôt le morceau en cours et en ouvre un autre : le texte arrive sans attendre. */
+  /** Coupe la tranche en cours sans attendre le silence. */
   couper: () => void;
   pause: () => void;
   reprendre: () => void;
@@ -57,81 +58,61 @@ export function messageMicro(e: unknown): string {
 }
 
 /** En dessous, la tranche n'a rien à dire : on ne l'envoie pas transcrire. */
-export const MINIMUM_S = 3;
+export const MINIMUM_S = 1;
 
-/**
- * Deux façons d'enregistrer, pour deux destinations.
- *
- * « compresse » : l'enregistreur du navigateur, quelques dizaines de kilo-
- * octets la minute — c'est ce qu'on veut envoyer sur le réseau d'une école.
- * « wav » : les échantillons bruts en 16 kHz mono, seul format que lit un
- * moteur local ; vingt fois plus lourd, mais il ne sort pas de la machine.
- */
-export type Format = "compresse" | "wav";
-
-export function useEcoute({ onTranche, tranche = MORCEAU_S, format = "compresse" }: {
+export function useEcoute({ onTranche, minimumParole = 2, plafond = 15 }: {
   onTranche: (t: TrancheAudio) => void;
-  tranche?: number;
-  format?: Format;
+  /** Secondes de parole en dessous desquelles on ne coupe pas. */
+  minimumParole?: number;
+  /** Secondes après lesquelles on coupe même en pleine phrase. */
+  plafond?: number;
 }): Ecoute {
   const [etat, setEtat] = React.useState<EtatEcoute>("repos");
   const [secondes, setSecondes] = React.useState(0);
-  const [secondesTranche, setSecondesTranche] = React.useState(0);
 
   const flux = React.useRef<MediaStream | null>(null);
-  const rec = React.useRef<MediaRecorder | null>(null);
-  // Capture brute : le contexte audio, le nœud qui reçoit les échantillons,
-  // et ce qui s'est accumulé depuis la dernière coupe.
   const contexte = React.useRef<AudioContext | null>(null);
   const capteur = React.useRef<ScriptProcessorNode | null>(null);
-  const morceauxPcm = React.useRef<Float32Array[]>([]);
-  const enPause = React.useRef(false);
-  const formatRef = React.useRef<Format>(format);
-  formatRef.current = format;
-  const morceaux = React.useRef<Blob[]>([]);
   const minuteur = React.useRef<number | null>(null);
-  const total = React.useRef(0);
+  const enPause = React.useRef(false);
+
+  // Ce qui s'accumule dans la tranche en cours.
+  const morceaux = React.useRef<Float32Array[]>([]);
+  const parole = React.useRef(0);
+  const silence = React.useRef(0);
+  const duree = React.useRef(0);
   const debutTranche = React.useRef(0);
-  const total_secondes = React.useCallback(() => total.current, []);
-  // Le rappel change à chaque rendu ; l'enregistreur, lui, vit plus longtemps.
+  const total = React.useRef(0);
+
+  const reglage = React.useRef({ minimumParole, plafond });
+  reglage.current = { minimumParole, plafond };
+  // Le rappel change à chaque rendu ; la capture, elle, vit plus longtemps.
   const rappel = React.useRef(onTranche);
   rappel.current = onTranche;
 
-  /** Coupe la tranche de la capture brute et la remet au rappel. */
-  const clorePcm = React.useCallback(() => {
+  /** Ferme la tranche en cours et la remet au rappel, si elle dit quelque chose. */
+  const clore = React.useCallback(() => {
     const ctx = contexte.current;
-    const morceaux = morceauxPcm.current;
-    morceauxPcm.current = [];
-    if (!ctx || !morceaux.length) return;
-    const total = morceaux.reduce((n, m) => n + m.length, 0);
-    const tout = new Float32Array(total);
-    let pos = 0;
-    for (const m of morceaux) { tout.set(m, pos); pos += m.length; }
+    const tranche = morceaux.current;
+    const parlee = parole.current;
+    const longueur = duree.current;
+    morceaux.current = [];
+    parole.current = 0;
+    silence.current = 0;
+    duree.current = 0;
     const debut = debutTranche.current;
-    const fin = total_secondes();
-    if (fin - debut < MINIMUM_S) return;
-    rappel.current({ blob: versWav(tout, ctx.sampleRate), debut, fin });
+    debutTranche.current = total.current;
+    // Une salle qui se tait ne mérite ni un appel au moteur ni une ligne
+    // « [BLANK_AUDIO] » dans le compte rendu.
+    if (!ctx || !tranche.length || parlee <= 0 || longueur < MINIMUM_S) return;
+    const total_echantillons = tranche.reduce((n, m) => n + m.length, 0);
+    const tout = new Float32Array(total_echantillons);
+    let pos = 0;
+    for (const m of tranche) { tout.set(m, pos); pos += m.length; }
+    rappel.current({ blob: versWav(tout, ctx.sampleRate), debut, fin: debut + longueur });
   }, []);
 
-  /** Ferme l'enregistreur en cours et remet la tranche au rappel. */
-  const clore = React.useCallback(() => {
-    if (formatRef.current === "wav") { clorePcm(); return; }
-    const courant = rec.current;
-    rec.current = null;
-    if (!courant) return;
-    // Le tableau de CET enregistreur : ses données arrivent à l'arrêt, et
-    // elles doivent y tomber, pas dans celui de la tranche suivante.
-    const parts = morceaux.current;
-    const debut = debutTranche.current;
-    const fin = total.current;
-    courant.onstop = () => {
-      const blob = new Blob(parts, { type: courant.mimeType || "audio/webm" });
-      if (blob.size > 0 && fin - debut >= MINIMUM_S) rappel.current({ blob, debut, fin });
-    };
-    try { courant.stop(); } catch { /* déjà arrêté */ }
-  }, [clorePcm]);
-
-  /** Ouvre la capture brute sur le micro déjà ouvert. */
+  /** Ouvre la capture sur le micro déjà ouvert. */
   const ouvrirCapture = React.useCallback(() => {
     const f = flux.current;
     if (!f || capteur.current) return;
@@ -141,60 +122,51 @@ export function useEcoute({ onTranche, tranche = MORCEAU_S, format = "compresse"
     const noeud = ctx.createScriptProcessor(4096, 1, 1);
     noeud.onaudioprocess = (e) => {
       if (enPause.current) return;
-      // Copier : le tampon du navigateur est réutilisé au tour suivant.
-      morceauxPcm.current.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+      const trame = new Float32Array(e.inputBuffer.getChannelData(0));
+      const secondesTrame = trame.length / ctx.sampleRate;
+      morceaux.current.push(trame);
+      duree.current += secondesTrame;
+      if (estSilencieux(trame)) {
+        silence.current += secondesTrame;
+      } else {
+        parole.current += secondesTrame;
+        silence.current = 0;
+      }
+      if (fautIlCouper({
+        parole: parole.current, silence: silence.current, total: duree.current,
+        minimum: reglage.current.minimumParole, plafond: reglage.current.plafond,
+      })) {
+        clore();
+      }
     };
     // Un nœud de capture ne tourne que s'il est branché à la sortie ; un gain
     // à zéro évite d'entendre la salle dans les haut-parleurs — et le larsen
     // qui suivrait.
-    const silence = ctx.createGain();
-    silence.gain.value = 0;
+    const muet = ctx.createGain();
+    muet.gain.value = 0;
     source.connect(noeud);
-    noeud.connect(silence);
-    silence.connect(ctx.destination);
+    noeud.connect(muet);
+    muet.connect(ctx.destination);
     capteur.current = noeud;
-    morceauxPcm.current = [];
-  }, []);
-
-  /** Ouvre un enregistreur sur le micro déjà ouvert. */
-  const ouvrirEnregistreur = React.useCallback(() => {
-    if (formatRef.current === "wav") {
-      ouvrirCapture();
-      debutTranche.current = total.current;
-      setSecondesTranche(0);
-      return;
-    }
-    const f = flux.current;
-    if (!f) return;
-    // Chaque enregistreur écrit dans son propre tableau : celui d'avant est
-    // peut-être encore en train de rendre son dernier morceau.
-    const parts: Blob[] = [];
-    morceaux.current = parts;
-    const r = new MediaRecorder(f);
-    r.ondataavailable = (e) => { if (e.data.size) parts.push(e.data); };
-    r.start();
-    rec.current = r;
-    debutTranche.current = total.current;
-    setSecondesTranche(0);
-  }, [ouvrirCapture]);
+    morceaux.current = [];
+    parole.current = 0;
+    silence.current = 0;
+    duree.current = 0;
+  }, [clore]);
 
   const couper = React.useCallback(() => {
-    if (!rec.current && !capteur.current) return;
+    if (!capteur.current) return;
     clore();
-    ouvrirEnregistreur();
-  }, [clore, ouvrirEnregistreur]);
+  }, [clore]);
 
-  /** Le compteur : il avance, et coupe de lui-même à chaque morceau. */
+  /** Le compteur de la réunion : il ne sert qu'à l'affichage. */
   const lancerLeCompteur = React.useCallback(() => {
     if (minuteur.current) window.clearInterval(minuteur.current);
     minuteur.current = window.setInterval(() => {
       total.current += 1;
       setSecondes(total.current);
-      const dans = total.current - debutTranche.current;
-      setSecondesTranche(dans);
-      if (dans >= tranche) couper();
     }, 1000);
-  }, [couper, tranche]);
+  }, []);
 
   const arreterLeCompteur = React.useCallback(() => {
     if (minuteur.current) { window.clearInterval(minuteur.current); minuteur.current = null; }
@@ -205,7 +177,7 @@ export function useEcoute({ onTranche, tranche = MORCEAU_S, format = "compresse"
     capteur.current = null;
     contexte.current?.close().catch(() => {});
     contexte.current = null;
-    morceauxPcm.current = [];
+    morceaux.current = [];
   };
 
   const liberer = React.useCallback(() => {
@@ -231,7 +203,7 @@ export function useEcoute({ onTranche, tranche = MORCEAU_S, format = "compresse"
       total.current = depuis;
       debutTranche.current = depuis;
       setSecondes(depuis);
-      ouvrirEnregistreur();
+      ouvrirCapture();
       lancerLeCompteur();
       setEtat("ecoute");
       return null;
@@ -240,20 +212,18 @@ export function useEcoute({ onTranche, tranche = MORCEAU_S, format = "compresse"
       setEtat("repos");
       return messageMicro(e);
     }
-  }, [ouvrirEnregistreur, lancerLeCompteur, liberer]);
+  }, [ouvrirCapture, lancerLeCompteur, liberer]);
 
   const pause = React.useCallback(() => {
-    if (!rec.current && !capteur.current) return;
+    if (!capteur.current) return;
     arreterLeCompteur();
     enPause.current = true;
-    try { rec.current?.pause(); } catch { /* pas de pause : la tranche continue */ }
     setEtat("pause");
   }, [arreterLeCompteur]);
 
   const reprendre = React.useCallback(() => {
-    if (!rec.current && !capteur.current) return;
+    if (!capteur.current) return;
     enPause.current = false;
-    try { rec.current?.resume(); } catch { /* idem */ }
     lancerLeCompteur();
     setEtat("ecoute");
   }, [lancerLeCompteur]);
@@ -261,13 +231,10 @@ export function useEcoute({ onTranche, tranche = MORCEAU_S, format = "compresse"
   const arreter = React.useCallback(() => {
     arreterLeCompteur();
     enPause.current = false;
-    // Reprendre avant de clore : un enregistreur en pause ne rend pas ses données.
-    if (rec.current?.state === "paused") { try { rec.current.resume(); } catch { /* ignore */ } }
     clore();
     liberer();
     setEtat("repos");
-    setSecondesTranche(0);
   }, [arreterLeCompteur, clore, liberer]);
 
-  return { etat, secondes, secondesTranche, demarrer, couper, pause, reprendre, arreter };
+  return { etat, secondes, demarrer, couper, pause, reprendre, arreter };
 }

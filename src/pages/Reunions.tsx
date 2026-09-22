@@ -8,7 +8,7 @@ import { printHTML, escapeHtml } from "../print";
 import { useEcoute, type TrancheAudio } from "../ecoute";
 import { ZoneVivante } from "../components/ZoneVivante";
 import {
-  formatDe, moteurActif, secondesParMorceau, sortieDeLAudio, transcrire, type Moteur,
+  moteurActif, paroleMinimale, plafondDuMorceau, sortieDeLAudio, transcrire, type Moteur,
 } from "../transcription";
 import {
   GENRES, PHRASES_PAR_RELECTURE, ajouterAuDocument, ajouterAuTexte, assezPourResumer, convertirAnciennes,
@@ -291,8 +291,8 @@ export default function Reunions() {
 
   const ecoute = useEcoute({
     onTranche: (t) => { void surMorceau(t); },
-    tranche: secondesParMorceau(moteur),
-    format: formatDe(moteur),
+    minimumParole: paroleMinimale(moteur),
+    plafond: plafondDuMorceau(moteur),
   });
   // Où en est CETTE réunion : le compteur du micro tant qu'il tourne, la
   // durée déjà écoutée sinon. Sans cela, une réunion tapée au clavier
