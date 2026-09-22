@@ -272,6 +272,14 @@ export function CommandPalette() {
 
   React.useEffect(() => { if (open) { setQ(""); setRes([]); setSel(0); setBulle(null); } }, [open]);
 
+  // Les dossiers du bureau : ils n'existent pas en base comme des lignes, mais
+  // on les cherche comme le reste — c'est souvent par eux qu'on retrouve.
+  const [dossiers, setDossiers] = React.useState<string[]>([]);
+  React.useEffect(() => {
+    if (!open) return;
+    api.dossiersBureau().then(setDossiers).catch(() => {});
+  }, [open]);
+
   // Sans cela, la sélection sortait de l'écran passé le huitième résultat et
   // l'on naviguait à l'aveugle.
   const ligneChoisie = React.useRef<HTMLButtonElement | null>(null);
@@ -332,7 +340,24 @@ export function CommandPalette() {
     donnee: true,
     run: () => { setOpen(false); allerVers(r, nav); },
   }));
-  const toutes = [...ACTIONS, ...navCmds, ...sousCmds, ...rechCmds];
+  const dossierCmds: Cmd[] = dossiers.map((chemin) => {
+    const bouts = chemin.split("/");
+    const parent = bouts.slice(0, -1).join(" › ");
+    return {
+      id: "dos" + chemin,
+      ico: "📁",
+      // Le nom du dossier d'abord : c'est lui qu'on cherche. Le chemin suit.
+      label: bouts[bouts.length - 1],
+      sous: ["Dossier du bureau", parent].filter(Boolean).join(" · "),
+      run: () => {
+        setOpen(false);
+        nav("/plan");
+        setTimeout(() => window.dispatchEvent(new CustomEvent(EVT_CHERCHER_BUREAU,
+          { detail: { dossier: chemin, titre: chemin } })), 140);
+      },
+    };
+  });
+  const toutes = [...ACTIONS, ...navCmds, ...sousCmds, ...dossierCmds, ...rechCmds];
   // Sans rien de tapé, on montre ce qui sert — pas le catalogue entier.
   const cmds = q.trim() ? classer(toutes, q, recents) : ouverture(toutes, recents, DEPARTS);
   const clamped = Math.min(sel, Math.max(0, cmds.length - 1));
