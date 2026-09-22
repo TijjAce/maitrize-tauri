@@ -1,25 +1,52 @@
 // ── Réunions écoutées et résumées ─────────────────────────────────────────
 //
 // Une ESS dure une heure, on y parle vite, et l'on en ressort avec trois mots
-// griffonnés. L'application écoute, découpe en tranches de cinq minutes, et
-// résume chaque tranche pendant que la réunion continue : à la fin, le compte
-// rendu est déjà écrit, et il ne reste qu'à le relire.
+// griffonnés. L'application écrit ce qui se dit, au fur et à mesure, et résume
+// toutes les dix phrases : à la fin, le compte rendu s'assemble à partir des
+// résumés, et il ne reste qu'à relire.
 //
-// Le découpage n'est pas qu'un détail technique. Cinq minutes, c'est assez
-// court pour qu'un résumé arrive avant qu'on ait oublié de quoi il parle, et
-// assez long pour qu'un point soit traité en entier. On voit donc avancer la
-// réunion, et l'on peut couper soi-même quand un sujet se termine.
+// Le texte est un seul bloc, qui grandit — on le voit s'écrire, on le corrige,
+// et l'on peut aussi y taper soi-même : une réunion se prend parfois au
+// clavier, et le résumé arrive alors de la même façon.
 //
-// Ce qui sort de l'ordinateur : l'audio de chaque tranche part chez Mistral
-// pour être transcrit, puis le texte pour être résumé — prénoms d'élèves
-// masqués (voir `confidentialite.ts`), remis au retour. L'audio n'est jamais
-// écrit sur le disque.
+// Résumer toutes les dix phrases plutôt que toutes les cinq minutes n'est pas
+// un détail : cinq minutes de tour de table valent une ligne, cinq minutes de
+// décisions en valent dix. Le découpage suit donc ce qui est dit, pas la
+// montre.
+//
+// Ce qui sort de l'ordinateur : l'audio part chez Mistral pour être transcrit,
+// puis le texte pour être résumé — prénoms d'élèves masqués (voir
+// `confidentialite.ts`), remis au retour. L'audio n'est jamais écrit sur le
+// disque.
 
 import { api, type Reunion, MODELE_TACHES } from "./api";
 import { pseudonymiser, restaurer } from "./confidentialite";
 
-/** Durée d'une tranche, en secondes. */
+/**
+ * Durée d'une tranche, en secondes.
+ *
+ * Gardée pour relire les réunions des versions 1.6.13 et 1.6.14, qui
+ * résumaient toutes les cinq minutes.
+ */
 export const TRANCHE_S = 300;
+
+/**
+ * Le morceau d'audio envoyé à la transcription.
+ *
+ * C'est le rythme auquel le texte s'écrit à l'écran : une minute et demie,
+ * assez court pour voir la réunion s'écrire, assez long pour qu'une phrase
+ * coupée en deux reste rare.
+ */
+export const MORCEAU_S = 90;
+
+/**
+ * Un résumé toutes les dix phrases.
+ *
+ * Le temps disait mal les choses : cinq minutes de tour de table valent une
+ * ligne, cinq minutes de décisions en valent dix. Dix phrases, c'est une
+ * quantité de propos — le résumé arrive quand il y a de quoi résumer.
+ */
+export const PHRASES_PAR_RESUME = 10;
 
 /** Les réunions d'un enseignant du premier degré, ESMS compris. */
 export const GENRES = [
@@ -114,26 +141,160 @@ export function ecrireTranches(tranches: Tranche[]): string {
   return JSON.stringify(posables);
 }
 
+
+// ── Le texte de la réunion, et ses résumés ────────────────────────────────
+//
+// Le texte s'écrit d'un bout à l'autre : la transcription s'y ajoute au fil
+// de l'écoute, et l'on peut aussi y taper soi-même — une réunion se prend
+// parfois au clavier. Les résumés, eux, ne suivent plus la montre mais le
+// texte : dix phrases, un résumé.
+
+export type EtatResume = "encours" | "fait" | "echec";
+
+/** Un résumé portant sur les phrases [de, a[ du texte de la réunion. */
+export interface Resume {
+  id: string;
+  rang: number;
+  de: number;
+  a: number;
+  texte: string;
+  etat: EtatResume;
+  /** Où l'on en était, en secondes d'écoute — absent si le texte a été tapé. */
+  quand?: number;
+  erreur?: string;
+}
+
+/**
+ * Découpe un texte en phrases.
+ *
+ * Sans recherche en arrière (lookbehind) : les webviews de macOS 11 ne la
+ * connaissent pas, et l'application planterait à la première phrase.
+ */
+export function decouperEnPhrases(texte: string): string[] {
+  const phrases: string[] = [];
+  let courante = "";
+  for (const ch of texte) {
+    if (ch === "\n") { phrases.push(courante); courante = ""; continue; }
+    courante += ch;
+    if (".!?…".includes(ch)) { phrases.push(courante); courante = ""; }
+  }
+  phrases.push(courante);
+  return phrases.map((p) => p.trim()).filter(Boolean);
+}
+
+/** Jusqu'où les résumés sont déjà allés dans le texte. */
+export function phrasesDejaResumees(resumes: Resume[]): number {
+  return resumes.reduce((m, r) => Math.max(m, r.a), 0);
+}
+
+/**
+ * Les phrases qui attendent un résumé.
+ *
+ * Si le texte a été raccourci à la main, le repère est ramené à sa longueur :
+ * mieux vaut re-résumer que de ne plus rien résumer du tout.
+ */
+export function phrasesEnAttente(texte: string, resumes: Resume[]): { de: number; phrases: string[] } {
+  const toutes = decouperEnPhrases(texte);
+  const de = Math.min(phrasesDejaResumees(resumes), toutes.length);
+  return { de, phrases: toutes.slice(de) };
+}
+
+/** Faut-il résumer maintenant ? */
+export const assezPourResumer = (attente: number, seuil = PHRASES_PAR_RESUME) => attente >= seuil;
+
+export function lireResumes(json: string): Resume[] {
+  let brut: unknown;
+  try { brut = JSON.parse(json || "[]"); } catch { return []; }
+  if (!Array.isArray(brut)) return [];
+  return brut.flatMap((x, i): Resume[] => {
+    if (!x || typeof x !== "object") return [];
+    const o = x as Record<string, unknown>;
+    const nombre = (v: unknown, repli: number) => (typeof v === "number" && isFinite(v) ? v : repli);
+    const chaine = (v: unknown) => (typeof v === "string" ? v : "");
+    const rang = nombre(o.rang, i + 1);
+    return [{
+      id: chaine(o.id) || `r${rang}`,
+      rang,
+      de: nombre(o.de, 0),
+      a: nombre(o.a, 0),
+      texte: chaine(o.texte),
+      // Un résumé relu n'est plus « en cours » : son texte ne viendra plus.
+      etat: chaine(o.etat) === "echec" ? "echec" : "fait",
+      quand: typeof o.quand === "number" ? o.quand : undefined,
+      erreur: chaine(o.erreur) || undefined,
+    }];
+  });
+}
+
+export function ecrireResumes(resumes: Resume[]): string {
+  return JSON.stringify(resumes
+    .filter((r) => r.etat !== "encours")
+    .map((r) => ({
+      id: r.id, rang: r.rang, de: r.de, a: r.a, texte: r.texte, etat: r.etat,
+      ...(r.quand != null ? { quand: r.quand } : {}),
+      ...(r.erreur ? { erreur: r.erreur } : {}),
+    })));
+}
+
+/**
+ * Relit une réunion enregistrée avant ce changement.
+ *
+ * Les versions 1.6.13 et 1.6.14 gardaient une transcription et un résumé par
+ * tranche de cinq minutes. On en refait le texte suivi et des résumés posés
+ * sur les phrases correspondantes, pour qu'une vieille réunion s'ouvre comme
+ * une neuve.
+ */
+export function convertirAnciennes(tranchesJson: string): { texte: string; resumes: Resume[] } {
+  const tranches = lireTranches(tranchesJson);
+  if (!tranches.length) return { texte: "", resumes: [] };
+  let texte = "";
+  const resumes: Resume[] = [];
+  let posees = 0;
+  for (const t of [...tranches].sort((a, b) => a.rang - b.rang)) {
+    const morceau = t.transcription.trim();
+    if (morceau) texte = texte ? `${texte} ${morceau}` : morceau;
+    const jusque = decouperEnPhrases(texte).length;
+    resumes.push({
+      id: t.id, rang: t.rang, de: posees, a: Math.max(posees, jusque),
+      texte: t.resume, etat: t.etat === "echec" ? "echec" : "fait",
+      quand: t.fin, erreur: t.erreur,
+    });
+    posees = Math.max(posees, jusque);
+  }
+  return { texte, resumes };
+}
+
+/** Ajoute ce qui vient d'être transcrit au texte de la réunion. */
+export function ajouterAuTexte(texte: string, morceau: string): string {
+  const propre = morceau.trim();
+  if (!propre) return texte;
+  if (!texte.trim()) return propre;
+  // Un point manquant entre deux morceaux collerait deux phrases en une.
+  const fin = texte.trimEnd();
+  const separateur = ".!?…".includes(fin.slice(-1)) ? " " : ". ";
+  return fin + separateur + propre;
+}
+
 // ── Ce qu'on demande au modèle ────────────────────────────────────────────
 
-/** Le résumé d'une tranche : des puces, rien d'autre. */
-export function promptTranche(genre: string, titre: string, transcription: string) {
+/** Le résumé d'un passage : des puces, rien d'autre. */
+export function promptPassage(genre: string, titre: string, passage: string) {
   const quoi = [genre, titre].filter(Boolean).join(" — ") || "une réunion";
   return [
     {
       role: "system" as const,
       content: [
         "Tu assistes un enseignant du premier degré pendant " + quoi + ".",
-        "On te donne la transcription brute de cinq minutes de réunion : plusieurs personnes parlent, la transcription contient des hésitations et des erreurs.",
+        "On te donne un passage de la réunion, tel qu'il vient d'être écrit : plusieurs personnes parlent, le texte contient des hésitations et des erreurs de transcription.",
         "Rends les points importants sous forme de puces commençant par « - », une idée par puce, à l'infinitif ou en phrase courte.",
         "Garde ce qui compte pour la suite : décisions, échéances, chiffres, dispositifs cités, ce que chacun s'engage à faire.",
         "N'invente rien, n'interprète pas, n'ajoute aucun commentaire ni titre.",
         "Ignore les bavardages, les répétitions et ce qui n'a pas de suite.",
-        "Si ces cinq minutes n'apportent rien (silence, hors sujet), réponds exactement : —",
+        "Si ce passage n'apporte rien (bavardage, hors sujet), réponds exactement : —",
         "Les marqueurs entre crochets comme [P1] remplacent des prénoms : recopie-les exactement.",
       ].join(" "),
     },
-    { role: "user" as const, content: transcription },
+    { role: "user" as const, content: passage },
   ];
 }
 
@@ -152,10 +313,10 @@ export function promptCompteRendu(r: {
       role: "system" as const,
       content: [
         "Tu rédiges le compte rendu d'une réunion pour un enseignant du premier degré (maternelle, élémentaire ou ESMS).",
-        "On te donne les résumés successifs de la réunion, tranche par tranche, dans l'ordre.",
+        "On te donne les résumés successifs de la réunion, passage par passage, dans l'ordre.",
         "Rends un compte rendu en français, sobre et professionnel, structuré avec exactement ces titres, chacun sur sa ligne et précédé de « ## » :",
         "## Points abordés, ## Décisions, ## Ce que je dois faire, ## À revoir.",
-        "Sous chaque titre, des puces commençant par « - ». Regroupe ce qui se répète d'une tranche à l'autre, garde l'ordre chronologique des sujets.",
+        "Sous chaque titre, des puces commençant par « - ». Regroupe ce qui se répète d'un passage à l'autre, garde l'ordre chronologique des sujets.",
         "Sous « Ce que je dois faire », ne mets que ce qui incombe à l'enseignant, avec l'échéance si elle a été dite.",
         "Sous « À revoir », mets ce qui est resté en suspens ou ce qui n'a pas été compris.",
         "Si une rubrique est vide, écris « - Rien à signaler ».",
@@ -204,27 +365,35 @@ function masquerTout(morceaux: string[], noms: string[]) {
  * Résume une tranche. La transcription arrive de l'audio (déjà partie chez
  * Mistral) ; pour le résumé, les prénoms connus sont masqués et remis ici.
  */
-export async function resumerTranche(
-  transcription: string,
+export async function resumerPassage(
+  passage: string,
   contexte: { genre: string; titre: string },
 ): Promise<string> {
-  if (!transcription.trim()) return "";
-  const { parts, table } = masquerTout([contexte.titre, transcription], await nomsDesEleves());
+  if (!passage.trim()) return "";
+  const { parts, table } = masquerTout([contexte.titre, passage], await nomsDesEleves());
   const [titre, masque] = parts;
   const modele = await api.modeleActif(MODELE_TACHES);
-  const rep = await api.mistralChat(promptTranche(contexte.genre, titre, masque), modele);
+  const rep = await api.mistralChat(promptPassage(contexte.genre, titre, masque), modele);
   const propre = nettoyer(rep);
   return restaurer(propre, table).texte;
+}
+
+/** Où en était la réunion quand ce résumé a été fait. */
+export function repereDuResume(r: Resume): string {
+  const phrases = `phrases ${r.de + 1}–${r.a}`;
+  if (r.quand == null) return phrases;
+  const m = Math.floor(r.quand / 60);
+  return `${m} min · ${phrases}`;
 }
 
 /** Rédige le compte rendu à partir des résumés déjà obtenus. */
 export async function redigerCompteRendu(
   reunion: Pick<Reunion, "genre" | "titre" | "date" | "participants">,
-  tranches: Tranche[],
+  liste: Resume[],
 ): Promise<string> {
-  const utiles = tranches.filter((t) => !riendedit(t.resume));
+  const utiles = liste.filter((r) => !riendedit(r.texte));
   if (!utiles.length) throw new Error("Aucun résumé à assembler.");
-  const resumes = utiles.map((t) => `[${horodatage(t)}]\n${t.resume.trim()}`).join("\n\n");
+  const resumes = utiles.map((r) => `[${repereDuResume(r)}]\n${r.texte.trim()}`).join("\n\n");
   // Le titre et les participants partent aussi : ils se masquent avec le reste.
   const { parts, table } = masquerTout(
     [reunion.titre, reunion.participants, resumes], await nomsDesEleves());
@@ -242,15 +411,15 @@ export async function redigerCompteRendu(
 // ── Ce qu'on emporte : texte à copier, page à imprimer ────────────────────
 
 /** Le compte rendu tel qu'on le colle dans un courriel. */
-export function texteACopier(r: Reunion, tranches: Tranche[]): string {
+export function texteACopier(r: Reunion, liste: Resume[]): string {
   const entete = [
     r.titre || r.genre || "Réunion",
     [r.genre, r.date, r.dureeS ? dureeLisible(r.dureeS) : ""].filter(Boolean).join(" · "),
     r.participants ? `Participants : ${r.participants}` : "",
   ].filter(Boolean).join("\n");
   const corps = r.compteRendu.trim()
-    || tranches.filter((t) => !riendedit(t.resume))
-      .map((t) => `[${horodatage(t)}]\n${t.resume.trim()}`).join("\n\n");
+    || liste.filter((x) => !riendedit(x.texte))
+      .map((x) => `[${repereDuResume(x)}]\n${x.texte.trim()}`).join("\n\n");
   return `${entete}\n\n${corps}\n`;
 }
 

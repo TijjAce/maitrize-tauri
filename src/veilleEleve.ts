@@ -19,7 +19,7 @@ import type { CommentaireEleve, Creneau, Reunion } from "./api";
 import { api } from "./api";
 import { normaliser } from "./competencesTravaillees";
 import { pseudonymiser, restaurer } from "./confidentialite";
-import { lireTranches, riendedit } from "./reunion";
+import { lireResumes, lireTranches, riendedit } from "./reunion";
 import { SECTIONS_SYNTHESE, sansAutresEleves, type Section, type SyntheseEleve } from "./synthese";
 
 /** D'où vient un écrit — pour que l'enseignant puisse aller le relire. */
@@ -139,7 +139,12 @@ export function ecritsDesReunions(reunions: Reunion[], prenom: string): Ecrit[] 
   for (const r of reunions) {
     const morceaux: string[] = [];
     if (r.compteRendu.trim()) morceaux.push(r.compteRendu);
-    else for (const t of lireTranches(r.tranchesJson)) if (!riendedit(t.resume)) morceaux.push(t.resume);
+    else {
+      // Les résumés d'aujourd'hui, ou les tranches des réunions d'avant.
+      const resumes = lireResumes(r.resumesJson).map((x) => x.texte)
+        .concat(lireTranches(r.tranchesJson).map((t) => t.resume));
+      for (const texte of resumes) if (!riendedit(texte)) morceaux.push(texte);
+    }
     const part = morceaux.map((m) => phrasesQuiCitent(m, prenom)).filter(Boolean).join(" ");
     if (!part) continue;
     ecrits.push({

@@ -1,17 +1,17 @@
 import React from "react";
-import { TRANCHE_S } from "./reunion";
+import { MORCEAU_S } from "./reunion";
 
-// ── Écouter longtemps, en tranches ────────────────────────────────────────
+// ── Écouter longtemps, par morceaux ───────────────────────────────────────
 //
 // La dictée (voir `dictee.ts`) enregistre d'un bloc et transcrit à la fin :
 // pour une réunion d'une heure, il faudrait attendre la fin pour avoir la
 // moindre ligne, et un envoi raté ferait tout perdre.
 //
-// Ici, l'enregistreur est refermé et rouvert toutes les cinq minutes sur le
-// même micro. Chaque tranche est donc un fichier complet, transcriptible seul
-// et tout de suite, pendant que la réunion continue. La coupe laisse un trou
-// de quelques millisecondes — le prix d'un fichier valide, un mot n'y tient
-// pas.
+// Ici, l'enregistreur est refermé et rouvert régulièrement sur le même micro.
+// Chaque morceau est donc un fichier complet, transcriptible seul et tout de
+// suite : le texte de la réunion s'écrit pendant qu'elle a lieu. La coupe
+// laisse un trou de quelques millisecondes — le prix d'un fichier valide, un
+// mot n'y tient pas.
 //
 // L'audio ne touche jamais le disque : il part en mémoire vers la
 // transcription, puis disparaît.
@@ -37,7 +37,7 @@ export interface Ecoute {
    * Renvoie l'erreur à afficher, ou null.
    */
   demarrer: (depuis?: number) => Promise<string | null>;
-  /** Clôt la tranche en cours et en ouvre une autre. */
+  /** Clôt le morceau en cours et en ouvre un autre : le texte arrive sans attendre. */
   couper: () => void;
   pause: () => void;
   reprendre: () => void;
@@ -58,7 +58,7 @@ export function messageMicro(e: unknown): string {
 /** En dessous, la tranche n'a rien à dire : on ne l'envoie pas transcrire. */
 export const MINIMUM_S = 3;
 
-export function useEcoute({ onTranche, tranche = TRANCHE_S }: {
+export function useEcoute({ onTranche, tranche = MORCEAU_S }: {
   onTranche: (t: TrancheAudio) => void;
   tranche?: number;
 }): Ecoute {
@@ -115,7 +115,7 @@ export function useEcoute({ onTranche, tranche = TRANCHE_S }: {
     ouvrirEnregistreur();
   }, [clore, ouvrirEnregistreur]);
 
-  /** Le compteur : il avance, et coupe de lui-même toutes les cinq minutes. */
+  /** Le compteur : il avance, et coupe de lui-même à chaque morceau. */
   const lancerLeCompteur = React.useCallback(() => {
     if (minuteur.current) window.clearInterval(minuteur.current);
     minuteur.current = window.setInterval(() => {
