@@ -13,6 +13,7 @@ import { DispositifsTab } from "./Dispositifs";
 import { ProgressionsTab } from "./Progressions";
 import { GevaScoTab } from "./GevaSco";
 import { DicteeAtelier } from "../components/DicteeAtelier";
+import { GrilleObservation } from "../components/GrilleObservation";
 import { age, libelleAge } from "../dossier";
 
 /** « 12 ans », ou rien sans date de naissance. */
@@ -163,6 +164,9 @@ function Observations() {
   const [type, setType] = React.useState("divers");
   const [dictee, setDictee] = React.useState(false);
   const [filtre, setFiltre] = React.useState<string | null>(null);
+  // Deux façons de regarder un élève : les notes au fil de l'eau, et les
+  // temps d'observation décidés à l'avance sur un axe.
+  const [vue, setVue] = React.useState<"notes" | "grille">("notes");
   const comptes = React.useMemo(() => {
     const n: Record<string, number> = {};
     for (const c of commentaires ?? []) n[c.type] = (n[c.type] ?? 0) + 1;
@@ -185,11 +189,18 @@ function Observations() {
           {eleves?.map((e) => <option key={e.id} value={e.id}>{e.nom}</option>)}
         </Select>
         <div className="spacer" />
-        <button className="btn" disabled={!eleves?.length} onClick={() => setDictee(true)}
+        <div className="seg">
+          <button className={vue === "notes" ? "active" : ""} onClick={() => setVue("notes")}>Notes</button>
+          <button className={vue === "grille" ? "active" : ""} onClick={() => setVue("grille")}
+            title="La grille « Observer » : réussites, difficultés, hypothèses, aménagements, réajustement">👁 Observer</button>
+        </div>
+        <button className="btn" disabled={!eleves?.length || vue === "grille"} onClick={() => setDictee(true)}
           title="Raconter l'atelier à voix haute et répartir les observations par élève">
           🎙 Dictée d'atelier
         </button>
       </div>
+      {vue === "grille" && <GrilleObservation eleve={eleves?.find((e) => e.id === eleveId) ?? null} />}
+      {vue === "notes" && <>
       {dictee && <DicteeAtelier eleves={eleves ?? []} onClose={() => setDictee(false)} onEnregistre={reload} />}
       <div className="card" style={{ marginBottom: 14 }}>
         <ChoixTypeObservation valeur={type} onChange={setType} />
@@ -224,6 +235,7 @@ function Observations() {
               }}>🗑</button>
           </div>
         ))}
+      </>}
     </>
   );
 }

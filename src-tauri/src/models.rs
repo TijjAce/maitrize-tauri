@@ -938,6 +938,71 @@ impl PiloteConversation {
     }
 }
 
+/// Un temps d'observation : la grille « Observer » remplie pour un élève.
+///
+/// Posée depuis le cahier journal — un axe tiré de la grille Cap école
+/// inclusive, la compétence travaillée, le contexte —, puis complétée dans le
+/// dossier de l'élève. `note` garde ce qui a été écrit dans le bilan du
+/// créneau : la matière première, avant d'être rangée en colonnes.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ObservationEleve {
+    #[serde(default = "new_id")]
+    pub id: String,
+    pub eleve_id: String,
+    #[serde(default)]
+    pub date: String,
+    #[serde(default)]
+    pub creneau_id: Option<String>,
+    #[serde(default)]
+    pub contexte: String,
+    #[serde(default)]
+    pub axe: String,
+    #[serde(default)]
+    pub domaine: String,
+    #[serde(default)]
+    pub competence: String,
+    #[serde(default)]
+    pub note: String,
+    #[serde(default)]
+    pub reussites: String,
+    #[serde(default)]
+    pub difficultes: String,
+    #[serde(default)]
+    pub hypotheses: String,
+    #[serde(default)]
+    pub amenagements: String,
+    #[serde(default)]
+    pub reajustement: String,
+    #[serde(default = "now_iso")]
+    pub date_creation: String,
+    #[serde(default = "now_iso")]
+    pub date_maj: String,
+}
+
+impl ObservationEleve {
+    pub fn from_row(r: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: r.get("id")?,
+            eleve_id: r.get("eleve_id")?,
+            date: r.get("date")?,
+            creneau_id: r.get("creneau_id")?,
+            contexte: r.get("contexte")?,
+            axe: r.get("axe")?,
+            domaine: r.get("domaine")?,
+            competence: r.get("competence")?,
+            note: r.get("note")?,
+            reussites: r.get("reussites")?,
+            difficultes: r.get("difficultes")?,
+            hypotheses: r.get("hypotheses")?,
+            amenagements: r.get("amenagements")?,
+            reajustement: r.get("reajustement")?,
+            date_creation: r.get("date_creation")?,
+            date_maj: r.get("date_maj")?,
+        })
+    }
+}
+
 /// Une réunion écoutée par l'application : ESS, équipe éducative, conseil de
 /// cycle… Les tranches de cinq minutes (texte transcrit et résumé) vivent dans
 /// `tranches_json` ; l'audio, lui, n'est jamais gardé.

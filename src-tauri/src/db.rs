@@ -589,6 +589,30 @@ pub(crate) fn migrate(conn: &Connection) {
             date_maj TEXT NOT NULL
         );
 
+        -- Temps d'observation d'un élève : la grille « Observer » (réussites,
+        -- difficultés, hypothèses, aménagements, réajustement), posée depuis
+        -- le cahier journal et reprise dans le dossier de l'élève.
+        CREATE TABLE IF NOT EXISTS observations_eleve (
+            id TEXT PRIMARY KEY,
+            eleve_id TEXT NOT NULL,
+            date TEXT NOT NULL DEFAULT '',
+            creneau_id TEXT,
+            contexte TEXT NOT NULL DEFAULT '',
+            axe TEXT NOT NULL DEFAULT '',
+            domaine TEXT NOT NULL DEFAULT '',
+            competence TEXT NOT NULL DEFAULT '',
+            note TEXT NOT NULL DEFAULT '',
+            reussites TEXT NOT NULL DEFAULT '',
+            difficultes TEXT NOT NULL DEFAULT '',
+            hypotheses TEXT NOT NULL DEFAULT '',
+            amenagements TEXT NOT NULL DEFAULT '',
+            reajustement TEXT NOT NULL DEFAULT '',
+            date_creation TEXT NOT NULL,
+            date_maj TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_observations_eleve ON observations_eleve(eleve_id);
+
         -- Réunions écoutées et résumées (ESS, conseil de cycle, équipe
         -- éducative…). Les tranches gardent le texte ; l'audio n'est jamais
         -- écrit sur le disque.
