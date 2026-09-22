@@ -264,6 +264,19 @@ export function convertirAnciennes(tranchesJson: string): { texte: string; resum
   return { texte, resumes };
 }
 
+/**
+ * Pose à la fin du document la parole qui vient d'être dite.
+ *
+ * Elle y reste en vrac, visible, jusqu'à ce que l'agent la range : c'est ce
+ * qu'on voit s'écrire dans l'encadré pendant que la réunion avance.
+ */
+export function ajouterAuDocument(document: string, morceau: string): string {
+  const propre = morceau.trim();
+  if (!propre) return document;
+  if (!document.trim()) return propre;
+  return `${document.trimEnd()}\n\n${propre}`;
+}
+
 /** Ajoute ce qui vient d'être transcrit au texte de la réunion. */
 export function ajouterAuTexte(texte: string, morceau: string): string {
   const propre = morceau.trim();
@@ -407,55 +420,57 @@ export function fusionnerPlan(ancien: Plan, nouveau: Plan): Plan {
   return sortie;
 }
 
-/** Ce qu'on demande à l'agent : réagencer, pas empiler. */
-export function promptPlan(a: { genre: string; titre: string; plan: string; passage: string }) {
+/**
+ * Ce qu'on demande à l'agent : ranger le document, pas en fabriquer un autre.
+ *
+ * Il n'y a qu'un encadré à l'écran, et ce qui vient d'être dit s'y écrit à la
+ * suite, brut. L'agent reçoit donc ce document entier — rubriques déjà
+ * rangées, puis la parole en vrac à la fin — et le rend rangé.
+ */
+export function promptRangement(a: { genre: string; titre: string; document: string }) {
   const quoi = [a.genre, a.titre].filter(Boolean).join(" — ") || "une réunion";
   return [
     {
       role: "system" as const,
       content: [
         "Tu tiens à jour le compte rendu d'" + quoi + ", pendant qu'elle a lieu.",
-        "On te donne le compte rendu actuel, puis le passage qui vient d'être dit (transcription brute, avec hésitations et erreurs).",
-        "Rends le compte rendu **entier et mis à jour**, avec exactement ces quatre titres précédés de « ## » :",
+        "On te donne le document tel qu'il est à l'écran : des rubriques déjà rangées, puis, à la fin, ce qui vient d'être dit — transcription brute, avec hésitations et erreurs, pas encore rangée.",
+        "Rends le document **entier et rangé**, avec exactement ces quatre titres précédés de « ## » :",
         RUBRIQUES.map((r) => `## ${r}`).join(", ") + ".",
         "Sous chaque titre, des puces courtes commençant par « - », une idée par puce.",
-        "Règles de mise à jour : garde mot pour mot ce qui est déjà écrit, sauf si le passage le précise, le corrige ou le contredit ;",
-        "ajoute ce qui est nouveau sous la bonne rubrique ; fusionne ce qui redit la même chose ;",
-        "déplace une ligne si elle a changé de nature — une piste devenue décision va sous « Décisions » ;",
+        "Range la parole en vrac sous les bonnes rubriques, et fais-la disparaître de la fin : rien ne doit rester hors des quatre rubriques.",
+        "Garde mot pour mot ce qui était déjà rangé, sauf si la suite le précise, le corrige ou le contredit ;",
+        "fusionne ce qui redit la même chose ; déplace une ligne si elle a changé de nature — une piste devenue décision va sous « Décisions » ;",
         "sous « Ce que je dois faire », ne mets que ce qui incombe à l'enseignant, avec l'échéance si elle a été dite.",
         "N'invente rien : aucune décision, aucune date, aucun nom qui ne soit dit.",
-        "Si le passage n'apporte rien, rends le compte rendu inchangé.",
-        "Si une rubrique est vide, écris « - Rien à signaler ». Aucun texte en dehors des quatre rubriques.",
+        "Ignore les bavardages et ce qui n'a pas de suite.",
+        "Si une rubrique est vide, écris « - Rien à signaler ».",
         "Les marqueurs entre crochets comme [P1] remplacent des prénoms : recopie-les exactement.",
       ].join(" "),
     },
-    {
-      role: "user" as const,
-      content: `Compte rendu actuel :\n${a.plan || "(vide)"}\n\nNouveau passage :\n${a.passage}`,
-    },
+    { role: "user" as const, content: a.document },
   ];
 }
 
 /**
- * Intègre un passage au compte rendu et rend le document suivant.
+ * Range le document et rend le suivant.
  *
- * Les prénoms partent masqués — le compte rendu **et** le passage, d'un seul
- * tenant, pour que [P1] désigne la même personne des deux côtés.
+ * Les prénoms partent masqués — titre compris, pour que [P1] désigne la même
+ * personne partout. Une réponse tronquée ne fait rien perdre : les rubriques
+ * revenues vides gardent leur contenu d'avant (voir `fusionnerPlan`), et le
+ * texte brut de la réunion est conservé à part de toute façon.
  */
-export async function integrerAuPlan(
-  planActuel: string,
-  passage: string,
+export async function rangerLeDocument(
+  document: string,
   contexte: { genre: string; titre: string },
 ): Promise<string> {
-  if (!passage.trim()) return planActuel;
-  const { parts, table } = masquerTout(
-    [contexte.titre, planActuel, passage], await nomsDesEleves());
-  const [titre, planMasque, passageMasque] = parts;
+  if (!document.trim()) return document;
+  const { parts, table } = masquerTout([contexte.titre, document], await nomsDesEleves());
+  const [titre, docMasque] = parts;
   const modele = await api.modeleActif(MODELE_TACHES);
   const rep = await api.mistralChat(
-    promptPlan({ genre: contexte.genre, titre, plan: planMasque, passage: passageMasque }), modele);
-  const lu = lirePlan(nettoyer(rep));
-  const fusionne = fusionnerPlan(lirePlan(planMasque), lu);
+    promptRangement({ genre: contexte.genre, titre, document: docMasque }), modele);
+  const fusionne = fusionnerPlan(lirePlan(docMasque), lirePlan(nettoyer(rep)));
   if (planVide(fusionne)) throw new Error("L'agent n'a rien rendu d'exploitable.");
   return restaurer(ecrirePlan(fusionne), table).texte;
 }
