@@ -22,7 +22,7 @@ import {
   lirePlan, lireResumes, lireTranches, mettreAuPropre, nettoyer, nomDeLaReunion, promptRelecture,
   relireLeDocument,
   phrasesEnAttente, planVide, promptCompteRendu, promptPassage, promptRangement, rangerLeDocument, redigerCompteRendu,
-  repereDuResume, resumerPassage, riendedit, texteACopier, type Resume,
+  repereDuResume, resumerPassage, riendedit, sansMarqueursOrphelins, texteACopier, type Resume,
 } from "./reunion";
 
 const resume = (p: Partial<Resume> = {}): Resume => ({
@@ -387,5 +387,21 @@ describe("la relecture de fond", () => {
     const suite = await relireLeDocument(BAVARD, { genre: "ESS", titre: "" });
     expect(lirePlan(suite)["Points abordés"]).toHaveLength(2);
     expect(lirePlan(suite)["Décisions"]).toEqual(["Essai accepté."]);
+  });
+});
+
+describe("les marqueurs qui n'ont pas de nom derrière", () => {
+  it("un « [P1] » inventé par le modèle ne reste pas à l'écran", () => {
+    // Vu en vrai : une réunion sans aucun élève cité, et « - [P1] : préciser
+    // la question » dans le compte rendu.
+    expect(sansMarqueursOrphelins("- [P1] : préciser la question sur l'IA."))
+      .toBe("- préciser la question sur l'IA.");
+    expect(sansMarqueursOrphelins("La question de [P1] reste ouverte."))
+      .toBe("La question de une personne reste ouverte.");
+  });
+
+  it("un texte sans marqueur n'est pas touché", () => {
+    const propre = "## Décisions\n- Essai à la cantine le mardi.";
+    expect(sansMarqueursOrphelins(propre)).toBe(propre);
   });
 });
