@@ -55,6 +55,29 @@ function versBlob(canvas: HTMLCanvasElement, type: string, qualite?: number): Pr
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("conversion impossible"))), type, qualite));
 }
 
+/**
+ * Les images d'un collage venu d'ailleurs qu'un fichier.
+ *
+ * Copier une image depuis une page web, un PDF ou un autre document ne met
+ * pas un fichier dans le presse-papiers : il n'y a qu'un bout de HTML, avec
+ * l'image écrite en base64 dans l'attribut `src`. Sans cette lecture, le
+ * collage ne posait rien du tout — c'est le cas le plus courant, et il ne
+ * marchait pas.
+ */
+export function imagesDuHtmlColle(html: string): Blob[] {
+  const images: Blob[] = [];
+  for (const m of (html ?? "").matchAll(/<img\b[^<>]*?src\s*=\s*["']data:(image\/[a-z+]+);base64,([^"']+)["'][^<>]*>/gi)) {
+    const [, type, donnees] = m;
+    try {
+      const binaire = atob(donnees.replace(/\s+/g, ""));
+      const octets = new Uint8Array(binaire.length);
+      for (let i = 0; i < binaire.length; i++) octets[i] = binaire.charCodeAt(i);
+      if (octets.length) images.push(new Blob([octets], { type }));
+    } catch { /* image illisible : on l'ignore plutôt que de tout perdre */ }
+  }
+  return images;
+}
+
 /** Une photo collée, réduite si besoin : son contenu en base64 et son extension. */
 export async function preparerImage(fichier: Blob): Promise<{ base64: string; ext: string }> {
   const connue = EXTENSIONS[fichier.type.toLowerCase()];

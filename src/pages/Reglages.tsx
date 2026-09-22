@@ -3,6 +3,7 @@ import { Page } from "../App";
 import { api, isMac, texteErreur, type InfoCopie, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo, type VerifSauvegarde } from "../api";
 import { Field, Input, Select, Modal, Confirm, useAsync } from "../components/ui";
 import { MesAppareils } from "../components/MesAppareils";
+import { PartagerMesDossiers } from "../components/PartagerMesDossiers";
 import { confirmer } from "../components/confirmer";
 import { toast } from "../components/Toaster";
 import { applyTheme, MODES, ACCENTS, STYLES, TAILLES } from "../theme";
@@ -372,6 +373,7 @@ export default function Reglages() {
       {/* Du plus courant au plus rare : ce qu'on fait tous les jours d'abord,
           l'emplacement des fichiers et l'export de secours à la fin. */}
       <MesAppareils />
+      <PartagerMesDossiers />
       <SauvegardeS3Card />
       <CopieDuBureauCard />
       <CopiesAutomatiques />
