@@ -1,7 +1,9 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { api, Creneau, Seance, Sequence, Eleve, Jeu, nouveauJeu, teinteCreneau, texteErreur } from "../api";
+import { api, Creneau, Seance, Sequence, Eleve, Jeu, nouveauJeu, teinteCreneau, texteErreur, nowIso, type ObservationEleve } from "../api";
 import { toast } from "./Toaster";
+import { PoserObservation } from "./PoserObservation";
+import { fichesANourrir } from "../observationEleve";
 import { useDictee, mmss } from "../dictee";
 import { natureDe } from "../heures";
 import { isoJour, plusJours } from "../dates";
@@ -98,12 +100,25 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
     });
   }, [duJour]);
 
+  // La liste des élèves, lisible depuis l'enregistrement — qui vit plus
+  // longtemps qu'un rendu.
+  const elevesRef = React.useRef(eleves);
+  elevesRef.current = eleves;
+
   const enregistrer = React.useCallback(async (id: string, b: Brouillon) => {
     setEtats((e) => ({ ...e, [id]: "enregistrement" }));
     try {
       await api.creneauJournalSave(id, b.prevu, b.bilan);
       enregistres.current[id] = b;
       setEtats((e) => ({ ...e, [id]: "ok" }));
+      // Les temps d'observation posés sur ce créneau se nourrissent du bilan,
+      // au fur et à mesure qu'il s'écrit.
+      const aNourrir = fichesANourrir(observations.current, id, b.bilan,
+        (eleveId) => elevesRef.current.find((x) => x.id === eleveId)?.nom ?? "", nowIso());
+      for (const o of aNourrir) {
+        await api.observationSave(o).catch(() => {});
+        observations.current = observations.current.map((x) => (x.id === o.id ? o : x));
+      }
     } catch (err) {
       setEtats((e) => ({ ...e, [id]: "erreur" }));
       toast("Cahier journal non enregistré : " + texteErreur(err), { icone: "⚠️", duree: 6000 });
@@ -272,6 +287,14 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
   const [manuelPour, setManuelPour] = React.useState<Creneau | null>(null);
   // ── Une compétence posée dans le prévu, prise dans les référentiels ──
   const [competencePour, setCompetencePour] = React.useState<Creneau | null>(null);
+  // Les temps d'observation posés sur les créneaux du jour : ce sont eux qui
+  // récupèrent le bilan, une fois qu'il est écrit.
+  const [observerPour, setObserverPour] = React.useState<Creneau | null>(null);
+  const observations = React.useRef<ObservationEleve[]>([]);
+  const relireObservations = React.useCallback(() => {
+    api.observationsList().then((l) => { observations.current = l; }).catch(() => {});
+  }, []);
+  React.useEffect(() => { relireObservations(); }, [relireObservations, dateIso]);
   const poserCompetence = (c: Creneau, comp: CompetenceSelectionnee) => {
     const prevu = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
     const ligne = ligneDeCompetence(comp.competenceTitre, comp.referentielNom, comp.niveau ?? "");
@@ -384,8 +407,15 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                           🎯 Compétence</button>
                       </>
                     ) : (
-                      <button className="btn ghost sm" disabled={!b.bilan.trim() || reunion} onClick={() => porterAuDossier(c, ids)}
-                        title="Faire du bilan, ou du passage sélectionné, une observation dans le dossier des élèves">📋 Au dossier</button>
+                      <>
+                        <button className="btn ghost sm" disabled={reunion || !ids.length}
+                          onClick={() => setObserverPour(c)}
+                          title={ids.length
+                            ? "Poser un temps d'observation sur un axe de la grille Cap école inclusive : ce bilan viendra le nourrir"
+                            : "Cochez d'abord les élèves présents sur ce créneau"}>👁 Observer</button>
+                        <button className="btn ghost sm" disabled={!b.bilan.trim() || reunion} onClick={() => porterAuDossier(c, ids)}
+                          title="Faire du bilan, ou du passage sélectionné, une observation dans le dossier des élèves">📋 Au dossier</button>
+                      </>
                     )}
                   </div>
                   <textarea className="textarea" value={b[champ]} placeholder={LIBELLES[champ].aide}
@@ -440,6 +470,23 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
       {versDossier && (
         <PorterAuDossier creneau={versDossier.creneau} texte={versDossier.texte} presents={versDossier.presents}
           eleves={eleves} onClose={() => setVersDossier(null)} />
+      )}
+      {observerPour && (
+        <PoserObservation
+          eleves={(() => { let ids: string[] = [];
+            try { ids = JSON.parse(observerPour.elevesJson || "[]"); } catch { ids = []; }
+            return eleves.filter((e) => ids.includes(e.id)); })()}
+          contexte={[observerPour.matiere, seances.find((s) => s.id === observerPour.seanceId)?.titre]
+            .filter(Boolean).join(" — ")}
+          competence={(() => {
+            const s = seances.find((x) => x.id === observerPour.seanceId);
+            return [s?.competences, s?.objectifs].filter(Boolean).join(" ").slice(0, 300);
+          })()}
+          creneauId={observerPour.id}
+          date={dateIso}
+          onClose={() => setObserverPour(null)}
+          onPose={relireObservations}
+        />
       )}
       {competencePour && (
         <ChoixCompetence onClose={() => setCompetencePour(null)} onChoisir={(comp) => poserCompetence(competencePour, comp)} />

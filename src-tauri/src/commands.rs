@@ -943,6 +943,45 @@ pub fn conversation_delete(db: State<Db>, id: String) -> R<()> {
 }
 
 // ============================================================
+// TEMPS D'OBSERVATION (grille « Observer »)
+// ============================================================
+
+#[tauri::command]
+pub fn observations_list(db: State<Db>, eleve_id: Option<String>) -> R<Vec<ObservationEleve>> {
+    let c = db.lock();
+    let (sql, params): (&str, Vec<String>) = match &eleve_id {
+        Some(id) => ("SELECT * FROM observations_eleve WHERE eleve_id = ?1 ORDER BY date DESC, date_creation DESC", vec![id.clone()]),
+        None => ("SELECT * FROM observations_eleve ORDER BY date DESC, date_creation DESC", vec![]),
+    };
+    let mut st = c.prepare(sql).map_err(e)?;
+    let rows = st.query_map(rusqlite::params_from_iter(params), ObservationEleve::from_row).map_err(e)?;
+    rows.collect::<rusqlite::Result<_>>().map_err(e)
+}
+
+#[tauri::command]
+pub fn observation_save(db: State<Db>, observation: ObservationEleve) -> R<ObservationEleve> {
+    let c = db.lock();
+    c.execute(
+        "INSERT INTO observations_eleve (id,eleve_id,date,creneau_id,contexte,axe,domaine,competence,note,
+          reussites,difficultes,hypotheses,amenagements,reajustement,date_creation,date_maj)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16) ON CONFLICT(id) DO UPDATE SET eleve_id = excluded.eleve_id, date = excluded.date, creneau_id = excluded.creneau_id, contexte = excluded.contexte, axe = excluded.axe, domaine = excluded.domaine, competence = excluded.competence, note = excluded.note, reussites = excluded.reussites, difficultes = excluded.difficultes, hypotheses = excluded.hypotheses, amenagements = excluded.amenagements, reajustement = excluded.reajustement, date_maj = excluded.date_maj",
+        params![observation.id, observation.eleve_id, observation.date, observation.creneau_id,
+                observation.contexte, observation.axe, observation.domaine, observation.competence,
+                observation.note, observation.reussites, observation.difficultes, observation.hypotheses,
+                observation.amenagements, observation.reajustement,
+                observation.date_creation, observation.date_maj],
+    ).map_err(e)?;
+    Ok(observation)
+}
+
+#[tauri::command]
+pub fn observation_delete(db: State<Db>, id: String) -> R<()> {
+    let c = db.lock();
+    c.execute("DELETE FROM observations_eleve WHERE id=?1", params![id]).map_err(e)?;
+    Ok(())
+}
+
+// ============================================================
 // RÉUNIONS ÉCOUTÉES (ESS, conseil de cycle…)
 // ============================================================
 
@@ -1975,6 +2014,7 @@ pub(crate) const TABLES_EXPORT: &[&str] = &[
     "commentaires_eleve", "evaluations", "notes_eleve", "pieces_jointes",
     "materiel_items", "papiers_eleve", "notes_competence", "progressions_annuelle",
     "programmations_finale", "edt_typique", "pilote_conversations", "reunions",
+    "observations_eleve",
     "referentiels", "documents_coffre", "textes", "settings",
 ];
 

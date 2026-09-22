@@ -250,6 +250,15 @@ export interface PiloteConversation {
   id: string; titre: string; messagesJson: string; dateCreation: string; dateMaj: string;
 }
 
+/** Un temps d'observation d'élève (grille « Observer », voir `observationEleve.ts`). */
+export interface ObservationEleve {
+  id: string; eleveId: string; date: string; creneauId: string | null;
+  contexte: string; axe: string; domaine: string; competence: string;
+  note: string; reussites: string; difficultes: string; hypotheses: string;
+  amenagements: string; reajustement: string;
+  dateCreation: string; dateMaj: string;
+}
+
 /** Une réunion écoutée et résumée (voir `reunion.ts`). */
 export interface Reunion {
   id: string; titre: string; genre: string; date: string; participants: string;
@@ -534,6 +543,13 @@ export const api = {
   conversationSave: (conversation: PiloteConversation) =>
     invoke<PiloteConversation>("conversation_save", { conversation }),
   conversationDelete: (id: string) => invoke<void>("conversation_delete", { id }),
+
+  // Temps d'observation (grille « Observer »)
+  observationsList: (eleveId?: string) =>
+    invoke<ObservationEleve[]>("observations_list", { eleveId: eleveId ?? null }),
+  observationSave: (observation: ObservationEleve) =>
+    invoke<ObservationEleve>("observation_save", { observation }),
+  observationDelete: (id: string) => invoke<void>("observation_delete", { id }),
 
   // Réunions écoutées
   reunionsList: () => invoke<Reunion[]>("reunions_list"),

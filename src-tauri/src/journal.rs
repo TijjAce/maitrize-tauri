@@ -37,6 +37,7 @@ pub const TABLES_SYNC: &[&str] = &[
     "materiel_items", "papiers_eleve", "notes_competence", "progressions_annuelle",
     "programmations_finale", "edt_typique", "documents_coffre", "documents_eleve",
     "jeux", "pilote_conversations", "textes", "outils_classe", "reunions",
+    "observations_eleve",
 ];
 
 /// Tables apparues après les versions qui ignoraient les annonces (1.6.9 et
@@ -50,7 +51,7 @@ pub const TABLES_SYNC: &[&str] = &[
 /// N'y mettre qu'une table inconnue des versions sans annonces : une version
 /// ancienne qui connaîtrait la table prendrait l'annonce pour une
 /// modification, et écraserait un travail plus récent.
-pub const TABLES_ANNONCEES: &[&str] = &["outils_classe", "reunions"];
+pub const TABLES_ANNONCEES: &[&str] = &["outils_classe", "reunions", "observations_eleve"];
 
 /// Préfixes de réglages apparus après les versions sans annonces : même
 /// traitement que `TABLES_ANNONCEES`. Les dossiers et la disposition des
