@@ -24,6 +24,30 @@ use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::collections::HashSet;
 use tauri::State;
+
+/**
+ * Le message d'une erreur, causes comprises.
+ *
+ * Le SDK S3 affiche « dispatch failure » et s'arrête là : ni le DNS, ni le
+ * certificat, ni la connexion coupée. Le journal d'incidents en recevait donc
+ * mille exemplaires sans qu'on puisse rien en faire. On déroule la chaîne des
+ * causes, qui, elle, nomme la panne.
+ */
+pub fn detail(err: &dyn std::error::Error) -> String {
+    let mut message = err.to_string();
+    let mut cause = err.source();
+    let mut profondeur = 0;
+    while let (Some(c), true) = (cause, profondeur < 4) {
+        let texte = c.to_string();
+        if !message.contains(&texte) {
+            message.push_str(" — ");
+            message.push_str(&texte);
+        }
+        cause = c.source();
+        profondeur += 1;
+    }
+    message
+}
 use x25519_dalek::{PublicKey, StaticSecret};
 
 type R<T> = Result<T, String>;
@@ -1476,7 +1500,7 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
         );
         cl.put_object().bucket(&cfg.bucket).key(&cle)
             .body(ByteStream::from(blob)).send().await
-            .map_err(|err| format!("Envoi impossible : {err}"))?;
+            .map_err(|err| format!("Envoi impossible : {}", detail(&err)))?;
         // Le repère n'avance qu'après un dépôt réussi : une coupure fait
         // renvoyer, jamais perdre.
         let c = db.lock();
@@ -1485,7 +1509,7 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
 
     // 2. Relire ce que les autres ont déposé.
     let liste = cl.list_objects_v2().bucket(&cfg.bucket).prefix(PREFIXE_DELTA)
-        .send().await.map_err(|err| format!("Lecture impossible : {err}"))?;
+        .send().await.map_err(|err| format!("Lecture impossible : {}", detail(&err)))?;
     let mut cles: Vec<String> = liste.contents().iter()
         .filter_map(|o| o.key().map(str::to_string))
         .filter(|k| !vus.contains(k))
@@ -1535,7 +1559,18 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
         publier_presence(&cl, &cfg, &phrase, &m).await;
     }
 
-    // 4. Élaguer le journal partagé, qui n'a pas à grandir sans fin.
+    // 4. Élaguer le journal local : ce qui est parti il y a plus d'un mois
+    // n'a plus à être relu à chaque passage.
+    {
+        let c = db.lock();
+        let envoye: i64 = get_setting(&c, CLE_SEQ_ENVOYEE).parse().unwrap_or(0);
+        let jetees = crate::journal::elaguer_ancien(&c, envoye, crate::journal::JOURS_JOURNAL);
+        if jetees > 0 {
+            crate::commands::diag_ecrire(format!("SYNCHRO journal élagué : {jetees} ligne(s) parties depuis plus de 30 jours"));
+        }
+    }
+
+    // 5. Élaguer le journal partagé, qui n'a pas à grandir sans fin.
     if cles.len() > DELTAS_GARDES {
         let mut toutes: Vec<String> = liste.contents().iter()
             .filter_map(|o| o.key().map(str::to_string)).collect();
@@ -1607,7 +1642,7 @@ pub async fn sync_fichiers(db: State<'_, Db>) -> R<ResultatFichiers> {
     let cl = client(&cfg);
     let ici = fichiers_locaux();
     let liste = cl.list_objects_v2().bucket(&cfg.bucket).prefix(PREFIXE_FICHIER)
-        .send().await.map_err(|err| format!("Lecture impossible : {err}"))?;
+        .send().await.map_err(|err| format!("Lecture impossible : {}", detail(&err)))?;
     let la_bas: std::collections::HashSet<String> = liste.contents().iter()
         .filter_map(|o| o.key()?.strip_prefix(PREFIXE_FICHIER).map(str::to_string))
         .filter(|n| !n.is_empty())

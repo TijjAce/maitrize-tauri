@@ -10,7 +10,7 @@
 // était bloqué entre les deux. Rien n'est interrompu — on ne fait que noter,
 // avec l'écran où c'est arrivé.
 
-import { battement, journal } from "./api";
+import { battement, commandesEnCours, journal } from "./api";
 
 /** Intervalle du battement. */
 export const BATTEMENT_MS = 2000;
@@ -44,6 +44,18 @@ export function messageDeBlocage(ecart: number, cache: boolean, ou: string): str
 const ouSuisJe = () => (typeof location === "undefined" ? "" : location.hash.replace(/^#/, "") || "/");
 
 /**
+ * L'écran, et ce qui tourne dessus.
+ *
+ * « FIGÉ 94 s sur /plan » ne dit pas quoi chercher ; « FIGÉ 94 s sur /plan
+ * (sync_deltas 46s) » désigne le coupable. Le battement l'emporte au backend,
+ * qui pourra le citer pendant le blocage — c'est le seul moment où la fenêtre,
+ * elle, ne peut plus rien écrire.
+ */
+export function ouEtQuoi(ou: string, enCours: string): string {
+  return enCours ? `${ou} (${enCours})` : ou;
+}
+
+/**
  * Démarre la veille. Rendre la fonction d'arrêt facilite les tests.
  *
  * Le battement part aussi au backend : lui n'est jamais bloqué, et peut donc
@@ -61,7 +73,7 @@ export function demarrerLaVeille(
     const maintenant = Date.now();
     const ecart = maintenant - precedent - BATTEMENT_MS;
     precedent = maintenant;
-    const ou = ouSuisJe();
+    const ou = ouEtQuoi(ouSuisJe(), commandesEnCours());
     battre(ou);
     const ligne = messageDeBlocage(ecart, typeof document !== "undefined" && document.hidden, ou);
     if (ligne) ecrire(ligne);
