@@ -1226,6 +1226,35 @@ pub fn elaguer(conn: &Connection, avant: i64) {
     conn.execute("DELETE FROM changements WHERE seq <= ?1", params![avant]).ok();
 }
 
+/// Combien de jours de journal on garde après l'envoi.
+pub const JOURS_JOURNAL: i64 = 30;
+
+/**
+ * Jette ce qui est parti il y a longtemps, garde le reste.
+ *
+ * Le journal sert à deux choses : envoyer ce qui n'est pas encore parti, et
+ * rattraper une machine revenue après quelques jours. Passé un mois, ni l'un
+ * ni l'autre — la ligne a voyagé, et un ordinateur absent depuis si longtemps
+ * repart d'une sauvegarde complète. Sans cet élagage, le journal grossit
+ * indéfiniment : chez son auteur, il pesait 7 Mo pour 7 000 lignes, relues à
+ * chaque passage de synchronisation.
+ *
+ * Deux conditions, et non une : `seq <= envoye_jusqua` garantit que la ligne
+ * est bien partie, la date garantit qu'on ne coupe pas l'herbe sous le pied
+ * d'une machine qui revient de vacances.
+ */
+pub fn elaguer_ancien(conn: &Connection, envoye_jusqua: i64, jours: i64) -> usize {
+    if envoye_jusqua <= 0 {
+        return 0;
+    }
+    let limite = (chrono::Utc::now() - chrono::Duration::days(jours)).to_rfc3339();
+    conn.execute(
+        "DELETE FROM changements WHERE seq <= ?1 AND horodatage < ?2",
+        params![envoye_jusqua, limite],
+    )
+    .unwrap_or(0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2052,6 +2081,32 @@ mod tests {
         elaguer(&c, repere);
         assert_eq!(changements_locaux(&c, 0).unwrap().0.len(), 0);
         assert_eq!(noms(&c).len(), 2, "élaguer le journal ne touche pas aux données");
+    }
+
+    #[test]
+    fn elaguer_ancien_garde_le_recent_et_ce_qui_n_est_pas_parti() {
+        let c = machine();
+        ajouter(&c, "e1", "Quang");
+        ajouter(&c, "e2", "Lina");
+        let (_, repere) = changements_locaux(&c, 0).unwrap();
+        // Tout est parti, mais tout est d'aujourd'hui : on ne jette rien.
+        assert_eq!(elaguer_ancien(&c, repere, JOURS_JOURNAL), 0);
+        assert_eq!(changements_locaux(&c, 0).unwrap().0.len(), 2);
+
+        // Vieillies d'un an, et déjà envoyées : elles partent.
+        c.execute("UPDATE changements SET horodatage = '2025-01-01T00:00:00Z'", []).unwrap();
+        assert_eq!(elaguer_ancien(&c, repere, JOURS_JOURNAL), 2);
+        assert_eq!(noms(&c).len(), 2, "élaguer le journal ne touche pas aux données");
+    }
+
+    #[test]
+    fn elaguer_ancien_ne_jette_pas_ce_qui_n_a_jamais_ete_envoye() {
+        let c = machine();
+        ajouter(&c, "e1", "Quang");
+        c.execute("UPDATE changements SET horodatage = '2025-01-01T00:00:00Z'", []).unwrap();
+        // Rien n'est parti (repère à 0) : le journal reste entier, si vieux soit-il.
+        assert_eq!(elaguer_ancien(&c, 0, JOURS_JOURNAL), 0);
+        assert_eq!(changements_locaux(&c, 0).unwrap().0.len(), 1);
     }
 
     /// Une base créée par une version antérieure — sans les colonnes ajoutées

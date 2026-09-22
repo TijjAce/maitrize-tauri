@@ -21,6 +21,8 @@ export const NOUVEAUTES: Nouveaute[] = [
     version: "1.6.15",
     titre: "Les réunions s'écrivent au fil de l'eau",
     points: [
+      { quoi: "Le journal d'incidents porte enfin la date, et dit ce qui tournait quand la fenêtre s'est figée : « FIGÉ 94 s sur /plan (sync_deltas 46s) » au lieu d'un simple « FIGÉ ». Une erreur réseau dit aussi sa cause réelle, et non plus « dispatch failure » tout court.", ou: "Réglages · Données & synchro · 🩺 Journal d'incidents" },
+      { quoi: "Le journal de synchronisation s'élague : ce qui est parti depuis plus d'un mois n'est plus relu à chaque passage. Il avait atteint 7 Mo et 7 000 lignes, relues toutes les trente secondes.", ou: "Réglages · Données & synchro" },
       { quoi: "Le texte de la réunion s'écrit maintenant sous vos yeux, en continu, au lieu d'arriver par blocs de cinq minutes. Vous pouvez le corriger pendant qu'il s'écrit — et même taper vous-même, sans micro : une réunion se prend parfois au clavier.", ou: "Réunions · Ce qui se dit" },
       { quoi: "Les résumés ne suivent plus la montre mais ce qui est dit : un résumé toutes les dix phrases. Cinq minutes de tour de table valent une ligne, cinq minutes de décisions en valent dix — le découpage suit désormais la matière. Un compteur annonce ce qu'il reste avant le prochain.", ou: "Réunions" },
       { quoi: "Un résumé raté se refait d'un clic : le texte est conservé, alors qu'avant l'audio était perdu. « ⤓ Écrire maintenant » transcrit sans attendre, et « ✂️ Résumer maintenant » résume ce qui est en attente.", ou: "Réunions" },
