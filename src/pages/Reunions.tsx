@@ -1,9 +1,10 @@
 import React from "react";
 import { Page } from "../App";
 import { api, journal, newId, nowIso, texteErreur, type Reunion } from "../api";
-import { Empty, Field, Input, Select } from "../components/ui";
+import { Empty, Field, Input, Modal, Select } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
+import { openCtx } from "../components/ctxmenu";
 import { printHTML, escapeHtml } from "../print";
 import { useEcoute, type TrancheAudio } from "../ecoute";
 import { ZoneVivante } from "../components/ZoneVivante";
@@ -12,7 +13,7 @@ import {
 } from "../transcription";
 import {
   GENRES, SECONDES_PAR_RELECTURE, ajouterAuDocument, ajouterAuTexte, assezPourResumer, convertirAnciennes,
-  decouperEnPhrases, dureeLisible, ecrireResumes, lirePlan, lireResumes, mettreAuPropre,
+  dureeLisible, ecrireResumes, lirePlan, lireResumes, mettreAuPropre,
   assezPourRelire, nomDeLaReunion, phrasesEnAttente, planVide, rangerLeDocument,
   relireLeDocument, texteACopier, type Resume,
 } from "../reunion";
@@ -59,6 +60,54 @@ function nouvelleReunion(): Reunion {
   };
 }
 
+/** Ce qu'on demande avant de commencer, et qu'on peut reprendre ensuite. */
+interface Infos { titre: string; genre: string; date: string; participants: string }
+
+/**
+ * La fiche de la réunion.
+ *
+ * Posée avant l'écoute, elle ne revient plus encombrer l'écran : pendant la
+ * réunion, on regarde le texte. Pour la reprendre après coup, clic droit sur
+ * la réunion dans la liste.
+ */
+function FicheReunion({ infos, titre, bouton, onValider, onClose }: {
+  infos: Infos; titre: string; bouton: string;
+  onValider: (i: Infos) => void; onClose: () => void;
+}) {
+  const [i, setI] = React.useState<Infos>(infos);
+  const champ = <T extends keyof Infos>(k: T) => (e: { target: { value: string } }) =>
+    setI((x) => ({ ...x, [k]: e.target.value }));
+  return (
+    <Modal titre={titre} onClose={onClose} footer={<>
+      <div className="spacer" style={{ flex: 1 }} />
+      <button className="btn" onClick={onClose}>Annuler</button>
+      <button className="btn primary" onClick={() => onValider(i)}>{bouton}</button>
+    </>}>
+      <form onSubmit={(e) => { e.preventDefault(); onValider(i); }}>
+        <Field label="Objet de la réunion">
+          <Input autoFocus value={i.titre} placeholder="ESS de Camille, projet cirque…" onChange={champ("titre")} />
+        </Field>
+        <div className="row">
+          <Field label="Type">
+            <Select value={i.genre} onChange={champ("genre")}>
+              {GENRES.map((g) => <option key={g}>{g}</option>)}
+            </Select>
+          </Field>
+          <Field label="Date">
+            <Input type="date" value={i.date} onChange={champ("date")} />
+          </Field>
+        </div>
+        <Field label="Participants (facultatif)">
+          <Input value={i.participants} placeholder="Directrice, psychologue, éducatrice, la famille…"
+            onChange={champ("participants")} />
+        </Field>
+        {/* Le formulaire se valide à l'Entrée : on pose l'ordinateur et ça part. */}
+        <button type="submit" hidden />
+      </form>
+    </Modal>
+  );
+}
+
 export default function Reunions() {
   const [liste, setListe] = React.useState<Reunion[] | null>(null);
   const [courante, setCourante] = React.useState<Reunion | null>(null);
@@ -69,7 +118,8 @@ export default function Reunions() {
   const [consentementVu, setConsentementVu] = React.useState(false);
   // L'en-tête (objet, type, date) ne sert qu'avant et après : pendant la
   // réunion, c'est l'encadré qui doit avoir la place.
-  const [entete, setEntete] = React.useState(false);
+  // La fiche ouverte : une nouvelle réunion, ou celle qu'on vient reprendre.
+  const [fiche, setFiche] = React.useState<{ pour: Reunion | null } | null>(null);
   // L'accord est donné une fois : ensuite l'écoute part d'elle-même, et il
   // n'y a plus de bouton à chercher au moment où la réunion commence.
   const dejaExplique = React.useRef(false);
@@ -234,22 +284,6 @@ export default function Reunions() {
     }
   }, [majResume, majReunion]);
 
-  /** Un passage mal intégré se rejoue : le texte, lui, n'est pas perdu. */
-  const refaire = async (r: Resume) => {
-    if (resumeEnCours.current) return;
-    resumeEnCours.current = true;
-    majResume(r.id, { etat: "encours", erreur: undefined });
-    try {
-      const suite = await rangerLeDocument(compteRenduRef.current, contexte.current);
-      compteRenduRef.current = suite;
-      setCompteRendu(suite);
-      majResume(r.id, { etat: "fait" });
-      majReunion({ compteRendu: suite, resumesJson: ecrireResumes(resumesRef.current), texte: texteRef.current }, true);
-    } catch (e) {
-      majResume(r.id, { etat: "echec", erreur: texteErreur(e) }, true);
-    } finally { resumeEnCours.current = false; }
-  };
-
   // Deux phrases de plus, et le rangement part — après un court repos, pour
   // ne pas couper un mot en train de s'écrire. Le même chemin sert à la
   // dictée et à la frappe.
@@ -318,9 +352,15 @@ export default function Reunions() {
     }
   };
 
-  const creer = async () => {
+  const creer = () => {
     if (ecoute.etat !== "repos") { toast("Terminez l'écoute en cours d'abord.", { icone: "🎧" }); return; }
-    const r = nouvelleReunion();
+    setFiche({ pour: null });
+  };
+
+  /** La fiche remplie : on crée la réunion, et l'écoute part d'elle-même. */
+  const commencer = async (i: Infos) => {
+    setFiche(null);
+    const r = { ...nouvelleReunion(), ...i };
     await enregistrer(r);
     setCourante(r);
     texteRef.current = ""; setTexte("");
@@ -328,7 +368,6 @@ export default function Reunions() {
     setCompteRendu("");
     secondesRelues.current = 0;
     setConsentementVu(false);
-    setEntete(false);
     // Rien à cliquer : on pose l'ordinateur et ça écoute. L'écran d'accord
     // ne revient que tant qu'il n'a pas été accepté une première fois.
     if (dejaExplique.current) {
@@ -336,6 +375,13 @@ export default function Reunions() {
       if (erreur) toast(erreur, { icone: "🎙" });
       else setConsentementVu(true);
     }
+  };
+
+  /** Une fiche reprise après coup, sur la réunion ouverte ou sur une autre. */
+  const reprendreLaFiche = async (r: Reunion, i: Infos) => {
+    setFiche(null);
+    if (courante?.id === r.id) majReunion(i, true);
+    else await enregistrer({ ...r, ...i, dateMaj: nowIso() });
   };
 
   /** Premier accord : on le retient, et l'écoute part dans la foulée. */
@@ -375,14 +421,20 @@ export default function Reunions() {
     } finally { setOccupe(""); }
   };
 
-  const copier = async () => {
-    if (!courante) return;
-    await navigator.clipboard.writeText(texteACopier({ ...courante, compteRendu, texte }));
+  /**
+   * L'état vrai d'une réunion : celle qui est ouverte vit à l'écran, les
+   * autres telles qu'elles sont enregistrées. Le clic droit de la liste agit
+   * sur n'importe laquelle.
+   */
+  const etatDe = (r: Reunion): Reunion => (courante?.id === r.id ? { ...r, compteRendu, texte } : r);
+
+  const copier = async (r: Reunion) => {
+    await navigator.clipboard.writeText(texteACopier(etatDe(r)));
     toast("Compte rendu copié.", { icone: "📋" });
   };
 
-  const imprimer = () => {
-    if (!courante) return;
+  const imprimer = (brut: Reunion) => {
+    const r = etatDe(brut);
     const lignes = (t: string) => t.split("\n").map((l) => {
       const x = l.trim();
       if (!x) return "";
@@ -391,22 +443,32 @@ export default function Reunions() {
       return `<p>${escapeHtml(x)}</p>`;
     }).join("").replace(/(<li>.*?<\/li>)(?!<li>)/g, "<ul>$1</ul>").replace(/<\/ul><ul>/g, "");
     // Sans compte rendu — réunion trop courte —, on imprime ce qui a été dit.
-    const corps = compteRendu.trim() ? lignes(compteRendu) : lignes(texte);
-    printHTML(nomDeLaReunion(courante),
-      `<h1>${escapeHtml(nomDeLaReunion(courante))}</h1>
-       <div class="meta">${escapeHtml([courante.genre, courante.date,
-         courante.dureeS ? dureeLisible(courante.dureeS) : ""].filter(Boolean).join(" · "))}</div>
-       ${courante.participants ? `<div class="meta">Participants : ${escapeHtml(courante.participants)}</div>` : ""}
+    const corps = r.compteRendu.trim() ? lignes(r.compteRendu) : lignes(r.texte);
+    printHTML(nomDeLaReunion(r),
+      `<h1>${escapeHtml(nomDeLaReunion(r))}</h1>
+       <div class="meta">${escapeHtml([r.genre, r.date,
+         r.dureeS ? dureeLisible(r.dureeS) : ""].filter(Boolean).join(" · "))}</div>
+       ${r.participants ? `<div class="meta">Participants : ${escapeHtml(r.participants)}</div>` : ""}
        ${corps}
        <div class="meta" style="margin-top:16px;font-style:italic">
          Compte rendu rédigé à partir de résumés automatiques, relu par l'enseignant.</div>`);
   };
 
-  const effacerTexte = async () => {
-    if (!await confirmer("Effacer le texte mot à mot ? Les résumés et le compte rendu sont conservés.")) return;
-    poserTexte("", true);
-    toast("Texte effacé.", { icone: "🧹" });
+  const effacerTexte = async (r: Reunion) => {
+    if (!await confirmer("Effacer le texte mot à mot ? Le compte rendu est conservé.")) return;
+    if (courante?.id === r.id) poserTexte("", true);
+    else await enregistrer({ ...r, texte: "", dateMaj: nowIso() });
+    toast("Mot à mot effacé.", { icone: "🧹" });
   };
+
+  /** Tout ce qu'on peut faire d'une réunion, là où on la voit : dans la liste. */
+  const menuDeLaReunion = (e: React.MouseEvent, r: Reunion) => openCtx(e, [
+    { label: "Modifier les informations…", icon: "✏️", onClick: () => setFiche({ pour: r }) },
+    { label: "Copier le compte rendu", icon: "📋", onClick: () => { void copier(r); } },
+    { label: "Imprimer", icon: "🖨", onClick: () => imprimer(r) },
+    { label: "Effacer le mot à mot", icon: "🧹", sep: true, onClick: () => { void effacerTexte(r); } },
+    { label: "Supprimer la réunion", icon: "🗑", danger: true, sep: true, onClick: () => { void supprimer(r); } },
+  ]);
 
   const supprimer = async (r: Reunion) => {
     if (!await confirmer(`Supprimer « ${nomDeLaReunion(r)} » et son compte rendu ?`)) return;
@@ -421,12 +483,23 @@ export default function Reunions() {
   // L'écran d'accord ne s'affiche que tant qu'il n'a pas été accepté, et
   // seulement sur une réunion qui n'a pas encore commencé.
   const aExpliquer = !enCours && !aDuTexte && !consentementVu && !dejaExplique.current;
-  const ratés = resumes.filter((r) => r.etat === "echec");
   const vide = planVide(lirePlan(compteRendu));
 
   return (
-    <Page titre="Réunions" sous="Le texte s'écrit tout seul, et se range toutes les 10 phrases"
+    <Page titre="Réunions" sous="Le texte s'écrit tout seul, et se range au fil de la parole"
       actions={<button className="btn primary" onClick={creer}>＋ Nouvelle réunion</button>}>
+
+      {fiche && (
+        <FicheReunion
+          titre={fiche.pour ? "Informations de la réunion" : "Nouvelle réunion"}
+          bouton={fiche.pour ? "Enregistrer" : "Commencer"}
+          infos={fiche.pour
+            ? { titre: fiche.pour.titre, genre: fiche.pour.genre, date: fiche.pour.date, participants: fiche.pour.participants }
+            : { titre: "", genre: GENRES[0], date: aujourdhui(), participants: "" }}
+          onClose={() => setFiche(null)}
+          onValider={(i) => { const pour = fiche.pour; void (pour ? reprendreLaFiche(pour, i) : commencer(i)); }}
+        />
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(190px, 240px) minmax(320px, 1fr)", gap: 14, alignItems: "start" }}>
         {/* La liste : on revient souvent chercher ce qui s'est dit le mois dernier. */}
@@ -437,6 +510,8 @@ export default function Reunions() {
             <p className="meta" style={{ margin: 8, fontSize: 12.5 }}>Aucune réunion enregistrée.</p>
           ) : liste.map((r) => (
             <button key={r.id} type="button" className="btn ghost" onClick={() => ouvrir(r)}
+              onContextMenu={(e) => menuDeLaReunion(e, r)}
+              title="Clic droit : informations, copier, imprimer, supprimer"
               style={{
                 width: "100%", justifyContent: "flex-start", textAlign: "left", marginBottom: 4,
                 background: courante?.id === r.id ? "var(--panel-2)" : undefined, height: "auto", padding: "8px 10px",
@@ -455,41 +530,9 @@ export default function Reunions() {
 
         {!courante ? (
           <Empty icone="🎧" titre="Aucune réunion ouverte"
-            sous="Créez une réunion, posez l'ordinateur sur la table, et laissez l'application écrire : elle résume toutes les dix phrases." />
+            sous="Créez une réunion, posez l'ordinateur sur la table, et laissez l'application écrire. Clic droit sur une réunion de la liste pour ses informations, la copier ou l'imprimer." />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-            {/* Pendant la réunion, l'écran s'efface : une bande de contrôle,
-                et l'encadré. L'en-tête ne sert qu'avant et après, il se
-                replie pour laisser la place au texte. */}
-            {(!enCours && !aDuTexte) || entete ? (
-              <div className="card">
-                <div className="row">
-                  <Field label="Objet de la réunion">
-                    <Input value={courante.titre} placeholder="ESS de Camille, projet cirque…"
-                      onChange={(e) => majReunion({ titre: e.target.value })} />
-                  </Field>
-                  <Field label="Type">
-                    <Select value={courante.genre} onChange={(e) => majReunion({ genre: e.target.value }, true)}>
-                      {GENRES.map((g) => <option key={g}>{g}</option>)}
-                    </Select>
-                  </Field>
-                  <Field label="Date">
-                    <Input type="date" value={courante.date} onChange={(e) => majReunion({ date: e.target.value }, true)} />
-                  </Field>
-                </div>
-                <Field label="Participants (facultatif)">
-                  <Input value={courante.participants} placeholder="Directrice, psychologue, éducatrice, la famille…"
-                    onChange={(e) => majReunion({ participants: e.target.value })} />
-                </Field>
-                {!vide && (
-                  <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-                    <button className="btn sm" onClick={copier}>📋 Copier le compte rendu</button>
-                    <button className="btn sm" onClick={imprimer}>🖨 Imprimer</button>
-                  </div>
-                )}
-              </div>
-            ) : null}
-
             {/* L'accord des participants se demande une fois, et l'écoute part
                 ensuite d'elle-même à chaque nouvelle réunion. */}
             {aExpliquer ? (
@@ -520,6 +563,7 @@ export default function Reunions() {
                   {ecoute.etat === "pause" ? "en pause"
                     : relit ? "relecture de l'ensemble…"
                     : transcrit ? "le texte s'écrit…"
+                    : occupe ? occupe
                     : enCours ? (assez ? "rangement en cours…"
                         : relecture
                           ? `relecture dans ${mmss(Math.max(0, SECONDES_PAR_RELECTURE - (ecoute.secondes - secondesRelues.current)))}`
@@ -550,8 +594,6 @@ export default function Reunions() {
                   <input type="checkbox" checked={relecture} onChange={basculerRelecture} />
                   Relecture
                 </label>
-                <button className="btn ghost sm" onClick={() => setEntete((v) => !v)}
-                  title="Objet, type, date, participants">{entete ? "▴" : "▾"} Détails</button>
               </div>
             )}
 
@@ -568,30 +610,12 @@ export default function Reunions() {
               </p>
             )}
 
-            {/* L'encadré, et rien d'autre : même feuille que l'éditeur de
-                textes, pour qu'on écrive ici comme on écrit là-bas. */}
+            {/* L'encadré, et rien d'autre. Le reste — l'objet, les
+                participants, copier, imprimer, supprimer — se trouve au clic
+                droit sur la réunion, dans la liste. */}
             <ZoneVivante cible={compteRendu} minHauteur="55vh" anime={enCours || transcrit || assez}
               onChange={(v) => { compteRenduRef.current = v; setCompteRendu(v); majReunion({ compteRendu: v }); }}
               placeholder="Ce qui se dit s'écrira ici, tout seul — et se rangera en points abordés, décisions et choses à faire. Vous pouvez écrire dedans à tout moment." />
-
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span className="meta" style={{ fontSize: 11.5 }}>
-                {occupe || `Mot à mot gardé à part (${decouperEnPhrases(texte).length} phrase(s))`}
-              </span>
-              {texte.trim() && <button className="btn ghost sm" onClick={effacerTexte}>🧹 Effacer le mot à mot</button>}
-              {ratés.length > 0 && (
-                <>
-                  <span style={{ fontSize: 11.5, color: "var(--danger, #ef4444)" }}>
-                    {ratés.length} rangement(s) raté(s).
-                  </span>
-                  <button className="btn ghost sm" onClick={() => { void refaire(ratés[0]); }}>↺ Réessayer</button>
-                </>
-              )}
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button className="btn ghost sm" onClick={() => supprimer(courante)}>🗑 Supprimer cette réunion</button>
-            </div>
           </div>
         )}
       </div>
