@@ -328,6 +328,138 @@ export function promptCompteRendu(r: {
   ];
 }
 
+
+// ── Le compte rendu vivant ────────────────────────────────────────────────
+//
+// Une liste de résumés bout à bout n'est pas un compte rendu : on y relit
+// trois fois la même décision, et ce qui compte se perd entre deux
+// bavardages. Ici, un seul document existe, et il est **réagencé** à chaque
+// passage : ce qui est nouveau va sous le bon titre, ce qui se répète
+// fusionne, et une remarque devenue décision change de rubrique.
+//
+// Le document sert aussi de mémoire à l'agent : on lui donne à chaque fois
+// l'état actuel et le passage qui vient d'être dit, et il rend l'état
+// suivant. Rien d'autre n'est conservé entre deux appels.
+
+export const RUBRIQUES = [
+  "Points abordés",
+  "Décisions",
+  "Ce que je dois faire",
+  "À revoir",
+] as const;
+
+/** Le compte rendu, rubrique par rubrique. */
+export type Plan = Record<string, string[]>;
+
+const normaliserTitre = (t: string) =>
+  t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
+
+/** Lit un compte rendu écrit en « ## Rubrique » et « - point ». */
+export function lirePlan(markdown: string): Plan {
+  const parRubrique = new Map(RUBRIQUES.map((r) => [normaliserTitre(r), r]));
+  const plan: Plan = {};
+  let courante = "";
+  for (const ligne of (markdown || "").split("\n")) {
+    const titre = ligne.match(/^\s*#{1,3}\s*(.+?)\s*$/);
+    if (titre) {
+      const connue = parRubrique.get(normaliserTitre(titre[1]));
+      courante = connue ?? "";
+      if (courante && !plan[courante]) plan[courante] = [];
+      continue;
+    }
+    const point = ligne.match(/^\s*[-*•]\s*(.+?)\s*$/);
+    if (courante && point && point[1].trim()) {
+      (plan[courante] ??= []).push(point[1].trim());
+    }
+  }
+  return plan;
+}
+
+/** Réécrit un compte rendu, rubriques dans l'ordre, vides comprises. */
+export function ecrirePlan(plan: Plan): string {
+  return RUBRIQUES
+    .map((r) => {
+      const points = (plan[r] ?? []).filter((p) => p.trim());
+      return `## ${r}\n${points.length ? points.map((p) => `- ${p}`).join("\n") : "- Rien à signaler"}`;
+    })
+    .join("\n\n");
+}
+
+/** Le compte rendu est-il encore vide de tout contenu réel ? */
+export function planVide(plan: Plan): boolean {
+  return RUBRIQUES.every((r) => (plan[r] ?? []).every((p) => /^rien à signaler\.?$/i.test(p.trim())));
+}
+
+/**
+ * Le nouvel état, en refusant les pertes.
+ *
+ * Un modèle qui répond trop court effacerait la moitié de la réunion : une
+ * rubrique qui revient vide alors qu'elle était remplie est donc ignorée, et
+ * l'ancienne reste. Le texte brut, lui, garde tout de toute façon.
+ */
+export function fusionnerPlan(ancien: Plan, nouveau: Plan): Plan {
+  const sortie: Plan = {};
+  for (const r of RUBRIQUES) {
+    const avant = (ancien[r] ?? []).filter((p) => p.trim() && !/^rien à signaler\.?$/i.test(p.trim()));
+    const apres = (nouveau[r] ?? []).filter((p) => p.trim() && !/^rien à signaler\.?$/i.test(p.trim()));
+    sortie[r] = apres.length >= 1 || avant.length === 0 ? apres : avant;
+  }
+  return sortie;
+}
+
+/** Ce qu'on demande à l'agent : réagencer, pas empiler. */
+export function promptPlan(a: { genre: string; titre: string; plan: string; passage: string }) {
+  const quoi = [a.genre, a.titre].filter(Boolean).join(" — ") || "une réunion";
+  return [
+    {
+      role: "system" as const,
+      content: [
+        "Tu tiens à jour le compte rendu d'" + quoi + ", pendant qu'elle a lieu.",
+        "On te donne le compte rendu actuel, puis le passage qui vient d'être dit (transcription brute, avec hésitations et erreurs).",
+        "Rends le compte rendu **entier et mis à jour**, avec exactement ces quatre titres précédés de « ## » :",
+        RUBRIQUES.map((r) => `## ${r}`).join(", ") + ".",
+        "Sous chaque titre, des puces courtes commençant par « - », une idée par puce.",
+        "Règles de mise à jour : garde mot pour mot ce qui est déjà écrit, sauf si le passage le précise, le corrige ou le contredit ;",
+        "ajoute ce qui est nouveau sous la bonne rubrique ; fusionne ce qui redit la même chose ;",
+        "déplace une ligne si elle a changé de nature — une piste devenue décision va sous « Décisions » ;",
+        "sous « Ce que je dois faire », ne mets que ce qui incombe à l'enseignant, avec l'échéance si elle a été dite.",
+        "N'invente rien : aucune décision, aucune date, aucun nom qui ne soit dit.",
+        "Si le passage n'apporte rien, rends le compte rendu inchangé.",
+        "Si une rubrique est vide, écris « - Rien à signaler ». Aucun texte en dehors des quatre rubriques.",
+        "Les marqueurs entre crochets comme [P1] remplacent des prénoms : recopie-les exactement.",
+      ].join(" "),
+    },
+    {
+      role: "user" as const,
+      content: `Compte rendu actuel :\n${a.plan || "(vide)"}\n\nNouveau passage :\n${a.passage}`,
+    },
+  ];
+}
+
+/**
+ * Intègre un passage au compte rendu et rend le document suivant.
+ *
+ * Les prénoms partent masqués — le compte rendu **et** le passage, d'un seul
+ * tenant, pour que [P1] désigne la même personne des deux côtés.
+ */
+export async function integrerAuPlan(
+  planActuel: string,
+  passage: string,
+  contexte: { genre: string; titre: string },
+): Promise<string> {
+  if (!passage.trim()) return planActuel;
+  const { parts, table } = masquerTout(
+    [contexte.titre, planActuel, passage], await nomsDesEleves());
+  const [titre, planMasque, passageMasque] = parts;
+  const modele = await api.modeleActif(MODELE_TACHES);
+  const rep = await api.mistralChat(
+    promptPlan({ genre: contexte.genre, titre, plan: planMasque, passage: passageMasque }), modele);
+  const lu = lirePlan(nettoyer(rep));
+  const fusionne = fusionnerPlan(lirePlan(planMasque), lu);
+  if (planVide(fusionne)) throw new Error("L'agent n'a rien rendu d'exploitable.");
+  return restaurer(ecrirePlan(fusionne), table).texte;
+}
+
 /** Ce que les modèles ajoutent parfois autour de la réponse. */
 export function nettoyer(rep: string): string {
   return rep.trim().replace(/^```[a-z]*\n?|\n?```$/g, "").trim();
@@ -386,6 +518,30 @@ export function repereDuResume(r: Resume): string {
   return `${m} min · ${phrases}`;
 }
 
+/**
+ * Met au propre le compte rendu vivant, à la fin.
+ *
+ * Pendant la réunion, l'agent range vite et sous les yeux de l'enseignant ;
+ * à la fin, on relit l'ensemble d'un coup — c'est là qu'on voit les redites
+ * et l'ordre à revoir.
+ */
+export async function mettreAuPropre(
+  reunion: Pick<Reunion, "genre" | "titre" | "date" | "participants">,
+  plan: string,
+): Promise<string> {
+  if (planVide(lirePlan(plan))) throw new Error("Le compte rendu est encore vide.");
+  const { parts, table } = masquerTout(
+    [reunion.titre, reunion.participants, plan], await nomsDesEleves());
+  const [titre, participants, planMasque] = parts;
+  const modele = await api.modeleActif();
+  const rep = await api.mistralChat(promptCompteRendu({
+    genre: reunion.genre, titre, date: reunion.date, participants, resumes: planMasque,
+  }), modele);
+  const propre = nettoyer(rep);
+  if (!propre) throw new Error("La réponse de l'IA est vide.");
+  return restaurer(propre, table).texte;
+}
+
 /** Rédige le compte rendu à partir des résumés déjà obtenus. */
 export async function redigerCompteRendu(
   reunion: Pick<Reunion, "genre" | "titre" | "date" | "participants">,
@@ -410,16 +566,19 @@ export async function redigerCompteRendu(
 
 // ── Ce qu'on emporte : texte à copier, page à imprimer ────────────────────
 
-/** Le compte rendu tel qu'on le colle dans un courriel. */
-export function texteACopier(r: Reunion, liste: Resume[]): string {
+/**
+ * Le compte rendu tel qu'on le colle dans un courriel.
+ *
+ * À défaut de compte rendu — une réunion arrêtée avant les dix premières
+ * phrases —, on emporte ce qui a été dit : mieux vaut du brut que rien.
+ */
+export function texteACopier(r: Reunion): string {
   const entete = [
     r.titre || r.genre || "Réunion",
     [r.genre, r.date, r.dureeS ? dureeLisible(r.dureeS) : ""].filter(Boolean).join(" · "),
     r.participants ? `Participants : ${r.participants}` : "",
   ].filter(Boolean).join("\n");
-  const corps = r.compteRendu.trim()
-    || liste.filter((x) => !riendedit(x.texte))
-      .map((x) => `[${repereDuResume(x)}]\n${x.texte.trim()}`).join("\n\n");
+  const corps = r.compteRendu.trim() || r.texte.trim();
   return `${entete}\n\n${corps}\n`;
 }
 
