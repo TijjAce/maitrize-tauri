@@ -1,15 +1,22 @@
 //! Version portable : l'app desktop sert un instantané de données sur le
 //! réseau local (WiFi). Le téléphone l'ouvre dans son navigateur via un QR
-//! code. Lecture seule, protégé par un jeton, démarré/arrêté à la demande.
-//! Rien ne transite par internet : tout reste sur le réseau local.
+//! code. Protégé par un jeton, démarré/arrêté à la demande. Rien ne transite
+//! par internet : tout reste sur le réseau local.
+//!
+//! Tout est en lecture, à une exception : les temps d'observation. Une
+//! observation se remplit en classe, debout, à côté de l'élève — c'est le
+//! téléphone qu'on a en main à ce moment-là, pas l'ordinateur. Le téléphone
+//! ne peut que **remplir les colonnes d'une fiche déjà posée** : il ne crée
+//! rien, ne change ni l'élève ni l'axe, et ne touche à rien d'autre.
 
 use crate::db::Db;
-use crate::models::{Creneau, Eleve, ProgrammationFinale, Seance, Sequence};
+use crate::models::{Creneau, Eleve, ObservationEleve, ProgrammationFinale, Seance, Sequence};
 use std::net::UdpSocket;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
-use tauri::{Emitter, State};
+use serde::Deserialize;
+use tauri::{Emitter, Manager, State};
 use uuid::Uuid;
 
 type R<T> = Result<T, String>;
@@ -37,6 +44,8 @@ struct Bundle {
     seances: Vec<Seance>,
     eleves: Vec<Eleve>,
     programmations: Vec<ProgrammationFinale>,
+    /// Les temps d'observation posés : le téléphone, lui, peut les remplir.
+    observations: Vec<ObservationEleve>,
 }
 
 /// IP locale sans dépendance : « connecter » un socket UDP fixe la route locale
@@ -100,18 +109,27 @@ fn snapshot(db: &State<Db>) -> R<String> {
         rows.collect::<rusqlite::Result<Vec<_>>>().map_err(e)?
     };
 
+    let observations = {
+        let mut st = c
+            .prepare("SELECT * FROM observations_eleve ORDER BY date DESC, date_creation DESC LIMIT 60")
+            .map_err(e)?;
+        let rows = st.query_map([], ObservationEleve::from_row).map_err(e)?;
+        rows.collect::<rusqlite::Result<Vec<_>>>().map_err(e)?
+    };
+
     let bundle = Bundle {
         planning,
         sequences,
         seances,
         eleves,
         programmations,
+        observations,
     };
     serde_json::to_string(&bundle).map_err(e)
 }
 
 #[tauri::command]
-pub fn portable_demarrer(db: State<Db>, portable: State<Portable>) -> R<PortableInfo> {
+pub fn portable_demarrer(app: tauri::AppHandle, db: State<Db>, portable: State<Portable>) -> R<PortableInfo> {
     // Arrêter une instance précédente éventuelle.
     if let Some(stop) = portable.0.lock().unwrap_or_else(PoisonError::into_inner).take() {
         stop.store(true, Ordering::Relaxed);
@@ -139,7 +157,7 @@ pub fn portable_demarrer(db: State<Db>, portable: State<Portable>) -> R<Portable
             break;
         }
         match server.recv_timeout(Duration::from_millis(300)) {
-            Ok(Some(req)) => repondre(req, &token, &page, &data_json),
+            Ok(Some(req)) => repondre(req, &token, &page, &data_json, &app),
             Ok(None) => continue,
             Err(_) => break,
         }
@@ -162,9 +180,65 @@ pub fn portable_arreter(portable: State<Portable>) -> R<()> {
     Ok(())
 }
 
-fn repondre(req: tiny_http::Request, token: &str, page: &str, data_json: &str) {
+/// Ce que le téléphone a le droit d'écrire : les colonnes d'une fiche déjà
+/// posée, rien d'autre. Il ne crée pas de fiche, ne change pas d'élève, ne
+/// touche pas à l'axe — le cadre de l'observation se décide sur l'ordinateur.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ObservationRemplie {
+    id: String,
+    #[serde(default)]
+    note: String,
+    #[serde(default)]
+    reussites: String,
+    #[serde(default)]
+    difficultes: String,
+    #[serde(default)]
+    hypotheses: String,
+    #[serde(default)]
+    amenagements: String,
+    #[serde(default)]
+    reajustement: String,
+}
+
+/// Écrit ce que le téléphone envoie, et dit si c'est passé.
+fn ecrire_observation(app: &tauri::AppHandle, corps: &str) -> Result<(), String> {
+    let o: ObservationRemplie = serde_json::from_str(corps).map_err(e)?;
+    let db = app.state::<Db>();
+    let c = db.lock();
+    let touchees = c
+        .execute(
+            "UPDATE observations_eleve SET note=?2, reussites=?3, difficultes=?4, hypotheses=?5,
+             amenagements=?6, reajustement=?7, date_maj=?8 WHERE id=?1",
+            rusqlite::params![
+                o.id, o.note, o.reussites, o.difficultes, o.hypotheses, o.amenagements,
+                o.reajustement, crate::models::now_iso()
+            ],
+        )
+        .map_err(e)?;
+    if touchees == 0 {
+        return Err("Cette observation n'existe plus sur l'ordinateur.".into());
+    }
+    Ok(())
+}
+
+fn repondre(mut req: tiny_http::Request, token: &str, page: &str, data_json: &str, app: &tauri::AppHandle) {
     let url = req.url().to_string();
     let autorise = url.contains(&format!("t={token}"));
+    // L'écriture se lit avant toute réponse : le corps ne se relit pas.
+    if autorise && url.starts_with("/api/observation") {
+        let mut corps = String::new();
+        let lu = std::io::Read::read_to_string(req.as_reader(), &mut corps).is_ok();
+        let (code, body) = match lu.then(|| ecrire_observation(app, &corps)) {
+            Some(Ok(())) => (200, "{\"ok\":true}".to_string()),
+            Some(Err(message)) => (400, format!("{{\"ok\":false,\"erreur\":{}}}", serde_json::to_string(&message).unwrap_or_default())),
+            None => (400, "{\"ok\":false}".to_string()),
+        };
+        let header = tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json; charset=utf-8"[..])
+            .expect("en-tete valide");
+        let _ = req.respond(tiny_http::Response::from_string(body).with_status_code(code).with_header(header));
+        return;
+    }
     let (code, ctype, body): (u16, &str, String) = if !autorise {
         (
             403,
@@ -376,6 +450,13 @@ const PAGE_HTML: &str = r##"<!DOCTYPE html>
  .sd-l { font-size:13px; margin-bottom:9px; line-height:1.5; }
  .sd-l:last-child { margin-bottom:2px; }
  .sd-l b { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:var(--txt2); margin-bottom:2px; font-weight:700; }
+ .obs .obs-h { font-size:14.5px; margin-bottom:2px; }
+ .obs .obs-h small { color:var(--txt2); font-weight:500; }
+ .obs .obs-axe { font-size:12.5px; color:var(--txt2); margin-bottom:8px; line-height:1.4; }
+ .obs-l { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:var(--txt2); font-weight:700; margin-bottom:8px; }
+ .obs-l textarea { display:block; width:100%; margin-top:3px; box-sizing:border-box; background:var(--bg); color:var(--txt); border:1px solid var(--bd); border-radius:9px; padding:9px 10px; font:inherit; font-size:15px; text-transform:none; letter-spacing:0; font-weight:400; line-height:1.45; }
+ .obs-save { width:100%; padding:11px; border:none; border-radius:10px; background:var(--acc); color:#fff; font:inherit; font-size:15px; font-weight:700; cursor:pointer; }
+ .obs-save:disabled { opacity:.7; }
  .el { display:flex; align-items:center; gap:10px; }
  .el .dot { width:9px; height:9px; border-radius:50%; flex:none; background:#cbd2e0; }
  .el .dot.p { background:#22c55e; }
@@ -410,9 +491,20 @@ let DATA = null;
 
 const TABS = [
   ['planning','🗓 Planning', renderPlanning],
+  ['observations','👁 Observer', renderObservations],
   ['sequences','📚 Séquences', renderSequences],
   ['eleves','👧 Élèves', renderEleves],
   ['programmations','🗂 Programmations', renderProgrammations],
+];
+
+/** Les colonnes de la grille « Observer », dans l'ordre du document. */
+const COLS = [
+  ['note','Ce qui s\'est passé'],
+  ['reussites','Réussites, points d\'appui'],
+  ['difficultes','Difficultés, obstacles'],
+  ['hypotheses','Besoin identifié — hypothèses'],
+  ['amenagements','Propositions — aménagements'],
+  ['reajustement','Évaluation — réajustement'],
 ];
 
 function show(id) {
@@ -532,6 +624,59 @@ function renderProgrammations(progs) {
   }).join('');
 }
 
+/**
+ * Les temps d'observation, remplissables ici.
+ *
+ * C'est le seul endroit du téléphone où l'on écrit : une observation se note
+ * debout, à côté de l'élève, et c'est le téléphone qu'on a en main à ce
+ * moment-là. La fiche, elle, a été posée sur l'ordinateur — le téléphone ne
+ * fait que la remplir.
+ */
+function renderObservations(obs) {
+  if (!obs.length) return '<p class="vide">Aucun temps d\'observation.<br>Posez-en un depuis le cahier journal, sur l\'ordinateur : bouton « 👁 Observer » d\'un créneau.</p>';
+  const nomDe = id => {
+    const e = (DATA.eleves || []).find(x => x.id === id);
+    return e ? (e.nom || '').split(' ')[0] : 'Élève';
+  };
+  const parJour = {};
+  obs.forEach(o => { (parJour[o.date || ''] = parJour[o.date || ''] || []).push(o); });
+  return Object.keys(parJour).sort().reverse().map(j => {
+    const cartes = parJour[j].map(o => {
+      const champs = COLS.map(c => '<label class="obs-l">' + esc(c[1])
+        + '<textarea data-k="' + c[0] + '" rows="2">' + esc(o[c[0]] || '') + '</textarea></label>').join('');
+      return '<div class="card obs" id="obs-' + esc(o.id) + '">'
+        + '<div class="obs-h"><b>' + esc(nomDe(o.eleveId || o.eleve_id)) + '</b>'
+        + (o.contexte ? '<small> · ' + esc(o.contexte) + '</small>' : '') + '</div>'
+        + (o.axe ? '<div class="obs-axe">👁 ' + esc(o.axe) + '</div>' : '')
+        + champs
+        + '<button class="obs-save" data-id="' + esc(o.id) + '">Enregistrer</button>'
+        + '</div>';
+    }).join('');
+    return '<div class="jour' + (j === auj ? ' auj' : '') + '">' + esc(fmtJour(j)) + (j === auj ? ' · aujourd\'hui' : '') + '</div>' + cartes;
+  }).join('');
+}
+
+async function enregistrerObs(id, btn) {
+  const carte = document.getElementById('obs-' + id);
+  if (!carte) return;
+  const lire = k => { const z = carte.querySelector('[data-k="' + k + '"]'); return z ? z.value : ''; };
+  const corps = { id: id };
+  COLS.forEach(c => { corps[c[0]] = lire(c[0]); });
+  const libelle = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  try {
+    const r = await fetch('/api/observation?t=' + encodeURIComponent(T), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps),
+    });
+    let j = {};
+    try { j = await r.json(); } catch (e) { j = {}; }
+    btn.textContent = (r.ok && j.ok) ? '✓ Enregistré sur l\'ordinateur' : ('⚠️ ' + (j.erreur || 'Non enregistré'));
+  } catch (e) {
+    btn.textContent = '⚠️ Hors réseau — réessayez';
+  }
+  setTimeout(() => { btn.disabled = false; btn.textContent = libelle; }, 2600);
+}
+
 fetch('/api/data?t=' + encodeURIComponent(T))
  .then(r => r.ok ? r.json() : Promise.reject(r.status))
  .then(d => {
@@ -540,7 +685,12 @@ fetch('/api/data?t=' + encodeURIComponent(T))
    main.innerHTML = TABS.map(t => '<section id="sec-' + t[0] + '">' + t[2](d[t[0]] || []) + '</section>').join('');
    tabsEl.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => show(b.dataset.id)));
    initPlanning();
-   main.addEventListener('click', ev => { if (ev.target.closest('.sea-body')) return; const it = ev.target.closest('.sea-item'); if (it) it.classList.toggle('open'); });
+   main.addEventListener('click', ev => {
+     const save = ev.target.closest('.obs-save');
+     if (save) { enregistrerObs(save.dataset.id, save); return; }
+     if (ev.target.closest('.sea-body')) return;
+     const it = ev.target.closest('.sea-item'); if (it) it.classList.toggle('open');
+   });
    show('planning');
  })
  .catch(() => { main.innerHTML = '<p class="err">Connexion perdue.<br>Vérifiez que le téléphone est sur le même WiFi que l\'ordinateur, puis rescannez le QR code.</p>'; });
