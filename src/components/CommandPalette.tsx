@@ -4,9 +4,12 @@ import { api, ResultatRecherche, joursFeriesFR, anneeScolaireActuelle, raccourci
 import { ouvrirOnglet } from "./ui";
 import { montrerLesNouveautes } from "./QuoiDeNeuf";
 import { EVT_CHERCHER_BUREAU } from "../bureauAteliers";
+import { ajouterRecent, classer, lireRecents, ouverture } from "../palette";
 
 interface Cmd {
   id: string; ico: string; label: string; sous?: string;
+  /** Vrai pour un résultat venu de la base : à note égale, il passe après. */
+  donnee?: boolean;
   /** Le passage trouvé, pour reconnaître le bon résultat sans l'ouvrir. */
   extrait?: string;
   quand?: string;
@@ -18,6 +21,17 @@ const jourCourt = (iso: string) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? "");
   return m ? `${m[3]}/${m[2]}` : "";
 };
+
+/** Les commandes déjà utilisées, gardées sur ce poste (non synchronisées). */
+const CLE_RECENTS = "paletteRecents";
+
+/**
+ * Les départs proposés à qui ouvre la palette sans rien avoir fait encore.
+ *
+ * Trois, pas trente : le cahier journal du jour, la préparation de demain, et
+ * la création d'une séquence. De quoi apprendre le geste.
+ */
+const DEPARTS = ["r-jour", "r-demain", "a-newseq"];
 
 /** Demande au planning d'aller sur ce jour (il n'est pas dans l'URL). */
 export const EVT_JOUR = "maitrize:aller-au-jour";
@@ -87,19 +101,19 @@ const KIND_NOM: Record<string, string> = {
 function allerVers(r: ResultatRecherche, nav: (to: string) => void) {
   const onglet = (page: string, tab: string) => setTimeout(() => ouvrirOnglet(page, tab), 140);
   switch (r.kind) {
-    case "sequence": return nav(`/sequences/${r.id}`);
+    // Tout ce qui vit sur le bureau s'y retrouve — dans son dossier, surligné.
+    case "sequence": case "materiel": case "texte":
+    case "atelier": case "espace": case "jeu": case "outil":
+      nav("/plan");
+      setTimeout(() => window.dispatchEvent(new CustomEvent(EVT_CHERCHER_BUREAU,
+        { detail: { id: r.id, titre: r.titre } })), 140);
+      return;
     case "seance": return nav(r.parent ? `/sequences/${r.parent}` : "/plan");
     case "creneau":
       nav("/planning");
       if (r.parent) setTimeout(() => window.dispatchEvent(new CustomEvent(EVT_JOUR, { detail: r.parent })), 120);
       return;
     case "observation": nav("/eleves"); return onglet("eleves", "observations");
-    // Ateliers, espaces, jeux et outils vivent sur le bureau du plan de
-    // travail : on y cherche l'élément trouvé.
-    case "atelier": case "espace": case "jeu": case "outil":
-      nav("/plan");
-      setTimeout(() => window.dispatchEvent(new CustomEvent(EVT_CHERCHER_BUREAU, { detail: r.titre })), 140);
-      return;
     case "eleve": nav("/eleves"); return onglet("eleves", "liste");
     default: return nav("/plan");
   }
@@ -231,6 +245,19 @@ export function CommandPalette() {
   const [sel, setSel] = React.useState(0);
   const [bulle, setBulle] = React.useState<{ titre: string; texte: string } | null>(null);
   const [busy, setBusy] = React.useState(false);
+  // Ce qui a déjà servi : c'est ce que la palette montre en s'ouvrant, et ce
+  // qui départage deux commandes de même note. Gardé sur ce poste seulement.
+  const [recents, setRecents] = React.useState<string[]>([]);
+  React.useEffect(() => {
+    api.settingGet(CLE_RECENTS).then((v) => setRecents(lireRecents(v))).catch(() => {});
+  }, []);
+  const noterUsage = (id: string) => {
+    setRecents((avant) => {
+      const suite = ajouterRecent(avant, id);
+      api.settingSet(CLE_RECENTS, JSON.stringify(suite)).catch(() => {});
+      return suite;
+    });
+  };
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -244,6 +271,13 @@ export function CommandPalette() {
   }, []);
 
   React.useEffect(() => { if (open) { setQ(""); setRes([]); setSel(0); setBulle(null); } }, [open]);
+
+  // Sans cela, la sélection sortait de l'écran passé le huitième résultat et
+  // l'on naviguait à l'aveugle.
+  const ligneChoisie = React.useRef<HTMLButtonElement | null>(null);
+  React.useEffect(() => {
+    ligneChoisie.current?.scrollIntoView({ block: "nearest" });
+  }, [sel, q]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -283,13 +317,11 @@ export function CommandPalette() {
     { id: "r-anniv", ico: "🎂", label: "Anniversaires du mois", sous: "Réponse directe", run: repondre("Anniversaires du mois", anniversairesMois) },
   ];
 
-  const match = (label: string) => !q || label.toLowerCase().includes(q.toLowerCase());
-  const navCmds: Cmd[] = NAV.filter((n) => match(n.label)).map((n) => ({ id: "nav" + n.to, ico: n.ico, label: n.label, sous: "Aller à", run: goNav(n.to) }));
-  const sousCmds: Cmd[] = SOUS_ONGLETS.filter((s) => match(s.label) || match(s.sous)).map((s) => ({
+  const navCmds: Cmd[] = NAV.map((n) => ({ id: "nav" + n.to, ico: n.ico, label: n.label, sous: "Aller à", run: goNav(n.to) }));
+  const sousCmds: Cmd[] = SOUS_ONGLETS.map((s) => ({
     id: "sub" + s.page + s.onglet, ico: s.ico, label: s.label, sous: "Aller à · " + s.sous,
     run: () => { setOpen(false); nav(s.to); setTimeout(() => ouvrirOnglet(s.page, s.onglet), 140); },
   }));
-  const actionCmds = ACTIONS.filter((a) => match(a.label) || match(a.sous ?? ""));
   const rechCmds: Cmd[] = res.map((r) => ({
     id: r.kind + r.id,
     ico: KIND_ICO[r.kind] ?? "•",
@@ -297,10 +329,15 @@ export function CommandPalette() {
     sous: [KIND_NOM[r.kind] ?? "", r.sousTitre].filter(Boolean).join(" · "),
     extrait: r.extrait,
     quand: jourCourt(r.date),
+    donnee: true,
     run: () => { setOpen(false); allerVers(r, nav); },
   }));
-  const cmds = [...actionCmds, ...navCmds, ...sousCmds, ...rechCmds];
+  const toutes = [...ACTIONS, ...navCmds, ...sousCmds, ...rechCmds];
+  // Sans rien de tapé, on montre ce qui sert — pas le catalogue entier.
+  const cmds = q.trim() ? classer(toutes, q, recents) : ouverture(toutes, recents, DEPARTS);
   const clamped = Math.min(sel, Math.max(0, cmds.length - 1));
+
+  const lancer = (c: Cmd) => { noterUsage(c.id); void c.run(); };
 
   if (!open) return null;
   return (
@@ -309,7 +346,7 @@ export function CommandPalette() {
       <div className="palette" role="dialog" aria-modal="true" aria-label="Recherche et commandes" onKeyDown={(e) => {
         if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => Math.min(s + 1, cmds.length - 1)); }
         if (e.key === "ArrowUp") { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)); }
-        if (e.key === "Enter" && cmds[clamped]) { e.preventDefault(); cmds[clamped].run(); }
+        if (e.key === "Enter" && cmds[clamped]) { e.preventDefault(); lancer(cmds[clamped]); }
       }}>
         <input className="palette-input" autoFocus aria-label="Commande, action ou recherche"
           placeholder="Commande, action, ou recherche (séance, bilan, élève, jeu…)"
@@ -324,7 +361,8 @@ export function CommandPalette() {
           {cmds.length === 0 ? <div style={{ padding: 16, color: "var(--text-2)" }}>Aucun résultat.</div> :
             cmds.map((c, i) => (
               <button key={c.id} className={"palette-item" + (i === clamped ? " on" : "")}
-                onMouseEnter={() => setSel(i)} onClick={() => c.run()}>
+                ref={i === clamped ? ligneChoisie : undefined}
+                onMouseEnter={() => setSel(i)} onClick={() => lancer(c)}>
                 <span style={{ fontSize: 16 }}>{c.ico}</span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "flex", alignItems: "baseline", gap: 8 }}>

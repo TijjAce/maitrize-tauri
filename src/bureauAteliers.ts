@@ -13,10 +13,32 @@
 /**
  * Ouvrir le bureau sur un élément précis, en le cherchant.
  *
- * Un jeu ou un outil n'a plus de page à lui : depuis ⌘K, c'est la recherche du
- * bureau qui mène jusqu'à l'élément trouvé.
+ * Un jeu ou un outil n'a plus de page à lui : depuis ⌘K, c'est le bureau qui
+ * mène jusqu'à l'élément trouvé — dans **son dossier**, et non à la racine
+ * avec un filtre. Retrouver quelque chose, c'est aussi voir où il est rangé.
  */
 export const EVT_CHERCHER_BUREAU = "maitrize:bureau-chercher";
+
+/** Ce que ⌘K demande au bureau : cet élément-là, là où il est. */
+export interface DemandeBureau {
+  /** L'identifiant de la ligne, quand on l'a : c'est lui qui situe le dossier. */
+  id?: string;
+  /** À défaut, le titre — une vieille demande, ou un élément disparu. */
+  titre: string;
+}
+
+/** Une demande, quelle que soit la forme reçue (un titre suffisait avant). */
+export function lireDemandeBureau(detail: unknown): DemandeBureau {
+  if (typeof detail === "string") return { titre: detail };
+  if (detail && typeof detail === "object") {
+    const o = detail as Record<string, unknown>;
+    return {
+      id: typeof o.id === "string" ? o.id : undefined,
+      titre: typeof o.titre === "string" ? o.titre : "",
+    };
+  }
+  return { titre: "" };
+}
 
 /** L'espace de réglages du bureau commun : « rangement:atelier:… ». */
 export const ESPACE_COMMUN = "atelier";
