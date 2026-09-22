@@ -18,8 +18,8 @@ vi.mock("./api", () => ({
 import {
   PHRASES_PAR_RESUME, RUBRIQUES, TRANCHE_S, ajouterAuTexte, assezPourResumer, convertirAnciennes,
   decouperEnPhrases, dureeLisible, ecrirePlan, ecrireResumes, fusionnerPlan, horodatage,
-  integrerAuPlan, lirePlan, lireResumes, lireTranches, mettreAuPropre, nettoyer, nomDeLaReunion,
-  phrasesEnAttente, planVide, promptCompteRendu, promptPassage, promptPlan, redigerCompteRendu,
+  lirePlan, lireResumes, lireTranches, mettreAuPropre, nettoyer, nomDeLaReunion,
+  phrasesEnAttente, planVide, promptCompteRendu, promptPassage, promptRangement, rangerLeDocument, redigerCompteRendu,
   repereDuResume, resumerPassage, riendedit, texteACopier, type Resume,
 } from "./reunion";
 
@@ -277,21 +277,20 @@ describe("le compte rendu vivant", () => {
     expect(fusion["Décisions"]).toEqual([]);
   });
 
-  it("la consigne demande de réagencer, pas d'empiler", () => {
-    const m = promptPlan({ genre: "ESS", titre: "Camille", plan: PLAN, passage: "On décide l'essai." });
-    expect(m[0].content).toContain("mis à jour");
+  it("la consigne demande de ranger le vrac de la fin, pas d'empiler", () => {
+    const m = promptRangement({ genre: "ESS", titre: "Camille", document: PLAN + "\n\nOn décide l'essai." });
+    expect(m[0].content).toContain("rangé");
     expect(m[0].content).toContain("fusionne");
     expect(m[0].content).toContain("déplace une ligne");
     expect(m[0].content).toContain("N'invente rien");
-    expect(m[1].content).toContain("Compte rendu actuel :");
+    expect(m[0].content).toContain("fais-la disparaître de la fin");
     expect(m[1].content).toContain("On décide l'essai.");
   });
 
-  it("intègre un passage, sans qu'aucun prénom ne sorte", async () => {
+  it("range le document, sans qu'aucun prénom ne sorte", async () => {
     reponse = "## Points abordés\n- La cantine du mardi pour [P1].\n## Décisions\n- Essai accepté.\n## Ce que je dois faire\n- Prévenir la cantine.\n## À revoir\n- Rien à signaler";
-    const suite = await integrerAuPlan(
-      "## Points abordés\n- La cantine de Camille Bernard.\n## Décisions\n- Rien à signaler\n## Ce que je dois faire\n- Rien à signaler\n## À revoir\n- Rien à signaler",
-      "On accepte l'essai pour Camille Bernard.",
+    const suite = await rangerLeDocument(
+      "## Points abordés\n- La cantine de Camille Bernard.\n## Décisions\n- Rien à signaler\n## Ce que je dois faire\n- Rien à signaler\n## À revoir\n- Rien à signaler\n\nOn accepte l'essai pour Camille Bernard.",
       { genre: "ESS", titre: "ESS de Camille Bernard" },
     );
     const envoye = appels[0].messages.map((m) => m.content).join("\n");
@@ -302,15 +301,14 @@ describe("le compte rendu vivant", () => {
     expect(suite).not.toMatch(/\[P\d+\]/);
   });
 
-  it("un passage vide laisse le compte rendu tel quel, sans appeler l'IA", async () => {
-    const avant = PLAN;
-    expect(await integrerAuPlan(avant, "   ", { genre: "ESS", titre: "" })).toBe(avant);
+  it("un document vide n'appelle pas l'IA pour rien", async () => {
+    expect(await rangerLeDocument("   ", { genre: "ESS", titre: "" })).toBe("   ");
     expect(appels).toHaveLength(0);
   });
 
   it("une réponse inexploitable ne remplace pas le compte rendu", async () => {
     reponse = "Bien sûr ! Voici le compte rendu mis à jour.";
-    await expect(integrerAuPlan(ecrirePlan({}), "On parle de la cantine.", { genre: "ESS", titre: "" }))
+    await expect(rangerLeDocument("On parle de la cantine.", { genre: "ESS", titre: "" }))
       .rejects.toThrow(/exploitable/);
   });
 
