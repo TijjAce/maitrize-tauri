@@ -955,8 +955,16 @@ pub struct Reunion {
     pub date: String,
     #[serde(default)]
     pub participants: String,
+    /// Les tranches de cinq minutes des versions 1.6.13 et 1.6.14 : relues
+    /// une fois pour nourrir `texte` et `resumes_json`, puis laissées là.
     #[serde(default = "vide_arr")]
     pub tranches_json: String,
+    /// Ce qui s'est dit, écrit au fil de la réunion.
+    #[serde(default)]
+    pub texte: String,
+    /// Les résumés, un par groupe de phrases.
+    #[serde(default = "vide_arr")]
+    pub resumes_json: String,
     #[serde(default)]
     pub compte_rendu: String,
     /// Durée écoutée, en secondes.
@@ -977,6 +985,8 @@ impl Reunion {
             date: r.get("date")?,
             participants: r.get("participants")?,
             tranches_json: r.get("tranches_json")?,
+            texte: r.get("texte").unwrap_or_default(),
+            resumes_json: r.get("resumes_json").unwrap_or_else(|_| "[]".into()),
             compte_rendu: r.get("compte_rendu")?,
             duree_s: r.get("duree_s")?,
             date_creation: r.get("date_creation")?,

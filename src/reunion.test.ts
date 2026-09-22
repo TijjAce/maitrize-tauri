@@ -16,73 +16,112 @@ vi.mock("./api", () => ({
 }));
 
 import {
-  TRANCHE_S, dureeLisible, ecrireTranches, horodatage, lireTranches, nomDeLaReunion,
-  promptCompteRendu, promptTranche, redigerCompteRendu, restantAvantLaCoupe, resumerTranche,
-  riendedit, texteACopier, nettoyer, type Tranche,
+  PHRASES_PAR_RESUME, TRANCHE_S, ajouterAuTexte, assezPourResumer, convertirAnciennes,
+  decouperEnPhrases, dureeLisible, ecrireResumes, horodatage, lireResumes, lireTranches,
+  nettoyer, nomDeLaReunion, phrasesEnAttente, promptCompteRendu, promptPassage,
+  redigerCompteRendu, repereDuResume, resumerPassage, riendedit, texteACopier, type Resume,
 } from "./reunion";
 
-const tranche = (p: Partial<Tranche> = {}): Tranche => ({
-  id: "t1", rang: 1, debut: 0, fin: TRANCHE_S, transcription: "", resume: "", etat: "fait", ...p,
+const resume = (p: Partial<Resume> = {}): Resume => ({
+  id: "r1", rang: 1, de: 0, a: 10, texte: "- Un point.", etat: "fait", ...p,
 });
 
 beforeEach(() => { appels.length = 0; });
 
-describe("le fil des tranches", () => {
-  it("dit où l'on en est dans la réunion", () => {
-    expect(horodatage({ debut: 0, fin: 300 })).toBe("00:00 → 05:00");
-    expect(horodatage({ debut: 3600, fin: 3720 })).toBe("60:00 → 62:00");
+describe("découper le texte en phrases", () => {
+  it("coupe sur la ponctuation forte et les retours à la ligne", () => {
+    expect(decouperEnPhrases("Bonjour. Ça va ? Oui !")).toEqual(["Bonjour.", "Ça va ?", "Oui !"]);
+    expect(decouperEnPhrases("Premier point\nDeuxième point")).toEqual(["Premier point", "Deuxième point"]);
+    expect(decouperEnPhrases("   ")).toEqual([]);
   });
 
-  it("compte ce qui reste avant la prochaine coupe", () => {
-    expect(restantAvantLaCoupe(0)).toBe(TRANCHE_S);
-    expect(restantAvantLaCoupe(297)).toBe(3);
-    // Une tranche qui a dépassé (transcription lente) n'affiche pas un négatif.
-    expect(restantAvantLaCoupe(320)).toBe(0);
+  it("garde une phrase inachevée : la réunion continue", () => {
+    expect(decouperEnPhrases("On commence. Et ensuite")).toEqual(["On commence.", "Et ensuite"]);
+  });
+});
+
+describe("le rythme des résumés", () => {
+  it("attend dix phrases, pas une de moins", () => {
+    expect(assezPourResumer(9)).toBe(false);
+    expect(assezPourResumer(PHRASES_PAR_RESUME)).toBe(true);
+    expect(assezPourResumer(12)).toBe(true);
   });
 
-  it("dit la durée écoutée comme on la prononce", () => {
-    expect(dureeLisible(300)).toBe("5 min");
-    expect(dureeLisible(3900)).toBe("1 h 05");
+  it("ne propose que les phrases pas encore résumées", () => {
+    const texte = "Un. Deux. Trois. Quatre.";
+    expect(phrasesEnAttente(texte, [])).toEqual({ de: 0, phrases: ["Un.", "Deux.", "Trois.", "Quatre."] });
+    expect(phrasesEnAttente(texte, [resume({ de: 0, a: 2 })])).toEqual({ de: 2, phrases: ["Trois.", "Quatre."] });
+  });
+
+  it("un texte raccourci à la main ne bloque pas les résumés suivants", () => {
+    // Le repère dépassait la fin du texte : plus rien n'était jamais résumé.
+    expect(phrasesEnAttente("Un. Deux.", [resume({ de: 0, a: 40 })])).toEqual({ de: 2, phrases: [] });
+  });
+});
+
+describe("le texte qui s'écrit", () => {
+  it("colle les morceaux transcrits, en séparant les phrases", () => {
+    expect(ajouterAuTexte("", "Bonjour à tous.")).toBe("Bonjour à tous.");
+    expect(ajouterAuTexte("Bonjour à tous.", "On commence.")).toBe("Bonjour à tous. On commence.");
+    // Un morceau qui finit sans point ne doit pas coller au suivant.
+    expect(ajouterAuTexte("Je disais que", "donc on reprend.")).toBe("Je disais que. donc on reprend.");
+    expect(ajouterAuTexte("Un texte.", "   ")).toBe("Un texte.");
   });
 });
 
 describe("ce qui est enregistré", () => {
-  it("n'enregistre pas une tranche encore en cours de traitement", () => {
-    const json = ecrireTranches([
-      tranche({ id: "a", resume: "- Un point." }),
-      tranche({ id: "b", rang: 2, etat: "transcription" }),
-    ]);
+  it("un résumé encore en cours n'est pas enregistré comme tel", () => {
+    const json = ecrireResumes([resume({ id: "a" }), resume({ id: "b", rang: 2, etat: "encours" })]);
     expect(JSON.parse(json)).toHaveLength(1);
     expect(JSON.parse(json)[0].id).toBe("a");
   });
 
-  it("une tranche relue n'est plus « en cours » : son audio n'existe plus", () => {
-    // Une application fermée pendant la transcription laissait cet état.
-    const lues = lireTranches(JSON.stringify([{ id: "a", rang: 1, etat: "transcription", resume: "- Oui." }]));
-    expect(lues[0].etat).toBe("fait");
-  });
-
-  it("un échec reste un échec après relecture", () => {
-    const lues = lireTranches(JSON.stringify([{ id: "a", rang: 1, etat: "echec", erreur: "Réseau" }]));
-    expect(lues[0].etat).toBe("echec");
-    expect(lues[0].erreur).toBe("Réseau");
+  it("un résumé relu n'est plus « en cours », un échec reste un échec", () => {
+    expect(lireResumes(JSON.stringify([{ id: "a", rang: 1, de: 0, a: 10, etat: "encours" }]))[0].etat).toBe("fait");
+    expect(lireResumes(JSON.stringify([{ id: "a", rang: 1, etat: "echec", erreur: "Réseau" }]))[0].etat).toBe("echec");
   });
 
   it("un enregistrement abîmé ne casse pas l'écran", () => {
-    expect(lireTranches("")).toEqual([]);
-    expect(lireTranches("{pas du json")).toEqual([]);
-    expect(lireTranches('{"rang":1}')).toEqual([]);
-    expect(lireTranches('[null, 3, "x"]')).toEqual([]);
+    expect(lireResumes("")).toEqual([]);
+    expect(lireResumes("{pas du json")).toEqual([]);
+    expect(lireResumes('[null, 3, "x"]')).toEqual([]);
   });
 
-  it("retrouve les bornes d'une tranche écrite sans elles", () => {
-    const lues = lireTranches(JSON.stringify([{ id: "a", rang: 3, resume: "- Un point." }]));
-    expect(lues[0].debut).toBe(2 * TRANCHE_S);
-    expect(lues[0].fin).toBe(3 * TRANCHE_S);
+  it("garde le moment où le résumé a été fait, quand il y en a un", () => {
+    const lus = lireResumes(ecrireResumes([resume({ quand: 720 })]));
+    expect(lus[0].quand).toBe(720);
+    expect(repereDuResume(lus[0])).toBe("12 min · phrases 1–10");
+    // Un texte tapé au clavier n'a pas de minute à afficher.
+    expect(repereDuResume(resume({ de: 10, a: 20 }))).toBe("phrases 11–20");
   });
 });
 
-describe("cinq minutes sans rien d'utile", () => {
+describe("relire une réunion d'avant", () => {
+  it("refait un texte suivi et des résumés posés sur les phrases", () => {
+    const anciennes = JSON.stringify([
+      { id: "t1", rang: 1, debut: 0, fin: 300, transcription: "Bonjour. On commence.", resume: "- Ouverture.", etat: "fait" },
+      { id: "t2", rang: 2, debut: 300, fin: 600, transcription: "La cantine du mardi.", resume: "- Cantine.", etat: "fait" },
+    ]);
+    const { texte, resumes } = convertirAnciennes(anciennes);
+    expect(texte).toBe("Bonjour. On commence. La cantine du mardi.");
+    expect(resumes.map((r) => [r.de, r.a])).toEqual([[0, 2], [2, 3]]);
+    expect(resumes[1].quand).toBe(600);
+    expect(resumes[0].texte).toBe("- Ouverture.");
+  });
+
+  it("une réunion sans tranches ne donne rien à convertir", () => {
+    expect(convertirAnciennes("[]")).toEqual({ texte: "", resumes: [] });
+  });
+
+  it("les anciennes tranches se relisent toujours", () => {
+    const t = lireTranches(JSON.stringify([{ id: "a", rang: 1, resume: "- Un point." }]));
+    expect(t[0].debut).toBe(0);
+    expect(t[0].fin).toBe(TRANCHE_S);
+    expect(horodatage(t[0])).toBe("00:00 → 05:00");
+  });
+});
+
+describe("un passage sans rien d'utile", () => {
   it("reconnaît un résumé vide, quel que soit le tiret du modèle", () => {
     expect(riendedit("")).toBe(true);
     expect(riendedit("—")).toBe(true);
@@ -92,12 +131,11 @@ describe("cinq minutes sans rien d'utile", () => {
 });
 
 describe("les consignes envoyées au modèle", () => {
-  it("le résumé d'une tranche interdit d'inventer et prévoit le silence", () => {
-    const m = promptTranche("ESS", "Camille", "euh… donc… on disait");
-    const systeme = m[0].content;
-    expect(systeme).toContain("ESS");
-    expect(systeme).toContain("N'invente rien");
-    expect(systeme).toMatch(/réponds exactement : —/);
+  it("le résumé d'un passage interdit d'inventer et prévoit le vide", () => {
+    const m = promptPassage("ESS", "Camille", "euh… donc… on disait");
+    expect(m[0].content).toContain("ESS");
+    expect(m[0].content).toContain("N'invente rien");
+    expect(m[0].content).toMatch(/réponds exactement : —/);
     expect(m[1].content).toBe("euh… donc… on disait");
   });
 
@@ -117,47 +155,43 @@ describe("les consignes envoyées au modèle", () => {
 });
 
 describe("ce qui part chez Mistral", () => {
-  it("aucun prénom d'élève ne part dans le résumé d'une tranche", async () => {
+  it("aucun prénom d'élève ne part dans le résumé d'un passage", async () => {
     reponse = "- [P1] a besoin d'un temps calme le matin.";
-    const texte = await resumerTranche("Camille Bernard a besoin d'un temps calme le matin.",
+    const texte = await resumerPassage("Camille Bernard a besoin d'un temps calme le matin.",
       { genre: "ESS", titre: "Camille" });
     const envoye = appels[0].messages.map((m) => m.content).join("\n");
     expect(envoye).not.toContain("Camille");
     expect(envoye).not.toContain("Bernard");
-    // Et le prénom revient dans le texte gardé ici.
     expect(texte).toBe("- Camille a besoin d'un temps calme le matin.");
   });
 
-  it("le compte rendu masque aussi les prénoms, et n'assemble que ce qui dit quelque chose", async () => {
-    reponse = "## Points abordés\n- [P1] progresse en lecture.";
-    const texte = await redigerCompteRendu(
-      { genre: "ESS", titre: "Camille", date: "2026-09-21", participants: "" },
-      [tranche({ resume: "- Camille Bernard progresse en lecture." }),
-       tranche({ id: "t2", rang: 2, resume: "—" })],
-    );
-    const envoye = appels[0].messages.map((m) => m.content).join("\n");
-    expect(envoye).not.toContain("Bernard");
-    expect(envoye).not.toContain("—");
-    // Le compte rendu gardé ici porte le vrai nom, plus aucun marqueur.
-    expect(texte).toContain("Camille");
-    expect(texte).not.toMatch(/\[P\d+\]/);
-  });
-
   it("le titre de la réunion ne trahit pas l'élève dont on parle", async () => {
-    // « ESS de Camille Bernard » part dans la consigne : il doit être masqué
-    // avec la même table que la transcription.
     reponse = "- Point noté.";
-    await resumerTranche("On parle de la cantine.", { genre: "ESS", titre: "ESS de Camille Bernard" });
+    await resumerPassage("On parle de la cantine.", { genre: "ESS", titre: "ESS de Camille Bernard" });
     const envoye = appels[0].messages.map((m) => m.content).join("\n");
     expect(envoye).not.toContain("Camille");
     expect(envoye).not.toContain("Bernard");
     expect(envoye).toContain("[P1]");
   });
 
+  it("le compte rendu masque aussi les prénoms, et n'assemble que ce qui dit quelque chose", async () => {
+    reponse = "## Points abordés\n- [P1] progresse en lecture.";
+    const texte = await redigerCompteRendu(
+      { genre: "ESS", titre: "Camille", date: "2026-09-21", participants: "" },
+      [resume({ texte: "- Camille Bernard progresse en lecture." }),
+       resume({ id: "r2", rang: 2, de: 10, a: 20, texte: "—" })],
+    );
+    const envoye = appels[0].messages.map((m) => m.content).join("\n");
+    expect(envoye).not.toContain("Bernard");
+    expect(envoye).not.toContain("—");
+    expect(texte).toContain("Camille");
+    expect(texte).not.toMatch(/\[P\d+\]/);
+  });
+
   it("sans aucun résumé utile, on ne fait pas d'appel pour rien", async () => {
     await expect(redigerCompteRendu(
       { genre: "ESS", titre: "", date: "", participants: "" },
-      [tranche({ resume: "—" })],
+      [resume({ texte: "—" })],
     )).rejects.toThrow();
     expect(appels).toHaveLength(0);
   });
@@ -166,9 +200,14 @@ describe("ce qui part chez Mistral", () => {
 describe("ce qu'on emporte", () => {
   const reunion = {
     id: "r1", titre: "ESS de Camille", genre: "ESS", date: "2026-09-21",
-    participants: "Directrice", tranchesJson: "[]", compteRendu: "", dureeS: 3900,
-    dateCreation: "", dateMaj: "",
+    participants: "Directrice", tranchesJson: "[]", texte: "", resumesJson: "[]",
+    compteRendu: "", dureeS: 3900, dateCreation: "", dateMaj: "",
   };
+
+  it("dit la durée écoutée comme on la prononce", () => {
+    expect(dureeLisible(300)).toBe("5 min");
+    expect(dureeLisible(3900)).toBe("1 h 05");
+  });
 
   it("copie le compte rendu avec son en-tête", () => {
     const t = texteACopier({ ...reunion, compteRendu: "## Décisions\n- Maintien en ULIS." }, []);
@@ -178,9 +217,9 @@ describe("ce qu'on emporte", () => {
     expect(t).toContain("- Maintien en ULIS.");
   });
 
-  it("à défaut de compte rendu, copie les résumés horodatés", () => {
-    const t = texteACopier(reunion, [tranche({ resume: "- Un point." }), tranche({ id: "t2", rang: 2, resume: "—" })]);
-    expect(t).toContain("[00:00 → 05:00]");
+  it("à défaut de compte rendu, copie les résumés avec leur repère", () => {
+    const t = texteACopier(reunion, [resume({ quand: 300 }), resume({ id: "r2", rang: 2, de: 10, a: 20, texte: "—" })]);
+    expect(t).toContain("[5 min · phrases 1–10]");
     expect(t).toContain("- Un point.");
     expect(t).not.toContain("—\n");
   });

@@ -599,6 +599,8 @@ pub(crate) fn migrate(conn: &Connection) {
             date TEXT NOT NULL DEFAULT '',
             participants TEXT NOT NULL DEFAULT '',
             tranches_json TEXT NOT NULL DEFAULT '[]',
+            texte TEXT NOT NULL DEFAULT '',
+            resumes_json TEXT NOT NULL DEFAULT '[]',
             compte_rendu TEXT NOT NULL DEFAULT '',
             duree_s INTEGER NOT NULL DEFAULT 0,
             date_creation TEXT NOT NULL,
@@ -701,6 +703,10 @@ pub(crate) fn migrate(conn: &Connection) {
     conn.execute("ALTER TABLE materiel_items ADD COLUMN coffre_json TEXT NOT NULL DEFAULT '[]'", []).ok();
     // Plan de travail : séquences et matériel se rangent dans les mêmes dossiers.
     conn.execute("ALTER TABLE sequences ADD COLUMN dossier TEXT NOT NULL DEFAULT ''", []).ok();
+    // Réunions : le texte s'écrit en continu, et les résumés portent sur des
+    // phrases, non plus sur des tranches de cinq minutes.
+    conn.execute("ALTER TABLE reunions ADD COLUMN texte TEXT NOT NULL DEFAULT ''", []).ok();
+    conn.execute("ALTER TABLE reunions ADD COLUMN resumes_json TEXT NOT NULL DEFAULT '[]'", []).ok();
     migrer_organisation_ime(conn);
 }
 

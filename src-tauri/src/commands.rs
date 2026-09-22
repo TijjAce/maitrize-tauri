@@ -958,10 +958,11 @@ pub fn reunions_list(db: State<Db>) -> R<Vec<Reunion>> {
 pub fn reunion_save(db: State<Db>, reunion: Reunion) -> R<Reunion> {
     let c = db.lock();
     c.execute(
-        "INSERT INTO reunions (id,titre,genre,date,participants,tranches_json,compte_rendu,duree_s,date_creation,date_maj)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, genre = excluded.genre, date = excluded.date, participants = excluded.participants, tranches_json = excluded.tranches_json, compte_rendu = excluded.compte_rendu, duree_s = excluded.duree_s, date_maj = excluded.date_maj",
+        "INSERT INTO reunions (id,titre,genre,date,participants,tranches_json,texte,resumes_json,compte_rendu,duree_s,date_creation,date_maj)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, genre = excluded.genre, date = excluded.date, participants = excluded.participants, tranches_json = excluded.tranches_json, texte = excluded.texte, resumes_json = excluded.resumes_json, compte_rendu = excluded.compte_rendu, duree_s = excluded.duree_s, date_maj = excluded.date_maj",
         params![reunion.id, reunion.titre, reunion.genre, reunion.date, reunion.participants,
-                reunion.tranches_json, reunion.compte_rendu, reunion.duree_s,
+                reunion.tranches_json, reunion.texte, reunion.resumes_json,
+                reunion.compte_rendu, reunion.duree_s,
                 reunion.date_creation, reunion.date_maj],
     ).map_err(e)?;
     Ok(reunion)
