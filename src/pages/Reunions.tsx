@@ -1,6 +1,6 @@
 import React from "react";
 import { Page } from "../App";
-import { api, newId, nowIso, texteErreur, type Reunion } from "../api";
+import { api, journal, newId, nowIso, texteErreur, type Reunion } from "../api";
 import { Empty, Field, Input, Select } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
@@ -8,9 +8,10 @@ import { printHTML, escapeHtml } from "../print";
 import { useEcoute, type TrancheAudio } from "../ecoute";
 import { ZoneVivante } from "../components/ZoneVivante";
 import {
-  GENRES, MORCEAU_S, PHRASES_PAR_RESUME, ajouterAuDocument, ajouterAuTexte, assezPourResumer, convertirAnciennes,
+  GENRES, MORCEAU_S, PHRASES_PAR_RELECTURE, ajouterAuDocument, ajouterAuTexte, assezPourResumer, convertirAnciennes,
   decouperEnPhrases, dureeLisible, ecrireResumes, lirePlan, lireResumes, mettreAuPropre,
-  nomDeLaReunion, phrasesEnAttente, planVide, rangerLeDocument, texteACopier, type Resume,
+  assezPourRelire, nomDeLaReunion, phrasesEnAttente, planVide, rangerLeDocument,
+  relireLeDocument, texteACopier, type Resume,
 } from "../reunion";
 
 // ── Réunions ──────────────────────────────────────────────────────────────
@@ -68,6 +69,7 @@ export default function Reunions() {
   // n'y a plus de bouton à chercher au moment où la réunion commence.
   const dejaExplique = React.useRef(false);
   const [transcrit, setTranscrit] = React.useState(false);
+  const [relit, setRelit] = React.useState(false);
 
   // Ce que les rappels du micro et des minuteurs doivent lire : ils vivent
   // plus longtemps qu'un rendu, et une valeur figée leur ferait résumer deux
@@ -83,6 +85,10 @@ export default function Reunions() {
   const compteRenduRef = React.useRef("");
   compteRenduRef.current = compteRendu;
   const resumeEnCours = React.useRef(false);
+  // Où en était le texte à la dernière relecture de fond. Perdu au
+  // redémarrage, et ce n'est pas grave : la relecture arrivera un peu plus
+  // tard, c'est tout.
+  const phrasesRelues = React.useRef(0);
   const secondesRef = React.useRef(0);
   // Un booléen, pas l'objet : `courante` change à chaque enregistrement, et
   // en dépendre relancerait le minuteur du résumé sans arrêt.
@@ -147,6 +153,29 @@ export default function Reunions() {
   // ── Résumer ce qui attend ───────────────────────────────────────────────
 
   /**
+   * La relecture de fond, toutes les dix phrases.
+   *
+   * Elle suit un rangement, jamais l'inverse : relire un document auquel il
+   * manque les deux dernières phrases n'aurait pas de sens.
+   */
+  const relireSiBesoin = React.useCallback(async () => {
+    const phrases = decouperEnPhrases(texteRef.current).length;
+    if (!assezPourRelire(phrases - phrasesRelues.current)) return;
+    phrasesRelues.current = phrases;
+    setRelit(true);
+    try {
+      const suite = await relireLeDocument(compteRenduRef.current, contexte.current);
+      compteRenduRef.current = suite;
+      setCompteRendu(suite);
+      majReunion({ compteRendu: suite }, true);
+    } catch (e) {
+      // Une relecture ratée ne casse rien : le document d'avant reste, et la
+      // suivante retentera dans dix phrases.
+      journal(`ÉCHEC relecture réunion : ${texteErreur(e)}`);
+    } finally { setRelit(false); }
+  }, [majReunion]);
+
+  /**
    * Fait relire le compte rendu à l'agent avec ce qui vient d'être dit.
    *
    * Rien n'est empilé : l'agent rend le document entier, réagencé. On repart
@@ -173,6 +202,7 @@ export default function Reunions() {
       setCompteRendu(suite);
       majResume(id, { etat: "fait" });
       majReunion({ compteRendu: suite, resumesJson: ecrireResumes(resumesRef.current), texte: texteRef.current }, true);
+      await relireSiBesoin();
     } catch (e) {
       majResume(id, { etat: "echec", erreur: texteErreur(e) }, true);
     } finally {
@@ -196,16 +226,19 @@ export default function Reunions() {
     } finally { resumeEnCours.current = false; }
   };
 
-  // Dix phrases de plus, et le résumé part — après un court repos, pour ne
-  // pas couper un mot en train de s'écrire. Le même chemin sert à la dictée
-  // et à la frappe. Tant qu'on est sous les dix phrases, aucun minuteur ne
-  // tourne : rien à annuler, rien à repousser.
+  // Deux phrases de plus, et le rangement part — après un court repos, pour
+  // ne pas couper un mot en train de s'écrire. Le même chemin sert à la
+  // dictée et à la frappe.
+  //
+  // Le minuteur ne dépend **pas** du texte : sinon chaque arrivée le remet à
+  // zéro, et si la parole arrive plus vite que le repos, il ne part jamais.
+  // Le défaut s'était déjà produit ; il ne se reproduira pas.
   const assez = assezPourResumer(phrasesEnAttente(texte, resumes).phrases.length);
   React.useEffect(() => {
     if (!ouverte || !assez) return;
     const t = window.setTimeout(() => { void integrerSiBesoin(); }, REPOS_MS);
     return () => window.clearTimeout(t);
-  }, [texte, ouverte, assez, integrerSiBesoin]);
+  }, [ouverte, assez, integrerSiBesoin]);
 
   // ── L'écoute ────────────────────────────────────────────────────────────
 
@@ -250,6 +283,7 @@ export default function Reunions() {
     resumesRef.current = relu.resumes;
     setResumes(relu.resumes);
     setCompteRendu(r.compteRendu);
+    phrasesRelues.current = decouperEnPhrases(relu.texte).length;
     setConsentementVu(false);
     if (ancienne) {
       void enregistrer({ ...r, texte: relu.texte, resumesJson: ecrireResumes(relu.resumes), dateMaj: nowIso() });
@@ -264,6 +298,7 @@ export default function Reunions() {
     texteRef.current = ""; setTexte("");
     resumesRef.current = []; setResumes([]);
     setCompteRendu("");
+    phrasesRelues.current = 0;
     setConsentementVu(false);
     setEntete(false);
     // Rien à cliquer : on pose l'ordinateur et ça écoute. L'écran d'accord
@@ -450,8 +485,10 @@ export default function Reunions() {
                 </b>
                 <span className="meta" style={{ fontSize: 12 }}>
                   {ecoute.etat === "pause" ? "en pause"
+                    : relit ? "relecture de l'ensemble…"
                     : transcrit ? "le texte s'écrit…"
-                    : enCours ? (assez ? "rangement en cours…" : `${PHRASES_PAR_RESUME - attente} phrases avant le prochain rangement`)
+                    : enCours ? (assez ? "rangement en cours…"
+                        : `relecture de fond dans ${Math.max(1, PHRASES_PAR_RELECTURE - (decouperEnPhrases(texte).length - phrasesRelues.current))} phrases`)
                     : "écoute arrêtée"}
                 </span>
                 <div className="spacer" style={{ flex: 1 }} />
