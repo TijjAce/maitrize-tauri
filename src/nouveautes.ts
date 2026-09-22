@@ -21,6 +21,9 @@ export const NOUVEAUTES: Nouveaute[] = [
     version: "1.6.15",
     titre: "Les réunions s'écrivent au fil de l'eau",
     points: [
+      { quoi: "Rejoindre un partage se fait en collant un lien et son mot de passe, rien d'autre : plus de choix à faire, plus de compte à configurer. Pour partager vos propres dossiers — votre Nuage, ou un dossier synchronisé sur cet ordinateur —, c'est désormais dans les Réglages, une fois pour toutes.", ou: "Bureaux communs · Réglages · Données & synchro" },
+      { quoi: "Une image copiée depuis une page web ou un PDF se colle maintenant dans un texte : elle n'arrive pas sous forme de fichier mais écrite dans le presse-papiers, et l'application ne la voyait pas. Elle est réduite puis posée au curseur, comme une photo.", ou: "Textes · éditeur" },
+      { quoi: "Le bouton « ▦ Fiches » disparaît du plan de travail : tout se trouve sur le bureau.", ou: "Plan de travail" },
       { quoi: "Le journal d'incidents porte enfin la date, et dit ce qui tournait quand la fenêtre s'est figée : « FIGÉ 94 s sur /plan (sync_deltas 46s) » au lieu d'un simple « FIGÉ ». Une erreur réseau dit aussi sa cause réelle, et non plus « dispatch failure » tout court.", ou: "Réglages · Données & synchro · 🩺 Journal d'incidents" },
       { quoi: "Le journal de synchronisation s'élague : ce qui est parti depuis plus d'un mois n'est plus relu à chaque passage. Il avait atteint 7 Mo et 7 000 lignes, relues toutes les trente secondes.", ou: "Réglages · Données & synchro" },
       { quoi: "Un seul encadré, de la taille d'une page — le même que l'éditeur de textes —, où la parole s'écrit lettre après lettre pendant la réunion. Le rangement, lui, se fait en arrière-plan : le document rangé se pose d'un coup, sans se retaper sous vos yeux. Vous pouvez mettre la main dedans à tout moment : l'animation s'arrête, tout s'affiche, et vous corrigez.", ou: "Réunions" },

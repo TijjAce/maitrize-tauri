@@ -226,7 +226,7 @@ export function PanneauCommun({ compact = false, onFermer }: {
       {!compact && (
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 8 }}>
           <button className="btn" onClick={() => nav("/plan")}>← Mon bureau</button>
-          <button className="btn primary" onClick={() => setAjout(true)}>+ Ajouter un bureau commun</button>
+          <button className="btn primary" onClick={() => setAjout(true)}>🔗 Coller un lien de partage</button>
         </div>
       )}
 
@@ -454,64 +454,48 @@ function PremiersPas({ onAjouter, compact = false }: { onAjouter: () => void; co
   if (compact) {
     return (
       <div className="card" style={{ fontSize: 13.5 }}>
-        <b>Partager avec des collègues</b>
+        <b>Rejoindre un partage</b>
         <p style={{ color: "var(--text-2)", marginTop: 6 }}>
-          Un bureau commun est un dossier partagé par Nuage, OneDrive ou Google Drive, synchronisé sur cet ordinateur.
+          Un collègue vous a envoyé un lien ? Collez-le, et son dossier apparaît ici.
         </p>
-        <button className="btn primary sm" onClick={onAjouter}>+ Ajouter un bureau commun</button>
+        <button className="btn primary sm" onClick={onAjouter}>🔗 Coller un lien de partage</button>
       </div>
     );
   }
   return (
     <div className="card" style={{ maxWidth: 720 }}>
-      <h3 style={{ marginTop: 0 }}>Partager avec des collègues</h3>
-      <p style={{ fontSize: 13.5, color: "var(--text-2)", marginTop: 0 }}>
-        Un bureau commun est un dossier partagé. C'est votre service de stockage qui le partage : vous y choisissez
-        vous-même, personne par personne, qui y a accès. Maitrize ne garde aucune clé.
+      <h3 style={{ marginTop: 0 }}>Rejoindre un partage</h3>
+      <p style={{ fontSize: 13.5, color: "var(--text-2)", marginTop: 0, lineHeight: 1.6 }}>
+        Un bureau commun est le dossier d'un collègue, ouvert par un lien. Vous n'avez besoin
+        d'aucun compte et personne ne donne son mot de passe : collez le lien reçu, et le dossier
+        apparaît — sur le Mac comme sur le PC, sans rien installer.
       </p>
-      <ol style={{ fontSize: 13.5, lineHeight: 1.7, paddingLeft: 20 }}>
-        <li>Dans <b>Nuage</b> (apps.education.fr), créez un dossier et <b>partagez-le</b> avec vos collègues.</li>
-        <li>Toujours dans Nuage : <b>Paramètres › Sécurité</b>, créez un <b>mot de passe d'application</b> pour Maitrize.</li>
-        <li>Ici, <b>« Ajouter un bureau commun »</b> : choisissez Nuage, collez ce mot de passe, et le dossier partagé
-          apparaît — sur le Mac comme sur le PC, sans rien installer. (Un dossier synchronisé par OneDrive ou Google Drive
-          sur cet ordinateur reste possible.)</li>
-      </ol>
-      <button className="btn primary" onClick={onAjouter}>+ Ajouter un bureau commun</button>
+      <button className="btn primary" onClick={onAjouter}>🔗 Coller un lien de partage</button>
+      <p style={{ fontSize: 12.5, color: "var(--text-2)", margin: "12px 0 0", lineHeight: 1.55 }}>
+        Pour <b>partager vos propres dossiers</b> — votre Nuage, ou un dossier synchronisé sur cet
+        ordinateur —, c'est dans <b>Réglages › Données &amp; synchro › 🤝 Partager mes dossiers</b>.
+        Vous en tirerez ensuite un lien à envoyer (menu ⋯ du bureau commun).
+      </p>
     </div>
   );
 }
 
 /** Ajouter un bureau commun : choisir le dossier partagé, lui donner un nom. */
 function AjoutBureau({ onClose, onAjoute }: { onClose: () => void; onAjoute: (b: BureauCommun) => void }) {
-  // Deux façons d'atteindre le dossier partagé : Nuage directement — rien à
-  // installer, et le Mac comme le PC y voient la même chose —, ou un dossier
-  // de cet ordinateur, tenu à jour par l'application du service.
-  const [sorte, setSorte] = React.useState<"nuage" | "lien" | "dossier">("nuage");
-  const [chemin, setChemin] = React.useState("");
+  // Un lien et, s'il y en a un, son mot de passe : c'est tout ce qu'il faut
+  // pour entrer dans le dossier d'un collègue. Aucun compte, aucun réglage.
+  // Partager son propre Nuage est une autre affaire, plus rare et plus
+  // technique : elle a sa place dans les Réglages, pas ici.
   const [nom, setNom] = React.useState("");
   const [lien, setLien] = React.useState("");
-  const [serveur, setServeur] = React.useState("");
-  const [utilisateur, setUtilisateur] = React.useState("");
   const [motDePasse, setMotDePasse] = React.useState("");
-  const [dossierDistant, setDossierDistant] = React.useState("");
   const [erreur, setErreur] = React.useState("");
   const [essai, setEssai] = React.useState(false);
-
-  const choisir = async () => {
-    const { open } = await import("@tauri-apps/plugin-dialog");
-    const choix = await open({ directory: true, multiple: false, title: "Le dossier partagé avec vos collègues" });
-    if (typeof choix === "string") {
-      setChemin(choix);
-      if (!nom.trim()) setNom(choix.split(/[\\/]/).filter(Boolean).pop() ?? "");
-    }
-  };
 
   const ajouter = async () => {
     setErreur(""); setEssai(true);
     try {
-      onAjoute(sorte === "nuage" ? await api.communAjouterNuage(nom, serveur, utilisateur, motDePasse, dossierDistant)
-        : sorte === "lien" ? await api.communAjouterLien(nom, lien, motDePasse, dossierDistant)
-        : await api.communAjouter(nom, chemin));
+      onAjoute(await api.communAjouterLien(nom, lien, motDePasse, ""));
     } catch (e) {
       setErreur(texteErreur(e));
     } finally {
@@ -519,95 +503,34 @@ function AjoutBureau({ onClose, onAjoute }: { onClose: () => void; onAjoute: (b:
     }
   };
 
-  const pret = sorte === "nuage" ? !!(serveur.trim() && utilisateur.trim() && motDePasse.trim())
-    : sorte === "lien" ? !!lien.trim()
-    : !!chemin;
   return (
-    <Modal titre="Ajouter un bureau commun" onClose={onClose}
+    <Modal titre="Rejoindre un partage" onClose={onClose}
       footer={<>
         <button className="btn" onClick={onClose}>Annuler</button>
-        <button className="btn primary" disabled={!pret || essai} onClick={() => { void ajouter(); }}>
-          {essai ? "Connexion…" : sorte === "dossier" ? "Ajouter" : "Se connecter"}
+        <button className="btn primary" disabled={!lien.trim() || essai} onClick={() => { void ajouter(); }}>
+          {essai ? "Connexion…" : "Se connecter"}
         </button>
       </>}>
-      <Field label="Où est le dossier partagé ?">
-        <div className="seg" style={{ flexWrap: "wrap" }}>
-          <button className={sorte === "nuage" ? "active" : ""} onClick={() => setSorte("nuage")}>☁️ Mon Nuage</button>
-          <button className={sorte === "lien" ? "active" : ""} onClick={() => setSorte("lien")}>🔗 Un lien de partage</button>
-          <button className={sorte === "dossier" ? "active" : ""} onClick={() => setSorte("dossier")}>💻 Un dossier de cet ordinateur</button>
-        </div>
+      <p style={{ marginTop: 0, fontSize: 13, color: "var(--text-2)", lineHeight: 1.55 }}>
+        Un collègue vous a envoyé un lien de partage ? Collez-le ici. Vous n'avez besoin d'aucun
+        compte, personne ne donne son mot de passe, et le lien n'ouvre que le dossier partagé.
+      </p>
+      <Field label="Lien de partage">
+        <Input autoFocus placeholder="https://nuage03.apps.education.fr/s/aBcD1234"
+          value={lien} onChange={(e) => setLien(e.target.value)} />
       </Field>
-
-      {sorte === "lien" ? (
-        <>
-          <p style={{ marginTop: 0, fontSize: 13, color: "var(--text-2)" }}>
-            Un collègue vous a envoyé un lien de partage ? Collez-le ici : vous n'avez besoin d'aucun compte, et personne
-            ne donne son mot de passe. Le lien n'ouvre que le dossier partagé.
-          </p>
-          <Field label="Lien de partage">
-            <Input placeholder="https://nuage03.apps.education.fr/s/aBcD1234" value={lien} onChange={(e) => setLien(e.target.value)} />
-          </Field>
-          <div className="row">
-            <Field label="Mot de passe du lien (s'il y en a un)">
-              <Input type="password" autoComplete="off" value={motDePasse} onChange={(e) => setMotDePasse(e.target.value)} />
-            </Field>
-            <Field label="Nom du bureau commun">
-              <Input placeholder="Équipe de l'IME" value={nom} onChange={(e) => setNom(e.target.value)} />
-            </Field>
-          </div>
-        </>
-      ) : sorte === "nuage" ? (
-        <>
-          <p style={{ marginTop: 0, fontSize: 13, color: "var(--text-2)" }}>
-            Pour <b>votre</b> Nuage. Maitrize s'y connecte : le bureau commun <b>est</b> votre dossier Nuage, identique sur le
-            Mac et sur le PC, sans rien installer. Dans Nuage, allez dans <b>Paramètres › Sécurité › Mot de passe
-            d'application</b>, créez-en un pour Maitrize, et recopiez-le ici — il ne se donne à personne, et se révoque
-            là-bas quand vous voulez. Pour inviter un collègue, vous lui enverrez un <b>lien de partage</b> (menu ⋯ du
-            bureau commun).
-          </p>
-          <Field label="Adresse de Nuage">
-            <Input placeholder="nuage17.apps.education.fr" value={serveur} onChange={(e) => setServeur(e.target.value)} />
-            <div style={{ fontSize: 12.5, color: "var(--text-2)", marginTop: 4 }}>
-              Le début de l'adresse suffit. Vous pouvez aussi coller l'adresse complète de la page que vous regardez dans
-              Nuage : Maitrize en tirera le serveur, et le dossier s'il y figure.
-            </div>
-          </Field>
-          <div className="row">
-            <Field label="Identifiant">
-              <Input placeholder="prenom.nom" value={utilisateur} onChange={(e) => setUtilisateur(e.target.value)} />
-            </Field>
-            <Field label="Mot de passe d'application">
-              <Input type="password" autoComplete="off" value={motDePasse} onChange={(e) => setMotDePasse(e.target.value)} />
-            </Field>
-          </div>
-          <Field label="Dossier partagé dans Nuage (facultatif)">
-            <Input placeholder="Équipe IME" value={dossierDistant} onChange={(e) => setDossierDistant(e.target.value)} />
-            <div style={{ fontSize: 12.5, color: "var(--text-2)", marginTop: 4 }}>
-              Son nom exact, accents et majuscules compris. Vide : tout votre Nuage devient le bureau commun.
-            </div>
-          </Field>
-          <Field label="Nom du bureau commun">
-            <Input placeholder="Équipe de l'IME" value={nom} onChange={(e) => setNom(e.target.value)} />
-          </Field>
-          <p style={{ fontSize: 12.5, color: "var(--text-2)" }}>
-            Le mot de passe d'application reste sur cet ordinateur : il ne part ni dans la synchronisation, ni dans les sauvegardes.
-          </p>
-        </>
-      ) : (
-        <>
-          <p style={{ marginTop: 0, fontSize: 13, color: "var(--text-2)" }}>
-            Choisissez le dossier que l'application de votre service de stockage (Nuage, OneDrive, Google Drive…) synchronise
-            sur cet ordinateur.
-          </p>
-          <Field label="Dossier partagé">
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button className="btn" onClick={() => { void choisir(); }}>Choisir le dossier…</button>
-              <span style={{ fontSize: 12.5, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{chemin || "Aucun"}</span>
-            </div>
-          </Field>
-          <Field label="Nom"><Input placeholder="Équipe de l'IME" value={nom} onChange={(e) => setNom(e.target.value)} /></Field>
-        </>
-      )}
+      <div className="row">
+        <Field label="Mot de passe du lien (s'il y en a un)">
+          <Input type="password" autoComplete="off" value={motDePasse} onChange={(e) => setMotDePasse(e.target.value)} />
+        </Field>
+        <Field label="Nom du bureau commun">
+          <Input placeholder="Équipe de l'IME" value={nom} onChange={(e) => setNom(e.target.value)} />
+        </Field>
+      </div>
+      <p style={{ fontSize: 12.5, color: "var(--text-2)", marginBottom: 0 }}>
+        Pour <b>partager</b> vos propres dossiers — depuis votre Nuage, ou un dossier synchronisé
+        sur cet ordinateur —, allez dans <b>Réglages › Données &amp; synchro › 🤝 Partager mes dossiers</b>.
+      </p>
       {erreur && <p style={{ color: "var(--danger, #ef4444)", fontSize: 13, marginBottom: 0 }}>{erreur}</p>}
     </Modal>
   );
