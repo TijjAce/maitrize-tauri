@@ -11,8 +11,6 @@
 // et ce document finit dans le dossier d'un élève.
 
 import { api } from "./api";
-import type { Format } from "./ecoute";
-import { MORCEAU_S } from "./reunion";
 
 export type Moteur = "ligne" | "local";
 
@@ -25,22 +23,22 @@ export async function moteurActif(): Promise<Moteur> {
 }
 
 /**
- * Le format d'enregistrement qu'attend ce moteur.
+ * Combien de parole il faut avant de couper sur un silence.
  *
- * Whisper lit un WAV 16 kHz ; Voxtral prend ce que le navigateur produit, et
- * autant lui envoyer de l'audio compressé — le réseau d'une école n'est pas
- * celui d'un bureau.
+ * La coupe suit les phrases (voir `audioWav.fautIlCouper`) : ce seuil dit
+ * seulement à partir de quand une phrase vaut un envoi. En local, il n'y a ni
+ * quota ni réseau à ménager, donc on écrit presque en suivant la parole ; en
+ * ligne, on regroupe un peu plus pour ne pas multiplier les appels.
  */
-export const formatDe = (m: Moteur): Format => (m === "local" ? "wav" : "compresse");
+export const paroleMinimale = (m: Moteur): number => (m === "local" ? 1.5 : 5);
 
 /**
- * Tous les combien la parole part se faire transcrire.
+ * Au-delà, on coupe même si personne ne s'arrête de parler.
  *
- * En local, il n'y a ni quota ni réseau à ménager : on coupe court pour que
- * le texte arrive presque tout de suite. En ligne, on espace — chaque envoi
- * coûte, et une école a rarement du débit.
+ * Sans ce plafond, un intervenant qui enchaîne sans respirer ferait attendre
+ * le texte indéfiniment.
  */
-export const secondesParMorceau = (m: Moteur): number => (m === "local" ? 12 : MORCEAU_S);
+export const plafondDuMorceau = (m: Moteur): number => (m === "local" ? 12 : 20);
 
 /** Ce qu'il faut dire à l'enseignant sur ce que devient son audio. */
 export const sortieDeLAudio = (m: Moteur): string =>
@@ -52,5 +50,5 @@ export const sortieDeLAudio = (m: Moteur): string =>
 export async function transcrire(audioB64: string, moteur: Moteur): Promise<string> {
   return moteur === "local"
     ? api.transcrireLocal(audioB64)
-    : api.transcrireAudio(audioB64, "reunion.webm");
+    : api.transcrireAudio(audioB64, "reunion.wav");
 }
