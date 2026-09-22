@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import { isoJour, lundiDe, jourPlanningInitial, anneeDe, toMin, minToHHMM } from "../dates";
-import { api, Creneau, Seance, Sequence, Eleve, Jeu, MATIERES, couleurPourMatiere, teinteCreneau, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance } from "../api";
+import { api, Creneau, Seance, Sequence, Eleve, Jeu, MATIERES, couleurPourMatiere, teinteCreneau, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance, type ObservationEleve } from "../api";
 import { Modal, Field, Input, Select, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
 import { toast } from "../components/Toaster";
@@ -226,6 +226,10 @@ export default function Planning() {
     }
     // La ludothèque : la règle des jeux cités suit le prévu du créneau.
     const jeux = await api.jeuxList().catch((): Jeu[] => []);
+    // Les temps d'observation posés sur la journée : ce qu'on a décidé de
+    // regarder s'imprime avec le reste — c'est la feuille qu'on a en main.
+    const observations = await api.observationsList().catch((): ObservationEleve[] => []);
+    const observationsDe = (c: Creneau) => observations.filter((o) => o.creneauId === c.id);
     // Qui était là : le cahier journal dit avec quels élèves le créneau se fait.
     // Les prénoms seuls, comme à l'écran — un cahier journal circule.
     const prenomsDe = (c: Creneau) => {
@@ -273,8 +277,13 @@ export default function Planning() {
       try { illus = s?.imagesDeroulement ? JSON.parse(s.imagesDeroulement) : []; } catch { /* */ }
       const deroul = (s?.deroulement || "").replace(reImg, "").replace(/\[cite:[^\]]+\]/g, "").trim();
       const prenoms = prenomsDe(c);
+      const observees = observationsDe(c);
       const body = [
         prenoms.length ? champ("Élèves", escapeHtml(prenoms.join(", "))) : "",
+        observees.length ? champ("Observation", observees.map((o) => {
+          const prenom = (eleves ?? []).find((e) => e.id === o.eleveId)?.nom.trim().split(/\s+/)[0] ?? "";
+          return `${escapeHtml(prenom)} — ${escapeHtml(o.axe)}`;
+        }).join("<br>")) : "",
         seq ? champ("Séquence", escapeHtml([seq.titre, seq.annee, seq.periode ? "P" + seq.periode : ""].filter(Boolean).join(" · "))) : "",
         s?.objectifs ? champ("Objectifs", escapeHtml(s.objectifs)) : "",
         deroul ? `<div class="f"><span class="fl">Activités :</span></div><div class="txt">${escapeHtml(deroul)}</div>` : "",
