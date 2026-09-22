@@ -228,7 +228,13 @@ export interface PiloteConversation {
 /** Une réunion écoutée et résumée (voir `reunion.ts`). */
 export interface Reunion {
   id: string; titre: string; genre: string; date: string; participants: string;
-  tranchesJson: string; compteRendu: string; dureeS: number;
+  /** Les tranches de 5 min des versions 1.6.13-14, relues une fois au premier ouvrage. */
+  tranchesJson: string;
+  /** Ce qui s'est dit, écrit au fil de la réunion. */
+  texte: string;
+  /** Les résumés, un par groupe de phrases. */
+  resumesJson: string;
+  compteRendu: string; dureeS: number;
   dateCreation: string; dateMaj: string;
 }
 
