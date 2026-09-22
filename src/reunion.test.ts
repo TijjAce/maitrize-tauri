@@ -16,7 +16,7 @@ vi.mock("./api", () => ({
 }));
 
 import {
-  PHRASES_PAR_RANGEMENT, PHRASES_PAR_RELECTURE, RUBRIQUES, TRANCHE_S, ajouterAuTexte,
+  PHRASES_PAR_RANGEMENT, SECONDES_PAR_RELECTURE, RUBRIQUES, TRANCHE_S, ajouterAuTexte,
   assezPourRelire, assezPourResumer, convertirAnciennes,
   decouperEnPhrases, dureeLisible, ecrirePlan, ecrireResumes, fusionnerPlan, horodatage,
   lirePlan, lireResumes, lireTranches, mettreAuPropre, nettoyer, nomDeLaReunion, promptRelecture,
@@ -50,11 +50,11 @@ describe("le rythme des deux agents", () => {
     expect(assezPourResumer(12)).toBe(true);
   });
 
-  it("relit l'ensemble toutes les deux phrases, pas avant", () => {
-    expect(assezPourRelire(1)).toBe(false);
-    expect(assezPourRelire(PHRASES_PAR_RELECTURE)).toBe(true);
-    // La relecture reste plus rare que le rangement : sinon elle le doublerait.
-    expect(PHRASES_PAR_RELECTURE).toBeGreaterThan(PHRASES_PAR_RANGEMENT);
+  it("relit l'ensemble toutes les cinq minutes, pas avant", () => {
+    expect(assezPourRelire(299)).toBe(false);
+    expect(assezPourRelire(SECONDES_PAR_RELECTURE)).toBe(true);
+    // Une dizaine d'appels pour une heure de réunion : le quota tient.
+    expect(3600 / SECONDES_PAR_RELECTURE).toBeLessThanOrEqual(12);
   });
 
   it("ne propose que les phrases pas encore résumées", () => {

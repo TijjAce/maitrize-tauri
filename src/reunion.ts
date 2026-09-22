@@ -49,18 +49,19 @@ export const MORCEAU_S = 45;
 export const PHRASES_PAR_RANGEMENT = 1;
 
 /**
- * La relecture de fond : toutes les deux phrases.
+ * La relecture de fond : toutes les cinq minutes.
  *
  * Ranger une phrase à la fois fait un document juste mais bavard — les mêmes
  * idées reviennent sous trois formulations, et les lignes s'allongent. Une
  * seconde lecture reprend l'ensemble et resserre : elle voit ce qu'un passage
  * seul ne peut pas voir.
  *
- * Deux phrases, c'est presque en continu, et cela se paie en appels : d'où le
- * bouton qui l'arrête, et l'avertissement qui dit qu'elle passe en ligne même
- * quand la transcription, elle, reste sur la machine.
+ * Au temps, et non aux phrases : le rangement suit la parole, la relecture
+ * suit la réunion. Cinq minutes, c'est assez espacé pour ne peser ni sur le
+ * quota ni sur le réseau — une dizaine d'appels pour une heure de réunion —
+ * et assez fréquent pour qu'on ne lise jamais un document bavard.
  */
-export const PHRASES_PAR_RELECTURE = 2;
+export const SECONDES_PAR_RELECTURE = 300;
 
 /** Les réunions d'un enseignant du premier degré, ESMS compris. */
 export const GENRES = [
@@ -216,9 +217,8 @@ export function phrasesEnAttente(texte: string, resumes: Resume[]): { de: number
 /** Faut-il ranger maintenant ? */
 export const assezPourResumer = (attente: number, seuil = PHRASES_PAR_RANGEMENT) => attente >= seuil;
 
-/** Faut-il relire l'ensemble ? */
-export const assezPourRelire = (depuisLaRelecture: number, seuil = PHRASES_PAR_RELECTURE) =>
-  depuisLaRelecture >= seuil;
+/** Faut-il relire l'ensemble ? `depuis` est en secondes d'écoute. */
+export const assezPourRelire = (depuis: number, seuil = SECONDES_PAR_RELECTURE) => depuis >= seuil;
 
 export function lireResumes(json: string): Resume[] {
   let brut: unknown;
