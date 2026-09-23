@@ -21,6 +21,8 @@ export const NOUVEAUTES: Nouveaute[] = [
     version: "1.6.15",
     titre: "Les réunions s'écrivent au fil de l'eau",
     points: [
+      { quoi: "⌘F dans la visionneuse du coffre-fort : on cherche un mot dans tout le document, les passages trouvés se surlignent, et ↵ mène de l'un à l'autre — « 3 sur 12 » dit où l'on en est. Les accents et la casse ne comptent pas, et une expression coupée en deux par la mise en page se trouve quand même.", ou: "Ressources · Coffre-fort · 🔍 Chercher" },
+      { quoi: "Les PDF du coffre s'affichaient dans un cadre du système, muet : pas de recherche, et un guide de cent pages se parcourait à la molette. Ils sont maintenant dessinés par l'application, page après page — seules celles qu'on approche se dessinent, pour que l'ouverture reste immédiate.", ou: "Ressources · Coffre-fort" },
       { quoi: "Des rubans en haut de ⌘K disent ce qu'on cherche : Actions, Pages, Dossiers, Coffre-fort, Jeux, Bureau. Un clic restreint la liste, ⇥ passe de l'un à l'autre, et seuls les rubans qui ont vraiment des résultats s'affichent. « Jeux » réunit les jeux rangés sur le bureau et les fabriques — on cherche un loto sans se demander s'il existe déjà.", ou: "⌘K" },
       { quoi: "Le cahier journal ne remonte plus dans ⌘K : il se tient par jour, et comme chaque bilan cite tout ce qui s'est fait, une recherche en ramenait dix avant le reste. Les jours s'ouvrent depuis le tableau de bord et le planning.", ou: "⌘K" },
       { quoi: "Un dossier se cherche par son nom, et non plus par le chemin de ses parents : « voca » remontait « Enrichir son vocabulaire » et ses six enfants, qui ne s'appellent pas comme ça. Au passage, un nom long ne se fait plus écraser par le chemin affiché à côté — c'est le chemin qui cède la place.", ou: "⌘K" },
