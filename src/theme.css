@@ -512,6 +512,12 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
   -webkit-user-select: none; user-select: none; }
 .pdf-page .textLayer.selecting .endOfContent { top: 0; }
 .pdf-page .textLayer span.pdf-trouve { background: rgba(255, 190, 0, .45); border-radius: 2px; }
+/* La trouvaille où l'on se trouve, pour la distinguer des autres. */
+.pdf-page .textLayer span.pdf-trouve-actif { background: rgba(255, 128, 0, .75); box-shadow: 0 0 0 2px rgba(255, 128, 0, .45); }
+/* La barre de recherche du coffre-fort (⌘F). */
+.pdf-chercher { display: flex; align-items: center; gap: 6px; padding: 8px 14px;
+  border-bottom: 1px solid var(--border); background: var(--panel); }
+.pdf-chercher .input { flex: 1; min-width: 0; }
 /* Mode image : on trace un cadre sur la page au lieu d'y surligner du texte. */
 .pdf-citable.en-image .textLayer { pointer-events: none; user-select: none; }
 .pdf-page-cadreur { position: absolute; inset: 0; z-index: 2; cursor: crosshair; touch-action: none; }
