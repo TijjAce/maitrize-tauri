@@ -115,3 +115,34 @@ describe("l'ouverture, sans rien taper", () => {
     expect(ouverture(cmds, [], [])).toEqual([]);
   });
 });
+
+describe("les PDF du coffre-fort", () => {
+  // Un PDF s'appelle comme son fichier : des tirets, des soulignés, des
+  // chiffres collés au texte. Ce qu'on tape, c'est un ou deux mots du titre.
+  const coffre = [
+    cmd("pdf1", "programme-cycle-2-BO-2020", "Coffre-fort · PDF", true),
+    cmd("pdf2", "Guide_référentiel_maths_GS", "Coffre-fort · PDF", true),
+    cmd("pdf3", "Évaluations nationales CP 2024", "Coffre-fort · PDF", true),
+    cmd("nav", "Ressources", "Aller à"),
+  ];
+
+  it("trouve un titre au milieu d'un nom de fichier", () => {
+    expect(classer(coffre, "cycle").map((c) => c.id)).toEqual(["pdf1"]);
+    expect(classer(coffre, "bo 2020").map((c) => c.id)).toEqual(["pdf1"]);
+  });
+
+  it("se passe des accents et des soulignés", () => {
+    expect(classer(coffre, "referentiel").map((c) => c.id)).toEqual(["pdf2"]);
+    expect(classer(coffre, "evaluations").map((c) => c.id)).toEqual(["pdf3"]);
+  });
+
+  it("à note égale, la commande passe devant le document", () => {
+    const l = classer([...coffre, cmd("pdf4", "Ressources", "Coffre-fort · PDF", true)], "ressources");
+    expect(l[0].id).toBe("nav");
+  });
+
+  it("un PDF déjà ouvert remonte", () => {
+    const l = classer(coffre, "2", ["pdf3"]);
+    expect(l[0].id).toBe("pdf3");
+  });
+});

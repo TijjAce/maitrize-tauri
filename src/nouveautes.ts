@@ -21,6 +21,7 @@ export const NOUVEAUTES: Nouveaute[] = [
     version: "1.6.15",
     titre: "Les réunions s'écrivent au fil de l'eau",
     points: [
+      { quoi: "Les PDF du coffre-fort se retrouvent depuis ⌘K : tapez deux mots du titre — « cycle 2 », « référentiel maths » — et le document s'ouvre, au lieu de passer par Ressources, puis Coffre-fort, puis la liste. Les accents, les tirets et les soulignés des noms de fichiers ne gênent pas, et « coffre » ou « pdf » les liste tous.", ou: "⌘K" },
       { quoi: "Un mode « 👧 Par élève » dans la programmation, pour l'IME : elle part des élèves, et non des matières. Dix à quinze objectifs par élève sur l'année, avec le compte affiché à côté de chaque prénom — c'est là qu'on se trompe, trois à l'un et vingt à l'autre. Un objectif vise un élève, un groupe, ou les deux ; les périodes se cochent d'un clic, et un second clic marque l'objectif atteint.", ou: "Organisation · Programmation" },
       { quoi: "Les groupes évitent la recopie : « demander de l'aide » se travaille avec quatre élèves, on l'écrit une fois. Supprimer un groupe ne vide pas l'année pour autant — ses objectifs restent, attribués élève par élève.", ou: "Organisation · Programmation · 👥 Groupes" },
       { quoi: "Elle s'imprime élève par élève : un tableau par enfant, une ligne par objectif, cinq colonnes de périodes — • programmé, ✔ atteint. De quoi la poser sur la table d'une ESS.", ou: "Organisation · Programmation · 🖨" },
