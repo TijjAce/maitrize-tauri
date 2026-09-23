@@ -6,8 +6,39 @@ import { montrerLesNouveautes } from "./QuoiDeNeuf";
 import { EVT_CHERCHER_BUREAU } from "../bureauAteliers";
 import { ajouterRecent, classer, lireRecents, ouverture } from "../palette";
 
+/**
+ * Les familles de résultats, pour restreindre d'un clic.
+ *
+ * On tape « voca » et l'on reçoit une page, un texte, six dossiers et un
+ * outil : quand on sait ce qu'on cherche, on doit pouvoir le dire. L'ordre
+ * est celui des rubans en haut de la palette.
+ */
+const FAMILLES = [
+  { id: "action", nom: "Actions" },
+  { id: "page", nom: "Pages" },
+  { id: "dossier", nom: "Dossiers" },
+  { id: "pdf", nom: "PDF" },
+  { id: "sequence", nom: "Séquences" },
+  { id: "journal", nom: "Cahier journal" },
+  { id: "eleve", nom: "Élèves" },
+  { id: "bureau", nom: "Bureau" },
+] as const;
+
+type Famille = typeof FAMILLES[number]["id"];
+
+/** À quelle famille se range un résultat de recherche. */
+const FAMILLE_DU_KIND: Record<string, Famille> = {
+  sequence: "sequence", seance: "sequence", creneau: "journal",
+  observation: "eleve", eleve: "eleve",
+  atelier: "bureau", espace: "bureau", jeu: "bureau", outil: "bureau",
+  texte: "bureau", materiel: "bureau",
+};
+
 interface Cmd {
   id: string; ico: string; label: string; sous?: string;
+  famille: Famille;
+  /** Le sous-titre s'affiche sans se chercher — le chemin d'un dossier. */
+  sousMuet?: boolean;
   /** Vrai pour un résultat venu de la base : à note égale, il passe après. */
   donnee?: boolean;
   /** Le passage trouvé, pour reconnaître le bon résultat sans l'ouvrir. */
@@ -278,7 +309,10 @@ export function CommandPalette() {
     return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("maitrize:palette", onOpen); };
   }, []);
 
-  React.useEffect(() => { if (open) { setQ(""); setRes([]); setSel(0); setBulle(null); } }, [open]);
+  // La famille choisie en haut : elle survit à ce qu'on continue de taper,
+  // et se remet à zéro à chaque ouverture.
+  const [famille, setFamille] = React.useState<Famille | "">("");
+  React.useEffect(() => { if (open) { setQ(""); setRes([]); setSel(0); setBulle(null); setFamille(""); } }, [open]);
 
   // Les dossiers du bureau : ils n'existent pas en base comme des lignes, mais
   // on les cherche comme le reste — c'est souvent par eux qu'on retrouve.
@@ -297,11 +331,31 @@ export function CommandPalette() {
   }, [open]);
 
   // Sans cela, la sélection sortait de l'écran passé le huitième résultat et
-  // l'on naviguait à l'aveugle.
+  // l'on naviguait à l'aveugle. Mais seul le clavier fait défiler : quand la
+  // liste bougeait sous un curseur immobile, le survol changeait la sélection,
+  // qui refaisait défiler — l'ascenseur s'emballait tout seul.
   const ligneChoisie = React.useRef<HTMLButtonElement | null>(null);
+  const laListe = React.useRef<HTMLDivElement | null>(null);
+  const auClavier = React.useRef(false);
   React.useEffect(() => {
-    ligneChoisie.current?.scrollIntoView({ block: "nearest" });
-  }, [sel, q]);
+    if (auClavier.current) ligneChoisie.current?.scrollIntoView({ block: "nearest" });
+  }, [sel]);
+  // Une nouvelle recherche repart du haut.
+  React.useEffect(() => { if (laListe.current) laListe.current.scrollTop = 0; }, [q, famille]);
+
+  /**
+   * Le survol ne prend la main que si la souris a vraiment bougé.
+   *
+   * `mousemove` porte la position : inchangée, c'est la liste qui a défilé
+   * sous le curseur, et non l'enseignant qui a visé cette ligne-là.
+   */
+  const derniereSouris = React.useRef({ x: -1, y: -1 });
+  const survoler = (i: number) => (e: React.MouseEvent) => {
+    if (e.clientX === derniereSouris.current.x && e.clientY === derniereSouris.current.y) return;
+    derniereSouris.current = { x: e.clientX, y: e.clientY };
+    auClavier.current = false;
+    setSel(i);
+  };
 
   React.useEffect(() => {
     if (!open) return;
@@ -322,28 +376,31 @@ export function CommandPalette() {
 
   // Actions du natif portées (navigation, actions, réponses directes).
   const ACTIONS: Cmd[] = [
-    { id: "a-newseq", ico: "➕", label: "Nouvelle séquence", sous: "Action · créer", run: goAction("/plan", "maitrize:nouvelle-sequence") },
-    { id: "a-genia", ico: "✨", label: "Générer une séquence (IA)", sous: "Action · assistant", run: goAction("/assistant", "maitrize:generer-sequence") },
-    { id: "a-assist", ico: "🪄", label: "Ouvrir l'assistant IA", sous: "Action", run: goNav("/assistant") },
-    { id: "a-neuf", ico: "✨", label: "Quoi de neuf", sous: "Action · ce qui a changé dans l'app", run: () => { setOpen(false); montrerLesNouveautes(); } },
-    { id: "r-demain", ico: "🌅", label: "Préparer pour demain", sous: "Réponse directe", run: repondre("Préparer pour demain", preparerDemain) },
-    { id: "r-jour", ico: "📅", label: "Planning d'aujourd'hui", sous: "Réponse directe", run: repondre("Planning d'aujourd'hui", () => planningJour("today")) },
-    { id: "r-listseq", ico: "📋", label: "Lister mes séquences", sous: "Réponse directe", run: repondre("Mes séquences", listerSequences) },
-    { id: "r-heures", ico: "⏱️", label: "Heures par matière", sous: "Réponse directe", run: repondre("Heures par matière", heuresParMatiere) },
-    { id: "r-bilan", ico: "✔️", label: "Bilan de la semaine", sous: "Réponse directe", run: repondre("Bilan de la semaine", bilanSemaine) },
-    { id: "r-vac", ico: "🏖️", label: "Prochaines vacances", sous: "Réponse directe", run: repondre("Prochaines vacances", prochainesVacances) },
-    { id: "r-ferie", ico: "🚩", label: "Prochain jour férié", sous: "Réponse directe", run: repondre("Prochain jour férié", () => prochainFerie()) },
-    { id: "r-top", ico: "⭐", label: "Mes meilleures séquences", sous: "Réponse directe", run: repondre("Meilleures séquences", meilleuresSequences) },
-    { id: "r-nonnote", ico: "☆", label: "Séquences non notées", sous: "Réponse directe", run: repondre("Séquences non notées", sequencesNonNotees) },
-    { id: "r-sansbilan", ico: "💬", label: "Séances sans bilan", sous: "Réponse directe", run: repondre("Séances sans bilan", seancesSansBilan) },
-    { id: "r-nexteval", ico: "📝", label: "Prochaine évaluation", sous: "Réponse directe", run: repondre("Prochaine évaluation", prochaineEvaluation) },
-    { id: "r-moy", ico: "📊", label: "Moyennes par matière", sous: "Réponse directe", run: repondre("Moyennes par matière", moyennesMatieres) },
-    { id: "r-anniv", ico: "🎂", label: "Anniversaires du mois", sous: "Réponse directe", run: repondre("Anniversaires du mois", anniversairesMois) },
+    { id: "a-newseq", ico: "➕", label: "Nouvelle séquence", sous: "Action · créer", famille: "action", run: goAction("/plan", "maitrize:nouvelle-sequence") },
+    { id: "a-genia", ico: "✨", label: "Générer une séquence (IA)", sous: "Action · assistant", famille: "action", run: goAction("/assistant", "maitrize:generer-sequence") },
+    { id: "a-assist", ico: "🪄", label: "Ouvrir l'assistant IA", sous: "Action", famille: "action", run: goNav("/assistant") },
+    { id: "a-neuf", ico: "✨", label: "Quoi de neuf", sous: "Action · ce qui a changé dans l'app", famille: "action", run: () => { setOpen(false); montrerLesNouveautes(); } },
+    { id: "r-demain", ico: "🌅", label: "Préparer pour demain", sous: "Réponse directe", famille: "action", run: repondre("Préparer pour demain", preparerDemain) },
+    { id: "r-jour", ico: "📅", label: "Planning d'aujourd'hui", sous: "Réponse directe", famille: "action", run: repondre("Planning d'aujourd'hui", () => planningJour("today")) },
+    { id: "r-listseq", ico: "📋", label: "Lister mes séquences", sous: "Réponse directe", famille: "action", run: repondre("Mes séquences", listerSequences) },
+    { id: "r-heures", ico: "⏱️", label: "Heures par matière", sous: "Réponse directe", famille: "action", run: repondre("Heures par matière", heuresParMatiere) },
+    { id: "r-bilan", ico: "✔️", label: "Bilan de la semaine", sous: "Réponse directe", famille: "action", run: repondre("Bilan de la semaine", bilanSemaine) },
+    { id: "r-vac", ico: "🏖️", label: "Prochaines vacances", sous: "Réponse directe", famille: "action", run: repondre("Prochaines vacances", prochainesVacances) },
+    { id: "r-ferie", ico: "🚩", label: "Prochain jour férié", sous: "Réponse directe", famille: "action", run: repondre("Prochain jour férié", () => prochainFerie()) },
+    { id: "r-top", ico: "⭐", label: "Mes meilleures séquences", sous: "Réponse directe", famille: "action", run: repondre("Meilleures séquences", meilleuresSequences) },
+    { id: "r-nonnote", ico: "☆", label: "Séquences non notées", sous: "Réponse directe", famille: "action", run: repondre("Séquences non notées", sequencesNonNotees) },
+    { id: "r-sansbilan", ico: "💬", label: "Séances sans bilan", sous: "Réponse directe", famille: "action", run: repondre("Séances sans bilan", seancesSansBilan) },
+    { id: "r-nexteval", ico: "📝", label: "Prochaine évaluation", sous: "Réponse directe", famille: "action", run: repondre("Prochaine évaluation", prochaineEvaluation) },
+    { id: "r-moy", ico: "📊", label: "Moyennes par matière", sous: "Réponse directe", famille: "action", run: repondre("Moyennes par matière", moyennesMatieres) },
+    { id: "r-anniv", ico: "🎂", label: "Anniversaires du mois", sous: "Réponse directe", famille: "action", run: repondre("Anniversaires du mois", anniversairesMois) },
   ];
 
-  const navCmds: Cmd[] = NAV.map((n) => ({ id: "nav" + n.to, ico: n.ico, label: n.label, sous: "Aller à", run: goNav(n.to) }));
+  const navCmds: Cmd[] = NAV.map((n) => ({ id: "nav" + n.to, ico: n.ico, label: n.label, sous: "Aller à", famille: "page", run: goNav(n.to) }));
   const sousCmds: Cmd[] = SOUS_ONGLETS.map((s) => ({
-    id: "sub" + s.page + s.onglet, ico: s.ico, label: s.label, sous: "Aller à · " + s.sous,
+    // Le libellé fait partie de l'identifiant : deux entrées mènent au même
+    // onglet (« Progressions par élève » et « Compétences travaillées »), et
+    // l'identifiant commun laissait une ligne périmée en tête de liste.
+    id: "sub" + s.page + s.onglet + s.label, ico: s.ico, label: s.label, sous: "Aller à · " + s.sous, famille: "page",
     run: () => { setOpen(false); nav(s.to); setTimeout(() => ouvrirOnglet(s.page, s.onglet), 140); },
   }));
   const rechCmds: Cmd[] = res.map((r) => ({
@@ -353,7 +410,11 @@ export function CommandPalette() {
     sous: [KIND_NOM[r.kind] ?? "", r.sousTitre].filter(Boolean).join(" · "),
     extrait: r.extrait,
     quand: jourCourt(r.date),
+    famille: FAMILLE_DU_KIND[r.kind] ?? "bureau",
     donnee: true,
+    // Le moteur l'a trouvé pour cette recherche-là, fût-ce au milieu d'un
+    // bilan : la palette n'a pas à le réexaminer sur son seul titre.
+    dejaTrouve: true,
     run: () => { setOpen(false); allerVers(r, nav); },
   }));
   const dossierCmds: Cmd[] = dossiers.map((chemin) => {
@@ -365,6 +426,10 @@ export function CommandPalette() {
       // Le nom du dossier d'abord : c'est lui qu'on cherche. Le chemin suit.
       label: bouts[bouts.length - 1],
       sous: ["Dossier du bureau", parent].filter(Boolean).join(" · "),
+      // Le chemin situe le dossier, il ne le nomme pas : chercher
+      // « vocabulaire » ne doit pas remonter tous ses enfants.
+      sousMuet: true,
+      famille: "dossier",
       run: () => {
         setOpen(false);
         nav("/plan");
@@ -379,6 +444,7 @@ export function CommandPalette() {
     label: d.nom,
     sous: "Coffre-fort · PDF",
     quand: jourCourt(d.dateAjout),
+    famille: "pdf",
     donnee: true,
     run: () => {
       setOpen(false);
@@ -391,8 +457,21 @@ export function CommandPalette() {
   }));
   const toutes = [...ACTIONS, ...navCmds, ...sousCmds, ...dossierCmds, ...coffreCmds, ...rechCmds];
   // Sans rien de tapé, on montre ce qui sert — pas le catalogue entier.
-  const cmds = q.trim() ? classer(toutes, q, recents) : ouverture(toutes, recents, DEPARTS);
+  const trouvees = q.trim() ? classer(toutes, q, recents) : ouverture(toutes, recents, DEPARTS);
+  // Les rubans se déduisent de ce qu'on a trouvé, avant de filtrer : on ne
+  // propose pas « Dossiers » quand il n'y en a aucun, et celui qu'on a choisi
+  // reste montré même s'il ne rend rien — sinon on ne peut plus en sortir.
+  const rubans = FAMILLES.filter((fam) => fam.id === famille || trouvees.some((c) => c.famille === fam.id));
+  const cmds = famille ? trouvees.filter((c) => c.famille === famille) : trouvees;
   const clamped = Math.min(sel, Math.max(0, cmds.length - 1));
+
+  /** Passe au ruban suivant (⇥), en repassant par « Tout ». */
+  const rubanSuivant = (pas: number) => {
+    const ids: (Famille | "")[] = ["", ...rubans.map((r) => r.id)];
+    const i = ids.indexOf(famille);
+    setFamille(ids[(i + pas + ids.length) % ids.length]);
+    setSel(0);
+  };
 
   const lancer = (c: Cmd) => { noterUsage(c.id); void c.run(); };
 
@@ -401,30 +480,52 @@ export function CommandPalette() {
     <div className="overlay" style={{ alignItems: "flex-start", paddingTop: "10vh" }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
       <div className="palette" role="dialog" aria-modal="true" aria-label="Recherche et commandes" onKeyDown={(e) => {
-        if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => Math.min(s + 1, cmds.length - 1)); }
-        if (e.key === "ArrowUp") { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)); }
+        if (e.key === "ArrowDown") { e.preventDefault(); auClavier.current = true; setSel((s) => Math.min(s + 1, cmds.length - 1)); }
+        if (e.key === "ArrowUp") { e.preventDefault(); auClavier.current = true; setSel((s) => Math.max(s - 1, 0)); }
+        if (e.key === "Tab") { e.preventDefault(); rubanSuivant(e.shiftKey ? -1 : 1); }
         if (e.key === "Enter" && cmds[clamped]) { e.preventDefault(); lancer(cmds[clamped]); }
       }}>
         <input className="palette-input" autoFocus aria-label="Commande, action ou recherche"
           placeholder="Commande, action, ou recherche (séance, bilan, élève, jeu…)"
           value={q} onChange={(e) => { setQ(e.target.value); setSel(0); }} />
+        {rubans.length > 1 && (
+          <div className="palette-rubans">
+            <button type="button" className={"chip" + (famille ? "" : " on")}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { setFamille(""); setSel(0); }}>Tout</button>
+            {rubans.map((fam) => (
+              <button key={fam.id} type="button" className={"chip" + (famille === fam.id ? " on" : "")}
+                // Sans cela, le champ perdait le focus et l'on ne pouvait plus taper.
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => { setFamille(fam.id); setSel(0); }}>{fam.nom}</button>
+            ))}
+          </div>
+        )}
         {bulle && (
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", background: "var(--accent-soft)" }}>
             <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{bulle.titre}</div>
             <div style={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.5 }}>{busy ? "…" : bulle.texte}</div>
           </div>
         )}
-        <div className="palette-list">
-          {cmds.length === 0 ? <div style={{ padding: 16, color: "var(--text-2)" }}>Aucun résultat.</div> :
+        <div className="palette-list" ref={laListe}>
+          {cmds.length === 0 ? (
+            <div style={{ padding: 16, color: "var(--text-2)" }}>
+              {famille ? `Aucun résultat dans « ${FAMILLES.find((x) => x.id === famille)?.nom} ».` : "Aucun résultat."}
+            </div>
+          ) :
             cmds.map((c, i) => (
               <button key={c.id} className={"palette-item" + (i === clamped ? " on" : "")}
                 ref={i === clamped ? ligneChoisie : undefined}
-                onMouseEnter={() => setSel(i)} onClick={() => lancer(c)}>
+                onMouseMove={survoler(i)} onClick={() => lancer(c)}>
                 <span style={{ fontSize: 16 }}>{c.ico}</span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.label}</span>
-                    {c.sous && <span style={{ fontSize: 12, color: "var(--text-2)", whiteSpace: "nowrap" }}>{c.sous}</span>}
+                    {/* Le nom d'abord : un sous-titre long — le chemin d'un dossier —
+                        l'écrasait jusqu'à le faire disparaître. */}
+                    <span style={{ flex: "1 1 auto", minWidth: "7em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.label}</span>
+                    {/* Le chemin cède la place le premier : c'est le nom qu'on lit. */}
+                    {c.sous && <span style={{ fontSize: 12, color: "var(--text-2)", whiteSpace: "nowrap",
+                      flex: "0 4 auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{c.sous}</span>}
                     {c.quand && <span style={{ fontSize: 12, color: "var(--text-2)", whiteSpace: "nowrap" }}>{c.quand}</span>}
                   </span>
                   {c.extrait && (
@@ -435,7 +536,7 @@ export function CommandPalette() {
               </button>
             ))}
         </div>
-        <div className="palette-foot">↑↓ naviguer · ↵ exécuter · esc fermer · {raccourci("K")}</div>
+        <div className="palette-foot">↑↓ naviguer · ⇥ filtrer · ↵ exécuter · esc fermer · {raccourci("K")}</div>
       </div>
     </div>
   );
