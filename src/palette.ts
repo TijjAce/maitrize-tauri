@@ -16,8 +16,24 @@ export interface Classable {
   id: string;
   label: string;
   sous?: string;
+  /**
+   * Le sous-titre s'affiche, mais ne se cherche pas.
+   *
+   * Un dossier porte le chemin de ses parents en sous-titre : sans cela,
+   * chercher « vocabulaire » remonte le dossier **et** ses six enfants, qui
+   * ne s'appellent pas comme ça. On cherche un dossier par son nom.
+   */
+  sousMuet?: boolean;
   /** Les résultats venus de la base passent après les commandes, à score égal. */
   donnee?: boolean;
+  /**
+   * Le moteur a déjà trouvé ce résultat : on le classe, on ne le rejette pas.
+   *
+   * La recherche en base lit le corps des textes, des bilans, des synthèses ;
+   * la palette, elle, ne voit que le titre. Sans cela, un bilan trouvé sur un
+   * mot écrit dedans disparaissait entre le moteur et l'écran.
+   */
+  dejaTrouve?: boolean;
 }
 
 /** Combien de commandes récentes la palette garde en mémoire. */
@@ -38,7 +54,7 @@ export function note(c: Classable, recherche: string): number | null {
   if (!q) return 0;
   const mots = q.split(/\s+/).filter(Boolean);
   const label = normaliser(c.label);
-  const sous = normaliser(c.sous ?? "");
+  const sous = c.sousMuet ? "" : normaliser(c.sous ?? "");
   let total = 0;
   for (const mot of mots) {
     const dans = (t: string) => {
@@ -49,8 +65,14 @@ export function note(c: Classable, recherche: string): number | null {
       return 25;
     };
     const n = Math.max(dans(label), Math.round(dans(sous) * 0.4));
-    // Un seul mot qui manque, et la commande ne répond pas à la question.
-    if (!n) return null;
+    // Un seul mot qui manque, et la commande ne répond pas à la question —
+    // sauf pour ce que le moteur a trouvé ailleurs que dans le titre : cela
+    // se range en fin de liste plutôt que de disparaître.
+    if (!n) {
+      if (!c.dejaTrouve) return null;
+      total += 8;
+      continue;
+    }
     total += n;
   }
   // Un libellé court qui contient tout est plus juste qu'un libellé fleuve.
