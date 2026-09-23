@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { api, ResultatRecherche, joursFeriesFR, anneeScolaireActuelle, raccourci } from "../api";
+import { api, DocumentCoffre, ResultatRecherche, joursFeriesFR, anneeScolaireActuelle, raccourci } from "../api";
 import { ouvrirOnglet } from "./ui";
 import { montrerLesNouveautes } from "./QuoiDeNeuf";
 import { EVT_CHERCHER_BUREAU } from "../bureauAteliers";
@@ -35,6 +35,14 @@ const DEPARTS = ["r-jour", "r-demain", "a-newseq"];
 
 /** Demande au planning d'aller sur ce jour (il n'est pas dans l'URL). */
 export const EVT_JOUR = "maitrize:aller-au-jour";
+
+/**
+ * Demande aux Ressources d'ouvrir ce document du coffre-fort.
+ *
+ * Un PDF importé n'a pas d'adresse à lui : sans ce relais, ⌘K ne pourrait
+ * que déposer devant la liste, à charge de le retrouver une seconde fois.
+ */
+export const EVT_PDF_COFFRE = "maitrize:ouvrir-pdf";
 
 /** Sous-onglets, invisibles depuis la barre latérale. */
 const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; onglet: string; sous: string }[] = [
@@ -280,6 +288,14 @@ export function CommandPalette() {
     api.dossiersBureau().then(setDossiers).catch(() => {});
   }, [open]);
 
+  // Le coffre-fort : les PDF importés et les programmes enregistrés. On en
+  // cherche le titre — c'est sous ce nom-là qu'on les a rangés.
+  const [pdfs, setPdfs] = React.useState<DocumentCoffre[]>([]);
+  React.useEffect(() => {
+    if (!open) return;
+    api.coffreList().then(setPdfs).catch(() => {});
+  }, [open]);
+
   // Sans cela, la sélection sortait de l'écran passé le huitième résultat et
   // l'on naviguait à l'aveugle.
   const ligneChoisie = React.useRef<HTMLButtonElement | null>(null);
@@ -357,7 +373,23 @@ export function CommandPalette() {
       },
     };
   });
-  const toutes = [...ACTIONS, ...navCmds, ...sousCmds, ...dossierCmds, ...rechCmds];
+  const coffreCmds: Cmd[] = pdfs.map((d) => ({
+    id: "pdf" + d.id,
+    ico: "📕",
+    label: d.nom,
+    sous: "Coffre-fort · PDF",
+    quand: jourCourt(d.dateAjout),
+    donnee: true,
+    run: () => {
+      setOpen(false);
+      nav("/ressources");
+      setTimeout(() => {
+        ouvrirOnglet("ressources", "coffre");
+        window.dispatchEvent(new CustomEvent(EVT_PDF_COFFRE, { detail: d.id }));
+      }, 140);
+    },
+  }));
+  const toutes = [...ACTIONS, ...navCmds, ...sousCmds, ...dossierCmds, ...coffreCmds, ...rechCmds];
   // Sans rien de tapé, on montre ce qui sert — pas le catalogue entier.
   const cmds = q.trim() ? classer(toutes, q, recents) : ouverture(toutes, recents, DEPARTS);
   const clamped = Math.min(sel, Math.max(0, cmds.length - 1));
