@@ -5,6 +5,7 @@ import { Input, Select, Empty, Confirm, useAsync, useSegmentNav } from "../compo
 import { api, DocumentCoffre, newId, nowIso, couleurHex } from "../api";
 import { PdfViewer } from "../components/PdfViewer";
 import { ProgrammesPourLeCoffre } from "../components/CiterCompetences";
+import { EVT_PDF_COFFRE } from "../components/CommandPalette";
 import eduscol from "../data/eduscol.json";
 import videos from "../data/videos.json";
 import outils from "../data/outils.json";
@@ -38,6 +39,19 @@ const teinteCat = (cat: string) => couleurHex[COULEUR_CAT[cat] ?? "gray"] ?? cou
 export default function Ressources() {
   const [onglet, setOnglet] = React.useState<typeof TABS[number]>("docs");
   useSegmentNav(TABS, onglet, setOnglet);
+  // ⌘K mène droit à un PDF du coffre : on bascule sur l'onglet et on l'ouvre,
+  // plutôt que de déposer devant la liste à charge de le retrouver.
+  const [pdfDemande, setPdfDemande] = React.useState("");
+  React.useEffect(() => {
+    const ouvrirLePdf = (e: Event) => {
+      const id = (e as CustomEvent).detail;
+      if (typeof id !== "string" || !id) return;
+      setOnglet("coffre");
+      setPdfDemande(id);
+    };
+    window.addEventListener(EVT_PDF_COFFRE, ouvrirLePdf);
+    return () => window.removeEventListener(EVT_PDF_COFFRE, ouvrirLePdf);
+  }, []);
   return (
     <Page titre="Ressources" sous="Éduscol, publications académiques, outils, vidéothèque et coffre-fort de PDF">
       <div className="onglets">
@@ -49,7 +63,8 @@ export default function Ressources() {
       </div>
       {onglet === "docs" ? <Documents docs={eduscol as Doc[]} placeholder="Rechercher un document Éduscol…" />
         : onglet === "academies" ? <Documents docs={academies as Doc[]} placeholder="Rechercher un document, une rubrique, une académie…" />
-        : onglet === "outils" ? <Outils /> : onglet === "videos" ? <Videos /> : <CoffreFort />}
+        : onglet === "outils" ? <Outils /> : onglet === "videos" ? <Videos />
+        : <CoffreFort demande={pdfDemande} demandeTraitee={() => setPdfDemande("")} />}
     </Page>
   );
 }
@@ -60,10 +75,20 @@ async function fileToBase64(file: File): Promise<string> {
   return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1] ?? ""); r.onerror = rej; r.readAsDataURL(file); });
 }
 
-function CoffreFort() {
+function CoffreFort({ demande = "", demandeTraitee }: { demande?: string; demandeTraitee?: () => void }) {
   const { data: docs, reload } = useAsync(() => api.coffreList(), []);
   const [del, setDel] = React.useState<DocumentCoffre | null>(null);
   const [ouvert, setOuvert] = React.useState<DocumentCoffre | null>(null);
+  // Le document demandé depuis ⌘K s'ouvre dès que la liste est chargée — elle
+  // ne l'est pas encore quand l'onglet apparaît.
+  const traitee = React.useRef(demandeTraitee);
+  traitee.current = demandeTraitee;
+  React.useEffect(() => {
+    if (!demande || !docs) return;
+    const d = docs.find((x) => x.id === demande);
+    if (d) setOuvert(d);
+    traitee.current?.();
+  }, [demande, docs]);
   const [programmes, setProgrammes] = React.useState(false);
   const input = React.useRef<HTMLInputElement>(null);
 
