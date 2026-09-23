@@ -21,6 +21,7 @@ export const NOUVEAUTES: Nouveaute[] = [
     version: "1.6.15",
     titre: "Les réunions s'écrivent au fil de l'eau",
     points: [
+      { quoi: "Les séances d'une séquence se réordonnent en les faisant glisser : prenez une séance, posez-la où elle doit être, et les numéros suivent. Deux flèches ⬆⬇ font la même chose au clavier, à côté de « Voir » — jusqu'ici il fallait deviner le clic droit.", ou: "Séquence · liste des séances" },
       { quoi: "⌘K trouve enfin sans les accents : taper « eleves » ou « synthese » remonte « Élèves » et « Synthèse GS ». Le filtre comparait des libellés accentués à ce qu'on tape — il n'a jamais rien trouvé de ce côté-là.", ou: "⌘K" },
       { quoi: "⌘K s'ouvre sur ce que vous faites, et non plus sur un catalogue de cinquante lignes : vos dernières commandes, puis le planning du jour, la préparation de demain et la nouvelle séquence. Les résultats sont classés par pertinence — le titre exact d'une séquence passe devant une action qui contient vaguement le mot — et la ligne sélectionnée reste visible au clavier.", ou: "⌘K" },
       { quoi: "Depuis ⌘K, une séquence, un jeu, du matériel, un texte ou un atelier vous emmène à sa place sur le bureau : le dossier s'ouvre et la tuile se signale quelques secondes. Retrouver quelque chose, c'est aussi voir où c'est rangé.", ou: "⌘K · Plan de travail" },
