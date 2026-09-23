@@ -2,6 +2,7 @@ import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import { api, Sequence, Seance, MaterielItem, Jeu, nouvelleSeance, couleurHex, nowIso, newId, DUREES, formatDuree, telechargerTexte } from "../api";
+import { decalee, deplacee, ordonnees, renumerotees } from "../ordreSeances";
 import { Modal, Field, Input, Textarea, TextareaAuto, Select, Stars, Empty, Confirm, useAsync } from "../components/ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
 import { TableauEditor, MaterielSeance, imageDuPresse, fileToBase64 } from "../components/SeanceParts";
@@ -29,6 +30,9 @@ export default function SequenceDetail() {
   const [voir, setVoir] = React.useState<Seance | null>(null);
   const [del, setDel] = React.useState<Seance | null>(null);
   const [modifier, setModifier] = React.useState(false);
+  // Le glisser-déposer des séances : celle qu'on tient, celle qu'on survole.
+  const [saisie, setSaisie] = React.useState("");
+  const [survol, setSurvol] = React.useState("");
 
   // Glisser-déposer natif (Finder/Aperçu). Le hook doit être appelé à chaque
   // rendu (avant tout return conditionnel) — la logique d'import réelle, qui
@@ -52,16 +56,17 @@ export default function SequenceDetail() {
   const next = (seances?.length ?? 0) + 1;
 
   const liste = seances ?? [];
-  const deplacer = async (s: Seance, sens: -1 | 1) => {
-    const ordonne = [...liste].sort((a, b) => a.numero - b.numero);
-    const i = ordonne.findIndex((x) => x.id === s.id);
-    const j = i + sens;
-    if (j < 0 || j >= ordonne.length) return;
-    const a = ordonne[i], b = ordonne[j];
-    await api.seanceSave({ ...a, numero: b.numero });
-    await api.seanceSave({ ...b, numero: a.numero });
+
+  /** Écrit un nouvel ordre : seules les séances qui changent sont sauvées. */
+  const ranger = async (rangees: Seance[]) => {
+    const aEcrire = renumerotees(rangees);
+    if (!aEcrire.length) return;
+    for (const s of aEcrire) await api.seanceSave(s);
     reload();
   };
+  const deplacer = (s: Seance, sens: -1 | 1) => ranger(decalee(liste, s.id, sens));
+  /** Glisser-déposer : la séance prise va prendre la place de celle visée. */
+  const poserSur = (deId: string, versId: string) => ranger(deplacee(liste, deId, versId));
   const dupliquerSeance = async (s: Seance) => {
     await api.seanceSave({ ...s, id: crypto.randomUUID(), numero: next, titre: s.titre + " (copie)" });
     reload();
@@ -186,8 +191,31 @@ export default function SequenceDetail() {
           try { comps = s.competences ? JSON.parse(s.competences) : []; } catch { /* ignore */ }
           return (
             <div key={s.id} className="list-row"
-              onDragOver={(e) => { if (e.dataTransfer.types.includes("text/materiel")) e.preventDefault(); }}
-              onDrop={(e) => { const mid = e.dataTransfer.getData("text/materiel"); if (mid) { e.preventDefault(); assignerMat(mid, s.id); } }}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData("text/seance", s.id);
+                e.dataTransfer.effectAllowed = "move";
+                setSaisie(s.id);
+              }}
+              onDragEnd={() => { setSaisie(""); setSurvol(""); }}
+              onDragOver={(e) => {
+                const t = e.dataTransfer.types;
+                if (t.includes("text/materiel")) { e.preventDefault(); return; }
+                if (t.includes("text/seance") && saisie !== s.id) { e.preventDefault(); setSurvol(s.id); }
+              }}
+              onDragLeave={() => setSurvol((v) => (v === s.id ? "" : v))}
+              onDrop={(e) => {
+                const mid = e.dataTransfer.getData("text/materiel");
+                if (mid) { e.preventDefault(); assignerMat(mid, s.id); return; }
+                const sid = e.dataTransfer.getData("text/seance");
+                if (sid && sid !== s.id) { e.preventDefault(); void poserSur(sid, s.id); }
+                setSurvol(""); setSaisie("");
+              }}
+              style={{
+                cursor: "grab",
+                opacity: saisie === s.id ? 0.4 : 1,
+                boxShadow: survol === s.id ? "inset 0 2px 0 0 var(--accent)" : undefined,
+              }}
               onContextMenu={(e) => openCtx(e, [
                 { label: "Voir", icon: "👁", onClick: () => setVoir(s) },
                 { label: "Modifier", icon: "✏️", onClick: () => setEdit(s) },
@@ -206,6 +234,12 @@ export default function SequenceDetail() {
               </div>
               {s.deroulement && <span className="chip">📋 déroulement</span>}
               {s.bilan && <span className="chip">✅ bilan</span>}
+              <button className="btn ghost sm" onClick={() => { void deplacer(s, -1); }}
+                disabled={ordonnees(liste)[0]?.id === s.id}
+                title="Monter cette séance" aria-label="Monter cette séance">⬆</button>
+              <button className="btn ghost sm" onClick={() => { void deplacer(s, 1); }}
+                disabled={ordonnees(liste)[liste.length - 1]?.id === s.id}
+                title="Descendre cette séance" aria-label="Descendre cette séance">⬇</button>
               <button className="btn ghost sm" onClick={() => setVoir(s)}>Voir</button>
               <button className="btn ghost sm" onClick={() => setEdit(s)}>Modifier</button>
               <button className="btn ghost sm" onClick={() => setDel(s)} aria-label="Supprimer">🗑</button>
