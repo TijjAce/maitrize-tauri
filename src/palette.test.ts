@@ -146,3 +146,55 @@ describe("les PDF du coffre-fort", () => {
     expect(l[0].id).toBe("pdf3");
   });
 });
+
+describe("un dossier se cherche par son nom, pas par son chemin", () => {
+  // Le vrai cas : « voca » remontait le dossier et ses six enfants, qui ne
+  // s'appellent pas comme ça — la liste devenait illisible.
+  const dossier = (id: string, nom: string, chemin: string): Classable =>
+    ({ id, label: nom, sous: "Dossier du bureau · " + chemin, sousMuet: true });
+  const arbre = [
+    dossier("d1", "Enrichir son vocabulaire", "cycle 1 › domaine 1"),
+    dossier("d2", "Organiser des mots en catégories", "cycle 1 › domaine 1 › Enrichir son vocabulaire"),
+    dossier("d3", "Réemployer les mots", "cycle 1 › domaine 1 › Enrichir son vocabulaire"),
+  ];
+
+  it("ne remonte que le dossier qui porte le mot", () => {
+    expect(classer(arbre, "voca").map((c) => c.id)).toEqual(["d1"]);
+    expect(classer(arbre, "vocabulaire").map((c) => c.id)).toEqual(["d1"]);
+  });
+
+  it("les enfants se trouvent par leur propre nom", () => {
+    expect(classer(arbre, "reemployer").map((c) => c.id)).toEqual(["d3"]);
+    expect(classer(arbre, "categories").map((c) => c.id)).toEqual(["d2"]);
+  });
+
+  it("ailleurs, le sous-titre continue de compter", () => {
+    // Une fiche rangée dans « Lecture » se trouve encore par sa rubrique.
+    const fiche = cmd("f1", "Combiné de téléphone", "Fiche de classe · Lecture et écriture", true);
+    expect(note(fiche, "lecture")).not.toBeNull();
+  });
+});
+
+describe("ce que le moteur a trouvé dans le corps du texte", () => {
+  // La recherche en base lit les bilans et les synthèses ; la palette ne voit
+  // que le titre. Ces résultats-là disparaissaient entre les deux.
+  const resultat = (id: string, titre: string, sous: string): Classable =>
+    ({ id, label: titre, sous, donnee: true, dejaTrouve: true });
+
+  it("reste affiché même si le mot n'est ni dans le titre ni dans le sous-titre", () => {
+    const r = resultat("cr1", "Langage oral", "Cahier journal · 09:00–09:30");
+    expect(note(r, "vocabulaire")).not.toBeNull();
+  });
+
+  it("passe derrière ce qui porte vraiment le mot", () => {
+    const l = classer([
+      resultat("cr1", "Langage oral", "Cahier journal"),
+      cmd("d1", "Vocabulaire CP", "Dossier du bureau"),
+    ], "vocabulaire");
+    expect(l.map((c) => c.id)).toEqual(["d1", "cr1"]);
+  });
+
+  it("une commande ordinaire, elle, est toujours écartée", () => {
+    expect(note(cmd("a", "Plan de salle"), "vocabulaire")).toBeNull();
+  });
+});
