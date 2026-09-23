@@ -7,6 +7,7 @@
 //   On transmet uniquement des données pédagogiques non nominatives :
 //   niveau de classe, nombre d'élèves, titres de séquences, programmation.
 import { api } from "./api";
+import { lire as lireIme } from "./programmationIme";
 
 export async function construireContexteIA(): Promise<string> {
   const [niveau, eleves, sequences, progs, annee] = await Promise.all([
@@ -28,7 +29,7 @@ export async function construireContexteIA(): Promise<string> {
     lignes.push(`Séquences déjà créées : ${titres}.`);
   }
 
-  const prog = (progs ?? []).find((p) => !p.estImportee && (!annee || p.annee === annee));
+  const prog = (progs ?? []).find((p) => !p.estImportee && p.niveau !== "ime" && (!annee || p.annee === annee));
   if (prog) {
     try {
       const ls = JSON.parse(prog.lignesJson) as { estDomaine: boolean; label: string }[];
@@ -36,6 +37,18 @@ export async function construireContexteIA(): Promise<string> {
         .map((l) => (l.estDomaine ? `\n- ${l.label}` : ` · ${l.label}`)).join("");
       if (items.trim()) lignes.push(`Programmation de l'année :${items}`);
     } catch { /* lignes illisibles */ }
+  }
+
+  // En IME, la programmation est par élève. On n'en transmet que les
+  // intitulés travaillés, jamais qui les travaille : la règle ci-dessus vaut
+  // ici comme ailleurs.
+  const progIme = (progs ?? []).find((p) => p.niveau === "ime" && (!annee || p.annee === annee));
+  if (!prog && progIme) {
+    const vises = [...new Set(lireIme(progIme.lignesJson).objectifs
+      .map((o) => o.competence.trim()).filter(Boolean))];
+    if (vises.length) {
+      lignes.push(`Objectifs travaillés cette année (programmation par élève) :\n- ${vises.join("\n- ")}`);
+    }
   }
 
   return lignes.join("\n");

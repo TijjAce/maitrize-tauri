@@ -18,6 +18,7 @@ import { PagesDeGardeTab } from "./PagesDeGarde";
 import { confirmer } from "../components/confirmer";
 import { tempsDeLaSemaineType, natureDuSlot, type SlotEdt } from "../organisation";
 import { duree, plageGrille } from "../heures";
+import { ProgrammationIme } from "../components/ProgrammationIme";
 
 // Couleurs officielles des périodes (miroir couleursPeriodes).
 const COULEUR_PERIODE: Record<number, string> = { 1: "#2e73d9", 2: "#d94033", 3: "#4d4d4d", 4: "#d97319", 5: "#269950" };
@@ -292,6 +293,9 @@ function ColonneForm({ colonne, onClose, onValider }: { colonne: Colonne; onClos
   );
 }
 
+/** Le mode de programmation choisi sur ce poste : classe, ou par élève. */
+const CLE_MODE_PROG = "programmationMode";
+
 // ── Programmation finale P1-P5 (domaines colorés, séquences liées, cases faites)
 interface Ligne {
   id: string; estDomaine: boolean; label: string; couleur?: string;
@@ -305,9 +309,25 @@ function Programmation({ annee, setAnnee }: AnneeProps) {
   const nav = useNavigate();
   const { data, reload } = useAsync(() => api.programmationsFinaleList(), []);
   const { data: sequences } = useAsync(() => api.sequencesList(), []);
-  const prog = data?.find((p) => p.annee === annee && !p.estImportee);
+  // La ligne « ime » vit à côté de la grille de classe : la prendre ici
+  // ferait lire une programmation par élève comme un tableau de lignes.
+  const prog = data?.find((p) => p.annee === annee && !p.estImportee && p.niveau !== "ime");
   const [lien, setLien] = React.useState<{ ligneId: string; col: string } | null>(null);
   const [partagerOuvert, setPartagerOuvert] = React.useState(false);
+  // En IME, on programme par élève : le réglage de structure décide du mode
+  // par défaut, et le choix de l'enseignant prime ensuite.
+  const [mode, setMode] = React.useState<"classe" | "ime">("classe");
+  React.useEffect(() => {
+    api.settingsAll().then((r) => {
+      const choisi = r[CLE_MODE_PROG];
+      if (choisi === "ime" || choisi === "classe") { setMode(choisi); return; }
+      if (r.typeStructure === "ime" || r["edt:mode"] === "ime") setMode("ime");
+    }).catch(() => {});
+  }, []);
+  const choisirMode = (m: "classe" | "ime") => {
+    setMode(m);
+    api.settingSet(CLE_MODE_PROG, m).catch(() => {});
+  };
   const fileRefProg = React.useRef<HTMLInputElement>(null);
 
   // État de la grille avec annuler/rétablir (⌘Z / Ctrl+Z, ⌘⇧Z / Ctrl+Y).
@@ -403,10 +423,33 @@ function Programmation({ annee, setAnnee }: AnneeProps) {
 
   const ligneLien = lignes.find((l) => l.id === lien?.ligneId);
 
+  if (mode === "ime") {
+    return (
+      <>
+        <div className="toolbar">
+          <AnneeSelect annee={annee} setAnnee={setAnnee} />
+          <div className="seg">
+            <button className={""} onClick={() => choisirMode("classe")}>Classe</button>
+            <button className="active">👧 Par élève (IME)</button>
+          </div>
+          <div className="spacer" />
+        </div>
+        <ProgrammationIme annee={annee} />
+      </>
+    );
+  }
+
   return (
     <>
       <div className="toolbar">
-        <AnneeSelect annee={annee} setAnnee={setAnnee} /><div className="spacer" />
+        <AnneeSelect annee={annee} setAnnee={setAnnee} />
+        {/* Deux façons de programmer, selon ce qu'on enseigne : une grille de
+            domaines pour une classe, des objectifs par élève en IME. */}
+        <div className="seg">
+          <button className="active">Classe</button>
+          <button onClick={() => choisirMode("ime")}>👧 Par élève (IME)</button>
+        </div>
+        <div className="spacer" />
         <input ref={fileRefProg} type="file" accept=".json,application/json" style={{ display: "none" }}
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importerProg(f); e.target.value = ""; }} />
         <button className="btn" onClick={(e) => openCtx(e, [
@@ -1113,7 +1156,7 @@ function TravailDeCycle({ annee, setAnnee }: AnneeProps) {
     Promise.all([api.settingGet("niveauClasse"), api.settingGet("enseignantNom")]).then(([n, nm]) => setMoi({ niveau: n ?? "", nom: nm ?? "" }));
   }, []);
 
-  const mienne = (data ?? []).find((p) => p.annee === annee && !p.estImportee);
+  const mienne = (data ?? []).find((p) => p.annee === annee && !p.estImportee && p.niveau !== "ime");
   const importees = (data ?? []).filter((p) => p.estImportee && p.annee === annee);
   const colonnes = [
     ...(mienne ? [{ prog: mienne, niveau: moi.niveau || "Ma classe", enseignant: "Moi", mienne: true }] : []),

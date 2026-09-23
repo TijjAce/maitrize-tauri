@@ -46,9 +46,6 @@ export default function Dashboard() {
   // aujourd'hui.
   const joursMontres = jours.filter((j, i) => i < 5 || duJour(j).length || j === today);
   const jourDeClasse = semaine.length > 0;
-  /** Ce qui est passé sans bilan : ce qu'il reste à écrire de la semaine. */
-  const sansBilan = semaine.filter((c) => !(c.bilan ?? "").trim()
-    && ((c.date ?? "").slice(0, 10) < today || ((c.date ?? "").slice(0, 10) === today && c.heureFin <= maintenant)));
   const nomDuJour = (iso: string) => {
     const d = new Date(`${iso}T12:00:00`);
     const texte = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric" });
@@ -81,9 +78,6 @@ export default function Dashboard() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <h3 style={{ margin: 0 }}>🗓️ Cette semaine</h3>
             <div className="spacer" />
-            {jourDeClasse && (
-              <button className="btn sm" onClick={() => ouvrirLeJournal(today)}>Ouvrir le cahier journal</button>
-            )}
           </div>
           {!jourDeClasse ? (
             <p style={{ color: "var(--text-2)" }}>Aucun créneau cette semaine. <a style={{ color: "var(--accent)", cursor: "pointer" }} onClick={() => nav("/planning")}>Ouvrir le planning →</a></p>
@@ -109,14 +103,6 @@ export default function Dashboard() {
                   </button>
                 );
               })}
-            </div>
-            <div style={{ marginTop: 8 }}>
-              {sansBilan.length > 0 && (
-                <button className="btn sm" style={{ marginTop: 4 }}
-                  onClick={() => ouvrirLeJournal((sansBilan[0].date ?? today).slice(0, 10))}>
-                  ✍️ {sansBilan.length} créneau{sansBilan.length > 1 ? "x" : ""} sans bilan
-                </button>
-              )}
             </div>
             </>
           )}
