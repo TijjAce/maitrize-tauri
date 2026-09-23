@@ -21,7 +21,8 @@ export const NOUVEAUTES: Nouveaute[] = [
     version: "1.6.15",
     titre: "Les réunions s'écrivent au fil de l'eau",
     points: [
-      { quoi: "Des rubans en haut de ⌘K disent ce qu'on cherche : Dossiers, PDF, Séquences, Cahier journal, Élèves, Bureau. Un clic restreint la liste, ⇥ passe de l'un à l'autre, et seuls les rubans qui ont vraiment des résultats s'affichent.", ou: "⌘K" },
+      { quoi: "Des rubans en haut de ⌘K disent ce qu'on cherche : Actions, Pages, Dossiers, Coffre-fort, Jeux, Bureau. Un clic restreint la liste, ⇥ passe de l'un à l'autre, et seuls les rubans qui ont vraiment des résultats s'affichent. « Jeux » réunit les jeux rangés sur le bureau et les fabriques — on cherche un loto sans se demander s'il existe déjà.", ou: "⌘K" },
+      { quoi: "Le cahier journal ne remonte plus dans ⌘K : il se tient par jour, et comme chaque bilan cite tout ce qui s'est fait, une recherche en ramenait dix avant le reste. Les jours s'ouvrent depuis le tableau de bord et le planning.", ou: "⌘K" },
       { quoi: "Un dossier se cherche par son nom, et non plus par le chemin de ses parents : « voca » remontait « Enrichir son vocabulaire » et ses six enfants, qui ne s'appellent pas comme ça. Au passage, un nom long ne se fait plus écraser par le chemin affiché à côté — c'est le chemin qui cède la place.", ou: "⌘K" },
       { quoi: "La liste ne s'emballe plus quand la souris la survole : elle défilait, le survol changeait la sélection, ce qui la refaisait défiler. Le survol ne compte désormais que si la souris a bougé pour de bon.", ou: "⌘K" },
       { quoi: "Une ligne périmée restait collée en tête des résultats — « Progressions par élève » s'affichait pour n'importe quelle recherche. Deux entrées portaient le même identifiant interne.", ou: "⌘K" },
