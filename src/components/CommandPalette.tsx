@@ -17,26 +17,39 @@ const FAMILLES = [
   { id: "action", nom: "Actions" },
   { id: "page", nom: "Pages" },
   { id: "dossier", nom: "Dossiers" },
-  { id: "pdf", nom: "PDF" },
-  { id: "sequence", nom: "Séquences" },
-  { id: "journal", nom: "Cahier journal" },
-  { id: "eleve", nom: "Élèves" },
+  { id: "coffre", nom: "Coffre-fort" },
+  { id: "jeu", nom: "Jeux" },
   { id: "bureau", nom: "Bureau" },
 ] as const;
 
 type Famille = typeof FAMILLES[number]["id"];
 
-/** À quelle famille se range un résultat de recherche. */
-const FAMILLE_DU_KIND: Record<string, Famille> = {
-  sequence: "sequence", seance: "sequence", creneau: "journal",
-  observation: "eleve", eleve: "eleve",
-  atelier: "bureau", espace: "bureau", jeu: "bureau", outil: "bureau",
+/**
+ * À quelle famille se range un résultat de recherche.
+ *
+ * Tout ce qui vit sur le bureau y retourne — une séquence comme un atelier —,
+ * sauf les jeux, qu'on cherche pour eux-mêmes. Un élève n'a pas de ruban :
+ * il se trouve, il ne se filtre pas.
+ */
+const FAMILLE_DU_KIND: Record<string, Famille | ""> = {
+  sequence: "bureau", seance: "bureau", jeu: "jeu",
+  atelier: "bureau", espace: "bureau", outil: "bureau",
   texte: "bureau", materiel: "bureau",
+  observation: "", eleve: "",
 };
+
+/**
+ * Ce que ⌘K ne remonte pas.
+ *
+ * Le cahier journal se tient par jour, pas par mot-clé : chaque bilan cite
+ * tout ce qui s'est fait, et une recherche en ramenait dix avant le reste.
+ */
+const KINDS_ECARTES = ["creneau"];
 
 interface Cmd {
   id: string; ico: string; label: string; sous?: string;
-  famille: Famille;
+  /** Le ruban sous lequel il se range — vide pour ce qui ne se filtre pas. */
+  famille: Famille | "";
   /** Le sous-titre s'affiche sans se chercher — le chemin d'un dossier. */
   sousMuet?: boolean;
   /** Vrai pour un résultat venu de la base : à note égale, il passe après. */
@@ -400,10 +413,13 @@ export function CommandPalette() {
     // Le libellé fait partie de l'identifiant : deux entrées mènent au même
     // onglet (« Progressions par élève » et « Compétences travaillées »), et
     // l'identifiant commun laissait une ligne périmée en tête de liste.
-    id: "sub" + s.page + s.onglet + s.label, ico: s.ico, label: s.label, sous: "Aller à · " + s.sous, famille: "page",
+    id: "sub" + s.page + s.onglet + s.label, ico: s.ico, label: s.label, sous: "Aller à · " + s.sous,
+    // Les fabriques de jeux se cherchent avec les jeux : on cherche un loto,
+    // sans savoir s'il est déjà rangé sur le bureau ou encore à fabriquer.
+    famille: s.to === "/jeux" ? "jeu" : "page",
     run: () => { setOpen(false); nav(s.to); setTimeout(() => ouvrirOnglet(s.page, s.onglet), 140); },
   }));
-  const rechCmds: Cmd[] = res.map((r) => ({
+  const rechCmds: Cmd[] = res.filter((r) => !KINDS_ECARTES.includes(r.kind)).map((r) => ({
     id: r.kind + r.id,
     ico: KIND_ICO[r.kind] ?? "•",
     label: r.titre,
@@ -444,7 +460,7 @@ export function CommandPalette() {
     label: d.nom,
     sous: "Coffre-fort · PDF",
     quand: jourCourt(d.dateAjout),
-    famille: "pdf",
+    famille: "coffre",
     donnee: true,
     run: () => {
       setOpen(false);
@@ -486,7 +502,7 @@ export function CommandPalette() {
         if (e.key === "Enter" && cmds[clamped]) { e.preventDefault(); lancer(cmds[clamped]); }
       }}>
         <input className="palette-input" autoFocus aria-label="Commande, action ou recherche"
-          placeholder="Commande, action, ou recherche (séance, bilan, élève, jeu…)"
+          placeholder="Commande, action, ou recherche (dossier, jeu, PDF du coffre, séquence…)"
           value={q} onChange={(e) => { setQ(e.target.value); setSel(0); }} />
         {rubans.length > 1 && (
           <div className="palette-rubans">
