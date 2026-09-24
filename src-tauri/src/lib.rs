@@ -104,6 +104,7 @@ pub fn run() {
             observations_list, observation_save, observation_delete,
             dossiers_bureau,
             whisper::transcrire_local, whisper::whisper_tester,
+            whisper::whisper_etat, whisper::whisper_telecharger_modele,
             // Coffre-fort
             coffre_list, coffre_save, coffre_delete, coffre_download,
             // Réglages
