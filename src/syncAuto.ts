@@ -11,10 +11,27 @@ import { EVT_DONNEES_DISTANTES } from "./components/ui";
 const PERIODE = 30_000;
 /** Intervalle après une écriture locale : on part vite, sans marteler. */
 const APRES_ECRITURE = 3_000;
+/** Au-delà, on ne réessaie plus si souvent : le stockage ne répond pas. */
+export const PERIODE_MAX = 5 * 60_000;
+
+/**
+ * Combien attendre après des échecs de suite.
+ *
+ * Sans cela, une matinée hors réseau recommence toutes les trente secondes —
+ * cinquante-deux passages en une heure dans le journal d'incidents, chacun
+ * s'obstinant auprès d'un stockage qui ne répond pas. L'attente double à
+ * chaque échec, jusqu'à cinq minutes, et repart à zéro dès que ça marche.
+ */
+export function attenteApres(echecs: number): number {
+  if (echecs <= 0) return PERIODE;
+  return Math.min(PERIODE_MAX, PERIODE * 2 ** Math.min(echecs, 10));
+}
 
 let minuteur: ReturnType<typeof setTimeout> | null = null;
 let enCours = false;
 let prochainDelai = PERIODE;
+/** Échecs consécutifs : c'est eux qui espacent les passages. */
+let echecs = 0;
 
 /**
  * Un passage de synchronisation.
@@ -38,9 +55,13 @@ async function passage() {
       window.dispatchEvent(new CustomEvent(EVT_DONNEES_DISTANTES));
     }
     // Gros lot de photos : on repasse vite plutôt que d'attendre 30 secondes.
+    echecs = 0;
     prochainDelai = (f?.restants ?? 0) > 0 ? APRES_ECRITURE : PERIODE;
   } catch {
-    /* silencieux : l'état s'affiche dans le bandeau */
+    // Silencieux : l'état s'affiche dans le bandeau. Mais on s'espace, pour
+    // ne pas passer la matinée à parler à un stockage absent.
+    echecs += 1;
+    prochainDelai = attenteApres(echecs);
   } finally {
     enCours = false;
   }
@@ -56,7 +77,9 @@ export function demarrerSyncAuto(): () => void {
   programmer(APRES_ECRITURE);
   // Retour sur la fenêtre : l'autre machine a pu travailler entre-temps, et
   // c'est le moment où l'enseignant regarde vraiment son écran.
-  const auRetour = () => { if (!document.hidden) programmer(500); };
+  // Revenir sur la fenêtre, c'est souvent avoir retrouvé du réseau : on
+  // reprend tout de suite, et sans l'attente accumulée.
+  const auRetour = () => { if (!document.hidden) { echecs = 0; programmer(500); } };
   window.addEventListener("focus", auRetour);
   document.addEventListener("visibilitychange", auRetour);
   return () => {
@@ -69,6 +92,7 @@ export function demarrerSyncAuto(): () => void {
 
 /** À appeler après une écriture locale pour faire partir le changement vite. */
 export function synchroniserBientot() {
+  echecs = 0;
   prochainDelai = PERIODE;
   programmer(APRES_ECRITURE);
 }
