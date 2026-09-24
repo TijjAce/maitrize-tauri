@@ -1,9 +1,9 @@
 // ── Où la parole est transcrite ───────────────────────────────────────────
 //
-// Deux moteurs, un choix. En ligne, c'est Voxtral chez Mistral : rien à
-// installer, et de très bons résultats. En local, c'est Whisper sur la
-// machine de l'enseignant : l'audio ne sort pas — et en réunion, c'est ce
-// qui compte le plus.
+// Deux moteurs, un choix. En ligne, c'est Voxtral chez Mistral : de très
+// bons résultats, mais il faut du réseau. Sur cet ordinateur, c'est Whisper,
+// qui tourne **dans** l'application : l'audio ne sort pas, et une réunion en
+// zone blanche s'écrit quand même — en ESS, c'est ce qui compte le plus.
 //
 // Le reste de l'intelligence (le rangement du compte rendu, la relecture)
 // passe par le service en ligne dans les deux cas : un modèle local de la
@@ -43,7 +43,7 @@ export const plafondDuMorceau = (m: Moteur): number => (m === "local" ? 12 : 20)
 /** Ce qu'il faut dire à l'enseignant sur ce que devient son audio. */
 export const sortieDeLAudio = (m: Moteur): string =>
   m === "local"
-    ? "L'audio est transcrit sur cet ordinateur et n'en sort pas. Il passe par un fichier temporaire, effacé aussitôt après."
+    ? "L'audio est transcrit sur cet ordinateur et n'en sort pas — il n'est même pas écrit sur le disque."
     : "L'audio part chez Mistral (serveurs en Europe) pour être transcrit, puis le texte pour être rangé.";
 
 /** Transcrit un enregistrement, par le moteur choisi. */

@@ -8,7 +8,7 @@ mod amis;
 mod commands;
 mod commun;
 mod veille;
-mod whisper;
+mod whisper_embarque;
 mod webdav;
 mod copie_bureau;
 mod db;
@@ -61,6 +61,7 @@ pub fn run() {
             Ok(())
         })
         .manage(Db(Mutex::new(conn)))
+        .manage(whisper_embarque::Moteur::default())
         .manage(arasaac::BanqueArasaac::default())
         .manage(portable::Portable(Mutex::new(None)))
         .manage(portable::PhotoCapture(Mutex::new(None)))
@@ -103,8 +104,8 @@ pub fn run() {
             reunions_list, reunion_save, reunion_delete,
             observations_list, observation_save, observation_delete,
             dossiers_bureau,
-            whisper::transcrire_local, whisper::whisper_tester,
-            whisper::whisper_etat, whisper::whisper_telecharger_modele,
+            whisper_embarque::transcrire_local, whisper_embarque::whisper_tester,
+            whisper_embarque::whisper_etat, whisper_embarque::whisper_telecharger_modele,
             // Coffre-fort
             coffre_list, coffre_save, coffre_delete, coffre_download,
             // Réglages

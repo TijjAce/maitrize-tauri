@@ -272,14 +272,14 @@ export interface Reunion {
   dateCreation: string; dateMaj: string;
 }
 
-/** Ce qu'on sait de la transcription locale sur cette machine. */
+/** Ce qu'on sait de la transcription sur cet ordinateur. */
 export interface EtatWhisper {
-  binaire: string; modele: string;
-  /** Vrai quand la valeur a été trouvée toute seule, sans réglage. */
-  binaireTrouve: boolean; modeleTrouve: boolean;
-  dossierModeles: string; tailleModele: number;
-  /** La commande d'installation qui convient à ce système. */
-  installation: string;
+  /** Le modèle prêt à servir, vide s'il n'y en a aucun. */
+  modele: string;
+  taille: number;
+  /** Les modèles qu'on peut aller chercher : nom, dépôt, octets. */
+  disponibles: [string, string, number][];
+  dossier: string;
 }
 
 export interface DocumentCoffre {
