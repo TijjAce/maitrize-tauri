@@ -22,7 +22,7 @@ import {
   lirePlan, lireResumes, lireTranches, mettreAuPropre, nettoyer, nomDeLaReunion, promptRelecture,
   relireLeDocument,
   phrasesEnAttente, planVide, promptCompteRendu, promptPassage, promptRangement, rangerLeDocument, redigerCompteRendu,
-  repereDuResume, resumerPassage, riendedit, sansMarqueursOrphelins, texteACopier, type Resume,
+  repereDuResume, resumerPassage, riendedit, sansMarqueursOrphelins, texteACopier, type Resume, promptReformuler, reformulerPassage,
 } from "./reunion";
 
 const resume = (p: Partial<Resume> = {}): Resume => ({
@@ -403,5 +403,25 @@ describe("les marqueurs qui n'ont pas de nom derrière", () => {
   it("un texte sans marqueur n'est pas touché", () => {
     const propre = "## Décisions\n- Essai à la cantine le mardi.";
     expect(sansMarqueursOrphelins(propre)).toBe(propre);
+  });
+});
+
+describe("reformuler un passage surligné", () => {
+  it("ne donne à l'IA que le passage, et lui interdit d'en dire plus", () => {
+    const [systeme, utilisateur] = promptReformuler("alors euh la famille elle est arrivée", false);
+    expect(utilisateur.content).toBe("alors euh la famille elle est arrivée");
+    expect(systeme.content).toContain("N'ajoute aucune information");
+    expect(systeme.content).toContain("rends le passage réécrit, seul");
+  });
+
+  it("ne parle des marqueurs que lorsqu'il y en a", () => {
+    // Sans cette condition, un « [P1] » apparaissait dans un compte rendu où
+    // rien n'avait été masqué.
+    expect(promptReformuler("x", false)[0].content).toContain("N'écris jamais de marqueur");
+    expect(promptReformuler("x", true)[0].content).toContain("recopie-les exactement");
+  });
+
+  it("refuse un passage trop court pour être une phrase", async () => {
+    await expect(reformulerPassage("oui")).rejects.toThrow(/un peu plus long/);
   });
 });
