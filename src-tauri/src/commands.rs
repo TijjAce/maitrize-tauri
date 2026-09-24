@@ -1141,14 +1141,14 @@ pub fn projets_list(db: State<Db>) -> R<Vec<Projet>> {
 pub fn projet_save(db: State<Db>, projet: Projet) -> R<Projet> {
     let c = db.lock();
     c.execute(
-        "INSERT INTO projets (id,titre,descriptif,couleur,date_creation,annee,image_nom,mois,etat,etapes_json,domaines,origine)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)
+        "INSERT INTO projets (id,titre,descriptif,couleur,date_creation,annee,image_nom,mois,semaine,etat,etapes_json,domaines,origine)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)
          ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, descriptif = excluded.descriptif,
            couleur = excluded.couleur, annee = excluded.annee, image_nom = excluded.image_nom,
-           mois = excluded.mois, etat = excluded.etat, etapes_json = excluded.etapes_json,
+           mois = excluded.mois, semaine = excluded.semaine, etat = excluded.etat, etapes_json = excluded.etapes_json,
            domaines = excluded.domaines, origine = excluded.origine",
         params![projet.id, projet.titre, projet.descriptif, projet.couleur, projet.date_creation,
-                projet.annee, projet.image_nom, projet.mois, projet.etat, projet.etapes_json,
+                projet.annee, projet.image_nom, projet.mois, projet.semaine, projet.etat, projet.etapes_json,
                 projet.domaines, projet.origine],
     ).map_err(e)?;
     Ok(projet)
