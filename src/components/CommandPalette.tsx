@@ -124,6 +124,7 @@ const NAV: { ico: string; label: string; to: string }[] = [
   { ico: "🧩", label: "Ateliers & Espaces", to: "/ateliers" },
   { ico: "🗓️", label: "Planning", to: "/planning" },
   { ico: "🗂️", label: "Organisation", to: "/organisation" },
+  { ico: "🌱", label: "Projets", to: "/projets" },
   { ico: "👧", label: "Élèves", to: "/eleves" },
   { ico: "📖", label: "Référentiels", to: "/referentiels" },
   { ico: "🌐", label: "Ressources", to: "/ressources" },

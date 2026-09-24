@@ -1120,6 +1120,49 @@ pub fn observation_delete(db: State<Db>, id: String) -> R<()> {
 // RÉUNIONS ÉCOUTÉES (ESS, conseil de cycle…)
 // ============================================================
 
+// ── Projets de classe ────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn projets_list(db: State<Db>) -> R<Vec<Projet>> {
+    let c = db.lock();
+    // Par mois d'abord : c'est ainsi qu'on les regarde, l'année scolaire
+    // commençant en septembre — d'où le tri qui met 09 avant 01.
+    let mut st = c
+        .prepare(
+            "SELECT * FROM projets
+             ORDER BY CASE WHEN mois >= '09' THEN 0 ELSE 1 END, mois, date_creation DESC",
+        )
+        .map_err(e)?;
+    let rows = st.query_map([], Projet::from_row).map_err(e)?;
+    rows.collect::<rusqlite::Result<_>>().map_err(e)
+}
+
+#[tauri::command]
+pub fn projet_save(db: State<Db>, projet: Projet) -> R<Projet> {
+    let c = db.lock();
+    c.execute(
+        "INSERT INTO projets (id,titre,descriptif,couleur,date_creation,annee,image_nom,mois,etat,etapes_json,domaines,origine)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)
+         ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, descriptif = excluded.descriptif,
+           couleur = excluded.couleur, annee = excluded.annee, image_nom = excluded.image_nom,
+           mois = excluded.mois, etat = excluded.etat, etapes_json = excluded.etapes_json,
+           domaines = excluded.domaines, origine = excluded.origine",
+        params![projet.id, projet.titre, projet.descriptif, projet.couleur, projet.date_creation,
+                projet.annee, projet.image_nom, projet.mois, projet.etat, projet.etapes_json,
+                projet.domaines, projet.origine],
+    ).map_err(e)?;
+    Ok(projet)
+}
+
+#[tauri::command]
+pub fn projet_delete(db: State<Db>, id: String) -> R<()> {
+    let c = db.lock();
+    // Les séquences rattachées restent : c'est le lien qui tombe, pas le
+    // travail (ON DELETE SET NULL sur `sequences.projet_id`).
+    c.execute("DELETE FROM projets WHERE id=?1", params![id]).map_err(e)?;
+    Ok(())
+}
+
 #[tauri::command]
 pub fn reunions_list(db: State<Db>) -> R<Vec<Reunion>> {
     let c = db.lock();
