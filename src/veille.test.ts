@@ -57,3 +57,22 @@ describe("ce qui tournait au moment du blocage", () => {
     expect(ouEtQuoi("/plan", "")).toBe("/plan");
   });
 });
+
+describe("un ralentissement n'est pas un gel", () => {
+  it("rien ne s'écrit quand la fenêtre est passée derrière", () => {
+    // Le vrai défaut : sur cent vingt gels relevés dans le journal, presque
+    // tous ont été écrits pendant que l'application était en arrière-plan.
+    // macOS ralentit alors ses minuteurs — rien ne bloquait, et personne ne
+    // regardait l'écran.
+    expect(messageDeBlocage(12_000, false, "/plan", false)).toBeNull();
+    expect(messageDeBlocage(107_000, false, "/reunions", false)).toBeNull();
+  });
+
+  it("mais un gel au premier plan se dit toujours", () => {
+    expect(messageDeBlocage(12_000, false, "/plan", true)).toBe("FIGÉ 12 s sur /plan");
+  });
+
+  it("par défaut, on suppose la fenêtre devant", () => {
+    expect(messageDeBlocage(12_000, false, "/plan")).toBe("FIGÉ 12 s sur /plan");
+  });
+});

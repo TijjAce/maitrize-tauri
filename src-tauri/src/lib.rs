@@ -35,9 +35,6 @@ pub fn run() {
         habituel(info);
     }));
 
-    // Une fenêtre figée ne peut rien écrire : c'est le backend qui le voit.
-    veille::surveiller();
-
     let conn = db::open();
 
     tauri::Builder::default()
@@ -50,6 +47,9 @@ pub fn run() {
             // l'application, et si la précédente a été tuée : c'est ce qui
             // distingue un plantage d'une fermeture ordinaire.
             commands::diag_demarrage(&app.package_info().version.to_string());
+            // Une fenêtre figée ne peut rien écrire : c'est le backend qui le
+            // voit. Il lui faut la fenêtre pour savoir si elle est devant.
+            veille::surveiller(app.handle().clone());
             // Mises à jour automatiques (distribution directe hors stores).
             // Plugins desktop uniquement.
             #[cfg(desktop)]
