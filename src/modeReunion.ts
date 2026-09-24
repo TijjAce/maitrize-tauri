@@ -1,46 +1,48 @@
 // ── Ce qui part en ligne pendant une réunion ──────────────────────────────
 //
-// Trois travaux, pas un : la parole se transcrit, le compte rendu se range,
-// et il se relit toutes les cinq minutes. Une seule case « Relecture » ne
-// pouvait pas dire tout cela — et elle promettait que rien ne sortait, alors
-// que le rangement partait quand même chez Mistral toutes les deux phrases.
+// Le choix se fait **avant** de commencer, une fois, sur la fiche : ensuite
+// l'écran ne montre plus que le texte. Pendant une réunion on écoute, on ne
+// règle pas.
 //
-// Trois positions, donc, et ce qu'elles disent est vrai :
-//   — « rien »    : le texte s'écrit tel quel, rien ne quitte l'ordinateur ;
-//   — « ranger »  : l'IA en ligne classe en points abordés, décisions, à faire ;
-//   — « relire »  : et resserre tout le document régulièrement.
+// Deux positions, et ce qu'elles disent est vrai :
+//   — « local » : la parole s'écrit telle quelle, rien ne quitte l'ordinateur ;
+//   — « ligne » : l'IA range le compte rendu et le relit régulièrement.
+//
+// La transcription, elle, tourne dans les deux cas : c'est le réglage du
+// moteur (Réglages · IA) qui dit où, et une réunion locale se passe de réseau
+// de bout en bout.
 
-export type ModeIA = "rien" | "ranger" | "relire";
+export type ModeIA = "local" | "ligne";
 
 export const CLE_MODE = "reunionsModeIA";
-/** L'ancienne case, qu'on relit une dernière fois pour ne pas changer d'avis à la place de l'enseignant. */
+/** L'ancienne case, relue une dernière fois pour ne pas choisir à la place de l'enseignant. */
 export const CLE_RELECTURE = "reunionsRelecture";
 
 export const MODES: { id: ModeIA; label: string; aide: string }[] = [
-  { id: "rien", label: "Rien en ligne",
-    aide: "La parole s'écrit telle quelle. Aucun texte ne quitte cet ordinateur — à condition que la transcription soit locale, elle aussi." },
-  { id: "ranger", label: "Ranger",
-    aide: "L'IA en ligne classe le compte rendu en points abordés, décisions et choses à faire. Les prénoms d'élèves sont masqués avant l'envoi." },
-  { id: "relire", label: "Ranger + relire",
-    aide: "Et toutes les cinq minutes, une relecture de l'ensemble resserre le document et retire les redites." },
+  { id: "local", label: "🔒 Rien ne sort d'ici",
+    aide: "La parole s'écrit telle quelle. Aucun texte ne quitte cet ordinateur — à condition que la transcription soit locale elle aussi (Réglages · IA)." },
+  { id: "ligne", label: "☁️ Avec l'IA en ligne",
+    aide: "Le compte rendu est rangé en points abordés, décisions et choses à faire, puis relu toutes les cinq minutes. Il part chez Mistral, prénoms d'élèves masqués." },
 ];
 
 /**
- * Le mode de cette machine, en tenant compte de l'ancienne case.
+ * Le mode de cette machine, en tenant compte des réglages d'avant.
  *
- * Qui avait décoché « Relecture » voulait moins d'appels, pas moins de
- * rangement : il retrouve « Ranger », et non « Rien en ligne ».
+ * « ranger » et « relire » valaient tous deux l'IA en ligne ; « rien » valait
+ * le local. Qui avait décoché l'ancienne case « Relecture » voulait moins
+ * d'appels, pas moins de rangement : il reste en ligne.
  */
 export function lireMode(mode: string | null, ancienneRelecture: string | null): ModeIA {
-  if (mode === "rien" || mode === "ranger" || mode === "relire") return mode;
-  return ancienneRelecture === "0" ? "ranger" : "relire";
+  if (mode === "local" || mode === "rien") return "local";
+  if (mode === "ligne" || mode === "ranger" || mode === "relire") return "ligne";
+  return ancienneRelecture === "0" ? "ligne" : "ligne";
 }
 
 /** Le rangement du compte rendu passe-t-il par l'IA en ligne ? */
-export const rangeEnLigne = (m: ModeIA) => m !== "rien";
+export const rangeEnLigne = (m: ModeIA) => m === "ligne";
 
 /** Et la relecture de fond ? */
-export const relitEnLigne = (m: ModeIA) => m === "relire";
+export const relitEnLigne = (m: ModeIA) => m === "ligne";
 
 /**
  * Cette erreur dit-elle que la machine n'a pas de réseau ?

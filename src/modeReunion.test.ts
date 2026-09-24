@@ -3,29 +3,33 @@ import { estUnePanneDeReseau, lireMode, rangeEnLigne, relitEnLigne } from "./mod
 
 describe("le mode d'une réunion", () => {
   it("se lit tel qu'il a été choisi", () => {
-    expect(lireMode("rien", null)).toBe("rien");
-    expect(lireMode("ranger", "1")).toBe("ranger");
-    expect(lireMode("relire", "0")).toBe("relire");
+    expect(lireMode("local", null)).toBe("local");
+    expect(lireMode("ligne", null)).toBe("ligne");
   });
 
   it("par défaut, l'IA range et relit", () => {
-    expect(lireMode(null, null)).toBe("relire");
+    expect(lireMode(null, null)).toBe("ligne");
+  });
+
+  it("relit les trois positions d'avant sans rien perdre", () => {
+    // « rien » valait le local ; « ranger » et « relire » valaient l'IA.
+    expect(lireMode("rien", null)).toBe("local");
+    expect(lireMode("ranger", "1")).toBe("ligne");
+    expect(lireMode("relire", "0")).toBe("ligne");
   });
 
   it("qui avait décoché « Relecture » garde son rangement", () => {
     // Décocher voulait dire « un appel de moins », pas « plus d'IA du tout » :
-    // le faire basculer sur « Rien en ligne » lui retirerait son compte rendu.
-    expect(lireMode(null, "0")).toBe("ranger");
-    expect(lireMode("", "0")).toBe("ranger");
+    // le faire basculer en local lui retirerait son compte rendu.
+    expect(lireMode(null, "0")).toBe("ligne");
+    expect(lireMode("", "0")).toBe("ligne");
   });
 
   it("dit ce qui part, pour chaque mode", () => {
-    expect(rangeEnLigne("rien")).toBe(false);
-    expect(relitEnLigne("rien")).toBe(false);
-    expect(rangeEnLigne("ranger")).toBe(true);
-    expect(relitEnLigne("ranger")).toBe(false);
-    expect(rangeEnLigne("relire")).toBe(true);
-    expect(relitEnLigne("relire")).toBe(true);
+    expect(rangeEnLigne("local")).toBe(false);
+    expect(relitEnLigne("local")).toBe(false);
+    expect(rangeEnLigne("ligne")).toBe(true);
+    expect(relitEnLigne("ligne")).toBe(true);
   });
 });
 
