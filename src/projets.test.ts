@@ -7,7 +7,7 @@ vi.mock("./api", () => ({
 
 import {
   CATALOGUE, MOIS, avancement, chercherIdees, depuisIdee, ecrireEtapes, etatDeduit,
-  ideesDuMois, lireEtapes, moisCourant, nomDuMois, projetVierge, rangerParMois, type Etape,
+  ideesDuMois, lireEtapes, moisCourant, nomDuMois, projetVierge, rangerParMois, type Etape, semainesDuMois, anneeDuMois, placer, THEMES
 } from "./projets";
 
 const aplatir = (s: string) =>
@@ -136,5 +136,60 @@ describe("ranger par mois", () => {
   it("ajoute un groupe pour ce qui n'a pas de mois — et seulement alors", () => {
     expect(rangerParMois([p("09")]).some((r) => r.mois === "")).toBe(false);
     expect(rangerParMois([p("")]).some((r) => r.mois === "")).toBe(true);
+  });
+});
+
+describe("les semaines d'un mois", () => {
+  it("rend les lundis du mois, dans la bonne année civile", () => {
+    // Année scolaire 2026-2027 : septembre est en 2026, janvier en 2027.
+    const sept = semainesDuMois("2026-2027", "09");
+    expect(sept[0].iso.startsWith("2026-09")).toBe(true);
+    expect(semainesDuMois("2026-2027", "01")[0].iso.startsWith("2027-01")).toBe(true);
+  });
+
+  it("en donne quatre ou cinq, jamais plus", () => {
+    for (const m of MOIS) {
+      const s = semainesDuMois("2026-2027", m.num);
+      expect(s.length, m.nom).toBeGreaterThanOrEqual(4);
+      expect(s.length, m.nom).toBeLessThanOrEqual(5);
+    }
+  });
+
+  it("chaque semaine se lit « du 7 au 11 »", () => {
+    const [premiere] = semainesDuMois("2026-2027", "09");
+    expect(premiere.label).toMatch(/^\d+ au \d+$/);
+    // Et c'est bien un lundi.
+    expect(new Date(`${premiere.iso}T12:00:00`).getDay()).toBe(1);
+  });
+
+  it("sait l'année civile d'un mois", () => {
+    expect(anneeDuMois("2026-2027", "09")).toBe(2026);
+    expect(anneeDuMois("2026-2027", "06")).toBe(2027);
+  });
+});
+
+describe("poser un projet", () => {
+  it("sur un mois : la semaine s'efface", () => {
+    const p = { ...projetVierge("09", "2026-2027"), semaine: "2026-09-07" };
+    expect(placer(p, "10")).toMatchObject({ mois: "10", semaine: "" });
+  });
+
+  it("sur une semaine : le mois suit, les deux ne se contredisent pas", () => {
+    const p = projetVierge("09", "2026-2027");
+    expect(placer(p, "01", "2027-01-04")).toMatchObject({ mois: "01", semaine: "2027-01-04" });
+  });
+});
+
+describe("le catalogue élargi", () => {
+  it("compte quatre-vingt-dix projets, tous avec un thème connu", () => {
+    expect(CATALOGUE.length).toBe(90);
+    const connus = new Set(THEMES.map((t) => t.id));
+    for (const i of CATALOGUE) expect(connus.has(i.theme), i.id).toBe(true);
+  });
+
+  it("chaque thème en porte dix", () => {
+    for (const t of THEMES) {
+      expect(CATALOGUE.filter((i) => i.theme === t.id).length, t.nom).toBe(10);
+    }
   });
 });

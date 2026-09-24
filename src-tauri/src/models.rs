@@ -1082,6 +1082,9 @@ pub struct Projet {
     /// Le mois où il se mène : « 09 » pour septembre, « 01 » pour janvier.
     #[serde(default)]
     pub mois: String,
+    /// La semaine où il est posé, au lundi — vide quand il tient tout le mois.
+    #[serde(default)]
+    pub semaine: String,
     /// « idee », « encours » ou « fait ».
     #[serde(default)]
     pub etat: String,
@@ -1107,6 +1110,7 @@ impl Projet {
             annee: r.get("annee")?,
             image_nom: r.get("image_nom").ok(),
             mois: r.get("mois").unwrap_or_default(),
+            semaine: r.get("semaine").unwrap_or_default(),
             etat: r.get("etat").unwrap_or_else(|_| "idee".into()),
             etapes_json: r.get("etapes_json").unwrap_or_else(|_| "[]".into()),
             domaines: r.get("domaines").unwrap_or_default(),

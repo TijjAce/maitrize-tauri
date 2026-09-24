@@ -709,6 +709,7 @@ pub(crate) fn migrate(conn: &Connection) {
     conn.execute("ALTER TABLE projets ADD COLUMN etapes_json TEXT NOT NULL DEFAULT '[]'", []).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN domaines TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN origine TEXT NOT NULL DEFAULT ''", []).ok();
+    conn.execute("ALTER TABLE projets ADD COLUMN semaine TEXT NOT NULL DEFAULT ''", []).ok();
     migrer_documents_eleve(conn);
 
     // Élèves présents sur un créneau (organisation IME, groupes restreints).
