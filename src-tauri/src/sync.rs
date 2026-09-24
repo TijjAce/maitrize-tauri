@@ -1472,18 +1472,31 @@ fn noter_vus(c: &Connection, vus: &std::collections::HashSet<String>) -> R<()> {
 /// copie. Rien ne s'écrase — chaque machine ajoute au journal partagé.
 #[tauri::command]
 pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
+    // Une sonde avant tout le reste.
+    //
+    // Un passage enchaîne une douzaine d'appels au stockage. Hors réseau,
+    // chacun s'obstine quatre secondes, deux fois : le passage entier durait
+    // une minute, et le suivant repartait aussitôt — le journal en garde
+    // cinquante-deux d'affilée. Une seule question suffit à savoir qu'il n'y
+    // a personne au bout.
+    let (phrase, cfg, moi) = {
+        let c = db.lock();
+        (get_setting(&c, "sauvegarde_phrase"), lire_cfg(&c).ok(), crate::db::identifiant_machine(&c))
+    };
+    let (Some(cfg0), false) = (cfg, phrase.trim().is_empty()) else {
+        return Ok(ResultatSync {
+            message: "Synchronisation non configurée.".into(),
+            ..Default::default()
+        });
+    };
+    let sonde = client(&cfg0);
+    if let Err(err) = sonde.list_objects_v2().bucket(&cfg0.bucket).max_keys(1).send().await {
+        return Err(format!("Envoi impossible : {}", detail(&err)));
+    }
+
     // Les tables que connaissent les autres ordinateurs : une table récente
     // leur est annoncée dès qu'ils la connaissent (voir `annoncer_tables`).
-    let autres = {
-        let (phrase, cfg, moi) = {
-            let c = db.lock();
-            (get_setting(&c, "sauvegarde_phrase"), lire_cfg(&c).ok(), crate::db::identifiant_machine(&c))
-        };
-        match cfg {
-            Some(cfg) if !phrase.trim().is_empty() => tables_des_autres(&client(&cfg), &cfg, phrase.trim(), &moi).await,
-            _ => Vec::new(),
-        }
-    };
+    let autres = tables_des_autres(&sonde, &cfg0, phrase.trim(), &moi).await;
     let (cfg, phrase, mut machine, repere, vus, mut lot) = {
         let c = db.lock();
         let phrase = get_setting(&c, "sauvegarde_phrase");
