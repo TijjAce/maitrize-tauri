@@ -696,3 +696,49 @@ export function texteACopier(r: Reunion): string {
 export function nomDeLaReunion(r: { titre: string; genre: string; date: string }): string {
   return r.titre.trim() || r.genre.trim() || "Réunion";
 }
+
+// ── Reformuler un passage surligné ────────────────────────────────────────
+
+/**
+ * Ce qu'on demande à l'IA pour un passage, et rien d'autre.
+ *
+ * Elle ne reçoit que ce qui est surligné : ni le reste du compte rendu, ni
+ * les participants. Une phrase dictée se tient rarement debout à l'écrit —
+ * hésitations, reprises, mots avalés —, et c'est cela qu'on répare, sans
+ * ajouter un mot que personne n'a dit.
+ */
+export function promptReformuler(passage: string, masques: boolean) {
+  return [
+    {
+      role: "system" as const,
+      content: [
+        "Tu réécris un passage de compte rendu dicté à l'oral, pour qu'il se lise.",
+        "Corrige la syntaxe, la ponctuation et les répétitions ; garde le vocabulaire professionnel.",
+        "N'ajoute aucune information, n'en retire aucune, ne commente pas : rends le passage réécrit, seul.",
+        "Garde la mise en forme : si le passage est une liste à tirets, la réponse est une liste à tirets.",
+        ...(masques
+          ? ["Les marqueurs entre crochets comme [P1] remplacent des prénoms : recopie-les exactement."]
+          : ["N'écris jamais de marqueur entre crochets."]),
+      ].join(" "),
+    },
+    { role: "user" as const, content: passage },
+  ];
+}
+
+/**
+ * Reformule un passage surligné, et rend le texte à remettre à sa place.
+ *
+ * La transcription continue pendant ce temps : c'est pour cela que l'appelant
+ * repère le passage par son contenu et non par sa position, laquelle aura
+ * bougé quand la réponse arrivera.
+ */
+export async function reformulerPassage(passage: string): Promise<string> {
+  const brut = passage.trim();
+  if (brut.length < 12) throw new Error("Surlignez un passage un peu plus long.");
+  const { parts, table } = masquerTout([brut], await nomsDesEleves());
+  const modele = await api.modeleActif(MODELE_TACHES);
+  const rep = await api.mistralChat(promptReformuler(parts[0], table.length > 0), modele);
+  const propre = nettoyer(rep);
+  if (!propre) throw new Error("La réponse de l'IA est vide.");
+  return sansMarqueursOrphelins(restaurer(propre, table).texte);
+}

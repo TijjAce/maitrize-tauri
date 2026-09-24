@@ -1,7 +1,7 @@
 import React from "react";
 import { Page } from "../App";
 import { api, journal, newId, nowIso, texteErreur, type Reunion } from "../api";
-import { Empty, Field, Input, Modal, Select } from "../components/ui";
+import { Field, Input, Modal, Select } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { openCtx } from "../components/ctxmenu";
@@ -12,10 +12,10 @@ import {
   moteurActif, paroleMinimale, plafondDuMorceau, sortieDeLAudio, transcrire, type Moteur,
 } from "../transcription";
 import {
-  GENRES, SECONDES_PAR_RELECTURE, ajouterAuDocument, ajouterAuTexte, assezPourResumer, convertirAnciennes,
+  GENRES, ajouterAuDocument, ajouterAuTexte, assezPourResumer, convertirAnciennes,
   dureeLisible, ecrireResumes, lirePlan, lireResumes, mettreAuPropre,
   assezPourRelire, nomDeLaReunion, phrasesEnAttente, planVide, rangerLeDocument,
-  relireLeDocument, texteACopier, type Resume,
+  reformulerPassage, relireLeDocument, texteACopier, type Resume,
 } from "../reunion";
 import {
   CLE_MODE, CLE_RELECTURE, MODES, estUnePanneDeReseau, lireMode, rangeEnLigne, relitEnLigne,
@@ -72,9 +72,11 @@ interface Infos { titre: string; genre: string; date: string; participants: stri
  * réunion, on regarde le texte. Pour la reprendre après coup, clic droit sur
  * la réunion dans la liste.
  */
-function FicheReunion({ infos, titre, bouton, onValider, onClose }: {
+function FicheReunion({ infos, titre, bouton, onValider, onClose, mode, setMode, moteur }: {
   infos: Infos; titre: string; bouton: string;
   onValider: (i: Infos) => void; onClose: () => void;
+  /** Le choix se fait ici, avant de commencer — pas pendant la réunion. */
+  mode: ModeIA; setMode: (m: ModeIA) => void; moteur: Moteur;
 }) {
   const [i, setI] = React.useState<Infos>(infos);
   const champ = <T extends keyof Infos>(k: T) => (e: { target: { value: string } }) =>
@@ -103,6 +105,18 @@ function FicheReunion({ infos, titre, bouton, onValider, onClose }: {
           <Input value={i.participants} placeholder="Directrice, psychologue, éducatrice, la famille…"
             onChange={champ("participants")} />
         </Field>
+        <Field label="Pendant la réunion">
+          <div className="seg" role="group" aria-label="Ce qui part en ligne">
+            {MODES.map((m) => (
+              <button key={m.id} type="button" className={mode === m.id ? "active" : ""}
+                title={m.aide} onClick={() => setMode(m.id)}>{m.label}</button>
+            ))}
+          </div>
+        </Field>
+        <p style={{ margin: "2px 0 0", fontSize: 12.5, lineHeight: 1.5, color: "var(--text-2)" }}>
+          {MODES.find((m) => m.id === mode)?.aide}
+          {" "}{sortieDeLAudio(moteur)}
+        </p>
         {/* Le formulaire se valide à l'Entrée : on pose l'ordinateur et ça part. */}
         <button type="submit" hidden />
       </form>
@@ -126,14 +140,19 @@ export default function Reunions() {
   // n'y a plus de bouton à chercher au moment où la réunion commence.
   const dejaExplique = React.useRef(false);
   const [transcrit, setTranscrit] = React.useState(false);
-  const [relit, setRelit] = React.useState(false);
   // Ce qui part en ligne : rien, le rangement, ou le rangement et la
   // relecture. Trois positions, parce qu'il y a trois travaux distincts.
-  const [mode, setMode] = React.useState<ModeIA>("relire");
+  const [mode, setMode] = React.useState<ModeIA>("ligne");
   // Le moteur de transcription : en ligne, ou sur cette machine.
   const [moteur, setMoteur] = React.useState<Moteur>("ligne");
   // Le réseau est tombé : on cesse d'essayer, et on le dit une fois.
   const [horsLigne, setHorsLigne] = React.useState(false);
+  // Le passage surligné, et la reformulation en cours. La transcription, elle,
+  // continue d'écrire pendant ce temps : c'est pour cela qu'on retrouve le
+  // passage par son contenu, et non par sa position, qui aura bougé.
+  const [choix, setChoix] = React.useState<{ texte: string; debut: number; fin: number } | null>(null);
+  const [reformule, setReformule] = React.useState(false);
+  const encadre = React.useRef<HTMLTextAreaElement | null>(null);
 
   // Ce que les rappels du micro et des minuteurs doivent lire : ils vivent
   // plus longtemps qu'un rendu, et une valeur figée leur ferait résumer deux
@@ -149,7 +168,7 @@ export default function Reunions() {
   const compteRenduRef = React.useRef("");
   compteRenduRef.current = compteRendu;
   // Lus depuis les rappels, qui vivent plus longtemps qu'un rendu.
-  const modeRef = React.useRef<ModeIA>("relire");
+  const modeRef = React.useRef<ModeIA>("ligne");
   modeRef.current = mode;
   const moteurRef = React.useRef<Moteur>("ligne");
   moteurRef.current = moteur;
@@ -173,18 +192,25 @@ export default function Reunions() {
    * « Whisper » dans les Réglages n'avait alors aucun effet avant de fermer
    * l'application — et la réunion suivante repartait chez Mistral.
    */
-  const relireLesReglages = React.useCallback(async () => {
-    const [accord, choisi, ancienne] = await Promise.all([
-      api.settingGet(CLE_CONSENTEMENT).catch(() => null),
-      api.settingGet(CLE_MODE).catch(() => null),
-      api.settingGet(CLE_RELECTURE).catch(() => null),
-    ]);
-    dejaExplique.current = accord === "1";
-    setMode(lireMode(choisi, ancienne));
+  const relireLeMoteur = React.useCallback(async () => {
     setMoteur(await moteurActif().catch(() => "ligne" as Moteur));
   }, []);
 
-  React.useEffect(() => { void relireLesReglages(); }, [relireLesReglages]);
+  React.useEffect(() => {
+    void (async () => {
+      const [accord, choisi, ancienne] = await Promise.all([
+        api.settingGet(CLE_CONSENTEMENT).catch(() => null),
+        api.settingGet(CLE_MODE).catch(() => null),
+        api.settingGet(CLE_RELECTURE).catch(() => null),
+      ]);
+      dejaExplique.current = accord === "1";
+      // Le mode ne se relit qu'ici : ensuite, c'est la fiche qui commande.
+      // Le relire au démarrage de la réunion écrasait le choix qui venait
+      // d'être fait, l'enregistrement n'étant pas encore revenu.
+      setMode(lireMode(choisi, ancienne));
+      await relireLeMoteur();
+    })();
+  }, [relireLeMoteur]);
 
   const choisirMode = (m: ModeIA) => {
     setMode(m);
@@ -271,7 +297,6 @@ export default function Reunions() {
     const maintenant = secondesRef.current;
     if (!assezPourRelire(maintenant - secondesRelues.current)) return;
     secondesRelues.current = maintenant;
-    setRelit(true);
     try {
       const suite = await relireLeDocument(compteRenduRef.current, contexte.current);
       compteRenduRef.current = suite;
@@ -281,7 +306,7 @@ export default function Reunions() {
       // Une relecture ratée ne casse rien : le document d'avant reste, et la
       // suivante retentera dans dix phrases.
       journal(`ÉCHEC relecture réunion : ${texteErreur(e)}`);
-    } finally { setRelit(false); }
+    } finally { /* la relecture ne s'annonce plus : elle se fait en fond */ }
   }, [majReunion]);
 
   /**
@@ -410,7 +435,7 @@ export default function Reunions() {
   /** La fiche remplie : on crée la réunion, et l'écoute part d'elle-même. */
   const commencer = async (i: Infos) => {
     setFiche(null);
-    await relireLesReglages();
+    await relireLeMoteur();
     setHorsLigne(false); horsLigneRef.current = false;
     const r = { ...nouvelleReunion(), ...i };
     await enregistrer(r);
@@ -446,7 +471,7 @@ export default function Reunions() {
   const demarrer = async () => {
     if (!courante) return;
     // Le moteur a pu changer dans les Réglages depuis l'ouverture de la page.
-    await relireLesReglages();
+    await relireLeMoteur();
     setHorsLigne(false); horsLigneRef.current = false;
     const erreur = await ecoute.demarrer(courante.dureeS);
     if (erreur) { toast(erreur, { icone: "🎙" }); return; }
@@ -474,6 +499,41 @@ export default function Reunions() {
     } catch (e) {
       toast("Mise au propre impossible : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
     } finally { setOccupe(""); }
+  };
+
+  /**
+   * Reformule le passage surligné, et le remet à sa place.
+   *
+   * La parole continue de s'écrire pendant l'aller-retour : le passage se
+   * retrouve donc par son contenu, et non par sa position — laquelle aura
+   * bougé de quelques centaines de caractères quand la réponse arrivera. S'il
+   * n'est plus là, c'est que l'enseignant l'a modifié entre-temps : on ne
+   * touche à rien plutôt que de réécrire au mauvais endroit.
+   */
+  const reformuler = async () => {
+    const passage = choix?.texte;
+    if (!passage || reformule) return;
+    // Le rangement réécrit le document entier : le laisser partir pendant une
+    // reformulation reviendrait à effacer celle-ci au retour. Un seul des deux
+    // à la fois — c'est le même verrou.
+    if (resumeEnCours.current) { toast("Un instant : le compte rendu est en train d'être rangé.", { icone: "⏳" }); return; }
+    resumeEnCours.current = true;
+    setReformule(true);
+    try {
+      const mieux = await reformulerPassage(passage);
+      const actuel = compteRenduRef.current;
+      const ou = actuel.indexOf(passage);
+      if (ou < 0) { toast("Ce passage a changé depuis : rien n'a été remplacé.", { icone: "↩️" }); return; }
+      const suite = actuel.slice(0, ou) + mieux + actuel.slice(ou + passage.length);
+      compteRenduRef.current = suite;
+      setCompteRendu(suite);
+      majReunion({ compteRendu: suite }, true);
+      setChoix(null);
+    } catch (e) {
+      const message = texteErreur(e);
+      if (estUnePanneDeReseau(message)) signalerLaPanne();
+      else toast("Reformulation impossible : " + message, { icone: "⚠️", duree: 7000 });
+    } finally { resumeEnCours.current = false; setReformule(false); }
   };
 
   /**
@@ -518,6 +578,9 @@ export default function Reunions() {
 
   /** Tout ce qu'on peut faire d'une réunion, là où on la voit : dans la liste. */
   const menuDeLaReunion = (e: React.MouseEvent, r: Reunion) => openCtx(e, [
+    ...(courante?.id === r.id && !planVide(lirePlan(compteRendu))
+      ? [{ label: "Mettre au propre", icon: "✍️", onClick: () => { void auPropre(); } }]
+      : []),
     { label: "Modifier les informations…", icon: "✏️", onClick: () => setFiche({ pour: r }) },
     { label: "Copier le compte rendu", icon: "📋", onClick: () => { void copier(r); } },
     { label: "Imprimer", icon: "🖨", onClick: () => imprimer(r) },
@@ -533,12 +596,10 @@ export default function Reunions() {
   };
 
   const enCours = ecoute.etat !== "repos";
-  const attente = phrasesEnAttente(texte, resumes).phrases.length;
   const aDuTexte = !!texte.trim() || !!compteRendu.trim();
   // L'écran d'accord ne s'affiche que tant qu'il n'a pas été accepté, et
   // seulement sur une réunion qui n'a pas encore commencé.
   const aExpliquer = !enCours && !aDuTexte && !consentementVu && !dejaExplique.current;
-  const vide = planVide(lirePlan(compteRendu));
 
   return (
     <Page titre="Réunions" sous="Le texte s'écrit tout seul, et se range au fil de la parole"
@@ -552,153 +613,131 @@ export default function Reunions() {
             ? { titre: fiche.pour.titre, genre: fiche.pour.genre, date: fiche.pour.date, participants: fiche.pour.participants }
             : { titre: "", genre: GENRES[0], date: aujourdhui(), participants: "" }}
           onClose={() => setFiche(null)}
+          mode={mode} setMode={choisirMode} moteur={moteur}
           onValider={(i) => { const pour = fiche.pour; void (pour ? reprendreLaFiche(pour, i) : commencer(i)); }}
         />
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(190px, 240px) minmax(320px, 1fr)", gap: 14, alignItems: "start" }}>
-        {/* La liste : on revient souvent chercher ce qui s'est dit le mois dernier. */}
-        <div className="card" style={{ padding: 8 }}>
-          {liste === null ? (
-            <p className="meta" style={{ margin: 8 }}>Chargement…</p>
-          ) : liste.length === 0 ? (
-            <p className="meta" style={{ margin: 8, fontSize: 12.5 }}>Aucune réunion enregistrée.</p>
-          ) : liste.map((r) => (
-            <button key={r.id} type="button" className="btn ghost" onClick={() => ouvrir(r)}
-              onContextMenu={(e) => menuDeLaReunion(e, r)}
-              title="Clic droit : informations, copier, imprimer, supprimer"
-              style={{
-                width: "100%", justifyContent: "flex-start", textAlign: "left", marginBottom: 4,
-                background: courante?.id === r.id ? "var(--panel-2)" : undefined, height: "auto", padding: "8px 10px",
-              }}>
-              <span style={{ display: "block", minWidth: 0 }}>
-                <b style={{ display: "block", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {nomDeLaReunion(r)}
-                </b>
-                <span className="meta" style={{ fontSize: 11.5 }}>
-                  {[r.genre, r.date, r.dureeS ? dureeLisible(r.dureeS) : ""].filter(Boolean).join(" · ")}
-                </span>
-              </span>
-            </button>
-          ))}
-        </div>
-
+      {/* Une seule fenêtre, au milieu. Tant qu'aucune réunion n'est ouverte,
+          elle porte la liste ; dès qu'on commence, elle ne porte plus que le
+          texte — on écoute, on ne règle pas. */}
+      <div style={{ maxWidth: 900, margin: "0 auto", width: "100%" }}>
         {!courante ? (
-          <Empty icone="🎧" titre="Aucune réunion ouverte"
-            sous="Créez une réunion, posez l'ordinateur sur la table, et laissez l'application écrire. Clic droit sur une réunion de la liste pour ses informations, la copier ou l'imprimer." />
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-            {/* L'accord des participants se demande une fois, et l'écoute part
-                ensuite d'elle-même à chaque nouvelle réunion. */}
-            {aExpliquer ? (
-              <div className="card">
-                <b style={{ fontSize: 14 }}>Avant de commencer</b>
-                <ul style={{ fontSize: 13, lineHeight: 1.6, margin: "8px 0 0", paddingLeft: 18 }}>
-                  <li><b>Prévenez les participants</b> que vous enregistrez pour prendre des notes,
-                      et recueillez leur accord — en ESS ou devant une famille, cela se demande avant.</li>
-                  <li>{sortieDeLAudio(moteur)} Les prénoms d'élèves connus de l'application
-                      sont masqués avant tout envoi de texte.</li>
-                  <li>{rangeEnLigne(mode)
-                    ? "Le compte rendu, lui, est rangé par l'IA en ligne : c'est du texte, et les prénoms y sont masqués. « Rien en ligne », dans la barre, l'en empêche."
-                    : "Vous avez choisi « Rien en ligne » : le texte s'écrira tel quel, sans partir nulle part."}</li>
-                  <li>Une fois cet écran accepté, l'écoute démarrera d'elle-même à chaque nouvelle
-                      réunion. Le bouton Pause reste à portée de main.</li>
-                </ul>
-                <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                  <button className="btn primary" onClick={accepterEtEcouter}>🎧 J'ai compris, écouter</button>
-                  <button className="btn" onClick={() => setConsentementVu(true)}>⌨️ Écrire moi-même</button>
-                </div>
-              </div>
-            ) : (
-              <div className="toolbar" style={{ marginBottom: 0 }}>
-                <span style={{ fontSize: 18 }}>{enCours ? (ecoute.etat === "pause" ? "⏸" : "🔴") : "⏹"}</span>
-                <b style={{ fontSize: 15, fontVariantNumeric: "tabular-nums", minWidth: 54 }}>
-                  {mmss(enCours ? ecoute.secondes : courante.dureeS)}
-                </b>
-                <span className="meta" style={{ fontSize: 12 }}>
-                  {ecoute.etat === "pause" ? "en pause"
-                    : relit ? "relecture de l'ensemble…"
-                    : transcrit ? "le texte s'écrit…"
-                    : occupe ? occupe
-                    : horsLigne ? (moteur === "local" ? "hors ligne — le texte s'écrit seul" : "hors ligne — rien ne s'écrit")
-                    : enCours ? (!rangeEnLigne(mode) ? "rien ne part en ligne"
-                        : assez ? "rangement en cours…"
-                        : relitEnLigne(mode)
-                          ? `relecture dans ${mmss(Math.max(0, SECONDES_PAR_RELECTURE - (ecoute.secondes - secondesRelues.current)))}`
-                          : "rangement à chaque phrase")
-                    : "écoute arrêtée"}
+          <div className="card" style={{ padding: 8 }}>
+            {liste === null ? (
+              <p className="meta" style={{ margin: 8 }}>Chargement…</p>
+            ) : liste.length === 0 ? (
+              <p className="meta" style={{ margin: 10, fontSize: 13, lineHeight: 1.6 }}>
+                Aucune réunion pour l'instant. « ＋ Nouvelle réunion », posez l'ordinateur sur la
+                table, et le texte s'écrit tout seul.
+              </p>
+            ) : liste.map((r) => (
+              <button key={r.id} type="button" className="btn ghost" onClick={() => ouvrir(r)}
+                onContextMenu={(e) => menuDeLaReunion(e, r)}
+                title="Clic droit : informations, copier, imprimer, supprimer"
+                style={{
+                  width: "100%", justifyContent: "flex-start", textAlign: "left", marginBottom: 4,
+                  height: "auto", padding: "10px 12px",
+                }}>
+                <span style={{ display: "block", minWidth: 0 }}>
+                  <b style={{ display: "block", fontSize: 13.5 }}>{nomDeLaReunion(r)}</b>
+                  <span className="meta" style={{ fontSize: 11.5 }}>
+                    {[r.genre, r.date, r.dureeS ? dureeLisible(r.dureeS) : ""].filter(Boolean).join(" · ")}
+                  </span>
                 </span>
-                <div className="spacer" style={{ flex: 1 }} />
-                {enCours ? (
-                  <>
-                    {ecoute.etat === "ecoute"
-                      ? <button className="btn" onClick={ecoute.pause}>⏸ Pause</button>
-                      : <button className="btn primary" onClick={ecoute.reprendre}>▶️ Reprendre</button>}
-                    <button className="btn" onClick={terminer}>⏹ Terminer</button>
-                  </>
-                ) : (
+              </button>
+            ))}
+          </div>
+        ) : aExpliquer ? (
+          /* L'accord des participants se demande une fois — ensuite l'écoute
+             part d'elle-même à chaque réunion. */
+          <div className="card">
+            <b style={{ fontSize: 14 }}>Avant de commencer</b>
+            <ul style={{ fontSize: 13, lineHeight: 1.6, margin: "8px 0 0", paddingLeft: 18 }}>
+              <li><b>Prévenez les participants</b> que vous enregistrez pour prendre des notes,
+                  et recueillez leur accord — en ESS ou devant une famille, cela se demande avant.</li>
+              <li>{sortieDeLAudio(moteur)}</li>
+              <li>{rangeEnLigne(mode)
+                ? "Le compte rendu est rangé par l'IA en ligne : c'est du texte, et les prénoms d'élèves connus sont masqués avant l'envoi."
+                : "Vous avez choisi que rien ne sorte d'ici : le texte s'écrira tel quel, sans partir nulle part."}</li>
+              <li>Une fois cet écran accepté, l'écoute démarrera d'elle-même à chaque nouvelle
+                  réunion. Il ne restera que Pause et Terminer.</li>
+            </ul>
+            <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+              <button className="btn primary" onClick={accepterEtEcouter}>🎧 J'ai compris, écouter</button>
+              <button className="btn" onClick={() => setConsentementVu(true)}>⌨️ Écrire moi-même</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Une barre, trois choses : où l'on en est, et les deux boutons
+                qui restent une fois l'écoute lancée. */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 18 }}>{enCours ? (ecoute.etat === "pause" ? "⏸" : "🔴") : "⏹"}</span>
+              <b style={{ fontSize: 16, fontVariantNumeric: "tabular-nums", minWidth: 56 }}>
+                {mmss(enCours ? ecoute.secondes : courante.dureeS)}
+              </b>
+              <span className="meta" style={{ fontSize: 12 }}>
+                {ecoute.etat === "pause" ? "en pause"
+                  : occupe ? occupe
+                  : horsLigne ? (moteur === "local" ? "hors ligne — le texte s'écrit seul" : "hors ligne — rien ne s'écrit")
+                  : enCours ? "à l'écoute"
+                  : "écoute arrêtée"}
+              </span>
+              <div className="spacer" style={{ flex: 1 }} />
+              {enCours ? (
+                <>
+                  {ecoute.etat === "ecoute"
+                    ? <button className="btn" onClick={ecoute.pause}>⏸ Pause</button>
+                    : <button className="btn primary" onClick={ecoute.reprendre}>▶️ Reprendre</button>}
+                  <button className="btn" onClick={terminer}>⏹ Terminer</button>
+                </>
+              ) : (
+                <>
                   <button className="btn primary" onClick={demarrer}>🎧 Écouter</button>
-                )}
-                {attente > 0 && (
-                  <button className="btn sm" onClick={() => { void integrerSiBesoin(true); }}
-                    title="Ranger tout de suite ce qui vient d'être dit">✨ Ranger</button>
-                )}
-                {!vide && (
-                  <button className="btn sm" disabled={!!occupe} onClick={auPropre}
-                    title="Relire l'ensemble d'un coup : redites, ordre, tournures">✍️ Au propre</button>
-                )}
-                {/* Trois travaux, trois positions : la case unique promettait
-                    que rien ne sortait, et le rangement partait quand même. */}
-                <div className="seg" role="group" aria-label="Ce qui part en ligne">
-                  {MODES.map((m) => (
-                    <button key={m.id} className={mode === m.id ? "active" : ""} title={m.aide}
-                      onClick={() => choisirMode(m.id)}>{m.label}</button>
-                  ))}
-                </div>
-              </div>
-            )}
+                  <button className="btn ghost" onClick={() => setCourante(null)}>← Mes réunions</button>
+                </>
+              )}
+            </div>
 
-            {/* Le réseau est tombé : on le dit ici, une fois, plutôt qu'à
-                chaque passage — et l'on dit quoi faire. */}
             {horsLigne && (
-              <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: "var(--text)",
+              <p style={{ margin: "0 0 10px", fontSize: 12.5, lineHeight: 1.5, color: "var(--text)",
                 background: "var(--panel-2)", padding: "8px 10px", borderRadius: 8,
                 border: "1px solid var(--border)" }}>
                 📡 <b>Pas de réseau.</b>{" "}
                 {moteur === "local"
-                  ? "La parole continue de s'écrire — elle est transcrite ici. Le rangement reprendra au retour du réseau."
-                  : "La transcription en ligne ne répond pas, et rien ne s'écrit. Pour que la réunion tienne sans réseau, il faut la transcription sur cet ordinateur (Réglages · IA)."}
+                  ? "La parole continue de s'écrire — elle est transcrite ici."
+                  : "La transcription en ligne ne répond pas. Pour que la réunion tienne sans réseau, il faut la transcription sur cet ordinateur (Réglages · IA)."}
                 <button className="btn ghost sm" style={{ marginLeft: 8 }}
                   onClick={() => { setHorsLigne(false); horsLigneRef.current = false; }}>Réessayer</button>
-                <button className="btn ghost sm" style={{ marginLeft: 6 }}
-                  onClick={() => { void relireLesReglages(); toast("Réglages relus.", { icone: "↻" }); }}>
-                  J'ai changé les réglages
+              </p>
+            )}
+
+            {/* L'encadré, et rien d'autre. Surligner un passage fait
+                apparaître « Reformuler » — la seule IA qu'on appelle à la
+                main, et la parole continue de s'écrire pendant ce temps. */}
+            <div style={{ position: "relative" }}>
+              <ZoneVivante cible={compteRendu} minHauteur="62vh" anime={enCours || transcrit}
+                zoneRef={encadre} onSelection={rangeEnLigne(mode) ? setChoix : undefined}
+                onChange={(v) => { compteRenduRef.current = v; setCompteRendu(v); majReunion({ compteRendu: v }); }}
+                placeholder={rangeEnLigne(mode)
+                  ? "Ce qui se dit s'écrira ici, tout seul. Surlignez un passage pour le faire reformuler."
+                  : "Ce qui se dit s'écrira ici, tout seul. Rien ne part en ligne : à vous de corriger, l'encadré s'écrit et se modifie."} />
+              {/* Pas de reformulation quand rien ne doit sortir : ce serait
+                  la seule chose à partir, et la promesse tomberait. */}
+              {choix && rangeEnLigne(mode) && (
+                <button className="btn primary sm"
+                  style={{ position: "absolute", right: 14, bottom: 14, boxShadow: "var(--shadow)" }}
+                  disabled={!!reformule} onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => { void reformuler(); }}>
+                  {reformule ? "Reformulation…" : "✨ Reformuler"}
                 </button>
-              </p>
-            )}
-
-            {/* Ce que le mode implique, dit là où on le choisit — et d'autant
-                plus net quand la transcription, elle, reste ici. */}
-            {rangeEnLigne(mode) && !aExpliquer && (
-              <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: "var(--text-2)",
-                background: "var(--panel-2)", padding: "8px 10px", borderRadius: 8 }}>
-                ⚠️ <b>Le rangement passe par l'IA en ligne</b> : le compte rendu part chez Mistral
-                {relitEnLigne(mode) ? ` — et toutes les ${SECONDES_PAR_RELECTURE / 60} minutes pour la relecture —` : ""}
-                , prénoms d'élèves masqués.{moteur === "local"
-                  ? " L'audio, lui, reste sur cet ordinateur. Choisissez « Rien en ligne » pour que rien ne sorte d'ici."
-                  : ""}
-              </p>
-            )}
-
-            {/* L'encadré, et rien d'autre. Le reste — l'objet, les
-                participants, copier, imprimer, supprimer — se trouve au clic
-                droit sur la réunion, dans la liste. */}
-            <ZoneVivante cible={compteRendu} minHauteur="55vh" anime={enCours || transcrit || assez}
-              onChange={(v) => { compteRenduRef.current = v; setCompteRendu(v); majReunion({ compteRendu: v }); }}
-              placeholder="Ce qui se dit s'écrira ici, tout seul — et se rangera en points abordés, décisions et choses à faire. Vous pouvez écrire dedans à tout moment." />
-          </div>
+              )}
+            </div>
+          </>
         )}
       </div>
+
     </Page>
   );
 }
