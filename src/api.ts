@@ -288,6 +288,8 @@ export interface ProjetClasse {
   dateCreation: string; annee: string; imageNom: string | null;
   /** Le mois où il se mène : « 09 » pour septembre. */
   mois: string;
+  /** La semaine où il est posé, au lundi (« 2026-09-07 ») — vide s'il tient le mois. */
+  semaine: string;
   /** « idee », « encours » ou « fait ». */
   etat: string;
   etapesJson: string; domaines: string; origine: string;
