@@ -272,6 +272,16 @@ export interface Reunion {
   dateCreation: string; dateMaj: string;
 }
 
+/** Ce qu'on sait de la transcription locale sur cette machine. */
+export interface EtatWhisper {
+  binaire: string; modele: string;
+  /** Vrai quand la valeur a été trouvée toute seule, sans réglage. */
+  binaireTrouve: boolean; modeleTrouve: boolean;
+  dossierModeles: string; tailleModele: number;
+  /** La commande d'installation qui convient à ce système. */
+  installation: string;
+}
+
 export interface DocumentCoffre {
   id: string; nom: string; nomFichier: string; tailleOctets: number; dateAjout: string;
 }
@@ -617,6 +627,8 @@ export const api = {
   transcrireLocal: (audioB64: string) => invoke<string>("transcrire_local", { audioB64 }),
   /** Vérifie que le moteur local est bien là, et le dit en clair. */
   whisperTester: () => invoke<string>("whisper_tester"),
+  whisperEtat: () => invoke<EtatWhisper>("whisper_etat"),
+  whisperTelechargerModele: (nom: string) => invoke<string>("whisper_telecharger_modele", { nom }),
 
   // Export / Import (sauvegarde)
   exportData: () => invoke<string>("export_data"),

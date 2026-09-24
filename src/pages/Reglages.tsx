@@ -1,6 +1,6 @@
 import React from "react";
 import { Page } from "../App";
-import { api, isMac, texteErreur, type InfoCopie, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo, type VerifSauvegarde } from "../api";
+import { api, isMac, texteErreur, type InfoCopie, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo, type VerifSauvegarde, type EtatWhisper } from "../api";
 import { Field, Input, Select, Modal, Confirm, useAsync } from "../components/ui";
 import { MesAppareils } from "../components/MesAppareils";
 import { PartagerMesDossiers } from "../components/PartagerMesDossiers";
@@ -12,6 +12,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { copierLeBureau, suivreLaCopie } from "../components/CopieDuBureau";
 import { CONTACTS, REPERES, cleEtab } from "../etablissement";
 import { CLE_MOTEUR } from "../transcription";
+import { listen } from "@tauri-apps/api/event";
 
 const ONGLETS = [
   ["general", "Général"],
@@ -339,31 +340,13 @@ export default function Reglages() {
           </Select>
         </Field>
         {s[CLE_MOTEUR] === "local" && (
-          <>
-            <p style={{ color: "var(--text-2)", fontSize: 12.5, lineHeight: 1.55, margin: "4px 0 10px" }}>
-              Installez <b>whisper.cpp</b> (par exemple <code>brew install whisper-cpp</code> sur Mac),
-              puis téléchargez un modèle — <code>ggml-small.bin</code> suffit pour du français,
-              <code> ggml-medium.bin</code> est meilleur et plus lent.
-            </p>
-            <Field label="Programme whisper (chemin complet)">
-              <Input placeholder="/opt/homebrew/bin/whisper-cli" value={s.whisperBinaire ?? ""}
-                onChange={(e) => set("whisperBinaire", e.target.value)} />
-            </Field>
-            <Field label="Modèle (fichier .bin)">
-              <Input placeholder="/Users/moi/Modeles/ggml-small.bin" value={s.whisperModele ?? ""}
-                onChange={(e) => set("whisperModele", e.target.value)} />
-            </Field>
-            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-              <button className="btn" disabled={whisperEnCours} onClick={testerWhisper}>
-                {whisperEnCours ? "Essai en cours…" : "Tester le moteur local"}
-              </button>
-              <span style={{ fontSize: 13 }}>{whisperMsg}</span>
-            </div>
-          </>
+          <InstallationLocale reglages={s} set={set} tester={testerWhisper}
+            enCours={whisperEnCours} message={whisperMsg} />
         )}
         <p style={{ color: "var(--text-2)", fontSize: 12, margin: "10px 0 0", lineHeight: 1.5 }}>
-          Le compte rendu, lui, est rangé par l'IA en ligne dans les deux cas : c'est du texte,
-          et les prénoms d'élèves y sont masqués avant l'envoi.
+          Le compte rendu, lui, est rangé par l'IA en ligne — c'est du texte, et les prénoms
+          d'élèves y sont masqués avant l'envoi. Pour qu'une réunion ne laisse rien partir du
+          tout, choisissez « Rien en ligne » pendant la réunion, dans la barre de l'onglet Réunions.
         </p>
       </div>
 
@@ -999,5 +982,141 @@ export function JournalIncidents() {
       )}
       {msg && <p style={{ fontSize: 13, marginBottom: 0, color: "var(--text-2)" }}>{msg}</p>}
     </div>
+  );
+}
+
+// ── Transcription sur cet ordinateur ──────────────────────────────────────
+//
+// L'écran demandait deux chemins absolus. Un enseignant n'ouvre pas un
+// terminal pour savoir où brew a posé whisper-cli, et une réunion tombée en
+// zone blanche ne se rattrape pas. On cherche donc l'installation tout seul,
+// et le modèle se télécharge d'ici — une fois, au calme, avec du réseau.
+
+const MODELES_WHISPER = [
+  { nom: "base", label: "Base", taille: "≈ 150 Mo", quoi: "rapide, même sur une machine modeste" },
+  { nom: "small", label: "Small", taille: "≈ 470 Mo", quoi: "le bon compromis en français" },
+  { nom: "medium", label: "Medium", taille: "≈ 1,5 Go", quoi: "le plus juste, le plus lent" },
+] as const;
+
+const enMo = (octets: number) => (octets > 1e9 ? (octets / 1e9).toFixed(1) + " Go" : Math.round(octets / 1e6) + " Mo");
+
+function InstallationLocale({ reglages, set, tester, enCours, message }: {
+  reglages: Record<string, string>;
+  set: (cle: string, valeur: string) => void;
+  tester: () => void;
+  enCours: boolean;
+  message: string;
+}) {
+  const [etat, setEtat] = React.useState<EtatWhisper | null>(null);
+  const [avancement, setAvancement] = React.useState<{ faits: number; total: number } | null>(null);
+  const [telecharge, setTelecharge] = React.useState("");
+  const [avance, setAvance] = React.useState(false);
+
+  const relire = React.useCallback(() => { api.whisperEtat().then(setEtat).catch(() => setEtat(null)); }, []);
+  React.useEffect(() => { relire(); }, [relire, reglages.whisperBinaire, reglages.whisperModele]);
+
+  React.useEffect(() => {
+    const p = listen<{ faits: number; total: number }>("whisper://avancement", (e) => setAvancement(e.payload));
+    return () => { p.then((off) => off()); };
+  }, []);
+
+  const telecharger = async (nom: string) => {
+    setTelecharge(nom);
+    setAvancement({ faits: 0, total: 0 });
+    try {
+      const chemin = await api.whisperTelechargerModele(nom);
+      toast("Modèle prêt : la transcription peut se faire hors ligne.", { icone: "✅" });
+      set("whisperModele", chemin);
+      relire();
+    } catch (e) {
+      toast("Téléchargement impossible : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
+    } finally {
+      setTelecharge("");
+      setAvancement(null);
+    }
+  };
+
+  const pret = !!etat?.binaire && !!etat?.modele;
+
+  return (
+    <>
+      <div className="card" style={{ margin: "4px 0 12px", padding: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <b style={{ fontSize: 13.5 }}>{pret ? "✅ Prêt à transcrire hors ligne" : "Ce qu'il manque"}</b>
+          <div className="spacer" style={{ flex: 1 }} />
+          <button className="btn ghost sm" onClick={relire}>↻ Revérifier</button>
+        </div>
+
+        {/* 1. le moteur */}
+        <div style={{ fontSize: 12.5, lineHeight: 1.6 }}>
+          {etat?.binaire ? (
+            <div>✅ <b>Moteur</b> — {etat.binaire}{etat.binaireTrouve ? " (trouvé tout seul)" : ""}</div>
+          ) : (
+            <div>
+              ❌ <b>Moteur</b> — whisper.cpp n'est pas sur cet ordinateur. Dans un terminal :{" "}
+              <code>{etat?.installation ?? "brew install whisper-cpp"}</code>
+              <button className="btn ghost sm" style={{ marginLeft: 8 }}
+                onClick={() => { navigator.clipboard?.writeText(etat?.installation ?? "brew install whisper-cpp"); toast("Commande copiée.", { icone: "📋" }); }}>
+                Copier
+              </button>
+            </div>
+          )}
+
+          {/* 2. le modèle */}
+          {etat?.modele ? (
+            <div>✅ <b>Modèle</b> — {etat.modele.split("/").pop()} ({enMo(etat.tailleModele)})
+              {etat.modeleTrouve ? " (trouvé tout seul)" : ""}</div>
+          ) : (
+            <div>⬇️ <b>Modèle</b> — aucun pour l'instant : prenez-en un ci-dessous (il faut du réseau
+              cette fois-là, et une seule).</div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+          {MODELES_WHISPER.map((m) => (
+            <button key={m.nom} className="btn sm" disabled={!!telecharge}
+              title={`${m.quoi} · ${m.taille}`} onClick={() => { void telecharger(m.nom); }}>
+              {telecharge === m.nom ? "Téléchargement…" : `⬇️ ${m.label} ${m.taille}`}
+            </button>
+          ))}
+        </div>
+        {avancement && (
+          <div style={{ marginTop: 8, fontSize: 12.5, color: "var(--text-2)" }}>
+            {avancement.total
+              ? `${enMo(avancement.faits)} sur ${enMo(avancement.total)} — ${Math.round((avancement.faits / avancement.total) * 100)} %`
+              : `${enMo(avancement.faits)} reçus…`}
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
+          <button className="btn" disabled={enCours || !pret} onClick={tester}>
+            {enCours ? "Essai en cours…" : "Tester le moteur local"}
+          </button>
+          <span style={{ fontSize: 13 }}>{message}</span>
+        </div>
+      </div>
+
+      {/* Les chemins restent accessibles, pour une installation qui sort de
+          l'ordinaire — mais ils ne barrent plus l'entrée. */}
+      <button className="btn ghost sm" onClick={() => setAvance((v) => !v)}>
+        {avance ? "Masquer les chemins" : "Indiquer les chemins à la main"}
+      </button>
+      {avance && (
+        <div style={{ marginTop: 8 }}>
+          <Field label="Programme whisper (chemin complet)">
+            <Input placeholder={etat?.binaire || "/opt/homebrew/bin/whisper-cli"} value={reglages.whisperBinaire ?? ""}
+              onChange={(e) => set("whisperBinaire", e.target.value)} />
+          </Field>
+          <Field label="Modèle (fichier .bin)">
+            <Input placeholder={etat?.modele || `${etat?.dossierModeles ?? ""}/ggml-small.bin`} value={reglages.whisperModele ?? ""}
+              onChange={(e) => set("whisperModele", e.target.value)} />
+          </Field>
+          <p style={{ color: "var(--text-2)", fontSize: 12, margin: 0 }}>
+            Laissés vides, ils sont cherchés automatiquement. Les modèles téléchargés d'ici se rangent
+            dans <code>{etat?.dossierModeles}</code>.
+          </p>
+        </div>
+      )}
+    </>
   );
 }

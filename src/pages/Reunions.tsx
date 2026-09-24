@@ -17,6 +17,10 @@ import {
   assezPourRelire, nomDeLaReunion, phrasesEnAttente, planVide, rangerLeDocument,
   relireLeDocument, texteACopier, type Resume,
 } from "../reunion";
+import {
+  CLE_MODE, CLE_RELECTURE, MODES, estUnePanneDeReseau, lireMode, rangeEnLigne, relitEnLigne,
+  type ModeIA,
+} from "../modeReunion";
 
 // ── Réunions ──────────────────────────────────────────────────────────────
 //
@@ -39,8 +43,6 @@ const aujourdhui = () => new Date().toISOString().slice(0, 10);
 
 /** L'accord donné une fois, gardé sur ce poste : l'écoute part seule ensuite. */
 const CLE_CONSENTEMENT = "reunionsConsentement";
-/** La relecture de fond, qu'on peut couper : elle coûte un appel de plus. */
-const CLE_RELECTURE = "reunionsRelecture";
 
 /**
  * Le repos après lequel on résume, une fois les dix phrases atteintes.
@@ -125,11 +127,13 @@ export default function Reunions() {
   const dejaExplique = React.useRef(false);
   const [transcrit, setTranscrit] = React.useState(false);
   const [relit, setRelit] = React.useState(false);
-  // La relecture de fond est un choix : elle améliore le compte rendu, et
-  // elle consomme un appel de plus toutes les dix phrases.
-  const [relecture, setRelecture] = React.useState(true);
+  // Ce qui part en ligne : rien, le rangement, ou le rangement et la
+  // relecture. Trois positions, parce qu'il y a trois travaux distincts.
+  const [mode, setMode] = React.useState<ModeIA>("relire");
   // Le moteur de transcription : en ligne, ou sur cette machine.
   const [moteur, setMoteur] = React.useState<Moteur>("ligne");
+  // Le réseau est tombé : on cesse d'essayer, et on le dit une fois.
+  const [horsLigne, setHorsLigne] = React.useState(false);
 
   // Ce que les rappels du micro et des minuteurs doivent lire : ils vivent
   // plus longtemps qu'un rendu, et une valeur figée leur ferait résumer deux
@@ -144,11 +148,13 @@ export default function Reunions() {
   // l'enseignant comprises : c'est lui l'état, il n'y en a pas d'autre.
   const compteRenduRef = React.useRef("");
   compteRenduRef.current = compteRendu;
-  // Lue depuis les rappels, qui vivent plus longtemps qu'un rendu.
-  const relectureRef = React.useRef(true);
-  relectureRef.current = relecture;
+  // Lus depuis les rappels, qui vivent plus longtemps qu'un rendu.
+  const modeRef = React.useRef<ModeIA>("relire");
+  modeRef.current = mode;
   const moteurRef = React.useRef<Moteur>("ligne");
   moteurRef.current = moteur;
+  const horsLigneRef = React.useRef(false);
+  horsLigneRef.current = horsLigne;
   const resumeEnCours = React.useRef(false);
   // Où en était la réunion, en secondes d'écoute, à la dernière relecture.
   // Perdu au redémarrage, et ce n'est pas grave : la relecture arrivera un
@@ -159,16 +165,30 @@ export default function Reunions() {
   // en dépendre relancerait le minuteur du résumé sans arrêt.
   const ouverte = !!courante;
 
-  React.useEffect(() => {
-    api.settingGet(CLE_CONSENTEMENT).then((v) => { dejaExplique.current = v === "1"; }).catch(() => {});
-    api.settingGet(CLE_RELECTURE).then((v) => setRelecture(v !== "0")).catch(() => {});
-    moteurActif().then(setMoteur).catch(() => {});
+  /**
+   * Relit les réglages qui commandent la réunion.
+   *
+   * La page reste montée quand on va ailleurs : lus une seule fois, le moteur
+   * et le mode restaient ceux du démarrage. Changer « En ligne » pour
+   * « Whisper » dans les Réglages n'avait alors aucun effet avant de fermer
+   * l'application — et la réunion suivante repartait chez Mistral.
+   */
+  const relireLesReglages = React.useCallback(async () => {
+    const [accord, choisi, ancienne] = await Promise.all([
+      api.settingGet(CLE_CONSENTEMENT).catch(() => null),
+      api.settingGet(CLE_MODE).catch(() => null),
+      api.settingGet(CLE_RELECTURE).catch(() => null),
+    ]);
+    dejaExplique.current = accord === "1";
+    setMode(lireMode(choisi, ancienne));
+    setMoteur(await moteurActif().catch(() => "ligne" as Moteur));
   }, []);
 
-  const basculerRelecture = () => {
-    const suite = !relecture;
-    setRelecture(suite);
-    api.settingSet(CLE_RELECTURE, suite ? "1" : "0").catch(() => {});
+  React.useEffect(() => { void relireLesReglages(); }, [relireLesReglages]);
+
+  const choisirMode = (m: ModeIA) => {
+    setMode(m);
+    api.settingSet(CLE_MODE, m).catch(() => {});
   };
 
   const charger = React.useCallback(async () => {
@@ -223,6 +243,21 @@ export default function Reunions() {
     if (ecrire) majReunion({ resumesJson: ecrireResumes(suite), texte: texteRef.current }, true);
   }, [majReunion]);
 
+  /**
+   * Le réseau est tombé : on le dit une fois, et l'on cesse d'essayer.
+   *
+   * Le 24 septembre, une réunion a produit trente et un échecs en six
+   * minutes : chaque passage repartait chez Mistral, attendait quarante-cinq
+   * secondes, échouait, et affichait son propre message. Rien n'était
+   * transcrit, et rien ne disait pourquoi.
+   */
+  const signalerLaPanne = React.useCallback(() => {
+    if (horsLigneRef.current) return;
+    horsLigneRef.current = true;
+    setHorsLigne(true);
+    journal("RÉUNION hors ligne : les agents en ligne sont mis en pause");
+  }, []);
+
   // ── Résumer ce qui attend ───────────────────────────────────────────────
 
   /**
@@ -232,7 +267,7 @@ export default function Reunions() {
    * manque les deux dernières phrases n'aurait pas de sens.
    */
   const relireSiBesoin = React.useCallback(async () => {
-    if (!relectureRef.current) return;
+    if (!relitEnLigne(modeRef.current) || horsLigneRef.current) return;
     const maintenant = secondesRef.current;
     if (!assezPourRelire(maintenant - secondesRelues.current)) return;
     secondesRelues.current = maintenant;
@@ -258,6 +293,11 @@ export default function Reunions() {
    */
   const integrerSiBesoin = React.useCallback(async (force = false) => {
     if (resumeEnCours.current) return;
+    // « Rien en ligne » vaut pour le rangement comme pour la relecture : c'est
+    // lui qui partait chez Mistral toutes les deux phrases, case décochée ou
+    // non. Et sans réseau, il n'y a rien à tenter — le texte, lui, continue
+    // de s'écrire et sera rangé au retour.
+    if (!rangeEnLigne(modeRef.current) || horsLigneRef.current) return;
     const { de, phrases } = phrasesEnAttente(texteRef.current, resumesRef.current);
     if (!phrases.length) return;
     if (!force && !assezPourResumer(phrases.length)) return;
@@ -278,7 +318,9 @@ export default function Reunions() {
       majReunion({ compteRendu: suite, resumesJson: ecrireResumes(resumesRef.current), texte: texteRef.current }, true);
       await relireSiBesoin();
     } catch (e) {
-      majResume(id, { etat: "echec", erreur: texteErreur(e) }, true);
+      const message = texteErreur(e);
+      majResume(id, { etat: "echec", erreur: message }, true);
+      if (estUnePanneDeReseau(message)) signalerLaPanne();
     } finally {
       resumeEnCours.current = false;
     }
@@ -292,15 +334,21 @@ export default function Reunions() {
   // zéro, et si la parole arrive plus vite que le repos, il ne part jamais.
   // Le défaut s'était déjà produit ; il ne se reproduira pas.
   const assez = assezPourResumer(phrasesEnAttente(texte, resumes).phrases.length);
+  // `mode` et `horsLigne` en font partie : reprendre « Ranger », ou retrouver
+  // le réseau, doit rattraper ce qui attend — sans quoi il faut reparler pour
+  // que le rangement reparte.
   React.useEffect(() => {
     if (!ouverte || !assez) return;
     const t = window.setTimeout(() => { void integrerSiBesoin(); }, REPOS_MS);
     return () => window.clearTimeout(t);
-  }, [ouverte, assez, integrerSiBesoin]);
+  }, [ouverte, assez, integrerSiBesoin, mode, horsLigne]);
 
   // ── L'écoute ────────────────────────────────────────────────────────────
 
   const surMorceau = React.useCallback(async (t: TrancheAudio) => {
+    // Sans réseau, un envoi de plus, c'est quarante-cinq secondes d'attente
+    // pour le même échec. On s'arrête jusqu'à ce que l'enseignant redemande.
+    if (horsLigneRef.current && moteurRef.current === "ligne") return;
     setTranscrit(true);
     try {
       const b64 = await new Promise<string>((res, rej) => {
@@ -319,7 +367,9 @@ export default function Reunions() {
       setCompteRendu(suite);
       majReunion({ compteRendu: suite }, true);
     } catch (e) {
-      toast("Un passage n'a pas pu être transcrit : " + texteErreur(e), { icone: "⚠️", duree: 7000 });
+      const message = texteErreur(e);
+      if (estUnePanneDeReseau(message) && moteurRef.current === "ligne") signalerLaPanne();
+      else toast("Un passage n'a pas pu être transcrit : " + message, { icone: "⚠️", duree: 7000 });
     } finally { setTranscrit(false); }
   }, [poserTexte]);
 
@@ -360,6 +410,8 @@ export default function Reunions() {
   /** La fiche remplie : on crée la réunion, et l'écoute part d'elle-même. */
   const commencer = async (i: Infos) => {
     setFiche(null);
+    await relireLesReglages();
+    setHorsLigne(false); horsLigneRef.current = false;
     const r = { ...nouvelleReunion(), ...i };
     await enregistrer(r);
     setCourante(r);
@@ -393,6 +445,9 @@ export default function Reunions() {
 
   const demarrer = async () => {
     if (!courante) return;
+    // Le moteur a pu changer dans les Réglages depuis l'ouverture de la page.
+    await relireLesReglages();
+    setHorsLigne(false); horsLigneRef.current = false;
     const erreur = await ecoute.demarrer(courante.dureeS);
     if (erreur) { toast(erreur, { icone: "🎙" }); return; }
     setConsentementVu(true);
@@ -543,8 +598,9 @@ export default function Reunions() {
                       et recueillez leur accord — en ESS ou devant une famille, cela se demande avant.</li>
                   <li>{sortieDeLAudio(moteur)} Les prénoms d'élèves connus de l'application
                       sont masqués avant tout envoi de texte.</li>
-                  <li>Le compte rendu, lui, est rangé par l'IA en ligne dans les deux cas :
-                      c'est du texte, et les prénoms y sont masqués.</li>
+                  <li>{rangeEnLigne(mode)
+                    ? "Le compte rendu, lui, est rangé par l'IA en ligne : c'est du texte, et les prénoms y sont masqués. « Rien en ligne », dans la barre, l'en empêche."
+                    : "Vous avez choisi « Rien en ligne » : le texte s'écrira tel quel, sans partir nulle part."}</li>
                   <li>Une fois cet écran accepté, l'écoute démarrera d'elle-même à chaque nouvelle
                       réunion. Le bouton Pause reste à portée de main.</li>
                 </ul>
@@ -564,8 +620,10 @@ export default function Reunions() {
                     : relit ? "relecture de l'ensemble…"
                     : transcrit ? "le texte s'écrit…"
                     : occupe ? occupe
-                    : enCours ? (assez ? "rangement en cours…"
-                        : relecture
+                    : horsLigne ? (moteur === "local" ? "hors ligne — le texte s'écrit seul" : "hors ligne — rien ne s'écrit")
+                    : enCours ? (!rangeEnLigne(mode) ? "rien ne part en ligne"
+                        : assez ? "rangement en cours…"
+                        : relitEnLigne(mode)
                           ? `relecture dans ${mmss(Math.max(0, SECONDES_PAR_RELECTURE - (ecoute.secondes - secondesRelues.current)))}`
                           : "rangement à chaque phrase")
                     : "écoute arrêtée"}
@@ -589,23 +647,45 @@ export default function Reunions() {
                   <button className="btn sm" disabled={!!occupe} onClick={auPropre}
                     title="Relire l'ensemble d'un coup : redites, ordre, tournures">✍️ Au propre</button>
                 )}
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5 }}
-                  title="Une seconde IA relit tout le compte rendu et le resserre : elle voit les redites qu'un passage seul ne peut pas voir.">
-                  <input type="checkbox" checked={relecture} onChange={basculerRelecture} />
-                  Relecture
-                </label>
+                {/* Trois travaux, trois positions : la case unique promettait
+                    que rien ne sortait, et le rangement partait quand même. */}
+                <div className="seg" role="group" aria-label="Ce qui part en ligne">
+                  {MODES.map((m) => (
+                    <button key={m.id} className={mode === m.id ? "active" : ""} title={m.aide}
+                      onClick={() => choisirMode(m.id)}>{m.label}</button>
+                  ))}
+                </div>
               </div>
             )}
 
-            {/* Ce que la relecture implique, dit là où on la coche — et
-                d'autant plus net quand la transcription, elle, reste ici. */}
-            {relecture && !aExpliquer && (
+            {/* Le réseau est tombé : on le dit ici, une fois, plutôt qu'à
+                chaque passage — et l'on dit quoi faire. */}
+            {horsLigne && (
+              <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: "var(--text)",
+                background: "var(--panel-2)", padding: "8px 10px", borderRadius: 8,
+                border: "1px solid var(--border)" }}>
+                📡 <b>Pas de réseau.</b>{" "}
+                {moteur === "local"
+                  ? "La parole continue de s'écrire — elle est transcrite ici. Le rangement reprendra au retour du réseau."
+                  : "La transcription en ligne ne répond pas, et rien ne s'écrit. Pour que la réunion tienne sans réseau, il faut la transcription sur cet ordinateur (Réglages · IA)."}
+                <button className="btn ghost sm" style={{ marginLeft: 8 }}
+                  onClick={() => { setHorsLigne(false); horsLigneRef.current = false; }}>Réessayer</button>
+                <button className="btn ghost sm" style={{ marginLeft: 6 }}
+                  onClick={() => { void relireLesReglages(); toast("Réglages relus.", { icone: "↻" }); }}>
+                  J'ai changé les réglages
+                </button>
+              </p>
+            )}
+
+            {/* Ce que le mode implique, dit là où on le choisit — et d'autant
+                plus net quand la transcription, elle, reste ici. */}
+            {rangeEnLigne(mode) && !aExpliquer && (
               <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: "var(--text-2)",
                 background: "var(--panel-2)", padding: "8px 10px", borderRadius: 8 }}>
-                ⚠️ <b>La relecture passe par l'IA en ligne</b> : le compte rendu part chez Mistral
-                toutes les {SECONDES_PAR_RELECTURE / 60} minutes pour être resserré, prénoms d'élèves
-                masqués.{moteur === "local"
-                  ? " L'audio, lui, reste sur cet ordinateur. Décochez « Relecture » pour que rien ne sorte d'ici."
+                ⚠️ <b>Le rangement passe par l'IA en ligne</b> : le compte rendu part chez Mistral
+                {relitEnLigne(mode) ? ` — et toutes les ${SECONDES_PAR_RELECTURE / 60} minutes pour la relecture —` : ""}
+                , prénoms d'élèves masqués.{moteur === "local"
+                  ? " L'audio, lui, reste sur cet ordinateur. Choisissez « Rien en ligne » pour que rien ne sorte d'ici."
                   : ""}
               </p>
             )}
