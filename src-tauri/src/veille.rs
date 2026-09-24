@@ -38,7 +38,14 @@ pub const RAPPEL_MS: u64 = 15_000;
  * Séparé du fil de surveillance pour être vérifiable : c'est cette décision
  * qui, en se trompant, remplirait le journal de fausses alertes.
  */
-pub fn message_de_silence(silence: u64, deja_dit: bool, ou: &str) -> Option<String> {
+pub fn message_de_silence(silence: u64, deja_dit: bool, ou: &str, devant: bool) -> Option<String> {
+    // Fenêtre passée derrière : macOS ralentit ses minuteurs de lui-même. Le
+    // battement s'espace, mais rien n'est bloqué — et personne ne regarde.
+    // Sans cette condition, le journal comptait des gels de cent secondes
+    // pendant que l'enseignant travaillait dans une autre application.
+    if !devant {
+        return None;
+    }
     if silence < BLOCAGE_MS || silence > SOMMEIL_MS {
         return None;
     }
@@ -59,13 +66,28 @@ pub fn diag_battement(ou: String) {
     }
 }
 
+/// La fenêtre est-elle devant ? En cas de doute, on suppose que oui.
+fn au_premier_plan(app: &tauri::AppHandle) -> bool {
+    use tauri::Manager;
+    match app.get_webview_window("main") {
+        Some(f) => f.is_focused().unwrap_or(true) && !f.is_minimized().unwrap_or(false),
+        None => true,
+    }
+}
+
 /// Démarre la surveillance, sur son propre fil.
-pub fn surveiller() {
+pub fn surveiller(app: tauri::AppHandle) {
     DERNIER.store(maintenant_ms(), Ordering::Relaxed);
-    std::thread::spawn(|| {
+    std::thread::spawn(move || {
         let mut dit_a = 0u64;
         loop {
             std::thread::sleep(Duration::from_millis(2000));
+            // Derrière une autre fenêtre, le silence ne prouve rien : on
+            // repart de zéro pour ne pas accuser le retour au premier plan.
+            if !au_premier_plan(&app) {
+                DERNIER.store(maintenant_ms(), Ordering::Relaxed);
+                continue;
+            }
             let dernier = DERNIER.load(Ordering::Relaxed);
             // Tant que la fenêtre n'a jamais battu, il n'y a rien à surveiller.
             if dernier == 0 {
@@ -78,7 +100,7 @@ pub fn surveiller() {
                 continue;
             }
             let ou = OU.lock().map(|x| x.clone()).unwrap_or_default();
-            if let Some(ligne) = message_de_silence(silence, deja_dit, &ou) {
+            if let Some(ligne) = message_de_silence(silence, deja_dit, &ou, true) {
                 crate::commands::diag_ecrire(ligne);
                 dit_a = maintenant_ms();
             }
@@ -91,20 +113,29 @@ mod tests {
     use super::*;
 
     #[test]
+    fn derriere_une_autre_fenetre_rien_ne_s_ecrit() {
+        // Le vrai défaut : cent vingt gels relevés, presque tous pendant que
+        // l'application était en arrière-plan et que macOS ralentissait ses
+        // minuteurs. Le journal criait au loup, et l'on ne voyait plus rien.
+        assert_eq!(message_de_silence(12_000, false, "/plan", false), None);
+        assert_eq!(message_de_silence(107_000, true, "/plan", false), None);
+    }
+
+    #[test]
     fn une_lenteur_ordinaire_ne_remplit_pas_le_journal() {
-        assert_eq!(message_de_silence(3_000, false, "/plan"), None);
-        assert_eq!(message_de_silence(9_999, false, "/plan"), None);
+        assert_eq!(message_de_silence(3_000, false, "/plan", true), None);
+        assert_eq!(message_de_silence(9_999, false, "/plan", true), None);
         // Un ordinateur qui dort n'est pas une panne.
-        assert_eq!(message_de_silence(300_000, false, "/plan"), None);
+        assert_eq!(message_de_silence(300_000, false, "/plan", true), None);
     }
 
     #[test]
     fn un_blocage_se_dit_une_fois_puis_se_rappelle() {
-        let premier = message_de_silence(12_000, false, "/plan").unwrap();
+        let premier = message_de_silence(12_000, false, "/plan", true).unwrap();
         assert_eq!(premier, "FIGÉ la fenêtre ne répond plus depuis 12 s sur /plan");
-        let suivant = message_de_silence(30_000, true, "/plan").unwrap();
+        let suivant = message_de_silence(30_000, true, "/plan", true).unwrap();
         assert_eq!(suivant, "FIGÉ toujours, 30 s sur /plan");
         // Sans écran connu, la ligne reste lisible.
-        assert_eq!(message_de_silence(12_000, false, "").unwrap(), "FIGÉ la fenêtre ne répond plus depuis 12 s");
+        assert_eq!(message_de_silence(12_000, false, "", true).unwrap(), "FIGÉ la fenêtre ne répond plus depuis 12 s");
     }
 }

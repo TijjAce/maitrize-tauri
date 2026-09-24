@@ -148,10 +148,34 @@ fn contexte(db: &State<Db>, ami_id: &str) -> R<Ctx> {
     Ok(Ctx { priv_: vers_32(pv)?, pub_: vers_32(pb)?, nom, ami_pub: vers_32(apub)?, mid, cfg })
 }
 
+/**
+ * Combien de temps attendre un stockage injoignable.
+ *
+ * Par défaut, le client S3 réessaie trois fois avec une attente qui double :
+ * hors réseau, un simple « où en est la synchro ? » prenait dix-huit secondes,
+ * pendant lesquelles le bandeau tourne et les passages se chevauchent. Deux
+ * tentatives et quatre secondes pour établir la connexion suffisent à
+ * distinguer une coupure d'un serveur lent.
+ *
+ * Aucun délai n'est posé sur l'opération entière : un envoi de photos sur une
+ * connexion d'école a le droit d'être long.
+ */
+fn patience() -> (aws_sdk_s3::config::retry::RetryConfig, aws_sdk_s3::config::timeout::TimeoutConfig) {
+    (
+        aws_sdk_s3::config::retry::RetryConfig::standard().with_max_attempts(2),
+        aws_sdk_s3::config::timeout::TimeoutConfig::builder()
+            .connect_timeout(std::time::Duration::from_secs(4))
+            .build(),
+    )
+}
+
 fn client(cfg: &S3Cfg) -> Client {
     let creds = Credentials::new(cfg.access.clone(), cfg.secret.clone(), None, None, "maitrize");
+    let (essais, delais) = patience();
     let conf = aws_sdk_s3::Config::builder()
         .behavior_version(BehaviorVersion::latest())
+        .retry_config(essais)
+        .timeout_config(delais)
         .region(Region::new(cfg.region.clone()))
         .endpoint_url(cfg.endpoint.clone())
         .credentials_provider(creds)

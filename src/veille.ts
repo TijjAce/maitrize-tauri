@@ -31,11 +31,16 @@ export const SOMMEIL_MS = 120_000;
  * Ce qu'il faut écrire pour cet écart, ou rien du tout.
  *
  * Séparé du minuteur pour être vérifiable : c'est cette décision qui, en se
- * trompant, remplirait le journal de fausses alertes.
+ * trompant, remplirait le journal de fausses alertes. Et elle s'est trompée :
+ * sur cent vingt gels relevés, presque tous ont été écrits pendant que la
+ * fenêtre était derrière une autre. macOS ralentit alors les minuteurs de
+ * lui-même — l'application ne bloquait rien, et personne ne regardait.
  */
-export function messageDeBlocage(ecart: number, cache: boolean, ou: string): string | null {
-  // Fenêtre masquée : le navigateur ralentit lui-même les minuteurs.
-  if (cache) return null;
+export function messageDeBlocage(
+  ecart: number, cache: boolean, ou: string, auPremierPlan = true,
+): string | null {
+  // Fenêtre masquée ou en arrière-plan : le système ralentit les minuteurs.
+  if (cache || !auPremierPlan) return null;
   if (ecart < BLOCAGE_MS || ecart > SOMMEIL_MS) return null;
   return `FIGÉ ${Math.round(ecart / 1000)} s${ou ? ` sur ${ou}` : ""}`;
 }
@@ -67,6 +72,16 @@ export function demarrerLaVeille(
   battre: (ou: string) => void = battement,
 ): () => void {
   let precedent = Date.now();
+  // Un gel ne se compte que si la fenêtre est restée devant d'un battement à
+  // l'autre : passer derrière suffit à faire traîner les minuteurs, et l'on
+  // prenait ce ralentissement pour un blocage.
+  let resteeDevant = typeof document === "undefined" || document.hasFocus();
+  const devant = () => { resteeDevant = true; };
+  const derriere = () => { resteeDevant = false; };
+  if (typeof window !== "undefined") {
+    window.addEventListener("focus", devant);
+    window.addEventListener("blur", derriere);
+  }
   // Minuteur global plutôt que `window` : la veille doit aussi tourner là où
   // il n'y a pas de fenêtre — dans les tests, par exemple.
   const id = setInterval(() => {
@@ -75,8 +90,17 @@ export function demarrerLaVeille(
     precedent = maintenant;
     const ou = ouEtQuoi(ouSuisJe(), commandesEnCours());
     battre(ou);
-    const ligne = messageDeBlocage(ecart, typeof document !== "undefined" && document.hidden, ou);
+    const ligne = messageDeBlocage(
+      ecart, typeof document !== "undefined" && document.hidden, ou, resteeDevant);
     if (ligne) ecrire(ligne);
+    // Le battement suivant repart de l'état d'aujourd'hui, pas d'hier.
+    resteeDevant = typeof document === "undefined" || document.hasFocus();
   }, BATTEMENT_MS);
-  return () => clearInterval(id);
+  return () => {
+    clearInterval(id);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("focus", devant);
+      window.removeEventListener("blur", derriere);
+    }
+  };
 }
