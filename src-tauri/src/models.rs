@@ -1060,6 +1060,61 @@ impl Reunion {
     }
 }
 
+/// Un projet de classe : ce qu'on mène sur quelques semaines, et qui donne
+/// leur raison d'être aux séquences qu'on y rattache.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Projet {
+    #[serde(default = "new_id")]
+    pub id: String,
+    #[serde(default)]
+    pub titre: String,
+    #[serde(default)]
+    pub descriptif: String,
+    #[serde(default)]
+    pub couleur: String,
+    #[serde(default)]
+    pub date_creation: String,
+    #[serde(default)]
+    pub annee: String,
+    #[serde(default)]
+    pub image_nom: Option<String>,
+    /// Le mois où il se mène : « 09 » pour septembre, « 01 » pour janvier.
+    #[serde(default)]
+    pub mois: String,
+    /// « idee », « encours » ou « fait ».
+    #[serde(default)]
+    pub etat: String,
+    /// Les étapes, cochables : `[{"texte":"…","faite":false}]`.
+    #[serde(default = "vide_arr")]
+    pub etapes_json: String,
+    /// Les domaines touchés, séparés par des virgules.
+    #[serde(default)]
+    pub domaines: String,
+    /// L'identifiant de l'idée du catalogue dont il est parti, s'il en vient.
+    #[serde(default)]
+    pub origine: String,
+}
+
+impl Projet {
+    pub fn from_row(r: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: r.get("id")?,
+            titre: r.get("titre")?,
+            descriptif: r.get("descriptif")?,
+            couleur: r.get("couleur")?,
+            date_creation: r.get("date_creation")?,
+            annee: r.get("annee")?,
+            image_nom: r.get("image_nom").ok(),
+            mois: r.get("mois").unwrap_or_default(),
+            etat: r.get("etat").unwrap_or_else(|_| "idee".into()),
+            etapes_json: r.get("etapes_json").unwrap_or_else(|_| "[]".into()),
+            domaines: r.get("domaines").unwrap_or_default(),
+            origine: r.get("origine").unwrap_or_default(),
+        })
+    }
+}
+
 /// Un outil pour l'élève (bande numérique, sous-main, casque…) ou un affichage
 /// de la classe (référentiel, règles de vie…).
 #[derive(Serialize, Deserialize, Clone, Debug)]

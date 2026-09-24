@@ -282,6 +282,17 @@ export interface EtatWhisper {
   dossier: string;
 }
 
+/** Un projet de classe, tel qu'il est enregistré. */
+export interface ProjetClasse {
+  id: string; titre: string; descriptif: string; couleur: string;
+  dateCreation: string; annee: string; imageNom: string | null;
+  /** Le mois où il se mène : « 09 » pour septembre. */
+  mois: string;
+  /** « idee », « encours » ou « fait ». */
+  etat: string;
+  etapesJson: string; domaines: string; origine: string;
+}
+
 export interface DocumentCoffre {
   id: string; nom: string; nomFichier: string; tailleOctets: number; dateAjout: string;
 }
@@ -565,6 +576,10 @@ export const api = {
   observationDelete: (id: string) => invoke<void>("observation_delete", { id }),
 
   // Réunions écoutées
+  projetsList: () => invoke<ProjetClasse[]>("projets_list"),
+  projetSave: (projet: ProjetClasse) => invoke<ProjetClasse>("projet_save", { projet }),
+  projetDelete: (id: string) => invoke<void>("projet_delete", { id }),
+
   reunionsList: () => invoke<Reunion[]>("reunions_list"),
   reunionSave: (reunion: Reunion) => invoke<Reunion>("reunion_save", { reunion }),
   reunionDelete: (id: string) => invoke<void>("reunion_delete", { id }),

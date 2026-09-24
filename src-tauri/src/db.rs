@@ -701,6 +701,14 @@ pub(crate) fn migrate(conn: &Connection) {
     conn.execute("ALTER TABLE materiel_items ADD COLUMN seance_id TEXT", []).ok();
     conn.execute("ALTER TABLE materiel_items ADD COLUMN sequence_id TEXT", []).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN image_nom TEXT", []).ok();
+    // Un projet de classe se mène sur un mois : c'est le mois qui le range,
+    // et l'état qui dit où l'on en est. Les étapes vivent en JSON, parce
+    // qu'on les coche et qu'on les réordonne sans schéma à faire évoluer.
+    conn.execute("ALTER TABLE projets ADD COLUMN mois TEXT NOT NULL DEFAULT ''", []).ok();
+    conn.execute("ALTER TABLE projets ADD COLUMN etat TEXT NOT NULL DEFAULT 'idee'", []).ok();
+    conn.execute("ALTER TABLE projets ADD COLUMN etapes_json TEXT NOT NULL DEFAULT '[]'", []).ok();
+    conn.execute("ALTER TABLE projets ADD COLUMN domaines TEXT NOT NULL DEFAULT ''", []).ok();
+    conn.execute("ALTER TABLE projets ADD COLUMN origine TEXT NOT NULL DEFAULT ''", []).ok();
     migrer_documents_eleve(conn);
 
     // Élèves présents sur un créneau (organisation IME, groupes restreints).
