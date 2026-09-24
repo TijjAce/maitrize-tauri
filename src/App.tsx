@@ -6,6 +6,7 @@ import SequenceDetail from "./pages/SequenceDetail";
 import Ateliers from "./pages/Ateliers";
 import Planning from "./pages/Planning";
 import Organisation from "./pages/Organisation";
+import Projets from "./pages/Projets";
 import Eleves from "./pages/Eleves";
 import Referentiels from "./pages/Referentiels";
 import PlanDeTravail from "./pages/PlanDeTravail";
@@ -43,6 +44,7 @@ const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: t
   { to: "/plan", ico: "🗂", label: "Plan de travail" },
   { to: "/planning", ico: "🗓️", label: "Planning" },
   { to: "/organisation", ico: "🗂️", label: "Organisation" },
+  { to: "/projets", ico: "🌱", label: "Projets" },
   { sep: true },
   { to: "/eleves", ico: "👧", label: "Élèves" },
   { to: "/referentiels", ico: "📖", label: "Référentiels" },
@@ -65,6 +67,7 @@ const KEEP_ALIVE: { path: string; element: React.ReactNode }[] = [
   { path: "/plan", element: <PlanDeTravail /> },
   { path: "/ateliers", element: <Ateliers /> },
   { path: "/organisation", element: <Organisation /> },
+  { path: "/projets", element: <Projets /> },
   { path: "/eleves", element: <Eleves /> },
   { path: "/referentiels", element: <Referentiels /> },
   { path: "/jeux", element: <Jeux /> },
@@ -112,7 +115,6 @@ function KeepAliveHost({ pathname }: { pathname: string }) {
                   mort vaudrait moins qu'une redirection. */}
               <Route path="/sequences" element={<Navigate to="/plan" replace />} />
               <Route path="/materiel" element={<Navigate to="/plan" replace />} />
-              <Route path="/projets" element={<Navigate to="/plan" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </ErrorBoundary>

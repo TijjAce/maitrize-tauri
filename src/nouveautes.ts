@@ -21,6 +21,9 @@ export const NOUVEAUTES: Nouveaute[] = [
     version: "1.6.15",
     titre: "Les réunions s'écrivent au fil de l'eau",
     points: [
+      { quoi: "Un onglet « 🌱 Projets » : trente projets de classe tout prêts, rangés par le mois qui leur va — la soupe de la classe en octobre, les oiseaux de l'hiver en janvier, le plan du quartier en mai. Chacun dit en une phrase de quoi il s'agit, les domaines qu'il touche, et ses quatre étapes.", ou: "Projets" },
+      { quoi: "« ＋ Le prendre » fait passer une idée dans vos projets, avec ses étapes à cocher. L'état suit tout seul ce que vous cochez — à faire, en cours, terminé — et un projet se déplace d'un mois à l'autre d'un clic. Vous pouvez aussi en écrire un de zéro.", ou: "Projets" },
+      { quoi: "La recherche fouille aussi les domaines : « monnaie » remonte le marché de Noël, la marchande et la kermesse, qui ne portent pas le mot dans leur titre.", ou: "Projets" },
       { quoi: "Hors réseau, la synchronisation ne s'obstine plus : une seule question au stockage avant chaque passage, au lieu d'une douzaine d'appels qui échouaient chacun après quatre secondes — le passage durait une minute entière et le suivant repartait aussitôt. Et l'attente double à chaque échec, jusqu'à cinq minutes, puis repart à zéro dès que le réseau revient.", ou: "Réglages · Données & synchro" },
       { quoi: "L'écran d'une réunion se réduit à un encadré, au milieu, et à deux boutons : Pause et Terminer. La liste, les réglages, les avertissements et les boutons d'IA ont disparu de là — pendant une réunion on écoute, on ne règle pas.", ou: "Réunions" },
       { quoi: "Le choix « rien ne sort d'ici » ou « avec l'IA en ligne » se fait maintenant sur la fiche, avant de commencer, avec ce que chacun implique écrit juste dessous. Une fois lancé, c'est lancé.", ou: "Réunions · nouvelle réunion" },
