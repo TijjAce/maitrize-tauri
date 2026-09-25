@@ -754,6 +754,7 @@ export const api = {
   syncDeltas: () => invoke<ResultatSync>("sync_deltas"),
   syncFichiers: () => invoke<ResultatFichiers>("sync_fichiers"),
   machinesListe: () => invoke<Machine[]>("machines_liste"),
+  machineOublier: (id: string) => invoke<void>("machine_oublier", { id }),
   machineNomSet: (nom: string) => invoke<void>("machine_nom_set", { nom }),
   appairageCode: () => invoke<string>("appairage_code"),
   appairageAppliquer: (code: string) => invoke<void>("appairage_appliquer", { code }),

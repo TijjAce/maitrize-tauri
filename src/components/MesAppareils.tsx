@@ -2,6 +2,7 @@ import React from "react";
 import { api, Machine } from "../api";
 import { Field, Input, Modal } from "./ui";
 import { toast } from "./Toaster";
+import { confirmer } from "./confirmer";
 
 // ── Mes appareils ──────────────────────────────────────────────────────────
 //
@@ -56,6 +57,17 @@ export function MesAppareils() {
     } catch (e: any) { toast(String(e), { icone: "⚠️" }); }
   };
 
+  const oublier = async (m: Machine) => {
+    if (!await confirmer(`Retirer « ${m.nom} » de la liste ? S'il se synchronise encore, il y reviendra tout seul.`)) return;
+    try {
+      await api.machineOublier(m.id);
+      relire();
+      toast(`« ${m.nom} » retiré.`, { icone: "🗑" });
+    } catch (e) {
+      toast("Retrait impossible : " + String(e), { icone: "⚠️" });
+    }
+  };
+
   const moi = machines?.find((m) => m.moi);
   const autres = machines?.filter((m) => !m.moi) ?? [];
 
@@ -77,7 +89,9 @@ export function MesAppareils() {
 
       <div style={{ marginTop: 12 }}>
         {moi && <LigneMachine m={moi} />}
-        {autres.map((m) => <LigneMachine key={m.id} m={m} />)}
+        {autres.map((m) => (
+          <LigneMachine key={m.id} m={m} onOublier={() => { void oublier(m); }} />
+        ))}
         {machines && !autres.length && (
           <p style={{ fontSize: 13, color: "var(--text-2)", margin: "8px 0 0" }}>
             Aucun autre ordinateur pour l'instant. Il apparaîtra ici après sa
@@ -143,18 +157,25 @@ export function MesAppareils() {
   );
 }
 
-function LigneMachine({ m }: { m: Machine }) {
+function LigneMachine({ m, onOublier }: { m: Machine; onOublier?: () => void }) {
   const ico = m.plateforme === "Windows" ? "🪟" : m.plateforme === "macOS" ? "🍎" : "🐧";
   return (
     <div style={{ display: "flex", gap: 10, alignItems: "center", padding: "7px 0",
       borderTop: "1px solid var(--border)", fontSize: 13 }}>
       <span style={{ fontSize: 18 }}>{ico}</span>
-      <span style={{ flex: 1 }}>
+      <span style={{ flex: 1, minWidth: 0 }}>
         <b>{m.nom}</b>{m.moi && <span style={{ color: "var(--text-2)" }}> — cet ordinateur</span>}
         <div className="meta">
           {m.plateforme} · {m.moi ? "dernière synchro" : "vu"} {vu(m.vueLe)}
         </div>
       </span>
+      {/* Un poste réinstallé, ou annoncé deux fois, laisse une ligne qui ne
+          correspond plus à rien. On peut la retirer : s'il existe encore, il
+          se réinscrira à sa prochaine synchronisation. */}
+      {onOublier && (
+        <button className="btn ghost sm" onClick={onOublier}
+          title="Retirer cet ordinateur de la liste">🗑</button>
+      )}
     </div>
   );
 }
