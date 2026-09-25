@@ -386,10 +386,11 @@ export default function Reglages() {
       {onglet === "partage" && <>
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
         <h3 style={{ marginTop: 0 }}>📱 Version portable (WiFi)</h3>
-        <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
-          Consultez vos données sur votre téléphone, sur le même réseau WiFi. Rien n'est
-          envoyé sur internet : tout reste sur le réseau local, et le partage s'arrête
-          quand vous quittez cette page.
+        <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13, lineHeight: 1.6 }}>
+          Planning, prévu et bilan, séquences, élèves — en lecture sur votre téléphone, par
+          le WiFi. L'onglet <b>👁 Observer</b> se remplit depuis le téléphone, et l'application
+          <b> Dictaphone</b> y dépose ce que vous avez dicté en classe. Rien ne passe par
+          internet, et le partage s'arrête quand vous quittez cette page.
         </p>
         {!portable ? (
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
