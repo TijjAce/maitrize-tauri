@@ -10,8 +10,8 @@ import { printHTML } from "../print";
 import { nettoyerHtml } from "../texteRiche";
 import { avecImages } from "../components/imagesTexte";
 import {
-  assembler, consigneIA, demandeIA, DOSSIER_GARDE, htmlDeLaReponse, modeleLocal, SORTES,
-  type InfosGarde, type SorteGarde,
+  assembler, basculer, choixParDefaut, consigneIA, demandeIA, DOSSIER_GARDE, groupesDe,
+  htmlDeLaReponse, modeleLocal, optionsDe, SORTES, type InfosGarde, type SorteGarde,
 } from "../pagesDeGarde";
 
 // ── Organisation → Pages de garde ─────────────────────────────────────────
@@ -25,11 +25,12 @@ import {
 /** Les réglages qui remplissent l'en-tête et la signature. */
 async function infosParDefaut(annee: string, sorte: SorteGarde): Promise<InfosGarde> {
   const r = await api.settingsAll().catch(() => ({} as Record<string, string>));
+  const ime = r.typeStructure === "ime" || r["edt:mode"] === "ime";
   return {
     sorte, titre: SORTES.find((s) => s.id === sorte)!.titre, annee,
     ecole: r.ecole ?? "", enseignant: r.enseignantNom ?? "", fonction: r.enseignantFonction ?? "",
     telephone: r["etab:telephone"] ?? "", niveau: r.niveauClasse ?? "",
-    ime: r.typeStructure === "ime" || r["edt:mode"] === "ime", precisions: "",
+    ime, choix: choixParDefaut(sorte, ime), precisions: "",
   };
 }
 
@@ -125,6 +126,42 @@ export function PagesDeGardeTab({ annee }: { annee: string }) {
   );
 }
 
+/**
+ * Les cases à cocher : ce que le document doit contenir.
+ *
+ * Elles servent deux fois — elles composent le document écrit sans l'IA, et
+ * elles forment la demande envoyée au modèle. On coche ce qu'on veut y lire
+ * plutôt que de le décrire dans un champ libre, qui reste là pour le reste.
+ */
+function CasesDuDocument({ infos, onChange }: { infos: InfosGarde; onChange: (i: InfosGarde) => void }) {
+  const groupes = groupesDe(infos.sorte, infos.ime);
+  const toutes = optionsDe(infos.sorte, infos.ime);
+  const coche = (choix: string[]) => onChange({ ...infos, choix });
+  return (
+    <Field label={`Ce que le document doit contenir — ${infos.choix.length} sur ${toutes.length}`}>
+      <div className="garde-cases">
+        {groupes.map((g) => (
+          <div key={g.titre}>
+            <div className="garde-groupe">{g.titre}</div>
+            {g.options.map((o) => (
+              <label key={o.id} className={`garde-case${infos.choix.includes(o.id) ? " cochee" : ""}`}>
+                <input type="checkbox" checked={infos.choix.includes(o.id)}
+                  onChange={() => coche(basculer(infos.choix, o.id))} />
+                <span>{o.libelle}</span>
+              </label>
+            ))}
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+        <button className="btn ghost sm" onClick={() => coche(toutes.map((o) => o.id))}>Tout cocher</button>
+        <button className="btn ghost sm" onClick={() => coche([])}>Tout décocher</button>
+        <button className="btn ghost sm" onClick={() => coche(choixParDefaut(infos.sorte, infos.ime))}>Rétablir</button>
+      </div>
+    </Field>
+  );
+}
+
 /** Ce qu'on demande avant d'écrire : la sorte, le nom du document, le contexte. */
 function NouveauDocument({ infos, onChange, onClose, onCreer }: {
   infos: InfosGarde; onChange: (i: InfosGarde) => void; onClose: () => void;
@@ -137,7 +174,7 @@ function NouveauDocument({ infos, onChange, onClose, onCreer }: {
     try { await onCreer(infos, avecIA); } finally { setOccupe(""); }
   };
   return (
-    <Modal titre={`${sorte.icone} Nouveau document`} onClose={onClose}
+    <Modal titre={`${sorte.icone} Nouveau document`} onClose={onClose} large
       footer={<>
         <button className="btn" onClick={onClose}>Annuler</button>
         <button className="btn" disabled={!!occupe} onClick={() => { void lancer(false); }}>
@@ -151,7 +188,10 @@ function NouveauDocument({ infos, onChange, onClose, onCreer }: {
         <div className="seg" style={{ flexWrap: "wrap" }}>
           {SORTES.map((s) => (
             <button key={s.id} className={s.id === infos.sorte ? "active" : ""}
-              onClick={() => onChange({ ...infos, sorte: s.id, titre: infos.titre === sorte.titre ? s.titre : infos.titre })}>
+              onClick={() => onChange({
+                ...infos, sorte: s.id, choix: choixParDefaut(s.id, infos.ime),
+                titre: infos.titre === sorte.titre ? s.titre : infos.titre,
+              })}>
               {s.icone} {s.libelle}
             </button>
           ))}
@@ -166,9 +206,10 @@ function NouveauDocument({ infos, onChange, onClose, onCreer }: {
           <Input value={infos.niveau} placeholder="ex. CE1, cycle 2" onChange={(e) => onChange({ ...infos, niveau: e.target.value })} />
         </Field>
       </div>
-      <Field label="À prendre en compte (facultatif)">
-        <Textarea value={infos.precisions} rows={3}
-          placeholder="ex. élèves non lecteurs, beaucoup de manipulation ; éviter le matériel coûteux ; cahier rendu à chaque période…"
+      <CasesDuDocument infos={infos} onChange={onChange} />
+      <Field label="À ajouter, en vos mots (facultatif)">
+        <Textarea value={infos.precisions} rows={2}
+          placeholder="ex. élèves non lecteurs, beaucoup de manipulation ; la piscine commence en janvier…"
           onChange={(e) => onChange({ ...infos, precisions: e.target.value })} />
       </Field>
       <div style={{ fontSize: 12.5, color: "var(--text-2)" }}>

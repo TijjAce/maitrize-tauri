@@ -757,3 +757,11 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .choix-sequence { border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; }
 .choix-sequence-tete { display: flex; align-items: center; gap: 8px; }
 .choix-sequence-seance { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 38px; font-size: 13px; border-top: 1px dashed var(--border); margin-top: 4px; }
+
+/* Pages de garde : les cases qui composent le document. */
+.garde-cases { display: grid; grid-template-columns: repeat(auto-fill, minmax(238px, 1fr)); gap: 4px 14px; align-items: start; max-height: 40vh; overflow-y: auto; padding: 2px 4px 2px 0; }
+.garde-groupe { font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; color: var(--text-2); margin: 6px 0 3px; }
+.garde-case { display: flex; gap: 7px; align-items: flex-start; font-size: 13px; line-height: 1.35; padding: 4px 6px; border-radius: 7px; cursor: pointer; }
+.garde-case:hover { background: var(--panel-2); }
+.garde-case.cochee { background: var(--accent-soft); }
+.garde-case input { margin: 2px 0 0; flex: none; }
