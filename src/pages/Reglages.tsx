@@ -12,6 +12,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { copierLeBureau, suivreLaCopie } from "../components/CopieDuBureau";
 import { CONTACTS, REPERES, cleEtab } from "../etablissement";
 import { CLE_MOTEUR } from "../transcription";
+import { VocauxRecus } from "../components/VocauxRecus";
 import { listen } from "@tauri-apps/api/event";
 
 const ONGLETS = [
@@ -405,11 +406,25 @@ export default function Reglages() {
                 Ou ouvrez cette adresse dans le navigateur : <br />
                 <code style={{ fontSize: 12 }}>{portable.url.replace(/\?t=.*/, "")}</code>
               </p>
+              {/* L'application Dictaphone, elle, a besoin de l'adresse entière
+                  — jeton compris : elle revient toute seule, sans QR code. */}
+              <p style={{ margin: "0 0 10px", fontSize: 12, color: "var(--text-2)" }}>
+                Pour l'application <b>Dictaphone</b>, collez-y cette adresse :<br />
+                <code style={{ fontSize: 11.5, wordBreak: "break-all" }}>{portable.url}</code>
+                <button className="btn ghost sm" style={{ marginLeft: 6 }}
+                  onClick={() => { navigator.clipboard?.writeText(portable.url); toast("Adresse copiée.", { icone: "📋" }); }}>
+                  Copier
+                </button>
+              </p>
               <button className="btn danger" onClick={arreterPortable}>⏹ Arrêter le partage</button>
             </div>
           </div>
         )}
       </div>
+
+      {/* Ce que le téléphone a déposé : au même endroit que le partage,
+          puisque c'est par là que ça passe. */}
+      <VocauxRecus />
 
       </>}
 
