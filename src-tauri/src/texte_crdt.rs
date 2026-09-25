@@ -19,9 +19,7 @@
 //! au milieu d'un tableau de l'autre. Ils restent en fusion champ par champ,
 //! qui est correcte pour eux.
 
-use std::collections::HashMap;
 use yrs::updates::decoder::Decode;
-use yrs::updates::encoder::Encode;
 use yrs::{Doc, GetString, ReadTxn, StateVector, Text, TextRef, Transact, Update};
 
 /// Champs rédigés en prose, confiés au CRDT.
@@ -193,12 +191,14 @@ pub fn fusionner(a: &[u8], b: &[u8]) -> (Vec<u8>, String) {
 }
 
 /// Le texte que porte un état, sans rien fusionner.
+#[cfg(test)]
 pub fn texte(etat: &[u8]) -> String {
     texte_de(&doc_depuis(etat))
 }
 
 /// États CRDT d'une ligne, par champ. Voyage avec le changement.
-pub type EtatsTexte = HashMap<String, Vec<u8>>;
+#[cfg(test)]
+pub type EtatsTexte = std::collections::HashMap<String, Vec<u8>>;
 
 #[cfg(test)]
 mod tests {

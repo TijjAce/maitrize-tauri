@@ -50,6 +50,13 @@ pub fn run() {
             // Une fenêtre figée ne peut rien écrire : c'est le backend qui le
             // voit. Il lui faut la fenêtre pour savoir si elle est devant.
             veille::surveiller(app.handle().clone());
+            // Le ménage de la base attend que la fenêtre soit là.
+            let pour_le_menage = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let db = tauri::Manager::state::<Db>(&pour_le_menage);
+                let c = db.lock();
+                db::menage_apres_demarrage(&c);
+            });
             // Mises à jour automatiques (distribution directe hors stores).
             // Plugins desktop uniquement.
             #[cfg(desktop)]
