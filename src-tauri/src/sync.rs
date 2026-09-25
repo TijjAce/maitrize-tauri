@@ -1864,6 +1864,39 @@ async fn publier_presence(cl: &Client, cfg: &S3Cfg, phrase: &str, m: &Machine) {
 }
 
 /// Les machines qui partagent ce stockage.
+/**
+ * Oublie une machine : sa fiche disparaît du stockage partagé.
+ *
+ * Un ordinateur réinstallé, ou qui s'est annoncé deux fois, laisse une ligne
+ * qui ne correspond plus à rien — et l'on ne savait pas s'en débarrasser. Il
+ * se réinscrira tout seul à sa prochaine synchronisation s'il existe encore ;
+ * c'est donc sans risque.
+ *
+ * Celle-ci ne s'oublie pas elle-même : ce serait effacer son propre nom du
+ * partage, et la liste des autres postes deviendrait fausse chez eux.
+ */
+#[tauri::command]
+pub async fn machine_oublier(db: State<'_, Db>, id: String) -> R<()> {
+    let (cfg, moi) = {
+        let c = db.lock();
+        (lire_cfg(&c)?, crate::db::identifiant_machine(&c))
+    };
+    if id.trim().is_empty() {
+        return Err("Machine inconnue.".into());
+    }
+    if id == moi {
+        return Err("Cet ordinateur ne peut pas s'oublier lui-même.".into());
+    }
+    client(&cfg)
+        .delete_object()
+        .bucket(&cfg.bucket)
+        .key(format!("{PREFIXE_MACHINE}{id}.enc"))
+        .send()
+        .await
+        .map_err(|err| format!("Suppression impossible : {}", detail(&err)))?;
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn machines_liste(db: State<'_, Db>) -> R<Vec<Machine>> {
     let (cfg, phrase, moi) = {
