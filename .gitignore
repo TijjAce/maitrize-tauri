@@ -34,3 +34,9 @@ dist-ssr
 src-tauri/embedded.provisionprofile
 *.pkg
 *.provisionprofile
+
+# Le compagnon iPhone : Rust compilé, et le projet Xcode que `tauri ios init`
+# régénère. Ce qui compte — la configuration, les autorisations — vit dans
+# compagnon/src-tauri/, pas dans gen/.
+compagnon/src-tauri/target/
+compagnon/src-tauri/gen/

@@ -138,8 +138,14 @@ pub fn portable_demarrer(app: tauri::AppHandle, db: State<Db>, portable: State<P
     // Instantané des données, figé au moment du clic (lecture seule).
     let data_json = snapshot(&db)?;
 
-    let token = Uuid::new_v4().to_string();
-    let server = tiny_http::Server::http("0.0.0.0:0").map_err(|err| err.to_string())?;
+    // Le même jeton et le même port d'une fois sur l'autre.
+    //
+    // Tant qu'on ouvrait la page par un QR code, un jeton tiré au hasard à
+    // chaque démarrage n'était pas gênant : on rescannait. Mais le dictaphone
+    // du téléphone, lui, garde l'adresse et revient tout seul — il faut donc
+    // qu'elle vaille encore demain.
+    let token = jeton_durable(&db);
+    let server = serveur_stable()?;
     let port = server
         .server_addr()
         .to_ip()
@@ -170,6 +176,41 @@ pub fn portable_demarrer(app: tauri::AppHandle, db: State<Db>, portable: State<P
         port,
         qr_svg: qr,
     })
+}
+
+/// Le port qu'on demande d'abord : le même chaque jour, pour que le
+/// téléphone retrouve l'ordinateur sans qu'on lui redise où il est.
+pub const PORT_PORTABLE: u16 = 8787;
+
+/**
+ * Le serveur, sur le port habituel si possible.
+ *
+ * S'il est pris — un autre programme, une instance qui n'a pas fini de se
+ * fermer —, on en prend un au hasard plutôt que d'échouer : le QR code
+ * marchera quand même, et seul le dictaphone demandera un nouvel appairage.
+ */
+fn serveur_stable() -> R<tiny_http::Server> {
+    match tiny_http::Server::http(("0.0.0.0", PORT_PORTABLE)) {
+        Ok(s) => Ok(s),
+        Err(_) => tiny_http::Server::http("0.0.0.0:0").map_err(|err| err.to_string()),
+    }
+}
+
+/**
+ * Le jeton de ce poste, fabriqué une fois et gardé.
+ *
+ * Il ne se synchronise pas : c'est l'adresse de cette machine-ci, pas une
+ * donnée de classe. Un nouveau poste s'en fabrique un autre.
+ */
+fn jeton_durable(db: &State<Db>) -> String {
+    let c = db.lock();
+    let garde = crate::sync::get_setting(&c, "portableJeton");
+    if !garde.trim().is_empty() {
+        return garde;
+    }
+    let neuf = Uuid::new_v4().to_string();
+    let _ = crate::sync::set_setting(&c, "portableJeton", &neuf);
+    neuf
 }
 
 #[tauri::command]
@@ -927,7 +968,13 @@ fetch('/api/data?t=' + encodeURIComponent(T))
 
 #[cfg(test)]
 mod tests {
-    use super::parametre;
+    use super::{parametre, PORT_PORTABLE};
+
+    #[test]
+    fn le_port_habituel_ne_bouge_pas() {
+        // Le dictaphone garde l'adresse : la changer, c'est le perdre.
+        assert_eq!(PORT_PORTABLE, 8787);
+    }
 
     #[test]
     fn lit_les_parametres_de_l_url() {

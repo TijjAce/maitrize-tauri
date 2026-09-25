@@ -1,0 +1,29 @@
+[package]
+name = "maitrize-dictaphone"
+version = "0.1.0"
+description = "Le dictaphone de classe de Maitrize"
+edition = "2021"
+
+[lib]
+# Le suffixe `_lib` évite la collision de noms avec le binaire sur Windows.
+name = "maitrize_dictaphone_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Volontairement court. Ce qui pèse dans l'application de bureau — Whisper,
+# le client S3, la génération de PDF — n'a rien à faire sur un téléphone :
+# celui-ci enregistre du son et le dépose, rien d'autre.
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+uuid = { version = "1", features = ["v4"] }
+chrono = "0.4"
+# L'envoi part de Rust et non de la page : les règles réseau d'iOS
+# (App Transport Security) ne s'appliquent pas aux sockets, ce qui évite
+# d'avoir à déclarer une exception pour parler en clair au Mac du WiFi.
+reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
+tokio = { version = "1", features = ["rt-multi-thread"] }
