@@ -166,6 +166,14 @@ describe("les précisions sur les cahiers", () => {
     expect(corps).toContain("<li>Une ramette de papier blanc A4</li>");
   });
 
+  it("supporte un document où les précisions n'existent pas encore", () => {
+    // Un document commencé avant que ces menus n'existent : la fenêtre ne
+    // doit pas tomber sur « reglages » manquant.
+    const vieux = { ...avec({}), reglages: undefined as unknown as Record<string, string> };
+    expect(() => corpsParDefaut(vieux)).not.toThrow();
+    expect(corpsParDefaut(vieux)).toContain("<li>Un cahier 24 × 32 cm");
+  });
+
   it("ne dit rien de plus quand on ne précise rien", () => {
     const i = avec({ lignage: "", pages: "", couverture: "", grammage: "" });
     expect(corpsParDefaut(i)).toContain("<li>Un cahier 24 × 32 cm, assez grand pour y coller une feuille A4</li>");

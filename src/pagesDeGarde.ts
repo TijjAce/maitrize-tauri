@@ -159,10 +159,15 @@ export const REGLAGES: Partial<Record<SorteGarde, ReglageGarde[]>> = {
 export const reglagesParDefaut = (sorte: SorteGarde, ime: boolean): Record<string, string> =>
   (sorte === "fournitures" ? { lignage: ime ? "seyes3" : "seyes" } : {});
 
-/** Le texte d'une précision, ou rien si elle n'est pas donnée. */
+/**
+ * Le texte d'une précision, ou rien si elle n'est pas donnée.
+ *
+ * `reglages` peut manquer : un document commencé avant que ces précisions
+ * n'existent, ou un état conservé au rechargement. On lit sans supposer.
+ */
 function texteDuReglage(i: InfosGarde, id: string): string {
   const reglage = (REGLAGES[i.sorte] ?? []).find((r) => r.id === id);
-  return reglage?.valeurs.find((v) => v.id === (i.reglages[id] ?? ""))?.texte ?? "";
+  return reglage?.valeurs.find((v) => v.id === ((i.reglages ?? {})[id] ?? ""))?.texte ?? "";
 }
 
 /** La puce d'une fourniture, précisions comprises. */
