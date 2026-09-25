@@ -8,7 +8,21 @@
 // téléphone sur le Mac. Le fichier est ensuite confié à Rust, qui le garde
 // jusqu'à ce que l'ordinateur réponde.
 
-const invoke = (cmd, args) => window.__TAURI__.core.invoke(cmd, args);
+/**
+ * L'appel vers Rust.
+ *
+ * Le pont global n'existe que si `withGlobalTauri` est vrai dans la
+ * configuration : sans lui, chaque appel partait en « undefined is not an
+ * object », un message qui ne dit rien à personne. On le vérifie une fois,
+ * et l'on dit ce qui manque.
+ */
+const invoke = (cmd, args) => {
+  const pont = window.__TAURI__;
+  if (!pont || !pont.core) {
+    return Promise.reject("Le pont vers l'application n'est pas là (withGlobalTauri).");
+  }
+  return pont.core.invoke(cmd, args);
+};
 
 const TAUX = 16000;
 let micro = null, ctx = null, noeud = null, morceaux = [], debut = null, depart = 0, minuteur = null;
