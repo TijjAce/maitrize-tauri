@@ -21,6 +21,7 @@ export const NOUVEAUTES: Nouveaute[] = [
     version: "1.6.15",
     titre: "Les réunions s'écrivent au fil de l'eau",
     points: [
+      { quoi: "Un onglet « 🎙 Dicter » sur le téléphone : un gros bouton, on dit ce qu'on vient de voir, on termine. L'enregistrement reste dans le téléphone tant que l'ordinateur n'est pas joignable — il part tout seul au retour, et ce qui n'est pas passé reste en attente plutôt que de disparaître.", ou: "Planning · 📱 Téléphone · 🎙 Dicter" },
       { quoi: "L'ordinateur sait recevoir les vocaux dictés depuis le téléphone, ordinateur fermé. Il les transcrit avec Whisper, sur place, et retrouve le créneau à l'heure : un vocal de 10 h 12 se range sous la numération de 10 h. Dicté juste en sortant de la salle, il rejoint le créneau qui vient de finir — mais au-delà d'une demi-heure, on ne devine plus, c'est vous qui choisissez.", ou: "Planning · cahier journal" },
       { quoi: "Rien ne s'écrit tout seul dans un bilan : le texte s'affiche, se corrige, et c'est « ↓ Verser dans le bilan » qui l'y met — à la suite de ce que vous aviez déjà écrit, jamais à la place. Le téléphone, lui, ne connaît ni vos élèves ni votre planning : il n'envoie que du son et une heure.", ou: "Planning · cahier journal" },
       { quoi: "Un onglet « 🌱 Projets » : quatre-vingt-dix projets de classe tout prêts, par thème — vivre ensemble, langage, nombres et monnaie, sciences, arts, corps, autonomie, sorties, fêtes. Chacun dit en une phrase de quoi il s'agit, ce qu'il travaille, et ses quatre étapes.", ou: "Projets" },

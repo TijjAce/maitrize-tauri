@@ -466,6 +466,10 @@ const PAGE_HTML: &str = r##"<!DOCTYPE html>
  main { padding:14px; max-width:680px; margin:0 auto; }
  section { display:none; }
  section.on { display:block; }
+ .dicte-bouton { width:100%; padding:26px 16px; font-size:20px; font-weight:700; border:none; border-radius:16px;
+   background:var(--acc); color:#fff; cursor:pointer; }
+ .dicte-bouton.rouge { background:#dc2626; }
+ .dicte-chrono { font-size:40px; font-weight:700; font-variant-numeric:tabular-nums; margin-bottom:4px; }
  .jour { margin:16px 0 8px; font-size:13px; font-weight:700; color:var(--txt2); text-transform:uppercase; letter-spacing:.04em; }
  .jour.auj { color:var(--acc); }
  .card { background:var(--card); border:1px solid var(--bd); border-radius:12px; padding:11px 13px; margin-bottom:9px; }
@@ -549,12 +553,175 @@ const auj = new Date().toISOString().slice(0,10);
 let DATA = null;
 
 const TABS = [
+  ['dictaphone','🎙 Dicter', renderDictaphone],
   ['planning','🗓 Planning', renderPlanning],
   ['observations','👁 Observer', renderObservations],
   ['sequences','📚 Séquences', renderSequences],
   ['eleves','👧 Élèves', renderEleves],
   ['programmations','🗂 Programmations', renderProgrammations],
 ];
+
+// ── Le dictaphone ────────────────────────────────────────────────────
+//
+// On dicte en classe, l'ordinateur fermé dans le sac. Le téléphone garde
+// l'enregistrement et l'heure, rien d'autre — pas un nom, pas un créneau.
+// Au retour, il les dépose et l'ordinateur range.
+//
+// Le son est capturé à 16 kHz mono et empaqueté en WAV ici même : c'est ce
+// que Whisper attend de l'autre côté, et cela évite de décoder un format de
+// téléphone sur le Mac.
+
+const TAUX = 16000;
+let micro = null, ctx = null, morceaux = [], debutDicte = null, minuteur = null;
+
+/** Les vocaux en attente, gardés dans le téléphone tant qu'ils ne sont pas partis. */
+function enAttente() {
+  try { return JSON.parse(localStorage.getItem('vocaux') || '[]'); } catch (e) { return []; }
+}
+function poserEnAttente(l) { localStorage.setItem('vocaux', JSON.stringify(l)); }
+
+/** L'heure locale au format que l'ordinateur attend. */
+function maintenantIso() {
+  const d = new Date(), p = (n) => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+    'T' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+}
+
+/** Rééchantillonne au taux de Whisper : un ratio simple suffit pour la parole. */
+function reechantillonner(entree, deTaux) {
+  if (deTaux === TAUX) return entree;
+  const ratio = deTaux / TAUX, sortie = new Float32Array(Math.floor(entree.length / ratio));
+  for (let i = 0; i < sortie.length; i++) sortie[i] = entree[Math.floor(i * ratio)] || 0;
+  return sortie;
+}
+
+/** Un WAV 16 bits mono, tel quel : en-tête de quarante-quatre octets, puis les échantillons. */
+function versWav(morceaux) {
+  let n = 0; for (const m of morceaux) n += m.length;
+  const tout = new Float32Array(n); let o = 0;
+  for (const m of morceaux) { tout.set(m, o); o += m.length; }
+  const buf = new ArrayBuffer(44 + tout.length * 2), vue = new DataView(buf);
+  const txt = (p, s) => { for (let i = 0; i < s.length; i++) vue.setUint8(p + i, s.charCodeAt(i)); };
+  txt(0, 'RIFF'); vue.setUint32(4, 36 + tout.length * 2, true); txt(8, 'WAVEfmt ');
+  vue.setUint32(16, 16, true); vue.setUint16(20, 1, true); vue.setUint16(22, 1, true);
+  vue.setUint32(24, TAUX, true); vue.setUint32(28, TAUX * 2, true);
+  vue.setUint16(32, 2, true); vue.setUint16(34, 16, true);
+  txt(36, 'data'); vue.setUint32(40, tout.length * 2, true);
+  for (let i = 0; i < tout.length; i++) {
+    const v = Math.max(-1, Math.min(1, tout[i]));
+    vue.setInt16(44 + i * 2, v < 0 ? v * 0x8000 : v * 0x7fff, true);
+  }
+  return new Blob([buf], { type: 'audio/wav' });
+}
+
+async function demarrerDicte() {
+  try {
+    micro = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    alert("Le micro n'est pas accessible. Autorisez-le pour ce site.");
+    return;
+  }
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const src = ctx.createMediaStreamSource(micro);
+  const noeud = ctx.createScriptProcessor(4096, 1, 1);
+  morceaux = []; debutDicte = maintenantIso();
+  noeud.onaudioprocess = (e) => {
+    morceaux.push(reechantillonner(new Float32Array(e.inputBuffer.getChannelData(0)), ctx.sampleRate));
+  };
+  // Une sortie muette : sans elle, le nœud ne reçoit rien sur certains navigateurs.
+  const muet = ctx.createGain(); muet.gain.value = 0;
+  src.connect(noeud); noeud.connect(muet); muet.connect(ctx.destination);
+  ctx._noeud = noeud;
+  const depart = Date.now();
+  minuteur = setInterval(() => {
+    const s = Math.round((Date.now() - depart) / 1000);
+    const el = document.getElementById('chrono');
+    if (el) el.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }, 500);
+  rendreDicte();
+}
+
+async function arreterDicte() {
+  if (!ctx) return;
+  clearInterval(minuteur); minuteur = null;
+  try { ctx._noeud.disconnect(); } catch (e) {}
+  const taux = TAUX, blob = versWav(morceaux);
+  let duree = 0; for (const m of morceaux) duree += m.length; duree = duree / taux;
+  try { await ctx.close(); } catch (e) {}
+  if (micro) micro.getTracks().forEach((t) => t.stop());
+  ctx = null; micro = null; morceaux = [];
+  if (duree < 0.5) { rendreDicte(); return; }
+  // On garde d'abord, on envoie ensuite : un vocal ne se perd pas parce que
+  // l'ordinateur était éteint.
+  const lecture = new FileReader();
+  lecture.onload = () => {
+    const l = enAttente();
+    l.push({ id: String(Date.now()), debut: debutDicte, duree: duree, b64: String(lecture.result).split(',')[1] });
+    poserEnAttente(l);
+    rendreDicte();
+    envoyerLesVocaux();
+  };
+  lecture.readAsDataURL(blob);
+}
+
+function octetsDe(b64) {
+  const bin = atob(b64), o = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) o[i] = bin.charCodeAt(i);
+  return o;
+}
+
+let envoiEnCours = false;
+/** Dépose ce qui attend, et ne retire que ce qui est bien arrivé. */
+async function envoyerLesVocaux() {
+  if (envoiEnCours) return;
+  envoiEnCours = true;
+  try {
+    for (const v of enAttente()) {
+      const url = '/api/vocal?t=' + encodeURIComponent(T) +
+        '&debut=' + encodeURIComponent(v.debut) + '&duree=' + encodeURIComponent(v.duree);
+      let ok = false;
+      try {
+        const r = await fetch(url, { method: 'POST', body: octetsDe(v.b64) });
+        ok = r.ok;
+      } catch (e) { ok = false; }
+      if (!ok) break; // l'ordinateur n'est pas là : on garde le reste pour plus tard
+      poserEnAttente(enAttente().filter((x) => x.id !== v.id));
+      rendreDicte();
+    }
+  } finally { envoiEnCours = false; }
+}
+
+/**
+ * Rafraîchit la section du dictaphone, et elle seule.
+ *
+ * La page dessine toutes ses sections une fois au chargement, puis se
+ * contente de les montrer ou de les cacher : il n'y a pas de rendu global à
+ * rappeler. Le dictaphone, lui, change d'état — au repos, en train
+ * d'enregistrer, avec des vocaux en attente —, donc il se redessine seul.
+ */
+function rendreDicte() {
+  const el = document.getElementById('sec-dictaphone');
+  if (el) el.innerHTML = renderDictaphone();
+}
+
+function renderDictaphone() {
+  const attente = enAttente();
+  const dicte = !!ctx;
+  return '<div class="card" style="text-align:center;padding:20px 14px">' +
+    (dicte
+      ? '<div class="dicte-chrono" id="chrono">0:00</div>' +
+        '<p class="meta" style="margin-top:0">Ça enregistre…</p>' +
+        '<button class="dicte-bouton rouge" onclick="arreterDicte()">⏹ Terminer</button>'
+      : '<button class="dicte-bouton" onclick="demarrerDicte()">🎙 Dicter</button>' +
+        '<p class="meta" style="margin-bottom:0">L\'heure suffit : l\'ordinateur saura de quel créneau il s\'agit.</p>') +
+    '</div>' +
+    (attente.length
+      ? '<p class="jour">En attente de l\'ordinateur (' + attente.length + ')</p>' +
+        attente.map((v) => '<div class="card"><b>' + v.debut.slice(11, 16).replace(':', 'h') + '</b> · ' +
+          Math.round(v.duree) + ' s</div>').join('') +
+        '<button class="btn" onclick="envoyerLesVocaux()">↑ Envoyer maintenant</button>'
+      : '<p class="vide">Rien en attente : tout est parti sur l\'ordinateur.</p>');
+}
 
 /** Les colonnes de la grille « Observer », dans l'ordre du document. */
 const COLS = [
@@ -750,7 +917,7 @@ fetch('/api/data?t=' + encodeURIComponent(T))
      if (ev.target.closest('.sea-body')) return;
      const it = ev.target.closest('.sea-item'); if (it) it.classList.toggle('open');
    });
-   show('planning');
+   show('dictaphone');
  })
  .catch(() => { main.innerHTML = '<p class="err">Connexion perdue.<br>Vérifiez que le téléphone est sur le même WiFi que l\'ordinateur, puis rescannez le QR code.</p>'; });
 </script>
