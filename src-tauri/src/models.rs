@@ -1060,6 +1060,51 @@ impl Reunion {
     }
 }
 
+/// Un vocal déposé par le téléphone : du son, une heure, et rien d'autre.
+///
+/// C'est tout ce que le téléphone connaît de la classe. Les noms, les élèves,
+/// les créneaux restent ici : le Mac regarde l'heure et sait de quoi il
+/// s'agit. Un téléphone perdu ne perd rien.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Vocal {
+    #[serde(default = "new_id")]
+    pub id: String,
+    /// Le nom du fichier dans `Fichiers/`.
+    #[serde(default)]
+    pub fichier: String,
+    /// Quand l'enregistrement a commencé, en ISO local.
+    #[serde(default)]
+    pub debut: String,
+    #[serde(default)]
+    pub duree_s: f64,
+    /// Ce que Whisper en a fait, vide tant qu'il n'a pas tourné.
+    #[serde(default)]
+    pub texte: String,
+    /// « recu », « transcrit » ou « echec ».
+    #[serde(default)]
+    pub etat: String,
+    #[serde(default)]
+    pub erreur: String,
+    #[serde(default)]
+    pub date_creation: String,
+}
+
+impl Vocal {
+    pub fn from_row(r: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: r.get("id")?,
+            fichier: r.get("fichier")?,
+            debut: r.get("debut")?,
+            duree_s: r.get("duree_s")?,
+            texte: r.get("texte")?,
+            etat: r.get("etat")?,
+            erreur: r.get("erreur")?,
+            date_creation: r.get("date_creation")?,
+        })
+    }
+}
+
 /// Un projet de classe : ce qu'on mène sur quelques semaines, et qui donne
 /// leur raison d'être aux séquences qu'on y rattache.
 #[derive(Serialize, Deserialize, Clone, Debug)]
