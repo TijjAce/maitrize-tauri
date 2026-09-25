@@ -4,10 +4,31 @@
 // décor, de la densité, ni de la place laissée pour répondre. On rastérise
 // donc la page avec pdf.js, qui tourne partout sans dépendance native.
 
-import * as pdfjs from "pdfjs-dist";
-import ouvrier from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import type * as TypesPdfjs from "pdfjs-dist";
 
-pdfjs.GlobalWorkerOptions.workerSrc = ouvrier;
+/**
+ * pdf.js n'est chargé qu'au premier PDF ouvert.
+ *
+ * La bibliothèque pèse près d'un mégaoctet : la mettre dans le paquet
+ * principal la faisait analyser à chaque démarrage, y compris les jours où
+ * l'on n'ouvre aucun PDF. Un import différé la range dans son propre
+ * morceau, chargé quand le coffre-fort ou l'adaptation de fiche s'ouvre.
+ *
+ * La promesse est retenue : les appels suivants ne rechargent rien.
+ */
+let chargement: Promise<typeof TypesPdfjs> | null = null;
+
+function pdfjsCharge(): Promise<typeof TypesPdfjs> {
+  chargement ??= (async () => {
+    const [lib, { default: ouvrier }] = await Promise.all([
+      import("pdfjs-dist"),
+      import("pdfjs-dist/build/pdf.worker.min.mjs?url"),
+    ]);
+    lib.GlobalWorkerOptions.workerSrc = ouvrier;
+    return lib;
+  })();
+  return chargement;
+}
 
 export interface PageRendue {
   numero: number;
@@ -34,7 +55,7 @@ const LARGEUR = 1200;
 const copie = (octets: Uint8Array) => new Uint8Array(octets);
 
 export async function nombreDePages(octets: Uint8Array): Promise<number> {
-  const doc = await pdfjs.getDocument({ data: copie(octets) }).promise;
+  const doc = await (await pdfjsCharge()).getDocument({ data: copie(octets) }).promise;
   const n = doc.numPages;
   doc.destroy();
   return n;
@@ -42,7 +63,7 @@ export async function nombreDePages(octets: Uint8Array): Promise<number> {
 
 /** Rend une page (numérotée à partir de 1) en PNG base64. */
 export async function rendrePage(octets: Uint8Array, numero: number): Promise<PageRendue> {
-  const doc = await pdfjs.getDocument({ data: copie(octets) }).promise;
+  const doc = await (await pdfjsCharge()).getDocument({ data: copie(octets) }).promise;
   try {
     const page = await doc.getPage(Math.min(Math.max(1, numero), doc.numPages));
     const base = page.getViewport({ scale: 1 });
@@ -142,7 +163,7 @@ export function rognerMarges(toile: HTMLCanvasElement, tolerance = 12): HTMLCanv
  * qui permet de garder les vignettes d'une visite à l'autre.
  */
 export async function vignettePdf(octets: Uint8Array, largeur = 220): Promise<string> {
-  const doc = await pdfjs.getDocument({ data: copie(octets) }).promise;
+  const doc = await (await pdfjsCharge()).getDocument({ data: copie(octets) }).promise;
   try {
     const page = await doc.getPage(1);
     const base = page.getViewport({ scale: 1 });
@@ -161,11 +182,11 @@ export async function vignettePdf(octets: Uint8Array, largeur = 220): Promise<st
   }
 }
 
-export type DocumentPdf = pdfjs.PDFDocumentProxy;
+export type DocumentPdf = TypesPdfjs.PDFDocumentProxy;
 
 /** Ouvre un PDF pour le parcourir page à page. Le refermer avec `destroy()`. */
 export function ouvrirPdf(octets: Uint8Array): Promise<DocumentPdf> {
-  return pdfjs.getDocument({ data: copie(octets) }).promise;
+  return pdfjsCharge().then((lib) => lib.getDocument({ data: copie(octets) }).promise);
 }
 
 /** Proportions de la première page (hauteur / largeur), pour réserver la place des suivantes. */
@@ -202,7 +223,7 @@ export async function rendrePageSelectionnable(
   const contenu = await page.getTextContent();
   calque.replaceChildren();
   calque.style.setProperty("--scale-factor", String(viewport.scale));
-  await new pdfjs.TextLayer({ textContentSource: contenu, container: calque, viewport }).render();
+  await new (await pdfjsCharge()).TextLayer({ textContentSource: contenu, container: calque, viewport }).render();
   return { hauteur: viewport.height, morceaux: contenu.items.length };
 }
 

@@ -179,7 +179,8 @@ export function PanneauCommun({ compact = false, onFermer }: {
     await relire();
     toastAnnulable(`« ${quoi} » est sur « ${actif.nom} » (${r.elements} élément${r.elements > 1 ? "s" : ""}).`,
       async () => {
-        await api.communSupprimer(actif.id, [dossier, r.nom].filter(Boolean).join("/")).catch(() => {});
+        await api.communSupprimer(actif.id, [dossier, r.nom].filter(Boolean).join("/"))
+          .catch((err: unknown) => toast("Annulation impossible : " + texteErreur(err), { icone: "⚠️" }));
         await relire();
       }, "🤝");
   };
