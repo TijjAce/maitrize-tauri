@@ -2469,8 +2469,9 @@ pub fn exporter_base(db: State<Db>, chemin: String) -> R<()> {
 
 /// Un réglage part-il dans une sauvegarde ? Ni la clé API, ni ce qui
 /// appartient à ce poste : son identifiant, ses repères de synchronisation.
+/// Ce qu'une sauvegarde emporte : tout, sauf les secrets et le poste lui-même.
 fn reglage_exportable(cle: &str) -> bool {
-    cle != "mistralApiKey" && !crate::journal::REGLAGES_DU_POSTE.contains(&cle)
+    !crate::journal::reglage_secret(cle) && !crate::journal::REGLAGES_DU_POSTE.contains(&cle)
 }
 
 /// Sérialise toutes les données utilisateur en un JSON unique (sauvegarde).
@@ -2556,12 +2557,16 @@ fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<()> {
         // Ne pas vider les référentiels intégrés (table non listée). Pour
         // settings on garde la clé API existante.
         if *t == "settings" {
-            // La clé API et les réglages du poste restent ceux d'ici : une
+            // Les secrets et les réglages du poste restent ceux d'ici. Une
             // sauvegarde faite sur un autre ordinateur (ou avant ce correctif)
-            // porte les siens, qui donneraient à ce poste l'identité de l'autre.
-            let du_poste = crate::journal::REGLAGES_DU_POSTE.iter().map(|k| format!("'{k}'")).collect::<Vec<_>>().join(", ");
-            c.execute(&format!("DELETE FROM settings WHERE cle != 'mistralApiKey' AND cle NOT IN ({du_poste})"), [])
-                .map_err(e)?;
+            // porte les siens, qui donneraient à ce poste l'identité de
+            // l'autre ; et une sauvegarde récente n'en contient plus aucun —
+            // les effacer couperait la synchronisation à la première
+            // restauration.
+            let garder = crate::journal::REGLAGES_DU_POSTE.iter().copied()
+                .chain(crate::journal::SECRETS.iter().copied())
+                .map(|k| format!("'{k}'")).collect::<Vec<_>>().join(", ");
+            c.execute(&format!("DELETE FROM settings WHERE cle NOT IN ({garder})"), []).map_err(e)?;
         } else if *t == "referentiels" {
             // Ne touche pas aux référentiels intégrés (seedés au démarrage).
             c.execute("DELETE FROM referentiels WHERE est_integre=0", []).map_err(e)?;
@@ -2571,7 +2576,8 @@ fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<()> {
         for row in arr {
             let Some(o) = row.as_object() else { continue };
             if *t == "settings" && o.get("cle").and_then(|v| v.as_str())
-                .is_some_and(|k| crate::journal::REGLAGES_DU_POSTE.contains(&k)) {
+                .is_some_and(|k| crate::journal::REGLAGES_DU_POSTE.contains(&k)
+                    || crate::journal::reglage_secret(k)) {
                 continue;
             }
             let cols: Vec<&String> = o.keys().collect();
@@ -2792,10 +2798,16 @@ mod tests_restauration {
 
     #[test]
     fn une_sauvegarde_nemporte_pas_lidentite_du_poste() {
-        for cle in ["identifiantMachine", "syncSeqEnvoyee", "syncDeltasVus", "derniereSync", "nomMachine", "mistralApiKey"] {
+        for cle in ["identifiantMachine", "syncSeqEnvoyee", "syncDeltasVus", "derniereSync", "nomMachine"] {
             assert!(!super::reglage_exportable(cle), "« {cle} » part dans la sauvegarde");
         }
-        for cle in ["ecole", "enseignantNom", "edt:mode", "bureau:", "sync_endpoint", "sauvegarde_phrase"] {
+        // Ni la clé du stockage, ni la phrase qui protège ce qu'il contient :
+        // le fichier vit sur une clé USB, les deux ensemble n'y ont pas leur
+        // place. On les ressaisit après une restauration.
+        for cle in crate::journal::SECRETS {
+            assert!(!super::reglage_exportable(cle), "« {cle} » part dans la sauvegarde");
+        }
+        for cle in ["ecole", "enseignantNom", "edt:mode", "bureau:", "sync_endpoint", "sync_bucket"] {
             assert!(super::reglage_exportable(cle), "« {cle} » manque à la sauvegarde");
         }
     }
