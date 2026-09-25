@@ -123,6 +123,20 @@ fn fichier_de(app: &tauri::AppHandle, id: &str) -> R<PathBuf> {
     Err("Cet enregistrement n'est plus là.".into())
 }
 
+/**
+ * Rend un vocal tel quel, pour l'écouter avant qu'il parte.
+ *
+ * On dicte en marchant, dans le bruit d'une classe : savoir si la phrase est
+ * audible avant de rentrer vaut mieux que de le découvrir le soir, devant une
+ * transcription vide. Le son ne quitte pas le téléphone pour autant.
+ */
+#[tauri::command]
+pub fn vocal_lire(app: tauri::AppHandle, id: String) -> R<String> {
+    use base64::Engine;
+    let octets = std::fs::read(fichier_de(&app, &id)?).map_err(|e| e.to_string())?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(octets))
+}
+
 /// Oublie un vocal : le fichier part avec.
 #[tauri::command]
 pub fn vocal_oublier(app: tauri::AppHandle, id: String) -> R<()> {
@@ -187,9 +201,16 @@ pub async fn ordinateur_joignable(app: tauri::AppHandle) -> R<bool> {
 
 /// Sépare l'origine du jeton dans l'adresse appairée.
 pub fn decouper_adresse(url: &str) -> R<(String, String)> {
-    let url = url.trim();
-    let sans = url.strip_prefix("http://").or_else(|| url.strip_prefix("https://"))
-        .ok_or("Adresse inattendue : elle doit commencer par http://")?;
+    // Une adresse arrive d'un collage : espaces, retours à la ligne, et
+    // parfois sans « http:// » parce qu'iOS le masque quand on copie depuis
+    // Safari. On accepte tout cela plutôt que d'envoyer l'enseignant retaper
+    // quarante caractères sur un clavier de téléphone.
+    let url: String = url.chars().filter(|c| !c.is_whitespace()).collect();
+    let url = url.as_str();
+    let sans = url
+        .strip_prefix("http://")
+        .or_else(|| url.strip_prefix("https://"))
+        .unwrap_or(url);
     let (hote, reste) = match sans.split_once('/') {
         Some((h, r)) => (h, r),
         None => (sans, ""),
@@ -228,6 +249,18 @@ mod tests {
     #[test]
     fn separe_l_origine_et_le_jeton() {
         let (o, j) = decouper_adresse("http://192.168.1.20:8787/?t=abc-123").unwrap();
+        assert_eq!(o, "http://192.168.1.20:8787");
+        assert_eq!(j, "abc-123");
+    }
+
+    #[test]
+    fn accepte_une_adresse_collee_telle_quelle() {
+        // Retours à la ligne et espaces ajoutés par le collage.
+        let (o, j) = decouper_adresse("  http://192.168.1.20:8787/?t=abc-123\n").unwrap();
+        assert_eq!(o, "http://192.168.1.20:8787");
+        assert_eq!(j, "abc-123");
+        // Sans schéma : Safari le masque quand on copie l'adresse.
+        let (o, j) = decouper_adresse("192.168.1.20:8787/?t=abc-123").unwrap();
         assert_eq!(o, "http://192.168.1.20:8787");
         assert_eq!(j, "abc-123");
     }
