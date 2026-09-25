@@ -94,9 +94,14 @@ describe("les cases à cocher", () => {
     // au programme d'une unité d'enseignement.
     expect(groupesDe("fournitures", false).map((g) => g.titre)).toContain("Mesurer et compter");
     expect(groupesDe("fournitures", true).map((g) => g.titre)).not.toContain("Mesurer et compter");
-    // Il y a de quoi composer une liste sans écrire une ligne.
-    expect(optionsDe("fournitures", true).length).toBeGreaterThan(35);
-    expect(optionsDe("fournitures", false).length).toBeGreaterThan(40);
+    // Le matériel de compensation ne se propose qu'en IME.
+    expect(groupesDe("fournitures", true).map((g) => g.titre)).toContain("Si votre enfant en a besoin");
+    expect(groupesDe("fournitures", false).map((g) => g.titre)).not.toContain("Si votre enfant en a besoin");
+    // Il y a de quoi composer une liste sans écrire une ligne, dans les deux cas.
+    expect(optionsDe("fournitures", true).length).toBeGreaterThan(55);
+    expect(optionsDe("fournitures", false).length).toBeGreaterThan(55);
+    // Mais on n'en coche qu'une dizaine d'office : une liste de rentrée reste courte.
+    expect(choixParDefaut("fournitures", true).length).toBeLessThan(15);
     // Les cases d'office donnent un document complet dès l'ouverture.
     expect(choixParDefaut("cahier", true).length).toBeGreaterThan(1);
     expect(choixParDefaut("fournitures", false).every((id) => ids("fournitures", false).includes(id))).toBe(true);
