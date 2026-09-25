@@ -179,7 +179,7 @@ function PrecisionsDuDocument({ infos, onChange }: { infos: InfosGarde; onChange
         {utiles.map((r) => (
           <label key={r.id} style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12, color: "var(--text-2)" }}>
             {r.libelle}
-            <Select value={infos.reglages[r.id] ?? ""} style={{ minWidth: 200 }}
+            <Select value={(infos.reglages ?? {})[r.id] ?? ""} style={{ minWidth: 200 }}
               onChange={(e) => onChange({ ...infos, reglages: { ...infos.reglages, [r.id]: e.target.value } })}>
               {r.valeurs.map((v) => <option key={v.id} value={v.id}>{v.libelle}</option>)}
             </Select>
