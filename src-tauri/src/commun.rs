@@ -277,7 +277,7 @@ pub fn fichiers_du_dossier(racine: &Path, dossier: &Path) -> Vec<String> {
 // ── Les commandes ─────────────────────────────────────────────────────────
 
 /// Les bureaux communs de cet ordinateur.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn communs_liste(db: State<'_, Db>) -> R<Vec<BureauCommun>> {
     Ok(lire_bureaux(&db)
         .into_iter()
@@ -338,7 +338,7 @@ pub async fn commun_ajouter_nuage(
 }
 
 /// Ajoute un bureau commun : un nom, et le dossier partagé choisi.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn commun_ajouter(db: State<'_, Db>, nom: String, chemin: String) -> R<BureauCommun> {
     let p = PathBuf::from(chemin.trim());
     if !p.is_dir() {
@@ -429,7 +429,7 @@ pub async fn commun_creer_lien(
 }
 
 /// Renomme un bureau commun dans Maitrize (le dossier, lui, garde son nom).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn commun_renommer(db: State<'_, Db>, id: String, nom: String) -> R<()> {
     let mut liste = lire_bureaux(&db);
     if let Some(b) = liste.iter_mut().find(|b| b.id == id) {
@@ -442,7 +442,7 @@ pub fn commun_renommer(db: State<'_, Db>, id: String, nom: String) -> R<()> {
 
 /// Oublie un bureau commun sur cet ordinateur. Le dossier partagé, et tout ce
 /// qu'il contient, restent en place.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn commun_oublier(db: State<'_, Db>, id: String) -> R<()> {
     let liste: Vec<BureauCommun> = lire_bureaux(&db).into_iter().filter(|b| b.id != id).collect();
     ecrire_bureaux(&db, &liste)

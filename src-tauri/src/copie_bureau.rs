@@ -608,7 +608,7 @@ pub fn copie_bureau_info(db: State<Db>) -> R<InfoCopie> {
     Ok(info(&db))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn copie_bureau_regler(db: State<Db>, active: bool, emplacement: Option<String>) -> R<InfoCopie> {
     if let Some(lieu) = emplacement.as_deref().map(str::trim).filter(|l| !l.is_empty()) {
         let chemin = Path::new(lieu);
@@ -668,7 +668,7 @@ pub async fn copie_bureau_appliquer(db: State<'_, Db>, entrees: Vec<Entree>, dos
     .map_err(|e| e.to_string())?
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn copie_bureau_ouvrir(db: State<Db>) -> R<()> {
     let racine = PathBuf::from(info(&db).racine);
     std::fs::create_dir_all(&racine).map_err(|e| e.to_string())?;

@@ -1361,7 +1361,7 @@ pub fn fichier_read(nom: String) -> R<String> {
 }
 
 /// Chemin absolu d'un fichier joint (pour convertFileSrc côté frontend).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fichier_path(nom: String) -> R<String> {
     Ok(fichiers_dir().join(&nom).to_string_lossy().to_string())
 }
@@ -1371,7 +1371,7 @@ pub fn fichier_path(nom: String) -> R<String> {
 /// Passe par le backend plutôt que par le greffon côté fenêtre : celui-ci
 /// exigerait une permission d'ouverture de chemins, qui manquerait en silence.
 /// Le nom est refusé s'il sort du dossier des fichiers.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fichier_ouvrir(nom: String) -> R<()> {
     if nom.is_empty() || nom.contains('/') || nom.contains('\\') || nom.contains("..") {
         return Err("Nom de fichier invalide.".into());
@@ -1864,7 +1864,7 @@ pub fn exporter_bilan_ppi(
 
 /// Ouvre un fichier joint dans l'app par défaut du système (Aperçu pour un PDF
 /// sur macOS), plutôt que dans une visionneuse interne.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn ouvrir_fichier(nom: String) -> R<()> {
     let path = fichiers_dir().join(&nom);
     if !path.exists() {
@@ -2312,7 +2312,7 @@ pub struct DossierDonnees {
     pub octets: u64,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn dossier_donnees_get() -> DossierDonnees {
     let chemin = crate::db::data_dir();
     let octets = std::fs::read_dir(&chemin)
@@ -2333,7 +2333,7 @@ pub fn dossier_donnees_get() -> DossierDonnees {
 /// ordinateurs ne peuvent pas faire ; et le verrouillage de fichier sur SMB
 /// est réputé peu fiable. Accepter mènerait à une base corrompue, souvent
 /// plusieurs jours après le changement, quand plus personne ne fait le lien.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn dossier_donnees_set(chemin: Option<String>) -> R<DossierDonnees> {
     match chemin.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
         Some(c) => {
@@ -2468,7 +2468,7 @@ pub fn sauvegardes_auto_list() -> R<Vec<SauvegardeAuto>> {
 }
 
 /// Ouvre le dossier des copies automatiques dans le Finder / l'Explorateur.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn sauvegardes_auto_ouvrir() -> R<()> {
     tauri_plugin_opener::open_path(crate::db::sauvegardes_dir(), None::<&str>).map_err(e)
 }
