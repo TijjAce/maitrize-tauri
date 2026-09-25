@@ -90,8 +90,13 @@ describe("les cases à cocher", () => {
     expect(ids("fournitures", true)).not.toContain("stylos");
     expect(ids("fournitures", false)).toContain("stylos");
     expect(ids("fournitures", false)).not.toContain("change");
-    // Un groupe vidé de ses cases ne s'affiche pas.
-    expect(groupesDe("fournitures", true).map((g) => g.titre)).not.toContain("Géométrie");
+    // Un groupe vidé de ses cases ne s'affiche pas : la géométrie n'est pas
+    // au programme d'une unité d'enseignement.
+    expect(groupesDe("fournitures", false).map((g) => g.titre)).toContain("Mesurer et compter");
+    expect(groupesDe("fournitures", true).map((g) => g.titre)).not.toContain("Mesurer et compter");
+    // Il y a de quoi composer une liste sans écrire une ligne.
+    expect(optionsDe("fournitures", true).length).toBeGreaterThan(35);
+    expect(optionsDe("fournitures", false).length).toBeGreaterThan(40);
     // Les cases d'office donnent un document complet dès l'ouverture.
     expect(choixParDefaut("cahier", true).length).toBeGreaterThan(1);
     expect(choixParDefaut("fournitures", false).every((id) => ids("fournitures", false).includes(id))).toBe(true);
