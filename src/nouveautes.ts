@@ -21,6 +21,8 @@ export const NOUVEAUTES: Nouveaute[] = [
     version: "1.6.15",
     titre: "Les réunions s'écrivent au fil de l'eau",
     points: [
+      { quoi: "L'ordinateur sait recevoir les vocaux dictés depuis le téléphone, ordinateur fermé. Il les transcrit avec Whisper, sur place, et retrouve le créneau à l'heure : un vocal de 10 h 12 se range sous la numération de 10 h. Dicté juste en sortant de la salle, il rejoint le créneau qui vient de finir — mais au-delà d'une demi-heure, on ne devine plus, c'est vous qui choisissez.", ou: "Planning · cahier journal" },
+      { quoi: "Rien ne s'écrit tout seul dans un bilan : le texte s'affiche, se corrige, et c'est « ↓ Verser dans le bilan » qui l'y met — à la suite de ce que vous aviez déjà écrit, jamais à la place. Le téléphone, lui, ne connaît ni vos élèves ni votre planning : il n'envoie que du son et une heure.", ou: "Planning · cahier journal" },
       { quoi: "Un onglet « 🌱 Projets » : quatre-vingt-dix projets de classe tout prêts, par thème — vivre ensemble, langage, nombres et monnaie, sciences, arts, corps, autonomie, sorties, fêtes. Chacun dit en une phrase de quoi il s'agit, ce qu'il travaille, et ses quatre étapes.", ou: "Projets" },
       { quoi: "L'année tient en haut de l'écran, en deux lignes de cinq mois. Vous cochez des projets dans le catalogue, et chaque mois tend la main : « ＋ ici ». Un mois s'ouvre sur ses semaines, pour poser un projet sur la semaine du 11 plutôt que sur janvier en entier.", ou: "Projets" },
       { quoi: "Une fois posé, un projet se coche étape par étape et son état suit tout seul : à faire, en cours, terminé. Il se déplace d'un mois à l'autre au clic droit, et rien n'empêche d'en écrire un de zéro.", ou: "Projets" },

@@ -405,6 +405,26 @@ pub async fn whisper_telecharger_modele(app: AppHandle, db: State<'_, Db>, nom: 
     Ok(nom)
 }
 
+/**
+ * Transcrit un WAV déjà en mémoire, sur cette machine.
+ *
+ * Le modèle reste chargé d'un passage à l'autre : relire trois cents
+ * méga-octets à chaque phrase coûterait plus cher que la transcription.
+ */
+pub fn transcrire_octets(moteur: &State<'_, Moteur>, octets: &[u8]) -> R<String> {
+    let pcm = pcm_du_wav(octets)?;
+    if pcm.is_empty() {
+        return Err("Enregistrement vide.".into());
+    }
+    let voulu = modele_installe()
+        .ok_or("Aucun modèle de transcription : téléchargez-en un dans Réglages · IA.")?;
+    let mut garde = moteur.0.lock().map_err(|_| "Moteur occupé.".to_string())?;
+    if garde.as_ref().map(|c| c.nom != voulu).unwrap_or(true) {
+        *garde = Some(Charge::ouvrir(&voulu)?);
+    }
+    garde.as_mut().expect("chargé juste au-dessus").transcrire(&pcm)
+}
+
 /// Transcrit un enregistrement (WAV 16 kHz mono, en base64) sur la machine.
 #[tauri::command]
 pub async fn transcrire_local(moteur: State<'_, Moteur>, audio_b64: String) -> R<String> {
@@ -412,21 +432,7 @@ pub async fn transcrire_local(moteur: State<'_, Moteur>, audio_b64: String) -> R
     let octets = base64::engine::general_purpose::STANDARD
         .decode(audio_b64.as_bytes())
         .map_err(|e| format!("Audio illisible : {e}"))?;
-    let pcm = pcm_du_wav(&octets)?;
-    if pcm.is_empty() {
-        return Err("Enregistrement vide.".into());
-    }
-    let voulu = modele_installe()
-        .ok_or("Aucun modèle de transcription : téléchargez-en un dans Réglages · IA.")?;
-
-    // Le modèle reste chargé d'un passage à l'autre : relire trois cents
-    // méga-octets à chaque phrase coûterait plus cher que la transcription.
-    let mut garde = moteur.0.lock().map_err(|_| "Moteur occupé.".to_string())?;
-    if garde.as_ref().map(|c| c.nom != voulu).unwrap_or(true) {
-        *garde = Some(Charge::ouvrir(&voulu)?);
-    }
-    let charge = garde.as_mut().expect("chargé juste au-dessus");
-    charge.transcrire(&pcm)
+    transcrire_octets(&moteur, &octets)
 }
 
 /// Essaie la transcription et dit ce qui cloche, en clair.
