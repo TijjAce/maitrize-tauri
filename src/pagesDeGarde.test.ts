@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   assembler, basculer, choixParDefaut, cochees, consigneIA, corpsParDefaut, demandeIA, entete, GROUPES,
-  groupesDe, htmlDeLaReponse, modeleLocal, optionsDe, signature, SORTES, type InfosGarde, type SorteGarde,
+  groupesDe, htmlDeLaReponse, modeleLocal, optionsDe, puceDe, REGLAGES, reglagesParDefaut, signature,
+  SORTES, type InfosGarde, type SorteGarde,
 } from "./pagesDeGarde";
 import { nettoyerHtml } from "./texteRiche";
 
@@ -9,9 +10,13 @@ const infos = (p: Partial<InfosGarde> = {}): InfosGarde => {
   const tout = {
     sorte: "lettre" as SorteGarde, titre: "Cahier de classe", annee: "2026-2027", ecole: "IME <Perce-Neige>",
     enseignant: "Clément Titet", fonction: "Professeur des écoles spécialisé", telephone: "01 85 74 27 87",
-    niveau: "", ime: true, choix: [] as string[], precisions: "", ...p,
+    niveau: "", ime: true, choix: [] as string[], reglages: {} as Record<string, string>, precisions: "", ...p,
   };
-  return { ...tout, choix: p.choix ?? choixParDefaut(tout.sorte, tout.ime) };
+  return {
+    ...tout,
+    choix: p.choix ?? choixParDefaut(tout.sorte, tout.ime),
+    reglages: p.reglages ?? reglagesParDefaut(tout.sorte, tout.ime),
+  };
 };
 
 describe("pages de garde", () => {
@@ -141,5 +146,47 @@ describe("les cases à cocher", () => {
     expect(basculer(["a", "b"], "c")).toEqual(["a", "b", "c"]);
     expect(basculer(["a", "b"], "a")).toEqual(["b"]);
     expect(cochees(infos({ sorte: "lettre", choix: ["rdv", "rythme"] })).map((o) => o.id)).toEqual(["rythme", "rdv"]);
+  });
+});
+
+describe("les précisions sur les cahiers", () => {
+  const avec = (reglages: Record<string, string>, choix = ["cahierGrand"]) =>
+    infos({ sorte: "fournitures", choix, reglages });
+
+  it("écrit le lignage, les pages et la couverture sur chaque cahier coché", () => {
+    const i = avec({ lignage: "seyes3", pages: "96", couverture: "polypro", grammage: "90" });
+    expect(corpsParDefaut(i)).toContain(
+      "<li>Un cahier 24 × 32 cm, assez grand pour y coller une feuille A4, 96 pages, "
+      + "réglure Seyès agrandie, interligne 3 mm, couverture polypro, papier 90 g</li>");
+    // Le même choix vaut pour tous les cahiers, et pour eux seuls.
+    const deux = avec({ lignage: "carreaux" }, ["cahierPetit", "poesies", "ramette"]);
+    const corps = corpsParDefaut(deux);
+    expect(corps).toContain("<li>Un cahier 17 × 22 cm, petits carreaux (5 × 5 mm)</li>");
+    expect(corps).toContain("<li>Un cahier de poésies, petits carreaux (5 × 5 mm)</li>");
+    expect(corps).toContain("<li>Une ramette de papier blanc A4</li>");
+  });
+
+  it("ne dit rien de plus quand on ne précise rien", () => {
+    const i = avec({ lignage: "", pages: "", couverture: "", grammage: "" });
+    expect(corpsParDefaut(i)).toContain("<li>Un cahier 24 × 32 cm, assez grand pour y coller une feuille A4</li>");
+    // Une valeur inconnue — un vieux document — ne casse pas la puce.
+    expect(puceDe(GROUPES.fournitures.flatMap((g) => g.options).find((o) => o.id === "brouillon")!,
+      avec({ pages: "mille" }))).toBe("Un cahier de brouillon");
+  });
+
+  it("part du Seyès agrandi en IME, du Seyès ordinaire ailleurs", () => {
+    expect(reglagesParDefaut("fournitures", true).lignage).toBe("seyes3");
+    expect(reglagesParDefaut("fournitures", false).lignage).toBe("seyes");
+    // Les autres documents ne se précisent pas ainsi.
+    expect(reglagesParDefaut("lettre", true)).toEqual({});
+    expect(REGLAGES.lettre).toBeUndefined();
+    // Chaque réglage propose de ne rien préciser.
+    for (const r of REGLAGES.fournitures!) expect(r.valeurs.some((v) => v.id === "" && v.texte === "")).toBe(true);
+  });
+
+  it("transmet au modèle la puce précisée, pour qu'il n'invente pas de réglure", () => {
+    const d = demandeIA(avec({ lignage: "seyes", pages: "48" }, ["cahierPetit"]));
+    expect(d).toContain("- un cahier 17 × 22 cm, 48 pages, grands carreaux (Seyès)");
+    expect(consigneIA(infos({ sorte: "fournitures" }))).toContain("rien d'autre");
   });
 });

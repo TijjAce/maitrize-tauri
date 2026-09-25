@@ -51,6 +51,8 @@ export interface InfosGarde {
   ime: boolean;
   /** Les cases cochées : ce que le document doit contenir. */
   choix: string[];
+  /** Les précisions communes : lignage des cahiers, pages, couverture… */
+  reglages: Record<string, string>;
   /** Ce que l'enseignant ajoute : « élèves non lecteurs », « budget serré »… */
   precisions: string;
 }
@@ -73,6 +75,13 @@ export interface OptionGarde {
   corps?: string | ((i: InfosGarde) => string);
   /** Pour les fournitures : la puce de la liste. */
   puce?: string;
+  /**
+   * Les précisions qui s'ajoutent à cette puce : un cahier prend le lignage
+   * et la couverture choisis pour toute la liste, une ramette n'en prend
+   * aucun. Écrire « 17 × 22 » cinq fois avec cinq lignages ferait cinquante
+   * cases ; une case et un menu suffisent.
+   */
+  precise?: string[];
   /** Cochée à l'ouverture. */
   dOffice?: boolean;
   /** Proposée seulement en IME, ou seulement hors IME. */
@@ -86,9 +95,82 @@ const c = (id: string, libelle: string, demande: string,
            corps?: OptionGarde["corps"], reste: Partial<OptionGarde> = {}): OptionGarde =>
   ({ id, libelle, demande, corps, ...reste });
 
+/** « Un cahier » devient « un cahier » : une puce se cite au fil d'une phrase. */
+const bas = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
+
 /** Une fourniture : la puce qu'elle ajoute est aussi ce qu'on en dit au modèle. */
 const f = (id: string, libelle: string, puce: string, reste: Partial<OptionGarde> = {}): OptionGarde =>
-  ({ id, libelle, demande: puce.charAt(0).toLowerCase() + puce.slice(1), puce, ...reste });
+  ({ id, libelle, demande: bas(puce), puce, ...reste });
+
+// ── Les précisions communes ───────────────────────────────────────────────
+//
+// Un cahier se commande par sa réglure autant que par son format. La réglure
+// française est le Seyès : des carreaux de 8 mm, subdivisés en interlignes de
+// 2 mm, avec une marge rouge. Pour un enfant qui débute, on l'agrandit —
+// interligne 3 mm en fin de grande section, 2,5 mm quand le geste s'assure.
+// Les petits carreaux de 5 mm sont ceux des mathématiques ; l'uni, celui de
+// la maternelle et du dessin ; le lignage coloré, celui des élèves qui se
+// repèrent mal dans la page.
+
+export interface ValeurReglage { id: string; libelle: string; texte: string }
+export interface ReglageGarde { id: string; libelle: string; valeurs: ValeurReglage[] }
+
+/** « Sans préciser » : la puce ne dit rien de plus. */
+const AU_CHOIX: ValeurReglage = { id: "", libelle: "Sans préciser", texte: "" };
+
+export const REGLAGES: Partial<Record<SorteGarde, ReglageGarde[]>> = {
+  fournitures: [
+    { id: "lignage", libelle: "Lignage", valeurs: [
+      { id: "seyes", libelle: "Grands carreaux (Seyès)", texte: "grands carreaux (Seyès)" },
+      { id: "seyes3", libelle: "Seyès agrandi, interligne 3 mm", texte: "réglure Seyès agrandie, interligne 3 mm" },
+      { id: "seyes25", libelle: "Seyès, interligne 2,5 mm", texte: "réglure Seyès, interligne 2,5 mm" },
+      { id: "carreaux", libelle: "Petits carreaux (5 × 5 mm)", texte: "petits carreaux (5 × 5 mm)" },
+      { id: "uni", libelle: "Pages unies", texte: "pages unies" },
+      { id: "colore", libelle: "Lignage coloré", texte: "lignage coloré, à interlignes repérés par des couleurs" },
+      AU_CHOIX,
+    ] },
+    { id: "pages", libelle: "Pages", valeurs: [
+      { id: "48", libelle: "48 pages", texte: "48 pages" },
+      { id: "96", libelle: "96 pages", texte: "96 pages" },
+      { id: "140", libelle: "140 pages", texte: "140 pages" },
+      AU_CHOIX,
+    ] },
+    { id: "couverture", libelle: "Couverture", valeurs: [
+      { id: "polypro", libelle: "Polypro, sans protège-cahier", texte: "couverture polypro" },
+      { id: "carton", libelle: "Carton", texte: "couverture carton" },
+      AU_CHOIX,
+    ] },
+    { id: "grammage", libelle: "Papier", valeurs: [
+      { id: "90", libelle: "90 g, pour le stylo plume", texte: "papier 90 g" },
+      { id: "70", libelle: "70 g", texte: "papier 70 g" },
+      AU_CHOIX,
+    ] },
+  ],
+};
+
+/**
+ * Les précisions à l'ouverture.
+ *
+ * Le Seyès agrandi de 3 mm est celui que l'on conseille aux enfants qui
+ * apprennent encore le geste : c'est le bon défaut en unité d'enseignement.
+ * Ailleurs, le Seyès ordinaire. Le reste, on ne le précise pas : une liste de
+ * rentrée n'a pas à imposer un grammage.
+ */
+export const reglagesParDefaut = (sorte: SorteGarde, ime: boolean): Record<string, string> =>
+  (sorte === "fournitures" ? { lignage: ime ? "seyes3" : "seyes" } : {});
+
+/** Le texte d'une précision, ou rien si elle n'est pas donnée. */
+function texteDuReglage(i: InfosGarde, id: string): string {
+  const reglage = (REGLAGES[i.sorte] ?? []).find((r) => r.id === id);
+  return reglage?.valeurs.find((v) => v.id === (i.reglages[id] ?? ""))?.texte ?? "";
+}
+
+/** La puce d'une fourniture, précisions comprises. */
+export function puceDe(o: OptionGarde, i: InfosGarde): string {
+  if (!o.puce) return "";
+  const suite = (o.precise ?? []).map((id) => texteDuReglage(i, id)).filter(Boolean);
+  return suite.length ? `${o.puce}, ${suite.join(", ")}` : o.puce;
+}
 
 /** Le nom de l'enseignant tel qu'il s'écrit au milieu d'une page de garde. */
 const quiSigne = (i: InfosGarde) => [i.enseignant.trim(), i.fonction.trim()].filter(Boolean).join(" — ");
@@ -179,17 +261,25 @@ export const GROUPES: Record<SorteGarde, GroupeGarde[]> = {
       f("tablier", "Tablier pour la peinture", "Un tablier, ou une vieille chemise, pour la peinture"),
     ] },
     { titre: "Cahiers et feuilles", options: [
-      f("cahierPetit", "Cahier petit format", "Un cahier petit format (17 × 22 cm), grands carreaux", { quand: "ordinaire" }),
-      f("cahierGrand", "Cahier grand format", "Un cahier grand format (24 × 32 cm), grands carreaux", { quand: "ordinaire" }),
-      f("brouillon", "Cahier de brouillon", "Un cahier de brouillon"),
-      f("feuilles", "Feuilles simples et doubles", "Un paquet de feuilles simples et un paquet de feuilles doubles, perforées", { quand: "ordinaire" }),
+      f("cahierPetit", "Cahier petit format", "Un cahier 17 × 22 cm",
+        { precise: ["pages", "lignage", "couverture", "grammage"] }),
+      f("cahierA4", "Cahier A4", "Un cahier 21 × 29,7 cm",
+        { precise: ["pages", "lignage", "couverture", "grammage"], quand: "ordinaire" }),
+      f("cahierGrand", "Cahier grand format", "Un cahier 24 × 32 cm, assez grand pour y coller une feuille A4",
+        { precise: ["pages", "lignage", "couverture", "grammage"] }),
+      f("cahierTP", "Cahier de travaux pratiques", "Un cahier de travaux pratiques : une page unie, une page réglée",
+        { precise: ["pages", "couverture"] }),
+      f("cahierEcriture", "Cahier d'écriture", "Un cahier d'écriture", { precise: ["lignage", "pages"] }),
+      f("italienne", "Cahier à l'italienne pour l'écriture", "Un petit cahier à l'italienne, pour l'écriture",
+        { precise: ["lignage"] }),
+      f("poesies", "Cahier de poésies", "Un cahier de poésies", { precise: ["pages", "lignage", "couverture"] }),
+      f("brouillon", "Cahier de brouillon", "Un cahier de brouillon", { precise: ["pages"] }),
+      f("cahierLiaison", "Cahier de liaison", "Un petit cahier de liaison", { precise: ["pages", "couverture"] }),
+      f("feuilles", "Feuilles simples et doubles", "Un paquet de feuilles simples et un paquet de feuilles doubles, perforées",
+        { precise: ["lignage"], quand: "ordinaire" }),
       f("repertoire", "Répertoire", "Un petit répertoire", { quand: "ordinaire" }),
       f("porteVues", "Porte-vues", "Un porte-vues de quarante vues"),
-      f("cahierLiaison", "Cahier de liaison", "Un petit cahier de liaison"),
       f("dessin", "Feuilles à dessin", "Une pochette de feuilles à dessin"),
-      f("italienne", "Cahier à l'italienne pour l'écriture", "Un petit cahier à l'italienne, pour l'écriture"),
-      f("poesies", "Cahier de poésies", "Un cahier de poésies"),
-      f("lignageColore", "Cahier à lignage coloré", "Un cahier à lignage coloré, ou à interlignes larges", { quand: "ime" }),
       f("ramette", "Ramette de papier A4", "Une ramette de papier blanc A4"),
     ] },
     { titre: "Ranger", options: [
@@ -335,7 +425,7 @@ export function corpsParDefaut(i: InfosGarde): string {
     return centre("<br>") + blocs.join(centre("<br>"));
   }
 
-  const puces = choisies.filter((o) => o.puce).map((o) => `<li>${echapper(o.puce!)}</li>`).join("");
+  const puces = choisies.filter((o) => o.puce).map((o) => `<li>${echapper(puceDe(o, i))}</li>`).join("");
   const textes = choisies.map(ecrit).filter(Boolean).join("");
 
   if (i.sorte === "fournitures") {
@@ -383,7 +473,9 @@ export function demandeIA(i: InfosGarde): string {
   const consignes = choisies.filter((o) => !o.puce);
   if (aLister.length) {
     lignes.push("La liste doit contenir ces fournitures, et aucune autre :");
-    for (const o of aLister) lignes.push(`- ${o.demande}`);
+    // La puce porte déjà le lignage et le format : on la reprend telle quelle,
+    // pour que le modèle n'aille pas en inventer d'autres.
+    for (const o of aLister) lignes.push(`- ${bas(puceDe(o, i))}`);
   }
   if (consignes.length) {
     lignes.push(`${ATTENDU[i.sorte]} :`);
