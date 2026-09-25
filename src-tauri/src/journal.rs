@@ -243,7 +243,7 @@ pub fn annoncer_tables(conn: &Connection, machine: &str, autres: &[(String, Vec<
         }
         for prefixe in REGLAGES_ANNONCES {
             let marque = format!("reglages:{prefixe}");
-            if !tables.iter().any(|t| *t == marque) {
+            if !tables.contains(&marque) {
                 continue;
             }
             let cle = format!("sync_annonce_{marque}_{autre}");

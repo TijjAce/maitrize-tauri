@@ -1071,7 +1071,7 @@ pub async fn sauvegarde_verifier(db: State<'_, Db>, cle: Option<String>) -> R<Ve
 }
 
 /// Le dernier essai de restauration, s'il y en a eu un.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn sauvegarde_verif_derniere(db: State<'_, Db>) -> R<Option<VerifSauvegarde>> {
     let c = db.lock();
     Ok(serde_json::from_str(&get_setting(&c, CLE_VERIF)).ok())

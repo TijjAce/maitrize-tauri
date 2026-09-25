@@ -41,7 +41,7 @@ impl Db {
 /// casserait sur un compte dont le dossier personnel n'est pas à sa place
 /// habituelle, ce qui arrive sur les postes d'établissement.
 pub fn dossier_par_defaut() -> PathBuf {
-    let base = dirs::data_dir().unwrap_or_else(|| std::env::temp_dir());
+    let base = dirs::data_dir().unwrap_or_else(std::env::temp_dir);
     base.join("fr.clementsapp.maitrize")
 }
 
