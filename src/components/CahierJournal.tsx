@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { api, Creneau, Seance, Sequence, Eleve, Jeu, nouveauJeu, teinteCreneau, texteErreur, nowIso, type ObservationEleve } from "../api";
+import { api, Creneau, Seance, Sequence, Eleve, Jeu, journal, nouveauJeu, teinteCreneau, texteErreur, nowIso, type ObservationEleve } from "../api";
 import { toast } from "./Toaster";
 import { PoserObservation } from "./PoserObservation";
 import { fichesANourrir } from "../observationEleve";
@@ -116,7 +116,14 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
       const aNourrir = fichesANourrir(observations.current, id, b.bilan,
         (eleveId) => elevesRef.current.find((x) => x.id === eleveId)?.nom ?? "", nowIso());
       for (const o of aNourrir) {
-        await api.observationSave(o).catch(() => {});
+        // Le bilan est enregistré ; si la fiche d'observation qu'il alimente
+        // ne l'est pas, l'écran dirait « enregistré » à tort. On ne peut pas
+        // l'écrire à la place de l'enseignant, mais on peut le dire.
+        await api.observationSave(o).catch((err: unknown) => {
+          journal(`ÉCHEC observation nourrie par le bilan : ${texteErreur(err)}`);
+          toast("Le bilan est enregistré, mais pas la fiche d'observation qu'il alimente.",
+            { icone: "⚠️", duree: 7000 });
+        });
         observations.current = observations.current.map((x) => (x.id === o.id ? o : x));
       }
     } catch (err) {
@@ -147,7 +154,15 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
       window.clearTimeout(t);
       enAttente.delete(id);
       const b = aEcrire.current[id], e = enregistres.current[id];
-      if (b && (!e || b.prevu !== e.prevu || b.bilan !== e.bilan)) api.creneauJournalSave(id, b.prevu, b.bilan).catch(() => {});
+      // La dernière écriture, celle du départ. Elle échouait sans un mot : on
+      // changeait de jour et le dernier paragraphe n'existait plus nulle part.
+      if (b && (!e || b.prevu !== e.prevu || b.bilan !== e.bilan)) {
+        api.creneauJournalSave(id, b.prevu, b.bilan).catch((err: unknown) => {
+          journal(`ÉCHEC enregistrement du cahier journal au départ : ${texteErreur(err)}`);
+          toast("Les dernières lignes du cahier journal n'ont pas pu être enregistrées.",
+            { icone: "⚠️", duree: 9000 });
+        });
+      }
     }
     minuteurs.current = {};
   }, [dateIso]);
