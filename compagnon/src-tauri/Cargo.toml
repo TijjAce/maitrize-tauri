@@ -7,7 +7,11 @@ edition = "2021"
 [lib]
 # Le suffixe `_lib` évite la collision de noms avec le binaire sur Windows.
 name = "maitrize_dictaphone_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
+# Pas de `cdylib` : sur iPhone, une bibliothèque dynamique doit résoudre ses
+# symboles à la compilation, or ceux de l'enveloppe Swift n'existent qu'au
+# moment où Xcode assemble l'application. La bibliothèque statique, elle,
+# les laisse en suspens — c'est Xcode qui les recolle.
+crate-type = ["staticlib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -16,7 +20,9 @@ tauri-build = { version = "2", features = [] }
 # Volontairement court. Ce qui pèse dans l'application de bureau — Whisper,
 # le client S3, la génération de PDF — n'a rien à faire sur un téléphone :
 # celui-ci enregistre du son et le dépose, rien d'autre.
-tauri = { version = "2", features = [] }
+# Épinglé sur la version du CLI installé : leurs numéros divergent, et garder
+# les deux alignés enlève une variable quand la compilation iOS coince.
+tauri = { version = "=2.11.2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 base64 = "0.22"
@@ -27,3 +33,4 @@ chrono = "0.4"
 # d'avoir à déclarer une exception pour parler en clair au Mac du WiFi.
 reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
 tokio = { version = "1", features = ["rt-multi-thread"] }
+tauri-plugin-dialog = "2.7.3"

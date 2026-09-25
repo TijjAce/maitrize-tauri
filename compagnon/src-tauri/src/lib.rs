@@ -15,6 +15,10 @@ use commandes::*;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Le greffon des dialogues sert à demander confirmation avant
+        // d'effacer un enregistrement — et il apporte au passage le pont
+        // Swift de Tauri, que rien d'autre ne tire sur iPhone.
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             ordinateur_lire,
             ordinateur_ecrire,
