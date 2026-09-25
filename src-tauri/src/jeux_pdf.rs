@@ -304,7 +304,7 @@ fn disposer_mot(mot: &str, largeur_dispo: f32) -> (Vec<String>, f32) {
         .map(|i| (i, largeur_capitales(&mots[..i].join(" "), 1.0).max(largeur_capitales(&mots[i..].join(" "), 1.0))))
         .min_by(|a, b| a.1.total_cmp(&b.1))
         .unwrap();
-    let taille = (largeur_dispo / plus_longue).min(TAILLE_MOT_DEUX_LIGNES).max(TAILLE_MOT_MIN);
+    let taille = (largeur_dispo / plus_longue).clamp(TAILLE_MOT_MIN, TAILLE_MOT_DEUX_LIGNES);
     if taille <= sur_une_ligne {
         return (vec![texte], sur_une_ligne.max(TAILLE_MOT_MIN));
     }
@@ -346,6 +346,9 @@ fn rect_arrondi(x: f32, y: f32, l: f32, h: f32, r: f32) -> Vec<(Point, bool)> {
     ]
 }
 
+// Une planche de loto se décrit par ce qu'elle porte : la réduire à moins
+// d'arguments demanderait une structure qui ne servirait qu'ici.
+#[allow(clippy::too_many_arguments)]
 fn rendre_planche(
     doc: &PdfDocumentReference,
     page: PdfPageIndex,
@@ -634,7 +637,7 @@ mod tests {
         let dispo = (297.0 - 2.0 * MARGE_PAGE - 3.0 * ECART) / 4.0 - 2.0 * MARGE_MOT;
         for mot in ["se brosser les dents", "anticonstitutionnellement", "mettre la table", "chat"] {
             let (lignes, taille) = disposer_mot(mot, dispo);
-            assert!(taille >= TAILLE_MOT_MIN && taille <= TAILLE_MOT, "{mot} : {taille}");
+            assert!((TAILLE_MOT_MIN..=TAILLE_MOT).contains(&taille), "{mot} : {taille}");
             assert!(lignes.len() <= 2, "{mot}");
             for l in &lignes {
                 assert!(largeur_capitales(l, taille) <= dispo + 0.01, "{mot} déborde : {l} à {taille} pt");

@@ -46,3 +46,13 @@ jobs:
 
       - name: Tests Rust
         run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      # `tsc` ne voit pas tout : un import manquant, un fichier absent ou une
+      # syntaxe que Rollup refuse ne se découvraient qu'au moment de publier.
+      - name: Construction du front
+        run: npx vite build
+
+      # Un avertissement du compilateur Rust signale du code mort ou un
+      # emprunt douteux : on préfère le voir ici que dans six mois.
+      - name: Avertissements Rust
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings

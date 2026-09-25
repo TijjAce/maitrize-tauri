@@ -127,7 +127,7 @@ impl Charge {
         let modele = Whisper::load(&vb, config.clone()).map_err(|e| format!("Modèle illisible : {e}"))?;
 
         let filtres: Vec<f32> = FILTRES_MEL
-            .chunks_exact(4)
+            .as_chunks::<4>().0.iter()
             .map(|o| f32::from_le_bytes([o[0], o[1], o[2], o[3]]))
             .collect();
 
@@ -234,7 +234,7 @@ impl Charge {
  * spectre, et répondait « ... » à toute parole.
  */
 pub fn recadrer_mel(brut: &[f32], bandes: usize, trames_voulues: usize) -> Vec<f32> {
-    let trames = if bandes == 0 { 0 } else { brut.len() / bandes };
+    let trames = brut.len().checked_div(bandes).unwrap_or(0);
     let mut sortie = Vec::with_capacity(bandes * trames_voulues);
     for bande in 0..bandes {
         for trame in 0..trames_voulues {
@@ -299,7 +299,7 @@ pub fn pcm_du_wav(octets: &[u8]) -> R<Vec<f32>> {
         let fin = debut.saturating_add(taille).min(octets.len());
         if nom == b"data" {
             return Ok(octets[debut..fin]
-                .chunks_exact(2)
+                .as_chunks::<2>().0.iter()
                 .map(|o| i16::from_le_bytes([o[0], o[1]]) as f32 / 32768.0)
                 .collect());
         }

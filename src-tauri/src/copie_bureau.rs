@@ -603,7 +603,7 @@ fn info(db: &Db) -> InfoCopie {
 /// Une seule copie à la fois : deux passages simultanés se disputeraient les fichiers.
 static EN_COURS: Mutex<()> = Mutex::new(());
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn copie_bureau_info(db: State<Db>) -> R<InfoCopie> {
     Ok(info(&db))
 }
