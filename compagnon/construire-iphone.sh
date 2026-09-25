@@ -18,6 +18,12 @@
 set -e
 cd "$(dirname "$0")"
 
+# rustup fournit les cibles iOS, et vit dans ~/.cargo — que `sh` ne connaît
+# pas si le script est lancé autrement que depuis un terminal ouvert.
+if [ -f "$HOME/.cargo/env" ]; then
+  . "$HOME/.cargo/env"
+fi
+
 CARGO_PROFILE_DEV_OPT_LEVEL=3 \
 CARGO_PROFILE_DEV_DEBUG=line-tables-only \
 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=false \
