@@ -300,6 +300,39 @@ fn ecrire_vocal(app: &tauri::AppHandle, url: &str, octets: Vec<u8>) -> Result<St
     Ok(id)
 }
 
+/// Au-delà, ce n'est plus une note prise en classe.
+const NOTE_MAX: usize = 4000;
+
+/**
+ * Reçoit une note écrite du téléphone : du texte, et l'heure.
+ *
+ * Tout ne se dicte pas. En réunion, dans un couloir, dans une salle bruyante,
+ * on écrit deux lignes au lieu de parler — et elles se rangent exactement
+ * comme un vocal, au créneau de l'heure. Rien à transcrire : le texte est
+ * déjà là, la note arrive donc à l'état « transcrit ».
+ */
+fn ecrire_note(app: &tauri::AppHandle, url: &str, texte: &str) -> Result<String, String> {
+    let texte = texte.trim();
+    if texte.is_empty() {
+        return Err("Note vide.".into());
+    }
+    if texte.len() > NOTE_MAX {
+        return Err("Note trop longue.".into());
+    }
+    let debut = parametre(url, "debut");
+    let id = crate::models::new_id();
+    let db = app.state::<Db>();
+    let c = db.lock();
+    c.execute(
+        "INSERT INTO vocaux (id,fichier,debut,duree_s,texte,etat,erreur,date_creation)
+         VALUES (?1,'',?2,0,?3,'transcrit','',?4)",
+        rusqlite::params![id, debut, texte, crate::models::now_iso()],
+    )
+    .map_err(|er| er.to_string())?;
+    let _ = app.emit("vocal:recu", id.clone());
+    Ok(id)
+}
+
 fn repondre(mut req: tiny_http::Request, token: &str, page: &str, data_json: &str, app: &tauri::AppHandle) {
     let url = req.url().to_string();
     let autorise = url.contains(&format!("t={token}"));
@@ -308,6 +341,20 @@ fn repondre(mut req: tiny_http::Request, token: &str, page: &str, data_json: &st
         let mut octets = Vec::new();
         let lu = std::io::Read::read_to_end(req.as_reader(), &mut octets).is_ok();
         let (code, body) = match lu.then(|| ecrire_vocal(app, &url, octets)) {
+            Some(Ok(id)) => (200, format!("{{\"ok\":true,\"id\":{}}}", serde_json::to_string(&id).unwrap_or_default())),
+            Some(Err(message)) => (400, format!("{{\"ok\":false,\"erreur\":{}}}", serde_json::to_string(&message).unwrap_or_default())),
+            None => (400, "{\"ok\":false}".to_string()),
+        };
+        let header = tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json; charset=utf-8"[..])
+            .expect("en-tete valide");
+        let _ = req.respond(tiny_http::Response::from_string(body).with_status_code(code).with_header(header));
+        return;
+    }
+    // Une note écrite : le corps est le texte, rien d'autre.
+    if autorise && url.starts_with("/api/note") {
+        let mut texte = String::new();
+        let lu = std::io::Read::read_to_string(req.as_reader(), &mut texte).is_ok();
+        let (code, body) = match lu.then(|| ecrire_note(app, &url, &texte)) {
             Some(Ok(id)) => (200, format!("{{\"ok\":true,\"id\":{}}}", serde_json::to_string(&id).unwrap_or_default())),
             Some(Err(message)) => (400, format!("{{\"ok\":false,\"erreur\":{}}}", serde_json::to_string(&message).unwrap_or_default())),
             None => (400, "{\"ok\":false}".to_string()),

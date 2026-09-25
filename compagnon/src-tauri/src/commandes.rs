@@ -183,6 +183,120 @@ pub async fn vocal_envoyer(app: tauri::AppHandle, id: String) -> R<()> {
     std::fs::remove_file(&chemin).map_err(|e| e.to_string())
 }
 
+// ── Les notes écrites ─────────────────────────────────────────────────────
+//
+// Tout ne se dicte pas : en réunion, dans un couloir, dans une salle où l'on
+// ne va pas parler tout seul, on tape deux lignes. Elles suivent le même
+// chemin qu'un vocal — gardées d'abord, déposées ensuite — et se rangent au
+// créneau de l'heure. L'ordinateur n'a rien à transcrire : le texte est là.
+
+/// Une note qui attend son ordinateur.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Note {
+    pub id: String,
+    pub debut: String,
+    pub texte: String,
+}
+
+/// Au-delà, ce n'est plus une note prise en classe.
+const NOTE_MAX: usize = 4000;
+
+fn dossier_notes(app: &tauri::AppHandle) -> R<PathBuf> {
+    let d = dossier(app)?.join("notes");
+    std::fs::create_dir_all(&d).map_err(|e| e.to_string())?;
+    Ok(d)
+}
+
+/// Garde une note avant toute tentative d'envoi.
+#[tauri::command]
+pub fn note_garder(app: tauri::AppHandle, debut: String, texte: String) -> R<Note> {
+    let texte = texte.trim().to_string();
+    if texte.is_empty() {
+        return Err("Note vide.".into());
+    }
+    if texte.len() > NOTE_MAX {
+        return Err("Note trop longue.".into());
+    }
+    let id = uuid::Uuid::new_v4().to_string();
+    let nom = format!("{id}__{}.txt", debut.replace(':', "-"));
+    std::fs::write(dossier_notes(&app)?.join(&nom), &texte)
+        .map_err(|e| format!("Écriture impossible : {e}"))?;
+    Ok(Note { id, debut, texte })
+}
+
+/// Relit le nom d'une note : l'identifiant et l'heure.
+fn note_depuis_le_nom(nom: &str) -> Option<(String, String)> {
+    let brut = nom.strip_suffix(".txt")?;
+    let (id, debut) = brut.split_once("__")?;
+    let debut = match debut.split_once('T') {
+        Some((jour, heure)) => format!("{jour}T{}", heure.replace('-', ":")),
+        None => debut.to_string(),
+    };
+    Some((id.to_string(), debut))
+}
+
+/// Ce qui attend, du plus ancien au plus récent.
+#[tauri::command]
+pub fn notes_liste(app: tauri::AppHandle) -> R<Vec<Note>> {
+    let mut sortie = Vec::new();
+    let Ok(entrees) = std::fs::read_dir(dossier_notes(&app)?) else { return Ok(sortie) };
+    for e in entrees.flatten() {
+        let nom = e.file_name().to_string_lossy().to_string();
+        let Some((id, debut)) = note_depuis_le_nom(&nom) else { continue };
+        let texte = std::fs::read_to_string(e.path()).unwrap_or_default();
+        sortie.push(Note { id, debut, texte });
+    }
+    sortie.sort_by(|a, b| a.debut.cmp(&b.debut));
+    Ok(sortie)
+}
+
+fn note_fichier(app: &tauri::AppHandle, id: &str) -> R<PathBuf> {
+    let entrees = std::fs::read_dir(dossier_notes(app)?).map_err(|e| e.to_string())?;
+    for e in entrees.flatten() {
+        if e.file_name().to_string_lossy().starts_with(&format!("{id}__")) {
+            return Ok(e.path());
+        }
+    }
+    Err("Cette note n'est plus là.".into())
+}
+
+/// Oublie une note : le fichier part avec.
+#[tauri::command]
+pub fn note_oublier(app: tauri::AppHandle, id: String) -> R<()> {
+    std::fs::remove_file(note_fichier(&app, &id)?).map_err(|e| e.to_string())
+}
+
+/// Dépose une note sur l'ordinateur, et ne l'efface que si elle est arrivée.
+#[tauri::command]
+pub async fn note_envoyer(app: tauri::AppHandle, id: String) -> R<()> {
+    let base = ordinateur_lire(app.clone())?;
+    if base.is_empty() {
+        return Err("Aucun ordinateur appairé.".into());
+    }
+    let (origine, jeton) = decouper_adresse(&base)?;
+    let chemin = note_fichier(&app, &id)?;
+    let nom = chemin.file_name().unwrap_or_default().to_string_lossy().to_string();
+    let (_, debut) = note_depuis_le_nom(&nom).ok_or("Nom de fichier inattendu.")?;
+    let texte = std::fs::read_to_string(&chemin).map_err(|e| e.to_string())?;
+
+    let url = format!("{origine}/api/note?t={}&debut={}", urlencode(&jeton), urlencode(&debut));
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(20))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let reponse = client
+        .post(&url)
+        .body(texte)
+        .send()
+        .await
+        .map_err(|_| "L'ordinateur ne répond pas.".to_string())?;
+    if !reponse.status().is_success() {
+        return Err(format!("L'ordinateur a refusé ({}).", reponse.status()));
+    }
+    std::fs::remove_file(&chemin).map_err(|e| e.to_string())
+}
+
 /// L'ordinateur est-il joignable ? Une question, une réponse, pas de dépôt.
 #[tauri::command]
 pub async fn ordinateur_joignable(app: tauri::AppHandle) -> R<bool> {
@@ -280,6 +394,16 @@ mod tests {
         // L'heure retrouve ses deux-points, que le système de fichiers refuse.
         assert_eq!(debut, "2026-09-25T10:12:00");
         assert!((duree - 4.01).abs() < 1e-6);
+    }
+
+    #[test]
+    fn relit_le_nom_d_une_note() {
+        let (id, debut) = super::note_depuis_le_nom("abcd__2026-09-25T10-12-00.txt").unwrap();
+        assert_eq!(id, "abcd");
+        assert_eq!(debut, "2026-09-25T10:12:00");
+        assert!(super::note_depuis_le_nom("abcd.txt").is_none());
+        // Un vocal n'est pas une note : les deux dossiers ne se mélangent pas.
+        assert!(super::note_depuis_le_nom("abcd__2026-09-25T10-12-00__4.010.wav").is_none());
     }
 
     #[test]
