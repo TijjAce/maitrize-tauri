@@ -381,14 +381,17 @@ export default function Reglages() {
           <h3 style={{ marginTop: 0 }}>💾 Export manuel</h3>
           <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
             Un fichier unique contenant tout, pièces jointes comprises — à garder
-            sur une clé avant une manipulation délicate. La clé API n'y figure jamais.
+            sur une clé avant une manipulation délicate. Aucun secret n'y figure :
+            ni la clé de l'IA, ni celle du stockage, ni votre phrase de sauvegarde.
+            Après une restauration, elles sont à ressaisir ici.
           </p>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <button className="btn" onClick={exporter}>⬇️ Exporter (JSON)</button>
             <input ref={importInput} type="file" accept="application/json,.json" style={{ display: "none" }}
               onChange={(e) => { const f = e.target.files?.[0]; if (f) importer(f); e.target.value = ""; }} />
             <button className="btn" onClick={() => importInput.current?.click()}>⬆️ Importer</button>
-            <button className="btn ghost sm" onClick={exporterBase} title="Copie brute de la base, pour l'ouvrir dans un outil SQLite">
+            <button className="btn ghost sm" onClick={exporterBase}
+              title="Copie brute de la base, pour l'ouvrir dans un outil SQLite. Elle contient tout, secrets compris : à ne pas laisser traîner.">
               base .sqlite3
             </button>
             <span style={{ fontSize: 13 }}>{dataMsg}</span>

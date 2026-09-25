@@ -276,11 +276,27 @@ pub fn annoncer_tables(conn: &Connection, machine: &str, autres: &[(String, Vec<
 /// écritures simultanées. Le synchroniser donnerait le même identifiant aux
 /// deux machines, et le départage cesserait de fonctionner au moment précis
 /// où il sert.
+/**
+ * Un secret : ce qui ouvre un compte, un stockage ou une sauvegarde.
+ *
+ * Ni la synchronisation ni l'export manuel ne doivent l'emporter. L'export
+ * est un fichier que l'on met sur une clé ou que l'on s'envoie par courrier :
+ * y laisser la clé du stockage **et** la phrase qui protège les sauvegardes
+ * qu'elle contient reviendrait à poser la serrure à côté de la clé.
+ */
+pub const SECRETS: &[&str] = &[
+    "mistralApiKey", "sauvegarde_phrase", "sync_access", "sync_secret", "portableJeton",
+];
+
+pub fn reglage_secret(cle: &str) -> bool {
+    SECRETS.contains(&cle)
+}
+
 pub fn reglage_partage(cle: &str) -> bool {
-    const JAMAIS: &[&str] = &[
-        "mistralApiKey", "sauvegarde_phrase", "cgu", "onboardingVu", "vacancesCache",
-    ];
-    if JAMAIS.contains(&cle) || REGLAGES_DU_POSTE.contains(&cle) || cle.starts_with("sync_") {
+    const JAMAIS: &[&str] = &["cgu", "onboardingVu", "vacancesCache"];
+    if reglage_secret(cle) || JAMAIS.contains(&cle) || REGLAGES_DU_POSTE.contains(&cle)
+        || cle.starts_with("sync_")
+    {
         return false;
     }
     REGLAGES_PARTAGES.contains(&cle) || PREFIXES_PARTAGES.iter().any(|p| cle.starts_with(p))
@@ -2136,6 +2152,19 @@ mod tests {
         annoncer_dossiers(&a, "A");
         assert!(changements_locaux(&a, repere2).unwrap().0.is_empty(), "une seule annonce");
         assert!(!reglage_partage(CLE_DOSSIERS_ANNONCES), "le repère reste propre au poste");
+    }
+
+    #[test]
+    fn un_secret_ne_voyage_ni_par_la_synchro_ni_par_une_sauvegarde() {
+        for cle in SECRETS {
+            assert!(reglage_secret(cle), "{cle} doit être tenu pour secret");
+            assert!(!reglage_partage(cle), "{cle} ne doit pas partir en synchronisation");
+        }
+        // Ce qui n'est pas un secret continue de voyager.
+        assert!(!reglage_secret("ecole"));
+        assert!(reglage_partage("ecole"));
+        // Le stockage garde son adresse : elle n'ouvre rien toute seule.
+        assert!(!reglage_secret("sync_bucket"));
     }
 
     #[test]
