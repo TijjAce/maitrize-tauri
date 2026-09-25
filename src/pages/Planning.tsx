@@ -12,7 +12,6 @@ import { printHTML, escapeHtml, dataUrlImage, colonnesDuTableau, logoImprimable,
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
 import { CahierJournal, ecrireLeCahierJournal } from "../components/CahierJournal";
 import { EVT_JOUR } from "../components/CommandPalette";
-import { SurLeTelephone } from "../components/SurLeTelephone";
 import { jeuxCites, reglesImprimees, STYLE_REGLES } from "../jeuxCites";
 import { sequencesCitees, sequencesImprimees, STYLE_SEQUENCES } from "../sequencesCitees";
 import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
@@ -421,7 +420,6 @@ export default function Planning() {
           ✋ Déplacer</button>}
         {vue !== "mois" && <button className="btn" onClick={imprimer}>🖨 PDF</button>}
         {/* Le planning et son cahier journal, emportés sur le téléphone. */}
-        <SurLeTelephone label="📱 Téléphone" />
         <div className="seg" style={{ marginLeft: 4 }}>
           <button className={vue === "jour" ? "active" : ""} onClick={() => setVue("jour")}>Jour</button>
           <button className={vue === "semaine" ? "active" : ""} onClick={() => setVue("semaine")}>Semaine</button>
