@@ -1120,6 +1120,69 @@ pub fn observation_delete(db: State<Db>, id: String) -> R<()> {
 // RÉUNIONS ÉCOUTÉES (ESS, conseil de cycle…)
 // ============================================================
 
+// ── Vocaux déposés par le téléphone ──────────────────────────────────────
+
+#[tauri::command]
+pub fn vocaux_list(db: State<Db>) -> R<Vec<Vocal>> {
+    let c = db.lock();
+    let mut st = c.prepare("SELECT * FROM vocaux ORDER BY debut").map_err(e)?;
+    let rows = st.query_map([], Vocal::from_row).map_err(e)?;
+    rows.collect::<rusqlite::Result<_>>().map_err(e)
+}
+
+/**
+ * Transcrit un vocal sur cette machine, et garde le texte.
+ *
+ * Le son ne sort pas : c'est Whisper embarqué qui travaille. Un échec
+ * s'écrit à côté du vocal plutôt que de le faire disparaître — on saura
+ * pourquoi, et on pourra réessayer.
+ */
+#[tauri::command]
+pub async fn vocal_transcrire(
+    db: State<'_, Db>,
+    moteur: State<'_, crate::whisper_embarque::Moteur>,
+    id: String,
+) -> R<Vocal> {
+    let fichier = {
+        let c = db.lock();
+        c.query_row("SELECT fichier FROM vocaux WHERE id=?1", params![id], |r| r.get::<_, String>(0))
+            .map_err(|_| "Ce vocal n'existe plus.".to_string())?
+    };
+    let octets = std::fs::read(fichiers_dir().join(&fichier))
+        .map_err(|er| format!("Enregistrement introuvable : {er}"))?;
+    let resultat = crate::whisper_embarque::transcrire_octets(&moteur, &octets);
+    let c = db.lock();
+    match resultat {
+        Ok(texte) => {
+            c.execute(
+                "UPDATE vocaux SET texte=?2, etat='transcrit', erreur='' WHERE id=?1",
+                params![id, texte],
+            ).map_err(e)?;
+        }
+        Err(message) => {
+            c.execute(
+                "UPDATE vocaux SET etat='echec', erreur=?2 WHERE id=?1",
+                params![id, message],
+            ).map_err(e)?;
+        }
+    }
+    c.query_row("SELECT * FROM vocaux WHERE id=?1", params![id], Vocal::from_row).map_err(e)
+}
+
+/// Retire un vocal : la ligne et le son, qui n'a plus de raison d'être.
+#[tauri::command]
+pub fn vocal_delete(db: State<Db>, id: String) -> R<()> {
+    let c = db.lock();
+    let fichier: String = c
+        .query_row("SELECT fichier FROM vocaux WHERE id=?1", params![id], |r| r.get(0))
+        .unwrap_or_default();
+    c.execute("DELETE FROM vocaux WHERE id=?1", params![id]).map_err(e)?;
+    if !fichier.is_empty() {
+        std::fs::remove_file(fichiers_dir().join(&fichier)).ok();
+    }
+    Ok(())
+}
+
 // ── Projets de classe ────────────────────────────────────────────────────
 
 #[tauri::command]

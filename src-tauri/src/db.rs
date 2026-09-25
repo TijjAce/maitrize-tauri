@@ -299,6 +299,20 @@ pub(crate) fn migrate(conn: &Connection) {
             image_nom TEXT
         );
 
+        -- Les vocaux déposés par le téléphone, en attente de transcription.
+        -- Ils ne se synchronisent pas : le son vit sur cette machine, il est
+        -- transcrit ici, rangé ici, puis effacé.
+        CREATE TABLE IF NOT EXISTS vocaux (
+            id TEXT PRIMARY KEY,
+            fichier TEXT NOT NULL DEFAULT '',
+            debut TEXT NOT NULL DEFAULT '',
+            duree_s REAL NOT NULL DEFAULT 0,
+            texte TEXT NOT NULL DEFAULT '',
+            etat TEXT NOT NULL DEFAULT 'recu',
+            erreur TEXT NOT NULL DEFAULT '',
+            date_creation TEXT NOT NULL DEFAULT ''
+        );
+
         CREATE TABLE IF NOT EXISTS sequences (
             id TEXT PRIMARY KEY,
             titre TEXT NOT NULL DEFAULT '',

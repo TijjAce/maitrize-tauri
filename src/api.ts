@@ -282,6 +282,9 @@ export interface EtatWhisper {
   dossier: string;
 }
 
+import type { Vocal } from "./vocaux";
+export type { Vocal };
+
 /** Un projet de classe, tel qu'il est enregistré. */
 export interface ProjetClasse {
   id: string; titre: string; descriptif: string; couleur: string;
@@ -578,6 +581,10 @@ export const api = {
   observationDelete: (id: string) => invoke<void>("observation_delete", { id }),
 
   // Réunions écoutées
+  vocauxList: () => invoke<Vocal[]>("vocaux_list"),
+  vocalTranscrire: (id: string) => invoke<Vocal>("vocal_transcrire", { id }),
+  vocalDelete: (id: string) => invoke<void>("vocal_delete", { id }),
+
   projetsList: () => invoke<ProjetClasse[]>("projets_list"),
   projetSave: (projet: ProjetClasse) => invoke<ProjetClasse>("projet_save", { projet }),
   projetDelete: (id: string) => invoke<void>("projet_delete", { id }),

@@ -222,9 +222,68 @@ fn ecrire_observation(app: &tauri::AppHandle, corps: &str) -> Result<(), String>
     Ok(())
 }
 
+/// Un paramètre de l'URL, tel qu'il est écrit.
+fn parametre(url: &str, nom: &str) -> String {
+    url.split(['?', '&'])
+        .find_map(|p| p.strip_prefix(&format!("{nom}=")))
+        .map(|v| v.replace("%3A", ":").replace("%20", " ").replace('+', " "))
+        .unwrap_or_default()
+}
+
+/**
+ * Reçoit un vocal du téléphone : du son, et l'heure où il a été dit.
+ *
+ * Rien d'autre ne traverse. Le téléphone ne sait ni qui est dans la classe,
+ * ni ce qui s'y faisait à cette heure-là : c'est l'ordinateur qui le sait, et
+ * qui rangera. Un téléphone perdu ne perd que des enregistrements.
+ */
+fn ecrire_vocal(app: &tauri::AppHandle, url: &str, octets: Vec<u8>) -> Result<String, String> {
+    if octets.len() < 100 {
+        return Err("Enregistrement vide.".into());
+    }
+    let debut = parametre(url, "debut");
+    let duree: f64 = parametre(url, "duree").parse().unwrap_or(0.0);
+    let id = crate::models::new_id();
+    let fichier = format!("vocal-{id}.wav");
+    std::fs::write(crate::db::fichiers_dir().join(&fichier), &octets)
+        .map_err(|er| format!("Écriture impossible : {er}"))?;
+    let db = app.state::<Db>();
+    let c = db.lock();
+    c.execute(
+        "INSERT INTO vocaux (id,fichier,debut,duree_s,texte,etat,erreur,date_creation)
+         VALUES (?1,?2,?3,?4,'','recu','',?5)",
+        rusqlite::params![id, fichier, debut, duree, crate::models::now_iso()],
+    )
+    .map_err(|er| er.to_string())?;
+    let _ = app.emit("vocal:recu", id.clone());
+    Ok(id)
+}
+
 fn repondre(mut req: tiny_http::Request, token: &str, page: &str, data_json: &str, app: &tauri::AppHandle) {
     let url = req.url().to_string();
     let autorise = url.contains(&format!("t={token}"));
+    // Le dépôt d'un vocal se lit avant toute réponse : le corps ne se relit pas.
+    if autorise && url.starts_with("/api/vocal") {
+        let mut octets = Vec::new();
+        let lu = std::io::Read::read_to_end(req.as_reader(), &mut octets).is_ok();
+        let (code, body) = match lu.then(|| ecrire_vocal(app, &url, octets)) {
+            Some(Ok(id)) => (200, format!("{{\"ok\":true,\"id\":{}}}", serde_json::to_string(&id).unwrap_or_default())),
+            Some(Err(message)) => (400, format!("{{\"ok\":false,\"erreur\":{}}}", serde_json::to_string(&message).unwrap_or_default())),
+            None => (400, "{\"ok\":false}".to_string()),
+        };
+        let header = tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json; charset=utf-8"[..])
+            .expect("en-tete valide");
+        let _ = req.respond(tiny_http::Response::from_string(body).with_status_code(code).with_header(header));
+        return;
+    }
+    // Le compagnon demande seulement si l'ordinateur est là.
+    if url.starts_with("/api/bonjour") {
+        let header = tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json; charset=utf-8"[..])
+            .expect("en-tete valide");
+        let body = if autorise { "{\"ok\":true}" } else { "{\"ok\":false}" };
+        let _ = req.respond(tiny_http::Response::from_string(body).with_status_code(if autorise { 200 } else { 403 }).with_header(header));
+        return;
+    }
     // L'écriture se lit avant toute réponse : le corps ne se relit pas.
     if autorise && url.starts_with("/api/observation") {
         let mut corps = String::new();
@@ -698,3 +757,30 @@ fetch('/api/data?t=' + encodeURIComponent(T))
 </body>
 </html>
 "##;
+
+#[cfg(test)]
+mod tests {
+    use super::parametre;
+
+    #[test]
+    fn lit_les_parametres_de_l_url() {
+        let url = "/api/vocal?t=abc&debut=2026-09-25T10%3A12%3A00&duree=42.5";
+        assert_eq!(parametre(url, "t"), "abc");
+        assert_eq!(parametre(url, "debut"), "2026-09-25T10:12:00");
+        assert_eq!(parametre(url, "duree"), "42.5");
+    }
+
+    #[test]
+    fn un_parametre_absent_rend_le_vide_plutot_qu_une_panique() {
+        assert_eq!(parametre("/api/vocal?t=abc", "debut"), "");
+        assert_eq!(parametre("", "t"), "");
+    }
+
+    #[test]
+    fn ne_confond_pas_deux_parametres_qui_commencent_pareil() {
+        // « dureeTotale » ne doit pas répondre pour « duree » : sans découpe
+        // sur « & », le premier venu gagnait.
+        let url = "/api/vocal?dureeTotale=9&duree=3";
+        assert_eq!(parametre(url, "duree"), "3");
+    }
+}
