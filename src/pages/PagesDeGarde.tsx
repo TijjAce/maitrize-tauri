@@ -1,6 +1,6 @@
 import React from "react";
 import { api, Texte, newId, nowIso, texteErreur } from "../api";
-import { Empty, Field, Input, Modal, Textarea, useAsync } from "../components/ui";
+import { Empty, Field, Input, Modal, Select, Textarea, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { openCtx } from "../components/ctxmenu";
@@ -10,8 +10,9 @@ import { printHTML } from "../print";
 import { nettoyerHtml } from "../texteRiche";
 import { avecImages } from "../components/imagesTexte";
 import {
-  assembler, basculer, choixParDefaut, consigneIA, demandeIA, DOSSIER_GARDE, groupesDe,
-  htmlDeLaReponse, modeleLocal, optionsDe, SORTES, type InfosGarde, type SorteGarde,
+  assembler, basculer, choixParDefaut, cochees, consigneIA, demandeIA, DOSSIER_GARDE, groupesDe,
+  htmlDeLaReponse, modeleLocal, optionsDe, REGLAGES, reglagesParDefaut, SORTES,
+  type InfosGarde, type SorteGarde,
 } from "../pagesDeGarde";
 
 // ── Organisation → Pages de garde ─────────────────────────────────────────
@@ -30,7 +31,7 @@ async function infosParDefaut(annee: string, sorte: SorteGarde): Promise<InfosGa
     sorte, titre: SORTES.find((s) => s.id === sorte)!.titre, annee,
     ecole: r.ecole ?? "", enseignant: r.enseignantNom ?? "", fonction: r.enseignantFonction ?? "",
     telephone: r["etab:telephone"] ?? "", niveau: r.niveauClasse ?? "",
-    ime, choix: choixParDefaut(sorte, ime), precisions: "",
+    ime, choix: choixParDefaut(sorte, ime), reglages: reglagesParDefaut(sorte, ime), precisions: "",
   };
 }
 
@@ -162,6 +163,33 @@ function CasesDuDocument({ infos, onChange }: { infos: InfosGarde; onChange: (i:
   );
 }
 
+/**
+ * Les précisions communes aux cahiers cochés : lignage, pages, couverture.
+ *
+ * Elles ne s'affichent que si elles servent — cocher une ramette et une
+ * gourde n'appelle aucun lignage.
+ */
+function PrecisionsDuDocument({ infos, onChange }: { infos: InfosGarde; onChange: (i: InfosGarde) => void }) {
+  const choisies = cochees(infos);
+  const utiles = (REGLAGES[infos.sorte] ?? []).filter((r) => choisies.some((o) => o.precise?.includes(r.id)));
+  if (!utiles.length) return null;
+  return (
+    <Field label="Précisions, pour tous les cahiers cochés">
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        {utiles.map((r) => (
+          <label key={r.id} style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12, color: "var(--text-2)" }}>
+            {r.libelle}
+            <Select value={infos.reglages[r.id] ?? ""} style={{ minWidth: 200 }}
+              onChange={(e) => onChange({ ...infos, reglages: { ...infos.reglages, [r.id]: e.target.value } })}>
+              {r.valeurs.map((v) => <option key={v.id} value={v.id}>{v.libelle}</option>)}
+            </Select>
+          </label>
+        ))}
+      </div>
+    </Field>
+  );
+}
+
 /** Ce qu'on demande avant d'écrire : la sorte, le nom du document, le contexte. */
 function NouveauDocument({ infos, onChange, onClose, onCreer }: {
   infos: InfosGarde; onChange: (i: InfosGarde) => void; onClose: () => void;
@@ -190,6 +218,7 @@ function NouveauDocument({ infos, onChange, onClose, onCreer }: {
             <button key={s.id} className={s.id === infos.sorte ? "active" : ""}
               onClick={() => onChange({
                 ...infos, sorte: s.id, choix: choixParDefaut(s.id, infos.ime),
+                reglages: reglagesParDefaut(s.id, infos.ime),
                 titre: infos.titre === sorte.titre ? s.titre : infos.titre,
               })}>
               {s.icone} {s.libelle}
@@ -207,6 +236,7 @@ function NouveauDocument({ infos, onChange, onClose, onCreer }: {
         </Field>
       </div>
       <CasesDuDocument infos={infos} onChange={onChange} />
+      <PrecisionsDuDocument infos={infos} onChange={onChange} />
       <Field label="À ajouter, en vos mots (facultatif)">
         <Textarea value={infos.precisions} rows={2}
           placeholder="ex. élèves non lecteurs, beaucoup de manipulation ; la piscine commence en janvier…"
