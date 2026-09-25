@@ -147,8 +147,45 @@ pub fn open() -> Connection {
     crate::journal::creer_table(&conn);
     crate::journal::poser_declencheurs(&conn, &identifiant_machine(&conn));
     crate::seed::seed_referentiels(&conn);
-    sauvegarde_auto(&conn);
     conn
+}
+
+/**
+ * Le ménage d'après le démarrage : replier le journal, rendre la place, copier.
+ *
+ * Rien de tout cela n'a sa place avant l'ouverture de la fenêtre. La copie
+ * quotidienne recopie la base entière — vingt-quatre mégaoctets chez son
+ * auteur —, et l'on attendait devant un écran vide une fois par jour.
+ *
+ * L'ordre compte : on replie d'abord ce qui n'est pas encore parti, ce qui
+ * libère l'essentiel du fichier ; on rend la place au disque ; et l'on copie
+ * une base déjà allégée.
+ */
+pub fn menage_apres_demarrage(conn: &Connection) {
+    let envoye = conn
+        .query_row("SELECT valeur FROM settings WHERE cle='syncSeqEnvoyee'", [], |r| r.get::<_, String>(0))
+        .ok()
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(0);
+    if crate::journal::compacter(conn, envoye) > 0 {
+        tasser_si_besoin(conn);
+    }
+    sauvegarde_auto(conn);
+}
+
+/// Rend au disque la place libérée, quand il y en a beaucoup.
+///
+/// Une suppression ne réduit pas le fichier : SQLite garde les pages pour les
+/// réutiliser. Après un gros repliement du journal, la base reste donc
+/// obèse — et la copie quotidienne recopie ce vide. `VACUUM` le rend, mais
+/// réécrit tout : on ne le fait qu'au-delà d'un quart de pages libres.
+pub fn tasser_si_besoin(conn: &Connection) -> bool {
+    let libres: i64 = conn.query_row("PRAGMA freelist_count", [], |r| r.get(0)).unwrap_or(0);
+    let total: i64 = conn.query_row("PRAGMA page_count", [], |r| r.get(0)).unwrap_or(0);
+    if total == 0 || libres * 4 < total {
+        return false;
+    }
+    conn.execute("VACUUM", []).is_ok()
 }
 
 /// Identifiant de cette machine, tiré une fois puis conservé.
