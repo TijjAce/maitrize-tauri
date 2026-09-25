@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Ce que le dictaphone demande à l'iPhone, et pourquoi.
+
+  Ce fichier est fusionné dans l'Info.plist par Tauri : il survit donc à une
+  régénération du projet Xcode, ce que le plist généré, lui, ne ferait pas.
+
+  Deux autorisations, et pas une de plus. Le micro, évidemment. Et le réseau
+  local, parce que le dépôt sur l'ordinateur se fait d'iPhone à Mac sur le
+  WiFi de l'école — iOS le demande depuis sa version 14, même pour une
+  connexion directe par adresse IP.
+-->
+<plist version="1.0">
+<dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Pour enregistrer ce que vous dictez en classe. Le son reste sur le téléphone, puis part sur votre ordinateur — il ne sort pas de là.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Pour déposer vos enregistrements sur votre ordinateur, quand il est sur le même WiFi que le téléphone.</string>
+</dict>
+</plist>
