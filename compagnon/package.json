@@ -1,0 +1,12 @@
+{
+  "name": "maitrize-dictaphone",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Le dictaphone de classe : il enregistre, il dépose sur l'ordinateur.",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.2"
+  }
+}

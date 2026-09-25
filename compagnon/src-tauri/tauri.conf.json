@@ -29,7 +29,8 @@
       "icons/icon.ico"
     ],
     "iOS": {
-      "developmentTeam": "AZZ5PTTNXH"
+      "developmentTeam": "AZZ5PTTNXH",
+      "minimumSystemVersion": "15.0"
     }
   }
 }
