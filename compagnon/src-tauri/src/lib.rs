@@ -25,6 +25,7 @@ pub fn run() {
             ordinateur_joignable,
             vocal_garder,
             vocaux_liste,
+            vocal_lire,
             vocal_oublier,
             vocal_envoyer,
         ])

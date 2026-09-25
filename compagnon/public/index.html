@@ -33,6 +33,15 @@
  input { width:100%; padding:12px; border:1px solid var(--bd); border-radius:10px; font-size:15px;
    background:var(--bg); color:var(--txt); font-family:inherit; }
  .err { color:var(--rouge); font-size:13.5px; }
+ /* Un avertissement sur la dictée qui vient de finir : à lire, pas à craindre. */
+ .avis { font-size:13.5px; line-height:1.5; background:var(--card); border:1px solid var(--bd);
+   border-left:3px solid var(--acc); border-radius:10px; padding:11px 13px; margin:0 0 10px; }
+ /* La jauge dit que le micro entend quelque chose. Sans elle, on ne sait
+    qu'au retour, devant une transcription vide, que rien n'avait été capté. */
+ .jauge-fond { height:8px; border-radius:99px; background:var(--bd); overflow:hidden; margin:2px 0 0; }
+ .jauge { height:100%; width:0; border-radius:99px; background:var(--acc);
+   transition:width .1s linear; }
+ .ligne .btn { padding:8px 11px; }
 </style>
 </head>
 <body>
