@@ -12,7 +12,6 @@ import { printHTML, escapeHtml, dataUrlImage, colonnesDuTableau, logoImprimable,
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
 import { CahierJournal, ecrireLeCahierJournal } from "../components/CahierJournal";
 import { EVT_JOUR } from "../components/CommandPalette";
-import { VocauxRecus } from "../components/VocauxRecus";
 import { SurLeTelephone } from "../components/SurLeTelephone";
 import { jeuxCites, reglesImprimees, STYLE_REGLES } from "../jeuxCites";
 import { sequencesCitees, sequencesImprimees, STYLE_SEQUENCES } from "../sequencesCitees";
@@ -448,13 +447,8 @@ export default function Planning() {
           ? <div className="planning-jour">
               <GrilleHoraire jours={jours} creneaux={creneaux ?? []} seances={seances ?? []} eleves={eleves ?? []} feries={feries} vacanceDe={vacanceDe}
                 deplacable={deplacer} onEdit={setEdit} onTap={ouvrirCreneau} onReload={reload} />
-              <div style={{ minWidth: 0 }}>
-                {/* Ce que le téléphone a déposé pendant la journée, avant le
-                    cahier journal : c'est là qu'on le verse. */}
-                <VocauxRecus dateIso={iso(ancre)} creneaux={creneaux ?? []} onEcrit={reload} />
-                <CahierJournal dateIso={iso(ancre)} creneaux={creneaux ?? []} seances={seances ?? []} sequences={sequences ?? []} eleves={eleves ?? []}
-                  onModifier={setEdit} />
-              </div>
+              <CahierJournal dateIso={iso(ancre)} creneaux={creneaux ?? []} seances={seances ?? []} sequences={sequences ?? []} eleves={eleves ?? []}
+                onModifier={setEdit} />
             </div>
           : <GrilleHoraire jours={jours} creneaux={creneaux ?? []} seances={seances ?? []} eleves={eleves ?? []} feries={feries} vacanceDe={vacanceDe}
               deplacable={deplacer} onEdit={setEdit} onTap={ouvrirCreneau} onReload={reload} />}
