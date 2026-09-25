@@ -28,6 +28,10 @@ pub fn run() {
             vocal_lire,
             vocal_oublier,
             vocal_envoyer,
+            note_garder,
+            notes_liste,
+            note_oublier,
+            note_envoyer,
         ])
         .run(tauri::generate_context!())
         .expect("le dictaphone n'a pas pu démarrer");
