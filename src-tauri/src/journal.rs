@@ -293,7 +293,7 @@ pub fn reglage_secret(cle: &str) -> bool {
 }
 
 pub fn reglage_partage(cle: &str) -> bool {
-    const JAMAIS: &[&str] = &["cgu", "onboardingVu", "vacancesCache"];
+    const JAMAIS: &[&str] = &["cgu", "onboardingVu", "vacancesCache", "vacancesCacheRepere"];
     if reglage_secret(cle) || JAMAIS.contains(&cle) || REGLAGES_DU_POSTE.contains(&cle)
         || cle.starts_with("sync_")
     {

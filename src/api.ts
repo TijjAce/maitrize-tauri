@@ -1,5 +1,6 @@
 // Couche d'accès au backend Rust via Tauri invoke. Types miroir des structs.
 import { invoke as invokeTauri } from "@tauri-apps/api/core";
+import { noterEchec, noterSucces, type EtatIncidents } from "./incidents";
 
 // La fenêtre de l'application n'a pas de console visible : quand une action
 // « ne fait rien », il ne reste aucune trace. Toute commande qui échoue est
@@ -28,6 +29,9 @@ export function commandesEnCours(maximum = 3): string {
     .join(", ");
 }
 
+/** Les séries d'échecs en cours, une par commande. */
+const incidents: EtatIncidents = new Map();
+
 function invoke<T>(cmd: string, ...args: unknown[]): Promise<T> {
   // Une commande partie en boucle ne rend jamais la main : la fenêtre paraît
   // simplement inerte. On ne l'interrompt pas — certaines sont longues pour de
@@ -41,8 +45,15 @@ function invoke<T>(cmd: string, ...args: unknown[]): Promise<T> {
   const suivie = cmd !== "diag_ecrire" && cmd !== "diag_battement";
   if (suivie && !enVol.has(cmd)) enVol.set(cmd, Date.now());
   return (invokeTauri as (c: string, ...a: unknown[]) => Promise<T>)(cmd, ...args)
+    .then((valeur) => {
+      if (suivie) for (const l of noterSucces(incidents, cmd)) journal(l);
+      return valeur;
+    })
     .catch((err) => {
-      if (cmd !== "diag_ecrire") journal(`ÉCHEC ${cmd} : ${texteErreur(err)}`);
+      // Un échec qui se répète n'est écrit qu'une fois : voir `incidents`.
+      if (cmd !== "diag_ecrire") {
+        for (const l of noterEchec(incidents, cmd, texteErreur(err), Date.now())) journal(l);
+      }
       throw err;
     })
     .finally(() => { clearTimeout(guet); if (suivie) enVol.delete(cmd); });

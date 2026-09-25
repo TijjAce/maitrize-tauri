@@ -5,6 +5,7 @@ import { ouvrirOnglet } from "./ui";
 import { montrerLesNouveautes } from "./QuoiDeNeuf";
 import { EVT_CHERCHER_BUREAU } from "../bureauAteliers";
 import { ajouterRecent, classer, lireRecents, ouverture } from "../palette";
+import { chargerVacances, prochaineVacance } from "../vacances";
 
 /**
  * Les familles de résultats, pour restreindre d'un clic.
@@ -227,12 +228,8 @@ async function bilanSemaine(): Promise<string> {
     Object.entries(m).sort((a, b) => b[1] - a[1]).map(([k, v]) => `• ${k} : ${(v / 60).toFixed(1)} h`).join("\n");
 }
 async function prochainesVacances(): Promise<string> {
-  const cache = await api.settingGet("vacancesCache");
-  let vac: { description: string; debut: string; fin: string }[] = [];
-  try { vac = cache ? JSON.parse(cache) : []; } catch { /* */ }
-  if (vac.length === 0) { try { vac = await api.vacancesScolaires((await api.settingGet("zoneVacances")) || "A"); } catch { /* */ } }
   const today = isoDate(new Date());
-  const proch = vac.filter((v) => v.fin > today).sort((a, b) => a.debut.localeCompare(b.debut))[0];
+  const proch = prochaineVacance(await chargerVacances(today), today);
   if (!proch) return "Vacances inconnues (vérifiez la zone dans Réglages).";
   return `🏖️ ${proch.description}\ndu ${new Date(proch.debut).toLocaleDateString("fr-FR")} au ${new Date(proch.fin).toLocaleDateString("fr-FR")}`;
 }

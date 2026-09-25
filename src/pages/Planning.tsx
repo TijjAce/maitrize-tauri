@@ -5,6 +5,7 @@ import { isoJour, lundiDe, jourPlanningInitial, anneeDe, toMin, minToHHMM } from
 import { api, Creneau, Seance, Sequence, Eleve, Jeu, MATIERES, couleurPourMatiere, teinteCreneau, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance, type ObservationEleve } from "../api";
 import { Modal, Field, Input, Select, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
+import { chargerVacances, vacanceDuJour, type Periode } from "../vacances";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { SeanceReadView } from "./SequenceDetail";
@@ -138,17 +139,13 @@ export default function Planning() {
     if (s) setVoirSeance(s); else setEdit(c);
   };
 
-  const [vacances, setVacances] = React.useState<{ description: string; debut: string; fin: string }[]>([]);
+  const [vacances, setVacances] = React.useState<Periode[]>([]);
   React.useEffect(() => {
     let annule = false;
-    (async () => {
-      const zone = (await api.settingGet("zoneVacances")) || "A";
-      try { const v = await api.vacancesScolaires(zone); if (!annule) { setVacances(v); api.settingSet("vacancesCache", JSON.stringify(v)); } }
-      catch { const cache = await api.settingGet("vacancesCache"); if (!annule && cache) { try { setVacances(JSON.parse(cache)); } catch { /* */ } } }
-    })();
+    chargerVacances(isoJour(new Date())).then((v) => { if (!annule) setVacances(v); });
     return () => { annule = true; };
   }, []);
-  const vacanceDe = (d: string) => vacances.find((v) => d >= v.debut && d < v.fin)?.description;
+  const vacanceDe = (d: string) => vacanceDuJour(vacances, d);
   const feries = React.useMemo(() => ({ ...joursFeriesFR(ancre.getFullYear()), ...joursFeriesFR(ancre.getFullYear() + 1) }), [ancre]);
 
   const decaler = (n: number) => {
