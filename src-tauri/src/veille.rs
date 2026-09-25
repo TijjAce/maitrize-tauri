@@ -46,7 +46,7 @@ pub fn message_de_silence(silence: u64, deja_dit: bool, ou: &str, devant: bool) 
     if !devant {
         return None;
     }
-    if silence < BLOCAGE_MS || silence > SOMMEIL_MS {
+    if !(BLOCAGE_MS..=SOMMEIL_MS).contains(&silence) {
         return None;
     }
     let lieu = if ou.is_empty() { String::new() } else { format!(" sur {ou}") };

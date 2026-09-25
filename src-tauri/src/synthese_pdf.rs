@@ -369,7 +369,7 @@ impl Layout {
 }
 
 pub fn generer(data: &SyntheseDonnees) -> Result<Vec<u8>, String> {
-    let prenom = data.eleve_nom.trim().split_whitespace().next().unwrap_or("L'élève").to_string();
+    let prenom = data.eleve_nom.split_whitespace().next().unwrap_or("L'élève").to_string();
     let mut lay = Layout {
         pages: vec![], y: MT, prenom,
         ecole: data.ecole.clone(), eleve: data.eleve_nom.clone(),

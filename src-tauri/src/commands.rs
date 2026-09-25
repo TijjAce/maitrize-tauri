@@ -957,7 +957,7 @@ pub fn conversation_delete(db: State<Db>, id: String) -> R<()> {
  * Les parents sont ajoutés : « Langage/Vocabulaire » fait exister « Langage »,
  * même si rien n'y est posé directement.
  */
-#[tauri::command]
+#[tauri::command(async)]
 pub fn dossiers_bureau(db: State<Db>) -> R<Vec<String>> {
     const SOURCES: &[&str] = &[
         "SELECT DISTINCT dossier FROM sequences",
@@ -1259,7 +1259,7 @@ pub fn reunion_delete(db: State<Db>, id: String) -> R<()> {
 // COFFRE-FORT (documents PDF)
 // ============================================================
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn coffre_list(db: State<Db>) -> R<Vec<DocumentCoffre>> {
     let c = db.lock();
     let mut st = c.prepare("SELECT * FROM documents_coffre ORDER BY date_ajout DESC").map_err(e)?;
@@ -1267,7 +1267,7 @@ pub fn coffre_list(db: State<Db>) -> R<Vec<DocumentCoffre>> {
     rows.collect::<rusqlite::Result<_>>().map_err(e)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn coffre_save(db: State<Db>, document: DocumentCoffre) -> R<DocumentCoffre> {
     let c = db.lock();
     c.execute(
@@ -1298,7 +1298,7 @@ pub async fn coffre_download(db: State<'_, Db>, url: String, nom: String) -> R<D
     Ok(doc)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn coffre_delete(db: State<Db>, id: String, nom_fichier: String) -> R<()> {
     let c = db.lock();
     c.execute("DELETE FROM documents_coffre WHERE id=?1", params![id]).map_err(e)?;
@@ -1341,7 +1341,7 @@ pub fn setting_set(db: State<Db>, cle: String, valeur: String) -> R<()> {
 // ============================================================
 
 /// Écrit des octets (base64) dans Fichiers/ et renvoie le nom de fichier.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fichier_save(nom: String, base64: String) -> R<String> {
     use base64::Engine;
     let data = base64::engine::general_purpose::STANDARD.decode(&base64).map_err(e)?;
@@ -1353,7 +1353,7 @@ pub fn fichier_save(nom: String, base64: String) -> R<String> {
 }
 
 /// Lit un fichier joint et renvoie son contenu en base64 (pour <img>/PDF).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fichier_read(nom: String) -> R<String> {
     use base64::Engine;
     let bytes = std::fs::read(fichiers_dir().join(&nom)).map_err(e)?;
@@ -1386,7 +1386,7 @@ pub fn fichier_ouvrir(nom: String) -> R<()> {
 /// Copie un fichier externe (chemin absolu, ex. glisser-déposer depuis le
 /// Finder/Aperçu) dans Fichiers/ et renvoie le nom généré. Évite l'aller-retour
 /// en base64 pour les PDF/images potentiellement volumineux.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fichier_importer_depuis_chemin(chemin: String) -> R<String> {
     let src = std::path::Path::new(&chemin);
     let ext = src.extension().and_then(|s| s.to_str()).unwrap_or("bin");
@@ -1479,7 +1479,7 @@ fn wrap_texte(s: &str, max: usize) -> Vec<String> {
 /// Construit un PDF du planning (mise en page inspirée de l'app native) et
 /// l'ouvre dans l'app PDF par défaut (Aperçu sur macOS) → visualisation,
 /// impression AirPrint et sauvegarde.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn imprimer_planning(titre: String, jours: Vec<PlanningJour>) -> R<()> {
     let octets = construire_planning_pdf(&titre, &jours)?;
     let nom = format!(
@@ -1523,7 +1523,7 @@ fn construire_planning_pdf(titre: &str, jours: &[PlanningJour]) -> R<Vec<u8>> {
     layer.use_text(if semaine { "PLANNING DE LA SEMAINE" } else { "PLANNING DU JOUR" }, 9.0, Mm(marge), Mm(y), &gras);
     y -= 8.0;
     layer.set_fill_color(noir.clone());
-    layer.use_text(&titre.replace("Planning — ", ""), if semaine { 18.0 } else { 22.0 }, Mm(marge), Mm(y), &gras);
+    layer.use_text(titre.replace("Planning — ", ""), if semaine { 18.0 } else { 22.0 }, Mm(marge), Mm(y), &gras);
     y -= 6.0;
     layer.set_outline_color(gris_clair.clone());
     layer.set_outline_thickness(0.5);
@@ -1542,7 +1542,7 @@ fn construire_planning_pdf(titre: &str, jours: &[PlanningJour]) -> R<Vec<u8>> {
             let x = marge + i as f32 * (col_w + gap);
             let mut cy = haut_grille;
             layer.set_fill_color(gris.clone());
-            layer.use_text(&j.jour.to_uppercase(), 9.0, Mm(x), Mm(cy), &gras);
+            layer.use_text(j.jour.to_uppercase(), 9.0, Mm(x), Mm(cy), &gras);
             cy -= 6.0;
             let vide = j.rangs.iter().all(|r| r.is_empty());
             if vide {
@@ -1557,7 +1557,7 @@ fn construire_planning_pdf(titre: &str, jours: &[PlanningJour]) -> R<Vec<u8>> {
                 rect_plein(&layer, teinte(&c.couleur), x, cy - h + 2.0, x + col_w, cy + 4.0);
                 rect_plein(&layer, plein(&c.couleur), x, cy - h + 2.0, x + 1.2, cy + 4.0);
                 layer.set_fill_color(gris.clone());
-                layer.use_text(&format!("{} – {}", c.heure_debut, c.heure_fin), 7.0, Mm(x + 3.0), Mm(cy), &gras);
+                layer.use_text(format!("{} – {}", c.heure_debut, c.heure_fin), 7.0, Mm(x + 3.0), Mm(cy), &gras);
                 cy -= 4.0;
                 layer.set_fill_color(noir.clone());
                 for ln in &lignes {
@@ -1666,7 +1666,7 @@ fn construire_planning_pdf(titre: &str, jours: &[PlanningJour]) -> R<Vec<u8>> {
                 let titre_c = if c.seance.is_empty() { c.matiere.clone() } else { c.seance.clone() };
                 rect_plein(&layer, plein(&c.couleur), gauche, y - 1.0, gauche + 1.6, y + 4.0);
                 layer.set_fill_color(noir.clone());
-                layer.use_text(&format!("{} – {}   {}", c.heure_debut, c.heure_fin, titre_c), 12.0, Mm(gauche + 5.0), Mm(y), &gras);
+                layer.use_text(format!("{} – {}   {}", c.heure_debut, c.heure_fin, titre_c), 12.0, Mm(gauche + 5.0), Mm(y), &gras);
                 y -= 7.0;
 
                 let bloc = |intitule: &str, texte: &str, layer: &mut PdfLayerReference, y: &mut f32| {
@@ -1749,7 +1749,7 @@ mod tests_planning_pdf {
 
 /// Exporte la "Synthèse des acquis fin GS" en reconstruisant le tableau (mise
 /// en page proche du gabarit MEN) avec des cellules d'observation extensibles.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn exporter_synthese_gs(
     ecole: String,
     eleve_nom: String,
@@ -1788,7 +1788,7 @@ pub fn exporter_synthese_gs(
 /// « Oui »…), `~motif` pour choisir l'état contenant le motif, `!motif` pour
 /// celui qui ne le contient pas (les états longs et accentués du formulaire
 /// sont ainsi désignés sans dépendre de leur encodage interne).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn exporter_gevasco(
     reexamen: bool,
     eleve_nom: String,
@@ -1815,7 +1815,7 @@ pub fn exporter_gevasco(
         if reexamen { "reexamen" } else { "1re demande" },
         // Nom de fichier stable par élève : réimprimer remplace le même
         // document au lieu d'empiler une fenêtre d'Aperçu à chaque clic.
-        eleve_nom.chars().map(|c| if c.is_alphanumeric() || c == ' ' || c == '-' { c } else { '_' }).collect::<String>().trim().to_string()
+        eleve_nom.chars().map(|c| if c.is_alphanumeric() || c == ' ' || c == '-' { c } else { '_' }).collect::<String>().trim()
     );
     let path = std::env::temp_dir().join(nom);
     std::fs::write(&path, &bytes).map_err(e)?;
@@ -1824,7 +1824,10 @@ pub fn exporter_gevasco(
 }
 
 /// Exporte le bilan de PPI (mode IME/inclusion) en PDF et l'ouvre dans Aperçu.
-#[tauri::command]
+#[tauri::command(async)]
+// Un bilan de PPI porte neuf champs saisis dans la fenêtre : les grouper
+// n'ajouterait qu'une structure de passage.
+#[allow(clippy::too_many_arguments)]
 pub fn exporter_bilan_ppi(
     eleve_nom: String,
     ecole: String,
@@ -1930,7 +1933,7 @@ pub fn tla_generer(gabarit: crate::tla_pdf::Gabarit) -> R<String> {
     Ok(path.to_string_lossy().into_owned())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn imprimer_pdf(nom: String) -> R<()> {
     let path = fichiers_dir().join(&nom);
     if !path.exists() {
@@ -1940,7 +1943,7 @@ pub fn imprimer_pdf(nom: String) -> R<()> {
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fichier_delete(nom: String) -> R<()> {
     std::fs::remove_file(fichiers_dir().join(&nom)).ok();
     Ok(())
@@ -2391,9 +2394,22 @@ pub fn diag_demarrage(version: &str) {
         .map(|derniere| derniere.contains("DÉMARRAGE"))
         .unwrap_or(false);
     if precedente_interrompue {
-        diag_ecrire("SESSION PRÉCÉDENTE INTERROMPUE (plantage, arrêt forcé ou coupure)".into());
+        // En développement, `tauri dev` tue le processus à chaque
+        // recompilation : la marque d'arrêt n'a pas le temps de s'écrire, et
+        // le journal criait au plantage quarante fois en quatre jours. Le
+        // dire, plutôt que d'alarmer pour rien.
+        diag_ecrire(if cfg!(debug_assertions) {
+            "SESSION PRÉCÉDENTE COUPÉE (build de développement : un redémarrage suffit à l'expliquer)".into()
+        } else {
+            "SESSION PRÉCÉDENTE INTERROMPUE (plantage, arrêt forcé ou coupure)".to_string()
+        });
     }
-    diag_ecrire(format!("DÉMARRAGE v{version} {} {}", std::env::consts::OS, std::env::consts::ARCH));
+    diag_ecrire(format!(
+        "DÉMARRAGE v{version} {} {}{}",
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+        if cfg!(debug_assertions) { " (dév)" } else { "" },
+    ));
 }
 
 /// Marque une fermeture normale : la session suivante saura qu'il n'y a rien eu.
@@ -2434,7 +2450,7 @@ pub fn diag_ouvrir() -> R<()> {
     tauri_plugin_opener::open_path(&chemin, None::<&str>).map_err(e)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn sauvegardes_auto_list() -> R<Vec<SauvegardeAuto>> {
     let dir = crate::db::sauvegardes_dir();
     let Ok(entrees) = std::fs::read_dir(&dir) else { return Ok(vec![]) };
@@ -2459,7 +2475,7 @@ pub fn sauvegardes_auto_ouvrir() -> R<()> {
 
 /// Exporte une copie consistante de la base SQLite vers un chemin choisi.
 /// `VACUUM INTO` intègre le WAL et produit un fichier unique et propre.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn exporter_base(db: State<Db>, chemin: String) -> R<()> {
     let c = db.lock();
     std::fs::remove_file(&chemin).ok(); // VACUUM INTO échoue si la cible existe
@@ -2475,7 +2491,7 @@ fn reglage_exportable(cle: &str) -> bool {
 }
 
 /// Sérialise toutes les données utilisateur en un JSON unique (sauvegarde).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn export_data(db: State<Db>) -> R<String> {
     let c = db.lock();
     export_json(&c)
@@ -2488,7 +2504,7 @@ pub fn export_json(c: &rusqlite::Connection) -> R<String> {
     root.insert("_date".into(), serde_json::Value::from(now_iso()));
     for t in TABLES_EXPORT {
         // settings : on n'exporte pas la clé API (sensible).
-        let rows = table_to_json(&c, t)?;
+        let rows = table_to_json(c, t)?;
         let rows = if *t == "settings" {
             rows.into_iter().filter(|r| reglage_exportable(r.get("cle").and_then(|v| v.as_str()).unwrap_or_default())).collect()
         } else if *t == "referentiels" {
@@ -2517,7 +2533,7 @@ pub fn export_json(c: &rusqlite::Connection) -> R<String> {
 }
 
 /// Restaure depuis un JSON produit par export_data (remplace les données).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn import_data(db: State<Db>, json: String) -> R<String> {
     let c = db.lock();
     let copie = crate::db::copie_de_securite(&c, "avant-import")?;

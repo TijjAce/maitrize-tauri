@@ -63,7 +63,10 @@ function invoke<T>(cmd: string, ...args: unknown[]): Promise<T> {
 export function texteErreur(err: unknown): string {
   if (typeof err === "string") return err;
   if (err instanceof Error) return err.message + (err.stack ? ` | ${err.stack.split("\n")[1]?.trim() ?? ""}` : "");
-  try { return JSON.stringify(err); } catch { return String(err); }
+  // JSON.stringify(undefined) ne rend pas une chaîne mais `undefined` : le
+  // message partait tel quel dans le journal, et la fonction mentait sur son
+  // type de retour.
+  try { return JSON.stringify(err) ?? String(err); } catch { return String(err); }
 }
 
 /** Écrit une ligne dans le journal d'incidents. Ne jette jamais. */

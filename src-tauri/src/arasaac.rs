@@ -145,7 +145,7 @@ pub struct EtatBanque {
     pub derniere_maj: String,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn arasaac_etat(etat: tauri::State<BanqueArasaac>) -> EtatBanque {
     let (taille, horodatage) = signature_fichier(&metadata_path());
     let (images, octets) = match std::fs::read_dir(images_dir()) {
@@ -282,7 +282,7 @@ pub struct Categorie {
 ///
 /// Les noms sont les étiquettes internes d'ARASAAC, en anglais ; la traduction
 /// pour l'enseignant se fait côté fenêtre, où elle se corrige sans recompiler.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn arasaac_categories(etat: tauri::State<BanqueArasaac>) -> Result<Vec<Categorie>, String> {
     let index = charger_index(&etat)?;
     let mut compte: BTreeMap<&str, usize> = BTreeMap::new();
@@ -387,7 +387,7 @@ pub fn selection(
     retenus
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn arasaac_selection(
     etat: tauri::State<BanqueArasaac>,
     categories: Vec<String>,
@@ -408,7 +408,7 @@ pub fn arasaac_selection(
 /// Ici l'enseignant voit les candidats et désigne le bon ; la machine propose,
 /// elle ne tranche pas. Les résultats sont classés du plus exact au plus vague
 /// pour que le bon soit presque toujours en tête.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn arasaac_chercher(
     etat: tauri::State<BanqueArasaac>,
     q: String,
@@ -455,7 +455,7 @@ pub fn arasaac_chercher(
 /// C'est ce qui donne la couleur de la case dans un tableau de langage : le
 /// code couleur usuel (clé de Fitzgerald) range les mots par nature, et la
 /// banque étiquette déjà les siens. Rien n'est déduit du mot lui-même.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn arasaac_nature(etat: tauri::State<BanqueArasaac>, id: i64) -> Result<String, String> {
     let index = charger_index(&etat)?;
     let picto = index.pictos.iter().find(|p| p.id == id);
@@ -485,7 +485,7 @@ pub fn nature(categories: &[String]) -> String {
 ///
 /// L'application lit déjà ses pièces jointes ainsi ; passer par la même voie
 /// évite d'ouvrir un accès au système de fichiers depuis la fenêtre.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn arasaac_image(id: i64) -> Result<String, String> {
     use base64::Engine;
     let chemin = images_dir().join(format!("{id}.png"));
@@ -499,7 +499,7 @@ pub fn arasaac_image(id: i64) -> Result<String, String> {
 /// mot-clé » ramenait des pictos aberrants — un drapeau pour « terre », parce
 /// que « Terre-Neuve » contient le mot. Un mot sans picto est signalé, jamais
 /// remplacé par une approximation.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn arasaac_par_mots(
     etat: tauri::State<BanqueArasaac>,
     mots: Vec<String>,

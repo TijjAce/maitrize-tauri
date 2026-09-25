@@ -196,10 +196,6 @@ pub fn texte(etat: &[u8]) -> String {
     texte_de(&doc_depuis(etat))
 }
 
-/// États CRDT d'une ligne, par champ. Voyage avec le changement.
-#[cfg(test)]
-pub type EtatsTexte = std::collections::HashMap<String, Vec<u8>>;
-
 #[cfg(test)]
 mod tests {
     use super::*;
