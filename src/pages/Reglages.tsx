@@ -353,34 +353,48 @@ export default function Reglages() {
       </>}
 
       {onglet === "donnees" && <>
-      {/* Du plus courant au plus rare : ce qu'on fait tous les jours d'abord,
-          l'emplacement des fichiers et l'export de secours à la fin. */}
-      <MesAppareils />
-      <PartagerMesDossiers />
-      <SauvegardeS3Card />
-      <CopieDuBureauCard />
-      <CopiesAutomatiques />
-      <EssaiDeRestauration />
-      <DossierDesDonnees />
-      <JournalIncidents />
+      {/* Neuf cartes se suivaient sans hiérarchie, de l'appairage au journal
+          d'incidents. Trois familles, et le rare replié : on ouvre cette page
+          pour brancher une machine ou vérifier une sauvegarde, pas pour lire
+          un chemin de dossier. */}
+      <Famille titre="Vos machines">
+        <MesAppareils />
+        <PartagerMesDossiers />
+      </Famille>
 
-      <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
-        <h3 style={{ marginTop: 0 }}>💾 Export manuel</h3>
-        <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
-          Un fichier unique contenant tout, pièces jointes comprises — à garder
-          sur une clé avant une manipulation délicate. La clé API n'y figure jamais.
-        </p>
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <button className="btn" onClick={exporter}>⬇️ Exporter (JSON)</button>
-          <input ref={importInput} type="file" accept="application/json,.json" style={{ display: "none" }}
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) importer(f); e.target.value = ""; }} />
-          <button className="btn" onClick={() => importInput.current?.click()}>⬆️ Importer</button>
-          <button className="btn ghost sm" onClick={exporterBase} title="Copie brute de la base, pour l'ouvrir dans un outil SQLite">
-            base .sqlite3
-          </button>
-          <span style={{ fontSize: 13 }}>{dataMsg}</span>
+      <Famille titre="Sauvegardes">
+        <SauvegardeS3Card />
+        <CopiesAutomatiques />
+      </Famille>
+
+      <Famille titre="Sur cet ordinateur">
+        <CopieDuBureauCard />
+      </Famille>
+
+      {/* Ce qu'on ouvre une fois par an, ou le jour où ça va mal. */}
+      <Repli titre="Vérifier, exporter, diagnostiquer">
+        <EssaiDeRestauration />
+        <DossierDesDonnees />
+        <JournalIncidents />
+
+        <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
+          <h3 style={{ marginTop: 0 }}>💾 Export manuel</h3>
+          <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
+            Un fichier unique contenant tout, pièces jointes comprises — à garder
+            sur une clé avant une manipulation délicate. La clé API n'y figure jamais.
+          </p>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <button className="btn" onClick={exporter}>⬇️ Exporter (JSON)</button>
+            <input ref={importInput} type="file" accept="application/json,.json" style={{ display: "none" }}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) importer(f); e.target.value = ""; }} />
+            <button className="btn" onClick={() => importInput.current?.click()}>⬆️ Importer</button>
+            <button className="btn ghost sm" onClick={exporterBase} title="Copie brute de la base, pour l'ouvrir dans un outil SQLite">
+              base .sqlite3
+            </button>
+            <span style={{ fontSize: 13 }}>{dataMsg}</span>
+          </div>
         </div>
-      </div>
+      </Repli>
       </>}
 
       {onglet === "partage" && <>
@@ -996,6 +1010,37 @@ export function JournalIncidents() {
           whiteSpace: "pre-wrap", background: "var(--panel-2)", padding: 10, borderRadius: 8 }}>{rapport}</pre>
       )}
       {msg && <p style={{ fontSize: 13, marginBottom: 0, color: "var(--text-2)" }}>{msg}</p>}
+    </div>
+  );
+}
+
+/** Un intertitre, et ce qui va avec : de quoi lire la page en diagonale. */
+function Famille({ titre, children }: { titre: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 6 }}>
+      <div className="meta" style={{ fontSize: 11.5, textTransform: "uppercase",
+        letterSpacing: .5, margin: "4px 0 8px", fontWeight: 700 }}>{titre}</div>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Ce qu'on n'ouvre presque jamais, replié.
+ *
+ * Fermé par défaut : l'emplacement des fichiers et le journal d'incidents ne
+ * se consultent qu'un jour de panne, et ils poussaient tout le reste vers le
+ * bas le reste de l'année.
+ */
+function Repli({ titre, children }: { titre: string; children: React.ReactNode }) {
+  const [ouvert, setOuvert] = React.useState(false);
+  return (
+    <div style={{ maxWidth: 620 }}>
+      <button className="btn ghost" style={{ width: "100%", justifyContent: "flex-start", marginBottom: 10 }}
+        onClick={() => setOuvert((v) => !v)} aria-expanded={ouvert}>
+        {ouvert ? "▾" : "▸"} {titre}
+      </button>
+      {ouvert && children}
     </div>
   );
 }
