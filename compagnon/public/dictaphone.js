@@ -41,6 +41,10 @@ const SEUIL_SILENCE = 0.015;
 const AVANT_DE_S_INQUIETER = 1800;
 /** Le vocal qu'on écoute, et le lecteur qui s'en charge. */
 let ecoute = "", lecteur = null;
+/** Les notes écrites qui attendent, et l'éditeur quand il est ouvert. */
+let notes = [], ecrit = false, brouillon = "";
+/** Le verrou qui empêche l'écran de s'éteindre pendant qu'on dicte. */
+let veille = null;
 
 // ── Capturer ──────────────────────────────────────────────────────────────
 
@@ -84,6 +88,26 @@ function maintenantIso() {
     `T${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
 }
 
+/**
+ * Empêche l'écran de s'éteindre pendant la dictée.
+ *
+ * iOS suspend la page dès que l'écran s'endort : le son cesse d'arriver sans
+ * que rien ne le dise. Le verrou est relâché à l'arrêt — on ne garde pas un
+ * téléphone allumé pour rien.
+ */
+async function garderLEcranAllume() {
+  try {
+    veille = navigator.wakeLock ? await navigator.wakeLock.request("screen") : null;
+  } catch (e) {
+    veille = null;  // Refusé ou inconnu : on le dira à l'écran.
+  }
+}
+
+function relacherLEcran() {
+  try { if (veille) veille.release(); } catch (e) { /* déjà relâché */ }
+  veille = null;
+}
+
 async function demarrer() {
   souci = "";
   avis = "";
@@ -122,6 +146,7 @@ async function demarrer() {
   source.connect(noeud); noeud.connect(muet); muet.connect(ctx.destination);
   // Chrono et jauge se posent à la main : refaire la page dix fois par
   // seconde couperait l'écoute en cours et ferait clignoter le bouton.
+  await garderLEcranAllume();
   minuteur = setInterval(() => {
     const el = document.getElementById("chrono");
     if (el) el.textContent = duree(Math.round((Date.now() - depart) / 1000));
@@ -139,6 +164,7 @@ async function demarrer() {
 
 async function arreter() {
   if (!ctx) return;
+  relacherLEcran();
   clearInterval(minuteur); minuteur = null;
   try { noeud.disconnect(); } catch (e) { /* déjà détaché */ }
   const octets = versWav(morceaux);
@@ -198,7 +224,32 @@ function base64(octets) {
 
 async function relire() {
   try { vocaux = await invoke("vocaux_liste"); } catch (e) { vocaux = []; }
+  try { notes = await invoke("notes_liste"); } catch (e) { notes = []; }
   rendre();
+}
+
+/** Ce qui attend l'ordinateur, vocaux et notes mêlés, du plus ancien au plus récent. */
+function enAttente() {
+  return [
+    ...vocaux.map((v) => ({ ...v, sorte: "vocal" })),
+    ...notes.map((n) => ({ ...n, sorte: "note" })),
+  ].sort((a, b) => String(a.debut).localeCompare(String(b.debut)));
+}
+
+/** Garde la note écrite, puis tente de la déposer. */
+async function garderLaNote() {
+  const champ = document.getElementById("note");
+  const texte = (champ ? champ.value : brouillon).trim();
+  if (!texte) { ecrit = false; brouillon = ""; rendre(); return; }
+  try {
+    await invoke("note_garder", { debut: maintenantIso(), texte });
+    ecrit = false; brouillon = ""; souci = "";
+  } catch (e) {
+    brouillon = texte;
+    souci = String(e);
+  }
+  await relire();
+  void envoyerTout();
 }
 
 async function tater() {
@@ -213,9 +264,9 @@ async function envoyerTout() {
   souci = "";
   rendre();
   try {
-    for (const v of vocaux.slice()) {
+    for (const x of enAttente()) {
       try {
-        await invoke("vocal_envoyer", { id: v.id });
+        await invoke(x.sorte === "note" ? "note_envoyer" : "vocal_envoyer", { id: x.id });
       } catch (e) {
         souci = String(e);
         break;
@@ -257,9 +308,10 @@ function arreterEcoute() {
   ecoute = "";
 }
 
-async function oublier(id) {
+async function oublier(id, sorte) {
   if (ecoute === id) arreterEcoute();
-  try { await invoke("vocal_oublier", { id }); } catch (e) { /* déjà parti */ }
+  try { await invoke(sorte === "note" ? "note_oublier" : "vocal_oublier", { id }); }
+  catch (e) { /* déjà parti */ }
   await relire();
 }
 
@@ -312,6 +364,16 @@ function libelleDuree(s) {
 
 const heureDe = (iso) => (iso.slice(11, 16) || "--:--").replace(":", "h");
 
+/** Ce qu'on met dans une page : le texte d'une note n'y est pas du HTML. */
+const echapper = (t) => String(t ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+
+/** Le début d'une note, pour la reconnaître dans la liste. */
+const apercu = (t) => {
+  const ligne = String(t ?? "").split("\n")[0].trim();
+  return ligne.length > 34 ? `${ligne.slice(0, 33)}…` : ligne;
+};
+
 /** « 340 ko », « 2,1 Mo » : de quoi juger si le dépôt va être long. */
 function poids(octets) {
   return octets >= 1e6
@@ -321,6 +383,7 @@ function poids(octets) {
 
 function rendre() {
   const enCours = !!ctx;
+  const attente = enAttente();
   const el = document.getElementById("ecran");
   if (!el) return;
 
@@ -336,9 +399,19 @@ function rendre() {
            <p class="meta" id="muet" hidden style="margin:8px 0 0;color:var(--rouge)">
              Le micro ne capte rien pour l'instant.
            </p>
-           <p class="meta" style="margin:8px 0 14px">Gardez l'écran allumé pendant que vous dictez.</p>
+           <p class="meta" style="margin:8px 0 14px">${veille
+             ? "L'écran reste allumé. Ne quittez pas l'application."
+             : "Gardez l'écran allumé et l'application devant, sans quoi iOS met la dictée en pause."}</p>
            <button class="gros rouge" id="stop">⏹ Terminer</button>`
         : `<button class="gros" id="go" ${adresse ? "" : "disabled"}>🎙 Dicter</button>
+           ${ecrit
+             ? `<textarea id="note" rows="4" placeholder="Deux lignes, au lieu de parler…">${echapper(brouillon)}</textarea>
+                <div style="display:flex;gap:8px;margin-top:8px">
+                  <button class="btn" id="annuler-note" style="flex:1">Annuler</button>
+                  <button class="btn plein" id="garder-note" style="flex:1">Garder</button>
+                </div>`
+             : `<button class="btn" id="ecrire" ${adresse ? "" : "disabled"}
+                  style="width:100%;margin-top:10px">✍️ Écrire plutôt</button>`}
            <p class="meta" style="margin:14px 0 0">${adresse
              ? "L'heure suffit : l'ordinateur saura de quel créneau il s'agit."
              : "Appairez d'abord l'ordinateur, ci-dessous."}</p>`}
@@ -347,16 +420,18 @@ function rendre() {
     ${avis ? `<p class="avis">${avis}</p>` : ""}
     ${souci ? `<p class="err">${souci}</p>` : ""}
 
-    ${vocaux.length ? `
-      <p class="titre">En attente de l'ordinateur (${vocaux.length})</p>
-      ${vocaux.map((v) => `
+    ${attente.length ? `
+      <p class="titre">En attente de l'ordinateur (${attente.length})</p>
+      ${attente.map((x) => `
         <div class="ligne">
           <span class="pt" style="background:${etat[0]}"></span>
-          <b>${heureDe(v.debut)}</b>
-          <span class="meta">${libelleDuree(v.dureeS)}${v.octets ? ` · ${poids(v.octets)}` : ""}</span>
+          <b>${heureDe(x.debut)}</b>
+          ${x.sorte === "note"
+            ? `<span class="note-apercu">✍️ ${echapper(apercu(x.texte))}</span>`
+            : `<span class="meta">${libelleDuree(x.dureeS)}${x.octets ? ` · ${poids(x.octets)}` : ""}</span>`}
           <span style="flex:1"></span>
-          <button class="btn" data-ecouter="${v.id}">${ecoute === v.id ? "⏸" : "▶︎"}</button>
-          <button class="btn" data-oublier="${v.id}">🗑</button>
+          ${x.sorte === "note" ? "" : `<button class="btn" data-ecouter="${x.id}">${ecoute === x.id ? "⏸" : "▶︎"}</button>`}
+          <button class="btn" data-oublier="${x.id}" data-sorte="${x.sorte}">🗑</button>
         </div>`).join("")}
       <button class="btn plein" id="envoyer" ${envoiEnCours ? "disabled" : ""}
         style="width:100%;margin-top:6px">${envoiEnCours ? "Envoi…" : "↑ Envoyer maintenant"}</button>
@@ -387,9 +462,14 @@ function rendre() {
   clic("envoyer", () => { void envoyerTout(); });
   clic("appairer", () => { void appairer(); });
   clic("colle", () => { void coller(); });
+  clic("ecrire", () => { ecrit = true; rendre(); document.getElementById("note")?.focus(); });
+  clic("annuler-note", () => { ecrit = false; brouillon = ""; rendre(); });
+  clic("garder-note", () => { void garderLaNote(); });
+  const champNote = document.getElementById("note");
+  if (champNote) champNote.oninput = () => { brouillon = champNote.value; };
   clic("changer", () => { appairage = true; rendre(); });
   el.querySelectorAll("[data-oublier]").forEach((b) => {
-    b.onclick = () => { void oublier(b.dataset.oublier); };
+    b.onclick = () => { void oublier(b.dataset.oublier, b.dataset.sorte); };
   });
   el.querySelectorAll("[data-ecouter]").forEach((b) => {
     b.onclick = () => { void ecouter(b.dataset.ecouter); };
@@ -407,6 +487,6 @@ function rendre() {
   setInterval(async () => {
     if (ctx || envoiEnCours) return;
     await tater();
-    if (joignable && vocaux.length) void envoyerTout();
+    if (joignable && enAttente().length) void envoyerTout();
   }, 20000);
 })();

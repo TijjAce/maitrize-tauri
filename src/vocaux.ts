@@ -87,6 +87,9 @@ export function repereDuVocal(v: { debut: string; dureeS: number }): string {
   const m = /T(\d{2}):(\d{2})/.exec(v.debut || "");
   const heure = m ? `${m[1]}h${m[2]}` : "heure inconnue";
   const s = Math.round(v.dureeS || 0);
+  // Sans durée, ce n'est pas un enregistrement muet : c'est une note tapée au
+  // téléphone, qui arrive déjà écrite.
+  if (s <= 0) return `${heure} · note écrite`;
   const duree = s >= 60 ? `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, "0")}` : `${s} s`;
   return `${heure} · ${duree}`;
 }

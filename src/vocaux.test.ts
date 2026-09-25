@@ -86,3 +86,10 @@ describe("les vocaux d'un jour", () => {
     expect(jourDuVocal({ debut: "" })).toBe("");
   });
 });
+
+describe("une note écrite", () => {
+  it("se lit comme une note, pas comme un enregistrement de zéro seconde", () => {
+    expect(repereDuVocal({ debut: "2026-09-25T10:12:00", dureeS: 0 })).toBe("10h12 · note écrite");
+    expect(repereDuVocal({ debut: "2026-09-25T10:12:00", dureeS: 4 })).toBe("10h12 · 4 s");
+  });
+});
