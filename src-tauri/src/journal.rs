@@ -509,9 +509,25 @@ pub fn changements_locaux(
     conn: &Connection,
     depuis: i64,
 ) -> rusqlite::Result<(Vec<Changement>, i64)> {
+    // Une ligne modifiée quarante fois ne part qu'une : chaque écriture porte
+    // l'état complet, seul le dernier compte. Sans ce regroupement, un texte
+    // enregistré tout seul pendant qu'on l'écrit partait en quarante copies —
+    // et le journal les relisait toutes, verrou tenu, à chaque passage.
+    //
+    // L'état d'avant, lui, est celui de la **première** : à l'arrivée, la
+    // fusion champ par champ doit voir tout ce que la série a changé, pas
+    // seulement la dernière retouche.
     let mut st = conn.prepare(
-        "SELECT table_nom, ligne_id, operation, donnees, horodatage, origine, avant
-           FROM changements WHERE seq > ?1 AND distant = 0 ORDER BY seq",
+        "SELECT c.table_nom, c.ligne_id, c.operation, c.donnees, c.horodatage, c.origine,
+                (SELECT d.avant FROM changements d
+                  WHERE d.table_nom = c.table_nom AND d.ligne_id = c.ligne_id
+                    AND d.seq > ?1 AND d.distant = 0
+                  ORDER BY d.seq LIMIT 1),
+                MAX(c.seq)
+           FROM changements c
+          WHERE c.seq > ?1 AND c.distant = 0
+          GROUP BY c.table_nom, c.ligne_id
+          ORDER BY MAX(c.seq)",
     )?;
     let lignes = st
         .query_map(params![depuis], |r| {
@@ -1223,8 +1239,57 @@ pub fn repere_envoi(conn: &Connection, repere: i64) -> i64 {
 }
 
 /// Élague le journal, qui n'a pas vocation à grandir sans fin.
+///
+/// Le chemin ordinaire passe par `elaguer_ancien`, qui ménage les machines en
+/// retard ; celle-ci coupe net, et ne sert qu'à éprouver l'autre.
+#[cfg(test)]
 pub fn elaguer(conn: &Connection, avant: i64) {
     conn.execute("DELETE FROM changements WHERE seq <= ?1", params![avant]).ok();
+}
+
+/**
+ * Ne garde, de chaque ligne pas encore partie, que sa dernière écriture.
+ *
+ * L'élagage ne peut rien contre le poids du journal tant que rien n'est
+ * parti : chez son auteur, hors réseau pendant quelques jours, la table
+ * pesait vingt mégaoctets sur vingt-quatre — sept mille écritures dont
+ * l'immense majorité étaient des versions successives des mêmes textes.
+ *
+ * Or une écriture porte l'état complet de la ligne : la garder deux fois ne
+ * sert à rien. On replie donc chaque série sur sa dernière, en lui donnant
+ * l'état d'avant de la première — ce que la fusion champ par champ attend.
+ *
+ * Seules les lignes pas encore envoyées sont repliées : replier de part et
+ * d'autre du repère d'envoi changerait ce qu'il reste à envoyer.
+ *
+ * Renvoie le nombre de lignes jetées.
+ */
+pub fn compacter(conn: &Connection, envoye_jusqua: i64) -> usize {
+    conn.execute(
+        "UPDATE changements
+            SET avant = COALESCE((SELECT p.avant FROM changements p
+                                   WHERE p.table_nom = changements.table_nom
+                                     AND p.ligne_id = changements.ligne_id
+                                     AND p.distant = 0 AND p.seq > ?1
+                                   ORDER BY p.seq LIMIT 1), avant)
+          WHERE distant = 0 AND seq > ?1
+            AND seq = (SELECT MAX(x.seq) FROM changements x
+                        WHERE x.table_nom = changements.table_nom
+                          AND x.ligne_id = changements.ligne_id
+                          AND x.distant = 0 AND x.seq > ?1)",
+        params![envoye_jusqua],
+    )
+    .ok();
+    conn.execute(
+        "DELETE FROM changements
+          WHERE distant = 0 AND seq > ?1
+            AND seq < (SELECT MAX(x.seq) FROM changements x
+                        WHERE x.table_nom = changements.table_nom
+                          AND x.ligne_id = changements.ligne_id
+                          AND x.distant = 0 AND x.seq > ?1)",
+        params![envoye_jusqua],
+    )
+    .unwrap_or(0)
 }
 
 /// Combien de jours de journal on garde après l'envoi.
@@ -2071,6 +2136,86 @@ mod tests {
         annoncer_dossiers(&a, "A");
         assert!(changements_locaux(&a, repere2).unwrap().0.is_empty(), "une seule annonce");
         assert!(!reglage_partage(CLE_DOSSIERS_ANNONCES), "le repère reste propre au poste");
+    }
+
+    #[test]
+    fn une_ligne_reecrite_dix_fois_ne_part_qu_une() {
+        let c = machine();
+        ajouter(&c, "e1", "Quang");
+        for n in ["Quang A", "Quang B", "Quang C"] {
+            c.execute("UPDATE eleves SET nom = ?1 WHERE id = 'e1'", params![n]).unwrap();
+        }
+        ajouter(&c, "e2", "Lina");
+        let (envoyes, _) = changements_locaux(&c, 0).unwrap();
+        assert_eq!(envoyes.len(), 2, "une ligne par élève, pas une par frappe");
+        let quang = envoyes.iter().find(|ch| ch.ligne_id == "e1").unwrap();
+        assert!(quang.donnees.contains("Quang C"), "c'est le dernier état qui part");
+        // L'état d'avant est celui de la première écriture de la série : sans
+        // cela, la fusion champ par champ ne verrait que la dernière retouche.
+        assert_eq!(quang.avant, "", "la série commence par une insertion");
+    }
+
+    #[test]
+    fn l_etat_d_avant_couvre_toute_la_serie() {
+        let c = machine();
+        ajouter(&c, "e1", "Quang");
+        let (_, repere) = changements_locaux(&c, 0).unwrap();
+        c.execute("UPDATE eleves SET nom = 'Quang B' WHERE id = 'e1'", []).unwrap();
+        c.execute("UPDATE eleves SET niveau = 'CM1' WHERE id = 'e1'", []).unwrap();
+        let (envoyes, _) = changements_locaux(&c, repere).unwrap();
+        assert_eq!(envoyes.len(), 1);
+        // Le nom ET le niveau doivent être vus comme touchés.
+        let apres: serde_json::Value = serde_json::from_str(&envoyes[0].donnees).unwrap();
+        let touches = champs_touches(&envoyes[0].avant, &apres);
+        assert!(touches.contains("nom"), "le nom a changé pendant la série");
+        assert!(touches.contains("niveau"), "le niveau aussi");
+    }
+
+    #[test]
+    fn une_suppression_l_emporte_sur_les_ecritures_qui_la_precedent() {
+        let c = machine();
+        ajouter(&c, "e1", "Quang");
+        c.execute("UPDATE eleves SET nom = 'Quang B' WHERE id = 'e1'", []).unwrap();
+        c.execute("DELETE FROM eleves WHERE id = 'e1'", []).unwrap();
+        let (envoyes, _) = changements_locaux(&c, 0).unwrap();
+        assert_eq!(envoyes.len(), 1);
+        assert_eq!(envoyes[0].operation, "suppr");
+    }
+
+    #[test]
+    fn compacter_allege_le_journal_sans_changer_ce_qui_part() {
+        let c = machine();
+        ajouter(&c, "e1", "Quang");
+        for n in ["A", "B", "C", "D"] {
+            c.execute("UPDATE eleves SET nom = ?1 WHERE id = 'e1'", params![n]).unwrap();
+        }
+        let avant_compaction = changements_locaux(&c, 0).unwrap().0;
+        let lignes = |c: &Connection| -> i64 {
+            c.query_row("SELECT COUNT(*) FROM changements", [], |r| r.get(0)).unwrap()
+        };
+        assert_eq!(lignes(&c), 5);
+        assert_eq!(compacter(&c, 0), 4, "quatre versions dépassées s'en vont");
+        assert_eq!(lignes(&c), 1);
+        // Ce qui part est identique, à la place du repère près.
+        let apres_compaction = changements_locaux(&c, 0).unwrap().0;
+        assert_eq!(apres_compaction.len(), avant_compaction.len());
+        assert_eq!(apres_compaction[0].donnees, avant_compaction[0].donnees);
+        assert_eq!(apres_compaction[0].avant, avant_compaction[0].avant);
+        // Et recommencer ne change plus rien.
+        assert_eq!(compacter(&c, 0), 0);
+    }
+
+    #[test]
+    fn compacter_ne_touche_pas_a_ce_qui_est_deja_parti() {
+        let c = machine();
+        ajouter(&c, "e1", "Quang");
+        let (_, repere) = changements_locaux(&c, 0).unwrap();
+        c.execute("UPDATE eleves SET nom = 'Quang B' WHERE id = 'e1'", []).unwrap();
+        c.execute("UPDATE eleves SET nom = 'Quang C' WHERE id = 'e1'", []).unwrap();
+        assert_eq!(compacter(&c, repere), 1, "seules les deux non parties se replient");
+        assert_eq!(changements_locaux(&c, repere).unwrap().0.len(), 1);
+        // L'insertion, déjà envoyée, est toujours là pour la machine en retard.
+        assert_eq!(changements_locaux(&c, 0).unwrap().0.len(), 1);
     }
 
     #[test]

@@ -1338,9 +1338,13 @@ mod tests_sauvegarde {
         let a = neuve("A");
         let mut b = neuve("B");
         a.execute("INSERT INTO eleves (id, nom, niveau) VALUES ('e1','Quang','CE2')", []).unwrap();
+        // L'insertion part d'abord : les écritures suivantes sont alors des
+        // retouches, et portent un vrai état d'avant.
+        let (premiers, repere) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut b, &premiers).unwrap();
         a.execute("UPDATE eleves SET niveau='CM1' WHERE id='e1'", []).unwrap();
 
-        let (locaux, _) = changements_locaux(&a, 0).unwrap();
+        let (locaux, _) = changements_locaux(&a, repere).unwrap();
         assert!(locaux.iter().any(|c| !c.avant.is_empty()), "l'état d'avant doit être enregistré");
 
         let json = serde_json::to_string(&locaux).unwrap();
@@ -1510,6 +1514,9 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
         crate::journal::annoncer_dossiers(&c, &machine);
         crate::journal::annoncer_tables(&c, &machine, &autres);
         let depuis = crate::journal::repere_envoi(&c, get_setting(&c, CLE_SEQ_ENVOYEE).parse().unwrap_or(0));
+        // Replier avant de lire : ce qui n'est pas encore parti ne vaut que
+        // par sa dernière version, et le journal s'allège d'autant.
+        crate::journal::compacter(&c, depuis);
         let (changements, repere) = crate::journal::changements_locaux(&c, depuis).map_err(e)?;
         (cfg, phrase.trim().to_string(), machine.clone(), repere, deltas_vus(&c),
          Lot { machine, changements })
