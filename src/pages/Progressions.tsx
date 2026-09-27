@@ -1,12 +1,13 @@
 import React from "react";
-import { api, Eleve, newId } from "../api";
+import { api, Eleve, anneeScolaireActuelle, newId } from "../api";
 import { Field, Input, Select, Modal, Empty, Confirm, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { printHTML, escapeHtml } from "../print";
 import { CiterCompetences } from "../components/CiterCompetences";
 import {
-  CompetenceTravaillee, TYPE_DOC_COMPETENCES, ajouterCompetences, lireCompetences, parSource,
+  CompetenceTravaillee, TYPE_DOC_COMPETENCES, ajouterCompetences, lireCompetences, parSource, sourceProgrammation, synchroniserProgrammation,
 } from "../competencesTravaillees";
+import { lire as lireProgrammation, objectifsDe } from "../programmationIme";
 
 // ── Progressions individuelles ────────────────────────────────────────────
 // Chaque élève suit sa propre trajectoire, indépendante du groupe : une
@@ -15,7 +16,9 @@ import {
 // Stockage par élève dans ses documents (type « progressions »).
 //
 // Au-dessus des progressions : les compétences du BO travaillées avec l'élève,
-// citées depuis les programmes officiels ou un PDF du coffre-fort.
+// citées depuis les programmes officiels ou un PDF du coffre-fort — et, en
+// IME, les objectifs que la programmation par élève lui a fixés cette année,
+// repris d'eux-mêmes à l'ouverture : on ne les recopie pas, on dit où il en est.
 
 type StatutEtape = "nonabordee" | "encours" | "acquise";
 interface Etape { id: string; intitule: string; statut: StatutEtape; date: string; notes: string }
@@ -62,17 +65,37 @@ export function ProgressionsTab() {
 
   React.useEffect(() => { if (!eleveId && eleves?.[0]) setEleveId(eleves[0].id); }, [eleves, eleveId]);
 
-  // Changer vite d'élève ne doit pas afficher les données du précédent.
+  // La programmation par élève de l'année : ce qu'on a décidé de travailler.
+  const annee = anneeScolaireActuelle();
+  const { data: programmations } = useAsync(() => api.programmationsFinaleList(), []);
+  // Relue par son texte : un rafraîchissement silencieux qui ne change rien ne relance rien.
+  const programmationJson = (programmations ?? []).find((p) => p.niveau === "ime" && p.annee === annee)?.lignesJson ?? "";
+  const programmation = React.useMemo(() => (programmationJson ? lireProgrammation(programmationJson) : null), [programmationJson]);
+
+  // Changer vite d'élève ne doit pas afficher les données du précédent. On
+  // attend la programmation avant de lire l'élève : sinon on l'afficherait
+  // sans ses objectifs, puis avec — deux fois.
   React.useEffect(() => {
-    if (!eleveId) return;
+    if (!eleveId || programmations == null) return;
     let actif = true;
     api.documentEleveGet(eleveId, "progressions").then((v) => {
       if (!actif) return;
       try { setProgs(v ? JSON.parse(v) : []); } catch { setProgs([]); }
     });
-    api.documentEleveGet(eleveId, TYPE_DOC_COMPETENCES).then((v) => { if (actif) setCompetences(lireCompetences(v)); });
+    api.documentEleveGet(eleveId, TYPE_DOC_COMPETENCES).then((v) => {
+      if (!actif) return;
+      const lues = lireCompetences(v);
+      // Les objectifs de la programmation qui manquent encore ici s'y ajoutent.
+      const objectifs = programmation ? objectifsDe(programmation, eleveId) : [];
+      const r = synchroniserProgrammation(lues, objectifs, annee, todayIso());
+      setCompetences(r.liste);
+      if (r.ajoutees + r.misesAJour > 0) {
+        api.documentEleveSet(eleveId, TYPE_DOC_COMPETENCES, JSON.stringify(r.liste)).catch(() => {});
+        if (r.ajoutees) toast(`${r.ajoutees} objectif${r.ajoutees > 1 ? "s" : ""} de la programmation repris${r.ajoutees > 1 ? "" : ""}.`, { icone: "🎯" });
+      }
+    });
     return () => { actif = false; };
-  }, [eleveId]);
+  }, [eleveId, programmation, programmations == null, annee]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const persisterCompetences = (l: CompetenceTravaillee[]) => {
     setCompetences(l);
@@ -203,6 +226,7 @@ export function ProgressionsTab() {
           <span style={{ fontSize: 12, color: "var(--text-2)" }}>
             {competences.length === 0 ? "Programmes officiels (BO)"
               : `${competences.length} citée${competences.length > 1 ? "s" : ""} · ${competences.filter((c) => c.statut === "acquise").length} acquise(s)`}
+            {(() => { const n = competences.filter((c) => c.source === sourceProgrammation(annee)).length; return n ? ` · ${n} de la programmation` : ""; })()}
           </span>
           <div className="spacer" />
           <button className="btn sm" onClick={() => setCiter("coffre")}>🗄️ Citer un PDF du coffre-fort</button>
@@ -212,6 +236,7 @@ export function ProgressionsTab() {
           <p style={{ fontSize: 13, color: "var(--text-2)", margin: "10px 0 0" }}>
             Citez les compétences travaillées avec {(eleve.nom || "").split(" ")[0]} : cochez-les dans les programmes officiels,
             ou surlignez-les dans un programme enregistré au coffre-fort.
+            {programmation && " Les objectifs de la programmation par élève arrivent ici d'eux-mêmes dès qu'il en a."}
           </p>
         ) : parSource(competences).map(([source, liste]) => (
           <div key={source} style={{ marginTop: 12 }}>
