@@ -629,8 +629,12 @@ export const api = {
   imprimerPdf: (nom: string) => invoke<void>("imprimer_pdf", { nom }),
   ouvrirFichier: (nom: string) => invoke<void>("ouvrir_fichier", { nom }),
   ouvrirHtml: (html: string) => invoke<void>("ouvrir_html", { html }),
-  imprimerPlanning: (titre: string, jours: { jour: string; rangs: { heureDebut: string; heureFin: string; matiere: string; seance: string; couleur: string; objectifs: string; deroulement: string }[][] }[]) =>
-    invoke<void>("imprimer_planning", { titre, jours }),
+  /** Le planning, puis le matériel des séances à sa suite ; renvoie ce qui n'a pas pu être joint. */
+  imprimerPlanning: (
+    titre: string,
+    jours: { jour: string; rangs: { heureDebut: string; heureFin: string; matiere: string; seance: string; couleur: string; objectifs: string; deroulement: string; prevu?: string; bilan?: string; materiel?: string[] }[][] }[],
+    annexes: { titre: string; quand: string; fichier: string }[] = [],
+  ) => invoke<string[]>("imprimer_planning", { titre, jours, annexes }),
   exporterSyntheseGs: (args: {
     ecole: string; eleveNom: string;
     domaines: { titre: string; titreObservations: string; items: { bloc: string | null; label: string; position: number }[]; enonces: string[]; observation: string }[];

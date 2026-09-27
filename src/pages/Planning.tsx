@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import { isoJour, lundiDe, jourPlanningInitial, anneeDe, toMin, minToHHMM } from "../dates";
-import { api, Creneau, Seance, Sequence, Eleve, Jeu, MATIERES, couleurPourMatiere, teinteCreneau, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance, type ObservationEleve } from "../api";
+import { api, Creneau, Seance, Sequence, Eleve, Jeu, MATIERES, couleurPourMatiere, teinteCreneau, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance, texteErreur, type MaterielItem, type ObservationEleve } from "../api";
 import { Modal, Field, Input, Select, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
 import { chargerVacances, vacanceDuJour, type Periode } from "../vacances";
@@ -17,6 +17,8 @@ import { jeuxCites, reglesImprimees, STYLE_REGLES } from "../jeuxCites";
 import { sequencesCitees, sequencesImprimees, STYLE_SEQUENCES } from "../sequencesCitees";
 import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
 import { organisationPour, natureDuSlot, type SlotEdt } from "../organisation";
+import { annexesDesCreneaux, annexesHtml, octetsDeBase64, STYLE_ANNEXES, titresDuMateriel, type AnnexeRendue } from "../materielAImprimer";
+import { nombreDePages, rendrePage } from "../pdfRendu";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const JOURS7 = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -206,6 +208,8 @@ export default function Planning() {
   const imprimerJourRiche = async (liste: Creneau[]) => {
     const jourCreneaux = liste.filter((c) => c.date === iso(ancre)).sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
     const reImg = /\[img:([^\]]+)\]/g;
+    // Le matériel des séances : annoncé dans le créneau, joint à la suite.
+    const materiels = await api.materielList().catch((): MaterielItem[] => []);
 
     // Collecte toutes les images référencées, puis les lit en data URL.
     const noms = new Set<string>();
@@ -284,6 +288,8 @@ export default function Planning() {
         s?.objectifs ? champ("Objectifs", escapeHtml(s.objectifs)) : "",
         deroul ? `<div class="f"><span class="fl">Activités :</span></div><div class="txt">${escapeHtml(deroul)}</div>` : "",
         comps.length ? champ("Compétences", comps.map((x) => escapeHtml(labelCourt(x))).join("<br>")) : "",
+        titresDuMateriel(c, materiels).length
+          ? champ("Matériel à imprimer", `${titresDuMateriel(c, materiels).map(escapeHtml).join(", ")} — joint à la suite`) : "",
         grid.length ? `<div class="fl" style="margin-top:4px">Tableau :</div><table>${colonnesDuTableau(grid[0])}${grid.map((row, r) => `<tr>${row.map((cell) => r === 0 ? `<th>${escapeHtml(cell)}</th>` : `<td>${rendreCell(cell)}</td>`).join("")}</tr>`).join("")}</table>` : "",
         illus.length ? `<div class="imgs">${illus.map(imgTag).join("")}</div>` : "",
         c.prevu?.trim() ? `<div class="f"><span class="fl">Prévu :</span></div><div class="txt prevu">${rendreCell(c.prevu.trim())}</div>` : "",
@@ -340,12 +346,30 @@ export default function Planning() {
       ${STYLE_REGLES}
       ${STYLE_SEQUENCES}
       ${STYLE_PIED}
+      ${STYLE_ANNEXES}
     `;
+    // Le matériel à la suite du journal : chaque page de PDF devient une
+    // image, entière, assez fine pour l'imprimante. Un fichier illisible ne
+    // retient pas le journal.
+    const rendues: AnnexeRendue[] = [];
+    for (const annexe of annexesDesCreneaux(jourCreneaux, seances ?? [], materiels)) {
+      try {
+        const octets = octetsDeBase64(await api.fichierRead(annexe.fichier));
+        const pages = [];
+        for (let n = 1, total = await nombreDePages(octets); n <= total; n++) {
+          pages.push(await rendrePage(octets, n, { rogner: false, largeur: 1500 }));
+        }
+        rendues.push({ annexe, pages });
+      } catch (e) {
+        toast(`« ${annexe.titre} » n'a pas pu être joint : ${texteErreur(e)}`, { icone: "⚠️", duree: 8000 });
+      }
+    }
     // Le logo se réduit ici : sans lui, le pied garde l'adresse.
     const logo = await logoImprimable().catch(() => "");
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Planning — ${escapeHtml(titre)}</title><style>${css}</style></head>
       <body><h1>${escapeHtml(titre)}</h1><div class="sub">Cahier journal</div>
       <div class="jour">${rangs || '<div class="row"><div style="padding:20px;color:#687087">Aucun créneau ce jour-là.</div></div>'}</div>
+      ${annexesHtml(rendues)}
       ${piedMaitrize(logo)}
       </body></html>`;
     await api.ouvrirHtml(html);
@@ -360,6 +384,7 @@ export default function Planning() {
     const liste = await api.creneauxList(debut, fin).catch(() => creneaux ?? []);
     reload();
     if (vue === "jour") { await imprimerJourRiche(liste); return; }
+    const materiels = await api.materielList().catch((): MaterielItem[] => []);
     const nettoie = (t: string) => (t || "").replace(/\[(img|cite):[^\]]+\]/g, "").replace(/\n{3,}/g, "\n\n").trim();
     const info = (c: Creneau) => {
       const s = (seances ?? []).find((x) => x.id === c.seanceId);
@@ -371,6 +396,7 @@ export default function Planning() {
         deroulement: nettoie(s?.deroulement ?? ""),
         prevu: (c.prevu ?? "").trim(),
         bilan: (c.bilan ?? "").trim(),
+        materiel: titresDuMateriel(c, materiels),
       };
     };
     // Regroupe les créneaux qui se chevauchent (même horaire) → affichés côte à côte.
@@ -388,15 +414,22 @@ export default function Planning() {
       return groups;
     };
     const ds = jours; // ici : vue semaine (le jour est traité plus haut)
+    const libelleJour = (d: Date) => d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
     const data = ds.map((d) => ({
-      jour: d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }),
+      jour: libelleJour(d),
       rangs: grouper(liste
         .filter((c) => c.date === iso(d))
         .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut))
         .map(info)),
     }));
+    // Le matériel des séances de la semaine, joint au PDF à la suite du journal.
+    const annexes = annexesDesCreneaux(
+      liste.filter((c) => ds.some((d) => c.date === iso(d))), seances ?? [], materiels,
+      (c) => { const d = ds.find((x) => iso(x) === c.date); return d ? libelleJour(d) : ""; },
+    );
     try {
-      await api.imprimerPlanning(`Planning — ${titre}`, data);
+      const manques = await api.imprimerPlanning(`Planning — ${titre}`, data, annexes.map(({ titre, quand, fichier }) => ({ titre, quand, fichier })));
+      if (manques.length) toast(`Matériel non joint : ${manques.join(" ; ")}`, { icone: "⚠️", duree: 8000 });
     } catch {
       // Repli (hors macOS) : impression via la webview.
       const rows = data.flatMap((j) => [

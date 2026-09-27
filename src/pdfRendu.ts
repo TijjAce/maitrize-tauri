@@ -61,13 +61,21 @@ export async function nombreDePages(octets: Uint8Array): Promise<number> {
   return n;
 }
 
+export interface OptionsRendu {
+  /** Retirer les marges uniformes (pour le modèle) ; faux pour imprimer la page entière. */
+  rogner?: boolean;
+  /** Largeur de rendu, en pixels. */
+  largeur?: number;
+}
+
 /** Rend une page (numérotée à partir de 1) en PNG base64. */
-export async function rendrePage(octets: Uint8Array, numero: number): Promise<PageRendue> {
+export async function rendrePage(octets: Uint8Array, numero: number, options: OptionsRendu = {}): Promise<PageRendue> {
+  const { rogner = true, largeur = LARGEUR } = options;
   const doc = await (await pdfjsCharge()).getDocument({ data: copie(octets) }).promise;
   try {
     const page = await doc.getPage(Math.min(Math.max(1, numero), doc.numPages));
     const base = page.getViewport({ scale: 1 });
-    const viewport = page.getViewport({ scale: LARGEUR / base.width });
+    const viewport = page.getViewport({ scale: largeur / base.width });
     const toile = document.createElement("canvas");
     toile.width = Math.round(viewport.width);
     toile.height = Math.round(viewport.height);
@@ -78,7 +86,7 @@ export async function rendrePage(octets: Uint8Array, numero: number): Promise<Pa
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, toile.width, toile.height);
     await page.render({ canvasContext: ctx, viewport, canvas: toile } as any).promise;
-    const cadree = rognerMarges(toile);
+    const cadree = rogner ? rognerMarges(toile) : toile;
     const url = cadree.toDataURL("image/png");
     return {
       numero,
