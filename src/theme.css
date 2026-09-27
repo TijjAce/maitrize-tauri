@@ -779,7 +779,7 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 
 /* Coloriage magique : la grille de calculs et sa légende. */
 .cm-grille { border-collapse: collapse; margin: 0 auto; }
-.cm-grille td { border: 1px solid var(--text-2); width: 58px; height: 52px; text-align: center;
+.cm-grille td { border: 1px solid var(--text-2); width: var(--cm-cote, 58px); height: var(--cm-cote, 52px); text-align: center;
   font-size: 13px; font-variant-numeric: tabular-nums; vertical-align: middle; }
 .cm-legende { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; font-size: 13px; }
 .cm-legende-ligne { display: flex; align-items: center; gap: 6px; }
@@ -864,3 +864,24 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .man-exo-num { flex: none; font-weight: 700; font-size: 13px; min-width: 52px; }
 .man-exo-texte { font-size: 13px; line-height: 1.45; color: var(--text-2); }
 .man-exo.on .man-exo-texte { color: var(--text); }
+
+/* Le coloriage magique : les trois temps de l'écran, la galerie des dessins, les vignettes. */
+.cm-etape { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13.5px; margin: 14px 0 8px; }
+.cm-etape span { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+.cm-galerie { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.cm-vignette { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px 5px; border: 1.5px solid var(--border);
+  border-radius: 10px; background: var(--panel-2); color: var(--text); cursor: pointer; font: inherit; }
+.cm-vignette:hover { border-color: var(--accent); }
+.cm-vignette.on { border-color: var(--accent); background: var(--accent-soft); }
+.cm-vignette-plus { border-style: dashed; justify-content: center; }
+.cm-vignette-nom { font-size: 11.5px; font-weight: 600; line-height: 1.2; text-align: center; }
+.cm-vignette-n { font-size: 10.5px; color: var(--text-2); }
+.cm-vignette-x { position: absolute; top: 2px; right: 5px; font-size: 11px; color: var(--text-2); }
+.cm-vignette-x:hover { color: var(--danger, #e5484d); }
+.cm-mini { display: grid; gap: 1px; width: 56px; height: 56px; background: #fff; border: 1px solid var(--border); border-radius: 4px; padding: 2px; }
+.cm-mini i { display: block; border-radius: 1px; }
+.cm-mini-grande { width: min(100%, 420px); height: auto; aspect-ratio: 1; gap: 2px; padding: 4px; }
+.cm-mini-grande i { border: 1px solid #d8dbe6; cursor: pointer; border-radius: 2px; }
+.cm-feutre { width: 28px; height: 28px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; opacity: .45; }
+.cm-feutre.on { opacity: 1; border-color: var(--text); }
+.cm-formes { display: inline-flex; gap: 8px; align-items: baseline; }
