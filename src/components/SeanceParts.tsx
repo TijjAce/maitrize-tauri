@@ -1,4 +1,5 @@
 import React from "react";
+import { DEMARCHES, ENTETE_TABLEAU, tableauDesPhases } from "../demarches";
 import { partDeColonne } from "../print";
 import { api, MaterielItem, newId, nowIso, raccourci } from "../api";
 import { FichierImg } from "./Deroulement";
@@ -105,11 +106,22 @@ export function TableauEditor({ grid, onChange, illustrations = [] }: {
 }) {
   const [picker, setPicker] = React.useState<{ r: number; c: number } | null>(null);
   if (grid.length === 0) {
+    // Un tableau vide, ou déjà structuré par une démarche : les quatre temps
+    // des livrets Éduscol, ou les phases de l'enseignement explicite. La
+    // séance n'a pas besoin d'être née d'un cadre pour en recevoir un.
     return (
-      <button className="btn sm" onClick={() => onChange([
-        ["Phase", "Durée", "Description", "Posture de l'enseignant"],
-        ["", "", "", ""], ["", "", "", ""],
-      ])}>＋ Insérer un tableau</button>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <button className="btn sm" onClick={() => onChange([
+          [...ENTETE_TABLEAU],
+          ["", "", "", ""], ["", "", "", ""],
+        ])}>＋ Insérer un tableau</button>
+        {DEMARCHES.map((d) => (
+          <button key={d.id} className="btn ghost sm" title={d.source}
+            onClick={() => onChange(tableauDesPhases(d.seances[0].phases))}>
+            🧭 {d.nom}
+          </button>
+        ))}
+      </div>
     );
   }
   const setCell = (r: number, c: number, v: string) => {

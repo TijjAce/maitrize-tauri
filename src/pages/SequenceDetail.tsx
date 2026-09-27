@@ -1,6 +1,7 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Page } from "../App";
+import { DEMARCHES, resumeDuCadre, seancesDuCadre } from "../demarches";
 import { api, Sequence, Seance, MaterielItem, Jeu, nouvelleSeance, couleurHex, nowIso, newId, DUREES, formatDuree, telechargerTexte } from "../api";
 import { decalee, deplacee, ordonnees, renumerotees } from "../ordreSeances";
 import { Modal, Field, Input, Textarea, TextareaAuto, Select, Stars, Empty, Confirm, useAsync } from "../components/ui";
@@ -184,7 +185,20 @@ export default function SequenceDetail() {
 
       <h3 style={{ margin: "4px 2px 12px" }}>Séances</h3>
       {(seances?.length ?? 0) === 0 ? (
-        <Empty icone="📝" titre="Aucune séance" sous="Ajoutez la première séance de cette séquence." />
+        <>
+          <Empty icone="📝" titre="Aucune séance" sous="Ajoutez la première séance, ou posez un cadre : une démarche d'un guide crée les séances et leurs phases." />
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginTop: -6, marginBottom: 18 }}>
+            {DEMARCHES.map((d) => (
+              <button key={d.id} className="btn sm" title={`${d.source} — ${resumeDuCadre(d)}`}
+                onClick={async () => {
+                  for (const sc of seancesDuCadre(d, seq.id, next)) await api.seanceSave(sc);
+                  await api.sequenceSave({ ...seq, nbSeancesPrevu: d.seances.length });
+                  reload(); reloadSeq();
+                  toast(`Cadre posé : ${resumeDuCadre(d)}.`, { icone: "🧭" });
+                }}>🧭 {d.nom}</button>
+            ))}
+          </div>
+        </>
       ) : (
         seances!.map((s) => {
           let comps: CompetenceSelectionnee[] = [];
