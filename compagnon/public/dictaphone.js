@@ -416,6 +416,12 @@ function libelleDuree(s) {
 
 const heureDe = (iso) => (iso.slice(11, 16) || "--:--").replace(":", "h");
 
+/** L'ordinateur qu'on cherche, tel qu'on le montre : sans le jeton. */
+function hoteDe(url) {
+  const m = /^https?:\/\/([^/?#]+)/.exec(String(url || ""));
+  return m ? m[1] : "aucun ordinateur";
+}
+
 /** Ce qu'on met dans une page : le texte d'une note n'y est pas du HTML. */
 const echapper = (t) => String(t ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
@@ -474,9 +480,11 @@ function rendre() {
   const el = document.getElementById("ecran");
   if (!el) return;
 
+  // Injoignable : on dit lequel on cherche. Une adresse retenue hier, quand
+  // la box donnait une autre IP, se reconnaît alors d'un coup d'œil.
   const etat = joignable === null ? ["var(--txt2)", "on regarde…"]
-    : joignable ? ["#16a34a", "ordinateur joignable"]
-    : ["#d97706", "ordinateur injoignable"];
+    : joignable ? ["#16a34a", `joignable — ${hoteDe(adresse)}`]
+    : ["#d97706", `injoignable — ${hoteDe(adresse)}`];
 
   el.innerHTML = `
     <div class="card" style="text-align:center">

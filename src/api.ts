@@ -800,6 +800,10 @@ export interface PortableInfo {
   ip: string;
   port: number;
   qrSvg: string;
+  /** Le nom de l'ordinateur sur le réseau — « MacBook-de-Marie.local ». */
+  hote?: string;
+  /** La même adresse, par le nom : elle survit à un changement d'IP. */
+  urlNom?: string;
 }
 
 export interface Identite { clePublique: string; nom: string; empreinte: string; }
