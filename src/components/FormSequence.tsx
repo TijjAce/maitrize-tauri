@@ -1,10 +1,11 @@
 import React from "react";
 import { api, Sequence, Referentiel, couleurHex, couleurPourMatiere, anneeScolaireActuelle } from "../api";
-import { Modal, Field, Input, Select, Textarea } from "./ui";
+import { Modal, Field, Input, Select, Textarea, useAsync } from "./ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "./CompetenceTree";
 import { FichierImg } from "./Deroulement";
 import { PhotoTelephone } from "./PhotoTelephone";
 import { DEMARCHES, demarcheDe, demarcheSuggeree, resumeDuCadre, seancesDuCadre } from "../demarches";
+import { sequencesParCompetence, titresVisant } from "../sequencesVisees";
 
 // Fiche d'une séquence : titre, période, compétence visée, objectifs, vignette,
 // vidéo. Elle vivait dans l'ancien onglet Séquences et avait disparu avec lui :
@@ -16,6 +17,10 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
   const [s, setS] = React.useState<Sequence>(sequence);
   const up = (p: Partial<Sequence>) => setS((cur) => ({ ...cur, ...p }));
   const [enCours, setEnCours] = React.useState(false);
+  // Ce que les autres séquences visent déjà : l'arbre le montre, pour ne pas
+  // refaire une séquence sur une compétence couverte sans le savoir.
+  const { data: toutes } = useAsync(() => api.sequencesList(), []);
+  const visees = React.useMemo(() => sequencesParCompetence(toutes ?? [], sequence.id), [toutes, sequence.id]);
   // Le déroulement : une démarche d'un guide, proposée au moment où l'on
   // choisit la compétence — c'est là qu'on sait ce qu'on va enseigner. On
   // décide alors de la suivre ou non ; tant qu'on n'a pas décidé, rien n'est
@@ -117,7 +122,8 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
             </div>
           </div>
         )}
-        <CompetenceTree mode="single" selection={comp ? [comp] : []} onPick={choisir} />
+        <CompetenceTree mode="single" selection={comp ? [comp] : []} onPick={choisir}
+          dejaVisee={(c) => titresVisant(visees, c)} />
         {(s.matiere || s.cycle) && (
           <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
             {s.matiere && <span className="chip"><span className="dot" style={{ background: couleurHex[s.couleur] }} />{s.matiere}</span>}
