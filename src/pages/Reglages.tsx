@@ -440,15 +440,36 @@ export default function Reglages() {
                 <code style={{ fontSize: 12 }}>{portable.url.replace(/\?t=.*/, "")}</code>
               </p>
               {/* L'application Dictaphone, elle, a besoin de l'adresse entière
-                  — jeton compris : elle revient toute seule, sans QR code. */}
+                  — jeton compris : elle revient toute seule, sans QR code.
+
+                  On lui donne l'adresse par le NOM de l'ordinateur plutôt que
+                  par son IP : la box redistribue une IP après chaque coupure,
+                  et le téléphone, qui avait retenu l'ancienne, ne trouvait
+                  plus personne. Le nom, lui, ne change pas. */}
               <p style={{ margin: "0 0 10px", fontSize: 12, color: "var(--text-2)" }}>
                 Pour l'application <b>Dictaphone</b>, collez-y cette adresse :<br />
-                <code style={{ fontSize: 11.5, wordBreak: "break-all" }}>{portable.url}</code>
+                <code style={{ fontSize: 11.5, wordBreak: "break-all" }}>{portable.urlNom || portable.url}</code>
                 <button className="btn ghost sm" style={{ marginLeft: 6 }}
-                  onClick={() => { navigator.clipboard?.writeText(portable.url); toast("Adresse copiée.", { icone: "📋" }); }}>
+                  onClick={() => {
+                    navigator.clipboard?.writeText(portable.urlNom || portable.url);
+                    toast("Adresse copiée.", { icone: "📋" });
+                  }}>
                   Copier
                 </button>
               </p>
+              {portable.urlNom && (
+                <p style={{ margin: "0 0 10px", fontSize: 11.5, color: "var(--text-2)", lineHeight: 1.5 }}>
+                  Cette adresse passe par le nom de l'ordinateur ({portable.hote}) : elle vaudra
+                  encore demain, même si la box lui donne une autre IP. Si le téléphone ne le
+                  trouve pas — certains réseaux d'école bloquent cette découverte —, essayez
+                  par l'adresse numérique :<br />
+                  <code style={{ fontSize: 11, wordBreak: "break-all" }}>{portable.url}</code>
+                  <button className="btn ghost sm" style={{ marginLeft: 6 }}
+                    onClick={() => { navigator.clipboard?.writeText(portable.url); toast("Adresse copiée.", { icone: "📋" }); }}>
+                    Copier
+                  </button>
+                </p>
+              )}
               <button className="btn danger" onClick={arreterPortable}>⏹ Arrêter le partage</button>
             </div>
           </div>
