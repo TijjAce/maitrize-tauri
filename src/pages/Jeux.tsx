@@ -9,6 +9,7 @@ import { TlaTab } from "./Tla";
 import { PartieToutTab, MultiplicatifsTab } from "./ProblemesBarres";
 import { ColoriageMagiqueTab } from "./ColoriageMagique";
 import { LectureSonsTab } from "./LectureSons";
+import { CompetencesAtelier } from "../components/CompetencesAtelier";
 import { SupportsVisuelsTab, retenirSupport } from "./SupportsVisuels";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { usePictoImage } from "../components/ChoixPicto";
@@ -43,6 +44,11 @@ interface Outil {
   quoi: string;
   /** Vrai si l'atelier a besoin de la banque de pictogrammes. */
   pictos?: boolean;
+  /**
+   * Les mots qui désignent, dans les référentiels, ce que l'atelier travaille.
+   * On ne recopie pas les intitulés : on va les chercher là où ils vivent.
+   */
+  competences?: readonly string[];
 }
 
 const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[] = [
@@ -51,15 +57,20 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
     aide: "Vocabulaire et désignation à partir des pictogrammes, et les fiches de sons.",
     outils: [
       { id: "jeux", nom: "Loto", icone: "🎲", pictos: true,
-        quoi: "Des planches et leurs cartes à découper, sur les thèmes que vous choisissez." },
+        quoi: "Des planches et leurs cartes à découper, sur les thèmes que vous choisissez.",
+        competences: ["lexique", "vocabulaire", "nommer", "désigner"] },
       { id: "memory", nom: "Mémory", icone: "🃏", pictos: true,
-        quoi: "Des paires à retourner : image et image, ou image et mot." },
+        quoi: "Des paires à retourner : image et image, ou image et mot.",
+        competences: ["mémoriser", "lexique", "associer"] },
       { id: "imagier", nom: "Imagier", icone: "📖", pictos: true,
-        quoi: "Une page d'images légendées, à afficher ou à coller dans un cahier." },
+        quoi: "Une page d'images légendées, à afficher ou à coller dans un cahier.",
+        competences: ["lexique", "vocabulaire", "mot"] },
       { id: "tla", nom: "Tableaux de langage", icone: "🗣", pictos: true,
-        quoi: "Des tableaux de communication : une grille de pictogrammes à pointer." },
+        quoi: "Des tableaux de communication : une grille de pictogrammes à pointer.",
+        competences: ["communiquer", "langage oral", "échanger"] },
       { id: "sons", nom: "Fiches de sons", icone: "🔤",
-        quoi: "Syllabes, mots à lire, à entourer, à compléter — une fiche par graphème." },
+        quoi: "Syllabes, mots à lire, à entourer, à compléter — une fiche par graphème.",
+        competences: ["correspondance", "graphème", "syllabe", "décoder", "phonème", "encoder"] },
     ],
   },
   {
@@ -67,11 +78,14 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
     aide: "Des problèmes à la structure choisie, et des calculs qui font apparaître un dessin.",
     outils: [
       { id: "partieTout", nom: "Problèmes partie-tout", icone: "➕",
-        quoi: "Un tout et ses parties, avec leur schéma en barres." },
+        quoi: "Un tout et ses parties, avec leur schéma en barres.",
+        competences: ["problèmes additifs", "résoudre des problèmes", "addition", "soustraction"] },
       { id: "multiplicatifs", nom: "Problèmes multiplicatifs", icone: "✖️",
-        quoi: "Parts égales et comparaisons, avec leur schéma en barres." },
+        quoi: "Parts égales et comparaisons, avec leur schéma en barres.",
+        competences: ["problèmes multiplicatifs", "multiplication", "division", "parts égales"] },
       { id: "coloriage", nom: "Coloriage magique", icone: "🎨",
-        quoi: "On calcule, le résultat dit la couleur, le dessin apparaît." },
+        quoi: "On calcule, le résultat dit la couleur, le dessin apparaît.",
+        competences: ["calcul mental", "addition", "soustraction", "tables de multiplication", "décoder"] },
     ],
   },
   {
@@ -79,7 +93,8 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
     aide: "Ce qui aide à suivre la journée : jetons, étapes, temps, scénarios.",
     outils: [
       { id: "supports", nom: "Supports visuels", icone: "🖼",
-        quoi: "Emploi du temps, étapes d'une tâche, minuteur, jetons de comportement." },
+        quoi: "Emploi du temps, étapes d'une tâche, minuteur, jetons de comportement.",
+        competences: ["se repérer dans le temps", "autonomie", "règles de vie"] },
     ],
   },
 ];
@@ -195,6 +210,7 @@ export default function Jeux() {
   return (
     <Page titre={outil ? `${outil.icone} ${outil.nom}` : "Fabriquer"} sous={outil?.quoi}
       actions={<button className="btn ghost sm" onClick={() => setOnglet("")}>← Tous les ateliers</button>}>
+      {outil?.competences && <CompetencesAtelier termes={outil.competences} />}
       {onglet === "supports" ? <SupportsVisuelsTab banque={Boolean(etat?.installee)} />
         : onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />
