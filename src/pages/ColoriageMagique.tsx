@@ -5,7 +5,8 @@ import { useReglages } from "../components/useMemoire";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { PhotoTelephone } from "../components/PhotoTelephone";
-import { printHTML, escapeHtml } from "../print";
+import { escapeHtml } from "../print";
+import { imprimerAtelier } from "../impressionAtelier";
 import {
   COULEURS, GRAPHIES, MOTIFS, OPERATIONS, PLAFONDS, POLICES_CURSIVES_CONNUES, REGLAGES_PAR_DEFAUT, SONS_COLORIAGE, TAILLES_MOTIF,
   basculerCase, casesAColorier, consigne, couleurDe, couleursDuMotif, ecrireMotifsPerso, fabriquerColoriage, lettreSousGraphie,
@@ -268,7 +269,7 @@ export function ColoriageMagiqueTab() {
         : `<b>${escapeHtml(grapheme !== undefined ? grapheme : String(resultat))}</b>`;
       return `<span class="lg"><i style="background:${couleur.hex}"></i> ${texte} ${escapeHtml(couleur.nom)}</span>`;
     }).join("");
-    printHTML(r.titre || "Coloriage magique",
+    void imprimerAtelier("coloriage", r.titre || "Coloriage magique",
       `<h1>${escapeHtml(r.titre || "Coloriage magique")}</h1>
        <p class="consigne">${escapeHtml(consigne(r))}</p>
        <div class="legende">${legende}</div>

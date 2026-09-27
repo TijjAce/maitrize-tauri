@@ -5,7 +5,7 @@ import { toast } from "../components/Toaster";
 import { chargerImages, usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
-import { printHTML } from "../print";
+import { imprimerAtelier } from "../impressionAtelier";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import { REGLAGES_ETIQUETTES, STYLE_ETIQUETTES, htmlEtiquettes } from "../etiquettes";
 import type { MotImage } from "../jeuxSons";
@@ -28,7 +28,7 @@ export function EtiquettesTab({ banque }: { banque: boolean }) {
   const imprimer = async () => {
     try {
       const im = r.pictos ? await chargerImages(ids) : {};
-      printHTML("Étiquettes de mots", htmlEtiquettes(mots, im, r), STYLE_FEUILLE + STYLE_ETIQUETTES);
+      await imprimerAtelier("etiquettes", "Étiquettes de mots", htmlEtiquettes(mots, im, r), STYLE_FEUILLE + STYLE_ETIQUETTES);
     } catch (e) { toast(String(e), { icone: "⚠️" }); }
   };
   const peut = mots.length > 0 && (r.grandes || r.petites || r.corolle);
