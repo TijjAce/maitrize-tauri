@@ -107,6 +107,35 @@ export function elevesConcernes(o: Objectif, groupes: Groupe[]): string[] {
 }
 
 /** Les objectifs d'un élève, dans l'ordre de la programmation. */
+/**
+ * Comment un élève est concerné par un objectif : en propre, par un groupe,
+ * ou pas du tout.
+ *
+ * La grille a besoin de la nuance : un objectif attribué en propre se retire
+ * d'un clic, un objectif hérité d'un groupe ne se retire qu'en touchant au
+ * groupe — le dire évite de cliquer dans le vide.
+ */
+export type Attache = "direct" | "groupe" | "aucun";
+
+export function attacheDeLEleve(o: Objectif, groupes: Groupe[], eleveId: string): Attache {
+  if (o.pour.includes(marqueEleve(eleveId))) return "direct";
+  return elevesConcernes(o, groupes).includes(eleveId) ? "groupe" : "aucun";
+}
+
+/**
+ * Les périodes d'un objectif, telles qu'une case de grille les résume.
+ *
+ * « 1·2·4 », les atteintes soulignées d'un ✔. Vide quand rien n'est prévu :
+ * une case sans période dit qu'il reste à décider quand.
+ */
+export function resumePeriodes(o: Objectif): string {
+  return o.periodes
+    .slice()
+    .sort((a, b) => a - b)
+    .map((p) => (o.atteintes.includes(p) ? `${p}✔` : `${p}`))
+    .join("·");
+}
+
 export const objectifsDe = (p: ProgrammationIme, eleveId: string): Objectif[] =>
   p.objectifs.filter((o) => elevesConcernes(o, p.groupes).includes(eleveId));
 
