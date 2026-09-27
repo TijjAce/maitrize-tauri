@@ -817,4 +817,6 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .comp-atelier-liste { list-style: none; margin: 10px 0 4px; padding: 0; display: flex;
   flex-direction: column; gap: 6px; }
 .comp-atelier-liste li { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.comp-atelier-liste li .btn { margin-left: auto; opacity: .55; }
+.comp-atelier-liste li:hover .btn { opacity: 1; }
 .comp-atelier-liste .meta { font-size: 11.5px; }
