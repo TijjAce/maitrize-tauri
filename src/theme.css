@@ -765,3 +765,14 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .garde-case:hover { background: var(--panel-2); }
 .garde-case.cochee { background: var(--accent-soft); }
 .garde-case input { margin: 2px 0 0; flex: none; }
+
+/* L'interrupteur du partage WiFi, dans la barre du haut. */
+.interrupteur { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border);
+  background: var(--panel); color: var(--text-2); border-radius: 999px; padding: 5px 12px 5px 10px;
+  font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.interrupteur:hover { border-color: var(--accent); color: var(--text); }
+.interrupteur.on { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.interrupteur:disabled { opacity: .5; cursor: default; }
+.interrupteur-voyant { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex: none; }
+.interrupteur.on .interrupteur-voyant { background: #16a34a; box-shadow: 0 0 0 3px rgba(22, 163, 74, .18); }
+@media (max-width: 900px) { .interrupteur-mot { display: none; } }
