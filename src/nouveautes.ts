@@ -18,6 +18,22 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.16",
+    titre: "Le téléphone dit sous quoi il enregistre",
+    points: [
+      { quoi: "Un interrupteur 📡 dans la barre du haut ouvre et ferme le partage WiFi depuis n'importe quelle page. Le voyant dit l'état sans qu'on ait à cliquer, et l'infobulle donne l'adresse. Le partage s'arrêtait jusqu'ici dès qu'on quittait les Réglages — alors qu'on l'ouvre justement pour aller travailler ailleurs pendant que le téléphone dépose.", ou: "barre du haut" },
+      { quoi: "Le QR code et l'adresse complète restent dans les Réglages, où l'on ne va qu'une fois, pour appairer.", ou: "Réglages · Partage WiFi" },
+      { quoi: "Le téléphone affiche désormais le créneau sous lequel il enregistre — « 📍 09h00 Numération » — et permet d'en changer. On dicte souvent en sortant de la salle, ou une heure plus tard en repensant à la séance : l'heure seule se trompe alors, et c'est le téléphone qui était là.", ou: "application du téléphone" },
+      { quoi: "Le créneau choisi arrive avec le vocal, et la fenêtre le présélectionne en disant d'où il vient : « choisi sur le téléphone » plutôt que « trouvé à l'heure ». Un créneau supprimé entre-temps ne bloque rien — on retombe sur la devinette par l'heure.", ou: "Réglages · Partage WiFi" },
+      { quoi: "Ce que le téléphone apprend de la classe, et rien d'autre : une heure et un intitulé par créneau, pour le jour même. Ni le prévu, ni le bilan, qui parlent des élèves. Un téléphone perdu ne porte pas l'année, seulement un emploi du temps sans personne dedans.", ou: "application du téléphone" },
+      { quoi: "« ✍️ Écrire plutôt » sur le téléphone : en réunion, dans un couloir, dans une salle où l'on ne va pas parler tout seul, on tape deux lignes. Elles se rangent au créneau comme un vocal, et arrivent déjà écrites — rien à transcrire, juste à relire et verser.", ou: "application du téléphone" },
+      { quoi: "Une jauge suit la voix pendant la dictée, et l'écran le dit si elle reste plate. Jusqu'ici, un micro refusé ou pris par une autre application se découvrait le soir, devant une transcription vide.", ou: "application du téléphone" },
+      { quoi: "L'écran ne s'éteint plus pendant une dictée, et ranger le téléphone dans sa poche ne perd plus l'enregistrement : iOS suspend la page, le son cesse d'arriver, et l'on croyait dicter encore. L'application termine proprement avec ce qui a été capté, et le dit au retour.", ou: "application du téléphone" },
+      { quoi: "Un vocal en attente s'écoute avant de partir, d'un bouton ▶︎. Savoir si la phrase est audible vaut mieux que de le découvrir le lendemain. Le son ne quitte pas le téléphone pour autant.", ou: "application du téléphone" },
+      { quoi: "L'appairage se fait par « 📋 Coller » : quarante caractères d'adresse ne se retapent pas sur un clavier de téléphone. Les espaces d'un collage passent, et une adresse sans « http:// » aussi.", ou: "application du téléphone" },
+    ],
+  },
+  {
     version: "1.6.15",
     titre: "Les réunions s'écrivent au fil de l'eau",
     points: [
