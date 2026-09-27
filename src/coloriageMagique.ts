@@ -12,6 +12,7 @@
 // de réimprimer la feuille d'un élève absent, et de montrer le corrigé.
 
 import { hasard } from "./problemesBarres";
+import { contientLeSon, SONS, sonDe, type Son } from "./lectureSons";
 
 // ── Les dessins ───────────────────────────────────────────────────────────
 //
@@ -121,6 +122,15 @@ export const casesAColorier = (m: Motif) =>
 
 // ── Les calculs ───────────────────────────────────────────────────────────
 
+/**
+ * Ce qu'on met dans les cases.
+ *
+ * Le calcul n'est qu'une façon de faire : un coloriage magique marche aussi
+ * bien avec des mots, la couleur étant donnée par le graphème qu'on y lit.
+ * C'est alors du déchiffrage, et l'erreur se voit toujours aussi bien.
+ */
+export type Matiere = "calcul" | "lettres";
+
 export type Operation = "addition" | "soustraction" | "melange" | "multiplication";
 
 export const OPERATIONS: { id: Operation; libelle: string }[] = [
@@ -133,6 +143,9 @@ export const OPERATIONS: { id: Operation; libelle: string }[] = [
 export const PLAFONDS = [10, 20, 100];
 
 export interface ReglagesColoriage {
+  matiere: Matiere;
+  /** Les sons ou graphèmes donnés aux couleurs, en mode « lettres ». */
+  sons: string[];
   motif: string;
   operation: Operation;
   /** Pour les additions et soustractions : au-delà de quoi on ne va pas. */
@@ -143,6 +156,7 @@ export interface ReglagesColoriage {
 }
 
 export const REGLAGES_PAR_DEFAUT: ReglagesColoriage = {
+  matiere: "calcul", sons: ["ch", "ou", "oi"],
   motif: "poisson", operation: "addition", plafond: 10, table: 2,
   titre: "Coloriage magique",
 };
@@ -209,15 +223,36 @@ export interface CaseColoriage {
 
 export interface Coloriage {
   motif: Motif;
-  legende: { couleur: CouleurColoriage; resultat: number }[];
+  /**
+   * Ce que dit la légende : un résultat en mode calcul, un graphème en mode
+   * lettres. `resultat` reste renseigné pour le calcul, `graphème` pour les
+   * lettres — jamais les deux.
+   */
+  legende: { couleur: CouleurColoriage; resultat?: number; grapheme?: string }[];
   lignes: CaseColoriage[][];
 }
+
+/**
+ * Les mots donnés à chaque son, sans ambiguïté possible.
+ *
+ * Un mot qui porterait deux des graphèmes coloriés serait de deux couleurs à
+ * la fois : « chou » ne peut pas servir quand on oppose [ʃ] et [u]. On les
+ * écarte, et l'on préfère se retrouver à court de mots plutôt que de poser à
+ * l'élève une question sans réponse.
+ */
+export function motsSansAmbiguite(son: Son, autres: Son[]): string[] {
+  return son.mots.filter((m) => !autres.some((a) => a.id !== son.id && contientLeSon(m, a)));
+}
+
+/** Les sons proposés au coloriage : ceux dont le corpus tient debout. */
+export const SONS_COLORIAGE = SONS;
 
 /** La feuille entière, reproductible à graine égale. */
 export function fabriquerColoriage(reglages: ReglagesColoriage, graine: number): Coloriage {
   const motif = MOTIFS.find((m) => m.id === reglages.motif) ?? MOTIFS[0];
   const r = hasard(graine);
   const couleurs = couleursDuMotif(motif);
+  if (reglages.matiere === "lettres") return coloriageDesLettres(motif, couleurs, reglages, r);
   const resultats = resultatsDesCouleurs(couleurs, reglages.operation, reglages.plafond, reglages.table, r);
   const legende = couleurs.map((couleur, i) => ({ couleur, resultat: resultats[i] }));
   const lignes = motif.grille.map((ligne) => [...ligne].map((c) => {
@@ -231,8 +266,51 @@ export function fabriquerColoriage(reglages: ReglagesColoriage, graine: number):
   return { motif, legende, lignes };
 }
 
-/** Ce que la consigne dit à l'élève, selon ce qu'on lui fait calculer. */
+/**
+ * Le coloriage des lettres : un mot par case, le graphème donne la couleur.
+ *
+ * Chaque couleur reçoit un son, et chaque case un mot qui le porte — et lui
+ * seul. Les mots tournent : une couleur qui n'aurait que trois mots les
+ * reprend, plutôt que de laisser des cases vides.
+ */
+function coloriageDesLettres(
+  motif: Motif, couleurs: CouleurColoriage[], reglages: ReglagesColoriage, r: () => number,
+): Coloriage {
+  const choisis = reglages.sons.map((id) => sonDe(id)).filter((s): s is Son => !!s);
+  const pris = couleurs.map((_, i) => choisis[i] ?? choisis[i % Math.max(1, choisis.length)]);
+  const viviers = pris.map((son) => (son ? melanger(r, motsSansAmbiguite(son, pris)) : []));
+  const compteurs = pris.map(() => 0);
+  const legende = couleurs.map((couleur, i) => ({
+    couleur, grapheme: pris[i] ? pris[i].graphemes[0] : "",
+  }));
+  const lignes = motif.grille.map((ligne) => [...ligne].map((c) => {
+    const place = couleurs.findIndex((x) => x.id === c);
+    if (place < 0) return { calcul: "", couleur: "" };
+    const vivier = viviers[place];
+    if (!vivier.length) return { calcul: "?", couleur: c };
+    const mot = vivier[compteurs[place] % vivier.length];
+    compteurs[place] += 1;
+    return { calcul: mot, couleur: c };
+  }));
+  return { motif, legende, lignes };
+}
+
+/** Mélange reproductible. */
+function melanger<T>(r: () => number, liste: readonly T[]): T[] {
+  const copie = [...liste];
+  for (let i = copie.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1));
+    [copie[i], copie[j]] = [copie[j], copie[i]];
+  }
+  return copie;
+}
+
+/** Ce que la consigne dit à l'élève, selon ce qu'on lui demande. */
 export function consigne(reglages: ReglagesColoriage): string {
+  if (reglages.matiere === "lettres") {
+    return "Lis chaque mot, puis colorie la case selon ce que tu y entends. "
+      + "Une case sans mot reste blanche.";
+  }
   const quoi = reglages.operation === "multiplication"
     ? `Calcule, puis colorie selon la table de ${reglages.table}.`
     : "Calcule chaque case, puis colorie-la selon son résultat.";
