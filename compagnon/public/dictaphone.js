@@ -53,6 +53,9 @@ let veille = null;
  * joint, et n'en garde qu'un jour.
  */
 let creneaux = [], creneauChoisi = "", choixOuvert = false;
+/** Faux tant que l'ordinateur ne nous a rien dit du jour : une journée sans
+ *  créneau n'est pas une ignorance, et l'écran ne doit pas accuser le réseau. */
+let creneauxConnus = false;
 
 // ── Capturer ──────────────────────────────────────────────────────────────
 
@@ -273,16 +276,21 @@ const jourDuJour = () => maintenantIso().slice(0, 10);
 
 /** Redemande l'emploi du temps du jour, et retient celui de l'instant. */
 async function rafraichirCreneaux() {
-  try { creneaux = await invoke("creneaux_rafraichir", { jour: jourDuJour() }); }
-  catch (e) { /* hors réseau : on garde ce qu'on avait */ }
+  try {
+    creneaux = await invoke("creneaux_rafraichir", { jour: jourDuJour() });
+    creneauxConnus = true;
+  } catch (e) { /* hors réseau : on garde ce qu'on avait */ }
   await relireCreneaux();
 }
 
 /** Relit ce qu'on a gardé, et pose le créneau de l'instant si on n'a rien choisi. */
 async function relireCreneaux() {
-  if (!creneaux.length) {
-    try { creneaux = await invoke("creneaux_du_jour", { jour: jourDuJour() }); }
-    catch (e) { creneaux = []; }
+  if (!creneauxConnus) {
+    try {
+      const lu = await invoke("creneaux_du_jour", { jour: jourDuJour() });
+      creneauxConnus = !!lu.connus;
+      creneaux = lu.creneaux ?? [];
+    } catch (e) { creneauxConnus = false; creneaux = []; }
   }
   if (!creneauChoisi) creneauChoisi = await creneauDeLHeure();
 }
@@ -433,8 +441,13 @@ function poids(octets) {
  * téléphone qui était là.
  */
 function bandeauCreneau() {
-  if (!creneaux.length) {
+  if (!creneauxConnus) {
     return `<p class="creneau vide">Créneaux inconnus — l'ordinateur les donnera au prochain contact.</p>`;
+  }
+  // L'ordinateur a répondu, et il n'y a rien : un dimanche, des vacances. On
+  // enregistre quand même, et c'est l'ordinateur qui rangera au retour.
+  if (!creneaux.length) {
+    return `<p class="creneau vide">Aucun créneau aujourd'hui — dictez tout de même, l'ordinateur rangera.</p>`;
   }
   if (choixOuvert) {
     return `<div class="choix">
