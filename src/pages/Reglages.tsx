@@ -7,6 +7,7 @@ import { PartagerMesDossiers } from "../components/PartagerMesDossiers";
 import { confirmer } from "../components/confirmer";
 import { toast } from "../components/Toaster";
 import { EVT_PARTAGE, fermerPartage, lirePartage, ouvrirPartage } from "../partageWifi";
+import { InterrupteurPartage } from "../components/InterrupteurPartage";
 import { applyTheme, MODES, ACCENTS, STYLES, TAILLES } from "../theme";
 import { lireAcceptationCgu, CguAcceptation } from "../components/CGU";
 import { getVersion } from "@tauri-apps/api/app";
@@ -409,16 +410,23 @@ export default function Reglages() {
 
       {onglet === "partage" && <>
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
-        <h3 style={{ marginTop: 0 }}>📱 Version portable (WiFi)</h3>
-        <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13, lineHeight: 1.6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <h3 style={{ margin: 0 }}>📱 Version portable (WiFi)</h3>
+          <div className="spacer" style={{ flex: 1 }} />
+          {/* Le même interrupteur que la barre du haut : c'est ici qu'on le
+              cherche, puisque c'est ici que le partage s'explique. */}
+          <InterrupteurPartage />
+        </div>
+        <p style={{ color: "var(--text-2)", marginTop: 10, fontSize: 13, lineHeight: 1.6 }}>
           Planning, prévu et bilan, séquences, élèves — en lecture sur votre téléphone, par
           le WiFi. L'onglet <b>👁 Observer</b> se remplit depuis le téléphone, et l'application
           <b> Dictaphone</b> y dépose ce que vous avez dicté en classe. Rien ne passe par
-          internet, et le partage s'arrête quand vous quittez cette page.
+          internet. Le partage reste ouvert tant que vous ne le fermez pas — le voyant de la
+          barre du haut le rappelle depuis n'importe quelle page.
         </p>
         {!portable ? (
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <button className="btn primary" onClick={activerPortable}>📤 Envoyer vers le téléphone</button>
+            <button className="btn primary" onClick={activerPortable}>📤 Ouvrir le partage</button>
             {portMsg && <span style={{ fontSize: 13 }}>{portMsg}</span>}
           </div>
         ) : (
