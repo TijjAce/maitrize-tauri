@@ -791,7 +791,8 @@ export const api = {
   portableArreter: () => invoke<void>("portable_arreter"),
   portableEtat: () => invoke<PortableInfo | null>("portable_etat"),
   // Capture photo depuis le téléphone (émet l'événement "photo:recue").
-  photoCaptureDemarrer: () => invoke<PortableInfo>("photo_capture_demarrer"),
+  /** En série, la session reste ouverte photo après photo, jusqu'au « terminé » du téléphone. */
+  photoCaptureDemarrer: (serie = false) => invoke<PortableInfo>("photo_capture_demarrer", { serie }),
   photoCaptureArreter: () => invoke<void>("photo_capture_arreter"),
 };
 
