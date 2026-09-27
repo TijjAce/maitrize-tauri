@@ -793,3 +793,8 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .creneau-choix.on { background: var(--accent-soft); border-color: var(--accent); }
 .creneau-heure { font-variant-numeric: tabular-nums; color: var(--text-2); font-size: 12px; flex: none; }
 .creneau-titre { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Fiches de sons : la feuille telle qu'elle s'imprimera. */
+.ls-consigne { font-size: 13.5px; margin: 0 0 6px; }
+.ls-syllabes, .ls-mots { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 19px; letter-spacing: .5px; }
+.ls-lignes div { border-bottom: 1.2px solid #999; height: 26px; margin-bottom: 10px; }
