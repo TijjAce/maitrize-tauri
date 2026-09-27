@@ -89,7 +89,7 @@ export function htmlFluence(g: GrilleFluence, r: ReglagesFluence): string {
       <table class="fl-plateau"><tbody>${Array.from({ length: 6 }, (_, l) =>
         `<tr>${cases.slice(l * 7, l * 7 + 7).map((x) => `<td>${escapeHtml(x)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   }
-  return feuille(`<div class="page"><div class="titre">${escapeHtml(titre)}</div><div class="sous">Nom : ................................</div>${consigne}${grille}${score}</div>${plateau}`, "fl");
+  return feuille(`<div class="page"><div class="titre">${escapeHtml(titre)}</div><div class="sous">Prénom : ........................................ Date : ........................</div>${consigne}${grille}${score}</div>${plateau}`, "fl");
 }
 
 // ── Le syllabaire, ou jeu de l'ascenseur ──────────────────────────────────
