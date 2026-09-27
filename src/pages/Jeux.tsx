@@ -11,6 +11,9 @@ import { ColoriageMagiqueTab } from "./ColoriageMagique";
 import { LectureSonsTab } from "./LectureSons";
 import { CompetencesAtelier } from "../components/CompetencesAtelier";
 import { SupportsVisuelsTab, retenirSupport } from "./SupportsVisuels";
+import { DominosTab, FluenceTab, IntrusTab, LettresTab, LotoSyllabesTab, PairesTab, SyllabaireTab } from "./AteliersSons";
+import { ArbreCalculTab, CartesCalculTab, CartesNombresTab, FractionsTab, JeuDeLOieTab } from "./AteliersMaths";
+import { EtiquettesTab } from "./AteliersLangage";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { usePictoImage } from "../components/ChoixPicto";
 
@@ -25,7 +28,11 @@ import { usePictoImage } from "../components/ChoixPicto";
 const OCTETS = (n: number) =>
   n > 1e9 ? `${(n / 1e9).toFixed(1)} Go` : n > 1e6 ? `${Math.round(n / 1e6)} Mo` : `${Math.round(n / 1e3)} ko`;
 
-const ONGLETS = ["jeux", "memory", "imagier", "tla", "supports", "partieTout", "multiplicatifs", "coloriage", "sons"] as const;
+const ONGLETS = [
+  "jeux", "memory", "imagier", "tla", "etiquettes",
+  "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres",
+  "supports", "partieTout", "multiplicatifs", "coloriage", "nombres", "calcul", "arbre", "fractions", "oie",
+] as const;
 type Onglet = typeof ONGLETS[number];
 
 /**
@@ -49,7 +56,7 @@ interface Outil {
 const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[] = [
   {
     id: "langage", libelle: "🗣 Langage",
-    aide: "Vocabulaire et désignation à partir des pictogrammes, et les fiches de sons.",
+    aide: "Vocabulaire et désignation à partir des pictogrammes.",
     outils: [
       { id: "jeux", nom: "Loto", icone: "🎲", pictos: true,
         quoi: "Des planches et leurs cartes à découper, sur les thèmes que vous choisissez." },
@@ -59,13 +66,35 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
         quoi: "Une page d'images légendées, à afficher ou à coller dans un cahier." },
       { id: "tla", nom: "Tableaux de langage", icone: "🗣", pictos: true,
         quoi: "Des tableaux de communication : une grille de pictogrammes à pointer." },
+      { id: "etiquettes", nom: "Étiquettes à catégoriser", icone: "🏷",
+        quoi: "Les mots collectés en grand pour le tableau, en petit par enveloppe, et la corolle lexicale." },
+    ],
+  },
+  {
+    id: "sons", libelle: "🔤 Sons et lecture",
+    aide: "Ce que les guides de lecture font manipuler : syllabes, sons, lettres, fluence.",
+    outils: [
       { id: "sons", nom: "Fiches de sons", icone: "🔤",
         quoi: "Syllabes, mots à lire, à entourer, à compléter — une fiche par graphème." },
+      { id: "lotoSyllabes", nom: "Loto des syllabes", icone: "🎯", pictos: true,
+        quoi: "Des cases qui imposent un nombre de syllabes : on pioche une image, on scande, on compte." },
+      { id: "dominos", nom: "Dominos des syllabes", icone: "🁡", pictos: true,
+        quoi: "La fin d'une image commence la suivante : micro – crocodile." },
+      { id: "intrus", nom: "Chasse à l'intrus", icone: "🔍", pictos: true,
+        quoi: "Trois mots qui commencent pareil, un intrus à entourer : bateau, banane, tapis, ballon." },
+      { id: "paires", nom: "Paires de mots proches", icone: "👂", pictos: true,
+        quoi: "Mouche / mousse, chou / joue : les cartes du trésor et du téléphone." },
+      { id: "fluence", nom: "Grille de fluence", icone: "⏱",
+        quoi: "Syllabes, pseudo-mots et mots à lire en une minute, le score noté chaque jour." },
+      { id: "syllabaire", nom: "Syllabaire", icone: "🛗",
+        quoi: "Le jeu de l'ascenseur : deux bandes qui glissent, la syllabe apparaît." },
+      { id: "lettres", nom: "Les lettres", icone: "🔠",
+        quoi: "Mémory, mistigri et loto des lettres, majuscule et minuscule ; la planche de l'ophtalmologue." },
     ],
   },
   {
     id: "maths", libelle: "🔢 Mathématiques",
-    aide: "Des problèmes à la structure choisie, et des calculs qui font apparaître un dessin.",
+    aide: "Des problèmes à la structure choisie, des cartes, des pistes, et des calculs qui font apparaître un dessin.",
     outils: [
       { id: "partieTout", nom: "Problèmes partie-tout", icone: "➕",
         quoi: "Un tout et ses parties, avec leur schéma en barres." },
@@ -73,6 +102,16 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
         quoi: "Parts égales et comparaisons, avec leur schéma en barres." },
       { id: "coloriage", nom: "Coloriage magique", icone: "🎨",
         quoi: "On calcule, le résultat dit la couleur, le dessin apparaît." },
+      { id: "nombres", nom: "Cartes des nombres", icone: "🔢",
+        quoi: "Chiffre, constellation, boîte de dix, mot : le même nombre sous toutes ses formes." },
+      { id: "calcul", nom: "Cartes de calcul", icone: "🃏",
+        quoi: "Le calcul devant, le résultat derrière : se tester, ou la bataille des tables." },
+      { id: "arbre", nom: "Arbre à calcul", icone: "🌳",
+        quoi: "Ajouter deux nombres en dizaines et unités, l'arbre à compléter." },
+      { id: "fractions", nom: "Fractions", icone: "🍰",
+        quoi: "Cartes, bandes à plier, règle graduée en quarts ou en dixièmes, course des nageurs." },
+      { id: "oie", nom: "Jeu de l'oie", icone: "🎲",
+        quoi: "Une piste au dé, avec des nombres, des lettres ou des syllabes, et le patron du dé." },
     ],
   },
   {
@@ -167,7 +206,7 @@ export default function Jeux() {
     return (
       <Page titre="Fabriquer" sous="Jeux et supports à imprimer : langage, mathématiques, autonomie">
         <Input value={recherche} onChange={(e) => setRecherche(e.target.value)}
-          placeholder="Chercher un atelier : loto, problèmes, coloriage, sons…"
+          placeholder="Chercher un atelier : loto, syllabes, fractions, dominos, coloriage…"
           aria-label="Chercher un atelier" style={{ maxWidth: 420, marginBottom: 16 }} />
         {recherche.trim() ? (
           trouves.length ? (
@@ -202,6 +241,19 @@ export default function Jeux() {
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />
         : onglet === "coloriage" ? <ColoriageMagiqueTab />
         : onglet === "sons" ? <LectureSonsTab />
+        : onglet === "fluence" ? <FluenceTab />
+        : onglet === "syllabaire" ? <SyllabaireTab />
+        : onglet === "lettres" ? <LettresTab />
+        : onglet === "nombres" ? <CartesNombresTab />
+        : onglet === "calcul" ? <CartesCalculTab />
+        : onglet === "arbre" ? <ArbreCalculTab />
+        : onglet === "fractions" ? <FractionsTab />
+        : onglet === "oie" ? <JeuDeLOieTab />
+        : onglet === "etiquettes" ? <EtiquettesTab banque={Boolean(etat?.installee)} />
+        : onglet === "lotoSyllabes" ? avecPictos(<LotoSyllabesTab banque />)
+        : onglet === "dominos" ? avecPictos(<DominosTab banque />)
+        : onglet === "intrus" ? avecPictos(<IntrusTab banque />)
+        : onglet === "paires" ? avecPictos(<PairesTab banque />)
         : onglet === "tla" ? avecPictos(<TlaTab />)
         : avecPictos(etat && (
           <Loto key={onglet} gen={GENERATEURS[onglet === "jeux" ? "loto" : onglet]} etat={etat}
