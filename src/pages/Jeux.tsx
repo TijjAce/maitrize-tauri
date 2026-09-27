@@ -7,6 +7,7 @@ import { toast } from "../components/Toaster";
 import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
 import { TlaTab } from "./Tla";
 import { PartieToutTab, MultiplicatifsTab } from "./ProblemesBarres";
+import { ColoriageMagiqueTab } from "./ColoriageMagique";
 import { SupportsVisuelsTab, retenirSupport } from "./SupportsVisuels";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { usePictoImage } from "../components/ChoixPicto";
@@ -22,7 +23,7 @@ import { usePictoImage } from "../components/ChoixPicto";
 const OCTETS = (n: number) =>
   n > 1e9 ? `${(n / 1e9).toFixed(1)} Go` : n > 1e6 ? `${Math.round(n / 1e6)} Mo` : `${Math.round(n / 1e3)} ko`;
 
-const ONGLETS = ["jeux", "memory", "imagier", "tla", "supports", "partieTout", "multiplicatifs"] as const;
+const ONGLETS = ["jeux", "memory", "imagier", "tla", "supports", "partieTout", "multiplicatifs", "coloriage"] as const;
 type Onglet = typeof ONGLETS[number];
 
 /**
@@ -43,10 +44,11 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: { id: Ongle
     ],
   },
   {
-    id: "maths", libelle: "🔢 Mathématiques", aide: "Des problèmes à la structure choisie, avec leur schéma en barres.",
+    id: "maths", libelle: "🔢 Mathématiques", aide: "Des problèmes à la structure choisie, et des calculs qui font apparaître un dessin.",
     outils: [
       { id: "partieTout", libelle: "➕ Problèmes partie-tout" },
       { id: "multiplicatifs", libelle: "✖️ Problèmes multiplicatifs" },
+      { id: "coloriage", libelle: "🎨 Coloriage magique" },
     ],
   },
   {
@@ -126,6 +128,7 @@ export default function Jeux() {
       {onglet === "supports" ? <SupportsVisuelsTab banque={Boolean(etat?.installee)} />
         : onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />
+        : onglet === "coloriage" ? <ColoriageMagiqueTab />
         : onglet === "tla" ? avecPictos(<TlaTab />)
         : avecPictos(etat && (
           <Loto key={onglet} gen={GENERATEURS[onglet === "jeux" ? "loto" : onglet]} etat={etat}

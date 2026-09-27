@@ -799,3 +799,11 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .prog-case.groupe { color: var(--text-2); border: 1px dashed var(--border); border-radius: 6px;
   display: flex; align-items: center; justify-content: center; cursor: default; }
 .prog-case.groupe:hover { background: none; }
+
+/* Coloriage magique : la grille de calculs et sa légende. */
+.cm-grille { border-collapse: collapse; margin: 0 auto; }
+.cm-grille td { border: 1px solid var(--text-2); width: 58px; height: 52px; text-align: center;
+  font-size: 13px; font-variant-numeric: tabular-nums; vertical-align: middle; }
+.cm-legende { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; font-size: 13px; }
+.cm-legende-ligne { display: flex; align-items: center; gap: 6px; }
+.cm-pastille { width: 15px; height: 15px; border-radius: 4px; border: 1px solid var(--border); flex: none; }
