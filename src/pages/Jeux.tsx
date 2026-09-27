@@ -8,6 +8,7 @@ import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac"
 import { TlaTab } from "./Tla";
 import { PartieToutTab, MultiplicatifsTab } from "./ProblemesBarres";
 import { ColoriageMagiqueTab } from "./ColoriageMagique";
+import { LectureSonsTab } from "./LectureSons";
 import { SupportsVisuelsTab, retenirSupport } from "./SupportsVisuels";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { usePictoImage } from "../components/ChoixPicto";
@@ -23,7 +24,7 @@ import { usePictoImage } from "../components/ChoixPicto";
 const OCTETS = (n: number) =>
   n > 1e9 ? `${(n / 1e9).toFixed(1)} Go` : n > 1e6 ? `${Math.round(n / 1e6)} Mo` : `${Math.round(n / 1e3)} ko`;
 
-const ONGLETS = ["jeux", "memory", "imagier", "tla", "supports", "partieTout", "multiplicatifs", "coloriage"] as const;
+const ONGLETS = ["jeux", "memory", "imagier", "tla", "supports", "partieTout", "multiplicatifs", "coloriage", "sons"] as const;
 type Onglet = typeof ONGLETS[number];
 
 /**
@@ -35,12 +36,13 @@ type Onglet = typeof ONGLETS[number];
  */
 const FAMILLES: { id: string; libelle: string; aide: string; outils: { id: Onglet; libelle: string }[] }[] = [
   {
-    id: "langage", libelle: "🗣 Langage", aide: "À partir des pictogrammes ARASAAC : vocabulaire, désignation, phrases.",
+    id: "langage", libelle: "🗣 Langage", aide: "Vocabulaire et désignation à partir des pictogrammes, et les fiches de sons.",
     outils: [
       { id: "jeux", libelle: "🎲 Loto" },
       { id: "memory", libelle: "🃏 Mémory" },
       { id: "imagier", libelle: "📖 Imagier" },
       { id: "tla", libelle: "🗣 Tableaux de langage" },
+      { id: "sons", libelle: "🔤 Fiches de sons" },
     ],
   },
   {
@@ -129,6 +131,7 @@ export default function Jeux() {
         : onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />
         : onglet === "coloriage" ? <ColoriageMagiqueTab />
+        : onglet === "sons" ? <LectureSonsTab />
         : onglet === "tla" ? avecPictos(<TlaTab />)
         : avecPictos(etat && (
           <Loto key={onglet} gen={GENERATEURS[onglet === "jeux" ? "loto" : onglet]} etat={etat}
