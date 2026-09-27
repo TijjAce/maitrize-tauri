@@ -52,12 +52,18 @@ function compter(data: RefData | null, recherche: string): number {
  * Avec `recherche`, seules les compétences qui contiennent tous les mots cherchés
  * restent, dépliées.
  */
-export function CompetenceTree({ mode, selection, onPick, onToggle, recherche = "" }: {
+export function CompetenceTree({ mode, selection, onPick, onToggle, recherche = "", dejaVisee }: {
   mode: "single" | "multi";
   selection: CompetenceSelectionnee[];
   onPick?: (c: CompetenceSelectionnee, ref: Referentiel) => void;
   onToggle?: (c: CompetenceSelectionnee, ref: Referentiel) => void;
   recherche?: string;
+  /**
+   * Les séquences qui visent déjà cette compétence, s'il y en a : un repère
+   * discret le dit dans la ligne, et leurs titres au survol. Sans cette
+   * fonction, l'arbre ne montre rien de plus.
+   */
+  dejaVisee?: (c: CompetenceSelectionnee) => string[];
 }) {
   const { data: refs } = useAsync(() => api.referentielsList(), []);
   const actifs = React.useMemo(() => (refs ?? []).filter((r) => r.actif), [refs]);
@@ -103,6 +109,7 @@ export function CompetenceTree({ mode, selection, onPick, onToggle, recherche = 
       competenceTitre: comp.texte, niveau: comp.niveau ?? null, competenceRefId: comp.id,
     };
     const checked = estSelectionnee(ref.nom, comp, sd);
+    const visee = dejaVisee?.(sel) ?? [];
     return (
       <button key={comp.id} className="comp-leaf" data-on={checked}
         style={{ borderLeft: `3px solid ${couleur}` }}
@@ -110,6 +117,12 @@ export function CompetenceTree({ mode, selection, onPick, onToggle, recherche = 
         <span className="comp-check">{mode === "multi" ? (checked ? "☑" : "☐") : (checked ? "◉" : "○")}</span>
         {comp.niveau && <span className="badge" style={{ marginRight: 6 }}>{comp.niveau}</span>}
         <span>{comp.texte}</span>
+        {visee.length > 0 && (
+          <span className="comp-deja" title={`Déjà visée par : ${visee.join(" · ")}`}
+            aria-label={`Déjà visée par ${visee.length} séquence${visee.length > 1 ? "s" : ""}`}>
+            📚{visee.length > 1 ? ` ${visee.length}` : ""}
+          </span>
+        )}
       </button>
     );
   };
