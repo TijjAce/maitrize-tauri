@@ -520,12 +520,19 @@ fn repondre(mut req: tiny_http::Request, token: &str, page: &str, data_json: &st
 // Le téléphone ouvre une page (via QR), prend une photo avec l'appareil natif
 // (<input capture>, qui marche en HTTP sans HTTPS), et la POST au serveur local.
 // La photo est enregistrée dans Fichiers/ et un événement `photo:recue` est
-// émis vers le front avec le nom du fichier. La session s'arrête après 1 photo.
+// émis vers le front avec le nom du fichier. La session s'arrête après 1 photo
+// — sauf en série : un manuel se photographie page après page, et c'est le
+// téléphone qui dit « terminé » (événement `photo:fin`).
 
 pub struct PhotoCapture(pub Mutex<Option<Arc<AtomicBool>>>);
 
+/// Vrai si l'adresse ouverte par le téléphone demande la série (`s=1`).
+fn serie_demandee(url: &str) -> bool {
+    parametre(url, "s") == "1"
+}
+
 #[tauri::command]
-pub fn photo_capture_demarrer(app: tauri::AppHandle, photo: State<PhotoCapture>) -> R<PortableInfo> {
+pub fn photo_capture_demarrer(app: tauri::AppHandle, photo: State<PhotoCapture>, serie: bool) -> R<PortableInfo> {
     if let Some(stop) = photo.0.lock().unwrap_or_else(PoisonError::into_inner).take() {
         stop.store(true, Ordering::Relaxed);
     }
@@ -533,7 +540,7 @@ pub fn photo_capture_demarrer(app: tauri::AppHandle, photo: State<PhotoCapture>)
     let server = tiny_http::Server::http("0.0.0.0:0").map_err(|err| err.to_string())?;
     let port = server.server_addr().to_ip().map(|a| a.port()).ok_or("port introuvable")?;
     let ip = ip_locale();
-    let url = format!("http://{ip}:{port}/?t={token}");
+    let url = format!("http://{ip}:{port}/?t={token}{}", if serie { "&s=1" } else { "" });
     let qr = qr_svg(&url);
 
     let stop = Arc::new(AtomicBool::new(false));
@@ -545,7 +552,7 @@ pub fn photo_capture_demarrer(app: tauri::AppHandle, photo: State<PhotoCapture>)
         match server.recv_timeout(Duration::from_millis(300)) {
             Ok(Some(req)) => {
                 if photo_repondre(req, &token, &app) {
-                    stop_thread.store(true, Ordering::Relaxed); // photo reçue → fin
+                    stop_thread.store(true, Ordering::Relaxed); // photo reçue, ou série terminée → fin
                 }
             }
             Ok(None) => continue,
@@ -565,12 +572,20 @@ pub fn photo_capture_arreter(photo: State<PhotoCapture>) -> R<()> {
     Ok(())
 }
 
-/// Traite une requête de capture. Renvoie true si une photo a bien été reçue.
+/// Traite une requête de capture. Renvoie true quand la session doit s'arrêter :
+/// une photo reçue hors série, ou le téléphone qui dit « terminé ».
 fn photo_repondre(mut req: tiny_http::Request, token: &str, app: &tauri::AppHandle) -> bool {
     let url = req.url().to_string();
+    // En série, la page du téléphone le dit à chaque envoi (`s=1`) : on ne s'arrête pas après une photo.
+    let serie = serie_demandee(&url);
     if !url.contains(&format!("t={token}")) {
         let _ = req.respond(tiny_http::Response::from_string("Acces refuse").with_status_code(403));
         return false;
+    }
+    if url.starts_with("/fin") {
+        let _ = app.emit("photo:fin", ());
+        let _ = req.respond(tiny_http::Response::from_string("OK"));
+        return true;
     }
     if req.method() == &tiny_http::Method::Post && url.starts_with("/upload") {
         let ext = if url.contains("ext=png") { "png" } else { "jpg" };
@@ -580,7 +595,7 @@ fn photo_repondre(mut req: tiny_http::Request, token: &str, app: &tauri::AppHand
             if std::fs::write(crate::db::fichiers_dir().join(&fichier), &buf).is_ok() {
                 let _ = app.emit("photo:recue", fichier);
                 let _ = req.respond(tiny_http::Response::from_string("OK"));
-                return true;
+                return !serie;
             }
         }
         let _ = req.respond(tiny_http::Response::from_string("Erreur").with_status_code(500));
@@ -615,20 +630,24 @@ const CAMERA_PAGE: &str = r##"<!DOCTYPE html>
 <body>
 <header>📷 Envoyer une photo à Maitrize</header>
 <main>
+ <p id="compte" style="display:none;font-weight:700;color:#6366f1;margin:0 0 12px"></p>
  <label class="big" id="lab"><input type="file" accept="image/*" capture="environment" id="f" hidden>📷 Prendre une photo</label>
  <img id="prev" style="display:none" alt="">
  <button id="send" style="display:none">Envoyer à l'ordinateur ↗</button>
+ <button id="fin" style="display:none;width:100%;padding:14px;font-size:16px;font-weight:700;background:#fff;color:#1c2233;border:2px solid #cfd4e2;border-radius:14px;margin-top:12px">✅ Terminer le manuel</button>
  <p id="msg"></p>
 </main>
 <script>
-const t = new URLSearchParams(location.search).get('t') || '';
-const f = document.getElementById('f'), prev = document.getElementById('prev'),
-      send = document.getElementById('send'), msg = document.getElementById('msg'), lab = document.getElementById('lab');
-let file = null;
+const params = new URLSearchParams(location.search);
+const t = params.get('t') || '', serie = params.get('s') === '1';
+const f = document.getElementById('f'), prev = document.getElementById('prev'), compte = document.getElementById('compte'),
+      send = document.getElementById('send'), msg = document.getElementById('msg'), lab = document.getElementById('lab'), fin = document.getElementById('fin');
+let file = null, envoyees = 0;
+if (serie) { lab.lastChild.textContent = '📷 Photographier la page 1'; fin.style.display = 'block'; msg.textContent = 'Une photo par page, dans l\'ordre du manuel. Terminez quand tout y est.'; }
 f.addEventListener('change', () => {
   file = f.files && f.files[0];
   if (!file) return;
-  prev.src = URL.createObjectURL(file); prev.style.display = 'block';
+  prev.src = URL.createObjectURL(file); prev.style.display = 'block'; prev.style.opacity = '1';
   send.style.display = 'block'; lab.lastChild.textContent = '📷 Reprendre la photo'; msg.textContent = '';
 });
 send.addEventListener('click', async () => {
@@ -636,10 +655,22 @@ send.addEventListener('click', async () => {
   send.disabled = true; msg.textContent = 'Envoi en cours…';
   const ext = file.type === 'image/png' ? 'png' : 'jpg';
   try {
-    const r = await fetch('/upload?t=' + encodeURIComponent(t) + '&ext=' + ext, { method: 'POST', body: file });
-    if (r.ok) { msg.textContent = '✅ Photo envoyée à l\'ordinateur ! Vous pouvez fermer cette page.'; send.style.display = 'none'; lab.style.display = 'none'; prev.style.opacity = '.5'; }
-    else { msg.textContent = 'Échec de l\'envoi (' + r.status + ').'; send.disabled = false; }
+    const r = await fetch('/upload?t=' + encodeURIComponent(t) + '&ext=' + ext + (serie ? '&s=1' : ''), { method: 'POST', body: file });
+    if (!r.ok) { msg.textContent = 'Échec de l\'envoi (' + r.status + ').'; send.disabled = false; return; }
+    if (serie) {
+      envoyees += 1; file = null; f.value = '';
+      compte.style.display = 'block'; compte.textContent = '✅ ' + envoyees + ' page' + (envoyees > 1 ? 's' : '') + ' envoyée' + (envoyees > 1 ? 's' : '');
+      prev.style.opacity = '.4'; send.style.display = 'none'; send.disabled = false;
+      lab.lastChild.textContent = '📷 Photographier la page ' + (envoyees + 1); msg.textContent = '';
+    } else {
+      msg.textContent = '✅ Photo envoyée à l\'ordinateur ! Vous pouvez fermer cette page.'; send.style.display = 'none'; lab.style.display = 'none'; prev.style.opacity = '.5';
+    }
   } catch (e) { msg.textContent = 'Connexion perdue. Vérifiez le WiFi et rescannez le QR.'; send.disabled = false; }
+});
+fin.addEventListener('click', async () => {
+  fin.disabled = true;
+  try { await fetch('/fin?t=' + encodeURIComponent(t) + '&s=1'); msg.textContent = '✅ Manuel terminé : ' + envoyees + ' page' + (envoyees > 1 ? 's' : '') + '. Vous pouvez fermer cette page.'; lab.style.display = 'none'; send.style.display = 'none'; fin.style.display = 'none'; }
+  catch (e) { msg.textContent = 'Connexion perdue. Vérifiez le WiFi.'; fin.disabled = false; }
 });
 </script>
 </body>
@@ -1126,7 +1157,7 @@ fetch('/api/data?t=' + encodeURIComponent(T))
 
 #[cfg(test)]
 mod tests {
-    use super::{parametre, PORT_PORTABLE};
+    use super::{parametre, PORT_PORTABLE, serie_demandee};
 
     #[test]
     fn le_port_habituel_ne_bouge_pas() {
@@ -1145,6 +1176,10 @@ mod tests {
     #[test]
     fn un_parametre_absent_rend_le_vide_plutot_qu_une_panique() {
         assert_eq!(parametre("/api/vocal?t=abc", "debut"), "");
+        // La série se demande par l'adresse que le QR encode ; sans elle, une photo suffit.
+        assert!(serie_demandee("/?t=abc&s=1"));
+        assert!(!serie_demandee("/?t=abc"));
+        assert!(!serie_demandee("/upload?t=abc&ext=jpg&s=0"));
         assert_eq!(parametre("", "t"), "");
     }
 
