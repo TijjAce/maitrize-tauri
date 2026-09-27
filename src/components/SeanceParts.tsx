@@ -5,6 +5,10 @@ import { api, MaterielItem, newId, nowIso, raccourci } from "../api";
 import { FichierImg } from "./Deroulement";
 import { useFileDropZone, estPdf, estImage, estDocument, typeDocument, EXTENSIONS_DOCUMENTS, fichierEnBase64 } from "../dragdrop";
 import { toast } from "./Toaster";
+import { Input, Modal, useAsync } from "./ui";
+import { VignettePdf } from "./VignettePdf";
+import { filDAriane } from "../dossiers";
+import { chercherPdfs, copiePourLaSeance, lirePdfs, pdfsDuBureau } from "../materielSeance";
 
 // ============================================================
 // Tableau de déroulement — grille [[string]] éditable
@@ -263,6 +267,16 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
     await api.materielDelete(m.id); reload();
   };
 
+  // Un PDF déjà sur le bureau : on le copie dans la séance, fichier compris,
+  // pour que le bureau garde le sien et que supprimer l'un ne touche pas l'autre.
+  const [bureauOuvert, setBureauOuvert] = React.useState(false);
+  const prendreSurLeBureau = async (m: MaterielItem) => {
+    const copies: string[] = [];
+    for (const nom of lirePdfs(m.pdfsJson)) copies.push(await api.fichierSave(nom, await api.fichierRead(nom)));
+    await api.materielSave(copiePourLaSeance(m, seanceId, copies, newId(), nowIso()));
+    reload();
+  };
+
   // Glisser-déposer natif depuis le Finder/Aperçu (un PDF ouvert dans Aperçu
   // peut être glissé directement depuis sa barre de titre).
   const { ref: dropRef, actif: dropActif } = useFileDropZone({
@@ -277,10 +291,15 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
     <div ref={dropRef} style={dropActif ? { outline: "2px dashed var(--accent)", borderRadius: 8, background: "var(--accent-soft)" } : undefined}>
       <input ref={pdfInput} type="file" accept="application/pdf" multiple style={{ display: "none" }}
         onChange={(e) => { Array.from(e.target.files ?? []).forEach((f) => ajouter(f)); e.target.value = ""; }} />
-      <button className="btn sm" onClick={() => pdfInput.current?.click()}>📄 Ajouter un PDF</button>
-      <div style={{ fontSize: 12, color: "var(--text-2)", margin: "6px 0 10px" }}>
-        Les PDF ajoutés ici apparaissent aussi dans l'onglet <b>Matériel</b> — glissez-en un directement depuis le Finder ou Aperçu.
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button className="btn sm" onClick={() => pdfInput.current?.click()}>📄 Ajouter un PDF</button>
+        <button className="btn sm" onClick={() => setBureauOuvert(true)}>🗂 Prendre sur le bureau</button>
       </div>
+      <div style={{ fontSize: 12, color: "var(--text-2)", margin: "6px 0 10px" }}>
+        Les PDF ajoutés ici apparaissent aussi dans l'onglet <b>Matériel</b> — glissez-en un depuis le Finder ou Aperçu,
+        ou reprenez un PDF déjà posé sur le plan de travail.
+      </div>
+      {bureauOuvert && <ChoixPdfDuBureau seanceId={seanceId} onPrendre={prendreSurLeBureau} onClose={() => setBureauOuvert(false)} />}
       {items.length === 0 ? (
         <div style={{ fontSize: 13, color: "var(--text-2)", fontStyle: "italic" }}>Aucun PDF pour cette séance.</div>
       ) : items.map((m) => (
@@ -291,6 +310,62 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
         </div>
       ))}
     </div>
+  );
+}
+
+/**
+ * Les PDF du bureau, à reprendre dans la séance.
+ *
+ * La fenêtre reste ouverte après un ajout : on prend souvent plusieurs
+ * fiches d'un coup, et chaque ligne dit ce qu'elle est devenue.
+ */
+function ChoixPdfDuBureau({ seanceId, onPrendre, onClose }: {
+  seanceId: string; onPrendre: (m: MaterielItem) => Promise<void>; onClose: () => void;
+}) {
+  const { data: tous, loading } = useAsync(() => api.materielList(), [seanceId]);
+  const [recherche, setRecherche] = React.useState("");
+  const [pris, setPris] = React.useState<Record<string, "encours" | "fait" | "echec">>({});
+  const candidats = React.useMemo(() => chercherPdfs(pdfsDuBureau(tous ?? []), recherche), [tous, recherche]);
+  const prendre = async (m: MaterielItem) => {
+    setPris((p) => ({ ...p, [m.id]: "encours" }));
+    try { await onPrendre(m); setPris((p) => ({ ...p, [m.id]: "fait" })); }
+    catch (e) { setPris((p) => ({ ...p, [m.id]: "echec" })); toast("PDF non copié : " + String(e), { icone: "⚠️" }); }
+  };
+  const chemin = (dossier: string) => filDAriane(dossier).slice(1).map((x) => x.nom).join(" › ");
+  return (
+    <Modal titre="Prendre un PDF sur le bureau" onClose={onClose}
+      footer={<button className="btn" onClick={onClose}>Fermer</button>}>
+      <div style={{ fontSize: 12.5, color: "var(--text-2)", marginBottom: 10 }}>
+        Les PDF posés sur le plan de travail. Chacun est copié dans la séance : le bureau garde le sien.
+      </div>
+      <Input value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="Chercher un titre ou un dossier…"
+        aria-label="Chercher un PDF du bureau" style={{ marginBottom: 10 }} />
+      {loading ? <div className="meta">Chargement…</div>
+        : candidats.length === 0 ? (
+          <div style={{ fontSize: 13, color: "var(--text-2)", fontStyle: "italic" }}>
+            {recherche.trim() ? "Aucun PDF du bureau ne correspond." : "Aucun PDF sur le bureau : déposez-en un sur le plan de travail."}
+          </div>
+        ) : candidats.map((m) => {
+          const etat = pris[m.id];
+          const nb = lirePdfs(m.pdfsJson).length;
+          return (
+            <div key={m.id} className="list-row" style={{ padding: "8px 12px" }}>
+              <div style={{ width: 44, height: 56, display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                <VignettePdf nom={lirePdfs(m.pdfsJson)[0]} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="title" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.titre || "Sans titre"}</div>
+                <div className="meta">{[chemin(m.dossier) || "Bureau", nb > 1 ? `${nb} PDF` : ""].filter(Boolean).join(" · ")}</div>
+              </div>
+              {etat === "fait"
+                ? <span className="chip">✓ Ajouté</span>
+                : <button className="btn sm primary" disabled={etat === "encours"} onClick={() => prendre(m)}>
+                    {etat === "encours" ? "Copie…" : "＋ Ajouter"}
+                  </button>}
+            </div>
+          );
+        })}
+    </Modal>
   );
 }
 
