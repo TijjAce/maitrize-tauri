@@ -7,9 +7,10 @@ import { openCtx } from "./ctxmenu";
 import { ChoixCompetence } from "./ChoixCompetence";
 import { printHTML, escapeHtml } from "../print";
 import {
-  CIBLE_MAX, CIBLE_MIN, PERIODES, basculerCible, basculerPeriode, comptes, ecrire,
-  elevesConcernes, etatDuCompte, lire, marqueEleve, marqueGroupe, motDuCompte, nouveauGroupe,
-  nouvelObjectif, objectifsDe, retirerGroupe, vide, type Objectif, type ProgrammationIme as Prog,
+  CIBLE_MAX, CIBLE_MIN, PERIODES, attacheDeLEleve, basculerCible, basculerPeriode, comptes,
+  ecrire, elevesConcernes, etatDuCompte, lire, marqueEleve, marqueGroupe, motDuCompte,
+  nouveauGroupe, nouvelObjectif, objectifsDe, resumePeriodes, retirerGroupe, vide,
+  type Objectif, type ProgrammationIme as Prog,
 } from "../programmationIme";
 
 // ── Programmer en IME ─────────────────────────────────────────────────────
@@ -29,6 +30,88 @@ const COULEUR_ETAT: Record<string, string> = {
 
 const prenom = (e: Eleve) => e.nom.trim().split(/\s+/)[0] || e.nom;
 
+/**
+ * La grille : une ligne par compétence, une colonne par élève.
+ *
+ * La liste répond à « qu'est-ce que je vise pour Apolline ? » ; celle-ci
+ * répond à « qui travaille quoi, et quand ? » — la question qu'on se pose
+ * devant une ESS, ou quand on cherche le trou dans l'année.
+ *
+ * Une case dit trois choses : concerné ou non, en propre ou par un groupe, et
+ * sur quelles périodes. Un clic attribue ou retire l'objectif à cet élève ;
+ * ce qui vient d'un groupe ne se retire pas ici, et la case le dit.
+ */
+function Grille({ objectifs, eleves, prog, filtre, onBasculer, onOuvrir }: {
+  objectifs: Objectif[];
+  eleves: Eleve[];
+  prog: Prog;
+  filtre: string;
+  onBasculer: (o: Objectif, eleveId: string) => void;
+  onOuvrir: () => void;
+}) {
+  return (
+    <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="prog-grille-cadre">
+        <table className="prog-grille">
+          <thead>
+            <tr>
+              <th className="prog-grille-tete">Compétence</th>
+              {eleves.map((e) => (
+                <th key={e.id} className={filtre === e.id ? "on" : undefined} title={e.nom}>
+                  {prenom(e)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {objectifs.map((o) => (
+              <tr key={o.id}>
+                <th className="prog-grille-tete" scope="row">
+                  <button className="prog-grille-titre" onClick={onOuvrir}
+                    title="Voir et modifier cet objectif dans la liste">
+                    {o.competence.trim() || "Sans intitulé"}
+                  </button>
+                  {o.origine && <div className="meta" style={{ fontSize: 10.5 }}>{o.origine}</div>}
+                </th>
+                {eleves.map((e) => {
+                  const attache = attacheDeLEleve(o, prog.groupes, e.id);
+                  const periodes = resumePeriodes(o);
+                  const titre = attache === "groupe"
+                    ? "Concerné par un groupe — cela se retire dans les groupes"
+                    : attache === "direct"
+                      ? `Retirer « ${o.competence || "cet objectif"} » à ${prenom(e)}`
+                      : `Donner « ${o.competence || "cet objectif"} » à ${prenom(e)}`;
+                  // Ce qui vient d'un groupe ne se clique pas : un clic y
+                  // ajoutait une attribution en propre, invisible à l'écran
+                  // puisque l'élève était déjà concerné — on croyait n'avoir
+                  // rien fait, et la donnée avait changé.
+                  return (
+                    <td key={e.id} className={filtre === e.id ? "on" : undefined}>
+                      {attache === "groupe" ? (
+                        <span className="prog-case groupe" title={titre}>{periodes || "—"}</span>
+                      ) : (
+                        <button className={`prog-case ${attache}`} title={titre}
+                          aria-pressed={attache === "direct"}
+                          onClick={() => onBasculer(o, e.id)}>
+                          {attache === "aucun" ? "" : (periodes || "—")}
+                        </button>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="meta" style={{ fontSize: 11.5, margin: 0, padding: "8px 12px", borderTop: "1px solid var(--border)" }}>
+        Les chiffres sont les périodes, « ✔ » celles qui sont atteintes. Un cadre en pointillés
+        vient d'un groupe. « — » signale un objectif attribué dont les périodes restent à choisir.
+      </p>
+    </div>
+  );
+}
+
 export function ProgrammationIme({ annee }: { annee: string }) {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   const { data: progs, reload } = useAsync(() => api.programmationsFinaleList(), []);
@@ -37,6 +120,9 @@ export function ProgrammationIme({ annee }: { annee: string }) {
   const [filtre, setFiltre] = React.useState("");
   const [groupesOuverts, setGroupesOuverts] = React.useState(false);
   const [competencePour, setCompetencePour] = React.useState<string>("");
+  // La liste sert à écrire un objectif, la grille à voir qui a quoi. Deux
+  // questions différentes, deux vues — et c'est la seconde qui manquait.
+  const [vue, setVue] = React.useState<"liste" | "grille">("liste");
 
   React.useEffect(() => { setProg(ligne ? lire(ligne.lignesJson) : vide()); }, [ligne?.id, ligne?.lignesJson]);
 
@@ -101,6 +187,10 @@ export function ProgrammationIme({ annee }: { annee: string }) {
           <b style={{ fontSize: 14 }}>Objectifs par élève</b>
           <span className="meta" style={{ fontSize: 12 }}>cible {CIBLE_MIN}–{CIBLE_MAX} sur l'année</span>
           <div className="spacer" style={{ flex: 1 }} />
+          <div className="seg sm" role="group" aria-label="Affichage">
+            <button className={vue === "liste" ? "active" : ""} onClick={() => setVue("liste")}>☰ Liste</button>
+            <button className={vue === "grille" ? "active" : ""} onClick={() => setVue("grille")}>▦ Grille</button>
+          </div>
           <button className="btn ghost sm" onClick={() => setGroupesOuverts((v) => !v)}>
             👥 Groupes{prog.groupes.length ? ` · ${prog.groupes.length}` : ""}
           </button>
@@ -180,6 +270,10 @@ export function ProgrammationIme({ annee }: { annee: string }) {
       {montres.length === 0 ? (
         <Empty icone="🎯" titre={filtre ? "Aucun objectif pour cet élève" : "Aucun objectif"}
           sous="« ＋ Objectif » : écrivez la compétence visée, dites pour qui, et sur quelles périodes." />
+      ) : vue === "grille" ? (
+        <Grille objectifs={montres} eleves={listeEleves} prog={prog} filtre={filtre}
+          onBasculer={(o, eleveId) => majObjectif(o.id, (x) => basculerCible(x, marqueEleve(eleveId)))}
+          onOuvrir={() => setVue("liste")} />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {montres.map((o) => {
