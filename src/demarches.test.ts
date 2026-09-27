@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  DEMARCHES, ENTETE_TABLEAU, demarcheDe, resumeDuCadre, seancesDuCadre, tableauDesPhases,
+  DEMARCHES, ENTETE_TABLEAU, demarcheDe, demarcheSuggeree, resumeDuCadre, seancesDuCadre,
+  tableauDesPhases,
 } from "./demarches";
 import { DUREES } from "./api";
 
@@ -97,5 +98,21 @@ describe("le cadre posé sur une séquence", () => {
   it("rend un tableau vide de phases à l'en-tête seul", () => {
     expect(tableauDesPhases([])).toEqual([[...ENTETE_TABLEAU]]);
     expect(demarcheDe("inconnue")).toBeUndefined();
+  });
+});
+
+describe("la démarche que la compétence appelle", () => {
+  it("propose les quatre temps des livrets pour le français et les mathématiques", () => {
+    expect(demarcheSuggeree("Français", "Cycle 2 — CP, CE1, CE2 (programmes 2026)").id).toBe("eduscol-quatre-temps");
+    expect(demarcheSuggeree("Nombres et calculs", "Cycle 2").id).toBe("eduscol-quatre-temps");
+    expect(demarcheSuggeree("", "").id).toBe("eduscol-quatre-temps");
+  });
+
+  it("propose le module d'apprentissage pour l'EPS, quelle que soit la graphie", () => {
+    expect(demarcheSuggeree("Éducation physique et sportive", "Cycle 2").id).toBe("eps-module");
+    expect(demarcheSuggeree("EPS", "").id).toBe("eps-module");
+    expect(demarcheSuggeree("Activité physique", "Cycle 1").id).toBe("eps-module");
+    // « physique » seul ne suffit pas : ce serait la physique-chimie.
+    expect(demarcheSuggeree("Sciences physiques", "Cycle 4").id).toBe("eduscol-quatre-temps");
   });
 });

@@ -297,6 +297,21 @@ export const DEMARCHES: Demarche[] = [EDUSCOL_QUATRE_TEMPS, EPS_MODULE, ENSEIGNE
 
 export const demarcheDe = (id: string) => DEMARCHES.find((d) => d.id === id);
 
+/**
+ * La démarche à proposer d'après la compétence visée.
+ *
+ * Les quatre temps des livrets valent pour presque tout ; l'EPS a son
+ * propre guide et ses propres mots — « module », « situation complexe »,
+ * « bilan » —, on ne lui propose pas une trace écrite. L'enseignement
+ * explicite reste au choix : on le prend quand on le veut, pas quand la
+ * compétence le dicte.
+ */
+export function demarcheSuggeree(domaineTitre: string, referentielNom = ""): Demarche {
+  const texte = `${domaineTitre} ${referentielNom}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (/\beps\b|physique et sportive|activite(s)? physique/.test(texte)) return demarcheDe("eps-module") ?? DEMARCHES[0];
+  return demarcheDe("eduscol-quatre-temps") ?? DEMARCHES[0];
+}
+
 /** Le tableau de déroulement d'une séance : l'en-tête, puis une ligne par phase. */
 export function tableauDesPhases(phases: PhaseCadre[]): string[][] {
   return [
