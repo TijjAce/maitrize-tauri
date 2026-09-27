@@ -4,7 +4,7 @@ import { Modal, Field, Input, Select, Textarea } from "./ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "./CompetenceTree";
 import { FichierImg } from "./Deroulement";
 import { PhotoTelephone } from "./PhotoTelephone";
-import { DEMARCHES, demarcheDe, resumeDuCadre, seancesDuCadre } from "../demarches";
+import { DEMARCHES, demarcheDe, demarcheSuggeree, resumeDuCadre, seancesDuCadre } from "../demarches";
 
 // Fiche d'une séquence : titre, période, compétence visée, objectifs, vignette,
 // vidéo. Elle vivait dans l'ancien onglet Séquences et avait disparu avec lui :
@@ -16,19 +16,23 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
   const [s, setS] = React.useState<Sequence>(sequence);
   const up = (p: Partial<Sequence>) => setS((cur) => ({ ...cur, ...p }));
   const [enCours, setEnCours] = React.useState(false);
-  // Le cadre : une démarche d'un guide, qui pose les séances à la création.
-  // Une séquence qui existe déjà a ses séances ; le cadre ne s'y propose pas.
+  // Le déroulement : une démarche d'un guide, proposée au moment où l'on
+  // choisit la compétence — c'est là qu'on sait ce qu'on va enseigner. On
+  // décide alors de la suivre ou non ; tant qu'on n'a pas décidé, rien n'est
+  // posé. Une séquence qui existe déjà a ses séances ; on ne lui en propose pas.
   const [cadre, setCadre] = React.useState("");
+  const [suivi, setSuivi] = React.useState<"" | "oui" | "non">("");
   const demarche = demarcheDe(cadre);
+  const poseLesSeances = nouvelle && suivi === "oui" && !!demarche;
   const save = async () => {
     setEnCours(true);
     try {
       const propre = {
         ...s, titre: s.titre.trim(), annee: s.annee || anneeScolaireActuelle(),
-        nbSeancesPrevu: nouvelle && demarche ? demarche.seances.length : s.nbSeancesPrevu,
+        nbSeancesPrevu: poseLesSeances ? demarche.seances.length : s.nbSeancesPrevu,
       };
       await api.sequenceSave(propre);
-      if (nouvelle && demarche) {
+      if (poseLesSeances) {
         for (const seance of seancesDuCadre(demarche, propre.id)) await api.seanceSave(seance);
       }
       onSaved(propre);
@@ -40,8 +44,10 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
 
   const choisir = (c: CompetenceSelectionnee, ref: Referentiel) => {
     up({ competenceVisee: JSON.stringify(c), matiere: c.domaineTitre, cycle: ref.cycle || s.cycle, couleur: couleurPourMatiere(c.domaineTitre) });
+    // La compétence appelle un déroulement : on le propose, on ne l'impose pas.
+    if (nouvelle) { setCadre(demarcheSuggeree(c.domaineTitre, ref.nom).id); setSuivi(""); }
   };
-  const effacer = () => up({ competenceVisee: "", matiere: "", cycle: "", couleur: "blue" });
+  const effacer = () => { up({ competenceVisee: "", matiere: "", cycle: "", couleur: "blue" }); setCadre(""); setSuivi(""); };
 
   return (
     <Modal large titre={sequence.titre && sequence.titre !== "Nouvelle séquence" ? "Modifier la séquence" : "Nouvelle séquence"} onClose={onClose}
@@ -79,6 +85,38 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
             🎯 {labelCourt(comp)} <span style={{ color: "var(--text-2)" }}>· {comp.domaineTitre}</span>
           </div>
         )}
+        {comp && nouvelle && demarche && (
+          <div className={`deroulement-propose${suivi === "non" ? " ecarte" : ""}`}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+              <b>🧭 Un déroulement peut être suivi</b>
+              <span className="meta">{resumeDuCadre(demarche)}</span>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "8px 0 6px" }}>
+              <Select value={cadre} onChange={(e) => { setCadre(e.target.value); setSuivi(""); }} style={{ maxWidth: 420 }}>
+                {DEMARCHES.map((d) => <option key={d.id} value={d.id}>{d.nom} — {d.source}</option>)}
+              </Select>
+            </div>
+            <div className="meta" style={{ fontSize: 12.5, lineHeight: 1.5 }}>{demarche.resume}</div>
+            <ol className="deroulement-seances">
+              {demarche.seances.map((sc, i) => (
+                <li key={i}><b>{sc.titre}</b> <span className="meta">· {sc.duree} min · {sc.phases.map((p) => p.phase.replace(/^Temps \d – /, "")).join(" › ")}</span></li>
+              ))}
+            </ol>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+              <button type="button" className={`btn sm${suivi === "oui" ? " primary" : ""}`} onClick={() => setSuivi("oui")}>
+                ✓ Suivre ce déroulement
+              </button>
+              <button type="button" className={`btn sm${suivi === "non" ? " active" : " ghost"}`} onClick={() => setSuivi("non")}>
+                Ne pas le suivre
+              </button>
+              <span className="meta" style={{ alignSelf: "center", fontSize: 12.5 }}>
+                {suivi === "oui" ? "Les séances seront créées avec leurs phases, à compléter."
+                  : suivi === "non" ? "La séquence restera vide : vous construirez les séances vous-même."
+                  : "À décider avant d'enregistrer — sans réponse, rien n'est posé."}
+              </span>
+            </div>
+          </div>
+        )}
         <CompetenceTree mode="single" selection={comp ? [comp] : []} onPick={choisir} />
         {(s.matiere || s.cycle) && (
           <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
@@ -89,20 +127,6 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
       </div>
 
       <Field label="Objectifs / notes"><Textarea value={s.objectifs} onChange={(e) => up({ objectifs: e.target.value })} /></Field>
-
-      {nouvelle && (
-        <Field label="Cadre des séances">
-          <Select value={cadre} onChange={(e) => setCadre(e.target.value)}>
-            <option value="">Aucun — je construis les séances moi-même</option>
-            {DEMARCHES.map((d) => <option key={d.id} value={d.id}>{d.nom} — {d.source}</option>)}
-          </Select>
-          <div style={{ fontSize: 12.5, color: "var(--text-2)", marginTop: 6, lineHeight: 1.5 }}>
-            {demarche
-              ? <>{demarche.resume} <b>{resumeDuCadre(demarche)}</b> — chaque séance reçoit ses phases dans son tableau de déroulement, à compléter.</>
-              : "Une démarche d'un guide pose les séances et leurs phases ; vous n'écrivez que le contenu."}
-          </div>
-        </Field>
-      )}
 
       <div className="field">
         <label>Vignette (image de couverture)</label>
