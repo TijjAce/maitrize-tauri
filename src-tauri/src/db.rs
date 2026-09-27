@@ -756,6 +756,10 @@ pub(crate) fn migrate(conn: &Connection) {
     // et l'état qui dit où l'on en est. Les étapes vivent en JSON, parce
     // qu'on les coche et qu'on les réordonne sans schéma à faire évoluer.
     conn.execute("ALTER TABLE projets ADD COLUMN mois TEXT NOT NULL DEFAULT ''", []).ok();
+    // Le téléphone peut dire sous quel créneau il a enregistré : c'est lui qui
+    // était dans la salle, et l'heure seule se trompe quand on dicte en
+    // sortant, ou une heure plus tard.
+    conn.execute("ALTER TABLE vocaux ADD COLUMN creneau_id TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN etat TEXT NOT NULL DEFAULT 'idee'", []).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN etapes_json TEXT NOT NULL DEFAULT '[]'", []).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN domaines TEXT NOT NULL DEFAULT ''", []).ok();

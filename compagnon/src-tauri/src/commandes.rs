@@ -29,6 +29,9 @@ pub struct Vocal {
     pub duree_s: f64,
     /// Ce qu'il pèse, pour le dire à l'écran.
     pub octets: u64,
+    /// Le créneau retenu au moment de dicter, vide si on n'en savait rien.
+    #[serde(default)]
+    pub creneau: String,
 }
 
 /// Où l'on garde les vocaux et l'adresse de l'ordinateur.
@@ -65,7 +68,9 @@ pub fn ordinateur_ecrire(app: tauri::AppHandle, url: String) -> R<()> {
  * la durée, ce qui évite un index à tenir à jour — et à désynchroniser.
  */
 #[tauri::command]
-pub fn vocal_garder(app: tauri::AppHandle, debut: String, duree_s: f64, wav_b64: String) -> R<Vocal> {
+pub fn vocal_garder(
+    app: tauri::AppHandle, debut: String, duree_s: f64, wav_b64: String, creneau: Option<String>,
+) -> R<Vocal> {
     use base64::Engine;
     let octets = base64::engine::general_purpose::STANDARD
         .decode(wav_b64.as_bytes())
@@ -74,25 +79,30 @@ pub fn vocal_garder(app: tauri::AppHandle, debut: String, duree_s: f64, wav_b64:
         return Err("Enregistrement vide.".into());
     }
     let id = uuid::Uuid::new_v4().to_string();
-    let nom = format!("{}__{}__{:.3}.wav", id, debut.replace(':', "-"), duree_s);
+    let creneau = creneau.unwrap_or_default();
+    let nom = format!("{}__{}__{:.3}__{creneau}.wav", id, debut.replace(':', "-"), duree_s);
     std::fs::write(dossier(&app)?.join("vocaux").join(&nom), &octets)
         .map_err(|e| format!("Écriture impossible : {e}"))?;
-    Ok(Vocal { id, debut, duree_s, octets: octets.len() as u64 })
+    Ok(Vocal { id, debut, duree_s, octets: octets.len() as u64, creneau })
 }
 
-/// Relit un nom de fichier : l'identifiant, l'heure et la durée.
-fn depuis_le_nom(nom: &str) -> Option<(String, String, f64)> {
+/// Relit un nom de fichier : l'identifiant, l'heure, la durée, le créneau.
+///
+/// Les enregistrements d'avant le choix du créneau n'ont que trois parties :
+/// ils restent lisibles, sans créneau.
+fn depuis_le_nom(nom: &str) -> Option<(String, String, f64, String)> {
     let brut = nom.strip_suffix(".wav")?;
     let mut bouts = brut.split("__");
     let id = bouts.next()?.to_string();
     let debut = bouts.next()?.to_string();
     let duree = bouts.next()?.parse().ok()?;
+    let creneau = bouts.next().unwrap_or_default().to_string();
     // L'heure a été écrite avec des tirets : « 10-12-00 » redevient « 10:12:00 ».
     let debut = match debut.split_once('T') {
         Some((jour, heure)) => format!("{jour}T{}", heure.replace('-', ":")),
         None => debut,
     };
-    Some((id, debut, duree))
+    Some((id, debut, duree, creneau))
 }
 
 /// Ce qui attend, du plus ancien au plus récent.
@@ -103,9 +113,9 @@ pub fn vocaux_liste(app: tauri::AppHandle) -> R<Vec<Vocal>> {
     let Ok(entrees) = std::fs::read_dir(&d) else { return Ok(sortie) };
     for e in entrees.flatten() {
         let nom = e.file_name().to_string_lossy().to_string();
-        let Some((id, debut, duree_s)) = depuis_le_nom(&nom) else { continue };
+        let Some((id, debut, duree_s, creneau)) = depuis_le_nom(&nom) else { continue };
         let octets = e.metadata().map(|m| m.len()).unwrap_or(0);
-        sortie.push(Vocal { id, debut, duree_s, octets });
+        sortie.push(Vocal { id, debut, duree_s, octets, creneau });
     }
     sortie.sort_by(|a, b| a.debut.cmp(&b.debut));
     Ok(sortie)
@@ -159,13 +169,14 @@ pub async fn vocal_envoyer(app: tauri::AppHandle, id: String) -> R<()> {
     let (origine, jeton) = decouper_adresse(&base)?;
     let chemin = fichier_de(&app, &id)?;
     let nom = chemin.file_name().unwrap_or_default().to_string_lossy().to_string();
-    let (_, debut, duree) = depuis_le_nom(&nom).ok_or("Nom de fichier inattendu.")?;
+    let (_, debut, duree, creneau) = depuis_le_nom(&nom).ok_or("Nom de fichier inattendu.")?;
     let octets = std::fs::read(&chemin).map_err(|e| e.to_string())?;
 
     let url = format!(
-        "{origine}/api/vocal?t={}&debut={}&duree={duree}",
+        "{origine}/api/vocal?t={}&debut={}&duree={duree}&creneau={}",
         urlencode(&jeton),
-        urlencode(&debut)
+        urlencode(&debut),
+        urlencode(&creneau)
     );
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
@@ -183,6 +194,127 @@ pub async fn vocal_envoyer(app: tauri::AppHandle, id: String) -> R<()> {
     std::fs::remove_file(&chemin).map_err(|e| e.to_string())
 }
 
+// ── Les créneaux du jour ──────────────────────────────────────────────────
+//
+// Le téléphone reste ignorant de la classe, à une exception près, demandée :
+// savoir sous quoi il enregistre. « 10h12 » ne dit rien, « Numération » si —
+// et l'heure seule se trompe quand on dicte en sortant de la salle, ou une
+// heure plus tard en y repensant.
+//
+// Ce qu'il garde est donc un emploi du temps sans personne dedans : une heure
+// et un intitulé, pour le jour même. Le fichier d'un autre jour est effacé au
+// premier rafraîchissement : un téléphone perdu ne porte pas l'année.
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Creneau {
+    pub id: String,
+    pub debut: String,
+    pub fin: String,
+    #[serde(default)]
+    pub matiere: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Journee {
+    pub jour: String,
+    pub creneaux: Vec<Creneau>,
+}
+
+fn fiche_creneaux(app: &tauri::AppHandle) -> R<PathBuf> {
+    Ok(dossier(app)?.join("creneaux.json"))
+}
+
+/// Les créneaux gardés, s'ils sont bien ceux du jour demandé.
+#[tauri::command]
+pub fn creneaux_du_jour(app: tauri::AppHandle, jour: String) -> R<Vec<Creneau>> {
+    let brut = std::fs::read_to_string(fiche_creneaux(&app)?).unwrap_or_default();
+    let Ok(journee) = serde_json::from_str::<Journee>(&brut) else { return Ok(Vec::new()) };
+    Ok(if journee.jour == jour { journee.creneaux } else { Vec::new() })
+}
+
+/// Redemande les créneaux à l'ordinateur, et remplace ce qu'on avait.
+#[tauri::command]
+pub async fn creneaux_rafraichir(app: tauri::AppHandle, jour: String) -> R<Vec<Creneau>> {
+    let base = ordinateur_lire(app.clone())?;
+    if base.is_empty() {
+        return Err("Aucun ordinateur appairé.".into());
+    }
+    let (origine, jeton) = decouper_adresse(&base)?;
+    let url = format!("{origine}/api/creneaux?t={}&jour={}", urlencode(&jeton), urlencode(&jour));
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(8))
+        .build()
+        .map_err(|e| e.to_string())?;
+    // Le corps se lit en texte puis se décode ici : la fonctionnalité `json`
+    // de reqwest n'est pas activée, et une dépendance de plus sur iPhone se
+    // paie à chaque compilation.
+    let corps = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|_| "L'ordinateur ne répond pas.".to_string())?
+        .text()
+        .await
+        .map_err(|e| format!("Réponse illisible : {e}"))?;
+    let journee: Journee =
+        serde_json::from_str(&corps).map_err(|e| format!("Réponse inattendue : {e}"))?;
+    // On n'en garde qu'un jour : celui-ci remplace le précédent.
+    std::fs::write(
+        fiche_creneaux(&app)?,
+        serde_json::to_string(&journee).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(journee.creneaux)
+}
+
+/// Les minutes depuis minuit d'un « 09:30 », ou -1.
+fn en_minutes(hhmm: &str) -> i64 {
+    let mut bouts = hhmm.split(':');
+    match (bouts.next().and_then(|h| h.parse::<i64>().ok()),
+           bouts.next().and_then(|m| m.parse::<i64>().ok())) {
+        (Some(h), Some(m)) => h * 60 + m,
+        _ => -1,
+    }
+}
+
+/**
+ * Le créneau où l'on se trouve, à cette heure-là.
+ *
+ * La même règle que l'ordinateur : d'abord celui qui contient l'heure, sinon
+ * le dernier fini dans la demi-heure — on enregistre souvent juste après, en
+ * sortant. Au-delà, on ne devine pas : l'enseignant choisira.
+ */
+pub fn creneau_pour(heure_iso: &str, creneaux: &[Creneau], tolerance: i64) -> Option<String> {
+    let heure = heure_iso.split_once('T')?.1;
+    let minute = en_minutes(&heure[..heure.len().min(5)]);
+    if minute < 0 {
+        return None;
+    }
+    let mut tries: Vec<&Creneau> = creneaux.iter().collect();
+    tries.sort_by_key(|c| en_minutes(&c.debut));
+    if let Some(c) = tries.iter().find(|c| {
+        let (d, f) = (en_minutes(&c.debut), en_minutes(&c.fin));
+        d >= 0 && f >= 0 && d <= minute && minute < f
+    }) {
+        return Some(c.id.clone());
+    }
+    tries
+        .iter()
+        .rfind(|c| {
+            let f = en_minutes(&c.fin);
+            f >= 0 && f <= minute && minute - f <= tolerance
+        })
+        .map(|c| c.id.clone())
+}
+
+/// Le créneau de l'instant, tel que l'écran l'affiche.
+#[tauri::command]
+pub fn creneau_maintenant(app: tauri::AppHandle, heure_iso: String) -> R<String> {
+    let jour = heure_iso.split('T').next().unwrap_or_default().to_string();
+    let creneaux = creneaux_du_jour(app, jour)?;
+    Ok(creneau_pour(&heure_iso, &creneaux, 30).unwrap_or_default())
+}
+
 // ── Les notes écrites ─────────────────────────────────────────────────────
 //
 // Tout ne se dicte pas : en réunion, dans un couloir, dans une salle où l'on
@@ -197,6 +329,8 @@ pub struct Note {
     pub id: String,
     pub debut: String,
     pub texte: String,
+    #[serde(default)]
+    pub creneau: String,
 }
 
 /// Au-delà, ce n'est plus une note prise en classe.
@@ -210,7 +344,9 @@ fn dossier_notes(app: &tauri::AppHandle) -> R<PathBuf> {
 
 /// Garde une note avant toute tentative d'envoi.
 #[tauri::command]
-pub fn note_garder(app: tauri::AppHandle, debut: String, texte: String) -> R<Note> {
+pub fn note_garder(
+    app: tauri::AppHandle, debut: String, texte: String, creneau: Option<String>,
+) -> R<Note> {
     let texte = texte.trim().to_string();
     if texte.is_empty() {
         return Err("Note vide.".into());
@@ -219,21 +355,25 @@ pub fn note_garder(app: tauri::AppHandle, debut: String, texte: String) -> R<Not
         return Err("Note trop longue.".into());
     }
     let id = uuid::Uuid::new_v4().to_string();
-    let nom = format!("{id}__{}.txt", debut.replace(':', "-"));
+    let creneau = creneau.unwrap_or_default();
+    let nom = format!("{id}__{}__{creneau}.txt", debut.replace(':', "-"));
     std::fs::write(dossier_notes(&app)?.join(&nom), &texte)
         .map_err(|e| format!("Écriture impossible : {e}"))?;
-    Ok(Note { id, debut, texte })
+    Ok(Note { id, debut, texte, creneau })
 }
 
 /// Relit le nom d'une note : l'identifiant et l'heure.
-fn note_depuis_le_nom(nom: &str) -> Option<(String, String)> {
+fn note_depuis_le_nom(nom: &str) -> Option<(String, String, String)> {
     let brut = nom.strip_suffix(".txt")?;
-    let (id, debut) = brut.split_once("__")?;
+    let mut bouts = brut.split("__");
+    let id = bouts.next()?.to_string();
+    let debut = bouts.next()?;
+    let creneau = bouts.next().unwrap_or_default().to_string();
     let debut = match debut.split_once('T') {
         Some((jour, heure)) => format!("{jour}T{}", heure.replace('-', ":")),
         None => debut.to_string(),
     };
-    Some((id.to_string(), debut))
+    Some((id, debut, creneau))
 }
 
 /// Ce qui attend, du plus ancien au plus récent.
@@ -243,9 +383,9 @@ pub fn notes_liste(app: tauri::AppHandle) -> R<Vec<Note>> {
     let Ok(entrees) = std::fs::read_dir(dossier_notes(&app)?) else { return Ok(sortie) };
     for e in entrees.flatten() {
         let nom = e.file_name().to_string_lossy().to_string();
-        let Some((id, debut)) = note_depuis_le_nom(&nom) else { continue };
+        let Some((id, debut, creneau)) = note_depuis_le_nom(&nom) else { continue };
         let texte = std::fs::read_to_string(e.path()).unwrap_or_default();
-        sortie.push(Note { id, debut, texte });
+        sortie.push(Note { id, debut, texte, creneau });
     }
     sortie.sort_by(|a, b| a.debut.cmp(&b.debut));
     Ok(sortie)
@@ -277,10 +417,13 @@ pub async fn note_envoyer(app: tauri::AppHandle, id: String) -> R<()> {
     let (origine, jeton) = decouper_adresse(&base)?;
     let chemin = note_fichier(&app, &id)?;
     let nom = chemin.file_name().unwrap_or_default().to_string_lossy().to_string();
-    let (_, debut) = note_depuis_le_nom(&nom).ok_or("Nom de fichier inattendu.")?;
+    let (_, debut, creneau) = note_depuis_le_nom(&nom).ok_or("Nom de fichier inattendu.")?;
     let texte = std::fs::read_to_string(&chemin).map_err(|e| e.to_string())?;
 
-    let url = format!("{origine}/api/note?t={}&debut={}", urlencode(&jeton), urlencode(&debut));
+    let url = format!(
+        "{origine}/api/note?t={}&debut={}&creneau={}",
+        urlencode(&jeton), urlencode(&debut), urlencode(&creneau)
+    );
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(20))
         .build()
@@ -389,18 +532,60 @@ mod tests {
 
     #[test]
     fn relit_le_nom_d_un_fichier() {
-        let (id, debut, duree) = depuis_le_nom("abcd__2026-09-25T10-12-00__4.010.wav").unwrap();
+        let (id, debut, duree, creneau) =
+            depuis_le_nom("abcd__2026-09-25T10-12-00__4.010__c7.wav").unwrap();
         assert_eq!(id, "abcd");
         // L'heure retrouve ses deux-points, que le système de fichiers refuse.
         assert_eq!(debut, "2026-09-25T10:12:00");
         assert!((duree - 4.01).abs() < 1e-6);
+        assert_eq!(creneau, "c7");
+        // Un enregistrement d'avant le choix du créneau reste lisible.
+        let (_, _, _, sans) = depuis_le_nom("abcd__2026-09-25T10-12-00__4.010.wav").unwrap();
+        assert_eq!(sans, "");
+    }
+
+    fn creneaux() -> Vec<super::Creneau> {
+        let c = |id: &str, d: &str, f: &str, m: &str| super::Creneau {
+            id: id.into(), debut: d.into(), fin: f.into(), matiere: m.into(),
+        };
+        vec![
+            c("c1", "09:00", "10:00", "Numération"),
+            c("c2", "10:00", "11:00", "Sport"),
+            c("c3", "14:00", "15:00", "Arts"),
+        ]
+    }
+
+    #[test]
+    fn trouve_le_creneau_de_l_heure() {
+        let cs = creneaux();
+        let quand = |h: &str| super::creneau_pour(&format!("2026-09-25T{h}"), &cs, 30);
+        assert_eq!(quand("09:30:00").as_deref(), Some("c1"));
+        // La fin d'un créneau appartient au suivant.
+        assert_eq!(quand("10:00:00").as_deref(), Some("c2"));
+        // Juste après la sortie : le créneau qui vient de finir.
+        assert_eq!(quand("11:20:00").as_deref(), Some("c2"));
+        // Au-delà de la demi-heure, on ne devine plus.
+        assert_eq!(quand("11:45:00"), None);
+        // Avant le premier, et sur une heure illisible.
+        assert_eq!(quand("07:00:00"), None);
+        assert_eq!(super::creneau_pour("2026-09-25", &cs, 30), None);
+        assert_eq!(super::creneau_pour("2026-09-25Tmidi", &cs, 30), None);
+    }
+
+    #[test]
+    fn sans_creneau_connu_on_ne_devine_rien() {
+        assert_eq!(super::creneau_pour("2026-09-25T09:30:00", &[], 30), None);
     }
 
     #[test]
     fn relit_le_nom_d_une_note() {
-        let (id, debut) = super::note_depuis_le_nom("abcd__2026-09-25T10-12-00.txt").unwrap();
+        let (id, debut, creneau) =
+            super::note_depuis_le_nom("abcd__2026-09-25T10-12-00__c7.txt").unwrap();
         assert_eq!(id, "abcd");
         assert_eq!(debut, "2026-09-25T10:12:00");
+        assert_eq!(creneau, "c7");
+        // Une note d'avant le créneau reste lisible.
+        assert_eq!(super::note_depuis_le_nom("abcd__2026-09-25T10-12-00.txt").unwrap().2, "");
         assert!(super::note_depuis_le_nom("abcd.txt").is_none());
         // Un vocal n'est pas une note : les deux dossiers ne se mélangent pas.
         assert!(super::note_depuis_le_nom("abcd__2026-09-25T10-12-00__4.010.wav").is_none());

@@ -32,6 +32,9 @@ pub fn run() {
             notes_liste,
             note_oublier,
             note_envoyer,
+            creneaux_du_jour,
+            creneaux_rafraichir,
+            creneau_maintenant,
         ])
         .run(tauri::generate_context!())
         .expect("le dictaphone n'a pas pu démarrer");

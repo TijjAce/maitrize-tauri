@@ -23,6 +23,8 @@ export interface Vocal {
   /** « recu », « transcrit » ou « echec ». */
   etat: string;
   erreur: string;
+  /** Le créneau choisi sur le téléphone, vide s'il n'a rien dit. */
+  creneauId?: string;
   dateCreation: string;
 }
 
@@ -97,3 +99,17 @@ export function repereDuVocal(v: { debut: string; dureeS: number }): string {
 /** Les vocaux d'un jour donné, les plus anciens d'abord. */
 export const vocauxDuJour = (vocaux: Vocal[], jour: string) =>
   vocaux.filter((v) => jourDuVocal(v) === jour).sort((a, b) => a.debut.localeCompare(b.debut));
+
+/**
+ * Le créneau sous lequel ranger ce vocal, avant tout choix de l'enseignant.
+ *
+ * Le téléphone était dans la salle : s'il a dit sous quoi il enregistrait, il
+ * sait mieux que l'heure — on dicte parfois en sortant, ou une heure plus
+ * tard en repensant à la séance. À défaut, on devine à l'heure.
+ */
+export function creneauRetenu(
+  v: { debut: string; creneauId?: string }, creneaux: Creneau[],
+): Creneau | null {
+  const dit = v.creneauId && creneaux.find((c) => c.id === v.creneauId);
+  return dit || creneauDuVocal(v.debut, creneaux);
+}
