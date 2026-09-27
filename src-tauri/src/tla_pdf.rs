@@ -60,6 +60,10 @@ pub struct Gabarit {
     /// du poing ; un écart nul rend la place à des cases plus grandes.
     #[serde(default = "ecart_defaut")]
     pub ecart: f32,
+    /// Ce que l'atelier travaille, une compétence par ligne : écrit sous le
+    /// titre, dans le bandeau, qui s'agrandit d'autant.
+    #[serde(default)]
+    pub competences: Vec<String>,
 }
 
 fn ecart_defaut() -> f32 {
@@ -144,8 +148,15 @@ pub fn construire(g: &Gabarit) -> Result<Vec<u8>, String> {
     const MARGE: f32 = 8.0;
     const HAUT: f32 = 9.0; // bandeau du titre
     const BAS: f32 = 6.0; // mention de licence
+    // Les compétences travaillées s'écrivent sous le titre : le bandeau
+    // grandit d'une ligne par ligne, et la grille cède ces millimètres.
+    const CORPS_COMPETENCES: f32 = 6.5;
+    const INTERLIGNE_COMPETENCES: f32 = 3.0;
+    let competences =
+        crate::jeux_pdf::lignes_competences(&g.competences, largeur - 2.0 * MARGE, CORPS_COMPETENCES, 3);
+    let haut = HAUT + competences.len() as f32 * INTERLIGNE_COMPETENCES;
     let ecart = g.ecart.clamp(0.0, 12.0);
-    let grille_h = hauteur - MARGE - HAUT - MARGE - BAS;
+    let grille_h = hauteur - MARGE - haut - MARGE - BAS;
     let case_l = (largeur - 2.0 * MARGE - (g.colonnes as f32 - 1.0) * ecart) / g.colonnes as f32;
     let case_h = (grille_h - (g.lignes as f32 - 1.0) * ecart) / g.lignes as f32;
 
@@ -158,7 +169,7 @@ pub fn construire(g: &Gabarit) -> Result<Vec<u8>, String> {
                 Mm(MARGE - ecart / 2.0),
                 Mm(MARGE + BAS - ecart / 2.0),
                 Mm(largeur - MARGE + ecart / 2.0),
-                Mm(hauteur - MARGE - HAUT + ecart / 2.0),
+                Mm(hauteur - MARGE - haut + ecart / 2.0),
             )
             .with_mode(printpdf::path::PaintMode::Fill),
         );
@@ -168,8 +179,13 @@ pub fn construire(g: &Gabarit) -> Result<Vec<u8>, String> {
     c.set_fill_color(couleur((0.2, 0.2, 0.25)));
     let titre = if g.eleve.is_empty() { g.nom.clone() } else { format!("{} — {}", g.eleve, g.nom) };
     c.use_text(&titre, 10.0, Mm(MARGE), Mm(hauteur - MARGE - 3.0), &gras);
+    c.set_fill_color(couleur((0.42, 0.42, 0.47)));
+    for (k, ligne) in competences.iter().enumerate() {
+        let y = hauteur - MARGE - 6.4 - k as f32 * INTERLIGNE_COMPETENCES;
+        c.use_text(ligne, CORPS_COMPETENCES, Mm(MARGE), Mm(y), &police);
+    }
 
-    let haut_grille = hauteur - MARGE - HAUT;
+    let haut_grille = hauteur - MARGE - haut;
     for (i, case) in g.cases.iter().enumerate() {
         let col = (i % g.colonnes as usize) as f32;
         let rang = (i / g.colonnes as usize) as f32;
@@ -265,6 +281,7 @@ mod tests {
             lignes,
             paysage: true,
             ecart: 3.0,
+            competences: vec![],
             cases: (0..n)
                 .map(|i| CaseTla {
                     picto_id: None,
@@ -297,6 +314,17 @@ mod tests {
         let pdf = construire(&gabarit(6, 5, 30)).expect("gabarit vide");
         assert!(pdf.starts_with(b"%PDF"), "en-tête PDF absent");
         assert!(pdf.len() > 500);
+    }
+
+    #[test]
+    fn les_competences_s_ecrivent_sous_le_titre_sans_casser_la_grille() {
+        let mut g = gabarit(6, 5, 30);
+        g.competences = vec![
+            "[Cycle 1] Oser entrer en communication".into(),
+            "[Cycle 1] Échanger et réfléchir avec les autres".into(),
+        ];
+        let pdf = construire(&g).expect("gabarit avec compétences");
+        assert!(pdf.starts_with(b"%PDF"));
     }
 
     /// Rendu sur de vraies images, pour juger de l'œil ce qu'aucune assertion
@@ -332,6 +360,7 @@ mod tests {
             lignes: 5,
             paysage: true,
             ecart: std::env::var("MAITRIZE_ECART").ok().and_then(|v| v.parse().ok()).unwrap_or(3.0),
+            competences: vec!["[Cycle 1] Communiquer avec les adultes et avec les autres enfants — Mobiliser le langage dans toutes ses dimensions".into()],
             cases: mots
                 .iter()
                 .enumerate()

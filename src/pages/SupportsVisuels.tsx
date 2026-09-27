@@ -4,7 +4,7 @@ import { api } from "../api";
 import { EVT_DONNEES_DISTANTES, Field, Input, Select, Textarea, useOngletDemande } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
-import { printHTML } from "../print";
+import { imprimerAtelier } from "../impressionAtelier";
 import { useMemoire } from "../components/useMemoire";
 import { ChoixPicto, chargerImages, usePictoImage, usePictoImages } from "../components/ChoixPicto";
 import {
@@ -183,7 +183,7 @@ function Atelier({ reglages, pictos, titre, feuille, page, aide }: {
   const ids = idsDes(pictos);
   const images = usePictoImages(ids);
   const imprimer = async () => {
-    printHTML(titre, feuille(await chargerImages(ids)), STYLE_SUPPORTS + page);
+    await imprimerAtelier("supports", titre, feuille(await chargerImages(ids)), STYLE_SUPPORTS + page);
   };
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 360px) minmax(0, 1fr)", gap: 14, alignItems: "start" }}>

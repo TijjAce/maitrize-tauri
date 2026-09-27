@@ -1,7 +1,8 @@
 import React from "react";
 import { Field, Input, Select, Textarea } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
-import { printHTML, escapeHtml } from "../print";
+import { escapeHtml } from "../print";
+import { imprimerAtelier } from "../impressionAtelier";
 import {
   fabriquerFiche, REGLAGES_PAR_DEFAUT, SONS, type FicheSon,
 } from "../lectureSons";
@@ -73,7 +74,7 @@ export function LectureSonsTab() {
         ? bloc(`Je complète avec « ${f.son.graphemes[0]} »`, mots(f.aCompleter.map((x) => x.trou))) : "",
       r.ecrire ? `<h3>J'écris le son</h3><div class="lignes"><div></div><div></div><div></div></div>` : "",
     ].join("");
-    printHTML(f.titre,
+    void imprimerAtelier("sons", f.titre,
       `<h1>${escapeHtml(f.titre)}</h1><p class="nom">Nom : ................................</p>${corps}`,
       `h3 { font-size: 14px; margin: 16px 0 6px; }
        .nom { font-size: 12px; color: #555; margin: 0 0 12px; }

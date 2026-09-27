@@ -5,7 +5,7 @@ import { toast } from "../components/Toaster";
 import { chargerImages, usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
-import { printHTML } from "../print";
+import { imprimerAtelier } from "../impressionAtelier";
 import { api } from "../api";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import { graineAuHasard, hasard } from "../hasard";
@@ -28,10 +28,10 @@ import {
 const ids = (mots: MotImage[]) => mots.map((m) => m.id).filter((x): x is number => x != null);
 
 /** Imprimer : on attend les images, puis on ouvre le document. */
-async function imprimer(titre: string, html: (images: Record<number, string>) => string, idsImages: number[], style: string) {
+async function imprimer(atelier: string, titre: string, html: (images: Record<number, string>) => string, idsImages: number[], style: string) {
   try {
     const images = await chargerImages(idsImages);
-    printHTML(titre, html(images), STYLE_FEUILLE + style);
+    await imprimerAtelier(atelier, titre, html(images), STYLE_FEUILLE + style);
   } catch (e) { toast(String(e), { icone: "⚠️" }); }
 }
 
@@ -93,7 +93,7 @@ export function LotoSyllabesTab({ banque }: { banque: boolean }) {
         <Coche on={r.ecrites} libelle="Compter le e muet final (ta-ble : 2 syllabes)" onChange={(v) => maj({ ecrites: v })} />
         <Coche on={r.legendes} libelle="Écrire le mot sous chaque image" onChange={(v) => maj({ legendes: v })} />
         <Boutons peut={planches.length > 0} onTirage={() => setGraine(graineAuHasard())}
-          onImprimer={() => imprimer("Loto des syllabes", (im) => htmlLotoSyllabes(planches, mots, im, r), ids(mots), STYLE_JEUX_SONS)} />
+          onImprimer={() => imprimer("lotoSyllabes", "Loto des syllabes", (im) => htmlLotoSyllabes(planches, mots, im, r), ids(mots), STYLE_JEUX_SONS)} />
       </>}
       droite={planches.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} /> : <Vide quoi="Ajoutez des mots : le loto se fabrique avec les mots de la classe et leurs images." />}
     />
@@ -120,7 +120,7 @@ export function DominosTab({ banque }: { banque: boolean }) {
         </div>
         <Coche on={legendes} libelle="Écrire le mot sous chaque image" onChange={setLegendes} />
         <Boutons peut={pieces.length >= 3} onTirage={() => setGraine(graineAuHasard())}
-          onImprimer={() => imprimer("Dominos des syllabes", (im) => htmlDominos(pieces, im, legendes), ids(mots), STYLE_JEUX_SONS)} />
+          onImprimer={() => imprimer("dominos", "Dominos des syllabes", (im) => htmlDominos(pieces, im, legendes), ids(mots), STYLE_JEUX_SONS)} />
       </>}
       droite={pieces.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} /> : <Vide quoi="Les dominos apparaîtront dès que des mots s'enchaînent : la rime de l'un est l'attaque de l'autre." />}
     />
@@ -155,7 +155,7 @@ export function IntrusTab({ banque }: { banque: boolean }) {
         <Coche on={r.legendes} libelle="Écrire le mot sous chaque image" onChange={(v) => maj({ legendes: v })} />
         <Coche on={r.corrige} libelle="Ajouter le corrigé" onChange={(v) => maj({ corrige: v })} />
         <Boutons peut={lignes.length > 0} onTirage={() => setGraine(graineAuHasard())}
-          onImprimer={() => imprimer("Chasse à l'intrus", (im) => htmlIntrus(lignes, im, r.mode, r.legendes, r.corrige), ids(mots), STYLE_JEUX_SONS)} />
+          onImprimer={() => imprimer("intrus", "Chasse à l'intrus", (im) => htmlIntrus(lignes, im, r.mode, r.legendes, r.corrige), ids(mots), STYLE_JEUX_SONS)} />
       </>}
       droite={lignes.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} /> : <Vide quoi="Les lignes apparaîtront dès que trois mots partagent une syllabe." />}
     />
@@ -213,7 +213,7 @@ export function PairesTab({ banque }: { banque: boolean }) {
         </Field>
         <Coche on={r.legendes} libelle="Écrire le mot sous chaque image" onChange={(v) => maj({ legendes: v })} />
         <Boutons peut={paires.length > 0}
-          onImprimer={() => imprimer("Paires de mots proches", () => html, [], STYLE_JEUX_SONS)} />
+          onImprimer={() => imprimer("paires", "Paires de mots proches", () => html, [], STYLE_JEUX_SONS)} />
       </>}
       droite={paires.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} /> : <Vide quoi="Choisissez au moins une paire." />}
     />
@@ -253,7 +253,7 @@ export function FluenceTab() {
           <Textarea value={r.mesMots} onChange={(e) => maj({ mesMots: e.target.value })} rows={3} placeholder="Les mots de la classe qui contiennent le son" />
         </Field>
         <Coche on={r.puissance4} libelle="Ajouter le plateau « quatre jetons alignés »" onChange={(v) => maj({ puissance4: v })} />
-        <Boutons peut onTirage={() => setGraine(graineAuHasard())} onImprimer={() => printHTML(`Grille de fluence — ${g.son.son}`, html, STYLE_FEUILLE + STYLE_FLUENCE)} />
+        <Boutons peut onTirage={() => setGraine(graineAuHasard())} onImprimer={() => void imprimerAtelier("fluence", `Grille de fluence — ${g.son.son}`, html, STYLE_FEUILLE + STYLE_FLUENCE)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_FLUENCE} />}
     />
@@ -281,7 +281,7 @@ export function SyllabaireTab() {
         </p>
         <Field label="Consonnes">{chips("consonnes", CONSONNES_SYLLABAIRE)}</Field>
         <Field label="Voyelles et graphèmes">{chips("voyelles", VOYELLES_SYLLABAIRE)}</Field>
-        <Boutons peut={r.consonnes.length > 0 && r.voyelles.length > 0} onImprimer={() => printHTML("Syllabaire", html, STYLE_FEUILLE + STYLE_FLUENCE)} />
+        <Boutons peut={r.consonnes.length > 0 && r.voyelles.length > 0} onImprimer={() => void imprimerAtelier("syllabaire", "Syllabaire", html, STYLE_FEUILLE + STYLE_FLUENCE)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_FLUENCE} />}
     />
@@ -317,7 +317,7 @@ export function LettresTab() {
             <Input type="number" min={1} max={12} value={r.planches} onChange={(e) => maj({ planches: Math.max(1, Math.min(12, Number(e.target.value) || 1)) })} style={{ width: 70 }} />
           </Field>
         )}
-        <Boutons peut={r.lettres.trim().length > 0} onTirage={() => setGraine(graineAuHasard())} onImprimer={() => printHTML("Les lettres", html, STYLE_FEUILLE + STYLE_JEUX_SONS)} />
+        <Boutons peut={r.lettres.trim().length > 0} onTirage={() => setGraine(graineAuHasard())} onImprimer={() => void imprimerAtelier("lettres", "Les lettres", html, STYLE_FEUILLE + STYLE_JEUX_SONS)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_JEUX_SONS} />}
     />
