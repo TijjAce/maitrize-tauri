@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
-  casesAColorier, consigne, couleursDuMotif, fabriquerColoriage, MOTIFS, motsSansAmbiguite,
-  operationPour, resultatsDesCouleurs, REGLAGES_PAR_DEFAUT, type Operation,
+  COULEURS, GRAPHIES, basculerCase, casesAColorier, consigne, couleursDuMotif, ecrireMotifsPerso, fabriquerColoriage, grilleValide,
+  lettreSousGraphie, lireMotifsPerso, MOTIFS, motifDepuisImage, motsSansAmbiguite, operationPour, resultatsDesCouleurs,
+  REGLAGES_PAR_DEFAUT, type Graphie, type Operation,
 } from "./coloriageMagique";
 import { hasard } from "./problemesBarres";
 import { contientLeSon, sonDe } from "./lectureSons";
@@ -14,13 +15,12 @@ const calcule = (expr: string): number => {
 };
 
 describe("les motifs", () => {
-  it("sont des carrés de huit sur huit, sans caractère inattendu", () => {
+  it("sont des carrés de huit à douze, sans caractère inattendu", () => {
+    expect(MOTIFS.length).toBeGreaterThanOrEqual(15);
     for (const m of MOTIFS) {
-      expect(m.grille, m.nom).toHaveLength(8);
-      for (const ligne of m.grille) {
-        expect(ligne.length, `${m.nom} : « ${ligne} »`).toBe(8);
-        expect(/^[.123]+$/.test(ligne), `${m.nom} : « ${ligne} »`).toBe(true);
-      }
+      expect(grilleValide(m.grille), m.nom).toBe(true);
+      expect(m.grille.length, m.nom).toBeGreaterThanOrEqual(8);
+      expect(m.grille.length, m.nom).toBeLessThanOrEqual(12);
     }
   });
 
@@ -29,8 +29,9 @@ describe("les motifs", () => {
       const n = casesAColorier(m);
       // Assez pour que le dessin se lise, pas au point d'y passer l'après-midi.
       expect(n, m.nom).toBeGreaterThan(20);
-      expect(n, m.nom).toBeLessThan(56);
+      expect(n, m.nom).toBeLessThan(80);
       expect(couleursDuMotif(m).length, m.nom).toBeGreaterThan(0);
+      expect(couleursDuMotif(m).length, m.nom).toBeLessThanOrEqual(COULEURS.length);
     }
   });
 
@@ -177,5 +178,83 @@ describe("le coloriage des lettres", () => {
     const c = lettres(["ch"]);
     expect(c.legende.every((l) => l.grapheme === "ch")).toBe(true);
     expect(c.lignes.flat().filter((x) => x.calcul).every((x) => x.calcul !== "?")).toBe(true);
+  });
+});
+
+describe("le coloriage des graphies", () => {
+  const reglages = { ...REGLAGES_PAR_DEFAUT, matiere: "graphies" as const, motif: "maison", lettres: ["b", "d", "P"], graphies: ["majuscule", "cursive"] as Graphie[], polices: true };
+
+  it("montre dans chaque case la lettre de sa couleur, sous une forme cochée", () => {
+    const c = fabriquerColoriage(reglages, 5);
+    expect(c.legende.map((l) => l.lettre)).toEqual(["b", "d", "p"]);
+    for (const ligne of c.lignes) for (const x of ligne) {
+      if (!x.couleur) { expect(x.calcul).toBe(""); continue; }
+      const attendue = c.legende.find((l) => l.couleur.id === x.couleur)!.lettre!;
+      expect(x.calcul.toLowerCase()).toBe(attendue);
+      expect(reglages.graphies).toContain(x.graphie);
+      expect(x.calcul).toBe(lettreSousGraphie(attendue, x.graphie!));
+      // Les polices ne se mêlent qu'à l'imprimerie : la cursive garde la sienne.
+      if (x.graphie === "cursive" || x.graphie === "cursiveMajuscule") expect(x.police).toBeUndefined();
+    }
+    expect(c.lignes.flat().some((x) => x.police)).toBe(true);
+    expect(fabriquerColoriage(reglages, 5)).toEqual(c);
+  });
+
+  it("complète les lettres manquantes et se rabat sur le script sans graphie cochée", () => {
+    const c = fabriquerColoriage({ ...reglages, lettres: [], graphies: [] }, 1);
+    expect(c.legende.map((l) => l.lettre)).toEqual(["a", "b", "c"]);
+    expect(c.lignes.flat().filter((x) => x.couleur).every((x) => x.graphie === "script")).toBe(true);
+    expect(GRAPHIES.map((g) => g.id)).toContain("cursiveMajuscule");
+    expect(consigne({ ...reglages })).toContain("cursive");
+  });
+});
+
+describe("un dessin tiré d'une photo", () => {
+  /** Une image de `n` × `n` pixels, colorée par blocs d'après une grille de lettres : b blanc, r rouge, v vert, k noir. */
+  const image = (blocs: string[], parBloc = 4) => {
+    const n = blocs.length * parBloc;
+    const pixels = new Uint8ClampedArray(n * n * 4);
+    const teinte: Record<string, [number, number, number]> = { b: [250, 250, 248], r: [220, 30, 70], v: [30, 160, 80], k: [20, 20, 30], g: [200, 200, 200] };
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      const [r, g, b] = teinte[blocs[Math.floor(y / parBloc)][Math.floor(x / parBloc)]];
+      const i = (y * n + x) * 4;
+      pixels[i] = r; pixels[i + 1] = g; pixels[i + 2] = b; pixels[i + 3] = 255;
+    }
+    return { largeur: n, hauteur: n, pixels };
+  };
+
+  it("donne à chaque bloc la couleur de feutre la plus proche, et laisse le clair en blanc", () => {
+    const grille = motifDepuisImage(image(["bbbb", "brrb", "bvkb", "bbgb"]), 4, 0.85, COULEURS);
+    expect(grille).toEqual(["....", ".11.", ".46.", "...."]);
+  });
+
+  it("recadre au carré une image plus large que haute", () => {
+    const large = image(["bbbb", "brrb", "brrb", "bbbb"]);
+    const encoreplusLarge = { largeur: large.largeur + 8, hauteur: large.hauteur, pixels: new Uint8ClampedArray((large.largeur + 8) * large.hauteur * 4).fill(255) };
+    // On recopie l'image au milieu d'une bande blanche.
+    for (let y = 0; y < large.hauteur; y++) for (let x = 0; x < large.largeur; x++) for (let k = 0; k < 4; k++) {
+      encoreplusLarge.pixels[(y * encoreplusLarge.largeur + x + 4) * 4 + k] = large.pixels[(y * large.largeur + x) * 4 + k];
+    }
+    expect(motifDepuisImage(encoreplusLarge, 4, 0.85, COULEURS)).toEqual(["....", ".11.", ".11.", "...."]);
+  });
+
+  it("se retouche case par case, et ne garde que des grilles qui tiennent debout", () => {
+    let g = ["....", ".11.", ".11.", "...."];
+    g = basculerCase(g, 0, 0, COULEURS.slice(0, 2));
+    expect(g[0]).toBe("1...");
+    g = basculerCase(g, 0, 0, COULEURS.slice(0, 2));
+    expect(g[0]).toBe("2...");
+    g = basculerCase(g, 0, 0, COULEURS.slice(0, 2));
+    expect(g[0]).toBe("....");
+    expect(grilleValide(["...."])).toBe(false);
+    expect(grilleValide(["..", ".."])).toBe(false);
+    expect(grilleValide(["...7", "....", "....", "...."])).toBe(false);
+    const perso = lireMotifsPerso(ecrireMotifsPerso([{ id: "p1", nom: "Mon chien", grille: g, perso: true }, { id: "p2", nom: "Cassé", grille: ["1"] }]));
+    expect(perso).toHaveLength(1);
+    expect(perso[0]).toMatchObject({ id: "p1", nom: "Mon chien", perso: true });
+    expect(lireMotifsPerso("nope")).toEqual([]);
+    // Un dessin de l'enseignant se fabrique comme les nôtres.
+    const c = fabriquerColoriage({ ...REGLAGES_PAR_DEFAUT, motif: "p1" }, 3, perso);
+    expect(c.motif.id).toBe("p1");
   });
 });
