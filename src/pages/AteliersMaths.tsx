@@ -7,6 +7,10 @@ import { STYLE_FEUILLE } from "../cartesImprimables";
 import { graineAuHasard } from "../hasard";
 import { SONS, syllabes } from "../lectureSons";
 import {
+  ECRITURES, EXERCICES, EXERCICES_MAX, GROUPEMENTS, PALETTE_CUBES, PLAFONDS, PLANCHERS, REGLAGES_CUBES, STYLE_CUBES,
+  ecrituresChoisies, exercicesCubes, groupementsJusqua, htmlCubes, type EcritureNombre, type ExerciceCubes,
+} from "../cubesNumeration";
+import {
   REGLAGES_ARBRE, REGLAGES_CALCUL, REGLAGES_FRACTIONS, REGLAGES_NOMBRES, REGLAGES_OIE, REPRESENTATIONS, STYLE_JEUX_MATHS,
   additionsArbre, cartesCalcul, cartesNombres, htmlArbreCalcul, htmlCartesCalcul, htmlCartesNombres, htmlFractions, htmlJeuDeLOie,
   type ContenuOie, type FacesDe, type MaterielFraction, type Operation, type Representation, type RepresentationFraction,
@@ -49,8 +53,8 @@ function Chips<T extends string | number>({ liste, choisis, onChange, libelle }:
   );
 }
 
-const imprimer = (atelier: string, titre: string, html: string) =>
-  void imprimerAtelier(atelier, titre, html, STYLE_FEUILLE + STYLE_JEUX_MATHS);
+const imprimer = (atelier: string, titre: string, html: string, style = STYLE_JEUX_MATHS) =>
+  void imprimerAtelier(atelier, titre, html, STYLE_FEUILLE + style);
 
 // ── Cartes des nombres ──
 
@@ -80,6 +84,87 @@ export function CartesNombresTab() {
         <Boutons peut={cartes.length > 0} onImprimer={() => imprimer("nombres", "Cartes des nombres", html)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_JEUX_MATHS} />}
+    />
+  );
+}
+
+// ── Les nombres en cubes ──
+
+/** Les couleurs possibles pour un groupement, en pastilles. */
+function Pastilles({ valeur, onChange }: { valeur: string; onChange: (hex: string) => void }) {
+  return (
+    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+      {PALETTE_CUBES.map((c) => (
+        <button key={c.hex} type="button" title={c.nom} aria-label={c.nom} aria-pressed={valeur === c.hex}
+          onClick={() => onChange(c.hex)}
+          style={{
+            width: 20, height: 20, borderRadius: 5, background: c.hex, cursor: "pointer", padding: 0,
+            border: valeur === c.hex ? "3px solid var(--text)" : "1px solid var(--border)",
+          }} />
+      ))}
+    </div>
+  );
+}
+
+export function CubesTab() {
+  const [r, maj] = useReglages("cubes", REGLAGES_CUBES);
+  const [graine, setGraine] = React.useState(graineAuHasard);
+  const exos = React.useMemo(() => exercicesCubes(r, graine), [r, graine]);
+  const html = React.useMemo(() => htmlCubes(exos, r, graine), [exos, r, graine]);
+  const style = STYLE_JEUX_MATHS + STYLE_CUBES;
+  const ecritures = ecrituresChoisies(r);
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0 }}>Les nombres en cubes</h3>
+        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
+          Le cube, la barre de dix, la plaque de cent, le gros cube de mille : l'élève lit les groupements et écrit le nombre — ou l'inverse.
+        </p>
+        <Field label="Exercice">
+          <Select value={r.exercice} onChange={(e) => maj({ exercice: e.target.value as ExerciceCubes })}>
+            {EXERCICES.map((e) => <option key={e.id} value={e.id}>{e.libelle}</option>)}
+          </Select>
+        </Field>
+        <Field label="Nombres de … à …">
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <Select value={r.de} onChange={(e) => maj({ de: Number(e.target.value) })} aria-label="De" style={{ width: 90 }}>
+              {PLANCHERS.filter((p) => p <= r.a).map((p) => <option key={p} value={p}>{p.toLocaleString("fr")}</option>)}
+            </Select>
+            <span>→</span>
+            <Select value={r.a} onChange={(e) => { const a = Number(e.target.value); maj({ a, de: Math.min(r.de, a) }); }} aria-label="À" style={{ width: 90 }}>
+              {PLAFONDS.map((p) => <option key={p} value={p}>{p.toLocaleString("fr")}</option>)}
+            </Select>
+          </div>
+        </Field>
+        <Field label={r.exercice === "ecrire" ? "L'élève écrit le nombre…" : "Le nombre est écrit…"}>
+          <Chips liste={ECRITURES.map((x) => x.id)} choisis={r.ecritures} onChange={(v) => maj({ ecritures: v as EcritureNombre[] })}
+            libelle={(id) => ECRITURES.find((x) => x.id === id)!.libelle} />
+          <div className="meta" style={{ fontSize: 12, marginTop: 4 }}>
+            {r.exercice === "ecrire" ? "Une ligne de réponse par écriture cochée." : "Plusieurs écritures cochées : chaque exercice en tire une."}
+            {" "}Exemple : {ecritures.map((id) => ECRITURES.find((x) => x.id === id)!.exemple).join(" · ")}.
+          </div>
+        </Field>
+        <Field label="Exercices sur la feuille">
+          <Input type="number" min={1} max={EXERCICES_MAX} value={r.nombre} style={{ width: 80 }}
+            onChange={(e) => maj({ nombre: Math.max(1, Math.min(EXERCICES_MAX, Number(e.target.value) || 1)) })} />
+        </Field>
+        <Field label="La couleur de chaque groupement">
+          {groupementsJusqua(r.a).map((g) => (
+            <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, margin: "3px 0" }}>
+              <span style={{ width: 70, fontSize: 12.5 }}>{GROUPEMENTS.find((x) => x.id === g.id)!.nom}</span>
+              <Pastilles valeur={r.couleurs[g.id]} onChange={(hex) => maj({ couleurs: { ...r.couleurs, [g.id]: hex } })} />
+            </div>
+          ))}
+        </Field>
+        <Coche on={r.zeros} libelle="Avec des zéros à l'intérieur (30, 105, 2 040)" onChange={(v) => maj({ zeros: v })} />
+        <Coche on={r.legende} libelle="La légende des cubes en haut de la feuille" onChange={(v) => maj({ legende: v })} />
+        <Coche on={r.corrige} libelle="Le corrigé sur une page à part" onChange={(v) => maj({ corrige: v })} />
+        <Field label="Titre de la feuille">
+          <Input value={r.titre} onChange={(e) => maj({ titre: e.target.value })} placeholder={REGLAGES_CUBES.titre} />
+        </Field>
+        <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("cubes", r.titre.trim() || REGLAGES_CUBES.titre, html, style)} />
+      </>}
+      droite={<ApercuFeuille html={html} style={style} />}
     />
   );
 }
