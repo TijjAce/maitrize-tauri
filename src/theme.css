@@ -831,3 +831,17 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 /* Une compétence qu'une séquence vise déjà : un repère, pas une alerte. */
 .comp-deja { margin-left: auto; padding-left: 10px; font-size: 12px; color: var(--text-2); flex: none; opacity: .8; }
 .comp-leaf:hover .comp-deja { opacity: 1; }
+
+/* Les feuilles à imprimer, vues à l'écran : chaque page séparée, l'excédent défile. */
+.apercu-feuille { overflow: auto; }
+.apercu-feuille .feuille .page + .page { border-top: 2px dashed #cfd4e2; margin-top: 16px; padding-top: 16px; }
+/* Les mots d'un jeu : l'image, le mot, ce qu'on en dit, la croix. */
+.bm-liste { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.bm-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 100px;
+  padding: 3px 6px 3px 4px; font-size: 12.5px; max-width: 100%; }
+.bm-chip img { width: 26px; height: 26px; object-fit: contain; background: #fff; border-radius: 50%; flex: none; }
+.bm-vide { width: 26px; height: 26px; border-radius: 50%; border: 1.5px dashed var(--text-2); flex: none; opacity: .6; }
+.bm-mot { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bm-compte { border: none; background: var(--accent-soft); color: var(--accent); border-radius: 100px; padding: 1px 7px; font-size: 11px; cursor: pointer; font-weight: 600; }
+.bm-x { border: none; background: transparent; color: var(--text-2); font-size: 15px; line-height: 1; cursor: pointer; padding: 0 2px; }
+.bm-x:hover { color: var(--danger, #e5484d); }
