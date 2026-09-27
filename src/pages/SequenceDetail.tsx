@@ -1,7 +1,7 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Page } from "../App";
-import { DEMARCHES, resumeDuCadre, seancesDuCadre } from "../demarches";
+import { demarcheDe, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre, type Demarche } from "../demarches";
 import { api, Sequence, Seance, MaterielItem, Jeu, nouvelleSeance, couleurHex, nowIso, newId, DUREES, formatDuree, telechargerTexte } from "../api";
 import { decalee, deplacee, ordonnees, renumerotees } from "../ordreSeances";
 import { Modal, Field, Input, Textarea, TextareaAuto, Select, Stars, Empty, Confirm, useAsync } from "../components/ui";
@@ -55,6 +55,18 @@ export default function SequenceDetail() {
     reloadSeq();
   };
   const next = (seances?.length ?? 0) + 1;
+  // La démarche que la compétence visée appelle, proposée en premier ; les
+  // autres restent à portée de menu.
+  const suggeree: Demarche = (() => {
+    try { return demarcheSuggeree(seq.competenceVisee ? JSON.parse(seq.competenceVisee) : seq.matiere, seq.cycle); }
+    catch { return demarcheSuggeree(seq.matiere, seq.cycle); }
+  })();
+  const poserCadre = async (d: Demarche) => {
+    for (const sc of seancesDuCadre(d, seq.id, next)) await api.seanceSave(sc);
+    await api.sequenceSave({ ...seq, nbSeancesPrevu: d.seances.length });
+    reload(); reloadSeq();
+    toast(`Cadre posé : ${resumeDuCadre(d)}.`, { icone: "🧭" });
+  };
 
   const liste = seances ?? [];
 
@@ -187,16 +199,19 @@ export default function SequenceDetail() {
       {(seances?.length ?? 0) === 0 ? (
         <>
           <Empty icone="📝" titre="Aucune séance" sous="Ajoutez la première séance, ou posez un cadre : une démarche d'un guide crée les séances et leurs phases." />
-          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginTop: -6, marginBottom: 18 }}>
-            {DEMARCHES.map((d) => (
-              <button key={d.id} className="btn sm" title={`${d.source} — ${resumeDuCadre(d)}`}
-                onClick={async () => {
-                  for (const sc of seancesDuCadre(d, seq.id, next)) await api.seanceSave(sc);
-                  await api.sequenceSave({ ...seq, nbSeancesPrevu: d.seances.length });
-                  reload(); reloadSeq();
-                  toast(`Cadre posé : ${resumeDuCadre(d)}.`, { icone: "🧭" });
-                }}>🧭 {d.nom}</button>
-            ))}
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", alignItems: "center", marginTop: -6, marginBottom: 18 }}>
+            <button className="btn sm primary" title={`${suggeree.source} — ${resumeDuCadre(suggeree)}`} onClick={() => poserCadre(suggeree)}>
+              🧭 {suggeree.nom}
+            </button>
+            <select className="select" value="" style={{ fontSize: 12.5, maxWidth: 340 }} aria-label="Poser une autre démarche"
+              onChange={(e) => { const d = demarcheDe(e.target.value); if (d) poserCadre(d); }}>
+              <option value="">Autre démarche…</option>
+              {demarchesParFamille().map((g) => (
+                <optgroup key={g.famille} label={g.famille}>
+                  {g.demarches.map((d) => <option key={d.id} value={d.id}>{d.nom} · {resumeDuCadre(d)}</option>)}
+                </optgroup>
+              ))}
+            </select>
           </div>
         </>
       ) : (

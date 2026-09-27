@@ -4,7 +4,7 @@ import { Modal, Field, Input, Select, Textarea, useAsync } from "./ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "./CompetenceTree";
 import { FichierImg } from "./Deroulement";
 import { PhotoTelephone } from "./PhotoTelephone";
-import { DEMARCHES, demarcheDe, demarcheSuggeree, resumeDuCadre, seancesDuCadre } from "../demarches";
+import { demarcheDe, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre } from "../demarches";
 import { sequencesParCompetence, titresVisant } from "../sequencesVisees";
 
 // Fiche d'une séquence : titre, période, compétence visée, objectifs, vignette,
@@ -50,7 +50,7 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
   const choisir = (c: CompetenceSelectionnee, ref: Referentiel) => {
     up({ competenceVisee: JSON.stringify(c), matiere: c.domaineTitre, cycle: ref.cycle || s.cycle, couleur: couleurPourMatiere(c.domaineTitre) });
     // La compétence appelle un déroulement : on le propose, on ne l'impose pas.
-    if (nouvelle) { setCadre(demarcheSuggeree(c.domaineTitre, ref.nom).id); setSuivi(""); }
+    if (nouvelle) { setCadre(demarcheSuggeree(c, ref.nom).id); setSuivi(""); }
   };
   const effacer = () => { up({ competenceVisee: "", matiere: "", cycle: "", couleur: "blue" }); setCadre(""); setSuivi(""); };
 
@@ -97,11 +97,16 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
               <span className="meta">{resumeDuCadre(demarche)}</span>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "8px 0 6px" }}>
-              <Select value={cadre} onChange={(e) => { setCadre(e.target.value); setSuivi(""); }} style={{ maxWidth: 420 }}>
-                {DEMARCHES.map((d) => <option key={d.id} value={d.id}>{d.nom} — {d.source}</option>)}
+              <Select value={cadre} onChange={(e) => { setCadre(e.target.value); setSuivi(""); }} style={{ maxWidth: 460 }}>
+                {demarchesParFamille().map((g) => (
+                  <optgroup key={g.famille} label={g.famille}>
+                    {g.demarches.map((d) => <option key={d.id} value={d.id}>{d.nom}</option>)}
+                  </optgroup>
+                ))}
               </Select>
             </div>
             <div className="meta" style={{ fontSize: 12.5, lineHeight: 1.5 }}>{demarche.resume}</div>
+            <div className="meta" style={{ fontSize: 12, lineHeight: 1.4, opacity: .85 }}>📖 {demarche.source}</div>
             <ol className="deroulement-seances">
               {demarche.seances.map((sc, i) => (
                 <li key={i}><b>{sc.titre}</b> <span className="meta">· {sc.duree} min · {sc.phases.map((p) => p.phase.replace(/^Temps \d – /, "")).join(" › ")}</span></li>

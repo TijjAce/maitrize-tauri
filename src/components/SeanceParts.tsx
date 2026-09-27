@@ -1,5 +1,5 @@
 import React from "react";
-import { DEMARCHES, ENTETE_TABLEAU, tableauDesPhases } from "../demarches";
+import { ENTETE_TABLEAU, demarcheDe, demarchesParFamille, tableauDesPhases } from "../demarches";
 import { partDeColonne } from "../print";
 import { api, MaterielItem, newId, nowIso, raccourci } from "../api";
 import { FichierImg } from "./Deroulement";
@@ -106,21 +106,25 @@ export function TableauEditor({ grid, onChange, illustrations = [] }: {
 }) {
   const [picker, setPicker] = React.useState<{ r: number; c: number } | null>(null);
   if (grid.length === 0) {
-    // Un tableau vide, ou déjà structuré par une démarche : les quatre temps
-    // des livrets Éduscol, ou les phases de l'enseignement explicite. La
-    // séance n'a pas besoin d'être née d'un cadre pour en recevoir un.
+    // Un tableau vide, ou déjà structuré par une démarche : les phases de la
+    // première séance d'un guide (quatre temps, leçon de code, investigation…).
+    // La séance n'a pas besoin d'être née d'un cadre pour en recevoir un.
     return (
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
         <button className="btn sm" onClick={() => onChange([
           [...ENTETE_TABLEAU],
           ["", "", "", ""], ["", "", "", ""],
         ])}>＋ Insérer un tableau</button>
-        {DEMARCHES.map((d) => (
-          <button key={d.id} className="btn ghost sm" title={d.source}
-            onClick={() => onChange(tableauDesPhases(d.seances[0].phases))}>
-            🧭 {d.nom}
-          </button>
-        ))}
+        <select className="select" value="" style={{ fontSize: 12.5, maxWidth: 360 }}
+          aria-label="Structurer le tableau d'après une démarche"
+          onChange={(e) => { const d = demarcheDe(e.target.value); if (d) onChange(tableauDesPhases(d.seances[0].phases)); }}>
+          <option value="">🧭 Structurer d'après une démarche…</option>
+          {demarchesParFamille().map((g) => (
+            <optgroup key={g.famille} label={g.famille}>
+              {g.demarches.map((d) => <option key={d.id} value={d.id}>{d.nom}</option>)}
+            </optgroup>
+          ))}
+        </select>
       </div>
     );
   }
