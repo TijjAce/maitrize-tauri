@@ -320,8 +320,8 @@ mod tests {
     fn les_competences_s_ecrivent_sous_le_titre_sans_casser_la_grille() {
         let mut g = gabarit(6, 5, 30);
         g.competences = vec![
-            "[Cycle 1] Oser entrer en communication".into(),
-            "[Cycle 1] Échanger et réfléchir avec les autres".into(),
+            "Oser entrer en communication".into(),
+            "Échanger et réfléchir avec les autres".into(),
         ];
         let pdf = construire(&g).expect("gabarit avec compétences");
         assert!(pdf.starts_with(b"%PDF"));
@@ -360,7 +360,7 @@ mod tests {
             lignes: 5,
             paysage: true,
             ecart: std::env::var("MAITRIZE_ECART").ok().and_then(|v| v.parse().ok()).unwrap_or(3.0),
-            competences: vec!["[Cycle 1] Communiquer avec les adultes et avec les autres enfants — Mobiliser le langage dans toutes ses dimensions".into()],
+            competences: vec!["Communiquer avec les adultes et avec les autres enfants — Mobiliser le langage dans toutes ses dimensions".into()],
             cases: mots
                 .iter()
                 .enumerate()

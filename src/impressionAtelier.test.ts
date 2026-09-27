@@ -30,8 +30,9 @@ const comp = (p: Partial<CompetenceSelectionnee> = {}): CompetenceSelectionnee =
 beforeEach(() => { reglages.clear(); impressions.length = 0; });
 
 describe("une compétence sur une ligne", () => {
-  it("dit le niveau, l'intitulé, puis d'où elle vient", () => {
-    expect(ligneCompetence(comp())).toBe("[CP] Décoder des syllabes simples — Cycle 2 › Lire et écrire › Identifier des mots");
+  it("dit l'intitulé, puis d'où elle vient — jamais le niveau, la feuille va à l'élève", () => {
+    expect(ligneCompetence(comp())).toBe("Décoder des syllabes simples — Cycle 2 › Lire et écrire › Identifier des mots");
+    expect(ligneCompetence(comp({ niveau: "CP" }))).not.toContain("CP");
   });
 
   it("se passe de ce qui manque", () => {
@@ -52,7 +53,8 @@ describe("l'en-tête imprimé", () => {
     const une = enteteCompetencesHtml([comp({ competenceTitre: "Lire <b>vite</b>" })]);
     expect(une).toContain("Compétence travaillée");
     expect(une).not.toContain("Compétences travaillées");
-    expect(une).toContain("[CP] Lire &lt;b&gt;vite&lt;/b&gt;");
+    expect(une).toContain("<b>Lire &lt;b&gt;vite&lt;/b&gt;</b>");
+    expect(une).not.toContain("[CP]");
     expect(une).toContain("Cycle 2 › Lire et écrire › Identifier des mots");
     expect(une).not.toContain("<b>vite</b>");
 
