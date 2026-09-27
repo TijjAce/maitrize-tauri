@@ -34,3 +34,6 @@ chrono = "0.4"
 reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 tauri-plugin-dialog = "2.7.3"
+# Le scanner de documents de l'iPhone : un manuel se photographie page à
+# page comme dans Notes, redressé et nettoyé. Écrit ici, dans `plugins/`.
+tauri-plugin-scanner = { path = "plugins/scanner" }

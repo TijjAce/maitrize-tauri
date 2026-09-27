@@ -56,6 +56,8 @@ let creneaux = [], creneauChoisi = "", choixOuvert = false;
 /** Faux tant que l'ordinateur ne nous a rien dit du jour : une journée sans
  *  créneau n'est pas une ignorance, et l'écran ne doit pas accuser le réseau. */
 let creneauxConnus = false;
+/** Le scanner de pages : ouvert, puis ce qu'il en est advenu. */
+let scanEnCours = false, scanInfo = "";
 
 // ── Capturer ──────────────────────────────────────────────────────────────
 
@@ -368,6 +370,29 @@ async function oublier(id, sorte) {
   await relire();
 }
 
+// ── Scanner un manuel ─────────────────────────────────────────────────────
+//
+// Le scanner de documents de l'iPhone — celui de Notes — trouve la page, la
+// redresse, la nettoie, et enchaîne. Les pages partent aussitôt sur
+// l'ordinateur, dans « Adapter une fiche › Manuels », où elles attendent.
+
+async function scannerPages() {
+  if (scanEnCours) return;
+  scanEnCours = true; scanInfo = "Le scanner s'ouvre…"; rendre();
+  try {
+    const r = await invoke("plugin:scanner|scanner");
+    const fichiers = (r && r.fichiers) || [];
+    if (!fichiers.length) { scanInfo = ""; return; }
+    scanInfo = `Envoi de ${fichiers.length} page${fichiers.length > 1 ? "s" : ""}…`; rendre();
+    const n = await invoke("scan_envoyer", { fichiers });
+    scanInfo = `✅ ${n} page${n > 1 ? "s" : ""} envoyée${n > 1 ? "s" : ""} sur l'ordinateur. Vous pouvez en scanner d'autres.`;
+  } catch (e) {
+    scanInfo = "❌ " + String(e);
+  } finally {
+    scanEnCours = false; rendre();
+  }
+}
+
 // ── Appairer ──────────────────────────────────────────────────────────────
 
 let adresse = "";
@@ -589,6 +614,15 @@ function rendre() {
     ${avis ? `<p class="avis">${avis}</p>` : ""}
     ${souci ? `<p class="err">${souci}</p>` : ""}
 
+    ${adresse && !enCours ? `
+      <p class="titre">Manuels</p>
+      <div class="card">
+        <button class="gros" id="scan-pages" ${scanEnCours ? "disabled" : ""}>📄 Scanner des pages</button>
+        <p class="meta" style="margin:12px 0 0">Comme dans Notes : cadrez la page, elle se redresse ; enchaînez les pages, puis
+          « Enregistrer ». Elles arrivent sur l'ordinateur, dans Adapter une fiche › Manuels — ouvrez-y « Scanner avec le compagnon ».</p>
+        ${scanInfo ? `<p class="avis" style="margin:10px 0 0">${echapper(scanInfo)}</p>` : ""}
+      </div>` : ""}
+
     ${attente.length ? `
       <p class="titre">En attente de l'ordinateur (${attente.length})</p>
       ${attente.map((x) => `
@@ -640,6 +674,7 @@ function rendre() {
   clic("appairer", () => { void appairer(); });
   clic("colle", () => { void coller(); });
   clic("scanner", () => { void scanner(); });
+  clic("scan-pages", () => { void scannerPages(); });
   clic("stop-scan", () => { fermerCamera(); rendre(); });
   clic("changer-creneau", () => { choixOuvert = true; rendre(); });
   el.querySelectorAll("[data-creneau]").forEach((b) => {

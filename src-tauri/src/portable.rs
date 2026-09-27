@@ -483,6 +483,29 @@ fn repondre(mut req: tiny_http::Request, token: &str, page: &str, data_json: &st
         let _ = req.respond(tiny_http::Response::from_string(body).with_status_code(if autorise { 200 } else { 403 }).with_header(header));
         return;
     }
+    // Une page scannée par le compagnon : l'image, rangée dans Fichiers/, et
+    // l'événement `photo:recue` que la fenêtre « Manuels » attend.
+    if autorise && url.starts_with("/api/photo") {
+        let ext = match parametre(&url, "ext").as_str() { "png" => "png", "pdf" => "pdf", _ => "jpg" };
+        let mut octets = Vec::new();
+        let lu = std::io::Read::read_to_end(req.as_reader(), &mut octets).is_ok() && !octets.is_empty();
+        let (code, body) = if lu {
+            let fichier = format!("{}.{}", Uuid::new_v4(), ext);
+            match std::fs::write(crate::db::fichiers_dir().join(&fichier), &octets) {
+                Ok(()) => {
+                    let _ = app.emit("photo:recue", fichier.clone());
+                    (200, format!("{{\"ok\":true,\"fichier\":{}}}", serde_json::to_string(&fichier).unwrap_or_default()))
+                }
+                Err(e) => (500, format!("{{\"ok\":false,\"erreur\":{}}}", serde_json::to_string(&e.to_string()).unwrap_or_default())),
+            }
+        } else {
+            (400, "{\"ok\":false}".to_string())
+        };
+        let header = tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json; charset=utf-8"[..])
+            .expect("en-tete valide");
+        let _ = req.respond(tiny_http::Response::from_string(body).with_status_code(code).with_header(header));
+        return;
+    }
     // L'écriture se lit avant toute réponse : le corps ne se relit pas.
     if autorise && url.starts_with("/api/observation") {
         let mut corps = String::new();
@@ -588,7 +611,7 @@ fn photo_repondre(mut req: tiny_http::Request, token: &str, app: &tauri::AppHand
         return true;
     }
     if req.method() == &tiny_http::Method::Post && url.starts_with("/upload") {
-        let ext = if url.contains("ext=png") { "png" } else { "jpg" };
+        let ext = match parametre(&url, "ext").as_str() { "png" => "png", "pdf" => "pdf", _ => "jpg" };
         let mut buf = Vec::new();
         if req.as_reader().read_to_end(&mut buf).is_ok() && !buf.is_empty() {
             let fichier = format!("{}.{}", Uuid::new_v4(), ext);
@@ -632,6 +655,8 @@ const CAMERA_PAGE: &str = r##"<!DOCTYPE html>
 <main>
  <p id="compte" style="display:none;font-weight:700;color:#6366f1;margin:0 0 12px"></p>
  <label class="big" id="lab"><input type="file" accept="image/*" capture="environment" id="f" hidden>📷 Prendre une photo</label>
+ <label class="big" id="lab2" style="background:#fff;color:#1c2233;border:2px solid #cfd4e2"><input type="file" accept="application/pdf,image/*" id="f2" hidden>📄 Scanner avec Fichiers</label>
+ <p id="aide2" style="font-size:13px;color:#687087;line-height:1.45;margin:-6px 0 16px">Le scanner de Notes, pour une page bien droite : « Choisir un fichier » → Parcourir → ⋯ en haut à droite → « Scanner des documents ». Scannez, « Enregistrer », puis choisissez le fichier.</p>
  <img id="prev" style="display:none" alt="">
  <button id="send" style="display:none">Envoyer à l'ordinateur ↗</button>
  <button id="fin" style="display:none;width:100%;padding:14px;font-size:16px;font-weight:700;background:#fff;color:#1c2233;border:2px solid #cfd4e2;border-radius:14px;margin-top:12px">✅ Terminer le manuel</button>
@@ -640,25 +665,29 @@ const CAMERA_PAGE: &str = r##"<!DOCTYPE html>
 <script>
 const params = new URLSearchParams(location.search);
 const t = params.get('t') || '', serie = params.get('s') === '1';
-const f = document.getElementById('f'), prev = document.getElementById('prev'), compte = document.getElementById('compte'),
+const f = document.getElementById('f'), f2 = document.getElementById('f2'), prev = document.getElementById('prev'), compte = document.getElementById('compte'),
       send = document.getElementById('send'), msg = document.getElementById('msg'), lab = document.getElementById('lab'), fin = document.getElementById('fin');
 let file = null, envoyees = 0;
 if (serie) { lab.lastChild.textContent = '📷 Photographier la page 1'; fin.style.display = 'block'; msg.textContent = 'Une photo par page, dans l\'ordre du manuel. Terminez quand tout y est.'; }
-f.addEventListener('change', () => {
-  file = f.files && f.files[0];
+const choisi = (entree) => {
+  file = entree.files && entree.files[0];
   if (!file) return;
-  prev.src = URL.createObjectURL(file); prev.style.display = 'block'; prev.style.opacity = '1';
-  send.style.display = 'block'; lab.lastChild.textContent = '📷 Reprendre la photo'; msg.textContent = '';
-});
+  const pdf = file.type === 'application/pdf';
+  if (pdf) { prev.style.display = 'none'; msg.textContent = '📄 ' + (file.name || 'document scanné') + ' — prêt à envoyer.'; }
+  else { prev.src = URL.createObjectURL(file); prev.style.display = 'block'; prev.style.opacity = '1'; msg.textContent = ''; }
+  send.style.display = 'block'; lab.lastChild.textContent = '📷 Reprendre la photo';
+};
+f.addEventListener('change', () => choisi(f));
+f2.addEventListener('change', () => choisi(f2));
 send.addEventListener('click', async () => {
   if (!file) return;
   send.disabled = true; msg.textContent = 'Envoi en cours…';
-  const ext = file.type === 'image/png' ? 'png' : 'jpg';
+  const ext = file.type === 'application/pdf' ? 'pdf' : file.type === 'image/png' ? 'png' : 'jpg';
   try {
     const r = await fetch('/upload?t=' + encodeURIComponent(t) + '&ext=' + ext + (serie ? '&s=1' : ''), { method: 'POST', body: file });
     if (!r.ok) { msg.textContent = 'Échec de l\'envoi (' + r.status + ').'; send.disabled = false; return; }
     if (serie) {
-      envoyees += 1; file = null; f.value = '';
+      envoyees += 1; file = null; f.value = ''; f2.value = '';
       compte.style.display = 'block'; compte.textContent = '✅ ' + envoyees + ' page' + (envoyees > 1 ? 's' : '') + ' envoyée' + (envoyees > 1 ? 's' : '');
       prev.style.opacity = '.4'; send.style.display = 'none'; send.disabled = false;
       lab.lastChild.textContent = '📷 Photographier la page ' + (envoyees + 1); msg.textContent = '';
