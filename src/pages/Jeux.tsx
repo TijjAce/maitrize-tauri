@@ -28,54 +28,103 @@ const ONGLETS = ["jeux", "memory", "imagier", "tla", "supports", "partieTout", "
 type Onglet = typeof ONGLETS[number];
 
 /**
- * Les générateurs, rangés par famille.
+ * Les ateliers, rangés par famille.
  *
- * Une rangée d'onglets s'allonge à chaque nouveau jeu et finit par ne plus
- * rien dire : on choisit d'abord ce qu'on travaille — le langage, les
- * mathématiques, l'autonomie —, puis l'outil.
+ * Une rangée d'onglets s'allonge à chaque nouveau générateur et finit par ne
+ * plus rien dire : « 🎲 Loto » ne dit pas ce qu'on obtient, et il faut ouvrir
+ * pour savoir. La page s'ouvre donc sur les ateliers eux-mêmes, chacun disant
+ * ce qu'il fabrique — puis l'on entre dans celui qu'on veut.
  */
-const FAMILLES: { id: string; libelle: string; aide: string; outils: { id: Onglet; libelle: string }[] }[] = [
+interface Outil {
+  id: Onglet;
+  nom: string;
+  icone: string;
+  /** Ce qu'on obtient, en une phrase : c'est la question qu'on se pose. */
+  quoi: string;
+  /** Vrai si l'atelier a besoin de la banque de pictogrammes. */
+  pictos?: boolean;
+}
+
+const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[] = [
   {
-    id: "langage", libelle: "🗣 Langage", aide: "Vocabulaire et désignation à partir des pictogrammes, et les fiches de sons.",
+    id: "langage", libelle: "🗣 Langage",
+    aide: "Vocabulaire et désignation à partir des pictogrammes, et les fiches de sons.",
     outils: [
-      { id: "jeux", libelle: "🎲 Loto" },
-      { id: "memory", libelle: "🃏 Mémory" },
-      { id: "imagier", libelle: "📖 Imagier" },
-      { id: "tla", libelle: "🗣 Tableaux de langage" },
-      { id: "sons", libelle: "🔤 Fiches de sons" },
+      { id: "jeux", nom: "Loto", icone: "🎲", pictos: true,
+        quoi: "Des planches et leurs cartes à découper, sur les thèmes que vous choisissez." },
+      { id: "memory", nom: "Mémory", icone: "🃏", pictos: true,
+        quoi: "Des paires à retourner : image et image, ou image et mot." },
+      { id: "imagier", nom: "Imagier", icone: "📖", pictos: true,
+        quoi: "Une page d'images légendées, à afficher ou à coller dans un cahier." },
+      { id: "tla", nom: "Tableaux de langage", icone: "🗣", pictos: true,
+        quoi: "Des tableaux de communication : une grille de pictogrammes à pointer." },
+      { id: "sons", nom: "Fiches de sons", icone: "🔤",
+        quoi: "Syllabes, mots à lire, à entourer, à compléter — une fiche par graphème." },
     ],
   },
   {
-    id: "maths", libelle: "🔢 Mathématiques", aide: "Des problèmes à la structure choisie, et des calculs qui font apparaître un dessin.",
+    id: "maths", libelle: "🔢 Mathématiques",
+    aide: "Des problèmes à la structure choisie, et des calculs qui font apparaître un dessin.",
     outils: [
-      { id: "partieTout", libelle: "➕ Problèmes partie-tout" },
-      { id: "multiplicatifs", libelle: "✖️ Problèmes multiplicatifs" },
-      { id: "coloriage", libelle: "🎨 Coloriage magique" },
+      { id: "partieTout", nom: "Problèmes partie-tout", icone: "➕",
+        quoi: "Un tout et ses parties, avec leur schéma en barres." },
+      { id: "multiplicatifs", nom: "Problèmes multiplicatifs", icone: "✖️",
+        quoi: "Parts égales et comparaisons, avec leur schéma en barres." },
+      { id: "coloriage", nom: "Coloriage magique", icone: "🎨",
+        quoi: "On calcule, le résultat dit la couleur, le dessin apparaît." },
     ],
   },
   {
-    id: "autonomie", libelle: "🧭 Autonomie et repères", aide: "Ce qui aide à suivre la journée : jetons, étapes, temps, scénarios.",
+    id: "autonomie", libelle: "🧭 Autonomie et repères",
+    aide: "Ce qui aide à suivre la journée : jetons, étapes, temps, scénarios.",
     outils: [
-      { id: "supports", libelle: "🖼 Supports visuels" },
+      { id: "supports", nom: "Supports visuels", icone: "🖼",
+        quoi: "Emploi du temps, étapes d'une tâche, minuteur, jetons de comportement." },
     ],
   },
 ];
 
-/** La famille qui porte cet outil. */
-const familleDe = (o: Onglet) => FAMILLES.find((f) => f.outils.some((x) => x.id === o)) ?? FAMILLES[0];
+/** L'atelier lui-même. */
+const outilDe = (o: Onglet) => FAMILLES.flatMap((f) => f.outils).find((x) => x.id === o);
+
+/** Les ateliers qui répondent à ce qu'on cherche — nom, phrase ou famille. */
+export function chercherAteliers(
+  familles: { libelle: string; outils: Outil[] }[], recherche: string,
+): Outil[] {
+  const q = recherche.trim().toLowerCase();
+  if (!q) return [];
+  const sans = (t: string) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const cible = sans(q);
+  return familles.flatMap((f) => f.outils.filter((o) =>
+    sans(`${o.nom} ${o.quoi} ${f.libelle}`).includes(cible)));
+}
 
 const ONGLET_MEMORISE = "fabriquer:onglet";
 
+/** Un atelier, tel qu'on le voit avant d'entrer : ce qu'il fabrique. */
+function CarteAtelier({ o, onOuvrir }: { o: Outil; onOuvrir: () => void }) {
+  return (
+    <button className="atelier" onClick={onOuvrir}>
+      <span className="atelier-icone">{o.icone}</span>
+      <span className="atelier-nom">{o.nom}</span>
+      <span className="atelier-quoi">{o.quoi}</span>
+      {o.pictos && <span className="atelier-besoin">pictogrammes ARASAAC</span>}
+    </button>
+  );
+}
+
 export default function Jeux() {
-  const [onglet, setOngletBrut] = React.useState<Onglet>(() => {
+  // Vide : on est devant les ateliers, et non dans l'un d'eux.
+  const [onglet, setOngletBrut] = React.useState<Onglet | "">(() => {
     try {
       const lu = localStorage.getItem(ONGLET_MEMORISE);
-      return ONGLETS.includes(lu as Onglet) ? (lu as Onglet) : "jeux";
+      return ONGLETS.includes(lu as Onglet) ? (lu as Onglet) : "";
     } catch {
-      return "jeux";
+      return "";
     }
   });
-  const setOnglet = React.useCallback((o: Onglet) => {
+  const [recherche, setRecherche] = React.useState("");
+  const setOnglet = React.useCallback((o: Onglet | "") => {
     setOngletBrut(o);
     try { localStorage.setItem(ONGLET_MEMORISE, o); } catch { /* stockage indisponible */ }
   }, []);
@@ -106,27 +155,46 @@ export default function Jeux() {
   // La banque est commune au loto et aux tableaux : tant qu'elle n'est pas
   // là, ces deux onglets n'ont de quoi travailler. Les supports visuels s'en
   // passent (ils portent alors le mot seul), les problèmes en barres aussi.
-  const famille = familleDe(onglet);
-
   const avecPictos = (contenu: React.ReactNode) =>
     !etat ? <div /> : !etat.installee ? <Banque progression={progression} onTelecharger={telecharger} /> : contenu;
 
+  const outil = onglet ? outilDe(onglet) : undefined;
+  const trouves = chercherAteliers(FAMILLES, recherche);
+
+  // ── Devant les ateliers ──
+  if (!onglet) {
+    return (
+      <Page titre="Fabriquer" sous="Jeux et supports à imprimer : langage, mathématiques, autonomie">
+        <Input value={recherche} onChange={(e) => setRecherche(e.target.value)}
+          placeholder="Chercher un atelier : loto, problèmes, coloriage, sons…"
+          aria-label="Chercher un atelier" style={{ maxWidth: 420, marginBottom: 16 }} />
+        {recherche.trim() ? (
+          trouves.length ? (
+            <div className="ateliers">
+              {trouves.map((o) => <CarteAtelier key={o.id} o={o} onOuvrir={() => setOnglet(o.id)} />)}
+            </div>
+          ) : (
+            <Empty icone="🔍" titre="Aucun atelier" sous="Essayez « loto », « problèmes », « sons »…" />
+          )
+        ) : FAMILLES.map((f) => (
+          <section key={f.id} style={{ marginBottom: 22 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+              <b style={{ fontSize: 15 }}>{f.libelle}</b>
+              <span className="meta" style={{ fontSize: 12.5 }}>{f.aide}</span>
+            </div>
+            <div className="ateliers">
+              {f.outils.map((o) => <CarteAtelier key={o.id} o={o} onOuvrir={() => setOnglet(o.id)} />)}
+            </div>
+          </section>
+        ))}
+      </Page>
+    );
+  }
+
+  // ── Dans un atelier ──
   return (
-    <Page titre="Fabriquer" sous="Jeux et supports à imprimer : langage, mathématiques, autonomie">
-      {/* D'abord ce qu'on travaille, ensuite l'outil : la liste peut grandir
-          sans que la barre devienne illisible. */}
-      <div className="onglets">
-        {FAMILLES.map((f) => (
-          <button key={f.id} className={famille.id === f.id ? "active" : ""} title={f.aide}
-            onClick={() => setOnglet(f.outils[0].id)}>{f.libelle}</button>
-        ))}
-      </div>
-      <div className="seg" style={{ margin: "10px 0 14px", flexWrap: "wrap" }}>
-        {famille.outils.map((o) => (
-          <button key={o.id} className={onglet === o.id ? "active" : ""} onClick={() => setOnglet(o.id)}>{o.libelle}</button>
-        ))}
-        <span style={{ alignSelf: "center", marginLeft: 10, fontSize: 12.5, color: "var(--text-2)" }}>{famille.aide}</span>
-      </div>
+    <Page titre={outil ? `${outil.icone} ${outil.nom}` : "Fabriquer"} sous={outil?.quoi}
+      actions={<button className="btn ghost sm" onClick={() => setOnglet("")}>← Tous les ateliers</button>}>
       {onglet === "supports" ? <SupportsVisuelsTab banque={Boolean(etat?.installee)} />
         : onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />

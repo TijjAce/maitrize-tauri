@@ -798,3 +798,15 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .ls-consigne { font-size: 13.5px; margin: 0 0 6px; }
 .ls-syllabes, .ls-mots { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 19px; letter-spacing: .5px; }
 .ls-lignes div { border-bottom: 1.2px solid #999; height: 26px; margin-bottom: 10px; }
+
+/* Fabriquer : les ateliers, avant d'entrer dans l'un d'eux. */
+.ateliers { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.atelier { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto auto;
+  gap: 2px 12px; text-align: left; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px 16px; font: inherit; color: var(--text); cursor: pointer; }
+.atelier:hover { border-color: var(--accent); background: var(--panel-2); }
+.atelier-icone { grid-row: 1 / span 3; font-size: 26px; line-height: 1; align-self: start; }
+.atelier-nom { font-weight: 700; font-size: 14.5px; }
+.atelier-quoi { font-size: 12.5px; color: var(--text-2); line-height: 1.5; }
+.atelier-besoin { font-size: 11px; color: var(--text-2); opacity: .8; margin-top: 4px; }
+.atelier-besoin::before { content: "▪ "; }
