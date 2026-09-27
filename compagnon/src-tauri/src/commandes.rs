@@ -224,12 +224,31 @@ fn fiche_creneaux(app: &tauri::AppHandle) -> R<PathBuf> {
     Ok(dossier(app)?.join("creneaux.json"))
 }
 
-/// Les créneaux gardés, s'ils sont bien ceux du jour demandé.
+/// Ce qu'on sait du jour : si l'ordinateur nous l'a dit, et ce qu'il a dit.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CreneauxConnus {
+    /// Faux tant que l'ordinateur ne nous a rien dit de ce jour-là.
+    pub connus: bool,
+    pub creneaux: Vec<Creneau>,
+}
+
+/**
+ * Les créneaux gardés, s'ils sont bien ceux du jour demandé.
+ *
+ * Une liste vide n'est pas une ignorance : un dimanche n'a pas de créneau, et
+ * l'écran ne doit pas accuser le réseau d'un silence qui n'existe pas.
+ */
 #[tauri::command]
-pub fn creneaux_du_jour(app: tauri::AppHandle, jour: String) -> R<Vec<Creneau>> {
+pub fn creneaux_du_jour(app: tauri::AppHandle, jour: String) -> R<CreneauxConnus> {
     let brut = std::fs::read_to_string(fiche_creneaux(&app)?).unwrap_or_default();
-    let Ok(journee) = serde_json::from_str::<Journee>(&brut) else { return Ok(Vec::new()) };
-    Ok(if journee.jour == jour { journee.creneaux } else { Vec::new() })
+    let rien = CreneauxConnus { connus: false, creneaux: Vec::new() };
+    let Ok(journee) = serde_json::from_str::<Journee>(&brut) else { return Ok(rien) };
+    Ok(if journee.jour == jour {
+        CreneauxConnus { connus: true, creneaux: journee.creneaux }
+    } else {
+        rien
+    })
 }
 
 /// Redemande les créneaux à l'ordinateur, et remplace ce qu'on avait.
@@ -311,8 +330,8 @@ pub fn creneau_pour(heure_iso: &str, creneaux: &[Creneau], tolerance: i64) -> Op
 #[tauri::command]
 pub fn creneau_maintenant(app: tauri::AppHandle, heure_iso: String) -> R<String> {
     let jour = heure_iso.split('T').next().unwrap_or_default().to_string();
-    let creneaux = creneaux_du_jour(app, jour)?;
-    Ok(creneau_pour(&heure_iso, &creneaux, 30).unwrap_or_default())
+    let connus = creneaux_du_jour(app, jour)?;
+    Ok(creneau_pour(&heure_iso, &connus.creneaux, 30).unwrap_or_default())
 }
 
 // ── Les notes écrites ─────────────────────────────────────────────────────
