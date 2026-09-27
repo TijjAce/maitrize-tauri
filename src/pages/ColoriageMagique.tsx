@@ -4,7 +4,7 @@ import { useReglages } from "../components/useMemoire";
 import { printHTML, escapeHtml } from "../print";
 import {
   consigne, couleurDe, fabriquerColoriage, MOTIFS, OPERATIONS, PLAFONDS, REGLAGES_PAR_DEFAUT,
-  casesAColorier, type Coloriage, type Operation,
+  SONS_COLORIAGE, casesAColorier, type Coloriage, type Matiere, type Operation,
 } from "../coloriageMagique";
 
 // ── Fabriquer › Mathématiques › Coloriage magique ─────────────────────────
@@ -39,10 +39,10 @@ function Grille({ c, corrige }: { c: Coloriage; corrige: boolean }) {
 function Legende({ c }: { c: Coloriage }) {
   return (
     <div className="cm-legende">
-      {c.legende.map(({ couleur, resultat }) => (
+      {c.legende.map(({ couleur, resultat, grapheme }) => (
         <div key={couleur.id} className="cm-legende-ligne">
           <span className="cm-pastille" style={{ background: couleur.hex }} />
-          <b>{resultat}</b> <span>{couleur.nom}</span>
+          <b>{grapheme !== undefined ? grapheme : resultat}</b> <span>{couleur.nom}</span>
         </div>
       ))}
     </div>
@@ -55,14 +55,18 @@ export function ColoriageMagiqueTab() {
   const [corrige, setCorrige] = React.useState(false);
   const c = React.useMemo(() => fabriquerColoriage(r, graine), [r, graine]);
   const multiplication = r.operation === "multiplication";
+  const lettres = r.matiere === "lettres";
+  /** Combien de couleurs ce dessin emploie : autant de sons à choisir. */
+  const combienDeSons = c.legende.length;
 
   const imprimer = (avecCorrige: boolean) => {
     const cases = c.lignes.map((ligne) => `<tr>${ligne.map((x) => {
       const fond = avecCorrige && x.couleur ? couleurDe(x.couleur)?.hex : "";
       return `<td${fond ? ` style="background:${fond};color:#fff"` : ""}>${escapeHtml(x.calcul)}</td>`;
     }).join("")}</tr>`).join("");
-    const legende = c.legende.map(({ couleur, resultat }) =>
-      `<span class="lg"><i style="background:${couleur.hex}"></i> <b>${resultat}</b> ${escapeHtml(couleur.nom)}</span>`).join("");
+    const legende = c.legende.map(({ couleur, resultat, grapheme }) =>
+      `<span class="lg"><i style="background:${couleur.hex}"></i> <b>${escapeHtml(
+        grapheme !== undefined ? grapheme : String(resultat))}</b> ${escapeHtml(couleur.nom)}</span>`).join("");
     printHTML(r.titre || "Coloriage magique",
       `<h1>${escapeHtml(r.titre || "Coloriage magique")}</h1>
        <p class="consigne">${escapeHtml(consigne(r))}</p>
@@ -85,8 +89,8 @@ export function ColoriageMagiqueTab() {
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Le coloriage</h3>
         <p className="meta" style={{ fontSize: 13, lineHeight: 1.6, marginTop: 0 }}>
-          L'élève calcule, le résultat lui dit la couleur, et le dessin apparaît. Une case
-          fausse se voit tout de suite : c'est la feuille qui corrige, pas vous.
+          L'élève lit ou calcule, la réponse lui dit la couleur, et le dessin apparaît. Une
+          case fausse se voit tout de suite : c'est la feuille qui corrige, pas vous.
         </p>
 
         <Field label="Le dessin">
@@ -97,24 +101,62 @@ export function ColoriageMagiqueTab() {
           </Select>
         </Field>
 
-        <Field label="Ce qu'on calcule">
-          <Select value={r.operation} onChange={(e) => maj({ operation: e.target.value as Operation })}>
-            {OPERATIONS.map((o) => <option key={o.id} value={o.id}>{o.libelle}</option>)}
-          </Select>
+        <Field label="Ce qu'on travaille">
+          <div className="seg" style={{ flexWrap: "wrap" }}>
+            <button className={!lettres ? "active" : ""} onClick={() => maj({ matiere: "calcul" as Matiere })}>
+              🔢 Calculs
+            </button>
+            <button className={lettres ? "active" : ""} onClick={() => maj({ matiere: "lettres" as Matiere })}>
+              🔤 Lettres et sons
+            </button>
+          </div>
         </Field>
 
-        {multiplication ? (
-          <Field label="Table">
-            <Select value={r.table} onChange={(e) => maj({ table: Number(e.target.value) })}>
-              {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((t) => <option key={t} value={t}>Table de {t}</option>)}
-            </Select>
+        {lettres ? (
+          <Field label={`Les sons coloriés — ${combienDeSons} couleur${combienDeSons > 1 ? "s" : ""}`}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {Array.from({ length: combienDeSons }, (_, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span className="cm-pastille" style={{ background: c.legende[i]?.couleur.hex }} />
+                  <Select value={r.sons[i] ?? ""} style={{ flex: 1 }}
+                    onChange={(e) => {
+                      const suite = [...r.sons];
+                      suite[i] = e.target.value;
+                      maj({ sons: suite });
+                    }}>
+                    {SONS_COLORIAGE.map((s) => (
+                      <option key={s.id} value={s.id}>{s.son} — {s.graphemes.join(", ")}</option>
+                    ))}
+                  </Select>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 6, lineHeight: 1.5 }}>
+              Un mot qui porterait deux de ces sons est écarté : il serait de deux couleurs
+              à la fois.
+            </div>
           </Field>
         ) : (
-          <Field label="Nombres">
-            <Select value={r.plafond} onChange={(e) => maj({ plafond: Number(e.target.value) })}>
-              {PLAFONDS.map((p) => <option key={p} value={p}>jusqu'à {p}</option>)}
-            </Select>
-          </Field>
+          <>
+            <Field label="Ce qu'on calcule">
+              <Select value={r.operation} onChange={(e) => maj({ operation: e.target.value as Operation })}>
+                {OPERATIONS.map((o) => <option key={o.id} value={o.id}>{o.libelle}</option>)}
+              </Select>
+            </Field>
+            {multiplication ? (
+              <Field label="Table">
+                <Select value={r.table} onChange={(e) => maj({ table: Number(e.target.value) })}>
+                  {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((t) => <option key={t} value={t}>Table de {t}</option>)}
+                </Select>
+              </Field>
+            ) : (
+              <Field label="Nombres">
+                <Select value={r.plafond} onChange={(e) => maj({ plafond: Number(e.target.value) })}>
+                  {PLAFONDS.map((p) => <option key={p} value={p}>jusqu'à {p}</option>)}
+                </Select>
+              </Field>
+            )}
+          </>
         )}
 
         <Field label="Titre de la feuille">
