@@ -1,85 +1,53 @@
 import { describe, it, expect } from "vitest";
-import { competencesDeLAtelier, competencesDesReferentiels } from "./ateliersCompetences";
-import type { Referentiel } from "./api";
+import {
+  basculerCompetence, cleDesCompetences, ecrireCompetencesAtelier, lireCompetencesAtelier,
+  memeCompetence,
+} from "./ateliersCompetences";
+import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 
-const referentiel = (id: string, nom: string, actif = true): Referentiel => ({
-  id, nom, cycle: "Cycle 2", actif, estIntegre: true, dateAjout: "2026-01-01",
-  donnees: JSON.stringify({
-    titre: nom,
-    domaines: [
-      {
-        id: "D1", titre: "Lire et écrire",
-        sousDomaines: [
-          { id: "S1", titre: "Identifier des mots", competences: [
-            { id: "c1", texte: "Établir les correspondances graphophonologiques", niveau: "CP" },
-            { id: "c2", texte: "Décoder des syllabes simples", niveau: "CP" },
-          ] },
-          { id: "S2", titre: "Comprendre", competencesGenerales: [
-            { id: "g1", titre: "Lire avec fluidité", competences: [
-              { id: "c3", texte: "Lire un texte court à voix haute", niveau: "CE1" },
-            ] },
-          ] },
-        ],
-      },
-      {
-        id: "D2", titre: "Nombres et calculs",
-        sousDomaines: [
-          { id: "S3", titre: "Résoudre des problèmes", competences: [
-            { id: "c4", texte: "Résoudre des problèmes additifs en une étape", niveau: "CP" },
-            { id: "c5", texte: "Mémoriser les tables de multiplication", niveau: "CE2" },
-          ] },
-        ],
-      },
-    ],
-  }),
-} as Referentiel);
-
-describe("les compétences des référentiels", () => {
-  it("les met à plat, chemin et niveau compris", () => {
-    const toutes = competencesDesReferentiels([referentiel("r1", "Cycle 2")]);
-    expect(toutes).toHaveLength(5);
-    const decoder = toutes.find((c) => c.competenceTitre.startsWith("Décoder"))!;
-    expect(decoder.domaineTitre).toBe("Lire et écrire");
-    expect(decoder.sousDomaineTitre).toBe("Identifier des mots");
-    expect(decoder.niveau).toBe("CP");
-    expect(decoder.referentielNom).toBe("Cycle 2");
-    // Celles rangées sous une compétence générale en gardent le titre.
-    const fluide = toutes.find((c) => c.competenceTitre.startsWith("Lire un texte"))!;
-    expect(fluide.competenceGeneraleTitre).toBe("Lire avec fluidité");
-  });
-
-  it("ignore un référentiel désactivé ou illisible", () => {
-    expect(competencesDesReferentiels([referentiel("r1", "Cycle 2", false)])).toHaveLength(0);
-    const casse = { ...referentiel("r2", "Abîmé"), donnees: "{pas du json" } as Referentiel;
-    expect(competencesDesReferentiels([casse])).toHaveLength(0);
-  });
+const comp = (p: Partial<CompetenceSelectionnee> = {}): CompetenceSelectionnee => ({
+  id: "r1|S1|c1", referentielNom: "Cycle 2", domaineId: "D1", domaineTitre: "Lire et écrire",
+  sousDomaineTitre: "Identifier des mots", competenceGeneraleTitre: null,
+  competenceTitre: "Décoder des syllabes simples", niveau: "CP", competenceRefId: "c1", ...p,
 });
 
 describe("les compétences d'un atelier", () => {
-  const refs = [referentiel("r1", "Cycle 2")];
-
-  it("retient celles que ses mots-clés désignent", () => {
-    const sons = competencesDeLAtelier(refs, ["correspondance", "syllabe"]);
-    expect(sons.map((c) => c.competenceTitre)).toEqual([
-      "Établir les correspondances graphophonologiques",
-      "Décoder des syllabes simples",
-    ]);
-    // Les mots-clés portent aussi sur le chemin, pas seulement l'intitulé.
-    const problemes = competencesDeLAtelier(refs, ["problèmes additifs"]);
-    expect(problemes.map((c) => c.competenceTitre)).toEqual(["Résoudre des problèmes additifs en une étape"]);
-    expect(competencesDeLAtelier(refs, ["tables de multiplication"])).toHaveLength(1);
+  it("se rangent dans un réglage partagé entre les ordinateurs", () => {
+    // Le préfixe « fabriquer: » est de ceux qui voyagent : ce qu'on prépare
+    // sur le bureau se retrouve sur le portable.
+    expect(cleDesCompetences("coloriage")).toBe("fabriquer:competences:coloriage");
   });
 
-  it("ne raconte rien sans référentiel, ni sans mot-clé", () => {
-    expect(competencesDeLAtelier([], ["syllabe"])).toEqual([]);
-    expect(competencesDeLAtelier(refs, [])).toEqual([]);
-    expect(competencesDeLAtelier(refs, ["trombone"])).toEqual([]);
+  it("reconnaissent la même compétence d'un référentiel à l'autre", () => {
+    expect(memeCompetence(comp(), comp())).toBe(true);
+    expect(memeCompetence(comp(), comp({ competenceRefId: "c2" }))).toBe(false);
+    expect(memeCompetence(comp(), comp({ referentielNom: "Cycle 3" }))).toBe(false);
+    // Sans identifiant, c'est l'intitulé qui départage.
+    const sansId = comp({ competenceRefId: null });
+    expect(memeCompetence(sansId, comp({ competenceRefId: null }))).toBe(true);
+    expect(memeCompetence(sansId, comp({ competenceRefId: null, competenceTitre: "Autre" }))).toBe(false);
   });
 
-  it("ne montre pas deux fois le même intitulé, et plafonne la liste", () => {
-    const deux = [referentiel("r1", "Cycle 2"), referentiel("r2", "Cycle 2 bis")];
-    // Le même intitulé dans deux référentiels ne compte qu'une fois.
-    expect(competencesDeLAtelier(deux, ["syllabe"])).toHaveLength(1);
-    expect(competencesDeLAtelier(deux, ["lire", "résoudre", "mémoriser", "décoder"], 2)).toHaveLength(2);
+  it("s'ajoutent et se retirent d'un même geste", () => {
+    const une = basculerCompetence([], comp());
+    expect(une).toHaveLength(1);
+    expect(basculerCompetence(une, comp())).toHaveLength(0);
+    expect(basculerCompetence(une, comp({ competenceRefId: "c2", id: "r1|S1|c2" }))).toHaveLength(2);
+  });
+
+  it("se relisent sans faire confiance à ce qui est enregistré", () => {
+    expect(lireCompetencesAtelier(null)).toEqual([]);
+    expect(lireCompetencesAtelier("")).toEqual([]);
+    expect(lireCompetencesAtelier("{pas du json")).toEqual([]);
+    expect(lireCompetencesAtelier('{"competenceTitre":"seule"}')).toEqual([]);
+    // Une ligne sans intitulé ne sert à personne.
+    expect(lireCompetencesAtelier('[{"competenceTitre":"  "}]')).toEqual([]);
+    const relu = lireCompetencesAtelier(ecrireCompetencesAtelier([comp()]));
+    expect(relu).toEqual([comp()]);
+    // Une ligne incomplète est complétée plutôt que jetée.
+    const maigre = lireCompetencesAtelier('[{"competenceTitre":"Lire"}]');
+    expect(maigre).toHaveLength(1);
+    expect(maigre[0].niveau).toBeNull();
+    expect(maigre[0].id).toBe("Lire");
   });
 });
