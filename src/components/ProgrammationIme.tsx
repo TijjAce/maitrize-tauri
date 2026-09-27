@@ -7,11 +7,13 @@ import { openCtx } from "./ctxmenu";
 import { ChoixCompetence } from "./ChoixCompetence";
 import { printHTML, escapeHtml } from "../print";
 import {
-  CIBLE_MAX, CIBLE_MIN, PERIODES, attacheDeLEleve, basculerCible, basculerPeriode, comptes,
-  ecrire, elevesConcernes, etatDuCompte, lire, marqueEleve, marqueGroupe, motDuCompte,
-  nouveauGroupe, nouvelObjectif, objectifsDe, resumePeriodes, retirerGroupe, vide,
-  type Objectif, type ProgrammationIme as Prog,
+  CIBLE_MAX, CIBLE_MIN, PERIODES, basculerCible, basculerPeriode, comptes, ecrire,
+  elevesConcernes, etatDuCompte, lire, marqueEleve, marqueGroupe, motDuCompte, nouveauGroupe,
+  nouvelObjectif, objectifsDe, objectifsDuCreneau, poserSurCreneau, retirerDuCreneau,
+  retirerGroupe, vide, type Objectif, type ProgrammationIme as Prog,
 } from "../programmationIme";
+import { CompetenceTree, type CompetenceSelectionnee } from "./CompetenceTree";
+import { JOURS_EDT, natureDuSlot, type SlotEdt } from "../organisation";
 
 // ── Programmer en IME ─────────────────────────────────────────────────────
 //
@@ -31,83 +33,138 @@ const COULEUR_ETAT: Record<string, string> = {
 const prenom = (e: Eleve) => e.nom.trim().split(/\s+/)[0] || e.nom;
 
 /**
- * La grille : une ligne par compétence, une colonne par élève.
+ * Programmer par créneau de la semaine type.
  *
- * La liste répond à « qu'est-ce que je vise pour Apolline ? » ; celle-ci
- * répond à « qui travaille quoi, et quand ? » — la question qu'on se pose
- * devant une ESS, ou quand on cherche le trou dans l'année.
- *
- * Une case dit trois choses : concerné ou non, en propre ou par un groupe, et
- * sur quelles périodes. Un clic attribue ou retire l'objectif à cet élève ;
- * ce qui vient d'un groupe ne se retire pas ici, et la case le dit.
+ * En IME, un créneau est déjà un groupe : « Lecture Compréhension, lundi
+ * 14 h 10 » désigne deux élèves et une matière. On choisit donc le créneau,
+ * puis les compétences qu'on y travaille — l'attribution aux élèves suit
+ * toute seule, au lieu de se redire élève par élève.
  */
-function Grille({ objectifs, eleves, prog, filtre, onBasculer, onOuvrir }: {
-  objectifs: Objectif[];
+function ParCreneau({ annee, eleves, prog, persister }: {
+  annee: string;
   eleves: Eleve[];
   prog: Prog;
-  filtre: string;
-  onBasculer: (o: Objectif, eleveId: string) => void;
-  onOuvrir: () => void;
+  persister: (p: Prog) => void;
 }) {
+  const { data: edts } = useAsync(() => api.edtTypiqueList(), []);
+  const [choisi, setChoisi] = React.useState("");
+  const [recherche, setRecherche] = React.useState("");
+
+  // La semaine type de l'IME d'abord, celle de la classe à défaut.
+  const slots = React.useMemo(() => {
+    const e = (edts ?? []).find((x) => x.annee === `${annee}·IME`)
+      ?? (edts ?? []).find((x) => x.annee === annee);
+    if (!e) return [];
+    let lus: SlotEdt[] = [];
+    try { lus = JSON.parse(e.slotsJson) as SlotEdt[]; } catch { return []; }
+    return lus.filter((sl) => natureDuSlot(sl) === "classe");
+  }, [edts, annee]);
+
+  /** Les élèves de chaque créneau : ceux qu'il nomme, ou toute la classe. */
+  const elevesParCreneau = React.useMemo(() => {
+    const tous = eleves.map((e) => e.id);
+    return Object.fromEntries(slots.map((sl) => [sl.id, sl.eleves?.length ? sl.eleves : tous]));
+  }, [slots, eleves]);
+
+  const slot = slots.find((sl) => sl.id === choisi);
+  const siens = slot ? elevesParCreneau[slot.id] ?? [] : [];
+  const poses = choisi ? objectifsDuCreneau(prog, choisi) : [];
+
+  // Ce que l'arbre doit montrer coché : les compétences déjà posées ici.
+  const selection: CompetenceSelectionnee[] = poses.flatMap((o) => (o.source ? [{
+    id: o.id, referentielNom: o.source.referentielNom, domaineId: "", domaineTitre: "",
+    sousDomaineTitre: o.source.sousDomaineTitre, competenceTitre: o.competence,
+    competenceRefId: o.source.competenceRefId,
+  }] : []));
+
+  const basculer = (c: CompetenceSelectionnee) => {
+    if (!slot) return;
+    const origine = [c.referentielNom, c.domaineTitre, c.niveau].filter(Boolean).join(" › ");
+    const source = {
+      referentielNom: c.referentielNom, sousDomaineTitre: c.sousDomaineTitre,
+      competenceRefId: c.competenceRefId ?? "",
+    };
+    const deja = poses.some((o) => o.source
+      && o.source.competenceRefId === source.competenceRefId
+      && o.source.referentielNom === source.referentielNom
+      && o.source.sousDomaineTitre === source.sousDomaineTitre);
+    persister(deja
+      ? retirerDuCreneau(prog, slot.id, c.competenceTitre, origine, elevesParCreneau)
+      : poserSurCreneau(prog, slot.id, siens, c.competenceTitre, origine, source));
+  };
+
+  if (!slots.length) {
+    return <Empty icone="🗓" titre="Aucune semaine type"
+      sous="Programmer par créneau part de votre emploi du temps : posez-le dans Organisation › Emploi du temps." />;
+  }
+
   return (
-    <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-      <div className="prog-grille-cadre">
-        <table className="prog-grille">
-          <thead>
-            <tr>
-              <th className="prog-grille-tete">Compétence</th>
-              {eleves.map((e) => (
-                <th key={e.id} className={filtre === e.id ? "on" : undefined} title={e.nom}>
-                  {prenom(e)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {objectifs.map((o) => (
-              <tr key={o.id}>
-                <th className="prog-grille-tete" scope="row">
-                  <button className="prog-grille-titre" onClick={onOuvrir}
-                    title="Voir et modifier cet objectif dans la liste">
-                    {o.competence.trim() || "Sans intitulé"}
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(240px, 300px) 1fr", gap: 14, alignItems: "start" }}>
+      <div className="card" style={{ maxHeight: "72vh", overflow: "auto" }}>
+        <b style={{ fontSize: 14 }}>La semaine</b>
+        <p className="meta" style={{ fontSize: 12, margin: "4px 0 10px", lineHeight: 1.5 }}>
+          Chaque créneau porte ses élèves : le choisir, c'est choisir le groupe.
+        </p>
+        {JOURS_EDT.filter((j) => slots.some((sl) => sl.jour === j)).map((jour) => (
+          <div key={jour} style={{ marginBottom: 10 }}>
+            <div className="meta" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: .4, marginBottom: 4 }}>
+              {jour}
+            </div>
+            {slots.filter((sl) => sl.jour === jour)
+              .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut))
+              .map((sl) => {
+                const n = (elevesParCreneau[sl.id] ?? []).length;
+                const combien = objectifsDuCreneau(prog, sl.id).length;
+                return (
+                  <button key={sl.id} type="button"
+                    className={`creneau-choix${sl.id === choisi ? " on" : ""}`}
+                    onClick={() => setChoisi(sl.id === choisi ? "" : sl.id)}>
+                    <span className="creneau-heure">{sl.heureDebut.slice(0, 5)}</span>
+                    <span className="creneau-titre">{sl.titre || "Sans intitulé"}</span>
+                    <span className="meta" style={{ fontSize: 11 }}>
+                      {n} élève{n > 1 ? "s" : ""}{combien ? ` · ${combien} ✓` : ""}
+                    </span>
                   </button>
-                  {o.origine && <div className="meta" style={{ fontSize: 10.5 }}>{o.origine}</div>}
-                </th>
-                {eleves.map((e) => {
-                  const attache = attacheDeLEleve(o, prog.groupes, e.id);
-                  const periodes = resumePeriodes(o);
-                  const titre = attache === "groupe"
-                    ? "Concerné par un groupe — cela se retire dans les groupes"
-                    : attache === "direct"
-                      ? `Retirer « ${o.competence || "cet objectif"} » à ${prenom(e)}`
-                      : `Donner « ${o.competence || "cet objectif"} » à ${prenom(e)}`;
-                  // Ce qui vient d'un groupe ne se clique pas : un clic y
-                  // ajoutait une attribution en propre, invisible à l'écran
-                  // puisque l'élève était déjà concerné — on croyait n'avoir
-                  // rien fait, et la donnée avait changé.
-                  return (
-                    <td key={e.id} className={filtre === e.id ? "on" : undefined}>
-                      {attache === "groupe" ? (
-                        <span className="prog-case groupe" title={titre}>{periodes || "—"}</span>
-                      ) : (
-                        <button className={`prog-case ${attache}`} title={titre}
-                          aria-pressed={attache === "direct"}
-                          onClick={() => onBasculer(o, e.id)}>
-                          {attache === "aucun" ? "" : (periodes || "—")}
-                        </button>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                );
+              })}
+          </div>
+        ))}
       </div>
-      <p className="meta" style={{ fontSize: 11.5, margin: 0, padding: "8px 12px", borderTop: "1px solid var(--border)" }}>
-        Les chiffres sont les périodes, « ✔ » celles qui sont atteintes. Un cadre en pointillés
-        vient d'un groupe. « — » signale un objectif attribué dont les périodes restent à choisir.
-      </p>
+
+      <div className="card">
+        {!slot ? (
+          <Empty icone="👈" titre="Choisissez un créneau"
+            sous="Les compétences travaillées s'y cochent, et vont à ses élèves." />
+        ) : (
+          <>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+              <b style={{ fontSize: 15 }}>{slot.titre || "Sans intitulé"}</b>
+              <span className="meta" style={{ fontSize: 12.5 }}>
+                {slot.jour} {slot.heureDebut.slice(0, 5)}–{slot.heureFin.slice(0, 5)}
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "8px 0 12px" }}>
+              {siens.map((id) => {
+                const e = eleves.find((x) => x.id === id);
+                return e ? <span key={id} className="badge">{prenom(e)}</span> : null;
+              })}
+              {!siens.length && <span className="meta" style={{ fontSize: 12.5 }}>Aucun élève sur ce créneau.</span>}
+            </div>
+            <Input value={recherche} onChange={(e) => setRecherche(e.target.value)}
+              placeholder="Chercher une compétence (ex. : nombres jusqu'à 30, attendre son tour…)"
+              aria-label="Chercher une compétence" />
+            <p className="meta" style={{ fontSize: 12, margin: "8px 0 0" }}>
+              {poses.length
+                ? `${poses.length} compétence${poses.length > 1 ? "s" : ""} travaillée${poses.length > 1 ? "s" : ""} sur ce créneau.`
+                : "Cochez ce que vous y travaillez : chaque compétence va aux élèves du créneau."}
+            </p>
+            <div style={{ maxHeight: "52vh", overflowY: "auto", marginTop: 8 }}>
+              <CompetenceTree mode="multi" selection={selection} recherche={recherche}
+                onToggle={(c) => basculer(c)} />
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -122,7 +179,7 @@ export function ProgrammationIme({ annee }: { annee: string }) {
   const [competencePour, setCompetencePour] = React.useState<string>("");
   // La liste sert à écrire un objectif, la grille à voir qui a quoi. Deux
   // questions différentes, deux vues — et c'est la seconde qui manquait.
-  const [vue, setVue] = React.useState<"liste" | "grille">("liste");
+  const [vue, setVue] = React.useState<"liste" | "creneau">("liste");
 
   React.useEffect(() => { setProg(ligne ? lire(ligne.lignesJson) : vide()); }, [ligne?.id, ligne?.lignesJson]);
 
@@ -189,7 +246,7 @@ export function ProgrammationIme({ annee }: { annee: string }) {
           <div className="spacer" style={{ flex: 1 }} />
           <div className="seg sm" role="group" aria-label="Affichage">
             <button className={vue === "liste" ? "active" : ""} onClick={() => setVue("liste")}>☰ Liste</button>
-            <button className={vue === "grille" ? "active" : ""} onClick={() => setVue("grille")}>▦ Grille</button>
+            <button className={vue === "creneau" ? "active" : ""} onClick={() => setVue("creneau")}>🗓 Par créneau</button>
           </div>
           <button className="btn ghost sm" onClick={() => setGroupesOuverts((v) => !v)}>
             👥 Groupes{prog.groupes.length ? ` · ${prog.groupes.length}` : ""}
@@ -267,13 +324,13 @@ export function ProgrammationIme({ annee }: { annee: string }) {
         </div>
       )}
 
-      {montres.length === 0 ? (
+      {/* La vue par créneau passe avant le vide : c'est justement par là qu'on
+          commence une année, quand aucun objectif n'est encore écrit. */}
+      {vue === "creneau" ? (
+        <ParCreneau annee={annee} eleves={listeEleves} prog={prog} persister={persister} />
+      ) : montres.length === 0 ? (
         <Empty icone="🎯" titre={filtre ? "Aucun objectif pour cet élève" : "Aucun objectif"}
           sous="« ＋ Objectif » : écrivez la compétence visée, dites pour qui, et sur quelles périodes." />
-      ) : vue === "grille" ? (
-        <Grille objectifs={montres} eleves={listeEleves} prog={prog} filtre={filtre}
-          onBasculer={(o, eleveId) => majObjectif(o.id, (x) => basculerCible(x, marqueEleve(eleveId)))}
-          onOuvrir={() => setVue("liste")} />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {montres.map((o) => {
