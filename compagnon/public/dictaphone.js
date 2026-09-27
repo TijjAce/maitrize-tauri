@@ -215,6 +215,7 @@ async function arreter() {
  * croire à une dictée qui n'a pas lieu.
  */
 document.addEventListener("visibilitychange", () => {
+  if (document.hidden) fermerCamera();
   if (document.hidden && ctx) {
     void arreter().then(() => {
       avis = "L'enregistrement s'est arrêté quand l'application est passée en "
@@ -371,6 +372,78 @@ async function oublier(id, sorte) {
 
 let adresse = "";
 let appairage = false;
+/** La caméra ouverte pour lire le QR code, et la boucle qui l'examine. */
+let camera = null, lecture = null, scanSouci = "";
+
+/**
+ * Lit le QR code affiché par l'ordinateur.
+ *
+ * C'est le geste le plus court : on pointe, et c'est appairé. Rien n'est
+ * photographié — chaque vue de la caméra est analysée puis jetée, et la
+ * caméra se referme dès qu'un code est lu.
+ *
+ * Le décodage se fait ici, en JavaScript : ajouter le greffon natif de Tauri
+ * demanderait de monter la version du cadriciel, et toute la chaîne de
+ * compilation iOS avec elle. Si la caméra refuse, « 📋 Coller » reste là.
+ */
+async function scanner() {
+  scanSouci = "";
+  appairage = true;
+  rendre();
+  try {
+    camera = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" },
+      audio: false,
+    });
+  } catch (e) {
+    scanSouci = "La caméra n'est pas accessible. Autorisez-la, ou collez l'adresse.";
+    camera = null;
+    rendre();
+    return;
+  }
+  rendre();
+  const video = document.getElementById("vue");
+  if (!video) { fermerCamera(); return; }
+  video.srcObject = camera;
+  video.setAttribute("playsinline", "");
+  try { await video.play(); } catch (e) { /* la lecture démarrera d'elle-même */ }
+
+  const toile = document.createElement("canvas");
+  const pinceau = toile.getContext("2d", { willReadFrequently: true });
+  lecture = setInterval(() => {
+    if (!video.videoWidth) return;
+    toile.width = video.videoWidth;
+    toile.height = video.videoHeight;
+    pinceau.drawImage(video, 0, 0, toile.width, toile.height);
+    const vue = pinceau.getImageData(0, 0, toile.width, toile.height);
+    const trouve = window.jsQR ? window.jsQR(vue.data, vue.width, vue.height) : null;
+    if (trouve && trouve.data) {
+      const lu = trouve.data;
+      fermerCamera();
+      void appairerAvec(lu);
+    }
+  }, 220);
+}
+
+function fermerCamera() {
+  if (lecture) { clearInterval(lecture); lecture = null; }
+  if (camera) { camera.getTracks().forEach((t) => t.stop()); camera = null; }
+}
+
+/** Retient l'adresse lue, et dit tout de suite si elle ne convient pas. */
+async function appairerAvec(lu) {
+  try {
+    await invoke("ordinateur_ecrire", { url: lu });
+    adresse = await invoke("ordinateur_lire");
+    appairage = false;
+    souci = "";
+    scanSouci = "";
+  } catch (e) {
+    scanSouci = `Ce QR code ne mène pas à Maitrize (${String(e)}).`;
+  }
+  rendre();
+  void tater();
+}
 
 /** Colle l'adresse depuis le presse-papiers : quarante caractères à la main, non. */
 async function coller() {
@@ -539,8 +612,14 @@ function rendre() {
     ${appairage || !adresse ? `
       <div class="card">
         <p class="meta" style="margin:0 0 10px">Sur l'ordinateur : Réglages → Partage WiFi →
-        « Ouvrir le partage ». Copiez l'adresse affichée sous le QR code, puis « Coller » ici.</p>
-        <input id="adresse" placeholder="http://192.168.1.20:8787/?t=…" value="${adresse}"
+        « Ouvrir le partage ». Pointez la caméra sur le QR code affiché.</p>
+        ${camera
+          ? `<video id="vue" class="vue" playsinline autoplay muted></video>
+             <button class="btn plein" id="stop-scan" style="width:100%;margin-top:8px">Arrêter la caméra</button>`
+          : `<button class="gros" id="scanner">📷 Scanner le QR code</button>`}
+        ${scanSouci ? `<p class="err" style="margin:10px 0 0">${echapper(scanSouci)}</p>` : ""}
+        <p class="titre" style="margin:16px 0 8px">Ou, à la main</p>
+        <input id="adresse" placeholder="http://ordinateur.local:8787/?t=…" value="${adresse}"
           autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url">
         <div style="display:flex;gap:8px;margin-top:8px">
           <button class="btn" id="colle" style="flex:1">📋 Coller</button>
@@ -560,6 +639,8 @@ function rendre() {
   clic("envoyer", () => { void envoyerTout(); });
   clic("appairer", () => { void appairer(); });
   clic("colle", () => { void coller(); });
+  clic("scanner", () => { void scanner(); });
+  clic("stop-scan", () => { fermerCamera(); rendre(); });
   clic("changer-creneau", () => { choixOuvert = true; rendre(); });
   el.querySelectorAll("[data-creneau]").forEach((b) => {
     b.onclick = () => { creneauChoisi = b.dataset.creneau; choixOuvert = false; rendre(); };
@@ -569,7 +650,7 @@ function rendre() {
   clic("garder-note", () => { void garderLaNote(); });
   const champNote = document.getElementById("note");
   if (champNote) champNote.oninput = () => { brouillon = champNote.value; };
-  clic("changer", () => { appairage = true; rendre(); });
+  clic("changer", () => { appairage = true; scanSouci = ""; rendre(); });
   el.querySelectorAll("[data-oublier]").forEach((b) => {
     b.onclick = () => { void oublier(b.dataset.oublier, b.dataset.sorte); };
   });
