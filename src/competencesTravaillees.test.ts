@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   depuisReferentiel, depuisDocument, nettoyerExtrait, ajouterCompetences, lireCompetences, parSource, correspond,
+  depuisProgrammation, synchroniserProgrammation, sourceProgrammation,
 } from "./competencesTravaillees";
+import { marqueEleve, marqueGroupe, objectifsDe, type Objectif, type ProgrammationIme } from "./programmationIme";
 import { PROGRAMMES_OFFICIELS, nomDansLeCoffre } from "./data/programmesOfficiels";
 
 const sel = (id: string, texte: string) => ({
@@ -89,5 +91,60 @@ describe("programmes officiels", () => {
     expect(urls.every((u) => /^https:\/\/([a-z.]+\.)?education\.gouv\.fr\/.+\.pdf$/.test(u))).toBe(true);
     const noms = PROGRAMMES_OFFICIELS.map(nomDansLeCoffre);
     expect(new Set(noms).size).toBe(noms.length);
+  });
+});
+
+describe("les objectifs de la programmation, suivis dans les compétences travaillées", () => {
+  const objectif = (id: string, competence: string, pour: string[], periodes: number[] = [1, 2]): Objectif =>
+    ({ id, competence, origine: "Cycle 2 › Lecture", pour, periodes, atteintes: [], creneaux: [], notes: "" });
+  const prog: ProgrammationIme = {
+    groupes: [{ id: "g1", nom: "Lecteurs", eleveIds: ["e1", "e2"] }],
+    objectifs: [
+      objectif("o1", "Décoder des mots réguliers", [marqueGroupe("g1")]),
+      objectif("o2", "Dénombrer jusqu'à 10", [marqueEleve("e3")], [3]),
+      objectif("o3", "Demander de l'aide", [marqueEleve("e1")], []),
+    ],
+  };
+
+  it("reprennent ce qui concerne l'élève, groupes compris, non abordé au départ", () => {
+    const { liste, ajoutees } = synchroniserProgrammation([], objectifsDe(prog, "e1"), "2026-2027", "2026-09-27");
+    expect(ajoutees).toBe(2);
+    expect(liste.map((c) => c.texte)).toEqual(["Décoder des mots réguliers", "Demander de l'aide"]);
+    expect(liste[0]).toMatchObject({ source: "Programmation 2026-2027", chemin: "Cycle 2 › Lecture · périodes 1, 2", objectifId: "o1", statut: "nonabordee", citeeLe: "2026-09-27" });
+    expect(liste[1].chemin).toBe("Cycle 2 › Lecture");
+    expect(sourceProgrammation("2026-2027")).toBe("Programmation 2026-2027");
+  });
+
+  it("ne doublent pas ce qui est déjà là, et gardent le statut et les notes", () => {
+    const deja = { ...depuisProgrammation(prog.objectifs[0], "2026-2027", "2026-09-01"), statut: "acquise" as const, date: "2026-09-20", notes: "avec le syllabaire" };
+    const r = synchroniserProgrammation([deja], objectifsDe(prog, "e1"), "2026-2027", "2026-09-27");
+    expect(r.ajoutees).toBe(1);
+    expect(r.misesAJour).toBe(0);
+    expect(r.liste[0]).toMatchObject({ statut: "acquise", date: "2026-09-20", notes: "avec le syllabaire", objectifId: "o1" });
+    // Une seconde passe ne change plus rien.
+    const r2 = synchroniserProgrammation(r.liste, objectifsDe(prog, "e1"), "2026-2027", "2026-09-28");
+    expect(r2.ajoutees + r2.misesAJour).toBe(0);
+    expect(r2.liste).toHaveLength(2);
+  });
+
+  it("suivent l'objectif si son intitulé change, et laissent ce qui a disparu", () => {
+    const avant = depuisProgrammation(prog.objectifs[0], "2026-2027", "2026-09-01");
+    const modifie: Objectif = { ...prog.objectifs[0], competence: "Décoder des mots réguliers et irréguliers", periodes: [1, 2, 3] };
+    const r = synchroniserProgrammation([avant], [modifie], "2026-2027", "2026-09-27");
+    expect(r.misesAJour).toBe(1);
+    expect(r.ajoutees).toBe(0);
+    expect(r.liste[0]).toMatchObject({ id: avant.id, texte: "Décoder des mots réguliers et irréguliers", chemin: "Cycle 2 › Lecture · périodes 1, 2, 3" });
+    // L'objectif o3 n'est plus dans la programmation : sa compétence reste.
+    const r3 = synchroniserProgrammation([avant, depuisProgrammation(prog.objectifs[2], "2026-2027", "2026-09-01")], [modifie], "2026-2027", "2026-09-27");
+    expect(r3.liste).toHaveLength(2);
+  });
+
+  it("relisent l'identifiant d'objectif, et le distinguent d'une citation du référentiel", () => {
+    const c = depuisProgrammation(prog.objectifs[1], "2026-2027", "2026-09-27");
+    const relu = lireCompetences(JSON.stringify([c]));
+    expect(relu[0].objectifId).toBe("o2");
+    // Une compétence citée du BO n'a pas d'objectif : ajouter l'objectif ne la double pas s'il a le même texte et la même source, mais ici les sources diffèrent.
+    const bo = depuisReferentiel(sel("m-1", "Dénombrer jusqu'à 10"), "2026-09-01");
+    expect(ajouterCompetences([bo], [c]).ajoutees).toBe(1);
   });
 });
