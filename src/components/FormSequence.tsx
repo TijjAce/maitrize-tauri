@@ -1,25 +1,36 @@
 import React from "react";
 import { api, Sequence, Referentiel, couleurHex, couleurPourMatiere, anneeScolaireActuelle } from "../api";
-import { Modal, Field, Input, Textarea } from "./ui";
+import { Modal, Field, Input, Select, Textarea } from "./ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "./CompetenceTree";
 import { FichierImg } from "./Deroulement";
 import { PhotoTelephone } from "./PhotoTelephone";
+import { DEMARCHES, demarcheDe, resumeDuCadre, seancesDuCadre } from "../demarches";
 
 // Fiche d'une séquence : titre, période, compétence visée, objectifs, vignette,
 // vidéo. Elle vivait dans l'ancien onglet Séquences et avait disparu avec lui :
 // une séquence ne pouvait plus être renommée.
 
-export function FormSequence({ sequence, onClose, onSaved }: {
-  sequence: Sequence; onClose: () => void; onSaved: (s: Sequence) => void;
+export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
+  sequence: Sequence; nouvelle?: boolean; onClose: () => void; onSaved: (s: Sequence) => void;
 }) {
   const [s, setS] = React.useState<Sequence>(sequence);
   const up = (p: Partial<Sequence>) => setS((cur) => ({ ...cur, ...p }));
   const [enCours, setEnCours] = React.useState(false);
+  // Le cadre : une démarche d'un guide, qui pose les séances à la création.
+  // Une séquence qui existe déjà a ses séances ; le cadre ne s'y propose pas.
+  const [cadre, setCadre] = React.useState("");
+  const demarche = demarcheDe(cadre);
   const save = async () => {
     setEnCours(true);
     try {
-      const propre = { ...s, titre: s.titre.trim(), annee: s.annee || anneeScolaireActuelle() };
+      const propre = {
+        ...s, titre: s.titre.trim(), annee: s.annee || anneeScolaireActuelle(),
+        nbSeancesPrevu: nouvelle && demarche ? demarche.seances.length : s.nbSeancesPrevu,
+      };
       await api.sequenceSave(propre);
+      if (nouvelle && demarche) {
+        for (const seance of seancesDuCadre(demarche, propre.id)) await api.seanceSave(seance);
+      }
       onSaved(propre);
     } finally { setEnCours(false); }
   };
@@ -78,6 +89,20 @@ export function FormSequence({ sequence, onClose, onSaved }: {
       </div>
 
       <Field label="Objectifs / notes"><Textarea value={s.objectifs} onChange={(e) => up({ objectifs: e.target.value })} /></Field>
+
+      {nouvelle && (
+        <Field label="Cadre des séances">
+          <Select value={cadre} onChange={(e) => setCadre(e.target.value)}>
+            <option value="">Aucun — je construis les séances moi-même</option>
+            {DEMARCHES.map((d) => <option key={d.id} value={d.id}>{d.nom} — {d.source}</option>)}
+          </Select>
+          <div style={{ fontSize: 12.5, color: "var(--text-2)", marginTop: 6, lineHeight: 1.5 }}>
+            {demarche
+              ? <>{demarche.resume} <b>{resumeDuCadre(demarche)}</b> — chaque séance reçoit ses phases dans son tableau de déroulement, à compléter.</>
+              : "Une démarche d'un guide pose les séances et leurs phases ; vous n'écrivez que le contenu."}
+          </div>
+        </Field>
+      )}
 
       <div className="field">
         <label>Vignette (image de couverture)</label>

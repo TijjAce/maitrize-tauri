@@ -948,7 +948,7 @@ export default function PlanDeTravail() {
       )}
 
       {sequenceFiche && (
-        <FormSequence sequence={sequenceFiche.sequence} onClose={() => setSequenceFiche(null)}
+        <FormSequence sequence={sequenceFiche.sequence} nouvelle={sequenceFiche.nouvelle} onClose={() => setSequenceFiche(null)}
           onSaved={async (seq) => {
             const nouvelle = sequenceFiche.nouvelle;
             setSequenceFiche(null);
