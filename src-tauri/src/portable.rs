@@ -291,13 +291,47 @@ fn ecrire_vocal(app: &tauri::AppHandle, url: &str, octets: Vec<u8>) -> Result<St
     let db = app.state::<Db>();
     let c = db.lock();
     c.execute(
-        "INSERT INTO vocaux (id,fichier,debut,duree_s,texte,etat,erreur,date_creation)
-         VALUES (?1,?2,?3,?4,'','recu','',?5)",
-        rusqlite::params![id, fichier, debut, duree, crate::models::now_iso()],
+        "INSERT INTO vocaux (id,fichier,debut,duree_s,texte,etat,erreur,creneau_id,date_creation)
+         VALUES (?1,?2,?3,?4,'','recu','',?5,?6)",
+        rusqlite::params![id, fichier, debut, duree, parametre(url, "creneau"), crate::models::now_iso()],
     )
     .map_err(|er| er.to_string())?;
     let _ = app.emit("vocal:recu", id.clone());
     Ok(id)
+}
+
+/**
+ * Les créneaux d'un jour, pour le compagnon — et rien d'autre.
+ *
+ * Le téléphone a besoin de savoir sous quoi il enregistre : « 10h12 » ne dit
+ * rien, « Numération » si. On ne lui envoie donc que l'heure et l'intitulé de
+ * chaque créneau du jour — ni le prévu, ni le bilan, qui parlent des élèves.
+ * Un téléphone perdu n'y trouverait qu'un emploi du temps sans personne
+ * dedans.
+ */
+fn creneaux_du_jour(app: &tauri::AppHandle, jour: &str) -> Result<String, String> {
+    let db = app.state::<Db>();
+    let c = db.lock();
+    let mut st = c
+        .prepare(
+            "SELECT id, heure_debut, heure_fin, matiere FROM creneaux
+              WHERE substr(date,1,10) = ?1 ORDER BY heure_debut",
+        )
+        .map_err(|er| er.to_string())?;
+    let lignes = st
+        .query_map([jour], |r| {
+            Ok(serde_json::json!({
+                "id": r.get::<_, String>(0)?,
+                "debut": r.get::<_, String>(1)?,
+                "fin": r.get::<_, String>(2)?,
+                "matiere": r.get::<_, String>(3).unwrap_or_default(),
+            }))
+        })
+        .map_err(|er| er.to_string())?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(|er| er.to_string())?;
+    serde_json::to_string(&serde_json::json!({ "jour": jour, "creneaux": lignes }))
+        .map_err(|er| er.to_string())
 }
 
 /// Au-delà, ce n'est plus une note prise en classe.
@@ -324,9 +358,9 @@ fn ecrire_note(app: &tauri::AppHandle, url: &str, texte: &str) -> Result<String,
     let db = app.state::<Db>();
     let c = db.lock();
     c.execute(
-        "INSERT INTO vocaux (id,fichier,debut,duree_s,texte,etat,erreur,date_creation)
-         VALUES (?1,'',?2,0,?3,'transcrit','',?4)",
-        rusqlite::params![id, debut, texte, crate::models::now_iso()],
+        "INSERT INTO vocaux (id,fichier,debut,duree_s,texte,etat,erreur,creneau_id,date_creation)
+         VALUES (?1,'',?2,0,?3,'transcrit','',?4,?5)",
+        rusqlite::params![id, debut, texte, parametre(url, "creneau"), crate::models::now_iso()],
     )
     .map_err(|er| er.to_string())?;
     let _ = app.emit("vocal:recu", id.clone());
@@ -358,6 +392,19 @@ fn repondre(mut req: tiny_http::Request, token: &str, page: &str, data_json: &st
             Some(Ok(id)) => (200, format!("{{\"ok\":true,\"id\":{}}}", serde_json::to_string(&id).unwrap_or_default())),
             Some(Err(message)) => (400, format!("{{\"ok\":false,\"erreur\":{}}}", serde_json::to_string(&message).unwrap_or_default())),
             None => (400, "{\"ok\":false}".to_string()),
+        };
+        let header = tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json; charset=utf-8"[..])
+            .expect("en-tete valide");
+        let _ = req.respond(tiny_http::Response::from_string(body).with_status_code(code).with_header(header));
+        return;
+    }
+    // Le compagnon demande les créneaux du jour, pour dire sous quoi il
+    // enregistre. Rien de nominatif n'y figure.
+    if autorise && url.starts_with("/api/creneaux") {
+        let jour = parametre(&url, "jour");
+        let (code, body) = match creneaux_du_jour(app, &jour) {
+            Ok(json) => (200, json),
+            Err(message) => (400, format!("{{\"erreur\":{}}}", serde_json::to_string(&message).unwrap_or_default())),
         };
         let header = tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json; charset=utf-8"[..])
             .expect("en-tete valide");

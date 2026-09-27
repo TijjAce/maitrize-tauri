@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  creneauDuVocal, jourDuVocal, minutesDuVocal, repereDuVocal, verserDansLeBilan, vocauxDuJour,
+  creneauDuVocal, creneauRetenu, jourDuVocal, minutesDuVocal, repereDuVocal, verserDansLeBilan,
+  vocauxDuJour,
 } from "./vocaux";
 import type { Creneau } from "./api";
 
@@ -91,5 +92,29 @@ describe("une note écrite", () => {
   it("se lit comme une note, pas comme un enregistrement de zéro seconde", () => {
     expect(repereDuVocal({ debut: "2026-09-25T10:12:00", dureeS: 0 })).toBe("10h12 · note écrite");
     expect(repereDuVocal({ debut: "2026-09-25T10:12:00", dureeS: 4 })).toBe("10h12 · 4 s");
+  });
+});
+
+describe("le créneau retenu", () => {
+  const creneaux = [
+    { id: "c1", date: "2026-09-25", heureDebut: "09:00", heureFin: "10:00", matiere: "Numération" },
+    { id: "c2", date: "2026-09-25", heureDebut: "10:00", heureFin: "11:00", matiere: "Sport" },
+  ] as unknown as Creneau[];
+
+  it("suit le téléphone quand il a dit sous quoi il enregistrait", () => {
+    // Dicté à 10 h 30, mais sur le créneau de 9 h : on repensait à la séance.
+    const v = { debut: "2026-09-25T10:30:00", creneauId: "c1" };
+    expect(creneauRetenu(v, creneaux)?.id).toBe("c1");
+    expect(creneauDuVocal(v.debut, creneaux)?.id).toBe("c2");
+  });
+
+  it("devine à l'heure quand le téléphone n'a rien dit", () => {
+    expect(creneauRetenu({ debut: "2026-09-25T10:30:00" }, creneaux)?.id).toBe("c2");
+    expect(creneauRetenu({ debut: "2026-09-25T10:30:00", creneauId: "" }, creneaux)?.id).toBe("c2");
+  });
+
+  it("ne s'accroche pas à un créneau disparu depuis", () => {
+    // Le créneau a été supprimé sur l'ordinateur entre-temps.
+    expect(creneauRetenu({ debut: "2026-09-25T09:30:00", creneauId: "parti" }, creneaux)?.id).toBe("c1");
   });
 });

@@ -44,6 +44,20 @@
  .ligne .btn { padding:8px 11px; }
  textarea { width:100%; margin-top:10px; padding:12px; border:1px solid var(--bd); border-radius:10px;
    font-size:16px; background:var(--bg); color:var(--txt); font-family:inherit; resize:none; }
+ /* Sous quoi l'on enregistre : la seule chose que ce téléphone sait de la
+    classe, et il faut qu'elle se lise d'un coup d'œil. */
+ .creneau { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%;
+   background:var(--bg); border:1px solid var(--bd); border-radius:12px; padding:10px 13px;
+   font-size:14.5px; font-weight:600; color:var(--txt); font-family:inherit; margin-bottom:14px; }
+ .creneau.vide { font-weight:400; color:var(--txt2); font-size:13.5px; display:block; text-align:left; }
+ .creneau-action { color:var(--acc); font-weight:600; font-size:13.5px; flex:none; }
+ .choix { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+ .choix-ligne { display:flex; align-items:center; gap:12px; width:100%; text-align:left;
+   background:var(--bg); border:1px solid var(--bd); border-radius:12px; padding:12px 13px;
+   font-size:15px; color:var(--txt); font-family:inherit; }
+ .choix-ligne.on { border-color:var(--acc); background:var(--card); }
+ .choix-ligne b { font-variant-numeric:tabular-nums; min-width:44px; flex:none; }
+ .creneau-puce { flex:none; opacity:.8; }
  .note-apercu { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; font-size:13.5px; }
 </style>
 </head>
