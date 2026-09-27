@@ -6,6 +6,7 @@ import { toast } from "../components/Toaster";
 import { printHTML, escapeHtml } from "../print";
 import { nombreDePages, rendrePage, octetsDuFichier, PageRendue } from "../pdfRendu";
 import { GRAVITES, Constat, consigneAnalyse, lireConstats, resume } from "../adaptation";
+import { ManuelsPanel } from "./Manuels";
 
 // ── Adapter une fiche ──────────────────────────────────────────────────────
 //
@@ -16,6 +17,13 @@ import { GRAVITES, Constat, consigneAnalyse, lireConstats, resume } from "../ada
 // juger sans relire toute la fiche.
 
 export default function Adapter() {
+  // Deux vues : une fiche à analyser, ou un manuel entier — photographié page
+  // à page avec le téléphone, ou importé en PDF — dont on relit les exercices
+  // pour les réadapter.
+  const [vue, setVue] = React.useState<"fiche" | "manuels">(() => {
+    try { return localStorage.getItem("adapter:vue") === "manuels" ? "manuels" : "fiche"; } catch { return "fiche"; }
+  });
+  const choisirVue = (v: "fiche" | "manuels") => { setVue(v); try { localStorage.setItem("adapter:vue", v); } catch { /* stockage indisponible */ } };
   const [octets, setOctets] = React.useState<Uint8Array | null>(null);
   const [nomFichier, setNomFichier] = React.useState("");
   const [pages, setPages] = React.useState(0);
@@ -95,14 +103,20 @@ export default function Adapter() {
   const r = constats ? resume(constats) : null;
 
   return (
-    <Page titre="Adapter une fiche" sous="Repérer ce qui surcharge un élève avec TSA"
+    <Page titre="Adapter une fiche" sous={vue === "fiche" ? "Repérer ce qui surcharge un élève avec TSA" : "Un manuel entier, ses exercices relus, réadaptés un à un"}
       actions={<>
-        <input ref={entree} type="file" accept="application/pdf" hidden
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) charger(f); e.target.value = ""; }} />
-        <button className="btn" onClick={() => entree.current?.click()}>📄 Ouvrir un PDF</button>
+        <div className="onglets" style={{ marginBottom: 0 }}>
+          <button className={vue === "fiche" ? "active" : ""} onClick={() => choisirVue("fiche")}>🔎 Une fiche</button>
+          <button className={vue === "manuels" ? "active" : ""} onClick={() => choisirVue("manuels")}>📚 Manuels</button>
+        </div>
+        {vue === "fiche" && <>
+          <input ref={entree} type="file" accept="application/pdf" hidden
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) charger(f); e.target.value = ""; }} />
+          <button className="btn" onClick={() => entree.current?.click()}>📄 Ouvrir un PDF</button>
+        </>}
       </>}>
 
-      {!rendu ? (
+      {vue === "manuels" ? <ManuelsPanel /> : !rendu ? (
         <Empty icone="📄" titre="Aucune fiche ouverte"
           sous="Ouvrez un PDF d'exercice : l'assistant regardera la page et signalera ce qui surcharge." />
       ) : (
