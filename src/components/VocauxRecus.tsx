@@ -4,7 +4,7 @@ import { api, texteErreur, type Creneau } from "../api";
 import { Select, TextareaAuto } from "./ui";
 import { toast } from "./Toaster";
 import { confirmer } from "./confirmer";
-import { creneauDuVocal, repereDuVocal, verserDansLeBilan, type Vocal } from "../vocaux";
+import { creneauRetenu, repereDuVocal, verserDansLeBilan, type Vocal } from "../vocaux";
 
 // ── Ce que le téléphone a déposé ──────────────────────────────────────────
 //
@@ -73,7 +73,7 @@ export function VocauxRecus() {
   }, [aTranscrire, charger]);
 
   const verser = async (v: Vocal) => {
-    const id = cible[v.id] ?? creneauDuVocal(v.debut, creneaux)?.id ?? "";
+    const id = cible[v.id] ?? creneauRetenu(v, creneaux)?.id ?? "";
     const c = creneaux.find((x) => x.id === id);
     if (!c) { toast("Choisissez le créneau où le ranger.", { icone: "🗓" }); return; }
     const dit = (texte[v.id] ?? v.texte).trim();
@@ -114,7 +114,7 @@ export function VocauxRecus() {
           {vocaux.filter((v) => v.debut.slice(0, 10) === jour)
             .sort((a, b) => a.debut.localeCompare(b.debut))
             .map((v) => {
-              const devine = creneauDuVocal(v.debut, creneaux);
+              const devine = creneauRetenu(v, creneaux);
               const id = cible[v.id] ?? devine?.id ?? "";
               return (
                 <div key={v.id} style={{ borderLeft: "3px solid var(--border)", paddingLeft: 10, marginBottom: 10 }}>
@@ -132,7 +132,9 @@ export function VocauxRecus() {
                         ))}
                     </Select>
                     {!cible[v.id] && devine && (
-                      <span className="meta" style={{ fontSize: 11.5 }}>trouvé à l'heure</span>
+                      <span className="meta" style={{ fontSize: 11.5 }}>
+                        {v.creneauId ? "choisi sur le téléphone" : "trouvé à l'heure"}
+                      </span>
                     )}
                     <div className="spacer" style={{ flex: 1 }} />
                     <button className="btn ghost sm" onClick={() => { void jeter(v); }} aria-label="Supprimer">🗑</button>

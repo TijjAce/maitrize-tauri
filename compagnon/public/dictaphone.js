@@ -45,6 +45,14 @@ let ecoute = "", lecteur = null;
 let notes = [], ecrit = false, brouillon = "";
 /** Le verrou qui empêche l'écran de s'éteindre pendant qu'on dicte. */
 let veille = null;
+/**
+ * Les créneaux du jour, et celui sous lequel on enregistre.
+ *
+ * C'est la seule chose que ce téléphone sait de la classe : un emploi du
+ * temps sans personne dedans. Il le redemande à l'ordinateur dès qu'il le
+ * joint, et n'en garde qu'un jour.
+ */
+let creneaux = [], creneauChoisi = "", choixOuvert = false;
 
 // ── Capturer ──────────────────────────────────────────────────────────────
 
@@ -181,10 +189,12 @@ async function arreter() {
   // On garde d'abord, on envoie ensuite : un vocal ne se perd pas parce que
   // l'ordinateur était éteint.
   try {
-    await invoke("vocal_garder", { debut, dureeS: secondes, wavB64: base64(octets) });
+    await invoke("vocal_garder",
+      { debut, dureeS: secondes, wavB64: base64(octets), creneau: creneauChoisi });
   } catch (e) {
     souci = String(e);
   }
+  creneauChoisi = await creneauDeLHeure();
   if (capte < SEUIL_SILENCE) {
     avis = "Rien n'a été capté : vérifiez que le micro est autorisé pour cette "
       + "application, et qu'aucune autre ne s'en sert.";
@@ -242,7 +252,7 @@ async function garderLaNote() {
   const texte = (champ ? champ.value : brouillon).trim();
   if (!texte) { ecrit = false; brouillon = ""; rendre(); return; }
   try {
-    await invoke("note_garder", { debut: maintenantIso(), texte });
+    await invoke("note_garder", { debut: maintenantIso(), texte, creneau: creneauChoisi });
     ecrit = false; brouillon = ""; souci = "";
   } catch (e) {
     brouillon = texte;
@@ -254,7 +264,41 @@ async function garderLaNote() {
 
 async function tater() {
   try { joignable = await invoke("ordinateur_joignable"); } catch (e) { joignable = false; }
+  if (joignable) await rafraichirCreneaux();
   rendre();
+}
+
+/** Le jour d'aujourd'hui, au format du planning. */
+const jourDuJour = () => maintenantIso().slice(0, 10);
+
+/** Redemande l'emploi du temps du jour, et retient celui de l'instant. */
+async function rafraichirCreneaux() {
+  try { creneaux = await invoke("creneaux_rafraichir", { jour: jourDuJour() }); }
+  catch (e) { /* hors réseau : on garde ce qu'on avait */ }
+  await relireCreneaux();
+}
+
+/** Relit ce qu'on a gardé, et pose le créneau de l'instant si on n'a rien choisi. */
+async function relireCreneaux() {
+  if (!creneaux.length) {
+    try { creneaux = await invoke("creneaux_du_jour", { jour: jourDuJour() }); }
+    catch (e) { creneaux = []; }
+  }
+  if (!creneauChoisi) creneauChoisi = await creneauDeLHeure();
+}
+
+/** Le créneau où l'on se trouve, d'après l'ordinateur autant que d'après l'heure. */
+async function creneauDeLHeure() {
+  try { return await invoke("creneau_maintenant", { heureIso: maintenantIso() }); }
+  catch (e) { return ""; }
+}
+
+/** Ce qu'on affiche d'un créneau : l'heure et l'intitulé. */
+function libelleCreneau(id) {
+  const c = creneaux.find((x) => x.id === id);
+  if (!c) return "";
+  const h = (c.debut || "").slice(0, 5).replace(":", "h");
+  return `${h} ${c.matiere || "créneau"}`;
 }
 
 /** Dépose ce qui attend, et s'arrête au premier refus : le reste est gardé. */
@@ -381,6 +425,36 @@ function poids(octets) {
     : `${Math.round(octets / 1000)} ko`;
 }
 
+/**
+ * Sous quoi l'on enregistre, et comment en changer.
+ *
+ * On dicte parfois en sortant de la salle, ou une heure plus tard en
+ * repensant à la séance : l'heure seule se trompe alors, et c'est le
+ * téléphone qui était là.
+ */
+function bandeauCreneau() {
+  if (!creneaux.length) {
+    return `<p class="creneau vide">Créneaux inconnus — l'ordinateur les donnera au prochain contact.</p>`;
+  }
+  if (choixOuvert) {
+    return `<div class="choix">
+      ${creneaux.map((c) => `
+        <button class="choix-ligne${c.id === creneauChoisi ? " on" : ""}" data-creneau="${c.id}">
+          <b>${echapper((c.debut || "").slice(0, 5).replace(":", "h"))}</b>
+          <span>${echapper(c.matiere || "créneau")}</span>
+        </button>`).join("")}
+      <button class="choix-ligne${creneauChoisi ? "" : " on"}" data-creneau="">
+        <b>—</b><span>Laisser l'ordinateur décider</span>
+      </button>
+    </div>`;
+  }
+  const libelle = libelleCreneau(creneauChoisi);
+  return `<button class="creneau" id="changer-creneau">
+    <span>${libelle ? `📍 ${echapper(libelle)}` : "📍 Hors créneau"}</span>
+    <span class="creneau-action">Changer</span>
+  </button>`;
+}
+
 function rendre() {
   const enCours = !!ctx;
   const attente = enAttente();
@@ -393,6 +467,7 @@ function rendre() {
 
   el.innerHTML = `
     <div class="card" style="text-align:center">
+      ${adresse ? bandeauCreneau() : ""}
       ${enCours
         ? `<p class="chrono" id="chrono">0:00</p>
            <div class="jauge-fond"><div class="jauge" id="jauge"></div></div>
@@ -429,6 +504,8 @@ function rendre() {
           ${x.sorte === "note"
             ? `<span class="note-apercu">✍️ ${echapper(apercu(x.texte))}</span>`
             : `<span class="meta">${libelleDuree(x.dureeS)}${x.octets ? ` · ${poids(x.octets)}` : ""}</span>`}
+          ${x.creneau && libelleCreneau(x.creneau)
+            ? `<span class="meta creneau-puce">${echapper(libelleCreneau(x.creneau))}</span>` : ""}
           <span style="flex:1"></span>
           ${x.sorte === "note" ? "" : `<button class="btn" data-ecouter="${x.id}">${ecoute === x.id ? "⏸" : "▶︎"}</button>`}
           <button class="btn" data-oublier="${x.id}" data-sorte="${x.sorte}">🗑</button>
@@ -462,6 +539,10 @@ function rendre() {
   clic("envoyer", () => { void envoyerTout(); });
   clic("appairer", () => { void appairer(); });
   clic("colle", () => { void coller(); });
+  clic("changer-creneau", () => { choixOuvert = true; rendre(); });
+  el.querySelectorAll("[data-creneau]").forEach((b) => {
+    b.onclick = () => { creneauChoisi = b.dataset.creneau; choixOuvert = false; rendre(); };
+  });
   clic("ecrire", () => { ecrit = true; rendre(); document.getElementById("note")?.focus(); });
   clic("annuler-note", () => { ecrit = false; brouillon = ""; rendre(); });
   clic("garder-note", () => { void garderLaNote(); });
@@ -480,6 +561,7 @@ function rendre() {
 
 (async () => {
   try { adresse = await invoke("ordinateur_lire"); } catch (e) { adresse = ""; }
+  await relireCreneaux();
   await relire();
   void tater();
   // L'ordinateur s'allume parfois après nous : on retente de loin en loin, et
