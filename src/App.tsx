@@ -32,6 +32,7 @@ import { InterrupteurPartage } from "./components/InterrupteurPartage";
 import { CguGate } from "./components/CGU";
 import { bootTheme } from "./theme";
 import { raccourci, isMac } from "./api";
+import { Retour, useSuiviDesLieux, useTitreDuLieu } from "./components/Retour";
 import { getVersion } from "@tauri-apps/api/app";
 import { Toaster, toast } from "./components/Toaster";
 import { ConfirmerHost } from "./components/confirmer";
@@ -129,6 +130,8 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const [version, setVersion] = React.useState("");
+  // Chaque adresse visitée se note : « Revenir » y ramène.
+  useSuiviDesLieux(location.pathname + location.search);
   React.useEffect(() => { bootTheme(); }, []);
   React.useEffect(() => { getVersion().then(setVersion).catch(() => {}); }, []);
   // Synchronisation de fond : rien à cliquer, les écrans se relisent d'eux-mêmes
@@ -218,6 +221,7 @@ export default function App() {
           onClick={() => window.dispatchEvent(new Event("maitrize:palette"))}>
           <span aria-hidden="true">🔎</span><span>Rechercher…</span><kbd aria-hidden="true">{raccourci("K")}</kbd>
         </button>
+        <Retour menu={NAV.filter((n): n is { to: string; ico: string; label: string } => "to" in n)} />
         {NAV.map((n, i) =>
           "sep" in n ? (
             <div key={i} className="nav-sep" role="separator" />
@@ -250,6 +254,8 @@ export default function App() {
 export function Page({ titre, sous, actions, children }: {
   titre: string; sous?: string; actions?: React.ReactNode; children: React.ReactNode;
 }) {
+  // Le titre nomme le lieu dans « Revenir » et les lieux récents.
+  useTitreDuLieu(titre);
   return (
     <>
       <div className="topbar">
