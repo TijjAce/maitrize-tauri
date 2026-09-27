@@ -11,8 +11,9 @@ export function dataUrlImage(nom: string, base64: string): string {
 // ── Pied de page : le logo et l'adresse, en bas de chaque page ────────────
 //
 // Un cahier journal imprimé circule : il passe à un remplaçant, à un
-// collègue, à l'inspection. Le logo et l'adresse disent d'où il vient, sans
-// prendre la place du contenu.
+// collègue, à l'inspection. Le logo et le nom disent d'où il vient, sans
+// prendre la place du contenu — pas d'adresse web au bas d'une feuille
+// qui va à un élève ou à une famille.
 
 import logoUrl from "./assets/logo.png";
 
@@ -50,9 +51,9 @@ export const STYLE_PIED = `
   }
 `;
 
-/** Le pied lui-même. Sans logo lisible, l'adresse suffit. */
+/** Le pied lui-même. Sans logo lisible, le nom suffit. */
 export function piedMaitrize(logo: string): string {
-  return `<div class="pied-maitrize">${logo ? `<img alt="" src="${logo}">` : ""}<span>Maitrize · https://maitrize.com</span></div>`;
+  return `<div class="pied-maitrize">${logo ? `<img alt="" src="${logo}">` : ""}<span>Maitrize</span></div>`;
 }
 
 /**

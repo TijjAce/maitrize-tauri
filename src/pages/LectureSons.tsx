@@ -21,7 +21,7 @@ function Apercu({ f, r }: { f: FicheSon; r: typeof REGLAGES_PAR_DEFAUT }) {
     <div className="pb-apercu-page">
       <h2 style={{ margin: "0 0 4px", fontSize: 19 }}>{f.titre}</h2>
       <p style={{ margin: "0 0 14px", fontSize: 12, color: "#687087" }}>
-        Nom : ................................
+        Prénom : ................................ Date : ..............
       </p>
       {r.syllabes && (
         <section style={{ marginBottom: 14 }}>
@@ -75,7 +75,7 @@ export function LectureSonsTab() {
       r.ecrire ? `<h3>J'écris le son</h3><div class="lignes"><div></div><div></div><div></div></div>` : "",
     ].join("");
     void imprimerAtelier("sons", f.titre,
-      `<h1>${escapeHtml(f.titre)}</h1><p class="nom">Nom : ................................</p>${corps}`,
+      `<h1>${escapeHtml(f.titre)}</h1><p class="nom">Prénom : ........................................ Date : ........................</p>${corps}`,
       `h3 { font-size: 14px; margin: 16px 0 6px; }
        .nom { font-size: 12px; color: #555; margin: 0 0 12px; }
        .ligne { display: flex; flex-wrap: wrap; gap: 10px 22px; font-size: 21px; letter-spacing: .5px; }

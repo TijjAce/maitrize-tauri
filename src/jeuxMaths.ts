@@ -164,7 +164,7 @@ export function htmlArbreCalcul(liste: Addition[], r: ReglagesArbre): string {
   const regle = `<div class="titre">Arbre à calcul — ajouter deux nombres</div>
     <div class="regle"><b>Comment faire</b>Je décompose chaque nombre en dizaines et unités, j'ajoute les dizaines entre elles, les unités entre elles, puis je recompose le total.
       L'arbre soutient le raisonnement ; l'objectif est de finir par s'en passer.
-      <span style="color:#687087">— Livret Mathématiques CP, Éduscol 2025.</span></div><div class="sous">Nom : ................................</div>`;
+      <span style="color:#687087">— Livret Mathématiques CP, Éduscol 2025.</span></div><div class="sous">Prénom : ........................................ Date : ........................</div>`;
   return feuille(`<div class="page">${regle}<div class="ar-grille">${liste.map(arbre).join("")}</div></div>`, "ar");
 }
 

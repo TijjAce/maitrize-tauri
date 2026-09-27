@@ -290,7 +290,7 @@ export function htmlFicheAdaptee(f: FicheAdaptee, o: OptionsReadaptation, origin
   const items = f.items.map((it) => `<li>${escapeHtml(it).replace(/\n/g, "<br>")}${o.zonesReponse ? `<span class="fa-reponse"></span>` : ""}</li>`).join("");
   return `<div class="fa${o.grosCaracteres ? " gros" : ""}">
     <div class="fa-titre">${escapeHtml(f.titre || "Exercice")}</div>
-    <div class="fa-nom">Nom : ................................ &nbsp;&nbsp; Date : ..............
+    <div class="fa-nom">Prénom : ................................ &nbsp;&nbsp; Date : ..............
       <span style="float:right">${escapeHtml(origine.manuel)} · p. ${origine.page}${origine.numero ? ` · ex. ${escapeHtml(origine.numero)}` : ""}</span></div>
     ${f.consigne ? `<div class="fa-consigne">${escapeHtml(f.consigne)}</div>` : ""}
     ${f.exemple ? `<div class="fa-exemple"><b>Exemple</b>${escapeHtml(f.exemple).replace(/\n/g, "<br>")}</div>` : ""}
