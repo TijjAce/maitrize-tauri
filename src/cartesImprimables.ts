@@ -1,0 +1,96 @@
+// Des cartes à découper, en pages : ce que la plupart des jeux impriment.
+//
+// Un mémory, des dominos, des étiquettes : ce sont des cases sur une grille,
+// avec des pointillés pour couper. Le même moule sert à tous, et la page qu'on
+// voit à l'écran est celle qui sort de l'imprimante — même HTML, même feuille
+// de style, sous une racine `.feuille` qui ne déborde pas sur l'application.
+
+import { escapeHtml } from "./print";
+
+/** Largeur utile d'une page A4 avec les marges de `@page` (14 mm). */
+export const LARGEUR_UTILE_MM = 182;
+export const HAUTEUR_UTILE_MM = 269;
+
+export const STYLE_FEUILLE = `
+  .feuille { color: #1c2233; background: #fff; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .feuille .page { page-break-after: always; break-after: page; }
+  .feuille .page:last-child { page-break-after: auto; break-after: auto; }
+  .feuille .titre { font-size: 18px; font-weight: 800; margin: 0 0 6px; }
+  .feuille .sous { font-size: 12px; color: #687087; margin: 0 0 10px; line-height: 1.45; }
+  .feuille .grille { display: grid; gap: 0; width: 100%; }
+  .feuille .carte { border: 1px dashed #9aa0b4; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 3mm; padding: 3mm; text-align: center; overflow: hidden; }
+  .feuille .carte img { width: 100%; max-width: 30mm; aspect-ratio: 1; object-fit: contain; margin: 0; max-height: none; }
+  .feuille .carte .vide { width: 100%; max-width: 30mm; aspect-ratio: 1; border: 1.5px dashed #c4c9d6; border-radius: 4mm; }
+  .feuille .mot { font-size: 16px; font-weight: 700; line-height: 1.15; }
+  .feuille .regle { border: 1px solid #cfd4e2; border-radius: 8px; padding: 8px 12px; font-size: 12px; line-height: 1.5;
+    margin: 0 0 10px; background: #f7f8fc; }
+  .feuille .regle b { display: block; margin-bottom: 2px; }
+  .feuille .attribution { font-size: 8px; color: #888; margin-top: 8px; text-align: center; }
+`;
+
+/** Mention exigée par la licence des pictogrammes (CC BY-NC-SA). */
+export const ATTRIBUTION_ARASAAC =
+  `<div class="attribution">Pictogrammes : ARASAAC (arasaac.org) — Gouvernement d'Aragon, licence CC BY-NC-SA. Usage non commercial.</div>`;
+
+/** Une image de pictogramme, ou une case vide si elle manque. */
+export const imgPicto = (src: string | undefined, mot: string) =>
+  src ? `<img src="${src}" alt="${escapeHtml(mot)}">` : `<div class="vide" title="${escapeHtml(mot)}"></div>`;
+
+/** Le mot sous l'image, quand on le veut. */
+export const legende = (mot: string, montre: boolean) => (montre ? `<div class="mot">${escapeHtml(mot)}</div>` : "");
+
+export interface FormatGrille {
+  colonnes: number;
+  lignes: number;
+  /** Hauteur d'une carte, en mm ; par défaut la page se partage. */
+  hauteurMm?: number;
+}
+
+/**
+ * Des cellules réparties en pages de `colonnes × lignes`.
+ *
+ * `entete` s'imprime en haut de chaque page (titre, règle) ; les cellules
+ * sont du HTML déjà prêt.
+ */
+export function pagesDeCartes(cellules: string[], format: FormatGrille, entete = ""): string {
+  const parPage = format.colonnes * format.lignes;
+  const hauteur = format.hauteurMm ?? Math.floor((HAUTEUR_UTILE_MM - (entete ? 30 : 0)) / format.lignes);
+  const pages: string[] = [];
+  for (let i = 0; i < Math.max(1, cellules.length); i += parPage) {
+    const tranche = cellules.slice(i, i + parPage);
+    pages.push(`<div class="page">${entete}<div class="grille" style="grid-template-columns: repeat(${format.colonnes}, 1fr); grid-auto-rows: ${hauteur}mm">${tranche.join("")}</div></div>`);
+  }
+  return pages.join("");
+}
+
+/**
+ * Recto et verso : la page des dos suit celle des faces, chaque ligne
+ * inversée, pour qu'une impression recto-verso sur le bord long tombe juste.
+ */
+export function pagesRectoVerso(rectos: string[], versos: string[], format: FormatGrille, entete = ""): string {
+  const parPage = format.colonnes * format.lignes;
+  const hauteur = format.hauteurMm ?? Math.floor((HAUTEUR_UTILE_MM - (entete ? 30 : 0)) / format.lignes);
+  const page = (cellules: string[], tete: string) =>
+    `<div class="page">${tete}<div class="grille" style="grid-template-columns: repeat(${format.colonnes}, 1fr); grid-auto-rows: ${hauteur}mm">${cellules.join("")}</div></div>`;
+  const pages: string[] = [];
+  for (let i = 0; i < Math.max(1, rectos.length); i += parPage) {
+    const faces = rectos.slice(i, i + parPage);
+    const dos = versos.slice(i, i + parPage);
+    // Chaque ligne du verso se lit de droite à gauche.
+    const dosMiroir: string[] = [];
+    for (let l = 0; l < format.lignes; l++) {
+      const ligne = dos.slice(l * format.colonnes, (l + 1) * format.colonnes);
+      while (ligne.length < format.colonnes && ligne.length > 0) ligne.push(`<div class="carte"></div>`);
+      dosMiroir.push(...ligne.reverse());
+    }
+    pages.push(page(faces, entete), page(dosMiroir, `<div class="sous">Verso — imprimer au dos de la page précédente (recto-verso, bord long).</div>`));
+  }
+  return pages.join("");
+}
+
+/** Une carte : image (facultative) et mot (facultatif). */
+export const carte = (contenu: string, classe = "") => `<div class="carte ${classe}">${contenu}</div>`;
+
+/** Le document entier, sous sa racine. */
+export const feuille = (corps: string, classe = "") => `<div class="feuille ${classe}">${corps}</div>`;
