@@ -13,6 +13,18 @@
 import { newId } from "./api";
 
 /** Ce qu'on vise pour un élève ou un groupe, sur une ou plusieurs périodes. */
+/**
+ * De quoi retrouver une compétence cochée dans l'arbre des référentiels.
+ *
+ * L'intitulé seul ne suffit pas : deux référentiels peuvent employer les
+ * mêmes mots, et c'est le trio qui identifie la ligne.
+ */
+export interface SourceCompetence {
+  referentielNom: string;
+  sousDomaineTitre: string;
+  competenceRefId: string;
+}
+
 export interface Objectif {
   id: string;
   /** L'intitulé, libre ou recopié d'un référentiel. */
@@ -25,6 +37,16 @@ export interface Objectif {
   periodes: number[];
   /** Périodes où l'objectif a été atteint. */
   atteintes: number[];
+  /**
+   * Les créneaux de la semaine type où on le travaille.
+   *
+   * En IME, un créneau est déjà un groupe : « Lecture Compréhension, lundi
+   * 14 h 10 » désigne deux élèves et une matière. Programmer par créneau dit
+   * donc d'un coup qui travaille quoi, et quand dans la semaine.
+   */
+  creneaux: string[];
+  /** Renseignée quand la compétence vient d'un référentiel. */
+  source?: SourceCompetence;
   notes: string;
 }
 
@@ -75,6 +97,12 @@ export function lire(json: string): ProgrammationIme {
         pour: chaines(x.pour),
         periodes: nombres(x.periodes),
         atteintes: nombres(x.atteintes),
+        creneaux: chaines(x.creneaux),
+        ...(x.source && typeof x.source === "object" ? { source: {
+          referentielNom: chaine((x.source as Record<string, unknown>).referentielNom),
+          sousDomaineTitre: chaine((x.source as Record<string, unknown>).sousDomaineTitre),
+          competenceRefId: chaine((x.source as Record<string, unknown>).competenceRefId),
+        } } : {}),
         notes: chaine(x.notes),
       }];
     }) : [],
@@ -107,35 +135,6 @@ export function elevesConcernes(o: Objectif, groupes: Groupe[]): string[] {
 }
 
 /** Les objectifs d'un élève, dans l'ordre de la programmation. */
-/**
- * Comment un élève est concerné par un objectif : en propre, par un groupe,
- * ou pas du tout.
- *
- * La grille a besoin de la nuance : un objectif attribué en propre se retire
- * d'un clic, un objectif hérité d'un groupe ne se retire qu'en touchant au
- * groupe — le dire évite de cliquer dans le vide.
- */
-export type Attache = "direct" | "groupe" | "aucun";
-
-export function attacheDeLEleve(o: Objectif, groupes: Groupe[], eleveId: string): Attache {
-  if (o.pour.includes(marqueEleve(eleveId))) return "direct";
-  return elevesConcernes(o, groupes).includes(eleveId) ? "groupe" : "aucun";
-}
-
-/**
- * Les périodes d'un objectif, telles qu'une case de grille les résume.
- *
- * « 1·2·4 », les atteintes soulignées d'un ✔. Vide quand rien n'est prévu :
- * une case sans période dit qu'il reste à décider quand.
- */
-export function resumePeriodes(o: Objectif): string {
-  return o.periodes
-    .slice()
-    .sort((a, b) => a - b)
-    .map((p) => (o.atteintes.includes(p) ? `${p}✔` : `${p}`))
-    .join("·");
-}
-
 export const objectifsDe = (p: ProgrammationIme, eleveId: string): Objectif[] =>
   p.objectifs.filter((o) => elevesConcernes(o, p.groupes).includes(eleveId));
 
@@ -173,8 +172,89 @@ export function motDuCompte(n: number): string {
 // ── Modifier ──────────────────────────────────────────────────────────────
 
 export const nouvelObjectif = (pour: string[] = []): Objectif => ({
-  id: newId(), competence: "", origine: "", pour, periodes: [], atteintes: [], notes: "",
+  id: newId(), competence: "", origine: "", pour, periodes: [], atteintes: [], creneaux: [], notes: "",
 });
+
+// ── Programmer par créneau ────────────────────────────────────────────────
+//
+// Un créneau de la semaine type porte déjà ses élèves : « Mathématiques
+// cycle 2, mardi 9 h, un élève ». Poser une compétence dessus revient donc à
+// la donner à ce groupe-là, sans le redire.
+//
+// Une compétence se reconnaît à son intitulé et à sa source : la reprendre
+// sur un second créneau ne la duplique pas, elle s'y ajoute.
+
+/** Ce qui identifie une compétence déjà posée : son intitulé et sa provenance. */
+export const cleCompetence = (competence: string, origine: string) =>
+  `${competence.trim().toLowerCase()}|${origine.trim().toLowerCase()}`;
+
+export const cleDeLObjectif = (o: Objectif) => cleCompetence(o.competence, o.origine);
+
+/** Les objectifs travaillés sur ce créneau. */
+export const objectifsDuCreneau = (p: ProgrammationIme, creneauId: string): Objectif[] =>
+  p.objectifs.filter((o) => o.creneaux.includes(creneauId));
+
+/**
+ * Pose une compétence sur un créneau, et l'attribue à ses élèves.
+ *
+ * Si elle y est déjà, rien ne bouge. Si elle existe ailleurs, on l'étend :
+ * une même compétence travaillée le lundi et le jeudi reste un seul objectif,
+ * sans quoi le compte par élève la verrait deux fois.
+ */
+export function poserSurCreneau(
+  p: ProgrammationIme, creneauId: string, eleveIds: string[], competence: string, origine: string,
+  source?: SourceCompetence,
+): ProgrammationIme {
+  const cle = cleCompetence(competence, origine);
+  const existant = p.objectifs.find((o) => cleDeLObjectif(o) === cle);
+  const avecEleves = (pour: string[]) => {
+    const suite = [...pour];
+    for (const id of eleveIds) if (!suite.includes(marqueEleve(id))) suite.push(marqueEleve(id));
+    return suite;
+  };
+  if (!existant) {
+    return {
+      ...p,
+      objectifs: [...p.objectifs, {
+        ...nouvelObjectif(avecEleves([])), competence: competence.trim(), origine: origine.trim(),
+        creneaux: [creneauId], ...(source ? { source } : {}),
+      }],
+    };
+  }
+  return {
+    ...p,
+    objectifs: p.objectifs.map((o) => (o.id === existant.id ? {
+      ...o,
+      creneaux: o.creneaux.includes(creneauId) ? o.creneaux : [...o.creneaux, creneauId],
+      pour: avecEleves(o.pour),
+    } : o)),
+  };
+}
+
+/**
+ * Retire une compétence d'un créneau.
+ *
+ * Les élèves qui la travaillent encore ailleurs la gardent : c'est tout
+ * l'intérêt d'une compétence partagée entre deux créneaux. L'objectif qui ne
+ * sert plus nulle part et ne vise plus personne s'en va.
+ */
+export function retirerDuCreneau(
+  p: ProgrammationIme, creneauId: string, competence: string, origine: string,
+  elevesParCreneau: Record<string, string[]>,
+): ProgrammationIme {
+  const cle = cleCompetence(competence, origine);
+  const objectifs = p.objectifs.flatMap((o): Objectif[] => {
+    if (cleDeLObjectif(o) !== cle || !o.creneaux.includes(creneauId)) return [o];
+    const restants = o.creneaux.filter((c) => c !== creneauId);
+    // Ceux que les créneaux restants couvrent encore.
+    const gardes = new Set(restants.flatMap((c) => elevesParCreneau[c] ?? []));
+    const partants = new Set((elevesParCreneau[creneauId] ?? []).filter((e) => !gardes.has(e)));
+    const pour = o.pour.filter((m) => !partants.has(m.replace(/^eleve:/, "")) || !m.startsWith("eleve:"));
+    if (!restants.length && !pour.length) return [];
+    return [{ ...o, creneaux: restants, pour }];
+  });
+  return { ...p, objectifs };
+}
 
 export const nouveauGroupe = (nom: string, eleveIds: string[] = []): Groupe =>
   ({ id: newId(), nom: nom.trim() || "Groupe", eleveIds });

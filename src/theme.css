@@ -777,29 +777,6 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .interrupteur.on .interrupteur-voyant { background: #16a34a; box-shadow: 0 0 0 3px rgba(22, 163, 74, .18); }
 @media (max-width: 900px) { .interrupteur-mot { display: none; } }
 
-/* La grille des compétences de la programmation IME. */
-.prog-grille-cadre { overflow: auto; max-height: 66vh; }
-.prog-grille { border-collapse: separate; border-spacing: 0; font-size: 12.5px; width: max-content; min-width: 100%; }
-.prog-grille th, .prog-grille td { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); padding: 0; }
-.prog-grille thead th { position: sticky; top: 0; z-index: 2; background: var(--panel-2); color: var(--text-2);
-  font-weight: 700; font-size: 11.5px; text-transform: uppercase; letter-spacing: .3px;
-  padding: 8px 10px; white-space: nowrap; text-align: center; }
-.prog-grille thead th.on, .prog-grille td.on { background: var(--accent-soft); }
-.prog-grille .prog-grille-tete { position: sticky; left: 0; z-index: 1; background: var(--panel);
-  text-align: left; padding: 7px 10px; min-width: 240px; max-width: 340px; vertical-align: top;
-  font-weight: 500; text-transform: none; letter-spacing: 0; font-size: 12.5px; }
-.prog-grille thead .prog-grille-tete { z-index: 3; background: var(--panel-2); }
-.prog-grille-titre { background: none; border: none; color: var(--text); font: inherit; text-align: left;
-  padding: 0; cursor: pointer; }
-.prog-grille-titre:hover { text-decoration: underline; }
-.prog-case { width: 100%; min-width: 62px; height: 34px; border: none; background: none; cursor: pointer;
-  font: inherit; font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--text-2); }
-.prog-case:hover { background: var(--panel-2); }
-.prog-case.direct { background: var(--accent-soft); color: var(--text); font-weight: 600; }
-.prog-case.groupe { color: var(--text-2); border: 1px dashed var(--border); border-radius: 6px;
-  display: flex; align-items: center; justify-content: center; cursor: default; }
-.prog-case.groupe:hover { background: none; }
-
 /* Coloriage magique : la grille de calculs et sa légende. */
 .cm-grille { border-collapse: collapse; margin: 0 auto; }
 .cm-grille td { border: 1px solid var(--text-2); width: 58px; height: 52px; text-align: center;
@@ -807,3 +784,12 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .cm-legende { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; font-size: 13px; }
 .cm-legende-ligne { display: flex; align-items: center; gap: 6px; }
 .cm-pastille { width: 15px; height: 15px; border-radius: 4px; border: 1px solid var(--border); flex: none; }
+
+/* Programmation IME : choisir un créneau de la semaine type. */
+.creneau-choix { display: flex; align-items: baseline; gap: 8px; width: 100%; text-align: left;
+  background: none; border: 1px solid transparent; border-radius: 9px; padding: 7px 9px;
+  font: inherit; font-size: 13px; color: var(--text); cursor: pointer; margin-bottom: 2px; }
+.creneau-choix:hover { background: var(--panel-2); }
+.creneau-choix.on { background: var(--accent-soft); border-color: var(--accent); }
+.creneau-heure { font-variant-numeric: tabular-nums; color: var(--text-2); font-size: 12px; flex: none; }
+.creneau-titre { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
