@@ -3,16 +3,16 @@ import { describe, it, expect, vi } from "vitest";
 vi.mock("./api", () => ({ newId: () => "id" + Math.random().toString(36).slice(2, 8) }));
 
 import {
-  CIBLE_MAX, CIBLE_MIN, attacheDeLEleve, basculerCible, basculerPeriode, comptes, ecrire, elevesConcernes, etatDuCompte, lire, marqueEleve, marqueGroupe, motDuCompte, nouveauGroupe, nouvelObjectif, objectifsDe, resumePeriodes, retirerGroupe, type ProgrammationIme, vide,
+  CIBLE_MAX, CIBLE_MIN, basculerCible, basculerPeriode, comptes, ecrire, elevesConcernes, etatDuCompte, lire, marqueEleve, marqueGroupe, motDuCompte, nouveauGroupe, nouvelObjectif, objectifsDe, objectifsDuCreneau, poserSurCreneau, retirerDuCreneau, retirerGroupe, type ProgrammationIme, vide,
 } from "./programmationIme";
 
 const prog = (): ProgrammationIme => ({
   groupes: [{ id: "g1", nom: "Langage", eleveIds: ["e1", "e2"] }],
   objectifs: [
     { id: "o1", competence: "Demander de l'aide", origine: "PPI", pour: [marqueGroupe("g1")],
-      periodes: [1, 2], atteintes: [], notes: "" },
+      periodes: [1, 2], atteintes: [], creneaux: [], notes: "" },
     { id: "o2", competence: "Dénombrer jusqu'à 10", origine: "BO", pour: [marqueEleve("e3")],
-      periodes: [3], atteintes: [], notes: "" },
+      periodes: [3], atteintes: [], creneaux: [], notes: "" },
   ],
 });
 
@@ -131,26 +131,62 @@ describe("l'enregistrement", () => {
   });
 });
 
-describe("la grille des compétences", () => {
-  const groupes = [nouveauGroupe("Les lecteurs", ["e1", "e2"])];
-  const o = {
-    ...nouvelObjectif([marqueEleve("e3"), marqueGroupe(groupes[0].id)]),
-    periodes: [4, 1, 2], atteintes: [2],
-  };
+describe("programmer par créneau", () => {
+  // Deux créneaux de la semaine type, avec leurs élèves — c'est le créneau
+  // qui fait le groupe, comme dans l'emploi du temps réel.
+  const élèvesPar = { lundi14: ["e1", "e2"], jeudi10: ["e2", "e5"] };
+  const base = (): ProgrammationIme => ({ groupes: [], objectifs: [] });
 
-  it("dit comment chaque élève est concerné", () => {
-    expect(attacheDeLEleve(o, groupes, "e3")).toBe("direct");
-    expect(attacheDeLEleve(o, groupes, "e1")).toBe("groupe");
-    expect(attacheDeLEleve(o, groupes, "e9")).toBe("aucun");
-    // Attribué en propre ET par un groupe : c'est « direct » qui l'emporte,
-    // puisque c'est ce qu'un clic retirerait.
-    const deuxFois = { ...o, pour: [...o.pour, marqueEleve("e1")] };
-    expect(attacheDeLEleve(deuxFois, groupes, "e1")).toBe("direct");
+  it("pose une compétence sur un créneau et l'attribue à ses élèves", () => {
+    const p = poserSurCreneau(base(), "lundi14", élèvesPar.lundi14, "Lire un mot outil", "Cycle 2 › Lecture");
+    expect(p.objectifs).toHaveLength(1);
+    const o = p.objectifs[0];
+    expect(o.competence).toBe("Lire un mot outil");
+    expect(o.creneaux).toEqual(["lundi14"]);
+    expect(o.pour.sort()).toEqual([marqueEleve("e1"), marqueEleve("e2")].sort());
+    expect(objectifsDuCreneau(p, "lundi14")).toHaveLength(1);
+    expect(objectifsDuCreneau(p, "jeudi10")).toHaveLength(0);
   });
 
-  it("résume les périodes dans l'ordre, les atteintes marquées", () => {
-    expect(resumePeriodes(o)).toBe("1·2✔·4");
-    expect(resumePeriodes({ ...o, periodes: [], atteintes: [] })).toBe("");
-    expect(resumePeriodes({ ...o, periodes: [5], atteintes: [5] })).toBe("5✔");
+  it("ne la pose pas deux fois sur le même créneau", () => {
+    let p = poserSurCreneau(base(), "lundi14", élèvesPar.lundi14, "Lire un mot outil", "Cycle 2 › Lecture");
+    p = poserSurCreneau(p, "lundi14", élèvesPar.lundi14, "  lire un mot outil ", "cycle 2 › Lecture");
+    expect(p.objectifs).toHaveLength(1);
+    expect(p.objectifs[0].creneaux).toEqual(["lundi14"]);
+  });
+
+  it("étend un objectif déjà posé plutôt que d'en créer un second", () => {
+    let p = poserSurCreneau(base(), "lundi14", élèvesPar.lundi14, "Lire un mot outil", "Cycle 2 › Lecture");
+    p = poserSurCreneau(p, "jeudi10", élèvesPar.jeudi10, "Lire un mot outil", "Cycle 2 › Lecture");
+    expect(p.objectifs).toHaveLength(1);
+    expect(p.objectifs[0].creneaux).toEqual(["lundi14", "jeudi10"]);
+    // e5 vient du jeudi, e1 du lundi, e2 des deux : chacun compté une fois.
+    expect(p.objectifs[0].pour.sort()).toEqual(
+      [marqueEleve("e1"), marqueEleve("e2"), marqueEleve("e5")].sort());
+    // Et le compte par élève ne la voit qu'une fois.
+    expect(comptes(p, ["e1", "e2", "e5"])).toEqual({ e1: 1, e2: 1, e5: 1 });
+  });
+
+  it("en la retirant d'un créneau, garde les élèves qui la travaillent ailleurs", () => {
+    let p = poserSurCreneau(base(), "lundi14", élèvesPar.lundi14, "Lire un mot outil", "Cycle 2 › Lecture");
+    p = poserSurCreneau(p, "jeudi10", élèvesPar.jeudi10, "Lire un mot outil", "Cycle 2 › Lecture");
+    p = retirerDuCreneau(p, "lundi14", "Lire un mot outil", "Cycle 2 › Lecture", élèvesPar);
+    expect(p.objectifs).toHaveLength(1);
+    expect(p.objectifs[0].creneaux).toEqual(["jeudi10"]);
+    // e1 ne la travaillait que le lundi : il la perd. e2 reste, il est aussi
+    // du jeudi. e5 reste.
+    expect(p.objectifs[0].pour.sort()).toEqual([marqueEleve("e2"), marqueEleve("e5")].sort());
+  });
+
+  it("efface l'objectif qui ne sert plus nulle part", () => {
+    let p = poserSurCreneau(base(), "lundi14", élèvesPar.lundi14, "Lire un mot outil", "Cycle 2 › Lecture");
+    p = retirerDuCreneau(p, "lundi14", "Lire un mot outil", "Cycle 2 › Lecture", élèvesPar);
+    expect(p.objectifs).toHaveLength(0);
+  });
+
+  it("laisse intact un objectif posé à la main, sans créneau", () => {
+    const p = retirerDuCreneau(prog(), "lundi14", "Demander de l'aide", "PPI", élèvesPar);
+    expect(p.objectifs).toHaveLength(2);
+    expect(p.objectifs[0].pour).toEqual([marqueGroupe("g1")]);
   });
 });
