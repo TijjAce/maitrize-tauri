@@ -1,11 +1,25 @@
-// Les nombres en lettres, jusqu'à quatre-vingt-dix-neuf : ce que les cartes
-// des nombres et des fractions écrivent sous le chiffre.
+// Les nombres en lettres, jusqu'à neuf mille neuf cent quatre-vingt-dix-neuf :
+// ce que les cartes des nombres, les fractions et les cubes écrivent.
+//
+// Orthographe d'usage : « deux cents », « deux cent un », « mille » invariable,
+// « quatre-vingts » avec son s quand rien ne suit.
 
 const UNITES = ["zéro", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix", "onze", "douze", "treize", "quatorze", "quinze", "seize"];
 const DIZAINES = ["", "dix", "vingt", "trente", "quarante", "cinquante", "soixante", "soixante", "quatre-vingt", "quatre-vingt"];
 
 export function nombreEnLettres(n: number): string {
-  if (!Number.isInteger(n) || n < 0 || n > 99) return String(n);
+  if (!Number.isInteger(n) || n < 0 || n > 9999) return String(n);
+  if (n >= 1000) {
+    const milliers = Math.floor(n / 1000), reste = n % 1000;
+    const tete = milliers === 1 ? "mille" : `${UNITES[milliers]} mille`;
+    return reste ? `${tete} ${nombreEnLettres(reste)}` : tete;
+  }
+  if (n >= 100) {
+    const centaines = Math.floor(n / 100), reste = n % 100;
+    const tete = centaines === 1 ? "cent" : `${UNITES[centaines]} cent`;
+    if (reste) return `${tete} ${nombreEnLettres(reste)}`;
+    return centaines === 1 ? tete : `${tete}s`;
+  }
   if (n <= 16) return UNITES[n];
   if (n < 20) return `dix-${UNITES[n - 10]}`;
   const d = Math.floor(n / 10), u = n % 10;

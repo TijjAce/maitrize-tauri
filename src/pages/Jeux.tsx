@@ -13,7 +13,7 @@ import { CompetencesAtelier } from "../components/CompetencesAtelier";
 import { lignesCompetencesAtelier } from "../impressionAtelier";
 import { SupportsVisuelsTab, retenirSupport } from "./SupportsVisuels";
 import { DominosTab, FluenceTab, IntrusTab, LettresTab, LotoSyllabesTab, PairesTab, SyllabaireTab } from "./AteliersSons";
-import { ArbreCalculTab, CartesCalculTab, CartesNombresTab, FractionsTab, JeuDeLOieTab } from "./AteliersMaths";
+import { ArbreCalculTab, CartesCalculTab, CartesNombresTab, CubesTab, FractionsTab, JeuDeLOieTab } from "./AteliersMaths";
 import { EtiquettesTab } from "./AteliersLangage";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { usePictoImage } from "../components/ChoixPicto";
@@ -32,7 +32,7 @@ const OCTETS = (n: number) =>
 const ONGLETS = [
   "jeux", "memory", "imagier", "tla", "etiquettes",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres",
-  "supports", "partieTout", "multiplicatifs", "coloriage", "nombres", "calcul", "arbre", "fractions", "oie",
+  "supports", "partieTout", "multiplicatifs", "coloriage", "nombres", "cubes", "calcul", "arbre", "fractions", "oie",
 ] as const;
 type Onglet = typeof ONGLETS[number];
 
@@ -105,6 +105,8 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
         quoi: "On calcule, le résultat dit la couleur, le dessin apparaît." },
       { id: "nombres", nom: "Cartes des nombres", icone: "🔢",
         quoi: "Chiffre, constellation, boîte de dix, mot : le même nombre sous toutes ses formes." },
+      { id: "cubes", nom: "Nombres en cubes", icone: "🧱",
+        quoi: "Unités, barres de dix, plaques de cent : lire les cubes et écrire le nombre, ou l'inverse." },
       { id: "calcul", nom: "Cartes de calcul", icone: "🃏",
         quoi: "Le calcul devant, le résultat derrière : se tester, ou la bataille des tables." },
       { id: "arbre", nom: "Arbre à calcul", icone: "🌳",
@@ -246,6 +248,7 @@ export default function Jeux() {
         : onglet === "syllabaire" ? <SyllabaireTab />
         : onglet === "lettres" ? <LettresTab />
         : onglet === "nombres" ? <CartesNombresTab />
+        : onglet === "cubes" ? <CubesTab />
         : onglet === "calcul" ? <CartesCalculTab />
         : onglet === "arbre" ? <ArbreCalculTab />
         : onglet === "fractions" ? <FractionsTab />
