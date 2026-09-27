@@ -789,6 +789,7 @@ export const api = {
   // Version portable : serveur local sur le WiFi + QR code (lecture seule).
   portableDemarrer: () => invoke<PortableInfo>("portable_demarrer"),
   portableArreter: () => invoke<void>("portable_arreter"),
+  portableEtat: () => invoke<PortableInfo | null>("portable_etat"),
   // Capture photo depuis le téléphone (émet l'événement "photo:recue").
   photoCaptureDemarrer: () => invoke<PortableInfo>("photo_capture_demarrer"),
   photoCaptureArreter: () => invoke<void>("photo_capture_arreter"),
