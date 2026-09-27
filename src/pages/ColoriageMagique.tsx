@@ -271,17 +271,17 @@ export function ColoriageMagiqueTab() {
     }).join("");
     void imprimerAtelier("coloriage", r.titre || "Coloriage magique",
       `<h1>${escapeHtml(r.titre || "Coloriage magique")}</h1>
+       <p class="nom">Prénom : ........................................ Date : ........................</p>
        <p class="consigne">${escapeHtml(consigne(r))}</p>
        <div class="legende">${legende}</div>
-       <table class="grille"><tbody>${cases}</tbody></table>
-       <p class="nom">Nom : ...............................................</p>`,
+       <table class="grille"><tbody>${cases}</tbody></table>`,
       `.consigne { font-size: 14px; margin-bottom: 10px; }
        .legende { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; font-size: 14px; align-items: center; }
        .lg i { display: inline-block; width: 14px; height: 14px; border: 1px solid #333; vertical-align: -2px; }
        .grille { border-collapse: collapse; margin: 0 auto; }
        .grille td { border: 1.2px solid #222; width: ${cote}px; height: ${cote}px; text-align: center;
          font-size: ${n > 8 ? 14 : 15}px; vertical-align: middle; }
-       .nom { margin-top: 22px; font-size: 13px; }`);
+       .nom { margin: 0 0 10px; font-size: 13px; color: #555; }`);
   };
 
   const tous = [...MOTIFS, ...motifsPerso];
