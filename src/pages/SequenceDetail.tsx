@@ -6,6 +6,7 @@ import { api, Sequence, Seance, MaterielItem, Jeu, nouvelleSeance, couleurHex, n
 import { decalee, deplacee, ordonnees, renumerotees } from "../ordreSeances";
 import { Modal, Field, Input, Textarea, TextareaAuto, Select, Stars, Empty, Confirm, useAsync } from "../components/ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
+import { ajouterManuelle, consigneSousCompetences, estManuelle, lireSousCompetences } from "../sousCompetences";
 import { TableauEditor, MaterielSeance, imageDuPresse, fileToBase64 } from "../components/SeanceParts";
 import { IllustrationsEditor, DeroulementRead, CelluleContenu, FichierImg, CitationButton } from "../components/Deroulement";
 import { fichierToBlobUrl } from "../components/PdfViewer";
@@ -280,7 +281,7 @@ export default function SequenceDetail() {
       {voir && <SeanceReadView seance={voir} onClose={() => setVoir(null)} onEdit={() => { setEdit(voir); setVoir(null); }} />}
       {modifier && <FormSequence sequence={seq} onClose={() => setModifier(false)}
         onSaved={() => { setModifier(false); reloadSeq(); }} />}
-      {edit && <SeanceForm seance={edit} cycle={seq.cycle} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
+      {edit && <SeanceForm seance={edit} cycle={seq.cycle} sequence={seq} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
       {del && <Confirm message={`Supprimer la séance « ${del.titre || del.numero} » ?`}
         onYes={() => api.seanceDelete(del.id).then(reload)} onClose={() => setDel(null)} />}
     </Page>
@@ -346,7 +347,9 @@ function Card({ titre, children, right }: { titre: string; children: React.React
   );
 }
 
-function SeanceForm({ seance, cycle = "", onClose, onSaved }: { seance: Seance; cycle?: string; onClose: () => void; onSaved: () => void }) {
+export function SeanceForm({ seance, cycle = "", sequence, onClose, onSaved }: {
+  seance: Seance; cycle?: string; sequence?: Sequence; onClose: () => void; onSaved: () => void;
+}) {
   const [s, setS] = React.useState<Seance>(seance);
   const { jeux, recharger: rechargerJeux } = useLudotheque();
   const up = (p: Partial<Seance>) => setS((cur) => ({ ...cur, ...p }));
@@ -375,8 +378,45 @@ function SeanceForm({ seance, cycle = "", onClose, onSaved }: { seance: Seance; 
 
   const setComps = (next: CompetenceSelectionnee[]) => up({ competences: JSON.stringify(next) });
   const toggleComp = (c: CompetenceSelectionnee) => {
-    const exists = comps.find((x) => x.competenceRefId === c.competenceRefId && x.sousDomaineTitre === c.sousDomaineTitre);
+    // Une compétence du référentiel se reconnaît à son entrée ; une compétence
+    // écrite à la main, à elle-même — deux manuelles ne se confondent pas.
+    const exists = comps.find((x) => x.id === c.id
+      || (!!c.competenceRefId && x.competenceRefId === c.competenceRefId && x.sousDomaineTitre === c.sousDomaineTitre));
     setComps(exists ? comps.filter((x) => x !== exists) : [...comps, c]);
+  };
+
+  // ── Les sous-compétences : écrites à la main, ou proposées par l'assistant ──
+  //
+  // La compétence de la séquence est celle du programme ; la séance y mène
+  // par des marches plus petites, que le référentiel n'écrit pas.
+  let competenceVisee: CompetenceSelectionnee | null = null;
+  try { competenceVisee = sequence?.competenceVisee ? JSON.parse(sequence.competenceVisee) : null; } catch { /* ignore */ }
+  const contexteManuel = { domaineTitre: competenceVisee?.domaineTitre ?? sequence?.matiere ?? "", competenceVisee: competenceVisee?.competenceTitre ?? "" };
+  const [saisie, setSaisie] = React.useState("");
+  const ajouterSaisie = () => {
+    const suite = ajouterManuelle(comps, saisie, contexteManuel);
+    if (suite === comps && saisie.trim()) toast("Cette compétence est déjà là.", { icone: "ℹ️" });
+    setComps(suite); setSaisie("");
+  };
+  const [propositions, setPropositions] = React.useState<{ texte: string; cochee: boolean }[] | null>(null);
+  const [proposeEnCours, setProposeEnCours] = React.useState(false);
+  const proposer = async () => {
+    setProposeEnCours(true);
+    try {
+      const reponse = await api.mistralChat(consigneSousCompetences({
+        competenceVisee: competenceVisee?.competenceTitre ?? "", domaineTitre: contexteManuel.domaineTitre, cycle: sequence?.cycle ?? cycle,
+        titreSeance: s.titre, objectifs: s.objectifs, dejaLa: comps.map((c) => c.competenceTitre),
+      }));
+      const lues = lireSousCompetences(reponse);
+      if (!lues.length) { toast("L'assistant n'a rien proposé de lisible ; réessayez.", { icone: "⚠️" }); return; }
+      setPropositions(lues.map((texte) => ({ texte, cochee: true })));
+    } catch (e) { toast(String(e), { icone: "⚠️" }); }
+    finally { setProposeEnCours(false); }
+  };
+  const garderPropositions = () => {
+    let suite = comps;
+    for (const p of propositions ?? []) if (p.cochee) suite = ajouterManuelle(suite, p.texte, contexteManuel);
+    setComps(suite); setPropositions(null);
   };
 
   const save = async () => {
@@ -417,10 +457,41 @@ function SeanceForm({ seance, cycle = "", onClose, onSaved }: { seance: Seance; 
         {comps.length > 0 && (
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
             {comps.map((c, i) => (
-              <span key={i} className="chip" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
-                {labelCourt(c)} <button className="btn ghost sm" style={{ padding: 0, marginLeft: 4 }} onClick={() => toggleComp(c)} aria-label="Retirer">✕</button>
+              <span key={i} className="chip" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+                title={estManuelle(c) ? "Sous-compétence écrite à la main" : c.referentielNom}>
+                {estManuelle(c) ? "✍️ " : ""}{labelCourt(c)} <button className="btn ghost sm" style={{ padding: 0, marginLeft: 4 }} onClick={() => toggleComp(c)} aria-label="Retirer">✕</button>
               </span>
             ))}
+          </div>
+        )}
+        {competenceVisee && (
+          <div className="meta" style={{ fontSize: 12.5, marginBottom: 6 }}>🎯 Vers : {labelCourt(competenceVisee)}</div>
+        )}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
+          <Input value={saisie} onChange={(e) => setSaisie(e.target.value)} placeholder="Écrire une sous-compétence : Reconnaître son prénom parmi trois étiquettes…"
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); ajouterSaisie(); } }} style={{ flex: 1, minWidth: 220 }} aria-label="Sous-compétence à écrire" />
+          <button type="button" className="btn sm" disabled={!saisie.trim()} onClick={ajouterSaisie}>＋ Ajouter</button>
+          <button type="button" className="btn sm" disabled={proposeEnCours} onClick={proposer}
+            title="L'assistant propose des sous-compétences à partir de la compétence visée et de l'objectif ; vous gardez celles qui conviennent.">
+            {proposeEnCours ? "L'assistant cherche…" : "✨ Proposer des sous-compétences"}
+          </button>
+        </div>
+        {propositions && (
+          <div className="deroulement-propose" style={{ marginBottom: 10 }}>
+            <b>✨ Propositions de l'assistant</b>
+            <div className="meta" style={{ fontSize: 12.5, margin: "2px 0 6px" }}>Décochez ce qui ne convient pas ; le reste s'écrit comme une sous-compétence, modifiable ensuite.</div>
+            {propositions.map((p, i) => (
+              <label key={i} className="pb-coche">
+                <input type="checkbox" checked={p.cochee} onChange={(e) => setPropositions(propositions.map((x, k) => (k === i ? { ...x, cochee: e.target.checked } : x)))} />
+                <span>{p.texte}</span>
+              </label>
+            ))}
+            <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+              <button type="button" className="btn primary sm" disabled={!propositions.some((p) => p.cochee)} onClick={garderPropositions}>
+                ✓ Garder les cochées ({propositions.filter((p) => p.cochee).length})
+              </button>
+              <button type="button" className="btn ghost sm" onClick={() => setPropositions(null)}>Ne rien garder</button>
+            </div>
           </div>
         )}
         <CompetenceTree mode="multi" selection={comps} onToggle={(c) => toggleComp(c)} />
@@ -501,7 +572,7 @@ export function SeanceReadView({ seance: s, onClose, onEdit }: { seance: Seance;
       {s.objectifs && <Section titre="Objectifs"><div style={{ whiteSpace: "pre-wrap" }}>{s.objectifs}</div></Section>}
       {comps.length > 0 && <Section titre="Compétences">
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {comps.map((c, i) => <span key={i} className="chip" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>{labelCourt(c)}</span>)}
+          {comps.map((c, i) => <span key={i} className="chip" style={{ background: "var(--accent-soft)", color: "var(--accent)" }} title={estManuelle(c) ? "Sous-compétence écrite à la main" : c.referentielNom}>{estManuelle(c) ? "✍️ " : ""}{labelCourt(c)}</span>)}
         </div>
       </Section>}
       {s.deroulement && <Section titre="Déroulement"><DeroulementRead texte={s.deroulement} /></Section>}
