@@ -3,9 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 vi.mock("./api", () => ({ newId: () => "id" + Math.random().toString(36).slice(2, 8) }));
 
 import {
-  CIBLE_MAX, CIBLE_MIN, basculerCible, basculerPeriode, comptes, ecrire, elevesConcernes,
-  etatDuCompte, lire, marqueEleve, marqueGroupe, motDuCompte, nouveauGroupe, nouvelObjectif,
-  objectifsDe, retirerGroupe, vide, type ProgrammationIme,
+  CIBLE_MAX, CIBLE_MIN, attacheDeLEleve, basculerCible, basculerPeriode, comptes, ecrire, elevesConcernes, etatDuCompte, lire, marqueEleve, marqueGroupe, motDuCompte, nouveauGroupe, nouvelObjectif, objectifsDe, resumePeriodes, retirerGroupe, type ProgrammationIme, vide,
 } from "./programmationIme";
 
 const prog = (): ProgrammationIme => ({
@@ -130,5 +128,29 @@ describe("l'enregistrement", () => {
   it("un groupe se crée avec un nom par défaut plutôt que vide", () => {
     expect(nouveauGroupe("  ").nom).toBe("Groupe");
     expect(nouveauGroupe("Langage", ["e1"]).eleveIds).toEqual(["e1"]);
+  });
+});
+
+describe("la grille des compétences", () => {
+  const groupes = [nouveauGroupe("Les lecteurs", ["e1", "e2"])];
+  const o = {
+    ...nouvelObjectif([marqueEleve("e3"), marqueGroupe(groupes[0].id)]),
+    periodes: [4, 1, 2], atteintes: [2],
+  };
+
+  it("dit comment chaque élève est concerné", () => {
+    expect(attacheDeLEleve(o, groupes, "e3")).toBe("direct");
+    expect(attacheDeLEleve(o, groupes, "e1")).toBe("groupe");
+    expect(attacheDeLEleve(o, groupes, "e9")).toBe("aucun");
+    // Attribué en propre ET par un groupe : c'est « direct » qui l'emporte,
+    // puisque c'est ce qu'un clic retirerait.
+    const deuxFois = { ...o, pour: [...o.pour, marqueEleve("e1")] };
+    expect(attacheDeLEleve(deuxFois, groupes, "e1")).toBe("direct");
+  });
+
+  it("résume les périodes dans l'ordre, les atteintes marquées", () => {
+    expect(resumePeriodes(o)).toBe("1·2✔·4");
+    expect(resumePeriodes({ ...o, periodes: [], atteintes: [] })).toBe("");
+    expect(resumePeriodes({ ...o, periodes: [5], atteintes: [5] })).toBe("5✔");
   });
 });
