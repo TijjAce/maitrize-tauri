@@ -24,10 +24,13 @@ fn e<E: std::fmt::Display>(err: E) -> String {
     err.to_string()
 }
 
-/// État partagé : le drapeau d'arrêt du serveur en cours, s'il y en a un.
-pub struct Portable(pub Mutex<Option<Arc<AtomicBool>>>);
+/// État partagé : le serveur en cours — son drapeau d'arrêt, et son adresse.
+///
+/// L'adresse est gardée pour qu'un écran ouvert après coup puisse dire où
+/// joindre l'ordinateur, sans relancer le serveur pour le savoir.
+pub struct Portable(pub Mutex<Option<(Arc<AtomicBool>, PortableInfo)>>);
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PortableInfo {
     pub url: String,
@@ -128,10 +131,12 @@ fn snapshot(db: &State<Db>) -> R<String> {
     serde_json::to_string(&bundle).map_err(e)
 }
 
-#[tauri::command]
+// L'instantané parcourt planning, séquences, élèves et observations : cela
+// n'a pas sa place sur le fil qui dessine la fenêtre.
+#[tauri::command(async)]
 pub fn portable_demarrer(app: tauri::AppHandle, db: State<Db>, portable: State<Portable>) -> R<PortableInfo> {
     // Arrêter une instance précédente éventuelle.
-    if let Some(stop) = portable.0.lock().unwrap_or_else(PoisonError::into_inner).take() {
+    if let Some((stop, _)) = portable.0.lock().unwrap_or_else(PoisonError::into_inner).take() {
         stop.store(true, Ordering::Relaxed);
     }
 
@@ -169,13 +174,9 @@ pub fn portable_demarrer(app: tauri::AppHandle, db: State<Db>, portable: State<P
         }
     });
 
-    *portable.0.lock().unwrap_or_else(PoisonError::into_inner) = Some(stop);
-    Ok(PortableInfo {
-        url,
-        ip,
-        port,
-        qr_svg: qr,
-    })
+    let info = PortableInfo { url, ip, port, qr_svg: qr };
+    *portable.0.lock().unwrap_or_else(PoisonError::into_inner) = Some((stop, info.clone()));
+    Ok(info)
 }
 
 /// Le port qu'on demande d'abord : le même chaque jour, pour que le
@@ -215,10 +216,24 @@ fn jeton_durable(db: &State<Db>) -> String {
 
 #[tauri::command]
 pub fn portable_arreter(portable: State<Portable>) -> R<()> {
-    if let Some(stop) = portable.0.lock().unwrap_or_else(PoisonError::into_inner).take() {
+    if let Some((stop, _)) = portable.0.lock().unwrap_or_else(PoisonError::into_inner).take() {
         stop.store(true, Ordering::Relaxed);
     }
     Ok(())
+}
+
+/// Le partage tourne-t-il, et à quelle adresse ?
+///
+/// L'interrupteur de la barre du haut s'ouvre sur n'importe quelle page :
+/// il lui faut l'état sans avoir à toucher au serveur.
+#[tauri::command]
+pub fn portable_etat(portable: State<Portable>) -> R<Option<PortableInfo>> {
+    Ok(portable
+        .0
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .as_ref()
+        .map(|(_, info)| info.clone()))
 }
 
 /// Ce que le téléphone a le droit d'écrire : les colonnes d'une fiche déjà

@@ -6,6 +6,7 @@ import { MesAppareils } from "../components/MesAppareils";
 import { PartagerMesDossiers } from "../components/PartagerMesDossiers";
 import { confirmer } from "../components/confirmer";
 import { toast } from "../components/Toaster";
+import { EVT_PARTAGE, fermerPartage, lirePartage, ouvrirPartage } from "../partageWifi";
 import { applyTheme, MODES, ACCENTS, STYLES, TAILLES } from "../theme";
 import { lireAcceptationCgu, CguAcceptation } from "../components/CGU";
 import { getVersion } from "@tauri-apps/api/app";
@@ -122,19 +123,25 @@ export default function Reglages() {
   };
 
   // ── Version portable (serveur local WiFi + QR) ──────────────────
+  //
+  // Le partage ne s'arrête plus quand on quitte cet écran : il se commande
+  // depuis l'interrupteur de la barre du haut, et on l'ouvre justement pour
+  // aller travailler ailleurs dans l'application. C'est le voyant, visible
+  // de partout, qui remplace l'arrêt automatique.
   const [portable, setPortable] = React.useState<PortableInfo | null>(null);
   const [portMsg, setPortMsg] = React.useState("");
+  React.useEffect(() => { lirePartage().then(setPortable); }, []);
+  React.useEffect(() => {
+    const ecouter = (e: Event) => setPortable((e as CustomEvent<PortableInfo | null>).detail);
+    window.addEventListener(EVT_PARTAGE, ecouter);
+    return () => window.removeEventListener(EVT_PARTAGE, ecouter);
+  }, []);
   const activerPortable = async () => {
     setPortMsg("");
-    try { setPortable(await api.portableDemarrer()); }
-    catch (e: any) { setPortMsg("❌ " + String(e)); }
+    try { setPortable(await ouvrirPartage()); }
+    catch (e: any) { setPortMsg("❌ " + texteErreur(e)); }
   };
-  const arreterPortable = async () => {
-    try { await api.portableArreter(); } catch { /* ignore */ }
-    setPortable(null);
-  };
-  // Arrête le partage si on quitte les Réglages (sécurité).
-  React.useEffect(() => () => { api.portableArreter().catch(() => {}); }, []);
+  const arreterPortable = async () => { await fermerPartage(); };
 
   if (!chargé) return <Page titre="Réglages"><div /></Page>;
 
