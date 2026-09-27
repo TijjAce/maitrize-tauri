@@ -37,6 +37,12 @@ pub struct PortableInfo {
     pub ip: String,
     pub port: u16,
     pub qr_svg: String,
+    /// Le nom de l'ordinateur sur le réseau, vide s'il n'en a pas.
+    #[serde(default)]
+    pub hote: String,
+    /// La même adresse, par le nom : celle-ci survit à un changement d'IP.
+    #[serde(default)]
+    pub url_nom: String,
 }
 
 /// Instantané des données envoyé au téléphone (lecture seule).
@@ -49,6 +55,42 @@ struct Bundle {
     programmations: Vec<ProgrammationFinale>,
     /// Les temps d'observation posés : le téléphone, lui, peut les remplir.
     observations: Vec<ObservationEleve>,
+}
+
+/**
+ * Le nom de cet ordinateur sur le réseau local — « MacBook-de-Marie.local ».
+ *
+ * Une adresse IP change : la box en redistribue une autre après une coupure,
+ * et le téléphone, qui avait retenu l'ancienne, ne trouve plus personne. Le
+ * nom, lui, ne change pas — c'est macOS qui le publie, et iOS qui le résout,
+ * sans rien à installer ni à configurer.
+ *
+ * Il peut manquer : sur un réseau qui bloque la découverte locale, ou hors
+ * macOS. L'adresse IP reste alors le seul recours, et c'est pour cela qu'on
+ * garde les deux.
+ */
+fn nom_local() -> String {
+    #[cfg(target_os = "macos")]
+    {
+        // `scutil` donne le nom Bonjour, celui que publie le partage — et non
+        // celui que la box a pu attribuer par DHCP.
+        if let Ok(sortie) = std::process::Command::new("scutil").args(["--get", "LocalHostName"]).output() {
+            let nom = String::from_utf8_lossy(&sortie.stdout).trim().to_string();
+            if !nom.is_empty() {
+                return format!("{nom}.local");
+            }
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        if let Ok(sortie) = std::process::Command::new("hostname").output() {
+            let nom = String::from_utf8_lossy(&sortie.stdout).trim().to_string();
+            if !nom.is_empty() {
+                return nom;
+            }
+        }
+    }
+    String::new()
 }
 
 /// IP locale sans dépendance : « connecter » un socket UDP fixe la route locale
@@ -158,6 +200,10 @@ pub fn portable_demarrer(app: tauri::AppHandle, db: State<Db>, portable: State<P
         .ok_or("port introuvable")?;
     let ip = ip_locale();
     let url = format!("http://{ip}:{port}/?t={token}");
+    // Par le nom, tant qu'on a encore le jeton sous la main : le fil du
+    // serveur l'emporte juste après.
+    let hote = nom_local();
+    let url_nom = if hote.is_empty() { String::new() } else { format!("http://{hote}:{port}/?t={token}") };
     let qr = qr_svg(&url);
 
     let stop = Arc::new(AtomicBool::new(false));
@@ -174,7 +220,7 @@ pub fn portable_demarrer(app: tauri::AppHandle, db: State<Db>, portable: State<P
         }
     });
 
-    let info = PortableInfo { url, ip, port, qr_svg: qr };
+    let info = PortableInfo { url, ip, port, qr_svg: qr, hote, url_nom };
     *portable.0.lock().unwrap_or_else(PoisonError::into_inner) = Some((stop, info.clone()));
     Ok(info)
 }
@@ -505,7 +551,7 @@ pub fn photo_capture_demarrer(app: tauri::AppHandle, photo: State<PhotoCapture>)
     });
 
     *photo.0.lock().unwrap_or_else(PoisonError::into_inner) = Some(stop);
-    Ok(PortableInfo { url, ip, port, qr_svg: qr })
+    Ok(PortableInfo { url, ip, port, qr_svg: qr, hote: String::new(), url_nom: String::new() })
 }
 
 #[tauri::command]
