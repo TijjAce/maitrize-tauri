@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Ce dont la page a besoin : rien que les commandes du dictaphone.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "scanner:default"]
 }
