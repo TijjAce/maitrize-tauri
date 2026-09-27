@@ -6,6 +6,8 @@ import { montrerLesNouveautes } from "./QuoiDeNeuf";
 import { EVT_CHERCHER_BUREAU } from "../bureauAteliers";
 import { ajouterRecent, classer, lireRecents, ouverture } from "../palette";
 import { chargerVacances, prochaineVacance } from "../vacances";
+import { historique, nomDuLieu, precedent, recents as lieuxRecents } from "../historique";
+import { RACCOURCI_RETOUR, useHistorique } from "./Retour";
 
 /**
  * Les familles de résultats, pour restreindre d'un clic.
@@ -76,7 +78,9 @@ const CLE_RECENTS = "paletteRecents";
  * Trois, pas trente : le cahier journal du jour, la préparation de demain, et
  * la création d'une séquence. De quoi apprendre le geste.
  */
-const DEPARTS = ["r-jour", "r-demain", "a-newseq"];
+// « Revenir » vient en tête : c'est souvent pour cela qu'on ouvre la palette
+// au milieu d'autre chose.
+const DEPARTS = ["nav-retour", "r-jour", "r-demain", "a-newseq"];
 
 /** Demande au planning d'aller sur ce jour (il n'est pas dans l'URL). */
 export const EVT_JOUR = "maitrize:aller-au-jour";
@@ -407,6 +411,19 @@ export function CommandPalette() {
   ];
 
   const navCmds: Cmd[] = NAV.map((n) => ({ id: "nav" + n.to, ico: n.ico, label: n.label, sous: "Aller à", famille: "page", run: goNav(n.to) }));
+  // Revenir où l'on était, et les lieux récents : ce que l'historique sait.
+  const h = useHistorique();
+  const avant = precedent(h);
+  const retourCmds: Cmd[] = [
+    ...(avant ? [{
+      id: "nav-retour", ico: "↩", label: `Revenir : ${nomDuLieu(avant, NAV)}`, sous: `Revenir où j'étais · ${RACCOURCI_RETOUR}`, famille: "page" as const,
+      run: () => { setOpen(false); const l = historique.reculer(); if (l) nav(l.chemin); },
+    }] : []),
+    ...lieuxRecents(h, 6).map((l) => ({
+      id: "nav-recent" + l.chemin, ico: "🕘", label: nomDuLieu(l, NAV), sous: "Lieu récent", famille: "page" as const,
+      run: () => { setOpen(false); nav(l.chemin); },
+    })),
+  ];
   const sousCmds: Cmd[] = SOUS_ONGLETS.map((s) => ({
     // Le libellé fait partie de l'identifiant : deux entrées mènent au même
     // onglet (« Progressions par élève » et « Compétences travaillées »), et
@@ -469,7 +486,7 @@ export function CommandPalette() {
       }, 140);
     },
   }));
-  const toutes = [...ACTIONS, ...navCmds, ...sousCmds, ...dossierCmds, ...coffreCmds, ...rechCmds];
+  const toutes = [...retourCmds, ...ACTIONS, ...navCmds, ...sousCmds, ...dossierCmds, ...coffreCmds, ...rechCmds];
   // Sans rien de tapé, on montre ce qui sert — pas le catalogue entier.
   const trouvees = q.trim() ? classer(toutes, q, recents) : ouverture(toutes, recents, DEPARTS);
   // Les rubans se déduisent de ce qu'on a trouvé, avant de filtrer : on ne
