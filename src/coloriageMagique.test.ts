@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
-  casesAColorier, consigne, couleursDuMotif, fabriquerColoriage, MOTIFS, operationPour,
-  resultatsDesCouleurs, REGLAGES_PAR_DEFAUT, type Operation,
+  casesAColorier, consigne, couleursDuMotif, fabriquerColoriage, MOTIFS, motsSansAmbiguite,
+  operationPour, resultatsDesCouleurs, REGLAGES_PAR_DEFAUT, type Operation,
 } from "./coloriageMagique";
 import { hasard } from "./problemesBarres";
+import { contientLeSon, sonDe } from "./lectureSons";
 
 const calcule = (expr: string): number => {
   const m = /^(\d+) ([+−×]) (\d+)$/.exec(expr);
@@ -130,5 +131,51 @@ describe("la feuille", () => {
     expect(consigne(REGLAGES_PAR_DEFAUT)).toContain("colorie");
     expect(consigne({ ...REGLAGES_PAR_DEFAUT, operation: "multiplication", table: 7 })).toContain("table de 7");
     expect(consigne(REGLAGES_PAR_DEFAUT)).toContain("reste blanche");
+  });
+});
+
+describe("le coloriage des lettres", () => {
+  const lettres = (sons: string[], motif = "maison") =>
+    fabriquerColoriage({ ...REGLAGES_PAR_DEFAUT, matiere: "lettres" as const, sons, motif }, 21);
+
+  it("met dans chaque case un mot qui porte le son de sa couleur, et lui seul", () => {
+    const sons = ["ch", "ou", "oi"];
+    const c = lettres(sons);
+    const parCouleur = new Map(c.legende.map((l) => [l.couleur.id, l.grapheme]));
+    let cases = 0;
+    c.lignes.forEach((ligne, y) => ligne.forEach((x, col) => {
+      if (c.motif.grille[y][col] === ".") { expect(x.calcul).toBe(""); return; }
+      cases += 1;
+      const sien = sonDe(sons[[...parCouleur.keys()].indexOf(x.couleur)])!;
+      expect(contientLeSon(x.calcul, sien), `« ${x.calcul} » pour ${sien.son}`).toBe(true);
+      // Et aucun autre son colorié : sinon la case aurait deux couleurs.
+      for (const autre of sons.filter((id) => id !== sien.id)) {
+        expect(contientLeSon(x.calcul, sonDe(autre)!), `« ${x.calcul} » aussi ${autre}`).toBe(false);
+      }
+    }));
+    expect(cases).toBeGreaterThan(20);
+  });
+
+  it("écarte les mots ambigus du vivier", () => {
+    const ch = sonDe("ch")!, ou = sonDe("ou")!;
+    const propres = motsSansAmbiguite(ch, [ch, ou]);
+    expect(propres.length).toBeGreaterThan(0);
+    for (const m of propres) expect(contientLeSon(m, ou), m).toBe(false);
+    // « bouche » porte les deux : il ne peut servir ni à l'un ni à l'autre.
+    expect(ch.mots).toContain("bouche");
+    expect(propres).not.toContain("bouche");
+  });
+
+  it("annonce les graphèmes en légende, et non des résultats", () => {
+    const c = lettres(["ch", "ou", "oi"]);
+    expect(c.legende.map((l) => l.grapheme)).toEqual(["ch", "ou", "oi"]);
+    expect(c.legende.every((l) => l.resultat === undefined)).toBe(true);
+    expect(consigne({ ...REGLAGES_PAR_DEFAUT, matiere: "lettres" })).toContain("Lis chaque mot");
+  });
+
+  it("tient debout avec moins de sons que de couleurs", () => {
+    const c = lettres(["ch"]);
+    expect(c.legende.every((l) => l.grapheme === "ch")).toBe(true);
+    expect(c.lignes.flat().filter((x) => x.calcul).every((x) => x.calcul !== "?")).toBe(true);
   });
 });
