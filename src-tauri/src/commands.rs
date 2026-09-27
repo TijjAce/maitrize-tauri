@@ -1438,6 +1438,9 @@ pub struct PlanningCreneau {
     pub prevu: String,
     #[serde(default)]
     pub bilan: String,
+    /// Les titres du matériel à imprimer de la séance : il suit le journal.
+    #[serde(default)]
+    pub materiel: Vec<String>,
 }
 #[derive(serde::Deserialize)]
 pub struct PlanningJour {
@@ -1476,12 +1479,35 @@ fn wrap_texte(s: &str, max: usize) -> Vec<String> {
     lignes
 }
 
+/// Un PDF à joindre au planning : le matériel d'une séance.
+#[derive(serde::Deserialize)]
+pub struct AnnexePlanning {
+    pub titre: String,
+    /// « lundi 28 septembre · 09:00 · Lecture » : d'où vient la feuille.
+    #[serde(default)]
+    pub quand: String,
+    /// Le nom du fichier dans le dossier des fichiers.
+    pub fichier: String,
+}
+
 /// Construit un PDF du planning (mise en page inspirée de l'app native) et
 /// l'ouvre dans l'app PDF par défaut (Aperçu sur macOS) → visualisation,
 /// impression AirPrint et sauvegarde.
+///
+/// Le matériel des séances vient à sa suite. Renvoie les documents qu'on n'a
+/// pas pu joindre : le planning sort quand même.
 #[tauri::command(async)]
-pub fn imprimer_planning(titre: String, jours: Vec<PlanningJour>) -> R<()> {
-    let octets = construire_planning_pdf(&titre, &jours)?;
+pub fn imprimer_planning(titre: String, jours: Vec<PlanningJour>, annexes: Vec<AnnexePlanning>) -> R<Vec<String>> {
+    let journal = construire_planning_pdf(&titre, &jours)?;
+    let (octets, manques) = if annexes.is_empty() {
+        (journal, Vec::new())
+    } else {
+        let joints: Vec<crate::fusion_pdf::Joint> = annexes
+            .into_iter()
+            .map(|a| crate::fusion_pdf::Joint { titre: a.titre, quand: a.quand, chemin: fichiers_dir().join(a.fichier) })
+            .collect();
+        crate::fusion_pdf::joindre(&journal, &joints)?
+    };
     let nom = format!(
         "planning-{}.pdf",
         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
@@ -1489,7 +1515,7 @@ pub fn imprimer_planning(titre: String, jours: Vec<PlanningJour>) -> R<()> {
     let path = std::env::temp_dir().join(nom);
     std::fs::write(&path, octets).map_err(e)?;
     tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
-    Ok(())
+    Ok(manques)
 }
 
 /// Le PDF du planning, sans l'ouvrir : de quoi le vérifier.
@@ -1638,7 +1664,7 @@ fn construire_planning_pdf(titre: &str, jours: &[PlanningJour]) -> R<Vec<u8>> {
             .rangs
             .iter()
             .flatten()
-            .filter(|c| [&c.objectifs, &c.deroulement, &c.prevu, &c.bilan].iter().any(|t| !t.trim().is_empty()))
+            .filter(|c| [&c.objectifs, &c.deroulement, &c.prevu, &c.bilan].iter().any(|t| !t.trim().is_empty()) || !c.materiel.is_empty())
             .collect();
         if !details.is_empty() {
             macro_rules! saut {
@@ -1704,6 +1730,10 @@ fn construire_planning_pdf(titre: &str, jours: &[PlanningJour]) -> R<Vec<u8>> {
                 bloc("DÉROULEMENT", &c.deroulement, &mut layer, &mut y);
                 bloc("PRÉVU", &c.prevu, &mut layer, &mut y);
                 bloc("FAIT · BILAN", &c.bilan, &mut layer, &mut y);
+                // Le matériel est joint à la suite du journal : on le dit ici,
+                // pour que la pile se lise dans l'ordre.
+                let materiel = c.materiel.iter().map(|m| format!("• {m}")).collect::<Vec<_>>().join("\n");
+                bloc("MATÉRIEL À IMPRIMER · JOINT À LA SUITE", &materiel, &mut layer, &mut y);
                 y -= 4.0;
             }
         }
@@ -1725,8 +1755,29 @@ mod tests_planning_pdf {
         PlanningCreneau {
             heure_debut: "15:00".into(), heure_fin: "16:00".into(), matiere: matiere.into(),
             seance: String::new(), couleur: "#f59e0b".into(), objectifs: String::new(), deroulement: String::new(),
-            prevu: prevu.into(), bilan: String::new(),
+            prevu: prevu.into(), bilan: String::new(), materiel: vec![],
         }
+    }
+
+    /// Le matériel d'une séance s'annonce dans le détail du journal.
+    #[test]
+    fn le_materiel_joint_s_annonce_dans_le_detail() {
+        let mut c = creneau("Lecture", "");
+        c.materiel = vec!["Fiche syllabes".into()];
+        let jours = vec![PlanningJour { jour: "lundi 28 septembre".into(), rangs: vec![vec![c]] }];
+        let pdf = construire_planning_pdf("Planning — lundi 28 septembre", &jours).expect("le PDF se construit");
+        let doc = lopdf::Document::load_mem(&pdf).expect("relisible");
+        let flux: String = doc.get_pages().values().map(|p| String::from_utf8_lossy(&doc.get_page_content(*p).unwrap()).into_owned()).collect();
+        // printpdf écrit chaque texte en hexadécimal : <4A4F494E54> Tj.
+        let lisible: String = flux
+            .split('<')
+            .skip(1)
+            .filter_map(|bout| bout.split('>').next())
+            .filter_map(|hex| (0..hex.len()).step_by(2).map(|i| u8::from_str_radix(hex.get(i..i + 2)?, 16).ok()).collect::<Option<Vec<u8>>>())
+            .map(|octets| String::from_utf8_lossy(&octets).into_owned() + " ")
+            .collect();
+        assert!(lisible.contains("JOINT"), "l'intitulé du bloc matériel est écrit : {lisible}");
+        assert!(lisible.contains("Fiche syllabes"), "{lisible}");
     }
 
     /// Le défaut signalé : un créneau sans séance, au cahier journal rempli,

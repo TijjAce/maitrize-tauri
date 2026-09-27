@@ -16,6 +16,7 @@ mod models;
 mod portable;
 mod seed;
 mod gevasco_pdf;
+mod fusion_pdf;
 mod ppi_pdf;
 mod sync;
 mod synthese_pdf;
