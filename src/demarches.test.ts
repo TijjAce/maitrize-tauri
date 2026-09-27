@@ -1,19 +1,36 @@
 import { describe, it, expect } from "vitest";
 import {
-  DEMARCHES, ENTETE_TABLEAU, demarcheDe, demarcheSuggeree, resumeDuCadre, seancesDuCadre,
+  DEMARCHES, ENTETE_TABLEAU, FAMILLES, demarcheDe, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre,
   tableauDesPhases,
 } from "./demarches";
 import { DUREES } from "./api";
 
 describe("les démarches", () => {
-  it("ont chacune un nom, une source et au moins trois séances", () => {
-    expect(DEMARCHES.length).toBeGreaterThanOrEqual(3);
+  it("ont chacune un nom, une source, une famille et au moins trois séances", () => {
+    expect(DEMARCHES.length).toBeGreaterThanOrEqual(20);
     for (const d of DEMARCHES) {
       expect(d.nom.trim().length, d.id).toBeGreaterThan(0);
       expect(d.source.trim().length, d.id).toBeGreaterThan(0);
+      expect(d.resume.trim().length, d.id).toBeGreaterThan(0);
+      expect(FAMILLES, d.id).toContain(d.famille);
       expect(d.seances.length, d.id).toBeGreaterThanOrEqual(3);
     }
     expect(new Set(DEMARCHES.map((d) => d.id)).size).toBe(DEMARCHES.length);
+    // Le menu les montre toutes, chacune dans sa famille, sans famille vide.
+    const groupes = demarchesParFamille();
+    expect(groupes.flatMap((g) => g.demarches).length).toBe(DEMARCHES.length);
+    expect(groupes.every((g) => g.demarches.length > 0)).toBe(true);
+    expect(groupes[0].famille).toBe("Toutes disciplines");
+  });
+
+  it("gardent les phases lisibles : une durée par ligne, et un tableau qui tient dans l'éditeur", () => {
+    for (const d of DEMARCHES) for (const s of d.seances) {
+      // Les durées des phases font au plus la durée de la séance : on ne
+      // promet pas 55 minutes de phases dans une séance de 30.
+      const total = s.phases.reduce((acc, p) => acc + (parseInt(p.duree, 10) || 0), 0);
+      expect(total, `${d.id} › ${s.titre} : ${total} min de phases pour ${s.duree}`).toBeLessThanOrEqual(s.duree);
+      expect(s.phases.length, `${d.id} › ${s.titre}`).toBeLessThanOrEqual(6);
+    }
   });
 
   it("prévoient des séances complètes, aux durées que l'éditeur propose", () => {
@@ -113,6 +130,60 @@ describe("la démarche que la compétence appelle", () => {
     expect(demarcheSuggeree("EPS", "").id).toBe("eps-module");
     expect(demarcheSuggeree("Activité physique", "Cycle 1").id).toBe("eps-module");
     // « physique » seul ne suffit pas : ce serait la physique-chimie.
-    expect(demarcheSuggeree("Sciences physiques", "Cycle 4").id).toBe("eduscol-quatre-temps");
+    expect(demarcheSuggeree("Sciences physiques", "Cycle 4").id).toBe("investigation");
+  });
+
+  const c2 = "Cycle 2 – CP, CE1, CE2 (programmes en vigueur à la rentrée 2026)";
+  const c1 = "Cycle 1 – École maternelle (Programme 2025)";
+  const sug = (domaineTitre: string, sousDomaineTitre: string, competenceTitre: string, ref = c2) =>
+    demarcheSuggeree({ domaineTitre, sousDomaineTitre, competenceTitre }, ref).id;
+
+  it("lisent le sous-domaine du français : lecture, écriture, oral, vocabulaire, grammaire", () => {
+    expect(sug("Français", "Lecture", "Décoder les syllabes contenant les graphèmes étudiés")).toBe("lecture-code");
+    expect(sug("Français", "Lecture", "Lire à voix haute avec fluidité, 50 mots par minute")).toBe("lecture-fluence");
+    expect(sug("Français", "Lecture", "Comprendre un texte lu par l'adulte et le raconter")).toBe("comprehension");
+    expect(sug("Français", "Écriture", "Écrire en cursive de manière fluide et lisible")).toBe("ecriture-geste");
+    expect(sug("Français", "Écriture", "Copier un texte court sans erreur")).toBe("ecriture-geste");
+    expect(sug("Français", "Écriture", "Produire un écrit narratif de quelques phrases")).toBe("ecriture-rediger");
+    expect(sug("Français", "Oral", "Raconter une histoire connue")).toBe("oral");
+    expect(sug("Français", "Vocabulaire", "Catégoriser des mots")).toBe("vocabulaire");
+    expect(sug("Français", "Grammaire et orthographe", "Identifier le verbe")).toBe("grammaire");
+    expect(sug("Français", "Grammaire et orthographe grammaticale", "Accorder le sujet et le verbe", "Cycle 3")).toBe("grammaire");
+  });
+
+  it("distinguent, en mathématiques, le calcul, les problèmes et la géométrie", () => {
+    expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Ajouter 9 en calcul mental")).toBe("eduscol-quatre-temps");
+    expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Résoudre des problèmes additifs en une étape")).toBe("problemes");
+    expect(sug("Mathématiques", "Grandeurs et mesures", "Comparer des masses")).toBe("geometrie-grandeurs");
+    expect(sug("Mathématiques", "Espace et géométrie", "Reconnaître un carré")).toBe("geometrie-grandeurs");
+    expect(sug("Mathématiques", "Organisation et gestion de données", "Lire un tableau")).toBe("problemes");
+    expect(sug("Mathématiques", "La proportionnalité", "Reconnaître une situation de proportionnalité", "Cycle 3")).toBe("problemes");
+  });
+
+  it("envoient chaque discipline vers son guide", () => {
+    expect(sug("Sciences et technologie", "Les êtres vivants dans leur environnement", "Identifier ce qui est vivant")).toBe("investigation");
+    expect(sug("Histoire-géographie", "Histoire", "Situer un événement sur une frise", "Cycle 3")).toBe("enquete-histoire-geo");
+    expect(sug("Enseignement moral et civique", "CE1 : Respecter les autres", "Écouter l'autre")).toBe("emc-debat");
+    expect(sug("Éducation physique et sportive", "Coopérer et s'opposer", "Jouer en respectant les règles")).toBe("eps-module");
+    expect(sug("Enseignements artistiques", "Arts plastiques", "Expérimenter des matériaux")).toBe("arts-plastiques");
+    expect(sug("Enseignements artistiques", "Éducation musicale", "Chanter en chœur")).toBe("musique");
+    expect(sug("Enseignements artistiques", "Histoire des arts", "Décrire une œuvre", "Cycle 3")).toBe("histoire-des-arts");
+    expect(sug("Langues vivantes étrangères et régionales", "Compréhension de l'oral : écouter et comprendre (CO)", "Comprendre des consignes")).toBe("langues-vivantes");
+  });
+
+  it("en maternelle, proposent la phonologie, le vocabulaire, l'investigation ou les modalités du programme", () => {
+    expect(sug("1. Mobiliser le langage dans toutes ses dimensions", "Passer de l'oral à l'écrit: se préparer à apprendre à écrire", "Repérer une syllabe", c1)).toBe("phonologie");
+    expect(sug("1. Mobiliser le langage dans toutes ses dimensions", "Acquérir le langage oral", "Utiliser un vocabulaire précis", c1)).toBe("vocabulaire");
+    expect(sug("1. Mobiliser le langage dans toutes ses dimensions", "Acquérir le langage oral", "Raconter une histoire", c1)).toBe("maternelle-modalites");
+    expect(sug("2. Agir, s'exprimer, comprendre à travers l'activité physique", "Se déplacer", "Courir", c1)).toBe("eps-module");
+    expect(sug("3. Agir, s'exprimer, comprendre à travers des activités artistiques", "Arts visuels", "Dessiner", c1)).toBe("arts-plastiques");
+    expect(sug("3. Agir, s'exprimer, comprendre à travers des activités artistiques", "Les univers sonores", "Chanter", c1)).toBe("musique");
+    expect(sug("4. Acquérir les premiers outils mathématiques", "Découvrir les nombres", "Dénombrer jusqu'à 5", c1)).toBe("maternelle-modalites");
+    expect(sug("4. Acquérir les premiers outils mathématiques", "Utiliser les nombres pour résoudre des problèmes", "Partager", c1)).toBe("problemes");
+    expect(sug("4. Acquérir les premiers outils mathématiques", "Explorer les solides et les formes planes", "Trier", c1)).toBe("geometrie-grandeurs");
+    expect(sug("6. Découvrir le monde du vivant, de la matière et des objets", "Découvrir le monde du vivant", "Observer", c1)).toBe("investigation");
+    expect(sug("5. Se repérer dans le temps et l'espace", "Se repérer dans le temps", "Ordonner", c1)).toBe("maternelle-modalites");
+    // Le domaine seul suffit à reconnaître la maternelle, référentiel absent.
+    expect(sug("5. Explorer le monde", "Explorer la matière", "Transvaser", "")).toBe("investigation");
   });
 });
