@@ -940,6 +940,8 @@ export interface PictoArasaac { id: number; mot: string; fichier: string; nature
 export interface OptionsJeu {
   libelles: boolean; cartes: boolean; colonnes: number; lignes: number;
   planches: number; graine: number;
+  /** Les compétences travaillées, une par ligne : écrites dans la marge haute de chaque page. */
+  competences?: string[];
 }
 
 // ── Tableau de langage assisté (TLA) ──────────────────────────────────────
@@ -951,6 +953,8 @@ export interface CaseTla {
 export interface Gabarit {
   id: string; nom: string; eleve: string;
   colonnes: number; lignes: number; paysage: boolean; ecart: number; cases: CaseTla[];
+  /** Les compétences travaillées, écrites sous le titre à l'impression ; jamais enregistrées avec le gabarit. */
+  competences?: string[];
 }
 export const caseVide = (): CaseTla => ({ pictoId: null, fichier: "", mot: "", nature: "nom" });
 

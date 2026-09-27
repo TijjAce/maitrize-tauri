@@ -10,6 +10,7 @@ import { PartieToutTab, MultiplicatifsTab } from "./ProblemesBarres";
 import { ColoriageMagiqueTab } from "./ColoriageMagique";
 import { LectureSonsTab } from "./LectureSons";
 import { CompetencesAtelier } from "../components/CompetencesAtelier";
+import { lignesCompetencesAtelier } from "../impressionAtelier";
 import { SupportsVisuelsTab, retenirSupport } from "./SupportsVisuels";
 import { DominosTab, FluenceTab, IntrusTab, LettresTab, LotoSyllabesTab, PairesTab, SyllabaireTab } from "./AteliersSons";
 import { ArbreCalculTab, CartesCalculTab, CartesNombresTab, FractionsTab, JeuDeLOieTab } from "./AteliersMaths";
@@ -256,7 +257,7 @@ export default function Jeux() {
         : onglet === "paires" ? avecPictos(<PairesTab banque />)
         : onglet === "tla" ? avecPictos(<TlaTab />)
         : avecPictos(etat && (
-          <Loto key={onglet} gen={GENERATEURS[onglet === "jeux" ? "loto" : onglet]} etat={etat}
+          <Loto key={onglet} gen={GENERATEURS[onglet === "jeux" ? "loto" : onglet]} atelier={onglet} etat={etat}
             progression={progression} onTelecharger={telecharger} />
         ))}
     </Page>
@@ -362,8 +363,10 @@ export const GENERATEURS: Record<string, Generateur> = {
   },
 };
 
-function Loto({ gen, etat, progression, onTelecharger }: {
+function Loto({ gen, atelier, etat, progression, onTelecharger }: {
   gen: Generateur;
+  /** L'onglet de Fabriquer, où l'enseignant a choisi les compétences. */
+  atelier: string;
   etat: EtatBanque; progression: { etape: string; faits: number; total: number } | null;
   onTelecharger: () => void;
 }) {
@@ -471,7 +474,9 @@ function Loto({ gen, etat, progression, onTelecharger }: {
     setOccupe(true);
     try {
       const nom = titre.trim() || themes.map(libelleCategorie).join(" + ") || gen.quoi;
-      await api.jeuGenerer(gen.id, selection, { ...options, graine: Math.floor(Math.random() * 1e9) }, nom);
+      // Les compétences de l'atelier s'écrivent dans la marge haute du PDF.
+      const competences = await lignesCompetencesAtelier(atelier);
+      await api.jeuGenerer(gen.id, selection, { ...options, graine: Math.floor(Math.random() * 1e9), competences }, nom);
       toast(`${gen.quoi.charAt(0).toUpperCase()}${gen.quoi.slice(1)} créé — le PDF s'ouvre.`, { icone: gen.icone });
     } catch (e: any) { toast(String(e), { icone: "⚠️" }); }
     finally { setOccupe(false); }

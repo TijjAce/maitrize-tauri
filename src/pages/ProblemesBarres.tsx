@@ -3,7 +3,7 @@ import { api, raccourci } from "../api";
 import { Field, Input, Modal, Select } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
-import { printHTML } from "../print";
+import { imprimerAtelier } from "../impressionAtelier";
 import { useMemoire, useReglages } from "../components/useMemoire";
 import {
   genererPartieTout, genererMultiplicatifs, blocProbleme, blocCorrige, enteteFeuille, feuilleProblemes, classesFeuille,
@@ -43,8 +43,8 @@ type Tirage = ReturnType<typeof useTirage>;
 const appliquerRetouches = (problemes: Probleme[], retouches: Record<number, Retouche>, enonces: boolean) =>
   problemes.map((p, i) => (retouches[i] ? retoucher(p, retouches[i], enonces) : p));
 
-const imprimer = (problemes: Probleme[], titre: string, presentation: Presentation) => {
-  printHTML(titre.trim() || "Problèmes", feuilleProblemes(problemes, titre, presentation), STYLE_FEUILLE);
+const imprimer = (atelier: string, problemes: Probleme[], titre: string, presentation: Presentation) => {
+  void imprimerAtelier(atelier, titre.trim() || "Problèmes", feuilleProblemes(problemes, titre, presentation), STYLE_FEUILLE);
   toast(`La feuille s'ouvre dans le navigateur : imprimez-la ou enregistrez-la en PDF (${raccourci("P")}).`, { icone: "🖨", duree: 6000 });
 };
 
@@ -65,7 +65,7 @@ export function PartieToutTab() {
   [r, presentation.enonce, tirage.graine, tirage.retirages, tirage.retouches]);
 
   return (
-    <Atelier titre={r.titre} setTitre={(titre) => maj({ titre })} nombre={r.nombre} setNombre={(nombre) => maj({ nombre })}
+    <Atelier atelier="partieTout" titre={r.titre} setTitre={(titre) => maj({ titre })} nombre={r.nombre} setNombre={(nombre) => maj({ nombre })}
       prenoms={r.prenoms} setPrenoms={(prenoms) => maj({ prenoms })}
       presentation={presentation} setPresentation={setPresentation} problemes={problemes} tirage={tirage}
       intro={<>Un tout et ses parties : l'élève voit ce qui manque avant de choisir l'opération. Programmes : « résoudre des
@@ -129,7 +129,7 @@ export function MultiplicatifsTab() {
   };
 
   return (
-    <Atelier titre={r.titre} setTitre={(titre) => maj({ titre })} nombre={r.nombre} setNombre={(nombre) => maj({ nombre })}
+    <Atelier atelier="multiplicatifs" titre={r.titre} setTitre={(titre) => maj({ titre })} nombre={r.nombre} setNombre={(nombre) => maj({ nombre })}
       prenoms={r.prenoms} setPrenoms={(prenoms) => maj({ prenoms })}
       presentation={presentation} setPresentation={setPresentation} problemes={problemes} tirage={tirage}
       intro={<>Des parts égales qui font un tout, ou une quantité plusieurs fois plus grande qu'une autre. Programmes :
@@ -188,7 +188,9 @@ function NombreChamp({ label, valeur, min, onChange }: { label: string; valeur: 
 
 // ── Mise en page commune ───────────────────────────────────────────────────
 
-function Atelier({ intro, titre, setTitre, nombre: nombreProblemes, setNombre, prenoms, setPrenoms, presentation, setPresentation, problemes, tirage, children }: {
+function Atelier({ atelier, intro, titre, setTitre, nombre: nombreProblemes, setNombre, prenoms, setPrenoms, presentation, setPresentation, problemes, tirage, children }: {
+  /** L'onglet de Fabriquer, où l'enseignant a choisi les compétences. */
+  atelier: string;
   intro: React.ReactNode;
   titre: string; setTitre: (v: string) => void;
   nombre: number; setNombre: (v: number) => void;
@@ -239,7 +241,7 @@ function Atelier({ intro, titre, setTitre, nombre: nombreProblemes, setNombre, p
           </label>
           <div style={{ flex: 1 }} />
           <button className="btn sm" onClick={tirage.nouvelle} title="Tire d'autres nombres et d'autres situations">🔀 Nouvelle feuille</button>
-          <button className="btn sm primary" onClick={() => imprimer(problemes, titre, p)}>🖨 Imprimer</button>
+          <button className="btn sm primary" onClick={() => imprimer(atelier, problemes, titre, p)}>🖨 Imprimer</button>
         </div>
         <style>{STYLE_FEUILLE}</style>
         <div className="pb-apercu">

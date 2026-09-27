@@ -8,6 +8,7 @@ import {
 } from "../tla";
 import { SQUELETTES, squelettePour, placesDuTheme, motsDuNoyau } from "../squelettes";
 import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
+import { lignesCompetencesAtelier } from "../impressionAtelier";
 
 // ── Tableaux de langage assisté ────────────────────────────────────────────
 //
@@ -156,7 +157,8 @@ function Editeur({ gabarit, onChange, onFermer }: {
     if (soucis.length) { toast(soucis[0], { icone: "⚠️" }); return; }
     setOccupe(true);
     try {
-      await api.tlaGenerer(gabarit);
+      // Les compétences de l'atelier s'écrivent sous le titre du tableau.
+      await api.tlaGenerer({ ...gabarit, competences: await lignesCompetencesAtelier("tla") });
       toast("Tableau créé — le PDF s'ouvre.", { icone: "🖨" });
     } catch (e: any) { toast(String(e), { icone: "⚠️" }); }
     finally { setOccupe(false); }

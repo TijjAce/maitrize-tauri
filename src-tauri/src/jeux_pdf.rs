@@ -47,6 +47,13 @@ const RAYON: f32 = 6.0;
 /// Mention imposée par la licence CC BY-NC-SA des pictogrammes.
 const ATTRIBUTION: &str = "Pictogrammes ARASAAC (Sergio Palao) - Gouvernement d'Aragon - CC BY-NC-SA";
 
+/// Les compétences travaillées, dans la marge haute : corps en points,
+/// interligne en millimètres, et le nombre de lignes que la marge accepte
+/// sans toucher à la zone de jeu.
+const TAILLE_COMPETENCES: f32 = 7.0;
+const INTERLIGNE_COMPETENCES: f32 = 3.0;
+const LIGNES_COMPETENCES: usize = 3;
+
 // ── Modèle commun ──────────────────────────────────────────────────────────
 
 /// Une planche : une grille de cases sur une page.
@@ -74,6 +81,11 @@ pub struct Options {
     pub planches: u8,
     #[serde(default)]
     pub graine: u64,
+    /// Ce que l'atelier travaille, une compétence par ligne. Écrit dans la
+    /// marge haute, en petit et en gris, pour l'adulte qui range la feuille :
+    /// la zone de jeu n'en sait rien.
+    #[serde(default)]
+    pub competences: Vec<String>,
 }
 
 fn vrai() -> bool { true }
@@ -429,7 +441,50 @@ fn rendre_planche(
     c.set_fill_color(couleur((0.6, 0.6, 0.6)));
     let largeur_mention = ATTRIBUTION.chars().count() as f32 * 6.0 * 0.5 * 0.3528;
     c.use_text(ATTRIBUTION, 6.0, Mm((largeur - largeur_mention) / 2.0), Mm(7.0), police);
+    ecrire_competences(&c, &o.competences, largeur, hauteur, police);
     Ok(())
+}
+
+/// Les compétences travaillées, dans la marge haute.
+///
+/// Elles s'adressent à l'adulte qui classe la feuille, pas à l'enfant qui
+/// joue : même gris discret que l'attribution, hors de la zone de jeu, et
+/// sur chaque page pour qu'une planche séparée du lot reste identifiable.
+fn ecrire_competences(
+    c: &PdfLayerReference,
+    competences: &[String],
+    largeur: f32,
+    hauteur: f32,
+    police: &IndirectFontRef,
+) {
+    let lignes = lignes_competences(competences, largeur - 2.0 * MARGE_PAGE, TAILLE_COMPETENCES, LIGNES_COMPETENCES);
+    c.set_fill_color(couleur((0.42, 0.42, 0.47)));
+    for (k, ligne) in lignes.iter().enumerate() {
+        let y = hauteur - 7.5 - k as f32 * INTERLIGNE_COMPETENCES;
+        c.use_text(ligne, TAILLE_COMPETENCES, Mm(MARGE_PAGE), Mm(y), police);
+    }
+}
+
+/// Les lignes à écrire pour des compétences : coupées aux mots pour tenir
+/// dans `largeur` (mm), `max` lignes au plus — la dernière finit par « … »
+/// quand la place a manqué. Sert aussi au tableau de langage.
+pub(crate) fn lignes_competences(competences: &[String], largeur: f32, corps: f32, max: usize) -> Vec<String> {
+    let mut lignes: Vec<String> = competences
+        .iter()
+        .map(|c| c.trim())
+        .filter(|c| !c.is_empty())
+        .flat_map(|c| crate::synthese_pdf::wrap(c, largeur, corps))
+        .collect();
+    if lignes.len() > max {
+        lignes.truncate(max);
+        if let Some(derniere) = lignes.last_mut() {
+            let garde = derniere.chars().count().saturating_sub(2);
+            let mut coupee: String = derniere.chars().take(garde).collect();
+            coupee.push('…');
+            *derniere = coupee;
+        }
+    }
+    lignes
 }
 
 /// Produit le PDF complet d'un jeu.
@@ -484,7 +539,7 @@ mod tests {
     }
 
     fn options() -> Options {
-        Options { libelles: false, cartes: true, colonnes: 3, lignes: 2, planches: 6, graine: 42 }
+        Options { libelles: false, cartes: true, colonnes: 3, lignes: 2, planches: 6, graine: 42, competences: vec![] }
     }
 
     #[test]
@@ -602,6 +657,9 @@ mod tests {
         assert!(vivier.len() >= 6, "banque vide");
         let mut o = options();
         o.libelles = true;
+        o.competences = vec![
+            "[Cycle 1] Communiquer avec les adultes et avec les autres enfants par le langage, en se faisant comprendre — Mobiliser le langage dans toutes ses dimensions › L'oral".into(),
+        ];
         if let Ok(g) = std::env::var("MAITRIZE_GRILLE") {
             let (c, l) = g.split_once('x').expect("grille CxL");
             (o.colonnes, o.lignes) = (c.parse().unwrap(), l.parse().unwrap());
@@ -610,6 +668,21 @@ mod tests {
         let sortie = std::env::var("MAITRIZE_SORTIE").unwrap_or_else(|_| "/tmp/loto-test.pdf".into());
         std::fs::write(&sortie, &pdf).unwrap();
         println!("PDF écrit : {sortie} ({} octets)", pdf.len());
+    }
+
+    #[test]
+    fn les_competences_tiennent_dans_la_marge_haute() {
+        // Trois lignes au plus dans la marge : au-delà, on coupe et on le dit.
+        let longue = "Identifier des mots de manière de plus en plus aisée : ".repeat(4);
+        let lignes = lignes_competences(&[longue.clone(), longue], 265.0, TAILLE_COMPETENCES, LIGNES_COMPETENCES);
+        assert_eq!(lignes.len(), LIGNES_COMPETENCES);
+        assert!(lignes.last().unwrap().ends_with('…'), "{lignes:?}");
+        for l in &lignes {
+            assert!(l.chars().count() <= 195, "{l}");
+        }
+        // Une ligne vide ne prend pas de place ; une courte reste entière.
+        let courtes = lignes_competences(&["  ".into(), "[CP] Lire des syllabes".into()], 265.0, 7.0, 3);
+        assert_eq!(courtes, vec!["[CP] Lire des syllabes"]);
     }
 
     #[test]
