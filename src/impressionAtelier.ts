@@ -18,9 +18,14 @@ import { escapeHtml, printHTML } from "./print";
 /** Combien de compétences s'écrivent en tête ; au-delà, on les compte. */
 export const LIGNES_MAX = 4;
 
-/** « [CP] Intitulé » : le niveau d'abord, quand il est connu. */
-export const etiquetteCompetence = (c: CompetenceSelectionnee) =>
-  (c.niveau ? `[${c.niveau}] ` : "") + c.competenceTitre.trim();
+/**
+ * L'intitulé seul, sans le niveau.
+ *
+ * La feuille va à l'élève : « CP » n'y a pas sa place — l'enseignant le sait,
+ * et l'élève d'IME n'a pas à lire sur sa fiche un niveau qui n'est pas le
+ * sien. Le niveau reste visible dans l'application, où il aide à choisir.
+ */
+export const etiquetteCompetence = (c: CompetenceSelectionnee) => c.competenceTitre.trim();
 
 /** D'où vient la compétence : « Cycle 2 › Lire et écrire › Identifier des mots ». */
 export function contexteCompetence(c: CompetenceSelectionnee): string {
@@ -32,7 +37,7 @@ export function contexteCompetence(c: CompetenceSelectionnee): string {
   return etapes.join(" › ");
 }
 
-/** Une compétence sur une ligne, pour les PDF : « [CP] Intitulé — contexte ». */
+/** Une compétence sur une ligne, pour les PDF : « Intitulé — contexte ». */
 export function ligneCompetence(c: CompetenceSelectionnee): string {
   const contexte = contexteCompetence(c);
   return contexte ? `${etiquetteCompetence(c)} — ${contexte}` : etiquetteCompetence(c);

@@ -658,7 +658,7 @@ mod tests {
         let mut o = options();
         o.libelles = true;
         o.competences = vec![
-            "[Cycle 1] Communiquer avec les adultes et avec les autres enfants par le langage, en se faisant comprendre — Mobiliser le langage dans toutes ses dimensions › L'oral".into(),
+            "Communiquer avec les adultes et avec les autres enfants par le langage, en se faisant comprendre — Mobiliser le langage dans toutes ses dimensions › L'oral".into(),
         ];
         if let Ok(g) = std::env::var("MAITRIZE_GRILLE") {
             let (c, l) = g.split_once('x').expect("grille CxL");
