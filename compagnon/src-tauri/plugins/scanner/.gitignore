@@ -1,0 +1,4 @@
+# Posé par Tauri à chaque compilation : l'API Swift de Tauri, le cache de swift build, la résolution des paquets.
+.tauri/
+ios/.build/
+ios/Package.resolved

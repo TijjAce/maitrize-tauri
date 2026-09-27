@@ -194,6 +194,48 @@ pub async fn vocal_envoyer(app: tauri::AppHandle, id: String) -> R<()> {
     std::fs::remove_file(&chemin).map_err(|e| e.to_string())
 }
 
+// ── Les pages scannées ────────────────────────────────────────────────────
+//
+// Le scanner de l'iPhone rend des pages redressées, en JPEG, dans le dossier
+// temporaire. Elles partent l'une après l'autre sur l'ordinateur, qui les
+// range dans le manuel ouvert ; chacune est effacée une fois arrivée. Un
+// manuel n'a rien de nominatif : le téléphone peut le garder le temps de
+// l'envoi sans rien trahir.
+
+/// Envoie les pages scannées ; rend le nombre de pages arrivées.
+///
+/// Au premier refus, on s'arrête et l'on dit combien sont passées : les
+/// pages restantes sont gardées, l'enseignant relance.
+#[tauri::command]
+pub async fn scan_envoyer(app: tauri::AppHandle, fichiers: Vec<String>) -> R<u32> {
+    let base = ordinateur_lire(app.clone())?;
+    if base.is_empty() {
+        return Err("Aucun ordinateur appairé.".into());
+    }
+    let (origine, jeton) = decouper_adresse(&base)?;
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(60))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let url = format!("{origine}/api/photo?t={}&ext=jpg", urlencode(&jeton));
+    let mut envoyees = 0u32;
+    for chemin in fichiers {
+        let octets = std::fs::read(&chemin).map_err(|e| e.to_string())?;
+        let reponse = client
+            .post(&url)
+            .body(octets)
+            .send()
+            .await
+            .map_err(|_| format!("L'ordinateur ne répond plus ({envoyees} page(s) envoyée(s))."))?;
+        if !reponse.status().is_success() {
+            return Err(format!("L'ordinateur a refusé ({}) après {envoyees} page(s).", reponse.status()));
+        }
+        let _ = std::fs::remove_file(&chemin);
+        envoyees += 1;
+    }
+    Ok(envoyees)
+}
+
 // ── Les créneaux du jour ──────────────────────────────────────────────────
 //
 // Le téléphone reste ignorant de la classe, à une exception près, demandée :

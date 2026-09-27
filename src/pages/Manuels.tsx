@@ -1,6 +1,8 @@
 import React from "react";
-import { api } from "../api";
-import { Field, Input, Select, Textarea, useAsync } from "../components/ui";
+import { listen } from "@tauri-apps/api/event";
+import { api, type PortableInfo } from "../api";
+import { Field, Input, Modal, Select, Textarea, useAsync } from "../components/ui";
+import { lirePartage, ouvrirPartage } from "../partageWifi";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { PhotoTelephone } from "../components/PhotoTelephone";
@@ -39,6 +41,90 @@ async function pngReduit(dataUrl: string, maxCote = 1600): Promise<string> {
 }
 
 const mimeDe = (fichier: string) => (fichier.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg");
+
+/** Les octets d'un fichier de Fichiers/, relus. */
+async function octetsDuFichierStocke(nom: string): Promise<Uint8Array> {
+  return Uint8Array.from(atob(await api.fichierRead(nom)), (c) => c.charCodeAt(0));
+}
+
+/**
+ * Un fichier reçu du téléphone, en pages : une image fait une page ; un PDF
+ * — celui que rend le scanner de l'application Fichiers — en fait autant que
+ * de pages, chacune rendue en image et rangée à son tour.
+ */
+async function pagesDuFichierRecu(nom: string): Promise<string[]> {
+  if (!nom.toLowerCase().endsWith(".pdf")) return [nom];
+  const octets = await octetsDuFichierStocke(nom);
+  const n = await nombreDePages(octets);
+  const noms: string[] = [];
+  for (let i = 1; i <= n; i++) {
+    const image = (await rendrePage(octets, i)).image;
+    noms.push(await api.fichierSave(`page-${i}.png`, image));
+  }
+  api.fichierDelete(nom).catch(() => {});
+  return noms;
+}
+
+/**
+ * Les pages scannées par le compagnon iPhone.
+ *
+ * Le téléphone scanne comme Notes, puis envoie ; ici on attend, on compte,
+ * et l'on range chaque page dans le manuel. Il faut que le partage WiFi soit
+ * ouvert : c'est par lui que le téléphone parle à l'ordinateur.
+ */
+function ScanCompagnon({ label, className = "btn", avantDOuvrir, onPage, onFin }: {
+  label: string; className?: string;
+  avantDOuvrir: () => boolean | Promise<boolean>;
+  onPage: (fichier: string) => void;
+  onFin: (recues: number) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [partage, setPartage] = React.useState<PortableInfo | null | undefined>(undefined);
+  const [recues, setRecues] = React.useState(0);
+  const recuesRef = React.useRef(0);
+  const ouvrir = async () => {
+    if (!(await avantDOuvrir())) return;
+    setRecues(0); recuesRef.current = 0; setOpen(true);
+    try { setPartage(await lirePartage()); } catch { setPartage(null); }
+  };
+  const terminer = () => { setOpen(false); onFin(recuesRef.current); };
+  const allumer = async () => {
+    try { setPartage(await ouvrirPartage()); } catch (e) { toast(String(e), { icone: "⚠️" }); }
+  };
+  React.useEffect(() => {
+    if (!open) return;
+    let actif = true;
+    const un = listen<string>("photo:recue", (e) => {
+      if (!actif) return;
+      onPage(e.payload);
+      recuesRef.current += 1; setRecues(recuesRef.current);
+    });
+    return () => { actif = false; un.then((f) => f()); };
+  }, [open, onPage]);
+  return (
+    <>
+      <button type="button" className={className} onClick={ouvrir}>{label}</button>
+      {open && (
+        <Modal titre="📱 Scanner avec le compagnon" onClose={terminer}
+          footer={<button className="btn primary" onClick={terminer}>{recues ? `✅ Terminer (${recues} page${recues > 1 ? "s" : ""})` : "Fermer"}</button>}>
+          {partage === undefined ? <p>On regarde le partage WiFi…</p> : partage ? (
+            <div>
+              <p style={{ marginTop: 0 }}>Sur le téléphone, dans <b>Maitrize Dictaphone</b> : <b>📄 Scanner des pages</b>. Le scanner d'iOS — celui de Notes —
+                cadre chaque page et la redresse ; enchaînez-les, puis « Enregistrer » : elles arrivent ici.</p>
+              <p className="meta">Partage ouvert sur {partage.urlNom || partage.url}. Le téléphone doit être appairé et sur le même WiFi.</p>
+              <p className="meta" style={{ fontSize: 14 }}>{recues ? `✅ ${recues} page${recues > 1 ? "s" : ""} reçue${recues > 1 ? "s" : ""} — en attente de la suite…` : "⏳ En attente de la première page…"}</p>
+            </div>
+          ) : (
+            <div>
+              <p style={{ marginTop: 0 }}>Le partage WiFi est éteint : le téléphone ne peut pas joindre l'ordinateur.</p>
+              <button type="button" className="btn primary" onClick={allumer}>📡 Ouvrir le partage WiFi</button>
+            </div>
+          )}
+        </Modal>
+      )}
+    </>
+  );
+}
 
 export function ManuelsPanel() {
   const { data: indexBrut, reload: relireIndex } = useAsync(() => api.settingGet(CLE_INDEX), []);
@@ -88,17 +174,24 @@ export function ManuelsPanel() {
     return true;
   };
   const continuerParPhotos = async () => { manuelEnCours.current = manuel; return !!manuel; };
+  // Les fichiers arrivent dans l'ordre ; on les range dans l'ordre, un à la fois.
+  const fileDArrivee = React.useRef(Promise.resolve());
   const photoRecue = React.useCallback((fichier: string) => {
-    const m = manuelEnCours.current;
-    if (!m) return;
-    const suite = ajouterPagePhoto(m, fichier);
-    manuelEnCours.current = suite;
-    void enregistrer(suite);
+    fileDArrivee.current = fileDArrivee.current.then(async () => {
+      const m = manuelEnCours.current;
+      if (!m) return;
+      let suite = m;
+      for (const nom of await pagesDuFichierRecu(fichier)) suite = ajouterPagePhoto(suite, nom);
+      manuelEnCours.current = suite;
+      await enregistrer(suite);
+    }).catch((e) => toast(`Page reçue mais illisible : ${e}`, { icone: "⚠️" }));
   }, [enregistrer]);
   const finDePhotos = React.useCallback((recues: number) => {
-    const m = manuelEnCours.current;
-    if (m && recues) { toast(`${recues} page${recues > 1 ? "s" : ""} reçue${recues > 1 ? "s" : ""} dans « ${m.titre} ».`, { icone: "📚" }); setPageId(m.pages[m.pages.length - 1]?.id ?? ""); }
-    manuelEnCours.current = null;
+    void fileDArrivee.current.then(() => {
+      const m = manuelEnCours.current;
+      if (m && recues) { toast(`${recues} page${recues > 1 ? "s" : ""} reçue${recues > 1 ? "s" : ""} dans « ${m.titre} ».`, { icone: "📚" }); setPageId(m.pages[m.pages.length - 1]?.id ?? ""); }
+      manuelEnCours.current = null;
+    });
   }, []);
 
   const importerPdf = async (f: File) => {
@@ -243,12 +336,14 @@ export function ManuelsPanel() {
             <Input value={titreNouveau} onChange={(e) => setTitreNouveau(e.target.value)} placeholder="Maths CE1, Lecture CP…" />
           </Field>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <PhotoTelephone serie label="📱 Photographier les pages" className="btn primary" avantDOuvrir={commencerParPhotos} onPhoto={photoRecue} onFin={finDePhotos} />
+            <ScanCompagnon label="📱 Scanner avec le compagnon" className="btn primary" avantDOuvrir={commencerParPhotos} onPage={photoRecue} onFin={finDePhotos} />
+            <PhotoTelephone serie label="📷 Photographier par QR code" avantDOuvrir={commencerParPhotos} onPhoto={photoRecue} onFin={finDePhotos} />
             <input ref={entree} type="file" accept="application/pdf" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) importerPdf(f); e.target.value = ""; }} />
             <button type="button" className="btn" disabled={!!occupe} onClick={() => entree.current?.click()}>📄 Importer un PDF</button>
           </div>
           <p className="meta" style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 0 }}>
-            Le téléphone photographie page après page (même WiFi) ; tout reste sur cet ordinateur.
+            Avec le compagnon iPhone, c'est le scanner de Notes : la page se cadre et se redresse. Par QR code, n'importe quel téléphone
+            prend des photos, ou scanne avec l'application Fichiers. Tout reste sur cet ordinateur.
           </p>
         </div>
       </div>
@@ -265,9 +360,10 @@ export function ManuelsPanel() {
               <Input value={manuel.titre} onChange={(e) => setManuel({ ...manuel, titre: e.target.value })} onBlur={() => enregistrer(manuel)} style={{ maxWidth: 260, fontWeight: 700 }} aria-label="Titre du manuel" />
               <Input value={manuel.niveau} onChange={(e) => setManuel({ ...manuel, niveau: e.target.value })} onBlur={() => enregistrer(manuel)} placeholder="Niveau (CP, CE2…)" style={{ maxWidth: 140 }} aria-label="Niveau" />
               <div style={{ flex: 1 }} />
-              {manuel.source === "telephone" && (
-                <PhotoTelephone serie label="📱 Ajouter des pages" className="btn sm" avantDOuvrir={continuerParPhotos} onPhoto={photoRecue} onFin={finDePhotos} />
-              )}
+              {manuel.source === "telephone" && (<>
+                <ScanCompagnon label="📱 Scanner d'autres pages" className="btn sm" avantDOuvrir={continuerParPhotos} onPage={photoRecue} onFin={finDePhotos} />
+                <PhotoTelephone serie label="📷 Par QR code" className="btn sm" avantDOuvrir={continuerParPhotos} onPhoto={photoRecue} onFin={finDePhotos} />
+              </>)}
               {occupe ? (
                 <button type="button" className="btn sm" onClick={() => { arret.current = true; }}>⏹ {occupe}</button>
               ) : (
