@@ -63,10 +63,10 @@ export function piedMaitrize(logo: string): string {
  * s'entasse sur dix lignes pendant que la durée occupe un quart de la page.
  */
 const PARTS: [RegExp, number][] = [
-  [/duree|temps|minute|horaire/, 1],
-  [/phase|etape|moment|numero|n°/, 1.5],
-  [/description|deroulement|activite|consigne|tache|contenu|demarche/, 4.5],
-  [/posture|role|enseignant|maitre|adulte|materiel|organisation|modalite|remarque|observation/, 2],
+  [/duree|temps|minute|horaire/, 0.8],
+  [/phase|etape|moment|numero|n°/, 1.2],
+  [/description|deroulement|activite|consigne|tache|contenu|demarche/, 5.2],
+  [/posture|role|enseignant|maitre|adulte|materiel|organisation|modalite|remarque|observation/, 1.6],
 ];
 
 /** La part d'une colonne, d'après son intitulé. */

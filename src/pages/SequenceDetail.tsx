@@ -9,7 +9,7 @@ import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../component
 import { TableauEditor, MaterielSeance, imageDuPresse, fileToBase64 } from "../components/SeanceParts";
 import { IllustrationsEditor, DeroulementRead, CelluleContenu, FichierImg, CitationButton } from "../components/Deroulement";
 import { fichierToBlobUrl } from "../components/PdfViewer";
-import { printHTML, dataUrlImage } from "../print";
+import { printHTML, dataUrlImage, partDeColonne } from "../print";
 import { openCtx } from "../components/ctxmenu";
 import { PhotoTelephone } from "../components/PhotoTelephone";
 import { useFileDropZone, estDocument, estImage, fichierEnBase64 } from "../dragdrop";
@@ -513,7 +513,12 @@ export function SeanceReadView({ seance: s, onClose, onEdit }: { seance: Seance;
       {grid.length > 0 && <Section titre="Tableau">
         <div style={{ overflowX: "auto" }}>
           <table className="tbl" style={{ tableLayout: "fixed", width: "100%" }}>
-            <colgroup>{grid[0]?.map((_, c) => <col key={c} style={{ width: `${100 / grid[0].length}%` }} />)}</colgroup>
+            {/* Chaque colonne à sa mesure : la durée tient en trois chiffres, la description porte tout. */}
+            <colgroup>{(() => {
+              const parts = grid[0].map(partDeColonne);
+              const total = parts.reduce((a, b) => a + b, 0) || 1;
+              return parts.map((p, c) => <col key={c} style={{ width: `${(p / total) * 100}%` }} />);
+            })()}</colgroup>
             <tbody>{grid.map((row, r) => <tr key={r} style={r === 0 ? { fontWeight: 700, background: "var(--panel-2)" } : undefined}>
               {row.map((cell, c) => <td key={c} style={{ verticalAlign: "top" }}>{r === 0 ? cell : <CelluleContenu texte={cell} />}</td>)}</tr>)}</tbody>
           </table>
