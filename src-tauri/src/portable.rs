@@ -204,7 +204,10 @@ pub fn portable_demarrer(app: tauri::AppHandle, db: State<Db>, portable: State<P
     // serveur l'emporte juste après.
     let hote = nom_local();
     let url_nom = if hote.is_empty() { String::new() } else { format!("http://{hote}:{port}/?t={token}") };
-    let qr = qr_svg(&url);
+    // C'est le nom qu'on encode dans le QR code : un téléphone qui le scanne
+    // retient alors une adresse qui vaudra encore demain.
+    let a_scanner = if url_nom.is_empty() { url.clone() } else { url_nom.clone() };
+    let qr = qr_svg(&a_scanner);
 
     let stop = Arc::new(AtomicBool::new(false));
     let stop_thread = stop.clone();
