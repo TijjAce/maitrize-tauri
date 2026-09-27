@@ -7,8 +7,13 @@
 //
 // Rangées par élève dans ses documents (type « competences »), à côté de ses
 // progressions.
+//
+// Troisième provenance, en IME : la programmation par élève. Ce qu'on a
+// décidé d'y travailler avec un jeune se retrouve ici, pour dire où il en
+// est — la programmation dit le projet, la progression dit le chemin.
 
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
+import type { Objectif } from "./programmationIme";
 
 export const TYPE_DOC_COMPETENCES = "competences";
 
@@ -27,6 +32,8 @@ export interface CompetenceTravaillee {
   page: string;
   competenceRefId: string | null;
   documentId: string | null;
+  /** L'objectif de la programmation dont elle vient, pour la suivre sans la doubler. */
+  objectifId?: string | null;
   statut: StatutCompetence;
   /** Date d'acquisition (AAAA-MM-JJ). */
   date: string;
@@ -70,12 +77,59 @@ export function nettoyerExtrait(s: string): string {
     .trim();
 }
 
+/** La source sous laquelle la programmation d'une année se range. */
+export const sourceProgrammation = (annee: string) => `Programmation ${annee}`;
+
+/**
+ * Un objectif de la programmation par élève, tel qu'on le suit ici.
+ *
+ * Non abordé tant qu'on n'a rien dit : c'est le projet de l'année, pas un
+ * constat. L'origine et les périodes prévues restent lisibles sous le texte.
+ */
+export function depuisProgrammation(o: Objectif, annee: string, aujourdhui: string): CompetenceTravaillee {
+  const periodes = o.periodes.length ? `période${o.periodes.length > 1 ? "s" : ""} ${o.periodes.join(", ")}` : "";
+  return {
+    id: nouvelId(), texte: o.competence.trim(), source: sourceProgrammation(annee),
+    chemin: [o.origine.trim(), periodes].filter(Boolean).join(" · "),
+    niveau: null, page: "", competenceRefId: o.source?.competenceRefId ?? null, documentId: null, objectifId: o.id,
+    statut: "nonabordee", date: "", notes: "", citeeLe: aujourdhui,
+  };
+}
+
+/**
+ * Reprend dans la liste les objectifs de la programmation qui n'y sont pas
+ * encore, et remet à jour ceux dont l'intitulé ou l'origine ont changé —
+ * en gardant le statut, la date et les notes déjà posés.
+ *
+ * Un objectif retiré de la programmation reste ici : ce qu'on a travaillé a
+ * été travaillé.
+ */
+export function synchroniserProgrammation(
+  liste: CompetenceTravaillee[], objectifs: Objectif[], annee: string, aujourdhui: string,
+): { liste: CompetenceTravaillee[]; ajoutees: number; misesAJour: number } {
+  let ajoutees = 0, misesAJour = 0;
+  const resultat = [...liste];
+  for (const o of objectifs) {
+    const voulu = depuisProgrammation(o, annee, aujourdhui);
+    if (!voulu.texte) continue;
+    const i = resultat.findIndex((x) => x.objectifId === o.id || memeCompetence(x, voulu));
+    if (i < 0) { resultat.push(voulu); ajoutees++; continue; }
+    const deja = resultat[i];
+    if (deja.texte !== voulu.texte || deja.chemin !== voulu.chemin || deja.objectifId !== o.id) {
+      resultat[i] = { ...deja, texte: voulu.texte, chemin: voulu.chemin, objectifId: o.id, competenceRefId: deja.competenceRefId ?? voulu.competenceRefId };
+      misesAJour++;
+    }
+  }
+  return { liste: resultat, ajoutees, misesAJour };
+}
+
 /** Sans accents, sans casse, espaces et apostrophes unifiés : pour comparer et chercher. */
 export const normaliser = (s: string) =>
   s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[’']/g, "'").replace(/\s+/g, " ").trim();
 
 /** Même compétence : même entrée du référentiel, ou même texte de la même source. */
 export function memeCompetence(a: CompetenceTravaillee, b: CompetenceTravaillee): boolean {
+  if (a.objectifId && b.objectifId) return a.objectifId === b.objectifId;
   if (a.source !== b.source) return false;
   if (a.competenceRefId && b.competenceRefId) return a.competenceRefId === b.competenceRefId && a.chemin === b.chemin;
   return normaliser(a.texte) === normaliser(b.texte);
@@ -102,7 +156,7 @@ export function lireCompetences(brut: string | null | undefined): CompetenceTrav
     return v.filter((x) => x && typeof x.texte === "string").map((x) => ({
       id: String(x.id ?? nouvelId()), texte: x.texte, source: String(x.source ?? ""), chemin: String(x.chemin ?? ""),
       niveau: x.niveau ?? null, page: String(x.page ?? ""), competenceRefId: x.competenceRefId ?? null,
-      documentId: x.documentId ?? null,
+      documentId: x.documentId ?? null, ...(x.objectifId ? { objectifId: String(x.objectifId) } : {}),
       statut: (["nonabordee", "encours", "acquise"].includes(x.statut) ? x.statut : "encours") as StatutCompetence,
       date: String(x.date ?? ""), notes: String(x.notes ?? ""), citeeLe: String(x.citeeLe ?? ""),
     }));
