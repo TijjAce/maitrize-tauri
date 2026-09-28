@@ -3,7 +3,8 @@ import { api, raccourci } from "../api";
 import { Field, Input, Modal, Select } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
-import { imprimerAtelier } from "../impressionAtelier";
+import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
+import { BoutonBureau } from "../components/BoutonBureau";
 import { useMemoire, useReglages } from "../components/useMemoire";
 import {
   genererPartieTout, genererMultiplicatifs, blocProbleme, blocCorrige, enteteFeuille, feuilleProblemes, classesFeuille,
@@ -42,6 +43,10 @@ type Tirage = ReturnType<typeof useTirage>;
 
 const appliquerRetouches = (problemes: Probleme[], retouches: Record<number, Retouche>, enonces: boolean) =>
   problemes.map((p, i) => (retouches[i] ? retoucher(p, retouches[i], enonces) : p));
+
+/** La même feuille, en PDF sur le plan de travail. */
+const bureau = (atelier: string, problemes: Probleme[], titre: string, presentation: Presentation) =>
+  enregistrerSurLeBureau(atelier, titre.trim() || "Problèmes", feuilleProblemes(problemes, titre, presentation), STYLE_FEUILLE);
 
 const imprimer = (atelier: string, problemes: Probleme[], titre: string, presentation: Presentation) => {
   void imprimerAtelier(atelier, titre.trim() || "Problèmes", feuilleProblemes(problemes, titre, presentation), STYLE_FEUILLE);
@@ -242,6 +247,7 @@ function Atelier({ atelier, intro, titre, setTitre, nombre: nombreProblemes, set
           <div style={{ flex: 1 }} />
           <button className="btn sm" onClick={tirage.nouvelle} title="Tire d'autres nombres et d'autres situations">🔀 Nouvelle feuille</button>
           <button className="btn sm primary" onClick={() => imprimer(atelier, problemes, titre, p)}>🖨 Imprimer</button>
+          <BoutonBureau onEnregistrer={() => bureau(atelier, problemes, titre, p)} />
         </div>
         <style>{STYLE_FEUILLE}</style>
         <div className="pb-apercu">

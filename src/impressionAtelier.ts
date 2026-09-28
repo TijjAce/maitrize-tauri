@@ -13,7 +13,8 @@
 
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 import { cleDesCompetences, lireCompetencesAtelier } from "./ateliersCompetences";
-import { escapeHtml, printHTML } from "./print";
+import { documentImprimable, escapeHtml, printHTML } from "./print";
+import type { MaterielItem } from "./api";
 
 /** Combien de compétences s'écrivent en tête ; au-delà, on les compte. */
 export const LIGNES_MAX = 4;
@@ -111,4 +112,45 @@ export const lignesCompetencesAtelier = async (atelier: string) =>
 export async function imprimerAtelier(atelier: string, titre: string, corps: string, style = ""): Promise<void> {
   const entete = enteteCompetencesHtml(await competencesDeLAtelier(atelier));
   printHTML(titre, entete + corps, entete ? style + STYLE_ENTETE_COMPETENCES : style);
+}
+
+// ── Sur le bureau ──────────────────────────────────────────────────────────
+//
+// Une feuille qu'on garde ne s'imprime pas seulement : elle se range sur le
+// plan de travail, en PDF, comme n'importe quel document — pour la retrouver,
+// la déposer dans une séance, la partager. Le matériel porte la première
+// compétence de l'atelier, pour que la tuile dise ce qu'elle travaille.
+
+/** Le matériel du bureau qui porte ce PDF, à la racine, sans séance ni séquence. */
+export function materielDuBureau(
+  atelier: string, titre: string, fichier: string, comps: CompetenceSelectionnee[], id: string, date: string,
+): MaterielItem {
+  const c = comps[0];
+  return {
+    id, titre: titre.trim() || atelier, descriptionMateriel: "",
+    competenceId: c?.competenceRefId ?? "", competenceTitre: c?.competenceTitre ?? "",
+    domaineTitre: c?.domaineTitre ?? "", sousDomaineTitre: c?.sousDomaineTitre ?? "", cycle: c?.referentielNom ?? "",
+    imagesJson: "[]", pdfsJson: JSON.stringify([fichier]), dateCreation: date, seanceId: null, sequenceId: null,
+    dossier: "", videosJson: "[]", coffreJson: "[]",
+  };
+}
+
+/** Un PDF déjà dans les fichiers de l'application, déposé sur le bureau. */
+export async function deposerSurLeBureau(atelier: string, titre: string, fichier: string): Promise<MaterielItem> {
+  const { api, newId, nowIso } = await import("./api");
+  const materiel = materielDuBureau(atelier, titre, fichier, await competencesDeLAtelier(atelier), newId(), nowIso());
+  await api.materielSave(materiel);
+  return materiel;
+}
+
+/**
+ * La feuille d'un atelier, la même que celle qu'on imprime — ses compétences
+ * en tête —, transformée en PDF et déposée sur le bureau.
+ */
+export async function enregistrerSurLeBureau(atelier: string, titre: string, corps: string, style = ""): Promise<MaterielItem> {
+  const { api } = await import("./api");
+  const entete = enteteCompetencesHtml(await competencesDeLAtelier(atelier));
+  const html = documentImprimable(titre, entete + corps, entete ? style + STYLE_ENTETE_COMPETENCES : style);
+  const fichier = await api.feuilleEnPdf(html);
+  return deposerSurLeBureau(atelier, titre, fichier);
 }

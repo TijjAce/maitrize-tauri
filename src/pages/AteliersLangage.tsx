@@ -5,7 +5,8 @@ import { toast } from "../components/Toaster";
 import { chargerImages, usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
-import { imprimerAtelier } from "../impressionAtelier";
+import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
+import { BoutonBureau } from "../components/BoutonBureau";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import { REGLAGES_ETIQUETTES, STYLE_ETIQUETTES, htmlEtiquettes } from "../etiquettes";
 import type { MotImage } from "../jeuxSons";
@@ -53,6 +54,10 @@ export function EtiquettesTab({ banque }: { banque: boolean }) {
         </Field>
         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
           <button type="button" className="btn primary sm" disabled={!peut} onClick={imprimer}>🖨 Imprimer</button>
+          <BoutonBureau disabled={!peut} onEnregistrer={async () => {
+            const im = r.pictos ? await chargerImages(ids) : {};
+            return enregistrerSurLeBureau("etiquettes", "Étiquettes de mots", htmlEtiquettes(mots, im, r), STYLE_FEUILLE + STYLE_ETIQUETTES);
+          }} />
         </div>
       </div>
       <div style={{ minWidth: 0 }}>

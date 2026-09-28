@@ -8,7 +8,8 @@ import {
 } from "../tla";
 import { SQUELETTES, squelettePour, placesDuTheme, motsDuNoyau } from "../squelettes";
 import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
-import { lignesCompetencesAtelier } from "../impressionAtelier";
+import { deposerSurLeBureau, lignesCompetencesAtelier } from "../impressionAtelier";
+import { BoutonBureau } from "../components/BoutonBureau";
 
 // ── Tableaux de langage assisté ────────────────────────────────────────────
 //
@@ -203,6 +204,13 @@ function Editeur({ gabarit, onChange, onFermer }: {
             </Select>
           </Field>
           <div style={{ flex: 1 }} />
+          <BoutonBureau className="btn" disabled={occupe} onEnregistrer={async () => {
+            const soucis = verifier(gabarit);
+            if (soucis.length) throw new Error(soucis[0]);
+            const chemin = await api.tlaGenerer({ ...gabarit, competences: await lignesCompetencesAtelier("tla") }, false);
+            const nom = gabarit.eleve ? `${gabarit.eleve} — ${gabarit.nom}` : gabarit.nom;
+            return deposerSurLeBureau("tla", nom, await api.fichierImporterDepuisChemin(chemin));
+          }} />
           <button className="btn primary" disabled={occupe} onClick={imprimer}>
             {occupe ? "Création…" : "🖨 Imprimer le tableau"}
           </button>

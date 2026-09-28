@@ -17,6 +17,7 @@ mod portable;
 mod seed;
 mod gevasco_pdf;
 mod fusion_pdf;
+pub mod feuille_pdf;
 mod ppi_pdf;
 mod sync;
 mod synthese_pdf;
@@ -41,6 +42,9 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        // Les feuilles à imprimer en PDF se servent à une fenêtre invisible (voir feuille_pdf).
+        .register_uri_scheme_protocol(feuille_pdf::PROTOCOLE, feuille_pdf::servir)
+        .manage(feuille_pdf::Feuilles::default())
         // Fenêtre opaque standard (pas d'API privée macOS) → compatible
         // Mac App Store / Microsoft Store.
         .setup(|app| {
@@ -123,6 +127,7 @@ pub fn run() {
             // Fichiers
             fichier_save, fichier_read, fichier_path, fichier_delete, fichier_importer_depuis_chemin, enregistrer_texte,
             imprimer_pdf, ouvrir_fichier, imprimer_planning, ouvrir_html, exporter_synthese_gs, exporter_bilan_ppi, exporter_gevasco,
+            feuille_pdf::feuille_en_pdf,
             // Recherche
             recherche,
             // Export / Import

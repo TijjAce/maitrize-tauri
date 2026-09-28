@@ -1939,6 +1939,8 @@ pub fn jeu_generer(
     pictos: Vec<crate::arasaac::PictoChoisi>,
     options: crate::jeux_pdf::Options,
     titre: String,
+    // Faux pour ranger le PDF sans l'ouvrir (sur le bureau).
+    ouvrir: Option<bool>,
 ) -> R<String> {
     let bytes = crate::jeux_pdf::construire(&jeu, &pictos, &options)?;
     let propre: String = titre
@@ -1955,7 +1957,9 @@ pub fn jeu_generer(
     );
     let path = std::env::temp_dir().join(&nom);
     std::fs::write(&path, &bytes).map_err(e)?;
-    tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
+    if ouvrir.unwrap_or(true) {
+        tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
+    }
     Ok(path.to_string_lossy().into_owned())
 }
 
@@ -1965,7 +1969,7 @@ pub fn jeu_generer(
 /// Déplacer une case briserait l'automatisation du geste que le tableau sert
 /// justement à installer.
 #[tauri::command]
-pub fn tla_generer(gabarit: crate::tla_pdf::Gabarit) -> R<String> {
+pub fn tla_generer(gabarit: crate::tla_pdf::Gabarit, ouvrir: Option<bool>) -> R<String> {
     let bytes = crate::tla_pdf::construire(&gabarit)?;
     let propre: String = format!("{} {}", gabarit.eleve, gabarit.nom)
         .chars()
@@ -1980,7 +1984,9 @@ pub fn tla_generer(gabarit: crate::tla_pdf::Gabarit) -> R<String> {
     );
     let path = std::env::temp_dir().join(&nom);
     std::fs::write(&path, &bytes).map_err(e)?;
-    tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
+    if ouvrir.unwrap_or(true) {
+        tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
+    }
     Ok(path.to_string_lossy().into_owned())
 }
 
