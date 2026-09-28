@@ -52,7 +52,7 @@ function Colonnes({ gauche, droite }: { gauche: React.ReactNode; droite: React.R
 }
 
 function Boutons({ onTirage, onImprimer, onBureau, peut }: {
-  onTirage?: () => void; onImprimer: () => void; onBureau?: () => Promise<{ titre: string }>; peut: boolean;
+  onTirage?: () => void; onImprimer: () => void; onBureau?: () => Promise<{ id: string; titre: string }>; peut: boolean;
 }) {
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>

@@ -51,18 +51,23 @@ export function Toaster() {
   if (items.length === 0) return null;
   return (
     <div className="toaster" role="region" aria-label="Notifications" aria-live="polite">
-      {items.map((t) => (
-        <div key={t.id} className="toast" role="status">
-          <span className="toast-ico" aria-hidden="true">{t.icone}</span>
-          <span className="toast-msg">{t.message}</span>
-          {t.action && (
-            <button className="btn sm" onClick={() => { void t.action!.faire(); fermer(t.id); }}>
-              {t.action.label}
-            </button>
-          )}
-          <button className="btn ghost sm" aria-label="Fermer la notification" onClick={() => fermer(t.id)}>✕</button>
-        </div>
-      ))}
+      {items.map((t) => {
+        const agir = t.action ? () => { void t.action!.faire(); fermer(t.id); } : undefined;
+        return (
+          // Le bandeau entier se clique quand il offre un geste : on vise le
+          // message, pas le petit bouton à côté.
+          <div key={t.id} className={`toast${agir ? " cliquable" : ""}`} role="status" onClick={agir}>
+            <span className="toast-ico" aria-hidden="true">{t.icone}</span>
+            <span className="toast-msg">{t.message}</span>
+            {t.action && (
+              <button className="btn sm" onClick={(e) => { e.stopPropagation(); agir?.(); }}>
+                {t.action.label}
+              </button>
+            )}
+            <button className="btn ghost sm" aria-label="Fermer la notification" onClick={(e) => { e.stopPropagation(); fermer(t.id); }}>✕</button>
+          </div>
+        );
+      })}
     </div>
   );
 }
