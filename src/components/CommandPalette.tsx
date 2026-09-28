@@ -393,6 +393,7 @@ export function CommandPalette() {
   const ACTIONS: Cmd[] = [
     { id: "a-newseq", ico: "➕", label: "Nouvelle séquence", sous: "Action · créer", famille: "action", run: goAction("/plan", "maitrize:nouvelle-sequence") },
     { id: "a-genia", ico: "✨", label: "Générer une séquence (IA)", sous: "Action · assistant", famille: "action", run: goAction("/assistant", "maitrize:generer-sequence") },
+    { id: "a-docia", ico: "📄", label: "Créer un document PDF (IA)", sous: "Action · assistant · fiche, mot aux familles, affiche", famille: "action", run: goAction("/assistant", "maitrize:document-ia") },
     { id: "a-assist", ico: "🪄", label: "Ouvrir l'assistant IA", sous: "Action", famille: "action", run: goNav("/assistant") },
     { id: "a-neuf", ico: "✨", label: "Quoi de neuf", sous: "Action · ce qui a changé dans l'app", famille: "action", run: () => { setOpen(false); montrerLesNouveautes(); } },
     { id: "r-demain", ico: "🌅", label: "Préparer pour demain", sous: "Réponse directe", famille: "action", run: repondre("Préparer pour demain", preparerDemain) },
