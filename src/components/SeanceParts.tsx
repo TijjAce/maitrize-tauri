@@ -237,8 +237,9 @@ export function imageDuPresse(e: React.ClipboardEvent): File | null {
   return null;
 }
 
-// Matériel pédagogique d'une séance : PDF uniquement, chaque ajout crée une
-// fiche dans l'onglet « Matériel » (liée via seanceId).
+// Matériel pédagogique d'une séance : PDF uniquement, chaque ajout crée un
+// matériel lié à la séance (seanceId) — qui reste chez elle, sans paraître
+// sur le bureau, et s'imprime à la suite du cahier journal.
 export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cycle?: string }) {
   const [items, setItems] = React.useState<MaterielItem[]>([]);
   const pdfInput = React.useRef<HTMLInputElement>(null);
@@ -296,8 +297,8 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
         <button className="btn sm" onClick={() => setBureauOuvert(true)}>🗂 Prendre sur le bureau</button>
       </div>
       <div style={{ fontSize: 12, color: "var(--text-2)", margin: "6px 0 10px" }}>
-        Les PDF ajoutés ici apparaissent aussi dans l'onglet <b>Matériel</b> — glissez-en un depuis le Finder ou Aperçu,
-        ou reprenez un PDF déjà posé sur le plan de travail.
+        Ces PDF restent dans la séance et s'impriment à la suite du cahier journal — glissez-en un depuis le Finder ou Aperçu,
+        ou reprenez un PDF du plan de travail, qui y reste à sa place.
       </div>
       {bureauOuvert && <ChoixPdfDuBureau seanceId={seanceId} onPrendre={prendreSurLeBureau} onClose={() => setBureauOuvert(false)} />}
       {items.length === 0 ? (
@@ -305,7 +306,7 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
       ) : items.map((m) => (
         <div key={m.id} className="list-row" style={{ marginBottom: 6 }}>
           <span>📄</span><div style={{ flex: 1 }} className="title">{m.titre}</div>
-          <span className="chip" title="Visible dans l'onglet Matériel">🧰 Matériel</span>
+          <span className="chip" title="Imprimé à la suite du cahier journal">🖨 Journal</span>
           <button className="btn ghost sm" onClick={() => supprimer(m)} aria-label="Supprimer">🗑</button>
         </div>
       ))}
