@@ -161,11 +161,13 @@ export interface ReglagesLectureSons {
   completer: boolean;
   ecrire: boolean;
   titre: string;
+  /** Des verbes en pictos ajoutés à la main devant la consigne (voir CAA). */
+  pictos: string[];
 }
 
 export const REGLAGES_PAR_DEFAUT: ReglagesLectureSons = {
   son: "ch", mesMots: "", syllabes: true, lireDesMots: true, entourer: true,
-  completer: true, ecrire: false, titre: "",
+  completer: true, ecrire: false, titre: "", pictos: [],
 };
 
 /** Les mots saisis par l'enseignant, un par ligne ou séparés par des virgules. */

@@ -113,7 +113,7 @@ export const lignesCompetencesAtelier = async (atelier: string) =>
  * Les consignes de la feuille avec les pictos de leurs verbes (voir `caa`),
  * si l'enseignant en a choisi. Une image qui manque ne bloque rien.
  */
-export async function consignesEnPictos(corps: string): Promise<{ corps: string; style: string }> {
+export async function consignesEnPictos(corps: string, supplement: string[] = []): Promise<{ corps: string; style: string }> {
   try {
     const { api } = await import("./api");
     const lexique = lireLexique(await api.settingGet(CLE_LEXIQUE));
@@ -123,17 +123,20 @@ export async function consignesEnPictos(corps: string): Promise<{ corps: string;
     await Promise.all(ids.map(async (id) => {
       try { images[id] = `data:image/png;base64,${await api.arasaacImage(id)}`; } catch { /* sans image, pas de picto */ }
     }));
-    const decore = decorerConsignesHtml(corps, lexique, images);
+    const decore = decorerConsignesHtml(corps, lexique, images, supplement);
     return { corps: decore, style: decore === corps ? "" : STYLE_CONSIGNES_PICTOS };
   } catch {
     return { corps, style: "" };
   }
 }
 
+/** Ce qu'un atelier ajoute à sa feuille : des pictos de verbes choisis à la main. */
+export interface ExtrasAtelier { pictos?: string[] }
+
 /** Imprime la feuille d'un atelier, ses compétences en tête et ses consignes en pictos. */
-export async function imprimerAtelier(atelier: string, titre: string, corps: string, style = ""): Promise<void> {
+export async function imprimerAtelier(atelier: string, titre: string, corps: string, style = "", extras: ExtrasAtelier = {}): Promise<void> {
   const entete = enteteCompetencesHtml(await competencesDeLAtelier(atelier));
-  const consignes = await consignesEnPictos(corps);
+  const consignes = await consignesEnPictos(corps, extras.pictos ?? []);
   printHTML(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style);
 }
 
@@ -170,10 +173,10 @@ export async function deposerSurLeBureau(atelier: string, titre: string, fichier
  * La feuille d'un atelier, la même que celle qu'on imprime — ses compétences
  * en tête —, transformée en PDF et déposée sur le bureau.
  */
-export async function enregistrerSurLeBureau(atelier: string, titre: string, corps: string, style = ""): Promise<MaterielItem> {
+export async function enregistrerSurLeBureau(atelier: string, titre: string, corps: string, style = "", extras: ExtrasAtelier = {}): Promise<MaterielItem> {
   const { api } = await import("./api");
   const entete = enteteCompetencesHtml(await competencesDeLAtelier(atelier));
-  const consignes = await consignesEnPictos(corps);
+  const consignes = await consignesEnPictos(corps, extras.pictos ?? []);
   const html = documentImprimable(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style);
   const fichier = await api.feuilleEnPdf(html);
   return deposerSurLeBureau(atelier, titre, fichier);
