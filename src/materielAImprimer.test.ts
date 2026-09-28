@@ -1,26 +1,49 @@
 import { describe, it, expect } from "vitest";
-import type { MaterielItem } from "./api";
-import { annexesDesCreneaux, annexesHtml, octetsDeBase64, STYLE_ANNEXES, titresDuMateriel } from "./materielAImprimer";
+import type { MaterielItem, Seance, Sequence } from "./api";
+import {
+  annexesDesCreneaux, annexesHtml, liensDuCreneau, materielDuCreneau, octetsDeBase64, STYLE_ANNEXES, titresDuMateriel,
+} from "./materielAImprimer";
 
 const materiel = (p: Partial<MaterielItem>): MaterielItem => ({
   id: "m", titre: "Fiche", descriptionMateriel: "", competenceId: "", competenceTitre: "", domaineTitre: "",
   sousDomaineTitre: "", cycle: "", imagesJson: "[]", pdfsJson: '["a.pdf"]', dateCreation: "", seanceId: null,
   sequenceId: null, dossier: "", videosJson: "[]", coffreJson: "[]", ...p,
 });
-const creneau = (date: string, heureDebut: string, seanceId: string | null, matiere = "Lecture") => ({ date, heureDebut, seanceId, matiere });
-const seances = [{ id: "s1", titre: "Les syllabes" }, { id: "s2", titre: "" }];
+const creneau = (date: string, heureDebut: string, seanceId: string | null, matiere = "Lecture", prevu = "") =>
+  ({ date, heureDebut, seanceId, matiere, prevu });
+const sequences = [{ id: "q1", titre: "Organiser les mots en réseau" }, { id: "q2", titre: "Les fractions au quotidien" }] as Sequence[];
+const seances = [
+  { id: "s1", titre: "Les syllabes", sequenceId: "q1", ordre: 1 }, { id: "s2", titre: "", sequenceId: "q1", ordre: 2 },
+  { id: "s3", titre: "Découverte du corpus", sequenceId: "q1", ordre: 3 },
+] as unknown as Seance[];
 const materiels = [
   materiel({ id: "m1", titre: "Fiche syllabes", seanceId: "s1", pdfsJson: '["a.pdf","b.pdf"]' }),
   materiel({ id: "m2", titre: "  ", seanceId: "s2", pdfsJson: '["c.pdf"]' }),
   materiel({ id: "m3", titre: "Sans PDF", seanceId: "s1", pdfsJson: "[]", imagesJson: '["x.png"]' }),
   materiel({ id: "m4", titre: "Sur le bureau", seanceId: null }),
+  materiel({ id: "m5", titre: "Corpus à découper", seanceId: "s3", pdfsJson: '["e.pdf"]' }),
+  materiel({ id: "m6", titre: "Affiche du réseau", sequenceId: "q1", pdfsJson: '["f.pdf"]' }),
+  materiel({ id: "m7", titre: "Bande des fractions", sequenceId: "q2", pdfsJson: '["g.pdf"]' }),
 ];
 
 describe("le matériel des séances du journal", () => {
   it("s'annonce par ses titres, sans les matériels sans PDF", () => {
-    expect(titresDuMateriel(creneau("2026-09-28", "09:00", "s1"), materiels)).toEqual(["Fiche syllabes"]);
-    expect(titresDuMateriel(creneau("2026-09-28", "09:00", "s2"), materiels)).toEqual(["Matériel"]);
-    expect(titresDuMateriel(creneau("2026-09-28", "09:00", null), materiels)).toEqual([]);
+    expect(titresDuMateriel(creneau("2026-09-28", "09:00", "s1"), sequences, seances, materiels)).toEqual(["Fiche syllabes"]);
+    expect(titresDuMateriel(creneau("2026-09-28", "09:00", "s2"), sequences, seances, materiels)).toEqual(["Matériel"]);
+    expect(titresDuMateriel(creneau("2026-09-28", "09:00", null), sequences, seances, materiels)).toEqual([]);
+  });
+
+  it("compte aussi la séance ou la séquence citée dans le prévu", () => {
+    // La ligne du bouton 📚 : la séquence et sa séance.
+    const cite = creneau("2026-09-28", "09:00", null, "Lecture", "📚 Organiser les mots en réseau · séance 3 : Découverte du corpus");
+    expect(liensDuCreneau(cite, sequences, seances)).toEqual({ seances: new Set(["s3"]), sequences: new Set() });
+    expect(titresDuMateriel(cite, sequences, seances, materiels)).toEqual(["Corpus à découper"]);
+    // Une séquence citée sans séance : son matériel à elle, pas celui de ses séances.
+    const seule = creneau("2026-09-28", "10:00", null, "Lecture", "On continue la séquence Organiser les mots en réseau.");
+    expect(titresDuMateriel(seule, sequences, seances, materiels)).toEqual(["Affiche du réseau"]);
+    // Le lien du planning et la citation se cumulent, la séance liée d'abord.
+    const deux = creneau("2026-09-28", "11:00", "s1", "Lecture", "Puis Les fractions au quotidien.");
+    expect(materielDuCreneau(deux, sequences, seances, materiels).map((m) => m.id)).toEqual(["m1", "m7"]);
   });
 
   it("suit l'ordre des créneaux, un fichier une seule fois, avec d'où il vient", () => {
@@ -30,13 +53,13 @@ describe("le matériel des séances du journal", () => {
       creneau("2026-09-28", "09:00", "s1"),
       creneau("2026-09-28", "11:00", null),
     ];
-    const annexes = annexesDesCreneaux(creneaux, seances, materiels, (c) => (c.date === "2026-09-28" ? "lundi 28 septembre" : "mardi 29 septembre"));
+    const annexes = annexesDesCreneaux(creneaux, sequences, seances, materiels, (c) => (c.date === "2026-09-28" ? "lundi 28 septembre" : "mardi 29 septembre"));
     expect(annexes.map((a) => a.fichier)).toEqual(["a.pdf", "b.pdf", "c.pdf"]);
     expect(annexes[0]).toEqual({ seanceId: "s1", quand: "lundi 28 septembre · 09:00 · Les syllabes", titre: "Fiche syllabes", fichier: "a.pdf" });
     // Sans titre de séance, la matière ; sans libellé de jour, l'heure d'abord.
     expect(annexes[2].quand).toBe("lundi 28 septembre · 14:00 · Maths");
-    expect(annexesDesCreneaux(creneaux, seances, materiels)[2].quand).toBe("14:00 · Maths");
-    expect(annexesDesCreneaux([], seances, materiels)).toEqual([]);
+    expect(annexesDesCreneaux(creneaux, sequences, seances, materiels)[2].quand).toBe("14:00 · Maths");
+    expect(annexesDesCreneaux([], sequences, seances, materiels)).toEqual([]);
   });
 
   it("relit les octets d'un fichier en base64", () => {
