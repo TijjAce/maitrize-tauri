@@ -5,14 +5,12 @@ import { api, EtatBanque, PictoArasaac, OptionsJeu } from "../api";
 import { Field, Input, Select, Empty, Modal, useAsync, useOngletDemande } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
-import { TlaTab } from "./Tla";
 import { PartieToutTab, MultiplicatifsTab } from "./ProblemesBarres";
 import { ColoriageMagiqueTab } from "./ColoriageMagique";
 import { LectureSonsTab } from "./LectureSons";
 import { CompetencesAtelier } from "../components/CompetencesAtelier";
 import { deposerSurLeBureau, lignesCompetencesAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
-import { SupportsVisuelsTab, retenirSupport } from "./SupportsVisuels";
 import { DominosTab, FluenceTab, IntrusTab, LettresTab, LotoSyllabesTab, PairesTab, SyllabaireTab } from "./AteliersSons";
 import { ArbreCalculTab, CartesCalculTab, CartesNombresTab, CubesTab, FractionsTab, JeuDeLOieTab } from "./AteliersMaths";
 import { EtiquettesTab } from "./AteliersLangage";
@@ -31,9 +29,9 @@ const OCTETS = (n: number) =>
   n > 1e9 ? `${(n / 1e9).toFixed(1)} Go` : n > 1e6 ? `${Math.round(n / 1e6)} Mo` : `${Math.round(n / 1e3)} ko`;
 
 const ONGLETS = [
-  "jeux", "memory", "imagier", "tla", "etiquettes",
+  "jeux", "memory", "imagier", "etiquettes",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres",
-  "supports", "partieTout", "multiplicatifs", "coloriage", "nombres", "cubes", "calcul", "arbre", "fractions", "oie",
+  "partieTout", "multiplicatifs", "coloriage", "nombres", "cubes", "calcul", "arbre", "fractions", "oie",
 ] as const;
 type Onglet = typeof ONGLETS[number];
 
@@ -66,8 +64,6 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
         quoi: "Des paires à retourner : image et image, ou image et mot." },
       { id: "imagier", nom: "Imagier", icone: "📖", pictos: true,
         quoi: "Une page d'images légendées, à afficher ou à coller dans un cahier." },
-      { id: "tla", nom: "Tableaux de langage", icone: "🗣", pictos: true,
-        quoi: "Des tableaux de communication : une grille de pictogrammes à pointer." },
       { id: "etiquettes", nom: "Étiquettes à catégoriser", icone: "🏷",
         quoi: "Les mots collectés en grand pour le tableau, en petit par enveloppe, et la corolle lexicale." },
     ],
@@ -118,14 +114,6 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
         quoi: "Une piste au dé, avec des nombres, des lettres ou des syllabes, et le patron du dé." },
     ],
   },
-  {
-    id: "autonomie", libelle: "🧭 Autonomie et repères",
-    aide: "Ce qui aide à suivre la journée : jetons, étapes, temps, scénarios.",
-    outils: [
-      { id: "supports", nom: "Supports visuels", icone: "🖼",
-        quoi: "Emploi du temps, étapes d'une tâche, minuteur, jetons de comportement." },
-    ],
-  },
 ];
 
 /** L'atelier lui-même. */
@@ -172,8 +160,7 @@ export default function Jeux() {
     setOngletBrut(o);
     try { localStorage.setItem(ONGLET_MEMORISE, o); } catch { /* stockage indisponible */ }
   }, []);
-  // Un support demandé par la palette (« minuteur »…) ouvre son onglet.
-  useOngletDemande("jeux", ONGLETS, setOnglet, (o) => { if (retenirSupport(o)) setOnglet("supports"); });
+  useOngletDemande("jeux", ONGLETS, setOnglet);
   const [etat, setEtat] = React.useState<EtatBanque | null>(null);
   const [progression, setProgression] = React.useState<{ etape: string; faits: number; total: number } | null>(null);
   const rafraichir = React.useCallback(() => { api.arasaacEtat().then(setEtat).catch(() => {}); }, []);
@@ -208,7 +195,7 @@ export default function Jeux() {
   // ── Devant les ateliers ──
   if (!onglet) {
     return (
-      <Page titre="Fabriquer" sous="Jeux et supports à imprimer : langage, mathématiques, autonomie">
+      <Page titre="Fabriquer" sous="Jeux et feuilles à imprimer : langage, sons, mathématiques">
         <Input value={recherche} onChange={(e) => setRecherche(e.target.value)}
           placeholder="Chercher un atelier : loto, syllabes, fractions, dominos, coloriage…"
           aria-label="Chercher un atelier" style={{ maxWidth: 420, marginBottom: 16 }} />
@@ -240,8 +227,7 @@ export default function Jeux() {
     <Page titre={outil ? `${outil.icone} ${outil.nom}` : "Fabriquer"} sous={outil?.quoi}
       actions={<button className="btn ghost sm" onClick={() => setOnglet("")}>← Tous les ateliers</button>}>
       {outil && <CompetencesAtelier atelier={outil.id} nom={outil.nom} />}
-      {onglet === "supports" ? <SupportsVisuelsTab banque={Boolean(etat?.installee)} />
-        : onglet === "partieTout" ? <PartieToutTab />
+      {onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />
         : onglet === "coloriage" ? <ColoriageMagiqueTab />
         : onglet === "sons" ? <LectureSonsTab />
@@ -259,7 +245,6 @@ export default function Jeux() {
         : onglet === "dominos" ? avecPictos(<DominosTab banque />)
         : onglet === "intrus" ? avecPictos(<IntrusTab banque />)
         : onglet === "paires" ? avecPictos(<PairesTab banque />)
-        : onglet === "tla" ? avecPictos(<TlaTab />)
         : avecPictos(etat && (
           <Loto key={onglet} gen={GENERATEURS[onglet === "jeux" ? "loto" : onglet]} atelier={onglet} etat={etat}
             progression={progression} onTelecharger={telecharger} />
@@ -270,7 +255,7 @@ export default function Jeux() {
 
 // ── La banque ──────────────────────────────────────────────────────────────
 
-function Banque({ progression, onTelecharger }: {
+export function Banque({ progression, onTelecharger }: {
   progression: { etape: string; faits: number; total: number } | null;
   onTelecharger: () => void;
 }) {

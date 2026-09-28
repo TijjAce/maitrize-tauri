@@ -36,7 +36,7 @@ export function retenirSupport(onglet: string): boolean {
 
 export function SupportsVisuelsTab({ banque }: { banque: boolean }) {
   const [support, setSupport] = useMemoire<Support>("supports:onglet", lireSupport);
-  useOngletDemande("jeux", SUPPORTS, setSupport);
+  useOngletDemande("caa", SUPPORTS, setSupport);
   return (
     <>
       <div className="onglets">
