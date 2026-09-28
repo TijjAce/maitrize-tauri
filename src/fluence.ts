@@ -102,11 +102,19 @@ export function htmlFluence(g: GrilleFluence, r: ReglagesFluence): string {
 export const CONSONNES_SYLLABAIRE = ["m", "l", "r", "s", "p", "t", "v", "f", "n", "d", "b", "ch", "j", "c", "g", "z"];
 export const VOYELLES_SYLLABAIRE = ["a", "i", "o", "u", "e", "é", "ou", "on", "an", "in", "oi", "eu"];
 
-export interface ReglagesSyllabaire { consonnes: string[]; voyelles: string[] }
-export const REGLAGES_SYLLABAIRE: ReglagesSyllabaire = { consonnes: CONSONNES_SYLLABAIRE.slice(0, 10), voyelles: VOYELLES_SYLLABAIRE.slice(0, 6) };
+export interface ReglagesSyllabaire {
+  consonnes: string[];
+  voyelles: string[];
+  /** Les lettres en capitales d'imprimerie — l'écriture que beaucoup d'élèves lisent en premier. */
+  capitales: boolean;
+}
+export const REGLAGES_SYLLABAIRE: ReglagesSyllabaire = { consonnes: CONSONNES_SYLLABAIRE.slice(0, 10), voyelles: VOYELLES_SYLLABAIRE.slice(0, 6), capitales: false };
+
+/** Un graphème tel qu'il s'écrit sur la bande : « ch » ou « CH », « é » ou « É ». */
+export const grapheme = (x: string, capitales: boolean) => (capitales ? x.toLocaleUpperCase("fr") : x);
 
 export function htmlSyllabaire(r: ReglagesSyllabaire): string {
-  const bande = (liste: string[], titre: string) => `<div class="sy-bande"><div class="sy-bande-titre">${titre}</div>${liste.map((x) => `<div class="sy-cell">${escapeHtml(x)}</div>`).join("")}</div>`;
+  const bande = (liste: string[], titre: string) => `<div class="sy-bande"><div class="sy-bande-titre">${titre}</div>${liste.map((x) => `<div class="sy-cell">${escapeHtml(grapheme(x, r.capitales))}</div>`).join("")}</div>`;
   return feuille(`<div class="page"><div class="titre">Syllabaire — le jeu de l'ascenseur</div>
     <div class="regle"><b>Fabrication</b>Découper le cadre et ses quatre fentes (traits épais) ; découper les deux bandes ; les glisser dans les fentes.
       <b style="margin-top:4px">Jeu</b>On fait monter ou descendre une bande : la syllabe apparaît dans la fenêtre, on la lit. Puis l'autre bande, puis les deux.
