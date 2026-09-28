@@ -1,5 +1,6 @@
 import React from "react";
-import { Field, Input, Textarea } from "../components/ui";
+import { Field, Input, Select, Textarea } from "../components/ui";
+import { api, MODELE_TACHES } from "../api";
 import { useReglages } from "../components/useMemoire";
 import { toast } from "../components/Toaster";
 import { chargerImages, usePictoImages } from "../components/ChoixPicto";
@@ -13,6 +14,7 @@ import type { MotImage } from "../jeuxSons";
 import { graineAuHasard } from "../hasard";
 import { REGLAGES_MOTS_MELES, STYLE_MOTS_MELES, grilleMotsMeles, htmlMotsMeles, motsSaisis } from "../motsMeles";
 import { REGLAGES_PHRASES, STYLE_PHRASES, htmlPhrasesEnDesordre, phrasesEnDesordre, phrasesSaisies } from "../phrasesEnDesordre";
+import { DEMANDE_PHRASES, phrasesDeLaReponse, promptPhrases } from "../phrasesIa";
 
 // ── Fabriquer › Langage › Étiquettes à catégoriser ────────────────────────
 //
@@ -144,6 +146,22 @@ export function PhrasesTab() {
   const phrases = React.useMemo(() => phrasesSaisies(r.phrases), [r.phrases]);
   const liste = React.useMemo(() => phrasesEnDesordre(phrases, graine), [phrases, graine]);
   const html = React.useMemo(() => htmlPhrasesEnDesordre(liste, r), [liste, r]);
+  // ── L'IA propose des phrases, qui s'ajoutent sous celles de l'enseignant ──
+  const [demande, majDemande] = useReglages("phrasesIa", DEMANDE_PHRASES);
+  const [occupe, setOccupe] = React.useState(false);
+  const proposer = async () => {
+    setOccupe(true);
+    try {
+      const modele = await api.modeleActif(MODELE_TACHES);
+      const reponse = await api.mistralChat(promptPhrases(demande), modele);
+      const nouvelles = phrasesDeLaReponse(reponse).filter((p) => !phrases.some((q) => q.toLowerCase() === p.toLowerCase()));
+      if (!nouvelles.length) { toast("Le modèle n'a rien proposé de lisible ; réessayez, ou changez le thème.", { icone: "🤔" }); return; }
+      maj({ phrases: [r.phrases.trim(), ...nouvelles].filter(Boolean).join("\n") });
+      toast(`${nouvelles.length} phrases ajoutées sous les vôtres : relisez-les, gardez celles qui conviennent.`, { icone: "✨", duree: 6000 });
+    } catch (e) {
+      toast("Proposition impossible : " + String(e), { icone: "⚠️" });
+    } finally { setOccupe(false); }
+  };
   return (
     <Colonnes
       gauche={<>
@@ -154,6 +172,25 @@ export function PhrasesTab() {
         <Field label="Les phrases, une par ligne">
           <Textarea rows={7} value={r.phrases} onChange={(e) => maj({ phrases: e.target.value })} placeholder={"Le chat dort sur le canapé.\nOù est mon cartable ?"} />
         </Field>
+        <div className="ia-phrases">
+          <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>✨ Demander des phrases à l'IA</div>
+          <Input value={demande.theme} onChange={(e) => majDemande({ theme: e.target.value })} placeholder="Le thème : la ferme, la cantine, l'hiver, la piscine…" aria-label="Thème des phrases" />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, margin: "6px 0" }}>
+            <Select value={demande.cycle} onChange={(e) => majDemande({ cycle: Number(e.target.value) as 2 | 3 })} aria-label="Cycle">
+              <option value={2}>Cycle 2</option><option value={3}>Cycle 3</option>
+            </Select>
+            <Select value={demande.combien} onChange={(e) => majDemande({ combien: Number(e.target.value) })} aria-label="Nombre de phrases">
+              {[4, 6, 8, 10].map((n) => <option key={n} value={n}>{n} phrases</option>)}
+            </Select>
+            <Select value={demande.motsMax} onChange={(e) => majDemande({ motsMax: Number(e.target.value) })} aria-label="Mots au plus">
+              {[4, 5, 6, 8, 10, 12].map((n) => <option key={n} value={n}>{n} mots au plus</option>)}
+            </Select>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <button type="button" className="btn sm" disabled={occupe} onClick={() => void proposer()}>{occupe ? "Le modèle écrit…" : "✨ Proposer des phrases"}</button>
+            <span className="meta" style={{ fontSize: 12 }}>Elles s'ajoutent sous les vôtres. Rien de la classe n'est envoyé.</span>
+          </div>
+        </div>
         <Coche on={r.lignes} libelle="Une ligne sous les étiquettes, pour coller ou recopier" onChange={(v) => maj({ lignes: v })} />
         <Coche on={r.capitales} libelle="Lettres en capitales" onChange={(v) => maj({ capitales: v })} />
         <div className="meta" style={{ fontSize: 12.5 }}>{phrases.length} phrases.</div>
