@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import type { MaterielItem, Seance, Sequence } from "./api";
 import {
-  annexesDesCreneaux, annexesHtml, cleEchelle, echellesDesReglages, liensDuCreneau, lireEchelle, materielDuCreneau, octetsDeBase64,
-  STYLE_ANNEXES, titresDuMateriel,
+  annexesDesCreneaux, annexesHtml, cleEchelle, echellesDesReglages, liensDuCreneau, lireEchelle, materielDuCreneau, moletteDuJournalHtml,
+  octetsDeBase64, STYLE_ANNEXES, titresDuMateriel,
 } from "./materielAImprimer";
 
 const materiel = (p: Partial<MaterielItem>): MaterielItem => ({
@@ -77,6 +77,15 @@ describe("le matériel des séances du journal", () => {
     expect(lireEchelle("10")).toBe(0.5);
     expect(echellesDesReglages({ "impression:echelle:m1": "80", "impression:echelle:m2": "x", "theme": "sombre", "impression:echelle:": "50" }))
       .toEqual({ m1: 0.8, m2: 1 });
+  });
+
+  it("donne au journal lui-même sa molette, qui remet en page par zoom et se retient", () => {
+    const html = moletteDuJournalHtml();
+    expect(html).toContain('class="annexe-outils journal-outils"');
+    expect(html).toContain('value="100"');
+    expect(html).toContain('journal.style.zoom');
+    expect(html).toContain("maitrize:echelle-journal");
+    expect(STYLE_ANNEXES).toContain(".journal-outils");
   });
 
   it("relit les octets d'un fichier en base64", () => {
