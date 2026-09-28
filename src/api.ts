@@ -627,6 +627,8 @@ export const api = {
   fichierImporterDepuisChemin: (chemin: string) => invoke<string>("fichier_importer_depuis_chemin", { chemin }),
   enregistrerTexte: (chemin: string, contenu: string) => invoke<void>("enregistrer_texte", { chemin, contenu }),
   imprimerPdf: (nom: string) => invoke<void>("imprimer_pdf", { nom }),
+  /** Une feuille HTML en PDF, rangée dans les fichiers de l'application ; renvoie son nom. */
+  feuilleEnPdf: (html: string) => invoke<string>("feuille_en_pdf", { html }),
   ouvrirFichier: (nom: string) => invoke<void>("ouvrir_fichier", { nom }),
   ouvrirHtml: (html: string) => invoke<void>("ouvrir_html", { html }),
   /** Le planning, puis le matériel des séances à sa suite ; renvoie ce qui n'a pas pu être joint. */
@@ -713,8 +715,9 @@ export const api = {
   arasaacImage: (id: number) => invoke<string>("arasaac_image", { id }),
   arasaacParMots: (mots: string[]) =>
     invoke<[PictoArasaac[], string[]]>("arasaac_par_mots", { mots }),
-  jeuGenerer: (jeu: string, pictos: PictoArasaac[], options: OptionsJeu, titre: string) =>
-    invoke<string>("jeu_generer", { jeu, pictos, options, titre }),
+  /** Le PDF d'un jeu ; `ouvrir` faux pour le ranger sans l'ouvrir. Renvoie son chemin. */
+  jeuGenerer: (jeu: string, pictos: PictoArasaac[], options: OptionsJeu, titre: string, ouvrir = true) =>
+    invoke<string>("jeu_generer", { jeu, pictos, options, titre, ouvrir }),
   mistralRechercheWeb: (question: string) =>
     invoke<ReponseWeb>("mistral_recherche_web", { question }),
   mistralVision: (consigne: string, imageB64: string, model?: string) =>
@@ -722,7 +725,7 @@ export const api = {
   arasaacChercher: (q: string, limite = 40) =>
     invoke<PictoArasaac[]>("arasaac_chercher", { q, limite }),
   arasaacNature: (id: number) => invoke<string>("arasaac_nature", { id }),
-  tlaGenerer: (gabarit: Gabarit) => invoke<string>("tla_generer", { gabarit }),
+  tlaGenerer: (gabarit: Gabarit, ouvrir = true) => invoke<string>("tla_generer", { gabarit, ouvrir }),
 
   // Amis (appariement chiffré, 100 % local pour l'instant)
   identiteGet: () => invoke<Identite>("identite_get"),

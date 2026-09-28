@@ -4,7 +4,8 @@ import { api } from "../api";
 import { EVT_DONNEES_DISTANTES, Field, Input, Select, Textarea, useOngletDemande } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
-import { imprimerAtelier } from "../impressionAtelier";
+import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
+import { BoutonBureau } from "../components/BoutonBureau";
 import { useMemoire } from "../components/useMemoire";
 import { ChoixPicto, chargerImages, usePictoImage, usePictoImages } from "../components/ChoixPicto";
 import {
@@ -185,6 +186,7 @@ function Atelier({ reglages, pictos, titre, feuille, page, aide }: {
   const imprimer = async () => {
     await imprimerAtelier("supports", titre, feuille(await chargerImages(ids)), STYLE_SUPPORTS + page);
   };
+  const bureau = async () => enregistrerSurLeBureau("supports", titre, feuille(await chargerImages(ids)), STYLE_SUPPORTS + page);
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 360px) minmax(0, 1fr)", gap: 14, alignItems: "start" }}>
       <div className="card">
@@ -196,6 +198,7 @@ function Atelier({ reglages, pictos, titre, feuille, page, aide }: {
           <h3 style={{ margin: 0 }}>Aperçu</h3>
           <div style={{ flex: 1 }} />
           <button className="btn sm primary" onClick={imprimer}>🖨 Imprimer</button>
+          <BoutonBureau onEnregistrer={bureau} />
         </div>
         <style>{STYLE_SUPPORTS}</style>
         <div className="sv-apercu" dangerouslySetInnerHTML={{ __html: feuille(images) }} />

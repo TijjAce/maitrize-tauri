@@ -2,7 +2,8 @@ import React from "react";
 import { Field, Input, Select, Textarea } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { escapeHtml } from "../print";
-import { imprimerAtelier } from "../impressionAtelier";
+import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
+import { BoutonBureau } from "../components/BoutonBureau";
 import {
   fabriquerFiche, REGLAGES_PAR_DEFAUT, SONS, type FicheSon,
 } from "../lectureSons";
@@ -62,7 +63,8 @@ export function LectureSonsTab() {
   const [graine, setGraine] = React.useState(() => Math.floor(Math.random() * 1e9));
   const f = React.useMemo(() => fabriquerFiche(r, graine), [r, graine]);
 
-  const imprimer = () => {
+  // La feuille — corps et style — d'où sortent l'impression et le PDF du bureau.
+  const feuilleSon = () => {
     const bloc = (consigne: string, contenu: string) =>
       `<h3>${escapeHtml(consigne)}</h3><div class="ligne">${contenu}</div>`;
     const mots = (liste: string[]) => liste.map((m) => `<span>${escapeHtml(m)}</span>`).join("");
@@ -74,13 +76,15 @@ export function LectureSonsTab() {
         ? bloc(`Je complète avec « ${f.son.graphemes[0]} »`, mots(f.aCompleter.map((x) => x.trou))) : "",
       r.ecrire ? `<h3>J'écris le son</h3><div class="lignes"><div></div><div></div><div></div></div>` : "",
     ].join("");
-    void imprimerAtelier("sons", f.titre,
-      `<h1>${escapeHtml(f.titre)}</h1><p class="nom">Prénom : ........................................ Date : ........................</p>${corps}`,
+    return { corps:
+      `<h1>${escapeHtml(f.titre)}</h1><p class="nom">Prénom : ........................................ Date : ........................</p>${corps}`, style:
       `h3 { font-size: 14px; margin: 16px 0 6px; }
        .nom { font-size: 12px; color: #555; margin: 0 0 12px; }
        .ligne { display: flex; flex-wrap: wrap; gap: 10px 22px; font-size: 21px; letter-spacing: .5px; }
-       .lignes div { border-bottom: 1.2px solid #888; height: 30px; margin-bottom: 12px; }`);
+       .lignes div { border-bottom: 1.2px solid #888; height: 30px; margin-bottom: 12px; }` };
   };
+  const imprimer = () => { const s = feuilleSon(); void imprimerAtelier("sons", f.titre, s.corps, s.style); };
+  const bureau = () => { const s = feuilleSon(); return enregistrerSurLeBureau("sons", f.titre, s.corps, s.style); };
 
   const coche = (cle: keyof typeof REGLAGES_PAR_DEFAUT, libelle: string) => (
     <label className="pb-coche">
@@ -138,6 +142,7 @@ export function LectureSonsTab() {
             🔀 Nouvelle feuille
           </button>
           <button className="btn primary sm" onClick={imprimer}>🖨 Imprimer</button>
+          <BoutonBureau onEnregistrer={bureau} />
         </div>
         <div className="pb-apercu"><Apercu f={f} r={r} /></div>
       </div>

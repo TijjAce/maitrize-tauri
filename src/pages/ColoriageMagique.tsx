@@ -6,7 +6,8 @@ import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { PhotoTelephone } from "../components/PhotoTelephone";
 import { escapeHtml } from "../print";
-import { imprimerAtelier } from "../impressionAtelier";
+import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
+import { BoutonBureau } from "../components/BoutonBureau";
 import {
   COULEURS, GRAPHIES, MOTIFS, OPERATIONS, PLAFONDS, POLICES_CURSIVES_CONNUES, REGLAGES_PAR_DEFAUT, SONS_COLORIAGE, TAILLES_MOTIF,
   basculerCase, casesAColorier, consigne, couleurDe, couleursDuMotif, ecrireMotifsPerso, fabriquerColoriage, lettreSousGraphie,
@@ -250,7 +251,8 @@ export function ColoriageMagiqueTab() {
     relirePerso();
   };
 
-  const imprimer = (avecCorrige: boolean) => {
+  // La feuille — corps et style — d'où sortent l'impression et le PDF du bureau.
+  const feuille = (avecCorrige: boolean) => {
     const n = c.lignes.length;
     const cote = Math.max(40, Math.min(62, Math.floor(680 / n)));
     const cases = c.lignes.map((ligne) => `<tr>${ligne.map((x) => {
@@ -269,20 +271,22 @@ export function ColoriageMagiqueTab() {
         : `<b>${escapeHtml(grapheme !== undefined ? grapheme : String(resultat))}</b>`;
       return `<span class="lg"><i style="background:${couleur.hex}"></i> ${texte} ${escapeHtml(couleur.nom)}</span>`;
     }).join("");
-    void imprimerAtelier("coloriage", r.titre || "Coloriage magique",
+    return { titre: r.titre || "Coloriage magique", corps:
       `<h1>${escapeHtml(r.titre || "Coloriage magique")}</h1>
        <p class="nom">Prénom : ........................................ Date : ........................</p>
        <p class="consigne">${escapeHtml(consigne(r))}</p>
        <div class="legende">${legende}</div>
-       <table class="grille"><tbody>${cases}</tbody></table>`,
+       <table class="grille"><tbody>${cases}</tbody></table>`, style:
       `.consigne { font-size: 14px; margin-bottom: 10px; }
        .legende { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; font-size: 14px; align-items: center; }
        .lg i { display: inline-block; width: 14px; height: 14px; border: 1px solid #333; vertical-align: -2px; }
        .grille { border-collapse: collapse; margin: 0 auto; }
        .grille td { border: 1.2px solid #222; width: ${cote}px; height: ${cote}px; text-align: center;
          font-size: ${n > 8 ? 14 : 15}px; vertical-align: middle; }
-       .nom { margin: 0 0 10px; font-size: 13px; color: #555; }`);
+       .nom { margin: 0 0 10px; font-size: 13px; color: #555; }` };
   };
+  const imprimer = (avecCorrige: boolean) => { const f = feuille(avecCorrige); void imprimerAtelier("coloriage", f.titre, f.corps, f.style); };
+  const bureau = () => { const f = feuille(false); return enregistrerSurLeBureau("coloriage", f.titre, f.corps, f.style); };
 
   const tous = [...MOTIFS, ...motifsPerso];
   const titreEtape = (n: number, texte: string) => <div className="cm-etape"><span>{n}</span>{texte}</div>;
@@ -420,6 +424,7 @@ export function ColoriageMagiqueTab() {
           <div className="spacer" style={{ flex: 1 }} />
           <button className="btn sm" onClick={() => setGraine(Math.floor(Math.random() * 1e9))}>🔀 Nouvelle feuille</button>
           <button className="btn primary sm" onClick={() => imprimer(false)}>🖨 Imprimer</button>
+          <BoutonBureau onEnregistrer={bureau} />
           <button className="btn ghost sm" onClick={() => imprimer(true)} title="La même feuille, coloriée : pour corriger d'un coup d'œil">🖨 Le corrigé</button>
         </div>
         <p className="meta" style={{ fontSize: 12.5, marginTop: 0 }}>{consigne(r)}</p>
