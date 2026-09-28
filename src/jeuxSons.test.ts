@@ -133,5 +133,18 @@ describe("la grille de fluence", () => {
   it("dessine le syllabaire avec ses bandes", () => {
     const html = htmlSyllabaire(REGLAGES_SYLLABAIRE);
     expect((html.match(/sy-cell/g) ?? []).length).toBe(REGLAGES_SYLLABAIRE.consonnes.length + REGLAGES_SYLLABAIRE.voyelles.length);
+    const choisi = htmlSyllabaire({ consonnes: ["s", "ch"], voyelles: ["a", "é"], capitales: false });
+    expect(choisi).toContain('<div class="sy-cell">ch</div>');
+    expect(choisi).toContain('<div class="sy-cell">é</div>');
+  });
+
+  it("écrit les bandes en capitales quand on le demande, accents compris", () => {
+    const html = htmlSyllabaire({ consonnes: ["s", "ch"], voyelles: ["a", "é"], capitales: true });
+    expect(html).toContain('<div class="sy-cell">CH</div>');
+    expect(html).toContain('<div class="sy-cell">É</div>');
+    expect(html).not.toContain('<div class="sy-cell">ch</div>');
+    // La règle et les titres des bandes, eux, restent tels quels.
+    expect(html).toContain('<div class="sy-bande-titre">consonnes</div>');
+    expect(html).toContain("<b>Fabrication</b>");
   });
 });

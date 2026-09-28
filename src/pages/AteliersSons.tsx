@@ -17,7 +17,7 @@ import {
   type ModeIntrus, type MotImage, type PaireDistinctive,
 } from "../jeuxSons";
 import {
-  CONSONNES_SYLLABAIRE, REGLAGES_FLUENCE, REGLAGES_SYLLABAIRE, STYLE_FLUENCE, VOYELLES_SYLLABAIRE, grilleFluence, htmlFluence, htmlSyllabaire,
+  CONSONNES_SYLLABAIRE, REGLAGES_FLUENCE, REGLAGES_SYLLABAIRE, STYLE_FLUENCE, VOYELLES_SYLLABAIRE, grapheme, grilleFluence, htmlFluence, htmlSyllabaire,
 } from "../fluence";
 
 // ── Fabriquer › Sons et lecture ───────────────────────────────────────────
@@ -284,7 +284,7 @@ export function SyllabaireTab() {
     maj({ [cle]: r[cle].includes(x) ? r[cle].filter((y) => y !== x) : [...r[cle], x] } as Partial<typeof r>);
   const chips = (cle: "consonnes" | "voyelles", liste: string[]) => (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-      {liste.map((x) => <button key={x} type="button" className={`btn sm${r[cle].includes(x) ? " primary" : " ghost"}`} onClick={() => bascule(cle, x)}>{x}</button>)}
+      {liste.map((x) => <button key={x} type="button" className={`btn sm${r[cle].includes(x) ? " primary" : " ghost"}`} onClick={() => bascule(cle, x)}>{grapheme(x, r.capitales)}</button>)}
     </div>
   );
   return (
@@ -296,6 +296,9 @@ export function SyllabaireTab() {
         </p>
         <Field label="Consonnes">{chips("consonnes", CONSONNES_SYLLABAIRE)}</Field>
         <Field label="Voyelles et graphèmes">{chips("voyelles", VOYELLES_SYLLABAIRE)}</Field>
+        <Field label="Écriture">
+          <Coche on={r.capitales} libelle="Lettres en capitales (CH, É)" onChange={(capitales) => maj({ capitales })} />
+        </Field>
         <Boutons peut={r.consonnes.length > 0 && r.voyelles.length > 0} onImprimer={() => void imprimerAtelier("syllabaire", "Syllabaire", html, STYLE_FEUILLE + STYLE_FLUENCE)}
           onBureau={() => enregistrerSurLeBureau("syllabaire", "Syllabaire", html, STYLE_FEUILLE + STYLE_FLUENCE)} />
       </>}
