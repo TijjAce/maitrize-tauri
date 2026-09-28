@@ -77,6 +77,8 @@ export interface ReglagesCubes {
   zeros: boolean;
   legende: boolean;
   corrige: boolean;
+  /** Le numéro de chaque exercice dans son coin ; on peut s'en passer. */
+  numeros: boolean;
 }
 
 export const REGLAGES_CUBES: ReglagesCubes = {
@@ -84,8 +86,11 @@ export const REGLAGES_CUBES: ReglagesCubes = {
   // Les couleurs du matériel le plus répandu : le jaune des unités, le vert
   // des barres, le bleu des plaques, le rouge du gros cube.
   couleurs: { u: "#ffe14d", d: "#62d93a", c: "#2454e6", m: "#e8402f" },
-  zeros: true, legende: true, corrige: false,
+  zeros: true, legende: true, corrige: false, numeros: true,
 };
+
+/** Le numéro d'un exercice, dans son coin — ou rien. */
+const numero = (r: ReglagesCubes, i: number) => (r.numeros !== false ? `<span class="cu-num">${i + 1}</span>` : "");
 
 // ── Le nombre et ses écritures ─────────────────────────────────────────────
 
@@ -322,7 +327,7 @@ function exercicesEcrire(exos: ExerciceCube[], r: ReglagesCubes, a: number, u: n
   const ecritures = ecrituresChoisies(r);
   const cellules = exos.map((e, i) => {
     const d = dessinerCubes(e.n, u, r.couleurs);
-    return `<div class="cu-exo"><span class="cu-num">${i + 1}</span><div class="cu-cubes">${d.svg}</div>${ecritures.map((x) => reponse(x, a)).join("")}</div>`;
+    return `<div class="cu-exo">${numero(r, i)}<div class="cu-cubes">${d.svg}</div>${ecritures.map((x) => reponse(x, a)).join("")}</div>`;
   });
   return grille(cellules, a < 1000 ? 2 : 1);
 }
@@ -332,7 +337,7 @@ function exercicesDessiner(exos: ExerciceCube[], r: ReglagesCubes, a: number, u:
   const plusGrand = dessinerCubes(a, u, r.couleurs);
   const cadre = { largeur: Math.max(30, plusGrand.largeur), hauteur: Math.max(16, plusGrand.hauteur + 4) };
   const cellules = exos.map((e, i) =>
-    `<div class="cu-exo"><span class="cu-num">${i + 1}</span><div class="cu-nombre">${escapeHtml(ecrireNombre(e.n, e.ecriture))}</div>`
+    `<div class="cu-exo">${numero(r, i)}<div class="cu-nombre">${escapeHtml(ecrireNombre(e.n, e.ecriture))}</div>`
     + `<div class="cu-cadre" style="height:${f(cadre.hauteur)}mm"></div></div>`);
   return grille(cellules, cadre.largeur > 85 ? 1 : 2);
 }

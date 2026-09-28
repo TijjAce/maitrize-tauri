@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import type { MaterielItem, Seance, Sequence } from "./api";
 import {
-  annexesDesCreneaux, annexesHtml, liensDuCreneau, materielDuCreneau, octetsDeBase64, STYLE_ANNEXES, titresDuMateriel,
+  annexesDesCreneaux, annexesHtml, cleEchelle, echellesDesReglages, liensDuCreneau, lireEchelle, materielDuCreneau, octetsDeBase64,
+  STYLE_ANNEXES, titresDuMateriel,
 } from "./materielAImprimer";
 
 const materiel = (p: Partial<MaterielItem>): MaterielItem => ({
@@ -55,11 +56,27 @@ describe("le matériel des séances du journal", () => {
     ];
     const annexes = annexesDesCreneaux(creneaux, sequences, seances, materiels, (c) => (c.date === "2026-09-28" ? "lundi 28 septembre" : "mardi 29 septembre"));
     expect(annexes.map((a) => a.fichier)).toEqual(["a.pdf", "b.pdf", "c.pdf"]);
-    expect(annexes[0]).toEqual({ seanceId: "s1", quand: "lundi 28 septembre · 09:00 · Les syllabes", titre: "Fiche syllabes", fichier: "a.pdf" });
+    expect(annexes[0]).toEqual({ seanceId: "s1", quand: "lundi 28 septembre · 09:00 · Les syllabes", titre: "Fiche syllabes", fichier: "a.pdf", echelle: 1 });
+    // L'échelle du matériel suit chacun de ses fichiers.
+    const reduites = annexesDesCreneaux(creneaux, sequences, seances, materiels, () => "", { m1: 0.8 });
+    expect(reduites.map((a) => a.echelle)).toEqual([0.8, 0.8, 1]);
     // Sans titre de séance, la matière ; sans libellé de jour, l'heure d'abord.
     expect(annexes[2].quand).toBe("lundi 28 septembre · 14:00 · Maths");
     expect(annexesDesCreneaux(creneaux, sequences, seances, materiels)[2].quand).toBe("14:00 · Maths");
     expect(annexesDesCreneaux([], sequences, seances, materiels)).toEqual([]);
+  });
+
+  it("garde l'échelle d'impression de chaque matériel dans un réglage, bornée", () => {
+    expect(cleEchelle("m1")).toBe("impression:echelle:m1");
+    expect(lireEchelle("80")).toBe(0.8);
+    expect(lireEchelle("125")).toBe(1.25);
+    expect(lireEchelle(null)).toBe(1);
+    expect(lireEchelle("abc")).toBe(1);
+    expect(lireEchelle("0")).toBe(1);
+    expect(lireEchelle("300")).toBe(1.5);
+    expect(lireEchelle("10")).toBe(0.5);
+    expect(echellesDesReglages({ "impression:echelle:m1": "80", "impression:echelle:m2": "x", "theme": "sombre", "impression:echelle:": "50" }))
+      .toEqual({ m1: 0.8, m2: 1 });
   });
 
   it("relit les octets d'un fichier en base64", () => {
@@ -68,7 +85,7 @@ describe("le matériel des séances du journal", () => {
   });
 
   it("met chaque page de PDF sur sa feuille, le bandeau sur la première seulement", () => {
-    const annexe = { seanceId: "s1", quand: "09:00 · Les syllabes", titre: "Fiche <b>1</b>", fichier: "a.pdf" };
+    const annexe = { seanceId: "s1", quand: "09:00 · Les syllabes", titre: "Fiche <b>1</b>", fichier: "a.pdf", echelle: 1 };
     const page = (numero: number) => ({ numero, image: `IMG${numero}`, largeur: 10, hauteur: 14 });
     const html = annexesHtml([{ annexe, pages: [page(1), page(2)] }, { annexe: { ...annexe, titre: "Seule", fichier: "b.pdf" }, pages: [page(1)] }]);
     expect(html.match(/<section class="annexe">/g)).toHaveLength(3);
@@ -77,6 +94,10 @@ describe("le matériel des séances du journal", () => {
     expect(html).not.toContain("Seule · 1 pages");
     expect(html).toContain('src="data:image/png;base64,IMG2"');
     expect(annexesHtml([])).toBe("");
+    // Réduite ou agrandie : l'image change d'échelle autour de son centre, pas la page.
+    expect(html).not.toContain("transform: scale");
+    const reduite = annexesHtml([{ annexe: { ...annexe, echelle: 0.8 }, pages: [page(1)] }]);
+    expect(reduite).toContain('style="transform: scale(0.8); transform-origin: center"');
     // Chaque feuille jointe commence une page, l'image plafonnée pour laisser le pied.
     expect(STYLE_ANNEXES).toContain("break-before: page");
     expect(STYLE_ANNEXES).toContain("max-height: 250mm");
