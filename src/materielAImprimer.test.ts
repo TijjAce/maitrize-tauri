@@ -39,9 +39,12 @@ describe("le matériel des séances du journal", () => {
     const cite = creneau("2026-09-28", "09:00", null, "Lecture", "📚 Organiser les mots en réseau · séance 3 : Découverte du corpus");
     expect(liensDuCreneau(cite, sequences, seances)).toEqual({ seances: new Set(["s3"]), sequences: new Set() });
     expect(titresDuMateriel(cite, sequences, seances, materiels)).toEqual(["Corpus à découper"]);
-    // Une séquence citée sans séance : son matériel à elle, pas celui de ses séances.
+    // Une séquence citée sans séance, c'est toute la séquence : son matériel à elle, puis celui de ses séances, dans l'ordre.
     const seule = creneau("2026-09-28", "10:00", null, "Lecture", "On continue la séquence Organiser les mots en réseau.");
-    expect(titresDuMateriel(seule, sequences, seances, materiels)).toEqual(["Affiche du réseau"]);
+    expect(titresDuMateriel(seule, sequences, seances, materiels)).toEqual(["Affiche du réseau", "Fiche syllabes", "Matériel", "Corpus à découper"]);
+    // La séance citée en plus n'est pas comptée deux fois.
+    const avecSeance = creneau("2026-09-28", "10:00", "s1", "Lecture", "On continue la séquence Organiser les mots en réseau.");
+    expect(materielDuCreneau(avecSeance, sequences, seances, materiels).map((m) => m.id)).toEqual(["m1", "m6", "m2", "m5"]);
     // Le lien du planning et la citation se cumulent, la séance liée d'abord.
     const deux = creneau("2026-09-28", "11:00", "s1", "Lecture", "Puis Les fractions au quotidien.");
     expect(materielDuCreneau(deux, sequences, seances, materiels).map((m) => m.id)).toEqual(["m1", "m7"]);
