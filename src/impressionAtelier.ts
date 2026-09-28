@@ -13,6 +13,7 @@
 
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 import { cleDesCompetences, lireCompetencesAtelier } from "./ateliersCompetences";
+import { CLE_ACTIF, CLE_LEXIQUE, STYLE_CONSIGNES_PICTOS, consignesActives, decorerConsignesHtml, lireLexique } from "./caa";
 import { documentImprimable, escapeHtml, printHTML } from "./print";
 import type { MaterielItem } from "./api";
 
@@ -108,10 +109,32 @@ export async function competencesDeLAtelier(atelier: string): Promise<Competence
 export const lignesCompetencesAtelier = async (atelier: string) =>
   lignesCompetences(await competencesDeLAtelier(atelier));
 
-/** Imprime la feuille d'un atelier, ses compétences en tête. */
+/**
+ * Les consignes de la feuille avec les pictos de leurs verbes (voir `caa`),
+ * si l'enseignant en a choisi. Une image qui manque ne bloque rien.
+ */
+export async function consignesEnPictos(corps: string): Promise<{ corps: string; style: string }> {
+  try {
+    const { api } = await import("./api");
+    const lexique = lireLexique(await api.settingGet(CLE_LEXIQUE));
+    if (!consignesActives(await api.settingGet(CLE_ACTIF), lexique)) return { corps, style: "" };
+    const ids = [...new Set(Object.values(lexique))];
+    const images: Record<number, string> = {};
+    await Promise.all(ids.map(async (id) => {
+      try { images[id] = `data:image/png;base64,${await api.arasaacImage(id)}`; } catch { /* sans image, pas de picto */ }
+    }));
+    const decore = decorerConsignesHtml(corps, lexique, images);
+    return { corps: decore, style: decore === corps ? "" : STYLE_CONSIGNES_PICTOS };
+  } catch {
+    return { corps, style: "" };
+  }
+}
+
+/** Imprime la feuille d'un atelier, ses compétences en tête et ses consignes en pictos. */
 export async function imprimerAtelier(atelier: string, titre: string, corps: string, style = ""): Promise<void> {
   const entete = enteteCompetencesHtml(await competencesDeLAtelier(atelier));
-  printHTML(titre, entete + corps, entete ? style + STYLE_ENTETE_COMPETENCES : style);
+  const consignes = await consignesEnPictos(corps);
+  printHTML(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style);
 }
 
 // ── Sur le bureau ──────────────────────────────────────────────────────────
@@ -150,7 +173,8 @@ export async function deposerSurLeBureau(atelier: string, titre: string, fichier
 export async function enregistrerSurLeBureau(atelier: string, titre: string, corps: string, style = ""): Promise<MaterielItem> {
   const { api } = await import("./api");
   const entete = enteteCompetencesHtml(await competencesDeLAtelier(atelier));
-  const html = documentImprimable(titre, entete + corps, entete ? style + STYLE_ENTETE_COMPETENCES : style);
+  const consignes = await consignesEnPictos(corps);
+  const html = documentImprimable(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style);
   const fichier = await api.feuilleEnPdf(html);
   return deposerSurLeBureau(atelier, titre, fichier);
 }

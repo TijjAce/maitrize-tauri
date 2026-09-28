@@ -66,7 +66,7 @@ export function LectureSonsTab() {
   // La feuille — corps et style — d'où sortent l'impression et le PDF du bureau.
   const feuilleSon = () => {
     const bloc = (consigne: string, contenu: string) =>
-      `<h3>${escapeHtml(consigne)}</h3><div class="ligne">${contenu}</div>`;
+      `<h3 class="consigne">${escapeHtml(consigne)}</h3><div class="ligne">${contenu}</div>`;
     const mots = (liste: string[]) => liste.map((m) => `<span>${escapeHtml(m)}</span>`).join("");
     const corps = [
       r.syllabes ? bloc("Je lis les syllabes", mots(f.syllabes)) : "",
