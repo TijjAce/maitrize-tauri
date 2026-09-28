@@ -131,18 +131,49 @@ export interface AnnexeRendue { annexe: AnnexeAImprimer; pages: PageRendue[] }
 /**
  * Les pages jointes du journal HTML : une page imprimée par page de PDF,
  * son image seule, et sur la première un bandeau qui dit d'où elle vient.
+ *
+ * À l'écran, avant d'imprimer, chaque feuille a sa molette : elle change
+ * l'échelle de ses pages sous les yeux, et disparaît à l'impression. Ce
+ * qu'on règle là ne vaut que pour cette impression ; la molette de la
+ * séance ou du journal, elle, se garde.
  */
 export function annexesHtml(rendues: AnnexeRendue[]): string {
-  return rendues.flatMap(({ annexe, pages }) => pages.map((p, i) => {
+  const sections = rendues.flatMap(({ annexe, pages }, k) => pages.map((p, i) => {
+    const pourcent = Math.round((annexe.echelle || 1) * 100);
     const bandeau = i === 0
       ? `<div class="annexe-bandeau">📎 Matériel à imprimer · ${escapeHtml([annexe.quand, annexe.titre].filter(Boolean).join(" · "))}`
         + (pages.length > 1 ? ` · ${pages.length} pages` : "") + `</div>`
+        + `<div class="annexe-outils" data-annexe="${k}">🔍 Échelle à l'impression <button type="button" data-pas="-${ECHELLE_PAS}" aria-label="Réduire">−</button>`
+        + `<input type="range" min="${ECHELLE_MIN}" max="${ECHELLE_MAX}" step="${ECHELLE_PAS}" value="${pourcent}" aria-label="Échelle">`
+        + `<button type="button" data-pas="${ECHELLE_PAS}" aria-label="Agrandir">+</button><output>${pourcent} %</output></div>`
       : "";
     // L'échelle se pose sur l'image, autour de son centre : la page garde sa place, l'image y grandit ou y rétrécit.
     const echelle = annexe.echelle && Math.abs(annexe.echelle - 1) > 0.001 ? ` style="transform: scale(${annexe.echelle}); transform-origin: center"` : "";
-    return `<section class="annexe">${bandeau}<img src="data:image/png;base64,${p.image}" alt="${escapeHtml(annexe.titre)} — page ${i + 1}"${echelle}></section>`;
-  })).join("");
+    return `<section class="annexe" data-annexe="${k}">${bandeau}<img src="data:image/png;base64,${p.image}" alt="${escapeHtml(annexe.titre)} — page ${i + 1}"${echelle}></section>`;
+  }));
+  return sections.length ? sections.join("") + SCRIPT_ANNEXES : "";
 }
+
+/** La molette des feuilles jointes, à l'écran : elle règle les images de sa feuille. */
+const SCRIPT_ANNEXES = `<script>
+(function () {
+  document.querySelectorAll(".annexe-outils").forEach(function (outils) {
+    var k = outils.getAttribute("data-annexe");
+    var curseur = outils.querySelector("input");
+    var sortie = outils.querySelector("output");
+    var images = document.querySelectorAll('.annexe[data-annexe="' + k + '"] img');
+    var appliquer = function (v) {
+      v = Math.max(${ECHELLE_MIN}, Math.min(${ECHELLE_MAX}, Number(v) || 100));
+      curseur.value = String(v); sortie.textContent = v + " %";
+      images.forEach(function (img) { img.style.transform = v === 100 ? "" : "scale(" + (v / 100) + ")"; img.style.transformOrigin = "center"; });
+    };
+    curseur.addEventListener("input", function () { appliquer(curseur.value); });
+    outils.querySelectorAll("button").forEach(function (b) {
+      b.addEventListener("click", function () { appliquer(Number(curseur.value) + Number(b.getAttribute("data-pas"))); });
+    });
+  });
+})();
+</script>`;
 
 /**
  * Chaque page jointe sur sa feuille, l'image plafonnée en hauteur pour
@@ -151,5 +182,11 @@ export function annexesHtml(rendues: AnnexeRendue[]): string {
 export const STYLE_ANNEXES = `
   .annexe { break-before: page; page-break-before: always; }
   .annexe-bandeau { font-size: 9px; color: #687087; margin: 0 0 2mm; }
+  .annexe-outils { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #3b4256; margin: 0 0 8px;
+    padding: 6px 10px; border: 1px dashed #9aa0b4; border-radius: 8px; background: #f7f8fc; }
+  .annexe-outils input[type="range"] { width: 140px; }
+  .annexe-outils button { font: inherit; width: 26px; height: 26px; border: 1px solid #9aa0b4; border-radius: 6px; background: #fff; cursor: pointer; }
+  .annexe-outils output { min-width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+  @media print { .annexe-outils { display: none; } }
   .annexe img { display: block; margin: 0 auto; width: auto; height: auto; max-width: 100%; max-height: 250mm; border-radius: 0; }
 `;

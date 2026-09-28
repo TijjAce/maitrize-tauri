@@ -88,8 +88,12 @@ describe("le matériel des séances du journal", () => {
     const annexe = { seanceId: "s1", quand: "09:00 · Les syllabes", titre: "Fiche <b>1</b>", fichier: "a.pdf", echelle: 1 };
     const page = (numero: number) => ({ numero, image: `IMG${numero}`, largeur: 10, hauteur: 14 });
     const html = annexesHtml([{ annexe, pages: [page(1), page(2)] }, { annexe: { ...annexe, titre: "Seule", fichier: "b.pdf" }, pages: [page(1)] }]);
-    expect(html.match(/<section class="annexe">/g)).toHaveLength(3);
+    expect(html.match(/<section class="annexe" data-annexe="\d+">/g)).toHaveLength(3);
     expect(html.match(/annexe-bandeau/g)).toHaveLength(2);
+    // À l'écran, une molette par feuille, réglée à son échelle ; le script une seule fois.
+    expect(html.match(/class="annexe-outils"/g)).toHaveLength(2);
+    expect(html).toContain('value="100"');
+    expect(html.match(/<script>/g)).toHaveLength(1);
     expect(html).toContain("📎 Matériel à imprimer · 09:00 · Les syllabes · Fiche &lt;b&gt;1&lt;/b&gt; · 2 pages");
     expect(html).not.toContain("Seule · 1 pages");
     expect(html).toContain('src="data:image/png;base64,IMG2"');
@@ -98,6 +102,8 @@ describe("le matériel des séances du journal", () => {
     expect(html).not.toContain("transform: scale");
     const reduite = annexesHtml([{ annexe: { ...annexe, echelle: 0.8 }, pages: [page(1)] }]);
     expect(reduite).toContain('style="transform: scale(0.8); transform-origin: center"');
+    expect(reduite).toContain('value="80"');
+    expect(STYLE_ANNEXES).toContain("@media print { .annexe-outils { display: none; } }");
     // Chaque feuille jointe commence une page, l'image plafonnée pour laisser le pied.
     expect(STYLE_ANNEXES).toContain("break-before: page");
     expect(STYLE_ANNEXES).toContain("max-height: 250mm");
