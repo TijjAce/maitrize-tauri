@@ -8,6 +8,7 @@ import { PhotoTelephone } from "../components/PhotoTelephone";
 import { escapeHtml } from "../print";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
+import { ConsigneEnPictos } from "../components/ConsigneEnPictos";
 import {
   COULEURS, GRAPHIES, MOTIFS, OPERATIONS, PLAFONDS, POLICES_CURSIVES_CONNUES, REGLAGES_PAR_DEFAUT, SONS_COLORIAGE, TAILLES_MOTIF,
   basculerCase, casesAColorier, consigne, couleurDe, couleursDuMotif, ecrireMotifsPerso, fabriquerColoriage, lettreSousGraphie,
@@ -285,8 +286,8 @@ export function ColoriageMagiqueTab() {
          font-size: ${n > 8 ? 14 : 15}px; vertical-align: middle; }
        .nom { margin: 0 0 10px; font-size: 13px; color: #555; }` };
   };
-  const imprimer = (avecCorrige: boolean) => { const f = feuille(avecCorrige); void imprimerAtelier("coloriage", f.titre, f.corps, f.style); };
-  const bureau = () => { const f = feuille(false); return enregistrerSurLeBureau("coloriage", f.titre, f.corps, f.style); };
+  const imprimer = (avecCorrige: boolean) => { const f = feuille(avecCorrige); void imprimerAtelier("coloriage", f.titre, f.corps, f.style, { pictos: r.pictos ?? [] }); };
+  const bureau = () => { const f = feuille(false); return enregistrerSurLeBureau("coloriage", f.titre, f.corps, f.style, { pictos: r.pictos ?? [] }); };
 
   const tous = [...MOTIFS, ...motifsPerso];
   const titreEtape = (n: number, texte: string) => <div className="cm-etape"><span>{n}</span>{texte}</div>;
@@ -412,6 +413,7 @@ export function ColoriageMagiqueTab() {
         <Field label="Titre de la feuille">
           <Input value={r.titre} onChange={(e) => maj({ titre: e.target.value })} />
         </Field>
+        <ConsigneEnPictos consignes={[consigne(r)]} pictos={r.pictos ?? []} onChange={(pictos) => maj({ pictos })} />
       </div>
 
       <div className="card" style={{ position: "sticky", top: 12 }}>

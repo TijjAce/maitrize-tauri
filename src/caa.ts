@@ -64,6 +64,8 @@ export const VERBES_CONSIGNE: VerbeConsigne[] = [
 
 export const CLE_LEXIQUE = "caa:consignes";
 export const CLE_ACTIF = "caa:consignes:actif";
+/** Émis quand le lexique change : les ateliers ouverts se mettent à jour. */
+export const EVT_LEXIQUE = "maitrize:caa-lexique";
 
 /** Le pictogramme choisi pour chaque verbe : l'identifiant ARASAAC. */
 export type Lexique = Record<string, number>;
@@ -98,15 +100,21 @@ const FORMES: Map<string, string> = new Map(
   VERBES_CONSIGNE.flatMap((v) => [v.verbe, ...v.formes].map((f) => [plat(f), v.verbe] as const)),
 );
 
-/** Les verbes d'une consigne, dans l'ordre du texte, une fois chacun — ceux qui ont un picto. */
-export function verbesDe(texte: string, lexique: Lexique): string[] {
+/** Les verbes d'action d'un texte, dans l'ordre, une fois chacun — qu'ils aient un picto ou non. */
+export function verbesDuTexte(texte: string): string[] {
   const sortie: string[] = [];
   for (const mot of plat(texte).split(/[^a-z]+/)) {
     const verbe = FORMES.get(mot);
-    if (verbe && lexique[verbe] && !sortie.includes(verbe)) sortie.push(verbe);
+    if (verbe && !sortie.includes(verbe)) sortie.push(verbe);
   }
   return sortie;
 }
+
+/** Les verbes d'une consigne, dans l'ordre du texte, une fois chacun — ceux qui ont un picto. */
+export const verbesDe = (texte: string, lexique: Lexique): string[] => verbesDuTexte(texte).filter((v) => lexique[v]);
+
+/** Les verbes connus, pour en proposer un à ajouter. */
+export const estUnVerbeConnu = (verbe: string) => VERBES_CONSIGNE.some((v) => v.verbe === verbe);
 
 /** Les classes des éléments qui portent une consigne pour l'élève, dans les feuilles. */
 export const CLASSES_CONSIGNE = ["consigne", "cu-consigne", "ls-consigne", "fa-consigne"];
@@ -125,16 +133,20 @@ const MENTION_ARASAAC = `<div class="consigne-attribution">Pictogrammes : ARASAA
  * Les consignes d'une feuille, avec les pictos de leurs verbes devant.
  *
  * On travaille sur le HTML des feuilles telles que l'application les écrit :
- * les consignes y sont des éléments simples, sans balise imbriquée. Rien ne
- * change pour une feuille sans consigne ; celle qui en gagne porte la
- * mention exigée par la licence des pictogrammes, si elle ne l'avait pas.
+ * les consignes y sont des éléments simples, sans balise imbriquée. Les
+ * verbes ajoutés à la main (`supplement`) viennent devant la première
+ * consigne — ou en tête de la feuille si elle n'en marque aucune. Rien ne
+ * change pour une feuille sans consigne ni ajout ; celle qui gagne des
+ * pictos porte la mention exigée par la licence, si elle ne l'avait pas.
  */
-export function decorerConsignesHtml(html: string, lexique: Lexique, images: Record<number, string>): string {
+export function decorerConsignesHtml(html: string, lexique: Lexique, images: Record<number, string>, supplement: string[] = []): string {
   if (!Object.keys(lexique).length) return html;
   const ouverture = /<(h[1-6]|p|div|span)\b([^>]*\bclass="([^"]*)"[^>]*)>/g;
   let sortie = "";
   let position = 0;
   let decore = false;
+  let premiere = true;
+  const ajoutes = supplement.filter((v) => lexique[v]);
   for (let m = ouverture.exec(html); m; m = ouverture.exec(html)) {
     const classes = m[3].split(/\s+/);
     if (!classes.some((c) => CLASSES_CONSIGNE.includes(c))) continue;
@@ -142,12 +154,20 @@ export function decorerConsignesHtml(html: string, lexique: Lexique, images: Rec
     const fin = html.indexOf(`</${m[1]}>`, debut);
     if (fin < 0) continue;
     const interieur = html.slice(debut, fin);
-    if (interieur.includes("consigne-pictos")) continue;
-    const pictos = htmlPictosVerbes(verbesDe(interieur.replace(/<[^>]*>/g, " "), lexique), lexique, images);
+    if (interieur.includes("consigne-pictos")) { premiere = false; continue; }
+    const trouves = verbesDe(interieur.replace(/<[^>]*>/g, " "), lexique);
+    const verbes = premiere ? [...ajoutes, ...trouves.filter((v) => !ajoutes.includes(v))] : trouves;
+    premiere = false;
+    const pictos = htmlPictosVerbes(verbes, lexique, images);
     if (!pictos) continue;
     sortie += html.slice(position, debut) + pictos;
     position = debut;
     decore = true;
+  }
+  if (premiere && ajoutes.length) {
+    // Aucune consigne marquée : les pictos ajoutés font une ligne à eux, en tête.
+    const bande = htmlPictosVerbes(ajoutes, lexique, images);
+    if (bande) { sortie = `<div class="consigne consigne-seule">${bande}</div>` + html; position = html.length; decore = true; }
   }
   if (!decore) return html;
   sortie += html.slice(position);
@@ -161,4 +181,5 @@ export const STYLE_CONSIGNES_PICTOS = `
   .consigne-picto img { width: 12mm; height: 12mm; object-fit: contain; margin: 0; max-height: none; border-radius: 1.5mm; }
   .consigne-picto small { font-size: 8px; color: #555; text-transform: none; letter-spacing: 0; font-weight: 500; }
   .consigne-attribution { font-size: 8px; color: #888; margin-top: 8px; text-align: center; }
+  .consigne-seule { margin: 0 0 4mm; }
 `;

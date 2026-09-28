@@ -11,8 +11,8 @@ import { Banque } from "./Jeux";
 import { TlaTab } from "./Tla";
 import { SupportsVisuelsTab, retenirSupport } from "./SupportsVisuels";
 import {
-  CLE_ACTIF, CLE_LEXIQUE, STYLE_CONSIGNES_PICTOS, VERBES_CONSIGNE, consignesActives, decorerConsignesHtml, ecrireLexique, lireLexique,
-  type Lexique,
+  CLE_ACTIF, CLE_LEXIQUE, EVT_LEXIQUE, STYLE_CONSIGNES_PICTOS, VERBES_CONSIGNE, consignesActives, decorerConsignesHtml, ecrireLexique,
+  lireLexique, type Lexique,
 } from "../caa";
 
 // ── CAA : communication alternative et augmentée ──────────────────────────
@@ -78,13 +78,15 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
   }, []);
   const enregistrer = (suite: Lexique) => {
     setLexique(suite);
-    api.settingSet(CLE_LEXIQUE, ecrireLexique(suite)).catch((e) => toast("Lexique non enregistré : " + String(e), { icone: "⚠️" }));
+    api.settingSet(CLE_LEXIQUE, ecrireLexique(suite))
+      .then(() => window.dispatchEvent(new Event(EVT_LEXIQUE)))
+      .catch((e) => toast("Lexique non enregistré : " + String(e), { icone: "⚠️" }));
   };
   const actif = consignesActives(reglageActif, lexique);
   const basculer = () => {
     const suite = actif ? "0" : "1";
     setReglageActif(suite);
-    api.settingSet(CLE_ACTIF, suite).catch(() => {});
+    api.settingSet(CLE_ACTIF, suite).then(() => window.dispatchEvent(new Event(EVT_LEXIQUE))).catch(() => {});
   };
   // Un picto pour chaque verbe qui n'en a pas encore : le premier que la banque connaît sous ce mot.
   const proposer = async () => {

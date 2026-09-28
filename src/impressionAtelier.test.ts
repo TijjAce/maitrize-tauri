@@ -122,10 +122,13 @@ describe("imprimer un atelier", () => {
     expect(corps).not.toContain('alt="lire"');
     expect(corps).toContain("ARASAAC");
     expect(style).toContain(".consigne-pictos");
+    // Un picto ajouté à la main vient devant, même si la consigne ne dit pas le verbe.
+    await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Compte.</p>', "", { pictos: ["écrire"] });
+    expect(impressions[1].corps).toContain('<p class="consigne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:image/png;base64,AAAA" alt="écrire">');
     // Coupés : la feuille reste nue.
     reglages.set("caa:consignes:actif", "0");
     await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Écris.</p>');
-    expect(impressions[1].corps).toBe('<p class="consigne">Écris.</p>');
+    expect(impressions[2].corps).toBe('<p class="consigne">Écris.</p>');
   });
 
   it("imprime quand même si le réglage est illisible", async () => {

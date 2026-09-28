@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   CLASSES_CONSIGNE, VERBES_CONSIGNE, consignesActives, decorerConsignesHtml, ecrireLexique, htmlPictosVerbes, lireLexique, verbesDe,
+  verbesDuTexte,
 } from "./caa";
 
 const lexique = { lire: 11, écrire: 22, colorier: 33, entourer: 44 };
@@ -12,6 +13,10 @@ describe("les verbes d'une consigne", () => {
     expect(verbesDe("J'entoure les mots où j'entends [a]", lexique)).toEqual(["entourer"]);
     expect(verbesDe("Je lis les syllabes", lexique)).toEqual(["lire"]);
     expect(verbesDe("LISEZ puis COLORIEZ", lexique)).toEqual(["lire", "colorier"]);
+  });
+
+  it("se lisent aussi sans lexique, pour proposer un picto à ceux qui n'en ont pas", () => {
+    expect(verbesDuTexte("Découpe puis colle les étiquettes, et lis-les.")).toEqual(["découper", "coller", "lire"]);
   });
 
   it("ne retiennent que les verbes qui ont un picto, et rien dans un texte sans verbe", () => {
@@ -72,6 +77,20 @@ describe("les consignes décorées", () => {
     // Une feuille qui cite déjà ARASAAC ne reçoit pas la mention deux fois.
     const avec = decorerConsignesHtml(`<p class="consigne">Lis.</p><div class="attribution">Pictogrammes : ARASAAC</div>`, lexique, images);
     expect(avec.match(/ARASAAC/g)).toHaveLength(1);
+  });
+
+  it("mettent les pictos ajoutés à la main devant la première consigne, ou en tête s'il n'y en a pas", () => {
+    const feuille = `<h1>Fiche</h1><p class="consigne">Écris le nombre.</p><p class="consigne">Colorie la case.</p>`;
+    const html = decorerConsignesHtml(feuille, lexique, images, ["lire", "écrire", "entourer"]);
+    // « lire » d'abord (ajouté), « écrire » une seule fois, « entourer » sans image passe son tour.
+    expect(html).toContain(`<p class="consigne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:lire" alt="lire"><small>lire</small></span><span class="consigne-picto"><img src="data:ecrire" alt="écrire"><small>écrire</small></span></span>Écris le nombre.</p>`);
+    expect(html).toContain(`<p class="consigne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:colorier"`);
+    expect(html.match(/alt="lire"/g)).toHaveLength(1);
+    // Sans consigne marquée : une ligne de pictos en tête, et la mention.
+    const nue = decorerConsignesHtml(`<h1>Loto</h1><div class="grille"></div>`, lexique, images, ["lire"]);
+    expect(nue.startsWith(`<div class="consigne consigne-seule"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:lire"`)).toBe(true);
+    expect(nue).toContain("ARASAAC");
+    expect(decorerConsignesHtml(`<h1>Loto</h1>`, lexique, images, ["entourer"])).toBe(`<h1>Loto</h1>`);
   });
 
   it("connaissent les consignes de toutes les feuilles", () => {

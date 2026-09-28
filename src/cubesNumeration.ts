@@ -79,6 +79,8 @@ export interface ReglagesCubes {
   corrige: boolean;
   /** Le numéro de chaque exercice dans son coin ; on peut s'en passer. */
   numeros: boolean;
+  /** Des verbes en pictos ajoutés à la main devant la consigne (voir CAA). */
+  pictos: string[];
 }
 
 export const REGLAGES_CUBES: ReglagesCubes = {
@@ -86,7 +88,7 @@ export const REGLAGES_CUBES: ReglagesCubes = {
   // Les couleurs du matériel le plus répandu : le jaune des unités, le vert
   // des barres, le bleu des plaques, le rouge du gros cube.
   couleurs: { u: "#ffe14d", d: "#62d93a", c: "#2454e6", m: "#e8402f" },
-  zeros: true, legende: true, corrige: false, numeros: true,
+  zeros: true, legende: true, corrige: false, numeros: true, pictos: [],
 };
 
 /** Le numéro d'un exercice, dans son coin — ou rien. */
@@ -284,7 +286,8 @@ export function dessinerCubes(n: number, u: number, couleurs: CouleursCubes): De
 
 // ── La feuille ─────────────────────────────────────────────────────────────
 
-const consigneDe = (r: ReglagesCubes) => EXERCICES.find((e) => e.id === r.exercice)?.consigne ?? "";
+/** La consigne de la feuille, d'après l'exercice. */
+export const consigneDe = (r: ReglagesCubes) => EXERCICES.find((e) => e.id === r.exercice)?.consigne ?? "";
 
 /** Les cases à remplir pour une écriture : le nombre, les unités de numération, la somme, la ligne. */
 function reponse(ecriture: EcritureNombre, a: number): string {
