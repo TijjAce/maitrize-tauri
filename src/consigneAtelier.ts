@@ -19,6 +19,31 @@ export const cleConsigne = (atelier: string) => `fabriquer:consigne:${atelier}`;
 /** Émis quand une consigne change : les aperçus ouverts se mettent à jour. */
 export const EVT_CONSIGNE = "maitrize:consigne-atelier";
 
+// ── Les pictos ajoutés à la main ──────────────────────────────────────────
+//
+// Les verbes que la consigne dit ont leur picto d'eux-mêmes (voir `caa`).
+// Ceux qu'on veut montrer sans que la consigne les dise se gardent par
+// atelier, dans un réglage partagé comme la consigne réécrite.
+
+/** Où se gardent les verbes ajoutés pour un atelier. */
+export const clePictos = (atelier: string) => `fabriquer:pictos:${atelier}`;
+
+/** Émis quand les pictos d'un atelier changent : l'aperçu se met à jour. */
+export const EVT_PICTOS = "maitrize:pictos-atelier";
+
+/** Les verbes ajoutés, tels qu'on peut s'y fier : des mots, sans doublon. */
+export function lirePictosAjoutes(brut: string | null | undefined): string[] {
+  if (!brut) return [];
+  try {
+    const lu = JSON.parse(brut);
+    return Array.isArray(lu) ? [...new Set(lu.filter((x): x is string => typeof x === "string" && x.trim() !== "").map((x) => x.trim()))] : [];
+  } catch {
+    return [];
+  }
+}
+
+export const ecrirePictosAjoutes = (verbes: string[]) => JSON.stringify(verbes);
+
 /** Les classes qui portent la consigne d'une feuille : celles des consignes, et les règles encadrées. */
 export const CLASSES_CONSIGNE_FEUILLE = [...CLASSES_CONSIGNE, "regle"];
 

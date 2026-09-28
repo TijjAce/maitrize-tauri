@@ -147,9 +147,10 @@ export function annexesHtml(rendues: AnnexeRendue[]): string {
         + `<input type="range" min="${ECHELLE_MIN}" max="${ECHELLE_MAX}" step="${ECHELLE_PAS}" value="${pourcent}" aria-label="Échelle">`
         + `<button type="button" data-pas="${ECHELLE_PAS}" aria-label="Agrandir">+</button><output>${pourcent} %</output></div>`
       : "";
-    // L'échelle se pose sur l'image, autour de son centre : la page garde sa place, l'image y grandit ou y rétrécit.
+    // L'échelle se pose sur l'image, autour de son centre ; le cadre rogne ce qui dépasse. La page garde
+    // sa place : agrandie, l'image perd ses marges au lieu d'empiéter sur le bandeau ou la page suivante.
     const echelle = annexe.echelle && Math.abs(annexe.echelle - 1) > 0.001 ? ` style="transform: scale(${annexe.echelle}); transform-origin: center"` : "";
-    return `<section class="annexe" data-annexe="${k}">${bandeau}<img src="data:image/png;base64,${p.image}" alt="${escapeHtml(annexe.titre)} — page ${i + 1}"${echelle}></section>`;
+    return `<section class="annexe" data-annexe="${k}">${bandeau}<div class="annexe-cadre"><img src="data:image/png;base64,${p.image}" alt="${escapeHtml(annexe.titre)} — page ${i + 1}"${echelle}></div></section>`;
   }));
   return sections.length ? sections.join("") + SCRIPT_ANNEXES : "";
 }
@@ -231,5 +232,6 @@ export const STYLE_ANNEXES = `
   .journal-outils { margin: 0 0 14px; flex-wrap: wrap; }
   .journal-outils-aide { color: #687087; font-size: 11px; }
   @media print { .annexe-outils { display: none; } }
+  .annexe-cadre { overflow: hidden; break-inside: avoid; page-break-inside: avoid; }
   .annexe img { display: block; margin: 0 auto; width: auto; height: auto; max-width: 100%; max-height: 250mm; border-radius: 0; }
 `;

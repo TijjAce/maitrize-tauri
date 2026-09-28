@@ -59,8 +59,8 @@ describe("les consignes décorées", () => {
     const html = decorerConsignesHtml(feuille, lexique, images);
     expect(html).toContain(`<p class="consigne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:ecrire" alt="écrire"><small>écrire</small></span>`
       + `<span class="consigne-picto"><img src="data:colorier" alt="colorier"><small>colorier</small></span></span>Écris le nombre`);
-    // La règle du jeu, pour l'adulte, reste telle quelle ; « compter » n'a pas de picto.
-    expect(html).toContain(`<div class="regle"><b>Loto</b>On lit les cartes.</div>`);
+    // La règle du jeu aussi, après son titre ; « compter » n'a pas de picto.
+    expect(html).toContain(`<div class="regle"><b>Loto</b><span class="consigne-pictos"><span class="consigne-picto"><img src="data:lire" alt="lire"><small>lire</small></span></span>On lit les cartes.</div>`);
     expect(html).toContain(`<div class="sous cu-consigne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:ecrire"`);
     expect(html.endsWith(`<div class="consigne-attribution">Pictogrammes : ARASAAC (arasaac.org) — Gouvernement d'Aragon, licence CC BY-NC-SA. Usage non commercial.</div>`)).toBe(true);
     // Décorer deux fois ne double rien.
@@ -94,6 +94,24 @@ describe("les consignes décorées", () => {
   });
 
   it("connaissent les consignes de toutes les feuilles", () => {
-    expect(CLASSES_CONSIGNE).toEqual(["consigne", "cu-consigne", "ls-consigne", "fa-consigne"]);
+    expect(CLASSES_CONSIGNE).toEqual(["consigne", "cu-consigne", "ls-consigne", "fa-consigne", "regle"]);
+  });
+
+  it("décorent la règle encadrée d'un jeu, section par section, après chaque titre", () => {
+    const lexique = { "découper": 1, "retrouver": 2, "entourer": 3, "lire": 4 };
+    const images = { 1: "data:decouper", 2: "data:retrouver", 3: "data:entourer", 4: "data:lire" };
+    const regle = `<div class="regle"><b>Fabrication</b>Découper le cadre et ses bandes.<b style="margin-top:4px">Jeu</b>On lit la syllabe, puis on l'entoure.<span style="color:#687087">— Livret.</span></div>`;
+    const html = decorerConsignesHtml(regle, lexique, images);
+    expect(html).toContain(`<b>Fabrication</b><span class="consigne-pictos"><span class="consigne-picto"><img src="data:decouper" alt="découper"><small>découper</small></span></span>Découper`);
+    expect(html).toContain(`<b style="margin-top:4px">Jeu</b><span class="consigne-pictos"><span class="consigne-picto"><img src="data:lire"`);
+    expect(html).toContain(`<small>entourer</small></span></span>On lit la syllabe`);
+    expect(html).toContain("ARASAAC");
+    // Sans titre, la règle se décore en tête, comme une consigne ; les verbes ajoutés y vont aussi.
+    const simple = decorerConsignesHtml(`<div class="regle">Retrouve les mots cachés dans la grille.</div>`, lexique, images, ["lire"]);
+    expect(simple.startsWith(`<div class="regle"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:lire"`)).toBe(true);
+    expect(simple).toContain(`<small>retrouver</small>`);
+    // Les nouveaux verbes des jeux sont reconnus.
+    expect(verbesDe("Remets les mots dans l'ordre, décompose le nombre, ajoute puis retranche.", { remettre: 1, "décomposer": 1, ajouter: 1, retrancher: 1 }))
+      .toEqual(["remettre", "décomposer", "ajouter", "retrancher"]);
   });
 });

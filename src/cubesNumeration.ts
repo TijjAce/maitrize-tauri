@@ -79,8 +79,6 @@ export interface ReglagesCubes {
   corrige: boolean;
   /** Le numéro de chaque exercice dans son coin ; on peut s'en passer. */
   numeros: boolean;
-  /** Des verbes en pictos ajoutés à la main devant la consigne (voir CAA). */
-  pictos: string[];
 }
 
 export const REGLAGES_CUBES: ReglagesCubes = {
@@ -88,7 +86,7 @@ export const REGLAGES_CUBES: ReglagesCubes = {
   // Les couleurs du matériel le plus répandu : le jaune des unités, le vert
   // des barres, le bleu des plaques, le rouge du gros cube.
   couleurs: { u: "#ffe14d", d: "#62d93a", c: "#2454e6", m: "#e8402f" },
-  zeros: true, legende: true, corrige: false, numeros: true, pictos: [],
+  zeros: true, legende: true, corrige: false, numeros: true,
 };
 
 /** Le numéro d'un exercice, dans son coin — ou rien. */
