@@ -4,7 +4,6 @@ import { useReglages } from "../components/useMemoire";
 import { escapeHtml } from "../print";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
-import { ConsigneEnPictos } from "../components/ConsigneEnPictos";
 import {
   fabriquerFiche, REGLAGES_PAR_DEFAUT, SONS, type FicheSon,
 } from "../lectureSons";
@@ -84,14 +83,8 @@ export function LectureSonsTab() {
        .ligne { display: flex; flex-wrap: wrap; gap: 10px 22px; font-size: 21px; letter-spacing: .5px; }
        .lignes div { border-bottom: 1.2px solid #888; height: 30px; margin-bottom: 12px; }` };
   };
-  const imprimer = () => { const s = feuilleSon(); void imprimerAtelier("sons", f.titre, s.corps, s.style, { pictos: r.pictos ?? [] }); };
-  const bureau = () => { const s = feuilleSon(); return enregistrerSurLeBureau("sons", f.titre, s.corps, s.style, { pictos: r.pictos ?? [] }); };
-  // Les consignes de la fiche telles qu'elles s'impriment, pour y reconnaître les verbes.
-  const consignes = [
-    r.syllabes ? "Je lis les syllabes" : "", r.lireDesMots ? "Je lis les mots" : "", r.entourer ? "J'entoure les mots" : "",
-    r.completer ? "Je complète" : "", r.ecrire ? "J'écris le son" : "",
-  ].filter(Boolean);
-
+  const imprimer = () => { const s = feuilleSon(); void imprimerAtelier("sons", f.titre, s.corps, s.style); };
+  const bureau = () => { const s = feuilleSon(); return enregistrerSurLeBureau("sons", f.titre, s.corps, s.style); };
   const coche = (cle: keyof typeof REGLAGES_PAR_DEFAUT, libelle: string) => (
     <label className="pb-coche">
       <input type="checkbox" checked={Boolean(r[cle])}
@@ -138,7 +131,6 @@ export function LectureSonsTab() {
           <Input value={r.titre} placeholder={`Le son ${f.son.son} — ${f.son.graphemes.join(", ")}`}
             onChange={(e) => maj({ titre: e.target.value })} />
         </Field>
-        <ConsigneEnPictos consignes={consignes} pictos={r.pictos ?? []} onChange={(pictos) => maj({ pictos })} />
       </div>
 
       <div className="card" style={{ position: "sticky", top: 12 }}>

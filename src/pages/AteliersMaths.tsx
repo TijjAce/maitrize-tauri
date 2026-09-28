@@ -4,13 +4,12 @@ import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
-import { ConsigneEnPictos, useConsignesEnPictos } from "../components/ConsigneEnPictos";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import { graineAuHasard } from "../hasard";
 import { SONS, syllabes } from "../lectureSons";
 import {
   ECRITURES, EXERCICES, EXERCICES_MAX, GROUPEMENTS, PALETTE_CUBES, PLAFONDS, PLANCHERS, REGLAGES_CUBES, STYLE_CUBES,
-  consigneDe, ecrituresChoisies, exercicesCubes, groupementsJusqua, htmlCubes, type EcritureNombre, type ExerciceCubes,
+  ecrituresChoisies, exercicesCubes, groupementsJusqua, htmlCubes, type EcritureNombre, type ExerciceCubes,
 } from "../cubesNumeration";
 import {
   REGLAGES_ARBRE, REGLAGES_CALCUL, REGLAGES_FRACTIONS, REGLAGES_NOMBRES, REGLAGES_OIE, REPRESENTATIONS, STYLE_JEUX_MATHS,
@@ -127,8 +126,6 @@ export function CubesTab() {
   const html = React.useMemo(() => htmlCubes(exos, r, graine), [exos, r, graine]);
   const style = STYLE_JEUX_MATHS + STYLE_CUBES;
   const ecritures = ecrituresChoisies(r);
-  // L'aperçu montre les pictos de la consigne comme l'impression les mettra.
-  const apercu = useConsignesEnPictos(html, r.pictos);
   return (
     <Colonnes
       gauche={<>
@@ -174,16 +171,15 @@ export function CubesTab() {
         </Field>
         <Coche on={r.zeros} libelle="Avec des zéros à l'intérieur (30, 105, 2 040)" onChange={(v) => maj({ zeros: v })} />
         <Coche on={r.numeros} libelle="Numéroter les exercices" onChange={(v) => maj({ numeros: v })} />
-        <ConsigneEnPictos consignes={[consigneDe(r)]} pictos={r.pictos ?? []} onChange={(pictos) => maj({ pictos })} />
         <Coche on={r.legende} libelle="La légende des cubes en haut de la feuille" onChange={(v) => maj({ legende: v })} />
         <Coche on={r.corrige} libelle="Le corrigé sur une page à part" onChange={(v) => maj({ corrige: v })} />
         <Field label="Titre de la feuille">
           <Input value={r.titre} onChange={(e) => maj({ titre: e.target.value })} placeholder={REGLAGES_CUBES.titre} />
         </Field>
-        <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("cubes", r.titre.trim() || REGLAGES_CUBES.titre, html, style, r.pictos)}
-          onBureau={() => bureau("cubes", r.titre.trim() || REGLAGES_CUBES.titre, html, style, r.pictos)} />
+        <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("cubes", r.titre.trim() || REGLAGES_CUBES.titre, html, style)}
+          onBureau={() => bureau("cubes", r.titre.trim() || REGLAGES_CUBES.titre, html, style)} />
       </>}
-      droite={<ApercuFeuille html={apercu.html} style={style + apercu.style} />}
+      droite={<ApercuFeuille html={html} style={style} />}
     />
   );
 }

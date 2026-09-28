@@ -35,6 +35,15 @@ export const VERBES_CONSIGNE: VerbeConsigne[] = [
   { verbe: "découper", formes: ["découpe", "découpez", "découpons"] },
   { verbe: "coller", formes: ["colle", "collez", "collons"] },
   { verbe: "compléter", formes: ["complète", "complétez", "complétons"] },
+  { verbe: "retrouver", formes: ["retrouve", "retrouvez", "retrouvons"] },
+  { verbe: "remettre", formes: ["remets", "remettez", "remettons"] },
+  { verbe: "décomposer", formes: ["décompose", "décomposez", "décomposons"] },
+  { verbe: "ajouter", formes: ["ajoute", "ajoutez", "ajoutons"] },
+  { verbe: "retrancher", formes: ["retranche", "retranchez", "retranchons"] },
+  { verbe: "additionner", formes: ["additionne", "additionnez", "additionnons"] },
+  { verbe: "réfléchir", formes: ["réfléchis", "réfléchissez", "réfléchissons"] },
+  { verbe: "glisser", formes: ["glisse", "glissez", "glissons"] },
+  { verbe: "jouer", formes: ["joue", "jouez", "jouons"] },
   { verbe: "cocher", formes: ["coche", "cochez", "cochons"] },
   { verbe: "trier", formes: ["trie", "triez", "trions"] },
   { verbe: "ranger", formes: ["range", "rangez", "rangeons"] },
@@ -116,8 +125,12 @@ export const verbesDe = (texte: string, lexique: Lexique): string[] => verbesDuT
 /** Les verbes connus, pour en proposer un à ajouter. */
 export const estUnVerbeConnu = (verbe: string) => VERBES_CONSIGNE.some((v) => v.verbe === verbe);
 
-/** Les classes des éléments qui portent une consigne pour l'élève, dans les feuilles. */
-export const CLASSES_CONSIGNE = ["consigne", "cu-consigne", "ls-consigne", "fa-consigne"];
+/**
+ * Les classes des éléments qui portent une consigne pour l'élève, dans les
+ * feuilles — la règle encadrée des jeux comprise : c'est là que la plupart
+ * disent quoi faire.
+ */
+export const CLASSES_CONSIGNE = ["consigne", "cu-consigne", "ls-consigne", "fa-consigne", "regle"];
 
 /** Les pictos de ces verbes, en ligne, chacun sous son mot. */
 export function htmlPictosVerbes(verbes: string[], lexique: Lexique, images: Record<number, string>): string {
@@ -125,6 +138,30 @@ export function htmlPictosVerbes(verbes: string[], lexique: Lexique, images: Rec
     .filter((v) => images[lexique[v]])
     .map((v) => `<span class="consigne-picto"><img src="${images[lexique[v]]}" alt="${escapeHtml(v)}"><small>${escapeHtml(v)}</small></span>`);
   return pictos.length ? `<span class="consigne-pictos">${pictos.join("")}</span>` : "";
+}
+
+/**
+ * Où poser les pictos dans un élément, et le texte qui dit ses verbes.
+ *
+ * Une règle encadrée a des titres en gras — « Fabrication », « Jeu » — et
+ * chaque section dit ses propres gestes : les pictos viennent après le titre,
+ * en tête du texte qu'ils illustrent. Sans titre, une seule section, en tête.
+ */
+function sectionsDe(interieur: string, regle: boolean): { offset: number; texte: string }[] {
+  const texteDe = (h: string) => h.replace(/<[^>]*>/g, " ");
+  if (!regle) return [{ offset: 0, texte: texteDe(interieur) }];
+  const titre = /<b\b[^>]*>[\s\S]*?<\/b>/g;
+  const titres: { debut: number; fin: number }[] = [];
+  for (let m = titre.exec(interieur); m; m = titre.exec(interieur)) titres.push({ debut: m.index, fin: m.index + m[0].length });
+  if (!titres.length) return [{ offset: 0, texte: texteDe(interieur) }];
+  const sections: { offset: number; texte: string }[] = [];
+  const avant = interieur.slice(0, titres[0].debut);
+  if (texteDe(avant).trim()) sections.push({ offset: 0, texte: texteDe(avant) });
+  titres.forEach((t, i) => {
+    const fin = i + 1 < titres.length ? titres[i + 1].debut : interieur.length;
+    sections.push({ offset: t.fin, texte: texteDe(interieur.slice(t.fin, fin)) });
+  });
+  return sections;
 }
 
 const MENTION_ARASAAC = `<div class="consigne-attribution">Pictogrammes : ARASAAC (arasaac.org) — Gouvernement d'Aragon, licence CC BY-NC-SA. Usage non commercial.</div>`;
@@ -155,14 +192,16 @@ export function decorerConsignesHtml(html: string, lexique: Lexique, images: Rec
     if (fin < 0) continue;
     const interieur = html.slice(debut, fin);
     if (interieur.includes("consigne-pictos")) { premiere = false; continue; }
-    const trouves = verbesDe(interieur.replace(/<[^>]*>/g, " "), lexique);
-    const verbes = premiere ? [...ajoutes, ...trouves.filter((v) => !ajoutes.includes(v))] : trouves;
-    premiere = false;
-    const pictos = htmlPictosVerbes(verbes, lexique, images);
-    if (!pictos) continue;
-    sortie += html.slice(position, debut) + pictos;
-    position = debut;
-    decore = true;
+    for (const s of sectionsDe(interieur, classes.includes("regle"))) {
+      const trouves = verbesDe(s.texte, lexique);
+      const verbes = premiere ? [...ajoutes, ...trouves.filter((v) => !ajoutes.includes(v))] : trouves;
+      premiere = false;
+      const pictos = htmlPictosVerbes(verbes, lexique, images);
+      if (!pictos) continue;
+      sortie += html.slice(position, debut + s.offset) + pictos;
+      position = debut + s.offset;
+      decore = true;
+    }
   }
   if (premiere && ajoutes.length) {
     // Aucune consigne marquée : les pictos ajoutés font une ligne à eux, en tête.
@@ -180,6 +219,7 @@ export const STYLE_CONSIGNES_PICTOS = `
   .consigne-picto { display: inline-flex; flex-direction: column; align-items: center; gap: 0.5mm; }
   .consigne-picto img { width: 12mm; height: 12mm; object-fit: contain; margin: 0; max-height: none; border-radius: 1.5mm; }
   .consigne-picto small { font-size: 8px; color: #555; text-transform: none; letter-spacing: 0; font-weight: 500; }
+  .regle .consigne-picto img { width: 10mm; height: 10mm; }
   .consigne-attribution { font-size: 8px; color: #888; margin-top: 8px; text-align: center; }
   .consigne-seule { margin: 0 0 4mm; }
 `;

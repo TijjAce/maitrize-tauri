@@ -49,12 +49,14 @@ export function useConsignesEnPictos(html: string, pictos: string[] = []): { htm
   }, [html, pictos, lexique, images, actif]);
 }
 
-export function ConsigneEnPictos({ consignes, pictos, onChange }: {
+export function ConsigneEnPictos({ consignes, pictos, onChange, compact = false }: {
   /** Les consignes de la feuille, telles qu'elles s'impriment. */
   consignes: string[];
   /** Les verbes ajoutés à la main pour cette feuille. */
   pictos: string[];
   onChange: (pictos: string[]) => void;
+  /** Sans titre ni cadre : quand le bandeau de l'atelier les donne déjà. */
+  compact?: boolean;
 }) {
   const navigate = useNavigate();
   const { lexique, actif, enregistrer } = useLexique();
@@ -77,9 +79,9 @@ export function ConsigneEnPictos({ consignes, pictos, onChange }: {
   const nb = Object.keys(lexique).length;
 
   return (
-    <div className="consigne-pictos-ui">
-      <div className="consigne-pictos-titre">
-        <span>🔤 Pictos de la consigne</span>
+    <div className={compact ? "consigne-pictos-ui compact" : "consigne-pictos-ui"}>
+      <div className="consigne-pictos-titre" style={compact ? { justifyContent: "flex-end" } : undefined}>
+        {!compact && <span>🔤 Pictos de la consigne</span>}
         <button type="button" className="btn ghost sm" onClick={() => navigate("/caa")} title="Le lexique des verbes, dans l'onglet CAA">CAA →</button>
       </div>
       {!nb ? (

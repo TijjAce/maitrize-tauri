@@ -112,6 +112,9 @@ describe("le matériel des séances du journal", () => {
     const reduite = annexesHtml([{ annexe: { ...annexe, echelle: 0.8 }, pages: [page(1)] }]);
     expect(reduite).toContain('style="transform: scale(0.8); transform-origin: center"');
     expect(reduite).toContain('value="80"');
+    // Le cadre rogne l'image agrandie : elle ne déborde ni sur le bandeau ni sur la page suivante.
+    expect(html.match(/<div class="annexe-cadre"><img /g)).toHaveLength(3);
+    expect(STYLE_ANNEXES).toContain(".annexe-cadre { overflow: hidden;");
     expect(STYLE_ANNEXES).toContain("@media print { .annexe-outils { display: none; } }");
     // Chaque feuille jointe commence une page, l'image plafonnée pour laisser le pied.
     expect(STYLE_ANNEXES).toContain("break-before: page");

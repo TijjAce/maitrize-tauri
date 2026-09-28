@@ -56,3 +56,14 @@ describe("les consignes d'origine publiées", () => {
     arreter();
   });
 });
+
+describe("les pictos ajoutés à un atelier", () => {
+  it("se relisent sans faire confiance à ce qui est enregistré", async () => {
+    const { clePictos, ecrirePictosAjoutes, lirePictosAjoutes } = await import("./consigneAtelier");
+    expect(clePictos("cubes")).toBe("fabriquer:pictos:cubes");
+    expect(lirePictosAjoutes(null)).toEqual([]);
+    expect(lirePictosAjoutes("{pas une liste")).toEqual([]);
+    expect(lirePictosAjoutes('["lire", 3, " ", "lire", " entourer "]')).toEqual(["lire", "entourer"]);
+    expect(lirePictosAjoutes(ecrirePictosAjoutes(["lire", "coller"]))).toEqual(["lire", "coller"]);
+  });
+});
