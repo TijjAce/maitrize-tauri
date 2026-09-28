@@ -457,6 +457,8 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .journal-materiel-titre { font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
 .journal-materiel-ligne { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 2px 0; }
 .journal-materiel-nom { flex: 1; min-width: 140px; }
+/* Un rituel cité sous le prévu du journal : la même carte qu'une règle de jeu, en vert. */
+.regle-app.rituel-app { border-color: color-mix(in srgb, #0f9d58 28%, var(--border)); background: color-mix(in srgb, #0f9d58 6%, var(--panel)); }
 /* Dans le bandeau d'un atelier : la consigne de la feuille, à réécrire. */
 .consigne-atelier .textarea { width: 100%; margin-top: 4px; font-size: 13px; }
 /* Dans un atelier : les pictos de la consigne, reconnus ou ajoutés. */

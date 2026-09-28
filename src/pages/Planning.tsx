@@ -19,6 +19,7 @@ import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
 import { organisationPour, natureDuSlot, type SlotEdt } from "../organisation";
 import { annexesDesCreneaux, annexesHtml, echellesDesReglages, moletteDuJournalHtml, octetsDeBase64, STYLE_ANNEXES, titresDuMateriel, type AnnexeRendue } from "../materielAImprimer";
 import { nombreDePages, rendrePage } from "../pdfRendu";
+import { CLE_RITUELS, avecRituels, lireRituels, rituelsCites, rituelsImprimes } from "../rituels";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const JOURS7 = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -211,6 +212,8 @@ export default function Planning() {
     // Le matériel des séances : annoncé dans le créneau, joint à la suite, à son échelle.
     const materiels = await api.materielList().catch((): MaterielItem[] => []);
     const echelles = echellesDesReglages(await api.settingsAll().catch(() => ({})));
+    // Les rituels cités dans le prévu : leur déroulement s'imprime sous lui.
+    const rituels = lireRituels(await api.settingGet(CLE_RITUELS).catch(() => null));
 
     // Collecte toutes les images référencées, puis les lit en data URL.
     const noms = new Set<string>();
@@ -296,6 +299,7 @@ export default function Planning() {
         c.prevu?.trim() ? `<div class="f"><span class="fl">Prévu :</span></div><div class="txt prevu">${rendreCell(c.prevu.trim())}</div>` : "",
         reglesImprimees(jeuxCites(`${c.prevu ?? ""}\n${deroul}`, jeux)),
         sequencesImprimees(sequencesCitees(c.prevu ?? "", sequences ?? [], seances ?? []), seances ?? []),
+        rituelsImprimes(rituelsCites(c.prevu ?? "", rituels)),
         c.bilan?.trim() ? `<div class="f"><span class="fl">Fait · bilan :</span></div><div class="txt">${escapeHtml(c.bilan.trim())}</div>` : "",
       ].join("");
       return `<div class="col">${head}${body ? `<div class="body">${body}</div>` : ""}</div>`;
@@ -387,6 +391,7 @@ export default function Planning() {
     if (vue === "jour") { await imprimerJourRiche(liste); return; }
     const materiels = await api.materielList().catch((): MaterielItem[] => []);
     const echelles = echellesDesReglages(await api.settingsAll().catch(() => ({})));
+    const rituels = lireRituels(await api.settingGet(CLE_RITUELS).catch(() => null));
     const nettoie = (t: string) => (t || "").replace(/\[(img|cite):[^\]]+\]/g, "").replace(/\n{3,}/g, "\n\n").trim();
     const info = (c: Creneau) => {
       const s = (seances ?? []).find((x) => x.id === c.seanceId);
@@ -396,7 +401,8 @@ export default function Planning() {
         couleur: teinteCreneau(c),
         objectifs: nettoie(s?.objectifs ?? ""),
         deroulement: nettoie(s?.deroulement ?? ""),
-        prevu: (c.prevu ?? "").trim(),
+        // Le PDF n'a que du texte : le déroulement des rituels cités suit le prévu.
+        prevu: avecRituels((c.prevu ?? "").trim(), rituels),
         bilan: (c.bilan ?? "").trim(),
         materiel: titresDuMateriel(c, sequences ?? [], seances ?? [], materiels),
       };

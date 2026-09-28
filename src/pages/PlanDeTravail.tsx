@@ -28,6 +28,8 @@ import { estPaquet, titreDuPaquet } from "../bureauCommun";
 import { confirmer } from "../components/confirmer";
 import { contenuDirect, nature } from "../bureau";
 import { estSurLeBureau } from "../materielSeance";
+import { RituelForm, useRituels } from "../components/Rituels";
+import { nouveauRituel, type Rituel } from "../rituels";
 import { lireVideos, lireLien, vignetteYoutube } from "../videos";
 import { useFileDropZone, estPdf, estImage, estDocument, typeDocument, fichierEnBase64, EXTENSIONS_DOCUMENTS } from "../dragdrop";
 import {
@@ -194,6 +196,9 @@ export default function PlanDeTravail() {
   const [editO, setEditO] = React.useState<OutilClasse | null>(null);
   const [suivi, setSuivi] = React.useState<Espace | null>(null);
   const [sequenceFiche, setSequenceFiche] = React.useState<{ sequence: Sequence; nouvelle: boolean } | null>(null);
+  // Un rituel se crée aussi d'ici : il ne vit pas sur le bureau, mais dans le cahier journal.
+  const [rituelNeuf, setRituelNeuf] = React.useState<Rituel | null>(null);
+  const { enregistrer: enregistrerRituel } = useRituels();
 
   const [dossier, setDossier] = React.useState("");
   // L'élément que ⌘K vient de désigner : signalé quelques secondes, le temps
@@ -856,6 +861,7 @@ export default function PlanDeTravail() {
             { label: "Nouveau dossier", icon: "📁", onClick: avecCase(creerDossier) },
             { label: "Nouveau texte", icon: "📝", onClick: avecCase(creerTexte) },
             { label: "Nouvelle séquence", icon: "📚", sep: true, onClick: avecCase(creerSequence) },
+            { label: "Nouveau rituel", icon: "🔁", onClick: () => setRituelNeuf(nouveauRituel()) },
             { label: "Nouveau support", icon: "🧰", enfants: [
               { label: "Matériel", icon: "🧰", onClick: creerMateriel },
               { label: "Outil pour l'élève", icon: "🧰", onClick: () => setEditO({ ...nouvelOutil("outil"), dossier }) },
@@ -982,6 +988,10 @@ export default function PlanDeTravail() {
         onClose={() => setEditE(null)} onSaved={() => { setEditE(null); recharger(); rL(); }} />}
       {suivi && <SuiviEspace espace={suivi} onClose={() => setSuivi(null)} />}
       {editJ && <JeuForm j={editJ} onClose={() => setEditJ(null)} onSaved={() => { setEditJ(null); recharger(); }} />}
+      {rituelNeuf && (
+        <RituelForm rituel={rituelNeuf} nouveau onClose={() => setRituelNeuf(null)}
+          onEnregistrer={(r) => { enregistrerRituel(r); toast(`Rituel « ${r.titre} » créé : posez-le dans le cahier journal avec 🔁 Rituel.`, { icone: "🔁", duree: 7000 }); }} />
+      )}
       {editO && <OutilForm o={editO} onClose={() => setEditO(null)} onSaved={() => { setEditO(null); recharger(); }} />}
 
       {materielOuvert && (
