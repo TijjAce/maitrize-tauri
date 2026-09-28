@@ -20,3 +20,14 @@ export function lireZoom(brut: string | null | undefined): number {
 
 /** Le zoom après un cran de pincement : le trackpad donne un deltaY, négatif quand on écarte les doigts. */
 export const zoomApresPincement = (zoom: number, deltaY: number) => bornerZoom(zoom - deltaY * 0.01);
+
+/**
+ * Le zoom réel du cahier journal pour le niveau affiché.
+ *
+ * Sur la grille du planning, le pourcentage n'étire que la hauteur des
+ * heures : le texte garde sa taille, 60 % reste lisible. Le journal, lui,
+ * n'est que du texte : au même chiffre, il fondrait deux fois plus. Pour
+ * que les deux se répondent côte à côte, son chiffre bouge deux fois plus
+ * que sa taille — 60 % affiché, c'est un journal à 80 % ; 250 %, à 175 %.
+ */
+export const zoomReelDuJournal = (niveau: number) => 1 + (niveau - 1) / 2;
