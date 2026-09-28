@@ -44,8 +44,9 @@ describe("les nombres en lettres au-delà de cent", () => {
       [9999, "neuf mille neuf cent quatre-vingt-dix-neuf"],
     ];
     for (const [n, attendu] of cas) expect(nombreEnLettres(n), String(n)).toBe(attendu);
-    // Au-delà, on ne ment pas : le chiffre tel quel.
-    expect(nombreEnLettres(10000)).toBe("10000");
+    // Au-delà des milliards, on ne ment pas : le chiffre tel quel.
+    expect(nombreEnLettres(10000)).toBe("dix mille");
+    expect(nombreEnLettres(1_000_000_000_000)).toBe("1000000000000");
   });
 });
 

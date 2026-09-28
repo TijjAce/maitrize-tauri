@@ -1,17 +1,30 @@
-// Les nombres en lettres, jusqu'à neuf mille neuf cent quatre-vingt-dix-neuf :
-// ce que les cartes des nombres, les fractions et les cubes écrivent.
+// Les nombres en lettres, jusqu'aux milliards : ce que les cartes des
+// nombres, les fractions, les cubes et la numération du cycle 3 écrivent.
 //
 // Orthographe d'usage : « deux cents », « deux cent un », « mille » invariable,
-// « quatre-vingts » avec son s quand rien ne suit.
+// « quatre-vingts » avec son s quand rien ne suit — et sans devant « mille »
+// (« quatre-vingt mille »), mais avec devant « millions », qui est un nom.
 
 const UNITES = ["zéro", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix", "onze", "douze", "treize", "quatorze", "quinze", "seize"];
 const DIZAINES = ["", "dix", "vingt", "trente", "quarante", "cinquante", "soixante", "soixante", "quatre-vingt", "quatre-vingt"];
 
+/** « quatre-vingts », « deux cents » perdent leur s devant « mille ». */
+const sansS = (t: string) => t.replace(/(vingt|cent)s$/, "$1");
+
+/** Les millions et les milliards : des noms, qui prennent le pluriel et gardent le s de ce qui précède. */
+function grand(n: number, base: number, un: string, plusieurs: string): string {
+  const q = Math.floor(n / base), reste = n % base;
+  const tete = q === 1 ? `un ${un}` : `${nombreEnLettres(q)} ${plusieurs}`;
+  return reste ? `${tete} ${nombreEnLettres(reste)}` : tete;
+}
+
 export function nombreEnLettres(n: number): string {
-  if (!Number.isInteger(n) || n < 0 || n > 9999) return String(n);
+  if (!Number.isInteger(n) || n < 0 || n > 999_999_999_999) return String(n);
+  if (n >= 1_000_000_000) return grand(n, 1_000_000_000, "milliard", "milliards");
+  if (n >= 1_000_000) return grand(n, 1_000_000, "million", "millions");
   if (n >= 1000) {
     const milliers = Math.floor(n / 1000), reste = n % 1000;
-    const tete = milliers === 1 ? "mille" : `${UNITES[milliers]} mille`;
+    const tete = milliers === 1 ? "mille" : `${sansS(nombreEnLettres(milliers))} mille`;
     return reste ? `${tete} ${nombreEnLettres(reste)}` : tete;
   }
   if (n >= 100) {

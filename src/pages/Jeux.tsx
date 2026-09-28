@@ -14,8 +14,10 @@ import { AtelierContext } from "../components/AtelierContext";
 import { deposerSurLeBureau, lignesCompetencesAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { DominosTab, FluenceTab, IntrusTab, LettresTab, LotoSyllabesTab, PairesTab, SyllabaireTab } from "./AteliersSons";
-import { ArbreCalculTab, CartesCalculTab, CartesNombresTab, CubesTab, FractionsTab, JeuDeLOieTab } from "./AteliersMaths";
-import { EtiquettesTab } from "./AteliersLangage";
+import {
+  ArbreCalculTab, CartesCalculTab, CartesNombresTab, CompteEstBonTab, CubesTab, FractionsTab, HeureTab, JeuDeLOieTab, MartiniereTab, NumerationTab, PyramidesTab,
+} from "./AteliersMaths";
+import { EtiquettesTab, MotsMelesTab, PhrasesTab } from "./AteliersLangage";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { usePictoImage } from "../components/ChoixPicto";
 
@@ -33,7 +35,8 @@ const OCTETS = (n: number) =>
 const ONGLETS = [
   "jeux", "memory", "imagier", "etiquettes",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres",
-  "partieTout", "multiplicatifs", "coloriage", "nombres", "cubes", "calcul", "arbre", "fractions", "oie",
+  "phrases", "motsMeles",
+  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "nombres", "cubes", "calcul", "arbre", "fractions", "oie", "heure", "numeration",
 ] as const;
 type Onglet = typeof ONGLETS[number];
 
@@ -53,6 +56,8 @@ interface Outil {
   quoi: string;
   /** Vrai si l'atelier a besoin de la banque de pictogrammes. */
   pictos?: boolean;
+  /** Pour qui : « Cycle 2 », « Cycles 2 et 3 »… */
+  cycles?: string;
 }
 
 const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[] = [
@@ -60,13 +65,13 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
     id: "langage", libelle: "🗣 Langage",
     aide: "Vocabulaire et désignation à partir des pictogrammes.",
     outils: [
-      { id: "jeux", nom: "Loto", icone: "🎲", pictos: true,
+      { id: "jeux", nom: "Loto", icone: "🎲", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Des planches et leurs cartes à découper, sur les thèmes que vous choisissez." },
-      { id: "memory", nom: "Mémory", icone: "🃏", pictos: true,
+      { id: "memory", nom: "Mémory", icone: "🃏", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Des paires à retourner : image et image, ou image et mot." },
-      { id: "imagier", nom: "Imagier", icone: "📖", pictos: true,
+      { id: "imagier", nom: "Imagier", icone: "📖", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Une page d'images légendées, à afficher ou à coller dans un cahier." },
-      { id: "etiquettes", nom: "Étiquettes à catégoriser", icone: "🏷",
+      { id: "etiquettes", nom: "Étiquettes à catégoriser", icone: "🏷", cycles: "Cycles 2 et 3",
         quoi: "Les mots collectés en grand pour le tableau, en petit par enveloppe, et la corolle lexicale." },
     ],
   },
@@ -74,46 +79,66 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
     id: "sons", libelle: "🔤 Sons et lecture",
     aide: "Ce que les guides de lecture font manipuler : syllabes, sons, lettres, fluence.",
     outils: [
-      { id: "sons", nom: "Fiches de sons", icone: "🔤",
+      { id: "sons", nom: "Fiches de sons", icone: "🔤", cycles: "Cycle 2",
         quoi: "Syllabes, mots à lire, à entourer, à compléter — une fiche par graphème." },
-      { id: "lotoSyllabes", nom: "Loto des syllabes", icone: "🎯", pictos: true,
+      { id: "lotoSyllabes", nom: "Loto des syllabes", icone: "🎯", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Des cases qui imposent un nombre de syllabes : on pioche une image, on scande, on compte." },
-      { id: "dominos", nom: "Dominos des syllabes", icone: "🁡", pictos: true,
+      { id: "dominos", nom: "Dominos des syllabes", icone: "🁡", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "La fin d'une image commence la suivante : micro – crocodile." },
-      { id: "intrus", nom: "Chasse à l'intrus", icone: "🔍", pictos: true,
+      { id: "intrus", nom: "Chasse à l'intrus", icone: "🔍", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Trois mots qui commencent pareil, un intrus à entourer : bateau, banane, tapis, ballon." },
-      { id: "paires", nom: "Paires de mots proches", icone: "👂", pictos: true,
+      { id: "paires", nom: "Paires de mots proches", icone: "👂", pictos: true, cycles: "Cycle 2",
         quoi: "Mouche / mousse, chou / joue : les cartes du trésor et du téléphone." },
-      { id: "fluence", nom: "Grille de fluence", icone: "⏱",
+      { id: "fluence", nom: "Grille de fluence", icone: "⏱", cycles: "Cycles 2 et 3",
         quoi: "Syllabes, pseudo-mots et mots à lire en une minute, le score noté chaque jour." },
-      { id: "syllabaire", nom: "Syllabaire", icone: "🛗",
+      { id: "syllabaire", nom: "Syllabaire", icone: "🛗", cycles: "Cycle 2",
         quoi: "Le jeu de l'ascenseur : deux bandes qui glissent, la syllabe apparaît." },
-      { id: "lettres", nom: "Les lettres", icone: "🔠",
+      { id: "lettres", nom: "Les lettres", icone: "🔠", cycles: "Cycles 1 et 2",
         quoi: "Mémory, mistigri et loto des lettres, majuscule et minuscule ; la planche de l'ophtalmologue." },
     ],
   },
   {
-    id: "maths", libelle: "🔢 Mathématiques",
-    aide: "Des problèmes à la structure choisie, des cartes, des pistes, et des calculs qui font apparaître un dessin.",
+    id: "ecrit", libelle: "✍️ Lecture et écriture",
+    aide: "Des mots et des phrases à manipuler : phrases à remettre en ordre, mots mêlés.",
     outils: [
-      { id: "partieTout", nom: "Problèmes partie-tout", icone: "➕",
+      { id: "phrases", nom: "Phrases en désordre", icone: "✂️", cycles: "Cycle 2",
+        quoi: "Les mots d'une phrase sur des étiquettes mélangées : on découpe, on remet en ordre, on colle." },
+      { id: "motsMeles", nom: "Mots mêlés", icone: "🔎", cycles: "Cycles 2 et 3",
+        quoi: "Les mots de la semaine cachés dans une grille de lettres, la liste dessous, le corrigé à la suite." },
+    ],
+  },
+  {
+    id: "maths", libelle: "🔢 Mathématiques",
+    aide: "Du calcul mental, des problèmes à la structure choisie, des cartes, des pistes, et des calculs qui font apparaître un dessin.",
+    outils: [
+      { id: "martiniere", nom: "Calcul mental", icone: "🧮", cycles: "Cycles 2 et 3",
+        quoi: "Le procédé La Martinière : la fiche du maître avec les réponses, et les ardoises papier des élèves." },
+      { id: "compteEstBon", nom: "Le compte est bon", icone: "🎯", cycles: "Cycles 2 et 3",
+        quoi: "Une cible, quelques nombres, les opérations permises : on cherche un chemin, une solution au corrigé." },
+      { id: "pyramides", nom: "Pyramides et carrés magiques", icone: "🔺", cycles: "Cycles 2 et 3",
+        quoi: "Des briques à additionner en montant, des carrés où chaque ligne fait la même somme." },
+      { id: "partieTout", nom: "Problèmes partie-tout", icone: "➕", cycles: "Cycles 2 et 3",
         quoi: "Un tout et ses parties, avec leur schéma en barres." },
-      { id: "multiplicatifs", nom: "Problèmes multiplicatifs", icone: "✖️",
+      { id: "multiplicatifs", nom: "Problèmes multiplicatifs", icone: "✖️", cycles: "Cycles 2 et 3",
         quoi: "Parts égales et comparaisons, avec leur schéma en barres." },
-      { id: "coloriage", nom: "Coloriage magique", icone: "🎨",
+      { id: "coloriage", nom: "Coloriage magique", icone: "🎨", cycles: "Cycles 2 et 3",
         quoi: "On calcule, le résultat dit la couleur, le dessin apparaît." },
-      { id: "nombres", nom: "Cartes des nombres", icone: "🔢",
+      { id: "nombres", nom: "Cartes des nombres", icone: "🔢", cycles: "Cycles 1 et 2",
         quoi: "Chiffre, constellation, boîte de dix, mot : le même nombre sous toutes ses formes." },
-      { id: "cubes", nom: "Nombres en cubes", icone: "🧱",
+      { id: "cubes", nom: "Nombres en cubes", icone: "🧱", cycles: "Cycle 2",
         quoi: "Unités, barres de dix, plaques de cent : lire les cubes et écrire le nombre, ou l'inverse." },
-      { id: "calcul", nom: "Cartes de calcul", icone: "🃏",
+      { id: "calcul", nom: "Cartes de calcul", icone: "🃏", cycles: "Cycles 2 et 3",
         quoi: "Le calcul devant, le résultat derrière : se tester, ou la bataille des tables." },
-      { id: "arbre", nom: "Arbre à calcul", icone: "🌳",
+      { id: "arbre", nom: "Arbre à calcul", icone: "🌳", cycles: "Cycle 2",
         quoi: "Ajouter deux nombres en dizaines et unités, l'arbre à compléter." },
-      { id: "fractions", nom: "Fractions", icone: "🍰",
+      { id: "fractions", nom: "Fractions", icone: "🍰", cycles: "Cycle 3",
         quoi: "Cartes, bandes à plier, règle graduée en quarts ou en dixièmes, course des nageurs." },
-      { id: "oie", nom: "Jeu de l'oie", icone: "🎲",
+      { id: "oie", nom: "Jeu de l'oie", icone: "🎲", cycles: "Cycles 1 et 2",
         quoi: "Une piste au dé, avec des nombres, des lettres ou des syllabes, et le patron du dé." },
+      { id: "heure", nom: "Lire l'heure", icone: "🕰", cycles: "Cycles 2 et 3",
+        quoi: "Des horloges à lire, des cadrans où dessiner les aiguilles — heures pile, demies, quarts, cinq minutes." },
+      { id: "numeration", nom: "Grands nombres et décimaux", icone: "💯", cycles: "Cycle 3",
+        quoi: "Tableau de numération, écriture en lettres, décomposition, comparaison, encadrement." },
     ],
   },
 ];
@@ -130,7 +155,7 @@ export function chercherAteliers(
   const sans = (t: string) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const cible = sans(q);
   return familles.flatMap((f) => f.outils.filter((o) =>
-    sans(`${o.nom} ${o.quoi} ${f.libelle}`).includes(cible)));
+    sans(`${o.nom} ${o.quoi} ${f.libelle} ${o.cycles ?? ""}`).includes(cible)));
 }
 
 const ONGLET_MEMORISE = "fabriquer:onglet";
@@ -142,7 +167,9 @@ function CarteAtelier({ o, onOuvrir }: { o: Outil; onOuvrir: () => void }) {
       <span className="atelier-icone">{o.icone}</span>
       <span className="atelier-nom">{o.nom}</span>
       <span className="atelier-quoi">{o.quoi}</span>
-      {o.pictos && <span className="atelier-besoin">pictogrammes ARASAAC</span>}
+      {(o.cycles || o.pictos) && (
+        <span className="atelier-besoin">{[o.cycles, o.pictos ? "pictogrammes ARASAAC" : ""].filter(Boolean).join(" · ")}</span>
+      )}
     </button>
   );
 }
@@ -197,9 +224,9 @@ export default function Jeux() {
   // ── Devant les ateliers ──
   if (!onglet) {
     return (
-      <Page titre="Fabriquer" sous="Jeux et feuilles à imprimer : langage, sons, mathématiques">
+      <Page titre="Fabriquer" sous="Jeux et feuilles à imprimer : langage, sons, lecture et écriture, mathématiques — du cycle 1 au cycle 3">
         <Input value={recherche} onChange={(e) => setRecherche(e.target.value)}
-          placeholder="Chercher un atelier : loto, syllabes, fractions, dominos, coloriage…"
+          placeholder="Chercher un atelier : loto, syllabes, calcul mental, fractions, cycle 3…"
           aria-label="Chercher un atelier" style={{ maxWidth: 420, marginBottom: 16 }} />
         {recherche.trim() ? (
           trouves.length ? (
@@ -244,6 +271,13 @@ export default function Jeux() {
         : onglet === "arbre" ? <ArbreCalculTab />
         : onglet === "fractions" ? <FractionsTab />
         : onglet === "oie" ? <JeuDeLOieTab />
+        : onglet === "martiniere" ? <MartiniereTab />
+        : onglet === "compteEstBon" ? <CompteEstBonTab />
+        : onglet === "pyramides" ? <PyramidesTab />
+        : onglet === "heure" ? <HeureTab />
+        : onglet === "numeration" ? <NumerationTab />
+        : onglet === "motsMeles" ? <MotsMelesTab />
+        : onglet === "phrases" ? <PhrasesTab />
         : onglet === "etiquettes" ? <EtiquettesTab banque={Boolean(etat?.installee)} />
         : onglet === "lotoSyllabes" ? avecPictos(<LotoSyllabesTab banque />)
         : onglet === "dominos" ? avecPictos(<DominosTab banque />)
