@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { api, Creneau, Seance, Sequence, Eleve, Jeu, journal, nouveauJeu, teinteCreneau, texteErreur, nowIso, type ObservationEleve } from "../api";
+import { api, Creneau, Seance, Sequence, Eleve, Jeu, journal, nouveauJeu, teinteCreneau, texteErreur, nowIso, type MaterielItem, type ObservationEleve } from "../api";
 import { toast } from "./Toaster";
 import { PoserObservation } from "./PoserObservation";
 import { fichesANourrir } from "../observationEleve";
@@ -23,6 +23,9 @@ import { ManuelDuJournal } from "./ManuelDuJournal";
 import { ChoixCompetence } from "./ChoixCompetence";
 import type { CompetenceSelectionnee } from "./CompetenceTree";
 import { FichierImg } from "./Deroulement";
+import { useAsync } from "./ui";
+import { MoletteEchelle } from "./MoletteEchelle";
+import { materielDuCreneau } from "../materielAImprimer";
 
 // ── Cahier journal du jour ────────────────────────────────────────────────
 //
@@ -74,6 +77,8 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
   onModifier: (c: Creneau) => void;
 }) {
   const navigate = useNavigate();
+  // Le matériel des séances : annoncé sous le créneau, avec la molette de son échelle à l'impression.
+  const { data: materiels } = useAsync(() => api.materielList(), []);
   const duJour = React.useMemo(
     () => creneaux.filter((c) => c.date.slice(0, 10) === dateIso).sort((a, b) => a.heureDebut.localeCompare(b.heureDebut)),
     [creneaux, dateIso]);
@@ -472,6 +477,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                       <ReglesDesJeux jeux={citesDans(b.prevu)} onModifier={(jeu) => setJeuEdite({ jeu, nouveau: false })} />
                       <SequencesCitees citations={sequencesCitees(b.prevu, sequences, seances)} seances={seances}
                         onOuvrir={(s) => navigate(`/sequences/${s.id}`)} onVoirSeance={setSeanceVue} />
+                      <MaterielDuJournal materiels={materielDuCreneau({ seanceId: c.seanceId, prevu: b.prevu }, sequences, seances, materiels ?? [])} />
                     </>
                   )}
                 </div>
@@ -530,6 +536,25 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
 }
 
 /** Les images posées dans le prévu : ce qu'on y a découpé, et de quoi le retirer. */
+/**
+ * Le matériel qui suivra le journal à l'impression, avec la molette de son
+ * échelle : c'est ici qu'on voit la feuille partir, c'est ici qu'on la règle.
+ */
+function MaterielDuJournal({ materiels }: { materiels: MaterielItem[] }) {
+  if (!materiels.length) return null;
+  return (
+    <div className="journal-materiel">
+      <div className="journal-materiel-titre">🖨 Matériel à imprimer, joint à la suite du journal</div>
+      {materiels.map((m) => (
+        <div key={m.id} className="journal-materiel-ligne">
+          <span className="journal-materiel-nom">📄 {m.titre.trim() || "Matériel"}</span>
+          <MoletteEchelle materiel={m} compact />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ImagesDuPrevu({ prevu, onRetirer }: { prevu: string; onRetirer: (nom: string) => void }) {
   const images = imagesDuTexte(prevu);
   if (!images.length) return null;

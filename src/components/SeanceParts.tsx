@@ -9,7 +9,7 @@ import { Input, Modal, useAsync } from "./ui";
 import { VignettePdf } from "./VignettePdf";
 import { filDAriane } from "../dossiers";
 import { chercherPdfs, copiePourLaSeance, lirePdfs, pdfsDuBureau } from "../materielSeance";
-import { ECHELLE_MAX, ECHELLE_MIN, ECHELLE_PAS, cleEchelle, lireEchelle } from "../materielAImprimer";
+import { MoletteEchelle } from "./MoletteEchelle";
 
 // ============================================================
 // Tableau de déroulement — grille [[string]] éditable
@@ -245,21 +245,9 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
   const [items, setItems] = React.useState<MaterielItem[]>([]);
   const pdfInput = React.useRef<HTMLInputElement>(null);
 
-  // L'échelle de chaque PDF dans le cahier journal imprimé, en pourcentage.
-  const [echelles, setEchelles] = React.useState<Record<string, number>>({});
   const reload = React.useCallback(() => {
-    api.materielList().then(async (all) => {
-      const miens = all.filter((m) => m.seanceId === seanceId);
-      setItems(miens);
-      const lues = await Promise.all(miens.map(async (m) => [m.id, Math.round(lireEchelle(await api.settingGet(cleEchelle(m.id)).catch(() => null)) * 100)] as const));
-      setEchelles(Object.fromEntries(lues));
-    });
+    api.materielList().then((all) => setItems(all.filter((m) => m.seanceId === seanceId)));
   }, [seanceId]);
-  const reglerEchelle = (m: MaterielItem, pourcent: number) => {
-    const borne = Math.max(ECHELLE_MIN, Math.min(ECHELLE_MAX, pourcent));
-    setEchelles((e) => ({ ...e, [m.id]: borne }));
-    api.settingSet(cleEchelle(m.id), String(borne)).catch((e) => toast("Échelle non enregistrée : " + String(e), { icone: "⚠️" }));
-  };
   React.useEffect(() => { reload(); }, [reload]);
 
   const creerMateriel = async (titre: string, nomFichier: string) => {
@@ -320,12 +308,7 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
         <div key={m.id} className="list-row" style={{ marginBottom: 6, flexWrap: "wrap" }}>
           <span>📄</span><div style={{ flex: 1, minWidth: 120 }} className="title">{m.titre}</div>
           {/* La molette : l'échelle de cette feuille dans le cahier journal imprimé. */}
-          <label className="echelle-impression" title="L'échelle de cette feuille à l'impression du cahier journal : réduite pour qu'elle rentre, agrandie pour qu'elle se lise">
-            <span aria-hidden="true">🔍</span>
-            <input type="range" min={ECHELLE_MIN} max={ECHELLE_MAX} step={ECHELLE_PAS} value={echelles[m.id] ?? 100}
-              aria-label={`Échelle à l'impression de ${m.titre}`} onChange={(e) => reglerEchelle(m, Number(e.target.value))} />
-            <span className="echelle-valeur">{echelles[m.id] ?? 100} %</span>
-          </label>
+          <MoletteEchelle materiel={m} />
           <span className="chip" title="Imprimé à la suite du cahier journal">🖨 Journal</span>
           <button className="btn ghost sm" onClick={() => supprimer(m)} aria-label="Supprimer">🗑</button>
         </div>
