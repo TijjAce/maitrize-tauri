@@ -154,10 +154,51 @@ export function annexesHtml(rendues: AnnexeRendue[]): string {
   return sections.length ? sections.join("") + SCRIPT_ANNEXES : "";
 }
 
+/**
+ * La molette du cahier journal lui-même, en haut de la page imprimée.
+ *
+ * Elle agit par `zoom` sur le bloc `.journal` : le texte se remet en page et
+ * la pagination suit — ce n'est pas un agrandissement d'image. Elle
+ * disparaît à l'impression, et le navigateur retient la dernière valeur.
+ */
+export function moletteDuJournalHtml(): string {
+  return `<div class="annexe-outils journal-outils">🔍 Échelle du cahier journal à l'impression <button type="button" data-pas="-${ECHELLE_PAS}" aria-label="Réduire">−</button>`
+    + `<input type="range" min="${ECHELLE_MIN}" max="${ECHELLE_MAX}" step="${ECHELLE_PAS}" value="100" aria-label="Échelle du journal">`
+    + `<button type="button" data-pas="${ECHELLE_PAS}" aria-label="Agrandir">+</button><output>100 %</output>`
+    + `<span class="journal-outils-aide">Les feuilles jointes ont chacune la leur, plus bas.</span></div>`
+    + SCRIPT_JOURNAL;
+}
+
+const SCRIPT_JOURNAL = `<script>
+(function () {
+  // La molette est écrite avant le journal : on attend que la page soit entière.
+  var demarrer = function () {
+  var outils = document.querySelector(".journal-outils");
+  var journal = document.querySelector(".journal");
+  if (!outils || !journal) return;
+  var curseur = outils.querySelector("input");
+  var sortie = outils.querySelector("output");
+  var CLE = "maitrize:echelle-journal";
+  var appliquer = function (v, retenir) {
+    v = Math.max(${ECHELLE_MIN}, Math.min(${ECHELLE_MAX}, Number(v) || 100));
+    curseur.value = String(v); sortie.textContent = v + " %";
+    journal.style.zoom = v === 100 ? "" : String(v / 100);
+    if (retenir) { try { localStorage.setItem(CLE, String(v)); } catch (e) {} }
+  };
+  try { var gardee = localStorage.getItem(CLE); if (gardee) appliquer(gardee, false); } catch (e) {}
+  curseur.addEventListener("input", function () { appliquer(curseur.value, true); });
+  outils.querySelectorAll("button").forEach(function (b) {
+    b.addEventListener("click", function () { appliquer(Number(curseur.value) + Number(b.getAttribute("data-pas")), true); });
+  });
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", demarrer); else demarrer();
+})();
+</script>`;
+
 /** La molette des feuilles jointes, à l'écran : elle règle les images de sa feuille. */
 const SCRIPT_ANNEXES = `<script>
 (function () {
-  document.querySelectorAll(".annexe-outils").forEach(function (outils) {
+  document.querySelectorAll(".annexe-outils[data-annexe]").forEach(function (outils) {
     var k = outils.getAttribute("data-annexe");
     var curseur = outils.querySelector("input");
     var sortie = outils.querySelector("output");
@@ -187,6 +228,8 @@ export const STYLE_ANNEXES = `
   .annexe-outils input[type="range"] { width: 140px; }
   .annexe-outils button { font: inherit; width: 26px; height: 26px; border: 1px solid #9aa0b4; border-radius: 6px; background: #fff; cursor: pointer; }
   .annexe-outils output { min-width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+  .journal-outils { margin: 0 0 14px; flex-wrap: wrap; }
+  .journal-outils-aide { color: #687087; font-size: 11px; }
   @media print { .annexe-outils { display: none; } }
   .annexe img { display: block; margin: 0 auto; width: auto; height: auto; max-width: 100%; max-height: 250mm; border-radius: 0; }
 `;
