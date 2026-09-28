@@ -2,7 +2,8 @@ import React from "react";
 import { Field, Input, Select, Textarea } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
-import { imprimerAtelier } from "../impressionAtelier";
+import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
+import { BoutonBureau } from "../components/BoutonBureau";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import { graineAuHasard } from "../hasard";
 import { SONS, syllabes } from "../lectureSons";
@@ -27,11 +28,14 @@ function Colonnes({ gauche, droite }: { gauche: React.ReactNode; droite: React.R
   );
 }
 
-function Boutons({ onTirage, onImprimer, peut = true }: { onTirage?: () => void; onImprimer: () => void; peut?: boolean }) {
+function Boutons({ onTirage, onImprimer, onBureau, peut = true }: {
+  onTirage?: () => void; onImprimer: () => void; onBureau?: () => Promise<{ titre: string }>; peut?: boolean;
+}) {
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
       {onTirage && <button type="button" className="btn sm" onClick={onTirage}>🎲 Autre tirage</button>}
       <button type="button" className="btn primary sm" disabled={!peut} onClick={onImprimer}>🖨 Imprimer</button>
+      {onBureau && <BoutonBureau disabled={!peut} onEnregistrer={onBureau} />}
     </div>
   );
 }
@@ -55,6 +59,9 @@ function Chips<T extends string | number>({ liste, choisis, onChange, libelle }:
 
 const imprimer = (atelier: string, titre: string, html: string, style = STYLE_JEUX_MATHS) =>
   void imprimerAtelier(atelier, titre, html, STYLE_FEUILLE + style);
+/** La même feuille, en PDF sur le plan de travail. */
+const bureau = (atelier: string, titre: string, html: string, style = STYLE_JEUX_MATHS) =>
+  enregistrerSurLeBureau(atelier, titre, html, STYLE_FEUILLE + style);
 
 // ── Cartes des nombres ──
 
@@ -81,7 +88,7 @@ export function CartesNombresTab() {
             libelle={(id) => REPRESENTATIONS.find((x) => x.id === id)!.libelle} />
         </Field>
         <div className="meta" style={{ fontSize: 12.5 }}>{cartes.length} cartes.</div>
-        <Boutons peut={cartes.length > 0} onImprimer={() => imprimer("nombres", "Cartes des nombres", html)} />
+        <Boutons peut={cartes.length > 0} onImprimer={() => imprimer("nombres", "Cartes des nombres", html)} onBureau={() => bureau("nombres", "Cartes des nombres", html)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_JEUX_MATHS} />}
     />
@@ -162,7 +169,8 @@ export function CubesTab() {
         <Field label="Titre de la feuille">
           <Input value={r.titre} onChange={(e) => maj({ titre: e.target.value })} placeholder={REGLAGES_CUBES.titre} />
         </Field>
-        <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("cubes", r.titre.trim() || REGLAGES_CUBES.titre, html, style)} />
+        <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("cubes", r.titre.trim() || REGLAGES_CUBES.titre, html, style)}
+          onBureau={() => bureau("cubes", r.titre.trim() || REGLAGES_CUBES.titre, html, style)} />
       </>}
       droite={<ApercuFeuille html={html} style={style} />}
     />
@@ -194,7 +202,7 @@ export function CartesCalculTab() {
         <Coche on={r.rectoVerso} libelle="Recto-verso : le résultat au dos" onChange={(v) => maj({ rectoVerso: v })} />
         <Coche on={r.melanger} libelle="Mélanger les cartes" onChange={(v) => maj({ melanger: v })} />
         <div className="meta" style={{ fontSize: 12.5 }}>{cartes.length} cartes.</div>
-        <Boutons peut={cartes.length > 0} onTirage={r.melanger ? () => setGraine(graineAuHasard()) : undefined} onImprimer={() => imprimer("calcul", "Cartes de calcul", html)} />
+        <Boutons peut={cartes.length > 0} onTirage={r.melanger ? () => setGraine(graineAuHasard()) : undefined} onImprimer={() => imprimer("calcul", "Cartes de calcul", html)} onBureau={() => bureau("calcul", "Cartes de calcul", html)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_JEUX_MATHS} />}
     />
@@ -226,7 +234,7 @@ export function ArbreCalculTab() {
           </Select>
         </Field>
         <Coche on={r.aide} libelle="Dizaines et unités déjà écrites (aide)" onChange={(v) => maj({ aide: v })} />
-        <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("arbre", "Arbre à calcul", html)} />
+        <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("arbre", "Arbre à calcul", html)} onBureau={() => bureau("arbre", "Arbre à calcul", html)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_JEUX_MATHS} />}
     />
@@ -260,7 +268,7 @@ export function FractionsTab() {
             </Select>
           </Field>
         )}
-        <Boutons peut={r.materiel.length > 0} onTirage={r.materiel.includes("cartes") ? () => setGraine(graineAuHasard()) : undefined} onImprimer={() => imprimer("fractions", "Fractions", html)} />
+        <Boutons peut={r.materiel.length > 0} onTirage={r.materiel.includes("cartes") ? () => setGraine(graineAuHasard()) : undefined} onImprimer={() => imprimer("fractions", "Fractions", html)} onBureau={() => bureau("fractions", "Fractions", html)} />
       </>}
       droite={r.materiel.length ? <ApercuFeuille html={html} style={STYLE_JEUX_MATHS} /> : <div className="card meta">Choisissez le matériel à fabriquer.</div>}
     />
@@ -315,7 +323,7 @@ export function JeuDeLOieTab() {
             <option value="1-3">patron 1 à 3 (deux fois)</option><option value="aucun">pas de dé</option>
           </Select>
         </Field>
-        <Boutons onTirage={r.evenements ? () => setGraine(graineAuHasard()) : undefined} onImprimer={() => imprimer("oie", "Jeu de l'oie", html)} />
+        <Boutons onTirage={r.evenements ? () => setGraine(graineAuHasard()) : undefined} onImprimer={() => imprimer("oie", "Jeu de l'oie", html)} onBureau={() => bureau("oie", "Jeu de l'oie", html)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_JEUX_MATHS} />}
     />

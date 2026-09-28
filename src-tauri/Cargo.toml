@@ -37,6 +37,8 @@ printpdf = { version = "0.7", features = ["embedded_images"] }
 # Décodage des PNG ARASAAC avant intégration au PDF (aplatissement du canal alpha).
 image = { version = "0.24", default-features = false, features = ["png"] }
 lopdf = "0.31"
+url = "2"
+
 # Appariement chiffré entre utilisateurs (identité X25519 + numéro de sécurité)
 x25519-dalek = { version = "2", features = ["static_secrets"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
@@ -58,3 +60,9 @@ candle-nn = "0.11"
 candle-transformers = "0.11"
 tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
 
+# Une feuille HTML devient un PDF : WebKit l'imprime dans un fichier (voir feuille_pdf).
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSString", "NSURL", "NSDictionary", "NSObject", "NSGeometry", "NSValue", "objc2-core-foundation"] }
+objc2-app-kit = { version = "0.3", features = ["NSPrintInfo", "NSPrintOperation", "NSResponder", "NSView", "NSWindow", "objc2-core-foundation"] }
+objc2-web-kit = { version = "0.3", features = ["WKWebView", "objc2-app-kit"] }

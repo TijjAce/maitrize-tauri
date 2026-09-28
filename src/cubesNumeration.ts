@@ -385,7 +385,8 @@ export const STYLE_CUBES = `
   .feuille.cu table.cu-grille { border-collapse: separate; border-spacing: 0 4mm; width: 100%; margin: -2mm 0 0; table-layout: fixed; }
   .feuille.cu table.cu-grille td { border: 0; padding: 0 1.5mm; vertical-align: top; font-size: inherit; }
   .feuille.cu table.cu-grille tr { break-inside: avoid; page-break-inside: avoid; }
-  .feuille.cu .cu-exo { position: relative; border: 1px solid #cfd4e2; border-radius: 3mm; padding: 3mm 3mm 2.5mm; min-height: 18mm; }
+  .feuille.cu .cu-exo { position: relative; border: 1px solid #cfd4e2; border-radius: 3mm; padding: 3mm 3mm 2.5mm; min-height: 18mm;
+    break-inside: avoid; page-break-inside: avoid; }
   /* Dans le cadre, pas à cheval dessus : ce qui dépasse d'un cadre poussé en
      haut d'une page s'imprimerait au bas de la précédente. */
   .feuille.cu .cu-num { position: absolute; top: 1.5mm; right: 2mm; background: #1c2233; color: #fff; border-radius: 100px;

@@ -3,9 +3,17 @@ import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 
 const reglages = new Map<string, string>();
 const impressions: { titre: string; corps: string; style: string }[] = [];
+const pdfs: string[] = [];
+const materiels: unknown[] = [];
 
 vi.mock("./api", () => ({
-  api: { settingGet: async (cle: string) => reglages.get(cle) ?? null },
+  api: {
+    settingGet: async (cle: string) => reglages.get(cle) ?? null,
+    feuilleEnPdf: async (html: string) => { pdfs.push(html); return `pdf-${pdfs.length}.pdf`; },
+    materielSave: async (m: unknown) => { materiels.push(m); return m; },
+  },
+  newId: () => "id-neuf",
+  nowIso: () => "2026-09-28T10:00:00.000Z",
 }));
 vi.mock("./print", async (importOriginal) => {
   const vrai = await importOriginal<typeof import("./print")>();
@@ -16,8 +24,8 @@ vi.mock("./print", async (importOriginal) => {
 });
 
 const {
-  LIGNES_MAX, contexteCompetence, enteteCompetencesHtml, imprimerAtelier, ligneCompetence,
-  lignesCompetences, STYLE_ENTETE_COMPETENCES,
+  LIGNES_MAX, contexteCompetence, enregistrerSurLeBureau, enteteCompetencesHtml, imprimerAtelier, ligneCompetence,
+  lignesCompetences, materielDuBureau, STYLE_ENTETE_COMPETENCES,
 } = await import("./impressionAtelier");
 const { ecrireCompetencesAtelier } = await import("./ateliersCompetences");
 
@@ -27,7 +35,7 @@ const comp = (p: Partial<CompetenceSelectionnee> = {}): CompetenceSelectionnee =
   competenceTitre: "Décoder des syllabes simples", niveau: "CP", competenceRefId: "c1", ...p,
 });
 
-beforeEach(() => { reglages.clear(); impressions.length = 0; });
+beforeEach(() => { reglages.clear(); impressions.length = 0; pdfs.length = 0; materiels.length = 0; });
 
 describe("une compétence sur une ligne", () => {
   it("dit l'intitulé, puis d'où elle vient — jamais le niveau, la feuille va à l'élève", () => {
@@ -108,5 +116,30 @@ describe("imprimer un atelier", () => {
     reglages.set("fabriquer:competences:oie", "{pas du json");
     await imprimerAtelier("oie", "Jeu de l'oie", "<p>piste</p>");
     expect(impressions[0].corps).toBe("<p>piste</p>");
+  });
+});
+
+describe("sur le bureau", () => {
+  it("fait un matériel du bureau qui porte le PDF et la première compétence", () => {
+    const m = materielDuBureau("cubes", "Les nombres en cubes", "x.pdf", [comp(), comp({ competenceTitre: "Autre" })], "id-1", "2026-09-28T10:00:00.000Z");
+    expect(m).toMatchObject({
+      id: "id-1", titre: "Les nombres en cubes", pdfsJson: '["x.pdf"]', dossier: "", seanceId: null, sequenceId: null,
+      competenceId: "c1", competenceTitre: "Décoder des syllabes simples", domaineTitre: "Lire et écrire",
+      sousDomaineTitre: "Identifier des mots", cycle: "Cycle 2", imagesJson: "[]", videosJson: "[]", coffreJson: "[]",
+    });
+    // Sans compétence, le matériel existe quand même ; sans titre, l'atelier le nomme.
+    expect(materielDuBureau("oie", "  ", "y.pdf", [], "id-2", "")).toMatchObject({ titre: "oie", competenceId: "", competenceTitre: "" });
+  });
+
+  it("enregistre la même feuille que l'impression, compétences en tête, puis la dépose", async () => {
+    reglages.set("fabriquer:competences:cubes", ecrireCompetencesAtelier([comp()]));
+    const m = await enregistrerSurLeBureau("cubes", "Les nombres en cubes", "<div class=\"feuille\">…</div>", ".feuille { }");
+    expect(pdfs).toHaveLength(1);
+    expect(pdfs[0]).toContain("<title>Les nombres en cubes</title>");
+    expect(pdfs[0].indexOf("competences-atelier")).toBeLessThan(pdfs[0].indexOf("<div class=\"feuille\">"));
+    expect(pdfs[0]).toContain("Décoder des syllabes simples");
+    expect(pdfs[0]).toContain(".feuille { }");
+    expect(materiels).toHaveLength(1);
+    expect(m).toMatchObject({ id: "id-neuf", titre: "Les nombres en cubes", pdfsJson: '["pdf-1.pdf"]', dateCreation: "2026-09-28T10:00:00.000Z" });
   });
 });

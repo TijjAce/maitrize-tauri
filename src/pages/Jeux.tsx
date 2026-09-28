@@ -10,7 +10,8 @@ import { PartieToutTab, MultiplicatifsTab } from "./ProblemesBarres";
 import { ColoriageMagiqueTab } from "./ColoriageMagique";
 import { LectureSonsTab } from "./LectureSons";
 import { CompetencesAtelier } from "../components/CompetencesAtelier";
-import { lignesCompetencesAtelier } from "../impressionAtelier";
+import { deposerSurLeBureau, lignesCompetencesAtelier } from "../impressionAtelier";
+import { BoutonBureau } from "../components/BoutonBureau";
 import { SupportsVisuelsTab, retenirSupport } from "./SupportsVisuels";
 import { DominosTab, FluenceTab, IntrusTab, LettresTab, LotoSyllabesTab, PairesTab, SyllabaireTab } from "./AteliersSons";
 import { ArbreCalculTab, CartesCalculTab, CartesNombresTab, CubesTab, FractionsTab, JeuDeLOieTab } from "./AteliersMaths";
@@ -708,6 +709,12 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
             {selection.length > 0 && selection.length < minimum && (
               <div style={{ marginTop: 10, fontSize: 13, color: "var(--danger, #b03030)" }}>{gen.manque(options)}</div>
             )}
+            <BoutonBureau className="btn" disabled={occupe || selection.length < minimum} onEnregistrer={async () => {
+              const nom = titre.trim() || themes.map(libelleCategorie).join(" + ") || gen.quoi;
+              const competences = await lignesCompetencesAtelier(atelier);
+              const chemin = await api.jeuGenerer(gen.id, selection, { ...options, graine: Math.floor(Math.random() * 1e9), competences }, nom, false);
+              return deposerSurLeBureau(atelier, nom, await api.fichierImporterDepuisChemin(chemin));
+            }} />
             <button className="btn primary" style={{ marginTop: 12 }} disabled={occupe || selection.length < minimum} onClick={generer}>
               {occupe ? "Création…" : gen.bouton}
             </button>
