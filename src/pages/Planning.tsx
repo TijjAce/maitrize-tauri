@@ -20,6 +20,7 @@ import { organisationPour, natureDuSlot, type SlotEdt } from "../organisation";
 import { annexesDesCreneaux, annexesHtml, echellesDesReglages, moletteDuJournalHtml, octetsDeBase64, STYLE_ANNEXES, titresDuMateriel, type AnnexeRendue } from "../materielAImprimer";
 import { nombreDePages, rendrePage } from "../pdfRendu";
 import { CLE_RITUELS, avecRituels, lireRituels, rituelsCites, rituelsImprimes } from "../rituels";
+import { IndicateurZoom, useZoomPince } from "../components/ZoomPince";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const JOURS7 = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -511,8 +512,8 @@ function GrilleHoraire({ jours, creneaux, seances, eleves, feries, vacanceDe, de
   // De 8h à 20h, plus si un créneau déborde.
   const { debut: H_DEBUT, fin: H_FIN } = plageGrille(creneaux);
   const heures = Array.from({ length: H_FIN - H_DEBUT + 1 }, (_, i) => H_DEBUT + i);
-  const [zoom, setZoom] = React.useState(() => { const v = Number(localStorage.getItem("planning-zoom")); return v >= 0.6 && v <= 2.5 ? v : 1; });
-  const majZoom = (v: number) => { const z = Math.max(0.6, Math.min(2.5, v)); setZoom(z); localStorage.setItem("planning-zoom", String(z)); };
+  // Pincement trackpad → zoom de la grille (hauteur des heures), retenu par ordinateur.
+  const { zoom, majZoom, cadre } = useZoomPince("planning-zoom");
   const hpx = H_PX * zoom;
   const hauteur = (H_FIN - H_DEBUT) * hpx;
   const colsRef = React.useRef<HTMLDivElement>(null);
@@ -564,15 +565,8 @@ function GrilleHoraire({ jours, creneaux, seances, eleves, feries, vacanceDe, de
     window.addEventListener("mouseup", onUp, { once: true });
   };
 
-  // Pincement trackpad (Safari/Chrome : wheel + ctrlKey) → zoom de la grille.
-  const onWheel = (e: React.WheelEvent) => {
-    if (!e.ctrlKey) return;
-    e.preventDefault();
-    majZoom(zoom - e.deltaY * 0.01);
-  };
-
   return (
-    <div className="card" style={{ padding: 0, overflow: "hidden" }} onWheel={onWheel}>
+    <div ref={cadre} className="card" style={{ padding: 0, overflow: "hidden" }}>
       <div style={{ display: "grid", gridTemplateColumns: `44px repeat(${n}, 1fr)`, borderBottom: "1px solid var(--border)" }}>
         <div />
         {jours.map((d, i) => {
@@ -657,10 +651,7 @@ function GrilleHoraire({ jours, creneaux, seances, eleves, feries, vacanceDe, de
       <div style={{ padding: "8px 12px", fontSize: 12, color: "var(--text-2)", display: "flex", alignItems: "center", gap: 10 }}>
         <span>💡 Clic sur une plage vide pour créer · glisser pour déplacer · pincer (trackpad) pour zoomer.</span>
         <div className="spacer" />
-        {zoom !== 1 && <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ minWidth: 34, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
-          <button className="btn sm" onClick={() => majZoom(1)} title="Réinitialiser le zoom">100%</button>
-        </span>}
+        <IndicateurZoom zoom={zoom} onReinitialiser={() => majZoom(1)} />
       </div>
     </div>
   );

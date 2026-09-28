@@ -19,6 +19,7 @@ import { confirmer } from "../components/confirmer";
 import { tempsDeLaSemaineType, natureDuSlot, type SlotEdt } from "../organisation";
 import { duree, plageGrille } from "../heures";
 import { ProgrammationIme } from "../components/ProgrammationIme";
+import { IndicateurZoom, useZoomPince } from "../components/ZoomPince";
 
 // Couleurs officielles des périodes (miroir couleursPeriodes).
 const COULEUR_PERIODE: Record<number, string> = { 1: "#2e73d9", 2: "#d94033", 3: "#4d4d4d", 4: "#d97319", 5: "#269950" };
@@ -873,16 +874,10 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
   // De 8h à 20h, plus si un créneau déborde.
   const { debut: EDT_H_DEBUT, fin: EDT_H_FIN } = plageGrille(slots);
   const heures = Array.from({ length: EDT_H_FIN - EDT_H_DEBUT + 1 }, (_, i) => EDT_H_DEBUT + i);
-  const [zoom, setZoom] = React.useState(() => { const v = Number(localStorage.getItem("edt-zoom")); return v >= 0.6 && v <= 2.5 ? v : 1; });
-  const majZoom = (v: number) => { const z = Math.max(0.6, Math.min(2.5, v)); setZoom(z); localStorage.setItem("edt-zoom", String(z)); };
+  // Pincement trackpad → zoom de la grille (hauteur des heures), retenu par ordinateur.
+  const { zoom, majZoom, cadre } = useZoomPince("edt-zoom");
   const hpx = EDT_H_PX * zoom;
   const hauteur = (EDT_H_FIN - EDT_H_DEBUT) * hpx;
-  // Pincement trackpad (Safari/Chrome : wheel + ctrlKey) → zoom de la grille.
-  const onWheel = (e: React.WheelEvent) => {
-    if (!e.ctrlKey) return;
-    e.preventDefault();
-    majZoom(zoom - e.deltaY * 0.01);
-  };
 
   const creerA = (jour: string, e: React.MouseEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest(".cren-block")) return;
@@ -955,10 +950,7 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
       <div style={{ fontSize: 12, color: "var(--text-2)", margin: "-8px 0 12px", display: "flex", alignItems: "center", gap: 10 }}>
         <span>{deplacer ? "✋ Glissez un créneau pour le déplacer (jour et horaire)." : "Cliquez sur une plage vide pour ajouter un créneau · clic droit pour dupliquer/supprimer · pincer (trackpad) pour zoomer."}</span>
         <div className="spacer" />
-        {zoom !== 1 && <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ minWidth: 34, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
-          <button className="btn sm" onClick={() => majZoom(1)} title="Réinitialiser le zoom">100%</button>
-        </span>}
+        <IndicateurZoom zoom={zoom} onReinitialiser={() => majZoom(1)} />
       </div>
 
       {ime && slots.length > 0 && (
@@ -969,7 +961,7 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
         </div>
       )}
 
-      <div className="card" style={{ padding: 0, overflow: "hidden" }} onWheel={onWheel}>
+      <div ref={cadre} className="card" style={{ padding: 0, overflow: "hidden" }}>
         {/* En-têtes jours */}
         <div style={{ display: "grid", gridTemplateColumns: `44px repeat(5, 1fr)`, borderBottom: "1px solid var(--border)" }}>
           <div />
