@@ -10,6 +10,10 @@ import { listen } from "@tauri-apps/api/event";
 import { useDictee, mmss } from "../dictee";
 import { toast } from "../components/Toaster";
 import { DicteeAtelier } from "../components/DicteeAtelier";
+import { SUGGESTIONS_DOCUMENT, consigneDocument, feuilleDuDocument } from "../documentIa";
+import { documentImprimable, printHTML } from "../print";
+import { BoutonBureau } from "../components/BoutonBureau";
+import { deposerSurLeBureau } from "../impressionAtelier";
 
 // Extrait un objet JSON d'une réponse IA (tolère du texte autour).
 function extraireJson(rep: string): any {
@@ -42,6 +46,9 @@ export default function Assistant() {
   const [showModif, setShowModif] = React.useState(false);
   const [contexteActif, setContexteActif] = React.useState(true);
   const [surLeWeb, setSurLeWeb] = React.useState(false);
+  // Mode document : le modèle écrit un document imprimable, et rien d'autre.
+  const [modeDocument, setModeDocument] = React.useState(false);
+  const saisie = React.useRef<HTMLTextAreaElement>(null);
   const [model, setModel] = React.useState(MODELE_DEFAUT);
   const [convId, setConvId] = React.useState("");
   const { data: convs, reload: reloadConvs } = useAsync(() => api.conversationsList(), []);
@@ -81,6 +88,23 @@ export default function Assistant() {
     window.addEventListener("maitrize:generer-sequence", h);
     return () => window.removeEventListener("maitrize:generer-sequence", h);
   }, []);
+  // Action « Créer un document PDF » : le mode document, et la saisie prête.
+  React.useEffect(() => {
+    const h = () => { setModeDocument(true); setTimeout(() => saisie.current?.focus(), 50); };
+    window.addEventListener("maitrize:document-ia", h);
+    return () => window.removeEventListener("maitrize:document-ia", h);
+  }, []);
+
+  // Une réponse devient une feuille : imprimée, ou en PDF sur le bureau.
+  const imprimerReponse = (markdown: string) => {
+    const f = feuilleDuDocument(markdown);
+    printHTML(f.titre, f.corps, f.style);
+  };
+  const reponseSurLeBureau = async (markdown: string) => {
+    const f = feuilleDuDocument(markdown);
+    const fichier = await api.feuilleEnPdf(documentImprimable(f.titre, f.corps, f.style));
+    return deposerSurLeBureau("assistant", f.titre, fichier);
+  };
   // ── Suivi du bas de la conversation ──────────────────────────────────
   // La réponse arrive token par token : chaque morceau change `messages` et
   // relancerait un défilement vers le bas. Sans garde-fou, impossible de
@@ -193,11 +217,14 @@ export default function Assistant() {
     try {
       // Contexte désactivé → on n'envoie AUCUN message système (rien d'autre que
       // la conversation). Activé → rôle pédagogique + contexte non personnel.
+      // En mode document, la consigne du document s'ajoute — seule, si le
+      // contexte est désactivé.
       let prefixe: ChatMessage[] = [];
       if (contexteActif) {
         const ctx = await construireContexteIA();
         prefixe = [{ role: "system", content: `${SYSTEME.content}\n\nContexte de la classe (données non personnelles, aucune information nominative sur les élèves) :\n${ctx}` }];
       }
+      if (modeDocument) prefixe = [...prefixe, { role: "system", content: consigneDocument() }];
       // Streaming : la réponse s'affiche au fil des tokens via événements Tauri.
       const reqId = newId();
       let acc = "";
@@ -279,6 +306,11 @@ export default function Assistant() {
             ? "La question part à un agent qui interroge le web et cite ses sources. Plus lent."
             : "L'assistant répond de mémoire : il ignore tout ce qui suit son entraînement."}>
           🔎 Web&nbsp;: {surLeWeb ? "activé" : "désactivé"}</button>
+        <button className="btn sm" aria-pressed={modeDocument} onClick={() => setModeDocument((v) => !v)}
+          title={modeDocument
+            ? "L'assistant écrit un document imprimable — fiche, mot aux familles, affiche, grille — à imprimer ou à déposer sur le bureau en PDF."
+            : "Demander un document imprimable plutôt qu'une réponse."}>
+          📄 Document&nbsp;: {modeDocument ? "activé" : "désactivé"}</button>
         <button className="btn sm" onClick={() => setShowModif(true)}>✏️ Modifier une séquence</button>
         <button className="btn sm primary" onClick={() => setShowGen(true)}>✨ Générer une séquence</button>
       </div>
@@ -293,9 +325,10 @@ export default function Assistant() {
         {messages.length === 0 && (
           <div style={{ margin: "auto", maxWidth: 520, textAlign: "center" }}>
             <div style={{ fontSize: 40, marginBottom: 8 }}>✨</div>
-            <h2 style={{ marginTop: 0 }}>Comment puis-je aider ?</h2>
+            <h2 style={{ marginTop: 0 }}>{modeDocument ? "Quel document fabriquer ?" : "Comment puis-je aider ?"}</h2>
+            {modeDocument && <p className="meta" style={{ fontSize: 13 }}>Le document se lit ici, puis s'imprime ou se dépose sur le bureau en PDF.</p>}
             <div style={{ display: "grid", gap: 10, marginTop: 18 }}>
-              {SUGGESTIONS.map((s) => (
+              {(modeDocument ? SUGGESTIONS_DOCUMENT : SUGGESTIONS).map((s) => (
                 <button key={s} className="btn" style={{ textAlign: "left" }} onClick={() => envoyer(s)}>{s}</button>
               ))}
             </div>
@@ -304,6 +337,13 @@ export default function Assistant() {
         {messages.map((m, i) => (
           <div key={i} className={"msg " + m.role}>
             {m.role === "assistant" ? <Markdown texte={m.content || "…"} /> : m.content}
+            {/* Une réponse finie devient une feuille : imprimée, ou en PDF sur le bureau. */}
+            {m.role === "assistant" && m.content.trim() && !(loading && i === messages.length - 1) && !m.content.startsWith("⚠️") && (
+              <div className="msg-actions">
+                <button type="button" className="btn ghost sm" onClick={() => imprimerReponse(m.content)} title="Cette réponse, mise en page, dans le navigateur pour l'imprimer">🖨 Imprimer</button>
+                <BoutonBureau className="btn ghost sm" onEnregistrer={() => reponseSurLeBureau(m.content)} />
+              </div>
+            )}
           </div>
         ))}
         {loading && messages[messages.length - 1]?.role !== "assistant" && <div className="msg assistant" style={{ opacity: 0.6 }}>…</div>}
@@ -315,8 +355,8 @@ export default function Assistant() {
         </button>
       )}
       <div className="chat-input">
-        <textarea className="textarea" rows={2}
-          placeholder={dictee.etat === "enregistrement" ? "Enregistrement en cours…" : "Écrivez ou dictez votre demande…"} value={input}
+        <textarea className="textarea" rows={2} ref={saisie}
+          placeholder={dictee.etat === "enregistrement" ? "Enregistrement en cours…" : modeDocument ? "Décrivez le document à fabriquer : pour qui, quoi, combien d'exercices…" : "Écrivez ou dictez votre demande…"} value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } }} />
         <button className="btn" onClick={classer} disabled={loading}
