@@ -457,6 +457,8 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .journal-materiel-titre { font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
 .journal-materiel-ligne { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 2px 0; }
 .journal-materiel-nom { flex: 1; min-width: 140px; }
+/* Dans le bandeau d'un atelier : la consigne de la feuille, à réécrire. */
+.consigne-atelier .textarea { width: 100%; margin-top: 4px; font-size: 13px; }
 /* Dans un atelier : les pictos de la consigne, reconnus ou ajoutés. */
 .consigne-pictos-ui { margin: 10px 0 4px; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 10px; }
 .consigne-pictos-titre { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; font-weight: 600; color: var(--text-2); }

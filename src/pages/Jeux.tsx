@@ -9,6 +9,8 @@ import { PartieToutTab, MultiplicatifsTab } from "./ProblemesBarres";
 import { ColoriageMagiqueTab } from "./ColoriageMagique";
 import { LectureSonsTab } from "./LectureSons";
 import { CompetencesAtelier } from "../components/CompetencesAtelier";
+import { ConsigneAtelier } from "../components/ConsigneAtelier";
+import { AtelierContext } from "../components/AtelierContext";
 import { deposerSurLeBureau, lignesCompetencesAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { DominosTab, FluenceTab, IntrusTab, LettresTab, LotoSyllabesTab, PairesTab, SyllabaireTab } from "./AteliersSons";
@@ -227,6 +229,8 @@ export default function Jeux() {
     <Page titre={outil ? `${outil.icone} ${outil.nom}` : "Fabriquer"} sous={outil?.quoi}
       actions={<button className="btn ghost sm" onClick={() => setOnglet("")}>← Tous les ateliers</button>}>
       {outil && <CompetencesAtelier atelier={outil.id} nom={outil.nom} />}
+      {outil && <ConsigneAtelier atelier={outil.id} />}
+      <AtelierContext.Provider value={onglet}>
       {onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />
         : onglet === "coloriage" ? <ColoriageMagiqueTab />
@@ -249,6 +253,7 @@ export default function Jeux() {
           <Loto key={onglet} gen={GENERATEURS[onglet === "jeux" ? "loto" : onglet]} atelier={onglet} etat={etat}
             progression={progression} onTelecharger={telecharger} />
         ))}
+      </AtelierContext.Provider>
     </Page>
   );
 }

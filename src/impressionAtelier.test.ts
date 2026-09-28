@@ -131,6 +131,16 @@ describe("imprimer un atelier", () => {
     expect(impressions[2].corps).toBe('<p class="consigne">Écris.</p>');
   });
 
+  it("prend la consigne que l'enseignant a réécrite pour l'atelier", async () => {
+    reglages.set("fabriquer:consigne:cubes", "Regarde les cubes.\nÉcris le nombre.");
+    await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Compte les cubes et écris le nombre.</p><table></table>');
+    expect(impressions[0].corps).toBe('<p class="consigne">Regarde les cubes.<br>Écris le nombre.</p><table></table>');
+    // Sans texte, la consigne de l'atelier.
+    reglages.set("fabriquer:consigne:cubes", "  ");
+    await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Compte.</p>');
+    expect(impressions[1].corps).toBe('<p class="consigne">Compte.</p>');
+  });
+
   it("imprime quand même si le réglage est illisible", async () => {
     reglages.set("fabriquer:competences:oie", "{pas du json");
     await imprimerAtelier("oie", "Jeu de l'oie", "<p>piste</p>");
