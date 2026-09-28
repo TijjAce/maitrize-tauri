@@ -20,6 +20,7 @@ import { ChoixSequence, SequencesCitees } from "./SequencesCitees";
 import { ChoixRituel, RituelForm, RituelsCites, useRituels } from "./Rituels";
 import { IndicateurZoom, useZoomPince } from "./ZoomPince";
 import { EVT_NOUVEAU_RITUEL, ligneDeRituel, nouveauRituel, rituelsCites, type Rituel } from "../rituels";
+import { zoomReelDuJournal } from "../zoomPince";
 import { insererLigne, ligneDeSequence, sequencesCitees, totalDesSeances } from "../sequencesCitees";
 import { SeanceReadView } from "../pages/SequenceDetail";
 import { ManuelDuJournal } from "./ManuelDuJournal";
@@ -396,8 +397,9 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
         <div className="spacer" />
         <IndicateurZoom zoom={zoom} onReinitialiser={() => majZoom(1)} />
       </div>
-      {/* Le zoom CSS agrandit tout le journal — textes, cadres, boutons — et le texte se replie à la largeur. */}
-      <div style={{ zoom, display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* Le zoom CSS agrandit tout le journal — textes, cadres, boutons — et le texte se replie à la largeur.
+          Le chiffre affiché bouge deux fois plus que la taille : 60 %, c'est un journal à 80 %. */}
+      <div style={{ zoom: zoomReelDuJournal(zoom), display: "flex", flexDirection: "column", gap: 10 }}>
         {duJour.map((c) => {
           const b = brouillons[c.id] ?? { prevu: c.prevu ?? "", bilan: c.bilan ?? "" };
           const teinte = teinteCreneau(c);
