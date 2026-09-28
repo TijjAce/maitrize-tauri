@@ -8,7 +8,7 @@ import { listen } from "@tauri-apps/api/event";
 // La photo est déjà enregistrée côté Rust ; on reçoit juste son nom de fichier.
 export function PhotoTelephone({ onPhoto, label = "📱 Téléphone", serie = false, onFin, className = "btn", avantDOuvrir }: {
   onPhoto: (nom: string) => void;
-  label?: string;
+  label?: React.ReactNode;
   /** En série, la fenêtre reste ouverte photo après photo : un manuel, page à page. */
   serie?: boolean;
   /** Fin de série : le téléphone a dit « terminé », ou l'on a fermé ici. */
