@@ -34,3 +34,16 @@ describe("chercher un atelier", () => {
     expect(chercherAteliers(familles, "trombone")).toEqual([]);
   });
 });
+
+describe("chercher un atelier par le cycle", () => {
+  it("remonte ceux qui s'adressent à ce cycle", () => {
+    const avecCycles = [{ libelle: "🔢 Mathématiques", outils: [
+      { id: "fractions" as const, nom: "Fractions", icone: "🍰", quoi: "Cartes, bandes à plier.", cycles: "Cycle 3" },
+      { id: "cubes" as const, nom: "Nombres en cubes", icone: "🧱", quoi: "Unités, barres de dix.", cycles: "Cycle 2" },
+      { id: "heure" as const, nom: "Lire l'heure", icone: "🕰", quoi: "Des horloges à lire.", cycles: "Cycles 2 et 3" },
+    ] }];
+    expect(chercherAteliers(avecCycles, "cycle 3").map((o) => o.id)).toEqual(["fractions"]);
+    expect(chercherAteliers(avecCycles, "cycle 2").map((o) => o.id)).toEqual(["cubes"]);
+    expect(chercherAteliers(avecCycles, "cycles 2 et 3").map((o) => o.id)).toEqual(["heure"]);
+  });
+});
