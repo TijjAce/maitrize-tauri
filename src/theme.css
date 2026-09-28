@@ -457,6 +457,9 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .journal-materiel-titre { font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
 .journal-materiel-ligne { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 2px 0; }
 .journal-materiel-nom { flex: 1; min-width: 140px; }
+/* Un bandeau qui offre un geste se clique en entier. */
+.toast.cliquable { cursor: pointer; }
+.toast.cliquable:hover { border-color: var(--accent); }
 /* Sous une réponse : l'imprimer, ou la déposer sur le bureau en PDF. */
 .msg-actions { display: flex; gap: 6px; margin-top: 8px; white-space: normal; }
 

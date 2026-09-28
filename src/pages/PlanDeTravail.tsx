@@ -20,7 +20,7 @@ import { FormSequence } from "../components/FormSequence";
 import { JeuForm } from "../components/JeuForm";
 import { OutilForm } from "../components/OutilForm";
 import { AtelierForm, EspaceForm, SuiviEspace } from "./Ateliers";
-import { CLE_FUSION, EVT_CHERCHER_BUREAU, fusionnerDansLePlanDeTravail, lireDemandeBureau } from "../bureauAteliers";
+import { CLE_FUSION, EVT_CHERCHER_BUREAU, fusionnerDansLePlanDeTravail, lireDemandeBureau, type DemandeBureau } from "../bureauAteliers";
 import type { CtxItem } from "../components/ctxmenu";
 import { deposerDossier, dossiersPris, recupererDossier, recupererFichier, recupererPaquet } from "../partageCommun";
 import { PanneauCommun, TYPE_COMMUN, lireDepotCommun } from "../components/PanneauCommun";
@@ -246,34 +246,41 @@ export default function PlanDeTravail() {
   // dossier, et surligné un instant. Retrouver quelque chose, c'est aussi
   // voir où c'est rangé : la racine avec un filtre ne le disait pas.
   const elementsRef = React.useRef<Element[]>([]);
+  // Une demande arrivée avant que la liste soit relue — le bandeau « Voir »
+  // d'une feuille qui vient d'être déposée — attend la liste, quelques secondes.
+  const enAttente = React.useRef<{ demande: DemandeBureau; jusqua: number } | null>(null);
+  /** Désigne ce qu'on demande ; faux si l'élément n'est pas (encore) dans la liste. */
+  const designer = React.useCallback((demande: DemandeBureau): boolean => {
+    // Un dossier demandé s'ouvre tel quel : il n'y a rien à désigner dedans.
+    if (demande.dossier !== undefined) {
+      setDossier(normaliser(demande.dossier));
+      setQ("");
+      setSurligne("");
+      return true;
+    }
+    const cible = demande.id
+      ? elementsRef.current.find((x) => x.id === demande.id)
+      : elementsRef.current.find((x) => normaliser(x.titre) === normaliser(demande.titre));
+    if (!cible) return false;
+    setDossier(normaliser(cible.dossier));
+    setQ("");
+    setSurligne(cible.id);
+    window.setTimeout(() => setSurligne((s) => (s === cible.id ? "" : s)), 4000);
+    return true;
+  }, []);
   React.useEffect(() => {
     const chercher = (e: Event) => {
       const demande = lireDemandeBureau((e as CustomEvent).detail);
-      // Un dossier demandé s'ouvre tel quel : il n'y a rien à désigner dedans.
-      if (demande.dossier !== undefined) {
-        setDossier(normaliser(demande.dossier));
-        setQ("");
-        setSurligne("");
-        return;
-      }
-      const cible = demande.id
-        ? elementsRef.current.find((x) => x.id === demande.id)
-        : elementsRef.current.find((x) => normaliser(x.titre) === normaliser(demande.titre));
-      if (cible) {
-        setDossier(normaliser(cible.dossier));
-        setQ("");
-        setSurligne(cible.id);
-        window.setTimeout(() => setSurligne((s) => (s === cible.id ? "" : s)), 4000);
-        return;
-      }
-      // Élément introuvable — supprimé, ou demande d'une ancienne version :
-      // on retombe sur l'ancien comportement plutôt que sur rien.
+      if (designer(demande)) { enAttente.current = null; return; }
+      // Élément introuvable — pas encore relu, supprimé, ou demande d'une
+      // ancienne version : on cherche par le titre en attendant la liste.
+      enAttente.current = { demande, jusqua: Date.now() + 8000 };
       setDossier("");
       setQ(demande.titre);
     };
     window.addEventListener(EVT_CHERCHER_BUREAU, chercher);
     return () => window.removeEventListener(EVT_CHERCHER_BUREAU, chercher);
-  }, []);
+  }, [designer]);
 
   /** Applique des réécritures de dispositions, en base puis à l'écran. */
   const ecrireDispositions = async (ecritures: Record<string, string>) => {
@@ -342,6 +349,12 @@ export default function PlanDeTravail() {
 
   const filtre = q.trim().toLowerCase();
   elementsRef.current = elements;
+  React.useEffect(() => {
+    const attente = enAttente.current;
+    if (!attente) return;
+    if (Date.now() > attente.jusqua) { enAttente.current = null; return; }
+    if (designer(attente.demande)) enAttente.current = null;
+  }, [elements, designer]);
   const dossiers = filtre ? [] : sousDossiers(elements, dossier, Object.keys(couleurs));
   // Une recherche regarde partout : sinon il faudrait deviner où se trouve ce
   // qu'on cherche avant de le chercher.
