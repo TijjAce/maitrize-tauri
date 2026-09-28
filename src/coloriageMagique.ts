@@ -334,8 +334,6 @@ export interface ReglagesColoriage {
   /** Pour la multiplication : la table travaillée. */
   table: number;
   titre: string;
-  /** Des verbes en pictos ajoutés à la main devant la consigne (voir CAA). */
-  pictos: string[];
 }
 
 export const REGLAGES_PAR_DEFAUT: ReglagesColoriage = {
@@ -343,7 +341,7 @@ export const REGLAGES_PAR_DEFAUT: ReglagesColoriage = {
   lettres: ["a", "e", "i", "o", "u", "m"], graphies: ["majuscule", "script", "cursive"], polices: false, policeCursive: "Snell Roundhand",
   motif: "poisson", operation: "addition", plafond: 10, table: 2,
   titre: "Coloriage magique",
-  pictos: [],
+ 
 };
 
 /**

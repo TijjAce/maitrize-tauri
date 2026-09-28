@@ -10,6 +10,7 @@ import { ColoriageMagiqueTab } from "./ColoriageMagique";
 import { LectureSonsTab } from "./LectureSons";
 import { CompetencesAtelier } from "../components/CompetencesAtelier";
 import { ConsigneAtelier } from "../components/ConsigneAtelier";
+import { PictosAtelier } from "../components/PictosAtelier";
 import { AtelierContext } from "../components/AtelierContext";
 import { deposerSurLeBureau, lignesCompetencesAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
@@ -257,6 +258,7 @@ export default function Jeux() {
       actions={<button className="btn ghost sm" onClick={() => setOnglet("")}>← Tous les ateliers</button>}>
       {outil && <CompetencesAtelier atelier={outil.id} nom={outil.nom} />}
       {outil && <ConsigneAtelier atelier={outil.id} />}
+      {outil && <PictosAtelier atelier={outil.id} />}
       <AtelierContext.Provider value={onglet}>
       {onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />

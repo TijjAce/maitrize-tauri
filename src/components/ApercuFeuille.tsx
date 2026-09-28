@@ -3,6 +3,7 @@ import { STYLE_FEUILLE } from "../cartesImprimables";
 import { AtelierContext } from "./AtelierContext";
 import { useConsigneAtelier } from "./ConsigneAtelier";
 import { useConsignesEnPictos } from "./ConsigneEnPictos";
+import { usePictosAtelier } from "./PictosAtelier";
 import { consigneParDefaut, consignesParDefaut, remplacerConsigne } from "../consigneAtelier";
 
 // La feuille telle qu'elle s'imprimera : même HTML, même style que le
@@ -15,7 +16,8 @@ export function ApercuFeuille({ html, style }: { html: string; style: string }) 
   // L'éditeur du bandeau propose la consigne d'origine : c'est l'aperçu qui la connaît.
   React.useEffect(() => { consignesParDefaut.publier(atelier, consigneParDefaut(html)); }, [atelier, html]);
   const remplace = React.useMemo(() => remplacerConsigne(html, consigne), [html, consigne]);
-  const pictos = useConsignesEnPictos(remplace);
+  const { pictos: ajoutes } = usePictosAtelier(atelier);
+  const pictos = useConsignesEnPictos(remplace, ajoutes);
   return (
     <div className="pb-apercu-page apercu-feuille">
       <style>{STYLE_FEUILLE + style + pictos.style}</style>
