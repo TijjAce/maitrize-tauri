@@ -73,7 +73,7 @@ async function pagesDuFichierRecu(nom: string): Promise<string[]> {
  * ouvert : c'est par lui que le téléphone parle à l'ordinateur.
  */
 function ScanCompagnon({ label, className = "btn", avantDOuvrir, onPage, onFin }: {
-  label: string; className?: string;
+  label: React.ReactNode; className?: string;
   avantDOuvrir: () => boolean | Promise<boolean>;
   onPage: (fichier: string) => void;
   onFin: (recues: number) => void;
@@ -130,7 +130,6 @@ export function ManuelsPanel() {
   const { data: indexBrut, reload: relireIndex } = useAsync(() => api.settingGet(CLE_INDEX), []);
   const index = React.useMemo(() => lireIndex(indexBrut), [indexBrut]);
   const [manuel, setManuel] = React.useState<Manuel | null>(null);
-  const [titreNouveau, setTitreNouveau] = React.useState("");
   const [pageId, setPageId] = React.useState("");
   const [exerciceId, setExerciceId] = React.useState("");
   const [occupe, setOccupe] = React.useState("");
@@ -167,10 +166,11 @@ export function ManuelsPanel() {
   // ── Entrées : le téléphone, page après page ; ou un PDF ──
   const manuelEnCours = React.useRef<Manuel | null>(null);
   const commencerParPhotos = async () => {
-    const m = nouveauManuel(titreNouveau, "telephone", todayIso());
+    // Le nom se donne sur la page du manuel, une fois les pages là.
+    const m = nouveauManuel(`Manuel du ${new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`, "telephone", todayIso());
     manuelEnCours.current = m;
     await enregistrer(m);
-    setPageId(""); setExerciceId(""); setTitreNouveau("");
+    setPageId(""); setExerciceId("");
     return true;
   };
   const continuerParPhotos = async () => { manuelEnCours.current = manuel; return !!manuel; };
@@ -312,182 +312,187 @@ export function ManuelsPanel() {
   };
 
   const aRelire = manuel?.pages.filter((p) => !p.extraitLe).length ?? 0;
+  const fermer = () => { setManuel(null); setPageId(""); setExerciceId(""); setFiche(null); };
 
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 300px) 1fr", gap: 14, alignItems: "start" }}>
-      {/* ── Les manuels ── */}
-      <div>
+  // ── L'accueil : on choisit, puis on change d'écran ──
+  //
+  // Un nouveau manuel par le compagnon, par QR code ou par PDF, ou un manuel
+  // déjà là : quatre portes, rien d'autre. Le manuel ouvert a l'écran pour lui.
+  if (!manuel) {
+    const carte = (icone: string, nom: string, quoi: string) => (
+      <><span className="atelier-icone">{icone}</span><span className="atelier-nom">{nom}</span><span className="atelier-quoi">{quoi}</span></>
+    );
+    return (
+      <div style={{ maxWidth: 1040 }}>
         <div className="card" style={{ marginBottom: 14 }}>
-          <h3 style={{ marginTop: 0 }}>📚 Manuels</h3>
-          {index.length === 0 && <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5 }}>Aucun manuel encore. Photographiez ses pages avec le téléphone, ou importez son PDF.</p>}
-          {index.map((r) => (
-            <div key={r.id} className={`man-ligne${manuel?.id === r.id ? " on" : ""}`}>
-              <button type="button" className="man-ouvrir" onClick={() => ouvrir(r.id)}>
-                <b>{r.titre}</b>
-                <span className="meta">{r.source === "pdf" ? "PDF" : "📱 photos"} · {r.pages} page{r.pages > 1 ? "s" : ""} · {r.exercices} exercice{r.exercices > 1 ? "s" : ""}</span>
-              </button>
-              <button type="button" className="btn ghost sm" aria-label={`Supprimer ${r.titre}`} onClick={() => supprimer(r)}>🗑</button>
-            </div>
-          ))}
+          <h3 style={{ marginTop: 0 }}>Un nouveau manuel</h3>
+          <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
+            Photographiez ses pages ou importez son PDF : le manuel s'ouvre, et le modèle relit ses exercices quand vous le lui demandez. Tout reste sur cet ordinateur.
+          </p>
+          <div className="ateliers">
+            <ScanCompagnon className="atelier" avantDOuvrir={commencerParPhotos} onPage={photoRecue} onFin={finDePhotos}
+              label={carte("📱", "Scanner avec le compagnon", "Le scanner de Notes sur l'iPhone : chaque page se cadre et se redresse, puis arrive ici.")} />
+            <PhotoTelephone serie className="atelier" avantDOuvrir={commencerParPhotos} onPhoto={photoRecue} onFin={finDePhotos}
+              label={carte("📷", "Photographier par QR code", "N'importe quel téléphone prend les pages en photo, ou les scanne avec l'application Fichiers.")} />
+            <button type="button" className="atelier" disabled={!!occupe} onClick={() => entree.current?.click()}>
+              {carte("📄", "Importer un PDF", occupe || "Le manuel en PDF, page à page.")}
+            </button>
+            <input ref={entree} type="file" accept="application/pdf" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) importerPdf(f); e.target.value = ""; }} />
+          </div>
         </div>
         <div className="card">
-          <h3 style={{ marginTop: 0, fontSize: 14 }}>Nouveau manuel</h3>
-          <Field label="Titre">
-            <Input value={titreNouveau} onChange={(e) => setTitreNouveau(e.target.value)} placeholder="Maths CE1, Lecture CP…" />
-          </Field>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <ScanCompagnon label="📱 Scanner avec le compagnon" className="btn primary" avantDOuvrir={commencerParPhotos} onPage={photoRecue} onFin={finDePhotos} />
-            <PhotoTelephone serie label="📷 Photographier par QR code" avantDOuvrir={commencerParPhotos} onPhoto={photoRecue} onFin={finDePhotos} />
-            <input ref={entree} type="file" accept="application/pdf" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) importerPdf(f); e.target.value = ""; }} />
-            <button type="button" className="btn" disabled={!!occupe} onClick={() => entree.current?.click()}>📄 Importer un PDF</button>
-          </div>
-          <p className="meta" style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 0 }}>
-            Avec le compagnon iPhone, c'est le scanner de Notes : la page se cadre et se redresse. Par QR code, n'importe quel téléphone
-            prend des photos, ou scanne avec l'application Fichiers. Tout reste sur cet ordinateur.
-          </p>
+          <h3 style={{ marginTop: 0 }}>Ouvrir un manuel</h3>
+          {index.length === 0
+            ? <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, margin: 0 }}>Aucun manuel encore : il apparaîtra ici dès sa première page.</p>
+            : index.map((r) => (
+              <div key={r.id} className="man-ligne">
+                <button type="button" className="man-ouvrir" onClick={() => ouvrir(r.id)}>
+                  <b>{r.titre}</b>
+                  <span className="meta">{r.source === "pdf" ? "PDF" : "📱 photos"} · {r.pages} page{r.pages > 1 ? "s" : ""} · {r.exercices} exercice{r.exercices > 1 ? "s" : ""}</span>
+                </button>
+                <button type="button" className="btn ghost sm" aria-label={`Supprimer ${r.titre}`} onClick={() => supprimer(r)}>🗑</button>
+              </div>
+            ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── La page du manuel ──
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <button type="button" className="btn ghost sm" onClick={fermer} title="Revenir aux manuels">← Manuels</button>
+          <Input value={manuel.titre} onChange={(e) => setManuel({ ...manuel, titre: e.target.value })} onBlur={() => enregistrer(manuel)} style={{ maxWidth: 260, fontWeight: 700 }} aria-label="Titre du manuel" />
+          <Input value={manuel.niveau} onChange={(e) => setManuel({ ...manuel, niveau: e.target.value })} onBlur={() => enregistrer(manuel)} placeholder="Niveau (CP, CE2…)" style={{ maxWidth: 140 }} aria-label="Niveau" />
+          <div style={{ flex: 1 }} />
+          {manuel.source === "telephone" && (<>
+            <ScanCompagnon label="📱 Scanner d'autres pages" className="btn sm" avantDOuvrir={continuerParPhotos} onPage={photoRecue} onFin={finDePhotos} />
+            <PhotoTelephone serie label="📷 Par QR code" className="btn sm" avantDOuvrir={continuerParPhotos} onPhoto={photoRecue} onFin={finDePhotos} />
+          </>)}
+          {occupe ? (
+            <button type="button" className="btn sm" onClick={() => { arret.current = true; }}>⏹ {occupe}</button>
+          ) : (
+            <button type="button" className="btn sm" disabled={aRelire === 0} onClick={relireTout} title="Chaque page part chez Mistral, l'une après l'autre">
+              {aRelire === 1 ? "🔎 Relire la page restante" : `🔎 Relire les ${aRelire} pages restantes`}
+            </button>
+          )}
+        </div>
+        <div className="man-pages">
+          {manuel.pages.map((p) => (
+            <button key={p.id} type="button" className={`man-page${p.id === pageId ? " on" : ""}`} onClick={() => { setPageId(p.id); setExerciceId(""); }}
+              title={p.extraitLe ? `${p.exercices.length} exercice${p.exercices.length > 1 ? "s" : ""}` : "Pas encore relue"}>
+              <span className="man-page-num">{p.numero}</span>
+              <span className="man-page-etat">{p.extraitLe ? `${p.exercices.length} ex.` : "·"}</span>
+            </button>
+          ))}
+          {manuel.pages.length === 0 && <span className="meta" style={{ fontSize: 12.5 }}>Aucune page : photographiez-les depuis le téléphone.</span>}
         </div>
       </div>
 
-      {/* ── Le manuel ouvert ── */}
-      {!manuel ? (
-        <div className="card" style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>
-          Ouvrez un manuel, ou créez-en un : ses pages s'afficheront ici, et le modèle en relira les exercices quand vous le lui demanderez.
-        </div>
-      ) : (
-        <div style={{ minWidth: 0 }}>
-          <div className="card" style={{ marginBottom: 14 }}>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <Input value={manuel.titre} onChange={(e) => setManuel({ ...manuel, titre: e.target.value })} onBlur={() => enregistrer(manuel)} style={{ maxWidth: 260, fontWeight: 700 }} aria-label="Titre du manuel" />
-              <Input value={manuel.niveau} onChange={(e) => setManuel({ ...manuel, niveau: e.target.value })} onBlur={() => enregistrer(manuel)} placeholder="Niveau (CP, CE2…)" style={{ maxWidth: 140 }} aria-label="Niveau" />
+      {page && (
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 300px) 1fr", gap: 14, alignItems: "start" }}>
+          <div className="card">
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+              <b style={{ fontSize: 13 }}>Page {page.numero}</b>
               <div style={{ flex: 1 }} />
-              {manuel.source === "telephone" && (<>
-                <ScanCompagnon label="📱 Scanner d'autres pages" className="btn sm" avantDOuvrir={continuerParPhotos} onPage={photoRecue} onFin={finDePhotos} />
-                <PhotoTelephone serie label="📷 Par QR code" className="btn sm" avantDOuvrir={continuerParPhotos} onPhoto={photoRecue} onFin={finDePhotos} />
-              </>)}
-              {occupe ? (
-                <button type="button" className="btn sm" onClick={() => { arret.current = true; }}>⏹ {occupe}</button>
-              ) : (
-                <button type="button" className="btn sm" disabled={aRelire === 0} onClick={relireTout} title="Chaque page part chez Mistral, l'une après l'autre">
-                  {aRelire === 1 ? "🔎 Relire la page restante" : `🔎 Relire les ${aRelire} pages restantes`}
-                </button>
+              {manuel.source === "telephone" && (
+                <button type="button" className="btn ghost sm" aria-label="Retirer cette page" onClick={async () => {
+                  if (!(await confirmer(`Retirer la page ${page.numero} ?`, { oui: "Retirer", danger: true }))) return;
+                  if (page.fichier) api.fichierDelete(page.fichier).catch(() => {});
+                  const suite = retirerPage(manuel, page.id);
+                  await enregistrer(suite); setPageId(suite.pages[0]?.id ?? "");
+                }}>🗑</button>
               )}
             </div>
-            <div className="man-pages">
-              {manuel.pages.map((p) => (
-                <button key={p.id} type="button" className={`man-page${p.id === pageId ? " on" : ""}`} onClick={() => { setPageId(p.id); setExerciceId(""); }}
-                  title={p.extraitLe ? `${p.exercices.length} exercice${p.exercices.length > 1 ? "s" : ""}` : "Pas encore relue"}>
-                  <span className="man-page-num">{p.numero}</span>
-                  <span className="man-page-etat">{p.extraitLe ? `${p.exercices.length} ex.` : "·"}</span>
-                </button>
-              ))}
-              {manuel.pages.length === 0 && <span className="meta" style={{ fontSize: 12.5 }}>Aucune page : photographiez-les depuis le téléphone.</span>}
-            </div>
+            {images[page.id] ? <img src={images[page.id]} alt="" style={{ width: "100%", borderRadius: 6, border: "1px solid var(--border)" }} />
+              : <div style={{ aspectRatio: "3 / 4", background: "var(--panel-2)", borderRadius: 6 }} />}
+            <button type="button" className="btn primary sm" style={{ width: "100%", marginTop: 10 }} disabled={!!occupe || !images[page.id]} onClick={relirePage}>
+              {page.extraitLe ? "🔎 Relire cette page" : "🔎 Récupérer les exercices"}
+            </button>
+            <p className="meta" style={{ fontSize: 11.5, lineHeight: 1.5, margin: "8px 0 0" }}>L'image de la page part chez Mistral, réduite ; les exercices reviennent en texte, à corriger si besoin.</p>
           </div>
 
-          {page && (
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 300px) 1fr", gap: 14, alignItems: "start" }}>
-              <div className="card">
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-                  <b style={{ fontSize: 13 }}>Page {page.numero}</b>
-                  <div style={{ flex: 1 }} />
-                  {manuel.source === "telephone" && (
-                    <button type="button" className="btn ghost sm" aria-label="Retirer cette page" onClick={async () => {
-                      if (!(await confirmer(`Retirer la page ${page.numero} ?`, { oui: "Retirer", danger: true }))) return;
-                      if (page.fichier) api.fichierDelete(page.fichier).catch(() => {});
-                      const suite = retirerPage(manuel, page.id);
-                      await enregistrer(suite); setPageId(suite.pages[0]?.id ?? "");
-                    }}>🗑</button>
-                  )}
-                </div>
-                {images[page.id] ? <img src={images[page.id]} alt="" style={{ width: "100%", borderRadius: 6, border: "1px solid var(--border)" }} />
-                  : <div style={{ aspectRatio: "3 / 4", background: "var(--panel-2)", borderRadius: 6 }} />}
-                <button type="button" className="btn primary sm" style={{ width: "100%", marginTop: 10 }} disabled={!!occupe || !images[page.id]} onClick={relirePage}>
-                  {page.extraitLe ? "🔎 Relire cette page" : "🔎 Récupérer les exercices"}
-                </button>
-                <p className="meta" style={{ fontSize: 11.5, lineHeight: 1.5, margin: "8px 0 0" }}>L'image de la page part chez Mistral, réduite ; les exercices reviennent en texte, à corriger si besoin.</p>
+          <div style={{ minWidth: 0 }}>
+            <div className="card" style={{ marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+                <h3 style={{ margin: 0, fontSize: 15 }}>Exercices de la page</h3>
+                <span className="meta" style={{ fontSize: 12 }}>{page.extraitLe ? `relue le ${page.extraitLe.split("-").reverse().join("/")}` : "pas encore relue"}</span>
+                <div style={{ flex: 1 }} />
+                <button type="button" className="btn sm" onClick={ajouterExercice}>＋ Exercice à la main</button>
               </div>
+              {page.exercices.length === 0 ? (
+                <p className="meta" style={{ fontSize: 12.5, margin: 0 }}>{page.extraitLe ? "Le modèle n'a trouvé aucun exercice sur cette page." : "Récupérez les exercices : ils s'afficheront ici."}</p>
+              ) : page.exercices.map((e) => (
+                <button key={e.id} type="button" className={`man-exo${e.id === exerciceId ? " on" : ""}`} onClick={() => setExerciceId(e.id)}>
+                  <span className="man-exo-num">{TYPES_EXERCICE.find((t) => t.id === e.type)?.icone} {e.numero || "—"}</span>
+                  <span className="man-exo-texte">{texteExercice({ ...e, numero: "" }).slice(0, 140)}</span>
+                </button>
+              ))}
+            </div>
 
-              <div style={{ minWidth: 0 }}>
-                <div className="card" style={{ marginBottom: 14 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
-                    <h3 style={{ margin: 0, fontSize: 15 }}>Exercices de la page</h3>
-                    <span className="meta" style={{ fontSize: 12 }}>{page.extraitLe ? `relue le ${page.extraitLe.split("-").reverse().join("/")}` : "pas encore relue"}</span>
-                    <div style={{ flex: 1 }} />
-                    <button type="button" className="btn sm" onClick={ajouterExercice}>＋ Exercice à la main</button>
+            {exercice && (
+              <div className="card">
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                  <h3 style={{ margin: 0, fontSize: 15 }}>✨ Réadapter l'exercice {exercice.numero}</h3>
+                  <div style={{ flex: 1 }} />
+                  <button type="button" className="btn ghost sm" onClick={retirerExercice}>🗑 Retirer</button>
+                </div>
+                <div className="row">
+                  <Field label="Numéro"><Input value={exercice.numero} onChange={(e) => majExercice({ numero: e.target.value })} style={{ maxWidth: 90 }} /></Field>
+                  <Field label="Type">
+                    <Select value={exercice.type} onChange={(e) => majExercice({ type: e.target.value as ExerciceManuel["type"] })}>
+                      {TYPES_EXERCICE.map((t) => <option key={t.id} value={t.id}>{t.icone} {t.libelle}</option>)}
+                    </Select>
+                  </Field>
+                </div>
+                <Field label="Consigne du manuel"><Textarea value={exercice.consigne} rows={2} onChange={(e) => majExercice({ consigne: e.target.value })} /></Field>
+                <Field label="Contenu (un item par ligne)"><Textarea value={exercice.contenu} rows={4} onChange={(e) => majExercice({ contenu: e.target.value })} /></Field>
+
+                <Field label="Ce qu'on change">
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 12px" }}>
+                    <label className="pb-coche"><input type="checkbox" checked={options.simplifier} onChange={(e) => majOption({ simplifier: e.target.checked })} /><span>Consigne simplifiée : une action, des mots connus</span></label>
+                    <label className="pb-coche"><input type="checkbox" checked={options.exemple} onChange={(e) => majOption({ exemple: e.target.checked })} /><span>Un exemple fait</span></label>
+                    <label className="pb-coche"><input type="checkbox" checked={options.zonesReponse} onChange={(e) => majOption({ zonesReponse: e.target.checked })} /><span>Une ligne pour chaque réponse</span></label>
+                    <label className="pb-coche"><input type="checkbox" checked={options.grosCaracteres} onChange={(e) => majOption({ grosCaracteres: e.target.checked })} /><span>Gros caractères, aéré</span></label>
+                    <label className="pb-coche"><input type="checkbox" checked={options.etapes} onChange={(e) => majOption({ etapes: e.target.checked })} /><span>La tâche en étapes</span></label>
+                    <label className="pb-coche" style={{ alignItems: "center" }}>
+                      <span>Garder</span>
+                      <Input type="number" min={0} max={20} value={options.items} onChange={(e) => majOption({ items: Math.max(0, Math.min(20, Number(e.target.value) || 0)) })} style={{ width: 60, margin: "0 6px" }} aria-label="Nombre d'items" />
+                      <span>items (0 : tous)</span>
+                    </label>
                   </div>
-                  {page.exercices.length === 0 ? (
-                    <p className="meta" style={{ fontSize: 12.5, margin: 0 }}>{page.extraitLe ? "Le modèle n'a trouvé aucun exercice sur cette page." : "Récupérez les exercices : ils s'afficheront ici."}</p>
-                  ) : page.exercices.map((e) => (
-                    <button key={e.id} type="button" className={`man-exo${e.id === exerciceId ? " on" : ""}`} onClick={() => setExerciceId(e.id)}>
-                      <span className="man-exo-num">{TYPES_EXERCICE.find((t) => t.id === e.type)?.icone} {e.numero || "—"}</span>
-                      <span className="man-exo-texte">{texteExercice({ ...e, numero: "" }).slice(0, 140)}</span>
-                    </button>
-                  ))}
+                  <Input value={options.precision} onChange={(e) => majOption({ precision: e.target.value })} placeholder="Précision pour le modèle : avec des jetons, nombres jusqu'à 20…" style={{ marginTop: 6 }} />
+                </Field>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button type="button" className="btn primary sm" disabled={!!occupe} onClick={readapter}>{occupe === "Le modèle réécrit l'exercice…" ? occupe : "✨ Réadapter avec Mistral"}</button>
+                  <button type="button" className="btn sm" onClick={() => setFiche(ficheDepuisLExercice(exercice, options))} title="Sans le modèle : la consigne et les items tels quels, mis en page">📝 Mettre en page tel quel</button>
                 </div>
 
-                {exercice && (
-                  <div className="card">
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-                      <h3 style={{ margin: 0, fontSize: 15 }}>✨ Réadapter l'exercice {exercice.numero}</h3>
+                {fiche && (
+                  <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <b style={{ fontSize: 13 }}>La fiche — à relire et corriger</b>
                       <div style={{ flex: 1 }} />
-                      <button type="button" className="btn ghost sm" onClick={retirerExercice}>🗑 Retirer</button>
+                      <button type="button" className="btn primary sm" onClick={imprimer}>🖨 Imprimer la fiche</button>
                     </div>
                     <div className="row">
-                      <Field label="Numéro"><Input value={exercice.numero} onChange={(e) => majExercice({ numero: e.target.value })} style={{ maxWidth: 90 }} /></Field>
-                      <Field label="Type">
-                        <Select value={exercice.type} onChange={(e) => majExercice({ type: e.target.value as ExerciceManuel["type"] })}>
-                          {TYPES_EXERCICE.map((t) => <option key={t.id} value={t.id}>{t.icone} {t.libelle}</option>)}
-                        </Select>
-                      </Field>
+                      <Field label="Titre"><Input value={fiche.titre} onChange={(e) => majFiche({ titre: e.target.value })} /></Field>
                     </div>
-                    <Field label="Consigne du manuel"><Textarea value={exercice.consigne} rows={2} onChange={(e) => majExercice({ consigne: e.target.value })} /></Field>
-                    <Field label="Contenu (un item par ligne)"><Textarea value={exercice.contenu} rows={4} onChange={(e) => majExercice({ contenu: e.target.value })} /></Field>
-
-                    <Field label="Ce qu'on change">
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 12px" }}>
-                        <label className="pb-coche"><input type="checkbox" checked={options.simplifier} onChange={(e) => majOption({ simplifier: e.target.checked })} /><span>Consigne simplifiée : une action, des mots connus</span></label>
-                        <label className="pb-coche"><input type="checkbox" checked={options.exemple} onChange={(e) => majOption({ exemple: e.target.checked })} /><span>Un exemple fait</span></label>
-                        <label className="pb-coche"><input type="checkbox" checked={options.zonesReponse} onChange={(e) => majOption({ zonesReponse: e.target.checked })} /><span>Une ligne pour chaque réponse</span></label>
-                        <label className="pb-coche"><input type="checkbox" checked={options.grosCaracteres} onChange={(e) => majOption({ grosCaracteres: e.target.checked })} /><span>Gros caractères, aéré</span></label>
-                        <label className="pb-coche"><input type="checkbox" checked={options.etapes} onChange={(e) => majOption({ etapes: e.target.checked })} /><span>La tâche en étapes</span></label>
-                        <label className="pb-coche" style={{ alignItems: "center" }}>
-                          <span>Garder</span>
-                          <Input type="number" min={0} max={20} value={options.items} onChange={(e) => majOption({ items: Math.max(0, Math.min(20, Number(e.target.value) || 0)) })} style={{ width: 60, margin: "0 6px" }} aria-label="Nombre d'items" />
-                          <span>items (0 : tous)</span>
-                        </label>
-                      </div>
-                      <Input value={options.precision} onChange={(e) => majOption({ precision: e.target.value })} placeholder="Précision pour le modèle : avec des jetons, nombres jusqu'à 20…" style={{ marginTop: 6 }} />
-                    </Field>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button type="button" className="btn primary sm" disabled={!!occupe} onClick={readapter}>{occupe === "Le modèle réécrit l'exercice…" ? occupe : "✨ Réadapter avec Mistral"}</button>
-                      <button type="button" className="btn sm" onClick={() => setFiche(ficheDepuisLExercice(exercice, options))} title="Sans le modèle : la consigne et les items tels quels, mis en page">📝 Mettre en page tel quel</button>
+                    <Field label="Consigne"><Textarea value={fiche.consigne} rows={2} onChange={(e) => majFiche({ consigne: e.target.value })} /></Field>
+                    <Field label="Exemple (vide : pas d'exemple)"><Textarea value={fiche.exemple} rows={2} onChange={(e) => majFiche({ exemple: e.target.value })} /></Field>
+                    <Field label="Items (un par ligne)"><Textarea value={fiche.items.join("\n")} rows={5} onChange={(e) => majFiche({ items: e.target.value.split("\n") })} /></Field>
+                    <Field label="Pour l'adulte"><Textarea value={fiche.aide} rows={2} onChange={(e) => majFiche({ aide: e.target.value })} /></Field>
+                    <div className="pb-apercu-page">
+                      <style>{STYLE_FICHE_ADAPTEE}</style>
+                      <div dangerouslySetInnerHTML={{ __html: htmlFicheAdaptee({ ...fiche, items: fiche.items.filter((x) => x.trim()) }, options, { manuel: manuel.titre, page: page.numero, numero: exercice.numero }) }} />
                     </div>
-
-                    {fiche && (
-                      <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                          <b style={{ fontSize: 13 }}>La fiche — à relire et corriger</b>
-                          <div style={{ flex: 1 }} />
-                          <button type="button" className="btn primary sm" onClick={imprimer}>🖨 Imprimer la fiche</button>
-                        </div>
-                        <div className="row">
-                          <Field label="Titre"><Input value={fiche.titre} onChange={(e) => majFiche({ titre: e.target.value })} /></Field>
-                        </div>
-                        <Field label="Consigne"><Textarea value={fiche.consigne} rows={2} onChange={(e) => majFiche({ consigne: e.target.value })} /></Field>
-                        <Field label="Exemple (vide : pas d'exemple)"><Textarea value={fiche.exemple} rows={2} onChange={(e) => majFiche({ exemple: e.target.value })} /></Field>
-                        <Field label="Items (un par ligne)"><Textarea value={fiche.items.join("\n")} rows={5} onChange={(e) => majFiche({ items: e.target.value.split("\n") })} /></Field>
-                        <Field label="Pour l'adulte"><Textarea value={fiche.aide} rows={2} onChange={(e) => majFiche({ aide: e.target.value })} /></Field>
-                        <div className="pb-apercu-page">
-                          <style>{STYLE_FICHE_ADAPTEE}</style>
-                          <div dangerouslySetInnerHTML={{ __html: htmlFicheAdaptee({ ...fiche, items: fiche.items.filter((x) => x.trim()) }, options, { manuel: manuel.titre, page: page.numero, numero: exercice.numero }) }} />
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </div>
