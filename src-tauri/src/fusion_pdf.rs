@@ -23,6 +23,8 @@ pub struct Joint {
     /// « lundi 28 septembre · 09:00 · Lecture » : d'où vient la feuille.
     pub quand: String,
     pub chemin: PathBuf,
+    /// L'échelle à l'impression : 1 = telle quelle ; 0,8 réduit autour du centre de la page.
+    pub echelle: f32,
 }
 
 /// Le nom, dans les ressources d'une page, de la police du bandeau.
@@ -39,6 +41,12 @@ pub fn joindre(journal: &[u8], joints: &[Joint]) -> Result<(Vec<u8>, Vec<String>
             .and_then(|source| ajouter_pages(&mut cible, source));
         match resultat {
             Ok(pages) => {
+                let echelle = if j.echelle.is_finite() { j.echelle.clamp(0.25, 3.0) } else { 1.0 };
+                if (echelle - 1.0).abs() > 0.001 {
+                    for &page in &pages {
+                        let _ = mettre_a_l_echelle(&mut cible, page, echelle);
+                    }
+                }
                 if let Some(&premiere) = pages.first() {
                     let texte = if j.quand.is_empty() { j.titre.clone() } else { format!("{} · {}", j.quand, j.titre) };
                     // Un bandeau qui échoue ne retire pas la feuille.
@@ -134,6 +142,25 @@ fn boite(doc: &Document, page: &Dictionary) -> Option<[f32; 4]> {
         };
     }
     Some([sortie[0].min(sortie[2]), sortie[1].min(sortie[3]), sortie[0].max(sortie[2]), sortie[1].max(sortie[3])])
+}
+
+/// Réduit ou agrandit le contenu d'une page autour de son centre, la page
+/// gardant son format : une feuille trop grande pour l'imprimante rentre,
+/// une feuille trop petite se lit. Ce qui dépasse le bord est perdu.
+fn mettre_a_l_echelle(doc: &mut Document, page: ObjectId, echelle: f32) -> Result<(), String> {
+    let dict = doc.get_dictionary(page).map_err(|e| e.to_string())?.clone();
+    let Some([x0, y0, x1, y1]) = boite(doc, &dict) else { return Ok(()) };
+    let (cx, cy) = ((x0 + x1) / 2.0, (y0 + y1) / 2.0);
+    let (tx, ty) = (cx * (1.0 - echelle), cy * (1.0 - echelle));
+    let avant = format!("q\n{echelle:.4} 0 0 {echelle:.4} {tx:.3} {ty:.3} cm\n");
+    let existants = doc.get_page_contents(page);
+    let ouverture = doc.add_object(Stream::new(Dictionary::new(), avant.into_bytes()));
+    let fermeture = doc.add_object(Stream::new(Dictionary::new(), b"\nQ\n".to_vec()));
+    let mut contenus = vec![Object::Reference(ouverture)];
+    contenus.extend(existants.into_iter().map(Object::Reference));
+    contenus.push(Object::Reference(fermeture));
+    doc.get_dictionary_mut(page).map_err(|e| e.to_string())?.set("Contents", Object::Array(contenus));
+    Ok(())
 }
 
 /// Écrit `texte` en petit gris dans la marge haute de la page.
@@ -238,7 +265,34 @@ mod tests {
     }
 
     fn joint(titre: &str, chemin: PathBuf) -> Joint {
-        Joint { titre: titre.into(), quand: "lundi 28 septembre · 09:00 · Lecture".into(), chemin }
+        Joint { titre: titre.into(), quand: "lundi 28 septembre · 09:00 · Lecture".into(), chemin, echelle: 1.0 }
+    }
+
+    #[test]
+    fn une_feuille_reduite_garde_son_format_et_se_recentre() {
+        let journal = pdf("Journal", 1);
+        let fiche = fichier("reduite.pdf", &pdf("Fiche", 2));
+        let mut j = joint("Fiche réduite", fiche.clone());
+        j.echelle = 0.8;
+        let (sortie, manques) = joindre(&journal, &[j]).expect("fusion");
+        assert!(manques.is_empty(), "{manques:?}");
+        if let Ok(chemin) = std::env::var("MAITRIZE_SORTIE_REDUITE") {
+            std::fs::write(chemin, &sortie).unwrap();
+        }
+        let doc = Document::load_mem(&sortie).unwrap();
+        let pages = doc.get_pages();
+        assert_eq!(pages.len(), 3);
+        for n in 2..=3 {
+            let contenu = String::from_utf8_lossy(&doc.get_page_content(pages[&n]).unwrap()).into_owned();
+            // Le contenu d'origine est pris entre un changement d'échelle centré et son Q.
+            assert!(contenu.contains("0.8000 0 0 0.8000 59.528 84.189 cm"), "page {n} : {contenu}");
+            let page = doc.get_dictionary(pages[&n]).unwrap();
+            assert!(page.has(b"MediaBox"), "le format ne change pas");
+        }
+        // Le bandeau, lui, reste à sa taille : il vient après le Q de l'échelle.
+        let deux = String::from_utf8_lossy(&doc.get_page_content(pages[&2]).unwrap()).into_owned();
+        assert!(deux.rfind("/MtzBandeau").unwrap() > deux.rfind("cm").unwrap());
+        let _ = std::fs::remove_file(fiche);
     }
 
     #[test]

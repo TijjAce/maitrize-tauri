@@ -164,6 +164,7 @@ export function CubesTab() {
           ))}
         </Field>
         <Coche on={r.zeros} libelle="Avec des zéros à l'intérieur (30, 105, 2 040)" onChange={(v) => maj({ zeros: v })} />
+        <Coche on={r.numeros} libelle="Numéroter les exercices" onChange={(v) => maj({ numeros: v })} />
         <Coche on={r.legende} libelle="La légende des cubes en haut de la feuille" onChange={(v) => maj({ legende: v })} />
         <Coche on={r.corrige} libelle="Le corrigé sur une page à part" onChange={(v) => maj({ corrige: v })} />
         <Field label="Titre de la feuille">

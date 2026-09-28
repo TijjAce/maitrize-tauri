@@ -17,7 +17,7 @@ import { jeuxCites, reglesImprimees, STYLE_REGLES } from "../jeuxCites";
 import { sequencesCitees, sequencesImprimees, STYLE_SEQUENCES } from "../sequencesCitees";
 import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
 import { organisationPour, natureDuSlot, type SlotEdt } from "../organisation";
-import { annexesDesCreneaux, annexesHtml, octetsDeBase64, STYLE_ANNEXES, titresDuMateriel, type AnnexeRendue } from "../materielAImprimer";
+import { annexesDesCreneaux, annexesHtml, echellesDesReglages, octetsDeBase64, STYLE_ANNEXES, titresDuMateriel, type AnnexeRendue } from "../materielAImprimer";
 import { nombreDePages, rendrePage } from "../pdfRendu";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
@@ -208,8 +208,9 @@ export default function Planning() {
   const imprimerJourRiche = async (liste: Creneau[]) => {
     const jourCreneaux = liste.filter((c) => c.date === iso(ancre)).sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
     const reImg = /\[img:([^\]]+)\]/g;
-    // Le matériel des séances : annoncé dans le créneau, joint à la suite.
+    // Le matériel des séances : annoncé dans le créneau, joint à la suite, à son échelle.
     const materiels = await api.materielList().catch((): MaterielItem[] => []);
+    const echelles = echellesDesReglages(await api.settingsAll().catch(() => ({})));
 
     // Collecte toutes les images référencées, puis les lit en data URL.
     const noms = new Set<string>();
@@ -352,7 +353,7 @@ export default function Planning() {
     // image, entière, assez fine pour l'imprimante. Un fichier illisible ne
     // retient pas le journal.
     const rendues: AnnexeRendue[] = [];
-    for (const annexe of annexesDesCreneaux(jourCreneaux, sequences ?? [], seances ?? [], materiels)) {
+    for (const annexe of annexesDesCreneaux(jourCreneaux, sequences ?? [], seances ?? [], materiels, () => "", echelles)) {
       try {
         const octets = octetsDeBase64(await api.fichierRead(annexe.fichier));
         const pages = [];
@@ -385,6 +386,7 @@ export default function Planning() {
     reload();
     if (vue === "jour") { await imprimerJourRiche(liste); return; }
     const materiels = await api.materielList().catch((): MaterielItem[] => []);
+    const echelles = echellesDesReglages(await api.settingsAll().catch(() => ({})));
     const nettoie = (t: string) => (t || "").replace(/\[(img|cite):[^\]]+\]/g, "").replace(/\n{3,}/g, "\n\n").trim();
     const info = (c: Creneau) => {
       const s = (seances ?? []).find((x) => x.id === c.seanceId);
@@ -426,9 +428,10 @@ export default function Planning() {
     const annexes = annexesDesCreneaux(
       liste.filter((c) => ds.some((d) => c.date === iso(d))), sequences ?? [], seances ?? [], materiels,
       (c) => { const d = ds.find((x) => iso(x) === c.date); return d ? libelleJour(d) : ""; },
+      echelles,
     );
     try {
-      const manques = await api.imprimerPlanning(`Planning — ${titre}`, data, annexes.map(({ titre, quand, fichier }) => ({ titre, quand, fichier })));
+      const manques = await api.imprimerPlanning(`Planning — ${titre}`, data, annexes.map(({ titre, quand, fichier, echelle }) => ({ titre, quand, fichier, echelle })));
       if (manques.length) toast(`Matériel non joint : ${manques.join(" ; ")}`, { icone: "⚠️", duree: 8000 });
     } catch {
       // Repli (hors macOS) : impression via la webview.

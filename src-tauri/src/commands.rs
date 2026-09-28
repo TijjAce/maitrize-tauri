@@ -1488,6 +1488,9 @@ pub struct AnnexePlanning {
     pub quand: String,
     /// Le nom du fichier dans le dossier des fichiers.
     pub fichier: String,
+    /// L'échelle à l'impression : 1 par défaut.
+    #[serde(default)]
+    pub echelle: Option<f32>,
 }
 
 /// Construit un PDF du planning (mise en page inspirée de l'app native) et
@@ -1504,7 +1507,7 @@ pub fn imprimer_planning(titre: String, jours: Vec<PlanningJour>, annexes: Vec<A
     } else {
         let joints: Vec<crate::fusion_pdf::Joint> = annexes
             .into_iter()
-            .map(|a| crate::fusion_pdf::Joint { titre: a.titre, quand: a.quand, chemin: fichiers_dir().join(a.fichier) })
+            .map(|a| crate::fusion_pdf::Joint { titre: a.titre, quand: a.quand, chemin: fichiers_dir().join(a.fichier), echelle: a.echelle.unwrap_or(1.0) })
             .collect();
         crate::fusion_pdf::joindre(&journal, &joints)?
     };
