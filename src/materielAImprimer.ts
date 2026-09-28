@@ -72,15 +72,25 @@ export function liensDuCreneau(c: Pick<Creneau, "seanceId" | "prevu">, sequences
   return liens;
 }
 
-/** Les matériels PDF d'un créneau : ceux de ses séances, puis ceux des séquences citées sans séance. */
+/**
+ * Les matériels PDF d'un créneau : ceux de ses séances, puis ceux des
+ * séquences citées sans séance — la séquence entière, donc son matériel et
+ * celui de chacune de ses séances, dans l'ordre des séances. « Prendre sur
+ * le bureau » range la feuille dans une séance ; citer la séquence par son
+ * titre doit suffire à la retrouver.
+ */
 export function materielDuCreneau(
   c: Pick<Creneau, "seanceId" | "prevu">, sequences: Sequence[], seances: Seance[], materiels: MaterielItem[],
 ): MaterielItem[] {
   const liens = liensDuCreneau(c, sequences, seances);
   const avecPdf = materiels.filter((m) => lirePdfs(m.pdfsJson).length > 0);
+  const seancesDesSequences = seances
+    .filter((s) => s.sequenceId && liens.sequences.has(s.sequenceId) && !liens.seances.has(s.id))
+    .sort((x, y) => x.numero - y.numero);
   return [
     ...avecPdf.filter((m) => m.seanceId && liens.seances.has(m.seanceId)),
     ...avecPdf.filter((m) => !m.seanceId && m.sequenceId && liens.sequences.has(m.sequenceId)),
+    ...seancesDesSequences.flatMap((s) => avecPdf.filter((m) => m.seanceId === s.id)),
   ];
 }
 
