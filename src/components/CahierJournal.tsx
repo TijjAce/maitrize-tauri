@@ -18,6 +18,7 @@ import { ReglesDesJeux, useJeuxCites, useLudotheque } from "./ReglesDesJeux";
 import { jeuxCites, nomSousLeCurseur } from "../jeuxCites";
 import { ChoixSequence, SequencesCitees } from "./SequencesCitees";
 import { ChoixRituel, RituelForm, RituelsCites, useRituels } from "./Rituels";
+import { IndicateurZoom, useZoomPince } from "./ZoomPince";
 import { EVT_NOUVEAU_RITUEL, ligneDeRituel, nouveauRituel, rituelsCites, type Rituel } from "../rituels";
 import { insererLigne, ligneDeSequence, sequencesCitees, totalDesSeances } from "../sequencesCitees";
 import { SeanceReadView } from "../pages/SequenceDetail";
@@ -366,6 +367,9 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
     }
   };
 
+  // Le journal se zoome au pincement, comme la grille du planning à côté ; retenu par ordinateur.
+  const { zoom, majZoom, cadre } = useZoomPince("journal-zoom");
+
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const passe = dateIso < aujourdhui;
 
@@ -383,133 +387,138 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+    <div ref={cadre} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700, fontSize: 15 }}>📓 Cahier journal</div>
         <div style={{ fontSize: 12, color: "var(--text-2)" }}>
-          {passe ? "Complétez ce qui a été fait" : "Notez ce qui est prévu"} · au clavier ou 🎙 à la voix
+          {passe ? "Complétez ce qui a été fait" : "Notez ce qui est prévu"} · au clavier ou 🎙 à la voix · pincer (trackpad) pour zoomer
         </div>
+        <div className="spacer" />
+        <IndicateurZoom zoom={zoom} onReinitialiser={() => majZoom(1)} />
       </div>
-      {duJour.map((c) => {
-        const b = brouillons[c.id] ?? { prevu: c.prevu ?? "", bilan: c.bilan ?? "" };
-        const teinte = teinteCreneau(c);
-        const seance = seances.find((s) => s.id === c.seanceId);
-        let ids: string[] = [];
-        try { ids = JSON.parse(c.elevesJson || "[]"); } catch { ids = []; }
-        const prenoms = ids.map((id) => eleves.find((e) => e.id === id)?.nom.split(" ")[0]).filter(Boolean);
-        const reunion = natureDe(c) === "reunion";
-        const etat = etats[c.id];
-        return (
-          <div key={c.id} className="card" style={{ padding: "10px 12px", borderLeft: `4px solid ${teinte}` }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-              <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{c.heureDebut}–{c.heureFin}</span>
-              <span style={{ fontWeight: 600 }}>{c.matiere || "Créneau"}</span>
-              {reunion && <span className="badge">🗣️ Réunion · formation</span>}
-              {seance && <span style={{ fontSize: 12, color: "var(--text-2)" }}>· {seance.titre}</span>}
-              {prenoms.length > 0 && <span style={{ fontSize: 12, color: "var(--text-2)" }}>👥 {prenoms.join(", ")}</span>}
-              <span style={{ marginLeft: "auto", fontSize: 11, color: etat === "erreur" ? "#c0392b" : "var(--text-2)" }}>
-                {etat === "enregistrement" ? "Enregistrement…" : etat === "ok" ? "✓ Enregistré" : etat === "erreur" ? "Non enregistré" : ""}
-              </span>
-              <button className="btn ghost sm" disabled={reunion || !ids.length}
-                onClick={() => setObserverPour(c)}
-                title={ids.length
-                  ? "Poser un temps d'observation sur un axe de la grille Cap école inclusive : ce bilan viendra le nourrir"
-                  : "Cochez d'abord les élèves présents sur ce créneau"}>👁 Observer</button>
-              <button className="btn ghost sm" onClick={() => onModifier(c)} title="Modifier le créneau" aria-label="Modifier le créneau">✏️</button>
-            </div>
-
-            {/* Ce qu'on a décidé d'observer sur ce créneau : la ligne est là
-                pendant la séance, sous les yeux — c'est le seul moment où
-                elle sert. */}
-            {observationsDuCreneau(c.id).map((o) => (
-              <div key={o.id} style={{
-                fontSize: 12.5, background: "var(--panel-2)", borderRadius: 8,
-                padding: "6px 9px", marginBottom: 6, lineHeight: 1.5,
-              }}>
-                👁 <b>{eleves.find((e) => e.id === o.eleveId)?.nom.split(" ")[0] ?? "Élève"}</b> — {o.axe}
-                {o.domaine && <span className="meta" style={{ fontSize: 11 }}> · {o.domaine}</span>}
+      {/* Le zoom CSS agrandit tout le journal — textes, cadres, boutons — et le texte se replie à la largeur. */}
+      <div style={{ zoom, display: "flex", flexDirection: "column", gap: 10 }}>
+        {duJour.map((c) => {
+          const b = brouillons[c.id] ?? { prevu: c.prevu ?? "", bilan: c.bilan ?? "" };
+          const teinte = teinteCreneau(c);
+          const seance = seances.find((s) => s.id === c.seanceId);
+          let ids: string[] = [];
+          try { ids = JSON.parse(c.elevesJson || "[]"); } catch { ids = []; }
+          const prenoms = ids.map((id) => eleves.find((e) => e.id === id)?.nom.split(" ")[0]).filter(Boolean);
+          const reunion = natureDe(c) === "reunion";
+          const etat = etats[c.id];
+          return (
+            <div key={c.id} className="card" style={{ padding: "10px 12px", borderLeft: `4px solid ${teinte}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{c.heureDebut}–{c.heureFin}</span>
+                <span style={{ fontWeight: 600 }}>{c.matiere || "Créneau"}</span>
+                {reunion && <span className="badge">🗣️ Réunion · formation</span>}
+                {seance && <span style={{ fontSize: 12, color: "var(--text-2)" }}>· {seance.titre}</span>}
+                {prenoms.length > 0 && <span style={{ fontSize: 12, color: "var(--text-2)" }}>👥 {prenoms.join(", ")}</span>}
+                <span style={{ marginLeft: "auto", fontSize: 11, color: etat === "erreur" ? "#c0392b" : "var(--text-2)" }}>
+                  {etat === "enregistrement" ? "Enregistrement…" : etat === "ok" ? "✓ Enregistré" : etat === "erreur" ? "Non enregistré" : ""}
+                </span>
+                <button className="btn ghost sm" disabled={reunion || !ids.length}
+                  onClick={() => setObserverPour(c)}
+                  title={ids.length
+                    ? "Poser un temps d'observation sur un axe de la grille Cap école inclusive : ce bilan viendra le nourrir"
+                    : "Cochez d'abord les élèves présents sur ce créneau"}>👁 Observer</button>
+                <button className="btn ghost sm" onClick={() => onModifier(c)} title="Modifier le créneau" aria-label="Modifier le créneau">✏️</button>
               </div>
-            ))}
-            {(["prevu", "bilan"] as Champ[]).map((champ) => {
-              const actif = cible?.id === c.id && cible.champ === champ;
-              const occupe = dictee.etat !== "repos" && !actif;
-              return (
-                <div key={champ} style={{ marginTop: champ === "bilan" ? 8 : 0 }}>
-                  {/* Six boutons ne tiennent pas sur une ligne étroite : ils s'y replient. */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>{LIBELLES[champ].titre}</span>
-                    <button className="btn ghost sm" disabled={occupe || dictee.etat === "transcription"}
-                      onClick={() => basculerDictee(c.id, champ)}
-                      aria-label={actif ? "Arrêter la dictée" : `Dicter : ${LIBELLES[champ].titre}`}
-                      style={actif ? { background: "#dc2626", color: "#fff", borderColor: "#dc2626" } : undefined}>
-                      {actif && dictee.etat === "enregistrement" ? `⏹ ${mmss(dictee.secondes)}`
-                        : actif && dictee.etat === "transcription" ? "Transcription…" : "🎙"}
-                    </button>
-                    <button className="btn ghost sm" disabled={corrigeant === `${c.id}|${champ}`}
-                      onClick={() => { void corriger(c, champ); }}
-                      title="Corriger l'orthographe et la grammaire avec l'IA, sans reformuler. Surlignez un passage pour ne corriger que lui.">
-                      {corrigeant === `${c.id}|${champ}` ? "Correction…" : "✨ Corriger"}
-                    </button>
-                    {champ === "prevu" ? (
+
+              {/* Ce qu'on a décidé d'observer sur ce créneau : la ligne est là
+                  pendant la séance, sous les yeux — c'est le seul moment où
+                  elle sert. */}
+              {observationsDuCreneau(c.id).map((o) => (
+                <div key={o.id} style={{
+                  fontSize: 12.5, background: "var(--panel-2)", borderRadius: 8,
+                  padding: "6px 9px", marginBottom: 6, lineHeight: 1.5,
+                }}>
+                  👁 <b>{eleves.find((e) => e.id === o.eleveId)?.nom.split(" ")[0] ?? "Élève"}</b> — {o.axe}
+                  {o.domaine && <span className="meta" style={{ fontSize: 11 }}> · {o.domaine}</span>}
+                </div>
+              ))}
+              {(["prevu", "bilan"] as Champ[]).map((champ) => {
+                const actif = cible?.id === c.id && cible.champ === champ;
+                const occupe = dictee.etat !== "repos" && !actif;
+                return (
+                  <div key={champ} style={{ marginTop: champ === "bilan" ? 8 : 0 }}>
+                    {/* Six boutons ne tiennent pas sur une ligne étroite : ils s'y replient. */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>{LIBELLES[champ].titre}</span>
+                      <button className="btn ghost sm" disabled={occupe || dictee.etat === "transcription"}
+                        onClick={() => basculerDictee(c.id, champ)}
+                        aria-label={actif ? "Arrêter la dictée" : `Dicter : ${LIBELLES[champ].titre}`}
+                        style={actif ? { background: "#dc2626", color: "#fff", borderColor: "#dc2626" } : undefined}>
+                        {actif && dictee.etat === "enregistrement" ? `⏹ ${mmss(dictee.secondes)}`
+                          : actif && dictee.etat === "transcription" ? "Transcription…" : "🎙"}
+                      </button>
+                      <button className="btn ghost sm" disabled={corrigeant === `${c.id}|${champ}`}
+                        onClick={() => { void corriger(c, champ); }}
+                        title="Corriger l'orthographe et la grammaire avec l'IA, sans reformuler. Surlignez un passage pour ne corriger que lui.">
+                        {corrigeant === `${c.id}|${champ}` ? "Correction…" : "✨ Corriger"}
+                      </button>
+                      {champ === "prevu" ? (
+                        <>
+                          <button className="btn ghost sm" onClick={() => reprendre(c)}
+                            title="Reprendre ce qui était prévu sur ce créneau la semaine dernière">↩ Semaine dernière</button>
+                          <button className="btn ghost sm" onClick={() => ajouterJeu(c)}
+                            title="Ajouter à la ludothèque le jeu écrit sur la ligne du curseur, avec sa règle : elle s'affichera ici dès qu'il est cité">
+                            🎲 Règle d'un jeu</button>
+                          <button className="btn ghost sm" onClick={() => setSequencePour(c)} disabled={!sequences.length}
+                            title={sequences.length ? "Poser une séquence ou une séance dans le prévu : ses objectifs et son déroulement s'afficheront ici" : "Aucune séquence pour l'instant"}>
+                            📚 Séquence</button>
+                          <button className="btn ghost sm" onClick={() => setRituelPour(c)}
+                            title="Poser un rituel dans le prévu — la date, l'appel, le calcul mental — : son déroulement s'affichera ici. On le crée aussi là.">
+                            🔁 Rituel</button>
+                          <button className="btn ghost sm" onClick={() => setManuelPour(c)}
+                            title="Citer une page d'un manuel du coffre-fort, et y découper l'exercice : son image se pose dans le prévu et s'imprime avec le jour">
+                            📖 Manuel</button>
+                          <button className="btn ghost sm" onClick={() => setCompetencePour(c)}
+                            title="Poser une compétence des référentiels dans le prévu">
+                            🎯 Compétence</button>
+                        </>
+                      ) : (
+                        <button className="btn ghost sm" disabled={!b.bilan.trim() || reunion} onClick={() => porterAuDossier(c, ids)}
+                          title="Faire du bilan, ou du passage sélectionné, une observation dans le dossier des élèves">📋 Au dossier</button>
+                      )}
+                    </div>
+                    <textarea className="textarea" value={b[champ]} placeholder={LIBELLES[champ].aide}
+                      ref={(el) => { (champ === "bilan" ? zones : zonesPrevu).current[c.id] = el; }}
+                      rows={Math.min(8, Math.max(2, b[champ].split("\n").length))}
+                      onChange={(e) => modifier(c.id, champ, e.target.value)}
+                      onFocus={champ === "prevu" ? () => ouvertes.current.add(c.id) : undefined}
+                      aria-label={`${LIBELLES[champ].titre} — ${c.heureDebut} ${c.matiere}`}
+                      style={{ width: "100%", resize: "vertical", fontSize: 13.5, lineHeight: 1.45 }} />
+                    {correction?.id === c.id && correction.champ === champ && (
+                      <div className="card" style={{ marginTop: 6, padding: "8px 10px", background: "var(--panel-2)" }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
+                          ✨ Correction proposée{correction.zone ? " (passage surligné)" : ""}
+                        </div>
+                        <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, lineHeight: 1.45 }}>{correction.apres}</div>
+                        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                          <button className="btn primary sm" onClick={appliquerCorrection}>Remplacer</button>
+                          <button className="btn sm" onClick={() => setCorrection(null)}>Laisser comme ça</button>
+                        </div>
+                      </div>
+                    )}
+                    {champ === "prevu" && (
                       <>
-                        <button className="btn ghost sm" onClick={() => reprendre(c)}
-                          title="Reprendre ce qui était prévu sur ce créneau la semaine dernière">↩ Semaine dernière</button>
-                        <button className="btn ghost sm" onClick={() => ajouterJeu(c)}
-                          title="Ajouter à la ludothèque le jeu écrit sur la ligne du curseur, avec sa règle : elle s'affichera ici dès qu'il est cité">
-                          🎲 Règle d'un jeu</button>
-                        <button className="btn ghost sm" onClick={() => setSequencePour(c)} disabled={!sequences.length}
-                          title={sequences.length ? "Poser une séquence ou une séance dans le prévu : ses objectifs et son déroulement s'afficheront ici" : "Aucune séquence pour l'instant"}>
-                          📚 Séquence</button>
-                        <button className="btn ghost sm" onClick={() => setRituelPour(c)}
-                          title="Poser un rituel dans le prévu — la date, l'appel, le calcul mental — : son déroulement s'affichera ici. On le crée aussi là.">
-                          🔁 Rituel</button>
-                        <button className="btn ghost sm" onClick={() => setManuelPour(c)}
-                          title="Citer une page d'un manuel du coffre-fort, et y découper l'exercice : son image se pose dans le prévu et s'imprime avec le jour">
-                          📖 Manuel</button>
-                        <button className="btn ghost sm" onClick={() => setCompetencePour(c)}
-                          title="Poser une compétence des référentiels dans le prévu">
-                          🎯 Compétence</button>
+                        <ImagesDuPrevu prevu={b.prevu} onRetirer={(nom) => modifier(c.id, "prevu", retirerImage(b.prevu, nom), true)} />
+                        <ReglesDesJeux jeux={citesDans(b.prevu)} onModifier={(jeu) => setJeuEdite({ jeu, nouveau: false })} />
+                        <SequencesCitees citations={sequencesCitees(b.prevu, sequences, seances)} seances={seances}
+                          onOuvrir={(s) => navigate(`/sequences/${s.id}`)} onVoirSeance={setSeanceVue} />
+                        <RituelsCites rituels={rituelsCites(b.prevu, rituels)} onModifier={(r) => setRituelEdite({ rituel: r, nouveau: false })} />
+                        <MaterielDuJournal materiels={materielDuCreneau({ seanceId: c.seanceId, prevu: b.prevu }, sequences, seances, materiels ?? [])} />
                       </>
-                    ) : (
-                      <button className="btn ghost sm" disabled={!b.bilan.trim() || reunion} onClick={() => porterAuDossier(c, ids)}
-                        title="Faire du bilan, ou du passage sélectionné, une observation dans le dossier des élèves">📋 Au dossier</button>
                     )}
                   </div>
-                  <textarea className="textarea" value={b[champ]} placeholder={LIBELLES[champ].aide}
-                    ref={(el) => { (champ === "bilan" ? zones : zonesPrevu).current[c.id] = el; }}
-                    rows={Math.min(8, Math.max(2, b[champ].split("\n").length))}
-                    onChange={(e) => modifier(c.id, champ, e.target.value)}
-                    onFocus={champ === "prevu" ? () => ouvertes.current.add(c.id) : undefined}
-                    aria-label={`${LIBELLES[champ].titre} — ${c.heureDebut} ${c.matiere}`}
-                    style={{ width: "100%", resize: "vertical", fontSize: 13.5, lineHeight: 1.45 }} />
-                  {correction?.id === c.id && correction.champ === champ && (
-                    <div className="card" style={{ marginTop: 6, padding: "8px 10px", background: "var(--panel-2)" }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
-                        ✨ Correction proposée{correction.zone ? " (passage surligné)" : ""}
-                      </div>
-                      <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, lineHeight: 1.45 }}>{correction.apres}</div>
-                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                        <button className="btn primary sm" onClick={appliquerCorrection}>Remplacer</button>
-                        <button className="btn sm" onClick={() => setCorrection(null)}>Laisser comme ça</button>
-                      </div>
-                    </div>
-                  )}
-                  {champ === "prevu" && (
-                    <>
-                      <ImagesDuPrevu prevu={b.prevu} onRetirer={(nom) => modifier(c.id, "prevu", retirerImage(b.prevu, nom), true)} />
-                      <ReglesDesJeux jeux={citesDans(b.prevu)} onModifier={(jeu) => setJeuEdite({ jeu, nouveau: false })} />
-                      <SequencesCitees citations={sequencesCitees(b.prevu, sequences, seances)} seances={seances}
-                        onOuvrir={(s) => navigate(`/sequences/${s.id}`)} onVoirSeance={setSeanceVue} />
-                      <RituelsCites rituels={rituelsCites(b.prevu, rituels)} onModifier={(r) => setRituelEdite({ rituel: r, nouveau: false })} />
-                      <MaterielDuJournal materiels={materielDuCreneau({ seanceId: c.seanceId, prevu: b.prevu }, sequences, seances, materiels ?? [])} />
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        );
-      })}
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
       {rituelPour && <ChoixRituel onClose={() => setRituelPour(null)} onChoisir={(r) => poserRituel(rituelPour, r)} />}
       {rituelEdite && (
         <RituelForm rituel={rituelEdite.rituel} nouveau={rituelEdite.nouveau} onClose={() => setRituelEdite(null)}
