@@ -17,7 +17,7 @@ import { jeuxCites, reglesImprimees, STYLE_REGLES } from "../jeuxCites";
 import { sequencesCitees, sequencesImprimees, STYLE_SEQUENCES } from "../sequencesCitees";
 import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
 import { organisationPour, natureDuSlot, type SlotEdt } from "../organisation";
-import { annexesDesCreneaux, annexesHtml, echellesDesReglages, octetsDeBase64, STYLE_ANNEXES, titresDuMateriel, type AnnexeRendue } from "../materielAImprimer";
+import { annexesDesCreneaux, annexesHtml, echellesDesReglages, moletteDuJournalHtml, octetsDeBase64, STYLE_ANNEXES, titresDuMateriel, type AnnexeRendue } from "../materielAImprimer";
 import { nombreDePages, rendrePage } from "../pdfRendu";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
@@ -368,8 +368,8 @@ export default function Planning() {
     // Le logo se réduit ici : sans lui, le pied garde l'adresse.
     const logo = await logoImprimable().catch(() => "");
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Planning — ${escapeHtml(titre)}</title><style>${css}</style></head>
-      <body><h1>${escapeHtml(titre)}</h1><div class="sub">Cahier journal</div>
-      <div class="jour">${rangs || '<div class="row"><div style="padding:20px;color:#687087">Aucun créneau ce jour-là.</div></div>'}</div>
+      <body>${moletteDuJournalHtml()}<div class="journal"><h1>${escapeHtml(titre)}</h1><div class="sub">Cahier journal</div>
+      <div class="jour">${rangs || '<div class="row"><div style="padding:20px;color:#687087">Aucun créneau ce jour-là.</div></div>'}</div></div>
       ${annexesHtml(rendues)}
       ${piedMaitrize(logo)}
       </body></html>`;
