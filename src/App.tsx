@@ -13,6 +13,7 @@ import PlanDeTravail from "./pages/PlanDeTravail";
 import BureauxCommuns from "./pages/BureauxCommuns";
 import Jeux from "./pages/Jeux";
 import Adapter from "./pages/Adapter";
+import Caa from "./pages/Caa";
 import Ressources from "./pages/Ressources";
 import Assistant from "./pages/Assistant";
 import Reunions from "./pages/Reunions";
@@ -51,6 +52,7 @@ const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: t
   { to: "/eleves", ico: "👧", label: "Élèves" },
   { to: "/referentiels", ico: "📖", label: "Référentiels" },
   { to: "/jeux", ico: "🎲", label: "Fabriquer" },
+  { to: "/caa", ico: "🗣", label: "CAA" },
   { to: "/adapter", ico: "📄", label: "Adapter une fiche" },
   { to: "/ressources", ico: "🌐", label: "Ressources" },
   { sep: true },
@@ -73,6 +75,7 @@ const KEEP_ALIVE: { path: string; element: React.ReactNode }[] = [
   { path: "/eleves", element: <Eleves /> },
   { path: "/referentiels", element: <Referentiels /> },
   { path: "/jeux", element: <Jeux /> },
+  { path: "/caa", element: <Caa /> },
   { path: "/adapter", element: <Adapter /> },
   { path: "/ressources", element: <Ressources /> },
   { path: "/assistant", element: <Assistant /> },

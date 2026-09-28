@@ -100,7 +100,7 @@ const REGLAGES_PARTAGES: &[&str] = &[
 /// du plan de travail, présentations enregistrées de Fabriquer et repères de
 /// l'établissement (contacts, où est le matériel). Ce sont des données de
 /// travail, pas des préférences d'affichage.
-const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:", "dossier:", "bureau:", "fabriquer:", "rangement:", "etab:"];
+const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:", "dossier:", "bureau:", "fabriquer:", "rangement:", "etab:", "caa:"];
 
 /// Réglages qui appartiennent à l'ordinateur lui-même, pas aux données.
 ///

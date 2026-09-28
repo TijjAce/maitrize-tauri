@@ -11,6 +11,7 @@ vi.mock("./api", () => ({
     settingGet: async (cle: string) => reglages.get(cle) ?? null,
     feuilleEnPdf: async (html: string) => { pdfs.push(html); return `pdf-${pdfs.length}.pdf`; },
     materielSave: async (m: unknown) => { materiels.push(m); return m; },
+    arasaacImage: async (id: number) => (id === 22 ? "AAAA" : Promise.reject(new Error("pas d'image"))),
   },
   newId: () => "id-neuf",
   nowIso: () => "2026-09-28T10:00:00.000Z",
@@ -110,6 +111,21 @@ describe("imprimer un atelier", () => {
   it("imprime la feuille inchangée quand rien n'est choisi", async () => {
     await imprimerAtelier("fluence", "Grille de fluence", "<p>grille</p>", ".fl { }");
     expect(impressions[0]).toEqual({ titre: "Grille de fluence", corps: "<p>grille</p>", style: ".fl { }" });
+  });
+
+  it("met les pictos des verbes devant les consignes, quand l'enseignant en a choisi", async () => {
+    reglages.set("caa:consignes", JSON.stringify({ écrire: 22, lire: 99 }));
+    await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Lis puis écris le nombre.</p>', ".cu { }");
+    const { corps, style } = impressions[0];
+    // « écrire » a son image, « lire » n'en a pas : un seul picto, et la mention ARASAAC.
+    expect(corps).toContain('<p class="consigne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:image/png;base64,AAAA" alt="écrire">');
+    expect(corps).not.toContain('alt="lire"');
+    expect(corps).toContain("ARASAAC");
+    expect(style).toContain(".consigne-pictos");
+    // Coupés : la feuille reste nue.
+    reglages.set("caa:consignes:actif", "0");
+    await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Écris.</p>');
+    expect(impressions[1].corps).toBe('<p class="consigne">Écris.</p>');
   });
 
   it("imprime quand même si le réglage est illisible", async () => {

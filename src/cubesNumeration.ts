@@ -374,7 +374,7 @@ export function htmlCubes(exos: ExerciceCube[], r: ReglagesCubes, graine = 1): s
     : exercicesRelier(exos, r, u, hasard(graine + 1));
   const page = `<div class="page"><div class="titre">${escapeHtml(titre)}</div>`
     + `<div class="cu-nom">Prénom : ........................................ Date : ........................</div>`
-    + `<div class="sous cu-consigne">${escapeHtml(consigneDe(r))}</div>`
+    + `<div class="sous cu-consigne consigne">${escapeHtml(consigneDe(r))}</div>`
     + (r.legende ? legende(a, r.couleurs) : "")
     + corps + `</div>`;
   return feuille(page + (r.corrige ? corrige(exos, titre) : ""), "cu");
