@@ -27,6 +27,7 @@ import { PanneauCommun, TYPE_COMMUN, lireDepotCommun } from "../components/Panne
 import { estPaquet, titreDuPaquet } from "../bureauCommun";
 import { confirmer } from "../components/confirmer";
 import { contenuDirect, nature } from "../bureau";
+import { estSurLeBureau } from "../materielSeance";
 import { lireVideos, lireLien, vignetteYoutube } from "../videos";
 import { useFileDropZone, estPdf, estImage, estDocument, typeDocument, fichierEnBase64, EXTENSIONS_DOCUMENTS } from "../dragdrop";
 import {
@@ -306,7 +307,9 @@ export default function PlanDeTravail() {
 
   const elements: Element[] = React.useMemo(() => [
     ...(sequences ?? []).map((s): Element => ({ genre: "sequence", id: s.id, titre: s.titre || "Sans titre", dossier: s.dossier, seq: s })),
-    ...(materiels ?? []).map((m): Element => ({ genre: "materiel", id: m.id, titre: m.titre || "Sans titre", dossier: m.dossier, mat: m })),
+    // Le matériel d'une séance ou d'une séquence reste chez elles : le
+    // bureau ne le montre pas une seconde fois.
+    ...(materiels ?? []).filter(estSurLeBureau).map((m): Element => ({ genre: "materiel", id: m.id, titre: m.titre || "Sans titre", dossier: m.dossier, mat: m })),
     // Les dossiers « @… » sont réservés (feuilles d'informations d'Organisation) : pas sur le bureau.
     ...(textes ?? []).filter((x) => !x.dossier.startsWith("@"))
       .map((x): Element => ({ genre: "texte", id: x.id, titre: x.titre || "Sans titre", dossier: x.dossier, txt: x })),

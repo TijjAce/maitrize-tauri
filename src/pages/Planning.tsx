@@ -288,8 +288,8 @@ export default function Planning() {
         s?.objectifs ? champ("Objectifs", escapeHtml(s.objectifs)) : "",
         deroul ? `<div class="f"><span class="fl">Activités :</span></div><div class="txt">${escapeHtml(deroul)}</div>` : "",
         comps.length ? champ("Compétences", comps.map((x) => escapeHtml(labelCourt(x))).join("<br>")) : "",
-        titresDuMateriel(c, materiels).length
-          ? champ("Matériel à imprimer", `${titresDuMateriel(c, materiels).map(escapeHtml).join(", ")} — joint à la suite`) : "",
+        titresDuMateriel(c, sequences ?? [], seances ?? [], materiels).length
+          ? champ("Matériel à imprimer", `${titresDuMateriel(c, sequences ?? [], seances ?? [], materiels).map(escapeHtml).join(", ")} — joint à la suite`) : "",
         grid.length ? `<div class="fl" style="margin-top:4px">Tableau :</div><table>${colonnesDuTableau(grid[0])}${grid.map((row, r) => `<tr>${row.map((cell) => r === 0 ? `<th>${escapeHtml(cell)}</th>` : `<td>${rendreCell(cell)}</td>`).join("")}</tr>`).join("")}</table>` : "",
         illus.length ? `<div class="imgs">${illus.map(imgTag).join("")}</div>` : "",
         c.prevu?.trim() ? `<div class="f"><span class="fl">Prévu :</span></div><div class="txt prevu">${rendreCell(c.prevu.trim())}</div>` : "",
@@ -352,7 +352,7 @@ export default function Planning() {
     // image, entière, assez fine pour l'imprimante. Un fichier illisible ne
     // retient pas le journal.
     const rendues: AnnexeRendue[] = [];
-    for (const annexe of annexesDesCreneaux(jourCreneaux, seances ?? [], materiels)) {
+    for (const annexe of annexesDesCreneaux(jourCreneaux, sequences ?? [], seances ?? [], materiels)) {
       try {
         const octets = octetsDeBase64(await api.fichierRead(annexe.fichier));
         const pages = [];
@@ -396,7 +396,7 @@ export default function Planning() {
         deroulement: nettoie(s?.deroulement ?? ""),
         prevu: (c.prevu ?? "").trim(),
         bilan: (c.bilan ?? "").trim(),
-        materiel: titresDuMateriel(c, materiels),
+        materiel: titresDuMateriel(c, sequences ?? [], seances ?? [], materiels),
       };
     };
     // Regroupe les créneaux qui se chevauchent (même horaire) → affichés côte à côte.
@@ -424,7 +424,7 @@ export default function Planning() {
     }));
     // Le matériel des séances de la semaine, joint au PDF à la suite du journal.
     const annexes = annexesDesCreneaux(
-      liste.filter((c) => ds.some((d) => c.date === iso(d))), seances ?? [], materiels,
+      liste.filter((c) => ds.some((d) => c.date === iso(d))), sequences ?? [], seances ?? [], materiels,
       (c) => { const d = ds.find((x) => iso(x) === c.date); return d ? libelleJour(d) : ""; },
     );
     try {
