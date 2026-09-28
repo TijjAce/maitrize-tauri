@@ -8,6 +8,7 @@ import { ajouterRecent, classer, lireRecents, ouverture } from "../palette";
 import { chargerVacances, prochaineVacance } from "../vacances";
 import { historique, nomDuLieu, precedent, recents as lieuxRecents } from "../historique";
 import { RACCOURCI_RETOUR, useHistorique } from "./Retour";
+import { EVT_NOUVEAU_RITUEL } from "../rituels";
 
 /**
  * Les familles de résultats, pour restreindre d'un clic.
@@ -398,6 +399,7 @@ export function CommandPalette() {
   const ACTIONS: Cmd[] = [
     { id: "a-newseq", ico: "➕", label: "Nouvelle séquence", sous: "Action · créer", famille: "action", run: goAction("/plan", "maitrize:nouvelle-sequence") },
     { id: "a-genia", ico: "✨", label: "Générer une séquence (IA)", sous: "Action · assistant", famille: "action", run: goAction("/assistant", "maitrize:generer-sequence") },
+    { id: "a-rituel", ico: "🔁", label: "Nouveau rituel", sous: "Action · cahier journal", famille: "action", run: goAction("/planning", EVT_NOUVEAU_RITUEL) },
     { id: "a-docia", ico: "📄", label: "Créer un document PDF (IA)", sous: "Action · assistant · fiche, mot aux familles, affiche", famille: "action", run: goAction("/assistant", "maitrize:document-ia") },
     { id: "a-assist", ico: "🪄", label: "Ouvrir l'assistant IA", sous: "Action", famille: "action", run: goNav("/assistant") },
     { id: "a-neuf", ico: "✨", label: "Quoi de neuf", sous: "Action · ce qui a changé dans l'app", famille: "action", run: () => { setOpen(false); montrerLesNouveautes(); } },

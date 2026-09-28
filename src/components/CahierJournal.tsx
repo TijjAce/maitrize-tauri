@@ -17,6 +17,8 @@ import { JeuForm } from "./JeuForm";
 import { ReglesDesJeux, useJeuxCites, useLudotheque } from "./ReglesDesJeux";
 import { jeuxCites, nomSousLeCurseur } from "../jeuxCites";
 import { ChoixSequence, SequencesCitees } from "./SequencesCitees";
+import { ChoixRituel, RituelForm, RituelsCites, useRituels } from "./Rituels";
+import { EVT_NOUVEAU_RITUEL, ligneDeRituel, nouveauRituel, rituelsCites, type Rituel } from "../rituels";
 import { insererLigne, ligneDeSequence, sequencesCitees, totalDesSeances } from "../sequencesCitees";
 import { SeanceReadView } from "../pages/SequenceDetail";
 import { ManuelDuJournal } from "./ManuelDuJournal";
@@ -242,6 +244,24 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
 
   // ── Les séquences citées dans le prévu ──
   const [sequencePour, setSequencePour] = React.useState<Creneau | null>(null);
+
+  // ── Les rituels : posés d'un clic, cités sous le prévu ──
+  const { rituels, enregistrer: enregistrerRituel } = useRituels();
+  const [rituelPour, setRituelPour] = React.useState<Creneau | null>(null);
+  const [rituelEdite, setRituelEdite] = React.useState<{ rituel: Rituel; nouveau: boolean } | null>(null);
+  const poserRituel = (c: Creneau, r: Rituel) => {
+    const prevu = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
+    const zone = zonesPrevu.current[c.id];
+    const curseur = zone && ouvertes.current.has(c.id) ? zone.selectionEnd : null;
+    modifier(c.id, "prevu", insererLigne(prevu, ligneDeRituel(r), curseur), true);
+    setRituelPour(null);
+  };
+  // « Nouveau rituel » depuis la palette ⌘K ou le bureau : le formulaire, ici.
+  React.useEffect(() => {
+    const h = () => setRituelEdite({ rituel: nouveauRituel(), nouveau: true });
+    window.addEventListener(EVT_NOUVEAU_RITUEL, h);
+    return () => window.removeEventListener(EVT_NOUVEAU_RITUEL, h);
+  }, []);
   const [seanceVue, setSeanceVue] = React.useState<Seance | null>(null);
   const poserSequence = (c: Creneau, sequence: Sequence, seance: Seance | null) => {
     const prevu = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
@@ -440,6 +460,9 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                         <button className="btn ghost sm" onClick={() => setSequencePour(c)} disabled={!sequences.length}
                           title={sequences.length ? "Poser une séquence ou une séance dans le prévu : ses objectifs et son déroulement s'afficheront ici" : "Aucune séquence pour l'instant"}>
                           📚 Séquence</button>
+                        <button className="btn ghost sm" onClick={() => setRituelPour(c)}
+                          title="Poser un rituel dans le prévu — la date, l'appel, le calcul mental — : son déroulement s'affichera ici. On le crée aussi là.">
+                          🔁 Rituel</button>
                         <button className="btn ghost sm" onClick={() => setManuelPour(c)}
                           title="Citer une page d'un manuel du coffre-fort, et y découper l'exercice : son image se pose dans le prévu et s'imprime avec le jour">
                           📖 Manuel</button>
@@ -477,6 +500,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                       <ReglesDesJeux jeux={citesDans(b.prevu)} onModifier={(jeu) => setJeuEdite({ jeu, nouveau: false })} />
                       <SequencesCitees citations={sequencesCitees(b.prevu, sequences, seances)} seances={seances}
                         onOuvrir={(s) => navigate(`/sequences/${s.id}`)} onVoirSeance={setSeanceVue} />
+                      <RituelsCites rituels={rituelsCites(b.prevu, rituels)} onModifier={(r) => setRituelEdite({ rituel: r, nouveau: false })} />
                       <MaterielDuJournal materiels={materielDuCreneau({ seanceId: c.seanceId, prevu: b.prevu }, sequences, seances, materiels ?? [])} />
                     </>
                   )}
@@ -486,6 +510,11 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
           </div>
         );
       })}
+      {rituelPour && <ChoixRituel onClose={() => setRituelPour(null)} onChoisir={(r) => poserRituel(rituelPour, r)} />}
+      {rituelEdite && (
+        <RituelForm rituel={rituelEdite.rituel} nouveau={rituelEdite.nouveau} onClose={() => setRituelEdite(null)}
+          onEnregistrer={(r) => { enregistrerRituel(r); if (rituelEdite.nouveau) toast(`Rituel « ${r.titre} » créé : posez-le dans un créneau avec 🔁 Rituel.`, { icone: "🔁", duree: 7000 }); }} />
+      )}
       {sequencePour && (
         <ChoixSequence sequences={sequences} seances={seances} matiere={sequencePour.matiere}
           onClose={() => setSequencePour(null)} onChoisir={(s, seance) => poserSequence(sequencePour, s, seance)} />
