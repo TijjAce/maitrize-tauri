@@ -148,6 +148,9 @@ describe("la feuille", () => {
     expect(html).toContain("Dessine les cubes qui font ce nombre.");
     expect(html.match(/class="cu-cadre"/g)).toHaveLength(3);
     expect(html).toContain(ecrireNombre(exos[0].n, "unites"));
+    // Les numéros d'exercice se retirent : deux nombres dans une case, c'est un de trop.
+    expect(html.match(/class="cu-num"/g)).toHaveLength(3);
+    expect(htmlCubes(exos, reglages({ exercice: "dessiner", nombre: 3, numeros: false }), 4)).not.toContain("cu-num");
     expect(html).not.toContain("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"2");
   });
 
