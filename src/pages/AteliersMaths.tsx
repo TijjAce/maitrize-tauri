@@ -17,6 +17,12 @@ import {
   additionsArbre, cartesCalcul, cartesNombres, htmlArbreCalcul, htmlCartesCalcul, htmlCartesNombres, htmlFractions, htmlJeuDeLOie,
   type ContenuOie, type FacesDe, type MaterielFraction, type Operation, type Representation, type RepresentationFraction,
 } from "../jeuxMaths";
+import { FAMILLES_CALCUL, PLAFONDS_MARTINIERE, REFLEXIONS, REGLAGES_CYCLE, REGLAGES_MARTINIERE, STYLE_MARTINIERE, calculsMartiniere, htmlMartiniere } from "../martiniere";
+import { OPERATIONS_COMPTE, REGLAGES_COMPTE, REGLAGES_COMPTE_CYCLE, STYLE_COMPTE, comptes, htmlCompteEstBon } from "../compteEstBon";
+import { REGLAGES_PYRAMIDES, STYLE_PYRAMIDES, htmlPyramides, type FormeCalcul } from "../pyramides";
+import { PRECISIONS_HEURE, REGLAGES_HEURE, STYLE_HEURE, heures, htmlHeure, type PrecisionHeure, type SensHeure } from "../heure";
+import { EXERCICES_NUMERATION, PLAFONDS_NUMERATION, REGLAGES_NUMERATION, STYLE_NUMERATION, htmlNumeration } from "../numeration";
+import { fr } from "../nombres";
 
 // ── Fabriquer › Mathématiques : ce que les livrets font fabriquer ─────────
 
@@ -331,6 +337,238 @@ export function JeuDeLOieTab() {
         <Boutons onTirage={r.evenements ? () => setGraine(graineAuHasard()) : undefined} onImprimer={() => imprimer("oie", "Jeu de l'oie", html)} onBureau={() => bureau("oie", "Jeu de l'oie", html)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_JEUX_MATHS} />}
+    />
+  );
+}
+
+// ── Calcul mental : procédé La Martinière ──
+
+/** Deux boutons, un choix : le cycle. */
+function Cycle({ valeur, onChange }: { valeur: 2 | 3; onChange: (c: 2 | 3) => void }) {
+  return (
+    <div className="seg">
+      <button type="button" className={valeur === 2 ? "active" : ""} onClick={() => onChange(2)}>Cycle 2</button>
+      <button type="button" className={valeur === 3 ? "active" : ""} onClick={() => onChange(3)}>Cycle 3</button>
+    </div>
+  );
+}
+
+const borne = (v: string, min: number, max: number, defaut: number) => Math.max(min, Math.min(max, Number(v) || defaut));
+
+export function MartiniereTab() {
+  const [r, maj] = useReglages("martiniere", REGLAGES_MARTINIERE);
+  const [graine, setGraine] = React.useState(graineAuHasard);
+  const series = React.useMemo(() => calculsMartiniere(r, graine), [r, graine]);
+  const html = React.useMemo(() => htmlMartiniere(series, r), [series, r]);
+  const familles = FAMILLES_CALCUL.filter((f) => f.cycles.includes(r.cycle));
+  const total = series.reduce((n, s) => n + s.length, 0);
+  const avecTables = r.familles.some((f) => f === "tables" || f === "divisions");
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0 }}>Calcul mental — procédé La Martinière</h3>
+        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
+          Je dis le calcul, on réfléchit, « écrivez », « montrez ». La fiche du maître avec les réponses, et les ardoises papier des élèves à la suite.
+        </p>
+        <Field label="Cycle"><Cycle valeur={r.cycle} onChange={(cycle) => maj({ cycle, ...REGLAGES_CYCLE[cycle] })} /></Field>
+        <Field label="Familles de calculs">
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {familles.map((f) => (
+              <Coche key={f.id} on={r.familles.includes(f.id)} libelle={f.libelle}
+                onChange={(v) => maj({ familles: v ? [...r.familles, f.id] : r.familles.filter((x) => x !== f.id) })} />
+            ))}
+          </div>
+        </Field>
+        <Field label="Nombres jusqu'à">
+          <Select value={r.jusqua} onChange={(e) => maj({ jusqua: Number(e.target.value) })}>
+            {PLAFONDS_MARTINIERE.map((p) => <option key={p} value={p}>{fr(p)}</option>)}
+          </Select>
+        </Field>
+        {avecTables && (
+          <Field label="Tables"><Chips liste={[2, 3, 4, 5, 6, 7, 8, 9, 10]} choisis={r.tables} onChange={(v) => maj({ tables: [...v].sort((a, b) => a - b) })} /></Field>
+        )}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <Field label="Calculs par série"><Input type="number" min={5} max={20} value={r.parSerie} onChange={(e) => maj({ parSerie: borne(e.target.value, 5, 20, 10) })} /></Field>
+          <Field label="Séries"><Input type="number" min={1} max={5} value={r.series} onChange={(e) => maj({ series: borne(e.target.value, 1, 5, 2) })} /></Field>
+        </div>
+        <Field label="Temps de réflexion avant « écrivez »">
+          <Select value={r.reflexion} onChange={(e) => maj({ reflexion: Number(e.target.value) })}>
+            {REFLEXIONS.map((s) => <option key={s} value={s}>{s} secondes</option>)}
+          </Select>
+        </Field>
+        <Coche on={r.ardoises} libelle="Les ardoises papier des élèves, à la suite" onChange={(v) => maj({ ardoises: v })} />
+        <div className="meta" style={{ fontSize: 12.5 }}>{total} calculs{total === 0 && r.familles.length === 0 ? " — choisissez au moins une famille" : ""}.</div>
+        <Boutons peut={total > 0} onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("martiniere", "Calcul mental", html, STYLE_MARTINIERE)} onBureau={() => bureau("martiniere", "Calcul mental", html, STYLE_MARTINIERE)} />
+      </>}
+      droite={<ApercuFeuille html={html} style={STYLE_MARTINIERE} />}
+    />
+  );
+}
+
+// ── Le compte est bon ──
+
+export function CompteEstBonTab() {
+  const [r, maj] = useReglages("compteEstBon", REGLAGES_COMPTE);
+  const [graine, setGraine] = React.useState(graineAuHasard);
+  const liste = React.useMemo(() => comptes(r, graine), [r, graine]);
+  const html = React.useMemo(() => htmlCompteEstBon(liste, r), [liste, r]);
+  const ids = OPERATIONS_COMPTE.map((o) => o.id);
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0 }}>Le compte est bon</h3>
+        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
+          Une cible, quelques nombres, les opérations permises : on cherche un chemin, on écrit ses calculs. Une solution dans le corrigé.
+        </p>
+        <Field label="Cycle"><Cycle valeur={r.cycle} onChange={(cycle) => maj({ cycle, ...REGLAGES_COMPTE_CYCLE[cycle] })} /></Field>
+        <Field label="Opérations permises">
+          <Chips liste={ids} choisis={r.operations} onChange={(v) => maj({ operations: ids.filter((id) => v.includes(id)) })}
+            libelle={(id) => OPERATIONS_COMPTE.find((o) => o.id === id)!.signe} />
+        </Field>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <Field label="Nombres par carte"><Input type="number" min={3} max={6} value={r.nombres} onChange={(e) => maj({ nombres: borne(e.target.value, 3, 6, 4) })} /></Field>
+          <Field label="Cartes"><Input type="number" min={1} max={12} value={r.problemes} onChange={(e) => maj({ problemes: borne(e.target.value, 1, 12, 6) })} /></Field>
+        </div>
+        <div className="meta" style={{ fontSize: 12.5 }}>{liste.length} cartes{liste.length < r.problemes ? " — pas davantage avec ces réglages" : ""}.</div>
+        <Boutons peut={liste.length > 0} onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("compteEstBon", "Le compte est bon", html, STYLE_COMPTE)} onBureau={() => bureau("compteEstBon", "Le compte est bon", html, STYLE_COMPTE)} />
+      </>}
+      droite={<ApercuFeuille html={html} style={STYLE_COMPTE} />}
+    />
+  );
+}
+
+// ── Pyramides et carrés magiques ──
+
+export function PyramidesTab() {
+  const [r, maj] = useReglages("pyramides", REGLAGES_PYRAMIDES);
+  const [graine, setGraine] = React.useState(graineAuHasard);
+  const html = React.useMemo(() => htmlPyramides(r, graine), [r, graine]);
+  const titre = r.forme === "pyramide" ? "Pyramides de nombres" : "Carrés magiques";
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0 }}>Pyramides et carrés magiques</h3>
+        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
+          Chaque brique est la somme des deux du dessous ; chaque ligne du carré fait la même somme. À compléter, le corrigé à la suite.
+        </p>
+        <Field label="Forme">
+          <Select value={r.forme} onChange={(e) => { const forme = e.target.value as FormeCalcul; maj({ forme, ...(forme === "carre" && r.jusqua < 10 ? { jusqua: 10 } : {}) }); }}>
+            <option value="pyramide">Pyramides de nombres</option><option value="carre">Carrés magiques</option>
+          </Select>
+        </Field>
+        {r.forme === "pyramide" ? (<>
+          <Field label="Étages">
+            <Select value={r.etages} onChange={(e) => maj({ etages: Number(e.target.value) })}>
+              {[3, 4, 5, 6].map((n) => <option key={n} value={n}>{n} étages</option>)}
+            </Select>
+          </Field>
+          <Field label="Briques données">
+            <Select value={r.trous} onChange={(e) => maj({ trous: e.target.value as "bas" | "meles" })}>
+              <option value="bas">La base : on additionne en montant</option><option value="meles">Mêlées : on ajoute et on retranche</option>
+            </Select>
+          </Field>
+          <Field label="Nombres de la base jusqu'à">
+            <Select value={r.jusqua} onChange={(e) => maj({ jusqua: Number(e.target.value) })}>
+              {[5, 10, 20, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+            </Select>
+          </Field>
+        </>) : (<>
+          <Field label="Taille">
+            <Select value={r.taille} onChange={(e) => maj({ taille: Number(e.target.value) as 3 | 4 })}>
+              <option value={3}>3 × 3</option><option value={4}>4 × 4</option>
+            </Select>
+          </Field>
+          <Field label="Nombres jusqu'à">
+            <Select value={r.jusqua} onChange={(e) => maj({ jusqua: Number(e.target.value) })}>
+              {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+            </Select>
+          </Field>
+        </>)}
+        <Field label="Combien par feuille"><Input type="number" min={1} max={12} value={r.combien} onChange={(e) => maj({ combien: borne(e.target.value, 1, 12, 6) })} style={{ width: 80 }} /></Field>
+        <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("pyramides", titre, html, STYLE_PYRAMIDES)} onBureau={() => bureau("pyramides", titre, html, STYLE_PYRAMIDES)} />
+      </>}
+      droite={<ApercuFeuille html={html} style={STYLE_PYRAMIDES} />}
+    />
+  );
+}
+
+// ── Lire l'heure ──
+
+export function HeureTab() {
+  const [r, maj] = useReglages("heure", REGLAGES_HEURE);
+  const [graine, setGraine] = React.useState(graineAuHasard);
+  const liste = React.useMemo(() => heures(r, graine), [r, graine]);
+  const html = React.useMemo(() => htmlHeure(liste, r), [liste, r]);
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0 }}>Lire l'heure</h3>
+        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
+          Des horloges à lire, ou des cadrans vides où dessiner l'heure demandée — les heures pile d'abord, puis les demies, les quarts, les cinq minutes.
+        </p>
+        <Field label="Précision">
+          <Select value={r.precision} onChange={(e) => maj({ precision: e.target.value as PrecisionHeure })}>
+            {PRECISIONS_HEURE.map((p) => <option key={p.id} value={p.id}>{p.libelle}</option>)}
+          </Select>
+        </Field>
+        <Field label="Exercice">
+          <Select value={r.sens} onChange={(e) => maj({ sens: e.target.value as SensHeure })}>
+            <option value="lire">Lire l'heure sur le cadran</option><option value="dessiner">Dessiner les aiguilles</option><option value="mixte">L'un et l'autre, en alternance</option>
+          </Select>
+        </Field>
+        <Coche on={r.apresMidi} libelle="L'après-midi aussi : 19 h 30 se lit comme 7 h 30" onChange={(v) => maj({ apresMidi: v })} />
+        <Field label="Horloges"><Input type="number" min={1} max={24} value={r.combien} onChange={(e) => maj({ combien: borne(e.target.value, 1, 24, 9) })} style={{ width: 80 }} /></Field>
+        <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("heure", "Lire l'heure", html, STYLE_HEURE)} onBureau={() => bureau("heure", "Lire l'heure", html, STYLE_HEURE)} />
+      </>}
+      droite={<ApercuFeuille html={html} style={STYLE_HEURE} />}
+    />
+  );
+}
+
+// ── Grands nombres et décimaux ──
+
+export function NumerationTab() {
+  const [r, maj] = useReglages("numeration", REGLAGES_NUMERATION);
+  const [graine, setGraine] = React.useState(graineAuHasard);
+  const html = React.useMemo(() => htmlNumeration(r, graine), [r, graine]);
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0 }}>Grands nombres et décimaux</h3>
+        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
+          Tableau de numération, écriture en lettres, décomposition, comparaison, encadrement : la feuille du cycle 3, avec d'autres nombres à chaque tirage.
+        </p>
+        <Field label="Nombres">
+          <div className="seg">
+            <button type="button" className={!r.decimaux ? "active" : ""} onClick={() => maj({ decimaux: false, jusqua: r.jusqua < 10000 ? 10000 : r.jusqua })}>Entiers</button>
+            <button type="button" className={r.decimaux ? "active" : ""} onClick={() => maj({ decimaux: true, jusqua: 1000 })}>Décimaux</button>
+          </div>
+        </Field>
+        {r.decimaux ? (
+          <Field label="Décimales">
+            <Select value={r.decimales} onChange={(e) => maj({ decimales: Number(e.target.value) as 1 | 2 | 3 })}>
+              <option value={1}>les dixièmes</option><option value={2}>les centièmes</option><option value={3}>les millièmes</option>
+            </Select>
+          </Field>
+        ) : (
+          <Field label="Jusqu'à">
+            <Select value={r.jusqua} onChange={(e) => maj({ jusqua: Number(e.target.value) })}>
+              {PLAFONDS_NUMERATION.map((p) => <option key={p} value={p}>{fr(p)}</option>)}
+            </Select>
+          </Field>
+        )}
+        <Field label="Exercices">
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {EXERCICES_NUMERATION.map((e) => (
+              <Coche key={e.id} on={r.exercices.includes(e.id)} libelle={e.libelle}
+                onChange={(v) => maj({ exercices: v ? [...r.exercices, e.id] : r.exercices.filter((x) => x !== e.id) })} />
+            ))}
+          </div>
+        </Field>
+        <Field label="Nombres par exercice"><Input type="number" min={1} max={10} value={r.combien} onChange={(e) => maj({ combien: borne(e.target.value, 1, 10, 5) })} style={{ width: 80 }} /></Field>
+        <Boutons peut={r.exercices.length > 0} onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("numeration", "Numération", html, STYLE_NUMERATION)} onBureau={() => bureau("numeration", "Numération", html, STYLE_NUMERATION)} />
+      </>}
+      droite={<ApercuFeuille html={html} style={STYLE_NUMERATION} />}
     />
   );
 }
