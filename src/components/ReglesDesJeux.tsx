@@ -3,6 +3,8 @@ import { api, Jeu } from "../api";
 import { useAsync } from "./ui";
 import { JeuForm } from "./JeuForm";
 import { infosDuJeu, jeuxCites } from "../jeuxCites";
+import { masqueJeu } from "../journalMasques";
+import { CaseImpression } from "./MasquesDuJournal";
 
 // ── Règles des jeux cités ──────────────────────────────────────────────────
 //
@@ -35,7 +37,11 @@ export function useJeuxCites(jeux: Jeu[]): (texte: string) => Jeu[] {
 /** Les jeux repliés, gardés pendant la séance de travail : replié ici, replié partout. */
 const replies = new Set<string>();
 
-function RegleDuJeu({ jeu, onModifier }: { jeu: Jeu; onModifier: () => void }) {
+function RegleDuJeu({ jeu, onModifier, masque = false, onMasquer }: {
+  jeu: Jeu; onModifier: () => void;
+  /** Dans le cahier journal : la règle reste à l'écran, mais ne s'imprime pas. */
+  masque?: boolean; onMasquer?: () => void;
+}) {
   const [replie, setReplie] = React.useState(() => replies.has(jeu.id));
   const [entiere, setEntiere] = React.useState(false);
   const regle = jeu.regles.trim();
@@ -46,13 +52,14 @@ function RegleDuJeu({ jeu, onModifier }: { jeu: Jeu; onModifier: () => void }) {
     if (suite) replies.add(jeu.id); else replies.delete(jeu.id);
   };
   return (
-    <div className="regle-app">
+    <div className={masque ? "regle-app non-imprime" : "regle-app"}>
       <div className="regle-app-tete">
         <button className="regle-app-titre" onClick={basculer} aria-expanded={!replie}
           title={replie ? "Afficher la règle" : "Replier la règle"}>
           <span aria-hidden="true" className="regle-app-fleche">{replie ? "▸" : "▾"}</span> 🎲 {jeu.titre}
         </button>
         <span className="regle-app-infos">{infosDuJeu(jeu)}</span>
+        {onMasquer && <CaseImpression masque={masque} onChange={onMasquer} />}
         <button className="btn ghost sm" onClick={onModifier} title="Modifier le jeu et sa règle dans la ludothèque"
           aria-label={`Modifier la règle de ${jeu.titre}`}>✏️</button>
       </div>
@@ -76,11 +83,18 @@ function RegleDuJeu({ jeu, onModifier }: { jeu: Jeu; onModifier: () => void }) {
 }
 
 /** Les règles des jeux donnés ; rien s'il n'y en a pas. */
-export function ReglesDesJeux({ jeux, onModifier }: { jeux: Jeu[]; onModifier: (j: Jeu) => void }) {
+export function ReglesDesJeux({ jeux, onModifier, masques, onMasquer }: {
+  jeux: Jeu[]; onModifier: (j: Jeu) => void;
+  /** Dans le cahier journal : ce que ce créneau cite sans l'imprimer, et de quoi le changer. */
+  masques?: readonly string[]; onMasquer?: (cle: string) => void;
+}) {
   if (!jeux.length) return null;
   return (
     <div className="regles-app" aria-label="Règles des jeux cités">
-      {jeux.map((j) => <RegleDuJeu key={j.id} jeu={j} onModifier={() => onModifier(j)} />)}
+      {jeux.map((j) => (
+        <RegleDuJeu key={j.id} jeu={j} onModifier={() => onModifier(j)}
+          masque={masques?.includes(masqueJeu(j.id))} onMasquer={onMasquer ? () => onMasquer(masqueJeu(j.id)) : undefined} />
+      ))}
     </div>
   );
 }

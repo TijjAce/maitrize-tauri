@@ -21,6 +21,7 @@ import { annexesDesCreneaux, annexesHtml, echellesDesReglages, moletteDuJournalH
 import { nombreDePages, rendrePage } from "../pdfRendu";
 import { CLE_RITUELS, avecRituels, lireRituels, rituelsCites, rituelsImprimes } from "../rituels";
 import { IndicateurZoom, useZoomPince } from "../components/ZoomPince";
+import { aImprimer, masqueJeu, masqueRituel, masqueSequence, masquesDesReglages } from "../journalMasques";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const JOURS7 = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -212,7 +213,10 @@ export default function Planning() {
     const reImg = /\[img:([^\]]+)\]/g;
     // Le matériel des séances : annoncé dans le créneau, joint à la suite, à son échelle.
     const materiels = await api.materielList().catch((): MaterielItem[] => []);
-    const echelles = echellesDesReglages(await api.settingsAll().catch(() => ({})));
+    const reglages = await api.settingsAll().catch((): Record<string, string> => ({}));
+    const echelles = echellesDesReglages(reglages);
+    // Ce que chaque créneau cite sans l'imprimer : la case cochée dans le journal.
+    const masques = masquesDesReglages(reglages);
     // Les rituels cités dans le prévu : leur déroulement s'imprime sous lui.
     const rituels = lireRituels(await api.settingGet(CLE_RITUELS).catch(() => null));
 
@@ -298,9 +302,9 @@ export default function Planning() {
         grid.length ? `<div class="fl" style="margin-top:4px">Tableau :</div><table>${colonnesDuTableau(grid[0])}${grid.map((row, r) => `<tr>${row.map((cell) => r === 0 ? `<th>${escapeHtml(cell)}</th>` : `<td>${rendreCell(cell)}</td>`).join("")}</tr>`).join("")}</table>` : "",
         illus.length ? `<div class="imgs">${illus.map(imgTag).join("")}</div>` : "",
         c.prevu?.trim() ? `<div class="f"><span class="fl">Prévu :</span></div><div class="txt prevu">${rendreCell(c.prevu.trim())}</div>` : "",
-        reglesImprimees(jeuxCites(`${c.prevu ?? ""}\n${deroul}`, jeux)),
-        sequencesImprimees(sequencesCitees(c.prevu ?? "", sequences ?? [], seances ?? []), seances ?? []),
-        rituelsImprimes(rituelsCites(c.prevu ?? "", rituels)),
+        reglesImprimees(aImprimer(jeuxCites(`${c.prevu ?? ""}\n${deroul}`, jeux), (j) => masqueJeu(j.id), masques[c.id] ?? [])),
+        sequencesImprimees(aImprimer(sequencesCitees(c.prevu ?? "", sequences ?? [], seances ?? []), (x) => masqueSequence(x.sequence.id, x.seance?.id), masques[c.id] ?? []), seances ?? []),
+        rituelsImprimes(aImprimer(rituelsCites(c.prevu ?? "", rituels), (r) => masqueRituel(r.id), masques[c.id] ?? [])),
         c.bilan?.trim() ? `<div class="f"><span class="fl">Fait · bilan :</span></div><div class="txt">${escapeHtml(c.bilan.trim())}</div>` : "",
       ].join("");
       return `<div class="col">${head}${body ? `<div class="body">${body}</div>` : ""}</div>`;
@@ -391,7 +395,10 @@ export default function Planning() {
     reload();
     if (vue === "jour") { await imprimerJourRiche(liste); return; }
     const materiels = await api.materielList().catch((): MaterielItem[] => []);
-    const echelles = echellesDesReglages(await api.settingsAll().catch(() => ({})));
+    const reglages = await api.settingsAll().catch((): Record<string, string> => ({}));
+    const echelles = echellesDesReglages(reglages);
+    // Ce que chaque créneau cite sans l'imprimer : la case cochée dans le journal.
+    const masques = masquesDesReglages(reglages);
     const rituels = lireRituels(await api.settingGet(CLE_RITUELS).catch(() => null));
     const nettoie = (t: string) => (t || "").replace(/\[(img|cite):[^\]]+\]/g, "").replace(/\n{3,}/g, "\n\n").trim();
     const info = (c: Creneau) => {
@@ -403,7 +410,7 @@ export default function Planning() {
         objectifs: nettoie(s?.objectifs ?? ""),
         deroulement: nettoie(s?.deroulement ?? ""),
         // Le PDF n'a que du texte : le déroulement des rituels cités suit le prévu.
-        prevu: avecRituels((c.prevu ?? "").trim(), rituels),
+        prevu: avecRituels((c.prevu ?? "").trim(), aImprimer(rituels, (r) => masqueRituel(r.id), masques[c.id] ?? [])),
         bilan: (c.bilan ?? "").trim(),
         materiel: titresDuMateriel(c, sequences ?? [], seances ?? [], materiels),
       };
