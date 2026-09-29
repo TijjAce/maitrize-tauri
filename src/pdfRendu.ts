@@ -68,32 +68,94 @@ export interface OptionsRendu {
   largeur?: number;
 }
 
+/** Une page du document, dessinée sur une toile à la largeur voulue. */
+async function toileDeLaPage(doc: TypesPdfjs.PDFDocumentProxy, numero: number, largeur: number): Promise<HTMLCanvasElement> {
+  const page = await doc.getPage(Math.min(Math.max(1, numero), doc.numPages));
+  const base = page.getViewport({ scale: 1 });
+  const viewport = page.getViewport({ scale: largeur / base.width });
+  const toile = document.createElement("canvas");
+  toile.width = Math.round(viewport.width);
+  toile.height = Math.round(viewport.height);
+  const ctx = toile.getContext("2d");
+  if (!ctx) throw new Error("Rendu impossible dans cette fenêtre.");
+  // Fond blanc : un PDF transparent donnerait une image noire une fois
+  // aplatie, que le modèle ne saurait pas lire.
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, toile.width, toile.height);
+  await page.render({ canvasContext: ctx, viewport, canvas: toile } as any).promise;
+  return toile;
+}
+
+const enPng = (toile: HTMLCanvasElement, numero: number): PageRendue => {
+  const url = toile.toDataURL("image/png");
+  return { numero, image: url.slice(url.indexOf(",") + 1), largeur: toile.width, hauteur: toile.height };
+};
+
 /** Rend une page (numérotée à partir de 1) en PNG base64. */
 export async function rendrePage(octets: Uint8Array, numero: number, options: OptionsRendu = {}): Promise<PageRendue> {
   const { rogner = true, largeur = LARGEUR } = options;
   const doc = await (await pdfjsCharge()).getDocument({ data: copie(octets) }).promise;
   try {
-    const page = await doc.getPage(Math.min(Math.max(1, numero), doc.numPages));
-    const base = page.getViewport({ scale: 1 });
-    const viewport = page.getViewport({ scale: largeur / base.width });
-    const toile = document.createElement("canvas");
-    toile.width = Math.round(viewport.width);
-    toile.height = Math.round(viewport.height);
-    const ctx = toile.getContext("2d");
-    if (!ctx) throw new Error("Rendu impossible dans cette fenêtre.");
-    // Fond blanc : un PDF transparent donnerait une image noire une fois
-    // aplatie, que le modèle ne saurait pas lire.
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, toile.width, toile.height);
-    await page.render({ canvasContext: ctx, viewport, canvas: toile } as any).promise;
-    const cadree = rogner ? rognerMarges(toile) : toile;
-    const url = cadree.toDataURL("image/png");
-    return {
-      numero,
-      image: url.slice(url.indexOf(",") + 1),
-      largeur: cadree.width,
-      hauteur: cadree.height,
-    };
+    const toile = await toileDeLaPage(doc, numero, largeur);
+    return enPng(rogner ? rognerMarges(toile) : toile, numero);
+  } finally {
+    doc.destroy();
+  }
+}
+
+// ── Les pages à joindre à une impression ──────────────────────────────────
+
+export interface Cadre { x0: number; y0: number; x1: number; y1: number }
+
+/**
+ * Le cadrage des pages d'un même document, pour l'impression.
+ *
+ * Chaque page est réduite à la hauteur de son contenu : une deuxième page
+ * où ne débordent que deux exercices ne prend plus une feuille entière.
+ * Toutes gardent la même largeur — celle du contenu le plus large — pour
+ * rester à la même échelle d'une page à l'autre. Une page vide ne s'imprime
+ * pas ; une page sans marge unie garde sa pleine page, et les autres avec
+ * elle leur pleine largeur.
+ */
+export function cadragesAImprimer(contenus: (Cadre | "vide" | "entiere")[], largeur: number, hauteurs: number[]): (Cadre | null)[] {
+  const marge = Math.round(largeur * 0.012);
+  const cadres = contenus.filter((c): c is Cadre => typeof c === "object");
+  const pleine = contenus.some((c) => c === "entiere") || !cadres.length;
+  const gauche = pleine ? 0 : Math.max(0, Math.min(...cadres.map((c) => c.x0)) - marge);
+  const droite = pleine ? largeur - 1 : Math.min(largeur - 1, Math.max(...cadres.map((c) => c.x1)) + marge);
+  return contenus.map((c, i) => {
+    if (c === "vide") return null;
+    if (c === "entiere") return { x0: 0, y0: 0, x1: largeur - 1, y1: hauteurs[i] - 1 };
+    return { x0: gauche, y0: Math.max(0, c.y0 - marge), x1: droite, y1: Math.min(hauteurs[i] - 1, c.y1 + marge) };
+  });
+}
+
+/**
+ * Les pages d'un PDF à joindre à une impression, cadrées sur leur contenu
+ * (voir `cadragesAImprimer`). Les pages vides n'y sont pas.
+ */
+export async function rendrePagesAImprimer(octets: Uint8Array, largeur = 1500): Promise<PageRendue[]> {
+  const doc = await (await pdfjsCharge()).getDocument({ data: copie(octets) }).promise;
+  try {
+    const toiles: HTMLCanvasElement[] = [];
+    for (let n = 1; n <= doc.numPages; n++) toiles.push(await toileDeLaPage(doc, n, largeur));
+    const cadrages = cadragesAImprimer(toiles.map((t) => cadreDuContenu(t)), toiles[0]?.width ?? largeur, toiles.map((t) => t.height));
+    const pages: PageRendue[] = [];
+    toiles.forEach((toile, i) => {
+      const c = cadrages[i];
+      if (!c) return;
+      const l = Math.min(toile.width - c.x0, c.x1 - c.x0 + 1), h = c.y1 - c.y0 + 1;
+      if (l <= 0 || h <= 0) return;
+      const sortie = document.createElement("canvas");
+      sortie.width = l; sortie.height = h;
+      const ctx = sortie.getContext("2d");
+      if (!ctx) { pages.push(enPng(toile, i + 1)); return; }
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, l, h);
+      ctx.drawImage(toile, c.x0, c.y0, l, h, 0, 0, l, h);
+      pages.push(enPng(sortie, i + 1));
+    });
+    return pages;
   } finally {
     doc.destroy();
   }
@@ -119,35 +181,10 @@ export async function octetsDuFichier(f: File): Promise<Uint8Array> {
  * pas blanc » y trouverait du contenu partout, donc ne rognerait rien.
  */
 export function rognerMarges(toile: HTMLCanvasElement, tolerance = 12): HTMLCanvasElement {
-  const ctx = toile.getContext("2d");
-  if (!ctx) return toile;
   const { width: L, height: H } = toile;
-  let data: Uint8ClampedArray;
-  try { data = ctx.getImageData(0, 0, L, H).data; } catch { return toile; }
-
-  const pixel = (x: number, y: number) => {
-    const i = (y * L + x) * 4;
-    return [data[i], data[i + 1], data[i + 2]] as const;
-  };
-  // Fond = la couleur des coins. Si les coins divergent, la page n'a pas de
-  // marge uniforme et il n'y a rien à rogner.
-  const coins = [pixel(0, 0), pixel(L - 1, 0), pixel(0, H - 1), pixel(L - 1, H - 1)];
-  const [fr, fg, fb] = coins[0];
-  const proche = (c: readonly [number, number, number]) =>
-    Math.abs(c[0] - fr) <= tolerance && Math.abs(c[1] - fg) <= tolerance && Math.abs(c[2] - fb) <= tolerance;
-  if (!coins.every(proche)) return toile;
-
-  let x0 = L, y0 = H, x1 = -1, y1 = -1;
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < L; x++) {
-      if (proche(pixel(x, y))) continue;
-      if (x < x0) x0 = x;
-      if (x > x1) x1 = x;
-      if (y < y0) y0 = y;
-      if (y > y1) y1 = y;
-    }
-  }
-  if (x1 < x0 || y1 < y0) return toile; // page entièrement unie
+  const contenu = cadreDuContenu(toile, tolerance);
+  if (typeof contenu !== "object") return toile;
+  let { x0, y0, x1, y1 } = contenu;
 
   const marge = Math.round(Math.min(L, H) * 0.01);
   x0 = Math.max(0, x0 - marge); y0 = Math.max(0, y0 - marge);
@@ -161,6 +198,43 @@ export function rognerMarges(toile: HTMLCanvasElement, tolerance = 12): HTMLCanv
   if (!sctx) return toile;
   sctx.drawImage(toile, x0, y0, l, h, 0, 0, l, h);
   return sortie;
+}
+
+/**
+ * Le rectangle du contenu d'une page : « vide » si elle est unie d'un bord à
+ * l'autre, « entiere » si elle n'a pas de marge unie où couper.
+ */
+export function cadreDuContenu(toile: HTMLCanvasElement, tolerance = 12): Cadre | "vide" | "entiere" {
+  const ctx = toile.getContext("2d");
+  if (!ctx) return "entiere";
+  const { width: L, height: H } = toile;
+  let data: Uint8ClampedArray;
+  try { data = ctx.getImageData(0, 0, L, H).data; } catch { return "entiere"; }
+
+  const pixel = (x: number, y: number) => {
+    const i = (y * L + x) * 4;
+    return [data[i], data[i + 1], data[i + 2]] as const;
+  };
+  // Fond = la couleur des coins. Si les coins divergent, la page n'a pas de
+  // marge uniforme et il n'y a rien à rogner.
+  const coins = [pixel(0, 0), pixel(L - 1, 0), pixel(0, H - 1), pixel(L - 1, H - 1)];
+  const [fr, fg, fb] = coins[0];
+  const proche = (c: readonly [number, number, number]) =>
+    Math.abs(c[0] - fr) <= tolerance && Math.abs(c[1] - fg) <= tolerance && Math.abs(c[2] - fb) <= tolerance;
+  if (!coins.every(proche)) return "entiere";
+
+  let x0 = L, y0 = H, x1 = -1, y1 = -1;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < L; x++) {
+      if (proche(pixel(x, y))) continue;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  if (x1 < x0 || y1 < y0) return "vide";
+  return { x0, y0, x1, y1 };
 }
 
 /**
