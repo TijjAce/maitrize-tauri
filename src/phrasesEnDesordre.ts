@@ -50,7 +50,7 @@ export function htmlPhrasesEnDesordre(liste: PhraseMelee[], r: ReglagesPhrases):
   for (let i = 0; i < Math.max(1, liste.length); i += 6) {
     pages.push(`<div class="page">${regle}${liste.slice(i, i + 6).map((p, j) => bloc(p, i + j)).join("")}</div>`);
   }
-  const corrige = `<div class="page"><div class="titre">Phrases en désordre — corrigé</div><ol class="pe-corrige">${liste.map((p) => `<li>${texte(p.phrase)}</li>`).join("")}</ol></div>`;
+  const corrige = `<div class="page corrige"><div class="titre">Phrases en désordre — corrigé</div><ol class="pe-corrige">${liste.map((p) => `<li>${texte(p.phrase)}</li>`).join("")}</ol></div>`;
   return feuille(pages.join("") + corrige, "pe");
 }
 

@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { OPTIONS_FEUILLE, appliquerOptionsFeuille } from "./optionsFeuille";
 import {
   REGLAGES_CUBES, decomposer, dessinerCubes, ecrireNombre, enChiffres, exercicesCubes, groupementsJusqua, htmlCubes,
   piece, taille, teinte, tirerNombres, type ReglagesCubes,
@@ -121,7 +122,7 @@ describe("le dessin", () => {
 
 describe("la feuille", () => {
   it("écrire : les cubes, puis une ligne de réponse par écriture, et le corrigé à part", () => {
-    const r = reglages({ nombre: 4, ecritures: ["chiffres", "unites"], corrige: true, titre: "Les nombres en cubes" });
+    const r = reglages({ nombre: 4, ecritures: ["chiffres", "unites"], titre: "Les nombres en cubes" });
     const exos = exercicesCubes(r, 1);
     const html = htmlCubes(exos, r, 1);
     expect(html).toContain("Compte les cubes et écris le nombre.");
@@ -136,10 +137,12 @@ describe("la feuille", () => {
     expect(html).not.toContain("= 100");
     expect(html).toContain("Corrigé");
     expect(html).toContain(ecrireNombre(exos[0].n, "lettres"));
-    // Sans légende ni corrigé, rien de tout cela.
+    // Le corrigé est une page marquée : la case « correction » du bandeau la retire d'un geste.
+    expect(html).toContain('<div class="page cu-corrige corrige">');
+    expect(appliquerOptionsFeuille(html, { ...OPTIONS_FEUILLE, corrige: false })).not.toContain("Corrigé");
+    // Sans légende, pas de légende.
     const nue = htmlCubes(exos, reglages({ nombre: 4, legende: false }), 1);
     expect(nue).not.toContain("cu-legende");
-    expect(nue).not.toContain("Corrigé");
   });
 
   it("dessiner : le nombre écrit et un cadre vide", () => {

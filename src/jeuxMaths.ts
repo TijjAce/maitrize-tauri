@@ -118,7 +118,7 @@ export function htmlCartesCalcul(cartes: CarteCalcul[], r: ReglagesCalcul): stri
     const versos = cartes.map((c) => carte(`<div class="ca-reponse">${c.reponse}</div>`));
     return feuille(pagesRectoVerso(rectos, versos, { colonnes: 4, lignes: 5 }, regle), "ca");
   }
-  const corrige = `<div class="page"><div class="titre">Corrigé</div><div class="ca-corrige">${cartes.map((c) => `<span>${escapeHtml(c.question)} = <b>${c.reponse}</b></span>`).join("")}</div></div>`;
+  const corrige = `<div class="page corrige"><div class="titre">Corrigé</div><div class="ca-corrige">${cartes.map((c) => `<span>${escapeHtml(c.question)} = <b>${c.reponse}</b></span>`).join("")}</div></div>`;
   return feuille(`${pagesDeCartes(rectos, { colonnes: 4, lignes: 5 }, regle)}${corrige}`, "ca");
 }
 

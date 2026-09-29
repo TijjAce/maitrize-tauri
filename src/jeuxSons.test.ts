@@ -73,7 +73,7 @@ describe("la chasse à l'intrus", () => {
     const ba = lignes.find((l) => l.cle === "ba");
     expect(ba).toBeDefined();
     expect(ba!.mots.filter((m) => m !== ba!.intrus).map((m) => m.mot).sort()).toEqual(["ballon", "banane", "bateau"]);
-    expect(htmlIntrus(lignes, {}, "attaque", false, true)).toContain("corrigé");
+    expect(htmlIntrus(lignes, {}, "attaque", false)).toContain("corrigé");
   });
 
   it("sait aussi jouer sur la rime", () => {

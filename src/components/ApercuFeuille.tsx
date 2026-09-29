@@ -4,6 +4,8 @@ import { AtelierContext } from "./AtelierContext";
 import { useConsigneAtelier } from "./ConsigneAtelier";
 import { useConsignesEnPictos } from "./ConsigneEnPictos";
 import { usePictosAtelier } from "./PictosAtelier";
+import { useOptionsFeuille } from "./OptionsFeuille";
+import { appliquerOptionsFeuille, contenuDeLaFeuille, feuillesPubliees } from "../optionsFeuille";
 import { consigneParDefaut, consignesParDefaut, remplacerConsigne } from "../consigneAtelier";
 
 // La feuille telle qu'elle s'imprimera : même HTML, même style que le
@@ -15,7 +17,10 @@ export function ApercuFeuille({ html, style }: { html: string; style: string }) 
   const consigne = useConsigneAtelier(atelier);
   // L'éditeur du bandeau propose la consigne d'origine : c'est l'aperçu qui la connaît.
   React.useEffect(() => { consignesParDefaut.publier(atelier, consigneParDefaut(html)); }, [atelier, html]);
-  const remplace = React.useMemo(() => remplacerConsigne(html, consigne), [html, consigne]);
+  // Les cases du bandeau ne proposent que ce que la feuille contient : c'est l'aperçu qui le sait.
+  React.useEffect(() => { feuillesPubliees.publier(atelier, contenuDeLaFeuille(html)); }, [atelier, html]);
+  const { options } = useOptionsFeuille(atelier);
+  const remplace = React.useMemo(() => appliquerOptionsFeuille(remplacerConsigne(html, consigne), options), [html, consigne, options]);
   const { pictos: ajoutes } = usePictosAtelier(atelier);
   const pictos = useConsignesEnPictos(remplace, ajoutes);
   return (

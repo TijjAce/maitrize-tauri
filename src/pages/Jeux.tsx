@@ -11,6 +11,7 @@ import { LectureSonsTab } from "./LectureSons";
 import { CompetencesAtelier } from "../components/CompetencesAtelier";
 import { ConsigneAtelier } from "../components/ConsigneAtelier";
 import { PictosAtelier } from "../components/PictosAtelier";
+import { OptionsFeuille } from "../components/OptionsFeuille";
 import { AtelierContext } from "../components/AtelierContext";
 import { deposerSurLeBureau, lignesCompetencesAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
@@ -259,6 +260,7 @@ export default function Jeux() {
       {outil && <CompetencesAtelier atelier={outil.id} nom={outil.nom} />}
       {outil && <ConsigneAtelier atelier={outil.id} />}
       {outil && <PictosAtelier atelier={outil.id} />}
+      {outil && <OptionsFeuille atelier={outil.id} />}
       <AtelierContext.Provider value={onglet}>
       {onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />

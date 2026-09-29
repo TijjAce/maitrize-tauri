@@ -62,7 +62,8 @@ describe("le compte est bon", () => {
     const r = { ...REGLAGES_COMPTE, problemes: 8 };
     const html = htmlCompteEstBon(comptes(r, 1), r);
     expect((html.match(/class="cb-carte"/g) ?? []).length).toBe(8);
-    expect((html.match(/class="page"/g) ?? []).length).toBe(3);
+    expect((html.match(/class="page"/g) ?? []).length).toBe(2);
+    expect((html.match(/class="page corrige"/g) ?? []).length).toBe(1);
     expect(html).toContain("une solution parmi d'autres");
     expect(html).toContain("Opérations permises : +  −.");
   });
