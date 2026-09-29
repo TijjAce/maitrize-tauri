@@ -82,7 +82,7 @@ export function htmlCompteEstBon(liste: Compte[], r: ReglagesCompte): string {
   for (let i = 0; i < Math.max(1, liste.length); i += 6) {
     pages.push(`<div class="page">${tete}<div class="cb-grille">${liste.slice(i, i + 6).map((c, j) => carte(c, i + j)).join("")}</div></div>`);
   }
-  const corrige = `<div class="page"><div class="titre">Le compte est bon — une solution parmi d'autres</div>
+  const corrige = `<div class="page corrige"><div class="titre">Le compte est bon — une solution parmi d'autres</div>
     <div class="cb-corrige">${liste.map((c, i) => `<div><b>${i + 1}. Cible ${fr(c.cible)}</b> avec ${c.nombres.map((n) => fr(n)).join(", ")} : ${c.solution.map(escapeHtml).join(" ; ")}.</div>`).join("")}</div></div>`;
   return feuille(pages.join("") + corrige, "cb");
 }

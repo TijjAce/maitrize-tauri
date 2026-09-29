@@ -149,7 +149,7 @@ export function htmlHeure(liste: Heure[], r: ReglagesHeure): string {
     pages.push(`<div class="page">${tete}<div class="he-grille">${liste.slice(i, i + 9).map((t, j) => carte(t, i + j)).join("")}</div></div>`);
   }
   const lecture = (t: Heure) => (r.apresMidi ? `${lireHeure(t.h < 12 ? t : autreLecture(t))} ou ${lireHeure(t.h < 12 ? autreLecture(t) : t)}` : lireHeure(t));
-  const corrige = `<div class="page"><div class="titre">Lire l'heure — corrigé</div><div class="he-corrige">${liste.map((t, i) => `<span>${i + 1}. <b>${lecture(t)}</b></span>`).join("")}</div></div>`;
+  const corrige = `<div class="page corrige"><div class="titre">Lire l'heure — corrigé</div><div class="he-corrige">${liste.map((t, i) => `<span>${i + 1}. <b>${lecture(t)}</b></span>`).join("")}</div></div>`;
   return feuille(pages.join("") + corrige, "he");
 }
 

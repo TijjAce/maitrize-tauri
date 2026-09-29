@@ -15,6 +15,7 @@ import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 import { cleDesCompetences, lireCompetencesAtelier } from "./ateliersCompetences";
 import { CLE_ACTIF, CLE_LEXIQUE, STYLE_CONSIGNES_PICTOS, consignesActives, decorerConsignesHtml, lireLexique } from "./caa";
 import { cleConsigne, remplacerConsigne, clePictos, lirePictosAjoutes } from "./consigneAtelier";
+import { appliquerOptionsFeuille, cleOptionsFeuille, lireOptionsFeuille } from "./optionsFeuille";
 import { documentImprimable, escapeHtml, printHTML } from "./print";
 import type { MaterielItem } from "./api";
 
@@ -147,11 +148,15 @@ export async function pictosDeLAtelier(atelier: string): Promise<string[]> {
 /** Les verbes à montrer en plus : ceux de l'atelier et ceux que la feuille apporte, une fois chacun. */
 const supplementDe = async (atelier: string, extras: ExtrasAtelier) => [...new Set([...(extras.pictos ?? []), ...(await pictosDeLAtelier(atelier))])];
 
-/** La feuille avec la consigne que l'enseignant a réécrite pour cet atelier, s'il l'a fait. */
+/**
+ * La feuille telle que l'enseignant la veut : la consigne qu'il a réécrite
+ * pour cet atelier, et sans ce qu'il a décoché — consigne, prénom, correction.
+ */
 export async function avecLaConsigneDeLAtelier(atelier: string, corps: string): Promise<string> {
   try {
     const { api } = await import("./api");
-    return remplacerConsigne(corps, await api.settingGet(cleConsigne(atelier)));
+    const reecrite = remplacerConsigne(corps, await api.settingGet(cleConsigne(atelier)));
+    return appliquerOptionsFeuille(reecrite, lireOptionsFeuille(await api.settingGet(cleOptionsFeuille(atelier))));
   } catch {
     return corps;
   }

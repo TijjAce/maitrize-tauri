@@ -198,15 +198,15 @@ export function lignesIntrus(mots: MotImage[], mode: ModeIntrus, combien: number
   return lignes;
 }
 
-export function htmlIntrus(lignes: LigneIntrus[], images: Images, mode: ModeIntrus, legendes: boolean, corrige: boolean): string {
+export function htmlIntrus(lignes: LigneIntrus[], images: Images, mode: ModeIntrus, legendes: boolean): string {
   const quoi = mode === "attaque" ? "commencent par la même syllabe" : "finissent par la même syllabe";
   const consigne = `<div class="titre">Chasse à l'intrus</div><div class="regle"><b>Consigne</b>Dans chaque ligne, trois mots ${quoi} ; un seul est différent : entoure l'intrus.
     <span style="color:#687087">— Pour préparer l'apprentissage de la lecture et de l'écriture à l'école maternelle, Éduscol 2020.</span></div>`;
   const cellules = lignes.flatMap((l, i) => l.mots.map((m, k) =>
     carte(`${k === 0 ? `<div class="ls-numero">${i + 1}</div>` : ""}${imgPicto(image(m, images), m.mot)}${legende(m.mot, legendes)}`, "ls-intrus")));
   const corps = pagesDeCartes(cellules, { colonnes: 4, lignes: 5, hauteurMm: 44 }, consigne);
-  const reponses = corrige
-    ? `<div class="page"><div class="titre">Chasse à l'intrus — corrigé</div><ol class="ls-corrige">${lignes.map((l) =>
+  const reponses = lignes.length
+    ? `<div class="page corrige"><div class="titre">Chasse à l'intrus — corrigé</div><ol class="ls-corrige">${lignes.map((l) =>
       `<li><b>${escapeHtml(l.intrus.mot)}</b> — les autres ${quoi} « ${escapeHtml(l.mots.filter((m) => m !== l.intrus).map((m) => m.mot).join(", "))} »</li>`).join("")}</ol></div>`
     : "";
   return feuille(`${corps}${reponses}${ATTRIBUTION_ARASAAC}`, "ls");

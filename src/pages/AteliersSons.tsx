@@ -143,11 +143,11 @@ export function DominosTab({ banque }: { banque: boolean }) {
 
 export function IntrusTab({ banque }: { banque: boolean }) {
   const [mots, setMots] = React.useState<MotImage[]>([]);
-  const [r, maj] = useReglages("intrus", { mode: "attaque" as ModeIntrus, combien: 6, legendes: false, corrige: true });
+  const [r, maj] = useReglages("intrus", { mode: "attaque" as ModeIntrus, combien: 6, legendes: false });
   const [graine, setGraine] = React.useState(graineAuHasard);
   const lignes = React.useMemo(() => lignesIntrus(mots, r.mode, r.combien, hasard(graine)), [mots, r.mode, r.combien, graine]);
   const images = usePictoImages(ids(mots));
-  const html = React.useMemo(() => htmlIntrus(lignes, images, r.mode, r.legendes, r.corrige), [lignes, images, r]);
+  const html = React.useMemo(() => htmlIntrus(lignes, images, r.mode, r.legendes), [lignes, images, r]);
   return (
     <Colonnes
       gauche={<>
@@ -165,10 +165,9 @@ export function IntrusTab({ banque }: { banque: boolean }) {
         </Field>
         <div className="meta" style={{ fontSize: 12.5, margin: "6px 0" }}>{lignes.length ? `${lignes.length} ligne${lignes.length > 1 ? "s" : ""} possible${lignes.length > 1 ? "s" : ""}.` : "Pas encore trois mots qui se ressemblent."}</div>
         <Coche on={r.legendes} libelle="Écrire le mot sous chaque image" onChange={(v) => maj({ legendes: v })} />
-        <Coche on={r.corrige} libelle="Ajouter le corrigé" onChange={(v) => maj({ corrige: v })} />
         <Boutons peut={lignes.length > 0} onTirage={() => setGraine(graineAuHasard())}
-          onImprimer={() => imprimer("intrus", "Chasse à l'intrus", (im) => htmlIntrus(lignes, im, r.mode, r.legendes, r.corrige), ids(mots), STYLE_JEUX_SONS)}
-          onBureau={() => bureau("intrus", "Chasse à l'intrus", (im) => htmlIntrus(lignes, im, r.mode, r.legendes, r.corrige), ids(mots), STYLE_JEUX_SONS)} />
+          onImprimer={() => imprimer("intrus", "Chasse à l'intrus", (im) => htmlIntrus(lignes, im, r.mode, r.legendes), ids(mots), STYLE_JEUX_SONS)}
+          onBureau={() => bureau("intrus", "Chasse à l'intrus", (im) => htmlIntrus(lignes, im, r.mode, r.legendes), ids(mots), STYLE_JEUX_SONS)} />
       </>}
       droite={lignes.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} /> : <Vide quoi="Les lignes apparaîtront dès que trois mots partagent une syllabe." />}
     />

@@ -55,7 +55,8 @@ describe("les mots mêlés", () => {
     expect(minuscules).toMatch(/<td>[a-z]<\/td>/);
     expect(minuscules).toContain("et parfois à l'envers");
     const deux = htmlMotsMeles([g, grilleMotsMeles(mots, REGLAGES_MOTS_MELES, 6)], REGLAGES_MOTS_MELES);
-    expect((deux.match(/class="page"/g) ?? []).length).toBe(4);
+    expect((deux.match(/class="page"/g) ?? []).length).toBe(2);
+    expect((deux.match(/class="page corrige"/g) ?? []).length).toBe(2);
     expect(deux).toContain("corrigé de la grille 2");
   });
 });

@@ -189,7 +189,7 @@ export function htmlNumeration(r: ReglagesNumeration, graine: number): string {
   let num = 0;
   const bloc = (consigne: string, corps: string, corrige: string) => {
     num++;
-    exercices.push(`<div class="nu-exo"><div class="nu-consigne"><b>${num}.</b> ${consigne}</div>${corps}</div>`);
+    exercices.push(`<div class="nu-exo"><div class="nu-consigne"><b>${num}.</b> <span class="consigne">${consigne}</span></div>${corps}</div>`);
     corriges.push(`<div class="nu-exo"><div class="nu-consigne"><b>${num}.</b> ${consigne}</div>${corrige}</div>`);
   };
   for (const ex of EXERCICES_NUMERATION.map((e) => e.id).filter((e) => r.exercices.includes(e))) {
@@ -220,7 +220,7 @@ export function htmlNumeration(r: ReglagesNumeration, graine: number): string {
     }
   }
   return feuille(`<div class="page"><div class="titre">${titre}</div><div class="sous">Prénom : ........................................ Date : ........................</div>${exercices.join("")}</div>
-    <div class="page"><div class="titre">${titre} — corrigé</div>${corriges.join("")}</div>`, "nu");
+    <div class="page corrige"><div class="titre">${titre} — corrigé</div>${corriges.join("")}</div>`, "nu");
 }
 
 export const STYLE_NUMERATION = `
