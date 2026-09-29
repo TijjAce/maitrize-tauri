@@ -4,11 +4,12 @@ import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
+import { Pastilles } from "../components/Pastilles";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import { graineAuHasard } from "../hasard";
 import { SONS, syllabes } from "../lectureSons";
 import {
-  ECRITURES, EXERCICES, EXERCICES_MAX, GROUPEMENTS, PALETTE_CUBES, PLAFONDS, PLANCHERS, REGLAGES_CUBES, STYLE_CUBES,
+  ECRITURES, EXERCICES, EXERCICES_MAX, GROUPEMENTS, PLAFONDS, PLANCHERS, REGLAGES_CUBES, STYLE_CUBES,
   ecrituresChoisies, exercicesCubes, groupementsJusqua, htmlCubes, type EcritureNombre, type ExerciceCubes,
 } from "../cubesNumeration";
 import {
@@ -103,22 +104,6 @@ export function CartesNombresTab() {
 }
 
 // ── Les nombres en cubes ──
-
-/** Les couleurs possibles, en pastilles : celles des cubes, ou la palette qu'on donne. */
-function Pastilles({ valeur, onChange, palette = PALETTE_CUBES }: { valeur: string; onChange: (hex: string) => void; palette?: { nom: string; hex: string }[] }) {
-  return (
-    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-      {palette.map((c) => (
-        <button key={c.hex} type="button" title={c.nom} aria-label={c.nom} aria-pressed={valeur === c.hex}
-          onClick={() => onChange(c.hex)}
-          style={{
-            width: 20, height: 20, borderRadius: 5, background: c.hex, cursor: "pointer", padding: 0,
-            border: valeur === c.hex ? "3px solid var(--text)" : "1px solid var(--border)",
-          }} />
-      ))}
-    </div>
-  );
-}
 
 export function CubesTab() {
   const [r, maj] = useReglages("cubes", REGLAGES_CUBES);
