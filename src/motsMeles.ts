@@ -98,7 +98,7 @@ export function htmlMotsMeles(grilles: GrilleMeles[], r: ReglagesMotsMeles): str
   const regle = `<div class="titre">Mots mêlés</div><div class="regle"><b>La règle</b>Retrouve les mots de la liste cachés dans la grille : ils se lisent ${sens}. Entoure chaque mot trouvé, puis barre-le dans la liste.</div>`;
   const liste = (g: GrilleMeles) => (r.liste ? `<div class="mm-liste">${g.places.map((m) => m.mot).sort((a, b) => a.localeCompare(b, "fr")).map((m) => `<span>${escapeHtml(r.capitales ? m.toLocaleUpperCase("fr") : m)}</span>`).join("")}</div>` : "");
   const pages = grilles.map((g, i) => `<div class="page">${regle}${grilles.length > 1 ? `<div class="sous">Grille ${i + 1}</div>` : ""}${grilleHtml(g, r, false)}${liste(g)}</div>`);
-  const corriges = grilles.map((g, i) => `<div class="page"><div class="titre">Mots mêlés — corrigé${grilles.length > 1 ? ` de la grille ${i + 1}` : ""}</div>${grilleHtml(g, r, true)}</div>`);
+  const corriges = grilles.map((g, i) => `<div class="page corrige"><div class="titre">Mots mêlés — corrigé${grilles.length > 1 ? ` de la grille ${i + 1}` : ""}</div>${grilleHtml(g, r, true)}</div>`);
   return feuille(pages.join("") + corriges.join(""), "mm");
 }
 

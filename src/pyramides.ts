@@ -143,12 +143,12 @@ export function htmlPyramides(r: ReglagesPyramides, graine: number): string {
       : "Chaque brique est la somme des deux briques du dessous. Retrouve les briques qui manquent : parfois on ajoute, parfois on retranche.";
     return feuille(`<div class="page"><div class="titre">Pyramides de nombres</div><div class="regle"><b>La règle</b>${consigne}</div>
       <div class="py-grille">${liste.map((p) => dessinPyramide(p, false)).join("")}</div></div>
-      <div class="page"><div class="titre">Pyramides de nombres — corrigé</div><div class="py-grille">${liste.map((p) => dessinPyramide(p, true)).join("")}</div></div>`, "py");
+      <div class="page corrige"><div class="titre">Pyramides de nombres — corrigé</div><div class="py-grille">${liste.map((p) => dessinPyramide(p, true)).join("")}</div></div>`, "py");
   }
   const liste = Array.from({ length: combien }, () => carreMagique(r.taille, r.jusqua, alea));
   return feuille(`<div class="page"><div class="titre">Carrés magiques</div><div class="regle"><b>La règle</b>Dans un carré magique, chaque ligne, chaque colonne et les deux diagonales font la même somme. Retrouve les nombres qui manquent — commence par une ligne où il n'en manque qu'un.</div>
     <div class="py-grille py-carres">${liste.map((c) => dessinCarre(c, false)).join("")}</div></div>
-    <div class="page"><div class="titre">Carrés magiques — corrigé</div><div class="py-grille py-carres">${liste.map((c) => dessinCarre(c, true)).join("")}</div></div>`, "py");
+    <div class="page corrige"><div class="titre">Carrés magiques — corrigé</div><div class="py-grille py-carres">${liste.map((c) => dessinCarre(c, true)).join("")}</div></div>`, "py");
 }
 
 export const STYLE_PYRAMIDES = `

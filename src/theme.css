@@ -464,6 +464,10 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .non-imprime .case-impression { color: var(--text); font-weight: 600; }
 /* Un rituel cité sous le prévu du journal : la même carte qu'une règle de jeu, en vert. */
 .regle-app.rituel-app { border-color: color-mix(in srgb, #0f9d58 28%, var(--border)); background: color-mix(in srgb, #0f9d58 6%, var(--panel)); }
+/* Dans le bandeau d'un atelier : ce qui s'imprime sur la feuille. */
+.options-feuille { display: flex; align-items: center; gap: 4px 16px; flex-wrap: wrap; }
+.options-feuille-titre { font-weight: 600; font-size: 13px; }
+.options-feuille .pb-coche { margin: 0; }
 /* Dans l'atelier des phrases en désordre : demander des phrases à l'IA. */
 .ia-phrases { margin: 8px 0 10px; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 10px; background: var(--panel-2); }
 /* Dans le bandeau d'un atelier : la consigne de la feuille, à réécrire. */

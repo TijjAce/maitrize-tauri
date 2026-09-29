@@ -76,7 +76,6 @@ export interface ReglagesCubes {
   /** Garder les nombres qui ont un zéro (30, 105) : les plus difficiles à lire. */
   zeros: boolean;
   legende: boolean;
-  corrige: boolean;
   /** Le numéro de chaque exercice dans son coin ; on peut s'en passer. */
   numeros: boolean;
 }
@@ -86,7 +85,7 @@ export const REGLAGES_CUBES: ReglagesCubes = {
   // Les couleurs du matériel le plus répandu : le jaune des unités, le vert
   // des barres, le bleu des plaques, le rouge du gros cube.
   couleurs: { u: "#ffe14d", d: "#62d93a", c: "#2454e6", m: "#e8402f" },
-  zeros: true, legende: true, corrige: false, numeros: true,
+  zeros: true, legende: true, numeros: true,
 };
 
 /** Le numéro d'un exercice, dans son coin — ou rien. */
@@ -363,7 +362,7 @@ function exercicesRelier(exos: ExerciceCube[], r: ReglagesCubes, u: number, h: (
 function corrige(exos: ExerciceCube[], titre: string): string {
   // La liste numérote elle-même : le numéro est celui de l'exercice.
   const lignes = exos.map((e) => `<li>${ECRITURES.map((x) => escapeHtml(ecrireNombre(e.n, x.id))).join(" · ")}</li>`);
-  return `<div class="page cu-corrige"><div class="titre">Corrigé${titre ? ` · ${escapeHtml(titre)}` : ""}</div><ol>${lignes.join("")}</ol></div>`;
+  return `<div class="page cu-corrige corrige"><div class="titre">Corrigé${titre ? ` · ${escapeHtml(titre)}` : ""}</div><ol>${lignes.join("")}</ol></div>`;
 }
 
 export function htmlCubes(exos: ExerciceCube[], r: ReglagesCubes, graine = 1): string {
@@ -378,7 +377,7 @@ export function htmlCubes(exos: ExerciceCube[], r: ReglagesCubes, graine = 1): s
     + `<div class="sous cu-consigne consigne">${escapeHtml(consigneDe(r))}</div>`
     + (r.legende ? legende(a, r.couleurs) : "")
     + corps + `</div>`;
-  return feuille(page + (r.corrige ? corrige(exos, titre) : ""), "cu");
+  return feuille(page + corrige(exos, titre), "cu");
 }
 
 export const STYLE_CUBES = `
