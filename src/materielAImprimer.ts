@@ -138,14 +138,43 @@ export function octetsDeBase64(b64: string): Uint8Array {
 
 export interface AnnexeRendue { annexe: AnnexeAImprimer; pages: PageRendue[] }
 
+/** La hauteur qu'une page jointe peut prendre, le pied de page du journal déduit. */
+export const HAUTEUR_ANNEXE_MM = 250;
+
+/** La largeur, en millimètres, à laquelle la page la plus haute du document tient encore dans la feuille. */
+export function limiteMm(pages: Pick<PageRendue, "largeur" | "hauteur">[]): number {
+  const rapport = Math.max(...pages.map((p) => (p.largeur > 0 ? p.hauteur / p.largeur : 0)), 0);
+  return rapport > 0 ? Math.round((HAUTEUR_ANNEXE_MM / rapport) * 10) / 10 : 1000;
+}
+
+/** La largeur d'une feuille du journal : une A4, moins ses marges de 11 mm. */
+export const LARGEUR_FEUILLE_MM = 188;
+
 /**
- * Les pages jointes du journal HTML : une page imprimée par page de PDF,
- * son image seule, et sur la première un bandeau qui dit d'où elle vient.
+ * Le plus grand pourcentage, au pas de la molette, auquel toutes les pages
+ * d'un document tiennent sur une seule feuille — 100 si elles y tiennent
+ * déjà. C'est ce que pose le bouton « Tenir sur une feuille » : on ne cherche
+ * pas le bon chiffre à tâtons.
+ */
+export function echellePourUneFeuille(pages: Pick<PageRendue, "largeur" | "hauteur">[]): number {
+  const somme = pages.reduce((s, p) => s + (p.largeur > 0 ? p.hauteur / p.largeur : 0), 0);
+  if (somme <= 0) return 100;
+  const largeur = Math.min(LARGEUR_FEUILLE_MM, limiteMm(pages));
+  // Ce qui reste une fois comptés le bandeau et l'écart entre deux pages.
+  const libre = HAUTEUR_ANNEXE_MM - 6 - 3 * (pages.length - 1);
+  const pourcent = Math.floor(((libre / (largeur * somme)) * 100) / ECHELLE_PAS) * ECHELLE_PAS;
+  return Math.max(ECHELLE_MIN, Math.min(100, pourcent));
+}
+
+/**
+ * Les pages jointes du journal HTML : chaque document commence une feuille,
+ * ses pages s'y suivent en images, et la première porte un bandeau qui dit
+ * d'où elle vient.
  *
- * À l'écran, avant d'imprimer, chaque feuille a sa molette : elle change
- * l'échelle de ses pages sous les yeux, et disparaît à l'impression. Ce
- * qu'on règle là ne vaut que pour cette impression ; la molette de la
- * séance ou du journal, elle, se garde.
+ * À l'écran, avant d'imprimer, chaque document a sa molette : elle change
+ * la taille de ses pages sous les yeux — et donc le nombre de feuilles —,
+ * et disparaît à l'impression. Ce qu'on règle là ne vaut que pour cette
+ * impression ; la molette de la séance ou du journal, elle, se garde.
  */
 export function annexesHtml(rendues: AnnexeRendue[]): string {
   const sections = rendues.flatMap(({ annexe, pages }, k) => pages.map((p, i) => {
@@ -155,12 +184,18 @@ export function annexesHtml(rendues: AnnexeRendue[]): string {
         + (pages.length > 1 ? ` · ${pages.length} pages` : "") + `</div>`
         + `<div class="annexe-outils" data-annexe="${k}">🔍 Échelle à l'impression <button type="button" data-pas="-${ECHELLE_PAS}" aria-label="Réduire">−</button>`
         + `<input type="range" min="${ECHELLE_MIN}" max="${ECHELLE_MAX}" step="${ECHELLE_PAS}" value="${pourcent}" aria-label="Échelle">`
-        + `<button type="button" data-pas="${ECHELLE_PAS}" aria-label="Agrandir">+</button><output>${pourcent} %</output></div>`
+        + `<button type="button" data-pas="${ECHELLE_PAS}" aria-label="Agrandir">+</button><output>${pourcent} %</output>`
+        + (pages.length > 1
+          ? `<button type="button" class="annexe-ajuster" data-echelle="${echellePourUneFeuille(pages)}" title="Réduit juste ce qu'il faut pour que les ${pages.length} pages tiennent sur une seule feuille">Tenir sur une feuille</button>`
+          : "")
+        + `</div>`
       : "";
-    // L'échelle se pose sur l'image, autour de son centre ; le cadre rogne ce qui dépasse. La page garde
-    // sa place : agrandie, l'image perd ses marges au lieu d'empiéter sur le bandeau ou la page suivante.
-    const echelle = annexe.echelle && Math.abs(annexe.echelle - 1) > 0.001 ? ` style="transform: scale(${annexe.echelle}); transform-origin: center"` : "";
-    return `<section class="annexe" data-annexe="${k}">${bandeau}<div class="annexe-cadre"><img src="data:image/png;base64,${p.image}" alt="${escapeHtml(annexe.titre)} — page ${i + 1}"${echelle}></div></section>`;
+    // Réduite, l'image rétrécit pour de bon, pas seulement à l'œil : les pages d'un même document se
+    // suivent sur la feuille et en prennent moins. Toutes ont la même largeur — celle qui fait tenir la
+    // plus haute dans la page — pour rester à la même échelle. Agrandie, l'image grossit depuis le haut
+    // dans son cadre, qui rogne ce qui dépasse : elle n'empiète ni sur le bandeau ni sur la suivante.
+    const reglage = `--limite:${limiteMm(pages)}mm` + (annexe.echelle && Math.abs(annexe.echelle - 1) > 0.001 ? `;--echelle:${annexe.echelle}` : "");
+    return `<section class="annexe${i === 0 ? "" : " annexe-suite"}" data-annexe="${k}" style="${reglage}">${bandeau}<div class="annexe-cadre"><img src="data:image/png;base64,${p.image}" alt="${escapeHtml(annexe.titre)} — page ${i + 1}"></div></section>`;
   }));
   return sections.length ? sections.join("") + SCRIPT_ANNEXES : "";
 }
@@ -213,35 +248,43 @@ const SCRIPT_ANNEXES = `<script>
     var k = outils.getAttribute("data-annexe");
     var curseur = outils.querySelector("input");
     var sortie = outils.querySelector("output");
-    var images = document.querySelectorAll('.annexe[data-annexe="' + k + '"] img');
+    var feuilles = document.querySelectorAll('.annexe[data-annexe="' + k + '"]');
     var appliquer = function (v) {
       v = Math.max(${ECHELLE_MIN}, Math.min(${ECHELLE_MAX}, Number(v) || 100));
       curseur.value = String(v); sortie.textContent = v + " %";
-      images.forEach(function (img) { img.style.transform = v === 100 ? "" : "scale(" + (v / 100) + ")"; img.style.transformOrigin = "center"; });
+      feuilles.forEach(function (f) { f.style.setProperty("--echelle", String(v / 100)); });
     };
     curseur.addEventListener("input", function () { appliquer(curseur.value); });
-    outils.querySelectorAll("button").forEach(function (b) {
+    outils.querySelectorAll("button[data-pas]").forEach(function (b) {
       b.addEventListener("click", function () { appliquer(Number(curseur.value) + Number(b.getAttribute("data-pas"))); });
     });
+    // « Tenir sur une feuille » : le pourcentage est calculé d'avance, d'après la hauteur des pages.
+    var ajuster = outils.querySelector("button[data-echelle]");
+    if (ajuster) ajuster.addEventListener("click", function () { appliquer(ajuster.getAttribute("data-echelle")); });
   });
 })();
 </script>`;
 
 /**
- * Chaque page jointe sur sa feuille, l'image plafonnée en hauteur pour
- * laisser sa place au pied de page fixe du journal : une A4 sort à 84 %.
+ * Chaque document joint commence une feuille ; ses pages se suivent, et
+ * passent à la feuille suivante quand elles n'y tiennent plus. L'image est
+ * plafonnée en hauteur pour laisser sa place au pied de page fixe du journal.
  */
 export const STYLE_ANNEXES = `
-  .annexe { break-before: page; page-break-before: always; }
+  .annexe { break-before: page; page-break-before: always; --echelle: 1; --limite: 100%; }
+  .annexe.annexe-suite { break-before: auto; page-break-before: auto; margin-top: 3mm; }
   .annexe-bandeau { font-size: 9px; color: #687087; margin: 0 0 2mm; }
   .annexe-outils { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #3b4256; margin: 0 0 8px;
     padding: 6px 10px; border: 1px dashed #9aa0b4; border-radius: 8px; background: #f7f8fc; }
   .annexe-outils input[type="range"] { width: 140px; }
   .annexe-outils button { font: inherit; width: 26px; height: 26px; border: 1px solid #9aa0b4; border-radius: 6px; background: #fff; cursor: pointer; }
   .annexe-outils output { min-width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+  .annexe-outils button.annexe-ajuster { width: auto; padding: 0 10px; margin-left: 8px; }
   .journal-outils { margin: 0 0 14px; flex-wrap: wrap; }
   .journal-outils-aide { color: #687087; font-size: 11px; }
   @media print { .annexe-outils { display: none; } }
   .annexe-cadre { overflow: hidden; break-inside: avoid; page-break-inside: avoid; }
-  .annexe img { display: block; margin: 0 auto; width: auto; height: auto; max-width: 100%; max-height: 250mm; border-radius: 0; }
+  .annexe img { display: block; margin: 0 auto; height: auto; max-width: none; max-height: none; border-radius: 0;
+    width: calc(min(100%, var(--limite)) * min(var(--echelle), 1));
+    transform: scale(max(var(--echelle), 1)); transform-origin: top center; }
 `;

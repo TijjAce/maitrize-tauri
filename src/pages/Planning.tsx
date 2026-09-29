@@ -18,7 +18,7 @@ import { sequencesCitees, sequencesImprimees, STYLE_SEQUENCES } from "../sequenc
 import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
 import { organisationPour, natureDuSlot, type SlotEdt } from "../organisation";
 import { annexesDesCreneaux, annexesHtml, echellesDesReglages, moletteDuJournalHtml, octetsDeBase64, STYLE_ANNEXES, titresDuMateriel, type AnnexeRendue } from "../materielAImprimer";
-import { nombreDePages, rendrePage } from "../pdfRendu";
+import { rendrePagesAImprimer } from "../pdfRendu";
 import { CLE_RITUELS, avecRituels, lireRituels, rituelsCites, rituelsImprimes } from "../rituels";
 import { IndicateurZoom, useZoomPince } from "../components/ZoomPince";
 import { aImprimer, masqueJeu, masqueRituel, masqueSequence, masquesDesReglages } from "../journalMasques";
@@ -365,11 +365,9 @@ export default function Planning() {
     for (const annexe of annexesDesCreneaux(jourCreneaux, sequences ?? [], seances ?? [], materiels, () => "", echelles)) {
       try {
         const octets = octetsDeBase64(await api.fichierRead(annexe.fichier));
-        const pages = [];
-        for (let n = 1, total = await nombreDePages(octets); n <= total; n++) {
-          pages.push(await rendrePage(octets, n, { rogner: false, largeur: 1500 }));
-        }
-        rendues.push({ annexe, pages });
+        // Chaque page réduite à son contenu : les pages d'un document se suivent sur la feuille.
+        const pages = await rendrePagesAImprimer(octets, 1500);
+        if (pages.length) rendues.push({ annexe, pages });
       } catch (e) {
         toast(`« ${annexe.titre} » n'a pas pu être joint : ${texteErreur(e)}`, { icone: "⚠️", duree: 8000 });
       }

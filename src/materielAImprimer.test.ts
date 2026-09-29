@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { MaterielItem, Seance, Sequence } from "./api";
 import {
   annexesDesCreneaux, annexesHtml, cleEchelle, echellesDesReglages, liensDuCreneau, lireEchelle, materielDuCreneau, moletteDuJournalHtml,
-  octetsDeBase64, STYLE_ANNEXES, titresDuMateriel,
+  echellePourUneFeuille, limiteMm, octetsDeBase64, STYLE_ANNEXES, titresDuMateriel,
 } from "./materielAImprimer";
 
 const materiel = (p: Partial<MaterielItem>): MaterielItem => ({
@@ -100,7 +100,11 @@ describe("le matériel des séances du journal", () => {
     const annexe = { seanceId: "s1", quand: "09:00 · Les syllabes", titre: "Fiche <b>1</b>", fichier: "a.pdf", echelle: 1 };
     const page = (numero: number) => ({ numero, image: `IMG${numero}`, largeur: 10, hauteur: 14 });
     const html = annexesHtml([{ annexe, pages: [page(1), page(2)] }, { annexe: { ...annexe, titre: "Seule", fichier: "b.pdf" }, pages: [page(1)] }]);
-    expect(html.match(/<section class="annexe" data-annexe="\d+">/g)).toHaveLength(3);
+    expect(html.match(/<section class="annexe( annexe-suite)?" data-annexe="\d+" /g)).toHaveLength(3);
+    // Les pages d'un même document se suivent ; chaque document commence sa feuille.
+    expect(html.match(/class="annexe annexe-suite"/g)).toHaveLength(1);
+    // Toutes à la largeur qui fait tenir la plus haute dans la page : 250 mm pour un rapport de 1,4.
+    expect(html.match(/style="--limite:178.6mm"/g)).toHaveLength(3);
     expect(html.match(/annexe-bandeau/g)).toHaveLength(2);
     // À l'écran, une molette par feuille, réglée à son échelle ; le script une seule fois.
     expect(html.match(/class="annexe-outils"/g)).toHaveLength(2);
@@ -110,17 +114,34 @@ describe("le matériel des séances du journal", () => {
     expect(html).not.toContain("Seule · 1 pages");
     expect(html).toContain('src="data:image/png;base64,IMG2"');
     expect(annexesHtml([])).toBe("");
-    // Réduite ou agrandie : l'image change d'échelle autour de son centre, pas la page.
-    expect(html).not.toContain("transform: scale");
+    // Réduite ou agrandie : c'est la taille réelle de l'image qui change, et la place qu'elle prend.
+    expect(html).not.toContain(";--echelle:");
     const reduite = annexesHtml([{ annexe: { ...annexe, echelle: 0.8 }, pages: [page(1)] }]);
-    expect(reduite).toContain('style="transform: scale(0.8); transform-origin: center"');
+    expect(reduite).toContain('style="--limite:178.6mm;--echelle:0.8"');
+    expect(reduite).toContain('f.style.setProperty("--echelle"');
     expect(reduite).toContain('value="80"');
     // Le cadre rogne l'image agrandie : elle ne déborde ni sur le bandeau ni sur la page suivante.
     expect(html.match(/<div class="annexe-cadre"><img /g)).toHaveLength(3);
     expect(STYLE_ANNEXES).toContain(".annexe-cadre { overflow: hidden;");
+    expect(STYLE_ANNEXES).toContain(".annexe.annexe-suite { break-before: auto;");
+    // Sous 100 %, la taille réelle ; au-dessus, un agrandissement dans le cadre, depuis le haut.
+    expect(STYLE_ANNEXES).toContain("width: calc(min(100%, var(--limite)) * min(var(--echelle), 1))");
+    expect(STYLE_ANNEXES).toContain("transform: scale(max(var(--echelle), 1)); transform-origin: top center");
+    // La page la plus haute fixe la largeur de toutes ; sans page, pas de limite.
+    expect(limiteMm([{ largeur: 1300, hauteur: 1600 }, { largeur: 1300, hauteur: 350 }])).toBe(203.1);
+    expect(limiteMm([{ largeur: 1000, hauteur: 250 }])).toBe(1000);
+    expect(limiteMm([])).toBe(1000);
+    // « Tenir sur une feuille » : proposé dès qu'un document a plusieurs pages, avec son pourcentage tout prêt.
+    expect(html.match(/class="annexe-ajuster"/g)).toHaveLength(1);
+    expect(html).toContain('class="annexe-ajuster" data-echelle="50"');
+    // Une feuille pleine et deux exercices qui débordent : 75 % suffisent, au pas de la molette.
+    expect(echellePourUneFeuille([{ largeur: 1216, hauteur: 1769 }, { largeur: 1216, hauteur: 369 }])).toBe(75);
+    // Deux pages pleines ne tiennent qu'à moitié ; ce qui tient déjà reste à 100 %.
+    expect(echellePourUneFeuille([{ largeur: 1500, hauteur: 2121 }, { largeur: 1500, hauteur: 2121 }])).toBe(50);
+    expect(echellePourUneFeuille([{ largeur: 1216, hauteur: 600 }, { largeur: 1216, hauteur: 369 }])).toBe(100);
+    expect(echellePourUneFeuille([])).toBe(100);
     expect(STYLE_ANNEXES).toContain("@media print { .annexe-outils { display: none; } }");
     // Chaque feuille jointe commence une page, l'image plafonnée pour laisser le pied.
     expect(STYLE_ANNEXES).toContain("break-before: page");
-    expect(STYLE_ANNEXES).toContain("max-height: 250mm");
   });
 });
