@@ -464,6 +464,15 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .non-imprime .case-impression { color: var(--text); font-weight: 600; }
 /* Un rituel cité sous le prévu du journal : la même carte qu'une règle de jeu, en vert. */
 .regle-app.rituel-app { border-color: color-mix(in srgb, #0f9d58 28%, var(--border)); background: color-mix(in srgb, #0f9d58 6%, var(--panel)); }
+/* Le calcul mental : les objectifs du programme, rangés par rubrique. */
+.fn-rubrique { margin: 0 0 8px; }
+.fn-rubrique-titre { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: var(--text-2); margin: 6px 0 3px; }
+.fn-objectif { display: flex; align-items: baseline; gap: 7px; width: 100%; text-align: left; font: inherit; font-size: 13px; line-height: 1.35; color: var(--text);
+  background: none; border: 1px solid transparent; border-radius: 8px; padding: 4px 8px; cursor: pointer; }
+.fn-objectif:hover { background: var(--panel-2); }
+.fn-objectif.choisi { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 45%, transparent); font-weight: 600; }
+.fn-puce { color: var(--text-2); flex: none; width: 14px; }
+.fn-objectif.choisi .fn-puce { color: var(--accent); }
 /* Dans le bandeau d'un atelier : ce qui s'imprime sur la feuille. */
 .options-feuille { display: flex; align-items: center; gap: 4px 16px; flex-wrap: wrap; }
 .options-feuille-titre { font-weight: 600; font-size: 13px; }

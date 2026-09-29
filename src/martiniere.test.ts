@@ -1,102 +1,88 @@
 import { describe, it, expect } from "vitest";
-import { hasard } from "./hasard";
-import { fr } from "./nombres";
-import { FAMILLES_CALCUL, REGLAGES_MARTINIERE, calculsMartiniere, dixiemes, htmlMartiniere, resumeMartiniere, unCalcul, type ReglagesMartiniere } from "./martiniere";
+import { objectifParId } from "./faitsNumeriques";
+import { escapeHtml } from "./print";
+import { OPTIONS_FEUILLE, appliquerOptionsFeuille, contenuDeLaFeuille } from "./optionsFeuille";
+import { REGLAGES_MARTINIERE, calculsMartiniere, fluenceAttendue, htmlMartiniere, libelleTravaille, objectifsRetenus, resumeMartiniere, type ReglagesMartiniere } from "./martiniere";
 
-const nombre = (t: string) => Number(t.replace(/ /g, "").replace(",", "."));
+const r = (p: Partial<ReglagesMartiniere> = {}): ReglagesMartiniere => ({ ...REGLAGES_MARTINIERE, ...p });
 
-describe("le calcul mental La Martinière", () => {
-  it("écrit les nombres comme au tableau", () => {
-    expect(fr(7)).toBe("7");
-    expect(fr(1234)).toBe("1 234");
-    expect(fr(1234567)).toBe("1 234 567");
-    expect(fr(2.5, 1)).toBe("2,5");
-    expect(dixiemes(25)).toBe("2,5");
-    expect(dixiemes(40)).toBe("4");
-    expect(dixiemes(105)).toBe("10,5");
+describe("le calcul mental, un objectif à la fois", () => {
+  it("ne retient qu'un objectif hors révision, et seulement ceux de la classe", () => {
+    expect(objectifsRetenus(r()).map((o) => o.id)).toEqual(["cp-complements-10"]);
+    const plusieurs = r({ objectifs: ["cp-doubles", "cp-moities", "ce1-doubles"] });
+    expect(objectifsRetenus(plusieurs).map((o) => o.id)).toEqual(["cp-doubles"]);
+    expect(objectifsRetenus({ ...plusieurs, revision: true }).map((o) => o.id)).toEqual(["cp-doubles", "cp-moities"]);
+    // Rien de la classe parmi les choix, ou un réglage d'avant : le premier objectif de la classe.
+    expect(objectifsRetenus(r({ niveau: "CE2", objectifs: ["cp-doubles"] })).map((o) => o.id)).toEqual(["ce2-tables-addition"]);
+    expect(objectifsRetenus({ niveau: "CM1", objectifs: undefined as unknown as string[], revision: false }).map((o) => o.id)).toEqual(["cm1-table-multiplication"]);
   });
 
-  it("fait des séries à la taille demandée, rejouables, sans deux fois le même calcul", () => {
-    const series = calculsMartiniere(REGLAGES_MARTINIERE, 42);
+  it("fait des séries du seul objectif choisi, rejouables", () => {
+    const series = calculsMartiniere(r(), 42);
     expect(series).toHaveLength(2);
     for (const s of series) {
       expect(s).toHaveLength(10);
-      for (const c of s) expect(REGLAGES_MARTINIERE.familles).toContain(c.famille);
+      for (const c of s) { expect(c.objectif).toBe("cp-complements-10"); expect(c.ecrit).toMatch(/10/); }
     }
-    const ecrits = series.flat().map((c) => c.ecrit);
-    expect(new Set(ecrits).size).toBe(ecrits.length);
-    expect(calculsMartiniere(REGLAGES_MARTINIERE, 42)).toEqual(series);
-    expect(calculsMartiniere(REGLAGES_MARTINIERE, 43)).not.toEqual(series);
+    expect(calculsMartiniere(r(), 42)).toEqual(series);
+    expect(calculsMartiniere(r(), 43)).not.toEqual(series);
+    // Pas deux fois le même calcul tant que l'objectif en a d'autres.
+    const tables = calculsMartiniere(r({ niveau: "CE1", objectifs: ["ce1-tables-addition"], series: 3 }), 7).flat().map((c) => c.ecrit);
+    expect(new Set(tables).size).toBe(30);
+    // En révision, les objectifs choisis reviennent à tour de rôle.
+    const revision = calculsMartiniere(r({ objectifs: ["cp-doubles", "cp-moities"], revision: true }), 3);
+    for (const s of revision) expect(new Set(s.map((c) => c.objectif))).toEqual(new Set(["cp-doubles", "cp-moities"]));
+    expect(calculsMartiniere(r({ series: 99, parSerie: 99 }), 1)).toHaveLength(6);
   });
 
-  it("reste dans les bornes de chaque famille, et les réponses sont justes", () => {
-    const alea = hasard(7);
-    const c2: ReglagesMartiniere = { ...REGLAGES_MARTINIERE, jusqua: 20, tables: [7] };
-    for (let i = 0; i < 200; i++) {
-      const c = unCalcul("complements", c2, alea)!;
-      const a = nombre(c.ecrit.split(" ")[0]);
-      expect(c.ecrit).toBe(`${a} + … = 10`);
-      expect(nombre(c.reponse)).toBe(10 - a);
-      const add = unCalcul("additions", c2, alea)!;
-      const [x, y] = add.ecrit.split(" + ").map(nombre);
-      expect(x + y).toBeLessThanOrEqual(20);
-      expect(nombre(add.reponse)).toBe(x + y);
-      const sous = unCalcul("soustractions", c2, alea)!;
-      const [m, n] = sous.ecrit.split(" − ").map(nombre);
-      expect(m).toBeLessThanOrEqual(20);
-      expect(nombre(sous.reponse)).toBe(m - n);
-      expect(nombre(sous.reponse)).toBeGreaterThan(0);
-      const t = unCalcul("tables", c2, alea)!;
-      expect(t.ecrit).toMatch(/^7 × (10|[1-9])$/);
-      expect(nombre(t.reponse)).toBe(7 * nombre(t.ecrit.split(" × ")[1]));
-      const d = unCalcul("doubles", c2, alea)!;
-      expect(nombre(d.reponse)).toBeLessThanOrEqual(20);
-      const mo = unCalcul("moities", c2, alea)!;
-      expect(nombre(mo.reponse) * 2).toBe(nombre(mo.ecrit.split(" ÷ ")[0]));
-    }
-    // Les dizaines n'ont pas de sens jusqu'à 10 ; les tables sans table non plus.
-    expect(unCalcul("dizaines", { ...c2, jusqua: 10 }, alea)).toBeNull();
-    expect(unCalcul("tables", { ...c2, tables: [] }, alea)).toBeNull();
+  it("dit ce qu'on travaille, la table choisie comprise, et ce que le programme attend", () => {
+    expect(resumeMartiniere(r())).toBe("CP · Compléments à 10 · 2 séries de 10 calculs.");
+    const table = r({ niveau: "CE1", objectifs: ["ce1-table-multiplication"], tables: [7], series: 1 });
+    expect(resumeMartiniere(table)).toBe("CE1 · Une table de multiplication : 7 · 1 série de 10 calculs.");
+    expect(libelleTravaille(objectifParId("ce1-table-multiplication")!, [1, 3, 7])).toBe("Une table de multiplication : 3, 7");
+    expect(libelleTravaille(objectifParId("ce1-table-multiplication")!, [])).toBe("Une table de multiplication : 2");
+    expect(fluenceAttendue(objectifParId("cp-complements-10")!)).toBe("8 égalités à trou en une minute");
+    expect(fluenceAttendue(objectifParId("cp-ajouter-9")!)).toBe("9 résultats en trois minutes");
+    expect(fluenceAttendue(objectifParId("cm1-fois-5")!)).toBe("");
   });
 
-  it("au cycle 3, divise, multiplie par 10, complète à 100 et à 1 000, et calcule en dixièmes", () => {
-    const alea = hasard(11);
-    const c3: ReglagesMartiniere = { ...REGLAGES_MARTINIERE, cycle: 3, jusqua: 1000, tables: [6, 8] };
-    const cibles = new Set<number>();
-    for (let i = 0; i < 200; i++) {
-      const div = unCalcul("divisions", c3, alea)!;
-      const [p, q] = div.ecrit.split(" ÷ ").map(nombre);
-      expect([6, 8]).toContain(q);
-      expect(p / q).toBe(nombre(div.reponse));
-      const f = unCalcul("fois10", c3, alea)!;
-      const [n, k] = f.ecrit.split(" × ").map(nombre);
-      expect([10, 100, 1000]).toContain(k);
-      expect(nombre(f.reponse)).toBe(n * k);
-      const c = unCalcul("complements", c3, alea)!;
-      cibles.add(nombre(c.ecrit.split(" = ")[1]));
-      const dec = unCalcul("decimaux", c3, alea)!;
-      expect(dec.reponse).toMatch(/^\d+(,\d)?$/);
-      const [u, v] = dec.ecrit.split(/ [+−] /).map(nombre);
-      expect(Math.round((dec.ecrit.includes("+") ? u + v : u - v) * 10)).toBe(Math.round(nombre(dec.reponse) * 10));
-      expect(nombre(dec.reponse)).toBeGreaterThan(0);
-    }
-    expect([...cibles].sort()).toEqual([100, 1000]);
-  });
-
-  it("s'imprime : la fiche du maître, puis deux ardoises par page", () => {
-    const series = calculsMartiniere(REGLAGES_MARTINIERE, 5);
-    const html = htmlMartiniere(series, REGLAGES_MARTINIERE);
+  it("à l'oral : la fiche du maître, les réponses marquées comme correction, puis les ardoises", () => {
+    const series = calculsMartiniere(r(), 5);
+    const html = htmlMartiniere(series, r());
     expect(html).toContain("procédé La Martinière");
-    expect(html).toContain("<caption>Série 1</caption>");
     expect(html).toContain("<caption>Série 2</caption>");
     expect(html).toContain("5 secondes");
+    expect(html).toContain("Attendu en fin de CP : 8 égalités à trou en une minute.");
+    expect((html.match(/<td class="corrige">/g) ?? []).length).toBe(20);
     expect((html.match(/class="ma-case"/g) ?? []).length).toBe(2 * 20);
-    expect((html.match(/class="ma-ardoise"/g) ?? []).length).toBe(2);
-    expect(htmlMartiniere(series, { ...REGLAGES_MARTINIERE, ardoises: false })).not.toContain("ma-case");
-    // Au-delà de quarante calculs, une seule ardoise par page.
-    const longues = calculsMartiniere({ ...REGLAGES_MARTINIERE, parSerie: 15, series: 3 }, 5);
-    expect((htmlMartiniere(longues, { ...REGLAGES_MARTINIERE, parSerie: 15, series: 3 }).match(/class="ma-ardoise"/g) ?? []).length).toBe(1);
-    expect(resumeMartiniere(REGLAGES_MARTINIERE)).toBe("Cycle 2 · compléments, additions, soustractions, doubles · nombres jusqu'à 20 · 2 séries de 10 calculs.");
-    expect(FAMILLES_CALCUL.filter((f) => f.cycles.includes(2)).length).toBe(8);
+    expect(contenuDeLaFeuille(html)).toEqual({ consigne: true, prenom: true, corrige: true });
+    // Sans la correction : la colonne des réponses s'en va, les calculs restent.
+    const sans = appliquerOptionsFeuille(html, { ...OPTIONS_FEUILLE, corrige: false });
+    expect(sans).not.toContain("Réponse");
+    expect(sans).toContain("<th>Au tableau</th></tr>");
+    expect(sans).toContain(escapeHtml(series[0][0].dire));
+    expect(htmlMartiniere(series, r({ ardoises: false }))).not.toContain("ma-case");
+    const longues = r({ parSerie: 15, series: 3 });
+    expect((htmlMartiniere(calculsMartiniere(longues, 5), longues).match(/class="ma-ardoise"/g) ?? []).length).toBe(1);
+  });
+
+  it("par écrit : les égalités à trou à compléter, et le corrigé sur sa page", () => {
+    const ecrit = r({ forme: "ecrit" });
+    const series = calculsMartiniere(ecrit, 5);
+    const html = htmlMartiniere(series, ecrit);
+    expect(html).toContain(`<div class="consigne">Complète le plus d'égalités possible en une minute.</div>`);
+    expect(html).toContain("Prénom : ");
+    expect((html.match(/class="ma-trou"/g) ?? []).length).toBe(20);
+    expect(html).toContain(`<div class="page corrige">`);
+    expect(html).toContain(`<b>${series[0][0].reponse}</b>`);
+    expect(html).not.toContain("La Martinière");
+    const sans = appliquerOptionsFeuille(html, { consigne: false, prenom: false, corrige: false });
+    expect(sans).not.toContain("corrigé");
+    expect(sans).not.toContain("Complète");
+    expect(sans).not.toContain("Prénom");
+    expect((sans.match(/class="ma-trou"/g) ?? []).length).toBe(20);
+    // Une procédure ne se chronomètre pas à la minute.
+    const procedure = r({ forme: "ecrit", objectifs: ["cp-ajouter-9"] });
+    expect(htmlMartiniere(calculsMartiniere(procedure, 1), procedure)).toContain("Calcule de tête, et complète les égalités.");
   });
 });

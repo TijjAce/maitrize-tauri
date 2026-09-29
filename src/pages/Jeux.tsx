@@ -114,7 +114,7 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
     aide: "Du calcul mental, des problèmes à la structure choisie, des cartes, des pistes, et des calculs qui font apparaître un dessin.",
     outils: [
       { id: "martiniere", nom: "Calcul mental", icone: "🧮", cycles: "Cycles 2 et 3",
-        quoi: "Le procédé La Martinière : la fiche du maître avec les réponses, et les ardoises papier des élèves." },
+        quoi: "Un fait numérique ou une procédure à la fois, d'après les programmes : à l'oral (La Martinière) ou en test de fluence." },
       { id: "compteEstBon", nom: "Le compte est bon", icone: "🎯", cycles: "Cycles 2 et 3",
         quoi: "Une cible, quelques nombres, les opérations permises : on cherche un chemin, une solution au corrigé." },
       { id: "pyramides", nom: "Pyramides et carrés magiques", icone: "🔺", cycles: "Cycles 2 et 3",
