@@ -4,6 +4,8 @@ import { Field, Input, Modal, Textarea } from "./ui";
 import { toast } from "./Toaster";
 import { confirmer } from "./confirmer";
 import { CLE_RITUELS, EVT_RITUELS, ecrireRituels, lireRituels, nouveauRituel, trierRituels, type Rituel } from "../rituels";
+import { masqueRituel } from "../journalMasques";
+import { CaseImpression } from "./MasquesDuJournal";
 
 // Les rituels, côté écran : la liste partagée, le formulaire, le choix
 // depuis le journal, et les rituels cités sous un prévu.
@@ -110,16 +112,21 @@ export function ChoixRituel({ onChoisir, onClose }: { onChoisir: (r: Rituel) => 
 }
 
 /** Les rituels cités sous le prévu : leur déroulement sous les yeux, et un crayon pour le corriger. */
-export function RituelsCites({ rituels, onModifier }: { rituels: Rituel[]; onModifier: (r: Rituel) => void }) {
+export function RituelsCites({ rituels, onModifier, masques, onMasquer }: {
+  rituels: Rituel[]; onModifier: (r: Rituel) => void;
+  /** Dans le cahier journal : ce que ce créneau cite sans l'imprimer, et de quoi le changer. */
+  masques?: readonly string[]; onMasquer?: (cle: string) => void;
+}) {
   if (!rituels.length) return null;
   return (
     <div className="regles-app" aria-label="Rituels cités">
       {rituels.map((r) => (
-        <div key={r.id} className="regle-app rituel-app">
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <b>🔁 {r.titre}</b>
-            {r.duree > 0 && <span className="meta">· {r.duree} min</span>}
+        <div key={r.id} className={masques?.includes(masqueRituel(r.id)) ? "regle-app rituel-app non-imprime" : "regle-app rituel-app"}>
+          <div className="regle-app-tete">
+            <b style={{ whiteSpace: "nowrap" }}>🔁 {r.titre}</b>
+            {r.duree > 0 && <span className="meta" style={{ whiteSpace: "nowrap" }}>· {r.duree} min</span>}
             <div style={{ flex: 1 }} />
+            {onMasquer && <CaseImpression masque={Boolean(masques?.includes(masqueRituel(r.id)))} onChange={() => onMasquer(masqueRituel(r.id))} />}
             <button type="button" className="btn ghost sm" onClick={() => onModifier(r)} aria-label={`Modifier ${r.titre}`}>✏️</button>
           </div>
           {r.deroulement.trim() && <div style={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.45, marginTop: 4 }}>{r.deroulement.trim()}</div>}

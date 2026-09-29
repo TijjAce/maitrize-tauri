@@ -19,6 +19,7 @@ import { jeuxCites, nomSousLeCurseur } from "../jeuxCites";
 import { ChoixSequence, SequencesCitees } from "./SequencesCitees";
 import { ChoixRituel, RituelForm, RituelsCites, useRituels } from "./Rituels";
 import { IndicateurZoom, useZoomPince } from "./ZoomPince";
+import { useMasquesDuJournal } from "./MasquesDuJournal";
 import { EVT_NOUVEAU_RITUEL, ligneDeRituel, nouveauRituel, rituelsCites, type Rituel } from "../rituels";
 import { zoomReelDuJournal } from "../zoomPince";
 import { insererLigne, ligneDeSequence, sequencesCitees, totalDesSeances } from "../sequencesCitees";
@@ -246,6 +247,9 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
 
   // ── Les séquences citées dans le prévu ──
   const [sequencePour, setSequencePour] = React.useState<Creneau | null>(null);
+
+  // ── Ce qu'on cite sans l'imprimer : une case par bloc, par créneau ──
+  const { masques, basculer: masquer } = useMasquesDuJournal();
 
   // ── Les rituels : posés d'un clic, cités sous le prévu ──
   const { rituels, enregistrer: enregistrerRituel } = useRituels();
@@ -507,10 +511,14 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                     {champ === "prevu" && (
                       <>
                         <ImagesDuPrevu prevu={b.prevu} onRetirer={(nom) => modifier(c.id, "prevu", retirerImage(b.prevu, nom), true)} />
-                        <ReglesDesJeux jeux={citesDans(b.prevu)} onModifier={(jeu) => setJeuEdite({ jeu, nouveau: false })} />
+                        {/* Les jeux du prévu, et ceux du déroulement de la séance liée : ce sont eux qui s'impriment. */}
+                        <ReglesDesJeux jeux={citesDans(seance?.deroulement ? `${b.prevu}\n${seance.deroulement}` : b.prevu)} onModifier={(jeu) => setJeuEdite({ jeu, nouveau: false })}
+                          masques={masques[c.id]} onMasquer={(cle) => masquer(c.id, cle)} />
                         <SequencesCitees citations={sequencesCitees(b.prevu, sequences, seances)} seances={seances}
-                          onOuvrir={(s) => navigate(`/sequences/${s.id}`)} onVoirSeance={setSeanceVue} />
-                        <RituelsCites rituels={rituelsCites(b.prevu, rituels)} onModifier={(r) => setRituelEdite({ rituel: r, nouveau: false })} />
+                          onOuvrir={(s) => navigate(`/sequences/${s.id}`)} onVoirSeance={setSeanceVue}
+                          masques={masques[c.id]} onMasquer={(cle) => masquer(c.id, cle)} />
+                        <RituelsCites rituels={rituelsCites(b.prevu, rituels)} onModifier={(r) => setRituelEdite({ rituel: r, nouveau: false })}
+                          masques={masques[c.id]} onMasquer={(cle) => masquer(c.id, cle)} />
                         <MaterielDuJournal materiels={materielDuCreneau({ seanceId: c.seanceId, prevu: b.prevu }, sequences, seances, materiels ?? [])} />
                       </>
                     )}
