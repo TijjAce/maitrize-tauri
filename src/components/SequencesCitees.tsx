@@ -2,6 +2,8 @@ import React from "react";
 import type { Seance, Sequence } from "../api";
 import { Input, Modal } from "./ui";
 import { rangDeLaSeance, texteDeSeance, totalDesSeances, type CitationSequence } from "../sequencesCitees";
+import { masqueSequence } from "../journalMasques";
+import { CaseImpression } from "./MasquesDuJournal";
 
 // ── Séquences citées dans le prévu ─────────────────────────────────────────
 //
@@ -11,9 +13,11 @@ import { rangDeLaSeance, texteDeSeance, totalDesSeances, type CitationSequence }
 /** Les séquences repliées, gardées pendant la séance de travail. */
 const repliees = new Set<string>();
 
-function SequenceCitee({ citation, seances, onOuvrir, onVoirSeance }: {
+function SequenceCitee({ citation, seances, onOuvrir, onVoirSeance, masque = false, onMasquer }: {
   citation: CitationSequence; seances: Seance[];
   onOuvrir: (s: Sequence) => void; onVoirSeance: (s: Seance) => void;
+  /** Dans le cahier journal : le bloc reste à l'écran, mais ne s'imprime pas. */
+  masque?: boolean; onMasquer?: () => void;
 }) {
   const { sequence: s, seance } = citation;
   const cle = `${s.id}|${seance?.id ?? ""}`;
@@ -29,13 +33,14 @@ function SequenceCitee({ citation, seances, onOuvrir, onVoirSeance }: {
   const long = deroulement.split("\n").length > 4 || deroulement.length > 320;
   const siennes = seances.filter((x) => x.sequenceId === s.id).sort((a, b) => a.numero - b.numero);
   return (
-    <div className="sequence-app">
+    <div className={masque ? "sequence-app non-imprime" : "sequence-app"}>
       <div className="regle-app-tete">
         <button className="regle-app-titre" onClick={basculer} aria-expanded={!replie} title={replie ? "Afficher" : "Replier"}>
           <span aria-hidden="true" className="regle-app-fleche">{replie ? "▸" : "▾"}</span>
           📚 {s.titre}{seance ? ` — ${rangDeLaSeance(seance, totalDesSeances(s, seances))}${seance.titre ? ` : ${seance.titre}` : ""}` : ""}
         </button>
         <span className="regle-app-infos">{[s.matiere, s.periode ? `période ${s.periode}` : ""].filter(Boolean).join(" · ")}</span>
+        {onMasquer && <CaseImpression masque={masque} onChange={onMasquer} />}
         {seance && <button className="btn ghost sm" onClick={() => onVoirSeance(seance)} title="Voir toute la séance">👁</button>}
         <button className="btn ghost sm" onClick={() => onOuvrir(s)} title="Ouvrir la séquence">↗</button>
       </div>
@@ -62,16 +67,22 @@ function SequenceCitee({ citation, seances, onOuvrir, onVoirSeance }: {
   );
 }
 
-export function SequencesCitees({ citations, seances, onOuvrir, onVoirSeance }: {
+export function SequencesCitees({ citations, seances, onOuvrir, onVoirSeance, masques, onMasquer }: {
   citations: CitationSequence[]; seances: Seance[];
   onOuvrir: (s: Sequence) => void; onVoirSeance: (s: Seance) => void;
+  /** Dans le cahier journal : ce que ce créneau cite sans l'imprimer, et de quoi le changer. */
+  masques?: readonly string[]; onMasquer?: (cle: string) => void;
 }) {
   if (!citations.length) return null;
   return (
     <div className="regles-app" aria-label="Séquences citées">
-      {citations.map((c) => (
-        <SequenceCitee key={`${c.sequence.id}|${c.seance?.id ?? ""}`} citation={c} seances={seances} onOuvrir={onOuvrir} onVoirSeance={onVoirSeance} />
-      ))}
+      {citations.map((c) => {
+        const cle = masqueSequence(c.sequence.id, c.seance?.id);
+        return (
+          <SequenceCitee key={`${c.sequence.id}|${c.seance?.id ?? ""}`} citation={c} seances={seances} onOuvrir={onOuvrir} onVoirSeance={onVoirSeance}
+            masque={masques?.includes(cle)} onMasquer={onMasquer ? () => onMasquer(cle) : undefined} />
+        );
+      })}
     </div>
   );
 }
