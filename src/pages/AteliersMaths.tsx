@@ -19,7 +19,7 @@ import {
 import { FAMILLES_CALCUL, PLAFONDS_MARTINIERE, REFLEXIONS, REGLAGES_CYCLE, REGLAGES_MARTINIERE, STYLE_MARTINIERE, calculsMartiniere, htmlMartiniere } from "../martiniere";
 import { OPERATIONS_COMPTE, REGLAGES_COMPTE, REGLAGES_COMPTE_CYCLE, STYLE_COMPTE, comptes, htmlCompteEstBon } from "../compteEstBon";
 import { REGLAGES_PYRAMIDES, STYLE_PYRAMIDES, htmlPyramides, type FormeCalcul } from "../pyramides";
-import { PRECISIONS_HEURE, REGLAGES_HEURE, STYLE_HEURE, heures, htmlHeure, type PrecisionHeure, type SensHeure } from "../heure";
+import { COULEURS_AIGUILLES, PRECISIONS_HEURE, REGLAGES_HEURE, STYLE_HEURE, heures, htmlHeure, type PrecisionHeure, type SensHeure } from "../heure";
 import { EXERCICES_NUMERATION, PLAFONDS_NUMERATION, REGLAGES_NUMERATION, STYLE_NUMERATION, htmlNumeration } from "../numeration";
 import { fr } from "../nombres";
 
@@ -103,11 +103,11 @@ export function CartesNombresTab() {
 
 // ── Les nombres en cubes ──
 
-/** Les couleurs possibles pour un groupement, en pastilles. */
-function Pastilles({ valeur, onChange }: { valeur: string; onChange: (hex: string) => void }) {
+/** Les couleurs possibles, en pastilles : celles des cubes, ou la palette qu'on donne. */
+function Pastilles({ valeur, onChange, palette = PALETTE_CUBES }: { valeur: string; onChange: (hex: string) => void; palette?: { nom: string; hex: string }[] }) {
   return (
     <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-      {PALETTE_CUBES.map((c) => (
+      {palette.map((c) => (
         <button key={c.hex} type="button" title={c.nom} aria-label={c.nom} aria-pressed={valeur === c.hex}
           onClick={() => onChange(c.hex)}
           style={{
@@ -512,7 +512,24 @@ export function HeureTab() {
             <option value="lire">Lire l'heure sur le cadran</option><option value="dessiner">Dessiner les aiguilles</option><option value="mixte">L'un et l'autre, en alternance</option>
           </Select>
         </Field>
-        <Coche on={r.apresMidi} libelle="L'après-midi aussi : 19 h 30 se lit comme 7 h 30" onChange={(v) => maj({ apresMidi: v })} />
+        <Field label="Les aides">
+          <Coche on={r.couleurs} libelle="Aiguilles en couleur" onChange={(v) => maj({ couleurs: v })} />
+          {r.couleurs && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, margin: "4px 0 8px 24px" }}>
+              <div>
+                <div className="meta" style={{ fontSize: 12, marginBottom: 4 }}>Petite aiguille · les heures</div>
+                <Pastilles palette={COULEURS_AIGUILLES} valeur={r.couleurHeures} onChange={(hex) => maj({ couleurHeures: hex })} />
+              </div>
+              <div>
+                <div className="meta" style={{ fontSize: 12, marginBottom: 4 }}>Grande aiguille · les minutes</div>
+                <Pastilles palette={COULEURS_AIGUILLES} valeur={r.couleurMinutes} onChange={(hex) => maj({ couleurMinutes: hex })} />
+              </div>
+            </div>
+          )}
+          <Coche on={r.minutesAutour} libelle="Les minutes autour du cadran : 5, 10, 15…" onChange={(v) => maj({ minutesAutour: v })} />
+          <Coche on={r.avecH} libelle="Le « h » déjà écrit dans la réponse" onChange={(v) => maj({ avecH: v })} />
+          <Coche on={r.apresMidi} libelle="L'après-midi aussi : 19 h 30 se lit comme 7 h 30" onChange={(v) => maj({ apresMidi: v })} />
+        </Field>
         <Field label="Horloges"><Input type="number" min={1} max={24} value={r.combien} onChange={(e) => maj({ combien: borne(e.target.value, 1, 24, 9) })} style={{ width: 80 }} /></Field>
         <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("heure", "Lire l'heure", html, STYLE_HEURE)} onBureau={() => bureau("heure", "Lire l'heure", html, STYLE_HEURE)} />
       </>}
