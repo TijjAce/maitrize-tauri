@@ -1,50 +1,36 @@
-// Le calcul mental, procédé La Martinière.
+// Le calcul mental : un fait numérique, une procédure à la fois.
 //
-// Le maître dit un calcul, deux fois ; les élèves réfléchissent sans écrire ;
-// « écrivez » — chacun écrit le résultat sur l'ardoise ; « montrez » — les
-// ardoises se lèvent ensemble ; on corrige, on passe au suivant. Dix calculs
-// font une série, deux ou trois séries une séance. Ce qui se prépare ici : la
-// fiche du maître — les calculs et leurs réponses, dans l'ordre où on les
-// dira — et les ardoises papier, une case numérotée par calcul, pour ceux
-// qui n'ont pas d'ardoise ou pour garder trace.
+// Les programmes rangent le calcul mental en objectifs précis, classe par
+// classe (voir `faitsNumeriques`). On en choisit un, et la feuille ne
+// travaille que lui : c'est ainsi qu'un fait se mémorise. La révision, qui
+// en mêle plusieurs, se demande à part.
 //
-// Les familles suivent les repères de progression du calcul mental : au
-// cycle 2, compléments à 10, sommes et différences jusqu'à 20 puis 100,
-// doubles et moitiés, dizaines entières, tables de 2, 5, 10 ; au cycle 3,
-// tables et divisions, multiplier par 10, 100, 1 000, compléments à 100 et
-// à 1 000, et les décimaux simples.
+// Deux formes. À l'oral, c'est le procédé La Martinière : le maître dit le
+// calcul, deux fois ; les élèves réfléchissent sans écrire ; « écrivez » —
+// chacun écrit le résultat sur l'ardoise ; « montrez » — les ardoises se
+// lèvent ensemble ; on corrige, on passe au suivant. La feuille est alors la
+// fiche du maître, et les ardoises papier pour qui n'a pas d'ardoise. Par
+// écrit, c'est le test de fluence que les programmes demandent : des
+// égalités à trou à compléter en temps limité, pour voir ses progrès.
 
 import { escapeHtml } from "./print";
 import { feuille } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
-import { choisir, entier, fr } from "./nombres";
+import { NIVEAUX, objectifParId, objectifsDuNiveau, tirerCalcul, type Calcul, type Niveau, type Objectif } from "./faitsNumeriques";
 
-export type FamilleCalcul =
-  | "complements" | "additions" | "soustractions" | "doubles" | "moities" | "dizaines"
-  | "tables" | "divisions" | "fois10" | "decimaux";
-
-export const FAMILLES_CALCUL: { id: FamilleCalcul; libelle: string; court: string; cycles: (2 | 3)[] }[] = [
-  { id: "complements", libelle: "Compléments à 10, à 100, à 1 000", court: "compléments", cycles: [2, 3] },
-  { id: "additions", libelle: "Additions", court: "additions", cycles: [2, 3] },
-  { id: "soustractions", libelle: "Soustractions", court: "soustractions", cycles: [2, 3] },
-  { id: "doubles", libelle: "Doubles", court: "doubles", cycles: [2, 3] },
-  { id: "moities", libelle: "Moitiés", court: "moitiés", cycles: [2, 3] },
-  { id: "dizaines", libelle: "Ajouter, retirer des dizaines, des centaines", court: "dizaines", cycles: [2, 3] },
-  { id: "tables", libelle: "Tables de multiplication", court: "tables", cycles: [2, 3] },
-  { id: "divisions", libelle: "Divisions : les tables à l'envers", court: "divisions", cycles: [3] },
-  { id: "fois10", libelle: "Multiplier par 10, 100, 1 000", court: "× 10, 100", cycles: [2, 3] },
-  { id: "decimaux", libelle: "Nombres décimaux : ajouter, retirer des dixièmes", court: "décimaux", cycles: [3] },
-];
-
-export const PLAFONDS_MARTINIERE = [10, 20, 50, 100, 1000, 10000] as const;
 export const REFLEXIONS = [3, 5, 10, 15] as const;
+export type FormeEntrainement = "oral" | "ecrit";
 
 export interface ReglagesMartiniere {
-  cycle: 2 | 3;
-  familles: FamilleCalcul[];
-  /** Le plus grand nombre en jeu dans les sommes, différences et compléments. */
-  jusqua: number;
+  niveau: Niveau;
+  /** Ce qu'on travaille : un seul objectif, sauf en révision. */
+  objectifs: string[];
+  /** La révision : plusieurs objectifs mêlés dans les mêmes séries. */
+  revision: boolean;
+  /** Les tables, pour les objectifs « au choix ». */
   tables: number[];
+  /** À l'oral, le procédé La Martinière ; par écrit, un test de fluence. */
+  forme: FormeEntrainement;
   parSerie: number;
   series: number;
   /** Le temps de réflexion, en secondes, avant « écrivez ». */
@@ -53,117 +39,46 @@ export interface ReglagesMartiniere {
   ardoises: boolean;
 }
 
-/** Ce que chaque cycle propose d'abord ; on y revient quand on change de cycle. */
-export const REGLAGES_CYCLE: Record<2 | 3, Pick<ReglagesMartiniere, "familles" | "jusqua" | "tables">> = {
-  2: { familles: ["complements", "additions", "soustractions", "doubles"], jusqua: 20, tables: [2, 5, 10] },
-  3: { familles: ["tables", "divisions", "fois10", "complements", "additions"], jusqua: 1000, tables: [3, 4, 6, 7, 8, 9] },
+export const REGLAGES_MARTINIERE: ReglagesMartiniere = {
+  niveau: "CP", objectifs: ["cp-complements-10"], revision: false, tables: [2], forme: "oral",
+  parSerie: 10, series: 2, reflexion: 5, ardoises: true,
 };
 
-export const REGLAGES_MARTINIERE: ReglagesMartiniere = { cycle: 2, ...REGLAGES_CYCLE[2], parSerie: 10, series: 2, reflexion: 5, ardoises: true };
-
-export interface Calcul {
-  famille: FamilleCalcul;
-  /** Ce que le maître dit. */
-  dire: string;
-  /** Le calcul écrit, pour la correction au tableau. */
-  ecrit: string;
-  reponse: string;
+/** Ce qu'on travaille vraiment : les objectifs choisis qui sont de la classe — le premier de la classe à défaut —, un seul hors révision. */
+export function objectifsRetenus(r: Pick<ReglagesMartiniere, "niveau" | "objectifs" | "revision">): Objectif[] {
+  const choisis = (r.objectifs ?? []).map(objectifParId).filter((o): o is Objectif => !!o && o.niveau === r.niveau);
+  const retenus = choisis.length ? choisis : objectifsDuNiveau(r.niveau).slice(0, 1);
+  return r.revision ? retenus : retenus.slice(0, 1);
 }
 
-/** Un nombre de dixièmes, écrit en décimal : 25 → « 2,5 », 40 → « 4 ». */
-export const dixiemes = (n: number) => (n % 10 ? fr(n / 10, 1) : fr(n / 10));
-
-/** Deux termes dont la somme ne dépasse pas `plafond` — et, au-delà de vingt, un second terme petit ou rond, comme on le calcule de tête. */
-function deuxTermes(alea: () => number, plafond: number): [number, number] {
-  const a = entier(alea, 1, plafond - 1);
-  const reste = plafond - a;
-  if (plafond <= 20 || reste < 10) return [a, entier(alea, 1, reste)];
-  const tirage = alea();
-  if (tirage < 0.4) return [a, entier(alea, 1, 9)];
-  const pas = plafond >= 1000 && tirage < 0.7 ? 100 : 10;
-  const rond = pas * entier(alea, 1, Math.floor(reste / pas));
-  return rond > 0 ? [a, rond] : [a, entier(alea, 1, reste)];
+/** L'objectif tel qu'on le travaille : avec la table choisie, quand il en demande une. */
+export function libelleTravaille(o: Objectif, tables: number[]): string {
+  if (!o.tables) return o.libelle;
+  const choisies = tables.filter((t) => o.tables!.includes(t));
+  const liste = (choisies.length ? choisies : [o.tables[0]]).join(", ");
+  return `${o.libelle.replace(", au choix", "")} : ${liste}`;
 }
 
-/** Un calcul de la famille ; `null` quand la famille n'a pas de sens avec ces réglages. */
-export function unCalcul(f: FamilleCalcul, r: ReglagesMartiniere, alea: () => number): Calcul | null {
-  const J = Math.max(10, r.jusqua);
-  switch (f) {
-    case "complements": {
-      const cible = J < 100 ? 10 : J < 1000 ? 100 : alea() < 0.5 ? 100 : 1000;
-      let a: number;
-      if (cible === 10) a = entier(alea, 1, 9);
-      else if (cible === 100) a = r.cycle === 2 || alea() < 0.5 ? 10 * entier(alea, 1, 9) : entier(alea, 1, 99);
-      else a = alea() < 0.5 ? 100 * entier(alea, 1, 9) : 10 * entier(alea, 1, 99);
-      return { famille: f, dire: `Combien pour aller de ${fr(a)} à ${fr(cible)} ?`, ecrit: `${fr(a)} + … = ${fr(cible)}`, reponse: fr(cible - a) };
-    }
-    case "additions": {
-      const [a, b] = deuxTermes(alea, J);
-      return { famille: f, dire: `${fr(a)} plus ${fr(b)}`, ecrit: `${fr(a)} + ${fr(b)}`, reponse: fr(a + b) };
-    }
-    case "soustractions": {
-      const [a, b] = deuxTermes(alea, J);
-      return { famille: f, dire: `${fr(a + b)} moins ${fr(b)}`, ecrit: `${fr(a + b)} − ${fr(b)}`, reponse: fr(a) };
-    }
-    case "doubles": {
-      const n = entier(alea, 1, Math.max(1, Math.floor(J / 2)));
-      return { famille: f, dire: `Le double de ${fr(n)}`, ecrit: `${fr(n)} × 2`, reponse: fr(2 * n) };
-    }
-    case "moities": {
-      const n = 2 * entier(alea, 1, Math.max(1, Math.floor(J / 2)));
-      return { famille: f, dire: `La moitié de ${fr(n)}`, ecrit: `${fr(n)} ÷ 2`, reponse: fr(n / 2) };
-    }
-    case "dizaines": {
-      if (J < 20) return null;
-      const pas = J >= 1000 && alea() < 0.5 ? 100 : 10;
-      const k = pas * entier(alea, 1, Math.min(9, Math.floor(J / pas) - 1));
-      const a = entier(alea, 1, J - k);
-      return alea() < 0.5
-        ? { famille: f, dire: `${fr(a)} plus ${fr(k)}`, ecrit: `${fr(a)} + ${fr(k)}`, reponse: fr(a + k) }
-        : { famille: f, dire: `${fr(a + k)} moins ${fr(k)}`, ecrit: `${fr(a + k)} − ${fr(k)}`, reponse: fr(a) };
-    }
-    case "tables": {
-      if (!r.tables.length) return null;
-      const t = choisir(alea, r.tables), k = entier(alea, 1, 10);
-      return { famille: f, dire: `${fr(t)} fois ${fr(k)}`, ecrit: `${fr(t)} × ${fr(k)}`, reponse: fr(t * k) };
-    }
-    case "divisions": {
-      if (!r.tables.length) return null;
-      const t = choisir(alea, r.tables), k = entier(alea, 1, 10);
-      return { famille: f, dire: `${fr(t * k)} divisé par ${fr(t)}`, ecrit: `${fr(t * k)} ÷ ${fr(t)}`, reponse: fr(k) };
-    }
-    case "fois10": {
-      const facteur = choisir(alea, r.cycle === 3 ? [10, 100, 1000] : [10, 100]);
-      const n = entier(alea, 2, r.cycle === 3 ? 99 : 30);
-      return { famille: f, dire: `${fr(n)} fois ${fr(facteur)}`, ecrit: `${fr(n)} × ${fr(facteur)}`, reponse: fr(n * facteur) };
-    }
-    case "decimaux": {
-      // En dixièmes, pour rester juste : 2,5 + 1,5 fait 4, pas 3,9999.
-      const a = entier(alea, 1, 95), b = entier(alea, 1, 100 - a);
-      return alea() < 0.5
-        ? { famille: f, dire: `${dixiemes(a)} plus ${dixiemes(b)}`, ecrit: `${dixiemes(a)} + ${dixiemes(b)}`, reponse: dixiemes(a + b) }
-        : { famille: f, dire: `${dixiemes(a + b)} moins ${dixiemes(b)}`, ecrit: `${dixiemes(a + b)} − ${dixiemes(b)}`, reponse: dixiemes(a) };
-    }
-  }
+/** Ce que le programme attend en fin d'année pour cet objectif, quand il le chiffre. */
+export function fluenceAttendue(o: Objectif): string {
+  if (o.fluence) return o.fluence;
+  return o.rubrique === "faits" ? "" : NIVEAUX.find((n) => n.id === o.niveau)?.procedures ?? "";
 }
 
-/** Les séries de la séance : chaque famille choisie revient à son tour, sans deux fois le même calcul. */
+/** Les séries : chaque objectif retenu revient à son tour, sans deux fois le même calcul tant que c'est possible. */
 export function calculsMartiniere(r: ReglagesMartiniere, graine: number): Calcul[][] {
   const alea = hasard(graine);
+  const retenus = objectifsRetenus(r);
   const vus = new Set<string>();
   const series: Calcul[][] = [];
-  for (let s = 0; s < Math.max(1, r.series); s++) {
-    const ordre = melanger(alea, r.familles);
+  for (let s = 0; s < Math.max(1, Math.min(6, r.series)); s++) {
+    const ordre = melanger(alea, retenus);
     const serie: Calcul[] = [];
-    if (!ordre.length) { series.push(serie); continue; }
-    for (let i = 0; i < r.parSerie; i++) {
-      let calcul: Calcul | null = null;
-      // Une famille sans calcul possible (dizaines jusqu'à 10) cède la place à la suivante.
-      for (let essai = 0; essai < 40 && !calcul; essai++) {
-        const c = unCalcul(ordre[(i + Math.floor(essai / 20)) % ordre.length], r, alea);
-        if (c && (!vus.has(c.ecrit) || essai >= 30)) calcul = c;
-      }
-      if (!calcul) continue;
+    for (let i = 0; i < Math.max(1, Math.min(30, r.parSerie)); i++) {
+      const objectif = ordre[i % ordre.length];
+      let calcul = tirerCalcul(objectif, alea, r.tables ?? []);
+      // Une table n'a que dix produits : au-delà, il faut bien y revenir.
+      for (let essai = 0; essai < 30 && vus.has(calcul.ecrit); essai++) calcul = tirerCalcul(objectif, alea, r.tables ?? []);
       vus.add(calcul.ecrit);
       serie.push(calcul);
     }
@@ -172,21 +87,24 @@ export function calculsMartiniere(r: ReglagesMartiniere, graine: number): Calcul
   return series;
 }
 
-/** La ligne qui résume les réglages, sous le titre. */
+/** La ligne qui dit ce que la feuille travaille. */
 export function resumeMartiniere(r: ReglagesMartiniere): string {
-  const familles = FAMILLES_CALCUL.filter((f) => r.familles.includes(f.id)).map((f) => f.court).join(", ");
-  const tables = r.familles.some((f) => f === "tables" || f === "divisions") && r.tables.length ? ` · tables de ${r.tables.join(", ")}` : "";
-  return `Cycle ${r.cycle} · ${familles || "aucune famille"} · nombres jusqu'à ${fr(r.jusqua)}${tables} · ${r.series} série${r.series > 1 ? "s" : ""} de ${r.parSerie} calculs.`;
+  const retenus = objectifsRetenus(r);
+  const quoi = retenus.map((o) => libelleTravaille(o, r.tables ?? [])).join(" ; ");
+  return `${r.niveau} · ${quoi} · ${r.series} série${r.series > 1 ? "s" : ""} de ${r.parSerie} calculs.`;
 }
 
-export function htmlMartiniere(series: Calcul[][], r: ReglagesMartiniere): string {
+const avecTrou = (ecrit: string) => escapeHtml(ecrit).replace("…", `<span class="ma-trou"></span>`);
+const avecReponse = (c: Calcul) => escapeHtml(c.ecrit).replace("…", `<b>${escapeHtml(c.reponse)}</b>`);
+
+function htmlOral(series: Calcul[][], r: ReglagesMartiniere): string {
+  const attendu = objectifsRetenus(r).map(fluenceAttendue).find(Boolean);
   const tete = `<div class="titre">Calcul mental — procédé La Martinière</div>
-    <div class="regle"><b>Le procédé</b>Je dis le calcul, deux fois. On réfléchit sans écrire, ${r.reflexion} secondes. « Écrivez ! » : chacun écrit le résultat, et rien d'autre. « Montrez ! » : les ardoises se lèvent ensemble. On dit la réponse, on corrige, on passe au calcul suivant.
-      <span style="color:#687087">— Le calcul mental à l'école, Éduscol : cinq à quinze minutes par jour, en rituel.</span></div>
-    <div class="sous">${escapeHtml(resumeMartiniere(r))}</div>`;
+    <div class="regle"><b>Le procédé</b>Je dis le calcul, deux fois. On réfléchit sans écrire, ${r.reflexion} secondes. « Écrivez ! » : chacun écrit le résultat, et rien d'autre. « Montrez ! » : les ardoises se lèvent ensemble. On dit la réponse, on corrige, on passe au calcul suivant.</div>
+    <div class="sous">${escapeHtml(resumeMartiniere(r))}${attendu ? ` Attendu en fin de ${r.niveau} : ${escapeHtml(attendu)}.` : ""}</div>`;
   const tables = series.map((s, i) => `<table class="ma-serie"><caption>Série ${i + 1}</caption>
-    <thead><tr><th>n°</th><th>Je dis</th><th>Au tableau</th><th>Réponse</th></tr></thead>
-    <tbody>${s.map((c, j) => `<tr><td>${j + 1}</td><td>${escapeHtml(c.dire)}</td><td>${escapeHtml(c.ecrit)}</td><td><b>${escapeHtml(c.reponse)}</b></td></tr>`).join("")}</tbody></table>`).join("");
+    <thead><tr><th>n°</th><th>Je dis</th><th>Au tableau</th><th class="corrige">Réponse</th></tr></thead>
+    <tbody>${s.map((c, j) => `<tr><td>${j + 1}</td><td>${escapeHtml(c.dire)}</td><td>${escapeHtml(c.ecrit)}</td><td class="corrige"><b>${escapeHtml(c.reponse)}</b></td></tr>`).join("")}</tbody></table>`).join("");
   const maitre = `<div class="page">${tete}<div class="ma-series">${tables}</div></div>`;
   if (!r.ardoises) return feuille(maitre, "ma");
   const ardoise = `<div class="ma-ardoise">
@@ -200,19 +118,40 @@ export function htmlMartiniere(series: Calcul[][], r: ReglagesMartiniere): strin
   return feuille(maitre + page, "ma");
 }
 
+function htmlEcrit(series: Calcul[][], r: ReglagesMartiniere): string {
+  const faits = objectifsRetenus(r).every((o) => o.rubrique === "faits");
+  const consigne = faits ? "Complète le plus d'égalités possible en une minute." : "Calcule de tête, et complète les égalités.";
+  const bloc = (s: Calcul[], i: number, corrige: boolean) => `<div class="ma-test"><div class="ma-test-titre"><span>Série ${i + 1}</span>`
+    + (corrige ? "" : `<span class="ma-score">Temps : ............ Score : ........ / ${s.length}</span>`) + `</div>
+    <div class="ma-egalites">${s.map((c, j) => `<div class="ma-egalite"><span class="ma-numero">${j + 1}</span>${corrige ? avecReponse(c) : avecTrou(c.ecrit)}</div>`).join("")}</div></div>`;
+  const eleve = `<div class="page"><div class="titre">Calcul mental</div><div class="sous">Prénom : ........................................ Date : ........................</div>
+    <div class="consigne">${consigne}</div>${series.map((s, i) => bloc(s, i, false)).join("")}</div>`;
+  const corrige = `<div class="page corrige"><div class="titre">Calcul mental — corrigé</div><div class="sous">${escapeHtml(resumeMartiniere(r))}</div>${series.map((s, i) => bloc(s, i, true)).join("")}</div>`;
+  return feuille(eleve + corrige, "ma");
+}
+
+export const htmlMartiniere = (series: Calcul[][], r: ReglagesMartiniere): string => (r.forme === "ecrit" ? htmlEcrit(series, r) : htmlOral(series, r));
+
 export const STYLE_MARTINIERE = `
+  .feuille.ma .consigne { font-size: 15px; font-weight: 700; color: #1c2233; margin: 0 0 4mm; }
   .feuille.ma .ma-series { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5mm; align-items: start; }
   .feuille.ma .ma-serie { border-collapse: collapse; width: 100%; font-size: 12.5px; page-break-inside: avoid; }
   .feuille.ma .ma-serie caption { text-align: left; font-weight: 800; font-size: 13px; padding: 1mm 0; }
   .feuille.ma .ma-serie th, .feuille.ma .ma-serie td { border: 1px solid #9aa0b4; padding: 1.4mm 2mm; text-align: left; }
   .feuille.ma .ma-serie th { background: #f0f2f8; font-size: 10.5px; }
   .feuille.ma .ma-serie td:first-child { width: 6mm; text-align: center; color: #687087; }
-  .feuille.ma .ma-serie td:last-child { text-align: center; width: 16mm; }
+  .feuille.ma .ma-serie td.corrige { text-align: center; width: 16mm; }
+  .feuille.ma .ma-serie td:nth-child(3) { white-space: nowrap; }
   .feuille.ma .ma-ardoise { padding: 2mm 0; page-break-inside: avoid; }
   .feuille.ma .ma-coupe { border-top: 1px dashed #9aa0b4; margin: 4mm 0; }
   .feuille.ma .ma-ardoise-tete { display: flex; gap: 8mm; font-size: 12px; font-weight: 700; margin-bottom: 2mm; }
-  .feuille.ma .ma-ardoise-titre { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #687087; margin: 2.5mm 0 1mm; }
+  .feuille.ma .ma-ardoise-titre, .feuille.ma .ma-test-titre { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #687087; margin: 2.5mm 0 1mm; }
   .feuille.ma .ma-cases { display: flex; flex-wrap: wrap; gap: 1.5mm; }
   .feuille.ma .ma-case { width: 16mm; height: 12mm; border: 1.5px solid #1c2233; border-radius: 1.5mm; position: relative; }
   .feuille.ma .ma-case span { position: absolute; top: .5mm; left: 1mm; font-size: 8px; color: #687087; }
+  .feuille.ma .ma-test { margin: 0 0 5mm; page-break-inside: avoid; }
+  .feuille.ma .ma-egalites { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 8mm; }
+  .feuille.ma .ma-egalite { display: flex; align-items: center; gap: 2mm; font-size: 18px; font-weight: 600; padding: 2.2mm 0; border-bottom: 1px dotted #c4c9d6; }
+  .feuille.ma .ma-numero { font-size: 10px; font-weight: 400; color: #687087; width: 6mm; }
+  .feuille.ma .ma-trou { display: inline-block; width: 14mm; height: 8mm; border: 1.5px solid #1c2233; border-radius: 1.5mm; vertical-align: middle; margin: 0 1mm; }
 `;
