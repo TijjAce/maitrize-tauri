@@ -72,7 +72,8 @@ export function retirerElements(html: string, aRetirer: (classes: string[]) => b
   return sortie + html.slice(position);
 }
 
-const LIGNE_PRENOM = /<(div|p)\b[^>]*>\s*Prénom\s*:[^<]*<\/\1>/g;
+// La ligne « Prénom … Date … » d'une feuille, ou les deux mentions séparées d'une ardoise.
+const LIGNE_PRENOM = /<(div|p|span)\b[^>]*>\s*(?:Prénom|Date)\s*:[^<]*<\/\1>/g;
 
 /** Ce que la feuille contient, pour ne proposer que les cases qui ont un effet. */
 export const contenuDeLaFeuille = (html: string): OptionsFeuille => ({

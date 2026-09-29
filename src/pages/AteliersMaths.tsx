@@ -16,7 +16,8 @@ import {
   additionsArbre, cartesCalcul, cartesNombres, htmlArbreCalcul, htmlCartesCalcul, htmlCartesNombres, htmlFractions, htmlJeuDeLOie,
   type ContenuOie, type FacesDe, type MaterielFraction, type Operation, type Representation, type RepresentationFraction,
 } from "../jeuxMaths";
-import { FAMILLES_CALCUL, PLAFONDS_MARTINIERE, REFLEXIONS, REGLAGES_CYCLE, REGLAGES_MARTINIERE, STYLE_MARTINIERE, calculsMartiniere, htmlMartiniere } from "../martiniere";
+import { REFLEXIONS, REGLAGES_MARTINIERE, STYLE_MARTINIERE, calculsMartiniere, fluenceAttendue, htmlMartiniere, objectifsRetenus, type FormeEntrainement } from "../martiniere";
+import { NIVEAUX, RUBRIQUES, objectifParId, objectifsDuNiveau, type Niveau, type Objectif } from "../faitsNumeriques";
 import { OPERATIONS_COMPTE, REGLAGES_COMPTE, REGLAGES_COMPTE_CYCLE, STYLE_COMPTE, comptes, htmlCompteEstBon } from "../compteEstBon";
 import { REGLAGES_PYRAMIDES, STYLE_PYRAMIDES, htmlPyramides, type FormeCalcul } from "../pyramides";
 import { COULEURS_AIGUILLES, PRECISIONS_HEURE, REGLAGES_HEURE, STYLE_HEURE, heures, htmlHeure, type PrecisionHeure, type SensHeure } from "../heure";
@@ -355,45 +356,96 @@ export function MartiniereTab() {
   const [graine, setGraine] = React.useState(graineAuHasard);
   const series = React.useMemo(() => calculsMartiniere(r, graine), [r, graine]);
   const html = React.useMemo(() => htmlMartiniere(series, r), [series, r]);
-  const familles = FAMILLES_CALCUL.filter((f) => f.cycles.includes(r.cycle));
+  const duNiveau = objectifsDuNiveau(r.niveau);
+  const retenus = objectifsRetenus(r);
+  const niveau = NIVEAUX.find((n) => n.id === r.niveau) ?? NIVEAUX[0];
   const total = series.reduce((n, s) => n + s.length, 0);
-  const avecTables = r.familles.some((f) => f === "tables" || f === "divisions");
+  const tablesPossibles = [...new Set(retenus.flatMap((o) => o.tables ?? []))];
+  const tablesChoisies = (r.tables ?? []).filter((t) => tablesPossibles.includes(t));
+  const attendu = retenus.map(fluenceAttendue).find(Boolean);
+
+  // Un seul objectif à la fois ; en révision, on coche ceux qu'on veut mêler.
+  const choisir = (o: Objectif) => {
+    const table = o.tables && !(r.tables ?? []).some((t) => o.tables!.includes(t)) ? { tables: [o.tables[0]] } : {};
+    if (!r.revision) { maj({ objectifs: [o.id], ...table }); return; }
+    const siens = (r.objectifs ?? []).filter((id) => objectifParId(id)?.niveau === r.niveau);
+    const suite = siens.includes(o.id) ? siens.filter((id) => id !== o.id) : [...siens, o.id];
+    maj({ objectifs: suite.length ? suite : [o.id], ...table });
+  };
+  const choisirTable = (t: number) => {
+    if (!r.revision) { maj({ tables: [t] }); return; }
+    const suite = tablesChoisies.includes(t) ? tablesChoisies.filter((x) => x !== t) : [...tablesChoisies, t];
+    maj({ tables: (suite.length ? suite : [t]).sort((a, b) => a - b) });
+  };
+  const titre = r.forme === "ecrit" ? "Calcul mental" : "Calcul mental — La Martinière";
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Calcul mental — procédé La Martinière</h3>
+        <h3 style={{ marginTop: 0 }}>Calcul mental</h3>
         <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Je dis le calcul, on réfléchit, « écrivez », « montrez ». La fiche du maître avec les réponses, et les ardoises papier des élèves à la suite.
+          Un fait numérique ou une procédure à la fois, tels que les programmes les donnent classe par classe. À l'oral, c'est le procédé La Martinière ; par écrit, un test de fluence.
         </p>
-        <Field label="Cycle"><Cycle valeur={r.cycle} onChange={(cycle) => maj({ cycle, ...REGLAGES_CYCLE[cycle] })} /></Field>
-        <Field label="Familles de calculs">
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {familles.map((f) => (
-              <Coche key={f.id} on={r.familles.includes(f.id)} libelle={f.libelle}
-                onChange={(v) => maj({ familles: v ? [...r.familles, f.id] : r.familles.filter((x) => x !== f.id) })} />
+        <Field label="Classe">
+          <div className="seg">
+            {NIVEAUX.map((n) => (
+              <button key={n.id} type="button" className={r.niveau === n.id ? "active" : ""}
+                onClick={() => maj({ niveau: n.id as Niveau, objectifs: [objectifsDuNiveau(n.id)[0].id] })}>{n.id}</button>
             ))}
           </div>
         </Field>
-        <Field label="Nombres jusqu'à">
-          <Select value={r.jusqua} onChange={(e) => maj({ jusqua: Number(e.target.value) })}>
-            {PLAFONDS_MARTINIERE.map((p) => <option key={p} value={p}>{fr(p)}</option>)}
-          </Select>
+        <Field label={r.revision ? "Ce qu'on révise" : "Ce qu'on travaille"}>
+          {RUBRIQUES.map((rubrique) => {
+            const siens = duNiveau.filter((o) => o.rubrique === rubrique.id);
+            if (!siens.length) return null;
+            return (
+              <div key={rubrique.id} className="fn-rubrique">
+                <div className="fn-rubrique-titre">{rubrique.libelle}</div>
+                {siens.map((o) => {
+                  const choisi = retenus.some((x) => x.id === o.id);
+                  return (
+                    <button key={o.id} type="button" className={choisi ? "fn-objectif choisi" : "fn-objectif"} aria-pressed={choisi} onClick={() => choisir(o)}>
+                      <span className="fn-puce" aria-hidden="true">{choisi ? (r.revision ? "☑" : "●") : (r.revision ? "☐" : "○")}</span>{o.libelle}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+          <Coche on={r.revision} libelle="Réviser : mêler plusieurs objectifs sur la même feuille"
+            onChange={(v) => maj({ revision: v, objectifs: v ? r.objectifs : retenus.slice(0, 1).map((o) => o.id) })} />
         </Field>
-        {avecTables && (
-          <Field label="Tables"><Chips liste={[2, 3, 4, 5, 6, 7, 8, 9, 10]} choisis={r.tables} onChange={(v) => maj({ tables: [...v].sort((a, b) => a - b) })} /></Field>
+        {tablesPossibles.length > 0 && (
+          <Field label={r.revision ? "Quelles tables ?" : "Quelle table ?"}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+              {tablesPossibles.map((t) => (
+                <button key={t} type="button" className={`btn sm${tablesChoisies.includes(t) ? " primary" : " ghost"}`} onClick={() => choisirTable(t)}>{t}</button>
+              ))}
+            </div>
+          </Field>
         )}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <Field label="Calculs par série"><Input type="number" min={5} max={20} value={r.parSerie} onChange={(e) => maj({ parSerie: borne(e.target.value, 5, 20, 10) })} /></Field>
-          <Field label="Séries"><Input type="number" min={1} max={5} value={r.series} onChange={(e) => maj({ series: borne(e.target.value, 1, 5, 2) })} /></Field>
+        <div className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, margin: "2px 0 8px" }}>
+          Programme de {r.niveau} · {niveau.champ}{attendu ? ` · attendu en fin d'année : ${attendu}` : ""}.
         </div>
-        <Field label="Temps de réflexion avant « écrivez »">
-          <Select value={r.reflexion} onChange={(e) => maj({ reflexion: Number(e.target.value) })}>
-            {REFLEXIONS.map((s) => <option key={s} value={s}>{s} secondes</option>)}
+        <Field label="Forme">
+          <Select value={r.forme} onChange={(e) => maj({ forme: e.target.value as FormeEntrainement })}>
+            <option value="oral">À l'oral — procédé La Martinière</option>
+            <option value="ecrit">Par écrit — test de fluence</option>
           </Select>
         </Field>
-        <Coche on={r.ardoises} libelle="Les ardoises papier des élèves, à la suite" onChange={(v) => maj({ ardoises: v })} />
-        <div className="meta" style={{ fontSize: 12.5 }}>{total} calculs{total === 0 && r.familles.length === 0 ? " — choisissez au moins une famille" : ""}.</div>
-        <Boutons peut={total > 0} onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("martiniere", "Calcul mental", html, STYLE_MARTINIERE)} onBureau={() => bureau("martiniere", "Calcul mental", html, STYLE_MARTINIERE)} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <Field label="Calculs par série"><Input type="number" min={5} max={30} value={r.parSerie} onChange={(e) => maj({ parSerie: borne(e.target.value, 5, 30, 10) })} /></Field>
+          <Field label="Séries"><Input type="number" min={1} max={6} value={r.series} onChange={(e) => maj({ series: borne(e.target.value, 1, 6, 2) })} /></Field>
+        </div>
+        {r.forme === "oral" && (<>
+          <Field label="Temps de réflexion avant « écrivez »">
+            <Select value={r.reflexion} onChange={(e) => maj({ reflexion: Number(e.target.value) })}>
+              {REFLEXIONS.map((s) => <option key={s} value={s}>{s} secondes</option>)}
+            </Select>
+          </Field>
+          <Coche on={r.ardoises} libelle="Les ardoises papier des élèves, à la suite" onChange={(v) => maj({ ardoises: v })} />
+        </>)}
+        <div className="meta" style={{ fontSize: 12.5 }}>{total} calculs.</div>
+        <Boutons peut={total > 0} onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("martiniere", titre, html, STYLE_MARTINIERE)} onBureau={() => bureau("martiniere", titre, html, STYLE_MARTINIERE)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_MARTINIERE} />}
     />
