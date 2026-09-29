@@ -124,6 +124,7 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "🔺", label: "Pyramides et carrés magiques", to: "/jeux", page: "jeux", onglet: "pyramides", sous: "Fabriquer" },
   { ico: "🕰", label: "Lire l'heure", to: "/jeux", page: "jeux", onglet: "heure", sous: "Fabriquer" },
   { ico: "💯", label: "Grands nombres et décimaux (numération cycle 3)", to: "/jeux", page: "jeux", onglet: "numeration", sous: "Fabriquer" },
+  { ico: "🏠", label: "Les maisons du tri (étiquettes à trier : être ou avoir, phrase ou pas)", to: "/jeux", page: "jeux", onglet: "tri", sous: "Fabriquer" },
   { ico: "🔎", label: "Mots mêlés", to: "/jeux", page: "jeux", onglet: "motsMeles", sous: "Fabriquer" },
   { ico: "✂️", label: "Phrases en désordre", to: "/jeux", page: "jeux", onglet: "phrases", sous: "Fabriquer" },
   { ico: "🗒", label: "Programmation", to: "/organisation", page: "organisation", onglet: "prog", sous: "Organisation" },

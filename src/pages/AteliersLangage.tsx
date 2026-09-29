@@ -1,5 +1,6 @@
 import React from "react";
 import { Field, Input, Select, Textarea } from "../components/ui";
+import { Pastilles } from "../components/Pastilles";
 import { api, MODELE_TACHES } from "../api";
 import { useReglages } from "../components/useMemoire";
 import { toast } from "../components/Toaster";
@@ -15,6 +16,12 @@ import { graineAuHasard } from "../hasard";
 import { REGLAGES_MOTS_MELES, STYLE_MOTS_MELES, grilleMotsMeles, htmlMotsMeles, motsSaisis } from "../motsMeles";
 import { REGLAGES_PHRASES, STYLE_PHRASES, htmlPhrasesEnDesordre, phrasesEnDesordre, phrasesSaisies } from "../phrasesEnDesordre";
 import { DEMANDE_PHRASES, phrasesDeLaReponse, promptPhrases } from "../phrasesIa";
+import {
+  CATEGORIES_MAX, COULEURS_TRI, MODELES_TRI, REGLAGES_TRI, STYLE_TRI, avecAide, etiquettesDuTri, etiquettesSaisies, htmlTri, maisonsDuTri,
+  type CategorieTri, type ReglagesTri,
+} from "../triEtiquettes";
+import { marquesDeLaReponse, promptMarquerVerbes } from "../triIa";
+import { pseudonymiser, restaurer } from "../confidentialite";
 
 // ── Fabriquer › Langage › Étiquettes à catégoriser ────────────────────────
 //
@@ -197,6 +204,119 @@ export function PhrasesTab() {
         <Boutons atelier="phrases" titre="Phrases en désordre" html={html} style={STYLE_PHRASES} peut={phrases.length > 0} onTirage={() => setGraine(graineAuHasard())} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_PHRASES} />}
+    />
+  );
+}
+
+// ── Les maisons du tri ──
+
+export function TriTab() {
+  const [r, maj] = useReglages("tri", REGLAGES_TRI);
+  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [occupe, setOccupe] = React.useState(false);
+  const html = React.useMemo(() => htmlTri(r, graine), [r, graine]);
+  const categories: CategorieTri[] = r.categories?.length ? r.categories : REGLAGES_TRI.categories;
+  const maisons = maisonsDuTri(r);
+  const total = etiquettesDuTri(r, graine).length;
+  const aide = avecAide(r);
+  const majMaison = (i: number, patch: Partial<CategorieTri>) => maj({ categories: categories.map((c, k) => (k === i ? { ...c, ...patch } : c)) });
+
+  // Le modèle marque le verbe de chaque phrase ; rien d'autre ne change, et les prénoms des élèves ne partent pas.
+  const marquerLesVerbes = async () => {
+    const phrases = categories.flatMap((c) => etiquettesSaisies(c.etiquettes));
+    if (!phrases.length) { toast("Écrivez d'abord des étiquettes.", { icone: "ℹ️" }); return; }
+    setOccupe(true);
+    try {
+      const eleves = await api.elevesList().catch(() => []);
+      const masque = pseudonymiser(phrases.join("\n"), eleves.map((e) => e.nom));
+      const modele = await api.modeleActif(MODELE_TACHES);
+      const reponse = restaurer(await api.mistralChat(promptMarquerVerbes(masque.texte.split("\n")), modele), masque.table).texte;
+      const { phrases: marquees, marquees: combien } = marquesDeLaReponse(reponse, phrases);
+      if (!combien) { toast("Le modèle n'a rien marqué de sûr ; marquez à la main, entre astérisques.", { icone: "🤔", duree: 6000 }); return; }
+      let k = 0;
+      maj({ aideMots: true, categories: categories.map((c) => ({ ...c, etiquettes: etiquettesSaisies(c.etiquettes).map(() => marquees[k++]).join("\n") })) });
+      toast(`${combien} verbe${combien > 1 ? "s" : ""} marqué${combien > 1 ? "s" : ""} : relisez l'aperçu, corrigez entre astérisques.`, { icone: "✨", duree: 6000 });
+    } catch (e) {
+      toast("Marquage impossible : " + String(e), { icone: "⚠️" });
+    } finally { setOccupe(false); }
+  };
+
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0 }}>Les maisons du tri</h3>
+        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
+          Des étiquettes à découper, et le tableau où les ranger : être ou avoir, phrase ou pas, nom ou verbe. Partez d'un modèle, ou écrivez les vôtres.
+        </p>
+        <Field label="Partir d'un modèle">
+          <Select value="" aria-label="Modèle" onChange={(e) => { const m = MODELES_TRI.find((x) => x.id === e.target.value); if (m) maj(m.reglages); }}>
+            <option value="">Choisir un modèle : il remplace ce qui est écrit…</option>
+            {MODELES_TRI.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
+          </Select>
+        </Field>
+        <Field label="Titre"><Input value={r.titre} onChange={(e) => maj({ titre: e.target.value })} placeholder="ÊTRE ou AVOIR ?" /></Field>
+        <Field label="Consigne"><Textarea rows={2} value={r.consigne} onChange={(e) => maj({ consigne: e.target.value })} /></Field>
+        <Field label="Les maisons, et leurs étiquettes">
+          {categories.map((c, i) => (
+            <div key={i} className="tri-maison">
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <Input value={c.titre} onChange={(e) => majMaison(i, { titre: e.target.value })} placeholder={`Maison ${i + 1}`} aria-label={`Titre de la maison ${i + 1}`} />
+                {categories.length > 2 && (
+                  <button type="button" className="btn ghost sm" aria-label={`Retirer la maison ${i + 1}`}
+                    onClick={() => maj({ categories: categories.filter((_, k) => k !== i) })}>🗑</button>
+                )}
+              </div>
+              <Textarea rows={5} value={c.etiquettes} onChange={(e) => majMaison(i, { etiquettes: e.target.value })}
+                placeholder={"Une étiquette par ligne.\nJe *suis* content."} aria-label={`Étiquettes de la maison ${i + 1}`} />
+            </div>
+          ))}
+          {categories.length < CATEGORIES_MAX && (
+            <button type="button" className="btn sm" onClick={() => maj({ categories: [...categories, { titre: "", etiquettes: "" }] })}>＋ Une maison de plus</button>
+          )}
+        </Field>
+        <Field label="Différencier">
+          <Coche on={r.aideMots} libelle="Le mot marqué en couleur : Je *suis* content." onChange={(v) => maj({ aideMots: v })} />
+          {r.aideMots && (
+            <div className="tri-aide">
+              <Pastilles palette={COULEURS_TRI} valeur={r.couleurMots} onChange={(hex) => maj({ couleurMots: hex })} />
+              <button type="button" className="btn sm" disabled={occupe} onClick={() => void marquerLesVerbes()}
+                title="Le modèle entoure d'astérisques le verbe de chaque phrase, sans rien changer d'autre">
+                {occupe ? "Le modèle lit…" : "✨ Marquer les verbes"}</button>
+            </div>
+          )}
+          <Coche on={r.aidePonctuation} libelle="La majuscule et la ponctuation en couleur" onChange={(v) => maj({ aidePonctuation: v })} />
+          {r.aidePonctuation && (
+            <div className="tri-aide"><Pastilles palette={COULEURS_TRI} valeur={r.couleurPonctuation} onChange={(hex) => maj({ couleurPonctuation: hex })} /></div>
+          )}
+          <Coche on={r.deuxVersions && aide} libelle="Les deux versions à la suite : avec l'aide, et sans" onChange={(v) => maj({ deuxVersions: v })} />
+        </Field>
+        <Field label="Présentation">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 4 }}>
+            <Select value={r.parLigne} aria-label="Étiquettes par ligne" onChange={(e) => maj({ parLigne: borne(e.target.value, 2, 4, 4) })}>
+              {[2, 3, 4].map((n) => <option key={n} value={n}>{n} étiquettes par ligne</option>)}
+            </Select>
+            <Select value={r.taille} aria-label="Taille des étiquettes" onChange={(e) => maj({ taille: e.target.value as ReglagesTri["taille"] })}>
+              <option value="normale">taille normale</option><option value="grande">grandes étiquettes</option>
+            </Select>
+          </div>
+          <Coche on={r.capitales} libelle="Lettres en capitales" onChange={(v) => maj({ capitales: v })} />
+          <Coche on={r.melanger} libelle="Mélanger les étiquettes" onChange={(v) => maj({ melanger: v })} />
+        </Field>
+        <Field label="Défi, pour ceux qui ont fini"><Input value={r.defi} onChange={(e) => maj({ defi: e.target.value })} placeholder="Défi : entoure le verbe dans chaque phrase." /></Field>
+        <details className="tri-fiche">
+          <summary>Fiche d'aide « Je vérifie »{r.aide.trim() || r.aRetenir.trim() ? " · écrite" : ""}</summary>
+          <Field label="Une vérification par ligne — titre : question">
+            <Textarea rows={4} value={r.aide} onChange={(e) => maj({ aide: e.target.value })} placeholder={"Le sens : Est-ce que cela veut dire quelque chose ?"} />
+          </Field>
+          <Field label="À retenir"><Textarea rows={3} value={r.aRetenir} onChange={(e) => maj({ aRetenir: e.target.value })} /></Field>
+        </details>
+        <div className="meta" style={{ fontSize: 12.5, marginTop: 6 }}>
+          {total} étiquettes, {maisons.length} maison{maisons.length > 1 ? "s" : ""}{maisons.length < 2 ? " — il en faut deux pour trier" : ""}.
+        </div>
+        <Boutons atelier="tri" titre={`Les maisons du tri${r.titre.trim() ? ` — ${r.titre.trim()}` : ""}`} html={html} style={STYLE_TRI}
+          peut={total > 0 && maisons.length >= 2} onTirage={() => setGraine(graineAuHasard())} />
+      </>}
+      droite={<ApercuFeuille html={html} style={STYLE_TRI} />}
     />
   );
 }

@@ -19,7 +19,7 @@ import { DominosTab, FluenceTab, IntrusTab, LettresTab, LotoSyllabesTab, PairesT
 import {
   ArbreCalculTab, CartesCalculTab, CartesNombresTab, CompteEstBonTab, CubesTab, FractionsTab, HeureTab, JeuDeLOieTab, MartiniereTab, NumerationTab, PyramidesTab,
 } from "./AteliersMaths";
-import { EtiquettesTab, MotsMelesTab, PhrasesTab } from "./AteliersLangage";
+import { EtiquettesTab, MotsMelesTab, PhrasesTab, TriTab } from "./AteliersLangage";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { usePictoImage } from "../components/ChoixPicto";
 
@@ -37,7 +37,7 @@ const OCTETS = (n: number) =>
 const ONGLETS = [
   "jeux", "memory", "imagier", "etiquettes",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres",
-  "phrases", "motsMeles",
+  "tri", "phrases", "motsMeles",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "nombres", "cubes", "calcul", "arbre", "fractions", "oie", "heure", "numeration",
 ] as const;
 type Onglet = typeof ONGLETS[number];
@@ -101,8 +101,10 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
   },
   {
     id: "ecrit", libelle: "✍️ Lecture et écriture",
-    aide: "Des mots et des phrases à manipuler : phrases à remettre en ordre, mots mêlés.",
+    aide: "Des mots et des phrases à manipuler : étiquettes à trier, phrases à remettre en ordre, mots mêlés.",
     outils: [
+      { id: "tri", nom: "Les maisons du tri", icone: "🏠", cycles: "Cycles 2 et 3",
+        quoi: "Des étiquettes à découper et le tableau où les ranger : être ou avoir, phrase ou pas, nom ou verbe. Le verbe en couleur pour qui en a besoin." },
       { id: "phrases", nom: "Phrases en désordre", icone: "✂️", cycles: "Cycle 2",
         quoi: "Les mots d'une phrase sur des étiquettes mélangées : on découpe, on remet en ordre, on colle." },
       { id: "motsMeles", nom: "Mots mêlés", icone: "🔎", cycles: "Cycles 2 et 3",
@@ -280,6 +282,7 @@ export default function Jeux() {
         : onglet === "pyramides" ? <PyramidesTab />
         : onglet === "heure" ? <HeureTab />
         : onglet === "numeration" ? <NumerationTab />
+        : onglet === "tri" ? <TriTab />
         : onglet === "motsMeles" ? <MotsMelesTab />
         : onglet === "phrases" ? <PhrasesTab />
         : onglet === "etiquettes" ? <EtiquettesTab banque={Boolean(etat?.installee)} />
