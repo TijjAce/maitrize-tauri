@@ -925,6 +925,71 @@ const PROBLEMES: Demarche = {
   ],
 };
 
+const CALCUL_MENTAL: Demarche = {
+  id: "calcul-mental-martiniere",
+  nom: "Calcul mental : procédé La Martinière",
+  famille: "Mathématiques",
+  source: "Pour enseigner les nombres, le calcul et la résolution de problèmes au CP (guide fondamental, 2020) ; « Le calcul aux cycles 2 et 3 », Éduscol ; programmes de mathématiques 2024-2025",
+  resume: "Un fait numérique ou une procédure à la fois : on le découvre en manipulant et en verbalisant, on l'entraîne chaque jour au procédé La Martinière — énoncé deux fois, réflexion sans écrire, « Écrivez ! », « Montrez ! », correction —, on le réinvestit dans un jeu, puis on mesure la fluence.",
+  seances: [
+    {
+      titre: "Découverte du fait numérique ou de la procédure",
+      objectifs: "Comprendre le fait numérique ou la procédure visés (compléments à 10, ajouter 9, une table…) en manipulant, les verbaliser, les écrire.",
+      duree: 30,
+      phases: [
+        ph(T1, "5 min", "Rappel du fait voisin déjà su ; objectif annoncé (« aujourd'hui, ajouter 9 : ajouter 10, retirer 1 »)."),
+        ph(T2, "15 min", "Manipuler — cubes, doigts, boîte de dix, bande numérique — ; verbaliser la procédure avec ses mots ; l'écrire en ligne.",
+          "Fait dire le « comment » avant le résultat ; deux ou trois élèves verbalisent devant les autres."),
+        ph(T3, "5 min", "Institutionnalisation : la procédure en une phrase et un exemple, dans le cahier de leçons."),
+        ph(T4, "5 min", "Trois calculs à l'ardoise, en verbalisant."),
+      ],
+    },
+    {
+      titre: "Entraînement — La Martinière (1)",
+      objectifs: "Automatiser le fait ou la procédure par une série courte, à l'oral, sur l'ardoise.",
+      duree: 15,
+      phases: [
+        ph("Mise en train", "3 min", "Trois calculs du fait voisin déjà su."),
+        ph("Série La Martinière", "10 min", "Dix calculs. Chacun est dit deux fois ; réflexion sans écrire, cinq secondes ; « Écrivez ! » — le résultat, rien d'autre ; « Montrez ! » — les ardoises se lèvent ensemble ; la réponse est dite, on corrige, on passe au suivant.",
+          "Note les erreurs qui reviennent ; fait verbaliser une procédure toutes les trois ou quatre questions."),
+        ph("Retour", "2 min", "Une procédure redite par un élève ; chacun note son score."),
+      ],
+    },
+    {
+      titre: "Entraînement — La Martinière (2), avec variation",
+      objectifs: "Transférer : le même fait avec des nombres plus grands, ou sous une autre forme — égalité à trou, calcul en ligne, énoncé en mots.",
+      duree: 15,
+      phases: [
+        ph("Mise en train", "3 min", "Trois calculs de la veille."),
+        ph("Série La Martinière", "10 min", "Dix calculs, dont des égalités à trou et des nombres plus grands.",
+          "Différencie : temps de réflexion plus long, matériel sous la main pour qui en a besoin."),
+        ph("Retour", "2 min", "Ce qui a changé par rapport à hier, et ce qui ne change pas."),
+      ],
+    },
+    {
+      titre: "Réinvestissement — jeu ou problème",
+      objectifs: "Retrouver le fait dans un autre contexte : cartes de calcul, bataille, le compte est bon, un problème court.",
+      duree: 30,
+      phases: [
+        ph("Règle", "5 min", "La règle du jeu, une partie d'exemple."),
+        ph("Jeu", "20 min", "Par deux ou trois : cartes de calcul, bataille des tables, le compte est bon.",
+          "Passe de groupe en groupe ; relance par une question sur la procédure, pas sur le résultat."),
+        ph("Retour", "5 min", "Le fait qu'on a utilisé ; ce qui reste difficile."),
+      ],
+    },
+    {
+      titre: "Test de fluence",
+      objectifs: "Mesurer : combien de calculs justes en une minute, l'attendu de fin d'année en tête ; chacun suit sa courbe.",
+      duree: 15,
+      phases: [
+        ph("Test", "5 min", "Une série écrite d'une minute, seul ; une seconde après un temps de calme."),
+        ph("Correction", "5 min", "Corrigé projeté ; chacun compte ses réussites et les note sur sa fiche de suivi."),
+        ph("Retour", "5 min", "Les procédures qui font gagner du temps ; ce qu'on entraîne demain."),
+      ],
+    },
+  ],
+};
+
 const GEOMETRIE_GRANDEURS: Demarche = {
   id: "geometrie-grandeurs",
   nom: "Manipuler, construire, institutionnaliser",
@@ -1531,7 +1596,7 @@ export const FAMILLES: Famille[] = [
 export const DEMARCHES: Demarche[] = [
   EDUSCOL_QUATRE_TEMPS, ENSEIGNEMENT_EXPLICITE,
   LECTURE_CODE, LECTURE_FLUENCE, COMPREHENSION, ECRITURE_GESTE, ECRITURE_REDIGER, ORAL, VOCABULAIRE, GRAMMAIRE,
-  PROBLEMES, GEOMETRIE_GRANDEURS,
+  PROBLEMES, CALCUL_MENTAL, GEOMETRIE_GRANDEURS,
   INVESTIGATION, ENQUETE_HISTOIRE_GEO, EMC_DEBAT,
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
   MATERNELLE_MODALITES, PHONOLOGIE,
@@ -1599,6 +1664,8 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string): string {
   if (/mathematiques/.test(dom)) {
     if (/grandeurs|geometrie|espace/.test(sd)) return "geometrie-grandeurs";
     if (/donnees|probabilit|proportionnalite/.test(sd) || /probleme/.test(comp)) return "problemes";
+    // Un fait numérique ou une procédure de calcul : ce qui s'entraîne chaque jour au procédé La Martinière.
+    if (/calcul mental/.test(sd) || /mental|faits? numeriques|tables? (d'addition|de multiplication)|complements? a (10|100)|doubles?\b|moities?\b|ajouter ou soustraire|retrancher|calculer? (en ligne|de tete)/.test(comp)) return "calcul-mental-martiniere";
     return "eduscol-quatre-temps";
   }
   if (/sciences|technologie|questionner le monde/.test(dom)) return "investigation";
