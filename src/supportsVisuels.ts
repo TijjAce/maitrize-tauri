@@ -117,9 +117,20 @@ function jeton(r: ReglagesJetons, images: Images): string {
   return `<svg class="sv-jeton-dessin" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${dessin}</svg>`;
 }
 
+/**
+ * Le diamètre des cases — et donc des jetons, qui doivent y tenir. Sur la
+ * page à l'italienne, cinq cases par rangée tiennent à 32 mm ; moins de
+ * cases, des cases plus grandes.
+ */
+export function diametreDesJetons(colonnes: number): number {
+  return colonnes >= 5 ? 32 : colonnes === 4 ? 36 : 40;
+}
+
 export function feuilleJetons(r: ReglagesJetons, images: Images): string {
   const n = Math.min(JETONS_MAX, Math.max(1, Math.round(r.nombre) || 5));
   const colonnes = n <= 5 ? n : Math.ceil(n / 2);
+  // Une seule mesure pour les cases et les jetons à découper : ce qu'on découpe entre dans le cercle.
+  const taille = `--jeton: ${diametreDesJetons(colonnes)}mm`;
   const classes = ["sv-feuille", "sv-jetons", r.capitales && "sv-majuscules"].filter(Boolean).join(" ");
   const cases = Array.from({ length: n }, (_, i) => `<div class="sv-j-case"><span>${i + 1}</span></div>`).join("");
   const regle = r.regle.trim() || r.comportements.some((c) => c.id != null || c.mot.trim())
@@ -127,17 +138,17 @@ export function feuilleJetons(r: ReglagesJetons, images: Images): string {
       .map((c) => `<div class="sv-carte sv-petite">${image(c, images)}${mot(c)}</div>`).join("")}`
       + (r.regle.trim() ? `<div class="sv-j-phrase">${escapeHtml(r.regle.trim())}</div>` : "") + `</div>`
     : "";
-  const planche = `<div class="${classes}">`
+  const planche = `<div class="${classes}" style="${taille}">`
     + (r.prenom.trim() ? `<div class="sv-titre">Le tableau ${escapeHtml(dePrenom(r.prenom))}</div>` : "")
     + `<div class="sv-j-corps">`
     + `<div class="sv-j-recompense"><div class="sv-j-label">Je travaille pour</div><div class="sv-carte sv-grande">${image(r.recompense, images)}${mot(r.recompense)}</div></div>`
-    + `<div class="sv-j-cases" style="grid-template-columns: repeat(${colonnes}, 1fr)">${cases}</div>`
+    + `<div class="sv-j-cases" style="grid-template-columns: repeat(${colonnes}, var(--jeton))">${cases}</div>`
     + `</div>${regle}${attribution([r.recompense, ...r.comportements])}</div>`;
   if (!r.decouper) return planche;
   // Deux jetons de plus : il en tombe toujours un derrière un meuble.
   const aDecouper = Array.from({ length: n + 2 }, () => `<div class="sv-j-jeton">${jeton(r, images)}</div>`).join("");
   return planche
-    + `<div class="sv-feuille sv-decouper"><div class="sv-titre sv-petit-titre">Jetons à découper</div>`
+    + `<div class="sv-feuille sv-decouper" style="${taille}"><div class="sv-titre sv-petit-titre">Jetons à découper — de la taille des cases</div>`
     + `<div class="sv-j-jetons">${aDecouper}</div>${attribution([r.forme === "picto" ? r.jeton : null])}</div>`;
 }
 
@@ -266,14 +277,15 @@ export const STYLE_SUPPORTS = `
 
   .sv-j-corps { display: grid; grid-template-columns: minmax(180px, 30%) 1fr; gap: 22px; align-items: center; }
   .sv-j-label { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: 6px; }
-  .sv-j-cases { display: grid; gap: 14px; }
-  .sv-j-case { aspect-ratio: 1; border: 3px dashed #7a8194; border-radius: 50%; display: flex; align-items: center;
-    justify-content: center; max-width: 130px; width: 100%; justify-self: center; }
+  .sv-j-cases { display: grid; gap: 4mm; justify-content: center; }
+  .sv-j-case { width: var(--jeton, 32mm); height: var(--jeton, 32mm); border: 3px dashed #7a8194; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; }
   .sv-j-case span { font-size: 18px; color: #b3b9c7; font-weight: 700; }
   .sv-j-regle { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
   .sv-j-phrase { font-size: 20px; font-weight: 600; }
-  .sv-j-jetons { display: grid; grid-template-columns: repeat(auto-fill, 38mm); gap: 6mm; justify-content: center; }
-  .sv-j-jeton { width: 38mm; height: 38mm; border: 1px dashed #aaa; display: flex; align-items: center; justify-content: center; padding: 3mm; }
+  .sv-j-jetons { display: grid; grid-template-columns: repeat(auto-fill, var(--jeton, 32mm)); gap: 5mm; justify-content: center; }
+  .sv-j-jeton { width: var(--jeton, 32mm); height: var(--jeton, 32mm); border: 1px dashed #aaa; display: flex; align-items: center;
+    justify-content: center; padding: 1.5mm; box-sizing: border-box; }
   .sv-jeton-dessin, .sv-jeton-image { width: 100%; height: 100%; object-fit: contain; }
   .sv-decouper { break-before: page; page-break-before: always; margin-top: 20px; }
 

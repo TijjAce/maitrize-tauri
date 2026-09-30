@@ -3,7 +3,7 @@ import {
   ATTRIBUTION_ARASAAC, DABORD_PAR_DEFAUT, dePrenom, JETONS_PAR_DEFAUT, MINUTEUR_PAR_DEFAUT, SCENARIO_PAR_DEFAUT,
   demarrer, dureeMs, estEnMarche, estFini, feuilleDabord, feuilleJetons, feuilleScenario, fractionAffichee,
   graduations, idsDes, mettreEnPause, minuteurPret, normaliserDabord, normaliserJetons, normaliserMinuteur,
-  normaliserScenario, pageDuScenario, PAGE_PAYSAGE, PAGE_PORTRAIT, prolonger, restantA, secteurRestant, tempsLisible,
+  normaliserScenario, pageDuScenario, PAGE_PAYSAGE, PAGE_PORTRAIT, prolonger, restantA, secteurRestant, tempsLisible, diametreDesJetons,
 } from "./supportsVisuels";
 
 const IMAGES = { 12: "data:image/png;base64,AAA", 34: "data:image/png;base64,BBB" };
@@ -24,6 +24,17 @@ describe("tableau d'économie de jetons", () => {
     expect(dePrenom("Ines")).toBe("d'Ines");
     expect(dePrenom("émile")).toBe("d'émile");
     expect(dePrenom("Hugo")).toBe("de Hugo");
+  });
+
+  it("découpe des jetons de la taille des cases : une seule mesure pour les deux", () => {
+    const cinq = feuilleJetons({ ...JETONS_PAR_DEFAUT, nombre: 5 }, {});
+    expect(compter(cinq, /--jeton: 32mm/g)).toBe(2);
+    expect(cinq).toContain("grid-template-columns: repeat(5, var(--jeton))");
+    const trois = feuilleJetons({ ...JETONS_PAR_DEFAUT, nombre: 3 }, {});
+    expect(compter(trois, /--jeton: 40mm/g)).toBe(2);
+    // Huit jetons : deux rangées de quatre, des cases de 36 mm.
+    expect(compter(feuilleJetons({ ...JETONS_PAR_DEFAUT, nombre: 8 }, {}), /--jeton: 36mm/g)).toBe(2);
+    expect([diametreDesJetons(1), diametreDesJetons(4), diametreDesJetons(5)]).toEqual([40, 36, 32]);
   });
 
   it("borne le nombre de jetons", () => {
