@@ -13,6 +13,8 @@ import { ConsigneAtelier } from "../components/ConsigneAtelier";
 import { PictosAtelier } from "../components/PictosAtelier";
 import { OptionsFeuille } from "../components/OptionsFeuille";
 import { ProjetDuMomentBandeau, ProjetDuMomentProvider, useProjetDuMoment } from "../components/ProjetDuMoment";
+import { UsageAtelier, useUsagesDesAteliers } from "../components/UsageAtelier";
+import { descriptionDe, rangerParUsage, type Usage } from "../usageAtelier";
 import { AtelierContext } from "../components/AtelierContext";
 import { deposerSurLeBureau, lignesCompetencesAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
@@ -151,29 +153,38 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
 /** L'atelier lui-même. */
 const outilDe = (o: Onglet) => FAMILLES.flatMap((f) => f.outils).find((x) => x.id === o);
 
-/** Les ateliers qui répondent à ce qu'on cherche — nom, phrase ou famille. */
+/** Les ateliers qui répondent à ce qu'on cherche — nom, phrase, famille, cycle, ou le moment où ils sont rangés. */
 export function chercherAteliers(
-  familles: { libelle: string; outils: Outil[] }[], recherche: string,
+  familles: { libelle: string; outils: Outil[] }[], recherche: string, usages: Record<string, Usage> = {},
 ): Outil[] {
   const q = recherche.trim().toLowerCase();
   if (!q) return [];
   const sans = (t: string) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const cible = sans(q);
   return familles.flatMap((f) => f.outils.filter((o) =>
-    sans(`${o.nom} ${o.quoi} ${f.libelle} ${o.cycles ?? ""}`).includes(cible)));
+    sans(`${o.nom} ${o.quoi} ${f.libelle} ${o.cycles ?? ""} ${usages[o.id] ? descriptionDe(usages[o.id]).nom : ""}`).includes(cible)));
 }
+
+/** Comment le catalogue se lit : par famille d'ateliers, ou par moment de la séquence. */
+type Rangement = "famille" | "usage";
+const RANGEMENT_MEMORISE = "fabriquer:rangement";
 
 const ONGLET_MEMORISE = "fabriquer:onglet";
 
-/** Un atelier, tel qu'on le voit avant d'entrer : ce qu'il fabrique. */
-function CarteAtelier({ o, onOuvrir }: { o: Outil; onOuvrir: () => void }) {
+/** Un atelier, tel qu'on le voit avant d'entrer : ce qu'il fabrique, et le moment où il est rangé. */
+function CarteAtelier({ o, usage, onOuvrir }: { o: Outil; usage?: Usage; onOuvrir: () => void }) {
+  const moment = usage ? descriptionDe(usage) : null;
+  const besoin = [o.cycles, o.pictos ? "pictogrammes ARASAAC" : ""].filter(Boolean).join(" · ");
   return (
     <button className="atelier" onClick={onOuvrir}>
       <span className="atelier-icone">{o.icone}</span>
       <span className="atelier-nom">{o.nom}</span>
       <span className="atelier-quoi">{o.quoi}</span>
-      {(o.cycles || o.pictos) && (
-        <span className="atelier-besoin">{[o.cycles, o.pictos ? "pictogrammes ARASAAC" : ""].filter(Boolean).join(" · ")}</span>
+      {(besoin || moment) && (
+        <span className="atelier-besoin">
+          {besoin}{besoin && moment ? " · " : ""}
+          {moment && <span className="atelier-usage" title={`${moment.aide} — ${moment.quand}.`}>{moment.ico} {moment.nom}</span>}
+        </span>
       )}
     </button>
   );
@@ -190,6 +201,15 @@ export default function Jeux() {
     }
   });
   const [recherche, setRecherche] = React.useState("");
+  // Le moment de la séquence où chaque atelier est rangé, et la façon de lire le catalogue.
+  const { usages } = useUsagesDesAteliers(ONGLETS);
+  const [rangement, setRangementBrut] = React.useState<Rangement>(() => {
+    try { return localStorage.getItem(RANGEMENT_MEMORISE) === "usage" ? "usage" : "famille"; } catch { return "famille"; }
+  });
+  const setRangement = (r: Rangement) => {
+    setRangementBrut(r);
+    try { localStorage.setItem(RANGEMENT_MEMORISE, r); } catch { /* stockage indisponible */ }
+  };
   const setOnglet = React.useCallback((o: Onglet | "") => {
     setOngletBrut(o);
     try { localStorage.setItem(ONGLET_MEMORISE, o); } catch { /* stockage indisponible */ }
@@ -224,32 +244,49 @@ export default function Jeux() {
     !etat ? <div /> : !etat.installee ? <Banque progression={progression} onTelecharger={telecharger} /> : contenu;
 
   const outil = onglet ? outilDe(onglet) : undefined;
-  const trouves = chercherAteliers(FAMILLES, recherche);
+  const trouves = chercherAteliers(FAMILLES, recherche, usages);
 
   // ── Devant les ateliers ──
   if (!onglet) {
+    const carte = (o: Outil) => <CarteAtelier key={o.id} o={o} usage={usages[o.id]} onOuvrir={() => setOnglet(o.id)} />;
     return (
       <Page titre="Fabriquer" sous="Jeux et feuilles à imprimer : langage, sons, lecture et écriture, mathématiques — du cycle 1 au cycle 3">
-        <Input value={recherche} onChange={(e) => setRecherche(e.target.value)}
-          placeholder="Chercher un atelier : loto, syllabes, calcul mental, fractions, cycle 3…"
-          aria-label="Chercher un atelier" style={{ maxWidth: 420, marginBottom: 16 }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+          <Input value={recherche} onChange={(e) => setRecherche(e.target.value)}
+            placeholder="Chercher un atelier : loto, syllabes, calcul mental, fractions, cycle 3, rituel…"
+            aria-label="Chercher un atelier" style={{ flex: "1 1 260px", maxWidth: 420 }} />
+          <div className="seg" role="group" aria-label="Ranger le catalogue">
+            <button className={rangement === "famille" ? "active" : ""} onClick={() => setRangement("famille")}>Par famille</button>
+            <button className={rangement === "usage" ? "active" : ""} onClick={() => setRangement("usage")}
+              title="Découverte, entraînement, réinvestissement, rituel : le moment de la séquence que sert chaque atelier">Par moment de la séquence</button>
+          </div>
+        </div>
         {recherche.trim() ? (
           trouves.length ? (
-            <div className="ateliers">
-              {trouves.map((o) => <CarteAtelier key={o.id} o={o} onOuvrir={() => setOnglet(o.id)} />)}
-            </div>
+            <div className="ateliers">{trouves.map(carte)}</div>
           ) : (
-            <Empty icone="🔍" titre="Aucun atelier" sous="Essayez « loto », « problèmes », « sons »…" />
+            <Empty icone="🔍" titre="Aucun atelier" sous="Essayez « loto », « problèmes », « sons », « rituel »…" />
           )
+        ) : rangement === "usage" ? (
+          <>
+            {rangerParUsage(FAMILLES.flatMap((f) => f.outils), usages).map(({ usage, outils }) => (
+              <section key={usage.id} style={{ marginBottom: 22 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+                  <b style={{ fontSize: 15 }}>{usage.ico} {usage.nom}</b>
+                  <span className="meta" style={{ fontSize: 12.5 }}>{usage.quand} — {usage.aide}</span>
+                </div>
+                <div className="ateliers">{outils.map(carte)}</div>
+              </section>
+            ))}
+            <p className="meta" style={{ fontSize: 12.5 }}>Chaque atelier se range depuis son bandeau « 🗂 Rangé dans » ; le rangement suit sur l'autre ordinateur.</p>
+          </>
         ) : FAMILLES.map((f) => (
           <section key={f.id} style={{ marginBottom: 22 }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
               <b style={{ fontSize: 15 }}>{f.libelle}</b>
               <span className="meta" style={{ fontSize: 12.5 }}>{f.aide}</span>
             </div>
-            <div className="ateliers">
-              {f.outils.map((o) => <CarteAtelier key={o.id} o={o} onOuvrir={() => setOnglet(o.id)} />)}
-            </div>
+            <div className="ateliers">{f.outils.map(carte)}</div>
           </section>
         ))}
       </Page>
@@ -266,6 +303,7 @@ export default function Jeux() {
       {outil && <PictosAtelier atelier={outil.id} />}
       {outil && <OptionsFeuille atelier={outil.id} />}
       {outil && <ProjetDuMomentBandeau atelier={outil.id} />}
+      {outil && <UsageAtelier atelier={outil.id} />}
       <AtelierContext.Provider value={onglet}>
       {onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />
