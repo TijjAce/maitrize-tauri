@@ -1,6 +1,6 @@
 import React from "react";
 import { api, Referentiel, couleurHex } from "../api";
-import { useAsync } from "./ui";
+import { Input, useAsync } from "./ui";
 import { correspond } from "../competencesTravaillees";
 
 // Miroir de CompetenceSelectionnee (Swift) — stocké en JSON.
@@ -52,11 +52,12 @@ function compter(data: RefData | null, recherche: string): number {
  * Avec `recherche`, seules les compétences qui contiennent tous les mots cherchés
  * restent, dépliées.
  */
-export function CompetenceTree({ mode, selection, onPick, onToggle, recherche = "", dejaVisee }: {
+export function CompetenceTree({ mode, selection, onPick, onToggle, recherche, dejaVisee }: {
   mode: "single" | "multi";
   selection: CompetenceSelectionnee[];
   onPick?: (c: CompetenceSelectionnee, ref: Referentiel) => void;
   onToggle?: (c: CompetenceSelectionnee, ref: Referentiel) => void;
+  /** Ce qu'on cherche, quand l'écran a sa propre barre ; absent, l'arbre affiche la sienne. */
   recherche?: string;
   /**
    * Les séquences qui visent déjà cette compétence, s'il y en a : un repère
@@ -68,7 +69,11 @@ export function CompetenceTree({ mode, selection, onPick, onToggle, recherche = 
   const { data: refs } = useAsync(() => api.referentielsList(), []);
   const actifs = React.useMemo(() => (refs ?? []).filter((r) => r.actif), [refs]);
   const donnees = React.useMemo(() => new Map(actifs.map((r) => [r.id, parse(r)])), [actifs]);
-  const cherche = recherche.trim().length >= 2 ? recherche.trim() : "";
+  // Sans barre de recherche autour de lui, l'arbre porte la sienne : on ne déplie pas trois niveaux pour trouver « décoder ».
+  const [propre, setPropre] = React.useState("");
+  const autonome = recherche === undefined;
+  const texte = autonome ? propre : recherche;
+  const cherche = texte.trim().length >= 2 ? texte.trim() : "";
   const [refId, setRefId] = React.useState<string>("");
   const [ouverts, setOuverts] = React.useState<Record<string, boolean>>({});
   const toggle = (k: string) => setOuverts((o) => ({ ...o, [k]: !o[k] }));
@@ -129,6 +134,10 @@ export function CompetenceTree({ mode, selection, onPick, onToggle, recherche = 
 
   return (
     <div>
+      {autonome && (
+        <Input value={propre} onChange={(e) => setPropre(e.target.value)} aria-label="Chercher une compétence"
+          placeholder="Chercher une compétence : décoder, addition, se repérer…" style={{ marginBottom: 8 }} />
+      )}
       {/* Sélecteur de référentiel */}
       <select className="select" value={ref.id} onChange={(e) => { setRefId(e.target.value); setOuverts({}); }}
         style={{ marginBottom: 8 }}>
