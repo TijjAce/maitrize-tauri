@@ -800,7 +800,19 @@ export default function PlanDeTravail() {
         </div>
         <Input className="search" placeholder="Rechercher partout…" value={q}
           onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 220 }} />
-        {/* Les séquences selon ce que le cahier journal en dit : en classe (et en pause), en préparation, terminées. */}
+        <button className={`btn sm${scinde ? " primary" : " ghost"}`} onClick={() => setScinde(!scinde)}
+          title={scinde ? "Refermer le bureau commun" : "Ouvrir le bureau commun à côté : glisser d'un bureau à l'autre"}>
+          🤝 Bureaux communs</button>
+        {copie?.active && (
+          <button className="btn ghost sm" onClick={ouvrirCopie}
+            title={`Ouvrir la copie de ce bureau sur l'ordinateur : ${copie.racine}`}>🗂 Copie sur l'ordinateur</button>
+        )}
+      </div>
+
+      {/* Les séquences selon ce que le cahier journal en dit : en classe (et en pause), en préparation, terminées.
+          Sur une ligne à part : dans la barre d'outils, le filtre écrasait le fil d'Ariane. */}
+      <div className="plan-filtres">
+        <span className="meta">Séquences :</span>
         <div className="seg" role="group" aria-label="Les séquences selon leur état">
           <button className={etatFiltre === "" ? "active" : ""} onClick={() => setEtatFiltre("")}>Toutes</button>
           {ETATS_SEQUENCE.filter((e) => e.id !== "pause").map((e) => {
@@ -813,12 +825,11 @@ export default function PlanDeTravail() {
             );
           })}
         </div>
-        <button className={`btn sm${scinde ? " primary" : " ghost"}`} onClick={() => setScinde(!scinde)}
-          title={scinde ? "Refermer le bureau commun" : "Ouvrir le bureau commun à côté : glisser d'un bureau à l'autre"}>
-          🤝 Bureaux communs</button>
-        {copie?.active && (
-          <button className="btn ghost sm" onClick={ouvrirCopie}
-            title={`Ouvrir la copie de ce bureau sur l'ordinateur : ${copie.racine}`}>🗂 Copie sur l'ordinateur</button>
+        {etatFiltre && (
+          <span className="meta">
+            {ici.length} séquence{ici.length > 1 ? "s" : ""}, de tous les dossiers, la plus active en tête ·{" "}
+            <button type="button" className="lien" onClick={() => setEtatFiltre("")}>tout afficher</button>
+          </span>
         )}
       </div>
 
