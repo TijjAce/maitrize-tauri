@@ -4,6 +4,10 @@ import { Page } from "../App";
 import { demarcheDe, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre, type Demarche } from "../demarches";
 import { api, Sequence, Seance, MaterielItem, Jeu, nouvelleSeance, couleurHex, nowIso, newId, DUREES, formatDuree, telechargerTexte } from "../api";
 import { decalee, deplacee, ordonnees, renumerotees } from "../ordreSeances";
+import { useSuiviSequences } from "../components/useSuiviSequences";
+import { BadgeSuivi } from "../components/SuiviSequence";
+import { avancement, dateCourte, jourProche, libelleDuSuivi } from "../suiviSequences";
+import { EVT_JOUR } from "../components/CommandPalette";
 import { Modal, Field, Input, Textarea, TextareaAuto, Select, Stars, Empty, Confirm, useAsync } from "../components/ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
 import { ajouterManuelle, consigneSousCompetences, estManuelle, lireSousCompetences } from "../sousCompetences";
@@ -28,6 +32,8 @@ export default function SequenceDetail() {
   const { data: sequences, reload: reloadSeq } = useAsync(() => api.sequencesList(), []);
   const { data: seances, reload } = useAsync(() => api.seancesList(id), [id]);
   const { data: mats, reload: reloadMat } = useAsync(() => api.materielList().then((all) => all.filter((m) => m.sequenceId === id)), [id]);
+  // Où en est la séquence d'après le cahier journal : ses passages en classe, séance par séance.
+  const { suivis, aujourdHui, recharger: rechargerSuivi } = useSuiviSequences();
   const [edit, setEdit] = React.useState<Seance | null>(null);
   const [voir, setVoir] = React.useState<Seance | null>(null);
   const [del, setDel] = React.useState<Seance | null>(null);
@@ -47,6 +53,18 @@ export default function SequenceDetail() {
 
   const seq = sequences?.find((s) => s.id === id);
   if (!seq) return <Page titre="Séquence"><Empty icone="🔍" titre="Séquence introuvable" /></Page>;
+  const suivi = suivis.get(seq.id);
+  const passagesDe = (seanceId: string) => suivi?.passages.filter((p) => p.seance?.id === seanceId) ?? [];
+  /** Ce que l'enseignant tranche : « pause », « terminee », ou rien — le journal décide. */
+  const marquer = async (etat: "" | "pause" | "terminee") => {
+    await api.sequenceSave({ ...seq, etat });
+    reloadSeq(); rechargerSuivi();
+    toast(etat === "pause" ? "Séquence mise en pause." : etat === "terminee" ? "Séquence marquée terminée." : "Le cahier journal décide de nouveau.", { icone: etat === "pause" ? "⏸" : etat === "terminee" ? "✅" : "📓" });
+  };
+  const ouvrirLeJournal = (iso: string) => {
+    nav("/planning");
+    setTimeout(() => window.dispatchEvent(new CustomEvent(EVT_JOUR, { detail: iso })), 120);
+  };
 
   let comp: CompetenceSelectionnee | null = null;
   try { comp = seq.competenceVisee ? JSON.parse(seq.competenceVisee) : null; } catch { /* ignore */ }
@@ -171,6 +189,31 @@ export default function SequenceDetail() {
         {seq.imageNom && <FichierImg nom={seq.imageNom} style={{ width: "100%", maxHeight: 200, objectFit: "cover", marginBottom: 12 }} />}
         {comp && <div style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 8 }}>🎯 {labelCourt(comp)}</div>}
         {seq.objectifs && <p style={{ marginTop: 0, color: "var(--text-2)" }}>{seq.objectifs}</p>}
+        {suivi && (
+          <div className="suivi-fiche">
+            <BadgeSuivi suivi={suivi} />
+            <span className="meta">{libelleDuSuivi(suivi, aujourdHui)}</span>
+            {(suivi.etat === "classe" || suivi.etat === "pause") && suivi.prevues > 0 && (
+              <div className="suivi-barre" style={{ width: 160 }} aria-label={`${suivi.faites.length} séances faites sur ${suivi.prevues}`}>
+                <span style={{ width: `${Math.round(avancement(suivi) * 100)}%` }} />
+              </div>
+            )}
+            <span style={{ flex: 1 }} />
+            {suivi.manuel === "terminee" ? (
+              <button className="btn ghost sm" onClick={() => void marquer("")} title="Le cahier journal décide de nouveau de l'état">↩ Rouvrir</button>
+            ) : suivi.manuel === "pause" ? (
+              <>
+                <button className="btn ghost sm" onClick={() => void marquer("")} title="Le cahier journal décide de nouveau de l'état">▶ Reprendre</button>
+                <button className="btn ghost sm" onClick={() => void marquer("terminee")}>✅ Marquer terminée</button>
+              </>
+            ) : (
+              <>
+                {suivi.etat !== "terminee" && <button className="btn ghost sm" onClick={() => void marquer("pause")} title="Elle ne s'affichera plus parmi les séquences en classe">⏸ Mettre en pause</button>}
+                <button className="btn ghost sm" onClick={() => void marquer("terminee")} title="Même s'il reste des séances écrites">✅ Marquer terminée</button>
+              </>
+            )}
+          </div>
+        )}
         {seq.video && <VideoSequence video={seq.video} />}
         <div className="row" style={{ marginTop: 6 }}>
           <RatingLine label="Engagement des élèves" value={seq.ratingEngagement} onChange={(v) => setRating("ratingEngagement", v)} />
@@ -196,7 +239,18 @@ export default function SequenceDetail() {
         {matsSeq.length > 0 && <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{matsSeq.map(matChip)}</div>}
       </div>
 
-      <h3 style={{ margin: "4px 2px 12px" }}>Séances</h3>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", margin: "4px 2px 12px" }}>
+        <h3 style={{ margin: 0 }}>Séances</h3>
+        {suivi?.prochain && (
+          <span className="meta">prochaine : {jourProche(suivi.prochain.date, aujourdHui)}{suivi.prochain.seance ? ` · séance ${suivi.prochain.seance.numero}` : ""}</span>
+        )}
+        {suivi?.suivante && suivi.etat !== "terminee" && !suivi.prochain && (
+          <button className="btn sm" title="Ouvrir le cahier journal d'aujourd'hui : choisissez le créneau, puis « 📚 Poser une séquence »"
+            onClick={() => { ouvrirLeJournal(aujourdHui); toast(`Choisissez le créneau, puis « 📚 Poser une séquence » — séance ${suivi.suivante!.numero}.`, { icone: "📅", duree: 6000 }); }}>
+            📅 Poser la séance {suivi.suivante.numero} dans le journal
+          </button>
+        )}
+      </div>
       {(seances?.length ?? 0) === 0 ? (
         <>
           <Empty icone="📝" titre="Aucune séance" sous="Ajoutez la première séance, ou posez un cadre : une démarche d'un guide crée les séances et leurs phases." />
@@ -257,11 +311,21 @@ export default function SequenceDetail() {
               <span className="badge">{s.numero}</span>
               <div style={{ flex: 1 }}>
                 <div className="title">{s.titre || "Séance sans titre"}</div>
-                <div className="meta">{formatDuree(s.duree)}{s.date ? " · " + new Date(s.date).toLocaleDateString("fr-FR") : ""}{comps.length ? ` · ${comps.length} compétence(s)` : ""}</div>
+                <div className="meta">
+                  {formatDuree(s.duree)}{s.date ? " · " + new Date(s.date).toLocaleDateString("fr-FR") : ""}{comps.length ? ` · ${comps.length} compétence(s)` : ""}
+                  {passagesDe(s.id).length > 0 && ` · faite le ${passagesDe(s.id).map((p) => dateCourte(p.date)).join(", ")}`}
+                </div>
+                {passagesDe(s.id).filter((p) => p.bilan.trim()).slice(-1).map((p) => (
+                  <div key={p.creneauId} className="meta" style={{ marginTop: 4 }}>
+                    📓 Bilan du {dateCourte(p.date)} : {p.bilan.trim().length > 160 ? `${p.bilan.trim().slice(0, 160)}…` : p.bilan.trim()}{" "}
+                    <button type="button" className="lien" onClick={(e) => { e.stopPropagation(); ouvrirLeJournal(p.date); }}>voir le journal</button>
+                  </div>
+                ))}
                 {matsDeSeance(s.id).length > 0 && (
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>{matsDeSeance(s.id).map(matChip)}</div>
                 )}
               </div>
+              {passagesDe(s.id).length > 0 && <span className="chip" title="Passée en classe, d'après le cahier journal">🟢 faite{passagesDe(s.id).length > 1 ? ` ×${passagesDe(s.id).length}` : ""}</span>}
               {s.deroulement && <span className="chip">📋 déroulement</span>}
               {s.bilan && <span className="chip">✅ bilan</span>}
               <button className="btn ghost sm" onClick={() => { void deplacer(s, -1); }}

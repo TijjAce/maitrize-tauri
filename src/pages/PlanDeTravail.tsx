@@ -28,6 +28,9 @@ import { estPaquet, titreDuPaquet } from "../bureauCommun";
 import { confirmer } from "../components/confirmer";
 import { contenuDirect, nature } from "../bureau";
 import { estSurLeBureau } from "../materielSeance";
+import { useSuiviSequences } from "../components/useSuiviSequences";
+import { BadgeSuivi } from "../components/SuiviSequence";
+import { ETATS_SEQUENCE, rangerParActivite, type EtatSequence, type SuiviSequence } from "../suiviSequences";
 import { RituelForm, useRituels } from "../components/Rituels";
 import { nouveauRituel, type Rituel } from "../rituels";
 import { lireVideos, lireLien, vignetteYoutube } from "../videos";
@@ -353,6 +356,11 @@ export default function PlanDeTravail() {
   }, [couleursLues, materiels, sequences, textes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtre = q.trim().toLowerCase();
+  // Où en est chaque séquence, d'après le cahier journal ; et le filtre qui ne montre que celles d'un état.
+  const { suivis } = useSuiviSequences();
+  const [etatFiltre, setEtatFiltre] = React.useState<EtatSequence | "">("");
+  const etatDe = (e: Element) => (e.genre === "sequence" ? suivis.get(e.id)?.etat : undefined);
+  const dansLEtat = (e: Element, etat: EtatSequence) => etatDe(e) === etat || (etat === "classe" && etatDe(e) === "pause");
   elementsRef.current = elements;
   React.useEffect(() => {
     const attente = enAttente.current;
@@ -360,14 +368,17 @@ export default function PlanDeTravail() {
     if (Date.now() > attente.jusqua) { enAttente.current = null; return; }
     if (designer(attente.demande)) enAttente.current = null;
   }, [elements, designer]);
-  const dossiers = filtre ? [] : sousDossiers(elements, dossier, Object.keys(couleurs));
+  const dossiers = filtre || etatFiltre ? [] : sousDossiers(elements, dossier, Object.keys(couleurs));
   // Une recherche regarde partout : sinon il faudrait deviner où se trouve ce
-  // qu'on cherche avant de le chercher.
-  const ici = elements
-    .filter((e) => (filtre
-      ? e.titre.toLowerCase().includes(filtre) || texteCherche(e).toLowerCase().includes(filtre)
-      : normaliser(e.dossier) === dossier))
-    .sort((a, b) => a.titre.localeCompare(b.titre, "fr"));
+  // qu'on cherche avant de le chercher. Le filtre par état aussi : il ne
+  // montre que des séquences, où qu'elles soient rangées, la plus active en tête.
+  const correspond = (e: Element) => !filtre || e.titre.toLowerCase().includes(filtre) || texteCherche(e).toLowerCase().includes(filtre);
+  const ici = etatFiltre
+    ? rangerParActivite(elements.filter((e) => dansLEtat(e, etatFiltre) && correspond(e)).map((e) => suivis.get(e.id)!))
+      .map((s) => elements.find((e) => e.genre === "sequence" && e.id === s.sequence.id)!)
+    : elements
+      .filter((e) => (filtre ? correspond(e) : normaliser(e.dossier) === dossier))
+      .sort((a, b) => a.titre.localeCompare(b.titre, "fr"));
 
   // ── Disposition libre ──
   const surfaceEl = React.useRef<HTMLDivElement | null>(null);
@@ -664,7 +675,7 @@ export default function PlanDeTravail() {
       id: newId(), titre: "Nouvelle séquence", matiere: "", cycle: "", objectifs: "",
       competences: "[]", competenceVisee: "", imageNom: null, couleur: "indigo",
       dateCreation: nowIso(), periode: 1, annee: "", ratingEngagement: 0, ratingFacilite: 0,
-      ratingApprentissage: 0, ratingDateMaj: null, projetId: null, video: "", dossier, nbSeancesPrevu: 0,
+      ratingApprentissage: 0, ratingDateMaj: null, projetId: null, video: "", dossier, nbSeancesPrevu: 0, etat: "", dateMaj: "",
     };
     // La fiche d'abord : on nomme la séquence avant d'y entrer.
     setSequenceFiche({ sequence: s, nouvelle: true });
@@ -739,6 +750,7 @@ export default function PlanDeTravail() {
 
   const tuileElement = (e: Element) => (
     <TuileElement key={e.genre + e.id} element={e} actions={actionsDe(e)} designe={surligne === e.id}
+      suivi={e.genre === "sequence" ? suivis.get(e.id) : undefined}
       onOuvrir={() => ouvrir(e)}
       onModifier={e.genre === "materiel" && contenuDirect(e.mat) ? () => setMaterielOuvert(e.mat)
         : e.genre === "sequence" ? () => setSequenceFiche({ sequence: e.seq, nouvelle: false }) : undefined}
@@ -778,7 +790,7 @@ export default function PlanDeTravail() {
             </React.Fragment>
           ))}
           <div style={{ flex: 1 }} />
-          <button type="button" className="btn ghost sm" disabled={!!filtre || !dispositions[dossier]}
+          <button type="button" className="btn ghost sm" disabled={!!filtre || !!etatFiltre || !dispositions[dossier]}
             title={dispositions[dossier]
               ? "Remettre les icônes en ordre : les dossiers d'abord, puis par nom"
               : "Déjà rangé : les icônes suivent l'ordre des noms"}
@@ -788,6 +800,19 @@ export default function PlanDeTravail() {
         </div>
         <Input className="search" placeholder="Rechercher partout…" value={q}
           onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 220 }} />
+        {/* Les séquences selon ce que le cahier journal en dit : en classe (et en pause), en préparation, terminées. */}
+        <div className="seg" role="group" aria-label="Les séquences selon leur état">
+          <button className={etatFiltre === "" ? "active" : ""} onClick={() => setEtatFiltre("")}>Toutes</button>
+          {ETATS_SEQUENCE.filter((e) => e.id !== "pause").map((e) => {
+            const n = elements.filter((x) => dansLEtat(x, e.id)).length;
+            return (
+              <button key={e.id} className={etatFiltre === e.id ? "active" : ""} onClick={() => setEtatFiltre(etatFiltre === e.id ? "" : e.id)}
+                title={e.id === "classe" ? "Démarrées dans le cahier journal, en pause comprises" : e.id === "preparation" ? "Écrites, mais aucune séance passée en classe" : "Toutes les séances faites, ou marquées terminées"}>
+                {e.ico} {e.pluriel}{n ? ` ${n}` : ""}
+              </button>
+            );
+          })}
+        </div>
         <button className={`btn sm${scinde ? " primary" : " ghost"}`} onClick={() => setScinde(!scinde)}
           title={scinde ? "Refermer le bureau commun" : "Ouvrir le bureau commun à côté : glisser d'un bureau à l'autre"}>
           🤝 Bureaux communs</button>
@@ -1104,8 +1129,10 @@ const EMOJI: Record<Element["genre"], string> = {
 const EMOJI_FICHE: Record<OutilClasse["genre"], string> = { outil: "📏", affichage: "🖼", evaluation: "📋" };
 const emojiDe = (e: Element) => (e.genre === "outil" ? EMOJI_FICHE[e.outil.genre] : EMOJI[e.genre]);
 
-function TuileElement({ element, actions = [], onOuvrir, onModifier, onRanger, onSupprimer, onDuplique, onGlisser, onFinGlisser, designe = false }: {
+function TuileElement({ element, actions = [], onOuvrir, onModifier, onRanger, onSupprimer, onDuplique, onGlisser, onFinGlisser, designe = false, suivi }: {
   element: Element; onOuvrir: () => void; onRanger: () => void;
+  /** Pour une séquence : où elle en est d'après le cahier journal. */
+  suivi?: SuiviSequence;
   /** Vrai quand ⌘K vient de mener ici : la tuile se signale quelques secondes. */
   designe?: boolean;
   /** Les gestes propres à son genre : dupliquer un jeu, suivre les élèves d'un espace… */
@@ -1181,6 +1208,7 @@ function TuileElement({ element, actions = [], onOuvrir, onModifier, onRanger, o
       </div>
       <div style={{ fontSize: 10.5, color: "var(--text-2)", overflow: "hidden",
         textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {suivi && <><BadgeSuivi suivi={suivi} petit /> </>}
         {sousTitreDe(element)}
       </div>
     </div>
