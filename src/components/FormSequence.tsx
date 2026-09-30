@@ -1,5 +1,5 @@
 import React from "react";
-import { api, Sequence, Referentiel, couleurHex, couleurPourMatiere, anneeScolaireActuelle } from "../api";
+import { api, Sequence, Referentiel, couleurHex, couleurPourMatiere, anneeScolaireActuelle, type Seance } from "../api";
 import { Modal, Field, Input, Select, Textarea, useAsync } from "./ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "./CompetenceTree";
 import { FichierImg } from "./Deroulement";
@@ -21,36 +21,47 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
   // refaire une séquence sur une compétence couverte sans le savoir.
   const { data: toutes } = useAsync(() => api.sequencesList(), []);
   const visees = React.useMemo(() => sequencesParCompetence(toutes ?? [], sequence.id), [toutes, sequence.id]);
-  // Le déroulement : une démarche d'un guide, proposée au moment où l'on
-  // choisit la compétence — c'est là qu'on sait ce qu'on va enseigner. On
-  // décide alors de la suivre ou non ; tant qu'on n'a pas décidé, rien n'est
-  // posé. Une séquence qui existe déjà a ses séances ; on ne lui en propose pas.
-  const [cadre, setCadre] = React.useState("");
+  // Le déroulement : une démarche d'un guide, proposée dès que la compétence
+  // est là — c'est elle qui dit ce qu'on va enseigner —, à la création comme
+  // à la modification d'une séquence encore sans séance. On décide de le
+  // suivre ou non ; tant qu'on n'a pas décidé, rien n'est posé. Une séquence
+  // qui a déjà ses séances peut encore en recevoir un, à la suite des
+  // siennes : on le demande alors, il ne s'impose pas.
+  let comp: CompetenceSelectionnee | null = null;
+  try { comp = s.competenceVisee ? JSON.parse(s.competenceVisee) : null; } catch { /* ignore */ }
+  const [cadre, setCadre] = React.useState(() => {
+    try {
+      const c = sequence.competenceVisee ? (JSON.parse(sequence.competenceVisee) as CompetenceSelectionnee) : null;
+      return c ? demarcheSuggeree(c, c.referentielNom).id : "";
+    } catch { return ""; }
+  });
   const [suivi, setSuivi] = React.useState<"" | "oui" | "non">("");
+  const { data: existantes } = useAsync(() => (nouvelle ? Promise.resolve([] as Seance[]) : api.seancesList(sequence.id)), [sequence.id, nouvelle]);
+  const nbExistantes = existantes?.length ?? 0;
+  const [ajouterCadre, setAjouterCadre] = React.useState(false);
   const demarche = demarcheDe(cadre);
-  const poseLesSeances = nouvelle && suivi === "oui" && !!demarche;
+  const proposeLeCadre = !!comp && !!demarche && !!existantes && (nbExistantes === 0 || ajouterCadre);
+  const poseLesSeances = proposeLeCadre && suivi === "oui" && !!demarche;
   const save = async () => {
     setEnCours(true);
     try {
       const propre = {
         ...s, titre: s.titre.trim(), annee: s.annee || anneeScolaireActuelle(),
-        nbSeancesPrevu: poseLesSeances ? demarche.seances.length : s.nbSeancesPrevu,
+        nbSeancesPrevu: poseLesSeances ? nbExistantes + demarche.seances.length : s.nbSeancesPrevu,
       };
       await api.sequenceSave(propre);
       if (poseLesSeances) {
-        for (const seance of seancesDuCadre(demarche, propre.id)) await api.seanceSave(seance);
+        // À la suite des séances qui existent : numérotées après elles.
+        for (const seance of seancesDuCadre(demarche, propre.id, nbExistantes + 1)) await api.seanceSave(seance);
       }
       onSaved(propre);
     } finally { setEnCours(false); }
   };
 
-  let comp: CompetenceSelectionnee | null = null;
-  try { comp = s.competenceVisee ? JSON.parse(s.competenceVisee) : null; } catch { /* ignore */ }
-
   const choisir = (c: CompetenceSelectionnee, ref: Referentiel) => {
     up({ competenceVisee: JSON.stringify(c), matiere: c.domaineTitre, cycle: ref.cycle || s.cycle, couleur: couleurPourMatiere(c.domaineTitre) });
     // La compétence appelle un déroulement : on le propose, on ne l'impose pas.
-    if (nouvelle) { setCadre(demarcheSuggeree(c, ref.nom).id); setSuivi(""); }
+    setCadre(demarcheSuggeree(c, ref.nom).id); setSuivi("");
   };
   const effacer = () => { up({ competenceVisee: "", matiere: "", cycle: "", couleur: "blue" }); setCadre(""); setSuivi(""); };
 
@@ -90,10 +101,15 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
             🎯 {labelCourt(comp)} <span style={{ color: "var(--text-2)" }}>· {comp.domaineTitre}</span>
           </div>
         )}
-        {comp && nouvelle && demarche && (
+        {comp && demarche && existantes && nbExistantes > 0 && !ajouterCadre && (
+          <button type="button" className="lien" style={{ margin: "0 0 8px" }} onClick={() => setAjouterCadre(true)}>
+            🧭 Ajouter un déroulement à la suite des {nbExistantes} séance{nbExistantes > 1 ? "s" : ""}
+          </button>
+        )}
+        {proposeLeCadre && demarche && (
           <div className={`deroulement-propose${suivi === "non" ? " ecarte" : ""}`}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-              <b>🧭 Un déroulement peut être suivi</b>
+              <b>🧭 {nbExistantes > 0 ? "Un déroulement peut être ajouté à la suite" : "Un déroulement peut être suivi"}</b>
               <span className="meta">{resumeDuCadre(demarche)}</span>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "8px 0 6px" }}>
@@ -120,9 +136,13 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
                 Ne pas le suivre
               </button>
               <span className="meta" style={{ alignSelf: "center", fontSize: 12.5 }}>
-                {suivi === "oui" ? "Les séances seront créées avec leurs phases, à compléter."
-                  : suivi === "non" ? "La séquence restera vide : vous construirez les séances vous-même."
-                  : "À décider avant d'enregistrer — sans réponse, rien n'est posé."}
+                {suivi === "oui"
+                  ? nbExistantes > 0
+                    ? `Vos ${nbExistantes} séance${nbExistantes > 1 ? "s" : ""} restent ; celles du déroulement viennent à la suite, numérotées à partir de ${nbExistantes + 1}.`
+                    : "Les séances seront créées avec leurs phases, à compléter."
+                  : suivi === "non"
+                    ? nbExistantes > 0 ? "Rien n'est ajouté." : "La séquence restera vide : vous construirez les séances vous-même."
+                    : "À décider avant d'enregistrer — sans réponse, rien n'est posé."}
               </span>
             </div>
           </div>
