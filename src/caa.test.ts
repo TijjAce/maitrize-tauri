@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   CLASSES_CONSIGNE, VERBES_CONSIGNE, consignesActives, decorerConsignesHtml, ecrireLexique, htmlPictosVerbes, lireLexique, verbesDe,
-  verbesDuTexte,
+  verbesDuTexte, motsAChercher, pictosProposes,
 } from "./caa";
 
 const lexique = { lire: 11, écrire: 22, colorier: 33, entourer: 44 };
@@ -113,5 +113,18 @@ describe("les consignes décorées", () => {
     // Les nouveaux verbes des jeux sont reconnus.
     expect(verbesDe("Remets les mots dans l'ordre, décompose le nombre, ajoute puis retranche.", { remettre: 1, "décomposer": 1, ajouter: 1, retrancher: 1 }))
       .toEqual(["remettre", "décomposer", "ajouter", "retrancher"]);
+  });
+});
+
+describe("proposer un picto à chaque verbe", () => {
+  it("demande le verbe, puis ses synonymes, dans l'ordre où l'on préfère", () => {
+    expect(motsAChercher("retrouver")).toEqual(["retrouver", "trouver", "chercher"]);
+    expect(motsAChercher("lire")).toEqual(["lire"]);
+  });
+
+  it("retient le verbe lui-même avant un synonyme, et laisse sans picto ce que la banque ignore", () => {
+    const trouves = [{ id: 24773, mot: "trouver" }, { id: 6947, mot: "chercher" }, { id: 2348, mot: "colorier" }, { id: 7, mot: "peindre" }, { id: 25282, mot: "mettre dans l'ordre" }];
+    expect(pictosProposes(["retrouver", "colorier", "remettre", "décomposer", "lire"], trouves))
+      .toEqual({ retrouver: 24773, colorier: 2348, remettre: 25282 });
   });
 });
