@@ -296,7 +296,8 @@ export const STYLE_SUPPORTS = `
   .sv-j-jeton { width: var(--jeton, 32mm); height: var(--jeton, 32mm); border: 1px dashed #aaa; display: flex; align-items: center;
     justify-content: center; padding: 1.5mm; box-sizing: border-box; }
   .sv-jeton-dessin, .sv-jeton-image { width: 100%; height: 100%; object-fit: contain; }
-  .sv-decouper { break-before: page; page-break-before: always; margin-top: 20px; }
+  /* Sur la même feuille que le tableau, sous un trait de découpe : une seule impression, rien à assembler. */
+  .sv-decouper { margin-top: 16px; padding-top: 10px; border-top: 2px dashed #b3b9c7; break-inside: avoid; page-break-inside: avoid; }
 
   .sv-d-planche { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 0 auto 18px; }
   .sv-d-etape { flex: 1 1 0; min-width: 0; max-width: 42%; display: flex; flex-direction: column; gap: 8px; }
