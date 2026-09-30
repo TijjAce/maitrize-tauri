@@ -4,7 +4,7 @@ import { Input, Modal } from "./ui";
 import { toast } from "./Toaster";
 import { CompetenceTree, type CompetenceSelectionnee } from "./CompetenceTree";
 import {
-  basculerCompetence, cleDesCompetences, ecrireCompetencesAtelier, lireCompetencesAtelier,
+  EVT_COMPETENCES_ATELIER, basculerCompetence, cleDesCompetences, ecrireCompetencesAtelier, lireCompetencesAtelier,
   memeCompetence,
 } from "../ateliersCompetences";
 
@@ -17,25 +17,34 @@ import {
 // La liste se choisit donc dans l'arbre des référentiels, une fois, et se
 // garde avec l'atelier — dans un réglage partagé entre les ordinateurs.
 
-export function CompetencesAtelier({ atelier, nom }: { atelier: string; nom: string }) {
+/** Les compétences choisies pour un atelier, tenues à jour d'où qu'elles changent, et de quoi les enregistrer. */
+export function useCompetencesAtelier(atelier: string): [CompetenceSelectionnee[], (suite: CompetenceSelectionnee[]) => void] {
   const [liste, setListe] = React.useState<CompetenceSelectionnee[]>([]);
-  const [ouvert, setOuvert] = React.useState(false);
-  const [recherche, setRecherche] = React.useState("");
   const cle = cleDesCompetences(atelier);
-
   React.useEffect(() => {
     let vivant = true;
-    api.settingGet(cle)
-      .then((v) => { if (vivant) setListe(lireCompetencesAtelier(v)); })
-      .catch(() => { if (vivant) setListe([]); });
-    return () => { vivant = false; };
+    const lire = () => {
+      api.settingGet(cle)
+        .then((v) => { if (vivant) setListe(lireCompetencesAtelier(v)); })
+        .catch(() => { if (vivant) setListe([]); });
+    };
+    lire();
+    window.addEventListener(EVT_COMPETENCES_ATELIER, lire);
+    return () => { vivant = false; window.removeEventListener(EVT_COMPETENCES_ATELIER, lire); };
   }, [cle]);
-
-  const enregistrer = (suite: CompetenceSelectionnee[]) => {
+  const enregistrer = React.useCallback((suite: CompetenceSelectionnee[]) => {
     setListe(suite);
     api.settingSet(cle, ecrireCompetencesAtelier(suite))
+      .then(() => window.dispatchEvent(new Event(EVT_COMPETENCES_ATELIER)))
       .catch((e) => toast("Compétences non enregistrées : " + texteErreur(e), { icone: "⚠️" }));
-  };
+  }, [cle]);
+  return [liste, enregistrer];
+}
+
+export function CompetencesAtelier({ atelier, nom }: { atelier: string; nom: string }) {
+  const [liste, enregistrer] = useCompetencesAtelier(atelier);
+  const [ouvert, setOuvert] = React.useState(false);
+  const [recherche, setRecherche] = React.useState("");
 
   return (
     <details className="comp-atelier">

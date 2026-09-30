@@ -8,10 +8,7 @@ import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac"
 import { PartieToutTab, MultiplicatifsTab } from "./ProblemesBarres";
 import { ColoriageMagiqueTab } from "./ColoriageMagique";
 import { LectureSonsTab } from "./LectureSons";
-import { CompetencesAtelier } from "../components/CompetencesAtelier";
-import { ConsigneAtelier } from "../components/ConsigneAtelier";
-import { PictosAtelier } from "../components/PictosAtelier";
-import { OptionsFeuille } from "../components/OptionsFeuille";
+import { FeuilleDeLAtelier } from "../components/FeuilleDeLAtelier";
 import { ProjetDuMomentBandeau, ProjetDuMomentProvider, useProjetDuMoment } from "../components/ProjetDuMoment";
 import { UsageAtelier, useUsagesDesAteliers } from "../components/UsageAtelier";
 import { descriptionDe, rangerParUsage, type Usage } from "../usageAtelier";
@@ -297,13 +294,12 @@ export default function Jeux() {
   return (
     <ProjetDuMomentProvider>
     <Page titre={outil ? `${outil.icone} ${outil.nom}` : "Fabriquer"} sous={outil?.quoi}
-      actions={<button className="btn ghost sm" onClick={() => setOnglet("")}>← Tous les ateliers</button>}>
-      {outil && <CompetencesAtelier atelier={outil.id} nom={outil.nom} />}
-      {outil && <ConsigneAtelier atelier={outil.id} />}
-      {outil && <PictosAtelier atelier={outil.id} />}
-      {outil && <OptionsFeuille atelier={outil.id} />}
+      actions={<>
+        {outil && <UsageAtelier atelier={outil.id} />}
+        <button className="btn ghost sm" onClick={() => setOnglet("")}>← Tous les ateliers</button>
+      </>}>
+      {outil && <FeuilleDeLAtelier atelier={outil.id} nom={outil.nom} />}
       {outil && <ProjetDuMomentBandeau atelier={outil.id} />}
-      {outil && <UsageAtelier atelier={outil.id} />}
       <AtelierContext.Provider value={onglet}>
       {onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />
