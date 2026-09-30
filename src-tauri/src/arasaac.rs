@@ -400,6 +400,44 @@ pub fn arasaac_selection(
     Ok(selection(&index, &categories, &exclues, intersection, combien, graine))
 }
 
+/// Les catégories où sont rangés les pictogrammes qui portent l'un de ces
+/// mots — de quoi deviner les thèmes d'un projet depuis son titre : « soupe »
+/// mène aux aliments, « vache » aux animaux domestiques. Tout se lit dans
+/// l'index local ; rien ne part.
+#[tauri::command(async)]
+pub fn arasaac_themes_des_mots(
+    etat: tauri::State<BanqueArasaac>,
+    mots: Vec<String>,
+) -> Result<Vec<Categorie>, String> {
+    let index = charger_index(&etat)?;
+    Ok(themes_des_mots(&index, &mots))
+}
+
+/// Compte, par catégorie, les pictogrammes dont le mot est l'un de ceux donnés
+/// (à la lettre, sans tenir compte de la casse) ; les plus fréquentes en tête.
+pub fn themes_des_mots(index: &Index, mots: &[String]) -> Vec<Categorie> {
+    let cherches: HashSet<String> = mots
+        .iter()
+        .map(|m| m.trim().to_lowercase())
+        .filter(|m| m.chars().count() >= 3)
+        .collect();
+    if cherches.is_empty() {
+        return Vec::new();
+    }
+    let mut compte: BTreeMap<&str, usize> = BTreeMap::new();
+    for p in index.pictos.iter().filter(|p| cherches.contains(&p.mot.to_lowercase())) {
+        for c in &p.categories {
+            *compte.entry(c.as_str()).or_insert(0) += 1;
+        }
+    }
+    let mut sortie: Vec<Categorie> = compte
+        .into_iter()
+        .map(|(nom, nombre)| Categorie { nom: nom.to_string(), nombre })
+        .collect();
+    sortie.sort_by(|a, b| b.nombre.cmp(&a.nombre).then_with(|| a.nom.cmp(&b.nom)));
+    sortie
+}
+
 /// Cherche un pictogramme par son mot, pour l'éditeur de tableau.
 ///
 /// La correspondance partielle est ici **volontaire**, à l'inverse de la
@@ -545,6 +583,17 @@ mod tests {
             ],
             signature: (1, 1),
         }
+    }
+
+    #[test]
+    fn les_mots_d_un_titre_revelent_leurs_themes() {
+        let i = index_exemple();
+        let t = themes_des_mots(&i, &["Vache".into(), "poule".into(), "xx".into(), "licorne".into()]);
+        let vus: Vec<(&str, usize)> = t.iter().map(|c| (c.nom.as_str(), c.nombre)).collect();
+        // « domestic animal » porte les deux, puis les autres par ordre alphabétique.
+        assert_eq!(vus, vec![("domestic animal", 2), ("mammal", 1), ("oviparous", 1), ("terrestrial animal", 1)]);
+        assert!(themes_des_mots(&i, &["pantalons".into()]).is_empty(), "le pluriel n'est pas le mot");
+        assert!(themes_des_mots(&i, &[]).is_empty());
     }
 
     // Les images n'existent pas sur le disque en test : `selection` les filtre.
