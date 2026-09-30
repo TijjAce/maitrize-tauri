@@ -36,7 +36,7 @@ const MOTS = {
     lieuExemple: "ex. Bac bleu du coin maths", categorie: "Catégorie", usage: "À quoi il sert",
     usageExemple: "Se repérer dans la suite des nombres, compter en avançant…",
     consignes: "Comment s'en servir", consignesExemple: "Le poser à gauche du cahier ; l'élève montre du doigt…",
-    documents: "Documents à imprimer", ajouter: "📎 Ajouter un document", icone: "🧰",
+    documents: "Documents à imprimer", ajouter: "📎 Ajouter un document", icone: "📏",
   },
   affichage: {
     nouveau: "Nouvel affichage", modifier: "Modifier l'affichage", titre: "Titre de l'affichage", lieu: "Où il est affiché",

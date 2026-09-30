@@ -864,7 +864,7 @@ export default function PlanDeTravail() {
             { label: "Nouveau rituel", icon: "🔁", onClick: () => setRituelNeuf(nouveauRituel()) },
             { label: "Nouveau support", icon: "🧰", enfants: [
               { label: "Matériel", icon: "🧰", onClick: creerMateriel },
-              { label: "Outil pour l'élève", icon: "🧰", onClick: () => setEditO({ ...nouvelOutil("outil"), dossier }) },
+              { label: "Outil pour l'élève", icon: "📏", onClick: () => setEditO({ ...nouvelOutil("outil"), dossier }) },
               { label: "Jeu", icon: "🎲", onClick: () => setEditJ({ ...nouveauJeu(), dossier }) },
               { label: "Évaluation", icon: "📋", onClick: () => setEditO({ ...nouvelOutil("evaluation"), dossier }) },
               { label: "Affichage", icon: "🖼", onClick: () => setEditO({ ...nouvelOutil("affichage"), dossier }) },
@@ -1098,10 +1098,10 @@ function sousTitreDe(e: Element): string {
 
 /** L'icône d'un élément sans image. */
 const EMOJI: Record<Element["genre"], string> = {
-  sequence: "📚", materiel: "🧰", texte: "📝", atelier: "🧩", espace: "🪑", jeu: "🎲", outil: "🧰",
+  sequence: "📚", materiel: "🧰", texte: "📝", atelier: "🧩", espace: "🪑", jeu: "🎲", outil: "📏",
 };
 /** Outils, affichages et évaluations partagent une fiche : leur icône les distingue. */
-const EMOJI_FICHE: Record<OutilClasse["genre"], string> = { outil: "🧰", affichage: "🖼", evaluation: "📋" };
+const EMOJI_FICHE: Record<OutilClasse["genre"], string> = { outil: "📏", affichage: "🖼", evaluation: "📋" };
 const emojiDe = (e: Element) => (e.genre === "outil" ? EMOJI_FICHE[e.outil.genre] : EMOJI[e.genre]);
 
 function TuileElement({ element, actions = [], onOuvrir, onModifier, onRanger, onSupprimer, onDuplique, onGlisser, onFinGlisser, designe = false }: {
