@@ -10,8 +10,9 @@ import { ColoriageMagiqueTab } from "./ColoriageMagique";
 import { LectureSonsTab } from "./LectureSons";
 import { FeuilleDeLAtelier } from "../components/FeuilleDeLAtelier";
 import { ProjetDuMomentBandeau, ProjetDuMomentProvider, useProjetDuMoment } from "../components/ProjetDuMoment";
-import { UsageAtelier, useUsagesDesAteliers } from "../components/UsageAtelier";
-import { descriptionDe, rangerParUsage, type Usage } from "../usageAtelier";
+import { useUsagesDesAteliers } from "../components/UsageAtelier";
+import { openCtx } from "../components/ctxmenu";
+import { USAGES, descriptionDe, rangerParUsage, type Usage } from "../usageAtelier";
 import { AtelierContext } from "../components/AtelierContext";
 import { deposerSurLeBureau, lignesCompetencesAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
@@ -168,12 +169,36 @@ const RANGEMENT_MEMORISE = "fabriquer:rangement";
 
 const ONGLET_MEMORISE = "fabriquer:onglet";
 
-/** Un atelier, tel qu'on le voit avant d'entrer : ce qu'il fabrique, et le moment où il est rangé. */
-function CarteAtelier({ o, usage, onOuvrir }: { o: Outil; usage?: Usage; onOuvrir: () => void }) {
+/** Le type de donnée d'une carte qu'on glisse d'un moment à l'autre. */
+const TYPE_ATELIER = "text/x-maitrize-atelier";
+
+/**
+ * Un atelier, tel qu'on le voit avant d'entrer : ce qu'il fabrique, et le
+ * moment où il est rangé. La carte se glisse d'un moment à l'autre ; le clic
+ * droit range aussi, pour qui ne glisse pas.
+ */
+function CarteAtelier({ o, usage, onOuvrir, onRanger, enVol, onVol }: {
+  o: Outil; usage?: Usage; onOuvrir: () => void;
+  /** Ranger l'atelier dans un moment ; absent, la carte ne se glisse pas. */
+  onRanger?: (usage: Usage) => void;
+  enVol?: boolean; onVol?: (enVol: boolean) => void;
+}) {
   const moment = usage ? descriptionDe(usage) : null;
   const besoin = [o.cycles, o.pictos ? "pictogrammes ARASAAC" : ""].filter(Boolean).join(" · ");
   return (
-    <button className="atelier" onClick={onOuvrir}>
+    <div role="button" tabIndex={0} className={`atelier${enVol ? " en-vol" : ""}`} onClick={onOuvrir}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOuvrir(); } }}
+      draggable={Boolean(onRanger)}
+      onDragStart={onRanger ? (e) => {
+        e.dataTransfer.setData(TYPE_ATELIER, o.id);
+        e.dataTransfer.effectAllowed = "move";
+        onVol?.(true);
+      } : undefined}
+      onDragEnd={onRanger ? () => onVol?.(false) : undefined}
+      onContextMenu={onRanger ? (e) => openCtx(e, USAGES.map((u) => ({
+        label: `Ranger dans ${u.nom}${u.id === usage ? " ✓" : ""}`, icon: u.ico, onClick: () => onRanger(u.id),
+      }))) : undefined}
+      title={onRanger ? "Glissez la carte vers un autre moment pour la ranger, ou clic droit" : undefined}>
       <span className="atelier-icone">{o.icone}</span>
       <span className="atelier-nom">{o.nom}</span>
       <span className="atelier-quoi">{o.quoi}</span>
@@ -183,7 +208,7 @@ function CarteAtelier({ o, usage, onOuvrir }: { o: Outil; usage?: Usage; onOuvri
           {moment && <span className="atelier-usage" title={`${moment.aide} — ${moment.quand}.`}>{moment.ico} {moment.nom}</span>}
         </span>
       )}
-    </button>
+    </div>
   );
 }
 
@@ -199,7 +224,16 @@ export default function Jeux() {
   });
   const [recherche, setRecherche] = React.useState("");
   // Le moment de la séquence où chaque atelier est rangé, et la façon de lire le catalogue.
-  const { usages } = useUsagesDesAteliers(ONGLETS);
+  const { usages, changer } = useUsagesDesAteliers(ONGLETS);
+  // La carte qu'on glisse, et le moment survolé.
+  const [enVol, setEnVol] = React.useState<Onglet | "">("");
+  const [survol, setSurvol] = React.useState<Usage | "">("");
+  const ranger = (id: Onglet, usage: Usage) => {
+    if (usages[id] === usage) return;
+    changer(id, usage);
+    const d = descriptionDe(usage);
+    toast(`${outilDe(id)?.nom ?? "L'atelier"} rangé dans ${d.nom} — ${d.quand}.`, { icone: d.ico });
+  };
   const [rangement, setRangementBrut] = React.useState<Rangement>(() => {
     try { return localStorage.getItem(RANGEMENT_MEMORISE) === "usage" ? "usage" : "famille"; } catch { return "famille"; }
   });
@@ -246,6 +280,11 @@ export default function Jeux() {
   // ── Devant les ateliers ──
   if (!onglet) {
     const carte = (o: Outil) => <CarteAtelier key={o.id} o={o} usage={usages[o.id]} onOuvrir={() => setOnglet(o.id)} />;
+    // Dans le catalogue par moment, les cartes se glissent d'un moment à l'autre.
+    const carteMobile = (o: Outil) => (
+      <CarteAtelier key={o.id} o={o} usage={usages[o.id]} onOuvrir={() => setOnglet(o.id)}
+        onRanger={(u) => ranger(o.id, u)} enVol={enVol === o.id} onVol={(v) => { setEnVol(v ? o.id : ""); if (!v) setSurvol(""); }} />
+    );
     return (
       <Page titre="Fabriquer" sous="Jeux et feuilles à imprimer : langage, sons, lecture et écriture, mathématiques — du cycle 1 au cycle 3">
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
@@ -266,16 +305,36 @@ export default function Jeux() {
           )
         ) : rangement === "usage" ? (
           <>
-            {rangerParUsage(FAMILLES.flatMap((f) => f.outils), usages).map(({ usage, outils }) => (
-              <section key={usage.id} style={{ marginBottom: 22 }}>
+            <p className="meta" style={{ fontSize: 12.5, margin: "0 0 12px" }}>
+              Glissez une carte d'un moment à l'autre pour ranger l'atelier — ou clic droit sur la carte. Le rangement suit sur l'autre ordinateur.
+            </p>
+            {rangerParUsage(FAMILLES.flatMap((f) => f.outils), usages, true).map(({ usage, outils }) => (
+              <section key={usage.id} className={`zone-moment${survol === usage.id ? " survol" : ""}`} aria-label={usage.nom}
+                onDragOver={(e) => {
+                  if (!enVol) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  if (survol !== usage.id) setSurvol(usage.id);
+                }}
+                onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setSurvol((s) => (s === usage.id ? "" : s)); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const id = (e.dataTransfer.getData(TYPE_ATELIER) || enVol) as Onglet | "";
+                  setSurvol("");
+                  setEnVol("");
+                  if (id) ranger(id, usage.id);
+                }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
                   <b style={{ fontSize: 15 }}>{usage.ico} {usage.nom}</b>
                   <span className="meta" style={{ fontSize: 12.5 }}>{usage.quand} — {usage.aide}</span>
                 </div>
-                <div className="ateliers">{outils.map(carte)}</div>
+                {outils.length ? (
+                  <div className="ateliers">{outils.map(carteMobile)}</div>
+                ) : (
+                  <div className="zone-moment-vide">Aucun atelier ici — glissez-en un.</div>
+                )}
               </section>
             ))}
-            <p className="meta" style={{ fontSize: 12.5 }}>Chaque atelier se range depuis son bandeau « 🗂 Rangé dans » ; le rangement suit sur l'autre ordinateur.</p>
           </>
         ) : FAMILLES.map((f) => (
           <section key={f.id} style={{ marginBottom: 22 }}>
@@ -294,10 +353,7 @@ export default function Jeux() {
   return (
     <ProjetDuMomentProvider>
     <Page titre={outil ? `${outil.icone} ${outil.nom}` : "Fabriquer"} sous={outil?.quoi}
-      actions={<>
-        {outil && <UsageAtelier atelier={outil.id} />}
-        <button className="btn ghost sm" onClick={() => setOnglet("")}>← Tous les ateliers</button>
-      </>}>
+      actions={<button className="btn ghost sm" onClick={() => setOnglet("")}>← Tous les ateliers</button>}>
       {outil && <FeuilleDeLAtelier atelier={outil.id} nom={outil.nom} />}
       {outil && <ProjetDuMomentBandeau atelier={outil.id} />}
       <AtelierContext.Provider value={onglet}>

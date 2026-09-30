@@ -44,5 +44,7 @@ describe("le rangement d'un atelier", () => {
       ["rituel", ["fluence", "phrases"]],
     ]);
     expect(descriptionDe("rituel").nom).toBe("Rituel");
+    // Pour y déposer un atelier, on peut demander les moments vides aussi.
+    expect(rangerParUsage(outils, {}, true).map((g) => g.usage.id)).toEqual(["manipulation", "entrainement", "reinvestissement", "rituel"]);
   });
 });

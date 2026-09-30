@@ -80,9 +80,14 @@ export function usagesDesReglages(reglages: Record<string, string>, ateliers: re
   return sortie;
 }
 
-/** Les ateliers rangés par moment, dans l'ordre de la séquence ; un moment sans atelier n'apparaît pas. */
-export function rangerParUsage<T extends { id: string }>(outils: T[], usages: Record<string, Usage>): { usage: DescriptionUsage; outils: T[] }[] {
+/**
+ * Les ateliers rangés par moment, dans l'ordre de la séquence. Un moment sans
+ * atelier n'apparaît pas — sauf si on le demande, pour pouvoir y déposer.
+ */
+export function rangerParUsage<T extends { id: string }>(
+  outils: T[], usages: Record<string, Usage>, avecVides = false,
+): { usage: DescriptionUsage; outils: T[] }[] {
   return USAGES
     .map((usage) => ({ usage, outils: outils.filter((o) => (usages[o.id] ?? usageParDefaut(o.id)) === usage.id) }))
-    .filter((g) => g.outils.length > 0);
+    .filter((g) => avecVides || g.outils.length > 0);
 }
