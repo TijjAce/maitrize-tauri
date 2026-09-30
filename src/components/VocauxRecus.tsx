@@ -12,9 +12,11 @@ import { creneauRetenu, repereDuVocal, verserDansLeBilan, type Vocal } from "../
 // endroit que le partage WiFi, puisque c'est par là qu'ils passent. On ouvre
 // cette page au retour, le téléphone se vide, et l'on range.
 //
-// La transcription part toute seule, sur cette machine : elle ne coûte rien
-// et ne sort pas. Le versement dans le bilan, lui, demande un clic : une
-// transcription se relit avant d'entrer dans le dossier d'un élève.
+// La transcription part toute seule — sur cette machine dès qu'un modèle y
+// est, en ligne sinon, comme les réunions. Un vocal en échec est repris une
+// fois à l'ouverture, et à la demande. Le versement dans le bilan, lui,
+// demande un clic : une transcription se relit avant d'entrer dans le
+// dossier d'un élève.
 
 /** Le jour d'un vocal, tel qu'on l'écrit au-dessus du groupe. */
 function jourLisible(iso: string): string {
@@ -53,24 +55,29 @@ export function VocauxRecus() {
   }, [charger]);
 
   /**
-   * La transcription part d'elle-même, un vocal après l'autre.
+   * La transcription part d'elle-même, un vocal après l'autre — les vocaux
+   * reçus, puis, une fois chacun, ceux qui avaient échoué : ce qui manquait
+   * la veille est peut-être là aujourd'hui.
    *
    * Le garde-fou est une référence, pas un état : l'effet ne dépend que de
    * l'identifiant à traiter, une chaîne stable. La chaîne se poursuit seule —
    * le vocal transcrit quitte la file, le suivant prend sa place.
    */
-  const aTranscrire = vocaux.find((v) => v.etat === "recu")?.id ?? "";
+  const repris = React.useRef(new Set<string>());
+  const aTranscrire = vocaux.find((v) => v.etat === "recu" || (v.etat === "echec" && !repris.current.has(v.id)))?.id ?? "";
   const enCours = React.useRef("");
-  React.useEffect(() => {
-    if (!aTranscrire || enCours.current) return;
-    enCours.current = aTranscrire;
-    setTranscrit(aTranscrire);
-    api.vocalTranscrire(aTranscrire)
+  const transcrire = React.useCallback((id: string) => {
+    if (enCours.current) return;
+    enCours.current = id;
+    repris.current.add(id);
+    setTranscrit(id);
+    api.vocalTranscrire(id)
       .then((suite) => setVocaux((avant) => avant.map((v) => (v.id === suite.id ? suite : v))))
       // L'état « echec » est écrit côté Rust : on relit plutôt que de deviner.
       .catch(() => { void charger(); })
       .finally(() => { enCours.current = ""; setTranscrit(""); });
-  }, [aTranscrire, charger]);
+  }, [charger]);
+  React.useEffect(() => { if (aTranscrire) transcrire(aTranscrire); }, [aTranscrire, transcrire]);
 
   const verser = async (v: Vocal) => {
     const id = cible[v.id] ?? creneauRetenu(v, creneaux)?.id ?? "";
@@ -103,8 +110,8 @@ export function VocauxRecus() {
       {vocaux.length === 0 ? (
         <p style={{ color: "var(--text-2)", margin: 0, fontSize: 13, lineHeight: 1.6 }}>
           Rien en attente. Ce que vous dictez depuis l'application du téléphone arrive ici
-          dès que le partage est ouvert — transcrit sur cet ordinateur, puis rangé dans le
-          bilan du créneau d'un clic.
+          dès que le partage est ouvert — transcrit sur cet ordinateur si un modèle y est, en
+          ligne sinon —, puis rangé dans le bilan du créneau d'un clic.
         </p>
       ) : jours.map((jour) => (
         <div key={jour} style={{ marginBottom: 14 }}>
@@ -145,9 +152,12 @@ export function VocauxRecus() {
                       {transcrit === v.id ? "Transcription en cours…" : "En attente de transcription…"}
                     </p>
                   ) : v.etat === "echec" ? (
-                    <p style={{ fontSize: 12.5, margin: 0, color: "var(--danger)" }}>
-                      Transcription impossible : {v.erreur}
-                    </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <p style={{ fontSize: 12.5, margin: 0, color: "var(--danger)" }}>
+                        {transcrit === v.id ? "Nouvel essai…" : `Transcription impossible : ${v.erreur}`}
+                      </p>
+                      <button className="btn sm" disabled={!!enCours.current} onClick={() => transcrire(v.id)}>↻ Réessayer</button>
+                    </div>
                   ) : (
                     <>
                       <TextareaAuto value={texte[v.id] ?? v.texte} minHauteur={56}
