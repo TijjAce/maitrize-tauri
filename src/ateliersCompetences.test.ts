@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   basculerCompetence, cleDesCompetences, ecrireCompetencesAtelier, lireCompetencesAtelier,
   memeCompetence,
+  competencesParObjectif, objectifsDesAteliers, unionDesCompetences,
 } from "./ateliersCompetences";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 
@@ -49,5 +50,49 @@ describe("les compétences d'un atelier", () => {
     expect(maigre).toHaveLength(1);
     expect(maigre[0].niveau).toBeNull();
     expect(maigre[0].id).toBe("Lire");
+  });
+});
+
+describe("les compétences par objectif", () => {
+  const c = (titre: string, ref = "R") => ({
+    id: titre, referentielNom: ref, domaineId: "d", domaineTitre: "D", sousDomaineTitre: "S",
+    competenceGeneraleTitre: null, competenceTitre: titre, niveau: null, competenceRefId: null,
+  });
+
+  it("se rangent sous l'atelier, objectif par objectif", () => {
+    expect(cleDesCompetences("martiniere")).toBe("fabriquer:competences:martiniere");
+    expect(cleDesCompetences("martiniere", "cp-complements-10")).toBe("fabriquer:competences:martiniere:cp-complements-10");
+  });
+
+  it("se relisent d'un coup depuis les réglages, sans les listes vides ni celles des autres ateliers", () => {
+    const reglages = {
+      [cleDesCompetences("martiniere", "cp-complements-10")]: JSON.stringify([c("Compléments à 10")]),
+      [cleDesCompetences("martiniere", "cm2-decimaux")]: "[]",
+      [cleDesCompetences("martiniere")]: JSON.stringify([c("Atelier")]),
+      [cleDesCompetences("martinierebis", "x")]: JSON.stringify([c("Autre")]),
+      "autre:cle": "x",
+    };
+    const par = competencesParObjectif(reglages, "martiniere");
+    expect(Object.keys(par)).toEqual(["cp-complements-10"]);
+    expect(par["cp-complements-10"][0].competenceTitre).toBe("Compléments à 10");
+  });
+
+  it("s'unissent sans répéter la même compétence", () => {
+    const u = unionDesCompetences([[c("A"), c("B")], [c("B"), c("C")], []]);
+    expect(u.map((x) => x.competenceTitre)).toEqual(["A", "B", "C"]);
+  });
+
+  it("gardent en mémoire les objectifs que chaque atelier travaille à l'écran", () => {
+    let appels = 0;
+    const off = objectifsDesAteliers.abonner(() => { appels++; });
+    objectifsDesAteliers.publier("martiniere", [{ id: "cp-complements-10", libelle: "Compléments à 10" }]);
+    objectifsDesAteliers.publier("martiniere", [{ id: "cp-complements-10", libelle: "Compléments à 10" }]);
+    expect(objectifsDesAteliers.lire("martiniere").map((o) => o.id)).toEqual(["cp-complements-10"]);
+    expect(objectifsDesAteliers.lire("tri")).toEqual([]);
+    expect(appels).toBe(1);
+    objectifsDesAteliers.publier("martiniere", []);
+    expect(objectifsDesAteliers.lire("martiniere")).toEqual([]);
+    expect(appels).toBe(2);
+    off();
   });
 });

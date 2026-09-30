@@ -17,7 +17,9 @@ import {
   additionsArbre, cartesCalcul, cartesNombres, htmlArbreCalcul, htmlCartesCalcul, htmlCartesNombres, htmlFractions, htmlJeuDeLOie,
   type ContenuOie, type FacesDe, type MaterielFraction, type Operation, type Representation, type RepresentationFraction,
 } from "../jeuxMaths";
-import { REFLEXIONS, REGLAGES_MARTINIERE, STYLE_MARTINIERE, calculsMartiniere, fluenceAttendue, htmlMartiniere, objectifsRetenus, type FormeEntrainement } from "../martiniere";
+import { REFLEXIONS, REGLAGES_MARTINIERE, STYLE_MARTINIERE, calculsMartiniere, fluenceAttendue, htmlMartiniere, libelleTravaille, objectifsRetenus, type FormeEntrainement } from "../martiniere";
+import { objectifsDesAteliers } from "../ateliersCompetences";
+import { useCompetencesParObjectif } from "../components/CompetencesAtelier";
 import { NIVEAUX, RUBRIQUES, objectifParId, objectifsDuNiveau, type Niveau, type Objectif } from "../faitsNumeriques";
 import { OPERATIONS_COMPTE, REGLAGES_COMPTE, REGLAGES_COMPTE_CYCLE, STYLE_COMPTE, comptes, htmlCompteEstBon } from "../compteEstBon";
 import { REGLAGES_PYRAMIDES, STYLE_PYRAMIDES, htmlPyramides, type FormeCalcul } from "../pyramides";
@@ -349,6 +351,15 @@ export function MartiniereTab() {
   const tablesChoisies = (r.tables ?? []).filter((t) => tablesPossibles.includes(t));
   const attendu = retenus.map(fluenceAttendue).find(Boolean);
 
+  // Chaque objectif travaille sa compétence : le bandeau règle celle de l'objectif retenu, la feuille imprime celles des retenus.
+  const cleRetenus = retenus.map((o) => o.id).join("|");
+  React.useEffect(() => {
+    objectifsDesAteliers.publier("martiniere", retenus.map((o) => ({ id: o.id, libelle: libelleTravaille(o, tablesChoisies) })));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cleRetenus, tablesChoisies.join("|")]);
+  React.useEffect(() => () => objectifsDesAteliers.publier("martiniere", []), []);
+  const competencesDe = useCompetencesParObjectif("martiniere");
+
   // Un seul objectif à la fois ; en révision, on coche ceux qu'on veut mêler.
   const choisir = (o: Objectif) => {
     const table = o.tables && !(r.tables ?? []).some((t) => o.tables!.includes(t)) ? { tables: [o.tables[0]] } : {};
@@ -387,9 +398,16 @@ export function MartiniereTab() {
                 <div className="fn-rubrique-titre">{rubrique.libelle}</div>
                 {siens.map((o) => {
                   const choisi = retenus.some((x) => x.id === o.id);
+                  const competences = competencesDe[o.id] ?? [];
                   return (
                     <button key={o.id} type="button" className={choisi ? "fn-objectif choisi" : "fn-objectif"} aria-pressed={choisi} onClick={() => choisir(o)}>
-                      <span className="fn-puce" aria-hidden="true">{choisi ? (r.revision ? "☑" : "●") : (r.revision ? "☐" : "○")}</span>{o.libelle}
+                      <span className="fn-puce" aria-hidden="true">{choisi ? (r.revision ? "☑" : "●") : (r.revision ? "☐" : "○")}</span>
+                      <span style={{ flex: 1 }}>{o.libelle}</span>
+                      {competences.length > 0 && (
+                        <span className="fn-competence" title={`Compétence${competences.length > 1 ? "s" : ""} choisie${competences.length > 1 ? "s" : ""} : ${competences.map((c) => c.competenceTitre).join(" ; ")}`}>
+                          🎯 {competences.length}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
