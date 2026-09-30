@@ -167,3 +167,24 @@ describe("le bilan du créneau qui nourrit la fiche", () => {
     expect(fichesANourrir([suite[0], autre], "c1", "Apolline a réussi.", nomDe, "x")).toEqual([]);
   });
 });
+
+describe("les fiches qu'un bilan fait naître", () => {
+  it("en pose une par élève du créneau qui n'en a pas, avec ce que le bilan dit de lui", async () => {
+    const { fichesACreer } = await import("./observationEleve");
+    const noms: Record<string, string> = { e1: "Apolline Martin", e2: "Zephir Dupont" };
+    const creneau = { id: "c1", date: "2026-09-29", elevesIds: ["e1", "e2", "e2"], contexte: "Lecture — Les syllabes", competence: "Lire des syllabes" };
+    let n = 0;
+    const suite = fichesACreer([], creneau, "Apolline a lu seule. Zephir a eu besoin d'aide.", (id) => noms[id], "2026-09-29T10:00:00Z", () => `o${++n}`);
+    expect(suite.map((o) => [o.id, o.eleveId, o.creneauId, o.date, o.contexte, o.competence, o.axe, o.note])).toEqual([
+      ["o1", "e1", "c1", "2026-09-29", "Lecture — Les syllabes", "Lire des syllabes", "", "Apolline a lu seule."],
+      ["o2", "e2", "c1", "2026-09-29", "Lecture — Les syllabes", "Lire des syllabes", "", "Zephir a eu besoin d'aide."],
+    ]);
+    // Une fiche déjà posée sur ce créneau pour cet élève : on ne double pas ; un autre créneau ne compte pas.
+    const posee = { ...suite[0], note: "" };
+    const ailleurs = { ...suite[1], creneauId: "c2" };
+    expect(fichesACreer([posee, ailleurs], creneau, "Bilan.", (id) => noms[id], "x", () => "o9").map((o) => o.eleveId)).toEqual(["e2"]);
+    // Rien tant que le bilan est vide, rien sans élève.
+    expect(fichesACreer([], creneau, "   ", (id) => noms[id], "x", () => "o9")).toEqual([]);
+    expect(fichesACreer([], { ...creneau, elevesIds: [] }, "Bilan.", (id) => noms[id], "x", () => "o9")).toEqual([]);
+  });
+});

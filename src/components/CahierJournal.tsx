@@ -1,9 +1,9 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { api, Creneau, Seance, Sequence, Eleve, Jeu, journal, nouveauJeu, teinteCreneau, texteErreur, nowIso, type MaterielItem, type ObservationEleve } from "../api";
+import { api, Creneau, Seance, Sequence, Eleve, Jeu, journal, newId, nouveauJeu, teinteCreneau, texteErreur, nowIso, type MaterielItem, type ObservationEleve } from "../api";
 import { toast } from "./Toaster";
 import { PoserObservation } from "./PoserObservation";
-import { fichesANourrir } from "../observationEleve";
+import { fichesACreer, fichesANourrir } from "../observationEleve";
 import { useDictee, mmss } from "../dictee";
 import { natureDe } from "../heures";
 import { isoJour, plusJours } from "../dates";
@@ -12,7 +12,6 @@ import {
   protegerImages, reprendrePrevu, restaurerImages, retirerImage,
 } from "../cahierJournal";
 import { reformuler } from "../reformulation";
-import { PorterAuDossier } from "./PorterAuDossier";
 import { JeuForm } from "./JeuForm";
 import { ReglesDesJeux, useJeuxCites, useLudotheque } from "./ReglesDesJeux";
 import { jeuxCites, nomSousLeCurseur } from "../jeuxCites";
@@ -110,10 +109,14 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
     });
   }, [duJour]);
 
-  // La liste des élèves, lisible depuis l'enregistrement — qui vit plus
-  // longtemps qu'un rendu.
+  // Les élèves, les créneaux et les séances, lisibles depuis l'enregistrement
+  // — qui vit plus longtemps qu'un rendu.
   const elevesRef = React.useRef(eleves);
   elevesRef.current = eleves;
+  const creneauxRef = React.useRef(duJour);
+  creneauxRef.current = duJour;
+  const seancesRef = React.useRef(seances);
+  seancesRef.current = seances;
 
   const enregistrer = React.useCallback(async (id: string, b: Brouillon) => {
     setEtats((e) => ({ ...e, [id]: "enregistrement" }));
@@ -121,10 +124,21 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
       await api.creneauJournalSave(id, b.prevu, b.bilan);
       enregistres.current[id] = b;
       setEtats((e) => ({ ...e, [id]: "ok" }));
-      // Les temps d'observation posés sur ce créneau se nourrissent du bilan,
-      // au fur et à mesure qu'il s'écrit.
-      const aNourrir = fichesANourrir(observations.current, id, b.bilan,
-        (eleveId) => elevesRef.current.find((x) => x.id === eleveId)?.nom ?? "", nowIso());
+      // Le bilan va de lui-même au dossier des élèves du créneau : les fiches
+      // posées sur ce créneau s'en nourrissent, et il en pose une à ceux qui
+      // n'en ont pas encore.
+      const nomDe = (eleveId: string) => elevesRef.current.find((x) => x.id === eleveId)?.nom ?? "";
+      const c = creneauxRef.current.find((x) => x.id === id);
+      let elevesIds: string[] = [];
+      try { elevesIds = c && natureDe(c) !== "reunion" ? JSON.parse(c.elevesJson || "[]") : []; } catch { elevesIds = []; }
+      const s = seancesRef.current.find((x) => x.id === c?.seanceId);
+      const neuves = c ? fichesACreer(observations.current, {
+        id, date: c.date.slice(0, 10), elevesIds,
+        contexte: [c.matiere, s?.titre].filter(Boolean).join(" — "),
+        competence: [s?.competences, s?.objectifs].filter(Boolean).join(" ").slice(0, 300),
+      }, b.bilan, nomDe, nowIso(), newId) : [];
+      const aNourrir = [...fichesANourrir(observations.current, id, b.bilan, nomDe, nowIso()), ...neuves];
+      if (neuves.length) observations.current = [...observations.current, ...neuves];
       for (const o of aNourrir) {
         // Le bilan est enregistré ; si la fiche d'observation qu'il alimente
         // ne l'est pas, l'écran dirait « enregistré » à tort. On ne peut pas
@@ -135,6 +149,10 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
             { icone: "⚠️", duree: 7000 });
         });
         observations.current = observations.current.map((x) => (x.id === o.id ? o : x));
+      }
+      if (neuves.length) {
+        setFiches(observations.current);
+        toast(`Bilan porté au dossier de ${neuves.map((o) => nomDe(o.eleveId).split(/\s+/)[0] || "l'élève").join(", ")}.`, { icone: "📋" });
       }
     } catch (err) {
       setEtats((e) => ({ ...e, [id]: "erreur" }));
@@ -218,16 +236,8 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
     }
   };
 
-  // ── Du bilan au dossier des élèves ──
+  // Les zones du bilan : la correction lit le passage surligné.
   const zones = React.useRef<Record<string, HTMLTextAreaElement | null>>({});
-  const [versDossier, setVersDossier] = React.useState<{ creneau: Creneau; texte: string; presents: string[] } | null>(null);
-  const porterAuDossier = (c: Creneau, presents: string[]) => {
-    const zone = zones.current[c.id];
-    const bilan = aEcrire.current[c.id]?.bilan ?? c.bilan ?? "";
-    // Le passage sélectionné s'il y en a un : un bilan parle souvent de plusieurs élèves.
-    const selection = zone && zone.selectionEnd > zone.selectionStart ? bilan.slice(zone.selectionStart, zone.selectionEnd) : "";
-    setVersDossier({ creneau: c, texte: (selection.trim() || bilan).trim(), presents });
-  };
 
   // ── Les jeux cités dans le prévu, et leur règle ──
   const { jeux, recharger: rechargerJeux } = useLudotheque();
@@ -485,8 +495,9 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                             🎯 Compétence</button>
                         </>
                       ) : (
-                        <button className="btn ghost sm" disabled={!b.bilan.trim() || reunion} onClick={() => porterAuDossier(c, ids)}
-                          title="Faire du bilan, ou du passage sélectionné, une observation dans le dossier des élèves">📋 Au dossier</button>
+                        <span className="meta" style={{ fontSize: 12 }} title="Ce que vous écrivez ici va de lui-même au dossier des élèves du créneau, une fiche par élève">
+                          {reunion || !ids.length ? "" : "📋 va au dossier des élèves"}
+                        </span>
                       )}
                     </div>
                     <textarea className="textarea" value={b[champ]} placeholder={LIBELLES[champ].aide}
@@ -549,10 +560,6 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
             rechargerJeux();
             toast(`« ${jeu.titre} » est dans la ludothèque${jeu.regles.trim() ? " : sa règle s'affiche là où il est cité" : ""}.`, { icone: "🎲" });
           }} />
-      )}
-      {versDossier && (
-        <PorterAuDossier creneau={versDossier.creneau} texte={versDossier.texte} presents={versDossier.presents}
-          eleves={eleves} onClose={() => setVersDossier(null)} />
       )}
       {observerPour && (
         <PoserObservation

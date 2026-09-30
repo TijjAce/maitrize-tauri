@@ -179,6 +179,31 @@ export function fichesANourrir(
   return suite;
 }
 
+/**
+ * Les fiches qu'un bilan fait naître.
+ *
+ * Le bilan d'un créneau va de lui-même au dossier de ses élèves : une fiche
+ * par élève du créneau qui n'en a pas encore, posée sur le créneau, sans
+ * axe — l'enseignant le choisira dans le dossier s'il le veut. Rien tant que
+ * le bilan est vide, et rien pour une réunion. Les fiches déjà posées, elles,
+ * se nourrissent (voir `fichesANourrir`).
+ */
+export function fichesACreer(
+  observations: ObservationEleve[],
+  creneau: { id: string; date: string; elevesIds: string[]; contexte: string; competence: string },
+  bilan: string,
+  nomDe: (eleveId: string) => string,
+  quand: string,
+  id: () => string,
+): ObservationEleve[] {
+  if (!bilan.trim()) return [];
+  const deja = new Set(observations.filter((o) => o.creneauId === creneau.id).map((o) => o.eleveId));
+  return [...new Set(creneau.elevesIds)].filter((eleveId) => !deja.has(eleveId)).map((eleveId) => ({
+    ...nouvelleObservation({ id: id(), eleveId, date: creneau.date, creneauId: creneau.id, contexte: creneau.contexte, competence: creneau.competence, quand }),
+    note: noteDepuisLeBilan(bilan, nomDe(eleveId)),
+  }));
+}
+
 // ── Ranger le bilan en colonnes ───────────────────────────────────────────
 
 /** Ce qu'on demande au modèle : répartir, pas inventer. */
