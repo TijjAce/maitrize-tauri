@@ -1,13 +1,14 @@
 import React from "react";
 import { api } from "../api";
-import { EVT_DONNEES_DISTANTES, Select } from "./ui";
+import { EVT_DONNEES_DISTANTES } from "./ui";
 import { toast } from "./Toaster";
-import { EVT_USAGE, USAGES, cleUsage, descriptionDe, usagesDesReglages, type Usage } from "../usageAtelier";
+import { EVT_USAGE, cleUsage, usagesDesReglages, type Usage } from "../usageAtelier";
 
 // Le moment de la séquence que sert un atelier, côté écran : ce qu'on a
-// rangé, pour tous les ateliers à la fois, et la rangée du bandeau qui le
-// change. Le rangement est un réglage partagé : rangé ici, rangé sur
-// l'autre ordinateur.
+// rangé, pour tous les ateliers à la fois, et de quoi le changer. Le
+// rangement se fait dans le catalogue, en glissant une carte d'un moment à
+// l'autre ; c'est un réglage partagé : rangé ici, rangé sur l'autre
+// ordinateur.
 
 /** Les rangements des ateliers donnés, tenus à jour d'où qu'ils changent. */
 export function useUsagesDesAteliers(ateliers: readonly string[]): { usages: Record<string, Usage>; changer: (atelier: string, usage: Usage) => void } {
@@ -30,18 +31,4 @@ export function useUsagesDesAteliers(ateliers: readonly string[]): { usages: Rec
       .catch((e) => toast("Rangement non enregistré : " + String(e), { icone: "⚠️" }));
   }, []);
   return { usages, changer };
-}
-
-/** Dans l'en-tête d'un atelier : le moment où on le range, à changer d'un choix — cela se fait une fois. */
-export function UsageAtelier({ atelier }: { atelier: string }) {
-  const { usages, changer } = useUsagesDesAteliers([atelier]);
-  const courant = usages[atelier] ?? "entrainement";
-  return (
-    <label className="usage-atelier" title={`${descriptionDe(courant).aide} Rangé ici, l'atelier se retrouve dans le catalogue « par moment de la séquence ».`}>
-      <span>🗂 Rangé dans</span>
-      <Select value={courant} onChange={(e) => changer(atelier, e.target.value as Usage)} aria-label="Le moment de la séquence que sert cet atelier">
-        {USAGES.map((u) => <option key={u.id} value={u.id}>{u.ico} {u.nom} · {u.quand}</option>)}
-      </Select>
-    </label>
-  );
 }

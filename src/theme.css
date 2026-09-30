@@ -913,9 +913,13 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .atelier-besoin::before { content: "▪ "; }
 .atelier-usage { color: var(--accent); white-space: nowrap; }
 /* Le moment de la séquence où l'atelier est rangé, dans son bandeau. */
-/* Le rangement de l'atelier, dans l'en-tête : un choix discret. */
-.usage-atelier { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; white-space: nowrap; }
-.usage-atelier select { max-width: 250px; font-weight: 400; }
+/* Le catalogue par moment : chaque moment reçoit les cartes qu'on y glisse. */
+.zone-moment { margin: 0 -6px 18px; padding: 6px; border-radius: 14px; border: 2px dashed transparent; transition: background .12s, border-color .12s; }
+.zone-moment.survol { background: var(--panel-2); border-color: var(--accent); }
+.zone-moment-vide { border: 1px dashed var(--border); border-radius: 12px; padding: 18px; font-size: 12.5px; color: var(--text-2); text-align: center; }
+.atelier[draggable="true"] { cursor: grab; }
+.atelier.en-vol { opacity: .45; }
+.atelier:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* La feuille de l'atelier : tout ce qui s'imprime, replié en une ligne ; ouvert, ses réglages à plat. */
 .feuille-atelier > summary .meta { font-weight: 400; margin-left: 8px; }
 .feuille-atelier-corps { margin-top: 4px; }
