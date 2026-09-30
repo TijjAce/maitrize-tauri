@@ -152,7 +152,9 @@ describe("la démarche que la compétence appelle", () => {
   });
 
   it("distinguent, en mathématiques, le calcul, les problèmes et la géométrie", () => {
-    expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Ajouter 9 en calcul mental")).toBe("eduscol-quatre-temps");
+    // Le calcul mental a désormais sa démarche ; le calcul posé garde les quatre temps.
+    expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Ajouter 9 en calcul mental")).toBe("calcul-mental-martiniere");
+    expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Poser une addition en colonnes")).toBe("eduscol-quatre-temps");
     expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Résoudre des problèmes additifs en une étape")).toBe("problemes");
     expect(sug("Mathématiques", "Grandeurs et mesures", "Comparer des masses")).toBe("geometrie-grandeurs");
     expect(sug("Mathématiques", "Espace et géométrie", "Reconnaître un carré")).toBe("geometrie-grandeurs");
@@ -185,5 +187,23 @@ describe("la démarche que la compétence appelle", () => {
     expect(sug("5. Se repérer dans le temps et l'espace", "Se repérer dans le temps", "Ordonner", c1)).toBe("maternelle-modalites");
     // Le domaine seul suffit à reconnaître la maternelle, référentiel absent.
     expect(sug("5. Explorer le monde", "Explorer la matière", "Transvaser", "")).toBe("investigation");
+  });
+});
+
+describe("le calcul mental au procédé La Martinière", () => {
+  it("est proposé pour un fait numérique ou une procédure de calcul, pas pour un problème", () => {
+    expect(demarcheSuggeree({ domaineTitre: "Mathématiques", sousDomaineTitre: "Nombres et calculs", competenceTitre: "Ajouter ou soustraire 1 ou 2 à un nombre." }).id).toBe("calcul-mental-martiniere");
+    expect(demarcheSuggeree({ domaineTitre: "Mathématiques", sousDomaineTitre: "Nombres et calculs", competenceTitre: "Mémoriser les compléments à 10" }).id).toBe("calcul-mental-martiniere");
+    expect(demarcheSuggeree({ domaineTitre: "Mathématiques", sousDomaineTitre: "Calcul mental", competenceTitre: "Multiplier par 10" }).id).toBe("calcul-mental-martiniere");
+    expect(demarcheSuggeree({ domaineTitre: "Mathématiques", sousDomaineTitre: "Nombres et calculs", competenceTitre: "Résoudre des problèmes en une étape" }).id).toBe("problemes");
+    expect(demarcheSuggeree({ domaineTitre: "Mathématiques", sousDomaineTitre: "Nombres et calculs", competenceTitre: "Lire et écrire les nombres jusqu'à 100" }).id).toBe("eduscol-quatre-temps");
+  });
+
+  it("dit le procédé dans ses mots : énoncé deux fois, réflexion, écrivez, montrez, correction", () => {
+    const d = demarcheDe("calcul-mental-martiniere")!;
+    expect(d.famille).toBe("Mathématiques");
+    const serie = d.seances[1].phases.find((p) => p.phase === "Série La Martinière")!;
+    for (const mot of ["deux fois", "réflexion", "Écrivez", "Montrez", "corrige"]) expect(serie.description).toContain(mot);
+    expect(d.seances.map((s) => s.duree)).toEqual([30, 15, 15, 30, 15]);
   });
 });
