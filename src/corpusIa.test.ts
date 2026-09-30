@@ -21,6 +21,19 @@ describe("demander un corpus au modèle", () => {
     expect(systeme.content).toContain("Pas de phrases");
     expect(systeme.content).toContain("cycle 3");
   });
+
+  it("ne demande que les phrases quand les mots sont déjà là, et les donne", () => {
+    const [systeme, user] = promptCorpus({ titre: "Les animaux", descriptif: "", domaines: "", etapes: [] }, { cycle: 2, mots: 0, phrases: 4, avec: ["vache", " poule ", ""] });
+    expect(systeme.content).toContain("4 phrases");
+    expect(systeme.content).toContain("seulement les phrases");
+    expect(systeme.content).toContain("chaque phrase en emploie un ou deux");
+    expect(systeme.content).not.toContain("« MOTS »");
+    expect(user.content).toBe("Projet : Les animaux\nLes mots du projet : vache, poule");
+  });
+
+  it("revient aux mots quand on ne demande rien", () => {
+    expect(promptCorpus({ titre: "x", descriptif: "", domaines: "", etapes: [] }, { cycle: 2, mots: 0, phrases: 0 })[0].content).toContain("16 mots");
+  });
 });
 
 describe("lire le corpus proposé", () => {

@@ -488,6 +488,9 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .projet-atelier-aide { font-size: 12px; }
 .projet-ligne { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 8px; font-size: 12.5px; }
 .corpus-projet-colonnes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.corpus-themes { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 2px 0 10px; }
+.corpus-themes .bm-chip { padding: 3px 6px 3px 10px; font-size: 12.5px; }
+.corpus-statut { font-size: 12.5px; line-height: 1.5; margin: 8px 0 0; }
 @media (max-width: 720px) { .corpus-projet-colonnes { grid-template-columns: 1fr; } }
 /* Dans l'atelier des phrases en désordre : demander des phrases à l'IA. */
 .ia-phrases { margin: 8px 0 10px; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 10px; background: var(--panel-2); }

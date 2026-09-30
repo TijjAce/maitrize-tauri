@@ -1,12 +1,17 @@
 import React from "react";
 import { Page } from "../App";
-import { api, anneeScolaireActuelle, MODELE_TACHES, texteErreur } from "../api";
+import { api, anneeScolaireActuelle, texteErreur } from "../api";
 import { Field, Input, Select, Textarea, TextareaAuto, useAsync, useOngletDemande } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { useReglages } from "../components/useMemoire";
-import { pseudonymiser } from "../confidentialite";
-import { DEMANDE_CORPUS, corpusDeLaReponse, promptCorpus } from "../corpusIa";
-import { aUnCorpus, corpusDe, resumeDuCorpus } from "../corpusProjet";
+import { decrireLeProjet, servicesCorpus } from "../components/ProjetDuMoment";
+import { DEMANDE_CORPUS } from "../corpusIa";
+import {
+  corpusParLIa, preparerLeCorpus, reserverLaPreparation, resumeDeLaPreparation, themesProposables, titreExploitable,
+} from "../corpusAuto";
+import { aUnCorpus, corpusDe, resumeDuCorpus, texteDuCorpus } from "../corpusProjet";
+import { libelleCategorie } from "../data/categoriesArasaac";
+import { graineAuHasard } from "../hasard";
 import { confirmer } from "../components/confirmer";
 import { openCtx } from "../components/ctxmenu";
 import { normaliser } from "../competencesTravaillees";
@@ -335,45 +340,107 @@ function ChampCorpus({ valeur, onChange, ...props }: { valeur: string; onChange:
   return <Textarea {...props} value={brouillon} onChange={(e) => taper(e.target.value)} onBlur={poser} />;
 }
 
-/** Les mots et les phrases du projet : ce que les ateliers de Fabriquer prennent tant qu'il est en cours. */
+/**
+ * Les mots et les phrases du projet : ce que les ateliers de Fabriquer
+ * prennent tant qu'il est en cours.
+ *
+ * Le corpus se prépare tout seul dès que le projet a un titre : les mots dans
+ * la banque ARASAAC de cet ordinateur — ils ont une image, rien ne part —,
+ * les phrases par l'IA, avec ces mots. Puis tout se change : les thèmes où
+ * piocher, le tirage, les phrases, ou les mots à la main.
+ */
 function CorpusDuProjet({ projet, onChange }: { projet: ProjetClasse; onChange: (p: ProjetClasse) => void }) {
   const corpus = corpusDe(projet);
+  const vide = !aUnCorpus(projet);
   const [demande, majDemande] = useReglages("corpusIa", DEMANDE_CORPUS);
-  const [occupe, setOccupe] = React.useState(false);
+  /** Les thèmes ARASAAC où l'on pioche : devinés à la préparation, puis ceux qu'on a choisis ; null tant qu'on ne sait pas. */
+  const [themes, setThemes] = React.useState<string[] | null>(null);
+  const { data: categories } = useAsync(() => servicesCorpus.banqueInstallee().then((ok) => (ok ? servicesCorpus.categories() : [])), []);
+  const proposables = React.useMemo(() => themesProposables(categories ?? []), [categories]);
+  const [occupe, setOccupe] = React.useState<"" | "tout" | "mots" | "phrases">("");
+  const [statut, setStatut] = React.useState("");
   // Ouvert d'emblée quand il y a quelque chose à voir ; ensuite, c'est l'enseignant qui plie et déplie.
   const [ouvertAuDepart] = React.useState(() => aUnCorpus(projet));
+  const projetRef = React.useRef(projet);
+  projetRef.current = projet;
 
-  const proposer = async () => {
-    setOccupe(true);
+  /** Prépare tout, tire d'autres mots, ou fait réécrire les phrases. */
+  const preparer = React.useCallback(async (quoi: "tout" | "mots" | "phrases", choisis?: string[]) => {
+    setOccupe(quoi);
+    setStatut(quoi === "tout" ? "Le corpus se prépare : les mots dans la banque ARASAAC, les phrases par l'IA…"
+      : quoi === "mots" ? "Un autre tirage dans la banque…" : "Le modèle écrit les phrases avec les mots du corpus…");
     try {
-      // Le projet part, pas la classe : un prénom glissé dans une étape est masqué avant l'envoi.
-      const eleves = await api.elevesList().catch(() => []);
-      const noms = eleves.map((e) => e.nom);
-      const masquer = (t: string) => pseudonymiser(t, noms).texte;
-      const decrit = {
-        titre: masquer(projet.titre), descriptif: masquer(projet.descriptif), domaines: masquer(projet.domaines),
-        etapes: lireEtapes(projet.etapesJson).map((e) => masquer(e.texte)),
-      };
-      const modele = await api.modeleActif(MODELE_TACHES);
-      const propose = corpusDeLaReponse(await api.mistralChat(promptCorpus(decrit, demande), modele));
-      const dejaLa = (liste: string[]) => new Set(liste.map((x) => x.toLocaleLowerCase("fr")));
-      const mots = propose.mots.filter((m) => !dejaLa(corpus.mots).has(m.toLocaleLowerCase("fr")));
-      const phrases = propose.phrases.filter((p) => !dejaLa(corpus.phrases).has(p.toLocaleLowerCase("fr")));
-      if (!mots.length && !phrases.length) { toast("Le modèle n'a rien proposé de neuf ; réessayez, ou précisez le descriptif.", { icone: "🤔" }); return; }
-      onChange({ ...projet, mots: [...corpus.mots, ...mots].join("\n"), phrases: [...corpus.phrases, ...phrases].join("\n") });
-      toast(`${resumeDuCorpus({ mots, phrases })} sous les vôtres : relisez, retirez ce qui ne convient pas.`, { icone: "✨", duree: 6000 });
+      const p = projetRef.current;
+      if (quoi === "phrases") {
+        const c = await corpusParLIa(decrireLeProjet(p), { ...demande, mots: 0, avec: corpusDe(p).mots }, servicesCorpus);
+        if (!c.phrases.length) { setStatut("Le modèle n'a rien proposé de lisible ; réessayez."); return; }
+        onChange({ ...p, phrases: texteDuCorpus(c.phrases) });
+        setStatut(`${c.phrases.length} phrases écrites par l'IA avec les mots du corpus. Relisez, retirez ce qui ne convient pas.`);
+        return;
+      }
+      const d = quoi === "mots" ? { ...demande, phrases: 0 } : demande;
+      const r = await preparerLeCorpus(decrireLeProjet(p), d, servicesCorpus, graineAuHasard(), choisis);
+      if (r.themes.length) setThemes(r.themes);
+      else if (choisis) setThemes(choisis);
+      const suite = { ...projetRef.current };
+      if (r.mots.length) suite.mots = texteDuCorpus(r.mots);
+      if (quoi === "tout" && r.phrases.length) suite.phrases = texteDuCorpus(r.phrases);
+      if (suite.mots !== p.mots || suite.phrases !== p.phrases) onChange(suite);
+      setStatut(resumeDeLaPreparation(r, d));
     } catch (e) {
-      toast("Proposition impossible : " + texteErreur(e), { icone: "⚠️" });
-    } finally { setOccupe(false); }
-  };
+      setStatut("Préparation impossible : " + texteErreur(e));
+    } finally { setOccupe(""); }
+  }, [demande, onChange]);
 
+  // Sans corpus, il se prépare tout seul — une fois le titre posé, et une seule fois.
+  const preparerRef = React.useRef(preparer);
+  preparerRef.current = preparer;
+  React.useEffect(() => {
+    if (!vide || !titreExploitable(projet.titre)) return;
+    const t = window.setTimeout(() => {
+      if (reserverLaPreparation(projet.id, projet.titre, true)) void preparerRef.current("tout");
+    }, 1200);
+    return () => window.clearTimeout(t);
+  }, [projet.id, projet.titre, vide]);
+
+  const choisis = themes ?? [];
   return (
     <details className="tri-fiche corpus-projet" open={ouvertAuDepart}>
-      <summary>📌 Le corpus du projet · {resumeDuCorpus(corpus)}</summary>
+      <summary>📌 Le corpus du projet · {resumeDuCorpus(corpus)}{occupe ? " · en préparation…" : ""}</summary>
       <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, margin: "4px 0 8px" }}>
-        Ses mots et ses phrases nourrissent les ateliers de Fabriquer tant que le projet est en cours :
-        mots mêlés, phrases en désordre, maisons du tri, loto, étiquettes.
+        Ses mots et ses phrases nourrissent les ateliers de Fabriquer tant que le projet est en cours : mots mêlés, phrases en désordre,
+        maisons du tri, loto, étiquettes. Il se prépare tout seul — les mots dans la banque ARASAAC de cet ordinateur, pour qu'ils aient
+        une image ; les phrases par l'IA, avec ces mots — et se change autant qu'on veut.
       </p>
+      {(proposables.length > 0 || choisis.length > 0) && (
+        <div className="corpus-themes" role="group" aria-label="Les thèmes ARASAAC où piocher les mots">
+          <span className="meta">Thèmes ARASAAC :</span>
+          {choisis.map((t) => (
+            <span key={t} className="bm-chip">
+              <span className="bm-mot">{libelleCategorie(t)}</span>
+              <button type="button" className="bm-x" aria-label={`Retirer le thème ${libelleCategorie(t)}`}
+                onClick={() => setThemes(choisis.filter((x) => x !== t))}>×</button>
+            </span>
+          ))}
+          {!choisis.length && <span className="meta">aucun pour l'instant</span>}
+          {proposables.length > 0 && (
+            <Select value="" aria-label="Ajouter un thème ARASAAC" style={{ maxWidth: 220 }}
+              onChange={(e) => { if (e.target.value) setThemes([...choisis, e.target.value]); }}>
+              <option value="">＋ un thème…</option>
+              {proposables.filter((c) => !choisis.includes(c.nom)).map((c) => (
+                <option key={c.nom} value={c.nom}>{libelleCategorie(c.nom)} ({c.nombre})</option>
+              ))}
+            </Select>
+          )}
+          <Select value={demande.mots} onChange={(e) => majDemande({ mots: Number(e.target.value) })} aria-label="Nombre de mots" style={{ width: 110 }}>
+            {[8, 12, 16, 24, 32].map((n) => <option key={n} value={n}>{n} mots</option>)}
+          </Select>
+          <button type="button" className="btn sm" disabled={!!occupe} onClick={() => void preparer("mots", themes ?? undefined)}
+            title="Un autre tirage dans les thèmes choisis : il remplace les mots">
+            {occupe === "mots" ? "Tirage…" : "🎲 D'autres mots"}
+          </button>
+        </div>
+      )}
       <div className="corpus-projet-colonnes">
         <Field label="Les mots, un par ligne">
           <ChampCorpus rows={8} valeur={projet.mots} onChange={(mots) => onChange({ ...projet, mots })} placeholder={"citrouille\nsoupe\nlouche…"} aria-label="Les mots du projet" />
@@ -383,24 +450,28 @@ function CorpusDuProjet({ projet, onChange }: { projet: ProjetClasse; onChange: 
         </Field>
       </div>
       <div className="ia-phrases">
-        <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>✨ Demander un corpus à l'IA</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: 6 }}>
-          <Select value={demande.cycle} onChange={(e) => majDemande({ cycle: Number(e.target.value) as 2 | 3 })} aria-label="Cycle">
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12.5, fontWeight: 600 }}>✨ Les phrases, par l'IA</span>
+          <Select value={demande.cycle} onChange={(e) => majDemande({ cycle: Number(e.target.value) as 2 | 3 })} aria-label="Cycle" style={{ width: 100 }}>
             <option value={2}>Cycle 2</option><option value={3}>Cycle 3</option>
           </Select>
-          <Select value={demande.mots} onChange={(e) => majDemande({ mots: Number(e.target.value) })} aria-label="Nombre de mots">
-            {[8, 12, 16, 24, 32].map((n) => <option key={n} value={n}>{n} mots</option>)}
-          </Select>
-          <Select value={demande.phrases} onChange={(e) => majDemande({ phrases: Number(e.target.value) })} aria-label="Nombre de phrases">
+          <Select value={demande.phrases} onChange={(e) => majDemande({ phrases: Number(e.target.value) })} aria-label="Nombre de phrases" style={{ width: 130 }}>
             <option value={0}>pas de phrase</option>
             {[4, 6, 8, 10].map((n) => <option key={n} value={n}>{n} phrases</option>)}
           </Select>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <button type="button" className="btn sm" disabled={occupe} onClick={() => void proposer()}>{occupe ? "Le modèle écrit…" : "✨ Proposer"}</button>
-          <span className="meta" style={{ fontSize: 12 }}>Ils s'ajoutent sous les vôtres. Seul le projet part, sans prénom d'élève.</span>
+          <button type="button" className="btn sm" disabled={!!occupe} onClick={() => void preparer("phrases")}
+            title="Le modèle réécrit les phrases avec les mots du corpus : elles remplacent celles-ci">
+            {occupe === "phrases" ? "Le modèle écrit…" : "✨ D'autres phrases"}
+          </button>
+          {vide && (
+            <button type="button" className="btn sm primary" disabled={!!occupe} onClick={() => void preparer("tout", themes ?? undefined)}>
+              {occupe === "tout" ? "Préparation…" : "⚙️ Préparer le corpus"}
+            </button>
+          )}
+          <span className="meta" style={{ fontSize: 12 }}>Écrites avec les mots du corpus. Seul le projet part, sans prénom d'élève.</span>
         </div>
       </div>
+      {statut && <p className="meta corpus-statut" aria-live="polite">{statut}</p>}
     </details>
   );
 }

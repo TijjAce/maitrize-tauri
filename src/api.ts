@@ -714,6 +714,8 @@ export const api = {
   arasaacCategories: () => invoke<CategorieArasaac[]>("arasaac_categories"),
   arasaacSelection: (categories: string[], exclues: string[], intersection: boolean, combien: number, graine: number) =>
     invoke<PictoArasaac[]>("arasaac_selection", { categories, exclues, intersection, combien, graine }),
+  /** Les catégories des pictogrammes qui portent ces mots, lues dans la banque locale. */
+  arasaacThemesDesMots: (mots: string[]) => invoke<CategorieArasaac[]>("arasaac_themes_des_mots", { mots }),
   arasaacImage: (id: number) => invoke<string>("arasaac_image", { id }),
   arasaacParMots: (mots: string[]) =>
     invoke<[PictoArasaac[], string[]]>("arasaac_par_mots", { mots }),
