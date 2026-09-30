@@ -1665,7 +1665,7 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string): string {
     if (/grandeurs|geometrie|espace/.test(sd)) return "geometrie-grandeurs";
     if (/donnees|probabilit|proportionnalite/.test(sd) || /probleme/.test(comp)) return "problemes";
     // Un fait numérique ou une procédure de calcul : ce qui s'entraîne chaque jour au procédé La Martinière.
-    if (/calcul mental/.test(sd) || /mental|faits? numeriques|tables? (d'addition|de multiplication)|complements? a (10|100)|doubles?\b|moities?\b|ajouter ou soustraire|retrancher|calculer? (en ligne|de tete)/.test(comp)) return "calcul-mental-martiniere";
+    if (/calcul mental/.test(sd) || /mental|faits? numeriques|tables? (d'addition|de multiplication)|complements?\b|dizaine superieure|doubles?\b|moities?\b|ajouter ou soustraire|retrancher|calculer? (en ligne|de tete)/.test(comp)) return "calcul-mental-martiniere";
     return "eduscol-quatre-temps";
   }
   if (/sciences|technologie|questionner le monde/.test(dom)) return "investigation";

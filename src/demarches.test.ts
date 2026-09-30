@@ -195,6 +195,7 @@ describe("le calcul mental au procédé La Martinière", () => {
     expect(demarcheSuggeree({ domaineTitre: "Mathématiques", sousDomaineTitre: "Nombres et calculs", competenceTitre: "Ajouter ou soustraire 1 ou 2 à un nombre." }).id).toBe("calcul-mental-martiniere");
     expect(demarcheSuggeree({ domaineTitre: "Mathématiques", sousDomaineTitre: "Nombres et calculs", competenceTitre: "Mémoriser les compléments à 10" }).id).toBe("calcul-mental-martiniere");
     expect(demarcheSuggeree({ domaineTitre: "Mathématiques", sousDomaineTitre: "Calcul mental", competenceTitre: "Multiplier par 10" }).id).toBe("calcul-mental-martiniere");
+    expect(demarcheSuggeree({ domaineTitre: "Mathématiques", sousDomaineTitre: "Nombres et calculs", competenceTitre: "Trouver le complément d'un nombre à la dizaine supérieure." }).id).toBe("calcul-mental-martiniere");
     expect(demarcheSuggeree({ domaineTitre: "Mathématiques", sousDomaineTitre: "Nombres et calculs", competenceTitre: "Résoudre des problèmes en une étape" }).id).toBe("problemes");
     expect(demarcheSuggeree({ domaineTitre: "Mathématiques", sousDomaineTitre: "Nombres et calculs", competenceTitre: "Lire et écrire les nombres jusqu'à 100" }).id).toBe("eduscol-quatre-temps");
   });
