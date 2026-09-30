@@ -9,12 +9,12 @@ import { BoutonBureau } from "../components/BoutonBureau";
 import { useMemoire } from "../components/useMemoire";
 import { ChoixPicto, chargerImages, usePictoImage, usePictoImages } from "../components/ChoixPicto";
 import {
-  COMPORTEMENTS_MAX, DUREES_MINUTEUR, ETAPES_SCENARIO_MAX, JETONS_MAX, MINUTES_MAX, PAGE_PAYSAGE,
+  COMPORTEMENTS_MAX, DUREES_MINUTEUR, ETAPES_SCENARIO_MAX, JETONS_MAX, MINUTES_MAX, PAGE_PAYSAGE, pageDabord,
   STYLE_SUPPORTS, TITRES_ETAPES,
   demarrer, dePrenom, dureeMs, estEnMarche, estFini, feuilleDabord, feuilleJetons, feuilleScenario, fractionAffichee, graduations,
   idsDes, mettreEnPause, minuteurPret, normaliserDabord, normaliserJetons, normaliserMinuteur, normaliserScenario,
   pageDuScenario, pictoVide, prolonger, restantA, secteurRestant, tempsLisible,
-  type EtatMinuteur, type FormeJeton, type Images, type PictoPose, type ReglagesMinuteur, type ReglagesScenario,
+  type EtatMinuteur, type FormeJeton, type Images, type PictoPose, type ReglagesMinuteur, type ReglagesScenario, type SensDabord,
 } from "../supportsVisuels";
 
 // ── Supports visuels ───────────────────────────────────────────────────────
@@ -274,7 +274,7 @@ function Jetons({ banque }: { banque: boolean }) {
 function Dabord({ banque }: { banque: boolean }) {
   const [r, maj, setR] = useSupport("dabord", normaliserDabord);
   return (
-    <Atelier titre="D'abord, ensuite" pictos={r.etapes} feuille={(images) => feuilleDabord(r, images)} page={PAGE_PAYSAGE}
+    <Atelier titre="D'abord, ensuite" pictos={r.etapes} feuille={(images) => feuilleDabord(r, images)} page={pageDabord(r)}
       aide="Ce qu'il faut faire d'abord, et ce qui vient ensuite : l'activité demandée, puis l'activité attendue."
       reglages={<>
         <Modeles type="dabord" valeur={r} set={setR} normaliser={normaliserDabord} exemple="Nom, par exemple « Travail puis tablette »" />
@@ -294,6 +294,12 @@ function Dabord({ banque }: { banque: boolean }) {
             <button className="btn sm" style={{ alignSelf: "center" }} onClick={() => maj({ etapes: [...r.etapes, pictoVide()] })}>＋ Puis</button>
           )}
         </div>
+        <Field label="Sens">
+          <Select value={r.sens} onChange={(e) => maj({ sens: e.target.value as SensDabord })}>
+            <option value="horizontal">De gauche à droite, sur une ligne</option>
+            <option value="vertical">De haut en bas, en colonne</option>
+          </Select>
+        </Field>
         <Field label="Sur la page">
           <Select value={r.exemplaires} onChange={(e) => maj({ exemplaires: Number(e.target.value) })}>
             <option value={1}>Une grande planche</option>
