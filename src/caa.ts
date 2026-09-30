@@ -71,6 +71,41 @@ export const VERBES_CONSIGNE: VerbeConsigne[] = [
   { verbe: "effacer", formes: ["efface", "effacez", "effaçons"] },
 ];
 
+/**
+ * Les mots sous lesquels la banque connaît un verbe qu'elle ne nomme pas
+ * ainsi : ARASAAC dit « trouver » et « chercher », pas « retrouver » ; « mettre
+ * dans l'ordre » plutôt que « remettre ». Dans l'ordre où l'on préfère.
+ */
+export const SYNONYMES_CONSIGNE: Record<string, string[]> = {
+  retrouver: ["trouver", "chercher"],
+  remettre: ["mettre dans l'ordre", "ordonner", "ranger"],
+  recopier: ["copier"],
+  colorier: ["peindre"],
+  barrer: ["rayer"],
+  retrancher: ["soustraire", "ôter"],
+  ajouter: ["additionner"],
+  décomposer: ["décomposition"],
+  vérifier: ["contrôler"],
+  associer: ["relier", "apparier"],
+};
+
+/** Les mots à demander à la banque pour un verbe : lui-même, puis ses synonymes. */
+export const motsAChercher = (verbe: string): string[] => [verbe, ...(SYNONYMES_CONSIGNE[verbe] ?? [])];
+
+/**
+ * Le picto proposé à chaque verbe, parmi ce que la banque a trouvé : sous le
+ * verbe lui-même d'abord, sinon sous le premier synonyme qui a une image.
+ */
+export function pictosProposes(verbes: string[], trouves: { id: number; mot: string }[]): Record<string, number> {
+  const parMot = new Map(trouves.map((p) => [p.mot.toLowerCase(), p.id]));
+  const sortie: Record<string, number> = {};
+  for (const verbe of verbes) {
+    const id = motsAChercher(verbe).map((m) => parMot.get(m.toLowerCase())).find((x) => x !== undefined);
+    if (id !== undefined) sortie[verbe] = id;
+  }
+  return sortie;
+}
+
 export const CLE_LEXIQUE = "caa:consignes";
 export const CLE_ACTIF = "caa:consignes:actif";
 /** Émis quand le lexique change : les ateliers ouverts se mettent à jour. */

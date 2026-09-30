@@ -63,10 +63,16 @@ struct PictoBrut {
 }
 
 /// Un picto tel que le module s'en sert : un identifiant, un mot, des rayons.
+///
+/// ARASAAC donne plusieurs mots-clés à un même dessin — « peindre » et
+/// « colorier », « rayer » et « barrer ». Le premier fait le libellé ; tous
+/// servent à chercher, sans quoi « colorier » ne trouvait rien.
 #[derive(Clone)]
 pub struct Picto {
     pub id: i64,
     pub mot: String,
+    /// Tous les mots-clés français, en minuscules, le libellé en tête.
+    pub mots: Vec<String>,
     pub categories: Vec<String>,
 }
 
@@ -95,12 +101,50 @@ fn signature_fichier(p: &PathBuf) -> (u64, i64) {
     }
 }
 
-/// Premier mot-clé français non vide, en minuscules. C'est le libellé du picto.
-fn mot_principal(p: &PictoBrut) -> Option<String> {
-    p.keywords
+/// Les mots-clés français non vides, en minuscules, sans doublon ; le premier est le libellé du picto.
+fn mots_du_picto(p: &PictoBrut) -> Vec<String> {
+    let mut mots: Vec<String> = Vec::new();
+    for k in p.keywords.iter().map(|k| k.keyword.trim().to_lowercase()) {
+        if !k.is_empty() && !mots.contains(&k) {
+            mots.push(k);
+        }
+    }
+    mots
+}
+
+/// Comment un picto répond à ce qu'on cherche : 0 si un de ses mots est
+/// exactement cela, 1 s'il commence ainsi, 2 s'il le contient — et le mot
+/// qui a répondu, pour l'écrire sous le dessin quand il est exact.
+pub fn reponse_du_picto(p: &Picto, cherche: &str) -> Option<(u8, String)> {
+    let mut meilleure: Option<(u8, String)> = None;
+    for m in &p.mots {
+        let rang = if m == cherche {
+            0
+        } else if m.starts_with(cherche) {
+            1
+        } else if m.contains(cherche) {
+            2
+        } else {
+            continue;
+        };
+        let libelle = if rang == 0 { m.clone() } else { p.mot.clone() };
+        if meilleure.as_ref().is_none_or(|(r, _)| rang < *r) {
+            meilleure = Some((rang, libelle));
+        }
+        if rang == 0 {
+            break;
+        }
+    }
+    meilleure
+}
+
+/// Le picto dont l'un des mots est exactement celui-là — le libellé d'abord, puis les autres.
+pub fn picto_par_mot<'a>(index: &'a Index, cherche: &str) -> Option<&'a Picto> {
+    index
+        .pictos
         .iter()
-        .map(|k| k.keyword.trim().to_lowercase())
-        .find(|k| !k.is_empty())
+        .find(|p| p.mot == cherche)
+        .or_else(|| index.pictos.iter().find(|p| p.mots.iter().any(|m| m == cherche)))
 }
 
 fn charger_index(etat: &BanqueArasaac) -> Result<std::sync::MutexGuard<'_, Index>, String> {
@@ -122,9 +166,11 @@ fn charger_index(etat: &BanqueArasaac) -> Result<std::sync::MutexGuard<'_, Index
         .into_iter()
         .filter(|p| !p.categories.is_empty())
         .filter_map(|p| {
-            mot_principal(&p).map(|mot| Picto {
+            let mots = mots_du_picto(&p);
+            mots.first().cloned().map(|mot| Picto {
                 id: p.id,
                 mot,
+                mots,
                 categories: p.categories.iter().map(|c| c.to_lowercase()).collect(),
             })
         })
@@ -221,7 +267,7 @@ pub async fn arasaac_telecharger(
     let dossier = images_dir();
     let manquants: Vec<i64> = liste
         .iter()
-        .filter(|p| !p.categories.is_empty() && mot_principal(p).is_some())
+        .filter(|p| !p.categories.is_empty() && !mots_du_picto(p).is_empty())
         .map(|p| p.id)
         .filter(|id| !dossier.join(format!("{id}.png")).exists())
         .collect();
@@ -425,7 +471,7 @@ pub fn themes_des_mots(index: &Index, mots: &[String]) -> Vec<Categorie> {
         return Vec::new();
     }
     let mut compte: BTreeMap<&str, usize> = BTreeMap::new();
-    for p in index.pictos.iter().filter(|p| cherches.contains(&p.mot.to_lowercase())) {
+    for p in index.pictos.iter().filter(|p| p.mots.iter().any(|m| cherches.contains(m))) {
         for c in &p.categories {
             *compte.entry(c.as_str()).or_insert(0) += 1;
         }
@@ -458,30 +504,19 @@ pub fn arasaac_chercher(
         return Ok(Vec::new());
     }
     let dossier = images_dir();
-    let mut candidats: Vec<(u8, &Picto)> = index
+    let mut candidats: Vec<(u8, String, &Picto)> = index
         .pictos
         .iter()
-        .filter_map(|p| {
-            let rang = if p.mot == cherche {
-                0
-            } else if p.mot.starts_with(&cherche) {
-                1
-            } else if p.mot.contains(&cherche) {
-                2
-            } else {
-                return None;
-            };
-            Some((rang, p))
-        })
-        .filter(|(_, p)| dossier.join(format!("{}.png", p.id)).exists())
+        .filter_map(|p| reponse_du_picto(p, &cherche).map(|(rang, libelle)| (rang, libelle, p)))
+        .filter(|(_, _, p)| dossier.join(format!("{}.png", p.id)).exists())
         .collect();
-    candidats.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.mot.len().cmp(&b.1.mot.len())));
+    candidats.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.len().cmp(&b.1.len())));
     Ok(candidats
         .into_iter()
         .take(if limite == 0 { 40 } else { limite })
-        .map(|(_, p)| PictoChoisi {
+        .map(|(_, libelle, p)| PictoChoisi {
             id: p.id,
-            mot: p.mot.clone(),
+            mot: libelle,
             fichier: dossier.join(format!("{}.png", p.id)).to_string_lossy().into_owned(),
             nature: nature(&p.categories),
         })
@@ -551,11 +586,12 @@ pub fn arasaac_par_mots(
         if cherche.is_empty() {
             continue;
         }
-        let picto = index.pictos.iter().find(|p| p.mot == cherche);
+        let picto = picto_par_mot(&index, &cherche);
         match picto {
+            // Le mot de l'enseignant fait le libellé : « colorier », pas « peindre ».
             Some(p) if dossier.join(format!("{}.png", p.id)).exists() => trouves.push(PictoChoisi {
                 id: p.id,
-                mot: p.mot.clone(),
+                mot: cherche.clone(),
                 fichier: dossier.join(format!("{}.png", p.id)).to_string_lossy().into_owned(),
                 nature: nature(&p.categories),
             }),
@@ -570,7 +606,50 @@ mod tests {
     use super::*;
 
     fn picto(id: i64, mot: &str, cats: &[&str]) -> Picto {
-        Picto { id, mot: mot.into(), categories: cats.iter().map(|c| c.to_string()).collect() }
+        Picto { id, mot: mot.into(), mots: vec![mot.into()], categories: cats.iter().map(|c| c.to_string()).collect() }
+    }
+
+    fn picto_mots(id: i64, mots: &[&str], cats: &[&str]) -> Picto {
+        Picto {
+            id,
+            mot: mots[0].into(),
+            mots: mots.iter().map(|m| m.to_string()).collect(),
+            categories: cats.iter().map(|c| c.to_string()).collect(),
+        }
+    }
+
+    #[test]
+    fn un_picto_se_trouve_par_chacun_de_ses_mots() {
+        let peindre = picto_mots(2348, &["peindre", "colorier"], &["verb", "educational task"]);
+        assert_eq!(reponse_du_picto(&peindre, "colorier"), Some((0, "colorier".into())), "le mot exact fait le libellé");
+        assert_eq!(reponse_du_picto(&peindre, "peindre"), Some((0, "peindre".into())));
+        assert_eq!(reponse_du_picto(&peindre, "color"), Some((1, "peindre".into())), "un début : le libellé reste le premier mot");
+        assert_eq!(reponse_du_picto(&peindre, "lori"), Some((2, "peindre".into())));
+        assert_eq!(reponse_du_picto(&peindre, "souligner"), None);
+
+        let mut i = index_exemple();
+        i.pictos.push(peindre);
+        assert_eq!(picto_par_mot(&i, "colorier").map(|p| p.id), Some(2348));
+        assert_eq!(picto_par_mot(&i, "vache").map(|p| p.id), Some(1));
+        assert!(picto_par_mot(&i, "vaches").is_none());
+        // Les thèmes aussi répondent à tous les mots.
+        let t = themes_des_mots(&i, &["colorier".into()]);
+        assert_eq!(t.iter().map(|c| c.nom.as_str()).collect::<Vec<_>>(), vec!["educational task", "verb"]);
+    }
+
+    #[test]
+    fn les_mots_cles_se_lisent_sans_doublon_ni_vide() {
+        let brut = PictoBrut {
+            id: 1,
+            keywords: vec![
+                MotCle { keyword: " Peindre ".into() },
+                MotCle { keyword: "".into() },
+                MotCle { keyword: "colorier".into() },
+                MotCle { keyword: "peindre".into() },
+            ],
+            categories: vec![],
+        };
+        assert_eq!(mots_du_picto(&brut), vec!["peindre".to_string(), "colorier".to_string()]);
     }
 
     fn index_exemple() -> Index {
