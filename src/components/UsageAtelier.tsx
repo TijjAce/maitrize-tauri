@@ -1,6 +1,6 @@
 import React from "react";
 import { api } from "../api";
-import { EVT_DONNEES_DISTANTES } from "./ui";
+import { EVT_DONNEES_DISTANTES, Select } from "./ui";
 import { toast } from "./Toaster";
 import { EVT_USAGE, USAGES, cleUsage, descriptionDe, usagesDesReglages, type Usage } from "../usageAtelier";
 
@@ -32,22 +32,16 @@ export function useUsagesDesAteliers(ateliers: readonly string[]): { usages: Rec
   return { usages, changer };
 }
 
-/** Dans le bandeau d'un atelier : le moment où on le range, et de quoi en changer. */
+/** Dans l'en-tête d'un atelier : le moment où on le range, à changer d'un choix — cela se fait une fois. */
 export function UsageAtelier({ atelier }: { atelier: string }) {
   const { usages, changer } = useUsagesDesAteliers([atelier]);
   const courant = usages[atelier] ?? "entrainement";
   return (
-    <div className="comp-atelier usage-atelier" role="group" aria-label="Le moment de la séquence que sert cet atelier">
-      <span className="options-feuille-titre">🗂 Rangé dans</span>
-      <div className="seg" role="radiogroup" aria-label="Moment de la séquence">
-        {USAGES.map((u) => (
-          <button key={u.id} type="button" className={u.id === courant ? "active" : ""} role="radio" aria-checked={u.id === courant}
-            title={`${u.aide} — ${u.quand}.`} onClick={() => changer(atelier, u.id)}>
-            {u.ico} {u.nom}
-          </button>
-        ))}
-      </div>
-      <span className="meta usage-atelier-aide">{descriptionDe(courant).aide}</span>
-    </div>
+    <label className="usage-atelier" title={`${descriptionDe(courant).aide} Rangé ici, l'atelier se retrouve dans le catalogue « par moment de la séquence ».`}>
+      <span>🗂 Rangé dans</span>
+      <Select value={courant} onChange={(e) => changer(atelier, e.target.value as Usage)} aria-label="Le moment de la séquence que sert cet atelier">
+        {USAGES.map((u) => <option key={u.id} value={u.id}>{u.ico} {u.nom} · {u.quand}</option>)}
+      </Select>
+    </label>
   );
 }

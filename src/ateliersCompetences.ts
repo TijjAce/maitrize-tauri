@@ -13,6 +13,8 @@ import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 
 /** Où se range la liste d'un atelier. */
 export const cleDesCompetences = (atelier: string) => `fabriquer:competences:${atelier}`;
+/** Émis quand les compétences d'un atelier changent : ce qui les résume ailleurs se relit. */
+export const EVT_COMPETENCES_ATELIER = "maitrize:competences-atelier";
 
 /** Deux lignes désignent la même compétence : même référentiel, même entrée. */
 export const memeCompetence = (a: CompetenceSelectionnee, b: CompetenceSelectionnee) =>
