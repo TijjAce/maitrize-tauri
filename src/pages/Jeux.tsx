@@ -12,6 +12,7 @@ import { CompetencesAtelier } from "../components/CompetencesAtelier";
 import { ConsigneAtelier } from "../components/ConsigneAtelier";
 import { PictosAtelier } from "../components/PictosAtelier";
 import { OptionsFeuille } from "../components/OptionsFeuille";
+import { ProjetDuMomentBandeau, ProjetDuMomentProvider, useProjetDuMoment } from "../components/ProjetDuMoment";
 import { AtelierContext } from "../components/AtelierContext";
 import { deposerSurLeBureau, lignesCompetencesAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
@@ -257,12 +258,14 @@ export default function Jeux() {
 
   // ── Dans un atelier ──
   return (
+    <ProjetDuMomentProvider>
     <Page titre={outil ? `${outil.icone} ${outil.nom}` : "Fabriquer"} sous={outil?.quoi}
       actions={<button className="btn ghost sm" onClick={() => setOnglet("")}>← Tous les ateliers</button>}>
       {outil && <CompetencesAtelier atelier={outil.id} nom={outil.nom} />}
       {outil && <ConsigneAtelier atelier={outil.id} />}
       {outil && <PictosAtelier atelier={outil.id} />}
       {outil && <OptionsFeuille atelier={outil.id} />}
+      {outil && <ProjetDuMomentBandeau atelier={outil.id} />}
       <AtelierContext.Provider value={onglet}>
       {onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />
@@ -296,6 +299,7 @@ export default function Jeux() {
         ))}
       </AtelierContext.Provider>
     </Page>
+    </ProjetDuMomentProvider>
   );
 }
 
@@ -407,6 +411,7 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
 }) {
   const { data: categories } = useAsync(() => api.arasaacCategories(), []);
   const [mode, setMode] = React.useState<Mode>("theme");
+  const { projet: projetDuMoment, corpus: corpusDuProjet } = useProjetDuMoment();
 
   // ── La sélection ──
   const [selection, setSelection] = React.useState<PictoArasaac[]>([]);
@@ -459,8 +464,7 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
   // ── Par liste de mots ──
   const [texteMots, setTexteMots] = React.useState("");
   const [absents, setAbsents] = React.useState<string[]>([]);
-  const ajouterMots = async () => {
-    const mots = motsDeLaListe(texteMots);
+  const ajouterMots = async (mots = motsDeLaListe(texteMots)) => {
     if (!mots.length) return;
     try {
       const [trouves, pasTrouves] = await api.arasaacParMots(mots);
@@ -579,9 +583,15 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
               <textarea className="textarea" rows={8} value={texteMots} onChange={(e) => setTexteMots(e.target.value)}
                 placeholder={"papa, maman, bébé, frère, sœur…\nou un mot par ligne"} style={{ width: "100%", resize: "vertical" }} />
             </Field>
-            <button className="btn primary" style={{ width: "100%" }} disabled={!motsDeLaListe(texteMots).length} onClick={ajouterMots}>
+            <button className="btn primary" style={{ width: "100%" }} disabled={!motsDeLaListe(texteMots).length} onClick={() => void ajouterMots()}>
               ✏️ Ajouter ces mots
             </button>
+            {projetDuMoment && corpusDuProjet.mots.length > 0 && (
+              <button className="btn" style={{ width: "100%", marginTop: 6 }} onClick={() => void ajouterMots(corpusDuProjet.mots)}
+                title={`Les mots du projet « ${projetDuMoment.titre} », avec leurs images`}>
+                📌 Les mots du projet ({corpusDuProjet.mots.length})
+              </button>
+            )}
             <p style={{ fontSize: 12, color: "var(--text-2)", margin: "8px 0 0" }}>
               Chaque mot prend l'image qui porte exactement ce nom ; « 🔄 » en propose d'autres dessins.
             </p>

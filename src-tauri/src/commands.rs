@@ -1239,19 +1239,24 @@ pub fn projets_list(db: State<Db>) -> R<Vec<Projet>> {
 
 #[tauri::command]
 pub fn projet_save(db: State<Db>, projet: Projet) -> R<Projet> {
-    let c = db.lock();
+    enregistrer_projet(&db.lock(), &projet)?;
+    Ok(projet)
+}
+
+/// Écrit un projet, neuf ou repris — son corpus compris.
+fn enregistrer_projet(c: &rusqlite::Connection, projet: &Projet) -> R<()> {
     c.execute(
-        "INSERT INTO projets (id,titre,descriptif,couleur,date_creation,annee,image_nom,mois,semaine,etat,etapes_json,domaines,origine)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)
+        "INSERT INTO projets (id,titre,descriptif,couleur,date_creation,annee,image_nom,mois,semaine,etat,etapes_json,domaines,origine,mots,phrases)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)
          ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, descriptif = excluded.descriptif,
            couleur = excluded.couleur, annee = excluded.annee, image_nom = excluded.image_nom,
            mois = excluded.mois, semaine = excluded.semaine, etat = excluded.etat, etapes_json = excluded.etapes_json,
-           domaines = excluded.domaines, origine = excluded.origine",
+           domaines = excluded.domaines, origine = excluded.origine, mots = excluded.mots, phrases = excluded.phrases",
         params![projet.id, projet.titre, projet.descriptif, projet.couleur, projet.date_creation,
                 projet.annee, projet.image_nom, projet.mois, projet.semaine, projet.etat, projet.etapes_json,
-                projet.domaines, projet.origine],
+                projet.domaines, projet.origine, projet.mots, projet.phrases],
     ).map_err(e)?;
-    Ok(projet)
+    Ok(())
 }
 
 #[tauri::command]
@@ -3250,5 +3255,60 @@ mod tests_vocaux {
         let erreur = moteur_du_vocal(false, Some("local")).unwrap_err();
         assert!(erreur.contains("Réglages"), "{erreur}");
         assert!(erreur.contains("en ligne"), "doit dire l'autre issue : {erreur}");
+    }
+}
+
+#[cfg(test)]
+mod tests_projets {
+    use super::enregistrer_projet;
+    use crate::models::Projet;
+    use rusqlite::Connection;
+
+    fn base() -> Connection {
+        let c = Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        c
+    }
+
+    fn lire(c: &Connection, id: &str) -> Projet {
+        c.query_row("SELECT * FROM projets WHERE id = ?1", [id], Projet::from_row).unwrap()
+    }
+
+    #[test]
+    fn le_corpus_du_projet_se_garde_et_se_reprend() {
+        let c = base();
+        let p: Projet = serde_json::from_str(
+            r#"{"id":"p1","titre":"La soupe","dateCreation":"2026-09-01","mois":"10",
+                "mots":"citrouille\nsoupe","phrases":"La soupe est chaude."}"#,
+        )
+        .unwrap();
+        enregistrer_projet(&c, &p).unwrap();
+        let relu = lire(&c, "p1");
+        assert_eq!(relu.mots, "citrouille\nsoupe");
+        assert_eq!(relu.phrases, "La soupe est chaude.");
+        assert_eq!(relu.etapes_json, "[]");
+
+        // Reprendre le même projet remplace son corpus, sans doublon de ligne.
+        let suite = Projet { mots: "citrouille\nsoupe\nlouche".into(), phrases: String::new(), ..p };
+        enregistrer_projet(&c, &suite).unwrap();
+        let relu = lire(&c, "p1");
+        assert_eq!(relu.mots, "citrouille\nsoupe\nlouche");
+        assert_eq!(relu.phrases, "");
+        let n: i64 = c.query_row("SELECT COUNT(*) FROM projets", [], |r| r.get(0)).unwrap();
+        assert_eq!(n, 1);
+    }
+
+    #[test]
+    fn un_projet_venu_d_une_ancienne_version_a_un_corpus_vide() {
+        let c = base();
+        // La ligne d'un ordinateur pas encore à jour : sans les colonnes du corpus.
+        c.execute(
+            "INSERT INTO projets (id, titre, date_creation) VALUES ('p2', 'Le marché', '2026-09-02')",
+            [],
+        )
+        .unwrap();
+        let relu = lire(&c, "p2");
+        assert_eq!(relu.mots, "");
+        assert_eq!(relu.phrases, "");
     }
 }

@@ -7,6 +7,7 @@ import { motsDeLaListe, uneImageParMot } from "../loto";
 import { melanger } from "../hasard";
 import { usePictoImage } from "./ChoixPicto";
 import type { MotImage } from "../jeuxSons";
+import { useProjetDuMoment } from "./ProjetDuMoment";
 
 // Les mots d'un jeu : ceux qu'on écrit, ceux qu'un thème apporte.
 //
@@ -44,9 +45,12 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide }: {
   const themes = React.useMemo(() => (categories ?? []).filter((c) => c.nombre >= 6)
     .sort((a, b) => libelleCategorie(a.nom).localeCompare(libelleCategorie(b.nom), "fr")), [categories]);
   const deja = new Set(mots.map((m) => m.mot.toLowerCase()));
+  const { projet, corpus } = useProjetDuMoment();
+  const duProjet = corpus.mots.filter((m) => !deja.has(m.toLowerCase()));
 
-  const ajouterMots = async () => {
-    const liste = motsDeLaListe(texte).filter((m) => !deja.has(m.toLowerCase()));
+  /** Ajoute les mots écrits — ou une liste venue d'ailleurs, comme celle du projet. */
+  const ajouterMots = async (saisis?: string[]) => {
+    const liste = (saisis ?? motsDeLaListe(texte)).filter((m) => !deja.has(m.toLowerCase()));
     if (!liste.length) return;
     setOccupe(true);
     try {
@@ -63,7 +67,7 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide }: {
         suite = liste.map((mot) => ({ id: null, mot }));
       }
       onChange([...mots, ...suite]);
-      setTexte("");
+      if (!saisis) setTexte("");
     } catch (e) { toast(String(e), { icone: "⚠️" }); } finally { setOccupe(false); }
   };
 
@@ -84,9 +88,17 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide }: {
       {aide && <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>{aide}</p>}
       <Field label="Mes mots (un par ligne, ou séparés par des virgules)">
         <Textarea value={texte} onChange={(e) => setTexte(e.target.value)} rows={3} placeholder={"bateau\nbanane\nballon"} />
-        <button type="button" className="btn sm" style={{ marginTop: 6 }} disabled={occupe || !texte.trim()} onClick={ajouterMots}>
-          ＋ Ajouter les mots
-        </button>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+          <button type="button" className="btn sm" disabled={occupe || !texte.trim()} onClick={() => void ajouterMots()}>
+            ＋ Ajouter les mots
+          </button>
+          {projet && corpus.mots.length > 0 && (
+            <button type="button" className="btn sm" disabled={occupe || !duProjet.length} onClick={() => void ajouterMots(corpus.mots)}
+              title={duProjet.length ? `Les mots du projet « ${projet.titre} »` : `Les mots du projet « ${projet.titre} » sont déjà là`}>
+              📌 Les mots du projet ({corpus.mots.length})
+            </button>
+          )}
+        </div>
       </Field>
       {banque ? (
         <Field label="Ou piocher dans un thème">
