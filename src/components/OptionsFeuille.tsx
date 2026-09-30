@@ -1,6 +1,7 @@
 import React from "react";
 import { api } from "../api";
 import { toast } from "./Toaster";
+import { AtelierContext } from "./AtelierContext";
 import {
   EVT_OPTIONS_FEUILLE, OPTIONS_FEUILLE, cleOptionsFeuille, ecrireOptionsFeuille, feuillesPubliees, lireOptionsFeuille, type OptionsFeuille as Options,
 } from "../optionsFeuille";
@@ -46,6 +47,31 @@ export function OptionsFeuille({ atelier }: { atelier: string }) {
   return (
     <div className="comp-atelier options-feuille" role="group" aria-label="Ce qui s'imprime sur la feuille">
       <span className="options-feuille-titre">🖨 Sur la feuille</span>
+      {utiles.map((c) => (
+        <label key={c.cle} className="pb-coche" title={c.aide}>
+          <input type="checkbox" checked={options[c.cle]} onChange={(e) => changer({ [c.cle]: e.target.checked })} />
+          <span>{c.libelle}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Les mêmes cases, à côté des boutons d'impression de l'atelier : c'est au
+ * moment d'imprimer qu'on décide de garder ou non la correction, et le bloc
+ * « La feuille » est replié. L'atelier vient du contexte ; rien ne s'affiche
+ * tant que la feuille n'a pas dit ce qu'elle contient.
+ */
+export function CasesFeuille() {
+  const atelier = React.useContext(AtelierContext);
+  const { options, changer } = useOptionsFeuille(atelier);
+  const contenu = React.useSyncExternalStore(feuillesPubliees.abonner, () => feuillesPubliees.lire(atelier));
+  const utiles = CASES.filter((c) => contenu[c.cle]);
+  if (!atelier || !utiles.length) return null;
+  return (
+    <div className="cases-feuille" role="group" aria-label="Ce qui s'imprime sur la feuille">
+      <span className="meta">Sur la feuille :</span>
       {utiles.map((c) => (
         <label key={c.cle} className="pb-coche" title={c.aide}>
           <input type="checkbox" checked={options[c.cle]} onChange={(e) => changer({ [c.cle]: e.target.checked })} />

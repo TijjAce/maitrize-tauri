@@ -9,6 +9,7 @@ import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
+import { CasesFeuille } from "../components/OptionsFeuille";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import { REGLAGES_ETIQUETTES, STYLE_ETIQUETTES, htmlEtiquettes } from "../etiquettes";
 import type { MotImage } from "../jeuxSons";
@@ -94,11 +95,14 @@ function Colonnes({ gauche, droite }: { gauche: React.ReactNode; droite: React.R
 
 function Boutons({ atelier, titre, html, style, peut, onTirage }: { atelier: string; titre: string; html: string; style: string; peut: boolean; onTirage: () => void }) {
   return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-      <button type="button" className="btn sm" onClick={onTirage}>🎲 Autre tirage</button>
-      <button type="button" className="btn primary sm" disabled={!peut} onClick={() => void imprimerAtelier(atelier, titre, html, STYLE_FEUILLE + style)}>🖨 Imprimer</button>
-      <BoutonBureau disabled={!peut} onEnregistrer={() => enregistrerSurLeBureau(atelier, titre, html, STYLE_FEUILLE + style)} />
-    </div>
+    <>
+      <CasesFeuille />
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+        <button type="button" className="btn sm" onClick={onTirage}>🎲 Autre tirage</button>
+        <button type="button" className="btn primary sm" disabled={!peut} onClick={() => void imprimerAtelier(atelier, titre, html, STYLE_FEUILLE + style)}>🖨 Imprimer</button>
+        <BoutonBureau disabled={!peut} onEnregistrer={() => enregistrerSurLeBureau(atelier, titre, html, STYLE_FEUILLE + style)} />
+      </div>
+    </>
   );
 }
 
