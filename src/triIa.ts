@@ -1,10 +1,15 @@
-// Marquer les verbes des étiquettes, avec l'IA.
+// Marquer les verbes des étiquettes, et ranger celles du projet, avec l'IA.
 //
 // Pour colorer le verbe, il faut le désigner : entourer d'astérisques le mot
 // de chaque phrase. Seize étiquettes, c'est long à la main. Le modèle le
 // fait ; mais il ne touche à rien d'autre. On ne garde sa ligne que si, une
 // fois ses astérisques retirés, elle redonne la phrase de l'enseignant — à
 // la lettre. Les prénoms des élèves sont masqués avant l'envoi.
+//
+// Même prudence pour ranger le corpus du projet dans les maisons : le modèle
+// dit dans quelle maison va chaque étiquette, en la recopiant ; une
+// étiquette qu'il déforme, ou qu'il ne sait pas placer, revient à
+// l'enseignant.
 
 import type { ChatMessage } from "./api";
 import { sansMarques } from "./triEtiquettes";
@@ -63,4 +68,46 @@ function remarquer(original: string, proposee: string): string | null {
     sortie += original[i++];
   }
   return i === original.length ? sortie : null;
+}
+
+// ── Ranger les étiquettes du projet dans les maisons ──
+
+/** Ce qu'on demande au modèle : le numéro de la maison de chaque étiquette. */
+export function promptRangerEtiquettes(maisons: string[], etiquettes: string[]): ChatMessage[] {
+  const systeme = [
+    "Tu aides un enseignant à préparer un exercice de tri, en français.",
+    "On te donne des maisons numérotées — les catégories du tri — puis des étiquettes, une par ligne.",
+    "Pour chaque étiquette, réponds sur une ligne : le numéro de la maison, une tabulation, puis l'étiquette recopiée à l'identique — mêmes mots, même ponctuation, même casse.",
+    "Une étiquette qui ne va dans aucune maison, ou qui pourrait aller dans plusieurs, prend le numéro 0.",
+    "Les marqueurs entre crochets comme [P1] se recopient tels quels. Réponds uniquement par ces lignes, sans commentaire.",
+  ].join(" ");
+  const demande = ["Maisons :", ...maisons.map((m, i) => `${i + 1}. ${m}`), "", "Étiquettes :", ...etiquettes.map(sansMarques)].join("\n");
+  return [{ role: "system", content: systeme }, { role: "user", content: demande }];
+}
+
+/**
+ * Les étiquettes rangées : pour chaque maison, celles que le modèle y a
+ * mises en les recopiant à la lettre. Ce qu'il a écarté, déformé ou mis
+ * dans une maison qui n'existe pas revient dans `ecartees` : à ranger à la
+ * main.
+ */
+export function rangementDeLaReponse(reponse: string, maisons: number, etiquettes: string[]): { parMaison: string[][]; ecartees: string[] } {
+  const parForme = new Map(etiquettes.map((e) => [forme(sansMarques(e)), e]));
+  const rangee = new Map<string, number>();
+  for (const brute of (reponse ?? "").replace(/```[a-z]*/g, "").split("\n")) {
+    const m = /^\s*(\d+)\s*[\t:.)\-–—|]*\s*(.+?)\s*$/.exec(brute);
+    if (!m) continue;
+    const original = parForme.get(forme(sansMarques(nettoyer(m[2]))));
+    if (!original || rangee.has(original)) continue;
+    const num = Number(m[1]);
+    if (num >= 1 && num <= maisons) rangee.set(original, num - 1);
+  }
+  const parMaison = Array.from({ length: maisons }, () => [] as string[]);
+  const ecartees: string[] = [];
+  for (const e of etiquettes) {
+    const i = rangee.get(e);
+    if (i === undefined) ecartees.push(e);
+    else parMaison[i].push(e);
+  }
+  return { parMaison, ecartees };
 }

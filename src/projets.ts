@@ -387,7 +387,7 @@ export function depuisIdee(idee: IdeeProjet, annee: string): ProjetClasse {
     id: newId(), titre: idee.titre, descriptif: idee.pitch, couleur: "indigo",
     dateCreation: nowIso(), annee, imageNom: null, mois: idee.mois, semaine: "", etat: "idee",
     etapesJson: ecrireEtapes(idee.etapes.map((texte) => ({ texte, faite: false }))),
-    domaines: idee.domaines.join(", "), origine: idee.id,
+    domaines: idee.domaines.join(", "), origine: idee.id, mots: "", phrases: "",
   };
 }
 
@@ -395,7 +395,7 @@ export function depuisIdee(idee: IdeeProjet, annee: string): ProjetClasse {
 export function projetVierge(mois: string, annee: string): ProjetClasse {
   return {
     id: newId(), titre: "", descriptif: "", couleur: "indigo", dateCreation: nowIso(),
-    annee, imageNom: null, mois, semaine: "", etat: "idee", etapesJson: "[]", domaines: "", origine: "",
+    annee, imageNom: null, mois, semaine: "", etat: "idee", etapesJson: "[]", domaines: "", origine: "", mots: "", phrases: "",
   };
 }
 

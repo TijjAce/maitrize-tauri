@@ -1,8 +1,12 @@
 import React from "react";
 import { Page } from "../App";
-import { api, anneeScolaireActuelle, texteErreur } from "../api";
-import { Input, TextareaAuto, useAsync } from "../components/ui";
+import { api, anneeScolaireActuelle, MODELE_TACHES, texteErreur } from "../api";
+import { Field, Input, Select, Textarea, TextareaAuto, useAsync, useOngletDemande } from "../components/ui";
 import { toast } from "../components/Toaster";
+import { useReglages } from "../components/useMemoire";
+import { pseudonymiser } from "../confidentialite";
+import { DEMANDE_CORPUS, corpusDeLaReponse, promptCorpus } from "../corpusIa";
+import { aUnCorpus, corpusDe, resumeDuCorpus } from "../corpusProjet";
 import { confirmer } from "../components/confirmer";
 import { openCtx } from "../components/ctxmenu";
 import { normaliser } from "../competencesTravaillees";
@@ -38,6 +42,8 @@ export default function Projets() {
 
   const miens = (projets ?? []).filter((p) => !p.annee || p.annee === annee);
   const dejaPris = new Set(miens.map((p) => p.origine).filter(Boolean));
+  // Depuis Fabriquer, « ✎ Le corpus » ouvre la fiche du projet suivi.
+  useOngletDemande("projets", miens.map((p) => p.id), setOuvert);
 
   const enregistrer = async (p: ProjetClasse) => {
     try { await api.projetSave(p); reload(); }
@@ -140,7 +146,7 @@ export default function Projets() {
 
       {/* ── La fiche d'un projet posé ── */}
       {ouvert && miens.some((p) => p.id === ouvert) && (
-        <FicheProjet projet={miens.find((p) => p.id === ouvert)!} annee={annee}
+        <FicheProjet key={ouvert} projet={miens.find((p) => p.id === ouvert)!} annee={annee}
           onChange={(suite) => { void enregistrer(suite); }}
           onFermer={() => setOuvert("")} onSupprimer={() => { void supprimer(miens.find((p) => p.id === ouvert)!); }} />
       )}
@@ -267,6 +273,8 @@ function FicheProjet({ projet, annee, onChange, onFermer, onSupprimer }: {
         ))}
       </div>
 
+      <CorpusDuProjet projet={projet} onChange={onChange} />
+
       {etapes.map((e, i) => (
         <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
           <input type="checkbox" checked={e.faite} aria-label={e.texte}
@@ -291,5 +299,108 @@ function FicheProjet({ projet, annee, onChange, onFermer, onSupprimer }: {
         <button className="btn ghost sm" onClick={onSupprimer}>🗑 Retirer de l'année</button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Un champ du corpus : ce qu'on tape s'enregistre une demi-seconde après la
+ * dernière lettre, ou en quittant le champ. Enregistrer à chaque frappe
+ * relisait la fiche et renvoyait le curseur en fin de texte — sur dix lignes
+ * de mots, on ne s'y retrouvait plus.
+ */
+function ChampCorpus({ valeur, onChange, ...props }: { valeur: string; onChange: (v: string) => void } & Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange">) {
+  const [brouillon, setBrouillon] = React.useState(valeur);
+  const minuterie = React.useRef<number | null>(null);
+  const onChangeRef = React.useRef(onChange);
+  onChangeRef.current = onChange;
+  // Ce qui arrive d'ailleurs — l'IA, l'autre ordinateur — remplace le brouillon, sauf pendant qu'on tape.
+  React.useEffect(() => { if (minuterie.current === null) setBrouillon(valeur); }, [valeur]);
+  const enregistrer = (v: string) => { minuterie.current = null; onChangeRef.current(v); };
+  const taper = (v: string) => {
+    setBrouillon(v);
+    if (minuterie.current !== null) window.clearTimeout(minuterie.current);
+    minuterie.current = window.setTimeout(() => enregistrer(v), 500);
+  };
+  const poser = () => {
+    if (minuterie.current === null) return;
+    window.clearTimeout(minuterie.current);
+    enregistrer(brouillon);
+  };
+  // Fermer la fiche pendant qu'on tape n'en perd pas la fin.
+  const brouillonRef = React.useRef(brouillon);
+  brouillonRef.current = brouillon;
+  React.useEffect(() => () => {
+    if (minuterie.current !== null) { window.clearTimeout(minuterie.current); onChangeRef.current(brouillonRef.current); }
+  }, []);
+  return <Textarea {...props} value={brouillon} onChange={(e) => taper(e.target.value)} onBlur={poser} />;
+}
+
+/** Les mots et les phrases du projet : ce que les ateliers de Fabriquer prennent tant qu'il est en cours. */
+function CorpusDuProjet({ projet, onChange }: { projet: ProjetClasse; onChange: (p: ProjetClasse) => void }) {
+  const corpus = corpusDe(projet);
+  const [demande, majDemande] = useReglages("corpusIa", DEMANDE_CORPUS);
+  const [occupe, setOccupe] = React.useState(false);
+  // Ouvert d'emblée quand il y a quelque chose à voir ; ensuite, c'est l'enseignant qui plie et déplie.
+  const [ouvertAuDepart] = React.useState(() => aUnCorpus(projet));
+
+  const proposer = async () => {
+    setOccupe(true);
+    try {
+      // Le projet part, pas la classe : un prénom glissé dans une étape est masqué avant l'envoi.
+      const eleves = await api.elevesList().catch(() => []);
+      const noms = eleves.map((e) => e.nom);
+      const masquer = (t: string) => pseudonymiser(t, noms).texte;
+      const decrit = {
+        titre: masquer(projet.titre), descriptif: masquer(projet.descriptif), domaines: masquer(projet.domaines),
+        etapes: lireEtapes(projet.etapesJson).map((e) => masquer(e.texte)),
+      };
+      const modele = await api.modeleActif(MODELE_TACHES);
+      const propose = corpusDeLaReponse(await api.mistralChat(promptCorpus(decrit, demande), modele));
+      const dejaLa = (liste: string[]) => new Set(liste.map((x) => x.toLocaleLowerCase("fr")));
+      const mots = propose.mots.filter((m) => !dejaLa(corpus.mots).has(m.toLocaleLowerCase("fr")));
+      const phrases = propose.phrases.filter((p) => !dejaLa(corpus.phrases).has(p.toLocaleLowerCase("fr")));
+      if (!mots.length && !phrases.length) { toast("Le modèle n'a rien proposé de neuf ; réessayez, ou précisez le descriptif.", { icone: "🤔" }); return; }
+      onChange({ ...projet, mots: [...corpus.mots, ...mots].join("\n"), phrases: [...corpus.phrases, ...phrases].join("\n") });
+      toast(`${resumeDuCorpus({ mots, phrases })} sous les vôtres : relisez, retirez ce qui ne convient pas.`, { icone: "✨", duree: 6000 });
+    } catch (e) {
+      toast("Proposition impossible : " + texteErreur(e), { icone: "⚠️" });
+    } finally { setOccupe(false); }
+  };
+
+  return (
+    <details className="tri-fiche corpus-projet" open={ouvertAuDepart}>
+      <summary>📌 Le corpus du projet · {resumeDuCorpus(corpus)}</summary>
+      <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, margin: "4px 0 8px" }}>
+        Ses mots et ses phrases nourrissent les ateliers de Fabriquer tant que le projet est en cours :
+        mots mêlés, phrases en désordre, maisons du tri, loto, étiquettes.
+      </p>
+      <div className="corpus-projet-colonnes">
+        <Field label="Les mots, un par ligne">
+          <ChampCorpus rows={8} valeur={projet.mots} onChange={(mots) => onChange({ ...projet, mots })} placeholder={"citrouille\nsoupe\nlouche…"} aria-label="Les mots du projet" />
+        </Field>
+        <Field label="Les phrases, une par ligne">
+          <ChampCorpus rows={8} valeur={projet.phrases} onChange={(phrases) => onChange({ ...projet, phrases })} placeholder={"Nous coupons la citrouille.\nLa soupe est chaude."} aria-label="Les phrases du projet" />
+        </Field>
+      </div>
+      <div className="ia-phrases">
+        <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>✨ Demander un corpus à l'IA</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: 6 }}>
+          <Select value={demande.cycle} onChange={(e) => majDemande({ cycle: Number(e.target.value) as 2 | 3 })} aria-label="Cycle">
+            <option value={2}>Cycle 2</option><option value={3}>Cycle 3</option>
+          </Select>
+          <Select value={demande.mots} onChange={(e) => majDemande({ mots: Number(e.target.value) })} aria-label="Nombre de mots">
+            {[8, 12, 16, 24, 32].map((n) => <option key={n} value={n}>{n} mots</option>)}
+          </Select>
+          <Select value={demande.phrases} onChange={(e) => majDemande({ phrases: Number(e.target.value) })} aria-label="Nombre de phrases">
+            <option value={0}>pas de phrase</option>
+            {[4, 6, 8, 10].map((n) => <option key={n} value={n}>{n} phrases</option>)}
+          </Select>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <button type="button" className="btn sm" disabled={occupe} onClick={() => void proposer()}>{occupe ? "Le modèle écrit…" : "✨ Proposer"}</button>
+          <span className="meta" style={{ fontSize: 12 }}>Ils s'ajoutent sous les vôtres. Seul le projet part, sans prénom d'élève.</span>
+        </div>
+      </div>
+    </details>
   );
 }

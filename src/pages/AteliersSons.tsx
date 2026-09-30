@@ -7,6 +7,7 @@ import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
+import { LigneDuProjet } from "../components/ProjetDuMoment";
 import { api } from "../api";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import { graineAuHasard, hasard } from "../hasard";
@@ -264,6 +265,8 @@ export function FluenceTab() {
         </Field>
         <Field label="Mes mots (facultatif)">
           <Textarea value={r.mesMots} onChange={(e) => maj({ mesMots: e.target.value })} rows={3} placeholder="Les mots de la classe qui contiennent le son" />
+          {/* Seuls ceux qui portent le son entrent dans la grille : les autres attendent leur semaine. */}
+          <LigneDuProjet quoi="mots" texte={r.mesMots} exemple={REGLAGES_FLUENCE.mesMots} appliquer={(mesMots) => maj({ mesMots })} />
         </Field>
         <Coche on={r.puissance4} libelle="Ajouter le plateau « quatre jetons alignés »" onChange={(v) => maj({ puissance4: v })} />
         <Boutons peut onTirage={() => setGraine(graineAuHasard())} onImprimer={() => void imprimerAtelier("fluence", `Grille de fluence — ${g.son.son}`, html, STYLE_FEUILLE + STYLE_FLUENCE)}

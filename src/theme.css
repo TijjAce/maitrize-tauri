@@ -482,6 +482,13 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .options-feuille { display: flex; align-items: center; gap: 4px 16px; flex-wrap: wrap; }
 .options-feuille-titre { font-weight: 600; font-size: 13px; }
 .options-feuille .pb-coche { margin: 0; }
+/* Le projet du moment, en tête d'un atelier ; et, sous une liste, d'où viennent ses entrées. */
+.projet-atelier { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; }
+.projet-atelier select { max-width: 280px; }
+.projet-atelier-aide { font-size: 12px; }
+.projet-ligne { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 8px; font-size: 12.5px; }
+.corpus-projet-colonnes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 720px) { .corpus-projet-colonnes { grid-template-columns: 1fr; } }
 /* Dans l'atelier des phrases en désordre : demander des phrases à l'IA. */
 .ia-phrases { margin: 8px 0 10px; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 10px; background: var(--panel-2); }
 /* Dans le bandeau d'un atelier : la consigne de la feuille, à réécrire. */

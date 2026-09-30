@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { marquesDeLaReponse, promptMarquerVerbes } from "./triIa";
+import { marquesDeLaReponse, promptMarquerVerbes, promptRangerEtiquettes, rangementDeLaReponse } from "./triIa";
 
 describe("marquer les verbes avec l'IA", () => {
   it("envoie les phrases nues, une par ligne, et dit de ne rien changer", () => {
@@ -34,5 +34,34 @@ describe("marquer les verbes avec l'IA", () => {
     expect(marquesDeLaReponse("", []).phrases).toEqual([]);
     // Une proposition remplace la marque posée à la main.
     expect(marquesDeLaReponse("Hier, j'*ai joué* au ballon.", ["Hier, j'*ai* joué au ballon."]).phrases).toEqual(["Hier, j'*ai joué* au ballon."]);
+  });
+});
+
+describe("ranger les étiquettes du projet avec l'IA", () => {
+  it("numérote les maisons et donne les étiquettes nues", () => {
+    const [systeme, user] = promptRangerEtiquettes(["Nom", "Verbe"], ["citrouille", "*couper*"]);
+    expect(systeme.content).toContain("le numéro de la maison");
+    expect(user.content).toBe("Maisons :\n1. Nom\n2. Verbe\n\nÉtiquettes :\ncitrouille\ncouper");
+  });
+
+  it("range ce que le modèle a recopié à la lettre, et rend le reste", () => {
+    const etiquettes = ["citrouille", "couper", "Nous coupons la citrouille.", "soupe", "2 carottes", "chaud"];
+    const reponse = [
+      "1\tcitrouille",
+      "2. couper",
+      "0\tNous coupons la citrouille.",   // aucune maison : à la main
+      "1 - la soupe",                     // déformée : à la main
+      "1\t2 carottes",                    // une étiquette qui commence par un chiffre
+      "3\tchaud",                         // une maison qui n'existe pas
+      "1\tcitrouille",                    // en double : une seule fois
+    ].join("\n");
+    expect(rangementDeLaReponse(reponse, 2, etiquettes)).toEqual({
+      parMaison: [["citrouille", "2 carottes"], ["couper"]],
+      ecartees: ["Nous coupons la citrouille.", "soupe", "chaud"],
+    });
+  });
+
+  it("ne range rien d'une réponse vide", () => {
+    expect(rangementDeLaReponse("", 2, ["a"])).toEqual({ parMaison: [[], []], ecartees: ["a"] });
   });
 });
