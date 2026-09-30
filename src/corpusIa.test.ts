@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { DEMANDE_CORPUS, corpusDeLaReponse, promptCorpus } from "./corpusIa";
+import {
+  DEMANDE_CORPUS, corpusDeLaReponse, motsChoisisDeLaReponse, promptChoisirLesMots, promptChoisirLesThemes, promptCorpus, themesChoisisDeLaReponse,
+} from "./corpusIa";
 
 describe("demander un corpus au modèle", () => {
   const projet = { titre: "La soupe de la classe", descriptif: "On cuisine une soupe.", domaines: "Sciences, Autonomie", etapes: ["Acheter les légumes", " ", "Éplucher"] };
@@ -56,5 +58,30 @@ describe("lire le corpus proposé", () => {
 
   it("ne garde ni les marqueurs, ni les vides", () => {
     expect(corpusDeLaReponse("MOTS\n[P1]\n\nPHRASES\n[P1] mange une pomme.\n")).toEqual({ mots: [], phrases: [] });
+  });
+});
+
+describe("choisir dans la banque", () => {
+  const projet = { titre: "La ferme", descriptif: "", domaines: "", etapes: [] };
+
+  it("soumet les mots de la banque et ne garde que ceux-là, dans l'ordre du modèle, sans doublon", () => {
+    const [systeme, user] = promptChoisirLesMots(projet, ["vache", "poule", "cochon d'Inde"], 2, 3, ["âne"]);
+    expect(systeme.content).toContain("Choisis les 2 mots");
+    expect(systeme.content).toContain("cycle 3");
+    expect(systeme.content).toContain("Écarte les mots déjà pris");
+    expect(user.content).toBe("Projet : La ferme\n\nMots disponibles : vache, poule, cochon d'Inde\nDéjà pris : âne");
+    expect(motsChoisisDeLaReponse("1. Poule\n- cochon  d'inde.\nlicorne\npoule\nvache", ["vache", "poule", "cochon d'Inde"], 5))
+      .toEqual(["poule", "cochon d'Inde", "vache"]);
+    expect(motsChoisisDeLaReponse("vache, poule, cochon d'Inde", ["vache", "poule", "cochon d'Inde"], 2)).toEqual(["vache", "poule"]);
+    expect(motsChoisisDeLaReponse("", ["vache"], 3)).toEqual([]);
+  });
+
+  it("soumet les thèmes par leur libellé et les rend par leur nom de banque, trois au plus", () => {
+    const proposables = [{ nom: "food", libelle: "Aliments" }, { nom: "vegetable", libelle: "Légumes" }, { nom: "fruit", libelle: "Fruits" }, { nom: "clothes", libelle: "Vêtements" }];
+    const [systeme, user] = promptChoisirLesThemes(projet, proposables.map((p) => p.libelle));
+    expect(systeme.content).toContain("Choisis au plus 3 thèmes");
+    expect(user.content).toBe("Projet : La ferme\n\nThèmes : Aliments ; Légumes ; Fruits ; Vêtements");
+    expect(themesChoisisDeLaReponse("- Légumes\nlégumes\nAliments\nFruits\nVêtements\nJouets", proposables)).toEqual(["vegetable", "food", "fruit"]);
+    expect(themesChoisisDeLaReponse("Rien de tout ça", proposables)).toEqual([]);
   });
 });
