@@ -12,7 +12,7 @@
 // à hauteur plafonnée — ce qu'il y a dessous ne bouge pas.
 
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
-import { cleDesCompetences, lireCompetencesAtelier } from "./ateliersCompetences";
+import { cleDesCompetences, lireCompetencesAtelier, objectifsDesAteliers, unionDesCompetences } from "./ateliersCompetences";
 import { CLE_ACTIF, CLE_LEXIQUE, STYLE_CONSIGNES_PICTOS, consignesActives, decorerConsignesHtml, lireLexique } from "./caa";
 import { cleConsigne, remplacerConsigne, clePictos, lirePictosAjoutes } from "./consigneAtelier";
 import { appliquerOptionsFeuille, cleOptionsFeuille, lireOptionsFeuille } from "./optionsFeuille";
@@ -96,12 +96,19 @@ export const STYLE_ENTETE_COMPETENCES = `
   @media print { body { padding-top: 0; } }
 `;
 
-/** Les compétences attachées à un atelier — aucune si rien n'est choisi ou si la lecture échoue. */
+/**
+ * Les compétences attachées à un atelier — ou, s'il travaille par objectif,
+ * celles des objectifs retenus à l'écran. Aucune si rien n'est choisi ou si
+ * la lecture échoue.
+ */
 export async function competencesDeLAtelier(atelier: string): Promise<CompetenceSelectionnee[]> {
   try {
     // Import dynamique, comme dans `print` : pas de cycle au chargement.
     const { api } = await import("./api");
-    return lireCompetencesAtelier(await api.settingGet(cleDesCompetences(atelier)));
+    const objectifs = objectifsDesAteliers.lire(atelier);
+    if (!objectifs.length) return lireCompetencesAtelier(await api.settingGet(cleDesCompetences(atelier)));
+    const listes = await Promise.all(objectifs.map((o) => api.settingGet(cleDesCompetences(atelier, o.id)).then(lireCompetencesAtelier)));
+    return unionDesCompetences(listes);
   } catch {
     return [];
   }

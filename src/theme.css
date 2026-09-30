@@ -477,6 +477,8 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .fn-objectif:hover { background: var(--panel-2); }
 .fn-objectif.choisi { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 45%, transparent); font-weight: 600; }
 .fn-puce { color: var(--text-2); flex: none; width: 14px; }
+/* Un objectif qui a déjà sa compétence : une pastille, le détail au survol. */
+.fn-competence { flex: none; font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border-radius: 100px; padding: 1px 7px; align-self: center; }
 .fn-objectif.choisi .fn-puce { color: var(--accent); }
 /* Dans le bandeau d'un atelier : ce qui s'imprime sur la feuille. */
 .options-feuille { display: flex; align-items: center; gap: 4px 16px; flex-wrap: wrap; }
