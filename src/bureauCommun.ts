@@ -85,7 +85,7 @@ const SORTES_RESUME: Record<string, { icone: string; un: string; des: string }> 
   jeux: { icone: "🎲", un: "jeu", des: "jeux" },
   ateliers: { icone: "🧩", un: "atelier", des: "ateliers" },
   espaces: { icone: "🪑", un: "espace", des: "espaces" },
-  outils: { icone: "🧰", un: "outil", des: "outils" },
+  outils: { icone: "📏", un: "outil", des: "outils" },
   affichages: { icone: "🖼", un: "affichage", des: "affichages" },
   evaluations: { icone: "📋", un: "évaluation", des: "évaluations" },
 };
