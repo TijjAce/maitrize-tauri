@@ -335,22 +335,21 @@ export default function Reglages() {
       </div>
 
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
-        <h3 style={{ marginTop: 0 }}>🎙 Transcription des réunions</h3>
+        <h3 style={{ marginTop: 0 }}>🎙 Transcription des réunions et des vocaux</h3>
         <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13, lineHeight: 1.55 }}>
           L'audio d'une réunion est ce qu'il y a de plus sensible : une famille qui parle
           de son enfant. En local, il ne quitte pas cet ordinateur, et une
-          réunion en zone blanche s'écrit quand même.
+          réunion en zone blanche s'écrit quand même. Les vocaux du téléphone se
+          transcrivent sur cet ordinateur dès qu'un modèle y est, en ligne sinon.
         </p>
-        <Field label="Moteur">
+        <Field label="Moteur des réunions">
           <Select value={s[CLE_MOTEUR] === "local" ? "local" : "ligne"}
             onChange={(e) => set(CLE_MOTEUR, e.target.value)}>
             <option value="ligne">En ligne — Mistral (Voxtral), rien à installer</option>
             <option value="local">Sur cet ordinateur — l'audio ne sort pas, et le réseau non plus</option>
           </Select>
         </Field>
-        {s[CLE_MOTEUR] === "local" && (
-          <InstallationLocale tester={testerWhisper} enCours={whisperEnCours} message={whisperMsg} />
-        )}
+        <InstallationLocale tester={testerWhisper} enCours={whisperEnCours} message={whisperMsg} />
         <p style={{ color: "var(--text-2)", fontSize: 12, margin: "10px 0 0", lineHeight: 1.5 }}>
           Le compte rendu, lui, est rangé par l'IA en ligne — c'est du texte, et les prénoms
           d'élèves y sont masqués avant l'envoi. Pour qu'une réunion ne laisse rien partir du

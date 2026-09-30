@@ -1130,12 +1130,36 @@ pub fn vocaux_list(db: State<Db>) -> R<Vec<Vocal>> {
     rows.collect::<rusqlite::Result<_>>().map_err(e)
 }
 
+/// Par quoi transcrire un vocal.
+#[derive(Debug, PartialEq, Eq)]
+pub enum MoteurDuVocal {
+    /// Whisper, dans l'application : le son ne sort pas.
+    Local,
+    /// Le service en ligne, comme les réunions quand on l'a choisi.
+    EnLigne,
+}
+
 /**
- * Transcrit un vocal sur cette machine, et garde le texte.
+ * Sur cette machine dès qu'un modèle y est — c'est gratuit et rien ne sort.
+ * Sans modèle, en ligne, sauf si l'enseignant a expressément choisi le local :
+ * on le lui dit alors, plutôt que d'envoyer ce qu'il voulait garder.
+ */
+pub fn moteur_du_vocal(modele_installe: bool, choix: Option<&str>) -> Result<MoteurDuVocal, String> {
+    if modele_installe {
+        return Ok(MoteurDuVocal::Local);
+    }
+    if choix == Some("local") {
+        return Err("Aucun modèle de transcription sur cet ordinateur. Dans Réglages · IA, téléchargez-en un — ou choisissez la transcription en ligne.".into());
+    }
+    Ok(MoteurDuVocal::EnLigne)
+}
+
+/**
+ * Transcrit un vocal, et garde le texte.
  *
- * Le son ne sort pas : c'est Whisper embarqué qui travaille. Un échec
- * s'écrit à côté du vocal plutôt que de le faire disparaître — on saura
- * pourquoi, et on pourra réessayer.
+ * Sur cette machine quand un modèle y est, en ligne sinon (voir
+ * `moteur_du_vocal`). Un échec s'écrit à côté du vocal plutôt que de le
+ * faire disparaître — on saura pourquoi, et on pourra réessayer.
  */
 #[tauri::command]
 pub async fn vocal_transcrire(
@@ -1143,14 +1167,27 @@ pub async fn vocal_transcrire(
     moteur: State<'_, crate::whisper_embarque::Moteur>,
     id: String,
 ) -> R<Vocal> {
-    let fichier = {
+    let (fichier, choix) = {
         let c = db.lock();
-        c.query_row("SELECT fichier FROM vocaux WHERE id=?1", params![id], |r| r.get::<_, String>(0))
-            .map_err(|_| "Ce vocal n'existe plus.".to_string())?
+        let fichier = c
+            .query_row("SELECT fichier FROM vocaux WHERE id=?1", params![id], |r| r.get::<_, String>(0))
+            .map_err(|_| "Ce vocal n'existe plus.".to_string())?;
+        let choix = c
+            .query_row("SELECT valeur FROM settings WHERE cle='moteurTranscription'", [], |r| r.get::<_, String>(0))
+            .ok();
+        (fichier, choix)
     };
     let octets = std::fs::read(fichiers_dir().join(&fichier))
         .map_err(|er| format!("Enregistrement introuvable : {er}"))?;
-    let resultat = crate::whisper_embarque::transcrire_octets(&moteur, &octets);
+    let resultat = match moteur_du_vocal(crate::whisper_embarque::modele_installe().is_some(), choix.as_deref()) {
+        Ok(MoteurDuVocal::Local) => crate::whisper_embarque::transcrire_octets(&moteur, &octets),
+        Ok(MoteurDuVocal::EnLigne) => {
+            use base64::Engine;
+            let b64 = base64::engine::general_purpose::STANDARD.encode(&octets);
+            crate::ai::transcrire_audio(db.clone(), b64, fichier.clone()).await
+        }
+        Err(message) => Err(message),
+    };
     let c = db.lock();
     match resultat {
         Ok(texte) => {
@@ -3192,5 +3229,26 @@ mod tests_cascades {
         crate::journal::appliquer(&mut b, &nouveaux).unwrap();
         assert_eq!(compter(&b, "SELECT count(*) FROM sequences WHERE dossier='Sciences'"), 1, "la modification n'est pas arrivée");
         assert_eq!(compter(&b, "SELECT count(*) FROM seances WHERE sequence_id='s1'"), 1, "la synchronisation a effacé les séances");
+    }
+}
+
+#[cfg(test)]
+mod tests_vocaux {
+    use super::{moteur_du_vocal, MoteurDuVocal};
+
+    #[test]
+    fn un_modele_installe_transcrit_sur_place_quoi_qu_on_ait_choisi() {
+        assert_eq!(moteur_du_vocal(true, None), Ok(MoteurDuVocal::Local));
+        assert_eq!(moteur_du_vocal(true, Some("ligne")), Ok(MoteurDuVocal::Local));
+        assert_eq!(moteur_du_vocal(true, Some("local")), Ok(MoteurDuVocal::Local));
+    }
+
+    #[test]
+    fn sans_modele_on_passe_en_ligne_sauf_si_on_a_voulu_le_local() {
+        assert_eq!(moteur_du_vocal(false, None), Ok(MoteurDuVocal::EnLigne));
+        assert_eq!(moteur_du_vocal(false, Some("ligne")), Ok(MoteurDuVocal::EnLigne));
+        let erreur = moteur_du_vocal(false, Some("local")).unwrap_err();
+        assert!(erreur.contains("Réglages"), "{erreur}");
+        assert!(erreur.contains("en ligne"), "doit dire l'autre issue : {erreur}");
     }
 }
