@@ -35,7 +35,7 @@ type SorteVue = "ateliers" | "espaces" | "jeux" | "outils" | "affichages" | "eva
 /** Ce que disent les trois sortes de fiches qui partagent le même formulaire. */
 const SORTE_DU_GENRE = { outil: "outils", affichage: "affichages", evaluation: "evaluations" } as const;
 const TITRE_DU_GENRE = {
-  outil: "🧰 Outils pour l'élève", affichage: "🖼 Affichages", evaluation: "📋 Évaluations",
+  outil: "📏 Outils pour l'élève", affichage: "🖼 Affichages", evaluation: "📋 Évaluations",
 } as const;
 
 export default function Ateliers() {
@@ -111,7 +111,7 @@ export default function Ateliers() {
     { court: "Atelier", label: "Nouvel atelier", icon: "🧩", onClick: () => setEditA({ ...nouvelAtelier() }) },
     { court: "Espace", label: "Nouvel espace", icon: "🪑", onClick: () => setEditE({ ...nouvelEspace() }) },
     { court: "Jeu", label: "Nouveau jeu", icon: "🎲", onClick: () => setEditJ({ ...nouveauJeu() }) },
-    { court: "Outil", label: "Nouvel outil", icon: "🧰", onClick: () => setEditO({ ...nouvelOutil("outil") }) },
+    { court: "Outil", label: "Nouvel outil", icon: "📏", onClick: () => setEditO({ ...nouvelOutil("outil") }) },
     { court: "Affichage", label: "Nouvel affichage", icon: "🖼", onClick: () => setEditO({ ...nouvelOutil("affichage") }) },
     { court: "Évaluation", label: "Nouvelle évaluation", icon: "📋", onClick: () => setEditO({ ...nouvelOutil("evaluation") }) },
   ];

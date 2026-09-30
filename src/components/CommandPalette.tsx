@@ -153,7 +153,7 @@ const NAV: { ico: string; label: string; to: string }[] = [
 
 const KIND_ICO: Record<string, string> = {
   sequence: "📚", seance: "📄", creneau: "🗓️", observation: "👀", atelier: "🧩",
-  espace: "🪑", jeu: "🎲", outil: "🧰", texte: "📝", eleve: "👧", materiel: "🧰",
+  espace: "🪑", jeu: "🎲", outil: "📏", texte: "📝", eleve: "👧", materiel: "🧰",
 };
 
 /** Le nom de ce qu'on a trouvé, dit en français. */
