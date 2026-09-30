@@ -18,6 +18,31 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.17",
+    titre: "Fabriquer se range, et suit le projet de la classe",
+    points: [
+      { quoi: "Fabriquer s'ouvre sur ses ateliers, rangés par famille — langage, sons et lecture, lecture et écriture, mathématiques —, chacun disant ce qu'il fabrique et pour quel cycle. Une recherche les retrouve : « loto », « problèmes », « cycle 3 », « rituel ».", ou: "Fabriquer" },
+      { quoi: "Des ateliers nouveaux, du cycle 1 au cycle 3 : les fiches de sons, les coloriages magiques (d'après les calculs ou d'après les sons, dix-huit dessins, un dessin depuis une photo), les jeux que les guides de lecture décrivent — loto des syllabes, dominos, chasse à l'intrus, paires de mots proches, grille de fluence, syllabaire, les lettres —, les nombres en cubes, le calcul mental, le compte est bon, les pyramides et carrés magiques, lire l'heure, les grands nombres et décimaux, les phrases en désordre, les mots mêlés et les maisons du tri.", ou: "Fabriquer" },
+      { quoi: "Le calcul mental travaille un fait numérique ou une procédure à la fois, tels que les programmes les donnent classe par classe, du CP à la 6e : à l'oral, c'est le procédé La Martinière ; par écrit, un test de fluence, avec l'attendu de fin d'année.", ou: "Fabriquer · Calcul mental" },
+      { quoi: "Chaque atelier dit ce qu'il travaille : les compétences se choisissent une fois dans les référentiels — elles ne se devinent pas —, s'impriment en tête de la feuille et se retrouvent dans le cahier journal. Le calcul mental en garde une par objectif, et la liste des objectifs dit lesquels ont déjà la leur.", ou: "Fabriquer · 🖨 La feuille · Ce que cela travaille" },
+      { quoi: "Les pictos de la consigne : dans l'onglet CAA, chaque verbe d'action — lis, écris, entoure, découpe… — reçoit son pictogramme ARASAAC, et toutes les feuilles les mettent devant leurs consignes. Ils se voient et s'ajoutent depuis l'atelier, la consigne se réécrit avec les mots de la classe, et un picto se trouve désormais sous chacun de ses mots-clés : « colorier » aussi bien que « peindre ».", ou: "CAA · Fabriquer · 🖨 La feuille" },
+      { quoi: "Sur la feuille, la consigne, le prénom et la correction se décochent — dans tous les ateliers, à côté des boutons d'impression.", ou: "Fabriquer" },
+      { quoi: "« Sur le bureau » : la feuille part en PDF sur le plan de travail, et le bandeau « est sur le bureau » y ramène. L'assistant fabrique lui aussi des documents, imprimés ou déposés en PDF.", ou: "Fabriquer · Assistant" },
+      { quoi: "Le projet du moment nourrit les ateliers. Un projet posé sur la semaine ou sur le mois porte ses mots et ses phrases, préparés tout seuls : les mots pris dans la banque ARASAAC de l'ordinateur — ils ont une image — et choisis par l'IA parmi ceux des thèmes du projet ; les phrases écrites par l'IA avec ces mots. Mots mêlés, phrases en désordre et fluence les prennent d'eux-mêmes tant que vous n'avez rien écrit de votre main ; loto, étiquettes et jeux de syllabes les ajoutent d'un clic ; les maisons du tri les rangent. Tout se change sur la fiche du projet : les thèmes, le tirage, les phrases.", ou: "Projets · Fabriquer · 📌 Projet" },
+      { quoi: "Chaque atelier se range dans un moment de la séquence — manipulation en début de séquence, entraînement, réinvestissement, rituel —, d'après les phases d'apprentissage que décrivent les guides. Le catalogue se lit par moment, et une carte se glisse d'un moment à l'autre.", ou: "Fabriquer · Par moment de la séquence" },
+      { quoi: "L'en-tête d'un atelier tient en deux lignes : « 🖨 La feuille » replie la consigne, ses pictos, les compétences et ce qui s'imprime ; le projet du moment reste sous les yeux.", ou: "Fabriquer" },
+      { quoi: "Supports visuels : « D'abord / ensuite » se lit aussi de haut en bas, sur une page en portrait ; les jetons à découper font la taille des cases du tableau.", ou: "CAA · Supports visuels" },
+      { quoi: "Le cahier journal a ses rituels — créés d'un bouton, posés d'un clic —, se zoome au pincement comme la grille du planning, et laisse cocher « ne pas imprimer » sur ce qu'un créneau cite : un jeu, une séquence, un rituel. Le matériel des séances citées suit à la suite du journal, à l'échelle qu'on lui donne, et une feuille réduite tient vraiment sur moins de pages.", ou: "Planning · cahier journal" },
+      { quoi: "Le bilan d'un créneau va de lui-même au dossier des élèves du créneau : plus de bouton à presser.", ou: "Planning · cahier journal" },
+      { quoi: "Un vocal du téléphone se transcrit en ligne quand l'ordinateur n'a pas de modèle, et un vocal en échec se reprend d'un bouton.", ou: "Réglages · Partage WiFi" },
+      { quoi: "Séquences : un cadre à la création, repris des démarches des guides Éduscol, une démarche par domaine ; l'arbre dit quelles compétences une séquence vise déjà ; des sous-compétences écrites à la main ou proposées par l'assistant ; un PDF du bureau se reprend dans le matériel de la séance, qui reste chez elle.", ou: "Plan de travail · Séquences" },
+      { quoi: "Manuels : un écran pour choisir, un écran par manuel. Un manuel se scanne avec le scanner de l'iPhone, comme dans Notes, et un manuel entier photographié au téléphone voit ses exercices réadaptés.", ou: "Adapter · Manuels" },
+      { quoi: "Programmation IME : programmer par créneau de la semaine type et voir les compétences en grille ; les objectifs de la programmation par élève se retrouvent dans ses progressions.", ou: "Organisation · Programmation" },
+      { quoi: "L'arbre des compétences porte sa barre de recherche partout où l'on choisit une compétence. La navigation garde les lieux récents — « Revenir où l'on était ». Plus d'adresse web au pied des pages imprimées, et le prénom en haut des fiches.", ou: "barre du haut" },
+      { quoi: "Compagnon : appairer en pointant la caméra sur le QR code, par le nom de l'ordinateur et non son adresse ; un dimanche n'est plus pris pour une panne de réseau ; l'interrupteur du partage là où on le cherche.", ou: "Réglages · Partage WiFi" },
+    ],
+  },
+  {
     version: "1.6.16",
     titre: "Le téléphone dit sous quoi il enregistre",
     points: [
