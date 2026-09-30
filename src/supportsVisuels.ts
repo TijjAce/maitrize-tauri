@@ -154,6 +154,8 @@ export function feuilleJetons(r: ReglagesJetons, images: Images): string {
 
 // ── D'abord / ensuite ──────────────────────────────────────────────────────
 
+export type SensDabord = "horizontal" | "vertical";
+
 export interface ReglagesDabord {
   /** Deux étapes, ou trois avec « puis ». */
   etapes: PictoPose[];
@@ -161,10 +163,12 @@ export interface ReglagesDabord {
   /** Planches par page : une grande, ou deux plus petites. */
   exemplaires: number;
   capitales: boolean;
+  /** De gauche à droite, ou de haut en bas — certains élèves lisent mieux une colonne. */
+  sens: SensDabord;
 }
 
 export const DABORD_PAR_DEFAUT: ReglagesDabord = {
-  etapes: [pictoVide(), pictoVide()], titres: true, exemplaires: 1, capitales: false,
+  etapes: [pictoVide(), pictoVide()], titres: true, exemplaires: 1, capitales: false, sens: "horizontal",
 };
 
 export const TITRES_ETAPES = ["D'abord", "Ensuite", "Puis"];
@@ -178,6 +182,7 @@ export function normaliserDabord(brut: unknown): ReglagesDabord {
     titres: booleen(o.titres, d.titres),
     exemplaires: entier(o.exemplaires, 1, 2, d.exemplaires),
     capitales: booleen(o.capitales, d.capitales),
+    sens: o.sens === "vertical" ? "vertical" : "horizontal",
   };
 }
 
@@ -191,9 +196,13 @@ export function feuilleDabord(r: ReglagesDabord, images: Images): string {
       + `<div class="sv-carte">${image(e, images)}${mot(e)}</div></div>`).join("")
     + `</div>`;
   const n = r.exemplaires >= 2 ? 2 : 1;
-  const classes = ["sv-feuille", "sv-dabord", `sv-ex-${n}`, r.capitales && "sv-majuscules"].filter(Boolean).join(" ");
+  // À la verticale, la flèche tourne et les planches se mettent côte à côte ; la page se tient en portrait.
+  const classes = ["sv-feuille", "sv-dabord", `sv-ex-${n}`, r.sens === "vertical" && "sv-v", r.capitales && "sv-majuscules"].filter(Boolean).join(" ");
   return `<div class="${classes}">${Array.from({ length: n }, () => planche).join("")}${attribution(etapes)}</div>`;
 }
+
+/** La page qui va au sens : à l'italienne pour une ligne, en portrait pour une colonne. */
+export const pageDabord = (r: ReglagesDabord) => (r.sens === "vertical" ? PAGE_PORTRAIT : PAGE_PAYSAGE);
 
 // ── Scénario social ────────────────────────────────────────────────────────
 
@@ -298,6 +307,16 @@ export const STYLE_SUPPORTS = `
   .sv-ex-2 .sv-d-titre { font-size: 20px; }
   .sv-ex-2 .sv-d-planche { border-bottom: 1px dashed #bbb; padding-bottom: 14px; }
   .sv-fleche { width: 56px; flex: none; }
+  /* De haut en bas : une colonne, la flèche vers le bas ; deux planches à découper se mettent côte à côte. */
+  .sv-v .sv-d-planche { flex-direction: column; gap: 6px; }
+  .sv-v .sv-d-etape { flex: none; width: 236px; max-width: none; }
+  .sv-v .sv-fleche { transform: rotate(90deg); width: 44px; height: 30px; }
+  .sv-v .sv-image, .sv-v .sv-image-vide { max-width: 200px; }
+  .sv-v.sv-ex-2 { display: flex; flex-wrap: wrap; gap: 0 24px; align-items: flex-start; justify-content: center; }
+  .sv-v.sv-ex-2 .sv-d-planche { flex: 1 1 0; min-width: 0; margin: 0; padding: 0 12px 10px; border-bottom: none; border-right: 1px dashed #bbb; }
+  .sv-v.sv-ex-2 .sv-d-planche:last-of-type { border-right: none; }
+  .sv-v.sv-ex-2 .sv-d-etape { width: 166px; }
+  .sv-v.sv-ex-2 .sv-attribution { flex-basis: 100%; }
 
   .sv-s-etapes { display: flex; flex-direction: column; gap: 10px; }
   .sv-s-etape { display: flex; align-items: center; gap: 14px; border: 2px solid #3a3a3a; border-radius: 12px; padding: 8px 12px;

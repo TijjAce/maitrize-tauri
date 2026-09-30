@@ -3,7 +3,7 @@ import {
   ATTRIBUTION_ARASAAC, DABORD_PAR_DEFAUT, dePrenom, JETONS_PAR_DEFAUT, MINUTEUR_PAR_DEFAUT, SCENARIO_PAR_DEFAUT,
   demarrer, dureeMs, estEnMarche, estFini, feuilleDabord, feuilleJetons, feuilleScenario, fractionAffichee,
   graduations, idsDes, mettreEnPause, minuteurPret, normaliserDabord, normaliserJetons, normaliserMinuteur,
-  normaliserScenario, pageDuScenario, PAGE_PAYSAGE, PAGE_PORTRAIT, prolonger, restantA, secteurRestant, tempsLisible, diametreDesJetons,
+  normaliserScenario, pageDuScenario, PAGE_PAYSAGE, PAGE_PORTRAIT, prolonger, restantA, secteurRestant, tempsLisible, diametreDesJetons, pageDabord,
 } from "./supportsVisuels";
 
 const IMAGES = { 12: "data:image/png;base64,AAA", 34: "data:image/png;base64,BBB" };
@@ -112,6 +112,19 @@ describe("d'abord / ensuite", () => {
     expect(normaliserDabord({ etapes: [{ id: 1, mot: "a" }] }).etapes).toHaveLength(2);
     expect(normaliserDabord({ etapes: [1, 2, 3, 4, 5] }).etapes).toHaveLength(3);
     expect(normaliserDabord({ exemplaires: 7 }).exemplaires).toBe(2);
+    expect(normaliserDabord({}).sens).toBe("horizontal");
+    expect(normaliserDabord({ sens: "vertical" }).sens).toBe("vertical");
+    expect(normaliserDabord({ sens: "oblique" }).sens).toBe("horizontal");
+  });
+
+  it("se met en colonne, sur une page en portrait", () => {
+    const etapes = [{ id: 1, mot: "travail" }, { id: 2, mot: "tablette" }];
+    const vertical = feuilleDabord({ ...DABORD_PAR_DEFAUT, etapes, sens: "vertical" }, IMAGES);
+    expect(vertical).toMatch(/class="sv-feuille sv-dabord sv-ex-1 sv-v"/);
+    expect(compter(vertical, /class="sv-fleche"/g)).toBe(1);
+    expect(feuilleDabord({ ...DABORD_PAR_DEFAUT, etapes }, IMAGES)).not.toContain("sv-v");
+    expect(pageDabord({ ...DABORD_PAR_DEFAUT, sens: "vertical" })).toContain("portrait");
+    expect(pageDabord(DABORD_PAR_DEFAUT)).toContain("landscape");
   });
 });
 
