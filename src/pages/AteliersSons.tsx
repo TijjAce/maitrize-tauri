@@ -7,6 +7,7 @@ import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
+import { CasesFeuille } from "../components/OptionsFeuille";
 import { LigneDuProjet } from "../components/ProjetDuMoment";
 import { api } from "../api";
 import { STYLE_FEUILLE } from "../cartesImprimables";
@@ -56,11 +57,14 @@ function Boutons({ onTirage, onImprimer, onBureau, peut }: {
   onTirage?: () => void; onImprimer: () => void; onBureau?: () => Promise<{ id: string; titre: string }>; peut: boolean;
 }) {
   return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-      {onTirage && <button type="button" className="btn sm" onClick={onTirage}>🎲 Autre tirage</button>}
-      <button type="button" className="btn primary sm" disabled={!peut} onClick={onImprimer}>🖨 Imprimer</button>
-      {onBureau && <BoutonBureau disabled={!peut} onEnregistrer={onBureau} />}
-    </div>
+    <>
+      <CasesFeuille />
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+        {onTirage && <button type="button" className="btn sm" onClick={onTirage}>🎲 Autre tirage</button>}
+        <button type="button" className="btn primary sm" disabled={!peut} onClick={onImprimer}>🖨 Imprimer</button>
+        {onBureau && <BoutonBureau disabled={!peut} onEnregistrer={onBureau} />}
+      </div>
+    </>
   );
 }
 

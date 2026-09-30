@@ -484,6 +484,9 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .options-feuille { display: flex; align-items: center; gap: 4px 16px; flex-wrap: wrap; }
 .options-feuille-titre { font-weight: 600; font-size: 13px; }
 .options-feuille .pb-coche { margin: 0; }
+/* Les mêmes cases, à côté des boutons d'impression. */
+.cases-feuille { display: flex; align-items: center; gap: 4px 14px; flex-wrap: wrap; margin-top: 10px; font-size: 12.5px; }
+.cases-feuille .pb-coche { margin: 0; font-size: 12.5px; }
 /* Le projet du moment, en tête d'un atelier ; et, sous une liste, d'où viennent ses entrées. */
 .projet-atelier { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; }
 .projet-atelier select { max-width: 280px; }
