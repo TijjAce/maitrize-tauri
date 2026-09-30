@@ -765,6 +765,11 @@ pub(crate) fn migrate(conn: &Connection) {
     conn.execute("ALTER TABLE projets ADD COLUMN domaines TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN origine TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN semaine TEXT NOT NULL DEFAULT ''", []).ok();
+    // Le corpus du projet — ses mots, ses phrases —, dont les ateliers de
+    // Fabriquer se servent tant qu'il est en cours. Un texte par colonne, une
+    // entrée par ligne : c'est ce qu'on écrit, et c'est ce qui se fusionne.
+    conn.execute("ALTER TABLE projets ADD COLUMN mots TEXT NOT NULL DEFAULT ''", []).ok();
+    conn.execute("ALTER TABLE projets ADD COLUMN phrases TEXT NOT NULL DEFAULT ''", []).ok();
     migrer_documents_eleve(conn);
 
     // Élèves présents sur un créneau (organisation IME, groupes restreints).

@@ -310,6 +310,8 @@ export interface ProjetClasse {
   /** « idee », « encours » ou « fait ». */
   etat: string;
   etapesJson: string; domaines: string; origine: string;
+  /** Le corpus du projet, une entrée par ligne : les ateliers de Fabriquer s'en servent tant qu'il est en cours. */
+  mots: string; phrases: string;
 }
 
 export interface DocumentCoffre {

@@ -1146,6 +1146,14 @@ pub struct Projet {
     /// L'identifiant de l'idée du catalogue dont il est parti, s'il en vient.
     #[serde(default)]
     pub origine: String,
+    /// Les mots du projet, un par ligne : le vocabulaire qu'on rencontre en le
+    /// menant. Les ateliers de Fabriquer s'en servent tant qu'il est en cours.
+    #[serde(default)]
+    pub mots: String,
+    /// Les phrases du projet, une par ligne : celles qu'on découpe, qu'on trie,
+    /// qu'on remet en ordre.
+    #[serde(default)]
+    pub phrases: String,
 }
 
 impl Projet {
@@ -1164,6 +1172,8 @@ impl Projet {
             etapes_json: r.get("etapes_json").unwrap_or_else(|_| "[]".into()),
             domaines: r.get("domaines").unwrap_or_default(),
             origine: r.get("origine").unwrap_or_default(),
+            mots: r.get("mots").unwrap_or_default(),
+            phrases: r.get("phrases").unwrap_or_default(),
         })
     }
 }

@@ -20,8 +20,9 @@ import {
   CATEGORIES_MAX, COULEURS_TRI, MODELES_TRI, REGLAGES_TRI, STYLE_TRI, avecAide, etiquettesDuTri, etiquettesSaisies, htmlTri, maisonsDuTri,
   type CategorieTri, type ReglagesTri,
 } from "../triEtiquettes";
-import { marquesDeLaReponse, promptMarquerVerbes } from "../triIa";
+import { marquesDeLaReponse, promptMarquerVerbes, promptRangerEtiquettes, rangementDeLaReponse } from "../triIa";
 import { pseudonymiser, restaurer } from "../confidentialite";
+import { LigneDuProjet, useProjetDuMoment } from "../components/ProjetDuMoment";
 
 // ── Fabriquer › Langage › Étiquettes à catégoriser ────────────────────────
 //
@@ -125,6 +126,7 @@ export function MotsMelesTab() {
         </p>
         <Field label="Les mots, un par ligne">
           <Textarea rows={7} value={r.mots} onChange={(e) => maj({ mots: e.target.value })} placeholder={"chat\nchien\nlapin…"} />
+          <LigneDuProjet quoi="mots" texte={r.mots} exemple={REGLAGES_MOTS_MELES.mots} appliquer={(mots) => maj({ mots })} />
         </Field>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <Field label="Taille de la grille"><Input type="number" min={5} max={20} value={r.taille} onChange={(e) => maj({ taille: borne(e.target.value, 5, 20, 10) })} /></Field>
@@ -156,11 +158,14 @@ export function PhrasesTab() {
   // ── L'IA propose des phrases, qui s'ajoutent sous celles de l'enseignant ──
   const [demande, majDemande] = useReglages("phrasesIa", DEMANDE_PHRASES);
   const [occupe, setOccupe] = React.useState(false);
+  // Sans thème écrit, c'est le projet du moment qui donne le sien.
+  const { projet } = useProjetDuMoment();
+  const theme = demande.theme.trim() || projet?.titre.trim() || "";
   const proposer = async () => {
     setOccupe(true);
     try {
       const modele = await api.modeleActif(MODELE_TACHES);
-      const reponse = await api.mistralChat(promptPhrases(demande), modele);
+      const reponse = await api.mistralChat(promptPhrases({ ...demande, theme }), modele);
       const nouvelles = phrasesDeLaReponse(reponse).filter((p) => !phrases.some((q) => q.toLowerCase() === p.toLowerCase()));
       if (!nouvelles.length) { toast("Le modèle n'a rien proposé de lisible ; réessayez, ou changez le thème.", { icone: "🤔" }); return; }
       maj({ phrases: [r.phrases.trim(), ...nouvelles].filter(Boolean).join("\n") });
@@ -178,10 +183,12 @@ export function PhrasesTab() {
         </p>
         <Field label="Les phrases, une par ligne">
           <Textarea rows={7} value={r.phrases} onChange={(e) => maj({ phrases: e.target.value })} placeholder={"Le chat dort sur le canapé.\nOù est mon cartable ?"} />
+          <LigneDuProjet quoi="phrases" texte={r.phrases} exemple={REGLAGES_PHRASES.phrases} appliquer={(phrases) => maj({ phrases })} />
         </Field>
         <div className="ia-phrases">
           <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>✨ Demander des phrases à l'IA</div>
-          <Input value={demande.theme} onChange={(e) => majDemande({ theme: e.target.value })} placeholder="Le thème : la ferme, la cantine, l'hiver, la piscine…" aria-label="Thème des phrases" />
+          <Input value={demande.theme} onChange={(e) => majDemande({ theme: e.target.value })} aria-label="Thème des phrases"
+            placeholder={projet?.titre.trim() ? `Le thème : par défaut, le projet « ${projet.titre.trim()} »` : "Le thème : la ferme, la cantine, l'hiver, la piscine…"} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, margin: "6px 0" }}>
             <Select value={demande.cycle} onChange={(e) => majDemande({ cycle: Number(e.target.value) as 2 | 3 })} aria-label="Cycle">
               <option value={2}>Cycle 2</option><option value={3}>Cycle 3</option>
@@ -220,6 +227,31 @@ export function TriTab() {
   const total = etiquettesDuTri(r, graine).length;
   const aide = avecAide(r);
   const majMaison = (i: number, patch: Partial<CategorieTri>) => maj({ categories: categories.map((c, k) => (k === i ? { ...c, ...patch } : c)) });
+  const { projet, corpus } = useProjetDuMoment();
+  const duProjet = [...corpus.phrases, ...corpus.mots];
+
+  // Le modèle range les mots et les phrases du projet dans les maisons ; ce qu'il n'a pas su placer reste à l'enseignant.
+  const rangerLeProjet = async () => {
+    const titres = categories.map((c) => c.titre.trim());
+    if (titres.length < 2 || titres.some((t) => !t)) { toast("Donnez un titre à chaque maison : c'est lui qui dit où ranger.", { icone: "ℹ️" }); return; }
+    const deja = new Set(categories.flatMap((c) => etiquettesSaisies(c.etiquettes)).map((e) => e.toLocaleLowerCase("fr")));
+    const aRanger = duProjet.filter((e) => !deja.has(e.toLocaleLowerCase("fr")));
+    if (!aRanger.length) { toast("Tout le corpus du projet est déjà dans les maisons.", { icone: "ℹ️" }); return; }
+    setOccupe(true);
+    try {
+      const eleves = await api.elevesList().catch(() => []);
+      const masque = pseudonymiser(aRanger.join("\n"), eleves.map((e) => e.nom));
+      const modele = await api.modeleActif(MODELE_TACHES);
+      const reponse = restaurer(await api.mistralChat(promptRangerEtiquettes(titres, masque.texte.split("\n")), modele), masque.table).texte;
+      const { parMaison, ecartees } = rangementDeLaReponse(reponse, titres.length, aRanger);
+      const rangees = aRanger.length - ecartees.length;
+      if (!rangees) { toast("Le modèle n'a rien rangé de sûr ; écrivez les étiquettes dans leurs maisons.", { icone: "🤔", duree: 6000 }); return; }
+      maj({ categories: categories.map((c, i) => ({ ...c, etiquettes: [...etiquettesSaisies(c.etiquettes), ...parMaison[i]].join("\n") })) });
+      toast(`${rangees} étiquette${rangees > 1 ? "s" : ""} du projet rangée${rangees > 1 ? "s" : ""}${ecartees.length ? `, ${ecartees.length} laissée${ecartees.length > 1 ? "s" : ""} de côté` : ""} : relisez les maisons.`, { icone: "✨", duree: 6000 });
+    } catch (e) {
+      toast("Rangement impossible : " + String(e), { icone: "⚠️" });
+    } finally { setOccupe(false); }
+  };
 
   // Le modèle marque le verbe de chaque phrase ; rien d'autre ne change, et les prénoms des élèves ne partent pas.
   const marquerLesVerbes = async () => {
@@ -270,9 +302,17 @@ export function TriTab() {
                 placeholder={"Une étiquette par ligne.\nJe *suis* content."} aria-label={`Étiquettes de la maison ${i + 1}`} />
             </div>
           ))}
-          {categories.length < CATEGORIES_MAX && (
-            <button type="button" className="btn sm" onClick={() => maj({ categories: [...categories, { titre: "", etiquettes: "" }] })}>＋ Une maison de plus</button>
-          )}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+            {categories.length < CATEGORIES_MAX && (
+              <button type="button" className="btn sm" onClick={() => maj({ categories: [...categories, { titre: "", etiquettes: "" }] })}>＋ Une maison de plus</button>
+            )}
+            {projet && duProjet.length > 0 && (
+              <button type="button" className="btn sm" disabled={occupe} onClick={() => void rangerLeProjet()}
+                title={`Les ${duProjet.length} mots et phrases du projet « ${projet.titre} », rangés par le modèle dans les maisons`}>
+                {occupe ? "Le modèle range…" : `✨ Ranger le corpus du projet (${duProjet.length})`}
+              </button>
+            )}
+          </div>
         </Field>
         <Field label="Différencier">
           <Coche on={r.aideMots} libelle="Le mot marqué en couleur : Je *suis* content." onChange={(v) => maj({ aideMots: v })} />
