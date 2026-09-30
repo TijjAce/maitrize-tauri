@@ -12,7 +12,7 @@ import { TlaTab } from "./Tla";
 import { SupportsVisuelsTab, retenirSupport } from "./SupportsVisuels";
 import {
   CLE_ACTIF, CLE_LEXIQUE, EVT_LEXIQUE, STYLE_CONSIGNES_PICTOS, VERBES_CONSIGNE, consignesActives, decorerConsignesHtml, ecrireLexique,
-  lireLexique, type Lexique,
+  lireLexique, type Lexique, motsAChercher, pictosProposes,
 } from "../caa";
 
 // ── CAA : communication alternative et augmentée ──────────────────────────
@@ -88,19 +88,17 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
     setReglageActif(suite);
     api.settingSet(CLE_ACTIF, suite).then(() => window.dispatchEvent(new Event(EVT_LEXIQUE))).catch(() => {});
   };
-  // Un picto pour chaque verbe qui n'en a pas encore : le premier que la banque connaît sous ce mot.
+  // Un picto pour chaque verbe qui n'en a pas encore : ce que la banque connaît sous ce mot, ou sous un synonyme.
   const proposer = async () => {
     setOccupe(true);
     try {
       const manquants = VERBES_CONSIGNE.map((v) => v.verbe).filter((v) => !lexique[v]);
-      const [trouves, absents] = await api.arasaacParMots(manquants);
-      const suite = { ...lexique };
-      for (const p of trouves) {
-        const verbe = manquants.find((v) => v.toLowerCase() === p.mot.toLowerCase());
-        if (verbe && !suite[verbe]) suite[verbe] = p.id;
-      }
+      const [trouves] = await api.arasaacParMots([...new Set(manquants.flatMap(motsAChercher))]);
+      const proposes = pictosProposes(manquants, trouves);
+      const suite = { ...lexique, ...proposes };
       enregistrer(suite);
-      const combien = Object.keys(suite).length - Object.keys(lexique).length;
+      const combien = Object.keys(proposes).length;
+      const absents = manquants.filter((v) => !proposes[v]);
       const sansImage = absents.length ? ` — sans image dans la banque : ${absents.slice(0, 5).join(", ")}${absents.length > 5 ? ` et ${absents.length - 5} autres` : ""}` : "";
       toast(`${combien} picto${combien > 1 ? "s" : ""} proposé${combien > 1 ? "s" : ""}${sansImage}.`, { icone: "🔤", duree: 8000 });
     } catch (e) { toast(String(e), { icone: "⚠️" }); }
