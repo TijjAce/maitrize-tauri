@@ -911,6 +911,11 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .atelier-quoi { font-size: 12.5px; color: var(--text-2); line-height: 1.5; }
 .atelier-besoin { font-size: 11px; color: var(--text-2); opacity: .8; margin-top: 4px; }
 .atelier-besoin::before { content: "▪ "; }
+.atelier-usage { color: var(--accent); white-space: nowrap; }
+/* Le moment de la séquence où l'atelier est rangé, dans son bandeau. */
+.usage-atelier { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; }
+.usage-atelier .seg button { font-size: 12.5px; }
+.usage-atelier-aide { font-size: 12px; }
 
 /* Ce qu'un atelier travaille, d'après les référentiels. */
 .comp-atelier { border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; margin-bottom: 14px; }

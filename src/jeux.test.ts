@@ -47,3 +47,11 @@ describe("chercher un atelier par le cycle", () => {
     expect(chercherAteliers(avecCycles, "cycles 2 et 3").map((o) => o.id)).toEqual(["heure"]);
   });
 });
+
+describe("chercher un atelier par le moment où il est rangé", () => {
+  it("remonte ceux qu'on a rangés dans ce moment", () => {
+    expect(chercherAteliers(familles, "rituel", { sons: "rituel" }).map((o) => o.id)).toEqual(["sons"]);
+    expect(chercherAteliers(familles, "réinvestissement", { jeux: "reinvestissement", coloriage: "reinvestissement" }).map((o) => o.id)).toEqual(["jeux", "coloriage"]);
+    expect(chercherAteliers(familles, "rituel")).toEqual([]);
+  });
+});
