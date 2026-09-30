@@ -59,6 +59,14 @@ pub struct Sequence {
     /// journal écrit alors « séance 3/6 ».
     #[serde(default)]
     pub nb_seances_prevu: i64,
+    /// Ce que l'enseignant a dit de son avancement quand le cahier journal ne
+    /// suffit pas : « pause », « terminee », ou rien — l'état se déduit alors.
+    #[serde(default)]
+    pub etat: String,
+    /// La dernière modification, posée à chaque enregistrement : c'est ce qui
+    /// dit « en préparation, touchée hier ».
+    #[serde(default)]
+    pub date_maj: String,
 }
 fn default_blue() -> String { "blue".into() }
 fn un() -> i64 { 1 }
@@ -86,6 +94,8 @@ impl Sequence {
             video: r.get("video")?,
             dossier: r.get("dossier").unwrap_or_default(),
             nb_seances_prevu: r.get("nb_seances_prevu").unwrap_or_default(),
+            etat: r.get("etat").unwrap_or_default(),
+            date_maj: r.get("date_maj").unwrap_or_default(),
         })
     }
 }
@@ -121,6 +131,9 @@ pub struct Seance {
     pub bilan_date: Option<String>,
     #[serde(default)]
     pub sequence_id: Option<String>,
+    /// La dernière modification, posée à chaque enregistrement.
+    #[serde(default)]
+    pub date_maj: String,
 }
 fn quarante_cinq() -> i64 { 45 }
 fn vide_arr() -> String { "[]".into() }
@@ -142,6 +155,7 @@ impl Seance {
             bilan: r.get("bilan")?,
             bilan_date: r.get("bilan_date")?,
             sequence_id: r.get("sequence_id")?,
+            date_maj: r.get("date_maj").unwrap_or_default(),
         })
     }
 }

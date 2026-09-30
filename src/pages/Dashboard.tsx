@@ -1,11 +1,14 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
-import { api, couleurHex, raccourci } from "../api";
+import { api, raccourci } from "../api";
 import { useAsync } from "../components/ui";
 import { BandeauSync } from "../components/BandeauSync";
 import { EVT_JOUR } from "../components/CommandPalette";
 import { isoJour, lundiDe, plusJours } from "../dates";
+import { useSuiviSequences } from "../components/useSuiviSequences";
+import { LigneSuivi } from "../components/SuiviSequence";
+import { rangerParActivite } from "../suiviSequences";
 
 export default function Dashboard() {
   const nav = useNavigate();
@@ -118,25 +121,45 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: 16 }}>
-        <h3 style={{ marginTop: 0 }}>📚 Séquences récentes</h3>
-        {(sequences?.length ?? 0) === 0 ? (
-          <p style={{ color: "var(--text-2)" }}>Aucune séquence pour l'instant.</p>
-        ) : (
-          [...(sequences ?? [])]
-            .sort((a, b) => b.dateCreation.localeCompare(a.dateCreation)).slice(0, 5)
-            .map((s) => (
-              <div key={s.id} className="list-row" style={{ cursor: "pointer", marginBottom: 6 }} onClick={() => nav(`/sequences/${s.id}`)}>
-                <span className="dot" style={{ width: 10, height: 10, borderRadius: 3, background: couleurHex[s.couleur] }} />
-                <div style={{ flex: 1 }}>
-                  <div className="title">{s.titre}</div>
-                  <div className="meta">{[s.matiere, s.cycle, `P${s.periode}`].filter(Boolean).join(" · ")}</div>
-                </div>
-                <span className="meta">{new Date(s.dateCreation).toLocaleDateString("fr-FR")}</span>
-              </div>
-            ))
-        )}
-      </div>
+      <SuiviDuTableauDeBord ouvrirLeJournal={ouvrirLeJournal} />
     </Page>
+  );
+}
+
+/**
+ * Les séquences telles que le cahier journal les voit : celles qui sont en
+ * classe en ce moment — avec leur avancement et la prochaine séance, ou
+ * l'alerte quand rien n'est posé —, puis celles qu'on prépare, les
+ * dernières touchées en tête.
+ */
+function SuiviDuTableauDeBord({ ouvrirLeJournal }: { ouvrirLeJournal: (iso: string) => void }) {
+  const nav = useNavigate();
+  const { suivis, aujourdHui, chargement } = useSuiviSequences();
+  const tous = [...suivis.values()];
+  const enClasse = rangerParActivite(tous.filter((s) => s.etat === "classe" || s.etat === "pause"));
+  const enPreparation = tous.filter((s) => s.etat === "preparation")
+    .sort((a, b) => (b.sequence.dateMaj ?? "").localeCompare(a.sequence.dateMaj ?? "") || a.sequence.titre.localeCompare(b.sequence.titre, "fr"))
+    .slice(0, 5);
+  const terminees = tous.filter((s) => s.etat === "terminee").length;
+  return (
+    <div className="card" style={{ marginTop: 16 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+        <h3 style={{ marginTop: 0 }}>📚 En classe en ce moment</h3>
+        {terminees > 0 && <span className="meta">{terminees} terminée{terminees > 1 ? "s" : ""} cette année</span>}
+      </div>
+      {chargement ? null : enClasse.length === 0 ? (
+        <p style={{ color: "var(--text-2)", margin: "0 0 8px" }}>
+          Aucune séquence démarrée : une séquence entre ici dès qu'une de ses séances est posée dans le cahier journal.
+        </p>
+      ) : enClasse.map((s) => (
+        <LigneSuivi key={s.sequence.id} suivi={s} aujourdHui={aujourdHui} onOuvrir={() => nav(`/sequences/${s.sequence.id}`)} onJournal={ouvrirLeJournal} />
+      ))}
+      <h3 style={{ margin: "14px 0 8px" }}>✏️ En préparation</h3>
+      {chargement ? null : enPreparation.length === 0 ? (
+        <p style={{ color: "var(--text-2)", margin: 0 }}>Rien en préparation : tout ce que vous avez écrit est passé en classe, ou terminé.</p>
+      ) : enPreparation.map((s) => (
+        <LigneSuivi key={s.sequence.id} suivi={s} aujourdHui={aujourdHui} onOuvrir={() => nav(`/sequences/${s.sequence.id}`)} />
+      ))}
+    </div>
   );
 }
