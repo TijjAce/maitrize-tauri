@@ -70,8 +70,12 @@ describe("piocher les mots", () => {
   });
 });
 
-/** Une banque et une IA de test, dont on règle les réponses. */
-function services(x: Partial<ServicesCorpus> & { reponse?: string }): ServicesCorpus & { envoyes: ChatMessage[][] } {
+/**
+ * Une banque et une IA de test, dont on règle les réponses : `reponse` aux
+ * phrases, `choix` aux mots à retenir, `themes` aux thèmes à désigner. Ce
+ * qu'on ne règle pas fait échouer l'IA, comme sans clé.
+ */
+function services(x: Partial<ServicesCorpus> & { reponse?: string; choix?: string; themes?: string }): ServicesCorpus & { envoyes: ChatMessage[][] } {
   const envoyes: ChatMessage[][] = [];
   return {
     banqueInstallee: async () => true,
@@ -79,7 +83,12 @@ function services(x: Partial<ServicesCorpus> & { reponse?: string }): ServicesCo
     themesDesMots: async () => [],
     selection: async () => [],
     chercher: async () => [],
-    chat: async (m) => { envoyes.push(m); if (x.reponse === undefined) throw new Error("pas de clé"); return x.reponse; },
+    chat: async (m) => {
+      envoyes.push(m);
+      const quoi = m[1].content.includes("Mots disponibles") ? x.choix : m[1].content.includes("Thèmes :") ? x.themes : x.reponse;
+      if (quoi === undefined) throw new Error("pas de clé");
+      return quoi;
+    },
     noms: async () => ["Apolline Durand"],
     ...x,
     envoyes,
@@ -97,7 +106,7 @@ describe("préparer le corpus", () => {
     const r = await preparerLeCorpus(projet, { ...DEMANDE_CORPUS, phrases: 2 }, s, 1);
     expect(r).toEqual({
       mots: ["âne", "poule", "vache"], phrases: ["La vache mange de l'herbe.", "La poule pond un œuf."],
-      themes: ["terrestrial animal", "domestic animal", "wild animal"], origineMots: "banque", sansIa: false,
+      themes: ["terrestrial animal", "domestic animal", "wild animal"], origineMots: "banque", choisisParLIa: false, sansIa: false,
     });
     // Une seule demande, pour les phrases seulement, avec les mots ; le prénom masqué.
     expect(s.envoyes).toHaveLength(1);
@@ -134,7 +143,7 @@ describe("préparer le corpus", () => {
   it("sans banque, l'IA donne les mots et les phrases", async () => {
     const s = services({ banqueInstallee: async () => false, reponse: "MOTS\nvache\npoule\nPHRASES\nLa vache dort." });
     const r = await preparerLeCorpus(projet, DEMANDE_CORPUS, s, 1);
-    expect(r).toEqual({ mots: ["vache", "poule"], phrases: ["La vache dort."], themes: [], origineMots: "ia", sansIa: false });
+    expect(r).toEqual({ mots: ["vache", "poule"], phrases: ["La vache dort."], themes: [], origineMots: "ia", choisisParLIa: false, sansIa: false });
     expect(s.envoyes[0][0].content).toContain("Réponds en deux parties");
     expect(resumeDeLaPreparation(r, DEMANDE_CORPUS)).toContain("écrits par l'IA");
   });
@@ -142,8 +151,70 @@ describe("préparer le corpus", () => {
   it("sans banque ni IA, ne donne rien — et le dit", async () => {
     const s = services({ banqueInstallee: async () => false });
     const r = await preparerLeCorpus(projet, DEMANDE_CORPUS, s, 1);
-    expect(r).toEqual({ mots: [], phrases: [], themes: [], origineMots: "aucune", sansIa: true });
+    expect(r).toEqual({ mots: [], phrases: [], themes: [], origineMots: "aucune", choisisParLIa: false, sansIa: true });
     expect(resumeDeLaPreparation(r, DEMANDE_CORPUS)).toContain("l'IA n'est pas réglée");
+  });
+
+  const FERME = ["vache", "poule", "cochon", "mouton", "chèvre", "âne", "cheval", "lapin", "canard", "oie", "loup", "renard",
+    "sanglier", "hérisson", "cerf", "chien", "chat", "dindon", "bouc", "veau"];
+
+  it("fait choisir à l'IA, parmi les mots de la banque, ceux du projet — sans rien inventer", async () => {
+    const s = services({
+      selection: async () => FERME.map((mot, i) => ({ id: i + 1, mot })),
+      choix: "vache\n- poule\ncochon\nlicorne\nVache\nmouton\nâne.\nchèvre",
+      reponse: "PHRASES\nLa vache mange.",
+    });
+    const r = await preparerLeCorpus(projet, { ...DEMANDE_CORPUS, mots: 5, phrases: 1 }, s, 1, undefined, ["loup"]);
+    expect(r.mots).toEqual(["âne", "cochon", "mouton", "poule", "vache"]);
+    expect(r.choisisParLIa).toBe(true);
+    expect(r.origineMots).toBe("banque");
+    expect(r.phrases).toEqual(["La vache mange."]);
+    // Deux passages : le choix des mots, puis les phrases.
+    expect(s.envoyes).toHaveLength(2);
+    const [systeme, user] = s.envoyes[0];
+    expect(systeme.content).toContain("Choisis les 5 mots");
+    expect(systeme.content).toContain("N'ajoute aucun mot");
+    expect(user.content).toContain("Mots disponibles : ");
+    for (const m of FERME) expect(user.content).toContain(m);
+    expect(user.content).toContain("Déjà pris : loup");
+    expect(user.content).not.toContain("Apolline");
+    expect(resumeDeLaPreparation(r, { ...DEMANDE_CORPUS, mots: 5, phrases: 1 })).toContain("choisis par l'IA parmi ceux de la banque ARASAAC (Animaux terrestres");
+  });
+
+  it("sans IA, tire au hasard dans la banque — et le dit", async () => {
+    const s = services({ selection: async () => FERME.map((mot, i) => ({ id: i + 1, mot })) });
+    const r = await preparerLeCorpus(projet, { ...DEMANDE_CORPUS, mots: 5 }, s, 3);
+    expect(r.mots).toHaveLength(5);
+    expect(r.mots.every((m) => FERME.includes(m))).toBe(true);
+    expect(r.choisisParLIa).toBe(false);
+    expect(r.sansIa).toBe(true);
+    // Un seul essai : après l'échec, on ne redemande pas les phrases.
+    expect(s.envoyes).toHaveLength(1);
+    expect(resumeDeLaPreparation(r, DEMANDE_CORPUS)).toContain("tirés au hasard dans la banque ARASAAC");
+    expect(resumeDeLaPreparation(r, DEMANDE_CORPUS)).toContain("les phrases attendent l'IA");
+  });
+
+  it("garde le hasard quand l'IA retient trop peu de mots", async () => {
+    const s = services({ selection: async () => FERME.map((mot, i) => ({ id: i + 1, mot })), choix: "vache\nlicorne", reponse: "PHRASES\nLa vache dort." });
+    const r = await preparerLeCorpus(projet, { ...DEMANDE_CORPUS, mots: 8 }, s, 3);
+    expect(r.mots).toHaveLength(8);
+    expect(r.choisisParLIa).toBe(false);
+    expect(r.sansIa).toBe(false);
+  });
+
+  it("quand rien ne désigne un thème, l'IA en choisit parmi ceux de la banque", async () => {
+    const s = services({
+      themes: "Légumes\n- Aliments\nFêtes",
+      selection: async (themes) => { expect(themes).toEqual(["vegetable", "food"]); return [{ id: 1, mot: "carotte" }, { id: 2, mot: "pain" }]; },
+    });
+    const r = await preparerLeCorpus({ ...projet, titre: "Qui suis-je ?", descriptif: "" }, { ...DEMANDE_CORPUS, phrases: 0 }, s, 1);
+    expect(r.themes).toEqual(["vegetable", "food"]);
+    expect(r.mots).toEqual(["carotte", "pain"]);
+    const [systeme, user] = s.envoyes[0];
+    expect(systeme.content).toContain("Choisis au plus 3 thèmes");
+    expect(user.content).toContain("Thèmes : ");
+    expect(user.content).toContain("Animaux domestiques");
+    expect(user.content).not.toContain("Verbes");
   });
 
   it("respecte les thèmes choisis par l'enseignant", async () => {

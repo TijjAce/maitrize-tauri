@@ -1,22 +1,27 @@
 // ── Le corpus se prépare tout seul ────────────────────────────────────────
 //
 // Les mots viennent de la banque ARASAAC installée sur cet ordinateur : ils
-// ont une image, et rien ne part sur le réseau. On devine les thèmes du
-// projet de deux façons — par le libellé des catégories (« Les animaux »
-// mène aux animaux terrestres) et par les pictogrammes qui portent les mots
-// du titre (« soupe » est rangée dans les aliments) —, et l'on y pioche.
-// Faute de thème, on garde les pictogrammes qui portent ces mots-là ; faute
-// de tout, l'IA propose. Les phrases, elles, viennent de l'IA, écrites avec
-// ces mots. L'enseignant change tout : les thèmes, le tirage, les phrases,
-// ou les mots à la main.
+// ont une image, et aucun n'est inventé. On devine les thèmes du projet de
+// deux façons — par le libellé des catégories (« Les animaux » mène aux
+// animaux terrestres) et par les pictogrammes qui portent les mots du titre
+// (« soupe » est rangée dans les aliments) — ; faute de thème, l'IA en
+// choisit parmi ceux de la banque. Puis, parmi les mots de ces thèmes, c'est
+// l'IA qui retient ceux qui servent le projet : un tirage au hasard donnait
+// le loup et le sanglier à une sortie à la ferme. Sans IA, on tire au
+// hasard, et on le dit. Faute de banque, l'IA propose les mots. Les
+// phrases, elles, viennent de l'IA, écrites avec ces mots. L'enseignant
+// change tout : les thèmes, le tirage, les phrases, ou les mots à la main.
 
 import type { CategorieArasaac, ChatMessage } from "./api";
 import { normaliser } from "./competencesTravaillees";
 import { pseudonymiser } from "./confidentialite";
-import { corpusDeLaReponse, promptCorpus, type DemandeCorpus, type ProjetDecrit } from "./corpusIa";
+import {
+  corpusDeLaReponse, motsChoisisDeLaReponse, promptChoisirLesMots, promptChoisirLesThemes, promptCorpus, themesChoisisDeLaReponse,
+  type DemandeCorpus, type ProjetDecrit,
+} from "./corpusIa";
 import type { Corpus } from "./corpusProjet";
 import { CATEGORIES_FR, libelleCategorie } from "./data/categoriesArasaac";
-import { hasard, piocher } from "./hasard";
+import { hasard, melanger, piocher } from "./hasard";
 import { uneImageParMot } from "./loto";
 
 // ── Deviner les thèmes ────────────────────────────────────────────────────
@@ -122,12 +127,21 @@ export const THEMES_MAX = 3;
 
 // ── Piocher les mots ──────────────────────────────────────────────────────
 
-/** De la banque, un tirage de mots : un par image, des mots simples, par ordre alphabétique. */
-export function motsDeLaBanque(pictos: { id: number; mot: string }[], combien: number, graine: number): string[] {
-  const propres = uneImageParMot(pictos).map((x) => x.picto.mot.replace(/\s+/g, " ").trim())
+/** Les mots propres d'un lot de pictogrammes : un par image, des mots simples, sans doublon. */
+export function motsPropres(pictos: { id: number; mot: string }[]): string[] {
+  return uneImageParMot(pictos).map((x) => x.picto.mot.replace(/\s+/g, " ").trim())
     .filter((m) => m && !/[\d()[\]/:.!?"«»]/.test(m) && m.split(" ").length <= 3 && m.length <= 24);
-  return piocher(hasard(graine), propres, Math.max(1, Math.round(combien) || 1)).sort((a, b) => a.localeCompare(b, "fr"));
 }
+
+const parOrdre = (mots: string[]) => [...mots].sort((a, b) => a.localeCompare(b, "fr"));
+
+/** De la banque, un tirage de mots au hasard : un par image, par ordre alphabétique. */
+export function motsDeLaBanque(pictos: { id: number; mot: string }[], combien: number, graine: number): string[] {
+  return parOrdre(piocher(hasard(graine), motsPropres(pictos), Math.max(1, Math.round(combien) || 1)));
+}
+
+/** Combien de mots de la banque on soumet au modèle, au plus : au-delà, la liste ne l'aide plus. */
+export const CANDIDATS_MAX = 300;
 
 // ── Préparer le corpus ────────────────────────────────────────────────────
 
@@ -152,7 +166,9 @@ export interface CorpusPrepare {
   themes: string[];
   /** D'où viennent les mots : la banque locale, l'IA, ou nulle part. */
   origineMots: "banque" | "ia" | "aucune";
-  /** L'IA n'a pas répondu : pas de phrases, et pas de mots de repli. */
+  /** Parmi les mots de la banque, c'est l'IA qui a retenu ceux du projet — sinon, le hasard. */
+  choisisParLIa: boolean;
+  /** L'IA n'a pas répondu : ni choix, ni phrases, ni mots de repli. */
   sansIa: boolean;
 }
 
@@ -168,54 +184,91 @@ export async function devinerLesThemes(p: { titre: string; descriptif: string },
   return [...new Set([...parLibelle, ...parPictos])].slice(0, THEMES_MAX);
 }
 
-/** Les mots du projet, pris dans la banque : dans ses thèmes, sinon parmi les pictogrammes qui portent ses mots. */
-export async function motsDeLaBanqueLocale(
-  p: { titre: string; descriptif: string }, themes: string[], combien: number, graine: number, s: ServicesCorpus,
+/** Les mots de la banque parmi lesquels choisir : ceux des thèmes, sinon ceux des pictogrammes qui portent les mots du projet. */
+export async function candidatsDeLaBanque(
+  p: { titre: string; descriptif: string }, themes: string[], s: ServicesCorpus,
 ): Promise<string[]> {
   if (themes.length) {
-    const mots = motsDeLaBanque(await s.selection(themes).catch(() => []), combien, graine);
+    const mots = motsPropres(await s.selection(themes).catch(() => []));
     if (mots.length) return mots;
   }
   if (!(await s.banqueInstallee().catch(() => false))) return [];
   const trouves: { id: number; mot: string }[] = [];
   for (const forme of formesAChercher(`${p.titre}\n${p.descriptif}`)) trouves.push(...await s.chercher(forme).catch(() => []));
-  return trouves.length ? motsDeLaBanque(trouves, combien, graine) : [];
+  return motsPropres(trouves);
+}
+
+/** Le projet tel qu'il part vers l'IA : sans les prénoms des élèves. */
+async function projetMasque(p: ProjetDecrit, s: ServicesCorpus): Promise<ProjetDecrit> {
+  const noms = await s.noms().catch(() => []);
+  const masquer = (t: string) => pseudonymiser(t, noms).texte;
+  return { titre: masquer(p.titre), descriptif: masquer(p.descriptif), domaines: masquer(p.domaines), etapes: p.etapes.map(masquer) };
 }
 
 /** Ce que l'IA écrit — les phrases, et les mots faute de banque ; le projet part sans les prénoms. */
 export async function corpusParLIa(p: ProjetDecrit, d: DemandeCorpus, s: ServicesCorpus): Promise<Corpus> {
-  const noms = await s.noms().catch(() => []);
-  const masquer = (t: string) => pseudonymiser(t, noms).texte;
-  const decrit = { titre: masquer(p.titre), descriptif: masquer(p.descriptif), domaines: masquer(p.domaines), etapes: p.etapes.map(masquer) };
-  return corpusDeLaReponse(await s.chat(promptCorpus(decrit, d)));
+  return corpusDeLaReponse(await s.chat(promptCorpus(await projetMasque(p, s), d)));
 }
 
 /**
  * Prépare le corpus d'un projet : les mots dans la banque locale — dans les
- * thèmes choisis, ou devinés —, les phrases par l'IA avec ces mots. Faute de
- * banque, l'IA donne aussi les mots ; faute d'IA, on garde ce qu'on a.
+ * thèmes choisis, devinés, ou désignés par l'IA —, retenus par l'IA parmi
+ * ceux de ces thèmes ; les phrases par l'IA avec ces mots. Faute de banque,
+ * l'IA donne aussi les mots ; faute d'IA, on tire au hasard et l'on garde
+ * ce qu'on a. `eviter` : les mots qu'on a déjà, quand on en veut d'autres.
  */
 export async function preparerLeCorpus(
-  p: ProjetDecrit, d: DemandeCorpus, s: ServicesCorpus, graine: number, themesChoisis?: string[],
+  p: ProjetDecrit, d: DemandeCorpus, s: ServicesCorpus, graine: number, themesChoisis?: string[], eviter: string[] = [],
 ): Promise<CorpusPrepare> {
-  const themes = themesChoisis ?? await devinerLesThemes(p, s);
-  let mots = d.mots > 0 ? await motsDeLaBanqueLocale(p, themes, d.mots, graine, s) : [];
-  let origineMots: CorpusPrepare["origineMots"] = mots.length ? "banque" : "aucune";
-  let phrases: string[] = [];
   let sansIa = false;
-  try {
-    if (mots.length || d.mots <= 0) {
-      if (d.phrases > 0) phrases = (await corpusParLIa(p, { ...d, mots: 0, avec: mots }, s)).phrases;
-    } else {
-      const c = await corpusParLIa(p, d, s);
+  /** Un passage par l'IA ; le premier échec suffit, on n'insiste pas. */
+  const ia = async (messages: ChatMessage[]): Promise<string | null> => {
+    if (sansIa) return null;
+    try { return await s.chat(messages); } catch { sansIa = true; return null; }
+  };
+  let decrit: ProjetDecrit | null = null;
+  const masque = async () => (decrit ??= await projetMasque(p, s));
+
+  let themes = themesChoisis ?? await devinerLesThemes(p, s);
+  if (!themes.length && themesChoisis === undefined && d.mots > 0 && (await s.banqueInstallee().catch(() => false))) {
+    // Ni les libellés ni les pictogrammes n'ont parlé : l'IA désigne des thèmes parmi ceux de la banque.
+    const proposables = themesProposables(await s.categories().catch(() => [] as CategorieArasaac[]))
+      .map((c) => ({ nom: c.nom, libelle: libelleCategorie(c.nom) }));
+    const rep = proposables.length ? await ia(promptChoisirLesThemes(await masque(), proposables.map((c) => c.libelle), THEMES_MAX)) : null;
+    if (rep) themes = themesChoisisDeLaReponse(rep, proposables, THEMES_MAX);
+  }
+
+  let mots: string[] = [];
+  let choisisParLIa = false;
+  if (d.mots > 0) {
+    const candidats = await candidatsDeLaBanque(p, themes, s);
+    const alea = hasard(graine);
+    if (candidats.length > d.mots) {
+      // Plus de mots que demandé : l'IA retient ceux du projet ; à défaut, le hasard.
+      const soumis = melanger(alea, candidats).slice(0, CANDIDATS_MAX);
+      const rep = await ia(promptChoisirLesMots(await masque(), soumis, d.mots, d.cycle, eviter));
+      const choisis = rep ? motsChoisisDeLaReponse(rep, soumis, d.mots) : [];
+      if (choisis.length >= Math.min(4, d.mots)) { mots = parOrdre(choisis); choisisParLIa = true; }
+    }
+    if (!mots.length) mots = parOrdre(piocher(alea, candidats, d.mots));
+  }
+  let origineMots: CorpusPrepare["origineMots"] = mots.length ? "banque" : "aucune";
+
+  let phrases: string[] = [];
+  if (mots.length || d.mots <= 0) {
+    const rep = d.phrases > 0 ? await ia(promptCorpus(await masque(), { ...d, mots: 0, avec: mots })) : null;
+    if (rep) phrases = corpusDeLaReponse(rep).phrases;
+  } else {
+    // Rien dans la banque : l'IA propose les mots, et les phrases avec.
+    const rep = await ia(promptCorpus(await masque(), d));
+    if (rep) {
+      const c = corpusDeLaReponse(rep);
       mots = c.mots;
       phrases = c.phrases;
       if (mots.length) origineMots = "ia";
     }
-  } catch {
-    sansIa = true;
   }
-  return { mots, phrases, themes: origineMots === "banque" ? themes : [], origineMots, sansIa };
+  return { mots, phrases, themes: origineMots === "banque" ? themes : [], origineMots, choisisParLIa, sansIa };
 }
 
 /** Ce qu'on dit de la préparation, en une ligne. */
@@ -225,7 +278,10 @@ export function resumeDeLaPreparation(r: CorpusPrepare, d: DemandeCorpus): strin
     : r.sansIa ? "les phrases attendent l'IA (Réglages › Mistral)" : "l'IA n'a pas donné de phrase lisible";
   if (r.origineMots === "banque") {
     const dou = r.themes.length ? ` (${r.themes.map(libelleCategorie).join(", ")})` : " (les pictogrammes qui portent les mots du projet)";
-    return `${r.mots.length} mots pris dans la banque ARASAAC${dou}${phrases ? `, ${phrases}` : ""}. Relisez, retirez ce qui ne convient pas.`;
+    const comment = r.choisisParLIa ? `choisis par l'IA parmi ceux de la banque ARASAAC${dou}`
+      : r.sansIa ? `tirés au hasard dans la banque ARASAAC${dou} — l'IA n'est pas réglée, elle ne les a pas choisis pour le projet`
+      : `pris dans la banque ARASAAC${dou}`;
+    return `${r.mots.length} mots ${comment}${phrases ? `, ${phrases}` : ""}. Relisez, retirez ce qui ne convient pas.`;
   }
   if (r.origineMots === "ia") return `Pas de thème pour ce projet dans la banque ARASAAC : ${r.mots.length} mots${r.phrases.length ? ` et ${r.phrases.length} phrases` : ""} écrits par l'IA. Relisez, retirez ce qui ne convient pas.`;
   if (d.mots <= 0) return phrases ? `${phrases.charAt(0).toUpperCase()}${phrases.slice(1)}.` : "Rien à écrire.";

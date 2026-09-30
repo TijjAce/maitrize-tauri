@@ -379,7 +379,7 @@ function CorpusDuProjet({ projet, onChange }: { projet: ProjetClasse; onChange: 
         return;
       }
       const d = quoi === "mots" ? { ...demande, phrases: 0 } : demande;
-      const r = await preparerLeCorpus(decrireLeProjet(p), d, servicesCorpus, graineAuHasard(), choisis);
+      const r = await preparerLeCorpus(decrireLeProjet(p), d, servicesCorpus, graineAuHasard(), choisis, quoi === "mots" ? corpusDe(p).mots : []);
       if (r.themes.length) setThemes(r.themes);
       else if (choisis) setThemes(choisis);
       const suite = { ...projetRef.current };
