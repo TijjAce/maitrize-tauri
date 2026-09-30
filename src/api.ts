@@ -116,6 +116,10 @@ export interface Sequence {
   dossier: string;
   /** Combien de séances la séquence prévoit (0 : non précisé) — « séance 3/6 ». */
   nbSeancesPrevu: number;
+  /** Ce que l'enseignant a dit de l'avancement : « pause », « terminee », ou rien (déduit du cahier journal). */
+  etat: string;
+  /** La dernière modification, écrite à chaque enregistrement. */
+  dateMaj: string;
 }
 
 export interface Seance {
@@ -123,6 +127,8 @@ export interface Seance {
   deroulement: string; materiel: string; duree: number; date: string | null;
   tableauDeroulement: string; imagesDeroulement: string; bilan: string;
   bilanDate: string | null; sequenceId: string | null;
+  /** La dernière modification, écrite à chaque enregistrement. */
+  dateMaj: string;
 }
 
 export interface Creneau {
@@ -413,12 +419,13 @@ export const nouvelleSequence = (): Sequence => ({
   competenceVisee: "", imageNom: null, couleur: "blue", dateCreation: nowIso(),
   periode: 1, annee: anneeScolaireActuelle(), ratingEngagement: 0, ratingFacilite: 0,
   ratingApprentissage: 0, ratingDateMaj: null, projetId: null, video: "", dossier: "", nbSeancesPrevu: 0,
+  etat: "", dateMaj: "",
 });
 
 export const nouvelleSeance = (sequenceId: string, numero: number): Seance => ({
   id: newId(), titre: "", numero, objectifs: "", competences: "", deroulement: "",
   materiel: "", duree: 45, date: null, tableauDeroulement: "[]", imagesDeroulement: "[]",
-  bilan: "", bilanDate: null, sequenceId,
+  bilan: "", bilanDate: null, sequenceId, dateMaj: "",
 });
 
 export const nouvelAtelier = (): Atelier => ({

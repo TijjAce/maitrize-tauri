@@ -1645,6 +1645,7 @@ export function seancesDuCadre(demarche: Demarche, sequenceId: string, depuis = 
     bilan: "",
     bilanDate: null,
     sequenceId,
+    dateMaj: "",
   }));
 }
 

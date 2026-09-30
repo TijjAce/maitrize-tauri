@@ -27,18 +27,25 @@ pub fn sequence_save(db: State<Db>, sequence: Sequence) -> R<Sequence> {
     ecrire_sequence(&c, sequence)
 }
 
+/// L'instant présent, tel que la fenêtre l'écrit (`new Date().toISOString()`).
+pub(crate) fn maintenant() -> String {
+    chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
+}
+
 pub(crate) fn ecrire_sequence(c: &rusqlite::Connection, sequence: Sequence) -> R<Sequence> {
+    // La date de modification s'écrit ici, pas dans la fenêtre : aucun enregistrement ne l'oublie.
+    let sequence = Sequence { date_maj: maintenant(), ..sequence };
     c.execute(
         "INSERT INTO sequences (id,titre,matiere,cycle,objectifs,competences,competence_visee,image_nom,couleur,
           date_creation,periode,annee,rating_engagement,rating_facilite,rating_apprentissage,
-          rating_date_maj,projet_id,video,dossier,nb_seances_prevu)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, matiere = excluded.matiere, cycle = excluded.cycle, objectifs = excluded.objectifs, competences = excluded.competences, competence_visee = excluded.competence_visee, image_nom = excluded.image_nom, couleur = excluded.couleur, date_creation = excluded.date_creation, periode = excluded.periode, annee = excluded.annee, rating_engagement = excluded.rating_engagement, rating_facilite = excluded.rating_facilite, rating_apprentissage = excluded.rating_apprentissage, rating_date_maj = excluded.rating_date_maj, projet_id = excluded.projet_id, video = excluded.video, dossier = excluded.dossier, nb_seances_prevu = excluded.nb_seances_prevu",
+          rating_date_maj,projet_id,video,dossier,nb_seances_prevu,etat,date_maj)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, matiere = excluded.matiere, cycle = excluded.cycle, objectifs = excluded.objectifs, competences = excluded.competences, competence_visee = excluded.competence_visee, image_nom = excluded.image_nom, couleur = excluded.couleur, date_creation = excluded.date_creation, periode = excluded.periode, annee = excluded.annee, rating_engagement = excluded.rating_engagement, rating_facilite = excluded.rating_facilite, rating_apprentissage = excluded.rating_apprentissage, rating_date_maj = excluded.rating_date_maj, projet_id = excluded.projet_id, video = excluded.video, dossier = excluded.dossier, nb_seances_prevu = excluded.nb_seances_prevu, etat = excluded.etat, date_maj = excluded.date_maj",
         params![sequence.id, sequence.titre, sequence.matiere, sequence.cycle,
                 sequence.objectifs, sequence.competences, sequence.competence_visee,
                 sequence.image_nom, sequence.couleur, sequence.date_creation, sequence.periode,
                 sequence.annee, sequence.rating_engagement, sequence.rating_facilite,
                 sequence.rating_apprentissage, sequence.rating_date_maj, sequence.projet_id,
-                sequence.video, sequence.dossier, sequence.nb_seances_prevu],
+                sequence.video, sequence.dossier, sequence.nb_seances_prevu, sequence.etat, sequence.date_maj],
     ).map_err(e)?;
     Ok(sequence)
 }
@@ -73,14 +80,15 @@ pub fn seance_save(db: State<Db>, seance: Seance) -> R<Seance> {
 }
 
 pub(crate) fn ecrire_seance(c: &rusqlite::Connection, seance: Seance) -> R<Seance> {
+    let seance = Seance { date_maj: maintenant(), ..seance };
     c.execute(
         "INSERT INTO seances (id,titre,numero,objectifs,competences,deroulement,materiel,duree,date,
-          tableau_deroulement,images_deroulement,bilan,bilan_date,sequence_id)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, numero = excluded.numero, objectifs = excluded.objectifs, competences = excluded.competences, deroulement = excluded.deroulement, materiel = excluded.materiel, duree = excluded.duree, date = excluded.date, tableau_deroulement = excluded.tableau_deroulement, images_deroulement = excluded.images_deroulement, bilan = excluded.bilan, bilan_date = excluded.bilan_date, sequence_id = excluded.sequence_id",
+          tableau_deroulement,images_deroulement,bilan,bilan_date,sequence_id,date_maj)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, numero = excluded.numero, objectifs = excluded.objectifs, competences = excluded.competences, deroulement = excluded.deroulement, materiel = excluded.materiel, duree = excluded.duree, date = excluded.date, tableau_deroulement = excluded.tableau_deroulement, images_deroulement = excluded.images_deroulement, bilan = excluded.bilan, bilan_date = excluded.bilan_date, sequence_id = excluded.sequence_id, date_maj = excluded.date_maj",
         params![seance.id, seance.titre, seance.numero, seance.objectifs, seance.competences,
                 seance.deroulement, seance.materiel, seance.duree, seance.date,
                 seance.tableau_deroulement, seance.images_deroulement, seance.bilan,
-                seance.bilan_date, seance.sequence_id],
+                seance.bilan_date, seance.sequence_id, seance.date_maj],
     ).map_err(e)?;
     Ok(seance)
 }
@@ -2750,6 +2758,14 @@ mod tests_sequences {
             "id": "q1", "titre": "Loto des animaux", "nbSeancesPrevu": 6
         })).unwrap();
         super::ecrire_sequence(&c, seq).unwrap();
+        let relue: Sequence = c.query_row("SELECT * FROM sequences WHERE id = 'q1'", [], Sequence::from_row).unwrap();
+        assert_eq!(relue.nb_seances_prevu, 6);
+        // La date de modification s'écrit toute seule ; l'état choisi se garde.
+        assert!(relue.date_maj.ends_with('Z') && relue.date_maj.len() >= 20, "{}", relue.date_maj);
+        assert_eq!(relue.etat, "");
+        super::ecrire_sequence(&c, Sequence { etat: "pause".into(), ..relue }).unwrap();
+        let relue: Sequence = c.query_row("SELECT * FROM sequences WHERE id = 'q1'", [], Sequence::from_row).unwrap();
+        assert_eq!(relue.etat, "pause");
         let lu = c.query_row("SELECT * FROM sequences WHERE id='q1'", [], Sequence::from_row).unwrap();
         assert_eq!(lu.nb_seances_prevu, 6);
         // Une séquence d'une version plus ancienne n'en annonce aucune.
