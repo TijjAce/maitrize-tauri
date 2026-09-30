@@ -913,9 +913,14 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .atelier-besoin::before { content: "▪ "; }
 .atelier-usage { color: var(--accent); white-space: nowrap; }
 /* Le moment de la séquence où l'atelier est rangé, dans son bandeau. */
-.usage-atelier { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; }
-.usage-atelier .seg button { font-size: 12.5px; }
-.usage-atelier-aide { font-size: 12px; }
+/* Le rangement de l'atelier, dans l'en-tête : un choix discret. */
+.usage-atelier { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.usage-atelier select { max-width: 250px; font-weight: 400; }
+/* La feuille de l'atelier : tout ce qui s'imprime, replié en une ligne ; ouvert, ses réglages à plat. */
+.feuille-atelier > summary .meta { font-weight: 400; margin-left: 8px; }
+.feuille-atelier-corps { margin-top: 4px; }
+.feuille-atelier-corps .comp-atelier { border: none; border-top: 1px solid var(--border); border-radius: 0; margin: 0; padding: 8px 0 6px; }
+.feuille-atelier-corps .comp-atelier:first-child { border-top: none; }
 
 /* Ce qu'un atelier travaille, d'après les référentiels. */
 .comp-atelier { border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; margin-bottom: 14px; }

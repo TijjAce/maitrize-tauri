@@ -33,7 +33,10 @@ export function usePictosAtelier(atelier: string): { pictos: string[]; enregistr
   return { pictos, enregistrer };
 }
 
-export function PictosAtelier({ atelier }: { atelier: string }) {
+/** La consigne telle qu'elle s'imprime, ses verbes montrés en pictos, et ceux qui n'en ont pas encore. */
+export function useEtatDesPictos(atelier: string): {
+  texte: string; pictos: string[]; enregistrer: (v: string[]) => void; montres: string[]; sansPicto: string[]; resume: string;
+} {
   const { pictos, enregistrer } = usePictosAtelier(atelier);
   const reecrite = useConsigneAtelier(atelier);
   // La consigne d'origine, que l'aperçu publie ; ou celle que l'enseignant a réécrite.
@@ -41,10 +44,16 @@ export function PictosAtelier({ atelier }: { atelier: string }) {
   const texte = reecrite.trim() || defaut;
   const { lexique } = useLexique();
   const verbes = React.useMemo(() => verbesDuTexte(texte), [texte]);
-  const montres = [...pictos, ...verbes.filter((v) => !pictos.includes(v))];
+  const montres = React.useMemo(() => [...pictos, ...verbes.filter((v) => !pictos.includes(v))], [pictos, verbes]);
+  const sansPicto = React.useMemo(() => montres.filter((v) => !lexique[v]), [montres, lexique]);
   const resume = !montres.length
     ? "aucun verbe reconnu dans la consigne"
     : montres.map((v) => (lexique[v] ? v : `${v} (sans picto)`)).join(", ");
+  return { texte, pictos, enregistrer, montres, sansPicto, resume };
+}
+
+export function PictosAtelier({ atelier }: { atelier: string }) {
+  const { texte, pictos, enregistrer, resume } = useEtatDesPictos(atelier);
   return (
     <details className="comp-atelier pictos-atelier">
       <summary>
