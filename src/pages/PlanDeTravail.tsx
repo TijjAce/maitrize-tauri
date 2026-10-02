@@ -28,7 +28,7 @@ import { estPaquet, titreDuPaquet } from "../bureauCommun";
 import { confirmer } from "../components/confirmer";
 import { contenuDirect, nature } from "../bureau";
 import { estSurLeBureau } from "../materielSeance";
-import { useSuiviSequences } from "../components/useSuiviSequences";
+import { useEtatDuPlan, useSuiviSequences } from "../components/useSuiviSequences";
 import { BadgeSuivi } from "../components/SuiviSequence";
 import { ETATS_SEQUENCE, rangerParActivite, type EtatSequence, type SuiviSequence } from "../suiviSequences";
 import { RituelForm, useRituels } from "../components/Rituels";
@@ -358,7 +358,8 @@ export default function PlanDeTravail() {
   const filtre = q.trim().toLowerCase();
   // Où en est chaque séquence, d'après le cahier journal ; et le filtre qui ne montre que celles d'un état.
   const { suivis } = useSuiviSequences();
-  const [etatFiltre, setEtatFiltre] = React.useState<EtatSequence | "">("");
+  // L'accueil renvoie ici pour les séquences en préparation, qu'il ne liste plus : le filtre suit sa demande.
+  const [etatFiltre, setEtatFiltre] = useEtatDuPlan();
   const etatDe = (e: Element) => (e.genre === "sequence" ? suivis.get(e.id)?.etat : undefined);
   const dansLEtat = (e: Element, etat: EtatSequence) => etatDe(e) === etat || (etat === "classe" && etatDe(e) === "pause");
   elementsRef.current = elements;
