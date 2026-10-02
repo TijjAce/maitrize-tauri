@@ -3,68 +3,161 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
 <title>Dictaphone — Maitrize</title>
 <style>
- :root { --bg:#f6f7fb; --card:#fff; --txt:#1c2233; --txt2:#687087; --acc:#6366f1; --bd:#e3e6ef; --rouge:#dc2626; }
+ :root {
+   --bg:#f2f2f7; --card:#fff; --txt:#111827; --txt2:#6b7280; --txt3:#9ca3af;
+   --acc:#6366f1; --acc-fonce:#4f46e5; --acc-txt:#4f46e5; --acc-doux:rgba(99,102,241,.12);
+   --sep:rgba(17,24,39,.08); --champ:#f2f2f7;
+   --rouge:#e5484d; --rouge-doux:rgba(229,72,77,.12);
+   --vert:#16a34a; --orange:#d97706; --orange-doux:rgba(217,119,6,.13);
+   --ombre:0 1px 2px rgba(17,24,39,.05), 0 6px 20px rgba(17,24,39,.06);
+ }
  @media (prefers-color-scheme: dark) {
-   :root { --bg:#12141c; --card:#1b1e28; --txt:#eceff7; --txt2:#9aa2b8; --bd:#2a2f3d; }
+   :root {
+     --bg:#0b0c10; --card:#17191f; --txt:#f3f4f6; --txt2:#9ca3af; --txt3:#6b7280;
+     --acc-txt:#a5b4fc; --acc-doux:rgba(129,140,248,.16);
+     --sep:rgba(255,255,255,.08); --champ:#0f1116;
+     --rouge-doux:rgba(229,72,77,.18); --orange-doux:rgba(217,119,6,.2);
+     --ombre:none;
+   }
  }
  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+ [hidden] { display:none !important; }
+ html { -webkit-text-size-adjust:100%; }
  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-   background:var(--bg); color:var(--txt); }
- header { padding:calc(14px + env(safe-area-inset-top)) 16px 12px; font-weight:700; font-size:17px; }
- main { padding:0 16px calc(24px + env(safe-area-inset-bottom)); max-width:560px; margin:0 auto; }
- .card { background:var(--card); border:1px solid var(--bd); border-radius:16px; padding:18px 16px; margin-bottom:12px; }
- .gros { width:100%; padding:30px 16px; font-size:21px; font-weight:700; border:none; border-radius:18px;
-   background:var(--acc); color:#fff; font-family:inherit; }
- .gros.rouge { background:var(--rouge); }
- .gros:disabled { opacity:.45; }
- .chrono { font-size:46px; font-weight:700; font-variant-numeric:tabular-nums; text-align:center; margin:0 0 2px; }
- .meta { color:var(--txt2); font-size:13.5px; line-height:1.55; }
- .titre { font-size:12px; font-weight:700; color:var(--txt2); text-transform:uppercase;
-   letter-spacing:.05em; margin:18px 0 8px; }
- .ligne { display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--bd);
-   border-radius:12px; padding:11px 13px; margin-bottom:7px; font-size:14px; }
- .ligne b { font-variant-numeric:tabular-nums; }
- .pt { width:9px; height:9px; border-radius:50%; flex:none; }
- .btn { border:1px solid var(--bd); background:var(--card); color:var(--txt); border-radius:10px;
-   padding:10px 14px; font-size:14px; font-family:inherit; }
- .btn.plein { background:var(--acc); color:#fff; border-color:transparent; font-weight:600; }
- input { width:100%; padding:12px; border:1px solid var(--bd); border-radius:10px; font-size:15px;
-   background:var(--bg); color:var(--txt); font-family:inherit; }
- .err { color:var(--rouge); font-size:13.5px; }
- /* Un avertissement sur la dictée qui vient de finir : à lire, pas à craindre. */
- .avis { font-size:13.5px; line-height:1.5; background:var(--card); border:1px solid var(--bd);
-   border-left:3px solid var(--acc); border-radius:10px; padding:11px 13px; margin:0 0 10px; }
- /* La jauge dit que le micro entend quelque chose. Sans elle, on ne sait
-    qu'au retour, devant une transcription vide, que rien n'avait été capté. */
- .jauge-fond { height:8px; border-radius:99px; background:var(--bd); overflow:hidden; margin:2px 0 0; }
- .jauge { height:100%; width:0; border-radius:99px; background:var(--acc);
-   transition:width .1s linear; }
- .ligne .btn { padding:8px 11px; }
- textarea { width:100%; margin-top:10px; padding:12px; border:1px solid var(--bd); border-radius:10px;
-   font-size:16px; background:var(--bg); color:var(--txt); font-family:inherit; resize:none; }
- /* Sous quoi l'on enregistre : la seule chose que ce téléphone sait de la
-    classe, et il faut qu'elle se lise d'un coup d'œil. */
- .creneau { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%;
-   background:var(--bg); border:1px solid var(--bd); border-radius:12px; padding:10px 13px;
-   font-size:14.5px; font-weight:600; color:var(--txt); font-family:inherit; margin-bottom:14px; }
- .creneau.vide { font-weight:400; color:var(--txt2); font-size:13.5px; display:block; text-align:left; }
- .creneau-action { color:var(--acc); font-weight:600; font-size:13.5px; flex:none; }
- .choix { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
- .choix-ligne { display:flex; align-items:center; gap:12px; width:100%; text-align:left;
-   background:var(--bg); border:1px solid var(--bd); border-radius:12px; padding:12px 13px;
-   font-size:15px; color:var(--txt); font-family:inherit; }
- .choix-ligne.on { border-color:var(--acc); background:var(--card); }
- .choix-ligne b { font-variant-numeric:tabular-nums; min-width:44px; flex:none; }
- .creneau-puce { flex:none; opacity:.8; }
- .vue { width:100%; border-radius:12px; background:#000; display:block; aspect-ratio:1/1;
-   object-fit:cover; }
- .note-apercu { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; font-size:13.5px; }
+   background:var(--bg); color:var(--txt); -webkit-font-smoothing:antialiased; }
+ button { font-family:inherit; cursor:pointer; }
+ button:disabled { opacity:.45; cursor:default; }
+ .ic { width:20px; height:20px; flex:none; display:block; }
+ .ic.petit { width:16px; height:16px; }
+
+ /* L'en-tête : le nom, et par où partirait une dictée maintenant. */
+ header { display:flex; align-items:center; justify-content:space-between; gap:12px;
+   padding:calc(12px + env(safe-area-inset-top)) 20px 4px; max-width:520px; margin:0 auto; }
+ h1 { margin:0; font-size:30px; font-weight:800; letter-spacing:-.02em; }
+ .liaison { display:inline-flex; align-items:center; gap:7px; padding:7px 12px; border-radius:99px;
+   background:var(--card); box-shadow:var(--ombre); font-size:13.5px; font-weight:600; color:var(--txt2); }
+ .pt { width:8px; height:8px; border-radius:50%; flex:none; background:var(--txt3); display:inline-block; }
+ .ok .pt, .pt.ok { background:var(--vert); }
+ .loin .pt, .pt.loin { background:var(--orange); }
+
+ main { padding:0 16px calc(32px + env(safe-area-inset-bottom)); max-width:520px; margin:0 auto; }
+
+ /* Dicter : le geste de la journée, au milieu de l'écran. */
+ .heros { display:flex; flex-direction:column; align-items:center; padding:18px 0 4px; }
+ .pastille { display:inline-flex; align-items:center; gap:8px; max-width:100%; padding:10px 15px;
+   border:none; border-radius:99px; background:var(--card); box-shadow:var(--ombre); color:var(--txt);
+   font-size:15px; font-weight:600; margin:0; }
+ .pastille > .ic:first-child { color:var(--acc-txt); }
+ .pastille span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+ .pastille .petit { color:var(--txt3); }
+ .pastille.muette { color:var(--txt2); font-weight:500; box-shadow:none; background:transparent; }
+ .pastille.muette > .ic:first-child { color:var(--txt3); }
+ .rond-cadre { position:relative; width:164px; height:164px; margin:30px 0 12px; }
+ .rond { position:relative; width:164px; height:164px; border-radius:50%; border:none; display:grid;
+   place-items:center; color:#fff; background:linear-gradient(150deg, #818cf8 0%, var(--acc) 45%, var(--acc-fonce) 100%);
+   box-shadow:0 14px 34px rgba(79,70,229,.38), inset 0 1px 0 rgba(255,255,255,.28);
+   transition:transform .12s ease; }
+ .heros > .rond { margin:30px 0 12px; }
+ .rond:active { transform:scale(.96); }
+ .rond .ic { width:62px; height:62px; stroke-width:1.8; }
+ .rond.rouge { background:linear-gradient(150deg, #f87171 0%, var(--rouge) 50%, #c2272d 100%);
+   box-shadow:0 14px 34px rgba(220,38,38,.35), inset 0 1px 0 rgba(255,255,255,.25); }
+ .rond.rouge .ic { width:52px; height:52px; }
+ /* Le halo suit la voix : on voit d'un coup d'œil que le micro entend. */
+ .halo { position:absolute; inset:0; border-radius:50%; background:var(--rouge-doux);
+   transition:transform .1s linear; }
+ .rond-legende { margin:0; font-size:17px; font-weight:700; }
+ .chrono { margin:22px 0 0; font-size:58px; font-weight:700; letter-spacing:-.02em;
+   font-variant-numeric:tabular-nums; line-height:1; }
+ .muet { margin:14px 0 0; color:var(--rouge); font-size:14.5px; font-weight:600; }
+ .tuiles { display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; margin-top:26px; }
+ .tuile { display:flex; align-items:center; justify-content:center; gap:9px; padding:15px 12px;
+   border:none; border-radius:16px; background:var(--card); box-shadow:var(--ombre); color:var(--txt);
+   font-size:15.5px; font-weight:600; }
+ .tuile .ic { color:var(--acc-txt); }
+
+ /* Écrire plutôt que parler. */
+ .note-carte { width:100%; margin-top:20px; }
+ textarea { width:100%; min-height:150px; padding:14px; border:none; border-radius:16px; background:var(--card);
+   box-shadow:var(--ombre); color:var(--txt); font-family:inherit; font-size:16.5px; line-height:1.45; resize:none;
+   outline:none; display:block; }
+ .deux { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+
+ .btn-plein, .btn-doux { display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
+   padding:15px 14px; border:none; border-radius:14px; font-size:16px; font-weight:700; }
+ .btn-plein { background:var(--acc); color:#fff; }
+ .btn-doux { background:var(--card); color:var(--txt); box-shadow:var(--ombre); }
+ .groupe + .btn-plein { margin-top:12px; }
+ .carte .btn-doux { background:var(--champ); box-shadow:none; }
+ .lien-btn { border:none; background:none; color:var(--acc-txt); font-size:15px; font-weight:600;
+   padding:8px 2px; flex:none; }
+ .lien-btn.rouge { color:var(--rouge); }
+
+ /* Ce qui vient de se passer : à lire en passant. */
+ .bulle { display:flex; gap:10px; align-items:flex-start; margin:16px 0 0; padding:12px 14px; border-radius:14px;
+   background:var(--acc-doux); font-size:14.5px; line-height:1.45; }
+ .bulle .ic { width:18px; height:18px; margin-top:1px; color:var(--acc-txt); }
+ .bulle.alerte { background:var(--orange-doux); }
+ .bulle.alerte .ic { color:var(--orange); }
+ .bulle.erreur { background:var(--rouge-doux); }
+ .bulle.erreur .ic { color:var(--rouge); }
+
+ .titre { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:28px 4px 8px;
+   font-size:13px; font-weight:600; color:var(--txt2); text-transform:uppercase; letter-spacing:.06em; }
+
+ /* Les listes, à la façon des réglages de l'iPhone. */
+ .groupe { background:var(--card); border-radius:16px; box-shadow:var(--ombre); overflow:hidden; }
+ .rang { position:relative; display:flex; align-items:center; gap:12px; width:100%; min-height:58px;
+   padding:10px 12px 10px 14px; border:none; background:transparent; color:var(--txt); text-align:left; font-size:15px; }
+ .rang + .rang::before { content:""; position:absolute; top:0; left:62px; right:0; height:1px; background:var(--sep); }
+ .ico { width:36px; height:36px; border-radius:10px; display:grid; place-items:center; flex:none;
+   background:var(--acc-doux); color:var(--acc-txt); }
+ .ico .ic { width:18px; height:18px; }
+ .rang-texte { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+ .rang-titre { font-size:15.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+ .rang-titre.accent { color:var(--acc-txt); }
+ .rang-sous { display:flex; align-items:center; gap:6px; font-size:13px; color:var(--txt2); min-width:0; }
+ .coupe { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+ .icone-btn { width:40px; height:40px; border-radius:50%; border:none; display:grid; place-items:center; flex:none;
+   background:var(--champ); color:var(--txt); }
+ .icone-btn .ic { width:17px; height:17px; }
+ .icone-btn.danger { color:var(--rouge); }
+ .vide-ok { color:var(--txt2); font-weight:500; }
+ .vide-ok .ic { color:var(--vert); }
+
+ /* Le choix du créneau, à la place de la pastille. */
+ .choix { width:100%; }
+ .choix-rang { display:flex; align-items:center; gap:14px; width:100%; min-height:52px; padding:12px 16px;
+   border:none; background:transparent; color:var(--txt); font-size:15.5px; text-align:left; position:relative; }
+ .choix-rang + .choix-rang::before { content:""; position:absolute; top:0; left:16px; right:0; height:1px; background:var(--sep); }
+ .choix-rang b { font-variant-numeric:tabular-nums; min-width:52px; color:var(--txt2); font-weight:600; }
+ .choix-rang span { flex:1; }
+ .choix-rang.on { color:var(--acc-txt); font-weight:700; }
+ .choix-rang .ic { color:var(--acc-txt); }
+
+ /* Relier : le QR code d'abord, un code collé sinon. */
+ .carte { background:var(--card); border-radius:20px; box-shadow:var(--ombre); padding:24px 18px 18px; margin-top:12px; }
+ main > .carte:first-child { margin-top:22px; }
+ .carte-tete { display:flex; flex-direction:column; align-items:center; gap:12px; margin-bottom:20px; }
+ .grand-ico { width:58px; height:58px; border-radius:18px; display:grid; place-items:center;
+   background:var(--acc-doux); color:var(--acc-txt); }
+ .grand-ico .ic { width:28px; height:28px; }
+ h2 { margin:0; font-size:21px; font-weight:700; letter-spacing:-.01em; }
+ .vue { width:100%; aspect-ratio:1/1; border-radius:16px; object-fit:cover; background:#000; display:block; margin-bottom:10px; }
+ .ou { display:flex; align-items:center; gap:12px; margin:18px 0 14px; color:var(--txt3); font-size:13.5px; }
+ .ou::before, .ou::after { content:""; flex:1; height:1px; background:var(--sep); }
+ input { width:100%; padding:14px; border:1px solid var(--sep); border-radius:12px; background:var(--champ);
+   color:var(--txt); font-family:inherit; font-size:16px; outline:none; }
+ input:focus { border-color:var(--acc); }
+ .erreur-ligne { margin:10px 0 0; color:var(--rouge); font-size:14px; }
+ .centre { display:block; margin:12px auto 0; }
 </style>
 </head>
 <body>
-<header>🎙 Dictaphone</header>
+<header><h1>Dictaphone</h1><span id="liaison" class="liaison" hidden></span></header>
 <main id="ecran"></main>
 <!-- jsQR (MIT) : le décodage du QR code, en local. Rien n'est téléchargé
      au moment de scanner — l'application doit marcher sans réseau. -->
