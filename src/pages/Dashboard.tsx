@@ -6,7 +6,7 @@ import { useAsync } from "../components/ui";
 import { BandeauSync } from "../components/BandeauSync";
 import { EVT_JOUR } from "../components/CommandPalette";
 import { isoJour, lundiDe, plusJours } from "../dates";
-import { useSuiviSequences } from "../components/useSuiviSequences";
+import { demanderEtatDuPlan, useSuiviSequences } from "../components/useSuiviSequences";
 import { LigneSuivi } from "../components/SuiviSequence";
 import { rangerParActivite } from "../suiviSequences";
 
@@ -128,37 +128,45 @@ export default function Dashboard() {
 
 /**
  * Les séquences telles que le cahier journal les voit : celles qui sont en
- * classe en ce moment — avec leur avancement et la prochaine séance, ou
- * l'alerte quand rien n'est posé —, puis celles qu'on prépare, les
- * dernières touchées en tête.
+ * classe en ce moment, avec leur avancement et la prochaine séance, ou
+ * l'alerte quand rien n'est posé. Celles qu'on prépare ne s'étalent pas
+ * ici — elles chargeaient l'accueil — : un compte, qui mène au plan de
+ * travail où elles se filtrent.
  */
 function SuiviDuTableauDeBord({ ouvrirLeJournal }: { ouvrirLeJournal: (iso: string) => void }) {
   const nav = useNavigate();
   const { suivis, aujourdHui, chargement } = useSuiviSequences();
   const tous = [...suivis.values()];
   const enClasse = rangerParActivite(tous.filter((s) => s.etat === "classe" || s.etat === "pause"));
-  const enPreparation = tous.filter((s) => s.etat === "preparation")
-    .sort((a, b) => (b.sequence.dateMaj ?? "").localeCompare(a.sequence.dateMaj ?? "") || a.sequence.titre.localeCompare(b.sequence.titre, "fr"))
-    .slice(0, 5);
+  const enPreparation = tous.filter((s) => s.etat === "preparation").length;
   const terminees = tous.filter((s) => s.etat === "terminee").length;
+  // Le plan de travail, filtré sur les séquences en préparation.
+  const voirLaPreparation = () => {
+    demanderEtatDuPlan("preparation");
+    nav("/plan");
+  };
   return (
     <div className="card" style={{ marginTop: 16 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
         <h3 style={{ marginTop: 0 }}>📚 En classe en ce moment</h3>
-        {terminees > 0 && <span className="meta">{terminees} terminée{terminees > 1 ? "s" : ""} cette année</span>}
+        {(enPreparation > 0 || terminees > 0) && (
+          <span className="meta">
+            {enPreparation > 0 && (
+              <button type="button" className="lien" onClick={voirLaPreparation} title="Les voir dans le plan de travail">
+                {enPreparation} en préparation
+              </button>
+            )}
+            {enPreparation > 0 && terminees > 0 && " · "}
+            {terminees > 0 && `${terminees} terminée${terminees > 1 ? "s" : ""} cette année`}
+          </span>
+        )}
       </div>
       {chargement ? null : enClasse.length === 0 ? (
-        <p style={{ color: "var(--text-2)", margin: "0 0 8px" }}>
+        <p style={{ color: "var(--text-2)", margin: 0 }}>
           Aucune séquence démarrée : une séquence entre ici dès qu'une de ses séances est posée dans le cahier journal.
         </p>
       ) : enClasse.map((s) => (
         <LigneSuivi key={s.sequence.id} suivi={s} aujourdHui={aujourdHui} onOuvrir={() => nav(`/sequences/${s.sequence.id}`)} onJournal={ouvrirLeJournal} />
-      ))}
-      <h3 style={{ margin: "14px 0 8px" }}>✏️ En préparation</h3>
-      {chargement ? null : enPreparation.length === 0 ? (
-        <p style={{ color: "var(--text-2)", margin: 0 }}>Rien en préparation : tout ce que vous avez écrit est passé en classe, ou terminé.</p>
-      ) : enPreparation.map((s) => (
-        <LigneSuivi key={s.sequence.id} suivi={s} aujourdHui={aujourdHui} onOuvrir={() => nav(`/sequences/${s.sequence.id}`)} />
       ))}
     </div>
   );
