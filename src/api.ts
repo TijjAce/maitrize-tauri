@@ -739,6 +739,9 @@ export const api = {
   arasaacChercher: (q: string, limite = 40) =>
     invoke<PictoArasaac[]>("arasaac_chercher", { q, limite }),
   arasaacNature: (id: number) => invoke<string>("arasaac_nature", { id }),
+  /** Les noms communs de la banque où s'écrit l'une de ces syllabes, avec leur dessin ; `limite` vaut pour chaque syllabe. */
+  arasaacNomsContenant: (morceaux: string[], limite = 150) =>
+    invoke<PictoArasaac[]>("arasaac_noms_contenant", { morceaux, limite }),
   tlaGenerer: (gabarit: Gabarit, ouvrir = true) => invoke<string>("tla_generer", { gabarit, ouvrir }),
 
   // Amis (appariement chiffré, 100 % local pour l'instant)
