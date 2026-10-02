@@ -13,6 +13,7 @@
 //! ne s'appliquent pas aux sockets, ce qui évite de déclarer une exception
 //! pour parler en clair au Mac du réseau local.
 
+use maitrize_relais as relais;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::Manager;
@@ -517,6 +518,152 @@ pub async fn ordinateur_joignable(app: tauri::AppHandle) -> R<bool> {
     Ok(client.get(&url).send().await.map(|r| r.status().is_success()).unwrap_or(false))
 }
 
+// ── Le relais de Nuage ────────────────────────────────────────────────────
+//
+// L'ordinateur n'est pas toujours là quand on a du réseau : on dicte en
+// classe, il dort dans le sac ; on rentre, il s'ouvre ailleurs. Par Nuage,
+// chacun passe quand il peut. Le téléphone y dépose ce qui attend, scellé
+// pour l'ordinateur — lui-même ne peut pas le rouvrir —, et y lit l'emploi du
+// temps que l'ordinateur lui laisse.
+//
+// Ce qu'il garde du relais tient dans le QR code scanné : un lien vers le
+// seul dossier du relais, et deux clés. Ni l'identifiant ni le mot de passe
+// de Nuage ne passent par ici.
+
+fn fiche_relais(app: &tauri::AppHandle) -> R<PathBuf> {
+    Ok(dossier(app)?.join("relais.txt"))
+}
+
+/// Le relais gardé, s'il y en a un et qu'il se lit encore.
+fn relais_garde(app: &tauri::AppHandle) -> Option<relais::Appairage> {
+    let code = std::fs::read_to_string(fiche_relais(app).ok()?).ok()?;
+    relais::Appairage::depuis_code(&code).ok()
+}
+
+/// Ce que l'écran montre du relais : s'il est là, et chez qui. Rien de secret.
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RelaisVu {
+    pub relie: bool,
+    /// « nuage03.apps.education.fr »
+    pub serveur: String,
+}
+
+fn vue_du_relais(a: Option<&relais::Appairage>) -> RelaisVu {
+    match a {
+        Some(a) => RelaisVu { relie: true, serveur: a.serveur.trim_start_matches("https://").trim_end_matches('/').to_string() },
+        None => RelaisVu::default(),
+    }
+}
+
+/// Le relais est-il configuré ?
+#[tauri::command]
+pub fn relais_lire(app: tauri::AppHandle) -> R<RelaisVu> {
+    Ok(vue_du_relais(relais_garde(&app).as_ref()))
+}
+
+/// Retient le relais scanné ou collé ; un code qui n'en est pas un est refusé tout de suite.
+#[tauri::command]
+pub fn relais_ecrire(app: tauri::AppHandle, code: String) -> R<RelaisVu> {
+    let a = relais::Appairage::depuis_code(&code)?;
+    std::fs::write(fiche_relais(&app)?, a.en_code()).map_err(|e| e.to_string())?;
+    Ok(vue_du_relais(Some(&a)))
+}
+
+/// Oublie le relais : le téléphone ne dépose plus que par le WiFi.
+#[tauri::command]
+pub fn relais_oublier(app: tauri::AppHandle) -> R<()> {
+    let _ = std::fs::remove_file(fiche_relais(&app)?);
+    Ok(())
+}
+
+/// Nuage répond-il, et le lien vaut-il toujours ?
+#[tauri::command]
+pub async fn relais_joignable(app: tauri::AppHandle) -> R<bool> {
+    match relais_garde(&app) {
+        Some(a) => Ok(relais::porte::joignable(&a).await),
+        None => Ok(false),
+    }
+}
+
+fn relais_requis(app: &tauri::AppHandle) -> R<relais::Appairage> {
+    relais_garde(app).ok_or_else(|| "Le téléphone n'est pas relié par Nuage.".to_string())
+}
+
+/// Dépose un vocal sur Nuage, scellé pour l'ordinateur, et ne l'efface que s'il est arrivé.
+#[tauri::command]
+pub async fn vocal_deposer(app: tauri::AppHandle, id: String) -> R<()> {
+    let a = relais_requis(&app)?;
+    let chemin = fichier_de(&app, &id)?;
+    let nom = chemin.file_name().unwrap_or_default().to_string_lossy().to_string();
+    let (_, debut, duree_s, creneau) = depuis_le_nom(&nom).ok_or("Nom de fichier inattendu.")?;
+    let octets = std::fs::read(&chemin).map_err(|e| e.to_string())?;
+    let etiquette = relais::Etiquette { genre: relais::Genre::Vocal, id: id.clone(), debut, duree_s, creneau, ext: String::new() };
+    let blob = relais::preparer_depot(&a, &etiquette, &octets)?;
+    relais::porte::deposer(&a, &relais::nom_du_depot(relais::Genre::Vocal, &id), blob).await?;
+    std::fs::remove_file(&chemin).map_err(|e| e.to_string())
+}
+
+/// Dépose une note sur Nuage, scellée pour l'ordinateur.
+#[tauri::command]
+pub async fn note_deposer(app: tauri::AppHandle, id: String) -> R<()> {
+    let a = relais_requis(&app)?;
+    let chemin = note_fichier(&app, &id)?;
+    let nom = chemin.file_name().unwrap_or_default().to_string_lossy().to_string();
+    let (_, debut, creneau) = note_depuis_le_nom(&nom).ok_or("Nom de fichier inattendu.")?;
+    let texte = std::fs::read_to_string(&chemin).map_err(|e| e.to_string())?;
+    let etiquette = relais::Etiquette { genre: relais::Genre::Note, id: id.clone(), debut, duree_s: 0.0, creneau, ext: String::new() };
+    let blob = relais::preparer_depot(&a, &etiquette, texte.as_bytes())?;
+    relais::porte::deposer(&a, &relais::nom_du_depot(relais::Genre::Note, &id), blob).await?;
+    std::fs::remove_file(&chemin).map_err(|e| e.to_string())
+}
+
+/// Dépose les pages scannées sur Nuage ; rend le nombre de pages parties.
+///
+/// Elles attendent là que l'ordinateur ouvre « Scanner avec le compagnon ».
+#[tauri::command]
+pub async fn scan_deposer(app: tauri::AppHandle, fichiers: Vec<String>) -> R<u32> {
+    let a = relais_requis(&app)?;
+    let mut parties = 0u32;
+    for chemin in fichiers {
+        let octets = std::fs::read(&chemin).map_err(|e| e.to_string())?;
+        // L'heure d'abord : les pages se rangent dans l'ordre où elles ont été scannées.
+        let id = format!("{}-{:03}-{}", chrono::Local::now().format("%Y%m%d%H%M%S"), parties, uuid::Uuid::new_v4().simple());
+        let etiquette = relais::Etiquette { genre: relais::Genre::Page, id: id.clone(), debut: String::new(), duree_s: 0.0, creneau: String::new(), ext: "jpg".into() };
+        let blob = relais::preparer_depot(&a, &etiquette, &octets)?;
+        relais::porte::deposer(&a, &relais::nom_du_depot(relais::Genre::Page, &id), blob)
+            .await
+            .map_err(|e| format!("{e} ({parties} page(s) partie(s))."))?;
+        let _ = std::fs::remove_file(&chemin);
+        parties += 1;
+    }
+    Ok(parties)
+}
+
+/// Les créneaux du jour, lus dans l'emploi du temps que l'ordinateur a laissé sur Nuage.
+///
+/// Comme par le WiFi, on n'en garde qu'un jour : celui-ci remplace le précédent.
+#[tauri::command]
+pub async fn creneaux_du_relais(app: tauri::AppHandle, jour: String) -> R<Vec<Creneau>> {
+    let a = relais_requis(&app)?;
+    let blob = relais::porte::lire_agenda(&a).await?
+        .ok_or("L'ordinateur n'a pas encore laissé son emploi du temps sur Nuage.")?;
+    let agenda = relais::dechiffrer_agenda(&relais::cle_de(&a.cle_retour)?, &blob)?;
+    let journee = journee_de(&agenda, &jour)
+        .ok_or("L'emploi du temps laissé sur Nuage ne va pas jusqu'à aujourd'hui : ouvrez Maitrize sur l'ordinateur.")?;
+    std::fs::write(fiche_creneaux(&app)?, serde_json::to_string(&journee).map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())?;
+    Ok(journee.creneaux)
+}
+
+/// La journée d'un agenda, telle que le téléphone la garde.
+fn journee_de(agenda: &relais::Agenda, jour: &str) -> Option<Journee> {
+    agenda.du_jour(jour).map(|j| Journee {
+        jour: j.jour.clone(),
+        creneaux: j.creneaux.iter().map(|c| Creneau { id: c.id.clone(), debut: c.debut.clone(), fin: c.fin.clone(), matiere: c.matiere.clone() }).collect(),
+    })
+}
+
 /// Sépare l'origine du jeton dans l'adresse appairée.
 pub fn decouper_adresse(url: &str) -> R<(String, String)> {
     // Une adresse arrive d'un collage : espaces, retours à la ligne, et
@@ -656,6 +803,45 @@ mod tests {
     fn un_nom_inattendu_ne_fait_pas_tomber_la_liste() {
         assert!(depuis_le_nom("truc.wav").is_none());
         assert!(depuis_le_nom(".DS_Store").is_none());
+    }
+
+    #[test]
+    fn le_relais_se_montre_sans_ses_cles() {
+        use super::relais;
+        let (_, publique) = relais::nouvelle_paire();
+        let a = relais::Appairage {
+            serveur: "https://nuage03.apps.education.fr".into(),
+            base: "public.php/dav/files/aBcD1234".into(),
+            jeton: "aBcD1234".into(),
+            mot_de_passe: "Mz7-secret".into(),
+            cle_depot: relais::cle_en_texte(&publique),
+            cle_retour: relais::cle_en_texte(&relais::nouvelle_cle()),
+        };
+        let vu = super::vue_du_relais(Some(&a));
+        assert_eq!(vu, super::RelaisVu { relie: true, serveur: "nuage03.apps.education.fr".into() });
+        let json = serde_json::to_string(&vu).unwrap();
+        assert!(!json.contains("aBcD1234") && !json.contains("Mz7-secret") && !json.contains(&a.cle_retour));
+        assert_eq!(super::vue_du_relais(None), super::RelaisVu::default());
+    }
+
+    #[test]
+    fn l_agenda_du_relais_donne_la_journee_et_rien_d_autre() {
+        use super::relais;
+        let agenda = relais::Agenda {
+            publie: String::new(),
+            jours: vec![
+                relais::Journee { jour: "2026-10-05".into(), creneaux: vec![relais::Creneau { id: "c1".into(), debut: "09:00".into(), fin: "10:00".into(), matiere: "Lecture".into() }] },
+                relais::Journee { jour: "2026-10-06".into(), creneaux: vec![] },
+            ],
+        };
+        let lundi = super::journee_de(&agenda, "2026-10-05").unwrap();
+        assert_eq!(lundi.jour, "2026-10-05");
+        assert_eq!(lundi.creneaux.len(), 1);
+        assert_eq!(lundi.creneaux[0].matiere, "Lecture");
+        // Un jour publié vide est connu : pas de classe, pas de panne.
+        assert!(super::journee_de(&agenda, "2026-10-06").unwrap().creneaux.is_empty());
+        // Un jour que l'agenda ne couvre pas reste inconnu.
+        assert!(super::journee_de(&agenda, "2026-10-30").is_none());
     }
 
     #[test]

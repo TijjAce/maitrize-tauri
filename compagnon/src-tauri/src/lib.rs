@@ -7,6 +7,10 @@
 //!
 //! C'est l'ordinateur qui sait ce qui se passait à 10 h 12, parce qu'il a le
 //! cahier journal. Il transcrit sur place avec Whisper et range.
+//!
+//! Le dépôt prend deux chemins : droit sur l'ordinateur quand ils partagent
+//! un WiFi, ou par un dossier de Nuage quand ils ne sont pas ensemble — scellé
+//! alors pour l'ordinateur, que le téléphone lui-même ne peut pas rouvrir.
 
 mod commandes;
 
@@ -38,6 +42,15 @@ pub fn run() {
             creneaux_rafraichir,
             creneau_maintenant,
             scan_envoyer,
+            // Le relais de Nuage : déposer sans que l'ordinateur soit là.
+            relais_lire,
+            relais_ecrire,
+            relais_oublier,
+            relais_joignable,
+            vocal_deposer,
+            note_deposer,
+            scan_deposer,
+            creneaux_du_relais,
         ])
         .run(tauri::generate_context!())
         .expect("le dictaphone n'a pas pu démarrer");
