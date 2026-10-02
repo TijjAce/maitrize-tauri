@@ -1,7 +1,7 @@
 import React from "react";
 import { Page } from "../App";
 import { api, isMac, texteErreur, type InfoCopie, type SauvegardeAuto, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo, type VerifSauvegarde, type EtatWhisper } from "../api";
-import { Field, Input, Select, Modal, Confirm, useAsync } from "../components/ui";
+import { Field, Input, Select, Modal, Confirm, useAsync, useOngletDemande } from "../components/ui";
 import { PartagerMesDossiers } from "../components/PartagerMesDossiers";
 import { confirmer } from "../components/confirmer";
 import { toast } from "../components/Toaster";
@@ -27,6 +27,8 @@ type Onglet = typeof ONGLETS[number][0];
 
 export default function Reglages() {
   const [onglet, setOnglet] = React.useState<Onglet>("general");
+  // L'annonce d'une dictée arrivée mène droit à l'onglet du téléphone.
+  useOngletDemande<Onglet>("reglages", ONGLETS.map(([k]) => k), setOnglet);
   const [s, setS] = React.useState<Record<string, string>>({});
   const [chargé, setChargé] = React.useState(false);
   const [testMsg, setTestMsg] = React.useState("");

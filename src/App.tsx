@@ -19,9 +19,10 @@ import Assistant from "./pages/Assistant";
 import Reunions from "./pages/Reunions";
 import Amis from "./pages/Amis";
 import Reglages from "./pages/Reglages";
-import { PageVisibleContext } from "./components/ui";
+import { PageVisibleContext, ouvrirOnglet } from "./components/ui";
 import { demarrerSyncAuto } from "./syncAuto";
-import { demarrerReleveTelephone } from "./releveTelephone";
+import { EVT_VOIR_VOCAUX, demarrerReleveTelephone } from "./releveTelephone";
+import { demarrerVocauxEnFond } from "./vocauxEnFond";
 import { verifierLaSauvegarde } from "./verifSauvegarde";
 import { QuoiDeNeuf } from "./components/QuoiDeNeuf";
 import { demarrerLaVeille } from "./veille";
@@ -143,6 +144,14 @@ export default function App() {
   React.useEffect(() => demarrerSyncAuto(), []);
   // Ce que le dictaphone a déposé sur Nuage se relève de la même façon, sans rien cliquer.
   React.useEffect(() => demarrerReleveTelephone(), []);
+  // Un vocal arrivé — par le WiFi ou par Nuage — se transcrit aussitôt, où que l'on soit.
+  React.useEffect(() => demarrerVocauxEnFond(), []);
+  // « Voir », sur l'annonce d'une dictée arrivée : droit aux vocaux du téléphone.
+  React.useEffect(() => {
+    const voir = () => { navigate("/reglages"); setTimeout(() => ouvrirOnglet("reglages", "partage"), 140); };
+    window.addEventListener(EVT_VOIR_VOCAUX, voir);
+    return () => window.removeEventListener(EVT_VOIR_VOCAUX, voir);
+  }, [navigate]);
   // Une fenêtre figée ne dit rien d'elle-même : la veille en laisse une trace.
   React.useEffect(() => demarrerLaVeille(), []);
 

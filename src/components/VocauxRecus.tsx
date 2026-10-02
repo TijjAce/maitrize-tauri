@@ -5,6 +5,7 @@ import { Select, TextareaAuto } from "./ui";
 import { toast } from "./Toaster";
 import { confirmer } from "./confirmer";
 import { creneauRetenu, repereDuVocal, verserDansLeBilan, type Vocal } from "../vocaux";
+import { EVT_VOCAUX, retranscrire, transcrireCeQuiAttend, vocalEnCours } from "../vocauxEnFond";
 
 // ── Ce que le téléphone a déposé ──────────────────────────────────────────
 //
@@ -12,11 +13,11 @@ import { creneauRetenu, repereDuVocal, verserDansLeBilan, type Vocal } from "../
 // endroit que le partage WiFi et le relais de Nuage, puisque c'est par là
 // qu'ils passent. On ouvre cette page au retour, et l'on range.
 //
-// La transcription part toute seule — sur cette machine dès qu'un modèle y
-// est, en ligne sinon, comme les réunions. Un vocal en échec est repris une
-// fois à l'ouverture, et à la demande. Le versement dans le bilan, lui,
-// demande un clic : une transcription se relit avant d'entrer dans le
-// dossier d'un élève.
+// La transcription part toute seule, dès qu'un vocal arrive et où que l'on
+// soit dans l'application (voir vocauxEnFond.ts) — sur cette machine dès
+// qu'un modèle y est, en ligne sinon. Un vocal en échec est repris une fois à
+// l'ouverture, et à la demande. Le versement dans le bilan, lui, demande un
+// clic : une transcription se relit avant d'entrer dans le dossier d'un élève.
 
 /** Le jour d'un vocal, tel qu'on l'écrit au-dessus du groupe. */
 function jourLisible(iso: string): string {
@@ -30,7 +31,8 @@ export function VocauxRecus() {
   const [vocaux, setVocaux] = React.useState<Vocal[]>([]);
   const [creneaux, setCreneaux] = React.useState<Creneau[]>([]);
   const [occupe, setOccupe] = React.useState<string>("");
-  const [transcrit, setTranscrit] = React.useState<string>("");
+  // Le vocal que la tâche de fond transcrit en ce moment.
+  const [transcrit, setTranscrit] = React.useState<string>(vocalEnCours);
   const [cible, setCible] = React.useState<Record<string, string>>({});
   const [texte, setTexte] = React.useState<Record<string, string>>({});
 
@@ -54,30 +56,14 @@ export function VocauxRecus() {
     return () => { p.then((off) => off()); };
   }, [charger]);
 
-  /**
-   * La transcription part d'elle-même, un vocal après l'autre — les vocaux
-   * reçus, puis, une fois chacun, ceux qui avaient échoué : ce qui manquait
-   * la veille est peut-être là aujourd'hui.
-   *
-   * Le garde-fou est une référence, pas un état : l'effet ne dépend que de
-   * l'identifiant à traiter, une chaîne stable. La chaîne se poursuit seule —
-   * le vocal transcrit quitte la file, le suivant prend sa place.
-   */
-  const repris = React.useRef(new Set<string>());
-  const aTranscrire = vocaux.find((v) => v.etat === "recu" || (v.etat === "echec" && !repris.current.has(v.id)))?.id ?? "";
-  const enCours = React.useRef("");
-  const transcrire = React.useCallback((id: string) => {
-    if (enCours.current) return;
-    enCours.current = id;
-    repris.current.add(id);
-    setTranscrit(id);
-    api.vocalTranscrire(id)
-      .then((suite) => setVocaux((avant) => avant.map((v) => (v.id === suite.id ? suite : v))))
-      // L'état « echec » est écrit côté Rust : on relit plutôt que de deviner.
-      .catch(() => { void charger(); })
-      .finally(() => { enCours.current = ""; setTranscrit(""); });
+  // La transcription tourne en tâche de fond : l'écran suit ce qu'elle fait, et la
+  // relance en s'ouvrant — un vocal resté en attente n'attend pas le suivant.
+  React.useEffect(() => {
+    const suivre = () => { setTranscrit(vocalEnCours()); void charger(); };
+    window.addEventListener(EVT_VOCAUX, suivre);
+    void transcrireCeQuiAttend();
+    return () => window.removeEventListener(EVT_VOCAUX, suivre);
   }, [charger]);
-  React.useEffect(() => { if (aTranscrire) transcrire(aTranscrire); }, [aTranscrire, transcrire]);
 
   const verser = async (v: Vocal) => {
     const id = cible[v.id] ?? creneauRetenu(v, creneaux)?.id ?? "";
@@ -157,7 +143,7 @@ export function VocauxRecus() {
                       <p style={{ fontSize: 12.5, margin: 0, color: "var(--danger)" }}>
                         {transcrit === v.id ? "Nouvel essai…" : `Transcription impossible : ${v.erreur}`}
                       </p>
-                      <button className="btn sm" disabled={!!enCours.current} onClick={() => transcrire(v.id)}>↻ Réessayer</button>
+                      <button className="btn sm" disabled={!!transcrit} onClick={() => retranscrire(v.id)}>↻ Réessayer</button>
                     </div>
                   ) : (
                     <>
