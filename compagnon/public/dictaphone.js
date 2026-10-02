@@ -134,10 +134,11 @@ function relacherLEcran() {
 async function demarrer() {
   souci = "";
   avis = "";
+  partiParNuage = "";
   try {
     micro = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (e) {
-    souci = "Le micro n'est pas accessible. Autorisez-le pour cette application.";
+    souci = "Le micro n'est pas accessible.";
     rendre();
     return;
   }
@@ -167,16 +168,16 @@ async function demarrer() {
   const muet = ctx.createGain();
   muet.gain.value = 0;
   source.connect(noeud); noeud.connect(muet); muet.connect(ctx.destination);
-  // Chrono et jauge se posent à la main : refaire la page dix fois par
+  // Chrono et halo se posent à la main : refaire la page dix fois par
   // seconde couperait l'écoute en cours et ferait clignoter le bouton.
   await garderLEcranAllume();
   minuteur = setInterval(() => {
     const el = document.getElementById("chrono");
     if (el) el.textContent = duree(Math.round((Date.now() - depart) / 1000));
-    const jauge = document.getElementById("jauge");
-    // La racine étale le bas de l'échelle : une voix normale remplit la
-    // moitié de la barre, un murmure la fait tout de même bouger.
-    if (jauge) jauge.style.width = `${Math.min(100, Math.round(Math.sqrt(niveau) * 190))}%`;
+    const halo = document.getElementById("halo");
+    // La racine étale le bas de l'échelle : une voix normale gonfle le halo
+    // à moitié, un murmure le fait tout de même bouger.
+    if (halo) halo.style.transform = `scale(${(1 + Math.min(1, Math.sqrt(niveau) * 1.9) * 0.42).toFixed(3)})`;
     // On laisse le temps de commencer à parler : sans ce délai, l'écran
     // annonçait un micro muet à la seconde même où l'on appuie.
     const muet = document.getElementById("muet");
@@ -210,10 +211,7 @@ async function arreter() {
     souci = String(e);
   }
   creneauChoisi = await creneauDeLHeure();
-  if (capte < SEUIL_SILENCE) {
-    avis = "Rien n'a été capté : vérifiez que le micro est autorisé pour cette "
-      + "application, et qu'aucune autre ne s'en sert.";
-  }
+  if (capte < SEUIL_SILENCE) avis = "Rien n'a été capté par le micro.";
   await relire();
   void envoyerTout();
 }
@@ -230,8 +228,7 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden) fermerCamera();
   if (document.hidden && ctx) {
     void arreter().then(() => {
-      avis = "L'enregistrement s'est arrêté quand l'application est passée en "
-        + "arrière-plan : gardez-la à l'écran pendant que vous dictez.";
+      avis = "Enregistrement arrêté : l'application est passée en arrière-plan.";
       rendre();
     });
   }
@@ -325,12 +322,20 @@ async function creneauDeLHeure() {
   catch (e) { return ""; }
 }
 
+/** L'heure d'un créneau, telle qu'on l'écrit : « 09h00 ». */
+const heureCourte = (hhmm) => String(hhmm || "").slice(0, 5).replace(":", "h");
+
 /** Ce qu'on affiche d'un créneau : l'heure et l'intitulé. */
 function libelleCreneau(id) {
   const c = creneaux.find((x) => x.id === id);
   if (!c) return "";
-  const h = (c.debut || "").slice(0, 5).replace(":", "h");
-  return `${h} ${c.matiere || "créneau"}`;
+  return `${heureCourte(c.debut)} · ${c.matiere || "Créneau"}`;
+}
+
+/** L'intitulé seul : sous un vocal, son heure est déjà écrite. */
+function matiereDuCreneau(id) {
+  const c = creneaux.find((x) => x.id === id);
+  return c ? c.matiere || heureCourte(c.debut) : "";
 }
 
 /** La commande qui dépose un élément par une voie : droit sur l'ordinateur, ou par Nuage. */
@@ -353,7 +358,7 @@ async function envoyerTout() {
   try {
     for (const x of enAttente()) {
       let par = voie();
-      if (!par) { souci = "Reliez d'abord l'ordinateur, ci-dessous."; break; }
+      if (!par) { souci = "Aucune liaison avec l'ordinateur."; break; }
       try {
         await invoke(commandeDEnvoi(x.sorte, par), { id: x.id });
       } catch (e) {
@@ -369,8 +374,7 @@ async function envoyerTout() {
     }
   } finally {
     if (parNuage) {
-      partiParNuage = `${parNuage} envoi${parNuage > 1 ? "s" : ""} parti${parNuage > 1 ? "s" : ""} par Nuage à ${heureDe(maintenantIso())} : `
-        + "l'ordinateur les relèvera en s'ouvrant.";
+      partiParNuage = `${parNuage} envoi${parNuage > 1 ? "s" : ""} parti${parNuage > 1 ? "s" : ""} par Nuage à ${heureDe(maintenantIso())}.`;
     }
     envoiEnCours = false;
     await relire();
@@ -421,7 +425,7 @@ async function oublier(id, sorte) {
 
 async function scannerPages() {
   if (scanEnCours) return;
-  scanEnCours = true; scanInfo = "Le scanner s'ouvre…"; rendre();
+  scanEnCours = true; scanInfo = ""; souci = ""; rendre();
   try {
     const r = await invoke("plugin:scanner|scanner");
     const fichiers = (r && r.fichiers) || [];
@@ -431,10 +435,11 @@ async function scannerPages() {
     const parNuage = !joignable && relais.relie;
     const n = await invoke(parNuage ? "scan_deposer" : "scan_envoyer", { fichiers });
     scanInfo = parNuage
-      ? `✅ ${n} page${n > 1 ? "s" : ""} partie${n > 1 ? "s" : ""} par Nuage : elles arrivent sur l'ordinateur dès que « Scanner avec le compagnon » y est ouvert.`
-      : `✅ ${n} page${n > 1 ? "s" : ""} envoyée${n > 1 ? "s" : ""} sur l'ordinateur. Vous pouvez en scanner d'autres.`;
+      ? `${n} page${n > 1 ? "s" : ""} partie${n > 1 ? "s" : ""} par Nuage.`
+      : `${n} page${n > 1 ? "s" : ""} envoyée${n > 1 ? "s" : ""} sur l'ordinateur.`;
   } catch (e) {
-    scanInfo = "❌ " + String(e);
+    scanInfo = "";
+    souci = String(e);
   } finally {
     scanEnCours = false; rendre();
   }
@@ -468,7 +473,7 @@ async function scanner() {
       audio: false,
     });
   } catch (e) {
-    scanSouci = "La caméra n'est pas accessible. Autorisez-la, ou collez l'adresse.";
+    scanSouci = "La caméra n'est pas accessible.";
     camera = null;
     rendre();
     return;
@@ -515,7 +520,7 @@ const estUnRelais = (t) => sansEspaces(t).startsWith("maitrize-relais:");
  */
 async function retenir(lu) {
   if (sansEspaces(lu).startsWith("maitrize-relais-ordinateur:")) {
-    throw "Ce code est celui de l'autre ordinateur. Pour le téléphone : Réglages › Téléphone › « QR code du téléphone ».";
+    throw "Ce code est celui de l'autre ordinateur, pas celui du téléphone.";
   }
   if (estUnRelais(lu)) {
     relais = await invoke("relais_ecrire", { code: lu });
@@ -560,7 +565,7 @@ async function coller() {
   try {
     texte = ((await navigator.clipboard.readText()) || "").trim();
   } catch (e) {
-    souci = "Le presse-papiers n'est pas accessible : collez dans le champ à la main.";
+    souci = "Le presse-papiers n'est pas accessible.";
     rendre();
     return;
   }
@@ -609,11 +614,8 @@ function hoteDe(url) {
 const echapper = (t) => String(t ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
 
-/** Le début d'une note, pour la reconnaître dans la liste. */
-const apercu = (t) => {
-  const ligne = String(t ?? "").split("\n")[0].trim();
-  return ligne.length > 34 ? `${ligne.slice(0, 33)}…` : ligne;
-};
+/** La première ligne d'une note, pour la reconnaître dans la liste : l'écran la coupe à sa largeur. */
+const apercu = (t) => String(t ?? "").split("\n")[0].trim().slice(0, 160);
 
 /** « 340 ko », « 2,1 Mo » : de quoi juger si le dépôt va être long. */
 function poids(octets) {
@@ -621,6 +623,32 @@ function poids(octets) {
     ? `${(octets / 1e6).toFixed(1).replace(".", ",")} Mo`
     : `${Math.round(octets / 1000)} ko`;
 }
+
+// Des icônes dessinées au trait, dans la couleur du texte : les emojis n'ont
+// ni la même taille ni la même teinte d'un iPhone à l'autre.
+const ICONES = {
+  micro: '<rect x="9" y="2.5" width="6" height="11.5" rx="3"/><path d="M5.5 10.5a6.5 6.5 0 0 0 13 0"/><path d="M12 17v4.5M8.5 21.5h7"/>',
+  stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="2.5" fill="currentColor" stroke="none"/>',
+  crayon: '<path d="M4 20h4L19 9a2.83 2.83 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+  page: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
+  nuage: '<path d="M7 18.5h10.5a4 4 0 0 0 .4-7.98A6 6 0 0 0 6.3 9.6 4.5 4.5 0 0 0 7 18.5z"/>',
+  wifi: '<path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.7 15.8a5 5 0 0 1 6.6 0"/><circle cx="12" cy="19" r="1" fill="currentColor"/>',
+  lecture: '<path d="M8 5.5v13l10.5-6.5z" fill="currentColor" stroke="none"/>',
+  pause: '<rect x="7" y="5.5" width="3.5" height="13" rx="1" fill="currentColor" stroke="none"/><rect x="13.5" y="5.5" width="3.5" height="13" rx="1" fill="currentColor" stroke="none"/>',
+  poubelle: '<path d="M4 7h16M10 11v6M14 11v6M9 7V4.5h6V7"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/>',
+  envoyer: '<path d="M12 19V5M5.5 11.5L12 5l6.5 6.5"/>',
+  coche: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  epingle: '<path d="M12 21s6.5-6.2 6.5-11a6.5 6.5 0 0 0-13 0c0 4.8 6.5 11 6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
+  chevron: '<path d="M7 10l5 5 5-5"/>',
+  qr: '<rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1.2"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1.2"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1.2"/><path d="M14 14h2.5v2.5H14zM18 18h2.5v2.5H18zM14 19.5h1.5M19.5 14v1.5"/>',
+  coller: '<rect x="8" y="3" width="8" height="4" rx="1.2"/><path d="M8 5H6.5A1.5 1.5 0 0 0 5 6.5v13A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 17.5 5H16"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  lien: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>',
+  attention: '<path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>',
+};
+
+const icone = (nom, classe = "") =>
+  `<svg class="ic ${classe}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONES[nom]}</svg>`;
 
 /**
  * Sous quoi l'on enregistre, et comment en changer.
@@ -630,147 +658,159 @@ function poids(octets) {
  * téléphone qui était là.
  */
 function bandeauCreneau() {
-  if (!creneauxConnus) {
-    return `<p class="creneau vide">Créneaux inconnus — l'ordinateur les donnera au prochain contact.</p>`;
-  }
+  if (!creneauxConnus) return `<p class="pastille muette">${icone("epingle")}<span>Créneau inconnu</span></p>`;
   // L'ordinateur a répondu, et il n'y a rien : un dimanche, des vacances. On
   // enregistre quand même, et c'est l'ordinateur qui rangera au retour.
-  if (!creneaux.length) {
-    return `<p class="creneau vide">Aucun créneau aujourd'hui — dictez tout de même, l'ordinateur rangera.</p>`;
-  }
+  if (!creneaux.length) return `<p class="pastille muette">${icone("epingle")}<span>Pas de créneau aujourd'hui</span></p>`;
   if (choixOuvert) {
-    return `<div class="choix">
-      ${creneaux.map((c) => `
-        <button class="choix-ligne${c.id === creneauChoisi ? " on" : ""}" data-creneau="${c.id}">
-          <b>${echapper((c.debut || "").slice(0, 5).replace(":", "h"))}</b>
-          <span>${echapper(c.matiere || "créneau")}</span>
-        </button>`).join("")}
-      <button class="choix-ligne${creneauChoisi ? "" : " on"}" data-creneau="">
-        <b>—</b><span>Laisser l'ordinateur décider</span>
-      </button>
+    const rang = (id, heure, libelle) => `
+      <button class="choix-rang${id === creneauChoisi ? " on" : ""}" data-creneau="${echapper(id)}">
+        <b>${echapper(heure)}</b><span>${echapper(libelle)}</span>${id === creneauChoisi ? icone("coche") : ""}
+      </button>`;
+    return `<div class="groupe choix">
+      ${creneaux.map((c) => rang(c.id, heureCourte(c.debut), c.matiere || "Créneau")).join("")}
+      ${rang("", "—", "Selon l'heure")}
     </div>`;
   }
-  const libelle = libelleCreneau(creneauChoisi);
-  return `<button class="creneau" id="changer-creneau">
-    <span>${libelle ? `📍 ${echapper(libelle)}` : "📍 Hors créneau"}</span>
-    <span class="creneau-action">Changer</span>
-  </button>`;
+  return `<button class="pastille" id="changer-creneau">${icone("epingle")}<span>${echapper(libelleCreneau(creneauChoisi) || "Selon l'heure")}</span>${icone("chevron", "petit")}</button>`;
+}
+
+/** Le grand bouton, et ce qu'on peut faire d'autre que dicter. */
+const auRepos = () => `
+  <button class="rond" id="go" aria-label="Dicter">${icone("micro")}</button>
+  <p class="rond-legende">Dicter</p>
+  <div class="tuiles">
+    <button class="tuile" id="ecrire">${icone("crayon")}Écrire</button>
+    <button class="tuile" id="scan-pages" ${scanEnCours ? "disabled" : ""}>${icone("page")}${scanEnCours ? "Scanner…" : "Scanner"}</button>
+  </div>`;
+
+/** Pendant qu'on dicte : le temps, le halo qui suit la voix, et de quoi s'arrêter. */
+const enDictee = () => `
+  <p class="chrono" id="chrono">${duree(Math.round((Date.now() - depart) / 1000))}</p>
+  <div class="rond-cadre">
+    <span class="halo" id="halo"></span>
+    <button class="rond rouge" id="stop" aria-label="Terminer">${icone("stop")}</button>
+  </div>
+  <p class="rond-legende">Terminer</p>
+  <p class="muet" id="muet" hidden>Le micro ne capte rien</p>`;
+
+const editeurDeNote = () => `
+  <div class="note-carte">
+    <textarea id="note" rows="5" placeholder="Votre note…">${echapper(brouillon)}</textarea>
+    <div class="deux">
+      <button class="btn-doux" id="annuler-note">Annuler</button>
+      <button class="btn-plein" id="garder-note">Garder</button>
+    </div>
+  </div>`;
+
+/** Ce qui vient de se passer — un avertissement, une erreur, un envoi : à lire en passant. */
+function bulles() {
+  const b = [];
+  if (avis) b.push(`<p class="bulle alerte">${icone("attention")}<span>${echapper(avis)}</span></p>`);
+  if (souci) b.push(`<p class="bulle erreur">${icone("attention")}<span>${echapper(souci)}</span></p>`);
+  if (!ctx && partiParNuage) b.push(`<p class="bulle">${icone("nuage")}<span>${echapper(partiParNuage)}</span></p>`);
+  if (!ctx && scanInfo) b.push(`<p class="bulle">${icone("page")}<span>${echapper(scanInfo)}</span></p>`);
+  return b.join("");
+}
+
+/** Par où partirait un envoi maintenant : le WiFi, Nuage, ou rien pour l'instant. */
+function routeDEnvoi() {
+  if (joignable) return { classe: "ok", texte: "WiFi" };
+  if (nuage) return { classe: "ok", texte: "Nuage" };
+  if (joignable === null || (relais.relie && nuage === null)) return { classe: "", texte: "…" };
+  return { classe: "loin", texte: "Hors ligne" };
+}
+
+function rangDAttente(x) {
+  const note = x.sorte === "note";
+  const matiere = x.creneau ? matiereDuCreneau(x.creneau) : "";
+  const sous = [heureDe(x.debut), matiere, !note && x.octets ? poids(x.octets) : ""].filter(Boolean).map(echapper).join(" · ");
+  return `<div class="rang">
+    <span class="ico">${icone(note ? "crayon" : "micro")}</span>
+    <span class="rang-texte">
+      <span class="rang-titre">${note ? echapper(apercu(x.texte)) : `Dictée · ${libelleDuree(x.dureeS)}`}</span>
+      <span class="rang-sous"><span class="coupe">${sous}</span></span>
+    </span>
+    ${note ? "" : `<button class="icone-btn" data-ecouter="${echapper(x.id)}" aria-label="${ecoute === x.id ? "Pause" : "Écouter"}">${icone(ecoute === x.id ? "pause" : "lecture")}</button>`}
+    <button class="icone-btn danger" data-oublier="${echapper(x.id)}" data-sorte="${x.sorte}" aria-label="Supprimer">${icone("poubelle")}</button>
+  </div>`;
+}
+
+function listeDAttente(attente) {
+  if (!attente.length) {
+    return `<p class="titre">À envoyer</p>
+      <div class="groupe"><div class="rang vide-ok"><span class="ico">${icone("coche")}</span><span class="rang-texte">Tout est envoyé</span></div></div>`;
+  }
+  return `<p class="titre">À envoyer · ${attente.length}</p>
+    <div class="groupe">${attente.map(rangDAttente).join("")}</div>
+    <button class="btn-plein" id="envoyer" ${envoiEnCours ? "disabled" : ""}>${icone("envoyer")}${envoiEnCours ? "Envoi…" : "Envoyer maintenant"}</button>`;
+}
+
+/** Le QR code d'abord, un code collé sinon. `fermable` quand on est déjà relié par ailleurs. */
+function carteAppairage(fermable) {
+  const valeur = appairage && adresse && !relais.relie ? echapper(adresse) : "";
+  return `<div class="carte">
+    <div class="carte-tete"><span class="grand-ico">${icone("lien")}</span><h2>Relier à l'ordinateur</h2></div>
+    ${camera
+      ? `<video id="vue" class="vue" playsinline autoplay muted></video>
+         <button class="btn-doux" id="stop-scan">Arrêter la caméra</button>`
+      : `<button class="btn-plein" id="scanner">${icone("qr")}Scanner le QR code</button>`}
+    ${scanSouci ? `<p class="erreur-ligne">${echapper(scanSouci)}</p>` : ""}
+    <p class="ou">ou</p>
+    <input id="adresse" placeholder="Code ou adresse" value="${valeur}"
+      autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url">
+    <div class="deux">
+      <button class="btn-doux" id="colle">${icone("coller")}Coller</button>
+      <button class="btn-plein" id="appairer">Relier</button>
+    </div>
+    ${fermable ? `<button class="lien-btn centre" id="fermer-appairage">Fermer</button>` : ""}
+  </div>`;
+}
+
+/** Les deux chemins vers l'ordinateur, et leur état. */
+function liaisons() {
+  const wifi = joignable === null ? ["", "…"] : joignable ? ["ok", "joignable"] : ["loin", "injoignable"];
+  // Nuage ne s'interroge que si l'ordinateur n'est pas là : à côté de lui, rien ne sort du WiFi.
+  const parNuage = joignable ? ["", "en réserve"] : nuage === null ? ["", "…"] : nuage ? ["ok", "prêt"] : ["loin", "injoignable"];
+  const autre = adresse && relais.relie ? "Relier autrement" : relais.relie ? "Relier aussi par le WiFi" : "Relier aussi par Nuage";
+  const rang = (ico, titre, etat, detail, bouton) => `<div class="rang">
+    <span class="ico">${icone(ico)}</span>
+    <span class="rang-texte"><span class="rang-titre">${titre}</span>
+      <span class="rang-sous"><span class="pt ${etat[0]}"></span><span class="coupe">${echapper(etat[1])} · ${echapper(detail)}</span></span></span>
+    ${bouton}
+  </div>`;
+  return `<p class="titre">Liaisons</p>
+    <div class="groupe">
+      ${adresse ? rang("wifi", "Ordinateur", wifi, hoteDe(adresse), `<button class="lien-btn" id="changer">Changer</button>`) : ""}
+      ${relais.relie ? rang("nuage", "Nuage", parNuage, relais.serveur, `<button class="lien-btn rouge" id="oublier-relais">Oublier</button>`) : ""}
+      ${appairage ? "" : `<button class="rang" id="relier-encore"><span class="ico">${icone("plus")}</span><span class="rang-titre accent">${autre}</span></button>`}
+    </div>
+    ${appairage ? carteAppairage(true) : ""}`;
 }
 
 function rendre() {
-  const enCours = !!ctx;
-  const attente = enAttente();
   const el = document.getElementById("ecran");
   if (!el) return;
-
-  // Injoignable : on dit lequel on cherche. Une adresse retenue hier, quand
-  // la box donnait une autre IP, se reconnaît alors d'un coup d'œil.
-  const etat = joignable === null ? ["var(--txt2)", "on regarde…"]
-    : joignable ? ["#16a34a", `joignable — ${hoteDe(adresse)}`]
-    : ["#d97706", `injoignable — ${hoteDe(adresse)}`];
-  // Le relais : on ne l'interroge que si l'ordinateur n'est pas là.
-  const etatNuage = joignable ? ["var(--txt2)", `en réserve — ${relais.serveur}`]
-    : nuage === null ? ["var(--txt2)", "on regarde…"]
-    : nuage ? ["#16a34a", `prêt — ${relais.serveur}`]
-    : ["#d97706", `injoignable — ${relais.serveur}`];
-  // Ce qui attend partira-t-il maintenant ? Par l'un ou par l'autre.
-  const pointAttente = joignable || nuage ? "#16a34a" : joignable === null && nuage === null ? "var(--txt2)" : "#d97706";
+  const enCours = !!ctx;
   const relie = relieQuelquePart();
 
-  el.innerHTML = `
-    <div class="card" style="text-align:center">
-      ${relie ? bandeauCreneau() : ""}
-      ${enCours
-        ? `<p class="chrono" id="chrono">0:00</p>
-           <div class="jauge-fond"><div class="jauge" id="jauge"></div></div>
-           <p class="meta" id="muet" hidden style="margin:8px 0 0;color:var(--rouge)">
-             Le micro ne capte rien pour l'instant.
-           </p>
-           <p class="meta" style="margin:8px 0 14px">${veille
-             ? "L'écran reste allumé. Ne quittez pas l'application."
-             : "Gardez l'écran allumé et l'application devant, sans quoi iOS met la dictée en pause."}</p>
-           <button class="gros rouge" id="stop">⏹ Terminer</button>`
-        : `<button class="gros" id="go" ${relie ? "" : "disabled"}>🎙 Dicter</button>
-           ${ecrit
-             ? `<textarea id="note" rows="4" placeholder="Deux lignes, au lieu de parler…">${echapper(brouillon)}</textarea>
-                <div style="display:flex;gap:8px;margin-top:8px">
-                  <button class="btn" id="annuler-note" style="flex:1">Annuler</button>
-                  <button class="btn plein" id="garder-note" style="flex:1">Garder</button>
-                </div>`
-             : `<button class="btn" id="ecrire" ${relie ? "" : "disabled"}
-                  style="width:100%;margin-top:10px">✍️ Écrire plutôt</button>`}
-           <p class="meta" style="margin:14px 0 0">${relie
-             ? "L'heure suffit : l'ordinateur saura de quel créneau il s'agit."
-             : "Reliez d'abord l'ordinateur, ci-dessous."}</p>`}
-    </div>
+  // En tête, par où partirait une dictée maintenant.
+  const tete = document.getElementById("liaison");
+  if (tete) {
+    const route = routeDEnvoi();
+    tete.hidden = !relie;
+    tete.className = `liaison ${route.classe}`;
+    tete.innerHTML = `<span class="pt"></span>${route.texte === "…" ? "…" : route.texte === "WiFi" ? "Ordinateur" : route.texte}`;
+  }
 
-    ${avis ? `<p class="avis">${avis}</p>` : ""}
-    ${souci ? `<p class="err">${souci}</p>` : ""}
-
-    ${relie && !enCours ? `
-      <p class="titre">Manuels</p>
-      <div class="card">
-        <button class="gros" id="scan-pages" ${scanEnCours ? "disabled" : ""}>📄 Scanner des pages</button>
-        <p class="meta" style="margin:12px 0 0">Comme dans Notes : cadrez la page, elle se redresse ; enchaînez les pages, puis
-          « Enregistrer ». Elles arrivent sur l'ordinateur, dans Adapter une fiche › Manuels — ouvrez-y « Scanner avec le compagnon ».</p>
-        ${scanInfo ? `<p class="avis" style="margin:10px 0 0">${echapper(scanInfo)}</p>` : ""}
-      </div>` : ""}
-
-    ${partiParNuage ? `<p class="avis">☁️ ${echapper(partiParNuage)}</p>` : ""}
-
-    ${attente.length ? `
-      <p class="titre">En attente d'envoi (${attente.length})</p>
-      ${attente.map((x) => `
-        <div class="ligne">
-          <span class="pt" style="background:${pointAttente}"></span>
-          <b>${heureDe(x.debut)}</b>
-          ${x.sorte === "note"
-            ? `<span class="note-apercu">✍️ ${echapper(apercu(x.texte))}</span>`
-            : `<span class="meta">${libelleDuree(x.dureeS)}${x.octets ? ` · ${poids(x.octets)}` : ""}</span>`}
-          ${x.creneau && libelleCreneau(x.creneau)
-            ? `<span class="meta creneau-puce">${echapper(libelleCreneau(x.creneau))}</span>` : ""}
-          <span style="flex:1"></span>
-          ${x.sorte === "note" ? "" : `<button class="btn" data-ecouter="${x.id}">${ecoute === x.id ? "⏸" : "▶︎"}</button>`}
-          <button class="btn" data-oublier="${x.id}" data-sorte="${x.sorte}">🗑</button>
-        </div>`).join("")}
-      <button class="btn plein" id="envoyer" ${envoiEnCours ? "disabled" : ""}
-        style="width:100%;margin-top:6px">${envoiEnCours ? "Envoi…" : "↑ Envoyer maintenant"}</button>
-    ` : `<p class="titre">En attente</p><p class="meta">Rien : tout est parti.</p>`}
-
-    <p class="titre">Ordinateur</p>
-    ${adresse ? `
-      <div class="ligne">
-        <span class="pt" style="background:${etat[0]}"></span>
-        <span class="meta" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📡 WiFi : ${echapper(etat[1])}</span>
-        <button class="btn" id="changer">Changer</button>
-      </div>` : ""}
-    ${relais.relie ? `
-      <div class="ligne">
-        <span class="pt" style="background:${etatNuage[0]}"></span>
-        <span class="meta" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">☁️ Nuage : ${echapper(etatNuage[1])}</span>
-        <button class="btn" id="oublier-relais">Oublier</button>
-      </div>` : ""}
-    ${appairage || !relie ? `
-      <div class="card">
-        <p class="meta" style="margin:0 0 10px">Sur l'ordinateur : <b>Réglages → Téléphone</b>. Pour déposer de partout,
-        « Le téléphone par Nuage » → <b>QR code du téléphone</b> ; pour le même WiFi, « Ouvrir le partage ».
-        Pointez la caméra sur le QR code affiché : l'application reconnaît lequel c'est.</p>
-        ${camera
-          ? `<video id="vue" class="vue" playsinline autoplay muted></video>
-             <button class="btn plein" id="stop-scan" style="width:100%;margin-top:8px">Arrêter la caméra</button>`
-          : `<button class="gros" id="scanner">📷 Scanner le QR code</button>`}
-        ${scanSouci ? `<p class="err" style="margin:10px 0 0">${echapper(scanSouci)}</p>` : ""}
-        <p class="titre" style="margin:16px 0 8px">Ou, à la main</p>
-        <input id="adresse" placeholder="L'adresse du partage, ou le code du relais" value="${appairage && adresse && !relais.relie ? echapper(adresse) : ""}"
-          autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url">
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="btn" id="colle" style="flex:1">📋 Coller</button>
-          <button class="btn plein" id="appairer" style="flex:1">Relier</button>
-        </div>
-        ${relie ? `<button class="btn" id="fermer-appairage" style="width:100%;margin-top:8px">Fermer</button>` : ""}
-      </div>`
-      : `<button class="btn" id="relier-encore" style="width:100%;margin-top:6px">${adresse && relais.relie ? "Relier autrement…"
-          : relais.relie ? "＋ Relier aussi par le WiFi…" : "＋ Relier aussi par Nuage : déposer sans WiFi commun…"}</button>`}
+  // Pas encore relié : il n'y a qu'une chose à faire.
+  el.innerHTML = !relie ? `${carteAppairage(false)}${bulles()}` : `
+    <section class="heros">
+      ${bandeauCreneau()}
+      ${enCours ? enDictee() : ecrit ? editeurDeNote() : auRepos()}
+    </section>
+    ${bulles()}
+    ${enCours || ecrit ? "" : listeDAttente(enAttente()) + liaisons()}
   `;
 
   const clic = (id, f) => { const b = document.getElementById(id); if (b) b.onclick = f; };
