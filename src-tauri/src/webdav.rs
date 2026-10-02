@@ -169,6 +169,32 @@ fn autorisation(acces: &Acces) -> String {
     format!("Basic {}", STANDARD.encode(format!("{}:{}", acces.utilisateur, acces.mot_de_passe)))
 }
 
+/// Vrai pour un accès par lien de partage, faux pour un compte.
+fn par_lien(acces: &Acces) -> bool {
+    acces.base.starts_with("public.php")
+}
+
+/**
+ * Les en-têtes d'une demande WebDAV : qui l'on est, et, par un lien de
+ * partage, la marque que Nuage exige.
+ *
+ * Depuis Nextcloud 29, tout ce qui n'est pas une lecture sur un lien public
+ * (lister, écrire, supprimer) doit porter « X-Requested-With: XMLHttpRequest »,
+ * sans quoi le serveur répond 401 — sauf là où le partage entre serveurs est
+ * activé. Un refus qui ressemble à un mauvais mot de passe, et n'en est pas un.
+ */
+fn entetes(acces: &Acces) -> reqwest::header::HeaderMap {
+    use reqwest::header::{HeaderMap, HeaderName, HeaderValue, AUTHORIZATION};
+    let mut sortie = HeaderMap::new();
+    if let Ok(valeur) = HeaderValue::from_str(&autorisation(acces)) {
+        sortie.insert(AUTHORIZATION, valeur);
+    }
+    if par_lien(acces) {
+        sortie.insert(HeaderName::from_static("x-requested-with"), HeaderValue::from_static("XMLHttpRequest"));
+    }
+    sortie
+}
+
 /// Ce qu'on dit d'une réponse qui n'a pas abouti, en français.
 fn erreur_http(statut: reqwest::StatusCode, quoi: &str) -> String {
     match statut.as_u16() {
@@ -197,7 +223,7 @@ async fn propfind(acces: &Acces, relatif: &str, profondeur: &str) -> R<String> {
     let methode = reqwest::Method::from_bytes(b"PROPFIND").map_err(|e| e.to_string())?;
     let rep = client()?
         .request(methode, url_de(acces, relatif))
-        .header("Authorization", autorisation(acces))
+        .headers(entetes(acces))
         .header("Depth", profondeur)
         .header("Content-Type", "application/xml; charset=utf-8")
         .body(PROPFIND)
@@ -372,7 +398,7 @@ pub async fn fichiers(acces: &Acces, dossier: &str) -> R<Vec<String>> {
 pub async fn lire(acces: &Acces, chemin: &str) -> R<Vec<u8>> {
     let rep = client()?
         .get(url_de(acces, chemin))
-        .header("Authorization", autorisation(acces))
+        .headers(entetes(acces))
         .send()
         .await
         .map_err(|e| format!("Nuage injoignable : {e}"))?;
@@ -387,7 +413,7 @@ pub async fn lire(acces: &Acces, chemin: &str) -> R<Vec<u8>> {
 pub async fn lire_debut(acces: &Acces, chemin: &str, octets: usize) -> R<Vec<u8>> {
     let rep = client()?
         .get(url_de(acces, chemin))
-        .header("Authorization", autorisation(acces))
+        .headers(entetes(acces))
         .header("Range", format!("bytes=0-{}", octets.saturating_sub(1)))
         .send()
         .await
@@ -405,7 +431,7 @@ pub async fn lire_debut(acces: &Acces, chemin: &str, octets: usize) -> R<Vec<u8>
 pub async fn ecrire(acces: &Acces, chemin: &str, octets: Vec<u8>) -> R<()> {
     let rep = client()?
         .put(url_de(acces, chemin))
-        .header("Authorization", autorisation(acces))
+        .headers(entetes(acces))
         .body(octets)
         .send()
         .await
@@ -418,7 +444,7 @@ pub async fn creer_dossier(acces: &Acces, chemin: &str) -> R<()> {
     let methode = reqwest::Method::from_bytes(b"MKCOL").map_err(|e| e.to_string())?;
     let rep = client()?
         .request(methode, url_de(acces, chemin))
-        .header("Authorization", autorisation(acces))
+        .headers(entetes(acces))
         .send()
         .await
         .map_err(|e| format!("Nuage injoignable : {e}"))?;
@@ -430,7 +456,7 @@ pub async fn creer_dossier(acces: &Acces, chemin: &str) -> R<()> {
 pub async fn supprimer(acces: &Acces, chemin: &str) -> R<()> {
     let rep = client()?
         .delete(url_de(acces, chemin))
-        .header("Authorization", autorisation(acces))
+        .headers(entetes(acces))
         .send()
         .await
         .map_err(|e| format!("Nuage injoignable : {e}"))?;
@@ -466,6 +492,55 @@ pub async fn est_dossier(acces: &Acces, chemin: &str) -> R<bool> {
  * Nuage quand on veut. Il passe par l'API de Nextcloud, pas par WebDAV.
  */
 pub async fn creer_lien(acces: &Acces, sous_dossier: &str, mot_de_passe: &str, ecriture: bool) -> R<String> {
+    creer_lien_detaille(acces, sous_dossier, mot_de_passe, ecriture).await.map(|l| l.url)
+}
+
+/// Un lien de partage tel que Nuage vient de le créer.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct LienCree {
+    /// Son numéro chez Nuage : c'est par lui qu'on le révoque.
+    pub id: String,
+    /// L'adresse à donner : « https://nuage03.apps.education.fr/s/aBcD1234 ».
+    pub url: String,
+    /// Le jeton, qui sert d'identifiant en WebDAV.
+    pub jeton: String,
+    /// Le jour où Nuage le fermera, s'il en impose un (« 2026-11-01 ») ; vide sinon.
+    pub expire: String,
+}
+
+/// Ce que Nuage répond à la création d'un lien : son numéro, son adresse, son jeton, son échéance.
+pub fn lire_lien_cree(corps: &str) -> R<LienCree> {
+    let v: serde_json::Value = serde_json::from_str(corps)
+        .map_err(|_| "Réponse de Nuage illisible.".to_string())?;
+    let donnees = &v["ocs"]["data"];
+    let Some(url) = donnees["url"].as_str() else {
+        let message = v["ocs"]["meta"]["message"].as_str().unwrap_or("").trim().to_string();
+        // « Passwords are enforced… » : Nuage le dit avec ou sans majuscule, en anglais ou en français.
+        let bas = message.to_lowercase();
+        return Err(if message.is_empty() {
+            "Nuage n'a pas rendu d'adresse pour ce lien.".to_string()
+        } else if bas.contains("password") || bas.contains("mot de passe") {
+            format!("Nuage demande un mot de passe pour ce lien : {message}")
+        } else {
+            format!("Nuage : {message}")
+        });
+    };
+    // Le numéro arrive en nombre ou en texte selon la version du serveur.
+    let id = match &donnees["id"] {
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Number(n) => n.to_string(),
+        _ => String::new(),
+    };
+    let jeton = donnees["token"].as_str().map(String::from)
+        .or_else(|| lien_partage(url).ok().map(|(_, j)| j))
+        .unwrap_or_default();
+    // « 2026-11-01 00:00:00 » : on n'en garde que le jour.
+    let expire = donnees["expiration"].as_str().unwrap_or("").chars().take(10).collect();
+    Ok(LienCree { id, url: url.to_string(), jeton, expire })
+}
+
+/// Crée un lien de partage, et rend tout ce qu'il faut pour s'en servir puis le révoquer.
+pub async fn creer_lien_detaille(acces: &Acces, sous_dossier: &str, mot_de_passe: &str, ecriture: bool) -> R<LienCree> {
     if acces.base.starts_with("public.php") {
         return Err("Ce bureau commun est déjà ouvert par un lien : c'est à son propriétaire d'en créer d'autres.".into());
     }
@@ -511,20 +586,44 @@ pub async fn creer_lien(acces: &Acces, sous_dossier: &str, mot_de_passe: &str, e
         });
     }
     // La réponse est un JSON d'OCS : l'adresse du lien est dans « data.url ».
-    let v: serde_json::Value = serde_json::from_str(&corps)
-        .map_err(|_| "Réponse de Nuage illisible.".to_string())?;
-    let donnees = &v["ocs"]["data"];
-    if let Some(url) = donnees["url"].as_str() {
-        return Ok(url.to_string());
+    lire_lien_cree(&corps)
+}
+
+/// Révoque un lien de partage : celui qui le tenait n'entre plus.
+pub async fn supprimer_lien(acces: &Acces, id: &str) -> R<()> {
+    if id.trim().is_empty() {
+        return Err("Ce lien n'a pas de numéro : supprimez-le depuis Nuage.".into());
     }
-    let message = v["ocs"]["meta"]["message"].as_str().unwrap_or("").trim().to_string();
-    Err(if message.is_empty() {
-        "Nuage n'a pas rendu d'adresse pour ce lien.".to_string()
-    } else if message.contains("password") || message.contains("mot de passe") {
-        format!("Nuage demande un mot de passe pour ce lien : {message}")
-    } else {
-        format!("Nuage : {message}")
-    })
+    let rep = client()?
+        .delete(format!("{}/ocs/v2.php/apps/files_sharing/api/v1/shares/{}?format=json", acces.serveur, encoder(id.trim())))
+        .header("Authorization", autorisation(acces))
+        .header("OCS-APIRequest", "true")
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|e| format!("Nuage injoignable : {e}"))?;
+    // Un lien déjà supprimé dans Nuage n'est pas une erreur : c'est ce qu'on voulait.
+    if rep.status().is_success() || rep.status().as_u16() == 404 { Ok(()) } else { Err(erreur_http(rep.status(), "le lien de partage")) }
+}
+
+/// Repousse l'échéance d'un lien, quand Nuage en impose une. Rend la nouvelle date.
+pub async fn prolonger_lien(acces: &Acces, id: &str, jusqu_au: &str) -> R<String> {
+    let rep = client()?
+        .put(format!("{}/ocs/v2.php/apps/files_sharing/api/v1/shares/{}?format=json", acces.serveur, encoder(id.trim())))
+        .header("Authorization", autorisation(acces))
+        .header("OCS-APIRequest", "true")
+        .header("Accept", "application/json")
+        .form(&[("expireDate", jusqu_au)])
+        .send()
+        .await
+        .map_err(|e| format!("Nuage injoignable : {e}"))?;
+    let statut = rep.status();
+    let corps = rep.text().await.unwrap_or_default();
+    if !statut.is_success() {
+        return Err(erreur_http(statut, "le lien de partage"));
+    }
+    let v: serde_json::Value = serde_json::from_str(&corps).unwrap_or_default();
+    Ok(v["ocs"]["data"]["expiration"].as_str().unwrap_or(jusqu_au).chars().take(10).collect())
 }
 
 /// La connexion répond-elle, et le dossier existe-t-il ?
@@ -667,4 +766,36 @@ mod tests {
         assert!(analyser_propfind("<d:multistatus><d:response>").is_ok());
         assert!(analyser_propfind("pas du xml").is_ok());
     }
+    #[test]
+    fn un_lien_cree_dit_son_numero_son_jeton_et_son_echeance() {
+        // Tel que Nuage le rend : le numéro en nombre, l'échéance avec son heure.
+        let lien = lire_lien_cree(r#"{"ocs":{"meta":{"status":"ok"},"data":{"id":1234,"token":"aBcD1234",
+            "url":"https://nuage03.apps.education.fr/s/aBcD1234","expiration":"2026-11-01 00:00:00"}}}"#).unwrap();
+        assert_eq!(lien, LienCree {
+            id: "1234".into(), url: "https://nuage03.apps.education.fr/s/aBcD1234".into(),
+            jeton: "aBcD1234".into(), expire: "2026-11-01".into(),
+        });
+        // Un serveur plus ancien : le numéro en texte, pas de jeton à part, pas d'échéance.
+        let ancien = lire_lien_cree(r#"{"ocs":{"data":{"id":"77","url":"https://exemple.fr/nextcloud/s/XyZ9/","expiration":null}}}"#).unwrap();
+        assert_eq!((ancien.id.as_str(), ancien.jeton.as_str(), ancien.expire.as_str()), ("77", "XyZ9", ""));
+        // Un refus s'explique avec les mots de Nuage.
+        let refus = lire_lien_cree(r#"{"ocs":{"meta":{"message":"Passwords are enforced for link and mail shares"},"data":[]}}"#).unwrap_err();
+        assert!(refus.contains("mot de passe"), "{refus}");
+        assert!(lire_lien_cree("<html>").unwrap_err().contains("illisible"));
+    }
+
+    #[test]
+    fn un_lien_de_partage_porte_la_marque_que_nuage_exige() {
+        let compte = acces();
+        let par_le_compte = entetes(&compte);
+        assert!(par_le_compte.get("authorization").unwrap().to_str().unwrap().starts_with("Basic "));
+        assert!(par_le_compte.get("x-requested-with").is_none());
+        // Par un lien : sans cette marque, lister ou écrire est refusé comme un mauvais mot de passe.
+        let lien = Acces { utilisateur: "aBcD1234".into(), mot_de_passe: "Mz7-secret".into(), base: "public.php/dav/files/aBcD1234".into(), ..compte };
+        let par_le_lien = entetes(&lien);
+        assert_eq!(par_le_lien.get("x-requested-with").unwrap(), "XMLHttpRequest");
+        assert_eq!(par_le_lien.get("authorization").unwrap().to_str().unwrap(), format!("Basic {}", STANDARD.encode("aBcD1234:Mz7-secret")));
+        assert!(par_lien(&Acces { base: "public.php/webdav".into(), ..lien }));
+    }
+
 }

@@ -118,6 +118,8 @@ pub const REGLAGES_DU_POSTE: &[&str] = &[
     // Les bureaux communs : des dossiers de cet ordinateur-ci, dont le chemin
     // n'est pas le même sur un Mac et sur un PC.
     crate::commun::CLE_BUREAUX,
+    // Ce que cet ordinateur a publié pour le téléphone : chacun tient son compte.
+    crate::telephone::CLE_AGENDA,
 ];
 
 // ── Dossiers du plan de travail ────────────────────────────────────────────
@@ -286,6 +288,9 @@ pub fn annoncer_tables(conn: &Connection, machine: &str, autres: &[(String, Vec<
  */
 pub const SECRETS: &[&str] = &[
     "mistralApiKey", "sauvegarde_phrase", "sync_access", "sync_secret", "portableJeton",
+    // Le relais du téléphone : le lien de son dossier et la clé qui rouvre ses
+    // dépôts ; le compte Nuage qui a créé ce lien.
+    crate::telephone::CLE_RELAIS, crate::telephone::CLE_COMPTE,
 ];
 
 pub fn reglage_secret(cle: &str) -> bool {
