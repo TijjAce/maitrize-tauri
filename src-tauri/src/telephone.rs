@@ -46,6 +46,14 @@ const DOSSIER: &str = "Maitrize-Telephone";
 /// Combien de jours d'emploi du temps le téléphone reçoit : de quoi tenir des
 /// vacances de la Toussaint sans rouvrir l'ordinateur.
 const JOURS_PUBLIES: i64 = 14;
+/// Et combien de jours passés : on dicte aussi sur la veille, ou sur la
+/// semaine écoulée — le téléphone remonte jusqu'à deux semaines.
+const JOURS_PASSES: i64 = 14;
+
+/// Les jours que l'emploi du temps publié couvre : le premier, et combien.
+fn fenetre_publiee(aujourdhui: chrono::NaiveDate) -> (chrono::NaiveDate, i64) {
+    (aujourdhui - chrono::Duration::days(JOURS_PASSES), JOURS_PASSES + JOURS_PUBLIES)
+}
 /// Quand le lien arrive à échéance dans moins de jours que cela, on la repousse.
 const MARGE_ECHEANCE: i64 = 10;
 /// De combien de jours on repousse l'échéance d'un lien.
@@ -630,7 +638,7 @@ async fn prolonger_si_besoin(db: &State<'_, Db>, r: &mut Relais) {
 // ── L'emploi du temps pour le téléphone ────────────────────────────────────
 
 /**
- * Les créneaux des jours à venir : une heure et un intitulé, rien d'autre.
+ * Les créneaux des jours publiés : une heure et un intitulé, rien d'autre.
  *
  * Ni le prévu ni le bilan, qui parlent des élèves. Un jour sans créneau y
  * figure vide : le téléphone sait alors que c'est un jour sans classe.
@@ -669,7 +677,8 @@ fn empreinte(a: &relais::Agenda) -> String {
 async fn publier_si_change(db: &State<'_, Db>, r: &Relais) -> R<bool> {
     let (mut a, deja) = {
         let c = db.lock();
-        (agenda(&c, chrono::Local::now().date_naive(), JOURS_PUBLIES)?, crate::sync::get_setting(&c, CLE_AGENDA))
+        let (depuis, jours) = fenetre_publiee(chrono::Local::now().date_naive());
+        (agenda(&c, depuis, jours)?, crate::sync::get_setting(&c, CLE_AGENDA))
     };
     let trace = empreinte(&a);
     if trace == deja {
@@ -984,6 +993,18 @@ mod tests {
         assert_eq!(empreinte(&publie), empreinte(&agenda(&c, lundi, 3).unwrap()));
         poser("c4", "2026-10-06", "14:00", "15:00", "Sport", "");
         assert_ne!(empreinte(&publie), empreinte(&agenda(&c, lundi, 3).unwrap()));
+    }
+
+    #[test]
+    fn l_emploi_du_temps_publie_couvre_les_deux_semaines_passees_et_les_deux_a_venir() {
+        let vendredi = chrono::NaiveDate::from_ymd_opt(2026, 10, 2).unwrap();
+        let (depuis, jours) = fenetre_publiee(vendredi);
+        assert_eq!(depuis, chrono::NaiveDate::from_ymd_opt(2026, 9, 18).unwrap());
+        assert_eq!(jours, 28);
+        // La veille y est, et le dernier jour publié est dans treize jours.
+        let dernier = depuis + chrono::Duration::days(jours - 1);
+        assert_eq!(dernier, chrono::NaiveDate::from_ymd_opt(2026, 10, 15).unwrap());
+        assert!(depuis < vendredi.pred_opt().unwrap());
     }
 
     #[test]
