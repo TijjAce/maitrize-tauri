@@ -140,7 +140,7 @@ pub fn run() {
             ai::mistral_modeles_disponibles, ai::mistral_vision, ai::mistral_recherche_web,
             arasaac::arasaac_etat, arasaac::arasaac_telecharger, arasaac::arasaac_categories,
             arasaac::arasaac_selection, arasaac::arasaac_themes_des_mots, arasaac::arasaac_par_mots, arasaac::arasaac_image,
-            arasaac::arasaac_chercher, arasaac::arasaac_nature,
+            arasaac::arasaac_chercher, arasaac::arasaac_nature, arasaac::arasaac_noms_contenant,
             commands::jeu_generer, commands::tla_generer,
             commands::dossier_donnees_get, commands::dossier_donnees_set,
             commands::diag_ecrire, commands::diag_ouvrir, commands::diag_rapport,

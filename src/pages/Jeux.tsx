@@ -22,6 +22,7 @@ import {
 } from "./AteliersMaths";
 import { EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
 import { GestesTab, MotsEnGestesTab } from "./AteliersGestes";
+import { SyllabeManquanteTab } from "./AtelierSyllabes";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { chargerPicto, usePictoImage } from "../components/ChoixPicto";
 import { BoutonMesImages, imagePourLePdf } from "../components/MesImages";
@@ -41,7 +42,7 @@ const OCTETS = (n: number) =>
 
 const ONGLETS = [
   "jeux", "memory", "imagier", "etiquettes", "ombres",
-  "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres", "gestes", "motsGestes",
+  "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "tri", "phrases", "motsMeles",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "nombres", "cubes", "calcul", "arbre", "fractions", "oie", "heure", "numeration",
 ] as const;
@@ -108,6 +109,8 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
         quoi: "Vos images des gestes en cartes à découper : petites pour les mains, grandes pour le tableau — et, d'un clic, en loto ou en mémory." },
       { id: "motsGestes", nom: "Mots codés en gestes", icone: "🫱", cycles: "Cycle 2",
         quoi: "La fiche d'un son en gestes Borel-Maisonny : colorier le bon dessin, relier au bon mot, ou écrire le mot." },
+      { id: "syllabeManquante", nom: "La syllabe qui manque", icone: "🧩", pictos: true, cycles: "Cycle 2",
+        quoi: "Sous chaque dessin, le mot avec un trou : écrire ma, mi ou mu. Puis des mots à écrire en entier, sous l'en-tête du son et de son geste." },
     ],
   },
   {
@@ -376,6 +379,7 @@ export default function Jeux() {
         : onglet === "lettres" ? <LettresTab />
         : onglet === "gestes" ? <GestesTab />
         : onglet === "motsGestes" ? <MotsEnGestesTab banque={Boolean(etat?.installee)} />
+        : onglet === "syllabeManquante" ? <SyllabeManquanteTab banque={Boolean(etat?.installee)} />
         : onglet === "nombres" ? <CartesNombresTab />
         : onglet === "cubes" ? <CubesTab />
         : onglet === "calcul" ? <CartesCalculTab />
