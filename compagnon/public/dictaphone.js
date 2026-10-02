@@ -28,6 +28,16 @@ const TAUX = 16000;
 let micro = null, ctx = null, noeud = null, morceaux = [], debut = null, depart = 0, minuteur = null;
 let vocaux = [], joignable = null, envoiEnCours = false, souci = "";
 /**
+ * Le relais de Nuage : relié ou non, et s'il répond.
+ *
+ * L'ordinateur n'est pas toujours sur le même WiFi que le téléphone — le plus
+ * souvent, il est fermé dans le sac. Par Nuage, ce qui attend part quand
+ * même, scellé pour lui, et il le relèvera en s'ouvrant.
+ */
+let relais = { relie: false, serveur: "" }, nuage = null;
+/** Ce qui vient de partir par Nuage : on le dit, pour qu'on ne le cherche pas sur l'ordinateur tout de suite. */
+let partiParNuage = "";
+/**
  * Ce qu'il y a à dire de la dernière dictée — micro muet, arrêt en
  * arrière-plan. Séparé de `souci`, qui parle du réseau : l'envoi part juste
  * après l'enregistrement et effaçait l'avertissement avant qu'on le lise.
@@ -268,11 +278,21 @@ async function garderLaNote() {
   void envoyerTout();
 }
 
+/** Y a-t-il quelqu'un à qui parler : l'ordinateur sur le WiFi, ou à défaut le dossier de Nuage ? */
 async function tater() {
-  try { joignable = await invoke("ordinateur_joignable"); } catch (e) { joignable = false; }
-  if (joignable) await rafraichirCreneaux();
+  try { joignable = adresse ? await invoke("ordinateur_joignable") : false; } catch (e) { joignable = false; }
+  // Nuage ne s'interroge que si l'ordinateur n'est pas là : à côté de lui, rien ne sort du WiFi.
+  if (joignable || !relais.relie) nuage = joignable ? null : false;
+  else { try { nuage = await invoke("relais_joignable"); } catch (e) { nuage = false; } }
+  if (joignable || nuage) await rafraichirCreneaux();
   rendre();
 }
+
+/** Par où part ce qui attend : droit sur l'ordinateur s'il est là, par Nuage sinon. */
+const voie = () => (joignable ? "direct" : relais.relie ? "nuage" : adresse ? "direct" : "");
+
+/** Le téléphone est relié à quelque chose : il peut garder, et tenter d'envoyer. */
+const relieQuelquePart = () => !!adresse || relais.relie;
 
 /** Le jour d'aujourd'hui, au format du planning. */
 const jourDuJour = () => maintenantIso().slice(0, 10);
@@ -280,7 +300,8 @@ const jourDuJour = () => maintenantIso().slice(0, 10);
 /** Redemande l'emploi du temps du jour, et retient celui de l'instant. */
 async function rafraichirCreneaux() {
   try {
-    creneaux = await invoke("creneaux_rafraichir", { jour: jourDuJour() });
+    // L'ordinateur les dit lui-même quand il est là ; sinon, il les a laissés sur Nuage.
+    creneaux = await invoke(joignable ? "creneaux_rafraichir" : "creneaux_du_relais", { jour: jourDuJour() });
     creneauxConnus = true;
   } catch (e) { /* hors réseau : on garde ce qu'on avait */ }
   await relireCreneaux();
@@ -312,23 +333,45 @@ function libelleCreneau(id) {
   return `${h} ${c.matiere || "créneau"}`;
 }
 
-/** Dépose ce qui attend, et s'arrête au premier refus : le reste est gardé. */
+/** La commande qui dépose un élément par une voie : droit sur l'ordinateur, ou par Nuage. */
+const commandeDEnvoi = (sorte, par) =>
+  `${sorte === "note" ? "note" : "vocal"}_${par === "nuage" ? "deposer" : "envoyer"}`;
+
+/**
+ * Dépose ce qui attend, et s'arrête au premier refus : le reste est gardé.
+ *
+ * L'ordinateur d'abord, quand il est sur le WiFi : rien ne sort alors du
+ * réseau local. Sinon par Nuage, si le téléphone y est relié — et si
+ * l'ordinateur décroche en cours de route, Nuage prend la suite.
+ */
 async function envoyerTout() {
   if (envoiEnCours) return;
   envoiEnCours = true;
   souci = "";
   rendre();
+  let parNuage = 0;
   try {
     for (const x of enAttente()) {
+      let par = voie();
+      if (!par) { souci = "Reliez d'abord l'ordinateur, ci-dessous."; break; }
       try {
-        await invoke(x.sorte === "note" ? "note_envoyer" : "vocal_envoyer", { id: x.id });
+        await invoke(commandeDEnvoi(x.sorte, par), { id: x.id });
       } catch (e) {
-        souci = String(e);
-        break;
+        if (par !== "direct" || !relais.relie) { souci = String(e); break; }
+        // L'ordinateur ne répond plus : on ne s'obstine pas, Nuage prend la suite.
+        joignable = false;
+        par = "nuage";
+        try { await invoke(commandeDEnvoi(x.sorte, par), { id: x.id }); }
+        catch (e2) { souci = String(e2); break; }
       }
+      if (par === "nuage") parNuage += 1;
       await relire();
     }
   } finally {
+    if (parNuage) {
+      partiParNuage = `${parNuage} envoi${parNuage > 1 ? "s" : ""} parti${parNuage > 1 ? "s" : ""} par Nuage à ${heureDe(maintenantIso())} : `
+        + "l'ordinateur les relèvera en s'ouvrant.";
+    }
     envoiEnCours = false;
     await relire();
     void tater();
@@ -384,8 +427,12 @@ async function scannerPages() {
     const fichiers = (r && r.fichiers) || [];
     if (!fichiers.length) { scanInfo = ""; return; }
     scanInfo = `Envoi de ${fichiers.length} page${fichiers.length > 1 ? "s" : ""}…`; rendre();
-    const n = await invoke("scan_envoyer", { fichiers });
-    scanInfo = `✅ ${n} page${n > 1 ? "s" : ""} envoyée${n > 1 ? "s" : ""} sur l'ordinateur. Vous pouvez en scanner d'autres.`;
+    // Par Nuage quand l'ordinateur n'est pas sur le WiFi : les pages l'y attendent.
+    const parNuage = !joignable && relais.relie;
+    const n = await invoke(parNuage ? "scan_deposer" : "scan_envoyer", { fichiers });
+    scanInfo = parNuage
+      ? `✅ ${n} page${n > 1 ? "s" : ""} partie${n > 1 ? "s" : ""} par Nuage : elles arrivent sur l'ordinateur dès que « Scanner avec le compagnon » y est ouvert.`
+      : `✅ ${n} page${n > 1 ? "s" : ""} envoyée${n > 1 ? "s" : ""} sur l'ordinateur. Vous pouvez en scanner d'autres.`;
   } catch (e) {
     scanInfo = "❌ " + String(e);
   } finally {
@@ -455,19 +502,56 @@ function fermerCamera() {
   if (camera) { camera.getTracks().forEach((t) => t.stop()); camera = null; }
 }
 
-/** Retient l'adresse lue, et dit tout de suite si elle ne convient pas. */
+/** Ce que porte un code de Maitrize : l'adresse de l'ordinateur sur le WiFi, ou le relais de Nuage. */
+const sansEspaces = (t) => String(t || "").replace(/\s+/g, "");
+const estUnRelais = (t) => sansEspaces(t).startsWith("maitrize-relais:");
+
+/**
+ * Retient ce qu'on vient de lire : l'ordinateur, ou le relais.
+ *
+ * Les deux QR codes se scannent du même geste ; c'est ce qu'ils portent qui
+ * dit lequel c'est. Le code que l'ordinateur donne à l'autre ordinateur, lui,
+ * n'est pas pour le téléphone : on le dit, plutôt que de l'avaler de travers.
+ */
+async function retenir(lu) {
+  if (sansEspaces(lu).startsWith("maitrize-relais-ordinateur:")) {
+    throw "Ce code est celui de l'autre ordinateur. Pour le téléphone : Réglages › Téléphone › « QR code du téléphone ».";
+  }
+  if (estUnRelais(lu)) {
+    relais = await invoke("relais_ecrire", { code: lu });
+    nuage = null;
+    return;
+  }
+  await invoke("ordinateur_ecrire", { url: lu });
+  adresse = await invoke("ordinateur_lire");
+}
+
+/** Retient le QR code lu, et dit tout de suite s'il ne convient pas. */
 async function appairerAvec(lu) {
+  let relie = false;
   try {
-    await invoke("ordinateur_ecrire", { url: lu });
-    adresse = await invoke("ordinateur_lire");
+    await retenir(lu);
+    relie = true;
     appairage = false;
     souci = "";
     scanSouci = "";
   } catch (e) {
-    scanSouci = `Ce QR code ne mène pas à Maitrize (${String(e)}).`;
+    scanSouci = `Ce QR code ne convient pas (${String(e)}).`;
+    appairage = true;
   }
   rendre();
-  void tater();
+  // Ce qui attendait part dès qu'on est relié — et seulement alors : un refus
+  // doit rester à l'écran, pas se faire recouvrir par un envoi impossible.
+  void tater().then(() => { if (relie && enAttente().length) void envoyerTout(); });
+}
+
+/** Oublie le relais de Nuage : ce qui attend ne partira plus que par le WiFi. */
+async function oublierLeRelais() {
+  try { await invoke("relais_oublier"); } catch (e) { /* déjà oublié */ }
+  relais = { relie: false, serveur: "" };
+  nuage = null;
+  partiParNuage = "";
+  rendre();
 }
 
 /** Colle l'adresse depuis le presse-papiers : quarante caractères à la main, non. */
@@ -491,16 +575,17 @@ async function coller() {
 
 async function appairer() {
   const champ = document.getElementById("adresse");
+  let relie = false;
   try {
-    await invoke("ordinateur_ecrire", { url: champ ? champ.value : "" });
-    adresse = await invoke("ordinateur_lire");
+    await retenir(champ ? champ.value : "");
+    relie = true;
     appairage = false;
     souci = "";
   } catch (e) {
     souci = String(e);
   }
   rendre();
-  void tater();
+  void tater().then(() => { if (relie && enAttente().length) void envoyerTout(); });
 }
 
 // ── Afficher ──────────────────────────────────────────────────────────────
@@ -583,10 +668,18 @@ function rendre() {
   const etat = joignable === null ? ["var(--txt2)", "on regarde…"]
     : joignable ? ["#16a34a", `joignable — ${hoteDe(adresse)}`]
     : ["#d97706", `injoignable — ${hoteDe(adresse)}`];
+  // Le relais : on ne l'interroge que si l'ordinateur n'est pas là.
+  const etatNuage = joignable ? ["var(--txt2)", `en réserve — ${relais.serveur}`]
+    : nuage === null ? ["var(--txt2)", "on regarde…"]
+    : nuage ? ["#16a34a", `prêt — ${relais.serveur}`]
+    : ["#d97706", `injoignable — ${relais.serveur}`];
+  // Ce qui attend partira-t-il maintenant ? Par l'un ou par l'autre.
+  const pointAttente = joignable || nuage ? "#16a34a" : joignable === null && nuage === null ? "var(--txt2)" : "#d97706";
+  const relie = relieQuelquePart();
 
   el.innerHTML = `
     <div class="card" style="text-align:center">
-      ${adresse ? bandeauCreneau() : ""}
+      ${relie ? bandeauCreneau() : ""}
       ${enCours
         ? `<p class="chrono" id="chrono">0:00</p>
            <div class="jauge-fond"><div class="jauge" id="jauge"></div></div>
@@ -597,24 +690,24 @@ function rendre() {
              ? "L'écran reste allumé. Ne quittez pas l'application."
              : "Gardez l'écran allumé et l'application devant, sans quoi iOS met la dictée en pause."}</p>
            <button class="gros rouge" id="stop">⏹ Terminer</button>`
-        : `<button class="gros" id="go" ${adresse ? "" : "disabled"}>🎙 Dicter</button>
+        : `<button class="gros" id="go" ${relie ? "" : "disabled"}>🎙 Dicter</button>
            ${ecrit
              ? `<textarea id="note" rows="4" placeholder="Deux lignes, au lieu de parler…">${echapper(brouillon)}</textarea>
                 <div style="display:flex;gap:8px;margin-top:8px">
                   <button class="btn" id="annuler-note" style="flex:1">Annuler</button>
                   <button class="btn plein" id="garder-note" style="flex:1">Garder</button>
                 </div>`
-             : `<button class="btn" id="ecrire" ${adresse ? "" : "disabled"}
+             : `<button class="btn" id="ecrire" ${relie ? "" : "disabled"}
                   style="width:100%;margin-top:10px">✍️ Écrire plutôt</button>`}
-           <p class="meta" style="margin:14px 0 0">${adresse
+           <p class="meta" style="margin:14px 0 0">${relie
              ? "L'heure suffit : l'ordinateur saura de quel créneau il s'agit."
-             : "Appairez d'abord l'ordinateur, ci-dessous."}</p>`}
+             : "Reliez d'abord l'ordinateur, ci-dessous."}</p>`}
     </div>
 
     ${avis ? `<p class="avis">${avis}</p>` : ""}
     ${souci ? `<p class="err">${souci}</p>` : ""}
 
-    ${adresse && !enCours ? `
+    ${relie && !enCours ? `
       <p class="titre">Manuels</p>
       <div class="card">
         <button class="gros" id="scan-pages" ${scanEnCours ? "disabled" : ""}>📄 Scanner des pages</button>
@@ -623,11 +716,13 @@ function rendre() {
         ${scanInfo ? `<p class="avis" style="margin:10px 0 0">${echapper(scanInfo)}</p>` : ""}
       </div>` : ""}
 
+    ${partiParNuage ? `<p class="avis">☁️ ${echapper(partiParNuage)}</p>` : ""}
+
     ${attente.length ? `
-      <p class="titre">En attente de l'ordinateur (${attente.length})</p>
+      <p class="titre">En attente d'envoi (${attente.length})</p>
       ${attente.map((x) => `
         <div class="ligne">
-          <span class="pt" style="background:${etat[0]}"></span>
+          <span class="pt" style="background:${pointAttente}"></span>
           <b>${heureDe(x.debut)}</b>
           ${x.sorte === "note"
             ? `<span class="note-apercu">✍️ ${echapper(apercu(x.texte))}</span>`
@@ -640,31 +735,42 @@ function rendre() {
         </div>`).join("")}
       <button class="btn plein" id="envoyer" ${envoiEnCours ? "disabled" : ""}
         style="width:100%;margin-top:6px">${envoiEnCours ? "Envoi…" : "↑ Envoyer maintenant"}</button>
-    ` : `<p class="titre">En attente</p><p class="meta">Rien : tout est parti sur l'ordinateur.</p>`}
+    ` : `<p class="titre">En attente</p><p class="meta">Rien : tout est parti.</p>`}
 
     <p class="titre">Ordinateur</p>
-    ${appairage || !adresse ? `
+    ${adresse ? `
+      <div class="ligne">
+        <span class="pt" style="background:${etat[0]}"></span>
+        <span class="meta" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📡 WiFi : ${echapper(etat[1])}</span>
+        <button class="btn" id="changer">Changer</button>
+      </div>` : ""}
+    ${relais.relie ? `
+      <div class="ligne">
+        <span class="pt" style="background:${etatNuage[0]}"></span>
+        <span class="meta" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">☁️ Nuage : ${echapper(etatNuage[1])}</span>
+        <button class="btn" id="oublier-relais">Oublier</button>
+      </div>` : ""}
+    ${appairage || !relie ? `
       <div class="card">
-        <p class="meta" style="margin:0 0 10px">Sur l'ordinateur : Réglages → Partage WiFi →
-        « Ouvrir le partage ». Pointez la caméra sur le QR code affiché.</p>
+        <p class="meta" style="margin:0 0 10px">Sur l'ordinateur : <b>Réglages → Téléphone</b>. Pour déposer de partout,
+        « Le téléphone par Nuage » → <b>QR code du téléphone</b> ; pour le même WiFi, « Ouvrir le partage ».
+        Pointez la caméra sur le QR code affiché : l'application reconnaît lequel c'est.</p>
         ${camera
           ? `<video id="vue" class="vue" playsinline autoplay muted></video>
              <button class="btn plein" id="stop-scan" style="width:100%;margin-top:8px">Arrêter la caméra</button>`
           : `<button class="gros" id="scanner">📷 Scanner le QR code</button>`}
         ${scanSouci ? `<p class="err" style="margin:10px 0 0">${echapper(scanSouci)}</p>` : ""}
         <p class="titre" style="margin:16px 0 8px">Ou, à la main</p>
-        <input id="adresse" placeholder="http://ordinateur.local:8787/?t=…" value="${adresse}"
+        <input id="adresse" placeholder="L'adresse du partage, ou le code du relais" value="${appairage && adresse && !relais.relie ? echapper(adresse) : ""}"
           autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url">
         <div style="display:flex;gap:8px;margin-top:8px">
           <button class="btn" id="colle" style="flex:1">📋 Coller</button>
-          <button class="btn plein" id="appairer" style="flex:1">Appairer</button>
+          <button class="btn plein" id="appairer" style="flex:1">Relier</button>
         </div>
+        ${relie ? `<button class="btn" id="fermer-appairage" style="width:100%;margin-top:8px">Fermer</button>` : ""}
       </div>`
-      : `<div class="ligne">
-           <span class="pt" style="background:${etat[0]}"></span>
-           <span class="meta" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${etat[1]}</span>
-           <button class="btn" id="changer">Changer</button>
-         </div>`}
+      : `<button class="btn" id="relier-encore" style="width:100%;margin-top:6px">${adresse && relais.relie ? "Relier autrement…"
+          : relais.relie ? "＋ Relier aussi par le WiFi…" : "＋ Relier aussi par Nuage : déposer sans WiFi commun…"}</button>`}
   `;
 
   const clic = (id, f) => { const b = document.getElementById(id); if (b) b.onclick = f; };
@@ -686,6 +792,9 @@ function rendre() {
   const champNote = document.getElementById("note");
   if (champNote) champNote.oninput = () => { brouillon = champNote.value; };
   clic("changer", () => { appairage = true; scanSouci = ""; rendre(); });
+  clic("relier-encore", () => { appairage = true; scanSouci = ""; rendre(); });
+  clic("fermer-appairage", () => { fermerCamera(); appairage = false; scanSouci = ""; rendre(); });
+  clic("oublier-relais", () => { void oublierLeRelais(); });
   el.querySelectorAll("[data-oublier]").forEach((b) => {
     b.onclick = () => { void oublier(b.dataset.oublier, b.dataset.sorte); };
   });
@@ -698,14 +807,17 @@ function rendre() {
 
 (async () => {
   try { adresse = await invoke("ordinateur_lire"); } catch (e) { adresse = ""; }
+  try { relais = await invoke("relais_lire"); } catch (e) { relais = { relie: false, serveur: "" }; }
   await relireCreneaux();
   await relire();
-  void tater();
-  // L'ordinateur s'allume parfois après nous : on retente de loin en loin, et
-  // l'on dépose ce qui attend dès qu'il répond.
+  // Ce qui attendait d'hier part dès l'ouverture, par l'ordinateur ou par Nuage.
+  void tater().then(() => { if ((joignable || nuage) && enAttente().length) void envoyerTout(); });
+  // L'ordinateur s'allume parfois après nous, le réseau revient en sortant du
+  // métro : on retente de loin en loin, et l'on dépose ce qui attend dès que
+  // l'un des deux chemins répond.
   setInterval(async () => {
     if (ctx || envoiEnCours) return;
     await tater();
-    if (joignable && enAttente().length) void envoyerTout();
+    if ((joignable || nuage) && enAttente().length) void envoyerTout();
   }, 20000);
 })();
