@@ -1,0 +1,4 @@
+# Compilation
+/target/
+# Une bibliothèque ne fige pas ses dépendances : chaque application a son Cargo.lock.
+Cargo.lock
