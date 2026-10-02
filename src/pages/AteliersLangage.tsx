@@ -32,7 +32,7 @@ import { OMBRES_MINIMUM, REGLAGES_OMBRES, STYLE_OMBRES, feuillesDOmbres, htmlOmb
 // Les mots collectés, sur étiquettes : grandes pour le tableau, petites par
 // enveloppe de trinôme, et la corolle lexicale pour les ranger.
 
-const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string; onChange: (v: boolean) => void }) => (
+export const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string; onChange: (v: boolean) => void }) => (
   <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span>{libelle}</span></label>
 );
 
@@ -86,7 +86,7 @@ export function EtiquettesTab({ banque }: { banque: boolean }) {
 
 // ── Fabriquer › Lecture et écriture ───────────────────────────────────────
 
-function Colonnes({ gauche, droite }: { gauche: React.ReactNode; droite: React.ReactNode }) {
+export function Colonnes({ gauche, droite }: { gauche: React.ReactNode; droite: React.ReactNode }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 380px) 1fr", gap: 14, alignItems: "start" }}>
       <div className="card">{gauche}</div>
@@ -95,12 +95,13 @@ function Colonnes({ gauche, droite }: { gauche: React.ReactNode; droite: React.R
   );
 }
 
-function Boutons({ atelier, titre, html, style, peut, onTirage }: { atelier: string; titre: string; html: string; style: string; peut: boolean; onTirage: () => void }) {
+/** Imprimer, ranger sur le bureau — et retirer au sort, pour les feuilles qui ont un tirage. */
+export function Boutons({ atelier, titre, html, style, peut, onTirage }: { atelier: string; titre: string; html: string; style: string; peut: boolean; onTirage?: () => void }) {
   return (
     <>
       <CasesFeuille />
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-        <button type="button" className="btn sm" onClick={onTirage}>🎲 Autre tirage</button>
+        {onTirage && <button type="button" className="btn sm" onClick={onTirage}>🎲 Autre tirage</button>}
         <button type="button" className="btn primary sm" disabled={!peut} onClick={() => void imprimerAtelier(atelier, titre, html, STYLE_FEUILLE + style)}>🖨 Imprimer</button>
         <BoutonBureau disabled={!peut} onEnregistrer={() => enregistrerSurLeBureau(atelier, titre, html, STYLE_FEUILLE + style)} />
       </div>

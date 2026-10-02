@@ -53,7 +53,7 @@ export const USAGE_PAR_DEFAUT: Record<string, Usage> = {
   jeux: "reinvestissement", memory: "reinvestissement", imagier: "manipulation", etiquettes: "manipulation", ombres: "manipulation",
   // Sons et lecture : la fluence et le syllabaire se font chaque jour.
   sons: "entrainement", lotoSyllabes: "manipulation", dominos: "reinvestissement", intrus: "entrainement", paires: "entrainement",
-  fluence: "rituel", syllabaire: "rituel", lettres: "reinvestissement",
+  fluence: "rituel", syllabaire: "rituel", lettres: "reinvestissement", gestes: "manipulation", motsGestes: "entrainement",
   // Lecture et écriture : on trie pour découvrir, on remet en ordre pour s'entraîner.
   tri: "manipulation", phrases: "entrainement", motsMeles: "reinvestissement",
   // Mathématiques : le calcul mental est le rituel par excellence.

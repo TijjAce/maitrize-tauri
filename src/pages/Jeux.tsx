@@ -21,9 +21,11 @@ import {
   ArbreCalculTab, CartesCalculTab, CartesNombresTab, CompteEstBonTab, CubesTab, FractionsTab, HeureTab, JeuDeLOieTab, MartiniereTab, NumerationTab, PyramidesTab,
 } from "./AteliersMaths";
 import { EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
+import { GestesTab, MotsEnGestesTab } from "./AteliersGestes";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { chargerPicto, usePictoImage } from "../components/ChoixPicto";
 import { BoutonMesImages, imagePourLePdf } from "../components/MesImages";
+import { gestesDemandes, gestesPourLesJeux, useNombreDeGestes } from "../components/BanqueDeGestes";
 import { estPerso } from "../imagesPerso";
 
 // ── Loto et tableaux à partir des pictogrammes ARASAAC ────────────────────
@@ -39,7 +41,7 @@ const OCTETS = (n: number) =>
 
 const ONGLETS = [
   "jeux", "memory", "imagier", "etiquettes", "ombres",
-  "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres",
+  "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres", "gestes", "motsGestes",
   "tri", "phrases", "motsMeles",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "nombres", "cubes", "calcul", "arbre", "fractions", "oie", "heure", "numeration",
 ] as const;
@@ -102,6 +104,10 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
         quoi: "Le jeu de l'ascenseur : deux bandes qui glissent, la syllabe apparaît." },
       { id: "lettres", nom: "Les lettres", icone: "🔠", cycles: "Cycles 1 et 2",
         quoi: "Mémory, mistigri et loto des lettres, majuscule et minuscule ; la planche de l'ophtalmologue." },
+      { id: "gestes", nom: "Gestes Borel-Maisonny", icone: "🤲", cycles: "Cycles 1 et 2",
+        quoi: "Vos images des gestes en cartes à découper : petites pour les mains, grandes pour le tableau — et, d'un clic, en loto ou en mémory." },
+      { id: "motsGestes", nom: "Mots codés en gestes", icone: "🫱", cycles: "Cycle 2",
+        quoi: "La fiche d'un son en gestes Borel-Maisonny : colorier le bon dessin, relier au bon mot, ou écrire le mot." },
     ],
   },
   {
@@ -368,6 +374,8 @@ export default function Jeux() {
         : onglet === "fluence" ? <FluenceTab />
         : onglet === "syllabaire" ? <SyllabaireTab />
         : onglet === "lettres" ? <LettresTab />
+        : onglet === "gestes" ? <GestesTab />
+        : onglet === "motsGestes" ? <MotsEnGestesTab banque={Boolean(etat?.installee)} />
         : onglet === "nombres" ? <CartesNombresTab />
         : onglet === "cubes" ? <CubesTab />
         : onglet === "calcul" ? <CartesCalculTab />
@@ -532,6 +540,23 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
   };
   const [variantesDe, setVariantesDe] = React.useState<PictoArasaac | null>(null);
   const [aRenommer, setARenommer] = React.useState<PictoArasaac | null>(null);
+  // Les gestes Borel-Maisonny que l'enseignant a rangés : un loto, un mémory tout trouvés.
+  const nbGestes = useNombreDeGestes();
+  const [lectureDesGestes, setLectureDesGestes] = React.useState(false);
+  const ajouterMesGestes = async (seulement?: string[]) => {
+    setLectureDesGestes(true);
+    try {
+      const gestes = await gestesPourLesJeux(seulement);
+      setSelection((s) => ajouter(s, gestes.map((g): PictoArasaac => ({ id: g.id, mot: g.mot, fichier: "", nature: "" }))));
+      toast(`${gestes.length} geste${gestes.length > 1 ? "s" : ""} — retirez d'un clic ceux que la classe n'a pas encore vus.`, { icone: "🤲" });
+    } catch (e) { toast(String(e), { icone: "⚠️" }); }
+    finally { setLectureDesGestes(false); }
+  };
+  // Venu de l'atelier des gestes par « En faire un loto » : le jeu s'ouvre avec eux.
+  React.useEffect(() => {
+    const sons = gestesDemandes();
+    if (sons) { setMode("images"); void ajouterMesGestes(sons); }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // Écrire une liste de mots ou choisir ses images mène droit au loto : pas d'étape « choisir ».
   const sansChoix = mode === "mots" || mode === "images";
 
@@ -732,6 +757,12 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
               onImages={(images) => setSelection((s) => [...s, ...images.map((i): PictoArasaac => ({ id: i.id, mot: i.mot, fichier: "", nature: "" }))])}>
               🖼 Choisir des images…
             </BoutonMesImages>
+            {nbGestes > 0 && (
+              <button className="btn" style={{ width: "100%", marginTop: 6 }} disabled={lectureDesGestes} onClick={() => void ajouterMesGestes()}
+                title="Les images rangées dans l'atelier « Gestes Borel-Maisonny », chacune sous son son">
+                {lectureDesGestes ? "Lecture des gestes…" : `🤲 Mes gestes Borel-Maisonny (${nbGestes})`}
+              </button>
+            )}
             <p style={{ fontSize: 12, color: "var(--text-2)", margin: "8px 0 0" }}>
               PNG ou JPEG ; une image copiée se colle aussi ({raccourci("V")}). Le nom du fichier propose le mot, « ✏️ » sur l'image le réécrit. Rien n'est enregistré : les images servent le temps de fabriquer le jeu.
             </p>

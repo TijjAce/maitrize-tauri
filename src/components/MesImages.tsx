@@ -34,8 +34,8 @@ async function peindre(source: Blob | string, max: number): Promise<{ toile: HTM
   }
 }
 
-/** Un fichier image, réduit : en PNG s'il a de la transparence, en JPEG sinon — dix fois plus léger pour une photo. */
-export async function imageReduite(fichier: Blob, max = 700): Promise<string> {
+/** Une image — un fichier, ou une image déjà lue —, réduite : en PNG si elle a de la transparence, en JPEG sinon, dix fois plus léger pour une photo. */
+export async function imageReduite(fichier: Blob | string, max = 700): Promise<string> {
   const { toile, pinceau } = await peindre(fichier, max);
   const pixels = pinceau.getImageData(0, 0, toile.width, toile.height).data;
   return aDeLaTransparence(pixels) ? toile.toDataURL("image/png") : toile.toDataURL("image/jpeg", 0.86);
