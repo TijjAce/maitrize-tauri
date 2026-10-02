@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
-import { isoJour, lundiDe, jourPlanningInitial, anneeDe, toMin, minToHHMM } from "../dates";
+import { isoJour, lundiDe, jourPlanningInitial, anneeDe, toMin, minToHHMM, plusJours } from "../dates";
 import { api, Creneau, Seance, Sequence, Eleve, Jeu, MATIERES, couleurPourMatiere, teinteCreneau, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance, texteErreur, type MaterielItem, type ObservationEleve } from "../api";
 import { Modal, Field, Input, Select, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
@@ -22,6 +22,7 @@ import { rendrePagesAImprimer } from "../pdfRendu";
 import { CLE_RITUELS, avecRituels, lireRituels, rituelsCites, rituelsImprimes } from "../rituels";
 import { IndicateurZoom, useZoomPince } from "../components/ZoomPince";
 import { aImprimer, masqueJeu, masqueRituel, masqueSequence, masquesDesReglages } from "../journalMasques";
+import { JOURS_DE_RECUL, STYLE_VEILLE, bilansDeLaVeilleHtml, veilleDe } from "../bilansVeille";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const JOURS7 = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -219,6 +220,11 @@ export default function Planning() {
     const masques = masquesDesReglages(reglages);
     // Les rituels cités dans le prévu : leur déroulement s'imprime sous lui.
     const rituels = lireRituels(await api.settingGet(CLE_RITUELS).catch(() => null));
+    // Les bilans du dernier jour de classe : écrits le soir, relus le matin, en tête du journal.
+    const veille = veilleDe(
+      await api.creneauxList(iso(plusJours(ancre, -JOURS_DE_RECUL)), iso(plusJours(ancre, -1))).catch((): Creneau[] => []),
+      iso(ancre),
+    );
 
     // Collecte toutes les images référencées, puis les lit en data URL.
     const noms = new Set<string>();
@@ -357,6 +363,7 @@ export default function Planning() {
       ${STYLE_SEQUENCES}
       ${STYLE_PIED}
       ${STYLE_ANNEXES}
+      ${STYLE_VEILLE}
     `;
     // Le matériel à la suite du journal : chaque page de PDF devient une
     // image, entière, assez fine pour l'imprimante. Un fichier illisible ne
@@ -376,6 +383,7 @@ export default function Planning() {
     const logo = await logoImprimable().catch(() => "");
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Planning — ${escapeHtml(titre)}</title><style>${css}</style></head>
       <body>${moletteDuJournalHtml()}<div class="journal"><h1>${escapeHtml(titre)}</h1><div class="sub">Cahier journal</div>
+      ${bilansDeLaVeilleHtml(veille)}
       <div class="jour">${rangs || '<div class="row"><div style="padding:20px;color:#687087">Aucun créneau ce jour-là.</div></div>'}</div></div>
       ${annexesHtml(rendues)}
       ${piedMaitrize(logo)}
