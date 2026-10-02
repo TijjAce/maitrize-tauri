@@ -190,8 +190,10 @@ export function DicteeAtelier({ eleves, onClose, onEnregistre, texteInitial, tit
           <div className="card" style={{ background: "var(--panel-2)", fontSize: 13, lineHeight: 1.55 }}>
             <b>Ce qui sort de votre ordinateur</b>
             <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
-              <li>L'enregistrement part chez <b>Mistral</b> (serveurs en Europe) pour être transcrit.
-                  S'il contient des prénoms d'élèves, ils sont transmis.</li>
+              {dictee.ici
+                ? <li>L'enregistrement est transcrit <b>sur cet ordinateur</b> : il n'en sort pas.</li>
+                : <li>L'enregistrement part chez <b>Mistral</b> (serveurs en Europe) pour être transcrit.
+                  S'il contient des prénoms d'élèves, ils sont transmis.</li>}
               <li>Pour la répartition, seuls les <b>prénoms</b> sont envoyés — jamais les noms de
                   famille, dates de naissance, INE ni dossiers.</li>
               <li>L'audio n'est jamais enregistré sur le disque et n'est pas conservé après la

@@ -40,6 +40,28 @@ export const paroleMinimale = (m: Moteur): number => (m === "local" ? 1.5 : 5);
  */
 export const plafondDuMorceau = (m: Moteur): number => (m === "local" ? 12 : 20);
 
+/**
+ * Où se transcrit une dictée au micro, dans l'application.
+ *
+ * Comme les vocaux du téléphone : sur cet ordinateur dès qu'un modèle y est —
+ * c'est gratuit, et rien ne sort. Sans modèle, en ligne ; sauf si l'enseignant
+ * a expressément choisi le local : on le lui dit alors, plutôt que d'envoyer
+ * ce qu'il voulait garder.
+ */
+export function moteurDeLaDictee(modeleInstalle: boolean, choix: string | null | undefined): { moteur: Moteur } | { erreur: string } {
+  if (modeleInstalle) return { moteur: "local" };
+  if (choix === "local") {
+    return { erreur: "Aucun modèle de transcription sur cet ordinateur. Dans Réglages · IA, téléchargez-en un — ou choisissez la transcription en ligne." };
+  }
+  return { moteur: "ligne" };
+}
+
+/** Le moteur d'une dictée, sur ce poste, maintenant. */
+export async function moteurDeLaDicteeIci(): Promise<{ moteur: Moteur } | { erreur: string }> {
+  const [etat, choix] = await Promise.all([api.whisperEtat().catch(() => null), api.settingGet(CLE_MOTEUR).catch(() => null)]);
+  return moteurDeLaDictee(!!etat?.modele, choix);
+}
+
 /** Ce qu'il faut dire à l'enseignant sur ce que devient son audio. */
 export const sortieDeLAudio = (m: Moteur): string =>
   m === "local"
