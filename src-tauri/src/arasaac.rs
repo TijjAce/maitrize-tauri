@@ -46,13 +46,18 @@ fn metadata_path() -> PathBuf {
 // Le fichier est un unique tableau JSON sur une seule ligne : il se parse d'un
 // bloc, jamais ligne à ligne.
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct MotCle {
     #[serde(default)]
     keyword: String,
+    /// La nature du mot chez ARASAAC : 2 pour un nom commun, 3 pour un verbe.
+    #[serde(default, rename = "type")]
+    sorte: Option<i64>,
+    #[serde(default)]
+    plural: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct PictoBrut {
     #[serde(rename = "_id")]
     id: i64,
@@ -60,6 +65,11 @@ struct PictoBrut {
     keywords: Vec<MotCle>,
     #[serde(default)]
     categories: Vec<String>,
+    /// Les deux marques qu'ARASAAC pose sur les dessins à ne pas montrer sans y penser.
+    #[serde(default)]
+    sex: bool,
+    #[serde(default)]
+    violence: bool,
 }
 
 /// Un picto tel que le module s'en sert : un identifiant, un mot, des rayons.
@@ -67,19 +77,26 @@ struct PictoBrut {
 /// ARASAAC donne plusieurs mots-clés à un même dessin — « peindre » et
 /// « colorier », « rayer » et « barrer ». Le premier fait le libellé ; tous
 /// servent à chercher, sans quoi « colorier » ne trouvait rien.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Picto {
     pub id: i64,
     pub mot: String,
     /// Tous les mots-clés français, en minuscules, le libellé en tête.
     pub mots: Vec<String>,
     pub categories: Vec<String>,
+    /// Ceux de ses mots qui sont des noms communs d'un seul mot : ce qu'on
+    /// propose de soi-même pour un exercice de lecture.
+    pub noms: Vec<String>,
+    /// Marqué « sexualité » ou « violence » par ARASAAC : il se cherche, il ne se propose pas.
+    pub sensible: bool,
 }
 
 /// L'index en mémoire. Reconstruit uniquement quand la banque change.
 #[derive(Default)]
 pub struct Index {
     pub pictos: Vec<Picto>,
+    /// Les pluriels qui s'écrivent autrement que leur singulier : « mains », pas « souris ».
+    pub pluriels: HashSet<String>,
     /// Empreinte du fichier lu, pour savoir s'il faut relire.
     signature: (u64, i64),
 }
@@ -110,6 +127,90 @@ fn mots_du_picto(p: &PictoBrut) -> Vec<String> {
         }
     }
     mots
+}
+
+/// Un seul mot, fait de lettres : ni locution, ni mot composé.
+fn est_un_mot_seul(m: &str) -> bool {
+    !m.is_empty() && m.chars().all(char::is_alphabetic)
+}
+
+/// Les noms communs d'un seul mot que porte un picto, en minuscules, sans doublon.
+fn noms_du_picto(p: &PictoBrut) -> Vec<String> {
+    let mut noms: Vec<String> = Vec::new();
+    for k in p.keywords.iter().filter(|k| k.sorte == Some(2)) {
+        let mot = k.keyword.trim().to_lowercase();
+        if est_un_mot_seul(&mot) && !noms.contains(&mot) {
+            noms.push(mot);
+        }
+    }
+    noms
+}
+
+/// Le pluriel d'un mot-clé, quand il s'écrit autrement que lui.
+fn pluriel_distinct(k: &MotCle) -> Option<String> {
+    let pluriel = k.plural.as_deref()?.trim().to_lowercase();
+    (!pluriel.is_empty() && pluriel != k.keyword.trim().to_lowercase()).then_some(pluriel)
+}
+
+/// Les mots proposés pour un exercice tiennent dans une case et se lisent : de trois à douze lettres.
+const LETTRES_D_UN_NOM: std::ops::RangeInclusive<usize> = 3..=12;
+
+/// Un nom que la banque propose : son dessin, et s'il est du vocabulaire de base.
+#[derive(Debug, Clone, PartialEq)]
+pub struct NomPropose {
+    pub id: i64,
+    pub mot: String,
+    /// ARASAAC range ce mot dans son « vocabulaire de base » : un mot que les élèves connaissent.
+    pub de_base: bool,
+}
+
+/// L'ordre dans lequel on propose : le vocabulaire de base d'abord, puis les
+/// mots les plus courts — ce sont les plus faciles à lire.
+fn ordre_des_noms(a: &NomPropose, b: &NomPropose) -> std::cmp::Ordering {
+    b.de_base
+        .cmp(&a.de_base)
+        .then_with(|| a.mot.chars().count().cmp(&b.mot.chars().count()))
+        .then_with(|| a.mot.cmp(&b.mot))
+}
+
+/// Les noms communs d'un seul mot où l'on lit cette suite de lettres : « ma »
+/// donne lama, malle, mamie.
+///
+/// De quoi proposer des mots à compléter pour une syllabe. On écarte les
+/// pluriels (« mains » quand « main » existe), les pictos qu'ARASAAC marque
+/// sensibles, ceux dont l'image manque. Un mot que plusieurs pictos portent
+/// prend celui dont il est le libellé — le dessin fait pour lui.
+pub fn noms_contenant(index: &Index, morceau: &str, a_une_image: &dyn Fn(i64) -> bool) -> Vec<NomPropose> {
+    let cherche = morceau.trim().to_lowercase();
+    if cherche.is_empty() {
+        return Vec::new();
+    }
+    // Par mot : le dessin retenu, s'il en est le libellé, et si l'un de ses dessins est du vocabulaire de base.
+    let mut par_mot: BTreeMap<&str, (bool, i64, bool)> = BTreeMap::new();
+    for p in index.pictos.iter().filter(|p| !p.sensible) {
+        let de_base = p.categories.iter().any(|c| c.starts_with("core vocabulary"));
+        for nom in p.noms.iter().filter(|n| n.contains(&cherche)) {
+            if !LETTRES_D_UN_NOM.contains(&nom.chars().count()) || index.pluriels.contains(nom) || !a_une_image(p.id) {
+                continue;
+            }
+            let libelle = p.mot == *nom;
+            match par_mot.get_mut(nom.as_str()) {
+                None => {
+                    par_mot.insert(nom, (libelle, p.id, de_base));
+                }
+                Some(deja) => {
+                    if libelle && !deja.0 {
+                        (deja.0, deja.1) = (true, p.id);
+                    }
+                    deja.2 |= de_base;
+                }
+            }
+        }
+    }
+    let mut sortie: Vec<NomPropose> =
+        par_mot.into_iter().map(|(mot, (_, id, de_base))| NomPropose { id, mot: mot.to_string(), de_base }).collect();
+    sortie.sort_by(ordre_des_noms);
+    sortie
 }
 
 /// Comment un picto répond à ce qu'on cherche : 0 si un de ses mots est
@@ -147,6 +248,31 @@ pub fn picto_par_mot<'a>(index: &'a Index, cherche: &str) -> Option<&'a Picto> {
         .or_else(|| index.pictos.iter().find(|p| p.mots.iter().any(|m| m == cherche)))
 }
 
+/// Ce que l'index garde des métadonnées : les pictos utilisables, et les pluriels à ne pas proposer.
+///
+/// Un picto sans mot ou sans catégorie ne sert à rien ici : il ne peut ni
+/// s'afficher sous un libellé, ni se retrouver par une sélection.
+fn indexer(liste: Vec<PictoBrut>) -> (Vec<Picto>, HashSet<String>) {
+    let pluriels = liste.iter().flat_map(|p| p.keywords.iter().filter_map(pluriel_distinct)).collect();
+    let pictos = liste
+        .into_iter()
+        .filter(|p| !p.categories.is_empty())
+        .filter_map(|p| {
+            let mots = mots_du_picto(&p);
+            let noms = noms_du_picto(&p);
+            mots.first().cloned().map(|mot| Picto {
+                id: p.id,
+                mot,
+                mots,
+                categories: p.categories.iter().map(|c| c.to_lowercase()).collect(),
+                noms,
+                sensible: p.sex || p.violence,
+            })
+        })
+        .collect();
+    (pictos, pluriels)
+}
+
 fn charger_index(etat: &BanqueArasaac) -> Result<std::sync::MutexGuard<'_, Index>, String> {
     let chemin = metadata_path();
     let sig = signature_fichier(&chemin);
@@ -160,21 +286,7 @@ fn charger_index(etat: &BanqueArasaac) -> Result<std::sync::MutexGuard<'_, Index
     let brut = std::fs::read_to_string(&chemin).map_err(|e| format!("Lecture : {e}"))?;
     let liste: Vec<PictoBrut> =
         serde_json::from_str(&brut).map_err(|e| format!("metadata.json illisible : {e}"))?;
-    // Un picto sans mot ou sans catégorie ne sert à rien ici : il ne peut ni
-    // s'afficher sous un libellé, ni se retrouver par une sélection.
-    index.pictos = liste
-        .into_iter()
-        .filter(|p| !p.categories.is_empty())
-        .filter_map(|p| {
-            let mots = mots_du_picto(&p);
-            mots.first().cloned().map(|mot| Picto {
-                id: p.id,
-                mot,
-                mots,
-                categories: p.categories.iter().map(|c| c.to_lowercase()).collect(),
-            })
-        })
-        .collect();
+    (index.pictos, index.pluriels) = indexer(liste);
     index.signature = sig;
     Ok(index)
 }
@@ -535,6 +647,33 @@ pub fn arasaac_nature(etat: tauri::State<BanqueArasaac>, id: i64) -> Result<Stri
     Ok(picto.map(|p| nature(&p.categories)).unwrap_or_else(|| "nom".into()))
 }
 
+/// Des mots à proposer pour une syllabe : les noms communs de la banque où on
+/// la lit, avec leur dessin. `limite` vaut pour chaque syllabe — « mu » n'a
+/// pas à céder sa place aux deux cents mots en « ma ». L'écran vérifie ensuite
+/// qu'on l'y entend : « main » s'écrit avec « ma », et ne se dit pas ainsi.
+#[tauri::command(async)]
+pub fn arasaac_noms_contenant(
+    etat: tauri::State<BanqueArasaac>,
+    morceaux: Vec<String>,
+    limite: usize,
+) -> Result<Vec<PictoChoisi>, String> {
+    let index = charger_index(&etat)?;
+    let dossier = images_dir();
+    let image = |id: i64| dossier.join(format!("{id}.png"));
+    let mut vus: HashSet<String> = HashSet::new();
+    let mut proposes: Vec<NomPropose> = Vec::new();
+    for morceau in &morceaux {
+        let trouves = noms_contenant(&index, morceau, &|id| image(id).exists());
+        proposes.extend(trouves.into_iter().take(if limite == 0 { 300 } else { limite }).filter(|n| vus.insert(n.mot.clone())));
+    }
+    // D'une syllabe à l'autre, le même ordre : un mot qui en porte deux se range à sa place dans chacune.
+    proposes.sort_by(ordre_des_noms);
+    Ok(proposes
+        .into_iter()
+        .map(|n| PictoChoisi { fichier: image(n.id).to_string_lossy().into_owned(), id: n.id, mot: n.mot, nature: "nom".into() })
+        .collect())
+}
+
 /// Nature grammaticale déduite des catégories, ou « nom » à défaut.
 pub fn nature(categories: &[String]) -> String {
     let a = |c: &str| categories.iter().any(|x| x == c);
@@ -606,7 +745,7 @@ mod tests {
     use super::*;
 
     fn picto(id: i64, mot: &str, cats: &[&str]) -> Picto {
-        Picto { id, mot: mot.into(), mots: vec![mot.into()], categories: cats.iter().map(|c| c.to_string()).collect() }
+        Picto { id, mot: mot.into(), mots: vec![mot.into()], categories: cats.iter().map(|c| c.to_string()).collect(), ..Default::default() }
     }
 
     fn picto_mots(id: i64, mots: &[&str], cats: &[&str]) -> Picto {
@@ -615,6 +754,7 @@ mod tests {
             mot: mots[0].into(),
             mots: mots.iter().map(|m| m.to_string()).collect(),
             categories: cats.iter().map(|c| c.to_string()).collect(),
+            ..Default::default()
         }
     }
 
@@ -642,12 +782,12 @@ mod tests {
         let brut = PictoBrut {
             id: 1,
             keywords: vec![
-                MotCle { keyword: " Peindre ".into() },
-                MotCle { keyword: "".into() },
-                MotCle { keyword: "colorier".into() },
-                MotCle { keyword: "peindre".into() },
+                MotCle { keyword: " Peindre ".into(), ..Default::default() },
+                MotCle { keyword: "".into(), ..Default::default() },
+                MotCle { keyword: "colorier".into(), ..Default::default() },
+                MotCle { keyword: "peindre".into(), ..Default::default() },
             ],
-            categories: vec![],
+            ..Default::default()
         };
         assert_eq!(mots_du_picto(&brut), vec!["peindre".to_string(), "colorier".to_string()]);
     }
@@ -661,7 +801,120 @@ mod tests {
                 picto(4, "pantalon", &["clothes"]),
             ],
             signature: (1, 1),
+            ..Default::default()
         }
+    }
+
+    fn mot_cle(mot: &str, sorte: i64, pluriel: &str) -> MotCle {
+        MotCle { keyword: mot.into(), sorte: Some(sorte), plural: (!pluriel.is_empty()).then(|| pluriel.to_string()) }
+    }
+
+    #[test]
+    fn un_picto_donne_ses_noms_communs_d_un_seul_mot() {
+        let brut = PictoBrut {
+            id: 1,
+            keywords: vec![
+                mot_cle("Grand-mère", 2, "grands-mères"),
+                mot_cle("mamie", 2, "mamies"),
+                mot_cle("tricoter", 3, ""),
+                mot_cle("pomme de terre", 2, ""),
+                mot_cle("Mamie", 2, ""),
+                MotCle { keyword: "mémé".into(), ..Default::default() },
+            ],
+            ..Default::default()
+        };
+        // Ni le mot composé, ni la locution, ni le verbe, ni le mot sans nature ; « mamie » une fois.
+        assert_eq!(noms_du_picto(&brut), vec!["mamie".to_string()]);
+        assert_eq!(pluriel_distinct(&mot_cle("Main", 2, " Mains ")), Some("mains".into()));
+        assert_eq!(pluriel_distinct(&mot_cle("souris", 2, "souris")), None, "un pluriel qui s'écrit comme le singulier n'écarte rien");
+        assert_eq!(pluriel_distinct(&mot_cle("lama", 2, "")), None);
+    }
+
+    #[test]
+    fn l_index_lit_les_noms_les_pluriels_et_les_marques_d_arasaac() {
+        let json = r#"[
+            {"_id": 1, "keywords": [{"type": 2, "keyword": "Main", "plural": "mains"}], "categories": ["Body"], "sex": false, "violence": false},
+            {"_id": 2, "keywords": [{"type": 2, "keyword": "arme", "plural": "armes"}], "categories": ["object"], "violence": true},
+            {"_id": 3, "keywords": [{"type": 3, "keyword": "manger"}, {"type": null, "keyword": "repas"}], "categories": ["verb"]},
+            {"_id": 4, "keywords": [{"type": 2, "keyword": "orphelin"}], "categories": []},
+            {"_id": 5, "keywords": [{"type": 2, "keyword": "souris", "plural": "souris"}], "categories": ["animal"], "sex": true}
+        ]"#;
+        let (pictos, pluriels) = indexer(serde_json::from_str(json).unwrap());
+        // Le picto sans catégorie est écarté ; les autres gardent leur libellé, leurs noms et leur marque.
+        let vus: Vec<(i64, &str, Vec<&str>, bool)> =
+            pictos.iter().map(|p| (p.id, p.mot.as_str(), p.noms.iter().map(String::as_str).collect(), p.sensible)).collect();
+        assert_eq!(vus, vec![(1, "main", vec!["main"], false), (2, "arme", vec!["arme"], true), (3, "manger", vec![], false), (5, "souris", vec!["souris"], true)]);
+        assert_eq!(pictos[0].categories, vec!["body".to_string()]);
+        // « souris » s'écrit de même au pluriel : il ne s'écarte pas lui-même.
+        let mut tries: Vec<&String> = pluriels.iter().collect();
+        tries.sort();
+        assert_eq!(tries, vec!["armes", "mains"]);
+    }
+
+    /// Ce que la vraie banque propose pour des syllabes, à lire de l'œil. Ignoré par défaut :
+    ///   MAITRIZE_BANQUE=/chemin/ARASAAC MAITRIZE_SYLLABES=ma,mi,mu cargo test propositions_reelles -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn propositions_reelles() {
+        let Ok(banque) = std::env::var("MAITRIZE_BANQUE") else { return };
+        let dossier = std::path::Path::new(&banque);
+        let brut = std::fs::read_to_string(dossier.join("metadata.json")).expect("metadata.json");
+        let (pictos, pluriels) = indexer(serde_json::from_str(&brut).expect("métadonnées"));
+        let index = Index { pictos, pluriels, signature: (1, 1) };
+        let syllabes = std::env::var("MAITRIZE_SYLLABES").unwrap_or_else(|_| "ma,mi,mu".into());
+        for s in syllabes.split(',') {
+            let trouves = noms_contenant(&index, s, &|id| dossier.join("images").join(format!("{id}.png")).exists());
+            let base = trouves.iter().filter(|n| n.de_base).count();
+            println!("{s} : {} noms, dont {base} de base", trouves.len());
+            println!("  {}", trouves.iter().take(60).map(|n| format!("{}{}", n.mot, if n.de_base { "*" } else { "" })).collect::<Vec<_>>().join(", "));
+        }
+    }
+
+    fn picto_noms(id: i64, libelle: &str, noms: &[&str]) -> Picto {
+        Picto { id, mot: libelle.into(), mots: vec![libelle.into()], noms: noms.iter().map(|n| n.to_string()).collect(), categories: vec!["x".into()], ..Default::default() }
+    }
+
+    #[test]
+    fn les_noms_ou_l_on_lit_une_syllabe() {
+        let mut i = Index {
+            pictos: vec![
+                picto_noms(10, "marguerite", &["marguerite"]),
+                picto_noms(11, "lama", &["lama"]),
+                picto_noms(12, "grand-mère", &["mamie"]),
+                picto_noms(13, "mamie", &["mamie"]),
+                picto_noms(14, "mains", &["mains"]),
+                picto_noms(15, "main", &["main"]),
+                picto_noms(16, "anticonstitutionnalisme", &["anticonstitutionnalisme"]),
+                picto_noms(17, "ma", &["ma"]),
+                picto_noms(18, "mur", &["mur"]),
+                Picto { sensible: true, ..picto_noms(19, "mari", &["mari"]) },
+                picto_noms(20, "malle", &["malle"]),
+                Picto { categories: vec!["core vocabulary-feeding".into()], ..picto_noms(21, "tomate", &["tomate"]) },
+            ],
+            signature: (1, 1),
+            ..Default::default()
+        };
+        i.pluriels.insert("mains".into());
+        let tout = |_: i64| true;
+        let mots = |liste: &[NomPropose]| liste.iter().map(|n| n.mot.clone()).collect::<Vec<_>>();
+        let id_de = |liste: &[NomPropose], mot: &str| liste.iter().find(|n| n.mot == mot).map(|n| n.id);
+        let trouves = noms_contenant(&i, " MA ", &tout);
+        // Le vocabulaire de base d'abord, puis les plus courts ; ni le pluriel, ni le trop long, ni le trop court, ni le dessin sensible.
+        assert_eq!(mots(&trouves), vec!["tomate", "lama", "main", "malle", "mamie", "marguerite"]);
+        assert!(trouves[0].de_base && !trouves[1].de_base);
+        // « mamie » prend le dessin dont c'est le libellé, pas celui de « grand-mère ».
+        assert_eq!(id_de(&trouves, "mamie"), Some(13));
+        // Sans l'image de celui-là, l'autre le remplace ; sans aucune, le mot ne se propose pas.
+        assert_eq!(id_de(&noms_contenant(&i, "ma", &|id| id != 13), "mamie"), Some(12));
+        assert_eq!(id_de(&noms_contenant(&i, "ma", &|id| id != 13 && id != 12), "mamie"), None);
+        assert_eq!(noms_contenant(&i, "mu", &tout), vec![NomPropose { id: 18, mot: "mur".into(), de_base: false }]);
+        assert!(noms_contenant(&i, "  ", &tout).is_empty());
+        assert!(noms_contenant(&i, "zz", &tout).is_empty());
+        // Un mot de base par l'un de ses dessins l'est pour tous : le libellé garde le dessin, le mot garde son rang.
+        i.pictos.push(Picto { categories: vec!["core vocabulary-living being".into()], ..picto_noms(22, "mémé", &["mamie"]) });
+        let avec = noms_contenant(&i, "ma", &tout);
+        assert_eq!(mots(&avec)[..2], ["mamie".to_string(), "tomate".to_string()]);
+        assert_eq!(id_de(&avec, "mamie"), Some(13));
     }
 
     #[test]

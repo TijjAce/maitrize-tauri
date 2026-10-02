@@ -526,12 +526,13 @@ function melerSansAligner<T>(liste: T[], graine: number): T[] {
  * cartes : la consigne peut porter ses pictogrammes, et une ligne qui déborde
  * part seule sur la feuille suivante.
  */
-const HAUTEUR_DES_FEUILLES_MM = HAUTEUR_DES_PLANCHES_MM - 10;
+export const HAUTEUR_DES_FEUILLES_MM = HAUTEUR_DES_PLANCHES_MM - 10;
 /** Le titre et la ligne du prénom. */
-const TITRE_MM = 16;
+export const TITRE_MM = 16;
 /** L'en-tête du son étudié, à la place du titre, et la ligne du prénom. */
-const BANDEAU_MM = 37;
-const CONSIGNE_MM = 14;
+export const BANDEAU_MM = 37;
+/** Une consigne, avec la marge qui la sépare de ce qui précède. */
+export const CONSIGNE_MM = 14;
 /** L'écart entre deux lignes. */
 const ECART_MM = 5;
 /** Le dessin à colorier, au plus grand. */
@@ -550,12 +551,20 @@ export function graphiesDuSon(son: string, mots: MotCode[]): string[] {
   return vues.length ? vues.sort((a, b) => rang(a) - rang(b)) : [g.graphies[0]];
 }
 
-/** L'en-tête de la feuille : le geste du son étudié, et ses écritures en grand. */
-function bandeauDuSon(son: string, mots: MotCode[], images: ImagesGestes): string {
+/**
+ * L'en-tête d'une feuille : le geste du son étudié, et ses écritures en grand.
+ * `ecritures` est ce qu'on écrit à côté du geste, déjà mis en forme.
+ */
+export function bandeauDuGeste(son: string, images: ImagesGestes, ecritures: string): string {
   if (!gesteDe(son)) return "";
-  return `<div class="gb-bandeau"><span class="gb-geste">${imageDuGeste(son, images)}</span>`
-    + `<span class="gb-graphies">${graphiesDuSon(son, mots).map((x) => `<b>${escapeHtml(x)}</b>`).join("")}</span></div>`;
+  return `<div class="gb-bandeau"><span class="gb-geste">${imageDuGeste(son, images)}</span><span class="gb-graphies">${ecritures}</span></div>`;
 }
+
+/** La ligne du prénom et de la date, en tête de chaque page d'élève. */
+export const LIGNE_DU_PRENOM = `<div class="gb-prenom">Prénom : .................................... Date : ....................</div>`;
+
+const bandeauDuSon = (son: string, mots: MotCode[], images: ImagesGestes) =>
+  bandeauDuGeste(son, images, graphiesDuSon(son, mots).map((x) => `<b>${escapeHtml(x)}</b>`).join(""));
 
 /** La feuille des mots codés : à relier, à reconnaître par son dessin, ou à écrire — et son corrigé. */
 export function htmlMotsCodes(mots: MotCode[], images: ImagesGestes, r: ReglagesMotsCodes, graine: number): string {
@@ -569,7 +578,7 @@ export function htmlMotsCodes(mots: MotCode[], images: ImagesGestes, r: Reglages
   const illustres = prets.filter((m) => m.image);
   const bandeau = bandeauDuSon(r.son, employes, images);
   const tirage = hasard(graine);
-  const prenom = `<div class="gb-prenom">Prénom : .................................... Date : ....................</div>`;
+  const prenom = LIGNE_DU_PRENOM;
   const dessin = (x: MotCode | undefined) => `<span class="gb-dessin">${x ? imgPicto(x.image, x.mot) : ""}</span>`;
   const corriges: string[] = [];
   const reponse = (m: MotCode, precision = "") => `<div class="gb-reponse">${suiteDeGestes(m.gestes, images)}<span class="gb-fleche">→</span>`
@@ -637,6 +646,8 @@ export const STYLE_GESTES = `
   .feuille.gb .gb-bandeau .gb-geste { flex: none; width: 17.6mm; height: 22mm; border: none; }
   .feuille.gb .gb-graphies { flex: 1 1 auto; display: flex; justify-content: space-around; align-items: center; font-size: 46px; line-height: 1; }
   .feuille.gb .gb-graphies b { font-weight: 500; }
+  .feuille.gb .gb-graphies .gb-cursive { font-family: "Écriture A", "Ecriture A", "Écriture B", "Ecriture B", "Belle Allure GS", "Belle Allure CE", "Belle Allure CM",
+    "Cursive standard", "Ecolier", "ScolaCursive", "Snell Roundhand", cursive; font-size: 1.15em; }
   .feuille.gb .gb-prenom { font-size: 12px; color: #4a5065; margin: 0 0 6px; }
   .feuille.gb .gb-lignes { display: flex; flex-direction: column; gap: 5mm; }
   .feuille.gb .gb-ligne { display: flex; align-items: center; gap: 3mm; break-inside: avoid; page-break-inside: avoid; }
