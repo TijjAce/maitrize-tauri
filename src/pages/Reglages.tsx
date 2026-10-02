@@ -335,12 +335,13 @@ export default function Reglages() {
       </div>
 
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
-        <h3 style={{ marginTop: 0 }}>🎙 Transcription des réunions et des vocaux</h3>
+        <h3 style={{ marginTop: 0 }}>🎙 Transcription des réunions, des dictées et des vocaux</h3>
         <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13, lineHeight: 1.55 }}>
           L'audio d'une réunion est ce qu'il y a de plus sensible : une famille qui parle
           de son enfant. En local, il ne quitte pas cet ordinateur, et une
-          réunion en zone blanche s'écrit quand même. Les vocaux du téléphone se
-          transcrivent sur cet ordinateur dès qu'un modèle y est, en ligne sinon.
+          réunion en zone blanche s'écrit quand même. Les vocaux du téléphone et les
+          dictées au micro se transcrivent sur cet ordinateur dès qu'un modèle y est,
+          en ligne sinon.
         </p>
         <Field label="Moteur des réunions">
           <Select value={s[CLE_MOTEUR] === "local" ? "local" : "ligne"}
