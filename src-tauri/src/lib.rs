@@ -21,6 +21,7 @@ pub mod feuille_pdf;
 mod ppi_pdf;
 mod sync;
 mod synthese_pdf;
+mod telephone;
 
 use commands::*;
 use db::Db;
@@ -172,6 +173,10 @@ pub fn run() {
             portable::portable_demarrer, portable::portable_arreter, portable::portable_etat,
             // Capture photo depuis le téléphone
             portable::photo_capture_demarrer, portable::photo_capture_arreter,
+            // Le téléphone relié par Nuage : relier, relever, publier
+            telephone::telephone_etat, telephone::telephone_comptes, telephone::telephone_relier,
+            telephone::telephone_code, telephone::telephone_code_ordinateur, telephone::telephone_code_appliquer,
+            telephone::telephone_oublier, telephone::telephone_relever, telephone::telephone_relever_pages,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")

@@ -55,6 +55,9 @@ tiny_http = "0.12"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 yrs = "0.27.4"
 quick-xml = "0.36"
+# Ce que le dictaphone et l'ordinateur se disent par Nuage : le format et le
+# chiffrement des dépôts, communs aux deux applications.
+maitrize-relais = { path = "../relais" }
 candle-core = "0.11"
 candle-nn = "0.11"
 candle-transformers = "0.11"
@@ -66,3 +69,7 @@ objc2 = "0.6"
 objc2-foundation = { version = "0.3", features = ["NSString", "NSURL", "NSDictionary", "NSObject", "NSGeometry", "NSValue", "objc2-core-foundation"] }
 objc2-app-kit = { version = "0.3", features = ["NSPrintInfo", "NSPrintOperation", "NSResponder", "NSView", "NSWindow", "objc2-core-foundation"] }
 objc2-web-kit = { version = "0.3", features = ["WKWebView", "objc2-app-kit"] }
+
+[dev-dependencies]
+# Un dossier jetable par essai : les essais n'écrivent jamais dans les fichiers de l'application.
+tempfile = "3"

@@ -21,6 +21,7 @@ import Amis from "./pages/Amis";
 import Reglages from "./pages/Reglages";
 import { PageVisibleContext } from "./components/ui";
 import { demarrerSyncAuto } from "./syncAuto";
+import { demarrerReleveTelephone } from "./releveTelephone";
 import { verifierLaSauvegarde } from "./verifSauvegarde";
 import { QuoiDeNeuf } from "./components/QuoiDeNeuf";
 import { demarrerLaVeille } from "./veille";
@@ -140,6 +141,8 @@ export default function App() {
   // Synchronisation de fond : rien à cliquer, les écrans se relisent d'eux-mêmes
   // quand des données arrivent de l'autre machine.
   React.useEffect(() => demarrerSyncAuto(), []);
+  // Ce que le dictaphone a déposé sur Nuage se relève de la même façon, sans rien cliquer.
+  React.useEffect(() => demarrerReleveTelephone(), []);
   // Une fenêtre figée ne dit rien d'elle-même : la veille en laisse une trace.
   React.useEffect(() => demarrerLaVeille(), []);
 

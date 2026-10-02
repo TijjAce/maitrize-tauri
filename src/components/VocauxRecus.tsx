@@ -9,8 +9,8 @@ import { creneauRetenu, repereDuVocal, verserDansLeBilan, type Vocal } from "../
 // ── Ce que le téléphone a déposé ──────────────────────────────────────────
 //
 // Les vocaux dictés en classe, ordinateur fermé, arrivent ici — au même
-// endroit que le partage WiFi, puisque c'est par là qu'ils passent. On ouvre
-// cette page au retour, le téléphone se vide, et l'on range.
+// endroit que le partage WiFi et le relais de Nuage, puisque c'est par là
+// qu'ils passent. On ouvre cette page au retour, et l'on range.
 //
 // La transcription part toute seule — sur cette machine dès qu'un modèle y
 // est, en ligne sinon, comme les réunions. Un vocal en échec est repris une
@@ -110,8 +110,9 @@ export function VocauxRecus() {
       {vocaux.length === 0 ? (
         <p style={{ color: "var(--text-2)", margin: 0, fontSize: 13, lineHeight: 1.6 }}>
           Rien en attente. Ce que vous dictez depuis l'application du téléphone arrive ici
-          dès que le partage est ouvert — transcrit sur cet ordinateur si un modèle y est, en
-          ligne sinon —, puis rangé dans le bilan du créneau d'un clic.
+          dès que le partage WiFi est ouvert, ou par Nuage quand le téléphone y est relié —
+          transcrit sur cet ordinateur si un modèle y est, en ligne sinon —, puis rangé dans
+          le bilan du créneau d'un clic.
         </p>
       ) : jours.map((jour) => (
         <div key={jour} style={{ marginBottom: 14 }}>

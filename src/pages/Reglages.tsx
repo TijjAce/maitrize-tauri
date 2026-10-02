@@ -15,13 +15,14 @@ import { copierLeBureau, suivreLaCopie } from "../components/CopieDuBureau";
 import { CONTACTS, REPERES, cleEtab } from "../etablissement";
 import { CLE_MOTEUR } from "../transcription";
 import { VocauxRecus } from "../components/VocauxRecus";
+import { TelephoneNuage } from "../components/TelephoneNuage";
 import { listen } from "@tauri-apps/api/event";
 
 const ONGLETS = [
   ["general", "Général"],
   ["ia", "Assistant IA"],
   ["donnees", "Données & synchro"],
-  ["partage", "Partage WiFi"],
+  ["partage", "Téléphone"],
 ] as const;
 type Onglet = typeof ONGLETS[number][0];
 
@@ -475,8 +476,11 @@ export default function Reglages() {
         )}
       </div>
 
-      {/* Ce que le téléphone a déposé : au même endroit que le partage,
-          puisque c'est par là que ça passe. */}
+      {/* L'autre chemin : par Nuage, quand le téléphone et l'ordinateur ne sont pas ensemble. */}
+      <TelephoneNuage />
+
+      {/* Ce que le téléphone a déposé, par un chemin ou par l'autre : au même
+          endroit que ce par quoi ça passe. */}
       <VocauxRecus />
 
       </>}
