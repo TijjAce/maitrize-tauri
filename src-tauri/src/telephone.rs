@@ -1011,6 +1011,29 @@ mod tests {
         assert!(relais_du_code(&format!("{PREFIXE_CODE_ORDINATEUR}abc")).is_err());
     }
 
+    /// Écrit le QR code d'un relais vraisemblable, pour vérifier à la main qu'il se lit.
+    /// Ignoré par défaut :
+    ///   MAITRIZE_SORTIE=/un/dossier cargo test qr_du_relais -- --ignored
+    #[test]
+    #[ignore]
+    fn qr_du_relais() {
+        let Ok(sortie) = std::env::var("MAITRIZE_SORTIE") else { return };
+        let (privee, _) = relais::nouvelle_paire();
+        let r = Relais {
+            serveur: "https://nuage03.apps.education.fr".into(),
+            base: "public.php/dav/files/aBcD1234EfGh567".into(),
+            jeton: "aBcD1234EfGh567".into(),
+            mot_de_passe: mot_de_passe_du_lien(),
+            cle_privee: relais::cle_en_texte(&privee),
+            cle_retour: relais::cle_en_texte(&relais::nouvelle_cle()),
+            ..Default::default()
+        };
+        let code = r.appairage().unwrap().en_code();
+        std::fs::write(format!("{sortie}/relais-code.txt"), &code).unwrap();
+        std::fs::write(format!("{sortie}/relais-qr.svg"), crate::portable::qr_svg(&code)).unwrap();
+        println!("{} caractères", code.len());
+    }
+
     #[test]
     fn l_echeance_se_repousse_quand_elle_approche() {
         let jour = |a, m, j| chrono::NaiveDate::from_ymd_opt(a, m, j).unwrap();
