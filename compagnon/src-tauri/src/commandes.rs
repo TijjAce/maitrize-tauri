@@ -246,7 +246,9 @@ pub async fn scan_envoyer(app: tauri::AppHandle, fichiers: Vec<String>) -> R<u32
 //
 // Ce qu'il garde est donc un emploi du temps sans personne dedans : une heure
 // et un intitulé, pour le jour même. Le fichier d'un autre jour est effacé au
-// premier rafraîchissement : un téléphone perdu ne porte pas l'année.
+// premier rafraîchissement : un téléphone perdu ne porte pas l'année. On peut
+// regarder un autre jour — on dicte le soir sur la journée, le lendemain sur
+// la veille — : ses créneaux se demandent alors, et ne se gardent pas.
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Creneau {
@@ -265,6 +267,25 @@ pub struct Journee {
 
 fn fiche_creneaux(app: &tauri::AppHandle) -> R<PathBuf> {
     Ok(dossier(app)?.join("creneaux.json"))
+}
+
+/// Le jour d'aujourd'hui, à l'heure du téléphone.
+fn aujourdhui() -> String {
+    chrono::Local::now().format("%Y-%m-%d").to_string()
+}
+
+/// Seul aujourd'hui se garde : regarder la veille ne remplace pas la journée en cours.
+fn a_garder(jour: &str, aujourdhui: &str) -> bool {
+    jour == aujourdhui
+}
+
+/// Garde la journée reçue si c'est aujourd'hui ; elle remplace alors la précédente.
+fn garder_la_journee(app: &tauri::AppHandle, journee: &Journee) -> R<()> {
+    if !a_garder(&journee.jour, &aujourdhui()) {
+        return Ok(());
+    }
+    std::fs::write(fiche_creneaux(app)?, serde_json::to_string(journee).map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())
 }
 
 /// Ce qu'on sait du jour : si l'ordinateur nous l'a dit, et ce qu'il a dit.
@@ -294,7 +315,7 @@ pub fn creneaux_du_jour(app: tauri::AppHandle, jour: String) -> R<CreneauxConnus
     })
 }
 
-/// Redemande les créneaux à l'ordinateur, et remplace ce qu'on avait.
+/// Redemande les créneaux d'un jour à l'ordinateur ; ceux d'aujourd'hui remplacent ce qu'on avait.
 #[tauri::command]
 pub async fn creneaux_rafraichir(app: tauri::AppHandle, jour: String) -> R<Vec<Creneau>> {
     let base = ordinateur_lire(app.clone())?;
@@ -320,12 +341,7 @@ pub async fn creneaux_rafraichir(app: tauri::AppHandle, jour: String) -> R<Vec<C
         .map_err(|e| format!("Réponse illisible : {e}"))?;
     let journee: Journee =
         serde_json::from_str(&corps).map_err(|e| format!("Réponse inattendue : {e}"))?;
-    // On n'en garde qu'un jour : celui-ci remplace le précédent.
-    std::fs::write(
-        fiche_creneaux(&app)?,
-        serde_json::to_string(&journee).map_err(|e| e.to_string())?,
-    )
-    .map_err(|e| e.to_string())?;
+    garder_la_journee(&app, &journee)?;
     Ok(journee.creneaux)
 }
 
@@ -640,9 +656,9 @@ pub async fn scan_deposer(app: tauri::AppHandle, fichiers: Vec<String>) -> R<u32
     Ok(parties)
 }
 
-/// Les créneaux du jour, lus dans l'emploi du temps que l'ordinateur a laissé sur Nuage.
+/// Les créneaux d'un jour, lus dans l'emploi du temps que l'ordinateur a laissé sur Nuage.
 ///
-/// Comme par le WiFi, on n'en garde qu'un jour : celui-ci remplace le précédent.
+/// Comme par le WiFi, seuls ceux d'aujourd'hui se gardent.
 #[tauri::command]
 pub async fn creneaux_du_relais(app: tauri::AppHandle, jour: String) -> R<Vec<Creneau>> {
     let a = relais_requis(&app)?;
@@ -650,9 +666,8 @@ pub async fn creneaux_du_relais(app: tauri::AppHandle, jour: String) -> R<Vec<Cr
         .ok_or("L'ordinateur n'a pas encore laissé son emploi du temps sur Nuage.")?;
     let agenda = relais::dechiffrer_agenda(&relais::cle_de(&a.cle_retour)?, &blob)?;
     let journee = journee_de(&agenda, &jour)
-        .ok_or("L'emploi du temps laissé sur Nuage ne va pas jusqu'à aujourd'hui : ouvrez Maitrize sur l'ordinateur.")?;
-    std::fs::write(fiche_creneaux(&app)?, serde_json::to_string(&journee).map_err(|e| e.to_string())?)
-        .map_err(|e| e.to_string())?;
+        .ok_or("L'emploi du temps laissé sur Nuage ne couvre pas ce jour.")?;
+    garder_la_journee(&app, &journee)?;
     Ok(journee.creneaux)
 }
 
@@ -822,6 +837,14 @@ mod tests {
         let json = serde_json::to_string(&vu).unwrap();
         assert!(!json.contains("aBcD1234") && !json.contains("Mz7-secret") && !json.contains(&a.cle_retour));
         assert_eq!(super::vue_du_relais(None), super::RelaisVu::default());
+    }
+
+    #[test]
+    fn seule_la_journee_d_aujourd_hui_se_garde() {
+        assert!(super::a_garder("2026-10-02", "2026-10-02"));
+        assert!(!super::a_garder("2026-10-01", "2026-10-02"), "la veille se regarde, elle ne remplace pas aujourd'hui");
+        assert!(!super::a_garder("", "2026-10-02"));
+        assert_eq!(super::aujourdhui().len(), 10);
     }
 
     #[test]

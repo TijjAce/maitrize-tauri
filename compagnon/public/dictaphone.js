@@ -63,6 +63,17 @@ let veille = null;
  * joint, et n'en garde qu'un jour.
  */
 let creneaux = [], creneauChoisi = "", choixOuvert = false;
+/**
+ * Le jour dont on parle — vide : aujourd'hui, qui suit l'horloge.
+ *
+ * On dicte le soir sur la journée, le lendemain matin sur la veille : la
+ * dictée se range alors au jour choisi, à l'heure de l'horloge. Ce choix ne
+ * dure pas : il ne survit ni à la fermeture de l'application, ni à un quart
+ * d'heure passé en arrière-plan.
+ */
+let jourChoisi = "";
+/** Les créneaux déjà reçus, par jour et par identifiant : une dictée d'hier garde son intitulé dans la liste. */
+const creneauxParJour = new Map(), creneauxVus = new Map();
 /** Faux tant que l'ordinateur ne nous a rien dit du jour : une journée sans
  *  créneau n'est pas une ignorance, et l'écran ne doit pas accuser le réseau. */
 let creneauxConnus = false;
@@ -146,7 +157,7 @@ async function demarrer() {
   const source = ctx.createMediaStreamSource(micro);
   noeud = ctx.createScriptProcessor(4096, 1, 1);
   morceaux = [];
-  debut = maintenantIso();
+  debut = horodatage();
   depart = Date.now();
   niveau = 0; crete = 0;
   noeud.onaudioprocess = (e) => {
@@ -210,7 +221,7 @@ async function arreter() {
   } catch (e) {
     souci = String(e);
   }
-  creneauChoisi = await creneauDeLHeure();
+  if (estAujourdHui()) creneauChoisi = await creneauDeLHeure();
   if (capte < SEUIL_SILENCE) avis = "Rien n'a été capté par le micro.";
   await relire();
   void envoyerTout();
@@ -224,7 +235,13 @@ async function arreter() {
  * termine donc proprement, avec ce qui a été capté, plutôt que de laisser
  * croire à une dictée qui n'a pas lieu.
  */
+/** Quand l'application est passée en arrière-plan, pour savoir combien de temps elle y est restée. */
+let cacheeDepuis = 0;
+const QUART_D_HEURE = 15 * 60 * 1000;
+
 document.addEventListener("visibilitychange", () => {
+  if (document.hidden) cacheeDepuis = Date.now();
+  else if (jourChoisi && cacheeDepuis && Date.now() - cacheeDepuis > QUART_D_HEURE) void allerAuJour("");
   if (document.hidden) fermerCamera();
   if (document.hidden && ctx) {
     void arreter().then(() => {
@@ -265,7 +282,7 @@ async function garderLaNote() {
   const texte = (champ ? champ.value : brouillon).trim();
   if (!texte) { ecrit = false; brouillon = ""; rendre(); return; }
   try {
-    await invoke("note_garder", { debut: maintenantIso(), texte, creneau: creneauChoisi });
+    await invoke("note_garder", { debut: horodatage(), texte, creneau: creneauChoisi });
     ecrit = false; brouillon = ""; souci = "";
   } catch (e) {
     brouillon = texte;
@@ -294,26 +311,106 @@ const relieQuelquePart = () => !!adresse || relais.relie;
 /** Le jour d'aujourd'hui, au format du planning. */
 const jourDuJour = () => maintenantIso().slice(0, 10);
 
-/** Redemande l'emploi du temps du jour, et retient celui de l'instant. */
+/** Le jour où se range ce qu'on dicte : celui qu'on a choisi, ou aujourd'hui. */
+const jourDeLaDictee = () => jourChoisi || jourDuJour();
+const estAujourdHui = () => jourDeLaDictee() === jourDuJour();
+
+/** L'heure de la dictée, rangée au jour choisi : l'heure est celle de l'horloge, le jour celui dont on parle. */
+const horodatage = () => `${jourDeLaDictee()}${maintenantIso().slice(10)}`;
+
+/** Combien de jours en arrière on peut remonter : deux semaines, pas l'année. */
+const JOURS_EN_ARRIERE = 13;
+
+/** Un jour décalé de `n` jours : « 2026-10-02 » et -1 → « 2026-10-01 ». */
+function decaler(jour, n) {
+  const d = new Date(`${jour}T12:00:00`);
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+}
+
+/** Combien de jours séparent deux jours. */
+const ecartEnJours = (de, a) => Math.round((new Date(`${a}T12:00:00`) - new Date(`${de}T12:00:00`)) / 86400000);
+
+const NOMS_JOURS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+const NOMS_MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+const MOIS_COURTS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+
+/** « Vendredi 2 octobre », « Jeudi 1er octobre ». */
+function dateLongue(jour) {
+  const d = new Date(`${jour}T12:00:00`);
+  const n = d.getDate();
+  const s = `${NOMS_JOURS[d.getDay()]} ${n === 1 ? "1er" : n} ${NOMS_MOIS[d.getMonth()]}`;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** Ce jour, vu d'aujourd'hui : « aujourd'hui », « hier », « il y a 4 jours ». */
+function proximite(jour) {
+  const e = ecartEnJours(jour, jourDuJour());
+  return e === 0 ? "aujourd'hui" : e === 1 ? "hier" : e === 2 ? "avant-hier" : e > 0 ? `il y a ${e} jours` : "à venir";
+}
+
+/** Le jour d'un envoi, en tête de sa ligne : rien pour aujourd'hui, « Hier », « jeu. 1 oct. ». */
+function jourCourt(jour) {
+  const e = ecartEnJours(jour, jourDuJour());
+  if (e === 0) return "";
+  if (e === 1) return "Hier";
+  const d = new Date(`${jour}T12:00:00`);
+  return `${NOMS_JOURS[d.getDay()].slice(0, 3)}. ${d.getDate()} ${MOIS_COURTS[d.getMonth()]}`;
+}
+
+/** Retient les créneaux reçus d'un jour. */
+function noterCreneaux(jour, liste) {
+  creneauxParJour.set(jour, liste);
+  for (const c of liste) creneauxVus.set(c.id, c);
+}
+
+/**
+ * Passe à un autre jour — vide : aujourd'hui.
+ *
+ * Ses créneaux viennent de ce qu'on a déjà reçu, sinon de l'ordinateur ou de
+ * Nuage ; sans réseau, ils restent inconnus, et la dictée se range quand même
+ * au bon jour.
+ */
+async function allerAuJour(jour) {
+  jourChoisi = jour && jour !== jourDuJour() ? jour : "";
+  choixOuvert = false;
+  creneauChoisi = "";
+  const connus = creneauxParJour.get(jourDeLaDictee());
+  creneaux = connus ?? [];
+  creneauxConnus = !!connus;
+  rendre();
+  await relireCreneaux();
+  rendre();
+  if (joignable || nuage) { await rafraichirCreneaux(); rendre(); }
+}
+
+/** Redemande l'emploi du temps du jour choisi, et retient celui de l'instant. */
 async function rafraichirCreneaux() {
+  const jour = jourDeLaDictee();
   try {
     // L'ordinateur les dit lui-même quand il est là ; sinon, il les a laissés sur Nuage.
-    creneaux = await invoke(joignable ? "creneaux_rafraichir" : "creneaux_du_relais", { jour: jourDuJour() });
-    creneauxConnus = true;
-  } catch (e) { /* hors réseau : on garde ce qu'on avait */ }
+    const liste = await invoke(joignable ? "creneaux_rafraichir" : "creneaux_du_relais", { jour });
+    noterCreneaux(jour, liste);
+    // On a pu changer de jour pendant la question : la réponse ne vaut que pour le sien.
+    if (jour === jourDeLaDictee()) { creneaux = liste; creneauxConnus = true; }
+  } catch (e) { /* hors réseau, ou jour que Nuage ne couvre pas : on garde ce qu'on avait */ }
   await relireCreneaux();
 }
 
-/** Relit ce qu'on a gardé, et pose le créneau de l'instant si on n'a rien choisi. */
+/** Relit ce qu'on a gardé, et pose le créneau de l'instant si on n'a rien choisi — aujourd'hui seulement. */
 async function relireCreneaux() {
   if (!creneauxConnus) {
+    const jour = jourDeLaDictee();
     try {
-      const lu = await invoke("creneaux_du_jour", { jour: jourDuJour() });
-      creneauxConnus = !!lu.connus;
-      creneaux = lu.creneaux ?? [];
+      const lu = await invoke("creneaux_du_jour", { jour });
+      if (jour === jourDeLaDictee()) {
+        creneauxConnus = !!lu.connus;
+        creneaux = lu.creneaux ?? [];
+        if (creneauxConnus) noterCreneaux(jour, creneaux);
+      }
     } catch (e) { creneauxConnus = false; creneaux = []; }
   }
-  if (!creneauChoisi) creneauChoisi = await creneauDeLHeure();
+  if (!creneauChoisi && estAujourdHui()) creneauChoisi = await creneauDeLHeure();
 }
 
 /** Le créneau où l'on se trouve, d'après l'ordinateur autant que d'après l'heure. */
@@ -332,9 +429,9 @@ function libelleCreneau(id) {
   return `${heureCourte(c.debut)} · ${c.matiere || "Créneau"}`;
 }
 
-/** L'intitulé seul : sous un vocal, son heure est déjà écrite. */
+/** L'intitulé seul : sous un vocal, son heure est déjà écrite. Celui d'un autre jour s'y trouve aussi. */
 function matiereDuCreneau(id) {
-  const c = creneaux.find((x) => x.id === id);
+  const c = creneaux.find((x) => x.id === id) ?? creneauxVus.get(id);
   return c ? c.matiere || heureCourte(c.debut) : "";
 }
 
@@ -640,6 +737,8 @@ const ICONES = {
   coche: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   epingle: '<path d="M12 21s6.5-6.2 6.5-11a6.5 6.5 0 0 0-13 0c0 4.8 6.5 11 6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
   chevron: '<path d="M7 10l5 5 5-5"/>',
+  gauche: '<path d="M14.5 6l-6 6 6 6"/>',
+  droite: '<path d="M9.5 6l6 6-6 6"/>',
   qr: '<rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1.2"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1.2"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1.2"/><path d="M14 14h2.5v2.5H14zM18 18h2.5v2.5H18zM14 19.5h1.5M19.5 14v1.5"/>',
   coller: '<rect x="8" y="3" width="8" height="4" rx="1.2"/><path d="M8 5H6.5A1.5 1.5 0 0 0 5 6.5v13A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 17.5 5H16"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
@@ -673,6 +772,24 @@ function bandeauCreneau() {
     </div>`;
   }
   return `<button class="pastille" id="changer-creneau">${icone("epingle")}<span>${echapper(libelleCreneau(creneauChoisi) || "Selon l'heure")}</span>${icone("chevron", "petit")}</button>`;
+}
+
+/**
+ * Le jour dont on parle, et deux petites flèches pour en changer. Un autre
+ * jour qu'aujourd'hui se voit de loin ; toucher sa date ramène à aujourd'hui.
+ */
+function barreDuJour() {
+  const jour = jourDeLaDictee();
+  const ecart = ecartEnJours(jour, jourDuJour());
+  const autre = ecart !== 0;
+  // Pendant une dictée, le jour est déjà pris : on le montre, on n'en change pas.
+  const fige = !!ctx;
+  const texte = `<b>${dateLongue(jour)}</b><span>${proximite(jour)}</span>`;
+  return `<div class="jour${autre ? " autre" : ""}">
+    <button class="jour-fleche" id="jour-avant" aria-label="Jour précédent" ${fige || ecart >= JOURS_EN_ARRIERE ? "disabled" : ""}>${icone("gauche")}</button>
+    ${autre && !fige ? `<button class="jour-texte" id="jour-aujourdhui" aria-label="Revenir à aujourd'hui">${texte}</button>` : `<span class="jour-texte">${texte}</span>`}
+    <button class="jour-fleche" id="jour-apres" aria-label="Jour suivant" ${fige || !autre ? "disabled" : ""}>${icone("droite")}</button>
+  </div>`;
 }
 
 /** Le grand bouton, et ce qu'on peut faire d'autre que dicter. */
@@ -724,7 +841,9 @@ function routeDEnvoi() {
 function rangDAttente(x) {
   const note = x.sorte === "note";
   const matiere = x.creneau ? matiereDuCreneau(x.creneau) : "";
-  const sous = [heureDe(x.debut), matiere, !note && x.octets ? poids(x.octets) : ""].filter(Boolean).map(echapper).join(" · ");
+  // Rangé à un autre jour qu'aujourd'hui : on le dit en tête de la ligne.
+  const jour = jourCourt(String(x.debut).slice(0, 10));
+  const sous = [jour, heureDe(x.debut), matiere, !note && x.octets ? poids(x.octets) : ""].filter(Boolean).map(echapper).join(" · ");
   return `<div class="rang">
     <span class="ico">${icone(note ? "crayon" : "micro")}</span>
     <span class="rang-texte">
@@ -806,6 +925,7 @@ function rendre() {
   // Pas encore relié : il n'y a qu'une chose à faire.
   el.innerHTML = !relie ? `${carteAppairage(false)}${bulles()}` : `
     <section class="heros">
+      ${barreDuJour()}
       ${bandeauCreneau()}
       ${enCours ? enDictee() : ecrit ? editeurDeNote() : auRepos()}
     </section>
@@ -823,6 +943,9 @@ function rendre() {
   clic("scan-pages", () => { void scannerPages(); });
   clic("stop-scan", () => { fermerCamera(); rendre(); });
   clic("changer-creneau", () => { choixOuvert = true; rendre(); });
+  clic("jour-avant", () => { void allerAuJour(decaler(jourDeLaDictee(), -1)); });
+  clic("jour-apres", () => { void allerAuJour(decaler(jourDeLaDictee(), 1)); });
+  clic("jour-aujourdhui", () => { void allerAuJour(""); });
   el.querySelectorAll("[data-creneau]").forEach((b) => {
     b.onclick = () => { creneauChoisi = b.dataset.creneau; choixOuvert = false; rendre(); };
   });
