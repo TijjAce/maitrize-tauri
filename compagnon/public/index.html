@@ -47,6 +47,18 @@
 
  /* Dicter : le geste de la journée, au milieu de l'écran. */
  .heros { display:flex; flex-direction:column; align-items:center; padding:18px 0 4px; }
+ /* Le jour dont on parle : aujourd'hui, ou un autre — qui se voit de loin. */
+ .jour { display:flex; align-items:center; gap:8px; width:100%; padding:6px; margin-bottom:14px;
+   border-radius:16px; background:var(--card); box-shadow:var(--ombre); }
+ .jour.autre { background:var(--orange-doux); box-shadow:none; }
+ .jour-fleche { width:42px; height:42px; border-radius:12px; border:none; display:grid; place-items:center; flex:none;
+   background:var(--champ); color:var(--txt); }
+ .jour.autre .jour-fleche { background:var(--card); }
+ .jour-texte { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:1px;
+   border:none; background:none; color:var(--txt); padding:0; font-family:inherit; }
+ .jour-texte b { font-size:16.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+ .jour-texte span { font-size:13px; color:var(--txt2); }
+ .jour.autre .jour-texte span { color:var(--orange); font-weight:600; }
  .pastille { display:inline-flex; align-items:center; gap:8px; max-width:100%; padding:10px 15px;
    border:none; border-radius:99px; background:var(--card); box-shadow:var(--ombre); color:var(--txt);
    font-size:15px; font-weight:600; margin:0; }
