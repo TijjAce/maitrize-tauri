@@ -815,7 +815,42 @@ export const api = {
   /** En série, la session reste ouverte photo après photo, jusqu'au « terminé » du téléphone. */
   photoCaptureDemarrer: (serie = false) => invoke<PortableInfo>("photo_capture_demarrer", { serie }),
   photoCaptureArreter: () => invoke<void>("photo_capture_arreter"),
+  // Le téléphone relié par Nuage : il dépose quand il a du réseau, l'ordinateur relève quand il est ouvert.
+  telephoneEtat: () => invoke<EtatRelais>("telephone_etat"),
+  /** Les comptes Nuage que Maitrize connaît déjà par un bureau commun. */
+  telephoneComptes: () => invoke<CompteConnu[]>("telephone_comptes"),
+  /** Relie le téléphone : par le compte d'un bureau commun, par un compte saisi, ou par celui déjà gardé. */
+  telephoneRelier: (bureau?: string, compte?: { serveur: string; utilisateur: string; motDePasse: string }) =>
+    invoke<EtatRelais>("telephone_relier", { bureau: bureau ?? null, compte: compte ?? null }),
+  /** Le QR code que le dictaphone scanne. */
+  telephoneCode: () => invoke<CodeTelephone>("telephone_code"),
+  /** Le code à saisir sur l'autre ordinateur, pour qu'il relève lui aussi. */
+  telephoneCodeOrdinateur: () => invoke<string>("telephone_code_ordinateur"),
+  telephoneCodeAppliquer: (code: string) => invoke<EtatRelais>("telephone_code_appliquer", { code }),
+  /** Révoque le lien et oublie les clés ; `sansRevoquer` quand Nuage ne répond pas. */
+  telephoneOublier: (sansRevoquer = false) => invoke<EtatRelais>("telephone_oublier", { sansRevoquer }),
+  telephoneRelever: () => invoke<BilanReleve>("telephone_relever"),
+  /** Les pages scannées, tant que « Scanner avec le compagnon » est ouvert. */
+  telephoneReleverPages: () => invoke<BilanReleve>("telephone_relever_pages"),
 };
+
+/** L'état du relais du téléphone : rien de secret n'y figure. */
+export interface EtatRelais {
+  relie: boolean; serveur: string; dossier: string;
+  /** Cet ordinateur a créé le lien : c'est lui qui le révoque et le prolonge. */
+  proprietaire: boolean;
+  /** Le jour où Nuage fermera le lien, s'il en impose un. */
+  expire: string; creeLe: string;
+  /** Le compte Nuage déjà connu de Maitrize, tel qu'on le montre. */
+  compte: string;
+}
+export interface CompteConnu { id: string; libelle: string }
+export interface CodeTelephone { code: string; qrSvg: string }
+/** Ce qu'une relève a rapporté. */
+export interface BilanReleve {
+  relie: boolean; occupe: boolean; vocaux: number; notes: number; pages: number;
+  pagesEnAttente: number; illisibles: number; agendaPublie: boolean; erreur: string;
+}
 
 export interface PortableInfo {
   url: string;

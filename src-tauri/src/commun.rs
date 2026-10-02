@@ -99,6 +99,19 @@ fn lire_bureaux(db: &State<'_, Db>) -> Vec<BureauCommun> {
     serde_json::from_str(&crate::sync::get_setting(&c, CLE_BUREAUX)).unwrap_or_default()
 }
 
+/// Les comptes Nuage que cet ordinateur connaît déjà par ses bureaux communs,
+/// un par compte : de quoi relier autre chose à Nuage — le téléphone — sans
+/// redemander un mot de passe d'application. Les bureaux ouverts par un lien
+/// n'en sont pas : un lien n'ouvre qu'un dossier, pas un compte.
+pub(crate) fn comptes_nuage(db: &State<'_, Db>) -> Vec<BureauCommun> {
+    let mut vus = std::collections::HashSet::new();
+    lire_bureaux(db)
+        .into_iter()
+        .filter(|b| b.sorte == "nuage" && !b.mot_de_passe.is_empty())
+        .filter(|b| vus.insert((b.serveur.clone(), b.utilisateur.clone())))
+        .collect()
+}
+
 fn ecrire_bureaux(db: &State<'_, Db>, liste: &[BureauCommun]) -> R<()> {
     let json = serde_json::to_string(liste).map_err(e)?;
     let c = db.lock();

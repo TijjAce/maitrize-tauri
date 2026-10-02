@@ -105,7 +105,7 @@ fn ip_locale() -> String {
         .unwrap_or_else(|_| "127.0.0.1".into())
 }
 
-fn qr_svg(data: &str) -> String {
+pub(crate) fn qr_svg(data: &str) -> String {
     use qrcode::{render::svg, QrCode};
     match QrCode::new(data.as_bytes()) {
         Ok(code) => code
@@ -343,25 +343,44 @@ fn parametre(url: &str, nom: &str) -> String {
  * qui rangera. Un téléphone perdu ne perd que des enregistrements.
  */
 fn ecrire_vocal(app: &tauri::AppHandle, url: &str, octets: Vec<u8>) -> Result<String, String> {
-    if octets.len() < 100 {
-        return Err("Enregistrement vide.".into());
-    }
     let debut = parametre(url, "debut");
     let duree: f64 = parametre(url, "duree").parse().unwrap_or(0.0);
     let id = crate::models::new_id();
-    let fichier = format!("vocal-{id}.wav");
-    std::fs::write(crate::db::fichiers_dir().join(&fichier), &octets)
-        .map_err(|er| format!("Écriture impossible : {er}"))?;
     let db = app.state::<Db>();
-    let c = db.lock();
+    ranger_vocal(&db.lock(), &crate::db::fichiers_dir(), &id, &debut, duree, &parametre(url, "creneau"), &octets)?;
+    let _ = app.emit("vocal:recu", id.clone());
+    Ok(id)
+}
+
+/**
+ * Range un vocal reçu, par le WiFi comme par le relais de Nuage.
+ *
+ * Rend faux s'il était déjà là : par le relais, le même dépôt peut être
+ * relevé deux fois — par deux ordinateurs, ou après une coupure avant
+ * l'effacement —, et il ne doit se ranger qu'une fois.
+ */
+pub(crate) fn ranger_vocal(
+    c: &rusqlite::Connection, dossier: &std::path::Path, id: &str, debut: &str, duree: f64, creneau: &str, octets: &[u8],
+) -> Result<bool, String> {
+    if octets.len() < 100 {
+        return Err("Enregistrement vide.".into());
+    }
+    if deja_range(c, id) {
+        return Ok(false);
+    }
+    let fichier = format!("vocal-{id}.wav");
+    std::fs::write(dossier.join(&fichier), octets).map_err(|er| format!("Écriture impossible : {er}"))?;
     c.execute(
         "INSERT INTO vocaux (id,fichier,debut,duree_s,texte,etat,erreur,creneau_id,date_creation)
          VALUES (?1,?2,?3,?4,'','recu','',?5,?6)",
-        rusqlite::params![id, fichier, debut, duree, parametre(url, "creneau"), crate::models::now_iso()],
+        rusqlite::params![id, fichier, debut, duree, creneau, crate::models::now_iso()],
     )
     .map_err(|er| er.to_string())?;
-    let _ = app.emit("vocal:recu", id.clone());
-    Ok(id)
+    Ok(true)
+}
+
+fn deja_range(c: &rusqlite::Connection, id: &str) -> bool {
+    c.query_row("SELECT 1 FROM vocaux WHERE id = ?1", [id], |_| Ok(())).is_ok()
 }
 
 /**
@@ -410,6 +429,15 @@ const NOTE_MAX: usize = 4000;
  * déjà là, la note arrive donc à l'état « transcrit ».
  */
 fn ecrire_note(app: &tauri::AppHandle, url: &str, texte: &str) -> Result<String, String> {
+    let id = crate::models::new_id();
+    let db = app.state::<Db>();
+    ranger_note(&db.lock(), &id, &parametre(url, "debut"), &parametre(url, "creneau"), texte)?;
+    let _ = app.emit("vocal:recu", id.clone());
+    Ok(id)
+}
+
+/// Range une note reçue, par le WiFi comme par le relais ; faux si elle était déjà là.
+pub(crate) fn ranger_note(c: &rusqlite::Connection, id: &str, debut: &str, creneau: &str, texte: &str) -> Result<bool, String> {
     let texte = texte.trim();
     if texte.is_empty() {
         return Err("Note vide.".into());
@@ -417,18 +445,16 @@ fn ecrire_note(app: &tauri::AppHandle, url: &str, texte: &str) -> Result<String,
     if texte.len() > NOTE_MAX {
         return Err("Note trop longue.".into());
     }
-    let debut = parametre(url, "debut");
-    let id = crate::models::new_id();
-    let db = app.state::<Db>();
-    let c = db.lock();
+    if deja_range(c, id) {
+        return Ok(false);
+    }
     c.execute(
         "INSERT INTO vocaux (id,fichier,debut,duree_s,texte,etat,erreur,creneau_id,date_creation)
          VALUES (?1,'',?2,0,?3,'transcrit','',?4,?5)",
-        rusqlite::params![id, debut, texte, parametre(url, "creneau"), crate::models::now_iso()],
+        rusqlite::params![id, debut, texte, creneau, crate::models::now_iso()],
     )
     .map_err(|er| er.to_string())?;
-    let _ = app.emit("vocal:recu", id.clone());
-    Ok(id)
+    Ok(true)
 }
 
 fn repondre(mut req: tiny_http::Request, token: &str, page: &str, data_json: &str, app: &tauri::AppHandle) {
