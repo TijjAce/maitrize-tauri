@@ -302,7 +302,14 @@ pub async fn telephone_relier(
         racine: String::new(),
         base: String::new(),
     };
-    let base = webdav::base_qui_repond(&par_le_lien, &webdav::bases_lien(&lien.jeton)).await?;
+    let base = match webdav::base_qui_repond(&par_le_lien, &webdav::bases_lien(&lien.jeton)).await {
+        Ok(base) => base,
+        Err(e) => {
+            // Un lien qu'on ne sait pas emprunter ne doit pas rester ouvert dans Nuage.
+            let _ = webdav::supprimer_lien(&acces, &lien.id).await;
+            return Err(format!("Le lien du dossier a été créé, mais il ne répond pas ({e}). Il a été retiré : rien n'est relié."));
+        }
+    };
 
     let (privee, _) = relais::nouvelle_paire();
     let nouveau = Relais {
