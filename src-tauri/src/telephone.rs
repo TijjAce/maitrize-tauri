@@ -244,8 +244,9 @@ pub struct CompteSaisi {
 pub async fn telephone_relier(
     app: AppHandle, db: State<'_, Db>, bureau: Option<String>, compte: Option<CompteSaisi>,
 ) -> R<EtatRelais> {
-    let (compte, ancien) = {
+    let (compte, ancien, compte_d_avant) = {
         let connu = lire_compte(&db.lock());
+        let compte_d_avant = connu.clone();
         let ancien = lire_relais(&db.lock());
         let compte = match (bureau.filter(|b| !b.trim().is_empty()), compte) {
             (Some(id), _) => crate::commun::comptes_nuage(&db)
@@ -266,7 +267,7 @@ pub async fn telephone_relier(
             }
             (None, None) => connu.ok_or("Indiquez le compte Nuage qui portera le dossier du téléphone.")?,
         };
-        (compte, ancien)
+        (compte, ancien, compte_d_avant)
     };
     if !compte.serveur.starts_with("https://") {
         // Le lien et les dépôts passeraient en clair : le téléphone le refuserait de toute façon.
@@ -276,11 +277,14 @@ pub async fn telephone_relier(
     webdav::tester(&acces).await?;
 
     // Ce que le téléphone a déposé pour l'ancien relais ne s'ouvrira plus avec
-    // la nouvelle clé : on le relève une dernière fois, puis on ferme l'ancien lien.
+    // la nouvelle clé : on le relève une dernière fois, puis on ferme l'ancien
+    // lien — avec le compte qui l'avait créé, qui n'est pas forcément celui
+    // qu'on vient de choisir.
     if let Some(vieux) = &ancien {
         let _ = relever_avec(&app, &db, vieux, false).await;
         if !vieux.lien_id.is_empty() {
-            let _ = webdav::supprimer_lien(&acces, &vieux.lien_id).await;
+            let createur = compte_d_avant.as_ref().map(|k| k.acces()).unwrap_or_else(|| acces.clone());
+            let _ = webdav::supprimer_lien(&createur, &vieux.lien_id).await;
         }
     }
 
