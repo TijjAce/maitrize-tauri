@@ -24,6 +24,8 @@ import {
 import { marquesDeLaReponse, promptMarquerVerbes, promptRangerEtiquettes, rangementDeLaReponse } from "../triIa";
 import { pseudonymiser, restaurer } from "../confidentialite";
 import { LigneDuProjet, useProjetDuMoment } from "../components/ProjetDuMoment";
+import { useImagesEtOmbres } from "../components/MesImages";
+import { OMBRES_MINIMUM, REGLAGES_OMBRES, STYLE_OMBRES, feuillesDOmbres, htmlOmbres, type FormeOmbres, type ImageOmbre, type ReglagesOmbres } from "../ombres";
 
 // ── Fabriquer › Langage › Étiquettes à catégoriser ────────────────────────
 //
@@ -361,6 +363,57 @@ export function TriTab() {
           peut={total > 0 && maisons.length >= 2} onTirage={() => setGraine(graineAuHasard())} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_TRI} />}
+    />
+  );
+}
+
+// ── Le jeu des ombres ──
+
+export function OmbresTab({ banque }: { banque: boolean }) {
+  const [mots, setMots] = React.useState<MotImage[]>([]);
+  const [r, maj] = useReglages("ombres", REGLAGES_OMBRES);
+  const [graine, setGraine] = React.useState(graineAuHasard);
+  const ids = mots.map((m) => m.id).filter((x): x is number => x != null);
+  const { images, ombres, pret } = useImagesEtOmbres(ids, r.grise);
+  // Une image et son ombre, dès que les deux sont prêtes ; un mot sans image n'a pas d'ombre.
+  const items = React.useMemo(() => mots.flatMap((m): ImageOmbre[] =>
+    (m.id != null && images[m.id] && ombres[m.id] ? [{ id: m.id, mot: m.mot, image: images[m.id], ombre: ombres[m.id] }] : [])), [mots, images, ombres]);
+  const html = React.useMemo(() => htmlOmbres(items, r, graine), [items, r, graine]);
+  // Un mot que la banque n'a pas, une image qui ne se lit plus : ils restent dans la liste, sans ombre.
+  const sansImage = pret ? mots.length - items.length : 0;
+  const peut = pret && items.length >= OMBRES_MINIMUM;
+  const feuilles = feuillesDOmbres(items.length, r);
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0 }}>Le jeu des ombres</h3>
+        <BanqueDeMots mots={mots} onChange={setMots} banque={banque}
+          aide="Chaque image retrouve son ombre : on découpe les images, on les pose sur la planche des silhouettes. Les pictogrammes de la banque, ou vos images : une image détourée, ou un objet photographié sur un fond uni — une feuille, une table —, donne une ombre nette ; une photo plein cadre ne donne qu'un rectangle." />
+        <Field label="Forme">
+          <Select value={r.forme} onChange={(e) => maj({ forme: e.target.value as FormeOmbres })}>
+            <option value="poser">Des images à découper, à poser sur les ombres</option>
+            <option value="relier">Une fiche : relier chaque image à son ombre</option>
+          </Select>
+        </Field>
+        {r.forme === "poser" && (
+          <Field label="Ombres par planche">
+            <Select value={r.parPage} onChange={(e) => maj({ parPage: Number(e.target.value) as ReglagesOmbres["parPage"] })}>
+              <option value={6}>6 — grandes, pour les petites mains</option>
+              <option value={9}>9</option>
+              <option value={12}>12 — petites</option>
+            </Select>
+          </Field>
+        )}
+        <Coche on={r.legendes} libelle="Écrire le mot sous l'image et sous son ombre" onChange={(v) => maj({ legendes: v })} />
+        <Coche on={r.grise} libelle="Des ombres grises : moins d'encre, même forme" onChange={(v) => maj({ grise: v })} />
+        <div className="meta" style={{ fontSize: 12.5, marginTop: 6 }}>
+          {!pret ? "Les ombres se dessinent…" : `${items.length} image${items.length > 1 ? "s" : ""}, ${feuilles} feuille${feuilles > 1 ? "s" : ""}.`}
+          {sansImage > 0 && <span style={{ color: "var(--orange)" }}> {sansImage} mot{sansImage > 1 ? "s" : ""} sans image : pas d'ombre pour {sansImage > 1 ? "eux" : "lui"}.</span>}
+        </div>
+        <Boutons atelier="ombres" titre="Le jeu des ombres" html={html} style={STYLE_OMBRES} peut={peut} onTirage={() => setGraine(graineAuHasard())} />
+      </>}
+      droite={items.length ? <ApercuFeuille html={html} style={STYLE_OMBRES} />
+        : <div className="card" style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>Ajoutez au moins deux images — des mots de la banque, un thème, ou vos propres images : chacune aura son ombre.</div>}
     />
   );
 }

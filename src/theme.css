@@ -314,6 +314,9 @@ input, textarea, select { font-family: inherit; font-size: 14px; }
      page à l'autre, ni selon qu'elle est seule ou dans une barre d'outils. */
   height: 29px; display: inline-flex; align-items: center; justify-content: center; }
 .seg button.active, .onglets button.active { background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
+/* Quatre choix dans une colonne étroite : deux par ligne, plutôt que des libellés qui se replient. */
+.seg.seg-carre { display: grid; grid-template-columns: 1fr 1fr; }
+.seg.seg-carre button { white-space: nowrap; }
 
 /* Barre d'onglets d'une page : même place et même écart partout, sous le titre
    et au-dessus des outils de la page. Elle passe à la ligne quand la fenêtre
@@ -979,6 +982,9 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .bm-compte { border: none; background: var(--accent-soft); color: var(--accent); border-radius: 100px; padding: 1px 7px; font-size: 11px; cursor: pointer; font-weight: 600; }
 .bm-x { border: none; background: transparent; color: var(--text-2); font-size: 15px; line-height: 1; cursor: pointer; padding: 0 2px; }
 .bm-x:hover { color: var(--danger, #e5484d); }
+/* Le mot d'une image de l'enseignant : un champ qui ressemble au mot. */
+.bm-renommer { font: inherit; color: inherit; background: transparent; border: none; border-bottom: 1px dashed var(--border); padding: 0 2px; min-width: 40px; max-width: 150px; outline: none; }
+.bm-renommer:focus { border-bottom-color: var(--accent); }
 
 /* Les manuels : la liste, les pages en vignettes numérotées, les exercices. */
 .man-ligne { display: flex; align-items: center; gap: 4px; border-top: 1px solid var(--border); }

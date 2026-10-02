@@ -1,8 +1,8 @@
 import React from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Page } from "../App";
-import { api, EtatBanque, PictoArasaac, OptionsJeu } from "../api";
-import { Field, Input, Select, Empty, Modal, useAsync, useOngletDemande } from "../components/ui";
+import { api, raccourci, EtatBanque, ImageFournie, PictoArasaac, OptionsJeu } from "../api";
+import { Field, Input, Select, Empty, Modal, Demander, useAsync, useOngletDemande } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
 import { PartieToutTab, MultiplicatifsTab } from "./ProblemesBarres";
@@ -20,9 +20,11 @@ import { DominosTab, FluenceTab, IntrusTab, LettresTab, LotoSyllabesTab, PairesT
 import {
   ArbreCalculTab, CartesCalculTab, CartesNombresTab, CompteEstBonTab, CubesTab, FractionsTab, HeureTab, JeuDeLOieTab, MartiniereTab, NumerationTab, PyramidesTab,
 } from "./AteliersMaths";
-import { EtiquettesTab, MotsMelesTab, PhrasesTab, TriTab } from "./AteliersLangage";
+import { EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
-import { usePictoImage } from "../components/ChoixPicto";
+import { chargerPicto, usePictoImage } from "../components/ChoixPicto";
+import { BoutonMesImages, imagePourLePdf } from "../components/MesImages";
+import { estPerso } from "../imagesPerso";
 
 // ── Loto et tableaux à partir des pictogrammes ARASAAC ────────────────────
 //
@@ -36,7 +38,7 @@ const OCTETS = (n: number) =>
   n > 1e9 ? `${(n / 1e9).toFixed(1)} Go` : n > 1e6 ? `${Math.round(n / 1e6)} Mo` : `${Math.round(n / 1e3)} ko`;
 
 const ONGLETS = [
-  "jeux", "memory", "imagier", "etiquettes",
+  "jeux", "memory", "imagier", "etiquettes", "ombres",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres",
   "tri", "phrases", "motsMeles",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "nombres", "cubes", "calcul", "arbre", "fractions", "oie", "heure", "numeration",
@@ -69,13 +71,15 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
     aide: "Vocabulaire et désignation à partir des pictogrammes.",
     outils: [
       { id: "jeux", nom: "Loto", icone: "🎲", pictos: true, cycles: "Cycles 1 et 2",
-        quoi: "Des planches et leurs cartes à découper, sur les thèmes que vous choisissez." },
+        quoi: "Des planches et leurs cartes à découper : les pictogrammes d'un thème, ou vos propres images." },
       { id: "memory", nom: "Mémory", icone: "🃏", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Des paires à retourner : image et image, ou image et mot." },
       { id: "imagier", nom: "Imagier", icone: "📖", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Une page d'images légendées, à afficher ou à coller dans un cahier." },
       { id: "etiquettes", nom: "Étiquettes à catégoriser", icone: "🏷", cycles: "Cycles 2 et 3",
         quoi: "Les mots collectés en grand pour le tableau, en petit par enveloppe, et la corolle lexicale." },
+      { id: "ombres", nom: "Jeu des ombres", icone: "👤", cycles: "Cycles 1 et 2",
+        quoi: "Chaque image retrouve sa silhouette : à poser dessus, ou à relier. Pictogrammes ou vos propres images." },
     ],
   },
   {
@@ -379,6 +383,7 @@ export default function Jeux() {
         : onglet === "motsMeles" ? <MotsMelesTab />
         : onglet === "phrases" ? <PhrasesTab />
         : onglet === "etiquettes" ? <EtiquettesTab banque={Boolean(etat?.installee)} />
+        : onglet === "ombres" ? <OmbresTab banque={Boolean(etat?.installee)} />
         : onglet === "lotoSyllabes" ? avecPictos(<LotoSyllabesTab banque />)
         : onglet === "dominos" ? avecPictos(<DominosTab banque />)
         : onglet === "intrus" ? avecPictos(<IntrusTab banque />)
@@ -433,7 +438,7 @@ export function Banque({ progression, onTelecharger }: {
 // écrite d'un trait, ou par recherche. Le hasard ne sert plus qu'à compléter,
 // et une image retirée n'y revient pas.
 
-type Mode = "theme" | "mots" | "recherche";
+type Mode = "theme" | "mots" | "recherche" | "images";
 const PAR_PAGE = 60;
 
 /**
@@ -492,6 +497,15 @@ export const GENERATEURS: Record<string, Generateur> = {
   },
 };
 
+/**
+ * Les images de l'enseignant n'ont pas de fichier dans la banque : elles
+ * partent avec la demande, telles qu'elles sont en mémoire. Rien ne s'écrit
+ * sur le disque, rien ne traîne après le PDF.
+ */
+const imagesDeLEnseignant = (selection: PictoArasaac[]): Promise<ImageFournie[]> =>
+  Promise.all(selection.filter((p) => estPerso(p.id))
+    .map(async (p) => ({ id: p.id, donnees: await imagePourLePdf(await chargerPicto(p.id)) })));
+
 function Loto({ gen, atelier, etat, progression, onTelecharger }: {
   gen: Generateur;
   /** L'onglet de Fabriquer, où l'enseignant a choisi les compétences. */
@@ -517,6 +531,9 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
     }
   };
   const [variantesDe, setVariantesDe] = React.useState<PictoArasaac | null>(null);
+  const [aRenommer, setARenommer] = React.useState<PictoArasaac | null>(null);
+  // Écrire une liste de mots ou choisir ses images mène droit au loto : pas d'étape « choisir ».
+  const sansChoix = mode === "mots" || mode === "images";
 
   // ── Par thème ──
   const [q, setQ] = React.useState("");
@@ -605,7 +622,8 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
       const nom = titre.trim() || themes.map(libelleCategorie).join(" + ") || gen.quoi;
       // Les compétences de l'atelier s'écrivent dans la marge haute du PDF.
       const competences = await lignesCompetencesAtelier(atelier);
-      await api.jeuGenerer(gen.id, selection, { ...options, graine: Math.floor(Math.random() * 1e9), competences }, nom);
+      await api.jeuGenerer(gen.id, selection, { ...options, graine: Math.floor(Math.random() * 1e9), competences }, nom,
+        true, await imagesDeLEnseignant(selection));
       toast(`${gen.quoi.charAt(0).toUpperCase()}${gen.quoi.slice(1)} créé — le PDF s'ouvre.`, { icone: gen.icone });
     } catch (e: any) { toast(String(e), { icone: "⚠️" }); }
     finally { setOccupe(false); }
@@ -630,10 +648,12 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
         {/* ── Trouver des images ── */}
         <div className="card">
           <h3 style={{ marginTop: 0 }}>1. Trouver des images</h3>
-          <div className="seg" style={{ marginBottom: 10, display: "flex" }}>
+          <div className="seg seg-carre" style={{ marginBottom: 10 }}>
             <button className={mode === "theme" ? "active" : ""} onClick={() => setMode("theme")}>📚 Thème</button>
             <button className={mode === "mots" ? "active" : ""} onClick={() => setMode("mots")}>✏️ Mots</button>
             <button className={mode === "recherche" ? "active" : ""} onClick={() => setMode("recherche")}>🔎 Chercher</button>
+            <button className={mode === "images" ? "active" : ""} onClick={() => setMode("images")}
+              title="Vos propres images : une photo, un dessin, une image d'ailleurs">🖼 Mes images</button>
           </div>
 
           {mode === "theme" && <>
@@ -703,11 +723,24 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
               Cliquez sur une image pour l'ajouter au loto, ou la retirer.
             </p>
           </>}
+
+          {mode === "images" && <>
+            <p style={{ fontSize: 13, lineHeight: 1.5, margin: "0 0 10px" }}>
+              Une photo de l'objet réel, le dessin d'un élève, une image trouvée ailleurs : elles se mêlent aux pictogrammes de la banque.
+            </p>
+            <BoutonMesImages className="btn primary" style={{ width: "100%" }}
+              onImages={(images) => setSelection((s) => [...s, ...images.map((i): PictoArasaac => ({ id: i.id, mot: i.mot, fichier: "", nature: "" }))])}>
+              🖼 Choisir des images…
+            </BoutonMesImages>
+            <p style={{ fontSize: 12, color: "var(--text-2)", margin: "8px 0 0" }}>
+              PNG ou JPEG ; une image copiée se colle aussi ({raccourci("V")}). Le nom du fichier propose le mot, « ✏️ » sur l'image le réécrit. Rien n'est enregistré : les images servent le temps de fabriquer le jeu.
+            </p>
+          </>}
         </div>
 
         <div>
           {/* ── Choisir ── */}
-          {mode !== "mots" && (
+          {!sansChoix && (
             <div className="card" style={{ marginBottom: 14 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <h3 style={{ margin: 0 }}>2. Choisir</h3>
@@ -759,7 +792,7 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
           {/* ── La sélection ── */}
           <div className="card" style={{ marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <h3 style={{ margin: 0 }}>{mode === "mots" ? "2" : "3"}. Mon loto</h3>
+              <h3 style={{ margin: 0 }}>{sansChoix ? "2" : "3"}. Mon loto</h3>
               <span style={{ fontSize: 13, color: selection.length && selection.length < parPlanche ? "var(--danger, #b03030)" : "var(--text-2)" }}>
                 {selection.length} image{selection.length > 1 ? "s" : ""}
                 {selection.length < conseille && ` · ${conseille} conseillées pour ${options.planches} planches variées`}
@@ -783,14 +816,18 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
             {!selection.length ? (
               <div style={{ marginTop: 10 }}>
                 <Empty icone="🎴" titre="Aucune image pour l'instant"
-                  sous="Cochez des images d'un thème, écrivez une liste de mots ou cherchez : elles se rangent ici." />
+                  sous="Cochez des images d'un thème, écrivez une liste de mots, cherchez, ou ajoutez les vôtres : elles se rangent ici." />
               </div>
             ) : (
               <div className="loto-grille">
                 {selection.map((p) => (
                   <Tuile key={p.id} picto={p} choisi onClick={() => basculer(p)}
-                    actions={<button className="btn sm loto-variantes" title="Choisir un autre dessin pour ce mot"
-                      onClick={(e) => { e.stopPropagation(); setVariantesDe(p); }}>🔄</button>} />
+                    actions={estPerso(p.id)
+                      // Une image de l'enseignant n'a pas d'autres dessins dans la banque : c'est son mot qu'on réécrit.
+                      ? <button className="btn sm loto-variantes" title="Écrire le mot de cette image"
+                          onClick={(e) => { e.stopPropagation(); setARenommer(p); }}>✏️</button>
+                      : <button className="btn sm loto-variantes" title="Choisir un autre dessin pour ce mot"
+                          onClick={(e) => { e.stopPropagation(); setVariantesDe(p); }}>🔄</button>} />
                 ))}
               </div>
             )}
@@ -798,7 +835,7 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
 
           {/* ── Imprimer ── */}
           <div className="card">
-            <h3 style={{ marginTop: 0 }}>{mode === "mots" ? "3" : "4"}. Imprimer</h3>
+            <h3 style={{ marginTop: 0 }}>{sansChoix ? "3" : "4"}. Imprimer</h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
               <Field label={`Nom du ${gen.quoi}`}>
                 <Input value={titre} placeholder={themes.map(libelleCategorie).join(" + ") || gen.exemple} onChange={(e) => setTitre(e.target.value)} />
@@ -843,7 +880,8 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
             <BoutonBureau className="btn" disabled={occupe || selection.length < minimum} onEnregistrer={async () => {
               const nom = titre.trim() || themes.map(libelleCategorie).join(" + ") || gen.quoi;
               const competences = await lignesCompetencesAtelier(atelier);
-              const chemin = await api.jeuGenerer(gen.id, selection, { ...options, graine: Math.floor(Math.random() * 1e9), competences }, nom, false);
+              const chemin = await api.jeuGenerer(gen.id, selection, { ...options, graine: Math.floor(Math.random() * 1e9), competences }, nom,
+                false, await imagesDeLEnseignant(selection));
               return deposerSurLeBureau(atelier, nom, await api.fichierImporterDepuisChemin(chemin));
             }} />
             <button className="btn primary" style={{ marginTop: 12 }} disabled={occupe || selection.length < minimum} onClick={generer}>
@@ -851,8 +889,8 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
             </button>
             <p style={{ fontSize: 12, color: "var(--text-2)", marginTop: 12, marginBottom: 0 }}>
               Pictogrammes ARASAAC — auteur Sergio Palao, origine Gouvernement d'Aragon,
-              licence CC BY-NC-SA. L'attribution est portée sur chaque page. Usage
-              pédagogique non commercial.
+              licence CC BY-NC-SA. L'attribution est portée sur chaque page qui en contient.
+              Usage pédagogique non commercial.
             </p>
           </div>
         </div>
@@ -861,6 +899,11 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
       {variantesDe && (
         <Variantes picto={variantesDe} onClose={() => setVariantesDe(null)}
           onChoisir={(p) => { setSelection((s) => remplacer(s, variantesDe.id, p)); setVariantesDe(null); }} />
+      )}
+      {aRenommer && (
+        <Demander titre="Le mot de cette image" label="Le mot" valeur={aRenommer.mot} placeholder="pomme, mon cartable, Nour…"
+          onClose={() => setARenommer(null)}
+          onValider={(mot) => { setSelection((s) => s.map((x) => (x.id === aRenommer.id ? { ...x, mot: mot.trim() || x.mot } : x))); setARenommer(null); }} />
       )}
     </>
   );

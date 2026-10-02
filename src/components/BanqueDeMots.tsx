@@ -8,6 +8,8 @@ import { melanger } from "../hasard";
 import { usePictoImage } from "./ChoixPicto";
 import type { MotImage } from "../jeuxSons";
 import { useProjetDuMoment } from "./ProjetDuMoment";
+import { BoutonMesImages } from "./MesImages";
+import { estPerso } from "../imagesPerso";
 
 // Les mots d'un jeu : ceux qu'on écrit, ceux qu'un thème apporte.
 //
@@ -16,12 +18,19 @@ import { useProjetDuMoment } from "./ProjetDuMoment";
 // quand il en faut plus. Chaque mot se voit, avec son image, et se retire d'un
 // clic ; rien ne s'imprime qu'on n'ait regardé.
 
-function Chip({ m, extra, onRetirer }: { m: MotImage; extra?: React.ReactNode; onRetirer: () => void }) {
+function Chip({ m, extra, onRetirer, onRenommer }: {
+  m: MotImage; extra?: React.ReactNode; onRetirer: () => void;
+  /** Pour une image de l'enseignant : son mot s'écrit ici, le nom du fichier n'en est qu'une proposition. */
+  onRenommer?: (mot: string) => void;
+}) {
   const src = usePictoImage(m.id);
   return (
-    <span className="bm-chip" title={m.id == null ? "Aucune image trouvée : le mot s'imprimera seul" : m.mot}>
+    <span className="bm-chip" title={m.id == null ? "Aucune image trouvée : le mot s'imprimera seul" : onRenommer ? "Votre image : écrivez son mot" : m.mot}>
       {src ? <img src={src} alt="" /> : <span className="bm-vide" />}
-      <span className="bm-mot">{m.mot}</span>
+      {onRenommer
+        ? <input className="bm-renommer" value={m.mot} size={Math.max(4, m.mot.length)} aria-label="Le mot de cette image"
+            onChange={(e) => onRenommer(e.target.value)} />
+        : <span className="bm-mot">{m.mot}</span>}
       {extra}
       <button type="button" className="bm-x" aria-label={`Retirer ${m.mot}`} onClick={onRetirer}>×</button>
     </span>
@@ -98,6 +107,8 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide }: {
               📌 Les mots du projet ({corpus.mots.length})
             </button>
           )}
+          {/* Une photo, un dessin, une image d'ailleurs : elles se mêlent aux pictogrammes. */}
+          <BoutonMesImages onImages={(images) => onChange([...mots, ...images.map((i) => ({ id: i.id, mot: i.mot }))])}>🖼 Mes images</BoutonMesImages>
         </div>
       </Field>
       {banque ? (
@@ -120,7 +131,10 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide }: {
       </div>
       <div className="bm-liste">
         {mots.map((m, i) => (
-          <Chip key={`${m.mot}-${i}`} m={m} extra={extra?.(m)} onRetirer={() => onChange(mots.filter((_, k) => k !== i))} />
+          // Une image de l'enseignant garde sa clé quand on réécrit son mot : le champ ne perd pas le curseur.
+          <Chip key={estPerso(m.id) ? `perso${m.id}` : `${m.mot}-${i}`} m={m} extra={extra?.(m)}
+            onRetirer={() => onChange(mots.filter((_, k) => k !== i))}
+            onRenommer={estPerso(m.id) ? (mot) => onChange(mots.map((x, k) => (k === i ? { ...x, mot } : x))) : undefined} />
         ))}
       </div>
     </div>
