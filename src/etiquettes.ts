@@ -7,7 +7,7 @@
 // catégorie. Les mots doivent être déchiffrables, sinon illustrés.
 
 import { escapeHtml } from "./print";
-import { ATTRIBUTION_ARASAAC, feuille, imgPicto, pagesDeCartes } from "./cartesImprimables";
+import { attributionPour, feuille, imgPicto, pagesDeCartes } from "./cartesImprimables";
 import type { Images, MotImage } from "./jeuxSons";
 
 export interface ReglagesEtiquettes {
@@ -57,7 +57,7 @@ export function htmlEtiquettes(mots: MotImage[], images: Images, r: ReglagesEtiq
       <div class="sous">Le mot au centre ; autour, ceux qui vont avec — même famille, contraires, ce qu'on peut faire avec. À compléter au fil de la séquence.</div>
       <div style="text-align:center">${corolleSvg(r.titreCorolle || "")}</div></div>`);
   }
-  return feuille(`${parties.join("")}${r.pictos ? ATTRIBUTION_ARASAAC : ""}`, "et");
+  return feuille(`${parties.join("")}${r.pictos ? attributionPour(mots.map((m) => m.id)) : ""}`, "et");
 }
 
 export const STYLE_ETIQUETTES = `
