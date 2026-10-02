@@ -146,8 +146,8 @@ export function TelephoneNuage() {
       </div>
       <p style={{ color: "var(--text-2)", marginTop: 10, fontSize: 13, lineHeight: 1.6 }}>
         Sans WiFi commun ni partage à ouvrir : le <b>Dictaphone</b> dépose dictées et notes dans un dossier de votre
-        Nuage dès qu'il a du réseau, et Maitrize les relève tout seul quand il est ouvert — ici comme sur votre autre
-        ordinateur. Tout est chiffré avant de quitter le téléphone : Nuage ne voit que des fichiers fermés, et le
+        Nuage dès qu'il a du réseau, et Maitrize les relève tout seul quand il est ouvert. Tout est chiffré avant de
+        quitter le téléphone : Nuage ne voit que des fichiers fermés, et le
         téléphone lui-même ne peut pas les rouvrir. En retour, il reçoit l'emploi du temps des jours à venir — une
         heure et un intitulé, sans personne dedans.
       </p>
@@ -200,7 +200,7 @@ export function TelephoneNuage() {
           </>}
           {avecCode && <>
             <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 12.5, lineHeight: 1.55 }}>
-              Sur l'ordinateur qui a relié le téléphone : Réglages › Téléphone › <b>Code pour l'autre ordinateur</b>.
+              Sur l'ordinateur qui a relié le téléphone : Réglages › Téléphone › <b>Un second ordinateur doit relever aussi ?</b>
               Collez-le ici : cet ordinateur relèvera lui aussi, sans rien changer au téléphone.
             </p>
             <textarea className="input" rows={3} value={recu} onChange={(e) => setRecu(e.target.value)}
@@ -231,7 +231,6 @@ export function TelephoneNuage() {
           )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
             <button className={`btn${code ? " primary" : ""}`} onClick={() => { void montrerLeQr(); }}>📷 QR code du téléphone</button>
-            <button className={`btn${codeOrdi ? " primary" : ""}`} onClick={() => { void montrerLeCodeOrdi(); }}>💻 Code pour l'autre ordinateur</button>
             <button className="btn" onClick={() => { releverMaintenant(); toast("Relève en cours…", { icone: "☁️", duree: 3000 }); }}>↻ Relever maintenant</button>
             {etat.proprietaire && <button className="btn" disabled={!!occupe} onClick={() => { void refaire(); }}>{occupe || "Refaire le lien"}</button>}
             <button className="btn danger" onClick={() => { void oublier(); }}>Oublier</button>
@@ -253,8 +252,14 @@ export function TelephoneNuage() {
             </div>
           )}
 
+          {/* Un second ordinateur est rare : son code ne tient pas la place d'un bouton. */}
+          <p style={{ margin: "12px 0 0" }}>
+            <button type="button" className="lien" style={{ fontSize: 12.5 }} onClick={() => { void montrerLeCodeOrdi(); }}>
+              {codeOrdi ? "Refermer le code du second ordinateur" : "Un second ordinateur doit relever aussi ?"}
+            </button>
+          </p>
           {codeOrdi && (
-            <div style={{ marginTop: 14 }}>
+            <div style={{ marginTop: 8 }}>
               <p style={{ margin: "0 0 6px", fontSize: 12.5, lineHeight: 1.55 }}>
                 Sur l'autre ordinateur : Réglages › Téléphone › « Le téléphone est déjà relié sur l'autre ordinateur ? ».
                 <b> Ce code vaut un mot de passe</b> : il porte la clé qui rouvre les dictées. Ne l'envoyez pas par

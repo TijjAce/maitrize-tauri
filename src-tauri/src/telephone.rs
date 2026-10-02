@@ -384,7 +384,7 @@ pub fn telephone_code_ordinateur(db: State<Db>) -> R<String> {
 fn relais_du_code(code: &str) -> R<Relais> {
     let propre: String = code.chars().filter(|c| !c.is_whitespace()).collect();
     if propre.starts_with(relais::PREFIXE_CODE) {
-        return Err("Ce code est celui du téléphone. Il faut celui de l'autre ordinateur : Réglages › Partage › « Code pour l'autre ordinateur ».".into());
+        return Err("Ce code est celui du téléphone. Il faut celui de l'autre ordinateur : Réglages › Téléphone › « Un second ordinateur doit relever aussi ? ».".into());
     }
     let corps = propre.strip_prefix(PREFIXE_CODE_ORDINATEUR).ok_or("Ce code ne vient pas de Maitrize.")?;
     let octets = URL_SAFE_NO_PAD.decode(corps).map_err(|_| "Ce code est incomplet ou mal recopié.".to_string())?;
