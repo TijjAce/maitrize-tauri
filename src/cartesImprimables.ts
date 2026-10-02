@@ -5,16 +5,19 @@
 // voit à l'écran est celle qui sort de l'imprimante — même HTML, même feuille
 // de style, sous une racine `.feuille` qui ne déborde pas sur l'application.
 
+import { estPerso } from "./imagesPerso";
 import { escapeHtml } from "./print";
 
 /** Largeur utile d'une page A4 avec les marges de `@page` (14 mm). */
 export const LARGEUR_UTILE_MM = 182;
 export const HAUTEUR_UTILE_MM = 269;
 
+// La mention des pictogrammes suit la dernière page : sans la règle `:has`,
+// le saut de page l'enverrait seule sur une feuille de plus.
 export const STYLE_FEUILLE = `
   .feuille { color: #1c2233; background: #fff; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   .feuille .page { page-break-after: always; break-after: page; }
-  .feuille .page:last-child { page-break-after: auto; break-after: auto; }
+  .feuille .page:last-child, .feuille .page:has(+ .attribution) { page-break-after: auto; break-after: auto; }
   .feuille .titre { font-size: 18px; font-weight: 800; margin: 0 0 6px; }
   .feuille .sous { font-size: 12px; color: #687087; margin: 0 0 10px; line-height: 1.45; }
   .feuille .grille { display: grid; gap: 0; width: 100%; }
@@ -32,6 +35,16 @@ export const STYLE_FEUILLE = `
 /** Mention exigée par la licence des pictogrammes (CC BY-NC-SA). */
 export const ATTRIBUTION_ARASAAC =
   `<div class="attribution">Pictogrammes : ARASAAC (arasaac.org) — Gouvernement d'Aragon, licence CC BY-NC-SA. Usage non commercial.</div>`;
+
+/**
+ * La mention, quand la feuille porte au moins un pictogramme de la banque.
+ * Les images de l'enseignant — une photo, un dessin — n'ont rien à lui
+ * attribuer : une feuille qui n'a qu'elles sort sans mention.
+ */
+export function attributionPour(ids: Iterable<number | null | undefined>, mention = ATTRIBUTION_ARASAAC): string {
+  for (const id of ids) if (id != null && !estPerso(id)) return mention;
+  return "";
+}
 
 /** Une image de pictogramme, ou une case vide si elle manque. */
 export const imgPicto = (src: string | undefined, mot: string) =>
