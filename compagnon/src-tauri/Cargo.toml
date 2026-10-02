@@ -32,6 +32,9 @@ chrono = "0.4"
 # (App Transport Security) ne s'appliquent pas aux sockets, ce qui évite
 # d'avoir à déclarer une exception pour parler en clair au Mac du WiFi.
 reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
+# Le relais de Nuage : le format et le chiffrement des dépôts, communs au
+# dictaphone et à l'application de bureau. Du Rust pur, sans rien du système.
+maitrize-relais = { path = "../../relais" }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 tauri-plugin-dialog = "2.7.3"
 # Le scanner de documents de l'iPhone : un manuel se photographie page à
