@@ -21,6 +21,15 @@ export function chargerPicto(id: number): Promise<string> {
   return p;
 }
 
+/**
+ * Range une image qui ne vient pas de la banque — une photo, un dessin de
+ * l'enseignant — sous un identifiant à elle (négatif) : elle se montre alors
+ * partout où un pictogramme se montre.
+ */
+export function memoriserImage(id: number, src: string): void {
+  cache.set(id, Promise.resolve(src));
+}
+
 export function usePictoImage(id: number | null | undefined): string {
   const [src, setSrc] = React.useState("");
   React.useEffect(() => {

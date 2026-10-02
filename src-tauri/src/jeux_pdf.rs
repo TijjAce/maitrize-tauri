@@ -44,7 +44,9 @@ const PT_EN_MM: f32 = 0.3528;
 /// Rayon des angles de case, en millimètres.
 const RAYON: f32 = 6.0;
 
-/// Mention imposée par la licence CC BY-NC-SA des pictogrammes.
+/// Mention imposée par la licence CC BY-NC-SA des pictogrammes. Elle ne vaut
+/// que pour eux : une planche faite des seules images de l'enseignant n'a
+/// rien à attribuer à la banque.
 const ATTRIBUTION: &str = "Pictogrammes ARASAAC (Sergio Palao) - Gouvernement d'Aragon - CC BY-NC-SA";
 
 /// Les compétences travaillées, dans la marge haute : corps en points,
@@ -243,7 +245,10 @@ pub fn jeu(nom: &str) -> Option<Box<dyn Jeu>> {
 /// Comme les planches sont blanches, composer sur blanc ne change rien à l'œil
 /// et supprime le problème à la source.
 fn charger_sur_blanc(chemin: &str) -> Result<::image::RgbImage, String> {
-    let brut = ::image::open(chemin).map_err(|e| format!("{chemin} : {e}"))?;
+    Ok(aplatir(::image::open(chemin).map_err(|e| format!("{chemin} : {e}"))?))
+}
+
+fn aplatir(brut: ::image::DynamicImage) -> ::image::RgbImage {
     let rgba = brut.to_rgba8();
     let mut sortie = ::image::RgbImage::new(rgba.width(), rgba.height());
     for (x, y, p) in rgba.enumerate_pixels() {
@@ -251,7 +256,128 @@ fn charger_sur_blanc(chemin: &str) -> Result<::image::RgbImage, String> {
         let melange = |c: u8| (c as f32 * a + 255.0 * (1.0 - a)).round() as u8;
         sortie.put_pixel(x, y, ::image::Rgb([melange(p[0]), melange(p[1]), melange(p[2])]));
     }
+    sortie
+}
+
+// ── Les images de l'enseignant ─────────────────────────────────────────────
+
+/// Une image qui n'est pas dans la banque : une photo de l'objet réel, le
+/// dessin d'un élève. Elle arrive avec la demande et ne passe pas par le
+/// disque ; le pictogramme de même identifiant, dans la sélection, la porte.
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageFournie {
+    pub id: i64,
+    /// Le fichier lui-même, en base64 : un PNG, ou un JPEG pour une photo.
+    pub donnees: String,
+}
+
+/// Une image prête à poser dans une case.
+#[derive(Clone)]
+enum Pixels {
+    /// Décodée et aplatie sur blanc : un pictogramme, un dessin détouré.
+    Bruts(::image::RgbImage),
+    /// Un JPEG posé tel quel : le PDF sait le lire, et une photo y pèse dix
+    /// fois moins que ses pixels.
+    Jpeg { octets: Vec<u8>, largeur: u32, hauteur: u32, gris: bool },
+}
+
+impl Pixels {
+    fn dimensions(&self) -> (u32, u32) {
+        match self {
+            Pixels::Bruts(i) => (i.width(), i.height()),
+            Pixels::Jpeg { largeur, hauteur, .. } => (*largeur, *hauteur),
+        }
+    }
+
+    fn en_objet(self) -> ImageXObject {
+        let (largeur, hauteur) = self.dimensions();
+        let (color_space, image_data, image_filter) = match self {
+            Pixels::Bruts(i) => (ColorSpace::Rgb, i.into_raw(), None),
+            Pixels::Jpeg { octets, gris, .. } => {
+                (if gris { ColorSpace::Greyscale } else { ColorSpace::Rgb }, octets, Some(ImageFilter::DCT))
+            }
+        };
+        ImageXObject {
+            width: Px(largeur as usize),
+            height: Px(hauteur as usize),
+            color_space,
+            bits_per_component: ColorBits::Bit8,
+            interpolate: true,
+            image_data,
+            image_filter,
+            clipping_bbox: None,
+            smask: None,
+        }
+    }
+}
+
+type Fournies = std::collections::HashMap<i64, Pixels>;
+
+/// Largeur, hauteur et nombre de composantes d'un JPEG, lus dans son en-tête.
+///
+/// Seuls les JPEG que le PDF sait lire passent : séquentiels ou progressifs,
+/// en gris ou en couleurs. Tout autre (sans perte, arithmétique, CMJN) est
+/// refusé plutôt que d'imprimer une case vide.
+fn entete_jpeg(o: &[u8]) -> Option<(u32, u32, u8)> {
+    if o.len() < 4 || o[0] != 0xFF || o[1] != 0xD8 {
+        return None;
+    }
+    let mut i = 2;
+    while i + 3 < o.len() {
+        if o[i] != 0xFF {
+            return None;
+        }
+        let marqueur = o[i + 1];
+        // Octets de remplissage, puis les marqueurs qui ne portent pas de longueur.
+        if marqueur == 0xFF {
+            i += 1;
+            continue;
+        }
+        if marqueur == 0x01 || (0xD0..=0xD8).contains(&marqueur) {
+            i += 2;
+            continue;
+        }
+        let longueur = u16::from_be_bytes([o[i + 2], o[i + 3]]) as usize;
+        match marqueur {
+            0xC0..=0xC2 => {
+                let c = o.get(i + 5..i + 10)?;
+                let (hauteur, largeur) = (u16::from_be_bytes([c[0], c[1]]) as u32, u16::from_be_bytes([c[2], c[3]]) as u32);
+                return (largeur > 0 && hauteur > 0 && matches!(c[4], 1 | 3)).then_some((largeur, hauteur, c[4]));
+            }
+            // Un autre codage, ou les données sans en-tête : pas pour nous.
+            0xC3 | 0xC5..=0xC7 | 0xC9..=0xCB | 0xCD..=0xCF | 0xDA | 0xD9 => return None,
+            _ => i += 2 + longueur.max(2),
+        }
+    }
+    None
+}
+
+/// Les images de l'enseignant, prêtes à poser : un JPEG reste un JPEG, un PNG
+/// est décodé et aplati sur blanc comme un pictogramme.
+fn preparer(images: &[ImageFournie]) -> Result<Fournies, String> {
+    use base64::Engine;
+    let mut sortie = Fournies::new();
+    for image in images {
+        let octets = base64::engine::general_purpose::STANDARD
+            .decode(image.donnees.trim())
+            .map_err(|e| format!("Image illisible : {e}"))?;
+        let pixels = if let Some((largeur, hauteur, composantes)) = entete_jpeg(&octets) {
+            Pixels::Jpeg { octets, largeur, hauteur, gris: composantes == 1 }
+        } else {
+            let brut = ::image::load_from_memory_with_format(&octets, ::image::ImageFormat::Png)
+                .map_err(|e| format!("Image illisible ({e}) : il faut un PNG ou un JPEG."))?;
+            Pixels::Bruts(aplatir(brut))
+        };
+        sortie.insert(image.id, pixels);
+    }
     Ok(sortie)
+}
+
+/// Vrai si la planche porte au moins un pictogramme de la banque : c'est à
+/// lui que va la mention de licence.
+fn doit_la_mention(planche: &Planche, fournies: &Fournies) -> bool {
+    planche.cases.iter().any(|p| !fournies.contains_key(&p.id))
 }
 
 /// Chasse d'un caractère en capitales dans l'Helvetica intégrée au PDF, en
@@ -370,6 +496,7 @@ fn rendre_planche(
     police: &IndirectFontRef,
     largeur: f32,
     hauteur: f32,
+    fournies: &Fournies,
 ) -> Result<(), String> {
     let c = doc.get_page(page).get_layer(couche);
     let (cols, lignes) = (planche.colonnes as f32, planche.lignes as f32);
@@ -394,24 +521,19 @@ fn rendre_planche(
         let hauteur_mot = if o.libelles { HAUTEUR_MOT } else { 0.0 };
         let place_h = case_h - 2.0 * marge_h - hauteur_mot;
 
-        let img = charger_sur_blanc(&picto.fichier)?;
-        let (iw, ih) = (img.width() as f32, img.height() as f32);
+        // L'image de l'enseignant si c'en est une, le fichier de la banque sinon.
+        let img = match fournies.get(&picto.id) {
+            Some(fournie) => fournie.clone(),
+            None => Pixels::Bruts(charger_sur_blanc(&picto.fichier)?),
+        };
+        let (iw, ih) = img.dimensions();
+        let (iw, ih) = (iw as f32, ih as f32);
         let echelle = (place_l / iw).min(place_h / ih);
         let (dl, dh) = (iw * echelle, ih * echelle);
         // printpdf place l'image en points par pouce : on convertit la taille
         // voulue en mm vers un facteur d'échelle appliqué aux pixels.
         let dpi = 300.0;
-        Image::from(ImageXObject {
-            width: Px(img.width() as usize),
-            height: Px(img.height() as usize),
-            color_space: ColorSpace::Rgb,
-            bits_per_component: ColorBits::Bit8,
-            interpolate: true,
-            image_data: img.into_raw(),
-            image_filter: None,
-            clipping_bbox: None,
-            smask: None,
-        })
+        Image::from(img.en_objet())
         .add_to_layer(
             c.clone(),
             ImageTransform {
@@ -438,9 +560,11 @@ fn rendre_planche(
     }
 
     // Attribution obligatoire, hors zone de jeu, la plus discrète possible.
-    c.set_fill_color(couleur((0.6, 0.6, 0.6)));
-    let largeur_mention = ATTRIBUTION.chars().count() as f32 * 6.0 * 0.5 * 0.3528;
-    c.use_text(ATTRIBUTION, 6.0, Mm((largeur - largeur_mention) / 2.0), Mm(7.0), police);
+    if doit_la_mention(planche, fournies) {
+        c.set_fill_color(couleur((0.6, 0.6, 0.6)));
+        let largeur_mention = ATTRIBUTION.chars().count() as f32 * 6.0 * 0.5 * 0.3528;
+        c.use_text(ATTRIBUTION, 6.0, Mm((largeur - largeur_mention) / 2.0), Mm(7.0), police);
+    }
     ecrire_competences(&c, &o.competences, largeur, hauteur, police);
     Ok(())
 }
@@ -491,17 +615,19 @@ pub(crate) fn lignes_competences(competences: &[String], largeur: f32, corps: f3
 pub fn construire(
     nom_jeu: &str,
     vivier: &[PictoChoisi],
+    images: &[ImageFournie],
     o: &Options,
 ) -> Result<Vec<u8>, String> {
     let jeu = jeu(nom_jeu).ok_or_else(|| format!("Jeu inconnu : {nom_jeu}"))?;
     let minimum = jeu.minimum(o);
     if vivier.len() < minimum {
         return Err(format!(
-            "Il faut au moins {minimum} pictogrammes pour une planche {}×{} ; la sélection n'en donne que {}. \
-             Élargissez la catégorie ou augmentez le vivier.",
+            "Il faut au moins {minimum} images pour une planche {}×{} ; la sélection n'en donne que {}. \
+             Élargissez la catégorie ou ajoutez des images.",
             o.colonnes, o.lignes, vivier.len()
         ));
     }
+    let fournies = preparer(images)?;
     let planches = jeu.planches(vivier, o);
     if planches.is_empty() {
         return Err("Aucune planche à produire.".into());
@@ -514,11 +640,11 @@ pub fn construire(
         .add_builtin_font(BuiltinFont::Helvetica)
         .map_err(|e| format!("Police : {e}"))?;
 
-    rendre_planche(&doc, page, couche, &planches[0], o, &police, l0, h0)?;
+    rendre_planche(&doc, page, couche, &planches[0], o, &police, l0, h0, &fournies)?;
     for planche in &planches[1..] {
         let (l, h) = dimensions(planche);
         let (p, c) = doc.add_page(Mm(l), Mm(h), "Planche");
-        rendre_planche(&doc, p, c, planche, o, &police, l, h)?;
+        rendre_planche(&doc, p, c, planche, o, &police, l, h, &fournies)?;
     }
 
     doc.save_to_bytes().map_err(|e| format!("Écriture du PDF : {e}"))
@@ -623,7 +749,7 @@ mod tests {
 
     #[test]
     fn refuse_un_vivier_trop_maigre() {
-        let e = construire("loto", &vivier(4), &options()).unwrap_err();
+        let e = construire("loto", &vivier(4), &[], &options()).unwrap_err();
         assert!(e.contains("au moins 6"), "{e}");
         assert!(e.contains("Élargissez"), "le message doit dire quoi faire : {e}");
     }
@@ -632,6 +758,7 @@ mod tests {
     /// assertion ne montre : cadrage, aplatissement du fond, lisibilité.
     /// Ignoré par défaut, il lui faut la banque :
     ///   MAITRIZE_BANQUE=/chemin/arasaac_fr cargo test rendu_reel -- --ignored --nocapture
+    /// `MAITRIZE_IMAGES=/un/dossier` y mêle des images de l'enseignant (PNG, JPEG).
     #[test]
     #[ignore]
     fn rendu_reel() {
@@ -655,6 +782,21 @@ mod tests {
             .collect();
         vivier.truncate(18);
         assert!(vivier.len() >= 6, "banque vide");
+        // Des images de l'enseignant en tête de la sélection, si on en donne.
+        let mut images = Vec::new();
+        if let Ok(dossier) = std::env::var("MAITRIZE_IMAGES") {
+            use base64::Engine;
+            let mut chemins: Vec<_> = std::fs::read_dir(&dossier).expect("dossier d'images").filter_map(|e| e.ok()).map(|e| e.path()).collect();
+            chemins.sort();
+            for (i, chemin) in chemins.iter().filter(|c| c.extension().is_some_and(|x| x == "png" || x == "jpg" || x == "jpeg")).enumerate() {
+                let id = -(i as i64) - 1;
+                images.push(ImageFournie { id, donnees: base64::engine::general_purpose::STANDARD.encode(std::fs::read(chemin).unwrap()) });
+                vivier.insert(i, PictoChoisi { id, mot: format!("photo {}", i + 1), fichier: String::new(), nature: String::new() });
+            }
+            if std::env::var("MAITRIZE_SANS_BANQUE").is_ok() {
+                vivier.truncate(images.len());
+            }
+        }
         let mut o = options();
         o.libelles = true;
         o.competences = vec![
@@ -664,10 +806,106 @@ mod tests {
             let (c, l) = g.split_once('x').expect("grille CxL");
             (o.colonnes, o.lignes) = (c.parse().unwrap(), l.parse().unwrap());
         }
-        let pdf = construire("loto", &vivier, &o).expect("génération");
+        let jeu = std::env::var("MAITRIZE_JEU").unwrap_or_else(|_| "loto".into());
+        let pdf = construire(&jeu, &vivier, &images, &o).expect("génération");
         let sortie = std::env::var("MAITRIZE_SORTIE").unwrap_or_else(|_| "/tmp/loto-test.pdf".into());
         std::fs::write(&sortie, &pdf).unwrap();
         println!("PDF écrit : {sortie} ({} octets)", pdf.len());
+    }
+
+    /// Un PNG de `cote` pixels de côté, à moitié transparent, en base64.
+    fn png_en_base64(cote: u32) -> String {
+        use base64::Engine;
+        let image = ::image::RgbaImage::from_fn(cote, cote, |x, y| ::image::Rgba([200, (x * 9) as u8, (y * 9) as u8, if x < cote / 2 { 0 } else { 255 }]));
+        let mut octets = std::io::Cursor::new(Vec::new());
+        ::image::DynamicImage::ImageRgba8(image).write_to(&mut octets, ::image::ImageOutputFormat::Png).unwrap();
+        base64::engine::general_purpose::STANDARD.encode(octets.into_inner())
+    }
+
+    /// L'en-tête d'un JPEG, sans ses données : de quoi lire ses dimensions.
+    fn entete(sof: u8, largeur: u16, hauteur: u16, composantes: u8) -> Vec<u8> {
+        let mut o = vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10];
+        o.extend_from_slice(b"JFIF\0\x01\x01\0\0\x01\0\x01\0\0");
+        // Une table de quantification avant le cadre, comme dans un vrai fichier.
+        o.extend_from_slice(&[0xFF, 0xDB, 0x00, 0x43]);
+        o.extend(std::iter::repeat_n(1u8, 65));
+        o.extend_from_slice(&[0xFF, sof, 0x00, 0x11, 0x08]);
+        o.extend_from_slice(&hauteur.to_be_bytes());
+        o.extend_from_slice(&largeur.to_be_bytes());
+        o.push(composantes);
+        o.extend(std::iter::repeat_n(0u8, 9));
+        o.extend_from_slice(&[0xFF, 0xD9]);
+        o
+    }
+
+    #[test]
+    fn un_jpeg_dit_ses_dimensions_dans_son_en_tete() {
+        assert_eq!(entete_jpeg(&entete(0xC0, 700, 525, 3)), Some((700, 525, 3)));
+        // Progressif, en gris : le PDF les lit aussi.
+        assert_eq!(entete_jpeg(&entete(0xC2, 64, 48, 1)), Some((64, 48, 1)));
+        // Sans perte ou en quatre couleurs : pas pour une case de loto.
+        assert_eq!(entete_jpeg(&entete(0xC3, 64, 48, 3)), None);
+        assert_eq!(entete_jpeg(&entete(0xC0, 64, 48, 4)), None);
+        assert_eq!(entete_jpeg(&entete(0xC0, 0, 48, 3)), None);
+        // Ce qui n'est pas un JPEG, ou un fichier tronqué.
+        assert_eq!(entete_jpeg(b"\x89PNG\r\n\x1a\n"), None);
+        assert_eq!(entete_jpeg(&entete(0xC0, 700, 525, 3)[..30]), None);
+        assert_eq!(entete_jpeg(&[]), None);
+    }
+
+    #[test]
+    fn les_images_de_l_enseignant_se_posent_sans_fichier() {
+        use base64::Engine;
+        // Six images qui ne sont pas dans la banque : trois PNG, trois photos.
+        let perso: Vec<PictoChoisi> = (1..=6)
+            .map(|i| PictoChoisi { id: -i, mot: format!("photo {i}"), fichier: String::new(), nature: String::new() })
+            .collect();
+        let images: Vec<ImageFournie> = (1..=6)
+            .map(|i| ImageFournie {
+                id: -i,
+                donnees: if i <= 3 { png_en_base64(24) } else { base64::engine::general_purpose::STANDARD.encode(entete(0xC0, 40, 30, 3)) },
+            })
+            .collect();
+        let mut o = options();
+        (o.planches, o.cartes) = (1, false);
+        let pdf = construire("loto", &perso, &images, &o).expect("le loto se fait sans la banque");
+        let doc = lopdf::Document::load_mem(&pdf).expect("relisible");
+        assert_eq!(doc.get_pages().len(), 1);
+        let flux: Vec<&lopdf::Stream> = doc.objects.values()
+            .filter_map(|x| x.as_stream().ok())
+            .filter(|s| s.dict.get(b"Subtype").and_then(|x| x.as_name_str()).ok() == Some("Image"))
+            .collect();
+        assert_eq!(flux.len(), 6);
+        // Les photos restent des JPEG, à leurs dimensions ; les PNG sont décodés.
+        let jpeg: Vec<&&lopdf::Stream> = flux.iter().filter(|s| format!("{:?}", s.dict.get(b"Filter")).contains("DCTDecode")).collect();
+        assert_eq!(jpeg.len(), 3);
+        for s in jpeg {
+            assert_eq!(s.dict.get(b"Width").and_then(|x| x.as_i64()).unwrap(), 40);
+            assert_eq!(s.dict.get(b"Height").and_then(|x| x.as_i64()).unwrap(), 30);
+            assert_eq!(s.content, entete(0xC0, 40, 30, 3));
+        }
+        // Une image annoncée mais illisible se dit, au lieu d'une case vide.
+        let abimee = vec![ImageFournie { id: -1, donnees: base64::engine::general_purpose::STANDARD.encode(b"pas une image") }];
+        let e = construire("loto", &perso, &abimee, &o).unwrap_err();
+        assert!(e.contains("PNG ou un JPEG"), "{e}");
+    }
+
+    #[test]
+    fn la_mention_de_la_banque_ne_va_qu_a_ses_pictogrammes() {
+        let fournies = preparer(&[ImageFournie { id: -1, donnees: png_en_base64(8) }, ImageFournie { id: -2, donnees: png_en_base64(8) }]).unwrap();
+        let planche = |ids: &[i64]| Planche {
+            colonnes: 2, lignes: 1, paysage: true,
+            cases: ids.iter().map(|&id| PictoChoisi { id, mot: String::new(), fichier: String::new(), nature: String::new() }).collect(),
+        };
+        // Rien que des images de l'enseignant : rien à attribuer.
+        assert!(!doit_la_mention(&planche(&[-1, -2]), &fournies));
+        // Un seul pictogramme de la banque suffit à la devoir.
+        assert!(doit_la_mention(&planche(&[-1, 2349]), &fournies));
+        assert!(doit_la_mention(&planche(&[2349, 2350]), &Fournies::new()));
+        // Le fond transparent d'un PNG devient blanc, pas noir.
+        let Some(Pixels::Bruts(image)) = fournies.get(&-1) else { panic!("un PNG se décode") };
+        assert_eq!(image.get_pixel(0, 0).0, [255, 255, 255]);
+        assert_eq!(image.get_pixel(7, 0).0, [200, 63, 0]);
     }
 
     #[test]
@@ -726,7 +964,7 @@ mod tests {
 
     #[test]
     fn refuse_un_jeu_inconnu() {
-        assert!(construire("echecs", &vivier(20), &options()).is_err());
+        assert!(construire("echecs", &vivier(20), &[], &options()).is_err());
     }
 
     #[test]
