@@ -1,6 +1,6 @@
 import React from "react";
 import { Page } from "../App";
-import { api, isMac, texteErreur, type InfoCopie, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo, type VerifSauvegarde, type EtatWhisper } from "../api";
+import { api, isMac, texteErreur, type InfoCopie, type SauvegardeAuto, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo, type VerifSauvegarde, type EtatWhisper } from "../api";
 import { Field, Input, Select, Modal, Confirm, useAsync } from "../components/ui";
 import { PartagerMesDossiers } from "../components/PartagerMesDossiers";
 import { confirmer } from "../components/confirmer";
@@ -361,8 +361,10 @@ export default function Reglages() {
 
       {onglet === "donnees" && <>
       {/* Des cartes se suivaient sans hiérarchie, du partage au journal
-          d'incidents. Trois familles, et le rare replié : on ouvre cette page
-          pour vérifier une sauvegarde, pas pour lire un chemin de dossier. */}
+          d'incidents. Deux familles, et tout ce qui tourne seul replié : on
+          ouvre cette page pour vérifier une sauvegarde, pas pour lire un
+          chemin de dossier. Ce qu'il faut voir d'un coup d'œil — la date de
+          la dernière copie — reste écrit sur la ligne repliée. */}
       <Famille titre="Avec vos collègues">
         <PartagerMesDossiers />
       </Famille>
@@ -373,12 +375,8 @@ export default function Reglages() {
         <Repli titre="Sauvegarde sur mon stockage (S3 / MinIO)">
           <SauvegardeS3Card />
         </Repli>
-        <CopiesAutomatiques />
-      </Famille>
-
-      <Famille titre="Sur cet ordinateur">
-        <CopieDuBureauCard />
-      </Famille>
+        <CopiesAutomatiquesRepliees />
+        <CopieDuBureauRepliee />
 
       {/* Ce qu'on ouvre une fois par an, ou le jour où ça va mal. */}
       <Repli titre="Vérifier, exporter, diagnostiquer">
@@ -407,6 +405,7 @@ export default function Reglages() {
           </div>
         </div>
       </Repli>
+      </Famille>
       </>}
 
       {onglet === "partage" && <>
@@ -732,6 +731,30 @@ function quandCopie(iso: string): string {
  * La copie du bureau dans un vrai dossier de l'ordinateur : de vrais fichiers,
  * qui restent là si les données de Maitrize venaient à manquer.
  */
+/** Ce que la ligne repliée dit de la copie du bureau : faite quand, ou pas du tout. */
+function resumeDeLaCopie(info: InfoCopie): { texte: string; alerte: boolean } {
+  if (!info.active) return { texte: "désactivée", alerte: false };
+  const d = info.derniere;
+  return { texte: d ? `dernière : ${quandCopie(d.date)}` : "pas encore faite", alerte: !!d?.erreurs.length };
+}
+
+/** La copie du bureau, repliée : sa dernière date reste lisible, et suit les copies qui se font. */
+function CopieDuBureauRepliee() {
+  const [info, setInfo] = React.useState<InfoCopie | null>(null);
+  const relire = React.useCallback(() => { api.copieBureauInfo().then(setInfo).catch(() => {}); }, []);
+  React.useEffect(() => {
+    relire();
+    return suivreLaCopie(relire);
+  }, [relire]);
+  const resume = info ? resumeDeLaCopie(info) : null;
+  return (
+    <Repli titre="Copie du bureau sur l'ordinateur"
+      resume={resume ? <span style={{ color: resume.alerte ? "var(--danger, #ef4444)" : undefined }}>{resume.texte}</span> : null}>
+      <CopieDuBureauCard />
+    </Repli>
+  );
+}
+
 function CopieDuBureauCard() {
   const [info, setInfo] = React.useState<InfoCopie | null>(null);
   const [msg, setMsg] = React.useState("");
@@ -937,26 +960,36 @@ function EssaiDeRestauration() {
 }
 
 /** Copies quotidiennes de la base, faites au lancement de l'app. */
+/** Quand la dernière copie automatique a eu lieu, et s'il faut s'en inquiéter. */
+function etatDesCopies(liste: SauvegardeAuto[]): { quand: string; alerte: boolean } {
+  const derniere = liste[0];
+  if (!derniere) return { quand: "aucune copie pour l'instant", alerte: false };
+  // Écart en jours entre la dernière copie et aujourd'hui.
+  const d = new Date(derniere.jour + "T00:00:00");
+  const auj = new Date(); auj.setHours(0, 0, 0, 0);
+  const jours = Math.round((auj.getTime() - d.getTime()) / 86_400_000);
+  const quand = jours <= 0 ? "aujourd'hui" : jours === 1 ? "hier" : `il y a ${jours} jours`;
+  // Au-delà de deux jours sans copie, l'app n'a pas été lancée : on le signale.
+  return { quand, alerte: jours > 2 };
+}
+
+/** Les copies automatiques, repliées : la date de la dernière se lit sans ouvrir, en rouge quand elle tarde. */
+function CopiesAutomatiquesRepliees() {
+  const { data: copies } = useAsync(() => api.sauvegardesAutoList(), []);
+  const { quand, alerte } = etatDesCopies(copies ?? []);
+  return (
+    <Repli titre="Copies automatiques"
+      resume={copies ? <span style={{ color: alerte ? "var(--danger, #ef4444)" : undefined }}>dernière : {quand}</span> : null}>
+      <CopiesAutomatiques />
+    </Repli>
+  );
+}
+
 function CopiesAutomatiques() {
   const { data: copies } = useAsync(() => api.sauvegardesAutoList(), []);
   const liste = copies ?? [];
-  const derniere = liste[0];
-
-  // Écart en jours entre la dernière copie et aujourd'hui.
-  const jours = React.useMemo(() => {
-    if (!derniere) return null;
-    const d = new Date(derniere.jour + "T00:00:00");
-    const auj = new Date(); auj.setHours(0, 0, 0, 0);
-    return Math.round((auj.getTime() - d.getTime()) / 86_400_000);
-  }, [derniere]);
-
-  const quand = jours === null ? "aucune copie pour l'instant"
-    : jours <= 0 ? "aujourd'hui"
-    : jours === 1 ? "hier"
-    : `il y a ${jours} jours`;
+  const { quand, alerte } = etatDesCopies(liste);
   const mo = (o: number) => (o / 1_048_576).toFixed(1).replace(".", ",") + " Mo";
-  // Au-delà de deux jours sans copie, l'app n'a pas été lancée : on le signale.
-  const alerte = jours !== null && jours > 2;
 
   return (
     <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
@@ -1073,15 +1106,18 @@ function Famille({ titre, children }: { titre: string; children: React.ReactNode
  *
  * Fermé par défaut : l'emplacement des fichiers et le journal d'incidents ne
  * se consultent qu'un jour de panne, et ils poussaient tout le reste vers le
- * bas le reste de l'année.
+ * bas le reste de l'année. `resume` dit sur la ligne ce qu'on venait
+ * vérifier — la date de la dernière copie —, pour ne pas avoir à ouvrir.
  */
-function Repli({ titre, children }: { titre: string; children: React.ReactNode }) {
+function Repli({ titre, resume, children }: { titre: string; resume?: React.ReactNode; children: React.ReactNode }) {
   const [ouvert, setOuvert] = React.useState(false);
   return (
     <div style={{ maxWidth: 620 }}>
       <button className="btn ghost" style={{ width: "100%", justifyContent: "flex-start", marginBottom: 10 }}
         onClick={() => setOuvert((v) => !v)} aria-expanded={ouvert}>
         {ouvert ? "▾" : "▸"} {titre}
+        {/* La couleur se pose ici : dans un bouton, celle de « meta » cède à celle du bouton. */}
+        {resume && !ouvert && <span style={{ marginLeft: 10, fontWeight: 400, fontSize: 12, color: "var(--text-2)" }}>{resume}</span>}
       </button>
       {ouvert && children}
     </div>
