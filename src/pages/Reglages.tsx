@@ -2,7 +2,6 @@ import React from "react";
 import { Page } from "../App";
 import { api, isMac, texteErreur, type InfoCopie, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo, type VerifSauvegarde, type EtatWhisper } from "../api";
 import { Field, Input, Select, Modal, Confirm, useAsync } from "../components/ui";
-import { MesAppareils } from "../components/MesAppareils";
 import { PartagerMesDossiers } from "../components/PartagerMesDossiers";
 import { confirmer } from "../components/confirmer";
 import { toast } from "../components/Toaster";
@@ -361,17 +360,19 @@ export default function Reglages() {
       </>}
 
       {onglet === "donnees" && <>
-      {/* Neuf cartes se suivaient sans hiérarchie, de l'appairage au journal
+      {/* Des cartes se suivaient sans hiérarchie, du partage au journal
           d'incidents. Trois familles, et le rare replié : on ouvre cette page
-          pour brancher une machine ou vérifier une sauvegarde, pas pour lire
-          un chemin de dossier. */}
-      <Famille titre="Vos machines">
-        <MesAppareils />
+          pour vérifier une sauvegarde, pas pour lire un chemin de dossier. */}
+      <Famille titre="Avec vos collègues">
         <PartagerMesDossiers />
       </Famille>
 
       <Famille titre="Sauvegardes">
-        <SauvegardeS3Card />
+        {/* Le stockage se règle une fois, puis la sauvegarde part toute seule :
+            cinq champs et une phrase secrète n'ont pas à rester sous les yeux. */}
+        <Repli titre="Sauvegarde sur mon stockage (S3 / MinIO)">
+          <SauvegardeS3Card />
+        </Repli>
         <CopiesAutomatiques />
       </Famille>
 
