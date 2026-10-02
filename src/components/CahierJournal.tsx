@@ -495,8 +495,8 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                             🎯 Compétence</button>
                         </>
                       ) : (
-                        <span className="meta" style={{ fontSize: 12 }} title="Ce que vous écrivez ici va de lui-même au dossier des élèves du créneau, une fiche par élève">
-                          {reunion || !ids.length ? "" : "📋 va au dossier des élèves"}
+                        <span className="meta" style={{ fontSize: 12 }} title="Ce que vous écrivez ici va de lui-même au dossier des élèves du créneau, une fiche par élève — et s'imprime en tête du cahier journal du prochain jour de classe">
+                          {reunion ? "" : [ids.length ? "📋 va au dossier des élèves" : "", "🖨 s'imprime sur le journal du lendemain"].filter(Boolean).join(" · ")}
                         </span>
                       )}
                     </div>
