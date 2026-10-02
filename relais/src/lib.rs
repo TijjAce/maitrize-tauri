@@ -66,29 +66,104 @@ pub struct Appairage {
     pub cle_retour: String,
 }
 
+/// La version du code d'appairage : un téléphone d'une version plus ancienne le refuse proprement.
+const VERSION_CODE: u8 = 1;
+const HTTPS: &str = "https://";
+
+/// Les deux chemins qu'un lien de partage prend chez Nextcloud, du plus récent au plus ancien.
+fn base_recente(jeton: &str) -> String { format!("public.php/dav/files/{jeton}") }
+const BASE_ANCIENNE: &str = "public.php/webdav";
+
 impl Appairage {
-    /// Le texte du QR code.
+    /**
+     * Le texte du QR code.
+     *
+     * Serré : un QR code se lit d'autant mieux, sur un écran, qu'il a peu de
+     * modules. Les clés y sont en octets et non en texte, le chemin du lien
+     * tient en un octet quand c'est l'un des deux que Nextcloud connaît, et
+     * « https:// » ne s'écrit pas — un relais est toujours en HTTPS.
+     */
     pub fn en_code(&self) -> String {
-        format!("{PREFIXE_CODE}{}", URL_SAFE_NO_PAD.encode(serde_json::to_vec(self).unwrap_or_default()))
+        let mut o = vec![VERSION_CODE];
+        o.extend_from_slice(&cle_de(&self.cle_depot).unwrap_or([0; 32]));
+        o.extend_from_slice(&cle_de(&self.cle_retour).unwrap_or([0; 32]));
+        let mut texte = |s: &str| {
+            let octets = s.as_bytes();
+            o.push(octets.len().min(255) as u8);
+            o.extend_from_slice(&octets[..octets.len().min(255)]);
+        };
+        texte(self.serveur.strip_prefix(HTTPS).unwrap_or(&self.serveur));
+        texte(&self.jeton);
+        texte(&self.mot_de_passe);
+        if self.base == base_recente(&self.jeton) {
+            o.push(0);
+        } else if self.base == BASE_ANCIENNE {
+            o.push(1);
+        } else {
+            o.push(2);
+            let octets = self.base.as_bytes();
+            o.push(octets.len().min(255) as u8);
+            o.extend_from_slice(&octets[..octets.len().min(255)]);
+        }
+        format!("{PREFIXE_CODE}{}", URL_SAFE_NO_PAD.encode(o))
     }
 
     /// Relit un code scanné ou collé ; dit pourquoi il ne convient pas.
     pub fn depuis_code(brut: &str) -> R<Appairage> {
+        let abime = || "Ce code est incomplet ou abîmé.".to_string();
         let propre: String = brut.chars().filter(|c| !c.is_whitespace()).collect();
         let corps = propre.strip_prefix(PREFIXE_CODE)
             .ok_or("Ce code n'est pas celui d'un relais Maitrize.")?;
-        let octets = URL_SAFE_NO_PAD.decode(corps).map_err(|_| "Ce code est incomplet ou abîmé.".to_string())?;
-        let a: Appairage = serde_json::from_slice(&octets).map_err(|_| "Ce code est incomplet ou abîmé.".to_string())?;
-        if !a.serveur.starts_with("https://") {
-            // Un relais en clair laisserait passer le jeton du lien à qui écoute.
-            return Err("Ce relais n'est pas en HTTPS : il ne sera pas utilisé.".into());
+        let o = URL_SAFE_NO_PAD.decode(corps).map_err(|_| abime())?;
+        match o.first() {
+            Some(&VERSION_CODE) => {}
+            Some(_) => return Err("Ce code vient d'une version plus récente de Maitrize : mettez le dictaphone à jour.".into()),
+            None => return Err(abime()),
         }
-        if a.jeton.is_empty() || a.base.is_empty() {
+        let mut suite = Lecteur { octets: &o, position: 1 };
+        let cle_depot: [u8; 32] = suite.prendre(32).and_then(|m| m.try_into().ok()).ok_or_else(abime)?;
+        let cle_retour: [u8; 32] = suite.prendre(32).and_then(|m| m.try_into().ok()).ok_or_else(abime)?;
+        let hote = suite.texte().ok_or_else(abime)?;
+        let jeton = suite.texte().ok_or_else(abime)?;
+        let mot_de_passe = suite.texte().ok_or_else(abime)?;
+        let base = match suite.prendre(1).ok_or_else(abime)?[0] {
+            0 => base_recente(&jeton),
+            1 => BASE_ANCIENNE.to_string(),
+            2 => suite.texte().ok_or_else(abime)?,
+            _ => return Err(abime()),
+        };
+        if hote.is_empty() || jeton.is_empty() || base.is_empty() {
             return Err("Ce code ne dit pas où déposer.".into());
         }
-        cle_de(&a.cle_depot)?;
-        cle_de(&a.cle_retour)?;
-        Ok(a)
+        // Un relais en clair laisserait passer le jeton du lien à qui écoute :
+        // le code ne sait écrire que du HTTPS.
+        Ok(Appairage {
+            serveur: format!("{HTTPS}{hote}"),
+            base,
+            jeton,
+            mot_de_passe,
+            cle_depot: cle_en_texte(&cle_depot),
+            cle_retour: cle_en_texte(&cle_retour),
+        })
+    }
+}
+
+/// Ce qui reste à lire d'un code : des octets, et des textes précédés de leur longueur.
+struct Lecteur<'a> {
+    octets: &'a [u8],
+    position: usize,
+}
+
+impl<'a> Lecteur<'a> {
+    fn prendre(&mut self, n: usize) -> Option<&'a [u8]> {
+        let morceau = self.octets.get(self.position..self.position + n)?;
+        self.position += n;
+        Some(morceau)
+    }
+
+    fn texte(&mut self) -> Option<String> {
+        let n = self.prendre(1)?[0] as usize;
+        String::from_utf8(self.prendre(n)?.to_vec()).ok()
     }
 }
 
@@ -398,12 +473,33 @@ mod tests {
         // Ce qui n'est pas un relais se dit, plutôt que d'échouer plus tard au premier dépôt.
         assert!(Appairage::depuis_code("http://192.168.1.20:8787/?t=abc").unwrap_err().contains("relais"));
         assert!(Appairage::depuis_code("maitrize-relais:pas-du-base64!").is_err());
+        assert!(Appairage::depuis_code("maitrize-relais:").is_err());
+        // Tronqué par un collage : on le dit, on ne retient pas un relais bancal.
+        assert!(Appairage::depuis_code(&code[..code.len() - 12]).unwrap_err().contains("incomplet"));
+        // Le code ne sait écrire que du HTTPS : un relais en clair n'en sort jamais.
         let mut clair = a.clone();
         clair.serveur = "http://nuage.exemple.fr".into();
-        assert!(Appairage::depuis_code(&clair.en_code()).unwrap_err().contains("HTTPS"));
-        let mut sans_cle = a.clone();
-        sans_cle.cle_depot = "courte".into();
-        assert!(Appairage::depuis_code(&sans_cle.en_code()).is_err());
+        assert!(Appairage::depuis_code(&clair.en_code()).unwrap().serveur.starts_with("https://"));
+        // Un code d'une version à venir se refuse avec la marche à suivre.
+        let mut futur = URL_SAFE_NO_PAD.decode(code.strip_prefix(PREFIXE_CODE).unwrap()).unwrap();
+        futur[0] = 9;
+        let erreur = Appairage::depuis_code(&format!("{PREFIXE_CODE}{}", URL_SAFE_NO_PAD.encode(futur))).unwrap_err();
+        assert!(erreur.contains("mettez le dictaphone à jour"), "{erreur}");
+    }
+
+    #[test]
+    fn le_code_reste_court_pour_que_le_qr_code_se_lise() {
+        let (a, _, _) = appairage();
+        // Moins de deux cent trente caractères : un QR code d'une cinquantaine de modules de côté.
+        assert!(a.en_code().len() < 230, "{} caractères", a.en_code().len());
+        // Les trois chemins d'un lien font l'aller-retour : le récent, l'ancien, et un autre.
+        for base in ["public.php/dav/files/aBcD1234".to_string(), "public.php/webdav".to_string(), "nextcloud/public.php/webdav".to_string()] {
+            let variante = Appairage { base: base.clone(), ..a.clone() };
+            assert_eq!(Appairage::depuis_code(&variante.en_code()).unwrap().base, base);
+        }
+        // Un lien sans mot de passe aussi.
+        let ouvert = Appairage { mot_de_passe: String::new(), ..a.clone() };
+        assert_eq!(Appairage::depuis_code(&ouvert.en_code()).unwrap(), ouvert);
     }
 
     #[test]
