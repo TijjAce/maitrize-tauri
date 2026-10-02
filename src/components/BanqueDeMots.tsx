@@ -37,7 +37,7 @@ function Chip({ m, extra, onRetirer, onRenommer }: {
   );
 }
 
-export function BanqueDeMots({ mots, onChange, banque, extra, aide }: {
+export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions }: {
   mots: MotImage[];
   onChange: (mots: MotImage[]) => void;
   /** La banque de pictogrammes est là : on peut chercher des images et des thèmes. */
@@ -45,8 +45,11 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide }: {
   /** Ce qu'on montre en plus sur chaque mot (un compte de syllabes, par exemple). */
   extra?: (m: MotImage) => React.ReactNode;
   aide?: string;
+  /** Des listes toutes prêtes que l'atelier propose : les mots d'un son, par exemple. */
+  propositions?: { libelle: string; mots: string[] }[];
 }) {
   const [texte, setTexte] = React.useState("");
+  const [proposition, setProposition] = React.useState("");
   const [theme, setTheme] = React.useState("");
   const [combien, setCombien] = React.useState(12);
   const [occupe, setOccupe] = React.useState(false);
@@ -111,6 +114,18 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide }: {
           <BoutonMesImages onImages={(images) => onChange([...mots, ...images.map((i) => ({ id: i.id, mot: i.mot }))])}>🖼 Mes images</BoutonMesImages>
         </div>
       </Field>
+      {propositions && propositions.length > 0 && (
+        <Field label="Ou des mots tout prêts">
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+            <Select value={proposition} onChange={(e) => setProposition(e.target.value)} style={{ flex: 1, minWidth: 150 }}>
+              <option value="">Choisir une liste…</option>
+              {propositions.map((p) => <option key={p.libelle} value={p.libelle}>{p.libelle}</option>)}
+            </Select>
+            <button type="button" className="btn sm" disabled={occupe || !proposition}
+              onClick={() => void ajouterMots(propositions.find((p) => p.libelle === proposition)?.mots ?? [])}>＋ Ajouter</button>
+          </div>
+        </Field>
+      )}
       {banque ? (
         <Field label="Ou piocher dans un thème">
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
