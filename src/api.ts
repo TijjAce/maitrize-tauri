@@ -726,9 +726,12 @@ export const api = {
   arasaacImage: (id: number) => invoke<string>("arasaac_image", { id }),
   arasaacParMots: (mots: string[]) =>
     invoke<[PictoArasaac[], string[]]>("arasaac_par_mots", { mots }),
-  /** Le PDF d'un jeu ; `ouvrir` faux pour le ranger sans l'ouvrir. Renvoie son chemin. */
-  jeuGenerer: (jeu: string, pictos: PictoArasaac[], options: OptionsJeu, titre: string, ouvrir = true) =>
-    invoke<string>("jeu_generer", { jeu, pictos, options, titre, ouvrir }),
+  /**
+   * Le PDF d'un jeu ; `ouvrir` faux pour le ranger sans l'ouvrir. Renvoie son chemin.
+   * `images` porte celles de l'enseignant, que la banque n'a pas : elles partent avec la demande.
+   */
+  jeuGenerer: (jeu: string, pictos: PictoArasaac[], options: OptionsJeu, titre: string, ouvrir = true, images: ImageFournie[] = []) =>
+    invoke<string>("jeu_generer", { jeu, pictos, options, titre, ouvrir, images }),
   mistralRechercheWeb: (question: string) =>
     invoke<ReponseWeb>("mistral_recherche_web", { question }),
   mistralVision: (consigne: string, imageB64: string, model?: string) =>
@@ -955,6 +958,8 @@ export interface EtatBanque {
 }
 export interface CategorieArasaac { nom: string; nombre: number }
 export interface PictoArasaac { id: number; mot: string; fichier: string; nature?: string }
+/** Une image de l'enseignant, pour un jeu : le pictogramme de même identifiant la porte ; `donnees` est un PNG ou un JPEG en base64. */
+export interface ImageFournie { id: number; donnees: string }
 export interface OptionsJeu {
   libelles: boolean; cartes: boolean; colonnes: number; lignes: number;
   planches: number; graine: number;

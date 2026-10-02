@@ -1994,8 +1994,10 @@ pub fn jeu_generer(
     titre: String,
     // Faux pour ranger le PDF sans l'ouvrir (sur le bureau).
     ouvrir: Option<bool>,
+    // Les images de l'enseignant, que la banque n'a pas : elles arrivent avec la demande.
+    images: Option<Vec<crate::jeux_pdf::ImageFournie>>,
 ) -> R<String> {
-    let bytes = crate::jeux_pdf::construire(&jeu, &pictos, &options)?;
+    let bytes = crate::jeux_pdf::construire(&jeu, &pictos, images.as_deref().unwrap_or(&[]), &options)?;
     let propre: String = titre
         .chars()
         .map(|c| if c.is_alphanumeric() { c } else { '_' })
