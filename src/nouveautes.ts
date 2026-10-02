@@ -18,6 +18,25 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.18",
+    titre: "Le téléphone passe par Nuage, et la lecture a ses fiches",
+    points: [
+      { quoi: "Le dictaphone du téléphone dépose ses dictées et ses notes sur Nuage (apps.education.fr) quand l'ordinateur n'est pas sur le même WiFi. Maitrize regarde dans Nuage toutes les trente secondes, range ce qu'il n'a pas encore reçu dans « Vocaux du téléphone », puis l'efface de Nuage. Tout est fermé sur le téléphone : seul votre ordinateur peut l'ouvrir. On relie une fois — un mot de passe d'application créé dans Nuage, puis un QR code à scanner.", ou: "Réglages · Téléphone" },
+      { quoi: "Les pages scannées au téléphone passent aussi par Nuage, quand « Scanner avec le compagnon » est ouvert. L'onglet « Partage WiFi » s'appelle maintenant « Téléphone ».", ou: "Réglages · Téléphone" },
+      { quoi: "La dictée au micro — cahier journal, dictée d'atelier, assistant — se transcrit sur l'ordinateur dès qu'un modèle de transcription y est installé : l'enregistrement ne sort plus. Sans modèle, elle part en ligne comme avant.", ou: "Réglages · IA" },
+      { quoi: "Gestes Borel-Maisonny : vos images des gestes, rangées par son, s'impriment en cartes à découper — petites, moyennes, grandes ou en affiches — et entrent d'un clic dans un loto ou un mémory. L'application n'en contient aucune : apportez les vôtres, nommées par leur son, ou collez-les.", ou: "Fabriquer · Sons et lecture" },
+      { quoi: "Mots codés en gestes : la fiche d'un son. En tête, le geste et les écritures du son ; puis des dessins à colorier, des mots à relier, ou le mot à écrire. Le codage de chaque mot se corrige d'un choix.", ou: "Fabriquer · Sons et lecture" },
+      { quoi: "La syllabe qui manque : sous chaque dessin, le mot avec un trou. La banque propose les mots où l'on entend ma, mi ou mu ; puis quelques mots s'écrivent en entier, derrière « Un » ou « Une ».", ou: "Fabriquer · Sons et lecture" },
+      { quoi: "Vos propres images dans le loto, le mémory, l'imagier et les ateliers de mots : une photo, un dessin, une image collée. Et un atelier « Jeu des ombres » : chaque image retrouve sa silhouette, à poser ou à relier.", ou: "Fabriquer · Langage" },
+      { quoi: "Le suivi des séquences se lit dans le cahier journal : en préparation, en classe avec son avancement, terminée, en pause — sans rien saisir. L'accueil montre ce qui est en classe en ce moment ; le plan de travail filtre par état ; la fiche d'une séquence met le réel à côté du prévu.", ou: "Accueil · Plan de travail" },
+      { quoi: "Séquences : le déroulement se propose aussi quand on modifie une séquence, et s'ajoute à la suite des séances existantes. Une démarche « Calcul mental : procédé La Martinière » parmi celles de mathématiques.", ou: "Plan de travail · Séquences" },
+      { quoi: "Le cahier journal imprimé s'ouvre sur les bilans de la veille : ce qui s'est passé, ce qui reste à reprendre.", ou: "Planning · cahier journal" },
+      { quoi: "Tableau à jetons : les jetons à découper tiennent sous le tableau, sur la même feuille.", ou: "CAA · Supports visuels" },
+      { quoi: "La mention ARASAAC reste au pied de la dernière page au lieu de partir seule sur une feuille, et ne s'imprime que si la feuille porte des pictogrammes de la banque.", ou: "Fabriquer" },
+      { quoi: "Les sauvegardes sont repliées, avec la date de la dernière copie sur leur ligne ; « Mes appareils » est retiré.", ou: "Réglages · Données & synchro" },
+    ],
+  },
+  {
     version: "1.6.17",
     titre: "Fabriquer se range, et suit le projet de la classe",
     points: [
