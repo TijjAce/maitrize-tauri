@@ -11,7 +11,7 @@
 import { escapeHtml } from "./print";
 import { melanger } from "./hasard";
 import { attaque, compterSyllabes, rime } from "./syllabes";
-import { ATTRIBUTION_ARASAAC, carte, feuille, imgPicto, legende, pagesDeCartes } from "./cartesImprimables";
+import { ATTRIBUTION_ARASAAC, attributionPour, carte, feuille, imgPicto, legende, pagesDeCartes } from "./cartesImprimables";
 
 /** Un mot et son image, ou pas d'image du tout. */
 export interface MotImage {
@@ -116,7 +116,7 @@ export function htmlLotoSyllabes(planches: number[][], mots: MotImage[], images:
   }
   const cartes = mots.map((m) => carte(`${imgPicto(image(m, images), m.mot)}${legende(m.mot, r.legendes)}`));
   const pagesCartes = pagesDeCartes(cartes, { colonnes: 4, lignes: 5 }, `<div class="sous">${escapeHtml(titre)} — les images à piocher (${mots.length})</div>`);
-  return feuille(`${pagesPlanches.join("")}${pagesCartes}${ATTRIBUTION_ARASAAC}`, "ls");
+  return feuille(`${pagesPlanches.join("")}${pagesCartes}${attributionPour(mots.map((m) => m.id))}`, "ls");
 }
 
 // ── Les dominos des syllabes ──────────────────────────────────────────────
@@ -161,7 +161,7 @@ export function htmlDominos(pieces: PieceDomino[], images: Images, legendes: boo
     <span style="color:#687087">— Pour préparer l'apprentissage de la lecture et de l'écriture à l'école maternelle, Éduscol 2020.</span></div>`;
   const moitie = (m: MotImage) => `<div class="ls-moitie">${imgPicto(image(m, images), m.mot)}${legende(m.mot, legendes)}</div>`;
   const cellules = pieces.map((p) => `<div class="carte ls-domino">${moitie(p.gauche)}<div class="ls-barre"></div>${moitie(p.droite)}</div>`);
-  return feuille(`${pagesDeCartes(cellules, { colonnes: 2, lignes: 5, hauteurMm: 46 }, regle)}${ATTRIBUTION_ARASAAC}`, "ls");
+  return feuille(`${pagesDeCartes(cellules, { colonnes: 2, lignes: 5, hauteurMm: 46 }, regle)}${attributionPour(pieces.flatMap((p) => [p.gauche.id, p.droite.id]))}`, "ls");
 }
 
 // ── La chasse à l'intrus ──────────────────────────────────────────────────
@@ -209,7 +209,7 @@ export function htmlIntrus(lignes: LigneIntrus[], images: Images, mode: ModeIntr
     ? `<div class="page corrige"><div class="titre">Chasse à l'intrus — corrigé</div><ol class="ls-corrige">${lignes.map((l) =>
       `<li><b>${escapeHtml(l.intrus.mot)}</b> — les autres ${quoi} « ${escapeHtml(l.mots.filter((m) => m !== l.intrus).map((m) => m.mot).join(", "))} »</li>`).join("")}</ol></div>`
     : "";
-  return feuille(`${corps}${reponses}${ATTRIBUTION_ARASAAC}`, "ls");
+  return feuille(`${corps}${reponses}${attributionPour(lignes.flatMap((l) => l.mots.map((m) => m.id)))}`, "ls");
 }
 
 // ── Les paires distinctives : le trésor et le téléphone ───────────────────
