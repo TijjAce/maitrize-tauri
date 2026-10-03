@@ -4,6 +4,9 @@ import { api, Creneau, Seance, Sequence, Eleve, Jeu, journal, nouveauJeu, teinte
 import { toast, toastAnnulable } from "./Toaster";
 import { PoserObservation } from "./PoserObservation";
 import { appliquer, porterAuDossier } from "../notesDuBilan";
+import { prenomsNommes, segmentsDuBilan } from "../surlignage";
+import { prenomDe } from "../veilleEleve";
+import { ZoneSurlignee } from "./ZoneSurlignee";
 import { enAttente } from "../journalEnAttente";
 import { useDictee, mmss } from "../dictee";
 import { natureDe } from "../heures";
@@ -79,6 +82,8 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
   const navigate = useNavigate();
   // Le matériel des séances : annoncé sous le créneau, avec la molette de son échelle à l'impression.
   const { data: materiels } = useAsync(() => api.materielList(), []);
+  // Les prénoms de la classe : ce que le bilan en nomme part dans les notes, et se voit en couleur.
+  const prenomsDeLaClasse = React.useMemo(() => eleves.map((e) => prenomDe(e.nom)).filter(Boolean), [eleves]);
   const duJour = React.useMemo(
     () => creneaux.filter((c) => c.date.slice(0, 10) === dateIso).sort((a, b) => a.heureDebut.localeCompare(b.heureDebut)),
     [creneaux, dateIso]);
@@ -498,18 +503,34 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                             🎯 Compétence</button>
                         </>
                       ) : (
-                        <span className="meta" style={{ fontSize: 12 }} title="Ce que vous écrivez ici va de lui-même au dossier des élèves du créneau, une fiche par élève — et s'imprime en tête du cahier journal du prochain jour de classe">
-                          {reunion ? "" : ["📋 ce qui nomme un élève va dans ses notes", "🖨 s'imprime sur le journal du lendemain"].join(" · ")}
+                        <span className="meta journal-indication" style={{ fontSize: 12 }}
+                          title="Les phrases qui nomment un élève vont dans ses notes, au dossier — en couleur pendant que vous écrivez. Le bilan s'imprime aussi en tête du cahier journal du prochain jour de classe.">
+                          {(() => {
+                            const nommes = prenomsNommes(b.bilan, prenomsDeLaClasse);
+                            const de = /^[aeiouyàâäéèêëîïôöùûü]/i.test(nommes[0] ?? "") ? "d'" : "de ";
+                            return nommes.length
+                              ? <>📋 <mark className="surligne-phrase">en couleur</mark> : va dans les notes {de}{nommes.join(", ")}</>
+                              : "📋 ce qui nomme un élève va dans ses notes";
+                          })()}
+                          {!reunion && " · 🖨 s'imprime sur le journal du lendemain"}
                         </span>
                       )}
                     </div>
-                    <textarea className="textarea" value={b[champ]} placeholder={LIBELLES[champ].aide}
-                      ref={(el) => { (champ === "bilan" ? zones : zonesPrevu).current[c.id] = el; }}
-                      rows={Math.min(8, Math.max(2, b[champ].split("\n").length))}
-                      onChange={(e) => modifier(c.id, champ, e.target.value)}
-                      onFocus={champ === "prevu" ? () => ouvertes.current.add(c.id) : undefined}
-                      aria-label={`${LIBELLES[champ].titre} — ${c.heureDebut} ${c.matiere}`}
-                      style={{ width: "100%", resize: "vertical", fontSize: 13.5, lineHeight: 1.45 }} />
+                    {(() => {
+                      const proprietes = {
+                        value: b[champ], placeholder: LIBELLES[champ].aide,
+                        rows: Math.min(8, Math.max(2, b[champ].split("\n").length)),
+                        onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => modifier(c.id, champ, e.target.value),
+                        onFocus: champ === "prevu" ? () => ouvertes.current.add(c.id) : undefined,
+                        "aria-label": `${LIBELLES[champ].titre} — ${c.heureDebut} ${c.matiere}`,
+                        style: { width: "100%", resize: "vertical", fontSize: 13.5, lineHeight: 1.45 } as React.CSSProperties,
+                      };
+                      // Le bilan montre en couleur ce qui part dans les notes des élèves.
+                      return champ === "bilan"
+                        ? <ZoneSurlignee {...proprietes} segments={segmentsDuBilan(b.bilan, prenomsDeLaClasse)}
+                            ref={(el) => { zones.current[c.id] = el; }} />
+                        : <textarea className="textarea" {...proprietes} ref={(el) => { zonesPrevu.current[c.id] = el; }} />;
+                    })()}
                     {correction?.id === c.id && correction.champ === champ && (
                       <div className="card" style={{ marginTop: 6, padding: "8px 10px", background: "var(--panel-2)" }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
