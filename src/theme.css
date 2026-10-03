@@ -955,6 +955,16 @@ table.prog-ime .prog-ime-p { width: 46px; padding-left: 4px; padding-right: 4px;
   color: var(--text-2); font-size: 16px; line-height: 1; cursor: pointer; }
 .journal-observation-x:hover { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
 
+/* Une zone de texte qui surligne : un calque dessous, au pixel près, et la zone transparente par-dessus. */
+.surligneur { position: relative; }
+.surligneur > .surligneur-fond { position: absolute; inset: 0; margin: 0; overflow: hidden; resize: none;
+  white-space: pre-wrap; overflow-wrap: break-word; color: transparent; pointer-events: none; }
+.surligneur > .surligneur-zone { position: relative; display: block; background: transparent; }
+.surligneur-fond mark { color: transparent; padding: 0; border-radius: 3px; }
+mark.surligne-phrase { background: color-mix(in srgb, var(--accent) 26%, transparent); }
+mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparent); }
+.journal-indication mark.surligne-phrase { color: inherit; padding: 0 4px; border-radius: 4px; }
+
 /* Le « ? » qui ouvre une explication, et la bulle qu'il ouvre. */
 .aide-ancre { position: relative; display: inline-flex; flex: none; }
 .aide-bouton { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); background: var(--panel);

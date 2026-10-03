@@ -55,9 +55,15 @@ export const prenomDe = (nom: string) => nom.trim().split(/\s+/)[0] ?? "";
  * qui est repéré ici soit bien ce qui sera masqué avant l'envoi.
  */
 export function citeLePrenom(texte: string, prenom: string): boolean {
-  if (!prenom) return false;
+  return positionsDuPrenom(texte, prenom).length > 0;
+}
+
+/** Où le texte nomme cette personne, selon la même règle : le début de chaque mention. */
+export function positionsDuPrenom(texte: string, prenom: string): number[] {
+  if (!prenom) return [];
   const bas = texte.toLocaleLowerCase("fr");
   const cible = prenom.toLocaleLowerCase("fr");
+  const sortie: number[] = [];
   let i = bas.indexOf(cible);
   while (i >= 0) {
     const avant = i > 0 ? texte[i - 1] : "";
@@ -65,11 +71,11 @@ export function citeLePrenom(texte: string, prenom: string): boolean {
     const initiale = texte[i];
     if (!LETTRE.test(avant) && !LETTRE.test(apres)
         && initiale === initiale.toLocaleUpperCase("fr") && initiale !== initiale.toLocaleLowerCase("fr")) {
-      return true;
+      sortie.push(i);
     }
     i = bas.indexOf(cible, i + 1);
   }
-  return false;
+  return sortie;
 }
 
 /**
