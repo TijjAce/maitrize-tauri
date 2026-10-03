@@ -1,12 +1,14 @@
 // ── Les vocaux du téléphone se transcrivent tout seuls ─────────────────────
 //
-// Ils arrivent pendant que Maitrize est ouvert — par le WiFi ou par Nuage —
-// et l'enseignant est ailleurs dans l'application. La transcription part
-// donc d'ici, et non de l'écran qui les montre : quand il vient les ranger,
-// le texte est déjà écrit. Un vocal à la fois : le moteur n'en mène qu'un.
+// Ils arrivent pendant que Maitrize est ouvert — par Nuage — et l'enseignant
+// est ailleurs dans l'application. La transcription part donc d'ici, et non
+// de l'écran qui les montre ; chaque texte prêt va ensuite de lui-même dans
+// le bilan de son créneau (voir versementDesVocaux.ts). Un vocal à la fois :
+// le moteur n'en mène qu'un.
 
 import { listen } from "@tauri-apps/api/event";
 import { api } from "./api";
+import { verserCeQuiEstPret } from "./versementDesVocaux";
 import type { Vocal } from "./vocaux";
 
 /** Émis quand un vocal commence ou finit d'être transcrit : l'écran qui les montre se relit. */
@@ -32,11 +34,16 @@ const signaler = () => window.dispatchEvent(new Event(EVT_VOCAUX));
 
 let tourne = false;
 
-/** Transcrit ce qui attend, un vocal après l'autre, jusqu'à ce qu'il ne reste rien. */
+/**
+ * Transcrit ce qui attend, un vocal après l'autre, jusqu'à ce qu'il ne reste
+ * rien ; verse dans le bilan ce qui est prêt — avant de commencer (une note
+ * arrive déjà écrite), puis après chaque transcription.
+ */
 export async function transcrireCeQuiAttend(): Promise<void> {
   if (tourne) return;
   tourne = true;
   try {
+    await verserCeQuiEstPret();
     for (;;) {
       const id = prochainATranscrire(await api.vocauxList(), tentes);
       if (!id) break;
@@ -47,6 +54,7 @@ export async function transcrireCeQuiAttend(): Promise<void> {
       await api.vocalTranscrire(id).catch(() => {});
       enCours = "";
       signaler();
+      await verserCeQuiEstPret();
     }
   } catch {
     // Pas de liste : on réessaiera au prochain vocal qui arrive.
@@ -66,7 +74,7 @@ export function retranscrire(id: string): void {
 export function demarrerVocauxEnFond(): () => void {
   // Ce qui était resté en attente à la dernière fermeture.
   const auDepart = setTimeout(() => { void transcrireCeQuiAttend(); }, 6000);
-  // Les deux chemins — WiFi et Nuage — annoncent chaque vocal rangé.
+  // Chaque vocal, chaque note relevés sur Nuage s'annoncent.
   const ecoute = listen("vocal:recu", () => { void transcrireCeQuiAttend(); }).catch(() => null);
   return () => {
     clearTimeout(auDepart);

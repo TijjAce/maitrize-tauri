@@ -4,20 +4,19 @@ import { api, texteErreur, type Creneau } from "../api";
 import { Select, TextareaAuto } from "./ui";
 import { toast } from "./Toaster";
 import { confirmer } from "./confirmer";
-import { creneauRetenu, repereDuVocal, verserDansLeBilan, type Vocal } from "../vocaux";
+import { creneauRetenu, repereDuVocal, type Vocal } from "../vocaux";
+import { EVT_BILAN_VERSE, verserUnVocal } from "../versementDesVocaux";
 import { EVT_VOCAUX, retranscrire, transcrireCeQuiAttend, vocalEnCours } from "../vocauxEnFond";
 
 // ── Ce que le téléphone a déposé ──────────────────────────────────────────
 //
-// Les vocaux dictés en classe, ordinateur fermé, arrivent ici — au même
-// endroit que le relais de Nuage, puisque c'est par là qu'ils passent. On
-// ouvre cette page au retour, et l'on range.
+// Les vocaux dictés en classe, ordinateur fermé, arrivent par Nuage, se
+// transcrivent et vont d'eux-mêmes dans le bilan de leur créneau, où que l'on
+// soit dans l'application (voir vocauxEnFond.ts et versementDesVocaux.ts).
 //
-// La transcription part toute seule, dès qu'un vocal arrive et où que l'on
-// soit dans l'application (voir vocauxEnFond.ts) — sur cette machine dès
-// qu'un modèle y est, en ligne sinon. Un vocal en échec est repris une fois à
-// l'ouverture, et à la demande. Le versement dans le bilan, lui, demande un
-// clic : une transcription se relit avant d'entrer dans le dossier d'un élève.
+// Ne restent ici que ceux qui attendent : leur transcription, un créneau
+// qu'on n'a pas su trouver, ou un nouvel essai après un échec. On choisit le
+// créneau, on relit, et l'on verse d'un clic.
 
 /** Le jour d'un vocal, tel qu'on l'écrit au-dessus du groupe. */
 function jourLisible(iso: string): string {
@@ -50,10 +49,12 @@ export function VocauxRecus() {
 
   React.useEffect(() => { void charger(); }, [charger]);
 
-  // Un vocal qui arrive pendant qu'on regarde l'écran doit s'y montrer.
+  // Un vocal qui arrive pendant qu'on regarde l'écran doit s'y montrer ; un vocal versé, en partir.
   React.useEffect(() => {
     const p = listen("vocal:recu", () => { void charger(); });
-    return () => { p.then((off) => off()); };
+    const verse = () => { void charger(); };
+    window.addEventListener(EVT_BILAN_VERSE, verse);
+    return () => { p.then((off) => off()); window.removeEventListener(EVT_BILAN_VERSE, verse); };
   }, [charger]);
 
   // La transcription tourne en tâche de fond : l'écran suit ce qu'elle fait, et la
@@ -73,8 +74,7 @@ export function VocauxRecus() {
     if (!dit) { toast("Ce vocal n'a rien donné à écrire.", { icone: "⚠️" }); return; }
     setOccupe(v.id);
     try {
-      await api.creneauJournalSave(c.id, c.prevu ?? "", verserDansLeBilan(c.bilan ?? "", dit));
-      await api.vocalDelete(v.id);
+      await verserUnVocal(v, c, dit);
       await charger();
       toast(`Versé dans le bilan de ${c.matiere || "ce créneau"}.`, { icone: "🎙" });
     } catch (e) {
@@ -95,10 +95,9 @@ export function VocauxRecus() {
       <h3 style={{ marginTop: 0 }}>🎙 Vocaux du téléphone</h3>
       {vocaux.length === 0 ? (
         <p style={{ color: "var(--text-2)", margin: 0, fontSize: 13, lineHeight: 1.6 }}>
-          Rien en attente. Ce que vous dictez depuis l'application du téléphone arrive ici
-          par Nuage, une fois le téléphone relié —
-          transcrit sur cet ordinateur si un modèle y est, en ligne sinon —, puis rangé dans
-          le bilan du créneau d'un clic.
+          Rien en attente. Ce que vous dictez dans le Dictaphone arrive par Nuage, se transcrit sur cet
+          ordinateur si un modèle y est (en ligne sinon), puis va tout seul dans le bilan de son créneau.
+          Seules les dictées dont le créneau est inconnu restent ici, le temps de le choisir.
         </p>
       ) : jours.map((jour) => (
         <div key={jour} style={{ marginBottom: 14 }}>
