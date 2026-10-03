@@ -347,7 +347,8 @@ function ChampCorpus({ valeur, onChange, ...props }: { valeur: string; onChange:
  * Le corpus se prépare tout seul dès que le projet a un titre : les mots dans
  * la banque ARASAAC de cet ordinateur — ils ont une image, rien ne part —,
  * les phrases par l'IA, avec ces mots. Puis tout se change : les thèmes où
- * piocher, le tirage, les phrases, ou les mots à la main.
+ * piocher, le tirage, les phrases, ou les mots à la main. Changer de thèmes
+ * ou de nombre de mots refait le tirage tout seul.
  */
 function CorpusDuProjet({ projet, onChange }: { projet: ProjetClasse; onChange: (p: ProjetClasse) => void }) {
   const corpus = corpusDe(projet);
@@ -364,8 +365,12 @@ function CorpusDuProjet({ projet, onChange }: { projet: ProjetClasse; onChange: 
   const projetRef = React.useRef(projet);
   projetRef.current = projet;
 
-  /** Prépare tout, tire d'autres mots, ou fait réécrire les phrases. */
-  const preparer = React.useCallback(async (quoi: "tout" | "mots" | "phrases", choisis?: string[]) => {
+  /**
+   * Prépare tout, tire d'autres mots, ou fait réécrire les phrases.
+   * `autresQueCeux` : le tirage écarte les mots déjà là — c'est ce qu'on
+   * demande au dé, pas à un changement de thèmes.
+   */
+  const preparer = React.useCallback(async (quoi: "tout" | "mots" | "phrases", choisis?: string[], autresQueCeux = true) => {
     setOccupe(quoi);
     setStatut(quoi === "tout" ? "Le corpus se prépare : les mots dans la banque ARASAAC, les phrases par l'IA…"
       : quoi === "mots" ? "Un autre tirage dans la banque…" : "Le modèle écrit les phrases avec les mots du corpus…");
@@ -379,7 +384,8 @@ function CorpusDuProjet({ projet, onChange }: { projet: ProjetClasse; onChange: 
         return;
       }
       const d = quoi === "mots" ? { ...demande, phrases: 0 } : demande;
-      const r = await preparerLeCorpus(decrireLeProjet(p), d, servicesCorpus, graineAuHasard(), choisis, quoi === "mots" ? corpusDe(p).mots : []);
+      const r = await preparerLeCorpus(decrireLeProjet(p), d, servicesCorpus, graineAuHasard(), choisis,
+        quoi === "mots" && autresQueCeux ? corpusDe(p).mots : []);
       if (r.themes.length) setThemes(r.themes);
       else if (choisis) setThemes(choisis);
       const suite = { ...projetRef.current };
@@ -403,6 +409,27 @@ function CorpusDuProjet({ projet, onChange }: { projet: ProjetClasse; onChange: 
     return () => window.clearTimeout(t);
   }, [projet.id, projet.titre, vide]);
 
+  // Changer de thèmes ou de nombre de mots refait le tirage tout seul, sans
+  // passer par le dé. Un seul tirage pour plusieurs changements d'affilée ; et
+  // jamais deux à la fois — celui qui arrive attend la fin du précédent.
+  const tirage = React.useRef<number | null>(null);
+  const occupeRef = React.useRef(occupe);
+  occupeRef.current = occupe;
+  const tirerBientot = (choisisApres: string[] | undefined) => {
+    if (tirage.current !== null) window.clearTimeout(tirage.current);
+    tirage.current = null;
+    // Sans plus aucun thème, on garde les mots : il n'y a plus où piocher.
+    if (choisisApres && !choisisApres.length) return;
+    const lancer = () => {
+      if (occupeRef.current) { tirage.current = window.setTimeout(lancer, 500); return; }
+      tirage.current = null;
+      void preparerRef.current("mots", choisisApres, false);
+    };
+    tirage.current = window.setTimeout(lancer, 700);
+  };
+  React.useEffect(() => () => { if (tirage.current !== null) window.clearTimeout(tirage.current); }, []);
+  const changerThemes = (suite: string[]) => { setThemes(suite); tirerBientot(suite); };
+
   const choisis = themes ?? [];
   return (
     <details className="tri-fiche corpus-projet" open={ouvertAuDepart}>
@@ -419,20 +446,21 @@ function CorpusDuProjet({ projet, onChange }: { projet: ProjetClasse; onChange: 
             <span key={t} className="bm-chip">
               <span className="bm-mot">{libelleCategorie(t)}</span>
               <button type="button" className="bm-x" aria-label={`Retirer le thème ${libelleCategorie(t)}`}
-                onClick={() => setThemes(choisis.filter((x) => x !== t))}>×</button>
+                onClick={() => changerThemes(choisis.filter((x) => x !== t))}>×</button>
             </span>
           ))}
           {!choisis.length && <span className="meta">aucun pour l'instant</span>}
           {proposables.length > 0 && (
             <Select value="" aria-label="Ajouter un thème ARASAAC" style={{ maxWidth: 220 }}
-              onChange={(e) => { if (e.target.value) setThemes([...choisis, e.target.value]); }}>
+              onChange={(e) => { if (e.target.value) changerThemes([...choisis, e.target.value]); }}>
               <option value="">＋ un thème…</option>
               {proposables.filter((c) => !choisis.includes(c.nom)).map((c) => (
                 <option key={c.nom} value={c.nom}>{libelleCategorie(c.nom)} ({c.nombre})</option>
               ))}
             </Select>
           )}
-          <Select value={demande.mots} onChange={(e) => majDemande({ mots: Number(e.target.value) })} aria-label="Nombre de mots" style={{ width: 110 }}>
+          <Select value={demande.mots} aria-label="Nombre de mots" style={{ width: 110 }}
+            onChange={(e) => { majDemande({ mots: Number(e.target.value) }); tirerBientot(themes ?? undefined); }}>
             {[8, 12, 16, 24, 32].map((n) => <option key={n} value={n}>{n} mots</option>)}
           </Select>
           <button type="button" className="btn sm" disabled={!!occupe} onClick={() => void preparer("mots", themes ?? undefined)}
