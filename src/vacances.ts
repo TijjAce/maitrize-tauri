@@ -34,6 +34,30 @@ export function lireCache(brut: string | null | undefined): Periode[] {
 export const vacanceDuJour = (periodes: Periode[], jour: string) =>
   periodes.find((v) => jour >= v.debut && jour < v.fin)?.description;
 
+/** Les vacances qui ferment une période : après elles, on passe à la suivante. */
+const ENTRE_DEUX_PERIODES = /toussaint|no[eë]l|hiver|printemps/i;
+
+/**
+ * La période scolaire d'un jour, de 1 à 5 : on compte les vacances déjà
+ * commencées depuis la rentrée — Toussaint, Noël, hiver, printemps.
+ *
+ * Sans le calendrier de cette année-là (hors réseau, ou pas encore publié),
+ * les mois en donnent une approximation : septembre-octobre, novembre-
+ * décembre, janvier-février, mars-avril, puis mai jusqu'à l'été.
+ */
+export function periodeDuJour(jour: string, vacances: Periode[]): number {
+  const annee = Number(jour.slice(0, 4));
+  const mois = Number(jour.slice(5, 7));
+  const rentree = `${mois >= 8 ? annee : annee - 1}-08-01`;
+  const ete = `${mois >= 8 ? annee + 1 : annee}-08-01`;
+  const siennes = vacances.filter((v) => ENTRE_DEUX_PERIODES.test(v.description) && v.debut >= rentree && v.debut < ete);
+  if (siennes.length >= 4) return Math.min(5, 1 + siennes.filter((v) => v.debut <= jour).length);
+  if (mois === 9 || mois === 10) return 1;
+  if (mois >= 11) return 2;
+  if (mois <= 2) return 3;
+  return mois <= 4 ? 4 : 5;
+}
+
 /** La prochaine période à venir, s'il y en a une. */
 export const prochaineVacance = (periodes: Periode[], jour: string) =>
   periodes.filter((v) => v.fin > jour).sort((a, b) => a.debut.localeCompare(b.debut))[0];
