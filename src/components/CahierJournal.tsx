@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { api, Creneau, Seance, Sequence, Eleve, Jeu, journal, newId, nouveauJeu, teinteCreneau, texteErreur, nowIso, type MaterielItem, type ObservationEleve } from "../api";
 import { toast } from "./Toaster";
 import { PoserObservation } from "./PoserObservation";
-import { fichesACreer, fichesANourrir } from "../observationEleve";
+import { fichesDuBilan } from "../observationEleve";
+import { enAttente } from "../journalEnAttente";
 import { useDictee, mmss } from "../dictee";
 import { natureDe } from "../heures";
 import { isoJour, plusJours } from "../dates";
@@ -62,11 +63,6 @@ export function ajouterDictee(texte: string, dicte: string): string {
   return texte.replace(/\s+$/, "") + (/[.!?…:]$/.test(texte.trim()) ? " " : ". ") + d;
 }
 
-/**
- * Écritures du cahier journal qui attendent encore leur enregistrement
- * (on n'écrit qu'après une pause de frappe).
- */
-const enAttente = new Map<string, () => Promise<void>>();
 
 /**
  * Enregistre tout de suite ce qui est tapé et pas encore écrit. Une impression
@@ -129,15 +125,8 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
       // n'en ont pas encore.
       const nomDe = (eleveId: string) => elevesRef.current.find((x) => x.id === eleveId)?.nom ?? "";
       const c = creneauxRef.current.find((x) => x.id === id);
-      let elevesIds: string[] = [];
-      try { elevesIds = c && natureDe(c) !== "reunion" ? JSON.parse(c.elevesJson || "[]") : []; } catch { elevesIds = []; }
       const s = seancesRef.current.find((x) => x.id === c?.seanceId);
-      const neuves = c ? fichesACreer(observations.current, {
-        id, date: c.date.slice(0, 10), elevesIds,
-        contexte: [c.matiere, s?.titre].filter(Boolean).join(" — "),
-        competence: [s?.competences, s?.objectifs].filter(Boolean).join(" ").slice(0, 300),
-      }, b.bilan, nomDe, nowIso(), newId) : [];
-      const aNourrir = [...fichesANourrir(observations.current, id, b.bilan, nomDe, nowIso()), ...neuves];
+      const { neuves, aEcrire: aNourrir } = fichesDuBilan(observations.current, c, s, b.bilan, nomDe, nowIso(), newId);
       if (neuves.length) observations.current = [...observations.current, ...neuves];
       for (const o of aNourrir) {
         // Le bilan est enregistré ; si la fiche d'observation qu'il alimente

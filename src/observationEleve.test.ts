@@ -16,6 +16,7 @@ vi.mock("./api", () => ({
 import {
   AXES, COLONNES, axesProches, cheminDeLAxe, chercherAxes, fichesANourrir, lireRepartition,
   motsUtiles, noteDepuisLeBilan, nouvelleObservation, observationVide, promptRepartition, repartir,
+  fichesDuBilan,
 } from "./observationEleve";
 import type { ObservationEleve } from "./api";
 
@@ -186,5 +187,29 @@ describe("les fiches qu'un bilan fait naître", () => {
     // Rien tant que le bilan est vide, rien sans élève.
     expect(fichesACreer([], creneau, "   ", (id) => noms[id], "x", () => "o9")).toEqual([]);
     expect(fichesACreer([], { ...creneau, elevesIds: [] }, "Bilan.", (id) => noms[id], "x", () => "o9")).toEqual([]);
+  });
+});
+
+describe("ce qu'un bilan change aux dossiers des élèves", () => {
+  const noms: Record<string, string> = { e1: "Ayub Martin", e2: "Nour Ben" };
+  const creneau = { id: "c1", date: "2026-10-02T00:00:00", elevesJson: '["e1","e2"]', nature: "classe", matiere: "Jeux collectifs" };
+  const bilan = "Ayub a coopéré. Nour a gagné deux fois.";
+
+  it("pose une fiche à chaque élève du créneau, nourrie de ce qui le nomme", () => {
+    const { neuves, aEcrire } = fichesDuBilan([], creneau, { titre: "Jeu de l'oie" }, bilan, (id) => noms[id], "2026-10-03T21:00:00Z", (() => { let n = 0; return () => `o${++n}`; })());
+    expect(neuves.map((o) => [o.eleveId, o.note, o.contexte])).toEqual([
+      ["e1", "Ayub a coopéré.", "Jeux collectifs — Jeu de l'oie"],
+      ["e2", "Nour a gagné deux fois.", "Jeux collectifs — Jeu de l'oie"],
+    ]);
+    expect(aEcrire).toEqual(neuves);
+  });
+
+  it("nourrit la fiche déjà posée sans en créer une seconde, et ne touche à rien pour une réunion", () => {
+    const [fiche] = fichesDuBilan([], { ...creneau, elevesJson: '["e1"]' }, undefined, "Avant.", (id) => noms[id], "x", () => "o1").neuves;
+    const ensuite = fichesDuBilan([fiche], { ...creneau, elevesJson: '["e1"]' }, undefined, `Avant. ${bilan}`, (id) => noms[id], "y", () => "o2");
+    expect(ensuite.neuves).toEqual([]);
+    expect(ensuite.aEcrire.map((o) => [o.id, o.note])).toEqual([["o1", "Ayub a coopéré."]]);
+    expect(fichesDuBilan([], { ...creneau, nature: "reunion" }, undefined, bilan, (id) => noms[id], "x", () => "o9").neuves).toEqual([]);
+    expect(fichesDuBilan([], undefined, undefined, bilan, (id) => noms[id], "x", () => "o9").aEcrire).toEqual([]);
   });
 });

@@ -13,6 +13,7 @@ import { printHTML, escapeHtml, dataUrlImage, colonnesDuTableau, logoImprimable,
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
 import { CahierJournal, ecrireLeCahierJournal } from "../components/CahierJournal";
 import { EVT_JOUR } from "../components/CommandPalette";
+import { EVT_BILAN_VERSE } from "../versementDesVocaux";
 import { jeuxCites, reglesImprimees, STYLE_REGLES } from "../jeuxCites";
 import { sequencesCitees, sequencesImprimees, STYLE_SEQUENCES } from "../sequencesCitees";
 import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
@@ -90,6 +91,11 @@ export default function Planning() {
   }, [vue, ancre]);
 
   const { data: creneaux, reload } = useAsync(() => api.creneauxList(debut, fin), [debut, fin]);
+  // Une dictée du téléphone vient d'être versée dans un bilan : le cahier journal ouvert la montre.
+  React.useEffect(() => {
+    window.addEventListener(EVT_BILAN_VERSE, reload);
+    return () => window.removeEventListener(EVT_BILAN_VERSE, reload);
+  }, [reload]);
   // Heures de la semaine affichée (ou de la semaine du jour) : relues à chaque changement de créneaux.
   const lundiSemaine = iso(lundiDe(ancre));
   const vendrediSemaine = (() => { const d = lundiDe(ancre); d.setDate(d.getDate() + 4); return iso(d); })();

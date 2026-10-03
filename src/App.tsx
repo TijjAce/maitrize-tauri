@@ -23,6 +23,9 @@ import { PageVisibleContext, ouvrirOnglet } from "./components/ui";
 import { demarrerSyncAuto } from "./syncAuto";
 import { EVT_VOIR_VOCAUX, demarrerReleveTelephone } from "./releveTelephone";
 import { demarrerVocauxEnFond } from "./vocauxEnFond";
+import { EVT_VOIR_JOUR } from "./versementDesVocaux";
+import { IndicateurTranscription } from "./components/IndicateurTranscription";
+import { EVT_JOUR } from "./components/CommandPalette";
 import { verifierLaSauvegarde } from "./verifSauvegarde";
 import { QuoiDeNeuf } from "./components/QuoiDeNeuf";
 import { demarrerLaVeille } from "./veille";
@@ -145,11 +148,21 @@ export default function App() {
   React.useEffect(() => demarrerReleveTelephone(), []);
   // Un vocal arrivé — par le WiFi ou par Nuage — se transcrit aussitôt, où que l'on soit.
   React.useEffect(() => demarrerVocauxEnFond(), []);
-  // « Voir », sur l'annonce d'une dictée arrivée : droit aux vocaux du téléphone.
+  // « Voir », sur une dictée qui attend son créneau : droit aux vocaux du téléphone.
   React.useEffect(() => {
     const voir = () => { navigate("/reglages"); setTimeout(() => ouvrirOnglet("reglages", "partage"), 140); };
     window.addEventListener(EVT_VOIR_VOCAUX, voir);
     return () => window.removeEventListener(EVT_VOIR_VOCAUX, voir);
+  }, [navigate]);
+  // « Voir », sur l'annonce d'une dictée versée : le planning, au jour de son créneau.
+  React.useEffect(() => {
+    const voir = (e: Event) => {
+      const jour = String((e as CustomEvent).detail ?? "");
+      navigate("/planning");
+      setTimeout(() => window.dispatchEvent(new CustomEvent(EVT_JOUR, { detail: jour })), 140);
+    };
+    window.addEventListener(EVT_VOIR_JOUR, voir);
+    return () => window.removeEventListener(EVT_VOIR_JOUR, voir);
   }, [navigate]);
   // Une fenêtre figée ne dit rien d'elle-même : la veille en laisse une trace.
   React.useEffect(() => demarrerLaVeille(), []);
@@ -253,6 +266,7 @@ export default function App() {
       </main>
       <QuoiDeNeuf />
       <Toaster />
+      <IndicateurTranscription />
       <ConfirmerHost />
       <UpdateBanner />
       <NotesPanel />

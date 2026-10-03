@@ -1,5 +1,6 @@
 // Couche d'accès au backend Rust via Tauri invoke. Types miroir des structs.
 import { invoke as invokeTauri } from "@tauri-apps/api/core";
+import { pendant } from "./calculEnCours";
 import { noterEchec, noterSucces, type EtatIncidents } from "./incidents";
 
 // La fenêtre de l'application n'a pas de console visible : quand une action
@@ -605,7 +606,8 @@ export const api = {
 
   // Réunions écoutées
   vocauxList: () => invoke<Vocal[]>("vocaux_list"),
-  vocalTranscrire: (id: string) => invoke<Vocal>("vocal_transcrire", { id }),
+  // La transcription chauffe la machine : l'indicateur le dit tant qu'elle dure (voir calculEnCours).
+  vocalTranscrire: (id: string) => pendant(invoke<Vocal>("vocal_transcrire", { id }), "d'une dictée du téléphone"),
   vocalDelete: (id: string) => invoke<void>("vocal_delete", { id }),
 
   projetsList: () => invoke<ProjetClasse[]>("projets_list"),
@@ -677,7 +679,7 @@ export const api = {
   transcrireAudio: (audioB64: string, nomFichier: string) =>
     invoke<string>("transcrire_audio", { audioB64, nomFichier }),
   /** Transcrit sur cette machine (WAV 16 kHz), sans que l'audio en sorte. */
-  transcrireLocal: (audioB64: string) => invoke<string>("transcrire_local", { audioB64 }),
+  transcrireLocal: (audioB64: string) => pendant(invoke<string>("transcrire_local", { audioB64 }), "de l'enregistrement"),
   /** Vérifie que le moteur local est bien là, et le dit en clair. */
   whisperTester: () => invoke<string>("whisper_tester"),
   whisperEtat: () => invoke<EtatWhisper>("whisper_etat"),
