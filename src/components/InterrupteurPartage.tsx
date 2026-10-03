@@ -5,11 +5,12 @@ import {
   EVT_PARTAGE, fermerPartage, lirePartage, ouvrirPartage, titreDuPartage,
 } from "../partageWifi";
 
-// L'interrupteur du partage WiFi, dans la barre du haut de chaque page.
+// L'interrupteur du partage WiFi, dans Réglages › Téléphone.
 //
-// On ouvre le partage pour dicter en classe, et on le referme en rentrant :
-// c'est un geste de tous les jours, il n'a pas à se chercher dans un onglet
-// des Réglages. Le voyant dit l'état sans qu'on ait à cliquer.
+// Il a longtemps tenu dans la barre du haut de chaque page, quand on dictait
+// par le WiFi. Les dictées passent maintenant par Nuage : le partage ne sert
+// plus qu'à lire le planning dans le navigateur du téléphone, et l'interrupteur
+// reste là où ce partage s'explique. Le voyant dit l'état sans qu'on ait à cliquer.
 
 export function InterrupteurPartage() {
   const [info, setInfo] = React.useState<PortableInfo | null>(null);

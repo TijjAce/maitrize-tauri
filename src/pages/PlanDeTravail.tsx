@@ -5,7 +5,7 @@ import {
   api, BureauCommun, Sequence, MaterielItem, Texte, Atelier, Espace, Jeu, OutilClasse, couleurHex, couleurPourMatiere, newId, nowIso,
   texteErreur, nouvelAtelier, nouvelEspace, nouveauJeu, nouvelOutil,
 } from "../api";
-import { Input, Confirm, Demander, Modal, ColorPicker, useAsync } from "../components/ui";
+import { Confirm, Demander, Modal, ColorPicker, useAsync } from "../components/ui";
 import { VignettePdf } from "../components/VignettePdf";
 import { toast } from "../components/Toaster";
 import { openCtx } from "../components/ctxmenu";
@@ -31,6 +31,8 @@ import { estSurLeBureau } from "../materielSeance";
 import { useEtatDuPlan, useSuiviSequences } from "../components/useSuiviSequences";
 import { BadgeSuivi } from "../components/SuiviSequence";
 import { ETATS_SEQUENCE, rangerParActivite, type EtatSequence, type SuiviSequence } from "../suiviSequences";
+import { MenuDuBureau } from "../components/MenuDuBureau";
+import { lireRangements, ordonner, MODES_RANGEMENT, PREFIXE_RANGEMENT, type Icone, type ModeRangement } from "../rangement";
 import { RituelForm, useRituels } from "../components/Rituels";
 import { nouveauRituel, type Rituel } from "../rituels";
 import { lireVideos, lireLien, vignetteYoutube } from "../videos";
@@ -129,6 +131,21 @@ const PREFIXE_GENRE: Record<Element["genre"], string> = {
   sequence: "s", materiel: "m", texte: "t", atelier: "a", espace: "e", jeu: "j", outil: "o",
 };
 const cleElement = (e: Element) => `${PREFIXE_GENRE[e.genre]}:${e.id}`;
+/** L'ordre des genres quand on range par type. */
+const ORDRE_DES_GENRES: Element["genre"][] = ["sequence", "materiel", "texte", "atelier", "espace", "jeu", "outil"];
+
+/** La dernière fois qu'on a touché à un élément : sa modification si on la connaît, sinon sa création. */
+function dateDe(e: Element): string {
+  switch (e.genre) {
+    case "sequence": return e.seq.dateMaj || e.seq.dateCreation;
+    case "texte": return e.txt.dateModification || e.txt.dateCreation;
+    case "materiel": return e.mat.dateCreation;
+    case "atelier": return e.at.dateCreation;
+    case "espace": return e.esp.dateCreation;
+    case "jeu": return e.jeu.dateCreation;
+    case "outil": return e.outil.dateCreation;
+  }
+}
 
 /**
  * Le texte d'un dépôt, quel que soit le type employé par la plateforme.
@@ -217,6 +234,8 @@ export default function PlanDeTravail() {
   const [aColorer, setAColorer] = React.useState<SousDossier | null>(null);
   const [couleursLues, setCouleursLues] = React.useState(false);
   const [dispositions, setDispositions] = React.useState<Record<string, Positions>>({});
+  // L'ordre choisi pour chaque dossier par « Ranger » ; par nom quand rien n'est choisi.
+  const [rangements, setRangements] = React.useState<Record<string, ModeRangement>>({});
   // Relus aussi quand des données arrivent de l'autre ordinateur : un dossier
   // créé là-bas, même vide, doit paraître ici sans rouvrir le plan de travail.
   const { data: reglages } = useAsync(() => api.settingsAll(), []);
@@ -235,6 +254,7 @@ export default function PlanDeTravail() {
     if (!reglages) return;
     setCouleurs(lireCouleurs(reglages));
     setDispositions(lireDispositions(reglages));
+    setRangements(lireRangements(reglages));
     setCouleursLues(true);
   }, [reglages]);
 
@@ -311,6 +331,18 @@ export default function PlanDeTravail() {
       for (const [cle, valeur] of Object.entries(ecritures)) {
         const chemin = cle.slice(PREFIXE_COULEUR.length);
         if (valeur) apres[chemin] = valeur; else delete apres[chemin];
+      }
+      return apres;
+    });
+  };
+  /** Applique des réécritures d'ordres de rangement, en base puis à l'écran. */
+  const ecrireRangements = async (ecritures: Record<string, string>) => {
+    for (const [cle, valeur] of Object.entries(ecritures)) await api.settingSet(cle, valeur);
+    setRangements((avant) => {
+      const apres = { ...avant };
+      for (const [cle, valeur] of Object.entries(ecritures)) {
+        const chemin = cle.slice(PREFIXE_RANGEMENT.length);
+        if (valeur) apres[chemin] = valeur as ModeRangement; else delete apres[chemin];
       }
       return apres;
     });
@@ -395,7 +427,26 @@ export default function PlanDeTravail() {
     observateur.current.observe(el);
   }, []);
   const nbCols = Math.max(1, Math.floor(largeurSurface / CASE_L));
-  const cles = [...dossiers.map(cleDossier), ...ici.map(cleElement)];
+  // Dans un dossier, ce qui n'a pas été placé à la main suit l'ordre choisi
+  // par « Ranger ». Une recherche ou un état gardent le leur.
+  const modeIci: ModeRangement = rangements[dossier] ?? "nom";
+  const dateDuDossier = (chemin: string) => {
+    let plus = "", quand = 0;
+    for (const e of elements) {
+      if (!estDans(normaliser(e.dossier), chemin)) continue;
+      const t = Date.parse(dateDe(e));
+      if (t > quand) { quand = t; plus = dateDe(e); }
+    }
+    return plus;
+  };
+  const icones: Icone[] = [
+    ...dossiers.map((d): Icone => ({
+      cle: cleDossier(d), nom: d.nom, dossier: true, total: d.total, rangDuGenre: -1,
+      date: modeIci === "recent" ? dateDuDossier(d.chemin) : "",
+    })),
+    ...ici.map((e): Icone => ({ cle: cleElement(e), nom: e.titre, dossier: false, total: 0, rangDuGenre: ORDRE_DES_GENRES.indexOf(e.genre), date: dateDe(e) })),
+  ];
+  const cles = filtre || etatFiltre ? icones.map((i) => i.cle) : ordonner(icones, modeIci);
   const cleDisposition = cles.join("|");
   const disposition = React.useMemo(() => disposer(cles, dispositions[dossier] ?? {}, nbCols),
     [cleDisposition, dispositions, dossier, nbCols]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -433,7 +484,11 @@ export default function PlanDeTravail() {
     if (!c) return;
     await ecrireDispositions({ [PREFIXE_BUREAU + dossier]: JSON.stringify(poser(disposition, cle, c, nbCols)) });
   };
-  const rangerParNom = () => ecrireDispositions({ [PREFIXE_BUREAU + dossier]: "" });
+  /** Range le dossier dans un ordre : les icônes placées à la main reprennent leur rang, et l'ordre se garde. */
+  const rangerPar = async (mode: ModeRangement) => {
+    await ecrireRangements({ [PREFIXE_RANGEMENT + dossier]: mode === "nom" ? "" : mode });
+    await ecrireDispositions({ [PREFIXE_BUREAU + dossier]: "" });
+  };
 
   // ── Déplacements et dépôts ──
   const ranger = async (e: Element, vers: string) => {
@@ -522,6 +577,7 @@ export default function PlanDeTravail() {
       await enregistrerDossier(e, nouveau);
     }
     await ecrireCouleurs(reporterCouleurs(couleurs, chemin, arrivee));
+    await ecrireRangements(reporterCouleurs(rangements, chemin, arrivee, PREFIXE_RANGEMENT));
     await ecrireDispositions(reporterDispositions(dispositions, chemin, arrivee));
     // On regardait l'intérieur du dossier déplacé : on le suit.
     if (dossier && estDans(dossier, chemin)) setDossier(renommerChemin(dossier, chemin, arrivee));
@@ -584,6 +640,7 @@ export default function PlanDeTravail() {
   const appliquerRenommage = async (d: SousDossier, nom: string) => {
     const nouveau = normaliser(parent(d.chemin) ? `${parent(d.chemin)}/${nom}` : nom);
     await ecrireCouleurs(reporterCouleurs(couleurs, d.chemin, nouveau));
+    await ecrireRangements(reporterCouleurs(rangements, d.chemin, nouveau, PREFIXE_RANGEMENT));
     await ecrireDispositions(reporterDispositions(dispositions, d.chemin, nouveau));
     const touches = elements.filter((e) => estDans(normaliser(e.dossier), d.chemin));
     for (const e of touches) {
@@ -766,7 +823,11 @@ export default function PlanDeTravail() {
   );
 
   return (
-    <Page titre="Plan de travail" sous="Votre bureau : séquences, matériel, documents, ateliers, jeux, outils, affichages, évaluations">
+    <Page titre="Plan de travail" sous="Votre bureau : séquences, matériel, documents, ateliers, jeux, outils, affichages, évaluations"
+      actions={<MenuDuBureau recherche={q} onRecherche={setQ} etat={etatFiltre} onEtat={setEtatFiltre}
+        compte={(etat) => elements.filter((x) => dansLEtat(x, etat)).length}
+        rangement={dispositions[dossier] ? null : modeIci} peutRanger={!filtre && !etatFiltre} onRanger={(m) => { void rangerPar(m); }}
+        scinde={scinde} onScinde={setScinde} copie={copie?.active ? copie : null} onCopie={ouvrirCopie} />}>
 
       <div className="toolbar">
         {/* Fil d'Ariane : on remonte en cliquant, et l'on peut y déposer pour
@@ -790,49 +851,21 @@ export default function PlanDeTravail() {
               </button>
             </React.Fragment>
           ))}
-          <div style={{ flex: 1 }} />
-          <button type="button" className="btn ghost sm" disabled={!!filtre || !!etatFiltre || !dispositions[dossier]}
-            title={dispositions[dossier]
-              ? "Remettre les icônes en ordre : les dossiers d'abord, puis par nom"
-              : "Déjà rangé : les icônes suivent l'ordre des noms"}
-            onClick={rangerParNom}>
-            🧹 Ranger
-          </button>
         </div>
-        <Input className="search" placeholder="Rechercher partout…" value={q}
-          onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 220 }} />
-        <button className={`btn sm${scinde ? " primary" : " ghost"}`} onClick={() => setScinde(!scinde)}
-          title={scinde ? "Refermer le bureau commun" : "Ouvrir le bureau commun à côté : glisser d'un bureau à l'autre"}>
-          🤝 Bureaux communs</button>
-        {copie?.active && (
-          <button className="btn ghost sm" onClick={ouvrirCopie}
-            title={`Ouvrir la copie de ce bureau sur l'ordinateur : ${copie.racine}`}>🗂 Copie sur l'ordinateur</button>
-        )}
       </div>
 
-      {/* Les séquences selon ce que le cahier journal en dit : en classe (et en pause), en préparation, terminées.
-          Sur une ligne à part : dans la barre d'outils, le filtre écrasait le fil d'Ariane. */}
-      <div className="plan-filtres">
-        <span className="meta">Séquences :</span>
-        <div className="seg" role="group" aria-label="Les séquences selon leur état">
-          <button className={etatFiltre === "" ? "active" : ""} onClick={() => setEtatFiltre("")}>Toutes</button>
-          {ETATS_SEQUENCE.filter((e) => e.id !== "pause").map((e) => {
-            const n = elements.filter((x) => dansLEtat(x, e.id)).length;
-            return (
-              <button key={e.id} className={etatFiltre === e.id ? "active" : ""} onClick={() => setEtatFiltre(etatFiltre === e.id ? "" : e.id)}
-                title={e.id === "classe" ? "Démarrées dans le cahier journal, en pause comprises" : e.id === "preparation" ? "Écrites, mais aucune séance passée en classe" : "Toutes les séances faites, ou marquées terminées"}>
-                {e.ico} {e.pluriel}{n ? ` ${n}` : ""}
-              </button>
-            );
-          })}
-        </div>
-        {etatFiltre && (
+      {/* Ce que le menu du bureau montre en ce moment : une recherche, ou les séquences d'un état. */}
+      {(filtre || etatFiltre) && (
+        <div className="plan-filtres">
           <span className="meta">
-            {ici.length} séquence{ici.length > 1 ? "s" : ""}, de tous les dossiers, la plus active en tête ·{" "}
-            <button type="button" className="lien" onClick={() => setEtatFiltre("")}>tout afficher</button>
+            {etatFiltre
+              ? <>{ETATS_SEQUENCE.find((e) => e.id === etatFiltre)?.ico} {ici.length} séquence{ici.length > 1 ? "s" : ""} {(ETATS_SEQUENCE.find((e) => e.id === etatFiltre)?.nom ?? "").toLowerCase()}, de tous les dossiers, la plus active en tête</>
+              : <>🔎 {ici.length} résultat{ici.length > 1 ? "s" : ""} pour « {q.trim()} », dans tous les dossiers</>}
+            {" · "}
+            <button type="button" className="lien" onClick={() => { setQ(""); setEtatFiltre(""); }}>tout afficher</button>
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       <input ref={choixFichiers} type="file" multiple hidden accept={`${EXTENSIONS_DOCUMENTS},image/*`}
         onChange={(e) => {
@@ -914,7 +947,9 @@ export default function PlanDeTravail() {
               caseImport.current = caseClic;
               choixFichiers.current?.click();
             } },
-            ...(!filtre && dispositions[dossier] ? [{ label: "Ranger par nom", icon: "🔤", sep: true, onClick: rangerParNom }] : []),
+            ...(!filtre && !etatFiltre ? [{ label: "Ranger", icon: "🧹", sep: true, enfants: MODES_RANGEMENT.map((m) => ({
+              label: m.label, icon: m.ico, onClick: () => { void rangerPar(m.id); },
+            })) }] : []),
           ]);
         }}
         style={{

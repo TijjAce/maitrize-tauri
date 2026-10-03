@@ -31,7 +31,6 @@ import { NotesPanel } from "./components/NotesPanel";
 import { CommandPalette } from "./components/CommandPalette";
 import { Onboarding } from "./components/Onboarding";
 import { ContextMenuHost } from "./components/ctxmenu";
-import { InterrupteurPartage } from "./components/InterrupteurPartage";
 import { CguGate } from "./components/CGU";
 import { bootTheme } from "./theme";
 import { raccourci, isMac } from "./api";
@@ -279,10 +278,7 @@ export function Page({ titre, sous, actions, children }: {
           {sous && <div className="sub">{sous}</div>}
         </div>
         <div className="spacer" />
-        <div className="topbar-actions">
-          <InterrupteurPartage />
-          {actions}
-        </div>
+        <div className="topbar-actions">{actions}</div>
       </div>
       <div className="content">{children}</div>
     </>
