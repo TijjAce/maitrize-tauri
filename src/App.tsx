@@ -280,7 +280,7 @@ export default function App() {
 }
 
 export function Page({ titre, sous, actions, children }: {
-  titre: string; sous?: string; actions?: React.ReactNode; children: React.ReactNode;
+  titre: string; sous?: React.ReactNode; actions?: React.ReactNode; children: React.ReactNode;
 }) {
   // Le titre nomme le lieu dans « Revenir » et les lieux récents.
   useTitreDuLieu(titre);
