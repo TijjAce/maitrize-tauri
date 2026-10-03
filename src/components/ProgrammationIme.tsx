@@ -1,16 +1,17 @@
 import React from "react";
-import { api, newId, texteErreur, type Eleve, type ProgrammationFinale } from "../api";
-import { Empty, Input, useAsync } from "./ui";
+import { useNavigate } from "react-router-dom";
+import { api, couleurHex, couleurPourMatiere, newId, texteErreur, type Eleve, type ProgrammationFinale, type Sequence } from "../api";
+import { Empty, Input, TextareaAuto, useAsync } from "./ui";
 import { toast } from "./Toaster";
 import { confirmer } from "./confirmer";
 import { openCtx } from "./ctxmenu";
 import { ChoixCompetence } from "./ChoixCompetence";
 import { printHTML, escapeHtml } from "../print";
 import {
-  CIBLE_MAX, CIBLE_MIN, PERIODES, basculerCible, basculerPeriode, comptes, ecrire,
-  elevesConcernes, etatDuCompte, lire, marqueEleve, marqueGroupe, motDuCompte, nouveauGroupe,
-  nouvelObjectif, objectifsDe, objectifsDuCreneau, poserSurCreneau, retirerDuCreneau,
-  retirerGroupe, vide, type Objectif, type ProgrammationIme as Prog,
+  CIBLE_MAX, CIBLE_MIN, PERIODES, basculerCible, comptes, cyclerPeriode, ecrire,
+  elevesConcernes, etatDePeriode, etatDuCompte, lire, marqueEleve, marqueGroupe, motDuCompte, niveauDe,
+  nouveauGroupe, nouvelObjectif, objectifsDe, objectifsDuCreneau, parDomaine, poserSurCreneau,
+  retirerDuCreneau, retirerGroupe, vide, type Groupe, type Objectif, type ProgrammationIme as Prog,
 } from "../programmationIme";
 import { CompetenceTree, type CompetenceSelectionnee } from "./CompetenceTree";
 import { JOURS_EDT, natureDuSlot, type SlotEdt } from "../organisation";
@@ -173,6 +174,189 @@ function ParCreneau({ annee, eleves, prog, persister }: {
   );
 }
 
+// ── Les objectifs en tableau ──────────────────────────────────────────────
+//
+// Une ligne par objectif, rangées par domaine comme la programmation d'une
+// classe : l'intitulé, pour qui, et les cinq périodes en cases. Les seize
+// élèves ne s'étalent plus sous chaque objectif : la case « Élèves » ne
+// montre que ceux qu'il vise, et s'ouvre pour en choisir d'autres.
+
+const LIBELLE_PERIODE = { "": "pas travaillé", prevue: "prévu", atteinte: "atteint" } as const;
+
+function TableauObjectifs({ objectifs, groupes, eleves, sequences, nouveau, majObjectif, supprimer, citer }: {
+  objectifs: Objectif[];
+  groupes: Groupe[];
+  eleves: Eleve[];
+  sequences: Sequence[];
+  /** L'objectif qu'on vient d'ajouter : on y écrit tout de suite. */
+  nouveau: string;
+  majObjectif: (id: string, fn: (o: Objectif) => Objectif) => void;
+  supprimer: (o: Objectif) => void;
+  citer: (id: string) => void;
+}) {
+  const nav = useNavigate();
+  const [choix, setChoix] = React.useState<{ id: string; ancre: DOMRect } | null>(null);
+  const enChoix = choix ? objectifs.find((o) => o.id === choix.id) : undefined;
+  const parId = new Map(eleves.map((e) => [e.id, e]));
+  const groupeDe = new Map(groupes.map((g) => [g.id, g]));
+
+  return (
+    <div className="card" style={{ padding: 0, overflowX: "auto" }}>
+      <table className="tbl prog-ime">
+        <thead>
+          <tr>
+            <th>Objectif</th>
+            <th>Élèves</th>
+            {PERIODES.map((p) => <th key={p} className="prog-ime-p" title="Un clic : prévu ●, deux : atteint ✔, trois : retiré">P{p}</th>)}
+            <th aria-label="Actions" />
+          </tr>
+        </thead>
+        <tbody>
+          {parDomaine(objectifs).map((g) => {
+            const teinte = g.domaine ? couleurHex[couleurPourMatiere(g.domaine)] ?? couleurHex.gray : couleurHex.gray;
+            return (
+              <React.Fragment key={g.domaine || "·libres"}>
+                <tr className="prog-ime-domaine" style={{ background: `${teinte}22` }}>
+                  <td colSpan={PERIODES.length + 3}>
+                    <span className="prog-ime-pastille" style={{ background: teinte }} />
+                    {g.domaine || "Objectifs écrits à la main"}
+                    <span className="meta"> · {g.objectifs.length}</span>
+                  </td>
+                </tr>
+                {g.objectifs.map((o) => {
+                  const niveau = niveauDe(o);
+                  const seqs = (o.sequences ?? []).flatMap((id) => sequences.filter((s) => s.id === id));
+                  return (
+                    <tr key={o.id} style={{ boxShadow: `inset 3px 0 0 ${teinte}` }}
+                      onContextMenu={(ev) => openCtx(ev, [
+                        { label: "Citer une compétence du BO…", icon: "🎯", onClick: () => citer(o.id) },
+                        { label: "Retirer de la programmation", icon: "🗑", danger: true, sep: true, onClick: () => supprimer(o) },
+                      ])}>
+                      <td className="prog-ime-objectif">
+                        <TextareaAuto className="textarea prog-ime-texte" rows={1} minHauteur={30} maxHauteur="10em" style={{ resize: "none" }}
+                          value={o.competence} autoFocus={o.id === nouveau} aria-label="Objectif"
+                          placeholder="Ce qu'on vise : « demander de l'aide », « dénombrer jusqu'à 10 »…"
+                          onChange={(e) => majObjectif(o.id, (x) => ({ ...x, competence: e.target.value }))} />
+                        {(niveau || (o.origine && !niveau && !g.domaine) || seqs.length > 0) && (
+                          <div className="prog-ime-meta">
+                            {niveau && <span className="badge" title={o.origine}>{niveau}</span>}
+                            {!g.domaine && o.origine && <span>{o.origine}</span>}
+                            {seqs.map((s) => (
+                              <button key={s.id} type="button" className="chip" title="Ouvrir la séquence"
+                                onClick={() => nav(`/sequences/${s.id}`)}>📚 {s.titre}</button>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td className="prog-ime-eleves">
+                        <button type="button" className="prog-ime-qui" title="Choisir pour qui"
+                          onClick={(e) => setChoix(choix?.id === o.id ? null : { id: o.id, ancre: e.currentTarget.getBoundingClientRect() })}>
+                          {o.pour.length ? o.pour.map((m) => {
+                            const g2 = m.startsWith("groupe:") ? groupeDe.get(m.slice(7)) : undefined;
+                            const e2 = m.startsWith("eleve:") ? parId.get(m.slice(6)) : undefined;
+                            if (g2) return <span key={m} className="prog-ime-nom">👥 {g2.nom || "Groupe"}</span>;
+                            return e2 ? <span key={m} className="prog-ime-nom">{prenom(e2)}</span> : null;
+                          }) : <span className="meta">Choisir…</span>}
+                        </button>
+                      </td>
+                      {PERIODES.map((p) => {
+                        const etat = etatDePeriode(o, p);
+                        return (
+                          <td key={p} className="prog-ime-p">
+                            <button type="button" className={etat} aria-label={`P${p} : ${LIBELLE_PERIODE[etat]}`}
+                              title={`P${p} : ${LIBELLE_PERIODE[etat]}`}
+                              onClick={() => majObjectif(o.id, (x) => cyclerPeriode(x, p))}>
+                              {etat === "atteinte" ? "✔" : etat === "prevue" ? "●" : ""}
+                            </button>
+                          </td>
+                        );
+                      })}
+                      <td className="prog-ime-actions">
+                        <button className="btn ghost sm" onClick={() => citer(o.id)} title="Reprendre l'intitulé exact d'un référentiel">🎯</button>
+                        <button className="btn ghost sm" onClick={() => supprimer(o)} aria-label="Retirer">🗑</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </React.Fragment>
+            );
+          })}
+        </tbody>
+      </table>
+      {choix && enChoix && (
+        <ChoixEleves ancre={choix.ancre} objectif={enChoix} groupes={groupes} eleves={eleves}
+          onBasculer={(cible) => majObjectif(enChoix.id, (x) => basculerCible(x, cible))}
+          onFermer={() => setChoix(null)} />
+      )}
+    </div>
+  );
+}
+
+/** Pour qui : les groupes, puis les élèves, à cocher — posé sous la case qui l'ouvre. */
+function ChoixEleves({ ancre, objectif, groupes, eleves, onBasculer, onFermer }: {
+  ancre: DOMRect; objectif: Objectif; groupes: Groupe[]; eleves: Eleve[];
+  onBasculer: (cible: string) => void; onFermer: () => void;
+}) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const ailleurs = (e: MouseEvent) => {
+      const cible = e.target as HTMLElement;
+      // La case qui l'a ouvert le referme elle-même.
+      if (!ref.current?.contains(cible) && !cible.closest(".prog-ime-qui")) onFermer();
+    };
+    const echap = (e: KeyboardEvent) => { if (e.key === "Escape") onFermer(); };
+    // Posé à l'écran, il ne suit pas la page : il se referme quand elle défile.
+    const defile = (e: Event) => { if (!ref.current?.contains(e.target as Node)) onFermer(); };
+    document.addEventListener("mousedown", ailleurs);
+    document.addEventListener("keydown", echap);
+    document.addEventListener("scroll", defile, true);
+    window.addEventListener("resize", onFermer);
+    return () => {
+      document.removeEventListener("mousedown", ailleurs);
+      document.removeEventListener("keydown", echap);
+      document.removeEventListener("scroll", defile, true);
+      window.removeEventListener("resize", onFermer);
+    };
+  }, [onFermer]);
+
+  const concernes = elevesConcernes(objectif, groupes);
+  const largeur = Math.min(380, window.innerWidth - 24);
+  const gauche = Math.max(12, Math.min(ancre.left, window.innerWidth - largeur - 12));
+  const place = window.innerHeight - ancre.bottom > 280
+    ? { top: ancre.bottom + 6 } : { bottom: window.innerHeight - ancre.top + 6 };
+  return (
+    <div ref={ref} className="prog-ime-choix" role="dialog" aria-label="Pour qui" style={{ left: gauche, width: largeur, ...place }}>
+      {groupes.length > 0 && <>
+        <div className="meta">Groupes</div>
+        <div className="prog-ime-choix-liste">
+          {groupes.map((g) => {
+            const pris = objectif.pour.includes(marqueGroupe(g.id));
+            return (
+              <button key={g.id} type="button" className={`btn sm${pris ? " primary" : " ghost"}`}
+                onClick={() => onBasculer(marqueGroupe(g.id))}>👥 {g.nom || "Groupe"}</button>
+            );
+          })}
+        </div>
+      </>}
+      <div className="meta">Élèves</div>
+      <div className="prog-ime-choix-liste">
+        {eleves.map((e) => {
+          const direct = objectif.pour.includes(marqueEleve(e.id));
+          const parGroupe = !direct && concernes.includes(e.id);
+          return (
+            <button key={e.id} type="button" className={`btn sm${direct ? " primary" : " ghost"}`}
+              title={parGroupe ? "Concerné par un groupe" : undefined}
+              style={parGroupe ? { borderStyle: "dashed", opacity: 0.85 } : undefined}
+              onClick={() => onBasculer(marqueEleve(e.id))}>
+              {prenom(e)}{parGroupe ? " ·" : ""}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function ProgrammationIme({ annee }: { annee: string }) {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   const { data: progs, reload } = useAsync(() => api.programmationsFinaleList(), []);
@@ -184,6 +368,7 @@ export function ProgrammationIme({ annee }: { annee: string }) {
   const [filtre, setFiltre] = React.useState("");
   const [groupesOuverts, setGroupesOuverts] = React.useState(false);
   const [competencePour, setCompetencePour] = React.useState<string>("");
+  const [nouveau, setNouveau] = React.useState("");
   // La liste sert à écrire un objectif, la grille à voir qui a quoi. Deux
   // questions différentes, deux vues — et c'est la seconde qui manquait.
   const [vue, setVue] = React.useState<"liste" | "creneau">("liste");
@@ -238,7 +423,9 @@ export function ProgrammationIme({ annee }: { annee: string }) {
     // Un objectif créé depuis le filtre d'un élève lui est déjà attribué :
     // c'est presque toujours ce qu'on veut.
     const pour = filtre ? [marqueEleve(filtre)] : [];
-    persister({ ...prog, objectifs: [...prog.objectifs, nouvelObjectif(pour)] });
+    const o = nouvelObjectif(pour);
+    persister({ ...prog, objectifs: [...prog.objectifs, o] });
+    setNouveau(o.id);
   };
 
   const supprimer = async (o: Objectif) => {
@@ -282,7 +469,7 @@ export function ProgrammationIme({ annee }: { annee: string }) {
           <span className="meta" style={{ fontSize: 12 }}>cible {CIBLE_MIN}–{CIBLE_MAX} sur l'année</span>
           <div className="spacer" style={{ flex: 1 }} />
           <div className="seg sm" role="group" aria-label="Affichage">
-            <button className={vue === "liste" ? "active" : ""} onClick={() => setVue("liste")}>☰ Liste</button>
+            <button className={vue === "liste" ? "active" : ""} onClick={() => setVue("liste")}>▦ Tableau</button>
             <button className={vue === "creneau" ? "active" : ""} onClick={() => setVue("creneau")}>🗓 Par créneau</button>
           </div>
           <button className="btn ghost sm" onClick={() => setGroupesOuverts((v) => !v)}>
@@ -369,82 +556,8 @@ export function ProgrammationIme({ annee }: { annee: string }) {
         <Empty icone="🎯" titre={filtre ? "Aucun objectif pour cet élève" : "Aucun objectif"}
           sous="« ＋ Objectif » : écrivez la compétence visée, dites pour qui, et sur quelles périodes. Une séquence citée dans le cahier journal apporte aussi la sienne." />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {montres.map((o) => {
-            const concernes = elevesConcernes(o, prog.groupes);
-            return (
-              <div key={o.id} className="card"
-                onContextMenu={(ev) => openCtx(ev, [
-                  { label: "Citer une compétence du BO…", icon: "🎯", onClick: () => setCompetencePour(o.id) },
-                  { label: "Retirer de la programmation", icon: "🗑", danger: true, sep: true, onClick: () => { void supprimer(o); } },
-                ])}>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
-                  <Input value={o.competence} placeholder="Ce qu'on vise : « demander de l'aide », « dénombrer jusqu'à 10 »…"
-                    onChange={(e) => majObjectif(o.id, (x) => ({ ...x, competence: e.target.value }))}
-                    style={{ flex: 1, minWidth: 220 }} />
-                  <button className="btn ghost sm" onClick={() => setCompetencePour(o.id)}
-                    title="Reprendre l'intitulé exact d'un référentiel">🎯</button>
-                  <button className="btn ghost sm" onClick={() => { void supprimer(o); }} aria-label="Retirer">🗑</button>
-                </div>
-                {o.origine && <div className="meta" style={{ fontSize: 11.5, marginBottom: 6 }}>{o.origine}</div>}
-                {(() => {
-                  const titres = (o.sequences ?? []).map((id) => sequences?.find((s) => s.id === id)?.titre.trim()).filter(Boolean);
-                  return titres.length ? (
-                    <div className="meta" style={{ fontSize: 11.5, marginBottom: 6 }}>📚 Cahier journal : {titres.join(", ")}</div>
-                  ) : null;
-                })()}
-
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-                  {prog.groupes.map((g) => {
-                    const pris = o.pour.includes(marqueGroupe(g.id));
-                    return (
-                      <button key={g.id} type="button" className={`btn sm${pris ? " primary" : " ghost"}`}
-                        onClick={() => majObjectif(o.id, (x) => basculerCible(x, marqueGroupe(g.id)))}>
-                        👥 {g.nom}
-                      </button>
-                    );
-                  })}
-                  {listeEleves.map((e) => {
-                    const direct = o.pour.includes(marqueEleve(e.id));
-                    const parGroupe = !direct && concernes.includes(e.id);
-                    return (
-                      <button key={e.id} type="button" className={`btn sm${direct ? " primary" : " ghost"}`}
-                        title={parGroupe ? "Concerné par un groupe" : undefined}
-                        style={parGroupe ? { borderStyle: "dashed", opacity: 0.85 } : undefined}
-                        onClick={() => majObjectif(o.id, (x) => basculerCible(x, marqueEleve(e.id)))}>
-                        {prenom(e)}{parGroupe ? " ·" : ""}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                  <span className="meta" style={{ fontSize: 11.5 }}>Périodes</span>
-                  {PERIODES.map((p) => {
-                    const prevue = o.periodes.includes(p);
-                    const atteinte = o.atteintes.includes(p);
-                    return (
-                      <button key={p} type="button" className={`btn sm${prevue ? " primary" : " ghost"}`}
-                        title={prevue ? "Cliquez encore pour marquer l'objectif atteint sur cette période" : `Travailler en P${p}`}
-                        onClick={() => majObjectif(o.id, (x) => {
-                          if (!x.periodes.includes(p)) return basculerPeriode(x, p);
-                          // Prévue → atteinte → retirée : un seul bouton, trois états.
-                          if (!x.atteintes.includes(p)) return { ...x, atteintes: [...x.atteintes, p].sort() };
-                          return basculerPeriode({ ...x, atteintes: x.atteintes.filter((y) => y !== p) }, p);
-                        })}>
-                        {atteinte ? "✔ " : ""}P{p}
-                      </button>
-                    );
-                  })}
-                  <div className="spacer" style={{ flex: 1 }} />
-                  <span className="meta" style={{ fontSize: 11.5 }}>
-                    {concernes.length ? `${concernes.length} élève(s)` : "personne pour l'instant"}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <TableauObjectifs objectifs={montres} groupes={prog.groupes} eleves={listeEleves} sequences={sequences ?? []}
+          nouveau={nouveau} majObjectif={majObjectif} supprimer={(o) => { void supprimer(o); }} citer={setCompetencePour} />
       )}
 
       {competencePour && (

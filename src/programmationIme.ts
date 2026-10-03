@@ -277,6 +277,48 @@ export function basculerCible(o: Objectif, cible: string): Objectif {
   };
 }
 
+/**
+ * Une période d'un objectif, en un clic : rien → prévue → atteinte → rien.
+ * Un seul bouton, trois états : c'est ce que montre une case du tableau.
+ */
+export function cyclerPeriode(o: Objectif, p: number): Objectif {
+  if (!o.periodes.includes(p)) return basculerPeriode(o, p);
+  if (!o.atteintes.includes(p)) return { ...o, atteintes: [...o.atteintes, p].sort((a, b) => a - b) };
+  return basculerPeriode({ ...o, atteintes: o.atteintes.filter((x) => x !== p) }, p);
+}
+
+export type EtatPeriode = "" | "prevue" | "atteinte";
+
+export const etatDePeriode = (o: Objectif, p: number): EtatPeriode =>
+  !o.periodes.includes(p) ? "" : o.atteintes.includes(p) ? "atteinte" : "prevue";
+
+// ── En tableau ────────────────────────────────────────────────────────────
+//
+// Une ligne par objectif, rangées par domaine comme la programmation d'une
+// classe. Le domaine se lit dans la provenance d'une compétence de
+// référentiel : « Cycle 2 — CP, CE1, CE2 › Français › CP ».
+
+const maillons = (o: Objectif) => o.origine.split(" › ").map((m) => m.trim()).filter(Boolean);
+
+/** Le domaine d'un objectif tiré d'un référentiel ; rien pour un objectif écrit à la main. */
+export const domaineDe = (o: Objectif): string => (maillons(o).length >= 2 ? maillons(o)[1] : "");
+
+/** Le niveau d'une compétence de référentiel (« CP »), s'il est dit. */
+export const niveauDe = (o: Objectif): string => (maillons(o).length >= 3 ? maillons(o)[maillons(o).length - 1] : "");
+
+/** Les objectifs par domaine, dans l'ordre où chaque domaine apparaît ; ceux écrits à la main à la fin. */
+export function parDomaine(objectifs: Objectif[]): { domaine: string; objectifs: Objectif[] }[] {
+  const groupes = new Map<string, Objectif[]>();
+  for (const o of objectifs) {
+    const d = domaineDe(o);
+    groupes.set(d, [...(groupes.get(d) ?? []), o]);
+  }
+  const libres = groupes.get("");
+  groupes.delete("");
+  return [...[...groupes].map(([domaine, liste]) => ({ domaine, objectifs: liste })),
+    ...(libres ? [{ domaine: "", objectifs: libres }] : [])];
+}
+
 /** Ajoute ou retire une période d'un objectif. */
 export function basculerPeriode(o: Objectif, p: number): Objectif {
   const set = new Set(o.periodes);

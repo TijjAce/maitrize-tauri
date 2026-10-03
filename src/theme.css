@@ -920,6 +920,33 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .mois-pastilles { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
 .mois-pastille { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 
+/* La programmation par élève (IME), en tableau : une ligne par objectif, rangées par domaine. */
+table.prog-ime td { vertical-align: top; }
+table.prog-ime .prog-ime-p { width: 46px; padding-left: 4px; padding-right: 4px; text-align: center; }
+.prog-ime-domaine td { font-weight: 700; font-size: 13px; padding-top: 7px; padding-bottom: 7px; }
+.prog-ime-domaine .meta { font-weight: 500; }
+.prog-ime-pastille { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
+.prog-ime-objectif { min-width: 260px; }
+.prog-ime-texte { border-color: transparent; background: transparent; padding: 4px 6px; resize: none; font-size: 13.5px; line-height: 1.4; }
+.prog-ime-texte:hover { border-color: var(--border); }
+.prog-ime-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 3px 0 0 6px; font-size: 11.5px; color: var(--text-2); }
+.prog-ime-meta .chip { border: none; cursor: pointer; font-size: 11px; font-family: inherit; }
+.prog-ime-eleves { width: 230px; }
+.prog-ime-qui { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; width: 100%; min-height: 32px; padding: 3px 4px;
+  border: 1px dashed transparent; border-radius: 7px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.prog-ime-qui:hover { border-color: var(--border); }
+.prog-ime-nom { font-size: 11.5px; font-weight: 700; padding: 2px 7px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.prog-ime-p button { width: 32px; height: 28px; margin-top: 2px; border-radius: 7px; border: 1px dashed var(--border); background: none;
+  color: var(--text-2); font: 700 13px/1 inherit; cursor: pointer; }
+.prog-ime-p button:hover { border-color: var(--accent); }
+.prog-ime-p button.prevue { border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent); }
+.prog-ime-p button.atteinte { border: 1px solid #16a34a; background: rgba(22, 163, 74, .15); color: #16a34a; }
+.prog-ime-actions { width: 84px; white-space: nowrap; text-align: right; }
+.prog-ime-choix { position: fixed; z-index: 300; background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: var(--shadow); padding: 10px 12px; max-height: 60vh; overflow-y: auto; }
+.prog-ime-choix .meta { font-size: 11.5px; margin: 2px 0 6px; }
+.prog-ime-choix-liste { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+
 /* Le « ? » qui ouvre une explication, et la bulle qu'il ouvre. */
 .aide-ancre { position: relative; display: inline-flex; flex: none; }
 .aide-bouton { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); background: var(--panel);
