@@ -1052,6 +1052,17 @@ mod tests {
     }
 
     #[test]
+    fn l_ordinateur_ne_parle_a_nuage_qu_en_chiffre() {
+        // Un compte saisi en http : refusé avant toute demande — l'identifiant ne part pas.
+        let en_clair = CompteNuage { serveur: "http://nuage17.apps.education.fr".into(), utilisateur: "clementtitet".into(), mot_de_passe: "secret".into() };
+        let erreur = en_attendant(webdav::tester(&en_clair.acces())).unwrap_err();
+        assert!(erreur.contains("non chiffrée"), "{erreur}");
+        let r = relais_sur(&FauxNuage::demarrer());
+        let erreur = en_attendant(relever_dans(&r, &acces_au_dossier(&r, &en_clair), false, |_, _| Ok(true))).unwrap_err();
+        assert!(erreur.contains("non chiffrée"), "{erreur}");
+    }
+
+    #[test]
     fn le_telephone_se_connecte_au_compte_du_dossier_et_a_lui_seul() {
         use relais::connexion;
         let nuage = FauxNuage::demarrer();

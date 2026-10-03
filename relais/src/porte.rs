@@ -27,6 +27,7 @@ fn client(secondes: u64) -> R<reqwest::Client> {
     reqwest::Client::builder()
         .user_agent("Maitrize-Dictaphone")
         .timeout(Duration::from_secs(secondes))
+        .redirect(crate::redirections_chiffrees())
         .build()
         .map_err(|e| e.to_string())
 }
@@ -54,6 +55,7 @@ pub fn delai_du_depot(octets: usize) -> u64 {
 
 /// Dépose un fichier scellé dans le dossier des dépôts.
 pub async fn deposer(a: &Appairage, k: &Connexion, nom: &str, blob: Vec<u8>) -> R<()> {
+    crate::adresse_chiffree(&k.serveur)?;
     let reponse = client(delai_du_depot(blob.len()))?
         .put(adresse(a, k, DOSSIER_DEPOT, nom))
         .header("Authorization", autorisation(k))
@@ -70,6 +72,7 @@ pub async fn deposer(a: &Appairage, k: &Connexion, nom: &str, blob: Vec<u8>) -> 
 
 /// L'agenda chiffré que l'ordinateur a laissé, ou rien s'il n'en a pas encore publié.
 pub async fn lire_agenda(a: &Appairage, k: &Connexion) -> R<Option<Vec<u8>>> {
+    crate::adresse_chiffree(&k.serveur)?;
     let reponse = client(20)?
         .get(adresse(a, k, DOSSIER_RETOUR, FICHIER_AGENDA))
         .header("Authorization", autorisation(k))
@@ -87,6 +90,7 @@ pub async fn lire_agenda(a: &Appairage, k: &Connexion) -> R<Option<Vec<u8>>> {
 
 /// Le dossier des dépôts répond-il à ce téléphone ? Dit pourquoi sinon.
 pub async fn verifier(a: &Appairage, k: &Connexion) -> R<()> {
+    crate::adresse_chiffree(&k.serveur)?;
     let methode = reqwest::Method::from_bytes(b"PROPFIND").map_err(|e| e.to_string())?;
     let reponse = client(10)?
         .request(methode, adresse(a, k, DOSSIER_DEPOT, ""))
@@ -116,6 +120,35 @@ mod tests {
         // Une heure de réunion : le temps qu'il faut, sans attendre indéfiniment.
         assert_eq!(delai_du_depot(115_000_000), 2935);
         assert_eq!(delai_du_depot(usize::MAX / 2), 3600);
+    }
+
+    /// Mène une demande à son terme sans réseau : elle doit s'arrêter avant d'envoyer quoi que ce soit.
+    fn sans_rien_envoyer<T>(f: impl std::future::Future<Output = T>) -> T {
+        let mut f = std::pin::pin!(f);
+        let mut cx = std::task::Context::from_waker(std::task::Waker::noop());
+        match f.as_mut().poll(&mut cx) {
+            std::task::Poll::Ready(v) => v,
+            std::task::Poll::Pending => panic!("la demande est partie"),
+        }
+    }
+
+    #[test]
+    fn rien_ne_part_vers_une_adresse_en_clair() {
+        let a = Appairage {
+            serveur: "https://nuage17.apps.education.fr".into(), compte: "clementtitet".into(), dossier: "Maitrize-Telephone".into(),
+            cle_depot: String::new(), cle_retour: String::new(),
+        };
+        let k = Connexion { serveur: "http://nuage17.apps.education.fr".into(), identifiant: "clementtitet".into(), mot_de_passe: "secret".into() };
+        for erreur in [
+            sans_rien_envoyer(deposer(&a, &k, "v-1.mtz", vec![1, 2, 3])).unwrap_err(),
+            sans_rien_envoyer(lire_agenda(&a, &k)).unwrap_err(),
+            sans_rien_envoyer(verifier(&a, &k)).unwrap_err(),
+            sans_rien_envoyer(crate::connexion::compte(&k)).unwrap_err(),
+            sans_rien_envoyer(crate::connexion::revoquer(&k)).unwrap_err(),
+            sans_rien_envoyer(crate::connexion::commencer("http://nuage17.apps.education.fr")).unwrap_err(),
+        ] {
+            assert!(erreur.contains("non chiffrée"), "{erreur}");
+        }
     }
 
     #[test]

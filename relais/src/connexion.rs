@@ -98,6 +98,7 @@ pub fn lire_demande(json: &str) -> R<Demande> {
  * refait là où l'on est renvoyé, quelques fois au plus.
  */
 pub async fn commencer(serveur: &str) -> R<Demande> {
+    crate::adresse_chiffree(serveur)?;
     let client = client(20)?;
     let mut adresse = format!("{}/index.php/login/v2", serveur.trim_end_matches('/'));
     for _ in 0..4 {
@@ -140,6 +141,7 @@ pub fn lire_connexion(json: &str) -> R<Connexion> {
 
 /// La connexion est-elle faite ? `None` tant que l'enseignant ne l'a pas acceptée.
 pub async fn interroger(d: &Demande) -> R<Option<Connexion>> {
+    crate::adresse_chiffree(&d.attente)?;
     let reponse = client(15)?
         .post(&d.attente)
         .form(&[("token", d.jeton.as_str())])
@@ -165,6 +167,7 @@ pub fn lire_compte(json: &str) -> R<String> {
 
 /// Le compte auquel cette connexion ouvre, tel que Nuage le nomme dans ses adresses.
 pub async fn compte(k: &Connexion) -> R<String> {
+    crate::adresse_chiffree(&k.serveur)?;
     let reponse = client(20)?
         .get(format!("{}/ocs/v2.php/cloud/user?format=json", k.serveur))
         .header("Authorization", autorisation(k))
@@ -198,6 +201,9 @@ pub fn meme_compte(a: &str, b: &str) -> bool {
  */
 pub async fn valider(a: &Appairage, k: Connexion) -> R<Connexion> {
     let du_code = Connexion { serveur: a.serveur.trim_end_matches('/').to_string(), ..k.clone() };
+    // Nuage ne remet pas d'adresse en clair ; si cela arrivait, le mot de
+    // passe ne partirait pas vers elle — pas même pour le retirer.
+    let k = if k.serveur.starts_with(schema(&a.serveur)) { k } else { du_code.clone() };
     let mut essais = vec![k.clone()];
     if du_code.serveur != k.serveur {
         essais.push(du_code.clone());
@@ -233,6 +239,7 @@ async fn retirer(k: &Connexion, du_code: &Connexion) {
 
 /// Retire au téléphone son mot de passe d'application : il n'entre plus dans Nuage.
 pub async fn revoquer(k: &Connexion) -> R<()> {
+    crate::adresse_chiffree(&k.serveur)?;
     let reponse = client(20)?
         .delete(format!("{}/ocs/v2.php/core/apppassword", k.serveur))
         .header("Authorization", autorisation(k))
