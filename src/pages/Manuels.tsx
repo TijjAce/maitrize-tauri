@@ -1,8 +1,6 @@
 import React from "react";
-import { listen } from "@tauri-apps/api/event";
-import { api, type PortableInfo } from "../api";
-import { Field, Input, Modal, Select, Textarea, useAsync } from "../components/ui";
-import { lirePartage, ouvrirPartage } from "../partageWifi";
+import { api } from "../api";
+import { Field, Input, Select, Textarea, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { PhotoTelephone } from "../components/PhotoTelephone";
@@ -65,94 +63,6 @@ async function pagesDuFichierRecu(nom: string): Promise<string[]> {
   return noms;
 }
 
-/**
- * Les pages scannées par le compagnon iPhone.
- *
- * Le téléphone scanne comme Notes, puis envoie ; ici on attend, on compte,
- * et l'on range chaque page dans le manuel. Les pages arrivent par le partage
- * WiFi quand il est ouvert, ou par Nuage quand le téléphone y est relié :
- * tant que cette fenêtre est ouverte, on passe les relever toutes les
- * quelques secondes.
- */
-
-/** L'intervalle entre deux relèves des pages, fenêtre ouverte. */
-const RELEVE_DES_PAGES = 4000;
-
-function ScanCompagnon({ label, className = "btn", avantDOuvrir, onPage, onFin }: {
-  label: React.ReactNode; className?: string;
-  avantDOuvrir: () => boolean | Promise<boolean>;
-  onPage: (fichier: string) => void;
-  onFin: (recues: number) => void;
-}) {
-  const [open, setOpen] = React.useState(false);
-  const [partage, setPartage] = React.useState<PortableInfo | null | undefined>(undefined);
-  // Le téléphone est-il relié par Nuage ? Alors les pages peuvent venir de là aussi.
-  const [parNuage, setParNuage] = React.useState(false);
-  const [recues, setRecues] = React.useState(0);
-  const recuesRef = React.useRef(0);
-  const ouvrir = async () => {
-    if (!(await avantDOuvrir())) return;
-    setRecues(0); recuesRef.current = 0; setOpen(true);
-    api.telephoneEtat().then((e) => setParNuage(e.relie)).catch(() => setParNuage(false));
-    try { setPartage(await lirePartage()); } catch { setPartage(null); }
-  };
-  const terminer = () => { setOpen(false); onFin(recuesRef.current); };
-  const allumer = async () => {
-    try { setPartage(await ouvrirPartage()); } catch (e) { toast(String(e), { icone: "⚠️" }); }
-  };
-  React.useEffect(() => {
-    if (!open) return;
-    let actif = true;
-    const un = listen<string>("photo:recue", (e) => {
-      if (!actif) return;
-      onPage(e.payload);
-      recuesRef.current += 1; setRecues(recuesRef.current);
-    });
-    return () => { actif = false; un.then((f) => f()); };
-  }, [open, onPage]);
-  // Par Nuage, personne ne frappe à la porte : on passe voir, tant que la fenêtre attend.
-  React.useEffect(() => {
-    if (!open || !parNuage) return;
-    let enCours = false;
-    const passer = async () => {
-      if (enCours) return;
-      enCours = true;
-      try { await api.telephoneReleverPages(); } catch { /* hors réseau : le passage suivant réessaiera */ }
-      finally { enCours = false; }
-    };
-    void passer();
-    const minuteur = setInterval(() => { void passer(); }, RELEVE_DES_PAGES);
-    return () => clearInterval(minuteur);
-  }, [open, parNuage]);
-  return (
-    <>
-      <button type="button" className={className} onClick={ouvrir}>{label}</button>
-      {open && (
-        <Modal titre="📱 Scanner avec le compagnon" onClose={terminer}
-          footer={<button className="btn primary" onClick={terminer}>{recues ? `✅ Terminer (${recues} page${recues > 1 ? "s" : ""})` : "Fermer"}</button>}>
-          {partage === undefined ? <p>On regarde le partage WiFi…</p> : partage || parNuage ? (
-            <div>
-              <p style={{ marginTop: 0 }}>Sur le téléphone, dans <b>Maitrize Dictaphone</b> : <b>📄 Scanner des pages</b>. Le scanner d'iOS — celui de Notes —
-                cadre chaque page et la redresse ; enchaînez-les, puis « Enregistrer » : elles arrivent ici.</p>
-              {partage
-                ? <p className="meta">Partage ouvert sur {partage.urlNom || partage.url}. Le téléphone doit être appairé et sur le même WiFi{parNuage ? " ; sinon, les pages passent par Nuage" : ""}.</p>
-                : <p className="meta">Le téléphone est relié par Nuage : les pages arrivent ici quelques secondes après l'envoi, sans WiFi commun. Gardez cette fenêtre ouverte le temps du scan.</p>}
-              <p className="meta" style={{ fontSize: 14 }}>{recues ? `✅ ${recues} page${recues > 1 ? "s" : ""} reçue${recues > 1 ? "s" : ""} — en attente de la suite…` : "⏳ En attente de la première page…"}</p>
-              {!partage && <button type="button" className="btn ghost sm" onClick={allumer}>📡 Ouvrir aussi le partage WiFi</button>}
-            </div>
-          ) : (
-            <div>
-              <p style={{ marginTop: 0 }}>Le partage WiFi est éteint, et le téléphone n'est pas relié par Nuage : il ne peut pas joindre l'ordinateur.</p>
-              <button type="button" className="btn primary" onClick={allumer}>📡 Ouvrir le partage WiFi</button>
-              <p className="meta" style={{ marginBottom: 0 }}>Pour se passer du WiFi commun : Réglages › Téléphone › « Le téléphone par Nuage ».</p>
-            </div>
-          )}
-        </Modal>
-      )}
-    </>
-  );
-}
-
 export function ManuelsPanel() {
   const { data: indexBrut, reload: relireIndex } = useAsync(() => api.settingGet(CLE_INDEX), []);
   const index = React.useMemo(() => lireIndex(indexBrut), [indexBrut]);
@@ -201,6 +111,11 @@ export function ManuelsPanel() {
     return true;
   };
   const continuerParPhotos = async () => { manuelEnCours.current = manuel; return !!manuel; };
+  // La fenêtre du QR code vit au-dessus des deux vues : créer le manuel change
+  // de vue, et la fenêtre ouverte depuis l'accueil disparaissait avec lui —
+  // les pages arrivaient alors sans personne pour les ranger.
+  const [demandeDeScan, setDemandeDeScan] = React.useState(0);
+  const scanner = async (avant: () => Promise<boolean>) => { if (await avant()) setDemandeDeScan((n) => n + 1); };
   // Les fichiers arrivent dans l'ordre ; on les range dans l'ordre, un à la fois.
   const fileDArrivee = React.useRef(Promise.resolve());
   const photoRecue = React.useCallback((fichier: string) => {
@@ -345,22 +260,24 @@ export function ManuelsPanel() {
   //
   // Un nouveau manuel par le compagnon, par QR code ou par PDF, ou un manuel
   // déjà là : quatre portes, rien d'autre. Le manuel ouvert a l'écran pour lui.
+  const fenetreDuScan = <PhotoTelephone serie sansBouton demande={demandeDeScan} onPhoto={photoRecue} onFin={finDePhotos} />;
+
   if (!manuel) {
     const carte = (icone: string, nom: string, quoi: string) => (
       <><span className="atelier-icone">{icone}</span><span className="atelier-nom">{nom}</span><span className="atelier-quoi">{quoi}</span></>
     );
     return (
       <div style={{ maxWidth: 1040 }}>
+        {fenetreDuScan}
         <div className="card" style={{ marginBottom: 14 }}>
           <h3 style={{ marginTop: 0 }}>Un nouveau manuel</h3>
           <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
             Photographiez ses pages ou importez son PDF : le manuel s'ouvre, et le modèle relit ses exercices quand vous le lui demandez. Tout reste sur cet ordinateur.
           </p>
           <div className="ateliers">
-            <ScanCompagnon className="atelier" avantDOuvrir={commencerParPhotos} onPage={photoRecue} onFin={finDePhotos}
-              label={carte("📱", "Scanner avec le compagnon", "Le scanner de Notes sur l'iPhone : chaque page se cadre et se redresse, puis arrive ici.")} />
-            <PhotoTelephone serie className="atelier" avantDOuvrir={commencerParPhotos} onPhoto={photoRecue} onFin={finDePhotos}
-              label={carte("📷", "Photographier par QR code", "N'importe quel téléphone prend les pages en photo, ou les scanne avec l'application Fichiers.")} />
+            <button type="button" className="atelier" onClick={() => { void scanner(commencerParPhotos); }}>
+              {carte("📱", "Scanner avec le téléphone", "Un QR code s'affiche : le Dictaphone scanne les pages comme Notes, n'importe quel téléphone les photographie.")}
+            </button>
             <button type="button" className="atelier" disabled={!!occupe} onClick={() => entree.current?.click()}>
               {carte("📄", "Importer un PDF", occupe || "Le manuel en PDF, page à page.")}
             </button>
@@ -388,6 +305,7 @@ export function ManuelsPanel() {
   // ── La page du manuel ──
   return (
     <div style={{ minWidth: 0 }}>
+      {fenetreDuScan}
       <div className="card" style={{ marginBottom: 14 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <button type="button" className="btn ghost sm" onClick={fermer} title="Revenir aux manuels">← Manuels</button>
@@ -395,8 +313,7 @@ export function ManuelsPanel() {
           <Input value={manuel.niveau} onChange={(e) => setManuel({ ...manuel, niveau: e.target.value })} onBlur={() => enregistrer(manuel)} placeholder="Niveau (CP, CE2…)" style={{ maxWidth: 140 }} aria-label="Niveau" />
           <div style={{ flex: 1 }} />
           {manuel.source === "telephone" && (<>
-            <ScanCompagnon label="📱 Scanner d'autres pages" className="btn sm" avantDOuvrir={continuerParPhotos} onPage={photoRecue} onFin={finDePhotos} />
-            <PhotoTelephone serie label="📷 Par QR code" className="btn sm" avantDOuvrir={continuerParPhotos} onPhoto={photoRecue} onFin={finDePhotos} />
+            <button type="button" className="btn sm" onClick={() => { void scanner(continuerParPhotos); }}>📱 Scanner d'autres pages</button>
           </>)}
           {occupe ? (
             <button type="button" className="btn sm" onClick={() => { arret.current = true; }}>⏹ {occupe}</button>

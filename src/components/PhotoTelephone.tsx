@@ -6,7 +6,12 @@ import { listen } from "@tauri-apps/api/event";
 // Bouton « 📱 Téléphone » : démarre un mini-serveur local, affiche un QR code,
 // et appelle onPhoto(nomFichier) quand le téléphone envoie une photo (via WiFi).
 // La photo est déjà enregistrée côté Rust ; on reçoit juste son nom de fichier.
-export function PhotoTelephone({ onPhoto, label = "📱 Téléphone", serie = false, onFin, className = "btn", avantDOuvrir }: {
+//
+// C'est la seule façon dont l'ordinateur demande quelque chose au téléphone par
+// le WiFi : le Dictaphone lit ce QR code (« Pages et photos »), scanne les
+// pages ou prend la photo, et envoie ; n'importe quel autre téléphone ouvre la
+// page de l'appareil photo.
+export function PhotoTelephone({ onPhoto, label = "📱 Téléphone", serie = false, onFin, className = "btn", avantDOuvrir, sansBouton = false, demande = 0 }: {
   onPhoto: (nom: string) => void;
   label?: React.ReactNode;
   /** En série, la fenêtre reste ouverte photo après photo : un manuel, page à page. */
@@ -16,6 +21,10 @@ export function PhotoTelephone({ onPhoto, label = "📱 Téléphone", serie = fa
   className?: string;
   /** Ce qu'il faut faire avant d'ouvrir ; `false` annule (un titre manquant, par exemple). */
   avantDOuvrir?: () => boolean | Promise<boolean>;
+  /** Pas de bouton à soi : d'autres boutons l'ouvrent, en changeant `demande`. */
+  sansBouton?: boolean;
+  /** Chaque nouvelle valeur ouvre la fenêtre : la demande vient d'ailleurs sur la page. */
+  demande?: number;
 }) {
   const [open, setOpen] = React.useState(false);
   const [info, setInfo] = React.useState<PortableInfo | null>(null);
@@ -40,6 +49,19 @@ export function PhotoTelephone({ onPhoto, label = "📱 Téléphone", serie = fa
     catch (e: any) { setErr("❌ " + String(e)); }
   };
 
+  // Ouverte d'ailleurs : un bouton de la page l'a demandée.
+  const derniereDemande = React.useRef(demande);
+  React.useEffect(() => {
+    if (demande === derniereDemande.current) return;
+    derniereDemande.current = demande;
+    void ouvrir();
+  }, [demande]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Une fenêtre qui disparaît avec sa page ne laisse pas tourner son serveur.
+  const ouverte = React.useRef(false);
+  ouverte.current = open;
+  React.useEffect(() => () => { if (ouverte.current) api.photoCaptureArreter().catch(() => {}); }, []);
+
   React.useEffect(() => {
     if (!open) return;
     let actif = true;
@@ -55,9 +77,9 @@ export function PhotoTelephone({ onPhoto, label = "📱 Téléphone", serie = fa
 
   return (
     <>
-      <button type="button" className={className} onClick={ouvrir}>{label}</button>
+      {!sansBouton && <button type="button" className={className} onClick={ouvrir}>{label}</button>}
       {open && (
-        <Modal titre={serie ? "📷 Photographier les pages" : "📷 Photo depuis le téléphone"} onClose={serie ? terminer : fermer}
+        <Modal titre={serie ? "📱 Les pages, depuis le téléphone" : "📷 Une photo, depuis le téléphone"} onClose={serie ? terminer : fermer}
           footer={serie
             ? <button className="btn primary" onClick={terminer}>{recues ? `✅ Terminer (${recues} page${recues > 1 ? "s" : ""})` : "Annuler"}</button>
             : <button className="btn" onClick={fermer}>Annuler</button>}>
@@ -65,8 +87,8 @@ export function PhotoTelephone({ onPhoto, label = "📱 Téléphone", serie = fa
             <div style={{ textAlign: "center" }}>
               <p style={{ marginTop: 0 }}>
                 {serie
-                  ? "Scannez ce QR code avec votre téléphone (même WiFi), puis photographiez les pages une à une, dans l'ordre : chacune arrive ici. Terminez depuis le téléphone ou d'ici."
-                  : "Scannez ce QR code avec votre téléphone (même WiFi), prenez une photo : elle arrivera ici automatiquement."}
+                  ? "Dans le Dictaphone, « Pages et photos » › Scanner le QR code, puis scannez les pages : chacune arrive ici. Ou visez ce QR code avec l'appareil photo de n'importe quel téléphone. Même WiFi que l'ordinateur."
+                  : "Dans le Dictaphone, « Pages et photos » › Scanner le QR code, puis prenez la photo. Ou visez ce QR code avec l'appareil photo de n'importe quel téléphone. Même WiFi que l'ordinateur."}
               </p>
               <div className="qr-portable" style={{ display: "inline-block" }} dangerouslySetInnerHTML={{ __html: info.qrSvg }} />
               <p className="meta" style={{ marginTop: 12 }}>

@@ -51,5 +51,5 @@ export const adresseDuPartage = (info: PortableInfo | null): string => info?.url
 export function titreDuPartage(info: PortableInfo | null): string {
   return info
     ? `Partage ouvert sur ${info.ip}:${info.port} — cliquez pour le fermer`
-    : "Partage fermé — cliquez pour l'ouvrir et recevoir ce que dicte le téléphone";
+    : "Partage fermé — cliquez pour l'ouvrir : le planning et les observations dans le navigateur du téléphone";
 }

@@ -412,6 +412,12 @@ export default function Reglages() {
       </>}
 
       {onglet === "partage" && <>
+      {/* Le Dictaphone : ses dictées et ses notes passent par Nuage, où que soit l'ordinateur. */}
+      <TelephoneNuage />
+
+      {/* Ce que le téléphone a déposé : au même endroit que ce par quoi ça passe. */}
+      <VocauxRecus />
+
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <h3 style={{ margin: 0 }}>📱 Version portable (WiFi)</h3>
@@ -421,11 +427,11 @@ export default function Reglages() {
           <InterrupteurPartage />
         </div>
         <p style={{ color: "var(--text-2)", marginTop: 10, fontSize: 13, lineHeight: 1.6 }}>
-          Planning, prévu et bilan, séquences, élèves — en lecture sur votre téléphone, par
-          le WiFi. L'onglet <b>👁 Observer</b> se remplit depuis le téléphone, et l'application
-          <b> Dictaphone</b> y dépose ce que vous avez dicté en classe. Rien ne passe par
-          internet. Le partage reste ouvert tant que vous ne le fermez pas — le voyant de la
-          barre du haut le rappelle depuis n'importe quelle page.
+          Planning, prévu et bilan, séquences, élèves — en lecture dans le navigateur de votre
+          téléphone, par le WiFi. L'onglet <b>👁 Observer</b> se remplit depuis le téléphone.
+          Rien ne passe par internet. Le partage reste ouvert tant que vous ne le fermez pas —
+          le voyant de la barre du haut le rappelle depuis n'importe quelle page. Le
+          <b> Dictaphone</b>, lui, n'en a pas besoin : ses dictées passent par Nuage.
         </p>
         {!portable ? (
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -442,49 +448,11 @@ export default function Reglages() {
                 Ou ouvrez cette adresse dans le navigateur : <br />
                 <code style={{ fontSize: 12 }}>{portable.url.replace(/\?t=.*/, "")}</code>
               </p>
-              {/* L'application Dictaphone, elle, a besoin de l'adresse entière
-                  — jeton compris : elle revient toute seule, sans QR code.
-
-                  On lui donne l'adresse par le NOM de l'ordinateur plutôt que
-                  par son IP : la box redistribue une IP après chaque coupure,
-                  et le téléphone, qui avait retenu l'ancienne, ne trouvait
-                  plus personne. Le nom, lui, ne change pas. */}
-              <p style={{ margin: "0 0 10px", fontSize: 12, color: "var(--text-2)" }}>
-                Pour l'application <b>Dictaphone</b>, collez-y cette adresse :<br />
-                <code style={{ fontSize: 11.5, wordBreak: "break-all" }}>{portable.urlNom || portable.url}</code>
-                <button className="btn ghost sm" style={{ marginLeft: 6 }}
-                  onClick={() => {
-                    navigator.clipboard?.writeText(portable.urlNom || portable.url);
-                    toast("Adresse copiée.", { icone: "📋" });
-                  }}>
-                  Copier
-                </button>
-              </p>
-              {portable.urlNom && (
-                <p style={{ margin: "0 0 10px", fontSize: 11.5, color: "var(--text-2)", lineHeight: 1.5 }}>
-                  Cette adresse passe par le nom de l'ordinateur ({portable.hote}) : elle vaudra
-                  encore demain, même si la box lui donne une autre IP. Si le téléphone ne le
-                  trouve pas — certains réseaux d'école bloquent cette découverte —, essayez
-                  par l'adresse numérique :<br />
-                  <code style={{ fontSize: 11, wordBreak: "break-all" }}>{portable.url}</code>
-                  <button className="btn ghost sm" style={{ marginLeft: 6 }}
-                    onClick={() => { navigator.clipboard?.writeText(portable.url); toast("Adresse copiée.", { icone: "📋" }); }}>
-                    Copier
-                  </button>
-                </p>
-              )}
               <button className="btn danger" onClick={arreterPortable}>⏹ Arrêter le partage</button>
             </div>
           </div>
         )}
       </div>
-
-      {/* L'autre chemin : par Nuage, quand le téléphone et l'ordinateur ne sont pas ensemble. */}
-      <TelephoneNuage />
-
-      {/* Ce que le téléphone a déposé, par un chemin ou par l'autre : au même
-          endroit que ce par quoi ça passe. */}
-      <VocauxRecus />
 
       </>}
 
