@@ -18,9 +18,8 @@
 import { api, type ObservationEleve } from "./api";
 import { GRILLES } from "./data/evaluationsDiagnostiques";
 import { normaliser } from "./competencesTravaillees";
-import { natureDe } from "./heures";
 import { pseudonymiser, restaurer } from "./confidentialite";
-import { phrasesQuiCitent, prenomDe } from "./veilleEleve";
+import { citeLePrenom, phrasesQuiCitent, prenomDe } from "./veilleEleve";
 
 /** Un observable de la grille, avec d'où il vient. */
 export interface Axe {
@@ -146,17 +145,21 @@ export const observationVide = (o: ObservationEleve) =>
  * Ce que le bilan d'un créneau dit de cet élève.
  *
  * Un bilan parle souvent de plusieurs élèves : on n'en garde que les phrases
- * qui nomment celui-ci — c'est la même règle que la veille sur un élève. S'il
- * n'est nommé nulle part, on garde tout : le créneau était le sien, et
- * l'enseignant tranchera.
+ * qui nomment celui-ci — c'est la même règle que la veille sur un élève. Si
+ * le bilan ne nomme personne, il parle du groupe, donc de lui aussi : on garde
+ * tout. S'il en nomme d'autres (`noms`, toute la classe), ce qu'il dit d'eux
+ * ne le regarde pas.
  */
-export function noteDepuisLeBilan(bilan: string, nomEleve: string): string {
+export function noteDepuisLeBilan(bilan: string, nomEleve: string, noms: string[] = []): string {
   const part = phrasesQuiCitent(bilan, prenomDe(nomEleve));
-  return (part.trim() || bilan.trim());
+  if (part.trim()) return part.trim();
+  return noms.some((n) => citeLePrenom(bilan, prenomDe(n))) ? "" : bilan.trim();
 }
 
 /**
- * Les fiches d'un créneau, mises à jour depuis son bilan.
+ * Les fiches d'un créneau, mises à jour depuis son bilan : celles qu'on y a
+ * posées sur un axe, avec « 👁 Observer ». Une fiche sans axe n'observe rien :
+ * le bilan va alors aux notes de l'élève (voir notesDuBilan.ts).
  *
  * Rendue séparément pour être vérifiable : c'est elle qui, en se trompant,
  * porterait au dossier d'un élève ce qui a été dit d'un autre.
@@ -167,69 +170,18 @@ export function fichesANourrir(
   bilan: string,
   nomDe: (eleveId: string) => string,
   quand: string,
+  noms: string[] = [],
 ): ObservationEleve[] {
   const suite: ObservationEleve[] = [];
   for (const o of observations) {
-    if (o.creneauId !== creneauId) continue;
-    const note = noteDepuisLeBilan(bilan, nomDe(o.eleveId));
+    if (o.creneauId !== creneauId || !o.axe.trim()) continue;
+    const note = noteDepuisLeBilan(bilan, nomDe(o.eleveId), noms);
     // Rien de neuf : on n'écrit pas pour écrire, et l'on ne touche pas à
     // `dateMaj` — la synchronisation transporterait la ligne pour rien.
     if (note === o.note) continue;
     suite.push({ ...o, note, dateMaj: quand });
   }
   return suite;
-}
-
-/**
- * Les fiches qu'un bilan fait naître.
- *
- * Le bilan d'un créneau va de lui-même au dossier de ses élèves : une fiche
- * par élève du créneau qui n'en a pas encore, posée sur le créneau, sans
- * axe — l'enseignant le choisira dans le dossier s'il le veut. Rien tant que
- * le bilan est vide, et rien pour une réunion. Les fiches déjà posées, elles,
- * se nourrissent (voir `fichesANourrir`).
- */
-export function fichesACreer(
-  observations: ObservationEleve[],
-  creneau: { id: string; date: string; elevesIds: string[]; contexte: string; competence: string },
-  bilan: string,
-  nomDe: (eleveId: string) => string,
-  quand: string,
-  id: () => string,
-): ObservationEleve[] {
-  if (!bilan.trim()) return [];
-  const deja = new Set(observations.filter((o) => o.creneauId === creneau.id).map((o) => o.eleveId));
-  return [...new Set(creneau.elevesIds)].filter((eleveId) => !deja.has(eleveId)).map((eleveId) => ({
-    ...nouvelleObservation({ id: id(), eleveId, date: creneau.date, creneauId: creneau.id, contexte: creneau.contexte, competence: creneau.competence, quand }),
-    note: noteDepuisLeBilan(bilan, nomDe(eleveId)),
-  }));
-}
-
-/**
- * Ce qu'un bilan enregistré change aux dossiers des élèves : les fiches déjà
- * posées sur le créneau, qu'il nourrit, et celles qu'il fait naître pour les
- * élèves du créneau qui n'en ont pas encore. Le cahier journal s'en sert à
- * chaque enregistrement ; le versement d'une dictée du téléphone aussi : une
- * dictée versée va au dossier des élèves comme un bilan tapé à la main.
- */
-export function fichesDuBilan(
-  observations: ObservationEleve[],
-  creneau: { id: string; date: string; elevesJson?: string; nature?: string; matiere?: string } | undefined,
-  seance: { titre?: string; competences?: string; objectifs?: string } | undefined,
-  bilan: string,
-  nomDe: (eleveId: string) => string,
-  quand: string,
-  id: () => string,
-): { neuves: ObservationEleve[]; aEcrire: ObservationEleve[] } {
-  if (!creneau) return { neuves: [], aEcrire: [] };
-  let elevesIds: string[] = [];
-  try { elevesIds = natureDe(creneau) !== "reunion" ? JSON.parse(creneau.elevesJson || "[]") : []; } catch { elevesIds = []; }
-  const neuves = fichesACreer(observations, {
-    id: creneau.id, date: creneau.date.slice(0, 10), elevesIds,
-    contexte: [creneau.matiere, seance?.titre].filter(Boolean).join(" — "),
-    competence: [seance?.competences, seance?.objectifs].filter(Boolean).join(" ").slice(0, 300),
-  }, bilan, nomDe, quand, id);
-  return { neuves, aEcrire: [...fichesANourrir(observations, creneau.id, bilan, nomDe, quand), ...neuves] };
 }
 
 // ── Ranger le bilan en colonnes ───────────────────────────────────────────
