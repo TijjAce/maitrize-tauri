@@ -38,6 +38,9 @@ pub fn run() {
             // Par Nuage : les dictées, les notes, l'emploi du temps.
             relais_lire,
             relais_ecrire,
+            nuage_connexion_commencer,
+            nuage_connexion_attendre,
+            nuage_connexion_annuler,
             relais_oublier,
             relais_joignable,
             vocal_deposer,

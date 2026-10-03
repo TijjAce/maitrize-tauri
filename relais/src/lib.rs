@@ -5,12 +5,17 @@
 //! parlent donc par un dossier de Nuage, que chacun visite quand il a du
 //! réseau — le téléphone y dépose, l'ordinateur y relève.
 //!
+//! Le dossier n'est ouvert qu'au compte Nuage de l'enseignant : aucun lien de
+//! partage, aucun mot de passe qui circulerait. Le téléphone s'y connecte
+//! lui-même, avec ce compte (voir `connexion`), et Nuage lui donne un mot de
+//! passe d'application à lui, qu'on retire depuis Nuage quand on veut.
+//!
 //! Ce qui s'y pose est illisible pour Nuage, et pour le téléphone lui-même :
 //!
 //!   - un **dépôt** (dictée, note, page scannée) est scellé pour l'ordinateur,
 //!     avec sa clé publique. Seule la clé privée, qui ne quitte pas
 //!     l'ordinateur, le rouvre : un téléphone perdu ne relit pas ce qu'il a
-//!     déposé, et le lien du dossier ne donne que des fichiers fermés ;
+//!     déposé, et Nuage ne garde que des fichiers fermés ;
 //!   - le **retour** (l'emploi du temps des jours à venir, sans personne
 //!     dedans) est chiffré avec une clé que le téléphone reçoit à l'appairage.
 //!
@@ -25,6 +30,7 @@ use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use x25519_dalek::{PublicKey, StaticSecret};
 
+pub mod connexion;
 pub mod porte;
 
 type R<T> = Result<T, String>;
@@ -45,21 +51,20 @@ const CONTEXTE_DEPOT: &[u8] = b"maitrize-relais-depot-v1";
 
 /// Ce que le téléphone reçoit en scannant le QR code de l'ordinateur.
 ///
-/// Un lien de partage vers le seul dossier du relais — ni l'identifiant ni le
-/// mot de passe du compte Nuage —, la clé publique pour sceller les dépôts,
-/// et la clé du retour. Le lien se révoque dans Nuage : un téléphone perdu
-/// ne garde alors rien d'utilisable.
+/// Où est le dossier du relais, et dans quel compte ; la clé publique pour
+/// sceller les dépôts, et la clé du retour. Aucun mot de passe : le dossier
+/// n'est ouvert qu'à ce compte, et le téléphone doit s'y connecter lui-même
+/// (voir `connexion`). Un QR code photographié par-dessus l'épaule n'ouvre
+/// rien.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Appairage {
     /// L'adresse de Nuage, sans barre finale : « https://nuage03.apps.education.fr ».
     pub serveur: String,
-    /// Le chemin WebDAV du lien : « public.php/dav/files/<jeton> » ou « public.php/webdav ».
-    pub base: String,
-    /// Le jeton du lien de partage, et son mot de passe s'il en a un.
-    pub jeton: String,
-    #[serde(default)]
-    pub mot_de_passe: String,
+    /// Le compte qui porte le dossier, tel que Nuage le nomme : le seul qui y entre.
+    pub compte: String,
+    /// Le dossier du relais dans ce compte : « Maitrize-Telephone ».
+    pub dossier: String,
     /// La clé publique de l'ordinateur (X25519, base64) : on scelle pour elle.
     pub cle_depot: String,
     /// La clé du retour (32 octets, base64).
@@ -67,48 +72,32 @@ pub struct Appairage {
 }
 
 /// La version du code d'appairage : un téléphone d'une version plus ancienne le refuse proprement.
-const VERSION_CODE: u8 = 1;
+const VERSION_CODE: u8 = 2;
+/// La première, en septembre 2026, portait un lien de partage et son mot de passe.
+const VERSION_PAR_LIEN: u8 = 1;
 const HTTPS: &str = "https://";
-
-/// Les deux chemins qu'un lien de partage prend chez Nextcloud, du plus récent au plus ancien.
-fn base_recente(jeton: &str) -> String { format!("public.php/dav/files/{jeton}") }
-const BASE_ANCIENNE: &str = "public.php/webdav";
 
 impl Appairage {
     /**
      * Le texte du QR code.
      *
      * Serré : un QR code se lit d'autant mieux, sur un écran, qu'il a peu de
-     * modules. Les clés y sont en octets et non en texte, le chemin du lien
-     * tient en un octet quand c'est l'un des deux que Nextcloud connaît, et
-     * « https:// » ne s'écrit pas — un relais est toujours en HTTPS.
+     * modules. Les clés y sont en octets et non en texte, et « https:// » ne
+     * s'écrit pas — un relais est toujours en HTTPS.
      */
     pub fn en_code(&self) -> String {
         let mut o = vec![VERSION_CODE];
         o.extend_from_slice(&cle_de(&self.cle_depot).unwrap_or([0; 32]));
         o.extend_from_slice(&cle_de(&self.cle_retour).unwrap_or([0; 32]));
-        let mut texte = |s: &str| {
+        for s in [self.serveur.strip_prefix(HTTPS).unwrap_or(&self.serveur), &self.compte, &self.dossier] {
             let octets = s.as_bytes();
-            o.push(octets.len().min(255) as u8);
-            o.extend_from_slice(&octets[..octets.len().min(255)]);
-        };
-        texte(self.serveur.strip_prefix(HTTPS).unwrap_or(&self.serveur));
-        texte(&self.jeton);
-        texte(&self.mot_de_passe);
-        if self.base == base_recente(&self.jeton) {
-            o.push(0);
-        } else if self.base == BASE_ANCIENNE {
-            o.push(1);
-        } else {
-            o.push(2);
-            let octets = self.base.as_bytes();
             o.push(octets.len().min(255) as u8);
             o.extend_from_slice(&octets[..octets.len().min(255)]);
         }
         format!("{PREFIXE_CODE}{}", URL_SAFE_NO_PAD.encode(o))
     }
 
-    /// Relit un code scanné ou collé ; dit pourquoi il ne convient pas.
+    /// Relit un code scanné ; dit pourquoi il ne convient pas.
     pub fn depuis_code(brut: &str) -> R<Appairage> {
         let abime = || "Ce code est incomplet ou abîmé.".to_string();
         let propre: String = brut.chars().filter(|c| !c.is_whitespace()).collect();
@@ -117,6 +106,9 @@ impl Appairage {
         let o = URL_SAFE_NO_PAD.decode(corps).map_err(|_| abime())?;
         match o.first() {
             Some(&VERSION_CODE) => {}
+            Some(&VERSION_PAR_LIEN) => return Err(
+                "Ce QR code ouvrait le dossier par un lien de partage, qui n'a plus cours. Sur l'ordinateur, \
+                 Réglages › Téléphone : réservez le dossier à votre compte, puis scannez le nouveau QR code.".into()),
             Some(_) => return Err("Ce code vient d'une version plus récente de Maitrize : mettez le dictaphone à jour.".into()),
             None => return Err(abime()),
         }
@@ -124,24 +116,17 @@ impl Appairage {
         let cle_depot: [u8; 32] = suite.prendre(32).and_then(|m| m.try_into().ok()).ok_or_else(abime)?;
         let cle_retour: [u8; 32] = suite.prendre(32).and_then(|m| m.try_into().ok()).ok_or_else(abime)?;
         let hote = suite.texte().ok_or_else(abime)?;
-        let jeton = suite.texte().ok_or_else(abime)?;
-        let mot_de_passe = suite.texte().ok_or_else(abime)?;
-        let base = match suite.prendre(1).ok_or_else(abime)?[0] {
-            0 => base_recente(&jeton),
-            1 => BASE_ANCIENNE.to_string(),
-            2 => suite.texte().ok_or_else(abime)?,
-            _ => return Err(abime()),
-        };
-        if hote.is_empty() || jeton.is_empty() || base.is_empty() {
+        let compte = suite.texte().ok_or_else(abime)?;
+        let dossier = suite.texte().ok_or_else(abime)?;
+        if hote.is_empty() || compte.is_empty() || dossier.is_empty() {
             return Err("Ce code ne dit pas où déposer.".into());
         }
-        // Un relais en clair laisserait passer le jeton du lien à qui écoute :
-        // le code ne sait écrire que du HTTPS.
+        // Le code ne sait écrire que du HTTPS : le mot de passe du téléphone
+        // ne passera jamais en clair.
         Ok(Appairage {
             serveur: format!("{HTTPS}{hote}"),
-            base,
-            jeton,
-            mot_de_passe,
+            compte,
+            dossier,
             cle_depot: cle_en_texte(&cle_depot),
             cle_retour: cle_en_texte(&cle_retour),
         })
@@ -416,9 +401,8 @@ mod tests {
         let retour = nouvelle_cle();
         let a = Appairage {
             serveur: "https://nuage03.apps.education.fr".into(),
-            base: "public.php/dav/files/aBcD1234".into(),
-            jeton: "aBcD1234".into(),
-            mot_de_passe: "un mot de passe, avec des espaces".into(),
+            compte: "clement.titet".into(),
+            dossier: "Maitrize-Telephone".into(),
             cle_depot: cle_en_texte(&publique),
             cle_retour: cle_en_texte(&retour),
         };
@@ -481,25 +465,28 @@ mod tests {
         clair.serveur = "http://nuage.exemple.fr".into();
         assert!(Appairage::depuis_code(&clair.en_code()).unwrap().serveur.starts_with("https://"));
         // Un code d'une version à venir se refuse avec la marche à suivre.
-        let mut futur = URL_SAFE_NO_PAD.decode(code.strip_prefix(PREFIXE_CODE).unwrap()).unwrap();
-        futur[0] = 9;
-        let erreur = Appairage::depuis_code(&format!("{PREFIXE_CODE}{}", URL_SAFE_NO_PAD.encode(futur))).unwrap_err();
-        assert!(erreur.contains("mettez le dictaphone à jour"), "{erreur}");
+        let avec_version = |v: u8| {
+            let mut octets = URL_SAFE_NO_PAD.decode(code.strip_prefix(PREFIXE_CODE).unwrap()).unwrap();
+            octets[0] = v;
+            Appairage::depuis_code(&format!("{PREFIXE_CODE}{}", URL_SAFE_NO_PAD.encode(octets))).unwrap_err()
+        };
+        assert!(avec_version(9).contains("mettez le dictaphone à jour"));
+        // Celui d'avant, qui portait un lien de partage, dit où trouver le nouveau.
+        assert!(avec_version(1).contains("réservez le dossier à votre compte"));
     }
 
     #[test]
-    fn le_code_reste_court_pour_que_le_qr_code_se_lise() {
+    fn le_code_ne_porte_aucun_mot_de_passe() {
         let (a, _, _) = appairage();
-        // Moins de deux cent trente caractères : un QR code d'une cinquantaine de modules de côté.
-        assert!(a.en_code().len() < 230, "{} caractères", a.en_code().len());
-        // Les trois chemins d'un lien font l'aller-retour : le récent, l'ancien, et un autre.
-        for base in ["public.php/dav/files/aBcD1234".to_string(), "public.php/webdav".to_string(), "nextcloud/public.php/webdav".to_string()] {
-            let variante = Appairage { base: base.clone(), ..a.clone() };
-            assert_eq!(Appairage::depuis_code(&variante.en_code()).unwrap().base, base);
-        }
-        // Un lien sans mot de passe aussi.
-        let ouvert = Appairage { mot_de_passe: String::new(), ..a.clone() };
-        assert_eq!(Appairage::depuis_code(&ouvert.en_code()).unwrap(), ouvert);
+        let octets = URL_SAFE_NO_PAD.decode(a.en_code().strip_prefix(PREFIXE_CODE).unwrap()).unwrap();
+        // Une version, deux clés, puis l'hôte, le compte et le dossier, chacun précédé de sa longueur : rien d'autre.
+        let textes = ["nuage03.apps.education.fr", "clement.titet", "Maitrize-Telephone"];
+        assert_eq!(octets.len(), 1 + 64 + textes.iter().map(|t| 1 + t.len()).sum::<usize>());
+        // Moins de deux cents caractères : un QR code d'une cinquantaine de modules de côté.
+        assert!(a.en_code().len() < 200, "{} caractères", a.en_code().len());
+        // Un compte sans hôte ou sans dossier ne dit pas où déposer.
+        let sans_compte = Appairage { compte: String::new(), ..a.clone() };
+        assert!(Appairage::depuis_code(&sans_compte.en_code()).unwrap_err().contains("où déposer"));
     }
 
     #[test]

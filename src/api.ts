@@ -829,7 +829,8 @@ export const api = {
   telephoneCode: () => invoke<CodeTelephone>("telephone_code"),
   /** Le code à saisir sur l'autre ordinateur, pour qu'il relève lui aussi. */
   telephoneCodeOrdinateur: () => invoke<string>("telephone_code_ordinateur"),
-  telephoneCodeAppliquer: (code: string) => invoke<EtatRelais>("telephone_code_appliquer", { code }),
+  telephoneCodeAppliquer: (code: string, bureau?: string, compte?: { serveur: string; utilisateur: string; motDePasse: string }) =>
+    invoke<EtatRelais>("telephone_code_appliquer", { code, bureau: bureau ?? null, compte: compte ?? null }),
   /** Révoque le lien et oublie les clés ; `sansRevoquer` quand Nuage ne répond pas. */
   telephoneOublier: (sansRevoquer = false) => invoke<EtatRelais>("telephone_oublier", { sansRevoquer }),
   telephoneRelever: () => invoke<BilanReleve>("telephone_relever"),
@@ -840,15 +841,18 @@ export const api = {
 /** L'état du relais du téléphone : rien de secret n'y figure. */
 export interface EtatRelais {
   relie: boolean; serveur: string; dossier: string;
-  /** Cet ordinateur a créé le lien : c'est lui qui le révoque et le prolonge. */
+  /** Le compte qui seul ouvre le dossier du téléphone (« prenom.nom »). */
+  compteDuDossier: string;
+  /** Un relais d'avant octobre 2026, encore ouvert par un lien de partage : à réserver au compte. */
+  parLien: boolean;
+  /** Cet ordinateur connaît le compte : il peut refaire le lien, et refermer celui d'un relais d'avant. */
   proprietaire: boolean;
-  /** Le jour où Nuage fermera le lien, s'il en impose un. */
-  expire: string; creeLe: string;
+  creeLe: string;
   /** Le compte Nuage déjà connu de Maitrize, tel qu'on le montre. */
   compte: string;
 }
 export interface CompteConnu { id: string; libelle: string }
-export interface CodeTelephone { code: string; qrSvg: string }
+export interface CodeTelephone { qrSvg: string }
 /** Ce qu'une relève a rapporté. */
 export interface BilanReleve {
   relie: boolean; occupe: boolean; vocaux: number; notes: number; pages: number;
