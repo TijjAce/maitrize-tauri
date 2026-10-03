@@ -9,7 +9,7 @@ import { printHTML, escapeHtml } from "../print";
 import { useEcoute, type TrancheAudio } from "../ecoute";
 import { ZoneVivante } from "../components/ZoneVivante";
 import {
-  moteurActif, paroleMinimale, plafondDuMorceau, sortieDeLAudio, transcrire, type Moteur,
+  choixIci, paroleMinimale, plafondDuMorceau, sortieDeLAudio, transcrire, type Choix, type Moteur,
 } from "../transcription";
 import {
   GENRES, ajouterAuDocument, ajouterAuTexte, assezPourResumer, convertirAnciennes,
@@ -172,6 +172,8 @@ export default function Reunions() {
   modeRef.current = mode;
   const moteurRef = React.useRef<Moteur>("ligne");
   moteurRef.current = moteur;
+  // Le modèle avec : relu au départ de chaque écoute, comme le moteur.
+  const choixRef = React.useRef<Choix>({ moteur: "ligne" });
   const horsLigneRef = React.useRef(false);
   horsLigneRef.current = horsLigne;
   const resumeEnCours = React.useRef(false);
@@ -193,7 +195,12 @@ export default function Reunions() {
    * l'application — et la réunion suivante repartait chez Mistral.
    */
   const relireLeMoteur = React.useCallback(async () => {
-    setMoteur(await moteurActif().catch(() => "ligne" as Moteur));
+    const c = await choixIci("reunions");
+    // Un modèle voulu mais absent : l'écoute reste ici, et chaque passage dit
+    // pourquoi il ne s'écrit pas — rien ne part en ligne à sa place.
+    const choix: Choix = "erreur" in c ? { moteur: "local", modele: "" } : c;
+    choixRef.current = choix;
+    setMoteur(choix.moteur);
   }, []);
 
   React.useEffect(() => {
@@ -382,7 +389,7 @@ export default function Reunions() {
         r.onerror = () => rej(new Error("Enregistrement illisible."));
         r.readAsDataURL(t.blob);
       });
-      const morceau = await transcrire(b64, moteurRef.current);
+      const morceau = await transcrire(b64, choixRef.current);
       // Deux endroits, un seul visible : la source garde le mot à mot, et
       // l'encadré reçoit la parole brute à la suite — c'est elle qu'on voit
       // s'écrire, et que l'agent rangera au prochain passage.

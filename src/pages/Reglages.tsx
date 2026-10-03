@@ -12,7 +12,8 @@ import { lireAcceptationCgu, CguAcceptation } from "../components/CGU";
 import { getVersion } from "@tauri-apps/api/app";
 import { copierLeBureau, suivreLaCopie } from "../components/CopieDuBureau";
 import { CONTACTS, REPERES, cleEtab } from "../etablissement";
-import { CLE_MOTEUR } from "../transcription";
+import { USAGES, cleUsage, type Usage } from "../transcription";
+import { Aide } from "../components/Aide";
 import { VocauxRecus } from "../components/VocauxRecus";
 import { TelephoneNuage } from "../components/TelephoneNuage";
 import { listen } from "@tauri-apps/api/event";
@@ -36,8 +37,6 @@ export default function Reglages() {
   const [etats, setEtats] = React.useState<EtatModele[] | null>(null);
   // L'essai du moteur local : il vaut mieux découvrir un chemin faux ici
   // qu'au milieu d'une ESS.
-  const [whisperEnCours, setWhisperEnCours] = React.useState(false);
-  const [whisperMsg, setWhisperMsg] = React.useState("");
   const [dataMsg, setDataMsg] = React.useState("");
   const [showMatieres, setShowMatieres] = React.useState(false);
   const [cgu, setCgu] = React.useState<CguAcceptation | null>(null);
@@ -98,14 +97,6 @@ export default function Reglages() {
     // Tout ce qui se voit doit se voir tout de suite : sinon on clique, rien ne
     // bouge, et l'on croit le réglage cassé.
     if (["apparence", "accent", "styleInterface", "liseret", "tailleTexte"].includes(cle)) applyTheme(next);
-  };
-
-  const testerWhisper = async () => {
-    setWhisperEnCours(true);
-    setWhisperMsg("");
-    try { setWhisperMsg("✅ " + await api.whisperTester()); }
-    catch (e) { setWhisperMsg("❌ " + texteErreur(e)); }
-    finally { setWhisperEnCours(false); }
   };
 
   const tester = async () => {
@@ -336,29 +327,7 @@ export default function Reglages() {
         )}
       </div>
 
-      <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
-        <h3 style={{ marginTop: 0 }}>🎙 Transcription des réunions, des dictées et des vocaux</h3>
-        <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13, lineHeight: 1.55 }}>
-          L'audio d'une réunion est ce qu'il y a de plus sensible : une famille qui parle
-          de son enfant. En local, il ne quitte pas cet ordinateur, et une
-          réunion en zone blanche s'écrit quand même. Les vocaux du téléphone et les
-          dictées au micro se transcrivent sur cet ordinateur dès qu'un modèle y est,
-          en ligne sinon.
-        </p>
-        <Field label="Moteur des réunions">
-          <Select value={s[CLE_MOTEUR] === "local" ? "local" : "ligne"}
-            onChange={(e) => set(CLE_MOTEUR, e.target.value)}>
-            <option value="ligne">En ligne — Mistral (Voxtral), rien à installer</option>
-            <option value="local">Sur cet ordinateur — l'audio ne sort pas, et le réseau non plus</option>
-          </Select>
-        </Field>
-        <InstallationLocale tester={testerWhisper} enCours={whisperEnCours} message={whisperMsg} />
-        <p style={{ color: "var(--text-2)", fontSize: 12, margin: "10px 0 0", lineHeight: 1.5 }}>
-          Le compte rendu, lui, est rangé par l'IA en ligne — c'est du texte, et les prénoms
-          d'élèves y sont masqués avant l'envoi. Pour qu'une réunion ne laisse rien partir du
-          tout, choisissez « Rien en ligne » pendant la réunion, dans la barre de l'onglet Réunions.
-        </p>
-      </div>
+      <Transcription />
 
       </>}
 
@@ -1094,28 +1063,20 @@ function Repli({ titre, resume, children }: { titre: string; resume?: React.Reac
   );
 }
 
-// ── Transcription sur cet ordinateur ──────────────────────────────────────
+// ── La transcription ──────────────────────────────────────────────────────
 //
-// Il n'y a plus rien à installer : Whisper tourne dans l'application. Seuls
-// les poids se téléchargent, une fois, depuis cet écran — après quoi une
-// réunion se transcrit sans réseau, et l'audio ne sort jamais de la machine.
-
-const CE_QUE_VALENT: Record<string, string> = {
-  tiny: "le plus rapide, mais il se trompe souvent sur les noms",
-  base: "le bon compromis : il suit la parole sans effort",
-  small: "le plus juste, et deux à trois fois plus lent",
-};
+// Un moteur par usage — réunions, observations d'élève, dictées —, avec le
+// modèle de son choix ; puis les modèles eux-mêmes, à télécharger une fois.
+// Le pourquoi (où part l'audio, ce que vaut chaque modèle) est derrière le
+// « ? » : le réglage se lit d'un coup d'œil.
 
 const enMo = (octets: number) => (octets > 1e9 ? (octets / 1e9).toFixed(1) + " Go" : Math.round(octets / 1e6) + " Mo");
 
-function InstallationLocale({ tester, enCours, message }: {
-  tester: () => void;
-  enCours: boolean;
-  message: string;
-}) {
+function Transcription() {
   const [etat, setEtat] = React.useState<EtatWhisper | null>(null);
-  const [avancement, setAvancement] = React.useState<{ fichier: string; faits: number; total: number } | null>(null);
+  const [avancement, setAvancement] = React.useState<{ faits: number; total: number } | null>(null);
   const [telecharge, setTelecharge] = React.useState("");
+  const [essai, setEssai] = React.useState<{ enCours: boolean; message: string }>({ enCours: false, message: "" });
 
   const relire = React.useCallback(() => { api.whisperEtat().then(setEtat).catch(() => setEtat(null)); }, []);
   React.useEffect(() => { relire(); }, [relire]);
@@ -1125,12 +1086,23 @@ function InstallationLocale({ tester, enCours, message }: {
     return () => { p.then((off) => off()); };
   }, []);
 
+  const installes = new Map(etat?.installes ?? []);
+  // Du plus juste au plus rapide : on cherche d'ordinaire le premier.
+  const modeles = [...(etat?.disponibles ?? [])].reverse();
+  const vaut = (u: Usage) => etat?.usages.find(([nom]) => nom === u)?.[1] ?? "";
+
+  const choisir = async (u: Usage, valeur: string) => {
+    try { await api.settingSet(cleUsage(u), valeur); }
+    catch (e) { toast("Réglage non enregistré : " + texteErreur(e), { icone: "⚠️" }); }
+    relire();
+  };
+
   const telecharger = async (nom: string) => {
     setTelecharge(nom);
     setAvancement(null);
     try {
       await api.whisperTelechargerModele(nom);
-      toast("Modèle prêt : les réunions se transcrivent désormais sur cet ordinateur.", { icone: "✅" });
+      toast(`Modèle « ${nom} » prêt.`, { icone: "✅" });
       relire();
     } catch (e) {
       toast("Téléchargement impossible : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
@@ -1140,53 +1112,73 @@ function InstallationLocale({ tester, enCours, message }: {
     }
   };
 
+  /** Charge chaque modèle téléchargé, l'un après l'autre : dit lequel coince. */
+  const tester = async () => {
+    setEssai({ enCours: true, message: "" });
+    const dits: string[] = [];
+    for (const [nom] of etat?.installes ?? []) {
+      try { dits.push("✅ " + await api.whisperTester(nom)); }
+      catch (e) { dits.push(`❌ « ${nom} » : ${texteErreur(e)}`); }
+    }
+    setEssai({ enCours: false, message: dits.join(" · ") });
+  };
+
   return (
-    <div className="card" style={{ margin: "4px 0 12px", padding: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <b style={{ fontSize: 13.5 }}>
-          {etat?.modele ? `✅ Prêt — modèle « ${etat.modele} » (${enMo(etat.taille)})` : "Un modèle à télécharger, une fois"}
-        </b>
-        <div className="spacer" style={{ flex: 1 }} />
-        <button className="btn ghost sm" onClick={relire}>↻ Revérifier</button>
+    <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
+      <div className="transcription-tete">
+        <h3>🎙 Transcription</h3>
+        <Aide titre="La transcription">
+          <p><b>Sur cet ordinateur</b> : l'audio ne sort pas, et tout marche sans réseau. Chaque modèle se télécharge une fois.</p>
+          <ul>
+            <li><b>small</b> : le plus juste, deux à trois fois plus lent ; l'ordinateur chauffe.</li>
+            <li><b>base</b> : le bon compromis.</li>
+            <li><b>tiny</b> : le plus rapide, mais il se trompe souvent sur les noms.</li>
+          </ul>
+          <p><b>En ligne</b> : l'audio part chez Mistral (Voxtral, serveurs en Europe). Rien à télécharger, mais il faut du réseau.</p>
+          <p><b>Observations d'élève</b> : le Dictaphone du téléphone et la dictée d'atelier. <b>Dictées</b> : le micro du cahier journal et de l'assistant.</p>
+          <p>Le compte rendu d'une réunion est ensuite rangé par l'IA en ligne, prénoms d'élèves masqués. Pour que rien ne parte, choisissez « Rien en ligne » pendant la réunion.</p>
+          {etat?.dossier && <p>Les modèles sont rangés dans <code>{etat.dossier}</code>.</p>}
+        </Aide>
       </div>
 
-      <p style={{ color: "var(--text-2)", fontSize: 12.5, lineHeight: 1.55, margin: "0 0 10px" }}>
-        Rien à installer : le moteur est dans l'application. Il ne manque que les poids du modèle —
-        un seul téléchargement, avec du réseau cette fois-là, et les réunions suivantes s'en passent.
-      </p>
-
-      <div style={{ display: "grid", gap: 6 }}>
-        {(etat?.disponibles ?? []).map(([nom, , octets]) => {
-          const installe = etat?.modele === nom;
+      <div className="transcription-usages">
+        {USAGES.map((u) => {
+          const v = vaut(u.id);
           return (
-            <div key={nom} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <button className={`btn sm${installe ? " primary" : ""}`} disabled={!!telecharge || installe}
-                onClick={() => { void telecharger(nom); }} style={{ minWidth: 150 }}>
-                {installe ? `✅ ${nom}` : telecharge === nom ? "Téléchargement…" : `⬇️ ${nom} · ${enMo(octets)}`}
-              </button>
-              <span style={{ fontSize: 12.5, color: "var(--text-2)" }}>{CE_QUE_VALENT[nom] ?? ""}</span>
-            </div>
+            <React.Fragment key={u.id}>
+              <label htmlFor={`transcription-${u.id}`}>{u.label}</label>
+              <Select id={`transcription-${u.id}`} value={v || "aucun"} disabled={!etat}
+                onChange={(e) => { void choisir(u.id, e.target.value); }}>
+                {!v && <option value="aucun" disabled>Sur cet ordinateur · aucun modèle</option>}
+                {modeles.map(([nom]) => (
+                  <option key={nom} value={nom} disabled={!installes.has(nom)}>
+                    Sur cet ordinateur · {nom}{installes.has(nom) ? "" : " (à télécharger)"}
+                  </option>
+                ))}
+                <option value="ligne">En ligne · Mistral</option>
+              </Select>
+            </React.Fragment>
           );
         })}
       </div>
 
-      {telecharge && avancement && (
-        <div style={{ marginTop: 8, fontSize: 12.5, color: "var(--text-2)" }}>
-          {avancement.fichier} — {avancement.total
-            ? `${enMo(avancement.faits)} sur ${enMo(avancement.total)} (${Math.round((avancement.faits / avancement.total) * 100)} %)`
-            : `${enMo(avancement.faits)} reçus…`}
-        </div>
-      )}
-
-      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
-        <button className="btn" disabled={enCours || !etat?.modele} onClick={tester}>
-          {enCours ? "Essai en cours…" : "Tester la transcription"}
+      <div className="transcription-modeles">
+        <span className="meta">Modèles</span>
+        {modeles.map(([nom, , octets]) => installes.has(nom) ? (
+          <span key={nom} className="chip">✅ {nom} · {enMo(installes.get(nom) || octets)}</span>
+        ) : (
+          <button key={nom} className="btn sm" disabled={!!telecharge} onClick={() => { void telecharger(nom); }}>
+            {telecharge === nom
+              ? `${nom} · ${avancement?.total ? Math.round((avancement.faits / avancement.total) * 100) + " %" : "…"}`
+              : `⬇️ ${nom} · ${enMo(octets)}`}
+          </button>
+        ))}
+        <div className="spacer" style={{ flex: 1 }} />
+        <button className="btn ghost sm" disabled={essai.enCours || !installes.size} onClick={() => { void tester(); }}>
+          {essai.enCours ? "Essai…" : "Tester"}
         </button>
-        <span style={{ fontSize: 13 }}>{message}</span>
       </div>
-      <p style={{ color: "var(--text-2)", fontSize: 12, margin: "10px 0 0" }}>
-        Les modèles se rangent dans <code>{etat?.dossier}</code> — à supprimer si vous voulez la place.
-      </p>
+      {essai.message && <p style={{ fontSize: 12.5, margin: "8px 0 0" }}>{essai.message}</p>}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import React from "react";
 import { api } from "./api";
 import { messageMicro, useEcoute } from "./ecoute";
-import { moteurDeLaDicteeIci, paroleMinimale, plafondDuMorceau } from "./transcription";
+import { choixIci, paroleMinimale, plafondDuMorceau, type Usage } from "./transcription";
 
 // ── Dictée ────────────────────────────────────────────────────────────────
 // Enregistrement micro puis transcription, partagés par la dictée d'atelier,
@@ -50,7 +50,8 @@ export function texteDeLaDictee(morceaux: string[], echec: string | null): { tex
   return { texte: dits.join(" "), erreur: null };
 }
 
-export function useDictee(): Dictee {
+/** Une dictée au micro ; `usage` dit quel réglage de transcription la commande. */
+export function useDictee(usage: Usage = "dictees"): Dictee {
   const [etat, setEtat] = React.useState<EtatDictee>("repos");
   const [secondes, setSecondes] = React.useState(0);
   const [ici, setIci] = React.useState<boolean | null>(null);
@@ -67,6 +68,8 @@ export function useDictee(): Dictee {
   const enCours = React.useRef(0);
   const textes = React.useRef<string[]>([]);
   const echec = React.useRef<string | null>(null);
+  /** Le modèle choisi au départ : une dictée ne change pas de modèle en cours de route. */
+  const modele = React.useRef("");
   /** Les transcriptions se suivent : le moteur n'en mène qu'une à la fois, et le texte garde l'ordre de la parole. */
   const fil = React.useRef<Promise<void>>(Promise.resolve());
   const { demarrer: ecouter, arreter: cesser, secondes: secondesEcoutees } = useEcoute({
@@ -79,7 +82,7 @@ export function useDictee(): Dictee {
       fil.current = fil.current.then(async () => {
         if (enCours.current !== moi) return;
         try {
-          const texte = await api.transcrireLocal(await enBase64(t.blob));
+          const texte = await api.transcrireLocal(await enBase64(t.blob), modele.current);
           if (enCours.current === moi) textes.current[rang] = texte;
         } catch (e) {
           if (enCours.current !== moi) return;
@@ -105,15 +108,16 @@ export function useDictee(): Dictee {
   // Ce que l'écran peut dire avant même qu'on parle : l'audio sortira-t-il ?
   React.useEffect(() => {
     let vivant = true;
-    moteurDeLaDicteeIci().then((m) => { if (vivant) setIci("moteur" in m && m.moteur === "local"); }).catch(() => {});
+    void choixIci(usage).then((m) => { if (vivant) setIci("moteur" in m && m.moteur === "local"); });
     return () => { vivant = false; };
-  }, []);
+  }, [usage]);
 
   const demarrer = React.useCallback(async () => {
-    const choix = await moteurDeLaDicteeIci();
+    const choix = await choixIci(usage);
     if ("erreur" in choix) return choix.erreur;
     setIci(choix.moteur === "local");
     if (choix.moteur === "local") {
+      modele.current = choix.modele;
       enCours.current = ++seance.current;
       textes.current = [];
       echec.current = null;
@@ -140,7 +144,7 @@ export function useDictee(): Dictee {
       setEtat("repos");
       return messageMicro(e);
     }
-  }, [liberer, ecouter]);
+  }, [liberer, ecouter, usage]);
 
   const arreter = React.useCallback(async () => {
     if (enCours.current) {

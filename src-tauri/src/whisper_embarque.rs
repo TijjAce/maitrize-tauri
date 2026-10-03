@@ -44,14 +44,19 @@ pub fn dossier_modele(nom: &str) -> PathBuf {
     crate::db::data_dir().join("Whisper").join(nom)
 }
 
-/// Le modèle installé, le plus juste d'abord — c'est celui qu'on prendra.
-pub fn modele_installe() -> Option<String> {
+/// Les modèles complets sur cet ordinateur, du plus rapide au plus juste.
+pub fn modeles_installes() -> Vec<String> {
     MODELES
         .iter()
-        .rev()
         .map(|(nom, _, _)| *nom)
-        .find(|nom| est_complet(&dossier_modele(nom)))
+        .filter(|nom| est_complet(&dossier_modele(nom)))
         .map(str::to_string)
+        .collect()
+}
+
+/// Un nom de modèle qu'on connaît : il finit dans un chemin, on ne prend pas n'importe quoi.
+fn connu(nom: &str) -> R<()> {
+    if MODELES.iter().any(|(n, _, _)| *n == nom) { Ok(()) } else { Err(format!("Modèle inconnu : {nom}")) }
 }
 
 /// Un modèle n'est utilisable que si ses trois fichiers sont là.
@@ -309,6 +314,107 @@ pub fn pcm_du_wav(octets: &[u8]) -> R<Vec<f32>> {
     Err("Enregistrement sans données audio.".into())
 }
 
+// ── Quel moteur, pour quoi ────────────────────────────────────────────────
+//
+// Trois usages, réglés chacun pour soi : les réunions, les observations
+// d'élève (le Dictaphone du téléphone, la dictée d'atelier) et les dictées
+// au micro de l'application. Chacun se transcrit sur cet ordinateur avec le
+// modèle qu'on lui a choisi, ou en ligne — « small » pour une ESS qu'on veut
+// juste, « base » pour les vocaux de la journée, qui ne font pas chauffer.
+
+/// Ce à quoi sert une transcription.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Usage {
+    Reunions,
+    Observations,
+    Dictees,
+}
+
+impl Usage {
+    pub const TOUS: [Usage; 3] = [Usage::Reunions, Usage::Observations, Usage::Dictees];
+
+    pub fn nom(self) -> &'static str {
+        match self {
+            Usage::Reunions => "reunions",
+            Usage::Observations => "observations",
+            Usage::Dictees => "dictees",
+        }
+    }
+
+    pub fn depuis(nom: &str) -> R<Usage> {
+        Usage::TOUS.into_iter().find(|u| u.nom() == nom).ok_or_else(|| format!("Usage de transcription inconnu : {nom}"))
+    }
+
+    /// Son réglage. Il reste sur cet ordinateur, comme les modèles : il n'est
+    /// pas dans la liste de ce que la synchronisation emporte.
+    pub fn cle(self) -> String {
+        format!("transcription:{}", self.nom())
+    }
+}
+
+/// Le réglage d'avant, commun à tous : « local » ou « ligne ». Il vaut encore
+/// pour un usage qu'on n'a pas réglé.
+pub const CLE_ANCIENNE: &str = "moteurTranscription";
+
+/// Par quoi transcrire.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Choix {
+    /// Whisper, dans l'application, avec ce modèle : le son ne sort pas.
+    Local(String),
+    /// Le service en ligne.
+    EnLigne,
+}
+
+const SANS_MODELE: &str = "Aucun modèle de transcription sur cet ordinateur. Dans Réglages › Assistant IA, \
+    téléchargez-en un — ou choisissez la transcription en ligne.";
+
+/// Le plus juste des modèles installés.
+fn le_plus_juste(installes: &[String]) -> Option<String> {
+    MODELES.iter().rev().map(|(n, _, _)| *n).find(|n| installes.iter().any(|i| i == n)).map(str::to_string)
+}
+
+/**
+ * Le moteur d'un usage, d'après son réglage, l'ancien réglage commun et les
+ * modèles présents.
+ *
+ * Un modèle choisi puis effacé laisse la place au plus juste de ceux qui
+ * restent : l'audio ne sort toujours pas. Sans aucun modèle, un usage réglé
+ * sur cet ordinateur refuse plutôt que d'envoyer en ligne ce qu'on voulait
+ * garder.
+ *
+ * Un usage jamais réglé fait comme avant qu'on les distingue : les réunions
+ * suivent l'ancien réglage, en ligne par défaut ; le reste se transcrit sur
+ * l'ordinateur dès qu'un modèle y est.
+ */
+pub fn choix_de(usage: Usage, valeur: Option<&str>, ancien: Option<&str>, installes: &[String]) -> R<Choix> {
+    let local = |voulu: Option<&str>| -> R<Choix> {
+        voulu
+            .filter(|m| installes.iter().any(|i| i == m))
+            .map(str::to_string)
+            .or_else(|| le_plus_juste(installes))
+            .map(Choix::Local)
+            .ok_or_else(|| SANS_MODELE.to_string())
+    };
+    match valeur {
+        Some("ligne") => return Ok(Choix::EnLigne),
+        Some(m) if connu(m).is_ok() => return local(Some(m)),
+        _ => {}
+    }
+    match usage {
+        Usage::Reunions if ancien == Some("local") => local(None),
+        Usage::Reunions => Ok(Choix::EnLigne),
+        _ if !installes.is_empty() => local(None),
+        _ if ancien == Some("local") => Err(SANS_MODELE.into()),
+        _ => Ok(Choix::EnLigne),
+    }
+}
+
+/// Le moteur d'un usage, sur cet ordinateur, maintenant.
+pub fn choix_ici(c: &rusqlite::Connection, usage: Usage) -> R<Choix> {
+    let lire = |cle: &str| Some(crate::sync::get_setting(c, cle)).filter(|v| !v.is_empty());
+    choix_de(usage, lire(&usage.cle()).as_deref(), lire(CLE_ANCIENNE).as_deref(), &modeles_installes())
+}
+
 // ── Ce que l'application demande ──────────────────────────────────────────
 
 use crate::db::Db;
@@ -318,31 +424,53 @@ use tauri::{AppHandle, Emitter, State};
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EtatWhisper {
-    /// Le modèle prêt à servir, s'il y en a un.
-    pub modele: String,
-    /// Ce qu'il pèse sur le disque.
-    pub taille: u64,
+    /// Les modèles sur cet ordinateur, et ce que chacun pèse sur le disque.
+    pub installes: Vec<(String, u64)>,
     /// Les modèles qu'on peut aller chercher : nom, libellé, octets.
     pub disponibles: Vec<(String, String, u64)>,
     /// Où ils se rangent, pour qui veut aller voir.
     pub dossier: String,
+    /// Ce que chaque usage emploie maintenant : un modèle, « ligne », ou rien
+    /// s'il attend un modèle qui n'est pas là.
+    pub usages: Vec<(String, String)>,
 }
 
 #[tauri::command]
-pub fn whisper_etat() -> R<EtatWhisper> {
-    let modele = modele_installe().unwrap_or_default();
-    let taille = if modele.is_empty() {
-        0
-    } else {
-        std::fs::metadata(dossier_modele(&modele).join("model.safetensors"))
-            .map(|m| m.len())
-            .unwrap_or(0)
-    };
+pub fn whisper_etat(db: State<'_, Db>) -> R<EtatWhisper> {
+    let poids = |nom: &str| std::fs::metadata(dossier_modele(nom).join("model.safetensors")).map(|m| m.len()).unwrap_or(0);
+    let c = db.lock();
+    let usages = Usage::TOUS
+        .iter()
+        .map(|u| {
+            let vaut = match choix_ici(&c, *u) {
+                Ok(Choix::Local(m)) => m,
+                Ok(Choix::EnLigne) => "ligne".into(),
+                Err(_) => String::new(),
+            };
+            (u.nom().to_string(), vaut)
+        })
+        .collect();
     Ok(EtatWhisper {
-        modele,
-        taille,
+        installes: modeles_installes().into_iter().map(|n| { let o = poids(&n); (n, o) }).collect(),
         disponibles: MODELES.iter().map(|(n, d, o)| (n.to_string(), d.to_string(), *o)).collect(),
         dossier: crate::db::data_dir().join("Whisper").to_string_lossy().to_string(),
+        usages,
+    })
+}
+
+/// Ce que l'écran doit savoir pour transcrire un usage : où, et avec quel modèle.
+#[derive(serde::Serialize)]
+pub struct ChoixVu {
+    pub moteur: &'static str,
+    pub modele: String,
+}
+
+#[tauri::command]
+pub fn transcription_choix(db: State<'_, Db>, usage: String) -> R<ChoixVu> {
+    let usage = Usage::depuis(&usage)?;
+    Ok(match choix_ici(&db.lock(), usage)? {
+        Choix::Local(modele) => ChoixVu { moteur: "local", modele },
+        Choix::EnLigne => ChoixVu { moteur: "ligne", modele: String::new() },
     })
 }
 
@@ -396,8 +524,9 @@ pub async fn whisper_telecharger_modele(app: AppHandle, db: State<'_, Db>, nom: 
         std::fs::rename(&provisoire, &cible).map_err(|e| format!("Impossible de ranger le fichier : {e}"))?;
     }
 
-    // Télécharger un modèle, c'est vouloir s'en servir : on bascule la
-    // transcription sur cet ordinateur sans le redemander.
+    // Télécharger un modèle, c'est vouloir s'en servir : les réunions qu'on
+    // n'a pas réglées passent sur cet ordinateur sans le redemander. Un usage
+    // réglé garde son choix (voir `choix_de`).
     {
         let c = db.lock();
         crate::sync::set_setting(&c, "moteurTranscription", "local").map_err(|e| e.to_string())?;
@@ -405,53 +534,52 @@ pub async fn whisper_telecharger_modele(app: AppHandle, db: State<'_, Db>, nom: 
     Ok(nom)
 }
 
+/// Le modèle demandé, chargé en mémoire s'il ne l'est pas déjà.
+fn avec_le_modele<T>(moteur: &State<'_, Moteur>, nom: &str, f: impl FnOnce(&mut Charge) -> R<T>) -> R<T> {
+    connu(nom)?;
+    let mut garde = moteur.0.lock().map_err(|_| "Moteur occupé.".to_string())?;
+    if garde.as_ref().map(|c| c.nom != nom).unwrap_or(true) {
+        *garde = Some(Charge::ouvrir(nom)?);
+    }
+    f(garde.as_mut().expect("chargé juste au-dessus"))
+}
+
 /**
- * Transcrit un WAV déjà en mémoire, sur cette machine.
+ * Transcrit un WAV déjà en mémoire, sur cette machine, avec ce modèle — ou,
+ * sans modèle nommé, avec le plus juste de ceux qui sont là.
  *
  * Le modèle reste chargé d'un passage à l'autre : relire trois cents
  * méga-octets à chaque phrase coûterait plus cher que la transcription.
  */
-pub fn transcrire_octets(moteur: &State<'_, Moteur>, octets: &[u8]) -> R<String> {
+pub fn transcrire_octets(moteur: &State<'_, Moteur>, octets: &[u8], modele: &str) -> R<String> {
     let pcm = pcm_du_wav(octets)?;
     if pcm.is_empty() {
         return Err("Enregistrement vide.".into());
     }
-    let voulu = modele_installe()
-        .ok_or("Aucun modèle de transcription : téléchargez-en un dans Réglages · IA.")?;
-    let mut garde = moteur.0.lock().map_err(|_| "Moteur occupé.".to_string())?;
-    if garde.as_ref().map(|c| c.nom != voulu).unwrap_or(true) {
-        *garde = Some(Charge::ouvrir(&voulu)?);
-    }
-    garde.as_mut().expect("chargé juste au-dessus").transcrire(&pcm)
+    let voulu = if modele.is_empty() {
+        le_plus_juste(&modeles_installes()).ok_or(SANS_MODELE)?
+    } else {
+        modele.to_string()
+    };
+    avec_le_modele(moteur, &voulu, |c| c.transcrire(&pcm))
 }
 
 /// Transcrit un enregistrement (WAV 16 kHz mono, en base64) sur la machine.
 #[tauri::command]
-pub async fn transcrire_local(moteur: State<'_, Moteur>, audio_b64: String) -> R<String> {
+pub async fn transcrire_local(moteur: State<'_, Moteur>, audio_b64: String, modele: Option<String>) -> R<String> {
     use base64::Engine;
     let octets = base64::engine::general_purpose::STANDARD
         .decode(audio_b64.as_bytes())
         .map_err(|e| format!("Audio illisible : {e}"))?;
-    transcrire_octets(&moteur, &octets)
+    transcrire_octets(&moteur, &octets, modele.as_deref().unwrap_or(""))
 }
 
-/// Essaie la transcription et dit ce qui cloche, en clair.
+/// Charge un modèle et lui fait transcrire une seconde de silence : dit ce qui cloche, en clair.
 #[tauri::command]
-pub async fn whisper_tester(moteur: State<'_, Moteur>) -> R<String> {
-    let voulu = modele_installe()
-        .ok_or("Aucun modèle : téléchargez-en un ci-dessous.")?;
+pub async fn whisper_tester(moteur: State<'_, Moteur>, modele: String) -> R<String> {
     let debut = std::time::Instant::now();
-    let mut garde = moteur.0.lock().map_err(|_| "Moteur occupé.".to_string())?;
-    if garde.as_ref().map(|c| c.nom != voulu).unwrap_or(true) {
-        *garde = Some(Charge::ouvrir(&voulu)?);
-    }
-    // Une seconde de silence : de quoi vérifier que tout se met en place.
-    let muet = vec![0f32; m::SAMPLE_RATE];
-    garde.as_mut().expect("chargé").transcrire(&muet)?;
-    Ok(format!(
-        "Modèle « {voulu} » chargé en {} s. L'audio des réunions restera sur cet ordinateur.",
-        debut.elapsed().as_secs_f32().round()
-    ))
+    avec_le_modele(&moteur, &modele, |c| c.transcrire(&vec![0f32; m::SAMPLE_RATE]))?;
+    Ok(format!("« {modele} » prêt en {} s", debut.elapsed().as_secs_f32().round()))
 }
 
 #[cfg(test)]
@@ -552,6 +680,49 @@ mod tests {
         println!("{secondes:.1} s d'audio transcrites en {mis:?}");
         println!("→ {texte}");
         assert!(texte.to_lowercase().contains("famille"), "texte obtenu : {texte}");
+    }
+
+    fn noms(n: &[&str]) -> Vec<String> {
+        n.iter().map(|x| x.to_string()).collect()
+    }
+
+    #[test]
+    fn chaque_usage_prend_le_modele_qu_on_lui_a_choisi() {
+        let deux = noms(&["base", "small"]);
+        assert_eq!(choix_de(Usage::Observations, Some("base"), None, &deux), Ok(Choix::Local("base".into())));
+        assert_eq!(choix_de(Usage::Reunions, Some("small"), Some("ligne"), &deux), Ok(Choix::Local("small".into())));
+        assert_eq!(choix_de(Usage::Dictees, Some("ligne"), Some("local"), &deux), Ok(Choix::EnLigne));
+        // Un modèle choisi puis effacé : un autre de cet ordinateur, jamais le réseau.
+        assert_eq!(choix_de(Usage::Dictees, Some("tiny"), None, &deux), Ok(Choix::Local("small".into())));
+        let erreur = choix_de(Usage::Dictees, Some("tiny"), None, &[]).unwrap_err();
+        assert!(erreur.contains("Réglages") && erreur.contains("en ligne"), "{erreur}");
+    }
+
+    #[test]
+    fn un_usage_jamais_regle_fait_comme_avant() {
+        let un = noms(&["base"]);
+        // Les réunions suivent l'ancien réglage commun, en ligne par défaut.
+        assert_eq!(choix_de(Usage::Reunions, None, None, &un), Ok(Choix::EnLigne));
+        assert_eq!(choix_de(Usage::Reunions, None, Some("local"), &un), Ok(Choix::Local("base".into())));
+        assert!(choix_de(Usage::Reunions, None, Some("local"), &[]).is_err());
+        // Le reste se transcrit sur l'ordinateur dès qu'un modèle y est, quel que soit l'ancien réglage…
+        for usage in [Usage::Observations, Usage::Dictees] {
+            assert_eq!(choix_de(usage, None, Some("ligne"), &un), Ok(Choix::Local("base".into())));
+            assert_eq!(choix_de(usage, None, None, &noms(&["tiny", "small"])), Ok(Choix::Local("small".into())));
+            // … et en ligne sans modèle, sauf si l'on avait voulu le local : on le dit plutôt que d'envoyer.
+            assert_eq!(choix_de(usage, None, None, &[]), Ok(Choix::EnLigne));
+            assert!(choix_de(usage, None, Some("local"), &[]).is_err());
+        }
+        // Une valeur qu'on ne connaît pas compte pour rien.
+        assert_eq!(choix_de(Usage::Dictees, Some("../../ailleurs"), None, &un), Ok(Choix::Local("base".into())));
+    }
+
+    #[test]
+    fn les_usages_et_leurs_reglages() {
+        assert_eq!(Usage::depuis("observations"), Ok(Usage::Observations));
+        assert!(Usage::depuis("autre").is_err());
+        assert_eq!(Usage::Dictees.cle(), "transcription:dictees");
+        assert!(connu("small").is_ok() && connu("../small").is_err());
     }
 
     #[test]

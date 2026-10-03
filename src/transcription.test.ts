@@ -1,20 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { moteurDeLaDictee, paroleMinimale, plafondDuMorceau, sortieDeLAudio } from "./transcription";
+import { cleUsage, paroleMinimale, plafondDuMorceau, sortieDeLAudio, USAGES } from "./transcription";
 import { LACUNE, texteDeLaDictee } from "./dictee";
 
-describe("où se transcrit une dictée au micro", () => {
-  it("reste sur l'ordinateur dès qu'un modèle y est, quel que soit le réglage des réunions", () => {
-    expect(moteurDeLaDictee(true, null)).toEqual({ moteur: "local" });
-    expect(moteurDeLaDictee(true, "ligne")).toEqual({ moteur: "local" });
-    expect(moteurDeLaDictee(true, "local")).toEqual({ moteur: "local" });
-  });
-
-  it("part en ligne sans modèle — sauf si l'enseignant a choisi le local : on le lui dit plutôt que d'envoyer", () => {
-    expect(moteurDeLaDictee(false, null)).toEqual({ moteur: "ligne" });
-    expect(moteurDeLaDictee(false, "ligne")).toEqual({ moteur: "ligne" });
-    expect(moteurDeLaDictee(false, undefined)).toEqual({ moteur: "ligne" });
-    const refus = moteurDeLaDictee(false, "local");
-    expect("erreur" in refus && refus.erreur).toContain("Aucun modèle de transcription");
+describe("où se transcrit la parole", () => {
+  it("trois usages, chacun son réglage — les mêmes clés que le moteur", () => {
+    expect(USAGES.map((u) => cleUsage(u.id))).toEqual(["transcription:reunions", "transcription:observations", "transcription:dictees"]);
   });
 
   it("coupe plus court et dit autre chose de l'audio quand tout reste ici", () => {

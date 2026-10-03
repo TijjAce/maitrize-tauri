@@ -1,25 +1,45 @@
 // ── Où la parole est transcrite ───────────────────────────────────────────
 //
-// Deux moteurs, un choix. En ligne, c'est Voxtral chez Mistral : de très
-// bons résultats, mais il faut du réseau. Sur cet ordinateur, c'est Whisper,
-// qui tourne **dans** l'application : l'audio ne sort pas, et une réunion en
-// zone blanche s'écrit quand même — en ESS, c'est ce qui compte le plus.
+// Deux moteurs. En ligne, c'est Voxtral chez Mistral : de très bons
+// résultats, mais il faut du réseau. Sur cet ordinateur, c'est Whisper, qui
+// tourne **dans** l'application : l'audio ne sort pas, et une réunion en zone
+// blanche s'écrit quand même — en ESS, c'est ce qui compte le plus.
+//
+// Trois usages, réglés chacun pour soi, avec le modèle de son choix : les
+// réunions, les observations d'élève (le Dictaphone du téléphone, la dictée
+// d'atelier) et les dictées au micro. Le choix se fait côté Rust, qui sait
+// quels modèles sont là (voir `whisper_embarque::choix_de`).
 //
 // Le reste de l'intelligence (le rangement du compte rendu, la relecture)
 // passe par le service en ligne dans les deux cas : un modèle local de la
 // taille qu'accepte un portable d'école tient mal une consigne structurée,
 // et ce document finit dans le dossier d'un élève.
 
-import { api } from "./api";
+import { api, texteErreur } from "./api";
 
 export type Moteur = "ligne" | "local";
 
-export const CLE_MOTEUR = "moteurTranscription";
+export type Usage = "reunions" | "observations" | "dictees";
 
-/** Le moteur choisi sur ce poste. En ligne par défaut : rien à installer. */
-export async function moteurActif(): Promise<Moteur> {
-  const v = await api.settingGet(CLE_MOTEUR).catch(() => null);
-  return v === "local" ? "local" : "ligne";
+export const USAGES: { id: Usage; label: string }[] = [
+  { id: "reunions", label: "Réunions" },
+  { id: "observations", label: "Observations d'élève" },
+  { id: "dictees", label: "Dictées" },
+];
+
+/** Le réglage d'un usage : un modèle (« small »…) ou « ligne ». Il reste sur cet ordinateur, comme les modèles. */
+export const cleUsage = (u: Usage) => `transcription:${u}`;
+
+export type Choix = { moteur: "local"; modele: string } | { moteur: "ligne" };
+
+/** Où transcrire cet usage, sur ce poste, maintenant ; ce qu'il faut dire s'il veut un modèle absent. */
+export async function choixIci(usage: Usage): Promise<Choix | { erreur: string }> {
+  try {
+    const c = await api.transcriptionChoix(usage);
+    return c.moteur === "local" ? { moteur: "local", modele: c.modele } : { moteur: "ligne" };
+  } catch (e) {
+    return { erreur: texteErreur(e) };
+  }
 }
 
 /**
@@ -40,28 +60,6 @@ export const paroleMinimale = (m: Moteur): number => (m === "local" ? 1.5 : 5);
  */
 export const plafondDuMorceau = (m: Moteur): number => (m === "local" ? 12 : 20);
 
-/**
- * Où se transcrit une dictée au micro, dans l'application.
- *
- * Comme les vocaux du téléphone : sur cet ordinateur dès qu'un modèle y est —
- * c'est gratuit, et rien ne sort. Sans modèle, en ligne ; sauf si l'enseignant
- * a expressément choisi le local : on le lui dit alors, plutôt que d'envoyer
- * ce qu'il voulait garder.
- */
-export function moteurDeLaDictee(modeleInstalle: boolean, choix: string | null | undefined): { moteur: Moteur } | { erreur: string } {
-  if (modeleInstalle) return { moteur: "local" };
-  if (choix === "local") {
-    return { erreur: "Aucun modèle de transcription sur cet ordinateur. Dans Réglages · IA, téléchargez-en un — ou choisissez la transcription en ligne." };
-  }
-  return { moteur: "ligne" };
-}
-
-/** Le moteur d'une dictée, sur ce poste, maintenant. */
-export async function moteurDeLaDicteeIci(): Promise<{ moteur: Moteur } | { erreur: string }> {
-  const [etat, choix] = await Promise.all([api.whisperEtat().catch(() => null), api.settingGet(CLE_MOTEUR).catch(() => null)]);
-  return moteurDeLaDictee(!!etat?.modele, choix);
-}
-
 /** Ce qu'il faut dire à l'enseignant sur ce que devient son audio. */
 export const sortieDeLAudio = (m: Moteur): string =>
   m === "local"
@@ -69,8 +67,8 @@ export const sortieDeLAudio = (m: Moteur): string =>
     : "L'audio part chez Mistral (serveurs en Europe) pour être transcrit, puis le texte pour être rangé.";
 
 /** Transcrit un enregistrement, par le moteur choisi. */
-export async function transcrire(audioB64: string, moteur: Moteur): Promise<string> {
-  return moteur === "local"
-    ? api.transcrireLocal(audioB64)
+export async function transcrire(audioB64: string, choix: Choix): Promise<string> {
+  return choix.moteur === "local"
+    ? api.transcrireLocal(audioB64, choix.modele)
     : api.transcrireAudio(audioB64, "reunion.wav");
 }
