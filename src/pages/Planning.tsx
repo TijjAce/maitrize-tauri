@@ -33,6 +33,22 @@ const iso = isoJour;
 const fmtDateLongueFr = (dateIso: string) => new Date(dateIso).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const fmtJour = (d: Date) => d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
 
+/** Les dates les plus longues que la barre puisse afficher, d'une vue à l'autre : leur place est réservée. */
+const SOUS_TITRES_LES_PLUS_LONGS = ["Mercredi 30 septembre 2026", "Semaine du 28 sept. au 2 oct."];
+
+/**
+ * Un texte qui occupe la place du plus long de ses semblables : les autres
+ * sont posés dessous, invisibles. Changer de vue ne change plus la largeur.
+ */
+function Superposes({ visible, reserves }: { visible: string; reserves: string[] }) {
+  return (
+    <span className="superposes">
+      <span>{visible}</span>
+      {reserves.map((r) => <span key={r} className="reserve" aria-hidden="true">{r}</span>)}
+    </span>
+  );
+}
+
 interface DragState { id: string; dayIndex: number; startMin: number; durMin: number; grabOffMin: number; }
 
 function layoutJour(cs: Creneau[]): Map<string, { lane: number; lanes: number }> {
@@ -470,22 +486,37 @@ export default function Planning() {
   };
 
   return (
-    <Page titre="Planning" sous={titre}
+    // La barre garde la même forme d'une vue à l'autre : les mêmes boutons
+    // (ceux du jour et de la semaine restent à leur place, invisibles, sur le
+    // mois) et une date à largeur réservée. Sans cela, elle passait à la ligne
+    // dans une vue et pas dans l'autre, et tout l'écran sautait.
+    <Page titre="Planning" sous={<Superposes visible={titre} reserves={SOUS_TITRES_LES_PLUS_LONGS} />}
       actions={<>
-        {vue !== "mois" && <button className="btn" style={{ minWidth: 196 }} onClick={generer}>⚡ {vue === "jour" ? "Générer le jour" : "Générer la semaine"}</button>}
-        {vue !== "mois" && <button className="btn" onClick={() => setDeplacer((v) => !v)} aria-pressed={deplacer}
-          style={deplacer ? { background: "var(--accent)", color: "#fff", borderColor: "var(--accent)" } : undefined}
-          title={deplacer ? "Déplacement activé — glissez les créneaux. Cliquez pour désactiver." : "Activer le déplacement des créneaux par glisser-déposer"}>
-          ✋ Déplacer</button>}
-        {vue !== "mois" && <button className="btn" onClick={imprimer}>🖨 PDF</button>}
-        <div className="seg" style={{ marginLeft: 4 }}>
+        {(() => {
+          const surLeMois = vue === "mois";
+          const cache = surLeMois ? { visibility: "hidden" as const } : undefined;
+          return <>
+            <button className="btn" style={cache} disabled={surLeMois} aria-hidden={surLeMois} onClick={generer}>
+              <Superposes visible={vue === "jour" ? "⚡ Générer le jour" : "⚡ Générer la semaine"}
+                reserves={["⚡ Générer le jour", "⚡ Générer la semaine"]} />
+            </button>
+            <button className="btn" disabled={surLeMois} aria-hidden={surLeMois} onClick={() => setDeplacer((v) => !v)} aria-pressed={deplacer}
+              style={cache ?? (deplacer ? { background: "var(--accent)", color: "#fff", borderColor: "var(--accent)" } : undefined)}
+              title={deplacer ? "Déplacement activé — glissez les créneaux. Cliquez pour désactiver." : "Activer le déplacement des créneaux par glisser-déposer"}>
+              ✋ Déplacer</button>
+            <button className="btn" style={cache} disabled={surLeMois} aria-hidden={surLeMois} onClick={imprimer}>🖨 PDF</button>
+          </>;
+        })()}
+        <div className="seg">
           <button className={vue === "jour" ? "active" : ""} onClick={() => setVue("jour")}>Jour</button>
           <button className={vue === "semaine" ? "active" : ""} onClick={() => setVue("semaine")}>Semaine</button>
           <button className={vue === "mois" ? "active" : ""} onClick={() => setVue("mois")}>Mois</button>
         </div>
-        <button className="btn" onClick={() => decaler(-1)} aria-label="Précédent">←</button>
-        <button className="btn" onClick={() => { const d = new Date(); d.setHours(0, 0, 0, 0); setAncre(d); }}>Aujourd'hui</button>
-        <button className="btn" onClick={() => decaler(1)} aria-label="Suivant">→</button>
+        <div className="boutons-joints">
+          <button className="btn" onClick={() => decaler(-1)} aria-label="Précédent">←</button>
+          <button className="btn" onClick={() => { const d = new Date(); d.setHours(0, 0, 0, 0); setAncre(d); }}>Aujourd'hui</button>
+          <button className="btn" onClick={() => decaler(1)} aria-label="Suivant">→</button>
+        </div>
       </>}>
       {vue !== "mois" && (
         <div className="heures-semaine" aria-label="Heures de la semaine">
@@ -694,13 +725,15 @@ function VueMois({ ancre, creneaux, feries, vacanceDe, anniversaires, onJour }: 
   }
   const pourJour = (d: Date) => creneaux.filter((c) => c.date.slice(0, 10) === iso(d)).sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
 
+  // « minmax(0, 1fr) » : une colonne ne s'élargit jamais pour son contenu. Avec
+  // « 1fr », un intitulé long poussait le samedi et le dimanche hors du cadre.
   return (
     <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: "1px solid var(--border)" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", borderBottom: "1px solid var(--border)" }}>
         {JOURS7.map((j) => <div key={j} style={{ textAlign: "center", padding: "8px 0", fontWeight: 700, fontSize: 12.5, background: "var(--panel-2)", borderLeft: "1px solid var(--border)" }}>{j}</div>)}
       </div>
       {semaines.map((row, wi) => (
-        <div key={wi} style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: "1px solid var(--border)" }}>
+        <div key={wi} style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", borderBottom: "1px solid var(--border)" }}>
           {row.map((d, di) => {
             const horsMois = d.getMonth() !== mois;
             const ferie = feries[iso(d)]; const vac = vacanceDe(iso(d));
@@ -708,7 +741,8 @@ function VueMois({ ancre, creneaux, feries, vacanceDe, anniversaires, onJour }: 
             const anniv = annivDe(d);
             return (
               <div key={di} onClick={() => onJour(d)}
-                style={{ minHeight: 92, padding: 5, borderLeft: "1px solid var(--border)", cursor: "pointer",
+                title={crs.length ? crs.map((c) => `${c.heureDebut} ${c.matiere}`).join("\n") : undefined}
+                style={{ minHeight: 84, padding: 5, borderLeft: "1px solid var(--border)", cursor: "pointer",
                   background: iso(d) === todayIso ? "var(--accent-soft)" : ferie || vac ? "var(--panel-2)" : undefined, opacity: horsMois ? 0.4 : 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                   <span style={{ fontWeight: 700, fontSize: 12.5 }}>{d.getDate()}</span>
@@ -721,12 +755,13 @@ function VueMois({ ancre, creneaux, feries, vacanceDe, anniversaires, onJour }: 
                     🎂 {nom}
                   </div>
                 ))}
-                {crs.slice(0, 4).map((c) => (
-                  <div key={c.id} style={{ marginTop: 2, fontSize: 10, color: "#fff", background: teinteCreneau(c), borderRadius: 4, padding: "1px 4px", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
-                    {c.heureDebut} {c.matiere}
+                {/* Le mois ne détaille pas les créneaux : une pastille chacun, dans sa couleur,
+                    pour voir les jours pleins d'un coup d'œil. Le détail est au survol, et au clic. */}
+                {crs.length > 0 && (
+                  <div className="mois-pastilles" aria-label={`${crs.length} créneau${crs.length > 1 ? "x" : ""}`}>
+                    {crs.map((c) => <span key={c.id} className="mois-pastille" style={{ background: teinteCreneau(c) }} />)}
                   </div>
-                ))}
-                {crs.length > 4 && <div style={{ fontSize: 10, color: "var(--text-2)", marginTop: 1 }}>+{crs.length - 4}…</div>}
+                )}
               </div>
             );
           })}
