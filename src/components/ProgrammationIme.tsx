@@ -14,6 +14,9 @@ import {
 } from "../programmationIme";
 import { CompetenceTree, type CompetenceSelectionnee } from "./CompetenceTree";
 import { JOURS_EDT, natureDuSlot, type SlotEdt } from "../organisation";
+import { reprendreDuJournal, travauxDuJournal } from "../objectifsDuJournal";
+import { chargerVacances, periodeDuJour } from "../vacances";
+import { isoJour } from "../dates";
 
 // ── Programmer en IME ─────────────────────────────────────────────────────
 //
@@ -24,7 +27,8 @@ import { JOURS_EDT, natureDuSlot, type SlotEdt } from "../organisation";
 // L'écran montre donc d'abord les élèves et leur compte, parce que c'est là
 // qu'on se trompe : on en met trois à l'un et vingt à l'autre. Les groupes
 // évitent la copie — « demander de l'aide » se travaille avec quatre élèves,
-// on l'écrit une fois.
+// on l'écrit une fois. Et ce que le cahier journal fait travailler arrive de
+// lui-même : une séquence citée sur un créneau y apporte sa compétence.
 
 const COULEUR_ETAT: Record<string, string> = {
   vide: "var(--text-2)", peu: "#d97706", bon: "var(--accent)", trop: "#dc2626",
@@ -174,6 +178,9 @@ export function ProgrammationIme({ annee }: { annee: string }) {
   const { data: progs, reload } = useAsync(() => api.programmationsFinaleList(), []);
   const ligne = progs?.find((p) => p.annee === annee && p.niveau === "ime");
   const [prog, setProg] = React.useState<Prog>(vide());
+  // Vrai une fois la programmation enregistrée relue : rien ne s'y ajoute avant,
+  // sans quoi on l'écraserait avec une programmation vide.
+  const [lue, setLue] = React.useState(false);
   const [filtre, setFiltre] = React.useState("");
   const [groupesOuverts, setGroupesOuverts] = React.useState(false);
   const [competencePour, setCompetencePour] = React.useState<string>("");
@@ -181,7 +188,19 @@ export function ProgrammationIme({ annee }: { annee: string }) {
   // questions différentes, deux vues — et c'est la seconde qui manquait.
   const [vue, setVue] = React.useState<"liste" | "creneau">("liste");
 
-  React.useEffect(() => { setProg(ligne ? lire(ligne.lignesJson) : vide()); }, [ligne?.id, ligne?.lignesJson]);
+  React.useEffect(() => {
+    setProg(ligne ? lire(ligne.lignesJson) : vide());
+    if (progs) setLue(true);
+  }, [ligne?.id, ligne?.lignesJson, !!progs]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Le cahier journal de l'année : les séquences citées sur ses créneaux.
+  const debutAnnee = Number(annee.slice(0, 4));
+  const { data: creneaux } = useAsync(() => (Number.isFinite(debutAnnee)
+    ? api.creneauxList(`${debutAnnee}-08-01`, `${debutAnnee + 1}-07-31`)
+    : Promise.resolve([])), [annee]);
+  const { data: sequences } = useAsync(() => api.sequencesList(), []);
+  const { data: seances } = useAsync(() => api.seancesList(), []);
+  const { data: vacances } = useAsync(() => chargerVacances(isoJour(new Date())), []);
 
   /** Enregistre la programmation : elle vit dans une ligne à part, marquée « ime ». */
   const persister = (suite: Prog) => {
@@ -193,6 +212,24 @@ export function ProgrammationIme({ annee }: { annee: string }) {
       .then(() => { if (!ligne) reload(); })
       .catch((e) => toast("Programmation non enregistrée : " + texteErreur(e), { icone: "⚠️" }));
   };
+
+  // Ce que le cahier journal a fait travailler depuis la dernière visite entre
+  // dans la programmation : l'objectif naît, ou gagne ces élèves et cette période.
+  const travaux = React.useMemo(() => (creneaux && sequences && seances && vacances && eleves
+    ? travauxDuJournal(creneaux, sequences, seances, eleves.map((e) => e.id), (jour) => periodeDuJour(jour, vacances))
+    : null), [creneaux, sequences, seances, vacances, eleves]);
+  React.useEffect(() => {
+    if (!lue || !travaux) return;
+    const { prog: suite, ajoutes, completes } = reprendreDuJournal(prog, travaux);
+    if (suite === prog) return;
+    persister(suite);
+    if (!ajoutes && !completes) return;
+    const dit = [
+      ajoutes ? `${ajoutes} objectif${ajoutes > 1 ? "s" : ""} ajouté${ajoutes > 1 ? "s" : ""}` : "",
+      completes ? `${completes} complété${completes > 1 ? "s" : ""}` : "",
+    ].filter(Boolean).join(", ");
+    toast(`Repris du cahier journal : ${dit}.`, { icone: "📚" });
+  }, [lue, travaux, prog]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const majObjectif = (id: string, fn: (o: Objectif) => Objectif) =>
     persister({ ...prog, objectifs: prog.objectifs.map((o) => (o.id === id ? fn(o) : o)) });
@@ -330,7 +367,7 @@ export function ProgrammationIme({ annee }: { annee: string }) {
         <ParCreneau annee={annee} eleves={listeEleves} prog={prog} persister={persister} />
       ) : montres.length === 0 ? (
         <Empty icone="🎯" titre={filtre ? "Aucun objectif pour cet élève" : "Aucun objectif"}
-          sous="« ＋ Objectif » : écrivez la compétence visée, dites pour qui, et sur quelles périodes." />
+          sous="« ＋ Objectif » : écrivez la compétence visée, dites pour qui, et sur quelles périodes. Une séquence citée dans le cahier journal apporte aussi la sienne." />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {montres.map((o) => {
@@ -350,6 +387,12 @@ export function ProgrammationIme({ annee }: { annee: string }) {
                   <button className="btn ghost sm" onClick={() => { void supprimer(o); }} aria-label="Retirer">🗑</button>
                 </div>
                 {o.origine && <div className="meta" style={{ fontSize: 11.5, marginBottom: 6 }}>{o.origine}</div>}
+                {(() => {
+                  const titres = (o.sequences ?? []).map((id) => sequences?.find((s) => s.id === id)?.titre.trim()).filter(Boolean);
+                  return titres.length ? (
+                    <div className="meta" style={{ fontSize: 11.5, marginBottom: 6 }}>📚 Cahier journal : {titres.join(", ")}</div>
+                  ) : null;
+                })()}
 
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
                   {prog.groupes.map((g) => {

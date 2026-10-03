@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { aRafraichir, lireCache, prochaineVacance, repereDuCache, vacanceDuJour } from "./vacances";
+import { aRafraichir, lireCache, periodeDuJour, prochaineVacance, repereDuCache, vacanceDuJour } from "./vacances";
 
 const periodes = [
   { description: "Vacances de la Toussaint", debut: "2026-10-17", fin: "2026-11-02" },
@@ -33,5 +33,35 @@ describe("vacances scolaires", () => {
     expect(prochaineVacance(periodes, "2026-09-25")?.description).toBe("Vacances de la Toussaint");
     expect(prochaineVacance(periodes, "2026-11-05")?.description).toBe("Vacances de Noël");
     expect(prochaineVacance(periodes, "2027-08-01")).toBeUndefined();
+  });
+});
+
+describe("la période scolaire d'un jour", () => {
+  const annee = [
+    { description: "Vacances d'Été", debut: "2026-07-04", fin: "2026-09-01" },
+    { description: "Vacances de la Toussaint", debut: "2026-10-17", fin: "2026-11-02" },
+    { description: "Vacances de Noël", debut: "2026-12-19", fin: "2027-01-04" },
+    { description: "Vacances d'Hiver", debut: "2027-02-06", fin: "2027-02-22" },
+    { description: "Vacances de Printemps", debut: "2027-04-03", fin: "2027-04-19" },
+    { description: "Pont de l'Ascension", debut: "2027-05-06", fin: "2027-05-10" },
+  ];
+
+  it("compte les vacances passées depuis la rentrée", () => {
+    expect(periodeDuJour("2026-09-01", annee)).toBe(1);
+    expect(periodeDuJour("2026-10-16", annee)).toBe(1);
+    expect(periodeDuJour("2026-11-02", annee)).toBe(2);
+    expect(periodeDuJour("2027-01-04", annee)).toBe(3);
+    expect(periodeDuJour("2027-02-22", annee)).toBe(4);
+    // Le pont de l'Ascension ne fait pas une sixième période.
+    expect(periodeDuJour("2027-05-20", annee)).toBe(5);
+    expect(periodeDuJour("2027-07-02", annee)).toBe(5);
+  });
+
+  it("sans le calendrier de l'année, s'en tient aux mois", () => {
+    expect(periodeDuJour("2027-09-15", annee)).toBe(1);
+    expect(periodeDuJour("2026-12-01", [])).toBe(2);
+    expect(periodeDuJour("2027-02-10", [])).toBe(3);
+    expect(periodeDuJour("2027-03-30", [])).toBe(4);
+    expect(periodeDuJour("2027-06-15", [])).toBe(5);
   });
 });
