@@ -145,8 +145,8 @@ export function TelephoneNuage() {
         </span>
       </div>
       <p style={{ color: "var(--text-2)", marginTop: 10, fontSize: 13, lineHeight: 1.6 }}>
-        Sans WiFi commun ni partage à ouvrir : le <b>Dictaphone</b> dépose dictées et notes dans un dossier de votre
-        Nuage dès qu'il a du réseau, et Maitrize les relève tout seul quand il est ouvert. Tout est chiffré avant de
+        Le <b>Dictaphone</b> dépose dictées et notes dans un dossier de votre Nuage dès qu'il a du réseau — c'est
+        leur seul chemin —, et Maitrize les relève tout seul quand il est ouvert. Tout est chiffré avant de
         quitter le téléphone : Nuage ne voit que des fichiers fermés, et le
         téléphone lui-même ne peut pas les rouvrir. En retour, il reçoit l'emploi du temps des jours à venir — une
         heure et un intitulé, sans personne dedans.
