@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-fermer-connexion"
+description = "Enables the fermer_connexion command without any pre-configured scope."
+commands.allow = ["fermer_connexion"]
+
+[[permission]]
+identifier = "deny-fermer-connexion"
+description = "Denies the fermer_connexion command without any pre-configured scope."
+commands.deny = ["fermer_connexion"]

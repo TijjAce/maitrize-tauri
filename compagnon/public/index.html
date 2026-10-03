@@ -114,7 +114,7 @@
  .btn-doux { background:var(--card); color:var(--txt); box-shadow:var(--ombre); }
  .groupe + .btn-plein, .groupe + .groupe, .btn-plein + .groupe { margin-top:12px; }
  .carte .btn-doux { background:var(--champ); box-shadow:none; }
- .carte .btn-plein + .btn-doux, .carte .vue + .btn-doux { margin-top:10px; }
+ .carte .btn-plein + .btn-doux, .carte .vue + .btn-doux, .carte .erreur-ligne + .btn-doux { margin-top:10px; }
  label.btn-plein { cursor:pointer; }
  .btn-plein.inactif { opacity:.45; pointer-events:none; }
  .carte-wifi { margin-top:10px; padding:16px; }
@@ -174,6 +174,8 @@
    background:var(--acc-doux); color:var(--acc-txt); }
  .grand-ico .ic { width:28px; height:28px; }
  .carte-tete h3 { margin:0; font-size:20px; font-weight:700; letter-spacing:-.01em; }
+ .carte-tete .sous { margin:-6px 0 0; font-size:15px; color:var(--txt2); text-align:center; overflow-wrap:anywhere; }
+ .carte-tete .sous b { color:var(--txt); font-weight:600; }
  .vue { width:100%; aspect-ratio:1/1; border-radius:16px; object-fit:cover; background:#000; display:block; margin-bottom:10px; }
  .ou { display:flex; align-items:center; gap:12px; margin:18px 0 14px; color:var(--txt3); font-size:13.5px; }
  .ou::before, .ou::after { content:""; flex:1; height:1px; background:var(--sep); }
