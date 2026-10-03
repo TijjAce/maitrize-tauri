@@ -422,8 +422,7 @@ export default function Reglages() {
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <h3 style={{ margin: 0 }}>📱 Version portable (WiFi)</h3>
           <div className="spacer" style={{ flex: 1 }} />
-          {/* Le même interrupteur que la barre du haut : c'est ici qu'on le
-              cherche, puisque c'est ici que le partage s'explique. */}
+          {/* L'interrupteur du partage : c'est ici qu'on le cherche, puisque c'est ici que le partage s'explique. */}
           <InterrupteurPartage />
         </div>
         <p style={{ color: "var(--text-2)", marginTop: 10, fontSize: 13, lineHeight: 1.6 }}>
