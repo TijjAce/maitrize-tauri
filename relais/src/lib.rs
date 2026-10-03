@@ -152,6 +152,46 @@ impl<'a> Lecteur<'a> {
     }
 }
 
+// ── Le transport ───────────────────────────────────────────────────────────
+
+/**
+ * Une adresse vers laquelle on peut envoyer : chiffrée (https), ou sur cet
+ * appareil même (127.0.0.1, localhost), d'où rien ne sort — c'est ainsi que
+ * les essais imitent Nuage. Tout le reste est refusé avant le moindre envoi.
+ */
+pub fn adresse_chiffree(adresse: &str) -> R<()> {
+    if adresse.starts_with("https://") {
+        return Ok(());
+    }
+    let sur_cet_appareil = reqwest::Url::parse(adresse).ok()
+        .filter(|u| u.scheme() == "http")
+        .and_then(|u| u.host_str().map(|h| matches!(h, "127.0.0.1" | "localhost" | "[::1]")))
+        .unwrap_or(false);
+    if sur_cet_appareil { Ok(()) } else { Err("Adresse non chiffrée : Maitrize ne parle à Nuage qu'en https.".into()) }
+}
+
+/**
+ * Les redirections qu'un client vers Nuage suit : cinq au plus, et jamais
+ * d'une adresse chiffrée (https) vers une adresse en clair (http).
+ *
+ * Nuage ne redirige pas ainsi, mais un réseau mal intentionné pourrait le
+ * tenter. Le client retirerait de lui-même l'identifiant en changeant de
+ * port ; ce qu'on dépose est déjà scellé. On refuse quand même : rien de ce
+ * qui part vers Nuage ne doit passer en clair, pas même une requête vide.
+ */
+pub fn redirections_chiffrees() -> reqwest::redirect::Policy {
+    reqwest::redirect::Policy::custom(|essai| {
+        let vers_le_clair = essai.url().scheme() != "https" && essai.previous().iter().any(|u| u.scheme() == "https");
+        if vers_le_clair {
+            essai.error("Nuage renvoie vers une adresse non chiffrée : refusé.")
+        } else if essai.previous().len() > 5 {
+            essai.error("Trop de redirections.")
+        } else {
+            essai.follow()
+        }
+    })
+}
+
 /// Trente-deux octets écrits en base64.
 pub fn cle_de(b64: &str) -> R<[u8; 32]> {
     let octets = STANDARD.decode(b64.trim()).map_err(|_| "Clé illisible.".to_string())?;
@@ -522,6 +562,16 @@ mod tests {
         // Ce que Nuage ou un curieux pose là n'est pas un dépôt.
         for nom in ["agenda.mtz", "v-.mtz", "x-1.mtz", "v-1.txt", ".DS_Store", "Readme.md"] {
             assert_eq!(genre_du_nom(nom), None, "{nom}");
+        }
+    }
+
+    #[test]
+    fn seules_les_adresses_chiffrees_ou_locales_sont_permises() {
+        for bonne in ["https://nuage17.apps.education.fr", "http://127.0.0.1:8080/x", "http://localhost:3000", "http://[::1]:9"] {
+            assert!(adresse_chiffree(bonne).is_ok(), "{bonne}");
+        }
+        for mauvaise in ["http://nuage17.apps.education.fr", "http://127.0.0.1.exemple.fr/", "http://localhost.exemple.fr", "ftp://127.0.0.1", "nuage17.apps.education.fr", ""] {
+            assert!(adresse_chiffree(mauvaise).unwrap_err().contains("https"), "{mauvaise}");
         }
     }
 

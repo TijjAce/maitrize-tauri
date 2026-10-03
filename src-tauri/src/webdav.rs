@@ -157,10 +157,13 @@ pub fn url_web(acces: &Acces, relatif: &str) -> String {
     format!("{}/apps/files/?dir=/{}", acces.serveur, chemin.join("/"))
 }
 
-fn client() -> R<reqwest::Client> {
+/// Le client d'une demande vers `serveur` : refusé d'avance si l'adresse n'est pas chiffrée.
+fn client(serveur: &str) -> R<reqwest::Client> {
+    maitrize_relais::adresse_chiffree(serveur)?;
     reqwest::Client::builder()
         .user_agent("Maitrize")
         .timeout(std::time::Duration::from_secs(90))
+        .redirect(maitrize_relais::redirections_chiffrees())
         .build()
         .map_err(|e| e.to_string())
 }
@@ -221,7 +224,7 @@ const PROPFIND: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 
 async fn propfind(acces: &Acces, relatif: &str, profondeur: &str) -> R<String> {
     let methode = reqwest::Method::from_bytes(b"PROPFIND").map_err(|e| e.to_string())?;
-    let rep = client()?
+    let rep = client(&acces.serveur)?
         .request(methode, url_de(acces, relatif))
         .headers(entetes(acces))
         .header("Depth", profondeur)
@@ -396,7 +399,7 @@ pub async fn fichiers(acces: &Acces, dossier: &str) -> R<Vec<String>> {
 
 /// Le contenu d'un fichier.
 pub async fn lire(acces: &Acces, chemin: &str) -> R<Vec<u8>> {
-    let rep = client()?
+    let rep = client(&acces.serveur)?
         .get(url_de(acces, chemin))
         .headers(entetes(acces))
         .send()
@@ -411,7 +414,7 @@ pub async fn lire(acces: &Acces, chemin: &str) -> R<Vec<u8>> {
 /// Le début d'un fichier seulement : de quoi lire l'en-tête d'un paquet sans
 /// tirer les mégaoctets qui suivent.
 pub async fn lire_debut(acces: &Acces, chemin: &str, octets: usize) -> R<Vec<u8>> {
-    let rep = client()?
+    let rep = client(&acces.serveur)?
         .get(url_de(acces, chemin))
         .headers(entetes(acces))
         .header("Range", format!("bytes=0-{}", octets.saturating_sub(1)))
@@ -429,7 +432,7 @@ pub async fn lire_debut(acces: &Acces, chemin: &str, octets: usize) -> R<Vec<u8>
 
 /// Pose un fichier (il remplace celui qui porterait le même nom).
 pub async fn ecrire(acces: &Acces, chemin: &str, octets: Vec<u8>) -> R<()> {
-    let rep = client()?
+    let rep = client(&acces.serveur)?
         .put(url_de(acces, chemin))
         .headers(entetes(acces))
         .body(octets)
@@ -442,7 +445,7 @@ pub async fn ecrire(acces: &Acces, chemin: &str, octets: Vec<u8>) -> R<()> {
 /// Crée un dossier. Un dossier déjà là n'est pas une erreur.
 pub async fn creer_dossier(acces: &Acces, chemin: &str) -> R<()> {
     let methode = reqwest::Method::from_bytes(b"MKCOL").map_err(|e| e.to_string())?;
-    let rep = client()?
+    let rep = client(&acces.serveur)?
         .request(methode, url_de(acces, chemin))
         .headers(entetes(acces))
         .send()
@@ -454,7 +457,7 @@ pub async fn creer_dossier(acces: &Acces, chemin: &str) -> R<()> {
 /// Supprime un fichier ou un dossier — pour tout le monde. Nuage le garde
 /// dans sa corbeille.
 pub async fn supprimer(acces: &Acces, chemin: &str) -> R<()> {
-    let rep = client()?
+    let rep = client(&acces.serveur)?
         .delete(url_de(acces, chemin))
         .headers(entetes(acces))
         .send()
@@ -561,7 +564,7 @@ pub async fn creer_lien_detaille(acces: &Acces, sous_dossier: &str, mot_de_passe
     if !mot_de_passe.trim().is_empty() {
         form.push(("password", mot_de_passe.trim().to_string()));
     }
-    let rep = client()?
+    let rep = client(&acces.serveur)?
         // « format=json » : certains serveurs ignorent l'en-tête Accept.
         .post(format!("{}/ocs/v2.php/apps/files_sharing/api/v1/shares?format=json", acces.serveur))
         .header("Authorization", autorisation(acces))
@@ -594,7 +597,7 @@ pub async fn supprimer_lien(acces: &Acces, id: &str) -> R<()> {
     if id.trim().is_empty() {
         return Err("Ce lien n'a pas de numéro : supprimez-le depuis Nuage.".into());
     }
-    let rep = client()?
+    let rep = client(&acces.serveur)?
         .delete(format!("{}/ocs/v2.php/apps/files_sharing/api/v1/shares/{}?format=json", acces.serveur, encoder(id.trim())))
         .header("Authorization", autorisation(acces))
         .header("OCS-APIRequest", "true")
@@ -614,7 +617,7 @@ pub async fn supprimer_lien(acces: &Acces, id: &str) -> R<()> {
  * connectant à son tour.
  */
 pub async fn identifiant_du_compte(acces: &Acces) -> R<String> {
-    let rep = client()?
+    let rep = client(&acces.serveur)?
         .get(format!("{}/ocs/v2.php/cloud/user?format=json", acces.serveur))
         .header("Authorization", autorisation(acces))
         .header("OCS-APIRequest", "true")
