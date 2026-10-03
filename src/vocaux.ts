@@ -6,9 +6,9 @@
 //
 // C'est l'ordinateur qui sait ce qui se passait à 10 h 12, parce qu'il a le
 // cahier journal. Il rapproche donc chaque vocal de son créneau, le transcrit
-// sur place avec Whisper, et le propose — jamais il ne l'écrit tout seul dans
-// un bilan : une transcription se relit avant d'entrer dans le dossier d'un
-// élève.
+// sur place avec Whisper, et le verse dans le bilan — l'enseignant l'a voulu
+// ainsi, en octobre 2026, plutôt qu'un clic par dictée (voir
+// versementDesVocaux.ts).
 
 import type { Creneau } from "./api";
 

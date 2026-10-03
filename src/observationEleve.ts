@@ -18,6 +18,7 @@
 import { api, type ObservationEleve } from "./api";
 import { GRILLES } from "./data/evaluationsDiagnostiques";
 import { normaliser } from "./competencesTravaillees";
+import { natureDe } from "./heures";
 import { pseudonymiser, restaurer } from "./confidentialite";
 import { phrasesQuiCitent, prenomDe } from "./veilleEleve";
 
@@ -202,6 +203,33 @@ export function fichesACreer(
     ...nouvelleObservation({ id: id(), eleveId, date: creneau.date, creneauId: creneau.id, contexte: creneau.contexte, competence: creneau.competence, quand }),
     note: noteDepuisLeBilan(bilan, nomDe(eleveId)),
   }));
+}
+
+/**
+ * Ce qu'un bilan enregistré change aux dossiers des élèves : les fiches déjà
+ * posées sur le créneau, qu'il nourrit, et celles qu'il fait naître pour les
+ * élèves du créneau qui n'en ont pas encore. Le cahier journal s'en sert à
+ * chaque enregistrement ; le versement d'une dictée du téléphone aussi : une
+ * dictée versée va au dossier des élèves comme un bilan tapé à la main.
+ */
+export function fichesDuBilan(
+  observations: ObservationEleve[],
+  creneau: { id: string; date: string; elevesJson?: string; nature?: string; matiere?: string } | undefined,
+  seance: { titre?: string; competences?: string; objectifs?: string } | undefined,
+  bilan: string,
+  nomDe: (eleveId: string) => string,
+  quand: string,
+  id: () => string,
+): { neuves: ObservationEleve[]; aEcrire: ObservationEleve[] } {
+  if (!creneau) return { neuves: [], aEcrire: [] };
+  let elevesIds: string[] = [];
+  try { elevesIds = natureDe(creneau) !== "reunion" ? JSON.parse(creneau.elevesJson || "[]") : []; } catch { elevesIds = []; }
+  const neuves = fichesACreer(observations, {
+    id: creneau.id, date: creneau.date.slice(0, 10), elevesIds,
+    contexte: [creneau.matiere, seance?.titre].filter(Boolean).join(" — "),
+    competence: [seance?.competences, seance?.objectifs].filter(Boolean).join(" ").slice(0, 300),
+  }, bilan, nomDe, quand, id);
+  return { neuves, aEcrire: [...fichesANourrir(observations, creneau.id, bilan, nomDe, quand), ...neuves] };
 }
 
 // ── Ranger le bilan en colonnes ───────────────────────────────────────────

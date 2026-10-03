@@ -2,7 +2,8 @@
 //
 // Le dictaphone dépose sur Nuage quand il a du réseau ; l'ordinateur passe
 // relever de loin en loin, tant que Maitrize est ouvert. Rien à cliquer : ce
-// qui est arrivé s'annonce, et se relit dans Réglages › Téléphone.
+// qui est arrivé se transcrit, puis se verse de lui-même dans le bilan de son
+// créneau, et c'est ce versement qui s'annonce (voir versementDesVocaux.ts).
 
 import { api, texteErreur, type BilanReleve } from "./api";
 import { attenteApres } from "./syncAuto";
@@ -14,8 +15,7 @@ const PERIODE = 30_000;
 /** Le premier passage, peu après l'ouverture. */
 const AU_DEPART = 4_000;
 
-/** Émis par « Voir », sur l'annonce d'une arrivée : l'application ouvre les vocaux du téléphone. */
-export const EVT_VOIR_VOCAUX = "maitrize:voir-vocaux";
+export { EVT_VOIR_VOCAUX } from "./versementDesVocaux";
 
 /** Émis après chaque passage : l'écran des Réglages dit où en est le relais. */
 export const EVT_RELEVE = "maitrize:releve-telephone";
@@ -81,14 +81,9 @@ async function passage() {
     if (b.occupe) return;
     noter({ quand: Date.now(), bilan: b, erreur: "" });
     lienMortDit = false;
-    const annonce = annonceDeLaReleve(b);
-    if (annonce) {
-      toast(`${annonce} — à relire dans Réglages › Téléphone.`, {
-        icone: "📱", duree: 12000, action: { label: "Voir", faire: () => { window.dispatchEvent(new Event(EVT_VOIR_VOCAUX)); } },
-      });
-    }
-    // Le texte s'écrit pendant que l'enseignant fait autre chose : il sera là quand il viendra ranger.
-    if (b.vocaux > 0) void transcrireCeQuiAttend();
+    // Transcrire, puis verser dans le bilan : l'indicateur de transcription et
+    // l'annonce du versement disent le reste, sans une annonce de plus ici.
+    if (b.vocaux > 0 || b.notes > 0) void transcrireCeQuiAttend();
   } catch (e) {
     echecs += 1;
     prochainDelai = attenteApres(echecs);
