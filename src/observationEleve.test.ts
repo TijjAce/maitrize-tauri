@@ -16,7 +16,6 @@ vi.mock("./api", () => ({
 import {
   AXES, COLONNES, axesProches, cheminDeLAxe, chercherAxes, fichesANourrir, lireRepartition,
   motsUtiles, noteDepuisLeBilan, nouvelleObservation, observationVide, promptRepartition, repartir,
-  fichesDuBilan,
 } from "./observationEleve";
 import type { ObservationEleve } from "./api";
 
@@ -151,65 +150,25 @@ describe("le bilan du créneau qui nourrit la fiche", () => {
     expect(noteDepuisLeBilan(bilan, "Apolline Martin")).toBe("Apolline a trié seule les couleurs.");
   });
 
-  it("garde tout quand l'élève n'est nommé nulle part : le créneau était le sien", () => {
+  it("garde tout quand le bilan ne nomme personne : il parle du groupe", () => {
     const bilan = "Atelier calme, tout le monde a participé.";
-    expect(noteDepuisLeBilan(bilan, "Apolline Martin")).toBe(bilan);
+    expect(noteDepuisLeBilan(bilan, "Apolline Martin", ["Apolline Martin", "Ayyûb Ben"])).toBe(bilan);
   });
 
-  it("ne met à jour que les fiches du bon créneau, et seulement si ça change", () => {
-    const base = fiche({ id: "a", creneauId: "c1", eleveId: "e1", note: "" });
-    const autre = fiche({ id: "b", creneauId: "c2", eleveId: "e1", note: "" });
+  it("ne donne rien à l'élève quand le bilan en nomme d'autres", () => {
+    expect(noteDepuisLeBilan("Ayyûb a bien travaillé.", "Apolline Martin", ["Apolline Martin", "Ayyûb Ben"])).toBe("");
+  });
+
+  it("ne nourrit que les fiches posées sur un axe, du bon créneau, et seulement si ça change", () => {
+    const base = fiche({ id: "a", creneauId: "c1", eleveId: "e1", note: "", axe: "Participe aux jeux de cour" });
+    const autre = fiche({ id: "b", creneauId: "c2", eleveId: "e1", note: "", axe: "Participe aux jeux de cour" });
+    const sansAxe = fiche({ id: "c", creneauId: "c1", eleveId: "e1", note: "", axe: "" });
     const nomDe = () => "Apolline Martin";
-    const suite = fichesANourrir([base, autre], "c1", "Apolline a réussi.", nomDe, "2026-09-22T10:00:00Z");
+    const suite = fichesANourrir([base, autre, sansAxe], "c1", "Apolline a réussi.", nomDe, "2026-09-22T10:00:00Z");
     expect(suite.map((o) => o.id)).toEqual(["a"]);
     expect(suite[0].note).toBe("Apolline a réussi.");
 
     // Rejouée avec le même bilan, elle ne réécrit rien.
     expect(fichesANourrir([suite[0], autre], "c1", "Apolline a réussi.", nomDe, "x")).toEqual([]);
-  });
-});
-
-describe("les fiches qu'un bilan fait naître", () => {
-  it("en pose une par élève du créneau qui n'en a pas, avec ce que le bilan dit de lui", async () => {
-    const { fichesACreer } = await import("./observationEleve");
-    const noms: Record<string, string> = { e1: "Apolline Martin", e2: "Zephir Dupont" };
-    const creneau = { id: "c1", date: "2026-09-29", elevesIds: ["e1", "e2", "e2"], contexte: "Lecture — Les syllabes", competence: "Lire des syllabes" };
-    let n = 0;
-    const suite = fichesACreer([], creneau, "Apolline a lu seule. Zephir a eu besoin d'aide.", (id) => noms[id], "2026-09-29T10:00:00Z", () => `o${++n}`);
-    expect(suite.map((o) => [o.id, o.eleveId, o.creneauId, o.date, o.contexte, o.competence, o.axe, o.note])).toEqual([
-      ["o1", "e1", "c1", "2026-09-29", "Lecture — Les syllabes", "Lire des syllabes", "", "Apolline a lu seule."],
-      ["o2", "e2", "c1", "2026-09-29", "Lecture — Les syllabes", "Lire des syllabes", "", "Zephir a eu besoin d'aide."],
-    ]);
-    // Une fiche déjà posée sur ce créneau pour cet élève : on ne double pas ; un autre créneau ne compte pas.
-    const posee = { ...suite[0], note: "" };
-    const ailleurs = { ...suite[1], creneauId: "c2" };
-    expect(fichesACreer([posee, ailleurs], creneau, "Bilan.", (id) => noms[id], "x", () => "o9").map((o) => o.eleveId)).toEqual(["e2"]);
-    // Rien tant que le bilan est vide, rien sans élève.
-    expect(fichesACreer([], creneau, "   ", (id) => noms[id], "x", () => "o9")).toEqual([]);
-    expect(fichesACreer([], { ...creneau, elevesIds: [] }, "Bilan.", (id) => noms[id], "x", () => "o9")).toEqual([]);
-  });
-});
-
-describe("ce qu'un bilan change aux dossiers des élèves", () => {
-  const noms: Record<string, string> = { e1: "Ayub Martin", e2: "Nour Ben" };
-  const creneau = { id: "c1", date: "2026-10-02T00:00:00", elevesJson: '["e1","e2"]', nature: "classe", matiere: "Jeux collectifs" };
-  const bilan = "Ayub a coopéré. Nour a gagné deux fois.";
-
-  it("pose une fiche à chaque élève du créneau, nourrie de ce qui le nomme", () => {
-    const { neuves, aEcrire } = fichesDuBilan([], creneau, { titre: "Jeu de l'oie" }, bilan, (id) => noms[id], "2026-10-03T21:00:00Z", (() => { let n = 0; return () => `o${++n}`; })());
-    expect(neuves.map((o) => [o.eleveId, o.note, o.contexte])).toEqual([
-      ["e1", "Ayub a coopéré.", "Jeux collectifs — Jeu de l'oie"],
-      ["e2", "Nour a gagné deux fois.", "Jeux collectifs — Jeu de l'oie"],
-    ]);
-    expect(aEcrire).toEqual(neuves);
-  });
-
-  it("nourrit la fiche déjà posée sans en créer une seconde, et ne touche à rien pour une réunion", () => {
-    const [fiche] = fichesDuBilan([], { ...creneau, elevesJson: '["e1"]' }, undefined, "Avant.", (id) => noms[id], "x", () => "o1").neuves;
-    const ensuite = fichesDuBilan([fiche], { ...creneau, elevesJson: '["e1"]' }, undefined, `Avant. ${bilan}`, (id) => noms[id], "y", () => "o2");
-    expect(ensuite.neuves).toEqual([]);
-    expect(ensuite.aEcrire.map((o) => [o.id, o.note])).toEqual([["o1", "Ayub a coopéré."]]);
-    expect(fichesDuBilan([], { ...creneau, nature: "reunion" }, undefined, bilan, (id) => noms[id], "x", () => "o9").neuves).toEqual([]);
-    expect(fichesDuBilan([], undefined, undefined, bilan, (id) => noms[id], "x", () => "o9").aEcrire).toEqual([]);
   });
 });

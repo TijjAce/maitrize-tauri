@@ -72,6 +72,11 @@ describe("ramasser ce qui est écrit", () => {
     expect(e[0].texte).toBe("Sait demander de l'aide.");
   });
 
+  it("ne compte pas deux fois ce que le bilan a porté aux notes : le cahier journal le donne déjà", () => {
+    const deBilan = { id: "bilan:c1:e1", date: "2026-10-02T11:00:00", texte: "Jeux collectifs : Camille a coopéré.", type: "scolaire", eleveId: "e1" };
+    expect(ecritsDesObservations([deBilan], "e1")).toEqual([]);
+  });
+
   it("le cahier journal ne donne que ce qui nomme l'élève", () => {
     const e = ecritsDuJournal([
       creneau({ bilan: "Camille a compté jusqu'à 12. Ayyûb a rangé." }),

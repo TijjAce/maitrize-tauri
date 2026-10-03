@@ -1,9 +1,9 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { api, Creneau, Seance, Sequence, Eleve, Jeu, journal, newId, nouveauJeu, teinteCreneau, texteErreur, nowIso, type MaterielItem, type ObservationEleve } from "../api";
-import { toast } from "./Toaster";
+import { api, Creneau, Seance, Sequence, Eleve, Jeu, journal, nouveauJeu, teinteCreneau, texteErreur, type CommentaireEleve, type MaterielItem, type ObservationEleve } from "../api";
+import { toast, toastAnnulable } from "./Toaster";
 import { PoserObservation } from "./PoserObservation";
-import { fichesDuBilan } from "../observationEleve";
+import { appliquer, porterAuDossier } from "../notesDuBilan";
 import { enAttente } from "../journalEnAttente";
 import { useDictee, mmss } from "../dictee";
 import { natureDe } from "../heures";
@@ -105,14 +105,12 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
     });
   }, [duJour]);
 
-  // Les élèves, les créneaux et les séances, lisibles depuis l'enregistrement
-  // — qui vit plus longtemps qu'un rendu.
+  // Les élèves et les créneaux, lisibles depuis l'enregistrement — qui vit
+  // plus longtemps qu'un rendu.
   const elevesRef = React.useRef(eleves);
   elevesRef.current = eleves;
   const creneauxRef = React.useRef(duJour);
   creneauxRef.current = duJour;
-  const seancesRef = React.useRef(seances);
-  seancesRef.current = seances;
 
   const enregistrer = React.useCallback(async (id: string, b: Brouillon) => {
     setEtats((e) => ({ ...e, [id]: "enregistrement" }));
@@ -120,28 +118,26 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
       await api.creneauJournalSave(id, b.prevu, b.bilan);
       enregistres.current[id] = b;
       setEtats((e) => ({ ...e, [id]: "ok" }));
-      // Le bilan va de lui-même au dossier des élèves du créneau : les fiches
-      // posées sur ce créneau s'en nourrissent, et il en pose une à ceux qui
-      // n'en ont pas encore.
-      const nomDe = (eleveId: string) => elevesRef.current.find((x) => x.id === eleveId)?.nom ?? "";
+      // Ce que le bilan dit d'un élève va dans ses notes ; les fiches posées
+      // sur ce créneau avec un axe s'en nourrissent (voir notesDuBilan.ts).
       const c = creneauxRef.current.find((x) => x.id === id);
-      const s = seancesRef.current.find((x) => x.id === c?.seanceId);
-      const { neuves, aEcrire: aNourrir } = fichesDuBilan(observations.current, c, s, b.bilan, nomDe, nowIso(), newId);
-      if (neuves.length) observations.current = [...observations.current, ...neuves];
-      for (const o of aNourrir) {
-        // Le bilan est enregistré ; si la fiche d'observation qu'il alimente
-        // ne l'est pas, l'écran dirait « enregistré » à tort. On ne peut pas
-        // l'écrire à la place de l'enseignant, mais on peut le dire.
-        await api.observationSave(o).catch((err: unknown) => {
-          journal(`ÉCHEC observation nourrie par le bilan : ${texteErreur(err)}`);
-          toast("Le bilan est enregistré, mais pas la fiche d'observation qu'il alimente.",
-            { icone: "⚠️", duree: 7000 });
-        });
-        observations.current = observations.current.map((x) => (x.id === o.id ? o : x));
-      }
-      if (neuves.length) {
-        setFiches(observations.current);
-        toast(`Bilan porté au dossier de ${neuves.map((o) => nomDe(o.eleveId).split(/\s+/)[0] || "l'élève").join(", ")}.`, { icone: "📋" });
+      if (!c) return;
+      try {
+        const porte = await porterAuDossier(c, b.bilan, { observations: observations.current, notes: notes.current, eleves: elevesRef.current });
+        observations.current = appliquer(observations.current, porte.fiches);
+        notes.current = appliquer(notes.current, porte.notes, porte.notesRetirees);
+        if (porte.fiches.length) setFiches(observations.current);
+        if (porte.nouvelles.length) {
+          const prenoms = porte.nouvelles.map((e) => elevesRef.current.find((x) => x.id === e)?.nom.split(/\s+/)[0] || "l'élève");
+          // « d'Aurélien », « de Louison » : l'élision suit le premier prénom.
+          const de = /^[aeiouyàâäéèêëîïôöùûü]/i.test(prenoms[0] ?? "") ? "d'" : "de ";
+          toast(`Porté dans les notes ${de}${prenoms.join(", ")}.`, { icone: "📋" });
+        }
+      } catch (err) {
+        // Le bilan est enregistré ; ce qu'il porte au dossier ne l'est pas :
+        // l'écran dirait « enregistré » à tort si l'on se taisait.
+        journal(`ÉCHEC dossier des élèves depuis le bilan : ${texteErreur(err)}`);
+        toast("Le bilan est enregistré, mais pas ce qu'il porte au dossier des élèves.", { icone: "⚠️", duree: 7000 });
       }
     } catch (err) {
       setEtats((e) => ({ ...e, [id]: "erreur" }));
@@ -335,13 +331,27 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
   // Les temps d'observation posés sur les créneaux du jour : ce sont eux qui
   // récupèrent le bilan, une fois qu'il est écrit.
   const [observerPour, setObserverPour] = React.useState<Creneau | null>(null);
+  const notes = React.useRef<CommentaireEleve[]>([]);
   const observations = React.useRef<ObservationEleve[]>([]);
   const [fiches, setFiches] = React.useState<ObservationEleve[]>([]);
   const relireObservations = React.useCallback(() => {
     api.observationsList().then((l) => { observations.current = l; setFiches(l); }).catch(() => {});
+    api.commentairesList().then((l) => { notes.current = l; }).catch(() => {});
   }, []);
+  // Seules les observations posées sur un axe se montrent : une fiche sans axe
+  // n'observe rien, et le bilan va de toute façon aux notes des élèves.
   const observationsDuCreneau = React.useCallback(
-    (creneauId: string) => fiches.filter((o) => o.creneauId === creneauId), [fiches]);
+    (creneauId: string) => fiches.filter((o) => o.creneauId === creneauId && o.axe.trim()), [fiches]);
+  /** Retire une observation posée par erreur ; dix secondes pour revenir en arrière. */
+  const retirerObservation = async (o: ObservationEleve) => {
+    try {
+      await api.observationDelete(o.id);
+      relireObservations();
+      toastAnnulable("Observation retirée.", async () => { await api.observationSave(o); relireObservations(); });
+    } catch (err) {
+      toast("Observation non retirée : " + texteErreur(err), { icone: "⚠️" });
+    }
+  };
   React.useEffect(() => { relireObservations(); }, [relireObservations, dateIso]);
   const poserCompetence = (c: Creneau, comp: CompetenceSelectionnee) => {
     const prevu = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
@@ -434,15 +444,19 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
               {/* Ce qu'on a décidé d'observer sur ce créneau : la ligne est là
                   pendant la séance, sous les yeux — c'est le seul moment où
                   elle sert. */}
-              {observationsDuCreneau(c.id).map((o) => (
-                <div key={o.id} style={{
-                  fontSize: 12.5, background: "var(--panel-2)", borderRadius: 8,
-                  padding: "6px 9px", marginBottom: 6, lineHeight: 1.5,
-                }}>
-                  👁 <b>{eleves.find((e) => e.id === o.eleveId)?.nom.split(" ")[0] ?? "Élève"}</b> — {o.axe}
-                  {o.domaine && <span className="meta" style={{ fontSize: 11 }}> · {o.domaine}</span>}
-                </div>
-              ))}
+              {observationsDuCreneau(c.id).map((o) => {
+                const prenom = eleves.find((e) => e.id === o.eleveId)?.nom.split(" ")[0] ?? "Élève";
+                return (
+                  <div key={o.id} className="journal-observation">
+                    <span>
+                      👁 <b>{prenom}</b> — {o.axe}
+                      {o.domaine && <span className="meta" style={{ fontSize: 11 }}> · {o.domaine}</span>}
+                    </span>
+                    <button type="button" className="journal-observation-x" title="Retirer cette observation"
+                      aria-label={`Retirer l'observation de ${prenom}`} onClick={() => { void retirerObservation(o); }}>×</button>
+                  </div>
+                );
+              })}
               {(["prevu", "bilan"] as Champ[]).map((champ) => {
                 const actif = cible?.id === c.id && cible.champ === champ;
                 const occupe = dictee.etat !== "repos" && !actif;
@@ -485,7 +499,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                         </>
                       ) : (
                         <span className="meta" style={{ fontSize: 12 }} title="Ce que vous écrivez ici va de lui-même au dossier des élèves du créneau, une fiche par élève — et s'imprime en tête du cahier journal du prochain jour de classe">
-                          {reunion ? "" : [ids.length ? "📋 va au dossier des élèves" : "", "🖨 s'imprime sur le journal du lendemain"].filter(Boolean).join(" · ")}
+                          {reunion ? "" : ["📋 ce qui nomme un élève va dans ses notes", "🖨 s'imprime sur le journal du lendemain"].join(" · ")}
                         </span>
                       )}
                     </div>
