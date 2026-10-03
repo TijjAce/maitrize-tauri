@@ -472,7 +472,6 @@ export default function Planning() {
           title={deplacer ? "Déplacement activé — glissez les créneaux. Cliquez pour désactiver." : "Activer le déplacement des créneaux par glisser-déposer"}>
           ✋ Déplacer</button>}
         {vue !== "mois" && <button className="btn" onClick={imprimer}>🖨 PDF</button>}
-        {/* Le planning et son cahier journal, emportés sur le téléphone. */}
         <div className="seg" style={{ marginLeft: 4 }}>
           <button className={vue === "jour" ? "active" : ""} onClick={() => setVue("jour")}>Jour</button>
           <button className={vue === "semaine" ? "active" : ""} onClick={() => setVue("semaine")}>Semaine</button>
