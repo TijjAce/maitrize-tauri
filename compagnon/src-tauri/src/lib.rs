@@ -26,31 +26,28 @@ pub fn run() {
         // Le scanner de documents : VisionKit, le même écran que Notes.
         .plugin(tauri_plugin_scanner::init())
         .invoke_handler(tauri::generate_handler![
-            ordinateur_lire,
-            ordinateur_ecrire,
-            ordinateur_joignable,
             vocal_garder,
             vocaux_liste,
             vocal_lire,
             vocal_oublier,
-            vocal_envoyer,
             note_garder,
             notes_liste,
             note_oublier,
-            note_envoyer,
             creneaux_du_jour,
-            creneaux_rafraichir,
             creneau_maintenant,
-            scan_envoyer,
-            // Le relais de Nuage : déposer sans que l'ordinateur soit là.
+            // Par Nuage : les dictées, les notes, l'emploi du temps.
             relais_lire,
             relais_ecrire,
             relais_oublier,
             relais_joignable,
             vocal_deposer,
             note_deposer,
-            scan_deposer,
             creneaux_du_relais,
+            // Par le WiFi, et seulement quand l'ordinateur le demande : pages et photos.
+            demande_lire,
+            demande_envoyer_pages,
+            demande_envoyer_photo,
+            demande_terminer,
         ])
         .run(tauri::generate_context!())
         .expect("le dictaphone n'a pas pu démarrer");

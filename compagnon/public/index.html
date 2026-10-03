@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>Dictaphone — Maitrize</title>
 <style>
@@ -25,7 +25,9 @@
  }
  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
  [hidden] { display:none !important; }
- html { -webkit-text-size-adjust:100%; }
+ /* Pas de zoom, ni au pincement ni au double appui : l'écran est fait pour le pouce. */
+ html { -webkit-text-size-adjust:100%; touch-action:manipulation; overflow-x:hidden; }
+ body { touch-action:manipulation; overflow-x:hidden; }
  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
    background:var(--bg); color:var(--txt); -webkit-font-smoothing:antialiased; }
  button { font-family:inherit; cursor:pointer; }
@@ -37,7 +39,7 @@
  header { display:flex; align-items:center; justify-content:space-between; gap:12px;
    padding:calc(12px + env(safe-area-inset-top)) 20px 4px; max-width:520px; margin:0 auto; }
  h1 { margin:0; font-size:30px; font-weight:800; letter-spacing:-.02em; }
- .liaison { display:inline-flex; align-items:center; gap:7px; padding:7px 12px; border-radius:99px;
+ .liaison { display:inline-flex; align-items:center; gap:6px; padding:7px 12px; border-radius:99px;
    background:var(--card); box-shadow:var(--ombre); font-size:13.5px; font-weight:600; color:var(--txt2); }
  .pt { width:8px; height:8px; border-radius:50%; flex:none; background:var(--txt3); display:inline-block; }
  .ok .pt, .pt.ok { background:var(--vert); }
@@ -45,8 +47,15 @@
 
  main { padding:0 16px calc(32px + env(safe-area-inset-bottom)); max-width:520px; margin:0 auto; }
 
+ /* Deux parties : ce qui passe par Nuage, ce qui passe par le WiFi. L'en-tête de chacune le dit. */
+ h2.partie { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:26px 4px 2px; font-size:19px; font-weight:800;
+   letter-spacing:-.01em; }
+ h2.partie:first-child { margin-top:14px; }
+ h2.partie .ic { width:22px; height:22px; color:var(--acc-txt); }
+ h2.partie small { flex-basis:100%; margin-left:30px; font-size:13px; font-weight:500; color:var(--txt2); letter-spacing:0; }
+
  /* Dicter : le geste de la journée, au milieu de l'écran. */
- .heros { display:flex; flex-direction:column; align-items:center; padding:18px 0 4px; }
+ .heros { display:flex; flex-direction:column; align-items:center; padding:12px 0 4px; }
  /* Le jour dont on parle : aujourd'hui, ou un autre — qui se voit de loin. */
  .jour { display:flex; align-items:center; gap:8px; width:100%; padding:6px; margin-bottom:14px;
    border-radius:16px; background:var(--card); box-shadow:var(--ombre); }
@@ -86,6 +95,7 @@
    font-variant-numeric:tabular-nums; line-height:1; }
  .muet { margin:14px 0 0; color:var(--rouge); font-size:14.5px; font-weight:600; }
  .tuiles { display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; margin-top:26px; }
+ .tuile.seule { width:100%; margin-top:24px; }
  .tuile { display:flex; align-items:center; justify-content:center; gap:9px; padding:15px 12px;
    border:none; border-radius:16px; background:var(--card); box-shadow:var(--ombre); color:var(--txt);
    font-size:15.5px; font-weight:600; }
@@ -102,8 +112,14 @@
    padding:15px 14px; border:none; border-radius:14px; font-size:16px; font-weight:700; }
  .btn-plein { background:var(--acc); color:#fff; }
  .btn-doux { background:var(--card); color:var(--txt); box-shadow:var(--ombre); }
- .groupe + .btn-plein { margin-top:12px; }
+ .groupe + .btn-plein, .groupe + .groupe, .btn-plein + .groupe { margin-top:12px; }
  .carte .btn-doux { background:var(--champ); box-shadow:none; }
+ .carte .btn-plein + .btn-doux, .carte .vue + .btn-doux { margin-top:10px; }
+ label.btn-plein { cursor:pointer; }
+ .btn-plein.inactif { opacity:.45; pointer-events:none; }
+ .carte-wifi { margin-top:10px; padding:16px; }
+ .carte-info { display:flex; align-items:center; gap:8px; margin:12px 2px 0; font-size:14.5px; color:var(--txt2); }
+ .carte-info .ic { width:18px; height:18px; color:var(--vert); }
  .lien-btn { border:none; background:none; color:var(--acc-txt); font-size:15px; font-weight:600;
    padding:8px 2px; flex:none; }
  .lien-btn.rouge { color:var(--rouge); }
@@ -152,12 +168,12 @@
 
  /* Relier : le QR code d'abord, un code collé sinon. */
  .carte { background:var(--card); border-radius:20px; box-shadow:var(--ombre); padding:24px 18px 18px; margin-top:12px; }
- main > .carte:first-child { margin-top:22px; }
+ .partie + .carte { margin-top:12px; }
  .carte-tete { display:flex; flex-direction:column; align-items:center; gap:12px; margin-bottom:20px; }
  .grand-ico { width:58px; height:58px; border-radius:18px; display:grid; place-items:center;
    background:var(--acc-doux); color:var(--acc-txt); }
  .grand-ico .ic { width:28px; height:28px; }
- h2 { margin:0; font-size:21px; font-weight:700; letter-spacing:-.01em; }
+ .carte-tete h3 { margin:0; font-size:20px; font-weight:700; letter-spacing:-.01em; }
  .vue { width:100%; aspect-ratio:1/1; border-radius:16px; object-fit:cover; background:#000; display:block; margin-bottom:10px; }
  .ou { display:flex; align-items:center; gap:12px; margin:18px 0 14px; color:var(--txt3); font-size:13.5px; }
  .ou::before, .ou::after { content:""; flex:1; height:1px; background:var(--sep); }
