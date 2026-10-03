@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 vi.mock("./api", () => ({ newId: () => "id" + Math.random().toString(36).slice(2, 8) }));
 
 import {
-  CIBLE_MAX, CIBLE_MIN, basculerCible, basculerPeriode, comptes, ecrire, elevesConcernes, etatDuCompte, lire, marqueEleve, marqueGroupe, motDuCompte, nouveauGroupe, nouvelObjectif, objectifsDe, objectifsDuCreneau, poserSurCreneau, retirerDuCreneau, retirerGroupe, type ProgrammationIme, vide,
+  CIBLE_MAX, CIBLE_MIN, basculerCible, cyclerPeriode, domaineDe, etatDePeriode, niveauDe, parDomaine, basculerPeriode, comptes, ecrire, elevesConcernes, etatDuCompte, lire, marqueEleve, marqueGroupe, motDuCompte, nouveauGroupe, nouvelObjectif, objectifsDe, objectifsDuCreneau, poserSurCreneau, retirerDuCreneau, retirerGroupe, type ProgrammationIme, vide,
 } from "./programmationIme";
 
 const prog = (): ProgrammationIme => ({
@@ -188,5 +188,34 @@ describe("programmer par créneau", () => {
     const p = retirerDuCreneau(prog(), "lundi14", "Demander de l'aide", "PPI", élèvesPar);
     expect(p.objectifs).toHaveLength(2);
     expect(p.objectifs[0].pour).toEqual([marqueGroupe("g1")]);
+  });
+});
+
+describe("la programmation en tableau", () => {
+  const objectif = (id: string, origine: string) => ({ ...nouvelObjectif(), id, competence: id, origine });
+
+  it("lit le domaine et le niveau dans la provenance d'une compétence", () => {
+    const o = objectif("a", "Cycle 2 — CP, CE1, CE2 (programmes 2026) › Français › CP");
+    expect([domaineDe(o), niveauDe(o)]).toEqual(["Français", "CP"]);
+    expect([domaineDe(objectif("b", "PPI")), niveauDe(objectif("b", "PPI"))]).toEqual(["", ""]);
+    expect([domaineDe(objectif("c", "BO · Cycle 1 › Langage")), niveauDe(objectif("c", "BO · Cycle 1 › Langage"))]).toEqual(["Langage", ""]);
+  });
+
+  it("range par domaine, dans l'ordre d'apparition, les objectifs écrits à la main à la fin", () => {
+    const groupes = parDomaine([
+      objectif("libre", "PPI"), objectif("f1", "C2 › Français › CP"), objectif("m1", "C2 › Mathématiques › CE1"),
+      objectif("f2", "C2 › Français › CE1"), objectif("vide", ""),
+    ]);
+    expect(groupes.map((g) => [g.domaine, g.objectifs.map((o) => o.id)])).toEqual([
+      ["Français", ["f1", "f2"]], ["Mathématiques", ["m1"]], ["", ["libre", "vide"]],
+    ]);
+  });
+
+  it("une case de période passe de rien à prévue, à atteinte, puis à rien", () => {
+    let o = objectif("a", "");
+    const etats = [];
+    for (let i = 0; i < 3; i++) { o = cyclerPeriode(o, 2); etats.push(etatDePeriode(o, 2)); }
+    expect(etats).toEqual(["prevue", "atteinte", ""]);
+    expect([o.periodes, o.atteintes]).toEqual([[], []]);
   });
 });
