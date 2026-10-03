@@ -9,9 +9,14 @@
 //! C'est l'ordinateur qui sait ce qui se passait à 10 h 12, parce qu'il a le
 //! cahier journal. Il transcrit sur place avec Whisper et range.
 //!
-//! Le dépôt part d'ici, en Rust, et non de la page : les règles réseau d'iOS
-//! ne s'appliquent pas aux sockets, ce qui évite de déclarer une exception
-//! pour parler en clair au Mac du réseau local.
+//! Deux chemins, chacun pour son usage. Les dictées et les notes passent par
+//! Nuage, scellées pour l'ordinateur — où qu'il soit. Le WiFi ne sert qu'aux
+//! demandes de l'ordinateur : les pages d'un manuel, une photo, envoyées au
+//! QR code qu'il affiche.
+//!
+//! Les envois partent d'ici, en Rust, et non de la page : les règles réseau
+//! d'iOS ne s'appliquent pas aux sockets, ce qui évite de déclarer une
+//! exception pour parler en clair au Mac du réseau local.
 
 use maitrize_relais as relais;
 use serde::{Deserialize, Serialize};
@@ -35,7 +40,7 @@ pub struct Vocal {
     pub creneau: String,
 }
 
-/// Où l'on garde les vocaux et l'adresse de l'ordinateur.
+/// Où l'on garde les vocaux, les notes et le relais.
 fn dossier(app: &tauri::AppHandle) -> R<PathBuf> {
     let d = app
         .path()
@@ -43,22 +48,6 @@ fn dossier(app: &tauri::AppHandle) -> R<PathBuf> {
         .map_err(|e| format!("Dossier de données introuvable : {e}"))?;
     std::fs::create_dir_all(d.join("vocaux")).map_err(|e| e.to_string())?;
     Ok(d)
-}
-
-fn fiche(app: &tauri::AppHandle) -> R<PathBuf> {
-    Ok(dossier(app)?.join("ordinateur.txt"))
-}
-
-/// L'adresse du Mac, telle qu'on l'a appairée. Vide tant qu'on ne l'a pas.
-#[tauri::command]
-pub fn ordinateur_lire(app: tauri::AppHandle) -> R<String> {
-    Ok(std::fs::read_to_string(fiche(&app)?).unwrap_or_default().trim().to_string())
-}
-
-/// Retient l'adresse du Mac : elle vaudra encore demain.
-#[tauri::command]
-pub fn ordinateur_ecrire(app: tauri::AppHandle, url: String) -> R<()> {
-    std::fs::write(fiche(&app)?, url.trim()).map_err(|e| e.to_string())
 }
 
 /**
@@ -155,86 +144,102 @@ pub fn vocal_oublier(app: tauri::AppHandle, id: String) -> R<()> {
     std::fs::remove_file(chemin).map_err(|e| e.to_string())
 }
 
-/**
- * Dépose un vocal sur l'ordinateur, et ne l'efface que s'il est arrivé.
- *
- * L'adresse gardée porte déjà le jeton : `http://192.168.x.x:8787/?t=…`. On en
- * reprend l'origine et le jeton pour bâtir l'adresse du dépôt.
- */
-#[tauri::command]
-pub async fn vocal_envoyer(app: tauri::AppHandle, id: String) -> R<()> {
-    let base = ordinateur_lire(app.clone())?;
-    if base.is_empty() {
-        return Err("Aucun ordinateur appairé.".into());
-    }
-    let (origine, jeton) = decouper_adresse(&base)?;
-    let chemin = fichier_de(&app, &id)?;
-    let nom = chemin.file_name().unwrap_or_default().to_string_lossy().to_string();
-    let (_, debut, duree, creneau) = depuis_le_nom(&nom).ok_or("Nom de fichier inattendu.")?;
-    let octets = std::fs::read(&chemin).map_err(|e| e.to_string())?;
+// ── Ce que l'ordinateur demande, par le WiFi ─────────────────────────────
+//
+// Le WiFi ne sert plus qu'à cela : quand l'ordinateur a besoin des pages d'un
+// manuel ou d'une photo, il affiche un QR code ; le téléphone le lit, envoie,
+// et c'est fini. Rien n'est retenu : la demande suivante viendra avec son
+// propre QR code. C'est le serveur de capture de l'ordinateur qui reçoit —
+// `/upload`, et `/fin` pour clore une série de pages.
 
-    let url = format!(
-        "{origine}/api/vocal?t={}&debut={}&duree={duree}&creneau={}",
-        urlencode(&jeton),
-        urlencode(&debut),
-        urlencode(&creneau)
-    );
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
+/// Une demande de l'ordinateur : où envoyer, et s'il attend une série de pages.
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DemandeWifi {
+    pub origine: String,
+    pub jeton: String,
+    /// Une série de pages — un manuel — plutôt qu'une seule photo.
+    pub serie: bool,
+}
+
+/// Lit le QR code d'une demande de l'ordinateur : « http://…/?t=…&s=1 ».
+pub fn lire_demande(url: &str) -> R<DemandeWifi> {
+    let propre: String = url.chars().filter(|c| !c.is_whitespace()).collect();
+    if !propre.starts_with("http://") && !propre.starts_with("https://") {
+        return Err("Ce QR code n'est pas celui d'une demande de l'ordinateur.".into());
+    }
+    let (origine, jeton) = decouper_adresse(&propre)?;
+    let serie = propre.split(['?', '&']).any(|p| p == "s=1");
+    Ok(DemandeWifi { origine, jeton, serie })
+}
+
+#[tauri::command]
+pub fn demande_lire(url: String) -> R<DemandeWifi> {
+    lire_demande(&url)
+}
+
+fn client_wifi() -> R<reqwest::Client> {
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(60))
         .build()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())
+}
+
+/// L'adresse d'envoi d'une image, telle que le serveur de capture l'attend.
+pub fn adresse_d_envoi(d: &DemandeWifi, ext: &str) -> String {
+    format!("{}/upload?t={}&ext={ext}{}", d.origine, urlencode(&d.jeton), if d.serie { "&s=1" } else { "" })
+}
+
+async fn poster(client: &reqwest::Client, url: &str, octets: Vec<u8>, deja: u32) -> R<()> {
     let reponse = client
-        .post(&url)
+        .post(url)
         .body(octets)
         .send()
         .await
-        .map_err(|_| "L'ordinateur ne répond pas.".to_string())?;
+        .map_err(|_| format!("L'ordinateur ne répond pas ({deja} envoyée(s)) : êtes-vous sur le même WiFi ?"))?;
     if !reponse.status().is_success() {
-        return Err(format!("L'ordinateur a refusé ({}).", reponse.status()));
+        return Err(format!("L'ordinateur a refusé ({}) : sa demande est peut-être close, affichez un nouveau QR code.", reponse.status()));
     }
-    std::fs::remove_file(&chemin).map_err(|e| e.to_string())
+    Ok(())
 }
 
-// ── Les pages scannées ────────────────────────────────────────────────────
-//
-// Le scanner de l'iPhone rend des pages redressées, en JPEG, dans le dossier
-// temporaire. Elles partent l'une après l'autre sur l'ordinateur, qui les
-// range dans le manuel ouvert ; chacune est effacée une fois arrivée. Un
-// manuel n'a rien de nominatif : le téléphone peut le garder le temps de
-// l'envoi sans rien trahir.
-
-/// Envoie les pages scannées ; rend le nombre de pages arrivées.
-///
-/// Au premier refus, on s'arrête et l'on dit combien sont passées : les
-/// pages restantes sont gardées, l'enseignant relance.
+/// Envoie des pages scannées à l'ordinateur qui les a demandées ; rend combien sont arrivées.
 #[tauri::command]
-pub async fn scan_envoyer(app: tauri::AppHandle, fichiers: Vec<String>) -> R<u32> {
-    let base = ordinateur_lire(app.clone())?;
-    if base.is_empty() {
-        return Err("Aucun ordinateur appairé.".into());
-    }
-    let (origine, jeton) = decouper_adresse(&base)?;
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(60))
-        .build()
-        .map_err(|e| e.to_string())?;
-    let url = format!("{origine}/api/photo?t={}&ext=jpg", urlencode(&jeton));
+pub async fn demande_envoyer_pages(url: String, fichiers: Vec<String>) -> R<u32> {
+    let d = lire_demande(&url)?;
+    let client = client_wifi()?;
     let mut envoyees = 0u32;
     for chemin in fichiers {
         let octets = std::fs::read(&chemin).map_err(|e| e.to_string())?;
-        let reponse = client
-            .post(&url)
-            .body(octets)
-            .send()
-            .await
-            .map_err(|_| format!("L'ordinateur ne répond plus ({envoyees} page(s) envoyée(s))."))?;
-        if !reponse.status().is_success() {
-            return Err(format!("L'ordinateur a refusé ({}) après {envoyees} page(s).", reponse.status()));
-        }
+        poster(&client, &adresse_d_envoi(&d, "jpg"), octets, envoyees).await?;
         let _ = std::fs::remove_file(&chemin);
         envoyees += 1;
     }
     Ok(envoyees)
+}
+
+/// Envoie une photo prise à la demande de l'ordinateur.
+#[tauri::command]
+pub async fn demande_envoyer_photo(url: String, image_b64: String, ext: String) -> R<()> {
+    use base64::Engine;
+    let d = lire_demande(&url)?;
+    let octets = base64::engine::general_purpose::STANDARD
+        .decode(image_b64.as_bytes())
+        .map_err(|e| format!("Photo illisible : {e}"))?;
+    let ext = match ext.as_str() { "png" => "png", _ => "jpg" };
+    poster(&client_wifi()?, &adresse_d_envoi(&d, ext), octets, 0).await
+}
+
+/// Dit à l'ordinateur que la série de pages est complète.
+#[tauri::command]
+pub async fn demande_terminer(url: String) -> R<()> {
+    let d = lire_demande(&url)?;
+    client_wifi()?
+        .get(format!("{}/fin?t={}&s=1", d.origine, urlencode(&d.jeton)))
+        .send()
+        .await
+        .map_err(|_| "L'ordinateur ne répond pas.".to_string())?;
+    Ok(())
 }
 
 // ── Les créneaux du jour ──────────────────────────────────────────────────
@@ -313,36 +318,6 @@ pub fn creneaux_du_jour(app: tauri::AppHandle, jour: String) -> R<CreneauxConnus
     } else {
         rien
     })
-}
-
-/// Redemande les créneaux d'un jour à l'ordinateur ; ceux d'aujourd'hui remplacent ce qu'on avait.
-#[tauri::command]
-pub async fn creneaux_rafraichir(app: tauri::AppHandle, jour: String) -> R<Vec<Creneau>> {
-    let base = ordinateur_lire(app.clone())?;
-    if base.is_empty() {
-        return Err("Aucun ordinateur appairé.".into());
-    }
-    let (origine, jeton) = decouper_adresse(&base)?;
-    let url = format!("{origine}/api/creneaux?t={}&jour={}", urlencode(&jeton), urlencode(&jour));
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(8))
-        .build()
-        .map_err(|e| e.to_string())?;
-    // Le corps se lit en texte puis se décode ici : la fonctionnalité `json`
-    // de reqwest n'est pas activée, et une dépendance de plus sur iPhone se
-    // paie à chaque compilation.
-    let corps = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|_| "L'ordinateur ne répond pas.".to_string())?
-        .text()
-        .await
-        .map_err(|e| format!("Réponse illisible : {e}"))?;
-    let journee: Journee =
-        serde_json::from_str(&corps).map_err(|e| format!("Réponse inattendue : {e}"))?;
-    garder_la_journee(&app, &journee)?;
-    Ok(journee.creneaux)
 }
 
 /// Les minutes depuis minuit d'un « 09:30 », ou -1.
@@ -485,55 +460,6 @@ pub fn note_oublier(app: tauri::AppHandle, id: String) -> R<()> {
     std::fs::remove_file(note_fichier(&app, &id)?).map_err(|e| e.to_string())
 }
 
-/// Dépose une note sur l'ordinateur, et ne l'efface que si elle est arrivée.
-#[tauri::command]
-pub async fn note_envoyer(app: tauri::AppHandle, id: String) -> R<()> {
-    let base = ordinateur_lire(app.clone())?;
-    if base.is_empty() {
-        return Err("Aucun ordinateur appairé.".into());
-    }
-    let (origine, jeton) = decouper_adresse(&base)?;
-    let chemin = note_fichier(&app, &id)?;
-    let nom = chemin.file_name().unwrap_or_default().to_string_lossy().to_string();
-    let (_, debut, creneau) = note_depuis_le_nom(&nom).ok_or("Nom de fichier inattendu.")?;
-    let texte = std::fs::read_to_string(&chemin).map_err(|e| e.to_string())?;
-
-    let url = format!(
-        "{origine}/api/note?t={}&debut={}&creneau={}",
-        urlencode(&jeton), urlencode(&debut), urlencode(&creneau)
-    );
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(20))
-        .build()
-        .map_err(|e| e.to_string())?;
-    let reponse = client
-        .post(&url)
-        .body(texte)
-        .send()
-        .await
-        .map_err(|_| "L'ordinateur ne répond pas.".to_string())?;
-    if !reponse.status().is_success() {
-        return Err(format!("L'ordinateur a refusé ({}).", reponse.status()));
-    }
-    std::fs::remove_file(&chemin).map_err(|e| e.to_string())
-}
-
-/// L'ordinateur est-il joignable ? Une question, une réponse, pas de dépôt.
-#[tauri::command]
-pub async fn ordinateur_joignable(app: tauri::AppHandle) -> R<bool> {
-    let base = ordinateur_lire(app)?;
-    if base.is_empty() {
-        return Ok(false);
-    }
-    let (origine, jeton) = decouper_adresse(&base)?;
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(3))
-        .build()
-        .map_err(|e| e.to_string())?;
-    let url = format!("{origine}/api/bonjour?t={}", urlencode(&jeton));
-    Ok(client.get(&url).send().await.map(|r| r.status().is_success()).unwrap_or(false))
-}
-
 // ── Le relais de Nuage ────────────────────────────────────────────────────
 //
 // L'ordinateur n'est pas toujours là quand on a du réseau : on dicte en
@@ -634,31 +560,9 @@ pub async fn note_deposer(app: tauri::AppHandle, id: String) -> R<()> {
     std::fs::remove_file(&chemin).map_err(|e| e.to_string())
 }
 
-/// Dépose les pages scannées sur Nuage ; rend le nombre de pages parties.
-///
-/// Elles attendent là que l'ordinateur ouvre « Scanner avec le compagnon ».
-#[tauri::command]
-pub async fn scan_deposer(app: tauri::AppHandle, fichiers: Vec<String>) -> R<u32> {
-    let a = relais_requis(&app)?;
-    let mut parties = 0u32;
-    for chemin in fichiers {
-        let octets = std::fs::read(&chemin).map_err(|e| e.to_string())?;
-        // L'heure d'abord : les pages se rangent dans l'ordre où elles ont été scannées.
-        let id = format!("{}-{:03}-{}", chrono::Local::now().format("%Y%m%d%H%M%S"), parties, uuid::Uuid::new_v4().simple());
-        let etiquette = relais::Etiquette { genre: relais::Genre::Page, id: id.clone(), debut: String::new(), duree_s: 0.0, creneau: String::new(), ext: "jpg".into() };
-        let blob = relais::preparer_depot(&a, &etiquette, &octets)?;
-        relais::porte::deposer(&a, &relais::nom_du_depot(relais::Genre::Page, &id), blob)
-            .await
-            .map_err(|e| format!("{e} ({parties} page(s) partie(s))."))?;
-        let _ = std::fs::remove_file(&chemin);
-        parties += 1;
-    }
-    Ok(parties)
-}
-
 /// Les créneaux d'un jour, lus dans l'emploi du temps que l'ordinateur a laissé sur Nuage.
 ///
-/// Comme par le WiFi, seuls ceux d'aujourd'hui se gardent.
+/// Seuls ceux d'aujourd'hui se gardent.
 #[tauri::command]
 pub async fn creneaux_du_relais(app: tauri::AppHandle, jour: String) -> R<Vec<Creneau>> {
     let a = relais_requis(&app)?;
@@ -837,6 +741,21 @@ mod tests {
         let json = serde_json::to_string(&vu).unwrap();
         assert!(!json.contains("aBcD1234") && !json.contains("Mz7-secret") && !json.contains(&a.cle_retour));
         assert_eq!(super::vue_du_relais(None), super::RelaisVu::default());
+    }
+
+    #[test]
+    fn une_demande_de_l_ordinateur_se_lit_dans_son_qr_code() {
+        let pages = super::lire_demande("http://192.168.1.31:51234/?t=abc-123&s=1").unwrap();
+        assert_eq!(pages, super::DemandeWifi { origine: "http://192.168.1.31:51234".into(), jeton: "abc-123".into(), serie: true });
+        assert_eq!(super::adresse_d_envoi(&pages, "jpg"), "http://192.168.1.31:51234/upload?t=abc-123&ext=jpg&s=1");
+        let photo = super::lire_demande(" http://192.168.1.31:51234/?t=abc-123 ").unwrap();
+        assert!(!photo.serie);
+        assert_eq!(super::adresse_d_envoi(&photo, "png"), "http://192.168.1.31:51234/upload?t=abc-123&ext=png");
+        // Ni un code de Nuage, ni une adresse sans jeton.
+        assert!(super::lire_demande("maitrize-relais:AAAA").is_err());
+        assert!(super::lire_demande("http://192.168.1.31:51234/").is_err());
+        // « s=10 » n'est pas une série.
+        assert!(!super::lire_demande("http://h:1/?t=x&s=10").unwrap().serie);
     }
 
     #[test]
