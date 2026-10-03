@@ -35,8 +35,14 @@ reqwest = { version = "0.12", features = ["rustls-tls"], default-features = fals
 # Le relais de Nuage : le format et le chiffrement des dépôts, communs au
 # dictaphone et à l'application de bureau. Du Rust pur, sans rien du système.
 maitrize-relais = { path = "../../relais" }
-tokio = { version = "1", features = ["rt-multi-thread"] }
+tokio = { version = "1", features = ["rt-multi-thread", "time"] }
 tauri-plugin-dialog = "2.7.3"
 # Le scanner de documents de l'iPhone : un manuel se photographie page à
 # page comme dans Notes, redressé et nettoyé. Écrit ici, dans `plugins/`.
 tauri-plugin-scanner = { path = "plugins/scanner" }
+
+# Le trousseau de l'iPhone : le mot de passe d'application que Nuage remet au
+# téléphone y est gardé, chiffré par le système, lisible par cette seule
+# application, et jamais copié dans une sauvegarde.
+[target.'cfg(target_vendor = "apple")'.dependencies]
+security-framework = "3"

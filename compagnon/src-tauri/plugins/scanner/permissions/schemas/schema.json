@@ -295,6 +295,30 @@
       "type": "string",
       "oneOf": [
         {
+          "description": "Enables the fermer_connexion command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-fermer-connexion",
+          "markdownDescription": "Enables the fermer_connexion command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the fermer_connexion command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-fermer-connexion",
+          "markdownDescription": "Denies the fermer_connexion command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the ouvrir_connexion command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-ouvrir-connexion",
+          "markdownDescription": "Enables the ouvrir_connexion command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the ouvrir_connexion command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-ouvrir-connexion",
+          "markdownDescription": "Denies the ouvrir_connexion command without any pre-configured scope."
+        },
+        {
           "description": "Enables the scanner command without any pre-configured scope.",
           "type": "string",
           "const": "allow-scanner",
@@ -307,10 +331,10 @@
           "markdownDescription": "Denies the scanner command without any pre-configured scope."
         },
         {
-          "description": "Ouvrir le scanner de documents de l'iPhone et rendre les pages scannées.\n#### This default permission set includes:\n\n- `allow-scanner`",
+          "description": "Ouvrir le scanner de documents de l'iPhone et rendre les pages scannées ; ouvrir et refermer la page de connexion à Nuage.\n#### This default permission set includes:\n\n- `allow-scanner`\n- `allow-ouvrir-connexion`\n- `allow-fermer-connexion`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Ouvrir le scanner de documents de l'iPhone et rendre les pages scannées.\n#### This default permission set includes:\n\n- `allow-scanner`"
+          "markdownDescription": "Ouvrir le scanner de documents de l'iPhone et rendre les pages scannées ; ouvrir et refermer la page de connexion à Nuage.\n#### This default permission set includes:\n\n- `allow-scanner`\n- `allow-ouvrir-connexion`\n- `allow-fermer-connexion`"
         }
       ]
     }

@@ -4,7 +4,13 @@ use tauri::{
     AppHandle, Runtime,
 };
 
-use crate::Pages;
+use crate::{Fermeture, Pages};
+
+/// L'adresse de la page de connexion, telle que Swift la lit.
+#[derive(serde::Serialize)]
+struct Page {
+    url: String,
+}
 
 #[cfg(target_os = "ios")]
 tauri::ios_plugin_binding!(init_plugin_scanner);
@@ -27,6 +33,19 @@ impl<R: Runtime> Scanner<R> {
     pub fn scanner(&self) -> Result<Pages, String> {
         self.0
             .run_mobile_plugin::<Pages>("scanner", ())
+            .map_err(|e| e.to_string())
+    }
+
+    pub fn ouvrir_connexion(&self, url: String) -> Result<Fermeture, String> {
+        self.0
+            .run_mobile_plugin::<Fermeture>("ouvrirConnexion", Page { url })
+            .map_err(|e| e.to_string())
+    }
+
+    pub fn fermer_connexion(&self) -> Result<(), String> {
+        self.0
+            .run_mobile_plugin::<Fermeture>("fermerConnexion", ())
+            .map(|_| ())
             .map_err(|e| e.to_string())
     }
 }

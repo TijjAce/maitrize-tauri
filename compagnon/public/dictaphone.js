@@ -5,8 +5,10 @@
 //
 // Deux chemins, qui ne se mêlent pas. Les dictées et les notes passent par
 // Nuage : le téléphone les y dépose, scellées, et l'ordinateur les relève où
-// qu'il soit. Le WiFi ne sert qu'à répondre à l'ordinateur quand il demande
-// les pages d'un manuel ou une photo : il affiche un QR code, on le lit, on
+// qu'il soit. Le dossier n'est ouvert qu'au compte Nuage de l'enseignant : le
+// QR code de l'ordinateur dit lequel, et le téléphone s'y connecte par la page
+// de Nuage. Le WiFi ne sert qu'à répondre à l'ordinateur quand il demande les
+// pages d'un manuel ou une photo : il affiche un QR code, on le lit, on
 // envoie. Rien ne se relie à la main : chaque liaison passe par un QR code.
 //
 // Le son est capturé à 16 kHz mono et empaqueté en WAV ici même : c'est ce que
@@ -34,12 +36,15 @@ const TAUX = 16000;
 let micro = null, ctx = null, noeud = null, morceaux = [], debut = null, depart = 0, minuteur = null;
 let vocaux = [], envoiEnCours = false, souci = "";
 /**
- * Le relais de Nuage : relié ou non, et s'il répond.
+ * Le relais de Nuage : relié ou non, connecté au compte ou non, et s'il répond.
  *
  * L'ordinateur est le plus souvent fermé dans le sac : par Nuage, ce qui
  * attend part quand même, scellé pour lui, et il le relèvera en s'ouvrant.
  */
-let relais = { relie: false, serveur: "" }, nuage = null;
+const SANS_RELAIS = { relie: false, connecte: false, serveur: "", compte: "" };
+let relais = SANS_RELAIS, nuage = null;
+/** La connexion au compte Nuage : en cours, et ce qui l'a empêchée. */
+let connexionEnCours = false, connexionSouci = "";
 /** Ce qui vient de partir par Nuage : on le dit, pour qu'on ne le cherche pas sur l'ordinateur tout de suite. */
 let partiParNuage = "";
 /**
@@ -302,10 +307,14 @@ async function garderLaNote() {
   void envoyerTout();
 }
 
-/** Nuage répond-il ? On ne le demande que si le téléphone y est relié. */
+/** Nuage répond-il ? On ne le demande que si le téléphone y est relié et connecté. */
 async function tater() {
-  if (!relais.relie) nuage = null;
-  else { try { nuage = await invoke("relais_joignable"); } catch (e) { nuage = false; } }
+  if (!relais.relie || !relais.connecte) nuage = null;
+  else {
+    try { nuage = await invoke("relais_joignable"); } catch (e) { nuage = false; }
+    // Un accès retiré dans Nuage se perd en route : l'écran redemande alors de se connecter.
+    if (!nuage) { try { relais = await invoke("relais_lire"); } catch (e) { /* on garde ce qu'on savait */ } }
+  }
   if (nuage) await rafraichirCreneaux();
   rendre();
 }
@@ -450,6 +459,7 @@ async function envoyerTout() {
   try {
     for (const x of enAttente()) {
       if (!relais.relie) { souci = "Le téléphone n'est pas relié à Nuage."; break; }
+      if (!relais.connecte) { souci = "Le téléphone n'est pas connecté à votre compte Nuage."; break; }
       try {
         await invoke(x.sorte === "note" ? "note_deposer" : "vocal_deposer", { id: x.id });
       } catch (e) { souci = String(e); break; }
@@ -647,8 +657,9 @@ async function codeLu(lu) {
       nuage = null;
       partiParNuage = "";
       scanSouci = "";
+      connexionSouci = "";
       rendre();
-      // Ce qui attendait part dès qu'on est relié.
+      // Ce qui attendait part dès qu'on est relié — et connecté, si c'est le même compte qu'avant.
       void tater().then(() => { if (nuage && enAttente().length) void envoyerTout(); });
       return;
     }
@@ -665,13 +676,49 @@ async function codeLu(lu) {
   }
 }
 
-/** Oublie le relais de Nuage : plus rien ne part jusqu'au prochain QR code. */
+/** Oublie le relais de Nuage : le téléphone rend son accès, et plus rien ne part jusqu'au prochain QR code. */
 async function oublierLeRelais() {
   try { await invoke("relais_oublier"); } catch (e) { /* déjà oublié */ }
-  relais = { relie: false, serveur: "" };
+  relais = SANS_RELAIS;
   nuage = null;
   partiParNuage = "";
+  connexionSouci = "";
   rendre();
+}
+
+/**
+ * Se connecte au compte Nuage qui porte le dossier.
+ *
+ * La page de connexion de Nuage s'ouvre dans une feuille de Safari ; pendant
+ * qu'on s'y connecte, Rust demande à Nuage si c'est fait, puis garde le mot de
+ * passe que Nuage remet au téléphone, et l'on referme la feuille.
+ */
+async function seConnecter() {
+  if (connexionEnCours) return;
+  connexionEnCours = true;
+  connexionSouci = "";
+  rendre();
+  try {
+    const page = await invoke("nuage_connexion_commencer");
+    const attente = invoke("nuage_connexion_attendre");
+    invoke("plugin:scanner|ouvrir_connexion", { url: page })
+      .then((r) => { if (r && r.annulee) void invoke("nuage_connexion_annuler"); })
+      .catch((e) => { connexionSouci = String(e); void invoke("nuage_connexion_annuler"); });
+    try {
+      relais = await attente;
+    } finally {
+      void invoke("plugin:scanner|fermer_connexion").catch(() => {});
+    }
+    nuage = null;
+    partiParNuage = "";
+    void tater().then(() => { if (nuage && enAttente().length) void envoyerTout(); });
+  } catch (e) {
+    // Refermer la page n'est pas une erreur : on reste où l'on était.
+    if (!/annulée/.test(String(e))) connexionSouci = String(e);
+  } finally {
+    connexionEnCours = false;
+    rendre();
+  }
 }
 
 // ── Afficher ──────────────────────────────────────────────────────────────
@@ -718,6 +765,7 @@ const ICONES = {
   gauche: '<path d="M14.5 6l-6 6 6 6"/>',
   photo: '<path d="M4 8h3l1.5-2.5h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/>',
   droite: '<path d="M9.5 6l6 6-6 6"/>',
+  cadenas: '<rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
   qr: '<rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1.2"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1.2"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1.2"/><path d="M14 14h2.5v2.5H14zM18 18h2.5v2.5H18zM14 19.5h1.5M19.5 14v1.5"/>',
   coller: '<rect x="8" y="3" width="8" height="4" rx="1.2"/><path d="M8 5H6.5A1.5 1.5 0 0 0 5 6.5v13A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 17.5 5H16"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
@@ -808,6 +856,7 @@ function bulles() {
 /** Nuage, tel que l'en-tête le dit : prêt, injoignable, ou pas encore regardé. */
 function etatDeNuage() {
   if (!relais.relie) return { classe: "", texte: "Non relié" };
+  if (!relais.connecte) return { classe: "loin", texte: "À connecter" };
   if (nuage === null) return { classe: "", texte: "…" };
   return nuage ? { classe: "ok", texte: "Nuage prêt" } : { classe: "loin", texte: "Hors ligne" };
 }
@@ -857,14 +906,28 @@ function carteNuage() {
   </div>`;
 }
 
-/** Le lien avec Nuage, une fois relié : son état, et de quoi l'oublier. */
+/**
+ * Se connecter au compte qui porte le dossier : le QR code l'a dit, la page de
+ * Nuage le demande. C'est le seul compte qui ouvre le dossier du téléphone.
+ */
+function carteConnexion() {
+  return `<div class="carte">
+    <div class="carte-tete"><span class="grand-ico">${icone("cadenas")}</span><h3>Se connecter à Nuage</h3>
+      <p class="sous">avec le compte <b>${echapper(relais.compte)}</b></p></div>
+    <button class="btn-plein" id="se-connecter" ${connexionEnCours ? "disabled" : ""}>${icone("cadenas")}${connexionEnCours ? "Connexion…" : "Se connecter"}</button>
+    ${connexionSouci ? `<p class="erreur-ligne">${echapper(connexionSouci)}</p>` : ""}
+    <button class="btn-doux" id="oublier-relais" ${connexionEnCours ? "disabled" : ""}>Oublier ce QR code</button>
+  </div>`;
+}
+
+/** Le lien avec Nuage, une fois connecté : son état, le compte, et de quoi l'oublier. */
 function lienNuage() {
   const e = etatDeNuage();
   return `<div class="groupe">
     <div class="rang">
       <span class="ico">${icone("nuage")}</span>
       <span class="rang-texte"><span class="rang-titre">Nuage</span>
-        <span class="rang-sous"><span class="pt ${e.classe}"></span><span class="coupe">${echapper(e.texte)} · ${echapper(relais.serveur)}</span></span></span>
+        <span class="rang-sous"><span class="pt ${e.classe}"></span><span class="coupe">${echapper(e.texte)} · ${echapper(relais.compte)}</span></span></span>
       <button class="lien-btn rouge" id="oublier-relais">Oublier</button>
     </div>
   </div>`;
@@ -907,7 +970,8 @@ function rendre() {
   }
 
   // Deux parties, qui ne se mêlent pas : ce qui passe par Nuage, ce qui passe par le WiFi.
-  const parNuage = !relais.relie ? carteNuage() : `
+  const pret = relais.relie && relais.connecte;
+  const parNuage = !relais.relie ? carteNuage() : !relais.connecte ? carteConnexion() : `
     <section class="heros">
       ${barreDuJour()}
       ${bandeauCreneau()}
@@ -918,7 +982,7 @@ function rendre() {
   el.innerHTML = `
     ${entete("nuage", "Dictées et notes", "par Nuage")}
     ${parNuage}
-    ${!relais.relie ? bulles() : ""}
+    ${!pret ? bulles() : ""}
     ${enCours || ecrit ? "" : `${entete("wifi", "Pages et photos", "par le WiFi, à la demande de l'ordinateur")}${carteWifi()}`}
   `;
 
@@ -927,6 +991,7 @@ function rendre() {
   clic("stop", () => { void arreter(); });
   clic("envoyer", () => { void envoyerTout(); });
   clic("lire-nuage", () => { void lireUnQrCode("nuage"); });
+  clic("se-connecter", () => { void seConnecter(); });
   clic("lire-wifi", () => { void lireUnQrCode("wifi"); });
   clic("stop-scan", () => { fermerCamera(); rendre(); });
   clic("scanner-pages", () => { void scannerLesPages(); });
@@ -962,7 +1027,7 @@ document.addEventListener("gesturestart", (e) => e.preventDefault());
 document.addEventListener("dblclick", (e) => e.preventDefault(), { passive: false });
 
 (async () => {
-  try { relais = await invoke("relais_lire"); } catch (e) { relais = { relie: false, serveur: "" }; }
+  try { relais = await invoke("relais_lire"); } catch (e) { relais = SANS_RELAIS; }
   await relireCreneaux();
   await relire();
   // Ce qui attendait d'hier part dès l'ouverture.

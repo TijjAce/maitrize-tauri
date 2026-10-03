@@ -19,8 +19,12 @@
 //! exception pour parler en clair au Mac du réseau local.
 
 use maitrize_relais as relais;
+use relais::connexion::{self, Connexion};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
+use std::time::Duration;
 use tauri::Manager;
 
 type R<T> = Result<T, String>;
@@ -468,9 +472,11 @@ pub fn note_oublier(app: tauri::AppHandle, id: String) -> R<()> {
 // pour l'ordinateur — lui-même ne peut pas le rouvrir —, et y lit l'emploi du
 // temps que l'ordinateur lui laisse.
 //
-// Ce qu'il garde du relais tient dans le QR code scanné : un lien vers le
-// seul dossier du relais, et deux clés. Ni l'identifiant ni le mot de passe
-// de Nuage ne passent par ici.
+// Le dossier du relais n'est ouvert qu'au compte Nuage de l'enseignant. Le
+// QR code de l'ordinateur dit où il est, et dans quel compte, avec deux clés :
+// aucun mot de passe. Le téléphone se connecte ensuite lui-même à ce compte,
+// par la page de connexion de Nuage, et Nuage lui remet un mot de passe
+// d'application à lui, gardé dans le trousseau de l'iPhone.
 
 fn fiche_relais(app: &tauri::AppHandle) -> R<PathBuf> {
     Ok(dossier(app)?.join("relais.txt"))
@@ -482,81 +488,235 @@ fn relais_garde(app: &tauri::AppHandle) -> Option<relais::Appairage> {
     relais::Appairage::depuis_code(&code).ok()
 }
 
-/// Ce que l'écran montre du relais : s'il est là, et chez qui. Rien de secret.
+/**
+ * Le trousseau de l'iPhone, où dort le mot de passe d'application du téléphone.
+ *
+ * Chiffré par le système, lisible par cette seule application, dès le premier
+ * déverrouillage après un redémarrage — un dépôt peut partir l'écran éteint —,
+ * et jamais copié dans une sauvegarde ni sur un autre appareil.
+ */
+#[cfg(target_vendor = "apple")]
+mod trousseau {
+    use security_framework::access_control::{ProtectionMode, SecAccessControl};
+    use security_framework::passwords::{delete_generic_password, generic_password, set_generic_password_options, PasswordOptions};
+
+    const SERVICE: &str = "fr.clementsapp.maitrize.dictaphone.nuage";
+    const ENTREE: &str = "connexion";
+
+    pub fn lire() -> Option<String> {
+        let octets = generic_password(PasswordOptions::new_generic_password(SERVICE, ENTREE)).ok()?;
+        String::from_utf8(octets).ok()
+    }
+
+    pub fn ecrire(texte: &str) -> Result<(), String> {
+        // Effacer d'abord : une mise à jour ne changerait pas la protection d'une entrée déjà là.
+        effacer();
+        let mut options = PasswordOptions::new_generic_password(SERVICE, ENTREE);
+        let protection = SecAccessControl::create_with_protection(Some(ProtectionMode::AccessibleAfterFirstUnlockThisDeviceOnly), 0)
+            .map_err(|e| format!("Trousseau indisponible : {e}"))?;
+        options.set_access_control(protection);
+        set_generic_password_options(texte.as_bytes(), options).map_err(|e| format!("Le trousseau de l'iPhone a refusé : {e}"))
+    }
+
+    pub fn effacer() {
+        let _ = delete_generic_password(SERVICE, ENTREE);
+    }
+}
+
+/// Ailleurs qu'un appareil Apple, pas de trousseau : le téléphone ne se connecte pas.
+#[cfg(not(target_vendor = "apple"))]
+mod trousseau {
+    pub fn lire() -> Option<String> {
+        None
+    }
+    pub fn ecrire(_texte: &str) -> Result<(), String> {
+        Err("Pas de trousseau sur cet appareil.".into())
+    }
+    pub fn effacer() {}
+}
+
+/// La connexion au compte, si le téléphone en a une.
+fn connexion_gardee() -> Option<Connexion> {
+    serde_json::from_str(&trousseau::lire()?).ok()
+}
+
+/// Ce que l'écran montre du relais : s'il est là, chez qui, et si le
+/// téléphone est connecté au compte. Rien de secret.
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct RelaisVu {
     pub relie: bool,
+    /// Le téléphone est connecté au compte qui porte le dossier.
+    pub connecte: bool,
     /// « nuage03.apps.education.fr »
     pub serveur: String,
+    /// Le compte qui seul ouvre le dossier : celui auquel se connecter.
+    pub compte: String,
 }
 
-fn vue_du_relais(a: Option<&relais::Appairage>) -> RelaisVu {
+fn vue_du_relais(a: Option<&relais::Appairage>, k: Option<&Connexion>) -> RelaisVu {
     match a {
-        Some(a) => RelaisVu { relie: true, serveur: a.serveur.trim_start_matches("https://").trim_end_matches('/').to_string() },
+        Some(a) => RelaisVu {
+            relie: true,
+            connecte: k.is_some(),
+            serveur: a.serveur.trim_start_matches("https://").trim_end_matches('/').to_string(),
+            compte: a.compte.clone(),
+        },
         None => RelaisVu::default(),
     }
 }
 
-/// Le relais est-il configuré ?
+/// Le relais est-il configuré, et le téléphone connecté ?
 #[tauri::command]
 pub fn relais_lire(app: tauri::AppHandle) -> R<RelaisVu> {
-    Ok(vue_du_relais(relais_garde(&app).as_ref()))
+    Ok(vue_du_relais(relais_garde(&app).as_ref(), connexion_gardee().as_ref()))
 }
 
-/// Retient le relais scanné ou collé ; un code qui n'en est pas un est refusé tout de suite.
+/**
+ * Retient le relais scanné ; un code qui n'en est pas un est refusé tout de suite.
+ *
+ * Un nouveau QR code du même compte — l'ordinateur a refait le lien — garde
+ * la connexion : inutile de se reconnecter. Celui d'un autre compte la retire.
+ */
 #[tauri::command]
-pub fn relais_ecrire(app: tauri::AppHandle, code: String) -> R<RelaisVu> {
+pub async fn relais_ecrire(app: tauri::AppHandle, code: String) -> R<RelaisVu> {
     let a = relais::Appairage::depuis_code(&code)?;
+    let mut k = connexion_gardee();
+    if let Some(ancienne) = k.as_ref().filter(|_| !relais_garde(&app).is_some_and(|avant| connexion::meme_compte(&avant.compte, &a.compte))) {
+        let _ = connexion::revoquer(ancienne).await;
+        trousseau::effacer();
+        k = None;
+    }
     std::fs::write(fiche_relais(&app)?, a.en_code()).map_err(|e| e.to_string())?;
-    Ok(vue_du_relais(Some(&a)))
+    Ok(vue_du_relais(Some(&a), k.as_ref()))
 }
 
-/// Oublie le relais : le téléphone ne dépose plus que par le WiFi.
+/// La connexion en cours : la page ouverte, et de quoi demander si c'est fait.
+static DEMANDE: Mutex<Option<connexion::Demande>> = Mutex::new(None);
+/// L'enseignant a refermé la page : on cesse d'attendre.
+static ANNULEE: AtomicBool = AtomicBool::new(false);
+/// Toutes les combien on demande à Nuage si c'est fait.
+const INTERVALLE: Duration = Duration::from_secs(2);
+/// Nuage oublie une demande de connexion au bout de vingt minutes.
+const PATIENCE: Duration = Duration::from_secs(20 * 60);
+
+/// Demande à Nuage une page de connexion ; rend son adresse, à ouvrir.
 #[tauri::command]
-pub fn relais_oublier(app: tauri::AppHandle) -> R<()> {
+pub async fn nuage_connexion_commencer(app: tauri::AppHandle) -> R<String> {
+    let a = relais_requis(&app)?;
+    let d = connexion::commencer(&a.serveur).await?;
+    let page = d.page.clone();
+    *DEMANDE.lock().map_err(|e| e.to_string())? = Some(d);
+    ANNULEE.store(false, Ordering::SeqCst);
+    Ok(page)
+}
+
+/**
+ * Attend que l'enseignant se connecte dans la page, puis garde la connexion.
+ *
+ * Nuage ne remet le mot de passe qu'une fois la connexion acceptée ; on le lui
+ * demande toutes les deux secondes. Le mot de passe remis doit ouvrir le
+ * compte du dossier (voir `connexion::valider`) : sinon il est retiré
+ * aussitôt, et on le dit.
+ */
+#[tauri::command]
+pub async fn nuage_connexion_attendre(app: tauri::AppHandle) -> R<RelaisVu> {
+    let a = relais_requis(&app)?;
+    let d = DEMANDE.lock().map_err(|e| e.to_string())?.take().ok_or("Aucune connexion en cours.")?;
+    let fin = std::time::Instant::now() + PATIENCE;
+    let k = loop {
+        if ANNULEE.load(Ordering::SeqCst) {
+            return Err("Connexion annulée.".into());
+        }
+        match connexion::interroger(&d).await {
+            Ok(Some(k)) => break k,
+            Ok(None) => {}
+            // Le réseau d'une salle de classe flanche : on redemandera.
+            Err(e) if e == "Nuage ne répond pas." => {}
+            Err(e) => return Err(e),
+        }
+        if std::time::Instant::now() >= fin {
+            return Err("La page de connexion a expiré : recommencez.".into());
+        }
+        tokio::time::sleep(INTERVALLE).await;
+    };
+    let k = connexion::valider(&a, k).await?;
+    trousseau::ecrire(&serde_json::to_string(&k).map_err(|e| e.to_string())?)?;
+    Ok(vue_du_relais(Some(&a), Some(&k)))
+}
+
+/// La page de connexion a été refermée sans aboutir.
+#[tauri::command]
+pub fn nuage_connexion_annuler() {
+    ANNULEE.store(true, Ordering::SeqCst);
+}
+
+/// Oublie le relais : le téléphone rend son accès à Nuage, et ne dépose plus.
+#[tauri::command]
+pub async fn relais_oublier(app: tauri::AppHandle) -> R<()> {
+    if let Some(k) = connexion_gardee() {
+        // Sans réseau, l'accès reste dans Nuage : il se retire de là, dans « Appareils et sessions ».
+        let _ = connexion::revoquer(&k).await;
+    }
+    trousseau::effacer();
     let _ = std::fs::remove_file(fiche_relais(&app)?);
     Ok(())
 }
 
-/// Nuage répond-il, et le lien vaut-il toujours ?
+/// Nuage répond-il, et le téléphone y entre-t-il toujours ?
 #[tauri::command]
 pub async fn relais_joignable(app: tauri::AppHandle) -> R<bool> {
-    match relais_garde(&app) {
-        Some(a) => Ok(relais::porte::joignable(&a).await),
-        None => Ok(false),
+    match (relais_garde(&app), connexion_gardee()) {
+        (Some(a), Some(k)) => Ok(oublier_si_retire(relais::porte::verifier(&a, &k).await).is_ok()),
+        _ => Ok(false),
     }
+}
+
+/// Un accès retiré dans Nuage ne reviendra pas : on l'oublie, et l'écran
+/// redemandera de se connecter au lieu de réessayer sans fin.
+fn oublier_si_retire<T>(resultat: R<T>) -> R<T> {
+    if matches!(&resultat, Err(e) if e == relais::porte::ACCES_RETIRE) {
+        trousseau::effacer();
+    }
+    resultat
 }
 
 fn relais_requis(app: &tauri::AppHandle) -> R<relais::Appairage> {
     relais_garde(app).ok_or_else(|| "Le téléphone n'est pas relié par Nuage.".to_string())
 }
 
+/// Le relais, et la connexion qui y fait entrer.
+fn relais_et_connexion(app: &tauri::AppHandle) -> R<(relais::Appairage, Connexion)> {
+    let a = relais_requis(app)?;
+    let k = connexion_gardee().ok_or("Le téléphone n'est pas encore connecté à votre compte Nuage.")?;
+    Ok((a, k))
+}
+
 /// Dépose un vocal sur Nuage, scellé pour l'ordinateur, et ne l'efface que s'il est arrivé.
 #[tauri::command]
 pub async fn vocal_deposer(app: tauri::AppHandle, id: String) -> R<()> {
-    let a = relais_requis(&app)?;
+    let (a, k) = relais_et_connexion(&app)?;
     let chemin = fichier_de(&app, &id)?;
     let nom = chemin.file_name().unwrap_or_default().to_string_lossy().to_string();
     let (_, debut, duree_s, creneau) = depuis_le_nom(&nom).ok_or("Nom de fichier inattendu.")?;
     let octets = std::fs::read(&chemin).map_err(|e| e.to_string())?;
     let etiquette = relais::Etiquette { genre: relais::Genre::Vocal, id: id.clone(), debut, duree_s, creneau, ext: String::new() };
     let blob = relais::preparer_depot(&a, &etiquette, &octets)?;
-    relais::porte::deposer(&a, &relais::nom_du_depot(relais::Genre::Vocal, &id), blob).await?;
+    oublier_si_retire(relais::porte::deposer(&a, &k, &relais::nom_du_depot(relais::Genre::Vocal, &id), blob).await)?;
     std::fs::remove_file(&chemin).map_err(|e| e.to_string())
 }
 
 /// Dépose une note sur Nuage, scellée pour l'ordinateur.
 #[tauri::command]
 pub async fn note_deposer(app: tauri::AppHandle, id: String) -> R<()> {
-    let a = relais_requis(&app)?;
+    let (a, k) = relais_et_connexion(&app)?;
     let chemin = note_fichier(&app, &id)?;
     let nom = chemin.file_name().unwrap_or_default().to_string_lossy().to_string();
     let (_, debut, creneau) = note_depuis_le_nom(&nom).ok_or("Nom de fichier inattendu.")?;
     let texte = std::fs::read_to_string(&chemin).map_err(|e| e.to_string())?;
     let etiquette = relais::Etiquette { genre: relais::Genre::Note, id: id.clone(), debut, duree_s: 0.0, creneau, ext: String::new() };
     let blob = relais::preparer_depot(&a, &etiquette, texte.as_bytes())?;
-    relais::porte::deposer(&a, &relais::nom_du_depot(relais::Genre::Note, &id), blob).await?;
+    oublier_si_retire(relais::porte::deposer(&a, &k, &relais::nom_du_depot(relais::Genre::Note, &id), blob).await)?;
     std::fs::remove_file(&chemin).map_err(|e| e.to_string())
 }
 
@@ -565,8 +725,8 @@ pub async fn note_deposer(app: tauri::AppHandle, id: String) -> R<()> {
 /// Seuls ceux d'aujourd'hui se gardent.
 #[tauri::command]
 pub async fn creneaux_du_relais(app: tauri::AppHandle, jour: String) -> R<Vec<Creneau>> {
-    let a = relais_requis(&app)?;
-    let blob = relais::porte::lire_agenda(&a).await?
+    let (a, k) = relais_et_connexion(&app)?;
+    let blob = oublier_si_retire(relais::porte::lire_agenda(&a, &k).await)?
         .ok_or("L'ordinateur n'a pas encore laissé son emploi du temps sur Nuage.")?;
     let agenda = relais::dechiffrer_agenda(&relais::cle_de(&a.cle_retour)?, &blob)?;
     let journee = journee_de(&agenda, &jour)
@@ -725,22 +885,24 @@ mod tests {
     }
 
     #[test]
-    fn le_relais_se_montre_sans_ses_cles() {
+    fn le_relais_se_montre_sans_ses_cles_ni_mot_de_passe() {
         use super::relais;
         let (_, publique) = relais::nouvelle_paire();
         let a = relais::Appairage {
             serveur: "https://nuage03.apps.education.fr".into(),
-            base: "public.php/dav/files/aBcD1234".into(),
-            jeton: "aBcD1234".into(),
-            mot_de_passe: "Mz7-secret".into(),
+            compte: "clement.titet".into(),
+            dossier: "Maitrize-Telephone".into(),
             cle_depot: relais::cle_en_texte(&publique),
             cle_retour: relais::cle_en_texte(&relais::nouvelle_cle()),
         };
-        let vu = super::vue_du_relais(Some(&a));
-        assert_eq!(vu, super::RelaisVu { relie: true, serveur: "nuage03.apps.education.fr".into() });
+        let k = super::Connexion { serveur: "https://nuage03.apps.education.fr".into(), identifiant: "clement.titet".into(), mot_de_passe: "Mz7-secret".into() };
+        let vu = super::vue_du_relais(Some(&a), Some(&k));
+        assert_eq!(vu, super::RelaisVu { relie: true, connecte: true, serveur: "nuage03.apps.education.fr".into(), compte: "clement.titet".into() });
         let json = serde_json::to_string(&vu).unwrap();
-        assert!(!json.contains("aBcD1234") && !json.contains("Mz7-secret") && !json.contains(&a.cle_retour));
-        assert_eq!(super::vue_du_relais(None), super::RelaisVu::default());
+        assert!(!json.contains("Mz7-secret") && !json.contains(&a.cle_retour) && !json.contains(&a.cle_depot));
+        // Relié mais pas encore connecté : l'écran demandera de se connecter au compte.
+        assert!(!super::vue_du_relais(Some(&a), None).connecte);
+        assert_eq!(super::vue_du_relais(None, Some(&k)), super::RelaisVu::default());
     }
 
     #[test]

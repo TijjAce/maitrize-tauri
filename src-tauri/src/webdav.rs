@@ -606,24 +606,26 @@ pub async fn supprimer_lien(acces: &Acces, id: &str) -> R<()> {
     if rep.status().is_success() || rep.status().as_u16() == 404 { Ok(()) } else { Err(erreur_http(rep.status(), "le lien de partage")) }
 }
 
-/// Repousse l'échéance d'un lien, quand Nuage en impose une. Rend la nouvelle date.
-pub async fn prolonger_lien(acces: &Acces, id: &str, jusqu_au: &str) -> R<String> {
+/**
+ * Le nom du compte tel que Nuage l'écrit dans ses adresses (« prenom.nom »).
+ *
+ * L'identifiant qu'on saisit pour se connecter peut s'en écarter d'une
+ * majuscule ; c'est ce nom-là que le téléphone devra retrouver en se
+ * connectant à son tour.
+ */
+pub async fn identifiant_du_compte(acces: &Acces) -> R<String> {
     let rep = client()?
-        .put(format!("{}/ocs/v2.php/apps/files_sharing/api/v1/shares/{}?format=json", acces.serveur, encoder(id.trim())))
+        .get(format!("{}/ocs/v2.php/cloud/user?format=json", acces.serveur))
         .header("Authorization", autorisation(acces))
         .header("OCS-APIRequest", "true")
         .header("Accept", "application/json")
-        .form(&[("expireDate", jusqu_au)])
         .send()
         .await
         .map_err(|e| format!("Nuage injoignable : {e}"))?;
-    let statut = rep.status();
-    let corps = rep.text().await.unwrap_or_default();
-    if !statut.is_success() {
-        return Err(erreur_http(statut, "le lien de partage"));
+    if !rep.status().is_success() {
+        return Err(erreur_http(rep.status(), "le compte"));
     }
-    let v: serde_json::Value = serde_json::from_str(&corps).unwrap_or_default();
-    Ok(v["ocs"]["data"]["expiration"].as_str().unwrap_or(jusqu_au).chars().take(10).collect())
+    maitrize_relais::connexion::lire_compte(&rep.text().await.map_err(|e| e.to_string())?)
 }
 
 /// La connexion répond-elle, et le dossier existe-t-il ?

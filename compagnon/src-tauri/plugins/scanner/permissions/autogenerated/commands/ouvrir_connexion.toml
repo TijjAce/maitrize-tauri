@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-ouvrir-connexion"
+description = "Enables the ouvrir_connexion command without any pre-configured scope."
+commands.allow = ["ouvrir_connexion"]
+
+[[permission]]
+identifier = "deny-ouvrir-connexion"
+description = "Denies the ouvrir_connexion command without any pre-configured scope."
+commands.deny = ["ouvrir_connexion"]
