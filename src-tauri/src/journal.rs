@@ -56,8 +56,9 @@ pub const TABLES_ANNONCEES: &[&str] = &["outils_classe", "reunions", "observatio
 /// Préfixes de réglages apparus après les versions sans annonces : même
 /// traitement que `TABLES_ANNONCEES`. Les dossiers et la disposition des
 /// onglets d'Ateliers & Espaces (« rangement: ») n'arrivaient pas sur un
-/// ordinateur pas encore à jour.
-pub const REGLAGES_ANNONCES: &[&str] = &["rangement:"];
+/// ordinateur pas encore à jour ; l'ordre choisi par « Ranger » pour chaque
+/// dossier du plan de travail (« ordre: ») non plus.
+pub const REGLAGES_ANNONCES: &[&str] = &["rangement:", "ordre:"];
 
 /// Ce que cette version synchronise, tel que la fiche de présence l'annonce :
 /// les tables, et les préfixes de réglages récents (« reglages:<préfixe> »).
@@ -97,10 +98,10 @@ const REGLAGES_PARTAGES: &[&str] = &[
 
 /// Familles de réglages qui voyagent, par préfixe : emploi du temps, plan de
 /// salle, tableaux de langage, couleurs des dossiers, disposition du bureau
-/// du plan de travail, présentations enregistrées de Fabriquer et repères de
-/// l'établissement (contacts, où est le matériel). Ce sont des données de
-/// travail, pas des préférences d'affichage.
-const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:", "dossier:", "bureau:", "fabriquer:", "rangement:", "etab:", "caa:", "rituels:", "journal:"];
+/// du plan de travail et ordre de ses dossiers, présentations enregistrées de
+/// Fabriquer et repères de l'établissement (contacts, où est le matériel). Ce
+/// sont des données de travail, pas des préférences d'affichage.
+const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:", "dossier:", "bureau:", "ordre:", "fabriquer:", "rangement:", "etab:", "caa:", "rituels:", "journal:"];
 
 /// Réglages qui appartiennent à l'ordinateur lui-même, pas aux données.
 ///
@@ -144,8 +145,9 @@ fn normaliser_chemin(chemin: &str) -> String {
 }
 
 /// Les réglages qui font exister les dossiers du plan de travail ici : ceux
-/// des dossiers créés (couleur ou « aucune ») et la disposition de leur bureau,
-/// plus « aucune » pour chaque dossier qui ne tient que par son contenu.
+/// des dossiers créés (couleur ou « aucune »), la disposition et l'ordre de
+/// leur bureau, plus « aucune » pour chaque dossier qui ne tient que par son
+/// contenu.
 pub fn reglages_des_dossiers(conn: &Connection) -> Vec<(String, String)> {
     let mut sortie = std::collections::BTreeMap::new();
     for table in TABLES_RANGEES {
@@ -159,7 +161,7 @@ pub fn reglages_des_dossiers(conn: &Connection) -> Vec<(String, String)> {
         }
     }
     if let Ok(mut st) = conn.prepare(
-        "SELECT cle, valeur FROM settings WHERE (cle LIKE 'dossier:%' OR cle LIKE 'bureau:%') AND valeur <> ''",
+        "SELECT cle, valeur FROM settings WHERE (cle LIKE 'dossier:%' OR cle LIKE 'bureau:%' OR cle LIKE 'ordre:%') AND valeur <> ''",
     ) {
         let lignes: Vec<(String, String)> = st.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
             .map(|it| it.flatten().collect()).unwrap_or_default();
@@ -1777,13 +1779,15 @@ mod tests {
         // Les repères de synchronisation sont locaux eux aussi.
         assert!(!reglage_partage("derniereSync"));
         assert!(!reglage_partage("syncSeqEnvoyee"));
+        // Le modèle de transcription choisi dépend des modèles téléchargés ici.
+        assert!(!reglage_partage("transcription:reunions"));
     }
 
     #[test]
     fn le_travail_de_lenseignant_voyage() {
         for cle in ["enseignantNom", "ecole", "anneeCourante", "typeStructure",
                     "notesRapides", "edt:mode", "edt:horaires:2025-2026",
-                    "salle:profils", "tla:gabarits", "dossier:Lecture", "bureau:", "bureau:Français/Lecture",
+                    "salle:profils", "tla:gabarits", "dossier:Lecture", "bureau:", "bureau:Français/Lecture", "ordre:Lecture",
                     "fabriquer:presentations", "matiereCouleursOverride"] {
             assert!(reglage_partage(cle), "« {cle} » devrait voyager");
         }
@@ -2042,12 +2046,13 @@ mod tests {
         poser_declencheurs(&b, "B");
         a.execute("INSERT INTO settings (cle, valeur) VALUES ('rangement:jeux:dossier:Maths', 'aucune')", []).unwrap();
         a.execute("INSERT INTO settings (cle, valeur) VALUES ('rangement:jeux:place:', '{\"j:1\":[0,0]}')", []).unwrap();
+        a.execute("INSERT INTO settings (cle, valeur) VALUES ('ordre:Maths', 'recent')", []).unwrap();
         a.execute("INSERT INTO settings (cle, valeur) VALUES ('mistralApiKey', 'secret')", []).unwrap();
         let (_, repere) = changements_locaux(&a, 0).unwrap();
         // Une version sans le marqueur n'en reçoit rien.
         assert_eq!(annoncer_tables(&a, "A", &[("B".to_string(), vec!["outils_classe".to_string()])]), 0);
         let a_jour = vec![("B".to_string(), tables_connues())];
-        assert_eq!(annoncer_tables(&a, "A", &a_jour), 2, "les deux réglages de rangement, pas le secret");
+        assert_eq!(annoncer_tables(&a, "A", &a_jour), 3, "les réglages de rangement et l'ordre du dossier, pas le secret");
         assert_eq!(annoncer_tables(&a, "A", &a_jour), 0);
         // B a déjà choisi une couleur pour « Maths » : elle reste.
         b.execute("INSERT INTO settings (cle, valeur) VALUES ('rangement:jeux:dossier:Maths', '#ff0000')", []).unwrap();
@@ -2056,6 +2061,7 @@ mod tests {
         let lire = |c: &Connection, cle: &str| c.query_row("SELECT valeur FROM settings WHERE cle = ?1", params![cle], |r| r.get::<_, String>(0)).ok();
         assert_eq!(lire(&b, "rangement:jeux:dossier:Maths").as_deref(), Some("#ff0000"));
         assert_eq!(lire(&b, "rangement:jeux:place:").as_deref(), Some("{\"j:1\":[0,0]}"));
+        assert_eq!(lire(&b, "ordre:Maths").as_deref(), Some("recent"));
         assert_eq!(lire(&b, "mistralApiKey"), None);
     }
 
