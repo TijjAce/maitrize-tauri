@@ -121,6 +121,7 @@ pub fn run() {
             dossiers_bureau,
             whisper_embarque::transcrire_local, whisper_embarque::whisper_tester,
             whisper_embarque::whisper_etat, whisper_embarque::whisper_telecharger_modele,
+            whisper_embarque::transcription_choix,
             // Coffre-fort
             coffre_list, coffre_save, coffre_delete, coffre_download,
             // Réglages

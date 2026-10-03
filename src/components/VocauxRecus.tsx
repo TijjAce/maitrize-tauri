@@ -95,9 +95,9 @@ export function VocauxRecus() {
       <h3 style={{ marginTop: 0 }}>🎙 Vocaux du téléphone</h3>
       {vocaux.length === 0 ? (
         <p style={{ color: "var(--text-2)", margin: 0, fontSize: 13, lineHeight: 1.6 }}>
-          Rien en attente. Ce que vous dictez dans le Dictaphone arrive par Nuage, se transcrit sur cet
-          ordinateur si un modèle y est (en ligne sinon), puis va tout seul dans le bilan de son créneau.
-          Seules les dictées dont le créneau est inconnu restent ici, le temps de le choisir.
+          Rien en attente. Ce que vous dictez dans le Dictaphone arrive par Nuage, se transcrit, puis va
+          tout seul dans le bilan de son créneau. Seules les dictées dont le créneau est inconnu restent ici,
+          le temps de le choisir.
         </p>
       ) : jours.map((jour) => (
         <div key={jour} style={{ marginBottom: 14 }}>
