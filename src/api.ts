@@ -295,12 +295,13 @@ export interface Reunion {
 
 /** Ce qu'on sait de la transcription sur cet ordinateur. */
 export interface EtatWhisper {
-  /** Le modèle prêt à servir, vide s'il n'y en a aucun. */
-  modele: string;
-  taille: number;
+  /** Les modèles téléchargés, et ce que chacun pèse sur le disque. */
+  installes: [string, number][];
   /** Les modèles qu'on peut aller chercher : nom, dépôt, octets. */
   disponibles: [string, string, number][];
   dossier: string;
+  /** Ce que chaque usage emploie maintenant : un modèle, « ligne », ou vide s'il attend un modèle absent. */
+  usages: [string, string][];
 }
 
 import type { Vocal } from "./vocaux";
@@ -679,9 +680,11 @@ export const api = {
   transcrireAudio: (audioB64: string, nomFichier: string) =>
     invoke<string>("transcrire_audio", { audioB64, nomFichier }),
   /** Transcrit sur cette machine (WAV 16 kHz), sans que l'audio en sorte. */
-  transcrireLocal: (audioB64: string) => pendant(invoke<string>("transcrire_local", { audioB64 }), "de l'enregistrement"),
+  transcrireLocal: (audioB64: string, modele: string) => pendant(invoke<string>("transcrire_local", { audioB64, modele }), "de l'enregistrement"),
+  /** Où transcrire un usage, et avec quel modèle ; une erreur s'il veut un modèle absent. */
+  transcriptionChoix: (usage: string) => invoke<{ moteur: "local" | "ligne"; modele: string }>("transcription_choix", { usage }),
   /** Vérifie que le moteur local est bien là, et le dit en clair. */
-  whisperTester: () => invoke<string>("whisper_tester"),
+  whisperTester: (modele: string) => invoke<string>("whisper_tester", { modele }),
   whisperEtat: () => invoke<EtatWhisper>("whisper_etat"),
   whisperTelechargerModele: (nom: string) => invoke<string>("whisper_telecharger_modele", { nom }),
 

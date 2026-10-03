@@ -95,7 +95,8 @@ export function DicteeAtelier({ eleves, onClose, onEnregistre, texteInitial, tit
   const [props, setProps] = React.useState<Proposition[]>([]);
   const [type, setType] = React.useState("divers");
 
-  const dictee = useDictee();
+  // Ce qu'on raconte d'un atelier finit dans le dossier des élèves : le réglage des observations.
+  const dictee = useDictee("observations");
 
   const demarrer = async () => {
     const erreur = await dictee.demarrer();
