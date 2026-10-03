@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { Creneau, ObservationEleve } from "./api";
+import type { CommentaireEleve, Creneau, ObservationEleve } from "./api";
 import type { Vocal } from "./vocaux";
 
 const etat = {
@@ -9,6 +9,7 @@ const etat = {
   journal: [] as { id: string; prevu: string; bilan: string }[],
   effaces: [] as string[],
   fiches: [] as ObservationEleve[],
+  notes: [] as CommentaireEleve[],
   toasts: [] as string[],
 };
 vi.mock("./components/Toaster", () => ({ toast: (message: string) => { etat.toasts.push(message); } }));
@@ -29,6 +30,9 @@ vi.mock("./api", () => ({
     elevesList: async () => [{ id: "e1", nom: "Ayub Martin" }, { id: "e2", nom: "Nour Ben" }],
     seancesList: async () => [],
     observationSave: async (o: ObservationEleve) => { etat.fiches.push(o); return o; },
+    commentairesList: async () => etat.notes,
+    commentaireSave: async (n: CommentaireEleve) => { etat.notes = [...etat.notes.filter((x) => x.id !== n.id), n]; return n; },
+    commentaireDelete: async (id: string) => { etat.notes = etat.notes.filter((x) => x.id !== id); },
   },
 }));
 
@@ -44,7 +48,7 @@ const vocal = (id: string, debut: string, texte: string, plus: Partial<Vocal> = 
 });
 
 beforeEach(() => {
-  etat.vocaux = []; etat.creneaux = []; etat.observations = []; etat.journal = []; etat.effaces = []; etat.fiches = []; etat.toasts = [];
+  etat.vocaux = []; etat.creneaux = []; etat.observations = []; etat.journal = []; etat.effaces = []; etat.fiches = []; etat.notes = []; etat.toasts = [];
   enAttente.clear();
   // Pas de fenêtre sous Node : une cible d'événements en tient lieu.
   vi.stubGlobal("window", new EventTarget());
@@ -74,7 +78,7 @@ describe("ce qui peut se verser", () => {
 });
 
 describe("le versement automatique", () => {
-  it("verse à la suite du bilan, nourrit le dossier des élèves, efface la dictée et l'annonce", async () => {
+  it("verse à la suite du bilan, porte aux notes des élèves ce qui les nomme, efface la dictée et l'annonce", async () => {
     etat.creneaux = [creneau("c1", "11:00", "12:00", "Jeux collectifs", { bilan: "Écrit à la main.", elevesJson: '["e1","e2"]' })];
     etat.vocaux = [
       vocal("v1", "2026-10-02T21:05:00", "On a joué au jeu collectif avec Ayub et ça s'est bien passé.", { creneauId: "c1" }),
@@ -85,10 +89,11 @@ describe("le versement automatique", () => {
     // Rien n'est écrasé : ce qui était écrit reste, la dictée puis la note suivent.
     expect(etat.creneaux[0].bilan).toBe("Écrit à la main.\nOn a joué au jeu collectif avec Ayub et ça s'est bien passé.\nNour a gagné deux fois.");
     expect(etat.effaces).toEqual(["v1", "n1"]);
-    // Le dossier de chaque élève du créneau reçoit ce qui le nomme.
-    const derniere = (eleve: string) => etat.fiches.filter((o) => o.eleveId === eleve).slice(-1)[0]?.note ?? "";
-    expect(derniere("e1")).toContain("Ayub");
-    expect(derniere("e2")).toContain("Nour a gagné");
+    // Chaque élève nommé reçoit une note : ce qui le nomme, et rien d'autre. Aucune fiche ne naît.
+    const note = (eleve: string) => etat.notes.find((n) => n.eleveId === eleve)?.texte ?? "";
+    expect(note("e1")).toBe("Jeux collectifs : On a joué au jeu collectif avec Ayub et ça s'est bien passé.");
+    expect(note("e2")).toBe("Jeux collectifs : Nour a gagné deux fois.");
+    expect(etat.fiches).toEqual([]);
     // Ce qui est versé s'annonce ; ce qui n'a pas de créneau aussi, une seule fois.
     expect(etat.toasts.filter((t) => t.includes("versée dans le bilan de 11:00 Jeux collectifs"))).toHaveLength(2);
     expect(etat.toasts.filter((t) => t.includes("pas trouvé de créneau"))).toHaveLength(1);

@@ -25,6 +25,7 @@ import { EVT_VOIR_VOCAUX, demarrerReleveTelephone } from "./releveTelephone";
 import { demarrerVocauxEnFond } from "./vocauxEnFond";
 import { EVT_VOIR_JOUR } from "./versementDesVocaux";
 import { IndicateurTranscription } from "./components/IndicateurTranscription";
+import { passerLesBilansAuxNotes } from "./notesDuBilan";
 import { EVT_JOUR } from "./components/CommandPalette";
 import { verifierLaSauvegarde } from "./verifSauvegarde";
 import { QuoiDeNeuf } from "./components/QuoiDeNeuf";
@@ -187,6 +188,13 @@ export default function App() {
     window.addEventListener("dragover", stop);
     window.addEventListener("drop", stop);
     return () => { window.removeEventListener("dragover", stop); window.removeEventListener("drop", stop); };
+  }, []);
+
+  // Une fois : les fiches sans axe nées des bilans s'en vont, et ce que les
+  // bilans déjà écrits disent des élèves rejoint leurs notes.
+  React.useEffect(() => {
+    const id = window.setTimeout(() => { passerLesBilansAuxNotes().catch(() => {}); }, 8000);
+    return () => window.clearTimeout(id);
   }, []);
 
   // Essai de restauration : une fois par mois, l'app relit pour de vrai la

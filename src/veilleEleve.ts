@@ -95,10 +95,14 @@ export function phrasesQuiCitent(texte: string, prenom: string): string {
 
 // ── Le ramassage, source par source ───────────────────────────────────────
 
-/** Les observations portées au dossier de l'élève. La santé n'en est pas. */
+/**
+ * Les observations portées au dossier de l'élève. La santé n'en est pas, ni
+ * les notes que le bilan d'un créneau y a portées (« bilan:… ») : le cahier
+ * journal, lu à part, les donne déjà.
+ */
 export function ecritsDesObservations(observations: CommentaireEleve[], eleveId: string): Ecrit[] {
   return observations
-    .filter((o) => o.eleveId === eleveId && o.type !== "santé" && o.texte.trim())
+    .filter((o) => o.eleveId === eleveId && o.type !== "santé" && o.texte.trim() && !o.id.startsWith("bilan:"))
     .map((o) => ({ origine: "observation" as const, date: jour(o.date), texte: o.texte.trim(),
       source: `Observation (${o.type})` }));
 }

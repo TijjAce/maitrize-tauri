@@ -11,11 +11,11 @@
 // de taper dans le cahier journal n'est pas touché : la dictée attend que la
 // frappe soit enregistrée, puis passe à la suite.
 
-import { api, newId, nowIso, texteErreur, type Creneau } from "./api";
+import { api, nowIso, texteErreur, type Creneau } from "./api";
 import { bilanEnCoursDEcriture } from "./journalEnAttente";
 import { toast } from "./components/Toaster";
 import { LACUNE } from "./dictee";
-import { fichesDuBilan } from "./observationEleve";
+import { porterAuDossier } from "./notesDuBilan";
 import { creneauRetenu, jourDuVocal, verserDansLeBilan, type Vocal } from "./vocaux";
 
 /** Émis après un versement : le planning ouvert se relit. */
@@ -54,13 +54,12 @@ export async function verserUnVocal(vocal: Vocal, creneau: Creneau, texte = voca
   const bilan = verserDansLeBilan(frais.bilan ?? "", texte);
   await api.creneauJournalSave(frais.id, frais.prevu ?? "", bilan);
   await api.vocalDelete(vocal.id);
-  // Jusqu'au dossier des élèves, comme un bilan tapé. S'il coince, le bilan est
-  // écrit quand même : les fiches se nourriront à la prochaine écriture du cahier.
+  // Jusqu'au dossier des élèves, comme un bilan tapé : ce qui nomme un élève va
+  // dans ses notes. S'il coince, le bilan est écrit quand même : le dossier
+  // suivra à la prochaine écriture du cahier.
   try {
-    const [observations, eleves, seances] = await Promise.all([api.observationsList(), api.elevesList(), api.seancesList()]);
-    const nomDe = (id: string) => eleves.find((e) => e.id === id)?.nom ?? "";
-    const seance = seances.find((s) => s.id === frais.seanceId);
-    for (const o of fichesDuBilan(observations, frais, seance, bilan, nomDe, nowIso(), newId).aEcrire) await api.observationSave(o);
+    const [observations, notes, eleves] = await Promise.all([api.observationsList(), api.commentairesList(), api.elevesList()]);
+    await porterAuDossier(frais, bilan, { observations, notes, eleves }, nowIso());
   } catch { /* voir plus haut */ }
   window.dispatchEvent(new CustomEvent(EVT_BILAN_VERSE, { detail: { creneauId: frais.id, jour } }));
   return { ...frais, bilan };
