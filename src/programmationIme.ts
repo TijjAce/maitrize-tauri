@@ -47,6 +47,8 @@ export interface Objectif {
   creneaux: string[];
   /** Renseignée quand la compétence vient d'un référentiel. */
   source?: SourceCompetence;
+  /** Les séquences citées au cahier journal qui l'ont fait travailler. */
+  sequences?: string[];
   notes: string;
 }
 
@@ -60,6 +62,12 @@ export interface Groupe {
 export interface ProgrammationIme {
   groupes: Groupe[];
   objectifs: Objectif[];
+  /**
+   * Ce que le cahier journal a déjà apporté, « <créneau>|<compétence> » : une
+   * citation n'est reprise qu'une fois — un objectif qu'on retire ne revient
+   * pas tant qu'une autre séance ne le fait pas travailler.
+   */
+  journal?: string[];
 }
 
 /** Ce qu'on vise par élève sur l'année : assez pour tenir, assez peu pour suivre. */
@@ -103,9 +111,11 @@ export function lire(json: string): ProgrammationIme {
           sousDomaineTitre: chaine((x.source as Record<string, unknown>).sousDomaineTitre),
           competenceRefId: chaine((x.source as Record<string, unknown>).competenceRefId),
         } } : {}),
+        ...(Array.isArray(x.sequences) ? { sequences: chaines(x.sequences) } : {}),
         notes: chaine(x.notes),
       }];
     }) : [],
+    ...(Array.isArray(o.journal) ? { journal: chaines(o.journal) } : {}),
   };
 }
 
@@ -287,6 +297,7 @@ export function retirerGroupe(p: ProgrammationIme, groupeId: string): Programmat
   if (!groupe) return p;
   const marque = marqueGroupe(groupeId);
   return {
+    ...p,
     groupes: p.groupes.filter((g) => g.id !== groupeId),
     objectifs: p.objectifs.map((o) => {
       if (!o.pour.includes(marque)) return o;
