@@ -21,7 +21,10 @@ import {
   CATEGORIES_MAX, COULEURS_TRI, MODELES_TRI, REGLAGES_TRI, STYLE_TRI, avecAide, etiquettesDuTri, etiquettesSaisies, htmlTri, maisonsDuTri,
   type CategorieTri, type ReglagesTri,
 } from "../triEtiquettes";
-import { marquesDeLaReponse, promptMarquerVerbes, promptRangerEtiquettes, promptTransposer, rangementDeLaReponse, transpositionDeLaReponse } from "../triIa";
+import {
+  marquesDeLaReponse, promptMarquerVerbes, promptRangerEtiquettes, promptRelireEtiquettes, promptTransposer, rangementDeLaReponse,
+  relectureDeLaReponse, sujetQuiNeVaPas, transpositionDeLaReponse,
+} from "../triIa";
 import { DEMANDE_CORPUS } from "../corpusIa";
 import { pseudonymiser, restaurer } from "../confidentialite";
 import { LigneDuProjet, useProjetDuMoment } from "../components/ProjetDuMoment";
@@ -273,8 +276,28 @@ export function TriTab() {
         toast("Le modèle n'a rien proposé de lisible ; réessayez.", { icone: "🤔", duree: 6000 });
         return;
       }
-      maj({ ...m.reglages, origine: "theme", categories: m.reglages.categories.map((c, i) => ({ ...c, etiquettes: ecrites[i].join("\n") })) });
-      toast(`« ${m.nom} » sur le thème « ${projet.titre} » : ${ecrites.flat().length} étiquettes écrites par l'IA. Relisez-les.`, { icone: "✨", duree: 6000 });
+      // Une seconde lecture, à part : elle rattrape les fautes que l'écriture a laissées.
+      setTransposition(`${m.nom}|relecture`);
+      const aplat = ecrites.flatMap((liste, i) => liste.map((e) => ({ i, e })));
+      let relues = aplat.map((x) => x.e);
+      let corrigees = 0;
+      let relue = true;
+      try {
+        const masque2 = pseudonymiser(relues.join("\n"), eleves.map((e) => e.nom));
+        const reponse2 = restaurer(await api.mistralChat(promptRelireEtiquettes(masque2.texte.split("\n"), demandeCorpus.cycle), modele), masque2.table).texte;
+        ({ etiquettes: relues, corrigees } = relectureDeLaReponse(reponse2, relues));
+      } catch { relue = false; }
+      // Le garde-fou : un sujet qui ne peut pas aller avec être ou avoir, la relecture l'aurait-elle laissé, ne passe pas.
+      const finales = ecrites.map(() => [] as string[]);
+      let ecartees = 0;
+      aplat.forEach((x, k) => { if (sujetQuiNeVaPas(relues[k])) ecartees++; else finales[x.i].push(relues[k]); });
+      maj({ ...m.reglages, origine: "theme", categories: m.reglages.categories.map((c, i) => ({ ...c, etiquettes: finales[i].join("\n") })) });
+      const dit = [
+        `${finales.flat().length} étiquettes écrites par l'IA`,
+        relue ? (corrigees ? `relues, ${corrigees} corrigée${corrigees > 1 ? "s" : ""}` : "relues") : "pas encore relues (l'IA n'a pas répondu)",
+        ecartees ? `${ecartees} écartée${ecartees > 1 ? "s" : ""} pour un sujet qui n'allait pas` : "",
+      ].filter(Boolean).join(", ");
+      toast(`« ${m.nom} » sur le thème « ${projet.titre} » : ${dit}. Jetez-y un œil.`, { icone: "✨", duree: 7000 });
     } catch (e) {
       toast("Transposition impossible : " + String(e), { icone: "⚠️", duree: 8000 });
     } finally {
@@ -367,7 +390,9 @@ export function TriTab() {
               </optgroup>
             </Select>
             {transposition && projet ? (
-              <div className="projet-ligne"><span className="meta">✨ L'IA écrit « {transposition} » sur le thème « {projet.titre} »…</span></div>
+              <div className="projet-ligne"><span className="meta">{transposition.endsWith("|relecture")
+                ? `✨ L'IA relit les étiquettes : orthographe, accords, conjugaison…`
+                : `✨ L'IA écrit « ${transposition} » sur le thème « ${projet.titre} »…`}</span></div>
             ) : projet && r.origine === "theme" ? (
               <div className="projet-ligne"><span className="meta">📌 Sur le thème du projet « {projet.titre} » — écrit par l'IA, à relire.</span></div>
             ) : projet && modelesDuProjet.length > 0 && (
