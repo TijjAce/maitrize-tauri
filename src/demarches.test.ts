@@ -205,6 +205,10 @@ describe("le calcul mental au procédé La Martinière", () => {
     expect(d.famille).toBe("Mathématiques");
     const serie = d.seances[1].phases.find((p) => p.phase === "Série La Martinière")!;
     for (const mot of ["deux fois", "réflexion", "Écrivez", "Montrez", "corrige"]) expect(serie.description).toContain(mot);
-    expect(d.seances.map((s) => s.duree)).toEqual([30, 15, 15, 30, 15]);
+    // Le plan des guides : une séance longue de découverte, puis des courtes, chacune ouverte par un échauffement.
+    expect(d.seances.map((s) => s.duree)).toEqual([45, 15, 15, 15, 15, 15]);
+    expect(d.seances[0].phases.map((p) => p.phase)).toEqual(["Échauffement", "Entraînement", "Recherche", "Trace écrite"]);
+    for (const s of d.seances.slice(0, 5)) expect(s.phases[0].phase).toBe("Échauffement");
+    expect(d.source).toContain("Une séquence de calcul");
   });
 });

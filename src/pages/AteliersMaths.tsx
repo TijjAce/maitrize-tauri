@@ -21,6 +21,7 @@ import {
 import { REFLEXIONS, REGLAGES_MARTINIERE, STYLE_MARTINIERE, calculsMartiniere, fluenceAttendue, htmlMartiniere, libelleTravaille, objectifsRetenus, type FormeEntrainement } from "../martiniere";
 import { objectifsDesAteliers } from "../ateliersCompetences";
 import { useCompetencesParObjectif } from "../components/CompetencesAtelier";
+import { SequenceDeCalculMental } from "../components/SequenceDeCalculMental";
 import { NIVEAUX, RUBRIQUES, objectifParId, objectifsDuNiveau, type Niveau, type Objectif } from "../faitsNumeriques";
 import { OPERATIONS_COMPTE, REGLAGES_COMPTE, REGLAGES_COMPTE_CYCLE, STYLE_COMPTE, comptes, htmlCompteEstBon } from "../compteEstBon";
 import { REGLAGES_PYRAMIDES, STYLE_PYRAMIDES, htmlPyramides, type FormeCalcul } from "../pyramides";
@@ -363,6 +364,7 @@ export function MartiniereTab() {
   }, [cleRetenus, tablesChoisies.join("|")]);
   React.useEffect(() => () => objectifsDesAteliers.publier("martiniere", []), []);
   const competencesDe = useCompetencesParObjectif("martiniere");
+  const [enSequence, setEnSequence] = React.useState(false);
 
   // Un seul objectif à la fois ; en révision, on coche ceux qu'on veut mêler.
   const choisir = (o: Objectif) => {
@@ -453,6 +455,13 @@ export function MartiniereTab() {
         </>)}
         <div className="meta" style={{ fontSize: 12.5 }}>{total} calculs.</div>
         <Boutons peut={total > 0} onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("martiniere", titre, html, STYLE_MARTINIERE)} onBureau={() => bureau("martiniere", titre, html, STYLE_MARTINIERE)} />
+        <button type="button" className="btn sm" style={{ marginTop: 8 }} disabled={total === 0 || r.revision} onClick={() => setEnSequence(true)}
+          title={r.revision ? "Une séquence travaille un seul objectif : décochez « Réviser »." : "Une séquence d'après les guides Éduscol, avec cette feuille dans ses séances"}>
+          📚 Créer une séquence avec cette feuille
+        </button>
+        {enSequence && (
+          <SequenceDeCalculMental reglages={r} graine={graine} competences={competencesDe[retenus[0]?.id ?? ""] ?? []} onClose={() => setEnSequence(false)} />
+        )}
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_MARTINIERE} />}
     />
