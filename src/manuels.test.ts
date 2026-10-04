@@ -2,10 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   OPTIONS_PAR_DEFAUT, ajouterPagePhoto, consigneExtraction, consigneReadaptation, ficheDepuisLExercice, htmlFicheAdaptee,
   indexAvec, indexSans, lireExercices, lireFicheAdaptee, lireIndex, lireManuel, ecrireManuel, nouveauManuel, resumeDe, retirerPage,
-  texteExercice, type ExerciceManuel,
+  texteExercice, appliquerClassement, classementDeLaReponse, consigneClassement, domaineConnu, exercicesAClasser, exercicesDeLaNotion,
+  notionsRangees, type ExerciceManuel, type Manuel,
 } from "./manuels";
 
-const ex = (numero: string, consigne: string, contenu: string): ExerciceManuel => ({ id: "e", numero, consigne, contenu, type: "calcul" });
+const ex = (numero: string, consigne: string, contenu: string): ExerciceManuel => ({ id: "e", numero, consigne, contenu, type: "calcul", notion: "" });
 
 describe("un manuel", () => {
   it("naît vide par photos, ou avec ses pages par PDF, et se relit tel quel", () => {
@@ -103,5 +104,79 @@ describe("réadapter un exercice", () => {
     expect(sobre).not.toContain("fa-reponse");
     expect(sobre).toContain("a &lt;b&gt;");
     expect(sobre).toContain("Exercice");
+  });
+});
+
+describe("le classement des exercices par notion", () => {
+  const exo = (id: string, numero: string, consigne: string, notion = ""): ExerciceManuel =>
+    ({ id, numero, consigne, contenu: "", type: "langue", notion });
+  const manuel = (): Manuel => ({
+    ...nouveauManuel("Pépites CE2", "telephone", "2026-10-04"), niveau: "CE2",
+    pages: [
+      { id: "p1", numero: 1, fichier: "a.jpg", extraitLe: "2026-10-04", exercices: [exo("e1", "1", "Souligne le sujet de chaque verbe."), exo("e2", "2", "Lis le texte et réponds.")] },
+      { id: "p2", numero: 2, fichier: "b.jpg", extraitLe: "2026-10-04", exercices: [exo("e3", "4", "Accorde le verbe avec son sujet."), exo("e4", "5", "Écris les noms composés.")] },
+    ],
+  });
+
+  it("demande au modèle de ranger chaque exercice, avec les notions déjà retenues", () => {
+    const m = manuel();
+    const lot = exercicesAClasser(m);
+    expect(lot.map((x) => [x.page, x.exercice.id])).toEqual([[1, "e1"], [1, "e2"], [2, "e3"], [2, "e4"]]);
+    const deja = [{ id: "n1", titre: "Accorder le verbe avec son sujet", domaine: "Grammaire", competences: [] }];
+    const demande = consigneClassement(m, lot, deja).map((x) => x.content).join("\n");
+    expect(demande).toContain("N1 · Grammaire · Accorder le verbe avec son sujet");
+    expect(demande).toContain("E3 (p. 2, ex. 4) Accorde le verbe avec son sujet.");
+    expect(demande).toContain("(niveau CE2)");
+  });
+
+  it("relit une réponse bavarde, et écarte ce qui ne se rattache à rien", () => {
+    const reponse = `Voici le classement :
+\`\`\`json
+{"notions":[
+  {"id":"N1","titre":"Accorder le verbe avec son sujet","domaine":"grammaire","exercices":["E1","E3"]},
+  {"id":"nouvelle","titre":"Comprendre un texte lu","domaine":"Lecture","exercices":["E2", "E9", "x"]},
+  {"id":"nouvelle","titre":"Les noms composés","domaine":"Lexique","exercices":[4]},
+  {"id":"nouvelle","titre":"","domaine":"Lecture","exercices":["E2"]},
+  {"id":"N7","titre":"","domaine":"","exercices":["E1"]}
+]}
+\`\`\``;
+    expect(classementDeLaReponse(reponse, 4, 1)).toEqual([
+      { notion: 0, titre: "Accorder le verbe avec son sujet", domaine: "Grammaire", exercices: [0, 2] },
+      { notion: null, titre: "Comprendre un texte lu", domaine: "Lecture", exercices: [1] },
+      { notion: null, titre: "Les noms composés", domaine: "Autre", exercices: [3] },
+    ]);
+    expect(classementDeLaReponse("pas de JSON", 4, 0)).toEqual([]);
+    expect(domaineConnu("ESPACE ET GÉOMÉTRIE")).toBe("Espace et géométrie");
+  });
+
+  it("range les exercices : une notion retenue se reprend, un titre déjà là se rejoint, un exercice ne se range qu'une fois", () => {
+    const deja = { id: "n1", titre: "Accorder le verbe avec son sujet", domaine: "Grammaire", competences: [] };
+    const m = { ...manuel(), notions: [deja] };
+    const lot = exercicesAClasser(m);
+    let k = 0;
+    const suite = appliquerClassement(m, lot, [
+      { notion: 0, titre: "", domaine: "Grammaire", exercices: [0] },
+      { notion: null, titre: "accorder le verbe avec son sujet !", domaine: "Grammaire", exercices: [2] },
+      { notion: null, titre: "Comprendre un texte lu", domaine: "Lecture", exercices: [1, 0] },
+    ], m.notions, () => `neuve${++k}`);
+    expect(suite.notions.map((n) => n.id)).toEqual(["n1", "neuve1"]);
+    expect(suite.pages.flatMap((p) => p.exercices.map((e) => [e.id, e.notion]))).toEqual([["e1", "n1"], ["e2", "neuve1"], ["e3", "n1"], ["e4", ""]]);
+    expect(exercicesAClasser(suite).map((x) => x.exercice.id)).toEqual(["e4"]);
+    expect(exercicesDeLaNotion(suite, "n1").map((x) => [x.page, x.exercice.numero])).toEqual([[1, "1"], [2, "4"]]);
+    // Les domaines dans leur ordre : la lecture avant la grammaire.
+    expect(notionsRangees(suite).map((n) => n.titre)).toEqual(["Comprendre un texte lu", "Accorder le verbe avec son sujet"]);
+  });
+
+  it("garde notions et compétences en se relisant ; un exercice rangé dans une notion disparue redevient à classer", () => {
+    const comp = { id: "c1", referentielNom: "Cycle 2", domaineId: "FR", domaineTitre: "Français", sousDomaineTitre: "Étude de la langue", competenceTitre: "Identifier le verbe et le sujet" };
+    const m: Manuel = { ...manuel(), notions: [{ id: "n1", titre: "Accorder le verbe", domaine: "grammaire", competences: [comp] }] };
+    m.pages[0].exercices[0].notion = "n1";
+    m.pages[0].exercices[1].notion = "disparue";
+    const relu = lireManuel(ecrireManuel(m))!;
+    expect(relu.notions).toEqual([{ id: "n1", titre: "Accorder le verbe", domaine: "Grammaire", competences: [expect.objectContaining({ competenceTitre: "Identifier le verbe et le sujet" })] }]);
+    expect(relu.pages[0].exercices.map((e) => e.notion)).toEqual(["n1", ""]);
+    // Un manuel d'avant le classement se relit sans notion.
+    const { notions: _sans, ...ancien } = manuel();
+    expect(lireManuel(JSON.stringify(ancien))!.notions).toEqual([]);
   });
 });
