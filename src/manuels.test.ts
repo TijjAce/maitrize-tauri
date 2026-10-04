@@ -3,10 +3,10 @@ import {
   OPTIONS_PAR_DEFAUT, ajouterPagePhoto, consigneExtraction, consigneReadaptation, ficheDepuisLExercice, htmlFicheAdaptee,
   indexAvec, indexSans, lireExercices, lireFicheAdaptee, lireIndex, lireManuel, ecrireManuel, nouveauManuel, resumeDe, retirerPage,
   texteExercice, appliquerClassement, classementDeLaReponse, consigneClassement, domaineConnu, exercicesAClasser, exercicesDeLaNotion,
-  notionsRangees, type ExerciceManuel, type Manuel,
+  notionsRangees, estUneEtape, fusionnerExercices, type ExerciceManuel, type Manuel,
 } from "./manuels";
 
-const ex = (numero: string, consigne: string, contenu: string): ExerciceManuel => ({ id: "e", numero, consigne, contenu, type: "calcul", notion: "" });
+const ex = (numero: string, consigne: string, contenu: string): ExerciceManuel => ({ id: "e", numero, titre: "", consigne, contenu, type: "calcul", notion: "" });
 
 describe("un manuel", () => {
   it("naît vide par photos, ou avec ses pages par PDF, et se relit tel quel", () => {
@@ -63,6 +63,40 @@ describe("relire les exercices d'une page", () => {
     expect(lireExercices("[]")).toEqual([]);
     expect(texteExercice(lus[0])).toBe("3 · Calcule. — 12 + 7 = … ; 25 + 9 = …");
   });
+
+  it("dit au modèle qu'un bloc fait un seul exercice, même en plusieurs consignes", () => {
+    const c = consigneExtraction("CE2");
+    expect(c).toContain("UN SEUL exercice");
+    expect(c).toContain("« Puis… »");
+    expect(c).toContain('"titre"');
+  });
+
+  it("réunit les étapes que le modèle a rendues à part : même titre, « Puis… », même numéro", () => {
+    // La page « J'accorde l'adjectif avec le nom » : trois consignes, un exercice.
+    const rep = JSON.stringify([
+      { numero: "Pour commencer", titre: "J'accorde l'adjectif avec le nom", consigne: "Finis de les colorier.", contenu: "", type: "langue" },
+      { numero: "", titre: "", consigne: "Puis complète les phrases avec les adjectifs de couleur qui conviennent.", contenu: "Louis a une chemise …\nBastien a …", type: "langue" },
+      { numero: "", titre: "J'accorde l'adjectif avec le nom", consigne: "Souligne quatre groupes nominaux.", contenu: "", type: "langue" },
+      { numero: "2", titre: "", consigne: "Accorde les adjectifs.", contenu: "des fleurs (bleu)", type: "langue" },
+      { numero: "2", titre: "", consigne: "", contenu: "des chats (noir)", type: "langue" },
+      { numero: "", titre: "", consigne: "Recopie la phrase.", contenu: "", type: "ecriture" },
+    ]);
+    const lus = lireExercices(rep);
+    expect(lus.map((e) => [e.numero, e.titre, e.consigne.split("\n").length, e.contenu.split("\n").filter(Boolean).length])).toEqual([
+      ["Pour commencer", "J'accorde l'adjectif avec le nom", 3, 2],
+      ["2", "", 1, 2],
+      ["", "", 1, 0],
+    ]);
+    expect(texteExercice(lus[0])).toContain("« J'accorde l'adjectif avec le nom » Finis de les colorier. Puis complète");
+  });
+
+  it("ne réunit pas deux exercices qui se suivent sans rien de commun", () => {
+    const a = { ...ex("", "Lis le texte.", ""), titre: "Le loup" };
+    expect(estUneEtape(a, { ...ex("", "Recopie la phrase.", ""), titre: "" })).toBe(false);
+    expect(estUneEtape(a, { ...ex("Je m'entraîne", "Puis écris.", ""), titre: "" })).toBe(false);
+    expect(estUneEtape(a, { ...ex("", "Ensuite, écris la fin.", ""), titre: "" })).toBe(true);
+    expect(fusionnerExercices({ ...a, notion: "n1" }, { ...ex("", "Ensuite, écris.", "la fin"), titre: "" })).toMatchObject({ titre: "Le loup", consigne: "Lis le texte.\nEnsuite, écris.", contenu: "la fin", notion: "n1" });
+  });
 });
 
 describe("réadapter un exercice", () => {
@@ -109,7 +143,7 @@ describe("réadapter un exercice", () => {
 
 describe("le classement des exercices par notion", () => {
   const exo = (id: string, numero: string, consigne: string, notion = ""): ExerciceManuel =>
-    ({ id, numero, consigne, contenu: "", type: "langue", notion });
+    ({ id, numero, titre: "", consigne, contenu: "", type: "langue", notion });
   const manuel = (): Manuel => ({
     ...nouveauManuel("Pépites CE2", "telephone", "2026-10-04"), niveau: "CE2",
     pages: [
