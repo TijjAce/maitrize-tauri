@@ -14,7 +14,7 @@ import {
   CLE_INDEX, DOMAINES_MANUEL, OPTIONS_PAR_DEFAUT, PAR_LOT, STYLE_FICHE_ADAPTEE, TYPES_EXERCICE, ajouterPagePhoto, appliquerClassement,
   classementDeLaReponse, cleManuel, consigneClassement, consigneExtraction, consigneReadaptation, ecrireManuel, exercicesAClasser,
   exercicesDeLaNotion, ficheDepuisLExercice, htmlFicheAdaptee, indexAvec, indexSans, lireExercices, lireFicheAdaptee, lireIndex, lireManuel,
-  notionsRangees, nouveauManuel, retirerPage, texteExercice, type ExerciceAClasser, type ExerciceManuel, type FicheAdaptee, type Manuel,
+  fusionnerExercices, notionsRangees, nouveauManuel, retirerPage, texteExercice, type ExerciceAClasser, type ExerciceManuel, type FicheAdaptee, type Manuel,
   type NotionManuel, type OptionsReadaptation, type PageManuel, type ResumeManuel,
 } from "../manuels";
 
@@ -266,9 +266,18 @@ export function ManuelsPanel() {
     void enregistrer({ ...manuel, pages: manuel.pages.map((p) => (p.id === page.id ? { ...p, exercices: p.exercices.filter((e) => e.id !== exercice.id) } : p)) });
     setExerciceId("");
   };
+  // Le modèle a coupé un bloc en deux : on rend la seconde partie à la première.
+  const precedent = page && exercice ? page.exercices[page.exercices.findIndex((e) => e.id === exercice.id) - 1] ?? null : null;
+  const rattacher = () => {
+    if (!manuel || !page || !exercice || !precedent) return;
+    void enregistrer({ ...manuel, pages: manuel.pages.map((p) => (p.id === page.id ? {
+      ...p, exercices: p.exercices.flatMap((e) => (e.id === precedent.id ? [fusionnerExercices(precedent, exercice)] : e.id === exercice.id ? [] : [e])),
+    } : p)) });
+    setExerciceId(precedent.id);
+  };
   const ajouterExercice = () => {
     if (!manuel || !page) return;
-    const e: ExerciceManuel = { id: crypto.randomUUID(), numero: "", consigne: "", contenu: "", type: "autre", notion: "" };
+    const e: ExerciceManuel = { id: crypto.randomUUID(), numero: "", titre: "", consigne: "", contenu: "", type: "autre", notion: "" };
     void enregistrer({ ...manuel, pages: manuel.pages.map((p) => (p.id === page.id ? { ...p, exercices: [...p.exercices, e] } : p)) });
     setExerciceId(e.id);
   };
@@ -502,10 +511,14 @@ export function ManuelsPanel() {
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                   <h3 style={{ margin: 0, fontSize: 15 }}>✨ Réadapter l'exercice {exercice.numero}</h3>
                   <div style={{ flex: 1 }} />
+                  {precedent && (
+                    <button type="button" className="btn ghost sm" onClick={rattacher}
+                      title={`Une suite de l'exercice ${precedent.numero || "d'avant"}, pas un exercice à part : on les réunit`}>⤴ Rattacher au précédent</button>
+                  )}
                   <button type="button" className="btn ghost sm" onClick={retirerExercice}>🗑 Retirer</button>
                 </div>
                 <div className="row">
-                  <Field label="Numéro"><Input value={exercice.numero} onChange={(e) => majExercice({ numero: e.target.value })} style={{ maxWidth: 90 }} /></Field>
+                  <Field label="Numéro"><Input value={exercice.numero} onChange={(e) => majExercice({ numero: e.target.value })} style={{ maxWidth: 150 }} /></Field>
                   <Field label="Type">
                     <Select value={exercice.type} onChange={(e) => majExercice({ type: e.target.value as ExerciceManuel["type"] })}>
                       {TYPES_EXERCICE.map((t) => <option key={t.id} value={t.id}>{t.icone} {t.libelle}</option>)}
@@ -523,7 +536,8 @@ export function ManuelsPanel() {
                     {notionDe(exercice)!.competences.map((c) => <span key={c.id} className="chip">🎯 {labelCourt(c)}</span>)}
                   </div>
                 )}
-                <Field label="Consigne du manuel"><Textarea value={exercice.consigne} rows={2} onChange={(e) => majExercice({ consigne: e.target.value })} /></Field>
+                <Field label="Titre du bloc"><Input value={exercice.titre} onChange={(e) => majExercice({ titre: e.target.value })} placeholder="J'accorde l'adjectif avec le nom" /></Field>
+                <Field label="Consigne du manuel (une par ligne)"><Textarea value={exercice.consigne} rows={3} onChange={(e) => majExercice({ consigne: e.target.value })} /></Field>
                 <Field label="Contenu (un item par ligne)"><Textarea value={exercice.contenu} rows={4} onChange={(e) => majExercice({ contenu: e.target.value })} /></Field>
 
                 <Field label="Ce qu'on change">
