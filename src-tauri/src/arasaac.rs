@@ -248,6 +248,27 @@ pub fn picto_par_mot<'a>(index: &'a Index, cherche: &str) -> Option<&'a Picto> {
         .or_else(|| index.pictos.iter().find(|p| p.mots.iter().any(|m| m == cherche)))
 }
 
+/// Un picto du sens de la classe : ARASAAC range parmi les tâches scolaires
+/// (« educational task ») ce que disent les consignes — entourer, découper,
+/// tracer —, et à part les mathématiques et le matériel scolaire.
+pub fn est_scolaire(p: &Picto) -> bool {
+    p.categories.iter().any(|c| matches!(c.as_str(), "educational task" | "mathematics" | "educational material"))
+}
+
+/// Le picto d'un verbe de consigne : parmi ceux qui portent exactement ce mot,
+/// celui de la classe d'abord — « repasser » sur des pointillés, pas au fer —,
+/// le libellé avant les autres mots ; sinon, comme `picto_par_mot`.
+pub fn picto_scolaire_par_mot<'a>(index: &'a Index, cherche: &str) -> Option<&'a Picto> {
+    let portent = |p: &&Picto| p.mots.iter().any(|m| m == cherche) && est_scolaire(p);
+    index
+        .pictos
+        .iter()
+        .filter(portent)
+        .find(|p| p.mot == cherche)
+        .or_else(|| index.pictos.iter().find(portent))
+        .or_else(|| picto_par_mot(index, cherche))
+}
+
 /// Ce que l'index garde des métadonnées : les pictos utilisables, et les pluriels à ne pas proposer.
 ///
 /// Un picto sans mot ou sans catégorie ne sert à rien ici : il ne peut ni
@@ -740,6 +761,31 @@ pub fn arasaac_par_mots(
     Ok((trouves, absents))
 }
 
+/// Le picto d'un mot de consigne, et s'il est du sens de la classe.
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PictoConsigne {
+    pub id: i64,
+    pub mot: String,
+    pub scolaire: bool,
+}
+
+/// Les pictos des mots d'une consigne, dans le sens de la classe quand ARASAAC
+/// en a un (voir `picto_scolaire_par_mot`). Un mot sans picto n'en ramène pas.
+#[tauri::command(async)]
+pub fn arasaac_pour_consignes(etat: tauri::State<BanqueArasaac>, mots: Vec<String>) -> Result<Vec<PictoConsigne>, String> {
+    let index = charger_index(&etat)?;
+    let dossier = images_dir();
+    Ok(mots
+        .iter()
+        .filter_map(|m| {
+            let cherche = m.trim().to_lowercase();
+            let p = picto_scolaire_par_mot(&index, &cherche)?;
+            dossier.join(format!("{}.png", p.id)).exists().then(|| PictoConsigne { id: p.id, mot: cherche.clone(), scolaire: est_scolaire(p) })
+        })
+        .collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -775,6 +821,26 @@ mod tests {
         // Les thèmes aussi répondent à tous les mots.
         let t = themes_des_mots(&i, &["colorier".into()]);
         assert_eq!(t.iter().map(|c| c.nom.as_str()).collect::<Vec<_>>(), vec!["educational task", "verb"]);
+    }
+
+    #[test]
+    fn un_verbe_de_consigne_prend_le_sens_de_la_classe() {
+        let mut i = index_exemple();
+        i.pictos.push(picto_mots(2830, &["repasser"], &["verb", "electrical appliance"]));
+        i.pictos.push(picto_mots(15475, &["tracer", "repasser"], &["verb", "educational task"]));
+        i.pictos.push(picto_mots(8026, &["ajouter"], &["verb", "cookery"]));
+        i.pictos.push(picto_mots(5868, &["additionner", "ajouter"], &["mathematics"]));
+        i.pictos.push(picto_mots(8088, &["dessiner"], &["verb", "educational task"]));
+        i.pictos.push(picto_mots(9000, &["tracer"], &["verb", "educational task"]));
+        // Le dessin de la classe l'emporte sur le libellé exact d'un autre sens…
+        assert_eq!(picto_scolaire_par_mot(&i, "repasser").map(|p| p.id), Some(15475));
+        assert_eq!(picto_scolaire_par_mot(&i, "ajouter").map(|p| p.id), Some(5868));
+        // … le libellé exact, sur un autre dessin de la classe…
+        assert_eq!(picto_scolaire_par_mot(&i, "tracer").map(|p| p.id), Some(15475));
+        // … et sans dessin de la classe, on garde ce qu'on trouvait.
+        assert_eq!(picto_scolaire_par_mot(&i, "vache").map(|p| p.id), Some(1));
+        assert!(!est_scolaire(&i.pictos[0]));
+        assert!(picto_scolaire_par_mot(&i, "inconnu").is_none());
     }
 
     #[test]

@@ -2,11 +2,13 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { toast } from "./Toaster";
-import { ChoixPicto, usePictoImages } from "./ChoixPicto";
+import { usePictoImages } from "./ChoixPicto";
+import { ChoixPictoConsigne } from "./ChoixPictoConsigne";
 import {
   CLE_ACTIF, CLE_LEXIQUE, EVT_LEXIQUE, STYLE_CONSIGNES_PICTOS, VERBES_CONSIGNE, consignesActives, decorerConsignesHtml, ecrireLexique,
   lireLexique, verbesDuTexte, type Lexique,
 } from "../caa";
+import type { RefPicto } from "../pictosAppoint";
 
 // Les pictos de la consigne, vus depuis l'atelier.
 //
@@ -60,8 +62,6 @@ export function ConsigneEnPictos({ consignes, pictos, onChange, compact = false 
 }) {
   const navigate = useNavigate();
   const { lexique, actif, enregistrer } = useLexique();
-  const [banque, setBanque] = React.useState(false);
-  React.useEffect(() => { api.arasaacEtat().then((e) => setBanque(Boolean(e.installee))).catch(() => {}); }, []);
   const [choix, setChoix] = React.useState("");
   const trouves = React.useMemo(() => {
     const tous: string[] = [];
@@ -69,7 +69,7 @@ export function ConsigneEnPictos({ consignes, pictos, onChange, compact = false 
     return tous;
   }, [consignes]);
   const montres = [...pictos, ...trouves.filter((v) => !pictos.includes(v))];
-  const images = usePictoImages([...new Set(montres.map((v) => lexique[v]).filter((id): id is number => !!id))]);
+  const images = usePictoImages([...new Set(montres.map((v) => lexique[v]).filter((id): id is RefPicto => !!id))]);
   const restants = VERBES_CONSIGNE.map((v) => v.verbe).filter((v) => !montres.includes(v));
   const ajouter = (verbe: string) => {
     if (!verbe || montres.includes(verbe)) return;
@@ -98,8 +98,8 @@ export function ConsigneEnPictos({ consignes, pictos, onChange, compact = false 
           const ajoute = pictos.includes(v);
           return (
             <span key={v} className={`consigne-chip${id ? "" : " sans"}`} title={ajoute ? "Ajouté à la main" : "Reconnu dans la consigne"}>
-              {src ? <img src={src} alt="" /> : <button type="button" className="consigne-chip-choisir" onClick={() => setChoix(v)} disabled={!banque}
-                title={banque ? "Choisir le picto de ce verbe" : "La banque ARASAAC n'est pas installée"}>＋</button>}
+              {src ? <img src={src} alt="" /> : <button type="button" className="consigne-chip-choisir" onClick={() => setChoix(v)}
+                title="Choisir le picto de ce verbe">＋</button>}
               <span>{v}</span>
               {ajoute && <button type="button" className="consigne-chip-retirer" aria-label={`Retirer ${v}`} onClick={() => onChange(pictos.filter((x) => x !== v))}>✕</button>}
             </span>
@@ -111,9 +111,13 @@ export function ConsigneEnPictos({ consignes, pictos, onChange, compact = false 
         </select>
       </div>
       {choix && (
-        <ChoixPicto valeur={{ id: lexique[choix] ?? null, mot: choix }} banque={banque} titre={`Le pictogramme de « ${choix} »`}
-          onClose={() => setChoix("")}
-          onValider={(p) => { if (p.id != null) enregistrer({ ...lexique, [choix]: p.id }); setChoix(""); }} />
+        <ChoixPictoConsigne verbe={choix} actuel={lexique[choix] ?? null} onClose={() => setChoix("")}
+          onValider={(ref) => {
+            const suite = { ...lexique };
+            if (ref == null) delete suite[choix]; else suite[choix] = ref;
+            enregistrer(suite);
+            setChoix("");
+          }} />
       )}
     </div>
   );

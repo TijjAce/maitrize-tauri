@@ -5,15 +5,17 @@ import { api, EtatBanque } from "../api";
 import { useOngletDemande } from "../components/ui";
 import { useMemoire } from "../components/useMemoire";
 import { toast } from "../components/Toaster";
-import { ChoixPicto, usePictoImage, usePictoImages } from "../components/ChoixPicto";
+import { usePictoImage, usePictoImages } from "../components/ChoixPicto";
+import { ChoixPictoConsigne, texteTelechargement, useBanquesAppoint } from "../components/ChoixPictoConsigne";
 import { CompetencesAtelier } from "../components/CompetencesAtelier";
 import { Banque } from "./Jeux";
 import { TlaTab } from "./Tla";
 import { SupportsVisuelsTab, retenirSupport } from "./SupportsVisuels";
 import {
   CLE_ACTIF, CLE_LEXIQUE, EVT_LEXIQUE, STYLE_CONSIGNES_PICTOS, VERBES_CONSIGNE, consignesActives, decorerConsignesHtml, ecrireLexique,
-  lireLexique, type Lexique, motsAChercher, pictosProposes,
+  lireLexique, type Lexique, motsAChercher, motsPourLaBanque, pictosAppointProposes, pictosProposes,
 } from "../caa";
+import { BANQUES_APPOINT, banqueDe, garderImageAppoint, infoBanque, type RefPicto } from "../pictosAppoint";
 
 // ── CAA : communication alternative et augmentée ──────────────────────────
 //
@@ -70,6 +72,7 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
   const [reglageActif, setReglageActif] = React.useState<string | null>(null);
   const [choix, setChoix] = React.useState<string>("");
   const [occupe, setOccupe] = React.useState(false);
+  const banques = useBanquesAppoint();
   React.useEffect(() => {
     let vivant = true;
     api.settingGet(CLE_LEXIQUE).then((v) => { if (vivant) setLexique(lireLexique(v)); }).catch(() => {});
@@ -88,19 +91,33 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
     setReglageActif(suite);
     api.settingSet(CLE_ACTIF, suite).then(() => window.dispatchEvent(new Event(EVT_LEXIQUE))).catch(() => {});
   };
-  // Un picto pour chaque verbe qui n'en a pas encore : ce que la banque connaît sous ce mot, ou sous un synonyme.
+  // Un picto pour chaque verbe qui n'en a pas encore : ce qu'ARASAAC connaît sous ce mot ou sous un synonyme ;
+  // à défaut, les consignes de F. Bajard ; puis Sclera — téléchargées au passage s'il le faut.
   const proposer = async () => {
     setOccupe(true);
     try {
-      const manquants = VERBES_CONSIGNE.map((v) => v.verbe).filter((v) => !lexique[v]);
-      const [trouves] = await api.arasaacParMots([...new Set(manquants.flatMap(motsAChercher))]);
-      const proposes = pictosProposes(manquants, trouves);
-      const suite = { ...lexique, ...proposes };
-      enregistrer(suite);
+      const verbes = VERBES_CONSIGNE.map((v) => v.verbe).filter((v) => !lexique[v]);
+      const trouves = await api.arasaacPourConsignes([...new Set(verbes.flatMap(motsAChercher))]);
+      const proposes: Record<string, RefPicto> = pictosProposes(verbes, trouves);
+      const parBanque: string[] = [];
+      const compter = (nom: string, n: number) => { if (n) parBanque.push(`${n} ${nom}`); };
+      compter("d'ARASAAC", Object.keys(proposes).length);
+      for (const b of BANQUES_APPOINT) {
+        const manquants = verbes.filter((v) => !proposes[v]);
+        if (!manquants.length) break;
+        if (!banques.installee(b.cle) && !await banques.telecharger(b.cle)) continue;
+        const appoint = pictosAppointProposes(manquants, await api.pictosAppointParMots(b.cle, [...new Set(manquants.flatMap((v) => motsPourLaBanque(v, b.cle)))]), b.cle);
+        // La copie de chaque image part avec le lexique : l'autre ordinateur l'imprime sans la banque.
+        await Promise.all(Object.values(appoint).map(garderImageAppoint));
+        Object.assign(proposes, appoint);
+        compter(b.cle === "bajard" ? "de F. Bajard" : "de Sclera", Object.keys(appoint).length);
+      }
+      enregistrer({ ...lexique, ...proposes });
       const combien = Object.keys(proposes).length;
-      const absents = manquants.filter((v) => !proposes[v]);
-      const sansImage = absents.length ? ` — sans image dans la banque : ${absents.slice(0, 5).join(", ")}${absents.length > 5 ? ` et ${absents.length - 5} autres` : ""}` : "";
-      toast(`${combien} picto${combien > 1 ? "s" : ""} proposé${combien > 1 ? "s" : ""}${sansImage}.`, { icone: "🔤", duree: 8000 });
+      const absents = verbes.filter((v) => !proposes[v]);
+      const detail = parBanque.length > 1 ? ` (${parBanque.join(", ")})` : "";
+      const sansImage = absents.length ? ` — sans image nulle part : ${absents.slice(0, 5).join(", ")}${absents.length > 5 ? ` et ${absents.length - 5} autres` : ""}` : "";
+      toast(`${combien} picto${combien > 1 ? "s" : ""} proposé${combien > 1 ? "s" : ""}${detail}${sansImage}.`, { icone: "🔤", duree: 9000 });
     } catch (e) { toast(String(e), { icone: "⚠️" }); }
     finally { setOccupe(false); }
   };
@@ -116,10 +133,16 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
           Choisissez, pour chaque verbe d'action, le pictogramme que vos élèves connaissent. Toutes les feuilles de Fabriquer mettront
           ces pictos devant leurs consignes — « écris », « colorie », « entoure » — pour que l'élève voie ce qu'il doit faire.
         </p>
+        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5 }}>
+          Les pictos viennent d'ARASAAC ; quand un verbe n'y est pas, des consignes de F. Bajard, puis de Sclera.{" "}
+          {BANQUES_APPOINT.map((b, i) => (
+            <React.Fragment key={b.cle}>{i ? " · " : ""}{b.nom} : {banques.installee(b.cle) ? `${banques.nombre(b.cle).toLocaleString("fr-FR")} pictos` : `à télécharger (${b.taille})`}</React.Fragment>
+          ))}
+        </p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
           <button type="button" className="btn sm primary" disabled={!banque || occupe} onClick={proposer}
-            title="La banque ARASAAC propose son premier picto pour chaque verbe qui n'en a pas ; vous changez ensuite ceux qui ne vont pas">
-            {occupe ? "⏳ Recherche…" : "🔎 Proposer un picto pour chaque verbe"}
+            title="ARASAAC propose son premier picto pour chaque verbe qui n'en a pas ; à défaut, les consignes de F. Bajard, puis Sclera, téléchargées au passage. Vous changez ensuite ceux qui ne vont pas.">
+            {banques.enCours ? `⏳ ${texteTelechargement(banques.enCours)}` : occupe ? "⏳ Recherche…" : "🔎 Proposer un picto pour chaque verbe"}
           </button>
           <label className="pb-coche" style={{ margin: 0 }} title={nb ? "" : "Choisissez d'abord au moins un picto"}>
             <input type="checkbox" checked={actif} disabled={!nb} onChange={basculer} />
@@ -136,30 +159,36 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
       <div className="card">
         <div className="caa-verbes">
           {VERBES_CONSIGNE.map((v) => (
-            <VerbeCarte key={v.verbe} verbe={v.verbe} id={lexique[v.verbe] ?? null}
+            <VerbeCarte key={v.verbe} verbe={v.verbe} refPicto={lexique[v.verbe] ?? null}
               onChoisir={() => setChoix(v.verbe)}
               onRetirer={() => { const suite = { ...lexique }; delete suite[v.verbe]; enregistrer(suite); }} />
           ))}
         </div>
       </div>
       {choix && (
-        <ChoixPicto valeur={{ id: lexique[choix] ?? null, mot: choix }} banque={banque} titre={`Le pictogramme de « ${choix} »`}
-          onClose={() => setChoix("")}
-          onValider={(p) => { if (p.id != null) enregistrer({ ...lexique, [choix]: p.id }); setChoix(""); }} />
+        <ChoixPictoConsigne verbe={choix} actuel={lexique[choix] ?? null} onClose={() => setChoix("")}
+          onValider={(ref) => {
+            const suite = { ...lexique };
+            if (ref == null) delete suite[choix]; else suite[choix] = ref;
+            enregistrer(suite);
+            setChoix("");
+          }} />
       )}
     </div>
   );
 }
 
-function VerbeCarte({ verbe, id, onChoisir, onRetirer }: { verbe: string; id: number | null; onChoisir: () => void; onRetirer: () => void }) {
-  const src = usePictoImage(id);
+function VerbeCarte({ verbe, refPicto, onChoisir, onRetirer }: { verbe: string; refPicto: RefPicto | null; onChoisir: () => void; onRetirer: () => void }) {
+  const src = usePictoImage(refPicto);
+  const banque = banqueDe(refPicto);
+  const appoint = banque && banque !== "arasaac" ? infoBanque(banque) : null;
   return (
-    <div className={`caa-verbe${id ? " on" : ""}`}>
-      <button type="button" className="caa-verbe-picto" onClick={onChoisir} title={id ? "Changer le pictogramme" : "Choisir un pictogramme"}>
-        {src ? <img src={src} alt="" /> : <span className="caa-verbe-vide">{id ? "…" : "＋"}</span>}
+    <div className={`caa-verbe${refPicto ? " on" : ""}`}>
+      <button type="button" className="caa-verbe-picto" onClick={onChoisir} title={refPicto ? "Changer le pictogramme" : "Choisir un pictogramme"}>
+        {src ? <img src={src} alt="" /> : <span className="caa-verbe-vide">{refPicto ? "…" : "＋"}</span>}
       </button>
-      <div className="caa-verbe-nom">{verbe}</div>
-      {id && <button type="button" className="btn ghost sm" aria-label={`Retirer le picto de ${verbe}`} onClick={onRetirer}>✕</button>}
+      <div className="caa-verbe-nom">{verbe}{appoint && <small className="caa-verbe-source" title={`Picto de la banque ${appoint.nom}`}>{appoint.cle === "bajard" ? "F. Bajard" : appoint.nom}</small>}</div>
+      {refPicto && <button type="button" className="btn ghost sm" aria-label={`Retirer le picto de ${verbe}`} onClick={onRetirer}>✕</button>}
     </div>
   );
 }

@@ -3,14 +3,18 @@
 // « Écris le nombre. » ne dit rien à qui ne lit pas encore, ou lit sans
 // comprendre. Le pictogramme du verbe, lui, se lit d'un coup d'œil : lire,
 // écrire, colorier, entourer, découper. L'enseignant choisit une fois, pour
-// chaque verbe d'action, le pictogramme ARASAAC qu'il veut voir — celui que
-// ses élèves connaissent —, et chaque feuille de Fabriquer met ces
-// pictogrammes devant ses consignes, sans qu'on ait rien à faire de plus.
+// chaque verbe d'action, le pictogramme qu'il veut voir — celui que ses
+// élèves connaissent —, et chaque feuille de Fabriquer met ces pictogrammes
+// devant ses consignes, sans qu'on ait rien à faire de plus. Ils viennent
+// d'ARASAAC ; à défaut, des consignes de F. Bajard, puis de Sclera (voir
+// pictosAppoint).
 //
 // Le lexique vit dans un réglage partagé entre les ordinateurs ; il se
 // coupe d'un geste pour une feuille qui n'en veut pas.
 
+import type { BanqueAppoint, PictoAppoint } from "./api";
 import { escapeHtml } from "./print";
+import { banqueDe, mentionDesPictos, parMot, type RefPicto } from "./pictosAppoint";
 
 export interface VerbeConsigne {
   verbe: string;
@@ -69,6 +73,15 @@ export const VERBES_CONSIGNE: VerbeConsigne[] = [
   { verbe: "lancer", formes: ["lance", "lancez", "lançons"] },
   { verbe: "vérifier", formes: ["vérifie", "vérifiez", "vérifions"] },
   { verbe: "effacer", formes: ["efface", "effacez", "effaçons"] },
+  // Les consignes que dessine F. Bajard, et qui n'étaient pas encore là.
+  { verbe: "corriger", formes: ["corrige", "corrigez", "corrigeons"] },
+  { verbe: "numéroter", formes: ["numérote", "numérotez", "numérotons"] },
+  { verbe: "raconter", formes: ["raconte", "racontez", "racontons"] },
+  { verbe: "relire", formes: ["relis", "relisez", "relisons"] },
+  { verbe: "repasser", formes: ["repasse", "repassez", "repassons"] },
+  { verbe: "séparer", formes: ["sépare", "séparez", "séparons"] },
+  { verbe: "surligner", formes: ["surligne", "surlignez", "surlignons"] },
+  { verbe: "tracer", formes: ["trace", "tracez", "traçons"] },
 ];
 
 /**
@@ -89,19 +102,52 @@ export const SYNONYMES_CONSIGNE: Record<string, string[]> = {
   associer: ["relier", "apparier"],
 };
 
+/**
+ * Les verbes qu'ARASAAC ne dessine que dans un autre sens que celui de la
+ * classe, faute de mieux : « numéroter », c'est pour lui composer un numéro de
+ * téléphone ; « poser », poser pour un portrait. Sans dessin de la classe, on
+ * va chercher ailleurs.
+ */
+export const SENS_ETRANGERS_ARASAAC = new Set(["numéroter", "poser"]);
+
 /** Les mots à demander à la banque pour un verbe : lui-même, puis ses synonymes. */
 export const motsAChercher = (verbe: string): string[] => [verbe, ...(SYNONYMES_CONSIGNE[verbe] ?? [])];
 
 /**
- * Le picto proposé à chaque verbe, parmi ce que la banque a trouvé : sous le
- * verbe lui-même d'abord, sinon sous le premier synonyme qui a une image.
+ * Le picto proposé à chaque verbe, parmi ce que la banque a trouvé : le
+ * dessin de la classe d'abord (`scolaire`), sous le verbe lui-même ou sous un
+ * synonyme ; sinon, sous le verbe lui-même, puis sous le premier synonyme qui
+ * a une image — sauf pour un verbe qu'ARASAAC ne dessine que dans un autre sens.
  */
-export function pictosProposes(verbes: string[], trouves: { id: number; mot: string }[]): Record<string, number> {
-  const parMot = new Map(trouves.map((p) => [p.mot.toLowerCase(), p.id]));
+export function pictosProposes(verbes: string[], trouves: { id: number; mot: string; scolaire?: boolean }[]): Record<string, number> {
+  const parMot = new Map(trouves.map((p) => [p.mot.toLowerCase(), p]));
   const sortie: Record<string, number> = {};
   for (const verbe of verbes) {
-    const id = motsAChercher(verbe).map((m) => parMot.get(m.toLowerCase())).find((x) => x !== undefined);
-    if (id !== undefined) sortie[verbe] = id;
+    const candidats = motsAChercher(verbe).map((m) => parMot.get(m.toLowerCase())).filter((p) => p !== undefined);
+    const choisi = candidats.find((p) => p.scolaire) ?? (SENS_ETRANGERS_ARASAAC.has(verbe) ? undefined : candidats[0]);
+    if (choisi) sortie[verbe] = choisi.id;
+  }
+  return sortie;
+}
+
+/**
+ * Les mots à demander à une banque d'appoint pour un verbe. Les consignes de
+ * F. Bajard sont nommées à l'impératif (« Colorie », « Écris ») ; Sclera, à
+ * l'infinitif, comme ARASAAC.
+ */
+export function motsPourLaBanque(verbe: string, banque: BanqueAppoint): string[] {
+  if (banque !== "bajard") return motsAChercher(verbe);
+  const formes = VERBES_CONSIGNE.find((v) => v.verbe === verbe)?.formes ?? [];
+  return [...formes, ...motsAChercher(verbe)];
+}
+
+/** Le picto proposé à chaque verbe dans une banque d'appoint : sous le premier de ses mots qu'elle connaît. */
+export function pictosAppointProposes(verbes: string[], trouves: PictoAppoint[], banque: BanqueAppoint): Record<string, string> {
+  const references = parMot(trouves);
+  const sortie: Record<string, string> = {};
+  for (const verbe of verbes) {
+    const ref = motsPourLaBanque(verbe, banque).map((m) => references.get(m.toLowerCase())).find((x) => x !== undefined);
+    if (ref !== undefined) sortie[verbe] = ref;
   }
   return sortie;
 }
@@ -111,8 +157,8 @@ export const CLE_ACTIF = "caa:consignes:actif";
 /** Émis quand le lexique change : les ateliers ouverts se mettent à jour. */
 export const EVT_LEXIQUE = "maitrize:caa-lexique";
 
-/** Le pictogramme choisi pour chaque verbe : l'identifiant ARASAAC. */
-export type Lexique = Record<string, number>;
+/** Le pictogramme choisi pour chaque verbe : son numéro ARASAAC, ou sa référence dans une banque d'appoint. */
+export type Lexique = Record<string, RefPicto>;
 
 const plat = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
@@ -124,8 +170,10 @@ export function lireLexique(brut: string | null | undefined): Lexique {
     if (!lu || typeof lu !== "object" || Array.isArray(lu)) return {};
     const sortie: Lexique = {};
     for (const [verbe, id] of Object.entries(lu as Record<string, unknown>)) {
+      if (!verbe.trim()) continue;
       const n = Number(id);
-      if (verbe.trim() && Number.isInteger(n) && n > 0) sortie[verbe.trim()] = n;
+      if (Number.isInteger(n) && n > 0) sortie[verbe.trim()] = n;
+      else if (banqueDe(id) && typeof id === "string") sortie[verbe.trim()] = id;
     }
     return sortie;
   } catch {
@@ -168,7 +216,7 @@ export const estUnVerbeConnu = (verbe: string) => VERBES_CONSIGNE.some((v) => v.
 export const CLASSES_CONSIGNE = ["consigne", "cu-consigne", "ls-consigne", "fa-consigne", "regle"];
 
 /** Les pictos de ces verbes, en ligne, chacun sous son mot. */
-export function htmlPictosVerbes(verbes: string[], lexique: Lexique, images: Record<number, string>): string {
+export function htmlPictosVerbes(verbes: string[], lexique: Lexique, images: Record<string, string>): string {
   const pictos = verbes
     .filter((v) => images[lexique[v]])
     .map((v) => `<span class="consigne-picto"><img src="${images[lexique[v]]}" alt="${escapeHtml(v)}"><small>${escapeHtml(v)}</small></span>`);
@@ -200,8 +248,6 @@ function sectionsDe(interieur: string, regle: boolean): { offset: number; fin: n
   return sections;
 }
 
-const MENTION_ARASAAC = `<div class="consigne-attribution">Pictogrammes : ARASAAC (arasaac.org) — Gouvernement d'Aragon, licence CC BY-NC-SA. Usage non commercial.</div>`;
-
 /**
  * Les consignes d'une feuille, avec les pictos de leurs verbes devant.
  *
@@ -210,16 +256,22 @@ const MENTION_ARASAAC = `<div class="consigne-attribution">Pictogrammes : ARASAA
  * verbes ajoutés à la main (`supplement`) viennent devant la première
  * consigne — ou en tête de la feuille si elle n'en marque aucune. Rien ne
  * change pour une feuille sans consigne ni ajout ; celle qui gagne des
- * pictos porte la mention exigée par la licence, si elle ne l'avait pas.
+ * pictos porte la mention qu'exigent les licences de leurs banques, si elle
+ * ne les cite pas déjà.
  */
-export function decorerConsignesHtml(html: string, lexique: Lexique, images: Record<number, string>, supplement: string[] = []): string {
+export function decorerConsignesHtml(html: string, lexique: Lexique, images: Record<string, string>, supplement: string[] = []): string {
   if (!Object.keys(lexique).length) return html;
   const ouverture = /<(h[1-6]|p|div|span)\b([^>]*\bclass="([^"]*)"[^>]*)>/g;
   let sortie = "";
   let position = 0;
-  let decore = false;
   let premiere = true;
   const ajoutes = supplement.filter((v) => lexique[v]);
+  /** Les pictos posés, pour la mention de leurs banques. */
+  const poses: RefPicto[] = [];
+  const poser = (verbes: string[]) => {
+    for (const v of verbes) if (images[lexique[v]]) poses.push(lexique[v]);
+    return htmlPictosVerbes(verbes, lexique, images);
+  };
   for (let m = ouverture.exec(html); m; m = ouverture.exec(html)) {
     const classes = m[3].split(/\s+/);
     if (!classes.some((c) => CLASSES_CONSIGNE.includes(c))) continue;
@@ -232,24 +284,23 @@ export function decorerConsignesHtml(html: string, lexique: Lexique, images: Rec
       const trouves = verbesDe(s.texte, lexique);
       const verbes = premiere ? [...ajoutes, ...trouves.filter((v) => !ajoutes.includes(v))] : trouves;
       premiere = false;
-      const pictos = htmlPictosVerbes(verbes, lexique, images);
+      const pictos = poser(verbes);
       if (!pictos) continue;
       // Les pictos à gauche, le texte en bloc à droite : une consigne longue
       // passe à la ligne sous ses propres mots, pas sous les images.
       sortie += html.slice(position, debut + s.offset)
         + `<span class="consigne-ligne">${pictos}<span class="consigne-texte">${html.slice(debut + s.offset, debut + s.fin)}</span></span>`;
       position = debut + s.fin;
-      decore = true;
     }
   }
   if (premiere && ajoutes.length) {
     // Aucune consigne marquée : les pictos ajoutés font une ligne à eux, en tête.
-    const bande = htmlPictosVerbes(ajoutes, lexique, images);
-    if (bande) { sortie = `<div class="consigne consigne-seule">${bande}</div>` + html; position = html.length; decore = true; }
+    const bande = poser(ajoutes);
+    if (bande) { sortie = `<div class="consigne consigne-seule">${bande}</div>` + html; position = html.length; }
   }
-  if (!decore) return html;
+  if (!poses.length) return html;
   sortie += html.slice(position);
-  return sortie.includes("ARASAAC") ? sortie : sortie + MENTION_ARASAAC;
+  return sortie + mentionDesPictos(poses, sortie);
 }
 
 /** Le style des pictos devant une consigne, à l'écran comme sur le papier. */

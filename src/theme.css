@@ -563,7 +563,9 @@ details.pli[open] { padding-bottom: 10px; }
   display: flex; align-items: center; justify-content: center; padding: 4px; }
 .caa-verbe-picto img { width: 100%; height: 100%; object-fit: contain; }
 .caa-verbe-vide { font-size: 24px; color: var(--text-2); }
-.caa-verbe-nom { font-size: 13px; font-weight: 600; }
+.caa-verbe-nom { font-size: 13px; font-weight: 600; display: flex; flex-direction: column; align-items: center; }
+/* Un picto qui ne vient pas d'ARASAAC dit sa banque. */
+.caa-verbe-source { font-size: 10.5px; font-weight: 500; color: var(--text-2); }
 .caa-verbe .btn.ghost { position: absolute; top: 2px; right: 2px; padding: 0 5px; }
 .caa-apercu { margin-top: 12px; padding: 10px 12px; background: #fff; color: #1c2233; border-radius: 8px; border: 1px solid var(--border); }
 .caa-apercu .consigne { margin: 6px 0; font-size: 14px; }

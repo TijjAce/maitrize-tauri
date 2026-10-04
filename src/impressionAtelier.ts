@@ -14,6 +14,7 @@
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 import { cleDesCompetences, lireCompetencesAtelier, objectifsDesAteliers, unionDesCompetences } from "./ateliersCompetences";
 import { CLE_ACTIF, CLE_LEXIQUE, STYLE_CONSIGNES_PICTOS, consignesActives, decorerConsignesHtml, lireLexique } from "./caa";
+import { chargerImageAppoint } from "./pictosAppoint";
 import { cleConsigne, remplacerConsigne, clePictos, lirePictosAjoutes } from "./consigneAtelier";
 import { appliquerOptionsFeuille, cleOptionsFeuille, lireOptionsFeuille } from "./optionsFeuille";
 import { documentImprimable, escapeHtml, printHTML } from "./print";
@@ -128,9 +129,11 @@ export async function consignesEnPictos(corps: string, supplement: string[] = []
     const lexique = lireLexique(await api.settingGet(CLE_LEXIQUE));
     if (!consignesActives(await api.settingGet(CLE_ACTIF), lexique)) return { corps, style: "" };
     const ids = [...new Set(Object.values(lexique))];
-    const images: Record<number, string> = {};
+    const images: Record<string, string> = {};
     await Promise.all(ids.map(async (id) => {
-      try { images[id] = `data:image/png;base64,${await api.arasaacImage(id)}`; } catch { /* sans image, pas de picto */ }
+      try {
+        images[id] = typeof id === "string" ? await chargerImageAppoint(id) : `data:image/png;base64,${await api.arasaacImage(id)}`;
+      } catch { /* sans image, pas de picto */ }
     }));
     const decore = decorerConsignesHtml(corps, lexique, images, supplement);
     return { corps: decore, style: decore === corps ? "" : STYLE_CONSIGNES_PICTOS };

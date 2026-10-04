@@ -737,6 +737,8 @@ export const api = {
   arasaacImage: (id: number) => invoke<string>("arasaac_image", { id }),
   arasaacParMots: (mots: string[]) =>
     invoke<[PictoArasaac[], string[]]>("arasaac_par_mots", { mots }),
+  /** Les pictos des mots d'une consigne, dans le sens de la classe quand ARASAAC en a un (« repasser » : tracer, pas le fer). */
+  arasaacPourConsignes: (mots: string[]) => invoke<PictoConsigne[]>("arasaac_pour_consignes", { mots }),
   /**
    * Le PDF d'un jeu ; `ouvrir` faux pour le ranger sans l'ouvrir. Renvoie son chemin.
    * `images` porte celles de l'enseignant, que la banque n'a pas : elles partent avec la demande.
@@ -753,6 +755,15 @@ export const api = {
   /** Les noms communs de la banque où s'écrit l'une de ces syllabes, avec leur dessin ; `limite` vaut pour chaque syllabe. */
   arasaacNomsContenant: (morceaux: string[], limite = 150) =>
     invoke<PictoArasaac[]>("arasaac_noms_contenant", { morceaux, limite }),
+  /** Les banques d'appoint des consignes (F. Bajard, Sclera) : téléchargées ou non sur cet ordinateur. */
+  pictosAppointEtat: () => invoke<EtatAppoint[]>("pictos_appoint_etat"),
+  pictosAppointTelecharger: (banque: BanqueAppoint) => invoke<EtatAppoint>("pictos_appoint_telecharger", { banque }),
+  /** Les images d'une banque d'appoint sous ces mots exacts, accents et majuscules mis à part. */
+  pictosAppointParMots: (banque: BanqueAppoint, mots: string[]) => invoke<PictoAppoint[]>("pictos_appoint_par_mots", { banque, mots }),
+  /** Les images d'une banque d'appoint qui répondent à ce qu'on tape ; rien tapé, toute la banque. */
+  pictosAppointChercher: (banque: BanqueAppoint, q: string, limite = 48) =>
+    invoke<PictoAppoint[]>("pictos_appoint_chercher", { banque, q, limite }),
+  pictosAppointImage: (reference: string) => invoke<string>("pictos_appoint_image", { reference }),
   tlaGenerer: (gabarit: Gabarit, ouvrir = true) => invoke<string>("tla_generer", { gabarit, ouvrir }),
 
   // Amis (appariement chiffré, 100 % local pour l'instant)
@@ -1013,6 +1024,13 @@ export interface EtatBanque {
 }
 export interface CategorieArasaac { nom: string; nombre: number }
 export interface PictoArasaac { id: number; mot: string; fichier: string; nature?: string }
+/** Le picto ARASAAC d'un mot de consigne ; `scolaire` s'il est rangé parmi les tâches de la classe. */
+export interface PictoConsigne { id: number; mot: string; scolaire: boolean }
+/** Les banques qui complètent ARASAAC pour les verbes des consignes. */
+export type BanqueAppoint = "bajard" | "sclera";
+export interface EtatAppoint { banque: BanqueAppoint; installee: boolean; nombre: number }
+/** Une image d'une banque d'appoint : « bajard:Colorie01.png », et le mot qui l'a trouvée. */
+export interface PictoAppoint { reference: string; mot: string }
 /** Une image de l'enseignant, pour un jeu : le pictogramme de même identifiant la porte ; `donnees` est un PNG ou un JPEG en base64. */
 export interface ImageFournie { id: number; donnees: string }
 export interface OptionsJeu {

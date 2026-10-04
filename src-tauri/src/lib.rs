@@ -2,6 +2,7 @@ mod ai;
 mod arasaac;
 mod jeux_pdf;
 mod manuel_pdf;
+mod pictos_appoint;
 mod journal;
 mod texte_crdt;
 mod tla_pdf;
@@ -142,9 +143,11 @@ pub fn run() {
             ai::mistral_modeles_disponibles, ai::mistral_vision, ai::mistral_recherche_web, ai::mistral_jetons,
             // Un manuel photographié, en PDF ; et un fichier recopié où l'on veut.
             manuel_pdf::manuel_en_pdf, manuel_pdf::fichier_exporter,
+            pictos_appoint::pictos_appoint_etat, pictos_appoint::pictos_appoint_telecharger, pictos_appoint::pictos_appoint_par_mots,
+            pictos_appoint::pictos_appoint_chercher, pictos_appoint::pictos_appoint_image,
             arasaac::arasaac_etat, arasaac::arasaac_telecharger, arasaac::arasaac_categories,
             arasaac::arasaac_selection, arasaac::arasaac_themes_des_mots, arasaac::arasaac_par_mots, arasaac::arasaac_image,
-            arasaac::arasaac_chercher, arasaac::arasaac_nature, arasaac::arasaac_noms_contenant,
+            arasaac::arasaac_chercher, arasaac::arasaac_nature, arasaac::arasaac_noms_contenant, arasaac::arasaac_pour_consignes,
             commands::jeu_generer, commands::tla_generer,
             commands::dossier_donnees_get, commands::dossier_donnees_set,
             commands::diag_ecrire, commands::diag_ouvrir, commands::diag_rapport,
