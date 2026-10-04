@@ -21,7 +21,8 @@ import {
   CATEGORIES_MAX, COULEURS_TRI, MODELES_TRI, REGLAGES_TRI, STYLE_TRI, avecAide, etiquettesDuTri, etiquettesSaisies, htmlTri, maisonsDuTri,
   type CategorieTri, type ReglagesTri,
 } from "../triEtiquettes";
-import { marquesDeLaReponse, promptMarquerVerbes, promptRangerEtiquettes, rangementDeLaReponse } from "../triIa";
+import { marquesDeLaReponse, promptMarquerVerbes, promptRangerEtiquettes, promptTransposer, rangementDeLaReponse, transpositionDeLaReponse } from "../triIa";
+import { DEMANDE_CORPUS } from "../corpusIa";
 import { pseudonymiser, restaurer } from "../confidentialite";
 import { LigneDuProjet, useProjetDuMoment } from "../components/ProjetDuMoment";
 import { estUnModele, trisDuProjet } from "../triDuProjet";
@@ -246,6 +247,36 @@ export function TriTab() {
     ...corpusDesProjets.mots.flatMap((mots, i) => trisDuProjet({ mots, phrases: corpusDesProjets.phrases[i] ?? [] }, "")),
   ], [corpusDesProjets]);
   const suitLeProjet = r.origine === "projet" && estUnModele(categories, modelesDuProjet);
+  // Les autres modèles, réécrits dans le thème du projet par l'IA — sauf ceux qu'il donne déjà sans elle.
+  const aTransposer = MODELES_TRI.filter((m) => !(m.id === "phrase" && modelesDuProjet.some((x) => x.id === "projet-phrase")));
+  const [transposition, setTransposition] = React.useState("");
+  const [demandeCorpus] = useReglages("corpusIa", DEMANDE_CORPUS);
+  const transposer = async (id: string) => {
+    const m = MODELES_TRI.find((x) => x.id === id);
+    if (!m || !projet) return;
+    const patron = m.reglages.categories.map((c) => ({ titre: c.titre, exemples: etiquettesSaisies(c.etiquettes).slice(0, 3) }));
+    const parMaison = Math.max(...m.reglages.categories.map((c) => etiquettesSaisies(c.etiquettes).length));
+    setOccupe(true);
+    setTransposition(m.nom);
+    try {
+      // Le thème et ses mots partent, jamais un prénom d'élève.
+      const eleves = await api.elevesList().catch(() => []);
+      const theme = [projet.titre.trim(), projet.descriptif.trim()].filter(Boolean).join(" — ");
+      const masque = pseudonymiser([theme, ...corpus.mots.slice(0, 30)].join("\n"), eleves.map((e) => e.nom));
+      const [themeMasque, ...motsMasques] = masque.texte.split("\n");
+      const modele = await api.modeleActif(MODELE_TACHES);
+      const reponse = restaurer(await api.mistralChat(promptTransposer(patron, themeMasque, motsMasques, parMaison, demandeCorpus.cycle), modele), masque.table).texte;
+      const ecrites = transpositionDeLaReponse(reponse, patron.length, parMaison);
+      if (ecrites.filter((l) => l.length >= 2).length < 2) { toast("Le modèle n'a rien proposé de lisible ; réessayez.", { icone: "🤔", duree: 6000 }); return; }
+      maj({ ...m.reglages, origine: "theme", categories: m.reglages.categories.map((c, i) => ({ ...c, etiquettes: ecrites[i].join("\n") })) });
+      toast(`« ${m.nom} » sur le thème « ${projet.titre} » : ${ecrites.flat().length} étiquettes écrites par l'IA. Relisez-les.`, { icone: "✨", duree: 6000 });
+    } catch (e) {
+      toast("Transposition impossible : " + String(e), { icone: "⚠️", duree: 8000 });
+    } finally {
+      setOccupe(false);
+      setTransposition("");
+    }
+  };
   const prendreLeProjet = () => { if (modelesDuProjet[0]) maj({ ...modelesDuProjet[0].reglages, origine: "projet" }); };
   // À l'ouverture, ou au changement de projet : un tri qu'on n'a ni écrit ni choisi prend celui du projet.
   const courant = React.useRef({ r, categories, maj, tousLesModeles });
@@ -310,22 +341,31 @@ export function TriTab() {
         <details className="pli" open>
           <summary>Les étiquettes <span className="meta">· {total} étiquettes, {maisons.length} maison{maisons.length > 1 ? "s" : ""}</span></summary>
           <Field label="Partir d'un modèle">
-            <Select value="" aria-label="Modèle" onChange={(e) => {
-              const duProjetChoisi = modelesDuProjet.find((x) => x.id === e.target.value);
-              const m = duProjetChoisi ?? MODELES_TRI.find((x) => x.id === e.target.value);
+            <Select value="" aria-label="Modèle" disabled={occupe} onChange={(e) => {
+              const v = e.target.value;
+              if (v.startsWith("theme:")) { void transposer(v.slice(6)); return; }
+              const duProjetChoisi = modelesDuProjet.find((x) => x.id === v);
+              const m = duProjetChoisi ?? MODELES_TRI.find((x) => x.id === v);
               if (m) maj({ ...m.reglages, origine: duProjetChoisi ? "projet" : "modele" });
             }}>
               <option value="">Choisir un modèle : il remplace ce qui est écrit…</option>
-              {projet && modelesDuProjet.length > 0 && (
+              {projet && (
                 <optgroup label={`Le projet « ${projet.titre} »`}>
                   {modelesDuProjet.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
+                  {aTransposer.map((m) => (
+                    <option key={m.id} value={`theme:${m.id}`}>✨ {projet.titre.trim() || "Le projet"} — {m.nom.charAt(0).toLocaleLowerCase("fr") + m.nom.slice(1)}</option>
+                  ))}
                 </optgroup>
               )}
               <optgroup label="Les modèles">
                 {MODELES_TRI.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
               </optgroup>
             </Select>
-            {projet && modelesDuProjet.length > 0 && (
+            {transposition && projet ? (
+              <div className="projet-ligne"><span className="meta">✨ L'IA écrit « {transposition} » sur le thème « {projet.titre} »…</span></div>
+            ) : projet && r.origine === "theme" ? (
+              <div className="projet-ligne"><span className="meta">📌 Sur le thème du projet « {projet.titre} » — écrit par l'IA, à relire.</span></div>
+            ) : projet && modelesDuProjet.length > 0 && (
               <div className="projet-ligne">
                 <span className="meta">📌 {suitLeProjet ? `Les mots du projet « ${projet.titre} ».` : `Le projet « ${projet.titre} » a de quoi trier.`}</span>
                 {!suitLeProjet && <button type="button" className="btn ghost sm" onClick={prendreLeProjet}>Les prendre</button>}

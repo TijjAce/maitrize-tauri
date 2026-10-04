@@ -111,3 +111,51 @@ export function rangementDeLaReponse(reponse: string, maisons: number, etiquette
   }
   return { parMaison, ecartees };
 }
+
+// ── Transposer un modèle au thème du projet ──
+//
+// « Être ou avoir », « Passé, présent, futur »… sont écrits avec des phrases
+// de tous les jours. Pour que le tri reste dans le thème du projet, le modèle
+// écrit de nouvelles étiquettes sur le même patron — mêmes maisons, même
+// forme, même mot marqué — avec les mots du projet. Chaque étiquette dit sa
+// maison ; ce qui n'en dit pas, ou en dit une qui n'existe pas, est écarté.
+
+/** Ce qu'on demande au modèle : des étiquettes sur le patron des exemples, dans le thème. */
+export function promptTransposer(
+  maisons: { titre: string; exemples: string[] }[], theme: string, mots: string[], parMaison: number, cycle: 2 | 3,
+): ChatMessage[] {
+  const systeme = [
+    `Tu aides un enseignant à préparer un exercice de tri, en français, pour des élèves de cycle ${cycle}.`,
+    "On te donne un tri : ses maisons numérotées, chacune avec des étiquettes d'exemple, puis un thème et ses mots.",
+    "Écris de nouvelles étiquettes sur le patron des exemples — même forme, même longueur, même difficulté, et le même mot entouré d'astérisques quand les exemples en ont —, mais sur le thème donné : emploie ses mots autant que possible.",
+    "Chaque étiquette doit aller sans hésitation dans sa maison, et dans une seule. Écris un français simple et correct, sans prénom de personne.",
+    `Écris ${parMaison} étiquettes par maison. Réponds uniquement par des lignes : le numéro de la maison, une tabulation, puis l'étiquette. Sans commentaire.`,
+  ].join(" ");
+  const demande = [
+    "Maisons :",
+    ...maisons.map((m, i) => `${i + 1}. ${m.titre} — exemples : ${m.exemples.join(" / ")}`),
+    "",
+    `Thème : ${theme}`,
+    mots.length ? `Mots du thème : ${mots.join(", ")}` : "",
+  ].filter((l, i, t) => l || t[i - 1] !== "").join("\n");
+  return [{ role: "system", content: systeme }, { role: "user", content: demande }];
+}
+
+/** Les étiquettes écrites pour chaque maison, sans doublon, `parMaison` au plus. */
+export function transpositionDeLaReponse(reponse: string, maisons: number, parMaison: number): string[][] {
+  const sortie = Array.from({ length: maisons }, () => [] as string[]);
+  const vues = new Set<string>();
+  for (const brute of (reponse ?? "").replace(/```[a-z]*/g, "").split("\n")) {
+    const m = /^\s*(\d+)\s*[\t:.)\-–—|]+\s*(.+?)\s*$/.exec(brute);
+    if (!m) continue;
+    const i = Number(m[1]) - 1;
+    const etiquette = nettoyer(m[2]).replace(/\s+/g, " ");
+    // Des astérisques qui ne vont pas par deux : l'étiquette s'imprimerait de travers.
+    if (i < 0 || i >= maisons || !sansMarques(etiquette).trim() || (etiquette.match(/\*/g) ?? []).length % 2) continue;
+    const cle = forme(sansMarques(etiquette)).toLocaleLowerCase("fr");
+    if (vues.has(cle) || sortie[i].length >= parMaison) continue;
+    vues.add(cle);
+    sortie[i].push(etiquette);
+  }
+  return sortie;
+}
