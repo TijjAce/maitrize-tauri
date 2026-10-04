@@ -36,6 +36,9 @@ export interface ExerciceManuel {
   id: string;
   /** Le numéro tel qu'il est écrit : « 3 », « 4 ★ », « Je m'entraîne ». */
   numero: string;
+  /** Le titre du bloc, quand il en a un : « J'accorde l'adjectif avec le nom ». */
+  titre: string;
+  /** Ce que l'élève doit faire : toutes les consignes du bloc, une par ligne. */
   consigne: string;
   /** Les items, données, texte : ce sur quoi porte la consigne. */
   contenu: string;
@@ -139,7 +142,7 @@ export function lireManuel(brut: string | null | undefined): Manuel | null {
       id: String(p?.id ?? nouvelId()), numero: Number(p?.numero) || i + 1, fichier: String(p?.fichier ?? ""),
       extraitLe: String(p?.extraitLe ?? ""),
       exercices: Array.isArray(p?.exercices) ? p.exercices.filter((e: any) => e && typeof e.consigne === "string").map((e: any) => ({
-        id: String(e.id ?? nouvelId()), numero: String(e.numero ?? ""), consigne: e.consigne, contenu: String(e.contenu ?? ""),
+        id: String(e.id ?? nouvelId()), numero: String(e.numero ?? ""), titre: String(e.titre ?? ""), consigne: e.consigne, contenu: String(e.contenu ?? ""),
         type: (TYPES.has(e.type) ? e.type : "autre") as TypeExercice, notion: String(e.notion ?? ""),
       })) : [],
     })) : [];
@@ -169,17 +172,25 @@ export function consigneExtraction(niveau: string): string {
   return `Tu lis la photo d'une page de manuel scolaire${niveau ? ` de niveau ${niveau}` : ""}.
 Transcris chaque exercice de la page, dans l'ordre où il apparaît.
 
+Ce qu'est UN exercice :
+- Un exercice est un bloc. Il commence par un numéro (souvent dans une pastille de couleur) ou par un titre (« Pour commencer », « Je m'entraîne », « J'accorde l'adjectif avec le nom »…), et va jusqu'au numéro ou au titre suivant.
+- Tout ce qui est dans ce bloc fait UN SEUL exercice, même s'il donne plusieurs consignes : des puces (▸, •, ►), « Puis… », « Ensuite… », des questions a), b), c). Ne le découpe jamais en plusieurs exercices.
+- Les dessins, les prénoms, les étiquettes et les lignes à compléter du bloc font partie de l'exercice.
+
 Règles :
 - Ne transcris que ce qui est VISIBLE. N'invente rien, ne complète rien.
 - Garde les nombres, les mots et la ponctuation exactement tels qu'ils sont écrits.
-- "numero" est le repère écrit devant l'exercice (« 3 », « 4 ★ », « Je m'entraîne ») ; vide s'il n'y en a pas.
-- "consigne" est ce que l'élève doit faire ; "contenu" est ce sur quoi il le fait : les calculs, les phrases, les mots, les questions, ligne par ligne.
+- "numero" : le repère écrit devant le bloc (« 3 », « 4 ★ », « Pour commencer ») ; vide s'il n'y en a pas.
+- "titre" : le titre du bloc, s'il en a un (« J'accorde l'adjectif avec le nom ») ; vide sinon.
+- "consigne" : ce que l'élève doit faire — toutes les consignes du bloc, dans l'ordre, une par ligne.
+- "contenu" : ce sur quoi il le fait : les calculs, les phrases, les mots, les questions, ligne par ligne.
 - Une image ou un schéma se décrit entre crochets, brièvement : [image : trois pommes dans un panier].
-- Ignore les titres de leçon, les encadrés de cours, les numéros de page et les décors.
+- Ignore le titre de la leçon en haut de page, les encadrés de cours (« Je retiens », « Leçon »), les numéros de page et les décors.
 - "type" vaut l'un de : ${types}.
 
 Réponds uniquement par un tableau JSON, sans texte autour :
-[{"numero":"3","consigne":"Calcule.","contenu":"12 + 7 = …\\n25 + 9 = …","type":"calcul"}]
+[{"numero":"3","titre":"","consigne":"Calcule.","contenu":"12 + 7 = …\\n25 + 9 = …","type":"calcul"},
+ {"numero":"Je m'entraîne","titre":"Le pluriel des noms","consigne":"Entoure les noms au pluriel.\\nPuis recopie-les dans le tableau.","contenu":"des chats ; un vélo ; les arbres","type":"langue"}]
 
 S'il n'y a aucun exercice sur la page, renvoie [].`;
 }
@@ -200,10 +211,43 @@ export function lireExercices(reponse: string): ExerciceManuel[] {
     const contenu = String(x?.contenu ?? "").trim();
     if (!consigne && !contenu) return [];
     return [{
-      id: nouvelId(), numero: String(x?.numero ?? "").trim(), consigne: consigne || "(sans consigne)", contenu,
+      id: nouvelId(), numero: String(x?.numero ?? "").trim(), titre: String(x?.titre ?? "").trim(), consigne: consigne || SANS_CONSIGNE, contenu,
       type: (TYPES.has(String(x?.type)) ? String(x?.type) : "autre") as TypeExercice, notion: "",
     }];
-  });
+  }).reduce(regrouper, []);
+}
+
+// ── Un exercice, même en plusieurs consignes ──────────────────────────────
+//
+// « Finis de les colorier. ▸ Puis complète les phrases. ▸ Souligne quatre
+// groupes nominaux. » : trois consignes, un seul exercice — le même bloc, le
+// même titre. Le modèle le sait par sa consigne ; s'il découpe quand même,
+// ce qui suit ramasse les morceaux, sans lui : une étape sans numéro sous le
+// même titre, ou qui commence par « Puis… », rejoint l'exercice d'avant.
+
+/** Ce qui tient lieu de consigne à un exercice qui n'en montre pas. */
+const SANS_CONSIGNE = "(sans consigne)";
+
+/** Deux morceaux d'un même exercice, réunis : le premier garde son numéro, son titre et sa place. */
+export function fusionnerExercices(a: ExerciceManuel, b: ExerciceManuel): ExerciceManuel {
+  const joindre = (x: string, y: string) => [x.trim(), y.trim()].filter((s) => s && s !== SANS_CONSIGNE).join("\n") || x.trim();
+  return { ...a, titre: a.titre || b.titre, consigne: joindre(a.consigne, b.consigne), contenu: joindre(a.contenu, b.contenu), notion: a.notion || b.notion };
+}
+
+/** Ce qui continue une consigne plutôt que d'en commencer une autre. */
+const SUITE = /^(puis|ensuite|enfin|et|maintenant|après|pour finir)\b/i;
+
+/** Vrai si `e` est une étape de l'exercice `avant`, rendue à part par le modèle. */
+export function estUneEtape(avant: ExerciceManuel, e: ExerciceManuel): boolean {
+  // Le même numéro deux fois de suite, c'est le même exercice coupé en deux.
+  if (/\d/.test(e.numero) && e.numero === avant.numero) return true;
+  if (e.numero) return false;
+  return (!!e.titre && aplati(e.titre) === aplati(avant.titre)) || SUITE.test(e.consigne.trim());
+}
+
+function regrouper(liste: ExerciceManuel[], e: ExerciceManuel): ExerciceManuel[] {
+  const avant = liste[liste.length - 1];
+  return avant && estUneEtape(avant, e) ? [...liste.slice(0, -1), fusionnerExercices(avant, e)] : [...liste, e];
 }
 
 // ── Le classement des exercices ───────────────────────────────────────────
@@ -250,8 +294,9 @@ export function consigneClassement(m: Manuel, lot: ExerciceAClasser[], notions: 
   const deja = notions.map((n, i) => `N${i + 1} · ${n.domaine} · ${n.titre}`).join("\n");
   const exercices = lot.map((x, i) => {
     const ou = `p. ${x.page}${x.exercice.numero ? `, ex. ${x.exercice.numero}` : ""}`;
+    const titre = x.exercice.titre ? `« ${extrait(x.exercice.titre, 80)} » ` : "";
     const contenu = x.exercice.contenu ? ` — ${extrait(x.exercice.contenu, 140)}` : "";
-    return `E${i + 1} (${ou}) ${extrait(x.exercice.consigne, 160)}${contenu}`;
+    return `E${i + 1} (${ou}) ${titre}${extrait(x.exercice.consigne, 160)}${contenu}`;
   }).join("\n");
   return [
     { role: "system", content: "Tu es un enseignant qui prépare sa progression à partir d'un manuel. Tu ranges des exercices par notion travaillée. Tu réponds en français, uniquement par un objet JSON." },
@@ -345,7 +390,7 @@ export function notionsRangees(m: Manuel): NotionManuel[] {
 
 /** L'exercice tel qu'on le lit d'un trait : « 3 · Calcule. — 12 + 7 = … ». */
 export const texteExercice = (e: ExerciceManuel) =>
-  [e.numero && `${e.numero} ·`, e.consigne, e.contenu && `— ${e.contenu.replace(/\s*\n\s*/g, " ; ")}`].filter(Boolean).join(" ");
+  [e.numero && `${e.numero} ·`, e.titre && `« ${e.titre} »`, e.consigne.replace(/\s*\n\s*/g, " "), e.contenu && `— ${e.contenu.replace(/\s*\n\s*/g, " ; ")}`].filter(Boolean).join(" ");
 
 // ── Réadapter un exercice ─────────────────────────────────────────────────
 //
@@ -396,7 +441,7 @@ export function consigneReadaptation(e: ExerciceManuel, o: OptionsReadaptation, 
     { role: "system", content: "Tu es un enseignant spécialisé. Tu réécris des exercices de manuel pour un élève qui a besoin d'une présentation allégée : une information à la fois, des mots simples, une tâche claire. Tu ne changes ni la notion travaillée ni la difficulté visée. Tu réponds en français, uniquement par un objet JSON." },
     { role: "user", content: `Voici un exercice de manuel${niveau ? ` (niveau ${niveau})` : ""} :
 
-Numéro : ${e.numero || "—"}
+Numéro : ${e.numero || "—"}${e.titre ? `\nTitre : ${e.titre}` : ""}
 Consigne : ${e.consigne}
 Contenu :
 ${e.contenu || "(rien d'autre que la consigne)"}
