@@ -1,16 +1,21 @@
 import React from "react";
-import { api } from "../api";
-import { Field, Input, Select, Textarea, useAsync } from "../components/ui";
+import { MODELE_TACHES, api, newId, nowIso, texteErreur } from "../api";
+import { Field, Input, Modal, Select, Textarea, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { PhotoTelephone } from "../components/PhotoTelephone";
+import { BoutonBureau } from "../components/BoutonBureau";
+import { CompetenceTree, labelCourt } from "../components/CompetenceTree";
+import { basculerCompetence, memeCompetence } from "../ateliersCompetences";
+import { STYLE_ENTETE_COMPETENCES, enteteCompetencesHtml, materielDuBureau } from "../impressionAtelier";
 import { printHTML } from "../print";
 import { nombreDePages, octetsDuFichier, rendrePage } from "../pdfRendu";
 import {
-  CLE_INDEX, OPTIONS_PAR_DEFAUT, STYLE_FICHE_ADAPTEE, TYPES_EXERCICE, ajouterPagePhoto, cleManuel, consigneExtraction, consigneReadaptation,
-  ecrireManuel, ficheDepuisLExercice, htmlFicheAdaptee, indexAvec, indexSans, lireExercices, lireFicheAdaptee, lireIndex, lireManuel,
-  nouveauManuel, retirerPage, texteExercice, type ExerciceManuel, type FicheAdaptee, type Manuel, type OptionsReadaptation, type PageManuel,
-  type ResumeManuel,
+  CLE_INDEX, DOMAINES_MANUEL, OPTIONS_PAR_DEFAUT, PAR_LOT, STYLE_FICHE_ADAPTEE, TYPES_EXERCICE, ajouterPagePhoto, appliquerClassement,
+  classementDeLaReponse, cleManuel, consigneClassement, consigneExtraction, consigneReadaptation, ecrireManuel, exercicesAClasser,
+  exercicesDeLaNotion, ficheDepuisLExercice, htmlFicheAdaptee, indexAvec, indexSans, lireExercices, lireFicheAdaptee, lireIndex, lireManuel,
+  notionsRangees, nouveauManuel, retirerPage, texteExercice, type ExerciceAClasser, type ExerciceManuel, type FicheAdaptee, type Manuel,
+  type NotionManuel, type OptionsReadaptation, type PageManuel, type ResumeManuel,
 } from "../manuels";
 
 // ── Adapter une fiche › Manuels ───────────────────────────────────────────
@@ -19,6 +24,10 @@ import {
 // PDF ; le modèle relit ses exercices ; l'enseignant en réadapte un et
 // l'imprime. Les images restent ici ; une page ne part chez le modèle que
 // quand on lui demande de la relire.
+//
+// Le manuel se range aussi : en PDF, sur le bureau ou là où l'on veut ; et
+// ses exercices par notion, dans « Classement », où l'enseignant met sur
+// chaque notion la compétence du BO qu'il veut.
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -39,6 +48,12 @@ async function pngReduit(dataUrl: string, maxCote = 1600): Promise<string> {
 }
 
 const mimeDe = (fichier: string) => (fichier.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg");
+
+/** Un titre qui peut nommer un fichier : sans les signes que Finder ou Windows refusent. */
+const nomDeFichier = (titre: string) => titre.replace(/[\\/:*?"<>|]+/g, "-").trim() || "Manuel";
+
+/** Le choix « nouvelle notion » dans la liste où l'on range un exercice. */
+const NOUVELLE = "+nouvelle";
 
 /** Les octets d'un fichier de Fichiers/, relus. */
 async function octetsDuFichierStocke(nom: string): Promise<Uint8Array> {
@@ -69,6 +84,7 @@ export function ManuelsPanel() {
   const [manuel, setManuel] = React.useState<Manuel | null>(null);
   const [pageId, setPageId] = React.useState("");
   const [exerciceId, setExerciceId] = React.useState("");
+  const [vue, setVue] = React.useState<"pages" | "classement">("pages");
   const [occupe, setOccupe] = React.useState("");
   const arret = React.useRef(false);
   // Les octets des PDF et les images des pages, gardés le temps de la visite.
@@ -86,7 +102,7 @@ export function ManuelsPanel() {
   const ouvrir = async (id: string) => {
     const m = lireManuel(await api.settingGet(cleManuel(id)));
     if (!m) { toast("Ce manuel ne se relit pas.", { icone: "⚠️" }); return; }
-    setManuel(m); setPageId(m.pages[0]?.id ?? ""); setExerciceId("");
+    setManuel(m); setPageId(m.pages[0]?.id ?? ""); setExerciceId(""); setVue("pages");
   };
 
   const supprimer = async (r: ResumeManuel) => {
@@ -229,10 +245,14 @@ export function ManuelsPanel() {
     } catch (e) { toast(String(e), { icone: "⚠️" }); }
     finally { setOccupe(""); }
   };
+  // La notion de l'exercice, et la compétence du BO qu'on y a mise : elle s'imprime en tête de la fiche.
+  const notionDe = (e: ExerciceManuel | null) => (e && manuel ? manuel.notions.find((n) => n.id === e.notion) ?? null : null);
   const imprimer = () => {
     if (!fiche || !manuel || !page) return;
+    const competences = notionDe(exercice)?.competences ?? [];
     printHTML(`${fiche.titre || "Exercice adapté"} — ${manuel.titre}`,
-      htmlFicheAdaptee(fiche, options, { manuel: manuel.titre, page: page.numero, numero: exercice?.numero ?? "" }), STYLE_FICHE_ADAPTEE);
+      enteteCompetencesHtml(competences) + htmlFicheAdaptee(fiche, options, { manuel: manuel.titre, page: page.numero, numero: exercice?.numero ?? "" }),
+      STYLE_FICHE_ADAPTEE + (competences.length ? STYLE_ENTETE_COMPETENCES : ""));
   };
   const majFiche = (patch: Partial<FicheAdaptee>) => setFiche((f) => (f ? { ...f, ...patch } : f));
   const majOption = (patch: Partial<OptionsReadaptation>) => setOptions((o) => ({ ...o, ...patch }));
@@ -248,13 +268,95 @@ export function ManuelsPanel() {
   };
   const ajouterExercice = () => {
     if (!manuel || !page) return;
-    const e: ExerciceManuel = { id: crypto.randomUUID(), numero: "", consigne: "", contenu: "", type: "autre" };
+    const e: ExerciceManuel = { id: crypto.randomUUID(), numero: "", consigne: "", contenu: "", type: "autre", notion: "" };
     void enregistrer({ ...manuel, pages: manuel.pages.map((p) => (p.id === page.id ? { ...p, exercices: [...p.exercices, e] } : p)) });
     setExerciceId(e.id);
   };
 
+  // ── Le manuel en PDF : sur le bureau, ou là où l'on veut ──
+  const pdfDuManuel = async (m: Manuel): Promise<string> => {
+    const r = await api.manuelEnPdf(m.titre, m.pages.map((p) => p.fichier).filter(Boolean), m.source === "pdf" ? m.fichierPdf : null);
+    if (r.illisibles.length) {
+      const n = r.illisibles.length;
+      toast(`Page${n > 1 ? "s" : ""} ${r.illisibles.join(", ")} laissée${n > 1 ? "s" : ""} de côté : illisible${n > 1 ? "s" : ""}.`, { icone: "⚠️", duree: 7000 });
+    }
+    return r.fichier;
+  };
+  const enregistrerLePdf = async () => {
+    if (!manuel) return;
+    const { save } = await import("@tauri-apps/plugin-dialog");
+    const chemin = await save({ defaultPath: `${nomDeFichier(manuel.titre)}.pdf`, filters: [{ name: "PDF", extensions: ["pdf"] }] });
+    if (!chemin) return;
+    setOccupe("Le PDF se fabrique…");
+    try {
+      const fichier = await pdfDuManuel(manuel);
+      await api.fichierExporter(fichier, chemin);
+      api.fichierDelete(fichier).catch(() => {});
+      toast(`« ${manuel.titre} » est enregistré en PDF.`, { icone: "📄" });
+    } catch (e) { toast("PDF non enregistré : " + texteErreur(e), { icone: "⚠️", duree: 7000 }); }
+    finally { setOccupe(""); }
+  };
+  // Le manuel déjà posé sur le bureau y est remplacé : refaire le PDF après de nouvelles pages n'en pose pas un second.
+  const poserSurLeBureau = async () => {
+    if (!manuel) throw new Error("Aucun manuel ouvert.");
+    const fichier = await pdfDuManuel(manuel);
+    const ancien = manuel.surLeBureau;
+    const deja = ancien ? (await api.materielList()).find((x) => x.id === ancien.materielId) : undefined;
+    let materiel = materielDuBureau("manuels", manuel.titre, fichier, [], newId(), nowIso());
+    if (deja && ancien) {
+      let pdfs: string[] = [];
+      try { const lus = JSON.parse(deja.pdfsJson); if (Array.isArray(lus)) pdfs = lus.map(String); } catch { /* une liste abîmée se refait */ }
+      materiel = { ...deja, titre: manuel.titre, pdfsJson: JSON.stringify(pdfs.includes(ancien.fichier) ? pdfs.map((x) => (x === ancien.fichier ? fichier : x)) : [fichier, ...pdfs]) };
+    }
+    await api.materielSave(materiel);
+    if (ancien && ancien.fichier !== fichier) api.fichierDelete(ancien.fichier).catch(() => {});
+    await enregistrer({ ...manuel, surLeBureau: { materielId: materiel.id, fichier } });
+    return materiel;
+  };
+
+  // ── Le classement : relire ce qui ne l'est pas, puis ranger par notion ──
+  const classer = async () => {
+    if (!manuel) return;
+    arret.current = false;
+    let m = manuel;
+    try {
+      // On ne classe que ce qu'on a lu : les pages pas encore relues passent d'abord.
+      const restantes = m.pages.filter((p) => !p.extraitLe);
+      for (const [i, p] of restantes.entries()) {
+        if (arret.current) break;
+        setOccupe(`Le modèle relit la page ${p.numero} (${i + 1}/${restantes.length})…`);
+        m = await relire(m, m.pages.find((x) => x.id === p.id)!);
+      }
+      const aClasser = exercicesAClasser(m);
+      const modele = await api.modeleActif(MODELE_TACHES);
+      let illisibles = 0;
+      for (let debut = 0; debut < aClasser.length && !arret.current; debut += PAR_LOT) {
+        const lot = aClasser.slice(debut, debut + PAR_LOT);
+        setOccupe(`Le modèle classe les exercices (${Math.min(debut + PAR_LOT, aClasser.length)}/${aClasser.length})…`);
+        const notions = m.notions;
+        const groupes = classementDeLaReponse(await api.mistralChat(consigneClassement(m, lot, notions), modele), lot.length, notions.length);
+        if (!groupes.length) illisibles++;
+        m = appliquerClassement(m, lot, groupes, notions);
+        await enregistrer(m);
+      }
+      const restent = exercicesAClasser(m).length;
+      toast([
+        `${m.notions.length} notion${m.notions.length > 1 ? "s" : ""}`,
+        restent ? `${restent} exercice${restent > 1 ? "s" : ""} encore à classer${illisibles ? " (réponse illisible : relancez)" : ""}` : "",
+        arret.current ? "arrêté" : "",
+      ].filter(Boolean).join(", ") + ". Donnez à chacune sa compétence du BO.", { icone: "🗂", duree: 7000 });
+    } catch (e) { toast("Classement interrompu : " + texteErreur(e), { icone: "⚠️", duree: 7000 }); }
+    finally { setOccupe(""); }
+  };
+  /** Un exercice du classement, montré sur sa page. */
+  const montrer = (id: string) => {
+    const p = manuel?.pages.find((x) => x.exercices.some((e) => e.id === id));
+    if (!p) return;
+    setVue("pages"); setPageId(p.id); setExerciceId(id);
+  };
+
   const aRelire = manuel?.pages.filter((p) => !p.extraitLe).length ?? 0;
-  const fermer = () => { setManuel(null); setPageId(""); setExerciceId(""); setFiche(null); };
+  const fermer = () => { setManuel(null); setPageId(""); setExerciceId(""); setFiche(null); setVue("pages"); };
 
   // ── L'accueil : on choisit, puis on change d'écran ──
   //
@@ -312,18 +414,30 @@ export function ManuelsPanel() {
           <Input value={manuel.titre} onChange={(e) => setManuel({ ...manuel, titre: e.target.value })} onBlur={() => enregistrer(manuel)} style={{ maxWidth: 260, fontWeight: 700 }} aria-label="Titre du manuel" />
           <Input value={manuel.niveau} onChange={(e) => setManuel({ ...manuel, niveau: e.target.value })} onBlur={() => enregistrer(manuel)} placeholder="Niveau (CP, CE2…)" style={{ maxWidth: 140 }} aria-label="Niveau" />
           <div style={{ flex: 1 }} />
+          <button type="button" className="btn sm" disabled={!!occupe || manuel.pages.length === 0} onClick={enregistrerLePdf}
+            title="Toutes les pages à la suite, une par feuille, là où vous voulez">📄 Enregistrer en PDF</button>
+          <BoutonBureau disabled={!!occupe || manuel.pages.length === 0} onEnregistrer={poserSurLeBureau} />
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 12 }}>
+          <div className="seg">
+            <button className={vue === "pages" ? "active" : ""} onClick={() => setVue("pages")}>Pages</button>
+            <button className={vue === "classement" ? "active" : ""} onClick={() => setVue("classement")}>
+              Classement{manuel.notions.length ? ` · ${manuel.notions.length} notion${manuel.notions.length > 1 ? "s" : ""}` : ""}
+            </button>
+          </div>
+          <div style={{ flex: 1 }} />
           {manuel.source === "telephone" && (<>
             <button type="button" className="btn sm" onClick={() => { void scanner(continuerParPhotos); }}>📱 Scanner d'autres pages</button>
           </>)}
           {occupe ? (
             <button type="button" className="btn sm" onClick={() => { arret.current = true; }}>⏹ {occupe}</button>
-          ) : (
+          ) : vue === "pages" && (
             <button type="button" className="btn sm" disabled={aRelire === 0} onClick={relireTout} title="Chaque page part chez Mistral, l'une après l'autre">
-              {aRelire === 1 ? "🔎 Relire la page restante" : `🔎 Relire les ${aRelire} pages restantes`}
+              {aRelire === 0 ? "✓ Toutes les pages sont relues" : aRelire === 1 ? "🔎 Relire la page restante" : `🔎 Relire les ${aRelire} pages restantes`}
             </button>
           )}
         </div>
-        <div className="man-pages">
+        {vue === "pages" && <div className="man-pages">
           {manuel.pages.map((p) => (
             <button key={p.id} type="button" className={`man-page${p.id === pageId ? " on" : ""}`} onClick={() => { setPageId(p.id); setExerciceId(""); }}
               title={p.extraitLe ? `${p.exercices.length} exercice${p.exercices.length > 1 ? "s" : ""}` : "Pas encore relue"}>
@@ -332,10 +446,14 @@ export function ManuelsPanel() {
             </button>
           ))}
           {manuel.pages.length === 0 && <span className="meta" style={{ fontSize: 12.5 }}>Aucune page : photographiez-les depuis le téléphone.</span>}
-        </div>
+        </div>}
       </div>
 
-      {page && (
+      {vue === "classement" && (
+        <ClassementDuManuel manuel={manuel} enregistrer={enregistrer} occupe={occupe} aLire={aRelire} onClasser={() => { void classer(); }} onMontrer={montrer} />
+      )}
+
+      {vue === "pages" && page && (
         <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 300px) 1fr", gap: 14, alignItems: "start" }}>
           <div className="card">
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
@@ -371,7 +489,10 @@ export function ManuelsPanel() {
               ) : page.exercices.map((e) => (
                 <button key={e.id} type="button" className={`man-exo${e.id === exerciceId ? " on" : ""}`} onClick={() => setExerciceId(e.id)}>
                   <span className="man-exo-num">{TYPES_EXERCICE.find((t) => t.id === e.type)?.icone} {e.numero || "—"}</span>
-                  <span className="man-exo-texte">{texteExercice({ ...e, numero: "" }).slice(0, 140)}</span>
+                  <span className="man-exo-texte">
+                    {texteExercice({ ...e, numero: "" }).slice(0, 140)}
+                    {notionDe(e) && <span className="man-exo-notion">🗂 {notionDe(e)!.titre}</span>}
+                  </span>
                 </button>
               ))}
             </div>
@@ -390,7 +511,18 @@ export function ManuelsPanel() {
                       {TYPES_EXERCICE.map((t) => <option key={t.id} value={t.id}>{t.icone} {t.libelle}</option>)}
                     </Select>
                   </Field>
+                  <Field label="Notion">
+                    <Select value={notionDe(exercice)?.id ?? ""} onChange={(e) => majExercice({ notion: e.target.value })}>
+                      <option value="">À classer</option>
+                      {notionsRangees(manuel).map((n) => <option key={n.id} value={n.id}>{n.titre}</option>)}
+                    </Select>
+                  </Field>
                 </div>
+                {(notionDe(exercice)?.competences.length ?? 0) > 0 && (
+                  <div className="man-notion-competences" style={{ marginBottom: 10 }}>
+                    {notionDe(exercice)!.competences.map((c) => <span key={c.id} className="chip">🎯 {labelCourt(c)}</span>)}
+                  </div>
+                )}
                 <Field label="Consigne du manuel"><Textarea value={exercice.consigne} rows={2} onChange={(e) => majExercice({ consigne: e.target.value })} /></Field>
                 <Field label="Contenu (un item par ligne)"><Textarea value={exercice.contenu} rows={4} onChange={(e) => majExercice({ contenu: e.target.value })} /></Field>
 
@@ -438,6 +570,146 @@ export function ManuelsPanel() {
             )}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── Le classement : les exercices de tout le manuel, par notion ────────────
+//
+// Le modèle range ; l'enseignant relit, déplace un exercice mal rangé,
+// renomme une notion, et met sur chacune la compétence du BO qu'il veut —
+// tous les exercices de la notion la portent.
+
+function ClassementDuManuel({ manuel, enregistrer, occupe, aLire, onClasser, onMontrer }: {
+  manuel: Manuel;
+  enregistrer: (m: Manuel) => Promise<void>;
+  occupe: string;
+  /** Les pages pas encore relues : le classement les relit d'abord. */
+  aLire: number;
+  onClasser: () => void;
+  onMontrer: (exerciceId: string) => void;
+}) {
+  const [choix, setChoix] = React.useState("");
+  const [recherche, setRecherche] = React.useState("");
+  const notions = notionsRangees(manuel);
+  const aClasser = exercicesAClasser(manuel);
+  const total = manuel.pages.reduce((n, p) => n + p.exercices.length, 0);
+  const choisie = manuel.notions.find((n) => n.id === choix) ?? null;
+  const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? "s" : ""}`;
+
+  const majNotion = (id: string, patch: Partial<NotionManuel>) =>
+    void enregistrer({ ...manuel, notions: manuel.notions.map((n) => (n.id === id ? { ...n, ...patch } : n)) });
+
+  const ranger = (exerciceId: string, vers: string) => {
+    let suite = manuel;
+    let cible = vers;
+    if (vers === NOUVELLE) {
+      const e = manuel.pages.flatMap((p) => p.exercices).find((x) => x.id === exerciceId);
+      const nouvelle: NotionManuel = { id: newId(), titre: (e?.consigne ?? "").slice(0, 60).trim() || "Nouvelle notion", domaine: "Autre", competences: [] };
+      suite = { ...suite, notions: [...suite.notions, nouvelle] };
+      cible = nouvelle.id;
+    }
+    void enregistrer({ ...suite, pages: suite.pages.map((p) => ({ ...p, exercices: p.exercices.map((e) => (e.id === exerciceId ? { ...e, notion: cible } : e)) })) });
+  };
+
+  const retirer = async (n: NotionManuel) => {
+    const nb = exercicesDeLaNotion(manuel, n.id).length;
+    const question = `Retirer la notion « ${n.titre} » ? ${nb ? `Ses ${pluriel(nb, "exercice")} redeviennent à classer` : "Elle n'a plus d'exercice"}${n.competences.length ? ", et ses compétences partent avec elle" : ""}.`;
+    if (!(await confirmer(question, { oui: "Retirer", danger: true }))) return;
+    void enregistrer({
+      ...manuel, notions: manuel.notions.filter((x) => x.id !== n.id),
+      pages: manuel.pages.map((p) => ({ ...p, exercices: p.exercices.map((e) => (e.notion === n.id ? { ...e, notion: "" } : e)) })),
+    });
+  };
+
+  const ligne = ({ page, exercice: e }: ExerciceAClasser) => (
+    <li key={e.id} className="man-notion-exo">
+      <button type="button" className="man-notion-ou" onClick={() => onMontrer(e.id)} title="Voir l'exercice sur sa page">
+        p. {page}{e.numero ? ` · ${e.numero}` : ""}
+      </button>
+      <span className="man-notion-consigne">{e.consigne}</span>
+      <Select className="select man-ranger" value={notions.some((n) => n.id === e.notion) ? e.notion : ""}
+        onChange={(ev) => ranger(e.id, ev.target.value)} aria-label="Ranger dans une autre notion">
+        <option value="">À classer</option>
+        {notions.map((n) => <option key={n.id} value={n.id}>{n.titre}</option>)}
+        <option value={NOUVELLE}>＋ Nouvelle notion</option>
+      </Select>
+    </li>
+  );
+
+  const libelle = aLire
+    ? `✨ Relire ${pluriel(aLire, "page")}, puis classer`
+    : aClasser.length ? `✨ Classer ${pluriel(aClasser.length, "exercice")}` : "✓ Tout est classé";
+  const domaines = [...new Set(notions.map((n) => n.domaine))];
+
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div className="card man-classement-tete">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 style={{ margin: 0, fontSize: 15 }}>Le classement des exercices</h3>
+          <span className="meta" style={{ fontSize: 12.5 }}>
+            {pluriel(total, "exercice")} · {pluriel(notions.length, "notion")}{aClasser.length ? ` · ${aClasser.length} à classer` : ""}
+          </span>
+        </div>
+        <button type="button" className="btn primary sm" disabled={!!occupe || (!aLire && !aClasser.length)} onClick={onClasser}
+          title="Le modèle range les exercices par notion ; la compétence du BO, c'est vous qui la donnez">{libelle}</button>
+      </div>
+
+      {domaines.map((d) => (
+        <section key={d} className="man-domaine">
+          <h4>{d}</h4>
+          {notions.filter((n) => n.domaine === d).map((n) => (
+            <div key={n.id} className="card man-notion">
+              <div className="man-notion-tete">
+                <Input key={`${n.id}:${n.titre}`} defaultValue={n.titre} aria-label="Titre de la notion"
+                  onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== n.titre) majNotion(n.id, { titre: v }); }} />
+                <Select value={n.domaine} onChange={(e) => majNotion(n.id, { domaine: e.target.value })} aria-label="Domaine">
+                  {DOMAINES_MANUEL.map((x) => <option key={x} value={x}>{x}</option>)}
+                </Select>
+                <button type="button" className="btn ghost sm" aria-label={`Retirer la notion ${n.titre}`} onClick={() => { void retirer(n); }}>🗑</button>
+              </div>
+              <div className="man-notion-competences">
+                {n.competences.map((c) => (
+                  <span key={c.id} className="chip">🎯 {labelCourt(c)}
+                    <button type="button" aria-label={`Retirer ${c.competenceTitre}`}
+                      onClick={() => majNotion(n.id, { competences: n.competences.filter((x) => !memeCompetence(x, c)) })}>×</button>
+                  </span>
+                ))}
+                <button type="button" className={n.competences.length ? "btn ghost sm" : "btn sm"} onClick={() => { setChoix(n.id); setRecherche(""); }}>
+                  🎯 {n.competences.length ? "Modifier" : "Choisir la compétence du BO"}
+                </button>
+              </div>
+              <ul className="man-notion-exos">{exercicesDeLaNotion(manuel, n.id).map(ligne)}</ul>
+            </div>
+          ))}
+        </section>
+      ))}
+
+      {aClasser.length > 0 && (
+        <section className="man-domaine">
+          <h4>À classer</h4>
+          <div className="card man-notion"><ul className="man-notion-exos">{aClasser.map(ligne)}</ul></div>
+        </section>
+      )}
+
+      {!total && !aLire && (
+        <p className="meta" style={{ fontSize: 12.5 }}>Aucun exercice relu : photographiez des pages, et le classement les rangera.</p>
+      )}
+
+      {choisie && (
+        <Modal titre={`🎯 « ${choisie.titre} »`} onClose={() => setChoix("")} large
+          footer={<button className="btn primary" onClick={() => setChoix("")}>Terminé</button>}>
+          <Input autoFocus value={recherche} onChange={(e) => setRecherche(e.target.value)}
+            placeholder="Chercher une compétence (ex. : accord, sujet, verbe…)" aria-label="Chercher une compétence" />
+          <div style={{ maxHeight: "52vh", overflowY: "auto", marginTop: 8 }}>
+            <CompetenceTree mode="multi" selection={choisie.competences} recherche={recherche}
+              onToggle={(c) => majNotion(choisie.id, { competences: basculerCompetence(choisie.competences, c) })} />
+          </div>
+          <div className="meta" style={{ fontSize: 12.5, marginTop: 6 }}>
+            Les {pluriel(exercicesDeLaNotion(manuel, choisie.id).length, "exercice")} de cette notion la porteront, jusque sur leur fiche imprimée.
+          </div>
+        </Modal>
       )}
     </div>
   );

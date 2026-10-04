@@ -248,7 +248,7 @@ fn charger_sur_blanc(chemin: &str) -> Result<::image::RgbImage, String> {
     Ok(aplatir(::image::open(chemin).map_err(|e| format!("{chemin} : {e}"))?))
 }
 
-fn aplatir(brut: ::image::DynamicImage) -> ::image::RgbImage {
+pub(crate) fn aplatir(brut: ::image::DynamicImage) -> ::image::RgbImage {
     let rgba = brut.to_rgba8();
     let mut sortie = ::image::RgbImage::new(rgba.width(), rgba.height());
     for (x, y, p) in rgba.enumerate_pixels() {
@@ -274,7 +274,7 @@ pub struct ImageFournie {
 
 /// Une image prête à poser dans une case.
 #[derive(Clone)]
-enum Pixels {
+pub(crate) enum Pixels {
     /// Décodée et aplatie sur blanc : un pictogramme, un dessin détouré.
     Bruts(::image::RgbImage),
     /// Un JPEG posé tel quel : le PDF sait le lire, et une photo y pèse dix
@@ -283,14 +283,14 @@ enum Pixels {
 }
 
 impl Pixels {
-    fn dimensions(&self) -> (u32, u32) {
+    pub(crate) fn dimensions(&self) -> (u32, u32) {
         match self {
             Pixels::Bruts(i) => (i.width(), i.height()),
             Pixels::Jpeg { largeur, hauteur, .. } => (*largeur, *hauteur),
         }
     }
 
-    fn en_objet(self) -> ImageXObject {
+    pub(crate) fn en_objet(self) -> ImageXObject {
         let (largeur, hauteur) = self.dimensions();
         let (color_space, image_data, image_filter) = match self {
             Pixels::Bruts(i) => (ColorSpace::Rgb, i.into_raw(), None),
@@ -319,7 +319,7 @@ type Fournies = std::collections::HashMap<i64, Pixels>;
 /// Seuls les JPEG que le PDF sait lire passent : séquentiels ou progressifs,
 /// en gris ou en couleurs. Tout autre (sans perte, arithmétique, CMJN) est
 /// refusé plutôt que d'imprimer une case vide.
-fn entete_jpeg(o: &[u8]) -> Option<(u32, u32, u8)> {
+pub(crate) fn entete_jpeg(o: &[u8]) -> Option<(u32, u32, u8)> {
     if o.len() < 4 || o[0] != 0xFF || o[1] != 0xD8 {
         return None;
     }

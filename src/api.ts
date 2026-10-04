@@ -637,6 +637,10 @@ export const api = {
   fichierOuvrir: (nom: string) => invoke<void>("fichier_ouvrir", { nom }),
   fichierDelete: (nom: string) => invoke<void>("fichier_delete", { nom }),
   fichierImporterDepuisChemin: (chemin: string) => invoke<string>("fichier_importer_depuis_chemin", { chemin }),
+  /** Recopie un fichier de l'application là où l'on a choisi de l'enregistrer. */
+  fichierExporter: (nom: string, chemin: string) => invoke<void>("fichier_exporter", { nom, chemin }),
+  /** Un manuel en PDF, rangé dans les fichiers de l'application : ses photos à la suite, ou son PDF d'origine recopié. */
+  manuelEnPdf: (titre: string, pages: string[], pdf: string | null) => invoke<ManuelPdf>("manuel_en_pdf", { titre, pages, pdf }),
   enregistrerTexte: (chemin: string, contenu: string) => invoke<void>("enregistrer_texte", { chemin, contenu }),
   imprimerPdf: (nom: string) => invoke<void>("imprimer_pdf", { nom }),
   /** Une feuille HTML en PDF, rangée dans les fichiers de l'application ; renvoie son nom. */
@@ -1036,6 +1040,9 @@ export interface ReponseWeb { texte: string; sources: SourceWeb[]; aCherche: boo
 
 /** Verdict d'un test réel sur un modèle, pour l'écran des réglages. */
 export interface EtatModele { id: string; disponible: boolean; detail: string }
+
+/** Un manuel en PDF : le fichier, et le numéro des pages laissées de côté parce qu'illisibles. */
+export interface ManuelPdf { fichier: string; illisibles: number[] }
 
 /** Les jetons que l'IA a dépensés sur cet ordinateur ; `depuis` (« AAAA-MM-JJ ») est vide tant que rien n'est compté. */
 export interface JetonsIa { ceMois: number; total: number; depuis: string }

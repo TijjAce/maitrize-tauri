@@ -1,6 +1,7 @@
 mod ai;
 mod arasaac;
 mod jeux_pdf;
+mod manuel_pdf;
 mod journal;
 mod texte_crdt;
 mod tla_pdf;
@@ -139,6 +140,8 @@ pub fn run() {
             // IA Mistral
             ai::mistral_chat, ai::mistral_test, ai::mistral_chat_stream, ai::transcrire_audio,
             ai::mistral_modeles_disponibles, ai::mistral_vision, ai::mistral_recherche_web, ai::mistral_jetons,
+            // Un manuel photographié, en PDF ; et un fichier recopié où l'on veut.
+            manuel_pdf::manuel_en_pdf, manuel_pdf::fichier_exporter,
             arasaac::arasaac_etat, arasaac::arasaac_telecharger, arasaac::arasaac_categories,
             arasaac::arasaac_selection, arasaac::arasaac_themes_des_mots, arasaac::arasaac_par_mots, arasaac::arasaac_image,
             arasaac::arasaac_chercher, arasaac::arasaac_nature, arasaac::arasaac_noms_contenant,

@@ -7,8 +7,13 @@
 // et l'enseignant en réadapte un : consigne simplifiée, moins d'items, un
 // exemple, de la place pour répondre. Le manuel reste sur cet ordinateur,
 // avec ses images ; rien ne part chez le modèle avant qu'on le lui demande.
+//
+// Le modèle range aussi les exercices de tout le manuel par notion, et
+// l'enseignant donne à chaque notion la compétence du BO qu'il veut.
 
 import type { ChatMessage } from "./api";
+import type { CompetenceSelectionnee } from "./components/CompetenceTree";
+import { lireCompetencesAtelier } from "./ateliersCompetences";
 import { escapeHtml } from "./print";
 
 export const CLE_INDEX = "manuels:index";
@@ -35,6 +40,18 @@ export interface ExerciceManuel {
   /** Les items, données, texte : ce sur quoi porte la consigne. */
   contenu: string;
   type: TypeExercice;
+  /** La notion où le classement l'a rangé ; vide tant qu'il n'est pas classé. */
+  notion: string;
+}
+
+/** Ce qu'un groupe d'exercices fait travailler, et la compétence du BO que l'enseignant y met. */
+export interface NotionManuel {
+  id: string;
+  /** Dite comme un savoir-faire : « Accorder le verbe avec son sujet ». */
+  titre: string;
+  domaine: string;
+  /** Les compétences du BO, choisies par l'enseignant : le classement ne les devine pas. */
+  competences: CompetenceSelectionnee[];
 }
 
 export interface PageManuel {
@@ -56,6 +73,9 @@ export interface Manuel {
   niveau: string;
   pages: PageManuel[];
   creeLe: string;
+  notions: NotionManuel[];
+  /** Le PDF du manuel posé sur le bureau : on le remplace au lieu d'en poser un second. */
+  surLeBureau?: { materielId: string; fichier: string };
 }
 
 /** Ce que l'index retient d'un manuel, pour la liste. */
@@ -72,7 +92,7 @@ const nouvelId = () => (globalThis.crypto?.randomUUID?.() ?? `m${Date.now()}${Ma
 
 export function nouveauManuel(titre: string, source: SourceManuel, aujourdhui: string, fichierPdf = "", nbPages = 0): Manuel {
   return {
-    id: nouvelId(), titre: titre.trim() || `Manuel du ${aujourdhui}`, source, fichierPdf, niveau: "", creeLe: aujourdhui,
+    id: nouvelId(), titre: titre.trim() || `Manuel du ${aujourdhui}`, source, fichierPdf, niveau: "", creeLe: aujourdhui, notions: [],
     pages: Array.from({ length: Math.max(0, nbPages) }, (_, i) => ({ id: nouvelId(), numero: i + 1, fichier: "", exercices: [], extraitLe: "" })),
   };
 }
@@ -120,12 +140,22 @@ export function lireManuel(brut: string | null | undefined): Manuel | null {
       extraitLe: String(p?.extraitLe ?? ""),
       exercices: Array.isArray(p?.exercices) ? p.exercices.filter((e: any) => e && typeof e.consigne === "string").map((e: any) => ({
         id: String(e.id ?? nouvelId()), numero: String(e.numero ?? ""), consigne: e.consigne, contenu: String(e.contenu ?? ""),
-        type: (TYPES.has(e.type) ? e.type : "autre") as TypeExercice,
+        type: (TYPES.has(e.type) ? e.type : "autre") as TypeExercice, notion: String(e.notion ?? ""),
       })) : [],
     })) : [];
+    const notions: NotionManuel[] = Array.isArray(v.notions) ? v.notions.filter((n: any) => n && typeof n.id === "string" && typeof n.titre === "string").map((n: any) => ({
+      id: n.id, titre: n.titre, domaine: domaineConnu(String(n.domaine ?? "")),
+      competences: lireCompetencesAtelier(JSON.stringify(Array.isArray(n.competences) ? n.competences : [])),
+    })) : [];
+    // Un exercice rangé dans une notion qui n'est plus là redevient « à classer ».
+    const connues = new Set(notions.map((n) => n.id));
+    for (const p of pages) for (const e of p.exercices) if (!connues.has(e.notion)) e.notion = "";
+    const bureau = v.surLeBureau && typeof v.surLeBureau.materielId === "string" && typeof v.surLeBureau.fichier === "string"
+      ? { materielId: v.surLeBureau.materielId, fichier: v.surLeBureau.fichier } : undefined;
     return {
       id: v.id, titre: String(v.titre ?? "Manuel"), source: v.source === "pdf" ? "pdf" : "telephone",
-      fichierPdf: String(v.fichierPdf ?? ""), niveau: String(v.niveau ?? ""), creeLe: String(v.creeLe ?? ""), pages,
+      fichierPdf: String(v.fichierPdf ?? ""), niveau: String(v.niveau ?? ""), creeLe: String(v.creeLe ?? ""), pages, notions,
+      ...(bureau ? { surLeBureau: bureau } : {}),
     };
   } catch { return null; }
 }
@@ -171,9 +201,146 @@ export function lireExercices(reponse: string): ExerciceManuel[] {
     if (!consigne && !contenu) return [];
     return [{
       id: nouvelId(), numero: String(x?.numero ?? "").trim(), consigne: consigne || "(sans consigne)", contenu,
-      type: (TYPES.has(String(x?.type)) ? String(x?.type) : "autre") as TypeExercice,
+      type: (TYPES.has(String(x?.type)) ? String(x?.type) : "autre") as TypeExercice, notion: "",
     }];
   });
+}
+
+// ── Le classement des exercices ───────────────────────────────────────────
+//
+// Un manuel range ses exercices par leçon, page après page ; l'enseignant
+// cherche, lui, ce qu'un exercice fait travailler. Le modèle regroupe donc
+// les exercices de tout le manuel par notion — « Accorder le verbe avec son
+// sujet », où qu'ils soient dans le livre —, et l'enseignant met sur chaque
+// notion la compétence du BO qu'il veut. Le modèle ne la devine pas : c'est
+// l'enseignant qui en juge.
+
+export const DOMAINES_MANUEL = [
+  "Lecture", "Écriture", "Oral", "Grammaire", "Conjugaison", "Orthographe", "Vocabulaire",
+  "Nombres", "Calcul", "Problèmes", "Grandeurs et mesures", "Espace et géométrie", "Données", "Autre",
+];
+
+/** Un texte ramené à ses lettres : « Accorder le verbe ! » et « accorder le verbe » se retrouvent. */
+const aplati = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr").replace(/[^a-z0-9]+/g, " ").trim();
+
+/** Le domaine dans la liste, d'où qu'il vienne ; « Autre » s'il n'y est pas. */
+export function domaineConnu(d: string): string {
+  const cle = aplati(d);
+  return DOMAINES_MANUEL.find((x) => aplati(x) === cle) ?? "Autre";
+}
+
+/** Un exercice à classer : où il est, et ce qu'il est. */
+export interface ExerciceAClasser { page: number; exercice: ExerciceManuel }
+
+/** Les exercices relus que le classement n'a pas encore rangés, dans l'ordre du manuel. */
+export function exercicesAClasser(m: Manuel): ExerciceAClasser[] {
+  const connues = new Set(m.notions.map((n) => n.id));
+  return m.pages.flatMap((p) => p.exercices.filter((e) => !connues.has(e.notion)).map((exercice) => ({ page: p.numero, exercice })));
+}
+
+const extrait = (s: string, n: number) => {
+  const plat = s.replace(/\s*\n\s*/g, " ; ").replace(/\s+/g, " ").trim();
+  return plat.length > n ? `${plat.slice(0, n - 1).trimEnd()}…` : plat;
+};
+
+/** Combien d'exercices par demande : assez pour voir les ressemblances, pas assez pour noyer le modèle. */
+export const PAR_LOT = 50;
+
+export function consigneClassement(m: Manuel, lot: ExerciceAClasser[], notions: NotionManuel[]): ChatMessage[] {
+  const deja = notions.map((n, i) => `N${i + 1} · ${n.domaine} · ${n.titre}`).join("\n");
+  const exercices = lot.map((x, i) => {
+    const ou = `p. ${x.page}${x.exercice.numero ? `, ex. ${x.exercice.numero}` : ""}`;
+    const contenu = x.exercice.contenu ? ` — ${extrait(x.exercice.contenu, 140)}` : "";
+    return `E${i + 1} (${ou}) ${extrait(x.exercice.consigne, 160)}${contenu}`;
+  }).join("\n");
+  return [
+    { role: "system", content: "Tu es un enseignant qui prépare sa progression à partir d'un manuel. Tu ranges des exercices par notion travaillée. Tu réponds en français, uniquement par un objet JSON." },
+    { role: "user", content: `Manuel : « ${m.titre} »${m.niveau ? ` (niveau ${m.niveau})` : ""}.
+
+Range chaque exercice ci-dessous dans la notion qu'il fait travailler.
+${deja ? `
+Notions déjà retenues — reprends-les quand un exercice y entre :
+${deja}
+` : ""}
+Exercices :
+${exercices}
+
+Règles :
+- Une notion dit ce que l'exercice fait apprendre, comme un savoir-faire, en 3 à 8 mots : « Accorder le verbe avec son sujet », « Identifier les compléments circonstanciels », « Comprendre un texte lu », « Additionner des nombres décimaux ».
+- Deux exercices qui travaillent la même chose vont dans la même notion, même loin l'un de l'autre dans le manuel.
+- Ni « Divers », ni « Révisions », ni « Exercices » : un exercice qui ne ressemble à aucun autre a sa propre notion.
+- "domaine" vaut l'un de : ${DOMAINES_MANUEL.join(", ")}.
+- Chaque exercice (E1, E2…) apparaît une fois, et une seule.
+
+Réponds uniquement par un objet JSON, sans texte autour :
+{"notions":[{"id":"nouvelle","titre":"…","domaine":"…","exercices":["E1","E4"]}]}
+- "id" : ${deja ? "celui d'une notion déjà retenue (N1, N2…) quand l'exercice y entre ; " : ""}"nouvelle" pour une notion nouvelle.` },
+  ];
+}
+
+/** Un groupe tel que le modèle l'a rendu : une notion déjà retenue (son rang) ou nouvelle, et ses exercices (leur rang dans le lot). */
+export interface GroupeClasse { notion: number | null; titre: string; domaine: string; exercices: number[] }
+
+/** Relit la réponse du modèle : l'objet JSON, quoi qu'il y ait autour, et rien qui ne se rattache à rien. */
+export function classementDeLaReponse(reponse: string, nbExercices: number, nbNotions: number): GroupeClasse[] {
+  const debut = reponse.search(/[[{]/);
+  const fin = Math.max(reponse.lastIndexOf("}"), reponse.lastIndexOf("]"));
+  if (debut < 0 || fin <= debut) return [];
+  let brut: any;
+  try { brut = JSON.parse(reponse.slice(debut, fin + 1)); } catch { return []; }
+  const groupes: any[] = Array.isArray(brut) ? brut : Array.isArray(brut?.notions) ? brut.notions : [];
+  const rang = (v: unknown, lettre: string, max: number): number | null => {
+    const m = new RegExp(`^\\s*${lettre}?\\s*(\\d+)\\s*$`, "i").exec(String(v ?? ""));
+    const n = m ? Number(m[1]) : NaN;
+    return n >= 1 && n <= max ? n : null;
+  };
+  return groupes.flatMap((g): GroupeClasse[] => {
+    if (!g || typeof g !== "object") return [];
+    const exercices = (Array.isArray(g.exercices) ? g.exercices : []).map((e: unknown) => rang(e, "E", nbExercices)).filter((n: number | null): n is number => n !== null);
+    const notion = rang(g.id, "N", nbNotions);
+    const titre = String(g.titre ?? "").trim();
+    if (!exercices.length || (notion === null && !titre)) return [];
+    return [{ notion: notion === null ? null : notion - 1, titre, domaine: domaineConnu(String(g.domaine ?? "")), exercices: exercices.map((n: number) => n - 1) }];
+  });
+}
+
+/**
+ * Le manuel, ses exercices rangés. Une notion nouvelle qui porte le titre
+ * d'une notion déjà là la rejoint ; un exercice ne se range qu'une fois.
+ */
+export function appliquerClassement(m: Manuel, lot: ExerciceAClasser[], groupes: GroupeClasse[], notionsDuLot: NotionManuel[], idNeuf: () => string = nouvelId): Manuel {
+  const notions = [...m.notions];
+  const rangement = new Map<string, string>();
+  for (const g of groupes) {
+    let notion = g.notion !== null ? notions.find((n) => n.id === notionsDuLot[g.notion!]?.id) : undefined;
+    if (!notion) notion = notions.find((n) => aplati(n.titre) === aplati(g.titre));
+    if (!notion) {
+      notion = { id: idNeuf(), titre: g.titre, domaine: g.domaine, competences: [] };
+      notions.push(notion);
+    }
+    for (const i of g.exercices) {
+      const e = lot[i]?.exercice;
+      if (e && !rangement.has(e.id)) rangement.set(e.id, notion.id);
+    }
+  }
+  return {
+    ...m, notions,
+    pages: m.pages.map((p) => ({ ...p, exercices: p.exercices.map((e) => (rangement.has(e.id) ? { ...e, notion: rangement.get(e.id)! } : e)) })),
+  };
+}
+
+/** Les exercices d'une notion, dans l'ordre du manuel, avec leur page. */
+export function exercicesDeLaNotion(m: Manuel, notionId: string): ExerciceAClasser[] {
+  return m.pages.flatMap((p) => p.exercices.filter((e) => e.notion === notionId).map((exercice) => ({ page: p.numero, exercice })));
+}
+
+/** Les notions dans l'ordre des domaines, puis de leur première apparition dans le manuel. */
+export function notionsRangees(m: Manuel): NotionManuel[] {
+  const premiere = new Map<string, number>();
+  m.pages.forEach((p) => p.exercices.forEach((e) => { if (e.notion && !premiere.has(e.notion)) premiere.set(e.notion, p.numero); }));
+  const rangDomaine = (d: string) => { const i = DOMAINES_MANUEL.indexOf(d); return i < 0 ? DOMAINES_MANUEL.length : i; };
+  return [...m.notions].sort((a, b) => rangDomaine(a.domaine) - rangDomaine(b.domaine)
+    || (premiere.get(a.id) ?? Infinity) - (premiere.get(b.id) ?? Infinity) || a.titre.localeCompare(b.titre, "fr"));
 }
 
 /** L'exercice tel qu'on le lit d'un trait : « 3 · Calcule. — 12 + 7 = … ». */
