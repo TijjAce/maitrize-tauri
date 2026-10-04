@@ -113,11 +113,43 @@ fn cle_mistral(db: &State<Db>) -> Result<String, String> {
 //
 // Mistral facture au jeton, et chaque réponse dit ce qu'elle a coûté. On les
 // additionne, par mois, pour que les réglages montrent ce que l'IA a dépensé
-// sans passer par console.mistral.ai. Le compte est celui de cet ordinateur :
-// il ne voyage ni par la synchronisation ni par une sauvegarde.
+// sans passer par console.mistral.ai — et leur équivalent en euros, au tarif
+// public de chaque modèle : une estimation, pas une facture. Le compte est
+// celui de cet ordinateur : il ne voyage ni par la synchronisation ni par une
+// sauvegarde.
 
 /// Réglage où s'additionnent les jetons de cet ordinateur.
 pub const CLE_JETONS: &str = "mistralJetons";
+
+/// Le dollar en euros, au cours de référence de la BCE du 1er octobre 2026 (1 € = 1,1298 $).
+const EUROS_PAR_DOLLAR: f64 = 1.0 / 1.1298;
+
+/// Le tarif public d'un modèle, en dollars par million de jetons, en entrée
+/// et en sortie (mistral.ai/pricing/api, octobre 2026). Un modèle inconnu
+/// prend celui du modèle par défaut, Ministral 8B.
+fn tarif(modele: &str) -> (f64, f64) {
+    let m = modele.to_ascii_lowercase();
+    if m.contains("ministral-3b") {
+        (0.10, 0.10)
+    } else if m.contains("ministral-14b") {
+        (0.20, 0.20)
+    } else if m.contains("ministral") {
+        (0.15, 0.15)
+    } else if m.contains("small") {
+        (0.15, 0.60)
+    } else if m.contains("medium") {
+        (1.5, 7.5)
+    } else if m.contains("large") {
+        (0.5, 1.5)
+    } else {
+        (0.15, 0.15)
+    }
+}
+
+/// Une recherche sur le web se paie en plus des jetons : 30 $ les mille.
+const DOLLARS_PAR_RECHERCHE: f64 = 0.03;
+/// La transcription en ligne se paie à la minute d'audio, pas au jeton.
+const DOLLARS_PAR_MINUTE_AUDIO: f64 = 0.003;
 
 /// Le compte, tel que le réglage le garde.
 #[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
@@ -130,47 +162,99 @@ pub(crate) struct Jetons {
     /// Le jour où le compte a commencé : avant, rien n'était compté.
     #[serde(default)]
     depuis: String,
+    /// Par mois, leur équivalent en euros au tarif public.
+    #[serde(default)]
+    euros: std::collections::BTreeMap<String, f64>,
+}
+
+/// Ce qu'une réponse a coûté : ses jetons, et leur prix au tarif public.
+#[derive(Default, Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Depense {
+    pub jetons: u64,
+    pub dollars: f64,
+}
+
+/// Un nombre du champ `usage`, lu sans exigence : un compte mal formé ne
+/// doit jamais faire échouer la réponse qu'il accompagne.
+fn nombre(u: &serde_json::Value, nom: &str) -> u64 {
+    u.get(nom).and_then(|x| x.as_u64().or_else(|| x.as_f64().map(|f| f.max(0.0) as u64))).unwrap_or(0)
 }
 
 /// Les jetons qu'une réponse a coûtés, d'après son champ `usage`.
-///
-/// Lu sans exigence : un compte mal formé ne doit jamais faire échouer la
-/// réponse qu'il accompagne — au pire, elle n'est pas comptée.
 pub(crate) fn jetons_de(usage: Option<&serde_json::Value>) -> u64 {
     let Some(u) = usage else { return 0 };
-    let champ = |nom: &str| u.get(nom).and_then(|x| x.as_u64().or_else(|| x.as_f64().map(|f| f.max(0.0) as u64))).unwrap_or(0);
-    match champ("total_tokens") {
-        0 => champ("prompt_tokens").saturating_add(champ("completion_tokens")),
+    match nombre(u, "total_tokens") {
+        0 => nombre(u, "prompt_tokens").saturating_add(nombre(u, "completion_tokens")),
         t => t,
     }
 }
 
-/// Le compte, `n` jetons de plus, dépensés le `jour` (« AAAA-MM-JJ »).
-pub(crate) fn ajouter_jetons(mut compte: Jetons, n: u64, jour: &str) -> Jetons {
-    if n == 0 {
+/// Ce qu'une réponse de texte a coûté avec ce modèle : l'entrée et la sortie n'ont pas le même prix.
+pub(crate) fn depense_texte(usage: Option<&serde_json::Value>, modele: &str) -> Depense {
+    let jetons = jetons_de(usage);
+    let Some(u) = usage else { return Depense::default() };
+    let (entree, sortie) = tarif(modele);
+    let (question, reponse) = (nombre(u, "prompt_tokens"), nombre(u, "completion_tokens"));
+    // Sans le détail, tout se compte au prix de l'entrée.
+    let dollars = if question + reponse > 0 {
+        (question as f64 * entree + reponse as f64 * sortie) / 1e6
+    } else {
+        jetons as f64 * entree / 1e6
+    };
+    Depense { jetons, dollars }
+}
+
+/// Ce qu'une transcription a coûté : ses jetons pour le compte, sa durée pour le prix.
+pub(crate) fn depense_audio(usage: Option<&serde_json::Value>) -> Depense {
+    let secondes = usage
+        .and_then(|u| u.get("prompt_audio_seconds"))
+        .and_then(|x| x.as_f64())
+        .unwrap_or(0.0)
+        .max(0.0);
+    Depense { jetons: jetons_de(usage), dollars: secondes / 60.0 * DOLLARS_PAR_MINUTE_AUDIO }
+}
+
+/// Le mois d'un jour « AAAA-MM-JJ ».
+fn mois_de(jour: &str) -> String {
+    jour.get(..7).unwrap_or(jour).to_string()
+}
+
+/// Le compte, une dépense de plus, faite le `jour` (« AAAA-MM-JJ »).
+pub(crate) fn ajouter_jetons(mut compte: Jetons, d: Depense, jour: &str) -> Jetons {
+    if d.jetons == 0 && d.dollars <= 0.0 {
         return compte;
     }
-    compte.total = compte.total.saturating_add(n);
-    let mois = compte.mois.entry(jour.get(..7).unwrap_or(jour).to_string()).or_default();
-    *mois = mois.saturating_add(n);
+    compte.total = compte.total.saturating_add(d.jetons);
+    let mois = compte.mois.entry(mois_de(jour)).or_default();
+    *mois = mois.saturating_add(d.jetons);
+    *compte.euros.entry(mois_de(jour)).or_default() += d.dollars.max(0.0) * EUROS_PAR_DOLLAR;
     if compte.depuis.is_empty() {
         compte.depuis = jour.to_string();
     }
     compte
 }
 
+/// Les mois comptés avant qu'on chiffre en euros : estimés au prix du modèle par défaut.
+pub(crate) fn avec_euros_estimes(mut compte: Jetons) -> Jetons {
+    let (entree, _) = tarif(MODELE_DEFAUT);
+    for (mois, jetons) in &compte.mois {
+        compte.euros.entry(mois.clone()).or_insert(*jetons as f64 * entree / 1e6 * EUROS_PAR_DOLLAR);
+    }
+    compte
+}
+
 fn lire_jetons(c: &rusqlite::Connection) -> Jetons {
-    serde_json::from_str(&crate::sync::get_setting(c, CLE_JETONS)).unwrap_or_default()
+    avec_euros_estimes(serde_json::from_str(&crate::sync::get_setting(c, CLE_JETONS)).unwrap_or_default())
 }
 
 /// Ajoute au compte de cet ordinateur ce qu'une réponse a coûté.
-fn noter_jetons(db: &Db, n: u64) {
-    if n == 0 {
+fn noter_depense(db: &Db, d: Depense) {
+    if d.jetons == 0 && d.dollars <= 0.0 {
         return;
     }
     let c = db.lock();
     let jour = chrono::Local::now().format("%Y-%m-%d").to_string();
-    let compte = ajouter_jetons(lire_jetons(&c), n, &jour);
+    let compte = ajouter_jetons(lire_jetons(&c), d, &jour);
     if let Ok(json) = serde_json::to_string(&compte) {
         let _ = crate::sync::set_setting(&c, CLE_JETONS, &json);
     }
@@ -184,13 +268,22 @@ pub struct BilanJetons {
     pub total: u64,
     /// « AAAA-MM-JJ », vide tant que rien n'a été compté.
     pub depuis: String,
+    /// L'équivalent en euros, au tarif public de Mistral : une estimation.
+    pub euros_ce_mois: f64,
+    pub euros_total: f64,
 }
 
 #[tauri::command]
 pub fn mistral_jetons(db: State<Db>) -> BilanJetons {
     let compte = lire_jetons(&db.lock());
     let mois = chrono::Local::now().format("%Y-%m").to_string();
-    BilanJetons { ce_mois: compte.mois.get(&mois).copied().unwrap_or(0), total: compte.total, depuis: compte.depuis }
+    BilanJetons {
+        ce_mois: compte.mois.get(&mois).copied().unwrap_or(0),
+        total: compte.total,
+        depuis: compte.depuis.clone(),
+        euros_ce_mois: compte.euros.get(&mois).copied().unwrap_or(0.0),
+        euros_total: compte.euros.values().sum(),
+    }
 }
 
 /// Envoie une conversation à Mistral et renvoie la réponse de l'assistant.
@@ -202,6 +295,7 @@ pub async fn mistral_chat(
 ) -> Result<String, String> {
     let cle = cle_mistral(&db)?;
     let model = model.unwrap_or_else(|| MODELE_DEFAUT.to_string());
+    let modele = model.clone();
 
     let body = MistralRequest {
         model,
@@ -239,7 +333,7 @@ pub async fn mistral_chat(
     };
 
     let parsed: MistralResponse = resp.json().await.map_err(|e| format!("Réponse : {e}"))?;
-    noter_jetons(&db, jetons_de(parsed.usage.as_ref()));
+    noter_depense(&db, depense_texte(parsed.usage.as_ref(), &modele));
     parsed
         .choices
         .into_iter()
@@ -264,6 +358,7 @@ pub async fn mistral_vision(
 ) -> Result<String, String> {
     let cle = cle_mistral(&db)?;
     let model = model.unwrap_or_else(|| MODELE_DEFAUT.to_string());
+    let modele = model.clone();
     let body = serde_json::json!({
         "model": model,
         "temperature": 0.2,
@@ -304,7 +399,7 @@ pub async fn mistral_vision(
     };
 
     let parsed: MistralResponse = resp.json().await.map_err(|e| format!("Réponse : {e}"))?;
-    noter_jetons(&db, jetons_de(parsed.usage.as_ref()));
+    noter_depense(&db, depense_texte(parsed.usage.as_ref(), &modele));
     parsed
         .choices
         .into_iter()
@@ -420,8 +515,18 @@ pub async fn mistral_recherche_web(
         return Err(message_erreur(code, &txt, quota));
     }
     let v: serde_json::Value = rep.json().await.map_err(|e| format!("Réponse : {e}"))?;
-    noter_jetons(&db, jetons_de(v.get("usage")));
+    let mut depense = depense_texte(v.get("usage"), MODELE_RECHERCHE);
+    depense.dollars += recherches_faites(&v) as f64 * DOLLARS_PAR_RECHERCHE;
+    noter_depense(&db, depense);
     Ok(lire_reponse_web(&v))
+}
+
+/// Combien de fois l'agent a cherché sur le web : chaque recherche se paie.
+pub(crate) fn recherches_faites(v: &serde_json::Value) -> usize {
+    v.get("outputs").and_then(|x| x.as_array()).map(|sorties| sorties.iter().filter(|o| {
+        o.get("type").and_then(|x| x.as_str()) == Some("tool.execution")
+            && o.get("name").and_then(|x| x.as_str()) == Some("web_search")
+    }).count()).unwrap_or(0)
 }
 
 /// Extrait texte, sources et preuve de recherche d'une conversation d'agent.
@@ -523,7 +628,7 @@ pub async fn mistral_modeles_disponibles(
             Ok(r) if r.status().is_success() => {
                 // Un jeton de réponse, mais la question se paie aussi.
                 if let Ok(v) = r.json::<serde_json::Value>().await {
-                    noter_jetons(&db, jetons_de(v.get("usage")));
+                    noter_depense(&db, depense_texte(v.get("usage"), &id));
                 }
                 EtatModele { id, disponible: true, detail: "Disponible".into() }
             }
@@ -573,6 +678,7 @@ pub async fn mistral_chat_stream(
 ) -> Result<(), String> {
     let cle = cle_mistral(&db)?;
     let model = model.unwrap_or_else(|| MODELE_DEFAUT.to_string());
+    let modele = model.clone();
     let body = serde_json::json!({ "model": model, "messages": messages, "temperature": 0.4, "stream": true });
 
     let envoyer_err = |msg: String| { let _ = app.emit("mistral://error", ErrEvt { id: request_id.clone(), message: msg.clone() }); msg };
@@ -607,7 +713,7 @@ pub async fn mistral_chat_stream(
                         return Ok(());
                     }
                     if let Ok(chunk) = serde_json::from_str::<StreamChunk>(data) {
-                        noter_jetons(&db, jetons_de(chunk.usage.as_ref()));
+                        noter_depense(&db, depense_texte(chunk.usage.as_ref(), &modele));
                         if let Some(delta) = chunk.choices.into_iter().next().and_then(|c| c.delta.content) {
                             if !delta.is_empty() {
                                 let _ = app.emit("mistral://chunk", ChunkEvt { id: request_id.clone(), delta });
@@ -674,7 +780,7 @@ pub async fn transcrire_audio(
     }
     let json: serde_json::Value = serde_json::from_str(&corps)
         .map_err(|e| format!("Réponse illisible : {e}"))?;
-    noter_jetons(&db, jetons_de(json.get("usage")));
+    noter_depense(&db, depense_audio(json.get("usage")));
     json.get("text")
         .and_then(|v| v.as_str())
         .map(|s| s.trim().to_string())
@@ -803,7 +909,7 @@ mod tests_erreurs {
 
     // ── Les jetons dépensés ──────────────────────────────────────────────
 
-    use super::{ajouter_jetons, jetons_de, Jetons};
+    use super::{ajouter_jetons, avec_euros_estimes, depense_audio, depense_texte, jetons_de, recherches_faites, Depense, Jetons};
 
     #[test]
     fn lit_le_cout_de_chaque_sorte_de_reponse() {
@@ -825,16 +931,61 @@ mod tests_erreurs {
         assert_eq!(jetons_de(None), 0);
     }
 
+    fn jetons(n: u64) -> Depense {
+        Depense { jetons: n, dollars: 0.0 }
+    }
+
     #[test]
     fn additionne_par_mois_et_retient_le_premier_jour() {
-        let compte = ajouter_jetons(Jetons::default(), 150, "2026-09-28");
-        let compte = ajouter_jetons(compte, 0, "2026-09-29");
-        let compte = ajouter_jetons(compte, 50, "2026-10-04");
-        let compte = ajouter_jetons(compte, 25, "2026-10-05");
+        let compte = ajouter_jetons(Jetons::default(), jetons(150), "2026-09-28");
+        let compte = ajouter_jetons(compte, jetons(0), "2026-09-29");
+        let compte = ajouter_jetons(compte, jetons(50), "2026-10-04");
+        let compte = ajouter_jetons(compte, jetons(25), "2026-10-05");
         assert_eq!(compte.total, 225);
         assert_eq!(compte.mois.get("2026-09"), Some(&150));
         assert_eq!(compte.mois.get("2026-10"), Some(&75));
         assert_eq!(compte.depuis, "2026-09-28", "le compte commence au premier jeton, pas avant");
+    }
+
+    #[test]
+    fn chaque_modele_a_son_prix_en_entree_et_en_sortie() {
+        let usage = serde_json::json!({ "prompt_tokens": 1_000_000, "completion_tokens": 1_000_000, "total_tokens": 2_000_000 });
+        let prix = |m: &str| (depense_texte(Some(&usage), m).dollars * 100.0).round() / 100.0;
+        assert_eq!(prix("ministral-8b-latest"), 0.30);
+        assert_eq!(prix("ministral-3b-latest"), 0.20);
+        assert_eq!(prix("ministral-14b-latest"), 0.40);
+        assert_eq!(prix("mistral-medium-latest"), 9.0, "la sortie de Medium coûte cinq fois l'entrée");
+        assert_eq!(prix("mistral-large-latest"), 2.0);
+        assert_eq!(prix("un-modele-inconnu"), 0.30, "un modèle inconnu prend le prix du modèle par défaut");
+        assert_eq!(depense_texte(Some(&usage), "ministral-8b-latest").jetons, 2_000_000);
+        assert_eq!(depense_texte(None, "ministral-8b-latest"), Depense::default());
+    }
+
+    #[test]
+    fn la_transcription_se_paie_a_la_minute_et_la_recherche_a_l_appel() {
+        let audio = serde_json::json!({ "prompt_audio_seconds": 600, "prompt_tokens": 4, "completion_tokens": 635, "total_tokens": 3264 });
+        let d = depense_audio(Some(&audio));
+        assert_eq!(d.jetons, 3264);
+        assert!((d.dollars - 0.03).abs() < 1e-9, "dix minutes à 0,003 $ : {}", d.dollars);
+        let agent = serde_json::json!({ "outputs": [
+            { "type": "tool.execution", "name": "web_search" },
+            { "type": "tool.execution", "name": "web_search" },
+            { "type": "message.output", "content": "…" },
+        ] });
+        assert_eq!(recherches_faites(&agent), 2);
+        assert_eq!(recherches_faites(&serde_json::json!({})), 0);
+    }
+
+    #[test]
+    fn les_euros_suivent_les_jetons_et_les_mois_d_avant_s_estiment() {
+        let compte = ajouter_jetons(Jetons::default(), Depense { jetons: 1000, dollars: 1.1298 }, "2026-10-04");
+        assert!((compte.euros["2026-10"] - 1.0).abs() < 1e-9, "1,1298 $ font 1 € au cours retenu");
+        // Un compte tenu avant qu'on chiffre en euros : ses jetons s'estiment au prix du modèle par défaut.
+        let ancien: Jetons = serde_json::from_str(r#"{"total":1000000,"mois":{"2026-10":1000000},"depuis":"2026-10-04"}"#).unwrap();
+        let estime = avec_euros_estimes(ancien);
+        assert!((estime.euros["2026-10"] - 0.15 / 1.1298).abs() < 1e-9, "{:?}", estime.euros);
+        // Un mois déjà chiffré ne se réestime pas.
+        assert_eq!(avec_euros_estimes(compte.clone()).euros, compte.euros);
     }
 
     #[test]
