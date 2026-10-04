@@ -2,8 +2,8 @@ import React from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Page } from "../App";
 import { api, EtatBanque } from "../api";
-import { useOngletDemande } from "../components/ui";
-import { useMemoire } from "../components/useMemoire";
+import { Field, Input, Select, useOngletDemande } from "../components/ui";
+import { useMemoire, useReglages } from "../components/useMemoire";
 import { toast } from "../components/Toaster";
 import { usePictoImage, usePictoImages } from "../components/ChoixPicto";
 import { ChoixPictoConsigne, texteTelechargement, useBanquesAppoint } from "../components/ChoixPictoConsigne";
@@ -16,6 +16,11 @@ import {
   lireLexique, type Lexique, motsAChercher, motsPourLaBanque, pictosAppointProposes, pictosProposes,
 } from "../caa";
 import { BANQUES_APPOINT, banqueDe, garderImageAppoint, infoBanque, type RefPicto } from "../pictosAppoint";
+import {
+  REGLAGES_CARTES_PICTOS, STYLE_CARTES_PICTOS, TAILLES_PICTOS, htmlCartesPictos, pagesDesCartesPictos, verbesAImprimer, verbesAvecPicto,
+  type TaillePictos,
+} from "../cartesPictosConsignes";
+import { Boutons, Coche } from "./AteliersLangage";
 
 // ── CAA : communication alternative et augmentée ──────────────────────────
 //
@@ -127,6 +132,7 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 380px) 1fr", gap: 14, alignItems: "start" }}>
+      <div>
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Les verbes des consignes</h3>
         <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
@@ -156,6 +162,8 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
           <div dangerouslySetInnerHTML={{ __html: apercu }} />
         </div>
       </div>
+      <ImprimerLesPictos lexique={lexique} />
+      </div>
       <div className="card">
         <div className="caa-verbes">
           {VERBES_CONSIGNE.map((v) => (
@@ -174,6 +182,49 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
             setChoix("");
           }} />
       )}
+    </div>
+  );
+}
+
+/** Les pictos des verbes en cartes à découper : en petit pour les manipuler, en grand pour le tableau. */
+function ImprimerLesPictos({ lexique }: { lexique: Lexique }) {
+  const [r, maj] = useReglages("caaCartesPictos", REGLAGES_CARTES_PICTOS);
+  const verbes = verbesAImprimer(lexique, r);
+  const tous = verbesAvecPicto(lexique);
+  const images = usePictoImages([...new Set(verbes.map((v) => lexique[v]))]);
+  const html = React.useMemo(() => htmlCartesPictos(verbes, lexique, images, r), [verbes, lexique, images, r]);
+  const combien = verbes.length * Math.max(1, r.exemplaires);
+  const pages = pagesDesCartesPictos(verbes.length, r);
+  const choisis = new Set(r.choisis);
+  const basculer = (v: string) => maj({ choisis: choisis.has(v) ? r.choisis.filter((x) => x !== v) : [...r.choisis, v] });
+  return (
+    <div className="card" style={{ marginTop: 14 }}>
+      <h3 style={{ marginTop: 0 }}>🖨 Imprimer les pictos</h3>
+      <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
+        En cartes à découper : en petit, ils se manipulent — plan de travail, bande velcro, table de l'élève ; en grand, ils s'affichent au tableau.
+      </p>
+      <Field label="Taille">
+        <Select value={r.taille} onChange={(e) => maj({ taille: e.target.value as TaillePictos })}>
+          {(Object.keys(TAILLES_PICTOS) as TaillePictos[]).map((t) => <option key={t} value={t}>{TAILLES_PICTOS[t].libelle}</option>)}
+        </Select>
+      </Field>
+      <Coche on={r.verbe} libelle="Écrire le verbe sous le picto" onChange={(v) => maj({ verbe: v })} />
+      <Field label="Combien de jeux">
+        <Input type="number" min={1} max={12} value={r.exemplaires} style={{ width: 80 }}
+          onChange={(e) => maj({ exemplaires: Math.max(1, Math.min(12, Number(e.target.value) || 1)) })} />
+      </Field>
+      <Field label={r.choisis.length ? `Les verbes à imprimer (${verbes.length})` : "Les verbes à imprimer : tous ceux qui ont un picto"}>
+        <div className="gb-sons">
+          {tous.map((v) => (
+            <button key={v} type="button" className={`gb-son${choisis.has(v) ? " on" : ""}`} aria-pressed={choisis.has(v)} onClick={() => basculer(v)}>{v}</button>
+          ))}
+          {r.choisis.length > 0 && <button type="button" className="btn ghost sm" onClick={() => maj({ choisis: [] })}>Tous</button>}
+        </div>
+      </Field>
+      <div className="meta" style={{ fontSize: 12.5, marginTop: 6 }}>
+        {verbes.length ? `${combien} carte${combien > 1 ? "s" : ""}, ${pages} page${pages > 1 ? "s" : ""} à découper.` : "Aucun verbe n'a encore de picto."}
+      </div>
+      <Boutons atelier="caaPictos" titre="Pictos des consignes" html={html} style={STYLE_CARTES_PICTOS} peut={verbes.length > 0} />
     </div>
   );
 }
