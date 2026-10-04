@@ -1,7 +1,8 @@
 import React from "react";
 import { api } from "../api";
 import { toast } from "./Toaster";
-import { EVT_CONSIGNE, cleConsigne, consignesParDefaut } from "../consigneAtelier";
+import { EVT_CONSIGNE, cleConsigne, consignesJustes, consignesParDefaut } from "../consigneAtelier";
+import { motsAReprendre } from "../consignesCalcul";
 
 // La consigne de la feuille, à réécrire depuis le bandeau de l'atelier.
 //
@@ -27,7 +28,10 @@ export function ConsigneAtelier({ atelier }: { atelier: string }) {
   const enregistree = useConsigneAtelier(atelier);
   const [brouillon, setBrouillon] = React.useState<string | null>(null);
   const defaut = React.useSyncExternalStore(consignesParDefaut.abonner, () => consignesParDefaut.lire(atelier));
+  const justes = React.useSyncExternalStore(consignesJustes.abonner, () => consignesJustes.lire(atelier));
   const texte = brouillon ?? enregistree;
+  // Un mot qui ne va pas aux calculs de la feuille : « additions » quand on y cherche un terme.
+  const aReprendre = React.useMemo(() => motsAReprendre(texte, justes.ecrits, justes.propositions[0]), [texte, justes.ecrits, justes.propositions]);
   // Enregistré un instant après la dernière frappe, et tout de suite quand on quitte le champ.
   const minuteur = React.useRef<number | null>(null);
   const enregistrer = React.useCallback((valeur: string) => {
@@ -72,6 +76,20 @@ export function ConsigneAtelier({ atelier }: { atelier: string }) {
           <button type="button" className="btn ghost sm" onClick={() => enregistrer("")}>↩ Revenir à la consigne d'origine</button>
         )}
       </div>
+      {aReprendre.map((m) => (
+        <p key={m.mot} className="consigne-a-reprendre">
+          ⚠️ « {m.mot} » : {m.pourquoi}{" "}
+          <button type="button" className="btn ghost sm" onClick={() => enregistrer(m.mieux)}>Mettre « {m.mieux} »</button>
+        </p>
+      ))}
+      {justes.propositions.length > 0 && (
+        <div className="consigne-propositions">
+          <span className="meta">Consignes justes pour cette feuille :</span>
+          {justes.propositions.map((p) => (
+            <button key={p} type="button" className={`btn sm${texte.trim() === p ? " primary" : ""}`} onClick={() => enregistrer(p)}>{p}</button>
+          ))}
+        </div>
+      )}
     </details>
   );
 }

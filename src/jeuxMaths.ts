@@ -18,7 +18,7 @@ import { fractionEnLettres, nombreEnLettres } from "./nombresEnLettres";
 
 export type Representation = "chiffre" | "constellation" | "boite" | "mot" | "decomposition";
 export const REPRESENTATIONS: { id: Representation; libelle: string }[] = [
-  { id: "chiffre", libelle: "le chiffre" },
+  { id: "chiffre", libelle: "l'écriture en chiffres" },
   { id: "constellation", libelle: "la constellation (dé)" },
   { id: "boite", libelle: "la boîte de dix" },
   { id: "mot", libelle: "le mot" },
@@ -82,7 +82,7 @@ export function htmlCartesNombres(cartes: CarteNombre[], r: ReglagesNombres): st
   const regle = `<div class="titre">Cartes des nombres de ${r.de} à ${r.a}</div>
     <div class="regle"><b>Mémory</b>Cartes face cachée ; on en retourne deux : le même nombre sous deux formes différentes fait une paire.
       <b style="margin-top:4px">Bataille</b>Chacun retourne une carte, quelle que soit sa forme ; le plus grand nombre remporte le pli.
-      <b style="margin-top:4px">Loto</b>Les chiffres sur les planches, les autres formes à piocher.
+      <b style="margin-top:4px">Loto</b>Les nombres écrits en chiffres sur les planches, les autres écritures à piocher.
       <span style="color:#687087">— Livret Mathématiques CP, Éduscol 2025 : passer d'une représentation à une autre.</span></div>`;
   return feuille(pagesDeCartes(cartes.map((c) => carte(c.html)), { colonnes: 4, lignes: 5 }, regle), "nb");
 }
@@ -108,8 +108,9 @@ export function cartesCalcul(r: ReglagesCalcul, graine: number): CarteCalcul[] {
 }
 
 export function htmlCartesCalcul(cartes: CarteCalcul[], r: ReglagesCalcul): string {
-  const nom = r.operation === "x" ? "tables de multiplication" : r.operation === "+" ? "additions" : "soustractions";
-  const regle = `<div class="titre">Cartes de calcul — ${nom} : ${r.tables.join(", ")}</div>
+  // Ce que disent les nombres choisis : la table de multiplication, le premier terme de l'addition, la différence de la soustraction.
+  const nom = r.operation === "x" ? "tables de multiplication de" : r.operation === "+" ? "tables d'addition de" : "soustractions dont la différence est";
+  const regle = `<div class="titre">Cartes de calcul — ${nom} ${r.tables.join(", ")}</div>
     <div class="regle"><b>Se tester</b>On lit la carte, on dit le résultat, on retourne pour vérifier — en classe et à la maison.
       <b style="margin-top:4px">Bataille</b>Chacun retourne une carte et calcule ; le plus grand résultat remporte le pli. À égalité, bataille !
       <span style="color:#687087">— Livrets Mathématiques CE1 et CE2, Éduscol 2025 : jeux de cartes et cartes recto-verso pour mémoriser.</span></div>`;
@@ -162,7 +163,7 @@ export function htmlArbreCalcul(liste: Addition[], r: ReglagesArbre): string {
     </div>`;
   };
   const regle = `<div class="titre">Arbre à calcul — ajouter deux nombres</div>
-    <div class="regle"><b>Comment faire</b>Je décompose chaque nombre en dizaines et unités, j'ajoute les dizaines entre elles, les unités entre elles, puis je recompose le total.
+    <div class="regle"><b>Comment faire</b>Je décompose chaque nombre en dizaines et unités, j'ajoute les dizaines entre elles, les unités entre elles, puis je recompose la somme.
       L'arbre soutient le raisonnement ; l'objectif est de finir par s'en passer.
       <span style="color:#687087">— Livret Mathématiques CP, Éduscol 2025.</span></div><div class="sous">Prénom : ........................................ Date : ........................</div>`;
   return feuille(`<div class="page">${regle}<div class="ar-grille">${liste.map(arbre).join("")}</div></div>`, "ar");
@@ -257,7 +258,7 @@ export function htmlFractions(r: ReglagesFractions, graine: number): string {
     const cartes = melanger(hasard(graine), cartesFractions(r));
     const regle = `<div class="titre">Cartes des fractions — ${r.denominateurs.map((n) => `en ${fractionEnLettres(2, n).split(" ")[1]}`).join(", ")}</div>
       <div class="regle"><b>Mémory</b>Cartes face cachée ; on en retourne deux : la même fraction sous deux formes différentes fait une paire. Cartes face visible d'abord, pour apprendre.
-        <b style="margin-top:4px">Bataille des fractions</b>Chacun retourne une carte ; la plus grande fraction remporte le pli : pour un même tout, plus il y a de parts, plus les parts sont petites.
+        <b style="margin-top:4px">Bataille des fractions</b>Chacun retourne une carte ; la plus grande fraction remporte le pli. Pour comparer, on regarde les dessins : pour un même tout partagé en parts égales, plus il y a de parts, plus chaque part est petite.
         <span style="color:#687087">— Livret Mathématiques CE1, Éduscol 2025.</span></div>`;
     parties.push(pagesDeCartes(cartes.map((c) => carte(c.html)), { colonnes: 4, lignes: 5 }, regle));
   }

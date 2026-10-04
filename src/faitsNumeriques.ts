@@ -62,6 +62,18 @@ export interface Objectif {
 
 // ── Écrire les nombres ────────────────────────────────────────────────────
 
+/** Le nom des parts d'une fraction, au singulier et au pluriel. */
+const PARTS: Record<number, [string, string]> = {
+  2: ["demi", "demis"], 3: ["tiers", "tiers"], 4: ["quart", "quarts"], 5: ["cinquième", "cinquièmes"],
+  10: ["dixième", "dixièmes"], 100: ["centième", "centièmes"], 1000: ["millième", "millièmes"],
+};
+
+/** Une fraction comme on la dit : « un tiers », « 3 dixièmes », « 45 centièmes ». */
+export function fractionDite(n: number, d: number): string {
+  const [un, plusieurs] = PARTS[d] ?? [`sur ${fr(d)}`, `sur ${fr(d)}`];
+  return n === 1 ? `un ${un}` : `${fr(n)} ${plusieurs}`;
+}
+
 /** Un nombre donné en dixièmes, centièmes ou millièmes : 345 centièmes → « 3,45 », sans zéro qui traîne. */
 export function virgule(m: number, echelle: number): string {
   const a = Math.abs(Math.round(m));
@@ -381,11 +393,12 @@ const CATALOGUE: Objectif[] = [
   { id: "6e-fractions-decimales", niveau: "6e", rubrique: "faits", libelle: "D'une fraction à l'écriture décimale, et retour", tirer: parmi(ECRITURES_SIXIEME) },
   { id: "6e-fraction-decimale", niveau: "6e", rubrique: "numeration", libelle: "D'une fraction décimale à l'écriture à virgule",
     tirer: (alea) => {
+      // Une fraction se lit par le nom de ses parts : « 45 centièmes », pas « 45 sur 100 ».
       const echelle = choisir(alea, [10, 100, 1000]), ent = entier(alea, 0, 9), n = entier(alea, 1, echelle - 1);
       const fraction = `${fr(n)}/${fr(echelle)}`;
       return ent
-        ? direct(`${ent} plus ${fr(n)} sur ${fr(echelle)}`, `${ent} + ${fraction}`, virgule(ent * echelle + n, echelle))
-        : direct(`${fr(n)} sur ${fr(echelle)} en écriture décimale`, fraction, virgule(n, echelle));
+        ? direct(`${ent} plus ${fractionDite(n, echelle)}`, `${ent} + ${fraction}`, virgule(ent * echelle + n, echelle))
+        : direct(`${fractionDite(n, echelle)} en écriture décimale`, fraction, virgule(n, echelle));
     } },
   { id: "6e-decimal-fois-divise", niveau: "6e", rubrique: "numeration", libelle: "Multiplier ou diviser un décimal par 10, 100 ou 1 000",
     tirer: (alea) => (alea() < 0.5 ? decimalFois([10, 100, 1000])(alea) : decimalDivise([10, 100, 1000], 1000)(alea)) },
@@ -393,7 +406,7 @@ const CATALOGUE: Objectif[] = [
     tirer: (alea) => {
       const [n, d] = choisir(alea, [[1, 2], [1, 3], [2, 3], [1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [1, 10], [3, 10]]);
       const q = d * entier(alea, 2, 10);
-      return direct(`${n} sur ${d} de ${q}`, `${n}/${d} de ${q}`, fr((q / d) * n));
+      return direct(`${fractionDite(n, d)} de ${q}`, `${n}/${d} de ${q}`, fr((q / d) * n));
     } },
 ];
 

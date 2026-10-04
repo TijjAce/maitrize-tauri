@@ -22,6 +22,8 @@ import { REFLEXIONS, REGLAGES_MARTINIERE, STYLE_MARTINIERE, calculsMartiniere, f
 import { objectifsDesAteliers } from "../ateliersCompetences";
 import { useCompetencesParObjectif } from "../components/CompetencesAtelier";
 import { SequenceDeCalculMental } from "../components/SequenceDeCalculMental";
+import { consignesJustes } from "../consigneAtelier";
+import { consignesPour } from "../consignesCalcul";
 import { NIVEAUX, RUBRIQUES, objectifParId, objectifsDuNiveau, type Niveau, type Objectif } from "../faitsNumeriques";
 import { OPERATIONS_COMPTE, REGLAGES_COMPTE, REGLAGES_COMPTE_CYCLE, STYLE_COMPTE, comptes, htmlCompteEstBon } from "../compteEstBon";
 import { REGLAGES_PYRAMIDES, STYLE_PYRAMIDES, htmlPyramides, type FormeCalcul } from "../pyramides";
@@ -195,7 +197,7 @@ export function CartesCalculTab() {
             <option value="x">multiplications (tables)</option><option value="+">additions</option><option value="-">soustractions</option>
           </Select>
         </Field>
-        <Field label={r.operation === "x" ? "Tables" : "Premier nombre"}>
+        <Field label={r.operation === "x" ? "Tables" : r.operation === "+" ? "Tables d'addition : le premier terme" : "La différence"}>
           <Chips liste={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]} choisis={r.tables} onChange={(v) => maj({ tables: [...v].sort((a, b) => a - b) })} />
         </Field>
         <Coche on={r.rectoVerso} libelle="Recto-verso : le résultat au dos" onChange={(v) => maj({ rectoVerso: v })} />
@@ -365,6 +367,12 @@ export function MartiniereTab() {
   React.useEffect(() => () => objectifsDesAteliers.publier("martiniere", []), []);
   const competencesDe = useCompetencesParObjectif("martiniere");
   const [enSequence, setEnSequence] = React.useState(false);
+  // Les consignes justes pour ces calculs-ci : l'éditeur de consigne les propose, et relève un mot qui ne leur irait pas.
+  React.useEffect(() => {
+    const ecrits = series.flat().map((c) => c.ecrit);
+    consignesJustes.publier("martiniere", { propositions: consignesPour(ecrits, r.forme === "oral"), ecrits });
+  }, [series, r.forme]);
+  React.useEffect(() => () => consignesJustes.publier("martiniere", null), []);
 
   // Un seul objectif à la fois ; en révision, on coche ceux qu'on veut mêler.
   const choisir = (o: Objectif) => {
