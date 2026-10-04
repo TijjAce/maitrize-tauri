@@ -67,15 +67,16 @@ const CITEE: Record<"arasaac" | BanqueAppoint, string> = { arasaac: "ARASAAC", b
 
 /**
  * La mention qu'exigent les licences des pictos posés sur une feuille, pour
- * les banques qu'elle ne cite pas déjà ; rien s'il n'y a rien à dire.
+ * les banques qu'elle ne cite pas déjà ; rien s'il n'y a rien à dire. La
+ * classe est celle du style de la feuille qui la porte.
  */
-export function mentionDesPictos(refs: RefPicto[], feuille = ""): string {
+export function mentionDesPictos(refs: RefPicto[], feuille = "", classe = "consigne-attribution"): string {
   const banques = (["arasaac", "bajard", "sclera"] as const)
     .filter((b) => refs.some((r) => banqueDe(r) === b))
     .filter((b) => !feuille.includes(CITEE[b]));
   if (!banques.length) return "";
   const qui = banques.map((b) => (b === "arasaac" ? MENTION_ARASAAC : infoBanque(b).mention));
-  return `<div class="consigne-attribution">Pictogrammes : ${qui.join(" ; ")}. Usage non commercial.</div>`;
+  return `<div class="${classe}">Pictogrammes : ${qui.join(" ; ")}. Usage non commercial.</div>`;
 }
 
 /** Les pictos trouvés dans une banque d'appoint, par mot : le premier qui répond l'emporte. */
