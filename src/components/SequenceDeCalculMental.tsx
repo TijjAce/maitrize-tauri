@@ -4,8 +4,11 @@ import { Field, Input, Modal } from "./ui";
 import { toast } from "./Toaster";
 import type { CompetenceSelectionnee } from "./CompetenceTree";
 import { demarcheDe, resumeDuCadre } from "../demarches";
-import type { ReglagesMartiniere } from "../martiniere";
-import { DEMARCHE_CALCUL_MENTAL, FEUILLES_DE_LA_SEQUENCE, creerLaSequenceDeCalcul, titreDeLaSequence, type FeuilleDeSequence } from "../sequenceCalculMental";
+import { objectifsRetenus, type ReglagesMartiniere } from "../martiniere";
+import { problemesAssocies } from "../problemesAssocies";
+import {
+  DEMARCHE_CALCUL_MENTAL, FEUILLES_DE_LA_SEQUENCE, SEANCE_DES_PROBLEMES, creerLaSequenceDeCalcul, titreDeLaSequence, type FeuilleDeSequence,
+} from "../sequenceCalculMental";
 
 // ── Une séquence avec la feuille du calcul mental ─────────────────────────
 //
@@ -15,6 +18,8 @@ import { DEMARCHE_CALCUL_MENTAL, FEUILLES_DE_LA_SEQUENCE, creerLaSequenceDeCalcu
 
 const ceQuiSePose = (f: FeuilleDeSequence) =>
   f.celleDeLEcran ? "la feuille à l'écran"
+    : f.forme === "decouverte" ? "la fiche de découverte : chercher, expliquer, retenir"
+    : f.forme === "evaluation" ? "l'évaluation finale et son corrigé"
     : f.forme === "ecrit" ? (f.uneSerie ? "une série écrite courte, en temps limité" : "le test de fluence et son corrigé")
     : "un autre tirage du même objectif";
 
@@ -25,6 +30,8 @@ export function SequenceDeCalculMental({ reglages, graine, competences, onClose 
   const demarche = demarcheDe(DEMARCHE_CALCUL_MENTAL);
   const [titre, setTitre] = React.useState(() => titreDeLaSequence(reglages));
   const [enCours, setEnCours] = React.useState(false);
+  const objectif = objectifsRetenus(reglages)[0];
+  const associes = React.useMemo(() => (objectif ? problemesAssocies(objectif, reglages.tables ?? []) : null), [objectif, reglages.tables]);
   if (!demarche) return null;
   const creer = async () => {
     setEnCours(true);
@@ -61,6 +68,7 @@ export function SequenceDeCalculMental({ reglages, graine, competences, onClose 
             <li key={s.titre}>
               <b>{s.titre}</b> <span className="meta">· {s.duree} min</span>
               {f && <span className="chip" style={{ marginLeft: 6 }}>📄 {ceQuiSePose(f)}</span>}
+              {i === SEANCE_DES_PROBLEMES && associes && <span className="chip" style={{ marginLeft: 6 }}>🧩 {associes.nom.toLowerCase()}</span>}
               <div className="meta" style={{ fontSize: 12.5, lineHeight: 1.45 }}>{s.objectifs}</div>
             </li>
           );

@@ -12,15 +12,22 @@
 // fiche du maître, et les ardoises papier pour qui n'a pas d'ardoise. Par
 // écrit, c'est le test de fluence que les programmes demandent : des
 // égalités à trou à compléter en temps limité, pour voir ses progrès.
+//
+// Deux feuilles encore, pour les deux bouts d'une séquence : la découverte —
+// quelques calculs à chercher, la place pour dire comment, et la trace
+// écrite à remplir après la mise en commun — et l'évaluation finale — une
+// partie en temps limité, une sans limite, une procédure à expliquer, un
+// problème quand l'objectif en a (voir problemesAssocies), et le bilan.
 
 import { escapeHtml } from "./print";
 import { consignesPour } from "./consignesCalcul";
+import { problemesAssocies, problemesDe } from "./problemesAssocies";
 import { feuille } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
 import { NIVEAUX, objectifParId, objectifsDuNiveau, tirerCalcul, type Calcul, type Niveau, type Objectif } from "./faitsNumeriques";
 
 export const REFLEXIONS = [3, 5, 10, 15] as const;
-export type FormeEntrainement = "oral" | "ecrit";
+export type FormeEntrainement = "oral" | "ecrit" | "decouverte" | "evaluation";
 
 export interface ReglagesMartiniere {
   niveau: Niveau;
@@ -134,7 +141,90 @@ function htmlEcrit(series: Calcul[][], r: ReglagesMartiniere): string {
   return feuille(eleve + corrige, "ma");
 }
 
-export const htmlMartiniere = (series: Calcul[][], r: ReglagesMartiniere): string => (r.forme === "ecrit" ? htmlEcrit(series, r) : htmlOral(series, r));
+/** Des lignes pointillées pour écrire. */
+const lignes = (n: number) => `<div class="ma-lignes">${'<div class="ma-ligne"></div>'.repeat(n)}</div>`;
+
+/** Ce que la feuille travaille, en une ligne : la classe et l'objectif. */
+const objectifEnLigne = (r: ReglagesMartiniere) =>
+  `${r.niveau} · ${objectifsRetenus(r).map((o) => libelleTravaille(o, r.tables ?? [])).join(" ; ")}`;
+
+const PRENOM_DATE = `<div class="sous">Prénom : ........................................ Date : ........................</div>`;
+
+/**
+ * La fiche de découverte : trois calculs à chercher seul, l'écrit permis, et
+ * « comment j'ai fait » ; puis la trace écrite, remplie après la mise en
+ * commun — la procédure, quand elle marche bien, un exemple.
+ */
+function htmlDecouverte(series: Calcul[][], r: ReglagesMartiniere): string {
+  const calculs = series.flat().slice(0, 3);
+  const recherche = calculs.map((c, i) => `<div class="ma-recherche"><div class="ma-recherche-calcul"><span class="ma-numero">${i + 1}</span>${avecTrou(c.ecrit)}</div>
+    <div class="ma-etiquette">Comment j'ai fait :</div>${lignes(3)}</div>`).join("");
+  const eleve = `<div class="page"><div class="titre">Calcul mental — découverte</div>${PRENOM_DATE}
+    <div class="consigne">Cherche, puis explique comment tu as fait.</div>
+    <div class="sous">${escapeHtml(objectifEnLigne(r))}</div>${recherche}
+    <div class="ma-retenir"><div class="ma-retenir-titre">Ce que nous retenons</div>
+      <div class="ma-etiquette">La procédure :</div>${lignes(2)}
+      <div class="ma-etiquette">Elle marche bien quand :</div>${lignes(1)}
+      <div class="ma-etiquette">Un exemple :</div>${lignes(1)}</div></div>`;
+  const corrige = `<div class="page corrige"><div class="titre">Calcul mental — découverte, corrigé</div>
+    <div class="ma-egalites">${calculs.map((c, i) => `<div class="ma-egalite"><span class="ma-numero">${i + 1}</span>${avecReponse(c)}</div>`).join("")}</div></div>`;
+  return feuille(eleve + corrige, "ma");
+}
+
+/** Une graine tirée des calculs eux-mêmes : la même feuille redonne le même problème. */
+const graineDe = (series: Calcul[][]) => [...series.flat().map((c) => c.ecrit).join("|")].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
+
+/**
+ * L'évaluation finale : la fluence en temps limité, des calculs sans limite
+ * de temps, une procédure à expliquer, un problème quand l'objectif en a un,
+ * et le bilan — de quoi voir ce qui est su, et ce qui reste à reprendre.
+ */
+function htmlEvaluation(series: Calcul[][], r: ReglagesMartiniere): string {
+  const tous = series.flat();
+  const [premiere = [], toute = []] = series.length > 1 ? series : [tous.slice(0, Math.ceil(tous.length / 2)), tous.slice(Math.ceil(tous.length / 2))];
+  // Six calculs sans limite de temps suffisent : l'explication et le problème suivent, et tout tient sur une feuille.
+  const seconde = toute.slice(0, 6);
+  const retenus = objectifsRetenus(r);
+  const faits = retenus.every((o) => o.rubrique === "faits");
+  const attendu = retenus.map(fluenceAttendue).find(Boolean);
+  const associes = retenus.length === 1 ? problemesAssocies(retenus[0], r.tables ?? []) : null;
+  const probleme = associes ? problemesDe(associes, 1, graineDe(series))[0] : undefined;
+  const expliquer = seconde[0] ?? premiere[0];
+  const egalites = (s: Calcul[], corrige: boolean) =>
+    `<div class="ma-egalites ma-serre">${s.map((c, j) => `<div class="ma-egalite"><span class="ma-numero">${j + 1}</span>${corrige ? avecReponse(c) : avecTrou(c.ecrit)}</div>`).join("")}</div>`;
+  const partie = (titre: string, score: string, contenu: string) =>
+    `<div class="ma-partie"><div class="ma-partie-titre"><span>${titre}</span>${score ? `<span class="ma-score">${score}</span>` : ""}</div>${contenu}</div>`;
+  let n = 0;
+  const numero = () => `${++n}.`;
+  const parties = [
+    partie(`${numero()} En temps limité`, `Temps : ............ Score : ........ / ${premiere.length}`,
+      `<div class="consigne">${faits ? "Complète le plus d'égalités possible en une minute." : "Calcule de tête : complète le plus d'égalités possible en trois minutes."}</div>${egalites(premiere, false)}`),
+    seconde.length ? partie(`${numero()} Sans limite de temps`, `Score : ........ / ${seconde.length}`,
+      `<div class="consigne">${escapeHtml(consignesPour(seconde.map((c) => c.ecrit))[0])}</div>${egalites(seconde, false)}`) : "",
+    expliquer ? partie(`${numero()} J'explique`, "",
+      `<div class="consigne">Explique comment tu calcules.</div><div class="ma-recherche-calcul">${avecTrou(expliquer.ecrit)}</div>${lignes(2)}`) : "",
+    probleme ? partie(`${numero()} Un problème`, "",
+      `<div class="consigne">Lis le problème, écris ton calcul, puis ta réponse.</div><p class="ma-enonce">${escapeHtml(probleme.enonce)}</p>
+       <div class="ma-etiquette">Calcul :</div>${lignes(1)}<div class="ma-etiquette">Réponse :</div>${lignes(1)}`) : "",
+  ].join("");
+  const bilan = `<div class="ma-bilan"><div class="ma-partie-titre"><span>Bilan</span></div>
+    <div class="ma-bilan-lignes"><span>En temps limité : ........ / ${premiere.length}</span>${seconde.length ? `<span>Sans limite de temps : ........ / ${seconde.length}</span>` : ""}
+      ${expliquer ? "<span>J'explique : ☐ juste ☐ à reprendre</span>" : ""}${probleme ? "<span>Le problème : ☐ réussi ☐ à reprendre</span>" : ""}</div>
+    <div class="ma-bilan-lignes"><b>☐ Acquis</b><b>☐ En cours d'acquisition</b><b>☐ À reprendre</b></div></div>`;
+  const eleve = `<div class="page ma-evaluation"><div class="titre">Calcul mental — évaluation</div>${PRENOM_DATE}
+    <div class="sous">${escapeHtml(objectifEnLigne(r))}${attendu ? ` · attendu en fin de ${r.niveau} : ${escapeHtml(attendu)}` : ""}</div>${parties}${bilan}</div>`;
+  const corrige = `<div class="page corrige"><div class="titre">Calcul mental — évaluation, corrigé</div>
+    ${partie("En temps limité", "", egalites(premiere, true))}${seconde.length ? partie("Sans limite de temps", "", egalites(seconde, true)) : ""}
+    ${probleme ? partie("Le problème", "", `<p class="ma-enonce">Calcul : ${escapeHtml(probleme.calcul)}<br>Réponse : ${escapeHtml(probleme.phrase)}</p>`) : ""}</div>`;
+  return feuille(eleve + corrige, "ma");
+}
+
+export function htmlMartiniere(series: Calcul[][], r: ReglagesMartiniere): string {
+  if (r.forme === "ecrit") return htmlEcrit(series, r);
+  if (r.forme === "decouverte") return htmlDecouverte(series, r);
+  if (r.forme === "evaluation") return htmlEvaluation(series, r);
+  return htmlOral(series, r);
+}
 
 export const STYLE_MARTINIERE = `
   .feuille.ma .consigne { font-size: 15px; font-weight: 700; color: #1c2233; margin: 0 0 4mm; }
@@ -158,4 +248,25 @@ export const STYLE_MARTINIERE = `
   .feuille.ma .ma-egalite { display: flex; align-items: center; gap: 2mm; font-size: 18px; font-weight: 600; padding: 2.2mm 0; border-bottom: 1px dotted #c4c9d6; }
   .feuille.ma .ma-numero { font-size: 10px; font-weight: 400; color: #687087; width: 6mm; }
   .feuille.ma .ma-trou { display: inline-block; width: 14mm; height: 8mm; border: 1.5px solid #1c2233; border-radius: 1.5mm; vertical-align: middle; margin: 0 1mm; }
+  .feuille.ma .ma-recherche { border: 1.5px solid #c4c9d6; border-radius: 3mm; padding: 3mm 4mm; margin: 0 0 4mm; page-break-inside: avoid; }
+  .feuille.ma .ma-recherche-calcul { display: flex; align-items: center; gap: 2mm; font-size: 20px; font-weight: 700; margin: 0 0 1mm; }
+  .feuille.ma .ma-etiquette { font-size: 12px; font-weight: 700; color: #4a5065; margin: 2mm 0 0; }
+  .feuille.ma .ma-ligne { border-bottom: 1px dotted #9aa0b4; height: 8mm; }
+  .feuille.ma .ma-retenir { border: 2px solid #1c2233; border-radius: 3mm; padding: 3mm 4mm; margin-top: 5mm; page-break-inside: avoid; }
+  .feuille.ma .ma-retenir-titre { font-weight: 800; font-size: 14px; }
+  .feuille.ma .ma-partie { margin: 0 0 5mm; page-break-inside: avoid; }
+  .feuille.ma .ma-partie-titre { display: flex; justify-content: space-between; align-items: baseline; gap: 4mm; font-weight: 800; font-size: 14px; margin: 0 0 2mm; }
+  .feuille.ma .ma-partie-titre .ma-score { font-size: 11px; font-weight: 700; color: #687087; }
+  .feuille.ma .ma-enonce { font-size: 14px; line-height: 1.5; margin: 0 0 1mm; }
+  .feuille.ma .ma-bilan { border: 1.5px solid #9aa0b4; border-radius: 3mm; padding: 3mm 4mm; font-size: 12.5px; page-break-inside: avoid; }
+  .feuille.ma .ma-bilan-lignes { display: flex; flex-wrap: wrap; gap: 2mm 8mm; margin: 1mm 0; }
+  /* L'évaluation tient sur une feuille : trois colonnes de calculs, plus serrées. */
+  .feuille.ma .ma-egalites.ma-serre { grid-template-columns: repeat(3, 1fr); gap: 0 6mm; }
+  .feuille.ma .ma-serre .ma-egalite { font-size: 15px; padding: 1.3mm 0; }
+  .feuille.ma .ma-serre .ma-trou { width: 11mm; height: 6.5mm; }
+  .feuille.ma .ma-evaluation .consigne { margin: 0 0 2mm; }
+  .feuille.ma .ma-evaluation .ma-partie { margin: 0 0 2.5mm; }
+  .feuille.ma .ma-evaluation .consigne { font-size: 14px; }
+  .feuille.ma .ma-evaluation .ma-recherche-calcul { font-size: 17px; }
+  .feuille.ma .ma-evaluation .ma-ligne { height: 7mm; }
 `;
