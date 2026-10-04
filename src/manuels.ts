@@ -147,7 +147,8 @@ const competencesRelues = (v: unknown) => lireCompetencesAtelier(JSON.stringify(
 function modeleRelu(v: any): ModeleSimplifie | undefined {
   if (!v || typeof v !== "object") return undefined;
   const fiche = lireFicheAdaptee(JSON.stringify(v.fiche ?? null));
-  if (!fiche) return undefined;
+  // Un modèle d'avant la lecture tolérante a pu garder « [object Object] » : il est à refaire.
+  if (!fiche || JSON.stringify(fiche).includes("[object Object]")) return undefined;
   return { fiche, options: { ...OPTIONS_PAR_DEFAUT, ...(v.options && typeof v.options === "object" ? v.options : {}) }, faitLe: String(v.faitLe ?? "") };
 }
 
@@ -238,8 +239,9 @@ const SYSTEME_READAPTATION = "Tu es un enseignant spécialisé. Tu réécris des
 /** Ce qu'on demande en réécrivant, selon les choix de l'enseignant. */
 function demandesDeReadaptation(o: OptionsReadaptation): string {
   return [
-    o.simplifier && "- La consigne tient en une phrase courte, à l'impératif, qui dit UNE action, avec des mots que l'élève connaît. Pas de double consigne.",
-    o.items > 0 && `- Garde au plus ${o.items} items, les plus simples ou les plus représentatifs ; ne change pas les nombres ni les mots des items gardés.`,
+    "- Garde TOUTES les tâches de l'exercice, dans l'ordre : n'en supprime aucune. S'il y en a plusieurs (lire, puis barrer, puis corriger…), écris une consigne par tâche, une par ligne dans \"consigne\".",
+    o.simplifier && "- Chaque consigne est une phrase courte, à l'impératif, qui dit UNE action, avec des mots que l'élève connaît : deux actions font deux lignes.",
+    o.items > 0 && `- Garde au plus ${o.items} items, les plus simples ou les plus représentatifs ; ne change pas les nombres ni les mots des items gardés. Si les items forment un texte suivi (un dialogue, une histoire), garde-les dans l'ordre, et d'abord ceux où l'élève a quelque chose à faire.`,
     o.exemple && "- Donne un exemple entièrement fait, pris parmi les items (ou un item du même modèle), pour montrer ce qu'on attend.",
     o.etapes && "- Découpe la tâche en étapes numérotées (étape 1, étape 2…), une action par étape, dans le champ \"aide\".",
     o.zonesReponse && "- Chaque item se termine par ce qu'il faut écrire ou compléter : l'élève aura une ligne ou un cadre pour répondre.",
@@ -248,8 +250,9 @@ function demandesDeReadaptation(o: OptionsReadaptation): string {
 }
 
 const CHAMPS_DE_LA_FICHE = `- "titre" : trois ou quatre mots qui disent ce qu'on travaille (« Additionner deux nombres »).
-- "exemple" : vide si tu n'en donnes pas.
-- "items" : un item par entrée, tel qu'il s'écrira sur la fiche.
+- "consigne" : les consignes, une par ligne.
+- "exemple" : une ligne de texte ; vide si tu n'en donnes pas.
+- "items" : un item par entrée, tel qu'il s'écrira sur la fiche — du texte simple, jamais un objet.
 - "aide" : ce que l'adulte peut dire ou donner ; vide si rien.`;
 
 /** Réécrire un exercice déjà lu, d'après son texte — celui que l'enseignant a pu corriger. */
@@ -274,29 +277,28 @@ ${CHAMPS_DE_LA_FICHE}` },
 }
 
 /**
- * Lire l'encadré et en tirer le modèle simplifié, d'un seul regard sur la
- * photo : l'exercice tel qu'il est écrit, puis tel qu'on le réécrit.
+ * Lire l'encadré : l'exercice tel qu'il est écrit, rien de plus. La
+ * simplification vient ensuite, d'après ce texte — deux demandes simples
+ * valent mieux qu'une double pour un petit modèle, et l'enseignant peut
+ * corriger la lecture avant de la refaire.
  */
-export function consigneModeleDepuisLEncadre(niveau: string, o: OptionsReadaptation): string {
+export function consigneLectureEncadre(niveau: string): string {
   const types = TYPES_EXERCICE.map((t) => t.id).join(", ");
-  return `${SYSTEME_READAPTATION}
+  return `Tu lis la photo d'UN exercice de manuel scolaire${niveau ? ` de niveau ${niveau}` : ""}, encadré dans sa page par l'enseignant. Tout ce qui est sur la photo fait un seul exercice : transcris-le.
 
-Voici la photo d'UN exercice de manuel scolaire${niveau ? ` de niveau ${niveau}` : ""}, encadré dans sa page par l'enseignant. Tout ce qui est sur la photo fait un seul exercice.
-
-1. Transcris-le dans "exercice" :
-- Ne transcris que ce qui est VISIBLE ; garde les nombres, les mots et la ponctuation tels qu'ils sont écrits.
+Règles :
+- Ne transcris que ce qui est VISIBLE. N'invente rien, ne complète rien.
+- Garde les nombres, les mots et la ponctuation exactement tels qu'ils sont écrits.
 - "numero" : le repère écrit devant l'exercice (« 3 », « 4 ★ », « Pour commencer ») ; vide s'il n'y en a pas.
-- "titre" : son titre, s'il en a un ; vide sinon.
-- "consigne" : toutes les consignes, dans l'ordre, une par ligne.
-- "contenu" : ce sur quoi l'élève travaille, ligne par ligne ; une image se décrit entre crochets : [image : trois pommes].
+- "titre" : son titre, s'il en a un (« Je fais attention à la logique des textes ») ; vide sinon.
+- "consigne" : TOUTES les consignes, dans l'ordre où elles sont écrites, une par ligne — celles du début comme celles de la fin.
+- "contenu" : ce sur quoi l'élève travaille — les phrases, les lignes d'un texte ou d'un dialogue, les calculs, les mots —, une ligne par ligne du manuel.
+- Une image ou un schéma se décrit entre crochets, brièvement : [image : trois pommes dans un panier].
 - "type" vaut l'un de : ${types}.
-
-2. Réécris-le dans "modele", pour un élève qui traite mal plusieurs informations à la fois :
-${demandesDeReadaptation(o)}
-${CHAMPS_DE_LA_FICHE}
+- Chaque valeur est du texte simple, jamais un objet ni un tableau.
 
 Réponds uniquement par un objet JSON, sans texte autour :
-{"exercice":{"numero":"…","titre":"…","consigne":"…","contenu":"…","type":"…"},"modele":{"titre":"…","consigne":"…","exemple":"…","items":["…"],"aide":"…"}}`;
+{"numero":"…","titre":"…","consigne":"…","contenu":"…","type":"…"}`;
 }
 
 /** Ce qui tient lieu de consigne à un exercice qui n'en montre pas. */
@@ -304,12 +306,13 @@ const SANS_CONSIGNE = "(sans consigne)";
 
 /** L'exercice tel que le modèle l'a transcrit, ou rien s'il n'a rien lu. */
 function exerciceTranscrit(x: any): Omit<ExerciceManuel, "id" | "competences"> | null {
-  const consigne = String(x?.consigne ?? "").trim();
-  const contenu = String(x?.contenu ?? "").trim();
+  if (!x || typeof x !== "object") return null;
+  const consigne = lignesDe(x.consigne).join("\n");
+  const contenu = lignesDe(x.contenu).join("\n");
   if (!consigne && !contenu) return null;
   return {
-    numero: String(x?.numero ?? "").trim(), titre: String(x?.titre ?? "").trim(), consigne: consigne || SANS_CONSIGNE, contenu,
-    type: (TYPES.has(String(x?.type)) ? String(x?.type) : "autre") as TypeExercice,
+    numero: enTexte(x.numero), titre: enTexte(x.titre), consigne: consigne || SANS_CONSIGNE, contenu,
+    type: (TYPES.has(enTexte(x.type)) ? enTexte(x.type) : "autre") as TypeExercice,
   };
 }
 
@@ -321,23 +324,40 @@ function objetDe(reponse: string): any {
   try { return JSON.parse(reponse.slice(debut, fin + 1)); } catch { return null; }
 }
 
-/** Ce que le modèle a lu dans l'encadré, et le modèle simplifié qu'il en a tiré : l'un peut manquer sans l'autre. */
-export function lireModeleDepuisLEncadre(reponse: string): { exercice: Omit<ExerciceManuel, "id" | "competences"> | null; fiche: FicheAdaptee | null } {
+/** L'exercice que le modèle a lu dans l'encadré, ou rien s'il n'a rien lu. */
+export function lireExerciceDeLEncadre(reponse: string): Omit<ExerciceManuel, "id" | "competences"> | null {
   const brut = objetDe(reponse);
-  if (!brut || typeof brut !== "object") return { exercice: null, fiche: null };
-  return { exercice: exerciceTranscrit(brut.exercice), fiche: lireFicheAdaptee(JSON.stringify(brut.modele ?? null)) };
+  if (!brut || typeof brut !== "object") return null;
+  // Un modèle qui enveloppe sa réponse (« {"exercice": {…}} ») est compris aussi.
+  return exerciceTranscrit(brut.exercice && typeof brut.exercice === "object" ? brut.exercice : brut);
 }
+
+/**
+ * Une valeur du modèle, en texte — quelle que soit la forme qu'il lui a
+ * donnée. Un petit modèle rend parfois un item en objet (« {"phrase": …,
+ * "correction": …} ») : on en garde les mots, au lieu d'imprimer
+ * « [object Object] ».
+ */
+export function enTexte(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "string") return v.trim();
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  if (Array.isArray(v)) return v.map(enTexte).filter(Boolean).join(" ; ");
+  if (typeof v === "object") return Object.values(v as Record<string, unknown>).map(enTexte).filter(Boolean).join(" → ");
+  return "";
+}
+
+/** Des lignes, d'où qu'elles viennent : un tableau, ou un texte à couper aux retours à la ligne. */
+const lignesDe = (v: unknown): string[] =>
+  (Array.isArray(v) ? v.map(enTexte) : enTexte(v).split(/\n+/)).map((x) => x.trim()).filter(Boolean);
 
 export function lireFicheAdaptee(reponse: string): FicheAdaptee | null {
   const brut = objetDe(reponse);
   if (!brut || typeof brut !== "object") return null;
-  const items = Array.isArray(brut.items) ? brut.items.map((x: any) => String(x ?? "").trim()).filter(Boolean) : [];
-  const consigne = String(brut.consigne ?? "").trim();
+  const items = lignesDe(brut.items);
+  const consigne = lignesDe(brut.consigne).join("\n");
   if (!consigne && !items.length) return null;
-  return {
-    titre: String(brut.titre ?? "").trim(), consigne, exemple: String(brut.exemple ?? "").trim(), items,
-    aide: String(brut.aide ?? "").trim(),
-  };
+  return { titre: enTexte(brut.titre), consigne, exemple: enTexte(brut.exemple), items, aide: enTexte(brut.aide) };
 }
 
 /** Ce qu'on garde d'un exercice sans passer par le modèle : ses items, ligne par ligne. */
@@ -386,6 +406,8 @@ export const STYLE_FICHE_ADAPTEE = `
   .fa.gros .fa-titre { font-size: 30px; }
   .fa .fa-nom { font-size: 13px; color: #687087; margin: 0 0 14px; }
   .fa .fa-consigne { font-weight: 700; font-size: 1.15em; border: 2px solid #1c2233; border-radius: 10px; padding: 10px 14px; margin: 0 0 16px; }
+  .fa ol.fa-etapes { padding-left: 2.2em; }
+  .fa ol.fa-etapes li { margin: 0 0 4px; }
   .fa .fa-exemple { background: #eef0fe; border-radius: 10px; padding: 10px 14px; margin: 0 0 16px; }
   .fa .fa-exemple b { display: block; font-size: .8em; color: #4338ca; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
   .fa ol { padding-left: 1.6em; margin: 0; }
@@ -396,13 +418,21 @@ export const STYLE_FICHE_ADAPTEE = `
   .fa .fa-aide b { color: #1c2233; }
 `;
 
+/** La consigne dans son cadre : une phrase, ou des étapes numérotées quand il y a plusieurs tâches. */
+function consigneHtml(consigne: string): string {
+  const etapes = consigne.split(/\n+/).map((l) => l.replace(/^\s*(\d+[.)]|[-•▸►])\s*/, "").trim()).filter(Boolean);
+  if (!etapes.length) return "";
+  if (etapes.length === 1) return `<div class="fa-consigne">${escapeHtml(etapes[0])}</div>`;
+  return `<ol class="fa-consigne fa-etapes">${etapes.map((e) => `<li>${escapeHtml(e)}</li>`).join("")}</ol>`;
+}
+
 export function htmlFicheAdaptee(f: FicheAdaptee, o: OptionsReadaptation, origine: { manuel: string; page: number; numero: string }): string {
   const items = f.items.map((it) => `<li>${escapeHtml(it).replace(/\n/g, "<br>")}${o.zonesReponse ? `<span class="fa-reponse"></span>` : ""}</li>`).join("");
   return `<div class="fa${o.grosCaracteres ? " gros" : ""}">
     <div class="fa-titre">${escapeHtml(f.titre || "Exercice")}</div>
     <div class="fa-nom">Prénom : ................................ &nbsp;&nbsp; Date : ..............
       <span style="float:right">${escapeHtml(origine.manuel)} · p. ${origine.page}${origine.numero ? ` · ex. ${escapeHtml(origine.numero)}` : ""}</span></div>
-    ${f.consigne ? `<div class="fa-consigne">${escapeHtml(f.consigne)}</div>` : ""}
+    ${consigneHtml(f.consigne)}
     ${f.exemple ? `<div class="fa-exemple"><b>Exemple</b>${escapeHtml(f.exemple).replace(/\n/g, "<br>")}</div>` : ""}
     <ol>${items}</ol>
     ${f.aide ? `<div class="fa-aide"><b>Pour l'adulte :</b> ${escapeHtml(f.aide).replace(/\n/g, "<br>")}</div>` : ""}
