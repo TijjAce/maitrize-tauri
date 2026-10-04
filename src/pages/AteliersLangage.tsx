@@ -24,6 +24,7 @@ import {
 import { marquesDeLaReponse, promptMarquerVerbes, promptRangerEtiquettes, rangementDeLaReponse } from "../triIa";
 import { pseudonymiser, restaurer } from "../confidentialite";
 import { LigneDuProjet, useProjetDuMoment } from "../components/ProjetDuMoment";
+import { estUnModele, trisDuProjet } from "../triDuProjet";
 import { useImagesEtOmbres } from "../components/MesImages";
 import { OMBRES_MINIMUM, REGLAGES_OMBRES, STYLE_OMBRES, feuillesDOmbres, htmlOmbres, type FormeOmbres, type ImageOmbre, type ReglagesOmbres } from "../ombres";
 
@@ -234,8 +235,29 @@ export function TriTab() {
   const total = etiquettesDuTri(r, graine).length;
   const aide = avecAide(r);
   const majMaison = (i: number, patch: Partial<CategorieTri>) => maj({ categories: categories.map((c, k) => (k === i ? { ...c, ...patch } : c)) });
-  const { projet, corpus } = useProjetDuMoment();
+  const { projet, corpus, corpusDesProjets } = useProjetDuMoment();
   const duProjet = [...corpus.phrases, ...corpus.mots];
+
+  // Le projet du moment donne ses tris : ses mots par syllabes, ses phrases ou pas.
+  const modelesDuProjet = React.useMemo(() => (projet ? trisDuProjet(corpus, projet.titre) : []), [projet, corpus]);
+  // Tous les tris qu'un modèle ou un projet poserait : un tri resté tel quel n'est pas de la main de l'enseignant.
+  const tousLesModeles = React.useMemo(() => [
+    ...MODELES_TRI,
+    ...corpusDesProjets.mots.flatMap((mots, i) => trisDuProjet({ mots, phrases: corpusDesProjets.phrases[i] ?? [] }, "")),
+  ], [corpusDesProjets]);
+  const suitLeProjet = r.origine === "projet" && estUnModele(categories, modelesDuProjet);
+  const prendreLeProjet = () => { if (modelesDuProjet[0]) maj({ ...modelesDuProjet[0].reglages, origine: "projet" }); };
+  // À l'ouverture, ou au changement de projet : un tri qu'on n'a ni écrit ni choisi prend celui du projet.
+  const courant = React.useRef({ r, categories, maj, tousLesModeles });
+  courant.current = { r, categories, maj, tousLesModeles };
+  const cleDuProjet = modelesDuProjet.map((m) => JSON.stringify(m.reglages.categories)).join("|");
+  React.useEffect(() => {
+    const premier = modelesDuProjet[0];
+    if (!premier) return;
+    const { r: actuel, categories: siennes, maj: poser, tousLesModeles: tous } = courant.current;
+    if (actuel.origine === "modele" || !estUnModele(siennes, tous) || estUnModele(siennes, modelesDuProjet)) return;
+    poser({ ...premier.reglages, origine: "projet" });
+  }, [cleDuProjet]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Le modèle range les mots et les phrases du projet dans les maisons ; ce qu'il n'a pas su placer reste à l'enseignant.
   const rangerLeProjet = async () => {
@@ -284,44 +306,63 @@ export function TriTab() {
     <Colonnes
       gauche={<>
         <h3 style={{ marginTop: 0 }}>Les maisons du tri</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Des étiquettes à découper, et le tableau où les ranger : être ou avoir, phrase ou pas, nom ou verbe. Partez d'un modèle, ou écrivez les vôtres.
-        </p>
-        <Field label="Partir d'un modèle">
-          <Select value="" aria-label="Modèle" onChange={(e) => { const m = MODELES_TRI.find((x) => x.id === e.target.value); if (m) maj(m.reglages); }}>
-            <option value="">Choisir un modèle : il remplace ce qui est écrit…</option>
-            {MODELES_TRI.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
-          </Select>
-        </Field>
-        <Field label="Titre"><Input value={r.titre} onChange={(e) => maj({ titre: e.target.value })} placeholder="ÊTRE ou AVOIR ?" /></Field>
-        <Field label="Consigne"><Textarea rows={2} value={r.consigne} onChange={(e) => maj({ consigne: e.target.value })} /></Field>
-        <Field label="Les maisons, et leurs étiquettes">
-          {categories.map((c, i) => (
-            <div key={i} className="tri-maison">
-              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <Input value={c.titre} onChange={(e) => majMaison(i, { titre: e.target.value })} placeholder={`Maison ${i + 1}`} aria-label={`Titre de la maison ${i + 1}`} />
-                {categories.length > 2 && (
-                  <button type="button" className="btn ghost sm" aria-label={`Retirer la maison ${i + 1}`}
-                    onClick={() => maj({ categories: categories.filter((_, k) => k !== i) })}>🗑</button>
-                )}
+        {/* Des plis : on ouvre ce qu'on règle, le reste se tait. */}
+        <details className="pli" open>
+          <summary>Les étiquettes <span className="meta">· {total} étiquettes, {maisons.length} maison{maisons.length > 1 ? "s" : ""}</span></summary>
+          <Field label="Partir d'un modèle">
+            <Select value="" aria-label="Modèle" onChange={(e) => {
+              const duProjetChoisi = modelesDuProjet.find((x) => x.id === e.target.value);
+              const m = duProjetChoisi ?? MODELES_TRI.find((x) => x.id === e.target.value);
+              if (m) maj({ ...m.reglages, origine: duProjetChoisi ? "projet" : "modele" });
+            }}>
+              <option value="">Choisir un modèle : il remplace ce qui est écrit…</option>
+              {projet && modelesDuProjet.length > 0 && (
+                <optgroup label={`Le projet « ${projet.titre} »`}>
+                  {modelesDuProjet.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
+                </optgroup>
+              )}
+              <optgroup label="Les modèles">
+                {MODELES_TRI.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
+              </optgroup>
+            </Select>
+            {projet && modelesDuProjet.length > 0 && (
+              <div className="projet-ligne">
+                <span className="meta">📌 {suitLeProjet ? `Les mots du projet « ${projet.titre} ».` : `Le projet « ${projet.titre} » a de quoi trier.`}</span>
+                {!suitLeProjet && <button type="button" className="btn ghost sm" onClick={prendreLeProjet}>Les prendre</button>}
               </div>
-              <Textarea rows={5} value={c.etiquettes} onChange={(e) => majMaison(i, { etiquettes: e.target.value })}
-                placeholder={"Une étiquette par ligne.\nJe *suis* content."} aria-label={`Étiquettes de la maison ${i + 1}`} />
+            )}
+          </Field>
+          <Field label="Titre"><Input value={r.titre} onChange={(e) => maj({ titre: e.target.value })} placeholder="ÊTRE ou AVOIR ?" /></Field>
+          <Field label="Consigne"><Textarea rows={2} value={r.consigne} onChange={(e) => maj({ consigne: e.target.value })} /></Field>
+          <Field label="Les maisons, et leurs étiquettes">
+            {categories.map((c, i) => (
+              <div key={i} className="tri-maison">
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <Input value={c.titre} onChange={(e) => majMaison(i, { titre: e.target.value })} placeholder={`Maison ${i + 1}`} aria-label={`Titre de la maison ${i + 1}`} />
+                  {categories.length > 2 && (
+                    <button type="button" className="btn ghost sm" aria-label={`Retirer la maison ${i + 1}`}
+                      onClick={() => maj({ categories: categories.filter((_, k) => k !== i) })}>🗑</button>
+                  )}
+                </div>
+                <Textarea rows={5} value={c.etiquettes} onChange={(e) => majMaison(i, { etiquettes: e.target.value })}
+                  placeholder={"Une étiquette par ligne.\nJe *suis* content."} aria-label={`Étiquettes de la maison ${i + 1}`} />
+              </div>
+            ))}
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+              {categories.length < CATEGORIES_MAX && (
+                <button type="button" className="btn sm" onClick={() => maj({ categories: [...categories, { titre: "", etiquettes: "" }] })}>＋ Une maison de plus</button>
+              )}
+              {projet && duProjet.length > 0 && (
+                <button type="button" className="btn sm" disabled={occupe} onClick={() => void rangerLeProjet()}
+                  title={`Les ${duProjet.length} mots et phrases du projet « ${projet.titre} », rangés par le modèle dans vos maisons`}>
+                  {occupe ? "Le modèle range…" : `✨ Ranger le corpus du projet (${duProjet.length})`}
+                </button>
+              )}
             </div>
-          ))}
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-            {categories.length < CATEGORIES_MAX && (
-              <button type="button" className="btn sm" onClick={() => maj({ categories: [...categories, { titre: "", etiquettes: "" }] })}>＋ Une maison de plus</button>
-            )}
-            {projet && duProjet.length > 0 && (
-              <button type="button" className="btn sm" disabled={occupe} onClick={() => void rangerLeProjet()}
-                title={`Les ${duProjet.length} mots et phrases du projet « ${projet.titre} », rangés par le modèle dans les maisons`}>
-                {occupe ? "Le modèle range…" : `✨ Ranger le corpus du projet (${duProjet.length})`}
-              </button>
-            )}
-          </div>
-        </Field>
-        <Field label="Différencier">
+          </Field>
+        </details>
+        <details className="pli">
+          <summary>Différencier{aide && <span className="meta"> · {[r.aideMots && "mot en couleur", r.aidePonctuation && "ponctuation en couleur", r.deuxVersions && "deux versions"].filter(Boolean).join(", ")}</span>}</summary>
           <Coche on={r.aideMots} libelle="Le mot marqué en couleur : Je *suis* content." onChange={(v) => maj({ aideMots: v })} />
           {r.aideMots && (
             <div className="tri-aide">
@@ -336,8 +377,9 @@ export function TriTab() {
             <div className="tri-aide"><Pastilles palette={COULEURS_TRI} valeur={r.couleurPonctuation} onChange={(hex) => maj({ couleurPonctuation: hex })} /></div>
           )}
           <Coche on={r.deuxVersions && aide} libelle="Les deux versions à la suite : avec l'aide, et sans" onChange={(v) => maj({ deuxVersions: v })} />
-        </Field>
-        <Field label="Présentation">
+        </details>
+        <details className="pli">
+          <summary>Présentation <span className="meta">· {r.parLigne} par ligne{r.taille === "grande" ? ", grandes" : ""}{r.capitales ? ", capitales" : ""}{r.melanger ? ", mélangées" : ""}</span></summary>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 4 }}>
             <Select value={r.parLigne} aria-label="Étiquettes par ligne" onChange={(e) => maj({ parLigne: borne(e.target.value, 2, 4, 4) })}>
               {[2, 3, 4].map((n) => <option key={n} value={n}>{n} étiquettes par ligne</option>)}
@@ -348,18 +390,15 @@ export function TriTab() {
           </div>
           <Coche on={r.capitales} libelle="Lettres en capitales" onChange={(v) => maj({ capitales: v })} />
           <Coche on={r.melanger} libelle="Mélanger les étiquettes" onChange={(v) => maj({ melanger: v })} />
-        </Field>
-        <Field label="Défi, pour ceux qui ont fini"><Input value={r.defi} onChange={(e) => maj({ defi: e.target.value })} placeholder="Défi : entoure le verbe dans chaque phrase." /></Field>
-        <details className="tri-fiche">
-          <summary>Fiche d'aide « Je vérifie »{r.aide.trim() || r.aRetenir.trim() ? " · écrite" : ""}</summary>
+        </details>
+        <details className="pli">
+          <summary>Fiche d'aide « Je vérifie »{r.aide.trim() || r.aRetenir.trim() ? <span className="meta"> · écrite</span> : null}</summary>
           <Field label="Une vérification par ligne — titre : question">
             <Textarea rows={4} value={r.aide} onChange={(e) => maj({ aide: e.target.value })} placeholder={"Le sens : Est-ce que cela veut dire quelque chose ?"} />
           </Field>
           <Field label="À retenir"><Textarea rows={3} value={r.aRetenir} onChange={(e) => maj({ aRetenir: e.target.value })} /></Field>
         </details>
-        <div className="meta" style={{ fontSize: 12.5, marginTop: 6 }}>
-          {total} étiquettes, {maisons.length} maison{maisons.length > 1 ? "s" : ""}{maisons.length < 2 ? " — il en faut deux pour trier" : ""}.
-        </div>
+        {maisons.length < 2 && <div className="meta" style={{ fontSize: 12.5, marginTop: 6, color: "var(--orange)" }}>Il faut deux maisons pour trier.</div>}
         <Boutons atelier="tri" titre={`Les maisons du tri${r.titre.trim() ? ` — ${r.titre.trim()}` : ""}`} html={html} style={STYLE_TRI}
           peut={total > 0 && maisons.length >= 2} onTirage={() => setGraine(graineAuHasard())} />
       </>}

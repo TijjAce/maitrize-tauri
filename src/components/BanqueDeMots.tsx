@@ -83,6 +83,15 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions
     } catch (e) { toast(String(e), { icone: "⚠️" }); } finally { setOccupe(false); }
   };
 
+  // Le projet du moment donne ses mots dès qu'on ouvre l'atelier, s'il est vide —
+  // une fois : on en retire, on en ajoute ensuite à sa guise.
+  const projetPris = React.useRef("");
+  React.useEffect(() => {
+    if (!projet || !corpus.mots.length || projetPris.current === projet.id || mots.length) return;
+    projetPris.current = projet.id;
+    void ajouterMots(corpus.mots);
+  }, [projet?.id, corpus.mots.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const ajouterTheme = async () => {
     if (!theme) return;
     setOccupe(true);

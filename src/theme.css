@@ -500,6 +500,15 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .tri-maison { border-left: 3px solid var(--border); padding-left: 8px; margin: 0 0 10px; display: flex; flex-direction: column; gap: 5px; }
 .tri-aide { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 2px 0 8px 24px; }
 .tri-fiche { margin: 4px 0 8px; font-size: 13px; }
+/* Les plis d'un atelier : on ouvre ce qu'on règle. Un trait les sépare, pour s'y retrouver d'un coup d'œil. */
+details.pli { border-top: 1px solid var(--border); padding: 2px 0; }
+details.pli > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap;
+  font-weight: 700; font-size: 13.5px; padding: 9px 0; user-select: none; }
+details.pli > summary::-webkit-details-marker { display: none; }
+details.pli > summary::before { content: "▸"; color: var(--text-2); width: 14px; flex: none; transition: transform .15s; }
+details.pli[open] > summary::before { transform: rotate(90deg); }
+details.pli > summary .meta { font-weight: 500; font-size: 12px; }
+details.pli[open] { padding-bottom: 10px; }
 .tri-fiche summary { cursor: pointer; font-weight: 600; color: var(--text-2); padding: 4px 0; }
 /* Le calcul mental : les objectifs du programme, rangés par rubrique. */
 .fn-rubrique { margin: 0 0 8px; }
