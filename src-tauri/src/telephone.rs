@@ -47,6 +47,8 @@ pub const CLE_RELAIS: &str = "telephoneRelais";
 pub const CLE_COMPTE: &str = "nuageCompte";
 /// L'empreinte du dernier emploi du temps publié : on ne réécrit pas ce qui n'a pas changé.
 pub const CLE_AGENDA: &str = "telephoneAgenda";
+/// Quand il est parti : l'écran le dit, sinon on ne sait pas si le téléphone l'a.
+pub const CLE_AGENDA_PUBLIE: &str = "telephoneAgendaPublie";
 
 /// Le dossier du relais, à la racine du Nuage de l'enseignant.
 const DOSSIER: &str = "Maitrize-Telephone";
@@ -192,6 +194,8 @@ pub struct EtatRelais {
     pub cree_le: String,
     /// Le compte Nuage déjà connu de Maitrize, pour ne pas le redemander.
     pub compte: String,
+    /// Quand l'emploi du temps est parti pour la dernière fois vers le téléphone ; vide tant qu'il n'est pas parti.
+    pub agenda_publie_le: String,
 }
 
 fn etat(c: &Connection) -> EtatRelais {
@@ -207,6 +211,7 @@ fn etat(c: &Connection) -> EtatRelais {
             compte_du_dossier: r.compte,
             cree_le: r.cree_le,
             compte: libelle,
+            agenda_publie_le: crate::sync::get_setting(c, CLE_AGENDA_PUBLIE),
         },
         None => EtatRelais { compte: libelle, ..Default::default() },
     }
@@ -341,6 +346,7 @@ pub async fn telephone_relier(
         crate::sync::set_setting(&c, CLE_COMPTE, &serde_json::to_string(&compte).map_err(|e| e.to_string())?)?;
         // L'emploi du temps doit repartir, chiffré avec la nouvelle clé.
         crate::sync::set_setting(&c, CLE_AGENDA, "")?;
+        crate::sync::set_setting(&c, CLE_AGENDA_PUBLIE, "")?;
     }
     // Le téléphone doit trouver l'emploi du temps dès son premier passage.
     let _ = publier_si_change(&db, &nouveau, &compte).await;
@@ -433,6 +439,7 @@ pub async fn telephone_code_appliquer(
     ecrire_relais(&c, &r)?;
     crate::sync::set_setting(&c, CLE_COMPTE, &serde_json::to_string(&compte).map_err(|e| e.to_string())?)?;
     crate::sync::set_setting(&c, CLE_AGENDA, "")?;
+    crate::sync::set_setting(&c, CLE_AGENDA_PUBLIE, "")?;
     Ok(etat(&c))
 }
 
@@ -463,6 +470,7 @@ pub async fn telephone_oublier(db: State<'_, Db>, sans_revoquer: bool) -> R<Etat
     let c = db.lock();
     crate::sync::set_setting(&c, CLE_RELAIS, "")?;
     crate::sync::set_setting(&c, CLE_AGENDA, "")?;
+    crate::sync::set_setting(&c, CLE_AGENDA_PUBLIE, "")?;
     Ok(etat(&c))
 }
 
@@ -483,6 +491,8 @@ pub struct Bilan {
     /// Les dépôts qui ne s'ouvrent pas avec la clé de cet ordinateur.
     pub illisibles: usize,
     pub agenda_publie: bool,
+    /// Pourquoi l'emploi du temps n'a pas pu partir vers le téléphone ; vide s'il est parti, ou n'avait pas à partir.
+    pub agenda_erreur: String,
     /// Ce qui n'a pas pu se ranger, dit une fois.
     pub erreur: String,
 }
@@ -633,7 +643,11 @@ pub async fn telephone_relever(app: AppHandle, db: State<'_, Db>) -> R<Bilan> {
     }
     let _garde = Garde;
     let mut bilan = relever_avec(&app, &db, &r, &compte, false).await?;
-    bilan.agenda_publie = publier_si_change(&db, &r, &compte).await.unwrap_or(false);
+    // Un envoi manqué se dit : sinon le téléphone garde un emploi du temps périmé sans que personne le sache.
+    match publier_si_change(&db, &r, &compte).await {
+        Ok(parti) => bilan.agenda_publie = parti,
+        Err(e) => bilan.agenda_erreur = e,
+    }
     Ok(bilan)
 }
 
@@ -688,18 +702,21 @@ fn empreinte(a: &relais::Agenda) -> String {
 
 /// Publie l'emploi du temps s'il n'est plus celui qu'on a publié. Rend vrai s'il est parti.
 async fn publier_si_change(db: &State<'_, Db>, r: &Relais, compte: &CompteNuage) -> R<bool> {
-    let (mut a, deja) = {
+    let (mut a, deja, date_connue) = {
         let c = db.lock();
         let (depuis, jours) = fenetre_publiee(chrono::Local::now().date_naive());
-        (agenda(&c, depuis, jours)?, crate::sync::get_setting(&c, CLE_AGENDA))
+        (agenda(&c, depuis, jours)?, crate::sync::get_setting(&c, CLE_AGENDA), !crate::sync::get_setting(&c, CLE_AGENDA_PUBLIE).is_empty())
     };
     let trace = empreinte(&a);
-    if trace == deja {
+    // Déjà parti, et l'on sait quand : rien à refaire. Parti avant qu'on note l'heure : on le renvoie une fois, pour la dire.
+    if trace == deja && date_connue {
         return Ok(false);
     }
     a.publie = crate::models::now_iso();
     publier(r, &acces_au_dossier(r, compte), &a).await?;
-    crate::sync::set_setting(&db.lock(), CLE_AGENDA, &trace)?;
+    let c = db.lock();
+    crate::sync::set_setting(&c, CLE_AGENDA, &trace)?;
+    crate::sync::set_setting(&c, CLE_AGENDA_PUBLIE, &a.publie)?;
     Ok(true)
 }
 
