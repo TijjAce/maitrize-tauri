@@ -2,6 +2,7 @@ import React from "react";
 import { api, PictoArasaac } from "../api";
 import { Field, Input, Modal } from "./ui";
 import type { PictoPose } from "../supportsVisuels";
+import { chargerImageAppoint } from "../pictosAppoint";
 
 // ── Choisir un pictogramme ARASAAC ─────────────────────────────────────────
 //
@@ -9,14 +10,18 @@ import type { PictoPose } from "../supportsVisuels";
 // sous le pictogramme reste modifiable : « tablette » plutôt que
 // « tablette tactile ».
 
-/** L'image d'un pictogramme, chargée à la demande et gardée pour la séance. */
-const cache = new Map<number, Promise<string>>();
-export function chargerPicto(id: number): Promise<string> {
-  let p = cache.get(id);
+/**
+ * L'image d'un pictogramme, chargée à la demande et gardée pour la séance :
+ * un numéro ARASAAC, ou la référence d'une banque d'appoint (« sclera:compter.png »).
+ */
+const cache = new Map<string, Promise<string>>();
+export function chargerPicto(id: number | string): Promise<string> {
+  const cle = String(id);
+  let p = cache.get(cle);
   if (!p) {
-    p = api.arasaacImage(id).then((b) => `data:image/png;base64,${b}`);
-    p.catch(() => cache.delete(id));
-    cache.set(id, p);
+    p = typeof id === "string" ? chargerImageAppoint(id) : api.arasaacImage(id).then((b) => `data:image/png;base64,${b}`);
+    p.catch(() => cache.delete(cle));
+    cache.set(cle, p);
   }
   return p;
 }
@@ -27,10 +32,10 @@ export function chargerPicto(id: number): Promise<string> {
  * partout où un pictogramme se montre.
  */
 export function memoriserImage(id: number, src: string): void {
-  cache.set(id, Promise.resolve(src));
+  cache.set(String(id), Promise.resolve(src));
 }
 
-export function usePictoImage(id: number | null | undefined): string {
+export function usePictoImage(id: number | string | null | undefined): string {
   const [src, setSrc] = React.useState("");
   React.useEffect(() => {
     if (id == null) { setSrc(""); return; }
@@ -42,15 +47,15 @@ export function usePictoImage(id: number | null | undefined): string {
 }
 
 /** Les images à imprimer : celles qui manquent encore sont attendues, celles qui échouent laissent une case vide. */
-export async function chargerImages(ids: number[]): Promise<Record<number, string>> {
+export async function chargerImages<T extends number | string>(ids: T[]): Promise<Record<T, string>> {
   const paires = await Promise.all(ids.map((id) => chargerPicto(id).then((s) => [id, s] as const).catch(() => null)));
-  return Object.fromEntries(paires.filter((p): p is readonly [number, string] => p !== null));
+  return Object.fromEntries(paires.filter((p): p is readonly [T, string] => p !== null)) as Record<T, string>;
 }
 
 /** Les images de plusieurs pictogrammes, pour l'aperçu. */
-export function usePictoImages(ids: number[]): Record<number, string> {
-  const [images, setImages] = React.useState<Record<number, string>>({});
-  const cle = [...ids].sort((a, b) => a - b).join(",");
+export function usePictoImages<T extends number | string>(ids: T[]): Record<T, string> {
+  const [images, setImages] = React.useState<Record<T, string>>({} as Record<T, string>);
+  const cle = ids.map(String).sort().join(",");
   React.useEffect(() => {
     let vivant = true;
     chargerImages(ids).then((lues) => { if (vivant) setImages(lues); });

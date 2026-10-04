@@ -37,6 +37,8 @@ printpdf = { version = "0.7", features = ["embedded_images"] }
 # Décodage des PNG ARASAAC avant intégration au PDF (aplatissement du canal alpha).
 image = { version = "0.24", default-features = false, features = ["png"] }
 lopdf = "0.31"
+# Les banques de pictos d'appoint (F. Bajard, Sclera) arrivent en zip.
+zip = { version = "8.6", default-features = false, features = ["deflate-flate2"] }
 url = "2"
 
 # Appariement chiffré entre utilisateurs (identité X25519 + numéro de sécurité)
