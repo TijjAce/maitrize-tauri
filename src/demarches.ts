@@ -925,66 +925,80 @@ const PROBLEMES: Demarche = {
   ],
 };
 
+// Le plan de séquence des guides Éduscol : « Pour enseigner les nombres, le
+// calcul et la résolution de problèmes au CP », focus « Une séquence de
+// calcul » — une pratique quotidienne d'au moins quinze minutes, des séances
+// courtes qui alternent avec des longues ; une séance longue en trois temps,
+// échauffement, entraînement (dont le procédé La Martinière), recherche ; une
+// courte, les deux premiers. « Le calcul en ligne au cycle 3 » nomme les
+// quatre étapes : découverte jusqu'à la trace écrite, appropriation et
+// entraînement, réinvestissement, évaluation — où chacun voit ses progrès.
 const CALCUL_MENTAL: Demarche = {
   id: "calcul-mental-martiniere",
   nom: "Calcul mental : procédé La Martinière",
   famille: "Mathématiques",
-  source: "Pour enseigner les nombres, le calcul et la résolution de problèmes au CP (guide fondamental, 2020) ; « Le calcul aux cycles 2 et 3 », Éduscol ; programmes de mathématiques 2024-2025",
-  resume: "Un fait numérique ou une procédure à la fois : on le découvre en manipulant et en verbalisant, on l'entraîne chaque jour au procédé La Martinière — énoncé deux fois, réflexion sans écrire, « Écrivez ! », « Montrez ! », correction —, on le réinvestit dans un jeu, puis on mesure la fluence.",
+  source: "Éduscol, « Pour enseigner les nombres, le calcul et la résolution de problèmes au CP » (focus « Une séquence de calcul ») et « Le calcul en ligne au cycle 3 » ; programmes de mathématiques 2024-2025",
+  resume: "Un fait numérique ou une procédure à la fois, en quatre étapes : la découverte, en séance longue, jusqu'à la trace écrite ; l'appropriation puis l'entraînement en séances courtes et quotidiennes, au procédé La Martinière — énoncé deux fois, réflexion sans écrire, « Écrivez ! », « Montrez ! », correction — ; le réinvestissement dans de petits problèmes ; l'évaluation par la fluence, où chacun voit ses progrès. Chaque séance s'ouvre sur un échauffement que tous réussissent.",
   seances: [
     {
-      titre: "Découverte du fait numérique ou de la procédure",
-      objectifs: "Comprendre le fait numérique ou la procédure visés (compléments à 10, ajouter 9, une table…) en manipulant, les verbaliser, les écrire.",
-      duree: 30,
+      titre: "Découverte — séance longue",
+      objectifs: "Construire le fait ou la procédure visés : les chercher, expliciter et comparer les démarches, retenir la plus sûre et la plus rapide, l'écrire.",
+      duree: 45,
       phases: [
-        ph(T1, "5 min", "Rappel du fait voisin déjà su ; objectif annoncé (« aujourd'hui, ajouter 9 : ajouter 10, retirer 1 »)."),
-        ph(T2, "15 min", "Manipuler — cubes, doigts, boîte de dix, bande numérique — ; verbaliser la procédure avec ses mots ; l'écrire en ligne.",
-          "Fait dire le « comment » avant le résultat ; deux ou trois élèves verbalisent devant les autres."),
-        ph(T3, "5 min", "Institutionnalisation : la procédure en une phrase et un exemple, dans le cahier de leçons."),
-        ph(T4, "5 min", "Trois calculs à l'ardoise, en verbalisant."),
+        ph("Échauffement", "5 min", "Une activité très courte qui réactive un fait déjà su — un furet, trois calculs à l'ardoise — : tous réussissent."),
+        ph("Entraînement", "10 min", "Au procédé La Martinière, les faits sur lesquels s'appuie la procédure du jour (pour les presque-doubles : les doubles)."),
+        ph("Recherche", "20 min", "Un calcul à chercher seul, l'écrit permis sur le cahier de recherche ; mise en commun : chacun montre et dit sa démarche, juste ou non ; on compare les procédures et on les hiérarchise — la plus sûre, la plus rapide, et quand elle marche.",
+          "Écrit ce que dit l'élève sans l'interpréter ; cherche avec la classe la cause des erreurs."),
+        ph("Trace écrite", "10 min", "La procédure retenue, son domaine d'efficacité et un exemple, écrits juste : cahier de leçons ou affiche de la classe."),
       ],
     },
     {
-      titre: "Entraînement — La Martinière (1)",
-      objectifs: "Automatiser le fait ou la procédure par une série courte, à l'oral, sur l'ardoise.",
+      titre: "Appropriation — La Martinière (1)",
+      objectifs: "S'approprier le fait ou la procédure : une série courte, à l'oral, en disant comment on calcule.",
       duree: 15,
       phases: [
-        ph("Mise en train", "3 min", "Trois calculs du fait voisin déjà su."),
+        ph("Échauffement", "5 min", "Les faits d'appui de la procédure, révisés à l'ardoise."),
         ph("Série La Martinière", "10 min", "Dix calculs. Chacun est dit deux fois ; réflexion sans écrire, cinq secondes ; « Écrivez ! » — le résultat, rien d'autre ; « Montrez ! » — les ardoises se lèvent ensemble ; la réponse est dite, on corrige, on passe au suivant.",
-          "Note les erreurs qui reviennent ; fait verbaliser une procédure toutes les trois ou quatre questions."),
-        ph("Retour", "2 min", "Une procédure redite par un élève ; chacun note son score."),
+          "Fait expliciter une procédure toutes les trois ou quatre questions ; note les erreurs qui reviennent."),
       ],
     },
     {
-      titre: "Entraînement — La Martinière (2), avec variation",
-      objectifs: "Transférer : le même fait avec des nombres plus grands, ou sous une autre forme — égalité à trou, calcul en ligne, énoncé en mots.",
+      titre: "Entraînement — La Martinière (2)",
+      objectifs: "Entraîner le fait ou la procédure sous d'autres formes : égalités à trou, nombres plus grands, énoncé en mots.",
       duree: 15,
       phases: [
-        ph("Mise en train", "3 min", "Trois calculs de la veille."),
-        ph("Série La Martinière", "10 min", "Dix calculs, dont des égalités à trou et des nombres plus grands.",
-          "Différencie : temps de réflexion plus long, matériel sous la main pour qui en a besoin."),
-        ph("Retour", "2 min", "Ce qui a changé par rapport à hier, et ce qui ne change pas."),
+        ph("Échauffement", "5 min", "Trois calculs de la veille."),
+        ph("Série La Martinière", "10 min", "Une nouvelle série, variée : égalités à trou, nombres plus grands.",
+          "Différencie par le temps de réflexion ou la difficulté des calculs ; le matériel reste sous la main de qui en a besoin."),
       ],
     },
     {
-      titre: "Réinvestissement — jeu ou problème",
-      objectifs: "Retrouver le fait dans un autre contexte : cartes de calcul, bataille, le compte est bon, un problème court.",
-      duree: 30,
-      phases: [
-        ph("Règle", "5 min", "La règle du jeu, une partie d'exemple."),
-        ph("Jeu", "20 min", "Par deux ou trois : cartes de calcul, bataille des tables, le compte est bon.",
-          "Passe de groupe en groupe ; relance par une question sur la procédure, pas sur le résultat."),
-        ph("Retour", "5 min", "Le fait qu'on a utilisé ; ce qui reste difficile."),
-      ],
-    },
-    {
-      titre: "Test de fluence",
-      objectifs: "Mesurer : combien de calculs justes en une minute, l'attendu de fin d'année en tête ; chacun suit sa courbe.",
+      titre: "Automatisation — La Martinière (3)",
+      objectifs: "Restituer vite et juste : que le fait ou la procédure deviennent automatiques.",
       duree: 15,
       phases: [
-        ph("Test", "5 min", "Une série écrite d'une minute, seul ; une seconde après un temps de calme."),
-        ph("Correction", "5 min", "Corrigé projeté ; chacun compte ses réussites et les note sur sa fiche de suivi."),
-        ph("Retour", "5 min", "Les procédures qui font gagner du temps ; ce qu'on entraîne demain."),
+        ph("Échauffement", "5 min", "Un fait voisin, en furet ou à l'ardoise."),
+        ph("Série La Martinière", "10 min", "Une série au temps de réflexion raccourci ; chacun note son score.",
+          "Les plus à l'aise calculent sans écrire les étapes : l'automatisation n'est pas visée au même moment pour tous."),
+      ],
+    },
+    {
+      titre: "Réinvestissement — petits problèmes",
+      objectifs: "Retrouver le fait ou la procédure dans un autre contexte : de petits problèmes, un jeu.",
+      duree: 15,
+      phases: [
+        ph("Échauffement", "5 min", "La fluence du jour : une série courte, écrite, en temps limité."),
+        ph("Problèmes", "10 min", "Deux ou trois petits problèmes qui appellent la procédure, à l'ardoise ; ou un jeu par deux — cartes de calcul, le compte est bon."),
+      ],
+    },
+    {
+      titre: "Évaluation — test de fluence",
+      objectifs: "Mesurer et voir ses progrès : combien de calculs justes en temps limité, l'attendu de fin d'année en tête.",
+      duree: 15,
+      phases: [
+        ph("Test", "5 min", "Une série écrite en temps limité, seul."),
+        ph("Correction", "5 min", "Corrigé projeté ; chacun compte ses réussites et les reporte sur sa fiche de suivi."),
+        ph("Suite", "5 min", "Ce qui est su, ce qui reste à reprendre ; le fait reviendra plus tard dans des séries de révision, pour s'ancrer."),
       ],
     },
   ],

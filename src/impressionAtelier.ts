@@ -213,10 +213,31 @@ export async function deposerSurLeBureau(atelier: string, titre: string, fichier
  * en tête —, transformée en PDF et déposée sur le bureau.
  */
 export async function enregistrerSurLeBureau(atelier: string, titre: string, corps: string, style = "", extras: ExtrasAtelier = {}): Promise<MaterielItem> {
+  return deposerSurLeBureau(atelier, titre, await pdfDeLAtelier(atelier, titre, corps, style, extras));
+}
+
+/** La feuille d'un atelier telle qu'elle s'imprime — compétences en tête, consignes en pictos —, en PDF dans les fichiers. */
+async function pdfDeLAtelier(atelier: string, titre: string, corps: string, style: string, extras: ExtrasAtelier): Promise<string> {
   const { api } = await import("./api");
   const entete = enteteCompetencesHtml(await competencesDeLAtelier(atelier));
   const consignes = await consignesEnPictos(await avecLaConsigneDeLAtelier(atelier, corps), await supplementDe(atelier, extras));
   const html = documentImprimable(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style);
-  const fichier = await api.feuilleEnPdf(html);
-  return deposerSurLeBureau(atelier, titre, fichier);
+  return api.feuilleEnPdf(html);
+}
+
+/**
+ * La feuille d'un atelier, en PDF, dans une séance de séquence plutôt qu'à
+ * la racine du bureau : elle s'imprime avec le cahier journal du jour où la
+ * séance est posée.
+ */
+export async function poserDansUneSeance(
+  atelier: string, titre: string, corps: string, style: string, seanceId: string, sequenceId: string, extras: ExtrasAtelier = {},
+): Promise<MaterielItem> {
+  const { api, newId, nowIso } = await import("./api");
+  const fichier = await pdfDeLAtelier(atelier, titre, corps, style, extras);
+  const materiel: MaterielItem = {
+    ...materielDuBureau(atelier, titre, fichier, await competencesDeLAtelier(atelier), newId(), nowIso()), seanceId, sequenceId,
+  };
+  await api.materielSave(materiel);
+  return materiel;
 }
