@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { marquesDeLaReponse, promptMarquerVerbes, promptRangerEtiquettes, rangementDeLaReponse } from "./triIa";
+import { marquesDeLaReponse, promptMarquerVerbes, promptRangerEtiquettes, promptTransposer, rangementDeLaReponse, transpositionDeLaReponse } from "./triIa";
 
 describe("marquer les verbes avec l'IA", () => {
   it("envoie les phrases nues, une par ligne, et dit de ne rien changer", () => {
@@ -63,5 +63,34 @@ describe("ranger les étiquettes du projet avec l'IA", () => {
 
   it("ne range rien d'une réponse vide", () => {
     expect(rangementDeLaReponse("", 2, ["a"])).toEqual({ parMaison: [[], []], ecartees: ["a"] });
+  });
+});
+
+describe("transposer un modèle au thème du projet", () => {
+  it("demande des étiquettes sur le patron des exemples, avec les mots du thème", () => {
+    const [systeme, demande] = promptTransposer(
+      [{ titre: "Verbe être", exemples: ["Je *suis* content.", "Tu *es* à l'école."] }, { titre: "Verbe avoir", exemples: ["J'*ai* un cartable."] }],
+      "Halloween", ["citrouille", "sorcière"], 8, 2);
+    expect(systeme.content).toContain("cycle 2");
+    expect(systeme.content).toContain("8 étiquettes par maison");
+    expect(demande.content).toBe("Maisons :\n1. Verbe être — exemples : Je *suis* content. / Tu *es* à l'école.\n2. Verbe avoir — exemples : J'*ai* un cartable.\n\nThème : Halloween\nMots du thème : citrouille, sorcière");
+  });
+
+  it("garde chaque étiquette dans sa maison ; écarte le reste, les doublons et le trop-plein", () => {
+    const reponse = [
+      "Voici les étiquettes :",
+      "1\tLa sorcière *est* sur son balai.",
+      "2\tLe fantôme *a* un drap blanc.",
+      "1. Nous *sommes* déguisés.",
+      "3\tUne maison qui n'existe pas.",
+      "2\tle fantôme *a* un drap blanc.",
+      "1\tLa citrouille *est orange.",
+      "2 - J'*ai* une lanterne.",
+      "1\tTu *es* une momie.",
+    ].join("\n");
+    expect(transpositionDeLaReponse(reponse, 2, 2)).toEqual([
+      ["La sorcière *est* sur son balai.", "Nous *sommes* déguisés."],
+      ["Le fantôme *a* un drap blanc.", "J'*ai* une lanterne."],
+    ]);
   });
 });
