@@ -25,6 +25,7 @@ import { ReglesCitees, useLudotheque } from "../components/ReglesDesJeux";
 import { sansMarqueurs, STYLE_REGLES } from "../jeuxCites";
 import { htmlDeLaSequence, imagesDeLaSequence } from "../sequenceHtml";
 import { useCorrecteur, ZoneCorrigeable } from "../components/CorrigerSelection";
+import { ExercicesDesManuels } from "../components/ExercicesDesManuels";
 
 export default function SequenceDetail() {
   const { id } = useParams();
@@ -238,6 +239,10 @@ export default function SequenceDetail() {
         </div>
         {matsSeq.length > 0 && <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{matsSeq.map(matChip)}</div>}
       </div>
+
+      {/* Les exercices des manuels qui portent la compétence visée : d'un geste dans une séance. */}
+      <ExercicesDesManuels competence={comp} sequenceId={seq.id} cycle={seq.cycle} seances={liste}
+        seanceParDefaut={suivi?.suivante?.id} onAjoute={reloadMat} />
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", margin: "4px 2px 12px" }}>
         <h3 style={{ margin: 0 }}>Séances</h3>

@@ -3,10 +3,9 @@ import type { ExerciceManuel, Zone } from "../manuels";
 
 // ── La page d'un manuel, ses exercices encadrés ───────────────────────────
 //
-// Chaque exercice se voit là où il est : en pointillés, le cadre que l'IA a
-// vu ; en trait plein, celui que l'enseignant a tracé ou corrigé. On clique
-// un cadre pour choisir l'exercice ; le cadre choisi se déplace, et ses coins
-// le redimensionnent. En mode « encadrer », on trace un cadre neuf : ce qu'il
+// Chaque exercice se voit là où l'enseignant l'a encadré. On clique un cadre
+// pour choisir l'exercice ; le cadre choisi se déplace, et ses coins le
+// redimensionnent. En mode « encadrer », on trace un cadre neuf : ce qu'il
 // contient devient un exercice.
 
 /** Une teinte par exercice : la même pour son cadre et pour sa ligne dans la liste. */
@@ -113,9 +112,8 @@ export function PageEncadree({ image, exercices, choisi, encadrer, onChoisir, on
         if (!zone) return null;
         const on = e.id === choisi;
         return (
-          <div key={e.id} className={`man-zone${on ? " on" : ""}${e.zoneManuelle ? " main" : ""}`}
+          <div key={e.id} className={`man-zone${on ? " on" : ""}`}
             style={{ left: pct(zone.x), top: pct(zone.y), width: pct(zone.l), height: pct(zone.h), ["--teinte" as string]: teinteExercice(i) }}
-            title={e.zoneManuelle ? "Votre encadré" : "Ce que l'IA a vu"}
             onPointerDown={(ev) => prendreLeCadre(ev, e)}>
             <span className="man-zone-etiquette">{e.numero || i + 1}</span>
             {on && !encadrer && COINS.map((c) => (

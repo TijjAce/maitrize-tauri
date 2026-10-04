@@ -1,15 +1,15 @@
-// Les manuels : des pages photographiées ou un PDF, leurs exercices, et la
-// fiche qu'on en refait.
+// Les manuels : des pages photographiées ou un PDF, les exercices que
+// l'enseignant y encadre, et le modèle simplifié qu'on en tire.
 //
 // Un manuel scolaire est fait pour la classe entière ; ses exercices sont
 // bons, leur présentation surcharge. On le photographie page après page avec
-// le téléphone (ou l'on importe son PDF), le modèle en relit les exercices,
-// et l'enseignant en réadapte un : consigne simplifiée, moins d'items, un
-// exemple, de la place pour répondre. Le manuel reste sur cet ordinateur,
-// avec ses images ; rien ne part chez le modèle avant qu'on le lui demande.
-//
-// Le modèle range aussi les exercices de tout le manuel par notion, et
-// l'enseignant donne à chaque notion la compétence du BO qu'il veut.
+// le téléphone (ou l'on importe son PDF). L'enseignant encadre lui-même un
+// exercice sur la page : c'est lui qui sait ce qui en fait un. Le modèle lit
+// l'encadré, et n'est là que pour en tirer un modèle simplifié — consigne
+// courte, moins d'items, un exemple, de la place pour répondre. L'enseignant
+// met sur l'exercice la compétence du BO qu'il veut, et le retrouve dans les
+// séquences qui la visent, prêt à poser dans une séance. Le manuel reste sur
+// cet ordinateur ; seul l'encadré part chez le modèle, quand on le lui donne.
 
 import type { ChatMessage } from "./api";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
@@ -32,69 +32,26 @@ export const TYPES_EXERCICE: { id: TypeExercice; libelle: string; icone: string 
   { id: "autre", libelle: "autre", icone: "📄" },
 ];
 
+/** Un rectangle sur l'image d'une page, en fractions de sa largeur et de sa hauteur (0…1). */
+export interface Zone { x: number; y: number; l: number; h: number }
+
 export interface ExerciceManuel {
   id: string;
-  /** Le numéro tel qu'il est écrit : « 3 », « 4 ★ », « Je m'entraîne ». */
+  /** Le numéro tel qu'il est écrit : « 3 », « 4 ★ », « Pour commencer ». */
   numero: string;
-  /** Le titre du bloc, quand il en a un : « J'accorde l'adjectif avec le nom ». */
+  /** Le titre de l'exercice, quand il en a un : « J'accorde l'adjectif avec le nom ». */
   titre: string;
-  /** Ce que l'élève doit faire : toutes les consignes du bloc, une par ligne. */
+  /** Ce que l'élève doit faire : toutes les consignes, une par ligne. */
   consigne: string;
   /** Les items, données, texte : ce sur quoi porte la consigne. */
   contenu: string;
   type: TypeExercice;
-  /** La notion où le classement l'a rangé ; vide tant qu'il n'est pas classé. */
-  notion: string;
-  /** Où l'exercice est sur la page : ce que l'IA a vu, ou l'encadré que l'enseignant a tracé. */
+  /** L'encadré que l'enseignant a tracé sur la page. */
   zone?: Zone;
-  /** Vrai quand c'est l'enseignant qui a tracé ou corrigé l'encadré. */
-  zoneManuelle?: boolean;
-}
-
-/** Un rectangle sur l'image d'une page, en fractions de sa largeur et de sa hauteur (0…1). */
-export interface Zone { x: number; y: number; l: number; h: number }
-
-const dans01 = (v: number) => Math.min(1, Math.max(0, v));
-
-/**
- * L'encadré que le modèle a rendu — [gauche, haut, droite, bas], en
- * pourcentages de la page —, ou rien s'il n'a pas de sens. Un modèle qui
- * répond en fractions (0…1) est compris aussi.
- */
-export function zoneLue(v: unknown): Zone | undefined {
-  if (!Array.isArray(v) || v.length !== 4) return undefined;
-  const n = v.map((x) => Number(x));
-  if (n.some((x) => !Number.isFinite(x))) return undefined;
-  const f = n.every((x) => x <= 1.0001) ? n : n.map((x) => x / 100);
-  const [g, d] = [Math.min(f[0], f[2]), Math.max(f[0], f[2])].map(dans01);
-  const [h, b] = [Math.min(f[1], f[3]), Math.max(f[1], f[3])].map(dans01);
-  if (d - g < 0.02 || b - h < 0.01) return undefined;
-  return { x: g, y: h, l: d - g, h: b - h };
-}
-
-/** Une zone enregistrée, telle qu'on peut s'y fier. */
-function zoneRelue(v: any): Zone | undefined {
-  if (!v || typeof v !== "object") return undefined;
-  const [x, y, l, h] = [v.x, v.y, v.l, v.h].map(Number);
-  if (![x, y, l, h].every(Number.isFinite) || l <= 0 || h <= 0) return undefined;
-  return { x: dans01(x), y: dans01(y), l: Math.min(l, 1 - dans01(x)), h: Math.min(h, 1 - dans01(y)) };
-}
-
-/** Le plus petit rectangle qui contient les deux. */
-export function zoneUnie(a?: Zone, b?: Zone): Zone | undefined {
-  if (!a || !b) return a ?? b;
-  const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
-  return { x, y, l: Math.max(a.x + a.l, b.x + b.l) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
-}
-
-/** Ce qu'un groupe d'exercices fait travailler, et la compétence du BO que l'enseignant y met. */
-export interface NotionManuel {
-  id: string;
-  /** Dite comme un savoir-faire : « Accorder le verbe avec son sujet ». */
-  titre: string;
-  domaine: string;
-  /** Les compétences du BO, choisies par l'enseignant : le classement ne les devine pas. */
+  /** Les compétences du BO que l'enseignant met sur l'exercice. */
   competences: CompetenceSelectionnee[];
+  /** Le modèle simplifié, tel que le modèle l'a fait et que l'enseignant l'a corrigé. */
+  modele?: ModeleSimplifie;
 }
 
 export interface PageManuel {
@@ -103,8 +60,6 @@ export interface PageManuel {
   /** L'image de la page dans Fichiers/ ; vide pour une page de PDF. */
   fichier: string;
   exercices: ExerciceManuel[];
-  /** Quand le modèle l'a relue ; vide tant qu'il ne l'a pas fait. */
-  extraitLe: string;
 }
 
 export interface Manuel {
@@ -116,7 +71,6 @@ export interface Manuel {
   niveau: string;
   pages: PageManuel[];
   creeLe: string;
-  notions: NotionManuel[];
   /** Le PDF du manuel posé sur le bureau : on le remplace au lieu d'en poser un second. */
   surLeBureau?: { materielId: string; fichier: string };
 }
@@ -135,19 +89,24 @@ const nouvelId = () => (globalThis.crypto?.randomUUID?.() ?? `m${Date.now()}${Ma
 
 export function nouveauManuel(titre: string, source: SourceManuel, aujourdhui: string, fichierPdf = "", nbPages = 0): Manuel {
   return {
-    id: nouvelId(), titre: titre.trim() || `Manuel du ${aujourdhui}`, source, fichierPdf, niveau: "", creeLe: aujourdhui, notions: [],
-    pages: Array.from({ length: Math.max(0, nbPages) }, (_, i) => ({ id: nouvelId(), numero: i + 1, fichier: "", exercices: [], extraitLe: "" })),
+    id: nouvelId(), titre: titre.trim() || `Manuel du ${aujourdhui}`, source, fichierPdf, niveau: "", creeLe: aujourdhui,
+    pages: Array.from({ length: Math.max(0, nbPages) }, (_, i) => ({ id: nouvelId(), numero: i + 1, fichier: "", exercices: [] })),
   };
 }
 
 /** Une page de plus, photographiée : elle prend le numéro suivant. */
 export function ajouterPagePhoto(m: Manuel, fichier: string): Manuel {
-  return { ...m, pages: [...m.pages, { id: nouvelId(), numero: m.pages.length + 1, fichier, exercices: [], extraitLe: "" }] };
+  return { ...m, pages: [...m.pages, { id: nouvelId(), numero: m.pages.length + 1, fichier, exercices: [] }] };
 }
 
 /** Une page retirée ; les suivantes se renumérotent. */
 export function retirerPage(m: Manuel, pageId: string): Manuel {
   return { ...m, pages: m.pages.filter((p) => p.id !== pageId).map((p, i) => ({ ...p, numero: i + 1 })) };
+}
+
+/** Un exercice neuf, encadré sur sa page : il reste à le lire. */
+export function exerciceEncadre(zone: Zone, id: string = nouvelId()): ExerciceManuel {
+  return { id, numero: "", titre: "", consigne: "", contenu: "", type: "autre", zone, competences: [] };
 }
 
 export const resumeDe = (m: Manuel): ResumeManuel => ({
@@ -172,33 +131,54 @@ export function indexAvec(index: ResumeManuel[], m: Manuel): ResumeManuel[] {
 export const indexSans = (index: ResumeManuel[], id: string) => index.filter((x) => x.id !== id);
 
 const TYPES = new Set<string>(TYPES_EXERCICE.map((t) => t.id));
+const dans01 = (v: number) => Math.min(1, Math.max(0, v));
+
+/** Une zone enregistrée, telle qu'on peut s'y fier. */
+function zoneRelue(v: any): Zone | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const [x, y, l, h] = [v.x, v.y, v.l, v.h].map(Number);
+  if (![x, y, l, h].every(Number.isFinite) || l <= 0 || h <= 0) return undefined;
+  return { x: dans01(x), y: dans01(y), l: Math.min(l, 1 - dans01(x)), h: Math.min(h, 1 - dans01(y)) };
+}
+
+const competencesRelues = (v: unknown) => lireCompetencesAtelier(JSON.stringify(Array.isArray(v) ? v : []));
+
+/** Le modèle simplifié enregistré, s'il se relit. */
+function modeleRelu(v: any): ModeleSimplifie | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const fiche = lireFicheAdaptee(JSON.stringify(v.fiche ?? null));
+  if (!fiche) return undefined;
+  return { fiche, options: { ...OPTIONS_PAR_DEFAUT, ...(v.options && typeof v.options === "object" ? v.options : {}) }, faitLe: String(v.faitLe ?? "") };
+}
 
 export function lireManuel(brut: string | null | undefined): Manuel | null {
   if (!brut) return null;
   try {
     const v = JSON.parse(brut);
     if (!v || typeof v !== "object" || typeof v.id !== "string") return null;
+    // Un manuel d'avant : ses exercices prenaient la compétence de leur notion — ils la gardent.
+    const deLaNotion = new Map<string, unknown>(
+      (Array.isArray(v.notions) ? v.notions : []).filter((n: any) => n && typeof n.id === "string").map((n: any) => [n.id, n.competences]),
+    );
     const pages: PageManuel[] = Array.isArray(v.pages) ? v.pages.map((p: any, i: number) => ({
       id: String(p?.id ?? nouvelId()), numero: Number(p?.numero) || i + 1, fichier: String(p?.fichier ?? ""),
-      extraitLe: String(p?.extraitLe ?? ""),
-      exercices: Array.isArray(p?.exercices) ? p.exercices.filter((e: any) => e && typeof e.consigne === "string").map((e: any) => ({
-        id: String(e.id ?? nouvelId()), numero: String(e.numero ?? ""), titre: String(e.titre ?? ""), consigne: e.consigne, contenu: String(e.contenu ?? ""),
-        type: (TYPES.has(e.type) ? e.type : "autre") as TypeExercice, notion: String(e.notion ?? ""),
-        ...(zoneRelue(e.zone) ? { zone: zoneRelue(e.zone), zoneManuelle: e.zoneManuelle === true } : {}),
-      })) : [],
+      exercices: Array.isArray(p?.exercices) ? p.exercices.filter((e: any) => e && typeof e.consigne === "string").map((e: any): ExerciceManuel => {
+        const propres = competencesRelues(e.competences);
+        const zone = zoneRelue(e.zone);
+        const modele = modeleRelu(e.modele);
+        return {
+          id: String(e.id ?? nouvelId()), numero: String(e.numero ?? ""), titre: String(e.titre ?? ""), consigne: e.consigne,
+          contenu: String(e.contenu ?? ""), type: (TYPES.has(e.type) ? e.type : "autre") as TypeExercice,
+          competences: propres.length ? propres : competencesRelues(deLaNotion.get(e.notion)),
+          ...(zone ? { zone } : {}), ...(modele ? { modele } : {}),
+        };
+      }) : [],
     })) : [];
-    const notions: NotionManuel[] = Array.isArray(v.notions) ? v.notions.filter((n: any) => n && typeof n.id === "string" && typeof n.titre === "string").map((n: any) => ({
-      id: n.id, titre: n.titre, domaine: domaineConnu(String(n.domaine ?? "")),
-      competences: lireCompetencesAtelier(JSON.stringify(Array.isArray(n.competences) ? n.competences : [])),
-    })) : [];
-    // Un exercice rangé dans une notion qui n'est plus là redevient « à classer ».
-    const connues = new Set(notions.map((n) => n.id));
-    for (const p of pages) for (const e of p.exercices) if (!connues.has(e.notion)) e.notion = "";
     const bureau = v.surLeBureau && typeof v.surLeBureau.materielId === "string" && typeof v.surLeBureau.fichier === "string"
       ? { materielId: v.surLeBureau.materielId, fichier: v.surLeBureau.fichier } : undefined;
     return {
       id: v.id, titre: String(v.titre ?? "Manuel"), source: v.source === "pdf" ? "pdf" : "telephone",
-      fichierPdf: String(v.fichierPdf ?? ""), niveau: String(v.niveau ?? ""), creeLe: String(v.creeLe ?? ""), pages, notions,
+      fichierPdf: String(v.fichierPdf ?? ""), niveau: String(v.niveau ?? ""), creeLe: String(v.creeLe ?? ""), pages,
       ...(bureau ? { surLeBureau: bureau } : {}),
     };
   } catch { return null; }
@@ -206,276 +186,15 @@ export function lireManuel(brut: string | null | undefined): Manuel | null {
 
 export const ecrireManuel = (m: Manuel) => JSON.stringify(m);
 
-// ── Relire les exercices d'une page ───────────────────────────────────────
-
-export function consigneExtraction(niveau: string): string {
-  const types = TYPES_EXERCICE.map((t) => t.id).join(", ");
-  return `Tu lis la photo d'une page de manuel scolaire${niveau ? ` de niveau ${niveau}` : ""}.
-Transcris chaque exercice de la page, dans l'ordre où il apparaît.
-
-Ce qu'est UN exercice :
-- Un exercice est un bloc. Il commence par un numéro (souvent dans une pastille de couleur) ou par un titre (« Pour commencer », « Je m'entraîne », « J'accorde l'adjectif avec le nom »…), et va jusqu'au numéro ou au titre suivant.
-- Tout ce qui est dans ce bloc fait UN SEUL exercice, même s'il donne plusieurs consignes : des puces (▸, •, ►), « Puis… », « Ensuite… », des questions a), b), c). Ne le découpe jamais en plusieurs exercices.
-- Les dessins, les prénoms, les étiquettes et les lignes à compléter du bloc font partie de l'exercice.
-
-Règles :
-- Ne transcris que ce qui est VISIBLE. N'invente rien, ne complète rien.
-- Garde les nombres, les mots et la ponctuation exactement tels qu'ils sont écrits.
-- "numero" : le repère écrit devant le bloc (« 3 », « 4 ★ », « Pour commencer ») ; vide s'il n'y en a pas.
-- "titre" : le titre du bloc, s'il en a un (« J'accorde l'adjectif avec le nom ») ; vide sinon.
-- "consigne" : ce que l'élève doit faire — toutes les consignes du bloc, dans l'ordre, une par ligne.
-- "contenu" : ce sur quoi il le fait : les calculs, les phrases, les mots, les questions, ligne par ligne.
-- Une image ou un schéma se décrit entre crochets, brièvement : [image : trois pommes dans un panier].
-- Ignore le titre de la leçon en haut de page, les encadrés de cours (« Je retiens », « Leçon »), les numéros de page et les décors.
-- "type" vaut l'un de : ${types}.
-- "zone" : où est le bloc sur la photo, en pourcentages de sa largeur et de sa hauteur — [gauche, haut, droite, bas] —, de son numéro ou de son titre jusqu'à sa dernière ligne. Toute la photo serait [0, 0, 100, 100].
-
-Réponds uniquement par un tableau JSON, sans texte autour :
-[{"numero":"3","titre":"","consigne":"Calcule.","contenu":"12 + 7 = …\\n25 + 9 = …","type":"calcul","zone":[5,8,48,30]},
- {"numero":"Je m'entraîne","titre":"Le pluriel des noms","consigne":"Entoure les noms au pluriel.\\nPuis recopie-les dans le tableau.","contenu":"des chats ; un vélo ; les arbres","type":"langue","zone":[52,8,96,55]}]
-
-S'il n'y a aucun exercice sur la page, renvoie [].`;
-}
-
-/**
- * Relit la réponse du modèle : le tableau JSON, quoi qu'il y ait autour, et
- * rien de ce qui n'a pas de consigne.
- */
-export function lireExercices(reponse: string): ExerciceManuel[] {
-  const debut = reponse.indexOf("[");
-  const fin = reponse.lastIndexOf("]");
-  if (debut < 0 || fin <= debut) return [];
-  let brut: any;
-  try { brut = JSON.parse(reponse.slice(debut, fin + 1)); } catch { return []; }
-  if (!Array.isArray(brut)) return [];
-  return brut.flatMap((x: any): ExerciceManuel[] => {
-    const consigne = String(x?.consigne ?? "").trim();
-    const contenu = String(x?.contenu ?? "").trim();
-    if (!consigne && !contenu) return [];
-    const zone = zoneLue(x?.zone);
-    return [{
-      id: nouvelId(), numero: String(x?.numero ?? "").trim(), titre: String(x?.titre ?? "").trim(), consigne: consigne || SANS_CONSIGNE, contenu,
-      type: (TYPES.has(String(x?.type)) ? String(x?.type) : "autre") as TypeExercice, notion: "", ...(zone ? { zone } : {}),
-    }];
-  }).reduce(regrouper, []);
-}
-
-// ── Un encadré tracé par l'enseignant ─────────────────────────────────────
-//
-// Quand le modèle découpe mal la page, l'enseignant trace lui-même le cadre
-// d'un exercice : ce qui est dedans est l'exercice, et le modèle n'a plus
-// qu'à le lire — sur l'encadré seul, découpé dans la photo.
-
-export function consigneLectureEncadre(niveau: string): string {
-  const types = TYPES_EXERCICE.map((t) => t.id).join(", ");
-  return `Tu lis la photo d'UN exercice de manuel scolaire${niveau ? ` de niveau ${niveau}` : ""}, découpé dans sa page par l'enseignant.
-Tout ce qui est sur la photo fait un seul exercice : transcris-le.
-
-Règles :
-- Ne transcris que ce qui est VISIBLE. N'invente rien, ne complète rien.
-- Garde les nombres, les mots et la ponctuation exactement tels qu'ils sont écrits.
-- "numero" : le repère écrit devant l'exercice (« 3 », « 4 ★ », « Pour commencer ») ; vide s'il n'y en a pas.
-- "titre" : son titre, s'il en a un ; vide sinon.
-- "consigne" : ce que l'élève doit faire — toutes les consignes, dans l'ordre, une par ligne.
-- "contenu" : ce sur quoi il le fait, ligne par ligne.
-- Une image ou un schéma se décrit entre crochets, brièvement : [image : trois pommes dans un panier].
-- "type" vaut l'un de : ${types}.
-
-Réponds uniquement par un objet JSON, sans texte autour :
-{"numero":"…","titre":"…","consigne":"…","contenu":"…","type":"…"}`;
-}
-
-/** L'exercice d'un encadré, tel que le modèle l'a lu : un seul, même s'il en a rendu plusieurs morceaux. */
-export function lireUnExercice(reponse: string): ExerciceManuel | null {
-  const debut = reponse.search(/[[{]/);
-  const fin = Math.max(reponse.lastIndexOf("}"), reponse.lastIndexOf("]"));
-  if (debut < 0 || fin <= debut) return null;
-  let brut: unknown;
-  try { brut = JSON.parse(reponse.slice(debut, fin + 1)); } catch { return null; }
-  const morceaux = lireExercices(JSON.stringify(Array.isArray(brut) ? brut : [brut]));
-  return morceaux.length ? morceaux.reduce((a, b) => fusionnerExercices(a, b)) : null;
-}
-
-// ── Un exercice, même en plusieurs consignes ──────────────────────────────
-//
-// « Finis de les colorier. ▸ Puis complète les phrases. ▸ Souligne quatre
-// groupes nominaux. » : trois consignes, un seul exercice — le même bloc, le
-// même titre. Le modèle le sait par sa consigne ; s'il découpe quand même,
-// ce qui suit ramasse les morceaux, sans lui : une étape sans numéro sous le
-// même titre, ou qui commence par « Puis… », rejoint l'exercice d'avant.
-
-/** Ce qui tient lieu de consigne à un exercice qui n'en montre pas. */
-const SANS_CONSIGNE = "(sans consigne)";
-
-/** Deux morceaux d'un même exercice, réunis : le premier garde son numéro, son titre et sa place. */
-export function fusionnerExercices(a: ExerciceManuel, b: ExerciceManuel): ExerciceManuel {
-  const joindre = (x: string, y: string) => [x.trim(), y.trim()].filter((s) => s && s !== SANS_CONSIGNE).join("\n") || x.trim();
-  const zone = zoneUnie(a.zone, b.zone);
-  return {
-    ...a, titre: a.titre || b.titre, consigne: joindre(a.consigne, b.consigne), contenu: joindre(a.contenu, b.contenu), notion: a.notion || b.notion,
-    ...(zone ? { zone, zoneManuelle: !!(a.zoneManuelle || b.zoneManuelle) } : {}),
-  };
-}
-
-/** Ce qui continue une consigne plutôt que d'en commencer une autre. */
-const SUITE = /^(puis|ensuite|enfin|et|maintenant|après|pour finir)\b/i;
-
-/** Vrai si `e` est une étape de l'exercice `avant`, rendue à part par le modèle. */
-export function estUneEtape(avant: ExerciceManuel, e: ExerciceManuel): boolean {
-  // Le même numéro deux fois de suite, c'est le même exercice coupé en deux.
-  if (/\d/.test(e.numero) && e.numero === avant.numero) return true;
-  if (e.numero) return false;
-  return (!!e.titre && aplati(e.titre) === aplati(avant.titre)) || SUITE.test(e.consigne.trim());
-}
-
-function regrouper(liste: ExerciceManuel[], e: ExerciceManuel): ExerciceManuel[] {
-  const avant = liste[liste.length - 1];
-  return avant && estUneEtape(avant, e) ? [...liste.slice(0, -1), fusionnerExercices(avant, e)] : [...liste, e];
-}
-
-// ── Le classement des exercices ───────────────────────────────────────────
-//
-// Un manuel range ses exercices par leçon, page après page ; l'enseignant
-// cherche, lui, ce qu'un exercice fait travailler. Le modèle regroupe donc
-// les exercices de tout le manuel par notion — « Accorder le verbe avec son
-// sujet », où qu'ils soient dans le livre —, et l'enseignant met sur chaque
-// notion la compétence du BO qu'il veut. Le modèle ne la devine pas : c'est
-// l'enseignant qui en juge.
-
-export const DOMAINES_MANUEL = [
-  "Lecture", "Écriture", "Oral", "Grammaire", "Conjugaison", "Orthographe", "Vocabulaire",
-  "Nombres", "Calcul", "Problèmes", "Grandeurs et mesures", "Espace et géométrie", "Données", "Autre",
-];
-
-/** Un texte ramené à ses lettres : « Accorder le verbe ! » et « accorder le verbe » se retrouvent. */
-const aplati = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr").replace(/[^a-z0-9]+/g, " ").trim();
-
-/** Le domaine dans la liste, d'où qu'il vienne ; « Autre » s'il n'y est pas. */
-export function domaineConnu(d: string): string {
-  const cle = aplati(d);
-  return DOMAINES_MANUEL.find((x) => aplati(x) === cle) ?? "Autre";
-}
-
-/** Un exercice à classer : où il est, et ce qu'il est. */
-export interface ExerciceAClasser { page: number; exercice: ExerciceManuel }
-
-/** Les exercices relus que le classement n'a pas encore rangés, dans l'ordre du manuel. */
-export function exercicesAClasser(m: Manuel): ExerciceAClasser[] {
-  const connues = new Set(m.notions.map((n) => n.id));
-  return m.pages.flatMap((p) => p.exercices.filter((e) => !connues.has(e.notion)).map((exercice) => ({ page: p.numero, exercice })));
-}
-
-const extrait = (s: string, n: number) => {
-  const plat = s.replace(/\s*\n\s*/g, " ; ").replace(/\s+/g, " ").trim();
-  return plat.length > n ? `${plat.slice(0, n - 1).trimEnd()}…` : plat;
-};
-
-/** Combien d'exercices par demande : assez pour voir les ressemblances, pas assez pour noyer le modèle. */
-export const PAR_LOT = 50;
-
-export function consigneClassement(m: Manuel, lot: ExerciceAClasser[], notions: NotionManuel[]): ChatMessage[] {
-  const deja = notions.map((n, i) => `N${i + 1} · ${n.domaine} · ${n.titre}`).join("\n");
-  const exercices = lot.map((x, i) => {
-    const ou = `p. ${x.page}${x.exercice.numero ? `, ex. ${x.exercice.numero}` : ""}`;
-    const titre = x.exercice.titre ? `« ${extrait(x.exercice.titre, 80)} » ` : "";
-    const contenu = x.exercice.contenu ? ` — ${extrait(x.exercice.contenu, 140)}` : "";
-    return `E${i + 1} (${ou}) ${titre}${extrait(x.exercice.consigne, 160)}${contenu}`;
-  }).join("\n");
-  return [
-    { role: "system", content: "Tu es un enseignant qui prépare sa progression à partir d'un manuel. Tu ranges des exercices par notion travaillée. Tu réponds en français, uniquement par un objet JSON." },
-    { role: "user", content: `Manuel : « ${m.titre} »${m.niveau ? ` (niveau ${m.niveau})` : ""}.
-
-Range chaque exercice ci-dessous dans la notion qu'il fait travailler.
-${deja ? `
-Notions déjà retenues — reprends-les quand un exercice y entre :
-${deja}
-` : ""}
-Exercices :
-${exercices}
-
-Règles :
-- Une notion dit ce que l'exercice fait apprendre, comme un savoir-faire, en 3 à 8 mots : « Accorder le verbe avec son sujet », « Identifier les compléments circonstanciels », « Comprendre un texte lu », « Additionner des nombres décimaux ».
-- Deux exercices qui travaillent la même chose vont dans la même notion, même loin l'un de l'autre dans le manuel.
-- Ni « Divers », ni « Révisions », ni « Exercices » : un exercice qui ne ressemble à aucun autre a sa propre notion.
-- "domaine" vaut l'un de : ${DOMAINES_MANUEL.join(", ")}.
-- Chaque exercice (E1, E2…) apparaît une fois, et une seule.
-
-Réponds uniquement par un objet JSON, sans texte autour :
-{"notions":[{"id":"nouvelle","titre":"…","domaine":"…","exercices":["E1","E4"]}]}
-- "id" : ${deja ? "celui d'une notion déjà retenue (N1, N2…) quand l'exercice y entre ; " : ""}"nouvelle" pour une notion nouvelle.` },
-  ];
-}
-
-/** Un groupe tel que le modèle l'a rendu : une notion déjà retenue (son rang) ou nouvelle, et ses exercices (leur rang dans le lot). */
-export interface GroupeClasse { notion: number | null; titre: string; domaine: string; exercices: number[] }
-
-/** Relit la réponse du modèle : l'objet JSON, quoi qu'il y ait autour, et rien qui ne se rattache à rien. */
-export function classementDeLaReponse(reponse: string, nbExercices: number, nbNotions: number): GroupeClasse[] {
-  const debut = reponse.search(/[[{]/);
-  const fin = Math.max(reponse.lastIndexOf("}"), reponse.lastIndexOf("]"));
-  if (debut < 0 || fin <= debut) return [];
-  let brut: any;
-  try { brut = JSON.parse(reponse.slice(debut, fin + 1)); } catch { return []; }
-  const groupes: any[] = Array.isArray(brut) ? brut : Array.isArray(brut?.notions) ? brut.notions : [];
-  const rang = (v: unknown, lettre: string, max: number): number | null => {
-    const m = new RegExp(`^\\s*${lettre}?\\s*(\\d+)\\s*$`, "i").exec(String(v ?? ""));
-    const n = m ? Number(m[1]) : NaN;
-    return n >= 1 && n <= max ? n : null;
-  };
-  return groupes.flatMap((g): GroupeClasse[] => {
-    if (!g || typeof g !== "object") return [];
-    const exercices = (Array.isArray(g.exercices) ? g.exercices : []).map((e: unknown) => rang(e, "E", nbExercices)).filter((n: number | null): n is number => n !== null);
-    const notion = rang(g.id, "N", nbNotions);
-    const titre = String(g.titre ?? "").trim();
-    if (!exercices.length || (notion === null && !titre)) return [];
-    return [{ notion: notion === null ? null : notion - 1, titre, domaine: domaineConnu(String(g.domaine ?? "")), exercices: exercices.map((n: number) => n - 1) }];
-  });
-}
-
-/**
- * Le manuel, ses exercices rangés. Une notion nouvelle qui porte le titre
- * d'une notion déjà là la rejoint ; un exercice ne se range qu'une fois.
- */
-export function appliquerClassement(m: Manuel, lot: ExerciceAClasser[], groupes: GroupeClasse[], notionsDuLot: NotionManuel[], idNeuf: () => string = nouvelId): Manuel {
-  const notions = [...m.notions];
-  const rangement = new Map<string, string>();
-  for (const g of groupes) {
-    let notion = g.notion !== null ? notions.find((n) => n.id === notionsDuLot[g.notion!]?.id) : undefined;
-    if (!notion) notion = notions.find((n) => aplati(n.titre) === aplati(g.titre));
-    if (!notion) {
-      notion = { id: idNeuf(), titre: g.titre, domaine: g.domaine, competences: [] };
-      notions.push(notion);
-    }
-    for (const i of g.exercices) {
-      const e = lot[i]?.exercice;
-      if (e && !rangement.has(e.id)) rangement.set(e.id, notion.id);
-    }
-  }
-  return {
-    ...m, notions,
-    pages: m.pages.map((p) => ({ ...p, exercices: p.exercices.map((e) => (rangement.has(e.id) ? { ...e, notion: rangement.get(e.id)! } : e)) })),
-  };
-}
-
-/** Les exercices d'une notion, dans l'ordre du manuel, avec leur page. */
-export function exercicesDeLaNotion(m: Manuel, notionId: string): ExerciceAClasser[] {
-  return m.pages.flatMap((p) => p.exercices.filter((e) => e.notion === notionId).map((exercice) => ({ page: p.numero, exercice })));
-}
-
-/** Les notions dans l'ordre des domaines, puis de leur première apparition dans le manuel. */
-export function notionsRangees(m: Manuel): NotionManuel[] {
-  const premiere = new Map<string, number>();
-  m.pages.forEach((p) => p.exercices.forEach((e) => { if (e.notion && !premiere.has(e.notion)) premiere.set(e.notion, p.numero); }));
-  const rangDomaine = (d: string) => { const i = DOMAINES_MANUEL.indexOf(d); return i < 0 ? DOMAINES_MANUEL.length : i; };
-  return [...m.notions].sort((a, b) => rangDomaine(a.domaine) - rangDomaine(b.domaine)
-    || (premiere.get(a.id) ?? Infinity) - (premiere.get(b.id) ?? Infinity) || a.titre.localeCompare(b.titre, "fr"));
-}
-
 /** L'exercice tel qu'on le lit d'un trait : « 3 · Calcule. — 12 + 7 = … ». */
 export const texteExercice = (e: ExerciceManuel) =>
   [e.numero && `${e.numero} ·`, e.titre && `« ${e.titre} »`, e.consigne.replace(/\s*\n\s*/g, " "), e.contenu && `— ${e.contenu.replace(/\s*\n\s*/g, " ; ")}`].filter(Boolean).join(" ");
 
-// ── Réadapter un exercice ─────────────────────────────────────────────────
+/** Le nom court d'un exercice, pour une liste : le titre de son modèle simplifié, sinon le sien, sinon sa consigne. */
+export const nomExercice = (e: ExerciceManuel) =>
+  e.modele?.fiche.titre || e.titre || e.consigne.split("\n")[0] || "Exercice à lire";
+
+// ── Le modèle simplifié ───────────────────────────────────────────────────
 //
 // Ce qu'on demande au modèle, c'est ce qu'un enseignant spécialisé fait à la
 // main : une consigne courte qui dit une seule action, le vocabulaire de
@@ -511,8 +230,14 @@ export interface FicheAdaptee {
   aide: string;
 }
 
-export function consigneReadaptation(e: ExerciceManuel, o: OptionsReadaptation, niveau: string): ChatMessage[] {
-  const demandes = [
+/** Le modèle simplifié d'un exercice : la fiche, et les choix avec lesquels on l'a faite. */
+export interface ModeleSimplifie { fiche: FicheAdaptee; options: OptionsReadaptation; faitLe: string }
+
+const SYSTEME_READAPTATION = "Tu es un enseignant spécialisé. Tu réécris des exercices de manuel pour un élève qui a besoin d'une présentation allégée : une information à la fois, des mots simples, une tâche claire. Tu ne changes ni la notion travaillée ni la difficulté visée. Tu réponds en français, uniquement par un objet JSON.";
+
+/** Ce qu'on demande en réécrivant, selon les choix de l'enseignant. */
+function demandesDeReadaptation(o: OptionsReadaptation): string {
+  return [
     o.simplifier && "- La consigne tient en une phrase courte, à l'impératif, qui dit UNE action, avec des mots que l'élève connaît. Pas de double consigne.",
     o.items > 0 && `- Garde au plus ${o.items} items, les plus simples ou les plus représentatifs ; ne change pas les nombres ni les mots des items gardés.`,
     o.exemple && "- Donne un exemple entièrement fait, pris parmi les items (ou un item du même modèle), pour montrer ce qu'on attend.",
@@ -520,8 +245,17 @@ export function consigneReadaptation(e: ExerciceManuel, o: OptionsReadaptation, 
     o.zonesReponse && "- Chaque item se termine par ce qu'il faut écrire ou compléter : l'élève aura une ligne ou un cadre pour répondre.",
     o.precision.trim() && `- Consigne particulière de l'enseignant : ${o.precision.trim()}`,
   ].filter(Boolean).join("\n");
+}
+
+const CHAMPS_DE_LA_FICHE = `- "titre" : trois ou quatre mots qui disent ce qu'on travaille (« Additionner deux nombres »).
+- "exemple" : vide si tu n'en donnes pas.
+- "items" : un item par entrée, tel qu'il s'écrira sur la fiche.
+- "aide" : ce que l'adulte peut dire ou donner ; vide si rien.`;
+
+/** Réécrire un exercice déjà lu, d'après son texte — celui que l'enseignant a pu corriger. */
+export function consigneReadaptation(e: ExerciceManuel, o: OptionsReadaptation, niveau: string): ChatMessage[] {
   return [
-    { role: "system", content: "Tu es un enseignant spécialisé. Tu réécris des exercices de manuel pour un élève qui a besoin d'une présentation allégée : une information à la fois, des mots simples, une tâche claire. Tu ne changes ni la notion travaillée ni la difficulté visée. Tu réponds en français, uniquement par un objet JSON." },
+    { role: "system", content: SYSTEME_READAPTATION },
     { role: "user", content: `Voici un exercice de manuel${niveau ? ` (niveau ${niveau})` : ""} :
 
 Numéro : ${e.numero || "—"}${e.titre ? `\nTitre : ${e.titre}` : ""}
@@ -530,24 +264,72 @@ Contenu :
 ${e.contenu || "(rien d'autre que la consigne)"}
 
 Réécris-le pour un élève qui traite mal plusieurs informations à la fois.
-${demandes}
+${demandesDeReadaptation(o)}
 
 Réponds uniquement par un objet JSON, sans texte autour :
 {"titre":"…","consigne":"…","exemple":"…","items":["…","…"],"aide":"…"}
 
-- "titre" : trois ou quatre mots qui disent ce qu'on travaille (« Additionner deux nombres »).
-- "exemple" : vide si tu n'en donnes pas.
-- "items" : un item par entrée, tel qu'il s'écrira sur la fiche.
-- "aide" : ce que l'adulte peut dire ou donner ; vide si rien.` },
+${CHAMPS_DE_LA_FICHE}` },
   ];
 }
 
-export function lireFicheAdaptee(reponse: string): FicheAdaptee | null {
+/**
+ * Lire l'encadré et en tirer le modèle simplifié, d'un seul regard sur la
+ * photo : l'exercice tel qu'il est écrit, puis tel qu'on le réécrit.
+ */
+export function consigneModeleDepuisLEncadre(niveau: string, o: OptionsReadaptation): string {
+  const types = TYPES_EXERCICE.map((t) => t.id).join(", ");
+  return `${SYSTEME_READAPTATION}
+
+Voici la photo d'UN exercice de manuel scolaire${niveau ? ` de niveau ${niveau}` : ""}, encadré dans sa page par l'enseignant. Tout ce qui est sur la photo fait un seul exercice.
+
+1. Transcris-le dans "exercice" :
+- Ne transcris que ce qui est VISIBLE ; garde les nombres, les mots et la ponctuation tels qu'ils sont écrits.
+- "numero" : le repère écrit devant l'exercice (« 3 », « 4 ★ », « Pour commencer ») ; vide s'il n'y en a pas.
+- "titre" : son titre, s'il en a un ; vide sinon.
+- "consigne" : toutes les consignes, dans l'ordre, une par ligne.
+- "contenu" : ce sur quoi l'élève travaille, ligne par ligne ; une image se décrit entre crochets : [image : trois pommes].
+- "type" vaut l'un de : ${types}.
+
+2. Réécris-le dans "modele", pour un élève qui traite mal plusieurs informations à la fois :
+${demandesDeReadaptation(o)}
+${CHAMPS_DE_LA_FICHE}
+
+Réponds uniquement par un objet JSON, sans texte autour :
+{"exercice":{"numero":"…","titre":"…","consigne":"…","contenu":"…","type":"…"},"modele":{"titre":"…","consigne":"…","exemple":"…","items":["…"],"aide":"…"}}`;
+}
+
+/** Ce qui tient lieu de consigne à un exercice qui n'en montre pas. */
+const SANS_CONSIGNE = "(sans consigne)";
+
+/** L'exercice tel que le modèle l'a transcrit, ou rien s'il n'a rien lu. */
+function exerciceTranscrit(x: any): Omit<ExerciceManuel, "id" | "competences"> | null {
+  const consigne = String(x?.consigne ?? "").trim();
+  const contenu = String(x?.contenu ?? "").trim();
+  if (!consigne && !contenu) return null;
+  return {
+    numero: String(x?.numero ?? "").trim(), titre: String(x?.titre ?? "").trim(), consigne: consigne || SANS_CONSIGNE, contenu,
+    type: (TYPES.has(String(x?.type)) ? String(x?.type) : "autre") as TypeExercice,
+  };
+}
+
+/** Le premier objet JSON d'une réponse, quoi qu'il y ait autour. */
+function objetDe(reponse: string): any {
   const debut = reponse.indexOf("{");
   const fin = reponse.lastIndexOf("}");
   if (debut < 0 || fin <= debut) return null;
-  let brut: any;
-  try { brut = JSON.parse(reponse.slice(debut, fin + 1)); } catch { return null; }
+  try { return JSON.parse(reponse.slice(debut, fin + 1)); } catch { return null; }
+}
+
+/** Ce que le modèle a lu dans l'encadré, et le modèle simplifié qu'il en a tiré : l'un peut manquer sans l'autre. */
+export function lireModeleDepuisLEncadre(reponse: string): { exercice: Omit<ExerciceManuel, "id" | "competences"> | null; fiche: FicheAdaptee | null } {
+  const brut = objetDe(reponse);
+  if (!brut || typeof brut !== "object") return { exercice: null, fiche: null };
+  return { exercice: exerciceTranscrit(brut.exercice), fiche: lireFicheAdaptee(JSON.stringify(brut.modele ?? null)) };
+}
+
+export function lireFicheAdaptee(reponse: string): FicheAdaptee | null {
+  const brut = objetDe(reponse);
   if (!brut || typeof brut !== "object") return null;
   const items = Array.isArray(brut.items) ? brut.items.map((x: any) => String(x ?? "").trim()).filter(Boolean) : [];
   const consigne = String(brut.consigne ?? "").trim();
@@ -561,8 +343,41 @@ export function lireFicheAdaptee(reponse: string): FicheAdaptee | null {
 /** Ce qu'on garde d'un exercice sans passer par le modèle : ses items, ligne par ligne. */
 export function ficheDepuisLExercice(e: ExerciceManuel, o: OptionsReadaptation): FicheAdaptee {
   const lignes = e.contenu.split(/\n+/).map((l) => l.trim()).filter(Boolean);
-  return { titre: "", consigne: e.consigne, exemple: "", items: o.items > 0 ? lignes.slice(0, o.items) : lignes, aide: "" };
+  return { titre: e.titre, consigne: e.consigne === SANS_CONSIGNE ? "" : e.consigne, exemple: "", items: o.items > 0 ? lignes.slice(0, o.items) : lignes, aide: "" };
 }
+
+/** Vrai si l'exercice a été lu : on peut le réécrire d'après son texte, sans renvoyer la photo. */
+export const estLu = (e: ExerciceManuel) => !!(e.contenu.trim() || (e.consigne.trim() && e.consigne !== SANS_CONSIGNE));
+
+// ── Les exercices d'une compétence ────────────────────────────────────────
+
+/** Un exercice retrouvé : son manuel, sa page, lui. */
+export interface ExerciceTrouve { manuel: Manuel; page: PageManuel; exercice: ExerciceManuel }
+
+/** Les exercices de ces manuels qui portent une compétence que `vise` reconnaît, dans l'ordre des manuels et des pages. */
+export function exercicesQuiTravaillent(manuels: Manuel[], vise: (c: CompetenceSelectionnee) => boolean): ExerciceTrouve[] {
+  return manuels.flatMap((manuel) => manuel.pages.flatMap((page) => page.exercices
+    .filter((exercice) => exercice.competences.some(vise))
+    .map((exercice) => ({ manuel, page, exercice }))));
+}
+
+/** Les exercices d'un manuel, par compétence — et ceux qui n'en ont pas encore. */
+export function exercicesParCompetence(m: Manuel): { groupes: { competence: CompetenceSelectionnee; exercices: { page: PageManuel; exercice: ExerciceManuel }[] }[]; sans: { page: PageManuel; exercice: ExerciceManuel }[] } {
+  const groupes: { competence: CompetenceSelectionnee; exercices: { page: PageManuel; exercice: ExerciceManuel }[] }[] = [];
+  const sans: { page: PageManuel; exercice: ExerciceManuel }[] = [];
+  const cle = (c: CompetenceSelectionnee) => `${c.referentielNom}|${c.sousDomaineTitre}|${c.competenceRefId ?? c.competenceTitre}`;
+  for (const page of m.pages) for (const exercice of page.exercices) {
+    if (!exercice.competences.length) { sans.push({ page, exercice }); continue; }
+    for (const competence of exercice.competences) {
+      let g = groupes.find((x) => cle(x.competence) === cle(competence));
+      if (!g) { g = { competence, exercices: [] }; groupes.push(g); }
+      g.exercices.push({ page, exercice });
+    }
+  }
+  return { groupes, sans };
+}
+
+// ── La fiche imprimée ─────────────────────────────────────────────────────
 
 export const STYLE_FICHE_ADAPTEE = `
   .fa { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1c2233; }
