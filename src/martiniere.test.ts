@@ -71,6 +71,30 @@ describe("le calcul mental, un objectif à la fois", () => {
     expect((htmlMartiniere(calculsMartiniere(longues, 5), longues).match(/class="ma-ardoise"/g) ?? []).length).toBe(1);
   });
 
+  it("découverte : trois calculs à chercher, comment j'ai fait, ce que nous retenons, et le corrigé à part", () => {
+    const rr = r({ forme: "decouverte" });
+    const html = htmlMartiniere(calculsMartiniere(rr, 5), rr);
+    expect((html.match(/class="ma-recherche"/g) ?? []).length).toBe(3);
+    expect(html).toContain("Comment j'ai fait");
+    expect(html).toContain("Ce que nous retenons");
+    expect(html).toContain('<div class="consigne">Cherche, puis explique comment tu as fait.</div>');
+    expect(html).toContain('class="page corrige"');
+  });
+
+  it("évaluation finale : en temps limité, sans limite, j'explique, un problème, le bilan", () => {
+    const rr = r({ forme: "evaluation" });
+    const html = htmlMartiniere(calculsMartiniere(rr, 5), rr);
+    for (const morceau of ["En temps limité", "Sans limite de temps", "J'explique", "Un problème", "☐ Acquis", "☐ En cours d'acquisition", "☐ À reprendre"]) {
+      expect(html).toContain(morceau);
+    }
+    expect(html).toContain("Complète le plus d'égalités possible en une minute.");
+    // La même feuille redonne le même problème.
+    expect(htmlMartiniere(calculsMartiniere(rr, 5), rr)).toBe(html);
+    // Un objectif sans problème associé — des fractions — n'en a pas.
+    const six = r({ niveau: "6e", objectifs: ["6e-fraction-decimale"], forme: "evaluation" });
+    expect(htmlMartiniere(calculsMartiniere(six, 5), six)).not.toContain("Un problème");
+  });
+
   it("par écrit : les égalités à trou à compléter, et le corrigé sur sa page", () => {
     const ecrit = r({ forme: "ecrit" });
     const series = calculsMartiniere(ecrit, 5);

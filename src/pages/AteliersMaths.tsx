@@ -1,5 +1,5 @@
 import React from "react";
-import { Field, Input, Select, Textarea } from "../components/ui";
+import { Field, Input, Select, Textarea, ouvrirOnglet } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
@@ -24,6 +24,7 @@ import { useCompetencesParObjectif } from "../components/CompetencesAtelier";
 import { SequenceDeCalculMental } from "../components/SequenceDeCalculMental";
 import { consignesJustes } from "../consigneAtelier";
 import { consignesPour } from "../consignesCalcul";
+import { problemesAssocies, reglagesDeLAtelier } from "../problemesAssocies";
 import { NIVEAUX, RUBRIQUES, objectifParId, objectifsDuNiveau, type Niveau, type Objectif } from "../faitsNumeriques";
 import { OPERATIONS_COMPTE, REGLAGES_COMPTE, REGLAGES_COMPTE_CYCLE, STYLE_COMPTE, comptes, htmlCompteEstBon } from "../compteEstBon";
 import { REGLAGES_PYRAMIDES, STYLE_PYRAMIDES, htmlPyramides, type FormeCalcul } from "../pyramides";
@@ -370,7 +371,10 @@ export function MartiniereTab() {
   // Les consignes justes pour ces calculs-ci : l'éditeur de consigne les propose, et relève un mot qui ne leur irait pas.
   React.useEffect(() => {
     const ecrits = series.flat().map((c) => c.ecrit);
-    consignesJustes.publier("martiniere", { propositions: consignesPour(ecrits, r.forme === "oral"), ecrits });
+    const propositions = r.forme === "decouverte"
+      ? ["Cherche, puis explique comment tu as fait.", "Trouve le nombre qui manque, puis explique comment tu as fait."]
+      : consignesPour(ecrits, r.forme === "oral");
+    consignesJustes.publier("martiniere", { propositions, ecrits });
   }, [series, r.forme]);
   React.useEffect(() => () => consignesJustes.publier("martiniere", null), []);
 
@@ -387,7 +391,18 @@ export function MartiniereTab() {
     const suite = tablesChoisies.includes(t) ? tablesChoisies.filter((x) => x !== t) : [...tablesChoisies, t];
     maj({ tables: (suite.length ? suite : [t]).sort((a, b) => a - b) });
   };
-  const titre = r.forme === "ecrit" ? "Calcul mental" : "Calcul mental — La Martinière";
+  const titre = { oral: "Calcul mental — La Martinière", ecrit: "Calcul mental", decouverte: "Calcul mental — découverte", evaluation: "Calcul mental — évaluation finale" }[r.forme] ?? "Calcul mental";
+  // Les problèmes qui réinvestissent ce calcul : l'atelier de problèmes s'ouvre réglé pour eux.
+  const associes = !r.revision && retenus.length === 1 ? problemesAssocies(retenus[0], tablesChoisies) : null;
+  const versLesProblemes = () => {
+    if (!associes) return;
+    const cle = `fabriquer:${associes.atelier}`;
+    try {
+      const avant = JSON.parse(localStorage.getItem(cle) ?? "{}");
+      localStorage.setItem(cle, JSON.stringify({ ...avant, ...reglagesDeLAtelier(associes, `Problèmes — ${libelleTravaille(retenus[0], tablesChoisies)}`) }));
+    } catch { /* stockage indisponible : l'atelier s'ouvre sur ses réglages */ }
+    ouvrirOnglet("jeux", associes.atelier);
+  };
   return (
     <Colonnes
       gauche={<>
@@ -447,12 +462,14 @@ export function MartiniereTab() {
           <Select value={r.forme} onChange={(e) => maj({ forme: e.target.value as FormeEntrainement })}>
             <option value="oral">À l'oral — procédé La Martinière</option>
             <option value="ecrit">Par écrit — test de fluence</option>
+            <option value="decouverte">Découverte — chercher, expliquer, retenir</option>
+            <option value="evaluation">Évaluation finale</option>
           </Select>
         </Field>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        {r.forme !== "decouverte" && <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <Field label="Calculs par série"><Input type="number" min={5} max={30} value={r.parSerie} onChange={(e) => maj({ parSerie: borne(e.target.value, 5, 30, 10) })} /></Field>
           <Field label="Séries"><Input type="number" min={1} max={6} value={r.series} onChange={(e) => maj({ series: borne(e.target.value, 1, 6, 2) })} /></Field>
-        </div>
+        </div>}
         {r.forme === "oral" && (<>
           <Field label="Temps de réflexion avant « écrivez »">
             <Select value={r.reflexion} onChange={(e) => maj({ reflexion: Number(e.target.value) })}>
@@ -461,8 +478,18 @@ export function MartiniereTab() {
           </Field>
           <Coche on={r.ardoises} libelle="Les ardoises papier des élèves, à la suite" onChange={(v) => maj({ ardoises: v })} />
         </>)}
-        <div className="meta" style={{ fontSize: 12.5 }}>{total} calculs.</div>
+        <div className="meta" style={{ fontSize: 12.5 }}>
+          {r.forme === "decouverte" ? "Trois calculs à chercher, puis la trace écrite à remplir ensemble."
+            : r.forme === "evaluation" ? `${series.length > 1 ? series[0].length : Math.ceil(total / 2)} calculs en temps limité, ${Math.min(6, series.length > 1 ? series[1].length : Math.floor(total / 2))} sans limite de temps, une procédure à expliquer${associes ? ", un problème" : ""}, et le bilan.`
+            : `${total} calculs.`}
+        </div>
         <Boutons peut={total > 0} onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("martiniere", titre, html, STYLE_MARTINIERE)} onBureau={() => bureau("martiniere", titre, html, STYLE_MARTINIERE)} />
+        {associes && (
+          <button type="button" className="btn sm" style={{ marginTop: 8, marginRight: 6 }} onClick={versLesProblemes}
+            title={`${associes.nom}, réglés pour réinvestir ce calcul`}>
+            🧩 Des problèmes avec ce calcul
+          </button>
+        )}
         <button type="button" className="btn sm" style={{ marginTop: 8 }} disabled={total === 0 || r.revision} onClick={() => setEnSequence(true)}
           title={r.revision ? "Une séquence travaille un seul objectif : décochez « Réviser »." : "Une séquence d'après les guides Éduscol, avec cette feuille dans ses séances"}>
           📚 Créer une séquence avec cette feuille
