@@ -1,6 +1,6 @@
 // Boîte de réception : on relève (télécharge + déchiffre) ce que les amis nous
 // envoient et on le garde « en attente ». L'utilisateur choisit ensuite, dans
-// l'onglet Amis, de récupérer (importer) ou de jeter chaque élément.
+// Réglages › Amis, de récupérer (importer) ou de jeter chaque élément.
 import { api, BoiteItem } from "./api";
 
 const LIBELLE: Record<BoiteItem["type"], string> = {

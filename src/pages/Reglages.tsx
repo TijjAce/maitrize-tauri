@@ -16,6 +16,7 @@ import { USAGES, cleUsage, type Usage } from "../transcription";
 import { Aide } from "../components/Aide";
 import { VocauxRecus } from "../components/VocauxRecus";
 import { TelephoneNuage } from "../components/TelephoneNuage";
+import { AmisTab } from "./Amis";
 import { listen } from "@tauri-apps/api/event";
 
 const ONGLETS = [
@@ -23,6 +24,7 @@ const ONGLETS = [
   ["ia", "Assistant IA"],
   ["donnees", "Données & synchro"],
   ["partage", "Téléphone"],
+  ["amis", "Amis"],
 ] as const;
 type Onglet = typeof ONGLETS[number][0];
 
@@ -382,6 +384,8 @@ export default function Reglages() {
       </Repli>
       </Famille>
       </>}
+
+      {onglet === "amis" && <AmisTab />}
 
       {onglet === "partage" && <>
       {/* Le Dictaphone : ses dictées et ses notes passent par Nuage, où que soit l'ordinateur. */}
