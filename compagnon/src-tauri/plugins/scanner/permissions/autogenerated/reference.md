@@ -1,10 +1,10 @@
 ## Default Permission
 
-Ouvrir le scanner de documents de l'iPhone et rendre les pages scannées ; ouvrir et refermer la page de connexion à Nuage.
+Photographier les pages d'un manuel, ajustées une à une ; ouvrir et refermer la page de connexion à Nuage.
 
 #### This default permission set includes the following:
 
-- `allow-scanner`
+- `allow-photographier`
 - `allow-ouvrir-connexion`
 - `allow-fermer-connexion`
 
@@ -72,12 +72,12 @@ Denies the ouvrir_connexion command without any pre-configured scope.
 <tr>
 <td>
 
-`scanner:allow-scanner`
+`scanner:allow-photographier`
 
 </td>
 <td>
 
-Enables the scanner command without any pre-configured scope.
+Enables the photographier command without any pre-configured scope.
 
 </td>
 </tr>
@@ -85,12 +85,12 @@ Enables the scanner command without any pre-configured scope.
 <tr>
 <td>
 
-`scanner:deny-scanner`
+`scanner:deny-photographier`
 
 </td>
 <td>
 
-Denies the scanner command without any pre-configured scope.
+Denies the photographier command without any pre-configured scope.
 
 </td>
 </tr>

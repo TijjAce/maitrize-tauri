@@ -1,7 +1,7 @@
 [package]
 name = "tauri-plugin-scanner"
 version = "0.1.0"
-description = "Le scanner de documents de l'iPhone (VisionKit), pour photographier un manuel page à page"
+description = "L'appareil des pages d'un manuel, sur l'iPhone : une photo, on ajuste les coins, la page est gardée"
 edition = "2021"
 # Exigé par tauri-plugin : c'est sous ce nom que Tauri retrouve le dossier iOS.
 links = "tauri-plugin-scanner"

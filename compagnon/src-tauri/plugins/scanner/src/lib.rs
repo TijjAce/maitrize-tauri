@@ -1,10 +1,11 @@
 //! Ce que la page du dictaphone ne sait pas faire seule, sur l'iPhone.
 //!
-//! **Le scanner de documents.** VisionKit fait ce que fait l'application
-//! Notes : il trouve les bords de la page, la prend au bon moment, la
-//! redresse, en nettoie le fond — et enchaîne les pages. C'est exactement ce
-//! qu'il faut pour un manuel, et rien de ce que peut faire une page web : la
-//! caméra n'y est pas donnée en HTTP.
+//! **Les pages d'un manuel.** Une photo, et l'on ajuste aussitôt les coins de
+//! la page, que Vision a déjà posés ; la page est redressée, nettoyée, et
+//! écrite tout de suite dans le dossier de l'application. Le scanner de Notes
+//! (VisionKit) ne rendait ses pages qu'à la fin, toutes ensemble : une
+//! application fermée en chemin les perdait toutes, et ses cadrages se
+//! reprenaient après coup, page par page.
 //!
 //! **La page de connexion à Nuage.** Le téléphone entre dans le dossier du
 //! relais avec le compte de l'enseignant ; il s'y connecte par la page de
@@ -27,10 +28,10 @@ use desktop::Scanner;
 #[cfg(mobile)]
 use mobile::Scanner;
 
-/// Ce que le scanner rend : les pages, en JPEG, dans le dossier temporaire.
+/// Ce que l'appareil rend en se refermant : combien de pages ont été gardées.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct Pages {
-    pub fichiers: Vec<String>,
+pub struct Gardees {
+    pub gardees: u32,
 }
 
 /// Comment la page de connexion s'est refermée : par l'enseignant
@@ -52,7 +53,7 @@ impl<R: Runtime, T: Manager<R>> ScannerExt<R> for T {
 
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("scanner")
-        .invoke_handler(tauri::generate_handler![commands::scanner, commands::ouvrir_connexion, commands::fermer_connexion])
+        .invoke_handler(tauri::generate_handler![commands::photographier, commands::ouvrir_connexion, commands::fermer_connexion])
         .setup(|app, api| {
             #[cfg(mobile)]
             let scanner = mobile::init(app, api)?;

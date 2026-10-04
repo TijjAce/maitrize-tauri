@@ -8,9 +8,10 @@ import { listen } from "@tauri-apps/api/event";
 // La photo est déjà enregistrée côté Rust ; on reçoit juste son nom de fichier.
 //
 // C'est la seule façon dont l'ordinateur demande quelque chose au téléphone par
-// le WiFi : le Dictaphone lit ce QR code (« Pages et photos »), scanne les
-// pages ou prend la photo, et envoie ; n'importe quel autre téléphone ouvre la
-// page de l'appareil photo.
+// le WiFi : le Dictaphone lit ce QR code (« Pages et photos »), photographie
+// les pages — chacune ajustée aussitôt, et envoyée dès qu'elle est gardée — ou
+// prend la photo ; n'importe quel autre téléphone ouvre la page de l'appareil
+// photo.
 export function PhotoTelephone({ onPhoto, label = "📱 Téléphone", serie = false, onFin, className = "btn", avantDOuvrir, sansBouton = false, demande = 0 }: {
   onPhoto: (nom: string) => void;
   label?: React.ReactNode;
@@ -87,7 +88,7 @@ export function PhotoTelephone({ onPhoto, label = "📱 Téléphone", serie = fa
             <div style={{ textAlign: "center" }}>
               <p style={{ marginTop: 0 }}>
                 {serie
-                  ? "Dans le Dictaphone, « Pages et photos » › Scanner le QR code, puis scannez les pages : chacune arrive ici. Ou visez ce QR code avec l'appareil photo de n'importe quel téléphone. Même WiFi que l'ordinateur."
+                  ? "Dans le Dictaphone, « Pages et photos » › Scanner le QR code, puis « Photographier les pages » : chacune arrive ici dès qu'elle est gardée. Ou visez ce QR code avec l'appareil photo de n'importe quel téléphone. Même WiFi que l'ordinateur."
                   : "Dans le Dictaphone, « Pages et photos » › Scanner le QR code, puis prenez la photo. Ou visez ce QR code avec l'appareil photo de n'importe quel téléphone. Même WiFi que l'ordinateur."}
               </p>
               <div className="qr-portable" style={{ display: "inline-block" }} dangerouslySetInnerHTML={{ __html: info.qrSvg }} />

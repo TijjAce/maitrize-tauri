@@ -1,10 +1,19 @@
 use serde::de::DeserializeOwned;
 use tauri::{
+    ipc::Channel,
     plugin::{PluginApi, PluginHandle},
     AppHandle, Runtime,
 };
 
-use crate::{Fermeture, Pages};
+use crate::{Fermeture, Gardees};
+
+/// Où l'appareil écrit les pages, et par où il annonce chacune, tel que Swift le lit.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Appareil {
+    dossier: String,
+    sur_page: Channel,
+}
 
 /// L'adresse de la page de connexion, telle que Swift la lit.
 #[derive(serde::Serialize)]
@@ -26,13 +35,13 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
     Ok(Scanner(handle))
 }
 
-/// Le scanner, côté téléphone.
+/// L'appareil et la page de connexion, côté téléphone.
 pub struct Scanner<R: Runtime>(PluginHandle<R>);
 
 impl<R: Runtime> Scanner<R> {
-    pub fn scanner(&self) -> Result<Pages, String> {
+    pub fn photographier(&self, dossier: String, sur_page: Channel) -> Result<Gardees, String> {
         self.0
-            .run_mobile_plugin::<Pages>("scanner", ())
+            .run_mobile_plugin::<Gardees>("photographier", Appareil { dossier, sur_page })
             .map_err(|e| e.to_string())
     }
 
