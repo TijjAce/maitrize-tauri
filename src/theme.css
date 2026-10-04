@@ -1156,6 +1156,32 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
 .man-exo.on .man-exo-texte { color: var(--text); }
 .man-exo-notion { display: block; margin-top: 3px; font-size: 11.5px; font-weight: 600; color: var(--accent); }
 
+/* La page et ses exercices encadrés : en pointillés ce que l'IA a vu, en trait plein ce que l'enseignant a tracé. */
+.man-page-encadree { position: relative; user-select: none; -webkit-user-select: none; touch-action: none;
+  border: 1px solid var(--border); border-radius: 6px; overflow: hidden; line-height: 0; }
+.man-page-encadree img { display: block; width: 100%; height: auto; pointer-events: none; }
+.man-page-encadree.trace { cursor: crosshair; }
+.man-zone { position: absolute; box-sizing: border-box; border: 2px dashed var(--teinte); border-radius: 4px; cursor: pointer;
+  background: color-mix(in srgb, var(--teinte) 7%, transparent); line-height: normal; }
+.man-zone.main { border-style: solid; }
+.man-zone.on { border-width: 3px; background: color-mix(in srgb, var(--teinte) 15%, transparent); cursor: move;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .7); z-index: 2; }
+.man-page-encadree.trace .man-zone { cursor: crosshair; }
+.man-zone.trace { --teinte: var(--accent); border-style: dashed; pointer-events: none; z-index: 3; }
+.man-zone-etiquette { position: absolute; top: -1px; left: -1px; max-width: calc(100% + 2px); padding: 1px 6px;
+  background: var(--teinte); color: #fff; font-size: 11px; font-weight: 700; border-radius: 3px 0 5px 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.man-zone-coin { position: absolute; width: 14px; height: 14px; background: #fff; border: 2.5px solid var(--teinte); border-radius: 50%; }
+.man-zone-coin.hg { left: -8px; top: -8px; cursor: nwse-resize; }
+.man-zone-coin.hd { right: -8px; top: -8px; cursor: nesw-resize; }
+.man-zone-coin.bg { left: -8px; bottom: -8px; cursor: nesw-resize; }
+.man-zone-coin.bd { right: -8px; bottom: -8px; cursor: nwse-resize; }
+.man-legende { font-size: 11.5px; line-height: 1.6; margin: 8px 0 0; }
+.man-legende-ia, .man-legende-main { display: inline-block; width: 16px; height: 10px; margin: 0 3px 0 6px; vertical-align: -1px;
+  border: 2px dashed var(--accent); border-radius: 2px; }
+.man-legende-ia:first-child { margin-left: 0; }
+.man-legende-main { border-style: solid; }
+
 /* Le classement : les exercices de tout le manuel, par notion, et la compétence du BO de chacune. */
 .man-classement-tete { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
 .man-domaine > h4 { margin: 18px 2px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-2); }

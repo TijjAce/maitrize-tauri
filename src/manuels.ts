@@ -45,6 +45,46 @@ export interface ExerciceManuel {
   type: TypeExercice;
   /** La notion où le classement l'a rangé ; vide tant qu'il n'est pas classé. */
   notion: string;
+  /** Où l'exercice est sur la page : ce que l'IA a vu, ou l'encadré que l'enseignant a tracé. */
+  zone?: Zone;
+  /** Vrai quand c'est l'enseignant qui a tracé ou corrigé l'encadré. */
+  zoneManuelle?: boolean;
+}
+
+/** Un rectangle sur l'image d'une page, en fractions de sa largeur et de sa hauteur (0…1). */
+export interface Zone { x: number; y: number; l: number; h: number }
+
+const dans01 = (v: number) => Math.min(1, Math.max(0, v));
+
+/**
+ * L'encadré que le modèle a rendu — [gauche, haut, droite, bas], en
+ * pourcentages de la page —, ou rien s'il n'a pas de sens. Un modèle qui
+ * répond en fractions (0…1) est compris aussi.
+ */
+export function zoneLue(v: unknown): Zone | undefined {
+  if (!Array.isArray(v) || v.length !== 4) return undefined;
+  const n = v.map((x) => Number(x));
+  if (n.some((x) => !Number.isFinite(x))) return undefined;
+  const f = n.every((x) => x <= 1.0001) ? n : n.map((x) => x / 100);
+  const [g, d] = [Math.min(f[0], f[2]), Math.max(f[0], f[2])].map(dans01);
+  const [h, b] = [Math.min(f[1], f[3]), Math.max(f[1], f[3])].map(dans01);
+  if (d - g < 0.02 || b - h < 0.01) return undefined;
+  return { x: g, y: h, l: d - g, h: b - h };
+}
+
+/** Une zone enregistrée, telle qu'on peut s'y fier. */
+function zoneRelue(v: any): Zone | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const [x, y, l, h] = [v.x, v.y, v.l, v.h].map(Number);
+  if (![x, y, l, h].every(Number.isFinite) || l <= 0 || h <= 0) return undefined;
+  return { x: dans01(x), y: dans01(y), l: Math.min(l, 1 - dans01(x)), h: Math.min(h, 1 - dans01(y)) };
+}
+
+/** Le plus petit rectangle qui contient les deux. */
+export function zoneUnie(a?: Zone, b?: Zone): Zone | undefined {
+  if (!a || !b) return a ?? b;
+  const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
+  return { x, y, l: Math.max(a.x + a.l, b.x + b.l) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
 }
 
 /** Ce qu'un groupe d'exercices fait travailler, et la compétence du BO que l'enseignant y met. */
@@ -144,6 +184,7 @@ export function lireManuel(brut: string | null | undefined): Manuel | null {
       exercices: Array.isArray(p?.exercices) ? p.exercices.filter((e: any) => e && typeof e.consigne === "string").map((e: any) => ({
         id: String(e.id ?? nouvelId()), numero: String(e.numero ?? ""), titre: String(e.titre ?? ""), consigne: e.consigne, contenu: String(e.contenu ?? ""),
         type: (TYPES.has(e.type) ? e.type : "autre") as TypeExercice, notion: String(e.notion ?? ""),
+        ...(zoneRelue(e.zone) ? { zone: zoneRelue(e.zone), zoneManuelle: e.zoneManuelle === true } : {}),
       })) : [],
     })) : [];
     const notions: NotionManuel[] = Array.isArray(v.notions) ? v.notions.filter((n: any) => n && typeof n.id === "string" && typeof n.titre === "string").map((n: any) => ({
@@ -187,10 +228,11 @@ Règles :
 - Une image ou un schéma se décrit entre crochets, brièvement : [image : trois pommes dans un panier].
 - Ignore le titre de la leçon en haut de page, les encadrés de cours (« Je retiens », « Leçon »), les numéros de page et les décors.
 - "type" vaut l'un de : ${types}.
+- "zone" : où est le bloc sur la photo, en pourcentages de sa largeur et de sa hauteur — [gauche, haut, droite, bas] —, de son numéro ou de son titre jusqu'à sa dernière ligne. Toute la photo serait [0, 0, 100, 100].
 
 Réponds uniquement par un tableau JSON, sans texte autour :
-[{"numero":"3","titre":"","consigne":"Calcule.","contenu":"12 + 7 = …\\n25 + 9 = …","type":"calcul"},
- {"numero":"Je m'entraîne","titre":"Le pluriel des noms","consigne":"Entoure les noms au pluriel.\\nPuis recopie-les dans le tableau.","contenu":"des chats ; un vélo ; les arbres","type":"langue"}]
+[{"numero":"3","titre":"","consigne":"Calcule.","contenu":"12 + 7 = …\\n25 + 9 = …","type":"calcul","zone":[5,8,48,30]},
+ {"numero":"Je m'entraîne","titre":"Le pluriel des noms","consigne":"Entoure les noms au pluriel.\\nPuis recopie-les dans le tableau.","contenu":"des chats ; un vélo ; les arbres","type":"langue","zone":[52,8,96,55]}]
 
 S'il n'y a aucun exercice sur la page, renvoie [].`;
 }
@@ -210,11 +252,48 @@ export function lireExercices(reponse: string): ExerciceManuel[] {
     const consigne = String(x?.consigne ?? "").trim();
     const contenu = String(x?.contenu ?? "").trim();
     if (!consigne && !contenu) return [];
+    const zone = zoneLue(x?.zone);
     return [{
       id: nouvelId(), numero: String(x?.numero ?? "").trim(), titre: String(x?.titre ?? "").trim(), consigne: consigne || SANS_CONSIGNE, contenu,
-      type: (TYPES.has(String(x?.type)) ? String(x?.type) : "autre") as TypeExercice, notion: "",
+      type: (TYPES.has(String(x?.type)) ? String(x?.type) : "autre") as TypeExercice, notion: "", ...(zone ? { zone } : {}),
     }];
   }).reduce(regrouper, []);
+}
+
+// ── Un encadré tracé par l'enseignant ─────────────────────────────────────
+//
+// Quand le modèle découpe mal la page, l'enseignant trace lui-même le cadre
+// d'un exercice : ce qui est dedans est l'exercice, et le modèle n'a plus
+// qu'à le lire — sur l'encadré seul, découpé dans la photo.
+
+export function consigneLectureEncadre(niveau: string): string {
+  const types = TYPES_EXERCICE.map((t) => t.id).join(", ");
+  return `Tu lis la photo d'UN exercice de manuel scolaire${niveau ? ` de niveau ${niveau}` : ""}, découpé dans sa page par l'enseignant.
+Tout ce qui est sur la photo fait un seul exercice : transcris-le.
+
+Règles :
+- Ne transcris que ce qui est VISIBLE. N'invente rien, ne complète rien.
+- Garde les nombres, les mots et la ponctuation exactement tels qu'ils sont écrits.
+- "numero" : le repère écrit devant l'exercice (« 3 », « 4 ★ », « Pour commencer ») ; vide s'il n'y en a pas.
+- "titre" : son titre, s'il en a un ; vide sinon.
+- "consigne" : ce que l'élève doit faire — toutes les consignes, dans l'ordre, une par ligne.
+- "contenu" : ce sur quoi il le fait, ligne par ligne.
+- Une image ou un schéma se décrit entre crochets, brièvement : [image : trois pommes dans un panier].
+- "type" vaut l'un de : ${types}.
+
+Réponds uniquement par un objet JSON, sans texte autour :
+{"numero":"…","titre":"…","consigne":"…","contenu":"…","type":"…"}`;
+}
+
+/** L'exercice d'un encadré, tel que le modèle l'a lu : un seul, même s'il en a rendu plusieurs morceaux. */
+export function lireUnExercice(reponse: string): ExerciceManuel | null {
+  const debut = reponse.search(/[[{]/);
+  const fin = Math.max(reponse.lastIndexOf("}"), reponse.lastIndexOf("]"));
+  if (debut < 0 || fin <= debut) return null;
+  let brut: unknown;
+  try { brut = JSON.parse(reponse.slice(debut, fin + 1)); } catch { return null; }
+  const morceaux = lireExercices(JSON.stringify(Array.isArray(brut) ? brut : [brut]));
+  return morceaux.length ? morceaux.reduce((a, b) => fusionnerExercices(a, b)) : null;
 }
 
 // ── Un exercice, même en plusieurs consignes ──────────────────────────────
@@ -231,7 +310,11 @@ const SANS_CONSIGNE = "(sans consigne)";
 /** Deux morceaux d'un même exercice, réunis : le premier garde son numéro, son titre et sa place. */
 export function fusionnerExercices(a: ExerciceManuel, b: ExerciceManuel): ExerciceManuel {
   const joindre = (x: string, y: string) => [x.trim(), y.trim()].filter((s) => s && s !== SANS_CONSIGNE).join("\n") || x.trim();
-  return { ...a, titre: a.titre || b.titre, consigne: joindre(a.consigne, b.consigne), contenu: joindre(a.contenu, b.contenu), notion: a.notion || b.notion };
+  const zone = zoneUnie(a.zone, b.zone);
+  return {
+    ...a, titre: a.titre || b.titre, consigne: joindre(a.consigne, b.consigne), contenu: joindre(a.contenu, b.contenu), notion: a.notion || b.notion,
+    ...(zone ? { zone, zoneManuelle: !!(a.zoneManuelle || b.zoneManuelle) } : {}),
+  };
 }
 
 /** Ce qui continue une consigne plutôt que d'en commencer une autre. */
