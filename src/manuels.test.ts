@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
-  OPTIONS_PAR_DEFAUT, ajouterPagePhoto, consigneModeleDepuisLEncadre, consigneReadaptation, estLu, exerciceEncadre, exercicesParCompetence,
-  exercicesQuiTravaillent, ficheDepuisLExercice, htmlFicheAdaptee, indexAvec, indexSans, lireFicheAdaptee, lireIndex, lireManuel,
-  lireModeleDepuisLEncadre, ecrireManuel, nomExercice, nouveauManuel, resumeDe, retirerPage, texteExercice, type ExerciceManuel, type Manuel,
+  OPTIONS_PAR_DEFAUT, ajouterPagePhoto, consigneLectureEncadre, consigneReadaptation, enTexte, estLu, exerciceEncadre, exercicesParCompetence,
+  exercicesQuiTravaillent, ficheDepuisLExercice, htmlFicheAdaptee, indexAvec, indexSans, lireExerciceDeLEncadre, lireFicheAdaptee, lireIndex, lireManuel,
+  ecrireManuel, nomExercice, nouveauManuel, resumeDe, retirerPage, texteExercice, type ExerciceManuel, type Manuel,
 } from "./manuels";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 
@@ -74,28 +74,61 @@ describe("un manuel", () => {
   });
 });
 
-describe("le modèle simplifié d'un encadré", () => {
-  it("demande d'un même regard l'exercice tel qu'il est écrit, et tel qu'on le réécrit", () => {
-    const c = consigneModeleDepuisLEncadre("CM1", { ...OPTIONS_PAR_DEFAUT, items: 4, precision: "avec des couleurs" });
+describe("lire un encadré, puis le simplifier", () => {
+  it("demande de lire l'encadré tel qu'il est écrit, toutes ses consignes comprises", () => {
+    const c = consigneLectureEncadre("CM1");
     expect(c).toContain("UN exercice");
     expect(c).toContain("niveau CM1");
-    expect(c).toContain("au plus 4 items");
-    expect(c).toContain("avec des couleurs");
-    expect(c).toContain('"exercice"');
-    expect(c).toContain('"modele"');
+    expect(c).toContain("TOUTES les consignes");
+    expect(c).toContain("jamais un objet");
   });
 
-  it("lit l'exercice et son modèle ; l'un peut manquer sans l'autre", () => {
-    const rep = `Voici :\n\`\`\`json\n${JSON.stringify({
-      exercice: { numero: "Pour commencer", titre: "J'accorde l'adjectif avec le nom", consigne: "Finis de les colorier.\nPuis complète les phrases.", contenu: "Louis a une chemise …", type: "langue" },
-      modele: { titre: "Accorder l'adjectif", consigne: "Complète avec la bonne couleur.", exemple: "une chemise bleue", items: ["des souliers …"], aide: "" },
-    })}\n\`\`\``;
-    const lu = lireModeleDepuisLEncadre(rep);
-    expect(lu.exercice).toMatchObject({ numero: "Pour commencer", titre: "J'accorde l'adjectif avec le nom", type: "langue" });
-    expect(lu.exercice!.consigne.split("\n")).toHaveLength(2);
-    expect(lu.fiche).toEqual({ titre: "Accorder l'adjectif", consigne: "Complète avec la bonne couleur.", exemple: "une chemise bleue", items: ["des souliers …"], aide: "" });
-    expect(lireModeleDepuisLEncadre(JSON.stringify({ exercice: { consigne: "Lis." } })).fiche).toBeNull();
-    expect(lireModeleDepuisLEncadre("rien")).toEqual({ exercice: null, fiche: null });
+  it("lit l'exercice de l'encadré, enveloppé ou non, et met en lignes ce qui vient en tableau", () => {
+    const lu = lireExerciceDeLEncadre(`Voici :\n\`\`\`json\n${JSON.stringify({
+      numero: "2", titre: "Je fais attention à la logique des textes",
+      consigne: ["Lis attentivement le texte pour bien comprendre.", "Puis barre ce qui n'est pas logique.", "À droite, corrige le texte en écrivant les bons mots."],
+      contenu: "Tiloann a demandé à Maroussia :\n« Avec qui tu te marieras quand tu seras grande ?\n– Avec toi.", type: "lecture",
+    })}\n\`\`\``);
+    expect(lu).toMatchObject({ numero: "2", titre: "Je fais attention à la logique des textes", type: "lecture" });
+    expect(lu!.consigne.split("\n")).toHaveLength(3);
+    expect(lu!.contenu.split("\n")).toHaveLength(3);
+    expect(lireExerciceDeLEncadre(JSON.stringify({ exercice: { numero: "3", consigne: "Entoure les homonymes." } }))).toMatchObject({ numero: "3", consigne: "Entoure les homonymes." });
+    expect(lireExerciceDeLEncadre("rien")).toBeNull();
+  });
+
+  it("garde les mots d'un item rendu en objet, au lieu d'imprimer « [object Object] »", () => {
+    // Ce que le modèle a rendu sur la page 27 : l'exemple et les items en objets.
+    const f = lireFicheAdaptee(JSON.stringify({
+      titre: "Comprendre et corriger les réponses",
+      consigne: ["Lis le dialogue.", "Barre les réponses qui n'ont pas de sens.", "Écris le bon mot à droite."],
+      exemple: { phrase: "– Une tout en bois.", correction: "Une maison en bois." },
+      items: [{ phrase: "– Combien ?", reponse: "Deux et demi." }, "– Pourquoi deux et demi ?", ["– Parce que deux", "c'est pas assez."]],
+      aide: null,
+    }));
+    expect(f).toEqual({
+      titre: "Comprendre et corriger les réponses",
+      consigne: "Lis le dialogue.\nBarre les réponses qui n'ont pas de sens.\nÉcris le bon mot à droite.",
+      exemple: "– Une tout en bois. → Une maison en bois.",
+      items: ["– Combien ? → Deux et demi.", "– Pourquoi deux et demi ?", "– Parce que deux ; c'est pas assez."],
+      aide: "",
+    });
+    expect(JSON.stringify(f)).not.toContain("[object Object]");
+    expect(enTexte({ a: { b: "x" }, c: 2 })).toBe("x → 2");
+  });
+
+  it("un modèle enregistré avec « [object Object] » est à refaire", () => {
+    const abime = { titre: "T", consigne: "C", exemple: "[object Object]", items: ["[object Object]"], aide: "" };
+    const e = { ...exerciceEncadre({ x: 0, y: 0, l: 1, h: 1 }, "e"), consigne: "Lis.", modele: { fiche: abime, options: OPTIONS_PAR_DEFAUT, faitLe: "" } };
+    const m: Manuel = { ...nouveauManuel("Cléo", "telephone", "2026-10-04"), pages: [{ id: "p", numero: 1, fichier: "a.jpg", exercices: [e] }] };
+    expect(lireManuel(ecrireManuel(m))!.pages[0].exercices[0].modele).toBeUndefined();
+  });
+
+  it("garde toutes les tâches : plusieurs consignes deviennent des étapes numérotées", () => {
+    const html = htmlFicheAdaptee({ titre: "Le dialogue", consigne: "1. Lis le dialogue.\n2. Barre ce qui n'a pas de sens.\n3. Écris le bon mot.", exemple: "", items: ["– Avec toi."], aide: "" },
+      OPTIONS_PAR_DEFAUT, { manuel: "Cléo", page: 27, numero: "2" });
+    expect(html).toContain('<ol class="fa-consigne fa-etapes"><li>Lis le dialogue.</li><li>Barre ce qui n&#39;a pas de sens.</li><li>Écris le bon mot.</li></ol>');
+    expect(htmlFicheAdaptee({ titre: "", consigne: "Lis.", exemple: "", items: [], aide: "" }, OPTIONS_PAR_DEFAUT, { manuel: "M", page: 1, numero: "" }))
+      .toContain('<div class="fa-consigne">Lis.</div>');
   });
 
   it("sait si un exercice a été lu, et lui trouve un nom court", () => {
@@ -116,12 +149,16 @@ describe("réécrire un exercice d'après son texte", () => {
     const msgs = consigneReadaptation(e, { ...OPTIONS_PAR_DEFAUT, items: 4, etapes: true, precision: "avec des jetons" }, "CE1");
     expect(msgs[0].role).toBe("system");
     const u = msgs[1].content;
+    expect(u).toContain("Garde TOUTES les tâches");
+    expect(u).toContain("deux actions font deux lignes");
+    expect(u).toContain("jamais un objet");
     expect(u).toContain("au plus 4 items");
     expect(u).toContain("étapes numérotées");
     expect(u).toContain("avec des jetons");
     expect(u).toContain("12 + 7 = …");
     const sans = consigneReadaptation(e, { ...OPTIONS_PAR_DEFAUT, simplifier: false, exemple: false, items: 0, zonesReponse: false }, "").pop()!.content;
     expect(sans).not.toContain("UNE action");
+    expect(sans).toContain("Garde TOUTES les tâches");
     expect(sans).not.toContain("exemple entièrement fait");
     expect(sans).not.toContain("au plus");
   });
