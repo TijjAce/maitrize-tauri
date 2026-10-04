@@ -55,7 +55,7 @@ export function trisDuProjet(corpus: Corpus, titreProjet: string): ModeleTri[] {
     const garnies = maisons.map((c, i) => ({ ...c, etiquettes: parMaison[i].join("\n") })).filter((c) => c.etiquettes);
     if (garnies.length >= 2) {
       modeles.push({ id: "projet-syllabes", nom: nom("combien de syllabes ?"), reglages: {
-        ...BASE_TRI, titre: "Combien de syllabes ?", aideMots: false, taille: "grande",
+        ...BASE_TRI, modele: "syllabes", titre: "Combien de syllabes ?", aideMots: false, taille: "grande",
         consigne: "Découpe les étiquettes. Dis chaque mot en frappant les syllabes, et place-le dans la bonne maison.",
         categories: garnies,
       } });
@@ -66,7 +66,7 @@ export function trisDuProjet(corpus: Corpus, titreProjet: string): ModeleTri[] {
   if (phrases.length >= 2) {
     const alea = hasard(graineDe(phrases.join("\n")));
     modeles.push({ id: "projet-phrase", nom: nom("phrase, ou pas une phrase"), reglages: {
-      ...BASE_TRI, titre: "Qu'est-ce qu'une phrase ?", aideMots: false, aidePonctuation: true, parLigne: 2,
+      ...BASE_TRI, modele: "phrase", titre: "Qu'est-ce qu'une phrase ?", aideMots: false, aidePonctuation: true, parLigne: 2,
       consigne: "Découpe les étiquettes. Lis-les, et range-les : celles qui sont des phrases, et celles qui n'en sont pas.",
       categories: [
         { titre: "C'est une phrase", etiquettes: phrases.join("\n") },

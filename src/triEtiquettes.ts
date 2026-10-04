@@ -48,6 +48,12 @@ export interface ReglagesTri {
    * choisi parmi les modèles. Ces deux-là restent. Absent : jamais choisi.
    */
   origine?: "projet" | "theme" | "modele";
+  /**
+   * Le modèle dont le tri vient, et donc la compétence qu'il travaille :
+   * « etre-avoir », « types », « syllabes »… Un tri dans le thème du projet
+   * garde celui de son modèle. Absent : un tri écrit à la main.
+   */
+  modele?: string;
 }
 
 export const COULEURS_TRI: { nom: string; hex: string }[] = [
@@ -69,14 +75,14 @@ export const BASE_TRI = {
 const BASE = BASE_TRI;
 
 export const MODELES_TRI: { id: string; nom: string; reglages: ReglagesTri }[] = [
-  { id: "etre-avoir", nom: "Être ou avoir", reglages: { ...BASE,
+  { id: "etre-avoir", nom: "Être ou avoir", reglages: { ...BASE, modele: "etre-avoir",
     titre: "ÊTRE ou AVOIR ?",
     consigne: "Découpe les étiquettes. Lis chaque phrase et place-la dans la bonne maison.",
     categories: [
       { titre: "Verbe être", etiquettes: "Je *suis* content.\nTu *es* à l'école.\nIl *est* dans la classe.\nElle *est* fatiguée.\nNous *sommes* prêts.\nVous *êtes* en retard.\nIls *sont* dans le jardin.\nElles *sont* heureuses." },
       { titre: "Verbe avoir", etiquettes: "J'*ai* un cartable.\nTu *as* un crayon.\nIl *a* un vélo.\nElle *a* une poupée.\nNous *avons* des livres.\nVous *avez* une gomme.\nIls *ont* des ballons.\nElles *ont* des fleurs." },
     ] } },
-  { id: "phrase", nom: "Phrase, ou pas une phrase", reglages: { ...BASE,
+  { id: "phrase", nom: "Phrase, ou pas une phrase", reglages: { ...BASE, modele: "phrase",
     titre: "Qu'est-ce qu'une phrase ?", aideMots: false, aidePonctuation: true, parLigne: 2,
     consigne: "Découpe les étiquettes, lis-les, puis forme deux groupes : ce qui est une phrase, ce qui n'en est pas une.",
     aide: "Le sens : Est-ce que la suite de mots veut dire quelque chose ?\nLes mots : Sont-ils rangés dans un ordre qui se comprend ?\nLa majuscule : Est-ce que cela commence par une majuscule ?\nLa ponctuation : Est-ce que cela finit par un point, un point d'interrogation ou un point d'exclamation ?",
@@ -85,7 +91,7 @@ export const MODELES_TRI: { id: string; nom: string; reglages: ReglagesTri }[] =
       { titre: "C'est une phrase", etiquettes: "Le chat dort sur le lit.\nAujourd'hui, nous allons à la piscine.\nAs-tu fini ton dessin ?\nQuel beau gâteau !\nMa sœur range sa chambre.\nIl pleut depuis ce matin.\nJe ne trouve pas mon cartable.\nDemain, papa viendra me chercher." },
       { titre: "Ce n'est pas une phrase", etiquettes: "Rue chat ma partir.\nles enfants jouent dans la cour\nTous les matins, mange avec.\nHier.\ntu viens avec moi !\nLe train maman les amis.\nPeux-tu me prêter ton stylo\nDix pas et campagne tu." },
     ] } },
-  { id: "types", nom: "Les types de phrases", reglages: { ...BASE,
+  { id: "types", nom: "Les types de phrases", reglages: { ...BASE, modele: "types",
     titre: "Les types de phrases", aideMots: false, aidePonctuation: true, parLigne: 3,
     consigne: "Découpe les étiquettes. Lis chaque phrase et range-la dans sa maison.",
     categories: [
@@ -93,7 +99,7 @@ export const MODELES_TRI: { id: string; nom: string; reglages: ReglagesTri }[] =
       { titre: "Elle pose une question", etiquettes: "Où est ton manteau ?\nVeux-tu jouer avec moi ?\nQuelle heure est-il ?\nEst-ce que tu viens ?" },
       { titre: "Elle s'exclame", etiquettes: "Quelle belle journée !\nComme tu as grandi !\nBravo, tu as réussi !\nQue ce gâteau est bon !" },
     ] } },
-  { id: "temps", nom: "Passé, présent, futur", reglages: { ...BASE,
+  { id: "temps", nom: "Passé, présent, futur", reglages: { ...BASE, modele: "temps",
     titre: "Passé, présent ou futur ?", parLigne: 3,
     consigne: "Découpe les étiquettes. Lis chaque phrase : est-ce déjà passé, est-ce maintenant, est-ce plus tard ?",
     categories: [
@@ -101,14 +107,14 @@ export const MODELES_TRI: { id: string; nom: string; reglages: ReglagesTri }[] =
       { titre: "Présent", etiquettes: "En ce moment, je *lis* un livre.\nAujourd'hui, il *fait* beau.\nMaintenant, nous *écrivons* la date.\nTu *manges* une pomme." },
       { titre: "Futur", etiquettes: "Demain, j'*irai* à la piscine.\nPlus tard, elle *sera* vétérinaire.\nLa semaine prochaine, nous *partirons* en vacances.\nCe soir, tu *regarderas* un film." },
     ] } },
-  { id: "nom-verbe", nom: "Nom ou verbe", reglages: { ...BASE,
+  { id: "nom-verbe", nom: "Nom ou verbe", reglages: { ...BASE, modele: "nom-verbe",
     titre: "NOM ou VERBE ?", aideMots: false, taille: "grande",
     consigne: "Découpe les étiquettes. Lis chaque mot et place-le dans la bonne maison.",
     categories: [
       { titre: "Un nom", etiquettes: "un chat\nla maison\nune pomme\nle jardin\ndes livres\nla maîtresse\nun vélo\nl'école" },
       { titre: "Un verbe", etiquettes: "manger\ncourir\ndormir\nchanter\nlire\nécrire\nsauter\ndessiner" },
     ] } },
-  { id: "nombre", nom: "Singulier ou pluriel", reglages: { ...BASE,
+  { id: "nombre", nom: "Singulier ou pluriel", reglages: { ...BASE, modele: "nombre",
     titre: "SINGULIER ou PLURIEL ?", taille: "grande",
     consigne: "Découpe les étiquettes. Un seul, ou plusieurs ? Place chaque étiquette dans la bonne maison.",
     categories: [
@@ -118,6 +124,34 @@ export const MODELES_TRI: { id: string; nom: string; reglages: ReglagesTri }[] =
 ];
 
 export const REGLAGES_TRI: ReglagesTri = MODELES_TRI[0].reglages;
+
+/**
+ * La compétence que chaque modèle travaille, une par modèle : être et avoir,
+ * le temps des verbes, les types de phrases ne s'apprennent pas ensemble.
+ * « syllabes » ne vient que d'un projet.
+ */
+export const COMPETENCES_TRI: { titre: string; modele: string }[] = [
+  { titre: "Conjuguer être et avoir", modele: "etre-avoir" },
+  { titre: "Reconnaître une phrase", modele: "phrase" },
+  { titre: "Les types de phrases", modele: "types" },
+  { titre: "Passé, présent, futur", modele: "temps" },
+  { titre: "Distinguer le nom et le verbe", modele: "nom-verbe" },
+  { titre: "Le singulier et le pluriel", modele: "nombre" },
+  { titre: "Compter les syllabes", modele: "syllabes" },
+];
+
+const titresDesMaisons = (r: Pick<ReglagesTri, "categories">) =>
+  (r.categories ?? []).map((c) => c.titre.trim().toLocaleLowerCase("fr")).join("|");
+
+/**
+ * Le modèle d'un tri : celui qu'il dit, sinon celui dont il a les maisons —
+ * un tri choisi avant qu'on le note se reconnaît à ses titres.
+ */
+export function modeleDuTri(r: Pick<ReglagesTri, "modele" | "categories">): string {
+  if (r.modele) return r.modele;
+  const titres = titresDesMaisons(r);
+  return MODELES_TRI.find((m) => titresDesMaisons(m.reglages) === titres)?.id ?? "";
+}
 
 // ── Les étiquettes ────────────────────────────────────────────────────────
 
