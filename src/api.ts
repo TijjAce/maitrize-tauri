@@ -845,7 +845,7 @@ export const api = {
   /** Révoque le lien et oublie les clés ; `sansRevoquer` quand Nuage ne répond pas. */
   telephoneOublier: (sansRevoquer = false) => invoke<EtatRelais>("telephone_oublier", { sansRevoquer }),
   telephoneRelever: () => invoke<BilanReleve>("telephone_relever"),
-  /** Les pages scannées, tant que « Scanner avec le compagnon » est ouvert. */
+  /** Les pages scannées, tant que « Scanner avec le téléphone » est ouvert. */
   telephoneReleverPages: () => invoke<BilanReleve>("telephone_relever_pages"),
 };
 

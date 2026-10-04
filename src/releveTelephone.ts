@@ -45,7 +45,7 @@ export function resumeDeLaReleve(e: EtatReleve | null): string {
   if (b.agendaPublie) lignes.push("emploi du temps envoyé au téléphone");
   if (b.agendaErreur) lignes.push(`l'emploi du temps n'a pas pu partir vers le téléphone (${b.agendaErreur})`);
   if (b.pagesEnAttente > 0) {
-    lignes.push(`${b.pagesEnAttente} page${b.pagesEnAttente > 1 ? "s" : ""} scannée${b.pagesEnAttente > 1 ? "s" : ""} en attente : ouvrez « Scanner avec le compagnon » dans les manuels`);
+    lignes.push(`${b.pagesEnAttente} page${b.pagesEnAttente > 1 ? "s" : ""} scannée${b.pagesEnAttente > 1 ? "s" : ""} en attente : ouvrez « Scanner avec le téléphone » dans les manuels`);
   }
   if (b.illisibles > 0) {
     lignes.push(`${b.illisibles} dépôt${b.illisibles > 1 ? "s" : ""} illisible${b.illisibles > 1 ? "s" : ""} : le téléphone est resté sur un ancien QR code, scannez le nouveau`);
