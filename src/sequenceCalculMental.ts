@@ -6,12 +6,16 @@
 // découverte en séance longue, des séances courtes au procédé La Martinière,
 // un réinvestissement, un test de fluence. Chaque séance d'entraînement reçoit
 // sa feuille — la première est celle qu'on vient de régler, les suivantes un
-// autre tirage du même objectif —, le réinvestissement une série écrite
-// courte, l'évaluation le test de fluence avec son corrigé.
+// autre tirage du même objectif. La découverte reçoit sa fiche de recherche,
+// le réinvestissement une série écrite courte et des problèmes qui
+// réinvestissent le calcul (voir problemesAssocies), l'évaluation finale sa
+// feuille et son corrigé.
 
 import { api, anneeScolaireActuelle, couleurPourMatiere, newId, nowIso, type Sequence } from "./api";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 import { STYLE_FEUILLE } from "./cartesImprimables";
+import { problemesAssocies, problemesDe } from "./problemesAssocies";
+import { PRESENTATION_COMPLETE, STYLE_FEUILLE as STYLE_PROBLEMES, feuilleProblemes } from "./problemesBarres";
 import { demarcheDe, seancesDuCadre } from "./demarches";
 import { NIVEAUX, RUBRIQUES } from "./faitsNumeriques";
 import { graineAuHasard } from "./hasard";
@@ -34,14 +38,20 @@ export interface FeuilleDeSequence {
   uneSerie?: boolean;
 }
 
-/** Les feuilles de la séquence : rien pour la découverte, qui se cherche ; une par séance ensuite. */
+/** Les feuilles de la séquence, séance par séance. */
 export const FEUILLES_DE_LA_SEQUENCE: FeuilleDeSequence[] = [
+  { seance: 0, forme: "decouverte" },
   { seance: 1, forme: "oral", celleDeLEcran: true },
   { seance: 2, forme: "oral" },
   { seance: 3, forme: "oral" },
   { seance: 4, forme: "ecrit", uneSerie: true },
-  { seance: 5, forme: "ecrit" },
+  { seance: 5, forme: "evaluation" },
 ];
+
+/** La séance où vont les problèmes qui réinvestissent le calcul : celle du réinvestissement. */
+export const SEANCE_DES_PROBLEMES = 4;
+/** Combien de problèmes : de quoi remplir les dix minutes de la séance. */
+const NOMBRE_DE_PROBLEMES = 4;
 
 /** Le titre proposé : « Calcul mental — Ajouter 9 (CP) ». */
 export function titreDeLaSequence(r: ReglagesMartiniere): string {
@@ -60,11 +70,16 @@ export function objectifsDeLaSequence(r: ReglagesMartiniere): string {
 
 /** Les réglages d'une feuille de la séquence : ceux de l'écran, dans sa forme, sans révision. */
 export function reglagesDeLaFeuille(r: ReglagesMartiniere, f: FeuilleDeSequence): ReglagesMartiniere {
-  return { ...r, revision: false, objectifs: objectifsRetenus(r).slice(0, 1).map((o) => o.id), forme: f.forme, series: f.uneSerie ? 1 : r.series };
+  // L'évaluation a deux parties — en temps limité, puis sans limite — : deux séries au moins.
+  const series = f.uneSerie ? 1 : f.forme === "evaluation" ? Math.max(2, r.series) : r.series;
+  return { ...r, revision: false, objectifs: objectifsRetenus(r).slice(0, 1).map((o) => o.id), forme: f.forme, series };
 }
 
 /** Le titre d'une feuille, comme l'atelier la nomme. */
-export const titreDeLaFeuille = (f: FeuilleDeSequence) => (f.forme === "ecrit" ? "Calcul mental — test de fluence" : "Calcul mental — La Martinière");
+export const titreDeLaFeuille = (f: FeuilleDeSequence) => ({
+  oral: "Calcul mental — La Martinière", ecrit: "Calcul mental — test de fluence",
+  decouverte: "Calcul mental — découverte", evaluation: "Calcul mental — évaluation finale",
+}[f.forme]);
 
 /**
  * Crée la séquence : la fiche, les séances de la démarche, puis les feuilles
@@ -99,6 +114,16 @@ export async function creerLaSequenceDeCalcul(
     const reglages = reglagesDeLaFeuille(r, f);
     const html = htmlMartiniere(calculsMartiniere(reglages, f.celleDeLEcran ? graineDeLEcran : graineAuHasard()), reglages);
     await poserDansUneSeance("martiniere", titreDeLaFeuille(f), html, STYLE_FEUILLE + STYLE_MARTINIERE, seance.id, sequence.id);
+    feuilles++;
+  }
+  // Les problèmes du réinvestissement, quand le calcul en a.
+  const o = objectifsRetenus(r)[0];
+  const associes = o ? problemesAssocies(o, r.tables ?? []) : null;
+  const seance = seances[SEANCE_DES_PROBLEMES];
+  if (associes && seance) {
+    const titreProblemes = `Problèmes — ${libelleTravaille(o, r.tables ?? [])}`;
+    const html = feuilleProblemes(problemesDe(associes, NOMBRE_DE_PROBLEMES, graineAuHasard()), titreProblemes, PRESENTATION_COMPLETE);
+    await poserDansUneSeance(associes.atelier, titreProblemes, html, STYLE_PROBLEMES, seance.id, sequence.id);
     feuilles++;
   }
   return { sequence, feuilles };
