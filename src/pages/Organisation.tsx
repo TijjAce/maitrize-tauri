@@ -565,7 +565,7 @@ function Programmation({ annee, setAnnee }: AnneeProps) {
 
 // Partage chiffré de la programmation finale : envoyer (à un ami) + recevoir.
 // Envoi chiffré de la programmation de l'année. La réception est centralisée
-// dans l'onglet Amis (« Boîte aux lettres ») : les programmations reçues
+// dans Réglages › Amis (« Boîte aux lettres ») : les programmations reçues
 // apparaissent automatiquement comme colonnes de comparaison.
 function EnvoyerProgModal({ annee, peutEnvoyer, onClose }: {
   annee: string; peutEnvoyer: boolean; onClose: () => void;
@@ -584,7 +584,7 @@ function EnvoyerProgModal({ annee, peutEnvoyer, onClose }: {
     <Modal titre={`Partager la programmation ${annee}`} onClose={onClose}
       footer={<button className="btn" onClick={onClose}>Fermer</button>}>
       {(amis?.length ?? 0) === 0
-        ? <Empty icone="🤝" titre="Aucun ami" sous="Ajoutez un collègue dans l'onglet Amis." />
+        ? <Empty icone="🤝" titre="Aucun ami" sous="Ajoutez un collègue dans Réglages › Amis." />
         : <>
             {!peutEnvoyer && <p className="meta" style={{ marginTop: 0 }}>Ajoutez au moins une ligne pour pouvoir envoyer.</p>}
             <p className="meta" style={{ marginTop: 0 }}>Chiffrée de bout en bout. Elle arrivera dans la boîte aux lettres du destinataire.</p>
