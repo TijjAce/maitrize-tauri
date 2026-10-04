@@ -1,7 +1,7 @@
 import React from "react";
 import { Field, Input, Select, Textarea } from "../components/ui";
 import { Pastilles } from "../components/Pastilles";
-import { api, MODELE_TACHES } from "../api";
+import { api, journal, MODELE_TACHES } from "../api";
 import { useReglages } from "../components/useMemoire";
 import { toast } from "../components/Toaster";
 import { chargerImages, usePictoImages } from "../components/ChoixPicto";
@@ -266,8 +266,13 @@ export function TriTab() {
       const [themeMasque, ...motsMasques] = masque.texte.split("\n");
       const modele = await api.modeleActif(MODELE_TACHES);
       const reponse = restaurer(await api.mistralChat(promptTransposer(patron, themeMasque, motsMasques, parMaison, demandeCorpus.cycle), modele), masque.table).texte;
-      const ecrites = transpositionDeLaReponse(reponse, patron.length, parMaison);
-      if (ecrites.filter((l) => l.length >= 2).length < 2) { toast("Le modèle n'a rien proposé de lisible ; réessayez.", { icone: "🤔", duree: 6000 }); return; }
+      const ecrites = transpositionDeLaReponse(reponse, patron.map((m) => m.titre), parMaison);
+      if (ecrites.filter((l) => l.length >= 2).length < 2) {
+        // Gardé au journal : c'est ce qui permet de lire, après coup, la forme que le modèle a prise.
+        journal(`Tri transposé illisible (${m.nom}) : ${reponse.slice(0, 600).replace(/\n/g, " ⏎ ")}`);
+        toast("Le modèle n'a rien proposé de lisible ; réessayez.", { icone: "🤔", duree: 6000 });
+        return;
+      }
       maj({ ...m.reglages, origine: "theme", categories: m.reglages.categories.map((c, i) => ({ ...c, etiquettes: ecrites[i].join("\n") })) });
       toast(`« ${m.nom} » sur le thème « ${projet.titre} » : ${ecrites.flat().length} étiquettes écrites par l'IA. Relisez-les.`, { icone: "✨", duree: 6000 });
     } catch (e) {

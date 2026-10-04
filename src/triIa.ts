@@ -127,9 +127,9 @@ export function promptTransposer(
   const systeme = [
     `Tu aides un enseignant à préparer un exercice de tri, en français, pour des élèves de cycle ${cycle}.`,
     "On te donne un tri : ses maisons numérotées, chacune avec des étiquettes d'exemple, puis un thème et ses mots.",
-    "Écris de nouvelles étiquettes sur le patron des exemples — même forme, même longueur, même difficulté, et le même mot entouré d'astérisques quand les exemples en ont —, mais sur le thème donné : emploie ses mots autant que possible.",
+    "Écris de nouvelles étiquettes sur le patron des exemples — même forme, même longueur, même difficulté, et le même mot entouré d'astérisques quand les exemples en ont —, mais sur le thème donné : emploie ses mots autant que possible. Ne recopie pas les exemples.",
     "Chaque étiquette doit aller sans hésitation dans sa maison, et dans une seule. Écris un français simple et correct, sans prénom de personne.",
-    `Écris ${parMaison} étiquettes par maison. Réponds uniquement par des lignes : le numéro de la maison, une tabulation, puis l'étiquette. Sans commentaire.`,
+    `Écris ${parMaison} étiquettes par maison. Réponds uniquement par des lignes : le numéro de la maison, une tabulation, puis l'étiquette. Sans titre ni commentaire.`,
   ].join(" ");
   const demande = [
     "Maisons :",
@@ -137,25 +137,99 @@ export function promptTransposer(
     "",
     `Thème : ${theme}`,
     mots.length ? `Mots du thème : ${mots.join(", ")}` : "",
+    "",
+    "La réponse a cette forme (avec d'autres étiquettes, sur le thème) :",
+    ...maisons.map((m, i) => `${i + 1}\t${m.exemples[0] ?? "…"}`),
   ].filter((l, i, t) => l || t[i - 1] !== "").join("\n");
   return [{ role: "system", content: systeme }, { role: "user", content: demande }];
 }
 
-/** Les étiquettes écrites pour chaque maison, sans doublon, `parMaison` au plus. */
-export function transpositionDeLaReponse(reponse: string, maisons: number, parMaison: number): string[][] {
+/** Une forme de titre comparable : sans accent, sans ponctuation, en minuscules. */
+const titreComparable = (t: string) => t.toLocaleLowerCase("fr").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  .replace(/[^a-z0-9]+/g, " ").trim();
+
+/**
+ * Les étiquettes écrites pour chaque maison, sans doublon, `parMaison` au plus.
+ *
+ * Le modèle ne répond pas toujours « numéro, tabulation, étiquette ». Il
+ * regroupe souvent sous le titre de chaque maison (« **Verbe être** »,
+ * « Maison 1 : »), numérote dans chaque groupe, met le mot en gras, ou
+ * répond en JSON. On lit toutes ces formes ; une étiquette dont on ne sait
+ * pas la maison est écartée, jamais devinée au hasard.
+ */
+export function transpositionDeLaReponse(reponse: string, titres: string[] | number, parMaison: number): string[][] {
+  const noms = typeof titres === "number" ? Array.from({ length: titres }, () => "") : titres;
+  const maisons = noms.length;
   const sortie = Array.from({ length: maisons }, () => [] as string[]);
   const vues = new Set<string>();
-  for (const brute of (reponse ?? "").replace(/```[a-z]*/g, "").split("\n")) {
-    const m = /^\s*(\d+)\s*[\t:.)\-–—|]+\s*(.+?)\s*$/.exec(brute);
-    if (!m) continue;
-    const i = Number(m[1]) - 1;
-    const etiquette = nettoyer(m[2]).replace(/\s+/g, " ");
+  const ranger = (i: number, brute: string) => {
+    const etiquette = nettoyer(brute.replace(/\*\*([^*\n]+)\*\*/g, "*$1*").replace(/__([^_\n]+)__/g, "*$1*")).replace(/\s+/g, " ").trim();
     // Des astérisques qui ne vont pas par deux : l'étiquette s'imprimerait de travers.
-    if (i < 0 || i >= maisons || !sansMarques(etiquette).trim() || (etiquette.match(/\*/g) ?? []).length % 2) continue;
+    if (i < 0 || i >= maisons || !sansMarques(etiquette).trim() || (etiquette.match(/\*/g) ?? []).length % 2) return;
     const cle = forme(sansMarques(etiquette)).toLocaleLowerCase("fr");
-    if (vues.has(cle) || sortie[i].length >= parMaison) continue;
+    if (vues.has(cle) || sortie[i].length >= parMaison) return;
     vues.add(cle);
     sortie[i].push(etiquette);
+  };
+  const texte = (reponse ?? "").replace(/```[a-z]*/g, "");
+
+  // Une réponse en JSON : un tableau de listes, ou un objet par maison.
+  const json = /[[{][\s\S]*[\]}]/.exec(texte)?.[0];
+  if (json) {
+    try {
+      const v: unknown = JSON.parse(json);
+      const listes = Array.isArray(v) ? v : v && typeof v === "object" ? Object.values(v as Record<string, unknown>) : [];
+      const enListes = (listes.length === 1 && Array.isArray(listes[0]) && (listes[0] as unknown[]).every(Array.isArray)) ? listes[0] as unknown[] : listes;
+      enListes.forEach((l, i) => { if (Array.isArray(l)) l.forEach((e) => { if (typeof e === "string") ranger(i, e); }); });
+      if (sortie.some((l) => l.length)) return sortie;
+    } catch { /* pas du JSON : on lit les lignes */ }
   }
+
+  const lignes = texte.split("\n").map((l) => l.trim());
+  /** La maison qu'une ligne annonce, si c'est un titre ; -1 sinon. */
+  const enTete = (ligne: string): number => {
+    const sansDeco = ligne.replace(/^#+\s*/, "").replace(/[*_]/g, "").trim();
+    const parNumero = /^(?:maison|cat[ée]gorie)\s*(\d+)\b\s*[:.)\-–—]?\s*(.*)$/i.exec(sansDeco);
+    if (parNumero) {
+      // « Maison 1 : Verbe être » est un titre ; « Maison 1 : La sorcière… », une étiquette.
+      const reste = titreComparable(parNumero[2]);
+      return !reste || noms.some((n) => n && titreComparable(n) === reste) ? Number(parNumero[1]) - 1 : -1;
+    }
+    const plat = titreComparable(sansDeco.replace(/^\(?\d+\)?\s*[.):\-–—]?\s*/, ""));
+    if (!plat || !/:$|^#|^\*\*|^\d+\s*[.)]/.test(ligne) && plat.split(" ").length > 6) return -1;
+    return noms.findIndex((n) => n && (titreComparable(n) === plat || plat.startsWith(titreComparable(n) + " ") && /:$/.test(ligne)));
+  };
+  // Un titre que le modèle a reformulé (« **Avec être :** ») : il annonce la maison suivante.
+  const preambule = (l: string) => /^(voici|voil[aà]|bien s[uû]r|ci-dessous|here|sure)\b/i.test(l.replace(/^[#*_\s]+/, ""));
+  const ressembleAUnTitre = (l: string) => !!l && !preambule(l)
+    && (/:\s*\**$/.test(l) || /^#/.test(l) || /^\*\*[^*]+\*\*:?$/.test(l) || /^(maison|cat[ée]gorie)\s*\d+\s*[:.)\-–—]?\s*$/i.test(l.replace(/^[#*_\s]+/, "").replace(/[*_]+$/, "")));
+  const parTitres = lignes.filter((l) => enTete(l) >= 0 || ressembleAUnTitre(l)).length >= 2;
+
+  if (parTitres) {
+    // Groupées sous leurs titres : chaque ligne va à la maison du dernier titre.
+    let courante = -1;
+    for (const l of lignes) {
+      if (!l || preambule(l)) continue;
+      const t = enTete(l);
+      if (t >= 0) { courante = t; continue; }
+      if (ressembleAUnTitre(l)) { courante++; continue; }
+      if (courante >= 0) ranger(courante, l.replace(/^(\d+[.)]|[-•*–])\s+/, ""));
+    }
+    return sortie;
+  }
+
+  let numerotees = 0;
+  for (const l of lignes) {
+    // « 1<tab>…», « 1. … », « 1 - … », « (1) … », « Maison 1 : … » — ou « 1 … » devant une majuscule.
+    const m = /^(?:[Mm]aison\s*|[Cc]at[ée]gorie\s*)?\(?(\d+)\)?\s*(?:[\t:.)\-–—|]+\s*|\s+(?=[A-ZÀ-ÖØ-Þ«"*]))(.+)$/.exec(l);
+    if (!m) continue;
+    numerotees++;
+    ranger(Number(m[1]) - 1, m[2]);
+  }
+  if (numerotees) return sortie;
+
+  // Ni numéros ni titres : des paquets séparés par une ligne vide, dans l'ordre des maisons.
+  const paquets = texte.split(/\n\s*\n/).map((p) => p.split("\n").map((l) => l.trim()).filter((l) => l && !/:$/.test(l))).filter((p) => p.length);
+  if (paquets.length === maisons) paquets.forEach((p, i) => p.forEach((l) => ranger(i, l.replace(/^(\d+[.)]|[-•*–])\s+/, ""))));
   return sortie;
 }

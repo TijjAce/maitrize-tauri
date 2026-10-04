@@ -73,7 +73,7 @@ describe("transposer un modèle au thème du projet", () => {
       "Halloween", ["citrouille", "sorcière"], 8, 2);
     expect(systeme.content).toContain("cycle 2");
     expect(systeme.content).toContain("8 étiquettes par maison");
-    expect(demande.content).toBe("Maisons :\n1. Verbe être — exemples : Je *suis* content. / Tu *es* à l'école.\n2. Verbe avoir — exemples : J'*ai* un cartable.\n\nThème : Halloween\nMots du thème : citrouille, sorcière");
+    expect(demande.content).toBe("Maisons :\n1. Verbe être — exemples : Je *suis* content. / Tu *es* à l'école.\n2. Verbe avoir — exemples : J'*ai* un cartable.\n\nThème : Halloween\nMots du thème : citrouille, sorcière\n\nLa réponse a cette forme (avec d'autres étiquettes, sur le thème) :\n1\tJe *suis* content.\n2\tJ'*ai* un cartable.");
   });
 
   it("garde chaque étiquette dans sa maison ; écarte le reste, les doublons et le trop-plein", () => {
@@ -92,5 +92,45 @@ describe("transposer un modèle au thème du projet", () => {
       ["La sorcière *est* sur son balai.", "Nous *sommes* déguisés."],
       ["Le fantôme *a* un drap blanc.", "J'*ai* une lanterne."],
     ]);
+  });
+
+  const titres = ["Verbe être", "Verbe avoir"];
+  const attendu = [["La sorcière *est* sur son balai.", "Nous *sommes* déguisés."], ["Le fantôme *a* un drap blanc.", "J'*ai* une lanterne."]];
+
+  it("lit les étiquettes groupées sous le titre de leur maison, numérotées dans chaque groupe", () => {
+    const reponse = [
+      "Voici les étiquettes sur le thème d'Halloween :", "",
+      "**Verbe être**", "1. La sorcière *est* sur son balai.", "2. Nous *sommes* déguisés.", "",
+      "**Verbe avoir**", "1. Le fantôme *a* un drap blanc.", "2. J'*ai* une lanterne.",
+    ].join("\n");
+    expect(transpositionDeLaReponse(reponse, titres, 8)).toEqual(attendu);
+  });
+
+  it("lit « Maison 1 : », les tirets, et le mot mis en gras", () => {
+    const reponse = [
+      "### Maison 1 : Verbe être", "- La sorcière **est** sur son balai.", "- Nous **sommes** déguisés.",
+      "### Maison 2 : Verbe avoir", "- Le fantôme **a** un drap blanc.", "- J'**ai** une lanterne.",
+    ].join("\n");
+    expect(transpositionDeLaReponse(reponse, titres, 8)).toEqual(attendu);
+  });
+
+  it("lit une réponse en JSON, et des paquets séparés d'une ligne vide", () => {
+    expect(transpositionDeLaReponse(JSON.stringify({ "Verbe être": attendu[0], "Verbe avoir": attendu[1] }), titres, 8)).toEqual(attendu);
+    expect(transpositionDeLaReponse(`${attendu[0].join("\n")}\n\n${attendu[1].join("\n")}`, titres, 8)).toEqual(attendu);
+  });
+
+  it("un titre reformulé annonce la maison suivante, sans répartir les étiquettes selon leur numéro", () => {
+    const reponse = [
+      "Voici les étiquettes :",
+      "**Avec être :**", "1. La sorcière *est* sur son balai.", "2. Nous *sommes* déguisés.",
+      "**Avec avoir :**", "1. Le fantôme *a* un drap blanc.", "2. J'*ai* une lanterne.",
+    ].join("\n");
+    expect(transpositionDeLaReponse(reponse, titres, 8)).toEqual(attendu);
+  });
+
+  it("« Maison 1 : … » sur une ligne est une étiquette, pas un titre", () => {
+    const reponse = ["Maison 1 : La sorcière *est* sur son balai.", "Maison 2 : Le fantôme *a* un drap blanc.",
+      "Maison 1 : Nous *sommes* déguisés.", "Maison 2 : J'*ai* une lanterne."].join("\n");
+    expect(transpositionDeLaReponse(reponse, titres, 8)).toEqual(attendu);
   });
 });
