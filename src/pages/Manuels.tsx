@@ -13,9 +13,9 @@ import { printHTML } from "../print";
 import { nombreDePages, octetsDuFichier, rendrePage } from "../pdfRendu";
 import { imageDeLaPage, pngDeLaZone } from "../exercicesDesManuels";
 import {
-  CLE_INDEX, OPTIONS_PAR_DEFAUT, STYLE_FICHE_ADAPTEE, TYPES_EXERCICE, ajouterPagePhoto, cleManuel, consigneModeleDepuisLEncadre,
+  CLE_INDEX, OPTIONS_PAR_DEFAUT, STYLE_FICHE_ADAPTEE, TYPES_EXERCICE, ajouterPagePhoto, cleManuel, consigneLectureEncadre,
   consigneReadaptation, ecrireManuel, estLu, exerciceEncadre, exercicesParCompetence, ficheDepuisLExercice, htmlFicheAdaptee, indexAvec,
-  indexSans, lireFicheAdaptee, lireIndex, lireManuel, lireModeleDepuisLEncadre, nomExercice, nouveauManuel, retirerPage,
+  indexSans, lireExerciceDeLEncadre, lireFicheAdaptee, lireIndex, lireManuel, nomExercice, nouveauManuel, retirerPage,
   type ExerciceManuel, type FicheAdaptee, type Manuel, type OptionsReadaptation, type PageManuel, type ResumeManuel, type Zone,
 } from "../manuels";
 
@@ -209,31 +209,47 @@ export function ManuelsPanel() {
   };
 
   // ── Les encadrés : l'enseignant trace l'exercice, le modèle en fait le modèle simplifié ──
+  //
+  // En deux temps : le modèle lit l'encadré — l'exercice tel qu'il est écrit —,
+  // puis le simplifie d'après ce texte. Deux demandes simples réussissent mieux
+  // qu'une double à un petit modèle, et la lecture se corrige avant de refaire.
   const [encadrer, setEncadrer] = React.useState(false);
   const [options, setOptions] = React.useState<OptionsReadaptation>(OPTIONS_PAR_DEFAUT);
-  const [enLecture, setEnLecture] = React.useState<Set<string>>(new Set());
-  const marquer = (eid: string, oui: boolean) => setEnLecture((s) => { const n = new Set(s); if (oui) n.add(eid); else n.delete(eid); return n; });
+  const [phases, setPhases] = React.useState<Record<string, "lecture" | "simplification">>({});
+  const phase = (eid: string, p: "lecture" | "simplification" | null) =>
+    setPhases((x) => { const { [eid]: _, ...reste } = x; return p ? { ...reste, [eid]: p } : reste; });
   const fileDesModeles = React.useRef(Promise.resolve());
-  /** Le modèle lit l'encadré seul et en tire le modèle simplifié ; les demandes passent une à une. */
-  const modeleDepuisLEncadre = (pid: string, eid: string, o: OptionsReadaptation) => {
-    marquer(eid, true);
+
+  /** Simplifie un exercice lu, d'après son texte ; rend vrai si le modèle simplifié est enregistré. */
+  const simplifier = async (pid: string, eid: string, o: OptionsReadaptation): Promise<boolean> => {
+    const m = manuelCourant.current;
+    const e = m?.pages.find((x) => x.id === pid)?.exercices.find((x) => x.id === eid);
+    if (!m || !e || !estLu(e)) return false;
+    phase(eid, "simplification");
+    const fiche = lireFicheAdaptee(await api.mistralChat(consigneReadaptation(e, o, m.niveau), await api.modeleActif(MODELE_TACHES)));
+    if (!fiche) { toast("Le modèle n'a pas renvoyé de modèle simplifié lisible : « Refaire » le redemandera.", { icone: "🤔", duree: 6000 }); return false; }
+    const actuel = manuelCourant.current;
+    if (actuel) await enregistrer(majDansLaPage(actuel, pid, eid, (x) => ({ ...x, modele: { fiche, options: o, faitLe: todayIso() } })));
+    return true;
+  };
+
+  /** Lit l'encadré seul, puis simplifie l'exercice lu ; les demandes passent une à une. */
+  const lireEtSimplifier = (pid: string, eid: string, o: OptionsReadaptation) => {
+    phase(eid, "lecture");
     fileDesModeles.current = fileDesModeles.current.then(async () => {
       const m = manuelCourant.current;
       const p = m?.pages.find((x) => x.id === pid);
       const e = p?.exercices.find((x) => x.id === eid);
       if (!m || !p || !e?.zone) return;
       try {
-        const reponse = await api.mistralVision(consigneModeleDepuisLEncadre(m.niveau, o), await pngDeLaZone(await imageDe(m, p), e.zone));
-        const { exercice: lu, fiche } = lireModeleDepuisLEncadre(reponse);
-        if (!lu && !fiche) { toast("Le modèle n'a rien lu de sûr dans cet encadré : réessayez, ou écrivez l'exercice à la main.", { icone: "🤔", duree: 6000 }); return; }
+        const lu = lireExerciceDeLEncadre(await api.mistralVision(consigneLectureEncadre(m.niveau), await pngDeLaZone(await imageDe(m, p), e.zone), await api.modeleActif()));
+        if (!lu) { toast("Le modèle n'a rien lu de sûr dans cet encadré : réessayez, ou écrivez l'exercice dans « Ce que dit le manuel ».", { icone: "🤔", duree: 7000 }); return; }
         const actuel = manuelCourant.current;
         if (!actuel) return;
-        await enregistrer(majDansLaPage(actuel, pid, eid, (x) => ({
-          ...x, ...(lu ?? {}),
-          ...(fiche ? { modele: { fiche, options: o, faitLe: todayIso() } } : {}),
-        })));
+        await enregistrer(majDansLaPage(actuel, pid, eid, (x) => ({ ...x, ...lu })));
+        await simplifier(pid, eid, o);
       } catch (err) { toast("Modèle simplifié impossible : " + texteErreur(err), { icone: "⚠️", duree: 7000 }); }
-      finally { marquer(eid, false); }
+      finally { phase(eid, null); }
     });
   };
   const tracer = (z: Zone) => {
@@ -241,7 +257,7 @@ export function ManuelsPanel() {
     const e = exerciceEncadre(z, newId());
     void enregistrer(majPage(manuel, page.id, (p) => ({ ...p, exercices: [...p.exercices, e] })));
     setExerciceId(e.id);
-    modeleDepuisLEncadre(page.id, e.id, options);
+    lireEtSimplifier(page.id, e.id, options);
   };
   const ajuster = (id: string, z: Zone) => {
     if (!manuel || !page) return;
@@ -262,20 +278,17 @@ export function ManuelsPanel() {
     void enregistrer(majPage(manuel, page.id, (p) => ({ ...p, exercices: p.exercices.filter((e) => e.id !== exercice.id) })));
     setExerciceId("");
   };
-  /** Refaire le modèle : d'après le texte lu — corrigé, peut-être —, ou d'après l'encadré s'il n'a pas été lu. */
+  /** Refaire le modèle : d'après le texte lu — corrigé, peut-être —, ou en relisant l'encadré s'il n'a pas été lu. */
   const refaireLeModele = async () => {
     if (!manuel || !page || !exercice) return;
-    if (!estLu(exercice)) { if (exercice.zone) modeleDepuisLEncadre(page.id, exercice.id, options); return; }
-    const pid = page.id, eid = exercice.id, o = options;
-    marquer(eid, true);
-    try {
-      const fiche = lireFicheAdaptee(await api.mistralChat(consigneReadaptation(exercice, o, manuel.niveau), await api.modeleActif(MODELE_TACHES)));
-      if (!fiche) { toast("Le modèle n'a pas renvoyé de modèle lisible ; réessayez.", { icone: "⚠️" }); return; }
-      const actuel = manuelCourant.current;
-      if (actuel) await enregistrer(majDansLaPage(actuel, pid, eid, (e) => ({ ...e, modele: { fiche, options: o, faitLe: todayIso() } })));
-    } catch (e) { toast(texteErreur(e), { icone: "⚠️" }); }
-    finally { marquer(eid, false); }
+    if (!estLu(exercice)) { if (exercice.zone) lireEtSimplifier(page.id, exercice.id, options); return; }
+    const eid = exercice.id;
+    try { await simplifier(page.id, eid, options); }
+    catch (e) { toast(texteErreur(e), { icone: "⚠️" }); }
+    finally { phase(eid, null); }
   };
+  /** Relire l'encadré : quand le modèle a mal lu, ou que le cadre a changé. */
+  const relireLEncadre = () => { if (page && exercice?.zone) lireEtSimplifier(page.id, exercice.id, options); };
   const telQuel = () => {
     if (!exercice) return;
     majExercice({ modele: { fiche: ficheDepuisLExercice(exercice, options), options, faitLe: todayIso() } });
@@ -431,7 +444,7 @@ export function ManuelsPanel() {
                   style={{ boxShadow: e.zone ? `inset 3px 0 0 ${teinteExercice(i)}` : undefined }}>
                   <span className="man-exo-num">{TYPES_EXERCICE.find((t) => t.id === e.type)?.icone} {e.numero || i + 1}</span>
                   <span className="man-exo-texte">
-                    {enLecture.has(e.id) ? "✨ Le modèle lit l'encadré…" : nomExercice(e)}
+                    {phases[e.id] === "lecture" ? "✨ Le modèle lit l'encadré…" : phases[e.id] === "simplification" ? "✨ Le modèle simplifie l'exercice…" : nomExercice(e)}
                     {e.competences.length > 0 && <span className="man-exo-competence">🎯 {e.competences.map(labelCourt).join(" · ")}</span>}
                   </span>
                 </button>
@@ -460,8 +473,8 @@ export function ManuelsPanel() {
                 </div>
 
                 <div className="man-modele">
-                  {enLecture.has(exercice.id) ? (
-                    <p className="meta" style={{ margin: 0 }}>✨ Le modèle lit l'encadré et fait le modèle simplifié…</p>
+                  {phases[exercice.id] ? (
+                    <p className="meta" style={{ margin: 0 }}>{phases[exercice.id] === "lecture" ? "✨ Le modèle lit l'encadré…" : "✨ Le modèle simplifie l'exercice…"}</p>
                   ) : exercice.modele ? (<>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                       <b style={{ fontSize: 13 }}>Le modèle simplifié</b>
@@ -501,7 +514,7 @@ export function ManuelsPanel() {
                   </div>
                   <Input value={options.precision} onChange={(e) => majOption({ precision: e.target.value })} placeholder="Précision pour le modèle : avec des jetons, nombres jusqu'à 20…" style={{ marginTop: 6 }} />
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                    <button type="button" className="btn primary sm" disabled={enLecture.has(exercice.id)} onClick={() => { void refaireLeModele(); }}>✨ Refaire le modèle simplifié</button>
+                    <button type="button" className="btn primary sm" disabled={!!phases[exercice.id]} onClick={() => { void refaireLeModele(); }}>✨ Refaire le modèle simplifié</button>
                     <button type="button" className="btn sm" disabled={!estLu(exercice)} onClick={telQuel} title="Sans le modèle : la consigne et les items tels quels, mis en page">📝 Tel quel</button>
                   </div>
                 </details>
@@ -519,6 +532,10 @@ export function ManuelsPanel() {
                   <Field label="Titre"><Input value={exercice.titre} onChange={(e) => majExercice({ titre: e.target.value })} /></Field>
                   <Field label="Consigne (une par ligne)"><Textarea value={exercice.consigne} rows={3} onChange={(e) => majExercice({ consigne: e.target.value })} /></Field>
                   <Field label="Contenu (un item par ligne)"><Textarea value={exercice.contenu} rows={4} onChange={(e) => majExercice({ contenu: e.target.value })} /></Field>
+                  {exercice.zone && (
+                    <button type="button" className="btn sm" disabled={!!phases[exercice.id]} onClick={relireLEncadre}
+                      title="Le modèle relit le cadre — après l'avoir agrandi, par exemple —, puis refait le modèle simplifié">🔎 Relire l'encadré</button>
+                  )}
                 </details>
 
                 {choixCompetence && (
