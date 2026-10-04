@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  REGLAGES_CARTES_PICTOS, TAILLES_PICTOS, htmlCartesPictos, pagesDesCartesPictos, verbesAImprimer, verbesAvecPicto,
+  REGLAGES_CARTES_PICTOS, cartesParPage, coteDesCartes, coteSurUneFeuille, htmlCartesPictos, libelleTaille, pagesDesCartesPictos,
+  verbesAImprimer, verbesAvecPicto,
 } from "./cartesPictosConsignes";
 
 const lexique = { écrire: 22, lire: 11, colorier: "bajard:Colorie01.png", comparer: "sclera:comparer.png" };
@@ -13,15 +14,28 @@ describe("les pictos des consignes en cartes", () => {
     expect(verbesAImprimer(lexique, { ...REGLAGES_CARTES_PICTOS, choisis: ["colorier", "lire", "dire"] })).toEqual(["lire", "colorier"]);
   });
 
-  it("se rangent en planches de la taille choisie, un jeu après l'autre", () => {
-    const r = { ...REGLAGES_CARTES_PICTOS, taille: "tresPetit" as const, exemplaires: 3 };
-    expect(TAILLES_PICTOS.tresPetit.colonnes * TAILLES_PICTOS.tresPetit.lignes).toBe(48);
-    expect(pagesDesCartesPictos(54, r)).toBe(4);
-    expect(pagesDesCartesPictos(54, { ...r, taille: "petit", exemplaires: 1 })).toBe(3);
-    const html = htmlCartesPictos(["lire", "écrire"], lexique, images, r);
+  it("sont des carrés, et tiennent par défaut sur une seule feuille", () => {
+    expect(cartesParPage(30)).toBe(48);
+    expect(cartesParPage(25)).toBe(63);
+    expect(cartesParPage(20)).toBe(108);
+    expect(libelleTaille("petit")).toBe("Petits — 3 cm, 48 par page");
+    expect(libelleTaille("tresPetit")).toBe("Très petits — 2,5 cm, 63 par page");
+    // Les 54 verbes : six colonnes, neuf rangées de carrés de 2,7 cm.
+    expect(coteSurUneFeuille(54)).toBe(27);
+    expect(coteSurUneFeuille(4)).toBe(90);
+    expect(coteSurUneFeuille(5000)).toBe(15);
+    expect(pagesDesCartesPictos(54, REGLAGES_CARTES_PICTOS)).toBe(1);
+    expect(pagesDesCartesPictos(54, { ...REGLAGES_CARTES_PICTOS, taille: "petit" })).toBe(2);
+    expect(coteDesCartes(54, REGLAGES_CARTES_PICTOS)).toBe(27);
+    expect(coteDesCartes(54, { taille: "moyen" })).toBe(45);
+  });
+
+  it("se rangent en planches de carrés de la taille choisie, un jeu après l'autre", () => {
+    const html = htmlCartesPictos(["lire", "écrire"], lexique, images, { ...REGLAGES_CARTES_PICTOS, taille: "petit", exemplaires: 3 });
     expect(html.match(/class="cp-carte"/g)).toHaveLength(6);
-    expect(html).toContain("cp-tresPetit");
-    expect(html).toContain("grid-template-columns: repeat(6, 1fr)");
+    expect(html).toContain("grid-template-columns: repeat(6, 30mm); grid-auto-rows: 30mm");
+    const seule = htmlCartesPictos(["lire", "écrire"], lexique, images, REGLAGES_CARTES_PICTOS);
+    expect(seule).toContain("grid-template-columns: repeat(2, 90mm); grid-auto-rows: 90mm");
   });
 
   it("écrivent le verbe à la demande, gardent la place d'une image qui manque, et citent les banques imprimées", () => {

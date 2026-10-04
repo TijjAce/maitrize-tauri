@@ -17,8 +17,8 @@ import {
 } from "../caa";
 import { BANQUES_APPOINT, banqueDe, garderImageAppoint, infoBanque, type RefPicto } from "../pictosAppoint";
 import {
-  REGLAGES_CARTES_PICTOS, STYLE_CARTES_PICTOS, TAILLES_PICTOS, htmlCartesPictos, pagesDesCartesPictos, verbesAImprimer, verbesAvecPicto,
-  type TaillePictos,
+  REGLAGES_CARTES_PICTOS, STYLE_CARTES_PICTOS, TAILLES_PICTOS, coteDesCartes, htmlCartesPictos, libelleTaille, pagesDesCartesPictos,
+  verbesAImprimer, verbesAvecPicto, type TaillePictos,
 } from "../cartesPictosConsignes";
 import { Boutons, Coche } from "./AteliersLangage";
 
@@ -188,7 +188,7 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
 
 /** Les pictos des verbes en cartes à découper : en petit pour les manipuler, en grand pour le tableau. */
 function ImprimerLesPictos({ lexique }: { lexique: Lexique }) {
-  const [r, maj] = useReglages("caaCartesPictos", REGLAGES_CARTES_PICTOS);
+  const [r, maj] = useReglages("caaCartesCarrees", REGLAGES_CARTES_PICTOS);
   const verbes = verbesAImprimer(lexique, r);
   const tous = verbesAvecPicto(lexique);
   const images = usePictoImages([...new Set(verbes.map((v) => lexique[v]))]);
@@ -205,7 +205,7 @@ function ImprimerLesPictos({ lexique }: { lexique: Lexique }) {
       </p>
       <Field label="Taille">
         <Select value={r.taille} onChange={(e) => maj({ taille: e.target.value as TaillePictos })}>
-          {(Object.keys(TAILLES_PICTOS) as TaillePictos[]).map((t) => <option key={t} value={t}>{TAILLES_PICTOS[t].libelle}</option>)}
+          {(Object.keys(TAILLES_PICTOS) as TaillePictos[]).map((t) => <option key={t} value={t}>{libelleTaille(t)}</option>)}
         </Select>
       </Field>
       <Coche on={r.verbe} libelle="Écrire le verbe sous le picto" onChange={(v) => maj({ verbe: v })} />
@@ -222,7 +222,9 @@ function ImprimerLesPictos({ lexique }: { lexique: Lexique }) {
         </div>
       </Field>
       <div className="meta" style={{ fontSize: 12.5, marginTop: 6 }}>
-        {verbes.length ? `${combien} carte${combien > 1 ? "s" : ""}, ${pages} page${pages > 1 ? "s" : ""} à découper.` : "Aucun verbe n'a encore de picto."}
+        {verbes.length
+          ? `${combien} carte${combien > 1 ? "s" : ""} de ${(coteDesCartes(combien, r) / 10).toLocaleString("fr-FR")} cm, ${pages > 1 ? `${pages} pages` : "une page"} à découper.`
+          : "Aucun verbe n'a encore de picto."}
       </div>
       <Boutons atelier="caaPictos" titre="Pictos des consignes" html={html} style={STYLE_CARTES_PICTOS} peut={verbes.length > 0} />
     </div>
