@@ -1175,3 +1175,9 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
 .cm-feutre { width: 28px; height: 28px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; opacity: .45; }
 .cm-feutre.on { opacity: 1; border-color: var(--text); }
 .cm-formes { display: inline-flex; gap: 8px; align-items: baseline; }
+
+/* Les jetons dépensés, au pied de la carte de l'assistant. */
+.jetons-ia { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--border); font-size: 13px; color: var(--text-2); }
+.jetons-ia > span:first-child { flex: 1; min-width: 0; }
+.jetons-ia b { color: var(--text); }

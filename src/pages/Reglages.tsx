@@ -1,6 +1,6 @@
 import React from "react";
 import { Page } from "../App";
-import { api, isMac, texteErreur, type InfoCopie, type SauvegardeAuto, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type PortableInfo, type VerifSauvegarde, type EtatWhisper } from "../api";
+import { api, isMac, texteErreur, type InfoCopie, type SauvegardeAuto, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type JetonsIa, type PortableInfo, type VerifSauvegarde, type EtatWhisper } from "../api";
 import { Field, Input, Select, Modal, Confirm, useAsync, useOngletDemande } from "../components/ui";
 import { PartagerMesDossiers } from "../components/PartagerMesDossiers";
 import { confirmer } from "../components/confirmer";
@@ -99,11 +99,13 @@ export default function Reglages() {
     if (["apparence", "accent", "styleInterface", "liseret", "tailleTexte"].includes(cle)) applyTheme(next);
   };
 
+  // Un essai coûte quelques jetons : le compte se relit après chacun.
+  const [majJetons, setMajJetons] = React.useState(0);
   const tester = async () => {
     setTestEnCours(true); setTestMsg(""); setEtats(null);
     try { await api.mistralTest(s.mistralModel); setTestMsg("✅ Connexion réussie"); }
     catch (e: any) { setTestMsg("❌ " + String(e)); }
-    finally { setTestEnCours(false); }
+    finally { setTestEnCours(false); setMajJetons((n) => n + 1); }
   };
 
   // Mistral n'ouvre pas les mêmes modèles à tous les abonnements, et refuse
@@ -113,7 +115,7 @@ export default function Reglages() {
     setTestEnCours(true); setTestMsg(""); setEtats(null);
     try { setEtats(await api.mistralModelesDisponibles(MODELES_MISTRAL.map((m) => m.id))); }
     catch (e: any) { setTestMsg("❌ " + String(e)); }
-    finally { setTestEnCours(false); }
+    finally { setTestEnCours(false); setMajJetons((n) => n + 1); }
   };
 
   // ── Version portable (serveur local WiFi + QR) ──────────────────
@@ -325,6 +327,7 @@ export default function Reglages() {
             })}
           </ul>
         )}
+        <JetonsDepenses maj={majJetons} />
       </div>
 
       <Transcription />
@@ -1059,6 +1062,37 @@ function Repli({ titre, resume, children }: { titre: string; resume?: React.Reac
         {resume && !ouvert && <span style={{ marginLeft: 10, fontWeight: 400, fontSize: 12, color: "var(--text-2)" }}>{resume}</span>}
       </button>
       {ouvert && children}
+    </div>
+  );
+}
+
+// ── Les jetons dépensés ───────────────────────────────────────────────────
+//
+// Mistral facture au jeton et chaque réponse dit ce qu'elle a coûté : le
+// compte se fait côté Rust, à chaque réponse, sur cet ordinateur.
+
+const enJetons = (n: number) => `${n.toLocaleString("fr-FR")} ${n >= 2 ? "jetons" : "jeton"}`;
+
+function JetonsDepenses({ maj }: { maj: number }) {
+  const [jetons, setJetons] = React.useState<JetonsIa | null>(null);
+  React.useEffect(() => { api.mistralJetons().then(setJetons).catch(() => setJetons(null)); }, [maj]);
+  if (!jetons) return null;
+  const depuis = jetons.depuis
+    ? new Date(`${jetons.depuis}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+    : "";
+  return (
+    <div className="jetons-ia">
+      <span>
+        📊 {jetons.total === 0 ? "Aucun jeton dépensé pour l'instant" : <>
+          <b>{enJetons(jetons.ceMois)}</b> ce mois-ci
+          {jetons.total > jetons.ceMois && <> · {enJetons(jetons.total)} depuis le {depuis}</>}
+        </>}
+      </span>
+      <Aide titre="Les jetons">
+        <p>Mistral facture au <b>jeton</b>, un morceau de mot. Chaque réponse dit combien elle en a coûté : Maitrize les additionne.</p>
+        <p>Tout compte : l'assistant, les ateliers, la recherche web, les transcriptions en ligne. La transcription sur cet ordinateur ne coûte rien.</p>
+        <p>Le compte est celui de cet ordinateur{depuis && `, depuis le ${depuis}`}. La facture exacte est sur console.mistral.ai.</p>
+      </Aide>
     </div>
   );
 }

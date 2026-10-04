@@ -38,6 +38,9 @@ struct MistralRequest {
 #[derive(Deserialize)]
 struct MistralResponse {
     choices: Vec<MistralChoice>,
+    /// Ce que la réponse a coûté. Lu en JSON libre : voir `jetons_de`.
+    #[serde(default)]
+    usage: Option<serde_json::Value>,
 }
 
 #[derive(Deserialize)]
@@ -106,6 +109,90 @@ fn cle_mistral(db: &State<Db>) -> Result<String, String> {
     }
 }
 
+// ── Les jetons dépensés ────────────────────────────────────────────────────
+//
+// Mistral facture au jeton, et chaque réponse dit ce qu'elle a coûté. On les
+// additionne, par mois, pour que les réglages montrent ce que l'IA a dépensé
+// sans passer par console.mistral.ai. Le compte est celui de cet ordinateur :
+// il ne voyage ni par la synchronisation ni par une sauvegarde.
+
+/// Réglage où s'additionnent les jetons de cet ordinateur.
+pub const CLE_JETONS: &str = "mistralJetons";
+
+/// Le compte, tel que le réglage le garde.
+#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
+pub(crate) struct Jetons {
+    #[serde(default)]
+    total: u64,
+    /// Par mois : « 2026-10 » → jetons.
+    #[serde(default)]
+    mois: std::collections::BTreeMap<String, u64>,
+    /// Le jour où le compte a commencé : avant, rien n'était compté.
+    #[serde(default)]
+    depuis: String,
+}
+
+/// Les jetons qu'une réponse a coûtés, d'après son champ `usage`.
+///
+/// Lu sans exigence : un compte mal formé ne doit jamais faire échouer la
+/// réponse qu'il accompagne — au pire, elle n'est pas comptée.
+pub(crate) fn jetons_de(usage: Option<&serde_json::Value>) -> u64 {
+    let Some(u) = usage else { return 0 };
+    let champ = |nom: &str| u.get(nom).and_then(|x| x.as_u64().or_else(|| x.as_f64().map(|f| f.max(0.0) as u64))).unwrap_or(0);
+    match champ("total_tokens") {
+        0 => champ("prompt_tokens").saturating_add(champ("completion_tokens")),
+        t => t,
+    }
+}
+
+/// Le compte, `n` jetons de plus, dépensés le `jour` (« AAAA-MM-JJ »).
+pub(crate) fn ajouter_jetons(mut compte: Jetons, n: u64, jour: &str) -> Jetons {
+    if n == 0 {
+        return compte;
+    }
+    compte.total = compte.total.saturating_add(n);
+    let mois = compte.mois.entry(jour.get(..7).unwrap_or(jour).to_string()).or_default();
+    *mois = mois.saturating_add(n);
+    if compte.depuis.is_empty() {
+        compte.depuis = jour.to_string();
+    }
+    compte
+}
+
+fn lire_jetons(c: &rusqlite::Connection) -> Jetons {
+    serde_json::from_str(&crate::sync::get_setting(c, CLE_JETONS)).unwrap_or_default()
+}
+
+/// Ajoute au compte de cet ordinateur ce qu'une réponse a coûté.
+fn noter_jetons(db: &Db, n: u64) {
+    if n == 0 {
+        return;
+    }
+    let c = db.lock();
+    let jour = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let compte = ajouter_jetons(lire_jetons(&c), n, &jour);
+    if let Ok(json) = serde_json::to_string(&compte) {
+        let _ = crate::sync::set_setting(&c, CLE_JETONS, &json);
+    }
+}
+
+/// Ce que l'IA a dépensé sur cet ordinateur.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BilanJetons {
+    pub ce_mois: u64,
+    pub total: u64,
+    /// « AAAA-MM-JJ », vide tant que rien n'a été compté.
+    pub depuis: String,
+}
+
+#[tauri::command]
+pub fn mistral_jetons(db: State<Db>) -> BilanJetons {
+    let compte = lire_jetons(&db.lock());
+    let mois = chrono::Local::now().format("%Y-%m").to_string();
+    BilanJetons { ce_mois: compte.mois.get(&mois).copied().unwrap_or(0), total: compte.total, depuis: compte.depuis }
+}
+
 /// Envoie une conversation à Mistral et renvoie la réponse de l'assistant.
 #[tauri::command]
 pub async fn mistral_chat(
@@ -152,6 +239,7 @@ pub async fn mistral_chat(
     };
 
     let parsed: MistralResponse = resp.json().await.map_err(|e| format!("Réponse : {e}"))?;
+    noter_jetons(&db, jetons_de(parsed.usage.as_ref()));
     parsed
         .choices
         .into_iter()
@@ -216,6 +304,7 @@ pub async fn mistral_vision(
     };
 
     let parsed: MistralResponse = resp.json().await.map_err(|e| format!("Réponse : {e}"))?;
+    noter_jetons(&db, jetons_de(parsed.usage.as_ref()));
     parsed
         .choices
         .into_iter()
@@ -331,6 +420,7 @@ pub async fn mistral_recherche_web(
         return Err(message_erreur(code, &txt, quota));
     }
     let v: serde_json::Value = rep.json().await.map_err(|e| format!("Réponse : {e}"))?;
+    noter_jetons(&db, jetons_de(v.get("usage")));
     Ok(lire_reponse_web(&v))
 }
 
@@ -430,7 +520,13 @@ pub async fn mistral_modeles_disponibles(
             .send()
             .await;
         let etat = match rep {
-            Ok(r) if r.status().is_success() => EtatModele { id, disponible: true, detail: "Disponible".into() },
+            Ok(r) if r.status().is_success() => {
+                // Un jeton de réponse, mais la question se paie aussi.
+                if let Ok(v) = r.json::<serde_json::Value>().await {
+                    noter_jetons(&db, jetons_de(v.get("usage")));
+                }
+                EtatModele { id, disponible: true, detail: "Disponible".into() }
+            }
             Ok(r) => {
                 let code = r.status().as_u16();
                 let quota = quota_minute(r.headers());
@@ -452,8 +548,14 @@ struct DoneEvt { id: String }
 #[derive(Serialize, Clone)]
 struct ErrEvt { id: String, message: String }
 
+/// Un morceau du flux. Le dernier porte `usage`, le compte de toute la réponse.
 #[derive(Deserialize)]
-struct StreamChunk { choices: Vec<StreamChoice> }
+struct StreamChunk {
+    #[serde(default)]
+    choices: Vec<StreamChoice>,
+    #[serde(default)]
+    usage: Option<serde_json::Value>,
+}
 #[derive(Deserialize)]
 struct StreamChoice { delta: Delta }
 #[derive(Deserialize)]
@@ -505,6 +607,7 @@ pub async fn mistral_chat_stream(
                         return Ok(());
                     }
                     if let Ok(chunk) = serde_json::from_str::<StreamChunk>(data) {
+                        noter_jetons(&db, jetons_de(chunk.usage.as_ref()));
                         if let Some(delta) = chunk.choices.into_iter().next().and_then(|c| c.delta.content) {
                             if !delta.is_empty() {
                                 let _ = app.emit("mistral://chunk", ChunkEvt { id: request_id.clone(), delta });
@@ -571,6 +674,7 @@ pub async fn transcrire_audio(
     }
     let json: serde_json::Value = serde_json::from_str(&corps)
         .map_err(|e| format!("Réponse illisible : {e}"))?;
+    noter_jetons(&db, jetons_de(json.get("usage")));
     json.get("text")
         .and_then(|v| v.as_str())
         .map(|s| s.trim().to_string())
@@ -695,6 +799,50 @@ mod tests_erreurs {
             let r = lire_reponse_web(&v);
             assert!(r.texte.is_empty() && !r.a_cherche);
         }
+    }
+
+    // ── Les jetons dépensés ──────────────────────────────────────────────
+
+    use super::{ajouter_jetons, jetons_de, Jetons};
+
+    #[test]
+    fn lit_le_cout_de_chaque_sorte_de_reponse() {
+        // Conversation, agent, transcription : chacun écrit son compte à sa façon.
+        let chat = serde_json::json!({ "prompt_tokens": 120, "completion_tokens": 30, "total_tokens": 150 });
+        let audio = serde_json::json!({ "prompt_audio_seconds": 203, "prompt_tokens": 4, "completion_tokens": 635, "total_tokens": 3264 });
+        let sans_total = serde_json::json!({ "prompt_tokens": 10, "completion_tokens": 5 });
+        assert_eq!(jetons_de(Some(&chat)), 150);
+        assert_eq!(jetons_de(Some(&audio)), 3264);
+        assert_eq!(jetons_de(Some(&sans_total)), 15);
+    }
+
+    #[test]
+    fn un_compte_absent_ou_abime_ne_compte_rien() {
+        for brut in ["null", "{}", r#"{"total_tokens":"beaucoup"}"#, r#"{"total_tokens":-3}"#] {
+            let v: serde_json::Value = serde_json::from_str(brut).unwrap();
+            assert_eq!(jetons_de(Some(&v)), 0, "{brut}");
+        }
+        assert_eq!(jetons_de(None), 0);
+    }
+
+    #[test]
+    fn additionne_par_mois_et_retient_le_premier_jour() {
+        let compte = ajouter_jetons(Jetons::default(), 150, "2026-09-28");
+        let compte = ajouter_jetons(compte, 0, "2026-09-29");
+        let compte = ajouter_jetons(compte, 50, "2026-10-04");
+        let compte = ajouter_jetons(compte, 25, "2026-10-05");
+        assert_eq!(compte.total, 225);
+        assert_eq!(compte.mois.get("2026-09"), Some(&150));
+        assert_eq!(compte.mois.get("2026-10"), Some(&75));
+        assert_eq!(compte.depuis, "2026-09-28", "le compte commence au premier jeton, pas avant");
+    }
+
+    #[test]
+    fn un_reglage_illisible_repart_de_zero() {
+        let lu: Jetons = serde_json::from_str("pas du json").unwrap_or_default();
+        assert_eq!(lu, Jetons::default());
+        let partiel: Jetons = serde_json::from_str(r#"{"total":12}"#).unwrap();
+        assert_eq!((partiel.total, partiel.mois.len(), partiel.depuis.as_str()), (12, 0, ""));
     }
 
     #[test]

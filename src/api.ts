@@ -715,6 +715,8 @@ export const api = {
   /** Essaie chaque modèle et dit lesquels l'abonnement accepte réellement. */
   mistralModelesDisponibles: (modeles: string[]) =>
     invoke<EtatModele[]>("mistral_modeles_disponibles", { modeles }),
+  /** Ce que l'IA a dépensé d'ici, compté sur chaque réponse de Mistral. */
+  mistralJetons: () => invoke<JetonsIa>("mistral_jetons"),
 
   /** Modèle retenu pour une tâche : réglage de l'utilisateur, ou repli. */
   modeleActif: async (repli = MODELE_DEFAUT) =>
@@ -1034,6 +1036,9 @@ export interface ReponseWeb { texte: string; sources: SourceWeb[]; aCherche: boo
 
 /** Verdict d'un test réel sur un modèle, pour l'écran des réglages. */
 export interface EtatModele { id: string; disponible: boolean; detail: string }
+
+/** Les jetons que l'IA a dépensés sur cet ordinateur ; `depuis` (« AAAA-MM-JJ ») est vide tant que rien n'est compté. */
+export interface JetonsIa { ceMois: number; total: number; depuis: string }
 
 /** Ramène un identifiant de modèle enregistré vers un modèle encore servi. */
 export function normaliserModele(id: string | null | undefined): string {
