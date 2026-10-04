@@ -182,19 +182,20 @@ export function htmlPictosVerbes(verbes: string[], lexique: Lexique, images: Rec
  * chaque section dit ses propres gestes : les pictos viennent après le titre,
  * en tête du texte qu'ils illustrent. Sans titre, une seule section, en tête.
  */
-function sectionsDe(interieur: string, regle: boolean): { offset: number; texte: string }[] {
+function sectionsDe(interieur: string, regle: boolean): { offset: number; fin: number; texte: string }[] {
   const texteDe = (h: string) => h.replace(/<[^>]*>/g, " ");
-  if (!regle) return [{ offset: 0, texte: texteDe(interieur) }];
+  const tout = [{ offset: 0, fin: interieur.length, texte: texteDe(interieur) }];
+  if (!regle) return tout;
   const titre = /<b\b[^>]*>[\s\S]*?<\/b>/g;
   const titres: { debut: number; fin: number }[] = [];
   for (let m = titre.exec(interieur); m; m = titre.exec(interieur)) titres.push({ debut: m.index, fin: m.index + m[0].length });
-  if (!titres.length) return [{ offset: 0, texte: texteDe(interieur) }];
-  const sections: { offset: number; texte: string }[] = [];
+  if (!titres.length) return tout;
+  const sections: { offset: number; fin: number; texte: string }[] = [];
   const avant = interieur.slice(0, titres[0].debut);
-  if (texteDe(avant).trim()) sections.push({ offset: 0, texte: texteDe(avant) });
+  if (texteDe(avant).trim()) sections.push({ offset: 0, fin: titres[0].debut, texte: texteDe(avant) });
   titres.forEach((t, i) => {
     const fin = i + 1 < titres.length ? titres[i + 1].debut : interieur.length;
-    sections.push({ offset: t.fin, texte: texteDe(interieur.slice(t.fin, fin)) });
+    sections.push({ offset: t.fin, fin, texte: texteDe(interieur.slice(t.fin, fin)) });
   });
   return sections;
 }
@@ -233,8 +234,11 @@ export function decorerConsignesHtml(html: string, lexique: Lexique, images: Rec
       premiere = false;
       const pictos = htmlPictosVerbes(verbes, lexique, images);
       if (!pictos) continue;
-      sortie += html.slice(position, debut + s.offset) + pictos;
-      position = debut + s.offset;
+      // Les pictos à gauche, le texte en bloc à droite : une consigne longue
+      // passe à la ligne sous ses propres mots, pas sous les images.
+      sortie += html.slice(position, debut + s.offset)
+        + `<span class="consigne-ligne">${pictos}<span class="consigne-texte">${html.slice(debut + s.offset, debut + s.fin)}</span></span>`;
+      position = debut + s.fin;
       decore = true;
     }
   }
@@ -250,6 +254,9 @@ export function decorerConsignesHtml(html: string, lexique: Lexique, images: Rec
 
 /** Le style des pictos devant une consigne, à l'écran comme sur le papier. */
 export const STYLE_CONSIGNES_PICTOS = `
+  .consigne-ligne { display: flex; align-items: center; gap: 4mm; }
+  .consigne-ligne > .consigne-pictos { margin: 0; flex: none; }
+  .consigne-texte { flex: 1; min-width: 0; }
   .consigne-pictos { display: inline-flex; gap: 3mm; align-items: flex-end; vertical-align: middle; margin: 0 4mm 1mm 0; }
   .consigne-picto { display: inline-flex; flex-direction: column; align-items: center; gap: 0.5mm; }
   .consigne-picto img { width: 12mm; height: 12mm; object-fit: contain; margin: 0; max-height: none; border-radius: 1.5mm; }

@@ -57,11 +57,12 @@ describe("les consignes décorées", () => {
     const feuille = `<h1>Fiche</h1><p class="consigne">Écris le nombre et colorie la case.</p><div class="regle"><b>Loto</b>On lit les cartes.</div>`
       + `<div class="sous cu-consigne">Compte les cubes et écris le nombre.</div><table class="grille"></table>`;
     const html = decorerConsignesHtml(feuille, lexique, images);
-    expect(html).toContain(`<p class="consigne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:ecrire" alt="écrire"><small>écrire</small></span>`
-      + `<span class="consigne-picto"><img src="data:colorier" alt="colorier"><small>colorier</small></span></span>Écris le nombre`);
+    // Les pictos à gauche, la consigne en bloc à droite : elle passe à la ligne sous ses mots, pas sous les images.
+    expect(html).toContain(`<p class="consigne"><span class="consigne-ligne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:ecrire" alt="écrire"><small>écrire</small></span>`
+      + `<span class="consigne-picto"><img src="data:colorier" alt="colorier"><small>colorier</small></span></span><span class="consigne-texte">Écris le nombre`);
     // La règle du jeu aussi, après son titre ; « compter » n'a pas de picto.
-    expect(html).toContain(`<div class="regle"><b>Loto</b><span class="consigne-pictos"><span class="consigne-picto"><img src="data:lire" alt="lire"><small>lire</small></span></span>On lit les cartes.</div>`);
-    expect(html).toContain(`<div class="sous cu-consigne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:ecrire"`);
+    expect(html).toContain(`<div class="regle"><b>Loto</b><span class="consigne-ligne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:lire" alt="lire"><small>lire</small></span></span><span class="consigne-texte">On lit les cartes.</span></span></div>`);
+    expect(html).toContain(`<div class="sous cu-consigne"><span class="consigne-ligne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:ecrire"`);
     expect(html.endsWith(`<div class="consigne-attribution">Pictogrammes : ARASAAC (arasaac.org) — Gouvernement d'Aragon, licence CC BY-NC-SA. Usage non commercial.</div>`)).toBe(true);
     // Décorer deux fois ne double rien.
     expect(decorerConsignesHtml(html, lexique, images)).toBe(html);
@@ -83,8 +84,8 @@ describe("les consignes décorées", () => {
     const feuille = `<h1>Fiche</h1><p class="consigne">Écris le nombre.</p><p class="consigne">Colorie la case.</p>`;
     const html = decorerConsignesHtml(feuille, lexique, images, ["lire", "écrire", "entourer"]);
     // « lire » d'abord (ajouté), « écrire » une seule fois, « entourer » sans image passe son tour.
-    expect(html).toContain(`<p class="consigne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:lire" alt="lire"><small>lire</small></span><span class="consigne-picto"><img src="data:ecrire" alt="écrire"><small>écrire</small></span></span>Écris le nombre.</p>`);
-    expect(html).toContain(`<p class="consigne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:colorier"`);
+    expect(html).toContain(`<p class="consigne"><span class="consigne-ligne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:lire" alt="lire"><small>lire</small></span><span class="consigne-picto"><img src="data:ecrire" alt="écrire"><small>écrire</small></span></span><span class="consigne-texte">Écris le nombre.</span></span></p>`);
+    expect(html).toContain(`<p class="consigne"><span class="consigne-ligne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:colorier"`);
     expect(html.match(/alt="lire"/g)).toHaveLength(1);
     // Sans consigne marquée : une ligne de pictos en tête, et la mention.
     const nue = decorerConsignesHtml(`<h1>Loto</h1><div class="grille"></div>`, lexique, images, ["lire"]);
@@ -102,13 +103,13 @@ describe("les consignes décorées", () => {
     const images = { 1: "data:decouper", 2: "data:retrouver", 3: "data:entourer", 4: "data:lire" };
     const regle = `<div class="regle"><b>Fabrication</b>Découper le cadre et ses bandes.<b style="margin-top:4px">Jeu</b>On lit la syllabe, puis on l'entoure.<span style="color:#687087">— Livret.</span></div>`;
     const html = decorerConsignesHtml(regle, lexique, images);
-    expect(html).toContain(`<b>Fabrication</b><span class="consigne-pictos"><span class="consigne-picto"><img src="data:decouper" alt="découper"><small>découper</small></span></span>Découper`);
-    expect(html).toContain(`<b style="margin-top:4px">Jeu</b><span class="consigne-pictos"><span class="consigne-picto"><img src="data:lire"`);
-    expect(html).toContain(`<small>entourer</small></span></span>On lit la syllabe`);
+    expect(html).toContain(`<b>Fabrication</b><span class="consigne-ligne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:decouper" alt="découper"><small>découper</small></span></span><span class="consigne-texte">Découper le cadre et ses bandes.</span></span><b`);
+    expect(html).toContain(`<b style="margin-top:4px">Jeu</b><span class="consigne-ligne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:lire"`);
+    expect(html).toContain(`<small>entourer</small></span></span><span class="consigne-texte">On lit la syllabe`);
     expect(html).toContain("ARASAAC");
     // Sans titre, la règle se décore en tête, comme une consigne ; les verbes ajoutés y vont aussi.
     const simple = decorerConsignesHtml(`<div class="regle">Retrouve les mots cachés dans la grille.</div>`, lexique, images, ["lire"]);
-    expect(simple.startsWith(`<div class="regle"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:lire"`)).toBe(true);
+    expect(simple.startsWith(`<div class="regle"><span class="consigne-ligne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:lire"`)).toBe(true);
     expect(simple).toContain(`<small>retrouver</small>`);
     // Les nouveaux verbes des jeux sont reconnus.
     expect(verbesDe("Remets les mots dans l'ordre, décompose le nombre, ajoute puis retranche.", { remettre: 1, "décomposer": 1, ajouter: 1, retrancher: 1 }))
