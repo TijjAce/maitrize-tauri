@@ -246,6 +246,7 @@ export function promptRelireEtiquettes(etiquettes: string[], cycle: 2 | 3): Chat
   const systeme = [
     `Tu relis les étiquettes d'un exercice pour des élèves de cycle ${cycle}, comme un correcteur attentif.`,
     "Corrige toute faute : orthographe, accords, conjugaison, élisions (« d'Halloween », « l'école »), majuscule au début, ponctuation.",
+    "L'élision se fait aussi autour des astérisques : « Je *ai* » s'écrit « J'*ai* », « Il ne *a* pas » s'écrit « Il n'*a* pas ».",
     "Le sujet et le verbe doivent aller ensemble : « Je *suis* », jamais « La *suis* » — remplace un sujet impossible par le bon pronom.",
     "Ne change ni le sens, ni les mots justes, ni la longueur. Garde les astérisques autour du même mot, corrigé s'il le faut.",
     "Réponds par les étiquettes, une par ligne, dans le même ordre, chacune précédée de son numéro et d'un point (« 1. »). Sans commentaire.",
