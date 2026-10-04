@@ -41,7 +41,9 @@ export function resumeDeLaReleve(e: EtatReleve | null): string {
   if (e.erreur) return `⚠️ ${e.erreur}`;
   const b = e.bilan;
   if (!b) return "";
-  const lignes: string[] = [annonceDeLaReleve(b) || "rien de nouveau"];
+  const lignes: string[] = [annonceDeLaReleve(b) || (b.agendaPublie || b.agendaErreur ? "" : "rien de nouveau")].filter(Boolean);
+  if (b.agendaPublie) lignes.push("emploi du temps envoyé au téléphone");
+  if (b.agendaErreur) lignes.push(`l'emploi du temps n'a pas pu partir vers le téléphone (${b.agendaErreur})`);
   if (b.pagesEnAttente > 0) {
     lignes.push(`${b.pagesEnAttente} page${b.pagesEnAttente > 1 ? "s" : ""} scannée${b.pagesEnAttente > 1 ? "s" : ""} en attente : ouvrez « Scanner avec le compagnon » dans les manuels`);
   }

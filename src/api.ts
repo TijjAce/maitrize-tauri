@@ -856,6 +856,8 @@ export interface EtatRelais {
   compteDuDossier: string;
   /** Un relais d'avant octobre 2026, encore ouvert par un lien de partage : à réserver au compte. */
   parLien: boolean;
+  /** Quand l'emploi du temps est parti pour la dernière fois vers le téléphone (ISO) ; vide tant qu'il n'est pas parti. */
+  agendaPublieLe: string;
   /** Cet ordinateur connaît le compte : il peut refaire le lien, et refermer celui d'un relais d'avant. */
   proprietaire: boolean;
   creeLe: string;
@@ -867,7 +869,7 @@ export interface CodeTelephone { qrSvg: string }
 /** Ce qu'une relève a rapporté. */
 export interface BilanReleve {
   relie: boolean; occupe: boolean; vocaux: number; notes: number; pages: number;
-  pagesEnAttente: number; illisibles: number; agendaPublie: boolean; erreur: string;
+  pagesEnAttente: number; illisibles: number; agendaPublie: boolean; agendaErreur: string; erreur: string;
 }
 
 export interface PortableInfo {

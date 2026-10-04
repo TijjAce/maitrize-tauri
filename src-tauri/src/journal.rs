@@ -119,8 +119,8 @@ pub const REGLAGES_DU_POSTE: &[&str] = &[
     // Les bureaux communs : des dossiers de cet ordinateur-ci, dont le chemin
     // n'est pas le même sur un Mac et sur un PC.
     crate::commun::CLE_BUREAUX,
-    // Ce que cet ordinateur a publié pour le téléphone : chacun tient son compte.
-    crate::telephone::CLE_AGENDA,
+    // Ce que cet ordinateur a publié pour le téléphone, et quand : chacun tient son compte.
+    crate::telephone::CLE_AGENDA, crate::telephone::CLE_AGENDA_PUBLIE,
     // Les jetons que l'IA a dépensés d'ici : là aussi, chacun tient son compte.
     crate::ai::CLE_JETONS,
 ];

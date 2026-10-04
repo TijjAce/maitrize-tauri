@@ -25,6 +25,17 @@ function jourLisible(iso: string): string {
 }
 
 const heure = (quand: number) => new Date(quand).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+/** « aujourd'hui à 17:30 », « hier à 9:05 », « le 2 octobre à 17:30 ». */
+function quandLisible(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const jour = (x: Date) => x.toDateString();
+  const hier = new Date(); hier.setDate(hier.getDate() - 1);
+  const h = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  if (jour(d) === jour(new Date())) return `aujourd'hui à ${h}`;
+  if (jour(d) === jour(hier)) return `hier à ${h}`;
+  return `le ${d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} à ${h}`;
+}
 
 /** Le compte que Maitrize garde déjà, et le compte à saisir : deux choix qui ne sont pas des bureaux communs. */
 const GARDE = "garde", AUTRE = "autre";
@@ -56,7 +67,12 @@ export function TelephoneNuage() {
   }, []);
 
   React.useEffect(() => {
-    const suivre = (e: Event) => setReleve((e as CustomEvent<EtatReleve>).detail);
+    const suivre = (e: Event) => {
+      const r = (e as CustomEvent<EtatReleve>).detail;
+      setReleve(r);
+      // L'emploi du temps vient de partir : sa ligne le dit aussitôt.
+      if (r.bilan?.agendaPublie) api.telephoneEtat().then(setEtat).catch(() => {});
+    };
     window.addEventListener(EVT_RELEVE, suivre);
     return () => window.removeEventListener(EVT_RELEVE, suivre);
   }, []);
@@ -253,6 +269,11 @@ export function TelephoneNuage() {
           </p>
           <p className="meta" style={{ margin: "0 0 4px", fontSize: 12.5 }}>
             {releve ? <>Dernière relève à {heure(releve.quand)} — {resumeDeLaReleve(releve)}.</> : resumeDeLaReleve(null)}
+          </p>
+          <p className="meta" style={{ margin: "0 0 4px", fontSize: 12.5 }}>
+            {etat.agendaPublieLe
+              ? <>📅 Emploi du temps envoyé au téléphone {quandLisible(etat.agendaPublieLe)} : les deux semaines passées et les deux à venir. Il repart de lui-même dès qu'un créneau change.</>
+              : <>📅 L'emploi du temps n'est pas encore parti vers le téléphone : il part à la prochaine relève.</>}
           </p>
           {!etat.parLien && (
             <p className="meta" style={{ margin: "0 0 4px", fontSize: 12.5 }}>

@@ -7,7 +7,7 @@ import { annonceDeLaReleve, resumeDeLaReleve } from "./releveTelephone";
 import type { BilanReleve } from "./api";
 
 const bilan = (p: Partial<BilanReleve> = {}): BilanReleve => ({
-  relie: true, occupe: false, vocaux: 0, notes: 0, pages: 0, pagesEnAttente: 0, illisibles: 0, agendaPublie: false, erreur: "", ...p,
+  relie: true, occupe: false, vocaux: 0, notes: 0, pages: 0, pagesEnAttente: 0, illisibles: 0, agendaPublie: false, agendaErreur: "", erreur: "", ...p,
 });
 
 describe("la relève du téléphone", () => {
@@ -29,5 +29,13 @@ describe("la relève du téléphone", () => {
     expect(charge).toContain("3 pages scannées en attente");
     expect(charge).toContain("1 dépôt illisible");
     expect(charge).toContain("Enregistrement vide.");
+  });
+
+  it("dit que l'emploi du temps est parti vers le téléphone, ou pourquoi il n'a pas pu", () => {
+    expect(resumeDeLaReleve({ quand: 1, bilan: bilan({ agendaPublie: true }), erreur: "" })).toBe("emploi du temps envoyé au téléphone");
+    expect(resumeDeLaReleve({ quand: 1, bilan: bilan({ vocaux: 1, agendaPublie: true }), erreur: "" }))
+      .toBe("1 dictée reçue du téléphone · emploi du temps envoyé au téléphone");
+    const rate = resumeDeLaReleve({ quand: 1, bilan: bilan({ agendaErreur: "Nuage injoignable" }), erreur: "" });
+    expect(rate).toBe("l'emploi du temps n'a pas pu partir vers le téléphone (Nuage injoignable)");
   });
 });
