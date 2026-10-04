@@ -18,7 +18,8 @@ import { REGLAGES_MOTS_MELES, STYLE_MOTS_MELES, grilleMotsMeles, htmlMotsMeles, 
 import { REGLAGES_PHRASES, STYLE_PHRASES, htmlPhrasesEnDesordre, phrasesEnDesordre, phrasesSaisies } from "../phrasesEnDesordre";
 import { DEMANDE_PHRASES, phrasesDeLaReponse, promptPhrases } from "../phrasesIa";
 import {
-  CATEGORIES_MAX, COULEURS_TRI, MODELES_TRI, REGLAGES_TRI, STYLE_TRI, avecAide, etiquettesDuTri, etiquettesSaisies, htmlTri, maisonsDuTri,
+  CATEGORIES_MAX, COMPETENCES_TRI, COULEURS_TRI, MODELES_TRI, REGLAGES_TRI, STYLE_TRI, avecAide, etiquettesDuTri, etiquettesSaisies, htmlTri,
+  maisonsDuTri, modeleDuTri,
   type CategorieTri, type ReglagesTri,
 } from "../triEtiquettes";
 import {
@@ -30,6 +31,7 @@ import { elider } from "../elisions";
 import { pseudonymiser, restaurer } from "../confidentialite";
 import { LigneDuProjet, useProjetDuMoment } from "../components/ProjetDuMoment";
 import { estUnModele, trisDuProjet } from "../triDuProjet";
+import { objectifsDesAteliers } from "../ateliersCompetences";
 import { useImagesEtOmbres } from "../components/MesImages";
 import { OMBRES_MINIMUM, REGLAGES_OMBRES, STYLE_OMBRES, feuillesDOmbres, htmlOmbres, type FormeOmbres, type ImageOmbre, type ReglagesOmbres } from "../ombres";
 
@@ -251,8 +253,13 @@ export function TriTab() {
     ...corpusDesProjets.mots.flatMap((mots, i) => trisDuProjet({ mots, phrases: corpusDesProjets.phrases[i] ?? [] }, "")),
   ], [corpusDesProjets]);
   const suitLeProjet = r.origine === "projet" && estUnModele(categories, modelesDuProjet);
-  // Les autres modèles, réécrits dans le thème du projet par l'IA — sauf ceux qu'il donne déjà sans elle.
-  const aTransposer = MODELES_TRI.filter((m) => !(m.id === "phrase" && modelesDuProjet.some((x) => x.id === "projet-phrase")));
+  // Chaque modèle travaille sa compétence : le bandeau règle celle du modèle à l'écran, la feuille l'imprime.
+  const modeleId = modeleDuTri(r);
+  const competence = COMPETENCES_TRI.find((c) => c.modele === modeleId)?.titre ?? "";
+  React.useEffect(() => {
+    objectifsDesAteliers.publier("tri", competence ? [{ id: modeleId, libelle: competence }] : []);
+  }, [modeleId, competence]);
+  React.useEffect(() => () => objectifsDesAteliers.publier("tri", []), []);
   const [transposition, setTransposition] = React.useState("");
   // Un tri écrit par l'IA avant que les élisions se fassent toutes seules : on les fait à l'ouverture,
   // une fois — jamais pendant qu'on tape.
@@ -387,17 +394,20 @@ export function TriTab() {
               if (m) maj({ ...m.reglages, origine: duProjetChoisi ? "projet" : "modele" });
             }}>
               <option value="">Choisir un modèle : il remplace ce qui est écrit…</option>
-              {projet && (
-                <optgroup label={`Le projet « ${projet.titre} »`}>
-                  {modelesDuProjet.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
-                  {aTransposer.map((m) => (
-                    <option key={m.id} value={`theme:${m.id}`}>✨ {projet.titre.trim() || "Le projet"} — {m.nom.charAt(0).toLocaleLowerCase("fr") + m.nom.slice(1)}</option>
-                  ))}
-                </optgroup>
-              )}
-              <optgroup label="Les modèles">
-                {MODELES_TRI.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
-              </optgroup>
+              {/* Une compétence par modèle : être et avoir n'est pas les types de phrases. Dans chacune, la
+                  version du projet — faite sur place 📌, ou écrite par l'IA dans son thème ✨ — puis le modèle. */}
+              {COMPETENCES_TRI.map(({ titre, modele: id }) => {
+                const theme = projet?.titre.trim() || "le projet";
+                const modele = MODELES_TRI.find((m) => m.id === id);
+                const duProjet = projet ? modelesDuProjet.find((m) => m.reglages.modele === id) : undefined;
+                const nom = modele?.nom ?? duProjet?.reglages.titre ?? id;
+                const options = [
+                  ...(duProjet ? [<option key={duProjet.id} value={duProjet.id}>📌 {nom} — {theme}</option>] : []),
+                  ...(projet && modele && !duProjet ? [<option key={`theme:${id}`} value={`theme:${id}`}>✨ {nom} — {theme}</option>] : []),
+                  ...(modele ? [<option key={id} value={id}>{nom}</option>] : []),
+                ];
+                return options.length ? <optgroup key={id} label={titre}>{options}</optgroup> : null;
+              })}
             </Select>
             {transposition && projet ? (
               <div className="projet-ligne"><span className="meta">{transposition.endsWith("|relecture")

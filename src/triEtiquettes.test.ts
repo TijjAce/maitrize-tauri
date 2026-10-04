@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { OPTIONS_FEUILLE, appliquerOptionsFeuille, contenuDeLaFeuille } from "./optionsFeuille";
+import { trisDuProjet } from "./triDuProjet";
 import {
-  MODELES_TRI, REGLAGES_TRI, avecAide, etiquettesDuTri, etiquettesSaisies, htmlEtiquette, htmlTri, lignesDAide, maisonsDuTri, morceaux, sansMarques,
+  COMPETENCES_TRI, MODELES_TRI, REGLAGES_TRI, avecAide, modeleDuTri, etiquettesDuTri, etiquettesSaisies, htmlEtiquette, htmlTri, lignesDAide, maisonsDuTri, morceaux, sansMarques,
   type ReglagesTri,
 } from "./triEtiquettes";
 
@@ -113,5 +114,24 @@ describe("les maisons du tri", () => {
       expect(new Set(maisons.map((c) => etiquettesSaisies(c.etiquettes).length)).size, m.id).toBe(1);
       expect(htmlTri(m.reglages, 1)).toContain("Les maisons du tri");
     }
+  });
+});
+
+describe("une compétence par modèle", () => {
+  it("chaque modèle, et chaque tri d'un projet, a la sienne — et une seule", () => {
+    const projet = trisDuProjet({ mots: ["chat", "citrouille", "lune", "sorcière"], phrases: ["Le chat dort.", "La lune brille."] }, "halloween");
+    const modeles = [...MODELES_TRI.map((m) => m.reglages.modele), ...projet.map((m) => m.reglages.modele)];
+    for (const id of modeles) expect(COMPETENCES_TRI.filter((c) => c.modele === id), id).toHaveLength(1);
+    // Être et avoir, le temps des verbes, les types de phrases : trois compétences, pas une.
+    const titre = (id: string) => COMPETENCES_TRI.find((c) => c.modele === id)?.titre;
+    expect(new Set(["etre-avoir", "temps", "types"].map(titre)).size).toBe(3);
+  });
+
+  it("reconnaît le modèle d'un tri qui ne le disait pas encore, à ses maisons", () => {
+    const ancien = { ...MODELES_TRI.find((m) => m.id === "types")!.reglages, modele: undefined };
+    expect(modeleDuTri(ancien)).toBe("types");
+    expect(modeleDuTri({ categories: [{ titre: " verbe ÊTRE", etiquettes: "" }, { titre: "Verbe avoir", etiquettes: "x" }] })).toBe("etre-avoir");
+    // Des maisons écrites à la main : pas de modèle, donc pas de compétence imposée.
+    expect(modeleDuTri({ categories: [{ titre: "Animaux", etiquettes: "" }, { titre: "Fruits", etiquettes: "" }] })).toBe("");
   });
 });
