@@ -77,9 +77,10 @@ let creneaux = [], creneauChoisi = "", choixOuvert = false;
  * Le jour dont on parle — vide : aujourd'hui, qui suit l'horloge.
  *
  * On dicte le soir sur la journée, le lendemain matin sur la veille : la
- * dictée se range alors au jour choisi, à l'heure de l'horloge. Ce choix ne
- * dure pas : il ne survit ni à la fermeture de l'application, ni à un quart
- * d'heure passé en arrière-plan.
+ * dictée se range alors au jour choisi, à l'heure de l'horloge. On regarde
+ * aussi les jours à venir, leurs créneaux. Ce choix ne dure pas : il ne
+ * survit ni à la fermeture de l'application, ni à un quart d'heure passé en
+ * arrière-plan.
  */
 let jourChoisi = "";
 /** Les créneaux déjà reçus, par jour et par identifiant : une dictée d'hier garde son intitulé dans la liste. */
@@ -331,6 +332,8 @@ const horodatage = () => `${jourDeLaDictee()}${maintenantIso().slice(10)}`;
 
 /** Combien de jours en arrière on peut remonter : deux semaines, pas l'année. */
 const JOURS_EN_ARRIERE = 13;
+/** Et en avant : jusqu'au bout de l'emploi du temps que l'ordinateur laisse sur Nuage. */
+const JOURS_EN_AVANT = 13;
 
 /** Un jour décalé de `n` jours : « 2026-10-02 » et -1 → « 2026-10-01 ». */
 function decaler(jour, n) {
@@ -354,17 +357,20 @@ function dateLongue(jour) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/** Ce jour, vu d'aujourd'hui : « aujourd'hui », « hier », « il y a 4 jours ». */
+/** Ce jour, vu d'aujourd'hui : « aujourd'hui », « hier », « il y a 4 jours », « demain », « dans 3 jours ». */
 function proximite(jour) {
   const e = ecartEnJours(jour, jourDuJour());
-  return e === 0 ? "aujourd'hui" : e === 1 ? "hier" : e === 2 ? "avant-hier" : e > 0 ? `il y a ${e} jours` : "à venir";
+  if (e === 0) return "aujourd'hui";
+  if (e > 0) return e === 1 ? "hier" : e === 2 ? "avant-hier" : `il y a ${e} jours`;
+  return e === -1 ? "demain" : e === -2 ? "après-demain" : `dans ${-e} jours`;
 }
 
-/** Le jour d'un envoi, en tête de sa ligne : rien pour aujourd'hui, « Hier », « jeu. 1 oct. ». */
+/** Le jour d'un envoi, en tête de sa ligne : rien pour aujourd'hui, « Hier », « Demain », « jeu. 1 oct. ». */
 function jourCourt(jour) {
   const e = ecartEnJours(jour, jourDuJour());
   if (e === 0) return "";
   if (e === 1) return "Hier";
+  if (e === -1) return "Demain";
   const d = new Date(`${jour}T12:00:00`);
   return `${NOMS_JOURS[d.getDay()].slice(0, 3)}. ${d.getDate()} ${MOIS_COURTS[d.getMonth()]}`;
 }
@@ -844,7 +850,7 @@ function bandeauCreneau() {
   if (!creneauxConnus) return `<p class="pastille muette">${icone("epingle")}<span>Créneau inconnu</span></p>`;
   // L'ordinateur a répondu, et il n'y a rien : un dimanche, des vacances. On
   // enregistre quand même, et c'est l'ordinateur qui rangera au retour.
-  if (!creneaux.length) return `<p class="pastille muette">${icone("epingle")}<span>Pas de créneau aujourd'hui</span></p>`;
+  if (!creneaux.length) return `<p class="pastille muette">${icone("epingle")}<span>Pas de créneau ${estAujourdHui() ? "aujourd'hui" : "ce jour-là"}</span></p>`;
   if (choixOuvert) {
     const rang = (id, heure, libelle) => `
       <button class="choix-rang${id === creneauChoisi ? " on" : ""}" data-creneau="${echapper(id)}">
@@ -872,7 +878,7 @@ function barreDuJour() {
   return `<div class="jour${autre ? " autre" : ""}">
     <button class="jour-fleche" id="jour-avant" aria-label="Jour précédent" ${fige || ecart >= JOURS_EN_ARRIERE ? "disabled" : ""}>${icone("gauche")}</button>
     ${autre && !fige ? `<button class="jour-texte" id="jour-aujourdhui" aria-label="Revenir à aujourd'hui">${texte}</button>` : `<span class="jour-texte">${texte}</span>`}
-    <button class="jour-fleche" id="jour-apres" aria-label="Jour suivant" ${fige || !autre ? "disabled" : ""}>${icone("droite")}</button>
+    <button class="jour-fleche" id="jour-apres" aria-label="Jour suivant" ${fige || ecart <= -JOURS_EN_AVANT ? "disabled" : ""}>${icone("droite")}</button>
   </div>`;
 }
 
