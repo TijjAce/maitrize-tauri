@@ -43,10 +43,11 @@ export interface ReglagesTri {
   aide: string;
   aRetenir: string;
   /**
-   * D'où vient le tri : « projet », il suit le projet du moment ; « modele »,
-   * on l'a choisi parmi les modèles, il reste. Absent : jamais choisi.
+   * D'où vient le tri : « projet », il suit le projet du moment ; « theme »,
+   * un modèle réécrit par l'IA dans le thème du projet ; « modele », on l'a
+   * choisi parmi les modèles. Ces deux-là restent. Absent : jamais choisi.
    */
-  origine?: "projet" | "modele";
+  origine?: "projet" | "theme" | "modele";
 }
 
 export const COULEURS_TRI: { nom: string; hex: string }[] = [
