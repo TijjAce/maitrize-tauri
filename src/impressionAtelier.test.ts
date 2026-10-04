@@ -118,13 +118,13 @@ describe("imprimer un atelier", () => {
     await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Lis puis écris le nombre.</p>', ".cu { }");
     const { corps, style } = impressions[0];
     // « écrire » a son image, « lire » n'en a pas : un seul picto, et la mention ARASAAC.
-    expect(corps).toContain('<p class="consigne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:image/png;base64,AAAA" alt="écrire">');
+    expect(corps).toContain('<p class="consigne"><span class="consigne-ligne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:image/png;base64,AAAA" alt="écrire">');
     expect(corps).not.toContain('alt="lire"');
     expect(corps).toContain("ARASAAC");
     expect(style).toContain(".consigne-pictos");
     // Un picto ajouté à la main vient devant, même si la consigne ne dit pas le verbe.
     await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Compte.</p>', "", { pictos: ["écrire"] });
-    expect(impressions[1].corps).toContain('<p class="consigne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:image/png;base64,AAAA" alt="écrire">');
+    expect(impressions[1].corps).toContain('<p class="consigne"><span class="consigne-ligne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:image/png;base64,AAAA" alt="écrire">');
     // Coupés : la feuille reste nue.
     reglages.set("caa:consignes:actif", "0");
     await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Écris.</p>');
