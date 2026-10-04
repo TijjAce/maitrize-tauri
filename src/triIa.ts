@@ -233,3 +233,90 @@ export function transpositionDeLaReponse(reponse: string, titres: string[] | num
   if (paquets.length === maisons) paquets.forEach((p, i) => p.forEach((l) => ranger(i, l.replace(/^(\d+[.)]|[-•*–])\s+/, ""))));
   return sortie;
 }
+
+// ── Relire ce que le modèle a écrit ──
+//
+// Un modèle qui écrit seize phrases en laisse passer : « La *suis* une
+// sorcière », « le costume de Halloween ». Une seconde lecture, demandée à
+// part, les rattrape mieux que la première écriture. Elle corrige sans rien
+// réécrire d'autre, et le mot marqué reste marqué.
+
+/** Ce qu'on demande au modèle : corriger chaque étiquette, rien de plus. */
+export function promptRelireEtiquettes(etiquettes: string[], cycle: 2 | 3): ChatMessage[] {
+  const systeme = [
+    `Tu relis les étiquettes d'un exercice pour des élèves de cycle ${cycle}, comme un correcteur attentif.`,
+    "Corrige toute faute : orthographe, accords, conjugaison, élisions (« d'Halloween », « l'école »), majuscule au début, ponctuation.",
+    "Le sujet et le verbe doivent aller ensemble : « Je *suis* », jamais « La *suis* » — remplace un sujet impossible par le bon pronom.",
+    "Ne change ni le sens, ni les mots justes, ni la longueur. Garde les astérisques autour du même mot, corrigé s'il le faut.",
+    "Réponds par les étiquettes, une par ligne, dans le même ordre, chacune précédée de son numéro et d'un point (« 1. »). Sans commentaire.",
+  ].join(" ");
+  return [{ role: "system", content: systeme }, { role: "user", content: etiquettes.map((e, i) => `${i + 1}. ${e}`).join("\n") }];
+}
+
+/** Les mots d'une étiquette, pour juger qu'une correction n'est pas une réécriture. */
+const motsDe = (t: string) => sansMarques(t).toLocaleLowerCase("fr").normalize("NFD").replace(/[̀-ͯ]/g, "")
+  .split(/[^a-z0-9]+/).filter(Boolean);
+
+/**
+ * Les étiquettes relues. Une ligne n'en remplace une autre que si elle garde
+ * le mot marqué (même corrigé) et l'essentiel de ses mots : sinon c'est une
+ * réécriture, pas une correction — on garde l'original.
+ */
+export function relectureDeLaReponse(reponse: string, etiquettes: string[]): { etiquettes: string[]; corrigees: number } {
+  const proposees = new Map<number, string>();
+  for (const brute of (reponse ?? "").replace(/```[a-z]*/g, "").split("\n")) {
+    const m = /^\s*(\d+)\s*[.):\-–—]\s*(.+?)\s*$/.exec(brute);
+    if (!m) continue;
+    const ligne = nettoyer(m[2].replace(/\*\*([^*\n]+)\*\*/g, "*$1*")).replace(/\s+/g, " ").trim();
+    if (!proposees.has(Number(m[1]) - 1)) proposees.set(Number(m[1]) - 1, ligne);
+  }
+  let corrigees = 0;
+  const sortie = etiquettes.map((e, i) => {
+    const p = proposees.get(i);
+    if (!p || p === e) return e;
+    const marques = (t: string) => (t.match(/\*/g) ?? []).length;
+    if (marques(p) % 2 || (marques(e) > 0) !== (marques(p) > 0) || !sansMarques(p).trim()) return e;
+    const avant = motsDe(e), apres = new Set(motsDe(p));
+    const gardes = avant.filter((w) => apres.has(w)).length;
+    if (!avant.length || gardes / avant.length < 0.6) return e;
+    corrigees++;
+    return p;
+  });
+  return { etiquettes: sortie, corrigees };
+}
+
+const PERSONNE_DU_VERBE: Record<string, string> = {
+  suis: "je", ai: "je", es: "tu", as: "tu", est: "il", a: "il",
+  sommes: "nous", avons: "nous", "êtes": "vous", avez: "vous", sont: "ils", ont: "ils",
+};
+const PERSONNE_DU_PRONOM: Record<string, string> = {
+  je: "je", j: "je", tu: "tu", il: "il", elle: "il", on: "il", nous: "nous", vous: "vous", ils: "ils", elles: "ils",
+};
+const DETERMINANTS = new Set(["le", "la", "un", "une", "des", "du", "mon", "ma", "mes", "ton", "ta", "tes", "son", "sa", "ses",
+  "notre", "nos", "votre", "vos", "leurs", "ce", "cet", "cette", "ces", "les", "l", "leur"]);
+/** Devant « avoir », ceux-là peuvent être des pronoms : « Il les *a* ». */
+const PRONOMS_COMPLEMENTS = new Set(["les", "l", "leur"]);
+
+/**
+ * Un sujet qui ne peut pas aller avec le verbe marqué, quand c'est être ou
+ * avoir au présent (ou l'auxiliaire d'un temps composé) : « La *suis* »,
+ * « Nous *est* », « Je *a* ». Rien quand on ne peut pas trancher — un nom
+ * sujet, par exemple. C'est le garde-fou derrière la relecture.
+ */
+export function sujetQuiNeVaPas(etiquette: string): boolean {
+  const m = /\*([^*\n]+)\*/.exec(etiquette);
+  if (!m) return false;
+  const verbe = m[1].trim().toLocaleLowerCase("fr").split(/\s+/)[0];
+  const personne = PERSONNE_DU_VERBE[verbe];
+  if (!personne) return false;
+  const mots = etiquette.slice(0, m.index).toLocaleLowerCase("fr").replace(/[’ʼ]/g, "'")
+    .split(/[^a-zàâäéèêëîïôöùûüÿçœæ]+/).filter(Boolean);
+  // La négation et « y », « en » se glissent entre le sujet et le verbe.
+  let k = mots.length - 1;
+  while (k >= 0 && ["ne", "n", "y", "en"].includes(mots[k])) k--;
+  const avant = mots[k];
+  if (!avant) return false;
+  if (avant in PERSONNE_DU_PRONOM) return PERSONNE_DU_PRONOM[avant] !== personne;
+  if (!DETERMINANTS.has(avant)) return false;
+  return !(PRONOMS_COMPLEMENTS.has(avant) && ["ai", "as", "a", "avons", "avez", "ont"].includes(verbe));
+}

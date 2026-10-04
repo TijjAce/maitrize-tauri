@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { marquesDeLaReponse, promptMarquerVerbes, promptRangerEtiquettes, promptTransposer, rangementDeLaReponse, transpositionDeLaReponse } from "./triIa";
+import {
+  marquesDeLaReponse, promptMarquerVerbes, promptRangerEtiquettes, promptRelireEtiquettes, promptTransposer, rangementDeLaReponse,
+  relectureDeLaReponse, sujetQuiNeVaPas, transpositionDeLaReponse,
+} from "./triIa";
 
 describe("marquer les verbes avec l'IA", () => {
   it("envoie les phrases nues, une par ligne, et dit de ne rien changer", () => {
@@ -132,5 +135,38 @@ describe("transposer un modèle au thème du projet", () => {
     const reponse = ["Maison 1 : La sorcière *est* sur son balai.", "Maison 2 : Le fantôme *a* un drap blanc.",
       "Maison 1 : Nous *sommes* déguisés.", "Maison 2 : J'*ai* une lanterne."].join("\n");
     expect(transpositionDeLaReponse(reponse, titres, 8)).toEqual(attendu);
+  });
+});
+
+describe("relire ce que le modèle a écrit", () => {
+  it("demande de corriger chaque étiquette, numérotée, en gardant le mot marqué", () => {
+    const [systeme, demande] = promptRelireEtiquettes(["La *suis* une sorcière.", "Le costume de Halloween *est* noir."], 2);
+    expect(systeme.content).toContain("Je *suis* »");
+    expect(systeme.content).toContain("d'Halloween");
+    expect(demande.content).toBe("1. La *suis* une sorcière.\n2. Le costume de Halloween *est* noir.");
+  });
+
+  it("prend les corrections, pas les réécritures ni les lignes qui perdent le mot marqué", () => {
+    const etiquettes = ["La *suis* une sorcière avec un balai.", "Le squelette *est* dans le costume de Halloween.", "Tu *as* un chapeau.", "Il *a* une araignée."];
+    const reponse = [
+      "1. Je *suis* une sorcière avec un balai.",
+      "2. Le squelette **est** dans le costume d'Halloween.",
+      "3. Tu as un chapeau.",
+      "4. Les vampires dansent toute la nuit au château.",
+    ].join("\n");
+    expect(relectureDeLaReponse(reponse, etiquettes)).toEqual({
+      etiquettes: ["Je *suis* une sorcière avec un balai.", "Le squelette *est* dans le costume d'Halloween.", "Tu *as* un chapeau.", "Il *a* une araignée."],
+      corrigees: 2,
+    });
+  });
+
+  it("repère un sujet qui ne va pas avec être ou avoir, sans juger ce qu'il ne peut pas trancher", () => {
+    for (const faux of ["La *suis* une sorcière.", "Nous *est* déguisés.", "Je *a* peur.", "Il ne *sont* pas là.", "Tu *suis* un fantôme.", "Le *est* noir."]) {
+      expect(sujetQuiNeVaPas(faux), faux).toBe(true);
+    }
+    for (const juste of ["Je *suis* content.", "J'*ai* une citrouille.", "Il y *a* une araignée.", "On *a* peur la nuit.",
+      "Les enfants *sont* contents.", "Il les *a* mangés.", "Elles n'*ont* pas peur.", "Hier, j'*ai joué* dehors.", "*Les* fantômes"]) {
+      expect(sujetQuiNeVaPas(juste), juste).toBe(false);
+    }
   });
 });
