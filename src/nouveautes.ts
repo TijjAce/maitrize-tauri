@@ -18,6 +18,16 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.20",
+    titre: "Des pictos pour toutes les consignes, à imprimer en cartes",
+    points: [
+      { quoi: "Quand ARASAAC n'a pas le picto d'un verbe de consigne, Maitrize le cherche dans les consignes de François Bajard, puis dans Sclera — deux banques d'usage libre en classe. « Proposer un picto pour chaque verbe » les télécharge au passage depuis leur site (0,8 et 77 Mo), et le choix du picto d'un verbe montre les trois banques à la suite.", ou: "CAA · Consignes en pictos" },
+      { quoi: "Dans ARASAAC, un verbe de consigne prend le dessin de la classe : « repasser » sur des pointillés plutôt qu'au fer, « remettre » dans l'ordre plutôt qu'une remise de prix, « ajouter » avec le signe +. Huit verbes rejoignent la liste : corriger, numéroter, raconter, relire, repasser, séparer, surligner, tracer.", ou: "CAA · Consignes en pictos" },
+      { quoi: "Une feuille cite chaque banque dont elle porte un picto, comme leurs licences le demandent. Les images venues de F. Bajard ou de Sclera passent d'un ordinateur à l'autre avec la liste des verbes : le second ordinateur les imprime sans rien télécharger.", ou: "Fabriquer" },
+      { quoi: "« Imprimer les pictos » : les pictos des verbes en cartes carrées à découper — tout sur une feuille, ou de 2 cm à 9 cm pour le tableau —, le verbe dessous ou non, un jeu par élève, tous les verbes ou ceux qu'on coche. À imprimer, ou à poser sur le bureau.", ou: "CAA · Consignes en pictos" },
+    ],
+  },
+  {
     version: "1.6.19",
     titre: "Les manuels entrent dans les séquences, et les dictées dans le bilan",
     points: [
