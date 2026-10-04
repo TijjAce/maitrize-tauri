@@ -121,6 +121,8 @@ pub const REGLAGES_DU_POSTE: &[&str] = &[
     crate::commun::CLE_BUREAUX,
     // Ce que cet ordinateur a publié pour le téléphone : chacun tient son compte.
     crate::telephone::CLE_AGENDA,
+    // Les jetons que l'IA a dépensés d'ici : là aussi, chacun tient son compte.
+    crate::ai::CLE_JETONS,
 ];
 
 // ── Dossiers du plan de travail ────────────────────────────────────────────
