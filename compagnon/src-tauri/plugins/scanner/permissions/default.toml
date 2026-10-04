@@ -1,5 +1,5 @@
 "$schema" = "schemas/schema.json"
 
 [default]
-description = "Ouvrir le scanner de documents de l'iPhone et rendre les pages scannées ; ouvrir et refermer la page de connexion à Nuage."
-permissions = ["allow-scanner", "allow-ouvrir-connexion", "allow-fermer-connexion"]
+description = "Photographier les pages d'un manuel, ajustées une à une ; ouvrir et refermer la page de connexion à Nuage."
+permissions = ["allow-photographier", "allow-ouvrir-connexion", "allow-fermer-connexion"]

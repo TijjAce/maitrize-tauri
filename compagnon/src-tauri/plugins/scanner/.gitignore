@@ -2,3 +2,6 @@
 .tauri/
 ios/.build/
 ios/Package.resolved
+# Une compilation du greffon seul (clippy, tests) : elle n'a rien à faire dans le dépôt.
+target/
+Cargo.lock

@@ -207,19 +207,101 @@ async fn poster(client: &reqwest::Client, url: &str, octets: Vec<u8>, deja: u32)
     Ok(())
 }
 
-/// Envoie des pages scannées à l'ordinateur qui les a demandées ; rend combien sont arrivées.
+// ── Les pages d'un manuel ─────────────────────────────────────────────────
+//
+// L'appareil écrit chaque page gardée dans `pages/`, dans le dossier de
+// l'application. Elles étaient avant dans le dossier temporaire, et n'y
+// arrivaient qu'à la fin, toutes ensemble : une application fermée en chemin
+// perdait la série entière. Une page envoyée passe dans `pages/envoyees/` et
+// y reste : c'est l'enseignant qui décide quand le téléphone l'oublie.
+
+/// Le dossier des pages qui attendent l'ordinateur ; celles déjà parties sont dans `envoyees/`.
+fn dossier_pages(app: &tauri::AppHandle) -> R<PathBuf> {
+    let d = dossier(app)?.join("pages");
+    std::fs::create_dir_all(d.join("envoyees")).map_err(|e| e.to_string())?;
+    Ok(d)
+}
+
+/// Les pages d'un dossier, dans l'ordre où on les a prises : leur nom porte l'heure.
+pub fn pages_du_dossier(d: &std::path::Path) -> Vec<PathBuf> {
+    let mut pages: Vec<PathBuf> = std::fs::read_dir(d)
+        .map(|entrees| {
+            entrees
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| p.is_file() && p.extension().is_some_and(|x| x.eq_ignore_ascii_case("jpg")))
+                .collect()
+        })
+        .unwrap_or_default();
+    pages.sort();
+    pages
+}
+
+/// Les pages gardées sur le téléphone, et où l'appareil les écrit.
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct EtatPages {
+    pub dossier: String,
+    pub a_envoyer: u32,
+    pub envoyees: u32,
+}
+
+fn etat_des_pages(d: &std::path::Path) -> EtatPages {
+    EtatPages {
+        dossier: d.to_string_lossy().into_owned(),
+        a_envoyer: pages_du_dossier(d).len() as u32,
+        envoyees: pages_du_dossier(&d.join("envoyees")).len() as u32,
+    }
+}
+
 #[tauri::command]
-pub async fn demande_envoyer_pages(url: String, fichiers: Vec<String>) -> R<u32> {
+pub fn pages_etat(app: tauri::AppHandle) -> R<EtatPages> {
+    Ok(etat_des_pages(&dossier_pages(&app)?))
+}
+
+/// Une seule tournée d'envoi à la fois : l'appareil annonce chaque page, et
+/// deux tournées en même temps enverraient la même page deux fois.
+static TOURNEE: std::sync::LazyLock<tauri::async_runtime::Mutex<()>> =
+    std::sync::LazyLock::new(|| tauri::async_runtime::Mutex::new(()));
+
+/// Envoie les pages qui attendent, dans l'ordre, à l'ordinateur qui les a
+/// demandées ; rend combien sont parties. Chaque page arrivée passe aussitôt
+/// dans `envoyees/` : si le WiFi tombe en chemin, la suite attend la prochaine fois.
+#[tauri::command]
+pub async fn pages_envoyer(app: tauri::AppHandle, url: String) -> R<u32> {
     let d = lire_demande(&url)?;
+    let _seule = TOURNEE.lock().await;
     let client = client_wifi()?;
+    let dossier = dossier_pages(&app)?;
     let mut envoyees = 0u32;
-    for chemin in fichiers {
+    for chemin in pages_du_dossier(&dossier) {
         let octets = std::fs::read(&chemin).map_err(|e| e.to_string())?;
         poster(&client, &adresse_d_envoi(&d, "jpg"), octets, envoyees).await?;
-        let _ = std::fs::remove_file(&chemin);
+        if let Some(nom) = chemin.file_name() {
+            std::fs::rename(&chemin, dossier.join("envoyees").join(nom)).map_err(|e| e.to_string())?;
+        }
         envoyees += 1;
     }
     Ok(envoyees)
+}
+
+/// Supprime les pages déjà envoyées — et celles qui attendent encore, si `toutes`.
+#[tauri::command]
+pub fn pages_oublier(app: tauri::AppHandle, toutes: bool) -> R<EtatPages> {
+    let d = dossier_pages(&app)?;
+    oublier_les_pages(&d, toutes)?;
+    Ok(etat_des_pages(&d))
+}
+
+fn oublier_les_pages(d: &std::path::Path, toutes: bool) -> R<()> {
+    let mut a_effacer = pages_du_dossier(&d.join("envoyees"));
+    if toutes {
+        a_effacer.extend(pages_du_dossier(d));
+    }
+    for p in a_effacer {
+        std::fs::remove_file(&p).map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 /// Envoie une photo prise à la demande de l'ordinateur.
@@ -789,6 +871,45 @@ fn urlencode(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{decouper_adresse, depuis_le_nom, urlencode};
+
+    /// Un dossier de pages, vide, à soi : chaque essai a le sien.
+    fn dossier_d_essai(nom: &str) -> std::path::PathBuf {
+        let d = std::env::temp_dir().join(format!("maitrize-pages-{nom}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(d.join("envoyees")).unwrap();
+        d
+    }
+
+    #[test]
+    fn les_pages_se_suivent_dans_l_ordre_ou_on_les_a_prises() {
+        let d = dossier_d_essai("ordre");
+        for nom in ["page-20261004-153712-500.jpg", "page-20261004-153705-001.jpg", "page-20261004-153712-499.jpg", "notes.txt", "page.JPG.tmp"] {
+            std::fs::write(d.join(nom), b"x").unwrap();
+        }
+        let noms: Vec<String> = super::pages_du_dossier(&d).iter().map(|p| p.file_name().unwrap().to_string_lossy().into_owned()).collect();
+        assert_eq!(noms, ["page-20261004-153705-001.jpg", "page-20261004-153712-499.jpg", "page-20261004-153712-500.jpg"]);
+        // Le dossier des envoyées n'est pas une page.
+        assert_eq!(super::etat_des_pages(&d).a_envoyer, 3);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn on_oublie_les_envoyees_et_l_on_garde_celles_qui_attendent() {
+        let d = dossier_d_essai("oubli");
+        std::fs::write(d.join("page-1.jpg"), b"x").unwrap();
+        std::fs::write(d.join("envoyees").join("page-0.jpg"), b"x").unwrap();
+        assert_eq!((super::etat_des_pages(&d).a_envoyer, super::etat_des_pages(&d).envoyees), (1, 1));
+        super::oublier_les_pages(&d, false).unwrap();
+        assert_eq!((super::etat_des_pages(&d).a_envoyer, super::etat_des_pages(&d).envoyees), (1, 0));
+        super::oublier_les_pages(&d, true).unwrap();
+        assert_eq!((super::etat_des_pages(&d).a_envoyer, super::etat_des_pages(&d).envoyees), (0, 0));
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn sans_dossier_il_n_y_a_pas_de_page() {
+        assert!(super::pages_du_dossier(std::path::Path::new("/nulle/part/ici")).is_empty());
+    }
 
     #[test]
     fn separe_l_origine_et_le_jeton() {

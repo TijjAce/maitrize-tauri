@@ -514,35 +514,92 @@ async function oublier(id, sorte) {
 // ── Répondre à l'ordinateur, par le WiFi ─────────────────────────────────
 //
 // L'ordinateur demande les pages d'un manuel ou une photo : il affiche un QR
-// code. Le téléphone le lit, puis scanne les pages — le scanner de l'iPhone,
-// celui de Notes, qui cadre et redresse — ou prend la photo, et envoie. Rien
-// n'est retenu : la demande suivante viendra avec son propre QR code.
+// code. Le téléphone le lit, puis photographie les pages — chacune ajustée
+// aussitôt prise — ou prend la photo, et envoie. La demande ne se retient
+// pas : la suivante viendra avec son propre QR code. Les pages, si : elles
+// restent sur le téléphone jusqu'à ce qu'on les supprime.
 
 /** Retient la demande qu'on vient de lire : où envoyer, et quoi. */
 async function accepterDemande(url) {
   const lue = await invoke("demande_lire", { url });
   demande = { url, serie: !!lue.serie, envoyees: 0 };
   demandeInfo = "";
+  // Des pages attendaient un ordinateur : elles partent dès qu'il en demande.
+  await relirePages();
+  if (demande.serie && pages.aEnvoyer) void envoyerLesPages();
 }
 
-/** Scanne des pages et les envoie à l'ordinateur qui les attend. */
-async function scannerLesPages() {
+// ── Les pages d'un manuel ─────────────────────────────────────────────────
+//
+// Une photo, on ajuste les coins, on garde : la page est écrite aussitôt sur
+// le téléphone, et part vers l'ordinateur pendant qu'on photographie la
+// suivante. Une page qui n'a pas pu partir attend le prochain QR code ; une
+// page partie reste sur le téléphone jusqu'à ce qu'on la supprime.
+
+/** Les pages gardées sur le téléphone : où l'appareil les écrit, combien attendent, combien sont parties. */
+let pages = { dossier: "", aEnvoyer: 0, envoyees: 0 };
+/** Une tournée d'envoi en cours, et s'il faudra en refaire une : une page est arrivée entre-temps. */
+let envoiPages = null, pagesEncore = false;
+
+async function relirePages() {
+  try { pages = await invoke("pages_etat"); } catch (e) { /* le dossier se recréera au prochain appel */ }
+}
+
+const enPages = (n) => `${n} page${n > 1 ? "s" : ""}`;
+
+/** Envoie ce qui attend à l'ordinateur qui l'a demandé ; une seule tournée à la fois. */
+function envoyerLesPages() {
+  if (!demande || !demande.serie) return Promise.resolve();
+  if (envoiPages) { pagesEncore = true; return envoiPages; }
+  envoiPages = (async () => {
+    try {
+      do {
+        pagesEncore = false;
+        const n = await invoke("pages_envoyer", { url: demande.url });
+        demande.envoyees += n;
+      } while (pagesEncore && demande);
+      souci = "";
+    } catch (e) {
+      // Rien n'est perdu : les pages attendent sur le téléphone.
+      souci = `${String(e)} Les pages restent sur le téléphone.`;
+    } finally {
+      envoiPages = null;
+      await relirePages();
+      if (demande && demande.envoyees) demandeInfo = `${enPages(demande.envoyees)} envoyée${demande.envoyees > 1 ? "s" : ""} à l'ordinateur.`;
+      rendre();
+    }
+  })();
+  return envoiPages;
+}
+
+/** Ouvre l'appareil : chaque page gardée part aussitôt vers l'ordinateur. */
+async function photographierLesPages() {
   if (!demande || demandeEnCours) return;
   demandeEnCours = true; souci = ""; rendre();
   try {
-    const r = await invoke("plugin:scanner|scanner");
-    const fichiers = (r && r.fichiers) || [];
-    if (!fichiers.length) return;
-    demandeInfo = `Envoi de ${fichiers.length} page${fichiers.length > 1 ? "s" : ""}…`; rendre();
-    const n = await invoke("demande_envoyer_pages", { url: demande.url, fichiers });
-    demande.envoyees += n;
-    demandeInfo = `${demande.envoyees} page${demande.envoyees > 1 ? "s" : ""} envoyée${demande.envoyees > 1 ? "s" : ""}.`;
+    await relirePages();
+    const surPage = new window.__TAURI__.core.Channel();
+    surPage.onmessage = () => { void relirePages().then(() => { void envoyerLesPages(); }); };
+    await invoke("plugin:scanner|photographier", { dossier: pages.dossier, surPage });
   } catch (e) {
-    demandeInfo = "";
     souci = String(e);
   } finally {
-    demandeEnCours = false; rendre();
+    demandeEnCours = false;
+    await envoyerLesPages();
+    await relirePages();
+    rendre();
   }
+}
+
+/** La suppression qu'on s'apprête à faire, le temps de la confirmer : « envoyees », ou « toutes ». */
+let pagesAOublier = "";
+
+/** Supprime les pages parties — ou toutes, celles qui attendent comprises. */
+async function oublierLesPages() {
+  const toutes = pagesAOublier === "toutes";
+  pagesAOublier = "";
+  try { pages = await invoke("pages_oublier", { toutes }); } catch (e) { souci = String(e); }
+  rendre();
 }
 
 /** Dit à l'ordinateur que le manuel est complet, et oublie la demande. */
@@ -933,9 +990,33 @@ function lienNuage() {
   </div>`;
 }
 
+/** Les pages gardées sur le téléphone : combien, combien attendent, et de quoi les supprimer. */
+function pagesGardees() {
+  const total = pages.aEnvoyer + pages.envoyees;
+  if (!total) return "";
+  if (pagesAOublier) {
+    const toutes = pagesAOublier === "toutes";
+    const n = toutes ? total : pages.envoyees;
+    const question = toutes
+      ? `Supprimer les ${enPages(n)} du téléphone${pages.aEnvoyer ? `, dont ${enPages(pages.aEnvoyer)} pas encore envoyée${pages.aEnvoyer > 1 ? "s" : ""}` : ""} ?`
+      : `Supprimer du téléphone ${n > 1 ? `les ${n} pages déjà envoyées` : "la page déjà envoyée"} ?`;
+    return `<div class="pages-gardees confirmer"><p>${echapper(question)}</p>
+      <div class="pages-boutons"><button class="lien-btn rouge" id="confirmer-oubli">Supprimer</button><button class="lien-btn" id="annuler-oubli">Garder</button></div></div>`;
+  }
+  const dit = `${enPages(total)} sur le téléphone · ${pages.aEnvoyer ? `${pages.aEnvoyer} à envoyer` : "toutes envoyées"}`;
+  return `<div class="pages-gardees">
+    <p>${icone("page")}<span>${echapper(dit)}</span></p>
+    ${pages.aEnvoyer && !demande ? `<p class="pages-aide">Elles partiront au prochain QR code « Scanner avec le compagnon » de l'ordinateur.</p>` : ""}
+    <div class="pages-boutons">
+      ${pages.envoyees ? `<button class="lien-btn" id="oublier-envoyees">Supprimer les envoyées</button>` : ""}
+      ${pages.aEnvoyer ? `<button class="lien-btn rouge" id="oublier-toutes">Tout supprimer</button>` : ""}
+    </div>
+  </div>`;
+}
+
 /**
- * Répondre à l'ordinateur, par le WiFi : lire son QR code, puis scanner les
- * pages qu'il attend ou prendre la photo qu'il demande.
+ * Répondre à l'ordinateur, par le WiFi : lire son QR code, puis photographier
+ * les pages qu'il attend ou prendre la photo qu'il demande.
  */
 function carteWifi() {
   const occupe = demandeEnCours ? "disabled" : "";
@@ -943,7 +1024,7 @@ function carteWifi() {
   if (!demande) {
     corps = vueDeLaCamera("wifi") || `<button class="btn-plein" id="lire-wifi">${icone("qr")}Scanner le QR code</button>`;
   } else if (demande.serie) {
-    corps = `<button class="btn-plein" id="scanner-pages" ${occupe}>${icone("page")}${demande.envoyees ? "Scanner d'autres pages" : "Scanner les pages"}</button>
+    corps = `<button class="btn-plein" id="photographier-pages" ${occupe}>${icone("photo")}${demande.envoyees ? "Photographier d'autres pages" : "Photographier les pages"}</button>
       <button class="btn-doux" id="terminer-demande" ${occupe}>${icone("coche")}Terminer</button>`;
   } else {
     corps = `<label class="btn-plein${demandeEnCours ? " inactif" : ""}">${icone("photo")}Prendre la photo
@@ -952,7 +1033,7 @@ function carteWifi() {
   }
   const info = demandeInfo ? `<p class="carte-info">${icone(demande ? "wifi" : "coche")}<span>${echapper(demandeInfo)}</span></p>` : "";
   const erreur = scanSouci && (lecturePour === "wifi" || demande || relais.relie) ? `<p class="erreur-ligne">${echapper(scanSouci)}</p>` : "";
-  return `<div class="carte carte-wifi">${corps}${info}${erreur}</div>`;
+  return `<div class="carte carte-wifi">${corps}${info}${erreur}${pagesGardees()}</div>`;
 }
 
 function rendre() {
@@ -994,7 +1075,11 @@ function rendre() {
   clic("se-connecter", () => { void seConnecter(); });
   clic("lire-wifi", () => { void lireUnQrCode("wifi"); });
   clic("stop-scan", () => { fermerCamera(); rendre(); });
-  clic("scanner-pages", () => { void scannerLesPages(); });
+  clic("photographier-pages", () => { void photographierLesPages(); });
+  clic("oublier-envoyees", () => { pagesAOublier = "envoyees"; rendre(); });
+  clic("oublier-toutes", () => { pagesAOublier = "toutes"; rendre(); });
+  clic("confirmer-oubli", () => { void oublierLesPages(); });
+  clic("annuler-oubli", () => { pagesAOublier = ""; rendre(); });
   clic("terminer-demande", () => { void terminerLaDemande(); });
   clic("annuler-demande", () => { demande = null; demandeInfo = ""; rendre(); });
   const photo = document.getElementById("photo");
@@ -1029,6 +1114,7 @@ document.addEventListener("dblclick", (e) => e.preventDefault(), { passive: fals
 (async () => {
   try { relais = await invoke("relais_lire"); } catch (e) { relais = SANS_RELAIS; }
   await relireCreneaux();
+  await relirePages();
   await relire();
   // Ce qui attendait d'hier part dès l'ouverture.
   void tater().then(() => { if (nuage && enAttente().length) void envoyerTout(); });

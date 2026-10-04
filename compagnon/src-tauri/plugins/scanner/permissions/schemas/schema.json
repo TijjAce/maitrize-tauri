@@ -319,22 +319,22 @@
           "markdownDescription": "Denies the ouvrir_connexion command without any pre-configured scope."
         },
         {
-          "description": "Enables the scanner command without any pre-configured scope.",
+          "description": "Enables the photographier command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-scanner",
-          "markdownDescription": "Enables the scanner command without any pre-configured scope."
+          "const": "allow-photographier",
+          "markdownDescription": "Enables the photographier command without any pre-configured scope."
         },
         {
-          "description": "Denies the scanner command without any pre-configured scope.",
+          "description": "Denies the photographier command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-scanner",
-          "markdownDescription": "Denies the scanner command without any pre-configured scope."
+          "const": "deny-photographier",
+          "markdownDescription": "Denies the photographier command without any pre-configured scope."
         },
         {
-          "description": "Ouvrir le scanner de documents de l'iPhone et rendre les pages scannées ; ouvrir et refermer la page de connexion à Nuage.\n#### This default permission set includes:\n\n- `allow-scanner`\n- `allow-ouvrir-connexion`\n- `allow-fermer-connexion`",
+          "description": "Photographier les pages d'un manuel, ajustées une à une ; ouvrir et refermer la page de connexion à Nuage.\n#### This default permission set includes:\n\n- `allow-photographier`\n- `allow-ouvrir-connexion`\n- `allow-fermer-connexion`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Ouvrir le scanner de documents de l'iPhone et rendre les pages scannées ; ouvrir et refermer la page de connexion à Nuage.\n#### This default permission set includes:\n\n- `allow-scanner`\n- `allow-ouvrir-connexion`\n- `allow-fermer-connexion`"
+          "markdownDescription": "Photographier les pages d'un manuel, ajustées une à une ; ouvrir et refermer la page de connexion à Nuage.\n#### This default permission set includes:\n\n- `allow-photographier`\n- `allow-ouvrir-connexion`\n- `allow-fermer-connexion`"
         }
       ]
     }

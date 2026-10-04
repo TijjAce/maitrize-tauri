@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-photographier"
+description = "Enables the photographier command without any pre-configured scope."
+commands.allow = ["photographier"]
+
+[[permission]]
+identifier = "deny-photographier"
+description = "Denies the photographier command without any pre-configured scope."
+commands.deny = ["photographier"]
