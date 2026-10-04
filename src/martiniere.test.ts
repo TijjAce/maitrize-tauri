@@ -53,6 +53,11 @@ describe("le calcul mental, un objectif à la fois", () => {
     expect(html).toContain("<caption>Série 2</caption>");
     expect(html).toContain("5 secondes");
     expect(html).toContain("Attendu en fin de CP : 8 égalités à trou en une minute.");
+    // La consigne des élèves d'abord, et juste : on y cherche un terme, l'élève écrit le nombre qui manque — pas « le résultat ».
+    expect(html).toContain('<div class="consigne">Écris le nombre qui manque.</div>');
+    expect(html.indexOf('class="consigne"')).toBeLessThan(html.indexOf('class="regle"'));
+    expect(html).toContain("chacun écrit sa réponse");
+    expect(html).not.toContain("écrit le résultat");
     expect((html.match(/<td class="corrige">/g) ?? []).length).toBe(20);
     expect((html.match(/class="ma-case"/g) ?? []).length).toBe(2 * 20);
     expect(contenuDeLaFeuille(html)).toEqual({ consigne: true, prenom: true, corrige: true });

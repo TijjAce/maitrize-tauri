@@ -488,7 +488,7 @@ export function redigerMultiplicatif(situation: Extract<Situation, { forme: "par
       };
     }
     return {
-      schema, situation, reponse: valeur, calcul: `${n(grand)} : ${n(fois)} = ${n(valeur)}`,
+      schema, situation, reponse: valeur, calcul: `${n(grand)} ÷ ${n(fois)} = ${n(valeur)}`,
       enonce: enonces ? `${b} a ${quantite(grand, objets)}. C'est ${n(fois)} fois plus que ${a}. Combien ${de(objets[1])} a ${a} ?` : "",
       phrase: enonces ? `${a} a ${quantite(valeur, objets)}.` : "",
     };
@@ -508,8 +508,8 @@ export function redigerMultiplicatif(situation: Extract<Situation, { forme: "par
   return {
     schema, situation,
     calcul: type === "tout" ? `${n(fois)} × ${n(valeur)} = ${n(tout)}`
-      : type === "part" ? `${n(tout)} : ${n(fois)} = ${n(valeur)}`
-      : `${n(tout)} : ${n(valeur)} = ${n(fois)}`,
+      : type === "part" ? `${n(tout)} ÷ ${n(fois)} = ${n(valeur)}`
+      : `${n(tout)} ÷ ${n(valeur)} = ${n(fois)}`,
     reponse: type === "tout" ? tout : type === "part" ? valeur : fois,
     enonce: enonces ? enonce : "",
     phrase: enonces ? phrase : "",

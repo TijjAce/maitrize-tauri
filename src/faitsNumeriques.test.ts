@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { hasard } from "./hasard";
-import { NIVEAUX, OBJECTIFS, RUBRIQUES, objectifParId, objectifsDuNiveau, tirerCalcul, virgule, type Calcul } from "./faitsNumeriques";
+import { NIVEAUX, OBJECTIFS, RUBRIQUES, fractionDite, objectifParId, objectifsDuNiveau, tirerCalcul, virgule, type Calcul } from "./faitsNumeriques";
 
 const propre = (t: string) => t.replace(/ /g, "");
 const nombre = (t: string) => Number(propre(t).replace(",", ".").replace("−", "-"));
@@ -147,5 +147,21 @@ describe("le catalogue des faits numériques", () => {
     expect(virgule(35, 10)).toBe("3,5");
     expect(virgule(123456, 100)).toBe("1 234,56");
     expect(virgule(1, 1000)).toBe("0,001");
+  });
+});
+
+describe("les fractions dites", () => {
+  it("se lisent par le nom de leurs parts, jamais « sur »", () => {
+    expect(fractionDite(1, 3)).toBe("un tiers");
+    expect(fractionDite(2, 3)).toBe("2 tiers");
+    expect(fractionDite(3, 4)).toBe("3 quarts");
+    expect(fractionDite(3, 10)).toBe("3 dixièmes");
+    expect(fractionDite(45, 100)).toBe("45 centièmes");
+    expect(fractionDite(406, 1000)).toBe("406 millièmes");
+    const alea = hasard(3);
+    for (const id of ["6e-fraction-decimale", "6e-fraction-quantite"]) {
+      const o = objectifParId(id)!;
+      for (let i = 0; i < 30; i++) expect(tirerCalcul(o, alea, []).dire).not.toMatch(/ sur /);
+    }
   });
 });

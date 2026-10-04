@@ -1223,3 +1223,9 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
 .jetons-ia > span:first-child { flex: 1; min-width: 0; }
 .jetons-ia b { color: var(--text); }
 .jetons-ia .jetons-euros { white-space: nowrap; }
+
+/* L'éditeur de consigne : les consignes justes pour la feuille, et le mot qui ne lui va pas. */
+.consigne-propositions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.consigne-a-reprendre { margin: 8px 0 0; padding: 7px 10px; border-radius: 8px; font-size: 12.5px; line-height: 1.5;
+  background: color-mix(in srgb, var(--orange, #f59e0b) 14%, transparent); }
+.consigne-a-reprendre .btn { margin-left: 4px; }

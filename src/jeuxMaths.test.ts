@@ -47,6 +47,10 @@ describe("les cartes de calcul", () => {
     expect(cartesCalcul({ ...REGLAGES_CALCUL, tables: [4], operation: "-" }, 2).every((c) => c.reponse === 4)).toBe(true);
     expect(cartesCalcul(REGLAGES_CALCUL, 5)).toEqual(cartesCalcul(REGLAGES_CALCUL, 5));
     expect(htmlCartesCalcul(cartes, { ...REGLAGES_CALCUL, rectoVerso: true })).toContain("Verso");
+    // Le titre dit ce que sont les nombres choisis : la table, le premier terme, la différence.
+    expect(htmlCartesCalcul(cartes, { ...REGLAGES_CALCUL, operation: "x", tables: [3, 7] })).toContain("tables de multiplication de 3, 7");
+    expect(htmlCartesCalcul(cartes, { ...REGLAGES_CALCUL, operation: "+", tables: [3] })).toContain("tables d'addition de 3");
+    expect(htmlCartesCalcul(cartes, { ...REGLAGES_CALCUL, operation: "-", tables: [4] })).toContain("soustractions dont la différence est 4");
     expect(htmlCartesCalcul(cartes, { ...REGLAGES_CALCUL, rectoVerso: false })).toContain("Corrigé");
   });
 });

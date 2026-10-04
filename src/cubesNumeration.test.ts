@@ -125,7 +125,7 @@ describe("la feuille", () => {
     const r = reglages({ nombre: 4, ecritures: ["chiffres", "unites"], titre: "Les nombres en cubes" });
     const exos = exercicesCubes(r, 1);
     const html = htmlCubes(exos, r, 1);
-    expect(html).toContain("Compte les cubes et écris le nombre.");
+    expect(html).toContain("Trouve le nombre que représente chaque dessin, et écris-le.");
     expect(html.match(/class="cu-exo"/g)).toHaveLength(4);
     expect(html.match(/En chiffres :/g)).toHaveLength(4);
     expect(html.match(/En unités :/g)).toHaveLength(4);
