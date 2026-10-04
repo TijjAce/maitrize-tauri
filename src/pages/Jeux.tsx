@@ -557,9 +557,10 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
     finally { setLectureDesGestes(false); }
   };
   // Venu de l'atelier des gestes par « En faire un loto » : le jeu s'ouvre avec eux.
+  const viaLesGestes = React.useRef(false);
   React.useEffect(() => {
     const sons = gestesDemandes();
-    if (sons) { setMode("images"); void ajouterMesGestes(sons); }
+    if (sons) { viaLesGestes.current = true; setMode("images"); void ajouterMesGestes(sons); }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // Écrire une liste de mots ou choisir ses images mène droit au loto : pas d'étape « choisir ».
   const sansChoix = mode === "mots" || mode === "images";
@@ -612,6 +613,17 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
         + (pasTrouves.length ? ` · ${pasTrouves.length} mot${pasTrouves.length > 1 ? "s" : ""} à chercher` : ""), { icone: "✏️" });
     } catch (e) { toast(String(e), { icone: "⚠️" }); }
   };
+
+  // Le projet du moment donne ses mots, avec leurs images, dès qu'on ouvre le jeu
+  // vide — une fois : on en retire, on en ajoute ensuite à sa guise.
+  const projetPris = React.useRef("");
+  React.useEffect(() => {
+    if (!projetDuMoment || !corpusDuProjet.mots.length || !etat.installee) return;
+    if (viaLesGestes.current || projetPris.current === projetDuMoment.id || selection.length) return;
+    projetPris.current = projetDuMoment.id;
+    setMode("mots");
+    void ajouterMots(corpusDuProjet.mots);
+  }, [projetDuMoment?.id, corpusDuProjet.mots.length, etat.installee]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Par recherche ──
   const [recherche, setRecherche] = React.useState("");

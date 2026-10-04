@@ -62,7 +62,7 @@ describe("les maisons du tri", () => {
     // Huit lignes par maison, vides sur la feuille de l'élève, remplies au corrigé.
     expect((html.match(/<td><\/td>/g) ?? []).length).toBe(16);
     expect(html).toContain(`<div class="page corrige">`);
-    expect(html).toContain("Défi : entoure le verbe dans chaque phrase.");
+    expect(html).not.toContain("Défi");
     expect(contenuDeLaFeuille(html)).toEqual({ consigne: true, prenom: true, corrige: true });
     expect(appliquerOptionsFeuille(html, { ...OPTIONS_FEUILLE, corrige: false })).not.toContain("corrigé");
     expect(htmlTri(r(), 3)).toBe(html);

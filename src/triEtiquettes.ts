@@ -39,11 +39,14 @@ export interface ReglagesTri {
   taille: "normale" | "grande";
   capitales: boolean;
   melanger: boolean;
-  /** Un défi pour ceux qui ont fini ; vide, pas de défi. */
-  defi: string;
   /** La fiche d'aide : une ligne par vérification, « titre : question ». */
   aide: string;
   aRetenir: string;
+  /**
+   * D'où vient le tri : « projet », il suit le projet du moment ; « modele »,
+   * on l'a choisi parmi les modèles, il reste. Absent : jamais choisi.
+   */
+  origine?: "projet" | "modele";
 }
 
 export const COULEURS_TRI: { nom: string; hex: string }[] = [
@@ -57,16 +60,17 @@ export const CATEGORIES_MAX = 4;
 
 // ── Les modèles ───────────────────────────────────────────────────────────
 
-const BASE = {
+/** Ce que tous les tris partagent, avant leurs maisons. */
+export const BASE_TRI = {
   aideMots: true, couleurMots: "#d94033", aidePonctuation: false, couleurPonctuation: "#2454e6", deuxVersions: false,
-  parLigne: 4, taille: "normale" as const, capitales: false, melanger: true, defi: "", aide: "", aRetenir: "",
+  parLigne: 4, taille: "normale" as const, capitales: false, melanger: true, aide: "", aRetenir: "",
 };
+const BASE = BASE_TRI;
 
 export const MODELES_TRI: { id: string; nom: string; reglages: ReglagesTri }[] = [
   { id: "etre-avoir", nom: "Être ou avoir", reglages: { ...BASE,
     titre: "ÊTRE ou AVOIR ?",
     consigne: "Découpe les étiquettes. Lis chaque phrase et place-la dans la bonne maison.",
-    defi: "Défi : entoure le verbe dans chaque phrase.",
     categories: [
       { titre: "Verbe être", etiquettes: "Je *suis* content.\nTu *es* à l'école.\nIl *est* dans la classe.\nElle *est* fatiguée.\nNous *sommes* prêts.\nVous *êtes* en retard.\nIls *sont* dans le jardin.\nElles *sont* heureuses." },
       { titre: "Verbe avoir", etiquettes: "J'*ai* un cartable.\nTu *as* un crayon.\nIl *a* un vélo.\nElle *a* une poupée.\nNous *avons* des livres.\nVous *avez* une gomme.\nIls *ont* des ballons.\nElles *ont* des fleurs." },
@@ -83,7 +87,6 @@ export const MODELES_TRI: { id: string; nom: string; reglages: ReglagesTri }[] =
   { id: "types", nom: "Les types de phrases", reglages: { ...BASE,
     titre: "Les types de phrases", aideMots: false, aidePonctuation: true, parLigne: 3,
     consigne: "Découpe les étiquettes. Lis chaque phrase et range-la dans sa maison.",
-    defi: "Défi : entoure le signe de ponctuation qui termine chaque phrase.",
     categories: [
       { titre: "Elle raconte, elle dit", etiquettes: "Le vent souffle fort.\nNous mangeons à la cantine.\nMon frère a huit ans.\nLa maîtresse lit une histoire." },
       { titre: "Elle pose une question", etiquettes: "Où est ton manteau ?\nVeux-tu jouer avec moi ?\nQuelle heure est-il ?\nEst-ce que tu viens ?" },
@@ -92,7 +95,6 @@ export const MODELES_TRI: { id: string; nom: string; reglages: ReglagesTri }[] =
   { id: "temps", nom: "Passé, présent, futur", reglages: { ...BASE,
     titre: "Passé, présent ou futur ?", parLigne: 3,
     consigne: "Découpe les étiquettes. Lis chaque phrase : est-ce déjà passé, est-ce maintenant, est-ce plus tard ?",
-    defi: "Défi : entoure le mot qui dit quand cela se passe.",
     categories: [
       { titre: "Passé", etiquettes: "Hier, j'*ai joué* au ballon.\nLa semaine dernière, nous *avons visité* un musée.\nCe matin, tu *as rangé* ta chambre.\nL'an dernier, il *était* au CP." },
       { titre: "Présent", etiquettes: "En ce moment, je *lis* un livre.\nAujourd'hui, il *fait* beau.\nMaintenant, nous *écrivons* la date.\nTu *manges* une pomme." },
@@ -108,7 +110,6 @@ export const MODELES_TRI: { id: string; nom: string; reglages: ReglagesTri }[] =
   { id: "nombre", nom: "Singulier ou pluriel", reglages: { ...BASE,
     titre: "SINGULIER ou PLURIEL ?", taille: "grande",
     consigne: "Découpe les étiquettes. Un seul, ou plusieurs ? Place chaque étiquette dans la bonne maison.",
-    defi: "Défi : entoure la lettre qui marque le pluriel.",
     categories: [
       { titre: "Singulier : un seul", etiquettes: "*le* chat\n*une* fleur\n*mon* cartable\n*la* voiture\n*un* enfant\n*ta* chaussure\n*ce* livre\n*l'*arbre" },
       { titre: "Pluriel : plusieurs", etiquettes: "*les* chats\n*des* fleurs\n*mes* cartables\n*les* voitures\n*des* enfants\n*tes* chaussures\n*ces* livres\n*les* arbres" },
@@ -226,7 +227,7 @@ export function htmlTri(r: ReglagesTri, graine: number): string {
     : "";
   const maison = `<div class="page"><div class="titre">Les maisons du tri${titre ? ` — ${escapeHtml(titre)}` : ""}</div>
     <div class="sous">Prénom : ........................................ Date : ........................</div>
-    ${ficheDAide}${tableau(false)}${r.defi.trim() ? `<div class="tr-defi">${escapeHtml(r.defi.trim())}</div>` : ""}</div>`;
+    ${ficheDAide}${tableau(false)}</div>`;
   const corrige = `<div class="page corrige"><div class="titre">Les maisons du tri — corrigé</div>${tableau(true)}</div>`;
   return feuille(pages + maison + corrige, `tr tr-${r.taille === "grande" ? "grande" : "normale"}`);
 }
@@ -243,7 +244,6 @@ export const STYLE_TRI = `
   .feuille.tr .tr-maisons th { border: 1.5px solid ${NOIR}; background: #d9dbe3; padding: 3mm 2mm; font-size: 13px; text-transform: uppercase; letter-spacing: .3px; }
   .feuille.tr .tr-maisons td { border: 1.5px solid ${NOIR}; height: 21mm; padding: 1mm 2mm; text-align: center; font-size: 14px; line-height: 1.3; }
   .feuille.tr-grande .tr-maisons td { height: 26mm; font-size: 18px; }
-  .feuille.tr .tr-defi { margin-top: 4mm; font-size: 13px; }
   .feuille.tr .tr-aide { margin: 0 0 5mm; }
   .feuille.tr .tr-aide-titre { font-size: 13px; font-weight: 800; margin-bottom: 1.5mm; }
   .feuille.tr .tr-verifications { border-collapse: collapse; width: 100%; font-size: 12.5px; }
