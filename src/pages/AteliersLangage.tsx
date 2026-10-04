@@ -26,6 +26,7 @@ import {
   relectureDeLaReponse, sujetQuiNeVaPas, transpositionDeLaReponse,
 } from "../triIa";
 import { DEMANDE_CORPUS } from "../corpusIa";
+import { elider } from "../elisions";
 import { pseudonymiser, restaurer } from "../confidentialite";
 import { LigneDuProjet, useProjetDuMoment } from "../components/ProjetDuMoment";
 import { estUnModele, trisDuProjet } from "../triDuProjet";
@@ -253,6 +254,13 @@ export function TriTab() {
   // Les autres modèles, réécrits dans le thème du projet par l'IA — sauf ceux qu'il donne déjà sans elle.
   const aTransposer = MODELES_TRI.filter((m) => !(m.id === "phrase" && modelesDuProjet.some((x) => x.id === "projet-phrase")));
   const [transposition, setTransposition] = React.useState("");
+  // Un tri écrit par l'IA avant que les élisions se fassent toutes seules : on les fait à l'ouverture,
+  // une fois — jamais pendant qu'on tape.
+  React.useEffect(() => {
+    if (r.origine !== "theme") return;
+    const suite = categories.map((c) => ({ ...c, etiquettes: c.etiquettes.split("\n").map(elider).join("\n") }));
+    if (suite.some((c, i) => c.etiquettes !== categories[i].etiquettes)) maj({ categories: suite });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [demandeCorpus] = useReglages("corpusIa", DEMANDE_CORPUS);
   const transposer = async (id: string) => {
     const m = MODELES_TRI.find((x) => x.id === id);
@@ -287,6 +295,8 @@ export function TriTab() {
         const reponse2 = restaurer(await api.mistralChat(promptRelireEtiquettes(masque2.texte.split("\n"), demandeCorpus.cycle), modele), masque2.table).texte;
         ({ etiquettes: relues, corrigees } = relectureDeLaReponse(reponse2, relues));
       } catch { relue = false; }
+      // Les élisions, que la relecture laisse passer quand un astérisque les coupe : « Je *ai* » → « J'*ai* ».
+      relues = relues.map((e) => { const elidee = elider(e); if (elidee !== e) corrigees++; return elidee; });
       // Le garde-fou : un sujet qui ne peut pas aller avec être ou avoir, la relecture l'aurait-elle laissé, ne passe pas.
       const finales = ecrites.map(() => [] as string[]);
       let ecartees = 0;
