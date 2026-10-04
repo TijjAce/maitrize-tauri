@@ -23,7 +23,7 @@ pub fn run() {
         // d'effacer un enregistrement — et il apporte au passage le pont
         // Swift de Tauri, que rien d'autre ne tire sur iPhone.
         .plugin(tauri_plugin_dialog::init())
-        // Le scanner de documents : VisionKit, le même écran que Notes.
+        // L'appareil des pages d'un manuel, et la page de connexion à Nuage.
         .plugin(tauri_plugin_scanner::init())
         .invoke_handler(tauri::generate_handler![
             vocal_garder,
@@ -48,9 +48,12 @@ pub fn run() {
             creneaux_du_relais,
             // Par le WiFi, et seulement quand l'ordinateur le demande : pages et photos.
             demande_lire,
-            demande_envoyer_pages,
             demande_envoyer_photo,
             demande_terminer,
+            // Les pages d'un manuel, gardées sur le téléphone jusqu'à ce qu'on les supprime.
+            pages_etat,
+            pages_envoyer,
+            pages_oublier,
         ])
         .run(tauri::generate_context!())
         .expect("le dictaphone n'a pas pu démarrer");

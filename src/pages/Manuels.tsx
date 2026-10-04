@@ -276,7 +276,7 @@ export function ManuelsPanel() {
           </p>
           <div className="ateliers">
             <button type="button" className="atelier" onClick={() => { void scanner(commencerParPhotos); }}>
-              {carte("📱", "Scanner avec le téléphone", "Un QR code s'affiche : le Dictaphone scanne les pages comme Notes, n'importe quel téléphone les photographie.")}
+              {carte("📱", "Scanner avec le téléphone", "Un QR code s'affiche : le Dictaphone photographie les pages, chacune ajustée aussitôt ; n'importe quel téléphone peut aussi les envoyer.")}
             </button>
             <button type="button" className="atelier" disabled={!!occupe} onClick={() => entree.current?.click()}>
               {carte("📄", "Importer un PDF", occupe || "Le manuel en PDF, page à page.")}

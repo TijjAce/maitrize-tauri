@@ -1,70 +1,78 @@
-// Le scanner de documents d'iOS, tel que l'application Notes l'ouvre.
+// Les pages d'un manuel, photographiées une à une, et la page de connexion à
+// Nuage.
 //
-// VisionKit trouve les bords de la page, la prend au bon moment, la
-// redresse et la nettoie ; l'enseignant enchaîne les pages puis touche
-// « Enregistrer ». Chaque page est ramenée à 2 000 px de côté au plus et
-// écrite en JPEG dans le dossier temporaire : c'est Rust qui la lit et
-// l'envoie, et qui l'efface une fois arrivée.
-//
-// Et la page de connexion à Nuage, plus bas.
+// L'appareil (AppareilPages) ajuste chaque photo aussitôt prise et écrit la
+// page gardée dans le dossier que Rust lui donne — celui de l'application,
+// pas un dossier temporaire : une page gardée y reste jusqu'à ce qu'on la
+// supprime. Chaque page écrite est annoncée à la page web, qui l'envoie à
+// l'ordinateur sans attendre la fin.
 
+import AVFoundation
 import AuthenticationServices
 import Tauri
 import UIKit
-import VisionKit
 import WebKit
 
-class ScannerPlugin: Plugin, VNDocumentCameraViewControllerDelegate {
-  private var enAttente: Invoke? = nil
+class ScannerPlugin: Plugin {
+  // ── Les pages d'un manuel ──────────────────────────────────────────────
 
-  @objc public func scanner(_ invoke: Invoke) {
-    guard VNDocumentCameraViewController.isSupported else {
-      invoke.reject("Le scanner de documents n'est pas disponible sur cet appareil.")
+  private var appareilEnAttente: Invoke? = nil
+
+  struct Appareil: Decodable {
+    let dossier: String
+    let surPage: Channel?
+  }
+
+  @objc public func photographier(_ invoke: Invoke) {
+    guard let args = try? invoke.parseArgs(Appareil.self), !args.dossier.isEmpty else {
+      invoke.reject("Le dossier des pages manque.")
       return
     }
-    if enAttente != nil {
-      invoke.reject("Le scanner est déjà ouvert.")
+    let dossier = URL(fileURLWithPath: args.dossier, isDirectory: true)
+    do {
+      try FileManager.default.createDirectory(at: dossier, withIntermediateDirectories: true)
+    } catch {
+      invoke.reject("Le dossier des pages ne peut pas être créé : \(error.localizedDescription)")
       return
     }
-    enAttente = invoke
     DispatchQueue.main.async {
-      let ecran = VNDocumentCameraViewController()
-      ecran.delegate = self
-      guard let hote = self.manager.viewController else {
-        self.enAttente = nil
-        invoke.reject("Aucun écran où ouvrir le scanner.")
+      guard self.appareilEnAttente == nil else {
+        invoke.reject("L'appareil est déjà ouvert.")
         return
       }
-      hote.present(ecran, animated: true, completion: nil)
-    }
-  }
-
-  func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFinishWith scan: VNDocumentCameraScan) {
-    var fichiers: [String] = []
-    let dossier = FileManager.default.temporaryDirectory
-    for i in 0..<scan.pageCount {
-      let image = ScannerPlugin.reduite(scan.imageOfPage(at: i), cote: 2000)
-      guard let donnees = image.jpegData(compressionQuality: 0.85) else { continue }
-      let chemin = dossier.appendingPathComponent("scan-\(UUID().uuidString).jpg")
-      if (try? donnees.write(to: chemin)) != nil {
-        fichiers.append(chemin.path)
+      self.appareilEnAttente = invoke
+      self.avecLaCamera { permise in
+        guard permise else {
+          self.repondreAppareil { $0.reject("La caméra est refusée à Maitrize : Réglages › Maitrize Dictaphone › Caméra.") }
+          return
+        }
+        guard let hote = self.manager.viewController else {
+          self.repondreAppareil { $0.reject("Aucun écran où ouvrir l'appareil.") }
+          return
+        }
+        let appareil = AppareilPages(
+          dossier: dossier,
+          quandGardee: { nom, gardees in args.surPage?.send(["fichier": nom, "gardees": gardees]) },
+          quandFini: { gardees in self.repondreAppareil { $0.resolve(["gardees": gardees]) } })
+        hote.present(appareil, animated: true, completion: nil)
       }
     }
-    controller.dismiss(animated: true, completion: nil)
-    enAttente?.resolve(["fichiers": fichiers])
-    enAttente = nil
   }
 
-  func documentCameraViewControllerDidCancel(_ controller: VNDocumentCameraViewController) {
-    controller.dismiss(animated: true, completion: nil)
-    enAttente?.resolve(["fichiers": [String]()])
-    enAttente = nil
+  private func repondreAppareil(_ reponse: (Invoke) -> Void) {
+    let invoke = appareilEnAttente
+    appareilEnAttente = nil
+    if let invoke { reponse(invoke) }
   }
 
-  func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFailWithError error: Error) {
-    controller.dismiss(animated: true, completion: nil)
-    enAttente?.reject(error.localizedDescription)
-    enAttente = nil
+  /// La caméra est-elle permise ? On la demande la première fois ; la réponse revient sur le fil principal.
+  private func avecLaCamera(_ suite: @escaping (Bool) -> Void) {
+    switch AVCaptureDevice.authorizationStatus(for: .video) {
+    case .authorized: suite(true)
+    case .notDetermined:
+      AVCaptureDevice.requestAccess(for: .video) { ok in DispatchQueue.main.async { suite(ok) } }
+    default: suite(false)
+    }
   }
 
   // ── La page de connexion à Nuage ───────────────────────────────────────
@@ -127,19 +135,6 @@ class ScannerPlugin: Plugin, VNDocumentCameraViewControllerDelegate {
     connexionEnAttente = nil
     connexion = nil
     enAttente?.resolve(["annulee": annulee])
-  }
-
-  /// La page ramenée à `cote` pixels au plus : lisible, et dix fois plus légère.
-  private static func reduite(_ image: UIImage, cote: CGFloat) -> UIImage {
-    let plusGrand = max(image.size.width, image.size.height)
-    guard plusGrand > cote else { return image }
-    let echelle = cote / plusGrand
-    let taille = CGSize(width: image.size.width * echelle, height: image.size.height * echelle)
-    let format = UIGraphicsImageRendererFormat.default()
-    format.scale = 1
-    return UIGraphicsImageRenderer(size: taille, format: format).image { _ in
-      image.draw(in: CGRect(origin: .zero, size: taille))
-    }
   }
 }
 
