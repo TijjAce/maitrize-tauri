@@ -3,7 +3,7 @@ import {
   OPTIONS_PAR_DEFAUT, ajouterPagePhoto, consigneExtraction, consigneReadaptation, ficheDepuisLExercice, htmlFicheAdaptee,
   indexAvec, indexSans, lireExercices, lireFicheAdaptee, lireIndex, lireManuel, ecrireManuel, nouveauManuel, resumeDe, retirerPage,
   texteExercice, appliquerClassement, classementDeLaReponse, consigneClassement, domaineConnu, exercicesAClasser, exercicesDeLaNotion,
-  notionsRangees, estUneEtape, fusionnerExercices, type ExerciceManuel, type Manuel,
+  notionsRangees, estUneEtape, fusionnerExercices, lireUnExercice, consigneLectureEncadre, zoneLue, zoneUnie, type ExerciceManuel, type Manuel,
 } from "./manuels";
 
 const ex = (numero: string, consigne: string, contenu: string): ExerciceManuel => ({ id: "e", numero, titre: "", consigne, contenu, type: "calcul", notion: "" });
@@ -212,5 +212,47 @@ describe("le classement des exercices par notion", () => {
     // Un manuel d'avant le classement se relit sans notion.
     const { notions: _sans, ...ancien } = manuel();
     expect(lireManuel(JSON.stringify(ancien))!.notions).toEqual([]);
+  });
+});
+
+describe("les encadrés des exercices", () => {
+  it("lit la zone que le modèle donne, en pourcentages ou en fractions, et écarte l'absurde", () => {
+    expect(zoneLue([10, 20, 60, 45])).toEqual({ x: 0.1, y: 0.2, l: 0.5, h: 0.25 });
+    expect(zoneLue([0.1, 0.2, 0.6, 0.45])).toEqual({ x: 0.1, y: 0.2, l: 0.5, h: 0.25 });
+    // Les coins donnés à l'envers se remettent dans l'ordre ; ce qui déborde est ramené à la page.
+    expect(zoneLue([60, 45, 10, 20])).toEqual({ x: 0.1, y: 0.2, l: 0.5, h: 0.25 });
+    expect(zoneLue([-5, 90, 120, 110])).toEqual({ x: 0, y: 0.9, l: 1, h: expect.closeTo(0.1, 5) });
+    for (const absurde of [null, "10,20,60,45", [10, 20, 60], [10, 20, 11, 20.5], [1, "a", 3, 4]]) expect(zoneLue(absurde), String(absurde)).toBeUndefined();
+  });
+
+  it("garde la zone de chaque exercice relu ; deux morceaux réunis prennent le rectangle qui les contient", () => {
+    const lus = lireExercices(JSON.stringify([
+      { numero: "Pour commencer", titre: "J'accorde l'adjectif avec le nom", consigne: "Finis de les colorier.", contenu: "", type: "langue", zone: [4, 10, 96, 40] },
+      { numero: "", titre: "", consigne: "Puis complète les phrases.", contenu: "", type: "langue", zone: [4, 38, 96, 80] },
+      { numero: "2", titre: "", consigne: "Accorde.", contenu: "", type: "langue" },
+    ]));
+    expect(lus.map((e) => e.zone)).toEqual([{ x: 0.04, y: 0.1, l: expect.closeTo(0.92, 5), h: expect.closeTo(0.7, 5) }, undefined]);
+    expect(zoneUnie(undefined, { x: 0, y: 0, l: 1, h: 1 })).toEqual({ x: 0, y: 0, l: 1, h: 1 });
+  });
+
+  it("lit l'exercice d'un encadré : un objet, ou des morceaux qu'on réunit", () => {
+    expect(consigneLectureEncadre("CM1")).toContain("UN exercice");
+    const un = lireUnExercice('Voici : {"numero":"3","titre":"","consigne":"Accorde l\'adjectif.","contenu":"des fleurs (bleu)","type":"langue"}');
+    expect(un).toMatchObject({ numero: "3", consigne: "Accorde l'adjectif.", contenu: "des fleurs (bleu)", type: "langue" });
+    const morceaux = lireUnExercice(JSON.stringify([
+      { numero: "1", consigne: "Lis.", contenu: "", type: "lecture" },
+      { numero: "", consigne: "Réponds.", contenu: "Qui ?", type: "lecture" },
+    ]));
+    expect(morceaux).toMatchObject({ numero: "1", consigne: "Lis.\nRéponds.", contenu: "Qui ?" });
+    expect(lireUnExercice("rien de lisible")).toBeNull();
+  });
+
+  it("se relit avec ses encadrés, et dit lesquels l'enseignant a tracés", () => {
+    const m = nouveauManuel("Cléo", "telephone", "2026-10-04");
+    const e = { ...ex("1", "Lis.", ""), zone: { x: 0.1, y: 0.2, l: 0.5, h: 0.3 }, zoneManuelle: true };
+    const avec: Manuel = { ...m, pages: [{ id: "p", numero: 1, fichier: "a.jpg", extraitLe: "2026-10-04", exercices: [e, { ...ex("2", "Écris.", ""), id: "f" }] }] };
+    const relu = lireManuel(ecrireManuel(avec))!;
+    expect(relu.pages[0].exercices[0]).toMatchObject({ zone: { x: 0.1, y: 0.2, l: 0.5, h: 0.3 }, zoneManuelle: true });
+    expect(relu.pages[0].exercices[1].zone).toBeUndefined();
   });
 });

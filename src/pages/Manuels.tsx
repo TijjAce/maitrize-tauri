@@ -5,6 +5,7 @@ import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { PhotoTelephone } from "../components/PhotoTelephone";
 import { BoutonBureau } from "../components/BoutonBureau";
+import { PageEncadree, teinteExercice } from "../components/PageEncadree";
 import { CompetenceTree, labelCourt } from "../components/CompetenceTree";
 import { basculerCompetence, memeCompetence } from "../ateliersCompetences";
 import { STYLE_ENTETE_COMPETENCES, enteteCompetencesHtml, materielDuBureau } from "../impressionAtelier";
@@ -13,9 +14,9 @@ import { nombreDePages, octetsDuFichier, rendrePage } from "../pdfRendu";
 import {
   CLE_INDEX, DOMAINES_MANUEL, OPTIONS_PAR_DEFAUT, PAR_LOT, STYLE_FICHE_ADAPTEE, TYPES_EXERCICE, ajouterPagePhoto, appliquerClassement,
   classementDeLaReponse, cleManuel, consigneClassement, consigneExtraction, consigneReadaptation, ecrireManuel, exercicesAClasser,
-  exercicesDeLaNotion, ficheDepuisLExercice, htmlFicheAdaptee, indexAvec, indexSans, lireExercices, lireFicheAdaptee, lireIndex, lireManuel,
+  consigneLectureEncadre, exercicesDeLaNotion, ficheDepuisLExercice, lireUnExercice, htmlFicheAdaptee, indexAvec, indexSans, lireExercices, lireFicheAdaptee, lireIndex, lireManuel,
   fusionnerExercices, notionsRangees, nouveauManuel, retirerPage, texteExercice, type ExerciceAClasser, type ExerciceManuel, type FicheAdaptee, type Manuel,
-  type NotionManuel, type OptionsReadaptation, type PageManuel, type ResumeManuel,
+  type NotionManuel, type OptionsReadaptation, type PageManuel, type ResumeManuel, type Zone,
 } from "../manuels";
 
 // ── Adapter une fiche › Manuels ───────────────────────────────────────────
@@ -43,6 +44,25 @@ async function pngReduit(dataUrl: string, maxCote = 1600): Promise<string> {
   if (!ctx) throw new Error("Rendu impossible dans cette fenêtre.");
   ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, toile.width, toile.height);
   ctx.drawImage(img, 0, 0, toile.width, toile.height);
+  const url = toile.toDataURL("image/png");
+  return url.slice(url.indexOf(",") + 1);
+}
+
+/** L'encadré d'une page, découpé dans son image — avec un liseré pour ne pas couper une lettre —, en PNG base64. */
+async function pngDeLaZone(dataUrl: string, z: Zone, maxCote = 1600): Promise<string> {
+  const img = new Image();
+  await new Promise<void>((ok, ko) => { img.onload = () => ok(); img.onerror = () => ko(new Error("Image illisible")); img.src = dataUrl; });
+  const marge = 0.01;
+  const x = Math.max(0, z.x - marge) * img.width, y = Math.max(0, z.y - marge) * img.height;
+  const l = Math.min(img.width - x, (z.l + 2 * marge) * img.width), h = Math.min(img.height - y, (z.h + 2 * marge) * img.height);
+  const echelle = Math.min(1, maxCote / Math.max(l, h));
+  const toile = document.createElement("canvas");
+  toile.width = Math.max(1, Math.round(l * echelle));
+  toile.height = Math.max(1, Math.round(h * echelle));
+  const ctx = toile.getContext("2d");
+  if (!ctx) throw new Error("Rendu impossible dans cette fenêtre.");
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, toile.width, toile.height);
+  ctx.drawImage(img, x, y, l, h, 0, 0, toile.width, toile.height);
   const url = toile.toDataURL("image/png");
   return url.slice(url.indexOf(",") + 1);
 }
@@ -92,7 +112,12 @@ export function ManuelsPanel() {
   const [images, setImages] = React.useState<Record<string, string>>({});
   const entree = React.useRef<HTMLInputElement>(null);
 
+  // Le manuel tel qu'il est à l'instant, pour ce qui finit plus tard (la lecture d'un encadré) :
+  // repartir d'une copie prise avant l'attente effacerait ce qui s'est fait entre-temps.
+  const manuelCourant = React.useRef<Manuel | null>(null);
+  manuelCourant.current = manuel;
   const enregistrer = React.useCallback(async (m: Manuel) => {
+    manuelCourant.current = m;
     setManuel(m);
     await api.settingSet(cleManuel(m.id), ecrireManuel(m));
     await api.settingSet(CLE_INDEX, JSON.stringify(indexAvec(lireIndex(await api.settingGet(CLE_INDEX)), m)));
@@ -206,6 +231,9 @@ export function ManuelsPanel() {
   };
   const relirePage = async () => {
     if (!manuel || !page) return;
+    const n = page.exercices.length;
+    const traces = page.exercices.filter((e) => e.zoneManuelle).length;
+    if (n && !(await confirmer(`Relire la page remplace ses ${n} exercice${n > 1 ? "s" : ""}${traces ? `, dont ${traces} que vous avez encadré${traces > 1 ? "s" : ""}` : ""}, et ce que vous y avez corrigé.`, { oui: "Relire", danger: traces > 0 }))) return;
     setOccupe("Le modèle relit la page…");
     try { const m = await relire(manuel, page); setExerciceId(m.pages.find((x) => x.id === page.id)?.exercices[0]?.id ?? ""); }
     catch (e) { toast(String(e), { icone: "⚠️" }); }
@@ -266,6 +294,43 @@ export function ManuelsPanel() {
     void enregistrer({ ...manuel, pages: manuel.pages.map((p) => (p.id === page.id ? { ...p, exercices: p.exercices.filter((e) => e.id !== exercice.id) } : p)) });
     setExerciceId("");
   };
+  // ── Les encadrés : l'enseignant trace ce qui fait un exercice, le modèle le lit ──
+  const [encadrer, setEncadrer] = React.useState(false);
+  const fileDesLectures = React.useRef(Promise.resolve());
+  const majPage = (m: Manuel, pid: string, f: (p: PageManuel) => PageManuel): Manuel => ({ ...m, pages: m.pages.map((p) => (p.id === pid ? f(p) : p)) });
+  /** Lit l'exercice d'un encadré, sur l'encadré seul ; les lectures passent une à une. */
+  const lireLEncadre = (pid: string, eid: string) => {
+    fileDesLectures.current = fileDesLectures.current.then(async () => {
+      const m = manuelCourant.current;
+      const p = m?.pages.find((x) => x.id === pid);
+      const e = p?.exercices.find((x) => x.id === eid);
+      if (!m || !p || !e?.zone) return;
+      setOccupe("Le modèle lit l'encadré…");
+      try {
+        const lu = lireUnExercice(await api.mistralVision(consigneLectureEncadre(m.niveau), await pngDeLaZone(await imageDe(m, p), e.zone)));
+        if (!lu) { toast("Le modèle n'a rien lu de sûr dans cet encadré : écrivez l'exercice à la main.", { icone: "🤔", duree: 6000 }); return; }
+        const actuel = manuelCourant.current;
+        if (!actuel) return;
+        await enregistrer(majPage(actuel, pid, (x) => ({
+          ...x, extraitLe: x.extraitLe || todayIso(),
+          exercices: x.exercices.map((y) => (y.id === eid ? { ...y, numero: lu.numero, titre: lu.titre, consigne: lu.consigne, contenu: lu.contenu, type: lu.type } : y)),
+        })));
+      } catch (err) { toast("Lecture de l'encadré impossible : " + texteErreur(err), { icone: "⚠️", duree: 7000 }); }
+      finally { setOccupe(""); }
+    });
+  };
+  const tracer = (z: Zone) => {
+    if (!manuel || !page) return;
+    const e: ExerciceManuel = { id: newId(), numero: "", titre: "", consigne: "", contenu: "", type: "autre", notion: "", zone: z, zoneManuelle: true };
+    void enregistrer(majPage(manuel, page.id, (p) => ({ ...p, exercices: [...p.exercices, e] })));
+    setExerciceId(e.id);
+    lireLEncadre(page.id, e.id);
+  };
+  const ajuster = (id: string, z: Zone) => {
+    if (!manuel || !page) return;
+    void enregistrer(majPage(manuel, page.id, (p) => ({ ...p, exercices: p.exercices.map((e) => (e.id === id ? { ...e, zone: z, zoneManuelle: true } : e)) })));
+  };
+
   // Le modèle a coupé un bloc en deux : on rend la seconde partie à la première.
   const precedent = page && exercice ? page.exercices[page.exercices.findIndex((e) => e.id === exercice.id) - 1] ?? null : null;
   const rattacher = () => {
@@ -463,7 +528,7 @@ export function ManuelsPanel() {
       )}
 
       {vue === "pages" && page && (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 300px) 1fr", gap: 14, alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 1fr) minmax(340px, 1fr)", gap: 14, alignItems: "start" }}>
           <div className="card">
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
               <b style={{ fontSize: 13 }}>Page {page.numero}</b>
@@ -477,12 +542,22 @@ export function ManuelsPanel() {
                 }}>🗑</button>
               )}
             </div>
-            {images[page.id] ? <img src={images[page.id]} alt="" style={{ width: "100%", borderRadius: 6, border: "1px solid var(--border)" }} />
-              : <div style={{ aspectRatio: "3 / 4", background: "var(--panel-2)", borderRadius: 6 }} />}
+            <button type="button" className={encadrer ? "btn primary sm" : "btn sm"} style={{ width: "100%", marginBottom: 8 }}
+              disabled={!images[page.id]} onClick={() => setEncadrer(!encadrer)} aria-pressed={encadrer}
+              title="Tracez un cadre autour d'un exercice : ce qu'il contient devient un exercice, que le modèle lit seul">
+              {encadrer ? "✏️ Tracez un cadre autour d'un exercice — terminer" : "✏️ Encadrer un exercice"}
+            </button>
+            {images[page.id] ? (
+              <PageEncadree image={images[page.id]} exercices={page.exercices} choisi={exerciceId} encadrer={encadrer}
+                onChoisir={setExerciceId} onTracer={tracer} onAjuster={ajuster} />
+            ) : <div style={{ aspectRatio: "3 / 4", background: "var(--panel-2)", borderRadius: 6 }} />}
+            {page.exercices.some((e) => e.zone) && (
+              <p className="meta man-legende"><span className="man-legende-ia" /> ce que l'IA a vu <span className="man-legende-main" /> vos encadrés · cliquez un cadre pour le choisir, puis déplacez-le ou tirez ses coins.</p>
+            )}
             <button type="button" className="btn primary sm" style={{ width: "100%", marginTop: 10 }} disabled={!!occupe || !images[page.id]} onClick={relirePage}>
               {page.extraitLe ? "🔎 Relire cette page" : "🔎 Récupérer les exercices"}
             </button>
-            <p className="meta" style={{ fontSize: 11.5, lineHeight: 1.5, margin: "8px 0 0" }}>L'image de la page part chez Mistral, réduite ; les exercices reviennent en texte, à corriger si besoin.</p>
+            <p className="meta" style={{ fontSize: 11.5, lineHeight: 1.5, margin: "8px 0 0" }}>L'image de la page part chez Mistral, réduite ; les exercices reviennent en texte et en cadres, à corriger si besoin. Un cadre tracé à la main part seul.</p>
           </div>
 
           <div style={{ minWidth: 0 }}>
@@ -495,8 +570,9 @@ export function ManuelsPanel() {
               </div>
               {page.exercices.length === 0 ? (
                 <p className="meta" style={{ fontSize: 12.5, margin: 0 }}>{page.extraitLe ? "Le modèle n'a trouvé aucun exercice sur cette page." : "Récupérez les exercices : ils s'afficheront ici."}</p>
-              ) : page.exercices.map((e) => (
-                <button key={e.id} type="button" className={`man-exo${e.id === exerciceId ? " on" : ""}`} onClick={() => setExerciceId(e.id)}>
+              ) : page.exercices.map((e, i) => (
+                <button key={e.id} type="button" className={`man-exo${e.id === exerciceId ? " on" : ""}`} onClick={() => setExerciceId(e.id)}
+                  style={{ boxShadow: e.zone ? `inset 3px 0 0 ${teinteExercice(i)}` : undefined }}>
                   <span className="man-exo-num">{TYPES_EXERCICE.find((t) => t.id === e.type)?.icone} {e.numero || "—"}</span>
                   <span className="man-exo-texte">
                     {texteExercice({ ...e, numero: "" }).slice(0, 140)}
@@ -511,6 +587,10 @@ export function ManuelsPanel() {
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                   <h3 style={{ margin: 0, fontSize: 15 }}>✨ Réadapter l'exercice {exercice.numero}</h3>
                   <div style={{ flex: 1 }} />
+                  {exercice.zone && (
+                    <button type="button" className="btn ghost sm" disabled={!!occupe} onClick={() => lireLEncadre(page.id, exercice.id)}
+                      title="Le modèle relit ce qui est dans le cadre, et rien d'autre">🔎 Relire l'encadré</button>
+                  )}
                   {precedent && (
                     <button type="button" className="btn ghost sm" onClick={rattacher}
                       title={`Une suite de l'exercice ${precedent.numero || "d'avant"}, pas un exercice à part : on les réunit`}>⤴ Rattacher au précédent</button>
