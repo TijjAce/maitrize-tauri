@@ -1072,6 +1072,9 @@ function Repli({ titre, resume, children }: { titre: string; resume?: React.Reac
 // compte se fait côté Rust, à chaque réponse, sur cet ordinateur.
 
 const enJetons = (n: number) => `${n.toLocaleString("fr-FR")} ${n >= 2 ? "jetons" : "jeton"}`;
+/** L'équivalent en euros, arrondi au centime : en dessous, on le dit. */
+const enEuros = (e: number) => (e < 0.005 ? "moins d'un centime"
+  : `≈ ${e.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`);
 
 function JetonsDepenses({ maj }: { maj: number }) {
   const [jetons, setJetons] = React.useState<JetonsIa | null>(null);
@@ -1084,13 +1087,14 @@ function JetonsDepenses({ maj }: { maj: number }) {
     <div className="jetons-ia">
       <span>
         📊 {jetons.total === 0 ? "Aucun jeton dépensé pour l'instant" : <>
-          <b>{enJetons(jetons.ceMois)}</b> ce mois-ci
-          {jetons.total > jetons.ceMois && <> · {enJetons(jetons.total)} depuis le {depuis}</>}
+          <b>{enJetons(jetons.ceMois)}</b> ce mois-ci <span className="jetons-euros">({enEuros(jetons.eurosCeMois)})</span>
+          {jetons.total > jetons.ceMois && <> · {enJetons(jetons.total)} depuis le {depuis} <span className="jetons-euros">({enEuros(jetons.eurosTotal)})</span></>}
         </>}
       </span>
       <Aide titre="Les jetons">
         <p>Mistral facture au <b>jeton</b>, un morceau de mot. Chaque réponse dit combien elle en a coûté : Maitrize les additionne.</p>
         <p>Tout compte : l'assistant, les ateliers, la recherche web, les transcriptions en ligne. La transcription sur cet ordinateur ne coûte rien.</p>
+        <p>Les euros sont une estimation au tarif public de Mistral (octobre 2026), modèle par modèle, au cours de la BCE (1 € = 1,13 $). La recherche web se paie en plus à la recherche, la transcription en ligne à la minute. Avec l'offre gratuite de Mistral, rien n'est facturé.</p>
         <p>Le compte est celui de cet ordinateur{depuis && `, depuis le ${depuis}`}. La facture exacte est sur console.mistral.ai.</p>
       </Aide>
     </div>

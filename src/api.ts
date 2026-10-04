@@ -1044,8 +1044,11 @@ export interface EtatModele { id: string; disponible: boolean; detail: string }
 /** Un manuel en PDF : le fichier, et le numéro des pages laissées de côté parce qu'illisibles. */
 export interface ManuelPdf { fichier: string; illisibles: number[] }
 
-/** Les jetons que l'IA a dépensés sur cet ordinateur ; `depuis` (« AAAA-MM-JJ ») est vide tant que rien n'est compté. */
-export interface JetonsIa { ceMois: number; total: number; depuis: string }
+/**
+ * Les jetons que l'IA a dépensés sur cet ordinateur ; `depuis` (« AAAA-MM-JJ ») est vide tant que rien n'est compté.
+ * Les euros sont une estimation au tarif public de Mistral, modèle par modèle.
+ */
+export interface JetonsIa { ceMois: number; total: number; depuis: string; eurosCeMois: number; eurosTotal: number }
 
 /** Ramène un identifiant de modèle enregistré vers un modèle encore servi. */
 export function normaliserModele(id: string | null | undefined): string {

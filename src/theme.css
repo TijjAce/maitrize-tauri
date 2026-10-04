@@ -1200,3 +1200,4 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
   border-top: 1px solid var(--border); font-size: 13px; color: var(--text-2); }
 .jetons-ia > span:first-child { flex: 1; min-width: 0; }
 .jetons-ia b { color: var(--text); }
+.jetons-ia .jetons-euros { white-space: nowrap; }
