@@ -1154,16 +1154,15 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
 .man-exo-num { flex: none; font-weight: 700; font-size: 13px; min-width: 52px; }
 .man-exo-texte { font-size: 13px; line-height: 1.45; color: var(--text-2); }
 .man-exo.on .man-exo-texte { color: var(--text); }
-.man-exo-notion { display: block; margin-top: 3px; font-size: 11.5px; font-weight: 600; color: var(--accent); }
+.man-exo-competence { display: block; margin-top: 3px; font-size: 11.5px; font-weight: 600; color: var(--accent); }
 
-/* La page et ses exercices encadrés : en pointillés ce que l'IA a vu, en trait plein ce que l'enseignant a tracé. */
+/* La page et les exercices que l'enseignant y a encadrés. */
 .man-page-encadree { position: relative; user-select: none; -webkit-user-select: none; touch-action: none;
   border: 1px solid var(--border); border-radius: 6px; overflow: hidden; line-height: 0; }
 .man-page-encadree img { display: block; width: 100%; height: auto; pointer-events: none; }
 .man-page-encadree.trace { cursor: crosshair; }
-.man-zone { position: absolute; box-sizing: border-box; border: 2px dashed var(--teinte); border-radius: 4px; cursor: pointer;
+.man-zone { position: absolute; box-sizing: border-box; border: 2px solid var(--teinte); border-radius: 4px; cursor: pointer;
   background: color-mix(in srgb, var(--teinte) 7%, transparent); line-height: normal; }
-.man-zone.main { border-style: solid; }
 .man-zone.on { border-width: 3px; background: color-mix(in srgb, var(--teinte) 15%, transparent); cursor: move;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .7); z-index: 2; }
 .man-page-encadree.trace .man-zone { cursor: crosshair; }
@@ -1177,28 +1176,23 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
 .man-zone-coin.bg { left: -8px; bottom: -8px; cursor: nesw-resize; }
 .man-zone-coin.bd { right: -8px; bottom: -8px; cursor: nwse-resize; }
 .man-legende { font-size: 11.5px; line-height: 1.6; margin: 8px 0 0; }
-.man-legende-ia, .man-legende-main { display: inline-block; width: 16px; height: 10px; margin: 0 3px 0 6px; vertical-align: -1px;
-  border: 2px dashed var(--accent); border-radius: 2px; }
-.man-legende-ia:first-child { margin-left: 0; }
-.man-legende-main { border-style: solid; }
 
-/* Le classement : les exercices de tout le manuel, par notion, et la compétence du BO de chacune. */
-.man-classement-tete { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
-.man-domaine > h4 { margin: 18px 2px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-2); }
-.man-notion { margin-bottom: 10px; padding-top: 12px; padding-bottom: 8px; }
-.man-notion-tete { display: flex; align-items: center; gap: 8px; }
-.man-notion-tete .input { flex: 1; min-width: 0; font-weight: 700; }
-.man-notion-tete .select { flex: none; width: auto; max-width: 190px; }
-.man-notion-competences { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.man-notion-competences .chip { background: var(--accent-soft); color: var(--accent); max-width: 100%; }
-.man-notion-competences .chip button { border: none; background: none; color: inherit; cursor: pointer; padding: 0 0 0 2px; font-size: 14px; line-height: 1; }
-.man-notion-exos { list-style: none; margin: 8px 0 0; padding: 0; }
-.man-notion-exo { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border); padding: 5px 0; }
-.man-notion-ou { flex: none; min-width: 74px; border: none; background: none; color: var(--accent); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; text-align: left; padding: 2px 0; }
-.man-notion-ou:hover { text-decoration: underline; }
-.man-notion-consigne { flex: 1; min-width: 0; font-size: 13px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.man-ranger.select { flex: none; width: 170px; padding-top: 3px; padding-bottom: 3px; font-size: 12px; }
-@media (max-width: 720px) { .man-notion-exo { flex-wrap: wrap; } .man-notion-consigne { white-space: normal; flex-basis: 100%; order: 3; } }
+/* L'exercice choisi : sa compétence, son modèle simplifié. */
+.man-exercice-tete { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.man-exercice-tete h3 { margin: 0; font-size: 15px; }
+.man-competences { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.man-competences .chip { background: var(--accent-soft); color: var(--accent); max-width: 100%; }
+.man-competences .chip button { border: none; background: none; color: inherit; cursor: pointer; padding: 0 0 0 2px; font-size: 14px; line-height: 1; }
+.man-modele { margin-bottom: 8px; }
+
+/* Les exercices par compétence : dans le manuel, et dans une séquence. */
+.man-par-competence > h4 { margin: 16px 0 6px; font-size: 13px; }
+.man-liste-exos { list-style: none; margin: 0; padding: 0; }
+.man-liste-exo { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border); padding: 6px 0; }
+.man-ou { flex: none; min-width: 74px; border: none; background: none; color: var(--accent); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; text-align: left; padding: 2px 0; }
+.man-ou:hover { text-decoration: underline; }
+.man-liste-nom { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.man-seance.select { flex: none; width: auto; max-width: 210px; padding-top: 4px; padding-bottom: 4px; font-size: 12.5px; }
 
 /* Le coloriage magique : les trois temps de l'écran, la galerie des dessins, les vignettes. */
 .cm-etape { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13.5px; margin: 14px 0 8px; }
