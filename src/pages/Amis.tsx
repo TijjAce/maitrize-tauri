@@ -1,14 +1,14 @@
 import React from "react";
-import { Page } from "../App";
 import { api, Identite, Ami, SyncConfig, SyncMessage, BoiteItem } from "../api";
 import { Field, Input, Modal, Empty, Confirm, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { releverBoiteAuxLettres, messageRecu } from "../inbox";
 
-// Page « Amis » : identité de l'appareil + appariement par code d'invitation.
-// 100 % local pour l'instant (aucun échange réseau) — la synchro chiffrée
-// viendra dans un second temps.
-export default function Amis() {
+// « Amis », un onglet des Réglages : identité de l'appareil, appariement par
+// code d'invitation, boîte aux lettres et synchronisation chiffrée avec un
+// collègue. Il avait sa page dans le menu ; c'est un réglage qu'on fait une
+// fois, il rejoint les autres.
+export function AmisTab() {
   const { data: identite, reload: reloadId } = useAsync(() => api.identiteGet(), []);
   const { data: amis, reload: reloadAmis } = useAsync(() => api.amisList(), []);
   const [inviter, setInviter] = React.useState(false);
@@ -18,11 +18,12 @@ export default function Amis() {
   const [echange, setEchange] = React.useState<Ami | null>(null);
 
   return (
-    <Page titre="Amis" sous="Reliez votre app à celle d'un collègue, en toute confidentialité"
-      actions={<>
+    <>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14, maxWidth: 620 }}>
+        <span className="meta" style={{ flex: 1, minWidth: 220 }}>Reliez votre application à celle d'un collègue, en toute confidentialité.</span>
         <button className="btn" onClick={() => setAjouter(true)}>➕ Ajouter un ami</button>
         <button className="btn primary" onClick={() => setInviter(true)}>📤 Inviter</button>
-      </>}>
+      </div>
 
       {identite && <CarteIdentite identite={identite} onRename={reloadId} />}
 
@@ -58,7 +59,7 @@ export default function Amis() {
       {vu && <SecuriteModal ami={vu} onClose={() => setVu(null)} onChange={reloadAmis} />}
       {supp && <Confirm message={`Supprimer ${supp.nom || "cet ami"} ?`}
         onYes={() => api.amiSupprimer(supp.id).then(reloadAmis)} onClose={() => setSupp(null)} />}
-    </Page>
+    </>
   );
 }
 

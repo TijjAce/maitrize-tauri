@@ -17,7 +17,6 @@ import Caa from "./pages/Caa";
 import Ressources from "./pages/Ressources";
 import Assistant from "./pages/Assistant";
 import Reunions from "./pages/Reunions";
-import Amis from "./pages/Amis";
 import Reglages from "./pages/Reglages";
 import { PageVisibleContext, ouvrirOnglet } from "./components/ui";
 import { demarrerSyncAuto } from "./syncAuto";
@@ -46,6 +45,16 @@ import { UpdateBanner } from "./components/UpdateBanner";
 import { CopieDuBureau } from "./components/CopieDuBureau";
 import { releverBoiteAuxLettres, messageRecu } from "./inbox";
 
+/** L'ancienne page « Amis » : c'est maintenant un onglet des Réglages. */
+function VersLesAmis() {
+  const navigate = useNavigate();
+  React.useEffect(() => {
+    navigate("/reglages", { replace: true });
+    setTimeout(() => ouvrirOnglet("reglages", "amis"), 140);
+  }, [navigate]);
+  return null;
+}
+
 const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: true })[] = [
   { to: "/", ico: "🏠", label: "Tableau de bord", end: true },
   { sep: true },
@@ -63,7 +72,6 @@ const NAV: ({ to: string; ico: string; label: string; end?: boolean } | { sep: t
   { sep: true },
   { to: "/assistant", ico: "✨", label: "Assistant IA" },
   { to: "/reunions", ico: "🎧", label: "Réunions" },
-  { to: "/amis", ico: "🤝", label: "Amis" },
   { to: "/reglages", ico: "⚙️", label: "Réglages" },
 ];
 
@@ -86,7 +94,6 @@ const KEEP_ALIVE: { path: string; element: React.ReactNode }[] = [
   { path: "/assistant", element: <Assistant /> },
   // L'écoute d'une réunion continue quand on passe voir autre chose.
   { path: "/reunions", element: <Reunions /> },
-  { path: "/amis", element: <Amis /> },
   { path: "/reglages", element: <Reglages /> },
 ];
 const KEEP_PATHS = new Set(KEEP_ALIVE.map((p) => p.path));
@@ -119,6 +126,7 @@ function KeepAliveHost({ pathname }: { pathname: string }) {
             <Routes>
               <Route path="/planning" element={<Planning />} />
               <Route path="/sequences/:id" element={<SequenceDetail />} />
+              <Route path="/amis" element={<VersLesAmis />} />
               <Route path="/commun" element={<BureauxCommuns />} />
               {/* Les anciens chemins restent valides : la palette ⌘K, le
                   tableau de bord et l'accueil y renvoient encore, et un lien
