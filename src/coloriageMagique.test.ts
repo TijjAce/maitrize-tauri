@@ -130,7 +130,11 @@ describe("la feuille", () => {
 
   it("dit à l'élève ce qu'on attend de lui", () => {
     expect(consigne(REGLAGES_PAR_DEFAUT)).toContain("colorie");
-    expect(consigne({ ...REGLAGES_PAR_DEFAUT, operation: "multiplication", table: 7 })).toContain("table de 7");
+    // On colorie selon le résultat : la somme, la différence, le produit — les mots du programme.
+    expect(consigne(REGLAGES_PAR_DEFAUT)).toContain("Calcule la somme écrite dans chaque case");
+    expect(consigne({ ...REGLAGES_PAR_DEFAUT, operation: "soustraction" })).toContain("selon cette différence");
+    expect(consigne({ ...REGLAGES_PAR_DEFAUT, operation: "multiplication", table: 7 })).toContain("selon ce produit");
+    expect(consigne({ ...REGLAGES_PAR_DEFAUT, operation: "melange" })).toContain("selon son résultat");
     expect(consigne(REGLAGES_PAR_DEFAUT)).toContain("reste blanche");
   });
 });

@@ -119,3 +119,32 @@ export const consignesParDefaut = {
   },
   abonner(f: () => void) { abonnes.add(f); return () => { abonnes.delete(f); }; },
 };
+
+// ── Les consignes justes, publiées par les ateliers de calcul ─────────────
+//
+// Un atelier qui connaît ses calculs dit ici les consignes qui leur vont —
+// « Complète les égalités. » quand le nombre qui manque est parfois un terme,
+// « Calcule les sommes. » quand c'est toujours une somme (voir
+// consignesCalcul) —, et ses calculs, pour que l'éditeur relève un mot de la
+// consigne qui ne leur irait pas.
+
+export interface ConsignesJustes { propositions: string[]; ecrits: string[] }
+
+const justes: Record<string, ConsignesJustes> = {};
+const abonnesJustes = new Set<() => void>();
+const VIDE: ConsignesJustes = { propositions: [], ecrits: [] };
+
+export const consignesJustes = {
+  lire: (atelier: string): ConsignesJustes => justes[atelier] ?? VIDE,
+  publier(atelier: string, valeur: ConsignesJustes | null) {
+    if (!atelier) return;
+    const avant = justes[atelier];
+    if (!valeur) { if (!avant) return; delete justes[atelier]; }
+    else {
+      if (avant && avant.propositions.join("|") === valeur.propositions.join("|") && avant.ecrits.join("|") === valeur.ecrits.join("|")) return;
+      justes[atelier] = valeur;
+    }
+    abonnesJustes.forEach((f) => f());
+  },
+  abonner(f: () => void) { abonnesJustes.add(f); return () => { abonnesJustes.delete(f); }; },
+};

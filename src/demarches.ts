@@ -958,7 +958,7 @@ const CALCUL_MENTAL: Demarche = {
       duree: 15,
       phases: [
         ph("Échauffement", "5 min", "Les faits d'appui de la procédure, révisés à l'ardoise."),
-        ph("Série La Martinière", "10 min", "Dix calculs. Chacun est dit deux fois ; réflexion sans écrire, cinq secondes ; « Écrivez ! » — le résultat, rien d'autre ; « Montrez ! » — les ardoises se lèvent ensemble ; la réponse est dite, on corrige, on passe au suivant.",
+        ph("Série La Martinière", "10 min", "Dix calculs. Chacun est dit deux fois ; réflexion sans écrire, cinq secondes ; « Écrivez ! » — la réponse, rien d'autre ; « Montrez ! » — les ardoises se lèvent ensemble ; la réponse est dite, on corrige, on passe au suivant.",
           "Fait expliciter une procédure toutes les trois ou quatre questions ; note les erreurs qui reviennent."),
       ],
     },

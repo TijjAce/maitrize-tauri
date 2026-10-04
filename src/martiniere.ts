@@ -7,13 +7,14 @@
 //
 // Deux formes. À l'oral, c'est le procédé La Martinière : le maître dit le
 // calcul, deux fois ; les élèves réfléchissent sans écrire ; « écrivez » —
-// chacun écrit le résultat sur l'ardoise ; « montrez » — les ardoises se
+// chacun écrit sa réponse sur l'ardoise ; « montrez » — les ardoises se
 // lèvent ensemble ; on corrige, on passe au suivant. La feuille est alors la
 // fiche du maître, et les ardoises papier pour qui n'a pas d'ardoise. Par
 // écrit, c'est le test de fluence que les programmes demandent : des
 // égalités à trou à compléter en temps limité, pour voir ses progrès.
 
 import { escapeHtml } from "./print";
+import { consignesPour } from "./consignesCalcul";
 import { feuille } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
 import { NIVEAUX, objectifParId, objectifsDuNiveau, tirerCalcul, type Calcul, type Niveau, type Objectif } from "./faitsNumeriques";
@@ -99,8 +100,11 @@ const avecReponse = (c: Calcul) => escapeHtml(c.ecrit).replace("…", `<b>${esca
 
 function htmlOral(series: Calcul[][], r: ReglagesMartiniere): string {
   const attendu = objectifsRetenus(r).map(fluenceAttendue).find(Boolean);
+  // La consigne des élèves d'abord : c'est elle que l'enseignant réécrit, et que les pictos illustrent.
+  const consigne = consignesPour(series.flat().map((c) => c.ecrit), true)[0];
   const tete = `<div class="titre">Calcul mental — procédé La Martinière</div>
-    <div class="regle"><b>Le procédé</b>Je dis le calcul, deux fois. On réfléchit sans écrire, ${r.reflexion} secondes. « Écrivez ! » : chacun écrit le résultat, et rien d'autre. « Montrez ! » : les ardoises se lèvent ensemble. On dit la réponse, on corrige, on passe au calcul suivant.</div>
+    <div class="consigne">${escapeHtml(consigne)}</div>
+    <div class="regle"><b>Le procédé</b>Je dis le calcul, deux fois. On réfléchit sans écrire, ${r.reflexion} secondes. « Écrivez ! » : chacun écrit sa réponse, et rien d'autre. « Montrez ! » : les ardoises se lèvent ensemble. On dit la réponse, on corrige, on passe au calcul suivant.</div>
     <div class="sous">${escapeHtml(resumeMartiniere(r))}${attendu ? ` Attendu en fin de ${r.niveau} : ${escapeHtml(attendu)}.` : ""}</div>`;
   const tables = series.map((s, i) => `<table class="ma-serie"><caption>Série ${i + 1}</caption>
     <thead><tr><th>n°</th><th>Je dis</th><th>Au tableau</th><th class="corrige">Réponse</th></tr></thead>

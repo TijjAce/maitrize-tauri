@@ -86,3 +86,12 @@ describe("lire l'heure", () => {
     expect(pm).toContain(`<span class="he-moment">après-midi</span>`);
   });
 });
+
+describe("la consigne de l'heure", () => {
+  it("demande les deux lectures quand l'après-midi compte aussi", () => {
+    expect(consigneHeure({ sens: "lire" })).toBe("Écris l'heure qu'il est.");
+    expect(consigneHeure({ sens: "lire", apresMidi: true })).toBe("Écris l'heure qu'il est le matin, puis l'après-midi.");
+    expect(consigneHeure({ sens: "mixte", apresMidi: true })).toBe("Écris l'heure qu'il est le matin, puis l'après-midi, ou dessine les aiguilles.");
+    expect(consigneHeure({ sens: "dessiner", apresMidi: true })).toBe("Dessine les aiguilles.");
+  });
+});

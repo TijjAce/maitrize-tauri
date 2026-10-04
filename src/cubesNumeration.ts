@@ -42,7 +42,7 @@ export const ECRITURES: { id: EcritureNombre; libelle: string; exemple: string }
 
 export type ExerciceCubes = "ecrire" | "dessiner" | "relier";
 export const EXERCICES: { id: ExerciceCubes; libelle: string; consigne: string }[] = [
-  { id: "ecrire", libelle: "Lire les cubes, écrire le nombre", consigne: "Compte les cubes et écris le nombre." },
+  { id: "ecrire", libelle: "Lire les cubes, écrire le nombre", consigne: "Trouve le nombre que représente chaque dessin, et écris-le." },
   { id: "dessiner", libelle: "Lire le nombre, dessiner les cubes", consigne: "Dessine les cubes qui font ce nombre." },
   { id: "relier", libelle: "Relier les cubes au nombre", consigne: "Relie chaque dessin au nombre qu'il représente." },
 ];

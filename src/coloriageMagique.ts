@@ -628,8 +628,11 @@ export function consigne(reglages: ReglagesColoriage): string {
     return "Lis chaque mot, puis colorie la case selon ce que tu y entends. "
       + "Une case sans mot reste blanche.";
   }
-  const quoi = reglages.operation === "multiplication"
-    ? `Calcule, puis colorie selon la table de ${reglages.table}.`
-    : "Calcule chaque case, puis colorie-la selon son résultat.";
+  const quoi = {
+    addition: "Calcule la somme écrite dans chaque case, puis colorie la case selon cette somme.",
+    soustraction: "Calcule la différence écrite dans chaque case, puis colorie la case selon cette différence.",
+    multiplication: "Calcule le produit écrit dans chaque case, puis colorie la case selon ce produit.",
+    melange: "Effectue le calcul écrit dans chaque case, puis colorie la case selon son résultat.",
+  }[reglages.operation];
   return `${quoi} Une case sans calcul reste blanche.`;
 }

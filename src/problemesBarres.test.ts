@@ -159,11 +159,11 @@ describe("problèmes multiplicatifs", () => {
       if (tout.schema.forme !== "parts-egales" || part.schema.forme !== "parts-egales" || nb.schema.forme !== "parts-egales") throw new Error("forme");
       if (grand.schema.forme !== "comparaison" || petit.schema.forme !== "comparaison") throw new Error("forme");
       expect(tout.calcul).toBe(`${tout.schema.nombre.valeur} × ${tout.schema.part.valeur} = ${tout.reponse}`);
-      expect(part.calcul).toBe(`${part.schema.tout.valeur} : ${part.schema.nombre.valeur} = ${part.reponse}`);
-      expect(nb.calcul).toBe(`${nb.schema.tout.valeur} : ${nb.schema.part.valeur} = ${nb.reponse}`);
+      expect(part.calcul).toBe(`${part.schema.tout.valeur} ÷ ${part.schema.nombre.valeur} = ${part.reponse}`);
+      expect(nb.calcul).toBe(`${nb.schema.tout.valeur} ÷ ${nb.schema.part.valeur} = ${nb.reponse}`);
       expect(grand.reponse).toBe(grand.schema.grand.valeur);
       expect(petit.reponse).toBe(petit.schema.petit.valeur);
-      expect(petit.calcul).toBe(`${petit.schema.grand.valeur} : ${petit.schema.fois} = ${petit.reponse}`);
+      expect(petit.calcul).toBe(`${petit.schema.grand.valeur} ÷ ${petit.schema.fois} = ${petit.reponse}`);
     }
   });
 
@@ -293,10 +293,10 @@ describe("retoucher un problème", () => {
   it("change la case à trouver d'un problème multiplicatif", () => {
     const p = problemeMultiplicatif(multiplicatifs({ types: ["tout"] }), 4, 0);
     const q = retoucher(p, { forme: "parts-egales", type: "nombre", parts: 3, valeur: 6 }, true);
-    expect(q.calcul).toBe("18 : 6 = 3");
+    expect(q.calcul).toBe("18 ÷ 6 = 3");
     expect(q.reponse).toBe(3);
     const c = problemeMultiplicatif(multiplicatifs({ types: ["grand"] }), 4, 0);
-    expect(retoucher(c, { forme: "comparaison", type: "petit", petit: 4, fois: 3 }, true).calcul).toBe("12 : 3 = 4");
+    expect(retoucher(c, { forme: "comparaison", type: "petit", petit: 4, fois: 3 }, true).calcul).toBe("12 ÷ 3 = 4");
     // Une retouche d'une autre forme ne s'applique pas.
     expect(retoucher(p, { forme: "comparaison", type: "petit", petit: 4, fois: 3 }, true)).toBe(p);
   });

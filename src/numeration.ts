@@ -208,7 +208,7 @@ export function htmlNumeration(r: ReglagesNumeration, graine: number): string {
         `<div class="nu-lignes">${nombres.map((n) => `<div><span class="nu-nombre">${ecrireNombre(n, r)}</span> = <b>${decomposer(n, r)}</b><span class="nu-aussi"> = ${decomposerEnProduits(n, r)}</span></div>`).join("")}</div>`);
     } else if (ex === "comparer") {
       const paires = Array.from({ length: combien }, () => paireAComparer(r, alea));
-      bloc("Compare avec &lt;, &gt; ou =.",
+      bloc("Compare les nombres : écris &lt;, &gt; ou =.",
         `<div class="nu-paires">${paires.map(([a, b]) => `<div>${ecrireNombre(a, r)} <span class="nu-signe"></span> ${ecrireNombre(b, r)}</div>`).join("")}</div>`,
         `<div class="nu-paires">${paires.map(([a, b]) => `<div>${ecrireNombre(a, r)} <b>${escapeHtml(comparer(a, b, r))}</b> ${ecrireNombre(b, r)}</div>`).join("")}</div>`);
     } else if (ex === "encadrer") {

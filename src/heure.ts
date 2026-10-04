@@ -77,8 +77,10 @@ export const lireHeure = (t: Heure) => `${t.h} h ${deux(t.m)}`;
 export const autreLecture = (t: Heure): Heure => ({ h: (t.h + 12) % 24, m: t.m });
 
 /** La consigne de la feuille, en une phrase. */
-export const consigneHeure = (r: Pick<ReglagesHeure, "sens">) =>
-  r.sens === "dessiner" ? "Dessine les aiguilles." : r.sens === "mixte" ? "Écris l'heure qu'il est, ou dessine les aiguilles." : "Écris l'heure qu'il est.";
+export const consigneHeure = (r: Pick<ReglagesHeure, "sens"> & Partial<Pick<ReglagesHeure, "apresMidi">>) => {
+  const lire = r.apresMidi ? "Écris l'heure qu'il est le matin, puis l'après-midi" : "Écris l'heure qu'il est";
+  return r.sens === "dessiner" ? "Dessine les aiguilles." : r.sens === "mixte" ? `${lire}, ou dessine les aiguilles.` : `${lire}.`;
+};
 
 /** Les couleurs des deux aiguilles : celles qu'on a choisies, ou le noir. */
 export const couleursDe = (r: Pick<ReglagesHeure, "couleurs" | "couleurHeures" | "couleurMinutes">) =>
