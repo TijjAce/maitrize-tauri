@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   CLASSES_CONSIGNE, VERBES_CONSIGNE, consignesActives, decorerConsignesHtml, ecrireLexique, htmlPictosVerbes, lireLexique, verbesDe,
-  verbesDuTexte, motsAChercher, pictosProposes,
+  verbesDuTexte, motsAChercher, motsPourLaBanque, pictosAppointProposes, pictosProposes,
 } from "./caa";
 
 const lexique = { lire: 11, écrire: 22, colorier: 33, entourer: 44 };
@@ -42,6 +42,12 @@ describe("le lexique", () => {
     expect(lireLexique("[1,2]")).toEqual({});
     expect(lireLexique('{"lire": 11, "écrire": "22", "vide": 0, " ": 5, "x": "abc"}')).toEqual({ lire: 11, écrire: 22 });
     expect(lireLexique(ecrireLexique(lexique))).toEqual(lexique);
+  });
+
+  it("garde aussi les pictos des banques d'appoint, et rien qui sorte de leur dossier", () => {
+    const lu = lireLexique('{"lire": 11, "colorier": "bajard:Colorie01.png", "compter": "sclera:compter.png", "x": "autre:a.png", "y": "sclera:../index.json"}');
+    expect(lu).toEqual({ lire: 11, colorier: "bajard:Colorie01.png", compter: "sclera:compter.png" });
+    expect(lireLexique(ecrireLexique(lu))).toEqual(lu);
   });
 
   it("met les pictos en marche dès qu'un verbe en a un, sauf si on les a coupés", () => {
@@ -117,7 +123,58 @@ describe("les consignes décorées", () => {
   });
 });
 
+describe("les consignes décorées avec plusieurs banques", () => {
+  const melange = { lire: 11, colorier: "bajard:Colorie01.png", compter: "sclera:compter.png" };
+  const imagesMelange = { 11: "data:lire", "bajard:Colorie01.png": "data:colorie", "sclera:compter.png": "data:compter" };
+
+  it("citent chaque banque dont un picto est posé, dans l'ordre où l'on y cherche", () => {
+    const html = decorerConsignesHtml(`<p class="consigne">Lis, colorie et compte.</p>`, melange, imagesMelange);
+    expect(html).toContain('<img src="data:colorie" alt="colorier">');
+    expect(html).toContain('<img src="data:compter" alt="compter">');
+    expect(html.endsWith(`<div class="consigne-attribution">Pictogrammes : ARASAAC (arasaac.org) — Gouvernement d'Aragon, licence CC BY-NC-SA ; `
+      + `François Bajard (ressources-ecole-inclusive.org), licence CC BY-NC-SA 4.0 ; Sclera (www.sclera.be), licence CC BY-NC 2.0 BE. Usage non commercial.</div>`)).toBe(true);
+  });
+
+  it("ne citent que les banques des pictos posés, et pas celles que la feuille cite déjà", () => {
+    const seul = decorerConsignesHtml(`<p class="consigne">Colorie la case.</p>`, melange, imagesMelange);
+    expect(seul).toContain("Pictogrammes : François Bajard");
+    expect(seul).not.toContain("ARASAAC");
+    expect(seul).not.toContain("Sclera");
+    const dejaCitee = decorerConsignesHtml(`<p class="consigne">Lis et compte.</p><div class="attribution">Pictogrammes : ARASAAC</div>`, melange, imagesMelange);
+    expect(dejaCitee.match(/ARASAAC/g)).toHaveLength(1);
+    expect(dejaCitee).toContain("Pictogrammes : Sclera (www.sclera.be), licence CC BY-NC 2.0 BE. Usage non commercial.");
+  });
+
+  it("reconnaissent les consignes de F. Bajard qui manquaient", () => {
+    expect(verbesDuTexte("Surligne les mots, numérote les phrases, relis-les, puis trace un trait et sépare les syllabes."))
+      .toEqual(["surligner", "numéroter", "relire", "tracer", "séparer"]);
+  });
+});
+
 describe("proposer un picto à chaque verbe", () => {
+  it("prend dans ARASAAC le dessin de la classe, et passe un verbe qu'il ne dessine que dans un autre sens", () => {
+    const trouves = [
+      { id: 5551, mot: "remettre", scolaire: false }, { id: 25282, mot: "mettre dans l'ordre", scolaire: true },
+      { id: 15475, mot: "repasser", scolaire: true }, { id: 9692, mot: "dire", scolaire: false },
+      { id: 4691, mot: "numéroter", scolaire: false },
+    ];
+    expect(pictosProposes(["remettre", "repasser", "dire", "numéroter"], trouves)).toEqual({ remettre: 25282, repasser: 15475, dire: 9692 });
+  });
+
+  it("demande l'impératif aux consignes de F. Bajard, l'infinitif à Sclera", () => {
+    expect(motsPourLaBanque("colorier", "bajard")).toEqual(["colorie", "coloriez", "colorions", "colorier", "peindre"]);
+    expect(motsPourLaBanque("colorier", "sclera")).toEqual(["colorier", "peindre"]);
+  });
+
+  it("retient dans une banque d'appoint la première forme qu'elle connaît", () => {
+    const trouves = [
+      { mot: "colorie", reference: "bajard:Colorie01.png" }, { mot: "écris", reference: "bajard:Ecris01.png" },
+      { mot: "colorier", reference: "bajard:Autre.png" },
+    ];
+    expect(pictosAppointProposes(["colorier", "écrire", "décomposer"], trouves, "bajard"))
+      .toEqual({ colorier: "bajard:Colorie01.png", écrire: "bajard:Ecris01.png" });
+  });
+
   it("demande le verbe, puis ses synonymes, dans l'ordre où l'on préfère", () => {
     expect(motsAChercher("retrouver")).toEqual(["retrouver", "trouver", "chercher"]);
     expect(motsAChercher("lire")).toEqual(["lire"]);
