@@ -17,7 +17,7 @@
 
 import { escapeHtml } from "./print";
 import { melanger } from "./hasard";
-import { HAUTEUR_UTILE_MM, LARGEUR_UTILE_MM, attributionPour, carte, feuille, imgPicto, legende, pagesDeCartes, type FormatGrille } from "./cartesImprimables";
+import { HAUTEUR_UTILE_MM, LARGEUR_CONTENU_MM, attributionPour, carte, feuille, gabaritGrille, hauteurDesCartes, imgPicto, legende, pagesDeCartes, type FormatGrille } from "./cartesImprimables";
 import type { MotImage } from "./jeuxSons";
 
 export type Niveau = "PS" | "MS" | "GS";
@@ -463,10 +463,10 @@ const imageDe = (m: MotImage, images: Images) => (m.id != null ? images[m.id] : 
 const COULEURS = ["#e8590c", "#1971c2", "#2f9e44", "#9c36b5", "#e67700", "#c2255c", "#0c8599", "#5c940d"];
 export const couleurDe = (i: number) => COULEURS[i % COULEURS.length];
 
-/** Les cartes à découper : grandes pour les petits, un peu moins ensuite. */
-const formatCartes = (n: Niveau): FormatGrille => (n === "PS" ? { colonnes: 3, lignes: 4, hauteurMm: 58 } : { colonnes: 4, lignes: 5, hauteurMm: 46 });
+/** Les cartes à découper, carrées comme les pictos : grandes pour les petits, un peu moins ensuite. */
+const formatCartes = (n: Niveau): FormatGrille => (n === "PS" ? { colonnes: 3, lignes: 4, hauteurMm: 54, carre: true } : { colonnes: 4, lignes: 5, hauteurMm: 41, carre: true });
 /** Les cartes d'un jeu qu'on tient en main : un peu plus petites, toutes de la même taille. */
-const formatJeuDeCartes = (n: Niveau): FormatGrille => (n === "PS" ? { colonnes: 3, lignes: 4, hauteurMm: 50 } : { colonnes: 4, lignes: 5, hauteurMm: 40 });
+const formatJeuDeCartes = (n: Niveau): FormatGrille => (n === "PS" ? { colonnes: 3, lignes: 4, hauteurMm: 50, carre: true } : { colonnes: 4, lignes: 5, hauteurMm: 40, carre: true });
 
 const titre = (t: string, sous = "") => `<div class="titre">${escapeHtml(t)}</div>${sous ? `<div class="sous">${escapeHtml(sous)}</div>` : ""}`;
 const consigne = (t: string, quoi = "Consigne") => `<div class="regle"><b>${quoi}</b>${escapeHtml(t)}</div>`;
@@ -488,7 +488,7 @@ function enteteCategorie(c: Categorie, images: Images, nommer: boolean): string 
  */
 function pagesAvecRegle(cellules: string[], format: FormatGrille, entete: string): string {
   // Le titre, la règle et l'en-tête des compétences prennent 55 mm au plus ; les cartes gardent leur taille.
-  const hauteur = format.hauteurMm ?? HAUTEUR_UTILE_MM / format.lignes;
+  const hauteur = hauteurDesCartes(format, true);
   const premiere = { ...format, lignes: Math.max(1, Math.min(format.lignes, Math.floor((HAUTEUR_UTILE_MM - 55) / hauteur))) };
   const n = premiere.colonnes * premiere.lignes;
   return pagesDeCartes(cellules.slice(0, n), premiere, entete) + (cellules.length > n ? pagesDeCartes(cellules.slice(n), format) : "");
@@ -526,11 +526,19 @@ function consigneDuTri(r: ReglagesCategoriser): string {
     : `Découpe les images. Range chaque image dans la bonne ${ou} et dis pourquoi.${intrus}`;
 }
 
-/** Les images du tri : la place de chacune se compte dans les boîtes, où l'élève les colle. */
-const formatDuTri = (n: Niveau): FormatGrille => (n === "PS" ? { colonnes: 3, lignes: 5, hauteurMm: 50 } : { colonnes: 4, lignes: 5, hauteurMm: 46 });
-/** La hauteur d'une page de boîtes : la première porte le titre, la consigne, le prénom et l'en-tête des compétences. */
-const PLACE_PREMIERE_PAGE = HAUTEUR_UTILE_MM - 55;
-const PLACE_PAGE = HAUTEUR_UTILE_MM - 12;
+/** Les images du tri, carrées : la place de chacune se compte dans les boîtes, où l'élève les colle. */
+const formatDuTri = (n: Niveau): FormatGrille => (n === "PS" ? { colonnes: 3, lignes: 5, hauteurMm: 50, carre: true } : { colonnes: 4, lignes: 5, hauteurMm: 41, carre: true });
+/**
+ * La hauteur d'une page de boîtes, en mm. Les boîtes s'y partagent ce que
+ * laissent le titre, la consigne et le prénom, quelle que soit leur hauteur.
+ * La première page compte large : l'en-tête des compétences et le blanc du
+ * haut de la feuille la raccourcissent ; une maison qui déborde d'un
+ * millimètre finirait seule sur la page suivante.
+ */
+const HAUTEUR_PREMIERE_PLANCHE = 248;
+const HAUTEUR_PLANCHE = HAUTEUR_UTILE_MM - 7;
+/** Ce que la première page garde pour ses boîtes : le titre, la consigne — et ses pictos — et le prénom prennent le reste. */
+const PLACE_PREMIERE_PAGE = HAUTEUR_PREMIERE_PLANCHE - 50;
 /** Le toit d'une maison, en mm : il compte dans sa hauteur. */
 const TOIT = 22;
 const ECART_BOITES = 4;
@@ -538,41 +546,39 @@ const ECART_BOITES = 4;
 /**
  * Les boîtes du tri, page par page. Chacune doit recevoir toutes ses images
  * collées, à leur taille, rangée par rangée sous son en-tête : une page en
- * porte autant que la place le permet — souvent une seule —, et chaque boîte
- * grandit jusqu'à remplir sa part de page.
+ * porte autant que la place le permet — souvent une seule —, et les boîtes
+ * d'une page s'en partagent toute la hauteur.
  */
-export function pagesDuTri(r: Pick<ReglagesCategoriser, "niveau" | "maisons" | "categories">): { categories: Categorie[]; hauteurMm: number }[] {
-  const format = formatDuTri(r.niveau);
-  const parRangee = Math.max(1, Math.floor((LARGEUR_UTILE_MM - 10) / (LARGEUR_UTILE_MM / format.colonnes)));
+export function pagesDuTri(r: Pick<ReglagesCategoriser, "niveau" | "maisons" | "categories">): Categorie[][] {
+  const cote = hauteurDesCartes(formatDuTri(r.niveau), false);
+  // Ce qu'une rangée de la boîte reçoit d'images : la largeur, moins le bord et le retrait.
+  const parRangee = Math.max(1, Math.floor((LARGEUR_CONTENU_MM - 10) / cote));
   const toit = r.maisons ? TOIT : 0;
-  const besoin = (c: Categorie) => Math.ceil(Math.max(1, c.mots.length) / parRangee) * (format.hauteurMm ?? 46) + 34 + toit;
-  const pages: { categories: Categorie[]; hauteurMm: number }[] = [];
+  const besoin = (c: Categorie) => Math.ceil(Math.max(1, c.mots.length) / parRangee) * cote + 34 + toit;
+  const pages: Categorie[][] = [];
   let page: Categorie[] = [];
   let pris = 0;
-  const place = () => (pages.length === 0 ? PLACE_PREMIERE_PAGE : PLACE_PAGE);
-  const fermer = () => {
-    const k = page.length;
-    pages.push({ categories: page, hauteurMm: Math.floor((place() - ECART_BOITES * (k - 1)) / k) });
-    page = [];
-    pris = 0;
-  };
   for (const c of categoriesRangees(r.categories)) {
-    if (page.length && pris + ECART_BOITES + besoin(c) > place()) fermer();
+    const place = pages.length === 0 ? PLACE_PREMIERE_PAGE : HAUTEUR_PLANCHE;
+    if (page.length && pris + ECART_BOITES + besoin(c) > place) {
+      pages.push(page);
+      page = [];
+      pris = 0;
+    }
     pris += (page.length ? ECART_BOITES : 0) + besoin(c);
     page.push(c);
   }
-  if (page.length) fermer();
+  if (page.length) pages.push(page);
   return pages;
 }
 
 function htmlTri(r: ReglagesCategoriser, images: Images, alea: () => number): string {
   const t = r.maisons ? "Les maisons des mots" : "Les boîtes de tri";
-  const toit = r.maisons ? TOIT : 0;
-  const boite = (c: Categorie, hauteur: number) =>
-    `<div class="ct-boite${r.maisons ? " ct-maison" : ""}" style="--c:${couleurDe(r.categories.indexOf(c))};height:${hauteur - toit}mm">`
+  const boite = (c: Categorie) =>
+    `<div class="ct-boite${r.maisons ? " ct-maison" : ""}" style="--c:${couleurDe(r.categories.indexOf(c))}">`
     + `${r.maisons ? `<div class="ct-toit"></div>` : ""}<div class="ct-entete">${enteteCategorie(c, images, r.nommer)}</div><div class="ct-fond"></div></div>`;
-  const planches = pagesDuTri(r).map((p, i) => `<div class="page">${i === 0 ? `${titre(t)}${consigne(consigneDuTri(r))}${prenom}` : ""}`
-    + `<div class="ct-boites">${p.categories.map((c) => boite(c, p.hauteurMm)).join("")}</div></div>`).join("");
+  const planches = pagesDuTri(r).map((p, i) => `<div class="page ct-planche" style="height:${i === 0 ? HAUTEUR_PREMIERE_PLANCHE : HAUTEUR_PLANCHE}mm">`
+    + `${i === 0 ? `${titre(t)}${consigne(consigneDuTri(r))}${prenom}` : ""}<div class="ct-boites">${p.map(boite).join("")}</div></div>`).join("");
   const cartes = toutesMelees(r.categories, alea).map((m) => carteImage(m, images, r.legendes));
   return planches + pagesDeCartes(cartes, formatDuTri(r.niveau), titre("Les images à découper")) + corrige(t, r.categories);
 }
@@ -595,9 +601,9 @@ function htmlIntrus(r: ReglagesCategoriser, images: Images, alea: () => number):
   return `<div class="page">${titre("Trouve l'intrus")}${consigne(consigneIntrus(r.niveau))}${prenom}<div class="ct-lignes">${rangs}</div></div>${solution}`;
 }
 
-/** Une plaque de loto : six cases au plus, chacune à la mesure d'une carte à piocher. */
+/** Une plaque de loto : six cases au plus, chacune à la mesure d'une carte à piocher — un carré de 36 mm. */
 const CASES_DU_LOTO = 6;
-const CARTES_DU_LOTO: FormatGrille = { colonnes: 4, lignes: 6, hauteurMm: 36 };
+const CARTES_DU_LOTO: FormatGrille = { colonnes: 4, lignes: 6, hauteurMm: 36, carre: true };
 
 function regleDuLoto(r: ReglagesCategoriser): string {
   if (!r.nommer) return "Chaque joueur reçoit une plaque : elle ne dit pas sa catégorie. Le meneur pioche une carte et la montre ; on la nomme. Celui à qui elle va la réclame et dit pourquoi. Au fil des cartes, chacun trouve sa catégorie — et la nomme quand sa plaque est pleine.";
@@ -640,9 +646,13 @@ function htmlAppelle(r: ReglagesCategoriser, images: Images, alea: () => number)
       + `${r.nommer && src ? `<img src="${src}" alt="">` : ""}<div class="ct-appel-quoi">${escapeHtml((c.appel || c.nom).trim() || "…")}</div></div>`;
   }).join("");
   const colonnes = rangees.length > 4 ? 3 : 2;
-  const page = `<div class="page">${titre("J'appelle…", "Les cartes d'appel, une par catégorie ; les images à la suite.")}${consigne(regleAppelle(r.niveau), "Règle du jeu")}<div class="ct-appels" style="grid-template-columns:repeat(${colonnes},1fr)">${appels}</div></div>`;
+  const grille = gabaritGrille({ colonnes, lignes: Math.ceil(rangees.length / colonnes), hauteurMm: 60, carre: true }, true);
+  const page = `<div class="page">${titre("J'appelle…", "Les cartes d'appel, une par catégorie ; les images à la suite.")}${consigne(regleAppelle(r.niveau), "Règle du jeu")}<div class="ct-appels" style="${grille}">${appels}</div></div>`;
   return page + pageDesCartes(toutesMelees(r.categories, alea), r, images) + corrige("J'appelle…", r.categories);
 }
+
+/** Les cartes du jeu des familles : des carrés, trois par rangée, qu'on tient en main. */
+const CARTES_DES_FAMILLES: FormatGrille = { colonnes: 3, lignes: 4, hauteurMm: 54, carre: true };
 
 const REGLE_FAMILLES = "On distribue quatre cartes à chacun ; les autres font la pioche. À son tour, on demande à un joueur une carte qui manque à l'une de ses familles : « Dans la famille des fruits, je voudrais la pomme. » S'il l'a, il la donne et on redemande ; sinon : « Pioche ! ». Une famille complète se pose devant soi, en nommant chaque carte. Celui qui a le plus de familles a gagné. Avec les plus jeunes : cartes visibles, et trois familles.";
 
@@ -656,9 +666,7 @@ function htmlFamilles(r: ReglagesCategoriser, images: Images): string {
       + `<div class="ct-famille-image">${imgPicto(imageDe(m, images), m.mot)}</div>${legende(m.mot, true)}`
       + `<div class="ct-famille-membres">${f.mots.map((x) => `<span class="${x === m ? "ici" : ""}">${imgPicto(imageDe(x, images), x.mot)}</span>`).join("")}</div></div>`);
   });
-  const pages = [`<div class="page">${titre("Le jeu des familles")}${consigne(REGLE_FAMILLES, "Règle du jeu")}<div class="ct-familles">${cartes.slice(0, 6).join("")}</div></div>`];
-  for (let i = 6; i < cartes.length; i += 9) pages.push(`<div class="page"><div class="ct-familles">${cartes.slice(i, i + 9).join("")}</div></div>`);
-  return pages.join("");
+  return pagesAvecRegle(cartes, CARTES_DES_FAMILLES, `${titre("Le jeu des familles")}${consigne(REGLE_FAMILLES, "Règle du jeu")}`);
 }
 
 /** Le chat noir du mistigri, dessiné : il n'a pas à être un picto. */
@@ -727,8 +735,9 @@ export const STYLE_CATEGORISER = `
   .feuille.ct .ct-entete { display: flex; align-items: center; gap: 3mm; font-size: 20px; font-weight: 800; color: var(--c, #1c2233); }
   .feuille.ct .ct-entete img { width: 16mm; height: 16mm; object-fit: contain; margin: 0; }
   .feuille.ct .ct-a-nommer { font-size: 14px; font-weight: 600; color: #687087; }
-  .feuille.ct .ct-boites { display: grid; gap: 4mm; }
-  .feuille.ct .ct-boite { border: 1.2mm solid var(--c); border-radius: 4mm; padding: 3mm; display: flex; flex-direction: column; gap: 2mm; box-sizing: border-box; }
+  .feuille.ct .ct-planche { display: flex; flex-direction: column; }
+  .feuille.ct .ct-boites { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4mm; }
+  .feuille.ct .ct-boite { flex: 1 1 0; min-height: 0; border: 1.2mm solid var(--c); border-radius: 4mm; padding: 3mm; display: flex; flex-direction: column; gap: 2mm; box-sizing: border-box; }
   .feuille.ct .ct-fond { flex: 1; border: 1.5px dashed #c4c9d6; border-radius: 3mm; }
   .feuille.ct .ct-maison { border-top: none; border-radius: 0 0 3mm 3mm; padding-top: 0; position: relative; margin-top: 22mm; }
   .feuille.ct .ct-toit { height: 22mm; margin: -22mm -4.2mm 2mm; background: var(--c); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
@@ -739,22 +748,21 @@ export const STYLE_CATEGORISER = `
   .feuille.ct .ct-case img, .feuille.ct .ct-case .vide { max-height: calc(100% - 2mm); max-width: 100%; aspect-ratio: 1; object-fit: contain; margin: 0; }
   .feuille.ct .ct-plaque { border: 1.2mm solid var(--c); border-radius: 4mm; padding: 3mm 4mm; margin: 0 0 5mm; page-break-inside: avoid; }
   .feuille.ct .ct-plaque .ct-entete img { width: 12mm; height: 12mm; }
-  .feuille.ct .ct-cases { display: grid; grid-template-columns: repeat(3, 44mm); grid-auto-rows: 36mm; gap: 3mm; justify-content: center; margin-top: 3mm; }
+  .feuille.ct .ct-cases { display: grid; grid-template-columns: repeat(3, 36mm); grid-auto-rows: 36mm; gap: 3mm; justify-content: center; margin-top: 3mm; }
   .feuille.ct .ct-case-vide { border: 1.5px dashed #9aa0b4; border-radius: 3mm; }
-  .feuille.ct .ct-appels { display: grid; grid-auto-rows: 60mm; gap: 0; }
+  .feuille.ct .ct-appels { display: grid; gap: 0; }
   .feuille.ct .ct-appel { border: 1px dashed #9aa0b4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3mm; padding: 4mm; text-align: center; }
   .feuille.ct .ct-appel-dit { font-size: 15px; font-weight: 700; color: var(--c); }
   .feuille.ct .ct-appel img { width: 30mm; height: 30mm; object-fit: contain; margin: 0; }
   .feuille.ct .ct-appel-quoi { font-size: 19px; font-weight: 800; line-height: 1.2; }
-  .feuille.ct .ct-familles { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 80mm; gap: 0; }
-  .feuille.ct .ct-famille { border: 1px dashed #9aa0b4; display: flex; flex-direction: column; align-items: center; gap: 1.5mm; padding: 0 0 2mm; overflow: hidden; }
-  .feuille.ct .ct-famille-nom { align-self: stretch; background: var(--c); color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 2mm; padding: 1.5mm 2mm; text-align: center; }
-  .feuille.ct .ct-famille-nom img { width: 8mm; height: 8mm; object-fit: contain; margin: 0; background: #fff; border-radius: 1.5mm; }
+  .feuille.ct .ct-famille { border: 1px dashed #9aa0b4; display: flex; flex-direction: column; align-items: center; gap: 1mm; padding: 0 0 1.5mm; overflow: hidden; }
+  .feuille.ct .ct-famille-nom { align-self: stretch; background: var(--c); color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 1.5mm; padding: 1mm 2mm; text-align: center; }
+  .feuille.ct .ct-famille-nom img { width: 6mm; height: 6mm; object-fit: contain; margin: 0; background: #fff; border-radius: 1mm; }
   .feuille.ct .ct-famille-image { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; width: 100%; }
   .feuille.ct .ct-famille-image img, .feuille.ct .ct-famille-image .vide { max-width: 38mm; max-height: 100%; aspect-ratio: 1; object-fit: contain; margin: 0; }
-  .feuille.ct .ct-famille .mot { font-size: 13px; }
+  .feuille.ct .ct-famille .mot { font-size: 12px; }
   .feuille.ct .ct-famille-membres { display: flex; gap: 1mm; flex-wrap: wrap; justify-content: center; padding: 0 2mm; }
-  .feuille.ct .ct-famille-membres span { width: 8mm; height: 8mm; border: 1px solid #dfe3ec; border-radius: 1.5mm; display: flex; }
+  .feuille.ct .ct-famille-membres span { width: 6mm; height: 6mm; border: 1px solid #dfe3ec; border-radius: 1mm; display: flex; }
   .feuille.ct .ct-famille-membres span.ici { border: 2px solid var(--c); }
   .feuille.ct .ct-famille-membres img, .feuille.ct .ct-famille-membres .vide { width: 100%; height: 100%; object-fit: contain; margin: 0; max-width: none; border: none; }
   .feuille.ct .ct-chat { width: 70%; max-width: 30mm; }

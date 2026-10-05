@@ -34,6 +34,16 @@ describe("le loto des syllabes", () => {
     expect(html).toContain('<img src="data:x"');
     expect(html).toContain("ARASAAC");
   });
+
+  it("a des cases carrées, et des cartes à piocher de leur taille", () => {
+    for (const [cases, cote] of [[6, 48], [9, 36]] as const) {
+      const r = { ...REGLAGES_LOTO_SYLLABES, cases };
+      const html = htmlLotoSyllabes(planchesLotoSyllabes(BANQUE, r, hasard(2)), BANQUE, {}, r);
+      const grilles = [...html.matchAll(/grid-template-columns: repeat\(\d+, (\d+)mm\); grid-auto-rows: (\d+)mm/g)].map((m) => [Number(m[1]), Number(m[2])]);
+      expect(grilles.length).toBeGreaterThanOrEqual(2);
+      for (const g of grilles) expect(g).toEqual([cote, cote]);
+    }
+  });
 });
 
 describe("les dominos des syllabes", () => {
