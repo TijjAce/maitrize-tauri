@@ -58,7 +58,7 @@ export const USAGE_PAR_DEFAUT: Record<string, Usage> = {
   tri: "manipulation", phrases: "entrainement", trous: "manipulation", motsMeles: "reinvestissement",
   // Mathématiques : le calcul mental est le rituel par excellence.
   martiniere: "rituel", compteEstBon: "rituel", pyramides: "entrainement", partieTout: "entrainement", multiplicatifs: "entrainement",
-  coloriage: "reinvestissement", collections: "manipulation", nombres: "manipulation", cubes: "manipulation", calcul: "entrainement", arbre: "entrainement",
+  coloriage: "reinvestissement", collections: "manipulation", nombres: "manipulation", cubes: "manipulation", comparer: "entrainement", calcul: "entrainement", arbre: "entrainement",
   fractions: "manipulation", oie: "reinvestissement", heure: "entrainement", numeration: "entrainement",
   // Affichages : la trace qu'on reprend, au mur.
   carteMentale: "reinvestissement",
