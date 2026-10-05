@@ -10,14 +10,17 @@ export function Modal({ titre, onClose, children, footer, large }: {
   const titreId = React.useId();
 
   // Accessibilité : focus initial dans la boîte + restauration à la fermeture.
+  // Ce qui avait la main se lit au premier rendu : à l'ouverture, un champ
+  // « autoFocus » l'a déjà prise, et c'est à lui qu'on la laisse — la donner
+  // au premier bouton, la croix, obligeait à cliquer dans le champ.
+  const [precedent] = React.useState(() => document.activeElement as HTMLElement | null);
   React.useEffect(() => {
-    const precedent = document.activeElement as HTMLElement | null;
     const focusables = () => Array.from(ref.current?.querySelectorAll<HTMLElement>(
       'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
     ) ?? []).filter((n) => n.offsetParent !== null);
-    (focusables()[0] ?? ref.current)?.focus();
+    if (!ref.current?.contains(document.activeElement)) (focusables()[0] ?? ref.current)?.focus();
     return () => precedent?.focus?.();
-  }, []);
+  }, [precedent]);
 
   // Échap pour fermer + piège de focus (Tab boucle dans la boîte).
   const onKeyDown = (e: React.KeyboardEvent) => {
