@@ -47,7 +47,9 @@ pub fn bases_lien(jeton: &str) -> Vec<String> {
 /// Le serveur et le jeton d'un lien de partage collé par un collègue.
 ///
 /// « https://nuage03.apps.education.fr/s/aBcD1234 », avec ou sans « /download »,
-/// avec ou sans barre finale.
+/// avec ou sans barre finale — et « …/index.php/s/aBcD1234 », tel que Nuage le
+/// donne souvent : la page « index.php » n'est pas le serveur, et les adresses
+/// WebDAV bâties dessus mèneraient nulle part.
 pub fn lien_partage(brut: &str) -> R<(String, String)> {
     let t = brut.trim();
     let sans_protocole = t.trim_start_matches("https://").trim_start_matches("http://");
@@ -58,7 +60,7 @@ pub fn lien_partage(brut: &str) -> R<(String, String)> {
         return Err("Ce lien de partage est incomplet.".into());
     }
     let protocole = if t.starts_with("http://") { "http://" } else { "https://" };
-    Ok((format!("{protocole}{}", hote.trim_end_matches('/')), jeton))
+    Ok((serveur_propre(&format!("{protocole}{}", hote.trim_end_matches('/'))), jeton))
 }
 
 /// Les caractères qu'une adresse accepte tels quels ; les autres s'écrivent « %XX ».
@@ -238,6 +240,7 @@ async fn propfind(acces: &Acces, relatif: &str, profondeur: &str) -> R<String> {
         return Err(match statut.as_u16() {
             // PROPFIND n'a de sens que sur une adresse WebDAV : ailleurs, le
             // serveur répond « méthode interdite ».
+            405 | 501 if par_lien(acces) => "Ce lien ne mène pas à un dossier partagé sur Nuage : collez-le tel que votre collègue l'a envoyé, il contient « /s/ ».".to_string(),
             405 | 501 => "Cette adresse n'est pas celle d'un serveur Nuage. Gardez seulement le début, par exemple « nuage17.apps.education.fr ».".to_string(),
             404 if relatif.is_empty() => "Ce dossier n'existe pas dans votre Nuage : vérifiez son nom, accents et majuscules compris.".to_string(),
             _ => erreur_http(statut, if relatif.is_empty() { "le dossier partagé" } else { relatif }),
@@ -704,6 +707,10 @@ mod tests {
         assert_eq!(lien_partage("https://nuage03.apps.education.fr/s/aBcD1234").unwrap(), attendu);
         assert_eq!(lien_partage("  https://nuage03.apps.education.fr/s/aBcD1234/  ").unwrap(), attendu);
         assert_eq!(lien_partage("nuage03.apps.education.fr/s/aBcD1234/download").unwrap(), attendu);
+        // Tel que Nuage le donne souvent : « index.php » est une page, pas le serveur.
+        assert_eq!(lien_partage("https://nuage03.apps.education.fr/index.php/s/aBcD1234").unwrap(), attendu);
+        assert_eq!(lien_partage("https://exemple.fr/nextcloud/index.php/s/aBcD1234").unwrap(),
+            ("https://exemple.fr/nextcloud".to_string(), "aBcD1234".to_string()));
         assert!(lien_partage("https://nuage03.apps.education.fr/apps/files").is_err());
         assert!(lien_partage("https://nuage03.apps.education.fr/s/").is_err());
         // Le lien mène au dossier partagé : pas de compte, pas d'identifiant.
