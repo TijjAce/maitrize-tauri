@@ -15,15 +15,18 @@ import React from "react";
 
 export const estPdf = (nom: string) => /\.pdf$/i.test(nom);
 export const estImage = (nom: string) => /\.(png|jpe?g|gif|webp|heic|bmp|svg)$/i.test(nom);
-/** Un document qu'on ouvre dans son application : PDF, Word, LibreOffice, tableur, présentation. */
-export const estDocument = (nom: string) => /\.(pdf|docx?|odt|rtf|pptx?|odp|xlsx?|ods)$/i.test(nom);
+/** Un texte Markdown : il se lit dans l'application, mis en page. */
+export const estMarkdown = (nom: string) => /\.(md|markdown)$/i.test(nom);
+/** Un document qu'on ouvre : PDF, Word, LibreOffice, tableur, présentation, Markdown. */
+export const estDocument = (nom: string) => /\.(pdf|docx?|odt|rtf|pptx?|odp|xlsx?|ods|md|markdown)$/i.test(nom);
 /** Extensions acceptées par le sélecteur de fichiers des documents. */
-export const EXTENSIONS_DOCUMENTS = ".pdf,.doc,.docx,.odt,.rtf,.ppt,.pptx,.odp,.xls,.xlsx,.ods";
+export const EXTENSIONS_DOCUMENTS = ".pdf,.doc,.docx,.odt,.rtf,.ppt,.pptx,.odp,.xls,.xlsx,.ods,.md,.markdown";
 
 /** Icône et nom lisible d'un document, d'après son extension. */
 export function typeDocument(nom: string): { icone: string; libelle: string } {
   const ext = (nom.split(".").pop() || "").toLowerCase();
   if (ext === "pdf") return { icone: "📄", libelle: "PDF" };
+  if (estMarkdown(nom)) return { icone: "📓", libelle: "Markdown" };
   if (ext === "doc" || ext === "docx") return { icone: "📘", libelle: "Word" };
   if (ext === "odt" || ext === "rtf") return { icone: "📝", libelle: ext === "odt" ? "LibreOffice" : "Texte RTF" };
   if (["xls", "xlsx", "ods"].includes(ext)) return { icone: "📊", libelle: "Tableur" };

@@ -19,6 +19,7 @@ import { copierLeBureau } from "../components/CopieDuBureau";
 import { FormSequence } from "../components/FormSequence";
 import { JeuForm } from "../components/JeuForm";
 import { OutilForm } from "../components/OutilForm";
+import { ouvrirLaPieceJointe } from "../components/LecteurMarkdown";
 import { AtelierForm, EspaceForm, SuiviEspace } from "./Ateliers";
 import { CLE_FUSION, EVT_CHERCHER_BUREAU, fusionnerDansLePlanDeTravail, lireDemandeBureau, type DemandeBureau } from "../bureauAteliers";
 import type { CtxItem } from "../components/ctxmenu";
@@ -560,7 +561,7 @@ export default function PlanDeTravail() {
       else deposerFichiers(fichiers, { caseDepot: caseSous(e.clientX, e.clientY) });
     },
     onRefus: (noms) => toast(`${noms.map((n) => `« ${n} »`).join(", ")} : ce type de fichier ne se pose pas sur le bureau. `
-      + "Il accepte PDF, Word, Excel, PowerPoint, LibreOffice et images.", { icone: "⚠️", duree: 7000 }),
+      + "Il accepte PDF, Word, Excel, PowerPoint, LibreOffice, Markdown et images.", { icone: "⚠️", duree: 7000 }),
   });
   // Importer par le sélecteur de fichiers, depuis le clic droit : les fichiers
   // se posent là où l'on a cliqué.
@@ -772,7 +773,7 @@ export default function PlanDeTravail() {
     // Dans le navigateur : l'intégration YouTube exige un référent que la
     // fenêtre de l'application compilée (tauri://) ne fournit pas.
     if (c.genre === "video") openUrl(c.video.url).catch(() => window.open(c.video.url, "_blank"));
-    else api.fichierOuvrir(c.nom).catch((err) => toast(String(err), { icone: "⚠️" }));
+    else ouvrirLaPieceJointe(c.nom, e.titre).catch((err) => toast(String(err), { icone: "⚠️" }));
   };
 
   /** Efface un élément, sans rien rafraîchir : les suppressions en chaîne s'en servent. */

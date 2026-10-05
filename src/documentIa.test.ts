@@ -23,8 +23,9 @@ describe("le Markdown d'un document", () => {
   it("connaît les lignes à écrire, les cases à cocher et le changement de page", () => {
     const html = markdownVersHtml("Réponse : ______\n- [ ] je range\n- [x] fini\n[page]\nSuite");
     expect(html).toContain('<p>Réponse : <span class="ligne"></span></p>');
-    expect(html).toContain('<li><span class="case"></span> je range</li>');
-    expect(html).toContain('<li><span class="case cochee"></span> fini</li>');
+    // La case sert de puce.
+    expect(html).toContain('<li class="tache"><span class="case"></span> je range</li>');
+    expect(html).toContain('<li class="tache"><span class="case cochee"></span> fini</li>');
     expect(html).toContain('<div class="saut"></div><p>Suite</p>');
   });
 
@@ -46,6 +47,57 @@ describe("le Markdown d'un document", () => {
     expect(html).toContain('<li>Léa a 12 bonbons.<br>Calcul : <span class="ligne"></span><br>Réponse : <span class="ligne"></span></li>');
     expect(html).toContain("<li>Tom a 20 billes.</li></ol>");
     expect(html).toContain('<ol start="3"><li>Zoé a 8 pommes.</li></ol>');
+  });
+});
+
+describe("le Markdown d'un fichier .md, écrit à la main ou ailleurs", () => {
+  const imp = (md: string) => markdownVersHtml(md, { titres: "impression" });
+
+  it("a des titres jusqu'à six niveaux, sans leurs dièses de fin", () => {
+    expect(imp("#### Quatre\n##### Cinq\n###### Six")).toBe("<h4>Quatre</h4><h5>Cinq</h5><h6>Six</h6>");
+    expect(markdownVersHtml("#### Quatre\n###### Six")).toBe("<h5>Quatre</h5><h6>Six</h6>");
+    expect(imp("## Partie ##\n# Le langage C#")).toBe("<h2>Partie</h2><h1>Le langage C#</h1>");
+    expect(imp("#mot-clé")).toBe("<p>#mot-clé</p>");
+  });
+
+  it("garde les blocs de code tels quels, échappés", () => {
+    expect(imp("```js\nconst a = 1 < 2;\n  **pas gras**\n```\nfin")).toBe("<pre><code>const a = 1 &lt; 2;\n  **pas gras**</code></pre><p>fin</p>");
+    expect(imp("~~~\n# pas un titre\n~~~")).toBe("<pre><code># pas un titre</code></pre>");
+    // Un bloc jamais refermé va jusqu'au bout ; « ```mot``` » sur une ligne n'ouvre rien.
+    expect(imp("- a\n```\nx")).toBe("<ul><li>a</li></ul><pre><code>x</code></pre>");
+    expect(imp("```mot```")).toBe("<p><code>mot</code></p>");
+    expect(imp("`` a ` b `` et `c`")).toBe("<p><code>a ` b</code> et <code>c</code></p>");
+  });
+
+  it("imbrique les listes selon leur retrait, et les garde ouvertes par-dessus une ligne vide", () => {
+    expect(imp("- a\n  - a1\n    - a1x\n  - a2\n- b")).toBe("<ul><li>a<ul><li>a1<ul><li>a1x</li></ul></li><li>a2</li></ul></li><li>b</li></ul>");
+    expect(imp("1. un\n   - détail\n2. deux")).toBe("<ol><li>un<ul><li>détail</li></ul></li><li>deux</li></ol>");
+    expect(imp("- a\n\t+ b")).toBe("<ul><li>a<ul><li>b</li></ul></li></ul>");
+    expect(imp("- a\n\n- b")).toBe("<ul><li>a</li><li>b</li></ul>");
+    expect(imp("- a\n  1. x\n  - y")).toBe("<ul><li>a<ol><li>x</li></ol><ul><li>y</li></ul></li></ul>");
+  });
+
+  it("met en forme le barré, le souligné, les images et les liens vers d'autres fichiers", () => {
+    const html = imp("~~barré~~ __gras__ _penché_ un_nom_composé `**brut**` ![le chat](https://a.fr/c.png) [mes notes](notes.md)");
+    expect(html).toContain("<del>barré</del>");
+    expect(html).toContain("<strong>gras</strong>");
+    expect(html).toContain("<em>penché</em>");
+    expect(html).toContain("un_nom_composé");
+    expect(html).toContain("<code>**brut**</code>");
+    // Rien ne se charge depuis Internet : l'image devient un lien.
+    expect(html).toContain('<a href="https://a.fr/c.png" target="_blank" rel="noreferrer">🖼 le chat</a>');
+    expect(html).not.toContain("<img");
+    expect(html).toContain(" mes notes</p>");
+    // Le souligné ne touche pas aux liens.
+    expect(imp("[lien](https://a.fr/_x_) _ et _")).toContain('<a href="https://a.fr/_x_" target="_blank" rel="noreferrer">lien</a>');
+  });
+
+  it("fait une citation des lignes qui se suivent, un filet de « * * * », et lit les fins de ligne Windows", () => {
+    expect(imp("> un\n> deux\n\n> trois")).toBe("<blockquote>un<br>deux</blockquote><blockquote>trois</blockquote>");
+    expect(imp("* * *")).toBe("<hr>");
+    // « ______ » seul reste une ligne où l'élève écrit.
+    expect(imp("______")).toBe('<p><span class="ligne"></span></p>');
+    expect(imp("# Titre\r\n- a\r\n")).toBe("<h1>Titre</h1><ul><li>a</li></ul>");
   });
 });
 
