@@ -35,12 +35,13 @@ describe("la séquence de calcul mental", () => {
     const d = demarcheDe(DEMARCHE_CALCUL_MENTAL)!;
     const titres = FEUILLES_DE_LA_SEQUENCE.map((f) => d.seances[f.seance].titre);
     expect(titres[0]).toContain("Découverte");
-    expect(FEUILLES_DE_LA_SEQUENCE[0].forme).toBe("decouverte");
-    expect(titres.slice(1, 4).every((t) => t.includes("La Martinière"))).toBe(true);
-    expect(titres[4]).toContain("Réinvestissement");
+    // La découverte reçoit sa fiche de recherche, et le matériel de manipulation.
+    expect(FEUILLES_DE_LA_SEQUENCE.filter((f) => f.seance === 0).map((f) => f.forme)).toEqual(["decouverte", "materiel"]);
+    expect(titres.slice(2, 5).every((t) => t.includes("La Martinière"))).toBe(true);
+    expect(titres[5]).toContain("Réinvestissement");
     expect(d.seances[SEANCE_DES_PROBLEMES].titre).toContain("Réinvestissement");
-    expect(titres[5]).toBe("Évaluation finale");
-    expect(FEUILLES_DE_LA_SEQUENCE[5].forme).toBe("evaluation");
+    expect(titres[6]).toBe("Évaluation finale");
+    expect(FEUILLES_DE_LA_SEQUENCE[6].forme).toBe("evaluation");
   });
 
   it("se nomme d'après l'objectif, et dit l'attendu de fin d'année", () => {
@@ -50,14 +51,14 @@ describe("la séquence de calcul mental", () => {
 
   it("garde un seul objectif, et prend la forme de chaque feuille", () => {
     const revision = { ...r, revision: true, objectifs: ["cp-complements-10", "autre"], series: 3 };
-    const oral = reglagesDeLaFeuille(revision, FEUILLES_DE_LA_SEQUENCE[1]);
+    const oral = reglagesDeLaFeuille(revision, FEUILLES_DE_LA_SEQUENCE[2]);
     expect(oral.revision).toBe(false);
     expect(oral.objectifs).toHaveLength(1);
     expect(oral.forme).toBe("oral");
-    expect(reglagesDeLaFeuille(revision, FEUILLES_DE_LA_SEQUENCE[4])).toMatchObject({ forme: "ecrit", series: 1 });
-    expect(reglagesDeLaFeuille(revision, FEUILLES_DE_LA_SEQUENCE[5])).toMatchObject({ forme: "evaluation", series: 3 });
+    expect(reglagesDeLaFeuille(revision, FEUILLES_DE_LA_SEQUENCE[5])).toMatchObject({ forme: "ecrit", series: 1 });
+    expect(reglagesDeLaFeuille(revision, FEUILLES_DE_LA_SEQUENCE[6])).toMatchObject({ forme: "evaluation", series: 3 });
     // Deux parties à l'évaluation : deux séries au moins.
-    expect(reglagesDeLaFeuille({ ...r, series: 1 }, FEUILLES_DE_LA_SEQUENCE[5]).series).toBe(2);
+    expect(reglagesDeLaFeuille({ ...r, series: 1 }, FEUILLES_DE_LA_SEQUENCE[6]).series).toBe(2);
   });
 
   it("crée la fiche, les six séances de la démarche, puis les feuilles et les problèmes à leur place", async () => {
@@ -69,26 +70,29 @@ describe("la séquence de calcul mental", () => {
     expect(JSON.parse(sequence.competenceVisee).competenceTitre).toBe("Mémoriser les compléments à 10");
     expect(enregistres.seances.map((s) => s.numero)).toEqual([1, 2, 3, 4, 5, 6]);
     expect(enregistres.seances.every((s) => s.sequenceId === sequence.id)).toBe(true);
-    expect(feuilles).toBe(7);
-    expect(enregistres.feuilles.map((f) => enregistres.seances.findIndex((s) => s.id === f.seanceId))).toEqual([0, 1, 2, 3, 4, 5, 4]);
+    expect(feuilles).toBe(8);
+    expect(enregistres.feuilles.map((f) => enregistres.seances.findIndex((s) => s.id === f.seanceId))).toEqual([0, 0, 1, 2, 3, 4, 5, 4]);
     expect(enregistres.feuilles.map((f) => f.titre)).toEqual([
-      "Calcul mental — découverte", "Calcul mental — La Martinière", "Calcul mental — La Martinière", "Calcul mental — La Martinière",
+      "Calcul mental — découverte", "Calcul mental — matériel de manipulation",
+      "Calcul mental — La Martinière", "Calcul mental — La Martinière", "Calcul mental — La Martinière",
       "Calcul mental — test de fluence", "Calcul mental — évaluation finale", "Problèmes — Compléments à 10",
     ]);
     expect(enregistres.feuilles[0].html).toContain("Ce que nous retenons");
-    expect(enregistres.feuilles[1].html).toContain("procédé La Martinière");
-    expect(enregistres.feuilles[5].html).toContain("En temps limité");
-    expect(enregistres.feuilles[5].html).toContain("corrigé");
-    // Les compléments à 10 se réinvestissent dans des problèmes partie-tout.
-    expect(enregistres.feuilles[6].atelier).toBe("partieTout");
+    // Les compléments à 10 se découvrent avec les boîtes de dix.
+    expect(enregistres.feuilles[1].html).toContain("Boîtes de dix");
+    expect(enregistres.feuilles[2].html).toContain("procédé La Martinière");
+    expect(enregistres.feuilles[6].html).toContain("En temps limité");
+    expect(enregistres.feuilles[6].html).toContain("corrigé");
+    // Et se réinvestissent dans des problèmes partie-tout.
+    expect(enregistres.feuilles[7].atelier).toBe("partieTout");
   });
 
   it("garde le tirage de l'écran pour la première feuille", async () => {
     await creerLaSequenceDeCalcul(r, 42, "A", []);
-    const premiere = enregistres.feuilles[1].html;
+    const premiere = enregistres.feuilles[2].html;
     enregistres.feuilles = [];
     await creerLaSequenceDeCalcul(r, 42, "B", []);
-    expect(enregistres.feuilles[1].html).toBe(premiere);
+    expect(enregistres.feuilles[2].html).toBe(premiere);
     expect(enregistres.sequences[1].competenceVisee).toBe("");
   });
 });

@@ -6,6 +6,7 @@ import type { CompetenceSelectionnee } from "./CompetenceTree";
 import { demarcheDe, resumeDuCadre } from "../demarches";
 import { objectifsRetenus, type ReglagesMartiniere } from "../martiniere";
 import { problemesAssocies } from "../problemesAssocies";
+import { materielPour } from "../materielManipulation";
 import {
   DEMARCHE_CALCUL_MENTAL, FEUILLES_DE_LA_SEQUENCE, SEANCE_DES_PROBLEMES, creerLaSequenceDeCalcul, titreDeLaSequence, type FeuilleDeSequence,
 } from "../sequenceCalculMental";
@@ -19,6 +20,7 @@ import {
 const ceQuiSePose = (f: FeuilleDeSequence) =>
   f.celleDeLEcran ? "la feuille à l'écran"
     : f.forme === "decouverte" ? "la fiche de découverte : chercher, expliquer, retenir"
+    : f.forme === "materiel" ? "le matériel de manipulation"
     : f.forme === "evaluation" ? "l'évaluation finale et son corrigé"
     : f.forme === "ecrit" ? (f.uneSerie ? "une série écrite courte, en temps limité" : "le test de fluence et son corrigé")
     : "un autre tirage du même objectif";
@@ -32,6 +34,7 @@ export function SequenceDeCalculMental({ reglages, graine, competences, onClose 
   const [enCours, setEnCours] = React.useState(false);
   const objectif = objectifsRetenus(reglages)[0];
   const associes = React.useMemo(() => (objectif ? problemesAssocies(objectif, reglages.tables ?? []) : null), [objectif, reglages.tables]);
+  const materiel = React.useMemo(() => (objectif ? materielPour(objectif, reglages.tables ?? []) : null), [objectif, reglages.tables]);
   if (!demarche) return null;
   const creer = async () => {
     setEnCours(true);
@@ -63,11 +66,15 @@ export function SequenceDeCalculMental({ reglages, graine, competences, onClose 
       </p>
       <ol style={{ margin: "0 0 10px", paddingLeft: 22, display: "grid", gap: 7 }}>
         {demarche.seances.map((s, i) => {
-          const f = FEUILLES_DE_LA_SEQUENCE.find((x) => x.seance === i);
+          const feuilles = FEUILLES_DE_LA_SEQUENCE.filter((x) => x.seance === i);
           return (
             <li key={s.titre}>
               <b>{s.titre}</b> <span className="meta">· {s.duree} min</span>
-              {f && <span className="chip" style={{ marginLeft: 6 }}>📄 {ceQuiSePose(f)}</span>}
+              {feuilles.map((f) => (
+                <span key={f.forme} className="chip" style={{ marginLeft: 6 }}>
+                  {f.forme === "materiel" ? `🧱 ${materiel ? materiel.nom.toLowerCase() : ceQuiSePose(f)}` : `📄 ${ceQuiSePose(f)}`}
+                </span>
+              ))}
               {i === SEANCE_DES_PROBLEMES && associes && <span className="chip" style={{ marginLeft: 6 }}>🧩 {associes.nom.toLowerCase()}</span>}
               <div className="meta" style={{ fontSize: 12.5, lineHeight: 1.45 }}>{s.objectifs}</div>
             </li>

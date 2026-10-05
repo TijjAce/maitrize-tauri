@@ -41,6 +41,7 @@ export interface FeuilleDeSequence {
 /** Les feuilles de la séquence, séance par séance. */
 export const FEUILLES_DE_LA_SEQUENCE: FeuilleDeSequence[] = [
   { seance: 0, forme: "decouverte" },
+  { seance: 0, forme: "materiel" },
   { seance: 1, forme: "oral", celleDeLEcran: true },
   { seance: 2, forme: "oral" },
   { seance: 3, forme: "oral" },
@@ -78,7 +79,8 @@ export function reglagesDeLaFeuille(r: ReglagesMartiniere, f: FeuilleDeSequence)
 /** Le titre d'une feuille, comme l'atelier la nomme. */
 export const titreDeLaFeuille = (f: FeuilleDeSequence) => ({
   oral: "Calcul mental — La Martinière", ecrit: "Calcul mental — test de fluence",
-  decouverte: "Calcul mental — découverte", evaluation: "Calcul mental — évaluation finale",
+  decouverte: "Calcul mental — découverte", materiel: "Calcul mental — matériel de manipulation",
+  evaluation: "Calcul mental — évaluation finale",
 }[f.forme]);
 
 /**

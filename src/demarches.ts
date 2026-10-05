@@ -947,7 +947,7 @@ const CALCUL_MENTAL: Demarche = {
       phases: [
         ph("Échauffement", "5 min", "Une activité très courte qui réactive un fait déjà su — un furet, trois calculs à l'ardoise — : tous réussissent."),
         ph("Entraînement", "10 min", "Au procédé La Martinière, les faits sur lesquels s'appuie la procédure du jour (pour les presque-doubles : les doubles)."),
-        ph("Recherche", "20 min", "Un calcul à chercher seul, l'écrit permis sur le cahier de recherche ; mise en commun : chacun montre et dit sa démarche, juste ou non ; on compare les procédures et on les hiérarchise — la plus sûre, la plus rapide, et quand elle marche.",
+        ph("Recherche", "20 min", "Un calcul à chercher seul, d'abord avec le matériel — cubes, boîte de dix, bande numérique, quadrillage… — en disant ce qu'on fait, puis sans, l'écrit permis sur le cahier de recherche ; mise en commun : chacun montre et dit sa démarche, juste ou non ; on compare les procédures et on les hiérarchise — la plus sûre, la plus rapide, et quand elle marche.",
           "Écrit ce que dit l'élève sans l'interpréter ; cherche avec la classe la cause des erreurs."),
         ph("Trace écrite", "10 min", "La procédure retenue, son domaine d'efficacité et un exemple, écrits juste : cahier de leçons ou affiche de la classe."),
       ],

@@ -25,6 +25,7 @@ import { SequenceDeCalculMental } from "../components/SequenceDeCalculMental";
 import { consignesJustes } from "../consigneAtelier";
 import { consignesPour } from "../consignesCalcul";
 import { problemesAssocies, reglagesDeLAtelier } from "../problemesAssocies";
+import { materielPour } from "../materielManipulation";
 import { NIVEAUX, RUBRIQUES, objectifParId, objectifsDuNiveau, type Niveau, type Objectif } from "../faitsNumeriques";
 import { OPERATIONS_COMPTE, REGLAGES_COMPTE, REGLAGES_COMPTE_CYCLE, STYLE_COMPTE, comptes, htmlCompteEstBon } from "../compteEstBon";
 import { REGLAGES_PYRAMIDES, STYLE_PYRAMIDES, htmlPyramides, type FormeCalcul } from "../pyramides";
@@ -391,7 +392,11 @@ export function MartiniereTab() {
     const suite = tablesChoisies.includes(t) ? tablesChoisies.filter((x) => x !== t) : [...tablesChoisies, t];
     maj({ tables: (suite.length ? suite : [t]).sort((a, b) => a - b) });
   };
-  const titre = { oral: "Calcul mental — La Martinière", ecrit: "Calcul mental", decouverte: "Calcul mental — découverte", evaluation: "Calcul mental — évaluation finale" }[r.forme] ?? "Calcul mental";
+  const titre = {
+    oral: "Calcul mental — La Martinière", ecrit: "Calcul mental", decouverte: "Calcul mental — découverte",
+    materiel: "Calcul mental — matériel de manipulation", evaluation: "Calcul mental — évaluation finale",
+  }[r.forme] ?? "Calcul mental";
+  const materiel = retenus.length === 1 ? materielPour(retenus[0], tablesChoisies) : null;
   // Les problèmes qui réinvestissent ce calcul : l'atelier de problèmes s'ouvre réglé pour eux.
   const associes = !r.revision && retenus.length === 1 ? problemesAssocies(retenus[0], tablesChoisies) : null;
   const versLesProblemes = () => {
@@ -463,10 +468,11 @@ export function MartiniereTab() {
             <option value="oral">À l'oral — procédé La Martinière</option>
             <option value="ecrit">Par écrit — test de fluence</option>
             <option value="decouverte">Découverte — chercher, expliquer, retenir</option>
+            <option value="materiel">Matériel de manipulation — pour la découverte</option>
             <option value="evaluation">Évaluation finale</option>
           </Select>
         </Field>
-        {r.forme !== "decouverte" && <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        {r.forme !== "decouverte" && r.forme !== "materiel" && <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <Field label="Calculs par série"><Input type="number" min={5} max={30} value={r.parSerie} onChange={(e) => maj({ parSerie: borne(e.target.value, 5, 30, 10) })} /></Field>
           <Field label="Séries"><Input type="number" min={1} max={6} value={r.series} onChange={(e) => maj({ series: borne(e.target.value, 1, 6, 2) })} /></Field>
         </div>}
@@ -479,7 +485,8 @@ export function MartiniereTab() {
           <Coche on={r.ardoises} libelle="Les ardoises papier des élèves, à la suite" onChange={(v) => maj({ ardoises: v })} />
         </>)}
         <div className="meta" style={{ fontSize: 12.5 }}>
-          {r.forme === "decouverte" ? "Trois calculs à chercher, puis la trace écrite à remplir ensemble."
+          {r.forme === "materiel" ? (materiel ? `${materiel.nom} : ${materiel.usage}` : "Choisissez un seul objectif.")
+            : r.forme === "decouverte" ? "Trois calculs à chercher, puis la trace écrite à remplir ensemble."
             : r.forme === "evaluation" ? `${series.length > 1 ? series[0].length : Math.ceil(total / 2)} calculs en temps limité, ${Math.min(6, series.length > 1 ? series[1].length : Math.floor(total / 2))} sans limite de temps, une procédure à expliquer${associes ? ", un problème" : ""}, et le bilan.`
             : `${total} calculs.`}
         </div>
