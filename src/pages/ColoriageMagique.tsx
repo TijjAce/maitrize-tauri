@@ -8,9 +8,14 @@ import { PhotoTelephone } from "../components/PhotoTelephone";
 import { escapeHtml } from "../print";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
+import { useMemoire } from "../components/useMemoire";
+import { chargerPicto, usePictoImage } from "../components/ChoixPicto";
+import { chercherPictos } from "../mesPictos";
+import { motDuFichier } from "../imagesPerso";
+import type { PictoArasaac } from "../api";
 import {
   COULEURS, GRAPHIES, MOTIFS, OPERATIONS, PLAFONDS, POLICES_CURSIVES_CONNUES, REGLAGES_PAR_DEFAUT, SONS_COLORIAGE, TAILLES_MOTIF,
-  basculerCase, casesAColorier, consigne, couleurDe, couleursDuMotif, ecrireMotifsPerso, fabriquerColoriage, lettreSousGraphie,
+  basculerCase, casesAColorier, consigne, couleurDe, couleursDuMotif, dimensionsDe, ecrireMotifsPerso, fabriquerColoriage, lettreSousGraphie,
   lireMotifsPerso, motifDepuisImage, type CaseColoriage, type Coloriage, type Graphie, type Matiere, type Motif, type Operation,
 } from "../coloriageMagique";
 
@@ -21,9 +26,10 @@ import {
 // voie. Une case de la mauvaise couleur crève les yeux au milieu d'un poisson,
 // là où une colonne de calculs faux passe inaperçue — l'élève se corrige seul.
 //
-// L'écran se lit en trois temps : le dessin, ce qu'on travaille, les
-// réglages de ce qu'on travaille. Le dessin se choisit dans une galerie de
-// vignettes, ou se tire d'une photo prise au téléphone.
+// L'écran se lit en trois temps, chacun dans son pli : le dessin, ce qu'on
+// travaille, les réglages de ce qu'on travaille. Le dessin se choisit dans
+// une galerie de vignettes, ou se tire d'une image : une photo prise au
+// téléphone, un fichier, un pictogramme, une image collée ou glissée.
 
 const CLE_MOTIFS_PERSO = "coloriage:motifs";
 
@@ -40,10 +46,10 @@ function styleDeCase(x: CaseColoriage, policeCursive: string): React.CSSProperti
 
 /** La grille, à l'écran comme au papier. Le corrigé remplit les couleurs. */
 function Grille({ c, corrige, policeCursive }: { c: Coloriage; corrige: boolean; policeCursive: string }) {
-  const n = c.lignes.length;
-  const cote = Math.max(34, Math.min(58, Math.floor(560 / Math.max(1, n))));
+  const n = Math.max(1, c.lignes.length, c.lignes[0]?.length ?? 0);
+  const cote = Math.max(30, Math.min(58, Math.floor(560 / n)));
   return (
-    <table className="cm-grille" style={{ ["--cm-cote" as string]: `${cote}px` }}>
+    <table className="cm-grille" style={{ ["--cm-cote" as string]: `${cote}px`, fontSize: cote >= 48 ? undefined : cote >= 40 ? 12 : 11, whiteSpace: "nowrap" }}>
       <tbody>
         {c.lignes.map((ligne, y) => (
           <tr key={y}>
@@ -84,11 +90,21 @@ function Legende({ c, graphies, policeCursive }: { c: Coloriage; graphies: Graph
 }
 
 /** Un dessin en petit : de quoi le reconnaître avant de le choisir. */
+/** Le style d'une grille en petit : ses colonnes, ses rangées, et ses proportions dans `cote` pixels. */
+function styleMini(grille: string[], cote?: number): React.CSSProperties {
+  const { colonnes, lignes } = dimensionsDe(grille);
+  const style: React.CSSProperties = { gridTemplateColumns: `repeat(${colonnes}, 1fr)`, gridTemplateRows: `repeat(${lignes}, 1fr)` };
+  if (cote) {
+    style.width = colonnes >= lignes ? cote : Math.round((cote * colonnes) / lignes);
+    style.height = colonnes >= lignes ? Math.round((cote * lignes) / colonnes) : cote;
+  } else style.aspectRatio = `${colonnes} / ${lignes}`;
+  return style;
+}
+
 function Vignette({ m, on, onClick, onSupprimer }: { m: Motif; on: boolean; onClick: () => void; onSupprimer?: () => void }) {
-  const n = m.grille.length;
   return (
     <button type="button" className={`cm-vignette${on ? " on" : ""}`} onClick={onClick} title={`${m.nom} — ${casesAColorier(m)} cases`}>
-      <span className="cm-mini" style={{ gridTemplateColumns: `repeat(${n}, 1fr)` }}>
+      <span className="cm-mini" style={styleMini(m.grille, 56)}>
         {m.grille.flatMap((ligne, y) => [...ligne].map((c, x) => (
           <i key={`${x}-${y}`} style={{ background: c === "." ? "transparent" : couleurDe(c)?.hex }} />
         )))}
@@ -116,29 +132,49 @@ async function pixelsDe(src: string, maxCote = 480): Promise<{ largeur: number; 
   return { largeur: d.width, hauteur: d.height, pixels: d.data };
 }
 
+/** Un pictogramme à prendre pour dessin : sa vignette, son mot. */
+function PictoSource({ p, onClick }: { p: PictoArasaac; onClick: () => void }) {
+  const src = usePictoImage(p.id);
+  return (
+    <button type="button" className="tp-vignette" onClick={onClick} title={p.mot}>
+      {src ? <img src={src} alt="" /> : <span className="tp-vide" />}
+      <span className="tp-mot">{p.mot}</span>
+    </button>
+  );
+}
+
 /**
- * Un dessin à soi, tiré d'une photo — du téléphone ou d'un fichier — et
- * retouché case par case avant d'être gardé.
+ * Un dessin à soi, tiré d'une image — une photo du téléphone, un fichier,
+ * un pictogramme, une image collée ou glissée — et retouché case par case
+ * avant d'être gardé.
  */
-function DepuisPhoto({ banque, onGarder, onClose }: { banque: boolean; onGarder: (m: Motif) => void; onClose: () => void }) {
-  const [image, setImage] = React.useState<{ src: string; largeur: number; hauteur: number; pixels: Uint8ClampedArray } | null>(null);
-  const [taille, setTaille] = React.useState(10);
+function DepuisImage({ onGarder, onClose }: { onGarder: (m: Motif) => void; onClose: () => void }) {
+  const [image, setImage] = React.useState<{ src: string; largeur: number; hauteur: number; pixels: Uint8ClampedArray; picto: boolean } | null>(null);
+  const [taille, setTaille] = React.useState(12);
   const [seuil, setSeuil] = React.useState(0.82);
+  const [recadrer, setRecadrer] = React.useState(true);
+  // Un picto au trait a le corps clair : on le remplit d'office ; une photo garde son blanc.
+  const [remplissage, setRemplissage] = React.useState<string | null>(null);
   const [palette, setPalette] = React.useState<string[]>(COULEURS.map((c) => c.id));
   const [grille, setGrille] = React.useState<string[] | null>(null);
   const [retouches, setRetouches] = React.useState(false);
   const [nom, setNom] = React.useState("");
+  const [survol, setSurvol] = React.useState(false);
+  const [cherche, setCherche] = React.useState<string | null>(null);
+  const [pictos, setPictos] = React.useState<PictoArasaac[]>([]);
   const entree = React.useRef<HTMLInputElement>(null);
   const couleurs = COULEURS.filter((c) => palette.includes(c.id));
 
-  const charger = async (src: string) => {
-    try { const p = await pixelsDe(src); setImage({ src, ...p }); setRetouches(false); }
+  const charger = async (src: string, picto = false) => {
+    try { const p = await pixelsDe(src); setImage({ src, ...p, picto }); setRemplissage(picto ? "5" : null); setRetouches(false); }
     catch (e: any) { toast(String(e?.message ?? e), { icone: "⚠️" }); }
   };
   const depuisFichier = (f: File) => {
+    if (!f.type.startsWith("image/")) { toast(`« ${f.name} » n'est pas une image.`, { icone: "⚠️" }); return; }
     const lecteur = new FileReader();
     lecteur.onload = () => { void charger(String(lecteur.result)); };
     lecteur.readAsDataURL(f);
+    setNom((n) => n || motDuFichier(f.name));
   };
   const depuisTelephone = React.useCallback(async (fichier: string) => {
     try {
@@ -146,84 +182,162 @@ function DepuisPhoto({ banque, onGarder, onClose }: { banque: boolean; onGarder:
       const mime = fichier.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
       await charger(`data:${mime};base64,${b64}`);
     } catch (e) { toast(String(e), { icone: "⚠️" }); }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const prendrePicto = async (p: PictoArasaac) => {
+    try { await charger(await chargerPicto(p.id), true); setNom((n) => n || p.mot); setCherche(null); }
+    catch (e) { toast("Picto illisible : " + String(e), { icone: "⚠️" }); }
+  };
+
+  // Une image copiée ailleurs se colle ici, d'un ⌘V.
+  const depuisFichierRef = React.useRef(depuisFichier);
+  depuisFichierRef.current = depuisFichier;
+  React.useEffect(() => {
+    const coller = (e: ClipboardEvent) => {
+      const f = Array.from(e.clipboardData?.files ?? []).find((x) => x.type.startsWith("image/"));
+      if (!f) return;
+      e.preventDefault();
+      depuisFichierRef.current(f);
+    };
+    window.addEventListener("paste", coller);
+    return () => window.removeEventListener("paste", coller);
   }, []);
+
+  // Les pictos qui répondent à ce qu'on cherche.
+  React.useEffect(() => {
+    if (cherche === null || cherche.trim().length < 2) { setPictos([]); return; }
+    const t = setTimeout(() => { chercherPictos(cherche.trim(), 24).then(setPictos).catch(() => setPictos([])); }, 200);
+    return () => clearTimeout(t);
+  }, [cherche]);
 
   // La grille suit l'image et les réglages, tant qu'on n'a pas retouché à la main.
   React.useEffect(() => {
     if (!image || retouches) return;
-    setGrille(motifDepuisImage(image, taille, seuil, couleurs.length ? couleurs : COULEURS));
-  }, [image, taille, seuil, palette, retouches]); // eslint-disable-line react-hooks/exhaustive-deps
+    setGrille(motifDepuisImage(image, { taille, seuilBlanc: seuil, palette: couleurs.length ? couleurs : COULEURS, recadrer, remplissage }));
+  }, [image, taille, seuil, palette, recadrer, remplissage, retouches]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cases = grille ? grille.join("").split("").filter((c) => c !== ".").length : 0;
+  const { colonnes, lignes } = dimensionsDe(grille ?? []);
   const garder = () => {
     if (!grille) return;
     onGarder({ id: `perso-${Date.now().toString(36)}`, nom: nom.trim() || "Mon dessin", grille, perso: true });
   };
+  const recalculer = <T,>(f: (v: T) => void) => (v: T) => { f(v); setRetouches(false); };
 
   return (
-    <Modal large titre="🖼 Un dessin depuis une photo" onClose={onClose}
+    <Modal large titre="🖼 Un dessin depuis une image" onClose={onClose}
       footer={<>
         <button className="btn" onClick={onClose}>Annuler</button>
         <button className="btn primary" disabled={!grille || cases < 4} onClick={garder}>✓ Garder ce dessin</button>
       </>}>
-      <p className="meta" style={{ marginTop: 0, fontSize: 13, lineHeight: 1.55 }}>
-        Un dessin d'élève, un pictogramme, un objet sur fond clair : la photo devient une grille de cases, chacune de la couleur de feutre la plus
-        proche, le clair restant blanc. Retouchez ensuite les cases en cliquant dessus.
-      </p>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-        <PhotoTelephone label="📱 Photo depuis le téléphone" className="btn primary" onPhoto={depuisTelephone} />
-        <input ref={entree} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) depuisFichier(f); e.target.value = ""; }} />
-        <button type="button" className="btn" onClick={() => entree.current?.click()}>🖼 Une image de l'ordinateur</button>
-        {!banque && null}
-      </div>
-      {image ? (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(200px, 260px) 1fr", gap: 14, alignItems: "start" }}>
-          <div>
-            <img src={image.src} alt="" style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)" }} />
-            <Field label="Cases de côté">
-              <div className="seg">
-                {TAILLES_MOTIF.map((t) => <button key={t} className={taille === t ? "active" : ""} onClick={() => { setTaille(t); setRetouches(false); }}>{t} × {t}</button>)}
-              </div>
-            </Field>
-            <Field label={`Ce qui reste blanc : le clair (${Math.round(seuil * 100)} %)`}>
-              <input type="range" min={0.5} max={0.98} step={0.02} value={seuil} onChange={(e) => { setSeuil(Number(e.target.value)); setRetouches(false); }} style={{ width: "100%" }} aria-label="Seuil de blanc" />
-            </Field>
-            <Field label="Les feutres">
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {COULEURS.map((c) => (
-                  <button key={c.id} type="button" className={`cm-feutre${palette.includes(c.id) ? " on" : ""}`} style={{ background: c.hex }} title={c.nom}
-                    onClick={() => { setPalette(palette.includes(c.id) ? palette.filter((x) => x !== c.id) : [...palette, c.id]); setRetouches(false); }} />
-                ))}
-              </div>
-            </Field>
-            <Field label="Nom du dessin"><Input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Le chien de Léo" /></Field>
-          </div>
-          <div>
-            {grille && (
-              <>
-                <div className="meta" style={{ fontSize: 12.5, marginBottom: 6 }}>
-                  {cases} cases à colorier · cliquez une case pour changer sa couleur{retouches ? " (retouché)" : ""}
-                  {retouches && <button type="button" className="btn ghost sm" style={{ marginLeft: 8 }} onClick={() => setRetouches(false)}>↺ Recalculer</button>}
-                </div>
-                <div className="cm-mini cm-mini-grande" style={{ gridTemplateColumns: `repeat(${taille}, 1fr)` }}>
-                  {grille.flatMap((ligne, y) => [...ligne].map((c, x) => (
-                    <i key={`${x}-${y}`} role="button" aria-label={`case ${x + 1},${y + 1}`} style={{ background: c === "." ? "#fff" : couleurDe(c)?.hex }}
-                      onClick={() => { setGrille(basculerCase(grille, x, y, couleurs.length ? couleurs : COULEURS)); setRetouches(true); }} />
-                  )))}
-                </div>
-              </>
-            )}
-          </div>
+      <div onDragOver={(e) => { if (Array.from(e.dataTransfer.types).includes("Files")) { e.preventDefault(); setSurvol(true); } }}
+        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setSurvol(false); }}
+        onDrop={(e) => {
+          const f = Array.from(e.dataTransfer.files).find((x) => x.type.startsWith("image/"));
+          if (!f) return;
+          e.preventDefault(); setSurvol(false); depuisFichier(f);
+        }}
+        style={survol ? { outline: "2px dashed var(--accent)", outlineOffset: 4, borderRadius: 8 } : undefined}>
+        <p className="meta" style={{ marginTop: 0, fontSize: 13, lineHeight: 1.55 }}>
+          Un dessin d'élève, un pictogramme, une image trouvée ailleurs : elle devient une grille de cases, chacune de la couleur de feutre
+          qui la couvre le plus, le clair restant blanc. Retouchez ensuite les cases en cliquant dessus.
+        </p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+          <PhotoTelephone label="📱 Photo depuis le téléphone" className="btn" onPhoto={depuisTelephone} />
+          <input ref={entree} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) depuisFichier(f); e.target.value = ""; }} />
+          <button type="button" className="btn" onClick={() => entree.current?.click()}>🖼 Une image de l'ordinateur</button>
+          <button type="button" className="btn" aria-pressed={cherche !== null} onClick={() => setCherche(cherche === null ? "" : null)}>🧩 Un pictogramme</button>
         </div>
-      ) : (
-        <div className="meta" style={{ fontSize: 13 }}>Prenez la photo, ou choisissez une image : la grille apparaîtra ici.</div>
-      )}
+        <p className="meta" style={{ fontSize: 12, margin: "0 0 12px" }}>Ou collez une image (⌘V), ou glissez-la ici depuis le Finder ou le navigateur.</p>
+        {cherche !== null && (
+          <div style={{ marginBottom: 12 }}>
+            <Input autoFocus value={cherche} onChange={(e) => setCherche(e.target.value)} placeholder="Chercher un picto : chat, maison, vélo…" aria-label="Chercher un pictogramme" />
+            <div className="tp-grille" style={{ marginTop: 8, maxHeight: 220, overflowY: "auto" }}>
+              {pictos.map((p) => <PictoSource key={p.id} p={p} onClick={() => { void prendrePicto(p); }} />)}
+              {cherche.trim().length >= 2 && !pictos.length && <span className="meta" style={{ fontSize: 12.5, gridColumn: "1 / -1" }}>Aucun picto pour « {cherche.trim()} ».</span>}
+            </div>
+          </div>
+        )}
+        {image ? (
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(200px, 260px) 1fr", gap: 14, alignItems: "start" }}>
+            <div>
+              <img src={image.src} alt="" style={{ width: "100%", maxHeight: 220, objectFit: "contain", borderRadius: 8, border: "1px solid var(--border)", background: "#fff" }} />
+              <Field label="Cases sur le grand côté">
+                <div className="seg">
+                  {TAILLES_MOTIF.map((n) => <button key={n} className={taille === n ? "active" : ""} onClick={() => recalculer(setTaille)(n)}>{n}</button>)}
+                </div>
+              </Field>
+              <label className="pb-coche">
+                <input type="checkbox" checked={recadrer} onChange={(e) => recalculer(setRecadrer)(e.target.checked)} />
+                <span>Retirer les marges autour du dessin</span>
+              </label>
+              <Field label={`Ce qui reste blanc : le clair (${Math.round(seuil * 100)} %)`}>
+                <input type="range" min={0.5} max={0.98} step={0.02} value={seuil} onChange={(e) => recalculer(setSeuil)(Number(e.target.value))} style={{ width: "100%" }} aria-label="Seuil de blanc" />
+              </Field>
+              <Field label="Les feutres">
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {COULEURS.map((c) => (
+                    <button key={c.id} type="button" className={`cm-feutre${palette.includes(c.id) ? " on" : ""}`} style={{ background: c.hex }} title={c.nom}
+                      onClick={() => recalculer(setPalette)(palette.includes(c.id) ? palette.filter((x) => x !== c.id) : [...palette, c.id])} />
+                  ))}
+                </div>
+                <div className="meta" style={{ fontSize: 12, marginTop: 6, lineHeight: 1.45 }}>
+                  {image.picto ? "Un picto a des contours noirs : retirez le feutre noir, ils ne compteront plus — seules les couleurs feront la grille."
+                    : "Sans le feutre noir, les traits noirs ne comptent pas : seules les couleurs font la grille."}
+                </div>
+              </Field>
+              <Field label="L'intérieur clair du dessin (entouré d'un trait)">
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                  <button type="button" className={`btn sm${remplissage === null ? " primary" : ""}`} onClick={() => recalculer(setRemplissage)(null)}>Reste blanc</button>
+                  {couleurs.filter((c) => c.id !== "6").map((c) => (
+                    <button key={c.id} type="button" className={`cm-feutre${remplissage === c.id ? " on" : ""}`} style={{ background: c.hex, opacity: 1, width: 24, height: 24 }}
+                      title={`Rempli en ${c.nom}`} aria-pressed={remplissage === c.id} onClick={() => recalculer(setRemplissage)(c.id)} />
+                  ))}
+                </div>
+              </Field>
+              <Field label="Nom du dessin"><Input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Le chien de Léo" /></Field>
+            </div>
+            <div>
+              {grille && (
+                <>
+                  <div className="meta" style={{ fontSize: 12.5, marginBottom: 6 }}>
+                    {colonnes} × {lignes} · {cases} cases à colorier · cliquez une case pour changer sa couleur{retouches ? " (retouché)" : ""}
+                    {retouches && <button type="button" className="btn ghost sm" style={{ marginLeft: 8 }} onClick={() => setRetouches(false)}>↺ Recalculer</button>}
+                  </div>
+                  {cases < 4 && (
+                    <div className="meta" style={{ fontSize: 12.5, marginBottom: 6, color: "var(--orange)" }}>
+                      Presque rien à colorier : donnez une couleur à l'intérieur clair du dessin, ou baissez « ce qui reste blanc ».
+                    </div>
+                  )}
+                  <div className="cm-mini cm-mini-grande" style={styleMini(grille)}>
+                    {grille.flatMap((ligne, y) => [...ligne].map((c, x) => (
+                      <i key={`${x}-${y}`} role="button" aria-label={`case ${x + 1},${y + 1}`} style={{ background: c === "." ? "#fff" : couleurDe(c)?.hex }}
+                        onClick={() => { setGrille(basculerCase(grille, x, y, couleurs.length ? couleurs : COULEURS)); setRetouches(true); }} />
+                    )))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="meta" style={{ fontSize: 13 }}>Choisissez une image, un pictogramme, ou collez-en une : la grille apparaîtra ici.</div>
+        )}
+      </div>
     </Modal>
   );
 }
 
+/** Les plis de l'écran, ouverts ou fermés : on les retrouve comme on les a laissés, sur cet ordinateur. */
+interface Plis { dessin: boolean; travail: boolean; reglages: boolean }
+const PLIS_OUVERTS: Plis = { dessin: true, travail: true, reglages: true };
+const lirePlis = (brut: unknown): Plis => ({ ...PLIS_OUVERTS, ...(brut && typeof brut === "object" ? brut as Partial<Plis> : {}) });
+
+const MATIERES_COLORIAGE: Record<Matiere, { icone: string; nom: string }> = {
+  calcul: { icone: "🔢", nom: "Calculs" }, lettres: { icone: "🔤", nom: "Sons dans les mots" }, graphies: { icone: "🅰️", nom: "Lettres et graphies" },
+};
+
 export function ColoriageMagiqueTab() {
   const [r, maj] = useReglages("coloriage", REGLAGES_PAR_DEFAUT);
+  const [plis, setPlis] = useMemoire<Plis>("coloriagePlis", lirePlis);
   const [graine, setGraine] = React.useState(() => Math.floor(Math.random() * 1e9));
   const [corrige, setCorrige] = React.useState(false);
   const [photo, setPhoto] = React.useState(false);
@@ -253,8 +367,11 @@ export function ColoriageMagiqueTab() {
 
   // La feuille — corps et style — d'où sortent l'impression et le PDF du bureau.
   const feuille = (avecCorrige: boolean) => {
-    const n = c.lignes.length;
-    const cote = Math.max(40, Math.min(62, Math.floor(680 / n)));
+    const colonnes = c.lignes[0]?.length ?? 1, rangees = c.lignes.length;
+    // Des cases à la taille de la grille, carrée ou non, dans la largeur de la page.
+    const cote = Math.max(36, Math.min(62, Math.floor(640 / colonnes), Math.floor(760 / rangees)));
+    // Un calcul tient sur une ligne : plus la case est étroite, plus il s'écrit petit.
+    const police = cote >= 56 ? 15 : cote >= 48 ? 14 : cote >= 42 ? 12 : 11;
     const cases = c.lignes.map((ligne) => `<tr>${ligne.map((x) => {
       const fond = avecCorrige && x.couleur ? couleurDe(x.couleur)?.hex : "";
       const st = styleDeCase(x, r.policeCursive);
@@ -282,14 +399,29 @@ export function ColoriageMagiqueTab() {
        .lg i { display: inline-block; width: 14px; height: 14px; border: 1px solid #333; vertical-align: -2px; }
        .grille { border-collapse: collapse; margin: 0 auto; }
        .grille td { border: 1.2px solid #222; width: ${cote}px; height: ${cote}px; text-align: center;
-         font-size: ${n > 8 ? 14 : 15}px; vertical-align: middle; }
+         font-size: ${police}px; white-space: nowrap; vertical-align: middle; }
        .nom { margin: 0 0 10px; font-size: 13px; color: #555; }` };
   };
   const imprimer = (avecCorrige: boolean) => { const f = feuille(avecCorrige); void imprimerAtelier("coloriage", f.titre, f.corps, f.style); };
   const bureau = () => { const f = feuille(false); return enregistrerSurLeBureau("coloriage", f.titre, f.corps, f.style); };
 
   const tous = [...MOTIFS, ...motifsPerso];
-  const titreEtape = (n: number, texte: string) => <div className="cm-etape"><span>{n}</span>{texte}</div>;
+  /** Un pli : son numéro, son titre, et ce qu'on y a choisi, lisible fermé. */
+  const pli = (cle: keyof Plis, n: number, titre: string, resume: string, contenu: React.ReactNode) => (
+    <details className="pli cm-pli" open={plis[cle]} onToggle={(e) => {
+      const ouvert = (e.currentTarget as HTMLDetailsElement).open;
+      if (ouvert !== plis[cle]) setPlis({ ...plis, [cle]: ouvert });
+    }}>
+      <summary><span className="cm-etape"><span>{n}</span>{titre}</span><span className="meta">{resume}</span></summary>
+      {contenu}
+    </details>
+  );
+  const nomDuSon = (id: string) => SONS_COLORIAGE.find((s) => s.id === id)?.son ?? "";
+  const resumeReglages = matiere === "calcul"
+    ? `${OPERATIONS.find((o) => o.id === r.operation)?.libelle ?? ""} · ${multiplication ? `table de ${r.table}` : `jusqu'à ${r.plafond}`}`
+    : matiere === "lettres"
+      ? r.sons.slice(0, combien).map(nomDuSon).filter(Boolean).join(", ")
+      : `${r.lettres.slice(0, combien).filter(Boolean).join(", ")} · ${r.graphies.length || 1} forme${r.graphies.length > 1 ? "s" : ""}`;
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 400px) 1fr", gap: 14, alignItems: "start" }}>
@@ -299,26 +431,30 @@ export function ColoriageMagiqueTab() {
           Une case fausse se voit tout de suite : c'est la feuille qui corrige, pas vous.
         </p>
 
-        {titreEtape(1, "Le dessin")}
-        <div className="cm-galerie">
-          {tous.map((m) => (
-            <Vignette key={m.id} m={m} on={r.motif === m.id} onClick={() => maj({ motif: m.id })} onSupprimer={m.perso ? () => supprimerPerso(m) : undefined} />
-          ))}
-          <button type="button" className="cm-vignette cm-vignette-plus" onClick={() => setPhoto(true)} title="Un dessin d'élève ou une image, en grille de cases">
-            <span style={{ fontSize: 26 }}>📷</span>
-            <span className="cm-vignette-nom">Depuis une photo</span>
-            <span className="cm-vignette-n">téléphone ou fichier</span>
-          </button>
-        </div>
+        {pli("dessin", 1, "Le dessin", `${c.motif.nom} · ${casesAColorier(c.motif)} cases`, (
+          <div className="cm-galerie">
+            {tous.map((m) => (
+              <Vignette key={m.id} m={m} on={r.motif === m.id} onClick={() => maj({ motif: m.id })} onSupprimer={m.perso ? () => supprimerPerso(m) : undefined} />
+            ))}
+            <button type="button" className="cm-vignette cm-vignette-plus" onClick={() => setPhoto(true)} title="Une photo, une image, un pictogramme : en grille de cases">
+              <span style={{ fontSize: 26 }}>🖼</span>
+              <span className="cm-vignette-nom">Depuis une image</span>
+              <span className="cm-vignette-n">photo, fichier, picto</span>
+            </button>
+          </div>
+        ))}
 
-        {titreEtape(2, "Ce qu'on travaille")}
-        <div className="seg" style={{ flexWrap: "wrap", marginBottom: 10 }}>
-          <button className={matiere === "calcul" ? "active" : ""} onClick={() => maj({ matiere: "calcul" })}>🔢 Calculs</button>
-          <button className={matiere === "lettres" ? "active" : ""} onClick={() => maj({ matiere: "lettres" })}>🔤 Sons dans les mots</button>
-          <button className={matiere === "graphies" ? "active" : ""} onClick={() => maj({ matiere: "graphies" })}>🅰️ Lettres et graphies</button>
-        </div>
+        {pli("travail", 2, "Ce qu'on travaille", MATIERES_COLORIAGE[matiere].nom, (
+          <div className="seg" style={{ flexWrap: "wrap", marginBottom: 10 }}>
+            {(Object.keys(MATIERES_COLORIAGE) as Matiere[]).map((m) => (
+              <button key={m} className={matiere === m ? "active" : ""} onClick={() => maj({ matiere: m })}>
+                {MATIERES_COLORIAGE[m].icone} {MATIERES_COLORIAGE[m].nom}
+              </button>
+            ))}
+          </div>
+        ))}
 
-        {titreEtape(3, matiere === "calcul" ? "Les calculs" : matiere === "lettres" ? "Les sons" : "Les lettres")}
+        {pli("reglages", 3, matiere === "calcul" ? "Les calculs" : matiere === "lettres" ? "Les sons" : "Les lettres", resumeReglages, (<>
         {matiere === "lettres" && (
           <Field label={`Un son par couleur — ${combien} couleur${combien > 1 ? "s" : ""} dans ce dessin`}>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -408,6 +544,7 @@ export function ColoriageMagiqueTab() {
             )}
           </>
         )}
+        </>))}
 
         <Field label="Titre de la feuille">
           <Input value={r.titre} onChange={(e) => maj({ titre: e.target.value })} />
@@ -435,7 +572,7 @@ export function ColoriageMagiqueTab() {
         <div className="meta" style={{ fontSize: 12, marginTop: 8 }}>{c.motif.nom} · {casesAColorier(c.motif)} cases · {couleursDuMotif(c.motif).length} couleurs</div>
       </div>
 
-      {photo && <DepuisPhoto banque onGarder={garderPerso} onClose={() => setPhoto(false)} />}
+      {photo && <DepuisImage onGarder={garderPerso} onClose={() => setPhoto(false)} />}
     </div>
   );
 }
