@@ -125,6 +125,7 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "✖️", label: "Problèmes multiplicatifs (schémas en barres)", to: "/jeux", page: "jeux", onglet: "multiplicatifs", sous: "Fabriquer" },
   { ico: "🧮", label: "Calcul mental (faits numériques, La Martinière, fluence)", to: "/jeux", page: "jeux", onglet: "martiniere", sous: "Fabriquer" },
   { ico: "🎯", label: "Le compte est bon", to: "/jeux", page: "jeux", onglet: "compteEstBon", sous: "Fabriquer" },
+  { ico: "⚖️", label: "Comparer les nombres (bataille, file des nombres, nombre caché : =, <, >)", to: "/jeux", page: "jeux", onglet: "comparer", sous: "Fabriquer" },
   { ico: "🔺", label: "Pyramides et carrés magiques", to: "/jeux", page: "jeux", onglet: "pyramides", sous: "Fabriquer" },
   { ico: "🕰", label: "Lire l'heure", to: "/jeux", page: "jeux", onglet: "heure", sous: "Fabriquer" },
   { ico: "💯", label: "Grands nombres et décimaux (numération cycle 3)", to: "/jeux", page: "jeux", onglet: "numeration", sous: "Fabriquer" },
