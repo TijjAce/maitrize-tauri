@@ -8,7 +8,8 @@
 // Un créneau désigne sa séance de deux façons : par le lien posé dans le
 // planning, ou en la citant dans son prévu — la ligne du bouton 📚, ou le
 // titre de la séquence écrit à la main. Les deux comptent. Une séquence citée
-// sans préciser la séance apporte son matériel à elle.
+// sans préciser la séance apporte son matériel à elle. Un PDF du bureau se
+// cite aussi tout seul, sans séance : la ligne du bouton 📄.
 //
 // Deux chemins d'impression, une même liste : le journal du jour est une page
 // HTML, où chaque page de PDF devient une image ; celui de la semaine est un
@@ -17,7 +18,7 @@
 import type { Creneau, MaterielItem, Seance, Sequence } from "./api";
 import { escapeHtml } from "./print";
 import { lirePdfs } from "./materielSeance";
-import { sequencesCitees } from "./sequencesCitees";
+import { forme, sequencesCitees } from "./sequencesCitees";
 import type { PageRendue } from "./pdfRendu";
 
 export interface AnnexeAImprimer {
@@ -72,12 +73,40 @@ export function liensDuCreneau(c: Pick<Creneau, "seanceId" | "prevu">, sequences
   return liens;
 }
 
+// ── Un PDF du bureau, cité tout seul ─────────────────────────────────────────
+
+/** La ligne que pose le bouton 📄 du cahier journal : le PDF, par son titre. */
+export const ligneDuPdf = (m: Pick<MaterielItem, "titre">) => `📄 ${m.titre.trim() || "PDF sans titre"}`;
+
+/**
+ * Les PDF cités dans un texte, dans son ordre : une ligne qui commence par
+ * 📄 nomme un matériel par son titre, sans accents ni majuscules, et peut
+ * continuer après lui (« 📄 Mots mêlés Halloween, pour les CE1 »). Le titre
+ * le plus long l'emporte ; à titre égal, celui du bureau, puis le plus récent.
+ */
+export function pdfsCites(texte: string, materiels: MaterielItem[]): MaterielItem[] {
+  const candidats = materiels
+    .filter((m) => m.titre.trim() && lirePdfs(m.pdfsJson).length > 0)
+    .map((m) => ({ m, titre: forme(m.titre), bureau: !m.seanceId && !m.sequenceId }))
+    .sort((a, b) => b.titre.length - a.titre.length || Number(b.bureau) - Number(a.bureau) || b.m.dateCreation.localeCompare(a.m.dateCreation));
+  const sortie: MaterielItem[] = [];
+  for (const ligne of (texte ?? "").split("\n")) {
+    const l = ligne.trim();
+    if (!l.startsWith("📄")) continue;
+    const reste = forme(l.slice("📄".length));
+    const trouve = candidats.find((x) => reste.startsWith(x.titre));
+    if (trouve && !sortie.includes(trouve.m)) sortie.push(trouve.m);
+  }
+  return sortie;
+}
+
 /**
  * Les matériels PDF d'un créneau : ceux de ses séances, puis ceux des
  * séquences citées sans séance — la séquence entière, donc son matériel et
- * celui de chacune de ses séances, dans l'ordre des séances. « Prendre sur
- * le bureau » range la feuille dans une séance ; citer la séquence par son
- * titre doit suffire à la retrouver.
+ * celui de chacune de ses séances, dans l'ordre des séances —, puis les PDF
+ * du bureau cités dans le prévu. « Prendre sur le bureau » range la feuille
+ * dans une séance ; citer la séquence par son titre doit suffire à la
+ * retrouver, et citer le PDF, à le joindre sans séance. Chacun une fois.
  */
 export function materielDuCreneau(
   c: Pick<Creneau, "seanceId" | "prevu">, sequences: Sequence[], seances: Seance[], materiels: MaterielItem[],
@@ -87,11 +116,13 @@ export function materielDuCreneau(
   const seancesDesSequences = seances
     .filter((s) => s.sequenceId && liens.sequences.has(s.sequenceId) && !liens.seances.has(s.id))
     .sort((x, y) => x.numero - y.numero);
+  const vus = new Set<string>();
   return [
     ...avecPdf.filter((m) => m.seanceId && liens.seances.has(m.seanceId)),
     ...avecPdf.filter((m) => !m.seanceId && m.sequenceId && liens.sequences.has(m.sequenceId)),
     ...seancesDesSequences.flatMap((s) => avecPdf.filter((m) => m.seanceId === s.id)),
-  ];
+    ...pdfsCites(c.prevu ?? "", avecPdf),
+  ].filter((m) => !vus.has(m.id) && Boolean(vus.add(m.id)));
 }
 
 /** Les titres du matériel d'un créneau, pour l'annoncer dans le journal. */

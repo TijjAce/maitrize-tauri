@@ -13,7 +13,7 @@ import { escapeHtml } from "./print";
 export interface CitationSequence { sequence: Sequence; seance: Seance | null }
 
 /** Une forme comparable : minuscules, sans accents, mots séparés d'une espace. */
-const forme = (texte: string) => ` ${(texte ?? "")
+export const forme = (texte: string) => ` ${(texte ?? "")
   .toLowerCase().replace(/œ/g, "oe").replace(/æ/g, "ae")
   .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
   .replace(/[^a-z0-9]+/g, " ").trim()} `;

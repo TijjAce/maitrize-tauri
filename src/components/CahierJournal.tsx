@@ -33,7 +33,10 @@ import type { CompetenceSelectionnee } from "./CompetenceTree";
 import { FichierImg } from "./Deroulement";
 import { useAsync } from "./ui";
 import { MoletteEchelle } from "./MoletteEchelle";
-import { materielDuCreneau } from "../materielAImprimer";
+import { ligneDuPdf, materielDuCreneau, pdfsCites } from "../materielAImprimer";
+import { ChoixPdfDuBureau } from "./SeanceParts";
+import { PdfViewer } from "./PdfViewer";
+import { lirePdfs } from "../materielSeance";
 
 // ── Cahier journal du jour ────────────────────────────────────────────────
 //
@@ -48,7 +51,8 @@ import { materielDuCreneau } from "../materielAImprimer";
 // une séquence citée, ses objectifs et le déroulement de sa séance. Un manuel
 // du coffre-fort se cite de même, et l'exercice qu'on y découpe se pose dans
 // le prévu, à l'écran comme dans le PDF du jour. Une compétence des
-// référentiels s'y pose aussi, en une ligne.
+// référentiels s'y pose aussi, en une ligne. Un PDF du bureau se cite sans
+// séance : il rejoint le matériel imprimé à la suite du journal.
 
 type Champ = "prevu" | "bilan";
 interface Brouillon { prevu: string; bilan: string }
@@ -331,6 +335,13 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
 
   // ── Les manuels cités, et leurs images ──
   const [manuelPour, setManuelPour] = React.useState<Creneau | null>(null);
+  // ── Un PDF du bureau, cité sans séance ──
+  const [pdfPour, setPdfPour] = React.useState<Creneau | null>(null);
+  const citerPdf = (c: Creneau, m: MaterielItem) => {
+    const prevu = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
+    if (pdfsCites(prevu, [m]).length) { toast(`« ${m.titre.trim() || "Ce PDF"} » est déjà cité dans ce créneau.`, { icone: "ℹ️" }); return; }
+    modifier(c.id, "prevu", insererLigne(prevu, ligneDuPdf(m), curseurDe(c)), true);
+  };
   // ── Une compétence posée dans le prévu, prise dans les référentiels ──
   const [competencePour, setCompetencePour] = React.useState<Creneau | null>(null);
   // Les temps d'observation posés sur les créneaux du jour : ce sont eux qui
@@ -492,6 +503,9 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                           <button className="btn ghost sm" onClick={() => setSequencePour(c)} disabled={!sequences.length}
                             title={sequences.length ? "Poser une séquence ou une séance dans le prévu : ses objectifs et son déroulement s'afficheront ici" : "Aucune séquence pour l'instant"}>
                             📚 Séquence</button>
+                          <button className="btn ghost sm" onClick={() => setPdfPour(c)}
+                            title="Citer un PDF posé sur le plan de travail, sans passer par une séance : il se voit sous le créneau et s'imprime à la suite du cahier journal">
+                            📄 PDF du bureau</button>
                           <button className="btn ghost sm" onClick={() => setRituelPour(c)}
                             title="Poser un rituel dans le prévu — la date, l'appel, le calcul mental — : son déroulement s'affichera ici. On le crée aussi là.">
                             🔁 Rituel</button>
@@ -605,6 +619,15 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
       {competencePour && (
         <ChoixCompetence onClose={() => setCompetencePour(null)} onChoisir={(comp) => poserCompetence(competencePour, comp)} />
       )}
+      {pdfPour && (
+        <ChoixPdfDuBureau onClose={() => setPdfPour(null)} onPrendre={(m) => citerPdf(pdfPour, m)}
+          mots={{
+            titre: "Citer un PDF du bureau",
+            aide: `Les PDF posés sur le plan de travail. Cité dans le prévu de ${pdfPour.heureDebut} ${pdfPour.matiere || "ce créneau"}, `
+              + "le PDF se voit sous le créneau et s'imprime à la suite du cahier journal ; il reste à sa place sur le bureau.",
+            bouton: "📄 Citer", enCours: "…", fait: "✓ Cité", echec: "PDF non cité",
+          }} />
+      )}
       {manuelPour && (
         <ManuelDuJournal onClose={() => setManuelPour(null)}
           onCiter={(manuel, page, passage) => citerManuel(manuelPour, manuel, page, passage)}
@@ -620,16 +643,24 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
  * échelle : c'est ici qu'on voit la feuille partir, c'est ici qu'on la règle.
  */
 function MaterielDuJournal({ materiels }: { materiels: MaterielItem[] }) {
+  const [vu, setVu] = React.useState<{ nom: string; titre: string } | null>(null);
   if (!materiels.length) return null;
   return (
     <div className="journal-materiel">
       <div className="journal-materiel-titre">🖨 Matériel à imprimer, joint à la suite du journal</div>
-      {materiels.map((m) => (
-        <div key={m.id} className="journal-materiel-ligne">
-          <span className="journal-materiel-nom">📄 {m.titre.trim() || "Matériel"}</span>
-          <MoletteEchelle materiel={m} compact />
-        </div>
-      ))}
+      {materiels.map((m) => {
+        const premier = lirePdfs(m.pdfsJson)[0];
+        const titre = m.titre.trim() || "Matériel";
+        return (
+          <div key={m.id} className="journal-materiel-ligne">
+            {premier
+              ? <button type="button" className="lien journal-materiel-nom" title="Voir le PDF" onClick={() => setVu({ nom: premier, titre })}>📄 {titre}</button>
+              : <span className="journal-materiel-nom">📄 {titre}</span>}
+            <MoletteEchelle materiel={m} compact />
+          </div>
+        );
+      })}
+      {vu && <PdfViewer nomFichier={vu.nom} titre={vu.titre} onClose={() => setVu(null)} />}
     </div>
   );
 }
