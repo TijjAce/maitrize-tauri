@@ -213,33 +213,71 @@ describe("le coloriage des graphies", () => {
   });
 });
 
-describe("un dessin tiré d'une photo", () => {
-  /** Une image de `n` × `n` pixels, colorée par blocs d'après une grille de lettres : b blanc, r rouge, v vert, k noir. */
+describe("un dessin tiré d'une image", () => {
+  /** Une image colorée par blocs d'après une grille de lettres : b blanc, r rouge, v vert, k noir, g gris clair, t transparent. */
   const image = (blocs: string[], parBloc = 4) => {
-    const n = blocs.length * parBloc;
-    const pixels = new Uint8ClampedArray(n * n * 4);
-    const teinte: Record<string, [number, number, number]> = { b: [250, 250, 248], r: [220, 30, 70], v: [30, 160, 80], k: [20, 20, 30], g: [200, 200, 200] };
-    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-      const [r, g, b] = teinte[blocs[Math.floor(y / parBloc)][Math.floor(x / parBloc)]];
-      const i = (y * n + x) * 4;
-      pixels[i] = r; pixels[i + 1] = g; pixels[i + 2] = b; pixels[i + 3] = 255;
+    const [l, h] = [blocs[0].length * parBloc, blocs.length * parBloc];
+    const pixels = new Uint8ClampedArray(l * h * 4);
+    const teinte: Record<string, [number, number, number, number]> = {
+      b: [250, 250, 248, 255], r: [220, 30, 70, 255], v: [30, 160, 80, 255], k: [20, 20, 30, 255], g: [200, 200, 200, 255], t: [0, 0, 0, 0],
+    };
+    for (let y = 0; y < h; y++) for (let x = 0; x < l; x++) {
+      const i = (y * l + x) * 4;
+      teinte[blocs[Math.floor(y / parBloc)][Math.floor(x / parBloc)]].forEach((v, k) => { pixels[i + k] = v; });
     }
-    return { largeur: n, hauteur: n, pixels };
+    return { largeur: l, hauteur: h, pixels };
   };
+  const options = (p: Partial<Parameters<typeof motifDepuisImage>[1]> = {}) => ({ taille: 4, seuilBlanc: 0.85, palette: COULEURS, recadrer: false, ...p });
 
-  it("donne à chaque bloc la couleur de feutre la plus proche, et laisse le clair en blanc", () => {
-    const grille = motifDepuisImage(image(["bbbb", "brrb", "bvkb", "bbgb"]), 4, 0.85, COULEURS);
-    expect(grille).toEqual(["....", ".11.", ".46.", "...."]);
+  it("donne à chaque case la couleur de feutre la plus proche, et laisse le clair en blanc", () => {
+    expect(motifDepuisImage(image(["bbbb", "brrb", "bvkb", "bbgb"]), options())).toEqual(["....", ".11.", ".46.", "...."]);
+    // Le transparent d'un picto compte comme du blanc.
+    expect(motifDepuisImage(image(["tttt", "trrt", "trrt", "tttt"]), options())).toEqual(["....", ".11.", ".11.", "...."]);
   });
 
-  it("recadre au carré une image plus large que haute", () => {
-    const large = image(["bbbb", "brrb", "brrb", "bbbb"]);
-    const encoreplusLarge = { largeur: large.largeur + 8, hauteur: large.hauteur, pixels: new Uint8ClampedArray((large.largeur + 8) * large.hauteur * 4).fill(255) };
-    // On recopie l'image au milieu d'une bande blanche.
-    for (let y = 0; y < large.hauteur; y++) for (let x = 0; x < large.largeur; x++) for (let k = 0; k < 4; k++) {
-      encoreplusLarge.pixels[(y * encoreplusLarge.largeur + x + 4) * 4 + k] = large.pixels[(y * large.largeur + x) * 4 + k];
-    }
-    expect(motifDepuisImage(encoreplusLarge, 4, 0.85, COULEURS)).toEqual(["....", ".11.", ".11.", "...."]);
+  it("prend la couleur qui couvre le plus la case, plutôt que la moyenne qui salit", () => {
+    // Les cases de gauche sont rouges aux deux tiers, celles de droite vertes : jamais une couleur de mélange.
+    const deux = motifDepuisImage(image(["rrrrvv", "rrrrvv", "rrrrvv", "rrrrvv", "rrrrvv", "rrrrvv"], 2), options({ taille: 4 }));
+    expect(deux.join("")).toMatch(/^[14]+$/);
+    expect(deux.every((ligne) => ligne.startsWith("11"))).toBe(true);
+  });
+
+  it("garde les proportions de l'image entière, sans en couper les bords", () => {
+    // Une image deux fois plus large que haute : 8 colonnes, 4 rangées ; le rouge du bord droit reste.
+    const large = image(["bbbbbbbr", "bbbbbbbr", "bbbbbbbr", "bbbbbbbr"]);
+    const g = motifDepuisImage(large, options({ taille: 8 }));
+    expect(g).toHaveLength(4);
+    expect(g.every((ligne) => ligne.length === 8 && ligne.endsWith("1"))).toBe(true);
+    // Plus haute que large : le grand côté est la hauteur.
+    const haute = motifDepuisImage(image(["rr", "rr", "bb", "bb"]), options({ taille: 8 }));
+    expect(haute.map((l) => l.length)).toEqual(Array(8).fill(4));
+  });
+
+  it("retire les marges claires : le dessin occupe toute la grille", () => {
+    const petit = image(["bbbbbbbb", "bbbbbbbb", "bbbrrbbb", "bbbrrbbb", "bbbbbbbb", "bbbbbbbb", "bbbbbbbb", "bbbbbbbb"]);
+    expect(motifDepuisImage(petit, options({ taille: 4 }))).toEqual(["....", "....", "....", "...."].map((l, i) => (i === 1 ? ".11." : l)));
+    const recadre = motifDepuisImage(petit, options({ taille: 4, recadrer: true }));
+    expect(recadre.join("").replace(/\./g, "").length).toBeGreaterThanOrEqual(9);
+  });
+
+  it("remplit l'intérieur clair d'un dessin au trait, et laisse blanc le fond qui touche le bord", () => {
+    // Un picto au trait : un corps gris clair entouré de noir, sur fond blanc.
+    const trait = image(["bbbbbb", "bkkkkb", "bkggkb", "bkggkb", "bkkkkb", "bbbbbb"]);
+    const sansNoir = COULEURS.filter((c) => c.id !== "6");
+    expect(motifDepuisImage(trait, options({ taille: 6, palette: sansNoir, remplissage: "5" })))
+      .toEqual(["......", "......", "..55..", "..55..", "......", "......"]);
+    // Sans remplissage, l'intérieur reste blanc : il n'y a rien à colorier.
+    expect(motifDepuisImage(trait, options({ taille: 6, palette: sansNoir })).join("")).toMatch(/^\.+$/);
+    // Un feutre de remplissage retiré de la palette ne remplit rien.
+    expect(motifDepuisImage(trait, options({ taille: 6, palette: COULEURS.slice(0, 2), remplissage: "5" })).join("")).not.toContain("5");
+  });
+
+  it("ne compte pas les traits noirs quand on retire le feutre noir", () => {
+    // Un picto : des contours noirs autour d'une tache verte.
+    const picto = image(["kkkk", "kvvk", "kvvk", "kkkk"]);
+    expect(motifDepuisImage(picto, options())).toEqual(["6666", "6446", "6446", "6666"]);
+    const sansNoir = COULEURS.filter((c) => c.id !== "6");
+    expect(motifDepuisImage(picto, options({ palette: sansNoir }))).toEqual(["....", ".44.", ".44.", "...."]);
   });
 
   it("se retouche case par case, et ne garde que des grilles qui tiennent debout", () => {
