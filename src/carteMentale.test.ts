@@ -82,4 +82,27 @@ describe("la carte mentale", () => {
     expect(idsDesImages(SENS)).toEqual(expect.arrayContaining([7, 1, 100, 101]));
     expect(idsDesImages({ ...SENS, pictos: false })).not.toContain(100);
   });
+
+  it("montre chaque idée comme on l'a voulue : l'image seule, le mot seul, ou les deux", () => {
+    const ponctuation = reglagesSurs({
+      centre: "La phrase",
+      branches: [
+        { ...branche("La ponctuation", []), idees: [{ id: 100, mot: "?", seul: "image" }, { id: 101, mot: ".", seul: "mot" }, { id: 102, mot: "!" }, { id: 103, mot: "virgule", seul: "image" }] },
+        branche("Les mots", ["le nom"]),
+      ],
+    });
+    // Le réglage se garde, et un réglage inconnu s'oublie.
+    expect(ponctuation.branches[0].idees.map((m) => m.seul)).toEqual(["image", "mot", undefined, "image"]);
+    expect(reglagesSurs({ branches: [{ ...branche("A", []), idees: [{ id: 1, mot: "x", seul: "rien" as never }] }] }).branches[0].idees[0]).toEqual({ id: 1, mot: "x" });
+    const images: Record<number, string> = { 100: "data:question", 101: "data:point", 102: "data:exclamation" };
+    const html = htmlCarteMentale(ponctuation, images);
+    // L'image seule, avec son mot pour qui ne voit pas l'image.
+    expect(html).toContain('<span class="cm-idee cm-image-seule"><img src="data:question" alt="?"></span>');
+    // Le mot seul : son image ne se charge même pas.
+    expect(html).toContain('<span class="cm-idee">.</span>');
+    expect(idsDesImages(ponctuation)).not.toContain(101);
+    expect(html).toContain('<span class="cm-idee"><img src="data:exclamation" alt="">!</span>');
+    // Sans image à montrer, le mot reste : l'idée ne disparaît pas.
+    expect(html).toContain('<span class="cm-idee">virgule</span>');
+  });
 });

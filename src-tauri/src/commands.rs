@@ -1344,6 +1344,19 @@ pub fn settings_all(db: State<Db>) -> R<std::collections::HashMap<String, String
     Ok(map)
 }
 
+/// Les réglages non vides d'une famille (« pictos: »…), sans lire tous les autres.
+#[tauri::command]
+pub fn settings_prefixe(db: State<Db>, prefixe: String) -> R<std::collections::HashMap<String, String>> {
+    let c = db.lock();
+    let mut st = c
+        .prepare("SELECT cle, valeur FROM settings WHERE substr(cle, 1, length(?1)) = ?1 AND valeur <> ''")
+        .map_err(e)?;
+    let rows = st.query_map(params![prefixe], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))).map_err(e)?;
+    let mut map = std::collections::HashMap::new();
+    for row in rows { let (k, v) = row.map_err(e)?; map.insert(k, v); }
+    Ok(map)
+}
+
 #[tauri::command]
 pub fn setting_get(db: State<Db>, cle: String) -> R<Option<String>> {
     let c = db.lock();

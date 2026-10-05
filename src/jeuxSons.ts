@@ -19,6 +19,8 @@ export interface MotImage {
   mot: string;
   /** Le nombre de syllabes fixé par l'enseignant, quand le nôtre est faux. */
   syllabes?: number;
+  /** Ce que la feuille en montre, quand ce n'est pas les deux : l'image seule, ou le mot seul. */
+  seul?: "image" | "mot";
 }
 
 export type Images = Record<number, string>;

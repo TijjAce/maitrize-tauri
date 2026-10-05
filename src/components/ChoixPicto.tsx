@@ -3,6 +3,7 @@ import { api, PictoArasaac } from "../api";
 import { Field, Input, Modal } from "./ui";
 import type { PictoPose } from "../supportsVisuels";
 import { chargerImageAppoint } from "../pictosAppoint";
+import { ETIQUETTES, chercherPictos, estMonPicto, imageDeMonPicto, origineDe } from "../mesPictos";
 import { PhotoTelephone } from "./PhotoTelephone";
 import { toast } from "./Toaster";
 
@@ -18,15 +19,17 @@ const chargerPhoto = (nom: string) =>
 
 /**
  * L'image d'un pictogramme, chargée à la demande et gardée pour la séance :
- * un numéro ARASAAC, la référence d'une banque d'appoint (« sclera:compter.png »),
- * ou une photo des fichiers (« photo:IMG-12.jpg »).
+ * un numéro ARASAAC, celui d'un picto de « Mes pictos », la référence d'une
+ * banque d'appoint (« sclera:compter.png »), ou une photo des fichiers
+ * (« photo:IMG-12.jpg »).
  */
 const cache = new Map<string, Promise<string>>();
 export function chargerPicto(id: number | string): Promise<string> {
   const cle = String(id);
   let p = cache.get(cle);
   if (!p) {
-    p = typeof id !== "string" ? api.arasaacImage(id).then((b) => `data:image/png;base64,${b}`)
+    p = typeof id !== "string"
+      ? estMonPicto(id) ? imageDeMonPicto(id) : api.arasaacImage(id).then((b) => `data:image/png;base64,${b}`)
       : id.startsWith("photo:") ? chargerPhoto(id.slice("photo:".length)) : chargerImageAppoint(id);
     p.catch(() => cache.delete(cle));
     cache.set(cle, p);
@@ -72,12 +75,22 @@ export function usePictoImages<T extends number | string>(ids: T[]): Record<T, s
   return images;
 }
 
+/** L'étiquette d'un picto de « Mes pictos » : « IA », « Sclera » ; rien pour un pictogramme d'ARASAAC. */
+export function EtiquetteMonPicto({ id }: { id: number | string | null | undefined }) {
+  const origine = origineDe(id);
+  if (!origine) return null;
+  const e = ETIQUETTES[origine];
+  return <span className={`mp-etiquette mp-${origine}`} title={e.long}>{e.court}</span>;
+}
+
 function Resultat({ picto, actif, onClick }: { picto: PictoArasaac; actif: boolean; onClick: () => void }) {
   const src = usePictoImage(picto.id);
+  const origine = origineDe(picto.id);
   return (
-    <button type="button" onClick={onClick} title={picto.mot}
-      style={{ border: actif ? "3px solid var(--accent)" : "1px solid var(--border)", borderRadius: 8, background: "#fff",
+    <button type="button" onClick={onClick} title={origine ? `${picto.mot} — ${ETIQUETTES[origine].long}` : picto.mot}
+      style={{ border: actif ? "3px solid var(--accent)" : "1px solid var(--border)", borderRadius: 8, background: "#fff", position: "relative",
         padding: 4, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+      <EtiquetteMonPicto id={picto.id} />
       {src ? <img src={src} alt="" style={{ width: "100%", aspectRatio: "1", objectFit: "contain" }} />
         : <div style={{ width: "100%", aspectRatio: "1" }} />}
       <span style={{ fontSize: 11, color: "#444", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -115,7 +128,7 @@ export function ChoixPicto({ valeur, banque, titre = "Choisir un pictogramme", o
     if (!banque) return;
     const t = setTimeout(() => {
       if (q.trim().length < 2) { setResultats([]); return; }
-      api.arasaacChercher(q.trim(), 48).then(setResultats).catch(() => setResultats([]));
+      chercherPictos(q.trim(), 48).then(setResultats).catch(() => setResultats([]));
     }, 200);
     return () => clearTimeout(t);
   }, [q, banque]);
