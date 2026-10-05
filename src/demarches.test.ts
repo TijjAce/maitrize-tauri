@@ -197,6 +197,13 @@ describe("la démarche que la compétence appelle", () => {
     // Constituer une collection d'un cardinal donné : la situation de référence des livrets, quelle que soit la formulation.
     expect(sug("4. Acquérir les premiers outils mathématiques", "Découvrir les nombres", "Constituer une collection (jusqu'à trois, voir quatre objets) d'un cardinal donné", c1)).toBe("collections-maternelle");
     expect(sug("4. Acquérir les premiers outils mathématiques", "Découvrir les nombres", "Construire des collections de cardinal donné.", c1)).toBe("collections-maternelle");
+    // La chronologie : le déroulement d'une histoire, sa chronologie, les étapes d'un processus — dans les mots du référentiel.
+    for (const comp of ["Comprendre et restituer le déroulement d'évènements quotidiens au sein d'une histoire simple.", "Restituer la chronologie des actions majeures d'une histoire simple.",
+      "Repérer les différentes étapes d'un processus ou d'un évènement vécu et les ordonner.", "Ordonner entre eux des moments rituels vécus."]) {
+      expect(sug("5. Se repérer dans le temps et l'espace", "Se repérer dans le temps", comp, c1), comp).toBe("chronologie-maternelle");
+    }
+    // Les étapes de la vie d'un animal restent une observation du vivant.
+    expect(sug("6. Découvrir le monde du vivant, de la matière et des objets", "Découvrir le monde du vivant", "Reconnaitre les étapes de la vie d'un animal ou d'une plante.", c1)).toBe("investigation");
     // Trouver un cardinal à partir d'un autre et d'un écart reste un problème.
     expect(sug("4. Acquérir les premiers outils mathématiques", "Utiliser les nombres pour résoudre des problèmes", "Déterminer le cardinal d'une collection à partir de celui d'une autre collection et de l'écart entre les deux.", c1)).toBe("problemes");
     expect(sug("4. Acquérir les premiers outils mathématiques", "Utiliser les nombres pour résoudre des problèmes", "Partager", c1)).toBe("problemes");

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  ETAPES_MAX, REGLAGES_SUITES, SUITES, cequiManque, etapesPleines, hauteurDeLaBande, htmlSuites, mesuresBande, mesuresColonnes, motsDuTemps,
+  ETAPES_MAX, OBSERVABLES, REGLAGES_SUITES, SUITES, cequiManque, etapesPleines, hauteurDeLaBande, htmlSuites, mesuresBande, mesuresColonnes, motsDuTemps,
   ordreMele, reglagesSurs, type ReglagesSuites,
 } from "./suitesImages";
 import { LARGEUR_CONTENU_MM } from "./cartesImprimables";
@@ -120,6 +120,17 @@ describe("les grandes images et l'ordre juste", () => {
     expect(compter(html, /class="carte si-grande"/g)).toBe(4);
     expect(compter(html, /class="carte si-carte-mot"/g)).toBe(4);
     expect(html).toContain("Au tableau");
+  });
+
+  it("la grille observe ce que le programme attend à cet âge, sans avoir besoin d'images", () => {
+    for (const niveau of ["PS", "MS", "GS"] as const) {
+      const grille = r({ forme: "evaluation", niveau, etapes: [] });
+      expect(cequiManque(grille)).toBeNull();
+      const html = htmlSuites(grille, {}, hasard(1));
+      for (const o of OBSERVABLES[niveau]) expect(html).toContain(o.replace(/'/g, "&#39;"));
+      expect(html).toContain("Mots du temps entendus");
+      expect(html).not.toContain("corrige");
+    }
   });
 
   it("l'ordre juste pour le maître, dans chaque feuille, et la mention d'ARASAAC pour les pictos seulement", () => {
