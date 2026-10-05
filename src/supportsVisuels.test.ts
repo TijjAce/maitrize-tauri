@@ -4,6 +4,7 @@ import {
   demarrer, dureeMs, estEnMarche, estFini, feuilleDabord, feuilleJetons, feuilleScenario, fractionAffichee,
   graduations, idsDes, mettreEnPause, minuteurPret, normaliserDabord, normaliserJetons, normaliserMinuteur,
   normaliserScenario, pageDuScenario, PAGE_PAYSAGE, PAGE_PORTRAIT, prolonger, restantA, secteurRestant, tempsLisible, diametreDesJetons, pageDabord,
+  cartesDabord, cleImage, mesuresDabord, normaliserPicto,
 } from "./supportsVisuels";
 
 const IMAGES = { 12: "data:image/png;base64,AAA", 34: "data:image/png;base64,BBB" };
@@ -252,5 +253,62 @@ describe("minuteur visuel", () => {
 
   it("liste les pictogrammes à charger, sans doublons", () => {
     expect(idsDes([{ id: 3, mot: "" }, null, { id: null, mot: "x" }, { id: 3, mot: "y" }, { id: 4, mot: "" }])).toEqual([3, 4]);
+  });
+});
+
+describe("les photos des objets, et les cartes à découper", () => {
+  const PHOTOS = { ...IMAGES, "photo:balle.jpg": "data:image/jpeg;base64,CCC", "photo:tablette.jpg": "data:image/jpeg;base64,DDD" };
+  const etapes = [{ id: 12, mot: "travailler" }, { id: null, mot: "balle", photo: "balle.jpg" }];
+
+  it("garde le nom d'une photo, jamais un chemin, et la charge sous sa clé", () => {
+    expect(normaliserPicto({ id: null, mot: "balle", photo: "balle.jpg" })).toEqual({ id: null, mot: "balle", photo: "balle.jpg" });
+    expect(normaliserPicto({ id: 3, mot: "x", photo: "../secret" }).photo).toBeUndefined();
+    expect(normaliserPicto({ id: 3, mot: "x", photo: "a/b.jpg" }).photo).toBeUndefined();
+    expect(cleImage({ id: 12, mot: "", photo: "balle.jpg" })).toBe("photo:balle.jpg");
+    expect(idsDes(etapes)).toEqual([12, "photo:balle.jpg"]);
+  });
+
+  it("pose la photo dans la planche, et ne cite ARASAAC que pour ses pictogrammes", () => {
+    const html = feuilleDabord({ ...DABORD_PAR_DEFAUT, etapes }, PHOTOS);
+    expect(html).toContain('src="data:image/jpeg;base64,CCC"');
+    expect(html).toContain(ATTRIBUTION_ARASAAC);
+    const photos = feuilleDabord({ ...DABORD_PAR_DEFAUT, etapes: [etapes[1], { id: null, mot: "tablette", photo: "tablette.jpg" }] }, PHOTOS);
+    expect(photos).not.toContain(ATTRIBUTION_ARASAAC);
+  });
+
+  it("garde une case qui n'a qu'une photo, sans mot, dans les jetons et le scénario", () => {
+    const seule = { id: null, mot: "", photo: "balle.jpg" };
+    expect(feuilleJetons({ ...JETONS_PAR_DEFAUT, comportements: [seule] }, PHOTOS)).toContain("base64,CCC");
+    expect(feuilleScenario({ ...SCENARIO_PAR_DEFAUT, etapes: [{ picto: seule, texte: "" }] }, PHOTOS)).toContain("base64,CCC");
+  });
+
+  it("imprime le modèle vide, puis les cartes à part, à la mesure des cadres", () => {
+    const r = { ...DABORD_PAR_DEFAUT, etapes, cartes: [{ id: null, mot: "tablette", photo: "tablette.jpg" }, { id: 12, mot: "travailler" }], impression: "modeleEtCartes" as const };
+    const html = feuilleDabord(r, PHOTOS);
+    const [modele, cartes] = html.split('class="sv-feuille sv-cartes-a-decouper');
+    // Le modèle : des cadres vides, sans image.
+    expect(modele).not.toContain("<img");
+    expect(compter(modele, /sv-cadre-vide/g)).toBe(2);
+    expect(modele).toContain(`width:${mesuresDabord(r).cadre}mm`);
+    // Les cartes : celles de la planche, puis les autres, chacune une fois.
+    expect(compter(cartes, /class="sv-carte-decoupe"/g)).toBe(3);
+    // Carrées, mot compris, et plus petites que leur cadre : elles s'y posent.
+    const { cadre, carte } = mesuresDabord(r);
+    expect(cartes).toContain(`width:${carte}mm;height:${carte}mm`);
+    expect(carte).toBeLessThan(cadre);
+    expect(cartesDabord(r).map((p) => p.mot)).toEqual(["travailler", "balle", "tablette"]);
+    // Les cartes seules.
+    const seules = feuilleDabord({ ...r, impression: "cartes" }, PHOTOS);
+    expect(seules).not.toContain("sv-cadre-vide");
+    expect(compter(seules, /class="sv-carte-decoupe"/g)).toBe(3);
+  });
+
+  it("garde ses cartes et son impression, et répare le reste", () => {
+    const lu = normaliserDabord({ etapes, cartes: [{ id: 34, mot: "récré" }], impression: "modeleEtCartes" });
+    expect(lu.cartes).toEqual([{ id: 34, mot: "récré" }]);
+    expect(lu.impression).toBe("modeleEtCartes");
+    expect(normaliserDabord({ impression: "nimporte" }).impression).toBe("planche");
+    expect(normaliserDabord({}).cartes).toEqual([]);
+    expect(mesuresDabord({ sens: "vertical", exemplaires: 2 }).cadre).toBeLessThan(mesuresDabord({ sens: "horizontal", exemplaires: 1 }).cadre);
   });
 });

@@ -4,15 +4,23 @@
 // Ce sont des outils de structuration pour les élèves qui ont besoin de voir
 // ce qu'on attend d'eux et ce qui vient ensuite — notamment les élèves
 // autistes. Chaque support s'imprime (pour être plastifié) à partir de
-// pictogrammes ARASAAC que l'enseignant choisit ; sans la banque, les cases
-// portent simplement le mot.
+// pictogrammes ARASAAC que l'enseignant choisit, ou de photos des objets de
+// la classe prises au téléphone ; sans image, les cases portent le mot.
 
 import { escapeHtml } from "./print";
 
-/** Un pictogramme posé sur un support : l'image ARASAAC et le mot écrit dessous. */
-export interface PictoPose { id: number | null; mot: string }
-/** Images des pictogrammes, par identifiant ARASAAC, en data URL. */
-export type Images = Record<number, string>;
+/**
+ * Un pictogramme posé sur un support : l'image ARASAAC et le mot écrit
+ * dessous — ou une photo de l'objet, rangée dans les fichiers de
+ * l'application, qui passe alors avant le pictogramme.
+ */
+export interface PictoPose { id: number | null; mot: string; photo?: string }
+/** Images des pictogrammes et des photos, par clé (voir `cleImage`), en data URL. */
+export type Images = Record<string | number, string>;
+
+/** La clé de l'image d'une case : le numéro ARASAAC, ou « photo:<fichier> ». */
+export const cleImage = (p: PictoPose | null | undefined): number | string | null =>
+  p?.photo ? `photo:${p.photo}` : p?.id ?? null;
 
 export const ATTRIBUTION_ARASAAC =
   "Pictogrammes : Sergio Palao, ARASAAC (arasaac.org), propriété du Gouvernement d'Aragon, licence CC BY-NC-SA. Usage non commercial.";
@@ -39,23 +47,31 @@ export const couleurValide = (v: unknown, defaut: string) =>
 
 export function normaliserPicto(v: unknown): PictoPose {
   const o = objet(v);
-  return { id: typeof o.id === "number" && Number.isInteger(o.id) && o.id >= 0 ? o.id : null, mot: texte(o.mot) };
+  const p: PictoPose = { id: typeof o.id === "number" && Number.isInteger(o.id) && o.id >= 0 ? o.id : null, mot: texte(o.mot) };
+  // Une photo : un nom de fichier, jamais un chemin.
+  if (typeof o.photo === "string" && /^[^/\\]+$/.test(o.photo) && !o.photo.includes("..")) p.photo = o.photo;
+  return p;
 }
 
-/** Les identifiants à charger pour imprimer. */
+/** Les images à charger pour imprimer : pictogrammes et photos. */
 export const idsDes = (pictos: (PictoPose | null | undefined)[]) =>
-  [...new Set(pictos.map((p) => p?.id).filter((id): id is number => typeof id === "number"))];
+  [...new Set(pictos.map(cleImage).filter((k): k is number | string => k !== null))];
+
+/** Une case qui n'a ni image ni mot. */
+export const estVide = (p: PictoPose | null | undefined) => !p || (p.id == null && !p.photo && !p.mot.trim());
 
 function image(p: PictoPose | null | undefined, images: Images, classe = "sv-image"): string {
-  const src = p?.id != null ? images[p.id] : undefined;
+  const cle = cleImage(p);
+  const src = cle !== null ? images[cle] : undefined;
   return src
     ? `<img class="${classe}" src="${src}" alt="${escapeHtml(p?.mot ?? "")}"/>`
     : `<div class="${classe} sv-image-vide"></div>`;
 }
 
 const mot = (p: PictoPose | null | undefined) => (p?.mot.trim() ? `<div class="sv-mot">${escapeHtml(p.mot.trim())}</div>` : "");
+/** La mention d'ARASAAC, quand un de ses pictogrammes est posé — pas pour des photos seules. */
 const attribution = (pictos: (PictoPose | null | undefined)[]) =>
-  idsDes(pictos).length ? `<div class="sv-attribution">${ATTRIBUTION_ARASAAC}</div>` : "";
+  pictos.some((p) => p && !p.photo && p.id != null) ? `<div class="sv-attribution">${ATTRIBUTION_ARASAAC}</div>` : "";
 
 // ── Économie de jetons ─────────────────────────────────────────────────────
 
@@ -133,8 +149,8 @@ export function feuilleJetons(r: ReglagesJetons, images: Images): string {
   const taille = `--jeton: ${diametreDesJetons(colonnes)}mm`;
   const classes = ["sv-feuille", "sv-jetons", r.capitales && "sv-majuscules"].filter(Boolean).join(" ");
   const cases = Array.from({ length: n }, (_, i) => `<div class="sv-j-case"><span>${i + 1}</span></div>`).join("");
-  const regle = r.regle.trim() || r.comportements.some((c) => c.id != null || c.mot.trim())
-    ? `<div class="sv-j-regle">${r.comportements.filter((c) => c.id != null || c.mot.trim())
+  const regle = r.regle.trim() || r.comportements.some((c) => !estVide(c))
+    ? `<div class="sv-j-regle">${r.comportements.filter((c) => !estVide(c))
       .map((c) => `<div class="sv-carte sv-petite">${image(c, images)}${mot(c)}</div>`).join("")}`
       + (r.regle.trim() ? `<div class="sv-j-phrase">${escapeHtml(r.regle.trim())}</div>` : "") + `</div>`
     : "";
@@ -155,10 +171,22 @@ export function feuilleJetons(r: ReglagesJetons, images: Images): string {
 // ── D'abord / ensuite ──────────────────────────────────────────────────────
 
 export type SensDabord = "horizontal" | "vertical";
+/**
+ * Ce qui s'imprime : la planche avec ses images ; ou le modèle vide et, à
+ * part, les cartes à découper qui s'y posent (au velcro) ; ou les cartes
+ * seules, pour en refaire.
+ */
+export type ImpressionDabord = "planche" | "modeleEtCartes" | "cartes";
+export const IMPRESSIONS_DABORD: ImpressionDabord[] = ["planche", "modeleEtCartes", "cartes"];
+/** Combien de cartes en plus de celles de la planche. */
+export const CARTES_MAX = 12;
 
 export interface ReglagesDabord {
   /** Deux étapes, ou trois avec « puis ». */
   etapes: PictoPose[];
+  /** Les cartes à découper en plus de celles de la planche : d'autres activités, à échanger. */
+  cartes: PictoPose[];
+  impression: ImpressionDabord;
   titres: boolean;
   /** Planches par page : une grande, ou deux plus petites. */
   exemplaires: number;
@@ -168,7 +196,7 @@ export interface ReglagesDabord {
 }
 
 export const DABORD_PAR_DEFAUT: ReglagesDabord = {
-  etapes: [pictoVide(), pictoVide()], titres: true, exemplaires: 1, capitales: false, sens: "horizontal",
+  etapes: [pictoVide(), pictoVide()], cartes: [], impression: "planche", titres: true, exemplaires: 1, capitales: false, sens: "horizontal",
 };
 
 export const TITRES_ETAPES = ["D'abord", "Ensuite", "Puis"];
@@ -179,6 +207,8 @@ export function normaliserDabord(brut: unknown): ReglagesDabord {
   while (etapes.length < 2) etapes.push(pictoVide());
   return {
     etapes,
+    cartes: Array.isArray(o.cartes) ? o.cartes.slice(0, CARTES_MAX).map(normaliserPicto) : [],
+    impression: parmi(o.impression, IMPRESSIONS_DABORD, d.impression),
     titres: booleen(o.titres, d.titres),
     exemplaires: entier(o.exemplaires, 1, 2, d.exemplaires),
     capitales: booleen(o.capitales, d.capitales),
@@ -188,17 +218,51 @@ export function normaliserDabord(brut: unknown): ReglagesDabord {
 
 const fleche = `<svg class="sv-fleche" viewBox="0 0 60 40" xmlns="http://www.w3.org/2000/svg"><path d="M4 20H46M34 8 50 20 34 32" fill="none" stroke="#3a3a3a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
+/**
+ * Le côté d'une case du modèle, en mm, et celui de la carte qui s'y pose —
+ * un peu plus petite, pour entrer dans le cadre avec son scratch.
+ */
+export function mesuresDabord(r: Pick<ReglagesDabord, "sens" | "exemplaires">): { cadre: number; carte: number } {
+  const deux = r.exemplaires >= 2;
+  const cadre = r.sens === "vertical" ? (deux ? 40 : 56) : (deux ? 38 : 64);
+  return { cadre, carte: cadre - 4 };
+}
+
+/** Les cartes à découper : celles de la planche, puis les autres, chacune une fois. */
+export function cartesDabord(r: ReglagesDabord): PictoPose[] {
+  const vues = new Set<string>();
+  return [...r.etapes, ...r.cartes].filter((p) => {
+    if (estVide(p)) return false;
+    const cle = JSON.stringify([cleImage(p), p.mot.trim()]);
+    if (vues.has(cle)) return false;
+    vues.add(cle);
+    return true;
+  });
+}
+
 export function feuilleDabord(r: ReglagesDabord, images: Images): string {
   const etapes = r.etapes.slice(0, 3);
+  const modele = r.impression === "modeleEtCartes";
+  const { cadre, carte } = mesuresDabord(r);
+  // Le modèle : des cadres vides, à la mesure des cartes.
+  const caseVide = `<div class="sv-image sv-image-vide sv-cadre-vide" style="width:${cadre}mm;height:${cadre}mm"></div>`;
   const planche = `<div class="sv-d-planche sv-d-${etapes.length}">`
     + etapes.map((e, i) => (i ? fleche : "")
       + `<div class="sv-d-etape">${r.titres ? `<div class="sv-d-titre">${TITRES_ETAPES[i]}</div>` : ""}`
-      + `<div class="sv-carte">${image(e, images)}${mot(e)}</div></div>`).join("")
+      + `<div class="sv-carte">${modele ? caseVide : `${image(e, images)}${mot(e)}`}</div></div>`).join("")
     + `</div>`;
   const n = r.exemplaires >= 2 ? 2 : 1;
   // À la verticale, la flèche tourne et les planches se mettent côte à côte ; la page se tient en portrait.
-  const classes = ["sv-feuille", "sv-dabord", `sv-ex-${n}`, r.sens === "vertical" && "sv-v", r.capitales && "sv-majuscules"].filter(Boolean).join(" ");
-  return `<div class="${classes}">${Array.from({ length: n }, () => planche).join("")}${attribution(etapes)}</div>`;
+  const classes = ["sv-feuille", "sv-dabord", `sv-ex-${n}`, r.sens === "vertical" && "sv-v", r.capitales && "sv-majuscules", modele && "sv-modele"].filter(Boolean).join(" ");
+  const cartes = cartesDabord(r);
+  const pageCartes = `<div class="sv-feuille sv-cartes-a-decouper${r.capitales ? " sv-majuscules" : ""}">`
+    + `<div class="sv-titre-cartes">Les cartes à découper</div><div class="sv-cartes-grille">`
+    // Carrées, mot compris : elles entrent dans les cadres du modèle.
+    + cartes.map((p) => `<div class="sv-carte-decoupe" style="width:${carte}mm;height:${carte}mm">${image(p, images)}${mot(p)}</div>`).join("")
+    + `</div>${attribution(cartes)}</div>`;
+  if (r.impression === "cartes") return pageCartes;
+  const laPlanche = `<div class="${classes}">${Array.from({ length: n }, () => planche).join("")}${modele ? "" : attribution(etapes)}</div>`;
+  return modele ? laPlanche + (cartes.length ? pageCartes : "") : laPlanche;
 }
 
 /** La page qui va au sens : à l'italienne pour une ligne, en portrait pour une colonne. */
@@ -248,7 +312,7 @@ export function normaliserScenario(brut: unknown): ReglagesScenario {
 export const pageDuScenario = (r: Pick<ReglagesScenario, "disposition">) => (r.disposition === "livret" ? PAGE_PAYSAGE : PAGE_PORTRAIT);
 
 export function feuilleScenario(r: ReglagesScenario, images: Images): string {
-  const etapes = r.etapes.filter((e) => e.texte.trim() || e.picto.id != null);
+  const etapes = r.etapes.filter((e) => e.texte.trim() || e.picto.id != null || e.picto.photo);
   const classes = ["sv-feuille", "sv-scenario", `sv-s-${r.disposition}`, r.grandTexte && "sv-s-grand", r.capitales && "sv-majuscules"]
     .filter(Boolean).join(" ");
   const titre = r.titre.trim() ? `<div class="sv-titre">${escapeHtml(r.titre.trim())}</div>` : "";
@@ -308,11 +372,23 @@ export const STYLE_SUPPORTS = `
   .sv-ex-2 .sv-d-titre { font-size: 20px; }
   .sv-ex-2 .sv-d-planche { border-bottom: 1px dashed #bbb; padding-bottom: 14px; }
   .sv-fleche { width: 56px; flex: none; }
+  /* Le modèle : des cadres vides où l'on pose les cartes ; les cartes, à part, sur leur page. */
+  .sv-modele .sv-cadre-vide { max-width: none; aspect-ratio: auto; border: 2px dashed #9aa0b4; }
+  .sv-modele .sv-carte { align-items: center; }
+  .sv-cartes-a-decouper { page-break-before: always; break-before: page; }
+  .sv-titre-cartes { font-size: 18px; font-weight: 800; margin: 0 0 4mm; }
+  .sv-cartes-grille { display: flex; flex-wrap: wrap; gap: 0; }
+  .sv-carte-decoupe { box-sizing: border-box; border: 1px dashed #9aa0b4; padding: 2mm; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 1mm; margin: 0 -1px -1px 0; break-inside: avoid; page-break-inside: avoid; }
+  .sv-carte-decoupe .sv-image, .sv-carte-decoupe .sv-image-vide { width: 100%; max-width: none; flex: 1 1 0; min-height: 0; aspect-ratio: auto; object-fit: contain; }
+  .sv-carte-decoupe .sv-mot { font-size: 14px; line-height: 1.1; }
   /* De haut en bas : une colonne, la flèche vers le bas ; deux planches à découper se mettent côte à côte. */
   .sv-v .sv-d-planche { flex-direction: column; gap: 6px; }
   .sv-v .sv-d-etape { flex: none; width: 236px; max-width: none; }
   .sv-v .sv-fleche { transform: rotate(90deg); width: 44px; height: 30px; }
   .sv-v .sv-image, .sv-v .sv-image-vide { max-width: 200px; }
+  /* Trois étapes en colonne sur une seule planche : un peu plus petites, pour tenir sur la page. */
+  .sv-v.sv-ex-1 .sv-d-3 .sv-image, .sv-v.sv-ex-1 .sv-d-3 .sv-image-vide { max-width: 170px; }
   .sv-v.sv-ex-2 { display: flex; flex-wrap: wrap; gap: 0 24px; align-items: flex-start; justify-content: center; }
   .sv-v.sv-ex-2 .sv-d-planche { flex: 1 1 0; min-width: 0; margin: 0; padding: 0 12px 10px; border-bottom: none; border-right: 1px dashed #bbb; }
   .sv-v.sv-ex-2 .sv-d-planche:last-of-type { border-right: none; }
