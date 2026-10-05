@@ -12,6 +12,12 @@ describe("jeux cités dans un texte", () => {
     jeu("qw", "Qwirkle"), jeu("go", "Go"),
   ];
 
+  it("ne voit pas de jeu dans la ligne d'un PDF, d'un manuel, d'une compétence ou d'un rituel", () => {
+    const avecMotsMeles = [...ludotheque, jeu("mm", "Mots mêlés")];
+    expect(titres(jeuxCites("📄 Mots mêlés Halloween\n🔁 Skyjo du vendredi", avecMotsMeles))).toEqual([]);
+    expect(titres(jeuxCites("📄 Mots mêlés Halloween\nPuis mots mêlés au tableau", avecMotsMeles))).toEqual(["Mots mêlés"]);
+  });
+
   it("retrouve les jeux du prévu, écrits comme on les prononce, dans l'ordre du texte", () => {
     expect(titres(jeuxCites("-hali gali\n-skyjo\n-mémory", ludotheque))).toEqual(["Halli Galli", "Skyjo", "Memory (animaux)"]);
   });

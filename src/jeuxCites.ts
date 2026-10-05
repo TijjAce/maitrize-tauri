@@ -6,10 +6,12 @@
 // « mémory » pour Memory, « les dominos », « halligalli ». La comparaison se
 // fait donc sans accents ni majuscules, lettres doublées réduites, « y » lu
 // comme « i », pluriel retiré, mots collés ou séparés ; un nom long supporte
-// une faute de frappe.
+// une faute de frappe. Une ligne qui cite autre chose — un PDF, un manuel, une
+// compétence, un rituel — ne nomme pas de jeu.
 
 import type { Jeu } from "./api";
 import { escapeHtml } from "./print";
+import { sansAutresCitations } from "./lignesCitees";
 
 /** Un mot tel qu'on le compare. */
 function forme(mot: string): string {
@@ -69,7 +71,7 @@ export const sansMarqueurs = (texte: string) => (texte ?? "").replace(/\[(img|ci
 
 /** Les jeux de la ludothèque cités dans un texte, dans l'ordre où on les lit, chacun une fois. */
 export function jeuxCites(texte: string, jeux: Jeu[]): Jeu[] {
-  const mots = motsCompares(texte);
+  const mots = motsCompares(sansAutresCitations(texte));
   if (!mots.length || !jeux.length) return [];
   const trouves: Trouve[] = [];
   for (const jeu of jeux) {
