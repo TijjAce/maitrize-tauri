@@ -8,7 +8,7 @@ import { ChoixPicto, chargerImages, usePictoImage, usePictoImages } from "../com
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
 import { BoutonBureau } from "../components/BoutonBureau";
-import { CasesFeuille } from "../components/OptionsFeuille";
+import { CasesFeuille, useOptionsFeuille } from "../components/OptionsFeuille";
 import { useCompetencesAtelier } from "../components/CompetencesAtelier";
 import { SequenceDeCategorisation } from "../components/SequenceDeCategorisation";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
@@ -137,6 +137,17 @@ export function CategoriserTab({ banque }: { banque: boolean }) {
   };
   const jeuChoisi = jeux.find((x) => x.id === jeu);
   const melange = ["tri", "intrus", "loto", "appelle", "mistigri"].includes(r.forme);
+  const avecImages = categories.some((c) => c.mots.length);
+  // Ce que le pli règle, dit sur sa ligne : on sait ce qui sortira sans l'ouvrir.
+  const nommable = r.forme === "tri" || r.forme === "loto" || r.forme === "appelle";
+  const legendable = !["affiche", "evaluation", "familles"].includes(r.forme);
+  const { options } = useOptionsFeuille(ATELIER);
+  const resume = [
+    nommable && (r.nommer ? "catégories nommées" : "à nommer par l'élève"),
+    r.forme === "tri" && r.maisons && "en maisons",
+    legendable && r.legendes && "mots sous les images",
+    !options.consigne && "sans consigne", !options.prenom && "sans prénom", !options.corrige && "sans correction",
+  ].filter(Boolean).join(", ");
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 400px) 1fr", gap: 14, alignItems: "start" }}>
@@ -157,16 +168,6 @@ export function CategoriserTab({ banque }: { banque: boolean }) {
         <div className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, margin: "-2px 0 10px" }}>
           {NIVEAUX.find((n) => n.id === r.niveau)?.age} : {REPERES[r.niveau]}
         </div>
-        <Field label="Des catégories toutes prêtes">
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-            <Select value={jeu} onChange={(e) => setJeu(e.target.value)} style={{ flex: 1, minWidth: 160 }}>
-              <option value="">Choisir un exemple…</option>
-              {jeux.map((j) => <option key={j.id} value={j.id}>{j.libelle}{j.niveaux.includes(r.niveau) ? "" : ` (${j.niveaux.join(", ")})`}</option>)}
-            </Select>
-            <button type="button" className="btn sm" disabled={!jeu || occupe} onClick={() => { void prendreLeJeu(); }}>{occupe ? "Recherche des images…" : "Prendre"}</button>
-          </div>
-          {jeuChoisi && <div className="meta" style={{ fontSize: 12, marginTop: 4 }}>D'après la {jeuChoisi.source}.</div>}
-        </Field>
         <Field label={`Les catégories (${categories.length})`}>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {categories.map((c, i) => (
@@ -201,15 +202,27 @@ export function CategoriserTab({ banque }: { banque: boolean }) {
             </Field>
           </div>
         )}
-        {(r.forme === "tri" || r.forme === "loto" || r.forme === "appelle") && (
-          <Coche on={r.nommer} libelle="Écrire le nom et l'image des catégories — décoché, c'est l'élève qui les nomme" onChange={(nommer) => maj({ nommer })} />
-        )}
-        {r.forme === "tri" && <Coche on={r.maisons} libelle="Des maisons plutôt que des boîtes (les maisons des familles de mots)" onChange={(maisons) => maj({ maisons })} />}
-        {!["affiche", "evaluation", "familles"].includes(r.forme) && (
-          <Coche on={r.legendes} libelle="Écrire le mot sous chaque image" onChange={(legendes) => maj({ legendes })} />
-        )}
+        {/* Un pli : les exemples et la présentation se règlent une fois, puis se taisent. Il s'ouvre tant qu'il n'y a rien à trier. */}
+        <details className="pli" open={!avecImages}>
+          <summary>Exemples et présentation{resume && <span className="meta"> · {resume}</span>}</summary>
+          <Field label="Des catégories toutes prêtes">
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+              <Select value={jeu} onChange={(e) => setJeu(e.target.value)} style={{ flex: 1, minWidth: 160 }}>
+                <option value="">Choisir un exemple…</option>
+                {jeux.map((j) => <option key={j.id} value={j.id}>{j.libelle}{j.niveaux.includes(r.niveau) ? "" : ` (${j.niveaux.join(", ")})`}</option>)}
+              </Select>
+              <button type="button" className="btn sm" disabled={!jeu || occupe} onClick={() => { void prendreLeJeu(); }}>{occupe ? "Recherche des images…" : "Prendre"}</button>
+            </div>
+            {jeuChoisi && <div className="meta" style={{ fontSize: 12, marginTop: 4 }}>D'après la {jeuChoisi.source}.</div>}
+          </Field>
+          {nommable && (
+            <Coche on={r.nommer} libelle="Écrire le nom et l'image des catégories — décoché, c'est l'élève qui les nomme" onChange={(nommer) => maj({ nommer })} />
+          )}
+          {r.forme === "tri" && <Coche on={r.maisons} libelle="Des maisons plutôt que des boîtes (les maisons des familles de mots)" onChange={(maisons) => maj({ maisons })} />}
+          {legendable && <Coche on={r.legendes} libelle="Écrire le mot sous chaque image" onChange={(legendes) => maj({ legendes })} />}
+          <CasesFeuille />
+        </details>
         {manque && <div className="meta" style={{ fontSize: 12.5, color: "var(--danger, #c92a2a)", margin: "6px 0" }}>{manque}</div>}
-        <CasesFeuille />
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
           {melange && <button type="button" className="btn sm" onClick={() => setGraine(graineAuHasard())}>🎲 Autre tirage</button>}
           <button type="button" className="btn primary sm" disabled={Boolean(manque)} onClick={() => { void imprimer(); }}>🖨 Imprimer</button>
@@ -223,7 +236,7 @@ export function CategoriserTab({ banque }: { banque: boolean }) {
         {enSequence && <SequenceDeCategorisation reglages={r} competences={competences} onClose={() => setEnSequence(false)} />}
       </div>
       <div style={{ minWidth: 0 }}>
-        {categories.some((c) => c.mots.length)
+        {avecImages
           ? <ApercuFeuille html={html} style={STYLE_CATEGORISER} />
           : <div className="card" style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>
               Prenez des catégories toutes prêtes — les exemples de la fiche Éduscol, comme « S'habiller ou cuisiner » en petite section ou
