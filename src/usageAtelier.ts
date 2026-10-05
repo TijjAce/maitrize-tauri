@@ -60,6 +60,8 @@ export const USAGE_PAR_DEFAUT: Record<string, Usage> = {
   martiniere: "rituel", compteEstBon: "rituel", pyramides: "entrainement", partieTout: "entrainement", multiplicatifs: "entrainement",
   coloriage: "reinvestissement", collections: "manipulation", nombres: "manipulation", cubes: "manipulation", calcul: "entrainement", arbre: "entrainement",
   fractions: "manipulation", oie: "reinvestissement", heure: "entrainement", numeration: "entrainement",
+  // Affichages : la trace qu'on reprend, au mur.
+  carteMentale: "reinvestissement",
 };
 
 export const usageParDefaut = (atelier: string): Usage => USAGE_PAR_DEFAUT[atelier] ?? "entrainement";
