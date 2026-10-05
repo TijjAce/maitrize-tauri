@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  COULEURS, GRAPHIES, basculerCase, casesAColorier, consigne, couleursDuMotif, ecrireMotifsPerso, fabriquerColoriage, grilleValide,
+  COULEURS, FAMILLES_MOTIFS, GRAPHIES, basculerCase, casesAColorier, consigne, couleursDuMotif, ecrireMotifsPerso, fabriquerColoriage, grilleValide,
   lettreSousGraphie, lireMotifsPerso, MOTIFS, motifDepuisImage, motsSansAmbiguite, operationPour, resultatsDesCouleurs,
   REGLAGES_PAR_DEFAUT, type Graphie, type Operation,
 } from "./coloriageMagique";
@@ -33,6 +33,13 @@ describe("les motifs", () => {
       expect(couleursDuMotif(m).length, m.nom).toBeGreaterThan(0);
       expect(couleursDuMotif(m).length, m.nom).toBeLessThanOrEqual(COULEURS.length);
     }
+  });
+
+  it("rangent chaque dessin dans une famille de la galerie, avec assez d'animaux pour choisir", () => {
+    for (const m of MOTIFS) expect(FAMILLES_MOTIFS.map((f) => f.id), m.nom).toContain(m.famille);
+    const animaux = MOTIFS.filter((m) => m.famille === "animaux").map((m) => m.id);
+    expect(animaux.length).toBeGreaterThanOrEqual(15);
+    for (const id of ["zebre", "lion", "elephant", "girafe", "coccinelle", "manchot"]) expect(animaux).toContain(id);
   });
 
   it("n'ont pas deux identifiants ni deux noms pareils", () => {
