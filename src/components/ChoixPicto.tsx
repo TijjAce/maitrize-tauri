@@ -3,6 +3,8 @@ import { api, PictoArasaac } from "../api";
 import { Field, Input, Modal } from "./ui";
 import type { PictoPose } from "../supportsVisuels";
 import { chargerImageAppoint } from "../pictosAppoint";
+import { PhotoTelephone } from "./PhotoTelephone";
+import { toast } from "./Toaster";
 
 // ── Choisir un pictogramme ARASAAC ─────────────────────────────────────────
 //
@@ -10,16 +12,22 @@ import { chargerImageAppoint } from "../pictosAppoint";
 // sous le pictogramme reste modifiable : « tablette » plutôt que
 // « tablette tactile ».
 
+/** Une photo des fichiers de l'application, en data URL. */
+const chargerPhoto = (nom: string) =>
+  api.fichierRead(nom).then((b) => `data:${/\.png$/i.test(nom) ? "image/png" : /\.webp$/i.test(nom) ? "image/webp" : "image/jpeg"};base64,${b}`);
+
 /**
  * L'image d'un pictogramme, chargée à la demande et gardée pour la séance :
- * un numéro ARASAAC, ou la référence d'une banque d'appoint (« sclera:compter.png »).
+ * un numéro ARASAAC, la référence d'une banque d'appoint (« sclera:compter.png »),
+ * ou une photo des fichiers (« photo:IMG-12.jpg »).
  */
 const cache = new Map<string, Promise<string>>();
 export function chargerPicto(id: number | string): Promise<string> {
   const cle = String(id);
   let p = cache.get(cle);
   if (!p) {
-    p = typeof id === "string" ? chargerImageAppoint(id) : api.arasaacImage(id).then((b) => `data:image/png;base64,${b}`);
+    p = typeof id !== "string" ? api.arasaacImage(id).then((b) => `data:image/png;base64,${b}`)
+      : id.startsWith("photo:") ? chargerPhoto(id.slice("photo:".length)) : chargerImageAppoint(id);
     p.catch(() => cache.delete(cle));
     cache.set(cle, p);
   }
@@ -79,14 +87,29 @@ function Resultat({ picto, actif, onClick }: { picto: PictoArasaac; actif: boole
   );
 }
 
-export function ChoixPicto({ valeur, banque, titre = "Choisir un pictogramme", onClose, onValider }: {
+export function ChoixPicto({ valeur, banque, titre = "Choisir un pictogramme", onClose, onValider, photos = false }: {
   valeur: PictoPose; banque: boolean; titre?: string;
   onClose: () => void; onValider: (p: PictoPose) => void;
+  /** Une photo de l'objet aussi : prise au téléphone, ou une image de l'ordinateur. */
+  photos?: boolean;
 }) {
   const [q, setQ] = React.useState(valeur.mot);
   const [resultats, setResultats] = React.useState<PictoArasaac[]>([]);
   const [choisi, setChoisi] = React.useState<number | null>(valeur.id);
   const [mot, setMot] = React.useState(valeur.mot);
+  const [photo, setPhoto] = React.useState(valeur.photo ?? "");
+  const srcPhoto = usePictoImage(photo ? `photo:${photo}` : null);
+  const prendrePhoto = (nom: string) => { setPhoto(nom); setChoisi(null); };
+  // Une image de l'ordinateur rejoint les fichiers de l'application, comme une photo du téléphone.
+  const importer = async (f: File) => {
+    const base64 = await new Promise<string>((ok, ko) => {
+      const lecteur = new FileReader();
+      lecteur.onload = () => ok(String(lecteur.result).split(",")[1] ?? "");
+      lecteur.onerror = () => ko(lecteur.error);
+      lecteur.readAsDataURL(f);
+    });
+    prendrePhoto(await api.fichierSave(f.name, base64));
+  };
 
   React.useEffect(() => {
     if (!banque) return;
@@ -99,6 +122,7 @@ export function ChoixPicto({ valeur, banque, titre = "Choisir un pictogramme", o
 
   const prendre = (p: PictoArasaac) => {
     setChoisi(p.id);
+    setPhoto("");
     if (!mot.trim() || resultats.some((r) => r.mot === mot)) setMot(p.mot);
   };
 
@@ -108,7 +132,8 @@ export function ChoixPicto({ valeur, banque, titre = "Choisir un pictogramme", o
         {(valeur.id != null || valeur.mot) && <button className="btn" onClick={() => onValider({ id: null, mot: "" })}>Vider</button>}
         <div className="spacer" />
         <button className="btn" onClick={onClose}>Annuler</button>
-        <button className="btn primary" disabled={choisi == null && !mot.trim()} onClick={() => onValider({ id: choisi, mot: mot.trim() })}>
+        <button className="btn primary" disabled={choisi == null && !mot.trim() && !photo}
+          onClick={() => onValider(photo ? { id: null, mot: mot.trim(), photo } : { id: choisi, mot: mot.trim() })}>
           Poser
         </button>
       </>}>
@@ -129,6 +154,25 @@ export function ChoixPicto({ valeur, banque, titre = "Choisir un pictogramme", o
           La banque de pictogrammes ARASAAC n'est pas encore téléchargée : l'onglet 🎲 Jeux la télécharge. En attendant,
           le support portera le mot seul.
         </p>
+      )}
+      {photos && (
+        <Field label="Ou une photo de l'objet">
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            {photo && (srcPhoto
+              ? <img src={srcPhoto} alt="" style={{ width: 84, height: 84, objectFit: "contain", border: "3px solid var(--accent)", borderRadius: 8, background: "#fff" }} />
+              : <span className="meta">📷 {photo}</span>)}
+            <PhotoTelephone label="📱 Photographier avec le téléphone" className="btn sm" onPhoto={prendrePhoto} />
+            <label className="btn sm" style={{ cursor: "pointer" }}>
+              🖼 Une image de l'ordinateur
+              <input type="file" accept="image/*" hidden onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) importer(f).catch((err) => toast("Image non enregistrée : " + String(err), { icone: "⚠️" }));
+              }} />
+            </label>
+            {photo && <button type="button" className="btn ghost sm" onClick={() => setPhoto("")}>Retirer la photo</button>}
+          </div>
+        </Field>
       )}
       <Field label="Mot écrit sous l'image">
         <Input value={mot} onChange={(e) => setMot(e.target.value)} placeholder="tablette, travail…" />

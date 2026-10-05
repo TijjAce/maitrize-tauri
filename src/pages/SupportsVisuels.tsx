@@ -9,12 +9,12 @@ import { BoutonBureau } from "../components/BoutonBureau";
 import { useMemoire } from "../components/useMemoire";
 import { ChoixPicto, chargerImages, usePictoImage, usePictoImages } from "../components/ChoixPicto";
 import {
-  COMPORTEMENTS_MAX, DUREES_MINUTEUR, ETAPES_SCENARIO_MAX, JETONS_MAX, MINUTES_MAX, PAGE_PAYSAGE, pageDabord,
-  STYLE_SUPPORTS, TITRES_ETAPES,
+  CARTES_MAX, COMPORTEMENTS_MAX, DUREES_MINUTEUR, ETAPES_SCENARIO_MAX, JETONS_MAX, MINUTES_MAX, PAGE_PAYSAGE, pageDabord,
+  STYLE_SUPPORTS, TITRES_ETAPES, cleImage, estVide,
   demarrer, dePrenom, dureeMs, estEnMarche, estFini, feuilleDabord, feuilleJetons, feuilleScenario, fractionAffichee, graduations,
   idsDes, mettreEnPause, minuteurPret, normaliserDabord, normaliserJetons, normaliserMinuteur, normaliserScenario,
   pageDuScenario, pictoVide, prolonger, restantA, secteurRestant, tempsLisible,
-  type EtatMinuteur, type FormeJeton, type Images, type PictoPose, type ReglagesMinuteur, type ReglagesScenario, type SensDabord,
+  type EtatMinuteur, type FormeJeton, type ImpressionDabord, type Images, type PictoPose, type ReglagesMinuteur, type ReglagesScenario, type SensDabord,
 } from "../supportsVisuels";
 
 // ── Supports visuels ───────────────────────────────────────────────────────
@@ -75,8 +75,8 @@ function CasePicto({ valeur, onChange, banque, titre, taille = 76 }: {
   valeur: PictoPose; onChange: (p: PictoPose) => void; banque: boolean; titre: string; taille?: number;
 }) {
   const [ouvert, setOuvert] = React.useState(false);
-  const src = usePictoImage(valeur.id);
-  const vide = valeur.id == null && !valeur.mot.trim();
+  const src = usePictoImage(cleImage(valeur));
+  const vide = estVide(valeur);
   return (
     <>
       <button type="button" className="sv-case-picto" onClick={() => setOuvert(true)} title={titre} aria-label={`${titre} : ${valeur.mot || "à choisir"}`}
@@ -86,7 +86,7 @@ function CasePicto({ valeur, onChange, banque, titre, taille = 76 }: {
         <span className="sv-case-mot">{valeur.mot.trim() || (vide ? "Choisir" : "")}</span>
       </button>
       {ouvert && (
-        <ChoixPicto valeur={valeur} banque={banque} titre={titre} onClose={() => setOuvert(false)}
+        <ChoixPicto valeur={valeur} banque={banque} titre={titre} photos onClose={() => setOuvert(false)}
           onValider={(p) => { onChange(p); setOuvert(false); }} />
       )}
     </>
@@ -274,8 +274,8 @@ function Jetons({ banque }: { banque: boolean }) {
 function Dabord({ banque }: { banque: boolean }) {
   const [r, maj, setR] = useSupport("dabord", normaliserDabord);
   return (
-    <Atelier titre="D'abord, ensuite" pictos={r.etapes} feuille={(images) => feuilleDabord(r, images)} page={pageDabord(r)}
-      aide="Ce qu'il faut faire d'abord, et ce qui vient ensuite : l'activité demandée, puis l'activité attendue."
+    <Atelier titre="D'abord, ensuite" pictos={[...r.etapes, ...r.cartes]} feuille={(images) => feuilleDabord(r, images)} page={pageDabord(r)}
+      aide="Ce qu'il faut faire d'abord, et ce qui vient ensuite : l'activité demandée, puis l'activité attendue. Des pictos, ou des photos des objets de la classe prises au téléphone."
       reglages={<>
         <Modeles type="dabord" valeur={r} set={setR} normaliser={normaliserDabord} exemple="Nom, par exemple « Travail puis tablette »" />
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", margin: "4px 0 10px" }}>
@@ -305,6 +305,31 @@ function Dabord({ banque }: { banque: boolean }) {
             <option value={1}>Une grande planche</option>
             <option value={2}>Deux planches à découper</option>
           </Select>
+        </Field>
+        <Field label="À imprimer">
+          <Select value={r.impression} onChange={(e) => maj({ impression: e.target.value as ImpressionDabord })}>
+            <option value="planche">La planche, avec ses images</option>
+            <option value="modeleEtCartes">Le modèle vide, et les cartes à part</option>
+            <option value="cartes">Les cartes seules</option>
+          </Select>
+        </Field>
+        <Field label={`Les cartes à découper : celles de la planche${r.cartes.length ? `, et ${r.cartes.length} autre${r.cartes.length > 1 ? "s" : ""}` : ""}`}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            {r.cartes.map((c, i) => (
+              <div key={i} style={{ position: "relative" }}>
+                <CasePicto valeur={c} banque={banque} titre={`Carte ${i + 1}`} taille={56}
+                  onChange={(p) => maj({ cartes: r.cartes.map((x, j) => (j === i ? p : x)) })} />
+                <button className="btn ghost sm sv-retirer" aria-label={`Retirer la carte ${i + 1}`}
+                  onClick={() => maj({ cartes: r.cartes.filter((_, j) => j !== i) })}>✕</button>
+              </div>
+            ))}
+            {r.cartes.length < CARTES_MAX && (
+              <button className="btn sm" onClick={() => maj({ cartes: [...r.cartes, pictoVide()] })}>＋ Une carte</button>
+            )}
+          </div>
+          <p className="meta" style={{ fontSize: 12, margin: "6px 0 0" }}>
+            D'autres activités à échanger sur la planche, au scratch : des pictos, ou des photos des objets. Elles s'impriment avec le modèle, à leur mesure.
+          </p>
         </Field>
         <Coche valeur={r.titres} onChange={(titres) => maj({ titres })}>Écrire « D'abord », « Ensuite », « Puis »</Coche>
         <Coche valeur={r.capitales} onChange={(capitales) => maj({ capitales })}>Mots en capitales</Coche>
@@ -477,8 +502,8 @@ function Cadran({ restant, total, r }: { restant: number; total: number; r: Regl
 }
 
 function CartePicto({ picto, titre, active }: { picto: PictoPose; titre: string; active?: boolean }) {
-  const src = usePictoImage(picto.id);
-  if (picto.id == null && !picto.mot.trim()) return null;
+  const src = usePictoImage(cleImage(picto));
+  if (estVide(picto)) return null;
   return (
     <div className={`sv-minuteur-carte${active ? " active" : ""}`}>
       <div className="sv-minuteur-carte-titre">{titre}</div>
@@ -552,7 +577,7 @@ function Minuteur({ banque }: { banque: boolean }) {
     </>
   );
 
-  const avecCartes = [r.maintenant, r.ensuite].some((p) => p.id != null || p.mot.trim());
+  const avecCartes = [r.maintenant, r.ensuite].some((p) => !estVide(p));
   const affichage = (grand: boolean) => (
     <div className={`sv-minuteur${grand ? " sv-minuteur-grand" : ""}${avecCartes ? " avec-cartes" : ""}`}>
       <CartePicto picto={r.maintenant} titre="Maintenant" active={!fini} />
