@@ -51,14 +51,6 @@ export function LivresDeReference({ onDemande, sources = true, autoFocus = false
   React.useEffect(() => setLimite(PAR_PAGE), [filtre]);
 
   const demander = (texte: string) => { preparerQuestion(texte); onDemande(); };
-  // Dans une fenêtre, la recherche prend la main après la fenêtre elle-même,
-  // qui la donne d'abord à son premier bouton.
-  const racine = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => {
-    if (!autoFocus) return;
-    const t = setTimeout(() => racine.current?.querySelector<HTMLInputElement>(".lv-filtres input")?.focus(), 0);
-    return () => clearTimeout(t);
-  }, [autoFocus]);
   const max = filtre.cycle ? LISTES[filtre.cycle].difficulteMax : 4;
   // Sans rien à chercher, on feuillette : les livres se rangent sous leur catégorie.
   const feuilleter = !filtre.texte.trim();
@@ -71,9 +63,9 @@ export function LivresDeReference({ onDemande, sources = true, autoFocus = false
 
   const montres = trouves.slice(0, limite);
   return (
-    <div className="lv" ref={racine}>
+    <div className="lv">
       <div className="lv-filtres">
-        <Input placeholder="Un titre, un auteur, un illustrateur, un éditeur…" value={filtre.texte}
+        <Input autoFocus={autoFocus} placeholder="Un titre, un auteur, un illustrateur, un éditeur…" value={filtre.texte}
           onChange={(e) => maj({ texte: e.target.value })} aria-label="Chercher un livre" />
         <div className="lv-selects">
           <Select value={filtre.cycle} onChange={(e) => maj({ cycle: Number(e.target.value) as Cycle | 0 })} aria-label="Cycle">
