@@ -1,118 +1,179 @@
 import { describe, it, expect } from "vitest";
 import { hasard } from "./hasard";
 import {
-  FORMES, REGLAGES_COMPARER, barresEtCubes, convient, ecrireForme, exempleDuSavoir, faceDeCarte, htmlComparer, paquet, reglagesComparerSurs,
-  ressemblant, type FormeNombre, type ReglagesComparer,
+  NIVEAUX, REGLAGES_COMPARER, barresEtCubes, convient, ecrireForme, exempleDuSavoir, faceDeCarte, htmlComparer, niveauParId, paquet,
+  phraseDuSavoir, reglagesComparerSurs, ressemblant, type FormeNombre, type IdNiveau, type ReglagesComparer,
 } from "./comparerNombres";
 
-const r = (p: Partial<ReglagesComparer> = {}) => reglagesComparerSurs({ ...REGLAGES_COMPARER, ...p });
+const r = (p: Partial<ReglagesComparer> & { jusqua?: number } = {}) => reglagesComparerSurs({ ...REGLAGES_COMPARER, ...p });
 const compter = (html: string, motif: RegExp) => (html.match(motif) ?? []).length;
-const TOUTES = FORMES.map((f) => f.id);
+const niv = (id: IdNiveau) => niveauParId(id);
+// Les milliers se séparent d'une espace fine insécable ; les attentes s'écrivent avec une espace simple.
+const sp = (t: string) => t.replace(/\u202f/g, " ");
+const CP = niv("cp-100"), CE1 = niv("ce1"), CE2 = niv("ce2"), CM1 = niv("cm1-grands"), CM2 = niv("cm2-grands");
+const DEC1 = niv("cm1-decimaux"), DEC2 = niv("cm2-decimaux");
 
-describe("comparer les nombres", () => {
-  it("écrit un nombre sous les formes du guide", () => {
-    expect(ecrireForme(47, "unites")).toBe("4d 7u");
-    expect(ecrireForme(60, "unites")).toBe("6d");
-    expect(ecrireForme(7, "unites")).toBe("7u");
-    expect(ecrireForme(34, "desordre")).toBe("4u 3d");
-    expect(ecrireForme(67, "plusDeDix")).toBe("5d 17u");
-    expect(ecrireForme(13, "plusDeDix")).toBe("13u");
-    expect(ecrireForme(47, "somme")).toBe("40 + 7");
-    expect(ecrireForme(47, "lettres")).toBe("quarante-sept");
-    // « 7u 4d » demande des dizaines et des unités ; « 3d 17u », une dizaine à défaire.
-    expect(convient(40, "desordre")).toBe(false);
-    expect(convient(7, "plusDeDix")).toBe(false);
-    expect(convient(7, "vrac")).toBe(false);
-    expect(convient(7, "cubes")).toBe(true);
+describe("comparer les nombres, de la maternelle au CM2", () => {
+  it("suit la progression des programmes, cycle par cycle", () => {
+    expect(NIVEAUX.map((n) => n.id)).toEqual([
+      "c1-avant4", "c1-4ans", "c1-5ans", "cp-30", "cp-59", "cp-100", "ce1", "ce2", "cm1-entiers", "cm1-grands", "cm1-decimaux", "cm2-grands", "cm2-decimaux",
+    ]);
+    // Avant 4 ans, des quantités qui diffèrent au moins du simple au double ; puis six, puis dix.
+    expect(niv("c1-avant4").valeurs).toEqual([1, 2, 4, 8]);
+    expect([niv("c1-4ans").max, niv("c1-5ans").max]).toEqual([6, 10]);
+    // 59 en période 2, 100 en période 3 au CP ; mille au CE1, dix mille au CE2.
+    expect(["cp-30", "cp-59", "cp-100", "ce1", "ce2"].map((id) => niv(id as IdNiveau).max)).toEqual([30, 59, 100, 1000, 10000]);
+    // Quatre chiffres en périodes 1 et 2 du CM1, six ensuite, neuf au CM2 ; centièmes, puis millièmes.
+    expect([niv("cm1-entiers").max, CM1.max, CM2.max]).toEqual([9999, 999999, 999999999]);
+    expect([DEC1.decimales, DEC2.decimales]).toEqual([2, 3]);
+    for (const n of NIVEAUX) expect(n.parDefaut.every((f) => n.formes.includes(f)), n.id).toBe(true);
   });
 
-  it("dessine les barres et les cubes, par rangées de cinq", () => {
-    const svg = barresEtCubes(3, 17);
-    // Une barre : son cadre et neuf traits ; un cube : un carré.
-    expect(compter(svg, /<rect /g)).toBe(3 + 17);
-    expect(svg).toContain('aria-label="3 barres de dix et 17 cubes"');
-    expect(barresEtCubes(1, 1)).toContain('aria-label="1 barre de dix et 1 cube"');
-    expect(faceDeCarte({ n: 47, forme: "vrac" })).toContain("3 barres de dix et 17 cubes");
-    expect(faceDeCarte({ n: 47, forme: "cubes" })).toContain("4 barres de dix et 7 cubes");
-    expect(faceDeCarte({ n: 47, forme: "chiffres" })).toBe('<div class="cn-chiffres">47</div>');
+  it("écrit un nombre sous les formes du guide et du programme, à chaque niveau", () => {
+    expect(["unites", "desordre", "plusDeDix", "somme", "lettres"].map((f) => ecrireForme(47, f as FormeNombre, CP)))
+      .toEqual(["4d 7u", "7u 4d", "3d 17u", "40 + 7", "quarante-sept"]);
+    expect(ecrireForme(60, "unites", CP)).toBe("6d");
+    expect(ecrireForme(13, "plusDeDix", CP)).toBe("13u");
+    // Au CE1, les centaines : 635, c'est aussi 5 centaines et 13 dizaines et 5 unités.
+    expect(["unites", "desordre", "plusDeDix", "somme"].map((f) => ecrireForme(635, f as FormeNombre, CE1)))
+      .toEqual(["6c 3d 5u", "5u 3d 6c", "5c 13d 5u", "600 + 30 + 5"]);
+    expect(ecrireForme(1000, "unites", CE1)).toBe("10c");
+    expect(ecrireForme(4635, "plusDeDix", CE2)).toBe("3m 16c 3d 5u");
+    expect(sp(ecrireForme(4635, "somme", CE2))).toBe("4 000 + 600 + 30 + 5");
+    expect(sp(ecrireForme(456789, "chiffres", CM1))).toBe("456 789");
+    expect(ecrireForme(456789, "classes", CM1)).toBe("456 mille 789");
+    expect(ecrireForme(12000345, "classes", CM2)).toBe("12 millions 345");
+    // Les grands nombres se décomposent par classes.
+    expect(sp(ecrireForme(8701978, "somme", CM2))).toBe("8 000 000 + 701 000 + 978");
+    expect(sp(ecrireForme(456789, "somme", CM1))).toBe("456 000 + 789");
+    expect(convient(456000, "somme", CM1)).toBe(false);
+    // Un nombre de neuf chiffres s'écrit plus petit qu'un nombre de deux, pour tenir dans sa carte.
+    expect(faceDeCarte({ n: 590515724, forme: "chiffres" }, CM2)).toContain('class="cn-chiffres cn-t3"');
+    // Les décimaux, en centièmes : 345 vaut 3,45 ; un zéro au bout ne s'écrit pas.
+    expect(["virgule", "fraction", "fractions", "unitesDec", "lettres"].map((f) => ecrireForme(345, f as FormeNombre, DEC1)))
+      .toEqual(["3,45", "345/100", "3 + 4/10 + 5/100", "3 unités 4 dixièmes 5 centièmes", "trois unités et quarante-cinq centièmes"]);
+    expect(ecrireForme(350, "virgule", DEC1)).toBe("3,5");
+    expect(ecrireForme(350, "fraction", DEC1)).toBe("35/10");
+    expect(ecrireForme(7, "virgule", DEC1)).toBe("0,07");
+    expect(sp(ecrireForme(3456, "fractions", DEC2))).toBe("3 + 4/10 + 5/100 + 6/1 000");
+    // Toutes les formes ne vont pas à tous les nombres.
+    expect(convient(40, "desordre", CP)).toBe(false);
+    expect(convient(7, "plusDeDix", CP)).toBe(false);
+    expect(convient(600, "somme", CE1)).toBe(false);
+    expect(convient(300, "fraction", DEC1)).toBe(false);
+    expect(convient(999, "classes", CM1)).toBe(false);
   });
 
-  it("trouve des nombres qui se ressemblent sans être égaux", () => {
+  it("dessine les cartes : points, doigts, barres et cubes, plaques, fractions", () => {
+    expect(compter(barresEtCubes(3, 17), /<rect /g)).toBe(3 + 17);
+    expect(faceDeCarte({ n: 47, forme: "vrac" }, CP)).toContain("3 barres de dix et 17 cubes");
+    expect(faceDeCarte({ n: 47, forme: "chiffres" }, CP)).toBe('<div class="cn-chiffres">47</div>');
+    // Au CE1, des plaques de cent : 635 pas tout groupé, c'est 5 centaines, 13 dizaines, 5 unités.
+    expect(faceDeCarte({ n: 635, forme: "vrac" }, CE1)).toContain('aria-label="5 centaines, 13 dizaines, 5 unités"');
+    const maternelle = niv("c1-5ans");
+    expect(compter(faceDeCarte({ n: 6, forme: "enVrac" }, maternelle), /<circle /g)).toBe(6);
+    expect(faceDeCarte({ n: 6, forme: "constellation" }, maternelle)).toContain("cl-points");
+    expect(faceDeCarte({ n: 7, forme: "doigts" }, maternelle)).toContain("cl-doigts cl-deux");
+    expect(faceDeCarte({ n: 345, forme: "fraction" }, DEC1)).toContain('<span class="cn-frac"><span>345</span><span>100</span></span>');
+  });
+
+  it("trouve des nombres qui se ressemblent sans être égaux, comme ceux où l'on se trompe", () => {
     const alea = hasard(3);
     for (let essai = 0; essai < 200; essai++) {
       const n = 1 + Math.floor(alea() * 100);
-      const v = ressemblant(n, 100, alea);
+      const v = ressemblant(n, CP, alea);
       if (v == null) continue;
       expect(v).not.toBe(n);
-      expect(v >= 1 && v <= 100).toBe(true);
       const [d, u, dv, uv] = [Math.floor(n / 10), n % 10, Math.floor(v / 10), v % 10];
-      const inverse = dv === u && uv === d;
-      const dizaineVoisine = dv === d + 1 && uv <= 2 && u >= 7;
-      const memeDizaine = dv === d;
-      const dizaineEtChiffre = u === 0 && v === d;
-      expect(inverse || dizaineVoisine || memeDizaine || dizaineEtChiffre, `${n} et ${v}`).toBe(true);
+      expect((dv === u && uv === d) || (dv === d + 1 && uv <= 2 && u >= 7) || dv === d || (u === 0 && v === d), `${n} et ${v}`).toBe(true);
     }
-    // 47 et 74, oui ; 31 inversé dépasse 30.
-    expect(ressemblant(13, 30, () => 0)).not.toBe(31);
-  });
-
-  it("fait un paquet où chaque nombre est deux fois, sous des formes qui lui vont", () => {
-    for (const jusqua of [30, 59, 100] as const) {
-      for (const cartes of [24, 48]) {
-        const reglages = r({ jusqua, cartes, formes: TOUTES });
-        const p = paquet(reglages, 7);
-        expect(p).toHaveLength(cartes);
-        const parNombre = new Map<number, FormeNombre[]>();
-        for (const c of p) {
-          expect(c.n >= 1 && c.n <= jusqua, `${c.n}`).toBe(true);
-          expect(convient(c.n, c.forme), `${c.n} ${c.forme}`).toBe(true);
-          parNombre.set(c.n, [...(parNombre.get(c.n) ?? []), c.forme]);
-        }
-        expect([...parNombre.values()].every((formes) => formes.length === 2)).toBe(true);
-        // Deux formes différentes dès qu'il y en a deux qui conviennent.
-        expect([...parNombre.values()].filter(([a, b]) => a !== b).length).toBeGreaterThan(cartes / 2 - 3);
+    for (const niveau of [CE1, CE2, CM1, CM2, DEC1, DEC2]) {
+      for (let essai = 0; essai < 100; essai++) {
+        const n = niveau.min + Math.floor(alea() * (niveau.max - niveau.min));
+        const v = ressemblant(n, niveau, alea);
+        if (v == null) continue;
+        expect(v !== n && v >= niveau.min && v <= niveau.max, `${niveau.id} : ${n} et ${v}`).toBe(true);
       }
     }
-    // Le même tirage se réimprime à l'identique ; un autre tirage change le paquet.
+    // 3,5 : 3,4…, 3,05, 3,6 ou 3,4 — plus de chiffres n'est pas plus grand.
+    const pieges = new Set(Array.from({ length: 60 }, () => ressemblant(350, DEC1, alea)));
+    expect([...pieges].some((v) => v != null && v > 340 && v < 350)).toBe(true);
+    expect(pieges.has(305)).toBe(true);
+    // Avant 4 ans, une autre quantité, toujours au moins du simple au double.
+    for (let i = 0; i < 20; i++) expect([2, 4, 8]).toContain(ressemblant(1, niv("c1-avant4"), alea));
+  });
+
+  it("fait un paquet où chaque nombre est deux fois, sous des formes qui lui vont, à chaque niveau", () => {
+    for (const n of NIVEAUX) {
+      for (const cartes of [24, 48]) {
+        const reglages = r({ niveau: n.id, cartes, formes: n.formes });
+        const p = paquet(reglages, 7);
+        expect(p, n.id).toHaveLength(cartes);
+        const parNombre = new Map<number, number>();
+        for (const c of p) {
+          expect(c.n >= n.min && c.n <= n.max && (!n.valeurs || n.valeurs.includes(c.n)), `${n.id} ${c.n}`).toBe(true);
+          expect(convient(c.n, c.forme, n), `${n.id} ${c.n} ${c.forme}`).toBe(true);
+          parNombre.set(c.n, (parNombre.get(c.n) ?? 0) + 1);
+        }
+        // Chaque nombre a sa paire ; en maternelle, chaque quantité revient plusieurs fois.
+        expect([...parNombre.values()].every((k) => k % 2 === 0), n.id).toBe(true);
+      }
+    }
     expect(paquet(r(), 11)).toEqual(paquet(r(), 11));
     expect(paquet(r(), 11)).not.toEqual(paquet(r(), 12));
   });
 
-  it("imprime la règle, le savoir à retenir, les cartes, les signes et la feuille de jeu", () => {
-    expect(exempleDuSavoir(100)).toEqual([71, 68]);
-    expect(exempleDuSavoir(59)).toEqual([51, 48]);
-    expect(exempleDuSavoir(30)).toEqual([21, 18]);
-    const reglages = r({ jusqua: 100 });
-    const html = htmlComparer(paquet(reglages, 5), reglages);
-    expect(html).toContain("71 est plus grand que 68, car dans 71 il y a 7\u00a0dizaines alors que dans 68 il y a seulement 6\u00a0dizaines.");
+  it("dit ce qu'on retient avec les nombres du niveau", () => {
+    expect(exempleDuSavoir(CP)).toEqual([71, 68]);
+    expect(exempleDuSavoir(niv("cp-59"))).toEqual([51, 48]);
+    expect(exempleDuSavoir(niv("cp-30"))).toEqual([21, 18]);
+    expect(phraseDuSavoir(CP)).toBe("71 est plus grand que 68, car dans 71 il y a 7 dizaines alors que dans 68 il y a seulement 6 dizaines.");
+    expect(phraseDuSavoir(niv("cp-30"))).toContain("1 dizaine.");
+    expect(phraseDuSavoir(CE1)).toBe("412 est plus grand que 398, car dans 412 il y a 4 centaines alors que dans 398 il y a seulement 3 centaines.");
+    expect(sp(phraseDuSavoir(CE2))).toBe("4 012 est plus grand que 3 998, car dans 4 012 il y a 4 milliers alors que dans 3 998 il y a seulement 3 milliers.");
+    expect(sp(phraseDuSavoir(CM1))).toMatch(/^100 000 est plus grand que 99 999 : il a plus de chiffres\./);
+    expect(phraseDuSavoir(DEC1)).toMatch(/^3,5 est plus grand que 3,45 : .*Le nombre de chiffres après la virgule ne dit pas lequel est le plus grand\.$/);
+    expect(phraseDuSavoir(niv("c1-4ans"))).toBe("Je compte : six points, quatre points. Six, c'est plus que quatre : il y a plus de points sur la première carte.");
+  });
+
+  it("imprime la règle, les cartes, les signes et la feuille de jeu — sans signes en maternelle", () => {
+    const html = htmlComparer(paquet(r({ niveau: "cp-100" }), 5), r({ niveau: "cp-100" }));
     expect(html).toContain("<b>La bataille des nombres</b>");
     expect(html).toContain("<b>La file des nombres</b>");
     expect(html).toContain("<b>Le nombre caché</b>");
     expect(html).toContain("« Comment le sais-tu ? »");
     expect(compter(html, /class="cn-signe"/g)).toBe(12);
-    expect(html).toContain("est plus petit que</div>");
     expect(html).toContain("Ma feuille de jeu");
-    // 32 cartes de nombres et 12 signes, en cartes à découper.
     expect(compter(html, /<div class="carte">/g)).toBe(32 + 12);
-    // Au champ de la période 1, les exemples restent sous 30.
-    const p1 = htmlComparer(paquet(r({ jusqua: 30 }), 5), r({ jusqua: 30 }));
-    expect(p1).toContain("21 est plus grand que 18, car dans 21 il y a 2\u00a0dizaines alors que dans 18 il y a seulement 1\u00a0dizaine.");
-    expect(p1).toContain("« 17 est plus petit que 21 »");
-    // Sans la règle, les signes ni la feuille de jeu : les cartes seules.
-    const seules = htmlComparer(paquet(r(), 5), r({ regle: false, signes: false, feuilleDeJeu: false }));
-    expect(seules).not.toContain("cn-savoir");
-    expect(seules).not.toContain("cn-signe\"");
-    expect(seules).not.toContain("Ma feuille de jeu");
+    // Au CE1, les exemples sont du CE1 ; pour vérifier, des plaques, des barres et des cubes.
+    const ce1 = htmlComparer(paquet(r({ niveau: "ce1" }), 5), r({ niveau: "ce1" }));
+    expect(ce1).toContain("« 325 est plus petit que 352 »");
+    expect(ce1).toContain("229 &lt; 234 &lt; 243");
+    expect(ce1).toContain("centaine contre centaine");
+    // Les décimaux : on compare virgule sous virgule.
+    expect(htmlComparer(paquet(r({ niveau: "cm1-decimaux" }), 5), r({ niveau: "cm1-decimaux" }))).toContain("« 3,45 est plus petit que 3,5 »");
+    // En maternelle : la bataille des points, ni signes ni feuille de jeu, même cochés.
+    const ms = htmlComparer(paquet(r({ niveau: "c1-4ans", formes: ["constellation", "doigts"] }), 5), r({ niveau: "c1-4ans", signes: true, feuilleDeJeu: true }));
+    expect(ms).toContain("<b>La bataille des points</b>");
+    expect(ms).toContain("<b>La file des points</b>");
+    expect(ms).not.toContain("cn-signe\"");
+    expect(ms).not.toContain("Ma feuille de jeu");
+    expect(ms).not.toContain("&gt;");
+    expect(ms).toContain("programme de l'école maternelle");
+    // Avant 4 ans, la bataille seule, d'un coup d'œil.
+    expect(htmlComparer(paquet(r({ niveau: "c1-avant4" }), 5), r({ niveau: "c1-avant4" }))).not.toContain("La file des points");
     expect(htmlComparer(paquet(r(), 5), r({ grandes: true }))).toContain('class="feuille cn cn-grandes"');
   });
 
-  it("répare des réglages abîmés", () => {
-    const s = reglagesComparerSurs({ jusqua: 42 as never, formes: ["lettres", "inconnue" as never], cartes: 7, pieges: "oui" as never, titre: 3 as never });
-    expect(s.jusqua).toBe(30);
+  it("répare des réglages abîmés, et reprend l'ancien champ du CP", () => {
+    expect(r({ niveau: undefined, jusqua: 59 }).niveau).toBe("cp-59");
+    const s = reglagesComparerSurs({ niveau: "cm9" as never, formes: ["lettres", "inconnue" as never], cartes: 7, pieges: "oui" as never, titre: 3 as never });
+    expect(s.niveau).toBe("cp-30");
     expect(s.formes).toEqual(["lettres"]);
     expect(s.cartes).toBe(32);
     expect(s.pieges).toBe(true);
     expect(s.titre).toBe("Comparer les nombres");
-    expect(reglagesComparerSurs({ formes: [] }).formes).toEqual(["chiffres"]);
+    // Une forme que le niveau ne connaît pas s'en va ; sans forme, celles qu'il propose.
+    expect(reglagesComparerSurs({ niveau: "cm1-decimaux", formes: ["cubes"] }).formes).toEqual(["virgule", "fraction", "fractions"]);
   });
 });

@@ -11,7 +11,8 @@
 import { api, anneeScolaireActuelle, couleurPourMatiere, newId, nowIso, type Referentiel, type Sequence } from "./api";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 import { STYLE_FEUILLE } from "./cartesImprimables";
-import { STYLE_COMPARER, exempleDuSavoir, htmlComparer, paquet, type ReglagesComparer } from "./comparerNombres";
+import { STYLE_COMPARER, exempleDuSavoir, htmlComparer, niveauDe, paquet, phraseDuSavoir, type Niveau, type ReglagesComparer } from "./comparerNombres";
+import { fr } from "./nombres";
 import {
   STYLE_FEUILLES_COMPARER, htmlAfficheDuSavoir, htmlComparerLesEcritures, htmlDeuxCollections, htmlEncadrer, htmlEvaluation,
   htmlOrdonnerIntercaler, htmlProblemes,
@@ -57,23 +58,37 @@ export function htmlDeLaFeuille(quoi: FeuilleComparer, r: ReglagesComparer, grai
   }
 }
 
-/** Le titre proposé : « Comparer, encadrer, intercaler les nombres jusqu'à 30 ». */
-export const titreDeLaSequence = (r: ReglagesComparer) => `Comparer, encadrer, intercaler les nombres jusqu'à ${r.jusqua}`;
+/**
+ * La séquence du guide CP vaut pour le cycle 2, aux nombres de chaque
+ * classe ; la maternelle compare des quantités, le cycle 3 des grands
+ * nombres et des décimaux : leurs démarches ne sont pas celle-ci.
+ */
+export const sequencePossible = (niv: Niveau) => niv.cycle === 2;
+
+/** Le titre proposé : « Comparer, encadrer, intercaler les nombres jusqu'à 1 000 (CE1) ». */
+export function titreDeLaSequence(r: ReglagesComparer): string {
+  const niv = niveauDe(r);
+  return `Comparer, encadrer, intercaler les nombres jusqu'à ${fr(niv.max)} (${niv.classe})`;
+}
 
 /** Ce que la séquence vise : la compétence du programme, et la phrase du guide aux nombres de l'atelier. */
 export function objectifsDeLaSequence(r: ReglagesComparer): string {
-  const [a, b] = exempleDuSavoir(r.jusqua);
-  const d = (n: number) => `${Math.floor(n / 10)} dizaine${Math.floor(n / 10) > 1 ? "s" : ""}`;
-  return `Comparer, encadrer, intercaler des nombres entiers jusqu'à ${r.jusqua} en utilisant les symboles =, < et > ; ranger cinq nombres `
-    + `dans l'ordre croissant ou décroissant — grâce à leur écriture chiffrée : « ${a} est plus grand que ${b}, car dans ${a} il y a ${d(a)} `
-    + `alors que dans ${b} il y a seulement ${d(b)} ».`;
+  const niv = niveauDe(r);
+  return `Comparer, encadrer, intercaler des nombres entiers jusqu'à ${fr(niv.max)} en utilisant les symboles =, < et > ; ranger cinq nombres `
+    + `dans l'ordre croissant ou décroissant — grâce à leur écriture chiffrée : « ${phraseDuSavoir(niv).replace(/\.$/, "")} ».`;
 }
 
 /** Ce qu'il faut préparer, séance par séance : la note « matériel » de chacune. */
 export function materielDesSeances(r: ReglagesComparer): string[] {
-  const [a, b] = exempleDuSavoir(r.jusqua);
+  const niv = niveauDe(r);
+  const [a, b] = exempleDuSavoir(niv);
+  const collections = niv.max <= 100
+    ? `Les deux feuilles de ronds — ${a} rouges pour un groupe, ${b} bleus pour l'autre — ; des feutres pour entourer les dizaines ; le matériel de numération : barres de dix et cubes, ou bûchettes.`
+    : niv.max <= 1000
+      ? `Les deux feuilles de matériel — ${fr(a)} cubes pour un groupe, dont une centaine défaite en dizaines, ${fr(b)} pour l'autre — ; le matériel de numération : plaques, barres et cubes.`
+      : `Les deux bons de livraison — ${fr(a)} vis pour un groupe, une caisse défaite en cartons, ${fr(b)} pour l'autre — ; le tableau de numération.`;
   return [
-    `Les deux feuilles de ronds — ${a} rouges pour un groupe, ${b} bleus pour l'autre — ; des feutres pour entourer les dizaines ; le matériel de numération : barres de dix et cubes, ou bûchettes.`,
+    collections,
     "Les écritures de la séance 1 ; les deux collections ; le matériel de numération aimanté au tableau ; les ardoises ; l'affiche « Ce qu'on retient » et les cartes des signes.",
     "La feuille « Comparer des nombres » ; le matériel de numération pour vérifier ; les cartes des jeux découpées — un paquet et des signes pour deux — et la feuille de jeu.",
     "Trois cartes de nombres pour le tableau ; la feuille « Ordonner et intercaler » ; la bande numérique ; les cartes, pour la file des nombres, et la feuille de jeu.",
@@ -83,9 +98,9 @@ export function materielDesSeances(r: ReglagesComparer): string[] {
   ];
 }
 
-/** « Comparer, encadrer, intercaler des nombres entiers… », au CP, dans les référentiels actifs. */
-export const competenceDuProgramme = (referentiels: Referentiel[]) =>
-  competenceDuReferentiel(referentiels, "CP", /comparer, encadrer, intercaler/i);
+/** « Comparer, encadrer, intercaler des nombres entiers… », à la classe du niveau, dans les référentiels actifs. */
+export const competenceDuProgramme = (referentiels: Referentiel[], niv: Niveau) =>
+  competenceDuReferentiel(referentiels, niv.classe, /comparer, encadrer, intercaler/i);
 
 /**
  * Crée la séquence : la fiche, les séances de la démarche avec leur

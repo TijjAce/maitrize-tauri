@@ -5,7 +5,8 @@ import { Field, Input, Modal } from "./ui";
 import { toast } from "./Toaster";
 import type { CompetenceSelectionnee } from "./CompetenceTree";
 import { demarcheDe, resumeDuCadre } from "../demarches";
-import { exempleDuSavoir, type ReglagesComparer } from "../comparerNombres";
+import { exempleDuSavoir, niveauDe, type ReglagesComparer } from "../comparerNombres";
+import { fr } from "../nombres";
 import {
   DEMARCHE_COMPARER, FEUILLES_DE_LA_SEQUENCE, competenceDuProgramme, creerLaSequenceDeComparaison, titreDeLaSequence,
 } from "../sequenceComparer";
@@ -28,12 +29,13 @@ export function SequenceDeComparaison({ reglages, competences, onClose }: {
   React.useEffect(() => {
     if (competences.length) return;
     let vivant = true;
-    api.referentielsList().then((refs) => { if (vivant) setDuProgramme(competenceDuProgramme(refs)); }).catch(() => {});
+    api.referentielsList().then((refs) => { if (vivant) setDuProgramme(competenceDuProgramme(refs, niveauDe(reglages))); }).catch(() => {});
     return () => { vivant = false; };
-  }, [competences.length]);
+  }, [competences.length, reglages]);
   const visees = competences.length ? competences : duProgramme ? [duProgramme] : [];
   if (!demarche) return null;
-  const [a, b] = exempleDuSavoir(reglages.jusqua);
+  const niv = niveauDe(reglages);
+  const [a, b] = exempleDuSavoir(niv);
   const creer = async () => {
     setEnCours(true);
     try {
@@ -74,14 +76,14 @@ export function SequenceDeComparaison({ reglages, competences, onClose }: {
         ))}
       </ol>
       <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, margin: "0 0 6px" }}>
-        Les séances citent les exemples du guide (71 et 68) ; les feuilles prennent les nombres de l'atelier, jusqu'à {reglages.jusqua} :
-        {" "}{a} et {b} pour les deux collections.
+        Les séances citent les exemples du guide (71 et 68) ; les feuilles prennent les nombres de l'atelier, {niv.libelle} :
+        {" "}{fr(a)} et {fr(b)} pour les deux collections.
       </p>
       <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, margin: 0 }}>
         {competences.length
           ? <>🎯 Compétence visée : <b>{competences[0].competenceTitre}</b></>
           : duProgramme
-            ? <>🎯 Compétence visée : <b>{duProgramme.competenceTitre}</b> ({duProgramme.niveau ?? "CP"}) — {duProgramme.referentielNom}</>
+            ? <>🎯 Compétence visée : <b>{duProgramme.competenceTitre}</b> ({duProgramme.niveau ?? niv.classe}) — {duProgramme.referentielNom}</>
             : "🎯 La compétence « Comparer, encadrer, intercaler des nombres entiers » n'est pas dans vos référentiels actifs : la séquence n'en visera pas. Choisissez-la plus tard sur la séquence."}
       </p>
     </Modal>
