@@ -5,6 +5,7 @@ import {
   type Categorie, type ReglagesCategoriser,
 } from "./categoriser";
 import { hasard } from "./hasard";
+import { LARGEUR_CONTENU_MM } from "./cartesImprimables";
 
 const cat = (nom: string, image: number | null, mots: string[], debut: number, extra: Partial<Categorie> = {}): Categorie =>
   ({ nom, image, appel: "", intrus: false, mots: mots.map((mot, i) => ({ id: debut + i, mot })), ...extra });
@@ -132,21 +133,19 @@ describe("les feuilles", () => {
 
   it("le tri : chaque boîte a la place de coller toutes ses images ; une page en porte autant qu'il en tient", () => {
     const saisons = categoriesDuJeu(JEUX_DE_CATEGORIES.find((j) => j.id === "saisons")!, {});
-    const pages = pagesDuTri({ niveau: "MS", maisons: true, categories: saisons });
-    expect(pages.map((p) => p.categories.length)).toEqual([1, 1, 1, 1]);
-    // Six images, trois par rangée : deux rangées de 46 mm, sous l'en-tête et le toit.
-    for (const p of pages) expect(p.hauteurMm).toBeGreaterThanOrEqual(2 * 46 + 34 + 22);
+    // Six images, trois par rangée de 41 mm : deux rangées sous l'en-tête et le toit, une maison par page.
+    expect(pagesDuTri({ niveau: "MS", maisons: true, categories: saisons }).map((p) => p.length)).toEqual([1, 1, 1, 1]);
     // Deux images par famille : deux maisons par page.
     const paires = categoriesDuJeu(JEUX_DE_CATEGORIES.find((j) => j.id === "familles-actions")!, {});
-    expect(pagesDuTri({ niveau: "GS", maisons: true, categories: paires }).map((p) => p.categories.length)).toEqual([2, 2, 2, 2]);
-    // En petite section, les images sont plus grandes : deux par rangée, une boîte par page.
-    const ps = pagesDuTri({ niveau: "PS", maisons: false, categories: [FRUITS, LEGUMES] });
-    expect(ps.map((p) => p.categories.length)).toEqual([1, 1]);
-    expect(ps[0].hauteurMm).toBeGreaterThanOrEqual(3 * 50 + 34);
-    // Une maison par page dans la feuille, et les images à leur taille sur la page à découper.
+    expect(pagesDuTri({ niveau: "GS", maisons: true, categories: paires }).map((p) => p.length)).toEqual([2, 2, 2, 2]);
+    // En petite section, les images sont plus grandes : une boîte par page.
+    expect(pagesDuTri({ niveau: "PS", maisons: false, categories: [FRUITS, LEGUMES] }).map((p) => p.length)).toEqual([1, 1]);
+    // Les maisons d'une page s'en partagent la hauteur, fixée pour tenir sous l'en-tête ; les images à découper sont carrées.
     const html = htmlCategoriser(r({ forme: "tri", maisons: true, categories: saisons }), IMAGES, hasard(2));
     expect(compter(html, /class="ct-boite ct-maison"/g)).toBe(4);
-    expect(compter(html, /<div class="page">/g)).toBeGreaterThanOrEqual(4 + 2);
+    expect(compter(html, /<div class="page ct-planche" style="height:\d+mm">/g)).toBe(4);
+    expect(html).not.toMatch(/class="ct-boite[^"]*" style="[^"]*height/);
+    expect(html).toContain("grid-template-columns: repeat(4, 41mm); grid-auto-rows: 41mm");
   });
 
   it("en grande section, l'élève nomme les catégories : les boîtes n'ont ni nom ni image", () => {
@@ -203,5 +202,23 @@ describe("les feuilles", () => {
     // La grille ne porte pas d'images : pas de mention d'ARASAAC.
     expect(grille).not.toContain("ARASAAC");
     expect(feuille({ forme: "cartes" })).toContain("ARASAAC");
+  });
+});
+
+describe("des cartes carrées", () => {
+  it("chaque jeu découpe ses images en carrés, qui tiennent dans la largeur de la page", () => {
+    const carres = (html: string) => [...html.matchAll(/grid-template-columns: repeat\((\d+), (\d+)mm\); grid-auto-rows: (\d+)mm/g)];
+    for (const forme of ["cartes", "tri", "loto", "appelle", "familles", "mistigri"] as const) {
+      for (const niveau of ["PS", "MS", "GS"] as const) {
+        const grilles = carres(feuille({ forme, niveau }));
+        expect(grilles.length, `${forme} ${niveau}`).toBeGreaterThan(0);
+        for (const [, colonnes, largeur, hauteur] of grilles) {
+          expect(largeur, `${forme} ${niveau}`).toBe(hauteur);
+          expect(Number(colonnes) * Number(largeur)).toBeLessThanOrEqual(LARGEUR_CONTENU_MM);
+        }
+      }
+    }
+    // Les cases du loto ont la taille des cartes qu'on y pose.
+    expect(feuille({ forme: "loto" })).toContain("grid-auto-rows: 36mm");
   });
 });
