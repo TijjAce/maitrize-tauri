@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import type { MaterielItem, Seance, Sequence } from "./api";
 import {
-  annexesDesCreneaux, annexesHtml, cleEchelle, echellesDesReglages, liensDuCreneau, lireEchelle, materielDuCreneau, moletteDuJournalHtml,
-  echellePourUneFeuille, limiteMm, octetsDeBase64, STYLE_ANNEXES, titresDuMateriel,
+  annexesDesCreneaux, annexesHtml, cleEchelle, echellesDesReglages, liensDuCreneau, ligneDuPdf, lireEchelle, materielDuCreneau, moletteDuJournalHtml,
+  echellePourUneFeuille, limiteMm, octetsDeBase64, pdfsCites, STYLE_ANNEXES, titresDuMateriel,
 } from "./materielAImprimer";
 
 const materiel = (p: Partial<MaterielItem>): MaterielItem => ({
@@ -48,6 +48,26 @@ describe("le matériel des séances du journal", () => {
     // Le lien du planning et la citation se cumulent, la séance liée d'abord.
     const deux = creneau("2026-09-28", "11:00", "s1", "Lecture", "Puis Les fractions au quotidien.");
     expect(materielDuCreneau(deux, sequences, seances, materiels).map((m) => m.id)).toEqual(["m1", "m7"]);
+  });
+
+  it("joint un PDF du bureau cité dans le prévu, sans séance, une seule fois", () => {
+    const bureau = [
+      ...materiels,
+      materiel({ id: "b1", titre: "Mots mêlés Halloween", pdfsJson: '["h.pdf"]', dateCreation: "2026-10-01" }),
+      materiel({ id: "b2", titre: "Mots mêlés Halloween (2)", pdfsJson: '["i.pdf"]' }),
+      materiel({ id: "b3", titre: "Mots mêlés Halloween", seanceId: "s1", pdfsJson: '["j.pdf"]', dateCreation: "2026-10-03" }),
+    ];
+    expect(ligneDuPdf(bureau[7])).toBe("📄 Mots mêlés Halloween");
+    expect(ligneDuPdf(materiel({ titre: "  " }))).toBe("📄 PDF sans titre");
+    // La ligne du bouton, sans accents ni majuscules, et ce qu'on écrit après le titre.
+    const prevu = "Accueil\n📄 MOTS MELES halloween, pour les CE1\n📄 Mots mêlés Halloween (2)\nMots mêlés Halloween sans le 📄 en tête";
+    expect(pdfsCites(prevu, bureau).map((m) => m.id)).toEqual(["b1", "b2"]);
+    // Rien que du texte : rien n'est cité.
+    expect(pdfsCites("Mots mêlés Halloween", bureau)).toEqual([]);
+    // Le PDF cité rejoint le matériel du créneau, après celui de la séance ; le même fichier ne sort qu'une fois.
+    const c = creneau("2026-10-05", "17:00", "s1", "Réunion", "📄 Mots mêlés Halloween\n📄 Mots mêlés Halloween");
+    expect(materielDuCreneau(c, sequences, seances, bureau).map((m) => m.id)).toEqual(["m1", "b3", "b1"]);
+    expect(annexesDesCreneaux([{ ...c, seanceId: null }], sequences, seances, bureau).map((a) => a.fichier)).toEqual(["h.pdf"]);
   });
 
   it("suit l'ordre des créneaux, un fichier une seule fois, avec d'où il vient", () => {

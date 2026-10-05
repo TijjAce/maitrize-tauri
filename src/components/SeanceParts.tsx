@@ -305,7 +305,7 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
         Ces PDF restent dans la séance et s'impriment à la suite du cahier journal — glissez-en un depuis le Finder ou Aperçu,
         ou reprenez un PDF du plan de travail, qui y reste à sa place.
       </div>
-      {bureauOuvert && <ChoixPdfDuBureau seanceId={seanceId} onPrendre={prendreSurLeBureau} onClose={() => setBureauOuvert(false)} />}
+      {bureauOuvert && <ChoixPdfDuBureau onPrendre={prendreSurLeBureau} onClose={() => setBureauOuvert(false)} />}
       {items.length === 0 ? (
         <div style={{ fontSize: 13, color: "var(--text-2)", fontStyle: "italic" }}>Aucun PDF pour cette séance.</div>
       ) : items.map((m) => {
@@ -336,31 +336,38 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
   );
 }
 
+/** Ce que dit la fenêtre des PDF du bureau quand on les copie dans une séance. */
+const MOTS_SEANCE = {
+  titre: "Prendre un PDF sur le bureau",
+  aide: "Les PDF posés sur le plan de travail. Chacun est copié dans la séance : le bureau garde le sien.",
+  bouton: "＋ Ajouter", enCours: "Copie…", fait: "✓ Ajouté", echec: "PDF non copié",
+};
+
 /**
- * Les PDF du bureau, à reprendre dans la séance.
+ * Les PDF du bureau, à reprendre dans une séance — ou à citer dans le cahier
+ * journal : les mots changent, la liste est la même.
  *
  * La fenêtre reste ouverte après un ajout : on prend souvent plusieurs
  * fiches d'un coup, et chaque ligne dit ce qu'elle est devenue.
  */
-function ChoixPdfDuBureau({ seanceId, onPrendre, onClose }: {
-  seanceId: string; onPrendre: (m: MaterielItem) => Promise<void>; onClose: () => void;
+export function ChoixPdfDuBureau({ onPrendre, onClose, mots = MOTS_SEANCE }: {
+  onPrendre: (m: MaterielItem) => Promise<void> | void; onClose: () => void;
+  mots?: { titre: string; aide: string; bouton: string; enCours: string; fait: string; echec: string };
 }) {
-  const { data: tous, loading } = useAsync(() => api.materielList(), [seanceId]);
+  const { data: tous, loading } = useAsync(() => api.materielList(), []);
   const [recherche, setRecherche] = React.useState("");
   const [pris, setPris] = React.useState<Record<string, "encours" | "fait" | "echec">>({});
   const candidats = React.useMemo(() => chercherPdfs(pdfsDuBureau(tous ?? []), recherche), [tous, recherche]);
   const prendre = async (m: MaterielItem) => {
     setPris((p) => ({ ...p, [m.id]: "encours" }));
     try { await onPrendre(m); setPris((p) => ({ ...p, [m.id]: "fait" })); }
-    catch (e) { setPris((p) => ({ ...p, [m.id]: "echec" })); toast("PDF non copié : " + String(e), { icone: "⚠️" }); }
+    catch (e) { setPris((p) => ({ ...p, [m.id]: "echec" })); toast(`${mots.echec} : ${String(e)}`, { icone: "⚠️" }); }
   };
   const chemin = (dossier: string) => filDAriane(dossier).slice(1).map((x) => x.nom).join(" › ");
   return (
-    <Modal titre="Prendre un PDF sur le bureau" onClose={onClose}
+    <Modal titre={mots.titre} onClose={onClose}
       footer={<button className="btn" onClick={onClose}>Fermer</button>}>
-      <div style={{ fontSize: 12.5, color: "var(--text-2)", marginBottom: 10 }}>
-        Les PDF posés sur le plan de travail. Chacun est copié dans la séance : le bureau garde le sien.
-      </div>
+      <div style={{ fontSize: 12.5, color: "var(--text-2)", marginBottom: 10 }}>{mots.aide}</div>
       <Input value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="Chercher un titre ou un dossier…"
         aria-label="Chercher un PDF du bureau" style={{ marginBottom: 10 }} />
       {loading ? <div className="meta">Chargement…</div>
@@ -381,9 +388,9 @@ function ChoixPdfDuBureau({ seanceId, onPrendre, onClose }: {
                 <div className="meta">{[chemin(m.dossier) || "Bureau", nb > 1 ? `${nb} PDF` : ""].filter(Boolean).join(" · ")}</div>
               </div>
               {etat === "fait"
-                ? <span className="chip">✓ Ajouté</span>
+                ? <span className="chip">{mots.fait}</span>
                 : <button className="btn sm primary" disabled={etat === "encours"} onClick={() => prendre(m)}>
-                    {etat === "encours" ? "Copie…" : "＋ Ajouter"}
+                    {etat === "encours" ? mots.enCours : mots.bouton}
                   </button>}
             </div>
           );
