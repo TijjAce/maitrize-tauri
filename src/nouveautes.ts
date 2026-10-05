@@ -18,6 +18,33 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.21",
+    titre: "Six nouveaux ateliers, et leurs séquences d'après les guides",
+    points: [
+      { quoi: "Catégoriser les mots : les jeux de la fiche Éduscol « Catégoriser » — cartes-images, boîtes de tri et maisons, trouve l'intrus, loto aveugle, « J'appelle… », jeu des familles, mistigri, affichage et grille d'observation —, vingt-deux exemples tout prêts de la petite à la grande section, et « Créer une séquence » en sept séances.", ou: "Fabriquer · Langage" },
+      { quoi: "Images séquentielles : une histoire, un geste, une recette à remettre dans l'ordre — pictos, photos du téléphone, illustrations d'un album —, en colonnes, en bande fléchée ou en grandes images pour le tableau, avec les mots du temps de l'âge. Huit suites toutes prêtes, et la séquence pour ordonner et raconter.", ou: "Fabriquer · Langage" },
+      { quoi: "Construire des collections de cardinal donné : six situations de référence (les poupées, le dortoir des oursons, les voyageurs…), les fiches de places à poser au fond de la boîte, les cartes-nombres de « Donne-moi… », les bons de commande à la mascotte, le bon panier et la grille d'observation, et la séquence en sept séances.", ou: "Fabriquer · Mathématiques" },
+      { quoi: "Comparer les nombres : des cartes où chaque nombre est deux fois, sous deux formes (47, barres et cubes, 4d 7u, 7u 4d, 3d 17u…), les signes <, > et =, la règle de trois jeux — la bataille, la file des nombres, le nombre caché — et la feuille de jeu. « Créer une séquence avec ce jeu » pose la séquence du guide CP en sept séances, chacune avec ses feuilles et leurs corrigés.", ou: "Fabriquer · Mathématiques" },
+      { quoi: "Texte à trous : des phrases dont on a retiré le verbe conjugué — être et avoir au présent, ou le mot qu'on veut, entre astérisques —, les étiquettes à découper de la taille des cases, le rappel pour vérifier et le corrigé. Quatre modèles, et de quoi différencier.", ou: "Fabriquer · Lecture et écriture" },
+      { quoi: "Carte mentale, dans la nouvelle famille « Affichages » : le thème au centre, deux à huit branches de couleur avec leurs idées en mots et en pictos, en A4 qui s'agrandit en A3. La feuille se reprend à la main : déplacer et agrandir les cadres, changer la taille du texte, réécrire un mot d'un double-clic, retirer un picto, ne garder que l'image d'une idée.", ou: "Fabriquer · Affichages" },
+      { quoi: "Calcul mental : « Créer une séquence avec cette feuille » d'après les guides Éduscol — découverte, appropriation, entraînement au procédé La Martinière, réinvestissement, fluence —, avec la fiche de découverte, le matériel de manipulation, des problèmes et l'évaluation finale. Au CP, l'élève cherche toujours le résultat (« 5 + 2 = … »), sauf pour le complément à 10.", ou: "Fabriquer · Calcul mental" },
+      { quoi: "Les consignes de calcul disent le mot juste du programme — la somme, la différence, le produit, le quotient, un terme —, et l'éditeur de consigne relève un mot qui ne va pas à la feuille.", ou: "Fabriquer · Mathématiques" },
+      { quoi: "Coloriage magique : les réglages en trois plis, un dessin tiré de n'importe quelle image (photo du téléphone, fichier, picto, image collée), et douze animaux de plus — zèbre, lion, éléphant, girafe, manchot… —, la galerie rangée par familles.", ou: "Fabriquer · Mathématiques" },
+      { quoi: "Lectures à l'école : les 908 albums et livres des listes de référence d'Éduscol, cycles 1, 2 et 3, à chercher par titre, auteur ou éditeur, à filtrer par cycle, catégorie, difficulté, patrimoine ou classique. Un livre se copie, ou part à l'assistant avec une question toute prête, que vous relisez avant de l'envoyer.", ou: "Ressources · Lectures à l'école, et Assistant · 📚 Livres" },
+      { quoi: "Assistant › 🧩 Pictos : un mot se cherche dans ARASAAC, dans Sclera et parmi vos pictos gardés ; quand rien ne répond, l'IA de Mistral en dessine un à la manière d'ARASAAC. Gardé dans « Mes pictos », il sert dans les ateliers, avec son étiquette « IA » jusque sur les feuilles.", ou: "Assistant IA" },
+      { quoi: "Les matières et les domaines du planning ont leur picto, proposé d'un clic, pour un emploi du temps en images ; ils s'impriment en cartes avec les verbes, ou seuls. Les cartes se règlent au millimètre, et font 32 mm par défaut.", ou: "CAA · Consignes en pictos" },
+      { quoi: "« D'abord / ensuite » : chaque case prend un picto ou une photo de l'objet, des cartes à découper s'ajoutent, et le support s'imprime en planche, en modèle vide avec ses cartes, ou en cartes seules.", ou: "CAA · Supports visuels" },
+      { quoi: "« 📄 PDF du bureau » cite un PDF du plan de travail dans le prévu d'un créneau, sans passer par une séance : il s'imprime à la suite du cahier journal.", ou: "Planning · cahier journal" },
+      { quoi: "Une séance montre la première page de chacun de ses PDF, qui s'ouvre en grand d'un clic. Les séances des démarches disent leur objectif ainsi : « À la fin de cette séance, les élèves sauront… ».", ou: "Plan de travail · Séquences" },
+      { quoi: "Les étiquettes de dos des classeurs : une par matière ou par domaine, à vos couleurs, pour les porte-étiquettes de 8 cm ou de 5 cm, ou sur mesure.", ou: "Organisation · Pages de garde" },
+      { quoi: "Un domaine des référentiels prend la couleur de sa matière, et peut recevoir la sienne.", ou: "Réglages · Couleurs des matières" },
+      { quoi: "Les fichiers « .md » s'ouvrent dans l'application, mis en page, pour les lire ou les imprimer.", ou: "Plan de travail · Bureau" },
+      { quoi: "Amis devient un onglet des Réglages.", ou: "Réglages · Amis" },
+      { quoi: "Impression : plus de pages blanches quand Safari imprime une feuille, des feuilles à leur taille au millimètre, des images qui ne disparaissent plus des PDF, et des cartes de pictos carrées." },
+      { quoi: "Un lien de partage Nuage en « /index.php/s/… » rejoint bien un bureau commun ; et les fenêtres mettent le curseur dans leur champ, pour renommer ou chercher sans cliquer d'abord." },
+    ],
+  },
+  {
     version: "1.6.20",
     titre: "Des pictos pour toutes les consignes, à imprimer en cartes",
     points: [
