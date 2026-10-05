@@ -1144,6 +1144,15 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
 /* Le mot d'une image de l'enseignant : un champ qui ressemble au mot. */
 .bm-renommer { font: inherit; color: inherit; background: transparent; border: none; border-bottom: 1px dashed var(--border); padding: 0 2px; min-width: 40px; max-width: 150px; outline: none; }
 .bm-renommer:focus { border-bottom-color: var(--accent); }
+/* Catégoriser les mots : chaque catégorie, sa couleur sur le bord, son image, ses images dépliées. */
+.ct-categorie { border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 8px; background: var(--panel-2); padding: 6px; }
+.ct-categorie-tete { display: flex; align-items: center; gap: 6px; }
+.ct-categorie-tete .input { flex: 1; min-width: 0; }
+.ct-categorie-image { width: 38px; height: 38px; flex: none; border: 1px solid var(--border); border-radius: 6px; background: #fff; padding: 2px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; }
+.ct-categorie-image img { width: 100%; height: 100%; object-fit: contain; }
+.ct-categorie-image:disabled { cursor: default; }
+.ct-categorie-corps { margin-top: 8px; }
 
 /* Les manuels : la liste, les pages en vignettes numérotées, les exercices. */
 .man-ligne { display: flex; align-items: center; gap: 4px; border-top: 1px solid var(--border); }
