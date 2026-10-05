@@ -12,7 +12,9 @@
 // formulations. On ne les réécrit pas : c'est ce qu'un inspecteur ou un
 // collègue reconnaîtra. Les phases deviennent les lignes du tableau de
 // déroulement de chaque séance ; les descriptions sont des consignes-cadres,
-// à compléter, jamais un contenu inventé pour l'enseignant.
+// à compléter, jamais un contenu inventé pour l'enseignant. L'objectif d'une
+// séance, lui, dit ce que les élèves sauront à la fin — « À la fin de cette
+// séance, les élèves sauront … » —, le contenu du guide à la suite.
 //
 // Sources :
 // - Livrets d'accompagnement de programme, Éduscol 2025 (mathématiques CP)
@@ -56,10 +58,13 @@ export interface PhaseCadre {
   posture: string;
 }
 
+/** Comment commence l'objectif d'une séance : ce que les élèves sauront à la fin. */
+export const DEBUT_OBJECTIF_SEANCE = "À la fin de cette séance, les élèves sauront";
+
 /** Une séance telle que la démarche la prévoit, avant qu'on l'écrive. */
 export interface SeanceCadre {
   titre: string;
-  /** Ce que la séance doit obtenir, dans les mots du guide. */
+  /** Ce que la séance doit obtenir : « À la fin de cette séance, les élèves sauront … », dans les mots du guide. */
   objectifs: string;
   duree: number;
   phases: PhaseCadre[];
@@ -112,7 +117,7 @@ const EDUSCOL_QUATRE_TEMPS: Demarche = {
   seances: [
     {
       titre: "Découverte et institutionnalisation",
-      objectifs: "Objectif : … (à écrire tel qu'il sera annoncé aux élèves).\nCritère de réussite : l'élève …",
+      objectifs: "À la fin de cette séance, les élèves sauront … (l'objectif, tel qu'il sera annoncé aux élèves).\nCritère de réussite : l'élève …",
       duree: 45,
       phases: quatreTemps(
         "Très courte recherche individuelle (3 minutes) sur ardoise : …\nPuis enseignement de la procédure : un élève en réussite montre, l'enseignant verbalise.",
@@ -124,7 +129,7 @@ const EDUSCOL_QUATRE_TEMPS: Demarche = {
     },
     {
       titre: "Entraînement différencié",
-      objectifs: "Effectuer seul plusieurs cas de plus en plus variés. Matériel de manipulation à disposition de qui en a besoin.",
+      objectifs: "À la fin de cette séance, les élèves sauront traiter seuls plusieurs cas de plus en plus variés, le matériel de manipulation à disposition de qui en a besoin.",
       duree: 30,
       phases: quatreTemps(
         "Rappel de la trace écrite par les élèves ; un cas résolu ensemble.",
@@ -136,7 +141,7 @@ const EDUSCOL_QUATRE_TEMPS: Demarche = {
     },
     {
       titre: "Entraînement — autonomie",
-      objectifs: "Les élèves, progressivement selon leur maîtrise, effectuent plusieurs cas de manière autonome.",
+      objectifs: "À la fin de cette séance, les élèves sauront traiter plusieurs cas en autonomie, chacun selon sa maîtrise.",
       duree: 30,
       phases: quatreTemps(
         "Rappel de l'objectif ; annonce de l'évaluation à venir.",
@@ -148,7 +153,7 @@ const EDUSCOL_QUATRE_TEMPS: Demarche = {
     },
     {
       titre: "Évaluation courte",
-      objectifs: "Évaluation courte et fréquente : identifier réussites, progrès et besoins. Les élèves savent qu'ils peuvent répondre directement pour ce qu'ils trouvent facile.",
+      objectifs: "À la fin de cette séance, les élèves sauront où ils en sont : leurs réussites, leurs progrès et leurs besoins. Ils répondent directement à ce qu'ils trouvent facile.",
       duree: 20,
       phases: [
         { phase: T1, duree: "5 min", description: "Ce qui est attendu, dit clairement. Un exemple fait ensemble.",
@@ -161,7 +166,7 @@ const EDUSCOL_QUATRE_TEMPS: Demarche = {
     },
     {
       titre: "Réinvestissement (séance courte)",
-      objectifs: "Séance courte, tout au long de l'année : la procédure réinvestie dans d'autres situations, rituels compris.",
+      objectifs: "À la fin de cette séance, les élèves sauront réinvestir la procédure dans d'autres situations — une séance courte, à reprendre tout au long de l'année, rituels compris.",
       duree: 15,
       phases: [
         { phase: T4, duree: "15 min", description: "Rituel ou situation nouvelle où la procédure sert : …",
@@ -182,7 +187,7 @@ const EPS_MODULE: Demarche = {
   seances: [
     {
       titre: "Découverte",
-      objectifs: "Mettre les élèves « en mouvement », leur permettre de prendre des repères, de construire du sens par une première expérience authentique.",
+      objectifs: "À la fin de cette séance, les élèves sauront se mettre en mouvement dans l'activité et prendre leurs premiers repères : une première expérience authentique, qui donne son sens au module.",
       duree: 45,
       phases: [
         { phase: "Mise en train", duree: "10 min", description: "Entrée dans l'activité : …", posture: "Installe un cadre apaisé et des repères." },
@@ -192,7 +197,7 @@ const EPS_MODULE: Demarche = {
     },
     {
       titre: "Apprentissage — situation complexe",
-      objectifs: "La situation porteuse des enjeux de formation du module, dans son entier.",
+      objectifs: "À la fin de cette séance, les élèves sauront agir dans la situation qui porte les enjeux du module, dans son entier.",
       duree: 45,
       phases: [
         { phase: "Mise en train", duree: "10 min", description: "…", posture: "" },
@@ -202,7 +207,7 @@ const EPS_MODULE: Demarche = {
     },
     {
       titre: "Apprentissage — situations ciblées",
-      objectifs: "Des situations ciblées visant à consolider des acquis ou à remédier aux difficultés constatées.",
+      objectifs: "À la fin de cette séance, les élèves sauront mieux faire ce qui leur posait difficulté : des situations ciblées pour consolider leurs acquis ou y remédier.",
       duree: 45,
       phases: [
         { phase: "Mise en train", duree: "10 min", description: "…", posture: "" },
@@ -212,7 +217,7 @@ const EPS_MODULE: Demarche = {
     },
     {
       titre: "Apprentissage — situation complexe",
-      objectifs: "Retour à la situation de référence : mesurer les progrès.",
+      objectifs: "À la fin de cette séance, les élèves sauront mesurer leurs progrès, de retour dans la situation de référence.",
       duree: 45,
       phases: [
         { phase: "Mise en train", duree: "10 min", description: "…", posture: "" },
@@ -222,7 +227,7 @@ const EPS_MODULE: Demarche = {
     },
     {
       titre: "Apprentissage — situations ciblées",
-      objectifs: "Consolider ce qui reste fragile avant l'évaluation.",
+      objectifs: "À la fin de cette séance, les élèves sauront réussir ce qui restait fragile avant l'évaluation.",
       duree: 45,
       phases: [
         { phase: "Mise en train", duree: "10 min", description: "…", posture: "" },
@@ -232,7 +237,7 @@ const EPS_MODULE: Demarche = {
     },
     {
       titre: "Évaluation — bilan des savoirs",
-      objectifs: "Bilan des savoirs construits par les élèves. La situation d'évaluation est attentive à deux choses : la part d'inédit par rapport aux entraînements, et l'accessibilité pour toutes et tous.",
+      objectifs: "À la fin de cette séance, les élèves sauront montrer ce qu'ils ont construit pendant le module, dans une situation en partie inédite et accessible à toutes et à tous.",
       duree: 45,
       phases: [
         { phase: "Mise en train", duree: "10 min", description: "…", posture: "" },
@@ -270,7 +275,7 @@ const ENSEIGNEMENT_EXPLICITE: Demarche = {
   seances: [
     {
       titre: "Modelage et pratique guidée",
-      objectifs: "À la fin de la séance, l'élève sait … Il l'a vu faire, puis fait avec l'enseignant.",
+      objectifs: "À la fin de cette séance, les élèves sauront … : ils l'auront vu faire, puis l'auront fait avec l'enseignant.",
       duree: 45,
       phases: explicite(
         "Objectif annoncé : …\nRappel de ce qu'il faut savoir : …",
@@ -283,7 +288,7 @@ const ENSEIGNEMENT_EXPLICITE: Demarche = {
     },
     {
       titre: "Pratique guidée puis autonome",
-      objectifs: "Répéter la procédure sur des cas proches, en réduisant l'aide.",
+      objectifs: "À la fin de cette séance, les élèves sauront appliquer la procédure à des cas proches, avec de moins en moins d'aide.",
       duree: 45,
       phases: explicite(
         "Rappel de la séance précédente par les élèves.",
@@ -296,7 +301,7 @@ const ENSEIGNEMENT_EXPLICITE: Demarche = {
     },
     {
       titre: "Pratique autonome et petits pas",
-      objectifs: "Un pas de plus vers le complexe, sans surcharge : une seule nouveauté.",
+      objectifs: "À la fin de cette séance, les élèves sauront appliquer la procédure à un cas un peu plus complexe : une seule nouveauté, sans surcharge.",
       duree: 45,
       phases: explicite(
         "Ce qu'on sait déjà faire ; ce qu'on ajoute aujourd'hui : …",
@@ -309,7 +314,7 @@ const ENSEIGNEMENT_EXPLICITE: Demarche = {
     },
     {
       titre: "Révision et évaluation",
-      objectifs: "Révision fréquente pour la mémoire à long terme, puis évaluation de ce qui a été enseigné explicitement.",
+      objectifs: "À la fin de cette séance, les élèves sauront restituer ce qui leur a été enseigné explicitement, révisé souvent pour la mémoire à long terme, puis évalué.",
       duree: 30,
       phases: [
         { phase: "Révision", duree: "10 min", description: "Reprise rapide des cas des séances précédentes.", posture: "Valorise les efforts et les stratégies : R = E × S." },
@@ -343,7 +348,7 @@ const LECTURE_CODE: Demarche = {
   seances: [
     {
       titre: "Les syllabes",
-      objectifs: "Lire avec précision les syllabes qui contiennent le graphème étudié : … L'objectif est la précision du décodage, pas la vitesse.",
+      objectifs: "À la fin de cette séance, les élèves sauront lire avec précision les syllabes qui contiennent le graphème étudié : … La précision du décodage d'abord, pas la vitesse.",
       duree: 30,
       phases: [
         ph(T1, "5 min", "Rappel des séances antérieures : les graphèmes connus, relus sur le mur sonore. Objectif : « aujourd'hui, nous apprenons à lire … ».",
@@ -358,7 +363,7 @@ const LECTURE_CODE: Demarche = {
     },
     {
       titre: "Les mots",
-      objectifs: "Décoder des mots entièrement déchiffrables avec les graphèmes connus : … puis les écrire.",
+      objectifs: "À la fin de cette séance, les élèves sauront décoder, puis écrire, des mots entièrement déchiffrables avec les graphèmes connus : …",
       duree: 30,
       phases: [
         ph(T1, "5 min", "Rappel des syllabes de la veille, relues vite. Objectif : lire et écrire les mots de la leçon."),
@@ -370,7 +375,7 @@ const LECTURE_CODE: Demarche = {
     },
     {
       titre: "Les phrases et le texte",
-      objectifs: "Lire des phrases puis un court texte déchiffrable ; comprendre ce qu'on lit et le manifester.",
+      objectifs: "À la fin de cette séance, les élèves sauront lire des phrases puis un court texte déchiffrable, et montrer qu'ils comprennent ce qu'ils lisent.",
       duree: 45,
       phases: [
         ph(T1, "5 min", "Rappel : les mots de la leçon relus en fluence. Objectif : lire des phrases, puis le texte, et le comprendre."),
@@ -383,7 +388,7 @@ const LECTURE_CODE: Demarche = {
     },
     {
       titre: "La dictée",
-      objectifs: "Apprendre à écrire des mots et des phrases en développant l'observation et l'attention : la dictée est un temps d'apprentissage, pas d'évaluation.",
+      objectifs: "À la fin de cette séance, les élèves sauront écrire des mots et des phrases en observant et en restant attentifs : la dictée est un temps d'apprentissage, pas d'évaluation.",
       duree: 30,
       phases: [
         ph("Lecture et compréhension du texte", "5 min", "Les élèves lisent le texte de la dictée silencieusement puis à voix haute ; le professeur s'assure de la compréhension par un questionnement simple.",
@@ -397,7 +402,7 @@ const LECTURE_CODE: Demarche = {
     },
     {
       titre: "Entraînement ritualisé en groupes de besoin",
-      objectifs: "Automatiser : précision et vitesse de lecture pour les groupes 1 et 2, prosodie pour les groupes 3 et 4 — selon le profil de lecteur (mots correctement lus par minute).",
+      objectifs: "À la fin de cette séance, les élèves sauront lire plus juste et plus vite (groupes 1 et 2), ou avec une meilleure prosodie (groupes 3 et 4), selon leur profil de lecteur (mots correctement lus par minute).",
       duree: 20,
       phases: [
         ph(T4, "20 min", "Atelier guidé avec un groupe ; les autres en autonomie : lecture chronométrée de syllabes et de mots, grille de fluence, jeux de lecture.",
@@ -416,7 +421,7 @@ const LECTURE_FLUENCE: Demarche = {
   seances: [
     {
       titre: "Jour 1 — atelier guidé : nouvelle grille de fluence",
-      objectifs: "Découvrir la grille de la semaine (graphèmes à réviser, syllabes, pseudo-mots, mots) et les outils pour réussir. Évaluation chronométrée sur la grille de la semaine précédente.",
+      objectifs: "À la fin de cette séance, les élèves sauront lire la grille de la semaine (graphèmes à réviser, syllabes, pseudo-mots, mots) avec les outils pour réussir. Évaluation chronométrée sur la grille de la semaine précédente.",
       duree: 30,
       phases: [
         ph("Évaluation chronométrée", "5 min", "Relecture chronométrée de la grille précédente avec l'enseignant ; score noté.",
@@ -429,7 +434,7 @@ const LECTURE_FLUENCE: Demarche = {
     },
     {
       titre: "Jour 2 — entraînement autonome",
-      objectifs: "Lire la grille le plus vite possible, sans erreur, en trinômes : chronométreur, vérificateur, lecteur.",
+      objectifs: "À la fin de cette séance, les élèves sauront lire la grille plus vite, sans erreur, en trinômes : chronométreur, vérificateur, lecteur.",
       duree: 20,
       phases: [
         ph(T4, "20 min", "Lecture chronométrée de la grille en autonomie, score noté sur le tableau ; outils : chronomètre, minuteur, chuchoteur ; outils numériques quand la fluence a progressé.",
@@ -438,7 +443,7 @@ const LECTURE_FLUENCE: Demarche = {
     },
     {
       titre: "Jour 3 — atelier guidé : évaluation intermédiaire",
-      objectifs: "Mesurer les progrès sur la grille du jour 1 et consolider ; copier en cursive tout ou partie de la liste.",
+      objectifs: "À la fin de cette séance, les élèves sauront mesurer leurs progrès sur la grille du jour 1, et copier en cursive tout ou partie de la liste.",
       duree: 30,
       phases: [
         ph(T1, "5 min", "Relecture non chronométrée de la grille (évaluation intermédiaire)."),
@@ -448,7 +453,7 @@ const LECTURE_FLUENCE: Demarche = {
     },
     {
       titre: "Jour 4 — entraînement autonome et lecture de phrases",
-      objectifs: "Réinvestir la grille dans des phrases ; préparer la lecture par binôme (lecteur / auditeur-évaluateur).",
+      objectifs: "À la fin de cette séance, les élèves sauront lire les mots de la grille dans des phrases, et préparer la lecture en binôme (lecteur / auditeur-évaluateur).",
       duree: 20,
       phases: [
         ph(T4, "20 min", "Lecture des phrases préparées ; grille d'autoévaluation : on entend les espaces, la ponctuation, les liaisons.",
@@ -457,7 +462,7 @@ const LECTURE_FLUENCE: Demarche = {
     },
     {
       titre: "Prosodie — lire avec expressivité",
-      objectifs: "Lire par groupes de souffle, respecter la ponctuation et les liaisons, mettre la voix au service du sens (groupes 3 et 4).",
+      objectifs: "À la fin de cette séance, les élèves sauront lire avec expressivité : par groupes de souffle, en respectant la ponctuation et les liaisons, la voix au service du sens (groupes 3 et 4).",
       duree: 30,
       phases: [
         ph(T1, "5 min", "Rappel des apprentissages ; lecture par le professeur du texte en accentuant ce qui est travaillé : liaisons, pauses entre groupes de souffle, articulation.",
@@ -479,7 +484,7 @@ const COMPREHENSION: Demarche = {
   seances: [
     {
       titre: "Découverte guidée du texte",
-      objectifs: "Parcourir le texte de manière rigoureuse et ordonnée, identifier les informations clés et les relier ; formuler des hypothèses.",
+      objectifs: "À la fin de cette séance, les élèves sauront parcourir le texte avec rigueur et dans l'ordre, identifier les informations clés, les relier et formuler des hypothèses.",
       duree: 45,
       phases: [
         ph("Avant la lecture", "10 min", "Prédictions à partir du titre, des images, de l'auteur : de quoi va parler le texte ? Ce qu'on sait déjà de cet univers.",
@@ -492,7 +497,7 @@ const COMPREHENSION: Demarche = {
     },
     {
       titre: "Une stratégie enseignée explicitement",
-      objectifs: "Faire émerger une stratégie de compréhension (faire des liens, inférer, se représenter la scène, repérer les substituts…) et montrer comment on comprend un texte.",
+      objectifs: "À la fin de cette séance, les élèves sauront utiliser une stratégie de compréhension (faire des liens, inférer, se représenter la scène, repérer les substituts…) et dire comment on comprend un texte.",
       duree: 30,
       phases: [
         ph("Objectif et modelage", "10 min", "La stratégie est nommée ; le professeur lit un extrait court et dit tout haut comment il comprend.", "Montre à voir comment on comprend."),
@@ -502,7 +507,7 @@ const COMPREHENSION: Demarche = {
     },
     {
       titre: "Lecture autonome et questions",
-      objectifs: "Découvrir seul un texte plus simple ; élaborer des questions ; répondre en cherchant des indices dans le texte.",
+      objectifs: "À la fin de cette séance, les élèves sauront découvrir seuls un texte plus simple, se poser des questions et y répondre en cherchant des indices dans le texte.",
       duree: 30,
       phases: [
         ph("Lecture autonome", "10 min", "Lecture silencieuse d'un texte à la portée des élèves."),
@@ -513,7 +518,7 @@ const COMPREHENSION: Demarche = {
     },
     {
       titre: "Représenter pour comprendre",
-      objectifs: "Manifester sa compréhension par des représentations : dessin, mise en scène, jeu théâtral, titres de paragraphes.",
+      objectifs: "À la fin de cette séance, les élèves sauront montrer ce qu'ils ont compris par une représentation : dessin, mise en scène, jeu théâtral, titres de paragraphes.",
       duree: 30,
       phases: [
         ph("Choisir une représentation", "5 min", "Dessiner la scène, mettre en scène avec des marionnettes, jouer le dialogue, titrer les paragraphes."),
@@ -523,7 +528,7 @@ const COMPREHENSION: Demarche = {
     },
     {
       titre: "Écrire à partir du texte",
-      objectifs: "Associer lecture et écriture : inventer la suite, écrire ce que pense un personnage, résumer.",
+      objectifs: "À la fin de cette séance, les élèves sauront écrire à partir du texte : inventer la suite, écrire ce que pense un personnage, résumer.",
       duree: 30,
       phases: [
         ph("Planifier", "5 min", "Ce qu'on va écrire, à partir de ce qu'on a compris."),
@@ -543,7 +548,7 @@ const ECRITURE_GESTE: Demarche = {
   seances: [
     {
       titre: "Tracer une lettre",
-      objectifs: "Tracer la lettre … et la relier aux autres : le geste mémorisé par le corps avant le cahier. Deux séances quotidiennes de 10 à 20 minutes selon la période.",
+      objectifs: "À la fin de cette séance, les élèves sauront tracer la lettre … et la relier aux autres, le geste mémorisé par le corps avant le cahier. Deux séances quotidiennes de 10 à 20 minutes selon la période.",
       duree: 20,
       phases: [
         ph(T1, "5 min", "Rituel de motricité fine (pianoter, toucher les doigts avec le pouce, marcher avec deux doigts). Objectif explicité et points de vigilance : « aujourd'hui, nous apprenons à bien tracer … ». Le professeur trace plusieurs fois au tableau en verbalisant chaque geste.",
@@ -556,7 +561,7 @@ const ECRITURE_GESTE: Demarche = {
     },
     {
       titre: "Enchaîner les lettres",
-      objectifs: "Lier les lettres pour écrire des syllabes puis des mots avec fluidité, en levant le crayon le moins possible.",
+      objectifs: "À la fin de cette séance, les élèves sauront lier les lettres pour écrire des syllabes puis des mots avec fluidité, en levant le crayon le moins possible.",
       duree: 20,
       phases: [
         ph(T1, "5 min", "Rappel des lettres connues ; le professeur modélise l'enchaînement au tableau, plusieurs fois, en vocalisant les sons."),
@@ -567,7 +572,7 @@ const ECRITURE_GESTE: Demarche = {
     },
     {
       titre: "Copier avec des stratégies",
-      objectifs: "Copier rapidement et sans erreur une phrase préalablement lue : découper en empans, repérer les difficultés, respecter la présentation.",
+      objectifs: "À la fin de cette séance, les élèves sauront copier rapidement et sans erreur une phrase déjà lue : découper en empans, repérer les difficultés, respecter la présentation.",
       duree: 20,
       phases: [
         ph(T1, "5 min", "Lecture et relecture de la phrase à copier ; repérage des difficultés graphiques et orthographiques (lettres muettes) ; le professeur modélise une manière de copier en verbalisant.",
@@ -579,7 +584,7 @@ const ECRITURE_GESTE: Demarche = {
     },
     {
       titre: "Gamme d'écriture ritualisée",
-      objectifs: "Entretenir le geste : lettres, enchaînements et mots de la semaine, chaque jour.",
+      objectifs: "À la fin de cette séance, les élèves sauront tracer avec plus d'aisance les lettres, les enchaînements et les mots de la semaine : le geste entretenu chaque jour.",
       duree: 10,
       phases: [
         ph("Gamme", "10 min", "Une ligne de chaque : lettre, enchaînement, mot ; on vocalise ce qu'on écrit.",
@@ -598,7 +603,7 @@ const ECRITURE_REDIGER: Demarche = {
   seances: [
     {
       titre: "Planifier : quel écrit, pour qui, pour quoi ?",
-      objectifs: "Se construire une vue d'ensemble du texte : le but, le genre, le destinataire, ce qu'on doit dire et comment le dire.",
+      objectifs: "À la fin de cette séance, les élèves sauront ce qu'ils vont écrire, pour qui et pour quoi : le but, le genre, le destinataire, ce qu'il faut dire et comment le dire.",
       duree: 30,
       phases: [
         ph("Contextualiser", "10 min", "La situation d'écriture présentée : quel écrit ? pour quoi faire ? pour qui ? Qu'est-ce que l'élève en a compris ?",
@@ -610,7 +615,7 @@ const ECRITURE_REDIGER: Demarche = {
     },
     {
       titre: "Mettre en texte",
-      objectifs: "Écrire un premier jet en s'appuyant sur les outils de la classe (répertoires, affiches, textes) : de l'écriture tâtonnée à la composition.",
+      objectifs: "À la fin de cette séance, les élèves sauront écrire un premier jet en s'appuyant sur les outils de la classe (répertoires, affiches, textes) : de l'écriture tâtonnée à la composition.",
       duree: 30,
       phases: [
         ph("Rappel du projet", "5 min", "Ce qu'on écrit, pour qui ; les outils disponibles."),
@@ -621,7 +626,7 @@ const ECRITURE_REDIGER: Demarche = {
     },
     {
       titre: "Réviser et améliorer",
-      objectifs: "Revenir sur l'écrit produit, différé dans le temps : l'adéquation au projet d'abord, puis le point d'orthographe travaillé en classe.",
+      objectifs: "À la fin de cette séance, les élèves sauront revenir sur leur écrit, à distance, pour l'améliorer : l'adéquation au projet d'abord, puis le point d'orthographe travaillé en classe.",
       duree: 30,
       phases: [
         ph("Révision collective", "10 min", "Un texte projeté et amélioré ensemble : ce qui manque pour comprendre, ce qui ne correspond pas au projet.",
@@ -633,7 +638,7 @@ const ECRITURE_REDIGER: Demarche = {
     },
     {
       titre: "Réécrire et publier",
-      objectifs: "Le texte réécrit et mis au propre pour son destinataire : le chef-d'œuvre du projet d'écriture.",
+      objectifs: "À la fin de cette séance, les élèves sauront réécrire leur texte et le mettre au propre pour son destinataire : l'aboutissement du projet d'écriture.",
       duree: 30,
       phases: [
         ph("Réécriture", "20 min", "Prise en compte des révisions ; mise au propre, manuscrite ou tapée."),
@@ -642,7 +647,7 @@ const ECRITURE_REDIGER: Demarche = {
     },
     {
       titre: "Écrit court quotidien",
-      objectifs: "Écrire chaque jour, dès le CP : phrase du jour, jogging d'écriture, charade, légende — sans réécriture, l'évaluation au long cours.",
+      objectifs: "À la fin de cette séance, les élèves sauront écrire chaque jour un texte court — phrase du jour, jogging d'écriture, charade, légende —, sans réécriture.",
       duree: 10,
       phases: [
         ph("Écrit court", "10 min", "Consigne variée chaque jour ; on écrit, on lit deux ou trois productions.", "Minore l'évaluation ; multiplie les contextes."),
@@ -660,7 +665,7 @@ const ORAL: Demarche = {
   seances: [
     {
       titre: "Production initiale",
-      objectifs: "Une première production dans le genre d'oral retenu (récit, exposé, débat, interview…), enregistrée ou filmée : elle sert de point de départ.",
+      objectifs: "À la fin de cette séance, les élèves sauront où ils en sont dans le genre d'oral retenu (récit, exposé, débat, interview…) : une première production, enregistrée ou filmée, qui sert de point de départ.",
       duree: 30,
       phases: [
         ph("Lancement", "5 min", "Le projet d'oral présenté : ce qu'on va apprendre à faire, pour qui."),
@@ -671,7 +676,7 @@ const ORAL: Demarche = {
     },
     {
       titre: "Repérage et analyse des compétences",
-      objectifs: "Écouter les productions, repérer ce qui fait un bon récit / exposé / débat ; garder une trace écrite de l'analyse.",
+      objectifs: "À la fin de cette séance, les élèves sauront ce qui fait un bon récit, un bon exposé ou un bon débat, et en garderont une trace écrite.",
       duree: 30,
       phases: [
         ph("Écoute des productions", "10 min", "Quelques enregistrements écoutés ; référentiel de compétences en lien avec le type d'oral.",
@@ -682,7 +687,7 @@ const ORAL: Demarche = {
     },
     {
       titre: "Situations d'apprentissage",
-      objectifs: "Des situations d'enseignement correspondant aux compétences à renforcer ; les élèves associés au sens et au but.",
+      objectifs: "À la fin de cette séance, les élèves sauront mieux mettre en œuvre une compétence de l'oral qu'il fallait renforcer, en sachant à quoi elle sert.",
       duree: 30,
       phases: [
         ph("Rituel d'ouverture", "5 min", "Relecture de la trace écrite : ce qu'on travaille aujourd'hui."),
@@ -693,7 +698,7 @@ const ORAL: Demarche = {
     },
     {
       titre: "Situations d'apprentissage (suite)",
-      objectifs: "Une deuxième compétence renforcée ; entraînement à la production complète.",
+      objectifs: "À la fin de cette séance, les élèves sauront mettre en œuvre une deuxième compétence, et l'intégrer à une production complète.",
       duree: 30,
       phases: [
         ph("Rituel d'ouverture", "5 min", "Relecture de la trace écrite."),
@@ -703,7 +708,7 @@ const ORAL: Demarche = {
     },
     {
       titre: "Production finale",
-      objectifs: "Mesurer les progrès : évaluation prenant appui sur les critères de réussite adossés à la trace écrite ; commenter ses productions, observer celles des pairs.",
+      objectifs: "À la fin de cette séance, les élèves sauront mesurer leurs progrès avec les critères de réussite de la trace écrite, commenter leur production et observer celles des autres.",
       duree: 30,
       phases: [
         ph("Production finale", "20 min", "Chacun produit à nouveau, enregistré.", "Évalue avec les critères construits ; compare avec la production initiale."),
@@ -722,7 +727,7 @@ const VOCABULAIRE: Demarche = {
   seances: [
     {
       titre: "Étape 1 — rencontrer les mots en contexte",
-      objectifs: "Découvrir les mots en contexte (littérature, projet de classe, autre discipline) et les collecter. Corpus visé : … (les mots à acquérir par tous en gras).",
+      objectifs: "À la fin de cette séance, les élèves sauront comprendre et employer les mots rencontrés en contexte (littérature, projet de classe, autre discipline). Corpus visé : … (les mots à acquérir par tous en gras).",
       duree: 20,
       phases: [
         ph("Rencontre", "15 min", "Au fil de la lecture ou de l'activité, les mots sont entendus, employés, expliqués en situation.",
@@ -732,7 +737,7 @@ const VOCABULAIRE: Demarche = {
     },
     {
       titre: "Étape 2 — catégoriser",
-      objectifs: "Structurer le lexique : regrouper, classer, trier les mots collectés selon le sens (familles, contraires, synonymes) ou la forme, en justifiant.",
+      objectifs: "À la fin de cette séance, les élèves sauront regrouper, classer et trier les mots collectés selon le sens (familles, contraires, synonymes) ou la forme, et justifier leurs choix.",
       duree: 60,
       phases: [
         ph("Temps 1 – Mise en réussite", "15 min", "Rappel de ce qu'on étudie en vocabulaire (« je réfléchis au sens des mots, j'observe comment ils sont fabriqués »). Quinze mots affichés sur étiquettes ; un élève amorce une catégorisation et justifie ; la classe valide.",
@@ -745,7 +750,7 @@ const VOCABULAIRE: Demarche = {
     },
     {
       titre: "Étape 2 — institutionnaliser et enrichir",
-      objectifs: "Construire les réseaux sémantiques et morphologiques, enrichir le corpus initial ; outil de référence individuel ou collectif.",
+      objectifs: "À la fin de cette séance, les élèves sauront relier les mots en réseaux de sens et de forme, et en ajouter de nouveaux à leur outil de référence, individuel ou collectif.",
       duree: 30,
       phases: [
         ph("Rappel", "5 min", "Les catégories retenues relues."),
@@ -755,7 +760,7 @@ const VOCABULAIRE: Demarche = {
     },
     {
       titre: "Étape 3 — réactiver par le jeu",
-      objectifs: "Entraîner et manipuler le corpus pour le mémoriser : la mémorisation passe par un apprentissage répété à intervalles réguliers.",
+      objectifs: "À la fin de cette séance, les élèves sauront retrouver et employer les mots du corpus en jouant. La mémorisation passe par un apprentissage répété à intervalles réguliers.",
       duree: 15,
       phases: [
         ph("Jeu", "15 min", "Loto, memory, mime, devinettes, « quart d'heure des mots » ; les mots prononcés dans un contexte pertinent.",
@@ -764,7 +769,7 @@ const VOCABULAIRE: Demarche = {
     },
     {
       titre: "Étape 3 — réinvestir à l'oral et à l'écrit",
-      objectifs: "Transférer : employer les mots dans une production orale puis écrite (légender une image, écrire une phrase, raconter).",
+      objectifs: "À la fin de cette séance, les élèves sauront employer les mots du corpus à l'oral puis à l'écrit : légender une image, écrire une phrase, raconter.",
       duree: 30,
       phases: [
         ph("À l'oral", "10 min", "Raconter, décrire avec les mots du corpus ; reformuler une histoire lue avec ses mots."),
@@ -784,7 +789,7 @@ const GRAMMAIRE: Demarche = {
   seances: [
     {
       titre: "Observer et trier un corpus",
-      objectifs: "Comprendre un fonctionnement par l'analogie : classer, trier des éléments choisis pour le fait de langue étudié (…), avec justification.",
+      objectifs: "À la fin de cette séance, les élèves sauront classer et trier des éléments choisis pour le fait de langue étudié (…), en justifiant, pour en comprendre le fonctionnement.",
       duree: 45,
       phases: [
         ph(T1, "5 min", "Objectif annoncé ; corpus de phrases ou de groupes de mots, prototypiques, adaptés à ce que la grammaire scolaire peut analyser.",
@@ -797,7 +802,7 @@ const GRAMMAIRE: Demarche = {
     },
     {
       titre: "Manipuler pour vérifier",
-      objectifs: "Utiliser systématiquement la comparaison, le remplacement et les autres manipulations syntaxiques (déplacement, suppression, ajout) pour identifier et vérifier.",
+      objectifs: "À la fin de cette séance, les élèves sauront identifier et vérifier en manipulant : comparer, remplacer, déplacer, supprimer, ajouter.",
       duree: 30,
       phases: [
         ph("Rappel", "5 min", "La régularité relue ; les manipulations connues."),
@@ -808,7 +813,7 @@ const GRAMMAIRE: Demarche = {
     },
     {
       titre: "Structurer : la leçon",
-      objectifs: "Institutionnaliser : la leçon co-construite, avec des exemples prototypiques et les manipulations qui permettent de vérifier.",
+      objectifs: "À la fin de cette séance, les élèves sauront énoncer la leçon construite ensemble, avec des exemples types et les manipulations qui permettent de vérifier.",
       duree: 30,
       phases: [
         ph("Formulation", "10 min", "Ce qu'il faut retenir, dit par les élèves puis écrit.",
@@ -819,7 +824,7 @@ const GRAMMAIRE: Demarche = {
     },
     {
       titre: "S'entraîner et automatiser",
-      objectifs: "Activités collectives courtes et régulières de réinvestissement : écrire sous la dictée, analyser les graphies proposées, argumenter.",
+      objectifs: "À la fin de cette séance, les élèves sauront appliquer la notion plus sûrement : écrire sous la dictée, analyser des graphies, argumenter.",
       duree: 20,
       phases: [
         ph("Rituel", "15 min", "Dictée courte (une phrase) ; analyse des graphies, erronées ou non ; solutions alternatives plausibles argumentées avec le métalangage.",
@@ -829,7 +834,7 @@ const GRAMMAIRE: Demarche = {
     },
     {
       titre: "Consolider en groupes de besoin",
-      objectifs: "Situations de structuration en groupes restreints pour les élèves ayant les mêmes besoins.",
+      objectifs: "À la fin de cette séance, les élèves sauront appliquer la notion là où ils hésitaient encore, en groupe restreint.",
       duree: 20,
       phases: [
         ph("Groupe de besoin", "20 min", "Reprise avec matériel (étiquettes, phrases à manipuler) pour ceux qui hésitent ; exercices plus ouverts pour les autres."),
@@ -837,7 +842,7 @@ const GRAMMAIRE: Demarche = {
     },
     {
       titre: "Transférer en écriture",
-      objectifs: "Mobiliser la notion à bon escient en écriture autonome : vigilance orthographique sur le point travaillé.",
+      objectifs: "À la fin de cette séance, les élèves sauront mobiliser la notion à bon escient quand ils écrivent seuls, avec une vigilance orthographique sur le point travaillé.",
       duree: 30,
       phases: [
         ph("Écrire", "15 min", "Production courte où la notion est nécessaire."),
@@ -860,7 +865,7 @@ const PROBLEMES: Demarche = {
   seances: [
     {
       titre: "Problème de référence — les quatre phases",
-      objectifs: "Résoudre un problème de … (parties-tout, comparaison, …) en quatre phases : comprendre, modéliser, calculer, répondre.",
+      objectifs: "À la fin de cette séance, les élèves sauront résoudre un problème de … (parties-tout, comparaison, …) en quatre phases : comprendre, modéliser, calculer, répondre.",
       duree: 45,
       phases: [
         ph(T1, "10 min", "Rappel d'un problème résolu de la même catégorie ; objectif annoncé. Lecture du problème ; comprendre : raconter l'histoire avec ses mots, ce qu'on sait, ce qu'on cherche.",
@@ -874,7 +879,7 @@ const PROBLEMES: Demarche = {
     },
     {
       titre: "Entraînement — problèmes analogues",
-      objectifs: "Faire des analogies entre un nouveau problème et les problèmes résolus précédemment ; matériel et schémas pour qui en a besoin.",
+      objectifs: "À la fin de cette séance, les élèves sauront reconnaître, dans un nouveau problème, un problème déjà résolu ; matériel et schémas pour qui en a besoin.",
       duree: 30,
       phases: [
         ph(T1, "5 min", "Relecture du problème type du cahier de leçons."),
@@ -885,7 +890,7 @@ const PROBLEMES: Demarche = {
     },
     {
       titre: "Séance courte — procédé La Martinière",
-      objectifs: "Huit problèmes en une vingtaine de minutes : réponse rapide sur l'ardoise, correction immédiate — nourrir la mémoire des problèmes résolus.",
+      objectifs: "À la fin de cette séance, les élèves sauront répondre rapidement à des problèmes simples : huit problèmes en une vingtaine de minutes, réponse sur l'ardoise, correction immédiate.",
       duree: 20,
       phases: [
         ph("Problèmes rapides", "20 min", "Chaque problème lu deux fois ; réflexion ; réponse à l'ardoise au signal ; correction et justification immédiates.",
@@ -894,7 +899,7 @@ const PROBLEMES: Demarche = {
     },
     {
       titre: "Problèmes en deux étapes",
-      objectifs: "Planifier les étapes de résolution ; qualifier les résultats intermédiaires (ce que représente chaque grandeur).",
+      objectifs: "À la fin de cette séance, les élèves sauront planifier les étapes d'une résolution, et dire ce que représente chaque résultat intermédiaire.",
       duree: 45,
       phases: [
         ph(T1, "10 min", "Un problème en deux étapes présenté : lire, identifier la question, analyser les données — pas de « mot-clé »."),
@@ -905,7 +910,7 @@ const PROBLEMES: Demarche = {
     },
     {
       titre: "Créer des problèmes",
-      objectifs: "Écrire un problème avec des contraintes : un autre regard sur la question et sur l'intention de l'auteur.",
+      objectifs: "À la fin de cette séance, les élèves sauront écrire un problème en respectant des contraintes : un autre regard sur la question et sur l'intention de l'auteur.",
       duree: 30,
       phases: [
         ph("Contraintes", "5 min", "Catégorie imposée, nombres imposés, ou un schéma donné."),
@@ -915,7 +920,7 @@ const PROBLEMES: Demarche = {
     },
     {
       titre: "Évaluation",
-      objectifs: "Trois ou quatre problèmes de la séquence : identifier réussites et besoins, phase par phase.",
+      objectifs: "À la fin de cette séance, les élèves sauront où ils en sont dans chaque phase de la résolution, sur trois ou quatre problèmes de la séquence.",
       duree: 20,
       phases: [
         ph("Évaluation", "15 min", "Problèmes à résoudre seul, schéma attendu."),
@@ -942,7 +947,7 @@ const CALCUL_MENTAL: Demarche = {
   seances: [
     {
       titre: "Découverte — séance longue",
-      objectifs: "Construire le fait ou la procédure visés : les chercher, expliciter et comparer les démarches, retenir la plus sûre et la plus rapide, l'écrire.",
+      objectifs: "À la fin de cette séance, les élèves sauront trouver le fait ou appliquer la procédure visés : ils les auront cherchés, auront comparé les démarches, retenu la plus sûre et la plus rapide, et l'auront écrite.",
       duree: 45,
       phases: [
         ph("Échauffement", "5 min", "Une activité très courte qui réactive un fait déjà su — un furet, trois calculs à l'ardoise — : tous réussissent."),
@@ -954,7 +959,7 @@ const CALCUL_MENTAL: Demarche = {
     },
     {
       titre: "Appropriation — La Martinière (1)",
-      objectifs: "S'approprier le fait ou la procédure : une série courte, à l'oral, en disant comment on calcule.",
+      objectifs: "À la fin de cette séance, les élèves sauront donner le fait ou appliquer la procédure à l'oral, en disant comment ils calculent.",
       duree: 15,
       phases: [
         ph("Échauffement", "5 min", "Les faits d'appui de la procédure, révisés à l'ardoise."),
@@ -964,7 +969,7 @@ const CALCUL_MENTAL: Demarche = {
     },
     {
       titre: "Entraînement — La Martinière (2)",
-      objectifs: "Entraîner le fait ou la procédure sous d'autres formes : égalités à trou, nombres plus grands, énoncé en mots.",
+      objectifs: "À la fin de cette séance, les élèves sauront retrouver le fait ou la procédure sous d'autres formes : égalités à trou, nombres plus grands, énoncés en mots.",
       duree: 15,
       phases: [
         ph("Échauffement", "5 min", "Trois calculs de la veille."),
@@ -974,7 +979,7 @@ const CALCUL_MENTAL: Demarche = {
     },
     {
       titre: "Automatisation — La Martinière (3)",
-      objectifs: "Restituer vite et juste : que le fait ou la procédure deviennent automatiques.",
+      objectifs: "À la fin de cette séance, les élèves sauront répondre vite et juste : le fait ou la procédure leur seront devenus automatiques.",
       duree: 15,
       phases: [
         ph("Échauffement", "5 min", "Un fait voisin, en furet ou à l'ardoise."),
@@ -984,7 +989,7 @@ const CALCUL_MENTAL: Demarche = {
     },
     {
       titre: "Réinvestissement — petits problèmes",
-      objectifs: "Retrouver le fait ou la procédure dans un autre contexte : de petits problèmes, un jeu.",
+      objectifs: "À la fin de cette séance, les élèves sauront utiliser le fait ou la procédure dans un autre contexte : de petits problèmes, un jeu.",
       duree: 15,
       phases: [
         ph("Échauffement", "5 min", "La fluence du jour : une série courte, écrite, en temps limité."),
@@ -993,7 +998,7 @@ const CALCUL_MENTAL: Demarche = {
     },
     {
       titre: "Évaluation finale",
-      objectifs: "Mesurer ce qui est su, et voir ses progrès : la fluence en temps limité, l'attendu de fin d'année en tête ; des calculs sans limite de temps ; une procédure expliquée ; un problème.",
+      objectifs: "À la fin de cette séance, les élèves sauront ce qu'ils ont acquis et verront leurs progrès : la fluence en temps limité, l'attendu de fin d'année en tête ; des calculs sans limite de temps ; une procédure expliquée ; un problème.",
       duree: 20,
       phases: [
         ph("Évaluation", "12 min", "Seul : d'abord la partie en temps limité, puis les calculs, l'explication et le problème, sans limite de temps."),
@@ -1013,7 +1018,7 @@ const GEOMETRIE_GRANDEURS: Demarche = {
   seances: [
     {
       titre: "Manipuler et comparer",
-      objectifs: "Donner du sens à la grandeur ou à l'objet géométrique par la manipulation d'objets réels : comparer directement, trier, décrire avec ses mots.",
+      objectifs: "À la fin de cette séance, les élèves sauront comparer directement, trier et décrire avec leurs mots la grandeur ou l'objet géométrique, en manipulant des objets réels.",
       duree: 45,
       phases: [
         ph(T1, "5 min", "Situation concrète empruntée à la vie courante : … Objectif annoncé."),
@@ -1025,7 +1030,7 @@ const GEOMETRIE_GRANDEURS: Demarche = {
     },
     {
       titre: "Construire et représenter",
-      objectifs: "Tracer, construire, reproduire avec les instruments (règle, équerre, compas, gabarit) ou mesurer avec l'unité et l'instrument ; produire des écrits intermédiaires.",
+      objectifs: "À la fin de cette séance, les élèves sauront tracer, construire, reproduire avec les instruments (règle, équerre, compas, gabarit), ou mesurer avec l'unité et l'instrument.",
       duree: 45,
       phases: [
         ph(T1, "5 min", "Rappel ; la tâche de construction ou de mesure : …"),
@@ -1037,7 +1042,7 @@ const GEOMETRIE_GRANDEURS: Demarche = {
     },
     {
       titre: "Institutionnaliser",
-      objectifs: "L'écrit de savoir arrive après les constructions : définition, propriété, référence (un litre, c'est la brique de lait ; un kilogramme, c'est …).",
+      objectifs: "À la fin de cette séance, les élèves sauront la définition, la propriété ou la référence à retenir (un litre, c'est la brique de lait ; un kilogramme, c'est …) : l'écrit de savoir vient après les constructions.",
       duree: 30,
       phases: [
         ph("Formulation", "10 min", "Ce qu'on a établi, dit par les élèves.", "Figures non prototypiques dans la trace : le carré n'est pas toujours posé sur un côté."),
@@ -1047,7 +1052,7 @@ const GEOMETRIE_GRANDEURS: Demarche = {
     },
     {
       titre: "Réinvestir dans des problèmes",
-      objectifs: "Résoudre des problèmes relatifs aux grandeurs ou aux figures : chercher, modéliser, représenter, raisonner, calculer, communiquer.",
+      objectifs: "À la fin de cette séance, les élèves sauront résoudre des problèmes de grandeurs ou de figures : chercher, modéliser, représenter, raisonner, calculer, communiquer.",
       duree: 45,
       phases: [
         ph(T1, "5 min", "Un problème de la vie courante : …"),
@@ -1059,7 +1064,7 @@ const GEOMETRIE_GRANDEURS: Demarche = {
     },
     {
       titre: "Automatiser",
-      objectifs: "Gammes courtes et régulières : reconnaître, nommer, estimer, convertir, tracer vite.",
+      objectifs: "À la fin de cette séance, les élèves sauront reconnaître, nommer, estimer, convertir et tracer plus vite, en gammes courtes et régulières.",
       duree: 15,
       phases: [
         ph("Gamme", "15 min", "Rituel : estimer une longueur, reconnaître une figure, lire une mesure."),
@@ -1079,7 +1084,7 @@ const INVESTIGATION: Demarche = {
   seances: [
     {
       titre: "Situation de départ et questionnement",
-      objectifs: "Une situation qui conduit à un questionnement productif ; les conceptions initiales exprimées et confrontées.",
+      objectifs: "À la fin de cette séance, les élèves sauront formuler la question à étudier, après avoir exprimé et confronté leurs conceptions initiales.",
       duree: 45,
       phases: [
         ph("Situation de départ", "15 min", "Phénomène, objet, document, sortie : … Réactions, premières questions.",
@@ -1091,7 +1096,7 @@ const INVESTIGATION: Demarche = {
     },
     {
       titre: "Hypothèses et conception de l'investigation",
-      objectifs: "Formuler des hypothèses, concevoir ce qui permettra de les valider ou de les invalider.",
+      objectifs: "À la fin de cette séance, les élèves sauront formuler des hypothèses, et concevoir ce qui permettra de les valider ou de les invalider.",
       duree: 45,
       phases: [
         ph("Hypothèses en groupes", "15 min", "Formulation orale puis écrite : « que va-t-il se passer selon moi ? pour quelles raisons ? ».",
@@ -1103,7 +1108,7 @@ const INVESTIGATION: Demarche = {
     },
     {
       titre: "Investigation",
-      objectifs: "Expérimentation directe, réalisation matérielle, observation, recherche documentaire ou enquête — l'action directe des élèves privilégiée.",
+      objectifs: "À la fin de cette séance, les élèves sauront mener l'investigation qu'ils ont conçue : expérimentation, réalisation matérielle, observation, recherche documentaire ou enquête.",
       duree: 45,
       phases: [
         ph("Rappel", "5 min", "Hypothèses et protocoles relus."),
@@ -1114,7 +1119,7 @@ const INVESTIGATION: Demarche = {
     },
     {
       titre: "Structuration des connaissances",
-      objectifs: "Comparer et mettre en relation les résultats des groupes ; confronter au savoir établi ; formuler les connaissances nouvelles.",
+      objectifs: "À la fin de cette séance, les élèves sauront formuler les connaissances nouvelles, après avoir comparé les résultats des groupes et les avoir confrontés au savoir établi.",
       duree: 45,
       phases: [
         ph("Comparaison des résultats", "15 min", "Résultats des groupes mis en relation ; causes d'un éventuel désaccord ; expériences complémentaires proposées."),
@@ -1124,7 +1129,7 @@ const INVESTIGATION: Demarche = {
     },
     {
       titre: "Communication",
-      objectifs: "Réaliser une production destinée à communiquer le résultat : texte, graphique, maquette, document multimédia.",
+      objectifs: "À la fin de cette séance, les élèves sauront communiquer leur résultat dans une production : texte, graphique, maquette, document multimédia.",
       duree: 30,
       phases: [
         ph("Production", "20 min", "Par groupes, une production pour une autre classe, les familles, l'affichage."),
@@ -1143,7 +1148,7 @@ const ENQUETE_HISTOIRE_GEO: Demarche = {
   seances: [
     {
       titre: "Questionnement et hypothèses",
-      objectifs: "Poser la question de la séquence ; proposer des réponses à partir de ce qu'on connaît et de ses représentations.",
+      objectifs: "À la fin de cette séance, les élèves sauront poser la question de la séquence, et proposer des réponses à partir de ce qu'ils connaissent.",
       duree: 45,
       phases: [
         ph("Situation initiale", "10 min", "Document d'accroche, trace, lieu, objet : … La question de la séquence.",
@@ -1155,7 +1160,7 @@ const ENQUETE_HISTOIRE_GEO: Demarche = {
     },
     {
       titre: "Analyse des documents",
-      objectifs: "Les hypothèses deviennent des faits quand elles se fondent sur des données vérifiées : documents, traces, étude de cas.",
+      objectifs: "À la fin de cette séance, les élèves sauront prélever des informations dans des documents, des traces, une étude de cas, pour vérifier leurs hypothèses.",
       duree: 45,
       phases: [
         ph("Documents", "10 min", "Corpus présenté : nature, auteur, date, lieu."),
@@ -1166,7 +1171,7 @@ const ENQUETE_HISTOIRE_GEO: Demarche = {
     },
     {
       titre: "Récit et mise en perspective",
-      objectifs: "Le récit de l'enseignant replace l'exemple dans son contexte ; repères sur la frise chronologique et sur la carte.",
+      objectifs: "À la fin de cette séance, les élèves sauront replacer l'exemple étudié dans son contexte, sur la frise chronologique et sur la carte.",
       duree: 30,
       phases: [
         ph("Récit", "15 min", "Récit historique ou description géographique par l'enseignant.", "Distingue l'histoire de la fiction ; nomme les acteurs."),
@@ -1175,7 +1180,7 @@ const ENQUETE_HISTOIRE_GEO: Demarche = {
     },
     {
       titre: "Élaboration de l'explication",
-      objectifs: "Rassembler l'ensemble des faits sous une forme choisie : texte, croquis, chronologie, schéma fléché.",
+      objectifs: "À la fin de cette séance, les élèves sauront rassembler les faits établis sous une forme choisie : texte, croquis, chronologie, schéma fléché.",
       duree: 30,
       phases: [
         ph("Explication", "20 min", "Trace écrite élaborée avec les élèves, en réponse à la question de la séquence.", "Fait justifier chaque étape de la démarche."),
@@ -1184,7 +1189,7 @@ const ENQUETE_HISTOIRE_GEO: Demarche = {
     },
     {
       titre: "Évaluation",
-      objectifs: "Répondre à une question proche en justifiant sa démarche à partir d'un document.",
+      objectifs: "À la fin de cette séance, les élèves sauront répondre à une question proche en justifiant leur démarche à partir d'un document.",
       duree: 20,
       phases: [
         ph("Évaluation", "20 min", "Un document nouveau ; une question ; la réponse justifiée."),
@@ -1202,7 +1207,7 @@ const EMC_DEBAT: Demarche = {
   seances: [
     {
       titre: "Choix de la question et lancement",
-      objectifs: "Faire émerger une question qui permet la controverse, entre des positions également défendables : dimension sociale, cognitive, psychologique.",
+      objectifs: "À la fin de cette séance, les élèves sauront formuler une question qui fait débat, entre des positions également défendables.",
       duree: 30,
       phases: [
         ph("Émergence", "15 min", "Document d'accroche, représentations, fait de vie scolaire ou d'actualité ; premier débat non préparé pour identifier la question.",
@@ -1213,7 +1218,7 @@ const EMC_DEBAT: Demarche = {
     },
     {
       titre: "Recherche et argumentaire",
-      objectifs: "Distinguer et articuler la position prise, les arguments qui l'étayent et les exemples ; anticiper les contre-arguments.",
+      objectifs: "À la fin de cette séance, les élèves sauront distinguer leur position, les arguments qui l'étayent et les exemples, et anticiper les contre-arguments.",
       duree: 45,
       phases: [
         ph("Recherche", "20 min", "Documents, entretiens, rencontres ; corpus exploité."),
@@ -1223,7 +1228,7 @@ const EMC_DEBAT: Demarche = {
     },
     {
       titre: "Le débat",
-      objectifs: "Exprimer son point de vue dans un échange régi par des règles, écouter, comprendre le point de vue de l'autre, chercher à convaincre en argumentant.",
+      objectifs: "À la fin de cette séance, les élèves sauront exprimer leur point de vue dans un échange réglé, écouter, comprendre celui des autres et chercher à convaincre en argumentant.",
       duree: 45,
       phases: [
         ph("Ouverture", "5 min", "Le modérateur pose et problématise la question ; rappel des règles ; disposition en U ou en cercle."),
@@ -1234,7 +1239,7 @@ const EMC_DEBAT: Demarche = {
     },
     {
       titre: "Dilemme moral",
-      objectifs: "Un court scénario, un protagoniste confronté à un choix, une question en termes de devoir — « que devrait faire … ? » : choisir et justifier.",
+      objectifs: "À la fin de cette séance, les élèves sauront choisir ce que devrait faire le personnage d'un dilemme — « que devrait faire … ? » — et justifier leur choix.",
       duree: 45,
       phases: [
         ph("Présentation du contexte", "5 min", "Supports : texte, extrait de journal, de film, image."),
@@ -1247,7 +1252,7 @@ const EMC_DEBAT: Demarche = {
     },
     {
       titre: "Bilan réflexif",
-      objectifs: "Auto-évaluation confrontée aux retours des évaluateurs et du groupe ; institutionnalisation des savoirs en jeu.",
+      objectifs: "À la fin de cette séance, les élèves sauront dire ce qu'ils ont appris, en confrontant leur auto-évaluation aux retours des évaluateurs et du groupe.",
       duree: 20,
       phases: [
         ph("Auto-évaluation", "5 min", "Chacun : ce que j'ai fait, ce que j'ai compris de l'autre."),
@@ -1269,7 +1274,7 @@ const ARTS_PLASTIQUES: Demarche = {
   seances: [
     {
       titre: "Incitation et pratique exploratoire",
-      objectifs: "Une incitation (mot, image, objet, contrainte, matériau) qui enclenche une pratique intuitive autour de la question travaillée : …",
+      objectifs: "À la fin de cette séance, les élèves sauront explorer la question travaillée dans une première pratique intuitive, à partir d'une incitation : …",
       duree: 45,
       phases: [
         ph("Incitation", "5 min", "Proposition donnée ; matériaux et outils à disposition.", "Installe une ambiance propice à la recherche ; ne montre pas de modèle à reproduire."),
@@ -1279,7 +1284,7 @@ const ARTS_PLASTIQUES: Demarche = {
     },
     {
       titre: "Verbalisation et références",
-      objectifs: "Mettre en mots la pratique (éléments du langage plastique), recevoir les productions des autres élèves et des œuvres d'artistes liées à la question.",
+      objectifs: "À la fin de cette séance, les élèves sauront mettre en mots leur pratique (éléments du langage plastique), et rapprocher les productions des autres et des œuvres d'artistes de la question travaillée.",
       duree: 30,
       phases: [
         ph("Verbalisation", "15 min", "Ce que j'ai fait, ce que j'ai cherché, ce que je vois chez les autres ; vocabulaire introduit.",
@@ -1290,7 +1295,7 @@ const ARTS_PLASTIQUES: Demarche = {
     },
     {
       titre: "Pratique réfléchie : projet personnel",
-      objectifs: "Développer une intention et y répondre : des choix (matériaux, formats, gestes) et des acquisitions techniques au service de l'intention.",
+      objectifs: "À la fin de cette séance, les élèves sauront développer une intention et y répondre, par des choix (matériaux, formats, gestes) et des techniques à son service.",
       duree: 45,
       phases: [
         ph("Intention", "5 min", "Chacun dit ce qu'il veut faire, à partir de la séance précédente."),
@@ -1300,7 +1305,7 @@ const ARTS_PLASTIQUES: Demarche = {
     },
     {
       titre: "Finalisation et exposition",
-      objectifs: "Achever, présenter, regarder, échanger : la diversité des réponses possibles à la question.",
+      objectifs: "À la fin de cette séance, les élèves sauront présenter leur production, regarder celles des autres et échanger : la diversité des réponses possibles à la question.",
       duree: 30,
       phases: [
         ph("Finalisation", "10 min", "Derniers choix ; un titre."),
@@ -1320,7 +1325,7 @@ const MUSIQUE: Demarche = {
   seances: [
     {
       titre: "Écoute — découverte, approfondissement, consolidation",
-      objectifs: "Écouter une œuvre : rencontre sensible, affinement de la perception et appropriation d'éléments de langage musical, mémorisation.",
+      objectifs: "À la fin de cette séance, les élèves sauront reconnaître l'œuvre écoutée et en décrire quelques éléments de langage musical, après l'avoir rencontrée, réécoutée et mémorisée.",
       duree: 30,
       phases: [
         ph("Découverte", "5 min", "Première écoute : réactions spontanées, ressentis.", "Ne guide pas encore : laisse émerger."),
@@ -1331,7 +1336,7 @@ const MUSIQUE: Demarche = {
     },
     {
       titre: "Chant — apprendre un chant",
-      objectifs: "Apprendre le chant … : échauffement, découverte, apprentissage par phrases, mise en chœur.",
+      objectifs: "À la fin de cette séance, les élèves sauront chanter le chant … : échauffement, découverte, apprentissage phrase par phrase, mise en chœur.",
       duree: 30,
       phases: [
         ph("Reprise d'un chant connu", "5 min", "Un ou deux chants appris repris : plaisir et mémoire."),
@@ -1343,7 +1348,7 @@ const MUSIQUE: Demarche = {
     },
     {
       titre: "Chanter avec expressivité",
-      objectifs: "Interpréter : nuances, intentions, diction au service du sens ; mobiliser le corps, le visage, le regard.",
+      objectifs: "À la fin de cette séance, les élèves sauront interpréter le chant : nuances, intentions, diction au service du sens, le corps, le visage et le regard mobilisés.",
       duree: 30,
       phases: [
         ph("Échauffement et reprise", "5 min", "Corps et voix ; le chant repris."),
@@ -1354,7 +1359,7 @@ const MUSIQUE: Demarche = {
     },
     {
       titre: "Explorer et créer",
-      objectifs: "Explorer sa voix, les sons, les objets sonores ; imaginer et organiser une courte production ; la coder.",
+      objectifs: "À la fin de cette séance, les élèves sauront explorer leur voix, les sons, les objets sonores, et organiser une courte production qu'ils sauront coder.",
       duree: 30,
       phases: [
         ph("Exploration", "10 min", "Jeux vocaux, objets sonores, corps : que peut-on produire ?"),
@@ -1364,7 +1369,7 @@ const MUSIQUE: Demarche = {
     },
     {
       titre: "Partager",
-      objectifs: "Chanter pour d'autres ; échanger, argumenter un jugement sur une musique en respectant le point de vue des autres.",
+      objectifs: "À la fin de cette séance, les élèves sauront chanter pour d'autres, et argumenter un jugement sur une musique en respectant le point de vue des autres.",
       duree: 20,
       phases: [
         ph("Production", "10 min", "Chanter pour une autre classe, les parents, un moment de l'école."),
@@ -1383,7 +1388,7 @@ const HISTOIRE_DES_ARTS: Demarche = {
   seances: [
     {
       titre: "Observer et décrire",
-      objectifs: "Identifier : donner un avis sur ce que représente ou exprime l'œuvre … ; décrire avec un vocabulaire simple.",
+      objectifs: "À la fin de cette séance, les élèves sauront décrire l'œuvre … avec un vocabulaire simple, et donner un avis sur ce qu'elle représente ou exprime.",
       duree: 30,
       phases: [
         ph("Question de départ", "5 min", "« De quoi s'agit-il ? » — l'œuvre projetée ou présentée, sans le cartel.", "Organise l'échange : premier tour de table."),
@@ -1394,7 +1399,7 @@ const HISTOIRE_DES_ARTS: Demarche = {
     },
     {
       titre: "Analyser",
-      objectifs: "Dégager, par l'observation ou l'écoute, les principales caractéristiques techniques et formelles ; ce que je comprends, et ce qui dans l'œuvre fait que je comprends cela.",
+      objectifs: "À la fin de cette séance, les élèves sauront dégager les principales caractéristiques techniques et formelles de l'œuvre, et dire ce qui, dans l'œuvre, leur fait comprendre ce qu'ils comprennent.",
       duree: 30,
       phases: [
         ph("Rappel", "5 min", "Ce qu'on a vu."),
@@ -1405,7 +1410,7 @@ const HISTOIRE_DES_ARTS: Demarche = {
     },
     {
       titre: "Situer",
-      objectifs: "Relier les caractéristiques de l'œuvre à des usages et au contexte historique et culturel de sa création ; la placer sur la frise.",
+      objectifs: "À la fin de cette séance, les élèves sauront relier l'œuvre à ses usages et au contexte historique et culturel de sa création, et la placer sur la frise.",
       duree: 30,
       phases: [
         ph("Usages", "10 min", "Pour quoi cette œuvre a-t-elle été réalisée ? Pour qui ? Où était-elle ?"),
@@ -1416,7 +1421,7 @@ const HISTOIRE_DES_ARTS: Demarche = {
     },
     {
       titre: "Garder trace et pratiquer",
-      objectifs: "Une trace écrite courte avec le vocabulaire ; une découverte par la pratique (croquis, prise de vue) ; ce qui nous touche.",
+      objectifs: "À la fin de cette séance, les élèves sauront garder une trace écrite courte avec le vocabulaire, et dire ce qui les touche, après une découverte par la pratique (croquis, prise de vue).",
       duree: 30,
       phases: [
         ph("Croquis", "15 min", "Dessiner pour observer et comprendre : forme générale, structure, détail."),
@@ -1436,7 +1441,7 @@ const LANGUES_VIVANTES: Demarche = {
   seances: [
     {
       titre: "Découverte",
-      objectifs: "Découvrir la thématique … à partir d'un support authentique ; comprendre puis répéter les premiers énoncés.",
+      objectifs: "À la fin de cette séance, les élèves sauront comprendre puis répéter les premiers énoncés de la thématique …, à partir d'un support authentique.",
       duree: 30,
       phases: [
         ph("Rituels de début de séance", "5 min", "Salutations, date, météo, comment on se sent — exclusivement en langue cible.",
@@ -1449,7 +1454,7 @@ const LANGUES_VIVANTES: Demarche = {
     },
     {
       titre: "Entraînement",
-      objectifs: "Rebrasser et s'approprier la langue travaillée grâce à différents ateliers de manipulation ; production imitée puis guidée.",
+      objectifs: "À la fin de cette séance, les élèves sauront réutiliser la langue travaillée, après l'avoir manipulée en ateliers : production imitée, puis guidée.",
       duree: 30,
       phases: [
         ph("Rituels", "5 min", "Rituels, dont ceux en lien avec l'apprentissage en cours."),
@@ -1461,7 +1466,7 @@ const LANGUES_VIVANTES: Demarche = {
     },
     {
       titre: "Production",
-      objectifs: "Produire en continu ou en interaction : de la production imitée à la production libre dans l'interaction, pour transférer à d'autres contextes.",
+      objectifs: "À la fin de cette séance, les élèves sauront produire en continu ou en interaction, de l'imitation à la production libre, et transférer à d'autres contextes.",
       duree: 30,
       phases: [
         ph("Rituels", "5 min", "Rituels."),
@@ -1473,7 +1478,7 @@ const LANGUES_VIVANTES: Demarche = {
     },
     {
       titre: "Réinvestissement — projet",
-      objectifs: "La tâche finale du scénario pédagogique : une situation de communication qui réinvestit ce qui a été travaillé (présentation, enregistrement, échange avec des correspondants).",
+      objectifs: "À la fin de cette séance, les élèves sauront réaliser la tâche finale : une situation de communication qui réinvestit ce qui a été travaillé (présentation, enregistrement, échange avec des correspondants).",
       duree: 30,
       phases: [
         ph("Rituels", "5 min", "Rituels."),
@@ -1483,7 +1488,7 @@ const LANGUES_VIVANTES: Demarche = {
     },
     {
       titre: "Rebrassage court",
-      objectifs: "Réactiver régulièrement : quelques minutes de rituel et de jeu pour entretenir le lexique et les structures.",
+      objectifs: "À la fin de cette séance, les élèves sauront retrouver le lexique et les structures déjà travaillés, entretenus par quelques minutes de rituel et de jeu.",
       duree: 10,
       phases: [
         ph("Rituel et jeu", "10 min", "Salutations, date, un jeu rapide sur le lexique en cours.", "Renforce l'exposition à la langue : rituels, EPS, moments de classe."),
@@ -1503,7 +1508,7 @@ const MATERNELLE_MODALITES: Demarche = {
   seances: [
     {
       titre: "Découvrir en jouant",
-      objectifs: "Un jeu structuré qui vise explicitement l'apprentissage … : exercer son autonomie, agir sur le réel, expérimenter des règles et des rôles.",
+      objectifs: "À la fin de cette séance, les élèves sauront jouer au jeu … en respectant ses règles et ses rôles : un jeu structuré qui vise explicitement l'apprentissage, pour agir sur le réel en autonomie.",
       duree: 30,
       phases: [
         ph("Présentation du jeu", "5 min", "Règle expliquée en montrant ; consigne reformulée par les élèves."),
@@ -1514,7 +1519,7 @@ const MATERNELLE_MODALITES: Demarche = {
     },
     {
       titre: "Réfléchir et résoudre un problème concret",
-      objectifs: "Un problème à la portée des élèves : mettre en lien des situations vécues, faire appel à ses connaissances, élaborer des propositions de résolution.",
+      objectifs: "À la fin de cette séance, les élèves sauront chercher la solution d'un problème concret à leur portée, en s'appuyant sur des situations vécues et sur ce qu'ils connaissent.",
       duree: 30,
       phases: [
         ph("Le problème", "5 min", "Situation concrète mise en scène, avec du matériel : …", "Propose un problème à leur portée ; dit ce qu'on cherche."),
@@ -1525,7 +1530,7 @@ const MATERNELLE_MODALITES: Demarche = {
     },
     {
       titre: "S'exercer",
-      objectifs: "Reprendre des processus connus dans des conditions variées : la stabilisation nécessite de nombreuses répétitions.",
+      objectifs: "À la fin de cette séance, les élèves sauront refaire avec plus d'assurance ce qu'ils connaissent déjà, dans des conditions variées : la stabilisation demande de nombreuses répétitions.",
       duree: 20,
       phases: [
         ph("Objectif expliqué", "3 min", "Ce qu'on est en train d'apprendre, le sens des efforts demandés."),
@@ -1535,7 +1540,7 @@ const MATERNELLE_MODALITES: Demarche = {
     },
     {
       titre: "Se remémorer et mémoriser",
-      objectifs: "Temps d'évocation des activités et des expériences ; mémoriser comptines, chansons, récits par des expositions répétées.",
+      objectifs: "À la fin de cette séance, les élèves sauront évoquer les activités vécues, et dire la comptine, la chanson ou le récit travaillés, mémorisés par des expositions répétées.",
       duree: 15,
       phases: [
         ph("Évocation", "7 min", "Qu'a-t-on fait, appris ? Photos, traces, affichages.", "S'exprime dans une langue riche, adaptée et explicite."),
@@ -1544,7 +1549,7 @@ const MATERNELLE_MODALITES: Demarche = {
     },
     {
       titre: "Atelier dirigé en trois temps",
-      objectifs: "Un atelier en petit groupe avec le professeur — mise en réussite, activité différenciée, retour — pendant que les autres sont en ateliers autonomes ou semi-dirigés.",
+      objectifs: "À la fin de cette séance, les élèves sauront … (ce que vise l'atelier) : un atelier en petit groupe avec le professeur — mise en réussite, activité différenciée, retour —, pendant que les autres sont en ateliers autonomes ou semi-dirigés.",
       duree: 30,
       phases: [
         ph("Temps 1 – Mise en réussite : découvrir, observer", "10 min", "Le professeur montre, verbalise, rappelle le travail précédent, présente l'objectif ; les élèves font avec lui.",
@@ -1575,27 +1580,27 @@ const PHONOLOGIE: Demarche = {
   resume: "Un enseignement explicite, structuré et progressif, en séances courtes et fréquentes en petits groupes : segmenter, dénombrer, discriminer, localiser, puis manipuler les syllabes ; entendre les rimes ; discriminer et manipuler les phonèmes, en lien avec les lettres.",
   seances: [
     seancePhono("Segmenter et dénombrer les syllabes",
-      "Frapper, scander, fusionner les syllabes de mots familiers ; les dénombrer et comparer.",
+      "À la fin de cette séance, les élèves sauront frapper, scander et fusionner les syllabes de mots familiers, les dénombrer et les comparer.",
       "Frapper les syllabes des prénoms en sautant ou avec un instrument ; scander une comptine.",
       "« Loto » : piocher une image, scander et dénombrer les syllabes, poser sur la case au bon nombre ; « Devine à qui je pense » à partir du codage des syllabes.",
       "Commence par la syllabe : l'unité la plus facilement perceptible."),
     seancePhono("Discriminer et localiser une syllabe",
-      "Repérer une syllabe dans une suite, dans des mots ; la localiser (début, milieu, fin) ; trouver l'intrus.",
+      "À la fin de cette séance, les élèves sauront repérer une syllabe dans une suite ou dans des mots, la localiser (début, milieu, fin) et trouver l'intrus.",
       "« La chasse à la syllabe » : lever la main dès qu'on entend « to » dans des syllabes, des mots, une phrase.",
       "« Loto des syllabes », « domino des syllabes », « trouver l'intrus » (bateau, banane, tapis, ballon).",
       "La tâche est plus aisée quand la syllabe est au début ou à la fin du mot."),
     seancePhono("Manipuler les syllabes",
-      "Inverser, supprimer, doubler, ajouter une syllabe ; trouver une règle de transformation.",
+      "À la fin de cette séance, les élèves sauront inverser, supprimer, doubler ou ajouter une syllabe, et trouver une règle de transformation.",
       "« Dis le mot lapin, j'enlève la, que reste-t-il ? » ; doubler la dernière syllabe (mototo, chapeaupeau).",
       "Inverser les syllabes de mots bisyllabiques ; ajouter une syllabe définie au début ou à la fin ; poursuivre une suite selon la règle.",
       "Les procédures comprises sur la syllabe seront remobilisées sur les phonèmes."),
     seancePhono("Entendre les rimes et les phonèmes",
-      "Repérer ce qui « sonne » pareil : rimes, assonances ; distinguer deux mots qui diffèrent d'un phonème ; étirer et fusionner les phonèmes.",
+      "À la fin de cette séance, les élèves sauront repérer ce qui « sonne » pareil (rimes, assonances), distinguer deux mots qui diffèrent d'un phonème, étirer et fusionner les phonèmes.",
       "Comptines à rimes ; mots qui riment associés ; paires pain/bain, poule/boule, four/tour.",
       "« Qui suis-je ? » : retrouver « ami » à partir de « aaaa-mmmm-iiii » ; bruiter les lettres de son prénom.",
       "Multi-sensoriel : gestes, lettres, images ; entraînement explicite en petits groupes homogènes."),
     seancePhono("Discriminer et manipuler un phonème",
-      "Repérer un phonème, le localiser, le coder ; ajouter, supprimer, substituer un phonème ; relier au lien oral-écrit : la lettre.",
+      "À la fin de cette séance, les élèves sauront repérer un phonème, le localiser, le coder, l'ajouter, le supprimer ou le substituer, et le relier à sa lettre.",
       "« La chasse au phonème » (/f/), « loto des phonèmes », « trouver l'intrus » (soleil, serpent, valise, sac).",
       "« Dans plouf, je retire /f/, que reste-t-il ? » ; « pour moto je dis roto » ; « la chasse aux lettres » : retrouver la lettre du phonème bruité dans son prénom.",
       "Les entraînements sont plus efficaces quand ils portent sur le lien lettres-sons."),
@@ -1620,7 +1625,7 @@ const CATEGORISER: Demarche = {
   seances: [
     {
       titre: "Étape 1 — Apporter les mots, en contexte",
-      objectifs: "Rencontrer les mots du corpus dans un univers de référence : nommer chaque objet par un mot précis, le décrire, dire à quoi il sert ; de l'objet réel au mot, en passant par son image.",
+      objectifs: "À la fin de cette séance, les élèves sauront nommer chaque objet du corpus par un mot précis, le décrire et dire à quoi il sert — l'objet réel, puis son image.",
       duree: 20,
       phases: [
         ph("Univers de référence", "10 min", "Dans un coin jeux — dînette, marchande, poupées — ou avec de vrais objets : manipuler, nommer, dire à quoi ça sert.",
@@ -1631,7 +1636,7 @@ const CATEGORISER: Demarche = {
     },
     {
       titre: "Étape 2 — Structurer : trier et classer",
-      objectifs: "Regrouper les images du corpus pour mieux retenir les mots : trouver l'intrus, compléter une catégorie, proposer une catégorisation, et justifier.",
+      objectifs: "À la fin de cette séance, les élèves sauront regrouper les images du corpus : trouver l'intrus, compléter une catégorie, proposer une catégorisation, et justifier leurs choix.",
       duree: 20,
       phases: [
         ph("Temps 1 – Mise en réussite", "5 min", "L'objectif annoncé : regrouper les mots pour mieux les retenir. Les images nommées, puis une première catégorisation collective, validée par le professeur.",
@@ -1644,7 +1649,7 @@ const CATEGORISER: Demarche = {
     },
     {
       titre: "Étape 2 — Nommer les catégories, garder la trace",
-      objectifs: "Donner son nom à chaque catégorie — le mot qui les dit toutes —, l'enrichir de mots nouveaux, et construire l'affichage des catégories de la classe.",
+      objectifs: "À la fin de cette séance, les élèves sauront donner son nom à chaque catégorie — le mot qui les dit toutes — et l'enrichir de mots nouveaux ; l'affichage des catégories de la classe en garde la trace.",
       duree: 15,
       phases: [
         ph("Nommer", "5 min", "Chaque catégorie reçoit son nom : « les fruits », « les vêtements » ; en grande section, ses sous-catégories."),
@@ -1655,7 +1660,7 @@ const CATEGORISER: Demarche = {
     },
     {
       titre: "Étape 3 — Mémoriser : le loto des catégories",
-      objectifs: "Se remémorer les mots appris en jouant : une séance courte et ritualisée, à reprendre plusieurs jours de suite, puis à intervalles plus espacés.",
+      objectifs: "À la fin de cette séance, les élèves sauront retrouver les mots appris et les ranger dans leur catégorie en jouant. Séance courte et ritualisée, à reprendre plusieurs jours de suite, puis à intervalles plus espacés.",
       duree: 15,
       phases: [
         ph("Rappel", "3 min", "On relit l'affichage : chaque catégorie, ses mots."),
@@ -1666,7 +1671,7 @@ const CATEGORISER: Demarche = {
     },
     {
       titre: "Étape 3 — Mémoriser : jouer avec les catégories",
-      objectifs: "Manipuler les mots appris dans des jeux à règles : « J'appelle… », le jeu des familles, le mistigri — chaque carte nommée, chaque choix justifié.",
+      objectifs: "À la fin de cette séance, les élèves sauront nommer chaque carte et justifier chaque choix dans des jeux à règles : « J'appelle… », le jeu des familles, le mistigri.",
       duree: 15,
       phases: [
         ph("Rappel", "3 min", "La règle du jeu, dite en montrant ; un tour joué ensemble."),
@@ -1677,7 +1682,7 @@ const CATEGORISER: Demarche = {
     },
     {
       titre: "Étape 4 — Réutiliser les mots",
-      objectifs: "Réemployer les mots et les catégories dans d'autres contextes : les espaces jeux, les devinettes, une dictée à l'adulte.",
+      objectifs: "À la fin de cette séance, les élèves sauront réemployer les mots et les catégories dans d'autres contextes : les espaces jeux, les devinettes, une dictée à l'adulte.",
       duree: 20,
       phases: [
         ph("Dans les espaces jeux", "10 min", "Ranger la dînette par catégories, faire les courses chez les marchands, préparer le sac de la poupée : employer les mots appris."),
@@ -1687,7 +1692,7 @@ const CATEGORISER: Demarche = {
     },
     {
       titre: "Évaluation — observer, à distance",
-      objectifs: "Observer chez chaque élève ce qui est acquis : nommer les images, trouver l'intrus, classer, nommer les catégories — puis vérifier un mois plus tard que le corpus est mémorisé.",
+      objectifs: "À la fin de cette séance, les élèves sauront montrer ce qu'ils ont acquis : nommer les images, trouver l'intrus, classer, nommer les catégories. Le professeur vérifie un mois plus tard que le corpus est mémorisé.",
       duree: 15,
       phases: [
         ph("Observation", "12 min", "En petit groupe ou seul avec l'élève, avec les cartes-images : nommer, trier, retirer l'intrus, nommer les catégories ; la grille se remplit.",
