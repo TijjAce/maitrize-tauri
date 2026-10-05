@@ -25,6 +25,7 @@ import { GestesTab, MotsEnGestesTab } from "./AteliersGestes";
 import { CategoriserTab } from "./AteliersCategoriser";
 import { CollectionsTab } from "./AteliersCollections";
 import { SuitesTab } from "./AteliersSuites";
+import { CarteMentaleTab } from "./AteliersCarteMentale";
 import { SyllabeManquanteTab } from "./AtelierSyllabes";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { chargerPicto, usePictoImage } from "../components/ChoixPicto";
@@ -48,6 +49,7 @@ const ONGLETS = [
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "tri", "phrases", "motsMeles",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "calcul", "arbre", "fractions", "oie", "heure", "numeration",
+  "carteMentale",
 ] as const;
 type Onglet = typeof ONGLETS[number];
 
@@ -166,6 +168,14 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
         quoi: "Des horloges à lire, des cadrans où dessiner les aiguilles — heures pile, demies, quarts, cinq minutes." },
       { id: "numeration", nom: "Grands nombres et décimaux", icone: "💯", cycles: "Cycle 3",
         quoi: "Tableau de numération, écriture en lettres, décomposition, comparaison, encadrement." },
+    ],
+  },
+  {
+    id: "affichages", libelle: "📌 Affichages",
+    aide: "Ce qui se met au mur de la classe : la carte mentale d'un thème, d'une notion, d'une leçon.",
+    outils: [
+      { id: "carteMentale", nom: "Carte mentale", icone: "🧠", pictos: true, cycles: "Cycles 1 à 3",
+        quoi: "Le thème au centre, ses branches autour, chacune à sa couleur avec ses idées en mots et en images : l'affiche de la classe, en A4 ou agrandie en A3." },
     ],
   },
 ];
@@ -391,6 +401,7 @@ export default function Jeux() {
         : onglet === "syllabeManquante" ? <SyllabeManquanteTab banque={Boolean(etat?.installee)} />
         : onglet === "collections" ? <CollectionsTab banque={Boolean(etat?.installee)} />
         : onglet === "suites" ? <SuitesTab banque={Boolean(etat?.installee)} />
+        : onglet === "carteMentale" ? <CarteMentaleTab banque={Boolean(etat?.installee)} />
         : onglet === "nombres" ? <CartesNombresTab />
         : onglet === "cubes" ? <CubesTab />
         : onglet === "calcul" ? <CartesCalculTab />
