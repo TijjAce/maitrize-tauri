@@ -5,10 +5,13 @@
 // déroulement de la séance citée.
 //
 // Le titre se reconnaît sans accents ni majuscules ; la séance, sur la même
-// ligne, par son numéro (« séance 2 ») ou par son titre.
+// ligne, par son numéro (« séance 2 ») ou par son titre. Une ligne qui cite
+// autre chose — un PDF, un manuel, une compétence, un rituel — ne cite pas de
+// séquence, même si elle en contient le titre.
 
 import type { Seance, Sequence } from "./api";
 import { escapeHtml } from "./print";
+import { citeAutreChose } from "./lignesCitees";
 
 export interface CitationSequence { sequence: Sequence; seance: Seance | null }
 
@@ -32,6 +35,7 @@ export function sequencesCitees(texte: string, sequences: Sequence[], seances: S
   const sortie: CitationSequence[] = [];
   const vues = new Set<string>();
   for (const ligne of (texte ?? "").split(/\n/)) {
+    if (citeAutreChose(ligne)) continue;
     let reste = forme(ligne);
     const trouvees: { s: Sequence; position: number }[] = [];
     // La ligne du bouton : une seule séquence, en tête, même au titre court.

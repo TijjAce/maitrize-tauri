@@ -68,6 +68,11 @@ describe("le matériel des séances du journal", () => {
     const c = creneau("2026-10-05", "17:00", "s1", "Réunion", "📄 Mots mêlés Halloween\n📄 Mots mêlés Halloween");
     expect(materielDuCreneau(c, sequences, seances, bureau).map((m) => m.id)).toEqual(["m1", "b3", "b1"]);
     expect(annexesDesCreneaux([{ ...c, seanceId: null }], sequences, seances, bureau).map((a) => a.fichier)).toEqual(["h.pdf"]);
+    // La séquence « mots mêlés » a son matériel : le PDF « Mots mêlés Halloween » cité ne l'apporte pas.
+    const avecSequence = [...sequences, { id: "q3", titre: "mots mêlés" } as Sequence];
+    const avecSonMateriel = [...bureau, materiel({ id: "mm", titre: "Mots mêlés", sequenceId: "q3", pdfsJson: '["k.pdf"]' })];
+    const seul = creneau("2026-10-05", "17:00", null, "Réunion", "📚 Organiser les mots en réseau · séance 3 : Découverte du corpus\n📄 Mots mêlés Halloween");
+    expect(materielDuCreneau(seul, avecSequence, seances, avecSonMateriel).map((m) => m.id)).toEqual(["m5", "b1"]);
   });
 
   it("suit l'ordre des créneaux, un fichier une seule fois, avec d'où il vient", () => {
