@@ -17,7 +17,7 @@
 
 import { escapeHtml } from "./print";
 import { melanger } from "./hasard";
-import { HAUTEUR_UTILE_MM, attributionPour, carte, feuille, imgPicto, legende, pagesDeCartes, type FormatGrille } from "./cartesImprimables";
+import { HAUTEUR_UTILE_MM, LARGEUR_UTILE_MM, attributionPour, carte, feuille, imgPicto, legende, pagesDeCartes, type FormatGrille } from "./cartesImprimables";
 import type { MotImage } from "./jeuxSons";
 
 export type Niveau = "PS" | "MS" | "GS";
@@ -526,22 +526,55 @@ function consigneDuTri(r: ReglagesCategoriser): string {
     : `Découpe les images. Range chaque image dans la bonne ${ou} et dis pourquoi.${intrus}`;
 }
 
+/** Les images du tri : la place de chacune se compte dans les boîtes, où l'élève les colle. */
+const formatDuTri = (n: Niveau): FormatGrille => (n === "PS" ? { colonnes: 3, lignes: 5, hauteurMm: 50 } : { colonnes: 4, lignes: 5, hauteurMm: 46 });
+/** La hauteur d'une page de boîtes : la première porte le titre, la consigne, le prénom et l'en-tête des compétences. */
+const PLACE_PREMIERE_PAGE = HAUTEUR_UTILE_MM - 55;
+const PLACE_PAGE = HAUTEUR_UTILE_MM - 12;
+/** Le toit d'une maison, en mm : il compte dans sa hauteur. */
+const TOIT = 22;
+const ECART_BOITES = 4;
+
+/**
+ * Les boîtes du tri, page par page. Chacune doit recevoir toutes ses images
+ * collées, à leur taille, rangée par rangée sous son en-tête : une page en
+ * porte autant que la place le permet — souvent une seule —, et chaque boîte
+ * grandit jusqu'à remplir sa part de page.
+ */
+export function pagesDuTri(r: Pick<ReglagesCategoriser, "niveau" | "maisons" | "categories">): { categories: Categorie[]; hauteurMm: number }[] {
+  const format = formatDuTri(r.niveau);
+  const parRangee = Math.max(1, Math.floor((LARGEUR_UTILE_MM - 10) / (LARGEUR_UTILE_MM / format.colonnes)));
+  const toit = r.maisons ? TOIT : 0;
+  const besoin = (c: Categorie) => Math.ceil(Math.max(1, c.mots.length) / parRangee) * (format.hauteurMm ?? 46) + 34 + toit;
+  const pages: { categories: Categorie[]; hauteurMm: number }[] = [];
+  let page: Categorie[] = [];
+  let pris = 0;
+  const place = () => (pages.length === 0 ? PLACE_PREMIERE_PAGE : PLACE_PAGE);
+  const fermer = () => {
+    const k = page.length;
+    pages.push({ categories: page, hauteurMm: Math.floor((place() - ECART_BOITES * (k - 1)) / k) });
+    page = [];
+    pris = 0;
+  };
+  for (const c of categoriesRangees(r.categories)) {
+    if (page.length && pris + ECART_BOITES + besoin(c) > place()) fermer();
+    pris += (page.length ? ECART_BOITES : 0) + besoin(c);
+    page.push(c);
+  }
+  if (page.length) fermer();
+  return pages;
+}
+
 function htmlTri(r: ReglagesCategoriser, images: Images, alea: () => number): string {
-  const rangees = categoriesRangees(r.categories);
-  // Deux boîtes l'une sous l'autre, larges ; au-delà, deux colonnes.
-  const colonnes = rangees.length <= 2 ? 1 : 2;
-  const rangs = Math.ceil(rangees.length / colonnes);
-  // Le titre, la consigne, le prénom, et l'en-tête des compétences s'il y en a ; le toit des maisons en plus.
-  const toit = r.maisons ? 14 : 0;
-  const hauteur = Math.max(36, Math.floor((HAUTEUR_UTILE_MM - 70 - toit * rangs) / rangs) - 4);
-  const boites = rangees.map((c) => {
-    const i = r.categories.indexOf(c);
-    return `<div class="ct-boite${r.maisons ? " ct-maison" : ""}" style="--c:${couleurDe(i)};height:${hauteur}mm">`
-      + `${r.maisons ? `<div class="ct-toit"></div>` : ""}<div class="ct-entete">${enteteCategorie(c, images, r.nommer)}</div><div class="ct-fond"></div></div>`;
-  }).join("");
   const t = r.maisons ? "Les maisons des mots" : "Les boîtes de tri";
-  const planche = `<div class="page">${titre(t)}${consigne(consigneDuTri(r))}${prenom}<div class="ct-boites" style="grid-template-columns:repeat(${colonnes},1fr)">${boites}</div></div>`;
-  return planche + pageDesCartes(toutesMelees(r.categories, alea), r, images) + corrige(t, r.categories);
+  const toit = r.maisons ? TOIT : 0;
+  const boite = (c: Categorie, hauteur: number) =>
+    `<div class="ct-boite${r.maisons ? " ct-maison" : ""}" style="--c:${couleurDe(r.categories.indexOf(c))};height:${hauteur - toit}mm">`
+    + `${r.maisons ? `<div class="ct-toit"></div>` : ""}<div class="ct-entete">${enteteCategorie(c, images, r.nommer)}</div><div class="ct-fond"></div></div>`;
+  const planches = pagesDuTri(r).map((p, i) => `<div class="page">${i === 0 ? `${titre(t)}${consigne(consigneDuTri(r))}${prenom}` : ""}`
+    + `<div class="ct-boites">${p.categories.map((c) => boite(c, p.hauteurMm)).join("")}</div></div>`).join("");
+  const cartes = toutesMelees(r.categories, alea).map((m) => carteImage(m, images, r.legendes));
+  return planches + pagesDeCartes(cartes, formatDuTri(r.niveau), titre("Les images à découper")) + corrige(t, r.categories);
 }
 
 function consigneIntrus(n: Niveau): string {
@@ -697,8 +730,8 @@ export const STYLE_CATEGORISER = `
   .feuille.ct .ct-boites { display: grid; gap: 4mm; }
   .feuille.ct .ct-boite { border: 1.2mm solid var(--c); border-radius: 4mm; padding: 3mm; display: flex; flex-direction: column; gap: 2mm; box-sizing: border-box; }
   .feuille.ct .ct-fond { flex: 1; border: 1.5px dashed #c4c9d6; border-radius: 3mm; }
-  .feuille.ct .ct-maison { border-top: none; border-radius: 0 0 3mm 3mm; padding-top: 0; position: relative; margin-top: 14mm; }
-  .feuille.ct .ct-toit { height: 14mm; margin: -14mm -4.2mm 2mm; background: var(--c); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+  .feuille.ct .ct-maison { border-top: none; border-radius: 0 0 3mm 3mm; padding-top: 0; position: relative; margin-top: 22mm; }
+  .feuille.ct .ct-toit { height: 22mm; margin: -22mm -4.2mm 2mm; background: var(--c); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
   .feuille.ct .ct-lignes { display: flex; flex-direction: column; gap: 3mm; }
   .feuille.ct .ct-ligne { display: grid; gap: 3mm; align-items: center; border: 1px solid #cfd4e2; border-radius: 3mm; padding: 2mm 3mm; box-sizing: border-box; page-break-inside: avoid; }
   .feuille.ct .ct-numero { font-size: 14px; font-weight: 800; color: #687087; }
