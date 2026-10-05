@@ -7,7 +7,10 @@ const assoc = (id: string, tables: number[] = []) => problemesAssocies(objectifP
 describe("les problèmes qui réinvestissent un calcul", () => {
   it("sont des problèmes partie-tout pour l'addition et la soustraction, à la taille des nombres", () => {
     expect(assoc("cp-complements-10")).toMatchObject({ atelier: "partieTout", inconnue: "partie", max: 10 });
-    expect(assoc("cp-sommes-10")).toMatchObject({ atelier: "partieTout", inconnue: "melange", max: 10 });
+    // Au CP, on cherche le résultat des sommes : les problèmes cherchent le tout.
+    expect(assoc("cp-sommes-10")).toMatchObject({ atelier: "partieTout", inconnue: "tout", max: 10 });
+    // Dans les deux sens, au CE1 : le tout ou une partie.
+    expect(assoc("ce1-tables-addition")).toMatchObject({ atelier: "partieTout", inconnue: "melange", max: 20 });
     expect(assoc("cp-ajouter-9")).toMatchObject({ atelier: "partieTout", inconnue: "tout", max: 100 });
     expect(assoc("ce1-soustraire-9")).toMatchObject({ atelier: "partieTout", inconnue: "partie", max: 1000 });
   });
@@ -31,7 +34,7 @@ describe("les problèmes qui réinvestissent un calcul", () => {
     const problemes = problemesDe(a, 4, 3);
     expect(problemes).toHaveLength(4);
     expect(problemes.every((p) => p.enonce.length > 0)).toBe(true);
-    expect(reglagesDeLAtelier(a, "Problèmes — sommes")).toEqual({ titre: "Problèmes — sommes", parties: 2, inconnue: "melange", max: 10, perso: false });
+    expect(reglagesDeLAtelier(a, "Problèmes — sommes")).toEqual({ titre: "Problèmes — sommes", parties: 2, inconnue: "tout", max: 10, perso: false });
     const m = assoc("ce1-table-multiplication", [7])!;
     expect(reglagesDeLAtelier(m, "T")).toMatchObject({ perso: true, valeurMin: 7, valeurMax: 7, partsMin: 2, partsMax: 10 });
     expect(problemesDe(m, 3, 5).every((p) => p.enonce.length > 0)).toBe(true);
