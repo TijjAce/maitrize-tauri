@@ -93,9 +93,10 @@ interface RefDom { id: string; titre: string; sousDomaines?: RefSous[] }
 /**
  * « Organiser les mots en catégorie et en réseau », à cet âge, dans les
  * référentiels actifs — le programme 2025 d'abord : la compétence que la
- * séquence vise quand l'atelier n'en a pas reçu.
+ * séquence vise quand l'atelier n'en a pas reçu. Une autre séquence de
+ * maternelle y cherche la sienne par son intitulé.
  */
-export function competenceDuProgramme(referentiels: Referentiel[], niveau: Niveau): CompetenceSelectionnee | null {
+export function competenceDuProgramme(referentiels: Referentiel[], niveau: Niveau, intitule = /organiser les mots en cat/i): CompetenceSelectionnee | null {
   const actifs = referentiels.filter((r) => r.actif).sort((a, b) => Number(/2025/.test(b.nom)) - Number(/2025/.test(a.nom)));
   for (const ref of actifs) {
     let donnees: { domaines?: RefDom[] } | null = null;
@@ -103,7 +104,7 @@ export function competenceDuProgramme(referentiels: Referentiel[], niveau: Nivea
     for (const dom of donnees?.domaines ?? []) for (const sd of dom.sousDomaines ?? []) {
       const groupes = [{ cg: null as RefCG | null, comps: sd.competences ?? [] }, ...(sd.competencesGenerales ?? []).map((cg) => ({ cg, comps: cg.competences ?? [] }))];
       for (const { cg, comps } of groupes) for (const c of comps) {
-        if (!/organiser les mots en cat/i.test(c.texte) || (c.niveau && c.niveau !== niveau)) continue;
+        if (!intitule.test(c.texte) || (c.niveau && c.niveau !== niveau)) continue;
         return {
           id: newId(), referentielNom: ref.nom, domaineId: dom.id, domaineTitre: dom.titre, sousDomaineTitre: sd.titre,
           competenceGeneraleTitre: cg?.titre ?? null, competenceTitre: c.texte, niveau: c.niveau ?? null, competenceRefId: c.id,
