@@ -249,7 +249,14 @@ export interface Dessin { svg: string; largeur: number; hauteur: number }
  * petit, posés sur une même ligne de base comme sur la table.
  */
 export function dessinerCubes(n: number, u: number, couleurs: CouleursCubes): Dessin {
-  const parts = decomposer(n);
+  return dessinerGroupes(decomposer(n), u, couleurs, `${n} en cubes`);
+}
+
+/**
+ * Des groupements donnés, pas forcément au plus juste : 5 plaques, 13 barres
+ * et 5 cubes font 635, comme dans les exemples du programme de CE1.
+ */
+export function dessinerGroupes(parts: Record<Groupement, number>, u: number, couleurs: CouleursCubes, titre: string): Dessin {
   const ecartGroupes = 2.5 * u;
   type Groupe = { g: Groupement; largeur: number; hauteur: number; positions: [number, number][] };
   const groupes: Groupe[] = [];
@@ -276,7 +283,7 @@ export function dessinerCubes(n: number, u: number, couleurs: CouleursCubes): De
   const marge = 0.3; // le trait du bord ne doit pas être rogné
   const L = f(largeur + 2 * marge), H = f(hauteur + 2 * marge);
   return {
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${L}mm" height="${H}mm" viewBox="${-marge} ${-marge} ${L} ${H}" role="img" aria-label="${n} en cubes">${corps}</svg>`,
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${L}mm" height="${H}mm" viewBox="${-marge} ${-marge} ${L} ${H}" role="img" aria-label="${escapeHtml(titre)}">${corps}</svg>`,
     largeur: L, hauteur: H,
   };
 }
