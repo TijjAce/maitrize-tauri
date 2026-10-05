@@ -84,7 +84,7 @@ describe("comparer les nombres", () => {
     expect(exempleDuSavoir(30)).toEqual([21, 18]);
     const reglages = r({ jusqua: 100 });
     const html = htmlComparer(paquet(reglages, 5), reglages);
-    expect(html).toContain("71 est plus grand que 68, car dans 71 il y a 7 dizaines alors que dans 68 il y a seulement 6 dizaines.");
+    expect(html).toContain("71 est plus grand que 68, car dans 71 il y a 7\u00a0dizaines alors que dans 68 il y a seulement 6\u00a0dizaines.");
     expect(html).toContain("<b>La bataille des nombres</b>");
     expect(html).toContain("<b>La file des nombres</b>");
     expect(html).toContain("<b>Le nombre caché</b>");
@@ -96,7 +96,7 @@ describe("comparer les nombres", () => {
     expect(compter(html, /<div class="carte">/g)).toBe(32 + 12);
     // Au champ de la période 1, les exemples restent sous 30.
     const p1 = htmlComparer(paquet(r({ jusqua: 30 }), 5), r({ jusqua: 30 }));
-    expect(p1).toContain("21 est plus grand que 18, car dans 21 il y a 2 dizaines alors que dans 18 il y a seulement 1 dizaine.");
+    expect(p1).toContain("21 est plus grand que 18, car dans 21 il y a 2\u00a0dizaines alors que dans 18 il y a seulement 1\u00a0dizaine.");
     expect(p1).toContain("« 17 est plus petit que 21 »");
     // Sans la règle, les signes ni la feuille de jeu : les cartes seules.
     const seules = htmlComparer(paquet(r(), 5), r({ regle: false, signes: false, feuilleDeJeu: false }));
