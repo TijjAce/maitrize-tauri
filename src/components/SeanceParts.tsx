@@ -5,6 +5,7 @@ import { api, MaterielItem, newId, nowIso, raccourci } from "../api";
 import { FichierImg } from "./Deroulement";
 import { useFileDropZone, estPdf, estImage, estDocument, typeDocument, EXTENSIONS_DOCUMENTS, fichierEnBase64 } from "../dragdrop";
 import { toast } from "./Toaster";
+import { ouvrirLaPieceJointe } from "./LecteurMarkdown";
 import { Input, Modal, useAsync } from "./ui";
 import { VignettePdf } from "./VignettePdf";
 import { PdfViewer } from "./PdfViewer";
@@ -435,7 +436,7 @@ export function FileListEditor({ type, fichiers, onChange }: {
           {fichiers.map((f) => (
             <div key={f} className="list-row" style={{ marginBottom: 6 }}>
               <span title={typeDocument(f).libelle}>{typeDocument(f).icone}</span><div style={{ flex: 1 }} className="meta">{typeDocument(f).libelle} · {f}</div>
-              <button className="btn ghost sm" onClick={() => api.fichierOuvrir(f).catch((e) => toast(String(e), { icone: "⚠️" }))} aria-label="Ouvrir">↗</button>
+              <button className="btn ghost sm" onClick={() => ouvrirLaPieceJointe(f).catch((e) => toast(String(e), { icone: "⚠️" }))} aria-label="Ouvrir">↗</button>
               <button className="btn ghost sm" onClick={() => supprimer(f)} aria-label="Supprimer">🗑</button>
             </div>
           ))}
