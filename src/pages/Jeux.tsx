@@ -32,6 +32,7 @@ import { chargerPicto, usePictoImage } from "../components/ChoixPicto";
 import { BoutonMesImages, imagePourLePdf } from "../components/MesImages";
 import { gestesDemandes, gestesPourLesJeux, useNombreDeGestes } from "../components/BanqueDeGestes";
 import { estPerso } from "../imagesPerso";
+import { chercherPictos, pictosDesMots } from "../mesPictos";
 
 // ── Loto et tableaux à partir des pictogrammes ARASAAC ────────────────────
 //
@@ -627,7 +628,7 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
   const ajouterMots = async (mots = motsDeLaListe(texteMots)) => {
     if (!mots.length) return;
     try {
-      const [trouves, pasTrouves] = await api.arasaacParMots(mots);
+      const [trouves, pasTrouves] = await pictosDesMots(mots);
       const avant = selection.length;
       const suite = ajouter(selection, trouves);
       setSelection(suite);
@@ -654,7 +655,7 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
   React.useEffect(() => {
     const t = setTimeout(() => {
       if (recherche.trim().length < 2) { setResultats([]); return; }
-      api.arasaacChercher(recherche.trim(), 60).then(setResultats).catch(() => setResultats([]));
+      chercherPictos(recherche.trim(), 60).then(setResultats).catch(() => setResultats([]));
     }, 200);
     return () => clearTimeout(t);
   }, [recherche]);

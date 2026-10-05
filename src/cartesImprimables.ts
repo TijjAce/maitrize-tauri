@@ -6,6 +6,7 @@
 // de style, sous une racine `.feuille` qui ne déborde pas sur l'application.
 
 import { estPerso } from "./imagesPerso";
+import { mentionDeMesPictos } from "./mesPictos";
 import { escapeHtml } from "./print";
 
 /** Largeur utile d'une page A4 avec les marges de `@page` (14 mm). */
@@ -45,11 +46,14 @@ export const ATTRIBUTION_ARASAAC =
 /**
  * La mention, quand la feuille porte au moins un pictogramme de la banque.
  * Les images de l'enseignant — une photo, un dessin — n'ont rien à lui
- * attribuer : une feuille qui n'a qu'elles sort sans mention.
+ * attribuer : une feuille qui n'a qu'elles sort sans mention. Les pictos de
+ * « Mes pictos » ont la leur : un dessin de l'IA n'est pas d'ARASAAC.
  */
 export function attributionPour(ids: Iterable<number | null | undefined>, mention = ATTRIBUTION_ARASAAC): string {
-  for (const id of ids) if (id != null && !estPerso(id)) return mention;
-  return "";
+  const liste = [...ids];
+  const miens = mentionDeMesPictos(liste);
+  return (liste.some((id) => id != null && !estPerso(id)) ? mention : "")
+    + (miens ? `<div class="attribution">${escapeHtml(miens)}</div>` : "");
 }
 
 /** Une image de pictogramme, ou une case vide si elle manque. */

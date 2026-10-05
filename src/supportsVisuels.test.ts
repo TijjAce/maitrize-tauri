@@ -264,6 +264,9 @@ describe("les photos des objets, et les cartes à découper", () => {
     expect(normaliserPicto({ id: null, mot: "balle", photo: "balle.jpg" })).toEqual({ id: null, mot: "balle", photo: "balle.jpg" });
     expect(normaliserPicto({ id: 3, mot: "x", photo: "../secret" }).photo).toBeUndefined();
     expect(normaliserPicto({ id: 3, mot: "x", photo: "a/b.jpg" }).photo).toBeUndefined();
+    // Un picto de « Mes pictos » se garde ; une image d'une séance de travail, non : elle ne survit pas au redémarrage.
+    expect(normaliserPicto({ id: -1_000_000_123, mot: "trottinette" }).id).toBe(-1_000_000_123);
+    expect(normaliserPicto({ id: -4, mot: "x" }).id).toBeNull();
     expect(cleImage({ id: 12, mot: "", photo: "balle.jpg" })).toBe("photo:balle.jpg");
     expect(idsDes(etapes)).toEqual([12, "photo:balle.jpg"]);
   });

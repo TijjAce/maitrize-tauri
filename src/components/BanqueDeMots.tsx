@@ -5,11 +5,12 @@ import { toast } from "./Toaster";
 import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
 import { motsDeLaListe, uneImageParMot } from "../loto";
 import { melanger } from "../hasard";
-import { usePictoImage } from "./ChoixPicto";
+import { EtiquetteMonPicto, usePictoImage } from "./ChoixPicto";
 import type { MotImage } from "../jeuxSons";
 import { useProjetDuMoment } from "./ProjetDuMoment";
 import { BoutonMesImages } from "./MesImages";
 import { estPerso } from "../imagesPerso";
+import { pictosDesMots } from "../mesPictos";
 
 // Les mots d'un jeu : ceux qu'on écrit, ceux qu'un thème apporte.
 //
@@ -18,26 +19,47 @@ import { estPerso } from "../imagesPerso";
 // quand il en faut plus. Chaque mot se voit, avec son image, et se retire d'un
 // clic ; rien ne s'imprime qu'on n'ait regardé.
 
-function Chip({ m, extra, onRetirer, onRenommer }: {
+function Chip({ m, extra, onRetirer, onRenommer, onSeul }: {
   m: MotImage; extra?: React.ReactNode; onRetirer: () => void;
   /** Pour une image de l'enseignant : son mot s'écrit ici, le nom du fichier n'en est qu'une proposition. */
   onRenommer?: (mot: string) => void;
+  /** Ce que la feuille montre du mot : son image, son mot, ou les deux — jamais rien. */
+  onSeul?: (seul: MotImage["seul"]) => void;
 }) {
   const src = usePictoImage(m.id);
+  const sansImage = m.seul === "mot", sansMot = m.seul === "image";
   return (
-    <span className="bm-chip" title={m.id == null ? "Aucune image trouvée : le mot s'imprimera seul" : onRenommer ? "Votre image : écrivez son mot" : m.mot}>
+    <span className={`bm-chip${sansImage ? " bm-sans-image" : ""}${sansMot ? " bm-sans-mot" : ""}`}
+      title={m.id == null ? "Aucune image trouvée : le mot s'imprimera seul" : onRenommer ? "Votre image : écrivez son mot" : m.mot}>
       {src ? <img src={src} alt="" /> : <span className="bm-vide" />}
+      <EtiquetteMonPicto id={m.id} />
       {onRenommer
         ? <input className="bm-renommer" value={m.mot} size={Math.max(4, m.mot.length)} aria-label="Le mot de cette image"
             onChange={(e) => onRenommer(e.target.value)} />
         : <span className="bm-mot">{m.mot}</span>}
       {extra}
+      {onSeul && src && (
+        <span className="bm-montrer" role="group" aria-label={`Ce que la feuille montre de « ${m.mot} »`}>
+          <button type="button" aria-pressed={!sansImage} disabled={sansMot}
+            title={sansImage ? "Remettre l'image sur la feuille" : "Enlever l'image de la feuille : le mot seul"}
+            onClick={() => onSeul(sansImage ? undefined : "mot")}>🖼</button>
+          <button type="button" aria-pressed={!sansMot} disabled={sansImage}
+            title={sansMot ? "Remettre le mot sur la feuille" : "Enlever le mot de la feuille : l'image seule"}
+            onClick={() => onSeul(sansMot ? undefined : "image")}>Aa</button>
+        </span>
+      )}
       <button type="button" className="bm-x" aria-label={`Retirer ${m.mot}`} onClick={onRetirer}>×</button>
     </span>
   );
 }
 
-export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions }: {
+/** Le mot, avec ce qu'il montre ; les deux, c'est sans réglage. */
+const avecSeul = (m: MotImage, seul: MotImage["seul"]): MotImage => {
+  const { seul: _avant, ...reste } = m;
+  return seul ? { ...reste, seul } : reste;
+};
+
+export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions, affichage = false }: {
   mots: MotImage[];
   onChange: (mots: MotImage[]) => void;
   /** La banque de pictogrammes est là : on peut chercher des images et des thèmes. */
@@ -47,6 +69,8 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions
   aide?: string;
   /** Des listes toutes prêtes que l'atelier propose : les mots d'un son, par exemple. */
   propositions?: { libelle: string; mots: string[] }[];
+  /** Chaque mot dit ce que la feuille en montre : 🖼 son image, Aa son mot (la carte mentale). */
+  affichage?: boolean;
 }) {
   const [texte, setTexte] = React.useState("");
   const [proposition, setProposition] = React.useState("");
@@ -68,7 +92,7 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions
     try {
       let suite: MotImage[] = [];
       if (banque) {
-        const [trouves, absents] = await api.arasaacParMots(liste);
+        const [trouves, absents] = await pictosDesMots(liste);
         const parMot = new Map(uneImageParMot(trouves).map((x) => [x.picto.mot.toLowerCase(), x.picto]));
         suite = liste.map((mot) => {
           const p = parMot.get(mot.toLowerCase()) ?? trouves.find((t) => t.mot.toLowerCase() === mot.toLowerCase());
@@ -158,7 +182,8 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions
           // Une image de l'enseignant garde sa clé quand on réécrit son mot : le champ ne perd pas le curseur.
           <Chip key={estPerso(m.id) ? `perso${m.id}` : `${m.mot}-${i}`} m={m} extra={extra?.(m)}
             onRetirer={() => onChange(mots.filter((_, k) => k !== i))}
-            onRenommer={estPerso(m.id) ? (mot) => onChange(mots.map((x, k) => (k === i ? { ...x, mot } : x))) : undefined} />
+            onRenommer={estPerso(m.id) ? (mot) => onChange(mots.map((x, k) => (k === i ? { ...x, mot } : x))) : undefined}
+            onSeul={affichage && m.id != null ? (seul) => onChange(mots.map((x, k) => (k === i ? avecSeul(x, seul) : x))) : undefined} />
         ))}
       </div>
     </div>

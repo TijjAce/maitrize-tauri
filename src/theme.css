@@ -1159,6 +1159,35 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
 /* Le mot d'une image de l'enseignant : un champ qui ressemble au mot. */
 .bm-renommer { font: inherit; color: inherit; background: transparent; border: none; border-bottom: 1px dashed var(--border); padding: 0 2px; min-width: 40px; max-width: 150px; outline: none; }
 .bm-renommer:focus { border-bottom-color: var(--accent); }
+/* Ce que la feuille montre d'un mot : ce qu'on en retire pâlit dans sa pastille. */
+.bm-chip.bm-sans-image img, .bm-chip.bm-sans-image .bm-vide { opacity: .3; }
+.bm-chip.bm-sans-mot .bm-mot, .bm-chip.bm-sans-mot .bm-renommer { text-decoration: line-through; opacity: .5; }
+.bm-montrer { display: inline-flex; gap: 2px; }
+.bm-montrer button { border: 1px solid var(--border); background: var(--panel); color: var(--text-2); border-radius: 6px;
+  font-size: 10.5px; font-weight: 700; line-height: 1; padding: 3px 4px; cursor: pointer; }
+.bm-montrer button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.bm-montrer button:disabled { opacity: .35; cursor: default; }
+/* Un picto de « Mes pictos » : d'où il vient, en petit — l'IA n'est pas ARASAAC. */
+.mp-etiquette { position: absolute; top: 3px; left: 3px; z-index: 1; font-size: 9.5px; font-weight: 800; line-height: 1; letter-spacing: .02em;
+  padding: 2px 4px; border-radius: 4px; background: #6741d9; color: #fff; cursor: help; }
+.mp-etiquette.mp-sclera, .mp-etiquette.mp-bajard { background: #495057; }
+.bm-chip .mp-etiquette { position: static; }
+/* L'assistant › Trouver un pictogramme : les banques à gauche, le picto choisi à droite. */
+.tp-corps { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 14px; align-items: start; }
+@media (max-width: 760px) { .tp-corps { grid-template-columns: minmax(0, 1fr); } }
+.tp-resultats { max-height: 62vh; overflow-y: auto; padding-right: 4px; }
+.tp-section { font-size: 12px; font-weight: 700; color: var(--text-2); margin: 2px 0 6px; }
+.tp-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 6px; margin-bottom: 12px; }
+.tp-vignette { position: relative; border: 1px solid var(--border); border-radius: 8px; background: #fff; padding: 4px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.tp-vignette.actif { border: 3px solid var(--accent); padding: 2px; }
+.tp-vignette img, .tp-vide { width: 100%; aspect-ratio: 1; object-fit: contain; }
+.tp-mot { font-size: 11px; color: #444; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tp-choix { position: sticky; top: 0; border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--panel-2);
+  display: flex; flex-direction: column; gap: 8px; }
+.tp-choix .mp-etiquette { top: 6px; left: 6px; font-size: 11px; padding: 3px 6px; }
+.tp-choix-image { display: block; width: 100%; aspect-ratio: 1; object-fit: contain; background: #fff; border-radius: 8px; border: 1px solid var(--border); }
+.tp-dessin { border: 1px dashed var(--accent); border-radius: 12px; padding: 12px; background: var(--accent-soft); margin: 2px 0 8px; }
 /* Catégoriser les mots : chaque catégorie, sa couleur sur le bord, son image, ses images dépliées. */
 .ct-categorie { border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 8px; background: var(--panel-2); padding: 6px; }
 .ct-categorie-tete { display: flex; align-items: center; gap: 6px; }

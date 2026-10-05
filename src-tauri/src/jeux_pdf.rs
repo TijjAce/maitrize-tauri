@@ -48,6 +48,12 @@ const RAYON: f32 = 6.0;
 /// que pour eux : une planche faite des seules images de l'enseignant n'a
 /// rien à attribuer à la banque.
 const ATTRIBUTION: &str = "Pictogrammes ARASAAC (Sergio Palao) - Gouvernement d'Aragon - CC BY-NC-SA";
+/// Les pictos gardés dans « Mes pictos » (voir mesPictos.ts) : la plage de
+/// leur numéro dit d'où ils viennent. Un dessin de l'IA n'est pas d'ARASAAC,
+/// et la feuille le dit ; Sclera et F. Bajard demandent leur nom.
+const MENTION_IA: &str = "Pictogrammes dessinés par IA (Mistral AI) à la manière d'ARASAAC : ils n'en font pas partie";
+const MENTION_SCLERA: &str = "Pictogrammes Sclera (www.sclera.be) - CC BY-NC 2.0 BE";
+const MENTION_BAJARD: &str = "Pictogrammes F. Bajard (ressources-ecole-inclusive.org) - CC BY-NC-SA 4.0";
 
 /// Les compétences travaillées, dans la marge haute : corps en points,
 /// interligne en millimètres, et le nombre de lignes que la marge accepte
@@ -380,6 +386,26 @@ fn doit_la_mention(planche: &Planche, fournies: &Fournies) -> bool {
     planche.cases.iter().any(|p| !fournies.contains_key(&p.id))
 }
 
+/// Les mentions qu'une planche doit porter, dans l'ordre : la banque, puis
+/// les pictos gardés selon leur origine.
+fn mentions(planche: &Planche, fournies: &Fournies) -> Vec<&'static str> {
+    let porte = |haut: i64, bas: i64| planche.cases.iter().any(|p| p.id <= haut && p.id > bas);
+    let mut m = Vec::new();
+    if doit_la_mention(planche, fournies) {
+        m.push(ATTRIBUTION);
+    }
+    if porte(-1_400_000_000, -1_800_000_000) {
+        m.push(MENTION_SCLERA);
+    }
+    if porte(-1_800_000_000, -2_100_000_000) {
+        m.push(MENTION_BAJARD);
+    }
+    if porte(-1_000_000_000, -1_400_000_000) {
+        m.push(MENTION_IA);
+    }
+    m
+}
+
 /// Chasse d'un caractère en capitales dans l'Helvetica intégrée au PDF, en
 /// millièmes de cadratin (métriques Adobe des 14 polices standard). Les
 /// capitales accentuées ont la chasse de leur lettre de base.
@@ -564,11 +590,22 @@ fn rendre_planche(
         }
     }
 
-    // Attribution obligatoire, hors zone de jeu, la plus discrète possible.
-    if doit_la_mention(planche, fournies) {
+    // Attribution obligatoire, hors zone de jeu, la plus discrète possible :
+    // une ligne, ou deux quand les mentions n'y tiennent pas.
+    let a_dire = mentions(planche, fournies);
+    if !a_dire.is_empty() {
         c.set_fill_color(couleur((0.6, 0.6, 0.6)));
-        let largeur_mention = ATTRIBUTION.chars().count() as f32 * 6.0 * 0.5 * 0.3528;
-        c.use_text(ATTRIBUTION, 6.0, Mm((largeur - largeur_mention) / 2.0), Mm(7.0), police);
+        let chasse_mention = |texte: &str| texte.chars().count() as f32 * 6.0 * 0.5 * 0.3528;
+        let une_ligne = a_dire.join(" - ");
+        let lignes = if chasse_mention(&une_ligne) <= largeur - 20.0 {
+            vec![une_ligne]
+        } else {
+            a_dire.iter().map(|s| s.to_string()).collect()
+        };
+        for (k, ligne) in lignes.iter().enumerate() {
+            let y = 7.0 + (lignes.len() - 1 - k) as f32 * 2.6;
+            c.use_text(ligne.as_str(), 6.0, Mm((largeur - chasse_mention(ligne)) / 2.0), Mm(y), police);
+        }
     }
     ecrire_competences(&c, &o.competences, largeur, hauteur, police);
     Ok(())
@@ -907,6 +944,12 @@ mod tests {
         // Un seul pictogramme de la banque suffit à la devoir.
         assert!(doit_la_mention(&planche(&[-1, 2349]), &fournies));
         assert!(doit_la_mention(&planche(&[2349, 2350]), &Fournies::new()));
+        // Un picto dessiné par l'IA ne doit rien à la banque, mais la feuille dit d'où il vient.
+        let ia = preparer(&[ImageFournie { id: -1_000_000_007, donnees: png_en_base64(8) }]).unwrap();
+        assert_eq!(mentions(&planche(&[-1_000_000_007]), &ia), vec![MENTION_IA]);
+        assert_eq!(mentions(&planche(&[-1_000_000_007, 2349]), &ia), vec![ATTRIBUTION, MENTION_IA]);
+        assert_eq!(mentions(&planche(&[-1_400_000_001]), &Fournies::new())[1..], [MENTION_SCLERA]);
+        assert!(mentions(&planche(&[-1, -2]), &fournies).is_empty());
         // Le fond transparent d'un PNG devient blanc, pas noir.
         let Some(Pixels::Bruts(image)) = fournies.get(&-1) else { panic!("un PNG se décode") };
         assert_eq!(image.get_pixel(0, 0).0, [255, 255, 255]);
