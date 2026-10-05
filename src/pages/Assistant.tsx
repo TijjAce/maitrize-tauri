@@ -16,6 +16,8 @@ import { documentImprimable, printHTML } from "../print";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { deposerSurLeBureau } from "../impressionAtelier";
 import { TrouverUnPicto } from "../components/TrouverUnPicto";
+import { TrouverUnLivre } from "../components/LivresDeReference";
+import { EVT_QUESTION_ASSISTANT, prendreQuestion } from "../questionAssistant";
 
 // Extrait un objet JSON d'une réponse IA (tolère du texte autour).
 function extraireJson(rep: string): any {
@@ -47,6 +49,7 @@ export default function Assistant() {
   const [showGen, setShowGen] = React.useState(false);
   const [showModif, setShowModif] = React.useState(false);
   const [showPictos, setShowPictos] = React.useState(false);
+  const [showLivres, setShowLivres] = React.useState(false);
   const [contexteActif, setContexteActif] = React.useState(true);
   const [surLeWeb, setSurLeWeb] = React.useState(false);
   // Mode document : le modèle écrit un document imprimable, et rien d'autre.
@@ -96,6 +99,27 @@ export default function Assistant() {
     const h = () => { setModeDocument(true); setTimeout(() => saisie.current?.focus(), 50); };
     window.addEventListener("maitrize:document-ia", h);
     return () => window.removeEventListener("maitrize:document-ia", h);
+  }, []);
+
+  // Une question préparée ailleurs — un livre des listes de référence — vient
+  // dans la zone de saisie, à la suite de ce qu'on avait commencé : on la
+  // relit, on la complète, on l'envoie soi-même.
+  React.useEffect(() => {
+    const prendre = () => {
+      const q = prendreQuestion();
+      if (!q) return;
+      setInput((v) => (v.trim() ? v.trimEnd() + "\n\n" : "") + q);
+      setTimeout(() => {
+        const t = saisie.current;
+        if (!t) return;
+        t.focus();
+        t.setSelectionRange(t.value.length, t.value.length);
+        t.scrollTop = t.scrollHeight;
+      }, 80);
+    };
+    prendre();
+    window.addEventListener(EVT_QUESTION_ASSISTANT, prendre);
+    return () => window.removeEventListener(EVT_QUESTION_ASSISTANT, prendre);
   }, []);
 
   // Une réponse devient une feuille : imprimée, ou en PDF sur le bureau.
@@ -317,6 +341,9 @@ export default function Assistant() {
         <button className="btn sm" onClick={() => setShowPictos(true)}
           title="Chercher un pictogramme dans ARASAAC, dans Sclera et vos pictos gardés ; s'il n'existe pas, le faire dessiner par l'IA">
           🧩 Pictos</button>
+        <button className="btn sm" onClick={() => setShowLivres(true)}
+          title="Chercher un album ou un livre dans les listes de référence d'Éduscol (cycles 1, 2 et 3), et en parler à l'assistant">
+          📚 Livres</button>
         <button className="btn sm" onClick={() => setShowModif(true)}>✏️ Modifier une séquence</button>
         <button className="btn sm primary" onClick={() => setShowGen(true)}>✨ Générer une séquence</button>
       </div>
@@ -328,6 +355,7 @@ export default function Assistant() {
       {showGen && <GenerateurSequence model={model} onClose={() => setShowGen(false)} />}
       {showModif && <ModifierSequence model={model} onClose={() => setShowModif(false)} />}
       {showPictos && <TrouverUnPicto onClose={() => setShowPictos(false)} />}
+      {showLivres && <TrouverUnLivre onClose={() => setShowLivres(false)} />}
       <div className="chat-scroll" ref={scrollRef} onScroll={surDefilement} onWheel={surMolette}>
         {messages.length === 0 && (
           <div style={{ margin: "auto", maxWidth: 520, textAlign: "center" }}>
