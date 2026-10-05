@@ -2,7 +2,7 @@ import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import { demarcheDe, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre, type Demarche } from "../demarches";
-import { api, Sequence, Seance, MaterielItem, Jeu, nouvelleSeance, couleurHex, nowIso, newId, DUREES, formatDuree, telechargerTexte } from "../api";
+import { api, Sequence, Seance, MaterielItem, Jeu, nouvelleSeance, nowIso, newId, DUREES, formatDuree, telechargerTexte, teinteSequence } from "../api";
 import { decalee, deplacee, ordonnees, renumerotees } from "../ordreSeances";
 import { useSuiviSequences } from "../components/useSuiviSequences";
 import { BadgeSuivi } from "../components/SuiviSequence";
@@ -186,7 +186,7 @@ export default function SequenceDetail() {
         <button className="btn" onClick={() => exporterSequence(seq, seances ?? [])}>⬇️ Exporter</button>
         <button className="btn primary" onClick={() => setEdit(nouvelleSeance(seq.id, next))}>+ Séance</button>
       </>}>
-      <div className="card" style={{ marginBottom: 18, borderTop: `3px solid ${couleurHex[seq.couleur]}` }}>
+      <div className="card" style={{ marginBottom: 18, borderTop: `3px solid ${teinteSequence(seq)}` }}>
         {seq.imageNom && <FichierImg nom={seq.imageNom} style={{ width: "100%", maxHeight: 200, objectFit: "cover", marginBottom: 12 }} />}
         {comp && <div style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 8 }}>🎯 {labelCourt(comp)}</div>}
         {seq.objectifs && <p style={{ marginTop: 0, color: "var(--text-2)" }}>{seq.objectifs}</p>}

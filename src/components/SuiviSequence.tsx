@@ -1,4 +1,4 @@
-import { couleurHex, couleurPourMatiere } from "../api";
+import { teinteSequence } from "../api";
 import { avancement, descriptionEtat, libelleDuSuivi, type SuiviSequence } from "../suiviSequences";
 
 // Ce qu'on montre du suivi d'une séquence : la pastille de son état, et la
@@ -26,7 +26,7 @@ export function LigneSuivi({ suivi, aujourdHui, onOuvrir, onJournal }: {
   const sansSuite = enClasse && !suivi.prochain;
   return (
     <div className="list-row" style={{ cursor: "pointer", marginBottom: 6, alignItems: "center" }} onClick={onOuvrir}>
-      <span className="dot" style={{ width: 10, height: 10, borderRadius: 3, flex: "none", background: couleurHex[couleurPourMatiere(s.matiere)] ?? couleurHex[s.couleur] }} />
+      <span className="dot" style={{ width: 10, height: 10, borderRadius: 3, flex: "none", background: teinteSequence(s) }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="title" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span>{s.titre || "Sans titre"}</span>
