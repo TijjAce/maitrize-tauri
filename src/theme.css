@@ -1154,6 +1154,9 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
 .ct-categorie-image:disabled { cursor: default; }
 .cl-situation { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12.5px; margin: -4px 0 10px; }
 .cl-situation img { width: 34px; height: 34px; object-fit: contain; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 2px; }
+.dos-choix { display: flex; flex-direction: column; max-height: 220px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; }
+.dos-choix .pb-coche { margin: 3px 0; }
+.dos-pastille { display: inline-block; width: 14px; height: 14px; border-radius: 4px; flex: none; border: none; padding: 0; }
 .si-etapes { display: flex; flex-direction: column; gap: 4px; }
 .si-etape-ligne { display: flex; align-items: center; gap: 8px; }
 .si-etape-rang { width: 18px; text-align: right; font-weight: 700; color: var(--text-2); flex: none; }
