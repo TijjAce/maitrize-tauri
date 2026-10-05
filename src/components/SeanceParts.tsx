@@ -7,6 +7,7 @@ import { useFileDropZone, estPdf, estImage, estDocument, typeDocument, EXTENSION
 import { toast } from "./Toaster";
 import { Input, Modal, useAsync } from "./ui";
 import { VignettePdf } from "./VignettePdf";
+import { PdfViewer } from "./PdfViewer";
 import { filDAriane } from "../dossiers";
 import { chercherPdfs, copiePourLaSeance, lirePdfs, pdfsDuBureau } from "../materielSeance";
 import { MoletteEchelle } from "./MoletteEchelle";
@@ -244,6 +245,8 @@ export function imageDuPresse(e: React.ClipboardEvent): File | null {
 export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cycle?: string }) {
   const [items, setItems] = React.useState<MaterielItem[]>([]);
   const pdfInput = React.useRef<HTMLInputElement>(null);
+  // Le PDF qu'on regarde, en grand, dans la visionneuse.
+  const [vu, setVu] = React.useState<{ nom: string; titre: string } | null>(null);
 
   const reload = React.useCallback(() => {
     api.materielList().then((all) => setItems(all.filter((m) => m.seanceId === seanceId)));
@@ -304,15 +307,30 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
       {bureauOuvert && <ChoixPdfDuBureau seanceId={seanceId} onPrendre={prendreSurLeBureau} onClose={() => setBureauOuvert(false)} />}
       {items.length === 0 ? (
         <div style={{ fontSize: 13, color: "var(--text-2)", fontStyle: "italic" }}>Aucun PDF pour cette séance.</div>
-      ) : items.map((m) => (
-        <div key={m.id} className="list-row" style={{ marginBottom: 6, flexWrap: "wrap" }}>
-          <span>📄</span><div style={{ flex: 1, minWidth: 120 }} className="title">{m.titre}</div>
-          {/* La molette : l'échelle de cette feuille dans le cahier journal imprimé. */}
-          <MoletteEchelle materiel={m} />
-          <span className="chip" title="Imprimé à la suite du cahier journal">🖨 Journal</span>
-          <button className="btn ghost sm" onClick={() => supprimer(m)} aria-label="Supprimer">🗑</button>
-        </div>
-      ))}
+      ) : items.map((m) => {
+        const pdfs = lirePdfs(m.pdfsJson);
+        const voir = (nom = pdfs[0]) => { if (nom) setVu({ nom, titre: m.titre }); };
+        return (
+          <div key={m.id} className="list-row" style={{ marginBottom: 6, flexWrap: "wrap" }}>
+            {/* La première page de chaque PDF : un clic l'ouvre en grand. */}
+            {pdfs.length ? pdfs.map((nom, i) => (
+              <button key={nom} type="button" className="vignette-seance" onClick={() => voir(nom)}
+                title="Voir le PDF" aria-label={pdfs.length > 1 ? `Voir ${m.titre}, PDF ${i + 1}` : `Voir ${m.titre}`}>
+                <VignettePdf nom={nom} />
+              </button>
+            )) : <span>📄</span>}
+            <div style={{ flex: 1, minWidth: 120 }} className="title">
+              {pdfs.length ? <button type="button" className="lien titre-seance" onClick={() => voir()}>{m.titre}</button> : m.titre}
+            </div>
+            <button className="btn sm" onClick={() => voir()} disabled={!pdfs.length}>👁 Voir</button>
+            {/* La molette : l'échelle de cette feuille dans le cahier journal imprimé. */}
+            <MoletteEchelle materiel={m} />
+            <span className="chip" title="Imprimé à la suite du cahier journal">🖨 Journal</span>
+            <button className="btn ghost sm" onClick={() => supprimer(m)} aria-label="Supprimer">🗑</button>
+          </div>
+        );
+      })}
+      {vu && <PdfViewer nomFichier={vu.nom} titre={vu.titre} onClose={() => setVu(null)} />}
     </div>
   );
 }
