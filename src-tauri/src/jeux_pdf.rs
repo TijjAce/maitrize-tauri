@@ -500,14 +500,19 @@ fn rendre_planche(
 ) -> Result<(), String> {
     let c = doc.get_page(page).get_layer(couche);
     let (cols, lignes) = (planche.colonnes as f32, planche.lignes as f32);
-    let case_l = (largeur - 2.0 * MARGE_PAGE - (cols - 1.0) * ECART) / cols;
-    let case_h = (hauteur - 2.0 * MARGE_PAGE - (lignes - 1.0) * ECART) / lignes;
+    // Des cases carrées, comme les pictos : le côté que la page permet dans
+    // les deux sens, et la grille centrée dans ce qui reste.
+    let cote = ((largeur - 2.0 * MARGE_PAGE - (cols - 1.0) * ECART) / cols)
+        .min((hauteur - 2.0 * MARGE_PAGE - (lignes - 1.0) * ECART) / lignes);
+    let (case_l, case_h) = (cote, cote);
+    let x0 = (largeur - cols * cote - (cols - 1.0) * ECART) / 2.0;
+    let haut = hauteur - (hauteur - lignes * cote - (lignes - 1.0) * ECART) / 2.0;
 
     for (i, picto) in planche.cases.iter().enumerate() {
         let col = (i % planche.colonnes as usize) as f32;
         let rang = (i / planche.colonnes as usize) as f32;
-        let x = MARGE_PAGE + col * (case_l + ECART);
-        let y = hauteur - MARGE_PAGE - (rang + 1.0) * case_h - rang * ECART;
+        let x = x0 + col * (case_l + ECART);
+        let y = haut - (rang + 1.0) * case_h - rang * ECART;
 
         // Cadre discret.
         c.set_outline_color(couleur(GRIS_BORD));

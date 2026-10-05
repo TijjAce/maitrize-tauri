@@ -11,9 +11,15 @@ import { escapeHtml } from "./print";
 /** Largeur utile d'une page A4 avec les marges de `@page` (14 mm). */
 export const LARGEUR_UTILE_MM = 182;
 export const HAUTEUR_UTILE_MM = 269;
+/**
+ * La largeur que la feuille occupe vraiment : le document imprimable garde
+ * 32 px de marge intérieure de chaque côté (voir print.ts), 17 mm en tout.
+ */
+export const LARGEUR_CONTENU_MM = 165;
 
 // La mention des pictogrammes suit la dernière page : sans la règle `:has`,
-// le saut de page l'enverrait seule sur une feuille de plus.
+// le saut de page l'enverrait seule sur une feuille de plus. Dans une petite
+// carte, l'image rapetisse pour laisser sa place au mot plutôt que de déborder.
 export const STYLE_FEUILLE = `
   .feuille { color: #1c2233; background: #fff; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   .feuille .page { page-break-after: always; break-after: page; }
@@ -23,8 +29,8 @@ export const STYLE_FEUILLE = `
   .feuille .grille { display: grid; gap: 0; width: 100%; }
   .feuille .carte { border: 1px dashed #9aa0b4; display: flex; flex-direction: column; align-items: center;
     justify-content: center; gap: 3mm; padding: 3mm; text-align: center; overflow: hidden; }
-  .feuille .carte img { width: 100%; max-width: 30mm; aspect-ratio: 1; object-fit: contain; margin: 0; max-height: none; }
-  .feuille .carte .vide { width: 100%; max-width: 30mm; aspect-ratio: 1; border: 1.5px dashed #c4c9d6; border-radius: 4mm; }
+  .feuille .carte img { width: 100%; max-width: 30mm; aspect-ratio: 1; object-fit: contain; margin: 0; max-height: none; flex: 0 1 auto; min-height: 0; }
+  .feuille .carte .vide { width: 100%; max-width: 30mm; aspect-ratio: 1; border: 1.5px dashed #c4c9d6; border-radius: 4mm; flex: 0 1 auto; min-height: 0; }
   .feuille .mot { font-size: 16px; font-weight: 700; line-height: 1.15; }
   .feuille .regle { border: 1px solid #cfd4e2; border-radius: 8px; padding: 8px 12px; font-size: 12px; line-height: 1.5;
     margin: 0 0 10px; background: #f7f8fc; }
@@ -58,6 +64,23 @@ export interface FormatGrille {
   lignes: number;
   /** Hauteur d'une carte, en mm ; par défaut la page se partage. */
   hauteurMm?: number;
+  /** Des cartes carrées — celles des pictos : le côté est la hauteur, si la largeur de la page le permet. */
+  carre?: boolean;
+  /** La largeur d'une carte, en mm, quand elle n'est pas un partage de la page : un domino fait deux carrés. */
+  largeurMm?: number;
+}
+
+/** La hauteur d'une rangée de cartes, en mm : celle qu'on a donnée, ou la page partagée ; un carré ne dépasse pas sa part de largeur. */
+export function hauteurDesCartes(format: FormatGrille, entete: boolean): number {
+  const hauteur = format.hauteurMm ?? Math.floor((HAUTEUR_UTILE_MM - (entete ? 30 : 0)) / format.lignes);
+  return format.carre ? Math.min(hauteur, Math.floor(LARGEUR_CONTENU_MM / format.colonnes)) : hauteur;
+}
+
+/** Les colonnes et les rangées d'une grille de cartes : partagées dans la largeur, ou carrées et centrées. */
+export function gabaritGrille(format: FormatGrille, entete: boolean): string {
+  const hauteur = hauteurDesCartes(format, entete);
+  if (!format.carre && !format.largeurMm) return `grid-template-columns: repeat(${format.colonnes}, 1fr); grid-auto-rows: ${hauteur}mm`;
+  return `grid-template-columns: repeat(${format.colonnes}, ${format.largeurMm ?? hauteur}mm); grid-auto-rows: ${hauteur}mm; justify-content: center`;
 }
 
 /**
@@ -68,11 +91,11 @@ export interface FormatGrille {
  */
 export function pagesDeCartes(cellules: string[], format: FormatGrille, entete = ""): string {
   const parPage = format.colonnes * format.lignes;
-  const hauteur = format.hauteurMm ?? Math.floor((HAUTEUR_UTILE_MM - (entete ? 30 : 0)) / format.lignes);
+  const gabarit = gabaritGrille(format, Boolean(entete));
   const pages: string[] = [];
   for (let i = 0; i < Math.max(1, cellules.length); i += parPage) {
     const tranche = cellules.slice(i, i + parPage);
-    pages.push(`<div class="page">${entete}<div class="grille" style="grid-template-columns: repeat(${format.colonnes}, 1fr); grid-auto-rows: ${hauteur}mm">${tranche.join("")}</div></div>`);
+    pages.push(`<div class="page">${entete}<div class="grille" style="${gabarit}">${tranche.join("")}</div></div>`);
   }
   return pages.join("");
 }
@@ -83,9 +106,9 @@ export function pagesDeCartes(cellules: string[], format: FormatGrille, entete =
  */
 export function pagesRectoVerso(rectos: string[], versos: string[], format: FormatGrille, entete = ""): string {
   const parPage = format.colonnes * format.lignes;
-  const hauteur = format.hauteurMm ?? Math.floor((HAUTEUR_UTILE_MM - (entete ? 30 : 0)) / format.lignes);
+  const gabarit = gabaritGrille(format, Boolean(entete));
   const page = (cellules: string[], tete: string) =>
-    `<div class="page">${tete}<div class="grille" style="grid-template-columns: repeat(${format.colonnes}, 1fr); grid-auto-rows: ${hauteur}mm">${cellules.join("")}</div></div>`;
+    `<div class="page">${tete}<div class="grille" style="${gabarit}">${cellules.join("")}</div></div>`;
   const pages: string[] = [];
   for (let i = 0; i < Math.max(1, rectos.length); i += parPage) {
     const faces = rectos.slice(i, i + parPage);

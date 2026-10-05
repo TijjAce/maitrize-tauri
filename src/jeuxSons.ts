@@ -11,7 +11,7 @@
 import { escapeHtml } from "./print";
 import { melanger } from "./hasard";
 import { attaque, compterSyllabes, rime } from "./syllabes";
-import { ATTRIBUTION_ARASAAC, attributionPour, carte, feuille, imgPicto, legende, pagesDeCartes } from "./cartesImprimables";
+import { ATTRIBUTION_ARASAAC, HAUTEUR_UTILE_MM, LARGEUR_CONTENU_MM, attributionPour, carte, feuille, gabaritGrille, imgPicto, legende, pagesDeCartes } from "./cartesImprimables";
 
 /** Un mot et son image, ou pas d'image du tout. */
 export interface MotImage {
@@ -103,6 +103,8 @@ const arcs = (n: number) =>
 export function htmlLotoSyllabes(planches: number[][], mots: MotImage[], images: Images, r: ReglagesLotoSyllabes, titre = "Loto des syllabes"): string {
   const colonnes = 3;
   const lignes = r.cases / 3;
+  // Des cases carrées, et des cartes à piocher de la même taille, qu'on pose dessus.
+  const cote = lignes === 2 ? 48 : 36;
   const regle = `<div class="regle"><b>Loto des syllabes</b>Chaque élève a une planche : dans chaque case, un nombre de syllabes.
     On pioche une image, on scande les syllabes du mot, on les compte — si une case le demande, on y pose l'image. La planche pleine a gagné.
     <span style="color:#687087">— Pour préparer l'apprentissage de la lecture et de l'écriture à l'école maternelle, Éduscol 2020.</span></div>`;
@@ -110,12 +112,13 @@ export function htmlLotoSyllabes(planches: number[][], mots: MotImage[], images:
   for (let i = 0; i < planches.length; i += 2) {
     const deux = planches.slice(i, i + 2).map((pl, k) =>
       `<div class="ls-planche"><div class="ls-planche-titre">${escapeHtml(titre)} — planche ${i + k + 1}</div>
-        <div class="grille" style="grid-template-columns: repeat(${colonnes}, 1fr); grid-auto-rows: ${lignes === 2 ? 48 : 36}mm">
+        <div class="grille" style="${gabaritGrille({ colonnes, lignes, hauteurMm: cote, carre: true }, false)}">
         ${pl.map((n) => `<div class="carte ls-case"><div class="ls-nombre">${n}</div>${arcs(n)}</div>`).join("")}</div></div>`).join("");
     pagesPlanches.push(`<div class="page">${i === 0 ? regle : ""}${deux}</div>`);
   }
   const cartes = mots.map((m) => carte(`${imgPicto(image(m, images), m.mot)}${legende(m.mot, r.legendes)}`));
-  const pagesCartes = pagesDeCartes(cartes, { colonnes: 4, lignes: 5 }, `<div class="sous">${escapeHtml(titre)} — les images à piocher (${mots.length})</div>`);
+  const format = { colonnes: Math.floor(LARGEUR_CONTENU_MM / cote), lignes: Math.floor((HAUTEUR_UTILE_MM - 12) / cote), hauteurMm: cote, carre: true };
+  const pagesCartes = pagesDeCartes(cartes, format, `<div class="sous">${escapeHtml(titre)} — les images à piocher (${mots.length})</div>`);
   return feuille(`${pagesPlanches.join("")}${pagesCartes}${attributionPour(mots.map((m) => m.id))}`, "ls");
 }
 
@@ -161,7 +164,8 @@ export function htmlDominos(pieces: PieceDomino[], images: Images, legendes: boo
     <span style="color:#687087">— Pour préparer l'apprentissage de la lecture et de l'écriture à l'école maternelle, Éduscol 2020.</span></div>`;
   const moitie = (m: MotImage) => `<div class="ls-moitie">${imgPicto(image(m, images), m.mot)}${legende(m.mot, legendes)}</div>`;
   const cellules = pieces.map((p) => `<div class="carte ls-domino">${moitie(p.gauche)}<div class="ls-barre"></div>${moitie(p.droite)}</div>`);
-  return feuille(`${pagesDeCartes(cellules, { colonnes: 2, lignes: 5, hauteurMm: 46 }, regle)}${attributionPour(pieces.flatMap((p) => [p.gauche.id, p.droite.id]))}`, "ls");
+  // Une pièce : deux carrés côte à côte, une image dans chacun.
+  return feuille(`${pagesDeCartes(cellules, { colonnes: 2, lignes: 5, hauteurMm: 41, largeurMm: 82 }, regle)}${attributionPour(pieces.flatMap((p) => [p.gauche.id, p.droite.id]))}`, "ls");
 }
 
 // ── La chasse à l'intrus ──────────────────────────────────────────────────
@@ -204,7 +208,7 @@ export function htmlIntrus(lignes: LigneIntrus[], images: Images, mode: ModeIntr
     <span style="color:#687087">— Pour préparer l'apprentissage de la lecture et de l'écriture à l'école maternelle, Éduscol 2020.</span></div>`;
   const cellules = lignes.flatMap((l, i) => l.mots.map((m, k) =>
     carte(`${k === 0 ? `<div class="ls-numero">${i + 1}</div>` : ""}${imgPicto(image(m, images), m.mot)}${legende(m.mot, legendes)}`, "ls-intrus")));
-  const corps = pagesDeCartes(cellules, { colonnes: 4, lignes: 5, hauteurMm: 44 }, consigne);
+  const corps = pagesDeCartes(cellules, { colonnes: 4, lignes: 5, hauteurMm: 41, carre: true }, consigne);
   const reponses = lignes.length
     ? `<div class="page corrige"><div class="titre">Chasse à l'intrus — corrigé</div><ol class="ls-corrige">${lignes.map((l) =>
       `<li><b>${escapeHtml(l.intrus.mot)}</b> — les autres ${quoi} « ${escapeHtml(l.mots.filter((m) => m !== l.intrus).map((m) => m.mot).join(", "))} »</li>`).join("")}</ol></div>`
@@ -263,7 +267,7 @@ export function htmlPaires(paires: PaireDistinctive[], jeux: number, images: Rec
       <span style="color:#687087">— Livret d'accompagnement « À partir de 5 ans », Éduscol 2025.</span></div>
     <div class="sous">Sons travaillés : ${escapeHtml([...new Set(paires.map((p) => p.sons))].join(" · "))} — ${jeux} jeu${jeux > 1 ? "x" : ""} de ${paires.length * 2} cartes.</div>`;
   const cellules = motsDesPaires(paires, jeux).map((mot) => carte(`${imgPicto(images[mot.toLowerCase()], mot)}${legende(mot, legendes)}`));
-  return feuille(`${pagesDeCartes(cellules, { colonnes: 4, lignes: 4 }, regles)}${ATTRIBUTION_ARASAAC}`, "ls");
+  return feuille(`${pagesDeCartes(cellules, { colonnes: 4, lignes: 4, carre: true }, regles)}${ATTRIBUTION_ARASAAC}`, "ls");
 }
 
 // ── Les lettres : mémory, mistigri, loto, ophtalmologue ───────────────────
