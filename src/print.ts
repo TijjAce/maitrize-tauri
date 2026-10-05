@@ -129,10 +129,22 @@ const STYLE = `
  * `styleExtra` est ajouté après la feuille commune, donc il la surcharge :
  * de quoi resserrer un document dense sans toucher aux autres impressions.
  */
+/**
+ * WebKit — Safari, et la vue où Maitrize fabrique ses PDF — imprime le
+ * pixel CSS à 0,8 point au lieu de 0,75 : tout sort 6,7 % trop grand, et une
+ * feuille pleine déborde d'un centimètre sur une page blanche. Le document
+ * se réduit d'autant à l'impression, dans WebKit seulement : Chrome et
+ * Firefox impriment juste. WebKit se reconnaît sans script, à une police
+ * que lui seul connaît — celle du texte des réglages d'Apple.
+ */
+export const ZOOM_WEBKIT = 0.75 / 0.8;
+const STYLE_WEBKIT = `@media print { @supports (font: -apple-system-body) { html { zoom: ${ZOOM_WEBKIT}; } } }`;
+
 /** Le document autonome qu'on ouvre pour l'imprimer ou l'enregistrer en PDF. */
 export function documentImprimable(title: string, bodyHtml: string, styleExtra = ""): string {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${STYLE}
     @media screen { body { max-width: 820px; margin: 0 auto; } }
+    ${STYLE_WEBKIT}
     ${styleExtra}</style></head><body>${bodyHtml}</body></html>`;
 }
 
