@@ -17,9 +17,10 @@ import {
 } from "../caa";
 import { BANQUES_APPOINT, banqueDe, garderImageAppoint, infoBanque, type RefPicto } from "../pictosAppoint";
 import {
-  REGLAGES_CARTES_PICTOS, STYLE_CARTES_PICTOS, TAILLES_PICTOS, coteDesCartes, htmlCartesPictos, libelleTaille, pagesDesCartesPictos,
-  verbesAImprimer, verbesAvecPicto, type TaillePictos,
+  COTE_MAX_MM, COTE_MIN_MM, REGLAGES_CARTES_PICTOS, STYLE_CARTES_PICTOS, TAILLES_PICTOS, cartesParPage, coteDesCartes, coteSur, htmlCartesPictos,
+  libelleTaille, pagesDesCartesPictos, pictosAImprimer, pictosImprimables, type QuoiImprimer, type TaillePictos,
 } from "../cartesPictosConsignes";
+import { CLE_MATIERES, MATIERES_EN_PICTOS, etiquetteDeMatiere, motsDeLaMatiere, pictosDesMatieresProposes } from "../pictosMatieres";
 import { Boutons, Coche } from "./AteliersLangage";
 
 // ── CAA : communication alternative et augmentée ──────────────────────────
@@ -77,13 +78,36 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
   const [reglageActif, setReglageActif] = React.useState<string | null>(null);
   const [choix, setChoix] = React.useState<string>("");
   const [occupe, setOccupe] = React.useState(false);
+  // Les matières et les domaines ont leur lexique à eux : ils ne décorent pas les consignes.
+  const [matieres, setMatieres] = React.useState<Lexique>({});
+  const [choixMatiere, setChoixMatiere] = React.useState<string>("");
   const banques = useBanquesAppoint();
   React.useEffect(() => {
     let vivant = true;
     api.settingGet(CLE_LEXIQUE).then((v) => { if (vivant) setLexique(lireLexique(v)); }).catch(() => {});
     api.settingGet(CLE_ACTIF).then((v) => { if (vivant) setReglageActif(v); }).catch(() => {});
+    api.settingGet(CLE_MATIERES).then((v) => { if (vivant) setMatieres(lireLexique(v)); }).catch(() => {});
     return () => { vivant = false; };
   }, []);
+  const enregistrerMatieres = (suite: Lexique) => {
+    setMatieres(suite);
+    api.settingSet(CLE_MATIERES, ecrireLexique(suite)).catch((e) => toast("Pictos des matières non enregistrés : " + String(e), { icone: "⚠️" }));
+  };
+  // Le picto de chaque matière qui n'en a pas : celui d'ARASAAC sous le premier de ses mots qu'il connaît.
+  const proposerMatieres = async () => {
+    setOccupe(true);
+    try {
+      const manquantes = MATIERES_EN_PICTOS.filter((m) => !matieres[m]);
+      const trouves = await api.arasaacPourConsignes([...new Set(manquantes.flatMap(motsDeLaMatiere))]);
+      const proposes = pictosDesMatieresProposes(manquantes, trouves);
+      enregistrerMatieres({ ...matieres, ...proposes });
+      const n = Object.keys(proposes).length;
+      const absentes = manquantes.filter((m) => !proposes[m]).map(etiquetteDeMatiere);
+      toast(`${n} picto${n > 1 ? "s" : ""} proposé${n > 1 ? "s" : ""}${absentes.length ? ` — sans image : ${absentes.join(", ")}` : ""}.`, { icone: "🗓", duree: 8000 });
+    } catch (e) { toast(String(e), { icone: "⚠️" }); }
+    finally { setOccupe(false); }
+  };
+  const nbMatieres = MATIERES_EN_PICTOS.filter((m) => matieres[m] != null).length;
   const enregistrer = (suite: Lexique) => {
     setLexique(suite);
     api.settingSet(CLE_LEXIQUE, ecrireLexique(suite))
@@ -162,8 +186,9 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
           <div dangerouslySetInnerHTML={{ __html: apercu }} />
         </div>
       </div>
-      <ImprimerLesPictos lexique={lexique} />
+      <ImprimerLesPictos lexique={lexique} matieres={matieres} />
       </div>
+      <div>
       <div className="card">
         <div className="caa-verbes">
           {VERBES_CONSIGNE.map((v) => (
@@ -172,6 +197,28 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
               onRetirer={() => { const suite = { ...lexique }; delete suite[v.verbe]; enregistrer(suite); }} />
           ))}
         </div>
+      </div>
+      <div className="card" style={{ marginTop: 14 }}>
+        <h3 style={{ marginTop: 0 }}>Les matières et les domaines</h3>
+        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
+          Ceux du planning, chacun avec son picto : pour un emploi du temps en images, ou pour dire ce qui vient.
+          Ils s'impriment en cartes avec les verbes.
+        </p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+          <button type="button" className="btn sm primary" disabled={!banque || occupe} onClick={() => { void proposerMatieres(); }}
+            title="ARASAAC propose le picto de la matière (« mathématiques », « EPS ») ou, à défaut, de ce qui s'y fait. Vous changez ensuite ceux qui ne vont pas.">
+            {occupe ? "⏳ Recherche…" : "🔎 Proposer un picto pour chaque matière"}
+          </button>
+          <span className="meta" style={{ fontSize: 12.5 }}>{nbMatieres} sur {MATIERES_EN_PICTOS.length} avec un picto.</span>
+        </div>
+        <div className="caa-verbes">
+          {MATIERES_EN_PICTOS.map((m) => (
+            <VerbeCarte key={m} verbe={etiquetteDeMatiere(m)} refPicto={matieres[m] ?? null}
+              onChoisir={() => setChoixMatiere(m)}
+              onRetirer={() => { const suite = { ...matieres }; delete suite[m]; enregistrerMatieres(suite); }} />
+          ))}
+        </div>
+      </div>
       </div>
       {choix && (
         <ChoixPictoConsigne verbe={choix} actuel={lexique[choix] ?? null} onClose={() => setChoix("")}
@@ -182,51 +229,91 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
             setChoix("");
           }} />
       )}
+      {choixMatiere && (
+        <ChoixPictoConsigne verbe={etiquetteDeMatiere(choixMatiere)} recherche={motsDeLaMatiere(choixMatiere)[0]}
+          actuel={matieres[choixMatiere] ?? null} onClose={() => setChoixMatiere("")}
+          onValider={(ref) => {
+            const suite = { ...matieres };
+            if (ref == null) delete suite[choixMatiere]; else suite[choixMatiere] = ref;
+            enregistrerMatieres(suite);
+            setChoixMatiere("");
+          }} />
+      )}
     </div>
   );
 }
 
-/** Les pictos des verbes en cartes à découper : en petit pour les manipuler, en grand pour le tableau. */
-function ImprimerLesPictos({ lexique }: { lexique: Lexique }) {
+/** Les pictos des verbes et des matières en cartes à découper : en petit pour les manipuler, en grand pour le tableau. */
+function ImprimerLesPictos({ lexique, matieres }: { lexique: Lexique; matieres: Lexique }) {
   const [r, maj] = useReglages("caaCartesCarrees", REGLAGES_CARTES_PICTOS);
-  const verbes = verbesAImprimer(lexique, r);
-  const tous = verbesAvecPicto(lexique);
-  const images = usePictoImages([...new Set(verbes.map((v) => lexique[v]))]);
-  const html = React.useMemo(() => htmlCartesPictos(verbes, lexique, images, r), [verbes, lexique, images, r]);
-  const combien = verbes.length * Math.max(1, r.exemplaires);
-  const pages = pagesDesCartesPictos(verbes.length, r);
+  // Les deux lexiques n'ont aucun mot en commun : un seul suffit à la planche.
+  const tout = React.useMemo(() => ({ ...lexique, ...matieres }), [lexique, matieres]);
+  const mots = pictosAImprimer(lexique, matieres, r);
+  const tous = pictosImprimables(lexique, matieres, r.quoi);
+  const images = usePictoImages([...new Set(mots.map((v) => tout[v]))]);
+  const html = React.useMemo(() => htmlCartesPictos(mots, tout, images, r), [mots, tout, images, r]);
+  const combien = mots.length * Math.max(1, r.exemplaires);
+  const pages = pagesDesCartesPictos(mots.length, r);
+  const cote = coteDesCartes(combien, r);
   const choisis = new Set(r.choisis);
   const basculer = (v: string) => maj({ choisis: choisis.has(v) ? r.choisis.filter((x) => x !== v) : [...r.choisis, v] });
+  const changerCote = (mm: number) => maj({ taille: "surMesure", cote: coteSur(mm) });
+  // La saisie garde ce qu'on tape : « 3 », en route vers « 32 », ne doit pas devenir 15 mm.
+  const [saisie, setSaisie] = React.useState(String(cote));
+  React.useEffect(() => setSaisie(String(cote)), [cote]);
+  const saisir = (texte: string) => {
+    setSaisie(texte);
+    const mm = Number(texte);
+    if (Number.isInteger(mm) && mm >= COTE_MIN_MM && mm <= COTE_MAX_MM) changerCote(mm);
+  };
   return (
     <div className="card" style={{ marginTop: 14 }}>
       <h3 style={{ marginTop: 0 }}>🖨 Imprimer les pictos</h3>
       <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
         En cartes à découper : en petit, ils se manipulent — plan de travail, bande velcro, table de l'élève ; en grand, ils s'affichent au tableau.
       </p>
+      <Field label="Quoi">
+        <Select value={r.quoi} onChange={(e) => maj({ quoi: e.target.value as QuoiImprimer })}>
+          <option value="tout">Les verbes et les matières</option>
+          <option value="verbes">Les verbes des consignes</option>
+          <option value="matieres">Les matières et les domaines</option>
+        </Select>
+      </Field>
       <Field label="Taille">
         <Select value={r.taille} onChange={(e) => maj({ taille: e.target.value as TaillePictos })}>
           {(Object.keys(TAILLES_PICTOS) as TaillePictos[]).map((t) => <option key={t} value={t}>{libelleTaille(t)}</option>)}
         </Select>
       </Field>
-      <Coche on={r.verbe} libelle="Écrire le verbe sous le picto" onChange={(v) => maj({ verbe: v })} />
+      {r.taille === "surMesure" && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "-4px 0 8px", fontSize: 13 }}>
+          <span>Côté des cartes</span>
+          <button type="button" className="btn sm" aria-label="Un millimètre de moins" disabled={cote <= COTE_MIN_MM} onClick={() => changerCote(cote - 1)}>−</button>
+          <Input type="number" min={COTE_MIN_MM} max={COTE_MAX_MM} value={saisie} style={{ width: 64 }} aria-label="Côté des cartes, en millimètres"
+            onChange={(e) => saisir(e.target.value)} onBlur={() => setSaisie(String(cote))} />
+          <button type="button" className="btn sm" aria-label="Un millimètre de plus" disabled={cote >= COTE_MAX_MM} onClick={() => changerCote(cote + 1)}>+</button>
+          <span>mm</span>
+          <span className="meta" style={{ fontSize: 12 }}>· {cartesParPage(cote)} par page</span>
+        </div>
+      )}
+      <Coche on={r.verbe} libelle="Écrire le mot sous le picto" onChange={(v) => maj({ verbe: v })} />
       <Field label="Combien de jeux">
         <Input type="number" min={1} max={12} value={r.exemplaires} style={{ width: 80 }}
           onChange={(e) => maj({ exemplaires: Math.max(1, Math.min(12, Number(e.target.value) || 1)) })} />
       </Field>
-      <Field label={r.choisis.length ? `Les verbes à imprimer (${verbes.length})` : "Les verbes à imprimer : tous ceux qui ont un picto"}>
+      <Field label={r.choisis.length ? `Les pictos à imprimer (${mots.length})` : "Les pictos à imprimer : tous ceux qui en ont un"}>
         <div className="gb-sons">
           {tous.map((v) => (
-            <button key={v} type="button" className={`gb-son${choisis.has(v) ? " on" : ""}`} aria-pressed={choisis.has(v)} onClick={() => basculer(v)}>{v}</button>
+            <button key={v} type="button" className={`gb-son${choisis.has(v) ? " on" : ""}`} aria-pressed={choisis.has(v)} onClick={() => basculer(v)}>{etiquetteDeMatiere(v)}</button>
           ))}
           {r.choisis.length > 0 && <button type="button" className="btn ghost sm" onClick={() => maj({ choisis: [] })}>Tous</button>}
         </div>
       </Field>
       <div className="meta" style={{ fontSize: 12.5, marginTop: 6 }}>
-        {verbes.length
-          ? `${combien} carte${combien > 1 ? "s" : ""} de ${(coteDesCartes(combien, r) / 10).toLocaleString("fr-FR")} cm, ${pages > 1 ? `${pages} pages` : "une page"} à découper.`
-          : "Aucun verbe n'a encore de picto."}
+        {mots.length
+          ? `${combien} carte${combien > 1 ? "s" : ""} de ${(cote / 10).toLocaleString("fr-FR")} cm, ${pages > 1 ? `${pages} pages` : "une page"} à découper.`
+          : r.quoi === "matieres" ? "Aucune matière n'a encore de picto." : "Aucun verbe n'a encore de picto."}
       </div>
-      <Boutons atelier="caaPictos" titre="Pictos des consignes" html={html} style={STYLE_CARTES_PICTOS} peut={verbes.length > 0} />
+      <Boutons atelier="caaPictos" titre="Pictos des consignes et des matières" html={html} style={STYLE_CARTES_PICTOS} peut={mots.length > 0} />
     </div>
   );
 }
