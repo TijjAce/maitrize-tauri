@@ -96,7 +96,7 @@ interface RefDom { id: string; titre: string; sousDomaines?: RefSous[] }
  * séquence vise quand l'atelier n'en a pas reçu. Une autre séquence de
  * maternelle y cherche la sienne par son intitulé.
  */
-export function competenceDuProgramme(referentiels: Referentiel[], niveau: Niveau, intitule = /organiser les mots en cat/i): CompetenceSelectionnee | null {
+export function competenceDuProgramme(referentiels: Referentiel[], niveau: Niveau | string, intitule = /organiser les mots en cat/i): CompetenceSelectionnee | null {
   const actifs = referentiels.filter((r) => r.actif).sort((a, b) => Number(/2025/.test(b.nom)) - Number(/2025/.test(a.nom)));
   for (const ref of actifs) {
     let donnees: { domaines?: RefDom[] } | null = null;
