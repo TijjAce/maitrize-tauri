@@ -21,6 +21,19 @@ const toutes = [reseau, fractions, fractionsDecimales, courte];
 const decrire = (c: ReturnType<typeof sequencesCitees>) => c.map((x) => `${x.sequence.id}${x.seance ? `/${x.seance.numero}` : ""}`);
 
 describe("séquences citées dans le prévu", () => {
+  it("ne prend pas pour une séquence le titre d'un PDF, d'un manuel, d'une compétence ou d'un rituel cité", () => {
+    const motsMeles = sequence("s5", "mots mêlés");
+    const avec = [...toutes, motsMeles];
+    // Le PDF « Mots mêlés Halloween » contient le titre de la séquence « mots mêlés » : il ne la cite pas.
+    expect(decrire(sequencesCitees("📄 Mots mêlés Halloween", avec, seances))).toEqual([]);
+    for (const ligne of ["📖 Manuel de mots mêlés · p. 4", "🎯 Résoudre des mots mêlés (Cycle 2)", "  🔁 Mots mêlés du lundi"]) {
+      expect(decrire(sequencesCitees(ligne, avec, seances)), ligne).toEqual([]);
+    }
+    // Écrite à la main, ou posée par 📚, la séquence se cite toujours.
+    expect(decrire(sequencesCitees("📄 Mots mêlés Halloween\nOn reprend les mots mêlés.", avec, seances))).toEqual(["s5"]);
+    expect(decrire(sequencesCitees("📚 mots mêlés", avec, seances))).toEqual(["s5"]);
+  });
+
   it("reconnaît une séquence écrite à la main, sans accents ni majuscules", () => {
     const prevu = "-graphisme\n- lecture narramus du vilain petit canard\nsequence organiser les mots en reseau.";
     expect(decrire(sequencesCitees(prevu, toutes, seances))).toEqual(["s1"]);
