@@ -101,6 +101,19 @@ export function pagesDeCartes(cellules: string[], format: FormatGrille, entete =
 }
 
 /**
+ * Des cartes en pages, quand la première porte aussi le titre et la règle
+ * du jeu : elle a une rangée de moins, pour que la dernière ne passe pas
+ * seule sur la page suivante.
+ */
+export function pagesAvecRegle(cellules: string[], format: FormatGrille, entete: string): string {
+  // Le titre, la règle et l'en-tête des compétences prennent 55 mm au plus ; les cartes gardent leur taille.
+  const hauteur = hauteurDesCartes(format, true);
+  const premiere = { ...format, lignes: Math.max(1, Math.min(format.lignes, Math.floor((HAUTEUR_UTILE_MM - 55) / hauteur))) };
+  const n = premiere.colonnes * premiere.lignes;
+  return pagesDeCartes(cellules.slice(0, n), premiere, entete) + (cellules.length > n ? pagesDeCartes(cellules.slice(n), format) : "");
+}
+
+/**
  * Recto et verso : la page des dos suit celle des faces, chaque ligne
  * inversée, pour qu'une impression recto-verso sur le bord long tombe juste.
  */

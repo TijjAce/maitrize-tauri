@@ -111,6 +111,7 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "🤝", label: "Bureaux communs", to: "/commun", page: "commun", onglet: "", sous: "Plan de travail · partager avec des collègues" },
   { ico: "🎲", label: "Loto (pictogrammes)", to: "/jeux", page: "jeux", onglet: "jeux", sous: "Fabriquer" },
   { ico: "🗂", label: "Catégoriser les mots (tri, intrus, loto aveugle, familles, mistigri)", to: "/jeux", page: "jeux", onglet: "categoriser", sous: "Fabriquer · maternelle" },
+  { ico: "🧸", label: "Construire des collections (cardinal donné : fiches de places, « Donne-moi… », bons de commande)", to: "/jeux", page: "jeux", onglet: "collections", sous: "Fabriquer · maternelle" },
   { ico: "🔤", label: "Consignes en pictogrammes (CAA)", to: "/caa", page: "caa", onglet: "consignes", sous: "CAA" },
   { ico: "🗣", label: "Tableaux de langage (TLA)", to: "/caa", page: "caa", onglet: "tla", sous: "CAA" },
   { ico: "🖼", label: "Supports visuels", to: "/caa", page: "caa", onglet: "supports", sous: "CAA" },
