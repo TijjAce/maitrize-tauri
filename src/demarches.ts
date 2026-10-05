@@ -1909,13 +1909,120 @@ export const FAMILLES: Famille[] = [
   "Toutes disciplines", "Français", "Mathématiques", "Sciences, histoire, EMC", "Arts, EPS et langues", "Maternelle",
 ];
 
+// « Comparer, encadrer, intercaler des nombres entiers en utilisant les
+// symboles =, < et > » (programme de mathématiques du cycle 2, 2024, CP). Le
+// guide « Pour enseigner les nombres, le calcul et la résolution de problèmes
+// au CP » (Éduscol, 2021) en donne la séquence, « Une séquence
+// d'apprentissage sur la numération écrite chiffrée » (p. 40-46) : deux
+// collections qu'on ne peut voir simultanément, dont on écrit le nombre en
+// chiffres pour communiquer ; puis la comparaison grâce à ces écritures, et
+// la trace « 71 est plus grand que 68, car dans 71 il y a 7 dizaines alors
+// que dans 68 il y a seulement 6 dizaines » ; le réinvestissement sous des
+// écritures variées et en contexte ; enfin ordonner, intercaler, encadrer,
+// « en diversifiant les contextes : par le jeu ». Il demande de faire
+// verbaliser plutôt que d'appliquer une règle, et de valider au matériel.
+const COMPARER_NOMBRES: Demarche = {
+  id: "comparer-nombres-cp",
+  nom: "Comparer, ranger, encadrer des nombres grâce à leur écriture chiffrée",
+  famille: "Mathématiques",
+  source: "Pour enseigner les nombres, le calcul et la résolution de problèmes au CP (guide fondamental, 2021), « Une séquence d'apprentissage sur la numération écrite chiffrée » et « Le jeu dans l'apprentissage des mathématiques » ; programme de mathématiques du cycle 2 (2024)",
+  resume: "Deux collections qu'on ne voit pas ensemble : pour savoir laquelle a le plus d'éléments, on écrit leur nombre en chiffres, en groupant par dix, puis on compare les écritures — « 71 est plus grand que 68, car dans 71 il y a 7 dizaines alors que dans 68 il y a seulement 6 dizaines ». Les signes < et > viennent à ce moment. On compare ensuite sous toutes les écritures (5d 1u, 3u 4d, 5d 17u), en contexte et par le jeu — la bataille, la file des nombres, le nombre caché —, pour ordonner, intercaler et encadrer. On fait dire le raisonnement, on valide au matériel, dizaine contre dizaine.",
+  seances: [
+    {
+      titre: "Écrire le nombre d'une collection qu'on ne voit pas",
+      objectifs: "À la fin de cette séance, les élèves sauront écrire en chiffres le nombre d'objets d'une collection en l'organisant en dizaines et en unités, pour faire connaître une quantité à qui ne la voit pas.",
+      duree: 45,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "La classe en deux groupes : les uns ont une feuille de ronds rouges, les autres une feuille de ronds bleus, et aucun ne voit celle de l'autre groupe. Le problème : « Sur quelle feuille y a-t-il le plus de ronds ? » Pour le savoir, il faut faire connaître la quantité de sa feuille.",
+          "Pose le problème sans dire comment le résoudre. Les quantités dépassent la comptine apprise en classe : compter un à un ne suffit plus."),
+        ph("Temps 2 – Mise en activité des élèves", "20 min", "Chaque élève écrit avec des chiffres le nombre de ronds de sa feuille : il entoure des paquets de dix, compte les dizaines, puis les unités restantes.",
+          "Revient sur la signification des chiffres avec qui en a besoin : chacun ne voit que la collection de sa couleur. Le matériel de numération reste à disposition."),
+        ph("Temps 3 – Institutionnalisation, retour réflexif", "15 min", "Bilan d'étape : chaque collection affichée l'une après l'autre, jamais ensemble. Trois procédures comparées : compter un à un, trop long et peu sûr ; compter de dix en dix, qui donne le nom du nombre mais pas encore son écriture ; grouper par dix et écrire les dizaines puis les unités, accessible à tous. Au tableau ne restent que les écritures : « 7 dizaines 1 unité » — 71 ; « 6 dizaines 8 unités » — 68.",
+          "Valide les écritures sans montrer les collections, en disant seulement les dizaines et les unités."),
+        ph("Temps 4 – Automatisation, réinvestissement, transfert", "5 min", "D'autres collections, en partie groupées par dix : écrire leur nombre en chiffres."),
+      ],
+    },
+    {
+      titre: "Comparer grâce à l'écriture chiffrée : les signes < et >",
+      objectifs: "À la fin de cette séance, les élèves sauront comparer deux nombres grâce à leur écriture chiffrée, en comparant d'abord les dizaines, et l'écrire avec les signes < et >.",
+      duree: 40,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "Au tableau, les deux écritures de la séance précédente. Le professeur montre 71 en disant « sept dizaines et une unité », puis 68 en disant « six dizaines et huit unités », sans prononcer le nom des nombres : « Écrivez sur l'ardoise le nombre le plus grand. »"),
+        ph("Temps 2 – Mise en activité des élèves", "15 min", "Chacun répond et justifie ; qui le veut vérifie avec son matériel de numération. On attend : « 71, c'est 7 dizaines et une unité, il y a plus de 7 dizaines ; 68, c'est 6 dizaines et 8 unités, il y a donc moins de 7 dizaines. »",
+          "Recense les réponses et les arguments ; ne tranche pas avant la validation."),
+        ph("Temps 3 – Institutionnalisation, retour réflexif", "15 min", "La validation : les deux collections enfin affichées ensemble, puis le matériel aimanté au tableau, dizaine contre dizaine, unité contre unité. Les signes < et > s'introduisent ici ; on peut d'abord faire entourer le nombre le plus grand. La trace : « Tu peux comparer les nombres grâce à leur écriture chiffrée. 71 est plus grand que 68, car dans 71 il y a 7 dizaines alors que dans 68 il y a seulement 6 dizaines. »",
+          "Fait verbaliser, écrit la trace avec les élèves : c'est l'affiche de la classe."),
+        ph("Temps 4 – Automatisation, réinvestissement, transfert", "5 min", "Lire des comparaisons écrites avec les signes : « 47 < 52 » se lit « 47 est plus petit que 52 »."),
+      ],
+    },
+    {
+      titre: "Comparer sous toutes les écritures : la bataille des nombres",
+      objectifs: "À la fin de cette séance, les élèves sauront comparer deux nombres écrits de différentes façons — en chiffres, en dizaines et unités, en barres et en cubes — et placer le signe =, < ou > qui convient, en justifiant par les dizaines.",
+      duree: 45,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "L'affiche relue. Un exemple montré : « 3u 4d » et « 34 », c'est le même nombre, 3 dizaines et 4 unités ; puis « 5d 17u » et « 6d »."),
+        ph("Temps 2 – Mise en activité des élèves", "20 min", "Les exercices du guide : « À chaque fois, entoure le nombre le plus grand et écris ensuite le symbole qui convient : =, < ou >. Tu peux, si tu le veux, vérifier tes réponses avec le matériel de numération. » Des paires qui trompent l'œil : 47 et 74, 70 et 7, 9 et 41. Un problème : 68 élèves et un car de 75 places.",
+          "Différencie par la taille des nombres et par les écritures ; le matériel reste à disposition pour vérifier."),
+        ph("Temps 3 – Institutionnalisation, retour réflexif", "10 min", "Les erreurs discutées : regarder le chiffre de droite, croire que 47 et 74 sont pareils. On redit : on compare d'abord les dizaines — et l'on ne récite pas une règle sans la comprendre."),
+        ph("Temps 4 – Automatisation, réinvestissement, transfert", "10 min", "La bataille des nombres, par deux : on pose le signe entre les deux cartes, on lit, et l'autre demande « Comment le sais-tu ? ». On écrit trois comparaisons sur la feuille de jeu.",
+          "Circule, écoute les justifications ; arbitre au matériel."),
+      ],
+    },
+    {
+      titre: "Ordonner et intercaler : la file des nombres",
+      objectifs: "À la fin de cette séance, les élèves sauront ranger trois, puis cinq nombres dans l'ordre croissant et dans l'ordre décroissant, et trouver un nombre qui s'intercale entre deux autres.",
+      duree: 40,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "« Ce qu'on sait faire pour deux nombres, on le fait pour trois. » Trois cartes au tableau, à ranger du plus petit au plus grand en disant pourquoi."),
+        ph("Temps 2 – Mise en activité des élèves", "15 min", "Ranger trois, puis cinq nombres, dans l'ordre croissant puis décroissant ; écrire un nombre qui va entre deux autres ; placer des nombres sur la bande numérique.",
+          "Fait dire le raisonnement plutôt qu'une règle : « 9, c'est moins d'une dizaine ; 45, c'est plus de 4 dizaines. »"),
+        ph("Temps 3 – Institutionnalisation, retour réflexif", "5 min", "La trace : ranger dans l'ordre croissant, c'est du plus petit au plus grand ; on l'écrit avec le signe < : 12 < 19 < 34."),
+        ph("Temps 4 – Automatisation, réinvestissement, transfert", "15 min", "La file des nombres, à trois ou quatre : chacun pose sa carte dans la file — avant, après, ou entre deux cartes — en disant les signes. On recopie la file sur la feuille de jeu."),
+      ],
+    },
+    {
+      titre: "Encadrer : entre deux dizaines, entre deux nombres",
+      objectifs: "À la fin de cette séance, les élèves sauront encadrer un nombre entre deux dizaines (30 < 34 < 40) ou entre le nombre d'avant et celui d'après, et retrouver sa place sur la bande numérique.",
+      duree: 40,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "Un nombre caché sous un gobelet : « Il est plus grand que 30 et plus petit que 40. » On l'écrit : 30 < ? < 40."),
+        ph("Temps 2 – Mise en activité des élèves", "15 min", "Encadrer des nombres entre deux dizaines, puis entre le nombre d'avant et celui d'après ; compléter une bande numérique d'une dizaine à la suivante, puis placer des nombres sur une demi-droite graduée de un en un."),
+        ph("Temps 3 – Institutionnalisation, retour réflexif", "5 min", "La trace : encadrer un nombre, c'est trouver un nombre plus petit et un nombre plus grand ; entre deux dizaines, le chiffre des dizaines suffit."),
+        ph("Temps 4 – Automatisation, réinvestissement, transfert", "15 min", "Le nombre caché, par deux : l'un tire une carte sans la montrer, l'autre propose un nombre et note chaque encadrement sur la feuille de jeu, jusqu'à le trouver."),
+      ],
+    },
+    {
+      titre: "Résoudre des problèmes de comparaison",
+      objectifs: "À la fin de cette séance, les élèves sauront répondre à une question de comparaison posée dans un contexte — qui en a le plus, y a-t-il assez de places — en comparant les nombres, et l'expliquer.",
+      duree: 40,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "Un problème lu ensemble : « Aaron a 49 trombones dans sa trousse et Mia en a 53. Qui de Aaron ou de Mia a le plus de trombones ? »"),
+        ph("Temps 2 – Mise en activité des élèves", "20 min", "D'autres problèmes, dont celui du guide : « 68 élèves doivent partir au cinéma. Le car arrive, il peut transporter 75 élèves. Tous les élèves pourront-ils être transportés ? Explique pourquoi. »",
+          "Fait écrire la comparaison avec un signe avant la réponse ; le matériel valide."),
+        ph("Temps 3 – Institutionnalisation, retour réflexif", "10 min", "Mise en commun : la réponse à la question, et la comparaison qui la justifie."),
+        ph("Temps 4 – Automatisation, réinvestissement, transfert", "5 min", "La bataille ou la file des nombres en autonomie, avec des nombres plus grands pour qui réussit."),
+      ],
+    },
+    {
+      titre: "Évaluation — comparer, ranger, encadrer",
+      objectifs: "À la fin de cette séance, les élèves sauront montrer ce qu'ils ont acquis : comparer deux nombres avec =, < et >, ranger cinq nombres, en intercaler et en encadrer, sous différentes écritures.",
+      duree: 30,
+      phases: [
+        ph("Observation", "20 min", "Une évaluation courte : placer les signes, ranger cinq nombres, intercaler, encadrer, un problème. Pendant un jeu, écouter les justifications de chacun.",
+          "Observe sans aider ; note les procédures : la dizaine, le nom du nombre, la bande numérique."),
+        ph("Suite", "10 min", "La remédiation au matériel pour qui en a besoin ; en rituel, le nombre caché sur la bande et « plus grand, plus petit »."),
+      ],
+    },
+  ],
+};
+
 export const DEMARCHES: Demarche[] = [
   EDUSCOL_QUATRE_TEMPS, ENSEIGNEMENT_EXPLICITE,
   LECTURE_CODE, LECTURE_FLUENCE, COMPREHENSION, ECRITURE_GESTE, ECRITURE_REDIGER, ORAL, VOCABULAIRE, GRAMMAIRE,
   PROBLEMES, CALCUL_MENTAL, GEOMETRIE_GRANDEURS,
   INVESTIGATION, ENQUETE_HISTOIRE_GEO, EMC_DEBAT,
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
-  MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, COLLECTIONS, CHRONOLOGIE,
+  MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, COLLECTIONS, CHRONOLOGIE, COMPARER_NOMBRES,
 ];
 
 export const demarcheDe = (id: string) => DEMARCHES.find((d) => d.id === id);
@@ -1983,6 +2090,8 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string): string {
   if (/mathematiques/.test(dom)) {
     if (/grandeurs|geometrie|espace/.test(sd)) return "geometrie-grandeurs";
     if (/donnees|probabilit|proportionnalite/.test(sd) || /probleme/.test(comp)) return "problemes";
+    // Comparer, ranger, encadrer des entiers : la séquence du guide CP, par l'écriture chiffrée — pas les fractions ni les décimaux.
+    if (/comparer|encadrer|intercaler|ordonner des nombres|ranger des nombres|ordre (de)?croissant/.test(comp) && !/fraction|decima/.test(comp)) return "comparer-nombres-cp";
     // Un fait numérique ou une procédure de calcul : ce qui s'entraîne chaque jour au procédé La Martinière.
     if (/calcul mental/.test(sd) || /mental|faits? numeriques|tables? (d'addition|de multiplication)|complements?\b|dizaine superieure|doubles?\b|moities?\b|ajouter ou soustraire|retrancher|calculer? (en ligne|de tete)/.test(comp)) return "calcul-mental-martiniere";
     return "eduscol-quatre-temps";

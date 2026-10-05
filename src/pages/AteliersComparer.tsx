@@ -4,6 +4,8 @@ import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { graineAuHasard } from "../hasard";
 import { Boutons, Colonnes } from "./AteliersLangage";
+import { useCompetencesAtelier } from "../components/CompetencesAtelier";
+import { SequenceDeComparaison } from "../components/SequenceDeComparaison";
 import {
   CHAMPS, FORMES, NOMBRES_DE_CARTES, REGLAGES_COMPARER, STYLE_COMPARER, htmlComparer, paquet, reglagesComparerSurs,
   type Champ, type FormeNombre, type ReglagesComparer,
@@ -25,6 +27,8 @@ export function ComparerTab() {
   const [brut, maj] = useReglages<ReglagesComparer>(ATELIER, REGLAGES_COMPARER);
   const r = React.useMemo(() => reglagesComparerSurs(brut), [brut]);
   const [graine, setGraine] = React.useState(graineAuHasard);
+  const [enSequence, setEnSequence] = React.useState(false);
+  const [competences] = useCompetencesAtelier(ATELIER);
   const cartes = React.useMemo(() => paquet(r, graine), [r, graine]);
   const html = React.useMemo(() => htmlComparer(cartes, r), [cartes, r]);
   const basculer = (id: FormeNombre) =>
@@ -73,6 +77,11 @@ export function ComparerTab() {
         </Field>
         <Boutons atelier={ATELIER} titre={r.titre.trim() || REGLAGES_COMPARER.titre} html={html} style={STYLE_COMPARER} peut={cartes.length > 0}
           onTirage={() => setGraine(graineAuHasard())} />
+        <button type="button" className="btn sm" style={{ marginTop: 8 }} onClick={() => setEnSequence(true)}
+          title="La séquence du guide CP d'Éduscol, en sept séances, avec ce jeu et ses feuilles rangés dans les séances">
+          📚 Créer une séquence avec ce jeu
+        </button>
+        {enSequence && <SequenceDeComparaison reglages={r} competences={competences} onClose={() => setEnSequence(false)} />}
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_COMPARER} />}
     />

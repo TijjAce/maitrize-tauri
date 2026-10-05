@@ -220,8 +220,9 @@ export function exempleDuSavoir(jusqua: number): [number, number] {
   return [t * 10 + 1, (t - 1) * 10 + 8];
 }
 
-const dizaines = (k: number) => `${k} dizaine${k > 1 ? "s" : ""}`;
-const unites = (k: number) => `${k} unité${k > 1 ? "s" : ""}`;
+// Une espace insécable : « 7 » ne reste pas seul en fin de ligne, loin de ses dizaines.
+const dizaines = (k: number) => `${k}\u00a0dizaine${k > 1 ? "s" : ""}`;
+const unites = (k: number) => `${k}\u00a0unité${k > 1 ? "s" : ""}`;
 
 /** Des exemples pris dans le champ des nombres, pour que la règle parle des nombres du paquet. */
 const EXEMPLES: Record<Champ, { petit: number; grand: number; file: [number, number, number]; cadres: [string, string] }> = {
@@ -230,20 +231,28 @@ const EXEMPLES: Record<Champ, { petit: number; grand: number; file: [number, num
   100: { petit: 68, grand: 71, file: [54, 58, 63], cadres: ["50 &lt; ? &lt; 80", "60 &lt; ? &lt; 70"] },
 };
 
-function pageDeRegle(r: ReglagesComparer, titre: string): string {
-  const [a, b] = exempleDuSavoir(r.jusqua);
-  const e = EXEMPLES[r.jusqua];
-  const [x, y, z] = e.file;
-  const cote = (n: number) => `<div class="cn-savoir-nombre">${barresEtCubes(Math.floor(n / 10), n % 10, 2.6)}`
+/**
+ * Ce qu'on retient, la trace du guide : les deux nombres en barres et en
+ * cubes, le signe, et la phrase qui dit pourquoi. `u` grandit pour l'affiche.
+ */
+export function blocDuSavoir(jusqua: number, u = 2.6): string {
+  const [a, b] = exempleDuSavoir(jusqua);
+  const cote = (n: number) => `<div class="cn-savoir-nombre">${barresEtCubes(Math.floor(n / 10), n % 10, u)}`
     + `<div>${dizaines(Math.floor(n / 10))} ${unites(n % 10)}</div></div>`;
-  return `<div class="page cn-regle">
-    <div class="titre">${escapeHtml(titre)} — jusqu'à ${r.jusqua}</div>
-    <div class="cn-savoir">
+  return `<div class="cn-savoir">
       <div class="cn-savoir-titre">Ce qu'on retient</div>
       <div class="cn-savoir-dessins">${cote(a)}${cote(b)}</div>
       <div class="cn-savoir-signes">${a} &gt; ${b}</div>
       <p>${a} est plus grand que ${b}, car dans ${a} il y a ${dizaines(Math.floor(a / 10))} alors que dans ${b} il y a seulement ${dizaines(Math.floor(b / 10))}.</p>
-    </div>
+    </div>`;
+}
+
+function pageDeRegle(r: ReglagesComparer, titre: string): string {
+  const e = EXEMPLES[r.jusqua];
+  const [x, y, z] = e.file;
+  return `<div class="page cn-regle">
+    <div class="titre">${escapeHtml(titre)} — jusqu'à ${r.jusqua}</div>
+    ${blocDuSavoir(r.jusqua)}
     <div class="cn-jeu-regle">
       <b>La bataille des nombres</b><span class="cn-pour">2 joueurs · comparer avec =, &lt; et &gt;</span>
       <ol>

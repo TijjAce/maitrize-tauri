@@ -167,6 +167,10 @@ describe("la démarche que la compétence appelle", () => {
     expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Poser une addition en colonnes")).toBe("eduscol-quatre-temps");
     expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Résoudre des problèmes additifs en une étape")).toBe("problemes");
     expect(sug("Mathématiques", "Grandeurs et mesures", "Comparer des masses")).toBe("geometrie-grandeurs");
+    // Comparer, encadrer, intercaler des entiers : la séquence du guide CP ; pas les fractions.
+    expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Comparer, encadrer, intercaler des nombres entiers en utilisant les symboles =, < et >.")).toBe("comparer-nombres-cp");
+    expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Ordonner des nombres dans l'ordre croissant ou décroissant.")).toBe("comparer-nombres-cp");
+    expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Comparer des fractions de même dénominateur", "Cycle 3")).not.toBe("comparer-nombres-cp");
     expect(sug("Mathématiques", "Espace et géométrie", "Reconnaître un carré")).toBe("geometrie-grandeurs");
     expect(sug("Mathématiques", "Organisation et gestion de données", "Lire un tableau")).toBe("problemes");
     expect(sug("Mathématiques", "La proportionnalité", "Reconnaître une situation de proportionnalité", "Cycle 3")).toBe("problemes");
