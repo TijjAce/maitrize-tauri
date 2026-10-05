@@ -23,6 +23,12 @@ export interface MotImage {
   seul?: "image" | "mot";
 }
 
+/** Le mot, avec ce qu'il montre ; les deux, c'est sans réglage. */
+export function avecSeul(m: MotImage, seul: MotImage["seul"]): MotImage {
+  const { seul: _avant, ...reste } = m;
+  return seul ? { ...reste, seul } : reste;
+}
+
 export type Images = Record<number, string>;
 
 const image = (m: MotImage, images: Images) => (m.id != null ? images[m.id] : undefined);

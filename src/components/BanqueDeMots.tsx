@@ -6,7 +6,7 @@ import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac"
 import { motsDeLaListe, uneImageParMot } from "../loto";
 import { melanger } from "../hasard";
 import { EtiquetteMonPicto, usePictoImage } from "./ChoixPicto";
-import type { MotImage } from "../jeuxSons";
+import { avecSeul, type MotImage } from "../jeuxSons";
 import { useProjetDuMoment } from "./ProjetDuMoment";
 import { BoutonMesImages } from "./MesImages";
 import { estPerso } from "../imagesPerso";
@@ -30,7 +30,7 @@ function Chip({ m, extra, onRetirer, onRenommer, onSeul }: {
   const sansImage = m.seul === "mot", sansMot = m.seul === "image";
   return (
     <span className={`bm-chip${sansImage ? " bm-sans-image" : ""}${sansMot ? " bm-sans-mot" : ""}`}
-      title={m.id == null ? "Aucune image trouvée : le mot s'imprimera seul" : onRenommer ? "Votre image : écrivez son mot" : m.mot}>
+      title={m.id == null ? "Aucune image trouvée : le mot s'imprimera seul" : onRenommer && estPerso(m.id) ? "Votre image : écrivez son mot" : m.mot}>
       {src ? <img src={src} alt="" /> : <span className="bm-vide" />}
       <EtiquetteMonPicto id={m.id} />
       {onRenommer
@@ -53,12 +53,6 @@ function Chip({ m, extra, onRetirer, onRenommer, onSeul }: {
   );
 }
 
-/** Le mot, avec ce qu'il montre ; les deux, c'est sans réglage. */
-const avecSeul = (m: MotImage, seul: MotImage["seul"]): MotImage => {
-  const { seul: _avant, ...reste } = m;
-  return seul ? { ...reste, seul } : reste;
-};
-
 export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions, affichage = false }: {
   mots: MotImage[];
   onChange: (mots: MotImage[]) => void;
@@ -69,7 +63,7 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions
   aide?: string;
   /** Des listes toutes prêtes que l'atelier propose : les mots d'un son, par exemple. */
   propositions?: { libelle: string; mots: string[] }[];
-  /** Chaque mot dit ce que la feuille en montre : 🖼 son image, Aa son mot (la carte mentale). */
+  /** Chaque mot dit ce que la feuille en montre — 🖼 son image, Aa son mot — et chacun se réécrit (la carte mentale). */
   affichage?: boolean;
 }) {
   const [texte, setTexte] = React.useState("");
@@ -179,10 +173,10 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions
       </div>
       <div className="bm-liste">
         {mots.map((m, i) => (
-          // Une image de l'enseignant garde sa clé quand on réécrit son mot : le champ ne perd pas le curseur.
-          <Chip key={estPerso(m.id) ? `perso${m.id}` : `${m.mot}-${i}`} m={m} extra={extra?.(m)}
+          // Un mot qu'on réécrit garde sa clé : le champ ne perd pas le curseur.
+          <Chip key={affichage ? `rang${i}` : estPerso(m.id) ? `perso${m.id}` : `${m.mot}-${i}`} m={m} extra={extra?.(m)}
             onRetirer={() => onChange(mots.filter((_, k) => k !== i))}
-            onRenommer={estPerso(m.id) ? (mot) => onChange(mots.map((x, k) => (k === i ? { ...x, mot } : x))) : undefined}
+            onRenommer={affichage || estPerso(m.id) ? (mot) => onChange(mots.map((x, k) => (k === i ? { ...x, mot } : x))) : undefined}
             onSeul={affichage && m.id != null ? (seul) => onChange(mots.map((x, k) => (k === i ? avecSeul(x, seul) : x))) : undefined} />
         ))}
       </div>
