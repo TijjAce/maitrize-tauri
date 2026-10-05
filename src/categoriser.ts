@@ -22,10 +22,10 @@ import type { MotImage } from "./jeuxSons";
 
 export type Niveau = "PS" | "MS" | "GS";
 
-export const NIVEAUX: { id: Niveau; age: string }[] = [
-  { id: "PS", age: "à partir de 3 ans" },
-  { id: "MS", age: "à partir de 4 ans" },
-  { id: "GS", age: "à partir de 5 ans" },
+export const NIVEAUX: { id: Niveau; age: string; classe: string }[] = [
+  { id: "PS", age: "à partir de 3 ans", classe: "petite section" },
+  { id: "MS", age: "à partir de 4 ans", classe: "moyenne section" },
+  { id: "GS", age: "à partir de 5 ans", classe: "grande section" },
 ];
 
 /** Ce qu'on observe chez l'élève, d'après la fiche « Catégoriser » : la progression d'un âge à l'autre. */
@@ -135,14 +135,19 @@ export function motsPourLImage(nom: string): string[] {
 
 // ── Les catégories toutes prêtes ──────────────────────────────────────────
 //
-// Les exemples de la fiche « Catégoriser » et du programme, avec des mots qui
-// ont tous un picto dans la banque — et le bon : « baguette » y est un bâton,
-// « paquebot » le même dessin que « bateau ».
+// Les exemples de la fiche « Catégoriser » et du programme, puis des thèmes de
+// la classe — les saisons, la maison, les couleurs —, avec des mots qui ont
+// tous un picto dans la banque, et le bon : « baguette » y est un bâton,
+// « paquebot » le même dessin que « bateau », « seau » une poubelle, « feu » un
+// feu tricolore, « maïs » des grains bruns, « salade » un bol bleu (on dit « laitue »).
 
 export interface CategoriePreparee {
   nom: string;
-  /** Le mot dont le picto dit la catégorie. */
-  picto: string;
+  /**
+   * Le mot dont le picto dit la catégorie — ou le numéro du picto, quand le
+   * premier dessin du mot n'est pas le bon (« salle de bain » : une porte).
+   */
+  picto: string | number;
   appel?: string;
   intrus?: boolean;
   mots: string[];
@@ -179,7 +184,7 @@ export const JEUX_DE_CATEGORIES: JeuDeCategories[] = [
     source: "fiche « Catégoriser » : le marchand de légumes",
     categories: [
       { nom: "Les fruits", picto: "fruits", appel: "les fruits", mots: ["pomme", "banane", "poire", "orange", "fraise", "cerise"] },
-      { nom: "Les légumes", picto: "légumes", appel: "les légumes", mots: ["carotte", "salade", "poireau", "pomme de terre", "chou", "radis"] },
+      { nom: "Les légumes", picto: "légumes", appel: "les légumes", mots: ["carotte", "laitue", "poireau", "pomme de terre", "chou", "radis"] },
     ],
   },
   {
@@ -207,7 +212,7 @@ export const JEUX_DE_CATEGORIES: JeuDeCategories[] = [
       { nom: "Chez le boulanger", picto: "boulangerie", appel: "ce qu'on achète chez le boulanger", mots: ["pain", "croissant", "pain au chocolat", "gâteau", "tarte", "pain de mie"] },
       { nom: "Chez le boucher", picto: "boucherie", appel: "ce qu'on achète chez le boucher", mots: ["viande", "saucisse", "jambon", "poulet", "steak", "rôti"] },
       { nom: "Chez le poissonnier", picto: "poissonnerie", appel: "ce qu'on achète chez le poissonnier", mots: ["poisson", "crevette", "huître", "crabe", "moule", "saumon"] },
-      { nom: "Chez le primeur", picto: "primeur", appel: "les fruits et les légumes", mots: ["pomme", "banane", "cerise", "carotte", "salade", "poireau"] },
+      { nom: "Chez le primeur", picto: "primeur", appel: "les fruits et les légumes", mots: ["pomme", "banane", "cerise", "carotte", "laitue", "poireau"] },
     ],
   },
   {
@@ -255,21 +260,129 @@ export const JEUX_DE_CATEGORIES: JeuDeCategories[] = [
       { nom: "skier", picto: "skier", mots: ["skier", "skieur"] },
     ],
   },
+  // Des catégories perceptives, dès 3 ans : « Mets ici tous les objets bleus, ici tous les objets rouges ».
+  {
+    id: "couleurs", libelle: "Les couleurs : rouge, jaune, vert", niveaux: ["PS"],
+    source: "fiche « Catégoriser » : des catégories perceptives, la taille, la couleur (à partir de 3 ans)",
+    categories: [
+      { nom: "Ce qui est rouge", picto: "rouge", appel: "tout ce qui est rouge", mots: ["fraise", "tomate", "cerise", "coccinelle", "camion de pompiers", "pomme"] },
+      { nom: "Ce qui est jaune", picto: "jaune", appel: "tout ce qui est jaune", mots: ["banane", "citron", "soleil", "poussin", "canari", "tournesol"] },
+      { nom: "Ce qui est vert", picto: "vert", appel: "tout ce qui est vert", mots: ["laitue", "grenouille", "feuille", "petits pois", "concombre", "brocoli"] },
+    ],
+  },
+  {
+    id: "chaud-froid", libelle: "Chaud ou froid", niveaux: ["PS", "MS"],
+    source: "fiche « Catégoriser » : des catégories perceptives, ce qu'on sent",
+    categories: [
+      { nom: "Ce qui est chaud", picto: "chaud", appel: "tout ce qui est chaud", mots: ["soleil", "feu de camp", "four", "radiateur", "soupe", "bougie"] },
+      { nom: "Ce qui est froid", picto: "froid", appel: "tout ce qui est froid", mots: ["neige", "glaçon", "réfrigérateur", "bonhomme de neige", "glace", "iceberg"] },
+    ],
+  },
+  {
+    id: "se-mange", libelle: "Ce qui se mange, ce qui ne se mange pas", niveaux: ["PS", "MS"],
+    source: "fiche « Catégoriser » : « Je mets le chat avec l'arbre car ils ne se mangent pas »",
+    categories: [
+      { nom: "Ce qui se mange", picto: "manger", appel: "tout ce qui se mange", mots: ["pomme", "pain", "fromage", "gâteau", "yaourt", "carotte"] },
+      { nom: "Ce qui ne se mange pas", picto: "", appel: "tout ce qui ne se mange pas", mots: ["chat", "arbre", "ballon", "chaussure", "crayon", "voiture"] },
+    ],
+  },
+  {
+    id: "ranger-la-classe", libelle: "Ranger la classe : les jouets et le matériel", niveaux: ["PS"],
+    source: "fiche « Catégoriser » : ranger un espace de la classe, en disant pourquoi chaque objet va là",
+    categories: [
+      { nom: "Les jouets", picto: "jouets", appel: "les jouets", mots: ["poupée", "ballon", "cubes", "puzzle", "toupie", "peluche"] },
+      { nom: "Le matériel de l'école", picto: "matériel scolaire", appel: "ce qui sert pour travailler en classe", mots: ["crayon", "ciseaux", "colle", "cahier", "livre", "gomme"] },
+    ],
+  },
+  {
+    id: "mer-montagne", libelle: "À la mer ou à la montagne", niveaux: ["PS", "MS"],
+    source: "fiche « Catégoriser » : des catégories thématiques (tracteur et vache = ferme)",
+    categories: [
+      { nom: "À la mer", picto: "mer", appel: "ce qu'on voit à la mer", mots: ["coquillage", "crabe", "étoile de mer", "mouette", "voilier", "château de sable"] },
+      { nom: "À la montagne", picto: "montagne", appel: "ce qu'on voit à la montagne", mots: ["ski", "luge", "sapin", "chalet", "marmotte", "télésiège"] },
+    ],
+  },
+  {
+    id: "domestiques-sauvages", libelle: "Les animaux de la maison et les animaux sauvages", niveaux: ["PS", "MS"],
+    source: "fiche « Catégoriser » : des catégories taxonomiques, puis leurs sous-catégories",
+    categories: [
+      { nom: "Les animaux de la maison", picto: "animal domestique", appel: "les animaux qui vivent avec nous", mots: ["chat", "chien", "lapin", "hamster", "perruche"] },
+      { nom: "Les animaux sauvages", picto: "savane", appel: "les animaux sauvages", mots: ["lion", "éléphant", "girafe", "zèbre", "tigre", "singe"] },
+    ],
+  },
+  {
+    id: "saisons", libelle: "Les saisons", niveaux: ["MS", "GS"],
+    source: "fiche « Catégoriser » : des catégories thématiques — ici, le temps qui passe",
+    categories: [
+      { nom: "L'hiver", picto: "hiver", appel: "ce qu'on voit en hiver", mots: ["neige", "bonhomme de neige", "moufles", "écharpe", "luge", "flocon de neige"] },
+      { nom: "Le printemps", picto: "printemps", appel: "ce qu'on voit au printemps", mots: ["fleur", "papillon", "coccinelle", "nid", "tulipe", "poussin"] },
+      { nom: "L'été", picto: "été", appel: "ce qu'on voit en été", mots: ["soleil", "plage", "maillot de bain", "parasol", "lunettes de soleil", "glace"] },
+      { nom: "L'automne", picto: "automne", appel: "ce qu'on voit en automne", mots: ["feuilles mortes", "champignon", "châtaigne", "citrouille", "parapluie", "gland"] },
+    ],
+  },
+  {
+    id: "maison", libelle: "Les pièces de la maison", niveaux: ["MS", "GS"],
+    source: "fiche « Catégoriser » : des catégories thématiques — chaque objet dans la pièce où il se trouve",
+    categories: [
+      { nom: "La cuisine", picto: "cuisine", appel: "ce qu'on trouve dans la cuisine", mots: ["réfrigérateur", "four", "évier", "casserole", "cuisinière", "micro-ondes"] },
+      { nom: "La salle de bain", picto: 33954, appel: "ce qu'on trouve dans la salle de bain", mots: ["baignoire", "douche", "lavabo", "brosse à dents", "savon", "dentifrice"] },
+      { nom: "La chambre", picto: "chambre à coucher", appel: "ce qu'on trouve dans la chambre", mots: ["lit", "oreiller", "armoire", "couverture", "réveil", "lampe"] },
+      { nom: "Le salon", picto: "salon", appel: "ce qu'on trouve dans le salon", mots: ["canapé", "télévision", "fauteuil", "tapis", "table basse"] },
+    ],
+  },
+  {
+    id: "fonctions", libelle: "À quoi ça sert : couper, écrire, nettoyer", niveaux: ["MS", "GS"],
+    source: "fiche « Catégoriser » : classer des objets selon leur fonction, « les objets qui coupent (ciseaux, couteau, scie) »",
+    categories: [
+      { nom: "Ce qui coupe", picto: "couper", appel: "tout ce qui coupe", mots: ["ciseaux", "couteau", "scie", "hache", "sécateur"] },
+      { nom: "Ce qui sert à écrire", picto: "écrire", appel: "tout ce qui sert à écrire", mots: ["crayon", "stylo", "feutre", "craie"] },
+      { nom: "Ce qui sert à nettoyer", picto: "nettoyer", appel: "tout ce qui sert à nettoyer", mots: ["balai", "éponge", "aspirateur", "chiffon"] },
+    ],
+  },
+  {
+    id: "vetements-corps", libelle: "Les vêtements : le haut, le bas, les pieds, les accessoires", niveaux: ["GS"],
+    source: "livret « À partir de 5 ans » (2025) : chercher les hyperonymes — vêtements pour le haut du corps, pour le bas du corps, accessoires",
+    categories: [
+      { nom: "Pour le haut du corps", picto: "torse", appel: "ce qu'on met sur le haut du corps", mots: ["pull", "tee-shirt", "chemise", "gilet", "anorak"] },
+      { nom: "Pour le bas du corps", picto: "jambe", appel: "ce qu'on met sur le bas du corps", mots: ["pantalon", "jupe", "short", "collant", "culotte"] },
+      { nom: "Pour les pieds", picto: "pieds", appel: "ce qu'on met aux pieds", mots: ["chaussure", "bottes", "sandales", "baskets", "chausson", "tongs"] },
+      { nom: "Les accessoires", picto: "accessoires", appel: "les accessoires", mots: ["bonnet", "écharpe", "gants", "ceinture", "casquette", "lunettes"] },
+    ],
+  },
+  {
+    id: "instruments", libelle: "Les instruments : on frappe, on souffle, on gratte les cordes", niveaux: ["GS"],
+    source: "fiche « Catégoriser » : des sous-catégories ; programme 2025, les univers sonores",
+    categories: [
+      { nom: "Ceux qu'on frappe", picto: "percussion", appel: "les instruments qu'on frappe", mots: ["tambour", "xylophone", "triangle", "cymbales", "tambourin"] },
+      { nom: "Ceux dans lesquels on souffle", picto: "instruments à vent", appel: "les instruments dans lesquels on souffle", mots: ["flûte", "trompette", "harmonica", "saxophone", "clarinette"] },
+      { nom: "Ceux qui ont des cordes", picto: "instruments à cordes", appel: "les instruments à cordes", mots: ["guitare", "violon", "harpe", "contrebasse", "ukulélé"] },
+    ],
+  },
+  {
+    id: "metiers", libelle: "Les métiers et leurs outils", niveaux: ["GS"],
+    source: "fiche « Catégoriser » : des catégories thématiques — l'objet et celui qui s'en sert",
+    categories: [
+      { nom: "Le jardinier", picto: "jardinier", appel: "les outils du jardinier", mots: ["râteau", "arrosoir", "brouette", "pelle", "sécateur"] },
+      { nom: "Le médecin", picto: "médecin", appel: "les outils du médecin", mots: ["stéthoscope", "thermomètre", "seringue", "pansement", "médicament"] },
+      { nom: "Le pompier", picto: "pompier", appel: "les outils du pompier", mots: ["camion de pompiers", "échelle", "extincteur"] },
+      { nom: "Le coiffeur", picto: "coiffeur", appel: "les outils du coiffeur", mots: ["peigne", "brosse à cheveux", "sèche-cheveux", "ciseaux", "shampoing"] },
+    ],
+  },
 ];
 
 /** Les exemples qui conviennent à cet âge d'abord, les autres ensuite. */
 export const jeuxPour = (n: Niveau) =>
   [...JEUX_DE_CATEGORIES.filter((j) => j.niveaux.includes(n)), ...JEUX_DE_CATEGORIES.filter((j) => !j.niveaux.includes(n))];
 
-/** Tous les mots à chercher dans la banque pour un exemple : ceux des images, et ceux des catégories. */
+/** Tous les mots à chercher dans la banque pour un exemple : ceux des images, et ceux des catégories (sauf un picto donné par son numéro). */
 export const motsDuJeu = (j: JeuDeCategories) =>
-  [...new Set(j.categories.flatMap((c) => [...c.mots, c.picto].filter((m) => m.trim())))];
+  [...new Set(j.categories.flatMap((c) => [...c.mots, typeof c.picto === "string" ? c.picto : ""].filter((m) => m.trim())))];
 
 /** Un exemple devenu des catégories, une fois ses mots trouvés dans la banque (un mot sans picto garde son mot seul). */
 export function categoriesDuJeu(j: JeuDeCategories, parMot: Record<string, number>): Categorie[] {
   const id = (mot: string) => parMot[mot.toLowerCase()] ?? null;
   return j.categories.map((c) => ({
-    nom: c.nom, image: c.picto ? id(c.picto) : null, appel: c.appel ?? "", intrus: c.intrus === true,
+    nom: c.nom, image: typeof c.picto === "number" ? c.picto : c.picto ? id(c.picto) : null, appel: c.appel ?? "", intrus: c.intrus === true,
     mots: c.mots.map((mot) => ({ id: id(mot), mot })),
   }));
 }
