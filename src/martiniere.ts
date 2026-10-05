@@ -22,12 +22,13 @@
 import { escapeHtml } from "./print";
 import { consignesPour } from "./consignesCalcul";
 import { problemesAssocies, problemesDe } from "./problemesAssocies";
+import { STYLE_MATERIEL, htmlMateriel, materielPour } from "./materielManipulation";
 import { feuille } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
 import { NIVEAUX, objectifParId, objectifsDuNiveau, tirerCalcul, type Calcul, type Niveau, type Objectif } from "./faitsNumeriques";
 
 export const REFLEXIONS = [3, 5, 10, 15] as const;
-export type FormeEntrainement = "oral" | "ecrit" | "decouverte" | "evaluation";
+export type FormeEntrainement = "oral" | "ecrit" | "decouverte" | "materiel" | "evaluation";
 
 export interface ReglagesMartiniere {
   niveau: Niveau;
@@ -222,6 +223,11 @@ function htmlEvaluation(series: Calcul[][], r: ReglagesMartiniere): string {
 export function htmlMartiniere(series: Calcul[][], r: ReglagesMartiniere): string {
   if (r.forme === "ecrit") return htmlEcrit(series, r);
   if (r.forme === "decouverte") return htmlDecouverte(series, r);
+  if (r.forme === "materiel") {
+    // Le matériel de la découverte : celui de l'objectif, à découper.
+    const o = objectifsRetenus(r)[0];
+    return o ? htmlMateriel(materielPour(o, r.tables ?? []), objectifEnLigne(r)) : feuille("", "mm");
+  }
   if (r.forme === "evaluation") return htmlEvaluation(series, r);
   return htmlOral(series, r);
 }
@@ -269,4 +275,4 @@ export const STYLE_MARTINIERE = `
   .feuille.ma .ma-evaluation .consigne { font-size: 14px; }
   .feuille.ma .ma-evaluation .ma-recherche-calcul { font-size: 17px; }
   .feuille.ma .ma-evaluation .ma-ligne { height: 7mm; }
-`;
+` + STYLE_MATERIEL;
