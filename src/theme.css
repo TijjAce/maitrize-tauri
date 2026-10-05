@@ -1298,6 +1298,8 @@ details.cm-pli > summary { align-items: center; padding: 10px 0 6px; }
 details.cm-pli > summary .cm-etape { margin: 0; }
 details.cm-pli > summary .meta { margin-left: 4px; font-size: 12.5px; }
 .cm-galerie { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.cm-famille { font-size: 12px; font-weight: 700; color: var(--text-2); margin: 12px 0 6px; }
+.cm-famille:first-child { margin-top: 2px; }
 .cm-vignette { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px 5px; border: 1.5px solid var(--border);
   border-radius: 10px; background: var(--panel-2); color: var(--text); cursor: pointer; font: inherit; }
 .cm-vignette:hover { border-color: var(--accent); }

@@ -14,7 +14,7 @@ import { chercherPictos } from "../mesPictos";
 import { motDuFichier } from "../imagesPerso";
 import type { PictoArasaac } from "../api";
 import {
-  COULEURS, GRAPHIES, MOTIFS, OPERATIONS, PLAFONDS, POLICES_CURSIVES_CONNUES, REGLAGES_PAR_DEFAUT, SONS_COLORIAGE, TAILLES_MOTIF,
+  COULEURS, FAMILLES_MOTIFS, GRAPHIES, MOTIFS, OPERATIONS, PLAFONDS, POLICES_CURSIVES_CONNUES, REGLAGES_PAR_DEFAUT, SONS_COLORIAGE, TAILLES_MOTIF,
   basculerCase, casesAColorier, consigne, couleurDe, couleursDuMotif, dimensionsDe, ecrireMotifsPerso, fabriquerColoriage, lettreSousGraphie,
   lireMotifsPerso, motifDepuisImage, type CaseColoriage, type Coloriage, type Graphie, type Matiere, type Motif, type Operation,
 } from "../coloriageMagique";
@@ -405,7 +405,6 @@ export function ColoriageMagiqueTab() {
   const imprimer = (avecCorrige: boolean) => { const f = feuille(avecCorrige); void imprimerAtelier("coloriage", f.titre, f.corps, f.style); };
   const bureau = () => { const f = feuille(false); return enregistrerSurLeBureau("coloriage", f.titre, f.corps, f.style); };
 
-  const tous = [...MOTIFS, ...motifsPerso];
   /** Un pli : son numéro, son titre, et ce qu'on y a choisi, lisible fermé. */
   const pli = (cle: keyof Plis, n: number, titre: string, resume: string, contenu: React.ReactNode) => (
     <details className="pli cm-pli" open={plis[cle]} onToggle={(e) => {
@@ -431,10 +430,22 @@ export function ColoriageMagiqueTab() {
           Une case fausse se voit tout de suite : c'est la feuille qui corrige, pas vous.
         </p>
 
-        {pli("dessin", 1, "Le dessin", `${c.motif.nom} · ${casesAColorier(c.motif)} cases`, (
+        {pli("dessin", 1, "Le dessin", `${c.motif.nom} · ${casesAColorier(c.motif)} cases`, (<>
+          {/* Rangés par famille : avec trente dessins, on cherche d'abord un animal, une fête, un objet. */}
+          {FAMILLES_MOTIFS.map((f) => (
+            <React.Fragment key={f.id}>
+              <div className="cm-famille">{f.nom}</div>
+              <div className="cm-galerie">
+                {MOTIFS.filter((m) => (m.famille ?? "objets") === f.id).map((m) => (
+                  <Vignette key={m.id} m={m} on={r.motif === m.id} onClick={() => maj({ motif: m.id })} />
+                ))}
+              </div>
+            </React.Fragment>
+          ))}
+          <div className="cm-famille">Mes dessins</div>
           <div className="cm-galerie">
-            {tous.map((m) => (
-              <Vignette key={m.id} m={m} on={r.motif === m.id} onClick={() => maj({ motif: m.id })} onSupprimer={m.perso ? () => supprimerPerso(m) : undefined} />
+            {motifsPerso.map((m) => (
+              <Vignette key={m.id} m={m} on={r.motif === m.id} onClick={() => maj({ motif: m.id })} onSupprimer={() => supprimerPerso(m)} />
             ))}
             <button type="button" className="cm-vignette cm-vignette-plus" onClick={() => setPhoto(true)} title="Une photo, une image, un pictogramme : en grille de cases">
               <span style={{ fontSize: 26 }}>🖼</span>
@@ -442,7 +453,7 @@ export function ColoriageMagiqueTab() {
               <span className="cm-vignette-n">photo, fichier, picto</span>
             </button>
           </div>
-        ))}
+        </>))}
 
         {pli("travail", 2, "Ce qu'on travaille", MATIERES_COLORIAGE[matiere].nom, (
           <div className="seg" style={{ flexWrap: "wrap", marginBottom: 10 }}>
