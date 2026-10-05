@@ -1188,6 +1188,27 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
 .tp-choix .mp-etiquette { top: 6px; left: 6px; font-size: 11px; padding: 3px 6px; }
 .tp-choix-image { display: block; width: 100%; aspect-ratio: 1; object-fit: contain; background: #fff; border-radius: 8px; border: 1px solid var(--border); }
 .tp-dessin { border: 1px dashed var(--accent); border-radius: 12px; padding: 12px; background: var(--accent-soft); margin: 2px 0 8px; }
+/* Fabriquer › Carte mentale : la feuille qu'on reprend à la main. */
+.cm-barre { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 30px; margin-bottom: 2px; }
+.cm-barre-quoi { font-size: 13px; }
+.cm-barre-taille { display: inline-flex; align-items: center; gap: 4px; }
+.cm-barre-pourcent { min-width: 44px; text-align: center; font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.cm-aide { font-size: 12px; margin: 0 0 8px; line-height: 1.45; }
+.cm-editeur-feuille { position: relative; user-select: none; -webkit-user-select: none; }
+.cm-choix { position: absolute; box-sizing: border-box; border: 2px dashed var(--accent); border-radius: 4px; pointer-events: none; }
+.cm-poignee { position: absolute; box-sizing: border-box; width: 12px; height: 12px; background: #fff; border: 2px solid var(--accent);
+  border-radius: 3px; pointer-events: auto; }
+.cm-p-n { top: -7px; left: calc(50% - 6px); cursor: ns-resize; }
+.cm-p-s { bottom: -7px; left: calc(50% - 6px); cursor: ns-resize; }
+.cm-p-e { right: -7px; top: calc(50% - 6px); cursor: ew-resize; }
+.cm-p-o { left: -7px; top: calc(50% - 6px); cursor: ew-resize; }
+.cm-p-ne { top: -7px; right: -7px; cursor: nesw-resize; }
+.cm-p-so { bottom: -7px; left: -7px; cursor: nesw-resize; }
+.cm-p-no { top: -7px; left: -7px; cursor: nwse-resize; }
+.cm-p-se { bottom: -7px; right: -7px; cursor: nwse-resize; }
+.cm-saisie { position: absolute; z-index: 2; box-sizing: border-box; padding: 5px 8px; border: 2px solid var(--accent); border-radius: 6px;
+  background: #fff; color: #1c2233; font-weight: 700; text-align: center; outline: none; box-shadow: 0 4px 16px rgba(0, 0, 0, .18);
+  user-select: text; -webkit-user-select: text; }
 /* Catégoriser les mots : chaque catégorie, sa couleur sur le bord, son image, ses images dépliées. */
 .ct-categorie { border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 8px; background: var(--panel-2); padding: 6px; }
 .ct-categorie-tete { display: flex; align-items: center; gap: 6px; }
