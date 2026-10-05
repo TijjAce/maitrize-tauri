@@ -22,6 +22,7 @@ import {
 } from "./AteliersMaths";
 import { EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
 import { GestesTab, MotsEnGestesTab } from "./AteliersGestes";
+import { CategoriserTab } from "./AteliersCategoriser";
 import { SyllabeManquanteTab } from "./AtelierSyllabes";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { chargerPicto, usePictoImage } from "../components/ChoixPicto";
@@ -41,7 +42,7 @@ const OCTETS = (n: number) =>
   n > 1e9 ? `${(n / 1e9).toFixed(1)} Go` : n > 1e6 ? `${Math.round(n / 1e6)} Mo` : `${Math.round(n / 1e3)} ko`;
 
 const ONGLETS = [
-  "jeux", "memory", "imagier", "etiquettes", "ombres",
+  "jeux", "memory", "imagier", "categoriser", "etiquettes", "ombres",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "tri", "phrases", "motsMeles",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "nombres", "cubes", "calcul", "arbre", "fractions", "oie", "heure", "numeration",
@@ -79,6 +80,8 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
         quoi: "Des paires à retourner : image et image, ou image et mot." },
       { id: "imagier", nom: "Imagier", icone: "📖", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Une page d'images légendées, à afficher ou à coller dans un cahier." },
+      { id: "categoriser", nom: "Catégoriser les mots", icone: "🗂", pictos: true, cycles: "Cycle 1",
+        quoi: "Les jeux d'Éduscol pour ranger les mots en catégories : boîtes de tri, intrus, loto aveugle, « J'appelle… », familles, mistigri — et leur séquence." },
       { id: "etiquettes", nom: "Étiquettes à catégoriser", icone: "🏷", cycles: "Cycles 2 et 3",
         quoi: "Les mots collectés en grand pour le tableau, en petit par enveloppe, et la corolle lexicale." },
       { id: "ombres", nom: "Jeu des ombres", icone: "👤", cycles: "Cycles 1 et 2",
@@ -399,6 +402,7 @@ export default function Jeux() {
         : onglet === "lotoSyllabes" ? avecPictos(<LotoSyllabesTab banque />)
         : onglet === "dominos" ? avecPictos(<DominosTab banque />)
         : onglet === "intrus" ? avecPictos(<IntrusTab banque />)
+        : onglet === "categoriser" ? avecPictos(<CategoriserTab banque />)
         : onglet === "paires" ? avecPictos(<PairesTab banque />)
         : avecPictos(etat && (
           <Loto key={onglet} gen={GENERATEURS[onglet === "jeux" ? "loto" : onglet]} atelier={onglet} etat={etat}

@@ -1602,6 +1602,102 @@ const PHONOLOGIE: Demarche = {
   ],
 };
 
+// « Organiser les mots en catégorie et en réseau » (programme 2025). Le
+// programme donne les quatre étapes de toute séquence de vocabulaire —
+// apporter de nouveaux mots, structurer le lexique, faire mémoriser par des
+// activités dédiées, réutiliser —, le guide « Pour enseigner le vocabulaire
+// à l'école maternelle » l'univers de référence qui les précède et des
+// séances courtes (« de 10 minutes en début de petite section à 20 minutes en
+// grande section ») ; le livret « À partir de 5 ans » la séance de
+// catégorisation en trois temps ; la fiche « Catégoriser » (2023) les jeux,
+// âge par âge, et ce qu'on observe.
+const CATEGORISER: Demarche = {
+  id: "categoriser-maternelle",
+  nom: "Catégoriser les mots : apporter, structurer, mémoriser, réutiliser",
+  famille: "Maternelle",
+  source: "Programme de l'école maternelle (2025) ; Pour enseigner le vocabulaire à l'école maternelle (guide fondamental, 2021) ; fiche « Catégoriser : de la catégorisation d'objets à la catégorisation de mots », Éduscol 2023 ; livret « À partir de 5 ans » (2025)",
+  resume: "Les mots rencontrés d'abord dans un univers de référence, avec les objets réels puis leurs images ; triés, classés, puis nommés en catégories, avec l'affichage pour trace ; mémorisés dans des jeux courts et répétés — loto des catégories, « J'appelle… », jeu des familles, mistigri — ; réutilisés dans les espaces jeux et les devinettes ; observés à distance, sur une grille, et revus un mois plus tard.",
+  seances: [
+    {
+      titre: "Étape 1 — Apporter les mots, en contexte",
+      objectifs: "Rencontrer les mots du corpus dans un univers de référence : nommer chaque objet par un mot précis, le décrire, dire à quoi il sert ; de l'objet réel au mot, en passant par son image.",
+      duree: 20,
+      phases: [
+        ph("Univers de référence", "10 min", "Dans un coin jeux — dînette, marchande, poupées — ou avec de vrais objets : manipuler, nommer, dire à quoi ça sert.",
+          "Prononce le mot précis, puis sollicite les élèves pour qu'ils l'emploient."),
+        ph("Les cartes-images", "10 min", "Les mêmes objets en images : les nommer, les décrire, dire où on les a rencontrés. Le professeur note les mots dits.",
+          "Collecte les mots en vue des outils de la classe ; repère ceux qu'aucun élève ne connaît."),
+      ],
+    },
+    {
+      titre: "Étape 2 — Structurer : trier et classer",
+      objectifs: "Regrouper les images du corpus pour mieux retenir les mots : trouver l'intrus, compléter une catégorie, proposer une catégorisation, et justifier.",
+      duree: 20,
+      phases: [
+        ph("Temps 1 – Mise en réussite", "5 min", "L'objectif annoncé : regrouper les mots pour mieux les retenir. Les images nommées, puis une première catégorisation collective, validée par le professeur.",
+          "Montre ce qui est attendu avant de laisser chercher."),
+        ph("Temps 2 – Activité différenciée", "10 min", "Par deux, selon les besoins : retirer l'intrus, compléter une catégorie commencée, ou classer seul les images dans les boîtes.",
+          "Observe les échanges, aide ponctuellement ; garde une trace de chaque groupe (photo, barquette)."),
+        ph("Temps 3 – Institutionnalisation", "5 min", "Mise en commun : les catégories sont débattues, justifiées, validées ; le professeur met en mots ce qu'on a appris aujourd'hui.",
+          "Si l'effort a été grand, fait le bilan plus tard — mais dans la même journée."),
+      ],
+    },
+    {
+      titre: "Étape 2 — Nommer les catégories, garder la trace",
+      objectifs: "Donner son nom à chaque catégorie — le mot qui les dit toutes —, l'enrichir de mots nouveaux, et construire l'affichage des catégories de la classe.",
+      duree: 15,
+      phases: [
+        ph("Nommer", "5 min", "Chaque catégorie reçoit son nom : « les fruits », « les vêtements » ; en grande section, ses sous-catégories."),
+        ph("Enrichir", "5 min", "D'autres mots rejoignent chaque catégorie ; un intrus glissé fait interroger les propriétés des objets.",
+          "Fait dire la forme, l'usage, la provenance : ce qui fait qu'un objet est de la catégorie."),
+        ph("La trace", "5 min", "L'affichage des catégories, construit avec les élèves : il servira de référence pour jouer et pour réviser."),
+      ],
+    },
+    {
+      titre: "Étape 3 — Mémoriser : le loto des catégories",
+      objectifs: "Se remémorer les mots appris en jouant : une séance courte et ritualisée, à reprendre plusieurs jours de suite, puis à intervalles plus espacés.",
+      duree: 15,
+      phases: [
+        ph("Rappel", "3 min", "On relit l'affichage : chaque catégorie, ses mots."),
+        ph("Le loto aveugle", "10 min", "Chacun sa plaque ; on pioche une carte, on la nomme, on la pose sur la plaque de sa catégorie en disant pourquoi.",
+          "En petit groupe ; reprend le mot juste, fait répéter la phrase entière."),
+        ph("Bilan", "2 min", "Les mots appris ; ceux qui résistent reviendront dans les jeux."),
+      ],
+    },
+    {
+      titre: "Étape 3 — Mémoriser : jouer avec les catégories",
+      objectifs: "Manipuler les mots appris dans des jeux à règles : « J'appelle… », le jeu des familles, le mistigri — chaque carte nommée, chaque choix justifié.",
+      duree: 15,
+      phases: [
+        ph("Rappel", "3 min", "La règle du jeu, dite en montrant ; un tour joué ensemble."),
+        ph("Jeu", "10 min", "« J'appelle tout ce qui se mange ! », « Dans la famille des fruits, je voudrais la pomme », ou les paires du mistigri.",
+          "Fait employer la catégorie dans une phrase : « La pomme et la banane, ce sont des fruits. »"),
+        ph("Bilan", "2 min", "Ce qu'on a réussi ; le jeu reste en accès libre."),
+      ],
+    },
+    {
+      titre: "Étape 4 — Réutiliser les mots",
+      objectifs: "Réemployer les mots et les catégories dans d'autres contextes : les espaces jeux, les devinettes, une dictée à l'adulte.",
+      duree: 20,
+      phases: [
+        ph("Dans les espaces jeux", "10 min", "Ranger la dînette par catégories, faire les courses chez les marchands, préparer le sac de la poupée : employer les mots appris."),
+        ph("Devinettes", "10 min", "« C'est un fruit jaune et long : qu'est-ce que c'est ? » Les élèves devinent, puis inventent leurs devinettes.",
+          "Fait dire la catégorie et ce qui distingue l'objet dans une phrase complète."),
+      ],
+    },
+    {
+      titre: "Évaluation — observer, à distance",
+      objectifs: "Observer chez chaque élève ce qui est acquis : nommer les images, trouver l'intrus, classer, nommer les catégories — puis vérifier un mois plus tard que le corpus est mémorisé.",
+      duree: 15,
+      phases: [
+        ph("Observation", "12 min", "En petit groupe ou seul avec l'élève, avec les cartes-images : nommer, trier, retirer l'intrus, nommer les catégories ; la grille se remplit.",
+          "Observe sans aider ; note les mots à retravailler."),
+        ph("Suite", "3 min", "Les mots à retravailler reviennent dans les jeux ; l'observation se refait un mois plus tard."),
+      ],
+    },
+  ],
+};
+
 /** L'ordre des familles à l'écran : le général d'abord, puis par domaine. */
 export const FAMILLES: Famille[] = [
   "Toutes disciplines", "Français", "Mathématiques", "Sciences, histoire, EMC", "Arts, EPS et langues", "Maternelle",
@@ -1613,7 +1709,7 @@ export const DEMARCHES: Demarche[] = [
   PROBLEMES, CALCUL_MENTAL, GEOMETRIE_GRANDEURS,
   INVESTIGATION, ENQUETE_HISTOIRE_GEO, EMC_DEBAT,
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
-  MATERNELLE_MODALITES, PHONOLOGIE,
+  MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER,
 ];
 
 export const demarcheDe = (id: string) => DEMARCHES.find((d) => d.id === id);
@@ -1655,6 +1751,7 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string): string {
     || /mobiliser le langage|premiers outils mathematiques|explorer le monde|se reperer dans le temps et l'espace/.test(dom);
   if (maternelle) {
     if (/oral a l'ecrit|apprendre a ecrire|principe alphabetique|phonolog/.test(sd) || /syllabe|phoneme|rime\b/.test(comp)) return "phonologie";
+    if (/organiser les mots|mots en categorie/.test(comp)) return "categoriser-maternelle";
     if (/vocabulaire|lexique|mots nouveaux/.test(`${sd} ${comp}`)) return "vocabulaire";
     if (/plastique|arts visuels/.test(sd)) return "arts-plastiques";
     if (/univers sonore/.test(sd)) return "musique";
