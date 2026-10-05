@@ -38,12 +38,13 @@ export const REPERES: Record<Niveau, string> = {
 /** Combien d'étapes, à chaque âge : trois, puis quatre, puis cinq. */
 export const ETAPES_CONSEILLEES: Record<Niveau, number> = { PS: 3, MS: 4, GS: 5 };
 
-export type Forme = "colonnes" | "bande" | "affichage";
+export type Forme = "colonnes" | "bande" | "affichage" | "evaluation";
 
 export const FORMES: { id: Forme; nom: string; quoi: string }[] = [
   { id: "colonnes", nom: "La fiche en colonnes", quoi: "les images à découper à gauche, les cases où les coller à droite" },
   { id: "bande", nom: "La bande fléchée", quoi: "des cases reliées par des flèches, les images à découper dessous" },
   { id: "affichage", nom: "Les grandes images", quoi: "pour ordonner ensemble au tableau, avec les mots du temps" },
+  { id: "evaluation", nom: "La grille d'observation", quoi: "l'évaluation : ordonner, raconter, avec quels mots du temps" },
 ];
 
 export const nomDeLaForme = (f: Forme) => FORMES.find((x) => x.id === f)?.nom ?? "Images séquentielles";
@@ -87,9 +88,9 @@ export function reglagesSurs(brut: Partial<ReglagesSuites>): ReglagesSuites {
 /** Les étapes qui s'impriment : celles qui ont une image ou un mot, dans l'ordre juste. */
 export const etapesPleines = (r: Pick<ReglagesSuites, "etapes">) => r.etapes.filter((p) => !estVide(p)).slice(0, ETAPES_MAX);
 
-/** Ce qui empêche la feuille de se faire, ou rien. */
+/** Ce qui empêche la feuille de se faire, ou rien : la grille, elle, se passe d'images. */
 export const cequiManque = (r: ReglagesSuites) =>
-  etapesPleines(r).length < ETAPES_MIN ? "Il faut au moins deux images, dans l'ordre de l'histoire." : null;
+  r.forme !== "evaluation" && etapesPleines(r).length < ETAPES_MIN ? "Il faut au moins deux images, dans l'ordre de l'histoire." : null;
 
 const MOTS_DU_TEMPS: Record<Niveau, { premier: string; milieu: string[]; dernier: string }> = {
   PS: { premier: "d'abord", milieu: ["après"], dernier: "à la fin" },
@@ -259,11 +260,31 @@ function corrige(r: ReglagesSuites, etapes: PictoPose[], images: Images): string
     + `<div class="sous si-pied">On valide avec ce qui a été vécu ou lu : l'album, les photos de la classe, l'action refaite. Puis l'élève raconte, avec les mots du temps de son âge.</div></div>`;
 }
 
+/** Ce qu'on observe, d'après le programme 2025 : ordonner, puis raconter avec les mots du temps de l'âge. */
+export const OBSERVABLES: Record<Niveau, string[]> = {
+  PS: ["Dit ce qui se passe au début et à la fin", "Ordonne deux images, puis trois", "Emploie « d'abord », « après »", "Raconte en montrant les images"],
+  MS: ["Ordonne les images de la suite", "Dit le début, ce qui se passe, la fin", "Emploie « au début, ensuite, pour finir »", "Dit pourquoi une image vient avant une autre"],
+  GS: ["Ordonne les étapes, seul", "Raconte la suite en entier", "Emploie « d'abord, ensuite, puis, enfin »", "Justifie l'ordre par une cause", "Ordonne une suite nouvelle"],
+};
+
+function htmlEvaluation(r: ReglagesSuites): string {
+  const age = NIVEAUX.find((x) => x.id === r.niveau)?.age ?? "";
+  const colonnes = OBSERVABLES[r.niveau];
+  const ligne = `<tr><td></td>${colonnes.map(() => "<td></td>").join("")}<td></td></tr>`;
+  const suite = r.titre.trim() ? ` · ${r.titre.trim()}` : "";
+  return `<div class="page">${titre("Grille d'observation — ordonner et raconter", `Programme de l'école maternelle 2025 · S'approprier la notion de chronologie · ${r.niveau}, ${age}${suite}.`)}`
+    + `<table class="si-grille"><thead><tr><th>Prénom</th>${colonnes.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}<th>Mots du temps entendus</th></tr></thead>`
+    + `<tbody>${Array.from({ length: 12 }, () => ligne).join("")}</tbody></table>`
+    + `<div class="sous si-pied">✓ réussi · ~ en cours · ✗ pas encore. Seul avec l'élève, les cartes de la suite mêlées : il les ordonne, puis raconte. `
+    + `Noter les mots qu'il emploie pour dire l'ordre ; revenir sur la suite quelques semaines plus tard.</div></div>`;
+}
+
 /** La feuille choisie, avec ses images ; `alea` mêle les images à découper. */
 export function htmlSuites(r: ReglagesSuites, images: Images, alea: () => number): string {
+  if (r.forme === "evaluation") return feuille(htmlEvaluation(r), "si");
   const etapes = etapesPleines(r);
   const ordre = ordreMele(etapes.length, alea);
-  const corps = { colonnes: htmlColonnes, bande: htmlBande, affichage: htmlAffichage }[r.forme](r, etapes, images, ordre);
+  const corps = { colonnes: htmlColonnes, bande: htmlBande, affichage: htmlAffichage }[r.forme as Exclude<Forme, "evaluation">](r, etapes, images, ordre);
   const pictos = etapes.filter((p) => !p.photo && p.id != null && images[p.id]).map((p) => p.id);
   return feuille(`${corps}${corrige(r, etapes, images)}${attributionPour(pictos)}`, "si");
 }
@@ -305,4 +326,9 @@ export const STYLE_SUITES = `
   .feuille.si .si-corrige-image img { width: 100%; height: 100%; object-fit: contain; margin: 0; max-height: none; }
   .feuille.si .si-corrige-image .si-mot-seul { font-size: 11px; }
   .feuille.si .si-pied { margin-top: 2mm; }
+  .feuille.si .si-grille { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .feuille.si .si-grille th, .feuille.si .si-grille td { border: 1px solid #9aa0b4; padding: 1.5mm; vertical-align: top; }
+  .feuille.si .si-grille th { background: #f2f4f8; text-align: left; }
+  .feuille.si .si-grille td { height: 11mm; }
+  .feuille.si .si-grille th:first-child { width: 28mm; }
 `;

@@ -8,6 +8,8 @@ import { CasePicto } from "../components/CasePicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { CasesFeuille, useOptionsFeuille } from "../components/OptionsFeuille";
+import { useCompetencesAtelier } from "../components/CompetencesAtelier";
+import { SequenceDeSuites } from "../components/SequenceDeSuites";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import { graineAuHasard, hasard } from "../hasard";
@@ -37,6 +39,8 @@ export function SuitesTab({ banque }: { banque: boolean }) {
   const r = React.useMemo(() => reglagesSurs(brut), [brut]);
   const [graine, setGraine] = React.useState(graineAuHasard);
   const [suite, setSuite] = React.useState("");
+  const [enSequence, setEnSequence] = React.useState(false);
+  const [competences] = useCompetencesAtelier(ATELIER);
   const ids = React.useMemo(() => idsDes(r.etapes), [r.etapes]);
   const images = usePictoImages(ids);
   const manque = cequiManque(r);
@@ -153,9 +157,14 @@ export function SuitesTab({ banque }: { banque: boolean }) {
           <BoutonBureau disabled={Boolean(manque)}
             onEnregistrer={async () => enregistrerSurLeBureau(ATELIER, titre, await feuilleImprimee(), STYLE_FEUILLE + STYLE_SUITES)} />
         </div>
+        <button type="button" className="btn sm" style={{ marginTop: 8 }} disabled={n < 2} onClick={() => setEnSequence(true)}
+          title="Une séquence d'après le programme et les ressources Éduscol, avec les feuilles de ces images dans ses séances">
+          📚 Créer une séquence avec ces images
+        </button>
+        {enSequence && <SequenceDeSuites reglages={r} competences={competences} onClose={() => setEnSequence(false)} />}
       </div>
       <div style={{ minWidth: 0 }}>
-        {n >= 2
+        {n >= 2 || r.forme === "evaluation"
           ? <ApercuFeuille html={html} style={STYLE_SUITES} />
           : <div className="card" style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>
               Posez les images dans l'ordre de l'histoire — des pictos, des photos de la classe en activité, ou les illustrations d'un album
