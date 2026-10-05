@@ -6,6 +6,11 @@
 // se lit d'un coup d'œil, et chaque branche se retrouve à sa couleur. Elle
 // s'imprime sur une page A4 à l'italienne, et s'agrandit en A3 à la
 // photocopieuse pour le mur.
+//
+// Ce que la carte place d'elle-même, l'enseignant le reprend sur la feuille :
+// un cadre se déplace ou s'agrandit, un texte grossit, un mot se réécrit, un
+// picto s'en va. On ne garde que ce qu'il a changé : le reste suit la mise
+// en page, et une branche ajoutée trouve encore sa place.
 
 import { escapeHtml } from "./print";
 import { attributionPour, feuille } from "./cartesImprimables";
@@ -23,12 +28,39 @@ export const PALETTE: { nom: string; hex: string }[] = [
 ];
 export const couleurDeBranche = (i: number) => PALETTE[i % PALETTE.length].hex;
 
+// ── La page ───────────────────────────────────────────────────────────────
+//
+// En millimètres, sur une page A4 à l'italienne : le centre au milieu, les
+// branches en deux colonnes, chacune dans sa part de hauteur — rien ne
+// déborde, rien ne se chevauche, quel que soit leur nombre.
+
+export const LARGEUR = 256;
+export const HAUTEUR = 168;
+const LARGEUR_CENTRE = 70;
+const HAUTEUR_CENTRE = 48;
+const LARGEUR_BRANCHE = 88;
+const ECART = 4;
+
+/** Un cadre sur la feuille, en millimètres depuis le coin haut gauche de la carte. */
+export interface Cadre { x: number; y: number; largeur: number; hauteur: number }
+
+/** La place du centre tant qu'on ne l'a pas changée. */
+export const CENTRE_DEFAUT: Cadre = {
+  x: (LARGEUR - LARGEUR_CENTRE) / 2, y: (HAUTEUR - HAUTEUR_CENTRE) / 2, largeur: LARGEUR_CENTRE, hauteur: HAUTEUR_CENTRE,
+};
+
 export interface Branche {
   titre: string;
   image: PictoPose;
   couleur: string;
   /** Ce que la branche porte : des mots, avec leur image si on veut — ou l'image seule, ou le mot seul. */
   idees: MotImage[];
+  /** Sa place, quand on l'a déplacée ou agrandie sur la feuille ; sinon, celle que la carte lui donne. */
+  cadre?: Cadre;
+  /** La taille de son titre (texte et picto), quand on l'a changée : 1, c'est la taille d'origine. */
+  tailleTitre?: number;
+  /** La taille de ses idées, texte et pictos. */
+  tailleIdees?: number;
 }
 
 export interface ReglagesCarte {
@@ -39,6 +71,10 @@ export interface ReglagesCarte {
   pictos: boolean;
   /** Tout en capitales, pour les plus jeunes. */
   capitales: boolean;
+  /** La place du centre, quand on l'a déplacé ou agrandi. */
+  cadreCentre?: Cadre;
+  /** La taille du centre, texte et picto. */
+  tailleCentre?: number;
 }
 
 export const brancheVide = (i: number): Branche => ({ titre: "", image: { id: null, mot: "" }, couleur: couleurDeBranche(i), idees: [] });
@@ -47,7 +83,67 @@ export const REGLAGES_CARTE: ReglagesCarte = {
   centre: "", image: { id: null, mot: "" }, branches: [brancheVide(0), brancheVide(1), brancheVide(2), brancheVide(3)], pictos: true, capitales: false,
 };
 
+// ── Tailles et cadres ─────────────────────────────────────────────────────
+
+/** Les tailles qu'on parcourt avec A− et A+ : de la moitié au triple. */
+export const TAILLES = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.15, 1.3, 1.5, 1.75, 2, 2.5, 3];
+
+/** La taille d'après, plus grande ou plus petite, sans dépasser les bornes. */
+export function tailleSuivante(k: number | undefined, sens: 1 | -1): number {
+  const v = k ?? 1;
+  return sens > 0
+    ? TAILLES.find((t) => t > v + 1e-9) ?? TAILLES[TAILLES.length - 1]
+    : [...TAILLES].reverse().find((t) => t < v - 1e-9) ?? TAILLES[0];
+}
+
+/** Une taille enregistrée, ramenée dans les bornes ; rien pour la taille d'origine. */
+export function tailleSure(v: unknown): number | undefined {
+  if (typeof v !== "number" || !Number.isFinite(v)) return undefined;
+  const k = Math.round(Math.min(TAILLES[TAILLES.length - 1], Math.max(TAILLES[0], v)) * 100) / 100;
+  return k === 1 ? undefined : k;
+}
+
+/** Les plus petits cadres : une branche garde la place de son titre, le centre celle de son mot. */
+export const MIN_BRANCHE = { largeur: 30, hauteur: 18 };
+export const MIN_CENTRE = { largeur: 30, hauteur: 16 };
+
+const dixieme = (v: number) => Math.round(v * 10) / 10;
+const auDixieme = (c: Cadre): Cadre => ({ x: dixieme(c.x), y: dixieme(c.y), largeur: dixieme(c.largeur), hauteur: dixieme(c.hauteur) });
+
+/** Un cadre tel qu'on peut s'y fier : dans la carte, pas plus petit que permis ; rien s'il est illisible. */
+export function cadreSur(v: unknown, min = MIN_BRANCHE): Cadre | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const o = v as Record<string, unknown>;
+  const [x, y, l, h] = [o.x, o.y, o.largeur, o.hauteur].map((n) => (typeof n === "number" && Number.isFinite(n) ? n : NaN));
+  if ([x, y, l, h].some(Number.isNaN)) return undefined;
+  const largeur = Math.min(LARGEUR, Math.max(min.largeur, l)), hauteur = Math.min(HAUTEUR, Math.max(min.hauteur, h));
+  return auDixieme({ x: Math.min(LARGEUR - largeur, Math.max(0, x)), y: Math.min(HAUTEUR - hauteur, Math.max(0, y)), largeur, hauteur });
+}
+
+/** Le cadre glissé de (dx, dy) millimètres, sans sortir de la carte. */
+export function deplacer(c: Cadre, dx: number, dy: number): Cadre {
+  return auDixieme({ ...c, x: Math.max(0, Math.min(LARGEUR - c.largeur, c.x + dx)), y: Math.max(0, Math.min(HAUTEUR - c.hauteur, c.y + dy)) });
+}
+
+/** Les poignées d'un cadre : ses côtés et ses coins, nommés comme sur une boussole (« o » pour l'ouest). */
+export type Poignee = "n" | "s" | "e" | "o" | "ne" | "no" | "se" | "so";
+
+/** Le cadre tiré par une poignée de (dx, dy) millimètres : le côté opposé ne bouge pas. */
+export function redimensionner(c: Cadre, p: Poignee, dx: number, dy: number, min = MIN_BRANCHE): Cadre {
+  let { x, y, largeur, hauteur } = c;
+  const droite = x + largeur, bas = y + hauteur;
+  if (p.includes("e")) largeur = Math.min(LARGEUR - x, Math.max(min.largeur, largeur + dx));
+  if (p.includes("o")) { x = Math.max(0, Math.min(droite - min.largeur, x + dx)); largeur = droite - x; }
+  if (p.includes("s")) hauteur = Math.min(HAUTEUR - y, Math.max(min.hauteur, hauteur + dy));
+  if (p.includes("n")) { y = Math.max(0, Math.min(bas - min.hauteur, y + dy)); hauteur = bas - y; }
+  return auDixieme({ x, y, largeur, hauteur });
+}
+
+// ── Les réglages ──────────────────────────────────────────────────────────
+
 const HEX = /^#[0-9a-f]{6}$/i;
+/** Un champ facultatif : présent seulement s'il a une valeur. */
+const siDefini = <K extends string, V>(cle: K, v: V | undefined) => (v === undefined ? {} : { [cle]: v } as Record<K, V>);
 
 /** Les réglages enregistrés, réparés : ce qu'une version plus ancienne ou un fichier abîmé y a laissé. */
 export function reglagesSurs(brut: Partial<ReglagesCarte>): ReglagesCarte {
@@ -60,6 +156,9 @@ export function reglagesSurs(brut: Partial<ReglagesCarte>): ReglagesCarte {
       idees: Array.isArray(o.idees) ? o.idees.filter((m): m is MotImage => Boolean(m) && typeof m.mot === "string")
         .map((m): MotImage => ({ id: typeof m.id === "number" ? m.id : null, mot: m.mot, ...(m.seul === "image" || m.seul === "mot" ? { seul: m.seul } : {}) }))
         .slice(0, IDEES_MAX) : [],
+      ...siDefini("cadre", cadreSur(o.cadre)),
+      ...siDefini("tailleTitre", tailleSure(o.tailleTitre)),
+      ...siDefini("tailleIdees", tailleSure(o.tailleIdees)),
     };
   }) : REGLAGES_CARTE.branches;
   while (branches.length < BRANCHES_MIN) branches.push(brancheVide(branches.length));
@@ -69,16 +168,23 @@ export function reglagesSurs(brut: Partial<ReglagesCarte>): ReglagesCarte {
     branches,
     pictos: brut.pictos !== false,
     capitales: brut.capitales === true,
+    ...siDefini("cadreCentre", cadreSur(brut.cadreCentre, MIN_CENTRE)),
+    ...siDefini("tailleCentre", tailleSure(brut.tailleCentre)),
   };
 }
 
+/** Une branche qui s'imprime : elle a un titre, une image ou une idée. */
+const estPleine = (b: Branche) => Boolean(b.titre.trim() || !estVide(b.image) || b.idees.length);
+
 /** Les branches qui s'impriment : celles qui ont un titre, une image ou une idée. */
-export const branchesPleines = (r: Pick<ReglagesCarte, "branches">) =>
-  r.branches.filter((b) => b.titre.trim() || !estVide(b.image) || b.idees.length);
+export const branchesPleines = (r: Pick<ReglagesCarte, "branches">) => r.branches.filter(estPleine);
 
 export const cequiManque = (r: ReglagesCarte) =>
   !r.centre.trim() && estVide(r.image) ? "Écrivez le thème du centre."
     : branchesPleines(r).length < BRANCHES_MIN ? "Il faut au moins deux branches." : null;
+
+/** Vrai si l'on a déplacé ou agrandi un cadre de la carte. */
+export const aDesCadres = (r: ReglagesCarte) => Boolean(r.cadreCentre) || r.branches.some((b) => b.cadre);
 
 /** Les images des idées qui en montrent une : toutes, sauf celles qu'on a voulues en mot seul. */
 const imagesDesIdees = (r: Pick<ReglagesCarte, "pictos">, idees: MotImage[]) =>
@@ -90,29 +196,9 @@ export function idsDesImages(r: ReglagesCarte): (number | string)[] {
   return [...new Set([...cles, ...imagesDesIdees(r, r.branches.flatMap((b) => b.idees))])];
 }
 
-/**
- * Une idée sur la feuille : son image et son mot, ou l'un des deux seulement.
- * Sans image à montrer, le mot reste : une idée ne disparaît jamais.
- */
-function idee(m: MotImage, src: string | undefined): string {
-  const ecrit = m.seul !== "image" || !src;
-  return `<span class="cm-idee${src && !ecrit ? " cm-image-seule" : ""}">`
-    + `${src ? `<img src="${src}" alt="${ecrit ? "" : escapeHtml(m.mot)}">` : ""}${ecrit ? escapeHtml(m.mot) : ""}</span>`;
-}
-
 // ── La mise en page ───────────────────────────────────────────────────────
-//
-// En millimètres, sur une page A4 à l'italienne : le centre au milieu, les
-// branches en deux colonnes, chacune dans sa part de hauteur — rien ne
-// déborde, rien ne se chevauche, quel que soit leur nombre.
 
-export const LARGEUR = 256;
-export const HAUTEUR = 168;
-const LARGEUR_CENTRE = 70;
-const LARGEUR_BRANCHE = 88;
-const ECART = 4;
-
-export interface Bloc { x: number; y: number; largeur: number; hauteur: number; cote: "gauche" | "droite" }
+export interface Bloc extends Cadre { cote: "gauche" | "droite" }
 
 /** La place de chaque branche : la moitié à droite d'abord, dans l'ordre des aiguilles d'une montre, le reste à gauche. */
 export function blocsDesBranches(n: number): Bloc[] {
@@ -125,12 +211,35 @@ export function blocsDesBranches(n: number): Bloc[] {
   return [...colonne(droite, "droite"), ...colonne(gauche, "gauche").reverse()];
 }
 
+/** Le cadre du centre : celui qu'on lui a donné, sinon le milieu de la page. */
+export const cadreDuCentre = (r: Pick<ReglagesCarte, "cadreCentre">): Cadre => r.cadreCentre ?? CENTRE_DEFAUT;
+
+/**
+ * Les branches qui s'impriment, chacune avec son rang dans les réglages et
+ * sa place sur la feuille. Les branches qu'on n'a pas touchées gardent la
+ * place que la carte donne à toutes : en agrandir une ne fait pas bouger
+ * les autres.
+ */
+export function blocsDeLaCarte(r: ReglagesCarte): { branche: Branche; rang: number; bloc: Bloc }[] {
+  const pleines = r.branches.map((branche, rang) => ({ branche, rang })).filter(({ branche }) => estPleine(branche));
+  const auto = blocsDesBranches(pleines.length);
+  const centre = cadreDuCentre(r);
+  return pleines.map(({ branche, rang }, k) => {
+    const c = branche.cadre;
+    if (!c) return { branche, rang, bloc: auto[k] };
+    // Un cadre déplacé se relie au centre par le côté où il se trouve.
+    const cote = c.x + c.largeur / 2 >= centre.x + centre.largeur / 2 ? "droite" : "gauche";
+    return { branche, rang, bloc: { ...c, cote } };
+  });
+}
+
 /** Le trait courbe du centre à une branche, qui part du bord du centre et arrive au milieu du bloc. */
-export function trait(b: Bloc, rang: number, parCote: number): string {
-  const cx = LARGEUR / 2, cy = HAUTEUR / 2;
+export function trait(b: Bloc, rang: number, parCote: number, centre: Cadre = CENTRE_DEFAUT): string {
+  const cx = centre.x + centre.largeur / 2, cy = centre.y + centre.hauteur / 2;
   const sens = b.cote === "droite" ? 1 : -1;
-  const x0 = cx + sens * (LARGEUR_CENTRE / 2 - 4);
-  const y0 = cy + (rang - (parCote - 1) / 2) * Math.min(9, 32 / Math.max(1, parCote));
+  const x0 = cx + sens * Math.max(0, centre.largeur / 2 - 4);
+  const ecart = Math.min(9, 32 / Math.max(1, parCote)) * (centre.hauteur / HAUTEUR_CENTRE);
+  const y0 = cy + (rang - (parCote - 1) / 2) * ecart;
   const x1 = b.cote === "droite" ? b.x : b.x + b.largeur;
   const y1 = b.y + b.hauteur / 2;
   const dx = Math.abs(x1 - x0) * 0.55;
@@ -143,38 +252,59 @@ export function tailleDesIdees(idees: number, hauteurDuBloc: number): "grande" |
   return place >= 14 ? "grande" : place >= 8 ? "moyenne" : "petite";
 }
 
-const image = (p: PictoPose | null, images: Images, classe: string) => {
+// ── La feuille ────────────────────────────────────────────────────────────
+//
+// Chaque élément porte un repère (`data-cm`, `data-i`, `data-j`…) : l'éditeur
+// de la feuille s'en sert pour savoir ce qu'on a choisi. L'imprimante, elle,
+// n'en fait rien.
+
+const image = (p: PictoPose | null, images: Images, classe: string, quoi: string) => {
   const cle = cleImage(p);
   const src = cle !== null ? images[cle] : undefined;
-  return src ? `<img class="${classe}" src="${src}" alt="${escapeHtml(p?.mot ?? "")}">` : "";
+  return src ? `<img class="${classe}" src="${src}" alt="${escapeHtml(p?.mot ?? "")}" data-cm-image="${quoi}">` : "";
 };
+
+/**
+ * Une idée sur la feuille : son image et son mot, ou l'un des deux seulement.
+ * Sans image à montrer, le mot reste : une idée ne disparaît jamais.
+ */
+function idee(m: MotImage, j: number, src: string | undefined): string {
+  const ecrit = m.seul !== "image" || !src;
+  return `<span class="cm-idee${src && !ecrit ? " cm-image-seule" : ""}" data-j="${j}">`
+    + `${src ? `<img src="${src}" alt="${ecrit ? "" : escapeHtml(m.mot)}" data-cm-image="idee">` : ""}${ecrit ? escapeHtml(m.mot) : ""}</span>`;
+}
+
+/** Les millimètres d'un cadre, en style. */
+const place = (c: Cadre) => `left:${c.x.toFixed(1)}mm;top:${c.y.toFixed(1)}mm;width:${c.largeur.toFixed(1)}mm;height:${c.hauteur.toFixed(1)}mm`;
 
 /** La carte, prête à imprimer : le centre, les branches et leurs traits. */
 export function htmlCarteMentale(r: ReglagesCarte, images: Images): string {
-  const branches = branchesPleines(r);
-  const blocs = blocsDesBranches(branches.length);
-  const parCote = { droite: blocs.filter((b) => b.cote === "droite").length, gauche: blocs.filter((b) => b.cote === "gauche").length };
+  const placees = blocsDeLaCarte(r);
+  const centre = cadreDuCentre(r);
+  const parCote = { droite: placees.filter((p) => p.bloc.cote === "droite").length, gauche: placees.filter((p) => p.bloc.cote === "gauche").length };
   const rangs = { droite: 0, gauche: 0 };
   // Les traits partent du centre dans l'ordre où les blocs se lisent de haut en bas, de chaque côté.
-  const traits = blocs.map((b, i) => ({ b, i })).sort((p, q) => p.b.y - q.b.y)
-    .map(({ b, i }) => `<path d="${trait(b, rangs[b.cote]++, parCote[b.cote])}" stroke="${branches[i].couleur}"/>`).join("");
-  const centre = `<div class="cm-centre" style="left:${(LARGEUR - LARGEUR_CENTRE) / 2}mm;top:${HAUTEUR / 2 - 24}mm;width:${LARGEUR_CENTRE}mm;height:48mm">`
-    + `${image(r.image, images, "cm-centre-image")}<div class="cm-centre-titre">${escapeHtml(r.centre.trim() || "…")}</div></div>`;
-  const blocsHtml = branches.map((br, i) => {
-    const b = blocs[i];
+  const traits = [...placees].sort((p, q) => p.bloc.y - q.bloc.y)
+    .map(({ branche, bloc }) => `<path d="${trait(bloc, rangs[bloc.cote]++, parCote[bloc.cote], centre)}" stroke="${branche.couleur}"/>`).join("");
+  const centreHtml = `<div class="cm-centre" data-cm="centre" style="${place(centre)}${r.tailleCentre ? `;--k:${r.tailleCentre}` : ""}">`
+    + `${image(r.image, images, "cm-centre-image", "centre")}<div class="cm-centre-titre" data-cm-texte="centre">${escapeHtml(r.centre.trim() || "…")}</div></div>`;
+  const blocsHtml = placees.map(({ branche: br, rang, bloc: b }) => {
     const taille = tailleDesIdees(br.idees.length, b.hauteur - 13);
-    const idees = br.idees.map((m) => idee(m, r.pictos && m.seul !== "mot" && m.id != null ? images[m.id] : undefined)).join("");
-    return `<div class="cm-branche" style="left:${b.x}mm;top:${b.y.toFixed(1)}mm;width:${b.largeur}mm;height:${b.hauteur.toFixed(1)}mm;--c:${br.couleur}">`
-      + `<div class="cm-titre">${image(br.image, images, "cm-titre-image")}<span>${escapeHtml(br.titre.trim() || "…")}</span></div>`
-      + (idees ? `<div class="cm-idees cm-${taille}">${idees}</div>` : "") + `</div>`;
+    const idees = br.idees.map((m, j) => idee(m, j, r.pictos && m.seul !== "mot" && m.id != null ? images[m.id] : undefined)).join("");
+    return `<div class="cm-branche" data-cm="branche" data-i="${rang}" style="${place(b)};--c:${br.couleur}${br.tailleTitre ? `;--kt:${br.tailleTitre}` : ""}">`
+      + `<div class="cm-titre">${image(br.image, images, "cm-titre-image", "titre")}<span data-cm-texte="titre">${escapeHtml(br.titre.trim() || "…")}</span></div>`
+      + (idees ? `<div class="cm-idees cm-${taille}"${br.tailleIdees ? ` style="--k:${br.tailleIdees}"` : ""}>${idees}</div>` : "") + `</div>`;
   }).join("");
+  const branches = placees.map((p) => p.branche);
   const ids = [r.image, ...branches.map((b) => b.image)].filter((p) => !p.photo && p.id != null && images[p.id]).map((p) => p.id)
     .concat(imagesDesIdees(r, branches.flatMap((b) => b.idees)).filter((id) => images[id]));
   return feuille(`<div class="page"><div class="cm-carte${r.capitales ? " cm-capitales" : ""}" style="width:${LARGEUR}mm;height:${HAUTEUR}mm">`
     + `<svg class="cm-traits" viewBox="0 0 ${LARGEUR} ${HAUTEUR}" width="${LARGEUR}mm" height="${HAUTEUR}mm">${traits}</svg>`
-    + `${centre}${blocsHtml}</div></div>${attributionPour(ids)}`, "cm");
+    + `${centreHtml}${blocsHtml}</div></div>${attributionPour(ids)}`, "cm");
 }
 
+// Les tailles suivent `--k` (le centre, les idées) et `--kt` (le titre d'une
+// branche) : le texte et ses pictos grandissent ensemble.
 export const STYLE_CARTE_MENTALE = `
   @page { size: A4 landscape; margin: 10mm; }
   .feuille.cm .cm-carte { position: relative; margin: 0 auto; }
@@ -182,25 +312,26 @@ export const STYLE_CARTE_MENTALE = `
   .feuille.cm .cm-traits { position: absolute; left: 0; top: 0; }
   .feuille.cm .cm-traits path { fill: none; stroke-width: 1.6; stroke-linecap: round; }
   .feuille.cm .cm-centre { position: absolute; box-sizing: border-box; border: 1mm solid #1c2233; border-radius: 50%; background: #fff;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5mm; padding: 4mm 8mm; text-align: center; }
-  .feuille.cm .cm-centre-image { width: 17mm; height: 17mm; object-fit: contain; margin: 0; max-height: none; }
-  .feuille.cm .cm-centre-titre { font-size: 24px; font-weight: 800; line-height: 1.12; }
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5mm; padding: 4mm 8mm; text-align: center; overflow: hidden; }
+  .feuille.cm .cm-centre-image { width: calc(17mm * var(--k, 1)); height: calc(17mm * var(--k, 1)); object-fit: contain; margin: 0; max-height: none; flex: none; }
+  .feuille.cm .cm-centre-titre { font-size: calc(24px * var(--k, 1)); font-weight: 800; line-height: 1.12; }
   .feuille.cm .cm-branche { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; border: 0.7mm solid var(--c);
     border-radius: 3.5mm; background: #fff; overflow: hidden; }
   .feuille.cm .cm-titre { flex: none; display: flex; align-items: center; gap: 2mm; background: var(--c); color: #fff; padding: 1.5mm 3mm;
-    font-size: 17px; font-weight: 800; line-height: 1.1; min-height: 10mm; box-sizing: border-box; }
-  .feuille.cm .cm-titre-image { width: 9mm; height: 9mm; object-fit: contain; margin: 0; max-height: none; background: #fff; border-radius: 1.5mm; flex: none; }
+    font-size: calc(17px * var(--kt, 1)); font-weight: 800; line-height: 1.1; min-height: 10mm; box-sizing: border-box; }
+  .feuille.cm .cm-titre-image { width: calc(9mm * var(--kt, 1)); height: calc(9mm * var(--kt, 1)); object-fit: contain; margin: 0; max-height: none;
+    background: #fff; border-radius: 1.5mm; flex: none; }
   .feuille.cm .cm-idees { flex: 1; min-height: 0; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 1.5mm 3mm; padding: 2mm 3mm; }
-  .feuille.cm .cm-idee { display: inline-flex; align-items: center; gap: 1.2mm; font-weight: 600; color: #1c2233; }
+  .feuille.cm .cm-idee { display: inline-flex; align-items: center; gap: 1.2mm; font-weight: 600; color: #1c2233; text-align: center; }
   .feuille.cm .cm-idee img { object-fit: contain; margin: 0; max-height: none; }
-  .feuille.cm .cm-grande .cm-idee { font-size: 16px; }
-  .feuille.cm .cm-grande .cm-idee img { width: 13mm; height: 13mm; }
-  .feuille.cm .cm-moyenne .cm-idee { font-size: 13px; }
-  .feuille.cm .cm-moyenne .cm-idee img { width: 9mm; height: 9mm; }
-  .feuille.cm .cm-petite .cm-idee { font-size: 11px; }
-  .feuille.cm .cm-petite .cm-idee img { width: 7mm; height: 7mm; }
+  .feuille.cm .cm-grande .cm-idee { font-size: calc(16px * var(--k, 1)); }
+  .feuille.cm .cm-grande .cm-idee img { width: calc(13mm * var(--k, 1)); height: calc(13mm * var(--k, 1)); }
+  .feuille.cm .cm-moyenne .cm-idee { font-size: calc(13px * var(--k, 1)); }
+  .feuille.cm .cm-moyenne .cm-idee img { width: calc(9mm * var(--k, 1)); height: calc(9mm * var(--k, 1)); }
+  .feuille.cm .cm-petite .cm-idee { font-size: calc(11px * var(--k, 1)); }
+  .feuille.cm .cm-petite .cm-idee img { width: calc(7mm * var(--k, 1)); height: calc(7mm * var(--k, 1)); }
   /* L'image seule prend la place du mot. */
-  .feuille.cm .cm-grande .cm-image-seule img { width: 17mm; height: 17mm; }
-  .feuille.cm .cm-moyenne .cm-image-seule img { width: 12mm; height: 12mm; }
-  .feuille.cm .cm-petite .cm-image-seule img { width: 9mm; height: 9mm; }
+  .feuille.cm .cm-grande .cm-image-seule img { width: calc(17mm * var(--k, 1)); height: calc(17mm * var(--k, 1)); }
+  .feuille.cm .cm-moyenne .cm-image-seule img { width: calc(12mm * var(--k, 1)); height: calc(12mm * var(--k, 1)); }
+  .feuille.cm .cm-petite .cm-image-seule img { width: calc(9mm * var(--k, 1)); height: calc(9mm * var(--k, 1)); }
 `;

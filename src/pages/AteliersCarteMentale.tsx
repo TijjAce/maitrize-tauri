@@ -4,7 +4,7 @@ import { useReglages } from "../components/useMemoire";
 import { toast } from "../components/Toaster";
 import { chargerImages, usePictoImages } from "../components/ChoixPicto";
 import { CasePicto } from "../components/CasePicto";
-import { ApercuFeuille } from "../components/ApercuFeuille";
+import { EditeurCarteMentale } from "../components/EditeurCarteMentale";
 import { BanqueDeMots } from "../components/BanqueDeMots";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
@@ -18,7 +18,8 @@ import {
 //
 // L'affichage d'un thème, d'une notion, d'une leçon : le centre, ses
 // branches, leurs idées — des mots, avec leur picto si on veut. On compose à
-// gauche, l'affiche se voit à droite telle qu'elle s'imprimera.
+// gauche ; l'affiche se voit à droite telle qu'elle s'imprimera, et se
+// reprend sur la feuille même : cadres, tailles, mots, pictos.
 
 const ATELIER = "carteMentale";
 
@@ -116,10 +117,7 @@ export function CarteMentaleTab({ banque }: { banque: boolean }) {
         </div>
       </div>
       <div style={{ minWidth: 0 }}>
-        {/* L'affiche fait 26 cm de large : l'aperçu la réduit pour la voir en entier. */}
-        <div style={{ zoom: 0.62 }}>
-          <ApercuFeuille html={html} style={STYLE_CARTE_MENTALE} />
-        </div>
+        <EditeurCarteMentale r={r} html={html} onChange={maj} onChoisirBranche={setOuverte} />
       </div>
     </div>
   );
