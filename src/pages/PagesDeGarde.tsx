@@ -9,6 +9,7 @@ import { useTexteAutosave, LIBELLE_ENREGISTREMENT } from "../components/useTexte
 import { printHTML } from "../print";
 import { nettoyerHtml } from "../texteRiche";
 import { avecImages } from "../components/imagesTexte";
+import { EtiquettesDos } from "../components/EtiquettesDos";
 import {
   assembler, basculer, choixParDefaut, cochees, consigneIA, demandeIA, DOSSIER_GARDE, groupesDe,
   htmlDeLaReponse, modeleLocal, optionsDe, REGLAGES, reglagesParDefaut, SORTES,
@@ -42,6 +43,7 @@ export function PagesDeGardeTab({ annee }: { annee: string }) {
   const [choisie, setChoisie] = React.useState("");
   const page = pages.find((p) => p.id === choisie) ?? null;
   const [nouvelle, setNouvelle] = React.useState<InfosGarde | null>(null);
+  const [dos, setDos] = React.useState(false);
 
   React.useEffect(() => { if (!choisie && pages[0]) setChoisie(pages[0].id); }, [pages, choisie]);
 
@@ -92,8 +94,10 @@ export function PagesDeGardeTab({ annee }: { annee: string }) {
   return (
     <div className="informations">
       <aside className="informations-liste" aria-label="Pages de garde">
-        <button className="btn primary" style={{ width: "100%" }} onClick={(e) => openCtx(e,
-          SORTES.map((s) => ({ label: s.libelle, icon: s.icone, onClick: () => { void ouvrirNouvelle(s.id); } })))}>
+        <button className="btn primary" style={{ width: "100%" }} onClick={(e) => openCtx(e, [
+          ...SORTES.map((s) => ({ label: s.libelle, icon: s.icone, onClick: () => { void ouvrirNouvelle(s.id); } })),
+          { label: "Étiquettes de dos de classeur", icon: "🏷", sep: true, onClick: () => setDos(true) },
+        ])}>
           ＋ Nouveau document
         </button>
         {pages.length === 0 && (
@@ -123,6 +127,7 @@ export function PagesDeGardeTab({ annee }: { annee: string }) {
       {nouvelle && (
         <NouveauDocument infos={nouvelle} onChange={setNouvelle} onClose={() => setNouvelle(null)} onCreer={creer} />
       )}
+      {dos && <EtiquettesDos annee={annee} onClose={() => setDos(false)} />}
     </div>
   );
 }
