@@ -50,6 +50,9 @@
 // - La construction du nombre à l'école maternelle (guide fondamental, 2023)
 //   et les livrets « Avant 4 ans » et « À partir de 4 ans » (2025) : la
 //   situation des voyageurs, les poupées, le dortoir des oursons.
+// - « La compréhension des récits de fiction » (Éduscol, 2017) et les
+//   indicateurs de progrès « Se repérer dans le temps et l'espace » (2016) :
+//   raconter en entier, rejouer, faire raconter, ordonner des photographies.
 
 import { newId, type Seance } from "./api";
 
@@ -1805,6 +1808,102 @@ const COLLECTIONS: Demarche = {
   ],
 };
 
+// « S'approprier la notion de chronologie » (programme 2025) : ordonner des
+// moments vécus, restituer la chronologie d'une histoire simple, ordonner
+// les étapes d'un processus — et le dire avec les mots du temps de l'âge.
+// La ressource Éduscol « La compréhension des récits de fiction » (2017)
+// donne la démarche du récit : le résumer en donnant sa fin, le raconter et
+// le lire plusieurs fois, jamais en morceaux, en faire manipuler les
+// personnages et rejouer les scènes — c'est ainsi que la chronologie
+// s'acquiert —, puis le faire raconter en petit groupe dès la moyenne
+// section, le professeur ajoutant les mots qui relient. Les indicateurs de
+// progrès (2016) font ordonner des photographies de ce qu'on a vécu, et en
+// parler ; les livrets de 2025, chaque séance en quatre temps.
+const CHRONOLOGIE: Demarche = {
+  id: "chronologie-maternelle",
+  nom: "Ordonner et raconter : la chronologie en images",
+  famille: "Maternelle",
+  source: "Programme de l'école maternelle (2025), « S'approprier la notion de chronologie » ; Éduscol, « La compréhension des récits de fiction : apprentissages et enseignement » (2017) et indicateurs de progrès « Se repérer dans le temps et l'espace » (2016) ; livrets d'accompagnement de 2025",
+  resume: "Une suite d'abord vécue ou entendue plusieurs fois — une activité de la classe photographiée, une histoire racontée en entier et rejouée, un geste de tous les jours —, puis ordonnée ensemble au tableau, en petit groupe avec les cartes, seul sur la fiche, enfin sans aide ; racontée à chaque fois avec les mots du temps de l'âge : « d'abord… après » ; « au début, ensuite, pour finir » ; « d'abord, ensuite, puis, enfin ». On valide avec ce qu'on a vécu ou lu ; on observe chacun, à distance.",
+  seances: [
+    {
+      titre: "Vivre ou entendre la suite",
+      objectifs: "À la fin de cette séance, les élèves sauront dire ce qui se passe dans la suite étudiée — l'activité vécue, l'histoire entendue, le geste fait — : au moins comment elle commence et comment elle finit.",
+      duree: 20,
+      phases: [
+        ph("Vivre ou entendre", "12 min", "L'activité vécue en petit groupe et photographiée à chaque étape ; ou l'histoire résumée en donnant sa fin, puis racontée et lue en entier, jamais en morceaux.",
+          "Met en mots chaque étape pendant qu'elle se fait ; raconte la même histoire plusieurs fois, les jours suivants."),
+        ph("Rejouer", "5 min", "Avec les personnages, les objets, des marottes : on refait les actions, dans l'ordre.", "Fait dire « d'abord », « après »."),
+        ph("Ce qu'on retient", "3 min", "Comment cela commence, comment cela finit."),
+      ],
+    },
+    {
+      titre: "Ordonner ensemble, au tableau",
+      objectifs: "À la fin de cette séance, les élèves sauront remettre dans l'ordre, avec la classe, les grandes images de la suite, en disant pourquoi l'une vient avant l'autre.",
+      duree: 20,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "Les grandes images en désordre au tableau : on les nomme, on les décrit. « Par laquelle tout commence ? »"),
+        ph("Temps 2 – Mise en activité", "10 min", "Chacun vient placer une image et dit pourquoi : « Avant, il faut… ». On vérifie avec l'album, les photos de la classe, ou en refaisant l'action.",
+          "Accepte les essais ; fait vérifier plutôt que donner la réponse."),
+        ph("Temps 3 – Institutionnalisation", "5 min", "On raconte toute la suite, les mots du temps posés sous les images. L'affiche reste au mur."),
+      ],
+    },
+    {
+      titre: "Ordonner en petit groupe, avec les cartes",
+      objectifs: "À la fin de cette séance, les élèves sauront poser dans l'ordre les cartes de la suite sur les cases fléchées, puis la raconter à un camarade.",
+      duree: 20,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "3 min", "L'affiche de la dernière fois : on la raconte ensemble."),
+        ph("Temps 2 – Mise en activité différenciée", "12 min", "Par deux ou trois : les cartes mêlées, la bande fléchée. On pose chaque carte sur sa case, on vérifie, puis on raconte.",
+          "Différencie : moins de cartes, l'affiche visible ou cachée, la première carte donnée."),
+        ph("Temps 3 – Institutionnalisation", "5 min", "Ce qui aide à trouver l'ordre : ce qu'il faut avoir fait avant ; ce qui change d'une image à l'autre."),
+      ],
+    },
+    {
+      titre: "Raconter avec les mots du temps",
+      objectifs: "À la fin de cette séance, les élèves sauront raconter la suite en entier et dans l'ordre, avec les mots du temps de leur âge : « d'abord… après » ; « au début, ensuite, pour finir » ; « d'abord, ensuite, puis, enfin ».",
+      duree: 20,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "Le professeur raconte en montrant les images ; les mots du temps sont mis en valeur, montrés sur leurs étiquettes."),
+        ph("Temps 2 – Mise en activité différenciée", "12 min", "En petit groupe, chacun raconte à son tour, image après image ; en grande section, la classe dicte la suite au professeur.",
+          "Ajoute les mots qui relient — « alors », « quand soudain », « le lendemain » — et fait reprendre la phrase entière."),
+        ph("Temps 3 – Institutionnalisation", "3 min", "On relit ce qui a été dit ou dicté ; le texte rejoint l'affiche."),
+      ],
+    },
+    {
+      titre: "Seul, coller dans l'ordre",
+      objectifs: "À la fin de cette séance, les élèves sauront remettre seuls les images de la suite dans l'ordre sur leur fiche, puis la raconter.",
+      duree: 20,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "3 min", "La consigne montrée sur une fiche agrandie : découper, ordonner sans coller, vérifier, puis coller."),
+        ph("Temps 2 – Mise en activité différenciée", "12 min", "Chacun découpe, ordonne, fait vérifier ou vérifie avec l'affiche, puis colle.",
+          "Fait raconter avant de coller ; aide au découpage sans donner l'ordre."),
+        ph("Temps 3 – Institutionnalisation", "5 min", "Quelques élèves racontent leur fiche ; on compare les fiches entre elles."),
+      ],
+    },
+    {
+      titre: "Sans aide : ordonner et raconter",
+      objectifs: "À la fin de cette séance, les élèves sauront ordonner la suite sans l'affiche ni les mots écrits, et la raconter d'eux-mêmes avec les mots du temps.",
+      duree: 15,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "3 min", "L'affiche est cachée : qui se souvient de la suite ?"),
+        ph("Temps 2 – Mise en activité", "9 min", "La bande sans les mots : chacun ordonne ses cartes, puis raconte à un camarade."),
+        ph("Temps 4 – Réinvestissement, transfert", "3 min", "Une autre suite du même genre — un autre geste, une autre histoire, une recette — pour transférer ce qu'on a appris."),
+      ],
+    },
+    {
+      titre: "Évaluation — observer chacun",
+      objectifs: "À la fin de cette séance, les élèves sauront montrer ce qu'ils ont acquis : ordonner seuls les images de la suite, dire comment elle commence et finit, la raconter avec les mots du temps, dire pourquoi une image vient avant une autre.",
+      duree: 15,
+      phases: [
+        ph("Observation", "12 min", "Seul avec l'élève : les cartes mêlées ; il les ordonne, puis raconte. La grille se remplit.",
+          "Observe sans aider ; note les mots du temps employés."),
+        ph("Suite", "3 min", "Revenir sur la suite quelques semaines plus tard ; l'affiche reste au mur pour se la rappeler."),
+      ],
+    },
+  ],
+};
+
 /** L'ordre des familles à l'écran : le général d'abord, puis par domaine. */
 export const FAMILLES: Famille[] = [
   "Toutes disciplines", "Français", "Mathématiques", "Sciences, histoire, EMC", "Arts, EPS et langues", "Maternelle",
@@ -1816,7 +1915,7 @@ export const DEMARCHES: Demarche[] = [
   PROBLEMES, CALCUL_MENTAL, GEOMETRIE_GRANDEURS,
   INVESTIGATION, ENQUETE_HISTOIRE_GEO, EMC_DEBAT,
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
-  MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, COLLECTIONS,
+  MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, COLLECTIONS, CHRONOLOGIE,
 ];
 
 export const demarcheDe = (id: string) => DEMARCHES.find((d) => d.id === id);
@@ -1860,6 +1959,7 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string): string {
     if (/oral a l'ecrit|apprendre a ecrire|principe alphabetique|phonolog/.test(sd) || /syllabe|phoneme|rime\b/.test(comp)) return "phonologie";
     if (/organiser les mots|mots en categorie/.test(comp)) return "categoriser-maternelle";
     if (/cardinal donne/.test(comp)) return "collections-maternelle";
+    if (/chronologie|deroulement d.evenements|etapes d.un processus|ordonner entre eux des moments/.test(comp)) return "chronologie-maternelle";
     if (/vocabulaire|lexique|mots nouveaux/.test(`${sd} ${comp}`)) return "vocabulaire";
     if (/plastique|arts visuels/.test(sd)) return "arts-plastiques";
     if (/univers sonore/.test(sd)) return "musique";
