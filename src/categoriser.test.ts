@@ -48,16 +48,19 @@ describe("les catégories de mots", () => {
 
 describe("les exemples tout prêts", () => {
   it("viennent de la fiche, avec au moins deux catégories de deux mots, et sans les mots au mauvais dessin", () => {
-    expect(JEUX_DE_CATEGORIES.length).toBeGreaterThanOrEqual(8);
+    expect(JEUX_DE_CATEGORIES.length).toBeGreaterThanOrEqual(20);
+    expect(new Set(JEUX_DE_CATEGORIES.map((j) => j.id)).size).toBe(JEUX_DE_CATEGORIES.length);
     for (const j of JEUX_DE_CATEGORIES) {
       expect(j.source.length, j.id).toBeGreaterThan(10);
       expect(j.niveaux.length, j.id).toBeGreaterThan(0);
       expect(j.categories.filter((c) => !c.intrus && c.mots.length >= 2).length, j.id).toBeGreaterThanOrEqual(2);
-      expect(motsDuJeu(j), j.id).not.toContain("baguette");
-      expect(motsDuJeu(j), j.id).not.toContain("paquebot");
+      for (const c of j.categories) expect(c.nom.trim(), j.id).not.toBe("");
+      // Dans la banque, ces mots-là ont d'abord un autre dessin : un bâton, un bateau, une poubelle, un feu tricolore, des grains bruns, un bol.
+      for (const mot of ["baguette", "paquebot", "seau", "feu", "maïs", "salade"]) expect(motsDuJeu(j), `${j.id} : ${mot}`).not.toContain(mot);
     }
-    // Chaque âge a les siens.
-    for (const n of ["PS", "MS", "GS"] as const) expect(JEUX_DE_CATEGORIES.some((j) => j.niveaux.includes(n)), n).toBe(true);
+    // Chaque âge a les siens, et de quoi choisir.
+    for (const n of ["PS", "MS", "GS"] as const) expect(JEUX_DE_CATEGORIES.filter((j) => j.niveaux.includes(n)).length, n).toBeGreaterThanOrEqual(6);
+    expect(JEUX_DE_CATEGORIES.some((j) => j.id === "saisons")).toBe(true);
   });
 
   it("deviennent des catégories avec les images trouvées ; un mot sans image garde son mot", () => {
@@ -68,6 +71,12 @@ describe("les exemples tout prêts", () => {
     expect(cs[0].mots[0]).toEqual({ id: 2462, mot: "pomme" });
     expect(cs[0].mots[1]).toEqual({ id: null, mot: "banane" });
     expect(categoriesDuJeu(JEUX_DE_CATEGORIES.find((x) => x.id === "familles-maisons")!, {}).some((c) => c.intrus)).toBe(true);
+    // Un picto donné par son numéro n'est pas cherché : la salle de bain, plutôt que la porte du premier dessin.
+    const maison = JEUX_DE_CATEGORIES.find((x) => x.id === "maison")!;
+    expect(categoriesDuJeu(maison, {}).find((c) => c.nom === "La salle de bain")!.image).toBe(33954);
+    expect(motsDuJeu(maison)).not.toContain("33954");
+    // Une catégorie sans picto garde son nom seul.
+    expect(categoriesDuJeu(JEUX_DE_CATEGORIES.find((x) => x.id === "se-mange")!, { manger: 2349 }).map((c) => c.image)).toEqual([2349, null]);
   });
 });
 

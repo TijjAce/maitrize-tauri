@@ -209,7 +209,13 @@ export function CategoriserTab({ banque }: { banque: boolean }) {
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
               <Select value={jeu} onChange={(e) => setJeu(e.target.value)} style={{ flex: 1, minWidth: 160 }}>
                 <option value="">Choisir un exemple…</option>
-                {jeux.map((j) => <option key={j.id} value={j.id}>{j.libelle}{j.niveaux.includes(r.niveau) ? "" : ` (${j.niveaux.join(", ")})`}</option>)}
+                {/* Ceux de la classe choisie d'abord ; les autres restent à portée, avec leur classe. */}
+                <optgroup label={`Pour la ${NIVEAUX.find((n) => n.id === r.niveau)?.classe ?? r.niveau}`}>
+                  {jeux.filter((j) => j.niveaux.includes(r.niveau)).map((j) => <option key={j.id} value={j.id}>{j.libelle}</option>)}
+                </optgroup>
+                <optgroup label="Pour les autres classes">
+                  {jeux.filter((j) => !j.niveaux.includes(r.niveau)).map((j) => <option key={j.id} value={j.id}>{j.libelle} ({j.niveaux.join(", ")})</option>)}
+                </optgroup>
               </Select>
               <button type="button" className="btn sm" disabled={!jeu || occupe} onClick={() => { void prendreLeJeu(); }}>{occupe ? "Recherche des images…" : "Prendre"}</button>
             </div>
