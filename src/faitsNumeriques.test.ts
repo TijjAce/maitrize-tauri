@@ -97,6 +97,22 @@ describe("le catalogue des faits numériques", () => {
     }
   });
 
+  it("au CP, fait chercher le résultat : le trou à la fin, jamais d'égalité à l'envers", () => {
+    for (const o of objectifsDuNiveau("CP").filter((x) => x.rubrique === "faits")) {
+      const alea = hasard(o.id.length * 13 + 1);
+      for (let i = 0; i < 100; i++) {
+        const { ecrit } = tirerCalcul(o, alea, o.tables ? [o.tables[4]] : []);
+        // Le complément à 10 est lui-même le résultat cherché : « 7 + … = 10 ».
+        if (o.id === "cp-complements-10") expect(ecrit, o.id).toMatch(/^\d \+ … = 10$/);
+        else expect(ecrit, `${o.id} : ${ecrit}`).toMatch(/ = …$/);
+      }
+    }
+    // Au CE1, les deux sens reviennent : le nombre manquant, et l'égalité à l'envers.
+    const ce1 = objectifParId("ce1-tables-addition")!, alea = hasard(2);
+    const formes = new Set(Array.from({ length: 60 }, () => tirerCalcul(ce1, alea, []).ecrit.replace(/\d+/g, "n")));
+    expect(formes).toEqual(new Set(["n + n = …", "n + … = n", "n = n + …"]));
+  });
+
   it("travaille la table qu'on choisit, et celle-là seulement", () => {
     const alea = hasard(5);
     const o = objectifParId("ce1-table-multiplication")!;

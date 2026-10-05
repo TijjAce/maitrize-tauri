@@ -107,10 +107,16 @@ const doubleDe = (alea: Alea, n: number, enMots: boolean): Tire => (alea() < 0.5
   ? { dire: `Le double de ${fr(n)}`, ecrit: enMots ? `double de ${fr(n)} = …` : `2 × ${fr(n)} = …`, reponse: fr(2 * n) }
   : { dire: `Le double de quel nombre fait ${fr(2 * n)} ?`, ecrit: enMots ? `double de … = ${fr(2 * n)}` : `2 × … = ${fr(2 * n)}`, reponse: fr(n) });
 
+/** Le double à trouver, sans l'égalité à l'envers : la forme du CP. */
+const leDouble = (n: number): Tire => ({ dire: `Le double de ${fr(n)}`, ecrit: `double de ${fr(n)} = …`, reponse: fr(2 * n) });
+
 /** La moitié d'un entier : juste aussi pour un impair — la moitié de 7 est 3,5. */
 const moitieDe = (alea: Alea, n: number): Tire => (alea() < 0.5
   ? { dire: `La moitié de ${fr(n)}`, ecrit: `moitié de ${fr(n)} = …`, reponse: virgule(n * 5, 10) }
   : { dire: `La moitié de quel nombre fait ${virgule(n * 5, 10)} ?`, ecrit: `moitié de … = ${virgule(n * 5, 10)}`, reponse: fr(n) });
+
+/** La moitié à trouver, sans l'égalité à l'envers : la forme du CP. */
+const laMoitie = (n: number): Tire => ({ dire: `La moitié de ${fr(n)}`, ecrit: `moitié de ${fr(n)} = …`, reponse: virgule(n * 5, 10) });
 
 /** Une liste d'égalités toutes faites — les fractions usuelles, par exemple. */
 const parmi = (liste: [dire: string, ecrit: string, reponse: string][]) => (alea: Alea): Tire => {
@@ -228,26 +234,29 @@ const UNE_MINUTE = (n: number) => `${n} égalités à trou en une minute`;
 
 const CATALOGUE: Objectif[] = [
   // ── CP : nombres jusqu'à 100 ──
+  // Au CP, l'élève cherche le résultat : « 5 + 2 = … », le trou à la fin. Le
+  // nombre manquant (« 2 + … = 6 ») et l'égalité à l'envers (« 9 = 8 + … »)
+  // viennent au CE1. Seul le complément à 10 se cherche au milieu : c'est
+  // lui, le résultat — « 7 et combien font 10 ? ».
   { id: "cp-complements-10", niveau: "CP", rubrique: "faits", libelle: "Compléments à 10", fluence: UNE_MINUTE(8),
     tirer: (alea) => {
       const a = entier(alea, 1, 9);
-      return alea() < 0.5
-        ? { dire: `Combien pour aller de ${a} à 10 ?`, ecrit: `${a} + … = 10`, reponse: String(10 - a) }
-        : { dire: `10, c'est ${a} plus combien ?`, ecrit: `10 = ${a} + …`, reponse: String(10 - a) };
+      return { dire: `Combien pour aller de ${a} à 10 ?`, ecrit: `${a} + … = 10`, reponse: String(10 - a) };
     } },
   { id: "cp-sommes-10", niveau: "CP", rubrique: "faits", libelle: "Tables d'addition : sommes jusqu'à 10", fluence: UNE_MINUTE(8),
-    tirer: (alea) => { const a = entier(alea, 1, 8); return aTrou(alea, a, entier(alea, 1, 9 - a), "+"); } },
+    tirer: (alea) => { const a = entier(alea, 1, 8); return somme(a, entier(alea, 1, 9 - a)); } },
   { id: "cp-table-addition", niveau: "CP", rubrique: "faits", libelle: "Une table d'addition, au choix", tables: TABLES_ADDITION, fluence: UNE_MINUTE(8),
-    tirer: (alea, tables) => aTrou(alea, table(alea, tables, TABLES_ADDITION), entier(alea, 1, 10), "+") },
-  { id: "cp-tables-addition", niveau: "CP", rubrique: "faits", libelle: "Toutes les tables d'addition, dans les deux sens", fluence: UNE_MINUTE(8), tirer: tablesAddition },
+    tirer: (alea, tables) => somme(table(alea, tables, TABLES_ADDITION), entier(alea, 1, 10)) },
+  { id: "cp-tables-addition", niveau: "CP", rubrique: "faits", libelle: "Toutes les tables d'addition : sommes jusqu'à 20", fluence: UNE_MINUTE(8),
+    tirer: (alea) => somme(entier(alea, 2, 10), entier(alea, 2, 10)) },
   { id: "cp-doubles", niveau: "CP", rubrique: "faits", libelle: "Doubles des nombres de 1 à 10", fluence: UNE_MINUTE(8),
-    tirer: (alea) => doubleDe(alea, entier(alea, 1, 10), true) },
+    tirer: (alea) => leDouble(entier(alea, 1, 10)) },
   { id: "cp-doubles-dizaines", niveau: "CP", rubrique: "faits", libelle: "Doubles de 20, 30, 40 et 50", fluence: UNE_MINUTE(8),
-    tirer: (alea) => doubleDe(alea, choisir(alea, [20, 30, 40, 50]), true) },
+    tirer: (alea) => leDouble(choisir(alea, [20, 30, 40, 50])) },
   { id: "cp-moities", niveau: "CP", rubrique: "faits", libelle: "Moitiés des nombres pairs de 2 à 20", fluence: UNE_MINUTE(8),
-    tirer: (alea) => moitieDe(alea, 2 * entier(alea, 1, 10)) },
+    tirer: (alea) => laMoitie(2 * entier(alea, 1, 10)) },
   { id: "cp-moities-dizaines", niveau: "CP", rubrique: "faits", libelle: "Moitiés de 40, 60, 80 et 100", fluence: UNE_MINUTE(8),
-    tirer: (alea) => moitieDe(alea, choisir(alea, [40, 60, 80, 100])) },
+    tirer: (alea) => laMoitie(choisir(alea, [40, 60, 80, 100])) },
   { id: "cp-un-ou-deux", niveau: "CP", rubrique: "numeration", libelle: "Ajouter ou soustraire 1 ou 2",
     tirer: (alea) => plusOuMoins(alea, entier(alea, 3, 97), choisir(alea, [1, 2])) },
   { id: "cp-dix", niveau: "CP", rubrique: "numeration", libelle: "Ajouter ou soustraire 10",
