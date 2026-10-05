@@ -176,6 +176,9 @@ describe("la démarche que la compétence appelle", () => {
   it("en maternelle, proposent la phonologie, le vocabulaire, l'investigation ou les modalités du programme", () => {
     expect(sug("1. Mobiliser le langage dans toutes ses dimensions", "Passer de l'oral à l'écrit: se préparer à apprendre à écrire", "Repérer une syllabe", c1)).toBe("phonologie");
     expect(sug("1. Mobiliser le langage dans toutes ses dimensions", "Acquérir le langage oral", "Utiliser un vocabulaire précis", c1)).toBe("vocabulaire");
+    expect(sug("1. Mobiliser le langage dans toutes ses dimensions", "Acquérir le langage oral", "Organiser les mots en catégorie et en réseau", c1)).toBe("categoriser-maternelle");
+    // Trier des instruments, classer des formes : ce n'est pas catégoriser des mots.
+    expect(sug("3. Agir, s'exprimer, comprendre à travers des activités artistiques", "Univers sonores", "Explorer différents instruments de musique, des objets sonores, les trier, les catégoriser", c1)).toBe("musique");
     expect(sug("1. Mobiliser le langage dans toutes ses dimensions", "Acquérir le langage oral", "Raconter une histoire", c1)).toBe("maternelle-modalites");
     expect(sug("2. Agir, s'exprimer, comprendre à travers l'activité physique", "Se déplacer", "Courir", c1)).toBe("eps-module");
     expect(sug("3. Agir, s'exprimer, comprendre à travers des activités artistiques", "Arts visuels", "Dessiner", c1)).toBe("arts-plastiques");
