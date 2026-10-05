@@ -27,7 +27,7 @@ export interface Branche {
   titre: string;
   image: PictoPose;
   couleur: string;
-  /** Ce que la branche porte : des mots, avec leur image si on veut. */
+  /** Ce que la branche porte : des mots, avec leur image si on veut — ou l'image seule, ou le mot seul. */
   idees: MotImage[];
 }
 
@@ -58,7 +58,8 @@ export function reglagesSurs(brut: Partial<ReglagesCarte>): ReglagesCarte {
       image: normaliserPicto(o.image),
       couleur: typeof o.couleur === "string" && HEX.test(o.couleur) ? o.couleur : couleurDeBranche(i),
       idees: Array.isArray(o.idees) ? o.idees.filter((m): m is MotImage => Boolean(m) && typeof m.mot === "string")
-        .map((m) => ({ id: typeof m.id === "number" ? m.id : null, mot: m.mot })).slice(0, IDEES_MAX) : [],
+        .map((m): MotImage => ({ id: typeof m.id === "number" ? m.id : null, mot: m.mot, ...(m.seul === "image" || m.seul === "mot" ? { seul: m.seul } : {}) }))
+        .slice(0, IDEES_MAX) : [],
     };
   }) : REGLAGES_CARTE.branches;
   while (branches.length < BRANCHES_MIN) branches.push(brancheVide(branches.length));
@@ -79,11 +80,24 @@ export const cequiManque = (r: ReglagesCarte) =>
   !r.centre.trim() && estVide(r.image) ? "Écrivez le thème du centre."
     : branchesPleines(r).length < BRANCHES_MIN ? "Il faut au moins deux branches." : null;
 
+/** Les images des idées qui en montrent une : toutes, sauf celles qu'on a voulues en mot seul. */
+const imagesDesIdees = (r: Pick<ReglagesCarte, "pictos">, idees: MotImage[]) =>
+  r.pictos ? idees.filter((m) => m.seul !== "mot").map((m) => m.id).filter((id): id is number => id != null) : [];
+
 /** Les images à charger : celle du centre, celles des branches, celles des idées. */
 export function idsDesImages(r: ReglagesCarte): (number | string)[] {
   const cles = [r.image, ...r.branches.map((b) => b.image)].map(cleImage).filter((k): k is number | string => k !== null);
-  const idees = r.pictos ? r.branches.flatMap((b) => b.idees.map((m) => m.id)).filter((id): id is number => id != null) : [];
-  return [...new Set([...cles, ...idees])];
+  return [...new Set([...cles, ...imagesDesIdees(r, r.branches.flatMap((b) => b.idees))])];
+}
+
+/**
+ * Une idée sur la feuille : son image et son mot, ou l'un des deux seulement.
+ * Sans image à montrer, le mot reste : une idée ne disparaît jamais.
+ */
+function idee(m: MotImage, src: string | undefined): string {
+  const ecrit = m.seul !== "image" || !src;
+  return `<span class="cm-idee${src && !ecrit ? " cm-image-seule" : ""}">`
+    + `${src ? `<img src="${src}" alt="${ecrit ? "" : escapeHtml(m.mot)}">` : ""}${ecrit ? escapeHtml(m.mot) : ""}</span>`;
 }
 
 // ── La mise en page ───────────────────────────────────────────────────────
@@ -149,13 +163,13 @@ export function htmlCarteMentale(r: ReglagesCarte, images: Images): string {
   const blocsHtml = branches.map((br, i) => {
     const b = blocs[i];
     const taille = tailleDesIdees(br.idees.length, b.hauteur - 13);
-    const idees = br.idees.map((m) => `<span class="cm-idee">${r.pictos && m.id != null && images[m.id] ? `<img src="${images[m.id]}" alt="">` : ""}${escapeHtml(m.mot)}</span>`).join("");
+    const idees = br.idees.map((m) => idee(m, r.pictos && m.seul !== "mot" && m.id != null ? images[m.id] : undefined)).join("");
     return `<div class="cm-branche" style="left:${b.x}mm;top:${b.y.toFixed(1)}mm;width:${b.largeur}mm;height:${b.hauteur.toFixed(1)}mm;--c:${br.couleur}">`
       + `<div class="cm-titre">${image(br.image, images, "cm-titre-image")}<span>${escapeHtml(br.titre.trim() || "…")}</span></div>`
       + (idees ? `<div class="cm-idees cm-${taille}">${idees}</div>` : "") + `</div>`;
   }).join("");
   const ids = [r.image, ...branches.map((b) => b.image)].filter((p) => !p.photo && p.id != null && images[p.id]).map((p) => p.id)
-    .concat(r.pictos ? branches.flatMap((b) => b.idees.map((m) => m.id)).filter((id) => id != null && images[id]) : []);
+    .concat(imagesDesIdees(r, branches.flatMap((b) => b.idees)).filter((id) => images[id]));
   return feuille(`<div class="page"><div class="cm-carte${r.capitales ? " cm-capitales" : ""}" style="width:${LARGEUR}mm;height:${HAUTEUR}mm">`
     + `<svg class="cm-traits" viewBox="0 0 ${LARGEUR} ${HAUTEUR}" width="${LARGEUR}mm" height="${HAUTEUR}mm">${traits}</svg>`
     + `${centre}${blocsHtml}</div></div>${attributionPour(ids)}`, "cm");
@@ -185,4 +199,8 @@ export const STYLE_CARTE_MENTALE = `
   .feuille.cm .cm-moyenne .cm-idee img { width: 9mm; height: 9mm; }
   .feuille.cm .cm-petite .cm-idee { font-size: 11px; }
   .feuille.cm .cm-petite .cm-idee img { width: 7mm; height: 7mm; }
+  /* L'image seule prend la place du mot. */
+  .feuille.cm .cm-grande .cm-image-seule img { width: 17mm; height: 17mm; }
+  .feuille.cm .cm-moyenne .cm-image-seule img { width: 12mm; height: 12mm; }
+  .feuille.cm .cm-petite .cm-image-seule img { width: 9mm; height: 9mm; }
 `;

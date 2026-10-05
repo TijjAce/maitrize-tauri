@@ -442,27 +442,26 @@ pub struct ReponseWeb {
     pub a_cherche: bool,
 }
 
-/// Récupère l'agent de recherche, ou le crée à la première utilisation.
-async fn agent_recherche(db: &State<'_, Db>, cle: &str) -> Result<String, String> {
-    {
+/// Récupère l'agent gardé sous le réglage `reglage`, ou le crée d'après
+/// `corps` à la première utilisation. `renouveler` en crée un autre : celui
+/// qu'on gardait n'existe plus chez Mistral (effacé depuis la console).
+async fn agent_garde(
+    db: &State<'_, Db>,
+    cle: &str,
+    reglage: &str,
+    corps: serde_json::Value,
+    renouveler: bool,
+) -> Result<String, String> {
+    if !renouveler {
         let c = db.lock();
         let existant: Option<String> = c
-            .query_row("SELECT valeur FROM settings WHERE cle='agentRechercheId'", params![], |r| r.get(0))
+            .query_row("SELECT valeur FROM settings WHERE cle=?1", params![reglage], |r| r.get(0))
             .ok()
             .filter(|v: &String| !v.trim().is_empty());
         if let Some(id) = existant {
             return Ok(id);
         }
     }
-    let corps = serde_json::json!({
-        "model": MODELE_RECHERCHE,
-        "name": "Maitrize — recherche web",
-        "description": "Répond aux questions d'un enseignant en citant ses sources.",
-        "instructions": "Tu aides un enseignant spécialisé français. Cherche sur le web avant \
-             de répondre, cite tes sources, et dis clairement quand tu ne trouves pas. \
-             Privilégie les sources officielles : education.gouv.fr, eduscol, service-public.",
-        "tools": [{ "type": "web_search" }],
-    });
     let rep = reqwest::Client::new()
         .post("https://api.mistral.ai/v1/agents")
         .bearer_auth(cle)
@@ -482,10 +481,23 @@ async fn agent_recherche(db: &State<'_, Db>, cle: &str) -> Result<String, String
     }
     let c = db.lock();
     c.execute(
-        "INSERT OR REPLACE INTO settings (cle, valeur) VALUES ('agentRechercheId', ?1)",
-        params![id],
+        "INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)",
+        params![reglage, id],
     ).ok();
     Ok(id)
+}
+
+/// Récupère l'agent de recherche, ou le crée à la première utilisation.
+async fn agent_recherche(db: &State<'_, Db>, cle: &str) -> Result<String, String> {
+    agent_garde(db, cle, "agentRechercheId", serde_json::json!({
+        "model": MODELE_RECHERCHE,
+        "name": "Maitrize — recherche web",
+        "description": "Répond aux questions d'un enseignant en citant ses sources.",
+        "instructions": "Tu aides un enseignant spécialisé français. Cherche sur le web avant \
+             de répondre, cite tes sources, et dis clairement quand tu ne trouves pas. \
+             Privilégie les sources officielles : education.gouv.fr, eduscol, service-public.",
+        "tools": [{ "type": "web_search" }],
+    }), false).await
 }
 
 /// Pose une question en cherchant sur le web, et rapporte les sources.
@@ -581,6 +593,151 @@ pub(crate) fn lire_reponse_web(v: &serde_json::Value) -> ReponseWeb {
         }
     }
     ReponseWeb { texte: texte.trim().to_string(), sources, a_cherche }
+}
+
+// ── Dessiner un pictogramme ────────────────────────────────────────────────
+//
+// Quand ni ARASAAC ni Sclera n'ont le mot, l'enseignant peut en demander un
+// dessin à la manière d'ARASAAC. Mistral dessine par un connecteur, comme il
+// cherche sur le web : un agent, créé une fois, qui appelle l'outil
+// `image_generation`. L'image revient comme un fichier de son espace : on la
+// rapatrie, puis on l'y efface. La demande ne porte que le mot, et ce qu'on
+// veut y voir.
+
+/// Modèle de l'agent qui dessine : les Ministral n'appellent pas les connecteurs.
+const MODELE_DESSIN: &str = "mistral-medium-latest";
+/// Une image dessinée se paie à l'unité : 100 $ les mille (tarif public, octobre 2026).
+const DOLLARS_PAR_IMAGE: f64 = 0.10;
+
+/// Récupère l'agent qui dessine, ou le crée à la première utilisation.
+async fn agent_dessin(db: &State<'_, Db>, cle: &str, renouveler: bool) -> Result<String, String> {
+    agent_garde(db, cle, "agentDessinId", serde_json::json!({
+        "model": MODELE_DESSIN,
+        "name": "Maitrize — pictogrammes",
+        "description": "Dessine des pictogrammes pour la classe, à la manière d'ARASAAC.",
+        "instructions": "Tu dessines des pictogrammes pour des enfants, à la manière des pictogrammes \
+             ARASAAC. À chaque demande, appelle une seule fois l'outil de génération d'image, avec une \
+             description en anglais fidèle à la demande : flat vector pictogram in the style of ARASAAC \
+             AAC symbols, thick uniform black outlines, flat bright colors, plain white background, no \
+             text, no letters, no shadows, no gradients, one single centered subject. Ne réponds rien d'autre.",
+        "tools": [{ "type": "image_generation" }],
+    }), renouveler).await
+}
+
+/// Ce qu'on demande à l'agent : le mot, ce qu'on doit y voir, le style d'ARASAAC.
+pub(crate) fn consigne_picto(mot: &str, precision: &str) -> String {
+    let voir = match precision.trim() {
+        "" => String::new(),
+        p => format!(" On doit y voir : {p}."),
+    };
+    format!(
+        "Dessine le pictogramme du mot français « {} ».{voir} Style des pictogrammes ARASAAC : \
+         dessin vectoriel plat, contours noirs épais et réguliers, aplats de couleurs franches, \
+         sans dégradé ni ombre, fond blanc uni, un seul sujet centré et vu en entier, formes simples, \
+         lisible en petit par un enfant. Aucun texte, aucune lettre, aucun chiffre. Image carrée.",
+        mot.trim()
+    )
+}
+
+/// Les fichiers qu'une conversation a dessinés, dans l'ordre, chacun une fois.
+///
+/// Un identifiant qui n'a pas la forme attendue est écarté : il entre dans
+/// l'adresse où l'on télécharge l'image.
+pub(crate) fn fichiers_dessines(v: &serde_json::Value) -> Vec<String> {
+    let mut ids: Vec<String> = Vec::new();
+    let Some(sorties) = v.get("outputs").and_then(|x| x.as_array()) else { return ids };
+    for o in sorties {
+        if o.get("type").and_then(|x| x.as_str()) != Some("message.output") {
+            continue;
+        }
+        let Some(morceaux) = o.get("content").and_then(|x| x.as_array()) else { continue };
+        for m in morceaux {
+            if m.get("type").and_then(|x| x.as_str()) != Some("tool_file") {
+                continue;
+            }
+            let id = m.get("file_id").and_then(|x| x.as_str()).unwrap_or_default();
+            let sur = !id.is_empty() && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+            if sur && !ids.iter().any(|x| x == id) {
+                ids.push(id.to_string());
+            }
+        }
+    }
+    ids
+}
+
+/// Dessine le pictogramme d'un mot, à la manière d'ARASAAC ; renvoie l'image en base64.
+#[tauri::command]
+pub async fn mistral_dessiner_picto(
+    db: State<'_, Db>,
+    mot: String,
+    precision: Option<String>,
+) -> Result<String, String> {
+    use base64::Engine;
+    let mot = mot.trim().to_string();
+    if mot.is_empty() {
+        return Err("Écrivez d'abord le mot à dessiner.".into());
+    }
+    let cle = cle_mistral(&db)?;
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(180))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let consigne = consigne_picto(&mot, precision.as_deref().unwrap_or(""));
+    let mut renouveler = false;
+    let v: serde_json::Value = loop {
+        let agent = agent_dessin(&db, &cle, renouveler).await?;
+        let rep = client
+            .post("https://api.mistral.ai/v1/conversations")
+            .bearer_auth(&cle)
+            .json(&serde_json::json!({ "agent_id": agent, "inputs": consigne }))
+            .send()
+            .await
+            .map_err(|e| format!("Réseau : {e}"))?;
+        if rep.status().is_success() {
+            break rep.json().await.map_err(|e| format!("Réponse : {e}"))?;
+        }
+        let code = rep.status().as_u16();
+        let quota = quota_minute(rep.headers());
+        let txt = rep.text().await.unwrap_or_default();
+        // L'agent gardé a pu être effacé depuis la console Mistral : on en crée un autre, une fois.
+        if code == 404 && !renouveler {
+            renouveler = true;
+            continue;
+        }
+        return Err(message_erreur(code, &txt, quota));
+    };
+
+    let fichiers = fichiers_dessines(&v);
+    let mut depense = depense_texte(v.get("usage"), MODELE_DESSIN);
+    depense.dollars += fichiers.len() as f64 * DOLLARS_PAR_IMAGE;
+    noter_depense(&db, depense);
+    let Some(premier) = fichiers.first() else {
+        return Err("Mistral n'a pas dessiné d'image cette fois-ci. Réessayez, ou précisez ce qu'on doit y voir.".into());
+    };
+    let rep = client
+        .get(format!("https://api.mistral.ai/v1/files/{premier}/content"))
+        .bearer_auth(&cle)
+        .send()
+        .await
+        .map_err(|e| format!("Réseau : {e}"))?;
+    if !rep.status().is_success() {
+        let code = rep.status().as_u16();
+        let txt = rep.text().await.unwrap_or_default();
+        return Err(message_erreur(code, &txt, None));
+    }
+    let octets = rep.bytes().await.map_err(|e| format!("Image : {e}"))?;
+    // Rien ne reste chez Mistral : le dessin rapatrié, sa copie là-bas s'efface.
+    for f in &fichiers {
+        let _ = client
+            .delete(format!("https://api.mistral.ai/v1/files/{f}"))
+            .bearer_auth(&cle)
+            .send()
+            .await;
+    }
+    if octets.is_empty() {
+        return Err("Mistral a renvoyé une image vide. Réessayez.".into());
+    }
+    Ok(base64::engine::general_purpose::STANDARD.encode(&octets))
 }
 
 /// Vérifie que la clé fonctionne (petit ping).
@@ -1007,5 +1164,50 @@ mod tests_erreurs {
         let m = message_erreur(500, &"x".repeat(1000), None);
         assert!(m.contains("code 500"), "{m}");
         assert!(m.len() < 300, "extrait trop long : {}", m.len());
+    }
+}
+
+#[cfg(test)]
+mod tests_dessin {
+    use super::{consigne_picto, fichiers_dessines};
+    use serde_json::json;
+
+    #[test]
+    fn la_consigne_porte_le_mot_le_style_et_ce_qu_on_doit_voir() {
+        let c = consigne_picto("  trottinette ", "");
+        assert!(c.contains("« trottinette »"));
+        assert!(c.contains("ARASAAC"));
+        assert!(c.contains("Aucun texte"));
+        assert!(!c.contains("On doit y voir"));
+        let p = consigne_picto("avocat", "le fruit coupé en deux");
+        assert!(p.contains("On doit y voir : le fruit coupé en deux."));
+    }
+
+    #[test]
+    fn retrouve_l_image_dessinee_dans_la_reponse() {
+        let v = json!({ "outputs": [
+            { "type": "tool.execution", "name": "image_generation" },
+            { "type": "message.output", "content": [
+                { "type": "text", "text": "Voici le pictogramme." },
+                { "type": "tool_file", "tool": "image_generation", "file_id": "a1b2-c3_d4", "file_name": "image_generated_0", "file_type": "png" },
+                { "type": "tool_file", "tool": "image_generation", "file_id": "a1b2-c3_d4" },
+            ]},
+        ]});
+        assert_eq!(fichiers_dessines(&v), vec!["a1b2-c3_d4".to_string()]);
+    }
+
+    #[test]
+    fn ecarte_ce_qui_n_est_pas_une_image_ou_n_a_pas_la_forme_d_un_identifiant() {
+        let v = json!({ "outputs": [
+            { "type": "message.output", "content": "Je ne peux pas dessiner cela." },
+            { "type": "message.output", "content": [
+                { "type": "tool_file", "file_id": "../agents" },
+                { "type": "tool_file", "file_id": "" },
+                { "type": "tool_file" },
+                { "type": "text", "text": "file_id" },
+            ]},
+        ]});
+        assert!(fichiers_dessines(&v).is_empty());
+        assert!(fichiers_dessines(&json!({})).is_empty());
     }
 }

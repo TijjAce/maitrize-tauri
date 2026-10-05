@@ -8,6 +8,7 @@
 // la classe prises au téléphone ; sans image, les cases portent le mot.
 
 import { escapeHtml } from "./print";
+import { estMonPicto, mentionDeMesPictos } from "./mesPictos";
 
 /**
  * Un pictogramme posé sur un support : l'image ARASAAC et le mot écrit
@@ -47,7 +48,8 @@ export const couleurValide = (v: unknown, defaut: string) =>
 
 export function normaliserPicto(v: unknown): PictoPose {
   const o = objet(v);
-  const p: PictoPose = { id: typeof o.id === "number" && Number.isInteger(o.id) && o.id >= 0 ? o.id : null, mot: texte(o.mot) };
+  // Un numéro de la banque, ou celui d'un picto de « Mes pictos ».
+  const p: PictoPose = { id: typeof o.id === "number" && Number.isInteger(o.id) && (o.id >= 0 || estMonPicto(o.id)) ? o.id : null, mot: texte(o.mot) };
   // Une photo : un nom de fichier, jamais un chemin.
   if (typeof o.photo === "string" && /^[^/\\]+$/.test(o.photo) && !o.photo.includes("..")) p.photo = o.photo;
   return p;
@@ -69,9 +71,17 @@ function image(p: PictoPose | null | undefined, images: Images, classe = "sv-ima
 }
 
 const mot = (p: PictoPose | null | undefined) => (p?.mot.trim() ? `<div class="sv-mot">${escapeHtml(p.mot.trim())}</div>` : "");
-/** La mention d'ARASAAC, quand un de ses pictogrammes est posé — pas pour des photos seules. */
-const attribution = (pictos: (PictoPose | null | undefined)[]) =>
-  pictos.some((p) => p && !p.photo && p.id != null) ? `<div class="sv-attribution">${ATTRIBUTION_ARASAAC}</div>` : "";
+/**
+ * La mention d'ARASAAC, quand un de ses pictogrammes est posé — pas pour des
+ * photos seules ; et celle des pictos gardés dans « Mes pictos » : un dessin
+ * de l'IA n'est pas d'ARASAAC.
+ */
+function attribution(pictos: (PictoPose | null | undefined)[]): string {
+  const ids = pictos.filter((p) => p && !p.photo).map((p) => p!.id);
+  const miens = mentionDeMesPictos(ids);
+  return (ids.some((id) => id != null && id >= 0) ? `<div class="sv-attribution">${ATTRIBUTION_ARASAAC}</div>` : "")
+    + (miens ? `<div class="sv-attribution">${escapeHtml(miens)}</div>` : "");
+}
 
 // ── Économie de jetons ─────────────────────────────────────────────────────
 

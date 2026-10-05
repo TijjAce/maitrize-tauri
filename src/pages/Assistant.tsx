@@ -15,6 +15,7 @@ import { SUGGESTIONS_DOCUMENT, consigneDocument, feuilleDuDocument } from "../do
 import { documentImprimable, printHTML } from "../print";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { deposerSurLeBureau } from "../impressionAtelier";
+import { TrouverUnPicto } from "../components/TrouverUnPicto";
 
 // Extrait un objet JSON d'une réponse IA (tolère du texte autour).
 function extraireJson(rep: string): any {
@@ -45,6 +46,7 @@ export default function Assistant() {
   const [hasKey, setHasKey] = React.useState<boolean | null>(null);
   const [showGen, setShowGen] = React.useState(false);
   const [showModif, setShowModif] = React.useState(false);
+  const [showPictos, setShowPictos] = React.useState(false);
   const [contexteActif, setContexteActif] = React.useState(true);
   const [surLeWeb, setSurLeWeb] = React.useState(false);
   // Mode document : le modèle écrit un document imprimable, et rien d'autre.
@@ -312,6 +314,9 @@ export default function Assistant() {
             ? "L'assistant écrit un document imprimable — fiche, mot aux familles, affiche, grille — à imprimer ou à déposer sur le bureau en PDF."
             : "Demander un document imprimable plutôt qu'une réponse."}>
           📄 Document&nbsp;: {modeDocument ? "activé" : "désactivé"}</button>
+        <button className="btn sm" onClick={() => setShowPictos(true)}
+          title="Chercher un pictogramme dans ARASAAC, dans Sclera et vos pictos gardés ; s'il n'existe pas, le faire dessiner par l'IA">
+          🧩 Pictos</button>
         <button className="btn sm" onClick={() => setShowModif(true)}>✏️ Modifier une séquence</button>
         <button className="btn sm primary" onClick={() => setShowGen(true)}>✨ Générer une séquence</button>
       </div>
@@ -322,6 +327,7 @@ export default function Assistant() {
       )}
       {showGen && <GenerateurSequence model={model} onClose={() => setShowGen(false)} />}
       {showModif && <ModifierSequence model={model} onClose={() => setShowModif(false)} />}
+      {showPictos && <TrouverUnPicto onClose={() => setShowPictos(false)} />}
       <div className="chat-scroll" ref={scrollRef} onScroll={surDefilement} onWheel={surMolette}>
         {messages.length === 0 && (
           <div style={{ margin: "auto", maxWidth: 520, textAlign: "center" }}>

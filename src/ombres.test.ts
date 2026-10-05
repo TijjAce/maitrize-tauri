@@ -147,6 +147,11 @@ describe("la feuille du jeu des ombres", () => {
     expect(htmlOmbres(perso, REGLAGES_OMBRES, 1)).not.toContain("ARASAAC");
     expect(attributionPour([null, undefined, -4])).toBe("");
     expect(attributionPour([null, -4, 2349])).toBe(ATTRIBUTION_ARASAAC);
+    // Un picto dessiné par l'IA, gardé dans « Mes pictos » : la feuille dit qu'il n'est pas d'ARASAAC.
+    const ia = attributionPour([-1_000_000_123]);
+    expect(ia).not.toContain("Gouvernement d'Aragon");
+    expect(ia).toContain("intelligence artificielle");
+    expect(attributionPour([2349, -1_000_000_123])).toBe(ATTRIBUTION_ARASAAC + ia);
   });
 
   it("attend des images pour faire une feuille", () => {

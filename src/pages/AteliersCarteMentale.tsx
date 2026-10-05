@@ -49,8 +49,9 @@ function CarteBranche({ b, rang, ouverte, onOuvrir, onChange, onRetirer, banque,
                 className="dos-pastille" style={{ width: 18, height: 18, background: c.hex, cursor: "pointer", outline: b.couleur === c.hex ? "2px solid var(--text)" : "none" }} />
             ))}
           </div>
-          <BanqueDeMots mots={b.idees} banque={banque} onChange={(idees) => onChange({ ...b, idees: idees.slice(0, IDEES_MAX) })}
-            aide={`Les idées de la branche, ${IDEES_MAX} au plus : écrivez les mots, la banque leur trouve un picto — ou ajoutez vos photos.`} />
+          <BanqueDeMots mots={b.idees} banque={banque} affichage onChange={(idees) => onChange({ ...b, idees: idees.slice(0, IDEES_MAX) })}
+            aide={`Les idées de la branche, ${IDEES_MAX} au plus : écrivez les mots, la banque leur trouve un picto — ou ajoutez vos photos. `
+              + "Sur chaque idée, 🖼 et Aa disent ce que la feuille en montre : cliquez Aa pour ne garder que l'image."} />
         </div>
       )}
     </div>

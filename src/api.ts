@@ -627,6 +627,8 @@ export const api = {
 
   // Réglages
   settingsAll: () => invoke<Record<string, string>>("settings_all"),
+  /** Les réglages non vides d'une famille (« pictos: »…), sans lire tous les autres. */
+  settingsPrefixe: (prefixe: string) => invoke<Record<string, string>>("settings_prefixe", { prefixe }),
   settingGet: (cle: string) => invoke<string | null>("setting_get", { cle }),
   settingSet: (cle: string, valeur: string) => invoke<void>("setting_set", { cle, valeur }),
 
@@ -747,6 +749,9 @@ export const api = {
     invoke<string>("jeu_generer", { jeu, pictos, options, titre, ouvrir, images }),
   mistralRechercheWeb: (question: string) =>
     invoke<ReponseWeb>("mistral_recherche_web", { question }),
+  /** Un picto dessiné par l'IA de Mistral à la manière d'ARASAAC, en base64 ; `precision` dit ce qu'on doit y voir. */
+  mistralDessinerPicto: (mot: string, precision = "") =>
+    invoke<string>("mistral_dessiner_picto", { mot, precision }),
   mistralVision: (consigne: string, imageB64: string, model?: string) =>
     invoke<string>("mistral_vision", { consigne, imageB64, model: normaliserModele(model) }),
   arasaacChercher: (q: string, limite = 40) =>

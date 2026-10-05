@@ -127,7 +127,7 @@ pub fn run() {
             // Coffre-fort
             coffre_list, coffre_save, coffre_delete, coffre_download,
             // Réglages
-            settings_all, setting_get, setting_set,
+            settings_all, settings_prefixe, setting_get, setting_set,
             // Fichiers
             fichier_save, fichier_read, fichier_path, fichier_delete, fichier_importer_depuis_chemin, enregistrer_texte,
             imprimer_pdf, ouvrir_fichier, imprimer_planning, ouvrir_html, exporter_synthese_gs, exporter_bilan_ppi, exporter_gevasco,
@@ -141,6 +141,7 @@ pub fn run() {
             // IA Mistral
             ai::mistral_chat, ai::mistral_test, ai::mistral_chat_stream, ai::transcrire_audio,
             ai::mistral_modeles_disponibles, ai::mistral_vision, ai::mistral_recherche_web, ai::mistral_jetons,
+            ai::mistral_dessiner_picto,
             // Un manuel photographié, en PDF ; et un fichier recopié où l'on veut.
             manuel_pdf::manuel_en_pdf, manuel_pdf::fichier_exporter,
             pictos_appoint::pictos_appoint_etat, pictos_appoint::pictos_appoint_telecharger, pictos_appoint::pictos_appoint_par_mots,
