@@ -131,6 +131,7 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "🏠", label: "Les maisons du tri (étiquettes à trier : être ou avoir, phrase ou pas)", to: "/jeux", page: "jeux", onglet: "tri", sous: "Fabriquer" },
   { ico: "🔎", label: "Mots mêlés", to: "/jeux", page: "jeux", onglet: "motsMeles", sous: "Fabriquer" },
   { ico: "✂️", label: "Phrases en désordre", to: "/jeux", page: "jeux", onglet: "phrases", sous: "Fabriquer" },
+  { ico: "🔳", label: "Texte à trous (étiquettes à coller : être et avoir au présent)", to: "/jeux", page: "jeux", onglet: "trous", sous: "Fabriquer" },
   { ico: "🗒", label: "Programmation", to: "/organisation", page: "organisation", onglet: "prog", sous: "Organisation" },
   { ico: "📉", label: "Progression annuelle", to: "/organisation", page: "organisation", onglet: "annuelle", sous: "Organisation" },
   { ico: "🕘", label: "EDT type", to: "/organisation", page: "organisation", onglet: "edt", sous: "Organisation" },
