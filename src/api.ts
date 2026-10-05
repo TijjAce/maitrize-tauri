@@ -1108,23 +1108,63 @@ let _matiereOverrides: Record<string, string> = {};
 export function setMatiereOverrides(o: Record<string, string>) { _matiereOverrides = o || {}; }
 export function getMatiereOverrides(): Record<string, string> { return _matiereOverrides; }
 
-/** Couleur d'une matière ou d'un intitulé, hors choix de l'enseignant. */
+// Les domaines des référentiels s'écrivent en entier — « 1. Mobiliser le
+// langage dans toutes ses dimensions », « Enseignement moral et civique » —,
+// et une séquence porte le domaine de sa compétence. La liste des matières
+// les dit en court : chaque domaine y retrouve la sienne, et sa couleur. Les
+// intitulés de l'emploi du temps (« domaine 1 », « Lecture ») n'en sont pas :
+// ils gardent la leur.
+const MATIERE_DES_DOMAINES: [RegExp, string][] = [
+  [/^mobiliser le langage/, "Mobiliser le langage"],
+  [/^agir s exprimer comprendre a travers l activite physique/, "Activité physique"],
+  [/^agir s exprimer comprendre a travers (les |des )?activites artistiques/, "Activités artistiques"],
+  [/premiers outils (mathematiques|pour structurer sa pensee)/, "Structurer sa pensée"],
+  [/^(explorer le monde|se reperer dans le temps et l espace|decouvrir le monde du vivant)/, "Explorer le monde"],
+  [/^histoire geographie$/, "Histoire-Géographie"],
+  [/^sciences et technologie$/, "Sciences et techno."],
+  [/^enseignement moral et civique$/, "EMC"],
+  [/^education physique et sportive$/, "EPS"],
+  [/^enseignements artistiques$/, "Arts plastiques"],
+  [/^langues vivantes/, "LVE / Anglais"],
+];
+
+/** La matière de la liste qu'un domaine de référentiel désigne ; rien pour une matière de la liste, ni pour un intitulé. */
+export function matiereDuDomaine(domaine: string): string | null {
+  if (COULEURS_MATIERES[domaine] || MATIERES.includes(domaine)) return null;
+  const plat = domaine.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/^\s*\d+\s*[.)]\s*/, "").replace(/[^a-z0-9]+/g, " ").trim();
+  return MATIERE_DES_DOMAINES.find(([re]) => re.test(plat))?.[1] ?? null;
+}
+
+/** Couleur d'une matière ou d'un intitulé, hors choix de l'enseignant ; un domaine prend celle de sa matière. */
 export function couleurParDefaut(matiere: string): string {
   if (COULEURS_MATIERES[matiere]) return COULEURS_MATIERES[matiere];
+  const liste = matiereDuDomaine(matiere);
+  if (liste) return couleurParDefaut(liste);
   const palette = ["blue", "green", "orange", "purple", "red", "indigo", "teal", "pink", "cyan", "brown"];
   let h = 0;
   for (const ch of matiere) h = (h + ch.charCodeAt(0)) & 0x7fffffff;
   return palette[h % palette.length];
 }
 
-export function couleurPourMatiere(matiere: string): string {
-  return _matiereOverrides[matiere] || couleurParDefaut(matiere);
+/**
+ * La couleur qu'une matière prend sans choix à elle : celle de sa matière de
+ * la liste pour un domaine — choix de l'enseignant compris —, sinon la sienne
+ * par défaut.
+ */
+export function couleurHeritee(choix: Record<string, string>, matiere: string): string {
+  const liste = matiereDuDomaine(matiere);
+  return liste ? (choix[liste] || couleurParDefaut(liste)) : couleurParDefaut(matiere);
 }
 
-/** Les choix de couleurs après en avoir choisi une pour `matiere` ; revenir à la couleur par défaut efface le choix. */
+export function couleurPourMatiere(matiere: string): string {
+  return _matiereOverrides[matiere] || couleurHeritee(_matiereOverrides, matiere);
+}
+
+/** Les choix de couleurs après en avoir choisi une pour `matiere` ; revenir à la couleur qu'elle prendrait sans choix efface le choix. */
 export function avecCouleurChoisie(choix: Record<string, string>, matiere: string, couleur: string): Record<string, string> {
   const suite = { ...choix };
-  if (!couleur || couleur === couleurParDefaut(matiere)) delete suite[matiere];
+  if (!couleur || couleur === couleurHeritee(choix, matiere)) delete suite[matiere];
   else suite[matiere] = couleur;
   return suite;
 }
@@ -1147,6 +1187,13 @@ export function choisirCouleurMatiere(matiere: string, couleur: string): Promise
 export function teinteCreneau(c: { matiere: string; couleur?: string }): string {
   return (c.matiere ? couleurHex[couleurPourMatiere(c.matiere)] : couleurHex[c.couleur ?? ""]) || couleurHex.blue;
 }
+
+/**
+ * La teinte d'une séquence : celle de sa matière — ou de son domaine —, choix
+ * de l'enseignant compris, comme un créneau. La couleur enregistrée à sa
+ * création ne sert qu'à défaut de matière.
+ */
+export const teinteSequence = (s: { matiere: string; couleur?: string }): string => teinteCreneau(s);
 
 // ── Téléchargement d'un fichier texte (JSON) via dialog "Enregistrer sous" ──
 // Le pattern <a download> + blob ne déclenche rien dans la webview Tauri ;

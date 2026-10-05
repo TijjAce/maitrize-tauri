@@ -1,5 +1,5 @@
 import React from "react";
-import { api, Sequence, Referentiel, couleurHex, couleurPourMatiere, anneeScolaireActuelle, type Seance } from "../api";
+import { api, Sequence, Referentiel, couleurPourMatiere, anneeScolaireActuelle, teinteSequence, type Seance } from "../api";
 import { Modal, Field, Input, Select, Textarea, useAsync } from "./ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "./CompetenceTree";
 import { FichierImg } from "./Deroulement";
@@ -151,7 +151,7 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
           dejaVisee={(c) => titresVisant(visees, c)} />
         {(s.matiere || s.cycle) && (
           <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-            {s.matiere && <span className="chip"><span className="dot" style={{ background: couleurHex[s.couleur] }} />{s.matiere}</span>}
+            {s.matiere && <span className="chip"><span className="dot" style={{ background: teinteSequence(s) }} />{s.matiere}</span>}
             {s.cycle && <span className="chip">{s.cycle}</span>}
           </div>
         )}
