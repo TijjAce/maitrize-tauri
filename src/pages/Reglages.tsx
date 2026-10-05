@@ -1,6 +1,6 @@
 import React from "react";
 import { Page } from "../App";
-import { api, isMac, texteErreur, type InfoCopie, type SauvegardeAuto, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type JetonsIa, type PortableInfo, type VerifSauvegarde, type EtatWhisper } from "../api";
+import { api, isMac, texteErreur, type InfoCopie, type SauvegardeAuto, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, matiereDuDomaine, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type JetonsIa, type PortableInfo, type VerifSauvegarde, type EtatWhisper } from "../api";
 import { Field, Input, Select, Modal, Confirm, useAsync, useOngletDemande } from "../components/ui";
 import { PartagerMesDossiers } from "../components/PartagerMesDossiers";
 import { confirmer } from "../components/confirmer";
@@ -455,24 +455,42 @@ export default function Reglages() {
 // Carte « Développement » : génère des données factices pour tester rapidement.
 function CouleursMatieresModal({ onClose }: { onClose: () => void }) {
   const [over, setOver] = React.useState<Record<string, string>>(() => ({ ...getMatiereOverrides() }));
-  // Les intitulés de l'emploi du temps (organisation IME) dont la couleur a été choisie.
-  const [intitules] = React.useState(() => Object.keys(getMatiereOverrides()).filter((m) => !MATIERES.includes(m))
+  // Les domaines des référentiels actifs : une séquence porte celui de sa compétence.
+  const [domaines, setDomaines] = React.useState<string[]>([]);
+  React.useEffect(() => {
+    let vivant = true;
+    api.referentielsList().then((refs) => {
+      const titres = refs.filter((r) => r.actif).flatMap((r) => {
+        try { return ((JSON.parse(r.donnees)?.domaines ?? []) as { titre?: string }[]).map((d) => d.titre ?? ""); } catch { return []; }
+      });
+      if (vivant) setDomaines([...new Set(titres.filter((t) => t.trim() && !MATIERES.includes(t)))]);
+    }).catch(() => {});
+    return () => { vivant = false; };
+  }, []);
+  // Les intitulés de l'emploi du temps (organisation IME) dont la couleur a été choisie — pas les domaines.
+  const [intitules] = React.useState(() => Object.keys(getMatiereOverrides()).filter((m) => !MATIERES.includes(m) && !matiereDuDomaine(m))
     .sort((a, b) => a.localeCompare(b, "fr")));
+  const domainesDe = (m: string) => domaines.filter((d) => matiereDuDomaine(d) === m);
+  const autresDomaines = domaines.filter((d) => !matiereDuDomaine(d) && !intitules.includes(d));
 
   const choisir = (m: string, c: string) => {
     choisirCouleurMatiere(m, c).catch((e) => toast(`Couleur non enregistrée : ${e}`, { icone: "⚠️" }));
     setOver({ ...getMatiereOverrides() });
   };
-  const ligne = (m: string) => (
-    <div key={m} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
-      <div style={{ flex: 1, fontSize: 13.5 }}>{m}</div>
+  // Un domaine se range sous sa matière, en retrait : il en prend la couleur, sauf si on lui en choisit une.
+  const ligne = (m: string, domaine = false) => (
+    <div key={m} style={{ display: "flex", alignItems: "center", gap: 8, padding: domaine ? "3px 0 3px 18px" : "6px 0",
+      borderBottom: "1px solid var(--border)" }}>
+      <div style={{ flex: 1, fontSize: domaine ? 12.5 : 13.5, color: domaine ? "var(--text-2)" : undefined }}>
+        {domaine ? <>↳ {m}{!over[m] && <span className="meta"> · couleur de sa matière</span>}</> : m}
+      </div>
       <div style={{ display: "flex", gap: 5 }}>
         {COULEURS.map((c) => (
           <button key={c} title={c} onClick={() => choisir(m, c)}
-            style={{ width: 20, height: 20, borderRadius: 5, background: couleurHex[c], cursor: "pointer",
+            style={{ width: domaine ? 16 : 20, height: domaine ? 16 : 20, borderRadius: 5, background: couleurHex[c], cursor: "pointer",
               border: couleurPourMatiere(m) === c ? "2.5px solid var(--text)" : "2px solid transparent" }} />
         ))}
-        {over[m] && <button className="btn ghost sm" onClick={() => choisir(m, "")}>défaut</button>}
+        {over[m] && <button className="btn ghost sm" onClick={() => choisir(m, "")}>{domaine ? "comme sa matière" : "défaut"}</button>}
       </div>
     </div>
   );
@@ -481,16 +499,23 @@ function CouleursMatieresModal({ onClose }: { onClose: () => void }) {
     <Modal large titre="🎨 Couleurs des matières" onClose={onClose}
       footer={<><div className="spacer" /><button className="btn primary" onClick={onClose}>Terminé</button></>}>
       <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
-        Personnalisez la couleur de chaque matière (utilisée dans le planning, les séquences, etc.).
+        Personnalisez la couleur de chaque matière : le planning, les séquences et le bureau la prennent. Sous chaque matière, les domaines
+        de vos référentiels — une séquence porte celui de sa compétence — prennent sa couleur, sauf si vous leur en choisissez une.
       </p>
-      {MATIERES.map(ligne)}
+      {MATIERES.map((m) => <React.Fragment key={m}>{ligne(m)}{domainesDe(m).map((d) => ligne(d, true))}</React.Fragment>)}
+      {autresDomaines.length > 0 && (
+        <>
+          <h4 style={{ margin: "16px 0 2px" }}>Autres domaines des référentiels</h4>
+          {autresDomaines.map((d) => ligne(d))}
+        </>
+      )}
       {intitules.length > 0 && (
         <>
           <h4 style={{ margin: "16px 0 2px" }}>Intitulés de l'emploi du temps</h4>
           <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 12.5 }}>
             Couleurs choisies dans Organisation, sur un créneau.
           </p>
-          {intitules.map(ligne)}
+          {intitules.map((m) => ligne(m))}
         </>
       )}
     </Modal>

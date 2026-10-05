@@ -9,7 +9,7 @@ import { Empty, Input, Select, Modal, ColorPicker, useAsync, useSegmentNav, useH
 import { openCtx } from "../components/ctxmenu";
 import { toast } from "../components/Toaster";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
-import { COULEURS, choisirCouleurMatiere } from "../api";
+import { COULEURS, choisirCouleurMatiere, teinteSequence } from "../api";
 import { printHTML, escapeHtml } from "../print";
 import { PlanSalleTab } from "./PlanSalle";
 import { ProjetPedagogiqueTab } from "./ProjetPedagogique";
@@ -617,7 +617,7 @@ function LierSequences({ sequences, selection, onClose, onValider }: {
           {sequences.map((s) => (
             <label key={s.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, background: "var(--bg)" }}>
               <input type="checkbox" checked={sel.includes(s.id)} onChange={() => toggle(s.id)} />
-              <span className="dot" style={{ background: couleurHex[s.couleur] }} />
+              <span className="dot" style={{ background: teinteSequence(s) }} />
               <span style={{ flex: 1 }}>{s.titre}</span>
               <span className="meta">{s.matiere} P{s.periode}</span>
             </label>
