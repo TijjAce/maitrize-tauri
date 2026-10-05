@@ -65,13 +65,15 @@ function Resultat({ refPicto, mot, actif, onClick }: { refPicto: RefPicto; mot: 
 
 const GRILLE: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))", gap: 6, marginBottom: 12 };
 
-export function ChoixPictoConsigne({ verbe, actuel, onClose, onValider }: {
+export function ChoixPictoConsigne({ verbe, actuel, onClose, onValider, recherche }: {
   verbe: string; actuel: RefPicto | null;
+  /** Ce qu'on cherche d'abord, quand ce n'est pas le mot lui-même : « anglais » pour « LVE / Anglais ». */
+  recherche?: string;
   onClose: () => void;
   /** Le picto retenu ; `null` pour que le verbe n'en ait plus. */
   onValider: (ref: RefPicto | null) => void;
 }) {
-  const [q, setQ] = React.useState(verbe);
+  const [q, setQ] = React.useState(recherche ?? verbe);
   const [choisi, setChoisi] = React.useState<RefPicto | null>(actuel);
   const [arasaacLa, setArasaacLa] = React.useState(false);
   const [arasaac, setArasaac] = React.useState<PictoArasaac[]>([]);

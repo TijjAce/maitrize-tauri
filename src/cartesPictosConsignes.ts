@@ -7,10 +7,11 @@
 
 import { VERBES_CONSIGNE, type Lexique } from "./caa";
 import { feuille } from "./cartesImprimables";
+import { etiquetteDeMatiere, matieresAvecPicto } from "./pictosMatieres";
 import { mentionDesPictos } from "./pictosAppoint";
 import { escapeHtml } from "./print";
 
-export type TaillePictos = "unePage" | "mini" | "tresPetit" | "petit" | "moyen" | "grand";
+export type TaillePictos = "surMesure" | "unePage" | "mini" | "tresPetit" | "petit" | "moyen" | "grand";
 
 /**
  * La place des cartes sur une feuille A4, en mm. Un peu moins que la page
@@ -24,8 +25,9 @@ export const HAUTEUR_DES_PLANCHES_MM = 246;
 export const cartesParPage = (coteMm: number) =>
   Math.floor(LARGEUR_DES_PLANCHES_MM / coteMm) * Math.floor(HAUTEUR_DES_PLANCHES_MM / coteMm);
 
-/** Les tailles : le côté d'une carte carrée, en mm — « tout sur une feuille » le calcule. */
+/** Les tailles : le côté d'une carte carrée, en mm — « tout sur une feuille » le calcule, « sur mesure » le prend des réglages. */
 export const TAILLES_PICTOS: Record<TaillePictos, { nom: string; coteMm: number }> = {
+  surMesure: { nom: "Sur mesure", coteMm: 0 },
   unePage: { nom: "Tout sur une feuille", coteMm: 0 },
   mini: { nom: "Mini", coteMm: 20 },
   tresPetit: { nom: "Très petits", coteMm: 25 },
@@ -34,9 +36,15 @@ export const TAILLES_PICTOS: Record<TaillePictos, { nom: string; coteMm: number 
   grand: { nom: "Grands, pour le tableau", coteMm: 90 },
 };
 
+/** Le côté sur mesure : de 15 mm, le plus petit qui se découpe, à 90 mm, deux cartes par rangée. */
+export const COTE_MIN_MM = 15;
+export const COTE_MAX_MM = 90;
+export const coteSur = (mm: unknown) => Math.max(COTE_MIN_MM, Math.min(COTE_MAX_MM, Math.round(Number(mm)) || REGLAGES_CARTES_PICTOS.cote));
+
 /** Ce que le choix d'une taille dit : « Petits — 3 cm, 48 par page ». */
 export function libelleTaille(t: TaillePictos): string {
   const { nom, coteMm } = TAILLES_PICTOS[t];
+  if (t === "surMesure") return `${nom} — au millimètre`;
   return coteMm ? `${nom} — ${(coteMm / 10).toLocaleString("fr-FR")} cm, ${cartesParPage(coteMm)} par page` : `${nom} — le plus grand carré qui tient`;
 }
 
@@ -47,21 +55,33 @@ export function coteSurUneFeuille(combien: number): number {
 }
 
 /** Le côté des cartes, pour tant de cartes et cette taille. */
-export function coteDesCartes(combien: number, r: { taille: TaillePictos }): number {
+export function coteDesCartes(combien: number, r: { taille: TaillePictos; cote?: number }): number {
+  if (r.taille === "surMesure") return coteSur(r.cote);
   return (TAILLES_PICTOS[r.taille] ?? TAILLES_PICTOS.unePage).coteMm || coteSurUneFeuille(combien);
 }
 
+/** Ce qui s'imprime : les verbes des consignes, les matières et les domaines, ou les deux. */
+export type QuoiImprimer = "verbes" | "matieres" | "tout";
+
 export interface ReglagesCartesPictos {
   taille: TaillePictos;
-  /** Écrire le verbe sous le picto. */
+  /** Le côté des cartes « sur mesure », en mm. */
+  cote: number;
+  quoi: QuoiImprimer;
+  /** Écrire le mot sous le picto. */
   verbe: boolean;
   /** Combien de jeux de cartes : un par élève, un par groupe. */
   exemplaires: number;
-  /** Les verbes retenus ; vide : tous ceux qui ont un picto. */
+  /** Les verbes et les matières retenus ; vide : tous ceux qui ont un picto. */
   choisis: string[];
 }
 
-export const REGLAGES_CARTES_PICTOS: ReglagesCartesPictos = { taille: "unePage", verbe: true, exemplaires: 1, choisis: [] };
+/**
+ * Des cartes de 32 mm par défaut. Toutes sur une feuille, les 54 verbes
+ * faisaient des carrés de 2,7 cm, trop petits pour les mains : on les a
+ * voulus de 5 mm plus grands dans les deux sens, quitte à prendre deux pages.
+ */
+export const REGLAGES_CARTES_PICTOS: ReglagesCartesPictos = { taille: "surMesure", cote: 32, quoi: "tout", verbe: true, exemplaires: 1, choisis: [] };
 
 /** Les verbes qui ont un picto, dans l'ordre de la liste. */
 export const verbesAvecPicto = (lexique: Lexique): string[] => VERBES_CONSIGNE.map((v) => v.verbe).filter((v) => lexique[v] != null);
@@ -70,6 +90,17 @@ export const verbesAvecPicto = (lexique: Lexique): string[] => VERBES_CONSIGNE.m
 export function verbesAImprimer(lexique: Lexique, r: ReglagesCartesPictos): string[] {
   const choisis = new Set(r.choisis);
   const tous = verbesAvecPicto(lexique);
+  return choisis.size ? tous.filter((v) => choisis.has(v)) : tous;
+}
+
+/** Tout ce qui peut s'imprimer, selon ce qu'on imprime : les verbes, puis les matières, dans l'ordre de leurs listes. */
+export const pictosImprimables = (verbes: Lexique, matieres: Lexique, quoi: QuoiImprimer): string[] =>
+  [...(quoi !== "matieres" ? verbesAvecPicto(verbes) : []), ...(quoi !== "verbes" ? matieresAvecPicto(matieres) : [])];
+
+/** Les cartes à imprimer : celles qu'on a choisies parmi les imprimables, ou toutes. */
+export function pictosAImprimer(verbes: Lexique, matieres: Lexique, r: ReglagesCartesPictos): string[] {
+  const choisis = new Set(r.choisis);
+  const tous = pictosImprimables(verbes, matieres, r.quoi);
   return choisis.size ? tous.filter((v) => choisis.has(v)) : tous;
 }
 
@@ -84,7 +115,7 @@ export function pagesDesCartesPictos(verbes: number, r: ReglagesCartesPictos): n
 
 /** Les cartes des verbes, sur des planches prêtes à découper, et la mention des banques de leurs pictos. */
 export function htmlCartesPictos(verbes: string[], lexique: Lexique, images: Record<string, string>, r: ReglagesCartesPictos): string {
-  if (!verbes.length) return feuille(`<div class="page"><div class="sous">Donnez d'abord un picto aux verbes : ils se rangent en cartes ici.</div></div>`, "cp");
+  if (!verbes.length) return feuille(`<div class="page"><div class="sous">Donnez d'abord un picto aux verbes ou aux matières : ils se rangent en cartes ici.</div></div>`, "cp");
   const cote = coteDesCartes(nombreDeCartes(verbes.length, r), r);
   const colonnes = Math.floor(LARGEUR_DES_PLANCHES_MM / cote);
   const parPage = cartesParPage(cote);
@@ -94,8 +125,9 @@ export function htmlCartesPictos(verbes: string[], lexique: Lexique, images: Rec
   // Un jeu après l'autre : chaque élève reçoit ses cartes dans l'ordre de la liste.
   const cartes = Array.from({ length: Math.max(1, r.exemplaires) }, () => verbes).flat().map((v) => {
     const src = images[lexique[v]];
-    const image = src ? `<img src="${src}" alt="${escapeHtml(v)}">` : `<span class="cp-manque">${escapeHtml(v)}</span>`;
-    return `<div class="cp-carte">${image}${r.verbe ? `<div class="cp-verbe">${escapeHtml(v)}</div>` : ""}</div>`;
+    const mot = etiquetteDeMatiere(v);
+    const image = src ? `<img src="${src}" alt="${escapeHtml(mot)}">` : `<span class="cp-manque">${escapeHtml(mot)}</span>`;
+    return `<div class="cp-carte">${image}${r.verbe ? `<div class="cp-verbe">${escapeHtml(mot)}</div>` : ""}</div>`;
   });
   const pages: string[] = [];
   for (let i = 0; i < cartes.length; i += parPage) {
