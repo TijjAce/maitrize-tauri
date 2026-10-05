@@ -8,6 +8,7 @@ import { FichierImg } from "./Deroulement";
 import { VignetteUpload } from "./JeuForm";
 import { ChoixCompetencesBo, EtiquettesBo } from "./ChoixCompetencesBo";
 import { toast } from "./Toaster";
+import { ouvrirLaPieceJointe } from "./LecteurMarkdown";
 import { fichierEnBase64 } from "../dragdrop";
 import { openCtx } from "./ctxmenu";
 
@@ -155,7 +156,7 @@ export function OutilForm({ o, onClose, onSaved }: { o: OutilClasse; onClose: ()
             {documents.map((d, i) => (
               <div key={`${d.fichier}-${i}`} className="outil-document">
                 <span aria-hidden>📄</span>
-                <button type="button" className="lien" onClick={() => api.fichierOuvrir(d.fichier).catch((e) => toast(texteErreur(e), { icone: "⚠️" }))}
+                <button type="button" className="lien" onClick={() => ouvrirLaPieceJointe(d.fichier, d.nom).catch((e) => toast(texteErreur(e), { icone: "⚠️" }))}
                   title="Ouvrir le document">{d.nom}</button>
                 <button type="button" className="btn ghost sm" aria-label={`Retirer ${d.nom}`}
                   onClick={() => setV((x) => ({ ...x, documentsJson: JSON.stringify(documentsDe(x).filter((_, j) => j !== i)) }))}>✕</button>

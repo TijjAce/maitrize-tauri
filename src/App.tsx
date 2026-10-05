@@ -41,6 +41,7 @@ import { Retour, useSuiviDesLieux, useTitreDuLieu } from "./components/Retour";
 import { getVersion } from "@tauri-apps/api/app";
 import { Toaster, toast } from "./components/Toaster";
 import { ConfirmerHost } from "./components/confirmer";
+import { LecteurMarkdownHost } from "./components/LecteurMarkdown";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { CopieDuBureau } from "./components/CopieDuBureau";
 import { releverBoiteAuxLettres, messageRecu } from "./inbox";
@@ -284,6 +285,7 @@ export default function App() {
       <Toaster />
       <IndicateurTranscription />
       <ConfirmerHost />
+      <LecteurMarkdownHost />
       <UpdateBanner />
       <NotesPanel />
       <CommandPalette />

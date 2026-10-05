@@ -6,7 +6,8 @@ import { toast, toastAnnulable } from "./Toaster";
 import { confirmer } from "./confirmer";
 import { openCtx } from "./ctxmenu";
 import { IconeDossier, COULEUR_DOSSIER } from "./IconeDossier";
-import { typeDocument, estImage } from "../dragdrop";
+import { typeDocument, estImage, estMarkdown } from "../dragdrop";
+import { lireMarkdown } from "./LecteurMarkdown";
 import { descriptionDuResume, estPaquet, titreDuPaquet, titreSansAuteur, type Resume } from "../bureauCommun";
 import {
   deposerDossier, deposerElement, dossiersDeMonBureau, entreesDuDepot, poserFichiers, resumeDuPaquet,
@@ -143,7 +144,11 @@ export function PanneauCommun({ compact = false, onFermer }: {
   const ouvrir = (e: EntreeCommune) => {
     if (e.dossier) { setDossier(e.chemin); return; }
     if (estPaquet(e.nom)) { direCommentRecuperer(); return; }
-    if (actif) api.communOuvrir(actif.id, e.chemin).catch((err) => toast(texteErreur(err), { icone: "⚠️" }));
+    if (!actif) return;
+    const ailleurs = () => api.communOuvrir(actif.id, e.chemin);
+    // Un « .md » se lit ici, mis en page ; le reste s'ouvre dans son application.
+    if (estMarkdown(e.nom)) lireMarkdown({ nom: e.nom, lire: () => api.communLire(actif.id, e.chemin), ailleurs });
+    else ailleurs().catch((err) => toast(texteErreur(err), { icone: "⚠️" }));
   };
 
   const supprimer = (e: EntreeCommune) => faire("suppression", async () => {
