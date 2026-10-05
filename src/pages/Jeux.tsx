@@ -21,6 +21,7 @@ import {
   ArbreCalculTab, CartesCalculTab, CartesNombresTab, CompteEstBonTab, CubesTab, FractionsTab, HeureTab, JeuDeLOieTab, MartiniereTab, NumerationTab, PyramidesTab,
 } from "./AteliersMaths";
 import { EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
+import { TrousTab } from "./AteliersTrous";
 import { GestesTab, MotsEnGestesTab } from "./AteliersGestes";
 import { CategoriserTab } from "./AteliersCategoriser";
 import { CollectionsTab } from "./AteliersCollections";
@@ -48,7 +49,7 @@ const OCTETS = (n: number) =>
 const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
-  "tri", "phrases", "motsMeles",
+  "tri", "phrases", "trous", "motsMeles",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "calcul", "arbre", "fractions", "oie", "heure", "numeration",
   "carteMentale",
 ] as const;
@@ -125,12 +126,14 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
   },
   {
     id: "ecrit", libelle: "✍️ Lecture et écriture",
-    aide: "Des mots et des phrases à manipuler : étiquettes à trier, phrases à remettre en ordre, mots mêlés.",
+    aide: "Des mots et des phrases à manipuler : étiquettes à trier, phrases à remettre en ordre, textes à trous, mots mêlés.",
     outils: [
       { id: "tri", nom: "Les maisons du tri", icone: "🏠", cycles: "Cycles 2 et 3",
         quoi: "Des étiquettes à découper et le tableau où les ranger : être ou avoir, phrase ou pas, nom ou verbe. Le verbe en couleur pour qui en a besoin." },
       { id: "phrases", nom: "Phrases en désordre", icone: "✂️", cycles: "Cycle 2",
         quoi: "Les mots d'une phrase sur des étiquettes mélangées : on découpe, on remet en ordre, on colle." },
+      { id: "trous", nom: "Texte à trous", icone: "🔳", cycles: "Cycles 2 et 3",
+        quoi: "Des phrases dont on a retiré le verbe — être, avoir, ou le mot de votre choix : les étiquettes, de la taille des cases, s'essaient, se vérifient et se collent." },
       { id: "motsMeles", nom: "Mots mêlés", icone: "🔎", cycles: "Cycles 2 et 3",
         quoi: "Les mots de la semaine cachés dans une grille de lettres, la liste dessous, le corrigé à la suite." },
     ],
@@ -417,6 +420,7 @@ export default function Jeux() {
         : onglet === "tri" ? <TriTab />
         : onglet === "motsMeles" ? <MotsMelesTab />
         : onglet === "phrases" ? <PhrasesTab />
+        : onglet === "trous" ? <TrousTab />
         : onglet === "etiquettes" ? <EtiquettesTab banque={Boolean(etat?.installee)} />
         : onglet === "ombres" ? <OmbresTab banque={Boolean(etat?.installee)} />
         : onglet === "lotoSyllabes" ? avecPictos(<LotoSyllabesTab banque />)
