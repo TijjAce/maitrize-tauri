@@ -21,17 +21,25 @@ import { contientLeSon, SONS, sonDe, type Son } from "./lectureSons";
 // longue ; au-delà, on découpe en deux fois. On peut aussi dessiner le sien,
 // ou le tirer d'une photo (voir plus bas).
 
+/** Les familles de la galerie : on y cherche un animal, puis une fête, puis un objet. */
+export type FamilleMotif = "animaux" | "nature" | "objets";
+export const FAMILLES_MOTIFS: { id: FamilleMotif; nom: string }[] = [
+  { id: "animaux", nom: "Les animaux" }, { id: "nature", nom: "La nature et les fêtes" }, { id: "objets", nom: "Les objets" },
+];
+
 export interface Motif {
   id: string;
   nom: string;
   /** Une ligne par rangée, un caractère par case : « . » ou « 1 »…« 6 ». */
   grille: string[];
+  /** Où le ranger dans la galerie ; un dessin de l'enseignant n'en a pas. */
+  famille?: FamilleMotif;
   /** Vrai pour un dessin de l'enseignant, gardé sur cet ordinateur. */
   perso?: boolean;
 }
 
 export const MOTIFS: Motif[] = [
-  { id: "coeur", nom: "Un cœur", grille: [
+  { id: "coeur", nom: "Un cœur", famille: "nature", grille: [
     ".11..11.",
     "11111111",
     "11111111",
@@ -41,7 +49,7 @@ export const MOTIFS: Motif[] = [
     "...11...",
     "........",
   ] },
-  { id: "maison", nom: "Une maison", grille: [
+  { id: "maison", nom: "Une maison", famille: "objets", grille: [
     "...11...",
     "..1111..",
     ".111111.",
@@ -51,7 +59,7 @@ export const MOTIFS: Motif[] = [
     ".223322.",
     ".223322.",
   ] },
-  { id: "sapin", nom: "Un sapin", grille: [
+  { id: "sapin", nom: "Un sapin", famille: "nature", grille: [
     "...33...",
     "...11...",
     "..1111..",
@@ -61,7 +69,7 @@ export const MOTIFS: Motif[] = [
     "11111111",
     "...22...",
   ] },
-  { id: "poisson", nom: "Un poisson", grille: [
+  { id: "poisson", nom: "Un poisson", famille: "animaux", grille: [
     "........",
     "..1111..",
     ".1111112",
@@ -71,7 +79,7 @@ export const MOTIFS: Motif[] = [
     "..1111..",
     "........",
   ] },
-  { id: "etoile", nom: "Une étoile", grille: [
+  { id: "etoile", nom: "Une étoile", famille: "nature", grille: [
     "...11...",
     "...11...",
     ".111111.",
@@ -81,7 +89,7 @@ export const MOTIFS: Motif[] = [
     "..1..1..",
     ".11..11.",
   ] },
-  { id: "fleur", nom: "Une fleur", grille: [
+  { id: "fleur", nom: "Une fleur", famille: "nature", grille: [
     "..1111..",
     ".111111.",
     "11122111",
@@ -91,7 +99,7 @@ export const MOTIFS: Motif[] = [
     "...33...",
     "...33...",
   ] },
-  { id: "pomme", nom: "Une pomme", grille: [
+  { id: "pomme", nom: "Une pomme", famille: "nature", grille: [
     "....4...",
     "...4....",
     ".111111.",
@@ -101,7 +109,7 @@ export const MOTIFS: Motif[] = [
     ".111111.",
     "..11.11.",
   ] },
-  { id: "champignon", nom: "Un champignon", grille: [
+  { id: "champignon", nom: "Un champignon", famille: "nature", grille: [
     "..1111..",
     ".131131.",
     "11111111",
@@ -111,7 +119,7 @@ export const MOTIFS: Motif[] = [
     "...55...",
     "...55...",
   ] },
-  { id: "ballon", nom: "Un ballon", grille: [
+  { id: "ballon", nom: "Un ballon", famille: "objets", grille: [
     "..1111..",
     ".111111.",
     "11311311",
@@ -121,7 +129,7 @@ export const MOTIFS: Motif[] = [
     ".111111.",
     "..1111..",
   ] },
-  { id: "soleil", nom: "Un soleil", grille: [
+  { id: "soleil", nom: "Un soleil", famille: "nature", grille: [
     "3...3...3.",
     ".3..3..3..",
     "..33333...",
@@ -133,7 +141,7 @@ export const MOTIFS: Motif[] = [
     ".3..3..3..",
     "3...3...3.",
   ] },
-  { id: "papillon", nom: "Un papillon", grille: [
+  { id: "papillon", nom: "Un papillon", famille: "animaux", grille: [
     "6........6",
     ".6......6.",
     "11.6..6.11",
@@ -145,7 +153,7 @@ export const MOTIFS: Motif[] = [
     ".11.6..11.",
     "....6.....",
   ] },
-  { id: "voiture", nom: "Une voiture", grille: [
+  { id: "voiture", nom: "Une voiture", famille: "objets", grille: [
     "..........",
     "..........",
     "...2222...",
@@ -157,7 +165,7 @@ export const MOTIFS: Motif[] = [
     ".66....66.",
     "..........",
   ] },
-  { id: "bateau", nom: "Un bateau", grille: [
+  { id: "bateau", nom: "Un bateau", famille: "objets", grille: [
     "....6.....",
     "....61....",
     "....611...",
@@ -169,7 +177,7 @@ export const MOTIFS: Motif[] = [
     ".22222222.",
     "..222222..",
   ] },
-  { id: "fusee", nom: "Une fusée", grille: [
+  { id: "fusee", nom: "Une fusée", famille: "objets", grille: [
     "....11....",
     "...1111...",
     "...1221...",
@@ -181,7 +189,7 @@ export const MOTIFS: Motif[] = [
     "...3333...",
     "..33..33..",
   ] },
-  { id: "chat", nom: "Un chat", grille: [
+  { id: "chat", nom: "Un chat", famille: "animaux", grille: [
     ".5......5.",
     ".55....55.",
     ".555555555",
@@ -193,7 +201,7 @@ export const MOTIFS: Motif[] = [
     "..555555..",
     ".55555555.",
   ] },
-  { id: "tortue", nom: "Une tortue", grille: [
+  { id: "tortue", nom: "Une tortue", famille: "animaux", grille: [
     "..........",
     "...4444...",
     "..444444..",
@@ -205,7 +213,7 @@ export const MOTIFS: Motif[] = [
     "..44..44..",
     "..44..44..",
   ] },
-  { id: "arc", nom: "Un arc-en-ciel", grille: [
+  { id: "arc", nom: "Un arc-en-ciel", famille: "nature", grille: [
     "...1111...",
     ".11555511.",
     "1155335511",
@@ -217,7 +225,7 @@ export const MOTIFS: Motif[] = [
     "..........",
     "..........",
   ] },
-  { id: "bonhomme", nom: "Un bonhomme de neige", grille: [
+  { id: "bonhomme", nom: "Un bonhomme de neige", famille: "nature", grille: [
     "...6666...",
     "....66....",
     "...2222...",
@@ -228,6 +236,155 @@ export const MOTIFS: Motif[] = [
     ".22212222.",
     ".22222222.",
     "..222222..",
+  ] },
+  // ── Les animaux de la savane, du jardin, de la ferme et de la mer ──
+  { id: "zebre", nom: "Un zèbre", famille: "animaux", grille: [
+    "..........6.6.",
+    "..........666.",
+    ".........66666",
+    ".........6.6.6",
+    "..666666666666",
+    ".6.6.6.6.6.66.",
+    "66.6.6.6.6.6..",
+    "6.6.6.6.6.6...",
+    "..666666666...",
+    "..6.6...6.6...",
+    "..6.6...6.6...",
+    "44444444444444",
+  ] },
+  { id: "lion", nom: "Un lion", famille: "animaux", grille: [
+    "....55....",
+    "..555555..",
+    ".55533555.",
+    ".55333355.",
+    "5536336355",
+    "5533333355",
+    ".53366335.",
+    ".55311355.",
+    "..555555..",
+    "....55....",
+  ] },
+  { id: "elephant", nom: "Un éléphant", famille: "animaux", grille: [
+    "............",
+    ".222.22.222.",
+    ".2222222222.",
+    "222262262222",
+    "222222222222",
+    ".22.2222222.",
+    "..2..22..2..",
+    ".....22.....",
+    ".....22.....",
+    ".....22.....",
+    "......22....",
+  ] },
+  { id: "girafe", nom: "Une girafe", famille: "animaux", grille: [
+    ".6.6........",
+    ".333........",
+    "33363.......",
+    "..333.......",
+    "..353.......",
+    "..335.......",
+    "..533.......",
+    "..3353333...",
+    "..335335336.",
+    "..353333536.",
+    "..3.3...3.3.",
+    "..3.3...3.3.",
+  ] },
+  { id: "coccinelle", nom: "Une coccinelle", famille: "animaux", grille: [
+    "..6.....6..",
+    "...6...6...",
+    "....666....",
+    "..1116111..",
+    ".166161661.",
+    ".111161111.",
+    ".116161611.",
+    ".111161111.",
+    "..1661661..",
+    "...11611...",
+  ] },
+  { id: "abeille", nom: "Une abeille", famille: "animaux", grille: [
+    ".6...........",
+    "..6..22.22...",
+    "..6.222.222..",
+    ".66.222.222..",
+    "6666.22.22...",
+    "666333663336.",
+    "6663336633366",
+    "666333663336.",
+    ".66..........",
+  ] },
+  { id: "grenouille", nom: "Une grenouille", famille: "animaux", grille: [
+    "..44....44..",
+    ".4664..4664.",
+    ".4444444444.",
+    "444444444444",
+    "441111111144",
+    ".4444444444.",
+    "..44444444..",
+    ".444....444.",
+    "44........44",
+    "4..........4",
+  ] },
+  { id: "poussin", nom: "Un poussin", famille: "animaux", grille: [
+    "...333......",
+    "..33333.....",
+    "..33633.....",
+    "..333355....",
+    "..33333.....",
+    ".3333333....",
+    "333333333...",
+    "3333333333..",
+    ".33333333...",
+    "..333333....",
+    "...5..5.....",
+    "..55.55.....",
+  ] },
+  { id: "manchot", nom: "Un manchot", famille: "animaux", grille: [
+    "...6666...",
+    "..666666..",
+    "..6.66.6..",
+    "..665566..",
+    ".66....66.",
+    "666....666",
+    "66......66",
+    "66......66",
+    ".66....66.",
+    "..666666..",
+    "..55..55..",
+  ] },
+  { id: "renard", nom: "Un renard", famille: "animaux", grille: [
+    "6........6",
+    "56......65",
+    "555....555",
+    "5555555555",
+    "5565555655",
+    ".55555555.",
+    "...5555...",
+    "....66....",
+  ] },
+  { id: "escargot", nom: "Un escargot", famille: "animaux", grille: [
+    "...555......",
+    "..55555.....",
+    ".556665..6.6",
+    ".5655565.6.6",
+    ".5656565.333",
+    ".5655565.363",
+    ".556665..333",
+    "..55555..33.",
+    "333333333333",
+  ] },
+  { id: "baleine", nom: "Une baleine", famille: "animaux", grille: [
+    "..2.2.......",
+    "...2........",
+    "...2........",
+    "..222222....",
+    ".22222222..2",
+    "2262222222.2",
+    "222222222222",
+    "2222222222.2",
+    ".22222222...",
+    "............",
   ] },
 ];
 
