@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { colonnesDuTableau, dataUrlImage, documentImprimable, escapeHtml, partDeColonne } from "./print";
+import { ZOOM_WEBKIT, colonnesDuTableau, dataUrlImage, documentImprimable, escapeHtml, partDeColonne } from "./print";
 
 describe("documents imprimables", () => {
   it("gardent les couleurs à l'impression et dans le PDF", () => {
@@ -9,6 +9,12 @@ describe("documents imprimables", () => {
   });
   it("échappent le titre", () => {
     expect(documentImprimable("<b>", "")).toContain(`<title>${escapeHtml("<b>")}</title>`);
+  });
+  it("se réduisent à l'impression dans WebKit, qui imprime tout 6,7 % trop grand — et là seulement, sans script", () => {
+    const html = documentImprimable("Fiches", "<p>x</p>");
+    expect(ZOOM_WEBKIT).toBeCloseTo(0.9375, 6);
+    expect(html).toContain(`@media print { @supports (font: -apple-system-body) { html { zoom: ${ZOOM_WEBKIT}; } } }`);
+    expect(html).not.toContain("<script");
   });
 });
 

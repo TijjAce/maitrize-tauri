@@ -29,6 +29,9 @@ pub const PROTOCOLE: &str = "feuille";
 /// millimètre débordaient sur une page de plus. Un zoom de la feuille rend
 /// aux millimètres leur taille ; l'échelle de l'impression, elle, faussait
 /// le découpage des pages, que WebKit calcule avant de la lui appliquer.
+/// Le document imprimable (`print.ts`) pose le même zoom pour Safari : les
+/// deux règles portent sur la même propriété du même élément, elles ne
+/// s'additionnent pas.
 pub const ZOOM_WEBKIT: f64 = 0.75 / 0.8;
 
 /// La feuille telle que WebKit doit l'imprimer : ramenée à sa taille (voir
