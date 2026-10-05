@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   JEUX_DE_CATEGORIES, OBSERVABLES, REGLAGES_CATEGORISER, categoriesDuJeu, cequiManque, famillesDuJeu, htmlCategoriser, idsDesImages,
-  lignesIntrus, motDeLaCategorie, motsDuJeu, motsPourLImage, normaliserCategories, pairesDuMistigri, reglagesDuNiveau,
+  lignesIntrus, motDeLaCategorie, motsDuJeu, motsPourLImage, normaliserCategories, pagesDuTri, pairesDuMistigri, reglagesDuNiveau,
   type Categorie, type ReglagesCategoriser,
 } from "./categoriser";
 import { hasard } from "./hasard";
@@ -128,6 +128,25 @@ describe("les feuilles", () => {
     expect(html).toContain("I900");
     // En maisons, chacune a son toit.
     expect(compter(feuille({ forme: "tri", maisons: true }), /class="ct-toit"/g)).toBe(3);
+  });
+
+  it("le tri : chaque boîte a la place de coller toutes ses images ; une page en porte autant qu'il en tient", () => {
+    const saisons = categoriesDuJeu(JEUX_DE_CATEGORIES.find((j) => j.id === "saisons")!, {});
+    const pages = pagesDuTri({ niveau: "MS", maisons: true, categories: saisons });
+    expect(pages.map((p) => p.categories.length)).toEqual([1, 1, 1, 1]);
+    // Six images, trois par rangée : deux rangées de 46 mm, sous l'en-tête et le toit.
+    for (const p of pages) expect(p.hauteurMm).toBeGreaterThanOrEqual(2 * 46 + 34 + 22);
+    // Deux images par famille : deux maisons par page.
+    const paires = categoriesDuJeu(JEUX_DE_CATEGORIES.find((j) => j.id === "familles-actions")!, {});
+    expect(pagesDuTri({ niveau: "GS", maisons: true, categories: paires }).map((p) => p.categories.length)).toEqual([2, 2, 2, 2]);
+    // En petite section, les images sont plus grandes : deux par rangée, une boîte par page.
+    const ps = pagesDuTri({ niveau: "PS", maisons: false, categories: [FRUITS, LEGUMES] });
+    expect(ps.map((p) => p.categories.length)).toEqual([1, 1]);
+    expect(ps[0].hauteurMm).toBeGreaterThanOrEqual(3 * 50 + 34);
+    // Une maison par page dans la feuille, et les images à leur taille sur la page à découper.
+    const html = htmlCategoriser(r({ forme: "tri", maisons: true, categories: saisons }), IMAGES, hasard(2));
+    expect(compter(html, /class="ct-boite ct-maison"/g)).toBe(4);
+    expect(compter(html, /<div class="page">/g)).toBeGreaterThanOrEqual(4 + 2);
   });
 
   it("en grande section, l'élève nomme les catégories : les boîtes n'ont ni nom ni image", () => {
