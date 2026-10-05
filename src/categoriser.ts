@@ -17,7 +17,10 @@
 
 import { escapeHtml } from "./print";
 import { melanger } from "./hasard";
-import { HAUTEUR_UTILE_MM, LARGEUR_CONTENU_MM, attributionPour, carte, feuille, gabaritGrille, hauteurDesCartes, imgPicto, legende, pagesDeCartes, type FormatGrille } from "./cartesImprimables";
+import {
+  HAUTEUR_UTILE_MM, LARGEUR_CONTENU_MM, attributionPour, carte, feuille, gabaritGrille, hauteurDesCartes, imgPicto, legende, pagesAvecRegle, pagesDeCartes,
+  type FormatGrille,
+} from "./cartesImprimables";
 import type { MotImage } from "./jeuxSons";
 
 export type Niveau = "PS" | "MS" | "GS";
@@ -479,19 +482,6 @@ function enteteCategorie(c: Categorie, images: Images, nommer: boolean): string 
   if (!nommer) return `<span class="ct-a-nommer">Son nom : ………………………</span>`;
   const src = c.image != null ? images[c.image] : undefined;
   return `${src ? `<img src="${src}" alt="">` : ""}<span>${escapeHtml(c.nom.trim() || "…")}</span>`;
-}
-
-/**
- * Des cartes en pages, quand la première porte aussi le titre et la règle
- * du jeu : elle a une rangée de moins, pour que la dernière ne passe pas
- * seule sur la page suivante.
- */
-function pagesAvecRegle(cellules: string[], format: FormatGrille, entete: string): string {
-  // Le titre, la règle et l'en-tête des compétences prennent 55 mm au plus ; les cartes gardent leur taille.
-  const hauteur = hauteurDesCartes(format, true);
-  const premiere = { ...format, lignes: Math.max(1, Math.min(format.lignes, Math.floor((HAUTEUR_UTILE_MM - 55) / hauteur))) };
-  const n = premiere.colonnes * premiere.lignes;
-  return pagesDeCartes(cellules.slice(0, n), premiere, entete) + (cellules.length > n ? pagesDeCartes(cellules.slice(n), format) : "");
 }
 
 /** Toutes les images, mêlées : celles des catégories et les intrus. */

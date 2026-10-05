@@ -23,6 +23,7 @@ import {
 import { EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
 import { GestesTab, MotsEnGestesTab } from "./AteliersGestes";
 import { CategoriserTab } from "./AteliersCategoriser";
+import { CollectionsTab } from "./AteliersCollections";
 import { SyllabeManquanteTab } from "./AtelierSyllabes";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { chargerPicto, usePictoImage } from "../components/ChoixPicto";
@@ -45,7 +46,7 @@ const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "etiquettes", "ombres",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "tri", "phrases", "motsMeles",
-  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "nombres", "cubes", "calcul", "arbre", "fractions", "oie", "heure", "numeration",
+  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "calcul", "arbre", "fractions", "oie", "heure", "numeration",
 ] as const;
 type Onglet = typeof ONGLETS[number];
 
@@ -144,6 +145,8 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
         quoi: "Parts égales et comparaisons, avec leur schéma en barres." },
       { id: "coloriage", nom: "Coloriage magique", icone: "🎨", cycles: "Cycles 2 et 3",
         quoi: "On calcule, le résultat dit la couleur, le dessin apparaît." },
+      { id: "collections", nom: "Construire des collections", icone: "🧸", pictos: true, cycles: "Cycle 1",
+        quoi: "Juste ce qu'il faut : les fiches de places, les cartes-nombres, les bons de commande et le bon panier des situations Éduscol — et leur séquence." },
       { id: "nombres", nom: "Cartes des nombres", icone: "🔢", cycles: "Cycles 1 et 2",
         quoi: "Chiffre, constellation, boîte de dix, mot : le même nombre sous toutes ses formes." },
       { id: "cubes", nom: "Nombres en cubes", icone: "🧱", cycles: "Cycle 2",
@@ -383,6 +386,7 @@ export default function Jeux() {
         : onglet === "gestes" ? <GestesTab />
         : onglet === "motsGestes" ? <MotsEnGestesTab banque={Boolean(etat?.installee)} />
         : onglet === "syllabeManquante" ? <SyllabeManquanteTab banque={Boolean(etat?.installee)} />
+        : onglet === "collections" ? <CollectionsTab banque={Boolean(etat?.installee)} />
         : onglet === "nombres" ? <CartesNombresTab />
         : onglet === "cubes" ? <CubesTab />
         : onglet === "calcul" ? <CartesCalculTab />

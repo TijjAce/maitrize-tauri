@@ -194,6 +194,11 @@ describe("la démarche que la compétence appelle", () => {
     expect(sug("3. Agir, s'exprimer, comprendre à travers des activités artistiques", "Arts visuels", "Dessiner", c1)).toBe("arts-plastiques");
     expect(sug("3. Agir, s'exprimer, comprendre à travers des activités artistiques", "Les univers sonores", "Chanter", c1)).toBe("musique");
     expect(sug("4. Acquérir les premiers outils mathématiques", "Découvrir les nombres", "Dénombrer jusqu'à 5", c1)).toBe("maternelle-modalites");
+    // Constituer une collection d'un cardinal donné : la situation de référence des livrets, quelle que soit la formulation.
+    expect(sug("4. Acquérir les premiers outils mathématiques", "Découvrir les nombres", "Constituer une collection (jusqu'à trois, voir quatre objets) d'un cardinal donné", c1)).toBe("collections-maternelle");
+    expect(sug("4. Acquérir les premiers outils mathématiques", "Découvrir les nombres", "Construire des collections de cardinal donné.", c1)).toBe("collections-maternelle");
+    // Trouver un cardinal à partir d'un autre et d'un écart reste un problème.
+    expect(sug("4. Acquérir les premiers outils mathématiques", "Utiliser les nombres pour résoudre des problèmes", "Déterminer le cardinal d'une collection à partir de celui d'une autre collection et de l'écart entre les deux.", c1)).toBe("problemes");
     expect(sug("4. Acquérir les premiers outils mathématiques", "Utiliser les nombres pour résoudre des problèmes", "Partager", c1)).toBe("problemes");
     expect(sug("4. Acquérir les premiers outils mathématiques", "Explorer les solides et les formes planes", "Trier", c1)).toBe("geometrie-grandeurs");
     expect(sug("6. Découvrir le monde du vivant, de la matière et des objets", "Découvrir le monde du vivant", "Observer", c1)).toBe("investigation");

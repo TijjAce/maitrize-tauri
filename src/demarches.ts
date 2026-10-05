@@ -47,6 +47,9 @@
 //   Histoire des arts (approche descriptive d'une œuvre).
 // - Le programme de l'école maternelle (2025) : apprendre en jouant, en
 //   réfléchissant et en résolvant des problèmes, en s'exerçant, en mémorisant.
+// - La construction du nombre à l'école maternelle (guide fondamental, 2023)
+//   et les livrets « Avant 4 ans » et « À partir de 4 ans » (2025) : la
+//   situation des voyageurs, les poupées, le dortoir des oursons.
 
 import { newId, type Seance } from "./api";
 
@@ -1703,6 +1706,105 @@ const CATEGORISER: Demarche = {
   ],
 };
 
+// « Constituer une collection d'un cardinal donné » (programme 2025). Le guide
+// « La construction du nombre à l'école maternelle » (2023) donne la
+// situation des voyageurs — une seule réserve, éloignée, un seul voyage, un
+// quai pour différer la validation — et ses variables : la disposition des
+// places, le nombre de trajets, la formulation à autrui. Les livrets
+// « Avant 4 ans » et « À partir de 4 ans » (2025) en font deux séquences —
+// les poupées et leurs pommes, le dortoir des oursons et la mascotte à qui
+// l'on commande par écrit —, chaque séance en quatre temps : la même
+// situation reprise, une contrainte de plus à chaque fois.
+const COLLECTIONS: Demarche = {
+  id: "collections-maternelle",
+  nom: "Construire des collections de cardinal donné : juste ce qu'il faut",
+  famille: "Maternelle",
+  source: "Programme de l'école maternelle (2025) ; La construction du nombre à l'école maternelle (guide fondamental, 2023) ; livrets d'accompagnement « Avant 4 ans » et « À partir de 4 ans » (2025), Acquisition des premiers outils mathématiques",
+  resume: "Une situation de référence — les poupées et leurs pommes, le dortoir des oursons, les voyageurs — reprise de séance en séance, une contrainte de plus à chaque fois : la réserve d'abord à portée de main, puis éloignée ; plusieurs trajets, puis un seul ; des places en rangée, en constellation, en vrac, en deux groupes ; la quantité dite ou montrée sur les doigts, puis commandée à la mascotte, à l'oral et par écrit. On valide en posant un objet sur chaque place ; on observe chacun, à distance.",
+  seances: [
+    {
+      titre: "Découvrir la situation : un objet par place",
+      objectifs: "À la fin de cette séance, les élèves sauront mettre juste ce qu'il faut d'objets pour qu'il y en ait un sur chaque place — pas de place sans objet, pas d'objet sans place —, la réserve à portée de main, et dire s'ils ont réussi.",
+      duree: 20,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "La situation mise en scène : « Voici des poupées qui ont faim : chaque poupée doit avoir une pomme dans son assiette. » Le critère de réussite dit, puis montré : un essai réussi, un essai raté.",
+          "Montre comment jouer ; simule une réussite et un échec pour que chacun sache se valider seul."),
+        ph("Temps 2 – Mise en activité différenciée", "10 min", "Chacun sa fiche de places, la réserve à côté : un objet sur chaque place. Les fiches changent, avec de plus en plus de places.",
+          "Met en mots ce que fait l'élève : « une pomme, et encore une pomme… »."),
+        ph("Temps 3 – Institutionnalisation", "5 min", "« Il y a autant de pommes que d'assiettes. » Le professeur nomme les petites quantités : « deux, c'est un et encore un »."),
+      ],
+    },
+    {
+      titre: "La réserve s'éloigne : plusieurs trajets, puis un seul",
+      objectifs: "À la fin de cette séance, les élèves sauront aller chercher dans une réserve éloignée juste ce qu'il faut d'objets pour les places de leur fiche — d'abord en plusieurs trajets, puis en un seul — en gardant la quantité en mémoire sur leurs doigts ou par le nom du nombre.",
+      duree: 20,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "Le jeu rappelé ; la nouvelle contrainte : la réserve est loin, la fiche reste au fond de la boîte, on rapporte les objets dans un panier."),
+        ph("Temps 2 – Mise en activité différenciée", "10 min", "Plusieurs trajets permis, puis un seul. Ce qu'on rapporte attend devant la boîte : « Penses-tu avoir juste ce qu'il faut ? » — puis on pose un objet sur chaque place.",
+          "Diffère la validation : la pensée précède l'action. Fait montrer la quantité sur les doigts avant le départ."),
+        ph("Temps 3 – Institutionnalisation", "5 min", "Les façons de se souvenir, dites et comparées : un doigt levé par place, la quantité vue d'un coup d'œil, « deux et encore un », le nom du nombre."),
+      ],
+    },
+    {
+      titre: "Un seul trajet : des places disposées autrement",
+      objectifs: "À la fin de cette séance, les élèves sauront rapporter en un seul trajet juste ce qu'il faut d'objets, quelle que soit la disposition des places — en rangée, en constellation, en vrac, en deux groupes —, en reconnaissant la quantité, en la décomposant ou en comptant.",
+      duree: 25,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "Une fiche déjà réussie, puis une fiche nouvelle : « Comment vas-tu savoir combien il en faut ? »"),
+        ph("Temps 2 – Mise en activité différenciée", "12 min", "Des fiches selon ce que chacun sait déjà : petites quantités vues d'un coup d'œil, constellations du dé, places en vrac à dénombrer, deux groupes (« quatre et encore un »).",
+          "Attribue les fiches d'après la cardinalité acquise ; questionne avant le départ : « Combien vas-tu en chercher ? Comment le sais-tu ? »"),
+        ph("Temps 3 – Institutionnalisation", "5 min", "Les procédures efficaces mises en évidence, la plus sûre d'abord ; les fiches réussies affichées avec leur nombre.",
+          "S'appuie sur des photos du jeu pour aider à se souvenir."),
+        ph("Temps 4 – Automatisation, réinvestissement", "3 min", "Le jeu reste dans l'espace mathématiques, avec d'autres fiches, pour s'entraîner seul ou à deux."),
+      ],
+    },
+    {
+      titre: "« Donne-moi… » : la quantité dite ou montrée",
+      objectifs: "À la fin de cette séance, les élèves sauront constituer une collection dont la quantité est dite, montrée sur les doigts ou par une constellation : « Donne-moi trois voitures », « Mets dans la boîte autant de jetons qu'il y a de points ».",
+      duree: 20,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "« Donne-moi trois voitures » : le professeur prend les voitures une à une en disant « une voiture, et encore une voiture, et encore une voiture : ça fait trois voitures »."),
+        ph("Temps 2 – Mise en activité différenciée", "10 min", "Par deux : l'un tire une carte-nombre — points, doigts, et le chiffre pour les plus grands — et passe commande ; l'autre constitue la collection ; on vérifie sur la carte.",
+          "Varie la nature et la taille des objets : trois éléphants, c'est trois comme trois fourmis."),
+        ph("Temps 3 – Institutionnalisation", "5 min", "Les écritures d'un même nombre rapprochées : trois doigts, trois points, « trois »."),
+      ],
+    },
+    {
+      titre: "Commander à la mascotte",
+      objectifs: "À la fin de cette séance, les élèves sauront commander à quelqu'un d'autre juste ce qu'il faut d'objets : à l'oral, puis — à partir de 4 ans — par un message que la mascotte peut lire, le nombre écrit en chiffres.",
+      duree: 25,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "La nouvelle contrainte : on ne va plus chercher soi-même, on commande à la mascotte, qui ne comprend que le nombre dit — puis écrit, sans parler."),
+        ph("Temps 2 – Mise en activité différenciée", "12 min", "Chacun trouve combien de places a sa fiche, dit le nombre, puis l'écrit sur son bon de commande, en s'aidant de la bande numérique et d'une pince à linge ; la mascotte livre, on vérifie sur les places.",
+          "Fait dire le nombre avant de l'écrire ; accepte d'abord dessins et traits, puis amène au code que tout le monde comprend : les chiffres."),
+        ph("Temps 3 – Institutionnalisation", "5 min", "« Pour être compris de tous, on écrit le nombre en chiffres. » La bande numérique collective reste affichée."),
+        ph("Temps 4 – Automatisation, réinvestissement", "3 min", "D'autres fiches, d'autres commandes, en autonomie."),
+      ],
+    },
+    {
+      titre: "Réinvestir dans un autre contexte",
+      objectifs: "À la fin de cette séance, les élèves sauront constituer juste ce qu'il faut d'objets dans une situation nouvelle — mettre la table, distribuer les pinceaux, commander les pièces d'une construction — et, en grande section, réunir deux collections pour trouver le bon panier.",
+      duree: 20,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "La situation nouvelle, mise en scène ; la règle rappelée : juste ce qu'il faut, pas plus, pas moins."),
+        ph("Temps 2 – Mise en activité différenciée", "12 min", "Des objets moins figuratifs — jetons, cubes — et d'autres contextes. En grande section, « le bon panier » : un message (quatre œufs verts et cinq rouges), le panier qui a juste ce qu'il faut d'œufs.",
+          "Remplace peu à peu les figurines par des jetons : on va vers le nombre."),
+        ph("Temps 3 – Institutionnalisation", "3 min", "Ce qui reste vrai d'une situation à l'autre : on cherche combien il en faut, puis on prend ce nombre-là."),
+      ],
+    },
+    {
+      titre: "Évaluation — observer chacun",
+      objectifs: "À la fin de cette séance, les élèves sauront montrer ce qu'ils ont acquis : rapporter en un seul trajet juste ce qu'il faut d'objets, répondre à « Donne-moi… », passer commande — jusqu'à trois ou quatre, six, puis dix selon l'âge.",
+      duree: 15,
+      phases: [
+        ph("Observation", "12 min", "Seul avec l'élève : une fiche de places, la réserve éloignée, un seul trajet ; puis « Donne-moi… ». La grille se remplit : la réussite et la procédure.",
+          "Observe sans aider ; note la procédure : un à un, d'un coup d'œil, en décomposant, en comptant."),
+        ph("Suite", "3 min", "Des rituels pour continuer : aller chercher juste ce qu'il faut de pinceaux ou de ballons pour un groupe, le nombre caché sur la bande, les nombres dits et montrés sur les doigts."),
+      ],
+    },
+  ],
+};
+
 /** L'ordre des familles à l'écran : le général d'abord, puis par domaine. */
 export const FAMILLES: Famille[] = [
   "Toutes disciplines", "Français", "Mathématiques", "Sciences, histoire, EMC", "Arts, EPS et langues", "Maternelle",
@@ -1714,7 +1816,7 @@ export const DEMARCHES: Demarche[] = [
   PROBLEMES, CALCUL_MENTAL, GEOMETRIE_GRANDEURS,
   INVESTIGATION, ENQUETE_HISTOIRE_GEO, EMC_DEBAT,
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
-  MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER,
+  MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, COLLECTIONS,
 ];
 
 export const demarcheDe = (id: string) => DEMARCHES.find((d) => d.id === id);
@@ -1757,6 +1859,7 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string): string {
   if (maternelle) {
     if (/oral a l'ecrit|apprendre a ecrire|principe alphabetique|phonolog/.test(sd) || /syllabe|phoneme|rime\b/.test(comp)) return "phonologie";
     if (/organiser les mots|mots en categorie/.test(comp)) return "categoriser-maternelle";
+    if (/cardinal donne/.test(comp)) return "collections-maternelle";
     if (/vocabulaire|lexique|mots nouveaux/.test(`${sd} ${comp}`)) return "vocabulaire";
     if (/plastique|arts visuels/.test(sd)) return "arts-plastiques";
     if (/univers sonore/.test(sd)) return "musique";
