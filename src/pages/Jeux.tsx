@@ -22,6 +22,7 @@ import {
 } from "./AteliersMaths";
 import { EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
 import { TrousTab } from "./AteliersTrous";
+import { ComparerTab } from "./AteliersComparer";
 import { GestesTab, MotsEnGestesTab } from "./AteliersGestes";
 import { CategoriserTab } from "./AteliersCategoriser";
 import { CollectionsTab } from "./AteliersCollections";
@@ -50,7 +51,7 @@ const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "tri", "phrases", "trous", "motsMeles",
-  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "calcul", "arbre", "fractions", "oie", "heure", "numeration",
+  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "comparer", "calcul", "arbre", "fractions", "oie", "heure", "numeration",
   "carteMentale",
 ] as const;
 type Onglet = typeof ONGLETS[number];
@@ -160,6 +161,8 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
         quoi: "Chiffre, constellation, boîte de dix, mot : le même nombre sous toutes ses formes." },
       { id: "cubes", nom: "Nombres en cubes", icone: "🧱", cycles: "Cycle 2",
         quoi: "Unités, barres de dix, plaques de cent : lire les cubes et écrire le nombre, ou l'inverse." },
+      { id: "comparer", nom: "Comparer les nombres", icone: "⚖️", cycles: "Cycle 2",
+        quoi: "Des cartes de nombres sous plusieurs formes et les signes <, > et = : la bataille, la file des nombres, le nombre caché — et la feuille de jeu." },
       { id: "calcul", nom: "Cartes de calcul", icone: "🃏", cycles: "Cycles 2 et 3",
         quoi: "Le calcul devant, le résultat derrière : se tester, ou la bataille des tables." },
       { id: "arbre", nom: "Arbre à calcul", icone: "🌳", cycles: "Cycle 2",
@@ -408,6 +411,7 @@ export default function Jeux() {
         : onglet === "carteMentale" ? <CarteMentaleTab banque={Boolean(etat?.installee)} />
         : onglet === "nombres" ? <CartesNombresTab />
         : onglet === "cubes" ? <CubesTab />
+        : onglet === "comparer" ? <ComparerTab />
         : onglet === "calcul" ? <CartesCalculTab />
         : onglet === "arbre" ? <ArbreCalculTab />
         : onglet === "fractions" ? <FractionsTab />
