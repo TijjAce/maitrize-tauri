@@ -24,6 +24,7 @@ import { EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./At
 import { GestesTab, MotsEnGestesTab } from "./AteliersGestes";
 import { CategoriserTab } from "./AteliersCategoriser";
 import { CollectionsTab } from "./AteliersCollections";
+import { SuitesTab } from "./AteliersSuites";
 import { SyllabeManquanteTab } from "./AtelierSyllabes";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { chargerPicto, usePictoImage } from "../components/ChoixPicto";
@@ -43,7 +44,7 @@ const OCTETS = (n: number) =>
   n > 1e9 ? `${(n / 1e9).toFixed(1)} Go` : n > 1e6 ? `${Math.round(n / 1e6)} Mo` : `${Math.round(n / 1e3)} ko`;
 
 const ONGLETS = [
-  "jeux", "memory", "imagier", "categoriser", "etiquettes", "ombres",
+  "jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "tri", "phrases", "motsMeles",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "calcul", "arbre", "fractions", "oie", "heure", "numeration",
@@ -83,6 +84,8 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
         quoi: "Une page d'images légendées, à afficher ou à coller dans un cahier." },
       { id: "categoriser", nom: "Catégoriser les mots", icone: "🗂", pictos: true, cycles: "Cycle 1",
         quoi: "Les jeux d'Éduscol pour ranger les mots en catégories : boîtes de tri, intrus, loto aveugle, « J'appelle… », familles, mistigri — et leur séquence." },
+      { id: "suites", nom: "Images séquentielles", icone: "🎞", pictos: true, cycles: "Cycles 1 et 2",
+        quoi: "Remettre dans l'ordre une histoire, un geste, une recette : les images à découper et les cases à remplir, en colonne ou fléchées — des pictos ou vos photos." },
       { id: "etiquettes", nom: "Étiquettes à catégoriser", icone: "🏷", cycles: "Cycles 2 et 3",
         quoi: "Les mots collectés en grand pour le tableau, en petit par enveloppe, et la corolle lexicale." },
       { id: "ombres", nom: "Jeu des ombres", icone: "👤", cycles: "Cycles 1 et 2",
@@ -387,6 +390,7 @@ export default function Jeux() {
         : onglet === "motsGestes" ? <MotsEnGestesTab banque={Boolean(etat?.installee)} />
         : onglet === "syllabeManquante" ? <SyllabeManquanteTab banque={Boolean(etat?.installee)} />
         : onglet === "collections" ? <CollectionsTab banque={Boolean(etat?.installee)} />
+        : onglet === "suites" ? <SuitesTab banque={Boolean(etat?.installee)} />
         : onglet === "nombres" ? <CartesNombresTab />
         : onglet === "cubes" ? <CubesTab />
         : onglet === "calcul" ? <CartesCalculTab />

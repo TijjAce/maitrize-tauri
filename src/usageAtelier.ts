@@ -50,7 +50,7 @@ export const descriptionDe = (u: Usage): DescriptionUsage => USAGES.find((x) => 
  */
 export const USAGE_PAR_DEFAUT: Record<string, Usage> = {
   // Langage : le vocabulaire se rencontre en images, puis se rejoue.
-  jeux: "reinvestissement", memory: "reinvestissement", imagier: "manipulation", categoriser: "manipulation", etiquettes: "manipulation", ombres: "manipulation",
+  jeux: "reinvestissement", memory: "reinvestissement", imagier: "manipulation", categoriser: "manipulation", suites: "manipulation", etiquettes: "manipulation", ombres: "manipulation",
   // Sons et lecture : la fluence et le syllabaire se font chaque jour.
   sons: "entrainement", lotoSyllabes: "manipulation", dominos: "reinvestissement", intrus: "entrainement", paires: "entrainement",
   fluence: "rituel", syllabaire: "rituel", lettres: "reinvestissement", gestes: "manipulation", motsGestes: "entrainement", syllabeManquante: "entrainement",
