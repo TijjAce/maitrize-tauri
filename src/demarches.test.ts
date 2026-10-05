@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  DEMARCHES, ENTETE_TABLEAU, FAMILLES, demarcheDe, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre,
+  DEBUT_OBJECTIF_SEANCE, DEMARCHES, ENTETE_TABLEAU, FAMILLES, demarcheDe, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre,
   tableauDesPhases,
 } from "./demarches";
 import { DUREES } from "./api";
@@ -21,6 +21,16 @@ describe("les démarches", () => {
     expect(groupes.flatMap((g) => g.demarches).length).toBe(DEMARCHES.length);
     expect(groupes.every((g) => g.demarches.length > 0)).toBe(true);
     expect(groupes[0].famille).toBe("Toutes disciplines");
+  });
+
+  it("disent, pour chaque séance, ce que les élèves sauront à la fin", () => {
+    for (const d of DEMARCHES) for (const s of d.seances) {
+      expect(s.objectifs.startsWith(`${DEBUT_OBJECTIF_SEANCE} `), `${d.id} › ${s.titre} : ${s.objectifs}`).toBe(true);
+      expect(s.objectifs.length, `${d.id} › ${s.titre}`).toBeGreaterThan(DEBUT_OBJECTIF_SEANCE.length + 3);
+    }
+    // La séance créée porte cet objectif.
+    const seance = seancesDuCadre(demarcheDe("categoriser-maternelle")!, "seq", 1)[0];
+    expect(seance.objectifs).toMatch(/^À la fin de cette séance, les élèves sauront nommer chaque objet du corpus/);
   });
 
   it("gardent les phases lisibles : une durée par ligne, et un tableau qui tient dans l'éditeur", () => {

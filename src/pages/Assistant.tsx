@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api, ChatMessage, Sequence, Seance, PiloteConversation, CYCLES, MATIERES, MODELES_MISTRAL, MODELE_DEFAUT, nouvelleSequence, nouvelleSeance, couleurPourMatiere, newId, nowIso } from "../api";
 import { Modal, Field, Input, Select, Demander, useAsync } from "../components/ui";
 import { construireContexteIA } from "../contexteIA";
+import { DEBUT_OBJECTIF_SEANCE } from "../demarches";
 import { openCtx } from "../components/ctxmenu";
 import { Markdown } from "../components/Markdown";
 import { invoke } from "@tauri-apps/api/core";
@@ -404,6 +405,7 @@ function GenerateurSequence({ model, onClose }: { model: string; onClose: () => 
       `Sujet : ${sujet}\nMatière : ${matiere}\nCycle : ${cycle}\nNiveau : ${niveau}\nNombre de séances : ${nb}\n\n` +
       `Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exact :\n` +
       `{"titre":"...","objectifs":"...","seances":[{"titre":"...","objectifs":"...","deroulement":"...","materiel":"...","duree":45}]}\n` +
+      `L'objectif de chaque séance commence par « ${DEBUT_OBJECTIF_SEANCE} » et dit ce qu'ils sauront faire. ` +
       `Le déroulement doit être concret (phases, consignes). duree en minutes.`;
     try {
       const rep = await api.mistralChat(
@@ -487,7 +489,8 @@ function ModifierSequence({ model, onClose }: { model: string; onClose: () => vo
         `Demande de modification : ${instruction}\n\n` +
         `Réponds UNIQUEMENT avec la séquence MODIFIÉE complète, en JSON valide strict, même format :\n` +
         `{"titre":"...","objectifs":"...","seances":[{"numero":1,"titre":"...","objectifs":"...","deroulement":"...","materiel":"...","duree":45}]}\n` +
-        `Conserve ce qui n'est pas visé par la demande. Numérote les séances à partir de 1. duree en minutes.`;
+        `Conserve ce qui n'est pas visé par la demande. Numérote les séances à partir de 1. duree en minutes. ` +
+      `L'objectif d'une séance nouvelle ou réécrite commence par « ${DEBUT_OBJECTIF_SEANCE} » et dit ce qu'ils sauront faire.`;
       const rep = await api.mistralChat(
         [{ role: "system", content: "Tu modifies des séquences pédagogiques. Tu réponds en JSON strict uniquement." },
          { role: "user", content: prompt }],
