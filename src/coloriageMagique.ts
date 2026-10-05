@@ -517,7 +517,8 @@ function coloriageDesGraphies(
 // feutre la plus proche de ce qu'elle contient, ou reste blanche si c'est
 // clair. Le résultat se retouche case par case avant d'être gardé.
 
-export const TAILLES_MOTIF = [8, 10, 12];
+/** Les cases du grand côté d'un dessin tiré d'une image ; l'autre côté suit ses proportions. */
+export const TAILLES_MOTIF = [8, 10, 12, 14];
 
 export interface ImageBrute {
   largeur: number;
@@ -533,51 +534,120 @@ const ecart = (a: [number, number, number], b: [number, number, number]) =>
 const rgbDe = (hex: string): [number, number, number] =>
   [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
 
+export interface OptionsDessin {
+  /** Les cases du grand côté. */
+  taille: number;
+  /** Ce qui reste blanc : le clair, de 0 à 1. */
+  seuilBlanc: number;
+  /** Les feutres. Sans le noir, les traits noirs ne comptent pas : seules les couleurs font la grille. */
+  palette: CouleurColoriage[];
+  /** Retirer d'abord les marges claires autour du dessin. */
+  recadrer: boolean;
+  /**
+   * Le feutre de l'intérieur clair du dessin — le gris ou le blanc qu'un
+   * trait entoure, comme le corps d'un picto au trait ; rien pour qu'il reste
+   * blanc.
+   */
+  remplissage?: string | null;
+}
+
 /**
- * La grille d'un dessin d'après une image : la couleur moyenne de chaque
- * bloc, blanc si c'est clair (au-dessus de `seuilBlanc`, de 0 à 1), sinon
- * la couleur de la palette la plus proche.
+ * La grille d'un dessin d'après une image : l'image entière, à ses
+ * proportions, sans ses marges claires si l'on veut.
+ *
+ * Le fond, c'est le clair qui touche le bord de l'image ; le clair qu'un
+ * trait entoure appartient au dessin, et prend le feutre de remplissage.
+ * Chaque case prend ensuite la couleur qui la couvre le plus — un feutre, ou
+ * le blanc : la couleur qui domine plutôt que la moyenne, pour des aplats
+ * nets, sans couleurs salies.
  */
-export function motifDepuisImage(image: ImageBrute, taille: number, seuilBlanc: number, palette: CouleurColoriage[]): string[] {
+export function motifDepuisImage(image: ImageBrute, o: OptionsDessin): string[] {
   const { largeur, hauteur, pixels } = image;
-  const cote = Math.min(largeur, hauteur);
-  const x0 = Math.floor((largeur - cote) / 2), y0 = Math.floor((hauteur - cote) / 2);
-  const bloc = cote / taille;
-  const couleurs = palette.map((c) => ({ id: c.id, rgb: rgbDe(c.hex) }));
-  const lignes: string[] = [];
-  for (let gy = 0; gy < taille; gy++) {
-    let ligne = "";
-    for (let gx = 0; gx < taille; gx++) {
-      let rs = 0, gs = 0, bs = 0, n = 0;
-      const xa = x0 + Math.floor(gx * bloc), xb = x0 + Math.max(xa - x0 + 1, Math.floor((gx + 1) * bloc));
-      const ya = y0 + Math.floor(gy * bloc), yb = y0 + Math.max(ya - y0 + 1, Math.floor((gy + 1) * bloc));
-      for (let y = ya; y < yb; y++) {
-        for (let x = xa; x < xb; x++) {
-          const i = (y * largeur + x) * 4;
-          const alpha = (pixels[i + 3] ?? 255) / 255;
-          // Un pixel transparent compte comme blanc.
-          rs += pixels[i] * alpha + 255 * (1 - alpha);
-          gs += pixels[i + 1] * alpha + 255 * (1 - alpha);
-          bs += pixels[i + 2] * alpha + 255 * (1 - alpha);
-          n++;
-        }
-      }
-      const moyenne: [number, number, number] = [rs / n, gs / n, bs / n];
-      const clarte = (0.299 * moyenne[0] + 0.587 * moyenne[1] + 0.114 * moyenne[2]) / 255;
-      const saturation = (Math.max(...moyenne) - Math.min(...moyenne)) / 255;
-      // Blanc : ce qui est clair — et le gris clair d'une feuille photographiée, même un peu à l'ombre.
-      if ((clarte >= seuilBlanc && saturation < 0.25) || (saturation < 0.12 && clarte >= 0.6)) { ligne += "."; continue; }
+  const total = largeur * hauteur;
+  const couleurs = o.palette.map((c) => ({ id: c.id, rgb: rgbDe(c.hex) }));
+  const avecNoir = o.palette.some((c) => c.id === "6");
+  const remplissage = o.remplissage && o.palette.some((c) => c.id === o.remplissage) ? o.remplissage : null;
+  // Chaque pixel lu une fois : la transparence compte comme du blanc.
+  const clair = new Uint8Array(total), sombre = new Uint8Array(total);
+  const teintes: [number, number, number][] = new Array(total);
+  for (let i = 0; i < total; i++) {
+    const alpha = (pixels[i * 4 + 3] ?? 255) / 255;
+    const rgb = [0, 1, 2].map((k) => pixels[i * 4 + k] * alpha + 255 * (1 - alpha)) as [number, number, number];
+    const clarte = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255;
+    const saturation = (Math.max(...rgb) - Math.min(...rgb)) / 255;
+    // Le clair — et le gris clair d'une feuille photographiée, même un peu à l'ombre.
+    clair[i] = (clarte >= o.seuilBlanc && saturation < 0.25) || (saturation < 0.12 && clarte >= 0.6) ? 1 : 0;
+    sombre[i] = clarte < 0.32 && saturation < 0.25 ? 1 : 0;
+    teintes[i] = rgb;
+  }
+  // Le fond : le clair relié au bord de l'image.
+  const fond = new Uint8Array(total);
+  const pile: number[] = [];
+  const pousser = (i: number) => { if (clair[i] && !fond[i]) { fond[i] = 1; pile.push(i); } };
+  for (let x = 0; x < largeur; x++) { pousser(x); pousser((hauteur - 1) * largeur + x); }
+  for (let y = 0; y < hauteur; y++) { pousser(y * largeur); pousser(y * largeur + largeur - 1); }
+  while (pile.length) {
+    const i = pile.pop()!;
+    const x = i % largeur, y = (i - x) / largeur;
+    if (x > 0) pousser(i - 1);
+    if (x < largeur - 1) pousser(i + 1);
+    if (y > 0) pousser(i - largeur);
+    if (y < hauteur - 1) pousser(i + largeur);
+  }
+  // Ce que chaque pixel devient : « . » le blanc, un feutre, ou rien — un trait noir qu'on ignore.
+  const classes: (string | null)[] = new Array(total);
+  for (let i = 0; i < total; i++) {
+    if (fond[i]) classes[i] = ".";
+    else if (clair[i]) classes[i] = remplissage ?? ".";
+    else if (sombre[i] && !avecNoir) classes[i] = null;
+    else {
       let meilleur = couleurs[0], distance = Infinity;
       for (const c of couleurs) {
-        const d = ecart(moyenne, c.rgb);
+        const d = ecart(teintes[i], c.rgb);
         if (d < distance) { distance = d; meilleur = c; }
       }
-      ligne += meilleur?.id ?? ".";
+      classes[i] = meilleur?.id ?? ".";
     }
-    lignes.push(ligne);
   }
-  return lignes;
+  // Le cadre du dessin : tout, ou ce qui n'est pas le fond, avec un peu d'air.
+  let [x0, y0, x1, y1] = [0, 0, largeur, hauteur];
+  if (o.recadrer) {
+    let [gauche, haut, droite, bas] = [largeur, hauteur, -1, -1];
+    for (let y = 0; y < hauteur; y++) for (let x = 0; x < largeur; x++) {
+      if (fond[y * largeur + x]) continue;
+      gauche = Math.min(gauche, x); droite = Math.max(droite, x); haut = Math.min(haut, y); bas = Math.max(bas, y);
+    }
+    if (droite >= 0) {
+      const air = Math.round(0.03 * Math.max(droite - gauche, bas - haut));
+      [x0, y0, x1, y1] = [Math.max(0, gauche - air), Math.max(0, haut - air), Math.min(largeur, droite + 1 + air), Math.min(hauteur, bas + 1 + air)];
+    }
+  }
+  const [l, h] = [x1 - x0, y1 - y0];
+  const colonnes = l >= h ? o.taille : Math.max(4, Math.round((o.taille * l) / h));
+  const lignes = l >= h ? Math.max(4, Math.round((o.taille * h) / l)) : o.taille;
+  const grille: string[] = [];
+  for (let gy = 0; gy < lignes; gy++) {
+    let ligne = "";
+    for (let gx = 0; gx < colonnes; gx++) {
+      const xa = x0 + Math.floor((gx * l) / colonnes), xb = Math.max(xa + 1, x0 + Math.floor(((gx + 1) * l) / colonnes));
+      const ya = y0 + Math.floor((gy * h) / lignes), yb = Math.max(ya + 1, y0 + Math.floor(((gy + 1) * h) / lignes));
+      const voix = new Map<string, number>();
+      for (let y = ya; y < Math.min(yb, hauteur); y++) for (let x = xa; x < Math.min(xb, largeur); x++) {
+        const c = classes[y * largeur + x];
+        if (c !== null) voix.set(c, (voix.get(c) ?? 0) + 1);
+      }
+      // La couleur la plus présente ; à égalité avec le blanc, la couleur.
+      let gagnante = ".", plus = voix.get(".") ?? 0;
+      for (const [c, n] of voix) if (c !== "." && n >= plus && (gagnante === "." || n > plus)) { gagnante = c; plus = n; }
+      ligne += gagnante;
+    }
+    grille.push(ligne);
+  }
+  return grille;
 }
+
+/** Les colonnes et les rangées d'une grille. */
+export const dimensionsDe = (grille: string[]) => ({ colonnes: grille[0]?.length ?? 0, lignes: grille.length });
 
 /** La case passe à la couleur suivante de la palette, puis redevient blanche. */
 export function basculerCase(grille: string[], x: number, y: number, palette: CouleurColoriage[]): string[] {
@@ -589,11 +659,11 @@ export function basculerCase(grille: string[], x: number, y: number, palette: Co
   }).join(""));
 }
 
-/** Une grille tient debout : carrée, de 4 à 16, faite de points et de chiffres de couleur. */
+/** Une grille tient debout : de 4 à 16 cases de côté, ses rangées de même longueur, faite de points et de chiffres de couleur. */
 export function grilleValide(grille: string[]): boolean {
-  if (grille.length < 4 || grille.length > 16) return false;
-  const n = grille.length;
-  return grille.every((l) => l.length === n && /^[.1-6]+$/.test(l));
+  const { colonnes, lignes } = dimensionsDe(grille);
+  if (lignes < 4 || lignes > 16 || colonnes < 4 || colonnes > 16) return false;
+  return grille.every((l) => l.length === colonnes && /^[.1-6]+$/.test(l));
 }
 
 export function lireMotifsPerso(brut: string | null | undefined): Motif[] {

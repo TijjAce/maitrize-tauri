@@ -1293,6 +1293,10 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
 /* Le coloriage magique : les trois temps de l'écran, la galerie des dessins, les vignettes. */
 .cm-etape { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13.5px; margin: 14px 0 8px; }
 .cm-etape span { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+/* Les trois temps du coloriage magique, chacun dans son pli : fermé, il dit ce qu'on y a choisi. */
+details.cm-pli > summary { align-items: center; padding: 10px 0 6px; }
+details.cm-pli > summary .cm-etape { margin: 0; }
+details.cm-pli > summary .meta { margin-left: 4px; font-size: 12.5px; }
 .cm-galerie { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
 .cm-vignette { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px 5px; border: 1.5px solid var(--border);
   border-radius: 10px; background: var(--panel-2); color: var(--text); cursor: pointer; font: inherit; }
