@@ -407,15 +407,34 @@ export interface MotEnAttente {
 }
 
 /**
+ * Une grille ne donne à lire que des mots seuls : une expression du projet
+ * (« chapeau de sorcier ») donne ses mots, sans les lettres élidées
+ * (« toile d'araignée » : toile, araignée). Seul un verbe avec « ils » reste
+ * entier : c'est ainsi qu'on lit son -ent muet.
+ */
+export function motsSeuls(liste: readonly string[]): string[] {
+  const sortie: string[] = [];
+  for (const item of liste) {
+    if (/^(ils|elles)\s/.test(item)) sortie.push(item);
+    else for (const mot of item.split(/[\s'’]+/)) if (mot.replace(/-/g, "").length >= 2) sortie.push(mot);
+  }
+  return [...new Set(sortie)];
+}
+
+/**
  * Les mots de l'étape : ceux de l'enseignant d'abord, puis ceux du corpus,
  * tous déchiffrables. Les mots de l'enseignant qui portent le graphème mais
- * demandent ce qu'on n'a pas encore vu attendent, avec la raison.
+ * demandent ce qu'on n'a pas encore vu attendent, avec la raison. Les verbes
+ * avec « ils » ne servent qu'à l'étape du -ent muet : ailleurs, ce ne sont ni
+ * des mots seuls, ni des pseudo-mots.
  */
 export function motsDe(e: EtapeCgp, mesMots: readonly string[]): { miens: string[]; corpus: string[]; enAttente: MotEnAttente[] } {
   const vues = vuesJusqua(e);
+  const avecIls = "ent-muet" in e.cles;
   const miens: string[] = [];
   const enAttente: MotEnAttente[] = [];
-  for (const mot of mesMots) {
+  for (const mot of motsSeuls(mesMots)) {
+    if (mot.includes(" ") && !avecIls) continue;
     const ms = decouper(mot);
     if (!porteLEtape(e, ms, mot)) continue;
     if (dechiffrable(ms, vues)) miens.push(mot);
@@ -424,7 +443,8 @@ export function motsDe(e: EtapeCgp, mesMots: readonly string[]): { miens: string
       enAttente.push({ mot, manque, aPartirDe: manque.some((m) => !m.etape) ? undefined : manque[manque.length - 1].etape });
     }
   }
-  const corpus = MOTS_DECHIFFRABLES.filter((mot) => !miens.includes(mot) && porteLEtape(e, decoupe(mot), mot) && dechiffrable(decoupe(mot), vues));
+  const corpus = MOTS_DECHIFFRABLES.filter((mot) => (avecIls || !mot.includes(" ")) && !miens.includes(mot)
+    && porteLEtape(e, decoupe(mot), mot) && dechiffrable(decoupe(mot), vues));
   return { miens, corpus, enAttente };
 }
 

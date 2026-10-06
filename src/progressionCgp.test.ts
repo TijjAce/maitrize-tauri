@@ -3,7 +3,7 @@ import { hasard } from "./hasard";
 import { decouper } from "./decoupageCgp";
 import { MOTS_DECHIFFRABLES } from "./motsDechiffrables";
 import {
-  ETAPES, ETAPE_PAR_DEFAUT, PERIODES, dechiffrable, dejaVu, etapeDe, etapeVoisine, motsDe, ouSApprend, porteLEtape, pseudoMotsDe,
+  ETAPES, ETAPE_PAR_DEFAUT, PERIODES, dechiffrable, dejaVu, etapeDe, etapeVoisine, motsDe, motsSeuls, ouSApprend, porteLEtape, pseudoMotsDe,
   syllabesDe, vuesJusqua,
 } from "./progressionCgp";
 
@@ -70,15 +70,26 @@ describe("la progression des guides CP et CE1", () => {
   it("garde les mots de la classe qui se déchiffrent, et dit ce qui manque aux autres", () => {
     const ch = motsDe(etapeDe("p2-ch"), HALLOWEEN);
     expect(ch.miens).toEqual([]);
-    expect(ch.enAttente.map((a) => a.mot)).toEqual(["chapeau de sorcier", "chauve-souris"]);
+    expect(ch.enAttente.map((a) => a.mot)).toEqual(["chapeau", "chauve-souris"]);
     const chauve = ch.enAttente.find((a) => a.mot === "chauve-souris")!;
     expect(chauve.manque.map((m) => [m.libelle, m.etape?.id])).toEqual(expect.arrayContaining([["au", "p3-au"], ["s", "p2-s"]]));
-    // À l'étape au, eau : la chauve-souris se lit ; le chapeau de sorcier attend encore c = [s].
+    // À l'étape au, eau : le chapeau et la chauve-souris se lisent.
     const au = motsDe(etapeDe("p3-au"), HALLOWEEN);
-    expect(au.miens).toEqual(["chauve-souris"]);
-    expect(au.enAttente.map((a) => a.mot)).toEqual(["chapeau de sorcier"]);
+    expect(au.miens).toEqual(["chapeau", "chauve-souris"]);
+    expect(au.enAttente).toEqual([]);
     // En fin d'année, la citrouille, enfin.
     expect(motsDe(etapeDe("p5-ill"), HALLOWEEN).miens).toEqual(["citrouille"]);
+  });
+
+  it("ne met que des mots seuls dans la grille ; les verbes avec « ils », à leur étape seulement", () => {
+    expect(motsSeuls(["chapeau de sorcier", "toile d'araignée", "chauve-souris", "ils chantent", "pleine lune", "chapeau"]))
+      .toEqual(["chapeau", "de", "sorcier", "toile", "araignée", "chauve-souris", "ils chantent", "pleine", "lune"]);
+    for (const e of ETAPES) {
+      const { miens, corpus } = motsDe(e, ["ils jouent"]);
+      const avecIls = [...miens, ...corpus].filter((m) => m.includes(" "));
+      if (e.id === "p3-ent") expect(avecIls).toEqual(expect.arrayContaining(["ils jouent", "ils chantent"]));
+      else expect(avecIls, e.id).toEqual([]);
+    }
   });
 
   it("retrouve l'étape d'un ancien réglage, et dit ce qui est déjà étudié", () => {
