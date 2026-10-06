@@ -20,6 +20,9 @@ describe("la séquence des nombres en cubes", () => {
 
   it("donne à chaque séance sa feuille : en vrac au CP, toute à regrouper, dans tous les sens", () => {
     expect(reglagesDeLaFeuille("grouper", r({ niveau: "cp-59" })).reglages.exercice).toBe("grouper");
+    // De grands tas, comme ceux du défi : au moins jusqu'à 59, même en début d'année.
+    expect(reglagesDeLaFeuille("grouper", r({ niveau: "cp-30" })).reglages.niveau).toBe("cp-59");
+    expect(reglagesDeLaFeuille("grouper", r({ niveau: "cp-100" })).reglages.niveau).toBe("cp-100");
     // Des centaines de cubes ne se sèment pas : au CE1, on écrit le nombre d'une collection.
     expect(reglagesDeLaFeuille("grouper", r({ niveau: "ce1" })).reglages.exercice).toBe("ecrire");
     expect(reglagesDeLaFeuille("regrouper", r()).part).toBe(1);
