@@ -2021,8 +2021,9 @@ const COMPARER_NOMBRES: Demarche = {
 // organisant » (programme de mathématiques du cycle 2, 2024). Le guide « Pour
 // enseigner les nombres, le calcul et la résolution de problèmes au CP »
 // (Éduscol, 2021) en donne le chemin, chapitre 1 et chapitre 4 : la dizaine
-// d'abord, par un jeu de comparaison rapide où l'on groupe par cinq puis par
-// dix ; la dizaine comme dix unités, avec des cubes emboîtables d'une même
+// d'abord, avec de grandes collections qu'on ne peut pas compter un à un —
+// le guide nomme les leviers : la quantité, au-delà de quarante, et la
+// durée — ; la dizaine comme dix unités, avec des cubes emboîtables d'une même
 // couleur ; l'écriture chiffrée qui code les dizaines puis les unités ; des
 // collections partiellement groupées, à regrouper ; les unités de numération
 // dans tous les sens (5 dizaines 6 unités, 6 unités 5 dizaines, 4 dizaines
@@ -2033,20 +2034,20 @@ const NUMERATION_DIZAINE: Demarche = {
   nom: "Grouper par dix, écrire le nombre, passer d'une représentation à l'autre",
   famille: "Mathématiques",
   source: "Pour enseigner les nombres, le calcul et la résolution de problèmes au CP (guide fondamental, 2021), chapitre 1 « Quels systèmes de numération enseigner, pourquoi et comment ? » et chapitre 4 sur les matériels ; programme de mathématiques du cycle 2 (2024)",
-  resume: "La dizaine d'abord : comparer très vite deux collections oblige à grouper par cinq, puis par dix. Avec des cubes emboîtables d'une seule couleur, une barre, c'est dix cubes, et on la défait. On écrit le nombre d'une collection en codant les dizaines puis les unités qui restent : 3 barres et 4 cubes, c'est 34. Des collections déjà en partie groupées, avec plus de dix cubes isolés, obligent à regrouper ; les unités de numération se lisent dans tous les sens — 6 unités 5 dizaines, 4 dizaines 16 unités. On passe enfin d'une représentation à l'autre : matériel, chiffres, nom, unités de numération, 30 + 4, lettres. Au CE1 et au CE2, le même chemin avec la centaine et le millier.",
+  resume: "La dizaine d'abord : de grandes collections, vues peu de temps et jamais ensemble, empêchent de compter un à un et obligent à faire des paquets de dix. Avec des cubes emboîtables d'une seule couleur, une barre, c'est dix cubes, et on la défait. On écrit le nombre d'une collection en codant les dizaines puis les unités qui restent : 3 barres et 4 cubes, c'est 34. Des collections déjà en partie groupées, avec plus de dix cubes isolés, obligent à regrouper ; les unités de numération se lisent dans tous les sens — 6 unités 5 dizaines, 4 dizaines 16 unités. On passe enfin d'une représentation à l'autre : matériel, chiffres, nom, unités de numération, 30 + 4, lettres. Au CE1 et au CE2, le même chemin avec la centaine et le millier.",
   seances: [
     {
-      titre: "Grouper pour dénombrer vite : le jeu des collections",
-      objectifs: "À la fin de cette séance, les élèves sauront organiser une collection en groupes de cinq, puis de dix, pour comparer ou dénombrer sans compter un à un.",
+      titre: "Grouper pour dénombrer vite : le défi des grands tas",
+      objectifs: "À la fin de cette séance, les élèves sauront organiser une grande collection en paquets de dix pour la comparer ou la dénombrer vite et sûrement, sans compter un à un.",
       duree: 45,
       phases: [
-        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "Le jeu du guide : deux collections de jetons montrées quelques secondes, puis cachées. « Où y a-t-il le plus de jetons ? » D'abord moins de quatre jetons, pour comprendre le jeu.",
-          "Montre assez vite pour qu'on ne puisse pas compter un à un."),
-        ph("Temps 2 – Mise en activité des élèves", "20 min", "Neuf jetons de chaque côté, en désordre : tout le monde doit trouver, et c'est l'échec. La classe cherche une organisation : des groupes de cinq, comme sur le dé. Puis treize et quatorze jetons : plusieurs groupes de cinq. Puis quarante-deux et quarante-trois : deux groupes de cinq accolés font dix.",
-          "La réussite doit être collective : c'est l'échec du premier essai qui pose le problème."),
-        ph("Temps 3 – Institutionnalisation, retour réflexif", "15 min", "Bilan : grouper par dix permet de comparer et de dénombrer sans compter un à un. Le mot « dizaine » est introduit. La feuille : entourer des paquets de dix cubes, puis écrire le nombre.",
-          "Valide en mettant les groupes en correspondance, dizaine contre dizaine."),
-        ph("Temps 4 – Automatisation, réinvestissement, transfert", "5 min", "D'autres collections en vrac à grouper par dix, en autonomie ; le jeu reprend en rituel les jours suivants."),
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "Le défi : deux tas de jetons, un rouge et un bleu, de 40 à 60 jetons chacun, qui ne diffèrent que d'un ou deux jetons. Chaque tas est montré une quinzaine de secondes, jamais en même temps que l'autre, puis caché. « Lequel a le plus de jetons ? Tout le monde doit trouver. » Personne n'y arrive : c'est le problème de la séance.",
+          "Les variables qui empêchent de compter un à un : beaucoup de jetons, au-delà de quarante ; peu de temps ; un écart d'un ou deux jetons, pour que l'œil ne suffise pas ; deux tas jamais visibles ensemble, qu'on ne peut pas rapprocher pour les apparier."),
+        ph("Temps 2 – Mise en activité des élèves", "20 min", "Par groupes de trois : un tas de 40 à 60 jetons en vrac, des gobelets ou des barquettes, et trois minutes au sablier. « À la fin, on vous reprend le tas : il faudra dire combien vous en aviez, à coup sûr. » Qui compte un à un n'a pas fini, se trompe ou n'est pas d'accord avec son voisin. On recommence avec un autre tas : les groupes inventent des paquets — de deux, de cinq, de dix — et comptent les paquets.",
+          "Ne donne pas la solution ; relance : « Comment être sûr sans tout recompter ? » Laisse choisir la taille des paquets. Les quantités dépassent la comptine apprise en classe : le nom du nombre n'aide pas."),
+        ph("Temps 3 – Institutionnalisation, retour réflexif", "15 min", "Les organisations comparées au tableau : en vrac, on se perd ; avec des paquets de deux ou de cinq, il reste beaucoup à compter ; avec des paquets de dix, on compte les paquets, puis les jetons qui restent. Deux tas comparés paquet contre paquet, sans recompter. Le mot « dizaine » : un paquet de dix. La trace : « Pour dénombrer vite et sûrement une grande collection, je fais des paquets de dix. »",
+          "Fait dire « 4 paquets de dix et 3 jetons » : la comptine n'est pas nécessaire."),
+        ph("Temps 4 – Automatisation, réinvestissement, transfert", "5 min", "La feuille : entourer des paquets de dix cubes, puis écrire le nombre. Le défi revient en rituel : des tas plus grands, des tas déjà en partie groupés, moins de temps."),
       ],
     },
     {

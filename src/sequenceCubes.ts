@@ -54,9 +54,11 @@ export function reglagesDeLaFeuille(quoi: Exclude<FeuilleCubes, "affiche">, r: R
   const base: ReglagesCubes = { ...r, legende: true, numeros: true, retenir: false, desordre: false };
   const feuille = (p: Partial<ReglagesCubes>, part = 1 / 3) => ({ reglages: { ...base, ...p }, part });
   switch (quoi) {
-    // Au CP, une collection en vrac à grouper ; ensuite, des centaines par milliers de cubes ne se sèment pas : on écrit.
+    // Au CP, une grande collection en vrac à grouper — jusqu'à 59 au moins, comme les tas du défi ; ensuite, des centaines
+    // par milliers de cubes ne se sèment pas : on écrit.
     case "grouper": return cp
-      ? feuille({ titre: "Grouper par dix, puis écrire le nombre", exercice: "grouper", ecritures: ["chiffres", "unites"], aRegrouper: true, nombre: 6 })
+      ? feuille({ titre: "Grouper par dix, puis écrire le nombre", exercice: "grouper", niveau: r.niveau === "cp-100" ? "cp-100" : "cp-59",
+        ecritures: ["chiffres", "unites"], aRegrouper: true, nombre: 6 })
       : feuille({ titre: "Écrire le nombre d'une collection", exercice: "ecrire", ecritures: ["chiffres", "unites"], aRegrouper: true, nombre: 6 });
     case "ecrire": return feuille({ titre: "Lire les cubes, écrire le nombre", exercice: "ecrire", ecritures: ["chiffres", "unites"], aRegrouper: false, nombre: 8 });
     case "regrouper": return feuille({ titre: "Des collections à regrouper", exercice: "ecrire", ecritures: ["chiffres", "unites"], aRegrouper: true, nombre: 6 }, 1);
@@ -100,7 +102,7 @@ export function materielDesSeancesCubes(r: ReglagesCubes): string[] {
     : niv.classe === "CE1" ? "du matériel multibase : plaques de cent, barres de dix et cubes" : "du matériel multibase : gros cubes de mille, plaques, barres et cubes";
   return [
     niv.classe === "CP"
-      ? "Des jetons aimantés de deux couleurs, ou des collections à vidéoprojeter ; la feuille « Grouper par dix » ; des feutres pour entourer les paquets de dix."
+      ? "Des jetons en quantité : deux tas de 40 à 60 jetons de deux couleurs pour le défi, un tas par groupe de trois ; des gobelets ou des barquettes ; un sablier de trois minutes ; la feuille « Grouper par dix » et des feutres pour entourer les paquets de dix."
       : `La feuille « Écrire le nombre d'une collection » ; ${pieces}.`,
     `${pieces[0].toUpperCase()}${pieces.slice(1)} ; l'affiche « Ce qu'on retient ».`,
     "La feuille « Lire les cubes, écrire le nombre » ; le matériel de numération ; les ardoises.",
