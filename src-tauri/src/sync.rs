@@ -1172,6 +1172,26 @@ mod tests_verif_sauvegarde {
 }
 
 #[cfg(test)]
+mod tests_deltas_vus {
+    use std::collections::HashSet;
+
+    #[test]
+    fn on_se_souvient_de_tous_les_depots_encore_sur_le_stockage() {
+        // Bornée à 800, la liste oubliait les plus anciens quand le stockage en
+        // gardait davantage : relus et réappliqués à chaque passage, ils
+        // recréaient ce qu'on avait supprimé depuis.
+        let presentes: HashSet<String> = (0..1500).map(|i| format!("maitrize/deltas/20260913{i:09}-f1c0f4ac.enc")).collect();
+        let mut vus = presentes.clone();
+        // Un dépôt effacé du stockage depuis : inutile de s'en souvenir.
+        vus.insert("maitrize/deltas/20250101000000000-f1c0f4ac.enc".into());
+        let gardes = super::vus_a_garder(&vus, &presentes);
+        assert_eq!(gardes.len(), 1500);
+        assert!(gardes.iter().all(|k| presentes.contains(k)));
+        assert!(gardes.windows(2).all(|w| w[0] < w[1]), "dans l'ordre des écritures");
+    }
+}
+
+#[cfg(test)]
 mod tests_suppression {
     #[test]
     fn seules_les_sauvegardes_se_suppriment() {
@@ -1460,13 +1480,47 @@ fn deltas_vus(c: &Connection) -> std::collections::HashSet<String> {
         .collect()
 }
 
-fn noter_vus(c: &Connection, vus: &std::collections::HashSet<String>) -> R<()> {
-    // Bornée : les clés sont horodatées, les plus anciennes ne reviendront pas.
-    let mut liste: Vec<&String> = vus.iter().collect();
+/// Borne de sûreté de la liste des dépôts vus, bien au-delà de ce que le stockage garde d'ordinaire.
+const VUS_MAX: usize = 20_000;
+
+/// Les dépôts vus à retenir : tous ceux qui sont encore sur le stockage.
+///
+/// La liste était bornée aux 800 derniers, en comptant que le stockage n'en
+/// garderait jamais davantage. Il en gardait plus : les plus anciens sortaient
+/// de la liste, étaient relus à chaque passage — près d'une minute — et leurs
+/// changements réappliqués, jusqu'à recréer ce qu'on avait supprimé depuis.
+/// Un dépôt effacé du stockage, lui, ne reviendra plus : on peut l'oublier.
+fn vus_a_garder(vus: &std::collections::HashSet<String>, presentes: &std::collections::HashSet<String>) -> Vec<String> {
+    let mut liste: Vec<String> = vus.iter().filter(|k| presentes.contains(*k)).cloned().collect();
     liste.sort();
-    let garde: Vec<&&String> = liste.iter().rev().take(DELTAS_GARDES * 2).collect();
-    let json = serde_json::to_string(&garde).map_err(e)?;
+    let debut = liste.len().saturating_sub(VUS_MAX);
+    liste.split_off(debut)
+}
+
+fn noter_vus(c: &Connection, vus: &std::collections::HashSet<String>, presentes: &std::collections::HashSet<String>) -> R<()> {
+    let json = serde_json::to_string(&vus_a_garder(vus, presentes)).map_err(e)?;
     set_setting(c, CLE_DELTAS_VUS, &json)
+}
+
+/// Toutes les clés de dépôts du stockage, page après page — une page n'en
+/// montre que mille —, dans l'ordre où elles ont été écrites.
+async fn cles_des_deltas(cl: &Client, cfg: &S3Cfg) -> R<Vec<String>> {
+    let mut cles = Vec::new();
+    let mut suite: Option<String> = None;
+    loop {
+        let mut demande = cl.list_objects_v2().bucket(&cfg.bucket).prefix(PREFIXE_DELTA);
+        if let Some(jeton) = &suite {
+            demande = demande.continuation_token(jeton);
+        }
+        let page = demande.send().await.map_err(|err| format!("Lecture impossible : {}", detail(&err)))?;
+        cles.extend(page.contents().iter().filter_map(|o| o.key().map(str::to_string)));
+        match (page.is_truncated(), page.next_continuation_token()) {
+            (Some(true), Some(jeton)) => suite = Some(jeton.to_string()),
+            _ => break,
+        }
+    }
+    cles.sort(); // horodatées : l'ordre alphabétique est l'ordre des écritures
+    Ok(cles)
 }
 
 /// Envoie les changements locaux, relit ceux des autres machines, applique.
@@ -1552,13 +1606,9 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
     }
 
     // 2. Relire ce que les autres ont déposé.
-    let liste = cl.list_objects_v2().bucket(&cfg.bucket).prefix(PREFIXE_DELTA)
-        .send().await.map_err(|err| format!("Lecture impossible : {}", detail(&err)))?;
-    let mut cles: Vec<String> = liste.contents().iter()
-        .filter_map(|o| o.key().map(str::to_string))
-        .filter(|k| !vus.contains(k))
-        .collect();
-    cles.sort(); // horodatées : l'ordre alphabétique est l'ordre des écritures
+    let toutes = cles_des_deltas(&cl, &cfg).await?;
+    let presentes: std::collections::HashSet<String> = toutes.iter().cloned().collect();
+    let cles: Vec<String> = toutes.iter().filter(|k| !vus.contains(*k)).cloned().collect();
 
     let mut vus = vus;
     let mut a_appliquer: Vec<crate::journal::Changement> = Vec::new();
@@ -1580,7 +1630,7 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
         if !a_appliquer.is_empty() {
             res.appliques = crate::journal::appliquer(&mut c, &a_appliquer).map_err(e)?;
         }
-        noter_vus(&c, &vus)?;
+        noter_vus(&c, &vus, &presentes)?;
         set_setting(&c, CLE_DERNIERE_SYNC,
                     &chrono::Local::now().format("%Y-%m-%d-%H%M%S").to_string())?;
     }
@@ -1616,9 +1666,6 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
 
     // 5. Élaguer le journal partagé, qui n'a pas à grandir sans fin.
     if cles.len() > DELTAS_GARDES {
-        let mut toutes: Vec<String> = liste.contents().iter()
-            .filter_map(|o| o.key().map(str::to_string)).collect();
-        toutes.sort();
         for vieille in toutes.iter().rev().skip(DELTAS_GARDES) {
             cl.delete_object().bucket(&cfg.bucket).key(vieille).send().await.ok();
         }
