@@ -112,7 +112,7 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
       { id: "paires", nom: "Paires de mots proches", icone: "👂", pictos: true, cycles: "Cycle 2",
         quoi: "Mouche / mousse, chou / joue : les cartes du trésor et du téléphone." },
       { id: "fluence", nom: "Grille de fluence", icone: "⏱", cycles: "Cycles 2 et 3",
-        quoi: "Syllabes, pseudo-mots et mots à lire en une minute, le score noté chaque jour." },
+        quoi: "Syllabes, pseudo-mots et mots à lire en une minute, le score noté chaque jour — à l'étape choisie de la progression des guides CP et CE1." },
       { id: "syllabaire", nom: "Syllabaire", icone: "🛗", cycles: "Cycle 2",
         quoi: "Le jeu de l'ascenseur : deux bandes qui glissent, la syllabe apparaît." },
       { id: "lettres", nom: "Les lettres", icone: "🔠", cycles: "Cycles 1 et 2",
