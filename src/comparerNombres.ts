@@ -148,8 +148,10 @@ const ANCIENS_CHAMPS: Record<number, IdNiveau> = { 30: "cp-30", 59: "cp-59", 100
 export function reglagesComparerSurs(brut: Partial<ReglagesComparer> & { jusqua?: number }): ReglagesComparer {
   const r = { ...REGLAGES_COMPARER, ...brut };
   const oui = (v: unknown, defaut: boolean) => (typeof v === "boolean" ? v : defaut);
-  const id = NIVEAUX.some((n) => n.id === brut.niveau) ? brut.niveau as IdNiveau
-    : typeof brut.jusqua === "number" && ANCIENS_CHAMPS[brut.jusqua] ? ANCIENS_CHAMPS[brut.jusqua] : REGLAGES_COMPARER.niveau;
+  // Un ancien réglage (« jusqu'à 100 ») passe avant le niveau par défaut, que la mémoire a mêlé aux réglages gardés ;
+  // il s'efface dès qu'on choisit un niveau.
+  const id = typeof brut.jusqua === "number" && ANCIENS_CHAMPS[brut.jusqua] ? ANCIENS_CHAMPS[brut.jusqua]
+    : NIVEAUX.some((n) => n.id === brut.niveau) ? brut.niveau as IdNiveau : REGLAGES_COMPARER.niveau;
   const niveau = niveauParId(id);
   const formes = Array.isArray(r.formes) ? niveau.formes.filter((f) => r.formes.includes(f)) : [];
   return {
