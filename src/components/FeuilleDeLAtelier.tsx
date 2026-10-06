@@ -3,7 +3,7 @@ import { CompetencesAtelier, useCompetencesAtelier, useCompetencesParObjectif } 
 import { ConsigneAtelier, useConsigneAtelier } from "./ConsigneAtelier";
 import { OptionsFeuille, useOptionsFeuille } from "./OptionsFeuille";
 import { PictosAtelier, useEtatDesPictos } from "./PictosAtelier";
-import { objectifsDesAteliers, unionDesCompetences } from "../ateliersCompetences";
+import { objectifsDesAteliers, propositionsDesAteliers, unionDesCompetences } from "../ateliersCompetences";
 import { feuillesPubliees } from "../optionsFeuille";
 
 // ── La feuille de l'atelier, en une ligne ──────────────────────────────────
@@ -29,12 +29,14 @@ export function useResumeDeLaFeuille(atelier: string): string {
   const [deLAtelier] = useCompetencesAtelier(atelier);
   const parObjectif = useCompetencesParObjectif(atelier);
   const competences = objectifs.length ? unionDesCompetences(objectifs.map((o) => parObjectif[o.id] ?? [])) : deLAtelier;
+  const proposees = React.useSyncExternalStore(propositionsDesAteliers.abonner, () => propositionsDesAteliers.lire(atelier, objectifs[0]?.id));
   const avecPicto = montres.length - sansPicto.length;
   return [
     consigne.trim() ? "consigne réécrite" : "consigne de l'atelier",
     !montres.length ? "" : sansPicto.length ? `pictos : ${avecPicto} sur ${montres.length}` : `${montres.length} picto${montres.length > 1 ? "s" : ""}`,
     ...(Object.keys(SANS) as (keyof typeof SANS)[]).filter((c) => contenu[c] && !options[c]).map((c) => SANS[c]),
     competences.length ? `${competences.length} compétence${competences.length > 1 ? "s" : ""}`
+      : proposees.length ? `${proposees.length} compétence${proposees.length > 1 ? "s" : ""} proposée${proposees.length > 1 ? "s" : ""}`
       : objectifs.length ? "compétences à choisir pour cet objectif" : "compétences à choisir",
   ].filter(Boolean).join(" · ");
 }
