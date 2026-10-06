@@ -28,6 +28,7 @@ import { CategoriserTab } from "./AteliersCategoriser";
 import { CollectionsTab } from "./AteliersCollections";
 import { SuitesTab } from "./AteliersSuites";
 import { CarteMentaleTab } from "./AteliersCarteMentale";
+import { OeilDeLynxTab } from "./AteliersObservation";
 import { SyllabeManquanteTab } from "./AtelierSyllabes";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { chargerPicto, usePictoImage } from "../components/ChoixPicto";
@@ -48,7 +49,7 @@ const OCTETS = (n: number) =>
   n > 1e9 ? `${(n / 1e9).toFixed(1)} Go` : n > 1e6 ? `${Math.round(n / 1e6)} Mo` : `${Math.round(n / 1e3)} ko`;
 
 const ONGLETS = [
-  "jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres",
+  "jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres", "oeilDeLynx",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "tri", "phrases", "trous", "motsMeles",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "comparer", "calcul", "arbre", "fractions", "oie", "heure", "numeration",
@@ -95,6 +96,14 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
         quoi: "Les mots collectés en grand pour le tableau, en petit par enveloppe, et la corolle lexicale." },
       { id: "ombres", nom: "Jeu des ombres", icone: "👤", cycles: "Cycles 1 et 2",
         quoi: "Chaque image retrouve sa silhouette : à poser dessus, ou à relier. Pictogrammes ou vos propres images." },
+    ],
+  },
+  {
+    id: "observation", libelle: "👁 Observation",
+    aide: "Observer, comparer, retrouver : l'attention visuelle qu'on exerce avant de lire, et pendant.",
+    outils: [
+      { id: "oeilDeLynx", nom: "Œil de lynx", icone: "👁", pictos: true, cycles: "Cycles 1 à 3",
+        quoi: "Des modèles à retrouver dans une image pleine de dessins, et à entourer : cinq niveaux — tailles, sens, sosies, noir et blanc —, la version « combien de fois ? », et le corrigé." },
     ],
   },
   {
@@ -427,6 +436,7 @@ export default function Jeux() {
         : onglet === "trous" ? <TrousTab />
         : onglet === "etiquettes" ? <EtiquettesTab banque={Boolean(etat?.installee)} />
         : onglet === "ombres" ? <OmbresTab banque={Boolean(etat?.installee)} />
+        : onglet === "oeilDeLynx" ? <OeilDeLynxTab banque={Boolean(etat?.installee)} />
         : onglet === "lotoSyllabes" ? avecPictos(<LotoSyllabesTab banque />)
         : onglet === "dominos" ? avecPictos(<DominosTab banque />)
         : onglet === "intrus" ? avecPictos(<IntrusTab banque />)

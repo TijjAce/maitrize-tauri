@@ -14,7 +14,7 @@ import { silhouette, teinteDeLOmbre } from "../ombres";
 // d'une image se calcule ici, là où l'on a une toile pour la peindre.
 
 /** L'image d'un fichier ou d'une adresse, peinte sur une toile d'au plus `max` pixels de côté. */
-async function peindre(source: Blob | string, max: number): Promise<{ toile: HTMLCanvasElement; pinceau: CanvasRenderingContext2D }> {
+export async function peindre(source: Blob | string, max: number): Promise<{ toile: HTMLCanvasElement; pinceau: CanvasRenderingContext2D }> {
   const adresse = typeof source === "string" ? source : URL.createObjectURL(source);
   try {
     const image = new Image();
