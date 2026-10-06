@@ -18,8 +18,9 @@ import {
 // l'atelier. On voit ce qui va se créer avant de le créer ; on arrive
 // ensuite sur la séquence.
 
-export function SequenceDesCubes({ reglages, competences, onClose }: {
-  reglages: ReglagesCubes; competences: CompetenceSelectionnee[]; onClose: () => void;
+export function SequenceDesCubes({ reglages, competences, proposees = false, onClose }: {
+  /** Celles retenues pour la classe — ou, s'il n'y en a pas, celles que l'atelier propose (`proposees`). */
+  reglages: ReglagesCubes; competences: CompetenceSelectionnee[]; proposees?: boolean; onClose: () => void;
 }) {
   const navigate = useNavigate();
   const demarche = demarcheDe(DEMARCHE_CUBES);
@@ -81,7 +82,14 @@ export function SequenceDesCubes({ reglages, competences, onClose }: {
       </p>
       <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, margin: 0 }}>
         {competences.length
-          ? <>🎯 Compétence visée : <b>{competences[0].competenceTitre}</b></>
+          ? <>
+              🎯 {competences.length > 1 ? "Compétences visées" : "Compétence visée"}
+              {proposees ? `, celle${competences.length > 1 ? "s" : ""} que l'atelier propose au ${niv.classe}` : `, retenue${competences.length > 1 ? "s" : ""} pour le ${niv.classe}`} :{" "}
+              {competences.map((c, i) => (
+                <React.Fragment key={c.id}>{i ? " · " : ""}<b>{c.competenceTitre.replace(/\.$/, "")}</b>{c.niveau ? ` (${c.niveau})` : ""}</React.Fragment>
+              ))}.
+              {proposees && " Pour en viser d'autres, retenez-les d'abord dans « Ce que cela travaille », en haut de l'atelier."}
+            </>
           : duProgramme
             ? <>🎯 Compétence visée : <b>{duProgramme.competenceTitre}</b> ({duProgramme.niveau ?? niv.classe}) — {duProgramme.referentielNom}</>
             : "🎯 La compétence « Connaitre et utiliser diverses représentations d'un nombre » n'est pas dans vos référentiels actifs : la séquence n'en visera pas. Choisissez-la plus tard sur la séquence."}

@@ -15,16 +15,17 @@ import {
   groupementsDuNiveau, htmlCubes, niveauCubes, ordreHabituel, ordreMelange, reglagesCubesSurs, type AnciensReglagesCubes, type EcritureNombre,
   type ExerciceCubes, type IdNiveauCubes, type ReglagesCubes,
 } from "../cubesNumeration";
-import { useCompetencesAtelier } from "../components/CompetencesAtelier";
 import { SequenceDesCubes } from "../components/SequenceDesCubes";
+import { competencesProposees } from "../sequenceCubes";
 import {
   REGLAGES_ARBRE, REGLAGES_CALCUL, REGLAGES_FRACTIONS, REGLAGES_NOMBRES, REGLAGES_OIE, REPRESENTATIONS, STYLE_JEUX_MATHS,
   additionsArbre, cartesCalcul, cartesNombres, htmlArbreCalcul, htmlCartesCalcul, htmlCartesNombres, htmlFractions, htmlJeuDeLOie,
   type ContenuOie, type FacesDe, type MaterielFraction, type Operation, type Representation, type RepresentationFraction,
 } from "../jeuxMaths";
 import { REFLEXIONS, REGLAGES_MARTINIERE, STYLE_MARTINIERE, calculsMartiniere, fluenceAttendue, htmlMartiniere, libelleTravaille, objectifsRetenus, type FormeEntrainement } from "../martiniere";
-import { objectifsDesAteliers } from "../ateliersCompetences";
-import { useCompetencesParObjectif } from "../components/CompetencesAtelier";
+import { objectifsDesAteliers, propositionsDesAteliers } from "../ateliersCompetences";
+import { useCompetencesAtelier, useCompetencesParObjectif } from "../components/CompetencesAtelier";
+import { api, type Referentiel } from "../api";
 import { SequenceDeCalculMental } from "../components/SequenceDeCalculMental";
 import { consignesJustes } from "../consigneAtelier";
 import { consignesPour } from "../consignesCalcul";
@@ -126,7 +127,20 @@ export function CubesTab() {
   const niv = niveauCubes(r.niveau);
   const [graine, setGraine] = React.useState(graineAuHasard);
   const [enSequence, setEnSequence] = React.useState(false);
-  const [competences] = useCompetencesAtelier("cubes");
+  // Ce que l'atelier travaille se règle classe par classe : au CP, des compétences du CP.
+  React.useEffect(() => { objectifsDesAteliers.publier("cubes", [{ id: niv.classe, libelle: niv.classe }]); }, [niv.classe]);
+  React.useEffect(() => () => { objectifsDesAteliers.publier("cubes", []); propositionsDesAteliers.publier("cubes", "", []); }, []);
+  const [retenues] = useCompetencesAtelier("cubes", niv.classe);
+  // Ce qu'on avait retenu sans classe, ou pour une autre classe : la proposition en donne l'équivalent à celle-ci.
+  const [sansClasse] = useCompetencesAtelier("cubes");
+  const parClasse = useCompetencesParObjectif("cubes");
+  const [referentiels, setReferentiels] = React.useState<Referentiel[]>([]);
+  React.useEffect(() => { api.referentielsList().then(setReferentiels).catch(() => {}); }, []);
+  const ailleurs = React.useMemo(() => [...sansClasse, ...Object.entries(parClasse).filter(([classe]) => classe !== niv.classe).flatMap(([, liste]) => liste)],
+    [sansClasse, parClasse, niv.classe]);
+  const proposees = React.useMemo(() => competencesProposees(referentiels, r, ailleurs), [referentiels, r, ailleurs]);
+  // La proposition s'affiche dans « Ce que cela travaille », pour la classe à l'écran.
+  React.useEffect(() => { propositionsDesAteliers.publier("cubes", niv.classe, proposees); }, [niv.classe, proposees]);
   const exos = React.useMemo(() => exercicesCubes(r, graine), [r, graine]);
   const html = React.useMemo(() => htmlCubes(exos, r, graine), [exos, r, graine]);
   const style = STYLE_JEUX_MATHS + STYLE_CUBES;
@@ -211,7 +225,9 @@ export function CubesTab() {
           title="La séquence d'après le guide CP et le programme, en sept séances, aux nombres de ce niveau, avec les feuilles de cet atelier rangées dans les séances">
           📚 Créer une séquence avec cet atelier
         </button>
-        {enSequence && <SequenceDesCubes reglages={r} competences={competences} onClose={() => setEnSequence(false)} />}
+        {enSequence && (
+          <SequenceDesCubes reglages={r} competences={retenues.length ? retenues : proposees} proposees={!retenues.length} onClose={() => setEnSequence(false)} />
+        )}
       </>}
       droite={<ApercuFeuille html={html} style={style} />}
     />

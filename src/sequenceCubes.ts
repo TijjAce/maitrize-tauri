@@ -13,8 +13,9 @@ import { api, anneeScolaireActuelle, couleurPourMatiere, newId, nowIso, type Ref
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 import { STYLE_FEUILLE } from "./cartesImprimables";
 import {
-  STYLE_CUBES, exempleDuNiveau, exercicesCubes, htmlAfficheCubes, htmlCubes, niveauCubes, type NiveauCubes, type ReglagesCubes,
+  STYLE_CUBES, exempleDuNiveau, exercicesCubes, htmlAfficheCubes, htmlCubes, niveauCubes, type ExerciceCubes, type NiveauCubes, type ReglagesCubes,
 } from "./cubesNumeration";
+import { unionDesCompetences } from "./ateliersCompetences";
 import { STYLE_JEUX_MATHS } from "./jeuxMaths";
 import { demarcheDe, seancesDuCadre } from "./demarches";
 import { graineAuHasard } from "./hasard";
@@ -116,6 +117,49 @@ export function materielDesSeancesCubes(r: ReglagesCubes): string[] {
 /** « Connaitre et utiliser diverses représentations d'un nombre… », à la classe du niveau, dans les référentiels actifs. */
 export const competenceDuProgrammeCubes = (referentiels: Referentiel[], niv: NiveauCubes) =>
   competenceDuReferentiel(referentiels, niv.classe, /diverses représentations d.un nombre/i);
+
+/** Les compétences de numération du programme, d'une classe à l'autre : le même objectif sous des mots parfois différents. */
+const FAMILLES_DE_COMPETENCES = [
+  /diverses représentations d.un nombre/i, /dénombrer des collections/i, /construire des collections de cardinal donné/i,
+  /valeur des chiffres/i, /relations? entre (les )?unités/i, /suite écrite et la suite orale/i,
+];
+
+/** Ce que travaille chaque exercice, dans les mots du programme ; les représentations, toujours. */
+const DE_L_EXERCICE: Record<ExerciceCubes, RegExp> = {
+  ecrire: /dénombrer des collections/i, grouper: /dénombrer des collections/i, relier: /valeur des chiffres/i,
+  dessiner: /construire des collections de cardinal donné/i, facons: /construire des collections de cardinal donné/i,
+};
+
+/**
+ * Les intitulés que l'exercice travaille : les représentations, toujours ;
+ * le sien ; et, quand on échange dix unités contre une dizaine — des cubes à
+ * regrouper, des façons de faire —, la valeur des chiffres au CP, la relation
+ * entre les unités de numération au CE1 et au CE2.
+ */
+export function intitulesDeLExercice(r: ReglagesCubes): RegExp[] {
+  const niv = niveauCubes(r.niveau);
+  const sortie = [/diverses représentations d.un nombre/i, DE_L_EXERCICE[r.exercice]];
+  const echanges = r.exercice === "facons" || (r.aRegrouper && r.exercice !== "grouper");
+  if (echanges) sortie.push(niv.classe === "CP" ? /valeur des chiffres/i : /relations? entre (les )?unités/i);
+  return sortie.filter((i, k) => sortie.findIndex((j) => j.source === i.source) === k);
+}
+
+/**
+ * Ce que l'atelier propose de retenir, à la classe du niveau choisi : ce que
+ * travaille l'exercice, et l'équivalent de ce qu'on avait retenu à une autre
+ * classe — « Construire des collections de cardinal donné » du CE1 devient
+ * celle du CP quand on choisit le CP.
+ */
+export function competencesProposees(referentiels: Referentiel[], r: ReglagesCubes, ailleurs: CompetenceSelectionnee[] = []): CompetenceSelectionnee[] {
+  const niv = niveauCubes(r.niveau);
+  const intitules = intitulesDeLExercice(r);
+  for (const c of ailleurs) {
+    const famille = FAMILLES_DE_COMPETENCES.find((f) => f.test(c.competenceTitre));
+    if (famille && !intitules.some((i) => i.source === famille.source)) intitules.push(famille);
+  }
+  const trouvees = intitules.map((i) => competenceDuReferentiel(referentiels, niv.classe, i)).filter((c): c is CompetenceSelectionnee => !!c);
+  return unionDesCompetences([trouvees]);
+}
 
 /**
  * Crée la séquence : la fiche, les séances de la démarche avec leur

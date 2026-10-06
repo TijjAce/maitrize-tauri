@@ -45,6 +45,30 @@ export const objectifsDesAteliers = {
   abonner(f: () => void) { abonnes.add(f); return () => { abonnes.delete(f); }; },
 };
 
+const propositions: Record<string, { objectif: string; liste: CompetenceSelectionnee[] }> = {};
+const abonnesPropositions = new Set<() => void>();
+const AUCUNE: CompetenceSelectionnee[] = [];
+const signature = (liste: CompetenceSelectionnee[]) =>
+  liste.map((c) => [c.referentielNom, c.sousDomaineTitre, c.competenceRefId ?? c.competenceTitre].join("|")).join("\n");
+
+/**
+ * Ce qu'un atelier propose de retenir pour l'objectif à l'écran — les
+ * compétences de la classe choisie, quand l'atelier sait les trouver dans les
+ * référentiels. Une proposition, pas un choix : seul ce qu'on retient
+ * s'imprime et se garde.
+ */
+export const propositionsDesAteliers = {
+  lire: (atelier: string, objectif = ""): CompetenceSelectionnee[] =>
+    propositions[atelier]?.objectif === objectif ? propositions[atelier].liste : AUCUNE,
+  publier(atelier: string, objectif: string, liste: CompetenceSelectionnee[]) {
+    const avant = propositions[atelier];
+    if (avant ? avant.objectif === objectif && signature(avant.liste) === signature(liste) : !liste.length) return;
+    if (liste.length) propositions[atelier] = { objectif, liste }; else delete propositions[atelier];
+    abonnesPropositions.forEach((f) => f());
+  },
+  abonner(f: () => void) { abonnesPropositions.add(f); return () => { abonnesPropositions.delete(f); }; },
+};
+
 /** Les listes d'un atelier, objectif par objectif, lues dans tous les réglages ; les vides ne comptent pas. */
 export function competencesParObjectif(reglages: Record<string, string>, atelier: string): Record<string, CompetenceSelectionnee[]> {
   const prefixe = `${PREFIXE_COMPETENCES}${atelier}:`;
