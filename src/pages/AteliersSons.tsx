@@ -20,7 +20,9 @@ import {
 } from "../jeuxSons";
 import {
   CONSONNES_SYLLABAIRE, REGLAGES_FLUENCE, REGLAGES_SYLLABAIRE, STYLE_FLUENCE, VOYELLES_SYLLABAIRE, grapheme, grilleFluence, htmlFluence, htmlSyllabaire,
+  nomDeLEtape,
 } from "../fluence";
+import { ETAPES, PERIODES, dejaVu, etapeVoisine, periodeDe, type EtapeCgp, type MotEnAttente } from "../progressionCgp";
 
 // ── Fabriquer › Sons et lecture ───────────────────────────────────────────
 //
@@ -240,22 +242,49 @@ export function PairesTab({ banque }: { banque: boolean }) {
 
 // ── Grille de fluence ──
 
+/** Quand un mot se lira, et ce qui lui manque : « se lira en CP, période 3 (il manque : au) ». */
+function raisonDeLAttente(a: MotEnAttente, ici: EtapeCgp): string {
+  const manque = `(il manque : ${a.manque.map((m) => m.libelle).join(", ")})`;
+  if (!a.aPartirDe) return `demande une lettre que la progression du CP n'enseigne pas ${manque}`;
+  const quand = a.aPartirDe.periode === ici.periode ? `plus loin en ${periodeDe(ici.periode).court}, à « ${nomDeLEtape(a.aPartirDe)} »` : `en ${periodeDe(a.aPartirDe.periode).court}`;
+  return `se lira ${quand} ${manque}`;
+}
+
 export function FluenceTab() {
   const [r, maj] = useReglages("fluence", REGLAGES_FLUENCE);
   const [graine, setGraine] = React.useState(graineAuHasard);
   const g = React.useMemo(() => grilleFluence(r, graine), [r, graine]);
   const html = React.useMemo(() => htmlFluence(g, r), [g, r]);
+  const { etape } = g;
+  const avant = etapeVoisine(etape, -1);
+  const apres = etapeVoisine(etape, 1);
+  const titre = `Grille de fluence — ${nomDeLEtape(etape)}`;
   return (
     <Colonnes
       gauche={<>
         <h3 style={{ marginTop: 0 }}>Grille de fluence</h3>
         <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Syllabes, pseudo-mots et mots du son de la semaine, à lire chaque jour en une minute ; le score se note en bas.
+          Syllabes, pseudo-mots et mots du graphème de la semaine, faits seulement de ce que la progression des guides CP et CE1 a déjà fait
+          étudier ; à lire chaque jour en une minute, le score se note en bas.
         </p>
-        <Field label="Le son">
-          <Select value={r.son} onChange={(e) => maj({ son: e.target.value })}>
-            {SONS.map((s) => <option key={s.id} value={s.id}>{s.son} — {s.graphemes.join(", ")}</option>)}
-          </Select>
+        <Field label="Le graphème de la semaine">
+          <div style={{ display: "flex", gap: 6 }}>
+            <button type="button" className="btn sm ghost" disabled={!avant} aria-label="Étape précédente"
+              title={avant ? `Étape précédente : ${nomDeLEtape(avant)}` : undefined} onClick={() => avant && maj({ son: avant.id })}>◀</button>
+            <Select value={etape.id} onChange={(e) => maj({ son: e.target.value })} style={{ flex: 1, minWidth: 0 }}>
+              {PERIODES.map((p) => (
+                <optgroup key={p.id} label={p.titre}>
+                  {ETAPES.filter((x) => x.periode === p.id).map((x) => <option key={x.id} value={x.id}>{nomDeLEtape(x)}</option>)}
+                </optgroup>
+              ))}
+            </Select>
+            <button type="button" className="btn sm ghost" disabled={!apres} aria-label="Étape suivante"
+              title={apres ? `Étape suivante : ${nomDeLEtape(apres)}` : undefined} onClick={() => apres && maj({ son: apres.id })}>▶</button>
+          </div>
+          <div className="meta" style={{ fontSize: 12, marginTop: 6, lineHeight: 1.45 }}>
+            <b>{periodeDe(etape.periode).court}</b> — {etape.rubrique}.{etape.note && <> {etape.note}</>}
+            <div style={{ marginTop: 3 }}>Déjà étudié : {dejaVu(etape)}</div>
+          </div>
         </Field>
         <Field label="Contenu">
           <Select value={r.contenu} onChange={(e) => maj({ contenu: e.target.value as typeof r.contenu })}>
@@ -268,13 +297,26 @@ export function FluenceTab() {
           <Input type="number" min={3} max={10} value={r.lignes} onChange={(e) => maj({ lignes: Math.max(3, Math.min(10, Number(e.target.value) || 3)) })} style={{ width: 70 }} />
         </Field>
         <Field label="Mes mots (facultatif)">
-          <Textarea value={r.mesMots} onChange={(e) => maj({ mesMots: e.target.value })} rows={3} placeholder="Les mots de la classe qui contiennent le son" />
-          {/* Seuls ceux qui portent le son entrent dans la grille : les autres attendent leur semaine. */}
+          <Textarea value={r.mesMots} onChange={(e) => maj({ mesMots: e.target.value })} rows={3} placeholder="Les mots de la classe qui contiennent le graphème" />
+          {/* Seuls ceux qui portent le graphème entrent dans la grille, et seulement s'ils se déchiffrent : les autres attendent leur semaine. */}
           <LigneDuProjet quoi="mots" texte={r.mesMots} exemple={REGLAGES_FLUENCE.mesMots} appliquer={(mesMots) => maj({ mesMots })} />
+          {(g.miens.length > 0 || g.enAttente.length > 0) && (
+            <div className="meta" style={{ fontSize: 12, marginTop: 6, lineHeight: 1.45 }}>
+              {g.miens.length > 0 && <div>Dans la grille : {g.miens.join(", ")}.</div>}
+              {g.enAttente.length > 0 && (
+                <div style={{ marginTop: 3 }}>
+                  Pas encore déchiffrables à cette étape :
+                  <ul style={{ margin: "2px 0 0", paddingLeft: 18 }}>
+                    {g.enAttente.map((a) => <li key={a.mot}><b>{a.mot}</b> — {raisonDeLAttente(a, etape)}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </Field>
         <Coche on={r.puissance4} libelle="Ajouter le plateau « quatre jetons alignés »" onChange={(v) => maj({ puissance4: v })} />
-        <Boutons peut onTirage={() => setGraine(graineAuHasard())} onImprimer={() => void imprimerAtelier("fluence", `Grille de fluence — ${g.son.son}`, html, STYLE_FEUILLE + STYLE_FLUENCE)}
-          onBureau={() => enregistrerSurLeBureau("fluence", `Grille de fluence — ${g.son.son}`, html, STYLE_FEUILLE + STYLE_FLUENCE)} />
+        <Boutons peut onTirage={() => setGraine(graineAuHasard())} onImprimer={() => void imprimerAtelier("fluence", titre, html, STYLE_FEUILLE + STYLE_FLUENCE)}
+          onBureau={() => enregistrerSurLeBureau("fluence", titre, html, STYLE_FEUILLE + STYLE_FLUENCE)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_FLUENCE} />}
     />

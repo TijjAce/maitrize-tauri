@@ -5,8 +5,9 @@ import {
   lettresChoisies, lignesIntrus, motsDesPaires, motsSimples, nbSyllabes, pairesQuiSenchainent, planchesLettres, planchesLotoSyllabes,
   REGLAGES_LETTRES, REGLAGES_LOTO_SYLLABES, type MotImage,
 } from "./jeuxSons";
-import { grilleFluence, htmlFluence, htmlSyllabaire, pseudoMots, REGLAGES_FLUENCE, REGLAGES_SYLLABAIRE } from "./fluence";
-import { sonDe } from "./lectureSons";
+import { grilleFluence, htmlFluence, htmlSyllabaire, REGLAGES_FLUENCE, REGLAGES_SYLLABAIRE } from "./fluence";
+import { dechiffrable, etapeDe, syllabesDe, vuesJusqua } from "./progressionCgp";
+import { decouper } from "./decoupageCgp";
 
 const mots = (liste: string[]): MotImage[] => liste.map((mot, i) => ({ id: i + 1, mot }));
 const BANQUE = mots(["bateau", "banane", "ballon", "tapis", "micro", "crocodile", "château", "tomate", "lapin", "pinceau", "sapin", "chat", "chapeau", "pomme de terre", "vélo", "lit"]);
@@ -133,11 +134,32 @@ describe("la grille de fluence", () => {
     expect(html).toContain("Quatre jetons alignés");
   });
 
-  it("invente des pseudo-mots qui ne sont pas des mots du son", () => {
-    const son = sonDe("ch")!;
-    const pseudos = pseudoMots(son, 8, hasard(8));
-    expect(pseudos.length).toBe(8);
-    expect(pseudos.some((p) => son.mots.includes(p))).toBe(false);
+  it("ne donne à lire que ce que la progression a déjà fait étudier", () => {
+    for (const id of ["p1-ou", "p2-ch", "p3-an", "p4-c-s", "ce1-aill-eill"]) {
+      const etape = etapeDe(id);
+      const vues = vuesJusqua(etape);
+      const syllabes = syllabesDe(etape);
+      const g = grilleFluence({ ...REGLAGES_FLUENCE, son: id, lignes: 8 }, 11);
+      expect(g.lignes.flat()).toHaveLength(40);
+      for (const item of g.lignes.flat()) expect(syllabes.includes(item) || dechiffrable(decouper(item), vues), `${id} : ${item}`).toBe(true);
+    }
+    // Un ancien réglage nommait le son : on retrouve son étape.
+    expect(grilleFluence({ ...REGLAGES_FLUENCE, son: "ch" }, 1).etape.id).toBe("p2-ch");
+  });
+
+  it("garde les mots de la classe qui se déchiffrent, et dit pourquoi les autres attendent", () => {
+    const g = grilleFluence({ ...REGLAGES_FLUENCE, son: "p2-ch", contenu: "mots", mesMots: "chat, chapeau de sorcier, citrouille, chou" }, 3);
+    expect(g.miens).toEqual(["chat", "chou"]);
+    expect(g.lignes.flat()).toEqual(expect.arrayContaining(["chat", "chou"]));
+    // citrouille n'a pas de ch : elle attend sa semaine sans rien dire ; le chapeau, lui, attend eau, c = [s]…
+    expect(g.enAttente.map((a) => a.mot)).toEqual(["chapeau de sorcier"]);
+    expect(g.enAttente[0].manque.map((m) => m.libelle)).toEqual(expect.arrayContaining(["eau", "c = [s]", "i = [j]", "er final"]));
+    const html = htmlFluence(g, REGLAGES_FLUENCE);
+    expect(html).toContain("Grille de fluence — ch [ʃ]");
+    expect(html).toContain("CP, période 2 — consonnes fricatives 2");
+    expect(html).toContain("progression du guide « Pour enseigner la lecture et l&#39;écriture au CP » (2018), p. 67-74");
+    // Les verbes avec « ils » tiennent dans leur case.
+    expect(htmlFluence(grilleFluence({ ...REGLAGES_FLUENCE, son: "p3-ent" }, 2), REGLAGES_FLUENCE)).toMatch(/<td class="fl-x?l">ils /);
   });
 
   it("dessine le syllabaire avec ses bandes", () => {
