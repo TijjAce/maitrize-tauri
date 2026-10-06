@@ -775,6 +775,18 @@ fn dernier_changement(tx: &Connection, table: &str, ligne_id: &str) -> Option<(S
     .ok()
 }
 
+/// La dernière opération notée ici sur une ligne, dans l'ordre où `dernier_changement` les range.
+fn derniere_operation(tx: &Connection, table: &str, ligne_id: &str) -> Option<String> {
+    tx.query_row(
+        "SELECT operation FROM changements
+          WHERE table_nom = ?1 AND ligne_id = ?2 AND operation <> 'annonce'
+          ORDER BY horodatage DESC, origine DESC LIMIT 1",
+        params![table, ligne_id],
+        |r| r.get(0),
+    )
+    .ok()
+}
+
 /// Un réglage lu comme une suite d'éléments identifiés : liste ou dictionnaire.
 fn en_table(v: &serde_json::Value) -> Option<Vec<(String, serde_json::Value)>> {
     match v {
@@ -1004,6 +1016,16 @@ fn appliquer_un(tx: &Connection, c: &Changement) -> rusqlite::Result<Effet> {
             )
             .ok()
             .and_then(|s| serde_json::from_str(&s).ok());
+
+        // Ligne absente ici parce qu'on l'y a supprimée après ce changement :
+        // la suppression l'emporte. Un changement plus ancien — arrivé en
+        // retard, ou relu d'un vieux dépôt — ne ressuscite pas ce qu'on a
+        // effacé depuis ; sans cette règle, un dossier supprimé revenait à
+        // chaque passage. Plus récent que la suppression, il gagne : on a
+        // modifié là-bas ce qu'on supprimait ici.
+        if ici.is_none() && !entrant_gagne && derniere_operation(tx, &c.table_nom, &c.ligne_id).as_deref() == Some("suppr") {
+            return Ok(Effet::Ignoree);
+        }
 
         // Les champs de prose passent par le CRDT : leur valeur fusionnée
         // remplace celle que transporte la ligne, laquelle ne représente
@@ -2217,6 +2239,42 @@ mod tests {
         let touches = champs_touches(&envoyes[0].avant, &apres);
         assert!(touches.contains("nom"), "le nom a changé pendant la série");
         assert!(touches.contains("niveau"), "le niveau aussi");
+    }
+
+    #[test]
+    fn un_changement_plus_ancien_ne_ressuscite_pas_une_ligne_supprimee_depuis() {
+        // Le dossier qui revenait : un vieux changement, relu à chaque
+        // passage, recréait chaque fois ce qu'on venait de supprimer.
+        let a = machine_nommee("A");
+        let mut b = machine_nommee("B");
+        ajouter(&a, "e1", "Quang");
+        let (vieux, _) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut b, &vieux).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(3));
+        b.execute("DELETE FROM eleves WHERE id = 'e1'", []).unwrap();
+        // Le même changement revient, plus ancien que la suppression : rien ne revient.
+        appliquer(&mut b, &vieux).unwrap();
+        appliquer(&mut b, &vieux).unwrap();
+        assert!(noms(&b).is_empty(), "la ligne supprimée est revenue : {:?}", noms(&b));
+        // Une modification faite là-bas après la suppression, elle, l'emporte.
+        std::thread::sleep(std::time::Duration::from_millis(3));
+        a.execute("UPDATE eleves SET nom = 'Quang N.' WHERE id = 'e1'", []).unwrap();
+        let (recents, _) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut b, &recents).unwrap();
+        assert_eq!(noms(&b), vec!["Quang N."]);
+    }
+
+    #[test]
+    fn une_ligne_jamais_vue_ici_se_cree_toujours() {
+        // La règle ne vise que ce qu'on a supprimé : une ligne neuve entre.
+        let a = machine_nommee("A");
+        let mut b = machine_nommee("B");
+        ajouter(&a, "e1", "Quang");
+        std::thread::sleep(std::time::Duration::from_millis(3));
+        ajouter(&b, "e2", "Lina");
+        let (de_a, _) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut b, &de_a).unwrap();
+        assert_eq!(noms(&b), vec!["Lina", "Quang"]);
     }
 
     #[test]
