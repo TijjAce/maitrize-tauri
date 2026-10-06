@@ -10,9 +10,13 @@ import { STYLE_FEUILLE } from "../cartesImprimables";
 import { graineAuHasard } from "../hasard";
 import { SONS, syllabes } from "../lectureSons";
 import {
-  ECRITURES, EXERCICES, EXERCICES_MAX, GROUPEMENTS, PLAFONDS, PLANCHERS, REGLAGES_CUBES, STYLE_CUBES,
-  ecrituresChoisies, exercicesCubes, groupementsJusqua, htmlCubes, type EcritureNombre, type ExerciceCubes,
+  CLASSES_CUBES, ECRITURES, EXERCICES, EXERCICES_MAX, GROUPEMENTS, NIVEAUX_CUBES, REGLAGES_CUBES, STYLE_CUBES, aRegrouperPourDessin,
+  aRegrouperPourEcriture, decomposer, ecrirePieces, ecrireNombre, ecrireUnites, ecrituresChoisies, exempleDuNiveau, exercicesCubes,
+  groupementsDuNiveau, htmlCubes, niveauCubes, ordreHabituel, ordreMelange, reglagesCubesSurs, type AnciensReglagesCubes, type EcritureNombre,
+  type ExerciceCubes, type IdNiveauCubes, type ReglagesCubes,
 } from "../cubesNumeration";
+import { useCompetencesAtelier } from "../components/CompetencesAtelier";
+import { SequenceDesCubes } from "../components/SequenceDesCubes";
 import {
   REGLAGES_ARBRE, REGLAGES_CALCUL, REGLAGES_FRACTIONS, REGLAGES_NOMBRES, REGLAGES_OIE, REPRESENTATIONS, STYLE_JEUX_MATHS,
   additionsArbre, cartesCalcul, cartesNombres, htmlArbreCalcul, htmlCartesCalcul, htmlCartesNombres, htmlFractions, htmlJeuDeLOie,
@@ -117,51 +121,79 @@ export function CartesNombresTab() {
 // ── Les nombres en cubes ──
 
 export function CubesTab() {
-  const [r, maj] = useReglages("cubes", REGLAGES_CUBES);
+  const [brut, maj] = useReglages<ReglagesCubes & AnciensReglagesCubes>("cubes", REGLAGES_CUBES);
+  const r = React.useMemo(() => reglagesCubesSurs(brut), [brut]);
+  const niv = niveauCubes(r.niveau);
   const [graine, setGraine] = React.useState(graineAuHasard);
+  const [enSequence, setEnSequence] = React.useState(false);
+  const [competences] = useCompetencesAtelier("cubes");
   const exos = React.useMemo(() => exercicesCubes(r, graine), [r, graine]);
   const html = React.useMemo(() => htmlCubes(exos, r, graine), [exos, r, graine]);
   const style = STYLE_JEUX_MATHS + STYLE_CUBES;
   const ecritures = ecrituresChoisies(r);
+  /** Un autre niveau : sa couleur de départ, et un exercice qu'il connaît ; les anciennes bornes s'effacent. */
+  const changerDeNiveau = (id: IdNiveauCubes) => {
+    const suivant = niveauCubes(id);
+    const seulementCp = EXERCICES.find((e) => e.id === r.exercice)?.cpSeulement && suivant.classe !== "CP";
+    maj({ niveau: id, memeCouleur: suivant.memeCouleur, exercice: seulementCp ? "ecrire" : r.exercice, a: undefined, de: undefined });
+  };
+  // Les exemples, au nombre du programme pour la classe : 34, 635, 4 635.
+  const exemple = exempleDuNiveau(niv);
+  const juste = decomposer(exemple, niv.plusGrand);
+  const exempleDe = (id: EcritureNombre) => (id === "unites" ? ecrireUnites(juste, ordreHabituel(juste), niv.enMots) : ecrireNombre(exemple, id, { plusGrand: niv.plusGrand, enMots: niv.enMots }));
+  const collectionARegrouper = aRegrouperPourDessin(exemple, niv, () => 0);
+  const ecritureARegrouper = aRegrouperPourEcriture(exemple, niv, () => 0);
+  const libelleRegrouper = r.exercice === "grouper" ? "Quelques barres déjà faites, et plus de dix cubes à grouper"
+    : r.exercice === "dessiner" ? `Des écritures à regrouper, avec plus de dix d'une unité (${ecritureARegrouper ? ecrireUnites(ecritureARegrouper, ordreHabituel(ecritureARegrouper), niv.enMots) : ""})`
+    : `Des collections à regrouper, avec plus de dix d'une sorte (${collectionARegrouper ? ecrirePieces(collectionARegrouper) : ""})`;
+  const avecUnites = (r.exercice === "dessiner" || r.exercice === "relier") && ecritures.includes("unites");
   return (
     <Colonnes
       gauche={<>
         <h3 style={{ marginTop: 0 }}>Les nombres en cubes</h3>
         <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Le cube, la barre de dix, la plaque de cent, le gros cube de mille : l'élève lit les groupements et écrit le nombre — ou l'inverse.
+          Le cube, la barre de dix, la plaque de cent, le gros cube de mille : lire les groupements et écrire le nombre, grouper par dix,
+          faire un nombre de plusieurs façons — passer d'une représentation à l'autre, comme le veut le programme. D'après le guide CP d'Éduscol.
         </p>
+        <Field label="Les nombres">
+          <Select value={r.niveau} onChange={(e) => changerDeNiveau(e.target.value as IdNiveauCubes)}>
+            {CLASSES_CUBES.map((classe) => (
+              <optgroup key={classe} label={classe}>
+                {NIVEAUX_CUBES.filter((n) => n.classe === classe).map((n) => <option key={n.id} value={n.id}>{n.classe} — {n.libelle}</option>)}
+              </optgroup>
+            ))}
+          </Select>
+          <div className="meta" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.45 }}>{niv.repere}</div>
+        </Field>
         <Field label="Exercice">
           <Select value={r.exercice} onChange={(e) => maj({ exercice: e.target.value as ExerciceCubes })}>
-            {EXERCICES.map((e) => <option key={e.id} value={e.id}>{e.libelle}</option>)}
+            {EXERCICES.filter((e) => !e.cpSeulement || niv.classe === "CP").map((e) => <option key={e.id} value={e.id}>{e.libelle}</option>)}
           </Select>
         </Field>
-        <Field label="Nombres de … à …">
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <Select value={r.de} onChange={(e) => maj({ de: Number(e.target.value) })} aria-label="De" style={{ width: 90 }}>
-              {PLANCHERS.filter((p) => p <= r.a).map((p) => <option key={p} value={p}>{p.toLocaleString("fr")}</option>)}
-            </Select>
-            <span>→</span>
-            <Select value={r.a} onChange={(e) => { const a = Number(e.target.value); maj({ a, de: Math.min(r.de, a) }); }} aria-label="À" style={{ width: 90 }}>
-              {PLAFONDS.map((p) => <option key={p} value={p}>{p.toLocaleString("fr")}</option>)}
-            </Select>
-          </div>
-        </Field>
-        <Field label={r.exercice === "ecrire" ? "L'élève écrit le nombre…" : "Le nombre est écrit…"}>
-          <Chips liste={ECRITURES.map((x) => x.id)} choisis={r.ecritures} onChange={(v) => maj({ ecritures: v as EcritureNombre[] })}
-            libelle={(id) => ECRITURES.find((x) => x.id === id)!.libelle} />
-          <div className="meta" style={{ fontSize: 12, marginTop: 4 }}>
-            {r.exercice === "ecrire" ? "Une ligne de réponse par écriture cochée." : "Plusieurs écritures cochées : chaque exercice en tire une."}
-            {" "}Exemple : {ecritures.map((id) => ECRITURES.find((x) => x.id === id)!.exemple).join(" · ")}.
-          </div>
-        </Field>
+        {r.exercice !== "facons" && (
+          <Field label={r.exercice === "ecrire" || r.exercice === "grouper" ? "L'élève écrit le nombre…" : "Le nombre est écrit…"}>
+            <Chips liste={ECRITURES.map((x) => x.id)} choisis={r.ecritures} onChange={(v) => maj({ ecritures: v as EcritureNombre[] })}
+              libelle={(id) => ECRITURES.find((x) => x.id === id)!.libelle} />
+            <div className="meta" style={{ fontSize: 12, marginTop: 4 }}>
+              {r.exercice === "ecrire" || r.exercice === "grouper" ? "Une ligne de réponse par écriture cochée." : "Plusieurs écritures cochées : chaque exercice en tire une."}
+              {" "}Exemple : {ecritures.map(exempleDe).join(" · ")}.
+            </div>
+          </Field>
+        )}
         <Field label="Exercices sur la feuille">
           <Input type="number" min={1} max={EXERCICES_MAX} value={r.nombre} style={{ width: 80 }}
             onChange={(e) => maj({ nombre: Math.max(1, Math.min(EXERCICES_MAX, Number(e.target.value) || 1)) })} />
         </Field>
-        <Field label="La couleur de chaque groupement">
-          {groupementsJusqua(r.a).map((g) => (
+        {r.exercice !== "facons" && <Coche on={r.aRegrouper} libelle={libelleRegrouper} onChange={(v) => maj({ aRegrouper: v })} />}
+        {avecUnites && (
+          <Coche on={r.desordre} libelle={`Les unités de numération dans le désordre (${ecrireUnites(juste, ordreMelange(juste, () => 0), niv.enMots)})`}
+            onChange={(v) => maj({ desordre: v })} />
+        )}
+        <Coche on={r.memeCouleur} libelle="Toutes les pièces de la même couleur, comme les cubes emboîtables du début" onChange={(v) => maj({ memeCouleur: v })} />
+        <Field label={r.memeCouleur ? "La couleur des pièces" : "La couleur de chaque groupement"}>
+          {(r.memeCouleur ? GROUPEMENTS.filter((g) => g.id === "u") : groupementsDuNiveau(niv)).map((g) => (
             <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, margin: "3px 0" }}>
-              <span style={{ width: 70, fontSize: 12.5 }}>{GROUPEMENTS.find((x) => x.id === g.id)!.nom}</span>
+              <span style={{ width: 70, fontSize: 12.5 }}>{r.memeCouleur ? "toutes" : g.nom}</span>
               <Pastilles valeur={r.couleurs[g.id]} onChange={(hex) => maj({ couleurs: { ...r.couleurs, [g.id]: hex } })} />
             </div>
           ))}
@@ -169,11 +201,17 @@ export function CubesTab() {
         <Coche on={r.zeros} libelle="Avec des zéros à l'intérieur (30, 105, 2 040)" onChange={(v) => maj({ zeros: v })} />
         <Coche on={r.numeros} libelle="Numéroter les exercices" onChange={(v) => maj({ numeros: v })} />
         <Coche on={r.legende} libelle="La légende des cubes en haut de la feuille" onChange={(v) => maj({ legende: v })} />
+        <Coche on={r.retenir} libelle="« Ce qu'on retient » en haut de la feuille" onChange={(v) => maj({ retenir: v })} />
         <Field label="Titre de la feuille">
           <Input value={r.titre} onChange={(e) => maj({ titre: e.target.value })} placeholder={REGLAGES_CUBES.titre} />
         </Field>
         <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("cubes", r.titre.trim() || REGLAGES_CUBES.titre, html, style)}
           onBureau={() => bureau("cubes", r.titre.trim() || REGLAGES_CUBES.titre, html, style)} />
+        <button type="button" className="btn sm" style={{ marginTop: 8 }} onClick={() => setEnSequence(true)}
+          title="La séquence d'après le guide CP et le programme, en sept séances, aux nombres de ce niveau, avec les feuilles de cet atelier rangées dans les séances">
+          📚 Créer une séquence avec cet atelier
+        </button>
+        {enSequence && <SequenceDesCubes reglages={r} competences={competences} onClose={() => setEnSequence(false)} />}
       </>}
       droite={<ApercuFeuille html={html} style={style} />}
     />

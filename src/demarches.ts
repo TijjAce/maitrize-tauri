@@ -2016,13 +2016,120 @@ const COMPARER_NOMBRES: Demarche = {
   ],
 };
 
+// « Connaitre et utiliser diverses représentations d'un nombre et passer de
+// l'une à l'autre », « Comparer et dénombrer des collections en les
+// organisant » (programme de mathématiques du cycle 2, 2024). Le guide « Pour
+// enseigner les nombres, le calcul et la résolution de problèmes au CP »
+// (Éduscol, 2021) en donne le chemin, chapitre 1 et chapitre 4 : la dizaine
+// d'abord, par un jeu de comparaison rapide où l'on groupe par cinq puis par
+// dix ; la dizaine comme dix unités, avec des cubes emboîtables d'une même
+// couleur ; l'écriture chiffrée qui code les dizaines puis les unités ; des
+// collections partiellement groupées, à regrouper ; les unités de numération
+// dans tous les sens (5 dizaines 6 unités, 6 unités 5 dizaines, 4 dizaines
+// 16 unités) ; puis toutes les représentations, jusqu'à l'écriture en
+// lettres. Le matériel multibase vient une fois la dizaine comprise.
+const NUMERATION_DIZAINE: Demarche = {
+  id: "numeration-dizaine-cp",
+  nom: "Grouper par dix, écrire le nombre, passer d'une représentation à l'autre",
+  famille: "Mathématiques",
+  source: "Pour enseigner les nombres, le calcul et la résolution de problèmes au CP (guide fondamental, 2021), chapitre 1 « Quels systèmes de numération enseigner, pourquoi et comment ? » et chapitre 4 sur les matériels ; programme de mathématiques du cycle 2 (2024)",
+  resume: "La dizaine d'abord : comparer très vite deux collections oblige à grouper par cinq, puis par dix. Avec des cubes emboîtables d'une seule couleur, une barre, c'est dix cubes, et on la défait. On écrit le nombre d'une collection en codant les dizaines puis les unités qui restent : 3 barres et 4 cubes, c'est 34. Des collections déjà en partie groupées, avec plus de dix cubes isolés, obligent à regrouper ; les unités de numération se lisent dans tous les sens — 6 unités 5 dizaines, 4 dizaines 16 unités. On passe enfin d'une représentation à l'autre : matériel, chiffres, nom, unités de numération, 30 + 4, lettres. Au CE1 et au CE2, le même chemin avec la centaine et le millier.",
+  seances: [
+    {
+      titre: "Grouper pour dénombrer vite : le jeu des collections",
+      objectifs: "À la fin de cette séance, les élèves sauront organiser une collection en groupes de cinq, puis de dix, pour comparer ou dénombrer sans compter un à un.",
+      duree: 45,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "Le jeu du guide : deux collections de jetons montrées quelques secondes, puis cachées. « Où y a-t-il le plus de jetons ? » D'abord moins de quatre jetons, pour comprendre le jeu.",
+          "Montre assez vite pour qu'on ne puisse pas compter un à un."),
+        ph("Temps 2 – Mise en activité des élèves", "20 min", "Neuf jetons de chaque côté, en désordre : tout le monde doit trouver, et c'est l'échec. La classe cherche une organisation : des groupes de cinq, comme sur le dé. Puis treize et quatorze jetons : plusieurs groupes de cinq. Puis quarante-deux et quarante-trois : deux groupes de cinq accolés font dix.",
+          "La réussite doit être collective : c'est l'échec du premier essai qui pose le problème."),
+        ph("Temps 3 – Institutionnalisation, retour réflexif", "15 min", "Bilan : grouper par dix permet de comparer et de dénombrer sans compter un à un. Le mot « dizaine » est introduit. La feuille : entourer des paquets de dix cubes, puis écrire le nombre.",
+          "Valide en mettant les groupes en correspondance, dizaine contre dizaine."),
+        ph("Temps 4 – Automatisation, réinvestissement, transfert", "5 min", "D'autres collections en vrac à grouper par dix, en autonomie ; le jeu reprend en rituel les jours suivants."),
+      ],
+    },
+    {
+      titre: "La dizaine : dix cubes, une barre",
+      objectifs: "À la fin de cette séance, les élèves sauront qu'une dizaine, c'est dix unités : former une barre de dix cubes, la défaire, et dire combien de dizaines et d'unités contient une collection.",
+      duree: 40,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "Des cubes emboîtables d'une seule couleur : « Faites des barres de dix cubes. »",
+          "Une seule couleur au début : la dizaine se voit comme dix cubes pareils."),
+        ph("Temps 2 – Mise en activité des élèves", "20 min", "Chacun forme des barres de dix avec ses cubes, compte les barres et les cubes qui restent ; puis casse une barre : il y a toujours le même nombre de cubes. 34 cubes, c'est 3 barres et 4 cubes, ou 2 barres et 14 cubes.",
+          "Parle de dizaines aussi quand les cubes ne sont pas assemblés : dix cubes isolés font une dizaine."),
+        ph("Temps 3 – Institutionnalisation, retour réflexif", "10 min", "La trace, l'affiche de la classe : dix cubes, c'est une barre, une dizaine ; 1 dizaine = 10 unités."),
+        ph("Temps 4 – Automatisation, réinvestissement, transfert", "5 min", "« Montrez-moi 2 dizaines et 3 unités » : avec les cubes, puis avec les doigts de deux élèves et d'un troisième."),
+      ],
+    },
+    {
+      titre: "Écrire le nombre : les dizaines, puis les unités",
+      objectifs: "À la fin de cette séance, les élèves sauront écrire en chiffres le nombre d'une collection de barres et de cubes : le chiffre des dizaines, puis celui des unités — 3 barres et 4 cubes, c'est 34.",
+      duree: 45,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "Une collection au tableau : 3 barres et 4 cubes. « Comment écrire avec des chiffres combien il y a de cubes ? »"),
+        ph("Temps 2 – Mise en activité des élèves", "20 min", "La procédure du guide : organiser la collection en un maximum de dizaines, écrire le nombre de dizaines, puis celui des unités qui restent, accolés dans cet ordre. La feuille « Lire les cubes, écrire le nombre ».",
+          "Fait dire « trois dizaines et quatre unités » avant le nom du nombre : l'écriture chiffrée n'est pas l'oral recopié, d'où des erreurs comme 304."),
+        ph("Temps 3 – Institutionnalisation, retour réflexif", "15 min", "Bilan : 34, c'est 3 dizaines et 4 unités ; le chiffre de gauche dit les dizaines. Pourquoi 23 n'est pas 32 : on construit les deux collections et on les compare."),
+        ph("Temps 4 – Automatisation, réinvestissement, transfert", "5 min", "Par deux : l'un dit « 4 dizaines 2 unités », l'autre montre le matériel et écrit 42 sur l'ardoise."),
+      ],
+    },
+    {
+      titre: "Des collections à regrouper : plus de dix unités",
+      objectifs: "À la fin de cette séance, les élèves sauront dénombrer une collection partiellement groupée — 5 dizaines et 18 unités — en regroupant dix unités en une dizaine, et écrire son nombre.",
+      duree: 45,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "Au tableau, 5 barres et 18 cubes : « Écrivez le nombre de cubes. » Certains écriront 518 : on en discute."),
+        ph("Temps 2 – Mise en activité des élèves", "20 min", "Regrouper dix cubes en une barre, ou échanger dix cubes contre une barre : 6 barres et 8 cubes, 68. La feuille « Des collections à regrouper ».",
+          "Le matériel multibase ne se défait pas : on échange dix cubes contre une barre. Il vient une fois la dizaine comprise."),
+        ph("Temps 3 – Institutionnalisation, retour réflexif", "15 min", "Bilan : quand il y a plus de dix unités, elles font une dizaine de plus. 5 dizaines 18 unités = 6 dizaines 8 unités = 68."),
+        ph("Temps 4 – Automatisation, réinvestissement, transfert", "5 min", "Le jeu du banquier, par deux : on lance le dé, on prend autant de cubes, on échange dix cubes contre une barre ; le premier à 5 barres a gagné."),
+      ],
+    },
+    {
+      titre: "Les unités de numération dans tous les sens",
+      objectifs: "À la fin de cette séance, les élèves sauront écrire en chiffres un nombre donné en unités de numération, dans l'ordre ou non, avec plus de dix unités ou non : 5 dizaines 6 unités, 6 unités 5 dizaines, 4 dizaines 16 unités.",
+      duree: 45,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "« 6 unités 5 dizaines » au tableau : est-ce 65 ou 56 ?"),
+        ph("Temps 2 – Mise en activité des élèves", "20 min", "Les exercices du guide, du plus simple au plus difficile : 5 dizaines 6 unités ; 6 unités 5 dizaines ; 4 dizaines 16 unités ; 16 unités 4 dizaines. On dessine les cubes, puis on écrit en chiffres. La feuille « Faire un nombre de plusieurs façons ».",
+          "D'abord avec le matériel, puis le matériel ne sert plus qu'à valider."),
+        ph("Temps 3 – Institutionnalisation, retour réflexif", "15 min", "Bilan : c'est le nom de l'unité qui compte, pas sa place dans la phrase ; dix unités font une dizaine. Un même nombre se fait de plusieurs façons : 3 barres et 4 cubes, 2 barres et 14 cubes, 34 cubes."),
+        ph("Temps 4 – Automatisation, réinvestissement, transfert", "5 min", "Le problème du programme, à la mesure de la classe : il faut 34 cubes, avec des barres de dix et des cubes seuls ; trouve trois façons."),
+      ],
+    },
+    {
+      titre: "D'une représentation à l'autre",
+      objectifs: "À la fin de cette séance, les élèves sauront passer d'une représentation d'un nombre à une autre : barres et cubes, écriture en chiffres, nom à l'oral, unités de numération, 30 + 4, écriture en lettres.",
+      duree: 40,
+      phases: [
+        ph("Temps 1 – Définition des objectifs et mise en réussite", "5 min", "Un même nombre montré de six façons : 3 barres et 4 cubes ; 34 ; « trente-quatre » ; 3 dizaines 4 unités ; 30 + 4 ; trente-quatre écrit en lettres."),
+        ph("Temps 2 – Mise en activité des élèves", "20 min", "Relier des dessins de cubes à des écritures ; lire un nombre écrit en chiffres et l'écrire en lettres. La feuille « D'une représentation à l'autre ».",
+          "Différencie par la taille des nombres ; le matériel reste à disposition."),
+        ph("Temps 3 – Institutionnalisation, retour réflexif", "10 min", "Bilan : toutes ces écritures désignent le même nombre. L'affiche de la classe est complétée."),
+        ph("Temps 4 – Automatisation, réinvestissement, transfert", "5 min", "Le mémory des écritures, par deux : retrouver les cartes qui désignent le même nombre."),
+      ],
+    },
+    {
+      titre: "Évaluation — dénombrer et représenter les nombres",
+      objectifs: "À la fin de cette séance, les élèves sauront montrer ce qu'ils ont acquis : écrire le nombre d'une collection de barres et de cubes, même à regrouper, et passer d'une écriture à l'autre.",
+      duree: 30,
+      phases: [
+        ph("Observation", "20 min", "Une évaluation courte : écrire en chiffres, en unités de numération et en décomposition le nombre de collections dessinées, dont certaines à regrouper.",
+          "Observe les procédures : grouper par dix, compter un à un, échanger."),
+        ph("Suite", "10 min", "La remédiation au matériel pour qui en a besoin ; en rituel, montrer un nombre en barres et en cubes, et le dire en dizaines et unités."),
+      ],
+    },
+  ],
+};
+
 export const DEMARCHES: Demarche[] = [
   EDUSCOL_QUATRE_TEMPS, ENSEIGNEMENT_EXPLICITE,
   LECTURE_CODE, LECTURE_FLUENCE, COMPREHENSION, ECRITURE_GESTE, ECRITURE_REDIGER, ORAL, VOCABULAIRE, GRAMMAIRE,
   PROBLEMES, CALCUL_MENTAL, GEOMETRIE_GRANDEURS,
   INVESTIGATION, ENQUETE_HISTOIRE_GEO, EMC_DEBAT,
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
-  MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, COLLECTIONS, CHRONOLOGIE, COMPARER_NOMBRES,
+  MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, COLLECTIONS, CHRONOLOGIE, COMPARER_NOMBRES, NUMERATION_DIZAINE,
 ];
 
 export const demarcheDe = (id: string) => DEMARCHES.find((d) => d.id === id);
@@ -2090,6 +2197,10 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string): string {
   if (/mathematiques/.test(dom)) {
     if (/grandeurs|geometrie|espace/.test(sd)) return "geometrie-grandeurs";
     if (/donnees|probabilit|proportionnalite/.test(sd) || /probleme/.test(comp)) return "problemes";
+    // Dénombrer en groupant par dix, passer d'une représentation du nombre à l'autre : le chemin du guide CP, de la dizaine
+    // aux unités de numération — au cycle 2 ; le cycle 3 travaille les grands nombres et les décimaux autrement.
+    if (/denombrer|representations? d.un nombre|unites de numeration|valeur des chiffres|cardinal donne/.test(comp)
+      && !/fraction|decima/.test(comp) && !/cycle 3/.test(ref)) return "numeration-dizaine-cp";
     // Comparer, ranger, encadrer des entiers : la séquence du guide CP, par l'écriture chiffrée — pas les fractions ni les décimaux.
     if (/comparer|encadrer|intercaler|ordonner des nombres|ranger des nombres|ordre (de)?croissant/.test(comp) && !/fraction|decima/.test(comp)) return "comparer-nombres-cp";
     // Un fait numérique ou une procédure de calcul : ce qui s'entraîne chaque jour au procédé La Martinière.
