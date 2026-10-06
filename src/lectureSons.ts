@@ -2,9 +2,9 @@
 //
 // La progression suit l'ordre des méthodes syllabiques — voyelles d'abord,
 // puis les consonnes les plus fréquentes et les plus régulières, les
-// graphèmes complexes ensuite. C'est celui de Pilotis, de Lecture Piano et
-// des recommandations du guide ministériel de 2018 : on n'invente rien ici,
-// on range.
+// graphèmes complexes ensuite. C'est celui de Pilotis et de Lecture Piano :
+// on n'invente rien ici, on range. La progression du guide CP de 2018, elle,
+// période par période, est dans progressionCgp.ts (grille de fluence).
 //
 // Le corpus est écrit à la main, mot par mot, parce qu'un mot de fiche de son
 // doit être déchiffrable et connu de l'élève. Une liste tirée d'un
