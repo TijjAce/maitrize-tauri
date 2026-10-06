@@ -18,7 +18,7 @@ import {
 import { reformuler } from "../reformulation";
 import { JeuForm } from "./JeuForm";
 import { ReglesDesJeux, useJeuxCites, useLudotheque } from "./ReglesDesJeux";
-import { jeuxCites, nomSousLeCurseur } from "../jeuxCites";
+import { jeuxCites, nomSousLeCurseur, regleEcrite } from "../jeuxCites";
 import { ChoixSequence, SequencesCitees } from "./SequencesCitees";
 import { ChoixRituel, RituelForm, RituelsCites, useRituels } from "./Rituels";
 import { IndicateurZoom, useZoomPince } from "./ZoomPince";
@@ -596,7 +596,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
           onSaved={(jeu) => {
             setJeuEdite(null);
             rechargerJeux();
-            toast(`« ${jeu.titre} » est dans la ludothèque${jeu.regles.trim() ? " : sa règle s'affiche là où il est cité" : ""}.`, { icone: "🎲" });
+            toast(`« ${jeu.titre} » est dans la ludothèque${regleEcrite(jeu.regles) ? " : sa règle s'affiche là où il est cité" : ""}.`, { icone: "🎲" });
           }} />
       )}
       {observerPour && (

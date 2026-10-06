@@ -133,14 +133,49 @@ export function infosDuJeu(j: Jeu): string {
     .filter(Boolean).join(" · ");
 }
 
+// ── Le canevas d'une règle ──
+//
+// Une règle vide s'ouvre sur quatre lignes à compléter après les deux-points.
+// Celles qu'on laisse vides ne s'affichent ni ne s'impriment ; un canevas
+// laissé tel quel s'enregistre comme une règle vide.
+
+export const LIGNES_DU_CANEVAS = [
+  "Dans le jeu il y a",
+  "Le but du jeu consiste à",
+  "Pour gagner à chaque manche, il faut",
+  "Le déroulement d'une partie est le suivant",
+];
+export const CANEVAS_REGLE = LIGNES_DU_CANEVAS.map((l) => `- ${l} : `).join("\n");
+
+/** Le début de ligne du canevas qu'une ligne reprend, et ce qui le suit : « - Le but du jeu consiste à : faire des paires ». */
+function ligneDuCanevas(ligne: string): { suite: string } | null {
+  const t = ligne.trim().replace(/^[-–—•]\s*/, "").replace(/’/g, "'");
+  const l = LIGNES_DU_CANEVAS.find((x) => t.toLowerCase().startsWith(x.toLowerCase()));
+  return l ? { suite: t.slice(l.length).replace(/^\s*:/, "").trim() } : null;
+}
+
+/**
+ * La règle telle qu'on la montre et l'imprime : sans les lignes du canevas
+ * restées vides. Une ligne vide que suivent les étapes de la partie, elle,
+ * reste : c'est leur titre.
+ */
+export function regleEcrite(regles: string): string {
+  const lignes = (regles ?? "").split("\n");
+  return lignes.filter((ligne, i) => {
+    if (ligneDuCanevas(ligne)?.suite !== "") return true;
+    const suivante = lignes.slice(i + 1).find((x) => x.trim());
+    return suivante !== undefined && !ligneDuCanevas(suivante);
+  }).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 /** Les règles des jeux cités, pour l'impression. Un jeu sans règle écrite n'y figure pas. */
 export function reglesImprimees(jeux: Jeu[]): string {
-  const avecRegle = jeux.filter((j) => j.regles.trim());
+  const avecRegle = jeux.filter((j) => regleEcrite(j.regles));
   if (!avecRegle.length) return "";
   return `<div class="regles-jeux">${avecRegle.map((j) =>
     `<div class="regle-jeu"><div class="regle-jeu-titre">🎲 Règle — ${escapeHtml(j.titre)}`
     + `<span class="regle-jeu-infos"> · ${escapeHtml(infosDuJeu(j))}</span></div>`
-    + `<div class="regle-jeu-texte">${escapeHtml(j.regles.trim())}</div></div>`).join("")}</div>`;
+    + `<div class="regle-jeu-texte">${escapeHtml(regleEcrite(j.regles))}</div></div>`).join("")}</div>`;
 }
 
 /** Styles des règles imprimées, à la taille du texte qui les entoure. */
@@ -156,8 +191,10 @@ export const STYLE_REGLES = `
 /** La question posée à la recherche en ligne : le nom du jeu, et rien d'autre de la classe. */
 export function questionRegle(titre: string): string {
   return `Quelle est la règle du jeu « ${titre.trim()} » ? Explique-la en français, simplement, pour un enseignant qui `
-    + "la présente à des enfants : le but du jeu, la mise en place, un tour de jeu, la fin de la partie. "
-    + "Phrases courtes, une étape par ligne, sans titre, sans gras, sans liens, en 130 mots au plus.";
+    + "la présente à des enfants. Complète ces quatre lignes, dans cet ordre : "
+    + LIGNES_DU_CANEVAS.map((l) => `« - ${l} : »`).join(", ") + ". "
+    + "Sous la dernière, une étape de la partie par ligne. Si une ligne ne convient pas au jeu, dis-le en quelques mots. "
+    + "Phrases courtes, sans titre, sans gras, sans liens, en 150 mots au plus.";
 }
 
 /** Une réponse mise en forme (gras, titres, puces, renvois) devient un texte simple. */
