@@ -5,7 +5,7 @@ import { toast } from "./Toaster";
 import { CompetenceTree, type CompetenceSelectionnee } from "./CompetenceTree";
 import {
   EVT_COMPETENCES_ATELIER, basculerCompetence, cleDesCompetences, competencesParObjectif, ecrireCompetencesAtelier,
-  lireCompetencesAtelier, memeCompetence, type ObjectifTravaille,
+  lireCompetencesAtelier, memeCompetence, propositionsDesAteliers, unionDesCompetences, type ObjectifTravaille,
 } from "../ateliersCompetences";
 
 // Ce que l'atelier travaille — dit par l'enseignant, pas deviné.
@@ -69,6 +69,9 @@ export function CompetencesAtelier({ atelier, nom, objectifs = [] }: { atelier: 
   const [designe, setDesigne] = React.useState("");
   const objectif = objectifs.find((o) => o.id === designe) ?? objectifs[0];
   const [liste, enregistrer] = useCompetencesAtelier(atelier, objectif?.id);
+  // Ce que l'atelier propose pour cet objectif — la classe choisie, par exemple —, tant qu'on ne l'a pas retenu.
+  const proposees = React.useSyncExternalStore(propositionsDesAteliers.abonner, () => propositionsDesAteliers.lire(atelier, objectif?.id));
+  const aRetenir = proposees.filter((c) => !liste.some((x) => memeCompetence(x, c)));
   const [ouvert, setOuvert] = React.useState(false);
   const [recherche, setRecherche] = React.useState("");
   const quoi = objectif ? `${nom} — ${objectif.libelle}` : nom;
@@ -81,7 +84,9 @@ export function CompetencesAtelier({ atelier, nom, objectifs = [] }: { atelier: 
           {objectif ? `pour « ${objectif.libelle} » : ` : ""}
           {liste.length
             ? `${liste.length} compétence${liste.length > 1 ? "s" : ""}`
-            : objectif ? "à choisir pour cet objectif" : "à choisir une fois"}
+            : aRetenir.length
+              ? `${aRetenir.length} compétence${aRetenir.length > 1 ? "s" : ""} proposée${aRetenir.length > 1 ? "s" : ""}`
+              : objectif ? "à choisir pour cet objectif" : "à choisir une fois"}
         </span>
       </summary>
       {objectifs.length > 1 && (
@@ -105,10 +110,32 @@ export function CompetencesAtelier({ atelier, nom, objectifs = [] }: { atelier: 
           ))}
         </ul>
       )}
+      {aRetenir.length > 0 && (
+        <div className="comp-atelier-propose">
+          <div className="meta" style={{ fontSize: 12.5, lineHeight: 1.45 }}>
+            Proposé{objectif ? ` pour « ${objectif.libelle} »` : ""}, d'après ce que l'atelier fait travailler — à retenir si c'est bien ce que vous visez :
+          </div>
+          <ul className="comp-atelier-liste">
+            {aRetenir.map((c) => (
+              <li key={c.id}>
+                {c.niveau && <span className="badge">{c.niveau}</span>}
+                <span>{c.competenceTitre}</span>
+                <span className="meta">{[c.referentielNom, c.domaineTitre].filter(Boolean).join(" › ")}</span>
+                <button className="btn ghost sm" onClick={() => enregistrer(unionDesCompetences([liste, [c]]))}>＋ Retenir</button>
+              </li>
+            ))}
+          </ul>
+          {aRetenir.length > 1 && (
+            <button className="btn sm" onClick={() => enregistrer(unionDesCompetences([liste, aRetenir]))}>＋ Retenir les {aRetenir.length}</button>
+          )}
+        </div>
+      )}
       <p className="meta" style={{ fontSize: 12.5, margin: "10px 0 4px", lineHeight: 1.5 }}>
         {liste.length
           ? "Elles s'affichent ici pour être recopiées dans un cahier journal, ou retrouvées dans une programmation."
-          : objectif
+          : aRetenir.length
+            ? "Rien de retenu encore : retenez ce qui est proposé, ou choisissez vous-même dans les référentiels — cela restera."
+            : objectif
             ? "Aucune pour cet objectif : dites une fois ce qu'il travaille chez vous, et cela restera — chaque objectif garde les siennes."
             : "Aucune : dites une fois ce que cet atelier travaille chez vous, et cela restera."}
       </p>

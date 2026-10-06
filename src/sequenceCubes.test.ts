@@ -1,12 +1,38 @@
 import { describe, it, expect } from "vitest";
 import { NIVEAUX_CUBES, REGLAGES_CUBES, reglagesCubesSurs, type IdNiveauCubes, type ReglagesCubes } from "./cubesNumeration";
 import {
-  DEMARCHE_CUBES, FEUILLES_DE_LA_SEQUENCE_CUBES, htmlDeLaFeuilleCubes, materielDesSeancesCubes, objectifsDeLaSequenceCubes, reglagesDeLaFeuille,
-  titreDeLaSequenceCubes,
+  DEMARCHE_CUBES, FEUILLES_DE_LA_SEQUENCE_CUBES, competencesProposees, htmlDeLaFeuilleCubes, materielDesSeancesCubes, objectifsDeLaSequenceCubes,
+  reglagesDeLaFeuille, titreDeLaSequenceCubes,
 } from "./sequenceCubes";
 import { demarcheDe } from "./demarches";
+import type { Referentiel } from "./api";
 
 const r = (p: Partial<ReglagesCubes> = {}) => reglagesCubesSurs({ ...REGLAGES_CUBES, ...p });
+
+// Les compétences de numération du programme de cycle 2, telles que le référentiel les range : une par classe.
+const PROGRAMME: [string, string][] = [
+  ["CP", "Comparer et dénombrer des collections en les organisant."],
+  ["CP", "Construire des collections de cardinal donné."],
+  ["CP", "Connaitre et utiliser diverses représentations d’un nombre et passer de l’une à l’autre."],
+  ["CP", "Connaitre la valeur des chiffres en fonction de leur position (unités, dizaines)."],
+  ["CE1", "Dénombrer des collections en les organisant."],
+  ["CE1", "Construire des collections de cardinal donné."],
+  ["CE1", "Connaitre et utiliser la relation entre unités et dizaines, entre dizaines et centaines, entre unités et centaines."],
+  ["CE1", "Connaitre et utiliser diverses représentations d’un nombre et passer de l’une à l’autre."],
+  ["CE2", "Dénombrer des collections."],
+  ["CE2", "Construire des collections de cardinal donné."],
+  ["CE2", "Connaitre et utiliser les relations entre les unités de numération."],
+  ["CE2", "Connaitre et utiliser diverses représentations d’un nombre et passer de l’une à l’autre."],
+];
+const referentiel = (actif = true): Referentiel => ({
+  id: "c2", nom: "Cycle 2 — Programme 2024", cycle: "Cycle 2", estIntegre: true, actif, dateAjout: "",
+  donnees: JSON.stringify({ domaines: [{ id: "M", titre: "Mathématiques", sousDomaines: [{
+    titre: "Nombres et calcul", competences: PROGRAMME.map(([niveau, texte], i) => ({ id: `n${i}`, texte, niveau })),
+  }] }] }),
+});
+const proposees = (p: Partial<ReglagesCubes>, ailleurs = [] as ReturnType<typeof competencesProposees>) =>
+  competencesProposees([referentiel()], r(p), ailleurs);
+const intitules = (liste: ReturnType<typeof competencesProposees>) => liste.map((c) => `${c.niveau} ${c.competenceTitre.split(" ").slice(0, 4).join(" ")}`);
 
 describe("la séquence des nombres en cubes", () => {
   it("met au moins une feuille dans chacune des sept séances de la démarche, à chaque niveau", () => {
@@ -41,5 +67,49 @@ describe("la séquence des nombres en cubes", () => {
     expect(materielDesSeancesCubes(r())).toHaveLength(7);
     expect(materielDesSeancesCubes(r({ niveau: "cp-30" }))[1]).toContain("cubes emboîtables d'une seule couleur");
     expect(materielDesSeancesCubes(r({ niveau: "ce1" }))[0]).toContain("plaques de cent");
+  });
+});
+
+describe("ce que l'atelier des cubes propose de retenir", () => {
+  it("propose les compétences de la classe choisie, jamais celles d'une autre", () => {
+    expect(intitules(proposees({ niveau: "cp-19", exercice: "dessiner", aRegrouper: false })))
+      .toEqual(["CP Connaitre et utiliser diverses", "CP Construire des collections de"]);
+    expect(intitules(proposees({ niveau: "ce1", exercice: "dessiner", aRegrouper: false })))
+      .toEqual(["CE1 Connaitre et utiliser diverses", "CE1 Construire des collections de"]);
+    for (const niveau of NIVEAUX_CUBES) for (const exercice of ["ecrire", "relier", "dessiner", "facons"] as const) {
+      const liste = proposees({ niveau: niveau.id, exercice });
+      expect(liste.length, `${niveau.id} ${exercice}`).toBeGreaterThanOrEqual(2);
+      expect(liste.every((c) => c.niveau === niveau.classe), `${niveau.id} ${exercice}`).toBe(true);
+    }
+  });
+
+  it("dit ce que chaque exercice travaille, et les échanges quand on regroupe", () => {
+    // Écrire le nombre d'une collection à regrouper : dénombrer, et la valeur des chiffres au CP…
+    expect(intitules(proposees({ niveau: "cp-59", exercice: "ecrire", aRegrouper: true })))
+      .toEqual(["CP Connaitre et utiliser diverses", "CP Comparer et dénombrer des", "CP Connaitre la valeur des"]);
+    // … la relation entre les unités au CE1 et au CE2.
+    expect(intitules(proposees({ niveau: "ce1", exercice: "ecrire", aRegrouper: true })))
+      .toEqual(["CE1 Connaitre et utiliser diverses", "CE1 Dénombrer des collections en", "CE1 Connaitre et utiliser la"]);
+    expect(intitules(proposees({ niveau: "ce2", exercice: "facons", aRegrouper: false })))
+      .toEqual(["CE2 Connaitre et utiliser diverses", "CE2 Construire des collections de", "CE2 Connaitre et utiliser les"]);
+    // Grouper des cubes en vrac pour les compter, c'est dénombrer.
+    expect(intitules(proposees({ niveau: "cp-59", exercice: "grouper" })))
+      .toEqual(["CP Connaitre et utiliser diverses", "CP Comparer et dénombrer des"]);
+  });
+
+  it("donne, à la classe choisie, l'équivalent de ce qu'on avait retenu à une autre", () => {
+    // Une compétence du CE1 retenue pour l'atelier : au CP, c'est celle du CP qu'on propose.
+    const duCe1 = proposees({ niveau: "ce1", exercice: "dessiner", aRegrouper: false })[1];
+    expect(duCe1.niveau).toBe("CE1");
+    const auCp = proposees({ niveau: "cp-19", exercice: "ecrire", aRegrouper: false }, [duCe1]);
+    expect(intitules(auCp)).toEqual(["CP Connaitre et utiliser diverses", "CP Comparer et dénombrer des", "CP Construire des collections de"]);
+    // Ce qui n'a pas d'équivalent ne s'invente pas.
+    const ailleurs = { ...duCe1, competenceTitre: "Résoudre des problèmes en utilisant des nombres." };
+    expect(proposees({ niveau: "cp-19", exercice: "ecrire", aRegrouper: false }, [ailleurs])).toHaveLength(2);
+  });
+
+  it("ne propose rien sans référentiel actif", () => {
+    expect(competencesProposees([], r())).toEqual([]);
+    expect(competencesProposees([referentiel(false)], r())).toEqual([]);
   });
 });

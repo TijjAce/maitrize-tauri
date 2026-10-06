@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   basculerCompetence, cleDesCompetences, ecrireCompetencesAtelier, lireCompetencesAtelier,
   memeCompetence,
-  competencesParObjectif, objectifsDesAteliers, unionDesCompetences,
+  competencesParObjectif, objectifsDesAteliers, propositionsDesAteliers, unionDesCompetences,
 } from "./ateliersCompetences";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 
@@ -93,6 +93,28 @@ describe("les compétences par objectif", () => {
     objectifsDesAteliers.publier("martiniere", []);
     expect(objectifsDesAteliers.lire("martiniere")).toEqual([]);
     expect(appels).toBe(2);
+    off();
+  });
+
+  it("gardent ce qu'un atelier propose pour l'objectif à l'écran, sans prévenir pour rien", () => {
+    let appels = 0;
+    const off = propositionsDesAteliers.abonner(() => { appels++; });
+    propositionsDesAteliers.publier("cubes", "CP", [comp()]);
+    // Les mêmes compétences, retrouvées une seconde fois dans le référentiel : rien n'a changé.
+    propositionsDesAteliers.publier("cubes", "CP", [comp({ id: "autre" })]);
+    expect(appels).toBe(1);
+    expect(propositionsDesAteliers.lire("cubes", "CP").map((c) => c.competenceRefId)).toEqual(["c1"]);
+    // Une proposition pour le CP ne vaut pas pour le CE1.
+    expect(propositionsDesAteliers.lire("cubes", "CE1")).toEqual([]);
+    expect(propositionsDesAteliers.lire("tri")).toEqual([]);
+    propositionsDesAteliers.publier("cubes", "CE1", [comp({ competenceRefId: "c2", niveau: "CE1" })]);
+    expect(propositionsDesAteliers.lire("cubes", "CP")).toEqual([]);
+    expect(appels).toBe(2);
+    propositionsDesAteliers.publier("cubes", "", []);
+    expect(propositionsDesAteliers.lire("cubes", "CE1")).toEqual([]);
+    expect(appels).toBe(3);
+    propositionsDesAteliers.publier("cubes", "", []);
+    expect(appels).toBe(3);
     off();
   });
 });
