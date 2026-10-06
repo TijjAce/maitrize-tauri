@@ -16,7 +16,7 @@ import { normaliser, PREFIXE_COULEUR } from "./dossiers";
 import { versHtml } from "./texteRiche";
 import { lireVideos } from "./videos";
 import { htmlDeLaSequence } from "./sequenceHtml";
-import { infosDuJeu, jeuxCites, sansMarqueurs, STYLE_REGLES } from "./jeuxCites";
+import { infosDuJeu, jeuxCites, regleEcrite, sansMarqueurs, STYLE_REGLES } from "./jeuxCites";
 
 /** Change quand la forme des fichiers écrits change : ils sont alors tous réécrits. */
 const VERSION = "1";
@@ -298,7 +298,7 @@ export function planDeCopie(d: DonneesBureau, plateforme: Plateforme): PlanDeCop
     fiche(j.id, j.dateCreation, j.dossier, j.titre, "Jeu", () => pageDeFiche(j.titre.trim() || "Sans titre", ["Jeu", j.typeJeu].filter(Boolean).join(" · "), j.imageNom, [
       ligneDeFiche("Joueurs", joueurs), ligneDeFiche("Durée", j.duree ? `${j.duree} min` : ""),
       ligneDeFiche("Dès", j.ageMin ? `${j.ageMin} ans` : ""), ligneDeFiche("Rangé", j.rangement),
-    ], [blocDeFiche("Ce que le jeu travaille", j.competences), blocDeFiche("Règle", j.regles)]),
+    ], [blocDeFiche("Ce que le jeu travaille", j.competences), blocDeFiche("Règle", regleEcrite(j.regles))]),
     { ...j, dossier: "" });
   }
   for (const a of ateliers) {

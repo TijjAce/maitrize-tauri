@@ -2,7 +2,7 @@ import React from "react";
 import { api, Jeu } from "../api";
 import { useAsync } from "./ui";
 import { JeuForm } from "./JeuForm";
-import { infosDuJeu, jeuxCites } from "../jeuxCites";
+import { infosDuJeu, jeuxCites, regleEcrite } from "../jeuxCites";
 import { masqueJeu } from "../journalMasques";
 import { CaseImpression } from "./MasquesDuJournal";
 
@@ -44,7 +44,7 @@ function RegleDuJeu({ jeu, onModifier, masque = false, onMasquer }: {
 }) {
   const [replie, setReplie] = React.useState(() => replies.has(jeu.id));
   const [entiere, setEntiere] = React.useState(false);
-  const regle = jeu.regles.trim();
+  const regle = regleEcrite(jeu.regles);
   const longue = regle.split("\n").length > 4 || regle.length > 320;
   const basculer = () => {
     const suite = !replie;
