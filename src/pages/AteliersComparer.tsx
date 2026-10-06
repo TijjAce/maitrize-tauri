@@ -36,7 +36,7 @@ function piegesDe(niv: Niveau): string {
 }
 
 export function ComparerTab() {
-  const [brut, maj] = useReglages<ReglagesComparer>(ATELIER, REGLAGES_COMPARER);
+  const [brut, maj] = useReglages<ReglagesComparer & { jusqua?: number }>(ATELIER, REGLAGES_COMPARER);
   const r = React.useMemo(() => reglagesComparerSurs(brut), [brut]);
   const niv = niveauParId(r.niveau);
   const [graine, setGraine] = React.useState(graineAuHasard);
@@ -50,7 +50,7 @@ export function ComparerTab() {
   const changerDeNiveau = (id: IdNiveau) => {
     const suivant = niveauParId(id);
     const gardees = r.formes.filter((f) => suivant.formes.includes(f));
-    maj({ niveau: id, formes: gardees.length >= 2 ? gardees : suivant.parDefaut });
+    maj({ niveau: id, formes: gardees.length >= 2 ? gardees : suivant.parDefaut, jusqua: undefined });
   };
   const signes = avecLesSignes(niv);
   const pieges = piegesDe(niv);
