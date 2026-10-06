@@ -160,7 +160,7 @@ const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[]
       { id: "nombres", nom: "Cartes des nombres", icone: "🔢", cycles: "Cycles 1 et 2",
         quoi: "Chiffre, constellation, boîte de dix, mot : le même nombre sous toutes ses formes." },
       { id: "cubes", nom: "Nombres en cubes", icone: "🧱", cycles: "Cycle 2",
-        quoi: "Unités, barres de dix, plaques de cent : lire les cubes et écrire le nombre, ou l'inverse." },
+        quoi: "Cubes, barres de dix, plaques de cent : lire les cubes et écrire le nombre, grouper par dix, faire un nombre de plusieurs façons — du CP au CE2, avec la séquence du guide CP." },
       { id: "comparer", nom: "Comparer les nombres", icone: "⚖️", cycles: "Cycle 2",
         quoi: "Des cartes de nombres sous plusieurs formes et les signes <, > et = : la bataille, la file des nombres, le nombre caché — et la feuille de jeu." },
       { id: "calcul", nom: "Cartes de calcul", icone: "🃏", cycles: "Cycles 2 et 3",

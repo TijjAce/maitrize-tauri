@@ -171,6 +171,11 @@ describe("la démarche que la compétence appelle", () => {
     expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Comparer, encadrer, intercaler des nombres entiers en utilisant les symboles =, < et >.")).toBe("comparer-nombres-cp");
     expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Ordonner des nombres dans l'ordre croissant ou décroissant.")).toBe("comparer-nombres-cp");
     expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Comparer des fractions de même dénominateur", "Cycle 3")).not.toBe("comparer-nombres-cp");
+    // Dénombrer en groupant par dix, passer d'une représentation à l'autre : le chemin du guide CP, au cycle 2.
+    expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Connaitre et utiliser diverses représentations d'un nombre et passer de l'une à l'autre.")).toBe("numeration-dizaine-cp");
+    expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Comparer et dénombrer des collections en les organisant.")).toBe("numeration-dizaine-cp");
+    expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Connaitre et utiliser les relations entre les unités de numération.")).toBe("numeration-dizaine-cp");
+    expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Connaître les unités de numération des grands nombres", "Cycle 3")).not.toBe("numeration-dizaine-cp");
     expect(sug("Mathématiques", "Espace et géométrie", "Reconnaître un carré")).toBe("geometrie-grandeurs");
     expect(sug("Mathématiques", "Organisation et gestion de données", "Lire un tableau")).toBe("problemes");
     expect(sug("Mathématiques", "La proportionnalité", "Reconnaître une situation de proportionnalité", "Cycle 3")).toBe("problemes");
