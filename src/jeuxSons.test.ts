@@ -151,9 +151,9 @@ describe("la grille de fluence", () => {
     const g = grilleFluence({ ...REGLAGES_FLUENCE, son: "p2-ch", contenu: "mots", mesMots: "chat, chapeau de sorcier, citrouille, chou" }, 3);
     expect(g.miens).toEqual(["chat", "chou"]);
     expect(g.lignes.flat()).toEqual(expect.arrayContaining(["chat", "chou"]));
-    // citrouille n'a pas de ch : elle attend sa semaine sans rien dire ; le chapeau, lui, attend eau, c = [s]…
-    expect(g.enAttente.map((a) => a.mot)).toEqual(["chapeau de sorcier"]);
-    expect(g.enAttente[0].manque.map((m) => m.libelle)).toEqual(expect.arrayContaining(["eau", "c = [s]", "i = [j]", "er final"]));
+    // citrouille n'a pas de ch : elle attend sa semaine sans rien dire ; le chapeau, lui, attend p et eau.
+    expect(g.enAttente.map((a) => a.mot)).toEqual(["chapeau"]);
+    expect(g.enAttente[0].manque.map((m) => m.libelle)).toEqual(["p", "eau"]);
     const html = htmlFluence(g, REGLAGES_FLUENCE);
     expect(html).toContain("Grille de fluence — ch [ʃ]");
     expect(html).toContain("CP, période 2 — consonnes fricatives 2");
