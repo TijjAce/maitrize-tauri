@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { nouveauJeu, type Jeu } from "./api";
-import { infosDuJeu, jeuxCites, motsCompares, nomSousLeCurseur, questionRegle, reglesImprimees, texteSimple } from "./jeuxCites";
+import {
+  CANEVAS_REGLE, LIGNES_DU_CANEVAS, infosDuJeu, jeuxCites, motsCompares, nomSousLeCurseur, questionRegle, regleEcrite, reglesImprimees, texteSimple,
+} from "./jeuxCites";
 
 const jeu = (id: string, titre: string, regles = "", p: Partial<Jeu> = {}): Jeu => ({ ...nouveauJeu(), id, titre, regles, ...p });
 const titres = (jeux: Jeu[]) => jeux.map((j) => j.titre);
@@ -89,11 +91,42 @@ describe("règles à l'impression", () => {
   });
 });
 
+describe("le canevas d'une règle", () => {
+  it("propose quatre lignes à compléter après les deux-points", () => {
+    expect(CANEVAS_REGLE.split("\n")).toEqual([
+      "- Dans le jeu il y a : ", "- Le but du jeu consiste à : ", "- Pour gagner à chaque manche, il faut : ",
+      "- Le déroulement d'une partie est le suivant : ",
+    ]);
+  });
+
+  it("ne s'affiche ni ne s'imprime tant qu'on ne l'a pas complété", () => {
+    expect(regleEcrite(CANEVAS_REGLE)).toBe("");
+    expect(regleEcrite(`${CANEVAS_REGLE}\n\n`)).toBe("");
+    expect(reglesImprimees([jeu("sk", "Skyjo", CANEVAS_REGLE)])).toBe("");
+  });
+
+  it("garde les lignes complétées, et le titre des étapes écrites dessous", () => {
+    const regle = CANEVAS_REGLE.replace("il y a : ", "il y a : 150 cartes")
+      .replace("est le suivant : ", "est le suivant :\n1. Chacun retourne deux cartes.\n2. À son tour, on pioche.");
+    const ecrite = "- Dans le jeu il y a : 150 cartes\n- Le déroulement d'une partie est le suivant :\n1. Chacun retourne deux cartes.\n2. À son tour, on pioche.";
+    expect(regleEcrite(regle)).toBe(ecrite);
+    expect(reglesImprimees([jeu("sk", "Skyjo", regle)])).toContain("150 cartes\n- Le déroulement");
+    expect(reglesImprimees([jeu("sk", "Skyjo", regle)])).not.toContain("Le but du jeu");
+  });
+
+  it("laisse telle quelle une règle écrite librement", () => {
+    expect(regleEcrite("Retourner 2 cartes.\n\nLe plus petit total gagne.")).toBe("Retourner 2 cartes.\n\nLe plus petit total gagne.");
+    // Une phrase qui commence comme le canevas, mais complétée, reste.
+    expect(regleEcrite("Dans le jeu il y a 52 cartes.")).toBe("Dans le jeu il y a 52 cartes.");
+  });
+});
+
 describe("règle cherchée en ligne", () => {
-  it("ne demande que le nom du jeu", () => {
+  it("ne demande que le nom du jeu, et la règle dans les lignes du canevas", () => {
     const q = questionRegle("  Skyjo ");
     expect(q).toContain("« Skyjo »");
     expect(q).not.toMatch(/élève|prénom/i);
+    for (const l of LIGNES_DU_CANEVAS) expect(q).toContain(`« - ${l} : »`);
   });
 
   it("rend une réponse mise en forme en texte simple", () => {

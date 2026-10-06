@@ -5,7 +5,7 @@ import { Modal, Field, Input, Textarea, Select, ColorPicker } from "./ui";
 import { FichierImg } from "./Deroulement";
 import { fileToBase64 } from "./SeanceParts";
 import { toast } from "./Toaster";
-import { questionRegle, texteSimple } from "../jeuxCites";
+import { CANEVAS_REGLE, questionRegle, regleEcrite, texteSimple } from "../jeuxCites";
 import { ChoixCompetencesBo } from "./ChoixCompetencesBo";
 
 /** Un jeu de la ludothèque, à créer ou à modifier — depuis la ludothèque ou le cahier journal. */
@@ -15,7 +15,8 @@ export function JeuForm({ j, nouveau = !j.titre, onClose, onSaved }: {
   nouveau?: boolean;
   onClose: () => void; onSaved: (jeu: Jeu) => void;
 }) {
-  const [v, setV] = React.useState<Jeu>(j);
+  // Une règle vide s'ouvre sur le canevas : ce qu'il y a dans le jeu, le but, comment gagner une manche, le déroulement.
+  const [v, setV] = React.useState<Jeu>(() => ({ ...j, regles: j.regles.trim() ? j.regles : CANEVAS_REGLE }));
   const up = (p: Partial<Jeu>) => setV((x) => ({ ...x, ...p }));
 
   // Le maximum ne peut pas passer sous le minimum, et inversement : sinon le
@@ -33,7 +34,8 @@ export function JeuForm({ j, nouveau = !j.titre, onClose, onSaved }: {
       const r = await api.mistralRechercheWeb(questionRegle(v.titre));
       const regle = texteSimple(r.texte);
       if (!regle) { toast(`Aucune règle trouvée pour « ${v.titre.trim()} ».`, { icone: "🔎" }); return; }
-      setV((x) => ({ ...x, regles: x.regles.trim() ? `${x.regles.trim()}\n\n${regle}` : regle }));
+      // Le canevas encore vide laisse sa place à la règle trouvée.
+      setV((x) => ({ ...x, regles: regleEcrite(x.regles) ? `${x.regles.trim()}\n\n${regle}` : regle }));
       setSources(r.sources);
       toast("Règle ajoutée : relisez-la avant d'enregistrer.", { icone: "✨" });
     } catch (e) {
@@ -47,7 +49,8 @@ export function JeuForm({ j, nouveau = !j.titre, onClose, onSaved }: {
   const enregistrer = async () => {
     setEnregistrement(true);
     try {
-      onSaved(await api.jeuSave(v));
+      // Un canevas laissé tel quel ne s'enregistre pas : le jeu reste sans règle.
+      onSaved(await api.jeuSave({ ...v, regles: regleEcrite(v.regles) ? v.regles.trim() : "" }));
     } catch (e) {
       toast("Jeu non enregistré : " + texteErreur(e), { icone: "⚠️", duree: 6000 });
       setEnregistrement(false);
