@@ -245,7 +245,7 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
                 📄 Les feuilles viennent {(() => {
                   const ateliers = [...new Set(plan.feuilles.map((f) => nomDeLAtelier(f.atelier)))];
                   return ateliers.length > 1 ? `des ateliers ${ateliers.join(" et ")}` : `de l'atelier ${ateliers[0]}`;
-                })()}, aux nombres du {ctx.classe}
+                })()}, pour le {ctx.classe}
                 {ctx.classe === "CP" ? `, en période ${ctx.periode}` : ""} ; chaque séance reçoit aussi la note de son matériel. Décochez ce que vous ne voulez pas.
               </div>
             )}
