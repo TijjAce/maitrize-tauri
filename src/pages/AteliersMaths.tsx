@@ -15,7 +15,6 @@ import {
   groupementsDuNiveau, htmlCubes, niveauCubes, ordreHabituel, ordreMelange, reglagesCubesSurs, type AnciensReglagesCubes, type EcritureNombre,
   type ExerciceCubes, type IdNiveauCubes, type ReglagesCubes,
 } from "../cubesNumeration";
-import { SequenceDesCubes } from "../components/SequenceDesCubes";
 import { competencesProposees } from "../sequenceCubes";
 import {
   REGLAGES_ARBRE, REGLAGES_CALCUL, REGLAGES_FRACTIONS, REGLAGES_NOMBRES, REGLAGES_OIE, REPRESENTATIONS, STYLE_JEUX_MATHS,
@@ -126,11 +125,9 @@ export function CubesTab() {
   const r = React.useMemo(() => reglagesCubesSurs(brut), [brut]);
   const niv = niveauCubes(r.niveau);
   const [graine, setGraine] = React.useState(graineAuHasard);
-  const [enSequence, setEnSequence] = React.useState(false);
   // Ce que l'atelier travaille se règle classe par classe : au CP, des compétences du CP.
   React.useEffect(() => { objectifsDesAteliers.publier("cubes", [{ id: niv.classe, libelle: niv.classe }]); }, [niv.classe]);
   React.useEffect(() => () => { objectifsDesAteliers.publier("cubes", []); propositionsDesAteliers.publier("cubes", "", []); }, []);
-  const [retenues] = useCompetencesAtelier("cubes", niv.classe);
   // Ce qu'on avait retenu sans classe, ou pour une autre classe : la proposition en donne l'équivalent à celle-ci.
   const [sansClasse] = useCompetencesAtelier("cubes");
   const parClasse = useCompetencesParObjectif("cubes");
@@ -221,13 +218,9 @@ export function CubesTab() {
         </Field>
         <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("cubes", r.titre.trim() || REGLAGES_CUBES.titre, html, style)}
           onBureau={() => bureau("cubes", r.titre.trim() || REGLAGES_CUBES.titre, html, style)} />
-        <button type="button" className="btn sm" style={{ marginTop: 8 }} onClick={() => setEnSequence(true)}
-          title="La séquence d'après le guide CP et le programme, en sept séances, aux nombres de ce niveau, avec les feuilles de cet atelier rangées dans les séances">
-          📚 Créer une séquence avec cet atelier
-        </button>
-        {enSequence && (
-          <SequenceDesCubes reglages={r} competences={retenues.length ? retenues : proposees} proposees={!retenues.length} onClose={() => setEnSequence(false)} />
-        )}
+        <p className="meta" style={{ fontSize: 12, lineHeight: 1.45, margin: "8px 0 0" }}>
+          📚 Une séquence part de sa compétence : Plan de travail › Nouvelle séquence, puis la compétence visée — la séquence vient alors piocher ici ses feuilles, aux nombres de sa classe.
+        </p>
       </>}
       droite={<ApercuFeuille html={html} style={style} />}
     />

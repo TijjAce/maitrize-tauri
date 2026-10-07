@@ -6,6 +6,11 @@ import { FichierImg } from "./Deroulement";
 import { PhotoTelephone } from "./PhotoTelephone";
 import { demarcheDe, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre } from "../demarches";
 import { sequencesParCompetence, titresVisant } from "../sequencesVisees";
+import { ateliersRattaches, classeDe, feuilleRattachee, planDesFeuilles, type ContexteFeuilles, type FeuilleAFabriquer } from "../feuillesDesSequences";
+import { nomDeLAtelier } from "../catalogueAteliers";
+import { poserDansUneSeance } from "../impressionAtelier";
+import { graineAuHasard } from "../hasard";
+import { toast } from "./Toaster";
 
 // Fiche d'une séquence : titre, période, compétence visée, objectifs, vignette,
 // vidéo. Elle vivait dans l'ancien onglet Séquences et avait disparu avec lui :
@@ -32,7 +37,7 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
   const [cadre, setCadre] = React.useState(() => {
     try {
       const c = sequence.competenceVisee ? (JSON.parse(sequence.competenceVisee) as CompetenceSelectionnee) : null;
-      return c ? demarcheSuggeree(c, c.referentielNom).id : "";
+      return c ? demarcheSuggeree(c, c.referentielNom, sequence.periode).id : "";
     } catch { return ""; }
   });
   const [suivi, setSuivi] = React.useState<"" | "oui" | "non">("");
@@ -42,6 +47,38 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
   const demarche = demarcheDe(cadre);
   const proposeLeCadre = !!comp && !!demarche && !!existantes && (nbExistantes === 0 || ajouterCadre);
   const poseLesSeances = proposeLeCadre && suivi === "oui" && !!demarche;
+
+  // Les feuilles : la démarche pioche dans les ateliers de Fabriquer, aux nombres de la classe de la compétence et de la
+  // période de la séquence. Chacune se décoche ; les jeux qu'on a rattachés soi-même à la compétence s'y ajoutent.
+  const classe = classeDe(comp?.niveau);
+  const ctx: ContexteFeuilles | null = classe ? { classe, periode: s.periode } : null;
+  const plan = React.useMemo(() => (demarche && ctx ? planDesFeuilles(demarche.id, ctx) : null),
+    [demarche?.id, ctx?.classe, ctx?.periode]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [retirees, setRetirees] = React.useState<ReadonlySet<number>>(() => new Set());
+  React.useEffect(() => { setRetirees(new Set()); }, [cadre]);
+  const basculer = (k: number) => setRetirees((avant) => {
+    const suite = new Set(avant);
+    if (suite.has(k)) suite.delete(k); else suite.add(k);
+    return suite;
+  });
+  const { data: reglages } = useAsync(() => api.settingsAll(), []);
+  const rattaches = React.useMemo(() => (comp && reglages
+    ? ateliersRattaches(reglages, comp).filter((a) => !plan?.feuilles.some((f) => f.atelier === a.atelier))
+    : []), [reglages, s.competenceVisee, plan]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Un jeu rattaché va, par défaut, dans la dernière séance avant l'évaluation : celle où l'on s'entraîne et réinvestit.
+  const derniere = demarche ? demarche.seances.length - 1 : 0;
+  const seanceParDefaut = demarche && /évaluation/i.test(demarche.seances[derniere]?.titre ?? "") ? Math.max(0, derniere - 1) : derniere;
+  const [ajouts, setAjouts] = React.useState<Record<string, number>>({});
+  const seanceDuJeu = (atelier: string) => ajouts[atelier] ?? seanceParDefaut;
+  const aFabriquer: FeuilleAFabriquer[] = [
+    ...(plan?.feuilles.filter((_, k) => !retirees.has(k)) ?? []),
+    ...rattaches.flatMap((a) => {
+      const f = seanceDuJeu(a.atelier) >= 0 ? feuilleRattachee(a.atelier, seanceDuJeu(a.atelier), ctx) : null;
+      return f ? [f] : [];
+    }),
+  ];
+  const [progres, setProgres] = React.useState("");
+
   const save = async () => {
     setEnCours(true);
     try {
@@ -51,25 +88,49 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
       };
       await api.sequenceSave(propre);
       if (poseLesSeances) {
-        // À la suite des séances qui existent : numérotées après elles.
-        for (const seance of seancesDuCadre(demarche, propre.id, nbExistantes + 1)) await api.seanceSave(seance);
+        // À la suite des séances qui existent : numérotées après elles, avec la note du matériel et la compétence visée.
+        const seances = seancesDuCadre(demarche, propre.id, nbExistantes + 1).map((sc, i) => ({
+          ...sc, materiel: plan?.materiel[i] || sc.materiel, competences: comp ? JSON.stringify([comp]) : sc.competences,
+        }));
+        for (const seance of seances) await api.seanceSave(seance);
+        // Puis les feuilles, chacune dans sa séance, en PDF, avec la compétence de la séquence en tête.
+        let faites = 0;
+        for (const f of aFabriquer) {
+          const seance = seances[f.seance];
+          if (!seance) continue;
+          setProgres(`Feuilles : ${faites + 1} sur ${aFabriquer.length}…`);
+          try {
+            const { html, style } = f.fabriquer(graineAuHasard());
+            await poserDansUneSeance(f.atelier, f.titre, html, style, seance.id, propre.id, { competences: comp ? [comp] : undefined });
+            faites++;
+          } catch (e) {
+            toast(`« ${f.titre} » n'a pas pu être fabriquée : ${String(e)}`, { icone: "⚠️" });
+          }
+        }
+        if (aFabriquer.length) {
+          toast(`${seances.length} séances créées, ${faites} feuille${faites > 1 ? "s" : ""} rangée${faites > 1 ? "s" : ""} dans leurs séances.`, { icone: "📚" });
+        }
       }
       onSaved(propre);
-    } finally { setEnCours(false); }
+    } finally { setEnCours(false); setProgres(""); }
   };
 
   const choisir = (c: CompetenceSelectionnee, ref: Referentiel) => {
     up({ competenceVisee: JSON.stringify(c), matiere: c.domaineTitre, cycle: ref.cycle || s.cycle, couleur: couleurPourMatiere(c.domaineTitre) });
     // La compétence appelle un déroulement : on le propose, on ne l'impose pas.
-    setCadre(demarcheSuggeree(c, ref.nom).id); setSuivi("");
+    setCadre(demarcheSuggeree(c, ref.nom, s.periode).id); setSuivi("");
   };
+  // Au CP, la période choisit la séquence du livret : jusqu'à 59 en période 2, jusqu'à 100 dès la période 3.
+  React.useEffect(() => {
+    if (comp && /^nombres-livret-cp-/.test(cadre)) setCadre(demarcheSuggeree(comp, comp.referentielNom, s.periode).id);
+  }, [s.periode]); // eslint-disable-line react-hooks/exhaustive-deps
   const effacer = () => { up({ competenceVisee: "", matiere: "", cycle: "", couleur: "blue" }); setCadre(""); setSuivi(""); };
 
   return (
     <Modal large titre={sequence.titre && sequence.titre !== "Nouvelle séquence" ? "Modifier la séquence" : "Nouvelle séquence"} onClose={onClose}
       footer={<>
         <button className="btn" onClick={onClose}>Annuler</button>
-        <button className="btn primary" onClick={save} disabled={!s.titre.trim() || enCours}>Enregistrer</button>
+        <button className="btn primary" onClick={save} disabled={!s.titre.trim() || enCours}>{progres || (enCours ? "Enregistrement…" : "Enregistrer")}</button>
       </>}>
       <Field label="Titre">
         <Input value={s.titre} autoFocus onChange={(e) => up({ titre: e.target.value })}
@@ -125,9 +186,48 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
             <div className="meta" style={{ fontSize: 12, lineHeight: 1.4, opacity: .85 }}>📖 {demarche.source}</div>
             <ol className="deroulement-seances">
               {demarche.seances.map((sc, i) => (
-                <li key={i}><b>{sc.titre}</b> <span className="meta">· {sc.duree} min · {sc.phases.map((p) => p.phase.replace(/^Temps \d – /, "")).join(" › ")}</span></li>
+                <li key={i}>
+                  <b>{sc.titre}</b> <span className="meta">· {sc.duree} min · {sc.phases.map((p) => p.phase.replace(/^Temps \d – /, "")).join(" › ")}</span>
+                  {plan && plan.feuilles.some((f) => f.seance === i) && (
+                    <div className="deroulement-feuilles">
+                      {plan.feuilles.map((f, k) => (f.seance !== i ? null : (
+                        <label key={k} className={`chip${retirees.has(k) ? " ecartee" : ""}`} title={`Fabriquée par l'atelier ${nomDeLAtelier(f.atelier)}`}>
+                          <input type="checkbox" checked={!retirees.has(k)} onChange={() => basculer(k)} /> 📄 {f.titre}
+                        </label>
+                      )))}
+                    </div>
+                  )}
+                </li>
               ))}
             </ol>
+            {plan && ctx && (
+              <div className="meta" style={{ fontSize: 12.5, lineHeight: 1.5 }}>
+                📄 Les feuilles viennent {(() => {
+                  const ateliers = [...new Set(plan.feuilles.map((f) => nomDeLAtelier(f.atelier)))];
+                  return ateliers.length > 1 ? `des ateliers ${ateliers.join(" et ")}` : `de l'atelier ${ateliers[0]}`;
+                })()}, aux nombres du {ctx.classe}
+                {ctx.classe === "CP" ? `, en période ${ctx.periode}` : ""} ; chaque séance reçoit aussi la note de son matériel. Décochez ce que vous ne voulez pas.
+              </div>
+            )}
+            {rattaches.length > 0 && (
+              <div className="deroulement-rattaches">
+                <div className="meta" style={{ fontSize: 12.5 }}>🎲 Rattachés à cette compétence dans Fabriquer, « Ce que cela travaille » :</div>
+                {rattaches.map((a) => (a.fabricable ? (
+                  <div key={a.atelier} className="deroulement-rattache">
+                    <label><input type="checkbox" checked={seanceDuJeu(a.atelier) >= 0}
+                      onChange={(e) => setAjouts((avant) => ({ ...avant, [a.atelier]: e.target.checked ? seanceParDefaut : -1 }))} /> {nomDeLAtelier(a.atelier)}, tel que réglé</label>
+                    {seanceDuJeu(a.atelier) >= 0 && (
+                      <Select value={seanceDuJeu(a.atelier)} onChange={(e) => setAjouts((avant) => ({ ...avant, [a.atelier]: Number(e.target.value) }))}
+                        aria-label={`La séance qui reçoit ${nomDeLAtelier(a.atelier)}`} style={{ maxWidth: 300 }}>
+                        {demarche.seances.map((sc, i) => <option key={i} value={i}>Séance {i + 1} — {sc.titre}</option>)}
+                      </Select>
+                    )}
+                  </div>
+                ) : (
+                  <div key={a.atelier} className="meta" style={{ fontSize: 12.5 }}>{nomDeLAtelier(a.atelier)} — à imprimer depuis son atelier, la séance ouverte.</div>
+                )))}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
               <button type="button" className={`btn sm${suivi === "oui" ? " primary" : ""}`} onClick={() => setSuivi("oui")}>
                 ✓ Suivre ce déroulement

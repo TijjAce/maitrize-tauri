@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { NIVEAUX_CUBES, REGLAGES_CUBES, reglagesCubesSurs, type IdNiveauCubes, type ReglagesCubes } from "./cubesNumeration";
+import { NIVEAUX_CUBES, REGLAGES_CUBES, reglagesCubesSurs, type ReglagesCubes } from "./cubesNumeration";
 import {
-  DEMARCHE_CUBES, FEUILLES_DE_LA_SEQUENCE_CUBES, competencesProposees, htmlDeLaFeuilleCubes, materielDesSeancesCubes, objectifsDeLaSequenceCubes,
-  reglagesDeLaFeuille, titreDeLaSequenceCubes,
+  DEMARCHE_CUBES, FEUILLES_DE_LA_SEQUENCE_CUBES, competencesProposees, htmlDeLaFeuilleCubes, materielDesSeancesCubes,
+  reglagesDeLaFeuille,
 } from "./sequenceCubes";
 import { demarcheDe } from "./demarches";
 import type { Referentiel } from "./api";
@@ -60,10 +60,7 @@ describe("la séquence des nombres en cubes", () => {
     expect(htmlDeLaFeuilleCubes("affiche", r({ niveau: "cp-30" }), 1)).toContain("Ce qu'on retient — les nombres en cubes");
   });
 
-  it("dit ce qu'elle vise et ce qu'il faut préparer, aux nombres de la classe", () => {
-    const cas: [IdNiveauCubes, string][] = [["cp-100", "jusqu'à 100 (CP)"], ["ce1", "jusqu'à 1 000 (CE1)"], ["ce2", "jusqu'à 10 000 (CE2)"]];
-    for (const [niveau, fin] of cas) expect(titreDeLaSequenceCubes(r({ niveau })).replace(/\u202f/g, " ")).toContain(fin);
-    expect(objectifsDeLaSequenceCubes(r({ niveau: "ce1" }))).toContain("centaines, dizaines et unités");
+  it("dit ce qu'il faut préparer, aux nombres de la classe", () => {
     expect(materielDesSeancesCubes(r())).toHaveLength(7);
     expect(materielDesSeancesCubes(r({ niveau: "cp-30" }))[1]).toContain("cubes emboîtables d'une seule couleur");
     expect(materielDesSeancesCubes(r({ niveau: "ce1" }))[0]).toContain("plaques de cent");
