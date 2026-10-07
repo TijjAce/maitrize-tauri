@@ -1,5 +1,5 @@
 import React from "react";
-import { api, Texte, newId, nowIso, texteErreur } from "../api";
+import { api, Eleve, Texte, newId, nowIso, texteErreur } from "../api";
 import { Empty, Field, Input, Modal, Select, Textarea, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
@@ -11,10 +11,12 @@ import { nettoyerHtml } from "../texteRiche";
 import { avecImages } from "../components/imagesTexte";
 import { EtiquettesDos } from "../components/EtiquettesDos";
 import {
-  assembler, basculer, choixParDefaut, cochees, consigneIA, demandeIA, DOSSIER_GARDE, groupesDe,
-  htmlDeLaReponse, modeleLocal, optionsDe, REGLAGES, reglagesParDefaut, SORTES,
-  type InfosGarde, type SorteGarde,
+  assembler, basculer, choixParDefaut, CLE_META, cochees, consigneIA, demandeIA, DOSSIER_GARDE, estUnePageDeGarde, exemplaires, groupesDe,
+  htmlDeLaReponse, lireMeta, modeleLocal, optionsDe, pourDesEleves, REGLAGES, reglagesParDefaut, rienPourLIA, SORTES, SORTES_DU_CHOIX, STYLE_EXEMPLAIRES,
+  type InfosGarde, type MetaGarde, type SorteGarde,
 } from "../pagesDeGarde";
+import { chargerVacances, periodesDeLAnnee } from "../vacances";
+import { isoJour } from "../dates";
 
 // ── Organisation → Pages de garde ─────────────────────────────────────────
 //
@@ -24,17 +26,26 @@ import {
 // le lui demande. Chacun est un texte mis en forme, enregistré tout seul,
 // rangé hors du plan de travail.
 
-/** Les réglages qui remplissent l'en-tête et la signature. */
+/** Les réglages qui remplissent l'en-tête et la signature ; les périodes de l'année, pour le cahier journal. */
 async function infosParDefaut(annee: string, sorte: SorteGarde): Promise<InfosGarde> {
   const r = await api.settingsAll().catch(() => ({} as Record<string, string>));
   const ime = r.typeStructure === "ime" || r["edt:mode"] === "ime";
+  const debut = Number(annee.slice(0, 4)) || new Date().getFullYear();
+  const periodes = periodesDeLAnnee(await chargerVacances(isoJour(new Date())).catch(() => []), debut);
   return {
     sorte, titre: SORTES.find((s) => s.id === sorte)!.titre, annee,
     ecole: r.ecole ?? "", enseignant: r.enseignantNom ?? "", fonction: r.enseignantFonction ?? "",
     telephone: r["etab:telephone"] ?? "", niveau: r.niveauClasse ?? "",
-    ime, choix: choixParDefaut(sorte, ime), reglages: reglagesParDefaut(sorte, ime), precisions: "",
+    ime, choix: choixParDefaut(sorte, ime), reglages: reglagesParDefaut(sorte, ime), precisions: "", periodes, eleves: [],
   };
 }
+
+/** Les élèves de la classe, par ordre alphabétique : ceux à qui l'on peut faire un exemplaire. */
+const elevesDeLaClasse = async (): Promise<Eleve[]> =>
+  (await api.elevesList().catch(() => [] as Eleve[])).filter((e) => e.present !== false && e.nom.trim())
+    .sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+
+const enregistrerMeta = (id: string, meta: MetaGarde) => api.settingSet(CLE_META(id), JSON.stringify(meta)).catch(() => {});
 
 export function PagesDeGardeTab({ annee }: { annee: string }) {
   const { data: textes, reload } = useAsync(() => api.textesList(), []);
@@ -54,6 +65,11 @@ export function PagesDeGardeTab({ annee }: { annee: string }) {
   /** Crée le document : le modèle tout de suite, le texte de l'IA si elle répond. */
   const creer = async (i: InfosGarde, avecIA: boolean) => {
     let contenu = modeleLocal(i);
+    // Un cahier journal sans devise ni souhait : tout s'écrit ici, l'IA n'a rien à rédiger.
+    if (avecIA && rienPourLIA(i)) {
+      avecIA = false;
+      toast("Rien à rédiger pour l'IA : les dates, la citation et les cadres s'écrivent tout seuls.", { icone: "ℹ️", duree: 6000 });
+    }
     if (avecIA) {
       try {
         const modele = await api.modeleActif();
@@ -71,15 +87,17 @@ export function PagesDeGardeTab({ annee }: { annee: string }) {
       dossier: DOSSIER_GARDE, dateCreation: nowIso(), dateModification: nowIso(),
     };
     await api.texteSave(t);
+    await enregistrerMeta(t.id, { sorte: i.sorte, eleves: pourDesEleves(i.sorte) ? i.eleves ?? [] : [] });
     setNouvelle(null);
     reload();
     setChoisie(t.id);
-    if (avecIA) toast("Relisez avant d'imprimer : ce document part aux familles.", { icone: "👀", duree: 7000 });
+    if (avecIA && i.sorte !== "journal") toast("Relisez avant d'imprimer : ce document part aux familles.", { icone: "👀", duree: 7000 });
   };
 
   const dupliquer = async (p: Texte) => {
     const t: Texte = { ...p, id: newId(), titre: `${p.titre} (copie)`, dateCreation: nowIso(), dateModification: nowIso() };
     await api.texteSave(t);
+    await enregistrerMeta(t.id, lireMeta(await api.settingGet(CLE_META(p.id)).catch(() => "")));
     reload();
     setChoisie(t.id);
   };
@@ -87,6 +105,7 @@ export function PagesDeGardeTab({ annee }: { annee: string }) {
   const supprimer = async (p: Texte) => {
     if (!(await confirmer(`Supprimer « ${p.titre} » ?`, { oui: "Supprimer", danger: true }))) return;
     await api.texteDelete(p.id);
+    await api.settingSet(CLE_META(p.id), "").catch(() => {});
     setChoisie("");
     reload();
   };
@@ -95,7 +114,7 @@ export function PagesDeGardeTab({ annee }: { annee: string }) {
     <div className="informations">
       <aside className="informations-liste" aria-label="Pages de garde">
         <button className="btn primary" style={{ width: "100%" }} onClick={(e) => openCtx(e, [
-          ...SORTES.map((s) => ({ label: s.libelle, icon: s.icone, onClick: () => { void ouvrirNouvelle(s.id); } })),
+          ...SORTES.map((s) => ({ label: s.id === "journal" ? "Page de garde de mon cahier journal" : s.libelle, icon: s.icone, onClick: () => { void ouvrirNouvelle(s.id); } })),
           { label: "Étiquettes de dos de classeur", icon: "🏷", sep: true, onClick: () => setDos(true) },
         ])}>
           ＋ Nouveau document
@@ -179,7 +198,7 @@ function PrecisionsDuDocument({ infos, onChange }: { infos: InfosGarde; onChange
   const utiles = (REGLAGES[infos.sorte] ?? []).filter((r) => choisies.some((o) => o.precise?.includes(r.id)));
   if (!utiles.length) return null;
   return (
-    <Field label="Précisions, pour tous les cahiers cochés">
+    <Field label={infos.sorte === "journal" ? "Précisions" : "Précisions, pour tous les cahiers cochés"}>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         {utiles.map((r) => (
           <label key={r.id} style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12, color: "var(--text-2)" }}>
@@ -200,8 +219,17 @@ function NouveauDocument({ infos, onChange, onClose, onCreer }: {
   infos: InfosGarde; onChange: (i: InfosGarde) => void; onClose: () => void;
   onCreer: (i: InfosGarde, avecIA: boolean) => Promise<void>;
 }) {
+  const { data: eleves } = useAsync(elevesDeLaClasse, []);
   const [occupe, setOccupe] = React.useState<"" | "modele" | "ia">("");
   const sorte = SORTES.find((s) => s.id === infos.sorte)!;
+  const changerDeSorte = (id: SorteGarde) => {
+    if (id === infos.sorte) return;
+    const nouvelle = SORTES.find((s) => s.id === id)!;
+    onChange({
+      ...infos, sorte: id, choix: choixParDefaut(id, infos.ime), reglages: reglagesParDefaut(id, infos.ime),
+      titre: infos.titre === sorte.titre ? nouvelle.titre : infos.titre,
+    });
+  };
   const lancer = async (avecIA: boolean) => {
     setOccupe(avecIA ? "ia" : "modele");
     try { await onCreer(infos, avecIA); } finally { setOccupe(""); }
@@ -219,17 +247,22 @@ function NouveauDocument({ infos, onChange, onClose, onCreer }: {
       </>}>
       <Field label="Sorte de document">
         <div className="seg" style={{ flexWrap: "wrap" }}>
-          {SORTES.map((s) => (
-            <button key={s.id} className={s.id === infos.sorte ? "active" : ""}
-              onClick={() => onChange({
-                ...infos, sorte: s.id, choix: choixParDefaut(s.id, infos.ime),
-                reglages: reglagesParDefaut(s.id, infos.ime),
-                titre: infos.titre === sorte.titre ? s.titre : infos.titre,
-              })}>
+          {SORTES_DU_CHOIX.map((id) => SORTES.find((s) => s.id === id)!).map((s) => (
+            <button key={s.id} className={s.id === infos.sorte || (s.id === "cahier" && infos.sorte === "journal") ? "active" : ""}
+              onClick={() => { if (!(s.id === "cahier" && infos.sorte === "journal")) changerDeSorte(s.id); }}>
               {s.icone} {s.libelle}
             </button>
           ))}
         </div>
+        {estUnePageDeGarde(infos.sorte) && (
+          <div className="seg" style={{ flexWrap: "wrap", marginTop: 6 }}>
+            {(["cahier", "journal"] as SorteGarde[]).map((id) => (
+              <button key={id} className={infos.sorte === id ? "active" : ""} onClick={() => changerDeSorte(id)}>
+                {id === "cahier" ? "📘 Le cahier d'un élève" : "📒 Mon cahier journal"}
+              </button>
+            ))}
+          </div>
+        )}
         <div style={{ fontSize: 12.5, color: "var(--text-2)", marginTop: 4 }}>{sorte.aide}</div>
       </Field>
       <div className="row">
@@ -242,12 +275,19 @@ function NouveauDocument({ infos, onChange, onClose, onCreer }: {
       </div>
       <CasesDuDocument infos={infos} onChange={onChange} />
       <PrecisionsDuDocument infos={infos} onChange={onChange} />
+      {pourDesEleves(infos.sorte) && (
+        <ChoixDesEleves eleves={eleves} choisis={infos.eleves ?? []} onChange={(ids) => onChange({ ...infos, eleves: ids })}
+          aide={infos.sorte === "cahier"
+            ? "Chaque élève coché a sa page de garde, son nom écrit sur la ligne à compléter."
+            : "Chaque élève coché a son exemplaire, à son nom. Rien de coché : un document sans nom."} />
+      )}
       <Field label="À ajouter, en vos mots (facultatif)">
         <Textarea value={infos.precisions} rows={2}
           placeholder="ex. élèves non lecteurs, beaucoup de manipulation ; la piscine commence en janvier…"
           onChange={(e) => onChange({ ...infos, precisions: e.target.value })} />
       </Field>
       <div style={{ fontSize: 12.5, color: "var(--text-2)" }}>
+        {infos.sorte === "journal" && !(infos.periodes ?? []).length && "Les dates des périodes viendront du calendrier des vacances dès qu'il sera chargé : en attendant, les mois. "}
         L'en-tête et la signature viennent de vos réglages : {infos.ecole || "établissement à renseigner"}
         {infos.enseignant ? ` · ${infos.enseignant}` : ""}{infos.telephone ? ` · ${infos.telephone}` : ""}.
         L'IA n'écrit que le texte, et ne reçoit aucune information sur vos élèves.
@@ -256,15 +296,64 @@ function NouveauDocument({ infos, onChange, onClose, onCreer }: {
   );
 }
 
+/**
+ * Les élèves pour qui l'on fait le document : une case par élève de la classe.
+ * Leurs noms restent ici — ils s'écrivent sur les exemplaires, à l'impression.
+ */
+function ChoixDesEleves({ eleves, choisis, onChange, aide }: {
+  eleves: Eleve[] | null | undefined; choisis: string[]; onChange: (ids: string[]) => void; aide: string;
+}) {
+  const liste = eleves ?? [];
+  const presents = choisis.filter((id) => liste.some((e) => e.id === id));
+  return (
+    <Field label={`Pour quels élèves ? — ${presents.length} sur ${liste.length}`}>
+      {liste.length === 0
+        ? <div style={{ fontSize: 12.5, color: "var(--text-2)" }}>Aucun élève dans la classe : ajoutez-les dans « Élèves » pour faire un exemplaire à leur nom.</div>
+        : <>
+          <div className="garde-eleves">
+            {liste.map((e) => (
+              <label key={e.id} className={`garde-case${presents.includes(e.id) ? " cochee" : ""}`}>
+                <input type="checkbox" checked={presents.includes(e.id)} onChange={() => onChange(basculer(presents, e.id))} />
+                <span>{e.nom}</span>
+              </label>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
+            <button className="btn ghost sm" onClick={() => onChange(liste.map((e) => e.id))}>Tous</button>
+            <button className="btn ghost sm" onClick={() => onChange([])}>Aucun</button>
+            <span style={{ fontSize: 12, color: "var(--text-2)" }}>{aide} Les noms ne partent jamais vers l'IA.</span>
+          </div>
+        </>}
+    </Field>
+  );
+}
+
 function EditeurPage({ page, onEnregistre, onDupliquer, onSupprimer }: {
   page: Texte; onEnregistre: () => void; onDupliquer: () => void; onSupprimer: () => void;
 }) {
   const { titre, setTitre, contenu, setContenu, etat, sauver } = useTexteAutosave(page, onEnregistre);
+  const { data: eleves } = useAsync(elevesDeLaClasse, []);
+  const [meta, setMeta] = React.useState<MetaGarde | null>(null);
+  const [ouvert, setOuvert] = React.useState(false);
+  React.useEffect(() => {
+    let annule = false;
+    api.settingGet(CLE_META(page.id)).catch(() => "").then((b) => { if (!annule) setMeta(lireMeta(b)); });
+    return () => { annule = true; };
+  }, [page.id]);
+  const choisis = (meta?.eleves ?? []).filter((id) => (eleves ?? []).some((e) => e.id === id));
+  const avecEleves = !!meta && pourDesEleves(meta.sorte);
+  const choisir = (ids: string[]) => {
+    const m = { ...(meta ?? { eleves: [] }), eleves: ids };
+    setMeta(m);
+    void enregistrerMeta(page.id, m);
+  };
 
   const imprimer = async () => {
     await sauver();
-    printHTML(titre || "Document", await avecImages(nettoyerHtml(contenu)),
-      "h1 { font-size: 26px; margin-bottom: 18px; } p { font-size: 14px; } li { margin: 3px 0; }");
+    // Un exemplaire par élève coché, chacun à son nom et sur sa page ; sinon, le document seul.
+    const noms = avecEleves ? choisis.map((id) => (eleves ?? []).find((e) => e.id === id)!.nom) : [];
+    printHTML(titre || "Document", exemplaires(await avecImages(nettoyerHtml(contenu)), noms, meta?.sorte),
+      `h1 { font-size: 26px; margin-bottom: 18px; } p { font-size: 14px; } li { margin: 3px 0; } h2 { font-size: 22px; } ${STYLE_EXEMPLAIRES}`);
   };
 
   return (
@@ -273,14 +362,23 @@ function EditeurPage({ page, onEnregistre, onDupliquer, onSupprimer }: {
         <input className="input" value={titre} onChange={(e) => setTitre(e.target.value)} aria-label="Titre du document"
           style={{ flex: "1 1 260px", fontSize: 16, fontWeight: 700 }} />
         <span style={{ fontSize: 12, color: etat === "erreur" ? "var(--danger, #c0392b)" : "var(--text-2)" }}>{LIBELLE_ENREGISTREMENT[etat]}</span>
-        <button className="btn" onClick={imprimer}>🖨 Imprimer</button>
+        {avecEleves && (
+          <button className={`btn${ouvert ? " primary" : ""}`} onClick={() => setOuvert((o) => !o)} title="Les élèves pour qui ce document est fait">
+            👥 {choisis.length ? `${choisis.length} élève${choisis.length > 1 ? "s" : ""}` : "Pour quels élèves ?"}
+          </button>
+        )}
+        <button className="btn" onClick={imprimer}>🖨 {choisis.length && avecEleves ? `Imprimer ${choisis.length} exemplaire${choisis.length > 1 ? "s" : ""}` : "Imprimer"}</button>
         <button className="btn ghost" onClick={onDupliquer} title="Dupliquer">📑</button>
         <button className="btn ghost" onClick={onSupprimer} title="Supprimer" aria-label="Supprimer le document">🗑</button>
       </div>
+      {avecEleves && ouvert && (
+        <ChoixDesEleves eleves={eleves} choisis={choisis} onChange={choisir}
+          aide={meta?.sorte === "cahier" ? "Chaque élève coché a sa page de garde, son nom sur la ligne à compléter." : "Chaque élève coché a son exemplaire, à son nom."} />
+      )}
       <EditeurRiche valeur={page.contenu} onChange={setContenu} minHauteur="58vh"
         placeholder="Écrivez le document…" />
       <div style={{ fontSize: 12, color: "var(--text-2)" }}>
-        Relisez avant d'imprimer : ce document part aux familles.
+        {meta?.sorte === "journal" ? "Votre page de garde : imprimez-la et collez-la en tête de votre cahier journal." : "Relisez avant d'imprimer : ce document part aux familles."}
       </div>
     </div>
   );
