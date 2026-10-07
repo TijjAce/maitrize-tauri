@@ -4,7 +4,7 @@
 
 export const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres", "oeilDeLynx",
-  "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
+  "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "tri", "phrases", "trous", "motsMeles", "cursive",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "comparer", "calcul", "arbre", "posees", "fractions", "oie", "heure", "monnaie", "mesures", "geometrie", "solides", "deplacements", "donnees", "numeration",
   "carteMentale",
@@ -76,6 +76,8 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Mouche / mousse, chou / joue : les cartes du trésor et du téléphone." },
       { id: "fluence", nom: "Grille de fluence", icone: "⏱", cycles: "Cycles 2 et 3",
         quoi: "Syllabes, pseudo-mots et mots à lire en une minute, le score noté chaque jour — à l'étape choisie de la progression des guides CP et CE1." },
+      { id: "voixHaute", nom: "Lire à voix haute", icone: "🎙", cycles: "Cycle 2",
+        quoi: "Des phrases à préparer, codées ou à coder — liaisons, ponctuation et intonation, phrase sur plusieurs lignes, groupes de souffle —, la grille du binôme, le texte partition de la fable du CE2." },
       { id: "syllabaire", nom: "Syllabaire", icone: "🛗", cycles: "Cycle 2",
         quoi: "Le jeu de l'ascenseur : deux bandes qui glissent, la syllabe apparaît." },
       { id: "lettres", nom: "Les lettres", icone: "🔠", cycles: "Cycles 1 et 2",
