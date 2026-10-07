@@ -111,6 +111,8 @@ export interface Sequence {
   id: string; titre: string; matiere: string; cycle: string; objectifs: string;
   competences: string; competenceVisee: string; imageNom: string | null;
   couleur: string; dateCreation: string; periode: number; annee: string;
+  /** Le niveau pour lequel la séquence est pensée — « CP », « CE1 » ; avec la période, sa programmation. Vide : non précisé. */
+  niveau?: string;
   ratingEngagement: number; ratingFacilite: number; ratingApprentissage: number;
   ratingDateMaj: string | null; projetId: string | null; video: string;
   /** Chemin de rangement dans le plan de travail : « Français/Lecture ». */

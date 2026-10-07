@@ -801,6 +801,8 @@ pub(crate) fn migrate(conn: &Connection) {
     conn.execute("ALTER TABLE materiel_items ADD COLUMN coffre_json TEXT NOT NULL DEFAULT '[]'", []).ok();
     // Plan de travail : séquences et matériel se rangent dans les mêmes dossiers.
     conn.execute("ALTER TABLE sequences ADD COLUMN dossier TEXT NOT NULL DEFAULT ''", []).ok();
+    // La programmation d'une séquence : le niveau pour lequel elle est pensée, à côté de sa période.
+    conn.execute("ALTER TABLE sequences ADD COLUMN niveau TEXT NOT NULL DEFAULT ''", []).ok();
     // Réunions : le texte s'écrit en continu, et les résumés portent sur des
     // phrases, non plus sur des tranches de cinq minutes.
     conn.execute("ALTER TABLE reunions ADD COLUMN texte TEXT NOT NULL DEFAULT ''", []).ok();
