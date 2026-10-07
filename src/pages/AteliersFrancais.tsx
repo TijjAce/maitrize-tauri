@@ -4,6 +4,8 @@ import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { graineAuHasard } from "../hasard";
 import { Boutons, Coche, Colonnes, bureau, imprimer } from "./AteliersMaths";
+import { EXERCICES_GRAMMAIRE, REGLAGES_GRAMMAIRE, STYLE_GRAMMAIRE, htmlGrammaire, type ExerciceGrammaire } from "../grammaire";
+import { TEMPS, type Temps } from "../conjugaison";
 import { EXERCICES_ECRIRE, REGLAGES_ECRIRE, STYLE_ECRIRE, htmlEcrire, type ExerciceEcrire } from "../ecrire";
 import { EXERCICES_ORTHOGRAPHE, REGLAGES_ORTHOGRAPHE, STYLE_ORTHOGRAPHE, htmlOrthographe, type Classe, type ExerciceOrthographe, type ReglagesOrthographe } from "../orthographe";
 
@@ -99,6 +101,59 @@ export function EcrireTab() {
           onImprimer={() => imprimer("ecrire", titre, html, STYLE_ECRIRE)} onBureau={() => bureau("ecrire", titre, html, STYLE_ECRIRE)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_ECRIRE} />}
+    />
+  );
+}
+
+// ── Fabriquer › Lecture et écriture : grammaire et conjugaison ────────────
+
+export function GrammaireTab() {
+  const [r, maj] = useReglages("grammaire", REGLAGES_GRAMMAIRE);
+  const [graine, setGraine] = React.useState(graineAuHasard);
+  const html = React.useMemo(() => htmlGrammaire(r, graine), [r, graine]);
+  const libelle = EXERCICES_GRAMMAIRE.find((e) => e.id === r.exercice)?.libelle ?? "";
+  const titre = `Grammaire — ${libelle.toLowerCase()}`;
+  const familles = [...new Set(EXERCICES_GRAMMAIRE.map((e) => e.famille))];
+  const avecTemps = (r.exercice === "conjuguer" || r.exercice === "transformerTemps") && r.classe !== "CP";
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0 }}>Grammaire et conjugaison</h3>
+        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
+          La phrase et ses marqueurs, les types et les formes, les classes de mots, groupe sujet, verbe et compléments, les paroles rapportées ; la chaîne d'accords et l'accord du verbe ; les tableaux de conjugaison, changer le temps d'une phrase, l'infinitif — avec les exemples du programme et le corrigé.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
+          <Field label="Classe">
+            <Select value={r.classe} onChange={(e) => maj({ classe: e.target.value as Classe })}>
+              <option value="CP">CP</option><option value="CE1">CE1</option><option value="CE2">CE2</option>
+            </Select>
+          </Field>
+          <Field label="Exercice">
+            <Select value={r.exercice} onChange={(e) => maj({ exercice: e.target.value as ExerciceGrammaire })}>
+              {familles.map((f) => (
+                <optgroup key={f} label={f}>
+                  {EXERCICES_GRAMMAIRE.filter((e) => e.famille === f).map((e) => <option key={e.id} value={e.id}>{e.libelle}</option>)}
+                </optgroup>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        {avecTemps && (
+          <Field label="Le temps">
+            <Select value={r.temps} onChange={(e) => maj({ temps: e.target.value as Temps })}>
+              {TEMPS.map((t) => <option key={t.id} value={t.id}>{t.nom}</option>)}
+            </Select>
+          </Field>
+        )}
+        {r.exercice === "conjuguer" && r.classe !== "CP" && (
+          <Field label="Les verbes (séparés par des virgules)">
+            <Input value={r.verbes} placeholder="Vide : des verbes de la classe. Exemple : chanter, être, faire" onChange={(e) => maj({ verbes: e.target.value })} />
+          </Field>
+        )}
+        <Boutons onTirage={() => setGraine(graineAuHasard())}
+          onImprimer={() => imprimer("grammaire", titre, html, STYLE_GRAMMAIRE)} onBureau={() => bureau("grammaire", titre, html, STYLE_GRAMMAIRE)} />
+      </>}
+      droite={<ApercuFeuille html={html} style={STYLE_GRAMMAIRE} />}
     />
   );
 }
