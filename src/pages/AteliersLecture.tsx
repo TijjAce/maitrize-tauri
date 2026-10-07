@@ -11,6 +11,9 @@ import { EXERCICES_LECTEUR, REGLAGES_LECTEUR, STYLE_LECTEUR, htmlLecteur, type E
 
 // ── Fabriquer › Sons et lecture : lire à voix haute ───────────────────────
 
+/** « Les cartes « Je prends la parole » » → « les cartes « Je prends la parole » » : seule l'initiale change, les sigles restent. */
+const minusculeInitiale = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
+
 const borne = (v: string, min: number, max: number, defaut: number) => Math.max(min, Math.min(max, Math.round(Number(v)) || defaut));
 
 export function VoixHauteTab() {
@@ -65,7 +68,7 @@ export function ComprehensionTab() {
   const [graine, setGraine] = React.useState(graineAuHasard);
   const html = React.useMemo(() => htmlComprehension(r, graine), [r, graine]);
   const libelle = EXERCICES_COMPREHENSION.find((e) => e.id === r.exercice)?.libelle ?? "";
-  const titre = `Comprendre un texte — ${libelle.toLowerCase()}`;
+  const titre = `Comprendre un texte — ${minusculeInitiale(libelle)}`;
   // Les textes de la classe d'abord ; puis ceux des autres classes, pour qui en a besoin.
   const textes = [...TEXTES.filter((t) => t.classe === r.classe), ...TEXTES.filter((t) => t.classe !== r.classe)];
   const avecTexte = r.exercice !== "typesDeTextes";
@@ -122,7 +125,7 @@ export function LecteurTab() {
   const [graine, setGraine] = React.useState(graineAuHasard);
   const html = React.useMemo(() => htmlLecteur(r, graine), [r, graine]);
   const libelle = EXERCICES_LECTEUR.find((e) => e.id === r.exercice)?.libelle ?? "";
-  const titre = `Carnet de lecteur — ${libelle.toLowerCase()}`;
+  const titre = `Carnet de lecteur — ${minusculeInitiale(libelle)}`;
   return (
     <Colonnes
       gauche={<>

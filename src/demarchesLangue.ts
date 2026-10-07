@@ -393,7 +393,10 @@ const conjugaisonPlan = (temps: Temps) => (classe: ClasseC2): Plan => {
       tri(0, "temps"),
       gr(1, `Conjuguer ${tempsDe(temps).au}`, { exercice: "conjuguer", classe: c, temps, verbes: "chanter, jouer, manger" }),
       gr(2, `Être et avoir ${tempsDe(temps).au}`, { exercice: "conjuguer", classe: c, temps, verbes: c === "CE2" ? "être, avoir, faire, aller" : "être, avoir" }),
-      gr(3, `Changer le temps : ${TERMINAISONS[temps].nom}`, { exercice: "transformerTemps", classe: c, temps: temps === "present" ? "futur" : temps }),
+      // Au présent, on change la personne ; aux autres temps, on passe du présent au temps étudié.
+      temps === "present"
+        ? gr(3, "Le sujet et le verbe", { exercice: "sujetVerbe", classe: c })
+        : gr(3, `Changer le temps : ${tempsDe(temps).nom}`, { exercice: "transformerTemps", classe: c, temps }),
       gr(4, `Conjuguer ${tempsDe(temps).au} — évaluation`, { exercice: "conjuguer", classe: c, temps }),
     ],
     materiel: ["Le corpus de phrases au tableau ; des étiquettes de phrases", "Le tableau de conjugaison vierge, en grand", "Les tableaux d'être et d'avoir", "Le cahier de références ; le cahier du jour", "Les feuilles d'évaluation"],
