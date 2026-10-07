@@ -6,7 +6,7 @@ export const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres", "oeilDeLynx",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "tri", "phrases", "trous", "motsMeles", "cursive",
-  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "comparer", "calcul", "arbre", "posees", "fractions", "oie", "heure", "monnaie", "mesures", "numeration",
+  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "comparer", "calcul", "arbre", "posees", "fractions", "oie", "heure", "monnaie", "mesures", "geometrie", "solides", "deplacements", "numeration",
   "carteMentale",
 ] as const;
 export type Onglet = typeof ONGLETS[number];
@@ -144,6 +144,12 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Des pièces et des billets « pour jouer » à découper ; compter un porte-monnaie, payer juste, comparer, ranger des prix, rendre la monnaie, l'écriture à virgule." },
       { id: "mesures", nom: "Mesures", icone: "📏", cycles: "Cycle 2",
         quoi: "Longueurs, masses, contenances : comparer, mesurer et tracer des segments à leur taille réelle, la balance, les masses marquées, les verres ; choisir l'unité, estimer, convertir, le périmètre." },
+      { id: "geometrie", nom: "Géométrie", icone: "📐", cycles: "Cycle 2",
+        quoi: "Reproduire sur quadrillage ou papier pointé et vérifier au calque, compléter un carré, reconnaître les figures, les alignements, les angles droits, le compas, les programmes de construction, la symétrie." },
+      { id: "solides", nom: "Les solides", icone: "🧊", cycles: "Cycle 2",
+        quoi: "Des solides en perspective à nommer, les objets et leur forme, faces, sommets et arêtes, le jeu du portrait, l'intrus ; les faces à découper, les patrons du cube, des assemblages de cubes à construire." },
+      { id: "deplacements", nom: "Se repérer, se déplacer", icone: "🧭", cycles: "Cycle 2",
+        quoi: "La fusée et ses flèches, le robot qui avance et pivote, sur un quadrillage : suivre, écrire ou corriger un code ; les cartes des positions." },
       { id: "numeration", nom: "Grands nombres et décimaux", icone: "💯", cycles: "Cycle 3",
         quoi: "Tableau de numération, écriture en lettres, décomposition, comparaison, encadrement." },
     ],
