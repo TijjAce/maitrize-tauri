@@ -5,9 +5,8 @@ import {
   htmlComparerLesEcritures, htmlDeuxCollections, htmlEncadrer, htmlEvaluation, htmlOrdonnerIntercaler, htmlProblemes, pairesAComparer,
   problemesDeComparaison, semerDesRonds, signeEntre, uniteDEncadrement,
 } from "./feuillesComparer";
-import { DEMARCHE_COMPARER, FEUILLES_DE_LA_SEQUENCE, htmlDeLaFeuille, materielDesSeances, objectifsDeLaSequence, sequencePossible } from "./sequenceComparer";
+import { DEMARCHE_COMPARER, FEUILLES_DE_LA_SEQUENCE, htmlDeLaFeuille, materielDesSeances } from "./sequenceComparer";
 import { demarcheDe } from "./demarches";
-import { NIVEAUX } from "./comparerNombres";
 
 const r = (p: Partial<ReglagesComparer> = {}) => reglagesComparerSurs({ ...REGLAGES_COMPARER, ...p });
 const compter = (html: string, motif: RegExp) => (html.match(motif) ?? []).length;
@@ -119,8 +118,7 @@ describe("les feuilles de la séquence « comparer les nombres »", () => {
     expect(evaluation).toContain("Encadre chaque nombre entre deux milliers.");
   });
 
-  it("ne crée la séquence qu'au cycle 2, une feuille au moins dans chacune des sept séances", () => {
-    expect(NIVEAUX.filter(sequencePossible).map((n) => n.id)).toEqual(DU_CYCLE_2);
+  it("met une feuille au moins dans chacune des sept séances, à chaque niveau du cycle 2", () => {
     const demarche = demarcheDe(DEMARCHE_COMPARER)!;
     expect(demarche.seances).toHaveLength(7);
     for (let i = 0; i < demarche.seances.length; i++) expect(FEUILLES_DE_LA_SEQUENCE.some((f) => f.seance === i), `séance ${i + 1}`).toBe(true);
@@ -128,7 +126,5 @@ describe("les feuilles de la séquence « comparer les nombres »", () => {
     expect(materielDesSeances(r())).toHaveLength(7);
     expect(materielDesSeances(r({ niveau: "cp-30" }))[0]).toContain("21 rouges");
     expect(materielDesSeances(r({ niveau: "ce1" }))[0]).toContain("plaques, barres et cubes");
-    expect(objectifsDeLaSequence(r({ niveau: "cp-100" }))).toContain("« 71 est plus grand que 68, car dans 71 il y a 7 dizaines alors que dans 68 il y a seulement 6 dizaines »");
-    expect(objectifsDeLaSequence(r({ niveau: "ce1" }))).toContain("jusqu'à 1 000");
   });
 });

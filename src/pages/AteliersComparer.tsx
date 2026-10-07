@@ -4,13 +4,10 @@ import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { graineAuHasard } from "../hasard";
 import { Boutons, Colonnes } from "./AteliersLangage";
-import { useCompetencesAtelier } from "../components/CompetencesAtelier";
-import { SequenceDeComparaison } from "../components/SequenceDeComparaison";
 import {
   GROUPES_DE_NIVEAUX, NIVEAUX, NOMBRES_DE_CARTES, REGLAGES_COMPARER, STYLE_COMPARER, avecLesSignes, exempleForme, htmlComparer, libelleForme,
   niveauParId, paquet, reglagesComparerSurs, type FormeNombre, type IdNiveau, type Niveau, type ReglagesComparer,
 } from "../comparerNombres";
-import { sequencePossible } from "../sequenceComparer";
 
 // ── Fabriquer › Comparer les nombres ──────────────────────────────────────
 //
@@ -40,8 +37,6 @@ export function ComparerTab() {
   const r = React.useMemo(() => reglagesComparerSurs(brut), [brut]);
   const niv = niveauParId(r.niveau);
   const [graine, setGraine] = React.useState(graineAuHasard);
-  const [enSequence, setEnSequence] = React.useState(false);
-  const [competences] = useCompetencesAtelier(ATELIER);
   const cartes = React.useMemo(() => paquet(r, graine), [r, graine]);
   const html = React.useMemo(() => htmlComparer(cartes, r), [cartes, r]);
   const basculer = (id: FormeNombre) =>
@@ -106,19 +101,9 @@ export function ComparerTab() {
         </Field>
         <Boutons atelier={ATELIER} titre={r.titre.trim() || REGLAGES_COMPARER.titre} html={html} style={STYLE_COMPARER} peut={cartes.length > 0}
           onTirage={() => setGraine(graineAuHasard())} />
-        {sequencePossible(niv)
-          ? (
-            <button type="button" className="btn sm" style={{ marginTop: 8 }} onClick={() => setEnSequence(true)}
-              title="La séquence du guide CP d'Éduscol, en sept séances, aux nombres de ce niveau, avec ce jeu et ses feuilles rangés dans les séances">
-              📚 Créer une séquence avec ce jeu
-            </button>
-          )
-          : (
-            <p className="meta" style={{ fontSize: 12, lineHeight: 1.45, margin: "8px 0 0" }}>
-              La séquence du guide CP se crée pour les niveaux du cycle 2 : {niv.cycle === 1 ? "la maternelle compare des quantités, avec d'autres démarches." : "le cycle 3 compare de grands nombres et des décimaux, avec d'autres démarches."}
-            </p>
-          )}
-        {enSequence && <SequenceDeComparaison reglages={r} competences={competences} onClose={() => setEnSequence(false)} />}
+        <p className="meta" style={{ fontSize: 12, lineHeight: 1.45, margin: "8px 0 0" }}>
+          📚 Une séquence part de sa compétence : Plan de travail › Nouvelle séquence, puis la compétence visée — la séquence vient alors piocher ici ses feuilles, aux nombres de sa classe.
+        </p>
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_COMPARER} />}
     />
