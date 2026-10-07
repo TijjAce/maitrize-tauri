@@ -43,6 +43,11 @@ const PAR_DEMARCHE: Record<string, { periode: number; raison: string }> = {
   "arbre-a-calcul-cp": { periode: 3, raison: citeLeLivret("CP", "Cette séquence peut être abordée en période 3.") },
   "ajouter-9-19-29-ce1": { periode: 2, raison: citeLeLivret("CE1", "À partir de la période 2, au fur et à mesure de l'apprentissage des nombres : la séquence comprendra plusieurs séances qui respecteront les rythmes d'apprentissages des élèves.") },
   "table-de-7-ce1": { periode: 3, raison: citeLeLivret("CE1", "Période 3 : Connaitre dans les deux sens les tables de 7.") },
+  // Les problèmes et les fractions : la période que donne la séquence du livret, ou le programme.
+  "parties-tout-cp": { periode: 4, raison: citeLeLivret("CP", "Elle est envisagée en fin de période 3 ou en période 4, en cohérence avec l'avancée du travail mené sur la numération décimale.") },
+  "parties-tout-ce1": { periode: 3, raison: citeLeLivret("CE1", "La séquence développée dans ce document, prévue en périodes 3 ou 4, s'inscrit dans la continuité du travail effectué en numération, en calcul et en résolution de problèmes.") },
+  "fractions-unitaires-ce1": { periode: 2, raison: cite("CE1", "Le travail sur les fractions commence dès la période 2 par l'introduction des fractions unitaires (de numérateur égal à 1) d'un tout et de leur écriture fractionnaire.") },
+  "fractions-longueurs-ce2": { periode: 3, raison: cite("CE2", "À partir de la période 3, le travail sur les fractions d'un tout permet de considérer une fraction d'une unité de longueur.") },
 };
 
 /** Les autres repères de période du programme, compétence par compétence. */
