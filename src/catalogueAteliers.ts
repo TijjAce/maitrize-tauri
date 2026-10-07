@@ -5,7 +5,7 @@
 export const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres", "oeilDeLynx",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
-  "tri", "phrases", "trous", "motsMeles", "cursive",
+  "comprehension", "lecteur", "tri", "phrases", "trous", "motsMeles", "cursive",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "comparer", "calcul", "arbre", "posees", "fractions", "oie", "heure", "monnaie", "mesures", "geometrie", "solides", "deplacements", "donnees", "numeration",
   "carteMentale",
 ] as const;
@@ -92,8 +92,12 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
   },
   {
     id: "ecrit", libelle: "✍️ Lecture et écriture",
-    aide: "Des mots et des phrases à manipuler : étiquettes à trier, phrases à remettre en ordre, textes à trous, mots mêlés ; et l'écriture cursive.",
+    aide: "Des textes à comprendre et le carnet de lecteur ; des mots et des phrases à manipuler : étiquettes à trier, phrases à remettre en ordre, textes à trous, mots mêlés ; et l'écriture cursive.",
     outils: [
+      { id: "comprehension", nom: "Comprendre un texte", icone: "📖", cycles: "Cycle 2",
+        quoi: "Des récits, documentaires, règles, poèmes et scènes de théâtre à la longueur de chaque classe, lignes numérotées : questions à justifier, résumé, moments du récit, reprises, inférences, émotions, mots inconnus, types de textes, écoute — et le corrigé." },
+      { id: "lecteur", nom: "Carnet de lecteur", icone: "📚", cycles: "Cycle 2",
+        quoi: "La page du carnet pour chaque livre lu, la carte d'identité d'un personnage, les personnages-types des contes, la mise en réseau, présenter un livre, choisir un livre, reconnaître les genres." },
       { id: "tri", nom: "Les maisons du tri", icone: "🏠", cycles: "Cycles 2 et 3",
         quoi: "Des étiquettes à découper et le tableau où les ranger : être ou avoir, phrase ou pas, nom ou verbe. Le verbe en couleur pour qui en a besoin." },
       { id: "phrases", nom: "Phrases en désordre", icone: "✂️", cycles: "Cycle 2",
