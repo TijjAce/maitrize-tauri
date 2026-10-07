@@ -177,7 +177,9 @@ export function htmlArbreCalcul(liste: Addition[], r: ReglagesArbre, entete?: { 
 // ── Les fractions : cartes, bandes, règle, nageurs ────────────────────────
 
 export type RepresentationFraction = "chiffres" | "lettres" | "bande" | "disque";
-export type MaterielFraction = "cartes" | "bandes" | "regle" | "nageurs" | "mesurer" | "tracer";
+export type MaterielFraction = "cartes" | "bandes" | "regle" | "nageurs" | "mesurer" | "tracer" | "comparer" | "operations";
+/** Ce qu'on compare ou calcule : même dénominateur, numérateur 1 (comparer), ou un dénominateur multiple de l'autre (CE2). */
+export type CasFractions = "denominateur" | "unitaires" | "multiple";
 export type Graduation = 4 | 8 | 10;
 
 export interface ReglagesFractions {
@@ -188,6 +190,8 @@ export interface ReglagesFractions {
   graduation: Graduation;
   /** Les cartes des seules fractions unitaires — un demi, un tiers… — : celles du début du CE1. */
   unitaires?: boolean;
+  /** Pour comparer, ajouter, retrancher : les cas de la classe. */
+  cas?: CasFractions;
 }
 
 export const REGLAGES_FRACTIONS: ReglagesFractions = {
@@ -343,6 +347,123 @@ export function htmlSegmentsATracer(g: Graduation, longueurs: number[]): string 
     <div class="sous">Prénom : ........................................ Date : ........................</div>${lignes}</div>${corrige}`;
 }
 
+// ── Comparer, ajouter, retrancher des fractions ───────────────────────────
+//
+// Les livrets programment, après les fractions unitaires, la comparaison des
+// fractions — de même dénominateur, de numérateur 1 au CE1 ; dont l'un des
+// dénominateurs est un multiple de l'autre au CE2 — puis leur somme et leur
+// différence. Chaque fraction a sa bande, le tout de même longueur : on
+// colorie, on compare, on calcule ; le corrigé montre les bandes coloriées.
+
+/** Des dénominateurs dont l'un est un multiple de l'autre, pour le CE2. */
+const MULTIPLES: [number, number][] = [[2, 4], [2, 8], [4, 8], [3, 6], [5, 10], [2, 6], [3, 12], [4, 12], [6, 12], [2, 10]];
+
+type Fraction = [k: number, n: number];
+const valeur = ([k, d]: Fraction) => k / d;
+
+/** Une bande unité partagée en n parts ; coloriées : les k premières, puis m autres d'une seconde couleur. */
+function bandeEnParts(n: number, k = 0, m = 0, mm = 64): string {
+  const w = 160, h = 22;
+  const parts = Array.from({ length: n }, (_, i) =>
+    `<rect x="${(i * w) / n}" y="0" width="${w / n}" height="${h}" fill="${i < k ? "#6366f1" : i < k + m ? "#f59e0b" : "#fff"}" stroke="#1c2233" stroke-width="1.3"/>`).join("");
+  return `<svg viewBox="-1 -1 ${w + 2} ${h + 2}" width="${mm}mm" height="${((mm * (h + 2)) / (w + 2)).toFixed(1)}mm">${parts}</svg>`;
+}
+
+const denominateursSurs = (ds: number[]) => (ds.filter((d) => d >= 2 && d <= 12).length ? ds.filter((d) => d >= 2 && d <= 12) : [2, 3, 4, 5, 6, 8, 10]);
+
+/** Des paires de fractions à comparer, toutes différentes ; au CE2, parfois égales. */
+export function fractionsAComparer(denominateurs: number[], cas: CasFractions, combien: number, graine: number): [Fraction, Fraction][] {
+  const alea = hasard(graine);
+  const ds = denominateursSurs(denominateurs);
+  const pris = (l: number[]) => l[Math.floor(alea() * l.length)];
+  const sortie: [Fraction, Fraction][] = [];
+  const vues = new Set<string>();
+  for (let garde = 0; sortie.length < combien && garde < 800; garde++) {
+    let a: Fraction, b: Fraction;
+    if (cas === "unitaires") {
+      const d1 = pris(ds), d2 = pris(ds);
+      if (d1 === d2) continue;
+      [a, b] = [[1, d1], [1, d2]];
+    } else if (cas === "denominateur") {
+      const d = pris(ds.filter((x) => x >= 3).length ? ds.filter((x) => x >= 3) : [4]);
+      const k1 = 1 + Math.floor(alea() * (d - 1)), k2 = 1 + Math.floor(alea() * (d - 1));
+      if (k1 === k2) continue;
+      [a, b] = [[k1, d], [k2, d]];
+    } else {
+      const [d1, d2] = MULTIPLES[Math.floor(alea() * MULTIPLES.length)];
+      const k1 = 1 + Math.floor(alea() * (d1 - 1)), k2 = 1 + Math.floor(alea() * (d2 - 1));
+      [a, b] = [[k1, d1], [k2, d2]];
+    }
+    if (alea() < 0.5) [a, b] = [b, a];
+    const cle = `${a.join("/")}-${b.join("/")}`;
+    if (vues.has(cle)) continue;
+    vues.add(cle);
+    sortie.push([a, b]);
+  }
+  return sortie;
+}
+
+const signeEntre = (a: Fraction, b: Fraction) => (Math.abs(valeur(a) - valeur(b)) < 1e-9 ? "=" : valeur(a) < valeur(b) ? "&lt;" : "&gt;");
+
+export function htmlComparerFractions(r: ReglagesFractions, graine: number): string {
+  const cas = r.cas ?? "denominateur";
+  const paires = fractionsAComparer(r.denominateurs, cas, 8, graine);
+  const membre = (f: Fraction, colorie: boolean) => `<div class="fr-membre">${fractionHtml(f[0], f[1])}${bandeEnParts(f[1], colorie ? f[0] : 0)}</div>`;
+  const ligne = ([a, b]: [Fraction, Fraction], corrige: boolean) =>
+    `<div class="fr-comparer">${membre(a, corrige)}<span class="fr-signe">${corrige ? signeEntre(a, b) : ""}</span>${membre(b, corrige)}</div>`;
+  const regle = cas === "unitaires" ? "Le même tout, partagé en plus ou moins de parts : plus il y a de parts, plus chacune est petite."
+    : cas === "denominateur" ? "Le même tout partagé de la même façon : on compte les parts prises."
+      : "Les deux touts ont la même longueur ; l'un est partagé en deux fois, trois fois plus de parts : combien de petites parts font une grande ?";
+  return `<div class="page"><div class="titre">Comparer des fractions</div>
+    <div class="regle"><b>Colorie, puis compare</b>Colorie chaque fraction sur sa bande, puis écris &lt;, &gt; ou = entre les deux. ${regle}
+      <span style="color:#687087">— Livrets Mathématiques CE1 et CE2, Éduscol 2025.</span></div>
+    <div class="sous">Prénom : ........................................ Date : ........................</div>
+    ${paires.map((p) => ligne(p, false)).join("")}</div>
+    <div class="page corrige"><div class="titre">Comparer des fractions — corrigé</div>${paires.map((p) => ligne(p, true)).join("")}</div>`;
+}
+
+/** Une somme ou une différence de fractions, le résultat inférieur ou égal à 1. */
+export interface OperationFractions { a: Fraction; b: Fraction; signe: "+" | "−"; resultat: Fraction }
+
+export function operationsSurFractions(denominateurs: number[], cas: CasFractions, combien: number, graine: number): OperationFractions[] {
+  const alea = hasard(graine);
+  const ds = denominateursSurs(denominateurs).filter((d) => d >= 3);
+  const sortie: OperationFractions[] = [];
+  const vues = new Set<string>();
+  for (let garde = 0; sortie.length < combien && garde < 800; garde++) {
+    const plus = sortie.length % 3 !== 2;
+    // Même dénominateur ; au CE2, l'un multiple de l'autre : on passe au plus grand.
+    const [d1, d2] = cas === "multiple" ? MULTIPLES[Math.floor(alea() * MULTIPLES.length)] : (() => { const d = ds[Math.floor(alea() * ds.length)] ?? 4; return [d, d]; })();
+    const k1 = 1 + Math.floor(alea() * (d1 - 1)), k2 = 1 + Math.floor(alea() * (d2 - 1));
+    const enGrand = k1 * (d2 / d1);
+    const total = plus ? enGrand + k2 : enGrand - k2;
+    if (total <= 0 || total > d2) continue;
+    const op: OperationFractions = { a: [k1, d1], b: [k2, d2], signe: plus ? "+" : "−", resultat: [total, d2] };
+    const cle = `${op.a.join("/")}${op.signe}${op.b.join("/")}`;
+    if (vues.has(cle)) continue;
+    vues.add(cle);
+    sortie.push(op);
+  }
+  return sortie;
+}
+
+export function htmlOperationsSurFractions(r: ReglagesFractions, graine: number): string {
+  const ops = operationsSurFractions(r.denominateurs, r.cas === "multiple" ? "multiple" : "denominateur", 8, graine);
+  const ligne = (o: OperationFractions, corrige: boolean) => {
+    const enGrand = o.a[0] * (o.b[1] / o.a[1]);
+    const bande = o.signe === "+" ? bandeEnParts(o.b[1], corrige ? enGrand : 0, corrige ? o.b[0] : 0) : bandeEnParts(o.b[1], corrige ? o.resultat[0] : 0, corrige ? o.b[0] : 0);
+    return `<div class="fr-operation"><div class="fr-calcul">${fractionHtml(o.a[0], o.a[1])}<span class="fr-op">${o.signe}</span>${fractionHtml(o.b[0], o.b[1])}<span class="fr-op">=</span>${
+      corrige ? fractionHtml(o.resultat[0], o.resultat[1]) : '<span class="fr-trou"></span>'}</div>${bande}</div>`;
+  };
+  return `<div class="page"><div class="titre">Ajouter et retrancher des fractions</div>
+    <div class="regle"><b>Calcule</b>Tu peux colorier la bande pour t'aider : les parts de la première fraction, puis celles qu'on ajoute — ou qu'on enlève.
+      ${r.cas === "multiple" ? "Quand les dénominateurs diffèrent, on écrit d'abord la première fraction avec les plus petites parts." : "Les parts sont de même taille : on ajoute, ou on enlève, des parts."}
+      <span style="color:#687087">— Livrets Mathématiques CE1 et CE2, Éduscol 2025.</span></div>
+    <div class="sous">Prénom : ........................................ Date : ........................</div>
+    ${ops.map((o) => ligne(o, false)).join("")}</div>
+    <div class="page corrige"><div class="titre">Ajouter et retrancher des fractions — corrigé</div>${ops.map((o) => ligne(o, true)).join("")}</div>`;
+}
+
 export function htmlFractions(r: ReglagesFractions, graine: number): string {
   const parties: string[] = [];
   if (r.materiel.includes("cartes")) {
@@ -377,6 +498,8 @@ export function htmlFractions(r: ReglagesFractions, graine: number): string {
   }
   if (r.materiel.includes("mesurer")) parties.push(htmlSegmentsAMesurer(r.graduation, graine));
   if (r.materiel.includes("tracer")) parties.push(htmlSegmentsATracer(r.graduation, longueursATracer(r.graduation, graine)));
+  if (r.materiel.includes("comparer")) parties.push(htmlComparerFractions(r, graine));
+  if (r.materiel.includes("operations")) parties.push(htmlOperationsSurFractions(r, graine));
   return feuille(parties.join(""), "fr");
 }
 
@@ -513,4 +636,11 @@ export const STYLE_JEUX_MATHS = `
   .feuille.fr .fr-consigne .fr-chiffres, .feuille.fr .fr-mesure .fr-chiffres, .feuille.fr .fr-corrige-ligne .fr-chiffres { font-size: 15px; }
   .feuille.fr .fr-consigne .fr-entier, .feuille.fr .fr-consigne .fr-u, .feuille.fr .fr-mesure .fr-entier, .feuille.fr .fr-mesure .fr-u,
   .feuille.fr .fr-corrige-ligne .fr-entier, .feuille.fr .fr-corrige-ligne .fr-u { font-size: 15px; }
+  .feuille.fr .fr-comparer { display: grid; grid-template-columns: 1fr 16mm 1fr; align-items: center; gap: 4mm; margin: 0 0 5mm; page-break-inside: avoid; }
+  .feuille.fr .fr-membre { display: flex; align-items: center; gap: 4mm; }
+  .feuille.fr .fr-signe { width: 13mm; height: 11mm; border: 1.5px solid #1c2233; border-radius: 1.5mm; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; }
+  .feuille.fr .fr-operation { display: flex; align-items: center; justify-content: space-between; gap: 6mm; margin: 0 0 5mm; page-break-inside: avoid; }
+  .feuille.fr .fr-calcul { display: flex; align-items: center; gap: 3mm; }
+  .feuille.fr .fr-op { font-size: 24px; font-weight: 700; }
+  .feuille.fr .fr-trou { display: inline-block; width: 12mm; height: 15mm; border: 1.5px solid #1c2233; border-radius: 1.5mm; }
 `;
