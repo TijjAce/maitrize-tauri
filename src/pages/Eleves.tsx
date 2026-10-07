@@ -151,6 +151,10 @@ function EleveForm({ e, onClose, onSaved }: { e: Eleve; onClose: () => void; onS
         <Field label="Date de naissance"><Input type="date" value={v.dateNaissance} onChange={(ev) => up({ dateNaissance: ev.target.value })} /></Field>
       </div>
       <Field label="INE (optionnel)"><Input value={v.ine} onChange={(ev) => up({ ine: ev.target.value })} /></Field>
+      <label className="pb-coche">
+        <input type="checkbox" checked={v.nonVerbal ?? false} onChange={(ev) => up({ nonVerbal: ev.target.checked })} />
+        <span>Non verbal <span style={{ color: "var(--text-2)" }}>— pas de fiche de lecture à faire seul (« En retard », dans ⌘K)</span></span>
+      </label>
     </Modal>
   );
 }
