@@ -17,6 +17,8 @@ import { REGLAGES_NOMBRES, REGLAGES_OIE, STYLE_JEUX_MATHS, cartesNombres, htmlCa
 import { CLASSE_DES_DEMARCHES } from "./demarchesNumeration";
 import { PREFIXE_COMPETENCES, lireCompetencesAtelier, memeCompetence } from "./ateliersCompetences";
 import { estUneDemarcheDeCalcul, planDuCalcul } from "./feuillesDuCalcul";
+import { estUneDemarcheDeProblemes, planDesProblemes } from "./problemesDesLivrets";
+import { estUneDemarcheDeFractions, planDesFractions } from "./fractionsDesLivrets";
 
 export type ClasseC2 = "CP" | "CE1" | "CE2";
 
@@ -128,6 +130,9 @@ function materielDuLivret(ctx: ContexteFeuilles, feuilles: FeuilleAFabriquer[]):
 export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): PlanDesFeuilles | null {
   // Le calcul mental : les séquences des livrets, ou le procédé La Martinière (voir feuillesDuCalcul.ts).
   if (estUneDemarcheDeCalcul(demarcheId)) return planDuCalcul(demarcheId, ctx);
+  // Les problèmes et les fractions des livrets (voir problemesDesLivrets.ts et fractionsDesLivrets.ts).
+  if (estUneDemarcheDeProblemes(demarcheId)) return planDesProblemes(demarcheId);
+  if (estUneDemarcheDeFractions(demarcheId)) return planDesFractions(demarcheId);
   if (!CLASSE_DES_DEMARCHES[demarcheId]) return null;
   // Grouper par dix, la centaine, le millier : les huit feuilles des cubes, de la grande collection à l'évaluation.
   if (demarcheId === "numeration-dizaine-cp" || demarcheId.startsWith("groupements-")) {

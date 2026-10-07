@@ -177,14 +177,17 @@ export function htmlArbreCalcul(liste: Addition[], r: ReglagesArbre, entete?: { 
 // ── Les fractions : cartes, bandes, règle, nageurs ────────────────────────
 
 export type RepresentationFraction = "chiffres" | "lettres" | "bande" | "disque";
-export type MaterielFraction = "cartes" | "bandes" | "regle" | "nageurs";
+export type MaterielFraction = "cartes" | "bandes" | "regle" | "nageurs" | "mesurer" | "tracer";
+export type Graduation = 4 | 8 | 10;
 
 export interface ReglagesFractions {
   denominateurs: number[];
   representations: RepresentationFraction[];
   materiel: MaterielFraction[];
-  /** La règle graduée : en quarts ou en dixièmes. */
-  graduation: 4 | 10;
+  /** La règle graduée, les nageurs, les segments : en quarts, en huitièmes ou en dixièmes d'unité. */
+  graduation: Graduation;
+  /** Les cartes des seules fractions unitaires — un demi, un tiers… — : celles du début du CE1. */
+  unitaires?: boolean;
 }
 
 export const REGLAGES_FRACTIONS: ReglagesFractions = {
@@ -217,7 +220,7 @@ export interface CarteFraction { k: number; n: number; representation: Represent
 export function cartesFractions(r: ReglagesFractions): CarteFraction[] {
   const sortie: CarteFraction[] = [];
   for (const n of r.denominateurs) {
-    for (let k = 1; k < n; k++) {
+    for (let k = 1; k < (r.unitaires ? 2 : n); k++) {
       for (const rep of r.representations) {
         const html = rep === "chiffres" ? fractionHtml(k, n)
           : rep === "lettres" ? `<div class="fr-lettres">${escapeHtml(fractionEnLettres(k, n))}</div>`
@@ -229,8 +232,14 @@ export function cartesFractions(r: ReglagesFractions): CarteFraction[] {
   return sortie;
 }
 
-/** La règle graduée, trois unités, en quarts ou en dixièmes. */
-export function regleSvg(graduation: 4 | 10, unites = 3, uMm = 50): string {
+/** L'unité de la règle et des segments : 5 cm, pour qu'une règle de trois unités tienne dans la largeur de la page. */
+export const UNITE_MM = 50;
+
+/** Le nom des parts d'une graduation : « quarts », « huitièmes », « dixièmes ». */
+export const nomDesParts = (g: Graduation) => (g === 4 ? "quarts" : g === 8 ? "huitièmes" : "dixièmes");
+
+/** La règle graduée, trois unités, en quarts, en huitièmes ou en dixièmes. */
+export function regleSvg(graduation: Graduation, unites = 3, uMm = UNITE_MM): string {
   const w = unites * uMm * 4, h = 60; // 4 px par mm
   let corps = `<rect x="0" y="0" width="${w + 40}" height="${h}" fill="#fff" stroke="#1c2233" stroke-width="2"/>`;
   for (let u = 0; u <= unites; u++) {
@@ -239,7 +248,8 @@ export function regleSvg(graduation: 4 | 10, unites = 3, uMm = 50): string {
     if (u === unites) break;
     for (let g = 1; g < graduation; g++) {
       const xg = x + (g / graduation) * uMm * 4;
-      const moitie = graduation === 10 && g === 5;
+      // La demi-unité, plus longue : elle aide à lire les huitièmes et les dixièmes.
+      const moitie = graduation !== 4 && g === graduation / 2;
       corps += `<line x1="${xg}" y1="0" x2="${xg}" y2="${moitie ? 26 : 16}" stroke="#1c2233" stroke-width="${moitie ? 2 : 1.2}"/>`;
     }
   }
@@ -247,7 +257,7 @@ export function regleSvg(graduation: 4 | 10, unites = 3, uMm = 50): string {
 }
 
 /** Les cartes de la course des nageurs : des longueurs en fractions d'unité, de 1/10 à 1 u + 9/10. */
-export function cartesNageurs(graduation: 4 | 10): string[] {
+export function cartesNageurs(graduation: Graduation): string[] {
   const sortie: string[] = [];
   for (let entier = 0; entier <= 1; entier++) {
     for (let k = 1; k < graduation; k++) {
@@ -255,6 +265,82 @@ export function cartesNageurs(graduation: 4 | 10): string[] {
     }
   }
   return sortie;
+}
+
+// ── Mesurer et tracer des segments en fractions d'unité (livret CE2) ─────
+
+/** Une longueur en parts d'unité : 7 quarts, c'est « 1 u + 3/4 u ». `simplifier` l'écrit en demis et en quarts quand c'est possible. */
+export function longueurEnUnites(k: number, g: Graduation, simplifier = false): string {
+  const entier = Math.floor(k / g), reste = k % g;
+  if (!reste) return `${entier} u`;
+  let [num, den] = [reste, g as number];
+  if (simplifier) for (const d of [4, 2]) if (num % d === 0 && den % d === 0) { num /= d; den /= d; }
+  const fraction = `${fractionHtml(num, den)}<span class="fr-u">u</span>`;
+  return entier ? `<span class="fr-entier">${entier} u +</span> ${fraction}` : fraction;
+}
+
+/** Des longueurs, en parts d'unité, toutes différentes : une plus petite que l'unité, une d'unités entières, les autres entre deux. */
+export function longueursAMesurer(g: Graduation, combien: number, graine: number): number[] {
+  const alea = hasard(graine);
+  const sortie = new Set<number>([1 + Math.floor(alea() * (g - 1)), g * (1 + Math.floor(alea() * 2))]);
+  for (let garde = 0; sortie.size < combien && garde < 500; garde++) {
+    const k = 1 + Math.floor(alea() * (3 * g - 1));
+    if (k % g) sortie.add(k);
+  }
+  return melanger(alea, [...sortie]);
+}
+
+const LETTRES_SEGMENTS = "ABCDEFGH";
+
+/** Un segment de k parts d'unité, avec ses extrémités marquées. */
+function segmentSvg(k: number, g: Graduation): string {
+  const l = (k / g) * UNITE_MM;
+  return `<svg viewBox="-2 -4 ${l + 4} 8" width="${l + 4}mm" height="8mm"><line x1="0" y1="0" x2="${l}" y2="0" stroke="#d33a32" stroke-width="1.2"/>`
+    + `<line x1="0" y1="-3" x2="0" y2="3" stroke="#1c2233" stroke-width="0.6"/><line x1="${l}" y1="-3" x2="${l}" y2="3" stroke="#1c2233" stroke-width="0.6"/></svg>`;
+}
+
+/**
+ * Des segments à mesurer avec la bande unité pliée — ou la règle graduée — :
+ * « Le segment A a pour longueur 1 unité et 3 quarts d'unité. » La bande
+ * unité est sur la feuille, à découper et à plier.
+ */
+export function htmlSegmentsAMesurer(g: Graduation, graine: number): string {
+  const longueurs = longueursAMesurer(g, 6, graine);
+  const bande = `<div class="fr-unite"><span>1 u</span></div>`;
+  const lignes = longueurs.map((k, i) => `<div class="fr-segment"><b>${LETTRES_SEGMENTS[i]}</b>${segmentSvg(k, g)}</div>
+    <div class="fr-mesure">Le segment ${LETTRES_SEGMENTS[i]} a pour longueur : ............ u + ............ d'unité.</div>`).join("");
+  const corrige = `<div class="page corrige"><div class="titre">Segments à mesurer — corrigé</div>
+    ${longueurs.map((k, i) => `<div class="fr-corrige-ligne"><b>${LETTRES_SEGMENTS[i]}</b> ${longueurEnUnites(k, g)}</div>`).join("")}</div>`;
+  return `<div class="page"><div class="titre">Mesurer des segments en ${nomDesParts(g)} d'unité</div>
+    <div class="regle">Découpe la bande unité, puis plie-la en ${g === 4 ? "quatre" : g === 8 ? "huit" : "dix"} parties égales — ou prends la règle graduée en ${nomDesParts(g)}. Mesure chaque segment, en unités et en ${nomDesParts(g)} d'unité.
+      <span style="color:#687087">— Livret Mathématiques CE2, Éduscol 2025.</span></div>
+    <div class="sous">Prénom : ........................................ Date : ........................</div>${bande}${lignes}</div>${corrige}`;
+}
+
+/** Des longueurs à tracer : plus petites, égales ou plus grandes qu'une unité ; en huitièmes, des demis et des quarts à convertir. */
+export function longueursATracer(g: Graduation, graine: number): number[] {
+  // Sur une règle en huitièmes, le livret fait tracer des demis et des quarts : des multiples de deux huitièmes.
+  const pas = g === 8 ? 2 : 1;
+  const alea = hasard(graine);
+  const sortie = new Set<number>([pas * (1 + Math.floor(alea() * (g / pas - 1))), g]);
+  for (let garde = 0; sortie.size < 5 && garde < 500; garde++) {
+    const k = pas * (1 + Math.floor(alea() * ((3 * g) / pas - 1)));
+    if (k % g) sortie.add(k);
+  }
+  return melanger(alea, [...sortie]);
+}
+
+/** Des segments à tracer, depuis un point, avec la règle graduée ; le corrigé les montre à la bonne longueur. */
+export function htmlSegmentsATracer(g: Graduation, longueurs: number[]): string {
+  const simplifier = g === 8;
+  const lignes = longueurs.map((k, i) => `<div class="fr-trace"><div class="fr-consigne">${LETTRES_SEGMENTS[i]}. Trace un segment de ${longueurEnUnites(k, g, simplifier)}</div>
+    <div class="fr-depart"><span class="fr-point"></span></div></div>`).join("");
+  const corrige = `<div class="page corrige"><div class="titre">Segments à tracer — corrigé</div>
+    ${longueurs.map((k, i) => `<div class="fr-segment"><b>${LETTRES_SEGMENTS[i]}</b>${segmentSvg(k, g)}<span class="fr-mesure">${longueurEnUnites(k, g)}</span></div>`).join("")}</div>`;
+  return `<div class="page"><div class="titre">Tracer des segments avec la règle graduée en ${nomDesParts(g)}</div>
+    <div class="regle">Pose le zéro de ta règle sur le point, et trace chaque segment de la longueur demandée.${simplifier ? " Attention : les longueurs sont en demis et en quarts d'unité ; combien de huitièmes cela fait-il ?" : ""}
+      <span style="color:#687087">— Livret Mathématiques CE2, Éduscol 2025.</span></div>
+    <div class="sous">Prénom : ........................................ Date : ........................</div>${lignes}</div>${corrige}`;
 }
 
 export function htmlFractions(r: ReglagesFractions, graine: number): string {
@@ -277,8 +363,8 @@ export function htmlFractions(r: ReglagesFractions, graine: number): string {
       <div class="sous">Bande repérée en dixièmes</div>${bande(`<div class="fr-reperes">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((g) => `<span style="left:${g * 10}%"></span>`).join("")}</div>`)}</div>`);
   }
   if (r.materiel.includes("regle")) {
-    parties.push(`<div class="page"><div class="titre">Règle graduée en ${r.graduation === 4 ? "quarts" : "dixièmes"} d'unité</div>
-      <div class="regle">Une règle où l'unité vaut 5 cm, graduée en ${r.graduation === 4 ? "quarts" : "dixièmes"} : pour mesurer et tracer des longueurs quand les entiers ne suffisent plus. À découper et coller sur du carton.
+    parties.push(`<div class="page"><div class="titre">Règle graduée en ${nomDesParts(r.graduation)} d'unité</div>
+      <div class="regle">Une règle où l'unité vaut 5 cm, graduée en ${nomDesParts(r.graduation)} : pour mesurer et tracer des longueurs quand les entiers ne suffisent plus. À découper et coller sur du carton.
         <span style="color:#687087">— Livret Mathématiques CE2, Éduscol 2025.</span></div>
       <div style="margin:8mm 0">${regleSvg(r.graduation)}</div><div style="margin:8mm 0">${regleSvg(r.graduation)}</div><div style="margin:8mm 0">${regleSvg(r.graduation)}</div></div>`);
   }
@@ -289,6 +375,8 @@ export function htmlFractions(r: ReglagesFractions, graine: number): string {
         <span style="color:#687087">— Livret Mathématiques CE2, Éduscol 2025.</span></div>`;
     parties.push(pagesDeCartes(cartesNageurs(r.graduation).map((c) => carte(c)), { colonnes: 3, lignes: 6, hauteurMm: 38 }, regle));
   }
+  if (r.materiel.includes("mesurer")) parties.push(htmlSegmentsAMesurer(r.graduation, graine));
+  if (r.materiel.includes("tracer")) parties.push(htmlSegmentsATracer(r.graduation, longueursATracer(r.graduation, graine)));
   return feuille(parties.join(""), "fr");
 }
 
@@ -413,4 +501,16 @@ export const STYLE_JEUX_MATHS = `
   .feuille.fr .fr-nageur { display: flex; align-items: center; gap: 3mm; }
   .feuille.fr .fr-entier { font-size: 24px; font-weight: 700; }
   .feuille.fr .fr-u { font-size: 24px; font-weight: 700; }
+  .feuille.fr .fr-unite { width: 50mm; height: 9mm; border: 1.5px dashed #1c2233; display: flex; align-items: center; justify-content: center; margin: 2mm 0 5mm; font-weight: 700; }
+  .feuille.fr .fr-segment { display: flex; align-items: center; gap: 4mm; margin: 5mm 0 1mm; }
+  .feuille.fr .fr-segment b { width: 6mm; font-size: 16px; }
+  .feuille.fr .fr-mesure { font-size: 13px; color: #3b4256; margin: 0 0 3mm 10mm; }
+  .feuille.fr .fr-corrige-ligne { display: flex; align-items: center; gap: 4mm; margin: 3mm 0; }
+  .feuille.fr .fr-trace { margin: 0 0 6mm; page-break-inside: avoid; }
+  .feuille.fr .fr-consigne { display: flex; align-items: center; gap: 2mm; font-size: 14px; font-weight: 600; }
+  .feuille.fr .fr-depart { height: 12mm; border-bottom: 1px dotted #c4c9d6; display: flex; align-items: center; }
+  .feuille.fr .fr-point { width: 2.4mm; height: 2.4mm; border-radius: 50%; background: #1c2233; margin-left: 4mm; }
+  .feuille.fr .fr-consigne .fr-chiffres, .feuille.fr .fr-mesure .fr-chiffres, .feuille.fr .fr-corrige-ligne .fr-chiffres { font-size: 15px; }
+  .feuille.fr .fr-consigne .fr-entier, .feuille.fr .fr-consigne .fr-u, .feuille.fr .fr-mesure .fr-entier, .feuille.fr .fr-mesure .fr-u,
+  .feuille.fr .fr-corrige-ligne .fr-entier, .feuille.fr .fr-corrige-ligne .fr-u { font-size: 15px; }
 `;

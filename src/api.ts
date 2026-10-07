@@ -1084,7 +1084,7 @@ export function normaliserModele(id: string | null | undefined): string {
 }
 
 // Palette de durées (miroir Swift) + format lisible.
-export const DUREES = [5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 75, 90, 105, 120, 150, 180];
+export const DUREES = [5, 10, 15, 20, 25, 30, 40, 45, 50, 55, 60, 75, 90, 105, 120, 150, 180];
 export function formatDuree(min: number): string {
   if (min < 60) return `${min} min`;
   const h = Math.floor(min / 60), m = min % 60;
