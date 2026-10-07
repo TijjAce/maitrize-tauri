@@ -6,6 +6,7 @@ import { graineAuHasard } from "../hasard";
 import { Boutons, Coche, Colonnes, bureau, imprimer } from "./AteliersMaths";
 import { EXERCICES_MONNAIE, PLAFONDS_MONNAIE, REGLAGES_MONNAIE, STYLE_MONNAIE, htmlMonnaie, type ExerciceMonnaie } from "../monnaie";
 import { EXERCICES_MESURES, REGLAGES_MESURES, STYLE_MESURES, htmlMesures, type Classe, type ExerciceMesures, type Grandeur } from "../mesures";
+import { EXERCICES_DONNEES, REGLAGES_DONNEES, STYLE_DONNEES, htmlDonnees, type ExerciceDonnees } from "../donnees";
 
 // ── Fabriquer › Mathématiques : la monnaie, les mesures ───────────────────
 
@@ -103,6 +104,35 @@ export function MesuresTab() {
         <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("mesures", titre, html, STYLE_MESURES)} onBureau={() => bureau("mesures", titre, html, STYLE_MESURES)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_MESURES} />}
+    />
+  );
+}
+
+export function DonneesTab() {
+  const [r, maj] = useReglages("donnees", REGLAGES_DONNEES);
+  const [graine, setGraine] = React.useState(graineAuHasard);
+  const html = React.useMemo(() => htmlDonnees(r, graine), [r, graine]);
+  const titre = (EXERCICES_DONNEES.find((e) => e.id === r.exercice)?.libelle ?? "Tableaux et diagrammes").replace(/ \((CP|CE1|CE2)(, (CE1|CE2))?\)$/, "");
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0 }}>Tableaux et diagrammes</h3>
+        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
+          Une enquête et son relevé par bâtons, le tableau, le diagramme en barres — de cubes au CP —, le tableau à double entrée, des problèmes : d'après le programme 2024, moins de quarante réponses au CP, un axe gradué de un en un au CE1, une échelle adaptée au CE2.
+        </p>
+        <Field label="Classe">
+          <Select value={r.classe} onChange={(e) => maj({ classe: e.target.value as Classe })}>
+            <option value="CP">CP</option><option value="CE1">CE1</option><option value="CE2">CE2</option>
+          </Select>
+        </Field>
+        <Field label="Exercice">
+          <Select value={r.exercice} onChange={(e) => maj({ exercice: e.target.value as ExerciceDonnees })}>
+            {EXERCICES_DONNEES.map((e) => <option key={e.id} value={e.id}>{e.libelle}</option>)}
+          </Select>
+        </Field>
+        <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("donnees", titre, html, STYLE_DONNEES)} onBureau={() => bureau("donnees", titre, html, STYLE_DONNEES)} />
+      </>}
+      droite={<ApercuFeuille html={html} style={STYLE_DONNEES} />}
     />
   );
 }
