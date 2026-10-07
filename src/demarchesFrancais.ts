@@ -17,9 +17,10 @@
 //   de La Fontaine lue à la classe.
 // Les livrets n'ont pas de séquence pour la compréhension, la production
 // d'écrits, l'oral ou la grammaire : la compréhension et le parcours de
-// lecteur ont leurs séquences, bâties sur le programme et les guides (voir
-// demarchesLecture.ts) ; les autres compétences gardent les démarches des
-// guides (voir demarches.ts).
+// lecteur, les dictées et l'orthographe des mots ont leurs séquences, bâties
+// sur le programme et les guides (voir demarchesLecture.ts et
+// demarchesOrthographe.ts) ; les autres compétences gardent les démarches
+// des guides (voir demarches.ts).
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 
@@ -440,7 +441,8 @@ export function demarcheDuLivretDeFrancais(classe: string, sd: string, cg: strin
       : /oraliser regulierement|textes dechiffrables/.test(comp) ? "precision-vitesse-cp" : "prosodie-cp";
     return classe === "ce1" ? "prosodie-ce1" : classe === "ce2" ? "lecture-expressive-ce2" : null;
   }
-  if (/encoder puis ecrire sous dictee/.test(cg)) return classe === "cp" ? "cgp-deux-jours-cp" : null;
+  // Encoder selon la progression des CGP : la routine du livret ; la dictée de mots et de phrases a sa séquence (demarchesOrthographe.ts).
+  if (/encoder puis ecrire sous dictee/.test(cg)) return classe === "cp" && !/lettres muettes|sous la dictee/.test(comp) ? "cgp-deux-jours-cp" : null;
   if (/ecriture cursive/.test(cg)) return "ecriture-cursive";
   if (/strategies de copie/.test(cg)) return "strategies-de-copie";
   if (/vocabulaire/.test(sd) && !/orthographe des mots/.test(cg)) {

@@ -34,7 +34,7 @@ describe("le français du cycle 2, d'après les livrets", () => {
       ["CE1", "Lecture", VOIX_HAUTE, "Lire de manière expressive. (en fin d’année)", "prosodie-ce1"],
       ["CE2", "Lecture", IDENTIFIER, "Automatiser la lecture des mots.", "precision-vitesse-ce1"],
       ["CE2", "Lecture", VOIX_HAUTE, "Manifester sa compréhension par une lecture expressive qui respecte la structure du texte, de la phrase et le sens.", "lecture-expressive-ce2"],
-      ["CP", "Écriture", "Encoder puis écrire sous dictée", "Écrire sous la dictée des mots et des phrases. (en fin d’année)", "cgp-deux-jours-cp"],
+      ["CP", "Écriture", "Encoder puis écrire sous dictée", "Encoder des syllabes simples puis des mots selon la progression des CGP. (dès le début de l’année)", "cgp-deux-jours-cp"],
       ["CP", "Écriture", "Apprendre à écrire en écriture cursive", "Apprendre à écrire en écriture cursive tous les graphèmes étudiés selon la progression en décodage.", "ecriture-cursive"],
       ["CE1", "Écriture", "Apprendre à écrire en écriture cursive", "Apprendre le tracé normé des lettres majuscules cursives par familles de gestes. (à partir de la période 2)", "ecriture-cursive"],
       ["CE1", "Écriture", "Copier et acquérir des stratégies de copie", "Acquérir des stratégies de copie et en mesurer l’efficacité.", "strategies-de-copie"],
@@ -43,7 +43,7 @@ describe("le français du cycle 2, d'après les livrets", () => {
       ["CE2", "Vocabulaire", "Réemployer le vocabulaire étudié", "Automatiser la restitution des mots d’un corpus étudié (fluence verbale).", "vocabulaire-ce2"],
       // Sans séquence de livret : la séquence bâtie sur le programme (voir demarchesLecture.test.ts), sinon la démarche du guide.
       ["CE1", "Lecture", "Comprendre un texte", "Justifier ses réponses par un retour au texte.", "comprendre-ce1"],
-      ["CP", "Vocabulaire", "Mémoriser l’orthographe des mots", "Identifier et nommer les accents.", "vocabulaire"],
+      ["CP", "Vocabulaire", "Mémoriser l’orthographe des mots", "Identifier et nommer les accents.", "accents-c2"],
       ["CE2", "Grammaire et orthographe", "Se repérer dans la phrase simple", "Reconnaitre et produire les trois types de phrases : déclarative, interrogative et impérative.", "grammaire"],
       ["CE1", "Oral", "Participer à des échanges", "Respecter le propos au cours des échanges au sein d’un groupe.", "oral"],
     ];
