@@ -245,3 +245,47 @@ export async function poserDansUneSeance(
   await api.materielSave(materiel);
   return materiel;
 }
+
+// ── Pour un élève ──────────────────────────────────────────────────────────
+//
+// Une fiche d'autonomie (voir `fichesAutonomie`) va à un élève : son prénom
+// et la date s'écrivent sur la ligne prévue, pour qu'elle trouve sa place
+// dans la pile qu'on distribue — et la correction reste au maître, elle n'a
+// rien à faire dans cette pile.
+
+/** Les pointillés à remplir après « Prénom : » ou « Date : ». */
+const A_REMPLIR = (quoi: string) => new RegExp(`(${quoi}\\s*:\\s*)[.…_]{3,}`, "g");
+
+/**
+ * La ligne « Prénom … Date … » remplie : le prénom, la date en toutes
+ * lettres. Une feuille qui n'en a pas — une pyramide, des mots mêlés — la
+ * reçoit en tête.
+ */
+export function auNomDeLEleve(html: string, prenom: string, date: string): string {
+  if (!A_REMPLIR("Prénom").test(html)) {
+    return `<div style="font-size:12px;color:#3b4256;margin:0 0 2mm">Prénom : ${escapeHtml(prenom)} · ${escapeHtml(date)}</div>${html}`;
+  }
+  return html
+    .replace(A_REMPLIR("Prénom"), (_, debut: string) => `${debut}${escapeHtml(prenom)}`)
+    .replace(A_REMPLIR("Date"), (_, debut: string) => `${debut}${escapeHtml(date)}`);
+}
+
+/**
+ * La fiche d'un élève, en PDF, rangée dans un dossier du bureau : la feuille
+ * de l'atelier telle qu'elle s'imprime — sa consigne, ses compétences —, à
+ * son nom, sans corrigé.
+ */
+export async function ficheDeLEleve(
+  atelier: string, titre: string, corps: string, style: string, eleve: { prenom: string; date: string; dossier: string },
+): Promise<MaterielItem> {
+  const { api, newId, nowIso } = await import("./api");
+  const comps = await competencesDeLAtelier(atelier);
+  const entete = enteteCompetencesHtml(comps);
+  const sansCorrige = appliquerOptionsFeuille(await avecLaConsigneDeLAtelier(atelier, corps), { consigne: true, prenom: true, corrige: false });
+  const consignes = await consignesEnPictos(auNomDeLEleve(sansCorrige, eleve.prenom, eleve.date), await supplementDe(atelier, {}));
+  const html = documentImprimable(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style);
+  const fichier = await api.feuilleEnPdf(html);
+  const materiel: MaterielItem = { ...materielDuBureau(atelier, titre, fichier, comps, newId(), nowIso()), dossier: eleve.dossier };
+  await api.materielSave(materiel);
+  return materiel;
+}

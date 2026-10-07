@@ -9,6 +9,7 @@ import { chargerVacances, prochaineVacance } from "../vacances";
 import { historique, nomDuLieu, precedent, recents as lieuxRecents } from "../historique";
 import { RACCOURCI_RETOUR, useHistorique } from "./Retour";
 import { EVT_NOUVEAU_RITUEL } from "../rituels";
+import { EVT_EN_RETARD } from "../fichesAutonomie";
 
 /**
  * Les familles de résultats, pour restreindre d'un clic.
@@ -415,6 +416,7 @@ export function CommandPalette() {
     { id: "a-newseq", ico: "➕", label: "Nouvelle séquence", sous: "Action · créer", famille: "action", run: goAction("/plan", "maitrize:nouvelle-sequence") },
     { id: "a-genia", ico: "✨", label: "Générer une séquence (IA)", sous: "Action · assistant", famille: "action", run: goAction("/assistant", "maitrize:generer-sequence") },
     { id: "a-rituel", ico: "🔁", label: "Nouveau rituel", sous: "Action · cahier journal", famille: "action", run: goAction("/planning", EVT_NOUVEAU_RITUEL) },
+    { id: "a-retard", ico: "⏰", label: "En retard : des fiches d'autonomie pour chaque élève", sous: "Action · planning · à son niveau, sur ses créneaux du jour, au cahier journal", famille: "action", run: goAction("/planning", EVT_EN_RETARD) },
     { id: "a-docia", ico: "📄", label: "Créer un document PDF (IA)", sous: "Action · assistant · fiche, mot aux familles, affiche", famille: "action", run: goAction("/assistant", "maitrize:document-ia") },
     { id: "a-assist", ico: "🪄", label: "Ouvrir l'assistant IA", sous: "Action", famille: "action", run: goNav("/assistant") },
     { id: "a-neuf", ico: "✨", label: "Quoi de neuf", sous: "Action · ce qui a changé dans l'app", famille: "action", run: () => { setOpen(false); montrerLesNouveautes(); } },

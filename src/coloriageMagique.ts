@@ -12,6 +12,7 @@
 // de réimprimer la feuille d'un élève absent, et de montrer le corrigé.
 
 import { hasard } from "./problemesBarres";
+import { escapeHtml } from "./print";
 import { contientLeSon, SONS, sonDe, type Son } from "./lectureSons";
 
 // ── Les dessins ───────────────────────────────────────────────────────────
@@ -862,4 +863,74 @@ export function consigne(reglages: ReglagesColoriage): string {
     melange: "Effectue le calcul écrit dans chaque case, puis colorie la case selon son résultat.",
   }[reglages.operation];
   return `${quoi} Une case sans calcul reste blanche.`;
+}
+
+// ── La feuille ────────────────────────────────────────────────────────────
+//
+// La même pour l'impression, le PDF du bureau et les fiches d'autonomie
+// (voir `fichesAutonomie`) : elle ne dépend que du coloriage et de ses
+// réglages.
+
+/** Ce qu'une case porte, avec sa graphie et sa police quand il y en a. */
+export function styleDeLaCase(x: CaseColoriage, policeCursive: string): { fontFamily?: string; fontSize?: number; fontWeight?: number } {
+  if (!x.graphie) return {};
+  const cursive = x.graphie === "cursive" || x.graphie === "cursiveMajuscule";
+  return {
+    fontFamily: cursive ? `"${policeCursive}", "Snell Roundhand", cursive` : x.police ? `"${x.police}", Arial, sans-serif` : undefined,
+    fontSize: cursive ? 26 : 22,
+    fontWeight: x.graphie === "majuscule" ? 700 : 500,
+  };
+}
+
+/**
+ * Le style d'une case dans un attribut HTML. Les noms de police y passent
+ * entre apostrophes : entre guillemets, ils fermaient l'attribut, et la
+ * cursive ne s'imprimait pas.
+ */
+function styleEnLigne(st: ReturnType<typeof styleDeLaCase>, fond = ""): string {
+  return [
+    fond ? `background:${fond};color:#fff` : "",
+    st.fontFamily ? `font-family:${st.fontFamily.replace(/"/g, "'")}` : "", st.fontSize ? `font-size:${st.fontSize}px` : "", st.fontWeight ? `font-weight:${st.fontWeight}` : "",
+  ].filter(Boolean).join(";");
+}
+
+/**
+ * La feuille — titre, corps et style. Le corrigé remplit les couleurs ;
+ * `consigneAutre` remplace celle des réglages (les chiffres d'un coloriage de
+ * maternelle ne sont pas des lettres).
+ */
+export function feuilleDuColoriage(c: Coloriage, r: ReglagesColoriage, avecCorrige: boolean, consigneAutre?: string): { titre: string; corps: string; style: string } {
+  const colonnes = c.lignes[0]?.length ?? 1, rangees = c.lignes.length;
+  // Des cases à la taille de la grille, carrée ou non, dans la largeur de la page.
+  const cote = Math.max(36, Math.min(62, Math.floor(640 / colonnes), Math.floor(760 / rangees)));
+  // Un calcul tient sur une ligne : plus la case est étroite, plus il s'écrit petit.
+  const police = cote >= 56 ? 15 : cote >= 48 ? 14 : cote >= 42 ? 12 : 11;
+  const cases = c.lignes.map((ligne) => `<tr>${ligne.map((x) => {
+    const fond = avecCorrige && x.couleur ? couleurDe(x.couleur)?.hex : "";
+    const style = styleEnLigne(styleDeLaCase(x, r.policeCursive), fond);
+    return `<td${style ? ` style="${style}"` : ""}>${escapeHtml(x.calcul)}</td>`;
+  }).join("")}</tr>`).join("");
+  const formes = r.graphies.length ? r.graphies : ["script" as Graphie];
+  const legende = c.legende.map(({ couleur, resultat, grapheme, lettre }) => {
+    const texte = lettre !== undefined
+      ? formes.map((g) => {
+        const st = styleDeLaCase({ calcul: "", couleur: "", graphie: g }, r.policeCursive);
+        return `<span style="${styleEnLigne({ ...st, fontFamily: st.fontFamily ?? "Arial" })};margin-right:8px">${escapeHtml(lettreSousGraphie(lettre, g))}</span>`;
+      }).join("")
+      : `<b>${escapeHtml(grapheme !== undefined ? grapheme : String(resultat))}</b>`;
+    return `<span class="lg"><i style="background:${couleur.hex}"></i> ${texte} ${escapeHtml(couleur.nom)}</span>`;
+  }).join("");
+  return { titre: r.titre || "Coloriage magique", corps:
+    `<h1>${escapeHtml(r.titre || "Coloriage magique")}</h1>
+     <p class="nom">Prénom : ........................................ Date : ........................</p>
+     <p class="consigne">${escapeHtml(consigneAutre ?? consigne(r))}</p>
+     <div class="legende">${legende}</div>
+     <table class="grille"><tbody>${cases}</tbody></table>`, style:
+    `.consigne { font-size: 14px; margin-bottom: 10px; }
+     .legende { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; font-size: 14px; align-items: center; }
+     .lg i { display: inline-block; width: 14px; height: 14px; border: 1px solid #333; vertical-align: -2px; }
+     .grille { border-collapse: collapse; margin: 0 auto; }
+     .grille td { border: 1.2px solid #222; width: ${cote}px; height: ${cote}px; text-align: center;
+       font-size: ${police}px; white-space: nowrap; vertical-align: middle; }
+     .nom { margin: 0 0 10px; font-size: 13px; color: #555; }` };
 }

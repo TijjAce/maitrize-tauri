@@ -25,6 +25,8 @@ import { IndicateurZoom, useZoomPince } from "../components/ZoomPince";
 import { aImprimer, masqueJeu, masqueRituel, masqueSequence, masquesDesReglages } from "../journalMasques";
 import { JOURS_DE_RECUL, STYLE_VEILLE, bilansDeLaVeilleHtml, veilleDe } from "../bilansVeille";
 import { niveauDeProgrammation } from "../programmation";
+import { EnRetard } from "../components/EnRetard";
+import { EVT_EN_RETARD } from "../fichesAutonomie";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const JOURS7 = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -91,6 +93,15 @@ export default function Planning() {
     window.addEventListener(EVT_JOUR, aller);
     return () => window.removeEventListener(EVT_JOUR, aller);
   }, []);
+  // « En retard », depuis ⌘K : les fiches d'autonomie du jour que le planning montre.
+  const [enRetard, setEnRetard] = React.useState<string | null>(null);
+  // Le journal relit son matériel en se montant : après « En retard », il doit voir les fiches qu'on vient de poser.
+  const [versionJournal, setVersionJournal] = React.useState(0);
+  React.useEffect(() => {
+    const ouvrir = () => setEnRetard(iso(ancre));
+    window.addEventListener(EVT_EN_RETARD, ouvrir);
+    return () => window.removeEventListener(EVT_EN_RETARD, ouvrir);
+  }, [ancre]);
   useSegmentNav(VUES, vue, setVue);
 
   // Plage de données chargée selon la vue.
@@ -535,7 +546,7 @@ export default function Planning() {
           ? <div className="planning-jour">
               <GrilleHoraire jours={jours} creneaux={creneaux ?? []} seances={seances ?? []} eleves={eleves ?? []} feries={feries} vacanceDe={vacanceDe}
                 deplacable={deplacer} onEdit={setEdit} onTap={ouvrirCreneau} onReload={reload} />
-              <CahierJournal dateIso={iso(ancre)} creneaux={creneaux ?? []} seances={seances ?? []} sequences={sequences ?? []} eleves={eleves ?? []}
+              <CahierJournal key={versionJournal} dateIso={iso(ancre)} creneaux={creneaux ?? []} seances={seances ?? []} sequences={sequences ?? []} eleves={eleves ?? []}
                 onModifier={setEdit} />
             </div>
           : <GrilleHoraire jours={jours} creneaux={creneaux ?? []} seances={seances ?? []} eleves={eleves ?? []} feries={feries} vacanceDe={vacanceDe}
@@ -548,6 +559,9 @@ export default function Planning() {
         onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }}
         onDelete={() => { setDel(edit); setEdit(null); }} onCreerSeance={creerSeanceDepuisCreneau} />}
       {del && <Confirm message="Supprimer ce créneau ?" onYes={() => api.creneauDelete(del.id).then(reload)} onClose={() => setDel(null)} />}
+      {/* Les fiches posées, on montre le jour et son cahier journal. */}
+      {enRetard && <EnRetard jourInitial={enRetard} onClose={() => setEnRetard(null)}
+        onFini={(jour) => { setEnRetard(null); setAncre(new Date(`${jour}T12:00:00`)); setVue("jour"); setVersionJournal((v) => v + 1); reload(); }} />}
     </Page>
   );
 }

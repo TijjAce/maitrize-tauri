@@ -401,10 +401,10 @@ pub fn eleve_save(db: State<Db>, eleve: Eleve) -> R<Eleve> {
 
 pub(crate) fn ecrire_eleve(c: &rusqlite::Connection, eleve: Eleve) -> R<Eleve> {
     c.execute(
-        "INSERT INTO eleves (id,nom,niveau,present,ine,date_naissance,photo_fichier)
-         VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET nom = excluded.nom, niveau = excluded.niveau, present = excluded.present, ine = excluded.ine, date_naissance = excluded.date_naissance, photo_fichier = excluded.photo_fichier",
+        "INSERT INTO eleves (id,nom,niveau,present,ine,date_naissance,photo_fichier,non_verbal)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8) ON CONFLICT(id) DO UPDATE SET nom = excluded.nom, niveau = excluded.niveau, present = excluded.present, ine = excluded.ine, date_naissance = excluded.date_naissance, photo_fichier = excluded.photo_fichier, non_verbal = excluded.non_verbal",
         params![eleve.id, eleve.nom, eleve.niveau, eleve.present as i64, eleve.ine,
-                eleve.date_naissance, eleve.photo_fichier],
+                eleve.date_naissance, eleve.photo_fichier, eleve.non_verbal as i64],
     ).map_err(e)?;
     Ok(eleve)
 }
@@ -3279,6 +3279,20 @@ mod tests_cascades {
         c.execute("INSERT INTO documents_eleve (id, eleve_id, type, donnees, date_maj) VALUES ('d1','e1','ppi','{}','x')", []).unwrap();
         super::ecrire_eleve(&c, Eleve { nom: "Apolline M.".into(), ..el }).unwrap();
         assert_eq!(compter(&c, "SELECT count(*) FROM documents_eleve WHERE eleve_id='e1'"), 1, "les documents de l'élève ont été effacés");
+    }
+
+    #[test]
+    fn un_eleve_non_verbal_le_reste_et_une_ligne_ancienne_ne_l_est_pas() {
+        let c = base();
+        let el: Eleve = serde_json::from_value(serde_json::json!({"id": "e1", "nom": "Yolanda", "nonVerbal": true})).unwrap();
+        super::ecrire_eleve(&c, el).unwrap();
+        // Une ligne venue d'une version sans la colonne : rien n'y est écrit.
+        c.execute("INSERT INTO eleves (id, nom, niveau, non_verbal) VALUES ('e2', 'Jean', 'CE1', NULL)", []).unwrap();
+        let lus: Vec<Eleve> = c.prepare("SELECT * FROM eleves ORDER BY id").unwrap()
+            .query_map([], Eleve::from_row).unwrap().collect::<rusqlite::Result<_>>().unwrap();
+        assert_eq!(lus.iter().map(|e| (e.id.as_str(), e.non_verbal)).collect::<Vec<_>>(), vec![("e1", true), ("e2", false)]);
+        let sans: Eleve = serde_json::from_value(serde_json::json!({"id": "e3", "nom": "Ethan"})).unwrap();
+        assert!(!sans.non_verbal, "un élève envoyé sans le champ n'est pas non verbal");
     }
 
     #[test]

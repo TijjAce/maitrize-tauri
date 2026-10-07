@@ -453,6 +453,9 @@ pub struct Eleve {
     pub date_naissance: String,
     #[serde(default)]
     pub photo_fichier: Option<String>,
+    /// Ne parle pas : pas de fiche de lecture en autonomie.
+    #[serde(default)]
+    pub non_verbal: bool,
 }
 fn vrai() -> bool { true }
 
@@ -466,6 +469,8 @@ impl Eleve {
             ine: r.get("ine")?,
             date_naissance: r.get("date_naissance")?,
             photo_fichier: r.get("photo_fichier")?,
+            // Vide sur une ligne venue d'une version sans la colonne.
+            non_verbal: r.get::<_, Option<i64>>("non_verbal").ok().flatten().unwrap_or(0) != 0,
         })
     }
 }
