@@ -63,8 +63,8 @@ describe("le français du cycle 2, d'après les livrets", () => {
         expect(style, `${d.id} · ${f.titre}`).toContain(".feuille");
       }
     }
-    // Sans feuille encore : la cursive, la copie, la prosodie, la fable ; la séquence se crée quand même, sans elles.
-    for (const id of ["ecriture-cursive", "strategies-de-copie", "prosodie-cp", "prosodie-ce1", "lecture-expressive-ce2"]) {
+    // Sans feuille encore : la prosodie, la fable ; la séquence se crée quand même, sans elles.
+    for (const id of ["prosodie-cp", "prosodie-ce1", "lecture-expressive-ce2"]) {
       expect(demarcheDe(id), id).toBeDefined();
       expect(planDesFeuilles(id, { classe: "CP", periode: 2 }), id).toBeNull();
     }
@@ -114,6 +114,32 @@ describe("le français du cycle 2, d'après les livrets", () => {
     expect(p("CE1", "Automatiser le décodage des correspondances graphophonémiques (CGP) apprises au CP. (tout au long de l’année)", "precision-vitesse-ce1").periode).toBe(1);
     // Rien ne fixe la période : le niveau seul.
     expect(p("CE2", "Lire un texte adapté à son niveau de lecture avec une vitesse de 90 mots par minute.", "lecture-expressive-ce2").periode).toBeNull();
+  });
+});
+
+describe("la cursive et la copie", () => {
+  afterEach(() => { delete (globalThis as { localStorage?: unknown }).localStorage; });
+
+  it("écrivent la lettre de la période, sur la réglure de la classe", () => {
+    const plan = planDuFrancais("ecriture-cursive", { classe: "CP", periode: 1 })!;
+    expect(plan.feuilles.map((f) => f.seance)).toEqual([0, 1, 2]);
+    const lettre = plan.feuilles[0].fabriquer(1).html;
+    expect(lettre).toContain("réglure de 3 mm");
+    expect(lettre).toContain("<text");
+    // En fin de CP, la réglure se resserre ; au CE1, 2 mm.
+    expect(planDuFrancais("ecriture-cursive", { classe: "CP", periode: 5 })!.feuilles[0].fabriquer(1).html).toContain("réglure de 2 mm");
+    expect(planDuFrancais("ecriture-cursive", { classe: "CP", periode: 3 })!.feuilles[0].fabriquer(1).html).toContain("réglure de 2,5 mm");
+    // La transcription : le modèle en script, à écrire en cursive.
+    expect(plan.feuilles[2].fabriquer(1).html).toContain("cu-script");
+  });
+
+  it("font copier la phrase du livret, puis celles de l'atelier « Phrases en désordre »", () => {
+    stockage({ "fabriquer:phrases": { phrases: "Le loup court.\nLa lune brille.\nIl pleut." } });
+    const plan = planDuFrancais("strategies-de-copie", { classe: "CE1", periode: 2 })!;
+    expect(plan.feuilles[0].fabriquer(1).html).toContain("Il lit un petit livre.");
+    expect(plan.feuilles[1].fabriquer(1).html).toContain("Le loup court.");
+    expect(plan.feuilles[2].fabriquer(1).html).toContain("La lune brille.");
+    expect(plan.feuilles[2].fabriquer(1).html).toContain("Il pleut.");
   });
 });
 

@@ -7,8 +7,11 @@
 //   la course au CP, l'alimentation au CE1, le bleu au CE2 —, de l'atelier
 //   « Étiquettes à catégoriser ». L'enseignant change les mots dans l'atelier
 //   pour son propre réseau.
-// La cursive, la copie, la prosodie n'ont pas encore de feuille : leurs
-// séances le disent dans la note du matériel.
+// - La cursive et la copie : les modèles et les lignes à réglure de l'atelier
+//   « Écriture cursive » — la lettre du graphème de la période, puis des
+//   syllabes et des mots ; pour copier, la phrase du livret, puis celles de
+//   l'atelier « Phrases en désordre ».
+// La prosodie n'a pas encore de feuille.
 
 import type { ClasseC2, ContexteFeuilles, FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
 import { STYLE_FEUILLE } from "./cartesImprimables";
@@ -16,6 +19,8 @@ import { REGLAGES_ETIQUETTES, STYLE_ETIQUETTES, htmlEtiquettes } from "./etiquet
 import { REGLAGES_FLUENCE, REGLAGES_SYLLABAIRE, STYLE_FLUENCE, grilleFluence, htmlFluence, htmlSyllabaire, nomDeLEtape, type ReglagesFluence, type ReglagesSyllabaire } from "./fluence";
 import { ETAPES, etapeDe } from "./progressionCgp";
 import { reglagesLaisses } from "./reglagesLaisses";
+import { REGLAGES_CURSIVE, STYLE_CURSIVE, htmlEcritureCursive, modelesDeLEtape, type ReglagesCursive } from "./ecritureCursive";
+import { REGLAGES_PHRASES, phrasesSaisies, type ReglagesPhrases } from "./phrasesEnDesordre";
 
 /** Le graphème d'une séquence de lecture : celui de l'atelier quand il est de la classe, sinon le premier de la période. */
 export function etapeDeLaSequence(classe: ClasseC2, periode: number): string {
@@ -70,6 +75,17 @@ function feuilleDEtiquettes(seance: number, classe: "CP" | "CE1" | "CE2"): Feuil
   };
 }
 
+/** La réglure de la classe : au CP, 3 mm, puis 2,5, puis 2 au fil de l'année ; 2 mm ensuite. */
+export const reglureDe = (classe: ClasseC2, periode: number): ReglagesCursive["reglure"] => (classe !== "CP" ? 2 : periode <= 2 ? 3 : periode <= 4 ? 2.5 : 2);
+
+function feuilleDeCursive(seance: number, titre: string, r: Partial<ReglagesCursive>): FeuilleAFabriquer {
+  const reglages: ReglagesCursive = { ...REGLAGES_CURSIVE, ...r };
+  return { seance, atelier: "cursive", titre, fabriquer: () => ({ html: htmlEcritureCursive(reglages), style: STYLE_FEUILLE + STYLE_CURSIVE }) };
+}
+
+/** Les phrases à copier : celle du livret d'abord, puis celles de l'atelier « Phrases en désordre ». */
+const phrasesACopier = () => phrasesSaisies({ ...REGLAGES_PHRASES, ...reglagesLaisses<ReglagesPhrases>("phrases") }.phrases);
+
 /** La note du matériel de chaque séance, avec les feuilles nommées comme elles s'impriment. */
 function notes(feuilles: FeuilleAFabriquer[], debuts: string[]): string[] {
   return debuts.map((debut, s) => {
@@ -82,7 +98,7 @@ const MUR = "Le mur sonore ; les ardoises";
 
 /** Les démarches de français dont on sait fabriquer des feuilles. */
 export const estUneDemarcheDeFrancais = (id: string) =>
-  ["cgp-deux-jours-cp", "precision-vitesse-cp", "precision-vitesse-ce1", "vocabulaire-cp", "vocabulaire-ce1", "vocabulaire-ce2"].includes(id);
+  ["cgp-deux-jours-cp", "precision-vitesse-cp", "precision-vitesse-ce1", "vocabulaire-cp", "vocabulaire-ce1", "vocabulaire-ce2", "ecriture-cursive", "strategies-de-copie"].includes(id);
 
 export function planDuFrancais(demarcheId: string, ctx: ContexteFeuilles): PlanDesFeuilles | null {
   const { classe, periode } = ctx;
@@ -107,6 +123,31 @@ export function planDuFrancais(demarcheId: string, ctx: ContexteFeuilles): PlanD
         ? ["Les outils : le mur sonore, la synthèse vocale", "Les jetons de deux couleurs ; les traces écrites des séances précédentes", "Un chronomètre", "Un chronomètre ; le cahier, pour la copie cursive"]
         : ["La grille de la semaine précédente, pour l'évaluation ; un chronomètre", "Un chronomètre", "Un chronomètre ; le cahier, pour la copie cursive", "Un chronomètre"]),
     };
+  }
+  if (demarcheId === "ecriture-cursive") {
+    const etape = etapeDeLaSequence(classe, periode), reglure = reglureDe(classe, periode);
+    const nom = nomDeLEtape(etapeDe(etape));
+    const feuilles = [
+      feuilleDeCursive(0, `Écriture cursive — la lettre : ${nom}`, { modeles: modelesDeLEtape(etape, "lettre", 1).join("\n"), reglure, lignes: 3 }),
+      feuilleDeCursive(1, `Écriture cursive — syllabes et mots : ${nom}`, { modeles: modelesDeLEtape(etape, "mots", 2).join("\n"), reglure, lignes: 2 }),
+      feuilleDeCursive(2, "Transcrire en cursive", { modeles: modelesDeLEtape(etape, "mots", 3).slice(-4).join("\n"), reglure, lignes: 1, transcrire: true }),
+    ];
+    return { feuilles, materiel: notes(feuilles, [
+      "L'ardoise ; le petit cahier à la réglure de la classe ; pour qui en a besoin, un crayon à trois faces, un guide-doigts, des lettres rugueuses",
+      "Le petit cahier", "Des mots ou des phrases écrits en script",
+    ]) };
+  }
+  if (demarcheId === "strategies-de-copie") {
+    const reglure = reglureDe(classe, periode);
+    const leurs = phrasesACopier();
+    const feuilles = [
+      feuilleDeCursive(0, "Copier une phrase", { modeles: "Il lit un petit livre.", reglure, lignes: 2, transcrire: true }),
+      feuilleDeCursive(1, "Copier une phrase — entraînement", { modeles: (leurs[0] ?? "Le chat dort sur le canapé."), reglure, lignes: 2, transcrire: true }),
+      feuilleDeCursive(2, "Copier deux ou trois phrases", { modeles: leurs.slice(1, 4).join("\n") || "Maman prépare une tarte aux pommes.\nNous allons à la piscine le mardi.", reglure, lignes: 1, transcrire: true }),
+    ];
+    return { feuilles, materiel: notes(feuilles, [
+      "La phrase au tableau, puis au fond de la classe ; le cahier", "Une nouvelle phrase au tableau ; le cahier", "Les phrases au tableau ; le cahier",
+    ]) };
   }
   if (demarcheId === "vocabulaire-cp" || demarcheId === "vocabulaire-ce1" || demarcheId === "vocabulaire-ce2") {
     const niveau = demarcheId === "vocabulaire-cp" ? "CP" : demarcheId === "vocabulaire-ce1" ? "CE1" : "CE2";

@@ -5,7 +5,7 @@
 export const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres", "oeilDeLynx",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
-  "tri", "phrases", "trous", "motsMeles",
+  "tri", "phrases", "trous", "motsMeles", "cursive",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "comparer", "calcul", "arbre", "fractions", "oie", "heure", "numeration",
   "carteMentale",
 ] as const;
@@ -90,7 +90,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
   },
   {
     id: "ecrit", libelle: "✍️ Lecture et écriture",
-    aide: "Des mots et des phrases à manipuler : étiquettes à trier, phrases à remettre en ordre, textes à trous, mots mêlés.",
+    aide: "Des mots et des phrases à manipuler : étiquettes à trier, phrases à remettre en ordre, textes à trous, mots mêlés ; et l'écriture cursive.",
     outils: [
       { id: "tri", nom: "Les maisons du tri", icone: "🏠", cycles: "Cycles 2 et 3",
         quoi: "Des étiquettes à découper et le tableau où les ranger : être ou avoir, phrase ou pas, nom ou verbe. Le verbe en couleur pour qui en a besoin." },
@@ -100,6 +100,8 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Des phrases dont on a retiré le verbe — être, avoir, ou le mot de votre choix : les étiquettes, de la taille des cases, s'essaient, se vérifient et se collent." },
       { id: "motsMeles", nom: "Mots mêlés", icone: "🔎", cycles: "Cycles 2 et 3",
         quoi: "Les mots de la semaine cachés dans une grille de lettres, la liste dessous, le corrigé à la suite." },
+      { id: "cursive", nom: "Écriture cursive", icone: "🖋", cycles: "Cycle 2",
+        quoi: "Des modèles en cursive et des lignes à réglure de 3, 2,5 ou 2 mm : la lettre du jour, des syllabes et des mots, ou une phrase en script à copier." },
     ],
   },
   {

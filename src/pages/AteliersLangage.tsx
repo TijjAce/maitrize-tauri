@@ -34,6 +34,9 @@ import { estUnModele, trisDuProjet } from "../triDuProjet";
 import { objectifsDesAteliers } from "../ateliersCompetences";
 import { useImagesEtOmbres } from "../components/MesImages";
 import { OMBRES_MINIMUM, REGLAGES_OMBRES, STYLE_OMBRES, feuillesDOmbres, htmlOmbres, type FormeOmbres, type ImageOmbre, type ReglagesOmbres } from "../ombres";
+import { REGLAGES_CURSIVE, REGLURES, STYLE_CURSIVE, htmlEcritureCursive, modelesDeLEtape, modelesSaisis, type ReglagesCursive } from "../ecritureCursive";
+import { REGLAGES_FLUENCE, nomDeLEtape } from "../fluence";
+import { etapeDe } from "../progressionCgp";
 
 // ── Fabriquer › Langage › Étiquettes à catégoriser ────────────────────────
 //
@@ -118,6 +121,51 @@ export function Boutons({ atelier, titre, html, style, peut, onTirage }: { ateli
 }
 
 const borne = (v: string, min: number, max: number, defaut: number) => Math.max(min, Math.min(max, Number(v) || defaut));
+
+// ── Écriture cursive ──
+//
+// Les modèles en cursive et les lignes à réglure de la séquence du livret CP :
+// la lettre du jour, l'enchaîner, ou copier une phrase écrite en script.
+
+export function CursiveTab() {
+  const [r, maj] = useReglages("cursive", REGLAGES_CURSIVE);
+  // Le graphème de la semaine : celui de la grille de fluence.
+  const [fluence] = useReglages("fluence", REGLAGES_FLUENCE);
+  const etape = etapeDe(fluence.son);
+  const html = React.useMemo(() => htmlEcritureCursive(r), [r]);
+  const modeles = modelesSaisis(r.modeles);
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0 }}>Écriture cursive</h3>
+        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
+          Des modèles en cursive et des lignes à réglure — 3, 2,5 ou 2 mm — pour tracer la lettre du jour, l'enchaîner dans des syllabes et des mots, ou copier une phrase écrite en script.
+          Le modèle prend la police d'écriture scolaire installée sur l'ordinateur (Écriture A, Belle Allure…).
+        </p>
+        <Field label="Les modèles, un par ligne">
+          <Textarea rows={6} value={r.modeles} onChange={(e) => maj({ modeles: e.target.value })} placeholder={"l\nli\nla\nlilas"} />
+        </Field>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "-4px 0 8px" }}>
+          <button type="button" className="btn ghost sm" onClick={() => maj({ modeles: modelesDeLEtape(etape.id, "lettre", graineAuHasard()).join("\n") })}
+            title="Le graphème de la grille de fluence, et des syllabes">✍️ La lettre : « {nomDeLEtape(etape)} »</button>
+          <button type="button" className="btn ghost sm" onClick={() => maj({ modeles: modelesDeLEtape(etape.id, "mots", graineAuHasard()).join("\n") })}
+            title="Des syllabes et des mots déchiffrables à cette étape">Syllabes et mots</button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <Field label="Réglure">
+            <Select value={r.reglure} onChange={(e) => maj({ reglure: Number(e.target.value) as ReglagesCursive["reglure"] })}>
+              {REGLURES.map((x) => <option key={x} value={x}>{String(x).replace(".", ",")} mm</option>)}
+            </Select>
+          </Field>
+          <Field label="Lignes par modèle"><Input type="number" min={1} max={6} value={r.lignes} onChange={(e) => maj({ lignes: borne(e.target.value, 1, 6, 2) })} /></Field>
+        </div>
+        <Coche on={r.transcrire} libelle="Copier : le modèle en script, à écrire en cursive" onChange={(v) => maj({ transcrire: v })} />
+        <Boutons atelier="cursive" titre={r.transcrire ? "Copier en cursive" : "Écriture cursive"} html={html} style={STYLE_CURSIVE} peut={modeles.length > 0} />
+      </>}
+      droite={<ApercuFeuille html={html} style={STYLE_CURSIVE} />}
+    />
+  );
+}
 
 // ── Mots mêlés ──
 
