@@ -65,6 +65,7 @@ import { DEMARCHES_OPERATIONS, demarcheDesOperations } from "./demarchesOperatio
 import { DEMARCHES_GRANDEURS, demarcheDesGrandeurs } from "./demarchesGrandeurs";
 import { DEMARCHES_GEOMETRIE, demarcheDeLaGeometrie } from "./demarchesGeometrie";
 import { DEMARCHES_DONNEES, demarcheDesDonnees } from "./demarchesDonnees";
+import { DEMARCHES_LECTURE, demarcheDeLaLecture } from "./demarchesLecture";
 
 /** Une ligne du tableau de déroulement, dans l'ordre de ses colonnes. */
 export interface PhaseCadre {
@@ -2141,7 +2142,7 @@ export const DEMARCHES: Demarche[] = [
   INVESTIGATION, ENQUETE_HISTOIRE_GEO, EMC_DEBAT,
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
   MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, COLLECTIONS, CHRONOLOGIE, COMPARER_NOMBRES, NUMERATION_DIZAINE,
-  ...DEMARCHES_NUMERATION, ...DEMARCHES_CALCUL, ...DEMARCHES_PROBLEMES, ...DEMARCHES_PROBLEMES_PROLONGES, ...DEMARCHES_FRACTIONS_PROLONGEES, ...DEMARCHES_OPERATIONS, ...DEMARCHES_GRANDEURS, ...DEMARCHES_GEOMETRIE, ...DEMARCHES_DONNEES, ...DEMARCHES_FRANCAIS,
+  ...DEMARCHES_NUMERATION, ...DEMARCHES_CALCUL, ...DEMARCHES_PROBLEMES, ...DEMARCHES_PROBLEMES_PROLONGES, ...DEMARCHES_FRACTIONS_PROLONGEES, ...DEMARCHES_OPERATIONS, ...DEMARCHES_GRANDEURS, ...DEMARCHES_GEOMETRIE, ...DEMARCHES_DONNEES, ...DEMARCHES_FRANCAIS, ...DEMARCHES_LECTURE,
 ];
 
 export const demarcheDe = (id: string) => DEMARCHES.find((d) => d.id === id);
@@ -2204,6 +2205,9 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string, niveau = 
     // vocabulaire (voir demarchesFrancais.ts) ; sinon, la démarche du guide.
     const livretDeFrancais = /^(cp|ce1|ce2)$/.test(niveau) ? demarcheDuLivretDeFrancais(niveau, sd, cg, comp) : null;
     if (livretDeFrancais) return livretDeFrancais;
+    // Comprendre un texte, devenir lecteur : des séquences bâties sur le programme et les guides (voir demarchesLecture.ts).
+    const lecture = /^(cp|ce1|ce2)$/.test(niveau) ? demarcheDeLaLecture(niveau, cg, comp) : null;
+    if (lecture) return lecture;
     if (/^lecture/.test(sd)) {
       if (/decod|encod|syllab|grapheme|correspondance|\bcgp\b|lettres?\b/.test(comp)) return "lecture-code";
       if (/fluen|voix haute|expressiv|prosod|mots par minute|mclm/.test(comp)) return "lecture-fluence";

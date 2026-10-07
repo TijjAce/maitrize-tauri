@@ -16,7 +16,9 @@
 // - CE2, n° 1 « Lecture : enseigner la fluence à visée expressive » : une fable
 //   de La Fontaine lue à la classe.
 // Les livrets n'ont pas de séquence pour la compréhension, la production
-// d'écrits, l'oral ou la grammaire : ces compétences gardent les démarches des
+// d'écrits, l'oral ou la grammaire : la compréhension et le parcours de
+// lecteur ont leurs séquences, bâties sur le programme et les guides (voir
+// demarchesLecture.ts) ; les autres compétences gardent les démarches des
 // guides (voir demarches.ts).
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
