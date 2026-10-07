@@ -20,7 +20,7 @@ import { DominosTab, FluenceTab, IntrusTab, LettresTab, LotoSyllabesTab, PairesT
 import {
   ArbreCalculTab, CartesCalculTab, CartesNombresTab, CompteEstBonTab, CubesTab, FractionsTab, HeureTab, JeuDeLOieTab, MartiniereTab, NumerationTab, PyramidesTab,
 } from "./AteliersMaths";
-import { EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
+import { CursiveTab, EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
 import { TrousTab } from "./AteliersTrous";
 import { ComparerTab } from "./AteliersComparer";
 import { GestesTab, MotsEnGestesTab } from "./AteliersGestes";
@@ -285,6 +285,7 @@ export default function Jeux() {
         : onglet === "numeration" ? <NumerationTab />
         : onglet === "tri" ? <TriTab />
         : onglet === "motsMeles" ? <MotsMelesTab />
+        : onglet === "cursive" ? <CursiveTab />
         : onglet === "phrases" ? <PhrasesTab />
         : onglet === "trous" ? <TrousTab />
         : onglet === "etiquettes" ? <EtiquettesTab banque={Boolean(etat?.installee)} />
