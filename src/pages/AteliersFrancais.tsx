@@ -4,6 +4,7 @@ import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { graineAuHasard } from "../hasard";
 import { Boutons, Coche, Colonnes, bureau, imprimer } from "./AteliersMaths";
+import { EXERCICES_ORAL, GENRES, REGLAGES_ORAL, STYLE_ORAL, htmlOral, type ExerciceOral, type Genre } from "../oral";
 import { EXERCICES_GRAMMAIRE, REGLAGES_GRAMMAIRE, STYLE_GRAMMAIRE, htmlGrammaire, type ExerciceGrammaire } from "../grammaire";
 import { TEMPS, type Temps } from "../conjugaison";
 import { EXERCICES_ECRIRE, REGLAGES_ECRIRE, STYLE_ECRIRE, htmlEcrire, type ExerciceEcrire } from "../ecrire";
@@ -154,6 +155,48 @@ export function GrammaireTab() {
           onImprimer={() => imprimer("grammaire", titre, html, STYLE_GRAMMAIRE)} onBureau={() => bureau("grammaire", titre, html, STYLE_GRAMMAIRE)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_GRAMMAIRE} />}
+    />
+  );
+}
+
+// ── Fabriquer › Lecture et écriture : l'oral ──────────────────────────────
+
+export function OralTab() {
+  const [r, maj] = useReglages("oral", REGLAGES_ORAL);
+  const [graine, setGraine] = React.useState(graineAuHasard);
+  const html = React.useMemo(() => htmlOral(r, graine), [r, graine]);
+  const libelle = EXERCICES_ORAL.find((e) => e.id === r.exercice)?.libelle ?? "";
+  const titre = `Oral — ${libelle.toLowerCase()}`;
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0 }}>L'oral</h3>
+        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
+          Les grilles d'écoute pour raconter, présenter un exposé, dire un poème, débattre ; la carte du récit et les mots imposés ; le poème à apprendre ; le plan d'exposé ; les cartes « Je prends la parole » avec les expressions du programme, les rôles du débat ; les registres de langue et les jeux de rôles.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
+          <Field label="Classe">
+            <Select value={r.classe} onChange={(e) => maj({ classe: e.target.value as Classe })}>
+              <option value="CP">CP</option><option value="CE1">CE1</option><option value="CE2">CE2</option>
+            </Select>
+          </Field>
+          <Field label="Feuille">
+            <Select value={r.exercice} onChange={(e) => maj({ exercice: e.target.value as ExerciceOral })}>
+              {EXERCICES_ORAL.map((e) => <option key={e.id} value={e.id}>{e.libelle}</option>)}
+            </Select>
+          </Field>
+        </div>
+        {r.exercice === "grille" && (
+          <Field label="Ce qu'on travaille">
+            <Select value={r.genre} onChange={(e) => maj({ genre: e.target.value as Genre })}>
+              {GENRES.map((g) => <option key={g.id} value={g.id}>{g.nom}</option>)}
+            </Select>
+          </Field>
+        )}
+        <Boutons onTirage={["raconter", "registres", "situations"].includes(r.exercice) ? () => setGraine(graineAuHasard()) : undefined}
+          onImprimer={() => imprimer("oral", titre, html, STYLE_ORAL)} onBureau={() => bureau("oral", titre, html, STYLE_ORAL)} />
+      </>}
+      droite={<ApercuFeuille html={html} style={STYLE_ORAL} />}
     />
   );
 }

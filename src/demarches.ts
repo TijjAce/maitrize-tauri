@@ -69,6 +69,7 @@ import { DEMARCHES_LECTURE, demarcheDeLaLecture } from "./demarchesLecture";
 import { DEMARCHES_ORTHOGRAPHE, demarcheDeLOrthographe } from "./demarchesOrthographe";
 import { DEMARCHES_ECRITURE, demarcheDeLEcriture } from "./demarchesEcriture";
 import { DEMARCHES_LANGUE, demarcheDeLaLangue } from "./demarchesLangue";
+import { DEMARCHES_ORAL, demarcheDeLOral } from "./demarchesOral";
 
 /** Une ligne du tableau de déroulement, dans l'ordre de ses colonnes. */
 export interface PhaseCadre {
@@ -2145,7 +2146,7 @@ export const DEMARCHES: Demarche[] = [
   INVESTIGATION, ENQUETE_HISTOIRE_GEO, EMC_DEBAT,
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
   MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, COLLECTIONS, CHRONOLOGIE, COMPARER_NOMBRES, NUMERATION_DIZAINE,
-  ...DEMARCHES_NUMERATION, ...DEMARCHES_CALCUL, ...DEMARCHES_PROBLEMES, ...DEMARCHES_PROBLEMES_PROLONGES, ...DEMARCHES_FRACTIONS_PROLONGEES, ...DEMARCHES_OPERATIONS, ...DEMARCHES_GRANDEURS, ...DEMARCHES_GEOMETRIE, ...DEMARCHES_DONNEES, ...DEMARCHES_FRANCAIS, ...DEMARCHES_LECTURE, ...DEMARCHES_ORTHOGRAPHE, ...DEMARCHES_ECRITURE, ...DEMARCHES_LANGUE,
+  ...DEMARCHES_NUMERATION, ...DEMARCHES_CALCUL, ...DEMARCHES_PROBLEMES, ...DEMARCHES_PROBLEMES_PROLONGES, ...DEMARCHES_FRACTIONS_PROLONGEES, ...DEMARCHES_OPERATIONS, ...DEMARCHES_GRANDEURS, ...DEMARCHES_GEOMETRIE, ...DEMARCHES_DONNEES, ...DEMARCHES_FRANCAIS, ...DEMARCHES_LECTURE, ...DEMARCHES_ORTHOGRAPHE, ...DEMARCHES_ECRITURE, ...DEMARCHES_LANGUE, ...DEMARCHES_ORAL,
 ];
 
 export const demarcheDe = (id: string) => DEMARCHES.find((d) => d.id === id);
@@ -2220,6 +2221,9 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string, niveau = 
     // La grammaire, l'orthographe grammaticale, la conjugaison : de même (voir demarchesLangue.ts) ; le temps à conjuguer suit la période.
     const langue = /^(cp|ce1|ce2)$/.test(niveau) ? demarcheDeLaLangue(niveau, cg, comp, periode) : null;
     if (langue) return langue;
+    // L'oral : de même, sur la démarche d'Éduscol (voir demarchesOral.ts).
+    const oral = /^(cp|ce1|ce2)$/.test(niveau) ? demarcheDeLOral(sd, cg, comp) : null;
+    if (oral) return oral;
     if (/^lecture/.test(sd)) {
       if (/decod|encod|syllab|grapheme|correspondance|\bcgp\b|lettres?\b/.test(comp)) return "lecture-code";
       if (/fluen|voix haute|expressiv|prosod|mots par minute|mclm/.test(comp)) return "lecture-fluence";
