@@ -1098,7 +1098,8 @@ export const STYLE_FEUILLE = `
   .pb-nom .pb-ligne { width: 150px; }
   .pb-nom .pb-courte { width: 90px; }
   .pb-grille { display: grid; gap: 0 14px; }
-  .pb-colonnes-1 { grid-template-columns: 1fr; }
+  /* Une seule colonne : un simple bloc. Dans une grille, WebKit coupe un problème entre deux pages malgré « break-inside ». */
+  .pb-grille.pb-colonnes-1 { display: block; }
   .pb-colonnes-2 { grid-template-columns: 1fr 1fr; }
   .pb-saut { break-after: page; page-break-after: always; }
   .pb-corrige { break-before: page; page-break-before: always; margin-top: 24px; }
