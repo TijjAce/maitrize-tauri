@@ -242,7 +242,7 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
                 </li>
               ))}
             </ol>
-            {plan && ctx && (
+            {plan && ctx && plan.feuilles.length > 0 && (
               <div className="meta" style={{ fontSize: 12.5, lineHeight: 1.5 }}>
                 📄 Les feuilles viennent {(() => {
                   const ateliers = [...new Set(plan.feuilles.map((f) => nomDeLAtelier(f.atelier)))];

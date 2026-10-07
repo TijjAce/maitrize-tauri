@@ -1,4 +1,5 @@
 import React from "react";
+import { REGLAGES_POSEES, STYLE_POSEES, htmlOperationsPosees, type OperationPosee, type ReglagesPosees } from "../operationsPosees";
 import { Field, Input, Select, Textarea, ouvrirOnglet } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
@@ -254,6 +255,59 @@ export function CartesCalculTab() {
         <Boutons peut={cartes.length > 0} onTirage={r.melanger ? () => setGraine(graineAuHasard()) : undefined} onImprimer={() => imprimer("calcul", "Cartes de calcul", html)} onBureau={() => bureau("calcul", "Cartes de calcul", html)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_JEUX_MATHS} />}
+    />
+  );
+}
+
+// ── Opérations posées ──
+
+export function OperationsPoseesTab() {
+  const [r, maj] = useReglages("operationsPosees", REGLAGES_POSEES);
+  const [graine, setGraine] = React.useState(graineAuHasard);
+  const html = React.useMemo(() => htmlOperationsPosees(r, graine), [r, graine]);
+  const titre = `Opérations posées — ${r.operation === "+" ? "additions" : r.operation === "−" ? "soustractions" : "multiplications"}`;
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0 }}>Opérations posées</h3>
+        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
+          Des additions, des soustractions, des multiplications dans un quadrillage : une case par chiffre, les unités sous les unités, une ligne pour les retenues ; posées d'avance, ou à poser. Le corrigé suit.
+        </p>
+        <Field label="Opération">
+          <Select value={r.operation} onChange={(e) => maj({ operation: e.target.value as OperationPosee })}>
+            <option value="+">additions</option><option value="−">soustractions</option><option value="×">multiplications</option>
+          </Select>
+        </Field>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <Field label="Chiffres des nombres">
+            <Select value={r.chiffres} onChange={(e) => maj({ chiffres: Number(e.target.value) })}>
+              <option value={2}>2 (jusqu'à 99)</option><option value={3}>3 (jusqu'à 999)</option><option value={4}>4 (jusqu'à 9 999)</option>
+            </Select>
+          </Field>
+          <Field label="Opérations">
+            <Select value={r.combien} onChange={(e) => maj({ combien: Number(e.target.value) })}>
+              {[3, 6, 9, 12].map((n) => <option key={n} value={n}>{n}</option>)}
+            </Select>
+          </Field>
+        </div>
+        <Field label="Retenue">
+          <Select value={r.retenue} onChange={(e) => maj({ retenue: e.target.value as ReglagesPosees["retenue"] })}>
+            <option value="sans">sans retenue</option><option value="avec">avec retenue</option><option value="melange">les deux, mêlées</option>
+          </Select>
+        </Field>
+        {r.operation === "×" && (
+          <Field label="Le second facteur">
+            <Select value={r.chiffresDuSecond} onChange={(e) => maj({ chiffresDuSecond: Number(e.target.value) as 1 | 2 })}>
+              <option value={1}>un chiffre</option><option value={2}>deux chiffres</option>
+            </Select>
+          </Field>
+        )}
+        {r.operation === "+" && <Coche on={r.troisTermes} libelle="Trois termes, dont un nombre à un chiffre" onChange={(v) => maj({ troisTermes: v })} />}
+        {r.operation !== "×" && <Coche on={r.euros} libelle="Des montants en euros, avec la virgule (CE2)" onChange={(v) => maj({ euros: v })} />}
+        <Coche on={!r.posees} libelle="À poser par l'élève, à partir de l'écriture en ligne" onChange={(v) => maj({ posees: !v })} />
+        <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("posees", titre, html, STYLE_POSEES)} onBureau={() => bureau("posees", titre, html, STYLE_POSEES)} />
+      </>}
+      droite={<ApercuFeuille html={html} style={STYLE_POSEES} />}
     />
   );
 }
