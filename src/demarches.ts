@@ -60,6 +60,7 @@ import { DEMARCHES_CALCUL, demarcheDuLivretDeCalcul } from "./demarchesCalcul";
 import { DEMARCHES_PROBLEMES, demarcheDuLivretDeProblemes } from "./demarchesProblemes";
 import { DEMARCHES_FRANCAIS, demarcheDuLivretDeFrancais } from "./demarchesFrancais";
 import { DEMARCHES_PROBLEMES_PROLONGES, demarcheProlongeeDeProblemes } from "./problemesProlonges";
+import { DEMARCHES_FRACTIONS_PROLONGEES, demarcheProlongeeDeFractions } from "./fractionsProlongees";
 
 /** Une ligne du tableau de déroulement, dans l'ordre de ses colonnes. */
 export interface PhaseCadre {
@@ -2136,7 +2137,7 @@ export const DEMARCHES: Demarche[] = [
   INVESTIGATION, ENQUETE_HISTOIRE_GEO, EMC_DEBAT,
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
   MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, COLLECTIONS, CHRONOLOGIE, COMPARER_NOMBRES, NUMERATION_DIZAINE,
-  ...DEMARCHES_NUMERATION, ...DEMARCHES_CALCUL, ...DEMARCHES_PROBLEMES, ...DEMARCHES_PROBLEMES_PROLONGES, ...DEMARCHES_FRANCAIS,
+  ...DEMARCHES_NUMERATION, ...DEMARCHES_CALCUL, ...DEMARCHES_PROBLEMES, ...DEMARCHES_PROBLEMES_PROLONGES, ...DEMARCHES_FRACTIONS_PROLONGEES, ...DEMARCHES_FRANCAIS,
 ];
 
 export const demarcheDe = (id: string) => DEMARCHES.find((d) => d.id === id);
@@ -2213,7 +2214,9 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string, niveau = 
   if (/mathematiques/.test(dom)) {
     if (/grandeurs|geometrie|espace/.test(sd)) return "geometrie-grandeurs";
     // Les problèmes et les fractions : la séquence du livret de la classe quand il y en a une (voir demarchesProblemes.ts).
-    const livretDeProblemes = /^(cp|ce1|ce2)$/.test(niveau) ? demarcheDuLivretDeProblemes(niveau, comp) ?? demarcheProlongeeDeProblemes(niveau, comp) : null;
+    // Et, à la demande de l'enseignant, les compétences sans séquence de livret prolongent celles des livrets.
+    const livretDeProblemes = /^(cp|ce1|ce2)$/.test(niveau)
+      ? demarcheDuLivretDeProblemes(niveau, comp) ?? demarcheProlongeeDeProblemes(niveau, comp) ?? demarcheProlongeeDeFractions(niveau, comp) : null;
     if (livretDeProblemes) return livretDeProblemes;
     if (/donnees|probabilit|proportionnalite/.test(sd) || /probleme/.test(comp)) return "problemes";
     // Le calcul mental : la séquence du livret de la classe quand il y en a une (voir demarchesCalcul.ts) ; sinon, quand

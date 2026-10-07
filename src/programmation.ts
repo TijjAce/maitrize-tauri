@@ -50,6 +50,10 @@ const PAR_DEMARCHE: Record<string, { periode: number; raison: string; niveau?: s
   "parties-tout-ce1": { periode: 3, raison: citeLeLivret("CE1", "La séquence développée dans ce document, prévue en périodes 3 ou 4, s'inscrit dans la continuité du travail effectué en numération, en calcul et en résolution de problèmes.") },
   "fractions-unitaires-ce1": { periode: 2, raison: cite("CE1", "Le travail sur les fractions commence dès la période 2 par l'introduction des fractions unitaires (de numérateur égal à 1) d'un tout et de leur écriture fractionnaire.") },
   "fractions-longueurs-ce2": { periode: 3, raison: cite("CE2", "À partir de la période 3, le travail sur les fractions d'un tout permet de considérer une fraction d'une unité de longueur.") },
+  // Les fractions du CE1 prolongées : la programmation du livret, et le programme pour comparer.
+  "fractions-non-unitaires-ce1": { periode: 3, raison: citeLeLivret("CE1", "Séquence 3 : interpréter, représenter, lire les fractions non unitaires inférieures ou égales à 1.") },
+  "comparer-fractions-ce1": { periode: 4, raison: cite("CE1", "Dès la période 4, les élèves apprennent à comparer des fractions dans des cas simples.") },
+  "additionner-fractions-ce1": { periode: 4, raison: citeLeLivret("CE1", "Séquence 5 : additionner ou soustraire des fractions de même dénominateur.") },
   // Le français : ce que disent les livrets de leurs ateliers et de leurs séances.
   "precision-vitesse-cp": { niveau: "CP", periode: 1, raison: citeLeLivretDeFrancais("CP", "À partir de la période 1 du CP et tout au long du cycle") },
   "prosodie-cp": { niveau: "CP", periode: 2, raison: citeLeLivretDeFrancais("CP", "À partir de la période 2 du CP") },

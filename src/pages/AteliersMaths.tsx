@@ -19,7 +19,7 @@ import { competencesProposees } from "../sequenceCubes";
 import {
   REGLAGES_ARBRE, REGLAGES_CALCUL, REGLAGES_FRACTIONS, REGLAGES_NOMBRES, REGLAGES_OIE, REPRESENTATIONS, STYLE_JEUX_MATHS,
   additionsArbre, cartesCalcul, cartesNombres, htmlArbreCalcul, htmlCartesCalcul, htmlCartesNombres, htmlFractions, htmlJeuDeLOie,
-  type ContenuOie, type FacesDe, type Graduation, type MaterielFraction, type Operation, type Representation, type RepresentationFraction,
+  type CasFractions, type ContenuOie, type FacesDe, type Graduation, type MaterielFraction, type Operation, type Representation, type RepresentationFraction,
 } from "../jeuxMaths";
 import { REFLEXIONS, REGLAGES_MARTINIERE, STYLE_MARTINIERE, calculsMartiniere, fluenceAttendue, htmlMartiniere, libelleTravaille, objectifsRetenus, type FormeEntrainement } from "../martiniere";
 import { objectifsDesAteliers, propositionsDesAteliers } from "../ateliersCompetences";
@@ -297,14 +297,14 @@ export function FractionsTab() {
   const [graine, setGraine] = React.useState(graineAuHasard);
   const html = React.useMemo(() => htmlFractions(r, graine), [r, graine]);
   const MATERIEL: [MaterielFraction, string][] = [["cartes", "cartes (mémory, bataille)"], ["bandes", "bandes unités à plier"], ["regle", "règle graduée"], ["nageurs", "course des nageurs"],
-    ["mesurer", "segments à mesurer"], ["tracer", "segments à tracer"]];
+    ["mesurer", "segments à mesurer"], ["tracer", "segments à tracer"], ["comparer", "comparer des fractions"], ["operations", "ajouter, retrancher"]];
   const REPS: [RepresentationFraction, string][] = [["chiffres", "en chiffres"], ["lettres", "en lettres"], ["bande", "bande partagée"], ["disque", "disque partagé"]];
   return (
     <Colonnes
       gauche={<>
         <h3 style={{ marginTop: 0 }}>Fractions</h3>
         <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Les cartes pour nommer et comparer les fractions, la bande unité qu'on plie, la règle graduée en quarts, en huitièmes ou en dixièmes, la course des nageurs, et des segments à mesurer ou à tracer.
+          Les cartes pour nommer et comparer les fractions, la bande unité qu'on plie, la règle graduée en quarts, en huitièmes ou en dixièmes, la course des nageurs, des segments à mesurer ou à tracer, des fractions à comparer, à ajouter et à retrancher.
         </p>
         <Field label="Matériel"><Chips liste={MATERIEL.map((m) => m[0])} choisis={r.materiel} onChange={(v) => maj({ materiel: v })} libelle={(id) => MATERIEL.find((m) => m[0] === id)![1]} /></Field>
         {r.materiel.includes("cartes") && (<>
@@ -312,6 +312,15 @@ export function FractionsTab() {
           <Field label="Formes"><Chips liste={REPS.map((m) => m[0])} choisis={r.representations} onChange={(v) => maj({ representations: v })} libelle={(id) => REPS.find((m) => m[0] === id)![1]} /></Field>
           <Coche on={!!r.unitaires} libelle="Les fractions unitaires seulement : un demi, un tiers, un quart…" onChange={(v) => maj({ unitaires: v })} />
         </>)}
+        {r.materiel.some((m) => m === "comparer" || m === "operations") && (
+          <Field label="Comparer, calculer">
+            <Select value={r.cas ?? "denominateur"} onChange={(e) => maj({ cas: e.target.value as CasFractions })}>
+              <option value="denominateur">même dénominateur (CE1)</option>
+              {r.materiel.includes("comparer") && <option value="unitaires">numérateur 1 (CE1)</option>}
+              <option value="multiple">un dénominateur multiple de l'autre (CE2)</option>
+            </Select>
+          </Field>
+        )}
         {r.materiel.some((m) => m === "regle" || m === "nageurs" || m === "mesurer" || m === "tracer") && (
           <Field label="Graduation de la règle">
             <Select value={r.graduation} onChange={(e) => maj({ graduation: Number(e.target.value) as Graduation })}>
@@ -319,7 +328,7 @@ export function FractionsTab() {
             </Select>
           </Field>
         )}
-        <Boutons peut={r.materiel.length > 0} onTirage={r.materiel.some((m) => m === "cartes" || m === "mesurer" || m === "tracer") ? () => setGraine(graineAuHasard()) : undefined} onImprimer={() => imprimer("fractions", "Fractions", html)} onBureau={() => bureau("fractions", "Fractions", html)} />
+        <Boutons peut={r.materiel.length > 0} onTirage={r.materiel.some((m) => m !== "bandes" && m !== "regle" && m !== "nageurs") ? () => setGraine(graineAuHasard()) : undefined} onImprimer={() => imprimer("fractions", "Fractions", html)} onBureau={() => bureau("fractions", "Fractions", html)} />
       </>}
       droite={r.materiel.length ? <ApercuFeuille html={html} style={STYLE_JEUX_MATHS} /> : <div className="card meta">Choisissez le matériel à fabriquer.</div>}
     />
