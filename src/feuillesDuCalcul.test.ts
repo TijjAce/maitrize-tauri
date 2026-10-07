@@ -16,7 +16,8 @@ const COMPETENCES: [ClasseC2, string, string, string][] = [
   ["CP", FAITS, "Connaitre dans les deux sens les tables d’addition.", "calcul-mental-martiniere"],
   ["CP", FAITS, "Connaitre les doubles et les moitiés de nombres usuels.", "calcul-mental-martiniere"],
   ["CE1", FAITS, "Connaitre dans les deux sens les tables d’addition.", "calcul-mental-martiniere"],
-  ["CE1", FAITS, "Connaitre dans les deux sens les tables de multiplication.", "table-de-7-ce1"],
+  // En période 2, les tables de 2 à 6 et de 10 : La Martinière ; la table de 7 vient en période 3 (voir plus bas).
+  ["CE1", FAITS, "Connaitre dans les deux sens les tables de multiplication.", "calcul-mental-martiniere"],
   ["CE1", FAITS, "Connaitre des faits multiplicatifs usuels.", "calcul-mental-martiniere"],
   ["CE2", FAITS, "Connaitre dans les deux sens les tables d’addition.", "calcul-mental-martiniere"],
   ["CE2", FAITS, "Connaitre dans les deux sens les tables de multiplication.", "calcul-mental-martiniere"],
@@ -61,6 +62,9 @@ describe("le calcul mental du cycle 2, compétence par compétence", () => {
     }
     // « Un nombre inférieur à 9 » n'est pas une comparaison de nombres.
     expect(demarcheSuggeree(cible("CP", PROCEDURES, "Ajouter un nombre inférieur à 9 à un nombre."), REF).id).not.toMatch(/^comparer/);
+    // Les tables du CE1 : la séquence de la table de 7 en période 3, La Martinière aux autres périodes.
+    const tables = (periode: number) => demarcheSuggeree(cible("CE1", FAITS, "Connaitre dans les deux sens les tables de multiplication."), REF, periode).id;
+    expect([tables(1), tables(3), tables(4), tables(0)]).toEqual(["calcul-mental-martiniere", "table-de-7-ce1", "calcul-mental-martiniere", "table-de-7-ce1"]);
     // La séquence d'un livret est celle d'une classe : ajouter 9, 19 ou 29 n'est pas au programme du CP.
     expect(demarcheSuggeree(cible("CE2", PROCEDURES, "Ajouter deux nombres inférieurs à 100."), REF).id).toBe("calcul-mental-martiniere");
   });

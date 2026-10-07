@@ -18,6 +18,7 @@ import { CLASSE_DES_DEMARCHES } from "./demarchesNumeration";
 import { PREFIXE_COMPETENCES, lireCompetencesAtelier, memeCompetence } from "./ateliersCompetences";
 import { estUneDemarcheDeCalcul, planDuCalcul } from "./feuillesDuCalcul";
 import { estUneDemarcheDeProblemes, planDesProblemes } from "./problemesDesLivrets";
+import { estUneDemarcheProlongee, planDesProblemesProlonges } from "./problemesProlonges";
 import { estUneDemarcheDeFractions, planDesFractions } from "./fractionsDesLivrets";
 import { estUneDemarcheDeFrancais, planDuFrancais } from "./feuillesDuFrancais";
 import { reglagesLaisses } from "./reglagesLaisses";
@@ -123,6 +124,7 @@ export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): Plan
   if (estUneDemarcheDeCalcul(demarcheId)) return planDuCalcul(demarcheId, ctx);
   // Les problèmes et les fractions des livrets (voir problemesDesLivrets.ts et fractionsDesLivrets.ts).
   if (estUneDemarcheDeProblemes(demarcheId)) return planDesProblemes(demarcheId);
+  if (estUneDemarcheProlongee(demarcheId)) return planDesProblemesProlonges(demarcheId);
   if (estUneDemarcheDeFractions(demarcheId)) return planDesFractions(demarcheId);
   // Le français des livrets : la grille de fluence, le syllabaire, les étiquettes du vocabulaire (voir feuillesDuFrancais.ts).
   if (estUneDemarcheDeFrancais(demarcheId)) return planDuFrancais(demarcheId, ctx);
