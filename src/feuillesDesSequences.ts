@@ -16,11 +16,19 @@ import { FEUILLES_DE_LA_SEQUENCE, STYLE_SEQUENCE_COMPARER, htmlDeLaFeuille as ht
 import { REGLAGES_NOMBRES, REGLAGES_OIE, STYLE_JEUX_MATHS, cartesNombres, htmlCartesNombres, htmlJeuDeLOie, type ReglagesNombres, type ReglagesOie } from "./jeuxMaths";
 import { CLASSE_DES_DEMARCHES } from "./demarchesNumeration";
 import { PREFIXE_COMPETENCES, lireCompetencesAtelier, memeCompetence } from "./ateliersCompetences";
+import { estUneDemarcheDeCalcul, planDuCalcul } from "./feuillesDuCalcul";
 
 export type ClasseC2 = "CP" | "CE1" | "CE2";
 
 /** Ce que la séquence dit d'elle-même : la classe de sa compétence, et la période où elle se fait. */
-export interface ContexteFeuilles { classe: ClasseC2; periode: number }
+export interface ContexteFeuilles {
+  classe: ClasseC2;
+  periode: number;
+  /** L'intitulé de la compétence : il dit ce qu'une séquence de calcul mental travaille. */
+  competence?: string;
+  /** L'objectif de l'atelier « Calcul mental » qu'on a rattaché soi-même à la compétence, s'il y en a un. */
+  objectifRattache?: string;
+}
 
 /** Une feuille qu'un atelier fabrique pour une séance. */
 export interface FeuilleAFabriquer {
@@ -118,6 +126,8 @@ function materielDuLivret(ctx: ContexteFeuilles, feuilles: FeuilleAFabriquer[]):
  * ateliers.
  */
 export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): PlanDesFeuilles | null {
+  // Le calcul mental : les séquences des livrets, ou le procédé La Martinière (voir feuillesDuCalcul.ts).
+  if (estUneDemarcheDeCalcul(demarcheId)) return planDuCalcul(demarcheId, ctx);
   if (!CLASSE_DES_DEMARCHES[demarcheId]) return null;
   // Grouper par dix, la centaine, le millier : les huit feuilles des cubes, de la grande collection à l'évaluation.
   if (demarcheId === "numeration-dizaine-cp" || demarcheId.startsWith("groupements-")) {

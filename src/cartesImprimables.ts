@@ -123,7 +123,10 @@ export function pagesAvecRegle(cellules: string[], format: FormatGrille, entete:
  */
 export function pagesRectoVerso(rectos: string[], versos: string[], format: FormatGrille, entete = ""): string {
   const parPage = format.colonnes * format.lignes;
-  const gabarit = gabaritGrille(format, Boolean(entete));
+  // Toutes les rangées tiennent sous le titre, la règle et l'en-tête des compétences — 55 mm au plus, comme pour
+  // pagesAvecRegle — : une rangée qui déborderait décalerait d'une page le verso, qui ne tomberait plus au dos.
+  const hauteurMm = format.hauteurMm ?? Math.floor((HAUTEUR_UTILE_MM - (entete ? 55 : 0)) / format.lignes);
+  const gabarit = gabaritGrille({ ...format, hauteurMm }, Boolean(entete));
   const page = (cellules: string[], tete: string) =>
     `<div class="page">${tete}<div class="grille" style="${gabarit}">${cellules.join("")}</div></div>`;
   const pages: string[] = [];

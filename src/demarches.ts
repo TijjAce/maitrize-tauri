@@ -56,6 +56,7 @@
 
 import { newId, type Seance } from "./api";
 import { DEMARCHES_NUMERATION } from "./demarchesNumeration";
+import { DEMARCHES_CALCUL, demarcheDuLivretDeCalcul } from "./demarchesCalcul";
 
 /** Une ligne du tableau de déroulement, dans l'ordre de ses colonnes. */
 export interface PhaseCadre {
@@ -2132,7 +2133,7 @@ export const DEMARCHES: Demarche[] = [
   INVESTIGATION, ENQUETE_HISTOIRE_GEO, EMC_DEBAT,
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
   MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, COLLECTIONS, CHRONOLOGIE, COMPARER_NOMBRES, NUMERATION_DIZAINE,
-  ...DEMARCHES_NUMERATION,
+  ...DEMARCHES_NUMERATION, ...DEMARCHES_CALCUL,
 ];
 
 export const demarcheDe = (id: string) => DEMARCHES.find((d) => d.id === id);
@@ -2149,6 +2150,8 @@ export interface CibleDemarche {
   competenceTitre?: string | null;
   /** La classe de la compétence — CP, CE1, CE2… — : la numération n'a pas la même démarche au CP et au CE2. */
   niveau?: string | null;
+  /** La compétence générale qui la range — « Le calcul mental : apprendre des procédures… » — : elle dit le domaine mieux que l'intitulé. */
+  competenceGeneraleTitre?: string | null;
 }
 
 const plat = (s: string | null | undefined) =>
@@ -2166,11 +2169,12 @@ const plat = (s: string | null | undefined) =>
  */
 export function demarcheSuggeree(cible: CibleDemarche | string, referentielNom = "", periode = 0): Demarche {
   const c: CibleDemarche = typeof cible === "string" ? { domaineTitre: cible } : cible;
-  return demarcheDe(idSuggere(plat(c.domaineTitre), plat(c.sousDomaineTitre), plat(c.competenceTitre), plat(referentielNom), plat(c.niveau), periode))
+  return demarcheDe(idSuggere(plat(c.domaineTitre), plat(c.sousDomaineTitre), plat(c.competenceTitre), plat(referentielNom), plat(c.niveau), periode,
+    plat(c.competenceGeneraleTitre)))
     ?? DEMARCHES[0];
 }
 
-function idSuggere(dom: string, sd: string, comp: string, ref: string, niveau = "", periode = 0): string {
+function idSuggere(dom: string, sd: string, comp: string, ref: string, niveau = "", periode = 0, cg = ""): string {
   if (/\beps\b|physique et sportive|activite(s)? physique/.test(`${dom} ${sd}`)) return "eps-module";
   const maternelle = /cycle 1|maternelle/.test(ref)
     || /mobiliser le langage|premiers outils mathematiques|explorer le monde|se reperer dans le temps et l'espace/.test(dom);
@@ -2202,6 +2206,12 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string, niveau = 
   if (/mathematiques/.test(dom)) {
     if (/grandeurs|geometrie|espace/.test(sd)) return "geometrie-grandeurs";
     if (/donnees|probabilit|proportionnalite/.test(sd) || /probleme/.test(comp)) return "problemes";
+    // Le calcul mental : la séquence du livret de la classe quand il y en a une (voir demarchesCalcul.ts) ; sinon, quand
+    // la compétence générale le nomme, le procédé La Martinière. Avant la numération : « un nombre inférieur à 9 »
+    // n'est pas une comparaison.
+    const livretDeCalcul = /^(cp|ce1|ce2)$/.test(niveau) ? demarcheDuLivretDeCalcul(niveau, comp) : null;
+    if (livretDeCalcul) return livretDeCalcul;
+    if (/calcul mental/.test(cg)) return "calcul-mental-martiniere";
     // La numération au cycle 2, classe par classe (voir demarchesNumeration.ts) : au CP, les séquences du guide et du
     // livret ; au CE1 et au CE2, les mêmes, prolongées à la centaine et au millier. Le cycle 3 travaille les grands
     // nombres et les décimaux autrement.

@@ -51,18 +51,22 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
 
   // Les feuilles : la démarche pioche dans les ateliers de Fabriquer, aux nombres de la classe de la compétence et de la
   // période de la séquence. Chacune se décoche ; les jeux qu'on a rattachés soi-même à la compétence s'y ajoutent.
+  const { data: reglages } = useAsync(() => api.settingsAll(), []);
   const classe = classeDe(comp?.niveau);
-  const ctx: ContexteFeuilles | null = classe ? { classe, periode: s.periode } : null;
+  // Un objectif de calcul mental qu'on a rattaché soi-même à la compétence : la séquence La Martinière le prend.
+  const objectifRattache = React.useMemo(() => (comp && reglages
+    ? ateliersRattaches(reglages, comp).find((a) => a.atelier === "martiniere" && a.objectif)?.objectif : undefined),
+  [reglages, s.competenceVisee]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ctx: ContexteFeuilles | null = classe ? { classe, periode: s.periode, competence: comp?.competenceTitre ?? "", objectifRattache } : null;
   const plan = React.useMemo(() => (demarche && ctx ? planDesFeuilles(demarche.id, ctx) : null),
-    [demarche?.id, ctx?.classe, ctx?.periode]); // eslint-disable-line react-hooks/exhaustive-deps
+    [demarche?.id, ctx?.classe, ctx?.periode, ctx?.competence, objectifRattache]); // eslint-disable-line react-hooks/exhaustive-deps
   const [retirees, setRetirees] = React.useState<ReadonlySet<number>>(() => new Set());
-  React.useEffect(() => { setRetirees(new Set()); }, [cadre]);
+  React.useEffect(() => { setRetirees(new Set()); }, [cadre, plan]);
   const basculer = (k: number) => setRetirees((avant) => {
     const suite = new Set(avant);
     if (suite.has(k)) suite.delete(k); else suite.add(k);
     return suite;
   });
-  const { data: reglages } = useAsync(() => api.settingsAll(), []);
   const rattaches = React.useMemo(() => (comp && reglages
     ? ateliersRattaches(reglages, comp).filter((a) => !plan?.feuilles.some((f) => f.atelier === a.atelier))
     : []), [reglages, s.competenceVisee, plan]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -179,7 +183,7 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
 
       {proposition && (proposition.raison || !suitLaProposition) && (
         <div className="meta programmation-proposee">
-          📅 {suitLaProposition ? "D'après le programme" : `Proposé : ${libelleDeProgrammation(proposition)}`}
+          📅 {suitLaProposition ? (proposition.raison.startsWith("Livret") ? "D'après le livret" : "D'après le programme") : `Proposé : ${libelleDeProgrammation(proposition)}`}
           {proposition.raison && <> — {proposition.raison}</>}
           {!suitLaProposition && (
             <button type="button" className="btn ghost sm" style={{ marginLeft: 6 }}
