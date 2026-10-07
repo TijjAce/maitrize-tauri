@@ -22,6 +22,7 @@ import {
 } from "./AteliersMaths";
 import { CursiveTab, EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
 import { MesuresTab, MonnaieTab } from "./AteliersMesures";
+import { DeplacementsTab, GeometrieTab, SolidesTab } from "./AteliersGeometrie";
 import { TrousTab } from "./AteliersTrous";
 import { ComparerTab } from "./AteliersComparer";
 import { GestesTab, MotsEnGestesTab } from "./AteliersGestes";
@@ -280,6 +281,9 @@ export default function Jeux() {
         : onglet === "posees" ? <OperationsPoseesTab />
         : onglet === "monnaie" ? <MonnaieTab />
         : onglet === "mesures" ? <MesuresTab />
+        : onglet === "geometrie" ? <GeometrieTab />
+        : onglet === "solides" ? <SolidesTab />
+        : onglet === "deplacements" ? <DeplacementsTab />
         : onglet === "fractions" ? <FractionsTab />
         : onglet === "oie" ? <JeuDeLOieTab />
         : onglet === "martiniere" ? <MartiniereTab />
