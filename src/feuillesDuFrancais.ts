@@ -11,7 +11,9 @@
 //   « Écriture cursive » — la lettre du graphème de la période, puis des
 //   syllabes et des mots ; pour copier, la phrase du livret, puis celles de
 //   l'atelier « Phrases en désordre ».
-// La prosodie n'a pas encore de feuille.
+// - Lire à voix haute : les phrases codées ou à coder et la grille du binôme
+//   de l'atelier « Lire à voix haute » ; au CE2, le texte partition de la
+//   fable.
 
 import type { ClasseC2, ContexteFeuilles, FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
 import { STYLE_FEUILLE } from "./cartesImprimables";
@@ -21,6 +23,7 @@ import { ETAPES, etapeDe } from "./progressionCgp";
 import { reglagesLaisses } from "./reglagesLaisses";
 import { REGLAGES_CURSIVE, STYLE_CURSIVE, htmlEcritureCursive, modelesDeLEtape, type ReglagesCursive } from "./ecritureCursive";
 import { REGLAGES_PHRASES, phrasesSaisies, type ReglagesPhrases } from "./phrasesEnDesordre";
+import { REGLAGES_VOIX_HAUTE, STYLE_VOIX_HAUTE, htmlVoixHaute, type ReglagesVoixHaute } from "./lectureVoixHaute";
 
 /** Le graphème d'une séquence de lecture : celui de l'atelier quand il est de la classe, sinon le premier de la période. */
 export function etapeDeLaSequence(classe: ClasseC2, periode: number): string {
@@ -98,7 +101,14 @@ const MUR = "Le mur sonore ; les ardoises";
 
 /** Les démarches de français dont on sait fabriquer des feuilles. */
 export const estUneDemarcheDeFrancais = (id: string) =>
-  ["cgp-deux-jours-cp", "precision-vitesse-cp", "precision-vitesse-ce1", "vocabulaire-cp", "vocabulaire-ce1", "vocabulaire-ce2", "ecriture-cursive", "strategies-de-copie"].includes(id);
+  ["cgp-deux-jours-cp", "precision-vitesse-cp", "precision-vitesse-ce1", "vocabulaire-cp", "vocabulaire-ce1", "vocabulaire-ce2", "ecriture-cursive", "strategies-de-copie",
+    "prosodie-cp", "prosodie-ce1", "lecture-expressive-ce2"].includes(id);
+
+/** Une feuille de l'atelier « Lire à voix haute ». */
+function feuilleVoixHaute(seance: number, titre: string, r: Partial<ReglagesVoixHaute>): FeuilleAFabriquer {
+  const reglages = { ...REGLAGES_VOIX_HAUTE, ...r };
+  return { seance, atelier: "voixHaute", titre, fabriquer: (graine) => ({ html: htmlVoixHaute(reglages, graine), style: STYLE_FEUILLE + STYLE_VOIX_HAUTE }) };
+}
 
 export function planDuFrancais(demarcheId: string, ctx: ContexteFeuilles): PlanDesFeuilles | null {
   const { classe, periode } = ctx;
@@ -123,6 +133,32 @@ export function planDuFrancais(demarcheId: string, ctx: ContexteFeuilles): PlanD
         ? ["Les outils : le mur sonore, la synthèse vocale", "Les jetons de deux couleurs ; les traces écrites des séances précédentes", "Un chronomètre", "Un chronomètre ; le cahier, pour la copie cursive"]
         : ["La grille de la semaine précédente, pour l'évaluation ; un chronomètre", "Un chronomètre", "Un chronomètre ; le cahier, pour la copie cursive", "Un chronomètre"]),
     };
+  }
+  if (demarcheId === "prosodie-cp") {
+    const feuilles = [
+      feuilleVoixHaute(0, "Lire à voix haute — les liaisons", { exercice: "liaisons", classe: "CP", codees: true, combien: 6 }),
+      feuilleVoixHaute(1, "La grille du binôme", { exercice: "grille", classe: "CP" }),
+      feuilleVoixHaute(2, "Lire à voix haute — la ponctuation", { exercice: "ponctuation", classe: "CP", codees: true, combien: 6 }),
+      feuilleVoixHaute(3, "La grille du binôme", { exercice: "grille", classe: "CP" }),
+    ];
+    return { feuilles, materiel: notes(feuilles, ["Les phrases ou le texte du jour", "Les critères du phrasé", "Un nouveau texte ; la grille « pas encore, parfois, excellent »", "Les critères du phrasé"]) };
+  }
+  if (demarcheId === "prosodie-ce1") {
+    const feuilles = [
+      feuilleVoixHaute(0, "Lire à voix haute — les liaisons codées", { exercice: "liaisons", classe: "CE1", codees: true, combien: 6 }),
+      feuilleVoixHaute(1, "Lire à voix haute — les liaisons à coder", { exercice: "liaisons", classe: "CE1", codees: false, combien: 6 }),
+      feuilleVoixHaute(2, "La grille du binôme", { exercice: "grille", classe: "CE1" }),
+    ];
+    return { feuilles, materiel: notes(feuilles, ["Le texte du jour", "La phrase au tableau : « Le petit éléphant a un gros appétit. » ; les grilles des liaisons en /n/, /t/, /z/", "Les critères et le codage du texte", "La grille « pas encore, parfois, excellent »"]) };
+  }
+  if (demarcheId === "lecture-expressive-ce2") {
+    const feuilles = [
+      feuilleVoixHaute(0, "La fable — le texte partition", { exercice: "fable", classe: "CE2" }),
+      feuilleVoixHaute(1, "La grille du binôme", { exercice: "grille", classe: "CE2" }),
+      feuilleVoixHaute(2, "La grille du binôme", { exercice: "grille", classe: "CE2" }),
+      feuilleVoixHaute(4, "Lire à voix haute — les groupes de souffle", { exercice: "souffle", classe: "CE2", codees: true, combien: 6 }),
+    ];
+    return { feuilles, materiel: notes(feuilles, ["Le texte de la fable ; des surligneurs de deux couleurs", "Le texte partition", "La grille des critères de réussite", "D'autres fables d'Ésope, de Phèdre, de La Fontaine", "Les supports des livrets CP et CE1 ; des phrases dialoguées"]) };
   }
   if (demarcheId === "ecriture-cursive") {
     const etape = etapeDeLaSequence(classe, periode), reglure = reglureDe(classe, periode);

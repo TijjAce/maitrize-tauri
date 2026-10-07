@@ -63,10 +63,10 @@ describe("le français du cycle 2, d'après les livrets", () => {
         expect(style, `${d.id} · ${f.titre}`).toContain(".feuille");
       }
     }
-    // Sans feuille encore : la prosodie, la fable ; la séquence se crée quand même, sans elles.
+    // La prosodie et la fable : les feuilles de l'atelier « Lire à voix haute » (voir lectureVoixHaute.test.ts).
     for (const id of ["prosodie-cp", "prosodie-ce1", "lecture-expressive-ce2"]) {
       expect(demarcheDe(id), id).toBeDefined();
-      expect(planDesFeuilles(id, { classe: "CP", periode: 2 }), id).toBeNull();
+      expect(planDesFeuilles(id, { classe: "CP", periode: 2 })!.feuilles.every((f) => f.atelier === "voixHaute"), id).toBe(true);
     }
   });
 
