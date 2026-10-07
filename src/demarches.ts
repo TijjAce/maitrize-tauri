@@ -55,6 +55,7 @@
 //   raconter en entier, rejouer, faire raconter, ordonner des photographies.
 
 import { newId, type Seance } from "./api";
+import { DEMARCHES_NUMERATION } from "./demarchesNumeration";
 
 /** Une ligne du tableau de déroulement, dans l'ordre de ses colonnes. */
 export interface PhaseCadre {
@@ -2131,6 +2132,7 @@ export const DEMARCHES: Demarche[] = [
   INVESTIGATION, ENQUETE_HISTOIRE_GEO, EMC_DEBAT,
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
   MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, COLLECTIONS, CHRONOLOGIE, COMPARER_NOMBRES, NUMERATION_DIZAINE,
+  ...DEMARCHES_NUMERATION,
 ];
 
 export const demarcheDe = (id: string) => DEMARCHES.find((d) => d.id === id);
@@ -2145,6 +2147,8 @@ export interface CibleDemarche {
   domaineTitre: string;
   sousDomaineTitre?: string | null;
   competenceTitre?: string | null;
+  /** La classe de la compétence — CP, CE1, CE2… — : la numération n'a pas la même démarche au CP et au CE2. */
+  niveau?: string | null;
 }
 
 const plat = (s: string | null | undefined) =>
@@ -2160,13 +2164,13 @@ const plat = (s: string | null | undefined) =>
  * fluence ou la compréhension. Rien ne s'impose : c'est une proposition,
  * le menu reste ouvert.
  */
-export function demarcheSuggeree(cible: CibleDemarche | string, referentielNom = ""): Demarche {
-  const c = typeof cible === "string" ? { domaineTitre: cible } : cible;
-  return demarcheDe(idSuggere(plat(c.domaineTitre), plat(c.sousDomaineTitre), plat(c.competenceTitre), plat(referentielNom)))
+export function demarcheSuggeree(cible: CibleDemarche | string, referentielNom = "", periode = 0): Demarche {
+  const c: CibleDemarche = typeof cible === "string" ? { domaineTitre: cible } : cible;
+  return demarcheDe(idSuggere(plat(c.domaineTitre), plat(c.sousDomaineTitre), plat(c.competenceTitre), plat(referentielNom), plat(c.niveau), periode))
     ?? DEMARCHES[0];
 }
 
-function idSuggere(dom: string, sd: string, comp: string, ref: string): string {
+function idSuggere(dom: string, sd: string, comp: string, ref: string, niveau = "", periode = 0): string {
   if (/\beps\b|physique et sportive|activite(s)? physique/.test(`${dom} ${sd}`)) return "eps-module";
   const maternelle = /cycle 1|maternelle/.test(ref)
     || /mobiliser le langage|premiers outils mathematiques|explorer le monde|se reperer dans le temps et l'espace/.test(dom);
@@ -2198,12 +2202,24 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string): string {
   if (/mathematiques/.test(dom)) {
     if (/grandeurs|geometrie|espace/.test(sd)) return "geometrie-grandeurs";
     if (/donnees|probabilit|proportionnalite/.test(sd) || /probleme/.test(comp)) return "problemes";
-    // Dénombrer en groupant par dix, passer d'une représentation du nombre à l'autre : le chemin du guide CP, de la dizaine
-    // aux unités de numération — au cycle 2 ; le cycle 3 travaille les grands nombres et les décimaux autrement.
-    if (/denombrer|representations? d.un nombre|unites de numeration|valeur des chiffres|cardinal donne/.test(comp)
-      && !/fraction|decima/.test(comp) && !/cycle 3/.test(ref)) return "numeration-dizaine-cp";
-    // Comparer, ranger, encadrer des entiers : la séquence du guide CP, par l'écriture chiffrée — pas les fractions ni les décimaux.
-    if (/comparer|encadrer|intercaler|ordonner des nombres|ranger des nombres|ordre (de)?croissant/.test(comp) && !/fraction|decima/.test(comp)) return "comparer-nombres-cp";
+    // La numération au cycle 2, classe par classe (voir demarchesNumeration.ts) : au CP, les séquences du guide et du
+    // livret ; au CE1 et au CE2, les mêmes, prolongées à la centaine et au millier. Le cycle 3 travaille les grands
+    // nombres et les décimaux autrement.
+    const entiers = !/fraction|decima/.test(comp) && !/cycle 3/.test(ref);
+    const classe = /ce2/.test(niveau) ? "ce2" : /ce1/.test(niveau) ? "ce1" : "cp";
+    // Dénombrer en groupant, construire une collection, échanger dix contre un : grouper par dix, la centaine, le millier.
+    if (entiers && /denombrer|cardinal donne|relations? entre (les )?unites|unites de numeration/.test(comp)) {
+      return classe === "cp" ? "numeration-dizaine-cp" : `groupements-${classe}`;
+    }
+    // La suite orale et écrite, les représentations, la valeur des chiffres : la séquence du livret CP — jusqu'à 59 en
+    // période 2, jusqu'à 100 dès la période 3 —, prolongée au CE1 et au CE2.
+    if (entiers && /suite (ecrite|orale)|representations? d.un nombre|valeur des chiffres/.test(comp)) {
+      return classe === "cp" ? (periode >= 3 ? "nombres-livret-cp-100" : "nombres-livret-cp-59") : `nombres-livret-${classe}`;
+    }
+    // Comparer, ranger, encadrer des entiers, et les mots pour le dire : la séquence du guide CP, par l'écriture chiffrée.
+    if (entiers && /comparer|encadrer|intercaler|ordonner des nombres|ranger des nombres|ordre (de)?croissant|superieur a|inferieur a|compris entre/.test(comp)) {
+      return classe === "cp" ? "comparer-nombres-cp" : `comparer-nombres-${classe}`;
+    }
     // Un fait numérique ou une procédure de calcul : ce qui s'entraîne chaque jour au procédé La Martinière.
     if (/calcul mental/.test(sd) || /mental|faits? numeriques|tables? (d'addition|de multiplication)|complements?\b|dizaine superieure|doubles?\b|moities?\b|ajouter ou soustraire|retrancher|calculer? (en ligne|de tete)/.test(comp)) return "calcul-mental-martiniere";
     return "eduscol-quatre-temps";

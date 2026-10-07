@@ -172,7 +172,7 @@ describe("la démarche que la compétence appelle", () => {
     expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Ordonner des nombres dans l'ordre croissant ou décroissant.")).toBe("comparer-nombres-cp");
     expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Comparer des fractions de même dénominateur", "Cycle 3")).not.toBe("comparer-nombres-cp");
     // Dénombrer en groupant par dix, passer d'une représentation à l'autre : le chemin du guide CP, au cycle 2.
-    expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Connaitre et utiliser diverses représentations d'un nombre et passer de l'une à l'autre.")).toBe("numeration-dizaine-cp");
+    expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Connaitre et utiliser diverses représentations d'un nombre et passer de l'une à l'autre.")).toBe("nombres-livret-cp-59");
     expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Comparer et dénombrer des collections en les organisant.")).toBe("numeration-dizaine-cp");
     expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Connaitre et utiliser les relations entre les unités de numération.")).toBe("numeration-dizaine-cp");
     expect(sug("Mathématiques", "Nombres, calcul et résolution de problèmes", "Connaître les unités de numération des grands nombres", "Cycle 3")).not.toBe("numeration-dizaine-cp");
@@ -246,3 +246,87 @@ describe("le calcul mental au procédé La Martinière", () => {
     expect(d.source).toContain("Une séquence de calcul");
   });
 });
+
+describe("la numération du cycle 2, compétence par compétence", () => {
+  // Les 38 compétences « Les nombres entiers » du référentiel « Cycle 2 — CP, CE1, CE2 (programmes 2026) », et la démarche
+  // que chacune appelle à sa classe. « Plus tard » : la demi-droite graduée et les ordinaux attendent leur démarche.
+  const REF = "Cycle 2 — CP, CE1, CE2 (programmes 2026)";
+  const PLUS_TARD = "eduscol-quatre-temps";
+  const COMPETENCES: [string, string, string][] = [
+    ["CP", "Comparer et dénombrer des collections en les organisant.", "numeration-dizaine-cp"],
+    ["CP", "Construire des collections de cardinal donné.", "numeration-dizaine-cp"],
+    ["CP", "Connaitre la suite écrite et la suite orale des nombres jusqu’à cent.", "nombres-livret-cp-59"],
+    ["CP", "Connaitre et utiliser diverses représentations d’un nombre et passer de l’une à l’autre.", "nombres-livret-cp-59"],
+    ["CP", "Connaitre la valeur des chiffres en fonction de leur position (unités, dizaines).", "nombres-livret-cp-59"],
+    ["CP", "Comparer, encadrer, intercaler des nombres entiers en utilisant les symboles =, < et >.", "comparer-nombres-cp"],
+    ["CP", "Ordonner des nombres dans l’ordre croissant ou décroissant.", "comparer-nombres-cp"],
+    ["CP", "Savoir placer des nombres sur une demi-droite graduée de un en un.", PLUS_TARD],
+    ["CP", "Connaitre les nombres ordinaux jusqu’à « vingtième ».", PLUS_TARD],
+    ["CP", "Comprendre et utiliser les nombres ordinaux.", PLUS_TARD],
+    ["CP", "Repérer un rang ou une position dans une file orientée ou dans une liste d’objets ou de personnes.", PLUS_TARD],
+    ["CP", "Faire le lien entre le rang d’un objet dans une liste et le nombre d’éléments qui le précèdent.", PLUS_TARD],
+    ["CP", "Utiliser les nombres ordinaux dans le cadre de l’étude de suites de symboles, de formes, de lettres ou de nombres.", PLUS_TARD],
+    ["CE1", "Dénombrer des collections en les organisant.", "groupements-ce1"],
+    ["CE1", "Construire des collections de cardinal donné.", "groupements-ce1"],
+    ["CE1", "Connaitre et utiliser la relation entre unités et dizaines, entre dizaines et centaines, entre unités et centaines.", "groupements-ce1"],
+    ["CE1", "Connaitre la suite écrite et la suite orale des nombres jusqu’à mille.", "nombres-livret-ce1"],
+    ["CE1", "Connaitre et utiliser diverses représentations d’un nombre et passer de l’une à l’autre.", "nombres-livret-ce1"],
+    ["CE1", "Connaitre la valeur des chiffres en fonction de leur position dans un nombre.", "nombres-livret-ce1"],
+    ["CE1", "Comparer, encadrer, intercaler des nombres entiers en utilisant les symboles (=, <, >).", "comparer-nombres-ce1"],
+    ["CE1", "Ordonner des nombres dans l’ordre croissant ou décroissant.", "comparer-nombres-ce1"],
+    ["CE1", "Comprendre et savoir utiliser les expressions « égal à », « supérieur à », « inférieur à », « compris entre … et … ».", "comparer-nombres-ce1"],
+    ["CE1", "Savoir placer des nombres sur une demi-droite graduée.", PLUS_TARD],
+    ["CE1", "Connaitre les nombres ordinaux jusqu’à cent.", PLUS_TARD],
+    ["CE1", "Comprendre et utiliser les nombres ordinaux.", PLUS_TARD],
+    ["CE1", "Repérer un rang ou une position dans une file orientée ou dans une liste d’objets ou de personnes.", PLUS_TARD],
+    ["CE1", "Faire le lien entre le rang d’un objet dans une liste et le nombre d’éléments qui le précèdent.", PLUS_TARD],
+    ["CE1", "Utiliser les nombres ordinaux dans le cadre de suite de symboles, de lettres ou de nombres.", PLUS_TARD],
+    ["CE2", "Dénombrer des collections.", "groupements-ce2"],
+    ["CE2", "Construire des collections de cardinal donné.", "groupements-ce2"],
+    ["CE2", "Connaitre et utiliser les relations entre les unités de numération.", "groupements-ce2"],
+    ["CE2", "Connaitre la suite écrite et la suite orale des nombres jusqu’à dix-mille.", "nombres-livret-ce2"],
+    ["CE2", "Connaitre et utiliser diverses représentations d’un nombre et passer de l’une à l’autre.", "nombres-livret-ce2"],
+    ["CE2", "Connaitre la valeur des chiffres en fonction de leur position dans un nombre.", "nombres-livret-ce2"],
+    ["CE2", "Comparer, encadrer, intercaler des nombres entiers en utilisant les symboles (=, <, >).", "comparer-nombres-ce2"],
+    ["CE2", "Ordonner des nombres dans l’ordre croissant ou décroissant.", "comparer-nombres-ce2"],
+    ["CE2", "Comprendre et savoir utiliser les expressions « égal à », « supérieur à », « inférieur à », « compris entre … et … ».", "comparer-nombres-ce2"],
+    ["CE2", "Savoir placer des nombres sur une demi-droite graduée.", PLUS_TARD],
+  ];
+  const cible = (niveau: string, competenceTitre: string) =>
+    ({ domaineTitre: "Mathématiques", sousDomaineTitre: "Nombres, calcul et résolution de problèmes", competenceTitre, niveau });
+
+  it("propose à chaque compétence la démarche de sa classe", () => {
+    expect(COMPETENCES).toHaveLength(38);
+    for (const [niveau, titre, attendue] of COMPETENCES) {
+      expect(demarcheSuggeree(cible(niveau, titre), REF).id, `${niveau} — ${titre}`).toBe(attendue);
+    }
+  });
+
+  it("passe au CP de « jusqu'à 59 » à « jusqu'à 100 » dès la période 3, comme la progression du livret", () => {
+    const suite = cible("CP", "Connaitre la suite écrite et la suite orale des nombres jusqu’à cent.");
+    expect(demarcheSuggeree(suite, REF, 2).id).toBe("nombres-livret-cp-59");
+    expect(demarcheSuggeree(suite, REF, 3).id).toBe("nombres-livret-cp-100");
+    expect(demarcheSuggeree(suite, REF, 5).id).toBe("nombres-livret-cp-100");
+  });
+
+  it("dit d'où vient chaque démarche : la source du CP, ou l'adaptation au CE1 et au CE2", () => {
+    for (const id of ["nombres-livret-ce1", "nombres-livret-ce2", "groupements-ce1", "groupements-ce2", "comparer-nombres-ce1", "comparer-nombres-ce2"]) {
+      const d = demarcheDe(id)!;
+      expect(d.source, id).toMatch(/^Adaptée du CP au CE[12], faute de séquence de numération dans le livret CE[12]/);
+      expect(d.nom, id).toMatch(/\((CE1|CE2)\)$/);
+    }
+    expect(demarcheDe("nombres-livret-cp-59")!.source).toMatch(/Livret d'accompagnement du programme de mathématiques, CP \(Éduscol, 2025\)/);
+    expect(demarcheDe("nombres-livret-cp-59")!.seances).toHaveLength(8);
+    expect(demarcheDe("nombres-livret-cp-100")!.source).toMatch(/Le système de numération oral utilisé en France/);
+  });
+
+  it("écrit les nombres de chaque classe, sans un exemple d'une autre", () => {
+    const texte = (id: string) => JSON.stringify(demarcheDe(id)!.seances);
+    expect(texte("nombres-livret-ce1")).not.toMatch(/millier/);
+    expect(texte("nombres-livret-ce2")).toMatch(/millier/);
+    expect(texte("groupements-ce2")).not.toMatch(/la millier|une millier|une gros cube/);
+    expect(texte("comparer-nombres-ce1")).toContain("412");
+    expect(texte("comparer-nombres-ce2")).toContain("4\u202f012");
+  });
+});
+
