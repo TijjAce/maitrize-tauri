@@ -58,6 +58,7 @@ import { newId, type Seance } from "./api";
 import { DEMARCHES_NUMERATION } from "./demarchesNumeration";
 import { DEMARCHES_CALCUL, demarcheDuLivretDeCalcul } from "./demarchesCalcul";
 import { DEMARCHES_PROBLEMES, demarcheDuLivretDeProblemes } from "./demarchesProblemes";
+import { DEMARCHES_FRANCAIS, demarcheDuLivretDeFrancais } from "./demarchesFrancais";
 
 /** Une ligne du tableau de déroulement, dans l'ordre de ses colonnes. */
 export interface PhaseCadre {
@@ -2134,7 +2135,7 @@ export const DEMARCHES: Demarche[] = [
   INVESTIGATION, ENQUETE_HISTOIRE_GEO, EMC_DEBAT,
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
   MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, COLLECTIONS, CHRONOLOGIE, COMPARER_NOMBRES, NUMERATION_DIZAINE,
-  ...DEMARCHES_NUMERATION, ...DEMARCHES_CALCUL, ...DEMARCHES_PROBLEMES,
+  ...DEMARCHES_NUMERATION, ...DEMARCHES_CALCUL, ...DEMARCHES_PROBLEMES, ...DEMARCHES_FRANCAIS,
 ];
 
 export const demarcheDe = (id: string) => DEMARCHES.find((d) => d.id === id);
@@ -2193,6 +2194,10 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string, niveau = 
     return "maternelle-modalites";
   }
   if (/francais/.test(dom)) {
+    // La séquence du livret de la classe quand il y en a une : décoder, lire à voix haute, la cursive, la copie, le
+    // vocabulaire (voir demarchesFrancais.ts) ; sinon, la démarche du guide.
+    const livretDeFrancais = /^(cp|ce1|ce2)$/.test(niveau) ? demarcheDuLivretDeFrancais(niveau, sd, cg, comp) : null;
+    if (livretDeFrancais) return livretDeFrancais;
     if (/^lecture/.test(sd)) {
       if (/decod|encod|syllab|grapheme|correspondance|\bcgp\b|lettres?\b/.test(comp)) return "lecture-code";
       if (/fluen|voix haute|expressiv|prosod|mots par minute|mclm/.test(comp)) return "lecture-fluence";
