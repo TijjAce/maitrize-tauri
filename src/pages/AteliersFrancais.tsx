@@ -12,6 +12,9 @@ import { EXERCICES_ORTHOGRAPHE, REGLAGES_ORTHOGRAPHE, STYLE_ORTHOGRAPHE, htmlOrt
 
 // ── Fabriquer › Lecture et écriture : orthographe et dictées ──────────────
 
+/** « Les cartes « Je prends la parole » » → « les cartes « Je prends la parole » » : seule l'initiale change, les sigles restent. */
+const minusculeInitiale = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
+
 const borne = (v: string, min: number, max: number, defaut: number) => Math.max(min, Math.min(max, Math.round(Number(v)) || defaut));
 
 export function OrthographeTab() {
@@ -19,7 +22,7 @@ export function OrthographeTab() {
   const [graine, setGraine] = React.useState(graineAuHasard);
   const html = React.useMemo(() => htmlOrthographe(r, graine), [r, graine]);
   const libelle = EXERCICES_ORTHOGRAPHE.find((e) => e.id === r.exercice)?.libelle ?? "";
-  const titre = `Orthographe — ${libelle.toLowerCase()}`;
+  const titre = `Orthographe — ${minusculeInitiale(libelle)}`;
   const avecMots = r.exercice === "dicteeDeMots" || r.exercice === "memoriser";
   const familles = [...new Set(EXERCICES_ORTHOGRAPHE.map((e) => e.famille))];
   return (
@@ -78,7 +81,7 @@ export function EcrireTab() {
   const [graine, setGraine] = React.useState(graineAuHasard);
   const html = React.useMemo(() => htmlEcrire(r, graine), [r, graine]);
   const libelle = EXERCICES_ECRIRE.find((e) => e.id === r.exercice)?.libelle ?? "";
-  const titre = `Écrire — ${libelle.toLowerCase()}`;
+  const titre = `Écrire — ${minusculeInitiale(libelle)}`;
   return (
     <Colonnes
       gauche={<>
@@ -113,7 +116,7 @@ export function GrammaireTab() {
   const [graine, setGraine] = React.useState(graineAuHasard);
   const html = React.useMemo(() => htmlGrammaire(r, graine), [r, graine]);
   const libelle = EXERCICES_GRAMMAIRE.find((e) => e.id === r.exercice)?.libelle ?? "";
-  const titre = `Grammaire — ${libelle.toLowerCase()}`;
+  const titre = `Grammaire — ${minusculeInitiale(libelle)}`;
   const familles = [...new Set(EXERCICES_GRAMMAIRE.map((e) => e.famille))];
   const avecTemps = (r.exercice === "conjuguer" || r.exercice === "transformerTemps") && r.classe !== "CP";
   return (
@@ -166,7 +169,7 @@ export function OralTab() {
   const [graine, setGraine] = React.useState(graineAuHasard);
   const html = React.useMemo(() => htmlOral(r, graine), [r, graine]);
   const libelle = EXERCICES_ORAL.find((e) => e.id === r.exercice)?.libelle ?? "";
-  const titre = `Oral — ${libelle.toLowerCase()}`;
+  const titre = `Oral — ${minusculeInitiale(libelle)}`;
   return (
     <Colonnes
       gauche={<>
