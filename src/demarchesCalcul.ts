@@ -297,12 +297,15 @@ export const CLASSE_DES_DEMARCHES_CALCUL: Record<string, "CP" | "CE1" | "CE2"> =
 /**
  * La séquence d'un livret pour une compétence de calcul mental, quand il y en
  * a une à sa classe ; rien sinon. `classe` et `competence` sont en minuscules
- * sans accents, comme les compare la suggestion des démarches.
+ * sans accents, comme les compare la suggestion des démarches. Les tables de
+ * multiplication du CE1 : la séquence de la table de 7 en période 3 — ou quand
+ * on ne sait pas la période — ; les autres tables gardent le procédé La
+ * Martinière, à la demande de l'enseignant (2026-10-07).
  */
-export function demarcheDuLivretDeCalcul(classe: string, competence: string): string | null {
+export function demarcheDuLivretDeCalcul(classe: string, competence: string, periode = 0): string | null {
   if (classe === "cp" && /ajouter deux nombres inferieurs a 100/.test(competence)) return "arbre-a-calcul-cp";
   if (classe === "ce1" && /ajouter 9, 19 (ou|et) 29/.test(competence)) return "ajouter-9-19-29-ce1";
-  if (classe === "ce1" && /connaitre dans les deux sens les tables de multiplication/.test(competence)) return "table-de-7-ce1";
+  if (classe === "ce1" && /connaitre dans les deux sens les tables de multiplication/.test(competence)) return periode === 0 || periode === 3 ? "table-de-7-ce1" : null;
   if (classe === "ce2" && /multiplier un nombre (entier )?par 4/.test(competence)) return "multiplier-par-4-ce2";
   return null;
 }
