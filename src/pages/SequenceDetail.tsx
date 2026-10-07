@@ -26,6 +26,7 @@ import { sansMarqueurs, STYLE_REGLES } from "../jeuxCites";
 import { htmlDeLaSequence, imagesDeLaSequence } from "../sequenceHtml";
 import { useCorrecteur, ZoneCorrigeable } from "../components/CorrigerSelection";
 import { ExercicesDesManuels } from "../components/ExercicesDesManuels";
+import { libelleDeProgrammation } from "../programmation";
 
 export default function SequenceDetail() {
   const { id } = useParams();
@@ -177,7 +178,7 @@ export default function SequenceDetail() {
   };
 
   return (
-    <Page titre={seq.titre} sous={[seq.matiere, seq.cycle, `Période ${seq.periode}`, seq.annee].filter(Boolean).join(" · ")}
+    <Page titre={seq.titre} sous={[seq.matiere, seq.cycle, libelleDeProgrammation(seq), seq.annee].filter(Boolean).join(" · ")}
       actions={<>
         <button className="btn" onClick={() => nav("/plan")}>← Retour</button>
         <button className="btn" onClick={() => setModifier(true)}>✏️ Modifier</button>

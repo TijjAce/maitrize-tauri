@@ -41,6 +41,10 @@ pub struct Sequence {
     pub periode: i64,
     #[serde(default)]
     pub annee: String,
+    /// Le niveau pour lequel la séquence est pensée — « CP », « CE1 » — ; avec
+    /// la période, c'est sa programmation. Vide : non précisé.
+    #[serde(default)]
+    pub niveau: String,
     #[serde(default)]
     pub rating_engagement: i64,
     #[serde(default)]
@@ -86,6 +90,7 @@ impl Sequence {
             date_creation: r.get("date_creation")?,
             periode: r.get("periode")?,
             annee: r.get("annee")?,
+            niveau: r.get("niveau").unwrap_or_default(),
             rating_engagement: r.get("rating_engagement")?,
             rating_facilite: r.get("rating_facilite")?,
             rating_apprentissage: r.get("rating_apprentissage")?,

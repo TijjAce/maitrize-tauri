@@ -1119,6 +1119,8 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
 .deroulement-feuilles .chip.ecartee { opacity: .5; text-decoration: line-through; }
 .deroulement-rattaches { margin-top: 8px; display: grid; gap: 5px; }
 .deroulement-rattache { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+/* La programmation proposée d'après le programme, et la phrase qui la justifie. */
+.programmation-proposee { font-size: 12.5px; line-height: 1.5; margin: -4px 0 10px; }
 
 /* Une compétence qu'une séquence vise déjà : un repère, pas une alerte. */
 .comp-deja { margin-left: auto; padding-left: 10px; font-size: 12px; color: var(--text-2); flex: none; opacity: .8; }

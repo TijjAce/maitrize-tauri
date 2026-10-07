@@ -344,11 +344,11 @@ fn inserer_sequence(c: &Connection, mut s: Sequence, seances: Vec<Seance>, image
     c.execute(
         "INSERT INTO sequences (id,titre,matiere,cycle,objectifs,competences,competence_visee,image_nom,couleur,
           date_creation,periode,annee,rating_engagement,rating_facilite,rating_apprentissage,
-          rating_date_maj,projet_id,video)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, matiere = excluded.matiere, cycle = excluded.cycle, objectifs = excluded.objectifs, competences = excluded.competences, competence_visee = excluded.competence_visee, image_nom = excluded.image_nom, couleur = excluded.couleur, date_creation = excluded.date_creation, periode = excluded.periode, annee = excluded.annee, rating_engagement = excluded.rating_engagement, rating_facilite = excluded.rating_facilite, rating_apprentissage = excluded.rating_apprentissage, rating_date_maj = excluded.rating_date_maj, projet_id = excluded.projet_id, video = excluded.video",
+          rating_date_maj,projet_id,video,niveau)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, matiere = excluded.matiere, cycle = excluded.cycle, objectifs = excluded.objectifs, competences = excluded.competences, competence_visee = excluded.competence_visee, image_nom = excluded.image_nom, couleur = excluded.couleur, date_creation = excluded.date_creation, periode = excluded.periode, annee = excluded.annee, rating_engagement = excluded.rating_engagement, rating_facilite = excluded.rating_facilite, rating_apprentissage = excluded.rating_apprentissage, rating_date_maj = excluded.rating_date_maj, projet_id = excluded.projet_id, video = excluded.video, niveau = excluded.niveau",
         params![s.id, s.titre, s.matiere, s.cycle, s.objectifs, s.competences, s.competence_visee,
                 s.image_nom, s.couleur, s.date_creation, s.periode, s.annee, s.rating_engagement,
-                s.rating_facilite, s.rating_apprentissage, s.rating_date_maj, s.projet_id, s.video],
+                s.rating_facilite, s.rating_apprentissage, s.rating_date_maj, s.projet_id, s.video, s.niveau],
     ).map_err(e)?;
     for mut se in seances {
         se.id = uuid::Uuid::new_v4().to_string();

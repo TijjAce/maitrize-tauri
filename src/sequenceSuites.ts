@@ -98,7 +98,7 @@ export async function creerLaSequenceDeSuites(
   const sequence: Sequence = {
     id: newId(), titre: titre.trim() || titreDeLaSequence(r), matiere, cycle: "Cycle 1",
     objectifs: objectifsDeLaSequence(r), competences: JSON.stringify(competences), competenceVisee: vise ? JSON.stringify(vise) : "",
-    imageNom: null, couleur: couleurPourMatiere(matiere), dateCreation: nowIso(), periode, annee: anneeScolaireActuelle(),
+    imageNom: null, couleur: couleurPourMatiere(matiere), dateCreation: nowIso(), periode, annee: anneeScolaireActuelle(), niveau: r.niveau,
     ratingEngagement: 0, ratingFacilite: 0, ratingApprentissage: 0, ratingDateMaj: null, projetId: null, video: "",
     dossier: "", nbSeancesPrevu: demarche.seances.length, etat: "", dateMaj: "",
   };

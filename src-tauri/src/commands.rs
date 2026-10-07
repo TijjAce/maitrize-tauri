@@ -38,14 +38,14 @@ pub(crate) fn ecrire_sequence(c: &rusqlite::Connection, sequence: Sequence) -> R
     c.execute(
         "INSERT INTO sequences (id,titre,matiere,cycle,objectifs,competences,competence_visee,image_nom,couleur,
           date_creation,periode,annee,rating_engagement,rating_facilite,rating_apprentissage,
-          rating_date_maj,projet_id,video,dossier,nb_seances_prevu,etat,date_maj)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, matiere = excluded.matiere, cycle = excluded.cycle, objectifs = excluded.objectifs, competences = excluded.competences, competence_visee = excluded.competence_visee, image_nom = excluded.image_nom, couleur = excluded.couleur, date_creation = excluded.date_creation, periode = excluded.periode, annee = excluded.annee, rating_engagement = excluded.rating_engagement, rating_facilite = excluded.rating_facilite, rating_apprentissage = excluded.rating_apprentissage, rating_date_maj = excluded.rating_date_maj, projet_id = excluded.projet_id, video = excluded.video, dossier = excluded.dossier, nb_seances_prevu = excluded.nb_seances_prevu, etat = excluded.etat, date_maj = excluded.date_maj",
+          rating_date_maj,projet_id,video,dossier,nb_seances_prevu,etat,date_maj,niveau)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, matiere = excluded.matiere, cycle = excluded.cycle, objectifs = excluded.objectifs, competences = excluded.competences, competence_visee = excluded.competence_visee, image_nom = excluded.image_nom, couleur = excluded.couleur, date_creation = excluded.date_creation, periode = excluded.periode, annee = excluded.annee, rating_engagement = excluded.rating_engagement, rating_facilite = excluded.rating_facilite, rating_apprentissage = excluded.rating_apprentissage, rating_date_maj = excluded.rating_date_maj, projet_id = excluded.projet_id, video = excluded.video, dossier = excluded.dossier, nb_seances_prevu = excluded.nb_seances_prevu, etat = excluded.etat, date_maj = excluded.date_maj, niveau = excluded.niveau",
         params![sequence.id, sequence.titre, sequence.matiere, sequence.cycle,
                 sequence.objectifs, sequence.competences, sequence.competence_visee,
                 sequence.image_nom, sequence.couleur, sequence.date_creation, sequence.periode,
                 sequence.annee, sequence.rating_engagement, sequence.rating_facilite,
                 sequence.rating_apprentissage, sequence.rating_date_maj, sequence.projet_id,
-                sequence.video, sequence.dossier, sequence.nb_seances_prevu, sequence.etat, sequence.date_maj],
+                sequence.video, sequence.dossier, sequence.nb_seances_prevu, sequence.etat, sequence.date_maj, sequence.niveau],
     ).map_err(e)?;
     Ok(sequence)
 }
@@ -2761,6 +2761,23 @@ mod tests_sequences {
         c.execute("INSERT INTO sequences (id, titre, date_creation) VALUES ('q2', 'Avant', '2026-01-01')", []).unwrap();
         let ancienne = c.query_row("SELECT * FROM sequences WHERE id='q2'", [], Sequence::from_row).unwrap();
         assert_eq!(ancienne.nb_seances_prevu, 0);
+        assert_eq!(ancienne.niveau, "", "une séquence d'avant n'a pas de niveau");
+    }
+
+    /// La programmation d'une séquence — son niveau, à côté de sa période — se garde.
+    #[test]
+    fn le_niveau_de_la_programmation_est_garde() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        let seq: Sequence = serde_json::from_value(serde_json::json!({
+            "id": "q3", "titre": "La centaine", "niveau": "CE1", "periode": 2
+        })).unwrap();
+        super::ecrire_sequence(&c, seq).unwrap();
+        let relue: Sequence = c.query_row("SELECT * FROM sequences WHERE id = 'q3'", [], Sequence::from_row).unwrap();
+        assert_eq!((relue.niveau.as_str(), relue.periode), ("CE1", 2));
+        super::ecrire_sequence(&c, Sequence { niveau: "CE2".into(), ..relue }).unwrap();
+        let relue: Sequence = c.query_row("SELECT * FROM sequences WHERE id = 'q3'", [], Sequence::from_row).unwrap();
+        assert_eq!(relue.niveau, "CE2");
     }
 }
 

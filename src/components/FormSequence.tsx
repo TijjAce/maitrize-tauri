@@ -11,6 +11,7 @@ import { nomDeLAtelier } from "../catalogueAteliers";
 import { poserDansUneSeance } from "../impressionAtelier";
 import { graineAuHasard } from "../hasard";
 import { toast } from "./Toaster";
+import { NIVEAUX_DE_PROGRAMMATION, libelleDeProgrammation, niveauDeProgrammation, programmationProposee } from "../programmation";
 
 // Fiche d'une séquence : titre, période, compétence visée, objectifs, vignette,
 // vidéo. Elle vivait dans l'ancien onglet Séquences et avait disparu avec lui :
@@ -115,10 +116,26 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
     } finally { setEnCours(false); setProgres(""); }
   };
 
+  // La programmation : le niveau et la période pour lesquels la séquence est pensée. À la création, la compétence les
+  // propose — son niveau, et la période que le programme fixe pour sa démarche ; dès qu'on les règle soi-même, ils restent.
+  const [programmationTouchee, setProgrammationTouchee] = React.useState(!nouvelle);
+  const proposition = React.useMemo(() => programmationProposee(comp, cadre), [s.competenceVisee, cadre]); // eslint-disable-line react-hooks/exhaustive-deps
+  const niveau = niveauDeProgrammation(s.niveau);
+  const suitLaProposition = !!proposition && (!proposition.niveau || proposition.niveau === niveau)
+    && (!proposition.periode || proposition.periode === s.periode);
+
   const choisir = (c: CompetenceSelectionnee, ref: Referentiel) => {
-    up({ competenceVisee: JSON.stringify(c), matiere: c.domaineTitre, cycle: ref.cycle || s.cycle, couleur: couleurPourMatiere(c.domaineTitre) });
-    // La compétence appelle un déroulement : on le propose, on ne l'impose pas.
-    setCadre(demarcheSuggeree(c, ref.nom, s.periode).id); setSuivi("");
+    // La compétence appelle un déroulement : on le propose, on ne l'impose pas. Sa période proposée peut changer le
+    // déroulement lui-même — au CP, jusqu'à 59 ou jusqu'à 100 — : on le choisit à la période retenue.
+    const premier = demarcheSuggeree(c, ref.nom, s.periode);
+    const prog = programmationProposee(c, premier.id);
+    const periode = !programmationTouchee && prog?.periode ? prog.periode : s.periode;
+    const demarche = periode === s.periode ? premier : demarcheSuggeree(c, ref.nom, periode);
+    up({
+      competenceVisee: JSON.stringify(c), matiere: c.domaineTitre, cycle: ref.cycle || s.cycle, couleur: couleurPourMatiere(c.domaineTitre),
+      ...(programmationTouchee ? {} : { niveau: prog?.niveau || niveau, periode }),
+    });
+    setCadre(demarche.id); setSuivi("");
   };
   // Au CP, la période choisit la séquence du livret : jusqu'à 59 en période 2, jusqu'à 100 dès la période 3.
   React.useEffect(() => {
@@ -137,11 +154,19 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
           onFocus={(e) => { if (s.titre === "Nouvelle séquence") e.currentTarget.select(); }} />
       </Field>
       <div className="row">
-        <Field label="Période">
-          <div className="seg">
-            {[1, 2, 3, 4, 5].map((p) => (
-              <button key={p} type="button" className={s.periode === p ? "active" : ""} onClick={() => up({ periode: p })}>P{p}</button>
-            ))}
+        <Field label="Programmation — pensée pour">
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <Select value={niveau} aria-label="Le niveau pour lequel la séquence est pensée" style={{ width: 110 }}
+              onChange={(e) => { setProgrammationTouchee(true); up({ niveau: e.target.value }); }}>
+              <option value="">Niveau…</option>
+              {NIVEAUX_DE_PROGRAMMATION.map((n) => <option key={n} value={n}>{n}</option>)}
+            </Select>
+            <div className="seg" role="group" aria-label="La période de l'année">
+              {[1, 2, 3, 4, 5].map((p) => (
+                <button key={p} type="button" className={s.periode === p ? "active" : ""}
+                  onClick={() => { setProgrammationTouchee(true); up({ periode: p }); }}>P{p}</button>
+              ))}
+            </div>
           </div>
         </Field>
         <Field label="Année"><Input value={s.annee} placeholder="2026-2027" onChange={(e) => up({ annee: e.target.value })} /></Field>
@@ -151,6 +176,17 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
             onChange={(e) => up({ nbSeancesPrevu: Math.max(0, Math.min(99, Math.round(Number(e.target.value) || 0))) })} />
         </Field>
       </div>
+
+      {proposition && (proposition.raison || !suitLaProposition) && (
+        <div className="meta programmation-proposee">
+          📅 {suitLaProposition ? "D'après le programme" : `Proposé : ${libelleDeProgrammation(proposition)}`}
+          {proposition.raison && <> — {proposition.raison}</>}
+          {!suitLaProposition && (
+            <button type="button" className="btn ghost sm" style={{ marginLeft: 6 }}
+              onClick={() => up({ niveau: proposition.niveau || niveau, periode: proposition.periode ?? s.periode })}>Appliquer</button>
+          )}
+        </div>
+      )}
 
       <div className="field">
         <label style={{ display: "flex", alignItems: "center" }}>
