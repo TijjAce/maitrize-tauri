@@ -23,6 +23,7 @@ import { estUneDemarcheDeFractionsProlongee, planDesFractionsProlongees } from "
 import { estUneDemarcheDesOperations, planDesOperations } from "./demarchesOperations";
 import { estUneDemarcheDesGrandeurs, planDesGrandeurs } from "./demarchesGrandeurs";
 import { estUneDemarcheDeGeometrie, planDeLaGeometrie } from "./demarchesGeometrie";
+import { estUneDemarcheDeDonnees, planDesDonnees } from "./demarchesDonnees";
 import { estUneDemarcheDeFractions, planDesFractions } from "./fractionsDesLivrets";
 import { estUneDemarcheDeFrancais, planDuFrancais } from "./feuillesDuFrancais";
 import { reglagesLaisses } from "./reglagesLaisses";
@@ -133,6 +134,7 @@ export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): Plan
   if (estUneDemarcheDesOperations(demarcheId)) return planDesOperations(demarcheId);
   if (estUneDemarcheDesGrandeurs(demarcheId)) return planDesGrandeurs(demarcheId);
   if (estUneDemarcheDeGeometrie(demarcheId)) return planDeLaGeometrie(demarcheId);
+  if (estUneDemarcheDeDonnees(demarcheId)) return planDesDonnees(demarcheId);
   if (estUneDemarcheDeFractions(demarcheId)) return planDesFractions(demarcheId);
   // Le français des livrets : la grille de fluence, le syllabaire, les étiquettes du vocabulaire (voir feuillesDuFrancais.ts).
   if (estUneDemarcheDeFrancais(demarcheId)) return planDuFrancais(demarcheId, ctx);
