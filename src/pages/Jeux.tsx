@@ -23,7 +23,7 @@ import {
 import { CursiveTab, EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
 import { DonneesTab, MesuresTab, MonnaieTab } from "./AteliersMesures";
 import { ComprehensionTab, LecteurTab, VoixHauteTab } from "./AteliersLecture";
-import { EcrireTab, OrthographeTab } from "./AteliersFrancais";
+import { EcrireTab, GrammaireTab, OrthographeTab } from "./AteliersFrancais";
 import { DeplacementsTab, GeometrieTab, SolidesTab } from "./AteliersGeometrie";
 import { TrousTab } from "./AteliersTrous";
 import { ComparerTab } from "./AteliersComparer";
@@ -292,6 +292,7 @@ export default function Jeux() {
         : onglet === "lecteur" ? <LecteurTab />
         : onglet === "orthographe" ? <OrthographeTab />
         : onglet === "ecrire" ? <EcrireTab />
+        : onglet === "grammaire" ? <GrammaireTab />
         : onglet === "fractions" ? <FractionsTab />
         : onglet === "oie" ? <JeuDeLOieTab />
         : onglet === "martiniere" ? <MartiniereTab />
