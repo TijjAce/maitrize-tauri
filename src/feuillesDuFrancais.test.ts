@@ -44,7 +44,7 @@ describe("le français du cycle 2, d'après les livrets", () => {
       // Sans séquence de livret : la séquence bâtie sur le programme (voir demarchesLecture.test.ts), sinon la démarche du guide.
       ["CE1", "Lecture", "Comprendre un texte", "Justifier ses réponses par un retour au texte.", "comprendre-ce1"],
       ["CP", "Vocabulaire", "Mémoriser l’orthographe des mots", "Identifier et nommer les accents.", "accents-c2"],
-      ["CE2", "Grammaire et orthographe", "Se repérer dans la phrase simple", "Reconnaitre et produire les trois types de phrases : déclarative, interrogative et impérative.", "grammaire"],
+      ["CE2", "Grammaire et orthographe", "Se repérer dans la phrase simple", "Reconnaitre et produire les trois types de phrases : déclarative, interrogative et impérative.", "types-formes-c2"],
       ["CE1", "Oral", "Participer à des échanges", "Respecter le propos au cours des échanges au sein d’un groupe.", "oral"],
     ];
     for (const [niveau, sd, cg, titre, attendue] of cas) expect(demarcheSuggeree(cible(niveau, sd, cg, titre), REF).id, `${niveau} — ${titre}`).toBe(attendue);
