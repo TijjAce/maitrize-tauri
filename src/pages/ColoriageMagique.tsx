@@ -5,7 +5,6 @@ import { useReglages } from "../components/useMemoire";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { PhotoTelephone } from "../components/PhotoTelephone";
-import { escapeHtml } from "../print";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { useMemoire } from "../components/useMemoire";
@@ -15,8 +14,8 @@ import { motDuFichier } from "../imagesPerso";
 import type { PictoArasaac } from "../api";
 import {
   COULEURS, FAMILLES_MOTIFS, GRAPHIES, MOTIFS, OPERATIONS, PLAFONDS, POLICES_CURSIVES_CONNUES, REGLAGES_PAR_DEFAUT, SONS_COLORIAGE, TAILLES_MOTIF,
-  basculerCase, casesAColorier, consigne, couleurDe, couleursDuMotif, dimensionsDe, ecrireMotifsPerso, fabriquerColoriage, lettreSousGraphie,
-  lireMotifsPerso, motifDepuisImage, type CaseColoriage, type Coloriage, type Graphie, type Matiere, type Motif, type Operation,
+  basculerCase, casesAColorier, consigne, couleurDe, couleursDuMotif, dimensionsDe, ecrireMotifsPerso, fabriquerColoriage, feuilleDuColoriage, lettreSousGraphie,
+  lireMotifsPerso, motifDepuisImage, styleDeLaCase, type CaseColoriage, type Coloriage, type Graphie, type Matiere, type Motif, type Operation,
 } from "../coloriageMagique";
 
 // ── Fabriquer › Mathématiques › Coloriage magique ─────────────────────────
@@ -34,15 +33,7 @@ import {
 const CLE_MOTIFS_PERSO = "coloriage:motifs";
 
 /** Ce qu'une case porte, avec sa graphie et sa police quand il y en a. */
-function styleDeCase(x: CaseColoriage, policeCursive: string): React.CSSProperties {
-  if (!x.graphie) return {};
-  const cursive = x.graphie === "cursive" || x.graphie === "cursiveMajuscule";
-  return {
-    fontFamily: cursive ? `"${policeCursive}", "Snell Roundhand", cursive` : x.police ? `"${x.police}", Arial, sans-serif` : undefined,
-    fontSize: cursive ? 26 : 22,
-    fontWeight: x.graphie === "majuscule" ? 700 : 500,
-  };
-}
+const styleDeCase = (x: CaseColoriage, policeCursive: string): React.CSSProperties => styleDeLaCase(x, policeCursive);
 
 /** La grille, à l'écran comme au papier. Le corrigé remplit les couleurs. */
 function Grille({ c, corrige, policeCursive }: { c: Coloriage; corrige: boolean; policeCursive: string }) {
@@ -366,42 +357,7 @@ export function ColoriageMagiqueTab() {
   };
 
   // La feuille — corps et style — d'où sortent l'impression et le PDF du bureau.
-  const feuille = (avecCorrige: boolean) => {
-    const colonnes = c.lignes[0]?.length ?? 1, rangees = c.lignes.length;
-    // Des cases à la taille de la grille, carrée ou non, dans la largeur de la page.
-    const cote = Math.max(36, Math.min(62, Math.floor(640 / colonnes), Math.floor(760 / rangees)));
-    // Un calcul tient sur une ligne : plus la case est étroite, plus il s'écrit petit.
-    const police = cote >= 56 ? 15 : cote >= 48 ? 14 : cote >= 42 ? 12 : 11;
-    const cases = c.lignes.map((ligne) => `<tr>${ligne.map((x) => {
-      const fond = avecCorrige && x.couleur ? couleurDe(x.couleur)?.hex : "";
-      const st = styleDeCase(x, r.policeCursive);
-      const style = [
-        fond ? `background:${fond};color:#fff` : "",
-        st.fontFamily ? `font-family:${st.fontFamily}` : "", st.fontSize ? `font-size:${st.fontSize}px` : "", st.fontWeight ? `font-weight:${st.fontWeight}` : "",
-      ].filter(Boolean).join(";");
-      return `<td${style ? ` style="${style}"` : ""}>${escapeHtml(x.calcul)}</td>`;
-    }).join("")}</tr>`).join("");
-    const formes = r.graphies.length ? r.graphies : ["script" as Graphie];
-    const legende = c.legende.map(({ couleur, resultat, grapheme, lettre }) => {
-      const texte = lettre !== undefined
-        ? formes.map((g) => { const st = styleDeCase({ calcul: "", couleur: "", graphie: g }, r.policeCursive); return `<span style="font-family:${st.fontFamily ?? "Arial"};font-size:${st.fontSize}px;font-weight:${st.fontWeight};margin-right:8px">${escapeHtml(lettreSousGraphie(lettre, g))}</span>`; }).join("")
-        : `<b>${escapeHtml(grapheme !== undefined ? grapheme : String(resultat))}</b>`;
-      return `<span class="lg"><i style="background:${couleur.hex}"></i> ${texte} ${escapeHtml(couleur.nom)}</span>`;
-    }).join("");
-    return { titre: r.titre || "Coloriage magique", corps:
-      `<h1>${escapeHtml(r.titre || "Coloriage magique")}</h1>
-       <p class="nom">Prénom : ........................................ Date : ........................</p>
-       <p class="consigne">${escapeHtml(consigne(r))}</p>
-       <div class="legende">${legende}</div>
-       <table class="grille"><tbody>${cases}</tbody></table>`, style:
-      `.consigne { font-size: 14px; margin-bottom: 10px; }
-       .legende { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; font-size: 14px; align-items: center; }
-       .lg i { display: inline-block; width: 14px; height: 14px; border: 1px solid #333; vertical-align: -2px; }
-       .grille { border-collapse: collapse; margin: 0 auto; }
-       .grille td { border: 1.2px solid #222; width: ${cote}px; height: ${cote}px; text-align: center;
-         font-size: ${police}px; white-space: nowrap; vertical-align: middle; }
-       .nom { margin: 0 0 10px; font-size: 13px; color: #555; }` };
-  };
+  const feuille = (avecCorrige: boolean) => feuilleDuColoriage(c, r, avecCorrige);
   const imprimer = (avecCorrige: boolean) => { const f = feuille(avecCorrige); void imprimerAtelier("coloriage", f.titre, f.corps, f.style); };
   const bureau = () => { const f = feuille(false); return enregistrerSurLeBureau("coloriage", f.titre, f.corps, f.style); };
 

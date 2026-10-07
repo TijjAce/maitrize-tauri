@@ -783,6 +783,9 @@ pub(crate) fn migrate(conn: &Connection) {
     // Compétences du BO d'un jeu. Sans NOT NULL : une ligne créée sur un
     // ordinateur pas encore mis à jour arrive sans cette colonne.
     conn.execute("ALTER TABLE jeux ADD COLUMN competences_bo TEXT", []).ok();
+    // Un élève non verbal : « En retard » ne lui donne pas de fiche de lecture
+    // à faire seul. Sans NOT NULL, pour la même raison.
+    conn.execute("ALTER TABLE eleves ADD COLUMN non_verbal INTEGER DEFAULT 0", []).ok();
     // Les objectifs du PPI travaillés, et comment ça s'est passé.
     conn.execute("ALTER TABLE commentaires_eleve ADD COLUMN objectifs TEXT", []).ok();
     // Combien de séances une séquence prévoit : « séance 3/6 » dans le cahier journal.

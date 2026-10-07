@@ -199,6 +199,8 @@ export interface ProgressionEleve {
 export interface Eleve {
   id: string; nom: string; niveau: string; present: boolean; ine: string;
   dateNaissance: string; photoFichier: string | null;
+  /** Ne parle pas : « En retard » ne lui donne pas de fiche de lecture à faire seul. */
+  nonVerbal?: boolean;
 }
 
 export interface AppelJournalier {
@@ -477,7 +479,7 @@ export const nouvelOutil = (genre: OutilClasse["genre"]): OutilClasse => ({
 });
 
 export const nouvelEleve = (niveau = ""): Eleve => ({
-  id: newId(), nom: "", niveau, present: true, ine: "", dateNaissance: "", photoFichier: null,
+  id: newId(), nom: "", niveau, present: true, ine: "", dateNaissance: "", photoFichier: null, nonVerbal: false,
 });
 
 export const nouvelleEvaluation = (): Evaluation => ({
