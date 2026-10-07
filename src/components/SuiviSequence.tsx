@@ -1,5 +1,6 @@
 import { teinteSequence } from "../api";
 import { avancement, descriptionEtat, libelleDuSuivi, type SuiviSequence } from "../suiviSequences";
+import { niveauDeProgrammation } from "../programmation";
 
 // Ce qu'on montre du suivi d'une séquence : la pastille de son état, et la
 // ligne complète — état, avancement, prochaine séance — dans une liste.
@@ -33,7 +34,7 @@ export function LigneSuivi({ suivi, aujourdHui, onOuvrir, onJournal }: {
           <BadgeSuivi suivi={suivi} />
         </div>
         <div className="meta">
-          {[s.matiere, s.periode ? `P${s.periode}` : ""].filter(Boolean).join(" · ")}
+          {[s.matiere, niveauDeProgrammation(s.niveau), s.periode ? `P${s.periode}` : ""].filter(Boolean).join(" · ")}
           {" · "}
           {sansSuite ? (
             <>

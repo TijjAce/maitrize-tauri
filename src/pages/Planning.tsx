@@ -24,6 +24,7 @@ import { CLE_RITUELS, avecRituels, lireRituels, rituelsCites, rituelsImprimes } 
 import { IndicateurZoom, useZoomPince } from "../components/ZoomPince";
 import { aImprimer, masqueJeu, masqueRituel, masqueSequence, masquesDesReglages } from "../journalMasques";
 import { JOURS_DE_RECUL, STYLE_VEILLE, bilansDeLaVeilleHtml, veilleDe } from "../bilansVeille";
+import { niveauDeProgrammation } from "../programmation";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const JOURS7 = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -321,7 +322,7 @@ export default function Planning() {
           const prenom = (eleves ?? []).find((e) => e.id === o.eleveId)?.nom.trim().split(/\s+/)[0] ?? "";
           return `${escapeHtml(prenom)} — ${escapeHtml(o.axe)}`;
         }).join("<br>")) : "",
-        seq ? champ("Séquence", escapeHtml([seq.titre, seq.annee, seq.periode ? "P" + seq.periode : ""].filter(Boolean).join(" · "))) : "",
+        seq ? champ("Séquence", escapeHtml([seq.titre, seq.annee, niveauDeProgrammation(seq.niveau), seq.periode ? "P" + seq.periode : ""].filter(Boolean).join(" · "))) : "",
         s?.objectifs ? champ("Objectifs", escapeHtml(s.objectifs)) : "",
         deroul ? `<div class="f"><span class="fl">Activités :</span></div><div class="txt">${escapeHtml(deroul)}</div>` : "",
         comps.length ? champ("Compétences", comps.map((x) => escapeHtml(labelCourt(x))).join("<br>")) : "",

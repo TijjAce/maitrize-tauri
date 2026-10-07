@@ -4,6 +4,7 @@ import { Input, Modal } from "./ui";
 import { rangDeLaSeance, texteDeSeance, totalDesSeances, type CitationSequence } from "../sequencesCitees";
 import { masqueSequence } from "../journalMasques";
 import { CaseImpression } from "./MasquesDuJournal";
+import { niveauDeProgrammation } from "../programmation";
 
 // ── Séquences citées dans le prévu ─────────────────────────────────────────
 //
@@ -39,7 +40,7 @@ function SequenceCitee({ citation, seances, onOuvrir, onVoirSeance, masque = fal
           <span aria-hidden="true" className="regle-app-fleche">{replie ? "▸" : "▾"}</span>
           📚 {s.titre}{seance ? ` — ${rangDeLaSeance(seance, totalDesSeances(s, seances))}${seance.titre ? ` : ${seance.titre}` : ""}` : ""}
         </button>
-        <span className="regle-app-infos">{[s.matiere, s.periode ? `période ${s.periode}` : ""].filter(Boolean).join(" · ")}</span>
+        <span className="regle-app-infos">{[s.matiere, niveauDeProgrammation(s.niveau), s.periode ? `période ${s.periode}` : ""].filter(Boolean).join(" · ")}</span>
         {onMasquer && <CaseImpression masque={masque} onChange={onMasquer} />}
         {seance && <button className="btn ghost sm" onClick={() => onVoirSeance(seance)} title="Voir toute la séance">👁</button>}
         <button className="btn ghost sm" onClick={() => onOuvrir(s)} title="Ouvrir la séquence">↗</button>
@@ -125,7 +126,7 @@ export function ChoixSequence({ sequences, seances, matiere, onClose, onChoisir 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600 }}>{s.titre || "Sans titre"}</div>
                   <div style={{ fontSize: 12, color: "var(--text-2)" }}>
-                    {[s.matiere, s.periode ? `période ${s.periode}` : "", compte].filter(Boolean).join(" · ")}
+                    {[s.matiere, niveauDeProgrammation(s.niveau), s.periode ? `période ${s.periode}` : "", compte].filter(Boolean).join(" · ")}
                   </div>
                 </div>
                 <button className="btn sm" onClick={() => onChoisir(s, null)}
