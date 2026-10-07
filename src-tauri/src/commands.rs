@@ -2315,10 +2315,14 @@ pub struct VacancePeriode {
 }
 
 /// Récupère les vacances scolaires d'une zone ("A"|"B"|"C") via l'API ODS v2.1.
+///
+/// Le jeu de données a une ligne par académie : demander les lignes une à une
+/// (cent au plus) coupait l'année en cours — ni Noël, ni printemps, ni été.
+/// L'export regroupé rend chaque vacance une seule fois, toutes années comprises.
 #[tauri::command]
 pub async fn vacances_scolaires(zone: String) -> R<Vec<VacancePeriode>> {
     let url = format!(
-        "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/records?limit=100&refine=zones%3AZone%20{}&timezone=Europe%2FParis&lang=fr",
+        "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/exports/json?select=description,start_date,end_date,population&group_by=description,start_date,end_date,population&order_by=start_date&refine=zones%3AZone%20{}&timezone=Europe%2FParis&lang=fr",
         zone
     );
     let resp = reqwest::get(&url).await.map_err(|e| format!("Réseau : {e}"))?;
@@ -2326,24 +2330,79 @@ pub async fn vacances_scolaires(zone: String) -> R<Vec<VacancePeriode>> {
         return Err(format!("HTTP {}", resp.status()));
     }
     let v: serde_json::Value = resp.json().await.map_err(|e| format!("JSON : {e}"))?;
+    Ok(vacances_de_la_reponse(&v))
+}
+
+/// Les vacances des élèves, une fois chacune, dans l'ordre. L'été existe aussi
+/// pour les enseignants, qui reprennent un jour plus tôt : on l'écarte, la
+/// rentrée d'une classe est celle des élèves.
+fn vacances_de_la_reponse(v: &serde_json::Value) -> Vec<VacancePeriode> {
+    let lignes = v.as_array().or_else(|| v.get("results").and_then(|r| r.as_array()));
     let mut out = Vec::new();
     let mut vus = std::collections::HashSet::new();
-    if let Some(results) = v.get("results").and_then(|r| r.as_array()) {
-        for rec in results {
-            let desc = rec.get("description").and_then(|x| x.as_str()).unwrap_or("");
-            let start = rec.get("start_date").and_then(|x| x.as_str()).unwrap_or("");
-            let end = rec.get("end_date").and_then(|x| x.as_str()).unwrap_or("");
-            if desc.is_empty() || start.is_empty() || end.is_empty() { continue; }
-            let cle = format!("{desc}|{start}|{end}");
-            if !vus.insert(cle) { continue; }
-            out.push(VacancePeriode {
-                description: desc.to_string(),
-                debut: start.chars().take(10).collect(),
-                fin: end.chars().take(10).collect(),
-            });
-        }
+    for rec in lignes.into_iter().flatten() {
+        let champ = |nom: &str| rec.get(nom).and_then(|x| x.as_str()).unwrap_or("");
+        let (desc, start, end) = (champ("description"), champ("start_date"), champ("end_date"));
+        if desc.is_empty() || start.is_empty() || end.is_empty() { continue; }
+        if champ("population").to_lowercase().contains("enseignant") { continue; }
+        let periode = VacancePeriode {
+            description: desc.to_string(),
+            debut: start.chars().take(10).collect(),
+            fin: end.chars().take(10).collect(),
+        };
+        if !vus.insert(format!("{}|{}|{}", periode.description, periode.debut, periode.fin)) { continue; }
+        out.push(periode);
     }
-    Ok(out)
+    out.sort_by(|a, b| a.debut.cmp(&b.debut));
+    out
+}
+
+#[cfg(test)]
+mod tests_vacances {
+    use super::*;
+
+    #[test]
+    fn l_ete_des_eleves_seulement_et_chaque_vacance_une_fois() {
+        let v = serde_json::json!([
+            { "description": "Vacances de Noël", "start_date": "2026-12-19T00:00:00+01:00", "end_date": "2027-01-04T00:00:00+01:00", "population": "-" },
+            { "description": "Vacances d'Été", "start_date": "2026-07-04T00:00:00+02:00", "end_date": "2026-08-31T00:00:00+02:00", "population": "Enseignants" },
+            { "description": "Vacances d'Été", "start_date": "2026-07-04T00:00:00+02:00", "end_date": "2026-09-01T00:00:00+02:00", "population": "Élèves" },
+            { "description": "Vacances de Noël", "start_date": "2026-12-19T00:00:00+01:00", "end_date": "2027-01-04T00:00:00+01:00", "population": "Élèves" },
+        ]);
+        let out = vacances_de_la_reponse(&v);
+        let lu: Vec<(&str, &str, &str)> = out.iter().map(|p| (p.description.as_str(), p.debut.as_str(), p.fin.as_str())).collect();
+        assert_eq!(lu, vec![
+            ("Vacances d'Été", "2026-07-04", "2026-09-01"),
+            ("Vacances de Noël", "2026-12-19", "2027-01-04"),
+        ]);
+    }
+
+    #[test]
+    fn l_ancienne_forme_de_reponse_se_lit_encore() {
+        let v = serde_json::json!({ "results": [
+            { "description": "Vacances de la Toussaint", "start_date": "2026-10-17T00:00:00+02:00", "end_date": "2026-11-02T00:00:00+01:00" },
+        ] });
+        assert_eq!(vacances_de_la_reponse(&v).len(), 1);
+    }
+
+    #[test]
+    fn l_annee_entiere_de_la_zone_c_sans_l_ete_des_enseignants() {
+        // Un extrait fidèle de l'export de la zone C pour 2026-2027.
+        let v = serde_json::json!([
+            { "description": "Vacances d'Été", "start_date": "2026-07-04T00:00:00+02:00", "end_date": "2026-08-31T00:00:00+02:00", "population": "Enseignants" },
+            { "description": "Vacances d'Été", "start_date": "2026-07-04T00:00:00+02:00", "end_date": "2026-09-01T00:00:00+02:00", "population": "Élèves" },
+            { "description": "Vacances de la Toussaint", "start_date": "2026-10-17T00:00:00+02:00", "end_date": "2026-11-02T00:00:00+01:00", "population": "-" },
+            { "description": "Vacances de Noël", "start_date": "2026-12-19T00:00:00+01:00", "end_date": "2027-01-04T00:00:00+01:00", "population": "-" },
+            { "description": "Vacances d'Hiver", "start_date": "2027-02-06T00:00:00+01:00", "end_date": "2027-02-22T00:00:00+01:00", "population": "-" },
+            { "description": "Vacances de Printemps", "start_date": "2027-04-03T00:00:00+02:00", "end_date": "2027-04-19T00:00:00+02:00", "population": "-" },
+            { "description": "Pont de l'Ascension", "start_date": "2027-05-07T00:00:00+02:00", "end_date": "2027-05-07T00:00:00+02:00", "population": "-" },
+            { "description": "Vacances d'Été", "start_date": "2027-07-03T00:00:00+02:00", "end_date": "2027-09-01T00:00:00+02:00", "population": "Enseignants" },
+            { "description": "Vacances d'Été", "start_date": "2027-07-03T00:00:00+02:00", "end_date": "2027-09-02T00:00:00+02:00", "population": "Élèves" },
+        ]);
+        let out = vacances_de_la_reponse(&v);
+        assert_eq!(out.len(), 7);
+        assert!(out.iter().all(|p| p.fin != "2026-08-31" && p.fin != "2027-09-01"));
+    }
 }
 
 // ============================================================
