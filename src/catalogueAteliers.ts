@@ -6,7 +6,7 @@ export const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres", "oeilDeLynx",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "tri", "phrases", "trous", "motsMeles", "cursive",
-  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "comparer", "calcul", "arbre", "posees", "fractions", "oie", "heure", "numeration",
+  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "comparer", "calcul", "arbre", "posees", "fractions", "oie", "heure", "monnaie", "mesures", "numeration",
   "carteMentale",
 ] as const;
 export type Onglet = typeof ONGLETS[number];
@@ -139,7 +139,11 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
       { id: "oie", nom: "Jeu de l'oie", icone: "🎲", cycles: "Cycles 1 et 2",
         quoi: "Une piste au dé, avec des nombres, des lettres ou des syllabes, et le patron du dé." },
       { id: "heure", nom: "Lire l'heure", icone: "🕰", cycles: "Cycles 2 et 3",
-        quoi: "Des horloges à lire, des cadrans où dessiner les aiguilles — heures pile, demies, quarts, cinq minutes." },
+        quoi: "Des horloges à lire, des cadrans où dessiner les aiguilles — heures pile, demies, quarts, cinq minutes, à la minute — ; la durée entre deux horloges, des problèmes de durées, les moments de la journée." },
+      { id: "monnaie", nom: "La monnaie", icone: "💶", cycles: "Cycle 2",
+        quoi: "Des pièces et des billets « pour jouer » à découper ; compter un porte-monnaie, payer juste, comparer, ranger des prix, rendre la monnaie, l'écriture à virgule." },
+      { id: "mesures", nom: "Mesures", icone: "📏", cycles: "Cycle 2",
+        quoi: "Longueurs, masses, contenances : comparer, mesurer et tracer des segments à leur taille réelle, la balance, les masses marquées, les verres ; choisir l'unité, estimer, convertir, le périmètre." },
       { id: "numeration", nom: "Grands nombres et décimaux", icone: "💯", cycles: "Cycle 3",
         quoi: "Tableau de numération, écriture en lettres, décomposition, comparaison, encadrement." },
     ],

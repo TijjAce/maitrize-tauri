@@ -54,6 +54,11 @@ const PAR_DEMARCHE: Record<string, { periode: number; raison: string; niveau?: s
   "fractions-non-unitaires-ce1": { periode: 3, raison: citeLeLivret("CE1", "Séquence 3 : interpréter, représenter, lire les fractions non unitaires inférieures ou égales à 1.") },
   "comparer-fractions-ce1": { periode: 4, raison: cite("CE1", "Dès la période 4, les élèves apprennent à comparer des fractions dans des cas simples.") },
   "additionner-fractions-ce1": { periode: 4, raison: citeLeLivret("CE1", "Séquence 5 : additionner ou soustraire des fractions de même dénominateur.") },
+  // La monnaie : les repères du programme.
+  "monnaie-cp": { periode: 2, raison: cite("CP", "La monnaie est introduite en période 2 ou 3.") },
+  "monnaie-ce1": { periode: 2, raison: cite("CE1", "Les centimes d'euro sont introduits au plus tard en période 2.") },
+  "monnaie-virgule-ce1": { periode: 3, raison: cite("CE1", "L'écriture à virgule est utilisée à partir de la période 3.") },
+  "monnaie-ce2": { periode: 1, raison: cite("CE2", "Cette écriture, introduite au CE1, est à nouveau utilisée dès la période 1 du CE2 dans le cadre d'exercices ou de problèmes impliquant la monnaie.") },
   // Le français : ce que disent les livrets de leurs ateliers et de leurs séances.
   "precision-vitesse-cp": { niveau: "CP", periode: 1, raison: citeLeLivretDeFrancais("CP", "À partir de la période 1 du CP et tout au long du cycle") },
   "prosodie-cp": { niveau: "CP", periode: 2, raison: citeLeLivretDeFrancais("CP", "À partir de la période 2 du CP") },

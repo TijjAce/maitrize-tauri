@@ -33,13 +33,13 @@ import { materielPour } from "../materielManipulation";
 import { NIVEAUX, RUBRIQUES, objectifParId, objectifsDuNiveau, type Niveau, type Objectif } from "../faitsNumeriques";
 import { OPERATIONS_COMPTE, REGLAGES_COMPTE, REGLAGES_COMPTE_CYCLE, STYLE_COMPTE, comptes, htmlCompteEstBon } from "../compteEstBon";
 import { REGLAGES_PYRAMIDES, STYLE_PYRAMIDES, htmlPyramides, type FormeCalcul } from "../pyramides";
-import { COULEURS_AIGUILLES, PRECISIONS_HEURE, REGLAGES_HEURE, STYLE_HEURE, heures, htmlHeure, type PrecisionHeure, type SensHeure } from "../heure";
+import { COULEURS_AIGUILLES, PRECISIONS_HEURE, REGLAGES_HEURE, STYLE_DUREES, STYLE_HEURE, htmlAtelierHeure, type ExerciceHeure, type PrecisionHeure } from "../heure";
 import { EXERCICES_NUMERATION, PLAFONDS_NUMERATION, REGLAGES_NUMERATION, STYLE_NUMERATION, htmlNumeration } from "../numeration";
 import { fr } from "../nombres";
 
 // ── Fabriquer › Mathématiques : ce que les livrets font fabriquer ─────────
 
-function Colonnes({ gauche, droite }: { gauche: React.ReactNode; droite: React.ReactNode }) {
+export function Colonnes({ gauche, droite }: { gauche: React.ReactNode; droite: React.ReactNode }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 380px) 1fr", gap: 14, alignItems: "start" }}>
       <div className="card">{gauche}</div>
@@ -48,7 +48,7 @@ function Colonnes({ gauche, droite }: { gauche: React.ReactNode; droite: React.R
   );
 }
 
-function Boutons({ onTirage, onImprimer, onBureau, peut = true }: {
+export function Boutons({ onTirage, onImprimer, onBureau, peut = true }: {
   onTirage?: () => void; onImprimer: () => void; onBureau?: () => Promise<{ id: string; titre: string }>; peut?: boolean;
 }) {
   return (
@@ -63,7 +63,7 @@ function Boutons({ onTirage, onImprimer, onBureau, peut = true }: {
   );
 }
 
-const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string; onChange: (v: boolean) => void }) => (
+export const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string; onChange: (v: boolean) => void }) => (
   <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span>{libelle}</span></label>
 );
 
@@ -80,10 +80,10 @@ function Chips<T extends string | number>({ liste, choisis, onChange, libelle }:
   );
 }
 
-const imprimer = (atelier: string, titre: string, html: string, style = STYLE_JEUX_MATHS, pictos: string[] = []) =>
+export const imprimer = (atelier: string, titre: string, html: string, style = STYLE_JEUX_MATHS, pictos: string[] = []) =>
   void imprimerAtelier(atelier, titre, html, STYLE_FEUILLE + style, { pictos });
 /** La même feuille, en PDF sur le plan de travail. */
-const bureau = (atelier: string, titre: string, html: string, style = STYLE_JEUX_MATHS, pictos: string[] = []) =>
+export const bureau = (atelier: string, titre: string, html: string, style = STYLE_JEUX_MATHS, pictos: string[] = []) =>
   enregistrerSurLeBureau(atelier, titre, html, STYLE_FEUILLE + style, { pictos });
 
 // ── Cartes des nombres ──
@@ -708,47 +708,58 @@ export function PyramidesTab() {
 export function HeureTab() {
   const [r, maj] = useReglages("heure", REGLAGES_HEURE);
   const [graine, setGraine] = React.useState(graineAuHasard);
-  const liste = React.useMemo(() => heures(r, graine), [r, graine]);
-  const html = React.useMemo(() => htmlHeure(liste, r), [liste, r]);
+  const html = React.useMemo(() => htmlAtelierHeure(r, graine), [r, graine]);
+  const horloges = r.exercice === "horloges";
+  const titre = r.exercice === "durees" ? "Combien de temps ?" : r.exercice === "problemes" ? "Problèmes de durées" : r.exercice === "moments" ? "Les moments de la journée" : "Lire l'heure";
+  const exercice = horloges ? r.sens : r.exercice;
+  const choisir = (v: string) => (v === "lire" || v === "dessiner" || v === "mixte" ? maj({ exercice: "horloges", sens: v }) : maj({ exercice: v as ExerciceHeure }));
   return (
     <Colonnes
       gauche={<>
         <h3 style={{ marginTop: 0 }}>Lire l'heure</h3>
         <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Des horloges à lire, ou des cadrans vides où dessiner l'heure demandée — les heures pile d'abord, puis les demies, les quarts, les cinq minutes.
+          Des horloges à lire, ou des cadrans vides où dessiner l'heure demandée — les heures pile d'abord, puis les demies, les quarts, les cinq minutes ; la durée entre deux horloges, des problèmes de durées, les moments de la journée.
         </p>
-        <Field label="Précision">
-          <Select value={r.precision} onChange={(e) => maj({ precision: e.target.value as PrecisionHeure })}>
-            {PRECISIONS_HEURE.map((p) => <option key={p.id} value={p.id}>{p.libelle}</option>)}
-          </Select>
-        </Field>
         <Field label="Exercice">
-          <Select value={r.sens} onChange={(e) => maj({ sens: e.target.value as SensHeure })}>
+          <Select value={exercice} onChange={(e) => choisir(e.target.value)}>
             <option value="lire">Lire l'heure sur le cadran</option><option value="dessiner">Dessiner les aiguilles</option><option value="mixte">L'un et l'autre, en alternance</option>
+            <option value="durees">Combien de temps ? Deux horloges (CE1, CE2)</option><option value="problemes">Problèmes de durées (CE1, CE2)</option><option value="moments">Les moments de la journée (CP)</option>
           </Select>
         </Field>
-        <Field label="Les aides">
-          <Coche on={r.couleurs} libelle="Aiguilles en couleur" onChange={(v) => maj({ couleurs: v })} />
-          {r.couleurs && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, margin: "4px 0 8px 24px" }}>
-              <div>
-                <div className="meta" style={{ fontSize: 12, marginBottom: 4 }}>Petite aiguille · les heures</div>
-                <Pastilles palette={COULEURS_AIGUILLES} valeur={r.couleurHeures} onChange={(hex) => maj({ couleurHeures: hex })} />
+        {r.exercice !== "moments" && (
+          <Field label="Précision">
+            <Select value={r.precision} onChange={(e) => maj({ precision: e.target.value as PrecisionHeure })}>
+              {PRECISIONS_HEURE.map((p) => <option key={p.id} value={p.id}>{p.libelle}</option>)}
+            </Select>
+          </Field>
+        )}
+        {r.exercice === "problemes" && <p className="meta" style={{ fontSize: 12, marginTop: 0 }}>Aux heures, demies ou quarts : les problèmes du CE1. De cinq en cinq minutes ou à la minute : ceux du CE2, avec la ligne du temps.</p>}
+        {r.exercice !== "problemes" && (
+          <Field label="Les aides">
+            <Coche on={r.couleurs} libelle="Aiguilles en couleur" onChange={(v) => maj({ couleurs: v })} />
+            {r.couleurs && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, margin: "4px 0 8px 24px" }}>
+                <div>
+                  <div className="meta" style={{ fontSize: 12, marginBottom: 4 }}>Petite aiguille · les heures</div>
+                  <Pastilles palette={COULEURS_AIGUILLES} valeur={r.couleurHeures} onChange={(hex) => maj({ couleurHeures: hex })} />
+                </div>
+                <div>
+                  <div className="meta" style={{ fontSize: 12, marginBottom: 4 }}>Grande aiguille · les minutes</div>
+                  <Pastilles palette={COULEURS_AIGUILLES} valeur={r.couleurMinutes} onChange={(hex) => maj({ couleurMinutes: hex })} />
+                </div>
               </div>
-              <div>
-                <div className="meta" style={{ fontSize: 12, marginBottom: 4 }}>Grande aiguille · les minutes</div>
-                <Pastilles palette={COULEURS_AIGUILLES} valeur={r.couleurMinutes} onChange={(hex) => maj({ couleurMinutes: hex })} />
-              </div>
-            </div>
-          )}
-          <Coche on={r.minutesAutour} libelle="Les minutes autour du cadran : 5, 10, 15…" onChange={(v) => maj({ minutesAutour: v })} />
-          <Coche on={r.avecH} libelle="Le « h » déjà écrit dans la réponse" onChange={(v) => maj({ avecH: v })} />
-          <Coche on={r.apresMidi} libelle="L'après-midi aussi : 19 h 30 se lit comme 7 h 30" onChange={(v) => maj({ apresMidi: v })} />
+            )}
+            {r.exercice !== "moments" && <Coche on={r.minutesAutour} libelle="Les minutes autour du cadran : 5, 10, 15…" onChange={(v) => maj({ minutesAutour: v })} />}
+            {horloges && <Coche on={r.avecH} libelle="Le « h » déjà écrit dans la réponse" onChange={(v) => maj({ avecH: v })} />}
+            {(horloges || r.exercice === "durees") && <Coche on={r.apresMidi} libelle={horloges ? "L'après-midi aussi : 19 h 30 se lit comme 7 h 30" : "Des durées qui passent midi"} onChange={(v) => maj({ apresMidi: v })} />}
+          </Field>
+        )}
+        <Field label={horloges ? "Horloges" : r.exercice === "moments" ? "Moments" : r.exercice === "problemes" ? "Problèmes" : "Durées"}>
+          <Input type="number" min={1} max={horloges ? 24 : r.exercice === "moments" ? 6 : 12} value={r.combien} onChange={(e) => maj({ combien: borne(e.target.value, 1, horloges ? 24 : r.exercice === "moments" ? 6 : 12, 6) })} style={{ width: 80 }} />
         </Field>
-        <Field label="Horloges"><Input type="number" min={1} max={24} value={r.combien} onChange={(e) => maj({ combien: borne(e.target.value, 1, 24, 9) })} style={{ width: 80 }} /></Field>
-        <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("heure", "Lire l'heure", html, STYLE_HEURE)} onBureau={() => bureau("heure", "Lire l'heure", html, STYLE_HEURE)} />
+        <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("heure", titre, html, STYLE_HEURE + STYLE_DUREES)} onBureau={() => bureau("heure", titre, html, STYLE_HEURE + STYLE_DUREES)} />
       </>}
-      droite={<ApercuFeuille html={html} style={STYLE_HEURE} />}
+      droite={<ApercuFeuille html={html} style={STYLE_HEURE + STYLE_DUREES} />}
     />
   );
 }
