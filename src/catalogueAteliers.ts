@@ -6,7 +6,7 @@ export const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres", "oeilDeLynx",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "tri", "phrases", "trous", "motsMeles", "cursive",
-  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "comparer", "calcul", "arbre", "fractions", "oie", "heure", "numeration",
+  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "comparer", "calcul", "arbre", "posees", "fractions", "oie", "heure", "numeration",
   "carteMentale",
 ] as const;
 export type Onglet = typeof ONGLETS[number];
@@ -132,6 +132,8 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Le calcul devant, le résultat derrière : se tester, ou la bataille des tables." },
       { id: "arbre", nom: "Arbre à calcul", icone: "🌳", cycles: "Cycle 2",
         quoi: "Ajouter deux nombres en dizaines et unités, l'arbre à compléter." },
+      { id: "posees", nom: "Opérations posées", icone: "🧾", cycles: "Cycle 2",
+        quoi: "Des additions, des soustractions, des multiplications dans un quadrillage — une case par chiffre, une ligne pour les retenues —, posées d'avance ou à poser, et le corrigé." },
       { id: "fractions", nom: "Fractions", icone: "🍰", cycles: "Cycle 3",
         quoi: "Cartes, bandes à plier, règle graduée en quarts ou en dixièmes, course des nageurs." },
       { id: "oie", nom: "Jeu de l'oie", icone: "🎲", cycles: "Cycles 1 et 2",
