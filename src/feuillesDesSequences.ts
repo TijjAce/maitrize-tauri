@@ -30,6 +30,7 @@ import { estUneDemarcheDeLecture, planDeLaLecture } from "./demarchesLecture";
 import { estUneDemarcheDOrthographe, planDeLOrthographe } from "./demarchesOrthographe";
 import { estUneDemarcheDEcriture, planDeLEcriture } from "./demarchesEcriture";
 import { estUneDemarcheDeLangue, planDeLaLangue } from "./demarchesLangue";
+import { estUneDemarcheDOral, planDeLOral } from "./demarchesOral";
 import { reglagesLaisses } from "./reglagesLaisses";
 
 export type ClasseC2 = "CP" | "CE1" | "CE2";
@@ -150,6 +151,8 @@ export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): Plan
   if (estUneDemarcheDEcriture(demarcheId)) return planDeLEcriture(demarcheId, ctx);
   // La grammaire et la conjugaison : les ateliers « Grammaire et conjugaison », du tri, des textes à trous (voir demarchesLangue.ts).
   if (estUneDemarcheDeLangue(demarcheId)) return planDeLaLangue(demarcheId, ctx);
+  // L'oral : l'atelier « Oral », l'écoute de « Comprendre un texte », les poèmes à coder de « Lire à voix haute » (voir demarchesOral.ts).
+  if (estUneDemarcheDOral(demarcheId)) return planDeLOral(demarcheId, ctx);
   if (!CLASSE_DES_DEMARCHES[demarcheId]) return null;
   // Grouper par dix, la centaine, le millier : les huit feuilles des cubes, de la grande collection à l'évaluation.
   if (demarcheId === "numeration-dizaine-cp" || demarcheId.startsWith("groupements-")) {
