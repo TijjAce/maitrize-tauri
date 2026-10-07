@@ -4,8 +4,9 @@
 // Une séquence prend son sens à un moment de l'année : la centaine dès le
 // début du CE1, les nombres jusqu'à 59 au plus tard en période 2 du CP.
 // Quand le programme le dit — pour la numération, les opérations posées, les
-// fractions, la monnaie —, on propose la période, et l'on cite sa phrase ; le
-// niveau, lui, est celui de la compétence. Ce n'est qu'une proposition :
+// fractions, la monnaie, les tables d'addition — ou la séquence d'un livret —
+// l'arbre à calcul, la table de 7… —, on propose la période, et l'on cite sa
+// phrase ; le niveau, lui, est celui de la compétence. Ce n'est qu'une proposition :
 // l'enseignant la garde ou la change.
 
 /** Les niveaux pour lesquels une séquence peut être pensée. */
@@ -22,6 +23,8 @@ export interface ProgrammationProposee {
 
 const PROGRAMME = "Programme de mathématiques du cycle 2 (2024)";
 const cite = (classe: string, phrase: string) => `${PROGRAMME}, ${classe} : « ${phrase} »`;
+/** Les séquences des livrets d'accompagnement disent elles-mêmes quand elles se font. */
+const citeLeLivret = (classe: string, phrase: string) => `Livret d'accompagnement de mathématiques du ${classe} (Éduscol, 2025) : « ${phrase} »`;
 
 /** La période des séquences de numération, d'après les repères du programme. */
 const PAR_DEMARCHE: Record<string, { periode: number; raison: string }> = {
@@ -36,10 +39,16 @@ const PAR_DEMARCHE: Record<string, { periode: number; raison: string }> = {
   "groupements-ce2": { periode: 1, raison: cite("CE2", "Des nombres supérieurs à mille sont rencontrés dès le début de la période 1.") },
   "nombres-livret-ce2": { periode: 2, raison: cite("CE2", "Au plus tard en période 2, les élèves travaillent avec des quantités et des nombres allant jusqu'à 10 000.") },
   "comparer-nombres-ce2": { periode: 2, raison: cite("CE2", "Au plus tard en période 2, les élèves travaillent avec des quantités et des nombres allant jusqu'à 10 000.") },
+  // Le calcul mental : la période que donne la séquence du livret.
+  "arbre-a-calcul-cp": { periode: 3, raison: citeLeLivret("CP", "Cette séquence peut être abordée en période 3.") },
+  "ajouter-9-19-29-ce1": { periode: 2, raison: citeLeLivret("CE1", "À partir de la période 2, au fur et à mesure de l'apprentissage des nombres : la séquence comprendra plusieurs séances qui respecteront les rythmes d'apprentissages des élèves.") },
+  "table-de-7-ce1": { periode: 3, raison: citeLeLivret("CE1", "Période 3 : Connaitre dans les deux sens les tables de 7.") },
 };
 
 /** Les autres repères de période du programme, compétence par compétence. */
 const REPERES: { niveau: string; motif: RegExp; periode: number; raison: string }[] = [
+  { niveau: "CP", motif: /tables d.addition/, periode: 1,
+    raison: cite("CP", "Ces résultats sont réintroduits progressivement pendant les deux premières périodes du CP, mais en les écrivant désormais avec les symboles « + » et « = ».") },
   { niveau: "CP", motif: /poser et effectuer des additions en colonnes/, periode: 4,
     raison: cite("CP", "Au CP, l'addition posée n'est introduite qu'en période 4 ou 5.") },
   { niveau: "CP", motif: /monnaie|pieces|billets|somme d.argent|achats/, periode: 2,

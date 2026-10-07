@@ -130,9 +130,9 @@ function htmlOral(series: Calcul[][], r: ReglagesMartiniere): string {
   return feuille(maitre + page, "ma");
 }
 
-function htmlEcrit(series: Calcul[][], r: ReglagesMartiniere): string {
+function htmlEcrit(series: Calcul[][], r: ReglagesMartiniere, consigneDonnee?: string): string {
   const faits = objectifsRetenus(r).every((o) => o.rubrique === "faits");
-  const consigne = faits ? "Complète le plus d'égalités possible en une minute." : "Calcule de tête, et complète les égalités.";
+  const consigne = consigneDonnee ?? (faits ? "Complète le plus d'égalités possible en une minute." : "Calcule de tête, et complète les égalités.");
   const bloc = (s: Calcul[], i: number, corrige: boolean) => `<div class="ma-test"><div class="ma-test-titre"><span>Série ${i + 1}</span>`
     + (corrige ? "" : `<span class="ma-score">Temps : ............ Score : ........ / ${s.length}</span>`) + `</div>
     <div class="ma-egalites">${s.map((c, j) => `<div class="ma-egalite"><span class="ma-numero">${j + 1}</span>${corrige ? avecReponse(c) : avecTrou(c.ecrit)}</div>`).join("")}</div></div>`;
@@ -220,8 +220,9 @@ function htmlEvaluation(series: Calcul[][], r: ReglagesMartiniere): string {
   return feuille(eleve + corrige, "ma");
 }
 
-export function htmlMartiniere(series: Calcul[][], r: ReglagesMartiniere): string {
-  if (r.forme === "ecrit") return htmlEcrit(series, r);
+/** La feuille, dans sa forme ; `consigne` remplace celle du test écrit — « en deux minutes », quand une séquence le dit. */
+export function htmlMartiniere(series: Calcul[][], r: ReglagesMartiniere, consigne?: string): string {
+  if (r.forme === "ecrit") return htmlEcrit(series, r, consigne);
   if (r.forme === "decouverte") return htmlDecouverte(series, r);
   if (r.forme === "materiel") {
     // Le matériel de la découverte : celui de l'objectif, à découper.

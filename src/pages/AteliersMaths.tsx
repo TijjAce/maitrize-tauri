@@ -25,7 +25,6 @@ import { REFLEXIONS, REGLAGES_MARTINIERE, STYLE_MARTINIERE, calculsMartiniere, f
 import { objectifsDesAteliers, propositionsDesAteliers } from "../ateliersCompetences";
 import { useCompetencesAtelier, useCompetencesParObjectif } from "../components/CompetencesAtelier";
 import { api, type Referentiel } from "../api";
-import { SequenceDeCalculMental } from "../components/SequenceDeCalculMental";
 import { consignesJustes } from "../consigneAtelier";
 import { consignesPour } from "../consignesCalcul";
 import { problemesAssocies, reglagesDeLAtelier } from "../problemesAssocies";
@@ -415,7 +414,6 @@ export function MartiniereTab() {
   }, [cleRetenus, tablesChoisies.join("|")]);
   React.useEffect(() => () => objectifsDesAteliers.publier("martiniere", []), []);
   const competencesDe = useCompetencesParObjectif("martiniere");
-  const [enSequence, setEnSequence] = React.useState(false);
   // Les consignes justes pour ces calculs-ci : l'éditeur de consigne les propose, et relève un mot qui ne leur irait pas.
   React.useEffect(() => {
     const ecrits = series.flat().map((c) => c.ecrit);
@@ -544,13 +542,9 @@ export function MartiniereTab() {
             🧩 Des problèmes avec ce calcul
           </button>
         )}
-        <button type="button" className="btn sm" style={{ marginTop: 8 }} disabled={total === 0 || r.revision} onClick={() => setEnSequence(true)}
-          title={r.revision ? "Une séquence travaille un seul objectif : décochez « Réviser »." : "Une séquence d'après les guides Éduscol, avec cette feuille dans ses séances"}>
-          📚 Créer une séquence avec cette feuille
-        </button>
-        {enSequence && (
-          <SequenceDeCalculMental reglages={r} graine={graine} competences={competencesDe[retenus[0]?.id ?? ""] ?? []} onClose={() => setEnSequence(false)} />
-        )}
+        <p className="meta" style={{ fontSize: 12, lineHeight: 1.45, margin: "8px 0 0" }}>
+          📚 Une séquence part de sa compétence : Plan de travail › Nouvelle séquence, puis la compétence visée — la séquence vient alors piocher ici ses feuilles, à la classe et à la période de la compétence.
+        </p>
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_MARTINIERE} />}
     />
