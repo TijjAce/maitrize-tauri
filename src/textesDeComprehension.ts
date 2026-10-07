@@ -31,6 +31,8 @@ export interface TexteAComprendre {
   moments?: string[];
   /** Ce que ressent un personnage à une ligne du récit, et l'indice qui le montre. */
   emotions?: { qui: string; ligne: number; emotion: string; indice: string }[];
+  /** Des affirmations à juger : vrai ou faux d'après la ligne donnée, ou « on ne peut pas savoir » (guides CP p. 84-85, CE1 p. 53). */
+  affirmations: { a: string; v: "vrai" | "faux" | "?"; ligne?: number }[];
   /** Un mot à élucider par le contexte, son sens, l'indice qui le donne et deux sens qui ne conviennent pas. */
   motInconnu: { mot: string; ligne: number; sens: string; indice: string; leurres: string[] };
 }
@@ -64,6 +66,7 @@ export const TEXTES: TexteAComprendre[] = [
     resumes: ["Lila trouve un chaton qui a froid derrière la porte ; elle le réchauffe et lui donne du lait.", "Lila perd son chaton dans le jardin et le cherche partout.", "Un chaton gris boit le lait de Lila, puis il s'enfuit dans le jardin."],
     moments: ["Lila entend un petit bruit derrière la porte.", "Elle trouve un chaton gris qui tremble.", "Elle lui donne un bol de lait.", "Le chaton s'endort sur ses genoux."],
     emotions: [{ qui: "le chaton", ligne: 5, emotion: "il a peur et il a froid", indice: "Il tremble et il miaule très fort." }, { qui: "le chaton", ligne: 10, emotion: "il est rassuré, il se sent bien", indice: "il s'endort sur les genoux de Lila" }],
+    affirmations: [{ a: "Lila entend un petit bruit derrière la porte du jardin.", v: "vrai", ligne: 1 }, { a: "Le chaton est noir.", v: "faux", ligne: 4 }, { a: "Le chaton boit tout le lait.", v: "vrai", ligne: 9 }, { a: "Lila va garder le chaton pour toujours.", v: "?" }],
     motInconnu: { mot: "tremble", ligne: 5, sens: "bouge tout seul, à petits coups, parce qu'il a froid ou peur", indice: "Lila dit : « Tu as froid ».", leurres: ["court très vite", "dort profondément"] },
   }),
   T({
@@ -91,6 +94,7 @@ export const TEXTES: TexteAComprendre[] = [
     resumes: ["Tom et Sami construisent une cabane ; quand la pluie arrive, ils restent au sec dedans.", "Tom et Sami jouent dans le bois, mais la pluie détruit leur cabane.", "Sami apporte une couverture pour dormir dans le jardin avec Tom."],
     moments: ["Tom et Sami ramassent des branches.", "Ils posent une couverture sur les branches.", "Le ciel devient tout noir.", "Ils restent au sec dans la cabane."],
     emotions: [{ qui: "Tom et Sami", ligne: 5, emotion: "ils sont contents de leur travail", indice: "La cabane est prête !" }, { qui: "Tom", ligne: 10, emotion: "il est fier", indice: "« Notre cabane est la meilleure ! »" }],
+    affirmations: [{ a: "Tom et Sami ramassent des branches dans le bois.", v: "vrai", ligne: 2 }, { a: "C'est Tom qui apporte la couverture.", v: "faux", ligne: 3 }, { a: "Les garçons sont mouillés par la pluie.", v: "faux", ligne: 9 }, { a: "La cabane est dans le jardin de Tom.", v: "?" }],
     motInconnu: { mot: "au sec", ligne: 9, sens: "sans être mouillés", indice: "Ils sont dans la cabane pendant qu'il pleut.", leurres: ["tout mouillés", "dans le noir"] },
   }),
   T({
@@ -116,6 +120,7 @@ export const TEXTES: TexteAComprendre[] = [
     ],
     reprises: [{ mot: "Il", ligne: 2, designe: "le hérisson" }, { mot: "Son", ligne: 3, designe: "le hérisson" }, { mot: "le", ligne: 5, designe: "le hérisson" }],
     resumes: ["Ce texte explique comment vit le hérisson : où il habite, ce qu'il mange, comment il se protège.", "Ce texte raconte l'histoire d'un hérisson qui se perd dans un jardin.", "Ce texte explique comment fabriquer un nid pour un hérisson."],
+    affirmations: [{ a: "Le hérisson sort surtout la nuit.", v: "vrai", ligne: 6 }, { a: "Le hérisson mange des carottes.", v: "faux", ligne: 7 }, { a: "En hiver, le hérisson dort dans un nid de feuilles.", v: "vrai", ligne: 8 }, { a: "Un hérisson vit dix ans.", v: "?" }],
     motInconnu: { mot: "piquants", ligne: 3, sens: "des sortes de petites épines pointues", indice: "Ils le protègent quand il se roule en boule.", leurres: ["des poils tout doux", "des plumes"] },
   }),
   T({
@@ -142,6 +147,7 @@ export const TEXTES: TexteAComprendre[] = [
     ],
     reprises: [{ mot: "dessus", ligne: 7, designe: "les morceaux de fruits" }],
     resumes: ["Ce texte explique comment préparer une salade de fruits.", "Ce texte raconte le goûter de quatre enfants.", "Ce texte explique comment faire pousser des pommes et des oranges."],
+    affirmations: [{ a: "Il faut deux bananes.", v: "vrai", ligne: 2 }, { a: "On met le saladier au four.", v: "faux", ligne: 9 }, { a: "On coupe les fruits en petits morceaux.", v: "vrai", ligne: 5 }, { a: "C'est le dessert préféré des enfants.", v: "?" }],
     motInconnu: { mot: "saladier", ligne: 6, sens: "un grand bol où l'on prépare la salade", indice: "On y met les morceaux, puis on mélange.", leurres: ["une petite cuillère", "un couteau pour éplucher"] },
   }),
   T({
@@ -169,6 +175,7 @@ export const TEXTES: TexteAComprendre[] = [
     resumes: ["Un petit escargot part voir la mer, mais il va si lentement que la coccinelle se moque de lui.", "Un petit escargot va voir la mer avec une coccinelle.", "Une coccinelle se perd dans le jardin et rencontre un escargot fatigué."],
     moments: ["Le petit escargot part voir la mer.", "Il traverse le jardin et passe sous la haie.", "Le soir, il est très fatigué.", "La coccinelle rit : la mer est très loin."],
     emotions: [{ qui: "le petit escargot", ligne: 9, emotion: "il est content, plein d'espoir", indice: "« Je vais voir la mer ! »" }, { qui: "la coccinelle", ligne: 10, emotion: "elle s'amuse, elle trouve ça drôle", indice: "La coccinelle rit" }],
+    affirmations: [{ a: "L'escargot veut voir la mer.", v: "vrai", ligne: 1 }, { a: "L'escargot part le soir.", v: "faux", ligne: 2 }, { a: "Une coccinelle se pose près de l'escargot.", v: "vrai", ligne: 7 }, { a: "L'escargot arrivera un jour à la mer.", v: "?" }],
     motInconnu: { mot: "haie", ligne: 4, sens: "une rangée d'arbustes qui fait comme un mur de feuilles", indice: "L'escargot passe dessous, au bord du jardin.", leurres: ["une flaque d'eau", "un grand chemin"] },
   }),
   T({
@@ -195,6 +202,7 @@ export const TEXTES: TexteAComprendre[] = [
     ],
     reprises: [{ mot: "ce numéro", ligne: 6, designe: "le numéro appelé par le maître" }],
     resumes: ["Ce texte explique les règles du jeu du béret.", "Ce texte raconte une partie de foulard dans la cour.", "Ce texte explique comment fabriquer un béret."],
+    affirmations: [{ a: "Il faut deux équipes et un foulard.", v: "vrai", ligne: 1 }, { a: "Tous les enfants courent en même temps.", v: "faux", ligne: 6 }, { a: "On joue jusqu'à dix points.", v: "vrai", ligne: 10 }, { a: "Une partie dure une heure.", v: "?" }],
     motInconnu: { mot: "camp", ligne: 8, sens: "l'endroit, la ligne de son équipe", indice: "On y revient après avoir pris le foulard.", leurres: ["la tente où l'on dort", "le foulard"] },
   }),
   T({
@@ -222,6 +230,7 @@ export const TEXTES: TexteAComprendre[] = [
     resumes: ["Pendant un pique-nique, des fourmis arrivent sur la nappe ; Papi les attire ailleurs avec une miette de gâteau.", "Nina et Léo font un pique-nique, mais il se met à pleuvoir.", "Des fourmis mangent tout le gâteau de Papi."],
     moments: ["Papi, Nina et Léo posent une nappe sur l'herbe.", "Des fourmis grimpent sur la nappe.", "Papi pose une miette de gâteau dans l'herbe.", "Les fourmis s'en vont avec la miette."],
     emotions: [{ qui: "Léo", ligne: 7, emotion: "il a peur, il est surpris", indice: "Au secours, des fourmis !" }, { qui: "Papi", ligne: 8, emotion: "il est amusé et calme", indice: "Papi rit" }],
+    affirmations: [{ a: "Papi emmène Nina et Léo au parc.", v: "vrai", ligne: 1 }, { a: "La nappe est bleue.", v: "faux", ligne: 2 }, { a: "Les fourmis s'en vont avec une miette de gâteau.", v: "vrai", ligne: 9 }, { a: "Il fait très chaud ce dimanche-là.", v: "?" }],
     motInconnu: { mot: "grimpe", ligne: 4, sens: "monte en s'accrochant", indice: "La fourmi arrive de l'herbe et monte sur la nappe.", leurres: ["tombe", "dort"] },
   }),
 
@@ -257,6 +266,7 @@ export const TEXTES: TexteAComprendre[] = [
     resumes: ["Le chien Biscuit a mangé les crêpes d'Inès ; les enfants le découvrent grâce aux indices.", "Noah a mangé les crêpes, et Inès est très fâchée contre lui.", "Inès et ses amis cherchent Biscuit, qui s'est perdu dans le jardin."],
     moments: ["Inès prépare des crêpes et va chercher ses amis.", "L'assiette est vide !", "Les enfants trouvent des miettes et des traces de pattes.", "Ils découvrent Biscuit, le museau plein de sucre."],
     emotions: [{ qui: "Inès", ligne: 5, emotion: "elle est surprise et fâchée", indice: "s'écrie Inès" }, { qui: "Inès", ligne: 13, emotion: "elle n'est plus fâchée, elle s'en amuse", indice: "Inès n'est pas fâchée très longtemps" }],
+    affirmations: [{ a: "Inès a préparé des crêpes.", v: "vrai", ligne: 1 }, { a: "Noah trouve des miettes sous la table.", v: "vrai", ligne: 7 }, { a: "C'est Jade qui a mangé les crêpes.", v: "faux", ligne: 11 }, { a: "Inès a huit ans.", v: "?" }],
     motInconnu: { mot: "museau", ligne: 11, sens: "le nez et la bouche d'un animal", indice: "C'est le chien qui l'a « plein de sucre ».", leurres: ["la queue d'un animal", "le panier d'un chien"] },
   }),
   T({
@@ -290,6 +300,7 @@ export const TEXTES: TexteAComprendre[] = [
     resumes: ["Un soir de tempête, la lampe du phare ne s'allume pas ; Marius sauve un bateau avec sa lanterne.", "Marius part en bateau pendant la tempête pour aider les pêcheurs.", "Les pêcheurs réparent la lampe du phare pour remercier Marius."],
     moments: ["Chaque soir, Marius allume la grande lampe du phare.", "Un soir de tempête, la lampe ne s'allume pas.", "Marius balance sa lanterne en haut du phare.", "Les pêcheurs le remercient avec un panier de poissons."],
     emotions: [{ qui: "Marius", ligne: 9, emotion: "il a peur pour les pêcheurs, il se dépêche", indice: "Le vieil homme ne perd pas de temps." }, { qui: "les pêcheurs", ligne: 15, emotion: "ils sont reconnaissants", indice: "un grand merci" }],
+    affirmations: [{ a: "Le gardien du phare s'appelle Marius.", v: "vrai", ligne: 2 }, { a: "L'escalier du phare a deux cents marches.", v: "faux", ligne: 3 }, { a: "Les pêcheurs apportent un panier de poissons à Marius.", v: "vrai", ligne: 14 }, { a: "Marius habite seul dans le phare.", v: "?" }],
     motInconnu: { mot: "aperçoit", ligne: 8, sens: "voit, de loin et pendant peu de temps", indice: "« Au loin », les feux du bateau.", leurres: ["entend", "touche"] },
   }),
   T({
@@ -321,6 +332,7 @@ export const TEXTES: TexteAComprendre[] = [
     ],
     reprises: [{ mot: "Chacune", ligne: 3, designe: "chaque abeille" }, { mot: "elle", ligne: 4, designe: "la reine" }, { mot: "Elles", ligne: 6, designe: "les ouvrières" }, { mot: "ce nectar", ligne: 8, designe: "le nectar des fleurs" }, { mot: "elles", ligne: 10, designe: "les abeilles" }],
     resumes: ["Ce texte explique comment vivent les abeilles dans la ruche et pourquoi elles sont utiles.", "Ce texte raconte l'histoire d'une reine des abeilles qui danse.", "Ce texte explique comment fabriquer du miel à la maison."],
+    affirmations: [{ a: "Les abeilles vivent dans une ruche.", v: "vrai", ligne: 1 }, { a: "La reine est la plus petite des abeilles.", v: "faux", ligne: 4 }, { a: "Les abeilles dansent pour communiquer.", v: "vrai", ligne: 13 }, { a: "Une abeille vit une année entière.", v: "?" }],
     motInconnu: { mot: "larves", ligne: 6, sens: "les petits qui sortent des œufs, avant de devenir des abeilles", indice: "La reine pond les œufs ; les ouvrières nourrissent les larves.", leurres: ["les fleurs où vont les abeilles", "les gardiennes de la ruche"] },
   }),
   T({
@@ -352,6 +364,7 @@ export const TEXTES: TexteAComprendre[] = [
     ],
     reprises: [{ mot: "les", ligne: 8, designe: "la farine et le sel" }, { mot: "Elle", ligne: 11, designe: "la pâte" }, { mot: "elle", ligne: 15, designe: "la pâte" }],
     resumes: ["Ce texte explique comment fabriquer de la pâte à sel pour faire des objets.", "Ce texte raconte comment un enfant a fait des perles avec sa grand-mère.", "Ce texte explique comment faire du pain."],
+    affirmations: [{ a: "Il faut deux verres de farine.", v: "vrai", ligne: 4 }, { a: "On verse toute l'eau d'un seul coup.", v: "faux", ligne: 9 }, { a: "On laisse sécher les objets deux jours.", v: "vrai", ligne: 13 }, { a: "On peut peindre les objets une fois secs.", v: "?" }],
     motInconnu: { mot: "Pétris", ligne: 10, sens: "écrase et retourne la pâte avec les mains", indice: "« avec les mains pendant cinq minutes ».", leurres: ["coupe la pâte avec un couteau", "laisse reposer la pâte"] },
   }),
   T({
@@ -385,6 +398,7 @@ export const TEXTES: TexteAComprendre[] = [
     resumes: ["Roux, un renardeau curieux, se perd en suivant un papillon ; sa mère le retrouve.", "Roux attrape un papillon bleu et le rapporte au terrier.", "La mère de Roux se perd dans le bois, et Roux la retrouve."],
     moments: ["Roux voit un papillon bleu et court après.", "Il ne reconnaît plus rien : il est perdu.", "Il suit une odeur qu'il connaît.", "Il retrouve sa mère derrière un buisson."],
     emotions: [{ qui: "Roux", ligne: 8, emotion: "il a peur", indice: "Le renardeau se mit à trembler." }, { qui: "Roux", ligne: 13, emotion: "il est rassuré", indice: "Roux se blottit contre elle." }],
+    affirmations: [{ a: "Roux est le plus petit de la famille.", v: "vrai", ligne: 2 }, { a: "Roux court après un oiseau.", v: "faux", ligne: 4 }, { a: "Sa mère le retrouve derrière un buisson.", v: "vrai", ligne: 11 }, { a: "Roux a trois frères.", v: "?" }],
     motInconnu: { mot: "se blottit", ligne: 13, sens: "se serre tout contre quelqu'un pour être protégé", indice: "Roux vient d'avoir peur et retrouve sa mère.", leurres: ["s'enfuit en courant", "se cache sous les feuilles"] },
   }),
   T({
@@ -416,6 +430,7 @@ export const TEXTES: TexteAComprendre[] = [
     ],
     reprises: [{ mot: "l'", ligne: 5, designe: "le magma" }, { mot: "elle", ligne: 7, designe: "la lave" }, { mot: "D'autres", ligne: 10, designe: "d'autres volcans" }, { mot: "le", ligne: 14, designe: "le piton de la Fournaise" }],
     resumes: ["Ce texte explique ce qu'est un volcan, d'où vient la lave et pourquoi on surveille certains volcans.", "Ce texte raconte l'éruption d'un volcan en Auvergne.", "Ce texte explique comment les scientifiques fabriquent de la lave."],
+    affirmations: [{ a: "Sous la terre, les roches fondent et forment le magma.", v: "vrai", ligne: 3 }, { a: "La lave reste toujours liquide.", v: "faux", ligne: 7 }, { a: "Le piton de la Fournaise est à La Réunion.", v: "vrai", ligne: 12 }, { a: "Le piton de la Fournaise est le plus haut volcan de France.", v: "?" }],
     motInconnu: { mot: "éruption", ligne: 9, sens: "le moment où le volcan crache de la lave, des cendres, des fumées", indice: "Un volcan actif peut « entrer en éruption » ; la lave, les cendres et les fumées en sortent.", leurres: ["le moment où le volcan s'endort", "la neige au sommet du volcan"] },
   }),
   T({
@@ -449,6 +464,7 @@ export const TEXTES: TexteAComprendre[] = [
     resumes: ["Zoé ne trouve plus son bonnet : son petit frère l'a mis sur la tête de son bonhomme de neige.", "Zoé perd son bonnet dans la neige et le cherche toute la journée.", "Zoé et Hugo construisent ensemble un bonhomme de neige dans la cour."],
     moments: ["Zoé ne trouve pas son bonnet.", "Elle part à l'école sans bonnet, les oreilles glacées.", "Elle voit son bonnet sur la tête d'un bonhomme de neige.", "Hugo explique, et Zoé récupère son bonnet."],
     emotions: [{ qui: "Zoé", ligne: 6, emotion: "elle est déçue, mais décidée", indice: "Tant pis, je pars sans lui" }, { qui: "Zoé", ligne: 14, emotion: "elle trouve ça drôle", indice: "Zoé éclata de rire" }],
+    affirmations: [{ a: "Il neigeait ce matin-là.", v: "vrai", ligne: 1 }, { a: "Le bonnet de Zoé est rouge.", v: "faux", ligne: 10 }, { a: "C'est Hugo qui a fait le bonhomme de neige.", v: "vrai", ligne: 13 }, { a: "Zoé arrive en retard à l'école.", v: "?" }],
     motInconnu: { mot: "enfila", ligne: 2, sens: "mit sur elle (un vêtement)", indice: "Son manteau, ses bottes et ses gants : des vêtements qu'on met pour sortir.", leurres: ["rangea", "lava"] },
   }),
 
@@ -490,6 +506,7 @@ export const TEXTES: TexteAComprendre[] = [
     resumes: ["Adam et son grand-père ont fabriqué un cerf-volant ; Adam gagne le concours parce qu'il a su attendre le vent.", "Adam perd le concours parce qu'il n'y a pas de vent, mais son grand-père le console.", "Le grand-père d'Adam gagne le concours de cerfs-volants du village."],
     moments: ["Adam et son grand-père fabriquent un cerf-volant.", "Le jour du concours, il n'y a pas de vent.", "Vers deux heures, le vent se lève et le cerf-volant d'Adam monte très haut.", "Adam reçoit la coupe et l'offre à son grand-père."],
     emotions: [{ qui: "Adam", ligne: 9, emotion: "il est triste, déçu", indice: "sentait les larmes lui monter aux yeux" }, { qui: "Adam", ligne: 19, emotion: "il est fier et reconnaissant envers son grand-père", indice: "Elle est à nous deux" }],
+    affirmations: [{ a: "Le concours a lieu au début du printemps.", v: "vrai", ligne: 1 }, { a: "Le matin du concours, le vent souffle fort.", v: "faux", ligne: 7 }, { a: "Adam reçoit une coupe.", v: "vrai", ligne: 17 }, { a: "Adam participera au concours l'année prochaine.", v: "?" }],
     motInconnu: { mot: "concurrents", ligne: 11, sens: "ceux qui participent au concours pour le gagner", indice: "Ils rangent leurs affaires, comme Adam qui veut gagner.", leurres: ["les spectateurs qui regardent", "les membres du jury"] },
   }),
   T({
@@ -527,6 +544,7 @@ export const TEXTES: TexteAComprendre[] = [
     ],
     reprises: [{ mot: "ces grands voyageurs", ligne: 3, designe: "les oiseaux qui migrent" }, { mot: "Elles", ligne: 4, designe: "les hirondelles" }, { mot: "les survivantes", ligne: 14, designe: "les hirondelles qui n'ont pas péri" }, { mot: "le", ligne: 16, designe: "le nid" }, { mot: "y", ligne: 17, designe: "dans le nid" }],
     resumes: ["Ce texte explique pourquoi et comment les hirondelles partent en Afrique chaque automne, puis reviennent au printemps.", "Ce texte raconte le voyage d'une hirondelle qui se perd dans le désert.", "Ce texte explique comment construire un nid pour les hirondelles."],
+    affirmations: [{ a: "Les hirondelles mangent des insectes attrapés en vol.", v: "vrai", ligne: 4 }, { a: "Les hirondelles passent l'hiver en Europe.", v: "faux", ligne: 6 }, { a: "Pour se repérer, elles utilisent le soleil et les étoiles.", v: "vrai", ligne: 9 }, { a: "Une hirondelle vit dix ans.", v: "?" }],
     motInconnu: { mot: "survivantes", ligne: 14, sens: "celles qui sont restées en vie", indice: "Juste avant : « Beaucoup d'entre elles meurent de fatigue ou de faim. »", leurres: ["les plus jeunes", "celles qui sont restées en Afrique"] },
   }),
   T({
@@ -564,6 +582,7 @@ export const TEXTES: TexteAComprendre[] = [
     ],
     reprises: [{ mot: "Il", ligne: 6, designe: "l'arbitre" }, { mot: "chacun d'eux", ligne: 6, designe: "chacun des trésors" }, { mot: "il", ligne: 11, designe: "le joueur parti chercher un trésor" }, { mot: "en", ligne: 17, designe: "des trésors" }],
     resumes: ["Ce texte donne les règles d'un jeu d'équipe : il faut rapporter les trésors cachés dans la cour.", "Ce texte raconte une course aux trésors pendant la récréation.", "Ce texte explique comment dessiner la carte d'une cour d'école."],
+    affirmations: [{ a: "L'arbitre cache six trésors dans la cour.", v: "vrai", ligne: 5 }, { a: "Deux joueurs d'une même équipe peuvent partir en même temps.", v: "faux", ligne: 10 }, { a: "Le coffre rapporte trois points.", v: "vrai", ligne: 19 }, { a: "Une partie dure vingt minutes.", v: "?" }],
     motInconnu: { mot: "adversaires", ligne: 13, sens: "les joueurs de l'autre équipe, contre qui l'on joue", indice: "On ne doit pas prendre dans leur cerceau.", leurres: ["les joueurs de son équipe", "les arbitres"] },
   }),
   T({
@@ -599,6 +618,7 @@ export const TEXTES: TexteAComprendre[] = [
     ],
     reprises: [{ mot: "Il", ligne: 11, designe: "le chat" }, { mot: "ses sept couleurs", ligne: 14, designe: "les couleurs de l'arc-en-ciel" }],
     resumes: ["Le poème décrit la ville sous la pluie et annonce le beau temps du lendemain.", "Le poème raconte l'histoire d'un chat qui se perd sous la pluie.", "Le poème explique comment se forme un arc-en-ciel."],
+    affirmations: [{ a: "Les parapluies sont comparés à des champignons noirs.", v: "vrai", ligne: 6 }, { a: "Le chat joue dehors sous la pluie.", v: "faux", ligne: 9 }, { a: "Le poème annonce un arc-en-ciel pour le lendemain.", v: "vrai", ligne: 13 }, { a: "Le poète habite dans cette ville.", v: "?" }],
     motInconnu: { mot: "le pitre", ligne: 11, sens: "le clown, celui qui fait rire en faisant des grimaces", indice: "Le chat « fait le gros dos » : il fait le malin.", leurres: ["le chat qui dort", "celui qui a peur de l'eau"] },
   }),
   T({
@@ -637,6 +657,7 @@ export const TEXTES: TexteAComprendre[] = [
     resumes: ["Le roi ne veut pas se coucher ; la reine fait éteindre les bougies, et il finit par s'endormir.", "Le roi organise une grande fête au château pour l'ambassadeur.", "Le garde éteint les bougies parce que la reine a peur du noir."],
     moments: ["Il est minuit passé, et le roi joue aux cartes.", "Le roi veut qu'on réveille tout le château pour une fête.", "Le garde éteint les bougies une à une.", "Le roi s'endort sur sa chaise."],
     emotions: [{ qui: "le roi", ligne: 4, emotion: "il est têtu, agacé", indice: "Un roi se couche quand il veut !" }, { qui: "la reine et le garde", ligne: 17, emotion: "ils sont amusés et soulagés", indice: "se regardent en souriant" }],
+    affirmations: [{ a: "Il est minuit passé.", v: "vrai", ligne: 3 }, { a: "Le roi veut aller se coucher tout de suite.", v: "faux", ligne: 4 }, { a: "Le garde éteint les bougies.", v: "vrai", ligne: 11 }, { a: "L'ambassadeur arrivera le matin.", v: "?" }],
     motInconnu: { mot: "ambassadeur", ligne: 5, sens: "celui qui représente son pays auprès d'un autre pays", indice: "Il vient « du pays voisin » et le roi doit le recevoir.", leurres: ["le cuisinier du roi", "le garde du château"] },
   }),
   T({
@@ -676,6 +697,7 @@ export const TEXTES: TexteAComprendre[] = [
     resumes: ["Un loup qui a peur du noir découvre, grâce à une chouette, que la nuit est belle.", "Une chouette a peur du noir, et un loup lui prête sa lanterne.", "Un loup méchant fait peur, la nuit, à tous les animaux de la forêt."],
     moments: ["Le loup allume chaque soir une lanterne en cachette.", "Un coup de vent éteint la flamme, et le loup crie.", "La chouette lui montre les beautés de la nuit.", "Le loup donne sa lanterne à un hérisson."],
     emotions: [{ qui: "le loup", ligne: 11, emotion: "il a honte", indice: "Le loup, honteux, avoua tout." }, { qui: "le loup", ligne: 15, emotion: "il se calme, il n'a plus peur", indice: "Peu à peu, l'animal se calma." }],
+    affirmations: [{ a: "Le loup a peur du noir.", v: "vrai", ligne: 4 }, { a: "La chouette se moque du loup.", v: "faux", ligne: 12 }, { a: "Le loup donne sa lanterne à un hérisson.", v: "vrai", ligne: 20 }, { a: "Le loup et la chouette habitent dans la même tanière.", v: "?" }],
     motInconnu: { mot: "tanière", ligne: 5, sens: "l'abri, le trou où vit un animal sauvage", indice: "Le loup y allume sa lanterne ; la chouette se pose à l'entrée.", leurres: ["la cime d'un arbre", "une lanterne"] },
   }),
   T({
@@ -688,7 +710,7 @@ export const TEXTES: TexteAComprendre[] = [
       "Mais Lucas, lui, n'y croyait pas du tout.",
       "Un samedi, il prit sa lampe de poche et monta l'escalier du grenier.",
       "La porte grinça. L'air sentait la poussière et le vieux papier.",
-      "Dans un coin, sous une malle, il remarqua de petits morceaux de journal déchirés.",
+      "Dans un coin, près d'une vieille malle, il remarqua de petits morceaux de journal déchirés.",
       "Il s'approcha sans faire de bruit et souleva doucement le couvercle.",
       "Quatre minuscules boules de poils dormaient, serrées les unes contre les autres.",
       "Une ombre fila soudain entre ses jambes : c'était la mère, inquiète pour ses petits.",
@@ -715,6 +737,7 @@ export const TEXTES: TexteAComprendre[] = [
     resumes: ["Lucas découvre une famille de souris au grenier, la nourrit en secret, puis l'installe avec son père dans la cabane du jardin.", "Lucas a peur des bruits du grenier et refuse d'y monter.", "Les parents de Lucas trouvent des souris au grenier et veulent s'en débarrasser."],
     moments: ["Lucas entend chaque nuit des bruits au grenier.", "Il monte au grenier et découvre une famille de souris.", "Il la nourrit en secret pendant un mois.", "Avec son père, il installe les souris dans la cabane du jardin."],
     emotions: [{ qui: "Lucas", ligne: 13, emotion: "il est ému, il a eu peur, il garde son secret", indice: "le cœur battant" }, { qui: "le père", ligne: 19, emotion: "il est amusé, complice", indice: "Son père sourit" }],
+    affirmations: [{ a: "Lucas entend des bruits chaque nuit.", v: "vrai", ligne: 2 }, { a: "Les parents de Lucas pensent que ce sont des souris.", v: "faux", ligne: 4 }, { a: "Lucas découvre quatre petites souris.", v: "vrai", ligne: 10 }, { a: "Lucas a une sœur.", v: "?" }],
     motInconnu: { mot: "souriceaux", ligne: 16, sens: "les petits de la souris", indice: "On entend « souris » dans le mot ; ce sont les quatre petits de la ligne 10.", leurres: ["des chats", "des oiseaux"] },
   }),
 ];

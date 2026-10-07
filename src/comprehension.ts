@@ -14,10 +14,11 @@ import { feuille } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
 import { TEXTES, ligneDe, lignesNumerotees, textesDeLaClasse, texteDe, type Classe, type Question, type TexteAComprendre, type TypeDeQuestion, type TypeDeTexte } from "./textesDeComprehension";
 
-export type ExerciceComprehension = "questions" | "sensGlobal" | "moments" | "reprises" | "inferences" | "emotions" | "motInconnu" | "typesDeTextes" | "ecoute";
+export type ExerciceComprehension = "questions" | "vraiFaux" | "sensGlobal" | "moments" | "reprises" | "inferences" | "emotions" | "motInconnu" | "typesDeTextes" | "ecoute";
 
 export const EXERCICES_COMPREHENSION: { id: ExerciceComprehension; libelle: string }[] = [
   { id: "questions", libelle: "Lire et répondre en revenant au texte" },
+  { id: "vraiFaux", libelle: "Vrai, faux, ou je ne peux pas savoir" },
   { id: "sensGlobal", libelle: "Le sens global : le bon résumé" },
   { id: "moments", libelle: "Les moments du récit, dans l'ordre" },
   { id: "reprises", libelle: "Qui est qui ? Les reprises" },
@@ -186,6 +187,27 @@ function feuilleSensGlobal(r: ReglagesComprehension, graine: number): string {
   return pageDuTexte(t, "", new Map(), TETE, "page", "", titrer) + page + corrige;
 }
 
+/**
+ * Vrai, faux, ou « je ne peux pas savoir » : le tableau à trois colonnes du
+ * guide CE1 (p. 53) ; au CP, le vrai ou faux justifié dans le texte (guide
+ * CP, p. 84-85). Le numéro de la ligne prouve le vrai et le faux.
+ */
+function feuilleVraiFaux(r: ReglagesComprehension, graine: number): string {
+  const t = texteDeLExercice(r, graine);
+  const cp = t.classe === "CP";
+  const items = melanger(hasard(graine + 19), t.affirmations);
+  const colonnes = cp ? ["Vrai", "Faux"] : ["Vrai", "Faux", "Je ne peux pas savoir"];
+  const affirmations = cp ? items.filter((x) => x.v !== "?") : items;
+  const lignes = affirmations.map((x, i) => `<tr><td><b>${i + 1}.</b> ${escapeHtml(x.a)}</td>${colonnes.map(() => '<td class="cx-centre"><span class="cx-case"></span></td>').join("")}<td class="cx-centre"></td></tr>`).join("");
+  const page = `<div class="page">${titre(`${t.titre} — vrai ou faux ?`)}${TETE}${regle(cp
+    ? "Lis chaque phrase. Est-ce vrai ou faux, d'après le texte ? Coche, puis écris le numéro de la ligne qui le prouve."
+    : "Lis chaque phrase. Le texte dit-il que c'est vrai, que c'est faux… ou ne dit-il rien ? Coche, puis écris le numéro de la ligne qui le prouve.")}
+    <table class="cx-tableau cx-vf"><tr><th>La phrase</th>${colonnes.map((c) => `<th class="cx-centre${c.length > 5 ? " cx-large" : ""}">${c}</th>`).join("")}<th class="cx-centre">Ligne</th></tr>${lignes}</table></div>`;
+  const corrige = `<div class="page corrige">${titre(`${t.titre} — corrigé`)}<div class="cx-corrige">${affirmations.map((x, i) =>
+    `<div class="cx-c"><b>${i + 1}.</b> ${escapeHtml(x.a)} — <b>${x.v === "?" ? "je ne peux pas savoir" : x.v}</b>${x.ligne ? ` <span class="cx-ligne">(ligne ${x.ligne} : « ${escapeHtml(ligneDe(t, x.ligne))} »)</span>` : " <span class=\"cx-ligne\">(le texte n'en dit rien)</span>"}</div>`).join("")}</div></div>`;
+  return pageDuTexte(t, "") + page + corrige;
+}
+
 /** Les inférences : l'indice du texte, ce que je sais déjà, donc ce que je comprends — expliciter son raisonnement. */
 function feuilleInferences(r: ReglagesComprehension, graine: number): string {
   const t = texteDeLExercice(r, graine);
@@ -292,6 +314,7 @@ function feuilleTypes(r: ReglagesComprehension, graine: number): string {
 
 export function htmlComprehension(r: ReglagesComprehension, graine: number): string {
   const corps = r.exercice === "questions" ? feuilleQuestions(r, graine)
+    : r.exercice === "vraiFaux" ? feuilleVraiFaux(r, graine)
     : r.exercice === "ecoute" ? feuilleEcoute(r, graine)
       : r.exercice === "sensGlobal" ? feuilleSensGlobal(r, graine)
         : r.exercice === "moments" ? feuilleMoments(r, graine)
@@ -345,6 +368,8 @@ export const STYLE_COMPREHENSION = `
   .feuille.cx .cx-banque span { display: inline-block; border: 1px solid #9aa0b4; border-radius: 3mm; padding: 0 2.5mm; margin: 0 1.5mm 1mm 0; line-height: 1.7; }
   .feuille.cx .cx-option { display: inline-block; margin-right: 4mm; white-space: nowrap; }
   .feuille.cx .cx-pointilles.cx-court { width: 60mm; }
+  .feuille.cx .cx-vf td { font-size: 14.5px; height: 12mm; }
+  .feuille.cx .cx-vf th.cx-large { width: 26mm; }
   .feuille.cx .cx-bilan { font-size: 12.5px; margin-top: 5mm; line-height: 2; }
   .feuille.cx .cx-corrige { font-size: 13px; line-height: 1.6; }
   .feuille.cx .cx-corrige.cx-apres { margin-top: 6mm; border-top: 1px solid #c4c9d6; padding-top: 3mm; }

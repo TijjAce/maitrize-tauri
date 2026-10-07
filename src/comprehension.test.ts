@@ -35,6 +35,14 @@ describe("les textes à comprendre", () => {
       expect(t.resumes, t.id).toHaveLength(3);
       expect(new Set(t.resumes).size, t.id).toBe(3);
       expect(t.motInconnu.leurres, t.id).toHaveLength(2);
+      // Les affirmations : des vraies, une fausse au moins, une qu'on ne peut pas savoir ; le vrai et le faux ont leur ligne.
+      expect(t.affirmations.filter((x) => x.v === "vrai").length, t.id).toBeGreaterThanOrEqual(1);
+      expect(t.affirmations.filter((x) => x.v === "faux").length, t.id).toBeGreaterThanOrEqual(1);
+      expect(t.affirmations.filter((x) => x.v === "?").length, t.id).toBe(1);
+      for (const x of t.affirmations) {
+        if (x.v === "?") expect(x.ligne, `${t.id} : ${x.a}`).toBeUndefined();
+        else { expect(x.ligne, `${t.id} : ${x.a}`).toBeGreaterThanOrEqual(1); expect(x.ligne!, `${t.id} : ${x.a}`).toBeLessThanOrEqual(n); }
+      }
       if (t.type === "narratif" || t.type === "théâtral") {
         expect(t.moments, t.id).toHaveLength(4);
         // Ce que ressent un personnage : l'indice est mot pour mot dans la ligne donnée.
@@ -103,6 +111,15 @@ describe("l'atelier « Comprendre un texte »", () => {
     expect(eleve).not.toContain("La lumière du phare");
     expect(corrige).toContain("La lumière du phare");
     expect(htmlComprehension({ ...REGLAGES_COMPREHENSION, exercice: "sensGlobal", classe: "CP", texte: "chaton" }, 1).split('class="page corrige"')[0]).toContain("Le chaton perdu");
+  });
+
+  it("fait juger des affirmations : au CP vrai ou faux, ensuite aussi « je ne peux pas savoir »", () => {
+    const cp = htmlComprehension({ ...REGLAGES_COMPREHENSION, exercice: "vraiFaux", classe: "CP", texte: "chaton" }, 1);
+    expect(cp).not.toContain("Je ne peux pas savoir");
+    expect(cp.split('class="page corrige"')[0].match(/<tr><td><b>/g)).toHaveLength(3);
+    const ce1 = htmlComprehension({ ...REGLAGES_COMPREHENSION, exercice: "vraiFaux", classe: "CE1", texte: "phare" }, 1);
+    expect(ce1).toContain("Je ne peux pas savoir");
+    expect(ce1.split('class="page corrige"')[1]).toContain("le texte n'en dit rien");
   });
 
   it("au CE2, fait reconnaître les cinq types de textes", () => {
