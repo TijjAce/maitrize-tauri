@@ -17,10 +17,10 @@
 //   de La Fontaine lue à la classe.
 // Les livrets n'ont pas de séquence pour la compréhension, la production
 // d'écrits, l'oral ou la grammaire : la compréhension et le parcours de
-// lecteur, les dictées et l'orthographe des mots ont leurs séquences, bâties
-// sur le programme et les guides (voir demarchesLecture.ts et
-// demarchesOrthographe.ts) ; les autres compétences gardent les démarches
-// des guides (voir demarches.ts).
+// lecteur, les dictées et l'orthographe des mots, la production d'écrits ont
+// leurs séquences, bâties sur le programme et les guides (voir
+// demarchesLecture.ts, demarchesOrthographe.ts, demarchesEcriture.ts) ; les
+// autres compétences gardent les démarches des guides (voir demarches.ts).
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 
