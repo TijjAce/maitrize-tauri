@@ -25,9 +25,11 @@ const PROGRAMME = "Programme de mathématiques du cycle 2 (2024)";
 const cite = (classe: string, phrase: string) => `${PROGRAMME}, ${classe} : « ${phrase} »`;
 /** Les séquences des livrets d'accompagnement disent elles-mêmes quand elles se font. */
 const citeLeLivret = (classe: string, phrase: string) => `Livret d'accompagnement de mathématiques du ${classe} (Éduscol, 2025) : « ${phrase} »`;
+const citeLeLivretDeFrancais = (classe: string, phrase: string) =>
+  `Livret d'accompagnement de français du ${classe} (Éduscol, ${classe === "CP" ? 2025 : 2026}) : « ${phrase} »`;
 
-/** La période des séquences de numération, d'après les repères du programme. */
-const PAR_DEMARCHE: Record<string, { periode: number; raison: string }> = {
+/** La période des séquences de numération, d'après les repères du programme ; `niveau` : le repère ne vaut qu'à cette classe. */
+const PAR_DEMARCHE: Record<string, { periode: number; raison: string; niveau?: string }> = {
   "numeration-dizaine-cp": { periode: 1, raison: cite("CP", "L'aspect décimal (base dix) et l'aspect positionnel […] sont abordés dès la période 1 : les élèves comparent, dénombrent et constituent des collections organisées en groupes de dix unités et en unités isolées.") },
   "nombres-livret-cp-59": { periode: 2, raison: cite("CP", "Au plus tard en période 2, les élèves travaillent avec des quantités et des nombres allant jusqu'à cinquante-neuf.") },
   "nombres-livret-cp-100": { periode: 3, raison: cite("CP", "Au plus tard en période 3, les élèves travaillent avec des quantités et des nombres allant jusqu'à cent.") },
@@ -48,7 +50,28 @@ const PAR_DEMARCHE: Record<string, { periode: number; raison: string }> = {
   "parties-tout-ce1": { periode: 3, raison: citeLeLivret("CE1", "La séquence développée dans ce document, prévue en périodes 3 ou 4, s'inscrit dans la continuité du travail effectué en numération, en calcul et en résolution de problèmes.") },
   "fractions-unitaires-ce1": { periode: 2, raison: cite("CE1", "Le travail sur les fractions commence dès la période 2 par l'introduction des fractions unitaires (de numérateur égal à 1) d'un tout et de leur écriture fractionnaire.") },
   "fractions-longueurs-ce2": { periode: 3, raison: cite("CE2", "À partir de la période 3, le travail sur les fractions d'un tout permet de considérer une fraction d'une unité de longueur.") },
+  // Le français : ce que disent les livrets de leurs ateliers et de leurs séances.
+  "precision-vitesse-cp": { niveau: "CP", periode: 1, raison: citeLeLivretDeFrancais("CP", "À partir de la période 1 du CP et tout au long du cycle") },
+  "prosodie-cp": { niveau: "CP", periode: 2, raison: citeLeLivretDeFrancais("CP", "À partir de la période 2 du CP") },
+  "precision-vitesse-ce1": { niveau: "CE1", periode: 1, raison: citeLeLivretDeFrancais("CE1", "À partir de la période 1 du CE1 et tout au long du cycle") },
+  "prosodie-ce1": { niveau: "CE1", periode: 1, raison: citeLeLivretDeFrancais("CE1", "À partir de la période 1 du CE1, pour les élèves des groupes ou profils 2, 3 et 4") },
+  "ecriture-cursive": { niveau: "CP", periode: 1, raison: citeLeLivretDeFrancais("CP", "À partir de la période 1 et tout au long de l'année, sur les séances quotidiennes.") },
+  "strategies-de-copie": { niveau: "CP", periode: 2, raison: citeLeLivretDeFrancais("CP", "À partir de la période 2, plusieurs fois par semaine.") },
 };
+
+/**
+ * Les repères que le programme de français écrit dans la compétence même :
+ * « (en fin de période 1) », « (en milieu d'année) », « (dès la 2e période) »… —
+ * cherchés sans accents, l'apostrophe droite ou courbe. « Tout au long de
+ * l'année » n'en fixe aucune.
+ */
+const MARQUES_DE_PERIODE: [RegExp, (m: RegExpMatchArray) => number][] = [
+  [/\((?:en fin de|des la|a partir de la|a l['’]issue de la|des la fin de la) periode (\d)\)/, (m) => Number(m[1])],
+  [/\((?:des la|des la fin de la) (\d)e periode\)/, (m) => Number(m[1])],
+  [/\((?:des le debut de l['’]annee|des les premieres semaines)\)/, () => 1],
+  [/\(en milieu d['’]annee\)/, () => 3],
+  [/\((?:en fin d['’]annee|a la fin de l['’]annee)\)/, () => 5],
+];
 
 /** Les autres repères de période du programme, compétence par compétence. */
 const REPERES: { niveau: string; motif: RegExp; periode: number; raison: string }[] = [
@@ -98,10 +121,16 @@ export function programmationProposee(
   if (!c) return null;
   const niveau = niveauDeProgrammation(c.niveau);
   const parDemarche = PAR_DEMARCHE[demarcheId];
-  if (parDemarche) return { niveau, ...parDemarche };
+  if (parDemarche && (!parDemarche.niveau || parDemarche.niveau === niveau)) return { niveau, periode: parDemarche.periode, raison: parDemarche.raison };
   const titre = plat(c.competenceTitre);
   const repere = REPERES.find((r) => r.niveau === niveau && r.motif.test(titre));
   if (repere) return { niveau, periode: repere.periode, raison: repere.raison };
+  // Le repère écrit dans la compétence, cité tel quel.
+  for (const [motif, periode] of MARQUES_DE_PERIODE) {
+    const m = titre.match(motif);
+    const ecrit = (c.competenceTitre ?? "").match(/\(([^()]*)\)\s*$/)?.[1];
+    if (m && niveau) return { niveau, periode: periode(m), raison: `Programme de français du cycle 2 (2024), ${niveau} : « ${ecrit ?? m[0].slice(1, -1)} »` };
+  }
   return niveau ? { niveau, periode: null, raison: "" } : null;
 }
 

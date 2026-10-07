@@ -19,6 +19,8 @@ import { PREFIXE_COMPETENCES, lireCompetencesAtelier, memeCompetence } from "./a
 import { estUneDemarcheDeCalcul, planDuCalcul } from "./feuillesDuCalcul";
 import { estUneDemarcheDeProblemes, planDesProblemes } from "./problemesDesLivrets";
 import { estUneDemarcheDeFractions, planDesFractions } from "./fractionsDesLivrets";
+import { estUneDemarcheDeFrancais, planDuFrancais } from "./feuillesDuFrancais";
+import { reglagesLaisses } from "./reglagesLaisses";
 
 export type ClasseC2 = "CP" | "CE1" | "CE2";
 
@@ -47,17 +49,6 @@ export interface PlanDesFeuilles {
   feuilles: FeuilleAFabriquer[];
   /** La note « matériel » de chaque séance, dans l'ordre ; vide quand il n'y a rien à dire. */
   materiel: string[];
-}
-
-/** Les réglages qu'on a laissés dans un atelier — ses couleurs, ses options —, sur cet ordinateur. */
-function reglagesLaisses<T>(cle: string): Partial<T> {
-  try {
-    const brut = localStorage.getItem(`fabriquer:${cle}`);
-    const lu = brut ? JSON.parse(brut) : {};
-    return lu && typeof lu === "object" && !Array.isArray(lu) ? lu as Partial<T> : {};
-  } catch {
-    return {};
-  }
 }
 
 /** La classe d'une compétence, d'après son niveau : CP, CE1 ou CE2 ; rien hors du cycle 2. */
@@ -133,6 +124,8 @@ export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): Plan
   // Les problèmes et les fractions des livrets (voir problemesDesLivrets.ts et fractionsDesLivrets.ts).
   if (estUneDemarcheDeProblemes(demarcheId)) return planDesProblemes(demarcheId);
   if (estUneDemarcheDeFractions(demarcheId)) return planDesFractions(demarcheId);
+  // Le français des livrets : la grille de fluence, le syllabaire, les étiquettes du vocabulaire (voir feuillesDuFrancais.ts).
+  if (estUneDemarcheDeFrancais(demarcheId)) return planDuFrancais(demarcheId, ctx);
   if (!CLASSE_DES_DEMARCHES[demarcheId]) return null;
   // Grouper par dix, la centaine, le millier : les huit feuilles des cubes, de la grande collection à l'évaluation.
   if (demarcheId === "numeration-dizaine-cp" || demarcheId.startsWith("groupements-")) {
