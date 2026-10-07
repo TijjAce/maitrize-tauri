@@ -41,11 +41,11 @@ describe("le français du cycle 2, d'après les livrets", () => {
       ["CP", "Vocabulaire", "Établir des relations entre les mots", "Savoir proposer et justifier une catégorisation du corpus de mots étudié.", "vocabulaire-cp"],
       ["CE1", "Vocabulaire", "Enrichir son vocabulaire dans toutes les disciplines", "S’appuyer sur la morphologie des mots pour en trouver le sens.", "vocabulaire-ce1"],
       ["CE2", "Vocabulaire", "Réemployer le vocabulaire étudié", "Automatiser la restitution des mots d’un corpus étudié (fluence verbale).", "vocabulaire-ce2"],
-      // Sans séquence de livret : la séquence bâtie sur le programme (voir demarchesLecture.test.ts), sinon la démarche du guide.
+      // Sans séquence de livret : la séquence bâtie sur le programme et les guides (voir demarchesLecture.test.ts et les suivants).
       ["CE1", "Lecture", "Comprendre un texte", "Justifier ses réponses par un retour au texte.", "comprendre-ce1"],
       ["CP", "Vocabulaire", "Mémoriser l’orthographe des mots", "Identifier et nommer les accents.", "accents-c2"],
       ["CE2", "Grammaire et orthographe", "Se repérer dans la phrase simple", "Reconnaitre et produire les trois types de phrases : déclarative, interrogative et impérative.", "types-formes-c2"],
-      ["CE1", "Oral", "Participer à des échanges", "Respecter le propos au cours des échanges au sein d’un groupe.", "oral"],
+      ["CE1", "Oral", "Participer à des échanges", "Respecter le propos au cours des échanges au sein d’un groupe.", "echanger-c2"],
     ];
     for (const [niveau, sd, cg, titre, attendue] of cas) expect(demarcheSuggeree(cible(niveau, sd, cg, titre), REF).id, `${niveau} — ${titre}`).toBe(attendue);
   });
