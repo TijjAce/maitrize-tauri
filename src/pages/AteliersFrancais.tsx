@@ -4,6 +4,7 @@ import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { graineAuHasard } from "../hasard";
 import { Boutons, Coche, Colonnes, bureau, imprimer } from "./AteliersMaths";
+import { EXERCICES_ECRIRE, REGLAGES_ECRIRE, STYLE_ECRIRE, htmlEcrire, type ExerciceEcrire } from "../ecrire";
 import { EXERCICES_ORTHOGRAPHE, REGLAGES_ORTHOGRAPHE, STYLE_ORTHOGRAPHE, htmlOrthographe, type Classe, type ExerciceOrthographe, type ReglagesOrthographe } from "../orthographe";
 
 // ── Fabriquer › Lecture et écriture : orthographe et dictées ──────────────
@@ -63,6 +64,41 @@ export function OrthographeTab() {
           onImprimer={() => imprimer("orthographe", titre, html, STYLE_ORTHOGRAPHE)} onBureau={() => bureau("orthographe", titre, html, STYLE_ORTHOGRAPHE)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_ORTHOGRAPHE} />}
+    />
+  );
+}
+
+// ── Fabriquer › Lecture et écriture : écrire ──────────────────────────────
+
+export function EcrireTab() {
+  const [r, maj] = useReglages("ecrire", REGLAGES_ECRIRE);
+  const [graine, setGraine] = React.useState(graineAuHasard);
+  const html = React.useMemo(() => htmlEcrire(r, graine), [r, graine]);
+  const libelle = EXERCICES_ECRIRE.find((e) => e.id === r.exercice)?.libelle ?? "";
+  const titre = `Écrire — ${libelle.toLowerCase()}`;
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0 }}>Écrire</h3>
+        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
+          Les écrits du programme et du guide CE1 : la phrase avec des mots imposés, les gammes sur une phrase modèle, déplacer-ajouter-remplacer-supprimer, de l'oral à l'écrit, le jogging d'écriture et ses lanceurs, transformer un texte, ajouter un épisode, les connecteurs ; et pour écrire un texte : le brouillon, la grille de relecture, la lettre à un destinataire.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
+          <Field label="Classe">
+            <Select value={r.classe} onChange={(e) => maj({ classe: e.target.value as Classe })}>
+              <option value="CP">CP</option><option value="CE1">CE1</option><option value="CE2">CE2</option>
+            </Select>
+          </Field>
+          <Field label="Feuille">
+            <Select value={r.exercice} onChange={(e) => maj({ exercice: e.target.value as ExerciceEcrire })}>
+              {EXERCICES_ECRIRE.map((e) => <option key={e.id} value={e.id}>{e.libelle}</option>)}
+            </Select>
+          </Field>
+        </div>
+        <Boutons onTirage={() => setGraine(graineAuHasard())}
+          onImprimer={() => imprimer("ecrire", titre, html, STYLE_ECRIRE)} onBureau={() => bureau("ecrire", titre, html, STYLE_ECRIRE)} />
+      </>}
+      droite={<ApercuFeuille html={html} style={STYLE_ECRIRE} />}
     />
   );
 }

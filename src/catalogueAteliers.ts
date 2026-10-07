@@ -5,7 +5,7 @@
 export const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres", "oeilDeLynx",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
-  "comprehension", "lecteur", "orthographe", "tri", "phrases", "trous", "motsMeles", "cursive",
+  "comprehension", "lecteur", "orthographe", "ecrire", "tri", "phrases", "trous", "motsMeles", "cursive",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "comparer", "calcul", "arbre", "posees", "fractions", "oie", "heure", "monnaie", "mesures", "geometrie", "solides", "deplacements", "donnees", "numeration",
   "carteMentale",
 ] as const;
@@ -92,7 +92,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
   },
   {
     id: "ecrit", libelle: "✍️ Lecture et écriture",
-    aide: "Des textes à comprendre, le carnet de lecteur, les dictées ; des mots et des phrases à manipuler : étiquettes à trier, phrases à remettre en ordre, textes à trous, mots mêlés ; et l'écriture cursive.",
+    aide: "Des textes à comprendre, le carnet de lecteur, les dictées, la production d'écrits ; des mots et des phrases à manipuler : étiquettes à trier, phrases à remettre en ordre, textes à trous, mots mêlés ; et l'écriture cursive.",
     outils: [
       { id: "comprehension", nom: "Comprendre un texte", icone: "📖", cycles: "Cycle 2",
         quoi: "Des récits, documentaires, règles, poèmes et scènes de théâtre à la longueur de chaque classe, lignes numérotées : questions à justifier, résumé, moments du récit, reprises, inférences, émotions, mots inconnus, types de textes, écoute — et le corrigé." },
@@ -100,6 +100,8 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "La page du carnet pour chaque livre lu, la carte d'identité d'un personnage, les personnages-types des contes, la mise en réseau, présenter un livre, choisir un livre, reconnaître les genres." },
       { id: "orthographe", nom: "Orthographe et dictées", icone: "✏️", cycles: "Cycle 2",
         quoi: "Les dictées des guides — préparée, de mots, phrase du jour, à choix multiples, autodictée, à trous, piégée — et mémoriser l'orthographe des mots : cartes et escalier, listes analogiques, lettre muette, s, c, g, m devant m, b, p, accents." },
+      { id: "ecrire", nom: "Écrire", icone: "📝", cycles: "Cycle 2",
+        quoi: "Les gammes sur une phrase modèle, des mots imposés, déplacer-ajouter-remplacer-supprimer, de l'oral à l'écrit, le jogging d'écriture, transformer un texte, ajouter un épisode, les connecteurs, le brouillon, la grille de relecture, la lettre." },
       { id: "tri", nom: "Les maisons du tri", icone: "🏠", cycles: "Cycles 2 et 3",
         quoi: "Des étiquettes à découper et le tableau où les ranger : être ou avoir, phrase ou pas, nom ou verbe. Le verbe en couleur pour qui en a besoin." },
       { id: "phrases", nom: "Phrases en désordre", icone: "✂️", cycles: "Cycle 2",
