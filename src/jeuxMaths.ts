@@ -107,10 +107,11 @@ export function cartesCalcul(r: ReglagesCalcul, graine: number): CarteCalcul[] {
   return r.melanger ? melanger(hasard(graine), sortie) : sortie;
 }
 
-export function htmlCartesCalcul(cartes: CarteCalcul[], r: ReglagesCalcul): string {
+/** Les cartes, recto-verso ou avec leur corrigé ; `titre` remplace celui que disent les tables — des cartes « + 19 », par exemple. */
+export function htmlCartesCalcul(cartes: CarteCalcul[], r: ReglagesCalcul, titre?: string): string {
   // Ce que disent les nombres choisis : la table de multiplication, le premier terme de l'addition, la différence de la soustraction.
   const nom = r.operation === "x" ? "tables de multiplication de" : r.operation === "+" ? "tables d'addition de" : "soustractions dont la différence est";
-  const regle = `<div class="titre">Cartes de calcul — ${nom} ${r.tables.join(", ")}</div>
+  const regle = `<div class="titre">${titre ? escapeHtml(titre) : `Cartes de calcul — ${nom} ${r.tables.join(", ")}`}</div>
     <div class="regle"><b>Se tester</b>On lit la carte, on dit le résultat, on retourne pour vérifier — en classe et à la maison.
       <b style="margin-top:4px">Bataille</b>Chacun retourne une carte et calcule ; le plus grand résultat remporte le pli. À égalité, bataille !
       <span style="color:#687087">— Livrets Mathématiques CE1 et CE2, Éduscol 2025 : jeux de cartes et cartes recto-verso pour mémoriser.</span></div>`;
@@ -150,7 +151,8 @@ export function additionsArbre(r: ReglagesArbre, graine: number): Addition[] {
   return sortie;
 }
 
-export function htmlArbreCalcul(liste: Addition[], r: ReglagesArbre): string {
+/** La feuille des arbres ; `entete` remplace son titre et sa règle — pour l'évaluation d'une séquence, par exemple. */
+export function htmlArbreCalcul(liste: Addition[], r: ReglagesArbre, entete?: { titre: string; consigne: string }): string {
   const boite = (v: string | number, classe = "") => `<span class="ar-boite ${classe}">${v}</span>`;
   const arbre = ({ a, b }: Addition) => {
     const da = Math.floor(a / 10) * 10, ua = a % 10, db = Math.floor(b / 10) * 10, ub = b % 10;
@@ -162,7 +164,10 @@ export function htmlArbreCalcul(liste: Addition[], r: ReglagesArbre): string {
       <div class="ar-ligne">${boite("")} + ${boite("")} = ${boite("", "ar-total")}</div>
     </div>`;
   };
-  const regle = `<div class="titre">Arbre à calcul — ajouter deux nombres</div>
+  const regle = entete
+    ? `<div class="titre">${escapeHtml(entete.titre)}</div><div class="regle">${escapeHtml(entete.consigne)}</div>
+      <div class="sous">Prénom : ........................................ Date : ........................ Score : ........ / ${liste.length}</div>`
+    : `<div class="titre">Arbre à calcul — ajouter deux nombres</div>
     <div class="regle"><b>Comment faire</b>Je décompose chaque nombre en dizaines et unités, j'ajoute les dizaines entre elles, les unités entre elles, puis je recompose la somme.
       L'arbre soutient le raisonnement ; l'objectif est de finir par s'en passer.
       <span style="color:#687087">— Livret Mathématiques CP, Éduscol 2025.</span></div><div class="sous">Prénom : ........................................ Date : ........................</div>`;
