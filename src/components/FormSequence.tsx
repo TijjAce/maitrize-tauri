@@ -139,13 +139,15 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
       competenceVisee: JSON.stringify(c), matiere: c.domaineTitre, cycle: ref.cycle || s.cycle, couleur: couleurPourMatiere(c.domaineTitre),
       ...(programmationTouchee ? {} : { niveau: prog?.niveau || niveau, periode }),
     });
-    setCadre(demarche.id); setSuivi("");
+    setCadre(demarche.id); setSuivi(""); setCadreChoisi(false);
   };
-  // Au CP, la période choisit la séquence du livret : jusqu'à 59 en période 2, jusqu'à 100 dès la période 3.
+  // La période peut choisir la séquence — au CP, les nombres jusqu'à 59 ou jusqu'à 100 ; au CE1, la table de 7 en
+  // période 3, La Martinière aux autres — : tant qu'on n'a pas choisi soi-même le déroulement, il suit la période.
+  const [cadreChoisi, setCadreChoisi] = React.useState(false);
   React.useEffect(() => {
-    if (comp && /^nombres-livret-cp-/.test(cadre)) setCadre(demarcheSuggeree(comp, comp.referentielNom, s.periode).id);
+    if (comp && !cadreChoisi) setCadre(demarcheSuggeree(comp, comp.referentielNom, s.periode).id);
   }, [s.periode]); // eslint-disable-line react-hooks/exhaustive-deps
-  const effacer = () => { up({ competenceVisee: "", matiere: "", cycle: "", couleur: "blue" }); setCadre(""); setSuivi(""); };
+  const effacer = () => { up({ competenceVisee: "", matiere: "", cycle: "", couleur: "blue" }); setCadre(""); setSuivi(""); setCadreChoisi(false); };
 
   return (
     <Modal large titre={sequence.titre && sequence.titre !== "Nouvelle séquence" ? "Modifier la séquence" : "Nouvelle séquence"} onClose={onClose}
@@ -214,7 +216,7 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
               <span className="meta">{resumeDuCadre(demarche)}</span>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "8px 0 6px" }}>
-              <Select value={cadre} onChange={(e) => { setCadre(e.target.value); setSuivi(""); }} style={{ maxWidth: 460 }}>
+              <Select value={cadre} onChange={(e) => { setCadre(e.target.value); setSuivi(""); setCadreChoisi(true); }} style={{ maxWidth: 460 }}>
                 {demarchesParFamille().map((g) => (
                   <optgroup key={g.famille} label={g.famille}>
                     {g.demarches.map((d) => <option key={d.id} value={d.id}>{d.nom}</option>)}

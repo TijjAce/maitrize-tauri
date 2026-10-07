@@ -273,9 +273,10 @@ export function problemeDeComparaison(g: Grandeur["id"], a: number, e: number, c
   const b = c.secondPlusGrand ? a + e : a - e;
   // La seconde est le sujet de la comparaison quand le mot dit vrai sur elle : « B a e de plus » quand B est la plus grande.
   const sujetEstB = (c.mot === "plus") === c.secondPlusGrand;
+  const que = (x: string) => (/^[AEIOUÉÈ]/.test(x) ? `qu'${x}` : `que ${x}`);
   const ecart = sujetEstB
-    ? `${gr.sujet(qb)} ${gr.mesure(e)} de ${c.mot} que ${gr.autre(qa)}.`
-    : `${gr.sujet(qa)} ${gr.mesure(e)} de ${c.mot} que ${gr.autre(qb)}.`;
+    ? `${gr.sujet(qb)} ${gr.mesure(e)} de ${c.mot} ${que(gr.autre(qa))}.`
+    : `${gr.sujet(qa)} ${gr.mesure(e)} de ${c.mot} ${que(gr.autre(qb))}.`;
   const tout = a + b;
   const etape1 = c.secondPlusGrand ? `${n(a)} + ${n(e)} = ${n(b)}` : `${n(a)} − ${n(e)} = ${n(b)}`;
   return {
@@ -296,14 +297,19 @@ export function problemeDeComparaison(g: Grandeur["id"], a: number, e: number, c
  * Des problèmes de comparaison, en deux étapes ou en une selon le rang ; l'écart en dizaines entières, parfois un peu
  * plus, pour le calcul mental ; un énoncé sur deux discordant.
  */
-export function problemesDeComparaison(grandeurs: Grandeur["id"][], combien: number, graine: number, etapes: (rang: number) => 1 | 2): Probleme[] {
+export function problemesDeComparaison(grandeurs: Grandeur["id"][], combien: number, graine: number, etapes: (rang: number) => 1 | 2, max = 0): Probleme[] {
   const alea = hasard(graine);
   const sortie: Probleme[] = [];
   for (let essai = 0; sortie.length < combien && essai < 200; essai++) {
     const k = sortie.length;
     const gr = GRANDEURS.find((x) => x.id === grandeurs[k % grandeurs.length])!;
-    const a = entier(alea, 21, gr.max - 25);
-    const e = choisir(alea, [10, 20, 30]) + (alea() < 0.4 ? choisir(alea, [1, 2, 5, 9]) : 0);
+    // De plus grands nombres quand la classe les connaît — mais pas pour la monnaie d'une tirelire, une bande de papier
+    // ou la durée d'une séance.
+    const plafond = max && (gr.id === "billes" || gr.id === "pommes") ? max : gr.max;
+    const a = entier(alea, 21, plafond - 25);
+    const e = plafond > 200
+      ? choisir(alea, [10, 20, 50, 100, 200].filter((x) => x < plafond / 3)) + (alea() < 0.4 ? entier(alea, 1, 9) : 0)
+      : choisir(alea, [10, 20, 30]) + (alea() < 0.4 ? choisir(alea, [1, 2, 5, 9]) : 0);
     const c: Comparaison = { mot: alea() < 0.5 ? "plus" : "moins", secondPlusGrand: k % 2 === 0 };
     if (!c.secondPlusGrand && a - e < 5) continue;
     const noms = gr.id === "durees" ? choisir(alea, MATIERES) : choisir(alea, PAIRES);

@@ -31,11 +31,10 @@ describe("les problèmes et les fractions des livrets", () => {
       ["CE2", "La résolution de problèmes", "Résoudre des problèmes additifs en deux étapes.", "deux-etapes-ce2"],
       ["CE1", "Les fractions", "Savoir interpréter, représenter, écrire et lire les fractions 1/2, 1/3, 1/4, 1/5, 1/6, 1/8 et 1/10.", "fractions-unitaires-ce1"],
       ["CE2", "Les fractions", "Partager une unité de longueur en fractions d’unité et mesurer des longueurs non entières par rapport à cette unité.", "fractions-longueurs-ce2"],
-      // Sans séquence de livret : la démarche des problèmes, ou les quatre temps.
-      ["CP", "La résolution de problèmes", "Résoudre des problèmes multiplicatifs en une étape (champ numérique inférieur ou égal à 30).", "problemes"],
-      ["CE1", "La résolution de problèmes", "Résoudre des problèmes additifs de comparaison en une étape.", "problemes"],
-      ["CE2", "La résolution de problèmes", "Résoudre des problèmes additifs en une étape de types parties-tout et comparaison.", "problemes"],
-      ["CE1", "Les fractions", "Comparer des fractions ayant le même dénominateur.", "eduscol-quatre-temps"],
+      // Sans séquence de livret : la trame des livrets, prolongée (voir problemesProlonges.ts).
+      ["CP", "La résolution de problèmes", "Résoudre des problèmes multiplicatifs en une étape (champ numérique inférieur ou égal à 30).", "multiplicatifs-cp"],
+      ["CE1", "La résolution de problèmes", "Résoudre des problèmes additifs de comparaison en une étape.", "comparaison-ce1"],
+      ["CE2", "La résolution de problèmes", "Résoudre des problèmes additifs en une étape de types parties-tout et comparaison.", "parties-tout-comparaison-ce2"],
     ];
     for (const [niveau, cg, titre, attendue] of cas) expect(demarcheSuggeree(cible(niveau, cg, titre), REF).id, `${niveau} — ${titre}`).toBe(attendue);
   });
@@ -117,7 +116,7 @@ describe("les problèmes et les fractions des livrets", () => {
     expect([deux.calcul, deux.reponse]).toEqual(["44 − 10 = 34 ; 44 + 34 = 78", 78]);
     // « de moins », et pourtant la seconde est la plus grande.
     const moins = problemeDeComparaison("monnaie", 35, 20, { mot: "moins", secondPlusGrand: true }, false, ["Tom", "Inès"]);
-    expect(moins.enonce).toBe("Tom a 35 €. Tom a 20 € de moins que Inès. Combien d'argent a Inès ?");
+    expect(moins.enonce).toBe("Tom a 35 €. Tom a 20 € de moins qu'Inès. Combien d'argent a Inès ?");
     expect([moins.calcul, moins.reponse]).toEqual(["35 + 20 = 55", 55]);
     expect(problemeDeComparaison("pommes", 30, 10, { mot: "plus", secondPlusGrand: true }, false, ["Léo", "Lucie"]).enonce)
       .toContain("Combien de pommes Lucie a-t-elle cueillies ?");
