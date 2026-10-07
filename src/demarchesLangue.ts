@@ -45,7 +45,7 @@ const evaluation = (quoi: string, ensuite: string) => seance("Évaluation", saur
 ]);
 
 const GUIDE_CE1 = "guide « Pour enseigner la lecture et l'écriture au CE1 » (2019), « La grammaire », p. 92-97";
-const GUIDE_CP = "guide « Pour enseigner la lecture et l'écriture au CP » (2018), p. 86-87";
+const GUIDE_CP = "guide « Pour enseigner la lecture et l'écriture au CP » (2019), p. 86-87";
 const SOURCE = `${PROGRAMME_FRANCAIS} ; ${GUIDE_CE1} ; démarche en quatre temps des livrets`;
 const SOURCE_CP = `${PROGRAMME_FRANCAIS} ; ${GUIDE_CP} ; ${GUIDE_CE1} ; démarche en quatre temps des livrets`;
 const MANIPULER = "Fais agir : classer, réécrire, surligner, recopier dans un tableau. Le corpus montre des régularités, sans exception.";

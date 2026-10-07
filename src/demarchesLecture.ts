@@ -40,8 +40,8 @@ const evaluation = (quoi: string, ensuite: string) => seance("Évaluation", saur
 ]);
 
 export const PROGRAMME_FRANCAIS = "Bâtie sur le programme de français du cycle 2 (2024) et les guides Éduscol, à la demande de l'enseignant, faute de séquence dans les livrets d'accompagnement";
-const COMPRENDRE = `${PROGRAMME_FRANCAIS} ; guide « Lecture et compréhension de l'écrit » (Éduscol, 2017) ; démarche en quatre temps des livrets`;
-const LECTEUR = `${PROGRAMME_FRANCAIS} ; « Devenir lecteur » et « Le parcours de lecteur et la culture littéraire » ; démarche en quatre temps des livrets`;
+const COMPRENDRE = `${PROGRAMME_FRANCAIS} ; guides « Pour enseigner la lecture et l'écriture » au CP (2019), « Comprendre en lisant », p. 48-55, et au CE1 (2019), « Quels supports et quelle méthode pour comprendre les textes ? », p. 35-62 ; démarche en quatre temps des livrets`;
+const LECTEUR = `${PROGRAMME_FRANCAIS} ; « Devenir lecteur » et « Le parcours de lecteur et la culture littéraire » ; guides « Pour enseigner la lecture et l'écriture » au CP (2019), p. 54-55 (le carnet, le journal de lecteur), et au CE1 (2019), p. 40-42 (les lectures personnelles) ; démarche en quatre temps des livrets`;
 
 // ── Comprendre un texte : une séquence par classe ─────────────────────────
 
@@ -61,7 +61,7 @@ const COMPRENDRE_CP: Demarche = {
       "La frise des moments de l'histoire, affichée ; les mots pour raconter : d'abord, ensuite, puis, à la fin."),
     trois("Répondre en revenant au texte", "trouver la ligne du texte qui répond à une question, et la montrer.",
       "Une question du professeur : « Où est la réponse ? » On découvre que les lignes du texte sont numérotées : on peut dire où on l'a trouvée.",
-      "Lecture autonome d'un texte déchiffrable d'une dizaine de lignes. Pour chaque question : la relire, chercher dans le texte, écrire la réponse et le numéro de la ligne qui la donne. En binôme, comparer ; en cas de désaccord, on relit la ligne ensemble.",
+      "Lecture autonome d'un texte déchiffrable d'une dizaine de lignes. Des affirmations à déclarer vraies ou fausses, en montrant la ligne qui le prouve (guide CP, p. 84-85) ; puis des questions : la relire, chercher dans le texte, écrire la réponse et le numéro de la ligne. En binôme, comparer ; en cas de désaccord, on relit la ligne ensemble.",
       "Ce qu'on retient : « Pour répondre, je relis la question, je cherche dans le texte, je montre la ligne qui le dit. »",
       "Ne valide pas une réponse sans la ligne qui la prouve."),
     trois("Lire un documentaire, une recette", "repérer les informations d'un texte informatif simple et faire ce que demande un texte prescriptif.",
@@ -80,8 +80,8 @@ const COMPRENDRE_CE1: Demarche = {
   seances: [
     trois("Lire seul et se faire le film", "lire seul un texte, s'en faire une représentation et la confronter à celle des autres.",
       "L'objectif annoncé : « Vous allez lire seuls ce texte ; ensuite, vous me raconterez le film que vous vous êtes fait. »",
-      "Lecture silencieuse. Puis, à deux, se raconter le texte sans le regarder ; mise en commun : quand deux films diffèrent, on revient au texte, ligne par ligne. Les questions de la feuille, réponses justifiées par la ligne.",
-      "Ce qu'on retient : « Quand je ne suis pas sûr, je relis le passage. »"),
+      "Deux lectures silencieuses sans s'arrêter, la seconde pour chercher qui sont les personnages et comment le texte les nomme ; surligner les mots non compris. Rappel collectif : « de qui, de quoi parle-t-on ? » ; quand deux films diffèrent, on revient au texte, ligne par ligne. Vrai, faux ou je ne peux pas savoir ; les questions, réponses justifiées par la ligne.",
+      "Le professeur reformule tout le texte et dit comment il a fait pour le comprendre (guide CE1, p. 43-46). Ce qu'on retient : « Quand je ne suis pas sûr, je relis le passage. »"),
     trois("Raconter, résumer, donner un titre", "restituer les enchaînements d'un récit, le résumer à l'oral et lui donner un titre.",
       "Un texte sans son titre : « Quel titre lui donneriez-vous ? »",
       "Remettre les moments du récit dans l'ordre et dire ce qui relie l'un à l'autre (parce que, alors, donc). Choisir le bon résumé parmi trois et dire ce qui ne va pas dans les autres ; résumer à l'oral ; proposer un titre, le comparer à celui de l'auteur.",
@@ -146,8 +146,8 @@ const REPRISES: Demarche = {
       "Ce qu'on retient : un personnage peut être repris par un pronom (il, elle, le, lui) ou par un autre nom (le fauve) : c'est toujours lui."),
     trois("Les petits mots qui remplacent", "trouver ce que désigne un pronom en relisant la phrase et celle d'avant.",
       "« Elle les a posées sur la table » : qui est elle ? que sont les ?",
-      "Pour chaque mot souligné du texte, relire la phrase et celle d'avant, proposer, puis vérifier en remplaçant le pronom par sa réponse : la phrase garde-t-elle son sens ?",
-      "Ce qu'on retient : pour savoir ce que remplace un petit mot, je relis avant, et je vérifie en remplaçant."),
+      "« Luc est ami avec Anne. Il a d'autres amis. Elle n'en a qu'un seul. » : souligner les noms propres et les pronoms, établir les correspondances (guide CE1, p. 47-48). Puis, pour chaque mot souligné du texte, relire la phrase et celle d'avant, proposer, vérifier en remplaçant le pronom par sa réponse : la phrase garde-t-elle son sens ?",
+      "Ce qu'on retient : « un pronom est un petit mot qui remplace le nom » ; je cherche toujours le personnage qu'il remplace (guide CE1, p. 53)."),
     trois("D'autres noms pour le même personnage", "relier un personnage aux autres noms qui le désignent dans un récit.",
       "Roux, le renardeau, le plus petit : un seul personnage ?",
       "Relever dans un récit tous les noms qui désignent chaque personnage ; les classer dans un tableau à une colonne par personnage ; réécrire une phrase en remplaçant le nom par un autre nom de la liste.",
@@ -180,7 +180,7 @@ const INFERENCES: Demarche = {
       "Ce qu'on retient : ce que fait un personnage montre ce qu'il ressent et ce qu'il veut."),
     trois("Je comprends, et je le prouve", "distinguer une inférence permise par le texte d'une invention.",
       "Deux réponses à la même question : laquelle le texte permet-il ?",
-      "Répondre aux questions dont la réponse n'est pas écrite, puis confronter les réponses : chacune est-elle prouvée par un indice ? Écarter celles que le texte contredit.",
+      "Juger des affirmations : vrai, faux ou « je ne peux pas savoir » (le tableau à trois colonnes du guide CE1, p. 53) ; répondre aux questions dont la réponse n'est pas écrite, puis confronter les réponses : chacune est-elle prouvée par un indice ? Écarter celles que le texte contredit.",
       "Ce qu'on retient : une inférence s'appuie toujours sur un indice du texte."),
     evaluation("répondre à des questions dont la réponse n'est pas écrite, en donnant l'indice",
       "Ensuite, à chaque lecture, au moins une question « Je réfléchis »."),
@@ -376,6 +376,7 @@ const PLANS: Record<string, (classe: ClasseC2) => Plan> = {
     feuilles: [
       cx(0, { exercice: "ecoute", classe: "CP", texte: "chaton" }, "Le chaton perdu — j'écoute et je comprends"),
       cx(1, { exercice: "moments", classe: "CP", texte: "cabane" }, "La cabane — les moments de l'histoire"),
+      cx(2, { exercice: "vraiFaux", classe: "CP", texte: "escargot" }, "Le petit escargot — vrai ou faux ?"),
       cx(2, { exercice: "questions", classe: "CP", texte: "escargot" }, "Le petit escargot — je comprends le texte"),
       cx(3, { exercice: "questions", classe: "CP", texte: "herisson" }, "Le hérisson — je comprends le texte"),
       cx(3, { exercice: "questions", classe: "CP", texte: "salade" }, "La salade de fruits — je comprends le texte"),
@@ -385,6 +386,7 @@ const PLANS: Record<string, (classe: ClasseC2) => Plan> = {
   }),
   "comprendre-ce1": () => ({
     feuilles: [
+      cx(0, { exercice: "vraiFaux", classe: "CE1", texte: "phare" }, "La lumière du phare — vrai ou faux ?"),
       cx(0, { exercice: "questions", classe: "CE1", texte: "phare" }, "La lumière du phare — je comprends le texte"),
       cx(1, { exercice: "sensGlobal", classe: "CE1", texte: "gouter" }, "De quoi parle le texte ? — résumé et titre"),
       cx(1, { exercice: "moments", classe: "CE1", texte: "gouter" }, "Le goûter disparu — les moments de l'histoire"),
@@ -428,6 +430,7 @@ const PLANS: Record<string, (classe: ClasseC2) => Plan> = {
       feuilles: [
         cx(1, { exercice: "inferences", classe, texte: a }, `${texteDe(a)!.titre} — ce qui n'est pas écrit`),
         cx(2, { exercice: "emotions", classe, texte: b }, `${texteDe(b)!.titre} — ce que ressentent les personnages`),
+        cx(3, { exercice: "vraiFaux", classe, texte: c }, `${texteDe(c)!.titre} — vrai, faux ou je ne peux pas savoir`),
         cx(3, { exercice: "questions", classe, texte: c, questions: "inférence" }, `${texteDe(c)!.titre} — je réfléchis`),
         cx(4, { exercice: "inferences", classe, texte: d }, `${texteDe(d)!.titre} — évaluation`),
       ],

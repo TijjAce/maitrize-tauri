@@ -1,7 +1,7 @@
 // Orthographe et dictées : les feuilles des dictées du CP au CE2, et celles
 // qui font mémoriser l'orthographe des mots.
 //
-// Guide « Pour enseigner la lecture et l'écriture au CP » (2019), p. 86 : la
+// Guide « Pour enseigner la lecture et l'écriture au CP » (2019), p. 85-86 : la
 // dictée « envisagée sous un angle constructif et non évaluatif » — lire le
 // texte, le comprendre, compter les phrases, les mots, les signes de
 // ponctuation, le copier en prononçant, vérifier soi-même, puis la dictée des
@@ -131,7 +131,7 @@ export const MOTS_ACCENTS: { mot: string; accent: "aigu" | "grave" | "circonflex
 
 // ── Les textes des dictées ────────────────────────────────────────────────
 
-/** La dictée préparée du CP : la phrase du guide (p. 80), puis d'autres, faites des lettres muettes apprises. */
+/** La dictée préparée du CP : la phrase du guide (p. 80 et 85), puis d'autres, faites des lettres muettes apprises. */
 export const DICTEES_CP = [
   "Assise sur le sable, Lisa lit le journal.",
   "Le chat de Malo dort sur le lit.",
@@ -274,7 +274,7 @@ function feuilleDicteePreparee(r: ReglagesOrthographe, graine: number): string {
     <div>Le texte : <b>${escapeHtml(texte)}</b></div>
     <div>${phrasesDuTexte(texte).length} phrase(s), ${mots.length} mots (« l'enfant » en compte deux), ${signesDePonctuation(texte)} signe(s) de ponctuation.</div>
     <div>Les mots dans le désordre : ${desordre.map(escapeHtml).join(", ")}.</div>
-    <div class="or-gris">Guide CP, p. 86 : s'assurer de la compréhension par un questionnement simple ; à la fin, dicter quelques mots des dictées précédentes pour réviser.</div></div></div>`;
+    <div class="or-gris">Guide CP, p. 85-86 : s'assurer de la compréhension par un questionnement simple ; à la fin, dicter quelques mots des dictées précédentes pour réviser.</div></div></div>`;
   return page1 + page2 + corrige;
 }
 

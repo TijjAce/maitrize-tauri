@@ -7,7 +7,7 @@
 // le programme et les guides, en le disant. Le programme : « Tous les jours,
 // chaque élève […] fait une dictée en lien avec les apprentissages
 // conduits » ; « avant d'être un outil d'évaluation de l'orthographe, la
-// dictée est bien une activité d'écriture ». Le guide CP (p. 86) en donne la
+// dictée est bien une activité d'écriture ». Le guide CP (p. 85-86) en donne la
 // conduite pas à pas ; le guide CE1 (p. 97-106) les types de dictées — pour
 // apprendre, pour s'entraîner, pour évaluer — et la mémorisation des mots.
 // Chaque séance suit la démarche en quatre temps des livrets ; les feuilles
@@ -38,7 +38,7 @@ const evaluation = (quoi: string, ensuite: string) => seance("Évaluation", saur
   ph(T4, "5 min", ensuite),
 ]);
 
-const GUIDE_CP = "guide « Pour enseigner la lecture et l'écriture au CP » (2018), p. 86";
+const GUIDE_CP = "guide « Pour enseigner la lecture et l'écriture au CP » (2019), p. 85-86";
 const GUIDE_CE1 = "guide « Pour enseigner la lecture et l'écriture au CE1 » (2019), p. 97-106";
 const DICTEES = (guides: string) => `${PROGRAMME_FRANCAIS} ; ${guides} ; démarche en quatre temps des livrets`;
 
@@ -47,7 +47,7 @@ const DICTEES = (guides: string) => `${PROGRAMME_FRANCAIS} ; ${guides} ; démarc
 const DICTEES_CP: Demarche = {
   id: "dictees-cp", nom: "La dictée qui apprend : mots, phrases, lettres muettes (CP)", famille: "Français",
   source: DICTEES(GUIDE_CP),
-  resume: "Écrire des mots dictés avec les lettres muettes apprises — « un ballon rond, une balle ronde, des ballons ronds » —, puis, en fin d'année, écrire sous la dictée des mots et des phrases. La dictée est « envisagée ici sous un angle constructif et non évaluatif » (guide CP, p. 86) : lire et comprendre le texte, compter ses phrases, ses mots, ses signes de ponctuation, le copier en prononçant, se vérifier, puis l'écrire sous la dictée. L'élève « oralise ce qu'il écrit et segmente la chaîne orale », utilise l'analogie et les outils de la classe.",
+  resume: "Écrire des mots dictés avec les lettres muettes apprises — « un ballon rond, une balle ronde, des ballons ronds » —, puis, en fin d'année, écrire sous la dictée des mots et des phrases. La dictée est « envisagée ici sous un angle constructif et non évaluatif » (guide CP, p. 85-86) : lire et comprendre le texte, compter ses phrases, ses mots, ses signes de ponctuation, le copier en prononçant, se vérifier, puis l'écrire sous la dictée. L'élève « oralise ce qu'il écrit et segmente la chaîne orale », utilise l'analogie et les outils de la classe.",
   seances: [
     trois("Préparer la dictée : lire, comprendre, compter", "lire le texte de la dictée, le comprendre et en compter les phrases, les mots et les signes de ponctuation.",
       "Le texte de la dictée au tableau : « Demain, je vous le dicterai. Aujourd'hui, on apprend à l'écrire. »",

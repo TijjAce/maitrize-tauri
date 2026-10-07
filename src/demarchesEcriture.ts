@@ -35,7 +35,7 @@ const trois = (titre: string, objectif: string, situation: string, activite: str
 const rituel = (titre: string, objectif: string, activite: string, retenir: string, posture = "") =>
   seance(titre, sauront(objectif), 20, [ph(T1, "5 min", "Le lanceur ou la phrase du jour, dit à l'oral d'abord."), ph(T2, "10 min", activite, posture), ph(T3, "5 min", retenir)]);
 
-const GUIDES = "guides « Pour enseigner la lecture et l'écriture » au CP (2018), « Savoir écrire un texte », p. 11-12, et au CE1 (2019), « La rédaction », p. 77-89";
+const GUIDES = "guides « Pour enseigner la lecture et l'écriture » au CP (2019), « Savoir écrire un texte », p. 11-12, et au CE1 (2019), « La rédaction », p. 77-89";
 const SOURCE = `${PROGRAMME_FRANCAIS} ; ${GUIDES} ; démarche en quatre temps des livrets`;
 
 const ECRIRE_CP: Demarche = {
