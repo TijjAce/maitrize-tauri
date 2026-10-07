@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
-  assembler, basculer, choixParDefaut, cochees, consigneIA, corpsParDefaut, demandeIA, entete, GROUPES,
-  groupesDe, htmlDeLaReponse, modeleLocal, optionsDe, puceDe, REGLAGES, reglagesParDefaut, signature,
-  SORTES, type InfosGarde, type SorteGarde,
+  assembler, auNomDe, basculer, choixParDefaut, CITATIONS, cochees, consigneIA, corpsParDefaut, dateEnLettres, demandeIA, entete, exemplaires, GROUPES,
+  groupesDe, htmlDeLaReponse, lireMeta, modeleLocal, optionsDe, pourDesEleves, puceDe, REGLAGES, reglagesParDefaut, rienPourLIA, signature,
+  SORTES, SORTES_DU_CHOIX, type InfosGarde, type SorteGarde,
 } from "./pagesDeGarde";
 import { nettoyerHtml } from "./texteRiche";
 
@@ -123,7 +123,7 @@ describe("les cases à cocher", () => {
   });
 
   it("garde un document propre quelles que soient les cases", () => {
-    for (const sorte of ["cahier", "lettre", "fournitures"] as const) {
+    for (const sorte of ["cahier", "journal", "lettre", "fournitures"] as const) {
       for (const ime of [true, false]) {
         const tout = infos({ sorte, ime, choix: optionsDe(sorte, ime).map((o) => o.id) });
         expect(nettoyerHtml(modeleLocal(tout))).toBe(modeleLocal(tout));
@@ -196,5 +196,107 @@ describe("les précisions sur les cahiers", () => {
     const d = demandeIA(avec({ lignage: "seyes", pages: "48" }, ["cahierPetit"]));
     expect(d).toContain("- un cahier 17 × 22 cm, 48 pages, grands carreaux (Seyès)");
     expect(consigneIA(infos({ sorte: "fournitures" }))).toContain("rien d'autre");
+  });
+});
+
+const PERIODES = [
+  { numero: 1, debut: "2026-09-01", fin: "2026-10-16" }, { numero: 2, debut: "2026-11-02", fin: "2026-12-18" },
+  { numero: 3, debut: "2027-01-04", fin: "2027-02-19" }, { numero: 4, debut: "2027-03-08", fin: "2027-04-16" },
+  { numero: 5, debut: "2027-05-03", fin: "2027-07-02" },
+];
+
+describe("la page de garde de mon cahier journal", () => {
+  const journal = (p: Partial<InfosGarde> = {}) => infos({ sorte: "journal", titre: "Cahier journal", niveau: "CE1", periodes: PERIODES, ...p });
+
+  it("se range sous « Page de garde », à côté du cahier d'un élève", () => {
+    expect(SORTES_DU_CHOIX).toEqual(["cahier", "lettre", "fournitures"]);
+    expect(SORTES.find((s) => s.id === "journal")!.titre).toBe("Cahier journal");
+  });
+
+  it("porte l'année, la classe, le nom, la citation exacte, les périodes datées, la photo et la frise", () => {
+    const html = modeleLocal(journal());
+    expect(html).toContain("<h1 style=\"text-align:center\">📒 Cahier journal</h1>");
+    expect(html).toContain("2026 – 2027");
+    expect(html).toContain("IME &lt;Perce-Neige&gt; · CE1");
+    expect(html).toContain("<b>Clément Titet — Professeur des écoles spécialisé</b>");
+    expect(html).toContain("Plutôt la tête bien faite que bien pleine.");
+    expect(html).toContain("— Montaigne, Essais, I, 26");
+    expect(html).toContain("<td>du 1er septembre au 16 octobre</td>");
+    expect(html).toContain("<td>du 3 mai au 2 juillet</td>");
+    expect(html).toContain("la photo de la classe");
+    // La frise, en tête et en pied de page.
+    expect(html.match(/<h2 style="text-align:center">✏️/g)).toHaveLength(2);
+    // Ce que l'éditeur garde tel quel : aucune balise ni style qu'il retirerait.
+    expect(nettoyerHtml(html)).toBe(html);
+    // Le cahier journal ne se signe pas : c'est le sien.
+    expect(html).not.toContain("01 85 74 27 87");
+  });
+
+  it("change de citation et de frise selon les précisions", () => {
+    const html = modeleLocal(journal({ reglages: { citation: "3", frise: "saisons" } }));
+    expect(html).toContain("Rien ne sert de courir ; il faut partir à point.");
+    expect(html).toContain("🍂 🍁 ❄️");
+    expect(REGLAGES.journal!.find((r) => r.id === "citation")!.valeurs).toHaveLength(CITATIONS.length);
+  });
+
+  it("sans calendrier, donne les mois des périodes, sans inventer de dates", () => {
+    const html = modeleLocal(journal({ periodes: [] , choix: ["periodes", "chiffres"] }));
+    expect(html).toContain("<td>septembre et octobre</td>");
+    expect(html).not.toContain("semaines de classe");
+    expect(modeleLocal(journal({ choix: ["chiffres"] }))).toContain("semaines de classe");
+    expect(dateEnLettres("2026-09-01")).toBe("1er septembre");
+    expect(dateEnLettres("2027-02-19")).toBe("19 février");
+  });
+
+  it("ne demande à l'IA que les mots doux : ni date, ni citation, ni nom", () => {
+    const i = journal();
+    const d = demandeIA(i);
+    expect(d).toContain("Écris seulement :\n- un petit mot d'encouragement");
+    expect(d).not.toMatch(/septembre|Montaigne|Clément|périodes|citation/);
+    expect(consigneIA(i)).toContain("sans date ni citation");
+    // L'IA écrit le souhait ; les dates et la citation restent celles d'ici.
+    const avecIA = assembler(i, "<p style=\"text-align:center\">Une belle année s'ouvre.</p>");
+    expect(avecIA).toContain("Une belle année s'ouvre.");
+    expect(avecIA).toContain("du 1er septembre au 16 octobre");
+    expect(rienPourLIA(i)).toBe(false);
+    expect(rienPourLIA(journal({ choix: ["annee", "periodes", "citation"] }))).toBe(true);
+  });
+});
+
+describe("un document pour plusieurs élèves", () => {
+  it("écrit le nom de l'élève sur la ligne à compléter, ou sous le titre", () => {
+    const page = modeleLocal(infos({ sorte: "cahier" }));
+    const lea = auNomDe(page, "Léa Martin", "cahier");
+    expect(lea).toContain("<b>Nom de l'élève :</b> <b>Léa Martin</b>");
+    expect(lea).not.toContain("……………");
+    const liste = modeleLocal(infos({ sorte: "fournitures" }));
+    expect(auNomDe(liste, "Tom & Sami", "fournitures")).toContain("</h1><p><b>Pour Tom &amp; Sami</b></p>");
+    // Un « $ » dans un nom ne casse rien.
+    expect(auNomDe(page, "A$1B", "cahier")).toContain("<b>A$1B</b>");
+    expect(auNomDe(liste, "", "fournitures")).toBe(liste);
+  });
+
+  it("imprime un exemplaire par élève, chacun sur sa page ; le document seul sinon", () => {
+    const liste = modeleLocal(infos({ sorte: "fournitures" }));
+    const trois = exemplaires(liste, ["Léa", "Tom", "Inès"], "fournitures");
+    expect(trois.match(/class="exemplaire"/g)).toHaveLength(3);
+    expect(trois).toContain("Pour Inès");
+    expect(exemplaires(liste, [], "fournitures")).toBe(liste);
+    // Le cahier journal ne se fait pas au nom des élèves.
+    expect(pourDesEleves("journal")).toBe(false);
+    expect(pourDesEleves("fournitures")).toBe(true);
+    expect(pourDesEleves(undefined)).toBe(true);
+  });
+
+  it("ne transmet jamais les élèves cochés au modèle", () => {
+    const i = infos({ sorte: "fournitures", eleves: ["e1", "e2"] });
+    expect(demandeIA(i)).not.toMatch(/e1|e2|élèves coch/);
+  });
+
+  it("lit ce qu'il retient d'un document, même abîmé", () => {
+    expect(lireMeta('{"sorte":"fournitures","eleves":["a","b"]}')).toEqual({ sorte: "fournitures", eleves: ["a", "b"] });
+    expect(lireMeta("")).toEqual({ sorte: undefined, eleves: [] });
+    expect(lireMeta("{pas du json")).toEqual({ eleves: [] });
+    expect(lireMeta('{"eleves":[1,"x"]}').eleves).toEqual(["x"]);
   });
 });

@@ -20,22 +20,43 @@
 // L'IA n'écrit que le corps : l'en-tête et les coordonnées viennent des
 // réglages, jamais du modèle, qui inventerait un numéro de téléphone. Rien de
 // nominatif sur les élèves ne lui est transmis.
+//
+// La page de garde a deux visages : celle du cahier d'un élève, et celle du
+// cahier journal de l'enseignant — l'année, la classe, les cinq périodes et
+// leurs dates, une citation, une frise de petits dessins. Ce que l'on sait
+// (les dates, la citation exacte) s'écrit ici ; l'IA ne rédige que les mots
+// doux, une devise, un souhait.
+//
+// Un document peut servir à plusieurs élèves : il s'imprime alors une fois
+// par élève coché, à son nom. Les noms s'ajoutent ici, à l'impression ; ils ne
+// partent jamais vers le modèle.
 
 import { echapper } from "./texteRiche";
+import type { PeriodeDeClasse } from "./vacances";
+import { semainesDeClasse } from "./vacances";
 
 /** Le dossier réservé de ces documents, hors du plan de travail. */
 export const DOSSIER_GARDE = "@pages-de-garde";
 
-export type SorteGarde = "cahier" | "lettre" | "fournitures";
+export type SorteGarde = "cahier" | "journal" | "lettre" | "fournitures";
 
 export const SORTES: { id: SorteGarde; libelle: string; icone: string; aide: string; titre: string }[] = [
   { id: "cahier", libelle: "Page de garde", icone: "📘", titre: "Cahier de classe",
     aide: "La première page d'un cahier ou d'un classeur, au nom de l'élève." },
+  { id: "journal", libelle: "Mon cahier journal", icone: "📒", titre: "Cahier journal",
+    aide: "La page de garde de votre cahier journal : l'année, la classe, les cinq périodes et leurs dates, une citation, des petits dessins." },
   { id: "lettre", libelle: "Mot aux familles", icone: "✉️", titre: "Mot aux familles",
     aide: "Ce que le cahier contient et comment le lire, en quelques paragraphes." },
   { id: "fournitures", libelle: "Fournitures scolaires", icone: "🎒", titre: "Fournitures scolaires",
     aide: "La liste à acheter pour la rentrée, sans superflu." },
 ];
+
+/** Les sortes du choix principal : la page de garde y est une seule case, pour l'élève ou pour soi. */
+export const SORTES_DU_CHOIX: SorteGarde[] = ["cahier", "lettre", "fournitures"];
+/** Une page de garde : celle d'un cahier d'élève, ou celle de son propre cahier journal. */
+export const estUnePageDeGarde = (s: SorteGarde) => s === "cahier" || s === "journal";
+/** Les documents qui s'impriment au nom des élèves : tous, sauf son propre cahier journal. */
+export const pourDesEleves = (s: SorteGarde | undefined) => s !== "journal";
 
 export interface InfosGarde {
   sorte: SorteGarde;
@@ -55,6 +76,10 @@ export interface InfosGarde {
   reglages: Record<string, string>;
   /** Ce que l'enseignant ajoute : « élèves non lecteurs », « budget serré »… */
   precisions: string;
+  /** Pour le cahier journal : les cinq périodes de l'année, si le calendrier est connu. */
+  periodes?: PeriodeDeClasse[];
+  /** Les élèves pour qui le document est fait : un exemplaire à leur nom chacun. Jamais transmis au modèle. */
+  eleves?: string[];
 }
 
 const ligne = (texte: string) => `<p>${echapper(texte)}</p>`;
@@ -86,6 +111,8 @@ export interface OptionGarde {
   dOffice?: boolean;
   /** Proposée seulement en IME, ou seulement hors IME. */
   quand?: "ime" | "ordinaire";
+  /** Écrite ici, même quand l'IA rédige : les dates, la citation exacte, les cadres. */
+  local?: boolean;
 }
 
 export interface GroupeGarde { titre: string; options: OptionGarde[] }
@@ -118,7 +145,35 @@ export interface ReglageGarde { id: string; libelle: string; valeurs: ValeurRegl
 /** « Sans préciser » : la puce ne dit rien de plus. */
 const AU_CHOIX: ValeurReglage = { id: "", libelle: "Sans préciser", texte: "" };
 
+/**
+ * Des citations exactes, pour le cahier journal : on cite, on n'invente pas —
+ * l'IA ne choisit pas la citation, elle se lit ici, avec sa source.
+ */
+export const CITATIONS: { texte: string; auteur: string }[] = [
+  { texte: "Plutôt la tête bien faite que bien pleine.", auteur: "Montaigne, Essais, I, 26" },
+  { texte: "Patience et longueur de temps font plus que force ni que rage.", auteur: "Jean de La Fontaine, « Le Lion et le Rat »" },
+  { texte: "On a souvent besoin d'un plus petit que soi.", auteur: "Jean de La Fontaine, « Le Lion et le Rat »" },
+  { texte: "Rien ne sert de courir ; il faut partir à point.", auteur: "Jean de La Fontaine, « Le Lièvre et la Tortue »" },
+  { texte: "Travaillez, prenez de la peine : c'est le fonds qui manque le moins.", auteur: "Jean de La Fontaine, « Le Laboureur et ses Enfants »" },
+  { texte: "La lecture est à l'esprit ce que l'exercice est au corps.", auteur: "Joseph Addison, The Tatler" },
+  { texte: "L'esprit n'est pas un vase qu'on remplit, mais un feu qu'on allume.", auteur: "d'après Plutarque, Comment écouter" },
+  { texte: "Il faut tout un village pour élever un enfant.", auteur: "proverbe africain" },
+];
+
+/** Les frises de petits dessins : une ligne d'emojis, en tête et en pied de page. */
+export const FRISES: { id: string; libelle: string; dessins: string }[] = [
+  { id: "ecole", libelle: "L'école : crayons, livres, peinture", dessins: "✏️ 📚 🎨 ✂️ 📐 🍎 ✏️ 📚 🎨 ✂️ 📐 🍎" },
+  { id: "saisons", libelle: "Les saisons de l'année", dessins: "🍂 🍁 ❄️ ⛄ 🌱 🌷 ☀️ 🌻 🍂 🍁 ❄️ 🌷" },
+  { id: "ciel", libelle: "Le ciel : étoiles, soleil, arc-en-ciel", dessins: "⭐ ☀️ 🌈 ☁️ 🌙 ✨ ⭐ ☀️ 🌈 ☁️ 🌙 ✨" },
+  { id: "nature", libelle: "La nature : arbres, fleurs, animaux", dessins: "🌳 🐞 🌼 🦋 🐌 🍄 🌳 🐞 🌼 🦋 🐌 🍄" },
+  { id: "sobre", libelle: "Sobre : des étoiles", dessins: "✦ ✧ ✦ ✧ ✦ ✧ ✦ ✧ ✦ ✧ ✦" },
+];
+
 export const REGLAGES: Partial<Record<SorteGarde, ReglageGarde[]>> = {
+  journal: [
+    { id: "citation", libelle: "La citation", valeurs: CITATIONS.map((c, k) => ({ id: String(k), libelle: `« ${c.texte} » — ${c.auteur}`, texte: "" })) },
+    { id: "frise", libelle: "La frise", valeurs: FRISES.map((f) => ({ id: f.id, libelle: f.libelle, texte: f.dessins })) },
+  ],
   fournitures: [
     { id: "lignage", libelle: "Lignage", valeurs: [
       { id: "seyes", libelle: "Grands carreaux (Seyès)", texte: "grands carreaux (Seyès)" },
@@ -157,7 +212,7 @@ export const REGLAGES: Partial<Record<SorteGarde, ReglageGarde[]>> = {
  * rentrée n'a pas à imposer un grammage.
  */
 export const reglagesParDefaut = (sorte: SorteGarde, ime: boolean): Record<string, string> =>
-  (sorte === "fournitures" ? { lignage: ime ? "seyes3" : "seyes" } : {});
+  (sorte === "fournitures" ? { lignage: ime ? "seyes3" : "seyes" } : sorte === "journal" ? { citation: "0", frise: "ecole" } : {});
 
 /**
  * Le texte d'une précision, ou rien si elle n'est pas donnée.
@@ -202,6 +257,27 @@ export const GROUPES: Record<SorteGarde, GroupeGarde[]> = {
       c("soin", "Trois règles de tenue du cahier", "trois règles simples de tenue du cahier, écrites à la première personne",
         centre("<i>Je note la date. J'écris proprement. Je range mon cahier dans mon cartable.</i>")),
       c("sobre", "Peu de texte, de grands caractères", "très peu de texte : quelques mots par ligne, lisibles de loin"),
+    ] },
+  ],
+
+  journal: [
+    { titre: "Sur la page", options: [
+      c("annee", "L'année scolaire, en grand", "l'année scolaire", undefined, { dOffice: true, local: true }),
+      c("classe", "L'établissement et la classe", "l'établissement et la classe", undefined, { dOffice: true, local: true }),
+      c("moi", "Mon nom et ma fonction", "le nom de l'enseignant", undefined, { dOffice: true, local: true }),
+      c("periodes", "Les cinq périodes et leurs dates", "les cinq périodes de l'année", undefined, { dOffice: true, local: true }),
+      c("chiffres", "Mon année en chiffres", "l'année en chiffres", undefined, { local: true }),
+      c("photo", "Un cadre pour la photo de la classe", "un cadre pour la photo de la classe", undefined, { dOffice: true, local: true }),
+      c("objectifs", "Mes objectifs pour l'année, à écrire", "trois lignes pour mes objectifs de l'année", undefined, { local: true }),
+      c("contacts", "Les contacts utiles", "les contacts utiles", undefined, { local: true }),
+    ] },
+    { titre: "Les petits plus", options: [
+      c("frise", "Une frise de petits dessins", "une frise de petits dessins", undefined, { dOffice: true, local: true, precise: ["frise"] }),
+      c("citation", "Une citation pour l'année", "une citation", undefined, { dOffice: true, local: true, precise: ["citation"] }),
+      c("devise", "Une devise pour la classe", "une devise pour la classe, courte et positive, en une phrase",
+        centre("<b>Notre devise : « Ici, on a le droit de se tromper : c'est comme ça qu'on apprend. »</b>")),
+      c("souhait", "Un petit mot pour moi", "un petit mot d'encouragement de l'enseignant pour lui-même, en une phrase, chaleureux et sans mièvrerie",
+        centre("<i>Belle année à nous ! Une journée après l'autre, et chaque petit pas compte.</i>"), { dOffice: true }),
     ] },
   ],
 
@@ -410,9 +486,69 @@ export function signature(i: InfosGarde): string {
 
 /** Le document complet : ce que l'application sait, autour du texte écrit. */
 export function assembler(i: InfosGarde, corps: string): string {
+  if (i.sorte === "journal") return assemblerJournal(i, corps);
   const fin = i.sorte === "cahier" ? "" : signature(i);
   return `${entete(i)}${corps}${fin}`;
 }
+
+// ── Le cahier journal ─────────────────────────────────────────────────────
+
+const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+/** « 2026-09-01 » → « 1er septembre » ; « 2026-10-16 » → « 16 octobre ». */
+export function dateEnLettres(jour: string): string {
+  const [, m, d] = jour.split("-").map(Number);
+  return `${d === 1 ? "1er" : d} ${MOIS[m - 1]}`;
+}
+
+/** Les mois approximatifs de chaque période, quand le calendrier manque. */
+const MOIS_DES_PERIODES = ["septembre et octobre", "novembre et décembre", "janvier et février", "mars et avril", "mai, juin et juillet"];
+
+const coche = (i: InfosGarde, id: string) => i.choix.includes(id);
+const reglage = (i: InfosGarde, id: string, defaut: string) => (i.reglages ?? {})[id] || defaut;
+
+/**
+ * La page de garde du cahier journal : la frise, le titre, l'année en grand,
+ * l'établissement, le nom de l'enseignant, la citation exacte, les mots doux
+ * (rédigés ici ou par l'IA), les périodes datées, la photo, les objectifs,
+ * les contacts. Rien que des balises que l'éditeur garde.
+ */
+export function assemblerJournal(i: InfosGarde, motsDoux: string): string {
+  const frise = coche(i, "frise") ? centreTitre(echapper(FRISES.find((f) => f.id === reglage(i, "frise", "ecole"))?.dessins ?? FRISES[0].dessins)) : "";
+  const titre = i.titre.trim() || "Cahier journal";
+  const morceaux: string[] = [frise, `<h1 style="text-align:center">📒 ${echapper(titre)}</h1>`];
+  if (coche(i, "annee") && i.annee.trim()) morceaux.push(centreTitre(`<mark style="background-color:#fef3c7">${echapper(i.annee.trim().replace("-", " – "))}</mark>`));
+  if (coche(i, "classe")) {
+    const ou = [i.ecole.trim(), i.niveau.trim()].filter(Boolean).join(" · ");
+    morceaux.push(centre(ou ? `🏫 ${echapper(ou)}` : "🏫 ……………………………………"));
+  }
+  if (coche(i, "moi")) morceaux.push(centre(quiSigne(i) ? `<b>${echapper(quiSigne(i))}</b>` : "<b>……………………………………</b>"));
+  if (coche(i, "citation")) {
+    const cit = CITATIONS[Number(reglage(i, "citation", "0"))] ?? CITATIONS[0];
+    morceaux.push(`<blockquote><p style="text-align:center"><i>« ${echapper(cit.texte)} »</i></p><p style="text-align:right">— ${echapper(cit.auteur)}</p></blockquote>`);
+  }
+  if (motsDoux.trim()) morceaux.push(motsDoux);
+  if (coche(i, "periodes")) {
+    const p = i.periodes ?? [];
+    const lignes = p.length === 5
+      ? p.map((x) => `<tr><td><b>Période ${x.numero}</b></td><td>du ${dateEnLettres(x.debut)} au ${dateEnLettres(x.fin)}</td></tr>`).join("")
+      : MOIS_DES_PERIODES.map((m, k) => `<tr><td><b>Période ${k + 1}</b></td><td>${m}</td></tr>`).join("");
+    morceaux.push(`<h3 style="text-align:center">🗓 Mon année en cinq périodes</h3><table><tbody>${lignes}</tbody></table>`);
+  }
+  if (coche(i, "chiffres") && (i.periodes ?? []).length === 5) {
+    morceaux.push(centre(`📅 ${semainesDeClasse(i.periodes!)} semaines de classe · 5 périodes · 4 petites vacances · 1 grande classe`));
+  }
+  if (coche(i, "photo")) morceaux.push(`<table><tbody><tr><td><p style="text-align:center"><br><br><br><br><br><br><br><i>📷 la photo de la classe</i><br><br></p></td></tr></tbody></table>`);
+  if (coche(i, "objectifs")) morceaux.push(`<h3>🎯 Mes objectifs pour cette année</h3><p>1. ……………………………………………………………………………</p><p>2. ……………………………………………………………………………</p><p>3. ……………………………………………………………………………</p>`);
+  if (coche(i, "contacts")) {
+    const tel = i.telephone.trim() ? `📞 L'établissement : ${echapper(i.telephone.trim())}` : "📞 L'établissement : ……………………";
+    morceaux.push(`<h3>☎️ Les contacts utiles</h3><p>${tel}</p><p>👥 L'équipe : ……………………………………………………</p><p>🩺 Les partenaires : ……………………………………………</p>`);
+  }
+  if (frise) morceaux.push(frise);
+  return morceaux.filter(Boolean).join("");
+}
+
+/** Une ligne centrée, en grand : la frise, l'année. */
+const centreTitre = (html: string) => `<h2 style="text-align:center">${html}</h2>`;
 
 /**
  * Le corps écrit sans l'IA : les cases cochées, mises bout à bout.
@@ -429,6 +565,7 @@ export function corpsParDefaut(i: InfosGarde): string {
     const blocs = choisies.map(ecrit).filter(Boolean);
     return centre("<br>") + blocs.join(centre("<br>"));
   }
+  if (i.sorte === "journal") return choisies.filter((o) => !o.local).map(ecrit).filter(Boolean).join("");
 
   const puces = choisies.filter((o) => o.puce).map((o) => `<li>${echapper(puceDe(o, i))}</li>`).join("");
   const textes = choisies.map(ecrit).filter(Boolean).join("");
@@ -449,6 +586,7 @@ export const modeleLocal = (i: InfosGarde) => assembler(i, corpsParDefaut(i));
 export function consigneIA(i: InfosGarde): string {
   const quoi = {
     cahier: "la page de garde d'un cahier d'élève : quelques lignes centrées, dont une ligne « Nom de l'élève » à compléter à la main, et une phrase qui dit à quoi sert ce cahier",
+    journal: "les quelques mots qui ornent la page de garde de son propre cahier journal : seulement ce qui est demandé, en une ou deux lignes centrées chacun, chaleureux, sans date ni citation",
     lettre: "un mot aux familles qui explique ce que contient ce cahier et comment le regarder avec leur enfant",
     fournitures: "une liste de fournitures scolaires à acheter pour la rentrée, en une liste à puces précédée d'une phrase d'introduction",
   }[i.sorte];
@@ -464,6 +602,7 @@ export function consigneIA(i: InfosGarde): string {
 /** L'en-tête de la liste des cases cochées, selon le document. */
 const ATTENDU: Record<SorteGarde, string> = {
   cahier: "La page doit porter",
+  journal: "Écris seulement",
   lettre: "Le mot doit dire",
   fournitures: "Et il faut dire aux familles",
 };
@@ -473,7 +612,8 @@ export function demandeIA(i: InfosGarde): string {
   const lignes = [`Document : ${i.titre.trim() || SORTES.find((s) => s.id === i.sorte)!.titre}.`];
   if (i.niveau.trim()) lignes.push(`Niveau des élèves : ${i.niveau.trim()}.`);
   if (i.ime) lignes.push("Contexte : unité d'enseignement d'un IME, élèves aux besoins très variés, beaucoup de manipulation.");
-  const choisies = cochees(i);
+  // Ce qui s'écrit ici — dates, citation, cadres — ne se demande pas au modèle.
+  const choisies = cochees(i).filter((o) => !o.local);
   const aLister = choisies.filter((o) => o.puce);
   const consignes = choisies.filter((o) => !o.puce);
   if (aLister.length) {
@@ -503,4 +643,41 @@ export function htmlDeLaReponse(reponse: string): string {
   if (/<(p|ul|ol|h2|h3|table|div)\b/i.test(t)) return t;
   return t.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
     .map((p) => `<p>${echapper(p).replace(/\n/g, "<br>")}</p>`).join("");
+}
+
+/** L'IA a-t-elle quelque chose à écrire ? Pour un cahier journal sans devise ni souhait, non. */
+export const rienPourLIA = (i: InfosGarde) => cochees(i).every((o) => o.local);
+
+// ── Un exemplaire par élève ───────────────────────────────────────────────
+
+/**
+ * Le document au nom d'un élève : la ligne « Nom de l'élève : …… » prend son
+ * nom ; sans cette ligne, son nom s'écrit sous le titre — « Pour Léa » sur
+ * une liste ou un mot. Le nom s'ajoute ici, au moment d'imprimer.
+ */
+export function auNomDe(html: string, nom: string, sorte?: SorteGarde): string {
+  const n = echapper(nom.trim());
+  if (!n) return html;
+  const ligneNom = /((?:Nom(?:\s+de\s+l(?:'|&#39;|’)élève)?|Prénom)\s*:\s*(?:<\/b>|<\/strong>)?\s*)[.…_]{3,}/i;
+  // Des fonctions de remplacement : un « $ » dans un nom ne serait pas lu comme un motif.
+  if (ligneNom.test(html)) return html.replace(ligneNom, (_m, debut: string) => `${debut}<b>${n}</b>`);
+  const ligne = sorte === "cahier" ? `<p style="text-align:center"><b>${n}</b></p>` : `<p><b>Pour ${n}</b></p>`;
+  return /<\/h1>/i.test(html) ? html.replace(/<\/h1>/i, () => `</h1>${ligne}`) : ligne + html;
+}
+
+/** Les exemplaires à imprimer : un par élève, chacun sur sa page ; le document seul s'il n'y en a pas. */
+export function exemplaires(html: string, noms: string[], sorte?: SorteGarde): string {
+  if (!noms.length) return html;
+  return noms.map((nom) => `<div class="exemplaire">${auNomDe(html, nom, sorte)}</div>`).join("");
+}
+export const STYLE_EXEMPLAIRES = ".exemplaire { page-break-after: always; break-after: page; } .exemplaire:last-child { page-break-after: auto; break-after: auto; }";
+
+/** Ce qu'on retient d'un document, à côté de son texte : sa sorte, et ses élèves. */
+export interface MetaGarde { sorte?: SorteGarde; eleves: string[] }
+export const CLE_META = (id: string) => `garde:${id}`;
+export function lireMeta(brut: string | null | undefined): MetaGarde {
+  try {
+    const v = JSON.parse(brut || "{}");
+    return { sorte: v.sorte, eleves: Array.isArray(v.eleves) ? v.eleves.filter((x: unknown) => typeof x === "string") : [] };
+  } catch { return { eleves: [] }; }
 }

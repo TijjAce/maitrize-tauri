@@ -86,3 +86,51 @@ export async function chargerVacances(jour: string): Promise<Periode[]> {
     return cache;
   }
 }
+
+// ── Les cinq périodes d'une année scolaire ────────────────────────────────
+
+/** Une période de classe : du jour de la reprise au dernier jour avant les vacances, compris. */
+export interface PeriodeDeClasse { numero: number; debut: string; fin: string }
+
+/** Le jour d'avant, en AAAA-MM-JJ : la veille des vacances est le dernier jour de classe. */
+export function veille(jour: string): string {
+  const d = new Date(`${jour}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Les cinq périodes de l'année qui commence en `anneeDebut` : de la rentrée
+ * aux vacances de la Toussaint, puis d'une vacance à l'autre, jusqu'à l'été.
+ * Rien quand le calendrier de cette année manque — hors réseau, ou pas encore
+ * publié : on n'invente pas de dates.
+ */
+export function periodesDeLAnnee(vacances: Periode[], anneeDebut: number): PeriodeDeClasse[] {
+  const dans = (v: Periode, de: string, a: string) => v.debut.slice(0, 10) >= de && v.debut.slice(0, 10) < a;
+  const annee = vacances.filter((v) => dans(v, `${anneeDebut}-08-15`, `${anneeDebut + 1}-08-15`));
+  const trouve = (motif: RegExp, liste = annee) => liste.find((v) => motif.test(v.description));
+  const toussaint = trouve(/toussaint/i), noel = trouve(/no[eë]l/i), hiver = trouve(/hiver/i), printemps = trouve(/printemps/i);
+  const ete = trouve(/[ée]t[ée]/i);
+  // La rentrée : la fin des vacances d'été qui la précèdent.
+  const etePrecedent = vacances.find((v) => /[ée]t[ée]/i.test(v.description) && v.fin.slice(0, 10) >= `${anneeDebut}-08-15` && v.fin.slice(0, 10) < `${anneeDebut}-10-01`);
+  if (!etePrecedent || !toussaint || !noel || !hiver || !printemps || !ete) return [];
+  const bornes: [string, string][] = [
+    [etePrecedent.fin, toussaint.debut], [toussaint.fin, noel.debut], [noel.fin, hiver.debut], [hiver.fin, printemps.debut], [printemps.fin, ete.debut],
+  ];
+  return bornes.map(([reprise, depart], i) => ({ numero: i + 1, debut: reprise.slice(0, 10), fin: veille(depart.slice(0, 10)) }));
+}
+
+/** Le numéro d'un jour, pour compter les jours entre deux dates. */
+const numeroDuJour = (jour: string) => Math.round(Date.parse(`${jour}T12:00:00Z`) / 86400000);
+
+/**
+ * Les semaines de classe de l'année : les semaines du calendrier, du lundi au
+ * dimanche, que touche chaque période — une rentrée un mardi compte sa
+ * semaine. On retrouve les trente-six semaines de l'année scolaire.
+ */
+export function semainesDeClasse(periodes: PeriodeDeClasse[]): number {
+  return periodes.reduce((t, p) => {
+    const jourSemaine = (new Date(`${p.debut}T12:00:00Z`).getUTCDay() + 6) % 7;
+    return t + Math.floor((numeroDuJour(p.fin) - (numeroDuJour(p.debut) - jourSemaine)) / 7) + 1;
+  }, 0);
+}
