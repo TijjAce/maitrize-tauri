@@ -1,32 +1,27 @@
-// Une séquence pour dénombrer en groupant par dix et passer d'une
-// représentation du nombre à l'autre, avec ses feuilles.
+// Les feuilles de cubes des séquences de numération, et ce que l'atelier
+// travaille, classe par classe.
 //
-// Comme pour « Comparer les nombres » : l'atelier fabrique les feuilles, la
-// séquence les installe dans la durée. La démarche « numeration-dizaine-cp »
-// (voir demarches.ts) suit le guide CP — le jeu de la dizaine, la barre de
-// dix, l'écriture chiffrée, les collections à regrouper, les unités de
-// numération dans tous les sens, puis toutes les représentations — ; chaque
-// séance reçoit les feuilles qui la servent, aux nombres et aux couleurs de
-// l'atelier, et la note du matériel.
+// La séquence se crée depuis sa compétence (voir feuillesDesSequences.ts) :
+// la démarche « numeration-dizaine-cp » suit le guide CP — le jeu de la
+// dizaine, la barre de dix, l'écriture chiffrée, les collections à
+// regrouper, les unités de numération dans tous les sens, puis toutes les
+// représentations —, ses prolongements font de même avec la centaine et le
+// millier ; chaque séance reçoit ici les feuilles qui la servent, aux
+// nombres et aux couleurs de l'atelier, et la note du matériel.
 
-import { api, anneeScolaireActuelle, couleurPourMatiere, newId, nowIso, type Referentiel, type Sequence } from "./api";
+import type { Referentiel } from "./api";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 import { STYLE_FEUILLE } from "./cartesImprimables";
 import {
-  STYLE_CUBES, exempleDuNiveau, exercicesCubes, htmlAfficheCubes, htmlCubes, niveauCubes, type ExerciceCubes, type NiveauCubes, type ReglagesCubes,
+  STYLE_CUBES, exercicesCubes, htmlAfficheCubes, htmlCubes, niveauCubes, type ExerciceCubes, type ReglagesCubes,
 } from "./cubesNumeration";
 import { unionDesCompetences } from "./ateliersCompetences";
 import { STYLE_JEUX_MATHS } from "./jeuxMaths";
-import { demarcheDe, seancesDuCadre } from "./demarches";
-import { graineAuHasard } from "./hasard";
-import { poserDansUneSeance } from "./impressionAtelier";
 import { competenceDuProgramme as competenceDuReferentiel } from "./sequenceCategoriser";
-import { chargerVacances, periodeDuJour } from "./vacances";
-import { fr } from "./nombres";
 
 export const DEMARCHE_CUBES = "numeration-dizaine-cp";
 
-export type FeuilleCubes = "grouper" | "affiche" | "ecrire" | "regrouper" | "unites" | "facons" | "relier" | "evaluation";
+export type FeuilleCubes = "grouper" | "affiche" | "ecrire" | "regrouper" | "dessiner" | "unites" | "facons" | "additive" | "relier" | "evaluation";
 
 /** Une feuille de la séquence : la séance qui la reçoit, et son nom dans la séance. */
 export interface FeuilleDeSequenceCubes { seance: number; quoi: FeuilleCubes; titre: string }
@@ -63,6 +58,8 @@ export function reglagesDeLaFeuille(quoi: Exclude<FeuilleCubes, "affiche">, r: R
       : feuille({ titre: "Écrire le nombre d'une collection", exercice: "ecrire", ecritures: ["chiffres", "unites"], aRegrouper: true, nombre: 6 });
     case "ecrire": return feuille({ titre: "Lire les cubes, écrire le nombre", exercice: "ecrire", ecritures: ["chiffres", "unites"], aRegrouper: false, nombre: 8 });
     case "regrouper": return feuille({ titre: "Des collections à regrouper", exercice: "ecrire", ecritures: ["chiffres", "unites"], aRegrouper: true, nombre: 6 }, 1);
+    case "dessiner": return feuille({ titre: "Lire le nombre, dessiner les cubes", exercice: "dessiner", ecritures: ["chiffres"], aRegrouper: false, nombre: 6 });
+    case "additive": return feuille({ titre: "Les décompositions additives", exercice: "ecrire", ecritures: ["additive", "chiffres"], aRegrouper: false, nombre: 8 });
     case "unites": return feuille({ titre: "Les unités de numération dans tous les sens", exercice: "dessiner", ecritures: ["unites"], aRegrouper: true, desordre: true, nombre: 6 }, 0.5);
     case "facons": return feuille({ titre: "Faire un nombre de plusieurs façons", exercice: "facons", nombre: cp ? 6 : 4 });
     case "relier": return feuille({ titre: "D'une représentation à l'autre", exercice: "relier", ecritures: ["chiffres", "unites", "additive", "lettres"], aRegrouper: true, desordre: true, nombre: 6 });
@@ -77,25 +74,6 @@ export function htmlDeLaFeuilleCubes(quoi: FeuilleCubes, r: ReglagesCubes, grain
   return htmlCubes(exercicesCubes(reglages, graine, part), reglages, graine);
 }
 
-/** Le titre proposé : « Dénombrer et représenter les nombres jusqu'à 100 (CP) ». */
-export function titreDeLaSequenceCubes(r: ReglagesCubes): string {
-  const niv = niveauCubes(r.niveau);
-  return `Dénombrer et représenter les nombres jusqu'à ${fr(niv.max === 9999 ? 10000 : niv.max)} (${niv.classe})`;
-}
-
-/** Les unités de numération du niveau, en toutes lettres : « des dizaines et des unités ». */
-const unitesDuNiveau = (niv: NiveauCubes) =>
-  niv.classe === "CP" ? "dizaines et unités" : niv.classe === "CE1" ? "centaines, dizaines et unités" : "milliers, centaines, dizaines et unités";
-
-/** Ce que la séquence vise : les compétences du programme, aux nombres et aux unités du niveau. */
-export function objectifsDeLaSequenceCubes(r: ReglagesCubes): string {
-  const niv = niveauCubes(r.niveau);
-  const n = exempleDuNiveau(niv);
-  return `Dénombrer des collections en les organisant en ${unitesDuNiveau(niv)} ; connaitre et utiliser diverses représentations des nombres `
-    + `jusqu'à ${fr(niv.max === 9999 ? 10000 : niv.max)} et passer de l'une à l'autre — le matériel, l'écriture en chiffres (${fr(n)}), le nom, `
-    + `les unités de numération même à regrouper, la décomposition additive, l'écriture en lettres.`;
-}
-
 /** Ce qu'il faut préparer, séance par séance : la note « matériel » de chacune. */
 export function materielDesSeancesCubes(r: ReglagesCubes): string[] {
   const niv = niveauCubes(r.niveau);
@@ -107,16 +85,12 @@ export function materielDesSeancesCubes(r: ReglagesCubes): string[] {
       : `La feuille « Écrire le nombre d'une collection » ; ${pieces}.`,
     `${pieces[0].toUpperCase()}${pieces.slice(1)} ; l'affiche « Ce qu'on retient ».`,
     "La feuille « Lire les cubes, écrire le nombre » ; le matériel de numération ; les ardoises.",
-    "La feuille « Des collections à regrouper » ; le matériel multibase pour échanger dix pièces contre une plus grande ; un dé pour le jeu du banquier.",
+    `La feuille « Des collections à regrouper » ; le matériel multibase pour échanger dix pièces contre une plus grande ; ${niv.classe === "CP" ? "un dé" : "deux dés"} pour le jeu du banquier.`,
     "Les feuilles « Les unités de numération dans tous les sens » et « Faire un nombre de plusieurs façons » ; le matériel pour valider.",
     "La feuille « D'une représentation à l'autre » ; des cartes des écritures pour le mémory.",
     "La feuille d'évaluation ; le matériel de numération pour la remédiation.",
   ];
 }
-
-/** « Connaitre et utiliser diverses représentations d'un nombre… », à la classe du niveau, dans les référentiels actifs. */
-export const competenceDuProgrammeCubes = (referentiels: Referentiel[], niv: NiveauCubes) =>
-  competenceDuReferentiel(referentiels, niv.classe, /diverses représentations d.un nombre/i);
 
 /** Les compétences de numération du programme, d'une classe à l'autre : le même objectif sous des mots parfois différents. */
 const FAMILLES_DE_COMPETENCES = [
@@ -159,40 +133,4 @@ export function competencesProposees(referentiels: Referentiel[], r: ReglagesCub
   }
   const trouvees = intitules.map((i) => competenceDuReferentiel(referentiels, niv.classe, i)).filter((c): c is CompetenceSelectionnee => !!c);
   return unionDesCompetences([trouvees]);
-}
-
-/**
- * Crée la séquence : la fiche, les séances de la démarche avec leur
- * matériel, puis les feuilles dans leurs séances. Rend la séquence créée, et
- * combien de feuilles y sont.
- */
-export async function creerLaSequenceDesCubes(
-  r: ReglagesCubes, titre: string, competences: CompetenceSelectionnee[],
-): Promise<{ sequence: Sequence; feuilles: number }> {
-  const demarche = demarcheDe(DEMARCHE_CUBES);
-  if (!demarche) throw new Error("La démarche « grouper par dix, écrire le nombre » est introuvable.");
-  const vise = competences[0];
-  const matiere = vise?.domaineTitre || "Mathématiques";
-  const aujourdHui = nowIso().slice(0, 10);
-  const vacances = await chargerVacances(aujourdHui).catch(() => []);
-  const periode = periodeDuJour(aujourdHui, Array.isArray(vacances) ? vacances : []);
-  const sequence: Sequence = {
-    id: newId(), titre: titre.trim() || titreDeLaSequenceCubes(r), matiere, cycle: "Cycle 2",
-    objectifs: objectifsDeLaSequenceCubes(r), competences: JSON.stringify(competences), competenceVisee: vise ? JSON.stringify(vise) : "",
-    imageNom: null, couleur: couleurPourMatiere(matiere), dateCreation: nowIso(), periode, annee: anneeScolaireActuelle(),
-    ratingEngagement: 0, ratingFacilite: 0, ratingApprentissage: 0, ratingDateMaj: null, projetId: null, video: "",
-    dossier: "", nbSeancesPrevu: demarche.seances.length, etat: "", dateMaj: "",
-  };
-  await api.sequenceSave(sequence);
-  const materiel = materielDesSeancesCubes(r);
-  const seances = seancesDuCadre(demarche, sequence.id, 1).map((s, i) => ({ ...s, competences: JSON.stringify(competences), materiel: materiel[i] ?? "" }));
-  for (const s of seances) await api.seanceSave(s);
-  let posees = 0;
-  for (const f of FEUILLES_DE_LA_SEQUENCE_CUBES) {
-    const seance = seances[f.seance];
-    if (!seance) continue;
-    await poserDansUneSeance("cubes", f.titre, htmlDeLaFeuilleCubes(f.quoi, r, graineAuHasard()), STYLE_SEQUENCE_CUBES, seance.id, sequence.id);
-    posees++;
-  }
-  return { sequence, feuilles: posees };
 }

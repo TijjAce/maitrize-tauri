@@ -59,15 +59,24 @@ export function useCompetencesParObjectif(atelier: string): Record<string, Compe
   return par;
 }
 
+/** Les niveaux pour lesquels un jeu peut garder sa propre liste. */
+export const NIVEAUX_DES_JEUX = ["PS", "MS", "GS", "CP", "CE1", "CE2", "CM1", "CM2"];
+
 /**
  * Ce que l'atelier travaille. Quand il a des objectifs — le calcul mental,
- * une procédure à la fois —, c'est l'objectif retenu qu'on règle, et chacun
- * garde sa liste.
+ * une procédure à la fois ; les nombres en cubes, une classe à la fois —,
+ * c'est l'objectif retenu qu'on règle, et chacun garde sa liste. Sinon, on
+ * choisit le niveau : un même jeu ne travaille pas la même compétence en
+ * grande section et au CE1, et chaque niveau garde la sienne — c'est là
+ * qu'une séquence créée à ce niveau ira le piocher.
  */
 export function CompetencesAtelier({ atelier, nom, objectifs = [] }: { atelier: string; nom: string; objectifs?: ObjectifTravaille[] }) {
   // L'objectif qu'on règle : le premier retenu, ou celui qu'on désigne quand il y en a plusieurs.
   const [designe, setDesigne] = React.useState("");
-  const objectif = objectifs.find((o) => o.id === designe) ?? objectifs[0];
+  const [niveau, setNiveau] = React.useState("");
+  const parNiveau = useCompetencesParObjectif(atelier);
+  const objectif = objectifs.find((o) => o.id === designe) ?? objectifs[0]
+    ?? (niveau ? { id: niveau, libelle: niveau } : undefined);
   const [liste, enregistrer] = useCompetencesAtelier(atelier, objectif?.id);
   // Ce que l'atelier propose pour cet objectif — la classe choisie, par exemple —, tant qu'on ne l'a pas retenu.
   const proposees = React.useSyncExternalStore(propositionsDesAteliers.abonner, () => propositionsDesAteliers.lire(atelier, objectif?.id));
@@ -89,6 +98,16 @@ export function CompetencesAtelier({ atelier, nom, objectifs = [] }: { atelier: 
               : objectif ? "à choisir pour cet objectif" : "à choisir une fois"}
         </span>
       </summary>
+      {!objectifs.length && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: "8px 0 2px", fontSize: 13 }}>
+          <span className="meta">Pour le niveau :</span>
+          <Select value={niveau} onChange={(e) => setNiveau(e.target.value)} aria-label="Le niveau dont on règle les compétences" style={{ maxWidth: 220 }}>
+            <option value="">Tous les niveaux</option>
+            {NIVEAUX_DES_JEUX.map((n) => <option key={n} value={n}>{n}{parNiveau[n]?.length ? ` (${parNiveau[n].length})` : ""}</option>)}
+          </Select>
+          <span className="meta" style={{ fontSize: 12 }}>Chaque niveau garde sa liste : une séquence créée à ce niveau vient y piocher ce jeu.</span>
+        </div>
+      )}
       {objectifs.length > 1 && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: "8px 0 2px", fontSize: 13 }}>
           <span className="meta">Pour l'objectif :</span>

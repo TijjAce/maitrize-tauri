@@ -143,7 +143,11 @@ export async function consignesEnPictos(corps: string, supplement: string[] = []
 }
 
 /** Ce qu'un atelier ajoute à sa feuille : des pictos de verbes choisis à la main. */
-export interface ExtrasAtelier { pictos?: string[] }
+export interface ExtrasAtelier {
+  pictos?: string[];
+  /** Les compétences à porter, quand ce ne sont pas celles de l'atelier : une feuille fabriquée pour une séquence porte la sienne. */
+  competences?: CompetenceSelectionnee[];
+}
 
 /** Les verbes ajoutés à la main pour cet atelier, depuis le bandeau (voir `consigneAtelier`). */
 export async function pictosDeLAtelier(atelier: string): Promise<string[]> {
@@ -219,7 +223,7 @@ export async function enregistrerSurLeBureau(atelier: string, titre: string, cor
 /** La feuille d'un atelier telle qu'elle s'imprime — compétences en tête, consignes en pictos —, en PDF dans les fichiers. */
 async function pdfDeLAtelier(atelier: string, titre: string, corps: string, style: string, extras: ExtrasAtelier): Promise<string> {
   const { api } = await import("./api");
-  const entete = enteteCompetencesHtml(await competencesDeLAtelier(atelier));
+  const entete = enteteCompetencesHtml(extras.competences ?? await competencesDeLAtelier(atelier));
   const consignes = await consignesEnPictos(await avecLaConsigneDeLAtelier(atelier, corps), await supplementDe(atelier, extras));
   const html = documentImprimable(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style);
   return api.feuilleEnPdf(html);
@@ -236,7 +240,7 @@ export async function poserDansUneSeance(
   const { api, newId, nowIso } = await import("./api");
   const fichier = await pdfDeLAtelier(atelier, titre, corps, style, extras);
   const materiel: MaterielItem = {
-    ...materielDuBureau(atelier, titre, fichier, await competencesDeLAtelier(atelier), newId(), nowIso()), seanceId, sequenceId,
+    ...materielDuBureau(atelier, titre, fichier, extras.competences ?? await competencesDeLAtelier(atelier), newId(), nowIso()), seanceId, sequenceId,
   };
   await api.materielSave(materiel);
   return materiel;

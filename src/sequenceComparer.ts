@@ -1,27 +1,20 @@
-// Une séquence pour comparer, encadrer, intercaler des nombres, avec ses feuilles.
+// Les feuilles de la séquence « comparer, ranger, encadrer ».
 //
-// Comme pour les collections et la catégorisation : l'atelier fabrique le
-// jeu, la séquence l'installe dans la durée. La démarche
-// « comparer-nombres-cp » (voir demarches.ts) reprend celle du guide CP —
-// deux collections qu'on ne voit pas ensemble, la comparaison par
-// l'écriture chiffrée, le réinvestissement sous toutes les écritures, puis
-// ordonner, intercaler, encadrer, par le jeu — ; chaque séance reçoit les
-// feuilles qui la servent, aux nombres de l'atelier, et la note du matériel.
+// La séquence se crée depuis sa compétence (voir feuillesDesSequences.ts) :
+// la démarche « comparer-nombres-cp », et ses prolongements au CE1 et au
+// CE2, reprennent celle du guide CP — deux collections qu'on ne voit pas
+// ensemble, la comparaison par l'écriture chiffrée, le réinvestissement sous
+// toutes les écritures, puis ordonner, intercaler, encadrer, par le jeu — ;
+// chaque séance reçoit ici les feuilles qui la servent, aux nombres de sa
+// classe, et la note du matériel.
 
-import { api, anneeScolaireActuelle, couleurPourMatiere, newId, nowIso, type Referentiel, type Sequence } from "./api";
-import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 import { STYLE_FEUILLE } from "./cartesImprimables";
-import { STYLE_COMPARER, exempleDuSavoir, htmlComparer, niveauDe, paquet, phraseDuSavoir, type Niveau, type ReglagesComparer } from "./comparerNombres";
+import { STYLE_COMPARER, exempleDuSavoir, htmlComparer, niveauDe, paquet, type ReglagesComparer } from "./comparerNombres";
 import { fr } from "./nombres";
 import {
   STYLE_FEUILLES_COMPARER, htmlAfficheDuSavoir, htmlComparerLesEcritures, htmlDeuxCollections, htmlEncadrer, htmlEvaluation,
   htmlOrdonnerIntercaler, htmlProblemes,
 } from "./feuillesComparer";
-import { demarcheDe, seancesDuCadre } from "./demarches";
-import { graineAuHasard } from "./hasard";
-import { poserDansUneSeance } from "./impressionAtelier";
-import { competenceDuProgramme as competenceDuReferentiel } from "./sequenceCategoriser";
-import { chargerVacances, periodeDuJour } from "./vacances";
 
 export const DEMARCHE_COMPARER = "comparer-nombres-cp";
 
@@ -58,26 +51,6 @@ export function htmlDeLaFeuille(quoi: FeuilleComparer, r: ReglagesComparer, grai
   }
 }
 
-/**
- * La séquence du guide CP vaut pour le cycle 2, aux nombres de chaque
- * classe ; la maternelle compare des quantités, le cycle 3 des grands
- * nombres et des décimaux : leurs démarches ne sont pas celle-ci.
- */
-export const sequencePossible = (niv: Niveau) => niv.cycle === 2;
-
-/** Le titre proposé : « Comparer, encadrer, intercaler les nombres jusqu'à 1 000 (CE1) ». */
-export function titreDeLaSequence(r: ReglagesComparer): string {
-  const niv = niveauDe(r);
-  return `Comparer, encadrer, intercaler les nombres jusqu'à ${fr(niv.max)} (${niv.classe})`;
-}
-
-/** Ce que la séquence vise : la compétence du programme, et la phrase du guide aux nombres de l'atelier. */
-export function objectifsDeLaSequence(r: ReglagesComparer): string {
-  const niv = niveauDe(r);
-  return `Comparer, encadrer, intercaler des nombres entiers jusqu'à ${fr(niv.max)} en utilisant les symboles =, < et > ; ranger cinq nombres `
-    + `dans l'ordre croissant ou décroissant — grâce à leur écriture chiffrée : « ${phraseDuSavoir(niv).replace(/\.$/, "")} ».`;
-}
-
 /** Ce qu'il faut préparer, séance par séance : la note « matériel » de chacune. */
 export function materielDesSeances(r: ReglagesComparer): string[] {
   const niv = niveauDe(r);
@@ -96,44 +69,4 @@ export function materielDesSeances(r: ReglagesComparer): string[] {
     "La feuille « Problèmes de comparaison » ; le matériel de numération ; les cartes des jeux pour qui a fini.",
     "La feuille d'évaluation ; le matériel de numération pour la remédiation.",
   ];
-}
-
-/** « Comparer, encadrer, intercaler des nombres entiers… », à la classe du niveau, dans les référentiels actifs. */
-export const competenceDuProgramme = (referentiels: Referentiel[], niv: Niveau) =>
-  competenceDuReferentiel(referentiels, niv.classe, /comparer, encadrer, intercaler/i);
-
-/**
- * Crée la séquence : la fiche, les séances de la démarche avec leur
- * matériel, puis les feuilles dans leurs séances. Rend la séquence créée, et
- * combien de feuilles y sont.
- */
-export async function creerLaSequenceDeComparaison(
-  r: ReglagesComparer, titre: string, competences: CompetenceSelectionnee[],
-): Promise<{ sequence: Sequence; feuilles: number }> {
-  const demarche = demarcheDe(DEMARCHE_COMPARER);
-  if (!demarche) throw new Error("La démarche « comparer des nombres » est introuvable.");
-  const vise = competences[0];
-  const matiere = vise?.domaineTitre || "Mathématiques";
-  const aujourdHui = nowIso().slice(0, 10);
-  const vacances = await chargerVacances(aujourdHui).catch(() => []);
-  const periode = periodeDuJour(aujourdHui, Array.isArray(vacances) ? vacances : []);
-  const sequence: Sequence = {
-    id: newId(), titre: titre.trim() || titreDeLaSequence(r), matiere, cycle: "Cycle 2",
-    objectifs: objectifsDeLaSequence(r), competences: JSON.stringify(competences), competenceVisee: vise ? JSON.stringify(vise) : "",
-    imageNom: null, couleur: couleurPourMatiere(matiere), dateCreation: nowIso(), periode, annee: anneeScolaireActuelle(),
-    ratingEngagement: 0, ratingFacilite: 0, ratingApprentissage: 0, ratingDateMaj: null, projetId: null, video: "",
-    dossier: "", nbSeancesPrevu: demarche.seances.length, etat: "", dateMaj: "",
-  };
-  await api.sequenceSave(sequence);
-  const materiel = materielDesSeances(r);
-  const seances = seancesDuCadre(demarche, sequence.id, 1).map((s, i) => ({ ...s, competences: JSON.stringify(competences), materiel: materiel[i] ?? "" }));
-  for (const s of seances) await api.seanceSave(s);
-  let posees = 0;
-  for (const f of FEUILLES_DE_LA_SEQUENCE) {
-    const seance = seances[f.seance];
-    if (!seance) continue;
-    await poserDansUneSeance("comparer", f.titre, htmlDeLaFeuille(f.quoi, r, graineAuHasard()), STYLE_SEQUENCE_COMPARER, seance.id, sequence.id);
-    posees++;
-  }
-  return { sequence, feuilles: posees };
 }
