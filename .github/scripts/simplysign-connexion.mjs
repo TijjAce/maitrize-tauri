@@ -21,6 +21,7 @@
 
 import { execFileSync, spawn } from "node:child_process";
 import { appendFileSync } from "node:fs";
+import { champDuLibelle, milieu } from "./fenetre.mjs";
 import { code, diagnostic, lireSecret, secondesRestantes } from "./totp.mjs";
 
 const APP = process.env.SIMPLYSIGN_APP || "C:\\Program Files\\Certum\\SimplySign Desktop\\SimplySignDesktop.exe";
@@ -161,6 +162,43 @@ function fenetresDecrites(quand) {
   }
 }
 
+/**
+ * Les éléments de la fenêtre de connexion et leur place à l'écran, lus
+ * avant de taper : « nom|x|y|largeur|hauteur|peut prendre la main ».
+ */
+function disposition() {
+  const sortie = powershell(`
+    Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+    $ids = @(Get-Process | Where-Object { $_.ProcessName -like '*SimplySign*' } | ForEach-Object { $_.Id })
+    $racine = [System.Windows.Automation.AutomationElement]::RootElement
+    $f = @($racine.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition) |
+      Where-Object { $ids -contains $_.Current.ProcessId -and $_.Current.Name -like '*SimplySign*' }) | Select-Object -First 1
+    if ($f) {
+      foreach ($e in $f.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition)) {
+        $c = $e.Current; $r = $c.BoundingRectangle
+        if ($r.IsEmpty) { continue }
+        "{0}|{1}|{2}|{3}|{4}|{5}" -f ($c.Name -replace '[|\\r\\n]', ''), [int]$r.Left, [int]$r.Top, [int]$r.Width, [int]$r.Height, $c.IsKeyboardFocusable
+      }
+    }
+  `);
+  return sortie.split(/\r?\n/).filter((l) => l.includes("|")).map((l) => {
+    const [nom, x, y, largeur, hauteur, main] = l.split("|");
+    return { nom: nom.trim(), x: Number(x), y: Number(y), largeur: Number(largeur), hauteur: Number(hauteur), main: main.trim() === "True" };
+  });
+}
+
+/** Un clic gauche à cet endroit de l'écran : c'est ainsi que le champ prend la main, quel que soit l'ordre des tabulations. */
+function cliquer({ x, y }) {
+  powershell(`
+    Add-Type -Namespace Maitrize -Name Souris -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y); [DllImport("user32.dll")] public static extern void mouse_event(uint f, uint dx, uint dy, uint d, System.UIntPtr e);'
+    [Maitrize.Souris]::SetCursorPos(${x}, ${y}) | Out-Null
+    Start-Sleep -Milliseconds 150
+    [Maitrize.Souris]::mouse_event(0x0002, 0, 0, 0, [System.UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 60
+    [Maitrize.Souris]::mouse_event(0x0004, 0, 0, 0, [System.UIntPtr]::Zero)
+  `);
+}
+
 /** Ce que voit Windows quand le certificat manque : rien de secret, l'adresse est masquée par GitHub. */
 function releve() {
   try {
@@ -233,22 +271,35 @@ async function main() {
         await attendreQue(() => fenetre() !== "", 15000);
       }
     }
-    // Quinze secondes au moins devant le code : il ne doit pas expirer en route.
+    // Les champs se trouvent par leurs libellés : au lancement, c'est celui du code qui a la main, et la
+    // tabulation menait au bouton « Cancel » — la fenêtre se fermait sans que rien ne parte chez Certum.
+    activer();
+    await attendre(500);
+    const elements = disposition();
+    const champId = champDuLibelle(elements, "ID:");
+    const champCode = champDuLibelle(elements, "Token:");
+    const ok = elements.find((e) => e.nom === "Ok");
+    if (!champId || !champCode || !ok || champId === champCode) {
+      fenetresDecrites("champs introuvables");
+      throw new Error("Je ne trouve pas les champs « ID » et « Token » ni le bouton « Ok » de la fenêtre de SimplySign.");
+    }
+    console.log(`Champ ID en ${milieu(champId).x},${milieu(champId).y} ; champ Token en ${milieu(champCode).x},${milieu(champCode).y} ; bouton Ok en ${milieu(ok).x},${milieu(ok).y}.`);
+    cliquer(milieu(champId));
+    await attendre(300);
+    clavier("^a");
+    taper(utilisateur);
+    await attendre(300);
+    // Le code se calcule au dernier moment, quinze secondes au moins devant lui.
     const reste = secondesRestantes(secret.periode);
     if (reste < 15) await attendre((reste + 1) * 1000);
     const leCode = code({ ...secret, algorithme: algo });
     console.log(`::add-mask::${leCode}`);
-    activer();
-    await attendre(500);
-    clavier("^a");
-    taper(utilisateur);
-    await attendre(200);
-    clavier("{TAB}");
+    cliquer(milieu(champCode));
+    await attendre(300);
     clavier("^a");
     taper(leCode);
-    await attendre(200);
-    activer();
-    clavier("{ENTER}");
+    await attendre(300);
+    cliquer(milieu(ok));
     console.log(`Connexion envoyée (essai ${i + 1} sur ${essais.length}).`);
     await attendre(6000);
     fenetresDecrites("après la connexion");
