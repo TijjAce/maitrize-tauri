@@ -153,7 +153,11 @@ function fenetresDecrites(quand) {
           $type = $c.ControlType.ProgrammaticName -replace '^ControlType\.', ''
           $nom = if ($type -eq 'Edit') { if ($c.IsPassword) { '(champ masqué)' } else { '(champ)' } } else { "« $($c.Name) »" }
           $focus = if ($c.HasKeyboardFocus) { ' [a la main]' } else { '' }
-          "    $type $nom$focus"
+          $r = $c.BoundingRectangle
+          $place = if ($r.IsEmpty) { 'sans place' } else { "{0},{1} {2}x{3}" -f [int]$r.Left, [int]$r.Top, [int]$r.Width, [int]$r.Height }
+          $prend = if ($c.IsKeyboardFocusable) { ' prend la main' } else { '' }
+          $quoi = if ($c.ClassName) { " $($c.ClassName)" } else { '' }
+          "    $type $nom$focus — $place$prend$quoi"
         }
       }
     `).trim());
