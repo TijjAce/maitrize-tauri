@@ -31,7 +31,9 @@ const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Du PowerShell ; le texte éventuel lui arrive par l'environnement. */
 function powershell(script, saisie = "") {
-  return execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script], {
+  // La sortie en UTF-8 : les accents des certificats et des services passent tels quels.
+  const avecUtf8 = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n${script}`;
+  return execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", avecUtf8], {
     env: { ...process.env, SAISIE: saisie },
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
@@ -85,18 +87,66 @@ async function attendreQue(condition, ms, pas = 1000) {
   return condition();
 }
 
-/** Le certificat de signature de code de Certum, avec sa clé — le plus lointain d'abord : « empreinte|sujet|fin ». */
+/**
+ * Le certificat de signature de code de Certum, le plus lointain d'abord :
+ * « empreinte|sujet|fin|clé ». Celui qu'annonce la carte virtuelle ne dit
+ * pas toujours qu'il a sa clé — signtool la trouve quand même, par la
+ * carte : on le préfère avec, on le prend sans.
+ */
 function certificat() {
   try {
     return powershell(`
       $c = Get-ChildItem Cert:\\CurrentUser\\My | Where-Object {
-        $_.HasPrivateKey -and $_.NotAfter -gt (Get-Date) -and $_.Issuer -like '*Certum*' -and
+        $_.NotAfter -gt (Get-Date) -and $_.Issuer -like '*Certum*' -and
         ($_.EnhancedKeyUsageList | Where-Object { $_.ObjectId -eq '1.3.6.1.5.5.7.3.3' })
-      } | Sort-Object NotAfter -Descending | Select-Object -First 1
-      if ($c) { "$($c.Thumbprint)|$($c.Subject)|$($c.NotAfter.ToString('yyyy-MM-dd'))" }
+      } | Sort-Object @{ Expression = 'HasPrivateKey'; Descending = $true }, @{ Expression = 'NotAfter'; Descending = $true } | Select-Object -First 1
+      if ($c) { "$($c.Thumbprint)|$($c.Subject)|$($c.NotAfter.ToString('yyyy-MM-dd'))|$($c.HasPrivateKey)" }
     `).trim();
   } catch {
     return "";
+  }
+}
+
+/**
+ * Les services qui portent une carte à puce dans le magasin de Windows : le
+ * lecteur (SCardSvr) et la recopie des certificats (CertPropSvc). Sur une
+ * machine de GitHub, ils peuvent être arrêtés.
+ */
+function demarrerLesServices() {
+  try {
+    console.log(powershell(`
+      foreach ($nom in 'SCardSvr', 'CertPropSvc') {
+        $s = Get-Service -Name $nom -ErrorAction SilentlyContinue
+        if (-not $s) { "$nom : absent"; continue }
+        if ($s.StartType -eq 'Disabled') { Set-Service -Name $nom -StartupType Manual }
+        if ($s.Status -ne 'Running') { Start-Service -Name $nom -ErrorAction SilentlyContinue }
+        "$nom : $((Get-Service -Name $nom).Status)"
+      }
+    `).trim());
+  } catch (e) {
+    console.log(`Services des cartes à puce : ${e.message}`);
+  }
+}
+
+/** Ce que voit Windows quand le certificat manque : rien de secret, l'adresse est masquée par GitHub. */
+function releve() {
+  try {
+    console.log(powershell(`
+      "— Services"
+      Get-Service SCardSvr, CertPropSvc -ErrorAction SilentlyContinue | ForEach-Object { "  $($_.Name) : $($_.Status), $($_.StartType)" }
+      "— SimplySign"
+      Get-Process | Where-Object { $_.ProcessName -like '*SimplySign*' } | ForEach-Object { "  $($_.ProcessName) — fenêtre « $($_.MainWindowTitle) »" }
+      foreach ($magasin in 'Cert:\\CurrentUser\\My', 'Cert:\\LocalMachine\\My') {
+        "— $magasin"
+        Get-ChildItem $magasin -ErrorAction SilentlyContinue | ForEach-Object { "  $($_.Subject) — émis par $($_.Issuer) — clé : $($_.HasPrivateKey)" }
+      }
+      "— Lecteurs de cartes"
+      $p = Start-Process certutil.exe -ArgumentList '-scinfo', '-silent' -NoNewWindow -PassThru -RedirectStandardOutput "$env:RUNNER_TEMP\\scinfo.txt"
+      if (-not $p.WaitForExit(30000)) { $p.Kill(); "  certutil ne répond pas" }
+      Get-Content "$env:RUNNER_TEMP\\scinfo.txt" -ErrorAction SilentlyContinue | Where-Object { $_ -match 'Reader|Lecteur|Card|Carte|Subject|Sujet|Issuer|Émetteur|Provider|Fournisseur|Status|État' } | Select-Object -First 40 | ForEach-Object { "  $_" }
+    `).trim());
+  } catch (e) {
+    console.log(`Relevé impossible : ${e.message}`);
   }
 }
 
@@ -113,6 +163,7 @@ async function main() {
     ? [secret.algorithme, secret.algorithme]
     : [secret.algorithme, secret.algorithme === "sha256" ? "sha1" : "sha256"];
 
+  demarrerLesServices();
   try { powershell("(New-Object -ComObject Shell.Application).MinimizeAll()"); } catch { /* rien à réduire */ }
   // Le premier lancement démarre le service, le second ouvre la fenêtre de connexion.
   lancer();
@@ -163,10 +214,13 @@ async function main() {
   if (!connecte) throw new Error("SimplySign Desktop n'a pas accepté la connexion : vérifiez CERTUM_UTILISATEUR et CERTUM_TOTP.");
 
   let trouve = "";
-  await attendreQue(() => (trouve = certificat()) !== "", 90000, 3000);
-  if (!trouve) throw new Error("Connecté, mais le certificat de Certum n'est pas apparu dans le magasin de Windows.");
-  const [empreinte, sujet, fin] = trouve.split("|");
-  console.log(`Certificat prêt : ${sujet}, jusqu'au ${fin} (empreinte ${empreinte}).`);
+  await attendreQue(() => (trouve = certificat()) !== "", 120000, 3000);
+  if (!trouve) {
+    releve();
+    throw new Error("Connecté, mais le certificat de Certum n'est pas apparu dans le magasin de Windows.");
+  }
+  const [empreinte, sujet, fin, cle] = trouve.split("|");
+  console.log(`Certificat prêt : ${sujet}, jusqu'au ${fin} (empreinte ${empreinte}${cle === "True" ? "" : ", clé portée par la carte"}).`);
   if (process.env.GITHUB_ENV) appendFileSync(process.env.GITHUB_ENV, `CERTUM_EMPREINTE=${empreinte}\n`);
 }
 
