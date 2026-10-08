@@ -61,6 +61,27 @@ export function lireSecret(valeur) {
   return { cle: base32(v), algorithme: "sha256", explicite: false, chiffres: 6, periode: 30, secretBrut: v };
 }
 
+/**
+ * Ce qui ne va pas dans la valeur rangée, dit sans la montrer : sa forme
+ * seulement — une adresse e-mail, un code du moment, un autre lien. Rien si
+ * elle se lit.
+ */
+export function diagnostic(valeur) {
+  const v = String(valeur ?? "").trim();
+  if (!v) return "CERTUM_TOTP est vide.";
+  // Six chiffres de 2 à 7 se liraient en base 32 : on les reconnaît d'abord.
+  if (/^\d{6,8}$/.test(v)) return "CERTUM_TOTP contient un code à chiffres : il faut le lien du code QR, qui ne change pas, et non le code du moment.";
+  try {
+    lireSecret(v);
+    return null;
+  } catch { /* on dit ci-dessous ce qu'elle semble être */ }
+  if (/^otpauth:\/\//i.test(v)) return "Le lien otpauth:// de CERTUM_TOTP ne contient pas de secret lisible (paramètre « secret »).";
+  if (/^[^\s@]+@[^\s@]+$/.test(v)) return "CERTUM_TOTP contient une adresse e-mail : les deux secrets sont peut-être inversés.";
+  const schema = /^([a-z][a-z0-9+.-]*):\/\//i.exec(v)?.[1];
+  if (schema) return `CERTUM_TOTP contient un lien « ${schema.toLowerCase()}:// », et non otpauth:// : ce n'est pas le code QR attendu.`;
+  return "CERTUM_TOTP n'est ni un lien otpauth:// ni un secret en base 32.";
+}
+
 /** Le code d'un instant (en secondes depuis 1970) : HMAC du compteur, troncature dynamique. */
 export function code({ cle, algorithme: algo, chiffres = 6, periode = 30 }, secondes = Date.now() / 1000) {
   const compteur = Buffer.alloc(8);
