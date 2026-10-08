@@ -52,9 +52,6 @@ jobs:
       - name: Tests Rust
         run: cargo test --manifest-path src-tauri/Cargo.toml
 
-      - name: Code de SimplySign (RFC 6238)
-        run: node --test .github/scripts/totp-verification.mjs .github/scripts/fenetre-verification.mjs
-
   build:
     needs: tests
     strategy:
@@ -71,12 +68,10 @@ jobs:
     runs-on: ${{ matrix.platform }}
 
     env:
-      # La version Windows se signerait avec le certificat Certum (voir
-      # PUBLISHING.md). C'est éteint tant que la variable SIGNATURE_WINDOWS du
-      # dépôt ne vaut pas « oui » : aux essais du 8 octobre 2026, SimplySign
-      # Desktop se connecte mais ne monte pas sa carte virtuelle sur les
-      # machines Windows de GitHub — pas de lecteur, et le service des cartes
-      # s'arrête. Allumé, il faut aussi les deux secrets CERTUM_*.
+      # La version Windows se signe avec le certificat Certum, par ssign (voir
+      # PUBLISHING.md), quand la variable SIGNATURE_WINDOWS du dépôt vaut
+      # « oui » et que les deux secrets CERTUM_* sont rangés ; sinon elle sort
+      # sans signature, comme avant.
       SIGNATURE_WINDOWS: ${{ vars.SIGNATURE_WINDOWS == 'oui' && secrets.CERTUM_UTILISATEUR != '' && secrets.CERTUM_TOTP != '' }}
 
     steps:
@@ -100,16 +95,26 @@ jobs:
       - name: Dépendances front
         run: npm install
 
-      # ── Signature Windows : le certificat Certum, par SimplySign Desktop ──
+      # ── Signature Windows : le certificat Certum, par ssign ──────────────
       #
-      # La clé reste chez Certum ; SimplySign Desktop, l'application officielle,
-      # la présente à Windows une fois connectée. On l'installe, on dit à Tauri
-      # de signer par signer-windows.ps1, on compile tout sans rien signer, puis
-      # on se connecte : la session n'a qu'à durer le temps de l'assemblage.
-      - name: SimplySign Desktop (installation)
+      # La clé reste chez Certum. ssign (MIT, github.com/Le-Syl21/ssign) parle
+      # directement à son service de signature ; SimplySign Desktop, lui, se
+      # connecte mais ne monte pas sa carte virtuelle sur les machines Windows
+      # de GitHub (essais du 8 octobre 2026). On le compile depuis la révision
+      # relue, on dit à Tauri de signer par signer-windows.ps1, on compile tout
+      # sans rien signer, puis on ouvre la session : son jeton dure vingt
+      # minutes, le temps de l'assemblage, et seul ce pas voit le secret.
+      - name: ssign (cache)
+        id: ssign-cache
         if: runner.os == 'Windows' && env.SIGNATURE_WINDOWS == 'true'
-        shell: pwsh
-        run: .github/scripts/simplysign-installer.ps1
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/ssign.exe
+          key: ssign-5fd4daf22155b19b645aef3dd467f3c4c9e440b3-${{ runner.os }}
+
+      - name: ssign (compilation de la révision relue, 0.1.7)
+        if: runner.os == 'Windows' && env.SIGNATURE_WINDOWS == 'true' && steps.ssign-cache.outputs.cache-hit != 'true'
+        run: cargo install --git https://github.com/Le-Syl21/ssign --rev 5fd4daf22155b19b645aef3dd467f3c4c9e440b3 --locked ssign
 
       - name: Signature Windows (réglage de Tauri)
         if: runner.os == 'Windows' && env.SIGNATURE_WINDOWS == 'true'
@@ -120,19 +125,21 @@ jobs:
           @{ bundle = @{ windows = @{ signCommand = @{ cmd = 'pwsh'; args = @('-NoProfile', '-NonInteractive', '-File', $signer, '%1') } } } } |
             ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8NoBOM src-tauri/tauri.windows.conf.json
 
-      - name: Compilation, avant la connexion
+      - name: Compilation, avant la session de signature
         if: runner.os == 'Windows' && env.SIGNATURE_WINDOWS == 'true'
         run: npm run tauri build -- --no-bundle
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-      - name: SimplySign Desktop (connexion)
+      - name: Session de signature (ssign)
         if: runner.os == 'Windows' && env.SIGNATURE_WINDOWS == 'true'
-        run: node .github/scripts/simplysign-connexion.mjs
+        shell: powershell
+        run: .github/scripts/ssign-session.ps1
         env:
-          CERTUM_UTILISATEUR: ${{ secrets.CERTUM_UTILISATEUR }}
-          CERTUM_TOTP: ${{ secrets.CERTUM_TOTP }}
+          CERTUM_EMAIL: ${{ secrets.CERTUM_UTILISATEUR }}
+          CERTUM_OTP: ${{ secrets.CERTUM_TOTP }}
+          XDG_RUNTIME_DIR: ${{ runner.temp }}/ssign-session
 
       # tauri-action v1 : la v0 renommait les fichiers contenant une espace en
       # passant par un dossier temporaire, et cette copie échouait sur les
@@ -154,6 +161,8 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Où ssign a rangé la session de signature (Windows seulement).
+          XDG_RUNTIME_DIR: ${{ runner.os == 'Windows' && format('{0}/ssign-session', runner.temp) || '' }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Maitrize V2 ${{ github.ref_name }}"
@@ -168,7 +177,7 @@ jobs:
         if: runner.os == 'Windows' && env.SIGNATURE_WINDOWS == 'true'
         shell: pwsh
         run: |
-          $fichiers = @(Get-ChildItem src-tauri/target/release/bundle -Recurse -Include *.exe, *.msi) + @(Get-ChildItem src-tauri/target/release/*.exe)
+          $fichiers = @(Get-ChildItem src-tauri/target/release/bundle -Recurse -Include *.exe) + @(Get-ChildItem src-tauri/target/release/*.exe)
           if (-not $fichiers) { throw 'Aucun fichier Windows à vérifier.' }
           $refuses = 0
           foreach ($f in $fichiers) {
@@ -180,12 +189,14 @@ jobs:
               $refuses++
             }
           }
+          # ssign ne signe pas les .msi : l'installeur .msi sort sans signature, l'application qu'il contient signée.
+          Get-ChildItem src-tauri/target/release/bundle -Recurse -Include *.msi | ForEach-Object { Write-Host "· $($_.Name) — sans signature (.msi)" }
           if ($refuses) { throw "$refuses fichier(s) sans signature valide et horodatée." }
 
-      - name: SimplySign Desktop (déconnexion)
+      - name: Session de signature (effacée)
         if: always() && runner.os == 'Windows' && env.SIGNATURE_WINDOWS == 'true'
         shell: pwsh
-        run: .github/scripts/simplysign-deconnexion.ps1
+        run: Remove-Item -Recurse -Force (Join-Path $env:RUNNER_TEMP 'ssign-session') -ErrorAction SilentlyContinue
 
   # Le manifeste de mise à jour (latest.json) est écrit pendant que la version
   # est encore un brouillon : tauri-action v1 y met alors des adresses d'API,
