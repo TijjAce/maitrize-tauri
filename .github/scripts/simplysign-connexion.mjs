@@ -168,7 +168,7 @@ function fenetresDecrites(quand) {
 
 /**
  * Les éléments de la fenêtre de connexion et leur place à l'écran, lus
- * avant de taper : « nom|x|y|largeur|hauteur|peut prendre la main ».
+ * avant de taper : « nom|x|y|largeur|hauteur|peut prendre la main|classe ».
  */
 function disposition() {
   const sortie = powershell(`
@@ -181,13 +181,13 @@ function disposition() {
       foreach ($e in $f.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition)) {
         $c = $e.Current; $r = $c.BoundingRectangle
         if ($r.IsEmpty) { continue }
-        "{0}|{1}|{2}|{3}|{4}|{5}" -f ($c.Name -replace '[|\\r\\n]', ''), [int]$r.Left, [int]$r.Top, [int]$r.Width, [int]$r.Height, $c.IsKeyboardFocusable
+        "{0}|{1}|{2}|{3}|{4}|{5}|{6}" -f ($c.Name -replace '[|\\r\\n]', ''), [int]$r.Left, [int]$r.Top, [int]$r.Width, [int]$r.Height, $c.IsKeyboardFocusable, $c.ClassName
       }
     }
   `);
   return sortie.split(/\r?\n/).filter((l) => l.includes("|")).map((l) => {
-    const [nom, x, y, largeur, hauteur, main] = l.split("|");
-    return { nom: nom.trim(), x: Number(x), y: Number(y), largeur: Number(largeur), hauteur: Number(hauteur), main: main.trim() === "True" };
+    const [nom, x, y, largeur, hauteur, main, classe = ""] = l.split("|");
+    return { nom: nom.trim(), x: Number(x), y: Number(y), largeur: Number(largeur), hauteur: Number(hauteur), main: main.trim() === "True", classe: classe.trim() };
   });
 }
 
@@ -207,8 +207,11 @@ function cliquer({ x, y }) {
 function releve() {
   try {
     console.log(powershell(`
+      "— Session : $env:SESSIONNAME, numéro $([System.Diagnostics.Process]::GetCurrentProcess().SessionId)"
       "— Services"
       Get-Service SCardSvr, CertPropSvc -ErrorAction SilentlyContinue | ForEach-Object { "  $($_.Name) : $($_.Status), $($_.StartType)" }
+      "— Périphériques des cartes"
+      Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.Class -match 'SmartCard' -or $_.FriendlyName -match 'SimplySign|Certum|Smart ?card' } | ForEach-Object { "  $($_.FriendlyName) — $($_.Class) — $($_.Status)" }
       "— SimplySign"
       Get-Process | Where-Object { $_.ProcessName -like '*SimplySign*' } | ForEach-Object { "  $($_.ProcessName) — fenêtre « $($_.MainWindowTitle) »" }
       foreach ($magasin in 'Cert:\\CurrentUser\\My', 'Cert:\\LocalMachine\\My') {
