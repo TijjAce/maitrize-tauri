@@ -145,8 +145,17 @@ jobs:
         if: inputs.maitrize
         shell: pwsh
         run: |
-          $fichiers = @(Get-ChildItem src-tauri/target/release/bundle -Recurse -Include *.exe) + @(Get-ChildItem src-tauri/target/release/*.exe)
-          if (-not $fichiers) { throw 'Aucun fichier Windows à vérifier.' }
+          # Ce que reçoivent les utilisateurs : l'installeur, et l'application rangée dedans. Celle du
+          # dossier de construction ne compte pas — Tauri la retouche d'un installeur à l'autre, après l'avoir signée.
+          $installeurs = @(Get-ChildItem src-tauri/target/release/bundle -Recurse -Include *.exe)
+          if (-not $installeurs) { throw 'Aucun installeur Windows à vérifier.' }
+          $dedans = Join-Path $env:RUNNER_TEMP 'installeur-ouvert'
+          $fichiers = @()
+          foreach ($i in $installeurs) {
+            $fichiers += $i
+            7z x $i.FullName "-o$dedans" -y | Out-Null
+            $fichiers += @(Get-ChildItem $dedans -Recurse -Filter '*.exe' | Where-Object { $_.Name -notmatch 'uninstall' } | Sort-Object Length -Descending | Select-Object -First 1)
+          }
           $refuses = 0
           foreach ($f in $fichiers) {
             $s = Get-AuthenticodeSignature -FilePath $f.FullName
