@@ -50,7 +50,7 @@ jobs:
       # Le code à six chiffres que la signature Windows calcule pour se
       # connecter à SimplySign (voir .github/scripts/simplysign-connexion.mjs).
       - name: Code de SimplySign (RFC 6238)
-        run: node --test .github/scripts/totp.test.mjs
+        run: node --test .github/scripts/totp-verification.mjs
 
       # `tsc` ne voit pas tout : un import manquant, un fichier absent ou une
       # syntaxe que Rollup refuse ne se découvraient qu'au moment de publier.
