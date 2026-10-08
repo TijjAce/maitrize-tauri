@@ -6,6 +6,11 @@ name: Essai de la signature Windows
 # programme d'essai et vérifie sa signature. Rien n'est construit ni publié.
 on:
   workflow_dispatch:
+    inputs:
+      connexion:
+        description: "Se connecter à SimplySign et signer (sinon : installer et décrire, sans tenter de connexion)"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -33,9 +38,11 @@ jobs:
         env:
           CERTUM_UTILISATEUR: ${{ secrets.CERTUM_UTILISATEUR }}
           CERTUM_TOTP: ${{ secrets.CERTUM_TOTP }}
+          SIMPLYSIGN_SANS_CONNEXION: ${{ inputs.connexion && '0' || '1' }}
 
       # Un programme de trois lignes, compilé sur place, signé comme le serait Maitrize.
       - name: Signer un programme d'essai
+        if: inputs.connexion
         shell: powershell
         run: |
           $exe = Join-Path $env:RUNNER_TEMP 'essai-signature.exe'

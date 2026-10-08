@@ -157,6 +157,17 @@ async function main() {
   if (!utilisateur.includes("@")) throw new Error("CERTUM_UTILISATEUR ne ressemble pas à une adresse e-mail.");
   const secret = lireSecret(brut);
   for (const masque of [utilisateur, brut.trim(), secret.secretBrut]) if (masque) console.log(`::add-mask::${masque}`);
+  // Ce que dit le lien, hors secret : l'algorithme écrit (ou non), les chiffres, la période, l'émetteur.
+  const lien = /^otpauth:\/\//i.test(brut.trim()) ? new URL(brut.trim()).searchParams : null;
+  console.log(lien
+    ? `Lien otpauth:// : algorithme ${lien.get("algorithm") ? `« ${lien.get("algorithm")} » écrit dans le lien` : "non écrit"}, ${secret.chiffres} chiffres, ${secret.periode} s, émetteur « ${lien.get("issuer") ?? "non écrit"} ».`
+    : "Secret seul, sans lien otpauth://.");
+  if (process.env.SIMPLYSIGN_SANS_CONNEXION === "1") {
+    demarrerLesServices();
+    releve();
+    console.log("Essai sans connexion : on s'arrête là.");
+    return;
+  }
 
   // Un secret seul ne dit pas son algorithme : SHA-256, celui de Certum, puis SHA-1.
   const essais = secret.explicite
