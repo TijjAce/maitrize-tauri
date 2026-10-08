@@ -21,7 +21,7 @@
 
 import { execFileSync, spawn } from "node:child_process";
 import { appendFileSync } from "node:fs";
-import { code, lireSecret, secondesRestantes } from "./totp.mjs";
+import { code, diagnostic, lireSecret, secondesRestantes } from "./totp.mjs";
 
 const APP = process.env.SIMPLYSIGN_APP || "C:\\Program Files\\Certum\\SimplySign Desktop\\SimplySignDesktop.exe";
 const utilisateur = (process.env.CERTUM_UTILISATEUR ?? "").trim();
@@ -102,6 +102,9 @@ function certificat() {
 
 async function main() {
   if (!utilisateur || !brut.trim()) throw new Error("Il manque CERTUM_UTILISATEUR ou CERTUM_TOTP dans les secrets de GitHub.");
+  const probleme = diagnostic(brut);
+  if (probleme) throw new Error(probleme);
+  if (!utilisateur.includes("@")) throw new Error("CERTUM_UTILISATEUR ne ressemble pas à une adresse e-mail.");
   const secret = lireSecret(brut);
   for (const masque of [utilisateur, brut.trim(), secret.secretBrut]) if (masque) console.log(`::add-mask::${masque}`);
 
