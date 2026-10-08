@@ -70,6 +70,12 @@ GitHub, `release.yml` :
 
 Sans les deux secrets `CERTUM_*`, la version Windows sort sans signature, comme avant.
 
+> ⚠️ **Éteint pour l'instant** (variable de dépôt `SIGNATURE_WINDOWS` absente) : aux
+> essais du 8 octobre 2026, SimplySign Desktop se connecte sur la machine Windows de
+> GitHub mais n'y monte pas sa carte virtuelle — aucun lecteur, le service des cartes
+> à puce s'arrête, aucun certificat dans le magasin. L'essai manuel « sans
+> connexion » décrit la fenêtre et l'état des cartes sans soumettre de code.
+
 Ranger le lien du code QR sans qu'il s'affiche : **⌘ ⇧ ⌃ 4** sur le code QR
 (l'image va dans le presse-papiers), puis `swift outils/code-qr.swift` (le
 lien remplace l'image), puis le coller dans le secret `CERTUM_TOTP` ; copier

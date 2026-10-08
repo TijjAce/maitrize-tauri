@@ -71,10 +71,13 @@ jobs:
     runs-on: ${{ matrix.platform }}
 
     env:
-      # La version Windows se signe avec le certificat Certum dès que les deux
-      # secrets de SimplySign sont rangés dans GitHub (voir PUBLISHING.md) ;
-      # sans eux, elle sort sans signature, comme avant.
-      SIGNATURE_WINDOWS: ${{ secrets.CERTUM_UTILISATEUR != '' && secrets.CERTUM_TOTP != '' }}
+      # La version Windows se signerait avec le certificat Certum (voir
+      # PUBLISHING.md). C'est éteint tant que la variable SIGNATURE_WINDOWS du
+      # dépôt ne vaut pas « oui » : aux essais du 8 octobre 2026, SimplySign
+      # Desktop se connecte mais ne monte pas sa carte virtuelle sur les
+      # machines Windows de GitHub — pas de lecteur, et le service des cartes
+      # s'arrête. Allumé, il faut aussi les deux secrets CERTUM_*.
+      SIGNATURE_WINDOWS: ${{ vars.SIGNATURE_WINDOWS == 'oui' && secrets.CERTUM_UTILISATEUR != '' && secrets.CERTUM_TOTP != '' }}
 
     steps:
       - uses: actions/checkout@v4
