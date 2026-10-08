@@ -52,29 +52,34 @@ gh release edit v1.1.0 --draft=false --latest
 Sauvegarde la clé minisign **hors du Mac** (gestionnaire de mots de passe) : c'est
 la seule pièce irremplaçable de la chaîne.
 
-### Signature Windows (Certum, SimplySign)
+### Signature Windows (Certum, par ssign)
 
 Certificat « Open Source Code Signing in the cloud » de Certum, au nom de
 « Open Source Developer CLEMENT TITET », valable jusqu'au **8 octobre 2027** :
-le renouveler avant. La clé reste chez Certum. Sur la machine Windows de
-GitHub, `release.yml` :
+le renouveler avant. La clé reste chez Certum. On signe par
+[ssign](https://github.com/Le-Syl21/ssign) (MIT), qui parle directement au
+service de signature de Certum ; SimplySign Desktop, l'application officielle,
+se connecte sur la machine Windows de GitHub mais n'y monte pas sa carte
+virtuelle (essais du 8 octobre 2026). Sur cette machine, `release.yml` :
 
-1. installe SimplySign Desktop, l'application officielle, depuis le site de
-   Certum (`.github/scripts/simplysign-installer.ps1`) ;
+1. compile ssign depuis la révision relue (0.1.7, `5fd4daf`), gardée en cache ;
 2. compile Maitrize sans rien signer ;
-3. s'y connecte avec l'adresse et le code à six chiffres calculé à partir de
-   `CERTUM_TOTP` (`.github/scripts/simplysign-connexion.mjs`) ;
-4. laisse Tauri signer l'application, ses installeurs et le désinstalleur par
-   `.github/scripts/signer-windows.ps1`, horodatés par Certum ;
-5. vérifie que chaque fichier porte une signature valide, puis ferme la session.
+3. ouvre la session : `.github/scripts/ssign-session.ps1` signe un petit
+   programme d'essai avec `CERTUM_UTILISATEUR` et `CERTUM_TOTP`, et ssign range
+   un jeton de vingt minutes — seul ce pas voit le secret ;
+4. laisse Tauri signer l'application, l'installeur `.exe` et le désinstalleur
+   par `.github/scripts/signer-windows.ps1`, avec ce jeton, horodatés par
+   Certum ; ssign ne sait pas signer les `.msi`, qui sortent sans signature
+   (l'application qu'ils contiennent est signée) ;
+5. vérifie que chaque `.exe` porte une signature valide et horodatée, puis
+   efface la session.
 
-Sans les deux secrets `CERTUM_*`, la version Windows sort sans signature, comme avant.
-
-> ⚠️ **Éteint pour l'instant** (variable de dépôt `SIGNATURE_WINDOWS` absente) : aux
-> essais du 8 octobre 2026, SimplySign Desktop se connecte sur la machine Windows de
-> GitHub mais n'y monte pas sa carte virtuelle — aucun lecteur, le service des cartes
-> à puce s'arrête, aucun certificat dans le magasin. L'essai manuel « sans
-> connexion » décrit la fenêtre et l'état des cartes sans soumettre de code.
+**Interrupteur :** tout cela ne tourne que si la variable de dépôt
+`SIGNATURE_WINDOWS` vaut `oui` (Settings → Secrets and variables → Actions →
+Variables) et que les deux secrets `CERTUM_*` sont rangés ; sinon, la version
+Windows sort sans signature, comme avant. Pour changer de révision de ssign,
+relire le code, puis changer le numéro de révision et la clé du cache dans
+`release.yml` et `signature-windows.yml`.
 
 Ranger le lien du code QR sans qu'il s'affiche : **⌘ ⇧ ⌃ 4** sur le code QR
 (l'image va dans le presse-papiers), puis `swift outils/code-qr.swift` (le
@@ -82,8 +87,8 @@ lien remplace l'image), puis le coller dans le secret `CERTUM_TOTP` ; copier
 ensuite autre chose.
 
 Essai sans rien publier : onglet **Actions** → « Essai de la signature
-Windows » → **Run workflow**. Il se connecte, signe un petit programme
-d'essai et vérifie sa signature.
+Windows » → **Run workflow**. Il ouvre la session sur un programme d'essai,
+en signe un second comme le fait Tauri, et vérifie les deux signatures.
 
 ---
 
