@@ -27,7 +27,7 @@ jobs:
           node-version: 22
 
       - name: Code de SimplySign (RFC 6238)
-        run: node --test .github/scripts/totp-verification.mjs
+        run: node --test .github/scripts/totp-verification.mjs .github/scripts/fenetre-verification.mjs
 
       - name: SimplySign Desktop (installation)
         shell: pwsh
