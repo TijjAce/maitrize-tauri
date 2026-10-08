@@ -193,6 +193,12 @@ jobs:
           Get-ChildItem src-tauri/target/release/bundle -Recurse -Include *.msi | ForEach-Object { Write-Host "· $($_.Name) — sans signature (.msi)" }
           if ($refuses) { throw "$refuses fichier(s) sans signature valide et horodatée." }
 
+      # Tauri garde pour lui ce qu'écrit la commande de signature : signer-windows.ps1 le note ici.
+      - name: Journal de signature
+        if: failure() && runner.os == 'Windows' && env.SIGNATURE_WINDOWS == 'true'
+        shell: pwsh
+        run: Get-Content (Join-Path $env:RUNNER_TEMP 'signature-windows.log') -ErrorAction SilentlyContinue
+
       - name: Session de signature (effacée)
         if: always() && runner.os == 'Windows' && env.SIGNATURE_WINDOWS == 'true'
         shell: pwsh
