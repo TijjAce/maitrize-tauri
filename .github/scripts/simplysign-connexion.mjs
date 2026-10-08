@@ -128,6 +128,39 @@ function demarrerLesServices() {
   }
 }
 
+/**
+ * Les fenêtres de SimplySign telles que les décrit Windows (UI Automation) :
+ * leurs boutons, leurs libellés, le champ qui a la main. Le contenu des
+ * champs n'est jamais lu.
+ */
+function fenetresDecrites(quand) {
+  try {
+    console.log(`— Fenêtres de SimplySign, ${quand}`);
+    console.log(powershell(`
+      Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+      $ids = @(Get-Process | Where-Object { $_.ProcessName -like '*SimplySign*' } | ForEach-Object { $_.Id })
+      $racine = [System.Windows.Automation.AutomationElement]::RootElement
+      $toutes = $racine.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)
+      $siennes = @($toutes | Where-Object { $ids -contains $_.Current.ProcessId })
+      if (-not $siennes) { "  aucune fenêtre" }
+      foreach ($f in $siennes) {
+        "  Fenêtre « $($f.Current.Name) » ($($f.Current.ClassName))"
+        $n = 0
+        foreach ($e in $f.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition)) {
+          if (++$n -gt 60) { "    …"; break }
+          $c = $e.Current
+          $type = $c.ControlType.ProgrammaticName -replace '^ControlType\.', ''
+          $nom = if ($type -eq 'Edit') { if ($c.IsPassword) { '(champ masqué)' } else { '(champ)' } } else { "« $($c.Name) »" }
+          $focus = if ($c.HasKeyboardFocus) { ' [a la main]' } else { '' }
+          "    $type $nom$focus"
+        }
+      }
+    `).trim());
+  } catch (e) {
+    console.log(`  relevé des fenêtres impossible : ${e.message}`);
+  }
+}
+
 /** Ce que voit Windows quand le certificat manque : rien de secret, l'adresse est masquée par GitHub. */
 function releve() {
   try {
@@ -162,12 +195,7 @@ async function main() {
   console.log(lien
     ? `Lien otpauth:// : algorithme ${lien.get("algorithm") ? `« ${lien.get("algorithm")} » écrit dans le lien` : "non écrit"}, ${secret.chiffres} chiffres, ${secret.periode} s, émetteur « ${lien.get("issuer") ?? "non écrit"} ».`
     : "Secret seul, sans lien otpauth://.");
-  if (process.env.SIMPLYSIGN_SANS_CONNEXION === "1") {
-    demarrerLesServices();
-    releve();
-    console.log("Essai sans connexion : on s'arrête là.");
-    return;
-  }
+  const sansConnexion = process.env.SIMPLYSIGN_SANS_CONNEXION === "1";
 
   // Un secret seul ne dit pas son algorithme : SHA-256, celui de Certum, puis SHA-1.
   const essais = secret.explicite
@@ -185,6 +213,12 @@ async function main() {
     if (!(await attendreQue(() => fenetre() !== "", 20000))) throw new Error("La fenêtre de connexion de SimplySign Desktop n'est pas apparue.");
   }
   console.log(`Fenêtre de connexion ouverte : « ${fenetre()} ».`);
+  fenetresDecrites("avant de taper");
+  if (sansConnexion) {
+    releve();
+    console.log("Essai sans connexion : on s'arrête là.");
+    return;
+  }
 
   let connecte = false;
   for (const [i, algo] of essais.entries()) {
@@ -216,6 +250,8 @@ async function main() {
     activer();
     clavier("{ENTER}");
     console.log(`Connexion envoyée (essai ${i + 1} sur ${essais.length}).`);
+    await attendre(6000);
+    fenetresDecrites("après la connexion");
     // Connecté, SimplySign Desktop ferme sa fenêtre et se range près de l'horloge.
     if (await attendreQue(() => fenetre() === "", 26000, 2000)) {
       connecte = true;
