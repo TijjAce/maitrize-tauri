@@ -1,16 +1,12 @@
 name: Essai de la signature Windows
 
-# À lancer à la main (onglet Actions → « Run workflow ») une fois les secrets
-# CERTUM_UTILISATEUR et CERTUM_TOTP rangés dans GitHub : se connecte à
-# SimplySign comme le fait la construction de Maitrize, signe un petit
-# programme d'essai et vérifie sa signature. Rien n'est construit ni publié.
+# À lancer à la main (onglet Actions → « Run workflow ») : le même chemin que
+# la construction de Maitrize, sans rien construire ni publier. ssign est
+# compilé depuis la révision relue, la session de signature s'ouvre sur un
+# premier programme d'essai, puis un second est signé comme Tauri le ferait,
+# par signer-windows.ps1 et la session seule.
 on:
   workflow_dispatch:
-    inputs:
-      connexion:
-        description: "Se connecter à SimplySign et signer (sinon : installer et décrire, sans tenter de connexion)"
-        type: boolean
-        default: true
 
 permissions:
   contents: read
@@ -21,40 +17,44 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Node
-        uses: actions/setup-node@v4
+      - name: Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: ssign (cache)
+        id: ssign-cache
+        uses: actions/cache@v4
         with:
-          node-version: 22
+          path: ~/.cargo/bin/ssign.exe
+          key: ssign-5fd4daf22155b19b645aef3dd467f3c4c9e440b3-${{ runner.os }}
 
-      - name: Code de SimplySign (RFC 6238)
-        run: node --test .github/scripts/totp-verification.mjs .github/scripts/fenetre-verification.mjs
+      - name: ssign (compilation de la révision relue, 0.1.7)
+        if: steps.ssign-cache.outputs.cache-hit != 'true'
+        run: cargo install --git https://github.com/Le-Syl21/ssign --rev 5fd4daf22155b19b645aef3dd467f3c4c9e440b3 --locked ssign
 
-      - name: SimplySign Desktop (installation)
-        shell: pwsh
-        run: .github/scripts/simplysign-installer.ps1
-
-      - name: SimplySign Desktop (connexion)
-        run: node .github/scripts/simplysign-connexion.mjs
+      - name: Session de signature (ssign)
+        shell: powershell
+        run: .github/scripts/ssign-session.ps1
         env:
-          CERTUM_UTILISATEUR: ${{ secrets.CERTUM_UTILISATEUR }}
-          CERTUM_TOTP: ${{ secrets.CERTUM_TOTP }}
-          SIMPLYSIGN_SANS_CONNEXION: ${{ inputs.connexion && '0' || '1' }}
+          CERTUM_EMAIL: ${{ secrets.CERTUM_UTILISATEUR }}
+          CERTUM_OTP: ${{ secrets.CERTUM_TOTP }}
+          XDG_RUNTIME_DIR: ${{ runner.temp }}/ssign-session
 
-      # Un programme de trois lignes, compilé sur place, signé comme le serait Maitrize.
-      - name: Signer un programme d'essai
-        if: inputs.connexion
+      # Le second programme, signé comme Tauri signe Maitrize : la session seule, sans le secret.
+      - name: Signer comme le fait Tauri
         shell: powershell
         run: |
-          $exe = Join-Path $env:RUNNER_TEMP 'essai-signature.exe'
-          Add-Type -OutputType ConsoleApplication -OutputAssembly $exe -TypeDefinition 'public static class Essai { public static void Main() { System.Console.WriteLine("Maitrize"); } }'
+          $exe = Join-Path $env:RUNNER_TEMP 'essai-tauri.exe'
+          Add-Type -OutputType ConsoleApplication -OutputAssembly $exe -TypeDefinition 'public static class EssaiTauri { public static void Main() { System.Console.WriteLine("Maitrize V2"); } }'
           pwsh -NoProfile -NonInteractive -File .github/scripts/signer-windows.ps1 $exe
           if ($LASTEXITCODE -ne 0) { throw 'La signature a échoué.' }
           $s = Get-AuthenticodeSignature -FilePath $exe
           if ($s.Status -ne 'Valid' -or -not $s.TimeStamperCertificate) { throw "Signature refusée : $($s.Status) $($s.StatusMessage)" }
           Write-Host "Signé par : $($s.SignerCertificate.Subject)"
           Write-Host "Horodaté par : $($s.TimeStamperCertificate.Subject)"
+        env:
+          XDG_RUNTIME_DIR: ${{ runner.temp }}/ssign-session
 
-      - name: SimplySign Desktop (déconnexion)
+      - name: Session de signature (effacée)
         if: always()
         shell: pwsh
-        run: .github/scripts/simplysign-deconnexion.ps1
+        run: Remove-Item -Recurse -Force (Join-Path $env:RUNNER_TEMP 'ssign-session') -ErrorAction SilentlyContinue
