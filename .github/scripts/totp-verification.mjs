@@ -1,7 +1,7 @@
 // node --test .github/scripts/totp-verification.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { base32, code, lireSecret, secondesRestantes } from "./totp.mjs";
+import { base32, code, diagnostic, lireSecret, secondesRestantes } from "./totp.mjs";
 
 // RFC 6238, annexe B : les codes à huit chiffres des trois algorithmes.
 const SECRETS = {
@@ -49,3 +49,19 @@ test("le temps qui reste au code", () => {
   assert.equal(secondesRestantes(30, 60), 30);
   assert.equal(secondesRestantes(30, 89.5), 1);
 });
+
+test("ce qui ne va pas dans le secret, dit sans le montrer", () => {
+  assert.equal(diagnostic(`otpauth://totp/x?secret=${SECRETS.sha1}`), null);
+  assert.equal(diagnostic(SECRETS.sha256), null);
+  assert.match(diagnostic(""), /vide/);
+  assert.match(diagnostic("jean.dupont@exemple.fr"), /adresse e-mail/);
+  assert.match(diagnostic("482913"), /code à chiffres/);
+  assert.match(diagnostic("234567"), /code à chiffres/);
+  assert.match(diagnostic("otpauth://totp/x?issuer=Certum"), /pas de secret lisible/);
+  assert.match(diagnostic("https://certum.eu/activation?jeton=abc"), /« https:\/\/ »/);
+  assert.match(diagnostic("bonjour !"), /ni un lien/);
+  for (const v of ["jean.dupont@exemple.fr", "482913", "https://certum.eu/activation?jeton=abc"]) {
+    assert.ok(!diagnostic(v).includes(v), "le message ne contient jamais la valeur");
+  }
+});
+
