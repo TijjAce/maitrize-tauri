@@ -1,4 +1,4 @@
-// node --test .github/scripts/totp.test.mjs
+// node --test .github/scripts/totp-verification.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { base32, code, lireSecret, secondesRestantes } from "./totp.mjs";
