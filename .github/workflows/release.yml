@@ -52,6 +52,9 @@ jobs:
       - name: Tests Rust
         run: cargo test --manifest-path src-tauri/Cargo.toml
 
+      - name: Code de SimplySign (RFC 6238)
+        run: node --test .github/scripts/totp.test.mjs
+
   build:
     needs: tests
     strategy:
@@ -66,6 +69,12 @@ jobs:
             rust_targets: ""
 
     runs-on: ${{ matrix.platform }}
+
+    env:
+      # La version Windows se signe avec le certificat Certum dès que les deux
+      # secrets de SimplySign sont rangés dans GitHub (voir PUBLISHING.md) ;
+      # sans eux, elle sort sans signature, comme avant.
+      SIGNATURE_WINDOWS: ${{ secrets.CERTUM_UTILISATEUR != '' && secrets.CERTUM_TOTP != '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -87,6 +96,40 @@ jobs:
 
       - name: Dépendances front
         run: npm install
+
+      # ── Signature Windows : le certificat Certum, par SimplySign Desktop ──
+      #
+      # La clé reste chez Certum ; SimplySign Desktop, l'application officielle,
+      # la présente à Windows une fois connectée. On l'installe, on dit à Tauri
+      # de signer par signer-windows.ps1, on compile tout sans rien signer, puis
+      # on se connecte : la session n'a qu'à durer le temps de l'assemblage.
+      - name: SimplySign Desktop (installation)
+        if: runner.os == 'Windows' && env.SIGNATURE_WINDOWS == 'true'
+        shell: pwsh
+        run: .github/scripts/simplysign-installer.ps1
+
+      - name: Signature Windows (réglage de Tauri)
+        if: runner.os == 'Windows' && env.SIGNATURE_WINDOWS == 'true'
+        shell: pwsh
+        run: |
+          # Tauri lit tauri.windows.conf.json en plus de tauri.conf.json, et seulement sur Windows.
+          $signer = Join-Path $env:GITHUB_WORKSPACE '.github/scripts/signer-windows.ps1'
+          @{ bundle = @{ windows = @{ signCommand = @{ cmd = 'pwsh'; args = @('-NoProfile', '-NonInteractive', '-File', $signer, '%1') } } } } |
+            ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8NoBOM src-tauri/tauri.windows.conf.json
+
+      - name: Compilation, avant la connexion
+        if: runner.os == 'Windows' && env.SIGNATURE_WINDOWS == 'true'
+        run: npm run tauri build -- --no-bundle
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: SimplySign Desktop (connexion)
+        if: runner.os == 'Windows' && env.SIGNATURE_WINDOWS == 'true'
+        run: node .github/scripts/simplysign-connexion.mjs
+        env:
+          CERTUM_UTILISATEUR: ${{ secrets.CERTUM_UTILISATEUR }}
+          CERTUM_TOTP: ${{ secrets.CERTUM_TOTP }}
 
       # tauri-action v1 : la v0 renommait les fichiers contenant une espace en
       # passant par un dossier temporaire, et cette copie échouait sur les
@@ -115,6 +158,31 @@ jobs:
           prerelease: false
           retryAttempts: 3
           args: ${{ matrix.args }}
+
+      # Chaque fichier Windows doit porter une signature valide et horodatée ;
+      # sinon la construction échoue, et le brouillon ne peut pas être publié.
+      - name: Signature Windows (vérification)
+        if: runner.os == 'Windows' && env.SIGNATURE_WINDOWS == 'true'
+        shell: pwsh
+        run: |
+          $fichiers = @(Get-ChildItem src-tauri/target/release/bundle -Recurse -Include *.exe, *.msi) + @(Get-ChildItem src-tauri/target/release/*.exe)
+          if (-not $fichiers) { throw 'Aucun fichier Windows à vérifier.' }
+          $refuses = 0
+          foreach ($f in $fichiers) {
+            $s = Get-AuthenticodeSignature -FilePath $f.FullName
+            if ($s.Status -eq 'Valid' -and $s.TimeStamperCertificate) {
+              Write-Host "✓ $($f.Name) — $($s.SignerCertificate.Subject)"
+            } else {
+              Write-Host "✗ $($f.Name) — $($s.Status) $($s.StatusMessage)"
+              $refuses++
+            }
+          }
+          if ($refuses) { throw "$refuses fichier(s) sans signature valide et horodatée." }
+
+      - name: SimplySign Desktop (déconnexion)
+        if: always() && runner.os == 'Windows' && env.SIGNATURE_WINDOWS == 'true'
+        shell: pwsh
+        run: .github/scripts/simplysign-deconnexion.ps1
 
   # Le manifeste de mise à jour (latest.json) est écrit pendant que la version
   # est encore un brouillon : tauri-action v1 y met alors des adresses d'API,
@@ -152,10 +220,3 @@ jobs:
           print(f"{n} lien(s) réécrit(s) pour {len(d.get('platforms', {}))} plateforme(s)")
           PY
           gh release upload "$TAG" latest.json --clobber -R "$REPO"
-
-  # ─────────────────────────────────────────────────────────────────────────
-  # TODO (étape suivante) : signature de code Windows via SignPath.
-  # Une fois le projet validé dans le programme open source de SignPath, ajouter
-  # un job qui télécharge le .msi/.exe de la Release, le soumet à SignPath
-  # (action signpath/github-action-submit-signing-request) et réuploade le binaire
-  # signé. Cela supprime l'avertissement SmartScreen en distribution directe.

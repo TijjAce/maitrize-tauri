@@ -46,9 +46,38 @@ gh release edit v1.1.0 --draft=false --latest
 | `APPLE_CERTIFICATE` / `_PASSWORD` | Certificat *Developer ID Application* exporté en `.p12`, encodé en base64. |
 | `APPLE_SIGNING_IDENTITY` | Ex. `Developer ID Application: Nom (TEAMID)`. |
 | `APPLE_ID` / `APPLE_PASSWORD` / `APPLE_TEAM_ID` | Notarisation. `APPLE_PASSWORD` est un **mot de passe d'application**, pas le mot de passe du compte. |
+| `CERTUM_UTILISATEUR` | Adresse e-mail du compte SimplySign (Certum), pour signer la version Windows. |
+| `CERTUM_TOTP` | Le lien `otpauth://` du code QR d'activation de SimplySign. **Avec lui et l'adresse, on signe au nom de l'éditeur : à garder comme une clé privée.** |
 
 Sauvegarde la clé minisign **hors du Mac** (gestionnaire de mots de passe) : c'est
 la seule pièce irremplaçable de la chaîne.
+
+### Signature Windows (Certum, SimplySign)
+
+Certificat « Open Source Code Signing in the cloud » de Certum, au nom de
+« Open Source Developer CLEMENT TITET », valable jusqu'au **8 octobre 2027** :
+le renouveler avant. La clé reste chez Certum. Sur la machine Windows de
+GitHub, `release.yml` :
+
+1. installe SimplySign Desktop, l'application officielle, depuis le site de
+   Certum (`.github/scripts/simplysign-installer.ps1`) ;
+2. compile Maitrize sans rien signer ;
+3. s'y connecte avec l'adresse et le code à six chiffres calculé à partir de
+   `CERTUM_TOTP` (`.github/scripts/simplysign-connexion.mjs`) ;
+4. laisse Tauri signer l'application, ses installeurs et le désinstalleur par
+   `.github/scripts/signer-windows.ps1`, horodatés par Certum ;
+5. vérifie que chaque fichier porte une signature valide, puis ferme la session.
+
+Sans les deux secrets `CERTUM_*`, la version Windows sort sans signature, comme avant.
+
+Ranger le lien du code QR sans qu'il s'affiche : **⌘ ⇧ ⌃ 4** sur le code QR
+(l'image va dans le presse-papiers), puis `swift outils/code-qr.swift` (le
+lien remplace l'image), puis le coller dans le secret `CERTUM_TOTP` ; copier
+ensuite autre chose.
+
+Essai sans rien publier : onglet **Actions** → « Essai de la signature
+Windows » → **Run workflow**. Il se connecte, signe un petit programme
+d'essai et vérifie sa signature.
 
 ---
 

@@ -1,0 +1,53 @@
+name: Essai de la signature Windows
+
+# À lancer à la main (onglet Actions → « Run workflow ») une fois les secrets
+# CERTUM_UTILISATEUR et CERTUM_TOTP rangés dans GitHub : se connecte à
+# SimplySign comme le fait la construction de Maitrize, signe un petit
+# programme d'essai et vérifie sa signature. Rien n'est construit ni publié.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  essai:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Code de SimplySign (RFC 6238)
+        run: node --test .github/scripts/totp.test.mjs
+
+      - name: SimplySign Desktop (installation)
+        shell: pwsh
+        run: .github/scripts/simplysign-installer.ps1
+
+      - name: SimplySign Desktop (connexion)
+        run: node .github/scripts/simplysign-connexion.mjs
+        env:
+          CERTUM_UTILISATEUR: ${{ secrets.CERTUM_UTILISATEUR }}
+          CERTUM_TOTP: ${{ secrets.CERTUM_TOTP }}
+
+      # Un programme de trois lignes, compilé sur place, signé comme le serait Maitrize.
+      - name: Signer un programme d'essai
+        shell: powershell
+        run: |
+          $exe = Join-Path $env:RUNNER_TEMP 'essai-signature.exe'
+          Add-Type -OutputType ConsoleApplication -OutputAssembly $exe -TypeDefinition 'public static class Essai { public static void Main() { System.Console.WriteLine("Maitrize"); } }'
+          pwsh -NoProfile -NonInteractive -File .github/scripts/signer-windows.ps1 $exe
+          if ($LASTEXITCODE -ne 0) { throw 'La signature a échoué.' }
+          $s = Get-AuthenticodeSignature -FilePath $exe
+          if ($s.Status -ne 'Valid' -or -not $s.TimeStamperCertificate) { throw "Signature refusée : $($s.Status) $($s.StatusMessage)" }
+          Write-Host "Signé par : $($s.SignerCertificate.Subject)"
+          Write-Host "Horodaté par : $($s.TimeStamperCertificate.Subject)"
+
+      - name: SimplySign Desktop (déconnexion)
+        if: always()
+        shell: pwsh
+        run: .github/scripts/simplysign-deconnexion.ps1
