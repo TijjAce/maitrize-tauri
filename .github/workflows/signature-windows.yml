@@ -7,6 +7,11 @@ name: Essai de la signature Windows
 # par signer-windows.ps1 et la session seule.
 on:
   workflow_dispatch:
+    inputs:
+      maitrize:
+        description: "Construire aussi Maitrize pour Windows, signée et vérifiée, sans rien publier (25 min)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -49,10 +54,83 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'La signature a échoué.' }
           $s = Get-AuthenticodeSignature -FilePath $exe
           if ($s.Status -ne 'Valid' -or -not $s.TimeStamperCertificate) { throw "Signature refusée : $($s.Status) $($s.StatusMessage)" }
-          Write-Host "Signé par : $($s.SignerCertificate.Subject)"
-          Write-Host "Horodaté par : $($s.TimeStamperCertificate.Subject)"
+          # Sans accents : GitHub écrit ce script sans indicateur d'ordre des octets, que 5.1 lirait de travers.
+          Write-Host "Signataire : $($s.SignerCertificate.Subject)"
+          Write-Host "Horodatage : $($s.TimeStamperCertificate.Subject)"
         env:
           XDG_RUNTIME_DIR: ${{ runner.temp }}/ssign-session
+
+      # ── Maitrize entière, comme release.yml la construit — sans rien publier ──
+      - name: Node
+        if: inputs.maitrize
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Cache Rust
+        if: inputs.maitrize
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Dépendances front
+        if: inputs.maitrize
+        run: npm install
+
+      - name: Signature Windows (réglage de Tauri)
+        if: inputs.maitrize
+        shell: pwsh
+        run: |
+          $signer = Join-Path $env:GITHUB_WORKSPACE '.github/scripts/signer-windows.ps1'
+          @{ bundle = @{ windows = @{ signCommand = @{ cmd = 'pwsh'; args = @('-NoProfile', '-NonInteractive', '-File', $signer, '%1') } } } } |
+            ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8NoBOM src-tauri/tauri.windows.conf.json
+
+      # La session de l'essai a quelques secondes : la compilation de Maitrize en dure quinze minutes.
+      # On compile donc d'abord, puis on rouvre la session, comme release.yml.
+      - name: Compilation, avant la session de signature
+        if: inputs.maitrize
+        run: npm run tauri build -- --no-bundle
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Session de signature, rouverte
+        if: inputs.maitrize
+        shell: powershell
+        run: |
+          Remove-Item -Recurse -Force (Join-Path $env:RUNNER_TEMP 'ssign-session') -ErrorAction SilentlyContinue
+          & .github/scripts/ssign-session.ps1
+        env:
+          CERTUM_EMAIL: ${{ secrets.CERTUM_UTILISATEUR }}
+          CERTUM_OTP: ${{ secrets.CERTUM_TOTP }}
+          XDG_RUNTIME_DIR: ${{ runner.temp }}/ssign-session
+
+      - name: Assemblage et signature de Maitrize
+        if: inputs.maitrize
+        run: npm run tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          XDG_RUNTIME_DIR: ${{ runner.temp }}/ssign-session
+
+      - name: Signature Windows (vérification)
+        if: inputs.maitrize
+        shell: pwsh
+        run: |
+          $fichiers = @(Get-ChildItem src-tauri/target/release/bundle -Recurse -Include *.exe) + @(Get-ChildItem src-tauri/target/release/*.exe)
+          if (-not $fichiers) { throw 'Aucun fichier Windows à vérifier.' }
+          $refuses = 0
+          foreach ($f in $fichiers) {
+            $s = Get-AuthenticodeSignature -FilePath $f.FullName
+            if ($s.Status -eq 'Valid' -and $s.TimeStamperCertificate) {
+              Write-Host "✓ $($f.Name) — $($s.SignerCertificate.Subject)"
+            } else {
+              Write-Host "✗ $($f.Name) — $($s.Status) $($s.StatusMessage)"
+              $refuses++
+            }
+          }
+          Get-ChildItem src-tauri/target/release/bundle -Recurse -Include *.msi | ForEach-Object { Write-Host "· $($_.Name) — sans signature (.msi)" }
+          if ($refuses) { throw "$refuses fichier(s) sans signature valide et horodatée." }
 
       - name: Session de signature (effacée)
         if: always()

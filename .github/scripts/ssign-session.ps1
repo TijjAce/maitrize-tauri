@@ -1,4 +1,4 @@
-# Ouvre la session de signature avant l'assemblage de Maitrize.
+﻿# Ouvre la session de signature avant l'assemblage de Maitrize.
 #
 # ssign (github.com/Le-Syl21/ssign, compilé depuis la révision relue, voir
 # release.yml) parle directement au service de signature de Certum, sans
@@ -9,7 +9,9 @@
 # secret du code QR (CERTUM_EMAIL, CERTUM_OTP) : ssign se connecte, signe, et
 # range dans XDG_RUNTIME_DIR un jeton valable vingt minutes. Les signatures
 # de Tauri (signer-windows.ps1) s'en servent ensuite, sans jamais voir le
-# secret. Windows PowerShell 5.1 : Add-Type n'y compile un .exe qu'en 5.1.
+# secret. Windows PowerShell 5.1 : Add-Type n'y compile un .exe qu'en 5.1 —
+# d'où l'indicateur d'ordre des octets en tête du fichier, sans lequel 5.1 lit
+# ses accents de travers.
 $ErrorActionPreference = 'Stop'
 
 if (-not $env:XDG_RUNTIME_DIR) { throw "XDG_RUNTIME_DIR manque : c'est là que se range la session." }
