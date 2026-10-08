@@ -8,6 +8,10 @@ name: Essai de la signature Windows
 on:
   workflow_dispatch:
     inputs:
+      publiee:
+        description: "Signer l'application de la dernière version publiée de Maitrize (quelques minutes)"
+        type: boolean
+        default: false
       maitrize:
         description: "Construire aussi Maitrize pour Windows, signée et vérifiée, sans rien publier (25 min)"
         type: boolean
@@ -59,6 +63,28 @@ jobs:
           Write-Host "Horodatage : $($s.TimeStamperCertificate.Subject)"
         env:
           XDG_RUNTIME_DIR: ${{ runner.temp }}/ssign-session
+
+      # L'application elle-même, prise dans l'installeur de la dernière version publiée :
+      # un vrai programme de Maitrize, sans attendre vingt minutes de compilation.
+      - name: L'application publiée, signée par ssign
+        if: inputs.publiee
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          XDG_RUNTIME_DIR: ${{ runner.temp }}/ssign-session
+        run: |
+          $dossier = Join-Path $env:RUNNER_TEMP 'publiee'
+          gh release download --repo $env:GITHUB_REPOSITORY --pattern '*x64-setup.exe' --dir $dossier
+          $setup = Get-ChildItem $dossier -Filter '*x64-setup.exe' | Select-Object -First 1
+          7z x $setup.FullName "-o$dossier\contenu" -y | Out-Null
+          $app = Get-ChildItem "$dossier\contenu" -Recurse -Filter '*.exe' | Where-Object { $_.Name -notmatch 'uninstall' } | Sort-Object Length -Descending | Select-Object -First 1
+          if (-not $app) { Get-ChildItem "$dossier\contenu" -Recurse | Select-Object -First 40 | ForEach-Object { $_.FullName }; throw "Pas de programme dans l'installeur." }
+          Write-Host "Application : $($app.Name), $([math]::Round($app.Length / 1MB, 1)) Mo"
+          pwsh -NoProfile -NonInteractive -File .github/scripts/signer-windows.ps1 $app.FullName
+          if ($LASTEXITCODE -ne 0) { throw "La signature de l'application a échoué (voir ci-dessus)." }
+          $s = Get-AuthenticodeSignature -FilePath $app.FullName
+          if ($s.Status -ne 'Valid' -or -not $s.TimeStamperCertificate) { throw "Signature refusée : $($s.Status) $($s.StatusMessage)" }
+          Write-Host "Signataire : $($s.SignerCertificate.Subject)"
 
       # ── Maitrize entière, comme release.yml la construit — sans rien publier ──
       - name: Node
@@ -131,6 +157,11 @@ jobs:
           }
           Get-ChildItem src-tauri/target/release/bundle -Recurse -Include *.msi | ForEach-Object { Write-Host "· $($_.Name) — sans signature (.msi)" }
           if ($refuses) { throw "$refuses fichier(s) sans signature valide et horodatée." }
+
+      - name: Journal de signature
+        if: failure()
+        shell: pwsh
+        run: Get-Content (Join-Path $env:RUNNER_TEMP 'signature-windows.log') -ErrorAction SilentlyContinue
 
       - name: Session de signature (effacée)
         if: always()
