@@ -43,4 +43,9 @@ if ($p.ExitCode -notin 0, 3010) {
     throw "L'installation a échoué (msiexec : $($p.ExitCode))."
 }
 if (-not (Test-Path $app)) { throw "SimplySign Desktop est introuvable après l'installation." }
-Write-Host "SimplySign Desktop $Version installé."
+Write-Host "SimplySign Desktop $Version installé (msiexec : $($p.ExitCode)$(if ($p.ExitCode -eq 3010) { ', redémarrage demandé' }))."
+# Le lecteur de carte virtuel et les services qu'installe SimplySign : ce qu'il faut voir avant de se connecter.
+Get-PnpDevice -ErrorAction SilentlyContinue | Where-Object { $_.Class -eq 'SmartCardReader' -or $_.FriendlyName -like '*SimplySign*' -or $_.FriendlyName -like '*Certum*' } |
+    ForEach-Object { Write-Host "Périphérique : $($_.FriendlyName) — $($_.Class) — $($_.Status)" }
+Get-Service -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like '*SimplySign*' -or $_.DisplayName -like '*Certum*' -or $_.Name -like '*SimplySign*' } |
+    ForEach-Object { Write-Host "Service : $($_.DisplayName) — $($_.Status)" }
