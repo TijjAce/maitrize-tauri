@@ -98,6 +98,8 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
+          # Un essai qui échoue garde sa compilation : le suivant n'attend pas quinze minutes de plus.
+          cache-on-failure: true
 
       - name: Dépendances front
         if: inputs.maitrize
