@@ -18,6 +18,23 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.22",
+    titre: "Les séquences du cycle 2 partent de la compétence, et « En retard » prépare la journée",
+    points: [
+      { quoi: "« Nouvelle séquence » part d'une compétence : Maitrize propose la démarche — celle des livrets et des guides Éduscol, ou bâtie sur le programme 2024 quand ils n'en ont pas —, ses séances, et les feuilles qu'elle pioche dans les ateliers, aux nombres de la classe et de la période. Le cycle 2 y est presque entier : numération, calcul, problèmes, fractions, opérations, grandeurs et mesures, géométrie, données ; lecture, écriture, dictée, grammaire, conjugaison, oral.", ou: "Plan de travail · Nouvelle séquence" },
+      { quoi: "Une séquence dit sa programmation : le niveau et la période pour lesquels elle est pensée, proposés d'après sa compétence.", ou: "Plan de travail · Séquences" },
+      { quoi: "Seize nouveaux ateliers pour ces feuilles : l'œil de lynx, l'écriture cursive, lire à voix haute ; comprendre un texte (vingt et un textes écrits pour Maitrize, à la longueur de chaque classe), le carnet de lecteur, l'orthographe et les dictées, écrire, la grammaire et la conjugaison, l'oral ; les opérations posées, la monnaie, les mesures, la géométrie, les solides, les déplacements, les tableaux et diagrammes.", ou: "Fabriquer" },
+      { quoi: "Nombres en cubes suit la progression du programme, avec la séquence du guide CP ; Comparer les nombres va de la maternelle au CM2 ; la grille de fluence suit la progression des correspondances graphèmes-phonèmes des guides CP et CE1.", ou: "Fabriquer · Mathématiques, Sons et lecture" },
+      { quoi: "« En retard » : pour chaque élève de la journée, des fiches à faire seul tirées des ateliers, à son niveau et à son prénom — trois en maternelle, quatre du CP au CE2, une au moins par créneau. On en change, on en retire, on en ajoute ; elles s'écrivent au cahier journal de ses créneaux, à la suite du prévu, et s'impriment avec lui.", ou: "⌘K · En retard" },
+      { quoi: "La fiche d'un élève dit s'il est non verbal : « En retard » ne lui donne pas de fiche de lecture.", ou: "Élèves" },
+      { quoi: "La page de garde de votre cahier journal : l'année, la classe, les cinq périodes avec leurs dates, une frise et une citation. Les fournitures et les autres documents se font pour plusieurs élèves à la fois, un exemplaire à leur nom.", ou: "Organisation · Pages de garde" },
+      { quoi: "Une nouvelle règle de jeu s'ouvre sur quatre lignes à compléter : ce qu'il y a dans le jeu, son but, comment gagner une manche, le déroulement d'une partie.", ou: "Fiche d'un jeu" },
+      { quoi: "La version Windows est signée par son auteur, avec un certificat Certum : Windows n'annonce plus un « éditeur inconnu »." },
+      { quoi: "Les dates des périodes viennent du calendrier officiel complet, avec la rentrée des élèves : la page de garde montrait des mois, faute de Noël, du printemps et de l'été." },
+      { quoi: "Un dossier supprimé ne revient plus à la synchronisation suivante. La grille de fluence ne propose que des mots seuls, les titres imprimés gardent leurs sigles (CP, CE1), et le coloriage magique imprime enfin sa cursive." },
+    ],
+  },
+  {
     version: "1.6.21",
     titre: "Six nouveaux ateliers, et leurs séquences d'après les guides",
     points: [
