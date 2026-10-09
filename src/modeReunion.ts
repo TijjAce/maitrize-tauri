@@ -22,20 +22,22 @@ export const MODES: { id: ModeIA; label: string; aide: string }[] = [
   { id: "local", label: "🔒 Rien ne sort d'ici",
     aide: "La parole s'écrit telle quelle. Aucun texte ne quitte cet ordinateur — à condition que la transcription soit locale elle aussi (Réglages · IA)." },
   { id: "ligne", label: "☁️ Avec l'IA en ligne",
-    aide: "Le compte rendu est rangé en points abordés, décisions et choses à faire, puis relu toutes les cinq minutes. Il part chez Mistral, prénoms d'élèves masqués." },
+    aide: "Le compte rendu est rangé en points abordés, décisions et choses à faire, puis relu toutes les cinq minutes. Il part chez Mistral, les noms des élèves et des participants masqués." },
 ];
 
 /**
  * Le mode de cette machine, en tenant compte des réglages d'avant.
  *
  * « ranger » et « relire » valaient tous deux l'IA en ligne ; « rien » valait
- * le local. Qui avait décoché l'ancienne case « Relecture » voulait moins
- * d'appels, pas moins de rangement : il reste en ligne.
+ * le local. Qui avait l'ancienne case « Relecture », cochée ou non, se servait
+ * de l'IA : il reste en ligne. Qui n'a jamais choisi commence sans rien
+ * envoyer — une ESS parle de santé et de handicap : c'est à l'enseignant de
+ * décider que son compte rendu part, sur la fiche, avant de commencer.
  */
 export function lireMode(mode: string | null, ancienneRelecture: string | null): ModeIA {
   if (mode === "local" || mode === "rien") return "local";
   if (mode === "ligne" || mode === "ranger" || mode === "relire") return "ligne";
-  return ancienneRelecture === "0" ? "ligne" : "ligne";
+  return ancienneRelecture === null ? "local" : "ligne";
 }
 
 /** Le rangement du compte rendu passe-t-il par l'IA en ligne ? */

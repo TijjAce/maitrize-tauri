@@ -395,6 +395,8 @@ export interface VerifSauvegarde {
 /** Emplacement des données de l'application. */
 export interface DossierDonnees {
   chemin: string; parDefaut: string; personnalise: boolean; octets: number;
+  /** Le service qui synchronise ce dossier (iCloud Drive, OneDrive…), s'il y en a un. */
+  synchronise?: string | null;
 }
 
 /** Le disque de l'ordinateur est-il chiffré ? « nom » : FileVault, BitLocker. */
@@ -412,8 +414,10 @@ export interface BilanCopie {
 }
 export interface InfoCopie {
   active: boolean;
-  /** Où se trouve la copie : le Bureau, par défaut. */
+  /** Où se trouve la copie : le dossier personnel, par défaut. */
   emplacement: string; parDefaut: boolean;
+  /** Le service qui synchronise ce dossier (iCloud Drive, OneDrive…), s'il y en a un : la copie part avec lui. */
+  synchronise?: string | null;
   /** Le dossier de la copie elle-même. */
   racine: string;
   derniere: BilanCopie | null;

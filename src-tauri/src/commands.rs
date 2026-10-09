@@ -435,15 +435,35 @@ fn effacer_eleve(c: &mut rusqlite::Connection, id: &str) -> R<()> {
         for n in noms.flatten() { if !n.is_empty() { fichiers.push(n); } }
     }
 
+    const TABLES_DE_L_ELEVE: [&str; 7] = ["appels_journalier", "commentaires_eleve", "notes_eleve", "papiers_eleve",
+                                          "progressions_eleve", "observations_eleve", "documents_eleve"];
+    // Ses lignes, relevées avant de partir : le journal en garde des copies.
+    let mut lignes: Vec<(&str, String)> = vec![("eleves", id.to_string())];
+    for table in TABLES_DE_L_ELEVE {
+        let mut st = c.prepare(&format!("SELECT id FROM {table} WHERE eleve_id=?1")).map_err(e)?;
+        let ids = st.query_map(params![id], |r| r.get::<_, String>(0)).map_err(e)?;
+        lignes.extend(ids.flatten().map(|lid| (table, lid)));
+    }
+
     let tx = c.transaction().map_err(e)?;
 
     // Les temps d'observation et les documents (PPI, GEVA-Sco, dispositifs…) partent aussi : les
     // documents ont une clé étrangère, mais elle ne vaut que si SQLite l'applique — on n'en dépend pas.
-    for table in ["appels_journalier", "commentaires_eleve", "notes_eleve", "papiers_eleve", "progressions_eleve",
-                  "observations_eleve", "documents_eleve"] {
+    for table in TABLES_DE_L_ELEVE {
         tx.execute(&format!("DELETE FROM {table} WHERE eleve_id=?1"), params![id]).map_err(e)?;
     }
     tx.execute("DELETE FROM eleves WHERE id=?1", params![id]).map_err(e)?;
+
+    // Le journal de synchronisation gardait chaque état de ces lignes, et
+    // l'historique d'édition de leurs textes : il n'en reste que la marque de
+    // suppression, qui fait effacer l'élève sur les autres ordinateurs. Les
+    // lignes qui restent (créneaux, outils, programmation) gardent leurs états
+    // d'avant jusqu'à la purge du journal : ils servent à fusionner.
+    for (table, lid) in &lignes {
+        tx.execute("DELETE FROM changements WHERE table_nom=?1 AND ligne_id=?2 AND operation <> 'suppr'",
+            params![table, lid]).ok();
+        tx.execute("DELETE FROM textes_crdt WHERE table_nom=?1 AND ligne_id=?2", params![table, lid]).ok();
+    }
 
     // Documents rangés dans `settings` : préfixés par l'élève (synthèse GS,
     // PPI, progressions, GEVA-Sco) ou suffixés (dispositif:<type>:<élève>).
@@ -457,13 +477,81 @@ fn effacer_eleve(c: &mut rusqlite::Connection, id: &str) -> R<()> {
     retirer_des_creneaux(&tx, id)?;
     retirer_des_edt(&tx, id)?;
     retirer_des_plans(&tx, id)?;
+    retirer_des_outils(&tx, id)?;
+    retirer_des_programmations(&tx, id)?;
 
     tx.commit().map_err(e)?;
 
     for nom in fichiers {
-        std::fs::remove_file(fichiers_dir().join(&nom)).ok();
+        effacer_fichier_joint(c, &nom);
     }
     Ok(())
+}
+
+/// Retire l'élève des outils de classe qui le citent (`outils_classe.eleves_json`).
+fn retirer_des_outils(c: &rusqlite::Connection, id: &str) -> R<()> {
+    let lignes: Vec<(String, String)> = {
+        let mut st = c.prepare("SELECT id, eleves_json FROM outils_classe WHERE eleves_json LIKE '%'||?1||'%'").map_err(e)?;
+        let it = st.query_map(params![id], |r| Ok((r.get(0)?, r.get(1)?))).map_err(e)?;
+        it.collect::<rusqlite::Result<_>>().map_err(e)?
+    };
+    for (oid, brut) in lignes {
+        let Ok(mut ids) = serde_json::from_str::<Vec<String>>(&brut) else { continue };
+        let avant = ids.len();
+        ids.retain(|x| x != id);
+        if ids.len() != avant {
+            let json = serde_json::to_string(&ids).unwrap_or_else(|_| "[]".into());
+            c.execute("UPDATE outils_classe SET eleves_json=?1 WHERE id=?2", params![json, oid]).map_err(e)?;
+        }
+    }
+    Ok(())
+}
+
+/// Retire l'élève de la programmation par élève (IME) : de ses groupes, et de
+/// ses objectifs — un objectif qui ne visait que lui part avec lui, ses notes
+/// le concernaient.
+fn retirer_des_programmations(c: &rusqlite::Connection, id: &str) -> R<()> {
+    let lignes: Vec<(String, String)> = {
+        let mut st = c.prepare("SELECT id, lignes_json FROM programmations_finale WHERE lignes_json LIKE '%'||?1||'%'")
+            .map_err(e)?;
+        let it = st.query_map(params![id], |r| Ok((r.get(0)?, r.get(1)?))).map_err(e)?;
+        it.collect::<rusqlite::Result<_>>().map_err(e)?
+    };
+    let marque = format!("eleve:{id}");
+    for (pid, brut) in lignes {
+        let Ok(mut v) = serde_json::from_str::<serde_json::Value>(&brut) else { continue };
+        let avant = v.clone();
+        if let Some(groupes) = v.get_mut("groupes").and_then(|g| g.as_array_mut()) {
+            for g in groupes {
+                if let Some(ids) = g.get_mut("eleveIds").and_then(|x| x.as_array_mut()) {
+                    ids.retain(|x| x.as_str() != Some(id));
+                }
+            }
+        }
+        if let Some(objectifs) = v.get_mut("objectifs").and_then(|o| o.as_array_mut()) {
+            objectifs.retain_mut(|o| {
+                let Some(pour) = o.get_mut("pour").and_then(|p| p.as_array_mut()) else { return true };
+                let visait = pour.iter().any(|x| x.as_str() == Some(marque.as_str()));
+                pour.retain(|x| x.as_str() != Some(marque.as_str()));
+                !(visait && pour.is_empty())
+            });
+        }
+        if v != avant {
+            c.execute("UPDATE programmations_finale SET lignes_json=?1 WHERE id=?2",
+                params![v.to_string(), pid]).map_err(e)?;
+        }
+    }
+    Ok(())
+}
+
+/// Efface un fichier joint, et s'en souvient : la synchronisation le retire
+/// alors du stockage et des autres ordinateurs. Sans cette trace, elle le
+/// ferait revenir — il manque ici, il est là-bas.
+pub(crate) fn effacer_fichier_joint(c: &rusqlite::Connection, nom: &str) {
+    let Ok(chemin) = fichier_de_l_application(nom) else { return };
+    std::fs::remove_file(chemin).ok();
+    c.execute("INSERT OR REPLACE INTO fichiers_effaces (nom, date, publie) VALUES (?1, ?2, 0)", params![nom, now_iso()]).ok();
+    c.execute("DELETE FROM fichiers_rendus WHERE nom=?1", params![nom]).ok();
 }
 
 /// Retire l'élève des groupes restreints du planning (`creneaux.eleves_json`).
@@ -798,7 +886,12 @@ pub fn papier_save(db: State<Db>, papier: PapierEleve) -> R<PapierEleve> {
 #[tauri::command]
 pub fn papier_delete(db: State<Db>, id: String) -> R<()> {
     let c = db.lock();
+    // Le fichier joint part avec la ligne : il n'était plus rattaché à rien.
+    let fichier: String = c
+        .query_row("SELECT nom_fichier FROM papiers_eleve WHERE id=?1", params![id], |r| r.get::<_, Option<String>>(0))
+        .ok().flatten().unwrap_or_default();
     c.execute("DELETE FROM papiers_eleve WHERE id=?1", params![id]).map_err(e)?;
+    if !fichier.is_empty() { effacer_fichier_joint(&c, &fichier); }
     Ok(())
 }
 
@@ -1233,7 +1326,7 @@ pub fn vocal_delete(db: State<Db>, id: String) -> R<()> {
         .unwrap_or_default();
     c.execute("DELETE FROM vocaux WHERE id=?1", params![id]).map_err(e)?;
     if !fichier.is_empty() {
-        std::fs::remove_file(fichiers_dir().join(&fichier)).ok();
+        effacer_fichier_joint(&c, &fichier);
     }
     Ok(())
 }
@@ -1362,7 +1455,7 @@ pub async fn coffre_download(db: State<'_, Db>, url: String, nom: String) -> R<D
 pub fn coffre_delete(db: State<Db>, id: String, nom_fichier: String) -> R<()> {
     let c = db.lock();
     c.execute("DELETE FROM documents_coffre WHERE id=?1", params![id]).map_err(e)?;
-    if !nom_fichier.is_empty() { std::fs::remove_file(fichiers_dir().join(&nom_fichier)).ok(); }
+    if !nom_fichier.is_empty() { effacer_fichier_joint(&c, &nom_fichier); }
     Ok(())
 }
 
@@ -2081,8 +2174,9 @@ pub fn imprimer_pdf(nom: String) -> R<()> {
 }
 
 #[tauri::command(async)]
-pub fn fichier_delete(nom: String) -> R<()> {
-    std::fs::remove_file(fichier_de_l_application(&nom)?).ok();
+pub fn fichier_delete(db: State<Db>, nom: String) -> R<()> {
+    fichier_de_l_application(&nom)?;
+    effacer_fichier_joint(&db.lock(), &nom);
     Ok(())
 }
 
@@ -2516,6 +2610,8 @@ pub struct DossierDonnees {
     pub par_defaut: String,
     pub personnalise: bool,
     pub octets: u64,
+    /// Le service qui synchronise ce dossier, s'il y en a un (choisi avant que ce soit refusé).
+    pub synchronise: Option<String>,
 }
 
 #[tauri::command(async)]
@@ -2529,6 +2625,7 @@ pub fn dossier_donnees_get() -> DossierDonnees {
         par_defaut: crate::db::dossier_par_defaut().to_string_lossy().into_owned(),
         personnalise: crate::db::dossier_choisi().is_some(),
         octets,
+        synchronise: crate::db::service_de_synchro(&chemin).map(str::to_string),
     }
 }
 
@@ -2552,6 +2649,13 @@ pub fn dossier_donnees_set(chemin: Option<String>) -> R<DossierDonnees> {
                      servez-vous de la sauvegarde chiffrée pour passer d'une machine à l'autre."
                         .into(),
                 );
+            }
+            if let Some(service) = crate::db::service_de_synchro(&p) {
+                return Err(format!(
+                    "Ce dossier est synchronisé par {service}. La base y serait recopiée pendant qu'elle \
+                     s'écrit, et finirait corrompue ; et les dossiers des élèves partiraient chez ce service. \
+                     Choisissez un dossier de l'ordinateur qui n'est pas synchronisé, et servez-vous de la \
+                     sauvegarde chiffrée pour passer d'une machine à l'autre."));
             }
             crate::db::definir_dossier(Some(&p)).map_err(e)?;
         }
@@ -2828,11 +2932,16 @@ fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<()> {
     // Restaure les fichiers joints (photos, PDF).
     if let Some(fichiers) = obj.get("_fichiers").and_then(|v| v.as_object()) {
         use base64::Engine;
-        let dir = fichiers_dir();
         for (nom, val) in fichiers {
+            // Un nom qui sortirait du dossier des fichiers n'est pas écrit.
+            let Ok(chemin) = fichier_de_l_application(nom) else { continue };
             if let Some(b64) = val.as_str() {
                 if let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(b64) {
-                    std::fs::write(dir.join(nom), bytes).ok();
+                    if std::fs::write(&chemin, bytes).is_ok() {
+                        // Ramené par la restauration : s'il avait été effacé, sa marque tombe.
+                        c.execute("DELETE FROM fichiers_effaces WHERE nom=?1", params![nom]).ok();
+                        c.execute("INSERT OR IGNORE INTO fichiers_rendus (nom) VALUES (?1)", params![nom]).ok();
+                    }
                 }
             }
         }
@@ -3312,6 +3421,65 @@ mod tests_eleve {
         assert!(!plans.contains(a) && plans.contains(b), "plan de salle : place non libérée ({plans})");
         let mat: String = c.query_row("SELECT valeur FROM settings WHERE cle='salle:plansMatiere'", [], |r| r.get(0)).unwrap();
         assert!(!mat.contains(a), "plan par matière : place non libérée ({mat})");
+    }
+
+    #[test]
+    fn suppression_ne_laisse_ni_copie_au_journal_ni_fichier_qui_revienne() {
+        let mut c = base();
+        crate::journal::creer_table(&c);
+        crate::journal::poser_declencheurs(&c, "ici");
+        let (a, b) = ("el-a", "el-b");
+        // Un nom de fichier qui n'existe nulle part : l'essai ne touche à aucun vrai fichier.
+        let photo = format!("essai-{}.jpg", uuid::Uuid::new_v4());
+        c.execute("INSERT INTO eleves (id, nom, photo_fichier) VALUES (?1, 'Apolline Martin', ?2)", params![a, photo]).unwrap();
+        c.execute("INSERT INTO eleves (id, nom) VALUES (?1, 'Rose Petit')", params![b]).unwrap();
+        c.execute("UPDATE eleves SET nom = 'Apolline Martin-Durand' WHERE id = ?1", params![a]).unwrap();
+        c.execute("INSERT INTO commentaires_eleve (id, date, eleve_id, texte) VALUES ('co-a','2026-01-01',?1,'Apolline a lu seule')",
+            params![a]).unwrap();
+        c.execute("INSERT INTO textes_crdt (table_nom, ligne_id, champ, etat) VALUES ('commentaires_eleve','co-a','texte', x'00')", []).unwrap();
+        c.execute("INSERT INTO outils_classe (id, titre, eleves_json) VALUES ('ou1', 'Tableau', ?1)",
+            params![format!("[\"{a}\",\"{b}\"]")]).unwrap();
+        let ime = serde_json::json!({
+            "groupes": [{ "id": "g1", "nom": "Les grands", "eleveIds": [a, b] }],
+            "objectifs": [
+                { "id": "o1", "competence": "Lire son prénom", "pour": [format!("eleve:{a}")], "notes": "Apolline progresse" },
+                { "id": "o2", "competence": "Demander de l'aide", "pour": [format!("eleve:{a}"), format!("eleve:{b}")], "notes": "" },
+                { "id": "o3", "competence": "Ranger", "pour": ["groupe:g1"], "notes": "" }
+            ]
+        });
+        c.execute("INSERT INTO programmations_finale (id, annee, lignes_json, niveau) VALUES ('pf1','2026-2027',?1,'ime')",
+            params![ime.to_string()]).unwrap();
+
+        effacer_eleve(&mut c, a).unwrap();
+
+        // Le journal ne garde que la marque de suppression : plus le nom, ni l'ancien, ni le nouveau.
+        for (table, ligne) in [("eleves", a), ("commentaires_eleve", "co-a")] {
+            let ops: Vec<String> = c.prepare("SELECT operation FROM changements WHERE table_nom=?1 AND ligne_id=?2").unwrap()
+                .query_map(params![table, ligne], |r| r.get(0)).unwrap().flatten().collect();
+            assert_eq!(ops, vec!["suppr".to_string()], "{table} : le journal garde des copies ({ops:?})");
+        }
+        // Une ligne qui reste — la programmation — garde ses états d'avant le
+        // temps que le journal les purge (30 jours après leur envoi) : ils
+        // servent à fusionner champ par champ. Celles de l'élève, aucun.
+        let traces = compte(&c, "SELECT COUNT(*) FROM changements WHERE table_nom <> 'programmations_finale'
+                                   AND (donnees LIKE '%Apolline%' OR avant LIKE '%Apolline%')");
+        assert_eq!(traces, 0, "le nom de l'élève reste dans le journal");
+        assert!(compte(&c, &format!("SELECT COUNT(*) FROM changements WHERE ligne_id='{b}' AND operation='maj'")) > 0,
+            "l'autre élève doit rester au journal");
+        assert_eq!(compte(&c, "SELECT COUNT(*) FROM textes_crdt WHERE ligne_id='co-a'"), 0, "l'historique d'édition reste");
+
+        let outils: String = c.query_row("SELECT eleves_json FROM outils_classe WHERE id='ou1'", [], |r| r.get(0)).unwrap();
+        assert_eq!(outils, format!("[\"{b}\"]"), "outil de classe : élève non retiré");
+
+        let prog: serde_json::Value = serde_json::from_str(
+            &c.query_row("SELECT lignes_json FROM programmations_finale WHERE id='pf1'", [], |r| r.get::<_, String>(0)).unwrap()).unwrap();
+        assert_eq!(prog["groupes"][0]["eleveIds"], serde_json::json!([b]));
+        let objectifs: Vec<&str> = prog["objectifs"].as_array().unwrap().iter().map(|o| o["id"].as_str().unwrap()).collect();
+        assert_eq!(objectifs, vec!["o2", "o3"], "l'objectif qui ne visait que l'élève part avec lui");
+        assert_eq!(prog["objectifs"][0]["pour"], serde_json::json!([format!("eleve:{b}")]));
+
+        // Sa photo est notée effacée : la synchronisation la retirera du stockage au lieu de la ramener.
+        assert_eq!(compte(&c, &format!("SELECT COUNT(*) FROM fichiers_effaces WHERE nom='{photo}' AND publie=0")), 1);
     }
 }
 
