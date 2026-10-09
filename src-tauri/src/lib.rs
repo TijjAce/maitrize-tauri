@@ -126,7 +126,7 @@ pub fn run() {
             conversations_list, conversation_save, conversation_delete,
             reunions_list, reunion_save, reunion_delete,
             projets_list, projet_save, projet_delete,
-            vocaux_list, vocal_transcrire, vocal_delete,
+            vocaux_list, vocal_transcrire, vocal_delete, notes_rapides_ajouter,
             observations_list, observation_save, observation_delete,
             dossiers_bureau,
             whisper_embarque::transcrire_local, whisper_embarque::whisper_tester,

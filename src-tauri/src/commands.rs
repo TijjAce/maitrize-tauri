@@ -1516,6 +1516,70 @@ pub fn setting_set(db: State<Db>, cle: String, valeur: String) -> R<()> {
     crate::sync::set_setting(&c, &cle, &valeur)
 }
 
+/// Les notes rapides, dans les réglages partagés : le panneau 📝 les écrit là.
+const NOTES_RAPIDES: &str = "notesRapides";
+
+/**
+ * Ajoute un point aux notes rapides : ce que le téléphone y envoie.
+ *
+ * Lu et écrit d'un seul tenant, sous le verrou de la base : deux dictées qui
+ * arrivent ensemble ne s'écrasent pas. Rend les notes telles qu'elles sont
+ * désormais, pour le panneau ouvert.
+ */
+#[tauri::command]
+pub fn notes_rapides_ajouter(db: State<Db>, texte: String) -> R<String> {
+    ajouter_aux_notes_rapides(&db.lock(), &texte)
+}
+
+pub(crate) fn ajouter_aux_notes_rapides(c: &rusqlite::Connection, texte: &str) -> R<String> {
+    let notes = avec_un_point_de_plus(&crate::sync::get_setting(c, NOTES_RAPIDES), texte);
+    crate::sync::set_setting(c, NOTES_RAPIDES, &notes)?;
+    Ok(notes)
+}
+
+/**
+ * Les notes avec un point de plus, à la ligne sous ce qui est écrit : « - … ».
+ * Une note de plusieurs lignes reste un seul point : les lignes suivantes se
+ * décalent sous le tiret. Le même calcul existe côté interface
+ * (`avecUnPointDePlus`, notesRapides.ts) : les deux doivent rester d'accord.
+ */
+pub(crate) fn avec_un_point_de_plus(notes: &str, texte: &str) -> String {
+    let lignes: Vec<&str> = texte.lines().map(str::trim).filter(|l| !l.is_empty()).collect();
+    if lignes.is_empty() {
+        return notes.to_string();
+    }
+    let point = format!("- {}", lignes.join("\n  "));
+    let avant = notes.trim_end();
+    if avant.is_empty() { point } else { format!("{avant}\n{point}") }
+}
+
+#[cfg(test)]
+mod tests_notes_rapides {
+    use super::{ajouter_aux_notes_rapides, avec_un_point_de_plus};
+
+    #[test]
+    fn un_point_s_ajoute_a_la_ligne_sous_ce_qui_est_ecrit() {
+        assert_eq!(avec_un_point_de_plus("", "acheter des feutres"), "- acheter des feutres");
+        assert_eq!(avec_un_point_de_plus("- appeler le SESSAD", " rendre les cahiers \n"), "- appeler le SESSAD\n- rendre les cahiers");
+        // Les lignes vides du bas ne s'empilent pas ; le texte de l'enseignant n'est pas touché au-dessus.
+        assert_eq!(avec_un_point_de_plus("Idées\n  - un atelier\n\n\n", "photos"), "Idées\n  - un atelier\n- photos");
+        // Plusieurs lignes : un seul point, la suite décalée sous le tiret.
+        assert_eq!(avec_un_point_de_plus("", "Sortie au musée\n\n  prévoir 3 accompagnateurs"), "- Sortie au musée\n  prévoir 3 accompagnateurs");
+        // Rien à dire : rien ne change.
+        assert_eq!(avec_un_point_de_plus("- a", "  \n "), "- a");
+    }
+
+    #[test]
+    fn les_points_arrives_ensemble_s_ajoutent_tous() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        crate::sync::set_setting(&c, "notesRapides", "penser aux photos").unwrap();
+        assert_eq!(ajouter_aux_notes_rapides(&c, "acheter des feutres").unwrap(), "penser aux photos\n- acheter des feutres");
+        assert_eq!(ajouter_aux_notes_rapides(&c, "réunion jeudi").unwrap(), "penser aux photos\n- acheter des feutres\n- réunion jeudi");
+        assert_eq!(crate::sync::get_setting(&c, "notesRapides"), "penser aux photos\n- acheter des feutres\n- réunion jeudi");
+    }
+}
+
 // ============================================================
 // FICHIERS (images, PDF) — copie dans le dossier de données
 // ============================================================

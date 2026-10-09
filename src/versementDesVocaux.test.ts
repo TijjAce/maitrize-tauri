@@ -11,6 +11,7 @@ const etat = {
   fiches: [] as ObservationEleve[],
   notes: [] as CommentaireEleve[],
   toasts: [] as string[],
+  pointsAjoutes: [] as string[],
 };
 vi.mock("./components/Toaster", () => ({ toast: (message: string) => { etat.toasts.push(message); } }));
 vi.mock("./api", () => ({
@@ -26,6 +27,7 @@ vi.mock("./api", () => ({
       etat.creneaux = etat.creneaux.map((c) => (c.id === id ? { ...c, prevu, bilan } : c));
     },
     vocalDelete: async (id: string) => { etat.effaces.push(id); etat.vocaux = etat.vocaux.filter((v) => v.id !== id); },
+    notesRapidesAjouter: async (texte: string) => { etat.pointsAjoutes.push(texte); return etat.pointsAjoutes.map((t) => `- ${t}`).join("\n"); },
     observationsList: async () => etat.observations,
     elevesList: async () => [{ id: "e1", nom: "Ayub Martin" }, { id: "e2", nom: "Nour Ben" }],
     seancesList: async () => [],
@@ -37,6 +39,7 @@ vi.mock("./api", () => ({
 }));
 
 import { aQuelqueChoseADire, aVerser, verserCeQuiEstPret } from "./versementDesVocaux";
+import { EVT_NOTE_AJOUTEE, type NoteAjoutee } from "./notesRapides";
 import { enAttente } from "./journalEnAttente";
 
 const creneau = (id: string, heureDebut: string, heureFin: string, matiere: string, plus: Partial<Creneau> = {}): Creneau => ({
@@ -49,6 +52,7 @@ const vocal = (id: string, debut: string, texte: string, plus: Partial<Vocal> = 
 
 beforeEach(() => {
   etat.vocaux = []; etat.creneaux = []; etat.observations = []; etat.journal = []; etat.effaces = []; etat.fiches = []; etat.notes = []; etat.toasts = [];
+  etat.pointsAjoutes = [];
   enAttente.clear();
   // Pas de fenêtre sous Node : une cible d'événements en tient lieu.
   vi.stubGlobal("window", new EventTarget());
@@ -114,5 +118,41 @@ describe("le versement automatique", () => {
     await vi.advanceTimersByTimeAsync(16_000);
     expect(etat.creneaux[0].bilan).toBe("Dictée.");
     vi.useRealTimers();
+  });
+});
+
+describe("ce que le téléphone envoie aux notes rapides", () => {
+  it("devient un point des notes rapides, sans chercher de créneau, puis s'efface", async () => {
+    etat.creneaux = [creneau("c1", "10:00", "11:00", "Maths")];
+    etat.vocaux = [
+      vocal("v1", "2026-10-02T10:12:00", "Acheter des feutres", { destination: "notes" }),
+      vocal("n1", "2026-10-02T10:20:00", "Photocopier la fiche", { destination: "notes", dureeS: 0, fichier: "" }),
+      vocal("v2", "2026-10-02T10:30:00", "On a compté jusqu'à 30."),
+    ];
+    const vus: NoteAjoutee[] = [];
+    window.addEventListener(EVT_NOTE_AJOUTEE, (e) => { vus.push((e as CustomEvent<NoteAjoutee>).detail); });
+    await verserCeQuiEstPret();
+    expect(etat.pointsAjoutes).toEqual(["Acheter des feutres", "Photocopier la fiche"]);
+    expect(etat.effaces).toEqual(["v1", "n1", "v2"]);
+    // Le bilan du créneau n'a reçu que ce qui allait au cahier journal.
+    expect(etat.journal.map((j) => j.bilan)).toEqual(["On a compté jusqu'à 30."]);
+    // Le panneau ouvert reçoit les notes telles qu'elles sont, et le point.
+    expect(vus.map((v) => v.texte)).toEqual(["Acheter des feutres", "Photocopier la fiche"]);
+    expect(vus[1].notes).toBe("- Acheter des feutres\n- Photocopier la fiche");
+    expect(etat.toasts.filter((t) => t.includes("aux notes rapides"))).toEqual([
+      "Dictée ajoutée aux notes rapides : « Acheter des feutres »",
+      "Note ajoutée aux notes rapides : « Photocopier la fiche »",
+    ]);
+  });
+
+  it("n'attend pas de créneau, et ne se signale pas comme perdu", async () => {
+    const pourLesNotes = vocal("v1", "2026-10-04T20:00:00", "Rendre les cahiers", { destination: "notes" });
+    expect(aVerser([pourLesNotes], [])).toEqual({ prets: [], sansCreneau: [] });
+    // Rien à écrire : il reste dans Réglages › Téléphone, sans rien ajouter.
+    etat.vocaux = [vocal("v2", "2026-10-04T20:00:00", "[…]", { destination: "notes" })];
+    await verserCeQuiEstPret();
+    expect(etat.pointsAjoutes).toEqual([]);
+    expect(etat.effaces).toEqual([]);
+    expect(etat.toasts).toEqual([]);
   });
 });

@@ -25,8 +25,16 @@ export interface Vocal {
   erreur: string;
   /** Le créneau choisi sur le téléphone, vide s'il n'a rien dit. */
   creneauId?: string;
+  /** « notes » quand le téléphone l'envoie aux notes rapides ; vide pour le cahier journal. */
+  destination?: string;
   dateCreation: string;
 }
+
+/** La destination « notes rapides », telle que le téléphone la dit. */
+export const VERS_LES_NOTES = "notes";
+
+/** Ce vocal va-t-il aux notes rapides plutôt qu'au cahier journal ? */
+export const pourLesNotes = (v: { destination?: string }) => v.destination === VERS_LES_NOTES;
 
 /** Le jour d'un vocal, au format du planning. */
 export const jourDuVocal = (v: { debut: string }) => (v.debut || "").slice(0, 10);

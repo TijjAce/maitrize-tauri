@@ -63,6 +63,17 @@ const AVANT_DE_S_INQUIETER = 1800;
 let ecoute = "", lecteur = null;
 /** Les notes écrites qui attendent, et l'éditeur quand il est ouvert. */
 let notes = [], ecrit = false, brouillon = "";
+/**
+ * Où va ce qu'on dicte ou qu'on écrit : au cahier journal, rangé au créneau,
+ * ou aux notes rapides de l'ordinateur, en un nouveau tiret. Le cahier
+ * journal reste la règle : le choix tombe, comme le jour, après un quart
+ * d'heure en arrière-plan.
+ */
+let pourLesNotes = false;
+/** Ce que l'étiquette de Nuage porte pour les notes rapides. */
+const VERS_LES_NOTES = "notes";
+/** La destination de la dictée en cours, prise quand elle commence. */
+let versDeLaDictee = "";
 /** Le verrou qui empêche l'écran de s'éteindre pendant qu'on dicte. */
 let veille = null;
 /**
@@ -174,6 +185,7 @@ async function demarrer() {
   noeud = ctx.createScriptProcessor(4096, 1, 1);
   morceaux = [];
   debut = horodatage();
+  versDeLaDictee = pourLesNotes ? VERS_LES_NOTES : "";
   depart = Date.now();
   niveau = 0; crete = 0;
   noeud.onaudioprocess = (e) => {
@@ -232,8 +244,10 @@ async function arreter() {
   // On garde d'abord, on envoie ensuite : un vocal ne se perd pas parce que
   // l'ordinateur était éteint.
   try {
-    await invoke("vocal_garder",
-      { debut, dureeS: secondes, wavB64: base64(octets), creneau: creneauChoisi });
+    await invoke("vocal_garder", {
+      debut, dureeS: secondes, wavB64: base64(octets),
+      creneau: versDeLaDictee ? "" : creneauChoisi, destination: versDeLaDictee,
+    });
   } catch (e) {
     souci = String(e);
   }
@@ -257,7 +271,11 @@ const QUART_D_HEURE = 15 * 60 * 1000;
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) cacheeDepuis = Date.now();
-  else if (jourChoisi && cacheeDepuis && Date.now() - cacheeDepuis > QUART_D_HEURE) void allerAuJour("");
+  else if (cacheeDepuis && Date.now() - cacheeDepuis > QUART_D_HEURE) {
+    // Une note rapide commencée garde sa destination : on ne la change pas sous les doigts.
+    if (pourLesNotes && !ecrit) { pourLesNotes = false; rendre(); }
+    if (jourChoisi) void allerAuJour("");
+  }
   if (document.hidden) fermerCamera();
   if (document.hidden && ctx) {
     void arreter().then(() => {
@@ -298,7 +316,10 @@ async function garderLaNote() {
   const texte = (champ ? champ.value : brouillon).trim();
   if (!texte) { ecrit = false; brouillon = ""; rendre(); return; }
   try {
-    await invoke("note_garder", { debut: horodatage(), texte, creneau: creneauChoisi });
+    await invoke("note_garder", {
+      debut: horodatage(), texte,
+      creneau: pourLesNotes ? "" : creneauChoisi, destination: pourLesNotes ? VERS_LES_NOTES : "",
+    });
     ecrit = false; brouillon = ""; souci = "";
   } catch (e) {
     brouillon = texte;
@@ -327,8 +348,12 @@ const jourDuJour = () => maintenantIso().slice(0, 10);
 const jourDeLaDictee = () => jourChoisi || jourDuJour();
 const estAujourdHui = () => jourDeLaDictee() === jourDuJour();
 
-/** L'heure de la dictée, rangée au jour choisi : l'heure est celle de l'horloge, le jour celui dont on parle. */
-const horodatage = () => `${jourDeLaDictee()}${maintenantIso().slice(10)}`;
+/**
+ * L'heure de la dictée, rangée au jour choisi : l'heure est celle de
+ * l'horloge, le jour celui dont on parle. Une note rapide n'a pas de jour à
+ * elle : elle est de maintenant.
+ */
+const horodatage = () => (pourLesNotes ? maintenantIso() : `${jourDeLaDictee()}${maintenantIso().slice(10)}`);
 
 /** Combien de jours en arrière on peut remonter : deux semaines, pas l'année. */
 const JOURS_EN_ARRIERE = 13;
@@ -832,6 +857,7 @@ const ICONES = {
   qr: '<rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1.2"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1.2"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1.2"/><path d="M14 14h2.5v2.5H14zM18 18h2.5v2.5H18zM14 19.5h1.5M19.5 14v1.5"/>',
   coller: '<rect x="8" y="3" width="8" height="4" rx="1.2"/><path d="M8 5H6.5A1.5 1.5 0 0 0 5 6.5v13A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 17.5 5H16"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  liste: '<path d="M9.5 6.5H20M9.5 12H20M9.5 17.5H20"/><path d="M4.5 6.5h1M4.5 12h1M4.5 17.5h1"/>',
   lien: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>',
   attention: '<path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>',
 };
@@ -882,11 +908,30 @@ function barreDuJour() {
   </div>`;
 }
 
+/**
+ * Où va ce qu'on dicte : au cahier journal, rangé au créneau, ou aux notes
+ * rapides de l'ordinateur. Pendant une dictée, le choix est pris : on le
+ * montre, on n'en change pas.
+ */
+function choixDeDestination() {
+  const fige = ctx ? "disabled" : "";
+  const bouton = (id, ico, libelle, on) =>
+    `<button id="${id}" class="${on ? "on" : ""}" aria-pressed="${on}" ${fige}>${icone(ico, "petit")}<span>${libelle}</span></button>`;
+  return `<div class="destination" role="group" aria-label="Où va la dictée">
+    ${bouton("vers-journal", "page", "Cahier journal", !pourLesNotes)}
+    ${bouton("vers-notes", "liste", "Notes rapides", pourLesNotes)}
+  </div>`;
+}
+
+/** À la place du jour et du créneau, ce que deviendra la note : un tiret de plus. */
+const versLesNotes = () =>
+  `<p class="pastille muette">${icone("liste")}<span>Un nouveau tiret dans les notes rapides</span></p>`;
+
 /** Le grand bouton, et l'autre façon de prendre une note : l'écrire. */
 const auRepos = () => `
-  <button class="rond" id="go" aria-label="Dicter">${icone("micro")}</button>
-  <p class="rond-legende">Dicter</p>
-  <button class="tuile seule" id="ecrire">${icone("crayon")}Écrire une note</button>`;
+  <button class="rond" id="go" aria-label="${pourLesNotes ? "Dicter une note rapide" : "Dicter"}">${icone("micro")}</button>
+  <p class="rond-legende">${pourLesNotes ? "Dicter une note rapide" : "Dicter"}</p>
+  <button class="tuile seule" id="ecrire">${icone("crayon")}${pourLesNotes ? "Écrire une note rapide" : "Écrire une note"}</button>`;
 
 /** Pendant qu'on dicte : le temps, le halo qui suit la voix, et de quoi s'arrêter. */
 const enDictee = () => `
@@ -900,7 +945,7 @@ const enDictee = () => `
 
 const editeurDeNote = () => `
   <div class="note-carte">
-    <textarea id="note" rows="5" placeholder="Votre note…">${echapper(brouillon)}</textarea>
+    <textarea id="note" rows="5" placeholder="${pourLesNotes ? "Votre note rapide…" : "Votre note…"}">${echapper(brouillon)}</textarea>
     <div class="deux">
       <button class="btn-doux" id="annuler-note">Annuler</button>
       <button class="btn-plein" id="garder-note">Garder</button>
@@ -926,7 +971,7 @@ function etatDeNuage() {
 
 function rangDAttente(x) {
   const note = x.sorte === "note";
-  const matiere = x.creneau ? matiereDuCreneau(x.creneau) : "";
+  const matiere = x.destination === VERS_LES_NOTES ? "Notes rapides" : x.creneau ? matiereDuCreneau(x.creneau) : "";
   // Rangé à un autre jour qu'aujourd'hui : on le dit en tête de la ligne.
   const jour = jourCourt(String(x.debut).slice(0, 10));
   const sous = [jour, heureDe(x.debut), matiere, !note && x.octets ? poids(x.octets) : ""].filter(Boolean).map(echapper).join(" · ");
@@ -1060,8 +1105,8 @@ function rendre() {
   const pret = relais.relie && relais.connecte;
   const parNuage = !relais.relie ? carteNuage() : !relais.connecte ? carteConnexion() : `
     <section class="heros">
-      ${barreDuJour()}
-      ${bandeauCreneau()}
+      ${choixDeDestination()}
+      ${pourLesNotes ? versLesNotes() : barreDuJour() + bandeauCreneau()}
       ${enCours ? enDictee() : ecrit ? editeurDeNote() : auRepos()}
     </section>
     ${bulles()}
@@ -1097,6 +1142,8 @@ function rendre() {
   el.querySelectorAll("[data-creneau]").forEach((b) => {
     b.onclick = () => { creneauChoisi = b.dataset.creneau; choixOuvert = false; rendre(); };
   });
+  clic("vers-journal", () => { pourLesNotes = false; rendre(); });
+  clic("vers-notes", () => { pourLesNotes = true; choixOuvert = false; rendre(); });
   clic("ecrire", () => { ecrit = true; rendre(); document.getElementById("note")?.focus(); });
   clic("annuler-note", () => { ecrit = false; brouillon = ""; rendre(); });
   clic("garder-note", () => { void garderLaNote(); });

@@ -1129,6 +1129,9 @@ pub struct Vocal {
     /// Le créneau choisi sur le téléphone, vide s'il n'a rien dit.
     #[serde(default)]
     pub creneau_id: String,
+    /// « notes » quand le téléphone l'envoie aux notes rapides ; vide pour le cahier journal.
+    #[serde(default)]
+    pub destination: String,
     #[serde(default)]
     pub date_creation: String,
 }
@@ -1144,6 +1147,7 @@ impl Vocal {
             etat: r.get("etat")?,
             erreur: r.get("erreur")?,
             creneau_id: r.get("creneau_id").unwrap_or_default(),
+            destination: r.get("destination").unwrap_or_default(),
             date_creation: r.get("date_creation")?,
         })
     }

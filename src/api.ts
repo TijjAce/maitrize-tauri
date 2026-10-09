@@ -636,6 +636,8 @@ export const api = {
   // La transcription chauffe la machine : l'indicateur le dit tant qu'elle dure (voir calculEnCours).
   vocalTranscrire: (id: string) => pendant(invoke<Vocal>("vocal_transcrire", { id }), "d'une dictée du téléphone"),
   vocalDelete: (id: string) => invoke<void>("vocal_delete", { id }),
+  /** Un point de plus aux notes rapides, « - … » ; rend les notes telles qu'elles sont désormais. */
+  notesRapidesAjouter: (texte: string) => invoke<string>("notes_rapides_ajouter", { texte }),
 
   projetsList: () => invoke<ProjetClasse[]>("projets_list"),
   projetSave: (projet: ProjetClasse) => invoke<ProjetClasse>("projet_save", { projet }),
