@@ -202,6 +202,9 @@ export function verbesDuTexte(texte: string): string[] {
   return sortie;
 }
 
+/** Le verbe de consigne d'un mot, quelle que soit sa forme : « Découpe » → « découper » ; rien s'il n'en est pas un. */
+export const verbeDeLaForme = (mot: string): string | undefined => FORMES.get(plat(mot));
+
 /** Les verbes d'une consigne, dans l'ordre du texte, une fois chacun — ceux qui ont un picto. */
 export const verbesDe = (texte: string, lexique: Lexique): string[] => verbesDuTexte(texte).filter((v) => lexique[v]);
 

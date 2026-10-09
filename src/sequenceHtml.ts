@@ -10,6 +10,7 @@ import { formatDuree, type Jeu, type PieceJointe, type Seance, type Sequence } f
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 import { colonnesDuTableau, escapeHtml } from "./print";
 import { jeuxCites, reglesImprimees, sansMarqueurs } from "./jeuxCites";
+import { lireConsignes } from "./tapuscrit";
 
 const liste = <T>(json: string | null | undefined): T[] => {
   try { const v = JSON.parse(json || "[]"); return Array.isArray(v) ? v : []; } catch { return []; }
@@ -65,6 +66,7 @@ export function htmlDeLaSequence(
       <h3>Séance ${s.numero} — ${escapeHtml(s.titre)}</h3>
       <div class="meta">${formatDuree(s.duree)}${s.date ? " · " + new Date(s.date).toLocaleDateString("fr-FR") : ""}</div>
       ${s.objectifs ? `<div class="label">Objectifs</div><div class="pre">${escapeHtml(s.objectifs)}</div>` : ""}
+      ${lireConsignes(s.consignes).length ? `<div class="label">Consignes pour les élèves</div><ol class="consignes">${lireConsignes(s.consignes).map((c) => `<li>${escapeHtml(c)}</li>`).join("")}</ol>` : ""}
       ${comps.length ? `<div class="label">Compétences</div>${comps.map((c) => `<span class="chip">${escapeHtml(labelCourt(c))}</span>`).join("")}` : ""}
       ${s.deroulement ? `<div class="label">Déroulement</div>${rendreTexte(s.deroulement)}${reglesImprimees(jeuxCites(sansMarqueurs(s.deroulement), jeux))}` : ""}
       ${grid.length ? `<table class="colonnes">${colonnesDuTableau(grid[0])}${grid.map((row, r) => `<tr>${row.map((c) => r === 0 ? `<th>${escapeHtml(c)}</th>` : `<td>${rendreTexte(c)}</td>`).join("")}</tr>`).join("")}</table>` : ""}

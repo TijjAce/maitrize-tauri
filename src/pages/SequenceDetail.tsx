@@ -29,6 +29,8 @@ import { htmlDeLaSequence, imagesDeLaSequence } from "../sequenceHtml";
 import { useCorrecteur, ZoneCorrigeable } from "../components/CorrigerSelection";
 import { ExercicesDesManuels } from "../components/ExercicesDesManuels";
 import { libelleDeProgrammation } from "../programmation";
+import { ConsignesSeance, TapuscritVue } from "../components/Tapuscrit";
+import { lireConsignes } from "../tapuscrit";
 
 export default function SequenceDetail() {
   const { id } = useParams();
@@ -528,6 +530,10 @@ export function SeanceForm({ seance, cycle = "", sequence, onClose, onSaved }: {
         <Textarea value={s.objectifs} onChange={(e) => up({ objectifs: e.target.value })} placeholder="Ce que les élèves doivent apprendre…" />
       </Card>
 
+      <Card titre="Consignes pour les élèves">
+        <ConsignesSeance valeur={s.consignes ?? ""} onChange={(consignes) => up({ consignes })} />
+      </Card>
+
       <Card titre="Compétences">
         {comps.length > 0 && (
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
@@ -645,6 +651,7 @@ export function SeanceReadView({ seance: s, onClose, onEdit }: { seance: Seance;
         {s.date && <span className="chip">{new Date(s.date).toLocaleDateString("fr-FR")}</span>}
       </div>
       {s.objectifs && <Section titre="Objectifs"><div style={{ whiteSpace: "pre-wrap" }}>{s.objectifs}</div></Section>}
+      {lireConsignes(s.consignes).length > 0 && <Section titre="Consignes pour les élèves"><TapuscritVue consignes={lireConsignes(s.consignes)} /></Section>}
       {comps.length > 0 && <Section titre="Compétences">
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {comps.map((c, i) => <span key={i} className="chip" style={{ background: "var(--accent-soft)", color: "var(--accent)" }} title={estManuelle(c) ? "Sous-compétence écrite à la main" : c.referentielNom}>{estManuelle(c) ? "✍️ " : ""}{labelCourt(c)}</span>)}

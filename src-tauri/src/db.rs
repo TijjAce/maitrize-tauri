@@ -900,6 +900,11 @@ pub(crate) fn migrate(conn: &Connection) {
     conn.execute("ALTER TABLE sequences ADD COLUMN etat TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE sequences ADD COLUMN date_maj TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE seances ADD COLUMN date_maj TEXT NOT NULL DEFAULT ''", []).ok();
+    // Les consignes de la séance, telles que l'élève les entend : une par
+    // ligne, bornées, pour qu'on sache ce qui se traduit en pictogrammes. NULL
+    // permis : une version plus ancienne, sur un autre ordinateur, envoie la
+    // ligne sans ce champ.
+    conn.execute("ALTER TABLE seances ADD COLUMN consignes TEXT", []).ok();
     // Le bureau commun sur S3, essayé avant les dossiers partagés, gardait ici
     // un accès au stockage : on ne laisse pas traîner de clé devenue inutile.
     conn.execute("DELETE FROM settings WHERE cle = 'commun'", []).ok();

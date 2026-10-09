@@ -786,6 +786,94 @@ pub fn arasaac_pour_consignes(etat: tauri::State<BanqueArasaac>, mots: Vec<Strin
         .collect())
 }
 
+/**
+ * Ce qu'un mot de consigne demande à la banque, pour le tapuscrit d'une
+ * séance : les formes à essayer, dans l'ordre. Les verbes d'abord, à
+ * l'infinitif — « Découpe » cherche « découper » —, puis le mot tel qu'il est
+ * écrit et son singulier.
+ */
+#[derive(Deserialize, Debug, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct MotATraduire {
+    #[serde(default)]
+    pub verbes: Vec<String>,
+    #[serde(default)]
+    pub noms: Vec<String>,
+}
+
+/// Combien un dessin parle de l'école : le matériel, les tâches, l'espace et
+/// les gens de la classe, les nombres, les formes et la langue d'abord ; le
+/// vocabulaire de base ensuite. Un mot de grammaire — « son » possessif — ne
+/// dessine pas le mot qu'on cherche.
+fn poids_en_classe(p: &Picto) -> i32 {
+    p.categories
+        .iter()
+        .map(|c| match c.as_str() {
+            "educational material" | "educational task" | "educational space" | "core vocabulary-education" | "educational staff"
+            | "students" | "mathematics" | "number" | "geometry" | "shape" | "language" | "lexicon" | "letter"
+            | "orthographic sign" | "library science" | "color" | "basic concepts" => 4,
+            c if c.starts_with("core vocabulary") => 2,
+            "possessive adjective" | "possessive pronoun" | "article" | "pronoun" | "personal pronoun" | "conjunction" => -2,
+            _ => 0,
+        })
+        .max()
+        .unwrap_or(0)
+}
+
+/**
+ * Le dessin d'un mot de consigne, dans le sens de la classe : parmi ceux qui
+ * portent exactement ce mot, le mieux classé — l'étiquette qu'on colle, pas
+ * celle d'un vêtement ; le feutre qui écrit, pas le chapeau. À égalité, celui
+ * dont c'est le libellé, puis celui dont le libellé commence par lui
+ * (« nombres » pour « nombre »), puis le premier de la banque. Un verbe
+ * préfère un dessin de verbe, un nom l'évite. Les dessins sensibles ne se
+ * proposent pas.
+ */
+pub fn picto_en_classe<'a>(index: &'a Index, cherche: &str, verbe: bool) -> Option<&'a Picto> {
+    let note = |p: &Picto| {
+        let dessin_de_verbe = p.categories.iter().any(|c| c == "verb");
+        let sens = match (verbe, dessin_de_verbe) {
+            (true, true) => 6,
+            (false, true) => -3,
+            _ => 0,
+        };
+        let libelle = if p.mot == cherche { 2 } else { i32::from(p.mot.starts_with(cherche)) };
+        poids_en_classe(p) * 2 + libelle + sens
+    };
+    let mut meilleur: Option<(&Picto, i32)> = None;
+    for p in index.pictos.iter().filter(|p| !p.sensible && p.mots.iter().any(|m| m == cherche)) {
+        let n = note(p);
+        if meilleur.map_or(true, |(_, m)| n > m) {
+            meilleur = Some((p, n));
+        }
+    }
+    meilleur.map(|(p, _)| p)
+}
+
+/// Le dessin d'un mot de consigne, essayé forme après forme ; rien plutôt qu'une approximation.
+pub fn traduire_mot(index: &Index, mot: &MotATraduire, present: &dyn Fn(&Picto) -> bool) -> Option<PictoConsigne> {
+    let essais = mot.verbes.iter().map(|v| (v, true)).chain(mot.noms.iter().map(|n| (n, false)));
+    for (forme, verbe) in essais {
+        let cherche = forme.trim().to_lowercase();
+        if cherche.is_empty() {
+            continue;
+        }
+        if let Some(p) = picto_en_classe(index, &cherche, verbe).filter(|p| present(p)) {
+            return Some(PictoConsigne { id: p.id, mot: cherche, scolaire: est_scolaire(p) });
+        }
+    }
+    None
+}
+
+/// Les pictos des mots d'une consigne, pour le tapuscrit d'une séance : un par mot demandé, dans l'ordre.
+#[tauri::command(async)]
+pub fn arasaac_pour_tapuscrit(etat: tauri::State<BanqueArasaac>, mots: Vec<MotATraduire>) -> Result<Vec<Option<PictoConsigne>>, String> {
+    let index = charger_index(&etat)?;
+    let dossier = images_dir();
+    let present = |p: &Picto| dossier.join(format!("{}.png", p.id)).exists();
+    Ok(mots.iter().map(|m| traduire_mot(&index, m, &present)).collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -821,6 +909,52 @@ mod tests {
         // Les thèmes aussi répondent à tous les mots.
         let t = themes_des_mots(&i, &["colorier".into()]);
         assert_eq!(t.iter().map(|c| c.nom.as_str()).collect::<Vec<_>>(), vec!["educational task", "verb"]);
+    }
+
+    #[test]
+    fn un_mot_du_tapuscrit_prend_le_sens_de_la_classe() {
+        let mut i = index_exemple();
+        // Dans l'ordre de la banque : par numéro.
+        i.pictos.extend([
+            picto_mots(2510, &["colle"], &["educational material"]),
+            picto_mots(2511, &["coller"], &["verb", "educational task"]),
+            picto_mots(9919, &["étiquette"], &["clothing industry", "clothes"]),
+            picto_mots(24757, &["coller", "étiquette"], &["verb", "educational task"]),
+            picto_mots(27749, &["étiquette"], &["educational material"]),
+            picto_mots(2572, &["chapeau", "feutre"], &["accessories", "clothes"]),
+            picto_mots(3246, &["feutre"], &["educational material"]),
+            picto_mots(5525, &["non"], &["verb"]),
+            picto_mots(5526, &["non"], &["adverb", "core vocabulary-communication"]),
+            picto_mots(8075, &["hutte", "case"], &["residential building"]),
+            picto_mots(12272, &["son"], &["possessive adjective", "possessive pronoun"]),
+            picto_mots(27073, &["son"], &["physics"]),
+            picto_mots(34361, &["lettre"], &["letter", "core vocabulary-communication"]),
+            picto_mots(24731, &["combien y en a-t-il ?", "nombre"], &["expression", "mathematics"]),
+            picto_mots(34771, &["nombres", "nombre"], &["number"]),
+        ]);
+        i.pictos.insert(5, picto_mots(2688, &["lettre"], &["mass media", "core vocabulary-communication"]));
+        let mut sensible = picto_mots(40000, &["feutre"], &["educational material"]);
+        sensible.sensible = true;
+        i.pictos.insert(0, sensible);
+        let tout = |_: &Picto| true;
+        let nom = |mot: &str| MotATraduire { verbes: vec![], noms: vec![mot.into()] };
+        let id = |m: MotATraduire| traduire_mot(&i, &m, &tout).map(|p| p.id);
+        assert_eq!(id(nom("étiquette")), Some(27749), "l'étiquette qu'on colle, pas celle d'un vêtement");
+        assert_eq!(id(nom("feutre")), Some(3246), "le feutre qui écrit, pas le chapeau ; jamais un dessin sensible");
+        assert_eq!(id(nom("non")), Some(5526), "la négation, pas un verbe");
+        assert_eq!(id(nom("son")), Some(27073), "le son qu'on entend, pas le possessif");
+        assert_eq!(id(nom("lettre")), Some(34361), "la lettre de l'alphabet, pas le courrier");
+        assert_eq!(id(nom("nombre")), Some(34771), "le libellé le plus proche du mot départage");
+        // « Colle » en tête de consigne est un verbe : coller, pas le tube de colle.
+        assert_eq!(id(MotATraduire { verbes: vec!["coller".into()], noms: vec!["colle".into()] }), Some(2511));
+        assert_eq!(id(nom("colle")), Some(2510));
+        // Les formes s'essaient dans l'ordre : le pluriel absent, le singulier répond.
+        assert_eq!(id(MotATraduire { verbes: vec![], noms: vec!["étiquettes".into(), "étiquette".into()] }), Some(27749));
+        // Un seul dessin, d'un autre sens : il se propose, l'enseignant le change ou le retire.
+        assert_eq!(id(nom("case")), Some(8075));
+        assert_eq!(id(nom("licorne")), None);
+        // Un dessin dont l'image manque sur cet ordinateur ne se propose pas.
+        assert_eq!(traduire_mot(&i, &nom("feutre"), &|p: &Picto| p.id != 3246).map(|p| p.id), None);
     }
 
     #[test]
