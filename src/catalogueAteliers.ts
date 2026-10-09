@@ -7,7 +7,7 @@ export const ONGLETS = [
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "trous", "motsMeles", "cursive",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "comparer", "calcul", "arbre", "posees", "fractions", "oie", "heure", "monnaie", "mesures", "geometrie", "solides", "deplacements", "donnees", "numeration",
-  "carteMentale",
+  "carteMentale", "taches",
 ] as const;
 export type Onglet = typeof ONGLETS[number];
 
@@ -168,6 +168,14 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Une enquête et son relevé par bâtons, le tableau, le diagramme en barres à lire ou à construire, le tableau à double entrée des formes et des couleurs, des tableaux à compléter, des problèmes." },
       { id: "numeration", nom: "Grands nombres et décimaux", icone: "💯", cycles: "Cycle 3",
         quoi: "Tableau de numération, écriture en lettres, décomposition, comparaison, encadrement." },
+    ],
+  },
+  {
+    id: "evaluer", libelle: "✅ Évaluer",
+    aide: "Une question par carte, sans fioritures : savoir où en est chaque élève, en mathématiques comme en français.",
+    outils: [
+      { id: "taches", nom: "Cartes à tâches", icone: "🧷", cycles: "Cycles 1 à 3",
+        quoi: "Des cartes à pinces et des cartes à écrire, une question chacune : solides, figures, heure, monnaie, nombres, calcul, aire, devinettes, sons, ponctuation, conjugaison… — numérotées, avec la fiche réponse, le corrigé, ou la réponse au dos pour se corriger seul." },
     ],
   },
   {
