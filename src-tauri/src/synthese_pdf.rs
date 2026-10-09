@@ -1,5 +1,5 @@
 // Génère l'export « Synthèse des acquis fin GS » en reconstruisant le tableau
-// officiel (mise en page très proche du gabarit MEN) avec printpdf, mais avec
+// officiel (mise en page très proche du modèle national) avec printpdf, mais avec
 // des cellules d'observation qui s'agrandissent selon le texte et un saut de
 // page automatique. Approche choisie plutôt que la superposition sur le PDF
 // d'origine, afin que les commentaires longs ne soient jamais tronqués.
@@ -129,11 +129,12 @@ impl Layout {
     fn nouvelle_page(&mut self, premiere: bool) {
         self.pages.push(vec![]);
         self.y = MT;
-        // L'en-tête (logo, titre, ligne des colonnes) n'apparaît que sur la 1re
-        // page, comme dans le gabarit officiel ; les pages suivantes continuent
-        // directement le tableau.
+        // L'en-tête (titre, ligne des colonnes) n'apparaît que sur la 1re page,
+        // comme dans le gabarit officiel ; les pages suivantes continuent
+        // directement le tableau. Pas de logo du ministère : la feuille est
+        // faite par l'enseignant avec Maitrize, pas éditée par l'institution.
         if premiere {
-            self.y = 45.0;
+            self.y = MT + 6.0;
             self.text_center(W / 2.0, self.y, 11.0, true, col_txt(),
                 "Synthèse des acquis scolaires de l'élève à l'issue de la dernière année de la scolarité à l'école maternelle");
             self.y += lh(11.0) + 4.0;
@@ -198,8 +199,6 @@ impl Layout {
     /// Domaine standard : items à gauche (bloc/label/3 positions) + une cellule
     /// d'observation unique à droite, le tout à hauteur extensible.
     fn domaine(&mut self, dom: &SynDomIn) {
-        self.bande_titre(&dom.titre);
-
         // Pré-calcule la hauteur de chaque item et celle de l'observation.
         let mut item_lignes: Vec<Vec<String>> = vec![];
         let mut item_h: Vec<f32> = vec![];
@@ -209,17 +208,35 @@ impl Layout {
             item_lignes.push(l);
             item_h.push(h);
         }
+        // Un bloc dont le libellé est plus haut que ses items les agrandit : le
+        // libellé ne déborde pas sur le bloc suivant.
+        let mut i = 0usize;
+        while i < dom.items.len() {
+            let bloc = dom.items[i].bloc.clone();
+            let mut span = 1usize;
+            if bloc.is_some() {
+                while i + span < dom.items.len() && dom.items[i + span].bloc == bloc { span += 1; }
+            }
+            if let Some(b) = &bloc {
+                let besoin = wrap(b, C_BLOC.1, 8.0).len() as f32 * lh(8.0) + 3.0;
+                let groupe_h: f32 = item_h[i..i + span].iter().sum();
+                if groupe_h < besoin { item_h[i + span - 1] += besoin - groupe_h; }
+            }
+            i += span;
+        }
         let somme_items: f32 = item_h.iter().sum();
         let obs_lignes = wrap(&dom.observation, C_OBS.1, 8.0);
         let obs_h = if dom.observation.trim().is_empty() { 0.0 } else { obs_lignes.len() as f32 * lh(8.0) + 3.0 };
         let bloc_total = somme_items.max(obs_h).max(7.0);
 
         // Saut de page si le domaine ne tient pas (et qu'il peut tenir sur une
-        // page entière) : on évite de couper au milieu d'un domaine.
+        // page entière) : on évite de couper au milieu d'un domaine, et son
+        // titre part avec lui plutôt que de rester seul en bas de page.
         let page_utile = (H - MB) - MT - 15.0; // moins l'en-tête répété
-        if self.reste() < bloc_total + 2.0 && bloc_total <= page_utile {
+        if self.reste() < 6.5 + bloc_total + 2.0 && bloc_total <= page_utile {
             self.nouvelle_page(false);
         }
+        self.bande_titre(&dom.titre);
 
         let y0 = self.y;
         // Cellule observation (fond blanc) sur toute la hauteur du domaine.
@@ -424,73 +441,7 @@ pub fn generer(data: &SyntheseDonnees) -> Result<Vec<u8>, String> {
         dessiner(&layer, cmds);
     }
 
-    let bytes = doc.save_to_bytes().map_err(|e| e.to_string())?;
-    ajouter_logo(bytes)
-}
-
-// Intègre le logo officiel (Ministère de l'Éducation nationale) en haut à
-// gauche de la 1re page. printpdf est compilé sans support image : on post-
-// traite donc le PDF avec lopdf (déjà présent) en injectant un XObject image
-// (RGB brut compressé FlateDecode) et une commande de dessin.
-fn ajouter_logo(bytes: Vec<u8>) -> Result<Vec<u8>, String> {
-    use lopdf::{Document, Object, Stream};
-    const LOGO: &[u8] = include_bytes!("../resources/logo_men.rgb.flate");
-    const LW: i64 = 461;
-    const LH: i64 = 337;
-
-    let mut doc = Document::load_mem(&bytes).map_err(|e| e.to_string())?;
-    let page1 = match doc.get_pages().get(&1) { Some(id) => *id, None => return Ok(bytes) };
-
-    let mut img_dict = lopdf::Dictionary::new();
-    img_dict.set("Type", "XObject");
-    img_dict.set("Subtype", "Image");
-    img_dict.set("Width", LW);
-    img_dict.set("Height", LH);
-    img_dict.set("ColorSpace", Object::Name(b"DeviceRGB".to_vec()));
-    img_dict.set("BitsPerComponent", 8i64);
-    img_dict.set("Filter", Object::Name(b"FlateDecode".to_vec()));
-    let img_id = doc.add_object(Stream::new(img_dict, LOGO.to_vec()));
-
-    // Ajoute /MtzLogo dans les ressources XObject de la page.
-    let page = doc.get_dictionary(page1).map_err(|e| e.to_string())?.clone();
-    let res_id = match page.get(b"Resources") { Ok(Object::Reference(r)) => Some(*r), _ => None };
-    let ajoute = |rdict: &mut lopdf::Dictionary, img_id: lopdf::ObjectId| {
-        let mut xo = rdict.get(b"XObject").and_then(|o| o.as_dict()).cloned().unwrap_or_default();
-        xo.set("MtzLogo", Object::Reference(img_id));
-        rdict.set("XObject", Object::Dictionary(xo));
-    };
-    if let Some(rid) = res_id {
-        let rdict = doc.get_object_mut(rid).and_then(Object::as_dict_mut).map_err(|e| e.to_string())?;
-        ajoute(rdict, img_id);
-    } else {
-        let pdict = doc.get_object_mut(page1).and_then(Object::as_dict_mut).map_err(|e| e.to_string())?;
-        if let Ok(rdict) = pdict.get_mut(b"Resources").and_then(Object::as_dict_mut) {
-            ajoute(rdict, img_id);
-        } else {
-            let mut rd = lopdf::Dictionary::new();
-            let mut xo = lopdf::Dictionary::new();
-            xo.set("MtzLogo", Object::Reference(img_id));
-            rd.set("XObject", Object::Dictionary(xo));
-            pdict.set("Resources", Object::Dictionary(rd));
-        }
-    }
-
-    // Dessine le logo en haut à gauche (mm → points). Largeur 40 mm.
-    let mm = 2.834645_f32;
-    let w_mm = 40.0_f32;
-    let h_mm = w_mm * LH as f32 / LW as f32;
-    let x_mm = 10.0_f32;
-    let y_haut = 7.0_f32; // depuis le haut de la page
-    let y_bas = H - y_haut - h_mm; // depuis le bas (origine PDF)
-    let contenu = format!(
-        "q {:.2} 0 0 {:.2} {:.2} {:.2} cm /MtzLogo Do Q",
-        w_mm * mm, h_mm * mm, x_mm * mm, y_bas * mm
-    );
-    doc.add_page_contents(page1, contenu.into_bytes()).map_err(|e| e.to_string())?;
-
-    let mut out = Vec::new();
-    doc.save_to(&mut out).map_err(|e| e.to_string())?;
-    Ok(out)
+    doc.save_to_bytes().map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
