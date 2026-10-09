@@ -1,10 +1,12 @@
 // ── Mes pictos ─────────────────────────────────────────────────────────────
 //
 // Les pictos que l'enseignant garde pour lui : dessinés par l'IA, à la
-// manière d'ARASAAC, quand ni ARASAAC ni Sclera n'ont le mot ; ou pris dans
-// Sclera, que les ateliers ne savent pas chercher. On les retrouve ensuite
-// partout où l'on cherche une image par son mot : les listes de mots, le
-// choix d'un picto, le loto.
+// manière d'ARASAAC, quand ni ARASAAC ni Sclera n'ont le mot ; pris dans
+// Sclera, que les ateliers ne savent pas chercher ; ou photographiés avec le
+// téléphone — l'objet de la classe, pour l'élève qui n'entre pas dans
+// l'abstraction d'un pictogramme. On les retrouve ensuite partout où l'on
+// cherche une image par son mot : les listes de mots, le choix d'un picto,
+// le loto.
 //
 // Chacun a un numéro à lui, négatif comme les images de l'enseignant — la
 // banque ARASAAC n'en a que de positifs —, mais durable : il se range dans
@@ -19,7 +21,7 @@
 import type { PictoArasaac } from "./api";
 import { infoBanque } from "./pictosAppoint";
 
-export type OrigineMonPicto = "ia" | "sclera" | "bajard";
+export type OrigineMonPicto = "ia" | "sclera" | "bajard" | "photo";
 
 export interface MonPicto {
   id: number;
@@ -43,6 +45,8 @@ const PLAGES: [OrigineMonPicto, number, number][] = [
   ["ia", -1_000_000_000, -1_400_000_000],
   ["sclera", -1_400_000_000, -1_800_000_000],
   ["bajard", -1_800_000_000, -2_100_000_000],
+  // Les photos du téléphone : la même plage que `telephone.rs`, qui les range.
+  ["photo", -2_100_000_000, -2_147_000_000],
 ];
 
 /** D'où vient un picto gardé ; rien pour un autre numéro. */
@@ -63,7 +67,19 @@ export const ETIQUETTES: Record<OrigineMonPicto, { court: string; long: string }
   ia: { court: "IA", long: "Dessiné par l'IA à la manière d'ARASAAC — ce n'est pas un pictogramme ARASAAC" },
   sclera: { court: "Sclera", long: "Pris dans Sclera (sclera.be)" },
   bajard: { court: "Bajard", long: "Pris dans les consignes de F. Bajard" },
+  photo: { court: "Photo", long: "Une photo prise avec le téléphone" },
 };
+
+/** Une photo de l'enseignant, et non un dessin. */
+export const estPhoto = (id: unknown): id is number => origineDe(id) === "photo";
+
+/** Émis quand Mes pictos change — un picto gardé, renommé, oublié, une photo arrivée du téléphone. */
+export const EVT_MES_PICTOS = "maitrize:mes-pictos";
+const annoncer = () => { if (typeof window !== "undefined") window.dispatchEvent(new Event(EVT_MES_PICTOS)); };
+
+/** Le type d'une image d'après son nom de fichier : les photos sont des JPEG, les dessins des PNG. */
+export const typeDImage = (fichier: string) =>
+  /\.jpe?g$/i.test(fichier) ? "image/jpeg" : /\.webp$/i.test(fichier) ? "image/webp" : "image/png";
 
 /** La clé d'un mot : sans majuscules ni accents, les espaces resserrés. */
 export const cleDuMot = (mot: string) => mot.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
@@ -102,10 +118,21 @@ export function chercherDans(liste: MonPicto[], q: string): MonPicto[] {
   return [...exacts, ...liste.filter((p) => !exacts.includes(p) && cleDuMot(p.mot).includes(c))];
 }
 
-/** Le picto gardé pour ce mot exactement : le plus récent, s'il y en a plusieurs. */
+const ARTICLES = /^(?:l'|le |la |les |un |une |des |du |de la |de l'|de |d')/;
+
+/** La clé d'un nom pour rapprocher deux images : sans article, majuscule ni accent — « les ciseaux » répond à « ciseaux ». */
+export const cleDeNom = (mot: string) => cleDuMot(mot).replace(/’/g, "'").replace(ARTICLES, "").trim();
+
+/**
+ * Le picto gardé pour ce mot : écrit pareil d'abord, sinon au même nom
+ * article mis à part — la photo « les ciseaux » pour le mot « ciseaux ». Le
+ * plus récent, s'il y en a plusieurs.
+ */
 export function pourLeMot(liste: MonPicto[], mot: string): MonPicto | undefined {
+  const recents = (l: MonPicto[]) => [...l].sort((a, b) => b.date.localeCompare(a.date))[0];
   const c = cleDuMot(mot);
-  return liste.filter((p) => cleDuMot(p.mot) === c).sort((a, b) => b.date.localeCompare(a.date))[0];
+  const n = cleDeNom(mot);
+  return recents(liste.filter((p) => cleDuMot(p.mot) === c)) ?? (n ? recents(liste.filter((p) => cleDeNom(p.mot) === n)) : undefined);
 }
 
 /** Un picto gardé sous la forme de ceux de la banque : il se range dans les mêmes listes. */
@@ -145,17 +172,18 @@ export async function lireMesPictos(): Promise<MonPicto[]> {
   return lireFiches(await api.settingsPrefixe(PREFIXE_MES_PICTOS).catch(() => ({})));
 }
 
-/** Garde une image dans Mes pictos, sous son mot. `base64` : un PNG. */
-export async function garderMonPicto(o: { mot: string; base64: string; origine: OrigineMonPicto; precision?: string }): Promise<MonPicto> {
+/** Garde une image dans Mes pictos, sous son mot. `base64` : un PNG, ou un JPEG pour une photo (`ext`). */
+export async function garderMonPicto(o: { mot: string; base64: string; origine: OrigineMonPicto; precision?: string; ext?: "png" | "jpg" }): Promise<MonPicto> {
   const { api } = await import("./api");
   const mot = o.mot.trim();
   if (!mot) throw new Error("Écrivez le mot de ce picto.");
   const precision = o.precision?.trim() ?? "";
   const p: MonPicto = {
-    id: nouvelIdMonPicto(o.origine), mot, fichier: await api.fichierSave("picto.png", o.base64), origine: o.origine,
+    id: nouvelIdMonPicto(o.origine), mot, fichier: await api.fichierSave(`picto.${o.ext ?? "png"}`, o.base64), origine: o.origine,
     date: new Date().toISOString().slice(0, 10), ...(precision ? { precision } : {}),
   };
   await api.settingSet(PREFIXE_MES_PICTOS + p.id, ficheEcrite(p));
+  annoncer();
   return p;
 }
 
@@ -165,6 +193,7 @@ export async function renommerMonPicto(p: MonPicto, mot: string): Promise<MonPic
   if (!mot.trim()) throw new Error("Écrivez le mot de ce picto.");
   const suite = { ...p, mot: mot.trim() };
   await api.settingSet(PREFIXE_MES_PICTOS + p.id, ficheEcrite(suite));
+  annoncer();
   return suite;
 }
 
@@ -176,6 +205,7 @@ export async function renommerMonPicto(p: MonPicto, mot: string): Promise<MonPic
 export async function oublierMonPicto(p: MonPicto): Promise<void> {
   const { api } = await import("./api");
   await api.settingSet(PREFIXE_MES_PICTOS + p.id, "");
+  annoncer();
 }
 
 /** L'image d'un picto gardé, en data URL. */
@@ -184,7 +214,7 @@ export async function imageDeMonPicto(id: number): Promise<string> {
   const cle = PREFIXE_MES_PICTOS + id;
   const [p] = lireFiches({ [cle]: (await api.settingGet(cle)) ?? "" });
   if (!p) throw new Error("Ce picto n'est plus dans Mes pictos.");
-  return `data:image/png;base64,${await api.fichierRead(p.fichier)}`;
+  return `data:${typeDImage(p.fichier)};base64,${await api.fichierRead(p.fichier)}`;
 }
 
 /** Les pictos de ces mots : ceux d'ARASAAC, puis, pour les mots qu'il n'a pas, ceux qu'on a gardés. */

@@ -5,6 +5,8 @@ import { OptionsFeuille, useOptionsFeuille } from "./OptionsFeuille";
 import { PictosAtelier, useEtatDesPictos } from "./PictosAtelier";
 import { objectifsDesAteliers, propositionsDesAteliers, unionDesCompetences } from "../ateliersCompetences";
 import { feuillesPubliees } from "../optionsFeuille";
+import { useModeDys, useModeImages } from "./PresentationFeuille";
+import { MODES_IMAGES, MODE_IMAGES_DEFAUT } from "../imagesSelonMode";
 
 // ── La feuille de l'atelier, en une ligne ──────────────────────────────────
 //
@@ -31,8 +33,12 @@ export function useResumeDeLaFeuille(atelier: string): string {
   const competences = objectifs.length ? unionDesCompetences(objectifs.map((o) => parObjectif[o.id] ?? [])) : deLAtelier;
   const proposees = React.useSyncExternalStore(propositionsDesAteliers.abonner, () => propositionsDesAteliers.lire(atelier, objectifs[0]?.id));
   const avecPicto = montres.length - sansPicto.length;
+  const [dys] = useModeDys(atelier);
+  const [images] = useModeImages(atelier);
   return [
     consigne.trim() ? "consigne réécrite" : "consigne de l'atelier",
+    dys ? "mode dyslexique" : "",
+    images !== MODE_IMAGES_DEFAUT ? (MODES_IMAGES.find((m) => m.id === images)?.libelle ?? "").toLowerCase() : "",
     !montres.length ? "" : sansPicto.length ? `pictos : ${avecPicto} sur ${montres.length}` : `${montres.length} picto${montres.length > 1 ? "s" : ""}`,
     ...(Object.keys(SANS) as (keyof typeof SANS)[]).filter((c) => contenu[c] && !options[c]).map((c) => SANS[c]),
     competences.length ? `${competences.length} compétence${competences.length > 1 ? "s" : ""}`

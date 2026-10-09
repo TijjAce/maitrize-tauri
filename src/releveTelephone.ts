@@ -9,6 +9,7 @@ import { api, texteErreur, type BilanReleve } from "./api";
 import { attenteApres } from "./syncAuto";
 import { toast } from "./components/Toaster";
 import { transcrireCeQuiAttend } from "./vocauxEnFond";
+import { EVT_MES_PICTOS } from "./mesPictos";
 
 /** Intervalle de fond, en millisecondes : celui de la synchronisation. */
 const PERIODE = 30_000;
@@ -27,12 +28,17 @@ let dernier: EtatReleve | null = null;
 export const derniereReleve = (): EtatReleve | null => dernier;
 
 /** Ce qu'on annonce d'une relève ; rien quand rien n'est arrivé. */
-export function annonceDeLaReleve(b: Pick<BilanReleve, "vocaux" | "notes">): string {
+export function annonceDeLaReleve(b: Pick<BilanReleve, "vocaux" | "notes"> & { photos?: number }): string {
+  const photos = b.photos ?? 0;
   const morceaux: string[] = [];
   if (b.vocaux > 0) morceaux.push(`${b.vocaux} dictée${b.vocaux > 1 ? "s" : ""}`);
   if (b.notes > 0) morceaux.push(`${b.notes} note${b.notes > 1 ? "s" : ""}`);
+  if (photos > 0) morceaux.push(`${photos} photo${photos > 1 ? "s" : ""}`);
   if (!morceaux.length) return "";
-  return `${morceaux.join(" et ")} reçue${b.vocaux + b.notes > 1 ? "s" : ""} du téléphone`;
+  const liste = morceaux.length > 1 ? `${morceaux.slice(0, -1).join(", ")} et ${morceaux[morceaux.length - 1]}` : morceaux[0];
+  const plusieurs = b.vocaux + b.notes + photos > 1;
+  const pictos = photos > 0 ? `, rangée${plusieurs ? "s" : ""} dans Mes pictos` : "";
+  return `${liste} reçue${plusieurs ? "s" : ""} du téléphone${pictos}`;
 }
 
 /** Ce que l'écran dit du dernier passage, en une ligne. */
@@ -86,6 +92,11 @@ async function passage() {
     // Transcrire, puis verser dans le bilan : l'indicateur de transcription et
     // l'annonce du versement disent le reste, sans une annonce de plus ici.
     if (b.vocaux > 0 || b.notes > 0) void transcrireCeQuiAttend();
+    // Une photo nommée est prête tout de suite : on le dit, et les listes de Mes pictos se relisent.
+    if (b.photos > 0) {
+      window.dispatchEvent(new Event(EVT_MES_PICTOS));
+      toast(`${b.photos > 1 ? `${b.photos} photos reçues` : "Une photo reçue"} du téléphone : elle${b.photos > 1 ? "s sont" : " est"} dans Mes pictos, sous le nom donné.`, { icone: "📷", duree: 7000 });
+    }
   } catch (e) {
     echecs += 1;
     prochainDelai = attenteApres(echecs);
