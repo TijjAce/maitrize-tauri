@@ -19,6 +19,7 @@ import { TelephoneNuage } from "../components/TelephoneNuage";
 import { AmisTab } from "./Amis";
 import { listen } from "@tauri-apps/api/event";
 import { Licences } from "../components/Licences";
+import { ChiffrementDisqueCard } from "../components/ChiffrementDisque";
 
 const ONGLETS = [
   ["general", "Général"],
@@ -343,6 +344,11 @@ export default function Reglages() {
           ouvre cette page pour vérifier une sauvegarde, pas pour lire un
           chemin de dossier. Ce qu'il faut voir d'un coup d'œil — la date de
           la dernière copie — reste écrit sur la ligne repliée. */}
+      {/* Avant tout le reste : les dossiers des élèves sont sur ce disque. */}
+      <Famille titre="Sur cet ordinateur">
+        <ChiffrementDisqueCard />
+      </Famille>
+
       <Famille titre="Avec vos collègues">
         <PartagerMesDossiers />
       </Famille>
@@ -376,7 +382,7 @@ export default function Reglages() {
               onChange={(e) => { const f = e.target.files?.[0]; if (f) importer(f); e.target.value = ""; }} />
             <button className="btn" onClick={() => importInput.current?.click()}>⬆️ Importer</button>
             <button className="btn ghost sm" onClick={exporterBase}
-              title="Copie brute de la base, pour l'ouvrir dans un outil SQLite. Elle contient tout, secrets compris : à ne pas laisser traîner.">
+              title="Copie brute de la base, pour l'ouvrir dans un outil SQLite. Elle contient toutes les données des élèves : à ne pas laisser traîner. Les secrets y restent chiffrés, illisibles hors de cet ordinateur.">
               base .sqlite3
             </button>
             <span style={{ fontSize: 13 }}>{dataMsg}</span>

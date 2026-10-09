@@ -397,6 +397,11 @@ export interface DossierDonnees {
   chemin: string; parDefaut: string; personnalise: boolean; octets: number;
 }
 
+/** Le disque de l'ordinateur est-il chiffré ? « nom » : FileVault, BitLocker. */
+export interface ChiffrementDisque {
+  etat: "actif" | "en_cours" | "inactif" | "inconnu"; nom: string;
+}
+
 /** Un passage de la copie du bureau sur l'ordinateur. */
 export interface BilanCopie {
   date: string; fichiers: number; ecrits: number; archives: number; erreurs: string[];
@@ -804,7 +809,7 @@ export const api = {
     invoke<BureauCommun>("commun_ajouter_lien", { nom, lien, motDePasse, dossier }),
   /** Crée un lien de partage sur ce bureau commun, à donner à un collègue. */
   communCreerLien: (bureau: string, dossier: string, motDePasse: string, ecriture: boolean) =>
-    invoke<string>("commun_creer_lien", { bureau, dossier, motDePasse, ecriture }),
+    invoke<{ url: string; expire: string }>("commun_creer_lien", { bureau, dossier, motDePasse, ecriture }),
   /** Ce qu'un dossier Maitrize contient, lu dans son en-tête (JSON, ou ""). */
   communResume: (bureau: string, chemin: string) => invoke<string>("commun_resume", { bureau, chemin }),
   communRenommer: (id: string, nom: string) => invoke<void>("commun_renommer", { id, nom }),
@@ -834,6 +839,8 @@ export const api = {
   diagRapport: (lignes = 200) => invoke<string>("diag_rapport", { lignes }),
   dossierDonneesGet: () => invoke<DossierDonnees>("dossier_donnees_get"),
   dossierDonneesSet: (chemin: string | null) => invoke<DossierDonnees>("dossier_donnees_set", { chemin }),
+  chiffrementDisque: () => invoke<ChiffrementDisque>("chiffrement_disque"),
+  ouvrirReglagesChiffrement: () => invoke<void>("ouvrir_reglages_chiffrement"),
   syncEnvoyer: (amiId: string, texte: string) => invoke<void>("sync_envoyer", { amiId, texte }),
   syncRelever: (amiId: string) => invoke<SyncMessage[]>("sync_relever", { amiId }),
   sequencePartager: (amiId: string, sequenceId: string) => invoke<void>("sequence_partager", { amiId, sequenceId }),

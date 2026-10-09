@@ -101,7 +101,9 @@ fn vers_32(v: Vec<u8>) -> R<[u8; 32]> {
     <[u8; 32]>::try_from(v.as_slice()).map_err(|_| "clé de taille invalide".to_string())
 }
 
+/// Écrit un réglage ; un secret passe sous la clé du trousseau.
 pub(crate) fn set_setting(c: &Connection, cle: &str, valeur: &str) -> R<()> {
+    let valeur = if crate::trousseau::reglage_chiffre(cle) { crate::trousseau::sceller(cle, valeur) } else { valeur.to_string() };
     c.execute(
         "INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)",
         params![cle, valeur],
@@ -109,9 +111,12 @@ pub(crate) fn set_setting(c: &Connection, cle: &str, valeur: &str) -> R<()> {
     Ok(())
 }
 
+/// Lit un réglage, en clair ; vide s'il manque, ou si c'est un secret que la
+/// clé de cet ordinateur n'ouvre pas.
 pub(crate) fn get_setting(c: &Connection, cle: &str) -> String {
-    c.query_row("SELECT valeur FROM settings WHERE cle = ?1", [cle], |r| r.get(0))
-        .optional().ok().flatten().unwrap_or_default()
+    let valeur: String = c.query_row("SELECT valeur FROM settings WHERE cle = ?1", [cle], |r| r.get(0))
+        .optional().ok().flatten().unwrap_or_default();
+    if crate::trousseau::reglage_chiffre(cle) { crate::trousseau::ouvrir(cle, &valeur) } else { valeur }
 }
 
 fn lire_cfg(c: &Connection) -> R<S3Cfg> {
@@ -145,6 +150,7 @@ fn contexte(db: &State<Db>, ami_id: &str) -> R<Ctx> {
         .query_row("SELECT cle_publique, mailbox_id FROM amis WHERE id = ?1", [ami_id], |r| Ok((r.get(0)?, r.get(1)?)))
         .map_err(|_| "Ami introuvable.".to_string())?;
     let cfg = lire_cfg(&c)?;
+    let pv = crate::trousseau::ouvrir_octets(crate::trousseau::CLE_PRIVEE, &pv)?;
     Ok(Ctx { priv_: vers_32(pv)?, pub_: vers_32(pb)?, nom, ami_pub: vers_32(apub)?, mid, cfg })
 }
 
@@ -238,9 +244,7 @@ pub fn sync_config_set(db: State<Db>, endpoint: String, region: String, bucket: 
 /// exactement les mêmes réglages depuis un code.
 fn ecrire_cfg(c: &Connection, endpoint: &str, region: &str, bucket: &str,
               access: &str, secret: Option<&str>) -> R<()> {
-    let set = |k: &str, v: &str| {
-        c.execute("INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)", params![k, v]).ok();
-    };
+    let set = |k: &str, v: &str| { set_setting(c, k, v).ok(); };
     set("sync_endpoint", endpoint.trim());
     set("sync_region", region.trim());
     set("sync_bucket", bucket.trim());

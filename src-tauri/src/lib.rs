@@ -14,6 +14,7 @@ mod whisper_embarque;
 mod webdav;
 mod copie_bureau;
 mod db;
+mod disque;
 mod models;
 mod portable;
 mod seed;
@@ -24,6 +25,7 @@ mod ppi_pdf;
 mod sync;
 mod synthese_pdf;
 mod telephone;
+mod trousseau;
 
 use commands::*;
 use db::Db;
@@ -64,6 +66,8 @@ pub fn run() {
                 let db = tauri::Manager::state::<Db>(&pour_le_menage);
                 let c = db.lock();
                 db::menage_apres_demarrage(&c);
+                // Les secrets encore en clair passent sous la clé du trousseau.
+                trousseau::migrer(&c);
                 drop(c);
                 // Les documents ouverts la veille — bilans, GEVA-Sco — ne restent pas dans le dossier temporaire.
                 commands::purger_temporaires();
@@ -154,6 +158,8 @@ pub fn run() {
             arasaac::arasaac_chercher, arasaac::arasaac_nature, arasaac::arasaac_noms_contenant, arasaac::arasaac_pour_consignes,
             commands::jeu_generer, commands::tla_generer,
             commands::dossier_donnees_get, commands::dossier_donnees_set,
+            // Le disque est-il chiffré ? (FileVault, BitLocker)
+            disque::chiffrement_disque, disque::ouvrir_reglages_chiffrement,
             commands::diag_ecrire, commands::diag_ouvrir, commands::diag_rapport,
             veille::diag_battement, commands::fichier_ouvrir,
             commands::creneau_journal_save,
