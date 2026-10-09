@@ -159,7 +159,8 @@ describe("comparer les nombres, de la maternelle au CM2", () => {
     expect(ms).not.toContain("cn-signe\"");
     expect(ms).not.toContain("Ma feuille de jeu");
     expect(ms).not.toContain("&gt;");
-    expect(ms).toContain("programme de l'école maternelle");
+    // Elle cite le programme de maternelle — en référence, qui ne s'imprime pas.
+    expect(ms).toContain('<span class="reference">Programme de l&#39;école maternelle (2025)');
     // Avant 4 ans, la bataille seule, d'un coup d'œil.
     expect(htmlComparer(paquet(r({ niveau: "c1-avant4" }), 5), r({ niveau: "c1-avant4" }))).not.toContain("La file des points");
     expect(htmlComparer(paquet(r(), 5), r({ grandes: true }))).toContain('class="feuille cn cn-grandes"');

@@ -22,6 +22,7 @@ import {
   type FormatGrille,
 } from "./cartesImprimables";
 import type { MotImage } from "./jeuxSons";
+import { reference } from "./references";
 
 export type Niveau = "PS" | "MS" | "GS";
 
@@ -471,7 +472,9 @@ const formatCartes = (n: Niveau): FormatGrille => (n === "PS" ? { colonnes: 3, l
 /** Les cartes d'un jeu qu'on tient en main : un peu plus petites, toutes de la même taille. */
 const formatJeuDeCartes = (n: Niveau): FormatGrille => (n === "PS" ? { colonnes: 3, lignes: 4, hauteurMm: 50, carre: true } : { colonnes: 4, lignes: 5, hauteurMm: 40, carre: true });
 
-const titre = (t: string, sous = "") => `<div class="titre">${escapeHtml(t)}</div>${sous ? `<div class="sous">${escapeHtml(sous)}</div>` : ""}`;
+/** Le titre, sa ligne de sous-titre, et la référence de la feuille au bout — elle ne s'imprime pas (voir `references`). */
+const titre = (t: string, sous = "", ref = "") =>
+  `<div class="titre">${escapeHtml(t)}</div>${sous || ref ? `<div class="sous">${escapeHtml(sous)}${ref ? ` ${reference(ref)}` : ""}</div>` : ""}`;
 const consigne = (t: string, quoi = "Consigne") => `<div class="regle"><b>${quoi}</b>${escapeHtml(t)}</div>`;
 const prenom = `<div class="ct-prenom">Prénom : ………………………… Date : ……………</div>`;
 const carteImage = (m: MotImage, images: Images, legendes: boolean, classe = "") =>
@@ -613,7 +616,7 @@ function htmlLoto(r: ReglagesCategoriser, images: Images, alea: () => number): s
   // Deux plaques par page : une par joueur, à découper.
   const pages: string[] = [];
   for (let i = 0; i < plaques.length; i += 2) {
-    pages.push(`<div class="page">${i === 0 ? `${titre("Le loto des catégories", "Le loto aveugle de la fiche Éduscol « Catégoriser » : la plaque montre la catégorie, pas les images.")}${consigne(regleDuLoto(r), "Règle du jeu")}` : ""}${plaques.slice(i, i + 2).join("")}</div>`);
+    pages.push(`<div class="page">${i === 0 ? `${titre("Le loto des catégories", "Le loto aveugle : la plaque montre la catégorie, pas les images.", "Fiche Éduscol « Catégoriser » (2023).")}${consigne(regleDuLoto(r), "Règle du jeu")}` : ""}${plaques.slice(i, i + 2).join("")}</div>`);
   }
   const cartes = toutesMelees(r.categories, alea).map((m) => carteImage(m, images, r.legendes));
   return pages.join("") + pagesDeCartes(cartes, CARTES_DU_LOTO, titre("Les cartes à piocher")) + corrige("Le loto des catégories", r.categories);
@@ -696,7 +699,7 @@ function htmlEvaluation(r: ReglagesCategoriser): string {
   const colonnes = OBSERVABLES[r.niveau];
   const corpus = categoriesRangees(r.categories).map((c) => `<li><b>${escapeHtml(c.nom || "…")}</b> : ${escapeHtml(c.mots.map((m) => m.mot).join(", "))}</li>`).join("");
   const ligne = `<tr><td></td>${colonnes.map(() => "<td></td>").join("")}<td></td></tr>`;
-  return `<div class="page">${titre("Grille d'observation — catégoriser", `Programme de l'école maternelle 2025 · Organiser les mots en catégorie et en réseau · ${r.niveau}, ${age}.`)}`
+  return `<div class="page">${titre("Grille d'observation — catégoriser", `Organiser les mots en catégorie et en réseau · ${r.niveau}, ${age}.`, "Programme de l'école maternelle 2025.")}`
     + `<div class="sous">Le corpus :</div><ul class="ct-corpus">${corpus}</ul>`
     + `<table class="ct-grille"><thead><tr><th>Prénom</th>${colonnes.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}<th>Mots à retravailler</th></tr></thead>`
     + `<tbody>${Array.from({ length: 12 }, () => ligne).join("")}</tbody></table>`

@@ -40,7 +40,7 @@ const NOIR = "#1c2233", ROUGE = "#d33a32", GRIS = "#b9c2d6", BLEU = "#2454e6";
 const f2 = (x: number) => x.toFixed(2);
 const entre = (alea: () => number, a: number, b: number) => a + Math.floor(alea() * (b - a + 1));
 
-const SOURCE = `<span style="color:#687087">— Programme de mathématiques du cycle 2, 2024 ; Éduscol, « Initiation à la programmation aux cycles 2 et 3 », 2016.</span>`;
+const SOURCE = `<span class="reference">Programme de mathématiques du cycle 2, 2024 ; Éduscol, « Initiation à la programmation aux cycles 2 et 3 », 2016.</span>`;
 const entete = (titre: string, consigne: string) => `<div class="titre">${titre}</div>
   <div class="sous">Prénom : ........................................ Date : ........................</div>
   <div class="regle">${consigne} ${SOURCE}</div>`;

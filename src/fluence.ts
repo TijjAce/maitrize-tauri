@@ -105,7 +105,7 @@ export function htmlFluence(g: GrilleFluence, r: ReglagesFluence): string {
     <tr><th>Score (lus − erreurs)</th><td></td><td></td><td></td><td></td></tr></tbody></table>`;
   const consigne = `<div class="regle"><b>Chaque jour de la semaine</b>Je lis la grille le plus vite possible, sans erreur ; on note mon score.
     Le lendemain, je recommence et je regarde mes progrès. En trinôme : un lecteur, un chronométreur, un vérificateur.
-    <span style="color:#687087">— Livrets Français CP (2025) et CE1 (2026), Éduscol ; progression du ${escapeHtml(periode.guide)}.</span></div>`;
+    <span class="reference">Livrets Français CP (2025) et CE1 (2026), Éduscol ; progression du ${escapeHtml(periode.guide)}.</span></div>`;
   let plateau = "";
   if (r.puissance4) {
     const pool = g.lignes.flat().filter((x) => x.length <= 4);
@@ -113,7 +113,7 @@ export function htmlFluence(g: GrilleFluence, r: ReglagesFluence): string {
     plateau = `<div class="page"><div class="titre">Quatre jetons alignés — ${escapeHtml(nom)}</div>
       <div class="regle"><b>Règle du jeu</b>Les joueurs ont des jetons de deux couleurs. Le premier joueur lit une syllabe et place son jeton sur la syllabe lue.
         Le deuxième joueur fait de même, et ainsi de suite. Le premier joueur qui a aligné quatre jetons a gagné.
-        <span style="color:#687087">— Livret Français CP, Éduscol 2025.</span></div>
+        <span class="reference">Livret Français CP, Éduscol 2025.</span></div>
       <table class="fl-plateau"><tbody>${Array.from({ length: 6 }, (_, l) =>
         `<tr>${cases.slice(l * 7, l * 7 + 7).map((x) => `<td>${escapeHtml(x)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   }
@@ -148,7 +148,7 @@ export function htmlSyllabaire(r: ReglagesSyllabaire): string {
   return feuille(`<div class="page"><div class="titre">Syllabaire — le jeu de l'ascenseur</div>
     <div class="regle"><b>Fabrication</b>Découper le cadre et ses quatre fentes (traits épais) ; découper les deux bandes ; les glisser dans les fentes.
       <b style="margin-top:4px">Jeu</b>On fait monter ou descendre une bande : la syllabe apparaît dans la fenêtre, on la lit. Puis l'autre bande, puis les deux.
-      <span style="color:#687087">— Livret Français CE1, Éduscol 2026.</span></div>
+      <span class="reference">Livret Français CE1, Éduscol 2026.</span></div>
     <div class="sy-cadre">
       <div class="sy-fenetre"><div class="sy-fente"></div><div class="sy-vue"></div><div class="sy-fente"></div></div>
       <div class="sy-fenetre"><div class="sy-fente"></div><div class="sy-vue"></div><div class="sy-fente"></div></div>

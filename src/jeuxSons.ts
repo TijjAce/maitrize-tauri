@@ -115,7 +115,7 @@ export function htmlLotoSyllabes(planches: number[][], mots: MotImage[], images:
   const cote = lignes === 2 ? 48 : 36;
   const regle = `<div class="regle"><b>Loto des syllabes</b>Chaque élève a une planche : dans chaque case, un nombre de syllabes.
     On pioche une image, on scande les syllabes du mot, on les compte — si une case le demande, on y pose l'image. La planche pleine a gagné.
-    <span style="color:#687087">— Pour préparer l'apprentissage de la lecture et de l'écriture à l'école maternelle, Éduscol 2020.</span></div>`;
+    <span class="reference">Pour préparer l'apprentissage de la lecture et de l'écriture à l'école maternelle, Éduscol 2020.</span></div>`;
   const pagesPlanches: string[] = [];
   for (let i = 0; i < planches.length; i += 2) {
     const deux = planches.slice(i, i + 2).map((pl, k) =>
@@ -169,7 +169,7 @@ export function dominos(paires: [MotImage, MotImage][]): PieceDomino[] {
 export function htmlDominos(pieces: PieceDomino[], images: Images, legendes: boolean, titre = "Dominos des syllabes"): string {
   const regle = `<div class="regle"><b>${escapeHtml(titre)}</b>On pose les dominos bout à bout : l'image de droite se termine par la syllabe
     qui commence l'image de gauche du domino suivant (micro – crocodile). ${pieces.length} pièces, qui se referment en boucle.
-    <span style="color:#687087">— Pour préparer l'apprentissage de la lecture et de l'écriture à l'école maternelle, Éduscol 2020.</span></div>`;
+    <span class="reference">Pour préparer l'apprentissage de la lecture et de l'écriture à l'école maternelle, Éduscol 2020.</span></div>`;
   const moitie = (m: MotImage) => `<div class="ls-moitie">${imgPicto(image(m, images), m.mot)}${legende(m.mot, legendes)}</div>`;
   const cellules = pieces.map((p) => `<div class="carte ls-domino">${moitie(p.gauche)}<div class="ls-barre"></div>${moitie(p.droite)}</div>`);
   // Une pièce : deux carrés côte à côte, une image dans chacun.
@@ -213,7 +213,7 @@ export function lignesIntrus(mots: MotImage[], mode: ModeIntrus, combien: number
 export function htmlIntrus(lignes: LigneIntrus[], images: Images, mode: ModeIntrus, legendes: boolean): string {
   const quoi = mode === "attaque" ? "commencent par la même syllabe" : "finissent par la même syllabe";
   const consigne = `<div class="titre">Chasse à l'intrus</div><div class="regle"><b>Consigne</b>Dans chaque ligne, trois mots ${quoi} ; un seul est différent : entoure l'intrus.
-    <span style="color:#687087">— Pour préparer l'apprentissage de la lecture et de l'écriture à l'école maternelle, Éduscol 2020.</span></div>`;
+    <span class="reference">Pour préparer l'apprentissage de la lecture et de l'écriture à l'école maternelle, Éduscol 2020.</span></div>`;
   const cellules = lignes.flatMap((l, i) => l.mots.map((m, k) =>
     carte(`${k === 0 ? `<div class="ls-numero">${i + 1}</div>` : ""}${imgPicto(image(m, images), m.mot)}${legende(m.mot, legendes)}`, "ls-intrus")));
   const corps = pagesDeCartes(cellules, { colonnes: 4, lignes: 5, hauteurMm: 41, carre: true }, consigne);
@@ -272,7 +272,7 @@ export function htmlPaires(paires: PaireDistinctive[], jeux: number, images: Rec
     <div class="regle"><b>Le téléphone</b>Les seize images sont affichées ; un second jeu est dans un sac. Le premier élève tire une carte sans la montrer
       et souffle le mot à l'oreille de son voisin, qui le passe au suivant… Le dernier désigne l'image entendue ; le premier montre la carte tirée.
       Si les deux diffèrent (mouche / mousse), on redit les deux mots en faisant entendre la consonne qui change.
-      <span style="color:#687087">— Livret d'accompagnement « À partir de 5 ans », Éduscol 2025.</span></div>
+      <span class="reference">Livret d'accompagnement « À partir de 5 ans », Éduscol 2025.</span></div>
     <div class="sous">Sons travaillés : ${escapeHtml([...new Set(paires.map((p) => p.sons))].join(" · "))} — ${jeux} jeu${jeux > 1 ? "x" : ""} de ${paires.length * 2} cartes.</div>`;
   const cellules = motsDesPaires(paires, jeux).map((mot) => carte(`${imgPicto(images[mot.toLowerCase()], mot)}${legende(mot, legendes)}`));
   return feuille(`${pagesDeCartes(cellules, { colonnes: 4, lignes: 4, carre: true }, regles)}${ATTRIBUTION_ARASAAC}`, "ls");
@@ -314,7 +314,7 @@ export function htmlLettres(r: ReglagesLettres, hasard: () => number): string {
     const tailles = [64, 52, 42, 34, 28, 22, 18];
     return feuille(`<div class="page"><div class="titre">Jeu de l'ophtalmologue</div>
       <div class="regle">L'« ophtalmologue » pointe les lettres une à une ; le « patient » nomme les lettres. On peut lire de haut en bas, puis les yeux à demi fermés.
-      <span style="color:#687087">— Livret Français CP, Éduscol 2025.</span></div>
+      <span class="reference">Livret Français CP, Éduscol 2025.</span></div>
       <div class="ls-oeil">${lignes.map((l, i) => `<div style="font-size:${tailles[i]}px">${l.map((x) => (i % 2 ? x : x.toUpperCase())).join("&nbsp;&nbsp;")}</div>`).join("")}</div></div>`, "ls");
   }
   if (r.jeu === "loto") {
@@ -322,7 +322,7 @@ export function htmlLettres(r: ReglagesLettres, hasard: () => number): string {
     const pages = planches.map((pl, i) => `<div class="ls-planche"><div class="ls-planche-titre">Loto des lettres — planche ${i + 1}</div>
       <div class="grille" style="grid-template-columns: repeat(3, 1fr); grid-auto-rows: 34mm">${pl.map((l) => `<div class="carte"><div class="ls-lettre maj">${l.toUpperCase()}</div></div>`).join("")}</div></div>`);
     const regle = `<div class="regle"><b>Loto des lettres</b>Les majuscules sur les planches, les minuscules à piocher : on nomme la lettre tirée, celui qui l'a la couvre.
-      <span style="color:#687087">— Livret Français CP, Éduscol 2025.</span></div>`;
+      <span class="reference">Livret Français CP, Éduscol 2025.</span></div>`;
     const pagesPlanches: string[] = [];
     for (let i = 0; i < pages.length; i += 2) pagesPlanches.push(`<div class="page">${i === 0 ? regle : ""}${pages.slice(i, i + 2).join("")}</div>`);
     const cartes = lettres.map((l) => lettreCarte(l, "min"));
@@ -330,10 +330,10 @@ export function htmlLettres(r: ReglagesLettres, hasard: () => number): string {
   }
   const regle = r.jeu === "memory"
     ? `<div class="regle"><b>Jeu de mémoire des lettres</b>Cartes face cachée ; on en retourne deux : la majuscule et sa minuscule font une paire.
-        <span style="color:#687087">— Livret Français CP, Éduscol 2025.</span></div>`
+        <span class="reference">Livret Français CP, Éduscol 2025.</span></div>`
     : `<div class="regle"><b>Mistigri des lettres</b>On distribue tout ; on pose ses paires (majuscule et minuscule), puis chacun tire une carte chez son voisin.
         Qui garde le Mistigri à la fin a perdu.
-        <span style="color:#687087">— Livret Français CP, Éduscol 2025.</span></div>`;
+        <span class="reference">Livret Français CP, Éduscol 2025.</span></div>`;
   const cartes = melanger(hasard, [...lettres.map((l) => lettreCarte(l, "maj")), ...lettres.map((l) => lettreCarte(l, "min"))]);
   if (r.jeu === "mistigri") cartes.push(carte(`<div class="ls-lettre" style="font-size:22px">🐈‍⬛<br>Mistigri</div>`));
   return feuille(pagesDeCartes(cartes, { colonnes: 5, lignes: 6 }, regle), "ls");

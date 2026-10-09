@@ -24,6 +24,7 @@ import { melanger } from "./hasard";
 import { attributionPour, carte, feuille, pagesAvecRegle, pagesDeCartes, type FormatGrille } from "./cartesImprimables";
 import { NIVEAUX, type Niveau } from "./categoriser";
 import { cleImage, estVide, normaliserPicto, type Images, type PictoPose } from "./supportsVisuels";
+import { reference } from "./references";
 
 export const ETAPES_MIN = 2;
 export const ETAPES_MAX = 6;
@@ -152,7 +153,9 @@ export const suitesPour = (niveau: Niveau) =>
 
 // ── Les feuilles ──────────────────────────────────────────────────────────
 
-const titre = (t: string, sous = "") => `<div class="titre">${escapeHtml(t)}</div>${sous ? `<div class="sous">${escapeHtml(sous)}</div>` : ""}`;
+/** Le titre, sa ligne de sous-titre, et la référence de la feuille au bout — elle ne s'imprime pas (voir `references`). */
+const titre = (t: string, sous = "", ref = "") =>
+  `<div class="titre">${escapeHtml(t)}</div>${sous || ref ? `<div class="sous">${escapeHtml(sous)}${ref ? ` ${reference(ref)}` : ""}</div>` : ""}`;
 const consigne = (t: string, quoi = "Consigne") => `<div class="regle"><b>${quoi}</b>${escapeHtml(t)}</div>`;
 const prenom = `<div class="si-prenom">Prénom : ………………………… Date : ……………</div>`;
 
@@ -272,7 +275,7 @@ function htmlEvaluation(r: ReglagesSuites): string {
   const colonnes = OBSERVABLES[r.niveau];
   const ligne = `<tr><td></td>${colonnes.map(() => "<td></td>").join("")}<td></td></tr>`;
   const suite = r.titre.trim() ? ` · ${r.titre.trim()}` : "";
-  return `<div class="page">${titre("Grille d'observation — ordonner et raconter", `Programme de l'école maternelle 2025 · S'approprier la notion de chronologie · ${r.niveau}, ${age}${suite}.`)}`
+  return `<div class="page">${titre("Grille d'observation — ordonner et raconter", `S'approprier la notion de chronologie · ${r.niveau}, ${age}${suite}.`, "Programme de l'école maternelle 2025.")}`
     + `<table class="si-grille"><thead><tr><th>Prénom</th>${colonnes.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}<th>Mots du temps entendus</th></tr></thead>`
     + `<tbody>${Array.from({ length: 12 }, () => ligne).join("")}</tbody></table>`
     + `<div class="sous si-pied">✓ réussi · ~ en cours · ✗ pas encore. Seul avec l'élève, les cartes de la suite mêlées : il les ordonne, puis raconte. `
