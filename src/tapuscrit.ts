@@ -75,7 +75,11 @@ const AVANT_UN_VERBE = new Set([
   "et", "puis", "ensuite", "alors", "ou", "ne", "n", "pour", "de", "d", "à", "a", "sans",
   "je", "j", "tu", "il", "elle", "on", "nous", "vous", "ils", "elles",
   "va", "vas", "allez", "peux", "pouvez", "dois", "devez", "faut", "essaie", "essayez",
+  "me", "m", "te", "t", "se", "s",
 ]);
+
+/** Après eux, le verbe est pronominal : « je me rappelle », c'est « se rappeler ». */
+const PRONOMS_REFLECHIS = new Set(["me", "m", "te", "t", "se", "s"]);
 
 /** Ce qui termine un morceau de phrase : le mot suivant commence une nouvelle action. */
 const FIN_DE_MORCEAU = /[.,;:!?]/;
@@ -109,6 +113,8 @@ export function infinitifsPossibles(mot: string): string[] {
     ajouter(`${r}er`); ajouter(`${r}re`); ajouter(`${r}ir`);
   }
   if (m.endsWith("e")) {
+    // Rappelle → rappeler, jette → jeter : la consonne se double au présent, pas à l'infinitif.
+    if (/(?:ll|tt)e$/.test(m)) ajouter(`${m.slice(0, -3)}${m.slice(-2, -1)}er`);
     ajouter(`${m}r`);
     // Lève → lever, répète → répéter : l'accent du radical change à l'infinitif.
     const i = m.lastIndexOf("è");
@@ -211,10 +217,23 @@ export function motsDeLaConsigne(consigne: string): MotDeConsigne[] {
       sortie.push({ texte: p.texte, cle: verbe, verbe, demande: { verbes: [verbe], noms: [] } });
       return;
     }
-    const verbes = avantVerbe && !/^\d+$/.test(bas) ? infinitifsPossibles(bas) : [];
+    const infinitifs = avantVerbe && !/^\d+$/.test(bas) ? infinitifsPossibles(bas) : [];
+    // « Je me rappelle » : la banque dessine « se rappeler », pas « rappeler » (au téléphone).
+    const verbes = PRONOMS_REFLECHIS.has(precedent)
+      ? [...infinitifs.flatMap((v) => (/^[aeiouyhéèêâîô]/.test(v) ? [`s'${v}`, `se ${v}`] : [`se ${v}`])), ...infinitifs]
+      : infinitifs;
     sortie.push({ texte: p.texte, cle: bas, demande: { verbes, noms: [...(SENS_DE_CLASSE[bas] ?? []), ...singuliers(bas)] } });
   });
   return sortie;
+}
+
+/**
+ * Le mot qui dit une étape d'un coup d'œil : son verbe — le geste à faire —,
+ * sinon son premier mot de sens. Rien pour une étape faite de petits mots.
+ */
+export function motPrincipal(etape: string): MotDeConsigne | null {
+  const mots = motsDeLaConsigne(etape);
+  return mots.find((m) => m.verbe || m.demande.verbes.length) ?? mots.find((m) => m.cle) ?? null;
 }
 
 // ── Les pictos choisis ────────────────────────────────────────────────────
