@@ -223,7 +223,10 @@ export function demarcheProlongeeDeFractions(classe: string, comp: string): stri
 
 function feuille(seance: number, titre: string, r: Partial<ReglagesFractions>): FeuilleAFabriquer {
   const reglages: ReglagesFractions = { ...REGLAGES_FRACTIONS, ...r };
-  return { seance, atelier: "fractions", titre, fabriquer: (graine) => ({ html: htmlFractions(reglages, graine), style: STYLE_FEUILLE + STYLE_JEUX_MATHS }) };
+  return {
+    seance, atelier: "fractions", titre,
+    fabriquer: (graine) => ({ html: htmlFractions(reglages, graine), style: STYLE_FEUILLE + STYLE_JEUX_MATHS, refaire: { fractions: reglages } }),
+  };
 }
 
 const TOUTES = [2, 3, 4, 5, 6, 8, 10];

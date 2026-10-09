@@ -1,10 +1,15 @@
 import React from "react";
+import { AtelierContext } from "./AtelierContext";
+import { noterMemoire } from "../modifierFeuille";
 
 /**
  * Un réglage de Fabriquer gardé d'une visite à l'autre sur cet ordinateur.
  * `lire` répare ce qui a été enregistré par une version plus ancienne.
  */
 export function useMemoire<T>(cle: string, lire: (brut: unknown) => T): [T, (v: T) => void] {
+  // Dans un atelier, la clé se note : c'est ce qu'on relira pour refaire sa feuille (voir `modifierFeuille`).
+  const atelier = React.useContext(AtelierContext);
+  React.useEffect(() => { noterMemoire(atelier, cle); }, [atelier, cle]);
   const [valeur, setValeur] = React.useState<T>(() => {
     try {
       const brut = localStorage.getItem(`fabriquer:${cle}`);

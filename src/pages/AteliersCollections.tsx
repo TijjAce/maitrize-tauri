@@ -11,6 +11,7 @@ import { SequenceDeCollections } from "../components/SequenceDeCollections";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import { graineAuHasard, hasard } from "../hasard";
+import { useGraine } from "../modifierFeuille";
 import { NIVEAUX, type Niveau } from "../categoriser";
 import {
   DISPOSITIONS, FORMES, QUANTITE_MAX, REGLAGES_COLLECTIONS, REPERES, REPRESENTATIONS, SITUATIONS, STYLE_COLLECTIONS,
@@ -41,7 +42,7 @@ const NOMBRES = Array.from({ length: QUANTITE_MAX }, (_, i) => i + 1);
 export function CollectionsTab({ banque }: { banque: boolean }) {
   const [brut, maj] = useReglages<ReglagesCollections>(ATELIER, REGLAGES_COLLECTIONS);
   const r = React.useMemo(() => reglagesSurs(brut), [brut]);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const [enSequence, setEnSequence] = React.useState(false);
   const [competences] = useCompetencesAtelier(ATELIER);
   const ids = React.useMemo(() => (banque ? idsDesImages(r) : []), [banque, r]);

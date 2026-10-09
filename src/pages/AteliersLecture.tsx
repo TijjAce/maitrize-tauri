@@ -3,6 +3,7 @@ import { Field, Input, Select, Textarea } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { graineAuHasard } from "../hasard";
+import { useGraine } from "../modifierFeuille";
 import { Boutons, Coche, Colonnes, bureau, imprimer } from "./AteliersMaths";
 import { EXERCICES_VOIX_HAUTE, REGLAGES_VOIX_HAUTE, STYLE_VOIX_HAUTE, htmlVoixHaute, type Classe, type ExerciceVoixHaute } from "../lectureVoixHaute";
 import { EXERCICES_COMPREHENSION, REGLAGES_COMPREHENSION, STYLE_COMPREHENSION, htmlComprehension, type ExerciceComprehension, type ReglagesComprehension } from "../comprehension";
@@ -18,7 +19,7 @@ const borne = (v: string, min: number, max: number, defaut: number) => Math.max(
 
 export function VoixHauteTab() {
   const [r, maj] = useReglages("voixHaute", REGLAGES_VOIX_HAUTE);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlVoixHaute(r, graine), [r, graine]);
   const titre = `Lire à voix haute — ${(EXERCICES_VOIX_HAUTE.find((e) => e.id === r.exercice)?.libelle ?? "").replace(/ \(CE2\)$/, "").toLowerCase()}`;
   const avecPhrases = r.exercice !== "grille" && r.exercice !== "fable";
@@ -65,7 +66,7 @@ const TYPES_LIBELLES: Record<string, string> = { narratif: "récit", informatif:
 
 export function ComprehensionTab() {
   const [r, maj] = useReglages("comprehension", REGLAGES_COMPREHENSION);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlComprehension(r, graine), [r, graine]);
   const libelle = EXERCICES_COMPREHENSION.find((e) => e.id === r.exercice)?.libelle ?? "";
   const titre = `Comprendre un texte — ${minusculeInitiale(libelle)}`;
@@ -122,7 +123,7 @@ export function ComprehensionTab() {
 
 export function LecteurTab() {
   const [r, maj] = useReglages("lecteur", REGLAGES_LECTEUR);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlLecteur(r, graine), [r, graine]);
   const libelle = EXERCICES_LECTEUR.find((e) => e.id === r.exercice)?.libelle ?? "";
   const titre = `Carnet de lecteur — ${minusculeInitiale(libelle)}`;

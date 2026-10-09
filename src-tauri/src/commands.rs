@@ -711,20 +711,25 @@ pub fn materiel_list(db: State<Db>) -> R<Vec<MaterielItem>> {
     rows.collect::<rusqlite::Result<_>>().map_err(e)
 }
 
-#[tauri::command]
-pub fn materiel_save(db: State<Db>, materiel: MaterielItem) -> R<MaterielItem> {
-    let c = db.lock();
+/// Écrit un matériel : créé, ou mis à jour sur place.
+pub(crate) fn ecrire_materiel(c: &rusqlite::Connection, m: &MaterielItem) -> rusqlite::Result<usize> {
     c.execute(
         "INSERT INTO materiel_items (id,titre,description_materiel,competence_id,competence_titre,domaine_titre,
           sous_domaine_titre,cycle,images_json,pdfs_json,date_creation,seance_id,sequence_id,
-          dossier,videos_json,coffre_json)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, description_materiel = excluded.description_materiel, competence_id = excluded.competence_id, competence_titre = excluded.competence_titre, domaine_titre = excluded.domaine_titre, sous_domaine_titre = excluded.sous_domaine_titre, cycle = excluded.cycle, images_json = excluded.images_json, pdfs_json = excluded.pdfs_json, date_creation = excluded.date_creation, seance_id = excluded.seance_id, sequence_id = excluded.sequence_id, dossier = excluded.dossier, videos_json = excluded.videos_json, coffre_json = excluded.coffre_json",
-        params![materiel.id, materiel.titre, materiel.description_materiel, materiel.competence_id,
-                materiel.competence_titre, materiel.domaine_titre, materiel.sous_domaine_titre,
-                materiel.cycle, materiel.images_json, materiel.pdfs_json, materiel.date_creation,
-                materiel.seance_id, materiel.sequence_id,
-                materiel.dossier, materiel.videos_json, materiel.coffre_json],
-    ).map_err(e)?;
+          dossier,videos_json,coffre_json,fabrication_json)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, description_materiel = excluded.description_materiel, competence_id = excluded.competence_id, competence_titre = excluded.competence_titre, domaine_titre = excluded.domaine_titre, sous_domaine_titre = excluded.sous_domaine_titre, cycle = excluded.cycle, images_json = excluded.images_json, pdfs_json = excluded.pdfs_json, date_creation = excluded.date_creation, seance_id = excluded.seance_id, sequence_id = excluded.sequence_id, dossier = excluded.dossier, videos_json = excluded.videos_json, coffre_json = excluded.coffre_json, fabrication_json = excluded.fabrication_json",
+        params![m.id, m.titre, m.description_materiel, m.competence_id,
+                m.competence_titre, m.domaine_titre, m.sous_domaine_titre,
+                m.cycle, m.images_json, m.pdfs_json, m.date_creation,
+                m.seance_id, m.sequence_id,
+                m.dossier, m.videos_json, m.coffre_json, m.fabrication_json],
+    )
+}
+
+#[tauri::command]
+pub fn materiel_save(db: State<Db>, materiel: MaterielItem) -> R<MaterielItem> {
+    let c = db.lock();
+    ecrire_materiel(&c, &materiel).map_err(e)?;
     Ok(materiel)
 }
 
@@ -3059,17 +3064,9 @@ mod tests_materiel {
             images_json: "[]".into(), pdfs_json: "[]".into(),
             date_creation: "2026-09-12T20:00:00Z".into(), seance_id: None, sequence_id: None,
             dossier: "Français/Lecture".into(), videos_json: "[]".into(), coffre_json: "[]".into(),
+            fabrication_json: String::new(),
         };
-        c.execute(
-            "INSERT INTO materiel_items (id,titre,description_materiel,competence_id,competence_titre,domaine_titre,
-              sous_domaine_titre,cycle,images_json,pdfs_json,date_creation,seance_id,sequence_id,
-              dossier,videos_json,coffre_json)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, description_materiel = excluded.description_materiel, competence_id = excluded.competence_id, competence_titre = excluded.competence_titre, domaine_titre = excluded.domaine_titre, sous_domaine_titre = excluded.sous_domaine_titre, cycle = excluded.cycle, images_json = excluded.images_json, pdfs_json = excluded.pdfs_json, date_creation = excluded.date_creation, seance_id = excluded.seance_id, sequence_id = excluded.sequence_id, dossier = excluded.dossier, videos_json = excluded.videos_json, coffre_json = excluded.coffre_json",
-            rusqlite::params![m.id, m.titre, m.description_materiel, m.competence_id,
-                m.competence_titre, m.domaine_titre, m.sous_domaine_titre, m.cycle,
-                m.images_json, m.pdfs_json, m.date_creation, m.seance_id, m.sequence_id,
-                m.dossier, m.videos_json, m.coffre_json],
-        ).expect("l'écriture doit réussir sur le schéma réel");
+        super::ecrire_materiel(&c, &m).expect("l'écriture doit réussir sur le schéma réel");
 
         let (titre, dossier): (String, String) = c
             .query_row("SELECT titre, dossier FROM materiel_items WHERE id='m1'", [],
@@ -3083,6 +3080,41 @@ mod tests_materiel {
                                MaterielItem::from_row).unwrap();
         assert_eq!(relu.dossier, "Français/Lecture");
         assert_eq!(relu.videos_json, "[]");
+    }
+
+    /// D'où vient une feuille fabriquée : gardé à l'écriture, rendu à la
+    /// lecture ; une ligne d'avant la colonne — ou reçue d'une version qui ne
+    /// la connaît pas, donc à NULL — se lit sans erreur, simplement vide.
+    #[test]
+    fn la_fabrication_d_une_feuille_se_garde_et_une_ligne_ancienne_se_lit() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        let mut m = MaterielItem {
+            id: "f1".into(), titre: "Les cartes des trois jeux".into(), description_materiel: String::new(),
+            competence_id: String::new(), competence_titre: String::new(),
+            domaine_titre: String::new(), sous_domaine_titre: String::new(), cycle: String::new(),
+            images_json: "[]".into(), pdfs_json: "[\"a.pdf\"]".into(),
+            date_creation: "2026-10-09T08:00:00Z".into(), seance_id: Some("s1".into()), sequence_id: Some("q1".into()),
+            dossier: String::new(), videos_json: "[]".into(), coffre_json: "[]".into(),
+            fabrication_json: r#"{"atelier":"comparer","cle":"comparer","reglages":{"niveau":"cp-59"},"graine":7}"#.into(),
+        };
+        super::ecrire_materiel(&c, &m).unwrap();
+        // La feuille refaite remplace le PDF, sur place : même matériel, nouvelle fabrication.
+        m.pdfs_json = "[\"b.pdf\"]".into();
+        m.fabrication_json = r#"{"atelier":"comparer","graine":8}"#.into();
+        super::ecrire_materiel(&c, &m).unwrap();
+        let relu = c.query_row("SELECT * FROM materiel_items WHERE id='f1'", [], MaterielItem::from_row).unwrap();
+        assert_eq!(relu.pdfs_json, "[\"b.pdf\"]");
+        assert_eq!(relu.fabrication_json, r#"{"atelier":"comparer","graine":8}"#);
+        assert_eq!(relu.seance_id.as_deref(), Some("s1"));
+        assert_eq!(c.query_row("SELECT COUNT(*) FROM materiel_items", [], |r| r.get::<_, i64>(0)).unwrap(), 1);
+
+        c.execute("INSERT INTO materiel_items (id, titre, date_creation, fabrication_json) VALUES ('f2', 'Ancien', '2026-01-01', NULL)", []).unwrap();
+        let ancien = c.query_row("SELECT * FROM materiel_items WHERE id='f2'", [], MaterielItem::from_row).unwrap();
+        assert_eq!(ancien.fabrication_json, "");
+        // Un matériel envoyé sans le champ — une version plus ancienne de l'application — n'en a pas.
+        let sans: MaterielItem = serde_json::from_str(r#"{"id":"f3","titre":"x"}"#).unwrap();
+        assert_eq!(sans.fabrication_json, "");
     }
 
     #[test]

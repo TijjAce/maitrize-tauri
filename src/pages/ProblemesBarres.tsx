@@ -12,6 +12,7 @@ import {
   STYLE_FEUILLE, TYPES_MULTIPLICATIFS, PLAFONDS, PRESENTATION_COMPLETE, PRESENTATION_MODELE_SEUL, nombre,
   type Probleme, type Presentation, type Retouche, type InconnuePartieTout, type TypeMultiplicatif,
 } from "../problemesBarres";
+import { useGraine } from "../modifierFeuille";
 
 // ── Fabriquer → Problèmes en barres ────────────────────────────────────────
 //
@@ -24,7 +25,8 @@ const nouvelleGraine = () => Math.floor(Math.random() * 2 ** 31);
 
 /** La feuille tirée : sa graine, les problèmes remplacés et ceux dont l'enseignant a choisi les nombres. */
 function useTirage(structure: string) {
-  const [graine, setGraine] = React.useState(nouvelleGraine);
+  // Le tirage de la feuille qu'on refait, à l'ouverture (voir `modifierFeuille`) ; sinon un nouveau.
+  const [graine, setGraine] = useGraine();
   const [retirages, setRetirages] = React.useState<Record<number, number>>({});
   const [retouches, setRetouches] = React.useState<Record<number, Retouche>>({});
   // Changer la nature des problèmes rend caducs les nombres choisis à la main.

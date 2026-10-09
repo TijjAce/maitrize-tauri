@@ -167,7 +167,10 @@ export function demarcheDesDonnees(classe: string, comp: string): string | null 
 
 const donnees = (seance: number, titre: string, r: Partial<ReglagesDonnees>): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_DONNEES, ...r };
-  return { seance, atelier: "donnees", titre, fabriquer: (g) => ({ html: htmlDonnees(reglages, g), style: STYLE_FEUILLE + STYLE_DONNEES }) };
+  return {
+    seance, atelier: "donnees", titre,
+    fabriquer: (g) => ({ html: htmlDonnees(reglages, g), style: STYLE_FEUILLE + STYLE_DONNEES, refaire: { donnees: reglages } }),
+  };
 };
 
 const PLANS: Record<string, { feuilles: FeuilleAFabriquer[]; materiel: string[] }> = {

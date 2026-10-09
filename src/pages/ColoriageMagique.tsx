@@ -17,6 +17,7 @@ import {
   basculerCase, casesAColorier, consigne, couleurDe, couleursDuMotif, dimensionsDe, ecrireMotifsPerso, fabriquerColoriage, feuilleDuColoriage, lettreSousGraphie,
   lireMotifsPerso, motifDepuisImage, styleDeLaCase, type CaseColoriage, type Coloriage, type Graphie, type Matiere, type Motif, type Operation,
 } from "../coloriageMagique";
+import { useGraine } from "../modifierFeuille";
 
 // ── Fabriquer › Mathématiques › Coloriage magique ─────────────────────────
 //
@@ -329,7 +330,7 @@ const MATIERES_COLORIAGE: Record<Matiere, { icone: string; nom: string }> = {
 export function ColoriageMagiqueTab() {
   const [r, maj] = useReglages("coloriage", REGLAGES_PAR_DEFAUT);
   const [plis, setPlis] = useMemoire<Plis>("coloriagePlis", lirePlis);
-  const [graine, setGraine] = React.useState(() => Math.floor(Math.random() * 1e9));
+  const [graine, setGraine] = useGraine();
   const [corrige, setCorrige] = React.useState(false);
   const [photo, setPhoto] = React.useState(false);
   const { data: brutPerso, reload: relirePerso } = useAsync(() => api.settingGet(CLE_MOTIFS_PERSO), []);

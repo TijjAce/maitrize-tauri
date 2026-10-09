@@ -368,21 +368,31 @@ export function demarcheDeLaLangue(classe: string, cg: string, comp: string, per
 
 const gr = (seance: number, titre: string, r: Partial<ReglagesGrammaire>): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_GRAMMAIRE, ...r };
-  return { seance, atelier: "grammaire", titre, fabriquer: (graine) => ({ html: htmlGrammaire(reglages, graine), style: STYLE_FEUILLE + STYLE_GRAMMAIRE }) };
+  return {
+    seance, atelier: "grammaire", titre,
+    fabriquer: (graine) => ({ html: htmlGrammaire(reglages, graine), style: STYLE_FEUILLE + STYLE_GRAMMAIRE, refaire: { grammaire: reglages } }),
+  };
 };
 const tri = (seance: number, modele: string): FeuilleAFabriquer => {
   const m = MODELES_TRI.find((x) => x.id === modele)!;
-  return { seance, atelier: "tri", titre: m.reglages.titre, fabriquer: (graine) => ({ html: htmlTri(m.reglages, graine), style: STYLE_FEUILLE + STYLE_TRI }) };
+  return {
+    seance, atelier: "tri", titre: m.reglages.titre,
+    fabriquer: (graine) => ({ html: htmlTri(m.reglages, graine), style: STYLE_FEUILLE + STYLE_TRI, refaire: { tri: m.reglages } }),
+  };
 };
 const trous = (seance: number, modele: string): FeuilleAFabriquer => {
   const m = MODELES_TROUS.find((x) => x.id === modele)!;
   const r = { ...REGLAGES_TROUS, modele: m.id, titre: m.titre, phrases: m.phrases, texteMethode: m.methode };
-  return { seance, atelier: "trous", titre: m.titre, fabriquer: (graine) => ({ html: htmlTexteATrous(r, graine), style: STYLE_FEUILLE + STYLE_TROUS }) };
+  return { seance, atelier: "trous", titre: m.titre, fabriquer: (graine) => ({ html: htmlTexteATrous(r, graine), style: STYLE_FEUILLE + STYLE_TROUS, refaire: { trous: r } }) };
 };
 const PHRASES_A_ORDONNER = ["Le chat dort sur le lit.", "Papa lit le journal.", "Les enfants jouent dans la cour.", "Lila mange une pomme rouge."];
+const REGLAGES_A_ORDONNER = { ...REGLAGES_PHRASES, phrases: PHRASES_A_ORDONNER.join("\n") };
 const desordre = (seance: number): FeuilleAFabriquer => ({
   seance, atelier: "phrases", titre: "Remettre les mots dans l'ordre",
-  fabriquer: (graine) => ({ html: htmlPhrasesEnDesordre(phrasesEnDesordre(PHRASES_A_ORDONNER, graine), { ...REGLAGES_PHRASES, phrases: PHRASES_A_ORDONNER.join("\n") }), style: STYLE_FEUILLE + STYLE_PHRASES }),
+  fabriquer: (graine) => ({
+    html: htmlPhrasesEnDesordre(phrasesEnDesordre(PHRASES_A_ORDONNER, graine), REGLAGES_A_ORDONNER), style: STYLE_FEUILLE + STYLE_PHRASES,
+    refaire: { phrases: REGLAGES_A_ORDONNER },
+  }),
 });
 
 type Plan = { feuilles: FeuilleAFabriquer[]; materiel: string[] };

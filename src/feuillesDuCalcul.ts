@@ -15,7 +15,7 @@ import { hasard } from "./hasard";
 import { STYLE_JEUX_MATHS, cartesCalcul, htmlArbreCalcul, htmlCartesCalcul, type Addition, type CarteCalcul, type ReglagesCalcul } from "./jeuxMaths";
 import { REGLAGES_MARTINIERE, STYLE_MARTINIERE, htmlMartiniere, calculsMartiniere, libelleTravaille, type FormeEntrainement, type ReglagesMartiniere } from "./martiniere";
 import { choisir, entier, fr } from "./nombres";
-import { problemesAssocies, problemesDe } from "./problemesAssocies";
+import { memoiresDesProblemes, problemesAssocies, problemesDe } from "./problemesAssocies";
 import { PRESENTATION_COMPLETE, STYLE_FEUILLE as STYLE_PROBLEMES, feuilleProblemes, genererPartieTout } from "./problemesBarres";
 
 const plat = (s: string | null | undefined) => (s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -205,7 +205,12 @@ function feuilleDeCalcul(
     seance, atelier: "martiniere", titre,
     fabriquer: (graine) => {
       const s = series(graine);
-      return { html: htmlMartiniere(s, reglagesMartiniere(classe, [objectif], forme, s, options.tables), options.consigne), style: STYLE_CALCUL_MENTAL };
+      const reglages = reglagesMartiniere(classe, [objectif], forme, s, options.tables);
+      return {
+        html: htmlMartiniere(s, reglages, options.consigne), style: STYLE_CALCUL_MENTAL,
+        // Le matériel ne dépend que des réglages : l'atelier le refait. Les séries des autres feuilles viennent de la séquence.
+        refaire: forme === "materiel" && !options.consigne ? { martiniere: reglages } : undefined,
+      };
     },
   };
 }
@@ -222,10 +227,17 @@ function feuilleDArbres(seance: number, titre: string, additions: (graine: numbe
 }
 
 /** Des cartes recto-verso : le calcul au recto, le résultat au verso. */
-function feuilleDeCartes(seance: number, titre: string, cartes: (graine: number) => CarteCalcul[], reglages: ReglagesCalcul, titreImprime?: string): FeuilleAFabriquer {
+function feuilleDeCartes(
+  seance: number, titre: string, cartes: (graine: number) => CarteCalcul[], reglages: ReglagesCalcul, titreImprime?: string,
+  /** Les cartes sont celles que l'atelier tire lui-même : il refait la feuille. */
+  commeLAtelier = false,
+): FeuilleAFabriquer {
   return {
     seance, atelier: "calcul", titre,
-    fabriquer: (graine) => ({ html: htmlCartesCalcul(cartes(graine), reglages, titreImprime), style: STYLE_ATELIERS_MATHS }),
+    fabriquer: (graine) => ({
+      html: htmlCartesCalcul(cartes(graine), reglages, titreImprime), style: STYLE_ATELIERS_MATHS,
+      refaire: commeLAtelier && !titreImprime ? { cartesCalcul: reglages } : undefined,
+    }),
   };
 }
 
@@ -301,6 +313,11 @@ function planDeLArbre(): PlanDesFeuilles {
         html: feuilleProblemes(genererPartieTout({ nombre: 4, parties: 2, inconnue: "tout", max: 100, min: 30, partMin: 11, enonces: true, prenoms: [] }, g),
           "Problèmes partie-tout — chercher le tout", PRESENTATION_COMPLETE),
         style: STYLE_PROBLEMES,
+        refaire: {
+          partieTout: { titre: "Problèmes partie-tout — chercher le tout", nombre: 4, prenoms: "", parties: 2, inconnue: "tout", max: 20,
+            perso: true, toutMin: 30, toutMax: 100, partieMin: 11 },
+          "presentation:partieTout": PRESENTATION_COMPLETE,
+        },
       }),
     },
   ];
@@ -363,7 +380,7 @@ function planDeLaTableDe7(): PlanDesFeuilles {
       { tables, consigne: "Complète le plus d'égalités possible en deux minutes." });
   const cartes = (seance: number, titre: string, tables: number[]) =>
     feuilleDeCartes(seance, titre, (g) => cartesCalcul({ operation: "x", tables, rectoVerso: true, melanger: true }, g),
-      { operation: "x", tables, rectoVerso: true, melanger: true });
+      { operation: "x", tables, rectoVerso: true, melanger: true }, undefined, true);
   const feuilles: FeuilleAFabriquer[] = [
     { seance: 0, atelier: "martiniere", titre: "La table de 7 — je construis", fabriquer: () => ({ html: htmlConstruireLaTable(7, [7, 8, 9]), style: STYLE_CALCUL_MENTAL + STYLE_CONSTRUIRE }) },
     oral(2, "La table de 7 — à l'ardoise"),
@@ -482,7 +499,7 @@ function planDeLaMartiniere(classe: ClasseC2, objectifs: string[], tables: numbe
       seance: f.seance, atelier: "martiniere", titre,
       fabriquer: (graine: number) => {
         const r: ReglagesMartiniere = { ...REGLAGES_MARTINIERE, niveau: classe, objectifs: ceux, revision: ceux.length > 1, tables, forme: f.forme, parSerie: 10, series };
-        return { html: htmlMartiniere(calculsMartiniere(r, graine), r), style: STYLE_CALCUL_MENTAL };
+        return { html: htmlMartiniere(calculsMartiniere(r, graine), r), style: STYLE_CALCUL_MENTAL, refaire: { martiniere: r } };
       },
     };
   });
@@ -492,7 +509,10 @@ function planDeLaMartiniere(classe: ClasseC2, objectifs: string[], tables: numbe
     const titre = `Problèmes — ${libelleTravaille(premier, tables)}`;
     feuilles.push({
       seance: SEANCE_DES_PROBLEMES, atelier: associes.atelier, titre,
-      fabriquer: (graine) => ({ html: feuilleProblemes(problemesDe(associes, 4, graine), titre, PRESENTATION_COMPLETE), style: STYLE_PROBLEMES }),
+      fabriquer: (graine) => ({
+        html: feuilleProblemes(problemesDe(associes, 4, graine), titre, PRESENTATION_COMPLETE), style: STYLE_PROBLEMES,
+        refaire: memoiresDesProblemes(associes, titre, 4),
+      }),
     });
   }
   return {

@@ -9,7 +9,7 @@
 
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 import { STYLE_FEUILLE } from "./cartesImprimables";
-import { REGLAGES_CUBES, STYLE_CUBES, exercicesCubes, htmlCubes, reglagesCubesSurs, type IdNiveauCubes, type ReglagesCubes } from "./cubesNumeration";
+import { PART_A_REGROUPER, REGLAGES_CUBES, STYLE_CUBES, exercicesCubes, htmlCubes, reglagesCubesSurs, type IdNiveauCubes, type ReglagesCubes } from "./cubesNumeration";
 import { FEUILLES_DE_LA_SEQUENCE_CUBES, STYLE_SEQUENCE_CUBES, htmlDeLaFeuilleCubes, materielDesSeancesCubes, reglagesDeLaFeuille, type FeuilleCubes } from "./sequenceCubes";
 import { REGLAGES_COMPARER, STYLE_COMPARER, htmlComparer, paquet, reglagesComparerSurs, type IdNiveau, type ReglagesComparer } from "./comparerNombres";
 import { FEUILLES_DE_LA_SEQUENCE, STYLE_SEQUENCE_COMPARER, htmlDeLaFeuille as htmlDeLaFeuilleComparer, materielDesSeances as materielDesSeancesComparer } from "./sequenceComparer";
@@ -32,6 +32,7 @@ import { estUneDemarcheDEcriture, planDeLEcriture } from "./demarchesEcriture";
 import { estUneDemarcheDeLangue, planDeLaLangue } from "./demarchesLangue";
 import { estUneDemarcheDOral, planDeLOral } from "./demarchesOral";
 import { reglagesLaisses } from "./reglagesLaisses";
+import { memesReglages } from "./modifierFeuille";
 
 export type ClasseC2 = "CP" | "CE1" | "CE2";
 
@@ -53,7 +54,13 @@ export interface FeuilleAFabriquer {
   atelier: string;
   /** Son nom, dans la séance et sur le bureau. */
   titre: string;
-  fabriquer: (graine: number) => { html: string; style: string };
+  fabriquer: (graine: number) => {
+    html: string; style: string;
+    /** Ce que l'atelier garde (`fabriquer:<clé>`) pour refaire la feuille dans Fabriquer ; absent s'il ne la refait pas à l'identique. */
+    refaire?: Record<string, unknown>;
+    /** Le tirage que l'atelier doit reprendre, quand la feuille n'a pas pris celui qu'on lui donnait (une évaluation tirée à part). */
+    graine?: number;
+  };
 }
 
 export interface PlanDesFeuilles {
@@ -91,10 +98,18 @@ const cubesPour = (demarcheId: string, ctx: ContexteFeuilles): ReglagesCubes =>
 const comparerPour = (ctx: ContexteFeuilles): ReglagesComparer =>
   reglagesComparerSurs({ ...REGLAGES_COMPARER, ...reglagesLaisses<ReglagesComparer>("comparer"), niveau: niveauDeComparer(ctx) });
 
-/** Une feuille de cubes : son titre est celui que la feuille imprime, à la classe de la séquence. */
+/**
+ * Une feuille de cubes : son titre est celui que la feuille imprime, à la
+ * classe de la séquence. L'atelier la refait quand elle est faite comme lui —
+ * sa part de collections à regrouper est la sienne ; pas l'affiche.
+ */
 function feuilleDeCubes(seance: number, quoi: FeuilleCubes, r: ReglagesCubes): FeuilleAFabriquer {
-  const titre = quoi === "affiche" ? "Ce qu'on retient — l'affiche" : reglagesDeLaFeuille(quoi, r).reglages.titre;
-  return { seance, atelier: "cubes", titre, fabriquer: (graine) => ({ html: htmlDeLaFeuilleCubes(quoi, r, graine), style: STYLE_SEQUENCE_CUBES }) };
+  const comme = quoi === "affiche" ? null : reglagesDeLaFeuille(quoi, r);
+  const titre = comme ? comme.reglages.titre : "Ce qu'on retient — l'affiche";
+  const fidele = comme && (!comme.reglages.aRegrouper || comme.part === PART_A_REGROUPER)
+    && memesReglages(reglagesCubesSurs(comme.reglages), comme.reglages);
+  const refaire = fidele ? { cubes: comme.reglages } : undefined;
+  return { seance, atelier: "cubes", titre, fabriquer: (graine) => ({ html: htmlDeLaFeuilleCubes(quoi, r, graine), style: STYLE_SEQUENCE_CUBES, refaire }) };
 }
 
 /** Les séances de la séquence du livret, et les feuilles de cubes qui les servent ; la première, orale, n'en a pas. */
@@ -171,7 +186,11 @@ export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): Plan
     return {
       feuilles: FEUILLES_DE_LA_SEQUENCE.map((f) => ({
         seance: f.seance, atelier: "comparer", titre: f.titre,
-        fabriquer: (graine: number) => ({ html: htmlDeLaFeuilleComparer(f.quoi, r, graine), style: STYLE_SEQUENCE_COMPARER }),
+        fabriquer: (graine: number) => ({
+          html: htmlDeLaFeuilleComparer(f.quoi, r, graine), style: STYLE_SEQUENCE_COMPARER,
+          // Les cartes des jeux sont ce que fait l'atelier, la règle, les signes et la feuille de jeu cochés.
+          refaire: f.quoi === "jeu" ? { comparer: { ...r, regle: true, signes: true, feuilleDeJeu: true } } : undefined,
+        }),
       })),
       materiel: materielDesSeancesComparer(r),
     };
@@ -182,37 +201,39 @@ export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): Plan
 // ── Les jeux qu'on a rattachés soi-même à la compétence ───────────────────
 
 /** Un atelier dont on sait fabriquer la feuille, tel qu'on l'a réglé — à la classe de la séquence quand il en a une. */
-interface Producteur { nom: string; fabriquer: (ctx: ContexteFeuilles | null, graine: number) => { html: string; style: string } }
+interface Producteur { nom: string; fabriquer: (ctx: ContexteFeuilles | null, graine: number) => ReturnType<FeuilleAFabriquer["fabriquer"]> }
 
 const PRODUCTEURS: Record<string, Producteur> = {
   cubes: {
     nom: "Nombres en cubes",
     fabriquer: (ctx, graine) => {
-      const laisses = reglagesCubesSurs({ ...REGLAGES_CUBES, ...reglagesLaisses<ReglagesCubes>("cubes") });
-      const r = ctx ? { ...laisses, niveau: niveauDesCubes("", ctx) } : laisses;
-      return { html: htmlCubes(exercicesCubes(r, graine), r, graine), style: STYLE_FEUILLE + STYLE_JEUX_MATHS + STYLE_CUBES };
+      // Relus comme l'atelier les relit : à une autre classe, il corrige ce qui n'y a pas cours.
+      const laisses = { ...REGLAGES_CUBES, ...reglagesLaisses<ReglagesCubes>("cubes") };
+      const r = reglagesCubesSurs(ctx ? { ...laisses, niveau: niveauDesCubes("", ctx) } : laisses);
+      return { html: htmlCubes(exercicesCubes(r, graine), r, graine), style: STYLE_FEUILLE + STYLE_JEUX_MATHS + STYLE_CUBES, refaire: { cubes: r } };
     },
   },
   comparer: {
     nom: "Comparer les nombres",
     fabriquer: (ctx, graine) => {
+      // Relus comme l'atelier les relit : à une autre classe, il garde les formes qui y ont cours.
       const laisses = reglagesComparerSurs({ ...REGLAGES_COMPARER, ...reglagesLaisses<ReglagesComparer>("comparer") });
-      const r = ctx ? { ...laisses, niveau: niveauDeComparer(ctx) } : laisses;
-      return { html: htmlComparer(paquet(r, graine), r), style: STYLE_FEUILLE + STYLE_COMPARER };
+      const r = reglagesComparerSurs(ctx ? { ...laisses, niveau: niveauDeComparer(ctx) } : laisses);
+      return { html: htmlComparer(paquet(r, graine), r), style: STYLE_FEUILLE + STYLE_COMPARER, refaire: { comparer: r } };
     },
   },
   nombres: {
     nom: "Cartes des nombres",
     fabriquer: () => {
       const r: ReglagesNombres = { ...REGLAGES_NOMBRES, ...reglagesLaisses<ReglagesNombres>("cartesNombres") };
-      return { html: htmlCartesNombres(cartesNombres(r), r), style: STYLE_FEUILLE + STYLE_JEUX_MATHS };
+      return { html: htmlCartesNombres(cartesNombres(r), r), style: STYLE_FEUILLE + STYLE_JEUX_MATHS, refaire: { cartesNombres: r } };
     },
   },
   oie: {
     nom: "Jeu de l'oie",
     fabriquer: (_ctx, graine) => {
       const r: ReglagesOie = { ...REGLAGES_OIE, ...reglagesLaisses<ReglagesOie>("jeuDeLOie") };
-      return { html: htmlJeuDeLOie(r, graine), style: STYLE_FEUILLE + STYLE_JEUX_MATHS };
+      return { html: htmlJeuDeLOie(r, graine), style: STYLE_FEUILLE + STYLE_JEUX_MATHS, refaire: { jeuDeLOie: r } };
     },
   },
 };

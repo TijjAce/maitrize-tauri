@@ -13,6 +13,7 @@ import { SequenceDeSuites } from "../components/SequenceDeSuites";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import { graineAuHasard, hasard } from "../hasard";
+import { useGraine } from "../modifierFeuille";
 import { NIVEAUX, type Niveau } from "../categoriser";
 import { idsDes, pictoVide, type PictoPose } from "../supportsVisuels";
 import {
@@ -37,7 +38,7 @@ const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string; onChan
 export function SuitesTab({ banque }: { banque: boolean }) {
   const [brut, maj] = useReglages<ReglagesSuites>(ATELIER, REGLAGES_SUITES);
   const r = React.useMemo(() => reglagesSurs(brut), [brut]);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const [suite, setSuite] = React.useState("");
   const [enSequence, setEnSequence] = React.useState(false);
   const [competences] = useCompetencesAtelier(ATELIER);

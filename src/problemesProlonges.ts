@@ -406,9 +406,11 @@ const REFERENCES: Record<string, Probleme> = {
 };
 
 type Tirage = (graine: number, combien: number) => Probleme[];
+/** Les problèmes de la famille, quand ce sont ceux de l'atelier multiplicatif tel quel — au CE2, qui écrit le produit : il les refait. */
+type CommeLAtelier = { types: TypeMultiplicatif[]; plages: { parts: [number, number]; valeurs: [number, number] } };
 
 /** Ce que chaque séquence fait tirer : sa famille, et ce qu'on y mêle à la fin. */
-const FAMILLES: Record<string, { famille: Tirage; autres: Tirage }> = {
+const FAMILLES: Record<string, { famille: Tirage; autres: Tirage; atelier?: CommeLAtelier }> = {
   "deux-etapes-cp": {
     famille: (g, k) => [...problemesDeuxTransformations(30, k - Math.floor(k / 3), g),
       ...genererPartieTout({ nombre: Math.floor(k / 3), parties: 3, inconnue: "partie", max: 30, min: 15, enonces: true, prenoms: [] }, g + 1)],
@@ -443,6 +445,7 @@ const FAMILLES: Record<string, { famille: Tirage; autres: Tirage }> = {
   },
   "multiplicatifs-ce2": {
     famille: (g, k) => problemesMultiplicatifs("CE2", ["tout", "part", "nombre"], k, g, { parts: [2, 10], valeurs: [3, 25] }),
+    atelier: { types: ["tout", "part", "nombre"], plages: { parts: [2, 10], valeurs: [3, 25] } },
     autres: (g, k) => genererPartieTout({ nombre: k, parties: 2, inconnue: "melange", max: 1000, min: 120, enonces: true, prenoms: [] }, g),
   },
   "mixtes-ce2": {
@@ -452,6 +455,7 @@ const FAMILLES: Record<string, { famille: Tirage; autres: Tirage }> = {
   },
   "comparaison-multiplicative-ce2": {
     famille: (g, k) => problemesMultiplicatifs("CE2", ["grand", "petit"], k, g, { parts: [2, 6], valeurs: [3, 30] }),
+    atelier: { types: ["grand", "petit"], plages: { parts: [2, 6], valeurs: [3, 30] } },
     autres: (g, k) => problemesDeComparaison(["billes", "monnaie", "pommes"], k, g, () => 1),
   },
   "produits-cartesiens-ce2": {
@@ -477,16 +481,32 @@ export function planDesProblemesProlonges(demarcheId: string): PlanDesFeuilles |
   // Au CP, un cadre pour dessiner ; au CE1 et au CE2, le schéma à compléter d'abord, puis à faire soi-même.
   const cp = demarcheId.endsWith("-cp");
   const debut: Presentation["schema"] = cp ? "sans" : "vide";
-  const feuille = (seance: number, titre: string, schema: Presentation["schema"], problemes: (g: number) => Probleme[]): FeuilleAFabriquer => ({
+  /** `famille` : la feuille ne tient que des problèmes de la famille, tirés à `decalage` près — l'atelier les refait, s'il les fait tels quels. */
+  const feuille = (
+    seance: number, titre: string, schema: Presentation["schema"], problemes: (g: number) => Probleme[],
+    famille?: { nombre: number; decalage?: number },
+  ): FeuilleAFabriquer => ({
     seance, atelier: demarcheId.includes("multiplicati") || demarcheId.includes("cartesien") ? "multiplicatifs" : "partieTout", titre,
-    fabriquer: (g) => ({ html: feuilleProblemes(problemes(g), titre, presentation(schema)), style: STYLE_PROBLEMES }),
+    fabriquer: (g) => ({
+      html: feuilleProblemes(problemes(g), titre, presentation(schema)), style: STYLE_PROBLEMES,
+      ...(famille && f.atelier ? {
+        refaire: {
+          multiplicatifs: {
+            titre, nombre: famille.nombre, prenoms: "", types: f.atelier.types, table: 10, perso: true,
+            partsMin: f.atelier.plages.parts[0], partsMax: f.atelier.plages.parts[1], valeurMin: f.atelier.plages.valeurs[0], valeurMax: f.atelier.plages.valeurs[1],
+          },
+          "presentation:multiplicatifs": presentation(schema),
+        },
+        graine: g + (famille.decalage ?? 0),
+      } : {}),
+    }),
   });
   const feuilles: FeuilleAFabriquer[] = [
     feuille(0, "Problèmes — le problème de référence", debut, (g) => [reference, ...f.famille(g, 4)]),
-    feuille(1, "Problèmes à l'ardoise — la même famille", debut, (g) => f.famille(g, 3)),
-    feuille(2, "Problèmes à l'ardoise — d'autres habillages", debut, (g) => f.famille(g + 3, 3)),
-    feuille(3, "Problèmes — entraînement", debut, (g) => f.famille(g, 6)),
-    feuille(4, "Évaluation intermédiaire", "sans", (g) => f.famille(g, 3)),
+    feuille(1, "Problèmes à l'ardoise — la même famille", debut, (g) => f.famille(g, 3), { nombre: 3 }),
+    feuille(2, "Problèmes à l'ardoise — d'autres habillages", debut, (g) => f.famille(g + 3, 3), { nombre: 3, decalage: 3 }),
+    feuille(3, "Problèmes — entraînement", debut, (g) => f.famille(g, 6), { nombre: 6 }),
+    feuille(4, "Évaluation intermédiaire", "sans", (g) => f.famille(g, 3), { nombre: 3 }),
     feuille(5, "Problèmes à l'ardoise — parmi d'autres", "sans", (g) => meles(f)(g, 3)),
     feuille(6, "Problèmes à l'ardoise — parmi d'autres (2)", "sans", (g) => meles(f)(g + 5, 3)),
     feuille(7, "Problèmes — tout mêlé", "sans", (g) => meles(f)(g, 6)),

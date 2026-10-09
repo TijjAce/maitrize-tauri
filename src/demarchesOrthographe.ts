@@ -259,7 +259,14 @@ export function demarcheDeLOrthographe(classe: string, sd: string, cg: string, c
 
 const or = (seance: number, titre: string, r: Partial<ReglagesOrthographe>, mots: string[] = []): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_ORTHOGRAPHE, ...r };
-  return { seance, atelier: "orthographe", titre, fabriquer: (graine) => ({ html: htmlOrthographe(reglages, graine, mots), style: STYLE_FEUILLE + STYLE_ORTHOGRAPHE }) };
+  return {
+    seance, atelier: "orthographe", titre,
+    fabriquer: (graine) => ({
+      html: htmlOrthographe(reglages, graine, mots), style: STYLE_FEUILLE + STYLE_ORTHOGRAPHE,
+      // Les mots du graphème viennent de la séquence : l'atelier ne refait que les feuilles qui s'en passent.
+      refaire: mots.length ? undefined : { orthographe: reglages },
+    }),
+  };
 };
 
 /** Les mots de la dictée de mots : ceux du graphème de la période, au CP et au CE1. */

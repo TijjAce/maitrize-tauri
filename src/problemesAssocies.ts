@@ -13,7 +13,7 @@ import { chercheDans, type Cherche } from "./consignesCalcul";
 import { tirerCalcul, type Objectif } from "./faitsNumeriques";
 import { hasard } from "./hasard";
 import {
-  PLAFONDS, genererMultiplicatifs, genererPartieTout, type InconnuePartieTout, type Probleme, type TypeMultiplicatif,
+  PLAFONDS, PRESENTATION_COMPLETE, genererMultiplicatifs, genererPartieTout, type InconnuePartieTout, type Probleme, type TypeMultiplicatif,
 } from "./problemesBarres";
 
 export type ProblemesAssocies =
@@ -67,6 +67,18 @@ export function problemesDe(a: ProblemesAssocies, nombre: number, graine: number
   return a.atelier === "partieTout"
     ? genererPartieTout({ nombre, parties: 2, inconnue: a.inconnue, max: a.max, enonces: true, prenoms: [] }, graine)
     : genererMultiplicatifs({ nombre, types: a.types, table: 10, parts: a.parts, valeurs: a.valeurs, enonces: true, prenoms: [] }, graine);
+}
+
+/**
+ * Ce que l'atelier de problèmes garde pour refaire la feuille des problèmes
+ * associés (voir `modifierFeuille`) : ses réglages, combien de problèmes, et
+ * la présentation complète sous sa propre clé.
+ */
+export function memoiresDesProblemes(a: ProblemesAssocies, titre: string, nombre: number): Record<string, unknown> {
+  return {
+    [a.atelier]: { ...reglagesDeLAtelier(a, titre), nombre, prenoms: "", ...(a.atelier === "multiplicatifs" ? { table: 10 } : {}) },
+    [`presentation:${a.atelier}`]: PRESENTATION_COMPLETE,
+  };
 }
 
 /** Les réglages à donner à l'atelier de problèmes pour qu'il s'ouvre sur ces problèmes-là. */

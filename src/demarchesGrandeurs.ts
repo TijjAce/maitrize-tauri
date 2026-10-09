@@ -616,15 +616,24 @@ export function demarcheDesGrandeurs(classe: string, cg: string, comp: string): 
 
 const monnaie = (seance: number, titre: string, r: Partial<ReglagesMonnaie>): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_MONNAIE, ...r };
-  return { seance, atelier: "monnaie", titre, fabriquer: (g) => ({ html: htmlMonnaie(reglages, g), style: STYLE_FEUILLE + STYLE_MONNAIE }) };
+  return {
+    seance, atelier: "monnaie", titre,
+    fabriquer: (g) => ({ html: htmlMonnaie(reglages, g), style: STYLE_FEUILLE + STYLE_MONNAIE, refaire: { monnaie: reglages } }),
+  };
 };
 const mesures = (seance: number, titre: string, r: Partial<ReglagesMesures>): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_MESURES, ...r };
-  return { seance, atelier: "mesures", titre, fabriquer: (g) => ({ html: htmlMesures(reglages, g), style: STYLE_FEUILLE + STYLE_MESURES }) };
+  return {
+    seance, atelier: "mesures", titre,
+    fabriquer: (g) => ({ html: htmlMesures(reglages, g), style: STYLE_FEUILLE + STYLE_MESURES, refaire: { mesures: reglages } }),
+  };
 };
 const heure = (seance: number, titre: string, r: Partial<ReglagesHeure>): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_HEURE, ...r };
-  return { seance, atelier: "heure", titre, fabriquer: (g) => ({ html: htmlAtelierHeure(reglages, g), style: STYLE_FEUILLE + STYLE_HEURE + STYLE_DUREES }) };
+  return {
+    seance, atelier: "heure", titre,
+    fabriquer: (g) => ({ html: htmlAtelierHeure(reglages, g), style: STYLE_FEUILLE + STYLE_HEURE + STYLE_DUREES, refaire: { heure: reglages } }),
+  };
 };
 
 const PLANS: Record<string, { feuilles: FeuilleAFabriquer[]; materiel: string[] }> = {

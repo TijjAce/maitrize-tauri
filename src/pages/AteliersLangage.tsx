@@ -14,6 +14,7 @@ import { STYLE_FEUILLE } from "../cartesImprimables";
 import { REGLAGES_ETIQUETTES, STYLE_ETIQUETTES, htmlEtiquettes } from "../etiquettes";
 import type { MotImage } from "../jeuxSons";
 import { graineAuHasard } from "../hasard";
+import { useGraine } from "../modifierFeuille";
 import { REGLAGES_MOTS_MELES, STYLE_MOTS_MELES, grilleMotsMeles, htmlMotsMeles, motsSaisis } from "../motsMeles";
 import { REGLAGES_PHRASES, STYLE_PHRASES, htmlPhrasesEnDesordre, phrasesEnDesordre, phrasesSaisies } from "../phrasesEnDesordre";
 import { DEMANDE_PHRASES, phrasesDeLaReponse, promptPhrases } from "../phrasesIa";
@@ -171,7 +172,7 @@ export function CursiveTab() {
 
 export function MotsMelesTab() {
   const [r, maj] = useReglages("motsMeles", REGLAGES_MOTS_MELES);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const mots = React.useMemo(() => motsSaisis(r.mots), [r.mots]);
   const grilles = React.useMemo(
     () => Array.from({ length: Math.max(1, Math.min(4, r.grilles)) }, (_, i) => grilleMotsMeles(mots, r, graine + i)),
@@ -214,7 +215,7 @@ export function MotsMelesTab() {
 
 export function PhrasesTab() {
   const [r, maj] = useReglages("phrases", REGLAGES_PHRASES);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const phrases = React.useMemo(() => phrasesSaisies(r.phrases), [r.phrases]);
   const liste = React.useMemo(() => phrasesEnDesordre(phrases, graine), [phrases, graine]);
   const html = React.useMemo(() => htmlPhrasesEnDesordre(liste, r), [liste, r]);
@@ -282,7 +283,7 @@ export function PhrasesTab() {
 
 export function TriTab() {
   const [r, maj] = useReglages("tri", REGLAGES_TRI);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const [occupe, setOccupe] = React.useState(false);
   const html = React.useMemo(() => htmlTri(r, graine), [r, graine]);
   const categories: CategorieTri[] = r.categories?.length ? r.categories : REGLAGES_TRI.categories;
@@ -550,7 +551,7 @@ export function TriTab() {
 export function OmbresTab({ banque }: { banque: boolean }) {
   const [mots, setMots] = React.useState<MotImage[]>([]);
   const [r, maj] = useReglages("ombres", REGLAGES_OMBRES);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const ids = mots.map((m) => m.id).filter((x): x is number => x != null);
   const { images, ombres, pret } = useImagesEtOmbres(ids, r.grise);
   // Une image et son ombre, dès que les deux sont prêtes ; un mot sans image n'a pas d'ombre.

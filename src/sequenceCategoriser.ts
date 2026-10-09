@@ -147,8 +147,12 @@ export async function creerLaSequenceDeCategorisation(
   for (const f of feuilles) {
     const seance = seances[f.seance];
     if (!seance) continue;
-    const html = htmlCategoriser({ ...r, forme: f.forme }, images, hasard(graineAuHasard()));
-    await poserDansUneSeance("categoriser", nomDeLaForme(f.forme), html, STYLE_FEUILLE + STYLE_CATEGORISER, seance.id, sequence.id);
+    // Les réglages et le tirage vont avec la feuille : « Modifier dans Fabriquer » la refait.
+    const graine = graineAuHasard();
+    const reglages = { ...r, forme: f.forme };
+    const html = htmlCategoriser(reglages, images, hasard(graine));
+    await poserDansUneSeance("categoriser", nomDeLaForme(f.forme), html, STYLE_FEUILLE + STYLE_CATEGORISER, seance.id, sequence.id,
+      { fabrication: { memoires: { categoriser: reglages }, graine } });
     posees++;
   }
   return { sequence, feuilles: posees };

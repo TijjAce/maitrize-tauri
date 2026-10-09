@@ -1,6 +1,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { COULEURS, couleurHex } from "../api";
+import { EVT_ONGLET } from "../ongletDemande";
 
 export function Modal({ titre, onClose, children, footer, large }: {
   titre: string; onClose: () => void; children: React.ReactNode;
@@ -231,13 +232,8 @@ export function useSegmentNav<T extends string>(ids: readonly T[], current: T, s
   }, [ids, current, set, visible]);
 }
 
-/** Nom de l'événement émis par la palette pour ouvrir un sous-onglet. */
-export const EVT_ONGLET = "maitrize:onglet";
-
-/** Demande l'ouverture d'un sous-onglet d'une page (depuis la palette). */
-export function ouvrirOnglet(page: string, onglet: string) {
-  window.dispatchEvent(new CustomEvent(EVT_ONGLET, { detail: { page, onglet } }));
-}
+// La demande d'un sous-onglet vit à part (voir `ongletDemande`) : des modules sans interface s'en servent.
+export { EVT_ONGLET, ouvrirOnglet } from "../ongletDemande";
 
 /**
  * Écoute les demandes d'ouverture de sous-onglet.
