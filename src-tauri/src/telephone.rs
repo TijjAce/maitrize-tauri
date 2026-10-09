@@ -573,10 +573,11 @@ fn ranger(c: &Connection, dossier: &std::path::Path, e: &relais::Etiquette, cont
         return Err("Dépôt sans identifiant.".into());
     }
     match e.genre {
-        relais::Genre::Vocal => crate::portable::ranger_vocal(c, dossier, &id, &e.debut, e.duree_s, &e.creneau, contenu).map(|n| (n, String::new())),
+        relais::Genre::Vocal => crate::portable::ranger_vocal(c, dossier, &id, &e.debut, e.duree_s, &e.creneau, &e.destination, contenu)
+            .map(|n| (n, String::new())),
         relais::Genre::Note => {
             let texte = String::from_utf8_lossy(contenu);
-            crate::portable::ranger_note(c, &id, &e.debut, &e.creneau, &texte).map(|n| (n, String::new()))
+            crate::portable::ranger_note(c, &id, &e.debut, &e.creneau, &e.destination, &texte).map(|n| (n, String::new()))
         }
         relais::Genre::Page => {
             if contenu.is_empty() {
@@ -928,6 +929,7 @@ mod tests {
             duree_s: if genre == relais::Genre::Vocal { 4.5 } else { 0.0 },
             creneau: "c7".into(),
             ext: if genre == relais::Genre::Page { "jpg".into() } else { String::new() },
+            destination: String::new(),
         }
     }
 
@@ -984,6 +986,35 @@ mod tests {
             assert_eq!(annoncees, vec!["page-p1.jpg"]);
             assert_eq!(std::fs::read(dossier.path().join("page-p1.jpg")).unwrap(), vec![0xFF, 0xD8, 0xFF, 1, 2, 3]);
             assert!(nuage.noms().is_empty());
+        });
+    }
+
+    #[test]
+    fn ce_qui_va_aux_notes_rapides_garde_sa_destination() {
+        fn vers(genre: relais::Genre, id: &str, destination: &str) -> relais::Etiquette {
+            relais::Etiquette { creneau: String::new(), destination: destination.into(), ..etiquette(genre, id) }
+        }
+        let nuage = FauxNuage::demarrer();
+        let r = relais_sur(&nuage);
+        let (a, k, acces) = (r.appairage().unwrap(), nuage.connexion(), acces_au_dossier(&r, &nuage.compte()));
+        let c = base_de_test();
+        let dossier = tempfile::tempdir().unwrap();
+        en_attendant(async {
+            deposer(&a, &k, &vers(relais::Genre::Note, "n2", relais::VERS_LES_NOTES), "Acheter des feutres".as_bytes()).await;
+            deposer(&a, &k, &vers(relais::Genre::Vocal, "v2", relais::VERS_LES_NOTES), &vec![3u8; 800]).await;
+            deposer(&a, &k, &etiquette(relais::Genre::Note, "n3"), "Louison a lu seul.".as_bytes()).await;
+            // Une destination que cet ordinateur ne connaît pas : le cahier journal, comme avant.
+            deposer(&a, &k, &vers(relais::Genre::Note, "n4", "ailleurs"), "Une note".as_bytes()).await;
+            relever_dans(&r, &acces, false, |e, contenu| ranger(&c, dossier.path(), e, contenu).map(|(n, _)| n)).await.unwrap();
+            let mut st = c.prepare("SELECT id, creneau_id, destination FROM vocaux ORDER BY id").unwrap();
+            let rangees: Vec<(String, String, String)> =
+                st.query_map([], |l| Ok((l.get(0)?, l.get(1)?, l.get(2)?))).unwrap().map(|l| l.unwrap()).collect();
+            assert_eq!(rangees, vec![
+                ("n2".into(), String::new(), "notes".into()),
+                ("n3".into(), "c7".into(), String::new()),
+                ("n4".into(), String::new(), String::new()),
+                ("v2".into(), String::new(), "notes".into()),
+            ]);
         });
     }
 

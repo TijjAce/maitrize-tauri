@@ -339,7 +339,17 @@ pub struct Etiquette {
     /// L'extension d'une page : « jpg », « png », « pdf ».
     #[serde(default)]
     pub ext: String,
+    /// Où l'enseignant veut le voir arriver : vide pour le cahier journal — le
+    /// créneau choisi, ou celui de l'heure — ; `VERS_LES_NOTES` pour ses notes
+    /// rapides. Absent du dépôt quand il est vide : un ordinateur plus ancien
+    /// relit le dépôt comme avant, et range une note pour les notes rapides au
+    /// créneau de l'heure, faute de les connaître.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub destination: String,
 }
+
+/// La destination d'une dictée ou d'une note qui va aux notes rapides de l'ordinateur.
+pub const VERS_LES_NOTES: &str = "notes";
 
 /// Le nom du fichier d'un dépôt dans le dossier : « v-<id>.mtz ».
 pub fn nom_du_depot(genre: Genre, id: &str) -> String {
@@ -452,7 +462,7 @@ mod tests {
     #[test]
     fn un_depot_ne_se_rouvre_qu_avec_la_cle_de_l_ordinateur() {
         let (a, privee, _) = appairage();
-        let etiquette = Etiquette { genre: Genre::Vocal, id: "abc-123".into(), debut: "2026-10-02T10:12:00".into(), duree_s: 4.5, creneau: "c7".into(), ext: String::new() };
+        let etiquette = Etiquette { genre: Genre::Vocal, id: "abc-123".into(), debut: "2026-10-02T10:12:00".into(), duree_s: 4.5, creneau: "c7".into(), ext: String::new(), destination: String::new() };
         let son = vec![7u8; 5000];
         let blob = preparer_depot(&a, &etiquette, &son).unwrap();
         // Rien de lisible dans ce qui voyage : ni l'identifiant, ni l'heure.
@@ -470,9 +480,27 @@ mod tests {
     }
 
     #[test]
+    fn la_destination_voyage_et_reste_muette_quand_elle_est_vide() {
+        let (a, privee, _) = appairage();
+        let pour_les_notes = Etiquette {
+            genre: Genre::Note, id: "n2".into(), debut: "2026-10-09T18:02:00".into(), duree_s: 0.0, creneau: String::new(),
+            ext: String::new(), destination: VERS_LES_NOTES.into(),
+        };
+        let (relue, contenu) = ouvrir_depot(&privee, &preparer_depot(&a, &pour_les_notes, "Rappeler l'orthophoniste.".as_bytes()).unwrap()).unwrap();
+        assert_eq!(relue.destination, "notes");
+        assert_eq!(contenu, "Rappeler l'orthophoniste.".as_bytes());
+        // Vide, elle ne s'écrit pas : l'étiquette est celle que lisent les ordinateurs d'avant.
+        let sans = Etiquette { destination: String::new(), ..pour_les_notes.clone() };
+        assert!(!serde_json::to_string(&sans).unwrap().contains("destination"));
+        // Et l'étiquette d'un téléphone d'avant se relit, sans destination.
+        let ancienne: Etiquette = serde_json::from_str(r#"{"genre":"note","id":"n3","debut":"","dureeS":0,"creneau":"c1","ext":""}"#).unwrap();
+        assert_eq!(ancienne.destination, "");
+    }
+
+    #[test]
     fn un_depot_modifie_en_route_est_refuse() {
         let (a, privee, _) = appairage();
-        let etiquette = Etiquette { genre: Genre::Note, id: "n1".into(), debut: String::new(), duree_s: 0.0, creneau: String::new(), ext: String::new() };
+        let etiquette = Etiquette { genre: Genre::Note, id: "n1".into(), debut: String::new(), duree_s: 0.0, creneau: String::new(), ext: String::new(), destination: String::new() };
         let blob = preparer_depot(&a, &etiquette, "Deux lignes.".as_bytes()).unwrap();
         for i in [0, 5, 40, 61, blob.len() - 1] {
             let mut abime = blob.clone();

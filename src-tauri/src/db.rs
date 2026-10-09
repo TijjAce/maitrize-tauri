@@ -852,6 +852,9 @@ pub(crate) fn migrate(conn: &Connection) {
     // était dans la salle, et l'heure seule se trompe quand on dicte en
     // sortant, ou une heure plus tard.
     conn.execute("ALTER TABLE vocaux ADD COLUMN creneau_id TEXT NOT NULL DEFAULT ''", []).ok();
+    // Une dictée peut aussi aller aux notes rapides (« notes ») plutôt qu'au
+    // cahier journal. La table ne se synchronise pas : le défaut ne gêne personne.
+    conn.execute("ALTER TABLE vocaux ADD COLUMN destination TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN etat TEXT NOT NULL DEFAULT 'idee'", []).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN etapes_json TEXT NOT NULL DEFAULT '[]'", []).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN domaines TEXT NOT NULL DEFAULT ''", []).ok();

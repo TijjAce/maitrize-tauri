@@ -56,6 +56,15 @@
 
  /* Dicter : le geste de la journée, au milieu de l'écran. */
  .heros { display:flex; flex-direction:column; align-items:center; padding:12px 0 4px; }
+ /* Où va ce qu'on dicte : le cahier journal, ou les notes rapides de l'ordinateur. */
+ .destination { display:grid; grid-template-columns:1fr 1fr; gap:4px; width:100%; padding:4px; margin-bottom:12px;
+   border-radius:14px; background:var(--card); box-shadow:var(--ombre); }
+ .destination button { display:flex; align-items:center; justify-content:center; gap:7px; min-width:0; padding:10px 6px;
+   border:none; border-radius:11px; background:none; color:var(--txt2); font-size:14.5px; font-weight:600; }
+ .destination button span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+ .destination button.on { background:var(--acc-doux); color:var(--acc-txt); }
+ .destination button:disabled { opacity:1; }
+ .destination button:disabled:not(.on) { opacity:.4; }
  /* Le jour dont on parle : aujourd'hui, ou un autre — qui se voit de loin. */
  .jour { display:flex; align-items:center; gap:8px; width:100%; padding:6px; margin-bottom:14px;
    border-radius:16px; background:var(--card); box-shadow:var(--ombre); }

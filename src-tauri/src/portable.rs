@@ -367,7 +367,7 @@ fn ecrire_vocal(app: &tauri::AppHandle, url: &str, octets: Vec<u8>) -> Result<St
     let duree: f64 = parametre(url, "duree").parse().unwrap_or(0.0);
     let id = crate::models::new_id();
     let db = app.state::<Db>();
-    ranger_vocal(&db.lock(), &crate::db::fichiers_dir(), &id, &debut, duree, &parametre(url, "creneau"), &octets)?;
+    ranger_vocal(&db.lock(), &crate::db::fichiers_dir(), &id, &debut, duree, &parametre(url, "creneau"), "", &octets)?;
     let _ = app.emit("vocal:recu", id.clone());
     Ok(id)
 }
@@ -380,7 +380,8 @@ fn ecrire_vocal(app: &tauri::AppHandle, url: &str, octets: Vec<u8>) -> Result<St
  * l'effacement —, et il ne doit se ranger qu'une fois.
  */
 pub(crate) fn ranger_vocal(
-    c: &rusqlite::Connection, dossier: &std::path::Path, id: &str, debut: &str, duree: f64, creneau: &str, octets: &[u8],
+    c: &rusqlite::Connection, dossier: &std::path::Path, id: &str, debut: &str, duree: f64, creneau: &str, destination: &str,
+    octets: &[u8],
 ) -> Result<bool, String> {
     if octets.len() < 100 {
         return Err("Enregistrement vide.".into());
@@ -391,12 +392,17 @@ pub(crate) fn ranger_vocal(
     let fichier = format!("vocal-{id}.wav");
     std::fs::write(dossier.join(&fichier), octets).map_err(|er| format!("Écriture impossible : {er}"))?;
     c.execute(
-        "INSERT INTO vocaux (id,fichier,debut,duree_s,texte,etat,erreur,creneau_id,date_creation)
-         VALUES (?1,?2,?3,?4,'','recu','',?5,?6)",
-        rusqlite::params![id, fichier, debut, duree, creneau, crate::models::now_iso()],
+        "INSERT INTO vocaux (id,fichier,debut,duree_s,texte,etat,erreur,creneau_id,destination,date_creation)
+         VALUES (?1,?2,?3,?4,'','recu','',?5,?6,?7)",
+        rusqlite::params![id, fichier, debut, duree, creneau, destination_connue(destination), crate::models::now_iso()],
     )
     .map_err(|er| er.to_string())?;
     Ok(true)
+}
+
+/// Une destination qu'on sait servir — les notes rapides —, ou rien : le cahier journal.
+fn destination_connue(destination: &str) -> &str {
+    if destination == maitrize_relais::VERS_LES_NOTES { destination } else { "" }
 }
 
 fn deja_range(c: &rusqlite::Connection, id: &str) -> bool {
@@ -451,13 +457,15 @@ const NOTE_MAX: usize = 4000;
 fn ecrire_note(app: &tauri::AppHandle, url: &str, texte: &str) -> Result<String, String> {
     let id = crate::models::new_id();
     let db = app.state::<Db>();
-    ranger_note(&db.lock(), &id, &parametre(url, "debut"), &parametre(url, "creneau"), texte)?;
+    ranger_note(&db.lock(), &id, &parametre(url, "debut"), &parametre(url, "creneau"), "", texte)?;
     let _ = app.emit("vocal:recu", id.clone());
     Ok(id)
 }
 
 /// Range une note reçue, par le WiFi comme par le relais ; faux si elle était déjà là.
-pub(crate) fn ranger_note(c: &rusqlite::Connection, id: &str, debut: &str, creneau: &str, texte: &str) -> Result<bool, String> {
+pub(crate) fn ranger_note(
+    c: &rusqlite::Connection, id: &str, debut: &str, creneau: &str, destination: &str, texte: &str,
+) -> Result<bool, String> {
     let texte = texte.trim();
     if texte.is_empty() {
         return Err("Note vide.".into());
@@ -469,9 +477,9 @@ pub(crate) fn ranger_note(c: &rusqlite::Connection, id: &str, debut: &str, crene
         return Ok(false);
     }
     c.execute(
-        "INSERT INTO vocaux (id,fichier,debut,duree_s,texte,etat,erreur,creneau_id,date_creation)
-         VALUES (?1,'',?2,0,?3,'transcrit','',?4,?5)",
-        rusqlite::params![id, debut, texte, creneau, crate::models::now_iso()],
+        "INSERT INTO vocaux (id,fichier,debut,duree_s,texte,etat,erreur,creneau_id,destination,date_creation)
+         VALUES (?1,'',?2,0,?3,'transcrit','',?4,?5,?6)",
+        rusqlite::params![id, debut, texte, creneau, destination_connue(destination), crate::models::now_iso()],
     )
     .map_err(|er| er.to_string())?;
     Ok(true)
