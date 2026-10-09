@@ -81,12 +81,15 @@ export function travauxDuJournal(
   return sortie;
 }
 
+/** Une compétence telle que la programmation l'écrit : son intitulé, sa provenance, sa ligne de référentiel s'il y en a une. */
+export interface CompetenceProgrammee { competence: string; origine: string; source?: SourceCompetence }
+
 /** La même compétence : même intitulé et même provenance, ou la même ligne d'un référentiel. */
-function memeCompetence(o: Objectif, t: TravailDuJournal): boolean {
+function memeCompetence(o: Objectif, t: CompetenceProgrammee): boolean {
   if (cleDeLObjectif(o) === cleCompetence(t.competence, t.origine)) return true;
   const a = o.source;
   // L'identifiant suffit : le titre de la partie a pu être corrigé depuis.
-  return !!(a && a.competenceRefId && a.competenceRefId === t.source.competenceRefId && a.referentielNom === t.source.referentielNom);
+  return !!(a && t.source && a.competenceRefId && a.competenceRefId === t.source.competenceRefId && a.referentielNom === t.source.referentielNom);
 }
 
 /**
@@ -125,4 +128,72 @@ export function reprendreDuJournal(p: ProgrammationIme, travaux: TravailDuJourna
     objectifs[i] = { ...o, pour, periodes, sequences };
   }
   return { prog: { ...p, objectifs, journal: [...vus] }, ajoutes: crees.size, completes: completes.size };
+}
+
+// ── Une séquence posée à la main ──────────────────────────────────────────
+//
+// À côté de « ＋ Objectif », « ＋ Séquence » : on programme une séquence
+// qu'on a déjà, plutôt que de recopier ce qu'elle vise. Sa compétence visée
+// devient l'objectif — sans compétence visée, chacune de ses compétences ;
+// sans compétence du tout, son titre. Un objectif qui porte déjà la
+// compétence cite la séquence, et gagne ces élèves et sa période.
+
+/** Ce qu'une séquence fait travailler, écrit comme la programmation l'écrit. */
+export function competencesDeLaSequence(s: Sequence): CompetenceProgrammee[] {
+  const visee = competenceDeLaSequence(s);
+  if (visee) return [visee];
+  let brut: unknown;
+  try { brut = s.competences ? JSON.parse(s.competences) : []; } catch { brut = []; }
+  const chaine = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  const vues = new Set<string>();
+  const lues = (Array.isArray(brut) ? brut : []).flatMap((c): CompetenceProgrammee[] => {
+    if (!c || typeof c !== "object") return [];
+    const o = c as Record<string, unknown>;
+    const competence = chaine(o.competenceTitre);
+    const origine = [chaine(o.referentielNom), chaine(o.domaineTitre), chaine(o.niveau)].filter(Boolean).join(" › ");
+    const cle = cleCompetence(competence, origine);
+    if (!competence || vues.has(cle)) return [];
+    vues.add(cle);
+    return [{
+      competence, origine,
+      source: { referentielNom: chaine(o.referentielNom), sousDomaineTitre: chaine(o.sousDomaineTitre), competenceRefId: chaine(o.competenceRefId) },
+    }];
+  });
+  if (lues.length) return lues;
+  const titre = s.titre.trim();
+  return titre ? [{ competence: titre, origine: "" }] : [];
+}
+
+/**
+ * Programme une séquence pour ces élèves : ses compétences deviennent des
+ * objectifs, ou s'ajoutent à ceux qui les portent déjà. La séquence y est
+ * citée, et sa période — si elle en a une — prévue.
+ */
+export function poserUneSequence(p: ProgrammationIme, s: Sequence, eleveIds: string[]): {
+  prog: ProgrammationIme; ajoutes: number; completes: number;
+} {
+  const periode = s.periode >= 1 && s.periode <= 5 ? s.periode : 0;
+  const objectifs = [...p.objectifs];
+  let ajoutes = 0;
+  let completes = 0;
+  for (const c of competencesDeLaSequence(s)) {
+    const i = objectifs.findIndex((o) => memeCompetence(o, c));
+    if (i < 0) {
+      objectifs.push({
+        ...nouvelObjectif(eleveIds.map(marqueEleve)), competence: c.competence, origine: c.origine,
+        periodes: periode ? [periode] : [], sequences: [s.id], ...(c.source ? { source: c.source } : {}),
+      });
+      ajoutes += 1;
+      continue;
+    }
+    const o = objectifs[i];
+    const deja = new Set(elevesConcernes(o, p.groupes));
+    const pour = [...o.pour, ...eleveIds.filter((id) => !deja.has(id)).map(marqueEleve)];
+    const periodes = !periode || o.periodes.includes(periode) ? o.periodes : [...o.periodes, periode].sort((a, b) => a - b);
+    const siennes = o.sequences ?? [];
+    const sequences = siennes.includes(s.id) ? siennes : [...siennes, s.id];
+    if (pour.length !== o.pour.length || periodes !== o.periodes || sequences !== siennes) completes += 1;
+    objectifs[i] = { ...o, pour, periodes, sequences };
+  }
+  return { prog: { ...p, objectifs }, ajoutes, completes };
 }
