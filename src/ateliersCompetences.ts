@@ -91,8 +91,9 @@ export function unionDesCompetences(listes: CompetenceSelectionnee[][]): Compete
 /** Deux lignes désignent la même compétence : même référentiel, même entrée. */
 export const memeCompetence = (a: CompetenceSelectionnee, b: CompetenceSelectionnee) =>
   a.referentielNom === b.referentielNom
-  && a.sousDomaineTitre === b.sousDomaineTitre
-  && (a.competenceRefId ?? a.competenceTitre) === (b.competenceRefId ?? b.competenceTitre);
+  // Une ligne du référentiel se reconnaît à son identifiant, qui ne sert qu'une fois : le titre de sa partie a pu être corrigé.
+  && (a.competenceRefId && b.competenceRefId ? a.competenceRefId === b.competenceRefId
+    : a.sousDomaineTitre === b.sousDomaineTitre && (a.competenceRefId ?? a.competenceTitre) === (b.competenceRefId ?? b.competenceTitre));
 
 /**
  * La liste enregistrée, telle qu'on peut s'y fier.

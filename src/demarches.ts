@@ -2192,7 +2192,8 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string, niveau = 
   const maternelle = /cycle 1|maternelle/.test(ref)
     || /mobiliser le langage|premiers outils mathematiques|explorer le monde|se reperer dans le temps et l'espace/.test(dom);
   if (maternelle) {
-    if (/oral a l'ecrit|apprendre a ecrire|principe alphabetique|phonolog/.test(sd) || /syllabe|phoneme|rime\b/.test(comp)) return "phonologie";
+    // « Se préparer à apprendre à écrire » ; la partie « … à lire » (comprendre les écrits, la diversité des langues) a d'autres démarches.
+    if (/apprendre a ecrire|principe alphabetique|phonolog/.test(sd) || /syllabe|phoneme|rime\b/.test(comp)) return "phonologie";
     if (/organiser les mots|mots en categorie/.test(comp)) return "categoriser-maternelle";
     if (/cardinal donne/.test(comp)) return "collections-maternelle";
     if (/chronologie|deroulement d.evenements|etapes d.un processus|ordonner entre eux des moments/.test(comp)) return "chronologie-maternelle";

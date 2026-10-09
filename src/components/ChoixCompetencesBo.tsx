@@ -16,8 +16,10 @@ export function lireCompetencesBo(json: string | null | undefined): CompetenceSe
 }
 
 export const memeCompetence = (a: CompetenceSelectionnee, b: CompetenceSelectionnee) =>
-  a.referentielNom === b.referentielNom && a.sousDomaineTitre === b.sousDomaineTitre
-  && (a.competenceRefId ?? a.competenceTitre) === (b.competenceRefId ?? b.competenceTitre);
+  a.referentielNom === b.referentielNom
+  // Une ligne du référentiel se reconnaît à son identifiant : le titre de sa partie a pu être corrigé.
+  && (a.competenceRefId && b.competenceRefId ? a.competenceRefId === b.competenceRefId
+    : a.sousDomaineTitre === b.sousDomaineTitre && (a.competenceRefId ?? a.competenceTitre) === (b.competenceRefId ?? b.competenceTitre));
 
 /** Coche ou décoche une compétence dans un JSON de compétences. */
 export function basculerCompetence(json: string, c: CompetenceSelectionnee): string {
