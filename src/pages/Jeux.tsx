@@ -16,6 +16,7 @@ import { openCtx } from "../components/ctxmenu";
 import { USAGES, descriptionDe, rangerParUsage, type Usage } from "../usageAtelier";
 import { AtelierContext } from "../components/AtelierContext";
 import { ChoixImages, ModeImagesDeLAtelier, useModeImages } from "../components/PresentationFeuille";
+import { MaterielDeLAtelier, MaterielDeLaClasse } from "../components/MaterielDeLaClasse";
 import { MODES_IMAGES, listeSelonMode } from "../imagesSelonMode";
 import { deposerSurLeBureau, lignesCompetencesAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
@@ -159,6 +160,7 @@ export default function Jeux() {
     }
   });
   const [recherche, setRecherche] = React.useState("");
+  const [inventaireOuvert, setInventaireOuvert] = React.useState(false);
   // Le moment de la séquence où chaque atelier est rangé, et la façon de lire le catalogue.
   const { usages, changer } = useUsagesDesAteliers(ONGLETS);
   // La carte qu'on glisse, et le moment survolé.
@@ -227,7 +229,10 @@ export default function Jeux() {
         onRanger={(u) => ranger(o.id, u)} enVol={enVol === o.id} onVol={(v) => { setEnVol(v ? o.id : ""); if (!v) setSurvol(""); }} />
     );
     return (
-      <Page titre="Fabriquer" sous="Jeux et feuilles à imprimer : langage, sons, lecture et écriture, mathématiques — du cycle 1 au cycle 3">
+      <Page titre="Fabriquer" sous="Jeux et feuilles à imprimer : langage, sons, lecture et écriture, mathématiques — du cycle 1 au cycle 3"
+        actions={<button className="btn ghost sm" onClick={() => setInventaireOuvert(true)}
+          title="Le matériel réel que les programmes nomment — balance, thermomètre, globe… — et ce que votre classe en possède">🧰 Le matériel de la classe</button>}>
+        {inventaireOuvert && <MaterielDeLaClasse onClose={() => setInventaireOuvert(false)} />}
         <BandeauModification atelier="" onReprendre={(a) => setOnglet(a as Onglet)} />
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
           <Input value={recherche} onChange={(e) => setRecherche(e.target.value)}
@@ -302,6 +307,7 @@ export default function Jeux() {
       actions={<button className="btn ghost sm" onClick={() => setOnglet("")}>← Tous les ateliers</button>}>
       <BandeauModification atelier={onglet} onReprendre={(a) => setOnglet(a as Onglet)} />
       {outil && <FeuilleDeLAtelier atelier={outil.id} nom={outil.nom} />}
+      {outil && <MaterielDeLAtelier atelier={outil.id} />}
       {outil && <ProjetDuMomentBandeau atelier={outil.id} />}
       <AtelierContext.Provider value={onglet}>
       <ModeImagesDeLAtelier atelier={onglet} />
