@@ -99,14 +99,11 @@ fn quota_minute(entetes: &reqwest::header::HeaderMap) -> Option<u64> {
 
 fn cle_mistral(db: &State<Db>) -> Result<String, String> {
     let c = db.lock();
-    let cle: Option<String> = c
-        .query_row("SELECT valeur FROM settings WHERE cle='mistralApiKey'", params![],
-                   |r| r.get(0))
-        .ok();
-    match cle {
-        Some(k) if !k.trim().is_empty() => Ok(k),
-        _ => Err("Clé API Mistral absente. Ajoutez-la dans Réglages.".into()),
+    let cle = crate::sync::get_setting(&c, "mistralApiKey");
+    if cle.trim().is_empty() {
+        return Err("Clé API Mistral absente. Ajoutez-la dans Réglages.".into());
     }
+    Ok(cle)
 }
 
 // ── Les jetons dépensés ────────────────────────────────────────────────────

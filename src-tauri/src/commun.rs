@@ -426,19 +426,31 @@ pub async fn commun_ajouter_lien(
     Ok(vu)
 }
 
+/// Un lien donné à un collègue : son adresse, et le jour où Nuage le fermera.
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Invitation {
+    pub url: String,
+    /// « 2027-08-31 » ; vide si Nuage n'en a pas dit.
+    pub expire: String,
+}
+
 /**
  * Crée un lien de partage sur ce bureau commun, à donner à un collègue. Il
  * n'aura besoin d'aucun compte : le lien, et son mot de passe s'il en a un.
+ * Le lien se ferme à la fin de l'année scolaire (voir `echeance_d_un_lien`).
  */
 #[tauri::command]
 pub async fn commun_creer_lien(
     db: State<'_, Db>, bureau: String, dossier: String, mot_de_passe: String, ecriture: bool,
-) -> R<String> {
+) -> R<Invitation> {
     let b = bureau_de(&db, &bureau)?;
     if !b.sur_nuage() {
         return Err("Ce bureau commun est un dossier de cet ordinateur : le partage se fait dans votre service de stockage.".into());
     }
-    crate::webdav::creer_lien(&b.acces(), &relatif_sur(&dossier)?, &mot_de_passe, ecriture).await
+    let echeance = crate::webdav::echeance_d_un_lien(chrono::Local::now().date_naive()).format("%Y-%m-%d").to_string();
+    let lien = crate::webdav::creer_lien_detaille(&b.acces(), &relatif_sur(&dossier)?, &mot_de_passe, ecriture, Some(&echeance)).await?;
+    Ok(Invitation { url: lien.url, expire: lien.expire })
 }
 
 /// Renomme un bureau commun dans Maitrize (le dossier, lui, garde son nom).

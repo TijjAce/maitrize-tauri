@@ -1376,7 +1376,11 @@ pub fn settings_all(db: State<Db>) -> R<std::collections::HashMap<String, String
     let mut st = c.prepare("SELECT cle, valeur FROM settings").map_err(e)?;
     let rows = st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))).map_err(e)?;
     let mut map = std::collections::HashMap::new();
-    for row in rows { let (k, v) = row.map_err(e)?; map.insert(k, v); }
+    for row in rows {
+        let (k, v) = row.map_err(e)?;
+        // Les secrets que l'interface n'affiche pas ne lui parviennent pas.
+        if let Some(v) = crate::trousseau::pour_l_interface(&k, v) { map.insert(k, v); }
+    }
     Ok(map)
 }
 
@@ -1389,7 +1393,10 @@ pub fn settings_prefixe(db: State<Db>, prefixe: String) -> R<std::collections::H
         .map_err(e)?;
     let rows = st.query_map(params![prefixe], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))).map_err(e)?;
     let mut map = std::collections::HashMap::new();
-    for row in rows { let (k, v) = row.map_err(e)?; map.insert(k, v); }
+    for row in rows {
+        let (k, v) = row.map_err(e)?;
+        if let Some(v) = crate::trousseau::pour_l_interface(&k, v) { map.insert(k, v); }
+    }
     Ok(map)
 }
 
@@ -1398,15 +1405,13 @@ pub fn setting_get(db: State<Db>, cle: String) -> R<Option<String>> {
     let c = db.lock();
     let v = c.query_row("SELECT valeur FROM settings WHERE cle=?1", params![cle],
                         |r| r.get::<_, String>(0)).ok();
-    Ok(v)
+    Ok(v.and_then(|v| crate::trousseau::pour_l_interface(&cle, v)))
 }
 
 #[tauri::command]
 pub fn setting_set(db: State<Db>, cle: String, valeur: String) -> R<()> {
     let c = db.lock();
-    c.execute("INSERT OR REPLACE INTO settings (cle,valeur) VALUES (?1,?2)",
-              params![cle, valeur]).map_err(e)?;
-    Ok(())
+    crate::sync::set_setting(&c, &cle, &valeur)
 }
 
 // ============================================================
