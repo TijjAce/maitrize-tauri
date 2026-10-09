@@ -12,7 +12,7 @@
 //!
 //! Ce qui s'y pose est illisible pour Nuage, et pour le téléphone lui-même :
 //!
-//!   - un **dépôt** (dictée, note, page scannée) est scellé pour l'ordinateur,
+//!   - un **dépôt** (dictée, note, page scannée, photo) est scellé pour l'ordinateur,
 //!     avec sa clé publique. Seule la clé privée, qui ne quitte pas
 //!     l'ordinateur, le rouvre : un téléphone perdu ne relit pas ce qu'il a
 //!     déposé, et Nuage ne garde que des fichiers fermés ;
@@ -302,7 +302,7 @@ pub fn dechiffrer_retour(cle: &[u8; 32], blob: &[u8]) -> R<Vec<u8>> {
 
 // ── Ce qu'on dépose ────────────────────────────────────────────────────────
 
-/// Les trois choses que le téléphone dépose.
+/// Les quatre choses que le téléphone dépose.
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Genre {
@@ -312,12 +312,16 @@ pub enum Genre {
     Note,
     /// Une page scannée : une image.
     Page,
+    /// Une photo nommée, pour « Mes pictos » : un JPEG. Son nom est dans
+    /// l'étiquette. Un ordinateur d'avant ne reconnaît pas sa lettre : il la
+    /// laisse sur Nuage, où un ordinateur à jour la relèvera.
+    Photo,
 }
 
 impl Genre {
     /// La lettre qui ouvre le nom du fichier : l'ordinateur trie sans rien ouvrir.
     fn lettre(self) -> char {
-        match self { Genre::Vocal => 'v', Genre::Note => 'n', Genre::Page => 'p' }
+        match self { Genre::Vocal => 'v', Genre::Note => 'n', Genre::Page => 'p', Genre::Photo => 'i' }
     }
 }
 
@@ -346,6 +350,11 @@ pub struct Etiquette {
     /// créneau de l'heure, faute de les connaître.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub destination: String,
+    /// Le nom qu'on a donné à une photo : « les ciseaux », « la cantine ».
+    /// C'est le mot sous lequel elle se range dans Mes pictos. Absent du dépôt
+    /// quand il est vide.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub nom: String,
 }
 
 /// La destination d'une dictée ou d'une note qui va aux notes rapides de l'ordinateur.
@@ -364,6 +373,7 @@ pub fn genre_du_nom(nom: &str) -> Option<Genre> {
         ("v", id) if !id.is_empty() => Some(Genre::Vocal),
         ("n", id) if !id.is_empty() => Some(Genre::Note),
         ("p", id) if !id.is_empty() => Some(Genre::Page),
+        ("i", id) if !id.is_empty() => Some(Genre::Photo),
         _ => None,
     }
 }
@@ -462,7 +472,7 @@ mod tests {
     #[test]
     fn un_depot_ne_se_rouvre_qu_avec_la_cle_de_l_ordinateur() {
         let (a, privee, _) = appairage();
-        let etiquette = Etiquette { genre: Genre::Vocal, id: "abc-123".into(), debut: "2026-10-02T10:12:00".into(), duree_s: 4.5, creneau: "c7".into(), ext: String::new(), destination: String::new() };
+        let etiquette = Etiquette { genre: Genre::Vocal, id: "abc-123".into(), debut: "2026-10-02T10:12:00".into(), duree_s: 4.5, creneau: "c7".into(), ext: String::new(), destination: String::new(), nom: String::new() };
         let son = vec![7u8; 5000];
         let blob = preparer_depot(&a, &etiquette, &son).unwrap();
         // Rien de lisible dans ce qui voyage : ni l'identifiant, ni l'heure.
@@ -484,7 +494,7 @@ mod tests {
         let (a, privee, _) = appairage();
         let pour_les_notes = Etiquette {
             genre: Genre::Note, id: "n2".into(), debut: "2026-10-09T18:02:00".into(), duree_s: 0.0, creneau: String::new(),
-            ext: String::new(), destination: VERS_LES_NOTES.into(),
+            ext: String::new(), destination: VERS_LES_NOTES.into(), nom: String::new(),
         };
         let (relue, contenu) = ouvrir_depot(&privee, &preparer_depot(&a, &pour_les_notes, "Rappeler l'orthophoniste.".as_bytes()).unwrap()).unwrap();
         assert_eq!(relue.destination, "notes");
@@ -495,12 +505,28 @@ mod tests {
         // Et l'étiquette d'un téléphone d'avant se relit, sans destination.
         let ancienne: Etiquette = serde_json::from_str(r#"{"genre":"note","id":"n3","debut":"","dureeS":0,"creneau":"c1","ext":""}"#).unwrap();
         assert_eq!(ancienne.destination, "");
+        assert_eq!(ancienne.nom, "");
+    }
+
+    #[test]
+    fn une_photo_voyage_avec_son_nom() {
+        let (a, privee, _) = appairage();
+        let photo = Etiquette {
+            genre: Genre::Photo, id: "i1".into(), debut: "2026-10-09T10:40:00".into(), duree_s: 0.0, creneau: String::new(),
+            ext: "jpg".into(), destination: String::new(), nom: "les ciseaux de la classe".into(),
+        };
+        let jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3];
+        let (relue, contenu) = ouvrir_depot(&privee, &preparer_depot(&a, &photo, &jpeg).unwrap()).unwrap();
+        assert_eq!(relue, photo);
+        assert_eq!(contenu, jpeg);
+        // Sans nom, l'étiquette reste celle des autres dépôts.
+        assert!(!serde_json::to_string(&Etiquette { nom: String::new(), ..photo }).unwrap().contains("\"nom\""));
     }
 
     #[test]
     fn un_depot_modifie_en_route_est_refuse() {
         let (a, privee, _) = appairage();
-        let etiquette = Etiquette { genre: Genre::Note, id: "n1".into(), debut: String::new(), duree_s: 0.0, creneau: String::new(), ext: String::new(), destination: String::new() };
+        let etiquette = Etiquette { genre: Genre::Note, id: "n1".into(), debut: String::new(), duree_s: 0.0, creneau: String::new(), ext: String::new(), destination: String::new(), nom: String::new() };
         let blob = preparer_depot(&a, &etiquette, "Deux lignes.".as_bytes()).unwrap();
         for i in [0, 5, 40, 61, blob.len() - 1] {
             let mut abime = blob.clone();
@@ -587,8 +613,10 @@ mod tests {
         assert_eq!(genre_du_nom("v-3f2a-77.mtz"), Some(Genre::Vocal));
         assert_eq!(genre_du_nom("n-1.mtz"), Some(Genre::Note));
         assert_eq!(genre_du_nom("p-1.mtz"), Some(Genre::Page));
+        assert_eq!(nom_du_depot(Genre::Photo, "9c1e"), "i-9c1e.mtz");
+        assert_eq!(genre_du_nom("i-9c1e.mtz"), Some(Genre::Photo));
         // Ce que Nuage ou un curieux pose là n'est pas un dépôt.
-        for nom in ["agenda.mtz", "v-.mtz", "x-1.mtz", "v-1.txt", ".DS_Store", "Readme.md"] {
+        for nom in ["agenda.mtz", "v-.mtz", "i-.mtz", "x-1.mtz", "v-1.txt", ".DS_Store", "Readme.md"] {
             assert_eq!(genre_du_nom(nom), None, "{nom}");
         }
     }

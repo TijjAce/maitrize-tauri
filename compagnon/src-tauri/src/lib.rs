@@ -33,6 +33,11 @@ pub fn run() {
             note_garder,
             notes_liste,
             note_oublier,
+            // Les photos nommées, pour Mes pictos.
+            photo_garder,
+            photos_liste,
+            photo_lire,
+            photo_oublier,
             creneaux_du_jour,
             creneau_maintenant,
             // Par Nuage : les dictées, les notes, l'emploi du temps.
@@ -45,6 +50,7 @@ pub fn run() {
             relais_joignable,
             vocal_deposer,
             note_deposer,
+            photo_deposer,
             creneaux_du_relais,
             // Par le WiFi, et seulement quand l'ordinateur le demande : pages et photos.
             demande_lire,

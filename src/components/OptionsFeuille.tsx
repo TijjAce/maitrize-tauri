@@ -2,6 +2,7 @@ import React from "react";
 import { api } from "../api";
 import { toast } from "./Toaster";
 import { AtelierContext } from "./AtelierContext";
+import { PresentationFeuille } from "./PresentationFeuille";
 import {
   EVT_OPTIONS_FEUILLE, OPTIONS_FEUILLE, cleOptionsFeuille, ecrireOptionsFeuille, feuillesPubliees, lireOptionsFeuille, type OptionsFeuille as Options,
 } from "../optionsFeuille";
@@ -42,8 +43,9 @@ const CASES: { cle: keyof Options; libelle: string; aide: string }[] = [
 export function OptionsFeuille({ atelier }: { atelier: string }) {
   const { options, changer } = useOptionsFeuille(atelier);
   const contenu = React.useSyncExternalStore(feuillesPubliees.abonner, () => feuillesPubliees.lire(atelier));
+  const connue = React.useSyncExternalStore(feuillesPubliees.abonner, () => feuillesPubliees.connue(atelier));
   const utiles = CASES.filter((c) => contenu[c.cle]);
-  if (!utiles.length) return null;
+  if (!utiles.length && !connue) return null;
   return (
     <div className="comp-atelier options-feuille" role="group" aria-label="Ce qui s'imprime sur la feuille">
       <span className="options-feuille-titre">🖨 Sur la feuille</span>
@@ -53,6 +55,7 @@ export function OptionsFeuille({ atelier }: { atelier: string }) {
           <span>{c.libelle}</span>
         </label>
       ))}
+      <PresentationFeuille atelier={atelier} />
     </div>
   );
 }
@@ -67,8 +70,9 @@ export function CasesFeuille() {
   const atelier = React.useContext(AtelierContext);
   const { options, changer } = useOptionsFeuille(atelier);
   const contenu = React.useSyncExternalStore(feuillesPubliees.abonner, () => feuillesPubliees.lire(atelier));
+  const connue = React.useSyncExternalStore(feuillesPubliees.abonner, () => feuillesPubliees.connue(atelier));
   const utiles = CASES.filter((c) => contenu[c.cle]);
-  if (!atelier || !utiles.length) return null;
+  if (!atelier || (!utiles.length && !connue)) return null;
   return (
     <div className="cases-feuille" role="group" aria-label="Ce qui s'imprime sur la feuille">
       <span className="meta">Sur la feuille :</span>
@@ -78,6 +82,7 @@ export function CasesFeuille() {
           <span>{c.libelle}</span>
         </label>
       ))}
+      <PresentationFeuille atelier={atelier} />
     </div>
   );
 }

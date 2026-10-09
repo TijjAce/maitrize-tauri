@@ -19,7 +19,7 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Pour enregistrer ce que vous dictez en classe. Le son reste sur le téléphone, puis part sur votre ordinateur — il ne sort pas de là.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Pour lire le QR code affiché par votre ordinateur, et photographier les pages d'un manuel qu'il vous demande. Les pages restent sur le téléphone jusqu'à ce que vous les supprimiez.</string>
+	<string>Pour lire le QR code affiché par votre ordinateur, photographier les pages d'un manuel qu'il vous demande, et prendre les photos que vous rangez dans Mes pictos. Les pages restent sur le téléphone jusqu'à ce que vous les supprimiez ; les photos partent scellées vers votre ordinateur.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Pour déposer vos enregistrements sur votre ordinateur, quand il est sur le même WiFi que le téléphone.</string>
 </dict>

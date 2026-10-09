@@ -5,6 +5,7 @@ import type { PictoPose } from "../supportsVisuels";
 import { chargerImageAppoint } from "../pictosAppoint";
 import { ETIQUETTES, chercherPictos, estMonPicto, imageDeMonPicto, origineDe } from "../mesPictos";
 import { PhotoTelephone } from "./PhotoTelephone";
+import { imagesSelonMode, modeImagesActif, photosChangees, type ModeImages } from "../imagesSelonMode";
 import { toast } from "./Toaster";
 
 // ── Choisir un pictogramme ARASAAC ─────────────────────────────────────────
@@ -24,7 +25,7 @@ const chargerPhoto = (nom: string) =>
  * (« photo:IMG-12.jpg »).
  */
 const cache = new Map<string, Promise<string>>();
-export function chargerPicto(id: number | string): Promise<string> {
+function chargerTelle(id: number | string): Promise<string> {
   const cle = String(id);
   let p = cache.get(cle);
   if (!p) {
@@ -38,6 +39,35 @@ export function chargerPicto(id: number | string): Promise<string> {
 }
 
 /**
+ * L'image d'un pictogramme selon le choix de l'atelier ouvert dans Fabriquer
+ * — photos et pictos, pictos seulement, photos seulement (voir
+ * `imagesSelonMode`) ; telle quelle ailleurs. Une image que le choix écarte
+ * ne se charge pas : sa case reste vide.
+ */
+export function chargerPicto(id: number | string, mode: ModeImages | null = modeImagesActif.lire()): Promise<string> {
+  if (!mode) return chargerTelle(id);
+  const cle = `${mode}|${photosChangees.version()}|${id}`;
+  let p = cache.get(cle);
+  if (!p) {
+    p = imagesSelonMode([id], mode).then((m) => {
+      const autre = m.get(id);
+      if (autre == null) throw new Error("Aucune image pour ce mot dans ce choix.");
+      return chargerTelle(autre);
+    });
+    p.catch(() => cache.delete(cle));
+    cache.set(cle, p);
+  }
+  return p;
+}
+
+/** Ce qui fait changer une image affichée : le choix de l'atelier ouvert, et les photos de Mes pictos. */
+function useChoixDesImages(): string {
+  const mode = React.useSyncExternalStore(modeImagesActif.abonner, modeImagesActif.lire);
+  const version = React.useSyncExternalStore(photosChangees.abonner, photosChangees.version);
+  return `${mode ?? ""}|${version}`;
+}
+
+/**
  * Range une image qui ne vient pas de la banque — une photo, un dessin de
  * l'enseignant — sous un identifiant à elle (négatif) : elle se montre alors
  * partout où un pictogramme se montre.
@@ -48,12 +78,13 @@ export function memoriserImage(id: number, src: string): void {
 
 export function usePictoImage(id: number | string | null | undefined): string {
   const [src, setSrc] = React.useState("");
+  const choix = useChoixDesImages();
   React.useEffect(() => {
     if (id == null) { setSrc(""); return; }
     let vivant = true;
     chargerPicto(id).then((s) => { if (vivant) setSrc(s); }).catch(() => { if (vivant) setSrc(""); });
     return () => { vivant = false; };
-  }, [id]);
+  }, [id, choix]);
   return src;
 }
 
@@ -67,11 +98,12 @@ export async function chargerImages<T extends number | string>(ids: T[]): Promis
 export function usePictoImages<T extends number | string>(ids: T[]): Record<T, string> {
   const [images, setImages] = React.useState<Record<T, string>>({} as Record<T, string>);
   const cle = ids.map(String).sort().join(",");
+  const choix = useChoixDesImages();
   React.useEffect(() => {
     let vivant = true;
     chargerImages(ids).then((lues) => { if (vivant) setImages(lues); });
     return () => { vivant = false; };
-  }, [cle]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cle, choix]); // eslint-disable-line react-hooks/exhaustive-deps
   return images;
 }
 

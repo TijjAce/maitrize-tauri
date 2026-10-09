@@ -102,6 +102,8 @@ const RIEN: OptionsFeuille = { consigne: false, prenom: false, corrige: false };
 
 export const feuillesPubliees = {
   lire: (atelier: string): OptionsFeuille => contenus[atelier] ?? RIEN,
+  /** Vrai dès que l'aperçu de l'atelier a montré une feuille : le mode dyslexique s'y propose. */
+  connue: (atelier: string): boolean => atelier in contenus,
   publier(atelier: string, contenu: OptionsFeuille) {
     const avant = contenus[atelier];
     if (!atelier || (avant && avant.consigne === contenu.consigne && avant.prenom === contenu.prenom && avant.corrige === contenu.corrige)) return;

@@ -64,6 +64,12 @@ let ecoute = "", lecteur = null;
 /** Les notes écrites qui attendent, et l'éditeur quand il est ouvert. */
 let notes = [], ecrit = false, brouillon = "";
 /**
+ * Les photos pour Mes pictos : celles qui attendent, et celle qu'on vient de
+ * prendre, le temps de lui donner son nom. Certains élèves n'entrent pas dans
+ * l'abstraction d'un pictogramme : la photo de l'objet de la classe leur parle.
+ */
+let photos = [], photoPrise = null, nomPhoto = "";
+/**
  * Où va ce qu'on dicte ou qu'on écrit : au cahier journal, rangé au créneau,
  * ou aux notes rapides de l'ordinateur, en un nouveau tiret. Le cahier
  * journal reste la règle : le choix tombe, comme le jour, après un quart
@@ -299,16 +305,22 @@ function base64(octets) {
 async function relire() {
   try { vocaux = await invoke("vocaux_liste"); } catch (e) { vocaux = []; }
   try { notes = await invoke("notes_liste"); } catch (e) { notes = []; }
+  try { photos = await invoke("photos_liste"); } catch (e) { photos = []; }
   rendre();
 }
 
-/** Ce qui attend l'ordinateur, vocaux et notes mêlés, du plus ancien au plus récent. */
+/** Ce qui attend l'ordinateur, vocaux, notes et photos mêlés, du plus ancien au plus récent. */
 function enAttente() {
   return [
     ...vocaux.map((v) => ({ ...v, sorte: "vocal" })),
     ...notes.map((n) => ({ ...n, sorte: "note" })),
+    ...photos.map((p) => ({ ...p, sorte: "photo" })),
   ].sort((a, b) => String(a.debut).localeCompare(String(b.debut)));
 }
+
+/** La commande qui dépose, ou qui oublie, chaque sorte de ce qui attend. */
+const DEPOSER = { vocal: "vocal_deposer", note: "note_deposer", photo: "photo_deposer" };
+const OUBLIER = { vocal: "vocal_oublier", note: "note_oublier", photo: "photo_oublier" };
 
 /** Garde la note écrite, puis tente de la déposer. */
 async function garderLaNote() {
@@ -492,7 +504,7 @@ async function envoyerTout() {
       if (!relais.relie) { souci = "Le téléphone n'est pas relié à Nuage."; break; }
       if (!relais.connecte) { souci = "Le téléphone n'est pas connecté à votre compte Nuage."; break; }
       try {
-        await invoke(x.sorte === "note" ? "note_deposer" : "vocal_deposer", { id: x.id });
+        await invoke(DEPOSER[x.sorte], { id: x.id });
       } catch (e) { souci = String(e); break; }
       parties += 1;
       await relire();
@@ -537,7 +549,7 @@ function arreterEcoute() {
 
 async function oublier(id, sorte) {
   if (ecoute === id) arreterEcoute();
-  try { await invoke(sorte === "note" ? "note_oublier" : "vocal_oublier", { id }); }
+  try { await invoke(OUBLIER[sorte] || "vocal_oublier", { id }); }
   catch (e) { /* déjà parti */ }
   await relire();
 }
@@ -643,22 +655,64 @@ async function terminerLaDemande() {
   rendre();
 }
 
-/** Une photo, ramenée à une taille d'écran : trois mégapixels suffisent, et l'envoi reste rapide. */
-async function photoReduite(fichier) {
+/**
+ * Une photo, ramenée à une taille d'écran : trois mégapixels suffisent, et
+ * l'envoi reste rapide. Un picto en demande moins encore : il s'imprime en
+ * quelques centimètres.
+ */
+async function photoReduite(fichier, cote = 2400, qualite = 0.88) {
   const adresse = URL.createObjectURL(fichier);
   try {
     const image = new Image();
     image.src = adresse;
     await image.decode();
-    const k = Math.min(1, 2400 / Math.max(image.naturalWidth, image.naturalHeight));
+    const k = Math.min(1, cote / Math.max(image.naturalWidth, image.naturalHeight));
     const toile = document.createElement("canvas");
     toile.width = Math.round(image.naturalWidth * k);
     toile.height = Math.round(image.naturalHeight * k);
     toile.getContext("2d").drawImage(image, 0, 0, toile.width, toile.height);
-    return toile.toDataURL("image/jpeg", 0.88).split(",")[1];
+    return toile.toDataURL("image/jpeg", qualite).split(",")[1];
   } finally {
     URL.revokeObjectURL(adresse);
   }
+}
+
+// ── Une photo pour Mes pictos ─────────────────────────────────────────────
+//
+// On photographie l'objet de la classe, on lui donne son nom, on garde : la
+// photo part par Nuage, scellée, avec les dictées. L'ordinateur la range dans
+// Mes pictos sous ce nom, et la montre partout où un picto se montre.
+
+/** La photo prise ou choisie, réduite : on demande ensuite son nom. */
+async function prendrePhoto(fichier) {
+  if (!fichier) return;
+  souci = "";
+  try {
+    const b64 = await photoReduite(fichier, 1200, 0.85);
+    photoPrise = { b64, apercu: `data:image/jpeg;base64,${b64}` };
+    nomPhoto = "";
+  } catch (e) {
+    souci = "Cette image ne s'ouvre pas : " + String(e);
+  }
+  rendre();
+  document.getElementById("nom-photo")?.focus();
+}
+
+/** Garde la photo sous son nom, puis tente de la déposer. */
+async function garderLaPhoto() {
+  if (!photoPrise) return;
+  const champ = document.getElementById("nom-photo");
+  const nom = (champ ? champ.value : nomPhoto).trim();
+  nomPhoto = nom;
+  if (!nom) { souci = "Donnez un nom à la photo : c'est le mot sous lequel vous la retrouverez."; rendre(); return; }
+  try {
+    await invoke("photo_garder", { debut: maintenantIso(), nom, imageB64: photoPrise.b64 });
+    photoPrise = null; nomPhoto = ""; souci = "";
+  } catch (e) {
+    souci = String(e);
+  }
+  await relire();
+  void envoyerTout();
 }
 
 /** Envoie la photo prise à l'ordinateur qui l'a demandée. */
@@ -927,11 +981,17 @@ function choixDeDestination() {
 const versLesNotes = () =>
   `<p class="pastille muette">${icone("liste")}<span>Un nouveau tiret dans les notes rapides</span></p>`;
 
-/** Le grand bouton, et l'autre façon de prendre une note : l'écrire. */
+/** Le grand bouton, l'autre façon de prendre une note — l'écrire —, et la photo pour un picto. */
 const auRepos = () => `
   <button class="rond" id="go" aria-label="${pourLesNotes ? "Dicter une note rapide" : "Dicter"}">${icone("micro")}</button>
   <p class="rond-legende">${pourLesNotes ? "Dicter une note rapide" : "Dicter"}</p>
-  <button class="tuile seule" id="ecrire">${icone("crayon")}${pourLesNotes ? "Écrire une note rapide" : "Écrire une note"}</button>`;
+  <div class="tuiles">
+    <button class="tuile" id="ecrire">${icone("crayon")}${pourLesNotes ? "Note rapide" : "Écrire une note"}</button>
+    <label class="tuile">${icone("photo")}Photo pour un picto
+      <input type="file" id="photo-picto" accept="image/*" capture="environment" hidden></label>
+  </div>
+  <label class="lien-album">ou choisir une image dans la photothèque
+    <input type="file" id="photo-album" accept="image/*" hidden></label>`;
 
 /** Pendant qu'on dicte : le temps, le halo qui suit la voix, et de quoi s'arrêter. */
 const enDictee = () => `
@@ -949,6 +1009,20 @@ const editeurDeNote = () => `
     <div class="deux">
       <button class="btn-doux" id="annuler-note">Annuler</button>
       <button class="btn-plein" id="garder-note">Garder</button>
+    </div>
+  </div>`;
+
+/** La photo qu'on vient de prendre, et son nom à écrire : le mot sous lequel on la retrouvera. */
+const editeurDePhoto = () => `
+  <div class="note-carte photo-carte">
+    <img class="photo-apercu" src="${photoPrise.apercu}" alt="">
+    <label class="photo-nom">Son nom
+      <input id="nom-photo" type="text" maxlength="60" autocomplete="off" autocapitalize="none"
+        placeholder="ex. : les ciseaux, la cantine, le bus" value="${echapper(nomPhoto)}"></label>
+    <p class="photo-aide">C'est le mot sous lequel elle se rangera dans Mes pictos, sur l'ordinateur.</p>
+    <div class="deux">
+      <button class="btn-doux" id="annuler-photo">Annuler</button>
+      <button class="btn-plein" id="garder-photo">Garder</button>
     </div>
   </div>`;
 
@@ -971,17 +1045,19 @@ function etatDeNuage() {
 
 function rangDAttente(x) {
   const note = x.sorte === "note";
-  const matiere = x.destination === VERS_LES_NOTES ? "Notes rapides" : x.creneau ? matiereDuCreneau(x.creneau) : "";
+  const photo = x.sorte === "photo";
+  const matiere = photo ? "Mes pictos" : x.destination === VERS_LES_NOTES ? "Notes rapides" : x.creneau ? matiereDuCreneau(x.creneau) : "";
   // Rangé à un autre jour qu'aujourd'hui : on le dit en tête de la ligne.
   const jour = jourCourt(String(x.debut).slice(0, 10));
   const sous = [jour, heureDe(x.debut), matiere, !note && x.octets ? poids(x.octets) : ""].filter(Boolean).map(echapper).join(" · ");
+  const titre = note ? echapper(apercu(x.texte)) : photo ? `Photo · « ${echapper(x.nom)} »` : `Dictée · ${libelleDuree(x.dureeS)}`;
   return `<div class="rang">
-    <span class="ico">${icone(note ? "crayon" : "micro")}</span>
+    <span class="ico">${icone(note ? "crayon" : photo ? "photo" : "micro")}</span>
     <span class="rang-texte">
-      <span class="rang-titre">${note ? echapper(apercu(x.texte)) : `Dictée · ${libelleDuree(x.dureeS)}`}</span>
+      <span class="rang-titre">${titre}</span>
       <span class="rang-sous"><span class="coupe">${sous}</span></span>
     </span>
-    ${note ? "" : `<button class="icone-btn" data-ecouter="${echapper(x.id)}" aria-label="${ecoute === x.id ? "Pause" : "Écouter"}">${icone(ecoute === x.id ? "pause" : "lecture")}</button>`}
+    ${note || photo ? "" : `<button class="icone-btn" data-ecouter="${echapper(x.id)}" aria-label="${ecoute === x.id ? "Pause" : "Écouter"}">${icone(ecoute === x.id ? "pause" : "lecture")}</button>`}
     <button class="icone-btn danger" data-oublier="${echapper(x.id)}" data-sorte="${x.sorte}" aria-label="Supprimer">${icone("poubelle")}</button>
   </div>`;
 }
@@ -1105,17 +1181,18 @@ function rendre() {
   const pret = relais.relie && relais.connecte;
   const parNuage = !relais.relie ? carteNuage() : !relais.connecte ? carteConnexion() : `
     <section class="heros">
+      ${photoPrise && !enCours && !ecrit ? `<p class="pastille muette">${icone("photo")}<span>Une photo pour Mes pictos</span></p>` : `
       ${choixDeDestination()}
-      ${pourLesNotes ? versLesNotes() : barreDuJour() + bandeauCreneau()}
-      ${enCours ? enDictee() : ecrit ? editeurDeNote() : auRepos()}
+      ${pourLesNotes ? versLesNotes() : barreDuJour() + bandeauCreneau()}`}
+      ${enCours ? enDictee() : ecrit ? editeurDeNote() : photoPrise ? editeurDePhoto() : auRepos()}
     </section>
     ${bulles()}
-    ${enCours || ecrit ? "" : listeDAttente(enAttente()) + lienNuage()}`;
+    ${enCours || ecrit || photoPrise ? "" : listeDAttente(enAttente()) + lienNuage()}`;
   el.innerHTML = `
-    ${entete("nuage", "Dictées et notes", "par Nuage")}
+    ${entete("nuage", "Dictées, notes et photos", "par Nuage")}
     ${parNuage}
     ${!pret ? bulles() : ""}
-    ${enCours || ecrit ? "" : `${entete("wifi", "Pages et photos", "par le WiFi, à la demande de l'ordinateur")}${carteWifi()}`}
+    ${enCours || ecrit || photoPrise ? "" : `${entete("wifi", "Pages et photos", "par le WiFi, à la demande de l'ordinateur")}${carteWifi()}`}
   `;
 
   const clic = (id, f) => { const b = document.getElementById(id); if (b) b.onclick = f; };
@@ -1149,6 +1226,17 @@ function rendre() {
   clic("garder-note", () => { void garderLaNote(); });
   const champNote = document.getElementById("note");
   if (champNote) champNote.oninput = () => { brouillon = champNote.value; };
+  for (const id of ["photo-picto", "photo-album"]) {
+    const entree = document.getElementById(id);
+    if (entree) entree.onchange = () => { const f = entree.files && entree.files[0]; if (f) void prendrePhoto(f); };
+  }
+  clic("annuler-photo", () => { photoPrise = null; nomPhoto = ""; souci = ""; rendre(); });
+  clic("garder-photo", () => { void garderLaPhoto(); });
+  const champPhoto = document.getElementById("nom-photo");
+  if (champPhoto) {
+    champPhoto.oninput = () => { nomPhoto = champPhoto.value; };
+    champPhoto.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); void garderLaPhoto(); } };
+  }
   clic("oublier-relais", () => { void oublierLeRelais(); });
   el.querySelectorAll("[data-oublier]").forEach((b) => {
     b.onclick = () => { void oublier(b.dataset.oublier, b.dataset.sorte); };

@@ -10,7 +10,7 @@ const picto = (id: number, mot: string, date = "2026-10-05"): MonPicto =>
 
 describe("Mes pictos", () => {
   it("donnent à chaque origine sa plage de numéros, loin des images d'une séance et dans les entiers 32 bits", () => {
-    for (const origine of ["ia", "sclera", "bajard"] as const) {
+    for (const origine of ["ia", "sclera", "bajard", "photo"] as const) {
       for (const h of [0, 0.5, 0.999999999]) {
         const id = nouvelIdMonPicto(origine, () => h);
         expect(origineDe(id), `${origine} ${h}`).toBe(origine);
@@ -20,7 +20,7 @@ describe("Mes pictos", () => {
         expect(estPerso(id)).toBe(true);
       }
     }
-    for (const autre of [0, 2349, -1, -999_999_999, -2_100_000_000, 1.5, "-1000000001", null]) expect(estMonPicto(autre)).toBe(false);
+    for (const autre of [0, 2349, -1, -999_999_999, -2_147_000_000, -2_147_483_648, 1.5, "-1000000001", null]) expect(estMonPicto(autre)).toBe(false);
   });
 
   it("se lisent dans les réglages ; une fiche abîmée ou un chemin sont écartés", () => {
@@ -49,6 +49,11 @@ describe("Mes pictos", () => {
     expect(pourLeMot(liste, "trotti")).toBeUndefined();
     // Deux pictos pour le même mot : le plus récent.
     expect(pourLeMot([picto(-1_000_000_009, "ballon", "2026-09-01"), picto(-1_000_000_010, "Ballon", "2026-10-01")], "ballon")?.id).toBe(-1_000_000_010);
+    // Une photo nommée avec son article répond au mot sans article, et l'inverse ; écrit pareil passe d'abord.
+    const photos = [picto(-2_100_000_001, "les ciseaux"), picto(-2_100_000_002, "cantine")];
+    expect(pourLeMot(photos, "ciseaux")?.id).toBe(-2_100_000_001);
+    expect(pourLeMot(photos, "la cantine")?.id).toBe(-2_100_000_002);
+    expect(pourLeMot([...photos, picto(-1_000_000_011, "ciseaux")], "ciseaux")?.id).toBe(-1_000_000_011);
   });
 
   it("complètent une recherche par mots : ce qu'ARASAAC n'a pas prend le picto gardé", () => {

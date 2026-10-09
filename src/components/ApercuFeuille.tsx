@@ -9,6 +9,9 @@ import { useOptionsFeuille } from "./OptionsFeuille";
 import { appliquerOptionsFeuille, contenuDeLaFeuille, feuillesPubliees } from "../optionsFeuille";
 import { consigneParDefaut, consignesParDefaut, remplacerConsigne } from "../consigneAtelier";
 import { STYLE_REFERENCES, referencesEnAide } from "../references";
+import { STYLE_DYS } from "../presentationFeuille";
+import { feuillesAvecImages, porteDesImages } from "../imagesSelonMode";
+import { useModeDys } from "./PresentationFeuille";
 
 // La feuille telle qu'elle s'imprimera : même HTML, même style que le
 // document envoyé à l'imprimante — la consigne réécrite par l'enseignant et
@@ -23,6 +26,9 @@ export function ApercuFeuille({ html, style }: { html: string; style: string }) 
   React.useEffect(() => { consignesParDefaut.publier(atelier, consigneParDefaut(html)); }, [atelier, html]);
   // Les cases du bandeau ne proposent que ce que la feuille contient : c'est l'aperçu qui le sait.
   React.useEffect(() => { feuillesPubliees.publier(atelier, contenuDeLaFeuille(html)); }, [atelier, html]);
+  // Le choix des images ne se propose qu'aux feuilles qui en montrent.
+  React.useEffect(() => { feuillesAvecImages.publier(atelier, porteDesImages(html)); }, [atelier, html]);
+  const [dys] = useModeDys(atelier);
   const { options } = useOptionsFeuille(atelier);
   const remplace = React.useMemo(() => referencesEnAide(appliquerOptionsFeuille(remplacerConsigne(html, consigne), options)), [html, consigne, options]);
   const { pictos: ajoutes } = usePictosAtelier(atelier);
@@ -30,7 +36,7 @@ export function ApercuFeuille({ html, style }: { html: string; style: string }) 
   const { bulle, montrer, cacher } = useBulleDeReference();
   return (
     <div className="pb-apercu-page apercu-feuille" onMouseOver={montrer} onFocus={montrer} onMouseOut={cacher} onBlur={cacher} onClick={montrer}>
-      <style>{STYLE_FEUILLE + style + pictos.style + STYLE_REFERENCES}</style>
+      <style>{STYLE_FEUILLE + style + pictos.style + STYLE_REFERENCES + (dys ? STYLE_DYS : "")}</style>
       <div dangerouslySetInnerHTML={{ __html: pictos.html }} />
       {bulle && createPortal(
         <div role="tooltip" style={{

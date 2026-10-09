@@ -486,6 +486,8 @@ pub struct Bilan {
     pub vocaux: usize,
     pub notes: usize,
     pub pages: usize,
+    /// Les photos nommées, rangées dans Mes pictos.
+    pub photos: usize,
     /// Les pages scannées restées sur Nuage : elles attendent qu'on ouvre « Scanner avec le compagnon ».
     pub pages_en_attente: usize,
     /// Les dépôts qui ne s'ouvrent pas avec la clé de cet ordinateur.
@@ -545,6 +547,7 @@ async fn relever_dans(
                         relais::Genre::Vocal => bilan.vocaux += 1,
                         relais::Genre::Note => bilan.notes += 1,
                         relais::Genre::Page => bilan.pages += 1,
+                        relais::Genre::Photo => bilan.photos += 1,
                     }
                 }
                 // S'il ne s'efface pas, on le reverra : il est rangé, il ne se rangera pas deux fois.
@@ -565,8 +568,50 @@ fn id_propre(id: &str) -> String {
     id.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-').take(64).collect()
 }
 
-/// Range une dictée ou une note dans la base ; une page dans les fichiers.
-/// Rend le nom du fichier d'une page, pour l'annoncer à la fenêtre qui l'attend.
+// ── Les photos pour Mes pictos ─────────────────────────────────────────────
+//
+// Une photo prise sur le téléphone arrive avec son nom. Elle se range comme
+// les pictos que l'enseignant garde (voir `mesPictos.ts`) : l'image parmi les
+// fichiers de l'application, sa fiche dans le réglage « pictos:<numéro> »,
+// qui voyage d'un ordinateur à l'autre. Le numéro est pris dans la plage des
+// photos : une feuille sait ainsi, sans rien relire, qu'elle porte une photo
+// de l'enseignant et non un pictogramme d'ARASAAC.
+
+/// La plage des numéros de photos dans Mes pictos, la première borne comprise — la même que `mesPictos.ts`.
+pub const PLAGE_PHOTOS: (i64, i64) = (-2_100_000_000, -2_147_000_000);
+
+/// Le nom d'une photo, sur une ligne, sans blancs en trop.
+fn nom_de_photo(brut: &str) -> String {
+    brut.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(60).collect()
+}
+
+/**
+ * La fiche d'une photo dans Mes pictos ; rien si une fiche porte déjà ce
+ * fichier. Le numéro part d'une empreinte de l'identifiant du dépôt, et
+ * avance tant qu'il est pris.
+ */
+fn ficher_la_photo(c: &Connection, fichier: &str, nom: &str, date: &str, depot: &str) -> R<bool> {
+    let deja: i64 = c.query_row(
+        "SELECT COUNT(*) FROM settings WHERE substr(cle, 1, 7) = 'pictos:' AND valeur LIKE ?1",
+        [format!("%\"fichier\":\"{fichier}\"%")], |r| r.get(0),
+    ).map_err(|er| er.to_string())?;
+    if deja > 0 {
+        return Ok(false);
+    }
+    let (haut, bas) = PLAGE_PHOTOS;
+    let largeur = (haut - bas - 1) as u64;
+    let empreinte = depot.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ b as u64).wrapping_mul(0x0000_0100_0000_01b3));
+    let mut numero = haut - (empreinte % largeur) as i64;
+    while crate::sync::get_setting(c, &format!("pictos:{numero}")) != "" {
+        numero = if numero - 1 > bas { numero - 1 } else { haut };
+    }
+    let fiche = serde_json::json!({ "mot": nom, "fichier": fichier, "date": date });
+    crate::sync::set_setting(c, &format!("pictos:{numero}"), &fiche.to_string())?;
+    Ok(true)
+}
+
+/// Range une dictée ou une note dans la base ; une page dans les fichiers ; une photo dans Mes pictos.
+/// Rend le nom du fichier d'une page, ou le nom d'une photo, pour l'annoncer à la fenêtre.
 fn ranger(c: &Connection, dossier: &std::path::Path, e: &relais::Etiquette, contenu: &[u8]) -> R<(bool, String)> {
     let id = id_propre(&e.id);
     if id.is_empty() {
@@ -593,6 +638,24 @@ fn ranger(c: &Connection, dossier: &std::path::Path, e: &relais::Etiquette, cont
             std::fs::write(&chemin, contenu).map_err(|er| format!("Écriture impossible : {er}"))?;
             Ok((true, fichier))
         }
+        relais::Genre::Photo => {
+            let nom = nom_de_photo(&e.nom);
+            if nom.is_empty() {
+                return Err("Photo sans nom.".into());
+            }
+            if contenu.len() < 100 || !contenu.starts_with(&[0xFF, 0xD8, 0xFF]) {
+                return Err("Photo illisible.".into());
+            }
+            let fichier = format!("photo-{id}.jpg");
+            let chemin = dossier.join(&fichier);
+            // Relevée deux fois, l'image est déjà là ; sa fiche aussi, sauf si l'écriture s'était arrêtée entre les deux.
+            if !chemin.exists() {
+                std::fs::write(&chemin, contenu).map_err(|er| format!("Écriture impossible : {er}"))?;
+            }
+            let date = if e.debut.len() >= 10 && e.debut.is_char_boundary(10) { e.debut[..10].to_string() } else { chrono::Local::now().format("%Y-%m-%d").to_string() };
+            let neuf = ficher_la_photo(c, &fichier, &nom, &date, &id)?;
+            Ok((neuf, nom))
+        }
     }
 }
 
@@ -601,10 +664,12 @@ fn ranger(c: &Connection, dossier: &std::path::Path, e: &relais::Etiquette, cont
 async fn relever_avec(app: &AppHandle, db: &State<'_, Db>, r: &Relais, compte: &CompteNuage, pages: bool) -> R<Bilan> {
     let dossier = crate::db::fichiers_dir();
     relever_dans(r, &acces_au_dossier(r, compte), pages, |etiquette, contenu| {
-        let (neuf, fichier) = ranger(&db.lock(), &dossier, etiquette, contenu)?;
+        // Le fichier d'une page, le nom d'une photo : ce que la fenêtre annonce.
+        let (neuf, annonce) = ranger(&db.lock(), &dossier, etiquette, contenu)?;
         if neuf {
             match etiquette.genre {
-                relais::Genre::Page => { let _ = app.emit("photo:recue", fichier); }
+                relais::Genre::Page => { let _ = app.emit("photo:recue", annonce); }
+                relais::Genre::Photo => { let _ = app.emit("picto:recu", annonce); }
                 _ => { let _ = app.emit("vocal:recu", id_propre(&etiquette.id)); }
             }
         }
@@ -930,6 +995,7 @@ mod tests {
             creneau: "c7".into(),
             ext: if genre == relais::Genre::Page { "jpg".into() } else { String::new() },
             destination: String::new(),
+            nom: String::new(),
         }
     }
 
@@ -987,6 +1053,46 @@ mod tests {
             assert_eq!(std::fs::read(dossier.path().join("page-p1.jpg")).unwrap(), vec![0xFF, 0xD8, 0xFF, 1, 2, 3]);
             assert!(nuage.noms().is_empty());
         });
+    }
+
+    #[test]
+    fn une_photo_du_telephone_se_range_dans_mes_pictos_sous_son_nom() {
+        let nuage = FauxNuage::demarrer();
+        let r = relais_sur(&nuage);
+        let (a, k, acces) = (r.appairage().unwrap(), nuage.connexion(), acces_au_dossier(&r, &nuage.compte()));
+        let c = base_de_test();
+        let dossier = tempfile::tempdir().unwrap();
+        let jpeg = [&[0xFF, 0xD8, 0xFF, 0xE0][..], &[5u8; 300][..]].concat();
+        let photo = relais::Etiquette { nom: "  les   ciseaux ".into(), ext: "jpg".into(), ..etiquette(relais::Genre::Photo, "ph1") };
+        en_attendant(async {
+            deposer(&a, &k, &photo, &jpeg).await;
+            assert_eq!(nuage.noms(), vec!["depot/i-ph1.mtz"]);
+            // Elle n'attend pas la fenêtre des pages : la relève ordinaire la prend.
+            let mut annoncees = Vec::new();
+            let bilan = relever_dans(&r, &acces, false, |e, contenu| {
+                let (neuf, annonce) = ranger(&c, dossier.path(), e, contenu)?;
+                annoncees.push(annonce);
+                Ok(neuf)
+            }).await.unwrap();
+            assert_eq!(bilan, Bilan { relie: true, photos: 1, ..Default::default() });
+            assert_eq!(annoncees, vec!["les ciseaux"]);
+            assert!(nuage.noms().is_empty());
+        });
+        assert_eq!(std::fs::read(dossier.path().join("photo-ph1.jpg")).unwrap(), jpeg);
+        let fiches: Vec<(String, String)> = c.prepare("SELECT cle, valeur FROM settings WHERE cle LIKE 'pictos:%'").unwrap()
+            .query_map([], |l| Ok((l.get(0)?, l.get(1)?))).unwrap().map(|l| l.unwrap()).collect();
+        assert_eq!(fiches.len(), 1);
+        let numero: i64 = fiches[0].0["pictos:".len()..].parse().unwrap();
+        assert!(numero <= PLAGE_PHOTOS.0 && numero > PLAGE_PHOTOS.1, "{numero}");
+        let fiche: serde_json::Value = serde_json::from_str(&fiches[0].1).unwrap();
+        assert_eq!(fiche, serde_json::json!({ "mot": "les ciseaux", "fichier": "photo-ph1.jpg", "date": "2026-10-02" }));
+        // Relevée une seconde fois — Nuage n'avait pas effacé —, elle ne se range pas deux fois.
+        assert_eq!(ranger(&c, dossier.path(), &photo, &jpeg).unwrap(), (false, "les ciseaux".into()));
+        let combien: i64 = c.query_row("SELECT COUNT(*) FROM settings WHERE cle LIKE 'pictos:%'", [], |l| l.get(0)).unwrap();
+        assert_eq!(combien, 1);
+        // Sans nom, ou sans image, rien ne se range.
+        assert!(ranger(&c, dossier.path(), &relais::Etiquette { nom: " ".into(), ..photo.clone() }, &jpeg).is_err());
+        assert!(ranger(&c, dossier.path(), &relais::Etiquette { id: "ph2".into(), ..photo }, b"pas une photo, assez longue pour passer la taille minimale de cent octets, ce qui n'en fait pas un JPEG pour autant.").is_err());
     }
 
     #[test]
