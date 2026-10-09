@@ -439,7 +439,7 @@ export const GENERATEURS: Record<string, Generateur> = {
     bouton: "🖨 Créer le PDF du loto", icone: "🎲",
   },
   memory: {
-    id: "memory", quoi: "mémory", exemple: "Mémory des animaux",
+    id: "memory", quoi: "jeu de mémoire", exemple: "Jeu de mémoire des animaux",
     // Une feuille de seize cartes, ce sont huit images, chacune en double.
     minimum: (o) => Math.max(2, Math.floor((o.colonnes * o.lignes) / 2)),
     manque: (o) => `Il faut au moins ${Math.max(2, Math.floor((o.colonnes * o.lignes) / 2))} images : chacune sort en double.`,

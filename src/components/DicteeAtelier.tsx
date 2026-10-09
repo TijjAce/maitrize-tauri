@@ -3,6 +3,8 @@ import { api, Eleve, ChatMessage, MODELE_TACHES, TYPES_OBSERVATION, newId, nowIs
 import { Modal, Field, Input, Select, Textarea } from "./ui";
 import { toast } from "./Toaster";
 import { useDictee, mmss } from "../dictee";
+import { pseudonymiser, restaurer } from "../confidentialite";
+import { nomsAMasquer } from "../nomsAMasquer";
 
 // ── Dictée d'atelier ──────────────────────────────────────────────────────
 //
@@ -13,6 +15,10 @@ import { useDictee, mmss } from "../dictee";
 // Rien n'est enregistré sans relecture : une observation portée au dossier
 // d'un élève engage l'enseignant, et une attribution automatique se trompe de
 // prénom tôt ou tard. L'écran propose, l'enseignant dispose.
+//
+// Aucun prénom ne part pour la répartition : les élèves cités deviennent des
+// marqueurs — [P1], [P2]… — et la réponse retrouve les vrais noms sur la
+// machine (voir `confidentialite`).
 
 const TYPES: string[] = [...TYPES_OBSERVATION];
 
@@ -26,6 +32,8 @@ interface Proposition {
 }
 
 const prenom = (e: Eleve) => e.nom.split(" ")[0];
+/** Minuscules sans accents : « Ines » retrouve Inès. */
+const plie = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr").trim();
 
 /**
  * Découpe la réponse du modèle en propositions.
@@ -46,38 +54,48 @@ export function lirePropositions(reponse: string, eleves: Eleve[]): Proposition[
     if (!ligne || typeof ligne !== "object") return [];
     const o = ligne as Record<string, unknown>;
     const texte = typeof o.observation === "string" ? o.observation.trim() : "";
-    const cible = typeof o.eleve === "string" ? o.eleve.trim().toLowerCase() : "";
+    const cible = typeof o.eleve === "string" ? plie(o.eleve) : "";
     if (!texte || !cible) return [];
-    // Le modèle renvoie un prénom : on retrouve l'élève, sinon on abandonne
-    // la ligne plutôt que de l'attribuer au hasard.
-    const eleve = eleves.find((e) => prenom(e).toLowerCase() === cible)
-      ?? eleves.find((e) => e.nom.toLowerCase() === cible);
+    // La réponse, noms remis, porte un prénom : on retrouve l'élève, sinon on
+    // abandonne la ligne plutôt que de l'attribuer au hasard.
+    const eleve = eleves.find((e) => plie(prenom(e)) === cible)
+      ?? eleves.find((e) => plie(e.nom) === cible);
     if (!eleve) return [];
     const type = typeof o.type === "string" && TYPES.includes(o.type) ? o.type : "divers";
     return [{ id: newId(), eleveId: eleve.id, texte, type, garder: true }];
   });
 }
 
-/** Prompt de répartition : prénoms seuls, consignes strictes. */
-export function promptRepartition(prenoms: string[], transcription: string): ChatMessage[] {
+/** Prompt de répartition : des marqueurs à la place des prénoms, consignes strictes. */
+export function promptRepartition(marqueurs: string[], transcription: string): ChatMessage[] {
   return [
     {
       role: "system",
       content:
         "Tu aides un enseignant spécialisé à ranger ses observations d'atelier. " +
-        "On te donne la liste des prénoms présents et la transcription de ce qu'il a dit. " +
+        "Les élèves sont désignés par des marqueurs [P1], [P2]… : on te donne la liste des marqueurs cités et la transcription de ce qu'il a dit. " +
         "Réponds UNIQUEMENT par un tableau JSON, sans texte autour, de la forme " +
-        `[{"eleve":"Prénom","observation":"…","type":"${TYPES.join("|")}"}]. ` +
+        `[{"eleve":"[P1]","observation":"…","type":"${TYPES.join("|")}"}]. ` +
         "Règles : n'invente rien, reformule sans ajouter d'interprétation, " +
-        "n'attribue une observation qu'à un prénom de la liste, " +
+        "n'attribue une observation qu'à un marqueur de la liste, recopie chaque marqueur tel quel, " +
         "ignore ce qui ne concerne aucun élève nommé, " +
         "et sépare en plusieurs entrées si plusieurs élèves sont cités.",
     },
     {
       role: "user",
-      content: `Prénoms présents : ${prenoms.join(", ")}\n\nTranscription :\n${transcription}`,
+      content: `Élèves cités : ${marqueurs.join(", ") || "aucun"}\n\nTranscription :\n${transcription}`,
     },
   ];
+}
+
+/**
+ * Ce qui part pour la répartition : la transcription, chaque élève cité
+ * remplacé par son marqueur, et la liste des marqueurs. La table, elle,
+ * reste sur la machine : elle remet les noms dans la réponse.
+ */
+export function preparerRepartition(eleves: Eleve[], transcription: string, autresNoms: string[] = []) {
+  const { texte, table } = pseudonymiser(transcription, [...eleves.map((e) => e.nom), ...autresNoms]);
+  return { messages: promptRepartition(table.map((r) => r.marqueur), texte), table };
 }
 
 export function DicteeAtelier({ eleves, onClose, onEnregistre, texteInitial, titre }: {
@@ -121,7 +139,9 @@ export function DicteeAtelier({ eleves, onClose, onEnregistre, texteInitial, tit
       // les abonnements Mistral : on reprend celui choisi dans les Réglages,
       // comme le fait l'assistant.
       const modele = await api.modeleActif(MODELE_TACHES);
-      const reponse = await api.mistralChat(promptRepartition(eleves.map(prenom), transcription), modele);
+      // Les adultes cités — l'AESH, une collègue — se masquent avec les élèves.
+      const { messages, table } = preparerRepartition(eleves, transcription, await nomsAMasquer());
+      const reponse = restaurer(await api.mistralChat(messages, modele), table).texte;
       const p = lirePropositions(reponse, eleves);
       if (p.length === 0) {
         toast("Aucun élève reconnu dans le texte. Ajoutez les observations à la main.", { icone: "🤔" });
@@ -195,8 +215,9 @@ export function DicteeAtelier({ eleves, onClose, onEnregistre, texteInitial, tit
                 ? <li>L'enregistrement est transcrit <b>sur cet ordinateur</b> : il n'en sort pas.</li>
                 : <li>L'enregistrement part chez <b>Mistral</b> (serveurs en Europe) pour être transcrit.
                   S'il contient des prénoms d'élèves, ils sont transmis.</li>}
-              <li>Pour la répartition, seuls les <b>prénoms</b> sont envoyés — jamais les noms de
-                  famille, dates de naissance, INE ni dossiers.</li>
+              <li>Pour la répartition, le texte part chez Mistral <b>sans aucun nom d'élève</b> : chaque élève
+                  cité y devient [P1], [P2]…, et les prénoms reviennent sur cet ordinateur. Ni noms de famille,
+                  ni dates de naissance, ni INE, ni dossiers.</li>
               <li>L'audio n'est jamais enregistré sur le disque et n'est pas conservé après la
                   transcription.</li>
             </ul>

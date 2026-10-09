@@ -329,7 +329,7 @@ export function htmlLettres(r: ReglagesLettres, hasard: () => number): string {
     return feuille(`${pagesPlanches.join("")}${pagesDeCartes(cartes, { colonnes: 5, lignes: 6 }, `<div class="sous">Les lettres à piocher</div>`)}`, "ls");
   }
   const regle = r.jeu === "memory"
-    ? `<div class="regle"><b>Mémory des lettres</b>Cartes face cachée ; on en retourne deux : la majuscule et sa minuscule font une paire.
+    ? `<div class="regle"><b>Jeu de mémoire des lettres</b>Cartes face cachée ; on en retourne deux : la majuscule et sa minuscule font une paire.
         <span style="color:#687087">— Livret Français CP, Éduscol 2025.</span></div>`
     : `<div class="regle"><b>Mistigri des lettres</b>On distribue tout ; on pose ses paires (majuscule et minuscule), puis chacun tire une carte chez son voisin.
         Qui garde le Mistigri à la fin a perdu.

@@ -47,7 +47,7 @@ const RAYON: f32 = 6.0;
 /// Mention imposée par la licence CC BY-NC-SA des pictogrammes. Elle ne vaut
 /// que pour eux : une planche faite des seules images de l'enseignant n'a
 /// rien à attribuer à la banque.
-const ATTRIBUTION: &str = "Pictogrammes ARASAAC (Sergio Palao) - Gouvernement d'Aragon - CC BY-NC-SA";
+const ATTRIBUTION: &str = "Pictogrammes ARASAAC (Sergio Palao, arasaac.org) - Gouvernement d'Aragon - CC BY-NC-SA 4.0 - Usage non commercial";
 /// Les pictos gardés dans « Mes pictos » (voir mesPictos.ts) : la plage de
 /// leur numéro dit d'où ils viennent. Un dessin de l'IA n'est pas d'ARASAAC,
 /// et la feuille le dit ; Sclera et F. Bajard demandent leur nom.

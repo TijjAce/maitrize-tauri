@@ -18,6 +18,7 @@ import { VocauxRecus } from "../components/VocauxRecus";
 import { TelephoneNuage } from "../components/TelephoneNuage";
 import { AmisTab } from "./Amis";
 import { listen } from "@tauri-apps/api/event";
+import { Licences } from "../components/Licences";
 
 const ONGLETS = [
   ["general", "Général"],
@@ -435,15 +436,17 @@ export default function Reglages() {
       <div className="card" style={{ maxWidth: 620 }}>
         <h3 style={{ marginTop: 0 }}>ℹ️ À propos</h3>
         <p style={{ color: "var(--text-2)", margin: 0, fontSize: 13 }}>
-          <b>Maitrize V2{version ? ` — v${version}` : ""}</b> · cross-plateforme (Tauri). Données stockées localement, sans compte ni serveur.
+          <b>Maitrize V2{version ? ` — v${version}` : ""}</b> · logiciel libre (AGPL-3.0). Vos données restent sur cet ordinateur : aucun compte,
+          rien n'est envoyé à l'éditeur. Ce qui peut en sortir — l'IA, la synchronisation, les mises à jour — est détaillé dans les conditions d'utilisation.
         </p>
         {cgu && (
           <p style={{ color: "var(--text-2)", margin: "10px 0 0", fontSize: 12 }}>
-            ✅ CGU (v{cgu.version}) acceptées le {new Date(cgu.accepteeLe).toLocaleDateString("fr-FR")}
+            ✅ Conditions d'utilisation (v{cgu.version}) acceptées le {new Date(cgu.accepteeLe).toLocaleDateString("fr-FR")}
           </p>
         )}
       </div>
       )}
+      {onglet === "general" && <Licences />}
 
       {showMatieres && <CouleursMatieresModal onClose={() => setShowMatieres(false)} />}
     </Page>
@@ -1030,8 +1033,8 @@ export function JournalIncidents() {
       <h3 style={{ marginTop: 0 }}>🩺 Journal d'incidents</h3>
       <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
         Si une action semble ne rien faire, ou si la fenêtre s'est figée, ce fichier dit ce qui s'est passé : erreurs,
-        blocages (avec leur durée et l'écran), plantages et arrêts forcés. Il s'écrit tout seul, au fil de l'eau, et ne
-        contient aucune donnée d'élève.
+        blocages (avec leur durée et l'écran), plantages et arrêts forcés. Il s'écrit tout seul, au fil de l'eau ; il note
+        les erreurs, jamais ce que vous écrivez — relisez-le tout de même avant de l'envoyer, il cite des noms de fichiers.
       </p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button className="btn" onClick={ouvrir}>Ouvrir le journal</button>
@@ -1202,6 +1205,7 @@ function Transcription() {
             <li><b>tiny</b> : le plus rapide, mais il se trompe souvent sur les noms.</li>
           </ul>
           <p><b>En ligne</b> : l'audio part chez Mistral (Voxtral, serveurs en Europe). Rien à télécharger, mais il faut du réseau.</p>
+          <p>Rien ne part en ligne sans que vous l'ayez choisi ici : sans modèle sur l'ordinateur, la transcription vous demande d'en télécharger un.</p>
           <p><b>Observations d'élève</b> : le Dictaphone du téléphone et la dictée d'atelier. <b>Dictées</b> : le micro du cahier journal et de l'assistant.</p>
           <p>Le compte rendu d'une réunion est ensuite rangé par l'IA en ligne, prénoms d'élèves masqués. Pour que rien ne parte, choisissez « Rien en ligne » pendant la réunion.</p>
           {etat?.dossier && <p>Les modèles sont rangés dans <code>{etat.dossier}</code>.</p>}

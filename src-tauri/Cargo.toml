@@ -1,8 +1,10 @@
 [package]
 name = "maitrize-tauri"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "Maitrize : préparation et suivi de classe pour enseignants"
+authors = ["Clément Titet"]
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/TijjAce/maitrize-tauri"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

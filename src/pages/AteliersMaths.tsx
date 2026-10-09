@@ -628,7 +628,7 @@ export function CompteEstBonTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Le compte est bon</h3>
+        <h3 style={{ marginTop: 0 }}>Le nombre cible</h3>
         <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
           Une cible, quelques nombres, les opérations permises : on cherche un chemin, on écrit ses calculs. Une solution dans le corrigé.
         </p>
@@ -642,7 +642,7 @@ export function CompteEstBonTab() {
           <Field label="Cartes"><Input type="number" min={1} max={12} value={r.problemes} onChange={(e) => maj({ problemes: borne(e.target.value, 1, 12, 6) })} /></Field>
         </div>
         <div className="meta" style={{ fontSize: 12.5 }}>{liste.length} cartes{liste.length < r.problemes ? " — pas davantage avec ces réglages" : ""}.</div>
-        <Boutons peut={liste.length > 0} onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("compteEstBon", "Le compte est bon", html, STYLE_COMPTE)} onBureau={() => bureau("compteEstBon", "Le compte est bon", html, STYLE_COMPTE)} />
+        <Boutons peut={liste.length > 0} onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("compteEstBon", "Le nombre cible", html, STYLE_COMPTE)} onBureau={() => bureau("compteEstBon", "Le compte est bon", html, STYLE_COMPTE)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_COMPTE} />}
     />

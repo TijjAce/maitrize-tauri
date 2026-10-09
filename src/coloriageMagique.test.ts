@@ -307,3 +307,16 @@ describe("un dessin tiré d'une image", () => {
     expect(c.motif.id).toBe("p1");
   });
 });
+
+describe("un dessin tiré d'un pictogramme", () => {
+  it("garde son crédit et l'imprime au pied de la feuille ; un motif de la galerie n'en porte pas", async () => {
+    const m = await import("./coloriageMagique");
+    const credit = "Pictogrammes : Sergio Palao, ARASAAC (arasaac.org), licence CC BY-NC-SA 4.0, propriété du Gouvernement d'Aragon.";
+    const [lu] = m.lireMotifsPerso(JSON.stringify([{ id: "perso-x", nom: "Chat", grille: m.MOTIFS[0].grille, credit }]));
+    expect(lu.credit).toBe(credit);
+    const r = { ...m.REGLAGES_PAR_DEFAUT, motif: "perso-x" };
+    expect(m.feuilleDuColoriage(m.fabriquerColoriage(r, 1, [lu]), r, false).corps).toContain("Sergio Palao");
+    const galerie = { ...m.REGLAGES_PAR_DEFAUT, motif: m.MOTIFS[0].id };
+    expect(m.feuilleDuColoriage(m.fabriquerColoriage(galerie, 1, []), galerie, false).corps).not.toContain("attribution");
+  });
+});

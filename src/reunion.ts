@@ -21,6 +21,7 @@
 
 import { api, type Reunion, MODELE_TACHES } from "./api";
 import { pseudonymiser, restaurer } from "./confidentialite";
+import { nomsAMasquer } from "./nomsAMasquer";
 
 /**
  * Durée d'une tranche, en secondes.
@@ -485,10 +486,10 @@ export function promptRangement(a: { genre: string; titre: string; document: str
  */
 export async function rangerLeDocument(
   document: string,
-  contexte: { genre: string; titre: string },
+  contexte: { genre: string; titre: string; participants?: string },
 ): Promise<string> {
   if (!document.trim()) return document;
-  const { parts, table } = masquerTout([contexte.titre, document], await nomsDesEleves());
+  const { parts, table } = masquerTout([contexte.titre, document], await nomsDesEleves(contexte.participants ?? ""));
   const [titre, docMasque] = parts;
   const modele = await api.modeleActif(MODELE_TACHES);
   const rep = await api.mistralChat(
@@ -526,10 +527,8 @@ export function riendedit(resume: string): boolean {
 
 // ── Les appels à l'IA ─────────────────────────────────────────────────────
 
-/** Les prénoms de la classe, pour les masquer avant l'envoi du texte. */
-async function nomsDesEleves(): Promise<string[]> {
-  return api.elevesList().then((l) => l.map((e) => e.nom)).catch(() => []);
-}
+/** Les noms à masquer avant l'envoi : les élèves, les contacts de l'établissement, et les participants de la réunion. */
+const nomsDesEleves = (...textes: string[]): Promise<string[]> => nomsAMasquer(textes);
 
 /**
  * Masque les noms d'élèves dans **tout** ce qui part, d'un seul tenant.
@@ -553,10 +552,10 @@ function masquerTout(morceaux: string[], noms: string[]) {
  */
 export async function resumerPassage(
   passage: string,
-  contexte: { genre: string; titre: string },
+  contexte: { genre: string; titre: string; participants?: string },
 ): Promise<string> {
   if (!passage.trim()) return "";
-  const { parts, table } = masquerTout([contexte.titre, passage], await nomsDesEleves());
+  const { parts, table } = masquerTout([contexte.titre, passage], await nomsDesEleves(contexte.participants ?? ""));
   const [titre, masque] = parts;
   const modele = await api.modeleActif(MODELE_TACHES);
   const rep = await api.mistralChat(promptPassage(contexte.genre, titre, masque), modele);
@@ -615,10 +614,10 @@ export function promptRelecture(a: { genre: string; titre: string; document: str
  */
 export async function relireLeDocument(
   document: string,
-  contexte: { genre: string; titre: string },
+  contexte: { genre: string; titre: string; participants?: string },
 ): Promise<string> {
   if (planVide(lirePlan(document))) return document;
-  const { parts, table } = masquerTout([contexte.titre, document], await nomsDesEleves());
+  const { parts, table } = masquerTout([contexte.titre, document], await nomsDesEleves(contexte.participants ?? ""));
   const [titre, docMasque] = parts;
   const modele = await api.modeleActif(MODELE_TACHES);
   const rep = await api.mistralChat(
@@ -641,7 +640,7 @@ export async function mettreAuPropre(
 ): Promise<string> {
   if (planVide(lirePlan(plan))) throw new Error("Le compte rendu est encore vide.");
   const { parts, table } = masquerTout(
-    [reunion.titre, reunion.participants, plan], await nomsDesEleves());
+    [reunion.titre, reunion.participants, plan], await nomsDesEleves(reunion.participants));
   const [titre, participants, planMasque] = parts;
   const modele = await api.modeleActif();
   const rep = await api.mistralChat(promptCompteRendu({
@@ -662,7 +661,7 @@ export async function redigerCompteRendu(
   const resumes = utiles.map((r) => `[${repereDuResume(r)}]\n${r.texte.trim()}`).join("\n\n");
   // Le titre et les participants partent aussi : ils se masquent avec le reste.
   const { parts, table } = masquerTout(
-    [reunion.titre, reunion.participants, resumes], await nomsDesEleves());
+    [reunion.titre, reunion.participants, resumes], await nomsDesEleves(reunion.participants));
   const [titre, participants, masque] = parts;
   const modele = await api.modeleActif();
   const rep = await api.mistralChat(promptCompteRendu({

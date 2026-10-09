@@ -236,7 +236,7 @@ const FEUILLES: Record<string, { feuilles: FeuilleAFabriquer[]; materiel: string
     feuilles: [
       feuille(1, "Cartes des fractions — en lettres et en images", { materiel: ["cartes"], denominateurs: [2, 3, 4], representations: ["lettres", "disque", "bande"] }),
       feuille(3, "Cartes des fractions — en chiffres et en images", { materiel: ["cartes"], denominateurs: [3, 4, 8], representations: ["chiffres", "disque"] }),
-      feuille(4, "Memory des fractions — en chiffres, en lettres", { materiel: ["cartes"], denominateurs: [2, 3, 4, 6], representations: ["chiffres", "lettres"] }),
+      feuille(4, "Jeu de mémoire des fractions — en chiffres, en lettres", { materiel: ["cartes"], denominateurs: [2, 3, 4, 6], representations: ["chiffres", "lettres"] }),
     ],
     materiel: [
       "Des carrés, des rectangles, des disques découpés ; des cartes vierges ; de la colle", "Les jeux de memory fabriqués", "Des formes partagées, des crayons de couleur",
@@ -264,7 +264,7 @@ const FEUILLES: Record<string, { feuilles: FeuilleAFabriquer[]; materiel: string
     feuilles: [
       feuille(0, "Bandes unités à plier", { materiel: ["bandes"] }),
       feuille(2, "Cartes des fractions — demis, quarts, huitièmes", { materiel: ["cartes"], denominateurs: [2, 4, 8], representations: ["chiffres", "bande"] }),
-      feuille(3, "Memory des fractions égales", { materiel: ["cartes"], denominateurs: [2, 3, 4, 6], representations: ["chiffres", "bande"] }),
+      feuille(3, "Jeu de mémoire des fractions égales", { materiel: ["cartes"], denominateurs: [2, 3, 4, 6], representations: ["chiffres", "bande"] }),
       feuille(4, "Comparer des fractions — égales ou non", { materiel: ["comparer"], cas: "multiple" }),
     ],
     materiel: ["Des bandes unités de même longueur à plier ; des crayons de couleur", "Des bandes partagées en trois, six, douze", "Des bandes partagées en 2 à 12 parts ; une affiche", "Les cartes, un jeu par groupe", "Les énoncés ; l'évaluation"],

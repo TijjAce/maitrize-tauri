@@ -4,7 +4,7 @@
 <dict>
     <!-- Texte affiché par macOS lors de la demande d'accès au micro. -->
     <key>NSMicrophoneUsageDescription</key>
-    <string>Maitrize utilise le micro uniquement quand vous lancez une dictée d'atelier, pour transcrire vos observations. Aucun enregistrement n'est conservé.</string>
+    <string>Maitrize utilise le micro quand vous dictez : cahier journal, dictée d'atelier, réunion. La voix est transcrite sur cet ordinateur, ou chez Mistral si vous avez choisi la transcription en ligne ; l'enregistrement n'est pas conservé.</string>
     <!-- Texte affiché lors de la demande d'accès au Bureau : la copie du plan de
          travail y pose son dossier (voir copie_bureau.rs). -->
     <key>NSDesktopFolderUsageDescription</key>

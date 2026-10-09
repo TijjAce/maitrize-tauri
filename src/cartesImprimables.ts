@@ -39,9 +39,12 @@ export const STYLE_FEUILLE = `
   .feuille .attribution { font-size: 8px; color: #888; margin-top: 8px; text-align: center; }
 `;
 
+/** Le crédit que demande la licence des pictogrammes ARASAAC : l'auteur, l'origine, la licence, le propriétaire. */
+export const CREDIT_ARASAAC =
+  "Pictogrammes : Sergio Palao, ARASAAC (arasaac.org), licence CC BY-NC-SA 4.0, propriété du Gouvernement d'Aragon. Usage non commercial.";
+
 /** Mention exigée par la licence des pictogrammes (CC BY-NC-SA). */
-export const ATTRIBUTION_ARASAAC =
-  `<div class="attribution">Pictogrammes : ARASAAC (arasaac.org) — Gouvernement d'Aragon, licence CC BY-NC-SA. Usage non commercial.</div>`;
+export const ATTRIBUTION_ARASAAC = `<div class="attribution">${CREDIT_ARASAAC}</div>`;
 
 /**
  * La mention, quand la feuille porte au moins un pictogramme de la banque.

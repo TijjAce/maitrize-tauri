@@ -64,6 +64,9 @@ pub fn run() {
                 let db = tauri::Manager::state::<Db>(&pour_le_menage);
                 let c = db.lock();
                 db::menage_apres_demarrage(&c);
+                drop(c);
+                // Les documents ouverts la veille — bilans, GEVA-Sco — ne restent pas dans le dossier temporaire.
+                commands::purger_temporaires();
             });
             // Mises à jour automatiques (distribution directe hors stores).
             // Plugins desktop uniquement.

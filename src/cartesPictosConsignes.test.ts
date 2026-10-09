@@ -55,7 +55,7 @@ describe("les pictos des consignes en cartes", () => {
     const avec = htmlCartesPictos(["lire", "colorier", "comparer"], lexique, images, REGLAGES_CARTES_PICTOS);
     expect(avec).toContain('<img src="data:colorie" alt="colorier"><div class="cp-verbe">colorier</div>');
     expect(avec).toContain('<span class="cp-manque">comparer</span>');
-    expect(avec).toContain('<div class="attribution">Pictogrammes : ARASAAC');
+    expect(avec).toContain('<div class="attribution">Pictogrammes : Sergio Palao, ARASAAC');
     expect(avec).toContain("François Bajard");
     // L'image de Sclera manque : la mention ne la cite pas.
     expect(avec).not.toContain("Sclera");
