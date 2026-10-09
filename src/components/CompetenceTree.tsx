@@ -93,8 +93,10 @@ export function CompetenceTree({ mode, selection, onPick, onToggle, recherche, d
     if (autre) setRefId(autre.id);
   }, [cherche]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const estSelectionnee = (refNom: string, comp: RefComp, sd: RefSous) =>
-    selection.some((s) => s.competenceRefId === comp.id && s.referentielNom === refNom && s.sousDomaineTitre === sd.titre);
+  // Un identifiant ne sert qu'une fois dans un référentiel : le titre de la partie n'a pas à concorder — il a pu être
+  // corrigé depuis (« Passer de l'oral à l'écrit : se préparer à apprendre à lire » s'appelait « Acquérir le langage oral »).
+  const estSelectionnee = (refNom: string, comp: RefComp) =>
+    selection.some((s) => s.competenceRefId === comp.id && s.referentielNom === refNom);
 
   if (actifs.length === 0) {
     return <div style={{ fontSize: 13, color: "var(--text-2)", fontStyle: "italic", padding: 12 }}>
@@ -113,7 +115,7 @@ export function CompetenceTree({ mode, selection, onPick, onToggle, recherche, d
       sousDomaineTitre: sd.titre, competenceGeneraleTitre: cg?.titre ?? null,
       competenceTitre: comp.texte, niveau: comp.niveau ?? null, competenceRefId: comp.id,
     };
-    const checked = estSelectionnee(ref.nom, comp, sd);
+    const checked = estSelectionnee(ref.nom, comp);
     const visee = dejaVisee?.(sel) ?? [];
     return (
       <button key={comp.id} className="comp-leaf" data-on={checked}

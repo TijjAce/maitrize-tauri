@@ -85,8 +85,8 @@ export function travauxDuJournal(
 function memeCompetence(o: Objectif, t: TravailDuJournal): boolean {
   if (cleDeLObjectif(o) === cleCompetence(t.competence, t.origine)) return true;
   const a = o.source;
-  return !!(a && a.competenceRefId && a.competenceRefId === t.source.competenceRefId
-    && a.referentielNom === t.source.referentielNom && a.sousDomaineTitre === t.source.sousDomaineTitre);
+  // L'identifiant suffit : le titre de la partie a pu être corrigé depuis.
+  return !!(a && a.competenceRefId && a.competenceRefId === t.source.competenceRefId && a.referentielNom === t.source.referentielNom);
 }
 
 /**

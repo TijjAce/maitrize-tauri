@@ -228,11 +228,11 @@
         },
         {
           "id": "D1.SD2",
-          "titre": "Acquérir le langage oral",
+          "titre": "Passer de l'oral à l'écrit : se préparer à apprendre à lire",
           "competencesGenerales": [
             {
               "id": "D1.SD2.CG1",
-              "titre": "Acquérir les habilités phonologiques et le principe alphabétique",
+              "titre": "Acquérir les habiletés phonologiques et le principe alphabétique",
               "competences": [
                 {
                   "texte": "Identifier les sons de la langue, lors de situations d'écoute proposées par le professeur",
@@ -472,7 +472,7 @@
         },
         {
           "id": "D1.SD3",
-          "titre": "Passer de l'oral à l'écrit: se préparer à apprendre à écrire",
+          "titre": "Passer de l'oral à l'écrit : se préparer à apprendre à écrire",
           "competencesGenerales": [
             {
               "id": "D1.SD3.CG1",
