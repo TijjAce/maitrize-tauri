@@ -23,6 +23,7 @@ import { escapeHtml } from "./print";
 import { melanger } from "./hasard";
 import { attributionPour, carte, feuille, pagesAvecRegle, pagesDeCartes, type FormatGrille } from "./cartesImprimables";
 import { NIVEAUX, type Niveau } from "./categoriser";
+import { reference } from "./references";
 
 // ── Ce que l'atelier règle ────────────────────────────────────────────────
 
@@ -363,7 +364,9 @@ export function panierSvg(total: number, groupes: [number, number] | null): stri
 /** Des images, par identifiant de pictogramme. */
 export type Images = Record<number, string>;
 
-const titre = (t: string, sous = "") => `<div class="titre">${escapeHtml(t)}</div>${sous ? `<div class="sous">${escapeHtml(sous)}</div>` : ""}`;
+/** Le titre, sa ligne de sous-titre, et la référence de la feuille au bout — elle ne s'imprime pas (voir `references`). */
+const titre = (t: string, sous = "", ref = "") =>
+  `<div class="titre">${escapeHtml(t)}</div>${sous || ref ? `<div class="sous">${escapeHtml(sous)}${ref ? ` ${reference(ref)}` : ""}</div>` : ""}`;
 const consigne = (t: string, quoi = "Consigne") => `<div class="regle"><b>${quoi}</b>${escapeHtml(t)}</div>`;
 const jusqua = (r: ReglagesCollections) => (r.de === r.a ? `${r.a}` : `de ${r.de} à ${r.a}`);
 
@@ -418,7 +421,7 @@ function htmlFiches(r: ReglagesCollections, images: Images, alea: () => number):
   // La clé, en colonnes : quarante fiches tiennent sur la première page, sous la consigne.
   const cle = `<div class="cl-cle corrige"><b>Pour le maître :</b><div class="cl-cle-fiches">${fiches.map((f, i) =>
     `<span><b>${codeDeLaFiche(i)}</b> ${f.n} ${escapeHtml(f.n > 1 ? s.place.pluriel : s.place.mot)}${f.n === 1 ? "" : `, ${nom(f.disposition)}`}</span>`).join("")}</div></div>`;
-  const couverture = `<div class="page">${titre(`Les fiches de places — ${s.nom}`, `Une fiche au fond de chaque boîte, ${jusqua(r)} ${s.place.pluriel}. D'après ${s.source}.`)}`
+  const couverture = `<div class="page">${titre(`Les fiches de places — ${s.nom}`, `Une fiche au fond de chaque boîte, ${jusqua(r)} ${s.place.pluriel}.`, `${s.source.charAt(0).toUpperCase()}${s.source.slice(1)}.`)}`
     + pairePictos(s, images)
     + consigne(consigneDeLaSituation(s))
     + `<div class="cl-jeu"><b>Le jeu.</b> La réserve ${s.partitif} est loin des boîtes, hors de vue ; `
@@ -459,7 +462,7 @@ function htmlBons(r: ReglagesCollections, images: Images): string {
   const regle = `Compte les ${s.place.pluriel} de ta fiche, dis le nombre, puis écris-le sur ton bon : la mascotte ne comprend que les nombres écrits. `
     + `Elle te donne ce que tu as commandé ; tu vérifies en posant un objet sur chaque place.`;
   return pagesAvecRegle(Array.from({ length: NOMBRE_DE_BONS }, () => bon), BONS,
-    `${titre(`Les bons de commande — ${s.nom}`, "D'après le livret « À partir de 4 ans » (2025) : commander à la mascotte, sans parler.")}${consigne(regle)}`);
+    `${titre(`Les bons de commande — ${s.nom}`, "Commander à la mascotte, sans parler.", "Livret « À partir de 4 ans » (2025).")}${consigne(regle)}`);
 }
 
 /** Une bande numérique de 1 au plus grand nombre : les points en rangées de cinq au-dessus de chaque chiffre. */
@@ -515,7 +518,7 @@ function htmlPanier(r: ReglagesCollections, alea: () => number): string {
     + "puis colorie. C'est réussi si les couleurs sont respectées et si tous les œufs sont coloriés.";
   const corrige = `<div class="page corrige">${titre("Le bon panier — pour le maître")}<ol class="cl-corrige">${messages.map((m) =>
     `<li>${m.a} ${m.couleurs[0][0]}${m.a > 1 ? "s" : ""} et ${m.b} ${m.couleurs[1][0]}${m.b > 1 ? "s" : ""} : le panier de ${m.a + m.b} œufs</li>`).join("")}</ol></div>`;
-  return pagesAvecRegle(cartes, MESSAGES, `${titre("Le bon panier", "Les messages, puis les paniers, à poser loin des tables. D'après le guide « La construction du nombre à l'école maternelle » (2023) : du nombre au calcul.")}${consigne(regle, "Règle du jeu")}`)
+  return pagesAvecRegle(cartes, MESSAGES, `${titre("Le bon panier", "Les messages, puis les paniers, à poser loin des tables.", "Guide « La construction du nombre à l'école maternelle » (2023) : du nombre au calcul.")}${consigne(regle, "Règle du jeu")}`)
     + pagesDeCartes(paniers, PANIERS, titre("Les paniers")) + corrige;
 }
 
@@ -530,7 +533,7 @@ function htmlEvaluation(r: ReglagesCollections): string {
   const age = NIVEAUX.find((n) => n.id === r.niveau)?.age ?? "";
   const colonnes = OBSERVABLES[r.niveau];
   const ligne = `<tr><td></td>${colonnes.map(() => "<td></td>").join("")}<td></td></tr>`;
-  return `<div class="page">${titre("Grille d'observation — construire des collections", `Programme de l'école maternelle 2025 · Constituer une collection d'un cardinal donné · ${r.niveau}, ${age}.`)}`
+  return `<div class="page">${titre("Grille d'observation — construire des collections", `Constituer une collection d'un cardinal donné · ${r.niveau}, ${age}.`, "Programme de l'école maternelle 2025.")}`
     + `<table class="cl-grille"><thead><tr><th>Prénom</th>${colonnes.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}<th>Procédure</th></tr></thead>`
     + `<tbody>${Array.from({ length: 12 }, () => ligne).join("")}</tbody></table>`
     + `<div class="sous cl-pied">✓ réussi · ~ en cours · ✗ pas encore. Procédure : T un à un (terme à terme) · V d'un coup d'œil · D en décomposant (« deux et encore un ») · C en comptant · S en surcomptant. `

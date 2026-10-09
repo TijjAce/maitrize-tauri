@@ -43,7 +43,7 @@ export function htmlEtiquettes(mots: MotImage[], images: Images, r: ReglagesEtiq
     const cellules = mots.map((m) => `<div class="carte et-grande">${r.pictos && m.id != null ? imgPicto(src(m), m.mot) : ""}<div class="et-mot">${escapeHtml(m.mot)}</div></div>`);
     parties.push(pagesDeCartes(cellules, { colonnes: 2, lignes: 6, hauteurMm: 40 },
       `<div class="sous">Étiquettes pour le tableau — à aimanter. Les mots collectés : ${mots.length}.
-       <span style="color:#687087">Livrets Français CP (2025) et CE1 (2026), Éduscol.</span></div>`));
+       <span class="reference">Livrets Français CP (2025) et CE1 (2026), Éduscol.</span></div>`));
   }
   if (r.petites) {
     for (let e = 0; e < Math.max(1, r.enveloppes); e++) {

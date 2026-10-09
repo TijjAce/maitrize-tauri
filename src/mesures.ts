@@ -61,7 +61,7 @@ const milliers = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " "
 const LETTRES = "ABCDEFGHIJKL";
 const NOIR = "#1c2233", ROUGE = "#d33a32";
 
-const SOURCE = `<span style="color:#687087">— Programme de mathématiques du cycle 2, 2024 ; Éduscol, « Grandeurs et mesures au cycle 2 », 2016.</span>`;
+const SOURCE = `<span class="reference">Programme de mathématiques du cycle 2, 2024 ; Éduscol, « Grandeurs et mesures au cycle 2 », 2016.</span>`;
 const entete = (titre: string, consigne: string) => `<div class="titre">${titre}</div>
   <div class="sous">Prénom : ........................................ Date : ........................</div>
   <div class="regle">${consigne} ${SOURCE}</div>`;

@@ -193,7 +193,7 @@ export function regleDeLaSerie(s: Serie, r: ReglagesCartes): string {
       : "Découpez les cartes, plastifiez-les si vous voulez. L'élève lit la carte et pose une pince à linge sur la bonne réponse."
     : "Découpez les cartes. L'élève écrit sa réponse sur la carte plastifiée, au feutre effaçable, ou sur sa fiche réponse, en face du numéro de la carte.";
   return `<div class="titre">${escapeHtml(s.type.nom)} — ${r.classe}</div>
-    <div class="regle"><b>${s.format === "pinces" ? "Cartes à pinces" : "Cartes à tâches"}</b>${comment}${s.type.note ? ` ${escapeHtml(s.type.note)}` : ""} <span style="color:#687087">— ${escapeHtml(s.type.source)}.</span></div>`;
+    <div class="regle"><b>${s.format === "pinces" ? "Cartes à pinces" : "Cartes à tâches"}</b>${comment}${s.type.note ? ` ${escapeHtml(s.type.note)}` : ""} <span class="reference">${escapeHtml(s.type.source)}.</span></div>`;
 }
 
 function ficheReponse(s: Serie): string {

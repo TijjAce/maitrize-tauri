@@ -248,7 +248,7 @@ export function ajoutsSuccessifs(prix: number, donne: number, virgule: boolean):
 
 // ── Les feuilles ──────────────────────────────────────────────────────────
 
-const SOURCE = `<span style="color:#687087">— Programme de mathématiques du cycle 2, 2024 ; guide CP, Éduscol 2021.</span>`;
+const SOURCE = `<span class="reference">Programme de mathématiques du cycle 2, 2024 ; guide CP, Éduscol 2021.</span>`;
 const entete = (titre: string, consigne: string) => `<div class="titre">${titre}</div>
   <div class="sous">Prénom : ........................................ Date : ........................</div>
   <div class="regle">${consigne} ${SOURCE}</div>`;

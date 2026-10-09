@@ -69,7 +69,7 @@ export function htmlEcritureCursive(r: ReglagesCursive): string {
     : "Regarde le modèle, puis écris en cursive sur les lignes, en levant le moins possible le crayon.";
   return feuille(`<div class="page"><div class="titre">${r.transcrire ? "Copier en cursive" : "Écriture cursive"}</div>
     <div class="sous">Prénom : ........................................ Date : ........................ · réglure de ${String(r.reglure).replace(".", ",")} mm</div>
-    <div class="regle">${consigne} <span style="color:#687087">— Livret Français CP, Éduscol 2025.</span></div>
+    <div class="regle">${consigne} <span class="reference">Livret Français CP, Éduscol 2025.</span></div>
     ${modeles.map(bloc).join("")}</div>`, "cu");
 }
 

@@ -12,6 +12,7 @@
 
 import { escapeHtml } from "./print";
 import { CLASSES_CONSIGNE } from "./caa";
+import { referencesDe, sansReferences } from "./references";
 
 /** Où se garde la consigne d'un atelier — préfixe « fabriquer: », donc partagé. */
 export const cleConsigne = (atelier: string) => `fabriquer:consigne:${atelier}`;
@@ -76,7 +77,8 @@ export function consigneParDefaut(html: string): string | null {
   if (!place) return null;
   // Les retours à la ligne du HTML ne sont que de la mise en forme : seuls
   // le titre en gras et les <br> font des lignes.
-  const interieur = html.slice(place.debut, place.fin)
+  // La référence n'est pas la consigne : elle reste derrière son « ? ».
+  const interieur = sansReferences(html.slice(place.debut, place.fin))
     .replace(/<span class="consigne-pictos">[\s\S]*?<\/span><\/span>/g, "")
     .replace(/\s+/g, " ")
     .replace(/<\/b>/g, "\n").replace(/<br\s*\/?>/g, "\n")
@@ -92,12 +94,17 @@ export function htmlDeConsigne(texte: string, regle: boolean): string {
   return lignes.map(escapeHtml).join("<br>");
 }
 
-/** La feuille avec la consigne de l'enseignant à la place de la première ; telle quelle si le texte est vide. */
+/**
+ * La feuille avec la consigne de l'enseignant à la place de la première ;
+ * telle quelle si le texte est vide. La référence de la consigne d'origine
+ * reste à sa place, après la nouvelle.
+ */
 export function remplacerConsigne(html: string, texte: string | null | undefined): string {
   if (!texte || !texte.trim()) return html;
   const place = premiereConsigne(html);
   if (!place) return html;
-  return html.slice(0, place.debut) + htmlDeConsigne(texte, place.regle) + html.slice(place.fin);
+  const references = referencesDe(html.slice(place.debut, place.fin));
+  return html.slice(0, place.debut) + htmlDeConsigne(texte, place.regle) + (references.length ? ` ${references.join(" ")}` : "") + html.slice(place.fin);
 }
 
 // ── Les consignes d'origine, publiées par les aperçus ──────────────────────

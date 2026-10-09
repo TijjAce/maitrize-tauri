@@ -35,6 +35,7 @@ import { nombreEnLettres } from "./nombresEnLettres";
 import { doigtsSvg, pointsSvg } from "./collections";
 import { boiteDeDixSvg } from "./jeuxMaths";
 import { fr } from "./nombres";
+import { reference } from "./references";
 
 // ── Les formes d'un nombre ────────────────────────────────────────────────
 
@@ -766,9 +767,9 @@ function regleDesNombres(niv: Niveau): string {
 }
 
 const SOURCES: Record<1 | 2 | 3, string> = {
-  1: "D'après le programme de l'école maternelle (2025), « Découvrir les nombres », et le guide « Pour enseigner la construction du nombre à l'école maternelle » (Éduscol).",
-  2: "D'après le programme de mathématiques du cycle 2 (2024) et le guide « Pour enseigner les nombres, le calcul et la résolution de problèmes au CP » (Éduscol).",
-  3: "D'après le programme de mathématiques du cycle 3 (2024).",
+  1: "Programme de l'école maternelle (2025), « Découvrir les nombres » ; guide « Pour enseigner la construction du nombre à l'école maternelle » (Éduscol).",
+  2: "Programme de mathématiques du cycle 2 (2024) ; guide « Pour enseigner les nombres, le calcul et la résolution de problèmes au CP » (Éduscol).",
+  3: "Programme de mathématiques du cycle 3 (2024).",
 };
 
 function pageDeRegle(niv: Niveau, titre: string): string {
@@ -776,7 +777,7 @@ function pageDeRegle(niv: Niveau, titre: string): string {
     <div class="titre">${escapeHtml(titre)} — ${escapeHtml(niv.libelle)}</div>
     ${blocDuSavoir(niv)}
     ${niv.cycle === 1 ? regleMaternelle(niv) : regleDesNombres(niv)}
-    <p class="cn-source">${SOURCES[niv.cycle]}</p>
+    <p class="cn-source">${reference(SOURCES[niv.cycle])}</p>
   </div>`;
 }
 
@@ -869,6 +870,7 @@ export const STYLE_COMPARER = `
   .feuille.cn .cn-jeu-regle li { margin: 0.8mm 0; }
   .feuille.cn .cn-verifier { font-size: 13px; margin: 3mm 0 1mm; }
   .feuille.cn .cn-source { font-size: 10.5px; color: #687087; margin: 2mm 0 0; }
+  .feuille.cn .cn-source:empty { display: none; }
   .feuille.cn .cn-nom { font-size: 13px; color: #444; margin: 0 0 3mm; }
   .feuille.cn .cn-feuille-jeu h3 { font-size: 16px; margin: 6mm 0 1mm; }
   .feuille.cn .cn-consigne { font-size: 13px; margin: 0 0 3mm; color: #1c2233; }

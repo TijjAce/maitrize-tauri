@@ -15,6 +15,7 @@
 import { escapeHtml } from "./print";
 import { feuille } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
+import { reference } from "./references";
 
 export type Classe = "CP" | "CE1" | "CE2";
 export type ExerciceEcrire = "motsImposes" | "gammes" | "manipulations" | "oralEcrit" | "lanceurs" | "transformer" | "episode" | "connecteurs" | "planifier" | "relecture" | "message";
@@ -171,21 +172,21 @@ function feuilleGammes(r: ReglagesEcrire, graine: number): string {
 
 function feuilleManipulations(): string {
   const m = MANIPULATIONS;
-  return `<div class="page">${titre("Déplacer, ajouter, remplacer, supprimer")}${TETE}${regle("Transforme la phrase de base comme on te le demande, d'abord à l'oral, puis à l'écrit. Chaque nouvelle phrase doit avoir du sens. — Guide CE1, p. 83.")}
+  return `<div class="page">${titre("Déplacer, ajouter, remplacer, supprimer")}${TETE}${regle(`Transforme la phrase de base comme on te le demande, d'abord à l'oral, puis à l'écrit. Chaque nouvelle phrase doit avoir du sens. ${reference("Guide CE1, p. 83.")}`)}
     <div class="ec-modele">${escapeHtml(m.base)}</div>${m.etapes.map((e, i) => `<div class="ec-q"><div class="ec-enonce"><b>${i + 1}.</b> ${escapeHtml(e.consigne)}</div>${lignes(1)}</div>`).join("")}</div>
     <div class="page corrige">${titre("Déplacer, ajouter, remplacer, supprimer — des réponses")}<div class="ec-corrige">${m.etapes.map((e, i) => `<div><b>${i + 1}.</b> ${escapeHtml(e.reponse)}</div>`).join("")}</div></div>`;
 }
 
 function feuilleOralEcrit(_r: ReglagesEcrire, graine: number): string {
   const items = melanger(hasard(graine), ORAL_ECRIT).slice(0, 6);
-  return `<div class="page">${titre("De l'oral à l'écrit")}${TETE}${regle("On le dit souvent ainsi à l'oral, mais on ne l'écrit pas comme ça. Réécris chaque phrase comme on l'écrit. — Guide CE1, p. 84.")}
+  return `<div class="page">${titre("De l'oral à l'écrit")}${TETE}${regle(`On le dit souvent ainsi à l'oral, mais on ne l'écrit pas comme ça. Réécris chaque phrase comme on l'écrit. ${reference("Guide CE1, p. 84.")}`)}
     ${items.map((x, i) => `<div class="ec-q"><div class="ec-enonce"><b>${i + 1}.</b> ${escapeHtml(x.consigne)} <i>« ${escapeHtml(x.phrase)} »</i></div>${lignes(1)}</div>`).join("")}</div>
     <div class="page corrige">${titre("De l'oral à l'écrit — corrigé")}<div class="ec-corrige">${items.map((x, i) => `<div><b>${i + 1}.</b> ${escapeHtml(x.ecrit)}</div>`).join("")}</div></div>`;
 }
 
 function feuilleLanceurs(r: ReglagesEcrire, graine: number): string {
   const choisis = melanger(hasard(graine), LANCEURS).slice(0, 5);
-  return `<div class="page">${titre("Le jogging d'écriture")}${TETE}${regle("Chaque matin, une ou deux phrases avec le lanceur du jour. Lis ta phrase à voix haute, puis corrige-la avec l'aide du professeur. — Guide CE1, p. 84.")}
+  return `<div class="page">${titre("Le jogging d'écriture")}${TETE}${regle(`Chaque matin, une ou deux phrases avec le lanceur du jour. Lis ta phrase à voix haute, puis corrige-la avec l'aide du professeur. ${reference("Guide CE1, p. 84.")}`)}
     ${choisis.map((l, i) => `<div class="ec-q"><div class="ec-enonce"><b>Jour ${i + 1}.</b> ${escapeHtml(l)}</div>${lignes(r.classe === "CE2" ? 3 : 2)}</div>`).join("")}</div>`;
 }
 

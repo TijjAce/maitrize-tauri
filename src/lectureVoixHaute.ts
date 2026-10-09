@@ -166,7 +166,7 @@ function feuilleGrille(r: ReglagesVoixHaute): string {
   const lignes = CRITERES[r.classe].map((c) => `<tr><td class="vh-critere">${escapeHtml(c)}</td>${[1, 2, 3].map(() => "<td><span class=\"vh-case\"></span> oui &nbsp; <span class=\"vh-case\"></span> pas encore</td>").join("")}</tr>`).join("");
   return `<div class="page"><div class="titre">Lire à voix haute — la grille du binôme</div>
     <div class="sous">Le lecteur : ........................................ L'auditeur : ........................................ Date : ..................</div>
-    <div class="regle">Le lecteur lit, l'auditeur écoute, puis on se met d'accord, critère par critère. On échange les rôles. <span style="color:#687087">— Livrets Français CP et CE1, Éduscol.</span></div>
+    <div class="regle">Le lecteur lit, l'auditeur écoute, puis on se met d'accord, critère par critère. On échange les rôles. <span class="reference">Livrets Français CP et CE1, Éduscol.</span></div>
     <table class="vh-grille"><tr><th>Ce qu'on écoute</th><th>1re lecture</th><th>2e lecture</th><th>3e lecture</th></tr>${lignes}</table>
     <div class="vh-conseil">Mon conseil pour la prochaine lecture : ........................................................................................................</div></div>`;
 }
@@ -203,7 +203,7 @@ function feuilleFable(): string {
   const vers = FABLE.map((morceaux, i) => `<tr><td class="vh-num">${i + 1}</td><td class="vh-vers">${morceaux.map((m) => `<span style="color:${VOIX[m.voix].couleur}">${escapeHtml(m.texte)}</span>`).join(" ")}</td><td class="vh-marge"></td></tr>`).join("");
   return `<div class="page"><div class="titre">La Grenouille qui se veut faire aussi grosse que le Bœuf — le texte partition</div>
     <div class="sous">Prénom : ........................................ Date : ........................</div>
-    <div class="regle">Chaque voix a sa couleur. Dans la marge, écris tes indications de lecture : plus fort, plus vite, une pause, une voix qui se moque… Code aussi les liaisons ‿ et les pauses /. <span style="color:#687087">— Jean de La Fontaine, Fables, I, 3 ; livret Français CE2, Éduscol.</span></div>
+    <div class="regle">Chaque voix a sa couleur. Dans la marge, écris tes indications de lecture : plus fort, plus vite, une pause, une voix qui se moque… Code aussi les liaisons ‿ et les pauses /. <span style="color:#687087">— Jean de La Fontaine, Fables, I, 3.</span> <span class="reference">Livret Français CE2, Éduscol.</span></div>
     <div class="vh-legende">${legende}</div>
     <table class="vh-fable"><tr><th></th><th>La fable</th><th>Mes indications</th></tr>${vers}</table></div>`;
 }
@@ -223,7 +223,7 @@ export function htmlVoixHaute(r: ReglagesVoixHaute, graine: number): string {
   const [consigneCodee, consigneACoder] = CONSIGNES[r.exercice];
   const aCoder = !r.codees && r.exercice !== "lignes";
   const tete = `<div class="titre">Lire à voix haute — ${titre.toLowerCase()}</div><div class="sous">Prénom : ........................................ Date : ........................</div>
-    <div class="regle">${aCoder ? consigneACoder : consigneCodee} <span style="color:#687087">— Livrets Français CP et CE1, Éduscol.</span></div>`;
+    <div class="regle">${aCoder ? consigneACoder : consigneCodee} <span class="reference">Livrets Français CP et CE1, Éduscol.</span></div>`;
   const page = `<div class="page">${tete}<div class="vh-liste">${liste.map((p, i) => ligne(p, i, !aCoder)).join("")}</div></div>`;
   const corrige = aCoder ? `<div class="page corrige"><div class="titre">Lire à voix haute — corrigé</div><div class="vh-liste">${liste.map((p, i) => ligne(p, i, true)).join("")}</div></div>` : "";
   return feuille(page + corrige, "vh");
