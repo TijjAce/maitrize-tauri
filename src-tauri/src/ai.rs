@@ -510,13 +510,18 @@ pub async fn mistral_recherche_web(
         .timeout(std::time::Duration::from_secs(180))
         .build()
         .map_err(|e| e.to_string())?;
-    let rep = client
-        .post("https://api.mistral.ai/v1/conversations")
-        .bearer_auth(&cle)
-        .json(&serde_json::json!({ "agent_id": agent, "inputs": question }))
-        .send()
-        .await
-        .map_err(|e| format!("Réseau : {e}"))?;
+    // La question n'a pas à rester chez Mistral : « store: false » lui demande
+    // de ne pas garder la conversation. Si son API refusait le champ, la
+    // recherche ne doit pas en pâtir : on redemande sans.
+    let envoyer = |garder: bool| {
+        let mut corps = serde_json::json!({ "agent_id": agent, "inputs": question });
+        if !garder { corps["store"] = serde_json::Value::Bool(false); }
+        client.post("https://api.mistral.ai/v1/conversations").bearer_auth(&cle).json(&corps).send()
+    };
+    let mut rep = envoyer(false).await.map_err(|e| format!("Réseau : {e}"))?;
+    if matches!(rep.status().as_u16(), 400 | 422) {
+        rep = envoyer(true).await.map_err(|e| format!("Réseau : {e}"))?;
+    }
     if !rep.status().is_success() {
         let code = rep.status().as_u16();
         let quota = quota_minute(rep.headers());

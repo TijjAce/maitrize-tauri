@@ -1,16 +1,14 @@
-//! Transfert chiffré de bout en bout entre amis via un stockage S3-compatible.
+//! Le stockage compatible S3 que l'enseignant configure lui-même (un NAS, un
+//! hébergeur de son choix) : synchronisation entre ses ordinateurs, sauvegarde
+//! en ligne, et envois chiffrés de bout en bout entre amis.
 //!
-//! - En local (test) : MinIO. En production : Scaleway/Hetzner (même code, juste
-//!   l'endpoint qui change).
-//! - Chaque message est chiffré avec une clé dérivée du secret partagé X25519
-//!   (Diffie-Hellman + HKDF) → le stockage ne voit que du ciphertext.
-//! - Les blobs vont dans `mailbox/<mailbox_id>/…` ; chacun ne peut être déchiffré
-//!   que par les deux amis de la paire.
-//!
-//! ⚠️ Étape de test : les identifiants S3 sont lus depuis la table `settings`
-//!   (local). En production, ils ne seront PAS dans le client : un petit service
-//!   « videur » délivrera des URLs présignées. Ici on vise juste à valider le
-//!   chiffrement et l'aller-retour de bout en bout.
+//! - Les identifiants du stockage restent sur cet ordinateur, sous la clé du
+//!   trousseau (voir `trousseau`).
+//! - Synchronisation et sauvegarde sont chiffrées avec une clé tirée de la
+//!   phrase secrète (Argon2id) : le stockage ne voit que du chiffré.
+//! - Entre amis, chaque envoi est chiffré avec une clé dérivée du secret
+//!   partagé X25519 (Diffie-Hellman + HKDF) ; les blobs vont dans
+//!   `mailbox/<mailbox_id>/…`, que seuls les deux amis de la paire déchiffrent.
 
 use crate::db::{fichiers_dir, Db};
 use crate::models::{ProgrammationFinale, Seance, Sequence};
@@ -444,9 +442,20 @@ pub async fn boite_relever(db: State<'_, Db>, ami_id: String) -> R<Vec<BoiteItem
 
     // (clé S3, kind, de_nom, titre, ts, payload JSON déchiffré)
     let mut recues: Vec<(String, String, String, String, String, String)> = Vec::new();
+    // Un envoi déjà rangé ici n'a plus à attendre sur le stockage : passé un
+    // délai qui laisse aux autres ordinateurs de l'enseignant le temps de le
+    // relever aussi, il en part.
+    let limite = std::time::SystemTime::now() - std::time::Duration::from_secs(30 * 24 * 3600);
+    let mut perimes: Vec<String> = Vec::new();
     for obj in liste.contents() {
         let Some(k) = obj.key() else { continue };
-        if deja.contains(k) { continue; }
+        if deja.contains(k) {
+            let ancien = obj.last_modified()
+                .and_then(|d| std::time::SystemTime::try_from(*d).ok())
+                .is_some_and(|d| d < limite);
+            if ancien { perimes.push(k.to_string()); }
+            continue;
+        }
         let resp = cl.get_object().bucket(&ctx.cfg.bucket).key(k).send().await
             .map_err(|er| format!("Téléchargement : {er}"))?;
         let bytes = resp.body.collect().await.map_err(e)?.into_bytes();
@@ -459,16 +468,21 @@ pub async fn boite_relever(db: State<'_, Db>, ami_id: String) -> R<Vec<BoiteItem
     }
 
     let mut out = Vec::new();
-    let c = db.lock();
-    let now = chrono::Utc::now().to_rfc3339();
-    for (k, kind, de_nom, titre, ts, payload) in recues {
-        let id = uuid::Uuid::new_v4().to_string();
-        c.execute(
-            "INSERT INTO boite_recue (id, type, de_nom, titre, ts, payload, recu_le) VALUES (?1,?2,?3,?4,?5,?6,?7)",
-            params![id, kind, de_nom, titre, ts, payload, now],
-        ).map_err(e)?;
-        c.execute("INSERT OR IGNORE INTO sync_recus (cle, date) VALUES (?1, ?2)", params![k, now]).ok();
-        out.push(BoiteItem { id, kind, de_nom, titre, ts });
+    {
+        let c = db.lock();
+        let now = chrono::Utc::now().to_rfc3339();
+        for (k, kind, de_nom, titre, ts, payload) in recues {
+            let id = uuid::Uuid::new_v4().to_string();
+            c.execute(
+                "INSERT INTO boite_recue (id, type, de_nom, titre, ts, payload, recu_le) VALUES (?1,?2,?3,?4,?5,?6,?7)",
+                params![id, kind, de_nom, titre, ts, payload, now],
+            ).map_err(e)?;
+            c.execute("INSERT OR IGNORE INTO sync_recus (cle, date) VALUES (?1, ?2)", params![k, now]).ok();
+            out.push(BoiteItem { id, kind, de_nom, titre, ts });
+        }
+    }
+    for k in perimes {
+        cl.delete_object().bucket(&ctx.cfg.bucket).key(&k).send().await.ok();
     }
     Ok(out)
 }
@@ -511,8 +525,11 @@ pub fn boite_supprimer(db: State<Db>, id: String) -> R<()> {
 
 // ── Partage de la programmation finale ──────────────────────────────────────
 
+/// La programmation de classe de l'année — jamais celle par élève (IME) : ses
+/// objectifs, ses groupes et ses notes concernent des élèves nommément.
 fn lire_programmation(c: &Connection, annee: &str) -> R<ProgrammationFinale> {
-    c.query_row("SELECT * FROM programmations_finale WHERE annee = ?1 AND est_importee = 0 LIMIT 1",
+    c.query_row("SELECT * FROM programmations_finale
+                  WHERE annee = ?1 AND est_importee = 0 AND COALESCE(niveau, '') <> 'ime' LIMIT 1",
         [annee], ProgrammationFinale::from_row)
         .map_err(|_| "Aucune programmation à partager pour cette année.".to_string())
 }
@@ -1690,6 +1707,9 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
 // seulement des fichiers présents d'un côté et pas de l'autre.
 
 const PREFIXE_FICHIER: &str = "maitrize/fichiers/";
+/// Les marques d'effacement : un objet vide par fichier effacé, sous son nom.
+/// Le nom est un identifiant tiré au hasard : la marque ne dit rien du fichier.
+const PREFIXE_EFFACE: &str = "maitrize/effaces/";
 /// Au-delà, on ne bloque pas la synchronisation sur un seul passage.
 const FICHIERS_PAR_PASSAGE: usize = 20;
 
@@ -1699,7 +1719,74 @@ pub struct ResultatFichiers {
     pub envoyes: usize,
     pub recus: usize,
     pub restants: usize,
+    /// Fichiers effacés ici à la suite d'un effacement sur un autre ordinateur.
+    #[serde(default)]
+    pub effaces: usize,
     pub message: String,
+}
+
+type Noms = std::collections::HashSet<String>;
+
+/// Ce qu'un passage de synchronisation des fichiers doit faire.
+#[derive(Debug, Default, PartialEq)]
+struct PlanFichiers {
+    /// Marques à retirer du stockage : une restauration a ramené ces fichiers.
+    lever: Vec<String>,
+    /// Marques à poser : fichiers effacés ici, pas encore annoncés.
+    poser: Vec<String>,
+    /// Copies à retirer du stockage.
+    retirer: Vec<String>,
+    /// Fichiers à effacer ici : un autre ordinateur les a effacés.
+    effacer_ici: Vec<String>,
+    envoyer: Vec<String>,
+    recevoir: Vec<String>,
+}
+
+/**
+ * Décide, à partir de ce qui est ici et là-bas, de ce qu'un passage fait.
+ *
+ * Sans les marques, la synchronisation ne connaissait que deux listes : un
+ * fichier effacé ici était encore sur le stockage, et revenait au passage
+ * suivant ; les autres ordinateurs gardaient le leur. Une photo d'élève
+ * effacée ne l'était jamais vraiment.
+ */
+fn planifier_fichiers(ici: &Noms, la_bas: &Noms, marques: &Noms, a_publier: &Noms, rendus: &Noms) -> PlanFichiers {
+    let trier = |mut v: Vec<String>| { v.sort(); v };
+    let lever = trier(rendus.intersection(marques).cloned().collect());
+    let mut effaces: Noms = marques.difference(rendus).cloned().collect();
+    let poser = trier(a_publier.difference(&effaces).cloned().collect());
+    let retirer = trier(a_publier.intersection(la_bas).cloned().collect());
+    effaces.extend(a_publier.iter().cloned());
+    let effacer_ici = trier(effaces.difference(a_publier).filter(|n| ici.contains(*n)).cloned().collect());
+    let restants: Noms = ici.iter().filter(|n| !effaces.contains(*n)).cloned().collect();
+    let envoyer = trier(restants.difference(la_bas).cloned().collect());
+    let recevoir = trier(la_bas.iter().filter(|n| !restants.contains(*n) && !effaces.contains(*n)).cloned().collect());
+    PlanFichiers { lever, poser, retirer, effacer_ici, envoyer, recevoir }
+}
+
+/// Toutes les clés sous un préfixe, page après page — une page n'en montre que mille.
+async fn cles_sous(cl: &Client, cfg: &S3Cfg, prefixe: &str) -> R<Vec<String>> {
+    let mut cles = Vec::new();
+    let mut suite: Option<String> = None;
+    loop {
+        let mut demande = cl.list_objects_v2().bucket(&cfg.bucket).prefix(prefixe);
+        if let Some(jeton) = &suite {
+            demande = demande.continuation_token(jeton);
+        }
+        let page = demande.send().await.map_err(|err| format!("Lecture impossible : {}", detail(&err)))?;
+        cles.extend(page.contents().iter().filter_map(|o| o.key().map(str::to_string)));
+        match (page.is_truncated(), page.next_continuation_token()) {
+            (Some(true), Some(jeton)) => suite = Some(jeton.to_string()),
+            _ => break,
+        }
+    }
+    Ok(cles)
+}
+
+fn noms_de(c: &Connection, sql: &str) -> Noms {
+    c.prepare(sql)
+        .and_then(|mut st| st.query_map([], |r| r.get::<_, String>(0))?.collect::<Result<Noms, _>>())
+        .unwrap_or_default()
 }
 
 fn fichiers_locaux() -> std::collections::HashSet<String> {
@@ -1722,7 +1809,7 @@ fn fichiers_locaux() -> std::collections::HashSet<String> {
 /// d'élèves ni les notifications MDPH en clair.
 #[tauri::command]
 pub async fn sync_fichiers(db: State<'_, Db>) -> R<ResultatFichiers> {
-    let (cfg, phrase) = {
+    let (cfg, phrase, a_publier, rendus) = {
         let c = db.lock();
         let phrase = get_setting(&c, "sauvegarde_phrase");
         if phrase.trim().is_empty() {
@@ -1731,25 +1818,70 @@ pub async fn sync_fichiers(db: State<'_, Db>) -> R<ResultatFichiers> {
         let Ok(cfg) = lire_cfg(&c) else {
             return Ok(ResultatFichiers { message: "Stockage non configuré.".into(), ..Default::default() });
         };
-        (cfg, phrase.trim().to_string())
+        (cfg, phrase.trim().to_string(),
+         noms_de(&c, "SELECT nom FROM fichiers_effaces WHERE publie = 0"),
+         noms_de(&c, "SELECT nom FROM fichiers_rendus"))
     };
 
     let cl = client(&cfg);
-    let ici = fichiers_locaux();
-    let liste = cl.list_objects_v2().bucket(&cfg.bucket).prefix(PREFIXE_FICHIER)
-        .send().await.map_err(|err| format!("Lecture impossible : {}", detail(&err)))?;
-    let la_bas: std::collections::HashSet<String> = liste.contents().iter()
-        .filter_map(|o| o.key()?.strip_prefix(PREFIXE_FICHIER).map(str::to_string))
-        .filter(|n| !n.is_empty())
-        .collect();
+    let sous = |cles: Vec<String>, prefixe: &str| -> Noms {
+        cles.iter().filter_map(|k| k.strip_prefix(prefixe)).filter(|n| !n.is_empty()).map(str::to_string).collect()
+    };
+    let la_bas = sous(cles_sous(&cl, &cfg, PREFIXE_FICHIER).await?, PREFIXE_FICHIER);
+    let marques = sous(cles_sous(&cl, &cfg, PREFIXE_EFFACE).await?, PREFIXE_EFFACE);
+    let plan = planifier_fichiers(&fichiers_locaux(), &la_bas, &marques, &a_publier, &rendus);
 
     let mut res = ResultatFichiers::default();
     let dossier = crate::db::fichiers_dir();
 
-    // 1. Déposer ce que nous avons et qu'eux n'ont pas.
-    let a_envoyer: Vec<&String> = ici.difference(&la_bas).collect();
-    res.restants = a_envoyer.len().saturating_sub(FICHIERS_PAR_PASSAGE);
-    for nom in a_envoyer.into_iter().take(FICHIERS_PAR_PASSAGE) {
+    // 1. Une restauration a ramené ces fichiers : leur marque tombe. Tant
+    //    qu'elle n'est pas tombée, on s'en souvient — sinon elle les ferait
+    //    effacer de nouveau.
+    let mut leves: Vec<&String> = rendus.iter().filter(|n| !plan.lever.contains(*n)).collect();
+    for nom in &plan.lever {
+        if cl.delete_object().bucket(&cfg.bucket).key(format!("{PREFIXE_EFFACE}{nom}")).send().await.is_ok() {
+            leves.push(nom);
+        }
+    }
+    {
+        let c = db.lock();
+        for nom in leves {
+            c.execute("DELETE FROM fichiers_rendus WHERE nom = ?1", params![nom]).ok();
+        }
+    }
+
+    // 2. Effacés ici : la marque se pose, la copie du stockage s'en va. Une
+    //    marque qui n'a pas pu se poser sera reposée au passage suivant.
+    let mut annonces: Vec<&String> = a_publier.iter().filter(|n| !plan.poser.contains(*n)).collect();
+    for nom in &plan.poser {
+        if cl.put_object().bucket(&cfg.bucket).key(format!("{PREFIXE_EFFACE}{nom}"))
+            .body(ByteStream::from(Vec::new())).send().await.is_ok() {
+            annonces.push(nom);
+        }
+    }
+    for nom in &plan.retirer {
+        cl.delete_object().bucket(&cfg.bucket).key(format!("{PREFIXE_FICHIER}{nom}")).send().await.ok();
+    }
+
+    // 3. Effacés ailleurs : ils partent d'ici aussi, et ne repartiront pas.
+    {
+        let c = db.lock();
+        for nom in &annonces {
+            c.execute("UPDATE fichiers_effaces SET publie = 1 WHERE nom = ?1", params![nom]).ok();
+        }
+        let maintenant = chrono::Utc::now().to_rfc3339();
+        for nom in &plan.effacer_ici {
+            if std::fs::remove_file(dossier.join(nom)).is_ok() {
+                res.effaces += 1;
+            }
+            c.execute("INSERT OR IGNORE INTO fichiers_effaces (nom, date, publie) VALUES (?1, ?2, 1)",
+                params![nom, maintenant]).ok();
+        }
+    }
+
+    // 4. Déposer ce que nous avons et qu'eux n'ont pas.
+    res.restants = plan.envoyer.len().saturating_sub(FICHIERS_PAR_PASSAGE);
+    for nom in plan.envoyer.iter().take(FICHIERS_PAR_PASSAGE) {
         let Ok(octets) = std::fs::read(dossier.join(nom)) else { continue };
         let blob = chiffrer_sauvegarde(&phrase, &octets)?;
         if cl.put_object().bucket(&cfg.bucket).key(format!("{PREFIXE_FICHIER}{nom}"))
@@ -1758,10 +1890,9 @@ pub async fn sync_fichiers(db: State<'_, Db>) -> R<ResultatFichiers> {
         }
     }
 
-    // 2. Récupérer ce qu'ils ont et que nous n'avons pas.
-    let a_recevoir: Vec<&String> = la_bas.difference(&ici).collect();
-    res.restants += a_recevoir.len().saturating_sub(FICHIERS_PAR_PASSAGE);
-    for nom in a_recevoir.into_iter().take(FICHIERS_PAR_PASSAGE) {
+    // 5. Récupérer ce qu'ils ont et que nous n'avons pas.
+    res.restants += plan.recevoir.len().saturating_sub(FICHIERS_PAR_PASSAGE);
+    for nom in plan.recevoir.iter().take(FICHIERS_PAR_PASSAGE) {
         let Ok(obj) = cl.get_object().bucket(&cfg.bucket).key(format!("{PREFIXE_FICHIER}{nom}"))
             .send().await else { continue };
         let Ok(corps) = obj.body.collect().await else { continue };
@@ -1776,6 +1907,64 @@ pub async fn sync_fichiers(db: State<'_, Db>) -> R<ResultatFichiers> {
     Ok(res)
 }
 
+
+#[cfg(test)]
+mod tests_plan_fichiers {
+    use super::*;
+
+    fn n(v: &[&str]) -> Noms { v.iter().map(|x| x.to_string()).collect() }
+    fn l(v: &[&str]) -> Vec<String> { v.iter().map(|x| x.to_string()).collect() }
+
+    #[test]
+    fn sans_effacement_on_echange_ce_qui_manque() {
+        let p = planifier_fichiers(&n(&["a", "b"]), &n(&["b", "c"]), &n(&[]), &n(&[]), &n(&[]));
+        assert_eq!(p.envoyer, l(&["a"]));
+        assert_eq!(p.recevoir, l(&["c"]));
+        assert!(p.poser.is_empty() && p.retirer.is_empty() && p.effacer_ici.is_empty() && p.lever.is_empty());
+    }
+
+    #[test]
+    fn un_fichier_efface_ici_ne_revient_pas_et_quitte_le_stockage() {
+        // « x » vient d'être effacé ici ; le stockage l'a encore.
+        let p = planifier_fichiers(&n(&["a"]), &n(&["a", "x"]), &n(&[]), &n(&["x"]), &n(&[]));
+        assert_eq!(p.poser, l(&["x"]));
+        assert_eq!(p.retirer, l(&["x"]));
+        assert!(p.recevoir.is_empty(), "il ne doit pas revenir : {:?}", p.recevoir);
+    }
+
+    #[test]
+    fn un_fichier_efface_ailleurs_part_d_ici_et_ne_repart_pas() {
+        // Un autre ordinateur a effacé « x » : sa marque est sur le stockage.
+        let p = planifier_fichiers(&n(&["a", "x"]), &n(&["a"]), &n(&["x"]), &n(&[]), &n(&[]));
+        assert_eq!(p.effacer_ici, l(&["x"]));
+        assert!(p.envoyer.is_empty(), "il ne doit pas être renvoyé : {:?}", p.envoyer);
+    }
+
+    #[test]
+    fn une_marque_deja_posee_ne_se_repose_pas() {
+        let p = planifier_fichiers(&n(&[]), &n(&[]), &n(&["x"]), &n(&["x"]), &n(&[]));
+        assert!(p.poser.is_empty());
+        assert!(p.effacer_ici.is_empty());
+    }
+
+    #[test]
+    fn un_fichier_restaure_leve_sa_marque_et_repart() {
+        // « x » avait été effacé, une restauration l'a ramené.
+        let p = planifier_fichiers(&n(&["x"]), &n(&[]), &n(&["x"]), &n(&[]), &n(&["x"]));
+        assert_eq!(p.lever, l(&["x"]));
+        assert!(p.effacer_ici.is_empty(), "la restauration ne doit pas être défaite");
+        assert_eq!(p.envoyer, l(&["x"]));
+    }
+
+    #[test]
+    fn apres_une_restauration_ailleurs_le_fichier_revient_ici() {
+        // Cet ordinateur avait effacé « x » sur la marque d'un autre ; l'autre
+        // l'a restauré et renvoyé : la marque a disparu, le fichier revient.
+        let p = planifier_fichiers(&n(&[]), &n(&["x"]), &n(&[]), &n(&[]), &n(&[]));
+        assert_eq!(p.recevoir, l(&["x"]));
+        assert!(p.poser.is_empty(), "une marque déjà annoncée ne se repose pas");
+    }
+}
 
 // ── Mes appareils ──────────────────────────────────────────────────────────
 //

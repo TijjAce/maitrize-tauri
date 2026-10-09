@@ -117,9 +117,11 @@ pub struct Preparation {
 #[serde(rename_all = "camelCase")]
 pub struct InfoCopie {
     pub active: bool,
-    /// Le dossier où est posée la copie (le Bureau, par défaut).
+    /// Le dossier où est posée la copie (le dossier personnel, par défaut).
     pub emplacement: String,
     pub par_defaut: bool,
+    /// Le service qui synchronise ce dossier, s'il y en a un : la copie part avec lui.
+    pub synchronise: Option<String>,
     /// Le dossier de la copie elle-même.
     pub racine: String,
     pub derniere: Option<Bilan>,
@@ -575,8 +577,16 @@ fn reglage(db: &Db, cle: &str) -> String {
         .unwrap_or_default()
 }
 
+/// Le dossier personnel par défaut : ni iCloud ni OneDrive ne le synchronisent
+/// d'eux-mêmes, quand le Bureau l'est souvent — et la copie serait partie avec
+/// lui sans qu'on y pense. Une copie déjà posée sur le Bureau y reste : on ne la
+/// déplace pas sans le dire, les Réglages préviennent.
 fn emplacement_par_defaut() -> PathBuf {
-    dirs::desktop_dir().or_else(dirs::home_dir).unwrap_or_else(std::env::temp_dir)
+    let bureau = dirs::desktop_dir();
+    if let Some(b) = bureau.as_ref().filter(|b| b.join(NOM_RACINE).is_dir()) {
+        return b.clone();
+    }
+    dirs::home_dir().or(bureau).unwrap_or_else(std::env::temp_dir)
 }
 
 fn emplacement(db: &Db) -> (PathBuf, bool) {
@@ -595,6 +605,7 @@ fn info(db: &Db) -> InfoCopie {
         active: reglage(db, CLE_ACTIVE) != "non",
         emplacement: lieu.to_string_lossy().to_string(),
         par_defaut,
+        synchronise: crate::db::service_de_synchro(&lieu).map(str::to_string),
         derniere: lire_manifeste(&racine).derniere,
         racine: racine.to_string_lossy().to_string(),
     }
