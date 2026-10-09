@@ -83,12 +83,12 @@ pub(crate) fn ecrire_seance(c: &rusqlite::Connection, seance: Seance) -> R<Seanc
     let seance = Seance { date_maj: maintenant(), ..seance };
     c.execute(
         "INSERT INTO seances (id,titre,numero,objectifs,competences,deroulement,materiel,duree,date,
-          tableau_deroulement,images_deroulement,bilan,bilan_date,sequence_id,date_maj)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, numero = excluded.numero, objectifs = excluded.objectifs, competences = excluded.competences, deroulement = excluded.deroulement, materiel = excluded.materiel, duree = excluded.duree, date = excluded.date, tableau_deroulement = excluded.tableau_deroulement, images_deroulement = excluded.images_deroulement, bilan = excluded.bilan, bilan_date = excluded.bilan_date, sequence_id = excluded.sequence_id, date_maj = excluded.date_maj",
+          tableau_deroulement,images_deroulement,bilan,bilan_date,sequence_id,date_maj,consignes)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, numero = excluded.numero, objectifs = excluded.objectifs, competences = excluded.competences, deroulement = excluded.deroulement, materiel = excluded.materiel, duree = excluded.duree, date = excluded.date, tableau_deroulement = excluded.tableau_deroulement, images_deroulement = excluded.images_deroulement, bilan = excluded.bilan, bilan_date = excluded.bilan_date, sequence_id = excluded.sequence_id, date_maj = excluded.date_maj, consignes = excluded.consignes",
         params![seance.id, seance.titre, seance.numero, seance.objectifs, seance.competences,
                 seance.deroulement, seance.materiel, seance.duree, seance.date,
                 seance.tableau_deroulement, seance.images_deroulement, seance.bilan,
-                seance.bilan_date, seance.sequence_id, seance.date_maj],
+                seance.bilan_date, seance.sequence_id, seance.date_maj, seance.consignes],
     ).map_err(e)?;
     Ok(seance)
 }
@@ -3598,6 +3598,20 @@ mod tests_cascades {
         super::ecrire_creneau(&c, cr).unwrap();
         super::ecrire_seance(&c, Seance { titre: "Semis de radis".into(), ..se }).unwrap();
         assert_eq!(compter(&c, "SELECT count(*) FROM creneaux WHERE seance_id='se1'"), 1, "la séance a été détachée du créneau");
+    }
+
+    #[test]
+    fn les_consignes_d_une_seance_se_gardent() {
+        let c = base();
+        let se: Seance = serde_json::from_value(serde_json::json!({
+            "id": "se1", "titre": "Semis", "consignes": "Prends un pot.\nMets la terre."
+        })).unwrap();
+        super::ecrire_seance(&c, se).unwrap();
+        let lue = |c: &Connection| c.query_row("SELECT * FROM seances WHERE id='se1'", [], Seance::from_row).unwrap();
+        assert_eq!(lue(&c).consignes, "Prends un pot.\nMets la terre.");
+        // Reçue d'un ordinateur d'avant les consignes : le champ manque, la séance se lit quand même.
+        c.execute("UPDATE seances SET consignes = NULL WHERE id='se1'", []).unwrap();
+        assert_eq!(lue(&c).consignes, "");
     }
 
     #[test]

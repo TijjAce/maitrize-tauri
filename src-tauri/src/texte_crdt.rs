@@ -32,6 +32,7 @@ pub const CHAMPS_TEXTE: &[(&str, &str)] = &[
     ("seances", "bilan"),
     ("seances", "objectifs"),
     ("seances", "materiel"),
+    ("seances", "consignes"),
     ("sequences", "objectifs"),
     ("sequences", "competence_visee"),
     ("projets", "descriptif"),

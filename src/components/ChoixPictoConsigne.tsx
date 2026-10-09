@@ -65,13 +65,15 @@ function Resultat({ refPicto, mot, actif, onClick }: { refPicto: RefPicto; mot: 
 
 const GRILLE: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))", gap: 6, marginBottom: 12 };
 
-export function ChoixPictoConsigne({ verbe, actuel, onClose, onValider, recherche }: {
+export function ChoixPictoConsigne({ verbe, actuel, onClose, onValider, recherche, onAutomatique }: {
   verbe: string; actuel: RefPicto | null;
   /** Ce qu'on cherche d'abord, quand ce n'est pas le mot lui-même : « anglais » pour « LVE / Anglais ». */
   recherche?: string;
   onClose: () => void;
   /** Le picto retenu ; `null` pour que le verbe n'en ait plus. */
   onValider: (ref: RefPicto | null) => void;
+  /** Rendre le mot au picto trouvé tout seul, quand on l'avait choisi à la main. */
+  onAutomatique?: () => void;
 }) {
   const [q, setQ] = React.useState(recherche ?? verbe);
   const [choisi, setChoisi] = React.useState<RefPicto | null>(actuel);
@@ -138,6 +140,7 @@ export function ChoixPictoConsigne({ verbe, actuel, onClose, onValider, recherch
     <Modal titre={`Le pictogramme de « ${verbe} »`} onClose={onClose} large
       footer={<>
         {actuel != null && <button className="btn" onClick={() => onValider(null)}>Vider</button>}
+        {onAutomatique && <button className="btn" onClick={onAutomatique} title="Reprendre le picto que l'application trouve toute seule">↺ Automatique</button>}
         <div className="spacer" />
         <button className="btn" onClick={onClose}>Annuler</button>
         <button className="btn primary" disabled={choisi == null || pose} onClick={() => { void poser(); }}>Poser</button>
