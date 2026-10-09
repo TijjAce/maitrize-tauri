@@ -89,3 +89,17 @@ describe("les noms dans un texte libre", () => {
     expect(texte).toBe("Mme [P1] et [P2] trouvent qu'[P3] progresse.");
   });
 });
+
+describe("plusieurs textes masqués ensemble", () => {
+  it("un même nom porte le même marqueur d'un texte à l'autre, et la réponse se restaure d'un coup", async () => {
+    const { pseudonymiserTout } = await import("./confidentialite");
+    const { textes, table } = pseudonymiserTout(["Comment aider Apolline ?", "Apolline et Léo lisent ensemble."], eleves);
+    expect(textes).toEqual(["Comment aider [P1] ?", "[P1] et [P2] lisent ensemble."]);
+    expect(restaurer("Proposez à [P1] de lire avec [P2].", table).texte).toBe("Proposez à Apolline de lire avec Léo.");
+  });
+
+  it("un texte sans nom revient tel quel", async () => {
+    const { pseudonymiserTout } = await import("./confidentialite");
+    expect(pseudonymiserTout(["Les fractions au CM1"], eleves).textes).toEqual(["Les fractions au CM1"]);
+  });
+});
