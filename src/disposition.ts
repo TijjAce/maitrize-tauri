@@ -104,6 +104,32 @@ export function poser(disposition: Record<string, Case>, cle: string, cible: Cas
   return res;
 }
 
+/**
+ * La disposition après avoir déplacé un groupe de tuiles d'un même écart,
+ * comme on glisse plusieurs icônes à la fois : elles gardent leurs places
+ * les unes par rapport aux autres. Les autres tuiles ne bougent pas ; une
+ * tuile du groupe dont la case est prise — ou qui sortirait du bureau — va à
+ * la case libre la plus proche, dans l'ordre de lecture du groupe.
+ */
+export function poserPlusieurs(disposition: Record<string, Case>, cles: string[], ecart: Case, nbCols: number): Positions {
+  const groupe = new Set(cles.filter((k) => disposition[k]));
+  const res: Positions = {};
+  const prises = new Set<string>();
+  for (const [k, c] of Object.entries(disposition)) {
+    if (groupe.has(k)) continue;
+    res[k] = [c.col, c.rang];
+    prises.add(cleCase(c));
+  }
+  const ordre = [...groupe].sort((a, b) => disposition[a].rang - disposition[b].rang || disposition[a].col - disposition[b].col);
+  for (const k of ordre) {
+    const c = disposition[k];
+    const arrivee = caseLibreLaPlusProche({ col: c.col + ecart.col, rang: c.rang + ecart.rang }, prises, nbCols);
+    res[k] = [arrivee.col, arrivee.rang];
+    prises.add(cleCase(arrivee));
+  }
+  return res;
+}
+
 const nomDe = (chemin: string) => chemin.slice(chemin.lastIndexOf(SEPARATEUR) + 1);
 
 /**
