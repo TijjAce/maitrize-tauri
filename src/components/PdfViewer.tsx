@@ -1,6 +1,9 @@
 import React from "react";
-import { api, texteErreur } from "../api";
+import { useNavigate } from "react-router-dom";
+import { api, texteErreur, type MaterielItem } from "../api";
 import { toast } from "./Toaster";
+import { lireFabrication, modifierDansFabriquer } from "../modifierFeuille";
+import { nomDeLAtelier } from "../catalogueAteliers";
 import { ouvrirPdf, proportionPdf, rendrePageSelectionnable, textePage, type DocumentPdf } from "../pdfRendu";
 import { aplatir, morceauxCouverts, occurrences, type TexteAplati } from "../rechercheDansPdf";
 
@@ -33,7 +36,13 @@ const octetsDe = (b64: string) => {
 /** Une trouvaille dans le document : sa page, et son rang dans cette page. */
 interface Trouvaille { page: number; rang: number }
 
-export function PdfViewer({ nomFichier, titre, onClose }: { nomFichier: string; titre: string; onClose: () => void }) {
+export function PdfViewer({ nomFichier, titre, onClose, materiel }: {
+  nomFichier: string; titre: string; onClose: () => void;
+  /** Le matériel qui porte ce PDF : fabriqué par un atelier, il se modifie dans Fabriquer. */
+  materiel?: MaterielItem;
+}) {
+  const navigate = useNavigate();
+  const fabrication = lireFabrication(materiel?.fabricationJson);
   const [doc, setDoc] = React.useState<DocumentPdf | null>(null);
   const [erreur, setErreur] = React.useState("");
   const [proportion, setProportion] = React.useState(1.414);
@@ -154,6 +163,12 @@ export function PdfViewer({ nomFichier, titre, onClose }: { nomFichier: string; 
     <div className="overlay" style={{ zIndex: 160 }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal" style={{ maxWidth: "92vw", width: 1020, height: "90vh", display: "flex", flexDirection: "column" }}>
         <div className="modal-head"><h2>{titre}</h2><div className="spacer" />
+          {materiel && fabrication && (
+            <button className="btn sm" onClick={() => { onClose(); modifierDansFabriquer(materiel, fabrication, navigate); }}
+              title={`Rouvrir l'atelier « ${nomDeLAtelier(fabrication.atelier)} » réglé comme cette feuille : ce que vous y enregistrerez prendra sa place`}>
+              ✏️ Modifier dans Fabriquer
+            </button>
+          )}
           <button className="btn sm" onClick={() => { setBarre(true); setTimeout(() => champ.current?.focus(), 0); }}
             title="Chercher dans le document (⌘F)">🔍 Chercher</button>
           <button className="btn sm" onClick={imprimer} disabled={!doc}>🖨 Imprimer</button>

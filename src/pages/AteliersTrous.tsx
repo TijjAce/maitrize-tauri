@@ -4,6 +4,7 @@ import { useReglages } from "../components/useMemoire";
 import { confirmer } from "../components/confirmer";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { graineAuHasard } from "../hasard";
+import { useGraine } from "../modifierFeuille";
 import { Boutons, Colonnes } from "./AteliersLangage";
 import {
   MODELES_TROUS, REGLAGES_TROUS, STYLE_TROUS, etiquettesEnPlus, htmlTexteATrous, phrasesATrous, phrasesSansTrou, queDesFormesEtreAvoir,
@@ -25,7 +26,7 @@ const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string; onChan
 export function TrousTab() {
   const [brut, maj] = useReglages<ReglagesTrous>(ATELIER, REGLAGES_TROUS);
   const r = React.useMemo(() => reglagesTrousSurs(brut), [brut]);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const phrases = React.useMemo(() => phrasesATrous(r.phrases), [r.phrases]);
   const html = React.useMemo(() => htmlTexteATrous(r, graine), [r, graine]);
   const trous = phrases.flatMap(trousDe).length;

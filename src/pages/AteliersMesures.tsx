@@ -3,6 +3,7 @@ import { Field, Input, Select } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { graineAuHasard } from "../hasard";
+import { useGraine } from "../modifierFeuille";
 import { Boutons, Coche, Colonnes, bureau, imprimer } from "./AteliersMaths";
 import { EXERCICES_MONNAIE, PLAFONDS_MONNAIE, REGLAGES_MONNAIE, STYLE_MONNAIE, htmlMonnaie, type ExerciceMonnaie } from "../monnaie";
 import { EXERCICES_MESURES, REGLAGES_MESURES, STYLE_MESURES, htmlMesures, type Classe, type ExerciceMesures, type Grandeur } from "../mesures";
@@ -14,7 +15,7 @@ const borne = (v: string, min: number, max: number, defaut: number) => Math.max(
 
 export function MonnaieTab() {
   const [r, maj] = useReglages("monnaie", REGLAGES_MONNAIE);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlMonnaie(r, graine), [r, graine]);
   const titre = EXERCICES_MONNAIE.find((e) => e.id === r.exercice)?.libelle.split(" — ")[0] ?? "La monnaie";
   return (
@@ -60,7 +61,7 @@ const GRANDEURS: { id: Grandeur; libelle: string }[] = [
 
 export function MesuresTab() {
   const [r, maj] = useReglages("mesures", REGLAGES_MESURES);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const exercices = EXERCICES_MESURES.filter((e) => e.grandeurs.includes(r.grandeur));
   // Un exercice qui ne vaut pas pour la grandeur choisie : le premier de la liste.
   const exercice = exercices.some((e) => e.id === r.exercice) ? r.exercice : exercices[0].id;
@@ -110,7 +111,7 @@ export function MesuresTab() {
 
 export function DonneesTab() {
   const [r, maj] = useReglages("donnees", REGLAGES_DONNEES);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlDonnees(r, graine), [r, graine]);
   const titre = (EXERCICES_DONNEES.find((e) => e.id === r.exercice)?.libelle ?? "Tableaux et diagrammes").replace(/ \((CP|CE1|CE2)(, (CE1|CE2))?\)$/, "");
   return (

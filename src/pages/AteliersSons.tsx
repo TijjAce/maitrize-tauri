@@ -12,6 +12,7 @@ import { LigneDuProjet } from "../components/ProjetDuMoment";
 import { api } from "../api";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import { graineAuHasard, hasard } from "../hasard";
+import { useGraine } from "../modifierFeuille";
 import { SONS, syllabes } from "../lectureSons";
 import {
   PAIRES_DISTINCTIVES, REGLAGES_LETTRES, REGLAGES_LOTO_SYLLABES, STYLE_JEUX_SONS, dominos, htmlDominos, htmlIntrus, htmlLettres,
@@ -83,7 +84,7 @@ const Vide = ({ quoi }: { quoi: string }) => (
 export function LotoSyllabesTab({ banque }: { banque: boolean }) {
   const [mots, setMots] = React.useState<MotImage[]>([]);
   const [r, maj] = useReglages("lotoSyllabes", REGLAGES_LOTO_SYLLABES);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const planches = React.useMemo(() => planchesLotoSyllabes(mots, r, hasard(graine)), [mots, r, graine]);
   const images = usePictoImages(ids(mots));
   const html = React.useMemo(() => htmlLotoSyllabes(planches, mots, images, r), [planches, mots, images, r]);
@@ -123,7 +124,7 @@ export function LotoSyllabesTab({ banque }: { banque: boolean }) {
 export function DominosTab({ banque }: { banque: boolean }) {
   const [mots, setMots] = React.useState<MotImage[]>([]);
   const [legendes, setLegendes] = React.useState(false);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const pieces = React.useMemo(() => dominos(pairesQuiSenchainent(mots, hasard(graine))), [mots, graine]);
   const images = usePictoImages(ids(mots));
   const html = React.useMemo(() => htmlDominos(pieces, images, legendes), [pieces, images, legendes]);
@@ -151,7 +152,7 @@ export function DominosTab({ banque }: { banque: boolean }) {
 export function IntrusTab({ banque }: { banque: boolean }) {
   const [mots, setMots] = React.useState<MotImage[]>([]);
   const [r, maj] = useReglages("intrus", { mode: "attaque" as ModeIntrus, combien: 6, legendes: false });
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const lignes = React.useMemo(() => lignesIntrus(mots, r.mode, r.combien, hasard(graine)), [mots, r.mode, r.combien, graine]);
   const images = usePictoImages(ids(mots));
   const html = React.useMemo(() => htmlIntrus(lignes, images, r.mode, r.legendes), [lignes, images, r]);
@@ -252,7 +253,7 @@ function raisonDeLAttente(a: MotEnAttente, ici: EtapeCgp): string {
 
 export function FluenceTab() {
   const [r, maj] = useReglages("fluence", REGLAGES_FLUENCE);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const g = React.useMemo(() => grilleFluence(r, graine), [r, graine]);
   const html = React.useMemo(() => htmlFluence(g, r), [g, r]);
   const { etape } = g;
@@ -359,7 +360,7 @@ export function SyllabaireTab() {
 
 export function LettresTab() {
   const [r, maj] = useReglages("lettres", REGLAGES_LETTRES);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlLettres(r, hasard(graine)), [r, graine]);
   return (
     <Colonnes

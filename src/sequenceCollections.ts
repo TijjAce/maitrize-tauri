@@ -126,8 +126,12 @@ export async function creerLaSequenceDeCollections(
   for (const f of feuillesPour(r)) {
     const seance = seances[f.seance];
     if (!seance) continue;
-    const html = htmlCollections(reglagesDeLaFeuille(r, f), images, hasard(graineAuHasard()));
-    await poserDansUneSeance("collections", titreDeLaFeuille(f), html, STYLE_FEUILLE + STYLE_COLLECTIONS, seance.id, sequence.id);
+    // Les réglages et le tirage vont avec la feuille : « Modifier dans Fabriquer » la refait.
+    const graine = graineAuHasard();
+    const reglages = reglagesDeLaFeuille(r, f);
+    const html = htmlCollections(reglages, images, hasard(graine));
+    await poserDansUneSeance("collections", titreDeLaFeuille(f), html, STYLE_FEUILLE + STYLE_COLLECTIONS, seance.id, sequence.id,
+      { fabrication: { memoires: { collections: reglages }, graine } });
     posees++;
   }
   return { sequence, feuilles: posees };

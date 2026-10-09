@@ -3,6 +3,7 @@ import { Field, Input, Select } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { graineAuHasard } from "../hasard";
+import { useGraine } from "../modifierFeuille";
 import { Boutons, Coche, Colonnes, bureau, imprimer } from "./AteliersMaths";
 import { EXERCICES_GEOMETRIE, REGLAGES_GEOMETRIE, STYLE_GEOMETRIE, htmlGeometrie, type Classe, type ExerciceGeometrie, type NiveauReproduction } from "../geometrie";
 import { EXERCICES_SOLIDES, REGLAGES_SOLIDES, STYLE_SOLIDES, htmlSolides, type ExerciceSolides, type ReglagesSolides } from "../solides";
@@ -23,7 +24,7 @@ const ChoixClasse = ({ valeur, onChange, classes = ["CP", "CE1", "CE2"] }: { val
 
 export function GeometrieTab() {
   const [r, maj] = useReglages("geometrie", REGLAGES_GEOMETRIE);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlGeometrie(r, graine), [r, graine]);
   const titre = titreDe(EXERCICES_GEOMETRIE.find((e) => e.id === r.exercice)?.libelle, "Géométrie");
   const surGrille = r.exercice === "reproduire" || r.exercice === "symetrie" || (r.exercice === "completer" && !r.uni);
@@ -71,7 +72,7 @@ export function GeometrieTab() {
 
 export function SolidesTab() {
   const [r, maj] = useReglages("solides", REGLAGES_SOLIDES);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlSolides(r, graine), [r, graine]);
   const titre = titreDe(EXERCICES_SOLIDES.find((e) => e.id === r.exercice)?.libelle, "Les solides");
   const sansNombre = r.exercice === "denombrer" || r.exercice === "patronCube" || r.exercice === "faces";
@@ -112,7 +113,7 @@ export function SolidesTab() {
 
 export function DeplacementsTab() {
   const [r, maj] = useReglages("deplacements", REGLAGES_DEPLACEMENTS);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlDeplacements(r, graine), [r, graine]);
   const titre = titreDe(EXERCICES_DEPLACEMENTS.find((e) => e.id === r.exercice)?.libelle, "Se déplacer").split(" : ")[0];
   return (

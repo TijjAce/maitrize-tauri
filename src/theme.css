@@ -1097,6 +1097,25 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
 .zone-moment { margin: 0 -6px 18px; padding: 6px; border-radius: 14px; border: 2px dashed transparent; transition: background .12s, border-color .12s; }
 .zone-moment.survol { background: var(--panel-2); border-color: var(--accent); }
 .zone-moment-vide { border: 1px dashed var(--border); border-radius: 12px; padding: 18px; font-size: 12.5px; color: var(--text-2); text-align: center; }
+/* Une famille, ou un moment, se plie : la flèche tourne, et la section repliée dit combien d'ateliers elle garde. */
+.famille-catalogue { margin-bottom: 22px; }
+.famille-catalogue:has(> details:not([open])) { margin-bottom: 10px; }
+.zone-moment:has(> details:not([open])) { margin-bottom: 8px; }
+details.pli-catalogue > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 4px 10px; flex-wrap: wrap;
+  margin-bottom: 10px; user-select: none; }
+details.pli-catalogue:not([open]) > summary { margin-bottom: 0; }
+details.pli-catalogue > summary::-webkit-details-marker { display: none; }
+details.pli-catalogue > summary::before { content: "▸"; color: var(--text-2); width: 12px; flex: none; transition: transform .15s; }
+details.pli-catalogue[open] > summary::before { transform: rotate(90deg); }
+details.pli-catalogue > summary b { font-size: 15px; }
+details.pli-catalogue > summary .meta { font-size: 12.5px; }
+details.pli-catalogue > summary:hover b { color: var(--accent); }
+.pli-nombre { font-size: 11.5px; font-weight: 600; color: var(--text-2); background: var(--panel-2); border-radius: 100px; padding: 1px 8px; white-space: nowrap; }
+/* La feuille qu'on refait : rappelée en tête de Fabriquer tant qu'on ne l'a ni remplacée ni abandonnée. */
+.bandeau-modif { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin: 0 0 14px; padding: 10px 14px;
+  border-radius: 12px; background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); font-size: 13px; line-height: 1.45; }
+.bandeau-modif-ico { font-size: 18px; flex: none; }
+.bandeau-modif-texte { flex: 1; min-width: 220px; }
 .atelier[draggable="true"] { cursor: grab; }
 .atelier.en-vol { opacity: .45; }
 .atelier:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

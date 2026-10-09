@@ -234,6 +234,8 @@ export interface MaterielItem {
   videosJson: string;
   /** Identifiants de documents du coffre-fort rattachés, en JSON. */
   coffreJson: string;
+  /** Une feuille fabriquée : l'atelier qui l'a faite, et de quoi l'y refaire (voir `modifierFeuille`), en JSON ; vide sinon. */
+  fabricationJson?: string;
 }
 
 /** Un fichier texte du plan de travail. */

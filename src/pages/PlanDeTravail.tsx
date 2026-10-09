@@ -28,6 +28,7 @@ import { PanneauCommun, TYPE_COMMUN, lireDepotCommun } from "../components/Panne
 import { estPaquet, titreDuPaquet } from "../bureauCommun";
 import { confirmer } from "../components/confirmer";
 import { contenuDirect, nature } from "../bureau";
+import { lireFabrication, modifierDansFabriquer } from "../modifierFeuille";
 import { estSurLeBureau } from "../materielSeance";
 import { useEtatDuPlan, useSuiviSequences } from "../components/useSuiviSequences";
 import { BadgeSuivi } from "../components/SuiviSequence";
@@ -803,6 +804,11 @@ export default function PlanDeTravail() {
       case "jeu": return [{ label: "Dupliquer", icon: "📑", onClick: () => { api.jeuSave({ ...e.jeu, ...copie }).then(recharger); } }];
       case "outil": return [{ label: "Dupliquer", icon: "📑", onClick: () => { api.outilClasseSave({ ...e.outil, ...copie, dateCreation: nowIso() }).then(recharger); } }];
       case "espace": return [{ label: "Suivi des élèves", icon: "📋", onClick: () => setSuivi(e.esp) }];
+      case "materiel": {
+        // Une feuille fabriquée se refait dans son atelier, et la nouvelle prend sa place.
+        const f = lireFabrication(e.mat.fabricationJson);
+        return f ? [{ label: "Modifier dans Fabriquer", icon: "🎲", onClick: () => modifierDansFabriquer(e.mat, f, nav) }] : [];
+      }
       default: return [];
     }
   };

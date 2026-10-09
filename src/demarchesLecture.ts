@@ -353,12 +353,15 @@ const cx = (seance: number, r: Partial<ReglagesComprehension>, titre?: string): 
   const t = reglages.texte ? texteDe(reglages.texte) : undefined;
   return {
     seance, atelier: "comprehension", titre: titre ?? (t ? t.titre : "Comprendre un texte"),
-    fabriquer: (graine) => ({ html: htmlComprehension(reglages, graine), style: STYLE_FEUILLE + STYLE_COMPREHENSION }),
+    fabriquer: (graine) => ({ html: htmlComprehension(reglages, graine), style: STYLE_FEUILLE + STYLE_COMPREHENSION, refaire: { comprehension: reglages } }),
   };
 };
 const cl = (seance: number, titre: string, r: Partial<ReglagesLecteur>): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_LECTEUR, ...r };
-  return { seance, atelier: "lecteur", titre, fabriquer: (graine) => ({ html: htmlLecteur(reglages, graine), style: STYLE_FEUILLE + STYLE_LECTEUR }) };
+  return {
+    seance, atelier: "lecteur", titre,
+    fabriquer: (graine) => ({ html: htmlLecteur(reglages, graine), style: STYLE_FEUILLE + STYLE_LECTEUR, refaire: { lecteur: reglages } }),
+  };
 };
 
 /** Les textes de chaque classe, dans l'ordre où les séquences des stratégies les prennent : récits d'abord. */

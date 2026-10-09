@@ -193,14 +193,18 @@ export function demarcheDeLEcriture(classe: string, cg: string, comp: string): s
 
 const ec = (seance: number, titre: string, r: Partial<ReglagesEcrire>): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_ECRIRE, ...r };
-  return { seance, atelier: "ecrire", titre, fabriquer: (graine) => ({ html: htmlEcrire(reglages, graine), style: STYLE_FEUILLE + STYLE_ECRIRE }) };
+  return { seance, atelier: "ecrire", titre, fabriquer: (graine) => ({ html: htmlEcrire(reglages, graine), style: STYLE_FEUILLE + STYLE_ECRIRE, refaire: { ecrire: reglages } }) };
 };
 
 /** Des phrases en étiquettes, faites de mots simples : on les découpe et on les remet en ordre. */
 const PHRASES_ETIQUETTES = ["Le chat dort sur le lit.", "Papa lit le journal.", "Lila a une moto rouge.", "Le loup a vu la chèvre.", "Malo mange une tomate."];
+const REGLAGES_ETIQUETTES = { ...REGLAGES_PHRASES, phrases: PHRASES_ETIQUETTES.join("\n") };
 const etiquettes = (seance: number): FeuilleAFabriquer => ({
   seance, atelier: "phrases", titre: "Des phrases en étiquettes",
-  fabriquer: (graine) => ({ html: htmlPhrasesEnDesordre(phrasesEnDesordre(PHRASES_ETIQUETTES, graine), { ...REGLAGES_PHRASES, phrases: PHRASES_ETIQUETTES.join("\n") }), style: STYLE_FEUILLE + STYLE_PHRASES }),
+  fabriquer: (graine) => ({
+    html: htmlPhrasesEnDesordre(phrasesEnDesordre(PHRASES_ETIQUETTES, graine), REGLAGES_ETIQUETTES), style: STYLE_FEUILLE + STYLE_PHRASES,
+    refaire: { phrases: REGLAGES_ETIQUETTES },
+  }),
 });
 
 type Plan = { feuilles: FeuilleAFabriquer[]; materiel: string[] };

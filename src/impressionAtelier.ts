@@ -19,6 +19,7 @@ import { cleConsigne, remplacerConsigne, clePictos, lirePictosAjoutes } from "./
 import { appliquerOptionsFeuille, cleOptionsFeuille, lireOptionsFeuille } from "./optionsFeuille";
 import { documentImprimable, escapeHtml, printHTML } from "./print";
 import type { MaterielItem } from "./api";
+import { ecrireFabrication, fabricationDuMoment, modificationEnCours, type Fabrication, type Modification } from "./modifierFeuille";
 
 /** Combien de compétences s'écrivent en tête ; au-delà, on les compte. */
 export const LIGNES_MAX = 4;
@@ -147,6 +148,8 @@ export interface ExtrasAtelier {
   pictos?: string[];
   /** Les compétences à porter, quand ce ne sont pas celles de l'atelier : une feuille fabriquée pour une séquence porte la sienne. */
   competences?: CompetenceSelectionnee[];
+  /** De quoi refaire la feuille dans son atelier, quand la séquence le sait (voir `modifierFeuille`). */
+  fabrication?: Pick<Fabrication, "memoires" | "graine">;
 }
 
 /** Les verbes ajoutés à la main pour cet atelier, depuis le bandeau (voir `consigneAtelier`). */
@@ -204,20 +207,62 @@ export function materielDuBureau(
   };
 }
 
-/** Un PDF déjà dans les fichiers de l'application, déposé sur le bureau. */
+/**
+ * Un PDF déjà dans les fichiers de l'application, déposé sur le bureau avec
+ * de quoi le refaire dans son atelier — ou mis à la place de la feuille de
+ * cet atelier qu'on est en train de refaire.
+ */
 export async function deposerSurLeBureau(atelier: string, titre: string, fichier: string): Promise<MaterielItem> {
+  const refaite = await remplacerLaFeuille(atelier, async () => fichier);
+  if (refaite) return refaite;
   const { api, newId, nowIso } = await import("./api");
-  const materiel = materielDuBureau(atelier, titre, fichier, await competencesDeLAtelier(atelier), newId(), nowIso());
+  const materiel: MaterielItem = {
+    ...materielDuBureau(atelier, titre, fichier, await competencesDeLAtelier(atelier), newId(), nowIso()),
+    fabricationJson: ecrireFabrication(fabricationDuMoment(atelier)),
+  };
   await api.materielSave(materiel);
   return materiel;
 }
 
 /**
  * La feuille d'un atelier, la même que celle qu'on imprime — ses compétences
- * en tête —, transformée en PDF et déposée sur le bureau.
+ * en tête —, transformée en PDF et déposée sur le bureau. Si l'on refait une
+ * feuille de cet atelier, elle sort comme l'ancienne — les compétences de sa
+ * séquence en tête, ou au nom de son élève — et prend sa place.
  */
 export async function enregistrerSurLeBureau(atelier: string, titre: string, corps: string, style = "", extras: ExtrasAtelier = {}): Promise<MaterielItem> {
+  const refaite = await remplacerLaFeuille(atelier, (m, titreGarde) => (m.eleve
+    ? pdfPourLEleve(atelier, titreGarde, corps, style, m.eleve)
+    : pdfDeLAtelier(atelier, titreGarde, corps, style, { ...extras, competences: m.competences ?? extras.competences })));
+  if (refaite) return refaite;
   return deposerSurLeBureau(atelier, titre, await pdfDeLAtelier(atelier, titre, corps, style, extras));
+}
+
+/**
+ * La feuille qu'on refait (voir `modifierFeuille`) : si c'est une feuille de
+ * cet atelier, le nouveau PDF prend la place de l'ancien dans le même
+ * matériel — même nom, même séance, même dossier, donc même ligne au cahier
+ * journal —, avec de quoi la refaire encore. Rien si l'on ne refait rien ici,
+ * ou si elle a été supprimée entre-temps : on enregistre alors comme d'habitude.
+ */
+async function remplacerLaFeuille(
+  atelier: string, pdf: (m: Modification, titreGarde: string) => Promise<string>,
+): Promise<MaterielItem | null> {
+  const m = modificationEnCours.lire();
+  if (!m || m.atelier !== atelier) return null;
+  const { api } = await import("./api");
+  const avant = (await api.materielList()).find((x) => x.id === m.materielId);
+  if (!avant) {
+    modificationEnCours.finir();
+    return null;
+  }
+  const apres: MaterielItem = {
+    ...avant, pdfsJson: JSON.stringify([await pdf(m, avant.titre)]),
+    fabricationJson: ecrireFabrication(fabricationDuMoment(atelier, { competences: m.competences, eleve: m.eleve })),
+  };
+  await api.materielSave(apres);
+  modificationEnCours.finir();
+  return apres;
 }
 
 /** La feuille d'un atelier telle qu'elle s'imprime — compétences en tête, consignes en pictos —, en PDF dans les fichiers. */
@@ -241,6 +286,7 @@ export async function poserDansUneSeance(
   const fichier = await pdfDeLAtelier(atelier, titre, corps, style, extras);
   const materiel: MaterielItem = {
     ...materielDuBureau(atelier, titre, fichier, extras.competences ?? await competencesDeLAtelier(atelier), newId(), nowIso()), seanceId, sequenceId,
+    fabricationJson: ecrireFabrication({ atelier, ...extras.fabrication, competences: extras.competences }),
   };
   await api.materielSave(materiel);
   return materiel;
@@ -270,22 +316,31 @@ export function auNomDeLEleve(html: string, prenom: string, date: string): strin
     .replace(A_REMPLIR("Date"), (_, debut: string) => `${debut}${escapeHtml(date)}`);
 }
 
-/**
- * La fiche d'un élève, en PDF, rangée dans un dossier du bureau : la feuille
- * de l'atelier telle qu'elle s'imprime — sa consigne, ses compétences —, à
- * son nom, sans corrigé.
- */
-export async function ficheDeLEleve(
-  atelier: string, titre: string, corps: string, style: string, eleve: { prenom: string; date: string; dossier: string },
-): Promise<MaterielItem> {
-  const { api, newId, nowIso } = await import("./api");
-  const comps = await competencesDeLAtelier(atelier);
-  const entete = enteteCompetencesHtml(comps);
+/** La feuille de l'atelier telle qu'elle s'imprime — sa consigne, ses compétences —, à son nom, sans corrigé, en PDF. */
+async function pdfPourLEleve(atelier: string, titre: string, corps: string, style: string, eleve: { prenom: string; date: string }): Promise<string> {
+  const { api } = await import("./api");
+  const entete = enteteCompetencesHtml(await competencesDeLAtelier(atelier));
   const sansCorrige = appliquerOptionsFeuille(await avecLaConsigneDeLAtelier(atelier, corps), { consigne: true, prenom: true, corrige: false });
   const consignes = await consignesEnPictos(auNomDeLEleve(sansCorrige, eleve.prenom, eleve.date), await supplementDe(atelier, {}));
   const html = documentImprimable(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style);
-  const fichier = await api.feuilleEnPdf(html);
-  const materiel: MaterielItem = { ...materielDuBureau(atelier, titre, fichier, comps, newId(), nowIso()), dossier: eleve.dossier };
+  return api.feuilleEnPdf(html);
+}
+
+/**
+ * La fiche d'un élève, en PDF, rangée dans un dossier du bureau : la feuille
+ * de l'atelier telle qu'elle s'imprime — sa consigne, ses compétences —, à
+ * son nom, sans corrigé. `refaire` dit comment l'atelier la refait.
+ */
+export async function ficheDeLEleve(
+  atelier: string, titre: string, corps: string, style: string, eleve: { prenom: string; date: string; dossier: string },
+  refaire: Pick<Fabrication, "memoires" | "graine"> = {},
+): Promise<MaterielItem> {
+  const { api, newId, nowIso } = await import("./api");
+  const fichier = await pdfPourLEleve(atelier, titre, corps, style, eleve);
+  const materiel: MaterielItem = {
+    ...materielDuBureau(atelier, titre, fichier, await competencesDeLAtelier(atelier), newId(), nowIso()), dossier: eleve.dossier,
+    fabricationJson: ecrireFabrication({ atelier, ...refaire, eleve: { prenom: eleve.prenom, date: eleve.date } }),
+  };
   await api.materielSave(materiel);
   return materiel;
 }

@@ -9,6 +9,7 @@ import { CasesFeuille } from "../components/OptionsFeuille";
 import { Pastilles } from "../components/Pastilles";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import { graineAuHasard } from "../hasard";
+import { useGraine } from "../modifierFeuille";
 import { SONS, syllabes } from "../lectureSons";
 import {
   CLASSES_CUBES, ECRITURES, EXERCICES, EXERCICES_MAX, GROUPEMENTS, NIVEAUX_CUBES, REGLAGES_CUBES, STYLE_CUBES, aRegrouperPourDessin,
@@ -124,7 +125,7 @@ export function CubesTab() {
   const [brut, maj] = useReglages<ReglagesCubes & AnciensReglagesCubes>("cubes", REGLAGES_CUBES);
   const r = React.useMemo(() => reglagesCubesSurs(brut), [brut]);
   const niv = niveauCubes(r.niveau);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   // Ce que l'atelier travaille se règle classe par classe : au CP, des compétences du CP.
   React.useEffect(() => { objectifsDesAteliers.publier("cubes", [{ id: niv.classe, libelle: niv.classe }]); }, [niv.classe]);
   React.useEffect(() => () => { objectifsDesAteliers.publier("cubes", []); propositionsDesAteliers.publier("cubes", "", []); }, []);
@@ -231,7 +232,7 @@ export function CubesTab() {
 
 export function CartesCalculTab() {
   const [r, maj] = useReglages("cartesCalcul", REGLAGES_CALCUL);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const cartes = React.useMemo(() => cartesCalcul(r, graine), [r, graine]);
   const html = React.useMemo(() => htmlCartesCalcul(cartes, r), [cartes, r]);
   return (
@@ -263,7 +264,7 @@ export function CartesCalculTab() {
 
 export function OperationsPoseesTab() {
   const [r, maj] = useReglages("operationsPosees", REGLAGES_POSEES);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlOperationsPosees(r, graine), [r, graine]);
   const titre = `Opérations posées — ${r.operation === "+" ? "additions" : r.operation === "−" ? "soustractions" : "multiplications"}`;
   return (
@@ -316,7 +317,7 @@ export function OperationsPoseesTab() {
 
 export function ArbreCalculTab() {
   const [r, maj] = useReglages("arbreCalcul", REGLAGES_ARBRE);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const liste = React.useMemo(() => additionsArbre(r, graine), [r, graine]);
   const html = React.useMemo(() => htmlArbreCalcul(liste, r), [liste, r]);
   return (
@@ -348,7 +349,7 @@ export function ArbreCalculTab() {
 
 export function FractionsTab() {
   const [r, maj] = useReglages("fractions", REGLAGES_FRACTIONS);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlFractions(r, graine), [r, graine]);
   const MATERIEL: [MaterielFraction, string][] = [["cartes", "cartes (mémory, bataille)"], ["bandes", "bandes unités à plier"], ["regle", "règle graduée"], ["nageurs", "course des nageurs"],
     ["mesurer", "segments à mesurer"], ["tracer", "segments à tracer"], ["comparer", "comparer des fractions"], ["operations", "ajouter, retrancher"]];
@@ -393,7 +394,7 @@ export function FractionsTab() {
 
 export function JeuDeLOieTab() {
   const [r, maj] = useReglages("jeuDeLOie", REGLAGES_OIE);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const [son, setSon] = React.useState("ch");
   const html = React.useMemo(() => htmlJeuDeLOie(r, graine), [r, graine]);
   const remplirSyllabes = () => {
@@ -460,7 +461,7 @@ const borne = (v: string, min: number, max: number, defaut: number) => Math.max(
 
 export function MartiniereTab() {
   const [r, maj] = useReglages("martiniere", REGLAGES_MARTINIERE);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const series = React.useMemo(() => calculsMartiniere(r, graine), [r, graine]);
   const html = React.useMemo(() => htmlMartiniere(series, r), [series, r]);
   const duNiveau = objectifsDuNiveau(r.niveau);
@@ -620,7 +621,7 @@ export function MartiniereTab() {
 
 export function CompteEstBonTab() {
   const [r, maj] = useReglages("compteEstBon", REGLAGES_COMPTE);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const liste = React.useMemo(() => comptes(r, graine), [r, graine]);
   const html = React.useMemo(() => htmlCompteEstBon(liste, r), [liste, r]);
   const ids = OPERATIONS_COMPTE.map((o) => o.id);
@@ -652,7 +653,7 @@ export function CompteEstBonTab() {
 
 export function PyramidesTab() {
   const [r, maj] = useReglages("pyramides", REGLAGES_PYRAMIDES);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlPyramides(r, graine), [r, graine]);
   const titre = r.forme === "pyramide" ? "Pyramides de nombres" : "Carrés magiques";
   return (
@@ -707,7 +708,7 @@ export function PyramidesTab() {
 
 export function HeureTab() {
   const [r, maj] = useReglages("heure", REGLAGES_HEURE);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlAtelierHeure(r, graine), [r, graine]);
   const horloges = r.exercice === "horloges";
   const titre = r.exercice === "durees" ? "Combien de temps ?" : r.exercice === "problemes" ? "Problèmes de durées" : r.exercice === "moments" ? "Les moments de la journée" : "Lire l'heure";
@@ -768,7 +769,7 @@ export function HeureTab() {
 
 export function NumerationTab() {
   const [r, maj] = useReglages("numeration", REGLAGES_NUMERATION);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlNumeration(r, graine), [r, graine]);
   return (
     <Colonnes

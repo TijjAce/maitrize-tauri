@@ -13,7 +13,10 @@ import { REGLAGES_FRACTIONS, STYLE_JEUX_MATHS, htmlFractions, type ReglagesFract
 
 function feuilleDeFractions(seance: number, titre: string, r: Partial<ReglagesFractions>): FeuilleAFabriquer {
   const reglages: ReglagesFractions = { ...REGLAGES_FRACTIONS, ...r };
-  return { seance, atelier: "fractions", titre, fabriquer: (graine) => ({ html: htmlFractions(reglages, graine), style: STYLE_FEUILLE + STYLE_JEUX_MATHS }) };
+  return {
+    seance, atelier: "fractions", titre,
+    fabriquer: (graine) => ({ html: htmlFractions(reglages, graine), style: STYLE_FEUILLE + STYLE_JEUX_MATHS, refaire: { fractions: reglages } }),
+  };
 }
 
 /** La note du matériel de chaque séance, avec les feuilles nommées comme elles s'impriment. */

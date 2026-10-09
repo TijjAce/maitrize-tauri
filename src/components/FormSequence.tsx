@@ -105,8 +105,11 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
           if (!seance) continue;
           setProgres(`Feuilles : ${faites + 1} sur ${aFabriquer.length}…`);
           try {
-            const { html, style } = f.fabriquer(graineAuHasard());
-            await poserDansUneSeance(f.atelier, f.titre, html, style, seance.id, propre.id, { competences: comp ? [comp] : undefined });
+            // Le tirage et les réglages vont avec la feuille : « Modifier dans Fabriquer » la refait.
+            const graine = graineAuHasard();
+            const sortie = f.fabriquer(graine);
+            await poserDansUneSeance(f.atelier, f.titre, sortie.html, sortie.style, seance.id, propre.id,
+              { competences: comp ? [comp] : undefined, fabrication: { memoires: sortie.refaire, graine: sortie.graine ?? graine } });
             faites++;
           } catch (e) {
             toast(`« ${f.titre} » n'a pas pu être fabriquée : ${String(e)}`, { icone: "⚠️" });

@@ -92,9 +92,10 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
         const nom = nomDeLaRecette(recette, c);
         setEnCours({ fait, total, quoi: `${c.prenom} — ${nom}` });
         try {
-          const { html, style } = await recette.fabriquer(c, f.graine, OUTILS);
+          const { html, style, refaire } = await recette.fabriquer(c, f.graine, OUTILS);
           const titre = titreLibre(titreDeLaFiche(nom, c.prenom, jour), pris);
-          await ficheDeLEleve(recette.atelier, titre, html, style, { prenom: c.prenom, date: jourEnLettres(jour), dossier: dossierDuJour(jour) });
+          await ficheDeLEleve(recette.atelier, titre, html, style, { prenom: c.prenom, date: jourEnLettres(jour), dossier: dossierDuJour(jour) },
+            { memoires: refaire, graine: f.graine });
           const creneau = creneaux[ou[i]];
           parCreneau.set(creneau.id, [...(parCreneau.get(creneau.id) ?? []), titre]);
         } catch {

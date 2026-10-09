@@ -15,7 +15,9 @@ import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 import type { FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
 import { STYLE_FEUILLE } from "./cartesImprimables";
 import { REGLAGES_POSEES, STYLE_POSEES, htmlOperationsPosees, type ReglagesPosees } from "./operationsPosees";
-import { PRESENTATION_COMPLETE, STYLE_FEUILLE as STYLE_PROBLEMES, feuilleProblemes, genererPartieTout, type Probleme } from "./problemesBarres";
+import {
+  PRESENTATION_COMPLETE, STYLE_FEUILLE as STYLE_PROBLEMES, feuilleProblemes, genererPartieTout, type InconnuePartieTout, type Probleme, type TypeMultiplicatif,
+} from "./problemesBarres";
 import { problemesMultiplicatifs } from "./problemesProlonges";
 import { REGLAGES_TRI, STYLE_TRI, htmlTri } from "./triEtiquettes";
 import { STYLE_JEUX_MATHS, cartesCalcul, htmlCartesCalcul } from "./jeuxMaths";
@@ -317,10 +319,34 @@ export function demarcheDesOperations(classe: string, comp: string): string | nu
 
 const posees = (seance: number, titre: string, r: Partial<ReglagesPosees>): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_POSEES, ...r };
-  return { seance, atelier: "posees", titre, fabriquer: (g) => ({ html: htmlOperationsPosees(reglages, g), style: STYLE_FEUILLE + STYLE_POSEES }) };
+  return {
+    seance, atelier: "posees", titre,
+    fabriquer: (g) => ({ html: htmlOperationsPosees(reglages, g), style: STYLE_FEUILLE + STYLE_POSEES, refaire: { operationsPosees: reglages } }),
+  };
 };
-const problemes = (seance: number, titre: string, atelier: string, tirer: (g: number) => Probleme[]): FeuilleAFabriquer => ({
-  seance, atelier, titre, fabriquer: (g) => ({ html: feuilleProblemes(tirer(g), titre, { ...PRESENTATION_COMPLETE, schema: "sans" }), style: STYLE_PROBLEMES }),
+const PRESENTATION_SANS_SCHEMA = { ...PRESENTATION_COMPLETE, schema: "sans" as const };
+/**
+ * Des problèmes en barres. `refaire` : les réglages de l'atelier qui les tire
+ * lui-même, à `decalage` près de la graine — l'évaluation tire à part.
+ */
+const problemes = (
+  seance: number, titre: string, atelier: string, tirer: (g: number) => Probleme[],
+  refaire?: { reglages: Record<string, unknown>; decalage?: number },
+): FeuilleAFabriquer => ({
+  seance, atelier, titre,
+  fabriquer: (g) => ({
+    html: feuilleProblemes(tirer(g), titre, PRESENTATION_SANS_SCHEMA), style: STYLE_PROBLEMES,
+    ...(refaire ? {
+      refaire: { [atelier]: { titre, nombre: 4, prenoms: "", ...refaire.reglages }, [`presentation:${atelier}`]: PRESENTATION_SANS_SCHEMA },
+      graine: g + (refaire.decalage ?? 0),
+    } : {}),
+  }),
+});
+/** Les réglages de l'atelier partie-tout qui tire les mêmes problèmes. */
+const commePartieTout = (inconnue: InconnuePartieTout, max: number) => ({ reglages: { parties: 2, inconnue, max, perso: false } });
+/** Les réglages de l'atelier multiplicatif qui tire les mêmes problèmes — au CE2, ceux de l'atelier tels quels. */
+const commeMultiplicatifs = (types: TypeMultiplicatif[], parts: [number, number], valeurs: [number, number], decalage = 0) => ({
+  reglages: { types, table: 10, perso: true, partsMin: parts[0], partsMax: parts[1], valeurMin: valeurs[0], valeurMax: valeurs[1] }, decalage,
 });
 
 /** Le tri des nombres pairs et impairs, dans l'atelier « Les maisons du tri ». */
@@ -341,7 +367,7 @@ function triDeLaParite(seance: number, grands: boolean): FeuilleAFabriquer {
         aRetenir: "Un nombre est pair quand son chiffre des unités est 0, 2, 4, 6 ou 8.",
         aideMots: false, aidePonctuation: false, deuxVersions: false, modele: undefined, origine: undefined,
       };
-      return { html: htmlTri(r, g), style: STYLE_FEUILLE + STYLE_TRI };
+      return { html: htmlTri(r, g), style: STYLE_FEUILLE + STYLE_TRI, refaire: { tri: r } };
     },
   };
 }
@@ -390,9 +416,12 @@ const PLANS: Record<string, { feuilles: FeuilleAFabriquer[]; materiel: string[] 
   },
   "sens-addition-soustraction-cp": {
     feuilles: [
-      problemes(0, "Problèmes — réunir, ajouter", "partieTout", (g) => genererPartieTout({ nombre: 4, parties: 2, inconnue: "tout", max: 20, enonces: true, prenoms: [] }, g)),
-      problemes(1, "Problèmes — retirer, chercher ce qui manque", "partieTout", (g) => genererPartieTout({ nombre: 4, parties: 2, inconnue: "partie", max: 20, enonces: true, prenoms: [] }, g)),
-      problemes(4, "Problèmes — évaluation", "partieTout", (g) => genererPartieTout({ nombre: 4, parties: 2, inconnue: "melange", max: 30, enonces: true, prenoms: [] }, g)),
+      problemes(0, "Problèmes — réunir, ajouter", "partieTout", (g) => genererPartieTout({ nombre: 4, parties: 2, inconnue: "tout", max: 20, enonces: true, prenoms: [] }, g),
+        commePartieTout("tout", 20)),
+      problemes(1, "Problèmes — retirer, chercher ce qui manque", "partieTout", (g) => genererPartieTout({ nombre: 4, parties: 2, inconnue: "partie", max: 20, enonces: true, prenoms: [] }, g),
+        commePartieTout("partie", 20)),
+      problemes(4, "Problèmes — évaluation", "partieTout", (g) => genererPartieTout({ nombre: 4, parties: 2, inconnue: "melange", max: 30, enonces: true, prenoms: [] }, g),
+        commePartieTout("melange", 30)),
     ],
     materiel: ["Des objets à réunir ; des cubes", "Une boîte et des objets à retirer", "Des cubes", "Des écritures à corriger, au tableau", "Les énoncés"],
   },
@@ -410,7 +439,8 @@ const PLANS: Record<string, { feuilles: FeuilleAFabriquer[]; materiel: string[] 
       {
         seance: 1, atelier: "calcul", titre: "Cartes de calcul — tables de 2 à 5",
         fabriquer: (g) => ({ html: htmlCartesCalcul(cartesCalcul({ operation: "x", tables: [2, 3, 4, 5], rectoVerso: true, melanger: true }, g),
-          { operation: "x", tables: [2, 3, 4, 5], rectoVerso: true, melanger: true }), style: STYLE_FEUILLE + STYLE_JEUX_MATHS }),
+          { operation: "x", tables: [2, 3, 4, 5], rectoVerso: true, melanger: true }), style: STYLE_FEUILLE + STYLE_JEUX_MATHS,
+        refaire: { cartesCalcul: { operation: "x", tables: [2, 3, 4, 5], rectoVerso: true, melanger: true } } }),
       },
       problemes(2, "Problèmes — parts égales", "multiplicatifs", (g) => problemesMultiplicatifs("CE1", ["tout", "nombre"], 4, g, { parts: [2, 10], valeurs: [2, 10] })),
       problemes(3, "Problèmes — évaluation", "multiplicatifs", (g) => problemesMultiplicatifs("CE1", ["tout", "nombre"], 4, g + 1, { parts: [2, 10], valeurs: [2, 10] })),
@@ -427,10 +457,14 @@ const PLANS: Record<string, { feuilles: FeuilleAFabriquer[]; materiel: string[] 
   },
   "division-ce2": {
     feuilles: [
-      problemes(0, "Problèmes — partager", "multiplicatifs", (g) => problemesMultiplicatifs("CE2", ["part"], 4, g, { parts: [2, 9], valeurs: [2, 12] })),
-      problemes(1, "Problèmes — grouper", "multiplicatifs", (g) => problemesMultiplicatifs("CE2", ["nombre"], 4, g, { parts: [2, 9], valeurs: [2, 12] })),
-      problemes(2, "Problèmes — partager ou grouper", "multiplicatifs", (g) => problemesMultiplicatifs("CE2", ["part", "nombre"], 4, g, { parts: [2, 9], valeurs: [2, 12] })),
-      problemes(3, "Problèmes — évaluation", "multiplicatifs", (g) => problemesMultiplicatifs("CE2", ["part", "nombre", "tout"], 4, g + 1, { parts: [2, 9], valeurs: [2, 12] })),
+      problemes(0, "Problèmes — partager", "multiplicatifs", (g) => problemesMultiplicatifs("CE2", ["part"], 4, g, { parts: [2, 9], valeurs: [2, 12] }),
+        commeMultiplicatifs(["part"], [2, 9], [2, 12])),
+      problemes(1, "Problèmes — grouper", "multiplicatifs", (g) => problemesMultiplicatifs("CE2", ["nombre"], 4, g, { parts: [2, 9], valeurs: [2, 12] }),
+        commeMultiplicatifs(["nombre"], [2, 9], [2, 12])),
+      problemes(2, "Problèmes — partager ou grouper", "multiplicatifs", (g) => problemesMultiplicatifs("CE2", ["part", "nombre"], 4, g, { parts: [2, 9], valeurs: [2, 12] }),
+        commeMultiplicatifs(["part", "nombre"], [2, 9], [2, 12])),
+      problemes(3, "Problèmes — évaluation", "multiplicatifs", (g) => problemesMultiplicatifs("CE2", ["part", "nombre", "tout"], 4, g + 1, { parts: [2, 9], valeurs: [2, 12] }),
+        commeMultiplicatifs(["part", "nombre", "tout"], [2, 9], [2, 12], 1)),
     ],
     materiel: ["Des jetons ; des images à partager", "Des jetons", "Les tables de multiplication", "Les énoncés"],
   },

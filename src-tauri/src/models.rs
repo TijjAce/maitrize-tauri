@@ -650,6 +650,10 @@ pub struct MaterielItem {
     pub videos_json: String,
     #[serde(default = "vide_arr")]
     pub coffre_json: String,
+    // Une feuille fabriquée par un atelier : lequel, et de quoi l'y refaire
+    // (voir `modifierFeuille.ts`). Vide pour tout autre matériel.
+    #[serde(default)]
+    pub fabrication_json: String,
 }
 
 impl MaterielItem {
@@ -671,6 +675,8 @@ impl MaterielItem {
             dossier: r.get("dossier").unwrap_or_default(),
             videos_json: r.get("videos_json").unwrap_or_else(|_| "[]".into()),
             coffre_json: r.get("coffre_json").unwrap_or_else(|_| "[]".into()),
+            // NULL : une ligne d'avant la colonne, ou reçue d'une version qui ne la connaît pas.
+            fabrication_json: r.get::<_, Option<String>>("fabrication_json").ok().flatten().unwrap_or_default(),
         })
     }
 }

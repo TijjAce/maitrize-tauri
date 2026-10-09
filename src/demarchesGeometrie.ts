@@ -549,15 +549,24 @@ export function demarcheDeLaGeometrie(classe: string, cg: string, comp: string):
 
 const geometrie = (seance: number, titre: string, r: Partial<ReglagesGeometrie>): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_GEOMETRIE, ...r };
-  return { seance, atelier: "geometrie", titre, fabriquer: (g) => ({ html: htmlGeometrie(reglages, g), style: STYLE_FEUILLE + STYLE_GEOMETRIE }) };
+  return {
+    seance, atelier: "geometrie", titre,
+    fabriquer: (g) => ({ html: htmlGeometrie(reglages, g), style: STYLE_FEUILLE + STYLE_GEOMETRIE, refaire: { geometrie: reglages } }),
+  };
 };
 const solides = (seance: number, titre: string, r: Partial<ReglagesSolides>): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_SOLIDES, ...r };
-  return { seance, atelier: "solides", titre, fabriquer: (g) => ({ html: htmlSolides(reglages, g), style: STYLE_FEUILLE + STYLE_SOLIDES }) };
+  return {
+    seance, atelier: "solides", titre,
+    fabriquer: (g) => ({ html: htmlSolides(reglages, g), style: STYLE_FEUILLE + STYLE_SOLIDES, refaire: { solides: reglages } }),
+  };
 };
 const deplacements = (seance: number, titre: string, r: Partial<ReglagesDeplacements>): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_DEPLACEMENTS, ...r };
-  return { seance, atelier: "deplacements", titre, fabriquer: (g) => ({ html: htmlDeplacements(reglages, g), style: STYLE_FEUILLE + STYLE_DEPLACEMENTS }) };
+  return {
+    seance, atelier: "deplacements", titre,
+    fabriquer: (g) => ({ html: htmlDeplacements(reglages, g), style: STYLE_FEUILLE + STYLE_DEPLACEMENTS, refaire: { deplacements: reglages } }),
+  };
 };
 
 const PLANS: Record<string, { feuilles: FeuilleAFabriquer[]; materiel: string[] }> = {
