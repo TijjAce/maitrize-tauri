@@ -9,6 +9,7 @@
 
 import { escapeHtml } from "./print";
 import { estMonPicto, mentionDeMesPictos } from "./mesPictos";
+import { CREDIT_ARASAAC } from "./cartesImprimables";
 
 /**
  * Un pictogramme posé sur un support : l'image ARASAAC et le mot écrit
@@ -23,8 +24,7 @@ export type Images = Record<string | number, string>;
 export const cleImage = (p: PictoPose | null | undefined): number | string | null =>
   p?.photo ? `photo:${p.photo}` : p?.id ?? null;
 
-export const ATTRIBUTION_ARASAAC =
-  "Pictogrammes : Sergio Palao, ARASAAC (arasaac.org), propriété du Gouvernement d'Aragon, licence CC BY-NC-SA. Usage non commercial.";
+export const ATTRIBUTION_ARASAAC = CREDIT_ARASAAC;
 
 export const pictoVide = (): PictoPose => ({ id: null, mot: "" });
 

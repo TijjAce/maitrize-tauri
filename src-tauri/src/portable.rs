@@ -46,12 +46,29 @@ pub struct PortableInfo {
 }
 
 /// Instantané des données envoyé au téléphone (lecture seule).
+
+/// Un élève tel que le téléphone le voit : son nom et son niveau, rien de plus.
+/// Le partage passe par le Wi-Fi de l'école, en clair : l'INE, la date de
+/// naissance, la photo ou ce qui touche au handicap n'ont rien à y faire —
+/// la page n'en affiche rien.
+#[derive(serde::Serialize)]
+struct EleveVuDuTelephone {
+    id: String,
+    nom: String,
+    niveau: String,
+}
+
+impl From<Eleve> for EleveVuDuTelephone {
+    fn from(e: Eleve) -> Self {
+        Self { id: e.id, nom: e.nom, niveau: e.niveau }
+    }
+}
 #[derive(serde::Serialize)]
 struct Bundle {
     planning: Vec<Creneau>,
     sequences: Vec<Sequence>,
     seances: Vec<Seance>,
-    eleves: Vec<Eleve>,
+    eleves: Vec<EleveVuDuTelephone>,
     programmations: Vec<ProgrammationFinale>,
     /// Les temps d'observation posés : le téléphone, lui, peut les remplir.
     observations: Vec<ObservationEleve>,
@@ -166,7 +183,7 @@ fn snapshot(db: &State<Db>) -> R<String> {
         planning,
         sequences,
         seances,
-        eleves,
+        eleves: eleves.into_iter().map(EleveVuDuTelephone::from).collect(),
         programmations,
         observations,
     };

@@ -80,7 +80,7 @@ export function cartesNombres(r: ReglagesNombres): CarteNombre[] {
 
 export function htmlCartesNombres(cartes: CarteNombre[], r: ReglagesNombres): string {
   const regle = `<div class="titre">Cartes des nombres de ${r.de} à ${r.a}</div>
-    <div class="regle"><b>Mémory</b>Cartes face cachée ; on en retourne deux : le même nombre sous deux formes différentes fait une paire.
+    <div class="regle"><b>Jeu de mémoire</b>Cartes face cachée ; on en retourne deux : le même nombre sous deux formes différentes fait une paire.
       <b style="margin-top:4px">Bataille</b>Chacun retourne une carte, quelle que soit sa forme ; le plus grand nombre remporte le pli.
       <b style="margin-top:4px">Loto</b>Les nombres écrits en chiffres sur les planches, les autres écritures à piocher.
       <span style="color:#687087">— Livret Mathématiques CP, Éduscol 2025 : passer d'une représentation à une autre.</span></div>`;
@@ -469,7 +469,7 @@ export function htmlFractions(r: ReglagesFractions, graine: number): string {
   if (r.materiel.includes("cartes")) {
     const cartes = melanger(hasard(graine), cartesFractions(r));
     const regle = `<div class="titre">Cartes des fractions — ${r.denominateurs.map((n) => `en ${fractionEnLettres(2, n).split(" ")[1]}`).join(", ")}</div>
-      <div class="regle"><b>Mémory</b>Cartes face cachée ; on en retourne deux : la même fraction sous deux formes différentes fait une paire. Cartes face visible d'abord, pour apprendre.
+      <div class="regle"><b>Jeu de mémoire</b>Cartes face cachée ; on en retourne deux : la même fraction sous deux formes différentes fait une paire. Cartes face visible d'abord, pour apprendre.
         <b style="margin-top:4px">Bataille des fractions</b>Chacun retourne une carte ; la plus grande fraction remporte le pli. Pour comparer, on regarde les dessins : pour un même tout partagé en parts égales, plus il y a de parts, plus chaque part est petite.
         <span style="color:#687087">— Livret Mathématiques CE1, Éduscol 2025.</span></div>`;
     parties.push(pagesDeCartes(cartes.map((c) => carte(c.html)), { colonnes: 4, lignes: 5 }, regle));

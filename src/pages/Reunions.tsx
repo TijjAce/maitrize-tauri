@@ -157,8 +157,8 @@ export default function Reunions() {
   // Ce que les rappels du micro et des minuteurs doivent lire : ils vivent
   // plus longtemps qu'un rendu, et une valeur figée leur ferait résumer deux
   // fois le même passage.
-  const contexte = React.useRef({ genre: "", titre: "" });
-  contexte.current = { genre: courante?.genre ?? "", titre: courante?.titre ?? "" };
+  const contexte = React.useRef({ genre: "", titre: "", participants: "" });
+  contexte.current = { genre: courante?.genre ?? "", titre: courante?.titre ?? "", participants: courante?.participants ?? "" };
   const texteRef = React.useRef("");
   texteRef.current = texte;
   const resumesRef = React.useRef<Resume[]>([]);

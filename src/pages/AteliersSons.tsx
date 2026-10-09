@@ -371,7 +371,7 @@ export function LettresTab() {
         </p>
         <Field label="Jeu">
           <Select value={r.jeu} onChange={(e) => maj({ jeu: e.target.value as typeof r.jeu })}>
-            <option value="memory">Mémory des lettres</option>
+            <option value="memory">Jeu de mémoire des lettres</option>
             <option value="mistigri">Mistigri des lettres</option>
             <option value="loto">Loto des lettres</option>
             <option value="ophtalmologue">Jeu de l'ophtalmologue</option>

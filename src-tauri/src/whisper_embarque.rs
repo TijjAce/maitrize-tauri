@@ -377,14 +377,13 @@ fn le_plus_juste(installes: &[String]) -> Option<String> {
  * Le moteur d'un usage, d'après son réglage, l'ancien réglage commun et les
  * modèles présents.
  *
- * Un modèle choisi puis effacé laisse la place au plus juste de ceux qui
- * restent : l'audio ne sort toujours pas. Sans aucun modèle, un usage réglé
- * sur cet ordinateur refuse plutôt que d'envoyer en ligne ce qu'on voulait
- * garder.
+ * La voix parle d'élèves : elle ne part en ligne que si l'enseignant l'a
+ * choisi — pour cet usage, ou dans l'ancien réglage commun. Sinon elle se
+ * transcrit sur l'ordinateur ; sans modèle, l'usage refuse et dit comment
+ * faire, plutôt que d'envoyer sans qu'on l'ait voulu.
  *
- * Un usage jamais réglé fait comme avant qu'on les distingue : les réunions
- * suivent l'ancien réglage, en ligne par défaut ; le reste se transcrit sur
- * l'ordinateur dès qu'un modèle y est.
+ * Un modèle choisi puis effacé laisse la place au plus juste de ceux qui
+ * restent : l'audio ne sort toujours pas.
  */
 pub fn choix_de(usage: Usage, valeur: Option<&str>, ancien: Option<&str>, installes: &[String]) -> R<Choix> {
     let local = |voulu: Option<&str>| -> R<Choix> {
@@ -401,11 +400,12 @@ pub fn choix_de(usage: Usage, valeur: Option<&str>, ancien: Option<&str>, instal
         _ => {}
     }
     match usage {
-        Usage::Reunions if ancien == Some("local") => local(None),
-        Usage::Reunions => Ok(Choix::EnLigne),
+        // Les réunions suivaient l'ancien réglage commun : en ligne seulement s'il le disait.
+        Usage::Reunions if ancien == Some("ligne") => Ok(Choix::EnLigne),
         _ if !installes.is_empty() => local(None),
-        _ if ancien == Some("local") => Err(SANS_MODELE.into()),
-        _ => Ok(Choix::EnLigne),
+        // Le reste : un modèle d'abord ; en ligne si on l'avait choisi autrefois ; sinon, on le dit.
+        Usage::Observations | Usage::Dictees if ancien == Some("ligne") => Ok(Choix::EnLigne),
+        _ => Err(SANS_MODELE.into()),
     }
 }
 
@@ -699,18 +699,21 @@ mod tests {
     }
 
     #[test]
-    fn un_usage_jamais_regle_fait_comme_avant() {
+    fn un_usage_jamais_regle_ne_part_pas_en_ligne_sans_qu_on_l_ait_choisi() {
         let un = noms(&["base"]);
-        // Les réunions suivent l'ancien réglage commun, en ligne par défaut.
-        assert_eq!(choix_de(Usage::Reunions, None, None, &un), Ok(Choix::EnLigne));
-        assert_eq!(choix_de(Usage::Reunions, None, Some("local"), &un), Ok(Choix::Local("base".into())));
+        // Les réunions : sur l'ordinateur ; en ligne seulement si l'ancien réglage commun le disait.
+        assert_eq!(choix_de(Usage::Reunions, None, None, &un), Ok(Choix::Local("base".into())));
+        assert_eq!(choix_de(Usage::Reunions, None, Some("ligne"), &un), Ok(Choix::EnLigne));
+        assert!(choix_de(Usage::Reunions, None, None, &[]).is_err());
         assert!(choix_de(Usage::Reunions, None, Some("local"), &[]).is_err());
         // Le reste se transcrit sur l'ordinateur dès qu'un modèle y est, quel que soit l'ancien réglage…
         for usage in [Usage::Observations, Usage::Dictees] {
             assert_eq!(choix_de(usage, None, Some("ligne"), &un), Ok(Choix::Local("base".into())));
             assert_eq!(choix_de(usage, None, None, &noms(&["tiny", "small"])), Ok(Choix::Local("small".into())));
-            // … et en ligne sans modèle, sauf si l'on avait voulu le local : on le dit plutôt que d'envoyer.
-            assert_eq!(choix_de(usage, None, None, &[]), Ok(Choix::EnLigne));
+            // … et sans modèle, en ligne seulement si on l'avait choisi : sinon on le dit plutôt que d'envoyer.
+            assert_eq!(choix_de(usage, None, Some("ligne"), &[]), Ok(Choix::EnLigne));
+            let erreur = choix_de(usage, None, None, &[]).unwrap_err();
+            assert!(erreur.contains("Réglages") && erreur.contains("en ligne"), "{erreur}");
             assert!(choix_de(usage, None, Some("local"), &[]).is_err());
         }
         // Une valeur qu'on ne connaît pas compte pour rien.

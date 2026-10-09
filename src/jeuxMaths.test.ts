@@ -74,7 +74,7 @@ describe("les fractions", () => {
     expect(cartesNageurs(10)).toHaveLength(18);
     expect(cartesNageurs(4)).toHaveLength(6);
     const html = htmlFractions({ ...REGLAGES_FRACTIONS, materiel: ["cartes", "bandes", "regle", "nageurs"], graduation: 10 }, 1);
-    for (const mot of ["Mémory", "Bandes unités", "dixièmes", "course des nageurs"]) expect(html).toContain(mot);
+    for (const mot of ["Jeu de mémoire", "Bandes unités", "dixièmes", "course des nageurs"]) expect(html).toContain(mot);
   });
 });
 

@@ -10,7 +10,7 @@ import { BoutonBureau } from "../components/BoutonBureau";
 import { useMemoire } from "../components/useMemoire";
 import { chargerPicto, usePictoImage } from "../components/ChoixPicto";
 import { chercherPictos } from "../mesPictos";
-import { motDuFichier } from "../imagesPerso";
+import { motDuFichier, estPerso } from "../imagesPerso";
 import type { PictoArasaac } from "../api";
 import {
   COULEURS, FAMILLES_MOTIFS, GRAPHIES, MOTIFS, OPERATIONS, PLAFONDS, POLICES_CURSIVES_CONNUES, REGLAGES_PAR_DEFAUT, SONS_COLORIAGE, TAILLES_MOTIF,
@@ -18,6 +18,7 @@ import {
   lireMotifsPerso, motifDepuisImage, styleDeLaCase, type CaseColoriage, type Coloriage, type Graphie, type Matiere, type Motif, type Operation,
 } from "../coloriageMagique";
 import { useGraine } from "../modifierFeuille";
+import { CREDIT_ARASAAC } from "../cartesImprimables";
 
 // ── Fabriquer › Mathématiques › Coloriage magique ─────────────────────────
 //
@@ -157,7 +158,10 @@ function DepuisImage({ onGarder, onClose }: { onGarder: (m: Motif) => void; onCl
   const entree = React.useRef<HTMLInputElement>(null);
   const couleurs = COULEURS.filter((c) => palette.includes(c.id));
 
+  // Le crédit de l'image chargée : celui d'un pictogramme ARASAAC ; rien pour une photo ou un dessin à soi.
+  const [credit, setCredit] = React.useState("");
   const charger = async (src: string, picto = false) => {
+    setCredit("");
     try { const p = await pixelsDe(src); setImage({ src, ...p, picto }); setRemplissage(picto ? "5" : null); setRetouches(false); }
     catch (e: any) { toast(String(e?.message ?? e), { icone: "⚠️" }); }
   };
@@ -176,7 +180,13 @@ function DepuisImage({ onGarder, onClose }: { onGarder: (m: Motif) => void; onCl
     } catch (e) { toast(String(e), { icone: "⚠️" }); }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const prendrePicto = async (p: PictoArasaac) => {
-    try { await charger(await chargerPicto(p.id), true); setNom((n) => n || p.mot); setCherche(null); }
+    try {
+      await charger(await chargerPicto(p.id), true);
+      // Un dessin tiré d'un pictogramme ARASAAC en est une adaptation : il en garde le crédit (un dessin de l'IA, non).
+      setCredit(estPerso(p.id) ? "" : `${CREDIT_ARASAAC} Le dessin est tiré d'un pictogramme, sous la même licence.`);
+      setNom((n) => n || p.mot);
+      setCherche(null);
+    }
     catch (e) { toast("Picto illisible : " + String(e), { icone: "⚠️" }); }
   };
 
@@ -211,7 +221,7 @@ function DepuisImage({ onGarder, onClose }: { onGarder: (m: Motif) => void; onCl
   const { colonnes, lignes } = dimensionsDe(grille ?? []);
   const garder = () => {
     if (!grille) return;
-    onGarder({ id: `perso-${Date.now().toString(36)}`, nom: nom.trim() || "Mon dessin", grille, perso: true });
+    onGarder({ id: `perso-${Date.now().toString(36)}`, nom: nom.trim() || "Mon dessin", grille, perso: true, ...(credit ? { credit } : {}) });
   };
   const recalculer = <T,>(f: (v: T) => void) => (v: T) => { f(v); setRetouches(false); };
 

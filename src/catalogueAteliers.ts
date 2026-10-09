@@ -38,7 +38,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
     outils: [
       { id: "jeux", nom: "Loto", icone: "🎲", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Des planches et leurs cartes à découper : les pictogrammes d'un thème, ou vos propres images." },
-      { id: "memory", nom: "Mémory", icone: "🃏", pictos: true, cycles: "Cycles 1 et 2",
+      { id: "memory", nom: "Jeu de mémoire", icone: "🃏", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Des paires à retourner : image et image, ou image et mot." },
       { id: "imagier", nom: "Imagier", icone: "📖", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Une page d'images légendées, à afficher ou à coller dans un cahier." },
@@ -56,7 +56,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
     id: "observation", libelle: "👁 Observation",
     aide: "Observer, comparer, retrouver : l'attention visuelle qu'on exerce avant de lire, et pendant.",
     outils: [
-      { id: "oeilDeLynx", nom: "Œil de lynx", icone: "👁", pictos: true, cycles: "Cycles 1 à 3",
+      { id: "oeilDeLynx", nom: "Cherche et trouve", icone: "👁", pictos: true, cycles: "Cycles 1 à 3",
         quoi: "Des modèles à retrouver dans une image pleine de dessins, et à entourer : cinq niveaux — tailles, sens, sosies, noir et blanc —, la version « combien de fois ? », et le corrigé." },
     ],
   },
@@ -81,7 +81,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
       { id: "syllabaire", nom: "Syllabaire", icone: "🛗", cycles: "Cycle 2",
         quoi: "Le jeu de l'ascenseur : deux bandes qui glissent, la syllabe apparaît." },
       { id: "lettres", nom: "Les lettres", icone: "🔠", cycles: "Cycles 1 et 2",
-        quoi: "Mémory, mistigri et loto des lettres, majuscule et minuscule ; la planche de l'ophtalmologue." },
+        quoi: "Jeu de mémoire, mistigri et loto des lettres, majuscule et minuscule ; la planche de l'ophtalmologue." },
       { id: "gestes", nom: "Gestes Borel-Maisonny", icone: "🤲", cycles: "Cycles 1 et 2",
         quoi: "Vos images des gestes en cartes à découper : petites pour les mains, grandes pour le tableau — et, d'un clic, en loto ou en mémory." },
       { id: "motsGestes", nom: "Mots codés en gestes", icone: "🫱", cycles: "Cycle 2",
@@ -124,7 +124,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
     outils: [
       { id: "martiniere", nom: "Calcul mental", icone: "🧮", cycles: "Cycles 2 et 3",
         quoi: "Un fait numérique ou une procédure à la fois, d'après les programmes : à l'oral (La Martinière) ou en test de fluence." },
-      { id: "compteEstBon", nom: "Le compte est bon", icone: "🎯", cycles: "Cycles 2 et 3",
+      { id: "compteEstBon", nom: "Le nombre cible", icone: "🎯", cycles: "Cycles 2 et 3",
         quoi: "Une cible, quelques nombres, les opérations permises : on cherche un chemin, une solution au corrigé." },
       { id: "pyramides", nom: "Pyramides et carrés magiques", icone: "🔺", cycles: "Cycles 2 et 3",
         quoi: "Des briques à additionner en montant, des carrés où chaque ligne fait la même somme." },

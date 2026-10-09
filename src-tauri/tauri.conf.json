@@ -39,7 +39,8 @@
     "category": "Education",
     "shortDescription": "Outil de préparation et de suivi de classe pour enseignants.",
     "longDescription": "Maitrize V2 aide les enseignants à préparer leurs séquences et séances, organiser le planning, suivre les élèves, gérer le matériel et la progression annuelle.",
-    "copyright": "© 2026 Clément",
+    "copyright": "© 2026 Clément Titet — logiciel libre, licence AGPL-3.0",
+    "license": "AGPL-3.0-or-later",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

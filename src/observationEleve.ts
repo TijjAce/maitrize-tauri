@@ -20,6 +20,7 @@ import { GRILLES } from "./data/evaluationsDiagnostiques";
 import { normaliser } from "./competencesTravaillees";
 import { pseudonymiser, restaurer } from "./confidentialite";
 import { citeLePrenom, phrasesQuiCitent, prenomDe } from "./veilleEleve";
+import { nomsAMasquer } from "./nomsAMasquer";
 
 /** Un observable de la grille, avec d'où il vient. */
 export interface Axe {
@@ -243,14 +244,15 @@ export function lireRepartition(reponse: string): Partial<Record<Colonne, string
 }
 
 /**
- * Range la note en colonnes, prénom masqué.
+ * Range la note en colonnes, noms masqués : l'élève observé, ses camarades,
+ * les adultes que la note cite.
  *
  * Rien n'est écrasé sans le dire : l'appelant décide quoi faire des colonnes
  * déjà remplies.
  */
 export async function repartir(o: ObservationEleve, nomEleve: string): Promise<Partial<Record<Colonne, string>>> {
   if (!o.note.trim()) throw new Error("Rien à ranger : le bilan de ce temps d'observation est vide.");
-  const { texte: note, table } = pseudonymiser(o.note, nomEleve ? [nomEleve] : []);
+  const { texte: note, table } = pseudonymiser(o.note, [...(nomEleve ? [nomEleve] : []), ...await nomsAMasquer()]);
   const modele = await api.modeleActif();
   const rep = await api.mistralChat(promptRepartition({ ...o, note }), modele);
   const lu = lireRepartition(rep);
