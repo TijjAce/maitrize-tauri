@@ -15,7 +15,8 @@ import {
 } from "../programmationIme";
 import { CompetenceTree, type CompetenceSelectionnee } from "./CompetenceTree";
 import { JOURS_EDT, natureDuSlot, type SlotEdt } from "../organisation";
-import { reprendreDuJournal, travauxDuJournal } from "../objectifsDuJournal";
+import { poserUneSequence, reprendreDuJournal, travauxDuJournal } from "../objectifsDuJournal";
+import { ChoixSequence } from "./SequencesCitees";
 import { chargerVacances, periodeDuJour } from "../vacances";
 import { isoJour } from "../dates";
 
@@ -370,6 +371,7 @@ export function ProgrammationIme({ annee }: { annee: string }) {
   const [groupesOuverts, setGroupesOuverts] = React.useState(false);
   const [competencePour, setCompetencePour] = React.useState<string>("");
   const [nouveau, setNouveau] = React.useState("");
+  const [choixSequence, setChoixSequence] = React.useState(false);
   // La liste sert à écrire un objectif, la grille à voir qui a quoi. Deux
   // questions différentes, deux vues — et c'est la seconde qui manquait.
   const [vue, setVue] = React.useState<"liste" | "creneau">("liste");
@@ -429,6 +431,23 @@ export function ProgrammationIme({ annee }: { annee: string }) {
     setNouveau(o.id);
   };
 
+  // Une séquence qu'on a déjà : sa compétence devient l'objectif, la séquence y est citée.
+  const programmerSequence = (s: Sequence) => {
+    setChoixSequence(false);
+    const pour = filtre ? [filtre] : [];
+    const { prog: suite, ajoutes, completes } = poserUneSequence(prog, s, pour);
+    if (suite === prog || (!ajoutes && !completes)) {
+      toast(`« ${s.titre || "Sans titre"} » est déjà programmée${filtre ? " pour cet élève" : ""}.`, { icone: "📚" });
+      return;
+    }
+    persister(suite);
+    const dit = [
+      ajoutes ? `${ajoutes} objectif${ajoutes > 1 ? "s" : ""} ajouté${ajoutes > 1 ? "s" : ""}` : "",
+      completes ? `${completes} complété${completes > 1 ? "s" : ""}` : "",
+    ].filter(Boolean).join(", ");
+    toast(`${s.titre || "La séquence"} : ${dit}.${filtre ? "" : " Dites pour qui dans la colonne « Élèves »."}`, { icone: "📚" });
+  };
+
   const supprimer = async (o: Objectif) => {
     if (o.competence.trim() && !await confirmer(`Retirer « ${o.competence} » de la programmation ?`)) return;
     persister({ ...prog, objectifs: prog.objectifs.filter((x) => x.id !== o.id) });
@@ -437,6 +456,7 @@ export function ProgrammationIme({ annee }: { annee: string }) {
   const listeEleves = eleves ?? [];
   const n = comptes(prog, listeEleves.map((e) => e.id));
   const montres = filtre ? objectifsDe(prog, filtre) : prog.objectifs;
+  const eleveFiltre = listeEleves.find((e) => e.id === filtre);
 
   const imprimer = () => {
     const parEleve = listeEleves.map((e) => {
@@ -477,6 +497,8 @@ export function ProgrammationIme({ annee }: { annee: string }) {
             👥 Groupes{prog.groupes.length ? ` · ${prog.groupes.length}` : ""}
           </button>
           <button className="btn ghost sm" onClick={imprimer}>🖨 Imprimer</button>
+          <button className="btn sm" onClick={() => setChoixSequence(true)}
+            title="Programmer une de vos séquences : sa compétence devient l'objectif, la séquence y est citée">＋ Séquence</button>
           <button className="btn primary sm" onClick={ajouter}>＋ Objectif</button>
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -559,6 +581,12 @@ export function ProgrammationIme({ annee }: { annee: string }) {
       ) : (
         <TableauObjectifs objectifs={montres} groupes={prog.groupes} eleves={listeEleves} sequences={sequences ?? []}
           nouveau={nouveau} majObjectif={majObjectif} supprimer={(o) => { void supprimer(o); }} citer={setCompetencePour} />
+      )}
+
+      {choixSequence && (
+        <ChoixSequence sequences={sequences ?? []} seances={seances ?? []} seancesAussi={false}
+          titre={eleveFiltre ? `Programmer une séquence pour ${prenom(eleveFiltre)}` : "Programmer une séquence"}
+          libelle="Programmer" onClose={() => setChoixSequence(false)} onChoisir={(s) => programmerSequence(s)} />
       )}
 
       {competencePour && (

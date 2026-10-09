@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { nouvelleSeance, nouvelleSequence, type Creneau, type Seance, type Sequence } from "./api";
-import { competenceDeLaSequence, reprendreDuJournal, travauxDuJournal } from "./objectifsDuJournal";
+import { competenceDeLaSequence, competencesDeLaSequence, poserUneSequence, reprendreDuJournal, travauxDuJournal } from "./objectifsDuJournal";
 import { comptes, marqueEleve, marqueGroupe, vide, type ProgrammationIme } from "./programmationIme";
 
 const visee = (competenceTitre: string, competenceRefId = "") => JSON.stringify({
@@ -93,5 +93,50 @@ describe("la reprise dans les objectifs par élève", () => {
     const revenu = reprendreDuJournal(retire, plusTard);
     expect(revenu.ajoutes).toBe(1);
     expect(revenu.prog.objectifs[0].pour).toEqual([marqueEleve("e1")]);
+  });
+});
+
+describe("une séquence programmée à la main", () => {
+  const competences = JSON.stringify([
+    { id: "a", referentielNom: "BO Cycle 2", domaineId: "M", domaineTitre: "Mathématiques", sousDomaineTitre: "Nombres",
+      competenceTitre: "Dénombrer une collection", niveau: "CP", competenceRefId: "M1" },
+    { id: "b", referentielNom: "BO Cycle 2", domaineId: "M", domaineTitre: "Mathématiques", sousDomaineTitre: "Nombres",
+      competenceTitre: "Dénombrer une collection", niveau: "CP", competenceRefId: "M1" },
+    { id: "c", referentielNom: "BO Cycle 2", domaineId: "M", domaineTitre: "Mathématiques", sousDomaineTitre: "Calcul",
+      competenceTitre: "Calculer une somme", niveau: "CP", competenceRefId: "M2" },
+  ]);
+
+  it("vise sa compétence visée ; sans elle, ses compétences ; sans rien, son titre", () => {
+    expect(competencesDeLaSequence(raconter).map((c) => c.competence)).toEqual(["Raconter une histoire entendue"]);
+    expect(competencesDeLaSequence({ ...sansCompetence, competences }).map((c) => [c.competence, c.origine]))
+      .toEqual([["Dénombrer une collection", "BO Cycle 2 › Mathématiques › CP"], ["Calculer une somme", "BO Cycle 2 › Mathématiques › CP"]]);
+    expect(competencesDeLaSequence(sansCompetence)).toEqual([{ competence: "Rituels du matin", origine: "" }]);
+    expect(competencesDeLaSequence({ ...sansCompetence, titre: " " })).toEqual([]);
+  });
+
+  it("crée l'objectif pour l'élève choisi, sur la période de la séquence, la séquence citée", () => {
+    const { prog, ajoutes, completes } = poserUneSequence(vide(), { ...raconter, periode: 2 }, ["e1"]);
+    expect([ajoutes, completes]).toEqual([1, 0]);
+    expect(prog.objectifs[0]).toMatchObject({
+      competence: "Raconter une histoire entendue", origine: "BO Cycle 1 › Langage",
+      pour: [marqueEleve("e1")], periodes: [2], sequences: ["s1"], source: { competenceRefId: "ref-s1" },
+    });
+  });
+
+  it("complète l'objectif qui porte déjà la compétence, sans le doubler", () => {
+    const premier = poserUneSequence(vide(), raconter, ["e1"]).prog;
+    const autre = { ...raconter, id: "s9", titre: "Raconter encore", periode: 3 };
+    const { prog, ajoutes, completes } = poserUneSequence(premier, autre, ["e1", "e2"]);
+    expect([ajoutes, completes]).toEqual([0, 1]);
+    expect(prog.objectifs).toHaveLength(1);
+    expect(prog.objectifs[0]).toMatchObject({ pour: [marqueEleve("e1"), marqueEleve("e2")], periodes: [raconter.periode, 3], sequences: ["s1", "s9"] });
+    // La même séquence, une seconde fois : rien ne bouge.
+    expect(poserUneSequence(prog, autre, ["e2"])).toMatchObject({ ajoutes: 0, completes: 0 });
+  });
+
+  it("sans élève choisi, l'objectif attend qu'on dise pour qui", () => {
+    const { prog } = poserUneSequence(vide(), compter, []);
+    expect(prog.objectifs[0].pour).toEqual([]);
+    expect(comptes(prog, tous)).toEqual({ e1: 0, e2: 0, e3: 0 });
   });
 });
