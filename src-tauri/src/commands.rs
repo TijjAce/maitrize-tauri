@@ -399,12 +399,21 @@ pub fn eleve_save(db: State<Db>, eleve: Eleve) -> R<Eleve> {
     ecrire_eleve(&c, eleve)
 }
 
-pub(crate) fn ecrire_eleve(c: &rusqlite::Connection, eleve: Eleve) -> R<Eleve> {
+pub(crate) fn ecrire_eleve(c: &rusqlite::Connection, mut eleve: Eleve) -> R<Eleve> {
+    // Le jour de création ne se pose qu'à la création. Un écran qui renvoie
+    // l'élève sans son année ni ce jour ne les efface pas pour autant.
+    let existe = c.query_row("SELECT 1 FROM eleves WHERE id=?1", params![eleve.id], |_| Ok(())).is_ok();
+    if !existe && eleve.date_creation.is_none() {
+        eleve.date_creation = Some(now_iso());
+    }
     c.execute(
-        "INSERT INTO eleves (id,nom,niveau,present,ine,date_naissance,photo_fichier,non_verbal)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8) ON CONFLICT(id) DO UPDATE SET nom = excluded.nom, niveau = excluded.niveau, present = excluded.present, ine = excluded.ine, date_naissance = excluded.date_naissance, photo_fichier = excluded.photo_fichier, non_verbal = excluded.non_verbal",
+        "INSERT INTO eleves (id,nom,niveau,present,ine,date_naissance,photo_fichier,non_verbal,annee_scolaire,date_creation)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10) ON CONFLICT(id) DO UPDATE SET nom = excluded.nom, niveau = excluded.niveau, present = excluded.present, ine = excluded.ine, date_naissance = excluded.date_naissance, photo_fichier = excluded.photo_fichier, non_verbal = excluded.non_verbal,
+           annee_scolaire = COALESCE(excluded.annee_scolaire, eleves.annee_scolaire),
+           date_creation = COALESCE(eleves.date_creation, excluded.date_creation)",
         params![eleve.id, eleve.nom, eleve.niveau, eleve.present as i64, eleve.ine,
-                eleve.date_naissance, eleve.photo_fichier, eleve.non_verbal as i64],
+                eleve.date_naissance, eleve.photo_fichier, eleve.non_verbal as i64,
+                eleve.annee_scolaire, eleve.date_creation],
     ).map_err(e)?;
     Ok(eleve)
 }

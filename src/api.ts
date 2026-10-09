@@ -201,6 +201,17 @@ export interface Eleve {
   dateNaissance: string; photoFichier: string | null;
   /** Ne parle pas : « En retard » ne lui donne pas de fiche de lecture à faire seul. */
   nonVerbal?: boolean;
+  /** Son année dans la classe (« 2026-2027 ») : la dernière pour laquelle on l'a gardé (voir `finDAnnee.ts`). */
+  anneeScolaire?: string | null;
+  /** Le jour de sa création ; vide pour un élève d'avant la colonne. */
+  dateCreation?: string | null;
+}
+
+/** Ce que l'export de fin d'année a écrit (voir `fin_annee.rs`). */
+export interface BilanExportEleves {
+  racine: string; eleves: number; fichiers: number;
+  /** Le service qui synchronise le dossier choisi, s'il y en a un. */
+  synchronise?: string | null;
 }
 
 export interface AppelJournalier {
@@ -844,6 +855,9 @@ export const api = {
   dossierDonneesGet: () => invoke<DossierDonnees>("dossier_donnees_get"),
   dossierDonneesSet: (chemin: string | null) => invoke<DossierDonnees>("dossier_donnees_set", { chemin }),
   chiffrementDisque: () => invoke<ChiffrementDisque>("chiffrement_disque"),
+  /** Exporte un dossier par élève — son dossier mis en page, ses données, ses fichiers. */
+  elevesExporter: (dossier: string, annee: string, eleves: { id: string; html: string }[]) =>
+    invoke<BilanExportEleves>("eleves_exporter", { dossier, annee, eleves }),
   ouvrirReglagesChiffrement: () => invoke<void>("ouvrir_reglages_chiffrement"),
   syncEnvoyer: (amiId: string, texte: string) => invoke<void>("sync_envoyer", { amiId, texte }),
   syncRelever: (amiId: string) => invoke<SyncMessage[]>("sync_relever", { amiId }),
