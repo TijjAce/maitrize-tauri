@@ -88,13 +88,21 @@ export function SequencesCitees({ citations, seances, onOuvrir, onVoirSeance, ma
   );
 }
 
-/** Choisir une séquence, ou l'une de ses séances, à poser dans le prévu. */
-export function ChoixSequence({ sequences, seances, matiere, onClose, onChoisir }: {
+/**
+ * Choisir une séquence, ou l'une de ses séances, à poser dans le prévu.
+ * Sans `seancesAussi`, la séquence seule se choisit : c'est ce que la
+ * programmation par élève prend.
+ */
+export function ChoixSequence({ sequences, seances, matiere, onClose, onChoisir, titre = "Poser une séquence dans le prévu", seancesAussi = true, libelle = "La séquence entière" }: {
   sequences: Sequence[]; seances: Seance[];
   /** L'intitulé du créneau : les séquences de cette matière viennent en tête. */
   matiere?: string;
   onClose: () => void;
   onChoisir: (s: Sequence, seance: Seance | null) => void;
+  titre?: string;
+  seancesAussi?: boolean;
+  /** Ce que dit le bouton qui prend la séquence. */
+  libelle?: string;
 }) {
   const [q, setQ] = React.useState("");
   const cle = (t: string) => (t ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -109,7 +117,7 @@ export function ChoixSequence({ sequences, seances, matiere, onClose, onChoisir 
       return pa - pb || (b.dateCreation ?? "").localeCompare(a.dateCreation ?? "");
     });
   return (
-    <Modal titre="Poser une séquence dans le prévu" onClose={onClose} large
+    <Modal titre={titre} onClose={onClose} large
       footer={<button className="btn" onClick={onClose}>Annuler</button>}>
       <Input autoFocus placeholder="Chercher une séquence ou une séance…" value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="choix-sequence-liste">
@@ -129,12 +137,12 @@ export function ChoixSequence({ sequences, seances, matiere, onClose, onChoisir 
                     {[s.matiere, niveauDeProgrammation(s.niveau), s.periode ? `période ${s.periode}` : "", compte].filter(Boolean).join(" · ")}
                   </div>
                 </div>
-                <button className="btn sm" onClick={() => onChoisir(s, null)}
-                  title="Poser la séquence seule : ses objectifs et la liste de ses séances">La séquence entière</button>
+                <button className={seancesAussi ? "btn sm" : "btn sm primary"} onClick={() => onChoisir(s, null)}
+                  title={seancesAussi ? "Poser la séquence seule : ses objectifs et la liste de ses séances" : undefined}>{libelle}</button>
               </div>
               {/* C'est la séance qui porte le contenu du jour : elle se choisit
                   d'un clic, sans avoir à déplier quoi que ce soit. */}
-              {siennes.map((x) => (
+              {seancesAussi && siennes.map((x) => (
                 <div key={x.id} className="choix-sequence-seance">
                   <span style={{ flex: 1, minWidth: 0 }}>
                     {rangDeLaSeance(x, total)}{x.titre ? ` : ${x.titre}` : ""}
@@ -142,7 +150,7 @@ export function ChoixSequence({ sequences, seances, matiere, onClose, onChoisir 
                   <button className="btn sm primary" onClick={() => onChoisir(s, x)}>Choisir cette séance</button>
                 </div>
               ))}
-              {!siennes.length && (
+              {seancesAussi && !siennes.length && (
                 <div className="choix-sequence-seance" style={{ color: "var(--text-2)", fontSize: 12.5 }}>
                   Aucune séance pour l'instant.
                 </div>
