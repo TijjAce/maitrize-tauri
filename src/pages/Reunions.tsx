@@ -142,9 +142,9 @@ export default function Reunions() {
   const [transcrit, setTranscrit] = React.useState(false);
   // Ce qui part en ligne : rien, le rangement, ou le rangement et la
   // relecture. Trois positions, parce qu'il y a trois travaux distincts.
-  const [mode, setMode] = React.useState<ModeIA>("ligne");
+  const [mode, setMode] = React.useState<ModeIA>("local");
   // Le moteur de transcription : en ligne, ou sur cette machine.
-  const [moteur, setMoteur] = React.useState<Moteur>("ligne");
+  const [moteur, setMoteur] = React.useState<Moteur>("local");
   // Le réseau est tombé : on cesse d'essayer, et on le dit une fois.
   const [horsLigne, setHorsLigne] = React.useState(false);
   // Le passage surligné, et la reformulation en cours. La transcription, elle,
@@ -168,12 +168,12 @@ export default function Reunions() {
   const compteRenduRef = React.useRef("");
   compteRenduRef.current = compteRendu;
   // Lus depuis les rappels, qui vivent plus longtemps qu'un rendu.
-  const modeRef = React.useRef<ModeIA>("ligne");
+  const modeRef = React.useRef<ModeIA>("local");
   modeRef.current = mode;
-  const moteurRef = React.useRef<Moteur>("ligne");
+  const moteurRef = React.useRef<Moteur>("local");
   moteurRef.current = moteur;
   // Le modèle avec : relu au départ de chaque écoute, comme le moteur.
-  const choixRef = React.useRef<Choix>({ moteur: "ligne" });
+  const choixRef = React.useRef<Choix>({ moteur: "local", modele: "" });
   const horsLigneRef = React.useRef(false);
   horsLigneRef.current = horsLigne;
   const resumeEnCours = React.useRef(false);

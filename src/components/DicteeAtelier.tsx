@@ -213,7 +213,7 @@ export function DicteeAtelier({ eleves, onClose, onEnregistre, texteInitial, tit
             <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
               {dictee.ici
                 ? <li>L'enregistrement est transcrit <b>sur cet ordinateur</b> : il n'en sort pas.</li>
-                : <li>L'enregistrement part chez <b>Mistral</b> (serveurs en Europe) pour être transcrit.
+                : <li>L'enregistrement part chez <b>Mistral AI</b>, entreprise française, pour être transcrit.
                   S'il contient des prénoms d'élèves, ils sont transmis.</li>}
               <li>Pour la répartition, le texte part chez Mistral <b>sans aucun nom d'élève</b> : chaque élève
                   cité y devient [P1], [P2]…, et les prénoms reviennent sur cet ordinateur. Ni noms de famille,

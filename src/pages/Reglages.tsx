@@ -676,8 +676,15 @@ function DossierDesDonnees() {
       <h3 style={{ marginTop: 0 }}>📂 Emplacement des données</h3>
       <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
         Base, fichiers joints et copies quotidiennes. Doit rester un dossier
-        <b> local</b> : sur un partage réseau, la base se corrompt.
+        <b> local</b>, ni sur un partage réseau, ni dans un dossier synchronisé (iCloud Drive, OneDrive…) :
+        la base s'y corrompt, et les dossiers des élèves partiraient chez ce service.
       </p>
+      {d.synchronise && (
+        <p style={{ fontSize: 13, color: "var(--danger, #ef4444)", marginTop: 0 }}>
+          ⚠️ Ce dossier est synchronisé par {d.synchronise}. Choisissez un dossier de l'ordinateur qui ne l'est pas,
+          ou revenez au dossier par défaut.
+        </p>
+      )}
       <div style={{ fontSize: 13, fontFamily: "ui-monospace, monospace", wordBreak: "break-all",
         background: "var(--panel-2)", padding: "6px 8px", borderRadius: 6 }}>
         {d.chemin}
@@ -807,9 +814,16 @@ function CopieDuBureauCard() {
           {info.racine}
         </div>
         <div style={{ fontSize: 12, color: "var(--text-2)", margin: "6px 0 10px" }}>
-          {info.parDefaut ? "Sur le Bureau" : "Emplacement choisi"}
+          {info.parDefaut ? "Emplacement par défaut" : "Emplacement choisi"}
           {d && ` · ${d.fichiers} fichier${d.fichiers > 1 ? "s" : ""} dans la copie`}
         </div>
+        {info.synchronise && (
+          <p style={{ fontSize: 13, color: "var(--danger, #ef4444)", margin: "0 0 10px" }}>
+            ⚠️ Ce dossier est synchronisé par {info.synchronise} : la copie — vos séquences, vos textes, vos
+            documents — part avec lui. Choisissez un dossier de l'ordinateur qui ne l'est pas, votre dossier
+            personnel par exemple, ou décochez la copie.
+          </p>
+        )}
         {d?.autorisationRefusee && (
           <p style={{ fontSize: 13, color: "var(--danger, #ef4444)", margin: "0 0 10px" }}>
             {isMac
@@ -1210,7 +1224,7 @@ function Transcription() {
             <li><b>base</b> : le bon compromis.</li>
             <li><b>tiny</b> : le plus rapide, mais il se trompe souvent sur les noms.</li>
           </ul>
-          <p><b>En ligne</b> : l'audio part chez Mistral (Voxtral, serveurs en Europe). Rien à télécharger, mais il faut du réseau.</p>
+          <p><b>En ligne</b> : l'audio part chez Mistral AI, entreprise française (modèle Voxtral). Rien à télécharger, mais il faut du réseau.</p>
           <p>Rien ne part en ligne sans que vous l'ayez choisi ici : sans modèle sur l'ordinateur, la transcription vous demande d'en télécharger un.</p>
           <p><b>Observations d'élève</b> : le Dictaphone du téléphone et la dictée d'atelier. <b>Dictées</b> : le micro du cahier journal et de l'assistant.</p>
           <p>Le compte rendu d'une réunion est ensuite rangé par l'IA en ligne, prénoms d'élèves masqués. Pour que rien ne parte, choisissez « Rien en ligne » pendant la réunion.</p>

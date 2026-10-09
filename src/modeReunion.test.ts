@@ -7,8 +7,9 @@ describe("le mode d'une réunion", () => {
     expect(lireMode("ligne", null)).toBe("ligne");
   });
 
-  it("par défaut, l'IA range et relit", () => {
-    expect(lireMode(null, null)).toBe("ligne");
+  it("par défaut, rien ne part : l'IA en ligne se choisit", () => {
+    expect(lireMode(null, null)).toBe("local");
+    expect(lireMode("", null)).toBe("local");
   });
 
   it("relit les trois positions d'avant sans rien perdre", () => {

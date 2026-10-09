@@ -64,7 +64,7 @@ export const plafondDuMorceau = (m: Moteur): number => (m === "local" ? 12 : 20)
 export const sortieDeLAudio = (m: Moteur): string =>
   m === "local"
     ? "L'audio est transcrit sur cet ordinateur et n'en sort pas — il n'est même pas écrit sur le disque."
-    : "L'audio part chez Mistral (serveurs en Europe) pour être transcrit, puis le texte pour être rangé.";
+    : "L'audio part chez Mistral AI, entreprise française, pour être transcrit, puis le texte pour être rangé.";
 
 /** Transcrit un enregistrement, par le moteur choisi. */
 export async function transcrire(audioB64: string, choix: Choix): Promise<string> {

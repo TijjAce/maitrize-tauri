@@ -124,6 +124,52 @@ pub fn est_chemin_reseau(chemin: &std::path::Path) -> bool {
     s.starts_with("/mnt/") || s.starts_with("/media/") || s.starts_with("/net/")
 }
 
+/// Le service qui synchronise ce dossier, s'il y en a un : iCloud Drive,
+/// OneDrive, Dropbox, Google Drive.
+///
+/// Ce qui y est écrit part chez ce service. Pour la base, c'est en plus la
+/// corrompre : le service recopie le fichier pendant que SQLite l'écrit. Pour
+/// la copie du bureau, c'est envoyer les documents de la classe là où l'on ne
+/// pense pas les avoir mis — le Bureau d'un Mac est souvent dans iCloud sans
+/// qu'on s'en souvienne.
+pub fn service_de_synchro(chemin: &std::path::Path) -> Option<&'static str> {
+    service_de_synchro_avec(chemin, dirs::home_dir().as_deref())
+}
+
+pub(crate) fn service_de_synchro_avec(chemin: &std::path::Path, maison: Option<&std::path::Path>) -> Option<&'static str> {
+    let parts: Vec<String> = chemin.components().map(|c| c.as_os_str().to_string_lossy().to_lowercase()).collect();
+    for (i, c) in parts.iter().enumerate() {
+        let suivant = parts.get(i + 1).map(String::as_str).unwrap_or("");
+        if c == "library" && suivant == "mobile documents" {
+            return Some("iCloud Drive");
+        }
+        // macOS range OneDrive, Dropbox et Google Drive sous ~/Library/CloudStorage.
+        if c == "library" && suivant == "cloudstorage" {
+            let fournisseur = parts.get(i + 2).map(String::as_str).unwrap_or("");
+            return Some(if fournisseur.starts_with("onedrive") { "OneDrive" }
+                else if fournisseur.starts_with("dropbox") { "Dropbox" }
+                else if fournisseur.starts_with("googledrive") { "Google Drive" }
+                else { "un service de stockage en ligne" });
+        }
+        if c.starts_with("onedrive") { return Some("OneDrive"); }
+        if c == "dropbox" { return Some("Dropbox"); }
+        if c == "google drive" || c.starts_with("googledrive") { return Some("Google Drive"); }
+        if c == "iclouddrive" { return Some("iCloud Drive"); }
+    }
+    // Le Bureau et les Documents d'un Mac gardent leur chemin quand iCloud les
+    // synchronise : seul leur double dans iCloud Drive le dit.
+    if let Some(maison) = maison {
+        for dossier in ["Desktop", "Documents"] {
+            if chemin.starts_with(maison.join(dossier))
+                && maison.join("Library/Mobile Documents/com~apple~CloudDocs").join(dossier).is_dir()
+            {
+                return Some("iCloud Drive");
+            }
+        }
+    }
+    None
+}
+
 /// Dossier des sauvegardes automatiques (copies horodatées de la base).
 pub fn sauvegardes_dir() -> PathBuf {
     let dir = data_dir().join("Sauvegardes");
@@ -318,6 +364,37 @@ pub(crate) fn migrer_documents_eleve(conn: &Connection) {
 /// Crée le schéma sur une connexion neuve, pour les tests qui ont besoin des
 /// vraies tables plutôt que d'un schéma réécrit à la main — lequel finirait
 /// par diverger de celui de l'application sans que rien ne le signale.
+#[cfg(test)]
+mod tests_synchro {
+    use super::service_de_synchro_avec;
+    use std::path::Path;
+
+    #[test]
+    fn un_dossier_synchronise_se_reconnait() {
+        let p = |s: &str| service_de_synchro_avec(Path::new(s), None);
+        assert_eq!(p("/Users/a/Library/Mobile Documents/com~apple~CloudDocs/Classe"), Some("iCloud Drive"));
+        assert_eq!(p("/Users/a/Library/CloudStorage/OneDrive-Personnel/Classe"), Some("OneDrive"));
+        assert_eq!(p("/Users/a/Library/CloudStorage/GoogleDrive-moi@exemple.fr/Mon Drive"), Some("Google Drive"));
+        assert_eq!(p("/Users/a/Library/CloudStorage/Dropbox/Classe"), Some("Dropbox"));
+        assert_eq!(p("/Users/a/OneDrive - Académie de Paris/Bureau"), Some("OneDrive"));
+        assert_eq!(p("/Users/a/Dropbox/Classe"), Some("Dropbox"));
+        assert_eq!(p("/Users/a/Maitrize"), None);
+        assert_eq!(p("/Users/a/Desktop"), None, "sans iCloud, le Bureau est un dossier ordinaire");
+    }
+
+    #[test]
+    fn le_bureau_d_un_mac_est_dans_icloud_quand_son_double_existe() {
+        let maison = tempfile::tempdir().unwrap();
+        let m = maison.path();
+        std::fs::create_dir_all(m.join("Desktop")).unwrap();
+        assert_eq!(service_de_synchro_avec(&m.join("Desktop"), Some(m)), None);
+        std::fs::create_dir_all(m.join("Library/Mobile Documents/com~apple~CloudDocs/Desktop")).unwrap();
+        assert_eq!(service_de_synchro_avec(&m.join("Desktop/Maitrize"), Some(m)), Some("iCloud Drive"));
+        assert_eq!(service_de_synchro_avec(&m.join("Documents"), Some(m)), None, "les Documents ne le sont pas");
+        assert_eq!(service_de_synchro_avec(&m.join("Maitrize"), Some(m)), None);
+    }
+}
+
 #[cfg(test)]
 pub(crate) fn migrer_pour_test(conn: &Connection) {
     migrate(conn);
@@ -721,6 +798,21 @@ pub(crate) fn migrate(conn: &Connection) {
         CREATE TABLE IF NOT EXISTS sync_recus (
             cle TEXT PRIMARY KEY,
             date TEXT NOT NULL DEFAULT ''
+        );
+
+        -- Fichiers joints effacés sur cet ordinateur : la synchronisation les
+        -- retire du stockage et des autres ordinateurs au lieu de les faire
+        -- revenir. `publie` : la marque d'effacement est posée sur le stockage.
+        CREATE TABLE IF NOT EXISTS fichiers_effaces (
+            nom TEXT PRIMARY KEY,
+            date TEXT NOT NULL DEFAULT '',
+            publie INTEGER NOT NULL DEFAULT 0
+        );
+
+        -- Fichiers qu'une restauration a ramenés : leur marque d'effacement
+        -- tombe à la prochaine synchronisation.
+        CREATE TABLE IF NOT EXISTS fichiers_rendus (
+            nom TEXT PRIMARY KEY
         );
 
         -- Boîte de réception : éléments reçus en attente, que l'utilisateur
