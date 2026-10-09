@@ -15,6 +15,7 @@ mod webdav;
 mod copie_bureau;
 mod db;
 mod disque;
+mod fin_annee;
 mod models;
 mod portable;
 mod seed;
@@ -160,6 +161,8 @@ pub fn run() {
             commands::dossier_donnees_get, commands::dossier_donnees_set,
             // Le disque est-il chiffré ? (FileVault, BitLocker)
             disque::chiffrement_disque, disque::ouvrir_reglages_chiffrement,
+            // La fin de l'année : exporter les dossiers des élèves qui partent.
+            fin_annee::eleves_exporter,
             commands::diag_ecrire, commands::diag_ouvrir, commands::diag_rapport,
             veille::diag_battement, commands::fichier_ouvrir,
             commands::creneau_journal_save,

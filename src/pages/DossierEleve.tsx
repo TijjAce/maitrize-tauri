@@ -1,9 +1,10 @@
 import React from "react";
-import { ChipObservation, couleurObservation } from "../components/TypeObservation";
+import { ChipObservation } from "../components/TypeObservation";
 import { infosReussite, intitulesDesObjectifs, lireLiens } from "../objectifsPpi";
 import { api, Eleve, TYPE_AXE } from "../api";
 import { Select, Empty, useAsync, ouvrirOnglet } from "../components/ui";
-import { printHTML, escapeHtml } from "../print";
+import { printHTML } from "../print";
+import { corpsDuDossier } from "../dossierHtml";
 import { construire, libelleAge, Dossier, Piece } from "../dossier";
 
 // ── Dossier de l'élève ─────────────────────────────────────────────────────
@@ -213,52 +214,5 @@ function LignePiece({ piece }: { piece: Piece }) {
 }
 
 function imprimer(d: Dossier, objectifs: Record<string, string>) {
-  const section = (titre: string, corps: string) =>
-    corps ? `<h2>${escapeHtml(titre)}</h2>${corps}` : "";
-  const liste = (items: string[]) =>
-    items.length ? `<ul>${items.map((i) => `<li>${i}</li>`).join("")}</ul>` : "";
-
-  printHTML(`Dossier — ${d.eleve.nom}`,
-    `<h1>${escapeHtml(d.eleve.nom)}</h1>
-     <div class="meta">${[d.eleve.niveau, d.age !== undefined && `${d.age} ans`,
-        d.eleve.ine && `INE ${d.eleve.ine}`].filter(Boolean).map((x) => escapeHtml(String(x))).join(" · ")}
-        · édité le ${new Date().toLocaleDateString("fr-FR")}</div>
-
-     ${section("Axes de travail", liste(d.observations.axes.map((a) =>
-        `${escapeHtml(a.texte)} <span class="meta">(${new Date(a.date).toLocaleDateString("fr-FR")})</span>`)))}
-
-     ${section("Pièces du dossier",
-        `<table><tr><th>Pièce</th><th>État</th></tr>${d.pieces.map((p) =>
-          `<tr><td>${escapeHtml(p.label)}</td><td>${p.rempli
-            ? "renseignée" + (p.dateMaj ? ` le ${new Date(p.dateMaj).toLocaleDateString("fr-FR")}` : "")
-            : "à remplir"}</td></tr>`).join("")}</table>`)}
-
-     ${d.observations.parType.map((g) => {
-        // La couleur de la catégorie, comme à l'écran.
-        const c = couleurObservation(g.type);
-        return g.items.length ? `<h2 style="border-bottom-color:${c}"><span class="chip" style="background:${c}1f;color:${c};border:1px solid ${c}55;font-size:13px">${escapeHtml(g.type)}</span> Observations</h2>
-          <ul style="border-left:4px solid ${c};padding-left:22px;margin-left:2px">${g.items.map((o) => {
-            // L'objectif travaillé accompagne l'observation : c'est ce qui rend
-            // le dossier utilisable en ESS, où l'on demande des preuves datées.
-            const vises = lireLiens(o.objectifs).filter((l) => objectifs[l.id]);
-            const cible = vises.length
-              ? ` <span class="meta">🎯 ${vises.map((l) => `${escapeHtml(objectifs[l.id])} ${infosReussite(l.reussite).icone}`).join(" · ")}</span>`
-              : "";
-            return `<li>${escapeHtml(o.texte)} <span class="meta">(${new Date(o.date).toLocaleDateString("fr-FR")})</span>${cible}</li>`;
-          }).join("")}</ul>` : "";
-      }).join("")}
-
-     ${section("Évaluations", d.notes.length
-        ? `<table><tr><th>Évaluation</th><th>Date</th><th>Note</th></tr>${d.notes.map((l) =>
-            `<tr><td>${escapeHtml(l.evaluation.titre)}<div class="meta">${escapeHtml(l.evaluation.matiere)}</div></td>
-              <td>${new Date(l.evaluation.date).toLocaleDateString("fr-FR")}</td>
-              <td>${l.note.note} / ${l.evaluation.bareme}</td></tr>`).join("")}</table>`
-        : "")}
-
-     ${section("Papiers", liste(d.papiers.map((p) =>
-        `${escapeHtml(p.type)} — ${escapeHtml(p.intitule)}`)))}
-
-     <div class="meta" style="margin-top:16px;font-style:italic">
-       Document interne. Il contient des données personnelles d'élève : à ne pas
-       diffuser hors de l'équipe.</div>`);
+  printHTML(`Dossier — ${d.eleve.nom}`, corpsDuDossier(d, objectifs));
 }

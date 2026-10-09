@@ -456,6 +456,14 @@ pub struct Eleve {
     /// Ne parle pas : pas de fiche de lecture en autonomie.
     #[serde(default)]
     pub non_verbal: bool,
+    /// L'année scolaire de l'élève dans la classe (« 2026-2027 ») : la dernière
+    /// pour laquelle on l'a gardé. Vide pour un élève créé depuis : sa date de
+    /// création le situe.
+    #[serde(default)]
+    pub annee_scolaire: Option<String>,
+    /// Le jour où il a été créé ; vide pour un élève d'avant la colonne.
+    #[serde(default)]
+    pub date_creation: Option<String>,
 }
 fn vrai() -> bool { true }
 
@@ -471,6 +479,8 @@ impl Eleve {
             photo_fichier: r.get("photo_fichier")?,
             // Vide sur une ligne venue d'une version sans la colonne.
             non_verbal: r.get::<_, Option<i64>>("non_verbal").ok().flatten().unwrap_or(0) != 0,
+            annee_scolaire: r.get::<_, Option<String>>("annee_scolaire").ok().flatten(),
+            date_creation: r.get::<_, Option<String>>("date_creation").ok().flatten(),
         })
     }
 }
