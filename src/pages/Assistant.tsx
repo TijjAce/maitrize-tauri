@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { api, ChatMessage, Sequence, Seance, PiloteConversation, CYCLES, MATIERES, MODELES_MISTRAL, MODELE_DEFAUT, nouvelleSequence, nouvelleSeance, couleurPourMatiere, newId, nowIso } from "../api";
 import { Modal, Field, Input, Select, Demander, useAsync } from "../components/ui";
 import { construireContexteIA } from "../contexteIA";
+import { nomsAMasquer } from "../nomsAMasquer";
+import { pseudonymiser, pseudonymiserTout, restaurer } from "../confidentialite";
 import { DEBUT_OBJECTIF_SEANCE } from "../demarches";
 import { openCtx } from "../components/ctxmenu";
 import { Markdown } from "../components/Markdown";
@@ -225,7 +227,10 @@ export default function Assistant() {
     // alors qu'elle ne l'est pas, ce qui est pire que pas de recherche.
     if (surLeWeb) {
       try {
-        const r = await api.mistralRechercheWeb(contenu);
+        // La question part sans les noms connus ; ils reviennent dans la réponse.
+        const masque = pseudonymiserTout([contenu], await nomsAMasquer());
+        const r = await api.mistralRechercheWeb(masque.textes[0]);
+        r.texte = restaurer(r.texte || "", masque.table).texte;
         const sources = r.sources.length
           ? "\n\n**Sources**\n" + r.sources.map((s) => `- [${s.titre}](${s.url})`).join("\n")
           : "";
@@ -252,6 +257,12 @@ export default function Assistant() {
         prefixe = [{ role: "system", content: `${SYSTEME.content}\n\nContexte de la classe (données non personnelles, aucune information nominative sur les élèves) :\n${ctx}` }];
       }
       if (modeDocument) prefixe = [...prefixe, { role: "system", content: consigneDocument() }];
+      // La conversation part sans les noms connus — élèves, contacts de
+      // l'établissement —, masquée d'un seul tenant ; la réponse les retrouve
+      // à mesure qu'elle s'écrit.
+      const masque = pseudonymiserTout(suite.map((m) => m.content), await nomsAMasquer());
+      const envoyes: ChatMessage[] = suite.map((m, i) => ({ ...m, content: masque.textes[i] ?? m.content }));
+      const rendre = (t: string) => restaurer(t, masque.table).texte;
       // Streaming : la réponse s'affiche au fil des tokens via événements Tauri.
       const reqId = newId();
       let acc = "";
@@ -259,12 +270,12 @@ export default function Assistant() {
       const unChunk = await listen<{ id: string; delta: string }>("mistral://chunk", (ev) => {
         if (ev.payload.id !== reqId) return;
         acc += ev.payload.delta;
-        setMessages([...suite, { role: "assistant", content: acc }]);
+        setMessages([...suite, { role: "assistant", content: rendre(acc) }]);
       });
       const unDone = await listen<{ id: string }>("mistral://done", (ev) => {
         if (ev.payload.id !== reqId) return;
         cleanup();
-        const final: ChatMessage[] = [...suite, { role: "assistant", content: acc }];
+        const final: ChatMessage[] = [...suite, { role: "assistant", content: rendre(acc) }];
         setMessages(final); setLoading(false);
         sauvegarderConv(final);
       });
@@ -274,7 +285,7 @@ export default function Assistant() {
         setMessages([...suite, { role: "assistant", content: "⚠️ " + ev.payload.message }]); setLoading(false);
       });
       cleanup = () => { unChunk(); unDone(); unErr(); };
-      await invoke("mistral_chat_stream", { messages: [...prefixe, ...suite], model, requestId: reqId });
+      await invoke("mistral_chat_stream", { messages: [...prefixe, ...envoyes], model, requestId: reqId });
     } catch (e: any) {
       cleanup();
       setMessages([...suite, { role: "assistant", content: "⚠️ " + String(e) }]);
@@ -442,11 +453,12 @@ function GenerateurSequence({ model, onClose }: { model: string; onClose: () => 
       `L'objectif de chaque séance commence par « ${DEBUT_OBJECTIF_SEANCE} » et dit ce qu'ils sauront faire. ` +
       `Le déroulement doit être concret (phases, consignes). duree en minutes.`;
     try {
-      const rep = await api.mistralChat(
+      const masque = pseudonymiser(prompt, await nomsAMasquer());
+      const rep = restaurer(await api.mistralChat(
         [{ role: "system", content: "Tu génères des séquences pédagogiques. Tu réponds en JSON strict uniquement." },
-         { role: "user", content: prompt }],
+         { role: "user", content: masque.texte }],
         model,
-      );
+      ), masque.table).texte;
       const data = extraireJson(rep);
       const seq = {
         ...nouvelleSequence(),
@@ -525,11 +537,12 @@ function ModifierSequence({ model, onClose }: { model: string; onClose: () => vo
         `{"titre":"...","objectifs":"...","seances":[{"numero":1,"titre":"...","objectifs":"...","deroulement":"...","materiel":"...","duree":45}]}\n` +
         `Conserve ce qui n'est pas visé par la demande. Numérote les séances à partir de 1. duree en minutes. ` +
       `L'objectif d'une séance nouvelle ou réécrite commence par « ${DEBUT_OBJECTIF_SEANCE} » et dit ce qu'ils sauront faire.`;
-      const rep = await api.mistralChat(
+      const masque = pseudonymiser(prompt, await nomsAMasquer());
+      const rep = restaurer(await api.mistralChat(
         [{ role: "system", content: "Tu modifies des séquences pédagogiques. Tu réponds en JSON strict uniquement." },
-         { role: "user", content: prompt }],
+         { role: "user", content: masque.texte }],
         model,
-      );
+      ), masque.table).texte;
       const data = extraireJson(rep);
       // Séquence : maj titre + objectifs (les autres champs sont conservés).
       await api.sequenceSave({ ...seq, titre: data.titre || seq.titre, objectifs: data.objectifs ?? seq.objectifs });
