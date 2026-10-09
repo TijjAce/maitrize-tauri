@@ -29,14 +29,20 @@ Les données des élèves relèvent du responsable de traitement de votre établ
 5. Contenus de tiers
 Les documents que vous importez — manuels, fiches, grilles d'éditeurs — restent soumis aux droits de leurs auteurs : ne les partagez que si vous en avez le droit.
 
-6. Garantie et responsabilité
+6. L'assistant IA
+Ce que l'IA propose — une séquence, une reformulation, un document — est un premier jet, à relire et à corriger avant tout usage en classe ou dans un document officiel. Vous restez responsable de ce que vous en faites.
+
+7. Garantie et responsabilité
 Maîtrize est fourni « en l'état », sans garantie, comme le prévoit sa licence. Dans les limites permises par la loi, son éditeur ne répond pas d'une perte de données, d'une indisponibilité ou d'un dommage résultant de son utilisation. Sauvegardez régulièrement vos données (Réglages › Données).
 
-7. Éditeur
+8. Éditeur
 Maîtrize est développé par Clément Titet. Contact : contact@maitrize.com.
 
-8. Évolutions et acceptation
-Ces conditions peuvent évoluer ; votre acceptation vous est alors redemandée au lancement. Elle est datée et associée à une empreinte de cette version, conservées sur cet ordinateur.`;
+9. Évolutions et acceptation
+Ces conditions peuvent évoluer ; votre acceptation vous est alors redemandée au lancement. Elle est datée et associée à une empreinte de cette version, conservées sur cet ordinateur.
+
+10. Droit applicable
+Ces conditions sont régies par le droit français.`;
 
 async function sha256(texte: string): Promise<string> {
   const data = new TextEncoder().encode(texte);
