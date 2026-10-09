@@ -36,6 +36,7 @@ import { SuitesTab } from "./AteliersSuites";
 import { CarteMentaleTab } from "./AteliersCarteMentale";
 import { OeilDeLynxTab } from "./AteliersObservation";
 import { SyllabeManquanteTab } from "./AtelierSyllabes";
+import { CartesATachesTab } from "./AteliersCartes";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { chargerPicto, usePictoImage } from "../components/ChoixPicto";
 import { BoutonMesImages, imagePourLePdf } from "../components/MesImages";
@@ -338,6 +339,7 @@ export default function Jeux() {
         : onglet === "pyramides" ? <PyramidesTab />
         : onglet === "heure" ? <HeureTab />
         : onglet === "numeration" ? <NumerationTab />
+        : onglet === "taches" ? <CartesATachesTab />
         : onglet === "tri" ? <TriTab />
         : onglet === "motsMeles" ? <MotsMelesTab />
         : onglet === "cursive" ? <CursiveTab />

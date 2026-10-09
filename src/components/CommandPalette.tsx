@@ -134,6 +134,7 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "🔎", label: "Mots mêlés", to: "/jeux", page: "jeux", onglet: "motsMeles", sous: "Fabriquer" },
   { ico: "✂️", label: "Phrases en désordre", to: "/jeux", page: "jeux", onglet: "phrases", sous: "Fabriquer" },
   { ico: "🔳", label: "Texte à trous (étiquettes à coller : être et avoir au présent)", to: "/jeux", page: "jeux", onglet: "trous", sous: "Fabriquer" },
+  { ico: "🧷", label: "Cartes à tâches (cartes à pinces, cartes à écrire, devinettes : une question par carte)", to: "/jeux", page: "jeux", onglet: "taches", sous: "Fabriquer · évaluer" },
   { ico: "📚", label: "Lectures à l'école : albums et livres des listes de référence (cycles 1, 2, 3)", to: "/ressources", page: "ressources", onglet: "lectures", sous: "Ressources · Éduscol" },
   { ico: "🗒", label: "Programmation", to: "/organisation", page: "organisation", onglet: "prog", sous: "Organisation" },
   { ico: "📉", label: "Progression annuelle", to: "/organisation", page: "organisation", onglet: "annuelle", sous: "Organisation" },
