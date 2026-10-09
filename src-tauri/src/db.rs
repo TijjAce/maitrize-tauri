@@ -802,6 +802,9 @@ pub(crate) fn migrate(conn: &Connection) {
     conn.execute("ALTER TABLE materiel_items ADD COLUMN dossier TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE materiel_items ADD COLUMN videos_json TEXT NOT NULL DEFAULT '[]'", []).ok();
     conn.execute("ALTER TABLE materiel_items ADD COLUMN coffre_json TEXT NOT NULL DEFAULT '[]'", []).ok();
+    // Une feuille fabriquée retient son atelier, pour s'y refaire. NULL permis : une
+    // version plus ancienne, sur un autre ordinateur, envoie la ligne sans ce champ.
+    conn.execute("ALTER TABLE materiel_items ADD COLUMN fabrication_json TEXT", []).ok();
     // Plan de travail : séquences et matériel se rangent dans les mêmes dossiers.
     conn.execute("ALTER TABLE sequences ADD COLUMN dossier TEXT NOT NULL DEFAULT ''", []).ok();
     // La programmation d'une séquence : le niveau pour lequel elle est pensée, à côté de sa période.

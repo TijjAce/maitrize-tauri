@@ -10,6 +10,7 @@ import { libelleCategorie } from "../data/categoriesArasaac";
 import { uneImageParMot } from "../loto";
 import type { MotImage } from "../jeuxSons";
 import { graineAuHasard } from "../hasard";
+import { useGraine } from "../modifierFeuille";
 import { Boutons, Coche, Colonnes } from "./AteliersLangage";
 import {
   CATEGORIES_FAMILIERES, CATEGORIES_LYNX, DESSINS_MAX, EXCLUES_LYNX, MODELES_MAX, NIVEAUX_LYNX, REGLAGES_LYNX, SEUIL_ENCRE, SEUIL_SCENE, STYLE_LYNX,
@@ -93,7 +94,7 @@ export function OeilDeLynxTab({ banque }: { banque: boolean }) {
   const [mots, setMots] = React.useState<MotImage[]>([]);
   const [brut, maj] = useReglages("oeilDeLynx", REGLAGES_LYNX);
   const r = React.useMemo(() => reglagesLynxSurs(brut), [brut]);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const niv = niveauLynx(r.niveau);
 
   // Où piocher les dessins : toute sorte de choses qui se dessinent, ou un thème de la banque.

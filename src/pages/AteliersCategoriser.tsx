@@ -14,6 +14,7 @@ import { SequenceDeCategorisation } from "../components/SequenceDeCategorisation
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import { graineAuHasard, hasard } from "../hasard";
+import { useGraine } from "../modifierFeuille";
 import {
   CATEGORIES_MAX, FORMES, NIVEAUX, REGLAGES_CATEGORISER, REPERES, STYLE_CATEGORISER, categoriesDuJeu, cequiManque, couleurDe,
   htmlCategoriser, idsDesImages, jeuxPour, motDeLaCategorie, motsDuJeu, motsPourLImage, nomDeLaForme, normaliserCategories, reglagesDuNiveau,
@@ -99,7 +100,7 @@ export function CategoriserTab({ banque }: { banque: boolean }) {
   const [brut, maj] = useReglages<ReglagesCategoriser>(ATELIER, REGLAGES_CATEGORISER);
   const categories = React.useMemo(() => normaliserCategories(brut.categories), [brut.categories]);
   const r = React.useMemo(() => ({ ...brut, categories }), [brut, categories]);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const [ouverte, setOuverte] = React.useState(-1);
   const [jeu, setJeu] = React.useState("");
   const [occupe, setOccupe] = React.useState(false);

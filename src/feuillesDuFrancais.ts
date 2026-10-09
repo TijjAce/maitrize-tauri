@@ -39,13 +39,16 @@ function feuilleDeFluence(seance: number, classe: ClasseC2, periode: number, plu
   const r: ReglagesFluence = { ...REGLAGES_FLUENCE, ...reglagesLaisses<ReglagesFluence>("fluence"), son: etapeDeLaSequence(classe, periode), ...plus };
   return {
     seance, atelier: "fluence", titre: `Grille de fluence — ${nomDeLEtape(etapeDe(r.son))}`,
-    fabriquer: (graine) => ({ html: htmlFluence(grilleFluence(r, graine), r), style: STYLE_FEUILLE + STYLE_FLUENCE }),
+    fabriquer: (graine) => ({ html: htmlFluence(grilleFluence(r, graine), r), style: STYLE_FEUILLE + STYLE_FLUENCE, refaire: { fluence: r } }),
   };
 }
 
 function feuilleDuSyllabaire(seance: number): FeuilleAFabriquer {
   const r: ReglagesSyllabaire = { ...REGLAGES_SYLLABAIRE, ...reglagesLaisses<ReglagesSyllabaire>("syllabaire") };
-  return { seance, atelier: "syllabaire", titre: "Syllabaire — le jeu de l'ascenseur", fabriquer: () => ({ html: htmlSyllabaire(r), style: STYLE_FEUILLE + STYLE_FLUENCE }) };
+  return {
+    seance, atelier: "syllabaire", titre: "Syllabaire — le jeu de l'ascenseur",
+    fabriquer: () => ({ html: htmlSyllabaire(r), style: STYLE_FEUILLE + STYLE_FLUENCE, refaire: { syllabaire: r } }),
+  };
 }
 
 /** Les corpus à catégoriser que donnent les livrets, mot pour mot. */
@@ -83,7 +86,7 @@ export const reglureDe = (classe: ClasseC2, periode: number): ReglagesCursive["r
 
 function feuilleDeCursive(seance: number, titre: string, r: Partial<ReglagesCursive>): FeuilleAFabriquer {
   const reglages: ReglagesCursive = { ...REGLAGES_CURSIVE, ...r };
-  return { seance, atelier: "cursive", titre, fabriquer: () => ({ html: htmlEcritureCursive(reglages), style: STYLE_FEUILLE + STYLE_CURSIVE }) };
+  return { seance, atelier: "cursive", titre, fabriquer: () => ({ html: htmlEcritureCursive(reglages), style: STYLE_FEUILLE + STYLE_CURSIVE, refaire: { cursive: reglages } }) };
 }
 
 /** Les phrases à copier : celle du livret d'abord, puis celles de l'atelier « Phrases en désordre ». */
@@ -107,7 +110,10 @@ export const estUneDemarcheDeFrancais = (id: string) =>
 /** Une feuille de l'atelier « Lire à voix haute ». */
 function feuilleVoixHaute(seance: number, titre: string, r: Partial<ReglagesVoixHaute>): FeuilleAFabriquer {
   const reglages = { ...REGLAGES_VOIX_HAUTE, ...r };
-  return { seance, atelier: "voixHaute", titre, fabriquer: (graine) => ({ html: htmlVoixHaute(reglages, graine), style: STYLE_FEUILLE + STYLE_VOIX_HAUTE }) };
+  return {
+    seance, atelier: "voixHaute", titre,
+    fabriquer: (graine) => ({ html: htmlVoixHaute(reglages, graine), style: STYLE_FEUILLE + STYLE_VOIX_HAUTE, refaire: { voixHaute: reglages } }),
+  };
 }
 
 export function planDuFrancais(demarcheId: string, ctx: ContexteFeuilles): PlanDesFeuilles | null {

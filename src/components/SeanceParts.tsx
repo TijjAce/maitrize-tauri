@@ -1,5 +1,8 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { ENTETE_TABLEAU, demarcheDe, demarchesParFamille, tableauDesPhases } from "../demarches";
+import { lireFabrication, modifierDansFabriquer } from "../modifierFeuille";
+import { nomDeLAtelier } from "../catalogueAteliers";
 import { partDeColonne } from "../print";
 import { api, MaterielItem, newId, nowIso, raccourci } from "../api";
 import { FichierImg } from "./Deroulement";
@@ -246,8 +249,9 @@ export function imageDuPresse(e: React.ClipboardEvent): File | null {
 export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cycle?: string }) {
   const [items, setItems] = React.useState<MaterielItem[]>([]);
   const pdfInput = React.useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
   // Le PDF qu'on regarde, en grand, dans la visionneuse.
-  const [vu, setVu] = React.useState<{ nom: string; titre: string } | null>(null);
+  const [vu, setVu] = React.useState<{ nom: string; titre: string; materiel: MaterielItem } | null>(null);
 
   const reload = React.useCallback(() => {
     api.materielList().then((all) => setItems(all.filter((m) => m.seanceId === seanceId)));
@@ -310,7 +314,8 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
         <div style={{ fontSize: 13, color: "var(--text-2)", fontStyle: "italic" }}>Aucun PDF pour cette séance.</div>
       ) : items.map((m) => {
         const pdfs = lirePdfs(m.pdfsJson);
-        const voir = (nom = pdfs[0]) => { if (nom) setVu({ nom, titre: m.titre }); };
+        const voir = (nom = pdfs[0]) => { if (nom) setVu({ nom, titre: m.titre, materiel: m }); };
+        const fabrication = lireFabrication(m.fabricationJson);
         return (
           <div key={m.id} className="list-row" style={{ marginBottom: 6, flexWrap: "wrap" }}>
             {/* La première page de chaque PDF : un clic l'ouvre en grand. */}
@@ -324,6 +329,12 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
               {pdfs.length ? <button type="button" className="lien titre-seance" onClick={() => voir()}>{m.titre}</button> : m.titre}
             </div>
             <button className="btn sm" onClick={() => voir()} disabled={!pdfs.length}>👁 Voir</button>
+            {fabrication && (
+              <button className="btn sm" onClick={() => modifierDansFabriquer(m, fabrication, navigate)}
+                title={`Rouvrir l'atelier « ${nomDeLAtelier(fabrication.atelier)} » réglé comme cette feuille : ce que vous y enregistrerez prendra sa place`}>
+                ✏️ Modifier
+              </button>
+            )}
             {/* La molette : l'échelle de cette feuille dans le cahier journal imprimé. */}
             <MoletteEchelle materiel={m} />
             <span className="chip" title="Imprimé à la suite du cahier journal">🖨 Journal</span>
@@ -331,7 +342,7 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
           </div>
         );
       })}
-      {vu && <PdfViewer nomFichier={vu.nom} titre={vu.titre} onClose={() => setVu(null)} />}
+      {vu && <PdfViewer nomFichier={vu.nom} titre={vu.titre} materiel={vu.materiel} onClose={() => setVu(null)} />}
     </div>
   );
 }

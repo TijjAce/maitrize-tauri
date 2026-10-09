@@ -10,6 +10,7 @@ import { useBanqueDeGestes } from "../components/BanqueDeGestes";
 import type { MotImage } from "../jeuxSons";
 import { estPerso } from "../imagesPerso";
 import { graineAuHasard } from "../hasard";
+import { useGraine } from "../modifierFeuille";
 import { ARTICLES, articleDe, cleDeLArticle, type Article } from "../articles";
 import { GESTES, STYLE_GESTES, gesteDe, legendeDuGeste } from "../gestesBM";
 import { Boutons, Colonnes } from "./AteliersLangage";
@@ -168,7 +169,7 @@ export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
   const [gardes, majGardes] = useReglages("articles", { mots: {} as Record<string, string> });
   // Quel trou pour un mot qui en offre plusieurs : le temps de la fiche.
   const [choix, setChoix] = React.useState<Record<string, number>>({});
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const [recherche, setRecherche] = React.useState(false);
   // Le mot dont on change le dessin, par sa place dans la liste.
   const [aRedessiner, setARedessiner] = React.useState<number | null>(null);

@@ -643,7 +643,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
  * échelle : c'est ici qu'on voit la feuille partir, c'est ici qu'on la règle.
  */
 function MaterielDuJournal({ materiels }: { materiels: MaterielItem[] }) {
-  const [vu, setVu] = React.useState<{ nom: string; titre: string } | null>(null);
+  const [vu, setVu] = React.useState<{ nom: string; titre: string; materiel: MaterielItem } | null>(null);
   if (!materiels.length) return null;
   return (
     <div className="journal-materiel">
@@ -654,13 +654,13 @@ function MaterielDuJournal({ materiels }: { materiels: MaterielItem[] }) {
         return (
           <div key={m.id} className="journal-materiel-ligne">
             {premier
-              ? <button type="button" className="lien journal-materiel-nom" title="Voir le PDF" onClick={() => setVu({ nom: premier, titre })}>📄 {titre}</button>
+              ? <button type="button" className="lien journal-materiel-nom" title="Voir le PDF" onClick={() => setVu({ nom: premier, titre, materiel: m })}>📄 {titre}</button>
               : <span className="journal-materiel-nom">📄 {titre}</span>}
             <MoletteEchelle materiel={m} compact />
           </div>
         );
       })}
-      {vu && <PdfViewer nomFichier={vu.nom} titre={vu.titre} onClose={() => setVu(null)} />}
+      {vu && <PdfViewer nomFichier={vu.nom} titre={vu.titre} materiel={vu.materiel} onClose={() => setVu(null)} />}
     </div>
   );
 }

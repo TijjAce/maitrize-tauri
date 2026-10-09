@@ -204,17 +204,23 @@ export function demarcheDeLOral(sd: string, cg: string, comp: string): string | 
 
 const ol = (seance: number, titre: string, r: Partial<ReglagesOral>): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_ORAL, ...r };
-  return { seance, atelier: "oral", titre, fabriquer: (graine) => ({ html: htmlOral(reglages, graine), style: STYLE_FEUILLE + STYLE_ORAL }) };
+  return { seance, atelier: "oral", titre, fabriquer: (graine) => ({ html: htmlOral(reglages, graine), style: STYLE_FEUILLE + STYLE_ORAL, refaire: { oral: reglages } }) };
 };
 const cx = (seance: number, titre: string, r: Partial<ReglagesComprehension>): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_COMPREHENSION, ...r };
-  return { seance, atelier: "comprehension", titre, fabriquer: (graine) => ({ html: htmlComprehension(reglages, graine), style: STYLE_FEUILLE + STYLE_COMPREHENSION }) };
+  return {
+    seance, atelier: "comprehension", titre,
+    fabriquer: (graine) => ({ html: htmlComprehension(reglages, graine), style: STYLE_FEUILLE + STYLE_COMPREHENSION, refaire: { comprehension: reglages } }),
+  };
 };
 /** Le poème de la classe, ses vers à coder : pauses et liaisons (atelier « Lire à voix haute »). */
 const poemeACoder = (seance: number, classe: ClasseC2): FeuilleAFabriquer => {
   const vers = POEMES[classe].vers.filter((v) => v.trim());
   const r = { ...REGLAGES_VOIX_HAUTE, exercice: classe === "CP" ? "ponctuation" as const : "liaisons" as const, classe, phrases: vers.join("\n"), codees: false, combien: vers.length };
-  return { seance, atelier: "voixHaute", titre: `${POEMES[classe].titre} — coder pour bien dire`, fabriquer: (graine) => ({ html: htmlVoixHaute(r, graine), style: STYLE_FEUILLE + STYLE_VOIX_HAUTE }) };
+  return {
+    seance, atelier: "voixHaute", titre: `${POEMES[classe].titre} — coder pour bien dire`,
+    fabriquer: (graine) => ({ html: htmlVoixHaute(r, graine), style: STYLE_FEUILLE + STYLE_VOIX_HAUTE, refaire: { voixHaute: r } }),
+  };
 };
 
 /** Les textes à écouter de chaque classe : une recette ou une règle, un récit, un documentaire, un texte pour l'évaluation. */

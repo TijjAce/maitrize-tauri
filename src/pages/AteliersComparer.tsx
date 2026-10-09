@@ -3,6 +3,7 @@ import { Field, Input, Select } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { graineAuHasard } from "../hasard";
+import { useGraine } from "../modifierFeuille";
 import { Boutons, Colonnes } from "./AteliersLangage";
 import {
   GROUPES_DE_NIVEAUX, NIVEAUX, NOMBRES_DE_CARTES, REGLAGES_COMPARER, STYLE_COMPARER, avecLesSignes, exempleForme, htmlComparer, libelleForme,
@@ -36,7 +37,7 @@ export function ComparerTab() {
   const [brut, maj] = useReglages<ReglagesComparer & { jusqua?: number }>(ATELIER, REGLAGES_COMPARER);
   const r = React.useMemo(() => reglagesComparerSurs(brut), [brut]);
   const niv = niveauParId(r.niveau);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const cartes = React.useMemo(() => paquet(r, graine), [r, graine]);
   const html = React.useMemo(() => htmlComparer(cartes, r), [cartes, r]);
   const basculer = (id: FormeNombre) =>

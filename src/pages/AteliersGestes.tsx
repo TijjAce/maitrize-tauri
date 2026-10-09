@@ -7,6 +7,7 @@ import { BanqueDeMots } from "../components/BanqueDeMots";
 import { BanqueDeGestes, demanderLesGestesAuJeu, useBanqueDeGestes } from "../components/BanqueDeGestes";
 import type { MotImage } from "../jeuxSons";
 import { graineAuHasard } from "../hasard";
+import { useGraine } from "../modifierFeuille";
 import { SONS } from "../lectureSons";
 import { Boutons, Coche, Colonnes } from "./AteliersLangage";
 import {
@@ -118,7 +119,7 @@ export function MotsEnGestesTab({ banque }: { banque: boolean }) {
   const [r, maj] = useReglages("motsGestes", REGLAGES_MOTS_CODES);
   // Les corrections se gardent : « ville » ne se corrige qu'une fois.
   const [gardees, majGardees] = useReglages("gestesCorrections", { mots: {} as Record<string, string[]> });
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const ids = mots.map((m) => m.id).filter((x): x is number => x != null);
   const pictos = usePictoImages(ids);
 

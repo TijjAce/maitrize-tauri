@@ -11,11 +11,13 @@ import { LectureSonsTab } from "./LectureSons";
 import { FeuilleDeLAtelier } from "../components/FeuilleDeLAtelier";
 import { ProjetDuMomentBandeau, ProjetDuMomentProvider, useProjetDuMoment } from "../components/ProjetDuMoment";
 import { useUsagesDesAteliers } from "../components/UsageAtelier";
+import { useMemoire } from "../components/useMemoire";
 import { openCtx } from "../components/ctxmenu";
 import { USAGES, descriptionDe, rangerParUsage, type Usage } from "../usageAtelier";
 import { AtelierContext } from "../components/AtelierContext";
 import { deposerSurLeBureau, lignesCompetencesAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
+import { BandeauModification } from "../components/BandeauModification";
 import { DominosTab, FluenceTab, IntrusTab, LettresTab, LotoSyllabesTab, PairesTab, SyllabaireTab } from "./AteliersSons";
 import {
   ArbreCalculTab, OperationsPoseesTab, CartesCalculTab, CartesNombresTab, CompteEstBonTab, CubesTab, FractionsTab, HeureTab, JeuDeLOieTab, MartiniereTab, NumerationTab, PyramidesTab,
@@ -71,6 +73,30 @@ export function chercherAteliers(
 /** Comment le catalogue se lit : par famille d'ateliers, ou par moment de la séquence. */
 type Rangement = "famille" | "usage";
 const RANGEMENT_MEMORISE = "fabriquer:rangement";
+
+/** Les sections repliées du catalogue — « famille:maths », « moment:rituel » —, gardées sur cet ordinateur. */
+const lirePlis = (brut: unknown): string[] => (Array.isArray(brut) ? brut.filter((x): x is string => typeof x === "string") : []);
+
+/**
+ * Une famille, ou un moment de la séquence, qui se plie : le catalogue est
+ * long, on referme ce qu'on n'ouvre jamais. Pliée, la section dit combien
+ * d'ateliers elle garde.
+ */
+function PliDuCatalogue({ ouvert, onBasculer, titre, aide, nombre, children }: {
+  ouvert: boolean; onBasculer: (ouvert: boolean) => void; titre: React.ReactNode; aide: string; nombre: number; children: React.ReactNode;
+}) {
+  return (
+    <details className="pli-catalogue" open={ouvert}
+      onToggle={(e) => { const o = e.currentTarget.open; if (o !== ouvert) onBasculer(o); }}>
+      <summary>
+        <b>{titre}</b>
+        {!ouvert && <span className="pli-nombre">{nombre} atelier{nombre > 1 ? "s" : ""}</span>}
+        <span className="meta">{aide}</span>
+      </summary>
+      {children}
+    </details>
+  );
+}
 
 const ONGLET_MEMORISE = "fabriquer:onglet";
 
@@ -146,6 +172,11 @@ export default function Jeux() {
     setRangementBrut(r);
     try { localStorage.setItem(RANGEMENT_MEMORISE, r); } catch { /* stockage indisponible */ }
   };
+  const [plis, setPlis] = useMemoire<string[]>("plis", lirePlis);
+  const plier = (cle: string, plie: boolean) => setPlis(plie ? [...new Set([...plis, cle])] : plis.filter((x) => x !== cle));
+  // « Tout replier » vaut pour la lecture du moment : les familles, ou les moments.
+  const sectionsLues = rangement === "usage" ? USAGES.map((u) => `moment:${u.id}`) : FAMILLES.map((f) => `famille:${f.id}`);
+  const toutPlie = sectionsLues.every((c) => plis.includes(c));
   const setOnglet = React.useCallback((o: Onglet | "") => {
     setOngletBrut(o);
     try { localStorage.setItem(ONGLET_MEMORISE, o); } catch { /* stockage indisponible */ }
@@ -192,6 +223,7 @@ export default function Jeux() {
     );
     return (
       <Page titre="Fabriquer" sous="Jeux et feuilles à imprimer : langage, sons, lecture et écriture, mathématiques — du cycle 1 au cycle 3">
+        <BandeauModification atelier="" onReprendre={(a) => setOnglet(a as Onglet)} />
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
           <Input value={recherche} onChange={(e) => setRecherche(e.target.value)}
             placeholder="Chercher un atelier : loto, syllabes, calcul mental, fractions, cycle 3, rituel…"
@@ -201,6 +233,12 @@ export default function Jeux() {
             <button className={rangement === "usage" ? "active" : ""} onClick={() => setRangement("usage")}
               title="Découverte, entraînement, réinvestissement, rituel : le moment de la séquence que sert chaque atelier">Par moment de la séquence</button>
           </div>
+          {!recherche.trim() && (
+            <button className="btn ghost sm" onClick={() => setPlis(toutPlie
+              ? plis.filter((c) => !sectionsLues.includes(c)) : [...new Set([...plis, ...sectionsLues])])}>
+              {toutPlie ? "▾ Tout déplier" : "▸ Tout replier"}
+            </button>
+          )}
         </div>
         {recherche.trim() ? (
           trouves.length ? (
@@ -229,25 +267,23 @@ export default function Jeux() {
                   setEnVol("");
                   if (id) ranger(id, usage.id);
                 }}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-                  <b style={{ fontSize: 15 }}>{usage.ico} {usage.nom}</b>
-                  <span className="meta" style={{ fontSize: 12.5 }}>{usage.quand} — {usage.aide}</span>
-                </div>
-                {outils.length ? (
-                  <div className="ateliers">{outils.map(carteMobile)}</div>
-                ) : (
-                  <div className="zone-moment-vide">Aucun atelier ici — glissez-en un.</div>
-                )}
+                <PliDuCatalogue ouvert={!plis.includes(`moment:${usage.id}`)} onBasculer={(o) => plier(`moment:${usage.id}`, !o)}
+                  titre={<>{usage.ico} {usage.nom}</>} aide={`${usage.quand} — ${usage.aide}`} nombre={outils.length}>
+                  {outils.length ? (
+                    <div className="ateliers">{outils.map(carteMobile)}</div>
+                  ) : (
+                    <div className="zone-moment-vide">Aucun atelier ici — glissez-en un.</div>
+                  )}
+                </PliDuCatalogue>
               </section>
             ))}
           </>
         ) : FAMILLES.map((f) => (
-          <section key={f.id} style={{ marginBottom: 22 }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-              <b style={{ fontSize: 15 }}>{f.libelle}</b>
-              <span className="meta" style={{ fontSize: 12.5 }}>{f.aide}</span>
-            </div>
-            <div className="ateliers">{f.outils.map(carte)}</div>
+          <section key={f.id} className="famille-catalogue">
+            <PliDuCatalogue ouvert={!plis.includes(`famille:${f.id}`)} onBasculer={(o) => plier(`famille:${f.id}`, !o)}
+              titre={f.libelle} aide={f.aide} nombre={f.outils.length}>
+              <div className="ateliers">{f.outils.map(carte)}</div>
+            </PliDuCatalogue>
           </section>
         ))}
       </Page>
@@ -259,6 +295,7 @@ export default function Jeux() {
     <ProjetDuMomentProvider>
     <Page titre={outil ? `${outil.icone} ${outil.nom}` : "Fabriquer"} sous={outil?.quoi}
       actions={<button className="btn ghost sm" onClick={() => setOnglet("")}>← Tous les ateliers</button>}>
+      <BandeauModification atelier={onglet} onReprendre={(a) => setOnglet(a as Onglet)} />
       {outil && <FeuilleDeLAtelier atelier={outil.id} nom={outil.nom} />}
       {outil && <ProjetDuMomentBandeau atelier={outil.id} />}
       <AtelierContext.Provider value={onglet}>

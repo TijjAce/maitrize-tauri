@@ -3,6 +3,7 @@ import { Field, Input, Select, Textarea } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { graineAuHasard } from "../hasard";
+import { useGraine } from "../modifierFeuille";
 import { Boutons, Coche, Colonnes, bureau, imprimer } from "./AteliersMaths";
 import { EXERCICES_ORAL, GENRES, REGLAGES_ORAL, STYLE_ORAL, htmlOral, type ExerciceOral, type Genre } from "../oral";
 import { EXERCICES_GRAMMAIRE, REGLAGES_GRAMMAIRE, STYLE_GRAMMAIRE, htmlGrammaire, type ExerciceGrammaire } from "../grammaire";
@@ -19,7 +20,7 @@ const borne = (v: string, min: number, max: number, defaut: number) => Math.max(
 
 export function OrthographeTab() {
   const [r, maj] = useReglages("orthographe", REGLAGES_ORTHOGRAPHE);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlOrthographe(r, graine), [r, graine]);
   const libelle = EXERCICES_ORTHOGRAPHE.find((e) => e.id === r.exercice)?.libelle ?? "";
   const titre = `Orthographe — ${minusculeInitiale(libelle)}`;
@@ -78,7 +79,7 @@ export function OrthographeTab() {
 
 export function EcrireTab() {
   const [r, maj] = useReglages("ecrire", REGLAGES_ECRIRE);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlEcrire(r, graine), [r, graine]);
   const libelle = EXERCICES_ECRIRE.find((e) => e.id === r.exercice)?.libelle ?? "";
   const titre = `Écrire — ${minusculeInitiale(libelle)}`;
@@ -113,7 +114,7 @@ export function EcrireTab() {
 
 export function GrammaireTab() {
   const [r, maj] = useReglages("grammaire", REGLAGES_GRAMMAIRE);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlGrammaire(r, graine), [r, graine]);
   const libelle = EXERCICES_GRAMMAIRE.find((e) => e.id === r.exercice)?.libelle ?? "";
   const titre = `Grammaire — ${minusculeInitiale(libelle)}`;
@@ -166,7 +167,7 @@ export function GrammaireTab() {
 
 export function OralTab() {
   const [r, maj] = useReglages("oral", REGLAGES_ORAL);
-  const [graine, setGraine] = React.useState(graineAuHasard);
+  const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlOral(r, graine), [r, graine]);
   const libelle = EXERCICES_ORAL.find((e) => e.id === r.exercice)?.libelle ?? "";
   const titre = `Oral — ${minusculeInitiale(libelle)}`;

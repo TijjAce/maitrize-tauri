@@ -31,8 +31,9 @@ import { ETAPES_CONSEILLEES, REGLAGES_SUITES, STYLE_SUITES, htmlSuites, suitesPo
 import { MOTIFS, REGLAGES_PAR_DEFAUT as REGLAGES_COLORIAGE, couleursDuMotif, fabriquerColoriage, feuilleDuColoriage, type Graphie, type ReglagesColoriage } from "./coloriageMagique";
 import { REGLAGES_CURSIVE, STYLE_CURSIVE, htmlEcritureCursive, modelesDeLEtape, type ReglagesCursive } from "./ecritureCursive";
 // Mathématiques
-import { REGLAGES_CUBES, exercicesCubes, htmlCubes, reglagesCubesSurs, type IdNiveauCubes, type ReglagesCubes } from "./cubesNumeration";
+import { PART_A_REGROUPER, REGLAGES_CUBES, exercicesCubes, htmlCubes, reglagesCubesSurs, type IdNiveauCubes, type ReglagesCubes } from "./cubesNumeration";
 import { STYLE_SEQUENCE_CUBES, reglagesDeLaFeuille as feuilleDeCubes } from "./sequenceCubes";
+import { memesReglages } from "./modifierFeuille";
 import { REGLAGES_COMPARER, reglagesComparerSurs, type IdNiveau as IdNiveauComparer, type ReglagesComparer } from "./comparerNombres";
 import { STYLE_SEQUENCE_COMPARER, htmlDeLaFeuille as htmlDeLaFeuilleComparer } from "./sequenceComparer";
 import { REGLAGES_PYRAMIDES, STYLE_PYRAMIDES, htmlPyramides } from "./pyramides";
@@ -98,7 +99,12 @@ export interface OutilsFiche {
   pictos: (mots: string[]) => Promise<Record<string, number>>;
 }
 
-export interface FicheFabriquee { html: string; style: string }
+export interface FicheFabriquee {
+  html: string;
+  style: string;
+  /** Ce que l'atelier garde (`fabriquer:<clé>`) pour refaire la fiche dans Fabriquer ; absent s'il ne la refait pas à l'identique. */
+  refaire?: Record<string, unknown>;
+}
 
 export interface RecetteDeFiche {
   id: string;
@@ -122,6 +128,9 @@ export const iconeDeLaRecette = (r: RecetteDeFiche) =>
   FAMILLES.flatMap((f) => f.outils).find((o) => o.id === r.atelier)?.icone ?? "📄";
 
 const elementaire = (n: NiveauFiches): Elementaire => (enMaternelle(n) ? "CP" : n);
+
+/** Une fiche que son atelier refait telle quelle : ses réglages, sous la clé où il les garde (voir `modifierFeuille`). */
+const commeLAtelier = (html: string, style: string, cle: string, reglages: object): FicheFabriquee => ({ html, style, refaire: { [cle]: reglages } });
 
 /** Les images de ces pictogrammes, par numéro ; une image qui manque ne bloque pas les autres. */
 async function imagesDe(ids: (number | null)[], outils: OutilsFiche): Promise<Record<number, string>> {
@@ -149,7 +158,8 @@ async function categoriser(forme: FormeCategoriser, c: ContexteFiche, graine: nu
     const r = { ...REGLAGES_CATEGORISER, ...categoriserDuNiveau(niveau), niveau, forme, categories, legendes: false, maisons: false };
     if (cequiManqueCategoriser(r)) continue;
     const images = await imagesDe(idsDesCategories(categories), outils);
-    return { html: htmlCategoriser(r, images, alea), style: STYLE_FEUILLE + STYLE_CATEGORISER };
+    // La feuille tire à partir de la graine, comme l'atelier : il la refait à l'identique.
+    return commeLAtelier(htmlCategoriser(r, images, hasard(graine)), STYLE_FEUILLE + STYLE_CATEGORISER, "categoriser", r);
   }
   throw new Error("Les pictogrammes de ces catégories manquent à la banque.");
 }
@@ -162,7 +172,8 @@ async function suiteDImages(c: ContexteFiche, graine: number, outils: OutilsFich
   const suite = melanger(alea, possibles.length ? possibles : suitesPour(niveau))[0];
   const r = { ...REGLAGES_SUITES, niveau, forme: "colonnes" as const, titre: suite.libelle, etapes: suite.etapes.map((e) => ({ id: e.id, mot: e.mot })), legendes: false };
   const images = await imagesDe(suite.etapes.map((e) => e.id), outils);
-  return { html: htmlSuites(r, images, alea), style: STYLE_FEUILLE + STYLE_SUITES };
+  // La feuille tire à partir de la graine, comme l'atelier : il la refait à l'identique.
+  return commeLAtelier(htmlSuites(r, images, hasard(graine)), STYLE_FEUILLE + STYLE_SUITES, "suites", r);
 }
 
 /**
@@ -183,7 +194,8 @@ function coloriage(r: Partial<ReglagesColoriage>, graine: number, maternelle: bo
     motif: motifAuHasard(graine, maternelle), ...r,
   };
   const f = feuilleDuColoriage(fabriquerColoriage(reglages, graine), reglages, false, consigneAutre);
-  return { html: f.corps, style: STYLE_FEUILLE + f.style };
+  // Une consigne à part — celle des chiffres —, l'atelier ne l'écrit pas : il ne refait que les autres.
+  return { html: f.corps, style: STYLE_FEUILLE + f.style, refaire: consigneAutre ? undefined : { coloriage: reglages } };
 }
 
 /** Les chiffres d'un coloriage de maternelle : jusqu'à 6 en moyenne section, jusqu'à 9 en grande. */
@@ -206,7 +218,8 @@ export const prenomEcrit = (prenom: string) =>
   prenom.trim().toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (_, avant: string, l: string) => avant + l.toUpperCase());
 
 function cursive(r: Partial<ReglagesCursive>): FicheFabriquee {
-  return { html: htmlEcritureCursive({ ...REGLAGES_CURSIVE, ...r }), style: STYLE_FEUILLE + STYLE_CURSIVE };
+  const reglages = { ...REGLAGES_CURSIVE, ...r };
+  return commeLAtelier(htmlEcritureCursive(reglages), STYLE_FEUILLE + STYLE_CURSIVE, "cursive", reglages);
 }
 
 // Le CP, le CE1, le CE2.
@@ -221,7 +234,9 @@ const cubes = (c: ContexteFiche): ReglagesCubes =>
 function feuilleCubes(quoi: "ecrire" | "dessiner", c: ContexteFiche, graine: number): FicheFabriquee {
   const { reglages, part } = feuilleDeCubes(quoi, cubes(c));
   const r = { ...reglages, nombre: c.niveau === "CE2" ? 4 : 6 };
-  return { html: htmlCubes(exercicesCubes(r, graine, part), r, graine), style: STYLE_SEQUENCE_CUBES };
+  // L'atelier la refait quand il garde ces réglages tels quels et regroupe la même part des collections.
+  const fidele = (!r.aRegrouper || part === PART_A_REGROUPER) && memesReglages(reglagesCubesSurs(r), r);
+  return { html: htmlCubes(exercicesCubes(r, graine, part), r, graine), style: STYLE_SEQUENCE_CUBES, refaire: fidele ? { cubes: r } : undefined };
 }
 
 const niveauDeComparer = (c: ContexteFiche): IdNiveauComparer =>
@@ -257,7 +272,7 @@ const motsFrequents = (classe: Elementaire, graine: number, combien: number) =>
 function motsMeles(c: ContexteFiche, graine: number): FicheFabriquee {
   const mots = c.niveau === "CP" ? motsDuSon(c, graine, 8) : motsFrequents(elementaire(c.niveau), graine, 8);
   const r = { ...REGLAGES_MOTS_MELES, mots: mots.join("\n"), taille: c.niveau === "CP" ? 9 : 10, diagonales: false, inverses: false, liste: true, grilles: 1 };
-  return { html: htmlMotsMeles([grilleMotsMeles(mots, r, graine)], r), style: STYLE_FEUILLE + STYLE_MOTS_MELES };
+  return commeLAtelier(htmlMotsMeles([grilleMotsMeles(mots, r, graine)], r), STYLE_FEUILLE + STYLE_MOTS_MELES, "motsMeles", r);
 }
 
 /** La grammaire de la classe : genre et nombre au CP, le sujet et le verbe au CE1, les classes de mots au CE2. */
@@ -292,31 +307,38 @@ export const RECETTES: RecetteDeFiche[] = [
   { id: "pyramides", atelier: "pyramides", nom: "Les pyramides de nombres", domaine: "maths", niveaux: C2,
     fabriquer: (c, g) => {
       const r = c.niveau === "CP" ? { etages: 3, jusqua: c.periode <= 2 ? 3 : 6 } : c.niveau === "CE1" ? { etages: 4, jusqua: 10 } : { etages: 4, jusqua: 25 };
-      return { html: htmlPyramides({ ...REGLAGES_PYRAMIDES, forme: "pyramide", combien: 6, trous: "bas", ...r }, g), style: STYLE_FEUILLE + STYLE_PYRAMIDES };
+      const reglages = { ...REGLAGES_PYRAMIDES, forme: "pyramide" as const, combien: 6, trous: "bas" as const, ...r };
+      return commeLAtelier(htmlPyramides(reglages, g), STYLE_FEUILLE + STYLE_PYRAMIDES, "pyramides", reglages);
     } },
   { id: "coloriage-calcul", atelier: "coloriage", nom: "Coloriage magique : calculer", domaine: "maths", niveaux: C2,
     fabriquer: (c, g) => coloriage(c.niveau === "CP" ? { matiere: "calcul", operation: "addition", plafond: 10 }
       : c.niveau === "CE1" ? { matiere: "calcul", operation: "melange", plafond: 20 }
         : { matiere: "calcul", operation: "multiplication", table: [2, 3, 4, 5][g % 4] }, g, false) },
   { id: "posees", atelier: "posees", nom: (c) => (c.niveau === "CE1" ? "Des additions posées" : "Des soustractions posées"), domaine: "maths", niveaux: ["CE1", "CE2"],
-    fabriquer: (c, g) => ({ html: htmlOperationsPosees(posees(c), g), style: STYLE_FEUILLE + STYLE_POSEES }) },
+    fabriquer: (c, g) => commeLAtelier(htmlOperationsPosees(posees(c), g), STYLE_FEUILLE + STYLE_POSEES, "operationsPosees", posees(c)) },
   { id: "reproduire", atelier: "geometrie", nom: "Reproduire sur quadrillage", domaine: "maths", niveaux: C2,
-    fabriquer: (c, g) => ({
-      html: htmlGeometrie({ ...REGLAGES_GEOMETRIE, exercice: "reproduire", classe: elementaire(c.niveau), support: "quadrille",
-        niveau: c.niveau === "CP" ? "lignes" : c.niveau === "CE1" ? "diagonales" : "obliques" }, g),
-      style: STYLE_FEUILLE + STYLE_GEOMETRIE,
-    }) },
+    fabriquer: (c, g) => {
+      const reglages = { ...REGLAGES_GEOMETRIE, exercice: "reproduire" as const, classe: elementaire(c.niveau), support: "quadrille" as const,
+        niveau: c.niveau === "CP" ? "lignes" as const : c.niveau === "CE1" ? "diagonales" as const : "obliques" as const };
+      return commeLAtelier(htmlGeometrie(reglages, g), STYLE_FEUILLE + STYLE_GEOMETRIE, "geometrie", reglages);
+    } },
   { id: "fusee", atelier: "deplacements", nom: "Le chemin de la fusée", domaine: "maths", niveaux: C2,
-    fabriquer: (c, g) => ({ html: htmlDeplacements({ ...REGLAGES_DEPLACEMENTS, exercice: "fusee", classe: c.niveau === "CP" ? "CP" : "CE1", mode: "decoder", combien: 4 }, g),
-      style: STYLE_FEUILLE + STYLE_DEPLACEMENTS }) },
+    fabriquer: (c, g) => {
+      const reglages = { ...REGLAGES_DEPLACEMENTS, exercice: "fusee" as const, classe: c.niveau === "CP" ? "CP" as const : "CE1" as const, mode: "decoder" as const, combien: 4 };
+      return commeLAtelier(htmlDeplacements(reglages, g), STYLE_FEUILLE + STYLE_DEPLACEMENTS, "deplacements", reglages);
+    } },
   { id: "heure", atelier: "heure", nom: "Lire l'heure", domaine: "maths", niveaux: ["CE1", "CE2"],
-    fabriquer: (c, g) => ({ html: htmlAtelierHeure(heure(c), g), style: STYLE_FEUILLE + STYLE_HEURE + STYLE_DUREES }) },
+    fabriquer: (c, g) => commeLAtelier(htmlAtelierHeure(heure(c), g), STYLE_FEUILLE + STYLE_HEURE + STYLE_DUREES, "heure", heure(c)) },
   { id: "monnaie", atelier: "monnaie", nom: "Combien d'argent ?", domaine: "maths", niveaux: C2,
-    fabriquer: (c, g) => ({ html: htmlMonnaie({ ...REGLAGES_MONNAIE, exercice: "valeur", jusqua: c.niveau === "CP" ? 20 : c.niveau === "CE1" ? 50 : 100, combien: 6 }, g),
-      style: STYLE_FEUILLE + STYLE_MONNAIE }) },
+    fabriquer: (c, g) => {
+      const reglages = { ...REGLAGES_MONNAIE, exercice: "valeur" as const, jusqua: c.niveau === "CP" ? 20 : c.niveau === "CE1" ? 50 : 100, combien: 6 };
+      return commeLAtelier(htmlMonnaie(reglages, g), STYLE_FEUILLE + STYLE_MONNAIE, "monnaie", reglages);
+    } },
   { id: "mesurer", atelier: "mesures", nom: "Mesurer des segments", domaine: "maths", niveaux: ["CE1", "CE2"],
-    fabriquer: (c, g) => ({ html: htmlMesures({ ...REGLAGES_MESURES, exercice: "mesurer", grandeur: "longueur", classe: elementaire(c.niveau), combien: 6 }, g),
-      style: STYLE_FEUILLE + STYLE_MESURES }) },
+    fabriquer: (c, g) => {
+      const reglages = { ...REGLAGES_MESURES, exercice: "mesurer" as const, grandeur: "longueur" as const, classe: elementaire(c.niveau), combien: 6 };
+      return commeLAtelier(htmlMesures(reglages, g), STYLE_FEUILLE + STYLE_MESURES, "mesures", reglages);
+    } },
   // ── Français
   { id: "cursive", atelier: "cursive", nom: "Écriture cursive", domaine: "francais", niveaux: C2,
     fabriquer: (c, g) => c.niveau === "CP"
@@ -327,17 +349,25 @@ export const RECETTES: RecetteDeFiche[] = [
   { id: "mots-meles", atelier: "motsMeles", nom: "Mots mêlés", domaine: "francais", niveaux: C2,
     fabriquer: (c, g) => motsMeles(c, g) },
   { id: "comprendre", atelier: "comprehension", nom: "Lire et comprendre un texte", domaine: "francais", niveaux: C2, lecture: true,
-    fabriquer: (c, g) => ({
-      html: htmlComprehension({ ...REGLAGES_COMPREHENSION, exercice: c.niveau === "CP" ? "vraiFaux" : "questions", classe: elementaire(c.niveau), texte: "", questions: "toutes" }, g),
-      style: STYLE_FEUILLE + STYLE_COMPREHENSION,
-    }) },
+    fabriquer: (c, g) => {
+      const reglages = { ...REGLAGES_COMPREHENSION, exercice: c.niveau === "CP" ? "vraiFaux" as const : "questions" as const, classe: elementaire(c.niveau), texte: "", questions: "toutes" as const };
+      return commeLAtelier(htmlComprehension(reglages, g), STYLE_FEUILLE + STYLE_COMPREHENSION, "comprehension", reglages);
+    } },
   { id: "grammaire", atelier: "grammaire", nom: (c) => GRAMMAIRE[elementaire(c.niveau)].nom, domaine: "francais", niveaux: C2, lecture: true,
-    fabriquer: (c, g) => ({ html: htmlGrammaire({ ...REGLAGES_GRAMMAIRE, exercice: GRAMMAIRE[elementaire(c.niveau)].exercice, classe: elementaire(c.niveau) }, g),
-      style: STYLE_FEUILLE + STYLE_GRAMMAIRE }) },
+    fabriquer: (c, g) => {
+      const reglages = { ...REGLAGES_GRAMMAIRE, exercice: GRAMMAIRE[elementaire(c.niveau)].exercice, classe: elementaire(c.niveau) };
+      return commeLAtelier(htmlGrammaire(reglages, g), STYLE_FEUILLE + STYLE_GRAMMAIRE, "grammaire", reglages);
+    } },
   { id: "listes", atelier: "orthographe", nom: "Les listes de mots qui se ressemblent", domaine: "francais", niveaux: ["CE1", "CE2"], lecture: true,
-    fabriquer: (c, g) => ({ html: htmlOrthographe({ ...REGLAGES_ORTHOGRAPHE, exercice: "listes", classe: elementaire(c.niveau) }, g), style: STYLE_FEUILLE + STYLE_ORTHOGRAPHE }) },
+    fabriquer: (c, g) => {
+      const reglages = { ...REGLAGES_ORTHOGRAPHE, exercice: "listes" as const, classe: elementaire(c.niveau) };
+      return commeLAtelier(htmlOrthographe(reglages, g), STYLE_FEUILLE + STYLE_ORTHOGRAPHE, "orthographe", reglages);
+    } },
   { id: "mots-imposes", atelier: "ecrire", nom: "Écrire avec des mots imposés", domaine: "francais", niveaux: ["CE1", "CE2"], lecture: true,
-    fabriquer: (c, g) => ({ html: htmlEcrire({ ...REGLAGES_ECRIRE, exercice: "motsImposes", classe: elementaire(c.niveau) }, g), style: STYLE_FEUILLE + STYLE_ECRIRE }) },
+    fabriquer: (c, g) => {
+      const reglages = { ...REGLAGES_ECRIRE, exercice: "motsImposes" as const, classe: elementaire(c.niveau) };
+      return commeLAtelier(htmlEcrire(reglages, g), STYLE_FEUILLE + STYLE_ECRIRE, "ecrire", reglages);
+    } },
 ];
 
 // Au CP, ce qui attend que le code soit bien avancé : un texte se lit seul à
