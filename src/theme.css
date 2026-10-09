@@ -553,6 +553,21 @@ details.pli[open] { padding-bottom: 10px; }
 /* Les mêmes cases, à côté des boutons d'impression. */
 .cases-feuille { display: flex; align-items: center; gap: 4px 14px; flex-wrap: wrap; margin-top: 10px; font-size: 12.5px; }
 .cases-feuille .pb-coche { margin: 0; font-size: 12.5px; }
+/* Le mode dyslexique et le choix des images, à la suite des cases. */
+.presentation-feuille { display: inline-flex; align-items: center; gap: 4px 14px; flex-wrap: wrap; }
+.presentation-feuille .pb-coche { margin: 0; }
+.presentation-images { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+/* Le vrai matériel : ce que la classe a, ce que le papier ne remplace pas. */
+.materiel-reel ul { list-style: none; margin: 6px 0 2px; padding: 0; display: grid; gap: 6px; }
+.materiel-reel-ligne { display: flex; gap: 8px; align-items: baseline; font-size: 13px; line-height: 1.4; }
+.materiel-reel-etat { flex: none; width: 16px; text-align: center; color: var(--text-2); font-weight: 700; }
+.materiel-reel-etat.oui { color: var(--accent); }
+.materiel-reel-badge { display: inline-block; font-size: 11px; font-weight: 600; color: #9a3412; background: #ffedd5;
+  border-radius: 100px; padding: 0 7px; margin-left: 4px; white-space: nowrap; cursor: help; }
+.materiel-reel-famille h4 { margin: 14px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .3px; color: var(--text-2); }
+.materiel-reel-fiche { padding: 6px 0 8px; border-top: 1px solid var(--border); }
+.materiel-reel-fiche .pb-coche { display: inline-flex; margin: 0; }
+.materiel-reel-atelier > summary .meta { font-weight: 400; margin-left: 8px; }
 /* Le projet du moment, en tête d'un atelier ; et, sous une liste, d'où viennent ses entrées. */
 .projet-atelier { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; }
 .projet-atelier select { max-width: 280px; }

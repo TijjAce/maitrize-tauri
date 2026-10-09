@@ -14,6 +14,8 @@ import { toast } from "./Toaster";
 import { NIVEAUX_DE_PROGRAMMATION, libelleDeProgrammation, niveauDeProgrammation, programmationProposee } from "../programmation";
 import { aidesDeLaSequence, seanceDeLaParole } from "../aidesDesSequences";
 import { lireProfils } from "../planDeLaClasse";
+import { CLE_INVENTAIRE, lireInventaire, materielPourCompetences, noteDuMaterielReel } from "../materielDeClasse";
+import { MaterielReelListe } from "./MaterielDeLaClasse";
 
 // Fiche d'une séquence : titre, période, compétence visée, objectifs, vignette,
 // vidéo. Elle vivait dans l'ancien onglet Séquences et avait disparu avec lui :
@@ -97,6 +99,10 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
   const [paroleChoisie, setParoleChoisie] = React.useState<number | null>(null);
   React.useEffect(() => { setParoleChoisie(null); }, [cadre]);
   const seanceParole = paroleChoisie ?? (demarche ? seanceDeLaParole(demarche.seances) : -1);
+  // Le matériel réel que la compétence nomme — la balance, le thermomètre, le globe — : chaque séance le rappelle.
+  const materielReel = React.useMemo(() => (comp
+    ? materielPourCompetences([{ texte: comp.competenceTitre, domaine: [comp.domaineTitre, comp.sousDomaineTitre].filter(Boolean).join(" › ") }])
+    : []), [s.competenceVisee]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const save = async () => {
     setEnCours(true);
@@ -108,8 +114,11 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
       await api.sequenceSave(propre);
       if (poseLesSeances) {
         // À la suite des séances qui existent : numérotées après elles, avec la note du matériel et la compétence visée.
+        // Le matériel réel de la classe, relu à l'enregistrement : ce qu'on vient de cocher dans l'inventaire compte.
+        const noteReelle = noteDuMaterielReel(materielReel, lireInventaire(await api.settingGet(CLE_INVENTAIRE).catch(() => null)));
         const seances = seancesDuCadre(demarche, propre.id, nbExistantes + 1).map((sc, i) => ({
-          ...sc, materiel: plan?.materiel[i] || sc.materiel, competences: comp ? JSON.stringify([comp]) : sc.competences,
+          ...sc, materiel: [plan?.materiel[i] || sc.materiel, noteReelle].filter(Boolean).join("\n"),
+          competences: comp ? JSON.stringify([comp]) : sc.competences,
         }));
         for (const seance of seances) await api.seanceSave(seance);
         // Puis les feuilles, chacune dans sa séance, en PDF, avec la compétence de la séquence en tête.
@@ -303,6 +312,12 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
                 ) : (
                   <div key={a.atelier} className="meta" style={{ fontSize: 12.5 }}>{nomDeLAtelier(a.atelier)} — à imprimer depuis son atelier, la séance ouverte.</div>
                 )))}
+              </div>
+            )}
+            {materielReel.length > 0 && (
+              <div className="deroulement-rattaches">
+                <MaterielReelListe materiel={materielReel}
+                  titre="🧰 Le vrai matériel que la compétence nomme — chaque séance le rappellera, à sortir ou à se procurer :" />
               </div>
             )}
             <div className="deroulement-rattaches">
