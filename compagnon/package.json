@@ -2,6 +2,7 @@
   "name": "maitrize-dictaphone",
   "private": true,
   "version": "0.1.0",
+  "license": "AGPL-3.0-or-later",
   "description": "Le dictaphone de classe : il enregistre, il dépose sur l'ordinateur.",
   "scripts": {
     "tauri": "tauri"

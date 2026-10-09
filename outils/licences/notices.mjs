@@ -65,6 +65,9 @@ const rust = meta.packages
   }))
   .sort((a, b) => a.nom.localeCompare(b.nom) || a.version.localeCompare(b.version));
 
+/** Le texte de la licence MIT, pour les données reprises (le banc de filtres de Whisper). */
+const LICENCE_MIT = "Permission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.";
+
 const ligne = (c) => `${c.nom} ${c.version} — ${c.licence}`;
 const parties = [
   "Maîtrize — licences des composants tiers",
@@ -75,6 +78,16 @@ const parties = [
   "",
   `Relevé pour ${hote}. Les pictogrammes (ARASAAC, Sclera, F. Bajard) et les modèles de transcription ne sont pas`,
   "embarqués : ils se téléchargent depuis l'application, et leurs licences y sont rappelées.",
+  "",
+  "== Données reprises ==",
+  "Banc de filtres mel de Whisper (src-tauri/assets/melfilters.bytes) : les valeurs du modèle de référence",
+  "d'OpenAI, https://github.com/openai/whisper — licence MIT.",
+  "",
+  "MIT License",
+  "",
+  "Copyright (c) 2022 OpenAI",
+  "",
+  ...LICENCE_MIT.split("\n"),
   "",
   `== Interface (JavaScript) — ${js.length} composants ==`,
   ...js.map(ligne),
