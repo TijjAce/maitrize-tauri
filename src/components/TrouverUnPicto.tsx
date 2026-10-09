@@ -3,6 +3,8 @@ import { api, texteErreur, type PictoAppoint, type PictoArasaac } from "../api";
 import { Field, Input, Modal } from "./ui";
 import { toast } from "./Toaster";
 import { confirmer } from "./confirmer";
+import { pseudonymiserTout } from "../confidentialite";
+import { nomsAMasquer } from "../nomsAMasquer";
 import { EtiquetteMonPicto, usePictoImage } from "./ChoixPicto";
 import { texteTelechargement, useBanquesAppoint } from "./ChoixPictoConsigne";
 import { infoBanque } from "../pictosAppoint";
@@ -115,7 +117,9 @@ export function TrouverUnPicto({ onClose }: { onClose: () => void }) {
     if (!mot) return;
     setDessine(true);
     try {
-      const brut = await api.mistralDessinerPicto(mot, precision);
+      // Un nom connu ne part pas, même pour un dessin.
+      const [motMasque, precisionMasquee] = pseudonymiserTout([mot, precision], await nomsAMasquer()).textes;
+      const brut = await api.mistralDessinerPicto(motMasque, precisionMasquee);
       setChoix({ sorte: "dessin", base64: await enPngCarre(`data:image;base64,${brut}`), mot, precision: precision.trim() });
     } catch (e) {
       toast(texteErreur(e), { icone: "⚠️", duree: 10000 });

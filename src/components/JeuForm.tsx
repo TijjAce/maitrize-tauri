@@ -7,6 +7,8 @@ import { fileToBase64 } from "./SeanceParts";
 import { toast } from "./Toaster";
 import { CANEVAS_REGLE, questionRegle, regleEcrite, texteSimple } from "../jeuxCites";
 import { ChoixCompetencesBo } from "./ChoixCompetencesBo";
+import { pseudonymiserTout, restaurer } from "../confidentialite";
+import { nomsAMasquer } from "../nomsAMasquer";
 
 /** Un jeu de la ludothèque, à créer ou à modifier — depuis la ludothèque ou le cahier journal. */
 export function JeuForm({ j, nouveau = !j.titre, onClose, onSaved }: {
@@ -24,15 +26,16 @@ export function JeuForm({ j, nouveau = !j.titre, onClose, onSaved }: {
   const setMin = (n: number) => setV((x) => ({ ...x, nbJoueursMin: n, nbJoueursMax: Math.max(n, x.nbJoueursMax) }));
   const setMax = (n: number) => setV((x) => ({ ...x, nbJoueursMax: n, nbJoueursMin: Math.min(n, x.nbJoueursMin) }));
 
-  // La règle cherchée en ligne : seul le nom du jeu part. Elle s'ajoute au
-  // champ, à relire avant d'enregistrer.
+  // La règle cherchée en ligne : seul le nom du jeu part, sans les noms
+  // connus. Elle s'ajoute au champ, à relire avant d'enregistrer.
   const [recherche, setRecherche] = React.useState(false);
   const [sources, setSources] = React.useState<SourceWeb[]>([]);
   const chercherRegle = async () => {
     setRecherche(true);
     try {
-      const r = await api.mistralRechercheWeb(questionRegle(v.titre));
-      const regle = texteSimple(r.texte);
+      const masque = pseudonymiserTout([v.titre], await nomsAMasquer());
+      const r = await api.mistralRechercheWeb(questionRegle(masque.textes[0]));
+      const regle = texteSimple(restaurer(r.texte, masque.table).texte);
       if (!regle) { toast(`Aucune règle trouvée pour « ${v.titre.trim()} ».`, { icone: "🔎" }); return; }
       // Le canevas encore vide laisse sa place à la règle trouvée.
       setV((x) => ({ ...x, regles: regleEcrite(x.regles) ? `${x.regles.trim()}\n\n${regle}` : regle }));

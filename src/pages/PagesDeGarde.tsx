@@ -17,6 +17,8 @@ import {
 } from "../pagesDeGarde";
 import { chargerVacances, periodesDeLAnnee } from "../vacances";
 import { isoJour } from "../dates";
+import { pseudonymiserTout, restaurer } from "../confidentialite";
+import { nomsAMasquer } from "../nomsAMasquer";
 
 // ── Organisation → Pages de garde ─────────────────────────────────────────
 //
@@ -73,8 +75,10 @@ export function PagesDeGardeTab({ annee }: { annee: string }) {
     if (avecIA) {
       try {
         const modele = await api.modeleActif();
-        const reponse = await api.mistralChat(
-          [{ role: "system", content: consigneIA(i) }, { role: "user", content: demandeIA(i) }], modele);
+        // Le titre et les précisions, écrits à la main, partent sans les noms connus.
+        const masque = pseudonymiserTout([demandeIA(i)], await nomsAMasquer());
+        const reponse = restaurer(await api.mistralChat(
+          [{ role: "system", content: consigneIA(i) }, { role: "user", content: masque.textes[0] }], modele), masque.table).texte;
         const corps = htmlDeLaReponse(reponse);
         if (corps) contenu = nettoyerHtml(assembler(i, corps));
         else toast("L'IA n'a rien renvoyé : voici le modèle, à compléter.", { icone: "⚠️", duree: 6000 });
