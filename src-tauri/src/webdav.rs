@@ -490,15 +490,23 @@ pub async fn est_dossier(acces: &Acces, chemin: &str) -> R<bool> {
 }
 
 /**
- * Crée un **lien de partage** sur le dossier du bureau commun, et rend son
- * adresse.
- *
- * C'est la réponse à « je ne veux pas donner mon mot de passe » : le lien
- * ouvre ce seul dossier, porte son propre mot de passe, et se révoque dans
- * Nuage quand on veut. Il passe par l'API de Nextcloud, pas par WebDAV.
+ * L'échéance d'un lien de partage : le 31 août qui clôt l'année scolaire —
+ * celui de l'année suivante s'il tombe dans moins de deux mois. Un lien
+ * donné à un collègue ne doit pas rester ouvert indéfiniment : on l'oublie,
+ * et il ouvre toujours le dossier.
  */
-pub async fn creer_lien(acces: &Acces, sous_dossier: &str, mot_de_passe: &str, ecriture: bool) -> R<String> {
-    creer_lien_detaille(acces, sous_dossier, mot_de_passe, ecriture).await.map(|l| l.url)
+pub fn echeance_d_un_lien(aujourdhui: chrono::NaiveDate) -> chrono::NaiveDate {
+    use chrono::Datelike;
+    let fin = |annee: i32| chrono::NaiveDate::from_ymd_opt(annee, 8, 31).unwrap_or(aujourdhui);
+    let cette_annee = fin(aujourdhui.year());
+    if cette_annee < aujourdhui + chrono::Duration::days(60) { fin(aujourdhui.year() + 1) } else { cette_annee }
+}
+
+/// Nuage refuse-t-il l'échéance demandée ? (« Cannot set expiration date more than 30 days in the future »)
+fn refus_d_echeance(corps: &str) -> bool {
+    serde_json::from_str::<serde_json::Value>(corps).ok()
+        .and_then(|v| v["ocs"]["meta"]["message"].as_str().map(|m| m.to_lowercase().contains("expir")))
+        .unwrap_or(false)
 }
 
 /// Un lien de partage tel que Nuage vient de le créer.
@@ -545,8 +553,19 @@ pub fn lire_lien_cree(corps: &str) -> R<LienCree> {
     Ok(LienCree { id, url: url.to_string(), jeton, expire })
 }
 
-/// Crée un lien de partage, et rend tout ce qu'il faut pour s'en servir puis le révoquer.
-pub async fn creer_lien_detaille(acces: &Acces, sous_dossier: &str, mot_de_passe: &str, ecriture: bool) -> R<LienCree> {
+/**
+ * Crée un **lien de partage** sur un dossier du bureau commun, et rend tout
+ * ce qu'il faut pour s'en servir puis le révoquer.
+ *
+ * C'est la réponse à « je ne veux pas donner mon mot de passe » : le lien
+ * ouvre ce seul dossier, porte son propre mot de passe, et se révoque dans
+ * Nuage quand on veut. Il passe par l'API de Nextcloud, pas par WebDAV.
+ * `expire` (« 2027-08-31 ») le ferme à cette date ; si Nuage impose une
+ * échéance plus proche, c'est la sienne qui vaut.
+ */
+pub async fn creer_lien_detaille(
+    acces: &Acces, sous_dossier: &str, mot_de_passe: &str, ecriture: bool, expire: Option<&str>,
+) -> R<LienCree> {
     if acces.base.starts_with("public.php") {
         return Err("Ce bureau commun est déjà ouvert par un lien : c'est à son propriétaire d'en créer d'autres.".into());
     }
@@ -567,18 +586,18 @@ pub async fn creer_lien_detaille(acces: &Acces, sous_dossier: &str, mot_de_passe
     if !mot_de_passe.trim().is_empty() {
         form.push(("password", mot_de_passe.trim().to_string()));
     }
-    let rep = client(&acces.serveur)?
-        // « format=json » : certains serveurs ignorent l'en-tête Accept.
-        .post(format!("{}/ocs/v2.php/apps/files_sharing/api/v1/shares?format=json", acces.serveur))
-        .header("Authorization", autorisation(acces))
-        .header("OCS-APIRequest", "true")
-        .header("Accept", "application/json")
-        .form(&form)
-        .send()
-        .await
-        .map_err(|e| format!("Nuage injoignable : {e}"))?;
-    let statut = rep.status();
-    let corps = rep.text().await.unwrap_or_default();
+    let sans_echeance = form.clone();
+    if let Some(date) = expire {
+        form.push(("expireDate", date.to_string()));
+    }
+    let (mut statut, mut corps) = poster_lien(acces, &form).await?;
+    let mut echeance_tenue = expire.is_some();
+    // Nuage limite la durée des liens : il refuse une échéance trop lointaine
+    // et applique alors la sienne, plus proche. On la lui laisse.
+    if expire.is_some() && refus_d_echeance(&corps) && (!statut.is_success() || lire_lien_cree(&corps).is_err()) {
+        (statut, corps) = poster_lien(acces, &sans_echeance).await?;
+        echeance_tenue = false;
+    }
     if !statut.is_success() {
         return Err(match statut.as_u16() {
             401 => "Nuage refuse l'identifiant ou le mot de passe d'application.".to_string(),
@@ -592,7 +611,28 @@ pub async fn creer_lien_detaille(acces: &Acces, sous_dossier: &str, mot_de_passe
         });
     }
     // La réponse est un JSON d'OCS : l'adresse du lien est dans « data.url ».
-    lire_lien_cree(&corps)
+    let mut lien = lire_lien_cree(&corps)?;
+    // Un serveur qui ne redit pas l'échéance l'a tout de même prise.
+    if lien.expire.is_empty() && echeance_tenue {
+        lien.expire = expire.unwrap_or_default().to_string();
+    }
+    Ok(lien)
+}
+
+/// Envoie la demande de lien à Nuage ; rend son statut et sa réponse.
+async fn poster_lien(acces: &Acces, form: &[(&str, String)]) -> R<(reqwest::StatusCode, String)> {
+    let rep = client(&acces.serveur)?
+        // « format=json » : certains serveurs ignorent l'en-tête Accept.
+        .post(format!("{}/ocs/v2.php/apps/files_sharing/api/v1/shares?format=json", acces.serveur))
+        .header("Authorization", autorisation(acces))
+        .header("OCS-APIRequest", "true")
+        .header("Accept", "application/json")
+        .form(form)
+        .send()
+        .await
+        .map_err(|e| format!("Nuage injoignable : {e}"))?;
+    let statut = rep.status();
+    Ok((statut, rep.text().await.unwrap_or_default()))
 }
 
 /// Révoque un lien de partage : celui qui le tenait n'entre plus.
@@ -794,6 +834,23 @@ mod tests {
         let refus = lire_lien_cree(r#"{"ocs":{"meta":{"message":"Passwords are enforced for link and mail shares"},"data":[]}}"#).unwrap_err();
         assert!(refus.contains("mot de passe"), "{refus}");
         assert!(lire_lien_cree("<html>").unwrap_err().contains("illisible"));
+    }
+
+    #[test]
+    fn un_lien_expire_a_la_fin_de_l_annee_scolaire() {
+        let jour = |a, m, j| chrono::NaiveDate::from_ymd_opt(a, m, j).unwrap();
+        assert_eq!(echeance_d_un_lien(jour(2026, 10, 9)), jour(2027, 8, 31));
+        assert_eq!(echeance_d_un_lien(jour(2027, 5, 2)), jour(2027, 8, 31));
+        // En juillet, l'année finit trop tôt : le lien vaut pour l'année d'après.
+        assert_eq!(echeance_d_un_lien(jour(2027, 7, 15)), jour(2028, 8, 31));
+    }
+
+    #[test]
+    fn un_refus_d_echeance_se_reconnait() {
+        assert!(refus_d_echeance(r#"{"ocs":{"meta":{"message":"Cannot set expiration date more than 30 days in the future"}}}"#));
+        assert!(refus_d_echeance(r#"{"ocs":{"meta":{"message":"Impossible de définir la date d'expiration à plus de 30 jours dans le futur"}}}"#));
+        assert!(!refus_d_echeance(r#"{"ocs":{"meta":{"message":"Passwords are enforced for link and mail shares"}}}"#));
+        assert!(!refus_d_echeance("<html>"));
     }
 
     #[test]

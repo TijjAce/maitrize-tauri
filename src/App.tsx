@@ -29,6 +29,7 @@ import { EVT_JOUR } from "./components/CommandPalette";
 import { verifierLaSauvegarde } from "./verifSauvegarde";
 import { QuoiDeNeuf } from "./components/QuoiDeNeuf";
 import { demarrerLaVeille } from "./veille";
+import { surveillerLeChiffrement } from "./chiffrementDisque";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { NotesPanel } from "./components/NotesPanel";
 import { CommandPalette } from "./components/CommandPalette";
@@ -176,6 +177,11 @@ export default function App() {
   }, [navigate]);
   // Une fenêtre figée ne dit rien d'elle-même : la veille en laisse une trace.
   React.useEffect(() => demarrerLaVeille(), []);
+  // Un disque non chiffré se dit, une fois par mois au plus : les dossiers des élèves y sont.
+  React.useEffect(() => surveillerLeChiffrement(() => {
+    navigate("/reglages");
+    setTimeout(() => ouvrirOnglet("reglages", "donnees"), 140);
+  }), [navigate]);
 
   // Liseré lumineux : met l'animation en pause quand la fenêtre perd le focus
   // (économie de batterie). L'attribut est lu par le CSS [data-winfocus].

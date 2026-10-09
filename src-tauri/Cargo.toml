@@ -70,9 +70,15 @@ tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
 # Une feuille HTML devient un PDF : WebKit l'imprime dans un fichier (voir feuille_pdf).
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
+# La clé qui chiffre les secrets de la base reste dans le trousseau (voir trousseau.rs).
+security-framework = "3"
 objc2-foundation = { version = "0.3", features = ["NSString", "NSURL", "NSDictionary", "NSObject", "NSGeometry", "NSValue", "objc2-core-foundation"] }
 objc2-app-kit = { version = "0.3", features = ["NSPrintInfo", "NSPrintOperation", "NSResponder", "NSView", "NSWindow", "objc2-core-foundation"] }
 objc2-web-kit = { version = "0.3", features = ["WKWebView", "objc2-app-kit"] }
+
+# Windows : la même clé, protégée par DPAPI pour la session de l'utilisateur (voir trousseau.rs).
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security_Cryptography"] }
 
 [dev-dependencies]
 # Un dossier jetable par essai : les essais n'écrivent jamais dans les fichiers de l'application.

@@ -73,13 +73,14 @@ fn charger_identite(c: &rusqlite::Connection) -> R<([u8; 32], [u8; 32])> {
         .optional()
         .map_err(e)?;
     if let Some((priv_, pub_)) = existant {
+        let priv_ = crate::trousseau::ouvrir_octets(crate::trousseau::CLE_PRIVEE, &priv_)?;
         return Ok((vers_32(priv_)?, vers_32(pub_)?));
     }
     let secret = StaticSecret::random_from_rng(OsRng);
     let public = PublicKey::from(&secret);
     c.execute(
         "INSERT INTO identite (id, cle_privee, cle_publique, nom) VALUES (1, ?1, ?2, '')",
-        params![secret.to_bytes().to_vec(), public.to_bytes().to_vec()],
+        params![crate::trousseau::sceller_octets(crate::trousseau::CLE_PRIVEE, &secret.to_bytes()), public.to_bytes().to_vec()],
     ).map_err(e)?;
     Ok((secret.to_bytes(), public.to_bytes()))
 }

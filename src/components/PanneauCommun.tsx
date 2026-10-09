@@ -551,6 +551,12 @@ function AjoutBureau({ onClose, onAjoute }: { onClose: () => void; onAjoute: (b:
   );
 }
 
+/** « 2027-08-31 » → « 31 août 2027 ». */
+function dateDuLien(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+}
+
 /**
  * Inviter un collègue sans lui donner quoi que ce soit de personnel : Nuage
  * fabrique un lien qui n'ouvre que ce dossier, avec son propre mot de passe.
@@ -559,13 +565,16 @@ function Invitation({ bureau, dossier, onClose }: { bureau: BureauCommun; dossie
   const [ecriture, setEcriture] = React.useState(true);
   const [motDePasse, setMotDePasse] = React.useState("");
   const [lien, setLien] = React.useState("");
+  const [expire, setExpire] = React.useState("");
   const [erreur, setErreur] = React.useState("");
   const [occupe, setOccupe] = React.useState(false);
 
   const creer = async () => {
     setErreur(""); setOccupe(true);
     try {
-      setLien(await api.communCreerLien(bureau.id, dossier, motDePasse, ecriture));
+      const cree = await api.communCreerLien(bureau.id, dossier, motDePasse, ecriture);
+      setLien(cree.url);
+      setExpire(cree.expire);
     } catch (e) {
       setErreur(texteErreur(e));
     } finally {
@@ -593,8 +602,9 @@ function Invitation({ bureau, dossier, onClose }: { bureau: BureauCommun; dossie
             navigator.clipboard?.writeText(lien).then(() => toast("Lien copié.", { icone: "🔗" })).catch(() => {});
           }}>📋 Copier le lien</button>
           <p style={{ fontSize: 12.5, color: "var(--text-2)" }}>
-            Ce lien n'ouvre que ce dossier : ni votre compte, ni le reste de votre Nuage. Vous pouvez le révoquer à tout
-            moment dans Nuage (onglet Partage du dossier).
+            Ce lien n'ouvre que ce dossier : ni votre compte, ni le reste de votre Nuage.
+            {expire ? ` Il se ferme le ${dateDuLien(expire)} ; vous pouvez le révoquer avant, à tout moment,` : " Vous pouvez le révoquer à tout moment"}
+            {" "}dans Nuage (onglet Partage du dossier).
           </p>
         </>
       ) : (
