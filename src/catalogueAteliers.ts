@@ -9,6 +9,7 @@ export const ONGLETS = [
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "comparer", "calcul", "arbre", "posees", "fractions", "oie", "heure", "monnaie", "mesures", "geometrie", "solides", "deplacements", "donnees", "numeration",
   "carteMentale", "taches",
   "sequentiel", "priseDeParole", "resolution", "modelisation", "fonction",
+  "planClasse", "frise", "paysage",
 ] as const;
 export type Onglet = typeof ONGLETS[number];
 
@@ -177,6 +178,18 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
     outils: [
       { id: "taches", nom: "Cartes à tâches", icone: "🧷", cycles: "Cycles 1 à 3",
         quoi: "Des cartes à pinces et des cartes à écrire, une question chacune : solides, figures, heure, monnaie, nombres, calcul, aire, devinettes, sons, ponctuation, conjugaison… — numérotées, avec la fiche réponse, le corrigé, ou la réponse au dos pour se corriger seul." },
+    ],
+  },
+  {
+    id: "histoireGeo", libelle: "🌍 Histoire-géographie",
+    aide: "Se repérer dans l'espace et dans le temps : les feuilles des séquences d'histoire et de géographie du cycle 2.",
+    outils: [
+      { id: "planClasse", nom: "Le plan de la classe", icone: "🗺", cycles: "Cycle 2 (CP)",
+        quoi: "Le plan de votre classe vu de dessus, d'après le plan de salle : avec ou sans les noms, en couleurs avec sa légende ; la chasse au trésor ; le plan à coller ; l'évaluation ; les étiquettes des maquettes." },
+      { id: "frise", nom: "Frises et calendriers", icone: "🗓", cycles: "Cycle 2",
+        quoi: "La journée, la semaine et sa roue, l'année et ses saisons, le calendrier du mois, la frise de la vie, les générations ; cent ans en décennies, les grandes périodes et leurs figures ; la Préhistoire, Rome, le royaume de France — complétées ou à compléter, avec les étiquettes." },
+      { id: "paysage", nom: "Lire un paysage", icone: "🏞", cycles: "Cycle 2 (CE1, CE2)",
+        quoi: "La fiche à poser à côté d'une photographie : premier plan, arrière-plan, éléments naturels et construits, le nom du paysage, le croquis et sa légende — ville et village, lieux de vie du monde, se loger, travailler." },
     ],
   },
   {

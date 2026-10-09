@@ -38,6 +38,7 @@ import { OeilDeLynxTab } from "./AteliersObservation";
 import { SyllabeManquanteTab } from "./AtelierSyllabes";
 import { CartesATachesTab } from "./AteliersCartes";
 import { FonctionTab, ModelisationTab, PriseDeParoleTab, ResolutionTab, SequentielTab } from "./AteliersAides";
+import { FriseTab, PaysageTab, PlanClasseTab } from "./AteliersHistoireGeo";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { chargerPicto, usePictoImage } from "../components/ChoixPicto";
 import { BoutonMesImages, imagePourLePdf } from "../components/MesImages";
@@ -342,6 +343,9 @@ export default function Jeux() {
         : onglet === "numeration" ? <NumerationTab />
         : onglet === "taches" ? <CartesATachesTab />
         : onglet === "sequentiel" ? <SequentielTab />
+        : onglet === "planClasse" ? <PlanClasseTab />
+        : onglet === "frise" ? <FriseTab />
+        : onglet === "paysage" ? <PaysageTab />
         : onglet === "priseDeParole" ? <PriseDeParoleTab />
         : onglet === "resolution" ? <ResolutionTab />
         : onglet === "modelisation" ? <ModelisationTab />
