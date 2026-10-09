@@ -42,6 +42,31 @@ pub struct Vocal {
     /// Le créneau retenu au moment de dicter, vide si on n'en savait rien.
     #[serde(default)]
     pub creneau: String,
+    /// « notes » pour les notes rapides de l'ordinateur ; vide pour le cahier journal.
+    #[serde(default)]
+    pub destination: String,
+}
+
+/// La destination demandée, telle qu'on la garde : les notes rapides, ou rien — le cahier journal.
+fn destination_sure(destination: Option<String>) -> String {
+    match destination.as_deref() {
+        Some(relais::VERS_LES_NOTES) => relais::VERS_LES_NOTES.into(),
+        _ => String::new(),
+    }
+}
+
+/**
+ * La destination d'un fichier, lue au bout de son nom : « …__notes.wav ».
+ * Les fichiers d'avant n'ont rien au bout : ils vont au cahier journal.
+ */
+fn destination_du_nom(nom: &str) -> String {
+    let brut = nom.rsplit_once('.').map(|(b, _)| b).unwrap_or(nom);
+    if brut.split("__").count() > 2 && brut.ends_with(&format!("__{}", relais::VERS_LES_NOTES)) { relais::VERS_LES_NOTES.into() } else { String::new() }
+}
+
+/// Le bout de nom d'une destination : rien pour le cahier journal.
+fn suffixe_de(destination: &str) -> String {
+    if destination.is_empty() { String::new() } else { format!("__{destination}") }
 }
 
 /// Où l'on garde les vocaux, les notes et le relais.
@@ -63,7 +88,7 @@ fn dossier(app: &tauri::AppHandle) -> R<PathBuf> {
  */
 #[tauri::command]
 pub fn vocal_garder(
-    app: tauri::AppHandle, debut: String, duree_s: f64, wav_b64: String, creneau: Option<String>,
+    app: tauri::AppHandle, debut: String, duree_s: f64, wav_b64: String, creneau: Option<String>, destination: Option<String>,
 ) -> R<Vocal> {
     use base64::Engine;
     let octets = base64::engine::general_purpose::STANDARD
@@ -73,11 +98,13 @@ pub fn vocal_garder(
         return Err("Enregistrement vide.".into());
     }
     let id = uuid::Uuid::new_v4().to_string();
-    let creneau = creneau.unwrap_or_default();
-    let nom = format!("{}__{}__{:.3}__{creneau}.wav", id, debut.replace(':', "-"), duree_s);
+    // Pour les notes rapides, le créneau ne compte pas : rien ne va au cahier journal.
+    let destination = destination_sure(destination);
+    let creneau = if destination.is_empty() { creneau.unwrap_or_default() } else { String::new() };
+    let nom = format!("{}__{}__{:.3}__{creneau}{}.wav", id, debut.replace(':', "-"), duree_s, suffixe_de(&destination));
     std::fs::write(dossier(&app)?.join("vocaux").join(&nom), &octets)
         .map_err(|e| format!("Écriture impossible : {e}"))?;
-    Ok(Vocal { id, debut, duree_s, octets: octets.len() as u64, creneau })
+    Ok(Vocal { id, debut, duree_s, octets: octets.len() as u64, creneau, destination })
 }
 
 /// Relit un nom de fichier : l'identifiant, l'heure, la durée, le créneau.
@@ -109,7 +136,7 @@ pub fn vocaux_liste(app: tauri::AppHandle) -> R<Vec<Vocal>> {
         let nom = e.file_name().to_string_lossy().to_string();
         let Some((id, debut, duree_s, creneau)) = depuis_le_nom(&nom) else { continue };
         let octets = e.metadata().map(|m| m.len()).unwrap_or(0);
-        sortie.push(Vocal { id, debut, duree_s, octets, creneau });
+        sortie.push(Vocal { id, debut, duree_s, octets, creneau, destination: destination_du_nom(&nom) });
     }
     sortie.sort_by(|a, b| a.debut.cmp(&b.debut));
     Ok(sortie)
@@ -470,6 +497,9 @@ pub struct Note {
     pub texte: String,
     #[serde(default)]
     pub creneau: String,
+    /// « notes » pour les notes rapides de l'ordinateur ; vide pour le cahier journal.
+    #[serde(default)]
+    pub destination: String,
 }
 
 /// Au-delà, ce n'est plus une note prise en classe.
@@ -484,7 +514,7 @@ fn dossier_notes(app: &tauri::AppHandle) -> R<PathBuf> {
 /// Garde une note avant toute tentative d'envoi.
 #[tauri::command]
 pub fn note_garder(
-    app: tauri::AppHandle, debut: String, texte: String, creneau: Option<String>,
+    app: tauri::AppHandle, debut: String, texte: String, creneau: Option<String>, destination: Option<String>,
 ) -> R<Note> {
     let texte = texte.trim().to_string();
     if texte.is_empty() {
@@ -494,11 +524,12 @@ pub fn note_garder(
         return Err("Note trop longue.".into());
     }
     let id = uuid::Uuid::new_v4().to_string();
-    let creneau = creneau.unwrap_or_default();
-    let nom = format!("{id}__{}__{creneau}.txt", debut.replace(':', "-"));
+    let destination = destination_sure(destination);
+    let creneau = if destination.is_empty() { creneau.unwrap_or_default() } else { String::new() };
+    let nom = format!("{id}__{}__{creneau}{}.txt", debut.replace(':', "-"), suffixe_de(&destination));
     std::fs::write(dossier_notes(&app)?.join(&nom), &texte)
         .map_err(|e| format!("Écriture impossible : {e}"))?;
-    Ok(Note { id, debut, texte, creneau })
+    Ok(Note { id, debut, texte, creneau, destination })
 }
 
 /// Relit le nom d'une note : l'identifiant et l'heure.
@@ -524,7 +555,7 @@ pub fn notes_liste(app: tauri::AppHandle) -> R<Vec<Note>> {
         let nom = e.file_name().to_string_lossy().to_string();
         let Some((id, debut, creneau)) = note_depuis_le_nom(&nom) else { continue };
         let texte = std::fs::read_to_string(e.path()).unwrap_or_default();
-        sortie.push(Note { id, debut, texte, creneau });
+        sortie.push(Note { id, debut, texte, creneau, destination: destination_du_nom(&nom) });
     }
     sortie.sort_by(|a, b| a.debut.cmp(&b.debut));
     Ok(sortie)
@@ -782,7 +813,9 @@ pub async fn vocal_deposer(app: tauri::AppHandle, id: String) -> R<()> {
     let nom = chemin.file_name().unwrap_or_default().to_string_lossy().to_string();
     let (_, debut, duree_s, creneau) = depuis_le_nom(&nom).ok_or("Nom de fichier inattendu.")?;
     let octets = std::fs::read(&chemin).map_err(|e| e.to_string())?;
-    let etiquette = relais::Etiquette { genre: relais::Genre::Vocal, id: id.clone(), debut, duree_s, creneau, ext: String::new() };
+    let etiquette = relais::Etiquette {
+        genre: relais::Genre::Vocal, id: id.clone(), debut, duree_s, creneau, ext: String::new(), destination: destination_du_nom(&nom),
+    };
     let blob = relais::preparer_depot(&a, &etiquette, &octets)?;
     oublier_si_retire(relais::porte::deposer(&a, &k, &relais::nom_du_depot(relais::Genre::Vocal, &id), blob).await)?;
     std::fs::remove_file(&chemin).map_err(|e| e.to_string())
@@ -796,7 +829,9 @@ pub async fn note_deposer(app: tauri::AppHandle, id: String) -> R<()> {
     let nom = chemin.file_name().unwrap_or_default().to_string_lossy().to_string();
     let (_, debut, creneau) = note_depuis_le_nom(&nom).ok_or("Nom de fichier inattendu.")?;
     let texte = std::fs::read_to_string(&chemin).map_err(|e| e.to_string())?;
-    let etiquette = relais::Etiquette { genre: relais::Genre::Note, id: id.clone(), debut, duree_s: 0.0, creneau, ext: String::new() };
+    let etiquette = relais::Etiquette {
+        genre: relais::Genre::Note, id: id.clone(), debut, duree_s: 0.0, creneau, ext: String::new(), destination: destination_du_nom(&nom),
+    };
     let blob = relais::preparer_depot(&a, &etiquette, texte.as_bytes())?;
     oublier_si_retire(relais::porte::deposer(&a, &k, &relais::nom_du_depot(relais::Genre::Note, &id), blob).await)?;
     std::fs::remove_file(&chemin).map_err(|e| e.to_string())
@@ -997,6 +1032,26 @@ mod tests {
         assert!(super::note_depuis_le_nom("abcd.txt").is_none());
         // Un vocal n'est pas une note : les deux dossiers ne se mélangent pas.
         assert!(super::note_depuis_le_nom("abcd__2026-09-25T10-12-00__4.010.wav").is_none());
+    }
+
+    #[test]
+    fn la_destination_se_lit_au_bout_du_nom() {
+        // Une dictée pour les notes rapides : pas de créneau, « notes » au bout.
+        let vocal = "abcd__2026-10-09T18-02-00__3.500____notes.wav";
+        let (id, debut, _, creneau) = depuis_le_nom(vocal).unwrap();
+        assert_eq!((id.as_str(), debut.as_str(), creneau.as_str()), ("abcd", "2026-10-09T18:02:00", ""));
+        assert_eq!(super::destination_du_nom(vocal), "notes");
+        let note = "abcd__2026-10-09T18-02-00____notes.txt";
+        assert_eq!(super::note_depuis_le_nom(note).unwrap().2, "");
+        assert_eq!(super::destination_du_nom(note), "notes");
+        // Les noms d'avant, et ceux du cahier journal, n'ont pas de destination.
+        assert_eq!(super::destination_du_nom("abcd__2026-09-25T10-12-00__4.010__c7.wav"), "");
+        assert_eq!(super::destination_du_nom("abcd__2026-09-25T10-12-00__c7.txt"), "");
+        assert_eq!(super::destination_du_nom("abcd__2026-09-25T10-12-00.txt"), "");
+        // Une destination inconnue ne s'écrit pas : seules les notes rapides en sont une.
+        assert_eq!(super::destination_sure(Some("ailleurs".into())), "");
+        assert_eq!(super::destination_sure(Some("notes".into())), "notes");
+        assert_eq!(super::suffixe_de(""), "");
     }
 
     #[test]

@@ -10,13 +10,17 @@
 // Réglages › Téléphone, où l'on choisit à la main. Un bilan qu'on est en train
 // de taper dans le cahier journal n'est pas touché : la dictée attend que la
 // frappe soit enregistrée, puis passe à la suite.
+//
+// Ce que le téléphone a marqué « Notes rapides » ne cherche pas de créneau :
+// il devient un point de plus dans les notes rapides, « - … », et s'efface.
 
 import { api, nowIso, texteErreur, type Creneau } from "./api";
 import { bilanEnCoursDEcriture } from "./journalEnAttente";
 import { toast } from "./components/Toaster";
 import { LACUNE } from "./dictee";
 import { porterAuDossier } from "./notesDuBilan";
-import { creneauRetenu, jourDuVocal, verserDansLeBilan, type Vocal } from "./vocaux";
+import { EVT_NOTE_AJOUTEE, EVT_OUVRIR_NOTES, type NoteAjoutee } from "./notesRapides";
+import { creneauRetenu, jourDuVocal, pourLesNotes, verserDansLeBilan, type Vocal } from "./vocaux";
 
 /** Émis après un versement : le planning ouvert se relit. */
 export const EVT_BILAN_VERSE = "maitrize:bilan-verse";
@@ -33,7 +37,7 @@ export function aVerser(vocaux: Vocal[], creneaux: Creneau[]): { prets: { vocal:
   const prets: { vocal: Vocal; creneau: Creneau }[] = [];
   const sansCreneau: Vocal[] = [];
   for (const vocal of vocaux) {
-    if (vocal.etat !== "transcrit" || !aQuelqueChoseADire(vocal.texte)) continue;
+    if (vocal.etat !== "transcrit" || !aQuelqueChoseADire(vocal.texte) || pourLesNotes(vocal)) continue;
     const creneau = creneauRetenu(vocal, creneaux);
     if (creneau) prets.push({ vocal, creneau }); else sansCreneau.push(vocal);
   }
@@ -65,6 +69,32 @@ export async function verserUnVocal(vocal: Vocal, creneau: Creneau, texte = voca
   return { ...frais, bilan };
 }
 
+/**
+ * Ajoute un vocal aux notes rapides, en un point, puis l'efface. Le point
+ * s'écrit avant : une panne entre les deux l'ajouterait deux fois, jamais zéro.
+ */
+export async function verserDansLesNotes(vocal: Vocal, texte = vocal.texte): Promise<NoteAjoutee> {
+  const notes = await api.notesRapidesAjouter(texte);
+  await api.vocalDelete(vocal.id);
+  const ajout: NoteAjoutee = { notes, texte };
+  window.dispatchEvent(new CustomEvent<NoteAjoutee>(EVT_NOTE_AJOUTEE, { detail: ajout }));
+  return ajout;
+}
+
+/** Les premiers mots d'un point, pour l'annoncer. */
+const debutDe = (texte: string) => {
+  const t = texte.replace(/\s+/g, " ").trim();
+  return t.length > 60 ? `${t.slice(0, 57).trimEnd()}…` : t;
+};
+
+function annoncerLaNote(vocal: Vocal, texte: string) {
+  const quoi = vocal.dureeS > 0 ? "Dictée ajoutée" : "Note ajoutée";
+  toast(`${quoi} aux notes rapides : « ${debutDe(texte)} »`, {
+    icone: "📝", duree: 9000,
+    action: { label: "Voir", faire: () => { window.dispatchEvent(new Event(EVT_OUVRIR_NOTES)); } },
+  });
+}
+
 /** « vendredi 2 octobre » */
 const jourLisible = (iso: string) =>
   new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
@@ -87,7 +117,16 @@ export async function verserCeQuiEstPret(): Promise<void> {
   enCours = true;
   let differe = false;
   try {
-    const candidats = (await api.vocauxList()).filter((v) => v.etat === "transcrit" && aQuelqueChoseADire(v.texte));
+    const transcrits = (await api.vocauxList()).filter((v) => v.etat === "transcrit" && aQuelqueChoseADire(v.texte));
+    // Les notes rapides d'abord : elles n'attendent ni créneau ni bilan.
+    for (const vocal of transcrits.filter(pourLesNotes)) {
+      try {
+        annoncerLaNote(vocal, (await verserDansLesNotes(vocal)).texte);
+      } catch (e) {
+        toast(`Une note n'a pas pu être ajoutée aux notes rapides : ${texteErreur(e)}`, { icone: "⚠️", duree: 9000 });
+      }
+    }
+    const candidats = transcrits.filter((v) => !pourLesNotes(v));
     if (!candidats.length) return;
     const jours = [...new Set(candidats.map(jourDuVocal))].sort();
     const { prets, sansCreneau } = aVerser(candidats, await api.creneauxList(jours[0], jours[jours.length - 1]));

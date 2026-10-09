@@ -4,8 +4,9 @@ import { api, texteErreur, type Creneau } from "../api";
 import { Select, TextareaAuto } from "./ui";
 import { toast } from "./Toaster";
 import { confirmer } from "./confirmer";
-import { creneauRetenu, repereDuVocal, type Vocal } from "../vocaux";
-import { EVT_BILAN_VERSE, verserUnVocal } from "../versementDesVocaux";
+import { VERS_LES_NOTES, creneauRetenu, pourLesNotes, repereDuVocal, type Vocal } from "../vocaux";
+import { EVT_BILAN_VERSE, verserDansLesNotes, verserUnVocal } from "../versementDesVocaux";
+import { EVT_NOTE_AJOUTEE } from "../notesRapides";
 import { EVT_VOCAUX, retranscrire, transcrireCeQuiAttend, vocalEnCours } from "../vocauxEnFond";
 
 // ── Ce que le téléphone a déposé ──────────────────────────────────────────
@@ -16,7 +17,7 @@ import { EVT_VOCAUX, retranscrire, transcrireCeQuiAttend, vocalEnCours } from ".
 //
 // Ne restent ici que ceux qui attendent : leur transcription, un créneau
 // qu'on n'a pas su trouver, ou un nouvel essai après un échec. On choisit le
-// créneau, on relit, et l'on verse d'un clic.
+// créneau — ou les notes rapides —, on relit, et l'on verse d'un clic.
 
 /** Le jour d'un vocal, tel qu'on l'écrit au-dessus du groupe. */
 function jourLisible(iso: string): string {
@@ -54,7 +55,12 @@ export function VocauxRecus() {
     const p = listen("vocal:recu", () => { void charger(); });
     const verse = () => { void charger(); };
     window.addEventListener(EVT_BILAN_VERSE, verse);
-    return () => { p.then((off) => off()); window.removeEventListener(EVT_BILAN_VERSE, verse); };
+    window.addEventListener(EVT_NOTE_AJOUTEE, verse);
+    return () => {
+      p.then((off) => off());
+      window.removeEventListener(EVT_BILAN_VERSE, verse);
+      window.removeEventListener(EVT_NOTE_AJOUTEE, verse);
+    };
   }, [charger]);
 
   // La transcription tourne en tâche de fond : l'écran suit ce qu'elle fait, et la
@@ -66,17 +72,20 @@ export function VocauxRecus() {
     return () => window.removeEventListener(EVT_VOCAUX, suivre);
   }, [charger]);
 
+  /** Où ira ce vocal : le choix fait ici, sinon celui du téléphone, sinon le créneau de l'heure. */
+  const cibleDe = (v: Vocal) => cible[v.id] ?? (pourLesNotes(v) ? VERS_LES_NOTES : creneauRetenu(v, creneaux)?.id ?? "");
+
   const verser = async (v: Vocal) => {
-    const id = cible[v.id] ?? creneauRetenu(v, creneaux)?.id ?? "";
+    const id = cibleDe(v);
     const c = creneaux.find((x) => x.id === id);
-    if (!c) { toast("Choisissez le créneau où le ranger.", { icone: "🗓" }); return; }
+    if (!c && id !== VERS_LES_NOTES) { toast("Choisissez le créneau où le ranger.", { icone: "🗓" }); return; }
     const dit = (texte[v.id] ?? v.texte).trim();
     if (!dit) { toast("Ce vocal n'a rien donné à écrire.", { icone: "⚠️" }); return; }
     setOccupe(v.id);
     try {
-      await verserUnVocal(v, c, dit);
+      if (c) await verserUnVocal(v, c, dit); else await verserDansLesNotes(v, dit);
       await charger();
-      toast(`Versé dans le bilan de ${c.matiere || "ce créneau"}.`, { icone: "🎙" });
+      toast(c ? `Versé dans le bilan de ${c.matiere || "ce créneau"}.` : "Ajouté aux notes rapides.", { icone: c ? "🎙" : "📝" });
     } catch (e) {
       toast("Versement impossible : " + texteErreur(e), { icone: "⚠️" });
     } finally { setOccupe(""); }
@@ -96,8 +105,8 @@ export function VocauxRecus() {
       {vocaux.length === 0 ? (
         <p style={{ color: "var(--text-2)", margin: 0, fontSize: 13, lineHeight: 1.6 }}>
           Rien en attente. Ce que vous dictez dans le Dictaphone arrive par Nuage, se transcrit, puis va
-          tout seul dans le bilan de son créneau. Seules les dictées dont le créneau est inconnu restent ici,
-          le temps de le choisir.
+          tout seul dans le bilan de son créneau — ou dans les notes rapides, si vous l'avez choisi sur le
+          téléphone. Seules les dictées dont le créneau est inconnu restent ici, le temps de le choisir.
         </p>
       ) : jours.map((jour) => (
         <div key={jour} style={{ marginBottom: 14 }}>
@@ -108,7 +117,7 @@ export function VocauxRecus() {
             .sort((a, b) => a.debut.localeCompare(b.debut))
             .map((v) => {
               const devine = creneauRetenu(v, creneaux);
-              const id = cible[v.id] ?? devine?.id ?? "";
+              const id = cibleDe(v);
               return (
                 <div key={v.id} style={{ borderLeft: "3px solid var(--border)", paddingLeft: 10, marginBottom: 10 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
@@ -116,6 +125,7 @@ export function VocauxRecus() {
                     <Select value={id} style={{ maxWidth: 240 }}
                       onChange={(e) => setCible((x) => ({ ...x, [v.id]: e.target.value }))}>
                       <option value="">— choisir le créneau —</option>
+                      <option value={VERS_LES_NOTES}>📝 Notes rapides</option>
                       {creneaux.filter((c) => c.date.slice(0, 10) === jour)
                         .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut))
                         .map((c) => (
@@ -124,9 +134,9 @@ export function VocauxRecus() {
                           </option>
                         ))}
                     </Select>
-                    {!cible[v.id] && devine && (
+                    {!cible[v.id] && (pourLesNotes(v) || devine) && (
                       <span className="meta" style={{ fontSize: 11.5 }}>
-                        {v.creneauId ? "choisi sur le téléphone" : "trouvé à l'heure"}
+                        {pourLesNotes(v) || v.creneauId ? "choisi sur le téléphone" : "trouvé à l'heure"}
                       </span>
                     )}
                     <div className="spacer" style={{ flex: 1 }} />
@@ -150,7 +160,7 @@ export function VocauxRecus() {
                         onChange={(e) => setTexte((x) => ({ ...x, [v.id]: e.target.value }))} />
                       <button className="btn primary sm" style={{ marginTop: 6 }}
                         disabled={!!occupe} onClick={() => { void verser(v); }}>
-                        ↓ Verser dans le bilan
+                        {id === VERS_LES_NOTES ? "↓ Ajouter aux notes rapides" : "↓ Verser dans le bilan"}
                       </button>
                     </>
                   )}
