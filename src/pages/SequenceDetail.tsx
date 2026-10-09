@@ -11,6 +11,8 @@ import { EVT_JOUR } from "../components/CommandPalette";
 import { Modal, Field, Input, Textarea, TextareaAuto, Select, Stars, Empty, Confirm, useAsync } from "../components/ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
 import { ajouterManuelle, consigneSousCompetences, estManuelle, lireSousCompetences } from "../sousCompetences";
+import { pseudonymiserTout, restaurer } from "../confidentialite";
+import { nomsAMasquer } from "../nomsAMasquer";
 import { TableauEditor, MaterielSeance, imageDuPresse, fileToBase64 } from "../components/SeanceParts";
 import { IllustrationsEditor, DeroulementRead, CelluleContenu, FichierImg, CitationButton } from "../components/Deroulement";
 import { fichierToBlobUrl } from "../components/PdfViewer";
@@ -473,10 +475,13 @@ export function SeanceForm({ seance, cycle = "", sequence, onClose, onSaved }: {
   const proposer = async () => {
     setProposeEnCours(true);
     try {
-      const reponse = await api.mistralChat(consigneSousCompetences({
+      const consigne = consigneSousCompetences({
         competenceVisee: competenceVisee?.competenceTitre ?? "", domaineTitre: contexteManuel.domaineTitre, cycle: sequence?.cycle ?? cycle,
         titreSeance: s.titre, objectifs: s.objectifs, dejaLa: comps.map((c) => c.competenceTitre),
-      }));
+      });
+      // Le titre et l'objectif de la séance partent sans les noms connus.
+      const masque = pseudonymiserTout(consigne.map((m) => m.content), await nomsAMasquer());
+      const reponse = restaurer(await api.mistralChat(consigne.map((m, i) => ({ ...m, content: masque.textes[i] }))), masque.table).texte;
       const lues = lireSousCompetences(reponse);
       if (!lues.length) { toast("L'assistant n'a rien proposé de lisible ; réessayez.", { icone: "⚠️" }); return; }
       setPropositions(lues.map((texte) => ({ texte, cochee: true })));
