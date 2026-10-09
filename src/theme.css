@@ -812,6 +812,14 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .bureau-case { position: absolute; padding: 0 4px; box-sizing: border-box; transition: left .18s ease, top .18s ease; }
 .bureau-case-visee { position: absolute; border: 2px dashed var(--accent); border-radius: 12px; background: var(--accent-soft);
   pointer-events: none; box-sizing: border-box; }
+/* Plusieurs éléments à la fois : la tuile choisie, le rectangle qu'on tire, l'étiquette du groupe qu'on glisse. */
+.plan-surface { user-select: none; -webkit-user-select: none; }
+.tuile-bureau:hover { background: var(--panel-2); }
+.tuile-bureau.choisie { background: var(--accent-soft); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 65%, transparent); }
+.bande-selection { position: fixed; z-index: 40; pointer-events: none; border-radius: 3px;
+  border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.glisse-groupe { position: fixed; top: -200px; left: -200px; padding: 8px 14px; border-radius: 10px; background: var(--accent); color: #fff;
+  font: 600 13px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; box-shadow: 0 6px 18px rgba(0, 0, 0, .25); white-space: nowrap; }
 
 /* ── Fabriquer : aperçu des problèmes en barres ── */
 /* Des feuilles de papier : fond blanc quel que soit le thème. */

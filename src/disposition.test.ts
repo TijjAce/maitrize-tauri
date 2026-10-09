@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  disposer, caseLibreLaPlusProche, poser, lirePositions, lireDispositions, reporterDispositions,
+  disposer, caseLibreLaPlusProche, poser, poserPlusieurs, lirePositions, lireDispositions, reporterDispositions,
   type Positions,
 } from "./disposition";
 
@@ -70,6 +70,35 @@ describe("poser", () => {
     const c = caseLibreLaPlusProche({ col: 2, rang: 2 }, prises, 5);
     expect(Math.max(Math.abs(c.col - 2), Math.abs(c.rang - 2))).toBe(1);
     expect(prises.has(`${c.col},${c.rang}`)).toBe(false);
+  });
+});
+
+describe("poser plusieurs tuiles à la fois", () => {
+  const depart = disposer(["d:A", "d:B", "m:1", "m:2"], {}, 5); // A(0,0) B(1,0) 1(2,0) 2(3,0)
+
+  it("le groupe garde ses écarts ; les autres ne bougent pas", () => {
+    expect(poserPlusieurs(depart, ["d:A", "d:B"], { col: 1, rang: 2 }, 5))
+      .toEqual({ "d:A": [1, 2], "d:B": [2, 2], "m:1": [2, 0], "m:2": [3, 0] });
+  });
+
+  it("glissé d'une case vers la droite, le groupe reprend les cases qu'il libère", () => {
+    expect(poserPlusieurs(depart, ["d:A", "d:B", "m:1"], { col: 1, rang: 0 }, 5))
+      .toEqual({ "d:A": [1, 0], "d:B": [2, 0], "m:1": [4, 0], "m:2": [3, 0] });
+  });
+
+  it("une case prise, ou hors du bureau, envoie à la plus proche libre", () => {
+    const p = poserPlusieurs(depart, ["m:1", "m:2"], { col: 2, rang: 0 }, 5);
+    expect(p["d:A"]).toEqual([0, 0]);
+    expect(p["d:B"]).toEqual([1, 0]);
+    expect(p["m:1"]).toEqual([4, 0]);
+    // La sienne serait au-delà de la dernière colonne : la plus proche libre, dans le bureau.
+    expect(p["m:2"][0]).toBeLessThan(5);
+    expect(new Set(Object.values(p).map(([c, r]) => `${c},${r}`)).size).toBe(4);
+  });
+
+  it("ignore ce qui n'est pas sur le bureau", () => {
+    expect(poserPlusieurs(depart, ["d:Z"], { col: 1, rang: 1 }, 5))
+      .toEqual({ "d:A": [0, 0], "d:B": [1, 0], "m:1": [2, 0], "m:2": [3, 0] });
   });
 });
 

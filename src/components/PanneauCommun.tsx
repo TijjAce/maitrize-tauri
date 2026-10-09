@@ -13,6 +13,7 @@ import {
   deposerDossier, deposerElement, dossiersDeMonBureau, entreesDuDepot, poserFichiers, resumeDuPaquet,
 } from "../partageCommun";
 import type { GenreElement } from "../bureauCommun";
+import { lireSelectionGlissee } from "../selectionBureau";
 
 // ── Le panneau d'un bureau commun ─────────────────────────────────────────
 //
@@ -190,9 +191,17 @@ export function PanneauCommun({ compact = false, onFermer }: {
       }, "🤝");
   };
 
-  /** Un dossier ou un élément lâché sur le panneau depuis le bureau. */
+  /** Un dossier ou un élément lâché sur le panneau depuis le bureau — ou plusieurs, choisis ensemble. */
   const accepterDuBureau = (dt: DataTransfer) => faire("depot", async () => {
     if (!actif) return;
+    const groupe = lireSelectionGlissee(dt);
+    if (groupe) {
+      for (const d of groupe.dossiers) await deposeAnnulable(d, () => deposerDossier(d, actif, dossier));
+      for (const el of groupe.elements) {
+        await deposeAnnulable(el.titre || "Sans titre", () => deposerElement(el.genre as GenreElement, el.id, el.titre, actif, dossier));
+      }
+      return;
+    }
     const chemin = dt.getData(TYPE_DOSSIER_BUREAU);
     if (chemin) {
       await deposeAnnulable(chemin, () => deposerDossier(chemin, actif, dossier));
