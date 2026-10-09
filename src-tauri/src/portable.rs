@@ -163,9 +163,12 @@ fn snapshot(db: &State<Db>) -> R<String> {
         let rows = st.query_map([], Eleve::from_row).map_err(e)?;
         rows.collect::<rusqlite::Result<Vec<_>>>().map_err(e)?
     };
+    // Les programmations de classe seules : celle par élève (IME) porte les
+    // objectifs, les progrès et les notes de chacun — et la page du téléphone
+    // ne sait pas l'afficher.
     let programmations = {
         let mut st = c
-            .prepare("SELECT * FROM programmations_finale ORDER BY annee")
+            .prepare("SELECT * FROM programmations_finale WHERE COALESCE(niveau, '') <> 'ime' ORDER BY annee")
             .map_err(e)?;
         let rows = st.query_map([], ProgrammationFinale::from_row).map_err(e)?;
         rows.collect::<rusqlite::Result<Vec<_>>>().map_err(e)?
