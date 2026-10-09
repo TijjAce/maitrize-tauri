@@ -12,6 +12,7 @@ import { poserDansUneSeance } from "../impressionAtelier";
 import { graineAuHasard } from "../hasard";
 import { toast } from "./Toaster";
 import { NIVEAUX_DE_PROGRAMMATION, libelleDeProgrammation, niveauDeProgrammation, programmationProposee } from "../programmation";
+import { aidesDeLaSequence, seanceDeLaParole } from "../aidesDesSequences";
 
 // Fiche d'une séquence : titre, période, compétence visée, objectifs, vignette,
 // vidéo. Elle vivait dans l'ancien onglet Séquences et avait disparu avec lui :
@@ -83,6 +84,11 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
     }),
   ];
   const [progres, setProgres] = React.useState("");
+  // Les aides à la tâche de Cap école inclusive : le séquentiel de chaque séance, et la prise de parole dans la séance du bilan.
+  const [aideSequentiel, setAideSequentiel] = React.useState(true);
+  const [paroleChoisie, setParoleChoisie] = React.useState<number | null>(null);
+  React.useEffect(() => { setParoleChoisie(null); }, [cadre]);
+  const seanceParole = paroleChoisie ?? (demarche ? seanceDeLaParole(demarche.seances) : -1);
 
   const save = async () => {
     setEnCours(true);
@@ -115,8 +121,26 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
             toast(`« ${f.titre} » n'a pas pu être fabriquée : ${String(e)}`, { icone: "⚠️" });
           }
         }
-        if (aFabriquer.length) {
-          toast(`${seances.length} séances créées, ${faites} feuille${faites > 1 ? "s" : ""} rangée${faites > 1 ? "s" : ""} dans leurs séances.`, { icone: "📚" });
+        // Puis les aides à la tâche, chacune dans sa séance.
+        const aides = aidesDeLaSequence(seances, propre, { sequentiel: aideSequentiel, parole: seanceParole });
+        let aidees = 0;
+        for (const a of aides) {
+          const seance = seances[a.seance];
+          if (!seance) continue;
+          setProgres(`Aides à la tâche : ${aidees + 1} sur ${aides.length}…`);
+          try {
+            const sortie = await a.fabriquer();
+            await poserDansUneSeance(a.atelier, a.titre, sortie.html, sortie.style, seance.id, propre.id,
+              { competences: comp ? [comp] : undefined, fabrication: { memoires: sortie.refaire } });
+            aidees++;
+          } catch (e) {
+            toast(`« ${a.titre} » n'a pas pu être fabriquée : ${String(e)}`, { icone: "⚠️" });
+          }
+        }
+        if (aFabriquer.length || aidees) {
+          const total = faites + aidees;
+          toast(`${seances.length} séances créées, ${total} feuille${total > 1 ? "s" : ""} rangée${total > 1 ? "s" : ""} dans leurs séances`
+            + `${aidees ? `, dont ${aidees} aide${aidees > 1 ? "s" : ""} à la tâche` : ""}.`, { icone: "📚" });
         }
       }
       onSaved(propre);
@@ -273,6 +297,22 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
                 )))}
               </div>
             )}
+            <div className="deroulement-rattaches">
+              <div className="meta" style={{ fontSize: 12.5 }}>🧩 Aides à la tâche (Cap école inclusive) — des fiches pour entrer dans la tâche, glissées dans les séances :</div>
+              <div className="deroulement-rattache">
+                <label><input type="checkbox" checked={aideSequentiel} onChange={(e) => setAideSequentiel(e.target.checked)} /> 📋 Le séquentiel de chaque séance : ce que l'élève va faire, étape par étape, à cocher</label>
+              </div>
+              <div className="deroulement-rattache">
+                <label><input type="checkbox" checked={seanceParole >= 0}
+                  onChange={(e) => setParoleChoisie(e.target.checked ? seanceDeLaParole(demarche.seances) : -1)} /> 🎤 Préparer sa prise de parole : la carte mentale de ce qu'on a appris</label>
+                {seanceParole >= 0 && (
+                  <Select value={seanceParole} onChange={(e) => setParoleChoisie(Number(e.target.value))}
+                    aria-label="La séance qui reçoit la préparation de la prise de parole" style={{ maxWidth: 300 }}>
+                    {demarche.seances.map((sc, i) => <option key={i} value={i}>Séance {i + 1} — {sc.titre}</option>)}
+                  </Select>
+                )}
+              </div>
+            </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
               <button type="button" className={`btn sm${suivi === "oui" ? " primary" : ""}`} onClick={() => setSuivi("oui")}>
                 ✓ Suivre ce déroulement

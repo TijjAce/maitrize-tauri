@@ -8,6 +8,7 @@ export const ONGLETS = [
   "comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "trous", "motsMeles", "cursive",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "comparer", "calcul", "arbre", "posees", "fractions", "oie", "heure", "monnaie", "mesures", "geometrie", "solides", "deplacements", "donnees", "numeration",
   "carteMentale", "taches",
+  "sequentiel", "priseDeParole", "resolution", "modelisation", "fonction",
 ] as const;
 export type Onglet = typeof ONGLETS[number];
 
@@ -176,6 +177,22 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
     outils: [
       { id: "taches", nom: "Cartes à tâches", icone: "🧷", cycles: "Cycles 1 à 3",
         quoi: "Des cartes à pinces et des cartes à écrire, une question chacune : solides, figures, heure, monnaie, nombres, calcul, aire, devinettes, sons, ponctuation, conjugaison… — numérotées, avec la fiche réponse, le corrigé, ou la réponse au dos pour se corriger seul." },
+    ],
+  },
+  {
+    id: "aides", libelle: "🧩 Aides à la tâche",
+    aide: "Structurer la tâche pour que chacun y entre et la mène au bout — d'après Cap école inclusive (Réseau Canopé). Les deux premières se glissent aussi dans les séquences qu'on crée.",
+    outils: [
+      { id: "sequentiel", nom: "Décomposer la tâche", icone: "📋", pictos: true, cycles: "De la maternelle au lycée",
+        quoi: "Les étapes d'une tâche, numérotées, avec le picto de chaque geste : check-list à cocher, séquentiel visuel, logigramme ou frise ; le chaînage qui cache l'étape apprise, le soliloque." },
+      { id: "priseDeParole", nom: "Préparer une prise de parole", icone: "🎤", pictos: true, cycles: "Cycles 1 à 4",
+        quoi: "La carte mentale à compléter, le sujet au centre ; les mots pour enchaîner ses idées ; les cartes-images des mots-clés ; le dé à raconter." },
+      { id: "resolution", nom: "Résoudre un problème pas à pas", icone: "🔎", cycles: "De l'école au collège",
+        quoi: "L'énoncé travaillé en couleurs, la question à part, puis quatre étapes : ce qu'on cherche, l'égalité, la résolution, la vérification et la phrase réponse." },
+      { id: "modelisation", nom: "De la figure à l'équation", icone: "🔺", cycles: "3e et 2de",
+        quoi: "Un problème de géométrie traduit en équation, en six étapes balisées : lire, expliquer, découper la figure, essayer, calculer avec x, contrôler." },
+      { id: "fonction", nom: "Modéliser par une fonction", icone: "📈", cycles: "Cycle 4 et lycée",
+        quoi: "Une figure à géométrie variable décortiquée : le texte et la figure aux mêmes couleurs, ce qui est fixe et ce qui bouge, le rôle des points, une partie à la fois." },
     ],
   },
   {

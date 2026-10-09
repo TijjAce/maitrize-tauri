@@ -40,13 +40,28 @@ export function useChoixTapuscrit(): { choix: ChoixDesMots; choisir: (cle: strin
   return { choix, choisir };
 }
 
+/** Un mot seul, à chercher tel quel dans la banque : une question, un mot-clé, une branche. */
+export const motDuMot = (mot: string): MotDeConsigne => {
+  const cle = mot.trim().toLowerCase();
+  return { texte: mot.trim(), cle, demande: { verbes: [], noms: singuliers(cle) } };
+};
+
 /** Les mots des consignes, le picto de chacun, et leurs images. */
 export function useTapuscrit(consignes: string[]) {
-  const { lexique } = useLexique();
-  const { choix, choisir } = useChoixTapuscrit();
   const texte = consignes.join("\n");
   const mots = React.useMemo(() => lireConsignes(texte).map(motsDeLaConsigne), [texte]);
-  const { cles, demandes } = React.useMemo(() => demandesDe(mots.flat()), [mots]);
+  return { mots, ...usePictosDesMots(mots.flat()) };
+}
+
+/**
+ * Le picto de chacun de ces mots — le choix de l'enseignant, le lexique de
+ * CAA, sinon la banque —, et leurs images, tenus à jour.
+ */
+export function usePictosDesMots(liste: MotDeConsigne[]) {
+  const { lexique } = useLexique();
+  const { choix, choisir } = useChoixTapuscrit();
+  const cleListe = JSON.stringify(liste.map((m) => [m.cle, m.demande]));
+  const { cles, demandes } = React.useMemo(() => demandesDe(liste), [cleListe]); // eslint-disable-line react-hooks/exhaustive-deps
   const [banque, setBanque] = React.useState<Record<string, RefPicto>>({});
   const [banqueAbsente, setBanqueAbsente] = React.useState(false);
   const cleDemandes = JSON.stringify(demandes);
@@ -68,9 +83,9 @@ export function useTapuscrit(consignes: string[]) {
     return () => { vivant = false; window.clearTimeout(t); };
   }, [cleDemandes]); // eslint-disable-line react-hooks/exhaustive-deps
   const pictoDe = React.useCallback((m: MotDeConsigne) => pictoDuMot(m, choix, lexique, banque), [choix, lexique, banque]);
-  const refs = [...new Set(mots.flat().map(pictoDe).filter((r): r is RefPicto => r != null))];
+  const refs = [...new Set(liste.map(pictoDe).filter((r): r is RefPicto => r != null))];
   const images = usePictoImages(refs) as Record<string, string>;
-  return { mots, pictoDe, images, banqueAbsente, choix, choisir };
+  return { pictoDe, images, banqueAbsente, choix, choisir };
 }
 
 /** Ce qu'on cherche d'abord pour un mot : l'infinitif d'un verbe, le singulier d'un nom. */
@@ -199,19 +214,30 @@ export function ConsignesSeance({ valeur, onChange }: { valeur: string; onChange
 export async function tapuscritImprimable(consignes: string[]): Promise<{ html: string; refs: RefPicto[] }> {
   const mots = consignes.flatMap((c) => lireConsignes(c)).map(motsDeLaConsigne);
   if (!mots.length) return { html: "", refs: [] };
+  const { pictoDe, images, refs } = await resoudrePictos(mots.flat());
+  return { html: htmlDuTapuscrit(mots, pictoDe, images), refs };
+}
+
+/**
+ * Le picto de chacun de ces mots, et leurs images chargées : pour imprimer,
+ * hors de l'écran. Un picto dont l'image n'a pas pu se charger ne compte pas.
+ */
+export async function resoudrePictos(liste: MotDeConsigne[]): Promise<{
+  pictoDe: (m: MotDeConsigne) => RefPicto | null; images: Record<string, string>; refs: RefPicto[];
+}> {
   const [lexique, choix] = await Promise.all([
     api.settingGet(CLE_LEXIQUE).then(lireLexique).catch(() => ({})),
     api.settingGet(CLE_CHOIX_TAPUSCRIT).then(lireChoix).catch((): ChoixDesMots => ({})),
   ]);
-  const { cles, demandes } = demandesDe(mots.flat());
+  const { cles, demandes } = demandesDe(liste);
   const trouves = demandes.length ? await api.arasaacPourTapuscrit(demandes).catch(() => []) : [];
   const banque: Record<string, RefPicto> = {};
   cles.forEach((c, i) => { const p = trouves[i]; if (p) banque[c] = p.id; });
-  const pictoDe = (m: MotDeConsigne) => pictoDuMot(m, choix, lexique, banque);
-  const refs = [...new Set(mots.flat().map(pictoDe).filter((r): r is RefPicto => r != null))];
-  const images = await chargerImages(refs) as Record<string, string>;
-  // Un picto dont l'image n'a pas pu se charger ne se cite pas.
-  return { html: htmlDuTapuscrit(mots, pictoDe, images), refs: refs.filter((r) => images[String(r)]) };
+  const choisi = (m: MotDeConsigne) => pictoDuMot(m, choix, lexique, banque);
+  const tous = [...new Set(liste.map(choisi).filter((r): r is RefPicto => r != null))];
+  const images = await chargerImages(tous) as Record<string, string>;
+  const pictoDe = (m: MotDeConsigne) => { const r = choisi(m); return r != null && images[String(r)] ? r : null; };
+  return { pictoDe, images, refs: tous.filter((r) => images[String(r)]) };
 }
 
 /** Les créneaux dont le tapuscrit s'imprime dans le cahier journal, tenus à jour d'où ils changent. */

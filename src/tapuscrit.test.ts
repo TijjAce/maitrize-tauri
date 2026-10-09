@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   CONSIGNE_MAX, CONSIGNES_MAX, avecChoix, demandesDe, ecrireConsignes, htmlDuTapuscrit, infinitifsPossibles, lireChoix, lireConsignes,
-  motsDeLaConsigne, pictoDuMot, singuliers, type MotDeConsigne,
+  motPrincipal, motsDeLaConsigne, pictoDuMot, singuliers, type MotDeConsigne,
 } from "./tapuscrit";
 
 /** Les mots d'une consigne, réduits à ce qu'on en vérifie : le mot, sa clé, ce qu'on demande à la banque. */
@@ -59,6 +59,18 @@ describe("les mots d'une consigne", () => {
     expect(resume("Prends le livre.")[2]).toEqual(["livre", "livre", "", "livre"]);
     // Les nombres se dessinent tels quels.
     expect(resume("Prends 3 jetons.")[1]).toEqual(["3", "3", "", "3"]);
+  });
+
+  it("cherchent un verbe pronominal sous sa forme pronominale", () => {
+    expect(resume("Je me rappelle la règle.")[2]).toEqual(["rappelle", "rappelle", "se rappeler|se rappeller|rappeler|rappeller", "rappelle"]);
+    expect(motsDeLaConsigne("Je m'assieds.")[2].demande.verbes).toEqual(["s'asseoir", "se asseoir", "asseoir"]);
+  });
+
+  it("donnent le mot principal d'une étape : son verbe, sinon son premier mot de sens", () => {
+    expect(motPrincipal("Je travaille seul.")?.texte).toBe("travaille");
+    expect(motPrincipal("Découpe les étiquettes.")?.verbe).toBe("découper");
+    expect(motPrincipal("La carte mentale du thème")?.texte).toBe("carte");
+    expect(motPrincipal("et puis")).toBeNull();
   });
 
   it("disent « le son » qu'on entend, mais pas « son cahier »", () => {

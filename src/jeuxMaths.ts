@@ -566,7 +566,12 @@ export function pisteSvg(cases: CaseOie[]): string {
 }
 
 /** Le patron d'un dé, en croix, à plier et coller. */
-export function patronDeSvg(faces: FacesDe): string {
+/**
+ * Le patron du dé. `dessin`, s'il est donné, pose autre chose sur chaque
+ * face — un picto et son mot, pour un dé à raconter (voir aidesALaTache.ts) ;
+ * `largeurMm` l'agrandit.
+ */
+export function patronDeSvg(faces: FacesDe, dessin?: (i: number, x: number, y: number, c: number) => string, largeurMm = 120): string {
   const c = 110;
   const positions: [number, number][] = [[1, 0], [0, 1], [1, 1], [2, 1], [3, 1], [1, 2]];
   const valeurs = faces === "1-3" ? [1, 2, 3, 1, 2, 3] : [1, 2, 3, 4, 5, 6];
@@ -576,14 +581,14 @@ export function patronDeSvg(faces: FacesDe): string {
   };
   const corps = positions.map(([col, ligne], i) => {
     const x = col * c, y = ligne * c, v = valeurs[i];
-    const contenu = faces === "chiffres"
+    const contenu = dessin ? dessin(i, x, y, c) : faces === "chiffres"
       ? `<text x="${x + 55}" y="${y + 70}" text-anchor="middle" font-size="44" font-weight="700" font-family="Helvetica, Arial, sans-serif">${v}</text>`
       : (places[v] ?? []).map(([px, py]) => `<circle cx="${x + px}" cy="${y + py}" r="9" fill="#1c2233"/>`).join("");
     return `<rect x="${x}" y="${y}" width="${c}" height="${c}" fill="#fff" stroke="#1c2233" stroke-width="2"/>${contenu}`;
   }).join("");
   // Les languettes de collage.
   const languettes = `<path d="M${c} 0 l-14 14 v82 l14 14 M${3 * c} ${c} l14 14 v82 l-14 14 M${2 * c} ${2 * c} l14 0 v82 l-14 14 M${c} ${3 * c} l0 14 h${c} l0 -14" fill="none" stroke="#9aa0b4" stroke-dasharray="4 3"/>`;
-  return `<svg viewBox="-20 -20 ${4 * c + 40} ${3 * c + 40}" width="120mm" height="90mm">${corps}${languettes}</svg>`;
+  return `<svg viewBox="-20 -20 ${4 * c + 40} ${3 * c + 40}" width="${largeurMm}mm" height="${(largeurMm * 3) / 4}mm">${corps}${languettes}</svg>`;
 }
 
 export function htmlJeuDeLOie(r: ReglagesOie, graine: number): string {
