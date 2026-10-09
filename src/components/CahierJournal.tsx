@@ -23,6 +23,8 @@ import { ChoixSequence, SequencesCitees } from "./SequencesCitees";
 import { ChoixRituel, RituelForm, RituelsCites, useRituels } from "./Rituels";
 import { IndicateurZoom, useZoomPince } from "./ZoomPince";
 import { useMasquesDuJournal } from "./MasquesDuJournal";
+import { TapuscritVue, useTapuscritDuJournal } from "./Tapuscrit";
+import { lireConsignes } from "../tapuscrit";
 import { EVT_NOUVEAU_RITUEL, ligneDeRituel, nouveauRituel, rituelsCites, type Rituel } from "../rituels";
 import { zoomReelDuJournal } from "../zoomPince";
 import { insererLigne, ligneDeSequence, sequencesCitees, totalDesSeances } from "../sequencesCitees";
@@ -254,6 +256,8 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
 
   // ── Ce qu'on cite sans l'imprimer : une case par bloc, par créneau ──
   const { masques, basculer: masquer } = useMasquesDuJournal();
+  // Le tapuscrit de la séance sous le créneau, à l'impression : coché créneau par créneau.
+  const tapuscrits = useTapuscritDuJournal();
 
   // ── Les rituels : posés d'un clic, cités sous le prévu ──
   const { rituels, enregistrer: enregistrerRituel } = useRituels();
@@ -445,6 +449,14 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                 <span style={{ fontWeight: 600 }}>{c.matiere || "Créneau"}</span>
                 {reunion && <span className="badge">🗣️ Réunion · formation</span>}
                 {seance && <span style={{ fontSize: 12, color: "var(--text-2)" }}>· {seance.titre}</span>}
+                {seance && lireConsignes(seance.consignes).length > 0 && (
+                  <label className="case-impression"
+                    title="Coché : les consignes de la séance, traduites en pictogrammes, s'impriment sous ce créneau dans le cahier journal">
+                    <input type="checkbox" checked={tapuscrits.avec.has(c.id)}
+                      onChange={(e) => { void tapuscrits.poser(c.id, e.target.checked); }} />
+                    <span>🖼 consignes en pictos à l'impression</span>
+                  </label>
+                )}
                 {prenoms.length > 0 && <span style={{ fontSize: 12, color: "var(--text-2)" }}>👥 {prenoms.join(", ")}</span>}
                 <span style={{ marginLeft: "auto", fontSize: 11, color: etat === "erreur" ? "#c0392b" : "var(--text-2)" }}>
                   {etat === "enregistrement" ? "Enregistrement…" : etat === "ok" ? "✓ Enregistré" : etat === "erreur" ? "Non enregistré" : ""}
@@ -457,6 +469,11 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                 <button className="btn ghost sm" onClick={() => onModifier(c)} title="Modifier le créneau" aria-label="Modifier le créneau">✏️</button>
               </div>
 
+              {seance && tapuscrits.avec.has(c.id) && lireConsignes(seance.consignes).length > 0 && (
+                <div style={{ marginBottom: 6 }}>
+                  <TapuscritVue consignes={lireConsignes(seance.consignes)} compact />
+                </div>
+              )}
               {/* Ce qu'on a décidé d'observer sur ce créneau : la ligne est là
                   pendant la séance, sous les yeux — c'est le seul moment où
                   elle sert. */}

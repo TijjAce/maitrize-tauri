@@ -357,11 +357,11 @@ fn inserer_sequence(c: &Connection, mut s: Sequence, seances: Vec<Seance>, image
         se.sequence_id = Some(new_seq.clone());
         c.execute(
             "INSERT INTO seances (id,titre,numero,objectifs,competences,deroulement,materiel,duree,date,
-              tableau_deroulement,images_deroulement,bilan,bilan_date,sequence_id)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, numero = excluded.numero, objectifs = excluded.objectifs, competences = excluded.competences, deroulement = excluded.deroulement, materiel = excluded.materiel, duree = excluded.duree, date = excluded.date, tableau_deroulement = excluded.tableau_deroulement, images_deroulement = excluded.images_deroulement, bilan = excluded.bilan, bilan_date = excluded.bilan_date, sequence_id = excluded.sequence_id",
+              tableau_deroulement,images_deroulement,bilan,bilan_date,sequence_id,consignes)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15) ON CONFLICT(id) DO UPDATE SET titre = excluded.titre, numero = excluded.numero, objectifs = excluded.objectifs, competences = excluded.competences, deroulement = excluded.deroulement, materiel = excluded.materiel, duree = excluded.duree, date = excluded.date, tableau_deroulement = excluded.tableau_deroulement, images_deroulement = excluded.images_deroulement, bilan = excluded.bilan, bilan_date = excluded.bilan_date, sequence_id = excluded.sequence_id, consignes = excluded.consignes",
             params![se.id, se.titre, se.numero, se.objectifs, se.competences, se.deroulement,
                     se.materiel, se.duree, se.date, se.tableau_deroulement, se.images_deroulement,
-                    se.bilan, se.bilan_date, se.sequence_id],
+                    se.bilan, se.bilan_date, se.sequence_id, se.consignes],
         ).map_err(e)?;
     }
     Ok(titre)

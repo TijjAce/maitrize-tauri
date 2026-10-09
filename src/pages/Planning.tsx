@@ -27,6 +27,10 @@ import { JOURS_DE_RECUL, STYLE_VEILLE, bilansDeLaVeilleHtml, veilleDe } from "..
 import { niveauDeProgrammation } from "../programmation";
 import { EnRetard } from "../components/EnRetard";
 import { EVT_EN_RETARD } from "../fichesAutonomie";
+import { STYLE_TAPUSCRIT, lireConsignes } from "../tapuscrit";
+import { tapuscritImprimable, useTapuscritDuJournal } from "../components/Tapuscrit";
+import { creneauxAvecTapuscrit } from "../journalTapuscrit";
+import { mentionDesPictos, type RefPicto } from "../pictosAppoint";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const JOURS7 = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -260,9 +264,12 @@ export default function Planning() {
       iso(ancre),
     );
 
+    // Les séances telles qu'elles sont maintenant : la page garde celles de son ouverture,
+    // et l'on a pu écrire des consignes, ou un déroulement, entre-temps.
+    const seancesDuJour = await api.seancesList().catch(() => seances ?? []);
     // Collecte toutes les images référencées, puis les lit en data URL.
     const noms = new Set<string>();
-    const seqDe = (c: Creneau) => (seances ?? []).find((s) => s.id === c.seanceId);
+    const seqDe = (c: Creneau) => seancesDuJour.find((s) => s.id === c.seanceId);
     for (const c of jourCreneaux) {
       // Les images posées dans le prévu (un exercice découpé dans un manuel).
       let p: RegExpExecArray | null; reImg.lastIndex = 0;
@@ -272,6 +279,19 @@ export default function Planning() {
       let m: RegExpExecArray | null; reImg.lastIndex = 0;
       while ((m = reImg.exec(s.deroulement || ""))) noms.add(m[1]);
       try { (JSON.parse(s.tableauDeroulement || "[]") as string[][]).forEach((row) => row.forEach((cell) => { let mm: RegExpExecArray | null; const re = /\[img:([^\]]+)\]/g; while ((mm = re.exec(cell))) noms.add(mm[1]); })); } catch { /* */ }
+    }
+    // Le tapuscrit des séances — leurs consignes en pictogrammes —, sous les
+    // créneaux où on l'a demandé (voir journalTapuscrit.ts). Sans lui, le journal s'imprime quand même.
+    const avecTapuscrit = creneauxAvecTapuscrit(reglages);
+    const tapuscrits: Record<string, string> = {};
+    const pictosDuJournal: RefPicto[] = [];
+    for (const c of jourCreneaux) {
+      const consignes = lireConsignes(seqDe(c)?.consignes);
+      if (!avecTapuscrit.has(c.id) || !consignes.length) continue;
+      try {
+        const { html, refs } = await tapuscritImprimable(consignes);
+        if (html) { tapuscrits[c.id] = html; pictosDuJournal.push(...refs); }
+      } catch { /* voir plus haut */ }
     }
     // La ludothèque : la règle des jeux cités suit le prévu du créneau.
     const jeux = await api.jeuxList().catch((): Jeu[] => []);
@@ -341,6 +361,7 @@ export default function Planning() {
           ? champ("Matériel à imprimer", `${titresDuMateriel(c, sequences ?? [], seances ?? [], materiels).map(escapeHtml).join(", ")} — joint à la suite`) : "",
         grid.length ? `<div class="fl" style="margin-top:4px">Tableau :</div><table>${colonnesDuTableau(grid[0])}${grid.map((row, r) => `<tr>${row.map((cell) => r === 0 ? `<th>${escapeHtml(cell)}</th>` : `<td>${rendreCell(cell)}</td>`).join("")}</tr>`).join("")}</table>` : "",
         illus.length ? `<div class="imgs">${illus.map(imgTag).join("")}</div>` : "",
+        tapuscrits[c.id] ? `<div class="f"><span class="fl">Consignes en pictogrammes :</span></div>${tapuscrits[c.id]}` : "",
         c.prevu?.trim() ? `<div class="f"><span class="fl">Prévu :</span></div><div class="txt prevu">${rendreCell(c.prevu.trim())}</div>` : "",
         reglesImprimees(aImprimer(jeuxCites(`${c.prevu ?? ""}\n${deroul}`, jeux), (j) => masqueJeu(j.id), masques[c.id] ?? [])),
         sequencesImprimees(aImprimer(sequencesCitees(c.prevu ?? "", sequences ?? [], seances ?? []), (x) => masqueSequence(x.sequence.id, x.seance?.id), masques[c.id] ?? []), seances ?? []),
@@ -398,6 +419,7 @@ export default function Planning() {
       ${STYLE_PIED}
       ${STYLE_ANNEXES}
       ${STYLE_VEILLE}
+      ${STYLE_TAPUSCRIT}
     `;
     // Le matériel à la suite du journal : chaque page de PDF devient une
     // image, entière, assez fine pour l'imprimante. Un fichier illisible ne
@@ -418,7 +440,8 @@ export default function Planning() {
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Planning — ${escapeHtml(titre)}</title><style>${css}</style></head>
       <body>${moletteDuJournalHtml()}<div class="journal"><h1>${escapeHtml(titre)}</h1><div class="sub">Cahier journal</div>
       ${bilansDeLaVeilleHtml(veille)}
-      <div class="jour">${rangs || '<div class="row"><div style="padding:20px;color:#687087">Aucun créneau ce jour-là.</div></div>'}</div></div>
+      <div class="jour">${rangs || '<div class="row"><div style="padding:20px;color:#687087">Aucun créneau ce jour-là.</div></div>'}</div>
+      ${mentionDesPictos([...new Set(pictosDuJournal)], "", "tp-attribution")}</div>
       ${annexesHtml(rendues)}
       ${piedMaitrize(logo)}
       </body></html>`;
@@ -793,6 +816,16 @@ function CreneauForm({ creneau, seances, sequences, onClose, onSaved, onDelete, 
   const [c, setC] = React.useState<Creneau>(creneau);
   const [creationEnCours, setCreationEnCours] = React.useState(false);
   const up = (p: Partial<Creneau>) => setC((cur) => ({ ...cur, ...p }));
+  // Le tapuscrit de la séance dans le cahier journal : ce créneau-ci, s'il est coché. Par défaut, non.
+  const tapuscrits = useTapuscritDuJournal();
+  const [avecTapuscrit, setAvecTapuscrit] = React.useState<boolean | null>(null);
+  const tapuscritCoche = avecTapuscrit ?? tapuscrits.avec.has(c.id);
+  const consignesLiees = lireConsignes(seances.find((s) => s.id === c.seanceId)?.consignes).length;
+  const enregistrer = async () => {
+    await api.creneauSave(c);
+    if (avecTapuscrit !== null && avecTapuscrit !== tapuscrits.avec.has(c.id)) await tapuscrits.poser(c.id, avecTapuscrit);
+    onSaved();
+  };
   // Séances groupées par séquence (séquences triées par titre, séances par n°).
   const seqsTriees = [...sequences].sort((a, b) => a.titre.localeCompare(b.titre));
   const seancesDe = (seqId: string) => seances.filter((s) => s.sequenceId === seqId).sort((a, b) => a.numero - b.numero);
@@ -803,7 +836,7 @@ function CreneauForm({ creneau, seances, sequences, onClose, onSaved, onDelete, 
         <button className="btn danger" onClick={onDelete}>Supprimer</button>
         <div className="spacer" />
         <button className="btn" onClick={onClose}>Annuler</button>
-        <button className="btn primary" onClick={() => api.creneauSave(c).then(onSaved)}>Enregistrer</button>
+        <button className="btn primary" onClick={() => { void enregistrer(); }}>Enregistrer</button>
       </>}>
       <div className="row">
         <Field label="Date"><Input type="date" value={c.date.slice(0, 10)} onChange={(e) => up({ date: e.target.value })} /></Field>
@@ -852,6 +885,17 @@ function CreneauForm({ creneau, seances, sequences, onClose, onSaved, onDelete, 
         <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 4 }}>
           Crée une séance vierge rattachée à une séquence « Séances du {fmtDateLongueFr(c.date.slice(0, 10))} » (créée automatiquement si besoin), puis ouvre sa fiche pour la compléter.
         </div>
+        <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10, fontSize: 13, cursor: c.seanceId ? "pointer" : "default",
+          color: c.seanceId ? undefined : "var(--text-2)" }}>
+          <input type="checkbox" disabled={!c.seanceId} checked={!!c.seanceId && tapuscritCoche}
+            onChange={(e) => setAvecTapuscrit(e.target.checked)} />
+          <span>🖼 Imprimer les consignes de la séance en pictogrammes dans le cahier journal</span>
+        </label>
+        {c.seanceId && tapuscritCoche && !consignesLiees && (
+          <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 4 }}>
+            Cette séance n'a pas encore de consignes : elles s'écrivent dans sa fiche, une par ligne.
+          </div>
+        )}
       </Field>
     </Modal>
   );

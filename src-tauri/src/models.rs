@@ -139,6 +139,9 @@ pub struct Seance {
     /// La dernière modification, posée à chaque enregistrement.
     #[serde(default)]
     pub date_maj: String,
+    /// Les consignes données aux élèves, une par ligne : ce que le tapuscrit traduit en pictogrammes.
+    #[serde(default)]
+    pub consignes: String,
 }
 fn quarante_cinq() -> i64 { 45 }
 fn vide_arr() -> String { "[]".into() }
@@ -161,6 +164,7 @@ impl Seance {
             bilan_date: r.get("bilan_date")?,
             sequence_id: r.get("sequence_id")?,
             date_maj: r.get("date_maj").unwrap_or_default(),
+            consignes: r.get::<_, Option<String>>("consignes").ok().flatten().unwrap_or_default(),
         })
     }
 }

@@ -579,6 +579,27 @@ details.pli[open] { padding-bottom: 10px; }
   color: var(--text-2); font-size: 15px; line-height: 1; padding: 0; }
 .consigne-chip-retirer { border: none; background: none; color: var(--text-2); cursor: pointer; padding: 0 2px; font-size: 11px; }
 .consigne-pictos-ajout { max-width: 200px; font-size: 12.5px; }
+/* Le tapuscrit d'une séance : ses consignes, une par ligne, puis en pictogrammes (voir tapuscrit.ts). */
+.consigne-saisie { display: flex; align-items: center; gap: 8px; }
+.consigne-saisie .input { flex: 1; min-width: 0; }
+.tapuscrit-ui { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 10px; }
+.tp-num { flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-soft); color: var(--accent);
+  font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.tapuscrit-ui .tp-ligne { display: flex; align-items: flex-start; gap: 8px; }
+.tapuscrit-ui .tp-num { margin-top: 14px; }
+.tapuscrit-ui.compact .tp-num { margin-top: 8px; }
+.tapuscrit-ui .tp-consigne { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 4px 6px; min-width: 0; }
+.tapuscrit-ui .tp-mot { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; padding: 2px 3px;
+  border: 1px solid transparent; border-radius: 8px; background: none; color: var(--text); font: inherit; }
+.tapuscrit-ui button.tp-mot { cursor: pointer; }
+.tapuscrit-ui button.tp-mot:hover, .tapuscrit-ui button.tp-mot:focus-visible { border-color: var(--border); background: var(--panel-2); }
+.tapuscrit-ui .tp-mot img { width: 44px; height: 44px; object-fit: contain; background: #fff; border-radius: 6px; }
+.tapuscrit-ui .tp-vide { width: 44px; height: 44px; border: 1.5px dashed var(--border); border-radius: 6px; display: flex;
+  align-items: center; justify-content: center; color: var(--text-2); font-size: 18px; }
+.tapuscrit-ui .tp-mot > span:last-child { font-size: 12px; line-height: 1.2; }
+.tapuscrit-ui .tp-petit > span { color: var(--text-2); }
+.tapuscrit-ui.compact { padding: 6px 8px; }
+.tapuscrit-ui.compact .tp-mot img, .tapuscrit-ui.compact .tp-vide { width: 32px; height: 32px; }
 /* CAA : les verbes des consignes et leurs pictos. */
 .caa-verbes { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; }
 .caa-verbe { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px; border: 1px solid var(--border);

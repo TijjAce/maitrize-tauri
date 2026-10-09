@@ -132,6 +132,8 @@ export interface Seance {
   bilanDate: string | null; sequenceId: string | null;
   /** La dernière modification, écrite à chaque enregistrement. */
   dateMaj: string;
+  /** Les consignes données aux élèves, une par ligne : ce que le tapuscrit traduit en pictogrammes. */
+  consignes?: string;
 }
 
 export interface Creneau {
@@ -769,6 +771,8 @@ export const api = {
     invoke<[PictoArasaac[], string[]]>("arasaac_par_mots", { mots }),
   /** Les pictos des mots d'une consigne, dans le sens de la classe quand ARASAAC en a un (« repasser » : tracer, pas le fer). */
   arasaacPourConsignes: (mots: string[]) => invoke<PictoConsigne[]>("arasaac_pour_consignes", { mots }),
+  /** Les pictos des mots d'une consigne de séance, dans le sens de la classe : un par mot demandé, ou `null`. */
+  arasaacPourTapuscrit: (mots: MotATraduire[]) => invoke<(PictoConsigne | null)[]>("arasaac_pour_tapuscrit", { mots }),
   /**
    * Le PDF d'un jeu ; `ouvrir` faux pour le ranger sans l'ouvrir. Renvoie son chemin.
    * `images` porte celles de l'enseignant, que la banque n'a pas : elles partent avec la demande.
@@ -1064,6 +1068,8 @@ export interface CategorieArasaac { nom: string; nombre: number }
 export interface PictoArasaac { id: number; mot: string; fichier: string; nature?: string }
 /** Le picto ARASAAC d'un mot de consigne ; `scolaire` s'il est rangé parmi les tâches de la classe. */
 export interface PictoConsigne { id: number; mot: string; scolaire: boolean }
+/** Ce qu'un mot de consigne demande à la banque : les verbes d'abord, à l'infinitif, puis le mot et son singulier. */
+export interface MotATraduire { verbes: string[]; noms: string[] }
 /** Les banques qui complètent ARASAAC pour les verbes des consignes. */
 export type BanqueAppoint = "bajard" | "sclera";
 export interface EtatAppoint { banque: BanqueAppoint; installee: boolean; nombre: number }
