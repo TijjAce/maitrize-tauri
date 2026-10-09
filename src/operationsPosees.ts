@@ -159,7 +159,7 @@ export function htmlOperationsPosees(r: ReglagesPosees, graine: number): string 
       : "On aligne les unités sous les unités, les dizaines sous les dizaines… On commence par les unités ; dix unités font une dizaine, qu'on met en retenue.";
   return feuille(`<div class="page"><div class="titre">Opérations posées — ${nom}</div>
     <div class="sous">Prénom : ........................................ Date : ........................</div>
-    <div class="regle"><b>${r.posees ? "Calcule" : "Pose, puis calcule"}</b>${regle} <span style="color:#687087">— Programme 2024 ; guide CP, Éduscol 2021.</span></div>
+    <div class="regle"><b>${r.posees ? "Calcule" : "Pose, puis calcule"}</b>${regle} <span class="reference">Programme 2024 ; guide CP, Éduscol 2021.</span></div>
     <div class="op-liste">${ops.map((o) => bloc(o, false)).join("")}</div></div>
     <div class="page corrige"><div class="titre">Opérations posées — corrigé</div><div class="op-liste">${ops.map((o) => bloc(o, true)).join("")}</div></div>`, "op");
 }

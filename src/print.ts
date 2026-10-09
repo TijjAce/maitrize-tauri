@@ -16,6 +16,7 @@ export function dataUrlImage(nom: string, base64: string): string {
 // qui va à un élève ou à une famille.
 
 import logoUrl from "./assets/logo.png";
+import { sansReferences } from "./references";
 
 /** Le logo réduit, en data URL : l'impression part sans dépendre de l'application. */
 let logoPret: Promise<string> | null = null;
@@ -140,12 +141,16 @@ const STYLE = `
 export const ZOOM_WEBKIT = 0.75 / 0.8;
 const STYLE_WEBKIT = `@media print { @supports (font: -apple-system-body) { html { zoom: ${ZOOM_WEBKIT}; } } }`;
 
-/** Le document autonome qu'on ouvre pour l'imprimer ou l'enregistrer en PDF. */
+/**
+ * Le document autonome qu'on ouvre pour l'imprimer ou l'enregistrer en PDF.
+ * Les références d'une feuille n'y passent pas : elles restent dans
+ * l'application, derrière un « ? » (voir `references`).
+ */
 export function documentImprimable(title: string, bodyHtml: string, styleExtra = ""): string {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${STYLE}
     @media screen { body { max-width: 820px; margin: 0 auto; } }
     ${STYLE_WEBKIT}
-    ${styleExtra}</style></head><body>${bodyHtml}</body></html>`;
+    ${styleExtra}</style></head><body>${sansReferences(bodyHtml)}</body></html>`;
 }
 
 export function printHTML(title: string, bodyHtml: string, styleExtra = "") {

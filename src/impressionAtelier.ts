@@ -20,6 +20,7 @@ import { appliquerOptionsFeuille, cleOptionsFeuille, lireOptionsFeuille } from "
 import { documentImprimable, escapeHtml, printHTML } from "./print";
 import type { MaterielItem } from "./api";
 import { ecrireFabrication, fabricationDuMoment, modificationEnCours, type Fabrication, type Modification } from "./modifierFeuille";
+import { sansReferences } from "./references";
 
 /** Combien de compétences s'écrivent en tête ; au-delà, on les compte. */
 export const LIGNES_MAX = 4;
@@ -168,14 +169,16 @@ const supplementDe = async (atelier: string, extras: ExtrasAtelier) => [...new S
 /**
  * La feuille telle que l'enseignant la veut : la consigne qu'il a réécrite
  * pour cet atelier, et sans ce qu'il a décoché — consigne, prénom, correction.
+ * Sans ses références non plus : elles ne s'impriment pas, et leurs mots ne
+ * doivent pas appeler de pictos dans la consigne.
  */
 export async function avecLaConsigneDeLAtelier(atelier: string, corps: string): Promise<string> {
   try {
     const { api } = await import("./api");
     const reecrite = remplacerConsigne(corps, await api.settingGet(cleConsigne(atelier)));
-    return appliquerOptionsFeuille(reecrite, lireOptionsFeuille(await api.settingGet(cleOptionsFeuille(atelier))));
+    return sansReferences(appliquerOptionsFeuille(reecrite, lireOptionsFeuille(await api.settingGet(cleOptionsFeuille(atelier)))));
   } catch {
-    return corps;
+    return sansReferences(corps);
   }
 }
 

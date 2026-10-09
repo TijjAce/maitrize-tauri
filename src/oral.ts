@@ -19,6 +19,7 @@ import { escapeHtml } from "./print";
 import { feuille } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
 import { texteDe } from "./textesDeComprehension";
+import { reference } from "./references";
 
 export type Classe = "CP" | "CE1" | "CE2";
 export type Genre = "raconter" | "expose" | "poeme" | "debat";
@@ -142,7 +143,7 @@ function feuilleGrille(r: ReglagesOral): string {
 function feuilleRaconter(r: ReglagesOral, graine: number): string {
   const carte = ["Qui ?", "Où ?", "Quand ?", "Quel est le problème ?", "Qu'arrive-t-il ?", "Quelle est la solution ?"];
   const mots = melanger(hasard(graine), MOTS_IMPOSES).slice(0, 6);
-  return `<div class="page">${titre("Raconter une histoire")}${TETE}${regle("Avant de raconter, je prépare la carte du récit en quelques mots. Je raconte comme pour quelqu'un qui ne connaît pas l'histoire. — Guide CP, p. 52-53.")}
+  return `<div class="page">${titre("Raconter une histoire")}${TETE}${regle(`Avant de raconter, je prépare la carte du récit en quelques mots. Je raconte comme pour quelqu'un qui ne connaît pas l'histoire. ${reference("Guide CP, p. 52-53.")}`)}
     <div class="ol-carte">${carte.map((c) => `<div class="ol-bulle"><b>${c}</b>${lignes(1)}</div>`).join("")}</div>
     <div class="ol-sous-titre">Les mots pour enchaîner</div><div class="ol-mots">${CONNECTEURS_ORAUX[r.classe].map((m) => `<span>${escapeHtml(m)}</span>`).join("")}</div>
     <div class="ol-sous-titre">Raconter à tour de rôle, avec un mot imposé (à découper)</div><div class="ol-cartes">${mots.map((m) => `<div class="ol-carte-mot">${escapeHtml(m)}</div>`).join("")}</div></div>`;

@@ -17,6 +17,7 @@
 import { escapeHtml } from "./print";
 import { feuille } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
+import { reference } from "./references";
 
 export type Classe = "CP" | "CE1" | "CE2";
 export type ExerciceOrthographe =
@@ -274,7 +275,7 @@ function feuilleDicteePreparee(r: ReglagesOrthographe, graine: number): string {
     <div>Le texte : <b>${escapeHtml(texte)}</b></div>
     <div>${phrasesDuTexte(texte).length} phrase(s), ${mots.length} mots (« l'enfant » en compte deux), ${signesDePonctuation(texte)} signe(s) de ponctuation.</div>
     <div>Les mots dans le désordre : ${desordre.map(escapeHtml).join(", ")}.</div>
-    <div class="or-gris">Guide CP, p. 85-86 : s'assurer de la compréhension par un questionnement simple ; à la fin, dicter quelques mots des dictées précédentes pour réviser.</div></div></div>`;
+    <div class="or-gris">S'assurer de la compréhension par un questionnement simple ; à la fin, dicter quelques mots des dictées précédentes pour réviser. ${reference("Guide CP, p. 85-86.")}</div></div></div>`;
   return page1 + page2 + corrige;
 }
 
@@ -282,7 +283,7 @@ function feuillePhraseDuJour(r: ReglagesOrthographe): string {
   const phrases = PHRASES_DU_JOUR[r.classe];
   const jours = phrases.map((_, i) => `<div class="or-jour"><div class="or-j">Jour ${i + 1}</div>${lignes(r.classe === "CP" ? 1 : 2)}<div class="or-change">Ce qui a changé : <span class="or-pointilles"></span></div></div>`).join("");
   return `<div class="page">${titre("La phrase du jour")}${TETE}${regle("Chaque jour, une phrase dictée : la même que la veille, avec un élément qui change. J'écris, puis on compare les propositions au tableau et on se met d'accord en justifiant.")}${jours}</div>
-    <div class="page corrige">${titre("La phrase du jour — la progression")}${regle("Lire la phrase, la faire reformuler ; pendant la dictée, relever les propositions sur les cahiers ; les recopier au tableau sans valider ; organiser l'échange : supprimer les propositions erronées en justifiant, avec les outils de la classe. Les mots rencontrés enrichissent les listes analogiques. — Guide CE1, p. 102-103.")}
+    <div class="page corrige">${titre("La phrase du jour — la progression")}${regle("Lire la phrase, la faire reformuler ; pendant la dictée, relever les propositions sur les cahiers ; les recopier au tableau sans valider ; organiser l'échange : supprimer les propositions erronées en justifiant, avec les outils de la classe. Les mots rencontrés enrichissent les listes analogiques. " + reference("Guide CE1, p. 102-103."))}
       <div class="or-corrige">${phrases.map((p, i) => `<div><b>Jour ${i + 1}.</b> ${escapeHtml(p)}</div>`).join("")}</div></div>`;
 }
 
@@ -306,7 +307,7 @@ function feuilleAutodictee(r: ReglagesOrthographe, graine: number): string {
     <div class="or-sous-titre">Les mots difficiles que je dois retenir</div>${lignes(2)}</div>
     <div class="page">${titre("L'autodictée — j'écris de mémoire")}${TETE}${regle("J'écris le texte que j'ai appris, sans le modèle. Puis je relis : les majuscules et les points, les accords, les mots difficiles.")}${lignes(nLignes + 1, "or-ligne or-sautee")}
       <div class="or-verif"><span class="or-case"></span> majuscules et points &nbsp; <span class="or-case"></span> les accords &nbsp; <span class="or-case"></span> les mots difficiles</div></div>
-    <div class="page corrige">${titre("L'autodictée — le texte")}<div class="or-corrige"><div><b>${escapeHtml(propre)}</b></div><div class="or-gris">Guide CE1, p. 101 : préparer le texte en classe, le découper en groupes de sens, l'apprendre, le restituer seul ; de la phrase simple à deux ou trois phrases en fin d'année.</div></div></div>`;
+    <div class="page corrige">${titre("L'autodictée — le texte")}<div class="or-corrige"><div><b>${escapeHtml(propre)}</b></div><div class="or-gris">Préparer le texte en classe, le découper en groupes de sens, l'apprendre, le restituer seul ; de la phrase simple à deux ou trois phrases en fin d'année. ${reference("Guide CE1, p. 101.")}</div></div></div>`;
 }
 
 function feuilleATrous(r: ReglagesOrthographe, graine: number): string {
@@ -335,7 +336,7 @@ function feuilleMemoriser(r: ReglagesOrthographe, graine: number): string {
   const longs = [...mots].sort((a, b) => b.length - a.length).filter((m) => !m.includes(" ")).slice(0, 3);
   const escaliers = longs.map((m) => `<div class="or-escalier">${escalier(m).map((e, k) => `<div style="margin-left:${k * 6}mm">${escapeHtml(e)}</div>`).join("")}</div>`).join("");
   return `<div class="page">${titre("Mémoriser des mots")}${TETE}
-    ${regle("J'observe le mot. Je le lis. Je l'épelle. Je ferme les yeux et j'essaie de le voir dans ma tête. Je vérifie à nouveau comment il s'écrit. Je le cache et je l'écris. — Guide CE1, p. 105.")}
+    ${regle(`J'observe le mot. Je le lis. Je l'épelle. Je ferme les yeux et j'essaie de le voir dans ma tête. Je vérifie à nouveau comment il s'écrit. Je le cache et je l'écris. ${reference("Guide CE1, p. 105.")}`)}
     <table class="or-tableau"><tr><th>Le mot</th><th>Je l'écris sans le regarder</th><th>Juste ?</th></tr>${lignesMots}</table>
     <div class="or-sous-titre">L'escalier : j'écris le mot marche après marche</div><div class="or-escaliers">${escaliers}</div></div>`;
 }

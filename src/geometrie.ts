@@ -55,7 +55,7 @@ const LETTRES = "ABCDEFGHIJKLMNOP";
 const f2 = (x: number) => x.toFixed(2);
 const entre = (alea: () => number, a: number, b: number) => a + Math.floor(alea() * (b - a + 1));
 
-const SOURCE = `<span style="color:#687087">— Programme de mathématiques du cycle 2, 2024 ; Éduscol, « Espace et géométrie au cycle 2 ».</span>`;
+const SOURCE = `<span class="reference">Programme de mathématiques du cycle 2, 2024 ; Éduscol, « Espace et géométrie au cycle 2 ».</span>`;
 const entete = (titre: string, consigne: string) => `<div class="titre">${titre}</div>
   <div class="sous">Prénom : ........................................ Date : ........................</div>
   <div class="regle">${consigne} ${SOURCE}</div>`;

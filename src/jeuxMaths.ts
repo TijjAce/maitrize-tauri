@@ -83,7 +83,7 @@ export function htmlCartesNombres(cartes: CarteNombre[], r: ReglagesNombres): st
     <div class="regle"><b>Jeu de mémoire</b>Cartes face cachée ; on en retourne deux : le même nombre sous deux formes différentes fait une paire.
       <b style="margin-top:4px">Bataille</b>Chacun retourne une carte, quelle que soit sa forme ; le plus grand nombre remporte le pli.
       <b style="margin-top:4px">Loto</b>Les nombres écrits en chiffres sur les planches, les autres écritures à piocher.
-      <span style="color:#687087">— Livret Mathématiques CP, Éduscol 2025 : passer d'une représentation à une autre.</span></div>`;
+      <span class="reference">Livret Mathématiques CP, Éduscol 2025 : passer d'une représentation à une autre.</span></div>`;
   return feuille(pagesDeCartes(cartes.map((c) => carte(c.html)), { colonnes: 4, lignes: 5 }, regle), "nb");
 }
 
@@ -114,7 +114,7 @@ export function htmlCartesCalcul(cartes: CarteCalcul[], r: ReglagesCalcul, titre
   const regle = `<div class="titre">${titre ? escapeHtml(titre) : `Cartes de calcul — ${nom} ${r.tables.join(", ")}`}</div>
     <div class="regle"><b>Se tester</b>On lit la carte, on dit le résultat, on retourne pour vérifier — en classe et à la maison.
       <b style="margin-top:4px">Bataille</b>Chacun retourne une carte et calcule ; le plus grand résultat remporte le pli. À égalité, bataille !
-      <span style="color:#687087">— Livrets Mathématiques CE1 et CE2, Éduscol 2025 : jeux de cartes et cartes recto-verso pour mémoriser.</span></div>`;
+      <span class="reference">Livrets Mathématiques CE1 et CE2, Éduscol 2025 : jeux de cartes et cartes recto-verso pour mémoriser.</span></div>`;
   const rectos = cartes.map((c) => carte(`<div class="ca-question">${escapeHtml(c.question)}</div>`));
   if (r.rectoVerso) {
     const versos = cartes.map((c) => carte(`<div class="ca-reponse">${c.reponse}</div>`));
@@ -170,7 +170,7 @@ export function htmlArbreCalcul(liste: Addition[], r: ReglagesArbre, entete?: { 
     : `<div class="titre">Arbre à calcul — ajouter deux nombres</div>
     <div class="regle"><b>Comment faire</b>Je décompose chaque nombre en dizaines et unités, j'ajoute les dizaines entre elles, les unités entre elles, puis je recompose la somme.
       L'arbre soutient le raisonnement ; l'objectif est de finir par s'en passer.
-      <span style="color:#687087">— Livret Mathématiques CP, Éduscol 2025.</span></div><div class="sous">Prénom : ........................................ Date : ........................</div>`;
+      <span class="reference">Livret Mathématiques CP, Éduscol 2025.</span></div><div class="sous">Prénom : ........................................ Date : ........................</div>`;
   return feuille(`<div class="page">${regle}<div class="ar-grille">${liste.map(arbre).join("")}</div></div>`, "ar");
 }
 
@@ -317,7 +317,7 @@ export function htmlSegmentsAMesurer(g: Graduation, graine: number): string {
     ${longueurs.map((k, i) => `<div class="fr-corrige-ligne"><b>${LETTRES_SEGMENTS[i]}</b> ${longueurEnUnites(k, g)}</div>`).join("")}</div>`;
   return `<div class="page"><div class="titre">Mesurer des segments en ${nomDesParts(g)} d'unité</div>
     <div class="regle">Découpe la bande unité, puis plie-la en ${g === 4 ? "quatre" : g === 8 ? "huit" : "dix"} parties égales — ou prends la règle graduée en ${nomDesParts(g)}. Mesure chaque segment, en unités et en ${nomDesParts(g)} d'unité.
-      <span style="color:#687087">— Livret Mathématiques CE2, Éduscol 2025.</span></div>
+      <span class="reference">Livret Mathématiques CE2, Éduscol 2025.</span></div>
     <div class="sous">Prénom : ........................................ Date : ........................</div>${bande}${lignes}</div>${corrige}`;
 }
 
@@ -343,7 +343,7 @@ export function htmlSegmentsATracer(g: Graduation, longueurs: number[]): string 
     ${longueurs.map((k, i) => `<div class="fr-segment"><b>${LETTRES_SEGMENTS[i]}</b>${segmentSvg(k, g)}<span class="fr-mesure">${longueurEnUnites(k, g)}</span></div>`).join("")}</div>`;
   return `<div class="page"><div class="titre">Tracer des segments avec la règle graduée en ${nomDesParts(g)}</div>
     <div class="regle">Pose le zéro de ta règle sur le point, et trace chaque segment de la longueur demandée.${simplifier ? " Attention : les longueurs sont en demis et en quarts d'unité ; combien de huitièmes cela fait-il ?" : ""}
-      <span style="color:#687087">— Livret Mathématiques CE2, Éduscol 2025.</span></div>
+      <span class="reference">Livret Mathématiques CE2, Éduscol 2025.</span></div>
     <div class="sous">Prénom : ........................................ Date : ........................</div>${lignes}</div>${corrige}`;
 }
 
@@ -416,7 +416,7 @@ export function htmlComparerFractions(r: ReglagesFractions, graine: number): str
       : "Les deux touts ont la même longueur ; l'un est partagé en deux fois, trois fois plus de parts : combien de petites parts font une grande ?";
   return `<div class="page"><div class="titre">Comparer des fractions</div>
     <div class="regle"><b>Colorie, puis compare</b>Colorie chaque fraction sur sa bande, puis écris &lt;, &gt; ou = entre les deux. ${regle}
-      <span style="color:#687087">— Livrets Mathématiques CE1 et CE2, Éduscol 2025.</span></div>
+      <span class="reference">Livrets Mathématiques CE1 et CE2, Éduscol 2025.</span></div>
     <div class="sous">Prénom : ........................................ Date : ........................</div>
     ${paires.map((p) => ligne(p, false)).join("")}</div>
     <div class="page corrige"><div class="titre">Comparer des fractions — corrigé</div>${paires.map((p) => ligne(p, true)).join("")}</div>`;
@@ -458,7 +458,7 @@ export function htmlOperationsSurFractions(r: ReglagesFractions, graine: number)
   return `<div class="page"><div class="titre">Ajouter et retrancher des fractions</div>
     <div class="regle"><b>Calcule</b>Tu peux colorier la bande pour t'aider : les parts de la première fraction, puis celles qu'on ajoute — ou qu'on enlève.
       ${r.cas === "multiple" ? "Quand les dénominateurs diffèrent, on écrit d'abord la première fraction avec les plus petites parts." : "Les parts sont de même taille : on ajoute, ou on enlève, des parts."}
-      <span style="color:#687087">— Livrets Mathématiques CE1 et CE2, Éduscol 2025.</span></div>
+      <span class="reference">Livrets Mathématiques CE1 et CE2, Éduscol 2025.</span></div>
     <div class="sous">Prénom : ........................................ Date : ........................</div>
     ${ops.map((o) => ligne(o, false)).join("")}</div>
     <div class="page corrige"><div class="titre">Ajouter et retrancher des fractions — corrigé</div>${ops.map((o) => ligne(o, true)).join("")}</div>`;
@@ -471,14 +471,14 @@ export function htmlFractions(r: ReglagesFractions, graine: number): string {
     const regle = `<div class="titre">Cartes des fractions — ${r.denominateurs.map((n) => `en ${fractionEnLettres(2, n).split(" ")[1]}`).join(", ")}</div>
       <div class="regle"><b>Jeu de mémoire</b>Cartes face cachée ; on en retourne deux : la même fraction sous deux formes différentes fait une paire. Cartes face visible d'abord, pour apprendre.
         <b style="margin-top:4px">Bataille des fractions</b>Chacun retourne une carte ; la plus grande fraction remporte le pli. Pour comparer, on regarde les dessins : pour un même tout partagé en parts égales, plus il y a de parts, plus chaque part est petite.
-        <span style="color:#687087">— Livret Mathématiques CE1, Éduscol 2025.</span></div>`;
+        <span class="reference">Livret Mathématiques CE1, Éduscol 2025.</span></div>`;
     parties.push(pagesDeCartes(cartes.map((c) => carte(c.html)), { colonnes: 4, lignes: 5 }, regle));
   }
   if (r.materiel.includes("bandes")) {
     const bande = (repere: string) => `<div class="fr-bande">${repere}</div>`;
     parties.push(`<div class="page"><div class="titre">Bandes unités à plier</div>
       <div class="regle">On plie la bande unité en deux, puis en quatre ; on marque les plis. Une bande pliée en dix pour les dixièmes.
-        Les bandes repérées servent à vérifier. <span style="color:#687087">— Livret Mathématiques CE2, Éduscol 2025.</span></div>
+        Les bandes repérées servent à vérifier. <span class="reference">Livret Mathématiques CE2, Éduscol 2025.</span></div>
       <div class="sous">Bandes vierges (1 u = 15 cm)</div>${[1, 2, 3, 4].map(() => bande("")).join("")}
       <div class="sous">Bande repérée en quarts</div>${bande(`<div class="fr-reperes">${[1, 2, 3].map((g) => `<span style="left:${g * 25}%"></span>`).join("")}</div>`)}
       <div class="sous">Bande repérée en dixièmes</div>${bande(`<div class="fr-reperes">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((g) => `<span style="left:${g * 10}%"></span>`).join("")}</div>`)}</div>`);
@@ -486,14 +486,14 @@ export function htmlFractions(r: ReglagesFractions, graine: number): string {
   if (r.materiel.includes("regle")) {
     parties.push(`<div class="page"><div class="titre">Règle graduée en ${nomDesParts(r.graduation)} d'unité</div>
       <div class="regle">Une règle où l'unité vaut 5 cm, graduée en ${nomDesParts(r.graduation)} : pour mesurer et tracer des longueurs quand les entiers ne suffisent plus. À découper et coller sur du carton.
-        <span style="color:#687087">— Livret Mathématiques CE2, Éduscol 2025.</span></div>
+        <span class="reference">Livret Mathématiques CE2, Éduscol 2025.</span></div>
       <div style="margin:8mm 0">${regleSvg(r.graduation)}</div><div style="margin:8mm 0">${regleSvg(r.graduation)}</div><div style="margin:8mm 0">${regleSvg(r.graduation)}</div></div>`);
   }
   if (r.materiel.includes("nageurs")) {
     const regle = `<div class="titre">La course des nageurs</div>
       <div class="regle"><b>Règle du jeu</b>Par groupes de trois, sur une feuille A3. À son tour, on pioche une carte et on trace, depuis le bord de départ puis depuis l'extrémité de son dernier segment, un segment de la longueur indiquée, avec la règle graduée.
         Le premier qui atteint ou dépasse l'autre bord a gagné — on finit le tour, il peut y avoir des ex aequo. Une ligne bien droite va plus vite qu'une ligne brisée.
-        <span style="color:#687087">— Livret Mathématiques CE2, Éduscol 2025.</span></div>`;
+        <span class="reference">Livret Mathématiques CE2, Éduscol 2025.</span></div>`;
     parties.push(pagesDeCartes(cartesNageurs(r.graduation).map((c) => carte(c)), { colonnes: 3, lignes: 6, hauteurMm: 38 }, regle));
   }
   if (r.materiel.includes("mesurer")) parties.push(htmlSegmentsAMesurer(r.graduation, graine));
@@ -592,10 +592,10 @@ export function htmlJeuDeLOie(r: ReglagesOie, graine: number): string {
   const regle = `<div class="titre">Jeu de l'oie${quoi ? ` — ${quoi}` : ""}</div>
     <div class="regle"><b>Règle du jeu</b>Chacun lance le dé et avance son pion d'autant de cases${quoi ? ` ; on lit ce que dit la case où l'on arrive` : ""}.
       Les cases jaunes font avancer, reculer, rejouer ou passer son tour. Le premier arrivé a gagné.
-      <span style="color:#687087">— Livrets « Résolution de problèmes » (la piste du type jeu de l'oie, pour les déplacements) et Français CP (le jeu de l'oie des lettres), Éduscol 2025.</span></div>`;
+      <span class="reference">Livrets « Résolution de problèmes » (la piste du type jeu de l'oie, pour les déplacements) et Français CP (le jeu de l'oie des lettres), Éduscol 2025.</span></div>`;
   const de = r.de === "aucun" ? "" : `<div class="page"><div class="titre">Le dé — patron à plier</div>
     <div class="regle">Découper sur les traits pleins, plier sur les traits des faces, coller les languettes. ${r.de === "1-3" ? "Les faces vont de 1 à 3, deux fois : pour les petits déplacements." : r.de === "chiffres" ? "Les faces portent les chiffres." : "Les faces portent les constellations, comme un dé ordinaire."}
-      <span style="color:#687087">— Programme de l'école maternelle 2025 : apprendre en jouant, jeux de société.</span></div>
+      <span class="reference">Programme de l'école maternelle 2025 : apprendre en jouant, jeux de société.</span></div>
     <div style="text-align:center;margin-top:6mm">${patronDeSvg(r.de)}</div></div>`;
   return feuille(`<div class="page">${regle}<div style="text-align:center;margin-top:4mm">${pisteSvg(cases)}</div></div>${de}`, "oie");
 }
