@@ -335,8 +335,8 @@ export function TriTab() {
       const reponse = restaurer(await api.mistralChat(promptTransposer(patron, themeMasque, motsMasques, parMaison, demandeCorpus.cycle), modele), masque.table).texte;
       const ecrites = transpositionDeLaReponse(reponse, patron.map((m) => m.titre), parMaison);
       if (ecrites.filter((l) => l.length >= 2).length < 2) {
-        // Gardé au journal : c'est ce qui permet de lire, après coup, la forme que le modèle a prise.
-        journal(`Tri transposé illisible (${m.nom}) : ${reponse.slice(0, 600).replace(/\n/g, " ⏎ ")}`);
+        // Gardé au journal : la forme que le modèle a prise, jamais son texte — il peut nommer un élève.
+        journal(`Tri transposé illisible (${m.nom}) : ${reponse.length} caractères, ${reponse.split("\n").length} lignes, ${ecrites.length} retenues`);
         toast("Le modèle n'a rien proposé de lisible ; réessayez.", { icone: "🤔", duree: 6000 });
         return;
       }

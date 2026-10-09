@@ -95,6 +95,11 @@ jobs:
       - name: Dépendances front
         run: npm install
 
+      # Les licences des composants que cette plateforme embarque, jointes à l'application
+      # (Réglages › Licences) : les licences MIT, BSD et Apache le demandent.
+      - name: Licences des composants tiers
+        run: node outils/licences/notices.mjs --en-ligne
+
       # ── Signature Windows : le certificat Certum, par ssign ──────────────
       #
       # La clé reste chez Certum. ssign (MIT, github.com/Le-Syl21/ssign) parle

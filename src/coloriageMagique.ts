@@ -37,6 +37,8 @@ export interface Motif {
   famille?: FamilleMotif;
   /** Vrai pour un dessin de l'enseignant, gardé sur cet ordinateur. */
   perso?: boolean;
+  /** Le crédit de l'image dont il est tiré — un pictogramme ARASAAC : la licence le demande sur la feuille. */
+  credit?: string;
 }
 
 export const MOTIFS: Motif[] = [
@@ -830,7 +832,10 @@ export function lireMotifsPerso(brut: string | null | undefined): Motif[] {
     const v = JSON.parse(brut);
     if (!Array.isArray(v)) return [];
     return v.filter((m) => m && typeof m.id === "string" && Array.isArray(m.grille) && grilleValide(m.grille))
-      .map((m) => ({ id: m.id, nom: String(m.nom || "Mon dessin"), grille: m.grille.map(String), perso: true }));
+      .map((m) => ({
+        id: m.id, nom: String(m.nom || "Mon dessin"), grille: m.grille.map(String), perso: true,
+        ...(typeof m.credit === "string" && m.credit ? { credit: m.credit } : {}),
+      }));
   } catch { return []; }
 }
 
@@ -925,12 +930,14 @@ export function feuilleDuColoriage(c: Coloriage, r: ReglagesColoriage, avecCorri
      <p class="nom">Prénom : ........................................ Date : ........................</p>
      <p class="consigne">${escapeHtml(consigneAutre ?? consigne(r))}</p>
      <div class="legende">${legende}</div>
-     <table class="grille"><tbody>${cases}</tbody></table>`, style:
+     <table class="grille"><tbody>${cases}</tbody></table>${c.motif.credit
+       ? `<p class="attribution">${escapeHtml(c.motif.credit)}</p>` : ""}`, style:
     `.consigne { font-size: 14px; margin-bottom: 10px; }
      .legende { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; font-size: 14px; align-items: center; }
      .lg i { display: inline-block; width: 14px; height: 14px; border: 1px solid #333; vertical-align: -2px; }
      .grille { border-collapse: collapse; margin: 0 auto; }
      .grille td { border: 1.2px solid #222; width: ${cote}px; height: ${cote}px; text-align: center;
        font-size: ${police}px; white-space: nowrap; vertical-align: middle; }
-     .nom { margin: 0 0 10px; font-size: 13px; color: #555; }` };
+     .nom { margin: 0 0 10px; font-size: 13px; color: #555; }
+     .attribution { font-size: 8px; color: #888; margin-top: 10px; text-align: center; }` };
 }

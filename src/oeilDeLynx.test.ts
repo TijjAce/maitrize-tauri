@@ -211,7 +211,7 @@ describe("l'œil de lynx", () => {
     expect(html).toMatch(/<div class="lx-nom">Prénom : \.+ Date : \.+<\/div>/);
     expect(html.match(/class="lx-d"/g)).toHaveLength(p.places.length * 2);
     expect(html.match(/class="lx-mot"/g)).toHaveLength(p.modeles.length * 2);
-    expect(html).toContain("Œil de lynx — corrigé");
+    expect(html).toContain("Cherche et trouve — corrigé");
     expect(html.match(/class="lx-rond"/g)).toHaveLength(p.modeles.length);
     expect(html).toContain("ARASAAC");
     expect(html).not.toContain("dessins au trait");

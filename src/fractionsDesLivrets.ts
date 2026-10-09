@@ -37,7 +37,7 @@ function planFractionsCE1(): PlanDesFeuilles {
     cartes(2, "Cartes des fractions — un tiers, un sixième", [3, 6], ["lettres", "disque"]),
     cartes(3, "Cartes des fractions — un cinquième, un dixième", [5, 10], ["lettres", "bande"]),
     cartes(5, "Cartes des fractions — en chiffres, en lettres, en images", TOUTES_UNITAIRES, ["chiffres", "lettres", "disque"]),
-    cartes(6, "Memory des fractions — l'écriture en chiffres et l'image", TOUTES_UNITAIRES, ["chiffres", "disque"]),
+    cartes(6, "Jeu de mémoire des fractions — l'écriture en chiffres et l'image", TOUTES_UNITAIRES, ["chiffres", "disque"]),
   ];
   return {
     feuilles,

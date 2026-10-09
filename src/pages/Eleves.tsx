@@ -27,6 +27,7 @@ import { EvaluationDiagnostiqueTab } from "./EvaluationDiagnostique";
 import syntheseDomaines from "../data/syntheseGS.json";
 import { pseudonymiser, restaurer } from "../confidentialite";
 import { SyntheseEleveTab } from "./SyntheseEleve";
+import { nomsAMasquer } from "../nomsAMasquer";
 
 const ELEVES_TABS = ["liste", "dossier", "observations", "evaluations", "papiers", "dispositifs", "gevasco", "progressions"] as const;
 /** Ce qu'affiche l'onglet Évaluations : le sommatif (notes, synthèse, synthèse GS) ou le diagnostique. */
@@ -512,7 +513,7 @@ function SyntheseGS() {
     try {
       // Aucun nom ne part : ceux des élèves sont masqués dans le texte, et
       // l'élève concerné est désigné par [E], remplacé par son prénom au retour.
-      const { texte: masque, table } = pseudonymiser(texte, (eleves ?? []).map((e) => e.nom));
+      const { texte: masque, table } = pseudonymiser(texte, [...(eleves ?? []).map((e) => e.nom), ...await nomsAMasquer()]);
       const modele = await api.modeleActif();
       const rep = await api.mistralChat([
         { role: "system", content:

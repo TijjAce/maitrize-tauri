@@ -185,7 +185,8 @@ export function TelephoneNuage() {
     {choix === AUTRE && <>
       <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 12.5, lineHeight: 1.55 }}>
         Dans Nuage : <b>Paramètres › Sécurité › Mot de passe d'application</b>, créez-en un pour Maitrize et
-        recopiez-le ici. Il reste sur cet ordinateur : ni synchronisé, ni sauvegardé, et jamais donné au téléphone.
+        recopiez-le ici. Il reste sur cet ordinateur — ses copies de sécurité locales comprises : il ne part ni dans la
+        synchronisation, ni dans la sauvegarde en ligne, et n'est jamais donné au téléphone.
       </p>
       <Field label="Adresse de Nuage">
         <Input placeholder="nuage17.apps.education.fr" value={serveur} onChange={(e) => setServeur(e.target.value)} />

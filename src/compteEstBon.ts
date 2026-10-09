@@ -72,7 +72,7 @@ export function comptes(r: ReglagesCompte, graine: number): Compte[] {
 
 export function htmlCompteEstBon(liste: Compte[], r: ReglagesCompte): string {
   const signes = OPERATIONS_COMPTE.filter((o) => r.operations.includes(o.id)).map((o) => o.signe).join("  ");
-  const tete = `<div class="titre">Le compte est bon</div>
+  const tete = `<div class="titre">Le nombre cible</div>
     <div class="regle"><b>La règle</b>Avec les nombres de la carte, chacun utilisé une fois au plus, on cherche à obtenir la cible. Opérations permises : ${signes}. On écrit ses calculs, une ligne par étape. Si on n'y arrive pas, on s'approche le plus possible — et on compare les chemins trouvés.
       <span style="color:#687087">— Calcul réfléchi : chercher, essayer, expliquer.</span></div>`;
   const carte = (c: Compte, i: number) => `<div class="cb-carte"><div class="cb-num">${i + 1}</div><div class="cb-cible"><span>Cible</span>${fr(c.cible)}</div>
@@ -82,7 +82,7 @@ export function htmlCompteEstBon(liste: Compte[], r: ReglagesCompte): string {
   for (let i = 0; i < Math.max(1, liste.length); i += 6) {
     pages.push(`<div class="page">${tete}<div class="cb-grille">${liste.slice(i, i + 6).map((c, j) => carte(c, i + j)).join("")}</div></div>`);
   }
-  const corrige = `<div class="page corrige"><div class="titre">Le compte est bon — une solution parmi d'autres</div>
+  const corrige = `<div class="page corrige"><div class="titre">Le nombre cible — une solution parmi d'autres</div>
     <div class="cb-corrige">${liste.map((c, i) => `<div><b>${i + 1}. Cible ${fr(c.cible)}</b> avec ${c.nombres.map((n) => fr(n)).join(", ")} : ${c.solution.map(escapeHtml).join(" ; ")}.</div>`).join("")}</div></div>`;
   return feuille(pages.join("") + corrige, "cb");
 }

@@ -13,7 +13,7 @@
 // l'ombre. Une photo sans fond donne un rectangle : l'ombre d'un cadre, pas
 // d'un objet, et c'est à l'enseignant de choisir une image détourée.
 
-import { HAUTEUR_UTILE_MM, attributionPour, feuille } from "./cartesImprimables";
+import { HAUTEUR_UTILE_MM, attributionPour, feuille, CREDIT_ARASAAC } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
 import { escapeHtml } from "./print";
 
@@ -260,7 +260,7 @@ function pagesARelier(items: ImageOmbre[], r: ReglagesOmbres, graine: number): s
 }
 
 /** L'ombre d'un pictogramme de la banque en est une adaptation : la licence demande de le dire. */
-const MENTION_OMBRES = `<div class="attribution">Pictogrammes : ARASAAC (arasaac.org) — Gouvernement d'Aragon, licence CC BY-NC-SA. Usage non commercial. Les ombres sont tirées de ces pictogrammes.</div>`;
+const MENTION_OMBRES = `<div class="attribution">${CREDIT_ARASAAC} Les ombres sont tirées de ces pictogrammes, sous la même licence.</div>`;
 
 /** La feuille : la planche des ombres et ses images à découper, ou la fiche à relier et son corrigé. */
 export function htmlOmbres(items: ImageOmbre[], r: ReglagesOmbres, graine: number): string {

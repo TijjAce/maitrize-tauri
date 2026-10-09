@@ -61,7 +61,7 @@ export async function garderImageAppoint(ref: RefPicto): Promise<void> {
   await api.settingSet(cleImageAppoint(ref), await api.pictosAppointImage(ref));
 }
 
-const MENTION_ARASAAC = "ARASAAC (arasaac.org) — Gouvernement d'Aragon, licence CC BY-NC-SA";
+const MENTION_ARASAAC = "Sergio Palao, ARASAAC (arasaac.org), licence CC BY-NC-SA 4.0, propriété du Gouvernement d'Aragon";
 /** Le mot qui dit qu'une feuille cite déjà une banque. */
 const CITEE: Record<"arasaac" | BanqueAppoint, string> = { arasaac: "ARASAAC", bajard: "Bajard", sclera: "Sclera" };
 

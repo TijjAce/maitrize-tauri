@@ -21,7 +21,7 @@
 // transparents sont rognés avant la mise en page : deux dessins voisins sont
 // séparés par un vrai blanc, pas par les marges invisibles de leurs images.
 
-import { LARGEUR_CONTENU_MM, attributionPour, feuille } from "./cartesImprimables";
+import { LARGEUR_CONTENU_MM, attributionPour, feuille, CREDIT_ARASAAC } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
 import { escapeHtml } from "./print";
 
@@ -71,7 +71,7 @@ export const NIVEAUX_LYNX: NiveauLynx[] = [
   { id: "difficile", libelle: "Difficile — 8 dessins parmi 50", pour: "CP, CE1",
     aide: "Des tailles variées, et des dessins penchés : la forme se reconnaît dans un autre sens.",
     modeles: 8, dessins: 50, disposition: "vrac", tailles: true, ...SANS_PIEGE, tourner: true },
-  { id: "expert", libelle: "Œil de lynx — 10 dessins parmi 70", pour: "CE1 et au-delà",
+  { id: "expert", libelle: "Expert — 10 dessins parmi 70", pour: "CE1 et au-delà",
     aide: "Au trait, en noir et blanc ; penchés, retournés ; et des sosies — un autre dessin du même objet, qu'il ne faut pas entourer.",
     modeles: 10, dessins: 70, disposition: "vrac", tailles: true, tourner: true, retourner: true, ressemblants: true, trait: true },
 ];
@@ -96,7 +96,7 @@ export function variablesDuNiveau(id: IdNiveauLynx): VariablesLynx {
 }
 
 export const REGLAGES_LYNX: ReglagesLynx = {
-  titre: "Œil de lynx", niveau: "difficile", ...variablesDuNiveau("difficile"), compter: false, legendes: false, intrus: "",
+  titre: "Cherche et trouve", niveau: "difficile", ...variablesDuNiveau("difficile"), compter: false, legendes: false, intrus: "",
 };
 
 export const MODELES_MAX = 12;
@@ -494,7 +494,7 @@ function cadre(p: PlancheLynx, images: Record<number, string>, corrige: boolean)
 }
 
 /** Les dessins d'ARASAAC passés au trait en sont une adaptation : la licence demande de le dire. */
-const MENTION_TRAIT = `<div class="attribution">Pictogrammes : ARASAAC (arasaac.org) — Gouvernement d'Aragon, licence CC BY-NC-SA. Usage non commercial. Les dessins au trait sont tirés de ces pictogrammes.</div>`;
+const MENTION_TRAIT = `<div class="attribution">${CREDIT_ARASAAC} Les dessins au trait sont tirés de ces pictogrammes, sous la même licence.</div>`;
 
 /** La feuille de l'élève, puis le corrigé : les mêmes dessins, aux mêmes places, ceux à trouver entourés. */
 export function htmlLynx(p: PlancheLynx | null, images: Record<number, string>, r: ReglagesLynx): string {

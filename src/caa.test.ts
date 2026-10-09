@@ -69,7 +69,7 @@ describe("les consignes décorées", () => {
     // La règle du jeu aussi, après son titre ; « compter » n'a pas de picto.
     expect(html).toContain(`<div class="regle"><b>Loto</b><span class="consigne-ligne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:lire" alt="lire"><small>lire</small></span></span><span class="consigne-texte">On lit les cartes.</span></span></div>`);
     expect(html).toContain(`<div class="sous cu-consigne"><span class="consigne-ligne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:ecrire"`);
-    expect(html.endsWith(`<div class="consigne-attribution">Pictogrammes : ARASAAC (arasaac.org) — Gouvernement d'Aragon, licence CC BY-NC-SA. Usage non commercial.</div>`)).toBe(true);
+    expect(html.endsWith(`<div class="consigne-attribution">Pictogrammes : Sergio Palao, ARASAAC (arasaac.org), licence CC BY-NC-SA 4.0, propriété du Gouvernement d'Aragon. Usage non commercial.</div>`)).toBe(true);
     // Décorer deux fois ne double rien.
     expect(decorerConsignesHtml(html, lexique, images)).toBe(html);
   });
@@ -131,7 +131,7 @@ describe("les consignes décorées avec plusieurs banques", () => {
     const html = decorerConsignesHtml(`<p class="consigne">Lis, colorie et compte.</p>`, melange, imagesMelange);
     expect(html).toContain('<img src="data:colorie" alt="colorier">');
     expect(html).toContain('<img src="data:compter" alt="compter">');
-    expect(html.endsWith(`<div class="consigne-attribution">Pictogrammes : ARASAAC (arasaac.org) — Gouvernement d'Aragon, licence CC BY-NC-SA ; `
+    expect(html.endsWith(`<div class="consigne-attribution">Pictogrammes : Sergio Palao, ARASAAC (arasaac.org), licence CC BY-NC-SA 4.0, propriété du Gouvernement d'Aragon ; `
       + `François Bajard (ressources-ecole-inclusive.org), licence CC BY-NC-SA 4.0 ; Sclera (www.sclera.be), licence CC BY-NC 2.0 BE. Usage non commercial.</div>`)).toBe(true);
   });
 

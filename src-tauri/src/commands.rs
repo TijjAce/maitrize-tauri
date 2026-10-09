@@ -437,7 +437,10 @@ fn effacer_eleve(c: &mut rusqlite::Connection, id: &str) -> R<()> {
 
     let tx = c.transaction().map_err(e)?;
 
-    for table in ["appels_journalier", "commentaires_eleve", "notes_eleve", "papiers_eleve", "progressions_eleve"] {
+    // Les temps d'observation et les documents (PPI, GEVA-Sco, dispositifs…) partent aussi : les
+    // documents ont une clé étrangère, mais elle ne vaut que si SQLite l'applique — on n'en dépend pas.
+    for table in ["appels_journalier", "commentaires_eleve", "notes_eleve", "papiers_eleve", "progressions_eleve",
+                  "observations_eleve", "documents_eleve"] {
         tx.execute(&format!("DELETE FROM {table} WHERE eleve_id=?1"), params![id]).map_err(e)?;
     }
     tx.execute("DELETE FROM eleves WHERE id=?1", params![id]).map_err(e)?;
@@ -709,6 +712,34 @@ pub fn materiel_list(db: State<Db>) -> R<Vec<MaterielItem>> {
     let mut st = c.prepare("SELECT * FROM materiel_items ORDER BY date_creation DESC").map_err(e)?;
     let rows = st.query_map([], MaterielItem::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
+}
+
+/// Le dossier des documents qu'on ouvre pour les lire ou les imprimer — bilans de PPI, GEVA-Sco,
+/// synthèses, feuilles : à part dans le dossier temporaire, pour qu'on puisse le vider.
+pub(crate) fn dossier_temporaire() -> std::path::PathBuf {
+    let d = std::env::temp_dir().join("Maitrize");
+    std::fs::create_dir_all(&d).ok();
+    d
+}
+
+/// Un document nominatif n'a pas à traîner sur le disque : au lancement, ce qui a plus d'un jour
+/// part — dans le dossier des documents, et ce que les versions d'avant laissaient à la racine du
+/// dossier temporaire.
+pub fn purger_temporaires() {
+    let limite = std::time::Duration::from_secs(24 * 3600);
+    let vieux = |e: &std::fs::DirEntry| e.metadata().and_then(|m| m.modified()).ok()
+        .and_then(|t| t.elapsed().ok()).is_some_and(|age| age > limite);
+    if let Ok(entrees) = std::fs::read_dir(dossier_temporaire()) {
+        for e in entrees.flatten().filter(|e| vieux(e)) { std::fs::remove_file(e.path()).ok(); }
+    }
+    let anciens = ["maitrize-", "synthese-gs-", "GEVA-Sco", "bilan-ppi-", "tla-"];
+    if let Ok(entrees) = std::fs::read_dir(std::env::temp_dir()) {
+        for e in entrees.flatten() {
+            let nom = e.file_name().to_string_lossy().to_string();
+            let fichier = e.file_type().is_ok_and(|f| f.is_file());
+            if fichier && anciens.iter().any(|p| nom.starts_with(p)) && vieux(&e) { std::fs::remove_file(e.path()).ok(); }
+        }
+    }
 }
 
 /// Écrit un matériel : créé, ou mis à jour sur place.
@@ -1398,14 +1429,14 @@ pub fn fichier_save(nom: String, base64: String) -> R<String> {
 #[tauri::command(async)]
 pub fn fichier_read(nom: String) -> R<String> {
     use base64::Engine;
-    let bytes = std::fs::read(fichiers_dir().join(&nom)).map_err(e)?;
+    let bytes = std::fs::read(fichier_de_l_application(&nom)?).map_err(e)?;
     Ok(base64::engine::general_purpose::STANDARD.encode(&bytes))
 }
 
 /// Chemin absolu d'un fichier joint (pour convertFileSrc côté frontend).
 #[tauri::command(async)]
 pub fn fichier_path(nom: String) -> R<String> {
-    Ok(fichiers_dir().join(&nom).to_string_lossy().to_string())
+    Ok(fichier_de_l_application(&nom)?.to_string_lossy().to_string())
 }
 
 /// Ouvre une pièce jointe dans l'application par défaut (Aperçu, Acrobat…).
@@ -1415,10 +1446,7 @@ pub fn fichier_path(nom: String) -> R<String> {
 /// Le nom est refusé s'il sort du dossier des fichiers.
 #[tauri::command(async)]
 pub fn fichier_ouvrir(nom: String) -> R<()> {
-    if nom.is_empty() || nom.contains('/') || nom.contains('\\') || nom.contains("..") {
-        return Err("Nom de fichier invalide.".into());
-    }
-    let chemin = fichiers_dir().join(&nom);
+    let chemin = fichier_de_l_application(&nom)?;
     if !chemin.exists() {
         return Err("Ce fichier n'existe plus.".into());
     }
@@ -1453,7 +1481,7 @@ pub fn ouvrir_html(html: String) -> R<()> {
         "maitrize-{}.html",
         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
     );
-    let path = std::env::temp_dir().join(nom);
+    let path = dossier_temporaire().join(nom);
     std::fs::write(&path, html).map_err(e)?;
     // Ouverture via NSWorkspace (plugin opener) → compatible App Sandbox.
     tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
@@ -1557,7 +1585,7 @@ pub fn imprimer_planning(titre: String, jours: Vec<PlanningJour>, annexes: Vec<A
         "planning-{}.pdf",
         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
     );
-    let path = std::env::temp_dir().join(nom);
+    let path = dossier_temporaire().join(nom);
     std::fs::write(&path, octets).map_err(e)?;
     tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
     Ok(manques)
@@ -1870,7 +1898,7 @@ pub fn exporter_synthese_gs(
         eleve_nom.replace(' ', "_"),
         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
     );
-    let path = std::env::temp_dir().join(nom);
+    let path = dossier_temporaire().join(nom);
     std::fs::write(&path, &bytes).map_err(e)?;
     tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
     Ok(())
@@ -1913,7 +1941,7 @@ pub fn exporter_gevasco(
         // document au lieu d'empiler une fenêtre d'Aperçu à chaque clic.
         eleve_nom.chars().map(|c| if c.is_alphanumeric() || c == ' ' || c == '-' { c } else { '_' }).collect::<String>().trim()
     );
-    let path = std::env::temp_dir().join(nom);
+    let path = dossier_temporaire().join(nom);
     std::fs::write(&path, &bytes).map_err(e)?;
     tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
     Ok(())
@@ -1952,7 +1980,7 @@ pub fn exporter_bilan_ppi(
         eleve_nom.replace(' ', "_"),
         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
     );
-    let path = std::env::temp_dir().join(nom);
+    let path = dossier_temporaire().join(nom);
     std::fs::write(&path, &bytes).map_err(e)?;
     tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
     Ok(())
@@ -1962,7 +1990,7 @@ pub fn exporter_bilan_ppi(
 /// sur macOS), plutôt que dans une visionneuse interne.
 #[tauri::command(async)]
 pub fn ouvrir_fichier(nom: String) -> R<()> {
-    let path = fichiers_dir().join(&nom);
+    let path = fichier_de_l_application(&nom)?;
     if !path.exists() {
         return Err("Fichier introuvable".to_string());
     }
@@ -2002,7 +2030,7 @@ pub fn jeu_generer(
         if propre.is_empty() { "jeu".into() } else { propre },
         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
     );
-    let path = std::env::temp_dir().join(&nom);
+    let path = dossier_temporaire().join(&nom);
     std::fs::write(&path, &bytes).map_err(e)?;
     if ouvrir.unwrap_or(true) {
         tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
@@ -2029,7 +2057,7 @@ pub fn tla_generer(gabarit: crate::tla_pdf::Gabarit, ouvrir: Option<bool>) -> R<
         if propre.is_empty() { "tableau".into() } else { propre },
         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
     );
-    let path = std::env::temp_dir().join(&nom);
+    let path = dossier_temporaire().join(&nom);
     std::fs::write(&path, &bytes).map_err(e)?;
     if ouvrir.unwrap_or(true) {
         tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
@@ -2039,7 +2067,7 @@ pub fn tla_generer(gabarit: crate::tla_pdf::Gabarit, ouvrir: Option<bool>) -> R<
 
 #[tauri::command(async)]
 pub fn imprimer_pdf(nom: String) -> R<()> {
-    let path = fichiers_dir().join(&nom);
+    let path = fichier_de_l_application(&nom)?;
     if !path.exists() {
         return Err("Fichier introuvable".to_string());
     }
@@ -2049,8 +2077,18 @@ pub fn imprimer_pdf(nom: String) -> R<()> {
 
 #[tauri::command(async)]
 pub fn fichier_delete(nom: String) -> R<()> {
-    std::fs::remove_file(fichiers_dir().join(&nom)).ok();
+    std::fs::remove_file(fichier_de_l_application(&nom)?).ok();
     Ok(())
+}
+
+/// Un fichier du dossier de l'application, d'après son nom : un nom seul, jamais un chemin. Une page
+/// détournée ne peut ainsi ni lire ni effacer ailleurs sur l'ordinateur (« ../../ », chemin absolu).
+pub(crate) fn fichier_de_l_application(nom: &str) -> R<std::path::PathBuf> {
+    let simple = std::path::Path::new(nom).file_name().is_some_and(|f| f == std::ffi::OsStr::new(nom));
+    if nom.is_empty() || !simple || nom.contains('/') || nom.contains('\\') || nom.contains("..") {
+        return Err("Nom de fichier invalide.".into());
+    }
+    Ok(fichiers_dir().join(nom))
 }
 
 // ============================================================
@@ -3045,6 +3083,17 @@ mod tests_textes {
 }
 
 #[cfg(test)]
+mod tests_fichiers {
+    #[test]
+    fn un_fichier_de_l_application_ne_se_designe_que_par_son_nom() {
+        assert!(super::fichier_de_l_application("a1b2c3.pdf").is_ok());
+        for mauvais in ["", "..", "../maitrize.sqlite3", "../../.ssh/id_rsa", "/etc/passwd", "sous/dossier.pdf", "..\\x.pdf", "C:\\x.pdf"] {
+            assert!(super::fichier_de_l_application(mauvais).is_err(), "{mauvais} doit être refusé");
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests_materiel {
     use crate::models::MaterielItem;
 
@@ -3219,6 +3268,8 @@ mod tests_eleve {
             c.execute("INSERT INTO papiers_eleve (id, eleve_id, date_ajout) VALUES (?1,?2,'2026-01-01')",
                 params![format!("pa-{id}"), id]).unwrap();
             c.execute("INSERT INTO progressions_eleve (id, eleve_id) VALUES (?1,?2)", params![format!("pr-{id}"), id]).unwrap();
+            c.execute("INSERT INTO observations_eleve (id, eleve_id, date, date_creation, date_maj) VALUES (?1,?2,'2026-01-01','2026-01-01','2026-01-01')",
+                params![format!("ob-{id}"), id]).unwrap();
             set(&c, &format!("syntheseGS:{id}"), "{}");
             set(&c, &format!("gevasco:{id}"), "{}");
             set(&c, &format!("ppi:{id}"), "{}");
@@ -3235,7 +3286,7 @@ mod tests_eleve {
         effacer_eleve(&mut c, a).unwrap();
 
         // Plus aucune trace de l'élève supprimé…
-        for t in ["appels_journalier", "commentaires_eleve", "notes_eleve", "papiers_eleve", "progressions_eleve"] {
+        for t in ["appels_journalier", "commentaires_eleve", "notes_eleve", "papiers_eleve", "progressions_eleve", "observations_eleve"] {
             let n = compte(&c, &format!("SELECT COUNT(*) FROM {t} WHERE eleve_id='{a}'"));
             assert_eq!(n, 0, "{t} garde des lignes orphelines");
             assert_eq!(compte(&c, &format!("SELECT COUNT(*) FROM {t} WHERE eleve_id='{b}'")), 1,

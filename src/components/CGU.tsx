@@ -2,35 +2,40 @@ import React from "react";
 import { api } from "../api";
 import logo from "../assets/logo.png";
 
-export const CGU_VERSION = 1;
+export const CGU_VERSION = 2;
 
-export const CGU_TEXTE = `Conditions Générales d'Utilisation — Maitrize V2
+export const CGU_TEXTE = `Conditions d'utilisation — Maîtrize
 
-Dernière mise à jour : juin 2026
+Dernière mise à jour : 9 octobre 2026
 
 1. Objet
-Maitrize V2 est une application d'aide à la préparation et au suivi pédagogique destinée aux enseignants. Les présentes conditions régissent son utilisation. En utilisant l'application, vous reconnaissez les avoir lues et acceptées.
+Maîtrize est un logiciel gratuit d'aide à la préparation de la classe et au suivi des élèves, destiné aux enseignants. Ces conditions encadrent son utilisation ; en l'utilisant, vous les acceptez.
 
-2. Données et confidentialité
-Toutes vos données (séquences, séances, élèves, planning, documents, etc.) sont stockées localement sur votre appareil. L'application ne crée aucun compte et ne transmet pas vos données à un serveur, hormis les requêtes que vous initiez explicitement vers l'assistant IA (le texte envoyé transite alors vers le fournisseur d'IA configuré).
+2. Licence
+Maîtrize est un logiciel libre, distribué sous la licence GNU Affero General Public License, version 3 (AGPL-3.0) : vous pouvez l'utiliser, l'étudier, le modifier et le redistribuer selon cette licence. Son code source est public : https://github.com/TijjAce/maitrize-tauri. Les composants tiers — bibliothèques, pictogrammes ARASAAC, Sclera et F. Bajard — gardent leurs propres licences : voir Réglages › Licences.
 
-3. Données relatives aux élèves
-Vous êtes seul responsable des données personnelles que vous saisissez, notamment celles concernant les élèves. Vous vous engagez à respecter la réglementation applicable (RGPD) : information des personnes, finalité légitime, durée de conservation limitée et sécurité des données. L'éditeur n'a pas accès à ces données.
+3. Où sont vos données
+Vos données restent sur cet ordinateur, dans le dossier de l'application. Maîtrize ne crée aucun compte et n'envoie rien à son éditeur. Ne sortent de l'ordinateur que :
+- ce que vous confiez à l'assistant IA (Mistral AI, avec votre propre clé et selon vos conditions avec Mistral) : les noms des élèves et des personnes que l'application connaît sont remplacés par des marqueurs avant l'envoi et remis à leur place au retour ; le reste du texte part tel que vous l'avez écrit ;
+- la voix, si vous choisissez vous-même la transcription en ligne (Mistral) ; sinon elle est transcrite sur l'ordinateur ;
+- la synchronisation et la sauvegarde que vous configurez, chiffrées, vers votre propre stockage ou votre compte Nuage ;
+- ce que vous déposez sur un bureau commun ou envoyez à un collègue ;
+- la recherche de mises à jour (GitHub), le calendrier des vacances (data.education.gouv.fr), les téléchargements que vous lancez (pictogrammes, modèles de transcription, programmes officiels) et les vignettes des vidéos YouTube que vous ajoutez.
 
-4. Responsabilité
-L'application est fournie « en l'état », sans garantie. L'éditeur ne saurait être tenu responsable d'une perte de données, d'une indisponibilité ou d'un dommage résultant de son utilisation. Il vous appartient de réaliser des sauvegardes régulières (export de données).
+4. Données des élèves
+Les données des élèves relèvent du responsable de traitement de votre établissement : en général le directeur académique pour le premier degré public, le chef d'établissement pour le second degré, la direction pour un établissement médico-social. Informez-le de l'usage de Maîtrize et suivez les consignes de son délégué à la protection des données. Ne saisissez que ce qui sert votre travail ; les informations de santé ou de handicap n'ont leur place que dans les dispositifs qui les demandent (PPS, PAI, PAP, PPI). Protégez l'ordinateur : session à mot de passe, disque chiffré (FileVault sur Mac, BitLocker sur Windows).
 
-5. Propriété intellectuelle
-L'application, son interface et son contenu sont protégés. Les contenus que vous créez restent votre propriété.
+5. Contenus de tiers
+Les documents que vous importez — manuels, fiches, grilles d'éditeurs — restent soumis aux droits de leurs auteurs : ne les partagez que si vous en avez le droit.
 
-6. Sauvegarde
-Vous êtes responsable de la sauvegarde de vos données via la fonction d'export disponible dans les Réglages.
+6. Garantie et responsabilité
+Maîtrize est fourni « en l'état », sans garantie, comme le prévoit sa licence. Dans les limites permises par la loi, son éditeur ne répond pas d'une perte de données, d'une indisponibilité ou d'un dommage résultant de son utilisation. Sauvegardez régulièrement vos données (Réglages › Données).
 
-7. Évolutions
-Ces conditions peuvent évoluer. En cas de modification, votre acceptation vous sera redemandée au lancement.
+7. Éditeur
+Maîtrize est développé par Clément Titet. Contact : contact@maitrize.com.
 
-8. Acceptation
-En cochant la case et en validant, vous acceptez l'intégralité des présentes conditions. Votre acceptation est horodatée et associée à une empreinte de cette version, conservées localement dans l'application.`;
+8. Évolutions et acceptation
+Ces conditions peuvent évoluer ; votre acceptation vous est alors redemandée au lancement. Elle est datée et associée à une empreinte de cette version, conservées sur cet ordinateur.`;
 
 async function sha256(texte: string): Promise<string> {
   const data = new TextEncoder().encode(texte);

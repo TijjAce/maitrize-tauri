@@ -204,7 +204,10 @@ export function planDeCopie(d: DonneesBureau, plateforme: Plateforme): PlanDeCop
     elements.push({ date: seq.dateCreation, id: seq.id, placer: () => {
       const titre = seq.titre.trim() || "Sans titre";
       const dossier = dossierDe(seq.dossier);
-      const seances = d.seances.filter((s) => s.sequenceId === seq.id).sort((a, b) => a.numero - b.numero);
+      // Sans leurs bilans : ils nomment des élèves, et la copie vit dans un dossier ordinaire de l'ordinateur — sur
+      // un Mac, le Bureau part souvent dans iCloud. Le bilan reste dans l'application.
+      const seances = d.seances.filter((s) => s.sequenceId === seq.id).sort((a, b) => a.numero - b.numero)
+        .map((s) => ({ ...s, bilan: "" }));
       const pieces = d.piecesJointes.filter((p) => seances.some((s) => s.id === p.seanceId));
       const cites = jeuxCites(seances.map((s) => sansMarqueurs(s.deroulement)).join("\n"), d.jeux)
         .map((j) => [j.titre, j.regles, infosDuJeu(j)]);

@@ -166,7 +166,7 @@ export function OeilDeLynxTab({ banque }: { banque: boolean }) {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Œil de lynx</h3>
+        <h3 style={{ marginTop: 0 }}>Cherche et trouve</h3>
         <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
           Une rangée de modèles, un grand cadre plein de dessins : l'élève retrouve chaque modèle et l'entoure. Le corrigé suit, et chaque tirage
           donne une autre feuille.

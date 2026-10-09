@@ -141,7 +141,8 @@ describe("la feuille du jeu des ombres", () => {
   it("cite la banque quand ses pictogrammes y sont, et seulement alors", () => {
     const banque = items(3).map((x, i) => ({ ...x, id: 2300 + i }));
     const perso = items(3).map((x, i) => ({ ...x, id: -1 - i }));
-    expect(htmlOmbres(banque, REGLAGES_OMBRES, 1)).toContain("Les ombres sont tirées de ces pictogrammes.");
+    expect(htmlOmbres(banque, REGLAGES_OMBRES, 1)).toContain("Sergio Palao");
+    expect(htmlOmbres(banque, REGLAGES_OMBRES, 1)).toContain("Les ombres sont tirées de ces pictogrammes, sous la même licence.");
     expect(htmlOmbres([...perso, banque[0]], { ...REGLAGES_OMBRES, forme: "relier" }, 1)).toContain("ARASAAC");
     // Rien que des photos de l'enseignant : rien à attribuer.
     expect(htmlOmbres(perso, REGLAGES_OMBRES, 1)).not.toContain("ARASAAC");

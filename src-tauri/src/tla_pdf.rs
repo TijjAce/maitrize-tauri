@@ -26,7 +26,7 @@ use serde::Deserialize;
 
 /// Mention imposée par la licence CC BY-NC-SA des pictogrammes.
 const ATTRIBUTION: &str =
-    "Pictogrammes ARASAAC (Sergio Palao) - Gouvernement d'Aragon - CC BY-NC-SA";
+    "Pictogrammes ARASAAC (Sergio Palao, arasaac.org) - Gouvernement d'Aragon - CC BY-NC-SA 4.0 - Usage non commercial";
 
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]

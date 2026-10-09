@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { lirePropositions, promptRepartition } from "./DicteeAtelier";
+import { lirePropositions, preparerRepartition } from "./DicteeAtelier";
+import { restaurer } from "../confidentialite";
 import type { Eleve } from "../api";
 
 const eleve = (nom: string, id: string): Eleve => ({
@@ -69,21 +70,24 @@ describe("lirePropositions", () => {
   });
 });
 
-describe("promptRepartition", () => {
-  const msgs = promptRepartition(["Apolline", "Clara"], "Clara a bien travaillé.");
+describe("préparer la répartition", () => {
+  const { messages, table } = preparerRepartition(CLASSE, "Clara a bien travaillé, puis apolline l'a aidée.");
+  const tout = messages.map((m) => m.content).join(" ");
 
-  it("n'envoie que les prénoms, jamais les noms de famille", () => {
-    const tout = msgs.map((m) => m.content).join(" ");
-    expect(tout).toContain("Apolline");
-    expect(tout).not.toContain("Roux");
-    expect(tout).not.toContain("Meunier");
+  it("n'envoie aucun prénom ni nom de famille", () => {
+    for (const nom of ["Clara", "Apolline", "apolline", "Roux", "Meunier", "Ayyûb", "Belhadj"]) expect(tout).not.toContain(nom);
+    expect(tout).toContain("[P1] a bien travaillé, puis [P2] l'a aidée.");
+    expect(tout).toContain("Élèves cités : [P1], [P2]");
   });
 
-  it("transmet la transcription", () => {
-    expect(msgs[1].content).toContain("Clara a bien travaillé.");
+  it("la réponse retrouve ses élèves sur la machine", () => {
+    const reponse = '[{"eleve":"[P1]","observation":"[P1] a aidé [P2]."},{"eleve":"[P2]","observation":"A été aidée."}]';
+    const r = lirePropositions(restaurer(reponse, table).texte, CLASSE);
+    expect(r.map((p) => p.eleveId)).toEqual(["e3", "e1"]);
+    expect(r[0].texte).toBe("Clara a aidé apolline.");
   });
 
   it("demande explicitement de ne rien inventer", () => {
-    expect(msgs[0].content).toMatch(/n'invente rien/i);
+    expect(messages[0].content).toMatch(/n'invente rien/i);
   });
 });

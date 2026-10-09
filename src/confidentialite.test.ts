@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pseudonymiser, restaurer } from "./confidentialite";
+import { nomsDansUnTexte, pseudonymiser, restaurer } from "./confidentialite";
 
 const eleves = ["Apolline Martin", "Léo Dubois-Durand", "Rose Petit"];
 
@@ -34,6 +34,27 @@ describe("pseudonymiser", () => {
     expect(texte).toBe("[P1] progresse.");
     expect(restaurer("[P1] fait des progrès.", table).texte).toBe("APOLLINE fait des progrès.");
   });
+
+  it("un prénom écrit en minuscules, ou sans ses accents, ne part pas non plus", () => {
+    const { texte, table } = pseudonymiser("apolline a lu. ines aussi, puis leo.", [...eleves, "Inès Bernard"]);
+    expect(texte).toBe("[P1] a lu. [P2] aussi, puis [P3].");
+    expect(restaurer(texte, table).texte).toBe("apolline a lu. ines aussi, puis leo.");
+  });
+
+  it("la particule d'un nom de famille n'est jamais masquée seule", () => {
+    const { texte } = pseudonymiser("Le chat de Léa Le Gall. Le Gall est venu, la maman de Léa aussi.", ["Léa Le Gall"]);
+    expect(texte).toBe("Le chat de [P1]. Le [P2] est venu, la maman de [P3] aussi.");
+  });
+
+  it("un nom de famille qui est un mot courant ne masque pas ce mot en minuscules", () => {
+    expect(pseudonymiser("Un petit chat, petit à petit.", eleves).texte).toBe("Un petit chat, petit à petit.");
+    expect(pseudonymiser("Rose Petit a lu.", eleves).texte).toBe("[P1] a lu.");
+  });
+
+  it("un texte décomposé (accents en deux caractères) est masqué comme les autres", () => {
+    const decompose = "Léo a lu.";
+    expect(pseudonymiser(decompose, eleves).texte).toBe("[P1] a lu.");
+  });
 });
 
 describe("restaurer", () => {
@@ -51,5 +72,20 @@ describe("restaurer", () => {
     const r = pseudonymiser("La séance a bien commencé.", eleves);
     expect(r.table).toEqual([]);
     expect(restaurer(r.texte, r.table).texte).toBe("La séance a bien commencé.");
+  });
+});
+
+describe("les noms dans un texte libre", () => {
+  it("retrouve les personnes, pas les titres ni les fonctions", () => {
+    expect(nomsDansUnTexte("Mme Martin — 01 23 45 67 89")).toEqual(["Martin"]);
+    expect(nomsDansUnTexte("Sophie (classe 2), Karim (atelier cuisine)")).toEqual(["Sophie", "Karim"]);
+    expect(nomsDansUnTexte("Léa (AESH), psychomotricienne le mardi")).toEqual(["Léa"]);
+    expect(nomsDansUnTexte("M. Durand, enseignant référent ; la maman de Camille, Dr Nguyen")).toEqual(["Durand", "Camille", "Nguyen"]);
+  });
+
+  it("les personnes d'une réunion partent masquées avec les élèves", () => {
+    const noms = [...eleves, ...nomsDansUnTexte("Mme Bernard (maman), Julie (AESH)")];
+    const { texte } = pseudonymiser("Mme Bernard et Julie trouvent qu'Apolline progresse.", noms);
+    expect(texte).toBe("Mme [P1] et [P2] trouvent qu'[P3] progresse.");
   });
 });

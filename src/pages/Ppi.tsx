@@ -2,6 +2,8 @@ import React from "react";
 import { api, newId, type CommentaireEleve } from "../api";
 import { Field, Input, Select, Empty, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
+import { pseudonymiser, restaurer } from "../confidentialite";
+import { nomsAMasquer } from "../nomsAMasquer";
 import { infosReussite, resumeSuivi, REUSSITES, sansNouvelles, suivreObjectif } from "../objectifsPpi";
 
 // ── PPI (Projet Personnalisé Individualisé) — mode IME/ULIS/inclusion ──────
@@ -122,21 +124,25 @@ export function PpiTab() {
   const eleve = eleves?.find((e) => e.id === eleveId);
   const prenom = (eleve?.nom || "L'élève").trim().split(/\s+/)[0];
 
-  // Reformulation IA du texte d'un bilan (même approche que la Synthèse GS).
+  // Reformulation IA du texte d'un bilan (même approche que la Synthèse GS). Le prénom de l'élève, comme
+  // tout nom d'élève dans les notes, part masqué — [P1], [P2]… — et revient à sa place sur la machine.
   const reformuler = async (b: PpiBilan) => {
     if (!b.texte.trim()) { toast("Écrivez d'abord quelques mots à reformuler.", { icone: "✍️" }); return; }
     setReformuleId(b.id);
     try {
       const modele = await api.modeleActif();
+      const noms = [...(eleves ?? []).map((e) => e.nom), ...await nomsAMasquer()];
+      const { texte: masque, table } = pseudonymiser(`Élève : ${prenom}\n\nNotes à reformuler :\n${b.texte}`, noms);
       const rep = await api.mistralChat([
         { role: "system", content:
           "Tu es enseignant·e spécialisé·e (IME/ULIS). Tu reformules les notes d'un enseignant pour le bilan officiel du Projet Personnalisé Individualisé d'un élève, destiné à l'équipe de suivi, la famille et la MDPH. " +
-          "Rédige en français, style clair, bienveillant et professionnel, à la 3e personne avec le prénom de l'élève. " +
+          "Rédige en français, style clair, bienveillant et professionnel, à la 3e personne. Les prénoms sont masqués par des marqueurs [P1], [P2]… : " +
+          "désigne l'élève par son marqueur et recopie chaque marqueur tel quel. " +
           "Reste fidèle au sens, n'invente rien, garde une longueur proche de l'original. " +
           "Réponds UNIQUEMENT par le texte reformulé, sans guillemets ni commentaire." },
-        { role: "user", content: `Prénom de l'élève : ${prenom}\n\nNotes à reformuler :\n${b.texte}` },
+        { role: "user", content: masque },
       ], modele);
-      const propre = rep.trim().replace(/^["«»\s]+|["«»\s]+$/g, "");
+      const propre = restaurer(rep.trim().replace(/^["«»\s]+|["«»\s]+$/g, ""), table).texte;
       if (propre) upBilan(b.id, { texte: propre });
     } catch (e: any) {
       toast("Reformulation impossible : " + String(e?.message ?? e), { icone: "⚠️", duree: 5000 });

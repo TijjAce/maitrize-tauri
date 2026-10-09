@@ -86,7 +86,7 @@ describe("le plan de la copie", () => {
   it("écrit les textes et les séquences en pages web, images comprises", () => {
     const seq = { ...nouvelleSequence(), id: "s1", titre: "Les fractions", dossier: "Maths" };
     const seance = { ...nouvelleSeance("s1", 1), id: "se1", titre: "Découverte",
-      deroulement: "On partage une pizza.\n[img:pizza.png]\nPartie de Skyjo." };
+      deroulement: "On partage une pizza.\n[img:pizza.png]\nPartie de Skyjo.", bilan: "Apolline a partagé seule." };
     const plan = planDeCopie(donnees({
       sequences: [seq], seances: [seance],
       piecesJointes: [
@@ -106,6 +106,9 @@ describe("le plan de la copie", () => {
     expect(page).toContain('src="maitrize-fichier:pizza.png"');
     expect(page).toContain('src="maitrize-fichier:pj2.png"');
     expect(page).toContain("🎲 Règle — Skyjo");
+    // Le bilan nomme des élèves : il reste dans l'application, la copie n'en garde rien.
+    expect(page).not.toContain("Apolline");
+    expect(page).not.toContain(">Bilan<");
     const bilan = contenuDe(trouver(plan.fichiers, "Bilan période.html"));
     expect(bilan).toContain("<title>Bilan &lt;période&gt;</title>");
     expect(bilan).toContain("<b>Très</b> bien");
