@@ -5,7 +5,8 @@
 // la séquence de son thème, telle que le programme de 2026 le découpe — une
 // séquence répond à la question du thème. La classe vue comme un espace
 // qu'on représente suit la séquence Éduscol que l'enseignant a fournie en
-// octobre 2026 ; les autres thèmes sont bâtis sur le programme, à sa
+// octobre 2026 ; le temps au CP, les séquences Éduscol de 2016 « Se situer
+// dans le temps » ; les autres thèmes sont bâtis sur le programme, à sa
 // demande, et le disent. Toutes piochent leurs feuilles dans les ateliers
 // de Fabriquer : le plan de la classe, les frises et calendriers, la
 // lecture de paysage, les étiquettes des mots du thème.
@@ -145,55 +146,119 @@ const TEMPS_NATUREL_CP: Demarche = {
   ],
 };
 
+// Le temps représenté et les évènements situés : les séquences Éduscol de 2016
+// « Se situer dans le temps », que l'enseignant a fournies — deux albums pour
+// passer d'un temps ressenti à un temps mesuré, un parcours sonore pour situer
+// les évènements les uns par rapport aux autres, et les rituels des rythmes
+// cycliques. Ce qu'elles ne couvrent pas — la journée et ses heures, la frise
+// de la vie, les générations — suit le programme, et la source le dit.
+
+const SE_SITUER_2016 = "Éduscol, ressources 2016 — Questionner le monde, cycle 2, « Se situer dans le temps »";
+
 const TEMPS_REPRESENTE_CP: Demarche = {
   id: "temps-represente-cp", nom: "Les représentations humaines du temps (CP)", famille: "Sciences, histoire, EMC",
-  source: PROGRAMME,
-  resume: "« Comment les hommes et les femmes se repèrent-ils dans le temps ? Comment le représentent-ils ? » Du temps qu'on ressent au temps "
-    + "qu'on mesure : les outils de mesure du temps, la journée et ses heures, les jours de la semaine, les mois et l'année ; le temps linéaire "
-    + "de la frise et le temps cyclique de la roue ; les calendriers de la classe.",
+  source: `${SE_SITUER_2016} : la séquence « Passer d'un temps ressenti à un temps mesuré » (séances 1 à 3), les outils de mesure de la séquence `
+    + "« Situer les événements les uns par rapport aux autres » (séances 1 et 5) et les rituels de « Identifier les rythmes cycliques du temps » (CP et CE1) ; "
+    + "l'évaluation bâtie sur le programme d'histoire-géographie du cycle 2 (BO n° 22 du 28 mai 2026)",
+  resume: "« Comment les hommes et les femmes se repèrent-ils dans le temps ? Comment le représentent-ils ? » Deux albums pour passer d'un temps "
+    + "ressenti à un temps mesuré — François et le temps, Le petit voleur de temps — et des jeux de langage sur les mots du temps ; les outils qui "
+    + "mesurent le temps, essayés ; le programme de la journée et l'horloge ; puis les rituels qui font voir le temps qui revient — les jours, les "
+    + "mois — et celui qui ne revient pas — les années.",
   seances: [
-    etape("Le temps qu'on ressent", "dire qu'une même durée peut sembler longue ou courte, et qu'il faut la mesurer pour la comparer.",
-      "Une minute, c'est long ou c'est court ? Un album sur le temps qui passe, lu par l'enseignant.",
-      "Attendre une minute sans rien faire, puis en jouant ; comparer ce qu'on a ressenti ; chercher comment mesurer pour se mettre d'accord.",
-      "Le temps ressenti n'est pas le même pour tous : on le mesure."),
-    etape("Mesurer le temps", "observer et utiliser des outils de mesure du temps : sablier, pendule, montre et réveil, analogiques et numériques.",
-      "Avec quoi mesure-t-on le temps ?",
-      "Manipuler un sablier, une pendule, une montre, un réveil, analogiques et numériques ; mesurer la durée d'activités de la classe.",
-      "Les outils et leur nom : sablier, pendule, montre, réveil. Le mot heure."),
-    etape("La journée et ses heures", "savoir que la journée est divisée en heures, et utiliser l'emploi du temps de la journée.",
-      "Que fait-on dans une journée ? Dans quel ordre ?",
-      "Ordonner les moments de la journée ; lire l'emploi du temps de la classe, avec ses heures ; une journée, c'est 24 heures.",
-      "L'emploi du temps de la journée, affiché. La journée : 24 heures."),
-    etape("Les jours de la semaine", "repérer, ordonner et nommer les jours de la semaine.",
-      "Quel jour sommes-nous ? Et demain ?",
-      "La roue des jours et l'éphéméride : nommer les jours dans l'ordre, chaque matin ; placer les jours d'école, le mercredi, la fin de semaine.",
-      "La semaine : sept jours, qui recommencent. La roue des jours, l'éphéméride."),
-    etape("Les mois et l'année", "savoir que l'année est divisée en mois, et le mois en semaines et en jours.",
-      "Combien de mois dans une année ? Dans quel mois sommes-nous ?",
-      "Le calendrier de la classe : les douze mois, les semaines d'un mois ; la frise de l'année (le temps qui avance) et la roue (le temps qui revient).",
-      "L'année : douze mois ; la semaine : sept jours ; la journée : vingt-quatre heures."),
+    seance("François et le temps",
+      sauront("dire qu'une attente semble longue ou courte selon ce qu'on vit, et qu'une montre permet de mesurer ce temps pour tous."), 50, [
+        ph("Découvrir l'album", "10 min", "La couverture de François et le temps (Christine Naumann-Villemin) est décrite : les élèves font des hypothèses sur l'histoire."),
+        ph("Lire et comprendre", "20 min", "Un élève dont la lecture est fluide lit l'histoire à ses camarades ; on confronte les interprétations, on explique les implicites "
+          + "et les mots qui structurent le temps.", "S'identifier à François : passer d'un temps ressenti à un temps mesuré, et voir que des objets du quotidien servent à le mesurer."),
+        ph("Les mots du temps", "20 min", "Relever et classer le lexique du temps : le temps ressenti (attendre, s'ennuyer, patienter), l'ordre (d'abord, juste avant, "
+          + "maintenant), la date et l'heure (aujourd'hui, ce soir, il est 8 heures), les objets qui mesurent le temps (montre, pendule, réveil, sablier, clepsydre), "
+          + "les bruits qui le scandent (tic-tac, la cloche).", "Le classement reste affiché : il sert toute la séquence."),
+      ]),
+    seance("Jeux de langage en ateliers",
+      sauront("employer les mots qui opposent et ordonnent le temps — avant, après, tôt, tard, en avance, en retard — et se repérer dans les jours, les mois et les saisons."), 75, [
+        ph("Présenter le nouvel album", "15 min", "Le petit voleur de temps (Nathalie Minne) est présenté par ses illustrations, en lien avec François et le temps."),
+        ph("Les ateliers, 10 minutes chacun", "40 min", "Des cartes de questions : le jeu des contraires (avant / après, un court instant / un long moment, ralentir / accélérer…) ; "
+          + "se repérer dans la semaine du voleur de temps (« Nous sommes mardi, ils ont rendez-vous jeudi : combien de nuits ? ») ; le jour, la nuit et les saisons "
+          + "(« À quel moment cela se passe-t-il si les feuilles tombent ? ») ; expliquer des expressions (« être en retard », « se souvenir », « programmer »).",
+          "Les trois premiers ateliers se font en autonomie, avec un élève bon lecteur ; la réponse des questions fermées est sur la carte : on cherche à se questionner et à échanger."),
+        ph("Regroupement", "10 min", "Ce que chaque atelier a fait dire, et les mots nouveaux, ajoutés au classement de la première séance."),
+      ]),
+    seance("Le petit voleur de temps",
+      sauront("situer les évènements de l'histoire sur un calendrier, et dire pourquoi on a besoin de mesurer le temps."), 45, [
+        ph("Le lundi, point de départ", "10 min", "Avant de lire, le calendrier de la classe : le lundi est le début du récit."),
+        ph("Lire, et faire avancer les personnages", "25 min", "Pendant la lecture, un élève déplace les deux personnages aimantés sur le calendrier, au fil des "
+          + "évènements ; l'horloge aide à comprendre les minutes « volées ».", "La séance est filée sur une semaine : relire l'album plusieurs fois affine la compréhension."),
+        ph("Comprendre et redire", "10 min", "Les inférences du texte ; raconter et expliquer avec les mots du temps."),
+      ]),
+    seance("Mesurer le temps : quel outil ?",
+      sauront("observer et utiliser des outils de mesure du temps — sablier, pendule, montre, réveil, analogiques et numériques — et dire lequel convient à quelle durée."), 45, [
+        ph("Estimer, puis mesurer", "15 min", "Estimer la durée d'une activité de la classe, puis la mesurer avec un chronomètre, une montre, l'horloge : on note les résultats pour les confronter."),
+        ph("Quel outil pour quelle durée ?", "20 min", "Essayer un sablier, un réveil, une montre, un chronomètre, l'horloge — et, si on en a, une clepsydre, un métronome : "
+          + "ce que chacun permet, ce qu'il empêche, lequel mesure les secondes, les minutes, les heures.", "Les élèves proposent, essaient, expliquent les problèmes rencontrés."),
+        ph("Ce qu'on retient", "10 min", "Les outils et leur nom : sablier, pendule, montre, réveil, chronomètre. Les mots seconde, minute, heure."),
+      ]),
+    seance("Le programme de la journée",
+      sauront("établir le programme de la journée avec des étiquettes, se repérer à l'aide d'une horloge, et savoir que la journée est divisée en heures."), 30, [
+        ph("Le programme du jour", "15 min", "Avec des étiquettes, établir le programme de la journée ; le placer à côté de l'horloge de la classe : à quelle heure ?"),
+        ph("La journée en heures", "15 min", "Une journée, ce sont vingt-quatre heures ; le jour et la nuit s'y partagent. Le programme de la semaine, sur le même modèle."),
+      ]),
+    seance("Rituel : quel jour sommes-nous ?",
+      sauront("écrire la date du jour avec le calendrier, nommer et ordonner les jours de la semaine, et employer hier, avant-hier, demain."), 15, [
+        ph("La date au tableau", "10 min", "Un binôme écrit la date du jour pour la classe, aidé d'une frise numérique pour les quantièmes et du calendrier pour les jours de la semaine.",
+          "Repris chaque jour : c'est le rituel qui installe le temps cyclique."),
+        ph("Hier, aujourd'hui, demain", "5 min", "Se repérer dans la succession des jours — la roue des jours, la semaine linéaire — avec les temps qui vont avec : passé, présent, futur.",
+          "L'enseignant reformule pour corriger les temps de la conjugaison."),
+      ]),
+    seance("Rituel : le mois et l'année",
+      sauront("savoir que l'année est divisée en mois, le mois en semaines et en jours, et que les années se suivent sans revenir."), 20, [
+        ph("Le calendrier", "10 min", "Identifier le mois, le jour, le quantième ; « En quelle année sommes-nous ? » Les mois reviennent, les années se suivent : le temps ne revient pas.",
+          "Chaque journée passée est rayée : le temps qui organise la classe revient — les jours, les mois — et pourtant il ne revient pas."),
+        ph("La frise des mois", "10 min", "Compter les mois jusqu'à la fin de l'année ; y reporter ce qui rythme la classe : anniversaires, sorties, commémorations."),
+      ]),
     evaluation("nommer et ordonner les jours de la semaine et les mois, et dire avec quoi on mesure le temps", "Le calendrier et la roue des jours restent au mur."),
   ],
 };
 
+/** Les deux premières séances de la séquence Éduscol « Situer les événements les uns par rapport aux autres » : le parcours sonore. */
+const PARCOURS_ECOUTE = seance("Le parcours sonore",
+  sauront("situer les évènements d'un parcours les uns par rapport aux autres — avant, après, en même temps — et les représenter sur une bande."), 45, [
+    ph("Écouter le parcours", "15 min", "Un enregistrement : un personnage se déplace sur un chemin. Les élèves identifient ses rencontres et les étapes de son parcours ; "
+      + "on réécoute pour vérifier les hypothèses.", "Décrire, expliquer, débattre de l'antériorité, de la postériorité, de la simultanéité."),
+    ph("Estimer les durées", "10 min", "Estimer la durée des étapes, puis la mesurer avec un chronomètre, une montre, l'horloge ; noter les résultats pour les confronter."),
+    ph("Représenter le chemin", "20 min", "Sur une bande de papier, dessiner le chemin du personnage : ses rencontres, les lieux, dans l'ordre ; du ruban adhésif et des ciseaux "
+      + "pour rectifier.", "L'enseignant vérifie la compréhension, fait dire la chronologie avec les mots du temps ; les représentations corrigées deviennent des références."),
+  ]);
+const PARCOURS_COMPARER = seance("Comparer nos chemins",
+  sauront("décrire leur représentation, justifier leurs choix, et repérer la simultanéité et la durée."), 45, [
+    ph("Présenter son chemin", "15 min", "Chacun décrit sa bande et justifie ses choix ; la classe questionne, commente, valide."),
+    ph("En même temps, plus longtemps", "15 min", "L'enseignant juxtapose deux ou trois représentations — un même instant codé de deux façons, une erreur d'ordre — "
+      + "et fait demander des explications.", "Faire émerger la continuité et la succession, l'antériorité et la postériorité, la simultanéité."),
+    ph("Mesurer le temps", "15 min", "Des outils de mesure proposés par les élèves, essayés en situation : lequel dit combien de temps a duré chaque étape ?",
+      "Prolongement : mesurer chaque jour la durée d'une tâche de la classe."),
+  ]);
+
 const SITUER_EVENEMENTS_CP: Demarche = {
-  id: "situer-evenements-cp", nom: "Situer des évènements dans le temps (CP)", famille: "Sciences, histoire, EMC", source: PROGRAMME,
-  resume: "« Comment situer des évènements dans le temps ? » Avant, pendant, après ; hier, aujourd'hui, demain : situer et planifier "
-    + "sur le calendrier les évènements de la classe — anniversaires, fêtes, commémorations, projets — ; la frise de la journée, la frise "
-    + "de la vie de l'élève ; les générations, à partir d'exemples d'arbres généalogiques. Le passé ne revient pas.",
+  id: "situer-evenements-cp", nom: "Situer des évènements dans le temps (CP)", famille: "Sciences, histoire, EMC",
+  source: `${SE_SITUER_2016} : la séquence « Situer les événements les uns par rapport aux autres » (séances 1 et 2, le parcours sonore) et les rituels `
+    + "de « Identifier les rythmes cycliques du temps » (le calendrier, la frise des mois, le cahier de textes) ; la journée, la frise de la vie, les "
+    + "générations et l'évaluation bâties sur le programme d'histoire-géographie du cycle 2 (BO n° 22 du 28 mai 2026)",
+  resume: "« Comment situer des évènements dans le temps ? » Un parcours sonore, écouté puis représenté sur une bande, pour situer des évènements les uns "
+    + "par rapport aux autres — avant, après, en même temps — et en mesurer la durée ; le calendrier de la classe pour situer et planifier, avec hier, "
+    + "aujourd'hui, demain ; la frise de la journée et celle de la vie de l'élève ; les générations, à partir d'exemples d'arbres généalogiques. "
+    + "Le passé ne revient pas.",
   seances: [
-    etape("Hier, aujourd'hui, demain", "employer hier, aujourd'hui, demain, avant-hier, après-demain, et les temps qui vont avec.",
-      "Qu'avons-nous fait hier ? Que ferons-nous demain ?",
-      "Raconter ce qu'on a fait, ce qu'on fera : le passé, le présent, le futur ; placer les étiquettes hier, aujourd'hui, demain sur le calendrier.",
-      "Les marqueurs du temps, affichés à côté du calendrier."),
-    etape("Le calendrier de la classe", "situer et planifier sur un calendrier des évènements particuliers ou récurrents.",
-      "Quand est l'anniversaire de… ? La prochaine fête ? La sortie ?",
-      "Inscrire sur le calendrier du mois les anniversaires, les fêtes, une commémoration, un projet de classe ; compter : dans combien de jours ? "
-        + "Il y a combien de jours ?",
-      "Il y a un mois, dans un mois : le calendrier sert à se souvenir et à prévoir."),
-    etape("Avant, pendant, après", "dire ce qui se passe avant, en même temps et après, et ordonner les moments de la journée.",
+    PARCOURS_ECOUTE,
+    PARCOURS_COMPARER,
+    seance("Le calendrier de la classe",
+      sauront("situer et planifier sur un calendrier des évènements particuliers ou récurrents, avec les temps verbaux et les marqueurs du temps."), 45, [
+        ph("La frise des mois", "15 min", "Reporter sur la frise des mois ce qui rythme la classe — les anniversaires, les sorties, une commémoration, un projet."),
+        ph("Se projeter", "20 min", "« Quel jour serons-nous le prochain jour d'école ? » Le calendrier pour compter : dans combien de jours ? il y a combien de jours ? "
+          + "Écrire dans le cahier de textes ce qu'on prévoit.", "Hier, avant-hier, il y a un mois ; demain, après-demain, dans un mois — avec le passé, le présent, le futur."),
+        ph("Ce qu'on retient", "10 min", "Le calendrier sert à se souvenir et à prévoir."),
+      ]),
+    etape("La frise de la journée", "compléter une frise chronologique de la journée, avec ce qui se passe avant, en même temps et après.",
       "Que fait-on avant la récréation ? Pendant ? Après ?",
-      "Ordonner des photographies d'une journée de classe ; compléter la frise de la journée ; trouver ce qui se passe en même temps.",
+      "Ordonner des photographies d'une journée de classe ; compléter la frise de la journée, comme on avait représenté le chemin du parcours sonore.",
       "Antériorité, simultanéité, postériorité : avant, en même temps, après."),
     etape("La frise de ma vie", "compléter une frise chronologique de leur vie, et comprendre qu'on ne revient pas en arrière.",
       "Qu'est-ce qui s'est passé depuis notre naissance ?",
@@ -204,6 +269,44 @@ const SITUER_EVENEMENTS_CP: Demarche = {
       "Lire l'arbre généalogique d'une famille d'un album ou d'une famille célèbre ; compléter un arbre ; placer les générations sur une frise.",
       "Les générations : les grands-parents, les parents, les enfants.", "On part d'exemples : l'arbre d'une famille étudiée, pas forcément celle de l'élève."),
     evaluation("situer des évènements sur le calendrier et sur une frise, avec hier, aujourd'hui, demain, avant, après", "Le calendrier et la frise de la classe continuent de vivre."),
+  ],
+};
+
+/** La séquence Éduscol entière, croisée avec l'éducation musicale : à choisir dans le menu des déroulements. */
+const PETITE_SIRENE_CP: Demarche = {
+  id: "petite-sirene-cp", nom: "Situer les évènements : la valise sonore de la Petite Sirène (CP)", famille: "Sciences, histoire, EMC",
+  source: `${SE_SITUER_2016} : la séquence « Situer les événements les uns par rapport aux autres » (présentation et séances 1 à 5), croisée avec l'éducation musicale`,
+  resume: "Un parcours sonore écouté puis dessiné sur une bande ; les chemins comparés, pour faire émerger l'antériorité, la simultanéité, la durée ; "
+    + "puis un projet : la valise sonore que la Petite Sirène emportera sur terre — des sons de la mer choisis, un chef d'orchestre, une frise-partition "
+    + "où un trait vaut une seconde, et les outils qui mesurent ces secondes. Un premier pas vers une frise.",
+  seances: [
+    PARCOURS_ECOUTE,
+    PARCOURS_COMPARER,
+    seance("Le chef d'orchestre",
+      sauront("identifier, dans une production sonore, ce qui se passe en même temps, et la durée de chaque son."), 45, [
+        ph("Choisir les sons de la mer", "15 min", "Le conte de la Petite Sirène, lu et écouté avant : choisir des instruments ou des objets qui sonnent comme la mer — "
+          + "pour l'eau, une paille, un fouet, une fourchette ; pour le vent, des papiers ; pour les poissons, une boîte à musique, la voix."),
+        ph("Jouer, diriger", "20 min", "Un élève est le chef d'orchestre : il fait démarrer les groupes d'instruments dans l'ordre qu'il veut, les arrête, les fait repartir. "
+          + "Un deuxième, puis un troisième prend sa place ; on enregistre.", "Les gestes du chef d'orchestre font voir la simultanéité et la durée."),
+        ph("Écouter et comparer", "10 min", "Écouter les enregistrements : quel objet fait ce son ? Lesquels sonnent en même temps ? Combien de temps chacun ?"),
+      ]),
+    seance("La frise-partition",
+      sauront("coder sur une partition les sons, leur durée et leur simultanéité, de façon que tous puissent la lire."), 45, [
+        ph("Ce qui a gêné", "10 min", "Expliquer ce qu'on a déjà fait, et les difficultés : des dessins trop détaillés, des durées qu'on ne distingue pas, la simultanéité, "
+          + "le besoin de réécouter."),
+        ph("Coder la partition", "25 min", "Sur une frise-partition — une ligne par son —, trouver un codage compréhensible de tous, et y marquer les durées et ce qui sonne "
+          + "en même temps.", "L'enseignant fixe les contraintes : le nombre de groupes d'instruments, les notions, les codages obligatoires ; il favorise l'entraide."),
+        ph("Un trait, une seconde", "10 min", "Lire les partitions : quand chaque trait vaut une seconde, la partition devient une frise qu'on peut compter.",
+          "La séance peut s'interrompre et reprendre au fil du projet."),
+      ]),
+    seance("Mesurer les durées pour jouer",
+      sauront("dire pourquoi il faut mesurer les durées, et choisir l'outil qui mesure les secondes."), 45, [
+        ph("Le chef d'orchestre se trompe", "10 min", "L'enseignant joue les partitions en amplifiant ce qui manque — les durées oubliées, un passage trop rapide : "
+          + "la valise sonore n'est plus harmonieuse. Il faut mesurer."),
+        ph("Quel outil ?", "20 min", "Sablier, clepsydre, horloge, réveil, téléphone, chronomètre, métronome, cadran solaire, montre : on essaie ceux qu'on a, on dit ce qui "
+          + "empêche, on trouve celui qui mesure les secondes.", "Les élèves émettent des hypothèses sur l'usage qui convient à chaque outil."),
+        ph("Jouer et enregistrer", "15 min", "Des codages précis choisis ensemble ; la partition est jouée et enregistrée, en lien avec l'éducation musicale."),
+      ]),
   ],
 };
 
@@ -584,7 +687,7 @@ const TRAVAILLER_CE2: Demarche = {
 };
 
 export const DEMARCHES_HISTOIRE_GEO: Demarche[] = [
-  TEMPS_NATUREL_CP, TEMPS_REPRESENTE_CP, SITUER_EVENEMENTS_CP, PASSE_PROCHE_CE1, GRANDES_PERIODES_CE1, TRACES_PASSE_CE1,
+  TEMPS_NATUREL_CP, TEMPS_REPRESENTE_CP, SITUER_EVENEMENTS_CP, PETITE_SIRENE_CP, PASSE_PROCHE_CE1, GRANDES_PERIODES_CE1, TRACES_PASSE_CE1,
   PREHISTOIRE_CE2, ROME_CE2, ROYAUME_CE2,
   LA_CLASSE, ECOLE_QUARTIER_CP, REPRESENTATIONS_MONDE_CP, TERRE_PEUPLEE_CE1, LIEUX_DE_VIE_CE1, POPULATION_FRANCE_CE2, SE_LOGER_CE2, TRAVAILLER_CE2,
 ];
@@ -727,29 +830,55 @@ const PLANS_DES_THEMES: Record<string, { feuilles: ((ctx: ContexteFeuilles | nul
   },
   [TEMPS_REPRESENTE_CP.id]: {
     feuilles: [
-      motsCles(1, "Mesurer le temps", ["le sablier", "la pendule", "la montre", "le réveil", "l'heure", "la minute"]),
-      frise(2, "Ma journée", "journee"),
-      frise(3, "La semaine", "semaine"),
-      frise(4, "L'année", "annee"),
-      frise(4, "Le calendrier du mois", "calendrier", false),
-      frise(5, "La semaine — évaluation", "semaine"),
+      motsCles(0, "Les mots du temps", ["attendre", "s'ennuyer", "patienter", "bientôt", "d'abord", "juste avant", "maintenant", "aujourd'hui", "ce soir",
+        "la montre", "la pendule", "le réveil", "le sablier", "la clepsydre"]),
+      motsCles(3, "Mesurer le temps", ["le sablier", "la pendule", "la montre", "le réveil", "le chronomètre", "la seconde", "la minute", "l'heure"]),
+      frise(4, "Ma journée", "journee"),
+      frise(5, "La semaine", "semaine"),
+      frise(6, "L'année", "annee"),
+      frise(6, "Le calendrier du mois", "calendrier", false),
+      frise(7, "La semaine — évaluation", "semaine"),
     ],
     materiel: [
-      "Un album sur le temps qui passe ; un sablier d'une minute", "Un sablier, une pendule, une montre, un réveil, analogiques et numériques",
-      "L'emploi du temps de la classe", "La roue des jours, l'éphéméride", "Le calendrier de la classe", "",
+      "L'album François et le temps (Christine Naumann-Villemin, éd. Kaléidoscope, 2010) ; une affiche pour classer les mots du temps",
+      "L'album Le petit voleur de temps (Nathalie Minne, éd. Casterman, 2014) ; les cartes de questions des quatre ateliers, la réponse des questions fermées écrite dessus",
+      "L'album Le petit voleur de temps ; le calendrier de la classe et deux personnages aimantés ; l'horloge",
+      "Des outils pour mesurer le temps : sablier, réveil, montre, chronomètre, l'horloge — et, si possible, une clepsydre ou un métronome",
+      "Les étiquettes des moments de la journée ; l'horloge de la classe",
+      "Le calendrier, la roue des jours, une frise numérique ; le tableau pour écrire la date",
+      "Le calendrier du mois, la frise des mois",
+      "",
     ],
   },
   [SITUER_EVENEMENTS_CP.id]: {
     feuilles: [
-      frise(1, "Le calendrier du mois", "calendrier"),
-      frise(2, "Ma journée", "journee"),
-      frise(3, "La frise de ma vie", "vie"),
-      frise(4, "Les générations", "generations"),
+      frise(2, "Le calendrier du mois", "calendrier"),
+      frise(3, "Ma journée", "journee"),
+      frise(4, "La frise de ma vie", "vie"),
+      frise(5, "Les générations", "generations"),
     ],
     materiel: [
-      "Le calendrier de la classe ; les étiquettes hier, aujourd'hui, demain", "Les dates des anniversaires, des fêtes, des projets",
-      "Des photographies d'une journée de classe", "Des photographies ou des dessins apportés par les familles, à leur gré",
-      "L'arbre généalogique d'une famille d'un album ou d'une famille célèbre", "",
+      "Un parcours sonore enregistré — Éduscol prend la piste 1 de « Promenade sonore dans la campagne » (L'atelier des images et des sons, Nathan), "
+        + "un autre convient — ; un chronomètre, une montre ; des bandes de papier, du ruban adhésif, des ciseaux",
+      "Les chemins dessinés ; deux ou trois productions choisies, affichées ou projetées ; des outils pour mesurer le temps",
+      "Le calendrier de la classe, la frise des mois ; les étiquettes hier, aujourd'hui, demain ; le cahier de textes",
+      "Des photographies d'une journée de classe",
+      "Des photographies ou des dessins apportés par les familles, à leur gré",
+      "L'arbre généalogique d'une famille d'un album ou d'une famille célèbre",
+      "",
+    ],
+  },
+  [PETITE_SIRENE_CP.id]: {
+    feuilles: [
+      motsCles(1, "Situer les évènements", ["avant", "après", "en même temps", "pendant", "d'abord", "ensuite", "enfin", "la durée"]),
+    ],
+    materiel: [
+      "Un parcours sonore enregistré — Éduscol prend la piste 1 de « Promenade sonore dans la campagne » (L'atelier des images et des sons, Nathan), "
+        + "un autre convient — ; un chronomètre, une montre ; des bandes de papier, du ruban adhésif, des ciseaux",
+      "Les chemins dessinés ; deux ou trois productions choisies, affichées ou projetées ; des outils pour mesurer le temps",
+      "Le conte de la Petite Sirène, lu et écouté avant ; des objets sonores — pailles, fouets, fourchettes, papiers, une boîte à musique — ; de quoi enregistrer",
+      "Les enregistrements ; de grandes feuilles pour les frises-partitions, une ligne par son",
+      "Les partitions choisies ; des outils pour mesurer le temps — sablier, réveil, montre, chronomètre, et si possible un métronome — ; de quoi enregistrer",
     ],
   },
   [PASSE_PROCHE_CE1.id]: {
