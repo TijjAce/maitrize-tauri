@@ -310,7 +310,7 @@ function EvalForm({ ev, onClose, onSaved }: { ev: Evaluation; onClose: () => voi
   try { comps = v.competencesJson ? JSON.parse(v.competencesJson) : []; } catch { /* ignore */ }
   const setComps = (next: CompetenceSelectionnee[]) => up({ competencesJson: JSON.stringify(next) });
   const toggleComp = (c: CompetenceSelectionnee) => {
-    const exist = comps.find((x) => x.competenceRefId === c.competenceRefId && x.sousDomaineTitre === c.sousDomaineTitre);
+    const exist = comps.find((x) => x.competenceRefId === c.competenceRefId && (!!c.competenceRefId || x.sousDomaineTitre === c.sousDomaineTitre));
     setComps(exist ? comps.filter((x) => x !== exist) : [...comps, c]);
   };
 

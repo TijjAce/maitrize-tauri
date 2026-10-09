@@ -97,7 +97,7 @@ export function CiterCompetences({ eleves, eleveId, ongletInitial = "programmes"
 
   const basculer = (c: CompetenceSelectionnee) => setChoisies((l) => {
     const i = l.findIndex((x) => x.competenceRefId === c.competenceRefId && x.referentielNom === c.referentielNom
-      && x.sousDomaineTitre === c.sousDomaineTitre);
+      && (!!c.competenceRefId || x.sousDomaineTitre === c.sousDomaineTitre));
     return i >= 0 ? l.filter((_, j) => j !== i) : [...l, c];
   });
 

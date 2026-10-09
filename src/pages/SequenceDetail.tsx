@@ -455,7 +455,7 @@ export function SeanceForm({ seance, cycle = "", sequence, onClose, onSaved }: {
     // Une compétence du référentiel se reconnaît à son entrée ; une compétence
     // écrite à la main, à elle-même — deux manuelles ne se confondent pas.
     const exists = comps.find((x) => x.id === c.id
-      || (!!c.competenceRefId && x.competenceRefId === c.competenceRefId && x.sousDomaineTitre === c.sousDomaineTitre));
+      || (!!c.competenceRefId && x.competenceRefId === c.competenceRefId));
     setComps(exists ? comps.filter((x) => x !== exists) : [...comps, c]);
   };
 

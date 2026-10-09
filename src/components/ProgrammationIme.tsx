@@ -92,7 +92,8 @@ function ParCreneau({ annee, eleves, prog, persister }: {
     const deja = poses.some((o) => o.source
       && o.source.competenceRefId === source.competenceRefId
       && o.source.referentielNom === source.referentielNom
-      && o.source.sousDomaineTitre === source.sousDomaineTitre);
+      // Sans identifiant, le titre de la partie départage ; avec, il a pu être corrigé depuis.
+      && (!!source.competenceRefId || o.source.sousDomaineTitre === source.sousDomaineTitre));
     persister(deja
       ? retirerDuCreneau(prog, slot.id, c.competenceTitre, origine, elevesParCreneau)
       : poserSurCreneau(prog, slot.id, siens, c.competenceTitre, origine, source));
