@@ -76,34 +76,39 @@ export function memoriserImage(id: number, src: string): void {
   cache.set(String(id), Promise.resolve(src));
 }
 
-export function usePictoImage(id: number | string | null | undefined): string {
+/**
+ * L'image d'un pictogramme, pour l'écran. `telle` : l'image elle-même, sans
+ * le choix photos ou pictos de l'atelier — ce que montre une fenêtre où l'on
+ * choisit, et les pictos des verbes d'une consigne.
+ */
+export function usePictoImage(id: number | string | null | undefined, telle = false): string {
   const [src, setSrc] = React.useState("");
   const choix = useChoixDesImages();
   React.useEffect(() => {
     if (id == null) { setSrc(""); return; }
     let vivant = true;
-    chargerPicto(id).then((s) => { if (vivant) setSrc(s); }).catch(() => { if (vivant) setSrc(""); });
+    chargerPicto(id, telle ? null : undefined).then((s) => { if (vivant) setSrc(s); }).catch(() => { if (vivant) setSrc(""); });
     return () => { vivant = false; };
-  }, [id, choix]);
+  }, [id, telle ? "" : choix]); // eslint-disable-line react-hooks/exhaustive-deps
   return src;
 }
 
-/** Les images à imprimer : celles qui manquent encore sont attendues, celles qui échouent laissent une case vide. */
-export async function chargerImages<T extends number | string>(ids: T[]): Promise<Record<T, string>> {
-  const paires = await Promise.all(ids.map((id) => chargerPicto(id).then((s) => [id, s] as const).catch(() => null)));
+/** Les images à imprimer : celles qui manquent encore sont attendues, celles qui échouent laissent une case vide. `telle` : sans le choix photos ou pictos. */
+export async function chargerImages<T extends number | string>(ids: T[], telle = false): Promise<Record<T, string>> {
+  const paires = await Promise.all(ids.map((id) => chargerPicto(id, telle ? null : undefined).then((s) => [id, s] as const).catch(() => null)));
   return Object.fromEntries(paires.filter((p): p is readonly [T, string] => p !== null)) as Record<T, string>;
 }
 
 /** Les images de plusieurs pictogrammes, pour l'aperçu. */
-export function usePictoImages<T extends number | string>(ids: T[]): Record<T, string> {
+export function usePictoImages<T extends number | string>(ids: T[], telle = false): Record<T, string> {
   const [images, setImages] = React.useState<Record<T, string>>({} as Record<T, string>);
   const cle = ids.map(String).sort().join(",");
   const choix = useChoixDesImages();
   React.useEffect(() => {
     let vivant = true;
-    chargerImages(ids).then((lues) => { if (vivant) setImages(lues); });
+    chargerImages(ids, telle).then((lues) => { if (vivant) setImages(lues); });
     return () => { vivant = false; };
-  }, [cle, choix]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cle, telle ? "" : choix]); // eslint-disable-line react-hooks/exhaustive-deps
   return images;
 }
 
@@ -116,7 +121,7 @@ export function EtiquetteMonPicto({ id }: { id: number | string | null | undefin
 }
 
 function Resultat({ picto, actif, onClick }: { picto: PictoArasaac; actif: boolean; onClick: () => void }) {
-  const src = usePictoImage(picto.id);
+  const src = usePictoImage(picto.id, true);
   const origine = origineDe(picto.id);
   return (
     <button type="button" onClick={onClick} title={origine ? `${picto.mot} — ${ETIQUETTES[origine].long}` : picto.mot}
@@ -143,7 +148,7 @@ export function ChoixPicto({ valeur, banque, titre = "Choisir un pictogramme", o
   const [choisi, setChoisi] = React.useState<number | null>(valeur.id);
   const [mot, setMot] = React.useState(valeur.mot);
   const [photo, setPhoto] = React.useState(valeur.photo ?? "");
-  const srcPhoto = usePictoImage(photo ? `photo:${photo}` : null);
+  const srcPhoto = usePictoImage(photo ? `photo:${photo}` : null, true);
   const prendrePhoto = (nom: string) => { setPhoto(nom); setChoisi(null); };
   // Une image de l'ordinateur rejoint les fichiers de l'application, comme une photo du téléphone.
   const importer = async (f: File) => {

@@ -51,7 +51,7 @@ export function useBanquesAppoint() {
 }
 
 function Resultat({ refPicto, mot, actif, onClick }: { refPicto: RefPicto; mot: string; actif: boolean; onClick: () => void }) {
-  const src = usePictoImage(refPicto);
+  const src = usePictoImage(refPicto, true);
   return (
     <button type="button" onClick={onClick} title={mot}
       style={{ border: actif ? "3px solid var(--accent)" : "1px solid var(--border)", borderRadius: 8, background: "#fff",
