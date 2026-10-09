@@ -70,6 +70,7 @@ import { DEMARCHES_ORTHOGRAPHE, demarcheDeLOrthographe } from "./demarchesOrthog
 import { DEMARCHES_ECRITURE, demarcheDeLEcriture } from "./demarchesEcriture";
 import { DEMARCHES_LANGUE, demarcheDeLaLangue } from "./demarchesLangue";
 import { DEMARCHES_ORAL, demarcheDeLOral } from "./demarchesOral";
+import { DEMARCHES_HISTOIRE_GEO, demarcheHistoireGeo } from "./demarchesHistoireGeo";
 
 /** Une ligne du tableau de déroulement, dans l'ordre de ses colonnes. */
 export interface PhaseCadre {
@@ -2146,7 +2147,7 @@ export const DEMARCHES: Demarche[] = [
   INVESTIGATION, ENQUETE_HISTOIRE_GEO, EMC_DEBAT,
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
   MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, COLLECTIONS, CHRONOLOGIE, COMPARER_NOMBRES, NUMERATION_DIZAINE,
-  ...DEMARCHES_NUMERATION, ...DEMARCHES_CALCUL, ...DEMARCHES_PROBLEMES, ...DEMARCHES_PROBLEMES_PROLONGES, ...DEMARCHES_FRACTIONS_PROLONGEES, ...DEMARCHES_OPERATIONS, ...DEMARCHES_GRANDEURS, ...DEMARCHES_GEOMETRIE, ...DEMARCHES_DONNEES, ...DEMARCHES_FRANCAIS, ...DEMARCHES_LECTURE, ...DEMARCHES_ORTHOGRAPHE, ...DEMARCHES_ECRITURE, ...DEMARCHES_LANGUE, ...DEMARCHES_ORAL,
+  ...DEMARCHES_NUMERATION, ...DEMARCHES_CALCUL, ...DEMARCHES_PROBLEMES, ...DEMARCHES_PROBLEMES_PROLONGES, ...DEMARCHES_FRACTIONS_PROLONGEES, ...DEMARCHES_OPERATIONS, ...DEMARCHES_GRANDEURS, ...DEMARCHES_GEOMETRIE, ...DEMARCHES_DONNEES, ...DEMARCHES_FRANCAIS, ...DEMARCHES_LECTURE, ...DEMARCHES_ORTHOGRAPHE, ...DEMARCHES_ECRITURE, ...DEMARCHES_LANGUE, ...DEMARCHES_ORAL, ...DEMARCHES_HISTOIRE_GEO,
 ];
 
 export const demarcheDe = (id: string) => DEMARCHES.find((d) => d.id === id);
@@ -2285,7 +2286,8 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string, niveau = 
     return "eduscol-quatre-temps";
   }
   if (/sciences|technologie|questionner le monde/.test(dom)) return "investigation";
-  if (/histoire|geographie/.test(dom)) return "enquete-histoire-geo";
+  // Le thème de la compétence a sa séquence quand Éduscol en propose une ; sinon, l'enquête.
+  if (/histoire|geographie/.test(dom)) return demarcheHistoireGeo(niveau, sd, cg, comp) ?? "enquete-histoire-geo";
   if (/moral et civique|\bemc\b/.test(dom)) return "emc-debat";
   if (/artistique|\barts\b/.test(dom)) {
     if (/musical|musique/.test(sd)) return "musique";

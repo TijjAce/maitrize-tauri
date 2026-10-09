@@ -13,6 +13,7 @@ import { graineAuHasard } from "../hasard";
 import { toast } from "./Toaster";
 import { NIVEAUX_DE_PROGRAMMATION, libelleDeProgrammation, niveauDeProgrammation, programmationProposee } from "../programmation";
 import { aidesDeLaSequence, seanceDeLaParole } from "../aidesDesSequences";
+import { lireProfils } from "../planDeLaClasse";
 
 // Fiche d'une séquence : titre, période, compétence visée, objectifs, vignette,
 // vidéo. Elle vivait dans l'ancien onglet Séquences et avait disparu avec lui :
@@ -58,9 +59,16 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
   const objectifRattache = React.useMemo(() => (comp && reglages
     ? ateliersRattaches(reglages, comp).find((a) => a.atelier === "martiniere" && a.objectif)?.objectif : undefined),
   [reglages, s.competenceVisee]); // eslint-disable-line react-hooks/exhaustive-deps
-  const ctx: ContexteFeuilles | null = classe ? { classe, periode: s.periode, competence: comp?.competenceTitre ?? "", objectifRattache } : null;
+  // La salle de la classe, d'après le plan de salle, et les prénoms : le plan de la classe de la géographie s'en dessine.
+  const { data: eleves } = useAsync(() => api.elevesList(), []);
+  const salle = React.useMemo(() => {
+    const profil = lireProfils(reglages?.["salle:profils"])[0];
+    return profil ? { elements: profil.elements, agencement: profil.nom } : undefined;
+  }, [reglages]);
+  const prenoms = React.useMemo(() => (eleves ?? []).map((e) => e.nom.trim().split(/\s+/)[0]).filter(Boolean), [eleves]);
+  const ctx: ContexteFeuilles | null = classe ? { classe, periode: s.periode, competence: comp?.competenceTitre ?? "", objectifRattache, salle, prenoms } : null;
   const plan = React.useMemo(() => (demarche && ctx ? planDesFeuilles(demarche.id, ctx) : null),
-    [demarche?.id, ctx?.classe, ctx?.periode, ctx?.competence, objectifRattache]); // eslint-disable-line react-hooks/exhaustive-deps
+    [demarche?.id, ctx?.classe, ctx?.periode, ctx?.competence, objectifRattache, salle, prenoms]); // eslint-disable-line react-hooks/exhaustive-deps
   const [retirees, setRetirees] = React.useState<ReadonlySet<number>>(() => new Set());
   React.useEffect(() => { setRetirees(new Set()); }, [cadre, plan]);
   const basculer = (k: number) => setRetirees((avant) => {

@@ -1,4 +1,7 @@
 import { describe, it, expect } from "vitest";
+import { REGLAGES_PLAN_CLASSE, htmlPlanClasse, reglagesPlanSurs } from "./planDeLaClasse";
+import { REGLAGES_FRISE, htmlFrise, reglagesFriseSurs } from "./frisesTemps";
+import { REGLAGES_PAYSAGE, htmlPaysage, reglagesPaysageSurs } from "./lireUnPaysage";
 
 // Ce qu'une feuille dit pouvoir refaire dans son atelier (`refaire`), l'atelier doit le refaire tel quel : les mêmes
 // réglages, relus comme l'atelier les relit, et le même tirage donnent la même feuille. Les « ateliers » ci-dessous
@@ -111,6 +114,9 @@ const ATELIERS: Record<string, (m: Memoires, g: number) => string> = {
   },
   suites: (m, g) => htmlSuites(suitesSures(lu(REGLAGES_SUITES, m.suites)), {}, hasard(g)),
   coloriage: (m, g) => { const r = lu(REGLAGES_COLORIAGE, m.coloriage); return feuilleDuColoriage(fabriquerColoriage(r, g, []), r, false).corps; },
+  planClasse: (m, g) => htmlPlanClasse(reglagesPlanSurs(lu(REGLAGES_PLAN_CLASSE, m.planClasse)), g),
+  frise: (m) => htmlFrise(reglagesFriseSurs(lu(REGLAGES_FRISE, m.frise))),
+  paysage: (m) => htmlPaysage(reglagesPaysageSurs(lu(REGLAGES_PAYSAGE, m.paysage))),
 };
 
 const GRAINES = [3, 1789];
