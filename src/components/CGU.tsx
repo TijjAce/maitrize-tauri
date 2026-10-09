@@ -18,8 +18,9 @@ Maîtrize est un logiciel libre, distribué sous la licence GNU Affero General P
 Vos données restent sur cet ordinateur, dans le dossier de l'application. Maîtrize ne crée aucun compte et n'envoie rien à son éditeur. Ne sortent de l'ordinateur que :
 - ce que vous confiez à l'assistant IA (Mistral AI, avec votre propre clé et selon vos conditions avec Mistral) : les noms des élèves et des personnes que l'application connaît sont remplacés par des marqueurs avant l'envoi et remis à leur place au retour ; le reste du texte part tel que vous l'avez écrit ;
 - la voix, si vous choisissez vous-même la transcription en ligne (Mistral) ; sinon elle est transcrite sur l'ordinateur ;
-- la synchronisation et la sauvegarde que vous configurez, chiffrées, vers votre propre stockage ou votre compte Nuage ;
+- la synchronisation et la sauvegarde que vous configurez, chiffrées, vers votre propre stockage ;
 - ce que vous déposez sur un bureau commun ou envoyez à un collègue ;
+- ce qui va à votre téléphone, si vous le reliez : par le WiFi, sur votre réseau local, une partie de vos données de classe ; par votre compte Nuage, vos dictées, chiffrées, et l'emploi du temps, sans nom d'élève ;
 - la recherche de mises à jour (GitHub), le calendrier des vacances (data.education.gouv.fr), les téléchargements que vous lancez (pictogrammes, modèles de transcription, programmes officiels) et les vignettes des vidéos YouTube que vous ajoutez.
 
 4. Données des élèves
