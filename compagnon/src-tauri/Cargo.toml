@@ -2,6 +2,7 @@
 name = "maitrize-dictaphone"
 version = "0.1.0"
 description = "Le dictaphone de classe de Maitrize"
+license = "AGPL-3.0-or-later"
 edition = "2021"
 
 [lib]
