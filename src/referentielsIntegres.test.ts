@@ -1,13 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import cycle1 from "../src-tauri/referentiels/competences_cycle1.json";
+import cycle1_2025 from "../src-tauri/referentiels/competences_cycle1_2025.json";
+import cycle2 from "../src-tauri/referentiels/competences_cycle2.json";
+import cycle3 from "../src-tauri/referentiels/competences_cycle3.json";
 import { memeCompetence } from "./ateliersCompetences";
 import { demarcheSuggeree } from "./demarches";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 
-const FICHIERS = ["competences_cycle1.json", "competences_cycle1_2025.json", "competences_cycle2.json", "competences_cycle3.json"];
-const lire = (f: string) => JSON.parse(readFileSync(`src-tauri/referentiels/${f}`, "utf8")) as {
-  domaines: { titre: string; sousDomaines: { titre: string }[] }[];
+type Referentiel = { domaines: { titre: string; sousDomaines: { titre: string }[] }[] };
+const REFERENTIELS: Record<string, Referentiel> = {
+  "competences_cycle1.json": cycle1, "competences_cycle1_2025.json": cycle1_2025, "competences_cycle2.json": cycle2, "competences_cycle3.json": cycle3,
 };
+const FICHIERS = Object.keys(REFERENTIELS);
+const lire = (f: string) => REFERENTIELS[f];
 
 describe("les référentiels embarqués", () => {
   it("ne donnent jamais le même titre à deux parties d'un domaine", () => {

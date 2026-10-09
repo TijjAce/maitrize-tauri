@@ -31,6 +31,8 @@ import { estUneDemarcheDOrthographe, planDeLOrthographe } from "./demarchesOrtho
 import { estUneDemarcheDEcriture, planDeLEcriture } from "./demarchesEcriture";
 import { estUneDemarcheDeLangue, planDeLaLangue } from "./demarchesLangue";
 import { estUneDemarcheDOral, planDeLOral } from "./demarchesOral";
+import { estUneDemarcheHistoireGeo, planHistoireGeo } from "./demarchesHistoireGeo";
+import type { ElemSalle } from "./planDeLaClasse";
 import { reglagesLaisses } from "./reglagesLaisses";
 import { memesReglages } from "./modifierFeuille";
 
@@ -44,6 +46,10 @@ export interface ContexteFeuilles {
   competence?: string;
   /** L'objectif de l'atelier « Calcul mental » qu'on a rattaché soi-même à la compétence, s'il y en a un. */
   objectifRattache?: string;
+  /** La salle de la classe, d'après le plan de salle : le plan de la classe de la géographie s'en dessine. */
+  salle?: { elements: ElemSalle[]; agencement: string };
+  /** Les prénoms de la classe : les étiquettes des maquettes. */
+  prenoms?: string[];
 }
 
 /** Une feuille qu'un atelier fabrique pour une séance. */
@@ -168,6 +174,8 @@ export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): Plan
   if (estUneDemarcheDeLangue(demarcheId)) return planDeLaLangue(demarcheId, ctx);
   // L'oral : l'atelier « Oral », l'écoute de « Comprendre un texte », les poèmes à coder de « Lire à voix haute » (voir demarchesOral.ts).
   if (estUneDemarcheDOral(demarcheId)) return planDeLOral(demarcheId, ctx);
+  // L'histoire et la géographie : le plan de la classe, et ce que les autres thèmes demandent (voir demarchesHistoireGeo.ts).
+  if (estUneDemarcheHistoireGeo(demarcheId)) return planHistoireGeo(demarcheId, ctx);
   if (!CLASSE_DES_DEMARCHES[demarcheId]) return null;
   // Grouper par dix, la centaine, le millier : les huit feuilles des cubes, de la grande collection à l'évaluation.
   if (demarcheId === "numeration-dizaine-cp" || demarcheId.startsWith("groupements-")) {

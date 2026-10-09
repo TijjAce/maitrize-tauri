@@ -30,6 +30,10 @@ const citeLeLivretDeFrancais = (classe: string, phrase: string) =>
 
 /** La période des séquences de numération, d'après les repères du programme ; `niveau` : le repère ne vaut qu'à cette classe. */
 const PAR_DEMARCHE: Record<string, { periode: number; raison: string; niveau?: string }> = {
+  // L'histoire au CE2 : l'ordre et les périodes que le programme recommande ; au CP et au CE1, aucune — ses dimensions se travaillent toute l'année.
+  "prehistoire-ce2": { periode: 1, niveau: "CE2", raison: "Programme d'histoire-géographie du cycle 2 (2026), CE2 : « première période »" },
+  "rome-gaule-ce2": { periode: 2, niveau: "CE2", raison: "Programme d'histoire-géographie du cycle 2 (2026), CE2 : « deuxième et troisième périodes »" },
+  "royaume-france-ce2": { periode: 4, niveau: "CE2", raison: "Programme d'histoire-géographie du cycle 2 (2026), CE2 : « quatrième et cinquième périodes »" },
   "numeration-dizaine-cp": { periode: 1, raison: cite("CP", "L'aspect décimal (base dix) et l'aspect positionnel […] sont abordés dès la période 1 : les élèves comparent, dénombrent et constituent des collections organisées en groupes de dix unités et en unités isolées.") },
   "nombres-livret-cp-59": { periode: 2, raison: cite("CP", "Au plus tard en période 2, les élèves travaillent avec des quantités et des nombres allant jusqu'à cinquante-neuf.") },
   "nombres-livret-cp-100": { periode: 3, raison: cite("CP", "Au plus tard en période 3, les élèves travaillent avec des quantités et des nombres allant jusqu'à cent.") },

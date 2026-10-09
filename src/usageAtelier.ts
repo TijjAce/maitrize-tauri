@@ -69,6 +69,8 @@ export const USAGE_PAR_DEFAUT: Record<string, Usage> = {
   taches: "reinvestissement",
   // Aides à la tâche : on les manipule pendant qu'on fait ; la prise de parole se prépare pour le bilan.
   sequentiel: "manipulation", priseDeParole: "reinvestissement", resolution: "entrainement", modelisation: "entrainement", fonction: "entrainement",
+  // Histoire-géographie : le plan se manipule, se lit, se refait.
+  planClasse: "manipulation", frise: "rituel", paysage: "entrainement",
 };
 
 export const usageParDefaut = (atelier: string): Usage => USAGE_PAR_DEFAUT[atelier] ?? "entrainement";
