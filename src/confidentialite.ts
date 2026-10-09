@@ -141,6 +141,20 @@ export function pseudonymiser(texte: string, noms: string[]): { texte: string; t
   };
 }
 
+/** Ce qui sépare les textes masqués ensemble : aucun nom ne le contient. */
+const SEPARE = "\u0000";
+
+/**
+ * Masque plusieurs textes d'un seul tenant — les messages d'une conversation,
+ * une question et son contexte : un même nom porte le même marqueur partout,
+ * et la réponse se restaure avec une seule table.
+ */
+export function pseudonymiserTout(textes: string[], noms: string[]): { textes: string[]; table: Remplacement[] } {
+  const { texte, table } = pseudonymiser(textes.join(SEPARE), noms);
+  const parts = texte.split(SEPARE);
+  return { textes: textes.map((t, i) => parts[i] ?? t), table };
+}
+
 /** Remet les vrais noms. `absents` : marqueurs disparus de la réponse. */
 export function restaurer(texte: string, table: Remplacement[]): { texte: string; absents: string[] } {
   const absents = table.filter((r) => !texte.includes(r.marqueur)).map((r) => r.original);

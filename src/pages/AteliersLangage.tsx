@@ -29,7 +29,8 @@ import {
 } from "../triIa";
 import { DEMANDE_CORPUS } from "../corpusIa";
 import { elider } from "../elisions";
-import { pseudonymiser, restaurer } from "../confidentialite";
+import { pseudonymiser, pseudonymiserTout, restaurer } from "../confidentialite";
+import { nomsAMasquer } from "../nomsAMasquer";
 import { LigneDuProjet, useProjetDuMoment } from "../components/ProjetDuMoment";
 import { estUnModele, trisDuProjet } from "../triDuProjet";
 import { objectifsDesAteliers } from "../ateliersCompetences";
@@ -229,7 +230,9 @@ export function PhrasesTab() {
     setOccupe(true);
     try {
       const modele = await api.modeleActif(MODELE_TACHES);
-      const reponse = await api.mistralChat(promptPhrases({ ...demande, theme }), modele);
+      // Le thème part sans les noms connus : un projet peut porter le prénom d'un élève.
+      const masque = pseudonymiserTout([theme], await nomsAMasquer());
+      const reponse = restaurer(await api.mistralChat(promptPhrases({ ...demande, theme: masque.textes[0] }), modele), masque.table).texte;
       const nouvelles = phrasesDeLaReponse(reponse).filter((p) => !phrases.some((q) => q.toLowerCase() === p.toLowerCase()));
       if (!nouvelles.length) { toast("Le modèle n'a rien proposé de lisible ; réessayez, ou changez le thème.", { icone: "🤔" }); return; }
       maj({ phrases: [r.phrases.trim(), ...nouvelles].filter(Boolean).join("\n") });
