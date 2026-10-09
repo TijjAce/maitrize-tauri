@@ -105,7 +105,6 @@ const LA_CLASSE: Demarche = {
 
 const PROGRAMME = "Bâtie sur le programme d'histoire-géographie du cycle 2 (BO n° 22 du 28 mai 2026, annexe 3), à la demande de l'enseignant : "
   + "la question du thème, ses objectifs, ses attendus, ses repères et ses mots-clés";
-const avecEduscol = (ressource: string) => `${PROGRAMME} ; ${ressource}`;
 
 const Q = "La question", C = "Chercher", R = "Ce qu'on retient";
 /** Une séance en trois temps : la question, la recherche, ce qu'on retient — sur la frise, la carte, l'affiche. */
@@ -148,7 +147,7 @@ const TEMPS_NATUREL_CP: Demarche = {
 
 const TEMPS_REPRESENTE_CP: Demarche = {
   id: "temps-represente-cp", nom: "Les représentations humaines du temps (CP)", famille: "Sciences, histoire, EMC",
-  source: avecEduscol("Éduscol, ressources 2016 — Questionner le monde, cycle 2, « Se situer dans le temps » : « Passer d'un temps ressenti à un temps mesuré »"),
+  source: PROGRAMME,
   resume: "« Comment les hommes et les femmes se repèrent-ils dans le temps ? Comment le représentent-ils ? » Du temps qu'on ressent au temps "
     + "qu'on mesure : les outils de mesure du temps, la journée et ses heures, les jours de la semaine, les mois et l'année ; le temps linéaire "
     + "de la frise et le temps cyclique de la roue ; les calendriers de la classe.",
