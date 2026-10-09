@@ -789,6 +789,8 @@ export const api = {
   arasaacChercher: (q: string, limite = 40) =>
     invoke<PictoArasaac[]>("arasaac_chercher", { q, limite }),
   arasaacNature: (id: number) => invoke<string>("arasaac_nature", { id }),
+  /** Les mots-clés de ces pictos, le libellé en tête ; un numéro inconnu de la banque n'a pas d'entrée. */
+  arasaacMotsDesIds: (ids: number[]) => invoke<Record<string, string[]>>("arasaac_mots_des_ids", { ids }),
   /** Les noms communs de la banque où s'écrit l'une de ces syllabes, avec leur dessin ; `limite` vaut pour chaque syllabe. */
   arasaacNomsContenant: (morceaux: string[], limite = 150) =>
     invoke<PictoArasaac[]>("arasaac_noms_contenant", { morceaux, limite }),
@@ -922,6 +924,8 @@ export interface CodeTelephone { qrSvg: string }
 /** Ce qu'une relève a rapporté. */
 export interface BilanReleve {
   relie: boolean; occupe: boolean; vocaux: number; notes: number; pages: number;
+  /** Les photos nommées, rangées dans Mes pictos. */
+  photos: number;
   pagesEnAttente: number; illisibles: number; agendaPublie: boolean; agendaErreur: string; erreur: string;
 }
 

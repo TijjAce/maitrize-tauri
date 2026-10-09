@@ -21,6 +21,7 @@ import { documentImprimable, escapeHtml, printHTML } from "./print";
 import type { MaterielItem } from "./api";
 import { ecrireFabrication, fabricationDuMoment, modificationEnCours, type Fabrication, type Modification } from "./modifierFeuille";
 import { sansReferences } from "./references";
+import { STYLE_DYS, cleModeDys, lireModeDys } from "./presentationFeuille";
 
 /** Combien de compétences s'écrivent en tête ; au-delà, on les compte. */
 export const LIGNES_MAX = 4;
@@ -182,11 +183,21 @@ export async function avecLaConsigneDeLAtelier(atelier: string, corps: string): 
   }
 }
 
+/** Le style que l'atelier ajoute à chacune de ses feuilles, en dernier : le mode dyslexique, s'il est choisi. */
+export async function styleDeLAtelier(atelier: string): Promise<string> {
+  try {
+    const { api } = await import("./api");
+    return lireModeDys(await api.settingGet(cleModeDys(atelier))) ? STYLE_DYS : "";
+  } catch {
+    return "";
+  }
+}
+
 /** Imprime la feuille d'un atelier : sa consigne, ses compétences en tête, ses consignes en pictos. */
 export async function imprimerAtelier(atelier: string, titre: string, corps: string, style = "", extras: ExtrasAtelier = {}): Promise<void> {
   const entete = enteteCompetencesHtml(await competencesDeLAtelier(atelier));
   const consignes = await consignesEnPictos(await avecLaConsigneDeLAtelier(atelier, corps), await supplementDe(atelier, extras));
-  printHTML(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style);
+  printHTML(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style + await styleDeLAtelier(atelier));
 }
 
 // ── Sur le bureau ──────────────────────────────────────────────────────────
@@ -273,7 +284,7 @@ async function pdfDeLAtelier(atelier: string, titre: string, corps: string, styl
   const { api } = await import("./api");
   const entete = enteteCompetencesHtml(extras.competences ?? await competencesDeLAtelier(atelier));
   const consignes = await consignesEnPictos(await avecLaConsigneDeLAtelier(atelier, corps), await supplementDe(atelier, extras));
-  const html = documentImprimable(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style);
+  const html = documentImprimable(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style + await styleDeLAtelier(atelier));
   return api.feuilleEnPdf(html);
 }
 
@@ -325,7 +336,7 @@ async function pdfPourLEleve(atelier: string, titre: string, corps: string, styl
   const entete = enteteCompetencesHtml(await competencesDeLAtelier(atelier));
   const sansCorrige = appliquerOptionsFeuille(await avecLaConsigneDeLAtelier(atelier, corps), { consigne: true, prenom: true, corrige: false });
   const consignes = await consignesEnPictos(auNomDeLEleve(sansCorrige, eleve.prenom, eleve.date), await supplementDe(atelier, {}));
-  const html = documentImprimable(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style);
+  const html = documentImprimable(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style + await styleDeLAtelier(atelier));
   return api.feuilleEnPdf(html);
 }
 

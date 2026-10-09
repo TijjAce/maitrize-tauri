@@ -7,7 +7,7 @@ import { annonceDeLaReleve, resumeDeLaReleve } from "./releveTelephone";
 import type { BilanReleve } from "./api";
 
 const bilan = (p: Partial<BilanReleve> = {}): BilanReleve => ({
-  relie: true, occupe: false, vocaux: 0, notes: 0, pages: 0, pagesEnAttente: 0, illisibles: 0, agendaPublie: false, agendaErreur: "", erreur: "", ...p,
+  relie: true, occupe: false, vocaux: 0, notes: 0, pages: 0, photos: 0, pagesEnAttente: 0, illisibles: 0, agendaPublie: false, agendaErreur: "", erreur: "", ...p,
 });
 
 describe("la relève du téléphone", () => {
@@ -18,6 +18,8 @@ describe("la relève du téléphone", () => {
     expect(annonceDeLaReleve(bilan({ notes: 1 }))).toBe("1 note reçue du téléphone");
     expect(annonceDeLaReleve(bilan({ vocaux: 1, notes: 1 }))).toBe("1 dictée et 1 note reçues du téléphone");
     expect(annonceDeLaReleve(bilan({ vocaux: 2, notes: 4 }))).toBe("2 dictées et 4 notes reçues du téléphone");
+    expect(annonceDeLaReleve(bilan({ photos: 1 }))).toBe("1 photo reçue du téléphone, rangée dans Mes pictos");
+    expect(annonceDeLaReleve(bilan({ vocaux: 1, notes: 1, photos: 2 }))).toBe("1 dictée, 1 note et 2 photos reçues du téléphone, rangées dans Mes pictos");
   });
 
   it("résume le dernier passage en une ligne, avec ce qui reste à faire", () => {

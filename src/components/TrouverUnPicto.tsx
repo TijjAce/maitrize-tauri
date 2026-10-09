@@ -51,7 +51,19 @@ async function enPngCarre(src: string, cote = 512): Promise<string> {
  * sans quoi le navigateur refuserait d'écrire.
  */
 function copierImage(src: string) {
-  const png = fetch(src).then((r) => r.blob()).then((b) => new Blob([b], { type: "image/png" }));
+  // Une photo est un JPEG : elle passe par une toile pour devenir un PNG, que le presse-papiers accepte.
+  const png = src.startsWith("data:image/png")
+    ? fetch(src).then((r) => r.blob()).then((b) => new Blob([b], { type: "image/png" }))
+    : (async () => {
+      const image = new Image();
+      image.src = src;
+      await image.decode();
+      const toile = document.createElement("canvas");
+      toile.width = image.naturalWidth;
+      toile.height = image.naturalHeight;
+      toile.getContext("2d")?.drawImage(image, 0, 0);
+      return new Promise<Blob>((ok, ko) => toile.toBlob((b) => (b ? ok(b) : ko(new Error("Image illisible."))), "image/png"));
+    })();
   navigator.clipboard.write([new ClipboardItem({ "image/png": png })])
     .then(() => toast("Image copiée : collez-la où vous voulez.", { icone: "📋" }))
     .catch((e) => toast("Copie impossible : " + String(e), { icone: "⚠️" }));

@@ -577,6 +577,132 @@ pub fn note_oublier(app: tauri::AppHandle, id: String) -> R<()> {
     std::fs::remove_file(note_fichier(&app, &id)?).map_err(|e| e.to_string())
 }
 
+// ── Les photos pour Mes pictos ────────────────────────────────────────────
+//
+// Certains élèves n'entrent pas dans l'abstraction d'un pictogramme : il leur
+// faut la photo de l'objet, celui de la classe. On la prend ici, on lui donne
+// son nom — « les ciseaux », « la cantine » —, et elle part par Nuage,
+// scellée comme une dictée. L'ordinateur la range dans Mes pictos sous ce
+// nom : elle se montre ensuite partout où un picto se montre.
+//
+// Chaque photo attend dans `photos/` : l'image, `<id>.jpg`, et sa fiche,
+// `<id>.json`. Le nom peut porter des accents et des espaces : il vit dans la
+// fiche, pas dans le nom du fichier.
+
+/// Une photo qui attend son ordinateur.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Photo {
+    pub id: String,
+    /// Quand on l'a gardée, en heure locale.
+    pub debut: String,
+    /// Le mot sous lequel elle se rangera dans Mes pictos.
+    pub nom: String,
+    pub octets: u64,
+}
+
+/// Un nom de picto tient sur une étiquette.
+const NOM_PHOTO_MAX: usize = 60;
+/// La page réduit la photo avant de la confier : au-delà, ce n'en est pas une.
+const PHOTO_MAX: usize = 6 * 1024 * 1024;
+
+fn dossier_photos(app: &tauri::AppHandle) -> R<PathBuf> {
+    let d = dossier(app)?.join("photos");
+    std::fs::create_dir_all(&d).map_err(|e| e.to_string())?;
+    Ok(d)
+}
+
+/// Le nom donné, sur une ligne, sans blancs en trop ; refusé vide ou trop long.
+pub fn nom_de_photo(brut: &str) -> R<String> {
+    let nom = brut.split_whitespace().collect::<Vec<_>>().join(" ");
+    if nom.is_empty() {
+        return Err("Donnez un nom à la photo : c'est le mot sous lequel vous la retrouverez.".into());
+    }
+    if nom.chars().count() > NOM_PHOTO_MAX {
+        return Err(format!("Un nom de {NOM_PHOTO_MAX} caractères au plus."));
+    }
+    Ok(nom)
+}
+
+/// Un identifiant de photo, tel qu'un nom de fichier l'accepte sans détour.
+fn id_de_photo(id: &str) -> R<&str> {
+    let sur = !id.is_empty() && id.len() <= 64 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-');
+    if sur { Ok(id) } else { Err("Photo inconnue.".into()) }
+}
+
+/// Garde une photo et sa fiche dans ce dossier ; rend la fiche.
+pub fn garder_photo_dans(d: &std::path::Path, debut: &str, nom: &str, octets: &[u8]) -> R<Photo> {
+    let nom = nom_de_photo(nom)?;
+    if octets.len() < 100 || !octets.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        return Err("Cette image n'est pas une photo lisible (JPEG).".into());
+    }
+    if octets.len() > PHOTO_MAX {
+        return Err("Photo trop lourde.".into());
+    }
+    let p = Photo { id: uuid::Uuid::new_v4().to_string(), debut: debut.to_string(), nom, octets: octets.len() as u64 };
+    std::fs::write(d.join(format!("{}.jpg", p.id)), octets).map_err(|e| format!("Écriture impossible : {e}"))?;
+    let fiche = serde_json::to_vec(&p).map_err(|e| e.to_string())?;
+    if let Err(e) = std::fs::write(d.join(format!("{}.json", p.id)), fiche) {
+        let _ = std::fs::remove_file(d.join(format!("{}.jpg", p.id)));
+        return Err(format!("Écriture impossible : {e}"));
+    }
+    Ok(p)
+}
+
+/// Les photos qui attendent dans ce dossier, de la plus ancienne à la plus récente ; une fiche sans image est écartée.
+pub fn photos_du_dossier(d: &std::path::Path) -> Vec<Photo> {
+    let Ok(entrees) = std::fs::read_dir(d) else { return Vec::new() };
+    let mut sortie: Vec<Photo> = entrees.flatten()
+        .filter(|e| e.file_name().to_string_lossy().ends_with(".json"))
+        .filter_map(|e| serde_json::from_slice::<Photo>(&std::fs::read(e.path()).ok()?).ok())
+        .filter(|p| id_de_photo(&p.id).is_ok() && d.join(format!("{}.jpg", p.id)).exists())
+        .collect();
+    sortie.sort_by(|a, b| a.debut.cmp(&b.debut).then_with(|| a.id.cmp(&b.id)));
+    sortie
+}
+
+/// Oublie une photo de ce dossier : l'image et sa fiche.
+pub fn oublier_photo_dans(d: &std::path::Path, id: &str) -> R<()> {
+    let id = id_de_photo(id)?;
+    let _ = std::fs::remove_file(d.join(format!("{id}.json")));
+    match std::fs::remove_file(d.join(format!("{id}.jpg"))) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+/// Garde une photo nommée avant toute tentative d'envoi. `image_b64` : un JPEG déjà réduit par la page.
+#[tauri::command]
+pub fn photo_garder(app: tauri::AppHandle, debut: String, nom: String, image_b64: String) -> R<Photo> {
+    use base64::Engine;
+    let octets = base64::engine::general_purpose::STANDARD
+        .decode(image_b64.as_bytes())
+        .map_err(|_| "Photo illisible.".to_string())?;
+    garder_photo_dans(&dossier_photos(&app)?, &debut, &nom, &octets)
+}
+
+/// Les photos qui attendent, de la plus ancienne à la plus récente.
+#[tauri::command]
+pub fn photos_liste(app: tauri::AppHandle) -> R<Vec<Photo>> {
+    Ok(photos_du_dossier(&dossier_photos(&app)?))
+}
+
+/// Une photo qui attend, en base64 : pour la revoir avant qu'elle parte.
+#[tauri::command]
+pub fn photo_lire(app: tauri::AppHandle, id: String) -> R<String> {
+    use base64::Engine;
+    let chemin = dossier_photos(&app)?.join(format!("{}.jpg", id_de_photo(&id)?));
+    let octets = std::fs::read(chemin).map_err(|_| "Cette photo n'est plus là.".to_string())?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(octets))
+}
+
+/// Oublie une photo : l'image et sa fiche partent.
+#[tauri::command]
+pub fn photo_oublier(app: tauri::AppHandle, id: String) -> R<()> {
+    oublier_photo_dans(&dossier_photos(&app)?, &id)
+}
+
 // ── Le relais de Nuage ────────────────────────────────────────────────────
 //
 // L'ordinateur n'est pas toujours là quand on a du réseau : on dicte en
@@ -815,6 +941,7 @@ pub async fn vocal_deposer(app: tauri::AppHandle, id: String) -> R<()> {
     let octets = std::fs::read(&chemin).map_err(|e| e.to_string())?;
     let etiquette = relais::Etiquette {
         genre: relais::Genre::Vocal, id: id.clone(), debut, duree_s, creneau, ext: String::new(), destination: destination_du_nom(&nom),
+        nom: String::new(),
     };
     let blob = relais::preparer_depot(&a, &etiquette, &octets)?;
     oublier_si_retire(relais::porte::deposer(&a, &k, &relais::nom_du_depot(relais::Genre::Vocal, &id), blob).await)?;
@@ -831,10 +958,27 @@ pub async fn note_deposer(app: tauri::AppHandle, id: String) -> R<()> {
     let texte = std::fs::read_to_string(&chemin).map_err(|e| e.to_string())?;
     let etiquette = relais::Etiquette {
         genre: relais::Genre::Note, id: id.clone(), debut, duree_s: 0.0, creneau, ext: String::new(), destination: destination_du_nom(&nom),
+        nom: String::new(),
     };
     let blob = relais::preparer_depot(&a, &etiquette, texte.as_bytes())?;
     oublier_si_retire(relais::porte::deposer(&a, &k, &relais::nom_du_depot(relais::Genre::Note, &id), blob).await)?;
     std::fs::remove_file(&chemin).map_err(|e| e.to_string())
+}
+
+/// Dépose une photo sur Nuage, scellée pour l'ordinateur, avec son nom.
+#[tauri::command]
+pub async fn photo_deposer(app: tauri::AppHandle, id: String) -> R<()> {
+    let (a, k) = relais_et_connexion(&app)?;
+    let d = dossier_photos(&app)?;
+    let p = photos_du_dossier(&d).into_iter().find(|p| p.id == id).ok_or("Cette photo n'est plus là.")?;
+    let octets = std::fs::read(d.join(format!("{}.jpg", p.id))).map_err(|e| e.to_string())?;
+    let etiquette = relais::Etiquette {
+        genre: relais::Genre::Photo, id: p.id.clone(), debut: p.debut.clone(), duree_s: 0.0, creneau: String::new(),
+        ext: "jpg".into(), destination: String::new(), nom: p.nom.clone(),
+    };
+    let blob = relais::preparer_depot(&a, &etiquette, &octets)?;
+    oublier_si_retire(relais::porte::deposer(&a, &k, &relais::nom_du_depot(relais::Genre::Photo, &p.id), blob).await)?;
+    oublier_photo_dans(&d, &p.id)
 }
 
 /// Les créneaux d'un jour, lus dans l'emploi du temps que l'ordinateur a laissé sur Nuage.
@@ -938,6 +1082,35 @@ mod tests {
         assert_eq!((super::etat_des_pages(&d).a_envoyer, super::etat_des_pages(&d).envoyees), (1, 0));
         super::oublier_les_pages(&d, true).unwrap();
         assert_eq!((super::etat_des_pages(&d).a_envoyer, super::etat_des_pages(&d).envoyees), (0, 0));
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn une_photo_se_garde_avec_son_nom_puis_s_oublie() {
+        let d = dossier_d_essai("photos");
+        let jpeg = [&[0xFF, 0xD8, 0xFF, 0xE0][..], &[7u8; 200][..]].concat();
+        let p = super::garder_photo_dans(&d, "2026-10-09T10:40:00", "  les   ciseaux\n", &jpeg).unwrap();
+        assert_eq!(p.nom, "les ciseaux");
+        assert_eq!(super::photos_du_dossier(&d), vec![p.clone()]);
+        // Une fiche sans image ne compte pas.
+        std::fs::write(d.join("orpheline.json"), br#"{"id":"orpheline","debut":"","nom":"x","octets":1}"#).unwrap();
+        assert_eq!(super::photos_du_dossier(&d).len(), 1);
+        super::oublier_photo_dans(&d, &p.id).unwrap();
+        assert!(super::photos_du_dossier(&d).is_empty());
+        // Oublier deux fois n'est pas une erreur ; sortir du dossier, si.
+        assert!(super::oublier_photo_dans(&d, &p.id).is_ok());
+        assert!(super::oublier_photo_dans(&d, "../relais").is_err());
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn une_photo_sans_nom_ou_qui_n_en_est_pas_une_est_refusee() {
+        let d = dossier_d_essai("photos-refus");
+        let jpeg = [&[0xFF, 0xD8, 0xFF, 0xE0][..], &[7u8; 200][..]].concat();
+        assert!(super::garder_photo_dans(&d, "", "   ", &jpeg).is_err());
+        assert!(super::garder_photo_dans(&d, "", &"x".repeat(61), &jpeg).is_err());
+        assert!(super::garder_photo_dans(&d, "", "un PNG", &[0x89, b'P', b'N', b'G', 0, 0, 0, 0]).is_err());
+        assert!(super::photos_du_dossier(&d).is_empty());
         let _ = std::fs::remove_dir_all(&d);
     }
 

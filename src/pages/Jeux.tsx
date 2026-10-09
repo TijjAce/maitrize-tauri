@@ -15,6 +15,8 @@ import { useMemoire } from "../components/useMemoire";
 import { openCtx } from "../components/ctxmenu";
 import { USAGES, descriptionDe, rangerParUsage, type Usage } from "../usageAtelier";
 import { AtelierContext } from "../components/AtelierContext";
+import { ChoixImages, ModeImagesDeLAtelier, useModeImages } from "../components/PresentationFeuille";
+import { MODES_IMAGES, listeSelonMode } from "../imagesSelonMode";
 import { deposerSurLeBureau, lignesCompetencesAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { BandeauModification } from "../components/BandeauModification";
@@ -302,6 +304,7 @@ export default function Jeux() {
       {outil && <FeuilleDeLAtelier atelier={outil.id} nom={outil.nom} />}
       {outil && <ProjetDuMomentBandeau atelier={outil.id} />}
       <AtelierContext.Provider value={onglet}>
+      <ModeImagesDeLAtelier atelier={onglet} />
       {onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />
         : onglet === "coloriage" ? <ColoriageMagiqueTab />
@@ -620,14 +623,24 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
     if (suite.length === selection.length) toast("Ce thème n'a plus d'autres images.", { icone: "ℹ️" });
     setSelection(suite);
   };
+  // Photos et pictos, pictos seulement, photos seulement : le PDF prend les images que le choix retient.
+  const [modeImages] = useModeImages(atelier);
+  const selectionDuPdf = async () => {
+    const retenues = await listeSelonMode(selection, modeImages);
+    if (retenues.length < minimum) {
+      throw new Error(`Avec « ${MODES_IMAGES.find((m) => m.id === modeImages)?.libelle ?? modeImages} », il reste ${retenues.length} image${retenues.length > 1 ? "s" : ""} : il en faut ${minimum}.`);
+    }
+    return retenues;
+  };
   const generer = async () => {
     setOccupe(true);
     try {
       const nom = titre.trim() || themes.map(libelleCategorie).join(" + ") || gen.quoi;
       // Les compétences de l'atelier s'écrivent dans la marge haute du PDF.
       const competences = await lignesCompetencesAtelier(atelier);
-      await api.jeuGenerer(gen.id, selection, { ...options, graine: Math.floor(Math.random() * 1e9), competences }, nom,
-        true, await imagesDeLEnseignant(selection));
+      const retenues = await selectionDuPdf();
+      await api.jeuGenerer(gen.id, retenues, { ...options, graine: Math.floor(Math.random() * 1e9), competences }, nom,
+        true, await imagesDeLEnseignant(retenues));
       toast(`${gen.quoi.charAt(0).toUpperCase()}${gen.quoi.slice(1)} créé — le PDF s'ouvre.`, { icone: gen.icone });
     } catch (e: any) { toast(String(e), { icone: "⚠️" }); }
     finally { setOccupe(false); }
@@ -884,14 +897,16 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
                 <span><b>Ajouter les cartes à découper</b></span>
               </label>
             )}
+            <div style={{ marginTop: 10 }}><ChoixImages atelier={atelier} toujours /></div>
             {selection.length > 0 && selection.length < minimum && (
               <div style={{ marginTop: 10, fontSize: 13, color: "var(--danger, #b03030)" }}>{gen.manque(options)}</div>
             )}
             <BoutonBureau className="btn" disabled={occupe || selection.length < minimum} onEnregistrer={async () => {
               const nom = titre.trim() || themes.map(libelleCategorie).join(" + ") || gen.quoi;
               const competences = await lignesCompetencesAtelier(atelier);
-              const chemin = await api.jeuGenerer(gen.id, selection, { ...options, graine: Math.floor(Math.random() * 1e9), competences }, nom,
-                false, await imagesDeLEnseignant(selection));
+              const retenues = await selectionDuPdf();
+              const chemin = await api.jeuGenerer(gen.id, retenues, { ...options, graine: Math.floor(Math.random() * 1e9), competences }, nom,
+                false, await imagesDeLEnseignant(retenues));
               return deposerSurLeBureau(atelier, nom, await api.fichierImporterDepuisChemin(chemin));
             }} />
             <button className="btn primary" style={{ marginTop: 12 }} disabled={occupe || selection.length < minimum} onClick={generer}>

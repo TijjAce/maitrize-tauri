@@ -668,6 +668,19 @@ pub fn arasaac_nature(etat: tauri::State<BanqueArasaac>, id: i64) -> Result<Stri
     Ok(picto.map(|p| nature(&p.categories)).unwrap_or_else(|| "nom".into()))
 }
 
+/// Les mots-clés de ces pictos, le libellé en tête : de quoi reconnaître, sous
+/// un pictogramme, la photo que l'enseignant a prise du même objet. Un
+/// numéro inconnu de la banque n'a pas d'entrée.
+#[tauri::command(async)]
+pub fn arasaac_mots_des_ids(
+    etat: tauri::State<BanqueArasaac>,
+    ids: Vec<i64>,
+) -> Result<std::collections::HashMap<i64, Vec<String>>, String> {
+    let index = charger_index(&etat)?;
+    let voulus: HashSet<i64> = ids.into_iter().collect();
+    Ok(index.pictos.iter().filter(|p| voulus.contains(&p.id)).map(|p| (p.id, p.mots.clone())).collect())
+}
+
 /// Des mots à proposer pour une syllabe : les noms communs de la banque où on
 /// la lit, avec leur dessin. `limite` vaut pour chaque syllabe — « mu » n'a
 /// pas à céder sa place aux deux cents mots en « ma ». L'écran vérifie ensuite
