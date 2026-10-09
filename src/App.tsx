@@ -42,6 +42,7 @@ import { Retour, useSuiviDesLieux, useTitreDuLieu } from "./components/Retour";
 import { getVersion } from "@tauri-apps/api/app";
 import { Toaster, toast } from "./components/Toaster";
 import { ConfirmerHost } from "./components/confirmer";
+import { FinDAnneeHost } from "./components/FinDAnnee";
 import { LecteurMarkdownHost } from "./components/LecteurMarkdown";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { CopieDuBureau } from "./components/CopieDuBureau";
@@ -296,6 +297,8 @@ export default function App() {
       <NotesPanel />
       <CommandPalette />
       <Onboarding />
+      {/* L'été : proposer de laisser place à la classe suivante (voir finDAnnee.ts). */}
+      <FinDAnneeHost />
       <ContextMenuHost />
       <CopieDuBureau />
     </div>

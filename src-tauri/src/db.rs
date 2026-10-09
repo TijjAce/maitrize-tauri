@@ -878,6 +878,16 @@ pub(crate) fn migrate(conn: &Connection) {
     // Un élève non verbal : « En retard » ne lui donne pas de fiche de lecture
     // à faire seul. Sans NOT NULL, pour la même raison.
     conn.execute("ALTER TABLE eleves ADD COLUMN non_verbal INTEGER DEFAULT 0", []).ok();
+    // L'année scolaire d'un élève, et le jour où il a été créé : à la fin de
+    // l'année, la fenêtre « Fin de l'année » propose de supprimer les élèves
+    // de l'année qui se termine, et ceux-là seuls — pas ceux qu'on a gardés,
+    // ni ceux créés pendant l'été pour la rentrée. Les élèves déjà là quand la
+    // colonne apparaît sont ceux de l'année en cours.
+    if conn.execute("ALTER TABLE eleves ADD COLUMN annee_scolaire TEXT", []).is_ok() {
+        let annee = crate::fin_annee::annee_en_cours(chrono::Local::now().date_naive());
+        conn.execute("UPDATE eleves SET annee_scolaire = ?1 WHERE annee_scolaire IS NULL", [annee]).ok();
+    }
+    conn.execute("ALTER TABLE eleves ADD COLUMN date_creation TEXT", []).ok();
     // Les objectifs du PPI travaillés, et comment ça s'est passé.
     conn.execute("ALTER TABLE commentaires_eleve ADD COLUMN objectifs TEXT", []).ok();
     // Combien de séances une séquence prévoit : « séance 3/6 » dans le cahier journal.
