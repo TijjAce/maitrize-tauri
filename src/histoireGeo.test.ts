@@ -59,6 +59,17 @@ describe("les séquences d'histoire-géographie du cycle 2", () => {
   it("disent leur source : la séquence Éduscol, ou le programme", () => {
     expect(demarcheDe("classe-espace-organise-cp")!.source).toMatch(/Éduscol, ressources 2016/);
     expect(demarcheDe("rome-gaule-ce2")!.source).toMatch(/BO n° 22 du 28 mai 2026/);
+    // Le temps au CP : les séquences Éduscol « Se situer dans le temps », et le programme pour ce qu'elles ne couvrent pas.
+    const temps = demarcheDe("temps-represente-cp")!;
+    expect(temps.source).toMatch(/« Passer d'un temps ressenti à un temps mesuré » \(séances 1 à 3\)/);
+    expect(temps.source).toMatch(/BO n° 22 du 28 mai 2026/);
+    expect(temps.seances.slice(0, 3).map((x) => x.titre)).toEqual(["François et le temps", "Jeux de langage en ateliers", "Le petit voleur de temps"]);
+    const situer = demarcheDe("situer-evenements-cp")!;
+    expect(situer.source).toMatch(/« Situer les événements les uns par rapport aux autres » \(séances 1 et 2/);
+    expect(situer.seances[0].titre).toBe("Le parcours sonore");
+    const sirene = demarcheDe("petite-sirene-cp")!;
+    expect(sirene.source).toMatch(/séances 1 à 5/);
+    expect(sirene.seances).toHaveLength(5);
   });
 
   it("proposent au CE2 les périodes du programme", () => {
