@@ -81,11 +81,11 @@ function Vignette({ src, mot, actif, etiquette, onClick }: {
   );
 }
 const VignetteArasaac = ({ p, actif, onClick }: { p: PictoArasaac; actif: boolean; onClick: () => void }) =>
-  <Vignette src={usePictoImage(p.id)} mot={p.mot} actif={actif} onClick={onClick} />;
+  <Vignette src={usePictoImage(p.id, true)} mot={p.mot} actif={actif} onClick={onClick} />;
 const VignetteSclera = ({ p, actif, onClick }: { p: PictoAppoint; actif: boolean; onClick: () => void }) =>
-  <Vignette src={usePictoImage(p.reference)} mot={p.mot} actif={actif} onClick={onClick} />;
+  <Vignette src={usePictoImage(p.reference, true)} mot={p.mot} actif={actif} onClick={onClick} />;
 const VignetteMienne = ({ p, actif, onClick }: { p: MonPicto; actif: boolean; onClick: () => void }) =>
-  <Vignette src={usePictoImage(p.id)} mot={p.mot} actif={actif} onClick={onClick} etiquette={<EtiquetteMonPicto id={p.id} />} />;
+  <Vignette src={usePictoImage(p.id, true)} mot={p.mot} actif={actif} onClick={onClick} etiquette={<EtiquetteMonPicto id={p.id} />} />;
 
 export function TrouverUnPicto({ onClose }: { onClose: () => void }) {
   const [q, setQ] = React.useState("");
@@ -251,7 +251,7 @@ function Apercu({ choix, occupe, dessine, onGarder, onRedessiner, onRenommer, on
   onOublier: (p: MonPicto) => void;
 }) {
   const cle = choix?.sorte === "arasaac" ? choix.id : choix?.sorte === "sclera" ? choix.reference : choix?.sorte === "mien" ? choix.picto.id : null;
-  const charge = usePictoImage(cle);
+  const charge = usePictoImage(cle, true);
   const src = choix?.sorte === "dessin" ? `data:image/png;base64,${choix.base64}` : charge;
   const [mot, setMot] = React.useState("");
   React.useEffect(() => {

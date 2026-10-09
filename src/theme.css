@@ -1262,6 +1262,7 @@ details.pli-catalogue > summary:hover b { color: var(--accent); }
 .mp-etiquette { position: absolute; top: 3px; left: 3px; z-index: 1; font-size: 9.5px; font-weight: 800; line-height: 1; letter-spacing: .02em;
   padding: 2px 4px; border-radius: 4px; background: #6741d9; color: #fff; cursor: help; }
 .mp-etiquette.mp-sclera, .mp-etiquette.mp-bajard { background: #495057; }
+.mp-etiquette.mp-photo { background: #0f766e; }
 .bm-chip .mp-etiquette { position: static; }
 /* L'assistant › Trouver un pictogramme : les banques à gauche, le picto choisi à droite. */
 .tp-corps { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 14px; align-items: start; }

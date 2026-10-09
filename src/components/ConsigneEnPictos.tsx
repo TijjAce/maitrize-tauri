@@ -43,7 +43,8 @@ export function useLexique(): { lexique: Lexique; actif: boolean; enregistrer: (
 /** L'aperçu d'une feuille avec ses consignes en pictos, comme à l'impression. */
 export function useConsignesEnPictos(html: string, pictos: string[] = []): { html: string; style: string } {
   const { lexique, actif } = useLexique();
-  const images = usePictoImages([...new Set(Object.values(lexique))]);
+  // Les pictos des verbes ne suivent pas le choix photos ou pictos : ce sont des gestes, pas des objets.
+  const images = usePictoImages([...new Set(Object.values(lexique))], true);
   return React.useMemo(() => {
     if (!actif) return { html, style: "" };
     const decore = decorerConsignesHtml(html, lexique, images, pictos);
@@ -69,7 +70,7 @@ export function ConsigneEnPictos({ consignes, pictos, onChange, compact = false 
     return tous;
   }, [consignes]);
   const montres = [...pictos, ...trouves.filter((v) => !pictos.includes(v))];
-  const images = usePictoImages([...new Set(montres.map((v) => lexique[v]).filter((id): id is RefPicto => !!id))]);
+  const images = usePictoImages([...new Set(montres.map((v) => lexique[v]).filter((id): id is RefPicto => !!id))], true);
   const restants = VERBES_CONSIGNE.map((v) => v.verbe).filter((v) => !montres.includes(v));
   const ajouter = (verbe: string) => {
     if (!verbe || montres.includes(verbe)) return;
