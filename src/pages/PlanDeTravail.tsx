@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import {
   api, BureauCommun, Sequence, MaterielItem, Texte, Atelier, Espace, Jeu, OutilClasse, couleurHex, couleurPourMatiere, newId, nowIso,
-  texteErreur, nouvelAtelier, nouvelEspace, nouveauJeu, nouvelOutil,
+  texteErreur, nouvelAtelier, nouvelEspace, nouveauJeu, nouvelOutil, isMac,
 } from "../api";
 import { Confirm, Demander, Modal, ColorPicker, useAsync } from "../components/ui";
 import { VignettePdf } from "../components/VignettePdf";
@@ -12,7 +12,8 @@ import { openCtx } from "../components/ctxmenu";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { FormMateriel } from "../components/FormMateriel";
 import { texteBrut } from "../texteRiche";
-import { disposer, poser, lireDispositions, lirePositions, reporterDispositions, PREFIXE_BUREAU, type Case, type Positions } from "../disposition";
+import { disposer, poser, poserPlusieurs, lireDispositions, lirePositions, reporterDispositions, PREFIXE_BUREAU, type Case, type Positions } from "../disposition";
+import { TYPE_SELECTION, basculer, lireSelectionGlissee, rectangle, touchees, type Boite, type SelectionGlissee } from "../selectionBureau";
 import { EditeurTexte } from "../components/EditeurTexte";
 import { IconeDossier, COULEUR_DOSSIER } from "../components/IconeDossier";
 import { copierLeBureau } from "../components/CopieDuBureau";
@@ -62,7 +63,9 @@ import {
 //
 // Comme sur un vrai bureau, on pose chaque dossier ou document où l'on veut :
 // la surface est une grille de cases, et la case de chacun est gardée (voir
-// disposition.ts).
+// disposition.ts). On en prend aussi plusieurs à la fois — clic, ⌘-clic,
+// rectangle tiré à la souris, ⌘A — pour les glisser, les ranger ou les
+// supprimer d'un coup (voir selectionBureau.ts).
 
 /** Taille d'une case du bureau, en pixels. */
 const CASE_L = 136, CASE_H = 186;
@@ -109,7 +112,21 @@ function texteCherche(e: Element): string {
  * dans un dossier, il ne crée rien.
  */
 const vientDuBureau = (e: React.DragEvent) =>
-  Array.from(e.dataTransfer.types).some((t) => t === "application/json" || t === TYPE_DOSSIER || t === TYPE_COMMUN);
+  Array.from(e.dataTransfer.types).some((t) => t === "application/json" || t === TYPE_DOSSIER || t === TYPE_SELECTION || t === TYPE_COMMUN);
+
+/** ⌘ sur Mac, Ctrl ailleurs, ou ⇧ : le clic ajoute à la sélection au lieu de la remplacer. */
+const ajouteASelection = (e: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean }) => e.metaKey || e.shiftKey || (!isMac && e.ctrlKey);
+
+/** L'image d'un groupe qu'on glisse : combien d'éléments partent ensemble. */
+function imageDuGroupe(e: React.DragEvent<HTMLElement>, combien: number) {
+  const image = document.createElement("div");
+  image.className = "glisse-groupe";
+  image.textContent = `${combien} éléments`;
+  document.body.appendChild(image);
+  e.dataTransfer.setDragImage(image, 18, 18);
+  // L'image est prise au début du glisser : l'élément peut partir aussitôt.
+  setTimeout(() => image.remove(), 0);
+}
 
 /** Ce qui arrive du bureau commun : à récupérer, pas à déplacer. */
 const vientDuCommun = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes(TYPE_COMMUN);
@@ -231,6 +248,11 @@ export default function PlanDeTravail() {
   const [survolBureau, setSurvolBureau] = React.useState(false);
   const [aSupprimer, setASupprimer] = React.useState<Element | null>(null);
   const [dossierASupprimer, setDossierASupprimer] = React.useState<SousDossier | null>(null);
+  // Ce qu'on a choisi sur le bureau : plusieurs éléments à la fois, comme sur un vrai bureau (voir selectionBureau.ts).
+  const [selection, setSelection] = React.useState<ReadonlySet<string>>(() => new Set());
+  const [selectionASupprimer, setSelectionASupprimer] = React.useState<{ elements: Element[]; dossiers: SousDossier[] } | null>(null);
+  // Le rectangle qu'on tire à la souris sur le fond du bureau, en coordonnées de l'écran.
+  const [bande, setBande] = React.useState<Boite | null>(null);
   const [materielOuvert, setMaterielOuvert] = React.useState<MaterielItem | null>(null);
   const [couleurs, setCouleurs] = React.useState<Record<string, string>>({});
   const [aColorer, setAColorer] = React.useState<SousDossier | null>(null);
@@ -404,6 +426,8 @@ export default function PlanDeTravail() {
     if (designer(attente.demande)) enAttente.current = null;
   }, [elements, designer]);
   const dossiers = filtre || etatFiltre ? [] : sousDossiers(elements, dossier, Object.keys(couleurs));
+  // Changer de dossier, chercher, filtrer : la sélection reste derrière.
+  React.useEffect(() => { setSelection(new Set()); }, [dossier, filtre, etatFiltre]);
   // Une recherche regarde partout : sinon il faudrait deviner où se trouve ce
   // qu'on cherche avant de le chercher. Le filtre par état aussi : il ne
   // montre que des séquences, où qu'elles soient rangées, la plus active en tête.
@@ -454,8 +478,9 @@ export default function PlanDeTravail() {
     [cleDisposition, dispositions, dossier, nbCols]); // eslint-disable-line react-hooks/exhaustive-deps
   const nbRangs = cles.length ? Math.max(...Object.values(disposition).map((c) => c.rang)) + 1 : 0;
 
-  const glisse = React.useRef<{ cle: string; dx: number; dy: number } | null>(null);
-  const [caseVisee, setCaseVisee] = React.useState<Case | null>(null);
+  // La tuile saisie, l'endroit où on l'a prise, et le groupe qui part avec elle.
+  const glisse = React.useRef<{ cle: string; dx: number; dy: number; groupe: string[] } | null>(null);
+  const [casesVisees, setCasesVisees] = React.useState<Case[]>([]);
   const caseSous = (x: number, y: number, decalage = { dx: CASE_L / 2, dy: 40 }): Case | null => {
     const el = surfaceEl.current;
     if (!el) return null;
@@ -463,12 +488,33 @@ export default function PlanDeTravail() {
     const gauche = x - r.left - decalage.dx + CASE_L / 2, haut = y - r.top - decalage.dy + CASE_H / 2;
     return { col: Math.min(nbCols - 1, Math.max(0, Math.floor(gauche / CASE_L))), rang: Math.max(0, Math.floor(haut / CASE_H)) };
   };
+  /**
+   * Glisser une tuile choisie emporte toute la sélection ; une autre part
+   * seule, et devient la sélection — comme dans le Finder.
+   */
   const commencerGlisser = (cle: string, e: React.DragEvent<HTMLElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
-    glisse.current = { cle, dx: e.clientX - r.left, dy: e.clientY - r.top };
+    const groupe = selection.has(cle) && selection.size > 1 ? [...selection] : [cle];
+    if (!selection.has(cle)) setSelection(new Set([cle]));
+    appui.current = null;
+    glisse.current = { cle, dx: e.clientX - r.left, dy: e.clientY - r.top, groupe };
+    if (groupe.length > 1) {
+      e.dataTransfer.setData(TYPE_SELECTION, JSON.stringify(pourGlisser(choisisParmi(groupe))));
+      imageDuGroupe(e, groupe.length);
+    }
   };
-  const finirGlisser = () => { glisse.current = null; setCaseVisee(null); };
-  /** Pose la tuile glissée sur la case visée ; les autres ne bougent pas. */
+  const finirGlisser = () => { glisse.current = null; setCasesVisees([]); };
+  /** Les cases où arriveraient la tuile saisie et son groupe, si on les lâchait ici. */
+  const casesSous = (x: number, y: number): Case[] => {
+    const g = glisse.current;
+    const c = g ? caseSous(x, y, g) : null;
+    const depart = g ? disposition[g.cle] : undefined;
+    if (!g || !c || !depart) return [];
+    return g.groupe.map((k) => disposition[k]).filter(Boolean)
+      .map((d) => ({ col: d.col + c.col - depart.col, rang: d.rang + c.rang - depart.rang }))
+      .filter((v) => v.col >= 0 && v.col < nbCols && v.rang >= 0);
+  };
+  /** Pose la tuile glissée — ou son groupe, qui garde ses écarts — sur la case visée ; les autres ne bougent pas. */
   const poserSurLeBureau = async (e: React.DragEvent) => {
     const g = glisse.current;
     const c = g ? caseSous(e.clientX, e.clientY, g) : null;
@@ -476,7 +522,10 @@ export default function PlanDeTravail() {
     if (!g || !c || !disposition[g.cle]) return;
     const actuelle = disposition[g.cle];
     if (actuelle.col === c.col && actuelle.rang === c.rang) return;
-    await ecrireDispositions({ [PREFIXE_BUREAU + dossier]: JSON.stringify(poser(disposition, g.cle, c, nbCols)) });
+    const positions = g.groupe.length > 1
+      ? poserPlusieurs(disposition, g.groupe, { col: c.col - actuelle.col, rang: c.rang - actuelle.rang }, nbCols)
+      : poser(disposition, g.cle, c, nbCols);
+    await ecrireDispositions({ [PREFIXE_BUREAU + dossier]: JSON.stringify(positions) });
   };
   /** Place une tuile qu'on vient de créer à l'endroit du clic droit. */
   const caseCreation = React.useRef<Case | null>(null);
@@ -570,9 +619,10 @@ export default function PlanDeTravail() {
   const caseImport = React.useRef<Case | null>(null);
 
   // ── Dossiers ──
-  const deplacerDossier = async (chemin: string, vers: string) => {
+  /** Déplace un dossier et ce qu'il contient ; faux s'il ne peut pas aller là — en lui-même, ou là où il est déjà. */
+  const deplacerDossierSeul = async (chemin: string, vers: string): Promise<boolean> => {
     const arrivee = destinationDossier(chemin, vers);
-    if (!arrivee) return;
+    if (!arrivee) return false;
     const touches = elements.filter((e) => estDans(normaliser(e.dossier), chemin));
     for (const e of touches) {
       const nouveau = renommerChemin(normaliser(e.dossier), chemin, arrivee);
@@ -583,6 +633,10 @@ export default function PlanDeTravail() {
     await ecrireDispositions(reporterDispositions(dispositions, chemin, arrivee));
     // On regardait l'intérieur du dossier déplacé : on le suit.
     if (dossier && estDans(dossier, chemin)) setDossier(renommerChemin(dossier, chemin, arrivee));
+    return true;
+  };
+  const deplacerDossier = async (chemin: string, vers: string) => {
+    if (!(await deplacerDossierSeul(chemin, vers))) return;
     recharger();
     toast(normaliser(vers) ? `Dossier rangé dans ${normaliser(vers)}` : "Dossier sorti sur le bureau", { icone: "📁" });
   };
@@ -590,6 +644,9 @@ export default function PlanDeTravail() {
   /** Ce qu'on lâche sur un dossier : un élément s'y range, un dossier y entre. */
   const deposerSur = (dt: DataTransfer, cible: string) => {
     if (Array.from(dt.types).includes(TYPE_COMMUN)) { void recupererDuCommun(dt, cible); return; }
+    // Plusieurs éléments à la fois : ils entrent tous.
+    const groupe = lireSelectionGlissee(dt);
+    if (groupe) { void rangerPlusieurs(groupe, cible); return; }
     const { element, dossier: d } = lireDepotInterne(dt);
     if (d) deplacerDossier(d, cible);
     else if (element) ranger(element, cible);
@@ -679,21 +736,26 @@ export default function PlanDeTravail() {
    * ses pièces jointes, que rien ne saurait recoudre. La question posée avant
    * dit donc exactement ce qui va disparaître.
    */
-  const supprimerDossier = async (d: SousDossier) => {
+  /** Efface un dossier, son contenu, ses couleurs et ses dispositions, sans rien rafraîchir ; rend combien d'éléments sont partis. */
+  const supprimerDossierSeul = async (d: SousDossier): Promise<number> => {
     const touches = elements.filter((e) => estDans(normaliser(e.dossier), d.chemin));
+    for (const e of touches) await effacer(e);
+    // Les couleurs et les dispositions du dossier et de ses sous-dossiers s'en vont avec lui.
+    const dedans = (chemins: string[]) => chemins.filter((c) => c && estDans(c, d.chemin));
+    await ecrireCouleurs(Object.fromEntries(dedans(Object.keys(couleurs)).map((c) => [PREFIXE_COULEUR + c, ""])));
+    await ecrireDispositions({
+      ...Object.fromEntries(dedans(Object.keys(dispositions)).map((c) => [PREFIXE_BUREAU + c, ""])),
+      ...reporterDispositions(dispositions, d.chemin, parent(d.chemin), true),
+    });
+    return touches.length;
+  };
+  const supprimerDossier = async (d: SousDossier) => {
     setDossierASupprimer(null);
     toast(`Suppression de « ${d.nom} »…`, { icone: "🗑", duree: 4000 });
     try {
-      for (const e of touches) await effacer(e);
-      // Les couleurs et les dispositions du dossier et de ses sous-dossiers s'en vont avec lui.
-      const dedans = (chemins: string[]) => chemins.filter((c) => c && estDans(c, d.chemin));
-      await ecrireCouleurs(Object.fromEntries(dedans(Object.keys(couleurs)).map((c) => [PREFIXE_COULEUR + c, ""])));
-      await ecrireDispositions({
-        ...Object.fromEntries(dedans(Object.keys(dispositions)).map((c) => [PREFIXE_BUREAU + c, ""])),
-        ...reporterDispositions(dispositions, d.chemin, parent(d.chemin), true),
-      });
+      const partis = await supprimerDossierSeul(d);
       recharger();
-      toast(`« ${d.nom} » et ${touches.length} élément${touches.length > 1 ? "s" : ""} supprimés.`, { icone: "🗑" });
+      toast(`« ${d.nom} » et ${partis} élément${partis > 1 ? "s" : ""} supprimés.`, { icone: "🗑" });
     } catch (e) {
       recharger();
       toast("Suppression interrompue : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
@@ -796,6 +858,137 @@ export default function PlanDeTravail() {
 
   const fil = filDAriane(dossier);
 
+  // ── Plusieurs éléments à la fois ──
+  /** Les éléments et les dossiers de ces tuiles, parmi ceux qu'on voit. */
+  const choisisParmi = (cles: Iterable<string>): { elements: Element[]; dossiers: SousDossier[] } => {
+    const voulues = new Set(cles);
+    return { elements: ici.filter((e) => voulues.has(cleElement(e))), dossiers: dossiers.filter((d) => voulues.has(cleDossier(d))) };
+  };
+  const pourGlisser = (c: { elements: Element[]; dossiers: SousDossier[] }): SelectionGlissee => ({
+    elements: c.elements.map((e) => ({ genre: e.genre, id: e.id, titre: e.titre })),
+    dossiers: c.dossiers.map((d) => d.chemin),
+  });
+  /** Range d'un coup des éléments et des dossiers ; un dossier n'entre pas en lui-même. */
+  const rangerPlusieurs = async (g: SelectionGlissee, vers: string) => {
+    const cible = normaliser(vers);
+    let ranges = 0;
+    try {
+      for (const x of g.elements) {
+        const e = elements.find((y) => y.genre === x.genre && y.id === x.id);
+        if (!e || normaliser(e.dossier) === cible) continue;
+        await enregistrerDossier(e, cible);
+        ranges++;
+      }
+      for (const chemin of g.dossiers) if (await deplacerDossierSeul(chemin, cible)) ranges++;
+    } catch (e) {
+      toast("Rangement interrompu : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
+    } finally {
+      setSelection(new Set());
+      recharger();
+    }
+    const s = ranges > 1 ? "s" : "";
+    if (ranges) toast(cible ? `${ranges} élément${s} rangé${s} dans ${cible}` : `${ranges} élément${s} sorti${s} sur le bureau`, { icone: "📂" });
+  };
+  /** ⌫ ou « Supprimer » : un élément ou un dossier seul garde sa question ; plusieurs, une question pour tous. */
+  const demanderSuppression = () => {
+    const c = choisisParmi(selection);
+    const total = c.elements.length + c.dossiers.length;
+    if (total === 1) {
+      if (c.elements.length) setASupprimer(c.elements[0]); else setDossierASupprimer(c.dossiers[0]);
+    } else if (total > 1) setSelectionASupprimer(c);
+  };
+  const supprimerSelection = async (c: { elements: Element[]; dossiers: SousDossier[] }) => {
+    setSelectionASupprimer(null);
+    const total = c.elements.length + c.dossiers.length;
+    toast(`Suppression de ${total} éléments…`, { icone: "🗑", duree: 4000 });
+    try {
+      let dedans = 0;
+      for (const e of c.elements) await effacer(e);
+      for (const d of c.dossiers) dedans += await supprimerDossierSeul(d);
+      toast(`${total} éléments supprimés${dedans ? `, et les ${dedans} que contenaient les dossiers` : ""}.`, { icone: "🗑" });
+    } catch (e) {
+      toast("Suppression interrompue : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
+    } finally {
+      setSelection(new Set());
+      recharger();
+    }
+  };
+  /** Le menu d'une tuile choisie parmi d'autres : ce qui vaut pour toutes. */
+  const menuDuGroupe = (): CtxItem[] => {
+    const c = choisisParmi(selection);
+    const n = c.elements.length + c.dossiers.length;
+    return [
+      { label: `Ranger les ${n} éléments dans…`, icon: "📂", onClick: () => setDemande({
+        titre: `Ranger ${n} éléments`, label: "Chemin du dossier", valeur: dossier, placeholder: "Français/Lecture",
+        sur: (chemin) => { void rangerPlusieurs(pourGlisser(c), chemin); },
+      }) },
+      ...(dossier ? [{ label: "Les sortir d'un cran", icon: "📤", onClick: () => { void rangerPlusieurs(pourGlisser(c), parent(dossier)); } }] : []),
+      { label: "Ne plus rien choisir", icon: "✕", onClick: () => setSelection(new Set()) },
+      { label: `Supprimer les ${n} éléments…`, icon: "🗑", danger: true, sep: true, onClick: demanderSuppression },
+    ];
+  };
+
+  // ── Un clic sur une tuile ──
+  // Appuyer choisit la tuile — avec ⌘ (Ctrl sur PC) ou ⇧, l'ajoute ou la retire. Une tuile déjà choisie parmi
+  // d'autres le reste à l'appui, pour qu'on puisse glisser tout le groupe ; relâchée sans glisser, elle reste seule.
+  const appui = React.useRef<{ cle: string; dejaChoisie: boolean } | null>(null);
+  const presser = (cle: string, e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    if (ajouteASelection(e)) { setSelection((s) => basculer(s, cle)); appui.current = null; return; }
+    appui.current = { cle, dejaChoisie: selection.has(cle) };
+    if (!selection.has(cle)) setSelection(new Set([cle]));
+  };
+  const cliquer = (cle: string) => {
+    if (appui.current?.cle === cle && appui.current.dejaChoisie) setSelection(new Set([cle]));
+    appui.current = null;
+  };
+
+  // ── Le rectangle de sélection, tiré sur le fond du bureau ──
+  const tirage = React.useRef<{ x: number; y: number; base: ReadonlySet<string>; ajoute: boolean; bouge: boolean } | null>(null);
+  const commencerRectangle = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Sur une tuile, c'est elle qu'on prend ; le clic droit ouvre le menu.
+    if (e.button !== 0 || (e.target as HTMLElement).closest("[data-cle], button, a, input, textarea, select")) return;
+    const ajoute = ajouteASelection(e);
+    tirage.current = { x: e.clientX, y: e.clientY, base: ajoute ? selection : new Set(), ajoute, bouge: false };
+    // Le rectangle suit la souris même quand elle sort du bureau.
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* pointeur déjà relâché */ }
+  };
+  const tirerRectangle = (e: React.PointerEvent<HTMLDivElement>) => {
+    const t0 = tirage.current;
+    if (!t0 || (!t0.bouge && Math.hypot(e.clientX - t0.x, e.clientY - t0.y) < 4)) return;
+    t0.bouge = true;
+    const r = rectangle(t0.x, t0.y, e.clientX, e.clientY);
+    setBande(r);
+    const tuiles = Array.from(e.currentTarget.querySelectorAll<HTMLElement>("[data-cle]"), (el) => {
+      const b = el.getBoundingClientRect();
+      return { cle: el.dataset.cle ?? "", boite: { gauche: b.left, haut: b.top, droite: b.right, bas: b.bottom } };
+    });
+    setSelection(new Set([...t0.base, ...touchees(r, tuiles)]));
+  };
+  const finirRectangle = () => {
+    const t0 = tirage.current;
+    tirage.current = null;
+    setBande(null);
+    // Un clic sur le fond, sans tirer : plus rien de choisi.
+    if (t0 && !t0.bouge && !t0.ajoute) setSelection(new Set());
+  };
+
+  // ── Au clavier : ⌘A prend tout, Échap ne garde rien, ⌫ propose de supprimer ──
+  const clavier = React.useRef({ toutes: [] as string[], supprimer: () => {} });
+  clavier.current = { toutes: [...dossiers.map(cleDossier), ...ici.map(cleElement)], supprimer: demanderSuppression };
+  React.useEffect(() => {
+    const surTouche = (e: KeyboardEvent) => {
+      const cible = e.target instanceof HTMLElement ? e.target : null;
+      // Une saisie, une fenêtre ouverte, un menu : la touche est à eux.
+      if (cible?.isContentEditable || cible?.closest("input, textarea, select") || document.querySelector(".overlay, .ctx-menu")) return;
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") { e.preventDefault(); setSelection(new Set(clavier.current.toutes)); }
+      else if (e.key === "Escape") setSelection(new Set());
+      else if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); clavier.current.supprimer(); }
+    };
+    window.addEventListener("keydown", surTouche);
+    return () => window.removeEventListener("keydown", surTouche);
+  }, []);
+
   /** Les gestes propres à un genre, ajoutés au menu de sa tuile. */
   const actionsDe = (e: Element): CtxItem[] => {
     const copie = { id: newId(), titre: `${e.titre} (copie)` };
@@ -815,6 +1008,10 @@ export default function PlanDeTravail() {
 
   const tuileElement = (e: Element) => (
     <TuileElement key={e.genre + e.id} element={e} actions={actionsDe(e)} designe={surligne === e.id}
+      cle={cleElement(e)} choisie={selection.has(cleElement(e))}
+      onPresse={(ev) => presser(cleElement(e), ev)} onClic={() => cliquer(cleElement(e))}
+      menuGroupe={selection.size > 1 && selection.has(cleElement(e)) ? menuDuGroupe : undefined}
+      onSeule={() => setSelection(new Set([cleElement(e)]))}
       suivi={e.genre === "sequence" ? suivis.get(e.id) : undefined}
       onOuvrir={() => ouvrir(e)}
       onModifier={e.genre === "materiel" && contenuDirect(e.mat) ? () => setMaterielOuvert(e.mat)
@@ -884,7 +1081,8 @@ export default function PlanDeTravail() {
 
       <div className={scinde ? "bureau-scinde" : undefined}>
       {/* ── La surface ── */}
-      <div ref={zoneFichiers}
+      <div ref={zoneFichiers} className="plan-surface"
+        onPointerDown={commencerRectangle} onPointerMove={tirerRectangle} onPointerUp={finirRectangle} onPointerCancel={finirRectangle}
         onDragOver={(e) => {
           if (vientDuCommun(e)) {
             // Une copie arrive du bureau commun : pas de case à viser.
@@ -892,12 +1090,12 @@ export default function PlanDeTravail() {
             return;
           }
           if (vientDuBureau(e)) {
-            // Une tuile du bureau qu'on déplace : on montre la case où elle arrivera.
+            // Une tuile du bureau qu'on déplace — seule ou avec son groupe : on montre les cases où ils arriveront.
             if (!glisse.current || filtre) return;
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
-            const c = caseSous(e.clientX, e.clientY, glisse.current);
-            setCaseVisee((avant) => (c && avant && avant.col === c.col && avant.rang === c.rang ? avant : c));
+            const cases = casesSous(e.clientX, e.clientY);
+            setCasesVisees((avant) => (avant.length === cases.length && avant.every((c, i) => c.col === cases[i].col && c.rang === cases[i].rang) ? avant : cases));
             return;
           }
           e.preventDefault();
@@ -908,7 +1106,7 @@ export default function PlanDeTravail() {
         }}
         onDragLeave={(e) => {
           setSurvolBureau(false);
-          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setCaseVisee(null);
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setCasesVisees([]);
         }}
         onDrop={async (e) => {
           if (vientDuCommun(e)) {
@@ -987,15 +1185,19 @@ export default function PlanDeTravail() {
             </div>
           ) : (
             <div ref={surfaceRef} className="bureau-surface" style={{ height: Math.max(nbRangs + 1, 3) * CASE_H }}>
-              {caseVisee && !survol && (
-                <div className="bureau-case-visee" aria-hidden="true"
-                  style={{ left: caseVisee.col * CASE_L, top: caseVisee.rang * CASE_H, width: CASE_L, height: CASE_H }} />
-              )}
+              {!survol && casesVisees.map((c) => (
+                <div key={`${c.col},${c.rang}`} className="bureau-case-visee" aria-hidden="true"
+                  style={{ left: c.col * CASE_L, top: c.rang * CASE_H, width: CASE_L, height: CASE_H }} />
+              ))}
               {dossiers.map((d) => {
                 const c = disposition[cleDossier(d)];
                 return (
                   <div key={d.chemin} className="bureau-case" style={{ left: c.col * CASE_L, top: c.rang * CASE_H, width: CASE_L }}>
                     <TuileDossier dossier={d} survole={survol === d.chemin}
+                      cle={cleDossier(d)} choisie={selection.has(cleDossier(d))}
+                      onPresse={(ev) => presser(cleDossier(d), ev)} onClic={() => cliquer(cleDossier(d))}
+                      menuGroupe={selection.size > 1 && selection.has(cleDossier(d)) ? menuDuGroupe : undefined}
+                      onSeule={() => setSelection(new Set([cleDossier(d)]))}
                       couleur={couleurHex[couleurDe(couleurs[d.chemin]) ?? ""] ?? COULEUR_DOSSIER}
                       onOuvrir={() => setDossier(d.chemin)}
                       onSurvol={setSurvol}
@@ -1006,7 +1208,7 @@ export default function PlanDeTravail() {
                       onSortir={d.total ? () => { void viderDossier(d); } : undefined}
                       partages={deposesPossibles(d)}
                       onGlisser={(e) => commencerGlisser(cleDossier(d), e)} onFinGlisser={finirGlisser}
-                      estSaisi={() => glisse.current?.cle === cleDossier(d)} />
+                      estSaisi={() => Boolean(glisse.current?.groupe.includes(cleDossier(d)))} />
                   </div>
                 );
               })}
@@ -1081,6 +1283,14 @@ export default function PlanDeTravail() {
         <Confirm message={`Supprimer « ${aSupprimer.titre} » ?`}
           onYes={() => supprimer(aSupprimer)} onClose={() => setASupprimer(null)} />
       )}
+      {selectionASupprimer && (
+        <Confirm message={questionDeSuppression(selectionASupprimer)}
+          onYes={() => supprimerSelection(selectionASupprimer)} onClose={() => setSelectionASupprimer(null)} />
+      )}
+      {bande && (
+        <div className="bande-selection" aria-hidden="true"
+          style={{ left: bande.gauche, top: bande.haut, width: bande.droite - bande.gauche, height: bande.bas - bande.haut }} />
+      )}
       {dossierASupprimer && (
         <Confirm
           message={dossierASupprimer.total
@@ -1093,8 +1303,35 @@ export default function PlanDeTravail() {
   );
 }
 
+/** La question posée avant de supprimer plusieurs éléments : ce qui part, dossiers et contenu compris. */
+function questionDeSuppression(c: { elements: Element[]; dossiers: SousDossier[] }): string {
+  const n = c.elements.length, nd = c.dossiers.length;
+  const dedans = c.dossiers.reduce((total, d) => total + d.total, 0);
+  const contiennent = `qu'il${nd > 1 ? "s" : ""} contien${nd > 1 ? "nent" : "t"}`;
+  const contenu = dedans === 1 ? ` avec l'élément ${contiennent}` : dedans > 1 ? ` avec les ${dedans} éléments ${contiennent}, sous-dossiers compris` : "";
+  const parties = [n ? `${n} élément${n > 1 ? "s" : ""}` : "", nd ? `${nd} dossier${nd > 1 ? "s" : ""}${contenu}` : ""].filter(Boolean).join(" et ");
+  const sequences = dedans > 0 || c.elements.some((e) => e.genre === "sequence");
+  return `Supprimer ${parties} ?${sequences ? " Les séances et les pièces jointes des séquences partent avec elles." : ""} Rien ne pourra être récupéré.`;
+}
+
+/** Ce qu'une tuile du bureau sait de la sélection. */
+interface ChoixDeTuile {
+  /** Sa clé dans la disposition : le rectangle de sélection la retrouve par là. */
+  cle: string;
+  choisie: boolean;
+  onPresse: (e: React.MouseEvent) => void;
+  onClic: () => void;
+  /** Présent quand elle est choisie parmi d'autres : son menu vaut pour tout le groupe. */
+  menuGroupe?: () => CtxItem[];
+  /** Un clic droit sur une tuile hors de la sélection la choisit seule, comme dans le Finder. */
+  onSeule: () => void;
+}
+
 /** Un dossier posé sur le bureau : on y entre, on y dépose. */
-function TuileDossier({ dossier, survole, couleur, onOuvrir, onSurvol, onDepose, onColorer, onRenommer, onVider, onSortir, partages = [], onGlisser, onFinGlisser, estSaisi }: {
+function TuileDossier({
+  dossier, survole, couleur, onOuvrir, onSurvol, onDepose, onColorer, onRenommer, onVider, onSortir, partages = [], onGlisser, onFinGlisser, estSaisi,
+  cle, choisie, onPresse, onClic, menuGroupe, onSeule,
+}: ChoixDeTuile & {
   dossier: SousDossier; survole: boolean; couleur: string; onOuvrir: () => void;
   onSurvol: (c: string | null) => void; onDepose: (dt: DataTransfer) => void;
   onColorer: () => void; onRenommer: () => void; onVider: () => void;
@@ -1107,7 +1344,8 @@ function TuileDossier({ dossier, survole, couleur, onOuvrir, onSurvol, onDepose,
   estSaisi?: () => boolean;
 }) {
   return (
-    <div draggable data-chemin={dossier.chemin}
+    <div draggable data-chemin={dossier.chemin} data-cle={cle} className={`tuile-bureau${choisie ? " choisie" : ""}`}
+      onMouseDown={onPresse} onClick={onClic}
       onDragStart={(e) => { e.dataTransfer.setData(TYPE_DOSSIER, dossier.chemin); e.dataTransfer.effectAllowed = "move"; onGlisser?.(e); }}
       onDragEnd={onFinGlisser}
       onDoubleClick={onOuvrir}
@@ -1123,18 +1361,21 @@ function TuileDossier({ dossier, survole, couleur, onOuvrir, onSurvol, onDepose,
         if (!vientDuBureau(e) || estSaisi?.()) return;
         e.preventDefault(); e.stopPropagation(); onSurvol(null); onDepose(e.dataTransfer);
       }}
-      onContextMenu={(e) => openCtx(e, [
-        { label: "Ouvrir", icon: "📂", onClick: onOuvrir },
-        { label: "Renommer", icon: "✏️", onClick: onRenommer },
-        { label: "Couleur…", icon: "🎨", onClick: onColorer },
-        ...partages.map((p, i) => ({ ...p, sep: i === 0 })),
-        ...(onSortir ? [{ label: "Sortir le contenu, garder les éléments", icon: "📤", sep: true, onClick: onSortir }] : []),
-        { label: "Supprimer le dossier et son contenu", icon: "🗑", danger: true, sep: !onSortir, onClick: onVider },
-      ])}
+      onContextMenu={(e) => {
+        if (menuGroupe) { openCtx(e, menuGroupe()); return; }
+        onSeule();
+        openCtx(e, [
+          { label: "Ouvrir", icon: "📂", onClick: onOuvrir },
+          { label: "Renommer", icon: "✏️", onClick: onRenommer },
+          { label: "Couleur…", icon: "🎨", onClick: onColorer },
+          ...partages.map((p, i) => ({ ...p, sep: i === 0 })),
+          ...(onSortir ? [{ label: "Sortir le contenu, garder les éléments", icon: "📤", sep: true, onClick: onSortir }] : []),
+          { label: "Supprimer le dossier et son contenu", icon: "🗑", danger: true, sep: !onSortir, onClick: onVider },
+        ]);
+      }}
       title={`${dossier.nom} — ${dossier.total} élément(s)`}
-      style={{ cursor: "pointer", textAlign: "center", padding: 8, borderRadius: 10,
-        background: survole ? "var(--accent)" : "transparent",
-        color: survole ? "#fff" : undefined, transition: "background .12s" }}>
+      style={{ cursor: "pointer", textAlign: "center", padding: 8, borderRadius: 10, transition: "background .12s",
+        ...(survole ? { background: "var(--accent)", color: "#fff" } : {}) }}>
       <IconeDossier couleur={couleur} ouvert={survole} />
       <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 4, overflow: "hidden",
         display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
@@ -1183,7 +1424,10 @@ const EMOJI: Record<Element["genre"], string> = {
 const EMOJI_FICHE: Record<OutilClasse["genre"], string> = { outil: "📏", affichage: "🖼", evaluation: "📋" };
 const emojiDe = (e: Element) => (e.genre === "outil" ? EMOJI_FICHE[e.outil.genre] : EMOJI[e.genre]);
 
-function TuileElement({ element, actions = [], onOuvrir, onModifier, onRanger, onSupprimer, onDuplique, onGlisser, onFinGlisser, designe = false, suivi }: {
+function TuileElement({
+  element, actions = [], onOuvrir, onModifier, onRanger, onSupprimer, onDuplique, onGlisser, onFinGlisser, designe = false, suivi,
+  cle, choisie, onPresse, onClic, menuGroupe, onSeule,
+}: ChoixDeTuile & {
   element: Element; onOuvrir: () => void; onRanger: () => void;
   /** Pour une séquence : où elle en est d'après le cahier journal. */
   suivi?: SuiviSequence;
@@ -1206,27 +1450,30 @@ function TuileElement({ element, actions = [], onOuvrir, onModifier, onRanger, o
   const pdf = element.genre === "materiel" ? liste(element.mat.pdfsJson)[0] : undefined;
 
   return (
-    <div draggable
+    <div draggable data-cle={cle} className={`tuile-bureau${choisie ? " choisie" : ""}`}
+      onMouseDown={onPresse} onClick={onClic}
       onDragStart={(e) => { e.dataTransfer.setData("application/json", JSON.stringify(element)); onGlisser?.(e); }}
       onDragEnd={onFinGlisser}
       onDoubleClick={onOuvrir}
-      onContextMenu={(e) => openCtx(e, [
-        { label: "Ouvrir", icon: "↗", onClick: onOuvrir },
-        ...(onModifier ? [{ label: "Modifier…", icon: "✏️", onClick: onModifier }] : []),
-        ...(element.genre === "sequence" ? [{ label: "Dupliquer", icon: "📑",
-          onClick: () => dupliquerSequence(element.seq).then(onDuplique) }] : []),
-        ...actions,
-        { label: "Ranger dans…", icon: "📂", onClick: onRanger },
-        { label: "Supprimer", icon: "🗑", danger: true, sep: true, onClick: onSupprimer },
-      ])}
+      onContextMenu={(e) => {
+        if (menuGroupe) { openCtx(e, menuGroupe()); return; }
+        onSeule();
+        openCtx(e, [
+          { label: "Ouvrir", icon: "↗", onClick: onOuvrir },
+          ...(onModifier ? [{ label: "Modifier…", icon: "✏️", onClick: onModifier }] : []),
+          ...(element.genre === "sequence" ? [{ label: "Dupliquer", icon: "📑",
+            onClick: () => dupliquerSequence(element.seq).then(onDuplique) }] : []),
+          ...actions,
+          { label: "Ranger dans…", icon: "📂", onClick: onRanger },
+          { label: "Supprimer", icon: "🗑", danger: true, sep: true, onClick: onSupprimer },
+        ]);
+      }}
       title={element.titre}
       ref={(el) => { if (designe) el?.scrollIntoView({ block: "center", behavior: "smooth" }); }}
       style={{
         cursor: "pointer", textAlign: "center", padding: 8, borderRadius: 10,
         ...(designe ? { outline: "2px solid var(--accent)", outlineOffset: 2, background: "var(--accent-soft)" } : {}),
-      }}
-      onMouseEnter={(e) => { if (!designe) e.currentTarget.style.background = "var(--panel-2)"; }}
-      onMouseLeave={(e) => { if (!designe) e.currentTarget.style.background = "transparent"; }}>
+      }}>
       <div style={{ position: "relative", width: "100%", aspectRatio: "1", borderRadius: 8,
         overflow: "hidden", background: t + "1f", border: `1px solid ${t}44`,
         display: "flex", alignItems: "center", justifyContent: "center" }}>
