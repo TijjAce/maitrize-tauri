@@ -21,6 +21,6 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Pour lire le QR code affiché par votre ordinateur, photographier les pages d'un manuel qu'il vous demande, et prendre les photos que vous rangez dans Mes pictos. Les pages restent sur le téléphone jusqu'à ce que vous les supprimiez ; les photos partent scellées vers votre ordinateur.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Pour déposer vos enregistrements sur votre ordinateur, quand il est sur le même WiFi que le téléphone.</string>
+	<string>Pour répondre à votre ordinateur sur le même WiFi, et montrer les aides à la tâche aux tablettes de vos élèves, sur le même réseau que le téléphone.</string>
 </dict>
 </plist>

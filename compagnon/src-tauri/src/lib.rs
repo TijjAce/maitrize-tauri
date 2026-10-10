@@ -1,9 +1,11 @@
-//! Le dictaphone de classe : enregistrer, garder, déposer.
+//! Le dictaphone de classe : enregistrer, garder, déposer — et montrer les
+//! aides à la tâche aux tablettes des élèves.
 //!
-//! Ce téléphone ne connaît rien de la classe. Ni les élèves, ni le planning,
-//! ni les séances : il enregistre du son et l'heure où il a été dit, et c'est
-//! tout. Perdu dans un couloir, il ne trahit personne ; n'ayant rien à
-//! renvoyer, il ne peut rien écraser non plus.
+//! Ce que le téléphone dépose, il ne peut pas le relire : c'est scellé pour
+//! l'ordinateur. Ce qu'il reçoit — l'emploi du temps, et le cahier journal
+//! avec ses aides à la tâche, quand l'enseignant le publie — est chiffré pour
+//! lui seul, et gardé dans le dossier de l'application. Il ne renvoie jamais
+//! rien : il ne peut rien écraser.
 //!
 //! C'est l'ordinateur qui sait ce qui se passait à 10 h 12, parce qu'il a le
 //! cahier journal. Il transcrit sur place avec Whisper et range.
@@ -13,8 +15,10 @@
 //! alors pour l'ordinateur, que le téléphone lui-même ne peut pas rouvrir.
 
 mod commandes;
+mod portail;
 
 use commandes::*;
+use portail::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -33,6 +37,15 @@ pub fn run() {
             note_garder,
             notes_liste,
             note_oublier,
+            // Le cahier journal publié par l'ordinateur, et ses aides à la tâche.
+            journal_du_jour,
+            aide_lire,
+            // Le portail des tablettes : une aide montrée aux élèves, sur le réseau local.
+            portail_ouvrir,
+            portail_montrer,
+            portail_cacher,
+            portail_etat,
+            portail_fermer,
             // Les photos nommées, pour Mes pictos.
             photo_garder,
             photos_liste,

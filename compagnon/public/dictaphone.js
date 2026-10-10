@@ -70,6 +70,17 @@ let notes = [], ecrit = false, brouillon = "";
  */
 let photos = [], photoPrise = null, nomPhoto = "";
 /**
+ * Le cahier journal du jour choisi, tel que l'ordinateur l'a publié — prévu,
+ * bilan, séance, aides à la tâche —, et ce qui l'a empêché d'arriver.
+ */
+let cahier = null, cahierSouci = "";
+/**
+ * Le portail des tablettes : ouvert, il montre l'aide choisie aux tablettes
+ * des élèves, sur le même réseau que le téléphone. Son état vient de Rust.
+ */
+const PORTAIL_FERME = { ouvert: false, adresses: [], qr: "", tablettes: 0, montree: "", montreeId: "" };
+let portail = PORTAIL_FERME, suiviPortail = null, portailSouci = "";
+/**
  * Où va ce qu'on dicte ou qu'on écrit : au cahier journal, rangé au créneau,
  * ou aux notes rapides de l'ordinateur, en un nouveau tiret. Le cahier
  * journal reste la règle : le choix tombe, comme le jour, après un quart
@@ -171,6 +182,8 @@ async function garderLEcranAllume() {
 }
 
 function relacherLEcran() {
+  // Le portail ouvert garde l'écran allumé : iOS suspendrait le serveur des tablettes.
+  if (portail.ouvert) return;
   try { if (veille) veille.release(); } catch (e) { /* déjà relâché */ }
   veille = null;
 }
@@ -282,6 +295,8 @@ document.addEventListener("visibilitychange", () => {
     if (pourLesNotes && !ecrit) { pourLesNotes = false; rendre(); }
     if (jourChoisi) void allerAuJour("");
   }
+  // De retour sur l'écran : le cahier journal a pu changer sur l'ordinateur.
+  if (!document.hidden && cacheeDepuis && Date.now() - cacheeDepuis > 60 * 1000) void relireCahier();
   if (document.hidden) fermerCamera();
   if (document.hidden && ctx) {
     void arreter().then(() => {
@@ -436,6 +451,7 @@ async function allerAuJour(jour) {
   await relireCreneaux();
   rendre();
   if (nuage) { await rafraichirCreneaux(); rendre(); }
+  void relireCahier();
 }
 
 /** Redemande l'emploi du temps du jour choisi, et retient celui de l'instant. */
@@ -729,6 +745,64 @@ async function envoyerLaPhoto(fichier) {
   } finally {
     demandeEnCours = false; rendre();
   }
+}
+
+// ── Le cahier journal, et le portail des tablettes ───────────────────────
+//
+// L'ordinateur publie le cahier journal sur Nuage, chiffré pour ce téléphone :
+// on le relit pour le jour choisi. Ses aides à la tâche se montrent aux
+// tablettes des élèves par le portail — un petit serveur sur le téléphone,
+// que les tablettes ouvrent par son QR code, sur le même réseau.
+
+/** Relit le cahier journal du jour choisi : sur Nuage s'il répond, gardé sinon. */
+async function relireCahier() {
+  if (!relais.relie || !relais.connecte) { cahier = null; cahierSouci = ""; return; }
+  try { cahier = await invoke("journal_du_jour", { jour: jourDeLaDictee() }); cahierSouci = ""; }
+  catch (e) { cahier = null; cahierSouci = String(e); }
+  rendre();
+}
+
+/** Suit le portail ouvert : combien de tablettes, ce qu'elles montrent. */
+function suivreLePortail() {
+  if (suiviPortail) return;
+  suiviPortail = setInterval(async () => {
+    let suite = portail;
+    try { suite = await invoke("portail_etat"); } catch (e) { /* on garde ce qu'on savait */ }
+    const change = JSON.stringify(suite) !== JSON.stringify(portail);
+    portail = suite;
+    if (!portail.ouvert) { clearInterval(suiviPortail); suiviPortail = null; }
+    if (change) rendre();
+  }, 3000);
+}
+
+/** Montre une aide aux tablettes : le portail s'ouvre s'il ne l'est pas. */
+async function montrerAide(id, titre) {
+  portailSouci = "";
+  try {
+    const aide = await invoke("aide_lire", { id });
+    if (!portail.ouvert) {
+      portail = await invoke("portail_ouvrir");
+      await garderLEcranAllume();
+      suivreLePortail();
+    }
+    portail = await invoke("portail_montrer", { id, titre: titre || aide.titre, html: aide.html });
+  } catch (e) {
+    portailSouci = String(e);
+  }
+  rendre();
+}
+
+async function cacherAide() {
+  try { portail = await invoke("portail_cacher"); } catch (e) { portailSouci = String(e); }
+  rendre();
+}
+
+async function fermerPortail() {
+  try { portail = await invoke("portail_fermer"); } catch (e) { portail = PORTAIL_FERME; }
+  if (suiviPortail) { clearInterval(suiviPortail); suiviPortail = null; }
+  // Plus de portail : l'écran peut s'éteindre, sauf pendant une dictée.
+  if (!ctx) relacherLEcran();
+  rendre();
 }
 
 // ── Lire un QR code ───────────────────────────────────────────────────────
@@ -1072,6 +1146,53 @@ function listeDAttente(attente) {
     <button class="btn-plein" id="envoyer" ${envoiEnCours ? "disabled" : ""}>${icone("envoyer")}${envoiEnCours ? "Envoi…" : "Envoyer maintenant"}</button>`;
 }
 
+/** Le portail ouvert : le QR code que les tablettes scannent, combien elles sont, ce qu'elles montrent. */
+function carteDuPortail() {
+  if (!portail.ouvert) return "";
+  const adresse = portail.adresses[0] || "";
+  return `<div class="portail">
+    ${portail.qr ? `<div class="portail-qr">${portail.qr}</div>` : ""}
+    <div class="portail-texte">
+      <b>${portail.tablettes} tablette${portail.tablettes > 1 ? "s" : ""} connectée${portail.tablettes > 1 ? "s" : ""}</b>
+      <span>${portail.montree ? `Montrée : ${echapper(portail.montree)}` : "Rien n'est montré pour l'instant."}</span>
+      <span class="portail-adresse">${adresse ? echapper(adresse) : "Aucun réseau : activez le WiFi, ou le partage de connexion pour les tablettes."}</span>
+      <span class="portail-aide">Les tablettes scannent ce code, sur le même réseau que le téléphone. Gardez le dictaphone ouvert pendant l'activité.</span>
+    </div>
+    <div class="deux">
+      ${portail.montree ? `<button class="btn-doux" id="cacher-aide">Ne plus montrer</button>` : "<span></span>"}
+      <button class="btn-doux" id="fermer-portail">Fermer le portail</button>
+    </div>
+  </div>`;
+}
+
+/** Le cahier journal du jour choisi : ses créneaux, leur prévu, leur bilan, et les aides à montrer. */
+function carteCahier() {
+  const souci = portailSouci ? `<p class="erreur-ligne">${echapper(portailSouci)}</p>` : "";
+  if (!cahier) {
+    const texte = cahierSouci || "Le cahier journal arrive…";
+    return `<div class="carte cj">${carteDuPortail()}${souci}<p class="carte-info">${icone(cahierSouci ? "attention" : "nuage")}<span>${echapper(texte)}</span></p></div>`;
+  }
+  const rangs = cahier.creneaux.map((c) => {
+    const aides = (c.aides || []).map((a) => {
+      const montree = portail.ouvert && portail.montreeId === a.id;
+      return `<div class="cj-aide${montree ? " on" : ""}">
+        <span class="cj-aide-titre">${icone("liste", "petit")}<span>${echapper(a.titre)}</span></span>
+        <button class="btn-mini${montree ? " on" : ""}" data-montrer="${echapper(a.id)}" data-titre="${echapper(a.titre)}" ${montree ? "disabled" : ""}>${montree ? "Montrée" : "Montrer"}</button>
+      </div>`;
+    }).join("");
+    return `<div class="cj-creneau">
+      <div class="cj-tete"><b>${echapper(heureCourte(c.debut))}</b><span>${echapper(c.matiere || "Créneau")}</span></div>
+      ${c.seance ? `<div class="cj-seance">${echapper(c.seance)}</div>` : ""}
+      ${(c.prevu || "").trim() ? `<div class="cj-texte">${echapper(c.prevu.trim())}</div>` : ""}
+      ${(c.bilan || "").trim() ? `<details class="cj-bilan"><summary>Bilan</summary><div class="cj-texte">${echapper(c.bilan.trim())}</div></details>` : ""}
+      ${aides}
+    </div>`;
+  }).join("");
+  const vide = cahier.creneaux.length ? "" : `<p class="carte-info">${icone("coche")}<span>Rien au cahier journal ${estAujourdHui() ? "aujourd'hui" : "ce jour-là"}.</span></p>`;
+  const publie = cahier.publie ? `<p class="cj-publie">Publié par l'ordinateur le ${echapper(cahier.publie.slice(8, 10))}/${echapper(cahier.publie.slice(5, 7))} à ${echapper(heureDe(cahier.publie))}${cahier.frais ? "" : " — gardé sur le téléphone, Nuage ne répond pas"}.</p>` : "";
+  return `<div class="carte cj">${carteDuPortail()}${souci}${rangs}${vide}${publie}</div>`;
+}
+
 /** L'en-tête d'une partie de l'écran : par où elle passe, d'un coup d'œil. */
 const entete = (ico, titre, voie) => `<h2 class="partie">${icone(ico)}<span>${titre}</span><small>${voie}</small></h2>`;
 
@@ -1192,6 +1313,7 @@ function rendre() {
     ${entete("nuage", "Dictées, notes et photos", "par Nuage")}
     ${parNuage}
     ${!pret ? bulles() : ""}
+    ${pret && !(enCours || ecrit || photoPrise) ? `${entete("page", "Le cahier journal", "par Nuage, et le portail des tablettes")}${carteCahier()}` : ""}
     ${enCours || ecrit || photoPrise ? "" : `${entete("wifi", "Pages et photos", "par le WiFi, à la demande de l'ordinateur")}${carteWifi()}`}
   `;
 
@@ -1231,6 +1353,11 @@ function rendre() {
     if (entree) entree.onchange = () => { const f = entree.files && entree.files[0]; if (f) void prendrePhoto(f); };
   }
   clic("annuler-photo", () => { photoPrise = null; nomPhoto = ""; souci = ""; rendre(); });
+  el.querySelectorAll("[data-montrer]").forEach((b) => {
+    b.onclick = () => { void montrerAide(b.dataset.montrer, b.dataset.titre); };
+  });
+  clic("cacher-aide", () => { void cacherAide(); });
+  clic("fermer-portail", () => { void fermerPortail(); });
   clic("garder-photo", () => { void garderLaPhoto(); });
   const champPhoto = document.getElementById("nom-photo");
   if (champPhoto) {
@@ -1259,6 +1386,7 @@ document.addEventListener("dblclick", (e) => e.preventDefault(), { passive: fals
   await relire();
   // Ce qui attendait d'hier part dès l'ouverture.
   void tater().then(() => { if (nuage && enAttente().length) void envoyerTout(); });
+  void relireCahier();
   // Le réseau revient en sortant du métro : on retente de loin en loin, et
   // l'on dépose ce qui attend dès que Nuage répond.
   setInterval(async () => {
