@@ -23,7 +23,7 @@ describe("des consignes qu'on reconnaît d'un coup d'œil", () => {
     // Après « je », « on », le verbe : même hors du lexique des pictos, chaque morceau reste une action.
     const cache = etapesDe("1. Je le cache et je l'écris. 2. On dit la réponse, on corrige, on passe au suivant.");
     expect(cache.map((e) => [e.sorte, e.html])).toEqual([["action", "Je le cache."], ["action", "Je l'écris."],
-      ["action", "On dit la réponse."], ["action", "On corrige, on passe au suivant."]]);
+      ["action", "Je dis la réponse."], ["action", "Je corrige."], ["action", "Je passe au suivant."]]);
     // « On » dit aussi une vérité générale : hors du lexique, ce n'est pas une action.
     expect(sorteDe("On ne parle pas de la même manière en classe et dans la cour.")).toBe("info");
     // Ce qui est permis aide ; ce qui est demandé est une action.
