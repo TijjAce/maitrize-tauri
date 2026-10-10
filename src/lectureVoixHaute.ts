@@ -166,7 +166,7 @@ function feuilleGrille(r: ReglagesVoixHaute): string {
   const lignes = CRITERES[r.classe].map((c) => `<tr><td class="vh-critere">${escapeHtml(c)}</td>${[1, 2, 3].map(() => "<td><span class=\"vh-case\"></span> oui &nbsp; <span class=\"vh-case\"></span> pas encore</td>").join("")}</tr>`).join("");
   return `<div class="page"><div class="titre">Lire à voix haute — la grille du binôme</div>
     <div class="sous">Le lecteur : ........................................ L'auditeur : ........................................ Date : ..................</div>
-    <div class="regle">Le lecteur lit, l'auditeur écoute, puis on se met d'accord, critère par critère. On échange les rôles. <span class="reference">Livrets Français CP et CE1, Éduscol.</span></div>
+    <div class="regle">Je lis ou j'écoute lire ; puis nous nous mettons d'accord, mon binôme et moi, critère par critère. Nous échangeons les rôles. <span class="reference">Livrets Français CP et CE1, Éduscol.</span></div>
     <table class="vh-grille"><tr><th>Ce qu'on écoute</th><th>1re lecture</th><th>2e lecture</th><th>3e lecture</th></tr>${lignes}</table>
     <div class="vh-conseil">Mon conseil pour la prochaine lecture : ........................................................................................................</div></div>`;
 }

@@ -288,7 +288,8 @@ export function enActions(html: string): string[] {
  */
 export function etapesDe(interieur: string): Etape[] {
   const lignes = interieur.split(/<br\s*\/?>/i).map((l) => l.trim()).filter((l) => texteDe(l) !== "");
-  const morceaux = lignes.flatMap((l) => numerotee(l) ?? enPhrases(l)).flatMap(enActions).map((h) => alaPremierePersonne(h, estImperatif));
+  // À la première personne d'abord : « On corrige, on passe au suivant » devient deux étapes, comme « Je corrige, je passe ».
+  const morceaux = lignes.flatMap((l) => numerotee(l) ?? enPhrases(l)).map((h) => alaPremierePersonne(h, estImperatif)).flatMap(enActions);
   return morceaux.map((html) => ({ sorte: sorteDe(html), html }));
 }
 
