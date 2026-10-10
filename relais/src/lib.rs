@@ -452,6 +452,115 @@ pub fn dechiffrer_agenda(cle: &[u8; 32], blob: &[u8]) -> R<Agenda> {
     serde_json::from_slice(&dechiffrer_retour(cle, blob)?).map_err(|_| "Agenda illisible.".to_string())
 }
 
+// ── Le cahier journal, pour le téléphone ───────────────────────────────────
+//
+// Le téléphone reçoit aussi le cahier journal des jours publiés : pour chaque
+// créneau, son prévu, son bilan, la séance posée et les aides à la tâche de
+// cette séance — qu'il peut ensuite montrer aux tablettes des élèves, sur le
+// réseau local. Tout est chiffré avec la clé du retour, comme l'emploi du
+// temps : Nuage ne lit rien. Les aides, plus lourdes — une page complète,
+// ses images comprises —, vont chacune dans son fichier, nommé par
+// l'empreinte de son contenu : une aide qui ne change pas ne repart pas.
+
+/// Le cahier journal des jours publiés, dans le retour.
+pub const FICHIER_JOURNAL: &str = "journal.mtz";
+/// Le dossier des aides à la tâche, dans le retour.
+pub const DOSSIER_AIDES: &str = "aides";
+
+/// Une aide à la tâche citée par un créneau : de quoi la retrouver, et son titre.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct AideDuJournal {
+    /// L'empreinte de son contenu (voir `id_de_l_aide`).
+    pub id: String,
+    pub titre: String,
+}
+
+/// Un créneau du cahier journal, tel que le téléphone le montre.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct CreneauDuJournal {
+    pub id: String,
+    pub debut: String,
+    pub fin: String,
+    #[serde(default)]
+    pub matiere: String,
+    #[serde(default)]
+    pub prevu: String,
+    #[serde(default)]
+    pub bilan: String,
+    /// La séance posée sur le créneau, par son titre ; vide sans séance.
+    #[serde(default)]
+    pub seance: String,
+    #[serde(default)]
+    pub aides: Vec<AideDuJournal>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+pub struct JourDuJournal {
+    pub jour: String,
+    pub creneaux: Vec<CreneauDuJournal>,
+}
+
+/// Le cahier journal des jours publiés. Un jour sans créneau y figure vide.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+pub struct Journal {
+    /// Quand l'ordinateur l'a publié.
+    #[serde(default)]
+    pub publie: String,
+    pub jours: Vec<JourDuJournal>,
+}
+
+impl Journal {
+    /// Les créneaux d'un jour, ou rien si le journal ne le couvre pas.
+    pub fn du_jour(&self, jour: &str) -> Option<&JourDuJournal> {
+        self.jours.iter().find(|j| j.jour == jour)
+    }
+}
+
+/// Une aide à la tâche, telle que les tablettes la montrent : une page complète, ses images comprises.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct Aide {
+    pub titre: String,
+    pub html: String,
+}
+
+/// Le cahier journal, chiffré pour le téléphone.
+pub fn chiffrer_journal(cle: &[u8; 32], journal: &Journal) -> R<Vec<u8>> {
+    chiffrer_retour(cle, &serde_json::to_vec(journal).map_err(|e| e.to_string())?)
+}
+
+/// Le cahier journal, relu sur le téléphone.
+pub fn dechiffrer_journal(cle: &[u8; 32], blob: &[u8]) -> R<Journal> {
+    serde_json::from_slice(&dechiffrer_retour(cle, blob)?).map_err(|_| "Cahier journal illisible.".to_string())
+}
+
+/// Une aide, chiffrée pour le téléphone.
+pub fn chiffrer_aide(cle: &[u8; 32], aide: &Aide) -> R<Vec<u8>> {
+    chiffrer_retour(cle, &serde_json::to_vec(aide).map_err(|e| e.to_string())?)
+}
+
+/// Une aide, relue sur le téléphone.
+pub fn dechiffrer_aide(cle: &[u8; 32], blob: &[u8]) -> R<Aide> {
+    serde_json::from_slice(&dechiffrer_retour(cle, blob)?).map_err(|_| "Aide illisible.".to_string())
+}
+
+/// L'identifiant d'une aide : l'empreinte de son contenu. Deux aides pareilles
+/// n'en font qu'une, et une aide qui change change de nom.
+pub fn id_de_l_aide(aide: &Aide) -> String {
+    use sha2::Digest;
+    let mut h = Sha256::new();
+    h.update(aide.titre.as_bytes());
+    h.update([0u8]);
+    h.update(aide.html.as_bytes());
+    h.finalize().iter().take(12).map(|o| format!("{o:02x}")).collect()
+}
+
+/// Le nom de fichier d'une aide, dans son dossier ; rien pour un identifiant qui n'en est pas un.
+pub fn nom_de_l_aide(id: &str) -> Option<String> {
+    (id.len() == 24 && id.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())).then(|| format!("{id}.mtz"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -506,6 +615,42 @@ mod tests {
         let ancienne: Etiquette = serde_json::from_str(r#"{"genre":"note","id":"n3","debut":"","dureeS":0,"creneau":"c1","ext":""}"#).unwrap();
         assert_eq!(ancienne.destination, "");
         assert_eq!(ancienne.nom, "");
+    }
+
+    #[test]
+    fn le_cahier_journal_et_ses_aides_ne_se_lisent_qu_avec_la_cle_du_retour() {
+        let (_, _, retour) = appairage();
+        let aide = Aide { titre: "Le séquentiel — séance 2".into(), html: "<!doctype html><p>1. J'écoute.</p>".into() };
+        let id = id_de_l_aide(&aide);
+        let journal = Journal {
+            publie: "2026-10-10T08:00:00".into(),
+            jours: vec![JourDuJournal { jour: "2026-10-12".into(), creneaux: vec![CreneauDuJournal {
+                id: "c1".into(), debut: "09:00".into(), fin: "10:00".into(), matiere: "Mathématiques".into(),
+                prevu: "📚 Les dizaines — séance 2".into(), bilan: String::new(), seance: "Les dizaines entières".into(),
+                aides: vec![AideDuJournal { id: id.clone(), titre: aide.titre.clone() }],
+            }] }],
+        };
+        let blob = chiffrer_journal(&retour, &journal).unwrap();
+        assert!(!blob.windows(9).any(|w| w == b"dizaines "), "le journal part chiffré");
+        assert_eq!(dechiffrer_journal(&retour, &blob).unwrap(), journal);
+        assert_eq!(dechiffrer_journal(&retour, &blob).unwrap().du_jour("2026-10-12").unwrap().creneaux[0].aides[0].id, id);
+        assert!(dechiffrer_journal(&nouvelle_cle(), &blob).is_err());
+        assert_eq!(dechiffrer_aide(&retour, &chiffrer_aide(&retour, &aide).unwrap()).unwrap(), aide);
+        // Un journal d'avant, sans aides ni bilan, se relit.
+        let ancien: CreneauDuJournal = serde_json::from_str(r#"{"id":"c","debut":"9","fin":"10"}"#).unwrap();
+        assert!(ancien.aides.is_empty() && ancien.bilan.is_empty());
+    }
+
+    #[test]
+    fn une_aide_porte_l_empreinte_de_son_contenu() {
+        let a = Aide { titre: "T".into(), html: "<p>x</p>".into() };
+        assert_eq!(id_de_l_aide(&a), id_de_l_aide(&a.clone()));
+        assert_ne!(id_de_l_aide(&a), id_de_l_aide(&Aide { html: "<p>y</p>".into(), ..a.clone() }));
+        assert_eq!(id_de_l_aide(&a).len(), 24);
+        assert_eq!(nom_de_l_aide(&id_de_l_aide(&a)), Some(format!("{}.mtz", id_de_l_aide(&a))));
+        for faux in ["../agenda", "ABCDEF0123456789ABCDEF01", "123", "zzzzzzzzzzzzzzzzzzzzzzzz"] {
+            assert_eq!(nom_de_l_aide(faux), None, "{faux}");
+        }
     }
 
     #[test]

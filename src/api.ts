@@ -900,9 +900,15 @@ export const api = {
   /** Révoque le lien et oublie les clés ; `sansRevoquer` quand Nuage ne répond pas. */
   telephoneOublier: (sansRevoquer = false) => invoke<EtatRelais>("telephone_oublier", { sansRevoquer }),
   telephoneRelever: () => invoke<BilanReleve>("telephone_relever"),
+  /** Le cahier journal des jours publiés et ses aides à la tâche, pour le téléphone : chiffrés, et seulement ce qui a changé. */
+  telephonePublierJournal: (journal: import("./journalTelephone").JournalTelephone, aides: import("./journalTelephone").AideAPublier[]) =>
+    invoke<BilanJournal>("telephone_publier_journal", { journal, aides }),
   /** Les pages scannées, tant que « Scanner avec le téléphone » est ouvert. */
   telephoneReleverPages: () => invoke<BilanReleve>("telephone_relever_pages"),
 };
+
+/** Ce qu'une publication du cahier journal pour le téléphone a fait. */
+export interface BilanJournal { relie: boolean; journal: boolean; aidesEnvoyees: number; aidesRetirees: number }
 
 /** L'état du relais du téléphone : rien de secret n'y figure. */
 export interface EtatRelais {
