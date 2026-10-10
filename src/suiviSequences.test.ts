@@ -8,7 +8,7 @@ vi.mock("./api", () => ({
 
 import type { Creneau, Seance, Sequence } from "./api";
 import {
-  avancement, bornesDeLAnnee, ilYA, jourProche, joursEntre, libelleDuSuivi, passagesParSequence, rangerParActivite,
+  avancement, bornesDeLAnnee, ilYA, jourProche, joursEntre, libelleDuPassage, libelleDuSuivi, passagesParSequence, rangerParActivite,
   suiviDeLaSequence, suivisDesSequences,
 } from "./suiviSequences";
 
@@ -73,6 +73,17 @@ describe("l'état d'une séquence", () => {
     expect(s.suivante?.numero).toBe(3);
     expect(avancement(s)).toBe(0.5);
     expect(libelleDuSuivi(s, AUJOURDHUI)).toBe("En classe depuis le 10/09 · séance 2/4 · prochaine demain");
+  });
+
+  it("garde les jours où elle a été posée dans le cahier journal, faits et à venir, chacun en une étiquette", () => {
+    const passages = passagesParSequence([
+      creneau("c1", "2026-09-10", { seanceId: "a" }), creneau("c2", "2026-10-01", { seanceId: "c", heureDebut: "14:10" }),
+      creneau("c3", "2026-10-08", { prevu: "📚 Les fractions décimales" }),
+    ], [fractions], seances).get("q1")!;
+    const s = suiviDeLaSequence(fractions, siennes, passages, AUJOURDHUI);
+    expect(s.passages.map((p) => p.date)).toEqual(["2026-09-10"]);
+    expect(s.aVenir.map((p) => p.date)).toEqual(["2026-10-01", "2026-10-08"]);
+    expect([...s.passages, ...s.aVenir].map(libelleDuPassage)).toEqual(["jeu. 10/09 · 9h00 · séance 1", "jeu. 01/10 · 14h10 · séance 3", "jeu. 08/10 · 9h00"]);
   });
 
   it("compte la séance d'aujourd'hui comme faite, et dit quand rien n'est posé", () => {

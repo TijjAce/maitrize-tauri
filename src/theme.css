@@ -277,6 +277,11 @@ input, textarea, select { font-family: inherit; font-size: 14px; }
 .suivi-alerte { color: #d97706; font-weight: 600; }
 .suivi-etat.petit { font-size: 9.5px; padding: 0 6px; vertical-align: 1px; }
 .suivi-fiche { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+/* Les jours où la séquence a été posée dans le cahier journal : un clic ouvre le jour. */
+.suivi-journal { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.suivi-journal .chip { cursor: pointer; border: none; font: inherit; font-size: 12px; }
+.suivi-journal .chip:hover { filter: brightness(.95); }
+.suivi-journal .chip.a-venir { background: transparent; border: 1px dashed var(--border); color: var(--text-2); }
 /* Le plan de travail : les séquences selon leur état, sous la barre d'outils. */
 .plan-filtres { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: -4px 0 12px; font-size: 12.5px; }
 .plan-filtres .seg button { font-size: 12.5px; }
