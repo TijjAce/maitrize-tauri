@@ -18,6 +18,27 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.23",
+    titre: "Des consignes qu'on reconnaît, le mode dyslexique, vos photos comme pictos, et le matériel réel de la classe",
+    points: [
+      { quoi: "Toutes les consignes des feuilles se présentent de la même façon : un liseré bleu, une action par ligne, numérotée, le verbe d'action en gras et en couleur ; à part, ce qui avertit ou aide, un exemple, ce qui dit qu'on a réussi. Les pictos des verbes se posent devant chaque étape. La couleur double toujours une autre marque : une photocopie en noir et blanc se lit encore.", ou: "Fabriquer" },
+      { quoi: "Le mode dyslexique, sur chaque feuille : une police aux lettres bien distinctes, plus d'espace entre les lettres, les mots et les lignes, ni italique ni texte justifié. Il se coche par atelier et vaut à l'impression, sur le bureau et dans les séances.", ou: "Fabriquer · La feuille, ou près des boutons d'impression" },
+      { quoi: "Le dictaphone prend des photos pour Mes pictos : on photographie l'objet de la classe, on lui donne son nom, et la photo arrive sur l'ordinateur, scellée par Nuage comme une dictée. Chaque atelier choisit ensuite : photos et pictos (la photo quand on en a une pour ce mot), pictos seulement, ou photos seulement.", ou: "Dictaphone · Photo pour un picto ; Fabriquer · La feuille" },
+      { quoi: "Le matériel de la classe : la balance et les masses marquées, le thermomètre, l'horloge, le sablier, les verres gradués, la pile et l'ampoule, le globe… — ce que les programmes nomment et que le papier ne remplace pas. On coche ce que la classe possède et où c'est rangé ; les ateliers le rappellent, et chaque séance d'une nouvelle séquence dit ce qu'il faut sortir ou se procurer.", ou: "Fabriquer · 🧰 Le matériel de la classe" },
+      { quoi: "Une séquence dit les jours où elle a été posée dans le cahier journal, et ceux où elle le sera : un clic ouvre le jour.", ou: "Une séquence · sous « Mettre en pause »" },
+      { quoi: "« ＋ Séquence » à côté de « ＋ Objectif » : on programme pour un élève une séquence qu'on a déjà ; sa compétence devient l'objectif, la séquence y est citée.", ou: "Programmation · par élève" },
+      { quoi: "L'histoire et la géographie du cycle 2 : une séquence par thème du programme 2026. Au CP, la classe et son plan, le temps qui passe — François et le temps, Le petit voleur de temps, les rituels du calendrier —, les évènements situés par un parcours sonore, d'après les ressources Éduscol ; les autres thèmes bâtis sur le programme, et ils le disent. Trois ateliers pour leurs feuilles : le plan de la classe (d'après votre plan de salle), frises et calendriers, lire un paysage.", ou: "Plan de travail · Nouvelle séquence ; Fabriquer" },
+      { quoi: "Les aides à la tâche de Cap école inclusive : le séquentiel de chaque séance, préparer sa prise de parole, et des fiches pour résoudre un problème, décomposer une tâche, modéliser — dans Fabriquer, et glissées dans les séances d'une nouvelle séquence.", ou: "Fabriquer · Aides à la tâche" },
+      { quoi: "Les consignes d'une séance, une par ligne, se traduisent en pictogrammes, et s'impriment avec le cahier journal si on le coche. Le dictaphone dicte ou écrit aussi pour les notes rapides.", ou: "Une séance · Consignes ; Dictaphone" },
+      { quoi: "Les cartes à tâches : une question par carte, à pinces ou à écrire, trente-six types de la GS au CM2, avec la fiche réponse et le corrigé.", ou: "Fabriquer · Évaluer" },
+      { quoi: "« Modifier dans Fabriquer » : une feuille fabriquée rouvre son atelier, réglée comme elle, et la nouvelle prend sa place. Le bureau prend plusieurs éléments à la fois — clic, ⌘-clic, rectangle à la souris, ⌘A — pour les glisser, les ranger ou les supprimer d'un coup.", ou: "Visionneuse, séance, bureau" },
+      { quoi: "Les références des feuilles ne s'impriment plus : un « ? » les garde dans l'aperçu." },
+      { quoi: "À l'été, les élèves de l'année laissent place à la classe suivante, après l'export de leurs données ; on coche ceux qui restent." },
+      { quoi: "Confidentialité : les prénoms sont masqués dans tout ce qui part vers l'IA, assistant compris ; les secrets sont chiffrés sous une clé du système ; Maitrize prévient si le disque n'est pas chiffré ; un élève effacé l'est partout. Les conditions d'utilisation, revues, sont à accepter de nouveau." },
+      { quoi: "Le cahier journal du jour n'affiche plus les heures de la semaine : elles restent dans la vue Semaine. Au cycle 1, « Passer de l'oral à l'écrit : se préparer à apprendre à lire » n'a plus le nom de sa voisine." },
+    ],
+  },
+  {
     version: "1.6.22",
     titre: "Les séquences du cycle 2 partent de la compétence, et « En retard » prépare la journée",
     points: [
