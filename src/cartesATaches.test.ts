@@ -29,6 +29,7 @@ describe("les types de cartes", () => {
     for (const c of CLASSES) expect(typesDeLaClasse(c).length, c).toBeGreaterThanOrEqual(c === "GS" ? 3 : 12);
   });
 
+  // Toutes les séries de toutes les classes et de tous les formats : plusieurs secondes, davantage sur les machines de GitHub.
   it("tirent des séries complètes et justes, dans chaque classe et chaque format, quel que soit le tirage", () => {
     for (const t of TYPES) {
       for (const classe of t.classes) {
@@ -61,7 +62,7 @@ describe("les types de cartes", () => {
         }
       }
     }
-  });
+  }, 60_000);
 
   it("se rejouent à l'identique avec la même graine", () => {
     const r = reglages({ type: "heure", classe: "CE1" });

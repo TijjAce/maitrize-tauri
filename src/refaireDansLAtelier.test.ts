@@ -122,6 +122,7 @@ const ATELIERS: Record<string, (m: Memoires, g: number) => string> = {
 const GRAINES = [3, 1789];
 
 describe("une feuille de séquence se refait dans son atelier", () => {
+  // Des centaines de feuilles refaites : plusieurs secondes, davantage sur les machines de GitHub.
   it("telle quelle, pour toutes celles qui le disent", () => {
     let verifiees = 0;
     const ateliers = new Set<string>();
@@ -146,7 +147,7 @@ describe("une feuille de séquence se refait dans son atelier", () => {
     // Presque toutes les feuilles des séquences se refont : on en vérifie des centaines, dans une vingtaine d'ateliers.
     expect(verifiees).toBeGreaterThan(500);
     expect(ateliers.size).toBeGreaterThan(20);
-  });
+  }, 60_000);
 
   it("les jeux rattachés à la compétence aussi, à la classe de la séquence", () => {
     for (const atelier of ["cubes", "comparer", "nombres", "oie"]) {
@@ -180,5 +181,5 @@ describe("une fiche « En retard » se refait dans son atelier", () => {
       }
     }
     expect(verifiees).toBeGreaterThan(100);
-  });
+  }, 60_000);
 });
