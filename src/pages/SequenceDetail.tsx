@@ -2,6 +2,7 @@ import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import { demarcheDe, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre, type Demarche } from "../demarches";
+import { MATERIEL_DES_MOTS, SEANCE_DES_MOTS, avecLaSeanceDesMots } from "../motsDesProblemes";
 import { api, Sequence, Seance, MaterielItem, Jeu, nouvelleSeance, nowIso, newId, DUREES, formatDuree, telechargerTexte, teinteSequence } from "../api";
 import { decalee, deplacee, ordonnees, renumerotees } from "../ordreSeances";
 import { useSuiviSequences } from "../components/useSuiviSequences";
@@ -86,8 +87,12 @@ export default function SequenceDetail() {
     try { return demarcheSuggeree(seq.competenceVisee ? JSON.parse(seq.competenceVisee) : seq.matiere, seq.cycle); }
     catch { return demarcheSuggeree(seq.matiere, seq.cycle); }
   })();
-  const poserCadre = async (d: Demarche) => {
-    for (const sc of seancesDuCadre(d, seq.id, next)) await api.seanceSave(sc);
+  const poserCadre = async (brute: Demarche) => {
+    // Une séquence qui pose des problèmes s'ouvre sur la séance de leurs mots.
+    const d = avecLaSeanceDesMots(brute);
+    for (const [i, sc] of seancesDuCadre(d, seq.id, next).entries()) {
+      await api.seanceSave(i === 0 && d.seances[0] === SEANCE_DES_MOTS ? { ...sc, materiel: MATERIEL_DES_MOTS } : sc);
+    }
     await api.sequenceSave({ ...seq, nbSeancesPrevu: d.seances.length });
     reload(); reloadSeq();
     toast(`Cadre posé : ${resumeDuCadre(d)}.`, { icone: "🧭" });
@@ -277,7 +282,7 @@ export default function SequenceDetail() {
         <>
           <Empty icone="📝" titre="Aucune séance" sous="Ajoutez la première séance, ou posez un cadre : une démarche d'un guide crée les séances et leurs phases." />
           <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", alignItems: "center", marginTop: -6, marginBottom: 18 }}>
-            <button className="btn sm primary" title={`${suggeree.source} — ${resumeDuCadre(suggeree)}`} onClick={() => poserCadre(suggeree)}>
+            <button className="btn sm primary" title={`${suggeree.source} — ${resumeDuCadre(avecLaSeanceDesMots(suggeree))}`} onClick={() => poserCadre(suggeree)}>
               🧭 {suggeree.nom}
             </button>
             <select className="select" value="" style={{ fontSize: 12.5, maxWidth: 340 }} aria-label="Poser une autre démarche"
@@ -285,7 +290,7 @@ export default function SequenceDetail() {
               <option value="">Autre démarche…</option>
               {demarchesParFamille().map((g) => (
                 <optgroup key={g.famille} label={g.famille}>
-                  {g.demarches.map((d) => <option key={d.id} value={d.id}>{d.nom} · {resumeDuCadre(d)}</option>)}
+                  {g.demarches.map((d) => <option key={d.id} value={d.id}>{d.nom} · {resumeDuCadre(avecLaSeanceDesMots(d))}</option>)}
                 </optgroup>
               ))}
             </select>
