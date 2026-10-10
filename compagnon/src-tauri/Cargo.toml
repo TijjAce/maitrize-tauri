@@ -41,6 +41,8 @@ tauri-plugin-dialog = "2.7.3"
 # Le scanner de documents de l'iPhone : un manuel se photographie page à
 # page comme dans Notes, redressé et nettoyé. Écrit ici, dans `plugins/`.
 tauri-plugin-scanner = { path = "plugins/scanner" }
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+libc = "0.2.190"
 
 # Le trousseau de l'iPhone : le mot de passe d'application que Nuage remet au
 # téléphone y est gardé, chiffré par le système, lisible par cette seule

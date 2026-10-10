@@ -1,10 +1,11 @@
 //! Les commandes du dictaphone.
 //!
 //!
-//! Ce téléphone ne connaît rien de la classe. Ni les élèves, ni le planning,
-//! ni les séances : il enregistre du son et l'heure où il a été dit, et c'est
-//! tout. Perdu dans un couloir, il ne trahit personne ; n'ayant rien à
-//! renvoyer, il ne peut rien écraser non plus.
+//! Ce téléphone enregistre du son et l'heure où il a été dit, des notes, des
+//! photos : il les scelle pour l'ordinateur, et ne peut plus les relire. Il
+//! reçoit l'emploi du temps et, quand l'enseignant le publie, le cahier
+//! journal avec ses aides à la tâche — chiffrés pour lui seul. N'ayant rien à
+//! renvoyer, il ne peut rien écraser.
 //!
 //! C'est l'ordinateur qui sait ce qui se passait à 10 h 12, parce qu'il a le
 //! cahier journal. Il transcrit sur place avec Whisper et range.
@@ -981,6 +982,103 @@ pub async fn photo_deposer(app: tauri::AppHandle, id: String) -> R<()> {
     oublier_photo_dans(&d, &p.id)
 }
 
+// ── Le cahier journal, et ses aides à la tâche ─────────────────────────────
+//
+// L'ordinateur laisse aussi sur Nuage le cahier journal des jours publiés —
+// prévu, bilan, séance, aides à la tâche —, chiffré avec la clé du retour.
+// Le téléphone le relit quand Nuage répond, et le garde pour quand il ne
+// répond pas : en classe, le réseau manque souvent. Les aides se gardent une
+// fois relevées ; ce sont elles que le portail montre aux tablettes.
+
+fn fiche_journal(app: &tauri::AppHandle) -> R<PathBuf> {
+    Ok(dossier(app)?.join("journal.json"))
+}
+
+fn dossier_aides(app: &tauri::AppHandle) -> R<PathBuf> {
+    let d = dossier(app)?.join("aides");
+    std::fs::create_dir_all(&d).map_err(|e| e.to_string())?;
+    Ok(d)
+}
+
+/// Un jour du cahier journal, tel que l'écran le montre : relu sur Nuage, ou gardé.
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct JourDuCahier {
+    pub jour: String,
+    pub creneaux: Vec<relais::CreneauDuJournal>,
+    /// Quand l'ordinateur l'a publié ; vide si l'on n'a encore rien reçu.
+    pub publie: String,
+    /// Vrai si Nuage vient de répondre ; faux si c'est ce que le téléphone gardait.
+    pub frais: bool,
+}
+
+/// Le jour d'un journal, ou un jour vide qui dit d'où il vient.
+fn jour_du(journal: &relais::Journal, jour: &str, frais: bool) -> JourDuCahier {
+    JourDuCahier {
+        jour: jour.into(),
+        creneaux: journal.du_jour(jour).map(|j| j.creneaux.clone()).unwrap_or_default(),
+        publie: journal.publie.clone(),
+        frais,
+    }
+}
+
+/// Les aides gardées qu'aucun créneau du journal ne cite plus s'en vont.
+fn ranger_les_aides(d: &std::path::Path, journal: &relais::Journal) {
+    let citees: std::collections::HashSet<String> = journal.jours.iter()
+        .flat_map(|j| j.creneaux.iter().flat_map(|c| c.aides.iter().map(|a| a.id.clone())))
+        .collect();
+    let Ok(entrees) = std::fs::read_dir(d) else { return };
+    for e in entrees.flatten() {
+        let nom = e.file_name().to_string_lossy().to_string();
+        if let Some(id) = nom.strip_suffix(".json") {
+            if !citees.contains(id) {
+                let _ = std::fs::remove_file(e.path());
+            }
+        }
+    }
+}
+
+/// Le cahier journal d'un jour : relu sur Nuage quand il répond, gardé pour quand il ne répond pas.
+#[tauri::command]
+pub async fn journal_du_jour(app: tauri::AppHandle, jour: String) -> R<JourDuCahier> {
+    let garde = || -> Option<relais::Journal> {
+        serde_json::from_str(&std::fs::read_to_string(fiche_journal(&app).ok()?).ok()?).ok()
+    };
+    let frais = async {
+        let (a, k) = relais_et_connexion(&app)?;
+        let Some(blob) = oublier_si_retire(relais::porte::lire_journal(&a, &k).await)? else { return Ok(None) };
+        relais::dechiffrer_journal(&relais::cle_de(&a.cle_retour)?, &blob).map(Some)
+    };
+    match frais.await {
+        Ok(Some(journal)) => {
+            std::fs::write(fiche_journal(&app)?, serde_json::to_string(&journal).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+            ranger_les_aides(&dossier_aides(&app)?, &journal);
+            Ok(jour_du(&journal, &jour, true))
+        }
+        Ok(None) => garde().map(|j| jour_du(&j, &jour, false))
+            .ok_or_else(|| "L'ordinateur n'a pas encore publié son cahier journal : ouvrez Maitrize, il le fera à la prochaine relève.".to_string()),
+        Err(e) => garde().map(|j| jour_du(&j, &jour, false)).ok_or(e),
+    }
+}
+
+/// Une aide à la tâche, par son identifiant : relue sur Nuage la première fois, gardée ensuite.
+#[tauri::command]
+pub async fn aide_lire(app: tauri::AppHandle, id: String) -> R<relais::Aide> {
+    let nom = relais::nom_de_l_aide(&id).ok_or("Aide inconnue.")?;
+    let fichier = dossier_aides(&app)?.join(nom.replace(".mtz", ".json"));
+    if let Ok(brut) = std::fs::read_to_string(&fichier) {
+        if let Ok(aide) = serde_json::from_str::<relais::Aide>(&brut) {
+            return Ok(aide);
+        }
+    }
+    let (a, k) = relais_et_connexion(&app)?;
+    let blob = oublier_si_retire(relais::porte::lire_aide(&a, &k, &id).await)?
+        .ok_or("Cette aide n'est plus sur Nuage : l'ordinateur l'a retirée du cahier journal.")?;
+    let aide = relais::dechiffrer_aide(&relais::cle_de(&a.cle_retour)?, &blob)?;
+    std::fs::write(&fichier, serde_json::to_string(&aide).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    Ok(aide)
+}
+
 /// Les créneaux d'un jour, lus dans l'emploi du temps que l'ordinateur a laissé sur Nuage.
 ///
 /// Seuls ceux d'aujourd'hui se gardent.
@@ -1111,6 +1209,27 @@ mod tests {
         assert!(super::garder_photo_dans(&d, "", &"x".repeat(61), &jpeg).is_err());
         assert!(super::garder_photo_dans(&d, "", "un PNG", &[0x89, b'P', b'N', b'G', 0, 0, 0, 0]).is_err());
         assert!(super::photos_du_dossier(&d).is_empty());
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn le_cahier_journal_donne_son_jour_et_les_aides_qu_il_ne_cite_plus_s_en_vont() {
+        use super::relais;
+        let journal = relais::Journal { publie: "2026-10-10T08:00:00".into(), jours: vec![relais::JourDuJournal {
+            jour: "2026-10-12".into(),
+            creneaux: vec![relais::CreneauDuJournal { id: "c1".into(), debut: "09:00".into(), fin: "10:00".into(),
+                aides: vec![relais::AideDuJournal { id: "aaaaaaaaaaaaaaaaaaaaaaaa".into(), titre: "Le séquentiel".into() }], ..Default::default() }],
+        }] };
+        let j = super::jour_du(&journal, "2026-10-12", true);
+        assert_eq!((j.creneaux.len(), j.publie.as_str(), j.frais), (1, "2026-10-10T08:00:00", true));
+        // Un jour que le journal ne couvre pas : vide, et l'écran le dit.
+        assert!(super::jour_du(&journal, "2027-01-04", false).creneaux.is_empty());
+        let d = dossier_d_essai("aides");
+        std::fs::write(d.join("aaaaaaaaaaaaaaaaaaaaaaaa.json"), b"{}").unwrap();
+        std::fs::write(d.join("bbbbbbbbbbbbbbbbbbbbbbbb.json"), b"{}").unwrap();
+        super::ranger_les_aides(&d, &journal);
+        assert!(d.join("aaaaaaaaaaaaaaaaaaaaaaaa.json").exists());
+        assert!(!d.join("bbbbbbbbbbbbbbbbbbbbbbbb.json").exists());
         let _ = std::fs::remove_dir_all(&d);
     }
 
