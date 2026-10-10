@@ -61,7 +61,8 @@ export function ConsigneAtelier({ atelier }: { atelier: string }) {
       </summary>
       <p className="meta" style={{ fontSize: 12.5, margin: "8px 0 6px", lineHeight: 1.5 }}>
         Réécrivez la consigne avec les mots de la classe : la feuille la prend, à l'aperçu comme à l'impression. Une ligne par phrase ;
-        pour une règle encadrée, la première ligne fait le titre. Vide, la consigne d'origine revient.
+        pour une règle encadrée, la première ligne fait le titre. Vide, la consigne d'origine revient. Elle s'imprime à la
+        première personne : « Entoure les mots » devient « J'entoure les mots ».
       </p>
       <textarea className="textarea" rows={3} value={texte} placeholder={defaut || "La consigne telle qu'elle s'imprime — ouvrez l'aperçu pour la voir."}
         aria-label="Consigne de la feuille"

@@ -51,7 +51,7 @@ describe("des consignes qu'on reconnaît d'un coup d'œil", () => {
   });
 
   it("ne prend pas un numéro de page pour une étape", () => {
-    expect(etapesDe("Lis la page 3. Puis écris la réponse.").map((x) => x.html)).toEqual(["Lis la page 3.", "Puis écris la réponse."]);
+    expect(etapesDe("Lis la page 3. Puis écris la réponse.").map((x) => x.html)).toEqual(["Je lis la page 3.", "Puis j'écris la réponse."]);
   });
 
   it("met à part ce qui aide, ce qui montre, ce qui dit qu'on a réussi", () => {
@@ -79,11 +79,11 @@ describe("des consignes qu'on reconnaît d'un coup d'œil", () => {
     expect(html).toContain("<p>Le texte.</p>");
     const p = structurerConsignesHtml('<p class="consigne" style="margin:0">Compte les cubes.</p>');
     expect(p).toBe('<div class="consigne cs" style="margin:0"><ol class="cs-etapes"><li class="cs-etape cs-action">'
-      + '<span class="cs-num cs-seule" aria-hidden="true">▸</span><span class="cs-texte"><b class="cs-verbe">Compte</b> les cubes.</span></li></ol></div>');
-    // Deux actions dans une phrase : deux étapes, numérotées.
+      + '<span class="cs-num cs-seule" aria-hidden="true">▸</span><span class="cs-texte">Je <b class="cs-verbe">compte</b> les cubes.</span></li></ol></div>');
+    // Deux actions dans une phrase : deux étapes, numérotées, à la première personne.
     expect(structurerConsignesHtml('<p class="consigne">Compte les cubes et écris le nombre.</p>')).toContain(
-      '<span class="cs-num">1</span><span class="cs-texte"><b class="cs-verbe">Compte</b> les cubes.</span></li><li class="cs-etape cs-action">'
-      + '<span class="cs-num">2</span><span class="cs-texte"><b class="cs-verbe">Écris</b> le nombre.</span>');
+      '<span class="cs-num">1</span><span class="cs-texte">Je <b class="cs-verbe">compte</b> les cubes.</span></li><li class="cs-etape cs-action">'
+      + '<span class="cs-num">2</span><span class="cs-texte">J\'<b class="cs-verbe">écris</b> le nombre.</span>');
   });
 
   it("garde les titres d'une règle encadrée, et ses références à la fin", () => {
@@ -102,13 +102,15 @@ describe("des consignes qu'on reconnaît d'un coup d'œil", () => {
     expect(milieu).toContain("<b>en majuscules</b>");
   });
 
-  it("laisse ce qu'elle ne sait pas découper sans risque : une consigne déjà structurée, ou qui contient des blocs", () => {
+  it("laisse ce qu'elle ne sait pas découper sans risque — une consigne déjà structurée, qui contient des blocs —, mais la dit à la première personne", () => {
     const deja = '<div class="consigne cs"><ol class="cs-etapes"><li>x</li></ol></div>';
     expect(structurerConsignesHtml(deja)).toBe(deja);
     const blocs = '<div class="regle"><div class="a">Lis.</div><div class="b">Écris.</div></div>';
     expect(structurerConsignesHtml(blocs)).toBe(blocs);
-    const titre = '<h3 class="consigne">Lis</h3>';
-    expect(structurerConsignesHtml(titre)).toBe(titre);
+    expect(structurerConsignesHtml('<h3 class="consigne">Lis</h3>')).toBe('<h3 class="consigne">Je lis</h3>');
+    // Les instructions des exercices aussi, sans étapes.
+    expect(structurerConsignesHtml('<div class="ge-quoi">Trace la droite qui passe par les deux points.</div>'))
+      .toBe('<div class="ge-quoi">Je trace la droite qui passe par les deux points.</div>');
   });
 });
 

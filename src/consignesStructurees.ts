@@ -16,6 +16,7 @@
 // seulement découpé et mis en forme.
 
 import { CLASSES_CONSIGNE, verbeDeLaForme } from "./caa";
+import { alaPremierePersonne } from "./premierePersonne";
 import { referencesDe, sansReferences } from "./references";
 
 /** Ce qu'est une ligne de consigne : une action à faire, une information, une aide, un exemple, ce qui dit qu'on a réussi. */
@@ -27,7 +28,7 @@ export interface Etape { sorte: SorteEtape; html: string }
 const OUVERTURES: [SorteEtape, RegExp][] = [
   ["critere", /^(j'ai réussi si|j’ai réussi si|tu as réussi si|c'est réussi|c’est réussi|pour vérifier|je vérifie que)/i],
   // « Tu peux » n'oblige pas, « tu dois » oblige (Meirieu) : ce qui est permis est une aide.
-  ["aide", /^(aide|astuce|attention|rappel|pour t'aider|pour t’aider|si tu (bloques|hésites|ne sais pas)|(je|tu|on) peu[xt]|tu n['’]es pas obligée?|je ne suis pas obligée?)(?![\p{L}])/iu],
+  ["aide", /^(aide|astuce|attention|rappel|pour [tm]['’]aider|si tu (bloques|hésites|ne sais pas)|si je (bloque|hésite|ne sais pas)|(je|tu|on) peu[xt]|tu n['’]es pas obligée?|je ne suis pas obligée?)(?![\p{L}])/iu],
   ["exemple", /^(exemple|par exemple)\b/i],
 ];
 
@@ -102,7 +103,8 @@ const IMPERATIFS = new Set([
   "continue", "recommence", "réponds", "explique", "invente", "cache", "donne", "fabrique", "lève", "présente", "propose", "rassemble", "regroupe",
   "remplis", "remplace", "résous", "retiens", "utilise", "vise", "mime", "chante", "récite", "épelle", "frappe", "marche", "saute", "attrape",
   "verse", "transvase", "pèse", "soupèse", "vide", "estime", "range", "dispose", "assemble", "partage", "distribue", "écoute",
-  "répète", "redis", "marque", "passe", "recompose", "demande",
+  "répète", "redis", "marque", "passe", "recompose", "demande", "aide", "forme", "transforme", "reporte", "change", "résume", "reviens",
+  "essaie", "note", "supprime", "déplace", "ordonne",
 ]);
 
 /** Ce qui peut précéder le verbe d'une ligne sans en être : « Puis écris… », « Ensuite, colle… ». */
@@ -116,6 +118,18 @@ const AUXILIAIRES = new Set(["suis", "est", "sont", "était", "étaient", "sera"
 
 /** Un impératif suivi de son pronom — « Écris-le », « Relis-toi » — ramené au verbe. */
 const sansPronom = (mot: string) => mot.replace(/-(le|la|les|toi|moi|lui|leur|en|y|nous|vous)$/i, "");
+
+/**
+ * Un impératif de la deuxième personne : un des impératifs ci-dessus, ou une
+ * forme du lexique qui n'est ni l'infinitif, ni « il lit », ni un pluriel.
+ */
+export const estImperatif = (mot: string): boolean => {
+  const m = mot.toLowerCase();
+  if (IMPERATIFS.has(m)) return true;
+  const verbe = verbeDeLaForme(m);
+  const plat = (x: string) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return !!verbe && plat(verbe) !== plat(m) && !/(t|ez|ons)$/.test(m);
+};
 
 /** Les sujets d'une consigne : « je », « tu », « on »… */
 const SUJETS = new Set(["je", "j'", "tu", "on", "nous", "vous"]);
@@ -162,7 +176,9 @@ function verbeDeTete(texte: string, avecOn = true): string | null {
       continue;
     }
     if (PRONOMS_COMPLEMENTS.has(m) && (sujet || m === "ne" || m === "n'")) continue;
-    return SUJETS_ELEVE.has(sujet) && !AUXILIAIRES.has(mot) && !PAS_UN_VERBE.has(mot) && !SUJETS.has(mot) ? sansPronom(brut) : null;
+    // « Je suis le programme » : suivre, devant un déterminant ; « je suis content », être.
+    const suivre = mot === "suis" && /^(le|la|les|l'|un|une|des|ce|cet|cette|ces|mon|ma|mes|son|sa|ses|chaque)$/.test(liste[i + 1]?.m ?? "");
+    return SUJETS_ELEVE.has(sujet) && (suivre || !AUXILIAIRES.has(mot)) && !PAS_UN_VERBE.has(mot) && !SUJETS.has(mot) ? sansPronom(brut) : null;
   }
   return null;
 }
@@ -267,11 +283,12 @@ export function enActions(html: string): string[] {
 /**
  * Les étapes d'une consigne : ses lignes, puis la numérotation qu'elle porte
  * déjà, sinon ses phrases ; une étape qui enchaîne plusieurs actions en fait
- * autant. Les références ont été retirées avant.
+ * autant ; chacune à la première personne (voir premierePersonne.ts). Les
+ * références ont été retirées avant.
  */
 export function etapesDe(interieur: string): Etape[] {
   const lignes = interieur.split(/<br\s*\/?>/i).map((l) => l.trim()).filter((l) => texteDe(l) !== "");
-  const morceaux = lignes.flatMap((l) => numerotee(l) ?? enPhrases(l)).flatMap(enActions);
+  const morceaux = lignes.flatMap((l) => numerotee(l) ?? enPhrases(l)).flatMap(enActions).map((h) => alaPremierePersonne(h, estImperatif));
   return morceaux.map((html) => ({ sorte: sorteDe(html), html }));
 }
 
@@ -378,7 +395,52 @@ function finDeLElement(html: string, balise: string, debut: number): number {
  * une liste ne vit pas dans un paragraphe. Une consigne déjà structurée, ou
  * qui porte déjà ses pictos, ne bouge pas.
  */
+/**
+ * Les instructions des exercices, hors des consignes : « Trace la droite qui
+ * passe par les deux points », « Paie 3 € », « Mets au pluriel ». Elles ne se
+ * découpent pas en étapes, mais se disent aussi à la première personne.
+ */
+const INSTRUCTIONS = ["ge-quoi", "fr-consigne", "nu-consigne", "fc-consigne", "gr-consigne", "ct-question", "do-question", "de-question",
+  "mo-cadre", "mo-prix", "cx-enonce", "ec-enonce", "ec-sous-titre", "gr-sous-titre", "ol-sous-titre"];
+
+/** Un texte phrase par phrase, chacune passée par `f` ; ce qui les sépare reste tel quel. */
+function parPhrases(html: string, f: (phrase: string) => string): string {
+  const masque = html.replace(/<[^>]*>/g, (t) => "\u0001".repeat(t.length));
+  let sortie = "";
+  let depuis = 0;
+  for (const m of masque.matchAll(/(?<=[.!?…])\s+(?=[\u0001]*[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ«])/g)) {
+    sortie += f(html.slice(depuis, m.index)) + m[0];
+    depuis = m.index + m[0].length;
+  }
+  return sortie + f(html.slice(depuis));
+}
+
+/** Les consignes laissées sans étapes, et les instructions des exercices, à la première personne. */
+function instructionsALaPremierePersonne(html: string): string {
+  const ouverture = /<(h[1-6]|p|div|span|td|li)\b([^>]*\bclass="([^"]*)"[^>]*)>/g;
+  let sortie = "";
+  let position = 0;
+  for (let m = ouverture.exec(html); m; m = ouverture.exec(html)) {
+    const classes = m[3].split(/\s+/);
+    if (classes.includes("cs") || !classes.some((c) => INSTRUCTIONS.includes(c) || CLASSES_CONSIGNE.includes(c))) continue;
+    const debut = m.index + m[0].length;
+    const fin = finDeLElement(html, m[1], debut);
+    if (fin < 0) continue;
+    const interieur = html.slice(debut, fin);
+    // Un bloc qui en contient d'autres se convertit dans ses enfants, s'ils sont des instructions.
+    if (/<(ol|ul|table|div|p)\b/i.test(interieur)) continue;
+    sortie += html.slice(position, debut) + parPhrases(interieur, (p) => alaPremierePersonne(p, estImperatif));
+    position = fin;
+    ouverture.lastIndex = fin;
+  }
+  return sortie + html.slice(position);
+}
+
 export function structurerConsignesHtml(html: string): string {
+  return instructionsALaPremierePersonne(structurerLesConsignes(html));
+}
+
+function structurerLesConsignes(html: string): string {
   let sortie = "";
   let position = 0;
   OUVERTURE.lastIndex = 0;
