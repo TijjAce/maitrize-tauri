@@ -78,7 +78,9 @@ let cahier = null, cahierSouci = "";
  * Le portail des tablettes : ouvert, il montre l'aide choisie aux tablettes
  * des élèves, sur le même réseau que le téléphone. Son état vient de Rust.
  */
-const PORTAIL_FERME = { ouvert: false, adresses: [], qr: "", tablettes: 0, montree: "", montreeId: "" };
+const PORTAIL_FERME = { ouvert: false, adresses: [], qr: "", tablettes: 0, montree: "", montreeId: "", affichage: "fiche", etape: null, etapes: 0, texteEtape: "", minuteur: null };
+/** Les durées du minuteur qu'on lance d'un toucher, en minutes. */
+const MINUTEURS = [1, 2, 5, 10, 15, 20, 30];
 let portail = PORTAIL_FERME, suiviPortail = null, portailSouci = "";
 /**
  * Où va ce qu'on dicte ou qu'on écrit : au cahier journal, rangé au créneau,
@@ -785,12 +787,59 @@ async function montrerAide(id, titre) {
       await garderLEcranAllume();
       suivreLePortail();
     }
-    portail = await invoke("portail_montrer", { id, titre: titre || aide.titre, html: aide.html });
+    portail = await invoke("portail_montrer", { id, titre: titre || aide.titre, html: aide.html, etapes: etapesDeLAide(aide.html) });
   } catch (e) {
     portailSouci = String(e);
   }
   rendre();
 }
+
+/**
+ * Les étapes d'une aide, pour le déroulé en grand : celles du séquentiel —
+ * leur texte et leur picto —, sinon les actions de sa consigne. Les tablettes
+ * les comptent de la même façon pour surligner l'étape en cours.
+ */
+function etapesDeLAide(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  let lignes = [...doc.querySelectorAll(".at-etape:not(.at-cachee), .sv-s-etape")];
+  if (!lignes.length) lignes = [...doc.querySelectorAll(".cs-etape.cs-action")];
+  return lignes.map((el) => {
+    const texte = (el.querySelector(".at-texte, .sv-s-texte, .cs-texte") || el).textContent.replace(/\s+/g, " ").trim();
+    const img = el.querySelector("img");
+    return { texte, image: img ? img.getAttribute("src") || "" : "" };
+  }).filter((e) => e.texte);
+}
+
+/** Ouvre le portail sans rien y montrer : le minuteur seul, au tableau ou sur les tablettes. */
+async function ouvrirLePortail() {
+  portailSouci = "";
+  try {
+    portail = await invoke("portail_ouvrir");
+    await garderLEcranAllume();
+    suivreLePortail();
+  } catch (e) { portailSouci = String(e); }
+  rendre();
+}
+
+/** Un ordre au portail ouvert : il rend son nouvel état. */
+async function auPortail(commande, args) {
+  try { portail = await invoke(commande, args || {}); portailSouci = ""; } catch (e) { portailSouci = String(e); }
+  rendre();
+}
+
+/** Ce qui reste au minuteur, lisible : « 7:32 ». */
+function resteDuMinuteur(t) {
+  if (!t) return "";
+  const reste = t.fin != null ? Math.max(0, t.fin - Date.now()) : t.reste;
+  if (t.fin != null && reste === 0) return "C'est fini\u00a0!";
+  const s = Math.ceil(reste / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+// Le temps qui reste, à la seconde, sans redessiner tout l'écran.
+setInterval(() => {
+  const el = document.getElementById("portail-reste");
+  if (el && portail.minuteur) el.textContent = resteDuMinuteur(portail.minuteur);
+}, 1000);
 
 async function cacherAide() {
   try { portail = await invoke("portail_cacher"); } catch (e) { portailSouci = String(e); }
@@ -988,6 +1037,7 @@ const ICONES = {
   liste: '<path d="M9.5 6.5H20M9.5 12H20M9.5 17.5H20"/><path d="M4.5 6.5h1M4.5 12h1M4.5 17.5h1"/>',
   lien: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>',
   attention: '<path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>',
+  horloge: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/>',
 };
 
 const icone = (nom, classe = "") =>
@@ -1158,6 +1208,8 @@ function carteDuPortail() {
       <span class="portail-adresse">${adresse ? echapper(adresse) : "Aucun réseau : activez le WiFi, ou le partage de connexion pour les tablettes."}</span>
       <span class="portail-aide">Les tablettes scannent ce code, sur le même réseau que le téléphone. Gardez le dictaphone ouvert pendant l'activité.</span>
     </div>
+    ${commandesDuDeroule()}
+    ${commandesDuMinuteur()}
     <div class="deux">
       ${portail.montree ? `<button class="btn-doux" id="cacher-aide">Ne plus montrer</button>` : "<span></span>"}
       <button class="btn-doux" id="fermer-portail">Fermer le portail</button>
@@ -1165,9 +1217,47 @@ function carteDuPortail() {
   </div>`;
 }
 
+/** L'aide montrée : en fiche ou en déroulé, et l'étape où en est la classe. */
+function commandesDuDeroule() {
+  if (!portail.montree || !portail.etapes) return "";
+  const deroule = portail.affichage === "deroule";
+  const k = portail.etape;
+  return `<div class="portail-bloc">
+    <div class="bascule">
+      <button class="${deroule ? "" : "on"}" id="affichage-fiche">La fiche</button>
+      <button class="${deroule ? "on" : ""}" id="affichage-deroule">Le déroulé en grand</button>
+    </div>
+    <div class="portail-etapes">
+      <button class="btn-mini" id="etape-avant" ${k == null || k === 0 ? "disabled" : ""} aria-label="Étape précédente">${icone("gauche", "petit")}</button>
+      <span>${k == null ? "Aucune étape surlignée" : `Étape ${k + 1} sur ${portail.etapes}`}</span>
+      <button class="btn-mini" id="etape-apres" ${k != null && k >= portail.etapes - 1 ? "disabled" : ""} aria-label="Étape suivante">${icone("droite", "petit")}</button>
+    </div>
+    ${portail.texteEtape ? `<p class="portail-etape-texte">${echapper(portail.texteEtape)}</p>` : ""}
+  </div>`;
+}
+
+/** Le minuteur des tablettes : des durées d'un toucher, puis le temps qui reste, la pause, l'arrêt. */
+function commandesDuMinuteur() {
+  const t = portail.minuteur;
+  if (!t) {
+    return `<div class="portail-bloc"><span class="portail-libelle">${icone("horloge", "petit")}Minuteur sur les tablettes</span>
+      <div class="minuteurs">${MINUTEURS.map((m) => `<button class="btn-mini" data-minuteur="${m * 60}">${m} min</button>`).join("")}</div></div>`;
+  }
+  const enPause = t.fin == null;
+  return `<div class="portail-bloc minuteur-en-cours">
+    <span class="portail-libelle">${icone("horloge", "petit")}Minuteur sur les tablettes${enPause ? " — en pause" : ""}</span>
+    <b id="portail-reste" class="portail-reste">${resteDuMinuteur(t)}</b>
+    <div class="deux">
+      <button class="btn-doux" id="${enPause ? "minuteur-reprendre" : "minuteur-pause"}">${enPause ? `${icone("lecture", "petit")}Reprendre` : `${icone("pause", "petit")}Pause`}</button>
+      <button class="btn-doux" id="minuteur-arreter">${icone("stop", "petit")}Arrêter</button>
+    </div>
+  </div>`;
+}
+
 /** Le cahier journal du jour choisi : ses créneaux, leur prévu, leur bilan, et les aides à montrer. */
 function carteCahier() {
-  const souci = portailSouci ? `<p class="erreur-ligne">${echapper(portailSouci)}</p>` : "";
+  const souci = (portailSouci ? `<p class="erreur-ligne">${echapper(portailSouci)}</p>` : "")
+    + (portail.ouvert ? "" : `<button class="btn-doux minuteur-seul" id="ouvrir-portail">${icone("horloge")}Un minuteur sur les tablettes</button>`);
   if (!cahier) {
     const texte = cahierSouci || "Le cahier journal arrive…";
     return `<div class="carte cj">${carteDuPortail()}${souci}<p class="carte-info">${icone(cahierSouci ? "attention" : "nuage")}<span>${echapper(texte)}</span></p></div>`;
@@ -1358,6 +1448,17 @@ function rendre() {
   });
   clic("cacher-aide", () => { void cacherAide(); });
   clic("fermer-portail", () => { void fermerPortail(); });
+  clic("ouvrir-portail", () => { void ouvrirLePortail(); });
+  el.querySelectorAll("[data-minuteur]").forEach((b) => {
+    b.onclick = () => { void auPortail("portail_minuteur", { secondes: Number(b.dataset.minuteur) }); };
+  });
+  clic("minuteur-pause", () => { void auPortail("portail_minuteur_pause"); });
+  clic("minuteur-reprendre", () => { void auPortail("portail_minuteur_reprendre"); });
+  clic("minuteur-arreter", () => { void auPortail("portail_minuteur_arreter"); });
+  clic("affichage-fiche", () => { void auPortail("portail_affichage", { affichage: "fiche" }); });
+  clic("affichage-deroule", () => { void auPortail("portail_affichage", { affichage: "deroule" }); });
+  clic("etape-avant", () => { void auPortail("portail_etape", { etape: Math.max(0, (portail.etape ?? 0) - 1) }); });
+  clic("etape-apres", () => { void auPortail("portail_etape", { etape: portail.etape == null ? 0 : portail.etape + 1 }); });
   clic("garder-photo", () => { void garderLaPhoto(); });
   const champPhoto = document.getElementById("nom-photo");
   if (champPhoto) {

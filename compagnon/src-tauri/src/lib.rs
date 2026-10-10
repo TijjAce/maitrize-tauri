@@ -44,6 +44,12 @@ pub fn run() {
             portail_ouvrir,
             portail_montrer,
             portail_cacher,
+            portail_affichage,
+            portail_etape,
+            portail_minuteur,
+            portail_minuteur_pause,
+            portail_minuteur_reprendre,
+            portail_minuteur_arreter,
             portail_etat,
             portail_fermer,
             // Les photos nommées, pour Mes pictos.
