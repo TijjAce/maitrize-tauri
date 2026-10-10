@@ -212,8 +212,8 @@ export function TelephoneNuage() {
         </span>
       </div>
       <p style={{ color: "var(--text-2)", marginTop: 10, fontSize: 13, lineHeight: 1.6 }}>
-        Le <b>Dictaphone</b> dépose dictées et notes dans un dossier de votre Nuage dès qu'il a du réseau — c'est
-        leur seul chemin —, et Maitrize les relève tout seul quand il est ouvert. Ce dossier n'est ouvert qu'à
+        Le <b>Dictaphone</b> dépose dictées, notes et photos dans un dossier de votre Nuage dès qu'il a du réseau — c'est
+        leur seul chemin —, et Maitrize les relève tout seul quand il est ouvert ; une photo nommée rejoint Mes pictos. Ce dossier n'est ouvert qu'à
         <b> votre compte</b> : aucun lien de partage, aucun mot de passe dans le QR code — le téléphone s'y connecte
         lui-même, avec votre compte. Tout est chiffré avant de quitter le téléphone : Nuage ne voit que des fichiers
         fermés, et le téléphone lui-même ne peut pas les rouvrir. En retour, il reçoit l'emploi du temps — une heure

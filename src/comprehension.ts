@@ -336,18 +336,19 @@ export const STYLE_COMPREHENSION = `
   .feuille.cx .cx-strophe td { height: 3mm; }
   .feuille.cx .cx-souligne { border-bottom: 2.5px solid #d33a32; padding-bottom: 1px; font-weight: 700; }
   .feuille.cx .cx-gras { font-weight: 800; border-bottom: 2px solid #2454e6; }
-  .feuille.cx .cx-aide { font-size: 11px; color: #4a5168; margin: 0 0 3mm; line-height: 1.7; }
+  .feuille.cx .cx-aide { font-size: 11px; color: #4a5168; margin: 0 0 2mm; line-height: 1.55; }
   .feuille.cx .cx-pastille { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 8px; padding: 0 6px; line-height: 1.6; margin-left: 1mm; vertical-align: 1px; white-space: nowrap; }
   .feuille.cx .cx-lit { background: #e3ebff; color: #2454e6; }
   .feuille.cx .cx-inf { background: #fff0dc; color: #b45d00; }
   .feuille.cx .cx-rep { background: #e2f5e8; color: #1f7a3f; }
   .feuille.cx .cx-voc { background: #f1e6fb; color: #7a3fb0; }
   .feuille.cx .cx-questions { display: block; }
-  .feuille.cx .cx-q { margin: 0 0 4.5mm; page-break-inside: avoid; break-inside: avoid; }
+  /* Les questions un peu plus serrées : la consigne, une action par ligne, prend la place gagnée. */
+  .feuille.cx .cx-q { margin: 0 0 3.5mm; page-break-inside: avoid; break-inside: avoid; }
   .feuille.cx .cx-enonce { font-size: 14px; line-height: 1.5; font-weight: 600; }
   .feuille.cx .cx-enonce b { color: #687087; margin-right: 1mm; }
   .feuille.cx div.cx-rep { border-bottom: 1px solid #9aa0b4; height: 9mm; background: none; border-radius: 0; padding: 0; margin: 0; }
-  .feuille.cx .cx-preuve { font-size: 12px; color: #4a5168; margin-top: 1.5mm; line-height: 2; }
+  .feuille.cx .cx-preuve { font-size: 12px; color: #4a5168; margin-top: 1.5mm; line-height: 1.6; }
   .feuille.cx .cx-case { display: inline-block; width: 4.5mm; height: 4.5mm; border: 1.5px solid #1c2233; border-radius: 1mm; vertical-align: -1mm; }
   .feuille.cx .cx-case.cx-grande { width: 8mm; height: 8mm; vertical-align: -2.5mm; margin-right: 2mm; }
   .feuille.cx .cx-pointilles { display: inline-block; width: 120mm; border-bottom: 1px dotted #687087; height: 4mm; }
@@ -370,7 +371,7 @@ export const STYLE_COMPREHENSION = `
   .feuille.cx .cx-pointilles.cx-court { width: 60mm; }
   .feuille.cx .cx-vf td { font-size: 14.5px; height: 12mm; }
   .feuille.cx .cx-vf th.cx-large { width: 26mm; }
-  .feuille.cx .cx-bilan { font-size: 12.5px; margin-top: 5mm; line-height: 2; }
+  .feuille.cx .cx-bilan { font-size: 12.5px; margin-top: 4mm; line-height: 2; }
   .feuille.cx .cx-corrige { font-size: 13px; line-height: 1.6; }
   .feuille.cx .cx-corrige.cx-apres { margin-top: 6mm; border-top: 1px solid #c4c9d6; padding-top: 3mm; }
   .feuille.cx .cx-c { margin: 0 0 2.5mm; }
