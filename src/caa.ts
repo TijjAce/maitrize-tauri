@@ -275,9 +275,25 @@ export function decorerConsignesHtml(html: string, lexique: Lexique, images: Rec
     for (const v of verbes) if (images[lexique[v]]) poses.push(lexique[v]);
     return htmlPictosVerbes(verbes, lexique, images);
   };
+  // Une consigne structurée (voir consignesStructurees) : chaque étape porte
+  // les pictos de ses verbes, juste après son numéro — un geste par ligne.
+  const etape = /(<li class="cs-etape[^"]*">)((?:<span class="cs-num[^"]*"[^>]*>[^<]*<\/span>)?)(<span class="cs-texte">)([\s\S]*?)(<\/li>)/g;
+  let etapes = "";
+  let depuis = 0;
+  for (let m = etape.exec(html); m; m = etape.exec(html)) {
+    if (m[4].includes("consigne-pictos")) { premiere = false; continue; }
+    const trouves = verbesDe(m[4].replace(/<[^>]*>/g, " "), lexique);
+    const verbes = premiere ? [...ajoutes, ...trouves.filter((v) => !ajoutes.includes(v))] : trouves;
+    premiere = false;
+    const pictos = poser(verbes);
+    if (!pictos) continue;
+    etapes += html.slice(depuis, m.index) + m[1] + m[2] + pictos + m[3] + m[4] + m[5];
+    depuis = m.index + m[0].length;
+  }
+  if (depuis > 0) html = etapes + html.slice(depuis);
   for (let m = ouverture.exec(html); m; m = ouverture.exec(html)) {
     const classes = m[3].split(/\s+/);
-    if (!classes.some((c) => CLASSES_CONSIGNE.includes(c))) continue;
+    if (!classes.some((c) => CLASSES_CONSIGNE.includes(c)) || classes.includes("cs")) continue;
     const debut = m.index + m[0].length;
     const fin = html.indexOf(`</${m[1]}>`, debut);
     if (fin < 0) continue;
