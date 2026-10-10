@@ -6,7 +6,7 @@ import { api, Sequence, Seance, MaterielItem, Jeu, nouvelleSeance, nowIso, newId
 import { decalee, deplacee, ordonnees, renumerotees } from "../ordreSeances";
 import { useSuiviSequences } from "../components/useSuiviSequences";
 import { BadgeSuivi } from "../components/SuiviSequence";
-import { avancement, dateCourte, jourProche, libelleDuSuivi } from "../suiviSequences";
+import { avancement, dateCourte, jourProche, libelleDuPassage, libelleDuSuivi } from "../suiviSequences";
 import { EVT_JOUR } from "../components/CommandPalette";
 import { Modal, Field, Input, Textarea, TextareaAuto, Select, Stars, Empty, Confirm, useAsync } from "../components/ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
@@ -218,6 +218,18 @@ export default function SequenceDetail() {
                 <button className="btn ghost sm" onClick={() => void marquer("terminee")} title="Même s'il reste des séances écrites">✅ Marquer terminée</button>
               </>
             )}
+          </div>
+        )}
+        {/* Quand la séquence a été posée dans le cahier journal — et quand elle le sera : un clic ouvre le jour. */}
+        {suivi && suivi.passages.length + suivi.aVenir.length > 0 && (
+          <div className="suivi-journal">
+            <span className="meta">📅 Dans le cahier journal :</span>
+            {[...suivi.passages, ...suivi.aVenir].map((p) => (
+              <button key={p.creneauId} type="button" className={`chip${p.date > aujourdHui ? " a-venir" : ""}`}
+                title={`Ouvrir le cahier journal à ce jour${p.bilan.trim() ? " — un bilan y est écrit" : ""}`} onClick={() => ouvrirLeJournal(p.date)}>
+                {libelleDuPassage(p)}{p.date > aujourdHui ? " · à venir" : p.bilan.trim() ? " · 📓" : ""}
+              </button>
+            ))}
           </div>
         )}
         {seq.video && <VideoSequence video={seq.video} />}
