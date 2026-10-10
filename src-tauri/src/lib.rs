@@ -196,7 +196,7 @@ pub fn run() {
             // Le téléphone relié par Nuage : relier, relever, publier
             telephone::telephone_etat, telephone::telephone_comptes, telephone::telephone_relier,
             telephone::telephone_code, telephone::telephone_code_ordinateur, telephone::telephone_code_appliquer,
-            telephone::telephone_oublier, telephone::telephone_relever, telephone::telephone_relever_pages,
+            telephone::telephone_oublier, telephone::telephone_relever, telephone::telephone_relever_pages, telephone::telephone_publier_journal,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")

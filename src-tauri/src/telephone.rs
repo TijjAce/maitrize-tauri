@@ -49,6 +49,8 @@ pub const CLE_COMPTE: &str = "nuageCompte";
 pub const CLE_AGENDA: &str = "telephoneAgenda";
 /// Quand il est parti : l'écran le dit, sinon on ne sait pas si le téléphone l'a.
 pub const CLE_AGENDA_PUBLIE: &str = "telephoneAgendaPublie";
+/// L'empreinte du dernier cahier journal publié pour le téléphone.
+pub const CLE_JOURNAL: &str = "telephoneJournal";
 
 /// Le dossier du relais, à la racine du Nuage de l'enseignant.
 const DOSSIER: &str = "Maitrize-Telephone";
@@ -347,6 +349,7 @@ pub async fn telephone_relier(
         // L'emploi du temps doit repartir, chiffré avec la nouvelle clé.
         crate::sync::set_setting(&c, CLE_AGENDA, "")?;
         crate::sync::set_setting(&c, CLE_AGENDA_PUBLIE, "")?;
+        crate::sync::set_setting(&c, CLE_JOURNAL, "")?;
     }
     // Le téléphone doit trouver l'emploi du temps dès son premier passage.
     let _ = publier_si_change(&db, &nouveau, &compte).await;
@@ -440,6 +443,7 @@ pub async fn telephone_code_appliquer(
     crate::sync::set_setting(&c, CLE_COMPTE, &serde_json::to_string(&compte).map_err(|e| e.to_string())?)?;
     crate::sync::set_setting(&c, CLE_AGENDA, "")?;
     crate::sync::set_setting(&c, CLE_AGENDA_PUBLIE, "")?;
+    crate::sync::set_setting(&c, CLE_JOURNAL, "")?;
     Ok(etat(&c))
 }
 
@@ -471,6 +475,7 @@ pub async fn telephone_oublier(db: State<'_, Db>, sans_revoquer: bool) -> R<Etat
     crate::sync::set_setting(&c, CLE_RELAIS, "")?;
     crate::sync::set_setting(&c, CLE_AGENDA, "")?;
     crate::sync::set_setting(&c, CLE_AGENDA_PUBLIE, "")?;
+    crate::sync::set_setting(&c, CLE_JOURNAL, "")?;
     Ok(etat(&c))
 }
 
@@ -792,6 +797,115 @@ async fn publier(r: &Relais, acces: &Acces, a: &relais::Agenda) -> R<()> {
     webdav::ecrire(acces, &format!("{}/{}", relais::DOSSIER_RETOUR, relais::FICHIER_AGENDA), blob).await
 }
 
+// ── Le cahier journal pour le téléphone ────────────────────────────────────
+//
+// L'interface fabrique le cahier journal des jours publiés — le prévu, le
+// bilan, la séance posée et ses aides à la tâche, dessinées comme à
+// l'impression — et le confie ici : on le chiffre avec la clé du retour, et
+// l'on n'envoie que ce qui a changé. Les aides vont chacune dans son fichier,
+// nommé par l'empreinte de son contenu ; celles qu'aucun créneau ne cite plus
+// s'en vont. Le téléphone peut ensuite les montrer aux tablettes des élèves.
+
+/// Une aide que l'interface confie : la clé par laquelle le journal envoyé la cite, son titre, sa page.
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AideAPublier {
+    pub cle: String,
+    pub titre: String,
+    pub html: String,
+}
+
+/// Ce qu'une publication a fait.
+#[derive(Serialize, Default, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct BilanJournal {
+    pub relie: bool,
+    /// Le texte du journal est reparti.
+    pub journal: bool,
+    pub aides_envoyees: usize,
+    pub aides_retirees: usize,
+}
+
+/**
+ * Le journal tel qu'il part : chaque aide citée par l'empreinte de son contenu
+ * plutôt que par la clé de l'interface ; les aides, par empreinte, une fois
+ * chacune. Une citation sans aide connue disparaît.
+ */
+pub fn journal_a_publier(mut j: relais::Journal, aides: &[AideAPublier]) -> (relais::Journal, std::collections::BTreeMap<String, relais::Aide>) {
+    let mut par_cle = std::collections::HashMap::new();
+    let mut par_id = std::collections::BTreeMap::new();
+    for a in aides {
+        let aide = relais::Aide { titre: a.titre.clone(), html: a.html.clone() };
+        let id = relais::id_de_l_aide(&aide);
+        par_cle.insert(a.cle.clone(), id.clone());
+        par_id.insert(id, aide);
+    }
+    for jour in &mut j.jours {
+        for c in &mut jour.creneaux {
+            c.aides = c.aides.drain(..).filter_map(|x| par_cle.get(&x.id).map(|id| relais::AideDuJournal { id: id.clone(), titre: x.titre })).collect();
+        }
+    }
+    (j, par_id)
+}
+
+/// De quoi savoir si le journal a changé, sans le garder.
+fn empreinte_du_journal(j: &relais::Journal) -> String {
+    let json = serde_json::to_vec(&j.jours).unwrap_or_default();
+    Sha256::digest(&json).iter().map(|o| format!("{o:02x}")).collect()
+}
+
+/// Publie le journal et ses aides dans le retour ; rend ce qui est parti, et l'empreinte du journal publié.
+async fn publier_journal_dans(
+    r: &Relais, acces: &Acces, j: &relais::Journal, aides: &std::collections::BTreeMap<String, relais::Aide>, deja: &str,
+) -> R<(BilanJournal, String)> {
+    let cle = relais::cle_de(&r.cle_retour)?;
+    let dossier = format!("{}/{}", relais::DOSSIER_RETOUR, relais::DOSSIER_AIDES);
+    // Ce qui est déjà sur Nuage : un dossier absent se crée, vide.
+    let presents: Vec<String> = match webdav::lister(acces, &dossier).await {
+        Ok(entrees) => entrees.into_iter().filter(|e| !e.dossier).filter_map(|e| e.nom.strip_suffix(".mtz").map(str::to_string)).collect(),
+        Err(_) => { webdav::creer_dossiers(acces, &dossier).await?; Vec::new() }
+    };
+    let mut bilan = BilanJournal { relie: true, ..Default::default() };
+    for (id, aide) in aides {
+        if presents.contains(id) { continue; }
+        let nom = relais::nom_de_l_aide(id).ok_or("Aide sans empreinte.")?;
+        webdav::ecrire(acces, &format!("{dossier}/{nom}"), relais::chiffrer_aide(&cle, aide)?).await?;
+        bilan.aides_envoyees += 1;
+    }
+    for id in presents.iter().filter(|id| !aides.contains_key(*id)) {
+        if let Some(nom) = relais::nom_de_l_aide(id) {
+            if webdav::supprimer(acces, &format!("{dossier}/{nom}")).await.is_ok() { bilan.aides_retirees += 1; }
+        }
+    }
+    let trace = empreinte_du_journal(j);
+    if trace != deja {
+        let publie = relais::Journal { publie: crate::models::now_iso(), jours: j.jours.clone() };
+        webdav::ecrire(acces, &format!("{}/{}", relais::DOSSIER_RETOUR, relais::FICHIER_JOURNAL), relais::chiffrer_journal(&cle, &publie)?).await?;
+        bilan.journal = true;
+    }
+    Ok((bilan, trace))
+}
+
+/**
+ * Publie le cahier journal pour le téléphone, s'il a changé, et ses aides à
+ * la tâche. Sans relais, rien ; appelée par la relève de fond.
+ */
+#[tauri::command]
+pub async fn telephone_publier_journal(db: State<'_, Db>, journal: relais::Journal, aides: Vec<AideAPublier>) -> R<BilanJournal> {
+    let (r, compte, deja) = {
+        let c = db.lock();
+        (lire_relais(&c), lire_compte(&c), crate::sync::get_setting(&c, CLE_JOURNAL))
+    };
+    let Some(r) = r else { return Ok(BilanJournal::default()) };
+    let compte = compte.ok_or(SANS_COMPTE)?;
+    let (j, par_id) = journal_a_publier(journal, &aides);
+    let (bilan, trace) = publier_journal_dans(&r, &acces_au_dossier(&r, &compte), &j, &par_id, &deja).await?;
+    if bilan.journal {
+        crate::sync::set_setting(&db.lock(), CLE_JOURNAL, &trace)?;
+    }
+    Ok(bilan)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1052,6 +1166,44 @@ mod tests {
             assert_eq!(annoncees, vec!["page-p1.jpg"]);
             assert_eq!(std::fs::read(dossier.path().join("page-p1.jpg")).unwrap(), vec![0xFF, 0xD8, 0xFF, 1, 2, 3]);
             assert!(nuage.noms().is_empty());
+        });
+    }
+
+    #[test]
+    fn le_cahier_journal_part_chiffre_avec_ses_aides_et_rien_ne_repart_pour_rien() {
+        let nuage = FauxNuage::demarrer();
+        let r = relais_sur(&nuage);
+        let acces = acces_au_dossier(&r, &nuage.compte());
+        let retour = relais::cle_de(&r.cle_retour).unwrap();
+        let aide = |cle: &str, html: &str| AideAPublier { cle: cle.into(), titre: format!("Aide {cle}"), html: html.into() };
+        let journal = |aides: Vec<&str>| relais::Journal { publie: String::new(), jours: vec![relais::JourDuJournal { jour: "2026-10-12".into(), creneaux: vec![relais::CreneauDuJournal {
+            id: "c1".into(), debut: "09:00".into(), fin: "10:00".into(), matiere: "Maths".into(), prevu: "Les dizaines".into(),
+            bilan: "Lina a compté jusqu'à 40.".into(), seance: "Séance 2".into(),
+            aides: aides.into_iter().map(|k| relais::AideDuJournal { id: k.into(), titre: format!("Aide {k}") }).collect(),
+        }] }] };
+        en_attendant(async {
+            let (j, par_id) = journal_a_publier(journal(vec!["a", "b", "inconnue"]), &[aide("a", "<p>1</p>"), aide("b", "<p>2</p>")]);
+            assert_eq!(j.jours[0].creneaux[0].aides.len(), 2, "une citation sans aide disparaît");
+            let (bilan, trace) = publier_journal_dans(&r, &acces, &j, &par_id, "").await.unwrap();
+            assert_eq!(bilan, BilanJournal { relie: true, journal: true, aides_envoyees: 2, aides_retirees: 0 });
+            let noms = nuage.noms();
+            assert!(noms.contains(&"retour/journal.mtz".to_string()));
+            assert_eq!(noms.iter().filter(|n| n.starts_with("retour/aides/")).count(), 2);
+            // Rien de lisible sur Nuage ; le téléphone, lui, relit tout avec la clé du retour.
+            assert!(!nuage.fichiers.lock().unwrap().values().any(|o| o.windows(4).any(|w| w == b"Lina")));
+            let lu = relais::dechiffrer_journal(&retour, &nuage.fichiers.lock().unwrap()["retour/journal.mtz"]).unwrap();
+            assert_eq!(lu.jours[0].creneaux[0].bilan, "Lina a compté jusqu'à 40.");
+            let id = lu.jours[0].creneaux[0].aides[0].id.clone();
+            let blob = nuage.fichiers.lock().unwrap()[&format!("retour/aides/{id}.mtz")].clone();
+            assert_eq!(relais::dechiffrer_aide(&retour, &blob).unwrap().html, "<p>1</p>");
+            // Republier la même chose : rien ne repart.
+            let (encore, _) = publier_journal_dans(&r, &acces, &j, &par_id, &trace).await.unwrap();
+            assert_eq!(encore, BilanJournal { relie: true, ..Default::default() });
+            // Une aide qui change : la nouvelle part, l'ancienne s'en va, le journal repart.
+            let (j2, par_id2) = journal_a_publier(journal(vec!["a", "b"]), &[aide("a", "<p>1</p>"), aide("b", "<p>2 bis</p>")]);
+            let (change, _) = publier_journal_dans(&r, &acces, &j2, &par_id2, &trace).await.unwrap();
+            assert_eq!(change, BilanJournal { relie: true, journal: true, aides_envoyees: 1, aides_retirees: 1 });
+            assert_eq!(nuage.noms().iter().filter(|n| n.starts_with("retour/aides/")).count(), 2);
         });
     }
 
