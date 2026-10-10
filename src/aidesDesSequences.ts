@@ -9,6 +9,7 @@
 
 import type { Sequence } from "./api";
 import { STYLE_FEUILLE } from "./cartesImprimables";
+import { motsDesProblemesImprimable, type MotsDesProblemes } from "./motsDesProblemes";
 import { resoudrePictos, motDuMot } from "./components/Tapuscrit";
 import { motPrincipal, type MotDeConsigne } from "./tapuscrit";
 import {
@@ -52,10 +53,20 @@ export function seanceDeLaParole(seances: SeanceDuCadre[]): number {
 export interface AideAPoser {
   /** La séance qui la reçoit, dans l'ordre de la démarche. */
   seance: number;
-  atelier: "sequentiel" | "priseDeParole";
+  atelier: "sequentiel" | "priseDeParole" | "etiquettes";
   titre: string;
   fabriquer: () => Promise<{ html: string; style: string; refaire: Record<string, unknown> }>;
 }
+
+/**
+ * La feuille des mots des problèmes, pour la séance qui ouvre la séquence :
+ * les mots que ses énoncés emploient, chacun avec son image (voir
+ * motsDesProblemes.ts). Elle se range avec les étiquettes de mots.
+ */
+export const aideDesMots = (seance: number, mots: MotsDesProblemes): AideAPoser => ({
+  seance, atelier: "etiquettes", titre: "Les mots des problèmes",
+  fabriquer: async () => { const f = await motsDesProblemesImprimable(mots); return { html: f.html, style: STYLE_FEUILLE + f.style, refaire: {} }; },
+});
 
 /** La prise de parole d'une séquence : dire ce qu'on a appris, le titre de la séquence au centre. */
 export const paroleDeLaSequence = (sequence: Pick<Sequence, "titre">): ReglagesParole => {

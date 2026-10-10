@@ -12,7 +12,8 @@ import { poserDansUneSeance } from "../impressionAtelier";
 import { graineAuHasard } from "../hasard";
 import { toast } from "./Toaster";
 import { NIVEAUX_DE_PROGRAMMATION, libelleDeProgrammation, niveauDeProgrammation, programmationProposee } from "../programmation";
-import { aidesDeLaSequence, seanceDeLaParole } from "../aidesDesSequences";
+import { aideDesMots, aidesDeLaSequence, seanceDeLaParole } from "../aidesDesSequences";
+import { SEANCE_DES_MOTS, avecLesMotsDesProblemes, enoncesDuHtml, motsDesEnonces, nombreDeMots, noteDesMots } from "../motsDesProblemes";
 import { lireProfils } from "../planDeLaClasse";
 import { CLE_INVENTAIRE, lireInventaire, materielPourCompetences, noteDuMaterielReel } from "../materielDeClasse";
 import { MaterielReelListe } from "./MaterielDeLaClasse";
@@ -49,9 +50,8 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
   const { data: existantes } = useAsync(() => (nouvelle ? Promise.resolve([] as Seance[]) : api.seancesList(sequence.id)), [sequence.id, nouvelle]);
   const nbExistantes = existantes?.length ?? 0;
   const [ajouterCadre, setAjouterCadre] = React.useState(false);
-  const demarche = demarcheDe(cadre);
-  const proposeLeCadre = !!comp && !!demarche && !!existantes && (nbExistantes === 0 || ajouterCadre);
-  const poseLesSeances = proposeLeCadre && suivi === "oui" && !!demarche;
+  const demarcheDuCadre = demarcheDe(cadre);
+  const proposeLeCadre = !!comp && !!demarcheDuCadre && !!existantes && (nbExistantes === 0 || ajouterCadre);
 
   // Les feuilles : la démarche pioche dans les ateliers de Fabriquer, aux nombres de la classe de la compétence et de la
   // période de la séquence. Chacune se décoche ; les jeux qu'on a rattachés soi-même à la compétence s'y ajoutent.
@@ -69,8 +69,11 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
   }, [reglages]);
   const prenoms = React.useMemo(() => (eleves ?? []).map((e) => e.nom.trim().split(/\s+/)[0]).filter(Boolean), [eleves]);
   const ctx: ContexteFeuilles | null = classe ? { classe, periode: s.periode, competence: comp?.competenceTitre ?? "", objectifRattache, salle, prenoms } : null;
-  const plan = React.useMemo(() => (demarche && ctx ? planDesFeuilles(demarche.id, ctx) : null),
-    [demarche?.id, ctx?.classe, ctx?.periode, ctx?.competence, objectifRattache, salle, prenoms]); // eslint-disable-line react-hooks/exhaustive-deps
+  const planDuCadre = React.useMemo(() => (demarcheDuCadre && ctx ? planDesFeuilles(demarcheDuCadre.id, ctx) : null),
+    [demarcheDuCadre?.id, ctx?.classe, ctx?.periode, ctx?.competence, objectifRattache, salle, prenoms]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Une séquence qui pose des problèmes s'ouvre sur la séance de leurs mots : ses feuilles suivent d'une séance.
+  const { demarche, plan } = React.useMemo(() => avecLesMotsDesProblemes(demarcheDuCadre, planDuCadre), [demarcheDuCadre, planDuCadre]);
+  const poseLesSeances = proposeLeCadre && suivi === "oui" && !!demarche;
   const [retirees, setRetirees] = React.useState<ReadonlySet<number>>(() => new Set());
   React.useEffect(() => { setRetirees(new Set()); }, [cadre, plan]);
   const basculer = (k: number) => setRetirees((avant) => {
@@ -123,6 +126,7 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
         for (const seance of seances) await api.seanceSave(seance);
         // Puis les feuilles, chacune dans sa séance, en PDF, avec la compétence de la séquence en tête.
         let faites = 0;
+        const enonces: string[] = [];
         for (const f of aFabriquer) {
           const seance = seances[f.seance];
           if (!seance) continue;
@@ -131,6 +135,7 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
             // Le tirage et les réglages vont avec la feuille : « Modifier dans Fabriquer » la refait.
             const graine = graineAuHasard();
             const sortie = f.fabriquer(graine);
+            enonces.push(...enoncesDuHtml(sortie.html));
             await poserDansUneSeance(f.atelier, f.titre, sortie.html, sortie.style, seance.id, propre.id,
               { competences: comp ? [comp] : undefined, fabrication: { memoires: sortie.refaire, graine: sortie.graine ?? graine } });
             faites++;
@@ -138,8 +143,14 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
             toast(`« ${f.titre} » n'a pas pu être fabriquée : ${String(e)}`, { icone: "⚠️" });
           }
         }
+        // Les mots des problèmes, relevés dans les énoncés qu'on vient de tirer : dans le matériel de la première séance, et sur leur feuille.
+        const mots = demarche.seances[0] === SEANCE_DES_MOTS ? motsDesEnonces(enonces) : null;
+        if (mots && nombreDeMots(mots) && seances[0]) await api.seanceSave({ ...seances[0], materiel: [seances[0].materiel, noteDesMots(mots)].filter(Boolean).join("\n") });
         // Puis les aides à la tâche, chacune dans sa séance.
-        const aides = aidesDeLaSequence(seances, propre, { sequentiel: aideSequentiel, parole: seanceParole });
+        const aides = [
+          ...(mots && nombreDeMots(mots) ? [aideDesMots(0, mots)] : []),
+          ...aidesDeLaSequence(seances, propre, { sequentiel: aideSequentiel, parole: seanceParole }),
+        ];
         let aidees = 0;
         for (const a of aides) {
           const seance = seances[a.seance];
