@@ -22,6 +22,7 @@ import type { MaterielItem } from "./api";
 import { ecrireFabrication, fabricationDuMoment, modificationEnCours, type Fabrication, type Modification } from "./modifierFeuille";
 import { sansReferences } from "./references";
 import { STYLE_DYS, cleModeDys, lireModeDys } from "./presentationFeuille";
+import { STYLE_CONSIGNES_STRUCTUREES, structurerConsignesHtml } from "./consignesStructurees";
 
 /** Combien de compétences s'écrivent en tête ; au-delà, on les compte. */
 export const LIGNES_MAX = 4;
@@ -177,19 +178,19 @@ export async function avecLaConsigneDeLAtelier(atelier: string, corps: string): 
   try {
     const { api } = await import("./api");
     const reecrite = remplacerConsigne(corps, await api.settingGet(cleConsigne(atelier)));
-    return sansReferences(appliquerOptionsFeuille(reecrite, lireOptionsFeuille(await api.settingGet(cleOptionsFeuille(atelier)))));
+    return sansReferences(structurerConsignesHtml(appliquerOptionsFeuille(reecrite, lireOptionsFeuille(await api.settingGet(cleOptionsFeuille(atelier))))));
   } catch {
-    return sansReferences(corps);
+    return sansReferences(structurerConsignesHtml(corps));
   }
 }
 
-/** Le style que l'atelier ajoute à chacune de ses feuilles, en dernier : le mode dyslexique, s'il est choisi. */
+/** Le style que l'atelier ajoute à chacune de ses feuilles, en dernier : les consignes structurées, et le mode dyslexique s'il est choisi. */
 export async function styleDeLAtelier(atelier: string): Promise<string> {
   try {
     const { api } = await import("./api");
-    return lireModeDys(await api.settingGet(cleModeDys(atelier))) ? STYLE_DYS : "";
+    return STYLE_CONSIGNES_STRUCTUREES + (lireModeDys(await api.settingGet(cleModeDys(atelier))) ? STYLE_DYS : "");
   } catch {
-    return "";
+    return STYLE_CONSIGNES_STRUCTUREES;
   }
 }
 

@@ -29,6 +29,7 @@ const {
   lignesCompetences, materielDuBureau, STYLE_ENTETE_COMPETENCES,
 } = await import("./impressionAtelier");
 const { ecrireCompetencesAtelier } = await import("./ateliersCompetences");
+const { STYLE_CONSIGNES_STRUCTUREES } = await import("./consignesStructurees");
 
 const comp = (p: Partial<CompetenceSelectionnee> = {}): CompetenceSelectionnee => ({
   id: "r1|S1|c1", referentielNom: "Cycle 2", domaineId: "D1", domaineTitre: "Lire et écrire",
@@ -110,35 +111,41 @@ describe("imprimer un atelier", () => {
 
   it("imprime la feuille inchangée quand rien n'est choisi", async () => {
     await imprimerAtelier("fluence", "Grille de fluence", "<p>grille</p>", ".fl { }");
-    expect(impressions[0]).toEqual({ titre: "Grille de fluence", corps: "<p>grille</p>", style: ".fl { }" });
+    // Le style des consignes structurées suit toujours celui de l'atelier : la feuille, elle, est inchangée.
+    expect(impressions[0]).toEqual({ titre: "Grille de fluence", corps: "<p>grille</p>", style: ".fl { }" + STYLE_CONSIGNES_STRUCTUREES });
   });
 
   it("met les pictos des verbes devant les consignes, quand l'enseignant en a choisi", async () => {
     reglages.set("caa:consignes", JSON.stringify({ écrire: 22, lire: 99 }));
     await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Lis puis écris le nombre.</p>', ".cu { }");
     const { corps, style } = impressions[0];
-    // « écrire » a son image, « lire » n'en a pas : un seul picto, et la mention ARASAAC.
-    expect(corps).toContain('<p class="consigne"><span class="consigne-ligne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:image/png;base64,AAAA" alt="écrire">');
+    // « écrire » a son image, « lire » n'en a pas : un seul picto, devant l'étape, et la mention ARASAAC.
+    expect(corps).toContain('<div class="consigne cs"><ol class="cs-etapes"><li class="cs-etape cs-action"><span class="cs-num cs-seule" aria-hidden="true">▸</span>'
+      + '<span class="consigne-pictos"><span class="consigne-picto"><img src="data:image/png;base64,AAAA" alt="écrire">');
     expect(corps).not.toContain('alt="lire"');
     expect(corps).toContain("ARASAAC");
     expect(style).toContain(".consigne-pictos");
     // Un picto ajouté à la main vient devant, même si la consigne ne dit pas le verbe.
     await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Compte.</p>', "", { pictos: ["écrire"] });
-    expect(impressions[1].corps).toContain('<p class="consigne"><span class="consigne-ligne"><span class="consigne-pictos"><span class="consigne-picto"><img src="data:image/png;base64,AAAA" alt="écrire">');
-    // Coupés : la feuille reste nue.
+    expect(impressions[1].corps).toContain('<span class="cs-num cs-seule" aria-hidden="true">▸</span><span class="consigne-pictos"><span class="consigne-picto"><img src="data:image/png;base64,AAAA" alt="écrire">');
+    // Coupés : la consigne reste structurée, sans picto.
     reglages.set("caa:consignes:actif", "0");
     await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Écris.</p>');
-    expect(impressions[2].corps).toBe('<p class="consigne">Écris.</p>');
+    expect(impressions[2].corps).toBe('<div class="consigne cs"><ol class="cs-etapes"><li class="cs-etape cs-action"><span class="cs-num cs-seule" aria-hidden="true">▸</span>'
+      + '<span class="cs-texte"><b class="cs-verbe">Écris</b>.</span></li></ol></div>');
   });
 
   it("prend la consigne que l'enseignant a réécrite pour l'atelier", async () => {
     reglages.set("fabriquer:consigne:cubes", "Regarde les cubes.\nÉcris le nombre.");
     await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Compte les cubes et écris le nombre.</p><table></table>');
-    expect(impressions[0].corps).toBe('<p class="consigne">Regarde les cubes.<br>Écris le nombre.</p><table></table>');
+    // Une ligne réécrite, une étape numérotée.
+    expect(impressions[0].corps).toBe('<div class="consigne cs"><ol class="cs-etapes">'
+      + '<li class="cs-etape cs-action"><span class="cs-num">1</span><span class="cs-texte"><b class="cs-verbe">Regarde</b> les cubes.</span></li>'
+      + '<li class="cs-etape cs-action"><span class="cs-num">2</span><span class="cs-texte"><b class="cs-verbe">Écris</b> le nombre.</span></li></ol></div><table></table>');
     // Sans texte, la consigne de l'atelier.
     reglages.set("fabriquer:consigne:cubes", "  ");
     await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Compte.</p>');
-    expect(impressions[1].corps).toBe('<p class="consigne">Compte.</p>');
+    expect(impressions[1].corps).toContain('<b class="cs-verbe">Compte</b>.');
   });
 
   it("imprime quand même si le réglage est illisible", async () => {
