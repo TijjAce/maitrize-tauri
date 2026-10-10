@@ -74,6 +74,13 @@ describe("les consignes décorées", () => {
     expect(decorerConsignesHtml(html, lexique, images)).toBe(html);
   });
 
+  it("posent dans une consigne structurée les pictos de chaque ligne après son numéro ou sa marque", async () => {
+    const { structurerConsignesHtml } = await import("./consignesStructurees");
+    const html = decorerConsignesHtml(structurerConsignesHtml(`<p class="consigne">Lis le mot.<br>Aide : écris-le en grand.</p>`), lexique, images);
+    expect(html).toContain(`<span class="cs-num cs-seule" aria-hidden="true">▸</span><span class="consigne-pictos"><span class="consigne-picto"><img src="data:lire"`);
+    expect(html).toContain(`<span class="cs-num cs-marque cs-marque-aide" aria-hidden="true">&#8203;</span><span class="consigne-pictos"><span class="consigne-picto"><img src="data:ecrire"`);
+  });
+
   it("ne changent rien sans lexique, sans verbe, ou sans image", () => {
     const feuille = `<p class="consigne">Écris le nombre.</p>`;
     expect(decorerConsignesHtml(feuille, {}, images)).toBe(feuille);

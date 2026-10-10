@@ -22,17 +22,28 @@ export const ecrireModeDys = (dys: boolean): string => (dys ? "1" : "");
 /**
  * Le style ajouté à la feuille en mode dyslexique.
  *
- * La police d'abord : Luciole ou OpenDyslexic si l'ordinateur les a, Verdana
- * sinon — présente sur Mac comme sur Windows, large, aux lettres qui ne se
- * confondent pas. Puis l'espace : entre les lettres, entre les mots, entre les
- * lignes. L'italique et le texte justifié, qui brouillent la lecture, sont
- * retirés.
+ * La police d'abord : Luciole si l'ordinateur l'a — Éduscol la cite pour les
+ * élèves à besoins particuliers —, Verdana sinon, présente sur Mac comme sur
+ * Windows, large, aux lettres qui ne se confondent pas. OpenDyslexic n'y est
+ * plus : les études ne lui trouvent aucun bénéfice (Rello et Baeza-Yates
+ * 2013, Wery et Diliberto 2017). Puis l'espace, ce que la recherche soutient
+ * le mieux : entre les lettres et, autant, entre les mots — élargir les unes
+ * sans les autres ralentit la lecture (Zorzi 2012, Galliussi 2020) —, et
+ * entre les lignes, de 1,5 à 2 (Cap école inclusive, BDA). L'italique et le
+ * texte justifié, qui brouillent la lecture, sont retirés ; le gras remplace
+ * l'italique.
+ *
+ * L'écriture cursive et les schémas gardent leur dessin : des lettres
+ * espacées ne se tiennent plus, et un schéma est coté au millimètre.
  */
 export const STYLE_DYS = `
-  .feuille { font-family: "Luciole", "OpenDyslexic", Verdana, Geneva, Arial, sans-serif !important;
-    letter-spacing: .05em; word-spacing: .16em; }
+  .feuille { font-family: "Luciole", Verdana, Geneva, Arial, sans-serif !important;
+    letter-spacing: .08em; word-spacing: .25em; }
   .feuille p, .feuille li, .feuille .consigne, .feuille .consigne-ligne, .feuille .regle, .feuille .texte {
-    line-height: 1.6; text-align: left; }
-  .feuille i, .feuille em, .feuille cite { font-style: normal; font-weight: 600; }
+    line-height: 1.8; text-align: left; }
+  .feuille .cs .cs-etape { line-height: 1.6; }
+  .feuille .cs .cs-etape + .cs-etape { margin-top: .3em; }
+  .feuille i, .feuille em, .feuille cite { font-style: normal; font-weight: 700; }
   .feuille [style*="justify"] { text-align: left !important; }
+  .feuille svg, .feuille .gb-cursive { letter-spacing: normal; word-spacing: normal; }
 `;

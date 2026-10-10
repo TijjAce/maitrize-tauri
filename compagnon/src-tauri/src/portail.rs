@@ -173,13 +173,15 @@ pub const PAGE_TABLETTE: &str = r#"<!doctype html>
 </script>
 </body></html>"#;
 
-/// Ce que la page d'une aide reçoit en plus sur la tablette : toucher une étape la coche.
+/// Ce que la page d'une aide reçoit en plus sur la tablette : toucher une étape la coche,
+/// et la case de « J'ai réussi si » se coche avec elle.
 pub const COCHER: &str = r#"<style>
   .sv-s-etape, .at-etape, .cs-etape, .at-case { cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .sv-s-etape.fait, .at-etape.fait, .cs-etape.fait { background: #dcfce7 !important; }
   .at-case.fait { background: #16a34a !important; border-color: #16a34a !important; position: relative; }
   .at-case.fait::after { content: "✓"; position: absolute; inset: 0; color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; }
   .sv-s-etape.fait .sv-s-numero, .at-etape.fait .at-num { background: #16a34a !important; }
+  .cs-critere.fait .cs-marque-critere { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect x='2.2' y='2.2' width='15.6' height='15.6' rx='2.4' fill='%23166534' stroke='%23166534' stroke-width='2.2'/%3E%3Cpath d='M5.6 10.4l3 3 5.8-6.6' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important; }
 </style>
 <script>
   document.addEventListener("click", function (e) {
