@@ -119,8 +119,9 @@ describe("imprimer un atelier", () => {
     reglages.set("caa:consignes", JSON.stringify({ écrire: 22, lire: 99 }));
     await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Lis puis écris le nombre.</p>', ".cu { }");
     const { corps, style } = impressions[0];
-    // « écrire » a son image, « lire » n'en a pas : un seul picto, devant l'étape, et la mention ARASAAC.
-    expect(corps).toContain('<div class="consigne cs"><ol class="cs-etapes"><li class="cs-etape cs-action"><span class="cs-num cs-seule" aria-hidden="true">▸</span>'
+    // Deux actions, deux étapes ; « écrire » a son image, « lire » n'en a pas : un seul picto, devant l'étape qui écrit, et la mention ARASAAC.
+    expect(corps).toContain('<div class="consigne cs"><ol class="cs-etapes"><li class="cs-etape cs-action"><span class="cs-num">1</span>'
+      + '<span class="cs-texte"><b class="cs-verbe">Lis</b>.</span></li><li class="cs-etape cs-action"><span class="cs-num">2</span>'
       + '<span class="consigne-pictos"><span class="consigne-picto"><img src="data:image/png;base64,AAAA" alt="écrire">');
     expect(corps).not.toContain('alt="lire"');
     expect(corps).toContain("ARASAAC");

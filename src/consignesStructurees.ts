@@ -11,8 +11,9 @@
 // On travaille sur le HTML des feuilles telles que l'application les écrit,
 // comme la consigne réécrite et les pictos des verbes : la consigne est un
 // élément qui porte l'une des classes des consignes. La numérotation qu'elle
-// porte déjà, ses retours à la ligne et ses phrases font les étapes ; rien
-// n'est réécrit, seulement découpé et mis en forme.
+// porte déjà, ses retours à la ligne et ses phrases font les étapes, et une
+// phrase qui enchaîne plusieurs actions en fait autant ; rien n'est réécrit,
+// seulement découpé et mis en forme.
 
 import { CLASSES_CONSIGNE, verbeDeLaForme } from "./caa";
 import { referencesDe, sansReferences } from "./references";
@@ -25,7 +26,8 @@ export interface Etape { sorte: SorteEtape; html: string }
 /** Ce qui ouvre une aide, un exemple, un critère de réussite. */
 const OUVERTURES: [SorteEtape, RegExp][] = [
   ["critere", /^(j'ai réussi si|j’ai réussi si|tu as réussi si|c'est réussi|c’est réussi|pour vérifier|je vérifie que)/i],
-  ["aide", /^(aide|astuce|attention|rappel|pour t'aider|pour t’aider|si tu (bloques|hésites|ne sais pas))\b/i],
+  // « Tu peux » n'oblige pas, « tu dois » oblige (Meirieu) : ce qui est permis est une aide.
+  ["aide", /^(aide|astuce|attention|rappel|pour t'aider|pour t’aider|si tu (bloques|hésites|ne sais pas)|(je|tu|on) peu[xt]|tu n['’]es pas obligée?|je ne suis pas obligée?)(?![\p{L}])/iu],
   ["exemple", /^(exemple|par exemple)\b/i],
 ];
 
@@ -100,27 +102,81 @@ const IMPERATIFS = new Set([
   "continue", "recommence", "réponds", "explique", "invente", "cache", "donne", "fabrique", "lève", "présente", "propose", "rassemble", "regroupe",
   "remplis", "remplace", "résous", "retiens", "utilise", "vise", "mime", "chante", "récite", "épelle", "frappe", "marche", "saute", "attrape",
   "verse", "transvase", "pèse", "soupèse", "vide", "estime", "range", "dispose", "assemble", "partage", "distribue", "écoute",
+  "répète", "redis", "marque", "passe", "recompose",
 ]);
 
 /** Ce qui peut précéder le verbe d'une ligne sans en être : « Puis écris… », « Ensuite, colle… ». */
 const LIENS = new Set(["puis", "ensuite", "enfin", "d'abord", "après", "alors", "maintenant", "et"]);
 
+/**
+ * Les auxiliaires : un verbe qui en suit un décrit un état ou ce qui est
+ * fait — « Le chemin est tracé », « Tu as colorié » —, pas une action à faire.
+ */
+const AUXILIAIRES = new Set(["suis", "est", "sont", "était", "étaient", "sera", "seront", "été", "es", "sommes", "êtes", "a", "ai", "as", "avons", "avez", "ont", "avait", "avaient"]);
+
 /** Un impératif suivi de son pronom — « Écris-le », « Relis-toi » — ramené au verbe. */
 const sansPronom = (mot: string) => mot.replace(/-(le|la|les|toi|moi|lui|leur|en|y|nous|vous)$/i, "");
 
-/** Le verbe d'action d'une étape, s'il vient dans ses premiers mots : c'est lui qu'on met en valeur. */
-export function verbeEnTete(html: string, portee = 6): string | null {
-  const liste = mots(texteDe(html)).slice(0, portee);
-  // En tête de ligne, après un mot de liaison au plus : les impératifs que le lexique n'a pas.
-  const premier = liste.findIndex((m) => !LIENS.has(m.toLowerCase().replace(/’/g, "'")));
-  if (premier >= 0 && premier <= 1) {
-    const mot = sansPronom(liste[premier]);
-    if (IMPERATIFS.has(mot.toLowerCase())) return mot;
+/** Les sujets d'une consigne : « je », « tu », « on »… */
+const SUJETS = new Set(["je", "j'", "tu", "on", "nous", "vous"]);
+/** … et ceux qui désignent l'élève : après eux vient forcément ce qu'il fait. « On » dit aussi une vérité générale — « on ne parle pas pareil en classe ». */
+const SUJETS_ELEVE = new Set(["je", "j'", "tu"]);
+
+/** Ce qui vient entre le sujet et son verbe : la négation, les pronoms compléments — « je ne raye pas », « je le copie ». */
+const PRONOMS_COMPLEMENTS = new Set(["ne", "n'", "le", "la", "les", "l'", "me", "m'", "te", "t'", "se", "s'", "lui", "leur", "y", "en", "nous", "vous"]);
+
+/** Ce qui n'est jamais le verbe qu'on cherche, même après un sujet : « nous, vous, ils », « c'est ». */
+const PAS_UN_VERBE = new Set(["il", "ils", "elle", "elles", "ce", "c'", "ça", "cela", "qui", "que", "qu'"]);
+
+/** Les premiers mots d'un texte, la ponctuation ôtée, l'élision à part : « J'écris » donne « J' » puis « écris ». */
+function motsDeTete(texte: string): { brut: string; m: string }[] {
+  return texte.trim().split(/\s+/).slice(0, 8).flatMap((t) => {
+    const nu = t.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, "");
+    const elision = /^(\p{L}+['’])(.+)$/u.exec(nu);
+    return (elision ? [elision[1], elision[2]] : [nu]).map((brut) => ({ brut, m: brut.toLowerCase().replace(/’/g, "'") }));
+  });
+}
+
+/**
+ * Le verbe qui ouvre une proposition, s'il y en a un : un impératif ou un
+ * verbe du lexique en tête, après un mot de liaison, un sujet et ses pronoms ;
+ * ou, après « je » et « tu », le mot qui suit — c'est forcément un verbe —,
+ * sauf être et avoir, qui disent un état. Sans sujet, seule la négation
+ * précède le verbe : un « la » en tête est un article.
+ */
+function verbeDeTete(texte: string): string | null {
+  const liste = motsDeTete(texte);
+  let enTete = true;
+  let sujet = "";
+  for (const [i, { brut, m }] of liste.entries()) {
+    if (!m) return null;
+    if (enTete && LIENS.has(m)) continue;
+    const mot = sansPronom(m);
+    // « en sautant une ligne » : un gérondif dit comment faire, ce n'est pas une action de plus.
+    if (i > 0 && liste[i - 1].m === "en" && mot.endsWith("ant")) return null;
+    if (verbeDeLaForme(mot) || (enTete && IMPERATIFS.has(mot))) return sansPronom(brut);
+    enTete = false;
+    if (!sujet && SUJETS.has(m)) { sujet = m; continue; }
+    if (PRONOMS_COMPLEMENTS.has(m) && (sujet || m === "ne" || m === "n'")) continue;
+    return SUJETS_ELEVE.has(sujet) && !AUXILIAIRES.has(mot) && !PAS_UN_VERBE.has(mot) && !SUJETS.has(mot) ? sansPronom(brut) : null;
   }
-  for (const m of liste) {
-    // « j'écris », « l'entoure » : le verbe suit l'apostrophe.
+  return null;
+}
+
+/**
+ * Le verbe d'action d'une étape, c'est lui qu'on met en valeur : celui qui
+ * l'ouvre, sinon un verbe du lexique dans ses premiers mots — « Chaque
+ * joueur lit une carte » —, s'il ne suit pas un auxiliaire.
+ */
+export function verbeEnTete(html: string, portee = 6): string | null {
+  const texte = texteDe(html);
+  const tete = verbeDeTete(texte);
+  if (tete) return tete;
+  const liste = mots(texte).slice(0, portee);
+  for (const [i, m] of liste.entries()) {
+    // « l'entoure » : le verbe suit l'apostrophe.
     const mot = sansPronom(m.replace(/^[a-zà-ÿ]+['’]/i, ""));
-    if (verbeDeLaForme(mot)) return mot;
+    if (verbeDeLaForme(mot) && !(i > 0 && AUXILIAIRES.has(liste[i - 1].toLowerCase()))) return mot;
   }
   return null;
 }
@@ -132,13 +188,66 @@ export function sorteDe(html: string): SorteEtape {
   return verbeEnTete(html) ? "action" : "info";
 }
 
+/** Une proposition qui commence par une action : son verbe en tête (voir verbeDeTete). */
+const commenceParUneAction = (texte: string) => verbeDeTete(texte) !== null;
+
+/**
+ * Ce qui, dans une phrase, pose une condition, un moment ou un but dont
+ * dépend la suite : « Si je me suis trompé, je… », « Quand tu as fini, … ».
+ * Une telle phrase ne se coupe pas.
+ */
+const SUBORDONNANTS = /(^|[^\p{L}'’])(si|s['’]ils?|quand|lorsque|lorsqu['’]|dès que|pour|avant de|avant d['’]|après avoir|une fois que|tant que|pendant que|jusqu['’]à ce)(?![\p{L}])/iu;
+
+/**
+ * Une étape qui enchaîne plusieurs actions — « J'écoute, je répète,
+ * j'écris… », « Compte les cubes et écris le nombre » — coupée en autant
+ * d'étapes : une phrase, une action (Cap école inclusive, « Lecture et
+ * compréhension des consignes » ; règles du FALC). On ne coupe qu'entre deux
+ * propositions qui commencent chacune par leur verbe ; jamais une phrase qui
+ * pose une condition ou un but, ni entre parenthèses ou guillemets. Rien n'est
+ * réécrit : la coupure reçoit son point, la suite sa majuscule.
+ */
+export function enActions(html: string): string[] {
+  if (sorteDe(html) !== "action") return [html];
+  const masque = html.replace(/<[^>]*>/g, (t) => "\u0001".repeat(t.length));
+  const separateur = /,\s+|\s+et\s+|\s*;\s+|\s+(?=puis\s)/g;
+  const coupures: { debut: number; fin: number }[] = [];
+  let depuis = 0;
+  for (let m = separateur.exec(masque); m; m = separateur.exec(masque)) {
+    if (profondeurA(html, m.index) !== 0) continue;
+    const avant = masque.slice(depuis, m.index);
+    // Entre parenthèses ou guillemets, on est dans une citation : on n'y coupe pas.
+    if ((avant.match(/[(«“]/g) ?? []).length > (avant.match(/[)»”]/g) ?? []).length) continue;
+    const suite = texteDe(html.slice(m.index + m[0].length)).replace(/^et\s+/i, "");
+    // Après deux-points, la phrase explique ou énumère — « un pronom : il, elle, nous… » — : on ne la coupe plus.
+    if (/:/.test(avant) || SUBORDONNANTS.test(texteDe(html.slice(depuis, m.index)))) continue;
+    if (!commenceParUneAction(texteDe(html.slice(depuis, m.index))) || !commenceParUneAction(suite)) continue;
+    coupures.push({ debut: m.index, fin: m.index + m[0].length });
+    depuis = m.index + m[0].length;
+  }
+  if (!coupures.length) return [html];
+  const bornes = [0, ...coupures.flatMap((c) => [c.debut, c.fin]), html.length];
+  const morceaux: string[] = [];
+  for (let i = 0; i < bornes.length; i += 2) morceaux.push(html.slice(bornes[i], bornes[i + 1]).trim());
+  return morceaux.map((m, i) => {
+    let x = i > 0 ? m.replace(/^((?:<[^>]*>)*)et\s+/i, "$1") : m;
+    // La majuscule à la première lettre du texte, hors des balises.
+    if (i > 0) x = x.replace(/^((?:<[^>]*>|\s)*)(\p{Ll})/u, (_t, balises: string, l: string) => balises + l.toUpperCase());
+    // Le point à la fin d'une coupure — sans le tiret qui fermait une incise ; la phrase d'origine garde le sien.
+    if (i < morceaux.length - 1) x = x.replace(/\s+[—–]\s*((?:<\/[^>]+>\s*)*)$/, "$1");
+    if (i < morceaux.length - 1 && !/[.!?…:]\s*((?:<\/[^>]+>)\s*)*$/.test(x)) x = x.replace(/((?:<\/[^>]+>\s*)*)$/, ".$1");
+    return x;
+  });
+}
+
 /**
  * Les étapes d'une consigne : ses lignes, puis la numérotation qu'elle porte
- * déjà, sinon ses phrases. Les références ont été retirées avant.
+ * déjà, sinon ses phrases ; une étape qui enchaîne plusieurs actions en fait
+ * autant. Les références ont été retirées avant.
  */
 export function etapesDe(interieur: string): Etape[] {
   const lignes = interieur.split(/<br\s*\/?>/i).map((l) => l.trim()).filter((l) => texteDe(l) !== "");
-  const morceaux = lignes.flatMap((l) => numerotee(l) ?? enPhrases(l));
+  const morceaux = lignes.flatMap((l) => numerotee(l) ?? enPhrases(l)).flatMap(enActions);
   return morceaux.map((html) => ({ sorte: sorteDe(html), html }));
 }
 
@@ -165,7 +274,15 @@ function ouvertureEnValeur(html: string, sorte: SorteEtape): string {
   return `${html.slice(0, debut)}<b class="cs-libelle">${m[0]}</b>${html.slice(debut + m[0].length)}`;
 }
 
-/** Les étapes en liste : les actions numérotées, le reste à part, chacun sa marque. */
+/**
+ * Les étapes en liste : les actions numérotées, le reste à part, chacun sa
+ * marque. Une aide, un exemple, ce qui dit qu'on a réussi portent, à la place
+ * du numéro, un dessin qu'on reconnaît sans lire — un triangle « ! », un œil,
+ * une case à cocher — et qui reste lisible photocopié en noir et blanc : la
+ * couleur n'est jamais le seul indice (Cap école inclusive, « Soutenir la
+ * prise d'indices visuels » ; WCAG 1.4.1). Un caractère invisible donne à
+ * la marque la ligne de base du texte, comme le chiffre à un numéro.
+ */
 export function htmlDesEtapes(etapes: Etape[]): string {
   const actions = etapes.filter((e) => e.sorte === "action").length;
   let n = 0;
@@ -176,7 +293,8 @@ export function htmlDesEtapes(etapes: Etape[]): string {
       const num = actions > 1 ? `<span class="cs-num">${n}</span>` : `<span class="cs-num cs-seule" aria-hidden="true">▸</span>`;
       return `<li class="cs-etape cs-action">${num}<span class="cs-texte">${verbeEnValeur(e.html)}</span></li>`;
     }
-    return `<li class="cs-etape cs-${e.sorte}"><span class="cs-texte">${ouvertureEnValeur(e.html, e.sorte)}</span></li>`;
+    const marque = e.sorte === "info" ? "" : `<span class="cs-num cs-marque cs-marque-${e.sorte}" aria-hidden="true">&#8203;</span>`;
+    return `<li class="cs-etape cs-${e.sorte}">${marque}<span class="cs-texte">${ouvertureEnValeur(e.html, e.sorte)}</span></li>`;
   });
   return `<ol class="cs-etapes">${lignes.join("")}</ol>`;
 }
@@ -198,7 +316,10 @@ export function structurerInterieur(interieur: string): string {
   let debutCorps = 0;
   for (let m = gras.exec(propre); m; m = gras.exec(propre)) {
     const avant = propre.slice(debutCorps, m.index);
-    const enDebutDeLigne = texteDe(avant) === "" || /<br\s*\/?>\s*$/i.test(avant);
+    // Un gras collé au mot qui le suit, après une phrase finie — « … à la maison. <b>Bataille</b>Chacun… » —
+    // était un titre posé sur sa ligne par la règle encadrée : il le reste.
+    const colle = /[.!?…]$/.test(texteDe(avant)) && /^\p{L}/u.test(propre.slice(m.index + m[0].length));
+    const enDebutDeLigne = texteDe(avant) === "" || /<br\s*\/?>\s*$/i.test(avant) || colle;
     const apres = propre.slice(m.index + m[0].length).replace(/^\s+/, "");
     if (!enDebutDeLigne || /^[:,;.]/.test(apres) || texteDe(m[1]) === "") continue;
     if (titre || texteDe(avant)) sections.push({ titre, corps: avant });
@@ -274,8 +395,19 @@ export const STYLE_CONSIGNES_STRUCTUREES = `
   .cs .cs-verbe { color: var(--cs-couleur); font-weight: 800; }
   /* Dans une règle encadrée, un gras était un titre, sur sa ligne : dans une étape, il reste dans la phrase. */
   .cs .cs-etape .cs-texte b { display: inline; margin: 0; }
-  .cs .cs-info, .cs .cs-aide, .cs .cs-exemple, .cs .cs-critere { padding-left: calc(1.06em + 1.6mm); }
-  .cs .cs-info { color: #374151; }
+  .cs .cs-info { padding-left: calc(1.06em + 1.6mm); color: #374151; }
+  /* Sur une planche — des cartes, un gabarit à découper —, tout est compté au millimètre : la règle garde sa hauteur,
+     chaque titre à gauche, ses étapes, toujours numérotées, à la suite sur la ligne. */
+  .page > .regle.cs { display: grid; grid-template-columns: auto 1fr; column-gap: 3mm; align-items: baseline; }
+  .page > .regle.cs .cs-titre { grid-column: 1; margin: 0; }
+  .page > .regle.cs .cs-etapes { grid-column: 2; display: flex; flex-wrap: wrap; column-gap: 3mm; }
+  .page > .regle.cs .cs-etapes:first-child, .page > .regle.cs > .reference { grid-column: 1 / -1; }
+  .page > .regle.cs .cs-etape { flex: 0 1 auto; }
+  /* Les marques d'une aide, d'un exemple, d'une réussite : à la place du numéro, à sa taille. */
+  .cs .cs-num.cs-marque { background: none center / contain no-repeat; border-radius: 0; color: transparent; }
+  .cs .cs-num.cs-marque-aide { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 2.4 18.4 17.2H1.6z' fill='%23b45309' stroke='%23b45309' stroke-width='1.8' stroke-linejoin='round'/%3E%3Cpath d='M10 7.2v4.9' stroke='%23fff' stroke-width='2.3' stroke-linecap='round'/%3E%3Ccircle cx='10' cy='14.9' r='1.25' fill='%23fff'/%3E%3C/svg%3E"); }
+  .cs .cs-num.cs-marque-exemple { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M1.3 10Q10 1.6 18.7 10Q10 18.4 1.3 10Z' fill='%23fff' stroke='%23374151' stroke-width='1.8' stroke-linejoin='round'/%3E%3Ccircle cx='10' cy='10' r='3' fill='%23374151'/%3E%3C/svg%3E"); }
+  .cs .cs-num.cs-marque-critere { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect x='2.2' y='2.2' width='15.6' height='15.6' rx='2.4' fill='%23fff' stroke='%23166534' stroke-width='2.2'/%3E%3C/svg%3E"); }
   .cs .cs-aide { color: #92400e; }
   .cs .cs-exemple { color: #374151; }
   .cs .cs-critere { color: #166534; }
