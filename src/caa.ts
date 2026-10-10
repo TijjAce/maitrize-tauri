@@ -45,7 +45,7 @@ export const VERBES_CONSIGNE: VerbeConsigne[] = [
   { verbe: "ajouter", formes: ["ajoute", "ajoutez", "ajoutons"] },
   { verbe: "retrancher", formes: ["retranche", "retranchez", "retranchons"] },
   { verbe: "additionner", formes: ["additionne", "additionnez", "additionnons"] },
-  { verbe: "réfléchir", formes: ["réfléchis", "réfléchissez", "réfléchissons"] },
+  { verbe: "réfléchir", formes: ["réfléchis", "réfléchissez", "réfléchissons", "réfléchit"] },
   { verbe: "glisser", formes: ["glisse", "glissez", "glissons"] },
   { verbe: "jouer", formes: ["joue", "jouez", "jouons"] },
   { verbe: "cocher", formes: ["coche", "cochez", "cochons"] },
