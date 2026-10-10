@@ -80,6 +80,12 @@ describe("la séance des mots", () => {
     expect(avecLaSeanceDesMots(demarcheDe("problemes")!).seances[0]).toBe(SEANCE_DES_MOTS);
   });
 
+  it("se dit à l'élève à la première personne, dans son séquentiel", async () => {
+    const { etapesDesPhases } = await import("./aidesALaTache");
+    expect(etapesDesPhases(SEANCE_DES_MOTS.phases.map((p) => p.phase)))
+      .toEqual(["Je découvre les mots.", "Je joue ce qui se passe.", "J'apprends les mots de la question.", "Je trie les étiquettes."]);
+  });
+
   it("suit les règles des séances des démarches", () => {
     expect(SEANCE_DES_MOTS.objectifs.startsWith(`${DEBUT_OBJECTIF_SEANCE} `)).toBe(true);
     expect(DUREES).toContain(SEANCE_DES_MOTS.duree);

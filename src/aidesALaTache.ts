@@ -273,6 +273,11 @@ export const styleDuSequentiel = (r: Pick<ReglagesSequentiel, "forme" | "disposi
 // l'ordre. Quand la séance a ses consignes, ce sont elles.
 
 const ETAPES_DES_PHASES: [RegExp, string][] = [
+  // La séance des mots des problèmes (voir motsDesProblemes.ts).
+  [/rencontrer les mots/i, "Je découvre les mots."],
+  [/jouer les actions/i, "Je joue ce qui se passe."],
+  [/mots de la question/i, "J'apprends les mots de la question."],
+  [/trier les étiquettes/i, "Je trie les étiquettes."],
   [/évaluation/i, "Je montre ce que je sais faire."],
   [/rappel|rituel|échauffement|mise en train|révision/i, "Je me rappelle ce que je sais déjà."],
   [/objectif|ouverture/i, "J'écoute ce que je vais apprendre."],
