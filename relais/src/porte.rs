@@ -6,7 +6,7 @@
 //! Nextcloud.
 
 use crate::connexion::{autorisation, Connexion};
-use crate::{Appairage, DOSSIER_DEPOT, DOSSIER_RETOUR, FICHIER_AGENDA};
+use crate::{Appairage, DOSSIER_AIDES, DOSSIER_DEPOT, DOSSIER_RETOUR, FICHIER_AGENDA, FICHIER_JOURNAL};
 use std::time::Duration;
 
 type R<T> = Result<T, String>;
@@ -70,11 +70,11 @@ pub async fn deposer(a: &Appairage, k: &Connexion, nom: &str, blob: Vec<u8>) -> 
     Ok(())
 }
 
-/// L'agenda chiffré que l'ordinateur a laissé, ou rien s'il n'en a pas encore publié.
-pub async fn lire_agenda(a: &Appairage, k: &Connexion) -> R<Option<Vec<u8>>> {
+/// Un fichier chiffré que l'ordinateur a laissé dans le retour, ou rien s'il n'y est pas.
+async fn lire_retour(a: &Appairage, k: &Connexion, chemin: &str, secondes: u64) -> R<Option<Vec<u8>>> {
     crate::adresse_chiffree(&k.serveur)?;
-    let reponse = client(20)?
-        .get(adresse(a, k, DOSSIER_RETOUR, FICHIER_AGENDA))
+    let reponse = client(secondes)?
+        .get(adresse(a, k, DOSSIER_RETOUR, chemin))
         .header("Authorization", autorisation(k))
         .send()
         .await
@@ -86,6 +86,22 @@ pub async fn lire_agenda(a: &Appairage, k: &Connexion) -> R<Option<Vec<u8>>> {
         return Err(refus(reponse.status()));
     }
     reponse.bytes().await.map(|b| Some(b.to_vec())).map_err(|e| format!("Lecture interrompue : {e}"))
+}
+
+/// L'agenda chiffré que l'ordinateur a laissé, ou rien s'il n'en a pas encore publié.
+pub async fn lire_agenda(a: &Appairage, k: &Connexion) -> R<Option<Vec<u8>>> {
+    lire_retour(a, k, FICHIER_AGENDA, 20).await
+}
+
+/// Le cahier journal chiffré que l'ordinateur a laissé, ou rien s'il n'en a pas encore publié.
+pub async fn lire_journal(a: &Appairage, k: &Connexion) -> R<Option<Vec<u8>>> {
+    lire_retour(a, k, FICHIER_JOURNAL, 30).await
+}
+
+/// Une aide à la tâche chiffrée, par son identifiant ; rien si elle n'est plus là.
+pub async fn lire_aide(a: &Appairage, k: &Connexion, id: &str) -> R<Option<Vec<u8>>> {
+    let nom = crate::nom_de_l_aide(id).ok_or("Aide inconnue.")?;
+    lire_retour(a, k, &format!("{DOSSIER_AIDES}/{nom}"), 60).await
 }
 
 /// Le dossier des dépôts répond-il à ce téléphone ? Dit pourquoi sinon.
