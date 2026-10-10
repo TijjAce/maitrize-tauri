@@ -18,6 +18,18 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.24",
+    titre: "Des consignes à la première personne, une action par ligne, et les mots des problèmes en début de séquence",
+    points: [
+      { quoi: "Toutes les consignes se disent à la première personne, comme l'élève se dit ce qu'il fait : « J'entoure les mots », « Je l'écris », « Je me relis ». Les règles de jeu aussi — « Je lis la carte, je dis le résultat » —, et les consignes que vous réécrivez.", ou: "Fabriquer" },
+      { quoi: "Une action par ligne : une phrase qui en enchaîne plusieurs — « J'écoute, je répète, j'écris » — devient autant d'étapes numérotées. Une aide, un exemple et « J'ai réussi si » portent un dessin qu'on reconnaît sans lire : un triangle « ! », un œil, une case à cocher. Une description n'est plus numérotée comme une étape.", ou: "Fabriquer" },
+      { quoi: "Chaque séquence qui pose des problèmes s'ouvre sur une séance « Les mots des problèmes » : les personnes, les objets et les actions de ses énoncés, et les mots de la question — « combien », « en tout », « il reste » —, relevés dans ses problèmes à sa création, sur une feuille à découper avec leur picto, ou votre photo.", ou: "Plan de travail · Nouvelle séquence" },
+      { quoi: "Le mode dyslexique, plus aéré : plus d'espace entre les lettres et entre les mots, des lignes plus hautes ; Luciole si l'ordinateur l'a, Verdana sinon. L'écriture cursive garde ses lettres attachées.", ou: "Fabriquer · La feuille" },
+      { quoi: "Relié au téléphone, Maitrize lui envoie aussi le cahier journal, chiffré : le prévu, le bilan et les aides à la tâche de chaque créneau. Le dictaphone, dans sa nouvelle version, l'affiche et montre aux tablettes de la classe l'aide qu'on choisit.", ou: "Réglages · Téléphone" },
+      { quoi: "Les conditions d'utilisation disent que le cahier journal part au téléphone : elles sont à accepter de nouveau." },
+    ],
+  },
+  {
     version: "1.6.23",
     titre: "Des consignes qu'on reconnaît, le mode dyslexique, vos photos comme pictos, et le matériel réel de la classe",
     points: [
