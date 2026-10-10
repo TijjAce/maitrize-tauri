@@ -82,6 +82,8 @@ export interface SuiviSequence {
   derniereLe: string | null;
   /** Le prochain passage posé après aujourd'hui, s'il y en a un. */
   prochain: Passage | null;
+  /** Tous les passages posés après aujourd'hui, du plus proche au plus lointain. */
+  aVenir: Passage[];
   /** La séance qui vient : la première, par numéro, qui n'a pas été faite. */
   suivante: Seance | null;
 }
@@ -97,7 +99,8 @@ const parNumero = (a: Seance, b: Seance) => a.numero - b.numero || a.titre.local
 /** L'état d'une séquence et ce qui l'explique, d'après ses séances et ses passages en classe. */
 export function suiviDeLaSequence(sequence: Sequence, siennes: Seance[], passages: Passage[], aujourdHui: string): SuiviSequence {
   const passes = passages.filter((p) => p.date <= aujourdHui);
-  const prochain = passages.find((p) => p.date > aujourdHui) ?? null;
+  const aVenir = passages.filter((p) => p.date > aujourdHui);
+  const prochain = aVenir[0] ?? null;
   const faites = [...new Map(passes.filter((p) => p.seance).map((p) => [p.seance!.id, p.seance!])).values()].sort(parNumero);
   const prevues = sequence.nbSeancesPrevu > 0 ? sequence.nbSeancesPrevu : siennes.length;
   const derniereLe = passes.length ? passes[passes.length - 1].date : null;
@@ -108,7 +111,7 @@ export function suiviDeLaSequence(sequence: Sequence, siennes: Seance[], passage
     : !prochain && derniereLe && joursEntre(derniereLe, aujourdHui) > 7 * SEMAINES_AVANT_PAUSE ? "pause"
     : "classe";
   const suivante = [...siennes].sort(parNumero).find((s) => !faites.some((f) => f.id === s.id)) ?? null;
-  return { sequence, etat, manuel, passages: passes, faites, prevues, demarreeLe: passes[0]?.date ?? null, derniereLe, prochain, suivante };
+  return { sequence, etat, manuel, passages: passes, faites, prevues, demarreeLe: passes[0]?.date ?? null, derniereLe, prochain, aVenir, suivante };
 }
 
 /** Le suivi de toutes les séquences, en une passe sur les créneaux. */
@@ -153,6 +156,19 @@ export function jourProche(iso: string, aujourdHui: string): string {
     return `${JOURS[d.getDay()]} ${d.getDate()}`;
   }
   return dateCourte(iso);
+}
+
+const JOURS_COURTS = ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."];
+
+/**
+ * Un passage dans le cahier journal, en une étiquette : « lun. 06/10 · 9h00 ·
+ * séance 2 ». C'est la liste de ces étiquettes, sous l'état de la séquence,
+ * qui dit quand la séquence a été posée — et quand elle le sera.
+ */
+export function libelleDuPassage(p: Passage): string {
+  const d = new Date(Number(p.date.slice(0, 4)), Number(p.date.slice(5, 7)) - 1, Number(p.date.slice(8, 10)));
+  const heure = p.heure ? p.heure.slice(0, 5).replace(":", "h").replace(/^0(\d)/, "$1") : "";
+  return [`${JOURS_COURTS[d.getDay()]} ${dateCourte(p.date)}`, heure, p.seance ? `séance ${p.seance.numero}` : ""].filter(Boolean).join(" · ");
 }
 
 /** Ce qu'on lit sous le titre d'une séquence : son état, et ce qui l'explique. */

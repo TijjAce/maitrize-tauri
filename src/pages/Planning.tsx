@@ -553,7 +553,8 @@ export default function Planning() {
           <button className="btn" onClick={() => decaler(1)} aria-label="Suivant">→</button>
         </div>
       </>}>
-      {vue !== "mois" && (
+      {/* Les heures de la semaine : en vue semaine seulement — dans le cahier journal du jour, elles ne servent pas. */}
+      {vue === "semaine" && (
         <div className="heures-semaine" aria-label="Heures de la semaine">
           <span style={{ color: "var(--text-2)" }}>
             Semaine du {fmtJour(lundiDe(ancre))} au {fmtJour(new Date(vendrediSemaine))}
