@@ -491,7 +491,7 @@ export function htmlFractions(r: ReglagesFractions, graine: number): string {
   }
   if (r.materiel.includes("nageurs")) {
     const regle = `<div class="titre">La course des nageurs</div>
-      <div class="regle"><b>Règle du jeu</b>Par groupes de trois, sur une feuille A3. À son tour, on pioche une carte et on trace, depuis le bord de départ puis depuis l'extrémité de son dernier segment, un segment de la longueur indiquée, avec la règle graduée.
+      <div class="regle"><b>Règle du jeu</b>Par groupes de trois, sur une feuille A3. À mon tour, je pioche une carte et je trace, depuis le bord de départ puis depuis l'extrémité de mon dernier segment, un segment de la longueur indiquée, avec la règle graduée.
         Le premier qui atteint ou dépasse l'autre bord a gagné — on finit le tour, il peut y avoir des ex aequo. Une ligne bien droite va plus vite qu'une ligne brisée.
         <span class="reference">Livret Mathématiques CE2, Éduscol 2025.</span></div>`;
     parties.push(pagesDeCartes(cartesNageurs(r.graduation).map((c) => carte(c)), { colonnes: 3, lignes: 6, hauteurMm: 38 }, regle));

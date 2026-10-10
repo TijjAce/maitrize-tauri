@@ -48,11 +48,11 @@ describe("les consignes à la première personne", () => {
     expect(je("Avant chaque calcul, demande-toi : faut-il ajouter 20 ?")).toBe("Avant chaque calcul, je me demande : faut-il ajouter 20 ?");
   });
 
-  it("laissent ce qui ne s'adresse pas à l'élève : l'infinitif, « on », les citations, le ton de la voix", () => {
+  it("laissent ce qui ne s'adresse pas à l'élève : l'infinitif, les descriptions, les citations, le ton de la voix", () => {
     for (const phrase of [
-      "Découper le cadre et ses quatre fentes.", "On lit la carte.", "Le robot regarde dans la direction de sa flèche.",
+      "Découper le cadre et ses quatre fentes.", "Le robot regarde dans la direction de sa flèche.",
       "« Écrivez ! » : chacun écrit sa réponse.", "Je lis la grille.", "Lis « Regarde tomber l'eau ».".replace(/^Lis /, "Le poème dit "),
-      "Change le ton de la voix.".replace(/^Change /, "On change "),
+      "Il change le ton de la voix.",
     ]) expect(je(phrase)).toBe(phrase);
   });
 });
@@ -80,7 +80,7 @@ describe("les consignes à la première personne, après deux ouvertures", () =>
   it("trouvent l'impératif après « Puis, à l'inverse, » et gardent « de ton » possessif devant un nom", () => {
     expect(alaPremierePersonne("Puis, à l'inverse, remplace le pronom par un groupe de ton choix.", (m) => m === "remplace"))
       .toBe("Puis, à l'inverse, je remplace le pronom par un groupe de mon choix.");
-    expect(alaPremierePersonne("On change de ton.", () => false)).toBe("On change de ton.");
+    expect(alaPremierePersonne("Il change de ton.", () => false)).toBe("Il change de ton.");
   });
 });
 
@@ -91,5 +91,30 @@ describe("les consignes à la première personne, proposition par proposition", 
       .toBe("Je ne suis pas obligé : pour les calculs faciles, je calcule dans ma tête et j'écris le résultat.");
     expect(alaPremierePersonne("Sans règle : reporte la longueur (ou avec le compas), puis range les segments.", imp))
       .toBe("Sans règle : je reporte la longueur (ou avec le compas), puis je range les segments.");
+  });
+});
+
+describe("les règles dites avec « on »", () => {
+  const sans = () => false;
+  it("passent à « je » quand c'est l'élève qui fait", () => {
+    expect(alaPremierePersonne("On lit la carte, on dit le résultat.", sans)).toBe("Je lis la carte, je dis le résultat.");
+    expect(alaPremierePersonne("Cartes face cachée ; on en retourne deux.", sans)).toBe("Cartes face cachée ; j'en retourne deux.");
+    expect(alaPremierePersonne("On manipule d'abord, en disant ce qu'on fait.", sans)).toBe("Je manipule d'abord, en disant ce que je fais.");
+    expect(alaPremierePersonne("Deux barres : on s'arrête.", sans)).toBe("Deux barres : je m'arrête.");
+    expect(alaPremierePersonne("Puis on calcule sans le matériel, en se le représentant.", sans)).toBe("Puis je calcule sans le matériel, en me le représentant.");
+    expect(alaPremierePersonne("Puis on se met d'accord.", sans)).toBe("Puis je me mets d'accord.");
+    expect(alaPremierePersonne("Ce qu'on sait : 1 m = 100 cm.", sans)).toBe("Ce que je sais : 1 m = 100 cm.");
+    expect(alaPremierePersonne("On choisit sa façon de parler selon la personne à qui l'on parle.", sans))
+      .toBe("Je choisis ma façon de parler selon la personne à qui je parle.");
+    expect(alaPremierePersonne("À son tour, on pioche une carte et on avance son pion.", sans)).toBe("À mon tour, je pioche une carte et j'avance mon pion.");
+    expect(alaPremierePersonne("On le dit à l'oral, mais on ne l'écrit pas comme ça.", sans)).toBe("Je le dis à l'oral, mais je ne l'écris pas comme ça.");
+  });
+
+  it("restent quand « on » est quelqu'un d'autre, la norme, ou ce qui a déjà été fait", () => {
+    for (const phrase of [
+      "Je fais 1 € avec des pièces, comme on me le demande.", "Je réécris chaque phrase comme on l'écrit.",
+      "On a demandé à chaque élève son fruit préféré.", "Je lis la grille ; on note mon score.",
+    ]) expect(alaPremierePersonne(phrase, sans)).toBe(phrase);
+    expect(alaPremierePersonne("On a trois minutes.", sans)).toBe("J'ai trois minutes.");
   });
 });

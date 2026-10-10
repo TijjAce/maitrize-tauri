@@ -48,6 +48,18 @@ function deTuAJe(verbe: string): string {
   return v.length > 2 && v.endsWith("es") ? v.slice(0, -1) : v;
 }
 
+/** Le verbe de « je » pour le verbe de « on » : « lit » → « lis », « prend » → « prends », « a » → « ai », « met » → « mets ». */
+const IRREGULIERS_DE_ON: Record<string, string> = { a: "ai", est: "suis", va: "vais", peut: "peux", veut: "veux", vaut: "vaux",
+  met: "mets", remet: "remets", permet: "permets", promet: "promets", admet: "admets", bat: "bats", combat: "combats" };
+function deOnAJe(verbe: string): string {
+  const v = verbe.toLowerCase();
+  if (IRREGULIERS_DE_ON[v]) return IRREGULIERS_DE_ON[v];
+  // « finit » → « finis », « connaît » → « connais » ; « prend » → « prends » ; « corrige » reste.
+  if (v.endsWith("t")) return `${v.slice(0, -1).replace(/î$/, "i")}s`;
+  if (v.endsWith("d") || v.endsWith("c")) return `${v}s`;
+  return v;
+}
+
 interface Mot { debut: number; fin: number; texte: string }
 
 /** Le texte où chercher : les balises, les entités et ce qui est entre guillemets masqués, à la même longueur. */
@@ -106,7 +118,7 @@ function impératifEnJe(mots: Mot[], k: number, estImperatif: EstImperatif, text
 }
 
 /** Les clitiques entre « tu » et son verbe : « tu ne », « tu te », « tu le ». */
-const CLITIQUES = new Set(["ne", "n'", "te", "t'", "le", "la", "les", "l'", "lui", "leur", "y", "en", "me", "m'"]);
+const CLITIQUES = new Set(["ne", "n'", "te", "t'", "se", "s'", "le", "la", "les", "l'", "lui", "leur", "y", "en", "me", "m'"]);
 
 /**
  * Une étape de consigne à la première personne. L'impératif en tête — après
@@ -191,27 +203,88 @@ export function alaPremierePersonne(source: string, estImperatif: EstImperatif):
     convertis.add(i);
   });
 
-  // « tu » et ce qui va avec lui : « tu as » → « j'ai », « tu n'es pas » → « je ne suis pas », « tu te trompes » → « je me trompe ».
-  for (let i = 0; i < mots.length; i++) {
-    if (exemples || bas(mots[i].texte) !== "tu") continue;
+  /**
+   * Un sujet mis à « je », avec ses clitiques et son verbe : de `i` (le sujet)
+   * au verbe ; `pronom` dit ce que devient « te » ou « se », `conjugue` le
+   * verbe. Rend le dernier mot converti, ou -1 si rien ne suit.
+   */
+  const versJe = (i: number, avant: string, pronom: (c: string) => string, conjugue: (v: string) => string): number => {
     let j = i + 1;
     const clitiques: Mot[] = [];
     while (j < mots.length && CLITIQUES.has(bas(mots[j].texte).replace(/['’]$/, "'"))) clitiques.push(mots[j++]);
-    // « t'aider », « n'es » : le clitique élidé colle au mot suivant.
-    const elide = j < mots.length ? /^([nltm]')(.+)$/i.exec(bas(mots[j].texte)) : null;
-    if (j >= mots.length) continue;
+    if (j >= mots.length) return -1;
+    // « t'aider », « n'es », « s'arrête » : le clitique élidé colle au mot suivant.
+    const elide = /^([nltms]')(.+)$/i.exec(bas(mots[j].texte));
     const verbe = elide ? elide[2] : bas(mots[j].texte);
-    const devant = [...clitiques.map((c) => bas(c.texte).replace(/^te$/, "me").replace(/^t'$/, "m'")), ...(elide ? [elide[1].replace(/^t'$/, "m'")] : [])];
-    const nouveau = deTuAJe(verbe);
+    const devant = [...clitiques.map((c) => pronom(bas(c.texte))), ...(elide ? [pronom(elide[1])] : [])];
     // Les élisions refaites : « n'es » → « ne suis », « me aide » → « m'aide ».
-    const suite = [...devant, nouveau].reduce((acc, x, n, tous) => {
+    const suite = [...devant, conjugue(verbe)].reduce((acc, x, n, tous) => {
       if (n === tous.length - 1) return acc + x;
-      const prochain = tous[n + 1];
       const base = x.replace(/'$/, "e");
-      return acc + (voyelle(prochain) && /^(ne|me|te|le|la)$/.test(base) ? `${base.charAt(0)}'` : `${base} `);
+      return acc + (voyelle(tous[n + 1]) && /^(ne|me|te|le|la|se)$/.test(base) ? `${base.charAt(0)}'` : `${base} `);
     }, "");
-    remplacements.push({ debut: mots[i].debut, fin: mots[j].fin, par: (/^[A-ZÀ-Ý]/.test(mots[i].texte) ? majuscule : (s: string) => s)(je(suite)) });
+    const sujet = mots[i].texte;
+    const par = `${avant}${je(suite)}`;
+    remplacements.push({ debut: mots[i].debut, fin: mots[j].fin, par: /^[A-ZÀ-Ý]/.test(sujet) ? majuscule(par) : par });
     for (let n = i; n <= j; n++) convertis.add(n);
+    return j;
+  };
+
+  // « tu » : « tu as » → « j'ai », « tu n'es pas » → « je ne suis pas », « tu te trompes » → « je me trompe ».
+  for (let i = 0; i < mots.length; i++) {
+    if (exemples || bas(mots[i].texte) !== "tu" || convertis.has(i)) continue;
+    versJe(i, "", (c) => c.replace(/^te$/, "me").replace(/^t'$/, "m'"), deTuAJe);
+  }
+
+  // « on », quand c'est l'élève qui fait : « on lit la carte » → « je lis la carte », « ce qu'on sait » → « ce que je sais »,
+  // « on s'arrête » → « je m'arrête ». Mais pas « comme on l'écrit » (la norme), « on me le demande » (quelqu'un d'autre),
+  // « on a demandé aux élèves » (ce qui a été fait), ni « on note mon score » : l'élève y est déjà, ce n'est pas lui.
+  const proposition = (x: Mot) => {
+    const debut = Math.max(...[".", ";", ":", "!", "?"].map((c) => m.lastIndexOf(c, x.debut)));
+    const fins = [".", ";", ":", "!", "?"].map((c) => m.indexOf(c, x.fin)).filter((n) => n >= 0);
+    return mots.filter((y) => y.debut > debut && y.fin <= (fins.length ? Math.min(...fins) : m.length));
+  };
+  let onConverti = false;
+  for (let i = 0; i < mots.length; i++) {
+    const b = bas(mots[i].texte);
+    const qu = /^(qu|l)'on$/.exec(b);
+    if (exemples || convertis.has(i) || (b !== "on" && !qu)) continue;
+    if (i > 0 && bas(mots[i - 1].texte) === "comme") continue;
+    const suivant = mots[i + 1] ? bas(mots[i + 1].texte) : "";
+    if (/^(me|m'|te|t'|nous|vous)$/.test(suivant) || /^[mt]'/.test(suivant)) continue;
+    // « on a demandé », « on a rempli » : un participe, pas « on a trois minutes ».
+    const apres = mots[i + 2] ? bas(mots[i + 2].texte) : "";
+    const participe = /(é|ée|és|ées|i|is|it|u|us|ert|aint)$/.test(apres)
+      && !/^(un|une|deux|trois|six|dix|vingt|le|la|les|des|du|de|son|sa|ses|mon|ma|mes|ce|cette|ces|plus|tous|assez)$/.test(apres);
+    if (suivant === "a" && participe) continue;
+    if (proposition(mots[i]).some((y) => y !== mots[i] && /^(mon|ma|mes|moi)$/.test(bas(y.texte)))) continue;
+    const j = versJe(i, qu?.[1] === "qu" ? "que " : "", (c) => c.replace(/^se$/, "me").replace(/^s'$/, "m'"), deOnAJe);
+    if (j < 0) continue;
+    onConverti = true;
+    // Ce qui est à lui, juste après son verbe : « on avance son pion » → « j'avance mon pion ».
+    const objet = mots[j + 1];
+    const POSSESSIFS: Record<string, string> = { son: "mon", sa: "ma", ses: "mes" };
+    if (objet && POSSESSIFS[bas(objet.texte)] && /^\s+$/.test(m.slice(mots[j].fin, objet.debut))) {
+      remplacements.push({ debut: objet.debut, fin: objet.fin, par: POSSESSIFS[bas(objet.texte)] });
+      convertis.add(j + 1);
+    }
+  }
+  // « en se le représentant » : le gérondif suit son sujet devenu « je ».
+  if (onConverti) {
+    mots.forEach((x, i) => {
+      if (convertis.has(i) || i === 0 || bas(mots[i - 1].texte) !== "en") return;
+      const b = bas(x.texte);
+      if (b === "se") { remplacements.push({ debut: x.debut, fin: x.fin, par: "me" }); convertis.add(i); }
+      else if (b.startsWith("s'")) { remplacements.push({ debut: x.debut, fin: x.debut + 2, par: "m'" }); convertis.add(i); }
+    });
+  }
+  // « À son tour, on pioche… » : son tour à lui.
+  if (onConverti) {
+    mots.forEach((x, i) => {
+      if (convertis.has(i) || bas(x.texte) !== "son" || !mots[i + 1] || bas(mots[i + 1].texte) !== "tour" || i === 0 || bas(mots[i - 1].texte) !== "à") return;
+      remplacements.push({ debut: x.debut, fin: x.fin, par: "mon" });
+      convertis.add(i);
+    });
   }
 
   // Les possessifs et les pronoms de « tu » — pas « le ton de la voix ».

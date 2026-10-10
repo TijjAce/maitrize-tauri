@@ -282,7 +282,7 @@ function feuilleDicteePreparee(r: ReglagesOrthographe, graine: number): string {
 function feuillePhraseDuJour(r: ReglagesOrthographe): string {
   const phrases = PHRASES_DU_JOUR[r.classe];
   const jours = phrases.map((_, i) => `<div class="or-jour"><div class="or-j">Jour ${i + 1}</div>${lignes(r.classe === "CP" ? 1 : 2)}<div class="or-change">Ce qui a changé : <span class="or-pointilles"></span></div></div>`).join("");
-  return `<div class="page">${titre("La phrase du jour")}${TETE}${regle("Chaque jour, une phrase dictée : la même que la veille, avec un élément qui change. J'écris, puis on compare les propositions au tableau et on se met d'accord en justifiant.")}${jours}</div>
+  return `<div class="page">${titre("La phrase du jour")}${TETE}${regle("Chaque jour, une phrase dictée : la même que la veille, avec un élément qui change. J'écris, puis nous comparons les propositions au tableau et nous nous mettons d'accord en justifiant.")}${jours}</div>
     <div class="page corrige">${titre("La phrase du jour — la progression")}${regle("Lire la phrase, la faire reformuler ; pendant la dictée, relever les propositions sur les cahiers ; les recopier au tableau sans valider ; organiser l'échange : supprimer les propositions erronées en justifiant, avec les outils de la classe. Les mots rencontrés enrichissent les listes analogiques. " + reference("Guide CE1, p. 102-103."))}
       <div class="or-corrige">${phrases.map((p, i) => `<div><b>Jour ${i + 1}.</b> ${escapeHtml(p)}</div>`).join("")}</div></div>`;
 }
