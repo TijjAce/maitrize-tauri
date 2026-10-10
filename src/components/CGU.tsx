@@ -6,7 +6,7 @@ export const CGU_VERSION = 2;
 
 export const CGU_TEXTE = `Conditions d'utilisation — Maîtrize
 
-Dernière mise à jour : 9 octobre 2026
+Dernière mise à jour : 10 octobre 2026
 
 1. Objet
 Maîtrize est un logiciel gratuit d'aide à la préparation de la classe et au suivi des élèves, destiné aux enseignants. Ces conditions encadrent son utilisation ; en l'utilisant, vous les acceptez.
@@ -20,7 +20,7 @@ Vos données restent sur cet ordinateur, dans le dossier de l'application. Maît
 - la voix, si vous choisissez vous-même la transcription en ligne (Mistral) ; sinon elle est transcrite sur l'ordinateur ;
 - la synchronisation et la sauvegarde que vous configurez, chiffrées, vers votre propre stockage ;
 - ce que vous déposez sur un bureau commun ou envoyez à un collègue ;
-- ce qui va à votre téléphone, si vous le reliez : par le WiFi, sur votre réseau local, une partie de vos données de classe ; par votre compte Nuage, vos dictées, vos notes et vos photos, chiffrées, et l'emploi du temps, sans nom d'élève ;
+- ce qui va à votre téléphone, si vous le reliez : par le WiFi, sur votre réseau local, une partie de vos données de classe ; par votre compte Nuage, vos dictées, vos notes, vos photos et votre cahier journal (le prévu, le bilan et les aides à la tâche de chaque créneau), chiffrés, et l'emploi du temps, sans nom d'élève ;
 - la recherche de mises à jour (GitHub), le calendrier des vacances (data.education.gouv.fr), les téléchargements que vous lancez (pictogrammes, modèles de transcription, programmes officiels) et les vignettes des vidéos YouTube que vous ajoutez.
 
 4. Données des élèves

@@ -217,7 +217,8 @@ export function TelephoneNuage() {
         <b> votre compte</b> : aucun lien de partage, aucun mot de passe dans le QR code — le téléphone s'y connecte
         lui-même, avec votre compte. Tout est chiffré avant de quitter le téléphone : Nuage ne voit que des fichiers
         fermés, et le téléphone lui-même ne peut pas les rouvrir. En retour, il reçoit l'emploi du temps — une heure
-        et un intitulé, sans personne dedans.
+        et un intitulé, sans personne dedans — et le cahier journal — le prévu, le bilan et les aides à la tâche de
+        chaque créneau —, chiffré pour lui seul : Nuage ne peut pas le lire.
       </p>
 
       {!etat.relie ? (
