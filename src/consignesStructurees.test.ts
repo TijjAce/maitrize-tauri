@@ -127,5 +127,15 @@ describe("le verbe d'action", () => {
     expect(verbeEnTete("Je me mets d'accord avec mon voisin.")).toBe("mets");
     expect(verbeEnTete("Puis je recompose la somme.")).toBe("recompose");
     expect(verbeEnTete("Je me suis trompé.")).toBeNull();
+    // Après une ouverture, le verbe de la proposition qui suit ; une description n'est pas une action.
+    expect(verbeEnTete("Pour comparer, écris-les dans la même unité.")).toBe("écris");
+    expect(verbeEnTete("Pour l'adulte : lire le texte deux fois.")).toBe("lire");
+    expect(verbeEnTete("À son tour, on pioche une carte.")).toBe("pioche");
+    expect(verbeEnTete("Les parts sont de même taille : on ajoute des parts.")).toBeNull();
+    expect(verbeEnTete("Le robot regarde dans la direction de sa flèche.")).toBeNull();
+    expect(verbeEnTete("Une barre manque !")).toBeNull();
+    expect(verbeEnTete("Des pièces pour jouer, à découper.")).toBeNull();
+    expect(verbeEnTete("« Écrivez ! » : chacun écrit sa réponse.")).toBe("Écrivez");
+    expect(verbeEnTete("L'adulte lit tout le texte.")).toBe("lit");
   });
 });

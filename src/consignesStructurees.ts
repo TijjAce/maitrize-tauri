@@ -102,7 +102,7 @@ const IMPERATIFS = new Set([
   "continue", "recommence", "réponds", "explique", "invente", "cache", "donne", "fabrique", "lève", "présente", "propose", "rassemble", "regroupe",
   "remplis", "remplace", "résous", "retiens", "utilise", "vise", "mime", "chante", "récite", "épelle", "frappe", "marche", "saute", "attrape",
   "verse", "transvase", "pèse", "soupèse", "vide", "estime", "range", "dispose", "assemble", "partage", "distribue", "écoute",
-  "répète", "redis", "marque", "passe", "recompose",
+  "répète", "redis", "marque", "passe", "recompose", "demande",
 ]);
 
 /** Ce qui peut précéder le verbe d'une ligne sans en être : « Puis écris… », « Ensuite, colle… ». */
@@ -131,7 +131,7 @@ const PAS_UN_VERBE = new Set(["il", "ils", "elle", "elles", "ce", "c'", "ça", "
 /** Les premiers mots d'un texte, la ponctuation ôtée, l'élision à part : « J'écris » donne « J' » puis « écris ». */
 function motsDeTete(texte: string): { brut: string; m: string }[] {
   return texte.trim().split(/\s+/).slice(0, 8).flatMap((t) => {
-    const nu = t.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, "");
+    const nu = t.replace(/^[^\p{L}]+|[^\p{L}'’]+$/gu, "");
     const elision = /^(\p{L}+['’])(.+)$/u.exec(nu);
     return (elision ? [elision[1], elision[2]] : [nu]).map((brut) => ({ brut, m: brut.toLowerCase().replace(/’/g, "'") }));
   });
@@ -144,39 +144,63 @@ function motsDeTete(texte: string): { brut: string; m: string }[] {
  * sauf être et avoir, qui disent un état. Sans sujet, seule la négation
  * précède le verbe : un « la » en tête est un article.
  */
-function verbeDeTete(texte: string): string | null {
+function verbeDeTete(texte: string, avecOn = true): string | null {
   const liste = motsDeTete(texte);
   let enTete = true;
   let sujet = "";
   for (const [i, { brut, m }] of liste.entries()) {
-    if (!m) return null;
+    if (!m) { if (enTete) continue; return null; }
     if (enTete && LIENS.has(m)) continue;
     const mot = sansPronom(m);
     // « en sautant une ligne » : un gérondif dit comment faire, ce n'est pas une action de plus.
     if (i > 0 && liste[i - 1].m === "en" && mot.endsWith("ant")) return null;
     if (verbeDeLaForme(mot) || (enTete && IMPERATIFS.has(mot))) return sansPronom(brut);
     enTete = false;
-    if (!sujet && SUJETS.has(m)) { sujet = m; continue; }
+    if (!sujet && SUJETS.has(m)) {
+      if (!avecOn && !SUJETS_ELEVE.has(m)) return null;
+      sujet = m;
+      continue;
+    }
     if (PRONOMS_COMPLEMENTS.has(m) && (sujet || m === "ne" || m === "n'")) continue;
     return SUJETS_ELEVE.has(sujet) && !AUXILIAIRES.has(mot) && !PAS_UN_VERBE.has(mot) && !SUJETS.has(mot) ? sansPronom(brut) : null;
   }
   return null;
 }
 
+/** Ceux qui agissent dans une règle de jeu ou une consigne pour l'adulte : « Chaque joueur lit une carte », « L'adulte lit le texte ». */
+const ACTEURS = new Set(["chacun", "chacune", "joueur", "joueurs", "élève", "élèves", "enfant", "enfants", "lecteur", "lectrice", "auditeur", "auditrice",
+  "adulte", "professeur", "maître", "maîtresse", "enseignant", "enseignante", "meneur", "meneuse", "arbitre", "groupe", "équipe", "binôme", "camarade",
+  "partenaire", "voisin", "voisine", "classe"]);
+
+/** Les mots après lesquels un verbe dit un but ou une manière, pas une action : « pour jouer », « à vérifier », « sans écrire ». */
+const BUTS = new Set(["pour", "à", "de", "d'", "sans", "en", "afin"]);
+
 /**
  * Le verbe d'action d'une étape, c'est lui qu'on met en valeur : celui qui
- * l'ouvre, sinon un verbe du lexique dans ses premiers mots — « Chaque
- * joueur lit une carte » —, s'il ne suit pas un auxiliaire.
+ * l'ouvre ; sinon celui qui ouvre la proposition après une ouverture —
+ * « Pour comparer, écris-les… », « Pour l'adulte : lire le texte » — ;
+ * sinon un verbe du lexique dans ses premiers mots quand quelqu'un agit —
+ * « Chaque joueur lit une carte » —, ni après un auxiliaire, ni après
+ * « pour », « à », « sans ». « Le robot regarde… » décrit : rien.
  */
 export function verbeEnTete(html: string, portee = 6): string | null {
   const texte = texteDe(html);
   const tete = verbeDeTete(texte);
   if (tete) return tete;
+  // Après deux-points, « on » explique plus qu'il ne fait faire : « Les parts sont de même taille : on ajoute des parts ».
+  const ouverture = /^(.*?)([,:;])\s+(.+)$/.exec(texte);
+  if (ouverture && mots(ouverture[1]).length <= 8) {
+    const suite = verbeDeTete(ouverture[3], ouverture[2] !== ":");
+    if (suite) return suite;
+  }
   const liste = mots(texte).slice(0, portee);
   for (const [i, m] of liste.entries()) {
     // « l'entoure » : le verbe suit l'apostrophe.
     const mot = sansPronom(m.replace(/^[a-zà-ÿ]+['’]/i, ""));
-    if (verbeDeLaForme(mot) && !(i > 0 && AUXILIAIRES.has(liste[i - 1].toLowerCase()))) return mot;
+    const avant = i > 0 ? liste[i - 1].toLowerCase().replace(/’/g, "'") : "";
+    if (!verbeDeLaForme(mot) || AUXILIAIRES.has(avant) || BUTS.has(avant) || /^d['’]/i.test(m)) continue;
+    const agit = liste.slice(0, i).some((x) => ACTEURS.has(x.toLowerCase().replace(/^[a-zà-ÿ]+['’]/i, "")));
+    return agit ? mot : null;
   }
   return null;
 }
@@ -396,13 +420,15 @@ export const STYLE_CONSIGNES_STRUCTUREES = `
   /* Dans une règle encadrée, un gras était un titre, sur sa ligne : dans une étape, il reste dans la phrase. */
   .cs .cs-etape .cs-texte b { display: inline; margin: 0; }
   .cs .cs-info { padding-left: calc(1.06em + 1.6mm); color: #374151; }
-  /* Sur une planche — des cartes, un gabarit à découper —, tout est compté au millimètre : la règle garde sa hauteur,
-     chaque titre à gauche, ses étapes, toujours numérotées, à la suite sur la ligne. */
-  .page > .regle.cs { display: grid; grid-template-columns: auto 1fr; column-gap: 3mm; align-items: baseline; }
-  .page > .regle.cs .cs-titre { grid-column: 1; margin: 0; }
-  .page > .regle.cs .cs-etapes { grid-column: 2; display: flex; flex-wrap: wrap; column-gap: 3mm; }
-  .page > .regle.cs .cs-etapes:first-child, .page > .regle.cs > .reference { grid-column: 1 / -1; }
-  .page > .regle.cs .cs-etape { flex: 0 1 auto; }
+  /* Sur une planche à découper ou à plier — des cartes, des patrons, le syllabaire —, tout est compté au millimètre :
+     la règle garde sa hauteur, chaque titre à gauche, ses étapes, toujours numérotées, à la suite sur la ligne.
+     Partout ailleurs, une action par ligne. */
+  .page > .regle.cs:has(+ :is(.grille, .so-patrons, .sy-cadre)) { display: grid; grid-template-columns: auto 1fr; column-gap: 3mm; align-items: baseline; }
+  .page > .regle.cs:has(+ :is(.grille, .so-patrons, .sy-cadre)) .cs-titre { grid-column: 1; margin: 0; }
+  .page > .regle.cs:has(+ :is(.grille, .so-patrons, .sy-cadre)) .cs-etapes { grid-column: 2; display: flex; flex-wrap: wrap; column-gap: 3mm; }
+  .page > .regle.cs:has(+ :is(.grille, .so-patrons, .sy-cadre)) .cs-etapes:first-child,
+  .page > .regle.cs:has(+ :is(.grille, .so-patrons, .sy-cadre)) > .reference { grid-column: 1 / -1; }
+  .page > .regle.cs:has(+ :is(.grille, .so-patrons, .sy-cadre)) .cs-etape { flex: 0 1 auto; }
   /* Les marques d'une aide, d'un exemple, d'une réussite : à la place du numéro, à sa taille. */
   .cs .cs-num.cs-marque { background: none center / contain no-repeat; border-radius: 0; color: transparent; }
   .cs .cs-num.cs-marque-aide { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 2.4 18.4 17.2H1.6z' fill='%23b45309' stroke='%23b45309' stroke-width='1.8' stroke-linejoin='round'/%3E%3Cpath d='M10 7.2v4.9' stroke='%23fff' stroke-width='2.3' stroke-linecap='round'/%3E%3Ccircle cx='10' cy='14.9' r='1.25' fill='%23fff'/%3E%3C/svg%3E"); }
