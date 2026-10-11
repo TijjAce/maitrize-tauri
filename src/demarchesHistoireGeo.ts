@@ -18,6 +18,7 @@ import { REGLAGES_PLAN_CLASSE, STYLE_PLAN_CLASSE, htmlPlanClasse, reglagesPlanSu
 import { REGLAGES_FRISE, STYLE_FRISE, htmlFrise, reglagesFriseSurs, type ModeleFrise } from "./frisesTemps";
 import { REGLAGES_PAYSAGE, STYLE_PAYSAGE, htmlPaysage, reglagesPaysageSurs, type FamillePaysage, type ReglagesPaysage } from "./lireUnPaysage";
 import { REGLAGES_ETIQUETTES, STYLE_ETIQUETTES, htmlEtiquettes } from "./etiquettes";
+import { documentsDesSeances } from "./documentsHistoireGeo";
 
 const ph = (phase: string, duree: string, description: string, posture = ""): PhaseCadre => ({ phase, duree, description, posture });
 const seance = (titre: string, objectifs: string, duree: number, phases: PhaseCadre[]): SeanceCadre => ({ titre, objectifs, duree, phases });
@@ -1006,5 +1007,7 @@ export function planHistoireGeo(demarcheId: string, ctx: ContexteFeuilles | null
     if (!debut) return lesFeuilles ? `${lesFeuilles.charAt(0).toUpperCase()}${lesFeuilles.slice(1)}.` : "";
     return lesFeuilles ? `${debut} ; ${lesFeuilles}.` : `${debut}.`;
   });
-  return { feuilles, materiel };
+  // Les documents trouvés en ligne pour chaque séance : ce qu'on projette, ce qu'on peut imprimer.
+  const documents = documentsDesSeances(demarcheId, materiel.length);
+  return { feuilles, materiel, ...(documents.some(Boolean) ? { documents } : {}) };
 }

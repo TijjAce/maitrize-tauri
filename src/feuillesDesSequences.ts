@@ -73,6 +73,8 @@ export interface PlanDesFeuilles {
   feuilles: FeuilleAFabriquer[];
   /** La note « matériel » de chaque séance, dans l'ordre ; vide quand il n'y a rien à dire. */
   materiel: string[];
+  /** Les documents à montrer de chaque séance, en texte (voir documentsHistoireGeo.ts) : ils suivent la note de matériel. */
+  documents?: string[];
 }
 
 /** La classe d'une compétence, d'après son niveau : CP, CE1 ou CE2 ; rien hors du cycle 2. */

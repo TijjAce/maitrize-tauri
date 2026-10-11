@@ -116,11 +116,11 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
       };
       await api.sequenceSave(propre);
       if (poseLesSeances) {
-        // À la suite des séances qui existent : numérotées après elles, avec la note du matériel et la compétence visée.
+        // À la suite des séances qui existent : numérotées après elles, avec la note du matériel, les documents à montrer et la compétence visée.
         // Le matériel réel de la classe, relu à l'enregistrement : ce qu'on vient de cocher dans l'inventaire compte.
         const noteReelle = noteDuMaterielReel(materielReel, lireInventaire(await api.settingGet(CLE_INVENTAIRE).catch(() => null)));
         const seances = seancesDuCadre(demarche, propre.id, nbExistantes + 1).map((sc, i) => ({
-          ...sc, materiel: [plan?.materiel[i] || sc.materiel, noteReelle].filter(Boolean).join("\n"),
+          ...sc, materiel: [plan?.materiel[i] || sc.materiel, plan?.documents?.[i], noteReelle].filter(Boolean).join("\n"),
           competences: comp ? JSON.stringify([comp]) : sc.competences,
         }));
         for (const seance of seances) await api.seanceSave(seance);
