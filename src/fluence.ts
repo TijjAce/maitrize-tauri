@@ -92,6 +92,18 @@ export function grilleFluence(r: ReglagesFluence, graine: number): GrilleFluence
 /** Les items longs (« ils chantent ») prennent une taille plus petite, pour tenir dans leur case. */
 const taille = (x: string) => (x.length > 11 ? ' class="fl-xl"' : x.length > 8 ? ' class="fl-l"' : "");
 
+/**
+ * Ce que l'élève fait chaque jour avec sa grille. Ce n'est pas sur la feuille :
+ * ce sont les consignes des séances d'entraînement, que leur séquentiel
+ * montre aux tablettes pendant l'activité.
+ */
+export const CONSIGNES_FLUENCE = [
+  "En trinôme : un lecteur, un chronométreur, un vérificateur.",
+  "Je lis la grille le plus vite possible, sans erreur.",
+  "On note mon score.",
+  "Le lendemain, je recommence et je regarde mes progrès.",
+];
+
 export function htmlFluence(g: GrilleFluence, r: ReglagesFluence): string {
   const nom = nomDeLEtape(g.etape);
   const periode = periodeDe(g.etape.periode);
@@ -103,9 +115,7 @@ export function htmlFluence(g: GrilleFluence, r: ReglagesFluence): string {
     <tr><th>Items lus en 1 minute</th><td></td><td></td><td></td><td></td></tr>
     <tr><th>Erreurs</th><td></td><td></td><td></td><td></td></tr>
     <tr><th>Score (lus − erreurs)</th><td></td><td></td><td></td><td></td></tr></tbody></table>`;
-  const consigne = `<div class="regle"><b>Chaque jour de la semaine</b>Je lis la grille le plus vite possible, sans erreur ; on note mon score.
-    Le lendemain, je recommence et je regarde mes progrès. En trinôme : un lecteur, un chronométreur, un vérificateur.
-    <span class="reference">Livrets Français CP (2025) et CE1 (2026), Éduscol ; progression du ${escapeHtml(periode.guide)}.</span></div>`;
+  const source = `<span class="reference">Livrets Français CP (2025) et CE1 (2026), Éduscol ; progression du ${escapeHtml(periode.guide)}.</span>`;
   let plateau = "";
   if (r.puissance4) {
     const pool = g.lignes.flat().filter((x) => x.length <= 4);
@@ -118,8 +128,8 @@ export function htmlFluence(g: GrilleFluence, r: ReglagesFluence): string {
         `<tr>${cases.slice(l * 7, l * 7 + 7).map((x) => `<td>${escapeHtml(x)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   }
   return feuille(`<div class="page"><div class="titre">${escapeHtml(titre)}</div>
-    <div class="sous fl-etape">${escapeHtml(periode.court)} — ${escapeHtml(g.etape.rubrique.toLocaleLowerCase("fr"))}</div>
-    <div class="sous">Prénom : ........................................ Date : ........................</div>${consigne}${grille}${score}</div>${plateau}`, "fl");
+    <div class="sous fl-etape">${escapeHtml(periode.court)} — ${escapeHtml(g.etape.rubrique.toLocaleLowerCase("fr"))} ${source}</div>
+    <div class="sous">Prénom : ........................................ Date : ........................</div>${grille}${score}</div>${plateau}`, "fl");
 }
 
 // ── Le syllabaire, ou jeu de l'ascenseur ──────────────────────────────────

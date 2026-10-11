@@ -1,8 +1,8 @@
 // La consigne d'une feuille, réécrite par l'enseignant.
 //
 // Chaque atelier imprime sa consigne — « Compte les cubes et écris le
-// nombre. », la règle du loto, la ligne « Chaque jour de la semaine » de la
-// grille de fluence. Les mots de l'application ne sont pas toujours ceux
+// nombre. », la règle du loto, celle des quatre jetons alignés. Les mots de
+// l'application ne sont pas toujours ceux
 // de la classe : l'enseignant garde les siens, une fois par atelier, dans un
 // réglage partagé entre ses ordinateurs. La feuille les prend à
 // l'impression comme dans l'aperçu ; vide, elle garde sa consigne d'origine.

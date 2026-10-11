@@ -22,6 +22,7 @@
 // demarchesOral.ts).
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
+import { CONSIGNES_FLUENCE } from "./fluence";
 
 const T1 = "Temps 1 – Définition des objectifs et mise en réussite";
 const T2 = "Temps 2 – Mise en activité des élèves";
@@ -30,6 +31,8 @@ const T4 = "Temps 4 – Automatisation, réinvestissement, transfert";
 
 const ph = (phase: string, duree: string, description: string, posture = ""): PhaseCadre => ({ phase, duree, description, posture });
 const seance = (titre: string, objectifs: string, duree: number, phases: PhaseCadre[]): SeanceCadre => ({ titre, objectifs, duree, phases });
+/** Un entraînement sur la grille de fluence : la routine de la grille, dite à l'élève, va dans son séquentiel (voir fluence.ts). */
+const avecLaRoutine = (s: SeanceCadre): SeanceCadre => ({ ...s, consignes: CONSIGNES_FLUENCE });
 
 const LIVRET = (classe: "CP" | "CE1" | "CE2", n: number, titre: string) =>
   `Éduscol, livret d'accompagnement du programme de français du ${classe} (${classe === "CP" ? 2025 : 2026}), « Proposition de séquence n° ${n} – ${titre} »`;
@@ -96,9 +99,9 @@ const PRECISION_CP: Demarche = {
         ph(T2, "10 min", "Les binômes confrontent leurs décodages de la liste ; mise en commun ; on statue sur la lecture de chaque CGP et de chaque mot, en dictée à l'adulte. Le jeu des quatre jetons alignés : le premier qui aligne quatre jetons a gagné."),
         ph(T3, "5 min", "La synthèse des acquis, le point sur les difficultés ; l'objectif de l'entraînement du lendemain."),
       ]),
-    seance("Jour 3 — Entraînement chronométré",
+    avecLaRoutine(seance("Jour 3 — Entraînement chronométré",
       "À la fin de cette séance, les élèves sauront lire la liste plus vite qu'au premier jour.",
-      15, [ph("En autonomie", "15 min", "Seul, ou en trinôme — un chronométreur, un vérificateur, un lecteur — : on lit la liste en une minute, on note son score.")]),
+      15, [ph("En autonomie", "15 min", "Seul, ou en trinôme — un chronométreur, un vérificateur, un lecteur — : on lit la liste en une minute, on note son score.")])),
     seance("Jour 4 — Atelier guidé d'évaluation",
       "À la fin de cette séance, les élèves sauront combien d'items ils lisent correctement en une minute, et de combien ils ont progressé.",
       20, [
@@ -124,9 +127,9 @@ const PRECISION_CE1: Demarche = {
           "Les élèves du groupe 2 qui lisent plus de 30 mots par minute reçoivent en avance les phrases du lendemain."),
         ph(T3, "5 min", "On statue sur la lecture de chaque CGP et de chaque mot, en dictée à l'adulte ; une trace écrite rappelle les outils : le mur sonore, l'ordinateur, le féminin, un mot de la même famille."),
       ]),
-    seance("Jour 2 — Entraînement en trinôme",
+    avecLaRoutine(seance("Jour 2 — Entraînement en trinôme",
       "À la fin de cette séance, les élèves sauront lire la grille plus vite qu'au premier jour.",
-      15, [ph("En autonomie", "15 min", "Le groupe 1 s'entraîne en trinôme : un chronométreur, un vérificateur, un lecteur.")]),
+      15, [ph("En autonomie", "15 min", "Le groupe 1 s'entraîne en trinôme : un chronométreur, un vérificateur, un lecteur.")])),
     seance("Jour 3 — Atelier guidé : évaluation intermédiaire",
       "À la fin de cette séance, les élèves sauront où ils en sont, et ce qu'ils visent le lendemain.",
       20, [
@@ -134,9 +137,9 @@ const PRECISION_CE1: Demarche = {
         ph(T2, "10 min", "Une évaluation intermédiaire chronométrée ; puis la copie cursive."),
         ph(T3, "5 min", "La synthèse, et l'objectif du jour 4."),
       ]),
-    seance("Jour 4 — Améliorer son score",
+    avecLaRoutine(seance("Jour 4 — Améliorer son score",
       "À la fin de cette séance, les élèves sauront lire la grille plus vite et plus juste qu'au début de la semaine.",
-      15, [ph("En autonomie", "15 min", "Chacun cherche à améliorer son score.")]),
+      15, [ph("En autonomie", "15 min", "Chacun cherche à améliorer son score.")])),
   ],
 };
 

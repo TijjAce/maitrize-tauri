@@ -71,6 +71,8 @@ import { DEMARCHES_ECRITURE, demarcheDeLEcriture } from "./demarchesEcriture";
 import { DEMARCHES_LANGUE, demarcheDeLaLangue } from "./demarchesLangue";
 import { DEMARCHES_ORAL, demarcheDeLOral } from "./demarchesOral";
 import { DEMARCHES_HISTOIRE_GEO, demarcheHistoireGeo } from "./demarchesHistoireGeo";
+import { CONSIGNES_FLUENCE } from "./fluence";
+import { ecrireConsignes } from "./tapuscrit";
 
 /** Une ligne du tableau de déroulement, dans l'ordre de ses colonnes. */
 export interface PhaseCadre {
@@ -90,6 +92,12 @@ export interface SeanceCadre {
   objectifs: string;
   duree: number;
   phases: PhaseCadre[];
+  /**
+   * Ce qu'on dit aux élèves, une action par ligne : les « Consignes pour les
+   * élèves » de la séance, que son séquentiel montre aux tablettes. Sans
+   * elles, le séquentiel dit les phases.
+   */
+  consignes?: string[];
 }
 
 /** La famille d'une démarche : le menu les groupe ainsi. */
@@ -462,6 +470,7 @@ const LECTURE_FLUENCE: Demarche = {
         ph(T4, "20 min", "Lecture chronométrée de la grille en autonomie, score noté sur le tableau ; outils : chronomètre, minuteur, chuchoteur ; outils numériques quand la fluence a progressé.",
           "Travaille en atelier guidé avec un autre groupe pendant ce temps."),
       ],
+      consignes: CONSIGNES_FLUENCE,
     },
     {
       titre: "Jour 3 — atelier guidé : évaluation intermédiaire",
@@ -2331,6 +2340,7 @@ export function seancesDuCadre(demarche: Demarche, sequenceId: string, depuis = 
     bilanDate: null,
     sequenceId,
     dateMaj: "",
+    ...(s.consignes?.length ? { consignes: ecrireConsignes(s.consignes) } : {}),
   }));
 }
 

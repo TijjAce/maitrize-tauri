@@ -111,6 +111,27 @@ describe("le cadre posé sur une séquence", () => {
     expect(grille[1][0]).toBe(d.seances[0].phases[0].phase);
   });
 
+  it("donne aux entraînements de fluence la routine de la grille : leur séquentiel la montre aux tablettes, la feuille ne l'imprime plus", async () => {
+    const { CONSIGNES_FLUENCE, REGLAGES_FLUENCE, grilleFluence, htmlFluence } = await import("./fluence");
+    const { etapesDeLaSeance } = await import("./aidesALaTache");
+    const { lireConsignes } = await import("./tapuscrit");
+    const entrainements = ["lecture-fluence", "precision-vitesse-cp", "precision-vitesse-ce1"]
+      .flatMap((id) => seancesDuCadre(demarcheDe(id)!, "seq-1"))
+      .filter((s) => s.consignes);
+    expect(entrainements.map((s) => s.titre)).toEqual([
+      "Jour 2 — entraînement autonome", "Jour 3 — Entraînement chronométré", "Jour 2 — Entraînement en trinôme", "Jour 4 — Améliorer son score",
+    ]);
+    for (const s of entrainements) {
+      expect(lireConsignes(s.consignes)).toEqual(CONSIGNES_FLUENCE);
+      expect(etapesDeLaSeance(s)).toEqual(CONSIGNES_FLUENCE);
+    }
+    // Les autres séances gardent leurs phases, dites pour l'élève.
+    expect(seancesDuCadre(demarcheDe("explicite")!, "seq-1").some((s) => "consignes" in s)).toBe(false);
+    const feuille = htmlFluence(grilleFluence(REGLAGES_FLUENCE, 1), REGLAGES_FLUENCE);
+    expect(feuille).not.toContain("Chaque jour de la semaine");
+    expect(feuille).not.toContain("chronométreur");
+  });
+
   it("se résume en séances et en temps", () => {
     const d = { ...demarcheDe("eduscol-quatre-temps")!, seances: [
       { titre: "a", objectifs: "", duree: 45, phases: [] },
