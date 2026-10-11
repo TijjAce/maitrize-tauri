@@ -5,7 +5,8 @@
 // prévu, son bilan, la séance posée et ses aides à la tâche. Les aides se
 // dessinent ici, comme à l'impression, consignes structurées comprises ; le
 // téléphone les montre ensuite aux tablettes des élèves, sur le réseau local,
-// pendant l'activité.
+// pendant l'activité. La consigne d'une feuille posée dans la séance part
+// aussi, comme une aide : elle n'est plus sur le papier (voir optionsFeuille).
 //
 // Tout part chiffré avec la clé du retour (voir telephone.rs) : Nuage ne lit
 // rien. Rien ne repart qui n'a pas changé ; ici, rien ne se redessine non plus.
@@ -42,11 +43,31 @@ export function joursPublies(aujourdHui: Date): string[] {
   });
 }
 
-/** Une aide de séance : un matériel posé dans une séance et fait par un atelier d'aides. */
+const estUnAtelierDAide = (atelier: string) => (ATELIERS_D_AIDE as readonly string[]).includes(atelier);
+
+/** Une aide de séance : un matériel posé dans une séance, fait par un atelier d'aides, ou une feuille qui envoie sa consigne aux tablettes. */
 export const estUneAide = (m: MaterielItem): boolean => {
   const f = lireFabrication(m.fabricationJson);
-  return !!m.seanceId && !!f && (ATELIERS_D_AIDE as readonly string[]).includes(f.atelier);
+  return !!m.seanceId && !!f && (estUnAtelierDAide(f.atelier) || !!f.consigne);
 };
+
+/** Le nom d'une aide au téléphone : celui de l'aide, ou « Consigne — » et celui de la feuille. */
+export const titreDeLAide = (m: MaterielItem): string => {
+  const f = lireFabrication(m.fabricationJson);
+  return f && !estUnAtelierDAide(f.atelier) && f.consigne ? `Consigne — ${m.titre}` : m.titre;
+};
+
+/** La page de la consigne d'une feuille, pour les tablettes : son titre, ses blocs de consigne et de règle, en grand. */
+export function pageDeLaConsigne(titre: string, consigne: string): string {
+  const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+  return `<div class="page"><div class="titre">${esc(titre)}</div>${consigne}</div>`;
+}
+
+/** Sur une tablette, la consigne se lit de loin : plus grande que sur la feuille. */
+export const STYLE_CONSIGNE_TABLETTE = `
+  .feuille .page > .titre { font-size: 24px; margin-bottom: 12px; }
+  .feuille .regle, .feuille .consigne, .feuille .cu-consigne, .feuille .ls-consigne, .feuille .fa-consigne { font-size: 20px; line-height: 1.5; }
+`;
 
 /**
  * Le cahier journal des jours publiés : chaque créneau de chaque jour, avec
@@ -66,7 +87,7 @@ export function journalDes(jours: string[], creneaux: Creneau[], seances: Seance
         .map((c) => ({
           id: c.id, debut: c.heureDebut, fin: c.heureFin, matiere: c.matiere ?? "", prevu: c.prevu ?? "", bilan: c.bilan ?? "",
           seance: c.seanceId ? titreDe.get(c.seanceId) ?? "" : "",
-          aides: c.seanceId ? aides.filter((m) => m.seanceId === c.seanceId).map((m) => ({ id: m.id, titre: m.titre })) : [],
+          aides: c.seanceId ? aides.filter((m) => m.seanceId === c.seanceId).map((m) => ({ id: m.id, titre: titreDeLAide(m) })) : [],
         })),
     })),
   };
@@ -87,10 +108,22 @@ const dessinees = new Map<string, string>();
 /** La page complète d'une aide de séance, comme à l'impression ; rien pour un matériel qui n'en est pas une. */
 export async function pageDeLAide(m: MaterielItem): Promise<string | null> {
   const f = lireFabrication(m.fabricationJson);
-  if (!f || !(ATELIERS_D_AIDE as readonly string[]).includes(f.atelier)) return null;
+  if (!f || !(estUnAtelierDAide(f.atelier) || f.consigne)) return null;
   const cle = `${m.id}|${m.fabricationJson ?? ""}`;
   const deja = dessinees.get(cle);
   if (deja) return deja;
+  if (!estUnAtelierDAide(f.atelier) && f.consigne) {
+    // La consigne d'une feuille : structurée, et avec les pictos de ses verbes si l'enseignant en a choisi.
+    const { STYLE_FEUILLE } = await import("./cartesImprimables");
+    const { documentImprimable } = await import("./print");
+    const { STYLE_CONSIGNES_STRUCTUREES, structurerConsignesHtml } = await import("./consignesStructurees");
+    const { consignesEnPictos } = await import("./impressionAtelier");
+    const titre = titreDeLAide(m);
+    const pictos = await consignesEnPictos(structurerConsignesHtml(pageDeLaConsigne(titre, f.consigne)));
+    const page = documentImprimable(titre, pictos.corps, STYLE_FEUILLE + STYLE_CONSIGNES_STRUCTUREES + pictos.style + STYLE_CONSIGNE_TABLETTE);
+    dessinees.set(cle, page);
+    return page;
+  }
   const a = await import("./aidesALaTache");
   const { sequentielImprimable, priseDeParoleImprimable } = await import("./aidesDesSequences");
   const { STYLE_FEUILLE } = await import("./cartesImprimables");
@@ -137,7 +170,7 @@ export async function publierLeJournal(maintenant = new Date()): Promise<void> {
     const aides: AideAPublier[] = [];
     for (const m of materiel.filter((x) => cites.has(x.id))) {
       const html = await pageDeLAide(m).catch(() => null);
-      if (html) aides.push({ cle: m.id, titre: m.titre, html });
+      if (html) aides.push({ cle: m.id, titre: titreDeLAide(m), html });
     }
     const bilan = await api.telephonePublierJournal(journal, aides);
     if (bilan.relie) publiee = signature;

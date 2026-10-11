@@ -27,6 +27,8 @@ export interface Fabrication {
   competences?: CompetenceSelectionnee[];
   /** Une fiche d'élève : son prénom et la date s'y écrivent, et le corrigé n'y est pas. */
   eleve?: { prenom: string; date: string };
+  /** La consigne de la feuille, pour les tablettes : ses blocs de consigne et de règle, tels qu'à la fabrication (voir journalTelephone). */
+  consigne?: string;
 }
 
 const estUnObjet = (v: unknown): v is Record<string, unknown> => Boolean(v) && typeof v === "object" && !Array.isArray(v);
@@ -45,6 +47,7 @@ export function lireFabrication(json: string | null | undefined): Fabrication | 
       graine: typeof f.graine === "number" && Number.isFinite(f.graine) ? f.graine : undefined,
       competences: Array.isArray(f.competences) ? f.competences as CompetenceSelectionnee[] : undefined,
       eleve,
+      consigne: typeof f.consigne === "string" && f.consigne.trim() ? f.consigne : undefined,
     };
   } catch {
     return null;

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Creneau, MaterielItem, Seance } from "./api";
-import { estUneAide, journalDes, joursPublies, signatureDuJournal } from "./journalTelephone";
+import { estUneAide, journalDes, joursPublies, pageDeLaConsigne, signatureDuJournal, titreDeLAide } from "./journalTelephone";
 
 const creneau = (id: string, date: string, p: Partial<Creneau> = {}): Creneau => ({
   id, date, heureDebut: "09:00", heureFin: "10:00", matiere: "Mathématiques", couleur: "blue", seanceId: null, atelierId: null, espaceId: null,
@@ -62,5 +62,27 @@ describe("le cahier journal pour le téléphone", () => {
     expect(signatureDuJournal(base, [autreAide])).not.toBe(sig);
     const autreBilan = journalDes(jours, [creneau("c1", "2026-10-12", { seanceId: "s1", bilan: "Fait." })], [seance("s1", "S")], [m1]);
     expect(signatureDuJournal(autreBilan, [m1])).not.toBe(sig);
+  });
+});
+
+describe("la consigne d'une feuille, pour les tablettes", () => {
+  const avecConsigne = (m: MaterielItem, consigne: string): MaterielItem => ({ ...m, fabricationJson: JSON.stringify({ atelier: "motsMeles", consigne }) });
+  const regle = '<div class="regle"><b>La règle</b>Retrouve les mots de la liste. Entoure chaque mot trouvé.</div>';
+
+  it("part avec la feuille posée dans une séance, sous le nom « Consigne — » et celui de la feuille", () => {
+    const feuille = avecConsigne(materiel("m4", "Mots mêlés", "s1", "motsMeles"), regle);
+    expect(estUneAide(feuille)).toBe(true);
+    expect(titreDeLAide(feuille)).toBe("Consigne — Mots mêlés");
+    // Sans consigne gardée, ou hors séance : rien ne part ; une aide à la tâche garde son nom.
+    expect(estUneAide(materiel("m5", "Mots mêlés", "s1", "motsMeles"))).toBe(false);
+    expect(estUneAide(avecConsigne(materiel("m6", "Mots mêlés", null, "motsMeles"), regle))).toBe(false);
+    expect(titreDeLAide(materiel("m1", "Ce que je vais faire", "s1", "sequentiel"))).toBe("Ce que je vais faire");
+    const j = journalDes(["2026-10-12"], [creneau("c1", "2026-10-12", { seanceId: "s1" })], [seance("s1", "Lire des mots")], [feuille]);
+    expect(j.jours[0].creneaux[0].aides).toEqual([{ id: "m4", titre: "Consigne — Mots mêlés" }]);
+  });
+
+  it("se montre sur une page à elle : le titre, puis la règle", () => {
+    expect(pageDeLaConsigne("Consigne — Mots mêlés", regle)).toBe(`<div class="page"><div class="titre">Consigne — Mots mêlés</div>${regle}</div>`);
+    expect(pageDeLaConsigne("<b>", "")).toContain("&lt;b&gt;");
   });
 });

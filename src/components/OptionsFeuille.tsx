@@ -7,9 +7,9 @@ import {
   EVT_OPTIONS_FEUILLE, OPTIONS_FEUILLE, cleOptionsFeuille, ecrireOptionsFeuille, feuillesPubliees, lireOptionsFeuille, type OptionsFeuille as Options,
 } from "../optionsFeuille";
 
-// Ce qui s'imprime sur la feuille, depuis le bandeau de l'atelier : trois
-// cases, les mêmes partout. Ne sont proposées que celles qui ont un effet
-// sur la feuille affichée.
+// Ce qui s'imprime sur la feuille, depuis le bandeau de l'atelier — trois
+// cases, les mêmes partout —, et ce qui va aux tablettes : la consigne. Ne
+// sont proposées que celles qui ont un effet sur la feuille affichée.
 
 /** Les choix d'un atelier, et leur mise à jour d'où qu'elle vienne. */
 export function useOptionsFeuille(atelier: string): { options: Options; changer: (patch: Partial<Options>) => void } {
@@ -34,11 +34,27 @@ export function useOptionsFeuille(atelier: string): { options: Options; changer:
   return { options, changer };
 }
 
-const CASES: { cle: keyof Options; libelle: string; aide: string }[] = [
-  { cle: "consigne", libelle: "la consigne", aide: "Décochée, la feuille sort sans sa consigne ni sa règle : on la dit à l'oral." },
+type Case = { cle: keyof Options; libelle: string; aide: string };
+
+const CASES: Case[] = [
+  { cle: "consigne", libelle: "la consigne", aide: "Cochée, la consigne et la règle s'impriment aussi sur la feuille : sans tablettes, ou pour une feuille qui part à la maison." },
   { cle: "prenom", libelle: "prénom et date", aide: "Décochée, la feuille sort sans la ligne « Prénom … Date … »." },
   { cle: "corrige", libelle: "la correction", aide: "Décochée, la feuille sort sans sa correction : ni page de corrigé, ni réponses." },
 ];
+
+/** La consigne sur les tablettes : elle part avec la feuille posée dans une séance du cahier journal. */
+const TABLETTES: Case = {
+  cle: "tablettes", libelle: "la consigne",
+  aide: "Cochée, la consigne part avec la feuille posée dans une séance : le téléphone la montre aux tablettes, avec les aides du créneau.",
+};
+
+/** Une case, cochée selon le choix de l'atelier. */
+const Coche = ({ c, options, changer }: { c: Case; options: Options; changer: (patch: Partial<Options>) => void }) => (
+  <label className="pb-coche" title={c.aide}>
+    <input type="checkbox" checked={options[c.cle]} onChange={(e) => changer({ [c.cle]: e.target.checked })} />
+    <span>{c.libelle}</span>
+  </label>
+);
 
 export function OptionsFeuille({ atelier }: { atelier: string }) {
   const { options, changer } = useOptionsFeuille(atelier);
@@ -47,14 +63,13 @@ export function OptionsFeuille({ atelier }: { atelier: string }) {
   const utiles = CASES.filter((c) => contenu[c.cle]);
   if (!utiles.length && !connue) return null;
   return (
-    <div className="comp-atelier options-feuille" role="group" aria-label="Ce qui s'imprime sur la feuille">
+    <div className="comp-atelier options-feuille" role="group" aria-label="Ce qui s'imprime sur la feuille, et ce qui va aux tablettes">
       <span className="options-feuille-titre">🖨 Sur la feuille</span>
-      {utiles.map((c) => (
-        <label key={c.cle} className="pb-coche" title={c.aide}>
-          <input type="checkbox" checked={options[c.cle]} onChange={(e) => changer({ [c.cle]: e.target.checked })} />
-          <span>{c.libelle}</span>
-        </label>
-      ))}
+      {utiles.map((c) => <Coche key={c.cle} c={c} options={options} changer={changer} />)}
+      {contenu.tablettes && <>
+        <span className="options-feuille-titre">📱 Sur les tablettes</span>
+        <Coche c={TABLETTES} options={options} changer={changer} />
+      </>}
       <PresentationFeuille atelier={atelier} />
     </div>
   );
@@ -74,14 +89,13 @@ export function CasesFeuille() {
   const utiles = CASES.filter((c) => contenu[c.cle]);
   if (!atelier || (!utiles.length && !connue)) return null;
   return (
-    <div className="cases-feuille" role="group" aria-label="Ce qui s'imprime sur la feuille">
+    <div className="cases-feuille" role="group" aria-label="Ce qui s'imprime sur la feuille, et ce qui va aux tablettes">
       <span className="meta">Sur la feuille :</span>
-      {utiles.map((c) => (
-        <label key={c.cle} className="pb-coche" title={c.aide}>
-          <input type="checkbox" checked={options[c.cle]} onChange={(e) => changer({ [c.cle]: e.target.checked })} />
-          <span>{c.libelle}</span>
-        </label>
-      ))}
+      {utiles.map((c) => <Coche key={c.cle} c={c} options={options} changer={changer} />)}
+      {contenu.tablettes && <>
+        <span className="meta">Sur les tablettes :</span>
+        <Coche c={TABLETTES} options={options} changer={changer} />
+      </>}
       <PresentationFeuille atelier={atelier} />
     </div>
   );

@@ -25,9 +25,12 @@ vi.mock("./print", async (importOriginal) => {
 });
 
 const {
-  LIGNES_MAX, contexteCompetence, enregistrerSurLeBureau, enteteCompetencesHtml, imprimerAtelier, ligneCompetence,
+  LIGNES_MAX, consignePourLesTablettes, contexteCompetence, enregistrerSurLeBureau, enteteCompetencesHtml, imprimerAtelier, ligneCompetence,
   lignesCompetences, materielDuBureau, STYLE_ENTETE_COMPETENCES,
 } = await import("./impressionAtelier");
+const { OPTIONS_FEUILLE, ecrireOptionsFeuille } = await import("./optionsFeuille");
+/** La consigne de l'atelier aussi sur la feuille, comme sans tablettes. */
+const consigneSurLaFeuille = (atelier: string) => reglages.set(`fabriquer:feuille:${atelier}`, ecrireOptionsFeuille({ ...OPTIONS_FEUILLE, consigne: true }));
 const { ecrireCompetencesAtelier } = await import("./ateliersCompetences");
 const { STYLE_CONSIGNES_STRUCTUREES } = await import("./consignesStructurees");
 
@@ -116,6 +119,7 @@ describe("imprimer un atelier", () => {
   });
 
   it("met les pictos des verbes devant les consignes, quand l'enseignant en a choisi", async () => {
+    consigneSurLaFeuille("cubes");
     reglages.set("caa:consignes", JSON.stringify({ écrire: 22, lire: 99 }));
     await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Lis puis écris le nombre.</p>', ".cu { }");
     const { corps, style } = impressions[0];
@@ -137,6 +141,7 @@ describe("imprimer un atelier", () => {
   });
 
   it("prend la consigne que l'enseignant a réécrite pour l'atelier", async () => {
+    consigneSurLaFeuille("cubes");
     reglages.set("fabriquer:consigne:cubes", "Regarde les cubes.\nÉcris le nombre.");
     await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Compte les cubes et écris le nombre.</p><table></table>');
     // Une ligne réécrite, une étape numérotée.
@@ -147,6 +152,21 @@ describe("imprimer un atelier", () => {
     reglages.set("fabriquer:consigne:cubes", "  ");
     await imprimerAtelier("cubes", "Cubes", '<p class="consigne">Compte.</p>');
     expect(impressions[1].corps).toContain('Je <b class="cs-verbe">compte</b>.');
+  });
+
+  it("laisse la consigne aux tablettes : la feuille sort sans elle, et la garde pour le cahier journal", async () => {
+    const corps = '<div class="page"><div class="regle"><b>La règle</b>Compte les cubes. <span class="reference">Livret CP.</span></div><table></table></div>';
+    await imprimerAtelier("cubes", "Cubes", corps);
+    expect(impressions[0].corps).toBe('<div class="page"><table></table></div>');
+    // Pour les tablettes : la règle, sans sa référence, et la consigne réécrite quand il y en a une.
+    expect(await consignePourLesTablettes("cubes", corps)).toBe('<div class="regle"><b>La règle</b>Compte les cubes.</div>');
+    reglages.set("fabriquer:consigne:cubes", "Regarde les cubes.");
+    expect(await consignePourLesTablettes("cubes", corps)).toContain("Regarde les cubes.");
+    // Décochée pour les tablettes, rien ne part ; une aide à la tâche part déjà entière.
+    reglages.set("fabriquer:feuille:cubes", ecrireOptionsFeuille({ ...OPTIONS_FEUILLE, tablettes: false }));
+    expect(await consignePourLesTablettes("cubes", corps)).toBeUndefined();
+    expect(await consignePourLesTablettes("sequentiel", corps)).toBeUndefined();
+    expect(await consignePourLesTablettes("cubes", "<table></table>")).toBeUndefined();
   });
 
   it("imprime quand même si le réglage est illisible", async () => {

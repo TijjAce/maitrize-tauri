@@ -16,7 +16,8 @@ import { cleDesCompetences, lireCompetencesAtelier, objectifsDesAteliers, unionD
 import { CLE_ACTIF, CLE_LEXIQUE, STYLE_CONSIGNES_PICTOS, consignesActives, decorerConsignesHtml, lireLexique } from "./caa";
 import { chargerImageAppoint } from "./pictosAppoint";
 import { cleConsigne, remplacerConsigne, clePictos, lirePictosAjoutes } from "./consigneAtelier";
-import { appliquerOptionsFeuille, cleOptionsFeuille, lireOptionsFeuille } from "./optionsFeuille";
+import { appliquerOptionsFeuille, cleOptionsFeuille, consignesDeLaFeuille, lireOptionsFeuille, type OptionsFeuille } from "./optionsFeuille";
+import { ATELIERS_D_AIDE } from "./journalTelephone";
 import { documentImprimable, escapeHtml, printHTML } from "./print";
 import type { MaterielItem } from "./api";
 import { ecrireFabrication, fabricationDuMoment, modificationEnCours, type Fabrication, type Modification } from "./modifierFeuille";
@@ -174,13 +175,34 @@ const supplementDe = async (atelier: string, extras: ExtrasAtelier) => [...new S
  * Sans ses références non plus : elles ne s'impriment pas, et leurs mots ne
  * doivent pas appeler de pictos dans la consigne.
  */
-export async function avecLaConsigneDeLAtelier(atelier: string, corps: string): Promise<string> {
+export async function avecLaConsigneDeLAtelier(atelier: string, corps: string, imposees: Partial<OptionsFeuille> = {}): Promise<string> {
   try {
     const { api } = await import("./api");
     const reecrite = remplacerConsigne(corps, await api.settingGet(cleConsigne(atelier)));
-    return sansReferences(structurerConsignesHtml(appliquerOptionsFeuille(reecrite, lireOptionsFeuille(await api.settingGet(cleOptionsFeuille(atelier))))));
+    const options = { ...lireOptionsFeuille(await api.settingGet(cleOptionsFeuille(atelier))), ...imposees };
+    return sansReferences(structurerConsignesHtml(appliquerOptionsFeuille(reecrite, options)));
   } catch {
-    return sansReferences(structurerConsignesHtml(corps));
+    // Sans les réglages, la feuille garde tout : mieux vaut une consigne de trop qu'une feuille sans elle.
+    return sansReferences(structurerConsignesHtml(appliquerOptionsFeuille(corps, { consigne: true, prenom: true, corrige: true, tablettes: false, ...imposees })));
+  }
+}
+
+/**
+ * La consigne d'une feuille pour les tablettes : ses blocs de consigne et de
+ * règle — la consigne que l'enseignant a réécrite comprise —, si l'atelier les
+ * y envoie. Elle part avec la feuille posée dans une séance : le cahier
+ * journal la publie au téléphone (voir journalTelephone). Rien pour une aide à
+ * la tâche, qui part déjà entière.
+ */
+export async function consignePourLesTablettes(atelier: string, corps: string): Promise<string | undefined> {
+  if ((ATELIERS_D_AIDE as readonly string[]).includes(atelier)) return undefined;
+  try {
+    const { api } = await import("./api");
+    if (!lireOptionsFeuille(await api.settingGet(cleOptionsFeuille(atelier))).tablettes) return undefined;
+    const consignes = consignesDeLaFeuille(sansReferences(remplacerConsigne(corps, await api.settingGet(cleConsigne(atelier)))));
+    return consignes.length ? consignes.join("\n") : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -227,13 +249,13 @@ export function materielDuBureau(
  * de quoi le refaire dans son atelier — ou mis à la place de la feuille de
  * cet atelier qu'on est en train de refaire.
  */
-export async function deposerSurLeBureau(atelier: string, titre: string, fichier: string): Promise<MaterielItem> {
-  const refaite = await remplacerLaFeuille(atelier, async () => fichier);
+export async function deposerSurLeBureau(atelier: string, titre: string, fichier: string, consigne?: string): Promise<MaterielItem> {
+  const refaite = await remplacerLaFeuille(atelier, async () => fichier, consigne);
   if (refaite) return refaite;
   const { api, newId, nowIso } = await import("./api");
   const materiel: MaterielItem = {
     ...materielDuBureau(atelier, titre, fichier, await competencesDeLAtelier(atelier), newId(), nowIso()),
-    fabricationJson: ecrireFabrication(fabricationDuMoment(atelier)),
+    fabricationJson: ecrireFabrication(fabricationDuMoment(atelier, consigne ? { consigne } : {})),
   };
   await api.materielSave(materiel);
   return materiel;
@@ -246,11 +268,12 @@ export async function deposerSurLeBureau(atelier: string, titre: string, fichier
  * séquence en tête, ou au nom de son élève — et prend sa place.
  */
 export async function enregistrerSurLeBureau(atelier: string, titre: string, corps: string, style = "", extras: ExtrasAtelier = {}): Promise<MaterielItem> {
+  const consigne = await consignePourLesTablettes(atelier, corps);
   const refaite = await remplacerLaFeuille(atelier, (m, titreGarde) => (m.eleve
     ? pdfPourLEleve(atelier, titreGarde, corps, style, m.eleve)
-    : pdfDeLAtelier(atelier, titreGarde, corps, style, { ...extras, competences: m.competences ?? extras.competences })));
+    : pdfDeLAtelier(atelier, titreGarde, corps, style, { ...extras, competences: m.competences ?? extras.competences })), consigne);
   if (refaite) return refaite;
-  return deposerSurLeBureau(atelier, titre, await pdfDeLAtelier(atelier, titre, corps, style, extras));
+  return deposerSurLeBureau(atelier, titre, await pdfDeLAtelier(atelier, titre, corps, style, extras), consigne);
 }
 
 /**
@@ -261,7 +284,7 @@ export async function enregistrerSurLeBureau(atelier: string, titre: string, cor
  * ou si elle a été supprimée entre-temps : on enregistre alors comme d'habitude.
  */
 async function remplacerLaFeuille(
-  atelier: string, pdf: (m: Modification, titreGarde: string) => Promise<string>,
+  atelier: string, pdf: (m: Modification, titreGarde: string) => Promise<string>, consigne?: string,
 ): Promise<MaterielItem | null> {
   const m = modificationEnCours.lire();
   if (!m || m.atelier !== atelier) return null;
@@ -273,7 +296,7 @@ async function remplacerLaFeuille(
   }
   const apres: MaterielItem = {
     ...avant, pdfsJson: JSON.stringify([await pdf(m, avant.titre)]),
-    fabricationJson: ecrireFabrication(fabricationDuMoment(atelier, { competences: m.competences, eleve: m.eleve })),
+    fabricationJson: ecrireFabrication(fabricationDuMoment(atelier, { competences: m.competences, eleve: m.eleve, ...(consigne ? { consigne } : {}) })),
   };
   await api.materielSave(apres);
   modificationEnCours.finir();
@@ -299,9 +322,10 @@ export async function poserDansUneSeance(
 ): Promise<MaterielItem> {
   const { api, newId, nowIso } = await import("./api");
   const fichier = await pdfDeLAtelier(atelier, titre, corps, style, extras);
+  const consigne = await consignePourLesTablettes(atelier, corps);
   const materiel: MaterielItem = {
     ...materielDuBureau(atelier, titre, fichier, extras.competences ?? await competencesDeLAtelier(atelier), newId(), nowIso()), seanceId, sequenceId,
-    fabricationJson: ecrireFabrication({ atelier, ...extras.fabrication, competences: extras.competences }),
+    fabricationJson: ecrireFabrication({ atelier, ...extras.fabrication, competences: extras.competences, ...(consigne ? { consigne } : {}) }),
   };
   await api.materielSave(materiel);
   return materiel;
@@ -331,11 +355,15 @@ export function auNomDeLEleve(html: string, prenom: string, date: string): strin
     .replace(A_REMPLIR("Date"), (_, debut: string) => `${debut}${escapeHtml(date)}`);
 }
 
-/** La feuille de l'atelier telle qu'elle s'imprime — sa consigne, ses compétences —, à son nom, sans corrigé, en PDF. */
+/**
+ * La feuille de l'atelier telle qu'elle s'imprime — sa consigne, ses
+ * compétences —, à son nom, sans corrigé, en PDF. Une fiche d'autonomie garde
+ * sa consigne sur le papier : l'élève y travaille seul, sans le portail.
+ */
 async function pdfPourLEleve(atelier: string, titre: string, corps: string, style: string, eleve: { prenom: string; date: string }): Promise<string> {
   const { api } = await import("./api");
   const entete = enteteCompetencesHtml(await competencesDeLAtelier(atelier));
-  const sansCorrige = appliquerOptionsFeuille(await avecLaConsigneDeLAtelier(atelier, corps), { consigne: true, prenom: true, corrige: false });
+  const sansCorrige = await avecLaConsigneDeLAtelier(atelier, corps, { consigne: true, corrige: false });
   const consignes = await consignesEnPictos(auNomDeLEleve(sansCorrige, eleve.prenom, eleve.date), await supplementDe(atelier, {}));
   const html = documentImprimable(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style + await styleDeLAtelier(atelier));
   return api.feuilleEnPdf(html);
