@@ -94,6 +94,503 @@ const LA_CLASSE: Demarche = {
   ],
 };
 
+// ── Les séquences Éduscol de 2016, au choix ───────────────────────────────
+//
+// « Questionner le monde » (2016) : des séquences que le programme de 2020,
+// encore en vigueur en CE1-CE2 en 2026-2027, porte toujours. Elles ne sont
+// pas la séquence d'un thème de 2026 : on les choisit dans le menu des
+// déroulements, comme la Petite Sirène.
+
+// « Se situer dans l'espace » et « Comprendre qu'un espace est organisé » : Un lion à Paris (CE1), le
+// quartier comparé à un village (CE2).
+
+const LION_A_PARIS_CE1: Demarche = {
+  id: "lion-a-paris-ce1",
+  nom: "Découvrir une ville par ses paysages et son plan : Un lion à Paris (CE1)",
+  famille: "Sciences, histoire, EMC",
+  source: "Éduscol, ressources 2016 — Questionner le monde, cycle 2, « Se situer dans l'espace – Explorer les organisations du monde » : "
+    + "« Séquence au CE1 à partir de l'album Un lion à Paris » (introduction ; séances 1 à 8, dont 2-a et 2-b) ; "
+    + "programme 2020, encore en vigueur en CE1-CE2 en 2026-2027",
+  resume: "Un album pour découvrir une ville qu'on n'a jamais visitée : le voyage du lion de Béatrice Alemagna dans Paris, remis en ordre sur "
+    + "une frise ; ses lieux retrouvés sur Internet avec leur vrai nom et associés à leur photographie ; puis cherchés sur un plan simplifié, "
+    + "sur un plan détaillé grâce à leur adresse, jusqu'à l'itinéraire du lion. Un espace qu'on n'a pas vécu ne se connaît que par les "
+    + "documents, photographies et plans : on apprend à les lire, et à distinguer la fiction de la réalité. La séquence vient après un "
+    + "premier travail sur le plan, celui de la cour ou de l'école.",
+  seances: [
+    seance("Découvrir l'album",
+      sauront("raconter le voyage du lion et nommer avec leurs mots les lieux de Paris qu'il traverse."), 40, [
+        ph("Ce qu'on sait de Paris", "10 min", "On annonce qu'on va parler de Paris. Les élèves disent ce qu'ils en savent ; l'enseignant note leurs idées "
+          + "sur une affiche, qui reste visible toute la séquence."),
+        ph("La couverture", "5 min", "Décrire la première de couverture : un lion se regarde dans l'eau d'un fleuve. Ce lion sera le personnage "
+          + "principal d'une histoire qui se passe à Paris."),
+        ph("Lire et comprendre", "20 min", "L'enseignant lit l'histoire d'une traite, sans montrer les illustrations. Chacun reçoit le texte, transcrit "
+          + "en quinze petits textes espacés ; on le relit pas à pas, et l'on questionne : où est le lion ? que voit-il ? que voit-on ? Les noms "
+          + "proposés pour chaque lieu sont notés sur une affiche collective ; on dessine ce qu'évoquent certains passages, comme le fleuve qui "
+          + "coupe la ville.",
+          "Une activité reprise chaque jour pendant une semaine : c'est la lecture de la semaine. Insister sur les lieux, sur ce que voit le lion."),
+      ]),
+    seance("La frise du voyage",
+      sauront("remettre dans l'ordre les étapes du voyage du lion, en prenant des indices dans l'image et dans le texte."), 40, [
+        ph("Coller dans l'ordre", "20 min", "Rappeler quelques situations et quelques lieux de l'histoire. Par deux, avec un jeu d'illustrations de "
+          + "l'album et une grande feuille : coller les illustrations dans l'ordre pour refaire le chemin du lion, et noter sous chaque image le "
+          + "nom du lieu dont on se souvient.",
+          "Nommer les lieux avec ce qu'on sait et avec ses propres mots."),
+        ph("Mise en commun", "20 min", "Toujours la même question : « Où est le lion ? » En cas de doute, chercher des indices dans le texte. "
+          + "L'enseignant construit la frise au tableau et y inscrit le nom de chaque lieu, tel que l'album le donne.",
+          "Toutes les images ne sont pas reproduites : faire imaginer ce qui se passe entre deux images — le lion dans la rue, au bord du fleuve. "
+          + "La frise fait travailler la succession : avant, après."),
+      ]),
+    seance("Les sentiments du lion",
+      sauront("écrire un texte qui raconte le voyage du lion et dit ce qu'il ressent, sans recopier l'album."), 40, [
+        ph("Écrire", "40 min", "Production d'écrit : chacun rédige un texte qui montre les sentiments du lion pendant son voyage.",
+          "Les critères de réussite : ne pas recopier le texte de l'album ; dire les émotions du lion avec le vocabulaire étudié en classe ; écrire "
+          + "des phrases correctes. Les textes d'élèves que cite le document suivent les étapes de la frise."),
+      ]),
+    seance("De la fiction à la réalité",
+      sauront("chercher si les lieux de l'album existent vraiment, les reconnaître sur des photographies grâce à des indices, et leur donner leur vrai nom."), 55, [
+        ph("Fiction ou réalité ?", "10 min", "Se remémorer les lieux vus par le lion. Un lion qui se promène dans Paris, c'est une histoire ; mais ses "
+          + "lieux sont-ils vrais ? On les compare à l'affiche de la première séance. Le « château blanc » existe-t-il ? Comment le vérifier sans "
+          + "aller à Paris ? Les élèves pensent à une carte, à Internet : on cherchera des lieux réels sur un site."),
+        ph("Chercher les vrais lieux", "30 min", "En salle informatique, par deux, sur un site des monuments de Paris qui offre un mur d'images : "
+          + "retrouver chaque lieu de l'album. Sur la liste des lieux, noter qu'il existe et son vrai nom : le château blanc devient la basilique "
+          + "du Sacré-Cœur.",
+          "Certains lieux sont faciles, comme la tour Eiffel ; d'autres trompent : le Sacré-Cœur pris pour les Invalides, le premier pont venu. "
+          + "Faire observer plus finement et chercher des preuves — la barrière en fer du pont des Arts, le bâtiment au toit arrondi au bout. "
+          + "Agrandir les photographies aide ; peu d'élèves lisent les textes."),
+        ph("Mise en commun", "10 min", "Était-ce facile ? Quels lieux a-t-on reconnus tout de suite ? Comment a-t-on trouvé les autres ? On fixe les "
+          + "vrais noms : l'usine est Beaubourg, le Centre Georges-Pompidou, un musée ; la gare de Lyon ; le café de Flore, dont le nom est écrit "
+          + "sur le store ; la station de métro Châtelet ; le pont des Arts.",
+          "Les informations lues sur le site sont exactes : le dire. Échanger sur les façons de chercher : lire une légende, un nom sur une image, "
+          + "partir de ce qu'on sait — la Joconde est au Louvre."),
+        ph("Paris vu d'en haut", "5 min", "Quelques vues de Paris, sur le site de la tour Eiffel : la ville est grande, et ses monuments sont "
+          + "dispersés sur un vaste territoire. Où sont-ils ? La question de la localisation est lancée."),
+      ]),
+    seance("Illustrations et photographies",
+      sauront("associer chaque illustration de l'album à la photographie du lieu réel, en repérant leurs points communs et en lisant le nom du lieu."), 50, [
+        ph("Associer, par deux", "40 min", "Rappeler la recherche en salle informatique et faire dire le lien entre les illustrations et les vraies "
+          + "photographies : quelqu'un a pris ces photos à Paris, donc ces lieux existent. Par deux, coller à côté de chaque illustration du cahier "
+          + "la photographie qui lui correspond : c'est la trace écrite de la recherche.",
+          "Les élèves s'aident des images en couleur de leur cahier et du tableau des vrais noms ; ils lisent surtout les noms. Le mot station, qui "
+          + "sert pour le métro comme pour la gare, prête à confusion."),
+        ph("Comment l'auteure a-t-elle fait ?", "10 min", "Une correction collective, rapide. Puis chercher comment l'auteure a fait ses "
+          + "illustrations pour qu'on retrouve les vrais lieux : elle a visité Paris, pris des photos, dessiné ce qu'elle a vu. Elle a peut-être "
+          + "vu la statue du lion de la place Denfert-Rochereau avant d'imaginer son histoire.",
+          "Profiter de la correction pour cette réflexion : elle relie la fiction et la réalité."),
+      ]),
+    seance("Le plan simplifié de Paris",
+      sauront("repérer sur un plan simplifié de Paris les lieux visités par le lion, et dire ce que ce plan ne montre pas."), 45, [
+        ph("Où sont ces lieux ?", "10 min", "Les lieux de l'album existent : comment savoir où ils sont, si l'on voulait les visiter ? Les élèves pensent "
+          + "au GPS, à Internet ; certains au plan, vu sur le site des monuments. On va apprendre à lire un plan : chacun reçoit un plan touristique "
+          + "du centre de Paris."),
+        ph("Entourer les lieux du lion", "15 min", "Seul, chercher des points de repère et entourer sur le plan les lieux vus par le lion.",
+          "Un plan choisi pour sa simplicité : les monuments y sont dessinés. Il ne montre que cinq lieux sur dix, mais c'est une étape dans un "
+          + "long apprentissage, la lecture de plan."),
+        ph("Mise en commun", "20 min", "Le plan est projeté ; l'élève interrogé déplace à l'ordinateur des cercles préparés pour entourer les "
+          + "monuments. Le tableau des lieux se remplit : le Louvre, la tour Eiffel, Beaubourg, le Sacré-Cœur et la Seine sont trouvés ; la gare "
+          + "de Lyon, le café de Flore, la station Châtelet, le pont des Arts et la place Denfert-Rochereau ne le sont pas.",
+          "La recherche fait lire d'autres mots : le Trocadéro, plusieurs musées, le Stade de France, l'héliport. Faire observer : un indice dit ce "
+          + "que sont les gros ronds noirs, des gares ; l'une est la gare de Lyon, mais laquelle ?"),
+      ]),
+    seance("Le grand plan de Paris",
+      sauront("se repérer sur un plan détaillé à partir de lieux connus, et localiser un lieu grâce à son adresse."), 45, [
+        ph("Un plan plus grand", "5 min", "Le premier plan ne montre pas tout : il est trop petit, il en faut un plus grand, avec plus d'indications. "
+          + "La visite virtuelle a fait voir que la ville est immense."),
+        ph("Les lieux déjà trouvés", "15 min", "Sur le nouveau plan, entourer d'abord les quatre lieux déjà trouvés, en cherchant ce qui ressemble au "
+          + "premier plan : la Seine coupe la ville en deux, le Sacré-Cœur est en haut, la tour Eiffel à gauche, le Louvre et Beaubourg au centre, "
+          + "au-dessus de la Seine.",
+          "Se familiariser avec un document complexe : ces premiers repères guident les localisations suivantes."),
+        ph("L'adresse", "10 min", "Un plan si riche ne se lit pas sans savoir où chercher. L'enseignant prend un exemple hors du vécu des élèves : "
+          + "« Si je vous invitais chez moi pour mon anniversaire, sauriez-vous venir ? » La notion d'adresse se dégage peu à peu."),
+        ph("Chercher l'adresse, trouver la rue", "15 min", "Pour chaque lieu manquant — le café de Flore, le pont des Arts, la station Châtelet, "
+          + "la place Denfert-Rochereau —, taper son nom dans un moteur de recherche et ouvrir la carte ; cartes.gouv.fr, l'ancien Géoportail, convient aussi. Sur la "
+          + "carte projetée, zoomer pour lire, dézoomer pour se repérer ; puis trouver la rue sur le plan.",
+          "Un repérage ardu : le plan n'est pas encore maîtrisé, et ces jeunes lecteurs ne savent pas encore quelles indications déchiffrer."),
+      ]),
+    seance("L'itinéraire du lion",
+      sauront("tracer sur un plan un itinéraire qui suit les rues, et dire ce que sont une rue, un boulevard, une allée, une impasse, un arrondissement."), 45, [
+        ph("Les étapes du lion", "5 min", "Rappeler les étapes du lion dans la ville ; l'enseignant les écrit au tableau. Entre deux lieux, le lion "
+          + "s'est déplacé : des pointillés figurent son chemin."),
+        ph("Lire le plan", "10 min", "Le plan où tous les lieux sont repérés est projeté : par où le lion a-t-il pu passer pour aller d'un lieu à "
+          + "l'autre ? On l'observe de plus près : les couleurs montrent les quartiers de Paris, les arrondissements ; les rues ont un nom. Définir "
+          + "ensemble la rue, le boulevard, l'allée, l'impasse. Le chemin qu'on suit par les rues est un itinéraire."),
+        ph("Tracer l'itinéraire", "20 min", "Par deux, tracer un itinéraire possible de la gare de Lyon à la place Denfert-Rochereau, en passant par "
+          + "toutes les étapes et en suivant les rues.",
+          "Les élèves remarquent parfois d'autres monuments sur le plan, que l'auteure aurait pu dessiner : l'Opéra, l'Arc de triomphe."),
+        ph("D'autres monuments", "10 min", "L'album Paris Pop Up montre des monuments de Paris en trois dimensions : les localiser sur son plan.",
+          "Une activité informelle dans le document : elle peut se faire à un autre moment."),
+      ]),
+    seance("Évaluation",
+      sauront("définir les mots de la ville, et dire ce qu'ils ont appris en argumentant et en justifiant leurs choix."), 75, [
+        ph("Évaluation écrite", "15 min", "Pour chaque mot, chacun écrit une définition ou fait un dessin qui montre qu'il a compris : un quartier, "
+          + "une ville, un rond-point, une place, une rue, un bâtiment, un centre-ville, un pont, un fleuve.",
+          "D'autres pistes, pour la lecture du plan : sur le plan simplifié, entourer les monuments vus par le lion et d'autres qu'il aurait pu "
+          + "voir ; prouver par des détails qu'une photographie montre le pont des Arts ; sur le grand plan, tracer un itinéraire et citer deux "
+          + "rues empruntées."),
+        ph("Entretiens en petits groupes", "60 min", "Par groupes de cinq ou six, un entretien d'un quart d'heure avec l'enseignant ; les groupes "
+          + "tournent, les autres élèves travaillent en autonomie. Les questions : se souvient-on de l'album ? qu'a-t-on aimé, ou pas ? qu'a-t-on "
+          + "appris ? Puis des rappels — Paris, la salle informatique, les illustrations et les photographies, les lieux du lion, le petit et le "
+          + "grand plan — ; l'itinéraire : le lion s'est-il perdu ? Enfin, quelle histoire semblable inventerait-on : qui se promène, où, comment "
+          + "se repérer ?",
+          "Aider à mémoriser, à reformuler, à clarifier les notions ; faire dépasser la description de son action pour argumenter et justifier. "
+          + "Le document propose aussi un transfert : la classe a imaginé un lion dans sa propre ville, Roubaix, et en a lu le plan."),
+      ]),
+  ],
+};
+
+// ── Le quartier comparé à un village (CE2) ────────────────────────────────
+
+const QUARTIER_VILLAGE_CE2: Demarche = {
+  id: "quartier-village-ce2",
+  nom: "Le quartier comparé à un village (CE2)",
+  famille: "Sciences, histoire, EMC",
+  source: "Éduscol, ressources 2016 — Questionner le monde, cycle 2, « Explorer les organisations du monde – Comprendre qu'un espace est organisé » : "
+    + "« L'organisation spatiale du quartier comparée à celle d'un village », séquence au CE2 (introduction ; séances 1, 2, 3a à 3c, 4a et 4b, "
+    + "5a à 5c ; évaluations n° 1 et n° 2) ; programme 2020, encore en vigueur en CE1-CE2 en 2026-2027",
+  resume: "Ce que les élèves savent de leur quartier devient une grille de lecture — habiter, circuler, acheter, se divertir, apprendre, les "
+    + "espaces verts — ; une sortie la vérifie, puis on passe des dessins du trajet à un plan collectif, au plan cadastral, à la photographie "
+    + "aérienne et aux angles de vue. Avec la même grille, on observe un village — Maroilles, dans le Nord, pour la classe de Lille — et l'on "
+    + "compare : un espace est organisé par une société pour ses activités. Dans une école rurale, on part du village et on le compare avec un "
+    + "quartier de la ville la plus proche.",
+  seances: [
+    seance("Ce qu'on sait du quartier",
+      sauront("dire ce qu'il y a dans leur quartier et le classer selon l'usage qu'on en fait : c'est le début d'une grille de lecture."), 40, [
+        ph("Ce que chacun sait", "20 min", "« Aujourd'hui, nous allons chercher comment est notre quartier. » Sur une fiche préparée, chacun écrit ce "
+          + "qui lui vient à l'esprit : des mots-clés, des phrases, des croquis, des dessins.",
+          "Ce que les élèves savent du quartier vient surtout de leurs pratiques, de leurs expériences, de leurs observations."),
+        ph("Mise en commun", "5 min", "Plusieurs élèves disent leurs propositions ; l'enseignant note au tableau les bonnes idées pour représenter "
+          + "tout le quartier et s'y repérer."),
+        ph("Classer, par deux", "10 min", "Par deux, chercher un classement de toutes ces idées, puis en discuter. Les élèves citent surtout des "
+          + "objets — maisons, rues, magasins — et les trient selon l'usage qu'ils en ont : habiter, circuler, la nature, ce qui se paie. La grille "
+          + "se formalise au tableau : les habitations, la circulation, les commerces, les loisirs, les lieux pour apprendre, les espaces verts.",
+          "D'autres fonctions du quartier ne sont pas vues : ne pas insister. La grille guidera l'observation pendant la sortie ; elle est faite "
+          + "pour être enrichie."),
+        ph("Ce qu'on retient", "5 min", "Un résumé : que retient-on de notre classement ? C'est la trace écrite, notre grille de lecture de "
+          + "l'espace. Puis les questions qu'on se pose sur le quartier : comment les vérifier ? Par une sortie, avec des appareils photo."),
+      ]),
+    seance("La sortie dans le quartier",
+      sauront("relever des points de repère le long d'un trajet, dessiner un élément du paysage, et retrouver d'où une photographie a été prise."), 90, [
+        ph("Avant le départ", "5 min", "L'enseignant donne rapidement l'itinéraire. Chacun prendra une photographie. Il faut tout observer : au "
+          + "retour, chacun représentera le quartier. On peut prendre des notes et dessiner.",
+          "Un espace peu vaste d'abord : dans la classe du document, la pluie a coupé la sortie en deux ; les premières représentations ont "
+          + "montré qu'il valait mieux réfléchir d'abord sur ce trajet, plus court."),
+        ph("Le trajet et ses repères", "40 min", "S'arrêter plusieurs fois pour observer et décrire des éléments du paysage, qui deviennent des "
+          + "points de repère le long du trajet : dans la classe du document, une maison très ancienne et un immeuble récent, un carrefour, un "
+          + "magasin de pianos, la place du marché, le théâtre. En chemin, chaque élève prend une photographie.",
+          "Les arrêts aident à mémoriser le trajet et à organiser l'espace. Pour la photographie, éviter les vues trop rapprochées, sur un seul "
+          + "objet : elle doit montrer d'autres éléments."),
+        ph("Le croquis d'observation", "20 min", "Dans un lieu calme et assez grand — un carrefour, un jardin public —, chacun choisit un élément du "
+          + "paysage et le dessine. On peut aussi dessiner un élément comme si on le voyait d'au-dessus : la fontaine de la place, par exemple.",
+          "Se concentrer sur un lieu pour en voir les détails : c'est un début de lecture de paysage, repris plus loin dans la séquence."),
+        ph("Les angles de vue", "25 min", "Faire observer les éléments proches, grands et détaillés, et les éléments éloignés, plus petits, visibles "
+          + "en entier mais sans détails — on les mesure, bras tendu, avec un crayon ; tendre les bras devant soi, en biais, matérialise l'angle de "
+          + "vue. Avec trois ou quatre photographies "
+          + "prises avant la sortie, chercher d'où le photographe les a prises ; on peut y ajouter un minuscule détail à débusquer.",
+          "Les enfants perçoivent sans s'arrêter, sauf si quelque chose les surprend ou si on leur demande d'être attentifs : ces jeux les obligent "
+          + "à observer finement."),
+      ]),
+    seance("Raconter et dessiner la sortie",
+      sauront("raconter le trajet de la sortie avec ses repères, et en faire une première représentation."), 40, [
+        ph("Se remémorer la sortie", "10 min", "Raviver les souvenirs : distribuer les photographies de la sortie dans l'ordre où elles ont été prises "
+          + "— chacun reconnaît la sienne, on dit ce qu'on y voit, l'enseignant note les points de repère au tableau — ; ou raconter ensemble les "
+          + "étapes, ce qu'on a observé, les anecdotes, les yeux fermés pour se « remettre sur le terrain ».",
+          "Autre choix, celui de la classe du document : un écrit de travail qui raconte la sortie — texte, dessin, schéma, carte mentale —, puis "
+          + "une mise en commun et la liste des repères. Compter alors 30 minutes."),
+        ph("Représenter le quartier", "30 min", "Chacun représente le quartier pour qu'on voie le chemin parcouru et ce qu'on a vu.",
+          "Ce premier essai pose la question du point de vue qui montre le mieux un vaste espace. Moins de la moitié des élèves tentent un plan ; la "
+          + "plupart gardent la vue de paysage ; des repères s'accrochent à une ligne, sans relations entre eux. Les détails et les noms de rues "
+          + "montrent qu'on a bien observé."),
+      ]),
+    seance("Vers un plan du quartier",
+      sauront("lire la représentation d'un camarade, y trouver de bonnes idées, et construire ensemble un plan du quartier vu de dessus et orienté."), 50, [
+        ph("Lire le dessin du voisin", "20 min", "Échanger son dessin avec son voisin et le lire, avec une consigne : trouver de bonnes idées pour "
+          + "représenter le quartier parcouru. On dresse la liste des bonnes idées à reprendre pour montrer tout le quartier.",
+          "Une lecture constructive : on comprend qu'on peut porter un autre point de vue sur l'espace. Attention : pour beaucoup, la meilleure "
+          + "idée reste la vue de paysage, plus jolie que la vue de dessus, qui cache les détails."),
+        ph("Le plan collectif", "30 min", "Au tableau, en appliquant les bonnes idées, construire un plan du quartier : une étape entre les dessins "
+          + "et le plan cadastral. On commence par l'école — un carré, vu d'en haut, avec son nom —, puis on fait dessiner la rue : c'est orienter "
+          + "le bâtiment, la rue d'un côté, la cour de l'autre. Les autres repères se placent ensuite.",
+          "Travailler au tableau oblige à s'orienter ; l'école orientée, chacun peut s'orienter et placer les autres repères. Garder ce plan sur un "
+          + "support durable : il resservira pour les angles de vue."),
+      ]),
+    seance("Le plan cadastral",
+      sauront("orienter le plan cadastral du quartier, y situer l'école, et y marquer l'itinéraire de la sortie."), 40, [
+        ph("Un repère connu", "5 min", "Chacun reçoit un extrait du plan cadastral du quartier et y cherche quelque chose de connu : il faut lire les "
+          + "indications, surtout les noms de rues. Un musée, une place, une rue se trouvent vite."),
+        ph("Orienter le plan", "10 min", "Au vidéoprojecteur : ceux qui ont trouvé la rue de l'école aident à situer l'école, et chacun la colorie. "
+          + "Puis on oriente le plan : imaginer un tout petit bonhomme dans « l'école du plan », et tourner le plan pour que la vraie rue et la "
+          + "petite rue du plan soient du même côté.",
+          "Tant que le plan ne correspond pas à la réalité, les élèves ne peuvent pas s'y projeter pour s'orienter. Un capuchon de stylo figure le "
+          + "bonhomme ; une petite figurine aide ceux qui ont du mal."),
+        ph("Marquer l'itinéraire", "15 min", "Seul, marquer sur le plan l'itinéraire de la sortie."),
+        ph("Mise en commun", "10 min", "À tour de rôle, au poste ordinateur, placer un segment sur chaque rue parcourue.",
+          "Les élèves cherchent le nom des rues et ne marquent souvent que la portion où il est écrit : faire marquer chaque rue sur toute sa "
+          + "longueur visible."),
+      ]),
+    seance("Les photographies du trajet",
+      sauront("ranger dans l'ordre du trajet des photographies prises sur le terrain, et retrouver les rues et quelques repères sur une photographie aérienne."), 45, [
+        ph("Ordonner les photographies", "20 min", "Quelques photographies qui jalonnent le parcours, sur une planche : les découper et les coller dans "
+          + "l'ordre où elles ont été prises. Il faut se remémorer le trajet et les paysages vus, et lire les détails de chaque image.",
+          "Une lecture très fine, surtout en ville, où les rues se ressemblent. Différencier par le choix des photographies données. Certains "
+          + "numérotent, d'autres écrivent le nom des rues."),
+        ph("Mise en commun", "10 min", "Chacun vérifie qu'il a bien ordonné toutes les photographies.",
+          "Bien mémoriser le trajet prépare les repérages sur la photographie aérienne et sur le plan."),
+        ph("La photographie aérienne", "15 min", "Chacun reçoit la photographie aérienne verticale du quartier : la même portion d'espace que le plan "
+          + "cadastral. L'enseignant ne dit rien et laisse découvrir. Une partie de la photographie est projetée : les élèves viennent à "
+          + "l'ordinateur y placer le nom des rues et des symboles — un rectangle rouge pour l'école, un M pour le métro, Prf pour la préfecture.",
+          "Continuer à lire le plan, avec un autre type de représentation de l'espace."),
+      ]),
+    seance("Les angles de vue",
+      sauront("dire ce qu'est un angle de vue, et associer des photographies du quartier aux angles de vue tracés sur le plan."), 40, [
+        ph("Rappel de la sortie", "10 min", "Sur la place, pendant la sortie, les éléments proches étaient grands et détaillés, ceux du fond bien plus "
+          + "petits : mesuré bras tendu avec un crayon, le musée ne faisait qu'un demi-crayon. Tout ce qu'on voit droit devant soi tient dans un "
+          + "angle : on le refait, bras tendus en biais. On l'appelle aussi le champ de vision."),
+        ph("Le petit bonhomme du plan", "10 min", "Sur le plan collectif construit au tableau, l'enseignant place un petit bonhomme — un point rouge "
+          + "— qui regarde devant lui — une flèche. Que voit-il ? La place du marché. Un élève trace l'angle de vue qui correspond."),
+        ph("Retrouver les angles de vue", "15 min", "Chacun reçoit une planche de neuf photographies de la sortie et un extrait du plan cadastral où "
+          + "l'enseignant a tracé des angles de vue. Retrouver chaque angle de vue et le mettre en couleur sur la planche."),
+        ph("Vérifier", "5 min", "La vérification se fait ensemble, au vidéoprojecteur."),
+      ]),
+    seance("Lire le plan — évaluation",
+      sauront("placer seuls, en lisant le plan, des repères du quartier sur sa photographie aérienne."), 30, [
+        ph("Renseigner la photographie aérienne", "30 min", "Avec le plan du quartier, renseigner la photographie aérienne qui lui correspond : coller "
+          + "au bon endroit des étiquettes préparées — l'école, des places, un théâtre, des rues, l'église, la poste — et compléter la légende. À "
+          + "l'ordinateur, on place les étiquettes sur l'écran.",
+          "À mi-parcours : sait-on orienter un plan et y trouver des repères ? Les étiquettes évitent que l'écriture gêne. Qui ne place que les "
+          + "repères retrouvés de mémoire a du mal à orienter le plan et la photographie, et ne cherche pas assez les détails : reprendre avec lui "
+          + "l'orientation, les repères, la lecture des deux documents ensemble. Fixer les documents : s'ils bougent, on perd le fil du repérage."),
+      ]),
+    seance("Observer un village",
+      sauront("observer les photographies d'un village avec la grille de lecture du quartier, et noter ce qu'ils voient dans une carte mentale."), 55, [
+        ph("Et un village ?", "10 min", "Afficher la grille de la première séance, ce qu'on a observé dans le quartier, et se remémorer les éléments "
+          + "vus. Tous les lieux de vie ressemblent-ils à ce quartier ? On peut aussi vivre à la campagne : c'est plus petit, il y a plus de nature. "
+          + "On va comparer le quartier avec un village, avec les catégories déjà construites.",
+          "Le document utilise la carte mentale, que la classe pratique souvent ; un tableau convient aussi bien — complété d'une autre couleur "
+          + "pour le village, ou un second tableau aux mêmes colonnes."),
+        ph("Le village en photographies", "45 min", "En salle informatique : observer les photographies du village et noter ce qu'on voit pour "
+          + "chaque rubrique — les habitations, les voies de circulation, les commerces, les espaces verts, les monuments, les services. Une carte "
+          + "mentale est commencée avec les critères du quartier ; une fiche explique comment ouvrir le logiciel.",
+          "Les photographies doivent montrer tous les aspects du village. Choisir un village que les élèves connaissent, assez grand pour avoir "
+          + "des services : Éduscol prend Maroilles, dans le Nord, 1 429 habitants en 2012. Compter avec le peu d'aisance des CE2 au clavier ; "
+          + "le logiciel, lui, est vite compris."),
+      ]),
+    seance("Comparer le quartier et le village",
+      sauront("comparer le quartier et le village critère par critère, et situer chacun : une ville, la campagne, une région, la France."), 60, [
+        ph("Mise en commun", "40 min", "Mettre en commun, rubrique par rubrique, ce qu'on a observé du village.",
+          "Dans la classe du document, faute d'ordinateurs ce jour-là, elle se fait au tableau."),
+        ph("Des critères de comparaison", "20 min", "La carte mentale, remise au propre avec le logiciel, est distribuée. Comment a-t-on comparé ? "
+          + "Avec les rubriques utilisées depuis le début : les habitations, les commerces, les espaces verts, la circulation, les monuments, les "
+          + "services, les loisirs. Les branches principales de la carte sont des critères de comparaison : au village, plus d'espaces verts, "
+          + "moins de commerces, moins de sortes de voies. Puis situer : notre quartier est un quartier d'une ville, dans une région, en France ; "
+          + "le village est à la campagne, dans la même région.",
+          "Les élèves énoncent les rubriques sans difficulté ; l'enjeu est de les voir comme des critères."),
+      ]),
+    seance("Le village vu d'en haut",
+      sauront("retrouver des repères sur le plan et les photographies aériennes d'un village, et dire ce qui distingue un village d'un quartier de ville, au-delà d'une liste."), 90, [
+        ph("Trois documents", "10 min", "Chacun reçoit trois documents du village : une photographie aérienne verticale, comme celle du quartier ; un "
+          + "plan ; une photographie aérienne oblique, qui montre son paysage. Les reconnaître : les photographies sont prises avec un appareil, d'un "
+          + "point de vue dominant ; le plan est fabriqué, dessiné."),
+        ph("Des repères communs", "20 min", "Trouver des points de repère sur les trois documents. L'église, bien visible sur la vue oblique, est "
+          + "difficile à trouver sur le plan et sur la vue verticale : l'enseignant donne une clé, sa place par rapport aux routes, qui fait "
+          + "découvrir le figuré du plan. On la marque d'un rectangle rouge sur la photographie, puis on passe au repère proposé par un autre élève."),
+        ph("L'écrit de travail", "10 min", "Chacun écrit pour revenir sur ces activités de comparaison."),
+        ph("Comparer sans énumérer", "20 min", "Avec les critères écrits au tableau et les mots de la carte mentale, formuler des comparaisons, en "
+          + "allant vers ce qui caractérise la ville : sa taille, sa variété, sa mobilité.",
+          "Dépasser les premières formulations, « dans le village il y a ceci et cela » : c'est difficile pour les élèves."),
+        ph("La trace écrite", "20 min", "La construire à partir des écrits de travail : de courts paragraphes, dans un tableau à deux colonnes, le "
+          + "quartier et le village, qui fait apparaître les critères. Le quartier fait partie d'une ville, de plus de 2 000 habitants ; le village, "
+          + "à la campagne, en a moins. Puis les habitations, les commerces et les services, les loisirs, les voies de circulation, les espaces verts."),
+        ph("Situer dans la région", "5 min", "Localiser le quartier et le village à l'échelle de la région, avec cartes.gouv.fr, l'ancien Géoportail : les limites "
+          + "administratives, et même la distance entre le village et la ville."),
+      ]),
+    seance("Le quartier et le village — évaluation",
+      sauront("définir seuls un quartier et un village, les comparer avec les critères vus en classe, et placer une légende en lisant une carte."), 45, [
+        ph("Revoir les critères", "10 min", "Revoir ensemble les critères de comparaison vus en classe, avant le travail individuel."),
+        ph("Comparer", "20 min", "Chacun définit le quartier et le village, puis compare le quartier avec un village grâce aux critères vus en "
+          + "classe : un texte, un tableau ou une carte mentale, au choix. D'autres questions portent sur un nouveau village à étudier, et sur ce "
+          + "qui caractérise un village et un quartier de ville."),
+        ph("Lire la carte", "15 min", "En s'aidant de la carte, placer au bon endroit, sur le document fourni, les noms et les symboles de la légende."),
+      ]),
+  ],
+};
+
+// « Comparer des modes de vie » : les marchés (CE1), les transports (CE2).
+
+const MARCHES_CE1: Demarche = {
+  id: "marches-ce1",
+  nom: "Les marchés, ici et ailleurs (CE1)",
+  famille: "Sciences, histoire, EMC",
+  source: "Éduscol, ressources 2016 — Questionner le monde, cycle 2, « Explorer les organisations du monde – Comparer quelques modes de vie des hommes et "
+    + "des femmes, et quelques représentations du monde » : « Les marchés », séquence au CE1 (introduction « Comparer des modes de vie » ; introduction de "
+    + "la séquence ; séances 1 à 5 et leurs annexes « Le marché près de chez nous » et « Les mots du marché » ; évaluation) ; programme 2020, encore en "
+    + "vigueur en CE1-CE2 en 2026-2027",
+  resume: "Une discussion à visée philosophique sur la différence, à partir de Jean de la Lune ; le marché près de chez soi, décrit avec ce qu'on en sait, "
+    + "puis vérifié au marché ou sur des photographies ; des marchés du Cambodge, de Tunisie, du Burkina Faso et du Brésil, découverts en photographies et "
+    + "présentés en courts exposés ; le témoignage d'une Cambodgienne ; puis la comparaison, dite avec « alors que » et « comme ». L'alimentation, par le "
+    + "marché : comparer pour mieux comprendre ce qui est familier, sans créer de stéréotypes.",
+  seances: [
+    seance("Discussion à visée philosophique",
+      sauront("formuler des questions que l'histoire de Jean de la Lune laisse ouvertes, en débattre en écoutant et en argumentant, et dire en une phrase "
+        + "ce que la différence nous apporte."), 50, [
+        ph("Lire l'album", "10 min", "L'enseignant lit Jean de la Lune, de Tomi Ungerer : l'album pose la question de la différence.",
+          "La séance suit la méthode de Claudine Leleux, Apprentis philosophes : des discussions à visée philosophique à partir de contes."),
+        ph("Raconter l'histoire", "5 min", "Les élèves racontent l'histoire : c'est ainsi qu'ils montrent ce qu'ils ont compris."),
+        ph("Poser des questions", "10 min", "Formuler des questions de type philosophique, auxquelles l'histoire ne répond pas explicitement. Par exemple : "
+          + "serait-il intéressant d'être tous pareils ? Que nous apporte la différence ?"),
+        ph("Discuter", "15 min", "Chacun exprime ses idées et son point de vue, et argumente ; on cherche ensemble des réponses.",
+          "L'enseignant aide les élèves à prendre de la distance avec l'histoire ; si besoin, il relance pour faire formuler d'autres réponses ou nuancer les propos."),
+        ph("Une phrase pour conclure", "10 min", "Chacun écrit une phrase qui résume la discussion — sa sagesse individuelle, selon le mot de Claudine Leleux —, "
+          + "à partir de la structure « Si nous étions tous pareils, … »."),
+      ]),
+    seance("Le marché près de chez soi",
+      sauront("dire où se tient le marché près de chez eux, ce qu'on y vend, qui vend et qui achète, et comment les aliments y sont transportés, conservés "
+        + "et présentés."), 60, [
+        ph("Rappel et projet", "5 min", "Rappeler les conclusions de la discussion sur la différence ; présenter les objectifs de la séquence : décrire le marché "
+          + "près de chez nous, pour le comparer ensuite à d'autres marchés du monde."),
+        ph("Ce que l'on sait", "10 min", "Chacun écrit ce qui caractérise, pour lui, un marché alimentaire près de chez soi.",
+          "Le recueil individuel et écrit implique chaque élève ; il donne à l'enseignant de quoi conduire la séance."),
+        ph("Mettre en commun", "10 min", "Mettre en commun et classer les réponses ; chercher d'autres caractéristiques : les personnes (vendeurs et acheteurs), "
+          + "les objets (la balance, la caisse enregistreuse), le lieu (des halles, une place, les trottoirs).",
+          "Veiller au vocabulaire juste. Souligner les désaccords et ce qu'on ignore : ils justifient l'enquête."),
+        ph("Enquêter", "20 min", "Deux façons, au choix : la sortie au marché le plus proche de l'école ; ou, en binômes, un corpus de photographies à observer "
+          + "et à commenter, pour répondre aux questions restées ouvertes.",
+          "La sortie se prépare : répartir ce qu'on cherche (les aliments vendus, leur présentation), définir les tâches, rappeler les règles de politesse et de "
+            + "respect des personnes. Pour les photographies, un corpus différent par binôme donne son sens au travail coopératif."),
+        ph("Écrire ensemble", "15 min", "Confronter les écrits pour stabiliser les réponses et expliciter le vocabulaire ; rédiger ensemble la description du "
+          + "marché près de chez nous, puis la copier.",
+          "La fiche Éduscol « Le marché près de chez nous » donne un exemple de ce texte, avec les mots du marché illustrés."),
+      ]),
+    seance("Des marchés, ailleurs dans le monde",
+      sauront("décrire un marché d'un autre pays d'après des photographies — le lieu, les aliments vendus, leur présentation — et le comparer au marché "
+        + "près de chez eux."), 60, [
+        ph("Se rappeler", "5 min", "Réactiver ce qu'on a appris : des devinettes, des images à associer à des mots, ou simplement un rappel, avec la synthèse "
+          + "de la séance précédente projetée."),
+        ph("Situer, supposer", "10 min", "Redire l'enjeu de la séance et ce qui la relie aux précédentes. L'enseignant situe sur le planisphère de la classe "
+          + "les pays étudiés — le Cambodge, la Tunisie, le Burkina Faso, le Brésil — ; les élèves font des hypothèses sur ce qu'on trouve sur un marché "
+          + "dans chacun."),
+        ph("Observer, écrire", "15 min", "Chaque groupe reçoit des photographies des marchés d'un même pays. Après échanges et hypothèses, chacun commente "
+          + "une image en quelques phrases : le lieu du marché, les aliments vendus, leur présentation."),
+        ph("Courts exposés", "15 min", "Chaque groupe choisit trois photographies — le lieu, un aliment, sa présentation — et les présente ; on lit les "
+          + "commentaires écrits, les échanges les affinent. L'enseignant remplit un tableau qui compare chaque marché au marché local.",
+          "Les observations des élèves affinent le questionnement."),
+        ph("Confronter", "10 min", "Après tous les exposés, confronter les résultats aux représentations du début : pointer quelques différences "
+          + "emblématiques que les élèves n'avaient pas imaginées. Chacun complète son tableau, la fiche « Les mots du marché » : près de chez nous, "
+          + "ailleurs dans le monde."),
+        ph("Les questions qui restent", "5 min", "Choisir le marché qui a suscité le plus de réactions, pour l'approfondir ; noter les questions des élèves "
+          + "et leurs propositions de réponses.",
+          "Ces questions servent à bâtir le QCM de la séance suivante. Dans la séquence Éduscol, c'est le marché du Cambodge : le témoignage de la "
+            + "séance 4 porte sur lui."),
+      ]),
+    seance("Le marché au Cambodge",
+      sauront("prélever des informations dans le témoignage oral d'une Cambodgienne pour répondre à leurs questions sur le marché au Cambodge, et écrire "
+        + "ce qu'ils en ont appris."), 50, [
+        ph("Réactiver", "5 min", "Se rappeler le marché cambodgien à l'aide de l'exposé du groupe."),
+        ph("Lire le QCM", "10 min", "Lire et expliciter un questionnaire à choix multiples, bâti sur les questions et les propositions de réponses de la "
+          + "séance précédente.", "Le QCM prépare à prélever des informations dans l'interview."),
+        ph("Écouter le témoignage", "20 min", "L'interview de Mara Zahnd, une Cambodgienne : une première écoute en entier, puis une écoute fractionnée, qui "
+          + "laisse le temps de s'approprier, de s'exprimer et de questionner ; la dernière écoute sert à cocher les réponses du QCM."),
+        ph("Écrire ce qu'on a appris", "10 min", "Chacun rédige un court texte sur ce qu'il a appris du marché cambodgien."),
+        ph("Une ressemblance, une différence", "5 min", "Pour engager la comparaison, les élèves disent une ressemblance et une différence avec le marché "
+          + "local de France métropolitaine ; l'enseignant les écrit au tableau. Par exemple : au Cambodge, le marché est flottant ; chez nous, il se "
+          + "tient sous des halles, sur une place ou dans la rue.", "Cette phase introduit la séance suivante."),
+      ]),
+    seance("Comparer les marchés",
+      sauront("dire une différence entre un marché en France et un marché d'un autre pays avec « alors que », et une ressemblance avec « comme »."), 45, [
+        ph("Souligner les différences", "10 min", "Sur le tableau des marchés complété en séance 3, chacun souligne les différences entre le marché local, en "
+          + "France métropolitaine, et le marché du pays étudié en groupe ; on les partage, l'enseignant les souligne au tableau."),
+        ph("Dire une différence", "15 min", "À l'oral, chacun dit en une phrase une différence entre un marché en France et un marché à l'étranger, avec "
+          + "« alors que » — ou « tandis que » ; sur ce modèle, des phrases sont écrites au tableau.",
+          "Des débuts de phrases, proposés à ceux qui en ont besoin, lèvent les blocages."),
+        ph("Dire une ressemblance", "10 min", "Une phrase avec l'adverbe « comme », par exemple : « Au Brésil comme en France, le marché a lieu dans la rue. »"),
+        ph("La trace écrite", "10 min", "Chacun rédige une trace écrite sur le vocabulaire et les connaissances acquis en découvrant les marchés du monde.",
+          "L'évaluation se fait en observant le travail effectif des élèves."),
+      ]),
+  ],
+};
+
+// ── Les moyens de transport dans le monde (CE2) ───────────────────────────
+
+const TRANSPORTS_CE2: Demarche = {
+  id: "transports-ce2",
+  nom: "Les moyens de transport dans le monde (CE2)",
+  famille: "Sciences, histoire, EMC",
+  source: "Éduscol, ressources 2016 — Questionner le monde, cycle 2, « Explorer les organisations du monde – Comparer quelques modes de vie des hommes et "
+    + "des femmes, et quelques représentations du monde » : « Les transports », séquence au CE2 (introduction « Comparer des modes de vie » ; introduction "
+    + "de la séquence ; séances 1 à 5 et les annexes des séances 2 et 3) ; programme 2020, encore en vigueur en CE1-CE2 en 2026-2027",
+  resume: "Un album, Le génie du pousse-pousse, pour se demander si l'on se déplace partout comme chez nous, et un projet d'écriture ; les moyens de transport "
+    + "de l'Europe, listés, devinés, placés sur la carte ; ceux de l'Asie, de l'Afrique, de l'Amérique et de l'Océanie, cherchés sur Internet par groupes, "
+    + "comparés à ceux de l'Europe puis présentés à la classe ; enfin, une aventure inventée, où un personnage se déplace avec un moyen de transport "
+    + "emblématique du lieu de l'histoire. Comparer pour décrire les différences, sans stéréotypes.",
+  seances: [
+    seance("Le génie du pousse-pousse",
+      sauront("dire ce qu'ils ont compris du Génie du pousse-pousse, y compris ce que le texte laisse entendre, en justifiant leur point de vue, et "
+        + "situer la Chine sur un planisphère en nommant son continent, l'Asie."), 45, [
+        ph("Lire l'album", "15 min", "L'enseignant lit à voix haute Le génie du pousse-pousse, de Jean-Côme Noguès, illustré par Anne Romby.",
+          "L'album est étudié pour lui-même ; il ouvre aussi la question des transports dans le monde, et donne son sens à la séquence par un projet d'écriture."),
+        ph("Comprendre", "15 min", "Échanger sur la compréhension du texte : les interactions entre élèves et les questions de l'enseignant sur l'implicite "
+          + "font saisir la portée morale de l'histoire."),
+        ph("La Chine, en Asie", "10 min", "Introduire, ou reprendre, la notion de continent : situer la Chine sur un planisphère et nommer son continent.",
+          "Cinq continents seront nommés et repérés au fil de la séquence ; l'Antarctique peut être mentionné, mais il n'est pas étudié."),
+        ph("Le projet", "5 min", "Présenter le projet : découvrir les moyens de transport du monde, pour écrire en fin de séquence une courte histoire "
+          + "inspirée de l'album, avec obligatoirement un enfant et un moyen de transport choisi.",
+          "La question qui guide la séquence : « est-ce que les habitants se déplacent dans leur pays comme on le fait chez nous ? »"),
+      ]),
+    seance("Les moyens de transport en Europe",
+      sauront("nommer les moyens de transport les plus courants en Europe, et situer quelques transports caractéristiques sur une carte de l'Europe."), 45, [
+        ph("Lister", "10 min", "En binômes, lister tous les moyens de transport auxquels on pense. L'enseignant consigne les représentations de la classe "
+          + "dans un tableau et montre le dessin de chaque véhicule, choisi à l'avance.",
+          "Une évaluation diagnostique : ce que les élèves savent déjà, pour l'accroître et le structurer."),
+        ph("Devinettes", "15 min", "Des devinettes font trouver les transports oubliés — le métro, le taxi, le tramway, la motoneige, le ski, les chiens de "
+          + "traîneau — ou trop peu détaillés : le bus à impériale, le voilier, le ferry-boat, la gondole. Chaque transport trouvé est montré en "
+          + "photographie ou en dessin.",
+          "Pour le métro, par exemple : un transport des grandes capitales d'Europe, qui ressemble à un train mais circule surtout sous terre."),
+        ph("La fiche", "5 min", "Sur la fiche des moyens de transport européens, écrire le nom de chacun en face de son image."),
+        ph("La trace écrite", "10 min", "Avec la carte de l'Europe, rédiger une trace écrite en dictée à l'adulte ; chacun la recopie dans le cahier de cet "
+          + "apprentissage."),
+        ph("Préparer l'enquête", "5 min", "Montrer la carte que les recherches des groupes compléteront ; former les groupes ; un élève de chaque groupe "
+          + "tire au sort le continent à étudier : l'Asie, l'Afrique, l'Amérique ou l'Océanie."),
+      ]),
+    seance("Les transports d'un autre continent",
+      sauront("trouver sur Internet les moyens de transport les plus courants d'un continent — l'Asie, l'Afrique, l'Amérique ou l'Océanie — et dire "
+        + "lesquels sont identiques à ceux de l'Europe, lesquels en diffèrent."), 60, [
+        ph("La question de départ", "5 min", "« Selon vous, comment se déplace-t-on en Asie ? » — ou sur le continent du groupe. Les représentations "
+          + "initiales sont dictées à l'adulte.",
+          "Au moins quatre groupes, un continent chacun ; mieux vaut ne pas les faire travailler tous en même temps, pour accompagner au mieux chaque recherche."),
+        ph("Chercher sur Internet", "20 min", "Par deux, chercher des photographies de moyens de transport du continent, avec une double consigne : retrouver "
+          + "ceux qu'on a vus en Europe, repérer ceux qui sont différents.",
+          "Un usage responsable d'Internet. L'enseignant fait dire les ressemblances et les différences avec l'Europe, et confronter aux représentations "
+            + "du début : on découvre ce qu'on n'imaginait pas — en Asie, la place des deux-roues."),
+        ph("Le tableau, la mise en commun", "15 min", "Le groupe remplit un tableau : les transports identiques à ceux de l'Europe, les transports "
+          + "différents — pour l'Asie, l'éléphant, le pousse-pousse, le tuk-tuk, le dromadaire, l'âne, la jonque. L'enseignant montre les photographies "
+          + "qui correspondent aux découvertes et précise ce qu'est chaque véhicule.",
+          "Tout ne pourra pas être illustré : amener les élèves à identifier les transports les plus caractéristiques."),
+        ph("La carte du continent", "5 min", "Placer la sélection de photographies autour d'une carte vierge du continent."),
+        ph("La trace écrite", "15 min", "Rédiger en dictée à l'adulte ce qu'on a appris sur les moyens de transport du continent ; le titre est choisi en "
+          + "dernier. Chacun copie la synthèse dans son cahier, la carte collée en vis-à-vis."),
+      ]),
+    seance("Mise en commun des savoirs",
+      sauront("présenter à la classe les moyens de transport du continent étudié, en se faisant entendre et comprendre, et comparer ceux de l'Asie, "
+        + "de l'Afrique, de l'Amérique et de l'Océanie."), 45, [
+        ph("Les exposés", "35 min", "Chaque groupe présente son continent en un court exposé illustré : il lit sa trace écrite à la classe et montre ses "
+          + "photographies, au tableau ou au TNI.",
+          "Dire pour être entendu et compris. Comparer sans créer de stéréotypes, ni laisser croire que le climat ou le relief décident de tout : on "
+            + "s'adapte au climat (la motoneige), on détourne aussi les contraintes (un tunnel sous la montagne)."),
+        ph("Le texte et la carte", "10 min", "L'enseignant distribue le texte qui rassemble toutes les traces écrites, et une carte des moyens de transport "
+          + "les plus caractéristiques, pour les mémoriser."),
+      ]),
+    seance("Écrire une aventure",
+      sauront("écrire une histoire d'environ une demi-page, inspirée du Génie du pousse-pousse, où un personnage se déplace avec un moyen de transport "
+        + "emblématique du lieu, puis l'améliorer et l'illustrer."), 75, [
+        ph("Rappeler le projet", "5 min", "Le projet annoncé à la première séance : une aventure inspirée de l'album, vécue par un personnage — un enfant, "
+          + "disait l'annonce — qui se déplace avec un moyen de transport assez emblématique du lieu de l'histoire."),
+        ph("Écrire", "30 min", "Chacun rédige un texte d'invention d'environ une demi-page.",
+          "Un texte cohérent, organisé, ponctué, pertinent pour sa visée et son destinataire."),
+        ph("Améliorer", "20 min", "Améliorer son texte, notamment l'orthographe, en tenant compte des indications données."),
+        ph("Illustrer", "20 min", "Illustrer le texte par une production plastique : dessin, peinture, collage.",
+          "Expérimenter, produire, créer : mettre en œuvre un projet artistique."),
+      ]),
+  ],
+};
+
 // ── Les autres thèmes : bâtis sur le programme ────────────────────────────
 //
 // Pour les thèmes qu'aucune séquence Éduscol ne détaille, la séquence suit le
@@ -691,6 +1188,7 @@ export const DEMARCHES_HISTOIRE_GEO: Demarche[] = [
   TEMPS_NATUREL_CP, TEMPS_REPRESENTE_CP, SITUER_EVENEMENTS_CP, PETITE_SIRENE_CP, PASSE_PROCHE_CE1, GRANDES_PERIODES_CE1, TRACES_PASSE_CE1,
   PREHISTOIRE_CE2, ROME_CE2, ROYAUME_CE2,
   LA_CLASSE, ECOLE_QUARTIER_CP, REPRESENTATIONS_MONDE_CP, TERRE_PEUPLEE_CE1, LIEUX_DE_VIE_CE1, POPULATION_FRANCE_CE2, SE_LOGER_CE2, TRAVAILLER_CE2,
+  LION_A_PARIS_CE1, QUARTIER_VILLAGE_CE2, MARCHES_CE1, TRANSPORTS_CE2,
 ];
 
 /**
@@ -992,6 +1490,93 @@ const PLANS_DES_THEMES: Record<string, { feuilles: ((ctx: ContexteFeuilles | nul
     ],
     materiel: ["Des photographies de lieux de travail", "Des photographies de paysages agricoles", "Des photographies de paysages industriels",
       "Des photographies d'un centre commercial et d'un quartier d'affaires", "Des photographies de stations touristiques", "Une photographie de paysage"],
+  },
+  [LION_A_PARIS_CE1.id]: {
+    feuilles: [
+      motsCles(4, "Les lieux du lion", ["la gare de Lyon", "le café de Flore", "la station de métro Châtelet", "le pont des Arts", "la Seine",
+        "le Centre Georges-Pompidou (Beaubourg)", "le musée du Louvre", "la basilique du Sacré-Cœur", "la tour Eiffel", "la place Denfert-Rochereau"]),
+      motsCles(7, "La ville et son plan", ["une ville", "un centre-ville", "un quartier", "un arrondissement", "un bâtiment", "une place", "un rond-point",
+        "une rue", "un boulevard", "une allée", "une impasse", "un pont", "un fleuve", "un plan", "une adresse", "un itinéraire"]),
+    ],
+    materiel: [
+      "L'album Un lion à Paris (Béatrice Alemagna, éd. Autrement Jeunesse, 2006) ; une affiche pour ce que les élèves savent de Paris, une autre "
+        + "pour les noms des lieux ; le texte de l'album transcrit en quinze petits textes espacés, un par élève",
+      "L'album ; par binôme, un jeu d'illustrations de l'album en petit format, une feuille A3, de la colle",
+      "L'album Un lion à Paris",
+      "L'album, les frises chronologiques ; la liste des lieux visités par le lion, par binôme ; la salle informatique et un site de photographies des monuments de Paris — Éduscol citait "
+        + "monumentsdeparis.net, qui ne répond plus en 2026 — ; l'affiche de la première séance ; des vues de Paris, sur le site de la tour Eiffel",
+      "L'album ; quelques illustrations de l'album, réduites, et les photographies des mêmes lieux, photocopiées ; les cahiers, de la colle ; le "
+        + "tableau des vrais noms des lieux",
+      "L'album ; un plan touristique simplifié du centre de Paris, où les monuments sont dessinés, un par élève ; le même plan projeté, avec des "
+        + "cercles à déplacer à l'ordinateur",
+      "Un plan plus détaillé de Paris, un par élève ; un ordinateur relié au vidéoprojecteur, un moteur de recherche et sa carte, ou cartes.gouv.fr (l'ancien Géoportail)",
+      "L'album ; le plan détaillé, projeté, avec tous les lieux repérés ; des copies en noir et blanc de ce plan ; deux feuilles format affiche ; "
+        + "l'album Paris Pop Up (Dominique Ehrhard, Carole Saturno, éd. Grandes Personnes, 2015)",
+      "L'album ; le cahier de chaque élève, avec ses traces écrites ; les affiches, la frise, les photographies ; pour les autres pistes, les deux "
+        + "plans de Paris et des photographies de monuments et de ponts",
+    ],
+  },
+  [QUARTIER_VILLAGE_CE2.id]: {
+    feuilles: [
+      motsCles(9, "Le quartier et le village", ["le quartier", "la ville", "le village", "la campagne", "les habitations", "les voies de circulation",
+        "les commerces", "les services", "les loisirs", "les monuments", "les espaces verts"]),
+    ],
+    materiel: [
+      "Une fiche pour recueillir ce que chacun sait du quartier : mots-clés, phrases, croquis, dessins",
+      "De quoi prendre des notes ; un appareil photo, pour une photographie par élève ; trois ou quatre photographies du quartier prises avant la "
+        + "sortie, photocopiées",
+      "Les photographies de la sortie, dans l'ordre où elles ont été prises ; une feuille blanche par élève, ou le cahier de travail",
+      "Les représentations de la sortie ; un support durable pour le plan collectif, qui resservira",
+      "Un extrait du plan cadastral du quartier par élève — cartes.gouv.fr, l'ancien Géoportail, en fournit — ; des feutres ; un vidéoprojecteur ; une petite "
+        + "figurine pour ceux qui en ont besoin",
+      "Quelques photographies de la sortie, réduites et photocopiées en une planche par élève ; une feuille blanche, des ciseaux, de la colle ; un "
+        + "extrait de la photographie aérienne verticale du quartier par élève ; un vidéoprojecteur",
+      "Le plan collectif construit au tableau ; par élève, une planche de neuf photographies de la sortie et un extrait du plan cadastral où sont "
+        + "tracés les angles de vue ; un vidéoprojecteur",
+      "Le plan du quartier et sa photographie aérienne ; des étiquettes à coller et une légende, préparées ; de la colle, ou un ordinateur",
+      "La grille de la première séance ; la salle informatique ; des photographies du village — Panoramax ou Google Street View en donnent — et des informations "
+        + "sur les sites de la mairie, de l'office de tourisme, des annuaires en ligne ; un logiciel de carte mentale en ligne — Éduscol utilise "
+        + "Framindmap — et la fiche pour l'ouvrir",
+      "La carte mentale du village, remise au propre et distribuée",
+      "Par élève, une photographie aérienne verticale, un plan et une photographie aérienne oblique du village — cartes.gouv.fr en fournit — ; "
+        + "cartes.gouv.fr, projeté, pour situer le quartier et le village",
+      "Une carte et le document où placer les noms et les symboles de sa légende ; des documents sur un autre village",
+    ],
+  },
+  [MARCHES_CE1.id]: {
+    feuilles: [
+      motsCles(1, "Le marché", ["des halles", "une place", "la rue", "les trottoirs", "un commerçant", "un acheteur", "un étal", "une cagette", "une vitrine",
+        "un camion réfrigéré", "une balance", "une caisse enregistreuse"]),
+    ],
+    materiel: [
+      "L'album Jean de la Lune, de Tomi Ungerer (L'École des loisirs)",
+      "La sortie au marché le plus proche de l'école, préparée, ou des corpus de photographies de marchés, un différent par binôme (le document Éduscol "
+        + "« Recherche coopérative d'informations ») ; la fiche Éduscol « Le marché près de chez nous »",
+      "La synthèse de la séance 2, à projeter ; le planisphère de la classe, une carte du monde ; des photographies de marchés du Cambodge, de Tunisie, "
+        + "du Burkina Faso et du Brésil, un pays par groupe (le document Éduscol « Les marchés dans le monde ») ; la fiche Éduscol « Les mots du marché »",
+      "L'exposé du groupe sur le Cambodge ; le QCM bâti sur les questions des élèves, ou la fiche Éduscol « Le QCM » ; la vidéo du témoignage de "
+        + "Mara Zahnd et sa transcription",
+      "Les tableaux « Les mots du marché » complétés en séance 3 ; des débuts de phrases, pour ceux qui en ont besoin",
+    ],
+  },
+  [TRANSPORTS_CE2.id]: {
+    feuilles: [
+      motsCles(0, "Les continents", ["l'Europe", "l'Afrique", "l'Asie", "l'Amérique", "l'Océanie", "l'Antarctique"]),
+      motsCles(1, "Les moyens de transport en Europe", ["la voiture", "le camion", "le train", "le vélo", "la moto", "le scooter", "le bateau", "l'avion",
+        "l'hélicoptère", "le bus", "la trottinette", "le camping-car", "la caravane", "le métro", "le taxi", "le tramway", "la motoneige", "le ski",
+        "les chiens de traîneau", "le bus à impériale", "le voilier", "le ferry-boat", "la gondole"]),
+    ],
+    materiel: [
+      "L'album Le génie du pousse-pousse (Jean-Côme Noguès, illustrations d'Anne Romby, Milan, 2001) ; un planisphère, une carte des continents",
+      "Des dessins de chaque véhicule, choisis à l'avance ; des photographies — le métro et un scooter à Paris, des taxis à Barcelone, un bus à impériale "
+        + "à Londres, une famille à vélo aux Pays-Bas, une gondole à Venise — ; la fiche Éduscol de synthèse « Les moyens de transport en Europe » ; une "
+        + "carte de l'Europe ; la carte que les groupes compléteront",
+      "Des ordinateurs reliés à Internet, ou le TNI ; des photographies des transports de chaque continent (l'annexe Éduscol de la séance 3) ; une carte "
+        + "vierge du continent de chaque groupe ; le cahier",
+      "Les cartes, les photographies et les traces écrites des groupes ; le TNI ou le tableau ; le texte qui rassemble toutes les traces écrites ; la carte "
+        + "des moyens de transport les plus caractéristiques",
+      "L'album ; de quoi dessiner, peindre ou coller",
+    ],
   },
 };
 
