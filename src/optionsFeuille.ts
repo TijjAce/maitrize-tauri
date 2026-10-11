@@ -1,12 +1,15 @@
 // Ce qui s'imprime sur la feuille d'un atelier : la consigne, le prénom, la
-// correction.
+// correction ; et ce qui va aux tablettes : la consigne.
 //
-// Une feuille sort avec sa consigne, sa ligne « Prénom … Date … » et, quand
-// l'atelier en fabrique une, sa correction. Ce n'est pas toujours voulu : la
-// consigne se dit à l'oral, la correction ne sert qu'au maître, la feuille va
-// dans un cahier qui porte déjà le prénom. Trois cases, les mêmes pour tous
-// les ateliers, gardées par atelier dans un réglage partagé entre les
-// ordinateurs.
+// La consigne d'une feuille — sa règle, ses étapes — se montre sur les
+// tablettes de la classe pendant l'activité, plus sur le papier (demande de
+// l'enseignant, octobre 2026) : la feuille est posée dans une séance, et le
+// téléphone montre sa consigne avec les aides du créneau. Qui n'a pas de
+// tablettes la remet sur la feuille. Sa ligne « Prénom … Date … » et sa
+// correction s'impriment, sauf si on les décoche : la feuille va dans un
+// cahier qui porte déjà le prénom, la correction ne sert qu'au maître.
+// Quatre cases, les mêmes pour tous les ateliers, gardées par atelier dans un
+// réglage partagé entre les ordinateurs.
 //
 // On travaille sur le HTML des feuilles telles que l'application les écrit :
 // la consigne porte l'une des classes des consignes, et tout ce qui relève
@@ -14,10 +17,20 @@
 
 import { CLASSES_CONSIGNE_FEUILLE } from "./consigneAtelier";
 
-export interface OptionsFeuille { consigne: boolean; prenom: boolean; corrige: boolean }
+export interface OptionsFeuille {
+  /** La consigne sur la feuille. */
+  consigne: boolean;
+  prenom: boolean;
+  corrige: boolean;
+  /** La consigne sur les tablettes : elle part avec la feuille posée dans une séance. */
+  tablettes: boolean;
+}
 
-/** Tout s'imprime tant qu'on n'a rien décoché. */
-export const OPTIONS_FEUILLE: OptionsFeuille = { consigne: true, prenom: true, corrige: true };
+/** La consigne va aux tablettes, pas sur le papier ; le reste s'imprime tant qu'on ne l'a pas décoché. */
+export const OPTIONS_FEUILLE: OptionsFeuille = { consigne: false, prenom: true, corrige: true, tablettes: true };
+
+/** La version des choix enregistrés : avant la 2, « consigne » était cochée d'office, et ce choix-là ne compte plus. */
+const VERSION = 2;
 
 /** Où se gardent les choix d'un atelier — préfixe « fabriquer: », donc partagé. */
 export const cleOptionsFeuille = (atelier: string) => `fabriquer:feuille:${atelier}`;
@@ -32,13 +45,18 @@ export function lireOptionsFeuille(brut: string | null | undefined): OptionsFeui
     const lu = JSON.parse(brut);
     if (!lu || typeof lu !== "object" || Array.isArray(lu)) return OPTIONS_FEUILLE;
     const o = lu as Record<string, unknown>;
-    return { consigne: o.consigne !== false, prenom: o.prenom !== false, corrige: o.corrige !== false };
+    // Un choix d'avant la version 2 : la consigne passe aux tablettes, le prénom et la correction restent comme on les avait laissés.
+    const recent = o.v === VERSION;
+    return {
+      consigne: recent ? o.consigne === true : false, prenom: o.prenom !== false, corrige: o.corrige !== false,
+      tablettes: recent ? o.tablettes !== false : true,
+    };
   } catch {
     return OPTIONS_FEUILLE;
   }
 }
 
-export const ecrireOptionsFeuille = (o: OptionsFeuille) => JSON.stringify(o);
+export const ecrireOptionsFeuille = (o: OptionsFeuille) => JSON.stringify({ v: VERSION, ...o });
 
 const OUVERTURE = /<([a-z][a-z0-9]*)\b([^>]*)>/gi;
 
@@ -55,14 +73,14 @@ function finDeLElement(html: string, balise: string, debut: number): number {
   return -1;
 }
 
-/** Le HTML sans les éléments dont les classes répondent à `aRetirer` — eux, et tout ce qu'ils contiennent. */
-export function retirerElements(html: string, aRetirer: (classes: string[]) => boolean): string {
+/** Le HTML sans les éléments dont les classes (et la balise) répondent à `aRetirer` — eux, et tout ce qu'ils contiennent. */
+export function retirerElements(html: string, aRetirer: (classes: string[], balise: string) => boolean): string {
   let sortie = "";
   let position = 0;
   OUVERTURE.lastIndex = 0;
   for (let m = OUVERTURE.exec(html); m; m = OUVERTURE.exec(html)) {
     const classes = /\bclass="([^"]*)"/.exec(m[2])?.[1];
-    if (!classes || m[0].endsWith("/>") || !aRetirer(classes.split(/\s+/))) continue;
+    if (!classes || m[0].endsWith("/>") || !aRetirer(classes.split(/\s+/), m[1].toLowerCase())) continue;
     const fin = finDeLElement(html, m[1], m.index + m[0].length);
     if (fin < 0) continue;
     sortie += html.slice(position, m.index);
@@ -76,17 +94,42 @@ export function retirerElements(html: string, aRetirer: (classes: string[]) => b
 const LIGNE_PRENOM = /<(div|p|span)\b[^>]*>\s*(?:Prénom|Date)\s*:[^<]*<\/\1>/g;
 
 /** Ce que la feuille contient, pour ne proposer que les cases qui ont un effet. */
-export const contenuDeLaFeuille = (html: string): OptionsFeuille => ({
-  consigne: new RegExp(`\\bclass="[^"]*\\b(${CLASSES_CONSIGNE_FEUILLE.join("|")})\\b`).test(html),
-  prenom: new RegExp(LIGNE_PRENOM.source).test(html),
-  corrige: /\bclass="(?:[^"]* )?corrige(?: [^"]*)?"/.test(html),
-});
+export const contenuDeLaFeuille = (html: string): OptionsFeuille => {
+  const consigne = new RegExp(`\\bclass="[^"]*\\b(${CLASSES_CONSIGNE_FEUILLE.join("|")})\\b`).test(html);
+  return {
+    consigne, tablettes: consigne,
+    prenom: new RegExp(LIGNE_PRENOM.source).test(html),
+    corrige: /\bclass="(?:[^"]* )?corrige(?: [^"]*)?"/.test(html),
+  };
+};
+
+/**
+ * Une consigne de la feuille : un bloc — une règle, une consigne en tête —,
+ * pas la consigne d'un exercice écrite dans sa ligne (« 1. Écris chaque
+ * nombre en lettres »), qui reste avec l'exercice.
+ */
+const estUneConsigne = (classes: string[], balise: string) => balise !== "span" && classes.some((c) => CLASSES_CONSIGNE_FEUILLE.includes(c));
+
+/** Les éléments de consigne et de règle de la feuille, dans l'ordre, chacun entier : ce que les tablettes montrent. */
+export function consignesDeLaFeuille(html: string): string[] {
+  const trouvees: string[] = [];
+  OUVERTURE.lastIndex = 0;
+  for (let m = OUVERTURE.exec(html); m; m = OUVERTURE.exec(html)) {
+    const classes = /\bclass="([^"]*)"/.exec(m[2])?.[1];
+    if (!classes || m[0].endsWith("/>") || !estUneConsigne(classes.split(/\s+/), m[1].toLowerCase())) continue;
+    const fin = finDeLElement(html, m[1], m.index + m[0].length);
+    if (fin < 0) continue;
+    trouvees.push(html.slice(m.index, fin));
+    OUVERTURE.lastIndex = fin;
+  }
+  return trouvees;
+}
 
 /** La feuille telle qu'elle doit sortir : sans ce qu'on a décoché. */
 export function appliquerOptionsFeuille(html: string, o: OptionsFeuille): string {
   let h = html;
   if (!o.corrige) h = retirerElements(h, (classes) => classes.includes("corrige"));
-  if (!o.consigne) h = retirerElements(h, (classes) => classes.some((c) => CLASSES_CONSIGNE_FEUILLE.includes(c)));
+  if (!o.consigne) h = retirerElements(h, estUneConsigne);
   if (!o.prenom) h = h.replace(LIGNE_PRENOM, "");
   return h;
 }
@@ -98,7 +141,7 @@ export function appliquerOptionsFeuille(html: string, o: OptionsFeuille): string
 
 const contenus: Record<string, OptionsFeuille> = {};
 const abonnes = new Set<() => void>();
-const RIEN: OptionsFeuille = { consigne: false, prenom: false, corrige: false };
+const RIEN: OptionsFeuille = { consigne: false, prenom: false, corrige: false, tablettes: false };
 
 export const feuillesPubliees = {
   lire: (atelier: string): OptionsFeuille => contenus[atelier] ?? RIEN,
@@ -106,7 +149,8 @@ export const feuillesPubliees = {
   connue: (atelier: string): boolean => atelier in contenus,
   publier(atelier: string, contenu: OptionsFeuille) {
     const avant = contenus[atelier];
-    if (!atelier || (avant && avant.consigne === contenu.consigne && avant.prenom === contenu.prenom && avant.corrige === contenu.corrige)) return;
+    if (!atelier || (avant && avant.consigne === contenu.consigne && avant.prenom === contenu.prenom && avant.corrige === contenu.corrige
+      && avant.tablettes === contenu.tablettes)) return;
     contenus[atelier] = contenu;
     abonnes.forEach((f) => f());
   },

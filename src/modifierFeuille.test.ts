@@ -54,6 +54,9 @@ describe("ce qu'une feuille retient de son atelier", () => {
   it("se relit, et ce qui n'en est pas une n'en a pas", () => {
     const f = lireFabrication(ecrireFabrication({ atelier: "comparer", memoires: { comparer: { niveau: "cp-59" } }, graine: 12 }));
     expect(f).toEqual({ atelier: "comparer", memoires: { comparer: { niveau: "cp-59" } }, graine: 12, competences: undefined, eleve: undefined });
+    // La consigne gardée pour les tablettes se relit ; vide, elle n'existe pas.
+    expect(lireFabrication(JSON.stringify({ atelier: "comparer", consigne: '<div class="regle">x</div>' }))?.consigne).toBe('<div class="regle">x</div>');
+    expect(lireFabrication(JSON.stringify({ atelier: "comparer", consigne: "  " }))?.consigne).toBeUndefined();
     expect(lireFabrication("")).toBeNull();
     expect(lireFabrication(undefined)).toBeNull();
     expect(lireFabrication("{pas du json")).toBeNull();
