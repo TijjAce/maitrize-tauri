@@ -529,10 +529,9 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
     finally { setLectureDesGestes(false); }
   };
   // Venu de l'atelier des gestes par « En faire un loto » : le jeu s'ouvre avec eux.
-  const viaLesGestes = React.useRef(false);
   React.useEffect(() => {
     const sons = gestesDemandes();
-    if (sons) { viaLesGestes.current = true; setMode("images"); void ajouterMesGestes(sons); }
+    if (sons) { setMode("images"); void ajouterMesGestes(sons); }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // Écrire une liste de mots ou choisir ses images mène droit au loto : pas d'étape « choisir ».
   const sansChoix = mode === "mots" || mode === "images";
@@ -573,8 +572,9 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
   // ── Par liste de mots ──
   const [texteMots, setTexteMots] = React.useState("");
   const [absents, setAbsents] = React.useState<string[]>([]);
-  const ajouterMots = async (mots = motsDeLaListe(texteMots)) => {
-    if (!mots.length) return;
+  /** Ajoute les images des mots ; rend celles qui n'étaient pas encore dans la sélection. */
+  const ajouterMots = async (mots = motsDeLaListe(texteMots)): Promise<PictoArasaac[]> => {
+    if (!mots.length) return [];
     try {
       const [trouves, pasTrouves] = await pictosDesMots(mots);
       const avant = selection.length;
@@ -583,19 +583,26 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
       setAbsents(pasTrouves);
       toast(`${suite.length - avant} image${suite.length - avant > 1 ? "s" : ""} ajoutée${suite.length - avant > 1 ? "s" : ""}`
         + (pasTrouves.length ? ` · ${pasTrouves.length} mot${pasTrouves.length > 1 ? "s" : ""} à chercher` : ""), { icone: "✏️" });
-    } catch (e) { toast(String(e), { icone: "⚠️" }); }
+      return suite.slice(avant);
+    } catch (e) { toast(String(e), { icone: "⚠️" }); return []; }
   };
 
-  // Le projet du moment donne ses mots, avec leurs images, dès qu'on ouvre le jeu
-  // vide — une fois : on en retire, on en ajoute ensuite à sa guise.
-  const projetPris = React.useRef("");
-  React.useEffect(() => {
-    if (!projetDuMoment || !corpusDuProjet.mots.length || !etat.installee) return;
-    if (viaLesGestes.current || projetPris.current === projetDuMoment.id || selection.length) return;
-    projetPris.current = projetDuMoment.id;
-    setMode("mots");
-    void ajouterMots(corpusDuProjet.mots);
-  }, [projetDuMoment?.id, corpusDuProjet.mots.length, etat.installee]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Les mots du projet du moment ne viennent qu'à la demande : la case ajoute leurs
+  // images ; la décocher retire celles qu'elle a ajoutées, pas celles qu'on avait déjà.
+  const [ajoutesDuProjet, setAjoutesDuProjet] = React.useState<{ projet: string; ids: number[] } | null>(null);
+  const projetCoche = !!projetDuMoment && ajoutesDuProjet?.projet === projetDuMoment.id
+    && (!ajoutesDuProjet.ids.length || ajoutesDuProjet.ids.some((id) => choisis.has(id)));
+  const basculerProjet = async (oui: boolean) => {
+    if (!projetDuMoment) return;
+    if (oui) {
+      const ajoutes = await ajouterMots(corpusDuProjet.mots);
+      setAjoutesDuProjet({ projet: projetDuMoment.id, ids: ajoutes.map((p) => p.id) });
+      return;
+    }
+    const ids = new Set(ajoutesDuProjet?.ids ?? []);
+    setSelection((s) => s.filter((p) => !ids.has(p.id)));
+    setAjoutesDuProjet(null);
+  };
 
   // ── Par recherche ──
   const [recherche, setRecherche] = React.useState("");
@@ -678,6 +685,14 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
             <button className={mode === "images" ? "active" : ""} onClick={() => setMode("images")}
               title="Vos propres images : une photo, un dessin, une image d'ailleurs">🖼 Mes images</button>
           </div>
+          {projetDuMoment && corpusDuProjet.mots.length > 0 && (
+            <label className="pb-coche" style={{ marginBottom: 10 }}>
+              <input type="checkbox" checked={projetCoche} onChange={(e) => void basculerProjet(e.target.checked)} />
+              <span><b>📌 Les mots du projet « {projetDuMoment.titre} »</b><br />
+                <span style={{ color: "var(--text-2)" }}>{corpusDuProjet.mots.length} mot{corpusDuProjet.mots.length > 1 ? "s" : ""}, avec leurs images.</span>
+              </span>
+            </label>
+          )}
 
           {mode === "theme" && <>
             <Input placeholder="Chercher un thème : famille, fruits, ferme…" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -719,12 +734,6 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
             <button className="btn primary" style={{ width: "100%" }} disabled={!motsDeLaListe(texteMots).length} onClick={() => void ajouterMots()}>
               ✏️ Ajouter ces mots
             </button>
-            {projetDuMoment && corpusDuProjet.mots.length > 0 && (
-              <button className="btn" style={{ width: "100%", marginTop: 6 }} onClick={() => void ajouterMots(corpusDuProjet.mots)}
-                title={`Les mots du projet « ${projetDuMoment.titre} », avec leurs images`}>
-                📌 Les mots du projet ({corpusDuProjet.mots.length})
-              </button>
-            )}
             <p style={{ fontSize: 12, color: "var(--text-2)", margin: "8px 0 0" }}>
               Chaque mot prend l'image qui porte exactement ce nom ; « 🔄 » en propose d'autres dessins.
             </p>
