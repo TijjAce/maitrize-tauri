@@ -67,6 +67,8 @@ const FICHE_DU_KIT = doc("La fiche du kit de cartes : quel repère, quelle class
 
 const REMONTER_LE_TEMPS = doc("Le quartier de l'école vu d'avion, vers 1950 et aujourd'hui (« Remonter le temps »)", IGN, "https://remonterletemps.ign.fr/", "imprimer", LO);
 const VU_DU_CIEL = doc("Le lieu vu du ciel, en photographie aérienne", `${IGN}, cartes.gouv.fr`, "https://cartes.gouv.fr/explorer-les-cartes/", "imprimer", LO);
+const CADASTRE = doc("Le plan cadastral : le contour des bâtiments et des rues", "cadastre.data.gouv.fr", "https://cadastre.data.gouv.fr/", "imprimer", LO);
+const PANORAMAX = doc("Les rues photographiées à hauteur d'œil (Panoramax)", "Panoramax", "https://panoramax.fr/", "imprimer", "Licence Ouverte ou CC BY-SA");
 const TERRE_LA_NUIT = doc("La Terre la nuit : les lumières montrent où vivent les êtres humains", NASA,
   "https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/", "imprimer", "domaine public, crédit NASA");
 const TERRE_VUE_DE_L_ESPACE = doc("La Terre entière vue de l'espace, une photographie par jour", NASA, "https://epic.gsfc.nasa.gov/", "imprimer",
@@ -230,9 +232,9 @@ export const DOCUMENTS_HG: Record<string, Record<number, DocumentAMontrer[]>> = 
         geoconfluences("informations-scientifiques/dossiers-thematiques/geographie-espaces-scolaires/geographie-a-l-ecole/langages-graphiques-et-appropriation-de-l-espace-cycle-2-dispositif-didactique"),
         "preparer"),
     ],
-    1: [doc("Le plan cadastral : le contour de l'école et de ses bâtiments", "cadastre.data.gouv.fr", "https://cadastre.data.gouv.fr/", "imprimer", LO)],
+    1: [CADASTRE],
     2: [VU_DU_CIEL, REMONTER_LE_TEMPS],
-    3: [doc("Les rues du trajet, photographiées à hauteur d'œil (Panoramax)", "Panoramax", "https://panoramax.fr/", "imprimer", "Licence Ouverte ou CC BY-SA")],
+    3: [PANORAMAX],
   },
   "representations-monde-cp": {
     0: [TERRE_VUE_DE_L_ESPACE],
@@ -301,6 +303,16 @@ export const DOCUMENTS_HG: Record<string, Record<number, DocumentAMontrer[]>> = 
       doc("Des stations balnéaires en France", COMMONS, commons("Category:Seaside_resorts_in_France"), "imprimer", PAR_IMAGE),
       doc("Des stations de ski en France", COMMONS, commons("Category:Ski_resorts_in_France"), "imprimer", PAR_IMAGE),
     ],
+  },
+  // ── Les séquences Éduscol de 2016, au choix ──
+  "lion-a-paris-ce1": {
+    6: [VU_DU_CIEL],
+  },
+  "quartier-village-ce2": {
+    4: [CADASTRE],
+    5: [VU_DU_CIEL],
+    8: [PANORAMAX],
+    10: [VU_DU_CIEL, REMONTER_LE_TEMPS],
   },
 };
 

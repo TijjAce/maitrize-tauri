@@ -72,6 +72,29 @@ describe("les séquences d'histoire-géographie du cycle 2", () => {
     expect(sirene.seances).toHaveLength(5);
   });
 
+  it("proposent au choix les séquences Éduscol de 2016 que le programme 2020 porte encore en CE1-CE2", () => {
+    const attendues: [string, RegExp, number][] = [
+      ["lion-a-paris-ce1", /Un lion à Paris/, 9],
+      ["quartier-village-ce2", /L'organisation spatiale du quartier comparée à celle d'un village/, 12],
+      ["marches-ce1", /« Les marchés », séquence au CE1/, 5],
+      ["transports-ce2", /« Les transports », séquence au CE2/, 5],
+    ];
+    for (const [id, titre, seances] of attendues) {
+      const d = demarcheDe(id)!;
+      expect(d.source, id).toMatch(/^Éduscol, ressources 2016/);
+      expect(d.source, id).toMatch(titre);
+      expect(d.source, id).toMatch(/programme 2020, encore en vigueur en CE1-CE2 en 2026-2027$/);
+      expect(d.seances, id).toHaveLength(seances);
+      // Au choix dans le menu : aucune compétence de 2026 n'y mène d'elle-même.
+      for (const c of competences) expect(demarcheSuggeree(c, c.referentielNom, 1).id, `${id} · ${c.competenceTitre}`).not.toBe(id);
+    }
+    // Le Géoportail a fermé le 30 septembre 2026 : les séquences disent cartes.gouv.fr.
+    for (const id of ["lion-a-paris-ce1", "quartier-village-ce2"]) {
+      const texte = JSON.stringify(demarcheDe(id)) + JSON.stringify(planHistoireGeo(id, null));
+      expect(texte.replace(/l'ancien Géoportail/g, ""), id).not.toMatch(/Géoportail/);
+    }
+  });
+
   it("proposent au CE2 les périodes du programme", () => {
     const ce2 = (id: string) => programmationProposee({ niveau: "CE2", competenceTitre: "" }, id);
     expect(ce2("prehistoire-ce2")).toMatchObject({ niveau: "CE2", periode: 1 });
