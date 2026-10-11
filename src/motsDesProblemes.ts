@@ -260,7 +260,10 @@ export function avecLesMotsDesProblemes(d: Demarche | undefined, plan: PlanDesFe
   if (!d || !DEMARCHES_A_PROBLEMES.has(d.id) || d.seances[0] === SEANCE_DES_MOTS) return { demarche: d, plan };
   return {
     demarche: avecLaSeanceDesMots(d),
-    plan: plan && { feuilles: plan.feuilles.map((f) => ({ ...f, seance: f.seance + 1 })), materiel: [MATERIEL_DES_MOTS, ...plan.materiel] },
+    plan: plan && {
+      feuilles: plan.feuilles.map((f) => ({ ...f, seance: f.seance + 1 })), materiel: [MATERIEL_DES_MOTS, ...plan.materiel],
+      ...(plan.documents ? { documents: ["", ...plan.documents] } : {}),
+    },
   };
 }
 

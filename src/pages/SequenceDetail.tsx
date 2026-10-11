@@ -32,6 +32,7 @@ import { ExercicesDesManuels } from "../components/ExercicesDesManuels";
 import { libelleDeProgrammation } from "../programmation";
 import { ConsignesSeance, TapuscritVue } from "../components/Tapuscrit";
 import { lireConsignes } from "../tapuscrit";
+import { TexteAvecLiens } from "../components/TexteAvecLiens";
 
 export default function SequenceDetail() {
   const { id } = useParams();
@@ -694,7 +695,7 @@ export function SeanceReadView({ seance: s, onClose, onEdit }: { seance: Seance;
           </table>
         </div>
       </Section>}
-      {s.materiel && <Section titre="Matériel"><div style={{ whiteSpace: "pre-wrap" }}>{s.materiel}</div></Section>}
+      {s.materiel && <Section titre="Matériel"><div style={{ whiteSpace: "pre-wrap" }}><TexteAvecLiens texte={s.materiel} /></div></Section>}
       {(materiels?.length ?? 0) > 0 && <Section titre="Matériel pédagogique (PDF)">
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {materiels!.map((m) => <span key={m.id} className="chip">📄 {m.titre}</span>)}
