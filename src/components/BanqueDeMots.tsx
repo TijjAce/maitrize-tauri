@@ -76,7 +76,9 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions
     .sort((a, b) => libelleCategorie(a.nom).localeCompare(libelleCategorie(b.nom), "fr")), [categories]);
   const deja = new Set(mots.map((m) => m.mot.toLowerCase()));
   const { projet, corpus } = useProjetDuMoment();
-  const duProjet = corpus.mots.filter((m) => !deja.has(m.toLowerCase()));
+  // Les mots du projet ne viennent qu'à la demande : la case les ajoute tous, la décocher les retire.
+  const presentsDuProjet = corpus.mots.filter((m) => deja.has(m.toLowerCase())).length;
+  const projetCoche = corpus.mots.length > 0 && presentsDuProjet === corpus.mots.length;
 
   /** Ajoute les mots écrits — ou une liste venue d'ailleurs, comme celle du projet. */
   const ajouterMots = async (saisis?: string[]) => {
@@ -101,14 +103,11 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions
     } catch (e) { toast(String(e), { icone: "⚠️" }); } finally { setOccupe(false); }
   };
 
-  // Le projet du moment donne ses mots dès qu'on ouvre l'atelier, s'il est vide —
-  // une fois : on en retire, on en ajoute ensuite à sa guise.
-  const projetPris = React.useRef("");
-  React.useEffect(() => {
-    if (!projet || !corpus.mots.length || projetPris.current === projet.id || mots.length) return;
-    projetPris.current = projet.id;
-    void ajouterMots(corpus.mots);
-  }, [projet?.id, corpus.mots.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  const basculerProjet = (oui: boolean) => {
+    if (oui) { void ajouterMots(corpus.mots); return; }
+    const duProjet = new Set(corpus.mots.map((m) => m.toLowerCase()));
+    onChange(mots.filter((m) => !duProjet.has(m.mot.toLowerCase())));
+  };
 
   const ajouterTheme = async () => {
     if (!theme) return;
@@ -131,15 +130,18 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions
           <button type="button" className="btn sm" disabled={occupe || !texte.trim()} onClick={() => void ajouterMots()}>
             ＋ Ajouter les mots
           </button>
-          {projet && corpus.mots.length > 0 && (
-            <button type="button" className="btn sm" disabled={occupe || !duProjet.length} onClick={() => void ajouterMots(corpus.mots)}
-              title={duProjet.length ? `Les mots du projet « ${projet.titre} »` : `Les mots du projet « ${projet.titre} » sont déjà là`}>
-              📌 Les mots du projet ({corpus.mots.length})
-            </button>
-          )}
           {/* Une photo, un dessin, une image d'ailleurs : elles se mêlent aux pictogrammes. */}
           <BoutonMesImages onImages={(images) => onChange([...mots, ...images.map((i) => ({ id: i.id, mot: i.mot }))])}>🖼 Mes images</BoutonMesImages>
         </div>
+        {projet && corpus.mots.length > 0 && (
+          <label className="pb-coche" style={{ marginTop: 8 }}>
+            {/* À moitié cochée : une partie des mots du projet est déjà là ; la cocher ajoute les autres. */}
+            <input type="checkbox" checked={projetCoche} disabled={occupe}
+              ref={(el) => { if (el) el.indeterminate = presentsDuProjet > 0 && !projetCoche; }}
+              onChange={(e) => basculerProjet(e.target.checked)} />
+            <span>📌 Les mots du projet « {projet.titre} » ({corpus.mots.length})</span>
+          </label>
+        )}
       </Field>
       {propositions && propositions.length > 0 && (
         <Field label="Ou des mots tout prêts">
