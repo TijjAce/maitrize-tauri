@@ -136,7 +136,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Parts égales et comparaisons, avec leur schéma en barres." },
       { id: "coloriage", nom: "Coloriage magique", icone: "🎨", cycles: "Cycles 2 et 3",
         quoi: "On calcule, le résultat dit la couleur, le dessin apparaît." },
-      { id: "collections", nom: "Construire des collections", icone: "🧸", pictos: true, cycles: "Cycle 1",
+      { id: "collections", nom: "Construire des collections — maternelle", icone: "🧸", pictos: true, cycles: "Cycle 1",
         quoi: "Juste ce qu'il faut : les fiches de places, les cartes-nombres, les bons de commande et le bon panier des situations Éduscol — et leur séquence." },
       { id: "nombres", nom: "Cartes des nombres", icone: "🔢", cycles: "Cycles 1 et 2",
         quoi: "Chiffre, constellation, boîte de dix, mot : le même nombre sous toutes ses formes." },
