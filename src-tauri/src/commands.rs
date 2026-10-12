@@ -2215,7 +2215,14 @@ pub fn jeu_generer(
 /// Déplacer une case briserait l'automatisation du geste que le tableau sert
 /// justement à installer.
 #[tauri::command]
-pub fn tla_generer(gabarit: crate::tla_pdf::Gabarit, ouvrir: Option<bool>) -> R<String> {
+pub fn tla_generer(mut gabarit: crate::tla_pdf::Gabarit, ouvrir: Option<bool>) -> R<String> {
+    // Une image de Mes pictos — une photo prise au téléphone — arrive par son seul nom : elle se cherche
+    // parmi les fichiers de l'application, sans jamais en sortir.
+    for case in gabarit.cases.iter_mut() {
+        if !case.fichier.is_empty() && !std::path::Path::new(&case.fichier).is_absolute() {
+            case.fichier = fichier_de_l_application(&case.fichier)?.to_string_lossy().into_owned();
+        }
+    }
     let bytes = crate::tla_pdf::construire(&gabarit)?;
     let propre: String = format!("{} {}", gabarit.eleve, gabarit.nom)
         .chars()

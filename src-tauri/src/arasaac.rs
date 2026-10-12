@@ -711,7 +711,10 @@ pub fn arasaac_noms_contenant(
 /// Nature grammaticale déduite des catégories, ou « nom » à défaut.
 pub fn nature(categories: &[String]) -> String {
     let a = |c: &str| categories.iter().any(|x| x == c);
-    if a("personal pronoun") || a("pronoun") {
+    // Qui, quoi, où, quand, pourquoi, comment : rangés par ARASAAC dans les pronoms interrogatifs.
+    if a("interrogative pronoun") {
+        "question"
+    } else if a("personal pronoun") || a("pronoun") {
         "personne"
     } else if a("verb") || a("usual verbs") {
         "verbe"
@@ -1198,6 +1201,8 @@ mod tests {
         assert_eq!(nature(&["qualifying adjective".into()]), "adjectif");
         assert_eq!(nature(&["polite set expression".into()]), "social");
         assert_eq!(nature(&["preposition".into()]), "petit mot");
+        assert_eq!(nature(&["interrogative pronoun".into(), "pronoun".into()]), "question");
+        assert_eq!(nature(&["interrogative pronoun".into(), "adverb".into(), "adverb of place".into()]), "question");
         // Tout le reste est un nom : c'est le cas le plus fréquent.
         assert_eq!(nature(&["terrestrial animal".into()]), "nom");
         assert_eq!(nature(&[]), "nom");

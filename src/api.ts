@@ -803,7 +803,7 @@ export const api = {
   pictosAppointChercher: (banque: BanqueAppoint, q: string, limite = 48) =>
     invoke<PictoAppoint[]>("pictos_appoint_chercher", { banque, q, limite }),
   pictosAppointImage: (reference: string) => invoke<string>("pictos_appoint_image", { reference }),
-  tlaGenerer: (gabarit: Gabarit, ouvrir = true) => invoke<string>("tla_generer", { gabarit, ouvrir }),
+  tlaGenerer: (gabarit: GabaritImprime, ouvrir = true) => invoke<string>("tla_generer", { gabarit, ouvrir }),
 
   // Amis (appariement chiffré, 100 % local pour l'instant)
   identiteGet: () => invoke<Identite>("identite_get"),
@@ -1096,15 +1096,37 @@ export interface OptionsJeu {
 
 // ── Tableau de langage assisté (TLA) ──────────────────────────────────────
 /** Nature grammaticale d'un mot : elle donne la couleur de la case. */
-export type NatureMot = "personne" | "verbe" | "adjectif" | "social" | "petit mot" | "nom";
+export type NatureMot = "personne" | "verbe" | "adjectif" | "social" | "petit mot" | "nom" | "question";
 export interface CaseTla {
   pictoId: number | null; fichier: string; mot: string; nature: NatureMot;
+  /** Une couleur à elle (« #rrggbb »), à la place de celle de sa nature. */
+  couleur?: string;
+  /** Masquée : elle garde son mot et sa place, mais s'imprime vide — le vocabulaire s'ouvre peu à peu, sans que rien ne bouge. */
+  masquee?: boolean;
 }
+/** Où va la couleur d'une case : son fond, son cadre, ou nulle part. */
+export type ModeCouleurTla = "fond" | "bordure" | "aucune";
+/** Les couleurs des tableaux : une par nature, et la façon de les poser. */
+export interface PaletteTla { mode: ModeCouleurTla; couleurs: Record<NatureMot, string> }
+/** Où s'écrit le mot d'une case : sous l'image, au-dessus, ou pas du tout. */
+export type PlaceDuMot = "dessous" | "dessus" | "aucune";
 export interface Gabarit {
   id: string; nom: string; eleve: string;
   colonnes: number; lignes: number; paysage: boolean; ecart: number; cases: CaseTla[];
+  /** Les couleurs de ce tableau ; sans elles, celles des réglages. */
+  couleurs?: PaletteTla;
+  /** Sous l'image par défaut. */
+  placeMot?: PlaceDuMot;
+  /** Le corps du mot imprimé, en points : 7 par défaut. */
+  corpsMot?: number;
   /** Les compétences travaillées, écrites sous le titre à l'impression ; jamais enregistrées avec le gabarit. */
   competences?: string[];
+}
+/** Ce que l'impression reçoit : chaque case avec ses couleurs déjà résolues (fond, cadre), et les mentions des images. */
+export interface GabaritImprime extends Omit<Gabarit, "cases" | "couleurs"> {
+  cases: (CaseTla & { fond: string; bord: string })[];
+  /** Les mentions des images qui ne viennent pas d'ARASAAC : Sclera, l'IA… */
+  mentions?: string;
 }
 export const caseVide = (): CaseTla => ({ pictoId: null, fichier: "", mot: "", nature: "nom" });
 

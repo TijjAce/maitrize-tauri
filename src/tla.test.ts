@@ -2,8 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   NATURES, couleurNature, nouveauGabarit, redimensionner,
   casesPerdues, poser, remplies, verifier, lireGabarit, echanger,
+  PALETTES, PALETTE_DEFAUT, apparence, dupliquer, lirePalette, pourImpression,
 } from "./tla";
-import type { CaseTla, Gabarit } from "./api";
+import type { CaseTla, Gabarit, PaletteTla } from "./api";
 
 // Un tableau de langage vaut par la stabilité de ses emplacements : l'élève
 // atteint un mot sans le chercher parce qu'il est toujours à la même case.
@@ -156,4 +157,97 @@ describe("code couleur", () => {
     expect(couleurNature("bidule" as any)).toBe(couleurNature("nom"));
   });
 
+});
+
+describe("couleurs au choix", () => {
+  const vives = PALETTES.find((p) => p.id === "vives")!.palette;
+  const sans: PaletteTla = { ...PALETTE_DEFAUT, mode: "aucune" };
+  const verbe: CaseTla = { pictoId: 4, fichier: "4.png", mot: "aller", nature: "verbe" };
+
+  it("donne à chaque nature une couleur distincte, dans chaque jeu de couleurs", () => {
+    for (const { id, palette } of PALETTES.filter((p) => p.id !== "aucune")) {
+      const vues = new Set(NATURES.map((n) => palette.couleurs[n.id]));
+      expect(vues.size, id).toBe(NATURES.length);
+    }
+    // Les questions ont la leur.
+    expect(NATURES.some((n) => n.id === "question")).toBe(true);
+  });
+
+  it("pose la couleur sur le fond, sur le cadre, ou nulle part", () => {
+    expect(apparence(verbe, PALETTE_DEFAUT)).toEqual({ fond: PALETTE_DEFAUT.couleurs.verbe, bord: "" });
+    expect(apparence(verbe, vives)).toEqual({ fond: "#ffffff", bord: vives.couleurs.verbe });
+    expect(apparence(verbe, sans)).toEqual({ fond: "#ffffff", bord: "" });
+  });
+
+  it("laisse la couleur forcée d'une case l'emporter, même sur un tableau sans couleur", () => {
+    const rouge = { ...verbe, couleur: "#E5484D" };
+    expect(apparence(rouge, PALETTE_DEFAUT).fond).toBe("#e5484d");
+    expect(apparence(rouge, sans).fond).toBe("#e5484d");
+    expect(apparence(rouge, vives)).toEqual({ fond: "#ffffff", bord: "#e5484d" });
+    // Une couleur mal écrite ne compte pas.
+    expect(apparence({ ...verbe, couleur: "rouge" }, PALETTE_DEFAUT).fond).toBe(PALETTE_DEFAUT.couleurs.verbe);
+  });
+
+  it("relit des couleurs gardées sans se laisser abîmer", () => {
+    expect(lirePalette(null)).toEqual(PALETTE_DEFAUT);
+    expect(lirePalette("du texte")).toEqual(PALETTE_DEFAUT);
+    const relue = lirePalette({ mode: "bordure", couleurs: { verbe: "#00AA00", nom: "orange", inconnue: "#123456" } });
+    expect(relue.mode).toBe("bordure");
+    expect(relue.couleurs.verbe).toBe("#00aa00");
+    expect(relue.couleurs.nom).toBe(PALETTE_DEFAUT.couleurs.nom);
+    expect(Object.keys(relue.couleurs).sort()).toEqual(NATURES.map((n) => n.id).sort());
+    expect(lirePalette({ mode: "fluo" }).mode).toBe("fond");
+  });
+});
+
+describe("impression", () => {
+  it("donne à chaque case son fond et son cadre, et va chercher le fichier des photos de Mes pictos", () => {
+    let g = nouveauGabarit(3, 1);
+    g = poser(g, 0, { pictoId: 12, fichier: "/arasaac/12.png", mot: "je", nature: "personne" });
+    g = poser(g, 1, { pictoId: -2_100_000_005, fichier: "", mot: "les ciseaux", nature: "nom", masquee: true });
+    g = poser(g, 2, { pictoId: -2_100_000_009, fichier: "", mot: "la cantine", nature: "nom" });
+    const vives = PALETTES.find((p) => p.id === "vives")!.palette;
+    const fichiers: Record<number, string> = { [-2_100_000_005]: "photo-ph1.jpg" };
+    const imprime = pourImpression({ ...g, couleurs: vives, placeMot: "dessus" }, vives, (id) => fichiers[id], "Sclera");
+    expect(imprime.cases[0]).toMatchObject({ fichier: "/arasaac/12.png", fond: "#ffffff", bord: vives.couleurs.personne });
+    expect(imprime.cases[1]).toMatchObject({ fichier: "photo-ph1.jpg", masquee: true });
+    // Une photo retirée de Mes pictos depuis : la case garde son mot, sans image.
+    expect(imprime.cases[2].fichier).toBe("");
+    expect(imprime.placeMot).toBe("dessus");
+    expect(imprime.mentions).toBe("Sclera");
+    // Les couleurs voyagent par les cases, pas par le gabarit.
+    expect("couleurs" in imprime).toBe(false);
+  });
+});
+
+describe("tableau dupliqué, tableau importé", () => {
+  it("duplique un tableau pour un autre élève, sans partager ses cases", () => {
+    const g = { ...garni(), couleurs: { ...PALETTE_DEFAUT, mode: "bordure" as const } };
+    const copie = dupliquer(g);
+    expect(copie.id).not.toBe(g.id);
+    expect(copie.nom).toBe(`${g.nom} (copie)`);
+    expect(copie.cases.map((c) => c.mot)).toEqual(g.cases.map((c) => c.mot));
+    copie.cases[0].mot = "tu";
+    copie.couleurs!.couleurs.verbe = "#000000";
+    expect(g.cases[0].mot).toBe("je");
+    expect(g.couleurs.couleurs.verbe).toBe(PALETTE_DEFAUT.couleurs.verbe);
+  });
+
+  it("relit les couleurs, les cases masquées et la place du mot d'un tableau importé", () => {
+    const json = JSON.stringify({
+      nom: "Cuisine", colonnes: 2, lignes: 1, placeMot: "aucune", corpsMot: 40,
+      couleurs: { mode: "aucune", couleurs: {} },
+      cases: [
+        { pictoId: 3, fichier: "3.png", mot: "chat", nature: "question", couleur: "#AABBCC", masquee: true },
+        { pictoId: 4, fichier: "4.png", mot: "chien", nature: "nom", couleur: "javascript:alert(1)", masquee: "oui" },
+      ],
+    });
+    const g = lireGabarit(json);
+    expect(g.cases[0]).toMatchObject({ nature: "question", couleur: "#aabbcc", masquee: true });
+    expect(g.cases[1].couleur).toBeUndefined();
+    expect(g.cases[1].masquee).toBeUndefined();
+    expect(g.couleurs?.mode).toBe("aucune");
+    expect(g.placeMot).toBe("aucune");
+    expect(g.corpsMot).toBe(16);
+  });
 });

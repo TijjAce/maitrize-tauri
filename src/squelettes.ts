@@ -22,7 +22,7 @@ import { NatureMot } from "./api";
 export type Role = "question" | "social" | "pronom" | "verbe" | "petit mot" | "nom" | "adjectif";
 
 export const NATURE_DU_ROLE: Record<Role, NatureMot> = {
-  question: "petit mot",
+  question: "question",
   social: "social",
   pronom: "personne",
   verbe: "verbe",

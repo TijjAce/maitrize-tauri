@@ -1,11 +1,14 @@
 import React from "react";
-import { api, Gabarit, CaseTla, NatureMot, PictoArasaac, caseVide, telechargerTexte } from "../api";
+import { api, Gabarit, CaseTla, NatureMot, PaletteTla, PictoArasaac, PlaceDuMot, caseVide, telechargerTexte } from "../api";
 import { Modal, Field, Input, Select, Empty, Confirm, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import {
-  NATURES, couleurNature, nouveauGabarit, redimensionner,
+  NATURES, CORPS_DU_MOT, PLACES_DU_MOT, apparence, couleurSure, dupliquer, nouveauGabarit, pourImpression, redimensionner,
   casesPerdues, poser, echanger, remplies, verifier, lireGabarit, tableauSurTheme,
 } from "../tla";
+import { chercherPictos, estMonPicto, lireMesPictos, mentionDeMesPictos, type MonPicto } from "../mesPictos";
+import { EtiquetteMonPicto, usePictoImage } from "../components/ChoixPicto";
+import { FenetreCouleurs, LegendeTla, garderPaletteParDefaut, usePaletteParDefaut } from "../components/CouleursTla";
 import { SQUELETTES, squelettePour, placesDuTheme, motsDuNoyau } from "../squelettes";
 import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
 import { deposerSurLeBureau, lignesCompetencesAtelier } from "../impressionAtelier";
@@ -31,6 +34,8 @@ export function TlaTab() {
   const [ouvert, setOuvert] = React.useState<string>("");
   const [aSupprimer, setASupprimer] = React.useState<Gabarit | null>(null);
   const [surTheme, setSurTheme] = React.useState(false);
+  const [couleursParDefaut, setCouleursParDefaut] = React.useState(false);
+  const paletteParDefaut = usePaletteParDefaut();
   const importInput = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -89,6 +94,9 @@ export function TlaTab() {
           <button className="btn" onClick={() => importInput.current?.click()}>📥 Importer un gabarit</button>
           <input ref={importInput} type="file" accept="application/json" hidden
             onChange={(e) => { const f = e.target.files?.[0]; if (f) importer(f); e.target.value = ""; }} />
+          <div style={{ flex: 1 }} />
+          <button className="btn" onClick={() => setCouleursParDefaut(true)}
+            title="Les couleurs que prend un tableau neuf ; aussi dans Réglages › Général › Apparence">🎨 Couleurs par défaut…</button>
         </div>
       </div>
 
@@ -105,6 +113,11 @@ export function TlaTab() {
               </div>
               <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
                 <button className="btn sm" onClick={() => setOuvert(g.id)}>✏️ Ouvrir</button>
+                <button className="btn sm" title="Les mêmes cases aux mêmes places, pour un autre élève" onClick={() => {
+                  const copie = dupliquer(g);
+                  enregistrer([...ref.current, copie]);
+                  setOuvert(copie.id);
+                }}>📄 Dupliquer</button>
                 <button className="btn sm" onClick={() =>
                   telechargerTexte(`tla-${g.nom.replace(/\W+/g, "-").toLowerCase()}.json`, JSON.stringify(g, null, 2))
                 }>📤 Exporter</button>
@@ -125,6 +138,12 @@ export function TlaTab() {
           onYes={() => { enregistrer(ref.current.filter((x) => x.id !== aSupprimer.id)); setASupprimer(null); }}
           onClose={() => setASupprimer(null)} />
       )}
+
+      {couleursParDefaut && (
+        <FenetreCouleurs titre="Couleurs par défaut des tableaux" palette={paletteParDefaut}
+          explication="Tous les tableaux les prennent, sauf ceux qui ont leurs propres couleurs. Elles se règlent aussi dans Réglages › Général › Apparence."
+          onChange={(p) => { void garderPaletteParDefaut(p); }} onClose={() => setCouleursParDefaut(false)} />
+      )}
     </>
   );
 }
@@ -138,6 +157,41 @@ function Editeur({ gabarit, onChange, onFermer }: {
   const [caseEditee, setCaseEditee] = React.useState<number | null>(null);
   const [redim, setRedim] = React.useState<{ colonnes: number; lignes: number } | null>(null);
   const [occupe, setOccupe] = React.useState(false);
+  const [fenetreCouleurs, setFenetreCouleurs] = React.useState(false);
+  // Les couleurs du tableau : les siennes, sinon celles des réglages.
+  const paletteParDefaut = usePaletteParDefaut();
+  const palette = gabarit.couleurs ?? paletteParDefaut;
+
+  // Annuler : les états d'avant, cinquante au plus. Le nom se corrige dans son champ, qui a son propre retour.
+  const passe = React.useRef<Gabarit[]>([]);
+  const [, setNbPasse] = React.useState(0);
+  const actuel = React.useRef(gabarit);
+  actuel.current = gabarit;
+  const prevenir = React.useRef(onChange);
+  prevenir.current = onChange;
+  const changer = (suite: Gabarit) => {
+    passe.current = [...passe.current.slice(-49), actuel.current];
+    setNbPasse(passe.current.length);
+    onChange(suite);
+  };
+  const annuler = React.useCallback(() => {
+    const avant = passe.current.pop();
+    if (!avant) return;
+    setNbPasse(passe.current.length);
+    prevenir.current(avant);
+  }, []);
+  // ⌘Z ou Ctrl+Z, hors des champs — qui ont le leur — et hors d'une fenêtre ouverte.
+  React.useEffect(() => {
+    const touche = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== "z") return;
+      const cible = e.target as HTMLElement | null;
+      if (cible?.closest("input, textarea, select, [contenteditable='true']") || document.querySelector(".modal")) return;
+      e.preventDefault();
+      annuler();
+    };
+    window.addEventListener("keydown", touche);
+    return () => window.removeEventListener("keydown", touche);
+  }, [annuler]);
 
   // Glisser une case sur une autre les échange. La case saisie vit dans une
   // référence : pendant le survol, le navigateur ne laisse pas lire les
@@ -150,20 +204,38 @@ function Editeur({ gabarit, onChange, onFermer }: {
   const changerTaille = (colonnes: number, lignes: number) => {
     const perdues = casesPerdues(gabarit, colonnes, lignes);
     if (perdues > 0) setRedim({ colonnes, lignes });
-    else onChange(redimensionner(gabarit, colonnes, lignes));
+    else changer(redimensionner(gabarit, colonnes, lignes));
+  };
+
+  /**
+   * Le tableau prêt à imprimer : ses couleurs, les compétences de l'atelier
+   * sous le titre, le fichier des photos de Mes pictos, et la mention des
+   * images qui ne viennent pas d'ARASAAC — celles qui s'impriment.
+   */
+  const preparer = async () => {
+    const soucis = verifier(gabarit);
+    if (soucis.length) throw new Error(soucis[0]);
+    const miens: MonPicto[] = await lireMesPictos().catch((): MonPicto[] => []);
+    return pourImpression(
+      { ...gabarit, competences: await lignesCompetencesAtelier("tla") },
+      palette,
+      (id) => miens.find((p) => p.id === id)?.fichier,
+      mentionDeMesPictos(gabarit.cases.filter((c) => !c.masquee).map((c) => c.pictoId)),
+    );
   };
 
   const imprimer = async () => {
-    const soucis = verifier(gabarit);
-    if (soucis.length) { toast(soucis[0], { icone: "⚠️" }); return; }
     setOccupe(true);
     try {
-      // Les compétences de l'atelier s'écrivent sous le titre du tableau.
-      await api.tlaGenerer({ ...gabarit, competences: await lignesCompetencesAtelier("tla") });
+      await api.tlaGenerer(await preparer());
       toast("Tableau créé — le PDF s'ouvre.", { icone: "🖨" });
-    } catch (e: any) { toast(String(e), { icone: "⚠️" }); }
+    } catch (e: any) { toast(String(e?.message ?? e), { icone: "⚠️" }); }
     finally { setOccupe(false); }
   };
+
+  const placeMot = gabarit.placeMot ?? "dessous";
+  const corpsMot = gabarit.corpsMot ?? 7;
+  const masquees = gabarit.cases.filter((c) => c.masquee && c.pictoId !== null).length;
 
   return (
     <>
@@ -174,7 +246,7 @@ function Editeur({ gabarit, onChange, onFermer }: {
             <Input value={gabarit.nom} onChange={(e) => onChange({ ...gabarit, nom: e.target.value })} />
           </Field>
           <Field label="Élève">
-            <Select value={gabarit.eleve} onChange={(e) => onChange({ ...gabarit, eleve: e.target.value })}>
+            <Select value={gabarit.eleve} onChange={(e) => changer({ ...gabarit, eleve: e.target.value })}>
               <option value="">— aucun —</option>
               {(eleves ?? []).map((el) => <option key={el.id} value={el.nom}>{el.nom}</option>)}
             </Select>
@@ -189,7 +261,7 @@ function Editeur({ gabarit, onChange, onFermer }: {
           </Field>
           <Field label="Écart entre les cases">
             <Select value={String(gabarit.ecart)}
-              onChange={(e) => onChange({ ...gabarit, ecart: Number(e.target.value) })}
+              onChange={(e) => changer({ ...gabarit, ecart: Number(e.target.value) })}
               title="Des cases détachées se visent du poing ; un écart nul rend la place à des cases plus grandes">
               <option value="0">Aucun — cases jointives</option>
               <option value="3">Normal</option>
@@ -198,16 +270,14 @@ function Editeur({ gabarit, onChange, onFermer }: {
           </Field>
           <Field label="Orientation">
             <Select value={gabarit.paysage ? "paysage" : "portrait"}
-              onChange={(e) => onChange({ ...gabarit, paysage: e.target.value === "paysage" })}>
+              onChange={(e) => changer({ ...gabarit, paysage: e.target.value === "paysage" })}>
               <option value="paysage">Paysage</option>
               <option value="portrait">Portrait</option>
             </Select>
           </Field>
           <div style={{ flex: 1 }} />
           <BoutonBureau className="btn" disabled={occupe} onEnregistrer={async () => {
-            const soucis = verifier(gabarit);
-            if (soucis.length) throw new Error(soucis[0]);
-            const chemin = await api.tlaGenerer({ ...gabarit, competences: await lignesCompetencesAtelier("tla") }, false);
+            const chemin = await api.tlaGenerer(await preparer(), false);
             const nom = gabarit.eleve ? `${gabarit.eleve} — ${gabarit.nom}` : gabarit.nom;
             return deposerSurLeBureau("tla", nom, await api.fichierImporterDepuisChemin(chemin));
           }} />
@@ -215,22 +285,51 @@ function Editeur({ gabarit, onChange, onFermer }: {
             {occupe ? "Création…" : "🖨 Imprimer le tableau"}
           </button>
         </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap", marginTop: 10 }}>
+          <Field label="Couleurs">
+            <Select value={gabarit.couleurs ? "propres" : "reglages"}
+              onChange={(e) => {
+                if (e.target.value === "propres") {
+                  changer({ ...gabarit, couleurs: { mode: palette.mode, couleurs: { ...palette.couleurs } } });
+                  setFenetreCouleurs(true);
+                } else {
+                  const { couleurs: _siennes, ...sans } = gabarit;
+                  changer(sans);
+                }
+              }}>
+              <option value="reglages">Celles des réglages</option>
+              <option value="propres">Propres à ce tableau</option>
+            </Select>
+          </Field>
+          {gabarit.couleurs && (
+            <button className="btn sm" style={{ marginBottom: 2 }} onClick={() => setFenetreCouleurs(true)}>🎨 Modifier les couleurs…</button>
+          )}
+          <Field label="Le mot">
+            <Select value={placeMot} onChange={(e) => changer({ ...gabarit, placeMot: e.target.value as PlaceDuMot })}>
+              {PLACES_DU_MOT.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+            </Select>
+          </Field>
+          <Field label="Taille du mot">
+            <Select value={String(corpsMot)} disabled={placeMot === "aucune"}
+              onChange={(e) => changer({ ...gabarit, corpsMot: Number(e.target.value) })}>
+              {CORPS_DU_MOT.map((c) => <option key={c.corps} value={c.corps}>{c.label}</option>)}
+            </Select>
+          </Field>
+          <div style={{ flex: 1 }} />
+          <button className="btn sm" style={{ marginBottom: 2 }} disabled={!passe.current.length} onClick={annuler}
+            title="Annuler la dernière modification (⌘Z)">↶ Annuler</button>
+        </div>
         <div style={{ display: "flex", gap: 12, marginTop: 10, flexWrap: "wrap", fontSize: 12 }}>
-          {NATURES.map((n) => (
-            <span key={n.id} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <span style={{ width: 12, height: 12, borderRadius: 3, background: n.couleur, border: "1px solid #bbb" }} />
-              {n.label}
-            </span>
-          ))}
+          <LegendeTla palette={palette} />
           <span style={{ color: "var(--text-2)" }}>
-            · {remplies(gabarit)} / {gabarit.cases.length} cases
+            · {remplies(gabarit)} / {gabarit.cases.length} cases{masquees ? ` · ${masquees} masquée${masquees > 1 ? "s" : ""}` : ""}
           </span>
         </div>
       </div>
 
       <div className="card">
         <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--text-2)" }}>
-          Cliquez sur une case pour y poser un mot. <b>Glissez un pictogramme
+          Cliquez sur une case pour y poser un mot, lui donner sa couleur ou la masquer. <b>Glissez un pictogramme
           sur un autre pour les échanger</b> ; sur une case vide, il s'y déplace.
           Changer la taille de la grille ne déplace jamais les cases déjà
           posées : elles gardent leurs coordonnées.
@@ -242,7 +341,8 @@ function Editeur({ gabarit, onChange, onFermer }: {
           maxWidth: gabarit.paysage ? "100%" : 620,
         }}>
           {gabarit.cases.map((c, i) => (
-            <CaseBouton key={i} valeur={c} onClick={() => setCaseEditee(i)}
+            <CaseBouton key={i} valeur={c} palette={palette} placeMot={placeMot} corpsMot={corpsMot}
+              onClick={() => setCaseEditee(i)}
               glissee={glissee === i} visee={visee === i && glissee !== i}
               onDragStart={(e) => {
                 e.dataTransfer.setData(TYPE_CASE, String(i));
@@ -263,7 +363,7 @@ function Editeur({ gabarit, onChange, onFermer }: {
                 if (depart === null) return;
                 e.preventDefault();
                 finirGlisser();
-                if (depart !== i) onChange(echanger(gabarit, depart, i));
+                if (depart !== i) changer(echanger(gabarit, depart, i));
               }}
               onDragEnd={finirGlisser} />
           ))}
@@ -271,16 +371,22 @@ function Editeur({ gabarit, onChange, onFermer }: {
       </div>
 
       {caseEditee !== null && (
-        <ChoixMot valeur={gabarit.cases[caseEditee]}
+        <ChoixMot valeur={gabarit.cases[caseEditee]} palette={palette}
           onClose={() => setCaseEditee(null)}
-          onValider={(v) => { onChange(poser(gabarit, caseEditee, v)); setCaseEditee(null); }} />
+          onValider={(v) => { changer(poser(gabarit, caseEditee, v)); setCaseEditee(null); }} />
       )}
 
       {redim && (
         <Confirm
           message={`Réduire la grille à ${redim.colonnes} × ${redim.lignes} effacera ${casesPerdues(gabarit, redim.colonnes, redim.lignes)} case(s) déjà remplie(s). Continuer ?`}
-          onYes={() => { onChange(redimensionner(gabarit, redim.colonnes, redim.lignes)); setRedim(null); }}
+          onYes={() => { changer(redimensionner(gabarit, redim.colonnes, redim.lignes)); setRedim(null); }}
           onClose={() => setRedim(null)} />
+      )}
+
+      {fenetreCouleurs && gabarit.couleurs && (
+        <FenetreCouleurs titre="Les couleurs de ce tableau" palette={gabarit.couleurs}
+          explication="Elles ne valent que pour ce tableau : les autres gardent celles des réglages."
+          onChange={(p) => changer({ ...actuel.current, couleurs: p })} onClose={() => setFenetreCouleurs(false)} />
       )}
     </>
   );
@@ -288,47 +394,55 @@ function Editeur({ gabarit, onChange, onFermer }: {
 
 type GlisserCase = Pick<React.HTMLAttributes<HTMLDivElement>, "onDragStart" | "onDragOver" | "onDragLeave" | "onDrop" | "onDragEnd">;
 
-function CaseBouton({ valeur, onClick, glissee, visee, ...glisser }: {
-  valeur: CaseTla; onClick: () => void;
+function CaseBouton({ valeur, palette, placeMot, corpsMot, onClick, glissee, visee, ...glisser }: {
+  valeur: CaseTla; palette: PaletteTla; placeMot: PlaceDuMot; corpsMot: number; onClick: () => void;
   /** La case qu'on est en train de glisser. */
   glissee: boolean;
   /** La case au-dessus de laquelle on la tient : c'est avec elle qu'elle s'échangera. */
   visee: boolean;
 } & GlisserCase) {
-  const [src, setSrc] = React.useState("");
-  React.useEffect(() => {
-    if (valeur.pictoId === null) { setSrc(""); return; }
-    let vivant = true;
-    api.arasaacImage(valeur.pictoId).then((b) => { if (vivant) setSrc(`data:image/png;base64,${b}`); }).catch(() => {});
-    return () => { vivant = false; };
-  }, [valeur.pictoId]);
+  // Un pictogramme d'ARASAAC, ou une image de Mes pictos : une photo prise au téléphone, un dessin.
+  const src = usePictoImage(valeur.pictoId, true);
   const vide = valeur.pictoId === null;
+  // Une case masquée s'imprimera blanche et vide ; à l'écran, on la voit encore, pâlie.
+  const masquee = !vide && !!valeur.masquee;
+  const { fond, bord } = apparence(valeur, palette);
+  const mot = !vide && placeMot !== "aucune" && (
+    <span style={{ fontSize: Math.round(10 * corpsMot / 7), color: "#333", lineHeight: 1.1, textAlign: "center", pointerEvents: "none",
+      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%", opacity: masquee ? 0.35 : 1 }}>
+      {valeur.mot}
+    </span>
+  );
   // Une case glissable n'est pas un <button> : WebKit ne fait pas glisser les boutons.
   return (
     <div role="button" tabIndex={0} draggable={!vide} {...glisser}
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
-      title={vide ? "Poser un mot" : valeur.mot}
-      aria-label={vide ? "Case vide : poser un mot" : `${valeur.mot} : changer le mot, ou glisser pour échanger`}
+      title={vide ? "Poser un mot" : masquee ? `${valeur.mot} — masquée : elle s'imprime vide` : valeur.mot}
+      aria-label={vide ? "Case vide : poser un mot" : `${valeur.mot}${masquee ? ", masquée" : ""} : changer le mot, ou glisser pour échanger`}
       style={{
         position: "relative",
-        background: vide ? "#fff" : couleurNature(valeur.nature),
+        background: vide || masquee ? "#fff" : fond,
+        boxShadow: !vide && !masquee && bord ? `inset 0 0 0 4px ${bord}` : undefined,
         border: "none", borderRadius: 3, aspectRatio: "1", cursor: vide ? "pointer" : "grab",
         display: "flex", flexDirection: "column", alignItems: "center",
-        justifyContent: "center", padding: 3, gap: 2, minHeight: 60,
+        justifyContent: "center", padding: bord ? 6 : 3, gap: 2, minHeight: 60,
         userSelect: "none", WebkitUserSelect: "none",
         opacity: glissee ? 0.35 : 1, transition: "opacity .12s",
         outline: visee ? "3px solid var(--accent)" : undefined, outlineOffset: -3,
       }}>
+      {placeMot === "dessus" && mot}
       {/* Sans événements : le survol reste celui de la case, et l'image ne se glisse pas seule. */}
       {src
-        ? <img src={src} alt="" draggable={false} style={{ width: "100%", flex: 1, objectFit: "contain", minHeight: 0, pointerEvents: "none" }} />
-        : <span style={{ flex: 1, display: "flex", alignItems: "center", color: "#bbb", fontSize: 18, pointerEvents: "none" }}>+</span>}
-      {!vide && (
-        <span style={{ fontSize: 10, color: "#333", lineHeight: 1.1, textAlign: "center", pointerEvents: "none",
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
-          {valeur.mot}
-        </span>
+        ? <img src={src} alt="" draggable={false} style={{ width: "100%", flex: 1, objectFit: "contain", minHeight: 0, pointerEvents: "none", opacity: masquee ? 0.25 : 1 }} />
+        : <span style={{ flex: 1, display: "flex", alignItems: "center", color: "#bbb", fontSize: 18, pointerEvents: "none" }}>{vide ? "+" : ""}</span>}
+      {placeMot !== "dessus" && mot}
+      {masquee && (
+        <span aria-hidden="true" style={{
+          position: "absolute", top: 4, left: 4, pointerEvents: "none",
+          background: "#4b5563", color: "#fff", borderRadius: 999,
+          fontSize: 10, lineHeight: 1, padding: "3px 6px", fontWeight: 700,
+        }}>masquée</span>
       )}
       {visee && (
         <span aria-hidden="true" style={{
@@ -347,8 +461,8 @@ function CaseBouton({ valeur, onClick, glissee, visee, ...glisser }: {
 // correspondance partielle, interdite dans la génération de jeux : chercher
 // « terre » ramène aussi des drapeaux, mais on les voit avant de choisir.
 
-function ChoixMot({ valeur, onClose, onValider }: {
-  valeur: CaseTla; onClose: () => void; onValider: (v: CaseTla) => void;
+function ChoixMot({ valeur, palette, onClose, onValider }: {
+  valeur: CaseTla; palette: PaletteTla; onClose: () => void; onValider: (v: CaseTla) => void;
 }) {
   const [q, setQ] = React.useState(valeur.mot);
   const [resultats, setResultats] = React.useState<PictoArasaac[]>([]);
@@ -357,21 +471,37 @@ function ChoixMot({ valeur, onClose, onValider }: {
   );
   const [mot, setMot] = React.useState(valeur.mot);
   const [nature, setNature] = React.useState<NatureMot>(valeur.nature);
+  // Vide : la couleur de sa nature ; sinon, une couleur à elle.
+  const [couleur, setCouleur] = React.useState(couleurSure(valeur.couleur) ?? "");
+  const [masquee, setMasquee] = React.useState(!!valeur.masquee);
 
+  // Mes pictos d'abord — les photos prises au téléphone, les dessins gardés —, puis ARASAAC.
   React.useEffect(() => {
     const t = setTimeout(() => {
       if (q.trim().length < 2) { setResultats([]); return; }
-      api.arasaacChercher(q, 40).then(setResultats).catch(() => setResultats([]));
+      chercherPictos(q, 40).then(setResultats).catch(() => setResultats([]));
     }, 200);
     return () => clearTimeout(t);
   }, [q]);
 
   // La nature vient des catégories ARASAAC, jamais d'une lecture du mot. Elle
   // reste modifiable : « manger » se pose parfois comme nom sur un tableau.
+  // Une image de Mes pictos n'a pas de catégorie : la case garde sa nature.
   const prendre = async (p: PictoArasaac) => {
     setChoisi(p);
     if (!mot.trim() || mot === choisi?.mot) setMot(p.mot);
+    if (estMonPicto(p.id)) return;
     try { setNature((await api.arasaacNature(p.id)) as NatureMot); } catch { /* on garde */ }
+  };
+
+  const poserLaCase = () => {
+    if (!choisi) return;
+    const propre = couleurSure(couleur);
+    onValider({
+      pictoId: choisi.id, fichier: choisi.fichier, mot: mot.trim(), nature,
+      ...(propre ? { couleur: propre } : {}),
+      ...(masquee ? { masquee: true } : {}),
+    });
   };
 
   return (
@@ -381,12 +511,11 @@ function ChoixMot({ valeur, onClose, onValider }: {
           <button className="btn" onClick={() => onValider(caseVide())}>Vider la case</button>
         )}
         <button className="btn" onClick={onClose}>Annuler</button>
-        <button className="btn primary" disabled={!choisi || !mot.trim()}
-          onClick={() => choisi && onValider({ pictoId: choisi.id, fichier: choisi.fichier, mot: mot.trim(), nature })}>
+        <button className="btn primary" disabled={!choisi || !mot.trim()} onClick={poserLaCase}>
           Poser
         </button>
       </>}>
-      <Field label="Chercher un pictogramme">
+      <Field label="Chercher un pictogramme, ou une image de Mes pictos">
         <Input autoFocus placeholder="manger, encore, content…" value={q} onChange={(e) => setQ(e.target.value)} />
       </Field>
       <div style={{
@@ -411,25 +540,42 @@ function ChoixMot({ valeur, onClose, onValider }: {
             {NATURES.map((n) => <option key={n.id} value={n.id}>{n.label}</option>)}
           </Select>
         </Field>
+        <Field label="Couleur de la case">
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <Select value={couleur ? "propre" : "nature"}
+              onChange={(e) => setCouleur(e.target.value === "propre" ? palette.couleurs[nature] : "")}>
+              <option value="nature">Celle de sa nature</option>
+              <option value="propre">Une couleur à elle</option>
+            </Select>
+            {couleur && (
+              <input type="color" value={couleur} aria-label="Couleur de la case"
+                style={{ width: 42, height: 32, padding: 0, border: "1px solid var(--border)", borderRadius: 6, background: "none", flex: "none" }}
+                onChange={(e) => setCouleur(e.target.value)} />
+            )}
+          </div>
+        </Field>
+        <Field label="Masquer la case">
+          <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, minHeight: 32, cursor: "pointer" }}>
+            <input type="checkbox" checked={masquee} onChange={(e) => setMasquee(e.target.checked)} />
+            Elle s'imprime vide, mais garde sa place et son mot
+          </label>
+        </Field>
       </div>
     </Modal>
   );
 }
 
 function Resultat({ picto, actif, onClick }: { picto: PictoArasaac; actif: boolean; onClick: () => void }) {
-  const [src, setSrc] = React.useState("");
-  React.useEffect(() => {
-    let vivant = true;
-    api.arasaacImage(picto.id).then((b) => { if (vivant) setSrc(`data:image/png;base64,${b}`); }).catch(() => {});
-    return () => { vivant = false; };
-  }, [picto.id]);
+  const src = usePictoImage(picto.id, true);
   return (
     <button onClick={onClick} title={picto.mot}
       style={{
+        position: "relative",
         border: actif ? "2px solid var(--accent)" : "1px solid var(--border)",
         borderRadius: 8, background: "#fff", padding: 4, cursor: "pointer",
         display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
       }}>
+      <EtiquetteMonPicto id={picto.id} />
       {src ? <img src={src} alt="" style={{ width: "100%", aspectRatio: "1", objectFit: "contain" }} />
            : <div style={{ width: "100%", aspectRatio: "1" }} />}
       <span style={{ fontSize: 10, color: "#444", lineHeight: 1.1, textAlign: "center",
