@@ -67,11 +67,18 @@ describe("les fiches qu'on propose", () => {
     }
   });
 
-  it("en maternelle : le langage, le temps, les nombres — chaque âge les siens", () => {
+  it("en maternelle : les nombres, les lettres, le temps — chaque âge les siens", () => {
     for (let g = 1; g < 20; g++) {
-      expect(proposer("PS", 1, false, 3, g).map((f) => f.recette)).toEqual(["intrus", "suite", "intrus"]);
-      expect(proposer("MS", 1, false, 3, g).map((f) => recetteDe(f.recette)?.domaine)).toEqual(["nombres", "langage", "temps"]);
-      expect(proposer("GS", 1, false, 3, g).map((f) => recetteDe(f.recette)?.domaine)).toEqual(["nombres", "lettres", "langage"]);
+      expect(proposer("PS", 1, false, 3, g).map((f) => f.recette)).toEqual(["suite", "suite", "suite"]);
+      expect(proposer("MS", 1, false, 3, g).map((f) => recetteDe(f.recette)?.domaine)).toEqual(["nombres", "temps", "nombres"]);
+      expect(proposer("GS", 1, false, 3, g).map((f) => recetteDe(f.recette)?.domaine)).toEqual(["nombres", "lettres", "temps"]);
+    }
+  });
+
+  it("ne tire jamais « Trouve l'intrus » : il se fait en disant pourquoi, et une ligne au hasard a souvent plusieurs intrus", () => {
+    expect(recetteDe("intrus")).toBeUndefined();
+    for (const n of ["PS", "MS", "GS"] as const) {
+      for (let g = 1; g < 30; g++) expect(proposer(n, 1, false, 5, g).map((f) => f.recette)).not.toContain("intrus");
     }
   });
 

@@ -14,7 +14,9 @@
 // vérifient (les pyramides, les cubes), qui s'exercent (la cursive). Pas de
 // jeu à plusieurs, pas de dictée, pas d'affiche ; pas non plus de matériel
 // qui sort en plusieurs pages à découper, comme les fiches de places ou les
-// boîtes de tri.
+// boîtes de tri. Ni « Trouve l'intrus » : il se fait en disant pourquoi, à
+// quelqu'un qui écoute, et une ligne tirée au hasard a souvent plusieurs
+// intrus possibles — les tongs avec les gants, la ceinture ou le bonnet ?
 
 import type { Creneau, Eleve } from "./api";
 import { STYLE_FEUILLE } from "./cartesImprimables";
@@ -23,10 +25,6 @@ import { hasard, melanger, piocher } from "./hasard";
 import { ligneDuPdf } from "./materielAImprimer";
 import { reglagesLaisses } from "./reglagesLaisses";
 // Maternelle
-import {
-  REGLAGES_CATEGORISER, STYLE_CATEGORISER, categoriesDuJeu, cequiManque as cequiManqueCategoriser, htmlCategoriser,
-  idsDesImages as idsDesCategories, jeuxPour, motsDuJeu, reglagesDuNiveau as categoriserDuNiveau, type Forme as FormeCategoriser,
-} from "./categoriser";
 import { ETAPES_CONSEILLEES, REGLAGES_SUITES, STYLE_SUITES, htmlSuites, suitesPour } from "./suitesImages";
 import { MOTIFS, REGLAGES_PAR_DEFAUT as REGLAGES_COLORIAGE, couleursDuMotif, fabriquerColoriage, feuilleDuColoriage, type Graphie, type ReglagesColoriage } from "./coloriageMagique";
 import { REGLAGES_CURSIVE, STYLE_CURSIVE, htmlEcritureCursive, modelesDeLEtape, type ReglagesCursive } from "./ecritureCursive";
@@ -140,29 +138,6 @@ async function imagesDe(ids: (number | null)[], outils: OutilsFiche): Promise<Re
 }
 
 // La maternelle : nommer et catégoriser, ordonner, reconnaître chiffres et lettres.
-
-/**
- * Une fiche de catégorisation sur un exemple d'Éduscol à l'âge de l'élève.
- * Une image qui manque à la banque laisse son mot seul, ce qui ne dit rien
- * à qui ne lit pas : on l'écarte, et l'on passe à l'exemple suivant si
- * celui-ci n'y suffit plus.
- */
-async function categoriser(forme: FormeCategoriser, c: ContexteFiche, graine: number, outils: OutilsFiche): Promise<FicheFabriquee> {
-  const niveau = c.niveau as Maternelle;
-  const alea = hasard(graine);
-  const jeux = jeuxPour(niveau);
-  const aCetAge = jeux.filter((j) => j.niveaux.includes(niveau));
-  for (const jeu of [...melanger(alea, aCetAge), ...melanger(alea, jeux.filter((j) => !aCetAge.includes(j)))]) {
-    const categories = categoriesDuJeu(jeu, await outils.pictos(motsDuJeu(jeu)))
-      .map((cat) => ({ ...cat, mots: cat.mots.filter((m) => m.id !== null) }));
-    const r = { ...REGLAGES_CATEGORISER, ...categoriserDuNiveau(niveau), niveau, forme, categories, legendes: false, maisons: false };
-    if (cequiManqueCategoriser(r)) continue;
-    const images = await imagesDe(idsDesCategories(categories), outils);
-    // La feuille tire à partir de la graine, comme l'atelier : il la refait à l'identique.
-    return commeLAtelier(htmlCategoriser(r, images, hasard(graine)), STYLE_FEUILLE + STYLE_CATEGORISER, "categoriser", r);
-  }
-  throw new Error("Les pictogrammes de ces catégories manquent à la banque.");
-}
 
 /** Une histoire en images à remettre dans l'ordre, du nombre d'étapes de l'âge — une de plus au plus. */
 async function suiteDImages(c: ContexteFiche, graine: number, outils: OutilsFiche): Promise<FicheFabriquee> {
@@ -287,8 +262,6 @@ const DES_PERIODES = (de: number) => [1, 2, 3, 4, 5].filter((p) => p >= de);
 
 export const RECETTES: RecetteDeFiche[] = [
   // ── Maternelle
-  { id: "intrus", atelier: "categoriser", nom: "Trouve l'intrus", domaine: "langage", niveaux: ["PS", "MS", "GS"],
-    fabriquer: (c, g, o) => categoriser("intrus", c, g, o) },
   { id: "suite", atelier: "suites", nom: "Remets les images dans l'ordre", domaine: "temps", niveaux: ["PS", "MS", "GS"],
     fabriquer: (c, g, o) => suiteDImages(c, g, o) },
   { id: "coloriage-chiffres", atelier: "coloriage", nom: "Coloriage magique des chiffres", domaine: "nombres", niveaux: ["MS", "GS"],
@@ -387,13 +360,14 @@ export function recettesPour(n: NiveauFiches, periode: number, nonVerbal: boolea
 
 /**
  * L'ordre des domaines, d'une fiche à la suivante : en maternelle, les
- * nombres, les lettres en grande section, le langage, le temps ; ensuite,
- * le français et les maths tour à tour.
+ * nombres, les lettres en grande section, le temps ; ensuite, le français et
+ * les maths tour à tour. Le langage n'a plus de fiche à faire seul : il se
+ * travaille en parlant.
  */
 export function ordreDesDomaines(n: NiveauFiches): Domaine[] {
-  if (n === "PS") return ["langage", "temps"];
-  if (n === "MS") return ["nombres", "langage", "temps"];
-  if (n === "GS") return ["nombres", "lettres", "langage", "temps"];
+  if (n === "PS") return ["temps"];
+  if (n === "MS") return ["nombres", "temps"];
+  if (n === "GS") return ["nombres", "lettres", "temps"];
   return ["francais", "maths"];
 }
 
