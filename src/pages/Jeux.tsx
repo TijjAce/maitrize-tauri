@@ -50,6 +50,8 @@ import { gestesDemandes, gestesPourLesJeux, useNombreDeGestes } from "../compone
 import { estPerso } from "../imagesPerso";
 import { chercherPictos, pictosDesMots } from "../mesPictos";
 import { FAMILLES, ONGLETS, type Onglet, type Outil } from "../catalogueAteliers";
+import { PliDuCatalogue, iconeEtNom } from "../components/PliDuCatalogue";
+import { CatalogueParCompetence } from "../components/CatalogueParCompetence";
 
 // ── Loto et tableaux à partir des pictogrammes ARASAAC ────────────────────
 //
@@ -77,43 +79,12 @@ export function chercherAteliers(
     sans(`${o.nom} ${o.quoi} ${f.libelle} ${o.cycles ?? ""} ${usages[o.id] ? descriptionDe(usages[o.id]).nom : ""}`).includes(cible)));
 }
 
-/** Comment le catalogue se lit : par famille d'ateliers, ou par moment de la séquence. */
-type Rangement = "famille" | "usage";
+/** Comment le catalogue se lit : par famille d'ateliers, par moment de la séquence, ou depuis les compétences des programmes. */
+type Rangement = "famille" | "usage" | "competence";
 const RANGEMENT_MEMORISE = "fabriquer:rangement";
 
 /** Les sections repliées du catalogue — « famille:maths », « moment:rituel » —, gardées sur cet ordinateur. */
 const lirePlis = (brut: unknown): string[] => (Array.isArray(brut) ? brut.filter((x): x is string => typeof x === "string") : []);
-
-/** L'icône et le nom d'une famille : « 🗣 Langage ». */
-const iconeEtNom = (libelle: string): [string, string] => {
-  const i = libelle.indexOf(" ");
-  return i > 0 ? [libelle.slice(0, i), libelle.slice(i + 1)] : ["", libelle];
-};
-
-/**
- * Une famille, ou un moment de la séquence, qui se plie : le catalogue est
- * long, on referme ce qu'on n'ouvre jamais. Pliée, c'est une carte — son
- * icône, son nom, ce qu'elle fait sur une ligne, combien d'ateliers elle garde.
- */
-function PliDuCatalogue({ ouvert, onBasculer, icone, titre, aide, nombre, children }: {
-  ouvert: boolean; onBasculer: (ouvert: boolean) => void; icone: string; titre: string; aide: string; nombre: number; children: React.ReactNode;
-}) {
-  return (
-    <details className="pli-catalogue" open={ouvert}
-      onToggle={(e) => { const o = e.currentTarget.open; if (o !== ouvert) onBasculer(o); }}>
-      <summary title={ouvert ? undefined : aide}>
-        <span className="pli-icone" aria-hidden="true">{icone}</span>
-        <span className="pli-texte">
-          <b className="pli-titre">{titre}</b>
-          <span className="pli-aide">{aide}</span>
-        </span>
-        <span className="pli-nombre">{nombre} atelier{nombre > 1 ? "s" : ""}</span>
-        <span className="pli-chevron" aria-hidden="true">›</span>
-      </summary>
-      {children}
-    </details>
-  );
-}
 
 const ONGLET_MEMORISE = "fabriquer:onglet";
 
@@ -184,7 +155,10 @@ export default function Jeux() {
     toast(`${outilDe(id)?.nom ?? "L'atelier"} rangé dans ${d.nom} — ${d.quand}.`, { icone: d.ico });
   };
   const [rangement, setRangementBrut] = React.useState<Rangement>(() => {
-    try { return localStorage.getItem(RANGEMENT_MEMORISE) === "usage" ? "usage" : "famille"; } catch { return "famille"; }
+    try {
+      const lu = localStorage.getItem(RANGEMENT_MEMORISE);
+      return lu === "usage" || lu === "competence" ? lu : "famille";
+    } catch { return "famille"; }
   });
   const setRangement = (r: Rangement) => {
     setRangementBrut(r);
@@ -247,26 +221,31 @@ export default function Jeux() {
         <BandeauModification atelier="" onReprendre={(a) => setOnglet(a as Onglet)} />
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
           <Input value={recherche} onChange={(e) => setRecherche(e.target.value)}
-            placeholder="Chercher un atelier : loto, syllabes, calcul mental, fractions, cycle 3, rituel…"
-            aria-label="Chercher un atelier" style={{ flex: "1 1 260px", maxWidth: 420 }} />
+            placeholder={rangement === "competence" ? "Chercher une compétence : décoder, addition, se repérer…"
+              : "Chercher un atelier : loto, syllabes, calcul mental, fractions, cycle 3, rituel…"}
+            aria-label={rangement === "competence" ? "Chercher une compétence" : "Chercher un atelier"} style={{ flex: "1 1 260px", maxWidth: 420 }} />
           <div className="seg" role="group" aria-label="Ranger le catalogue">
             <button className={rangement === "famille" ? "active" : ""} onClick={() => setRangement("famille")}>Par famille</button>
             <button className={rangement === "usage" ? "active" : ""} onClick={() => setRangement("usage")}
               title="Découverte, entraînement, réinvestissement, rituel : le moment de la séquence que sert chaque atelier">Par moment de la séquence</button>
+            <button className={rangement === "competence" ? "active" : ""} onClick={() => setRangement("competence")}
+              title="Les compétences des programmes, et les ateliers qui travaillent chacune">Par compétence</button>
           </div>
           {rangement === "usage" && !recherche.trim() && (
             <Aide titre="Ranger par moment" vers="droite">
               <p>Glissez une carte d'un moment à l'autre pour ranger l'atelier — ou clic droit sur la carte. Le rangement suit sur l'autre ordinateur.</p>
             </Aide>
           )}
-          {!recherche.trim() && (
+          {!recherche.trim() && rangement !== "competence" && (
             <button className="btn ghost sm" onClick={() => setPlis(toutPlie
               ? plis.filter((c) => !sectionsLues.includes(c)) : [...new Set([...plis, ...sectionsLues])])}>
               {toutPlie ? "▾ Tout déplier" : "▸ Tout replier"}
             </button>
           )}
         </div>
-        {recherche.trim() ? (
+        {rangement === "competence" ? (
+          <CatalogueParCompetence recherche={recherche} onOuvrir={setOnglet} />
+        ) : recherche.trim() ? (
           trouves.length ? (
             <div className="ateliers">{trouves.map(carte)}</div>
           ) : (

@@ -136,3 +136,95 @@ export function basculerCompetence(
     ? liste.filter((x) => !memeCompetence(x, c))
     : [...liste, c];
 }
+
+// ── Le catalogue par compétence ───────────────────────────────────────────
+//
+// Fabriquer peut se lire depuis les programmes : chaque compétence, et les
+// ateliers qui la travaillent. C'est la même donnée que « Ce que cela
+// travaille », lue dans l'autre sens : ce qu'on rattache d'un côté se voit
+// de l'autre, et les séquences y piochent pareil.
+
+/** Un atelier rattaché à une compétence, et la liste qui l'y rattache : vide pour « tous niveaux », sinon une classe ou un objectif. */
+export interface LienAtelier { atelier: string; objectif: string }
+
+/** Une ligne de référentiel, reconnue d'une liste à l'autre : son référentiel et son identifiant. */
+export const identiteCompetence = (referentielNom: string, competenceRefId: string) => `${referentielNom}#${competenceRefId}`;
+
+/** Les listes d'un atelier — tous niveaux, par classe, par objectif —, lues dans les réglages. */
+function listesDe(reglages: Record<string, string>, atelier: string): [string, CompetenceSelectionnee[]][] {
+  const base = cleDesCompetences(atelier);
+  return Object.entries(reglages)
+    .filter(([cle]) => cle === base || cle.startsWith(`${base}:`))
+    .map(([cle, valeur]): [string, CompetenceSelectionnee[]] => [cle, lireCompetencesAtelier(valeur)]);
+}
+
+/**
+ * Les ateliers de chaque compétence, d'après toutes les listes. Une ligne
+ * gardée sans identifiant — choisie avant qu'ils existent — ne se retrouve
+ * pas dans l'arbre : l'arbre ne la coche pas non plus.
+ */
+export function liensParCompetence(reglages: Record<string, string>): Map<string, LienAtelier[]> {
+  const sortie = new Map<string, LienAtelier[]>();
+  for (const [cle, valeur] of Object.entries(reglages)) {
+    if (!cle.startsWith(PREFIXE_COMPETENCES)) continue;
+    const [atelier, ...reste] = cle.slice(PREFIXE_COMPETENCES.length).split(":");
+    if (!atelier) continue;
+    const objectif = reste.join(":");
+    for (const c of lireCompetencesAtelier(valeur)) {
+      if (!c.competenceRefId) continue;
+      const id = identiteCompetence(c.referentielNom, c.competenceRefId);
+      const liens = sortie.get(id) ?? [];
+      if (!liens.some((l) => l.atelier === atelier && l.objectif === objectif)) liens.push({ atelier, objectif });
+      sortie.set(id, liens);
+    }
+  }
+  return sortie;
+}
+
+/** Combien de compétences différentes chaque atelier travaille, toutes listes confondues. */
+export function nombreDeCompetences(reglages: Record<string, string>): Record<string, number> {
+  const parAtelier: Record<string, Set<string>> = {};
+  for (const [id, liens] of liensParCompetence(reglages)) {
+    for (const l of liens) (parAtelier[l.atelier] ??= new Set()).add(id);
+  }
+  return Object.fromEntries(Object.entries(parAtelier).map(([a, s]) => [a, s.size]));
+}
+
+/**
+ * Ce qu'il faut écrire pour rattacher la compétence à l'atelier : sa liste
+ * « tous niveaux », celle que l'atelier montre d'abord et que sa feuille
+ * imprime. La compétence dit déjà sa classe : une séquence d'une autre
+ * classe ne la vise pas. Rien à écrire si l'atelier l'a déjà, dans une
+ * liste ou une autre.
+ */
+export function rattacherAtelier(reglages: Record<string, string>, atelier: string, c: CompetenceSelectionnee): Record<string, string> {
+  if (listesDe(reglages, atelier).some(([, liste]) => liste.some((x) => memeCompetence(x, c)))) return {};
+  const cle = cleDesCompetences(atelier);
+  return { [cle]: ecrireCompetencesAtelier([...lireCompetencesAtelier(reglages[cle]), c]) };
+}
+
+/** Ce qu'il faut écrire pour détacher la compétence de l'atelier : retirée de toutes ses listes, puisqu'on la voyait d'un seul tenant. */
+export function detacherAtelier(reglages: Record<string, string>, atelier: string, c: CompetenceSelectionnee): Record<string, string> {
+  const sortie: Record<string, string> = {};
+  for (const [cle, liste] of listesDe(reglages, atelier)) {
+    if (liste.some((x) => memeCompetence(x, c))) sortie[cle] = ecrireCompetencesAtelier(liste.filter((x) => !memeCompetence(x, c)));
+  }
+  return sortie;
+}
+
+export const ORDRE_DES_NIVEAUX = ["PS", "MS", "GS", "CP", "CE1", "CE2", "CM1", "CM2"];
+
+/** Les niveaux d'une ligne de référentiel : « CE1 », une plage « CP-CE2 », ou aucun quand elle vaut pour tout le cycle. */
+export function niveauxDeLaLigne(niveau: string | null | undefined): string[] {
+  const n = (niveau ?? "").trim();
+  if (!n) return [];
+  const [a, b = a] = n.split("-").map((x) => x.trim());
+  const i = ORDRE_DES_NIVEAUX.indexOf(a), j = ORDRE_DES_NIVEAUX.indexOf(b);
+  return i < 0 || j < i ? [n] : ORDRE_DES_NIVEAUX.slice(i, j + 1);
+}
+
+/** La ligne vaut pour ce niveau : le sien, une plage qui le contient, ou tout le cycle. */
+export function vautPourLeNiveau(niveau: string | null | undefined, filtre: string): boolean {
+  const niveaux = niveauxDeLaLigne(niveau);
+  return !filtre || !niveaux.length || niveaux.includes(filtre);
+}

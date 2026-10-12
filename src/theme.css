@@ -1174,6 +1174,47 @@ details.pli-catalogue[open] .pli-aide { white-space: normal; }
 .pli-nombre { font-size: 11.5px; font-weight: 600; color: var(--text-2); background: var(--panel-2); border-radius: 100px; padding: 2px 9px; white-space: nowrap; }
 .pli-chevron { font-size: 20px; line-height: 1; color: var(--text-2); text-align: center; transition: transform .15s; }
 details.pli-catalogue[open] .pli-chevron { transform: rotate(90deg); }
+/* Fabriquer, par compétence : les programmes à gauche, avec sous chaque ligne ses ateliers ; à droite, les ateliers à y glisser. */
+.pc-barre { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: -4px 0 8px; }
+.pc-bilan { font-size: 12.5px; color: var(--text-2); margin: 0 0 14px; }
+.par-competence { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 16px; align-items: start; }
+.pc-partie { margin: 0 0 14px; padding: 0 2px; }
+.pc-partie-titre { display: flex; align-items: baseline; gap: 8px; font-weight: 700; font-size: 13.5px; margin: 4px 0 6px; }
+.pc-partie-compte { font-size: 11.5px; font-weight: 600; color: var(--text-2); white-space: nowrap; }
+.pc-cg { font-size: 12px; font-weight: 600; color: var(--text-2); margin: 8px 0 4px 2px; }
+.pc-ligne { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; align-items: start; gap: 8px; margin-bottom: 4px;
+  padding: 7px 8px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel); transition: background .12s, border-color .12s; }
+/* Sans atelier, la ligne s'efface un peu : ce qui reste à couvrir se voit d'un coup d'œil. */
+.pc-ligne.sans { background: transparent; border-style: dashed; }
+.pc-ligne.survol { background: var(--accent-soft); border-color: var(--accent); border-style: solid; }
+.pc-niveau .badge { white-space: nowrap; }
+.pc-texte { display: flex; flex-direction: column; gap: 5px; font-size: 13px; line-height: 1.45; min-width: 0; }
+.pc-puces { display: flex; flex-wrap: wrap; gap: 4px; }
+.pc-puce { display: inline-flex; align-items: center; border-radius: 100px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 600; }
+.pc-puce-nom { border: none; background: none; color: inherit; font: inherit; padding: 2px 3px 2px 9px; cursor: pointer; }
+.pc-puce-nom:disabled { cursor: default; }
+.pc-puce-retirer { border: none; background: none; color: inherit; font: 700 13px/1 inherit; padding: 2px 8px 2px 3px; cursor: pointer; opacity: .55; }
+.pc-puce-retirer:hover, .pc-puce-retirer:focus-visible { opacity: 1; }
+.pc-ajouter { padding: 2px 9px; }
+.pc-ateliers { position: sticky; top: 10px; display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - 150px);
+  background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 10px 10px 6px; }
+.pc-ateliers-tete { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; }
+.pc-sans-competence { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
+.pc-ateliers-liste { overflow-y: auto; min-height: 0; margin: 0 -4px; padding: 0 4px; }
+.pc-famille { margin-bottom: 10px; }
+.pc-famille-titre { font-size: 12px; font-weight: 700; color: var(--text-2); margin: 4px 0; }
+.pc-atelier { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 9px; font-size: 12.5px; cursor: grab; border: 1px solid transparent; }
+.pc-atelier:hover { background: var(--panel-2); border-color: var(--border); }
+.pc-atelier.en-vol { opacity: .5; }
+.pc-atelier-nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-atelier-nombre { font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 100px; padding: 1px 7px; }
+.pc-choix { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px 10px; }
+.pc-choix-atelier { display: flex; align-items: center; gap: 6px; font-size: 13px; padding: 4px 6px; border-radius: 8px; cursor: pointer; }
+.pc-choix-atelier.on { background: var(--accent-soft); }
+@media (max-width: 900px) {
+  .par-competence { grid-template-columns: 1fr; }
+  .pc-ateliers { position: static; max-height: 280px; order: -1; }
+}
 /* La feuille qu'on refait : rappelée en tête de Fabriquer tant qu'on ne l'a ni remplacée ni abandonnée. */
 .bandeau-modif { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin: 0 0 14px; padding: 10px 14px;
   border-radius: 12px; background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); font-size: 13px; line-height: 1.45; }

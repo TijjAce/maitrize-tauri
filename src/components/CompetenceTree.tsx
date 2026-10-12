@@ -20,13 +20,14 @@ export function labelCourt(c: CompetenceSelectionnee): string {
   return (c.niveau ? `[${c.niveau}] ` : "") + c.competenceTitre;
 }
 
-interface RefComp { id: string; texte: string; niveau?: string }
-interface RefCG { id: string; titre: string; competences?: RefComp[] }
-interface RefSous { id: string; titre: string; competences?: RefComp[]; competencesGenerales?: RefCG[] }
-interface RefDom { id: string; titre: string; sousDomaines: RefSous[] }
-interface RefData { titre: string; domaines: RefDom[] }
+export interface RefComp { id: string; texte: string; niveau?: string }
+export interface RefCG { id: string; titre: string; competences?: RefComp[] }
+export interface RefSous { id: string; titre: string; competences?: RefComp[]; competencesGenerales?: RefCG[] }
+export interface RefDom { id: string; titre: string; sousDomaines: RefSous[] }
+export interface RefData { titre: string; domaines: RefDom[] }
 
-function parse(r: Referentiel): RefData | null {
+/** Les domaines, parties et lignes d'un référentiel ; rien s'il est illisible. */
+export function donneesDuReferentiel(r: Referentiel): RefData | null {
   try { return JSON.parse(r.donnees); } catch { return null; }
 }
 
@@ -68,7 +69,7 @@ export function CompetenceTree({ mode, selection, onPick, onToggle, recherche, d
 }) {
   const { data: refs } = useAsync(() => api.referentielsList(), []);
   const actifs = React.useMemo(() => (refs ?? []).filter((r) => r.actif), [refs]);
-  const donnees = React.useMemo(() => new Map(actifs.map((r) => [r.id, parse(r)])), [actifs]);
+  const donnees = React.useMemo(() => new Map(actifs.map((r) => [r.id, donneesDuReferentiel(r)])), [actifs]);
   // Sans barre de recherche autour de lui, l'arbre porte la sienne : on ne déplie pas trois niveaux pour trouver « décoder ».
   const [propre, setPropre] = React.useState("");
   const autonome = recherche === undefined;
