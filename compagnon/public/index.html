@@ -8,20 +8,44 @@
 <style>
  :root {
    --bg:#f2f2f7; --card:#fff; --txt:#111827; --txt2:#6b7280; --txt3:#9ca3af;
-   --acc:#6366f1; --acc-fonce:#4f46e5; --acc-txt:#4f46e5; --acc-doux:rgba(99,102,241,.12);
-   --sep:rgba(17,24,39,.08); --champ:#f2f2f7;
+   --sep:rgba(17,24,39,.08); --champ:#f2f2f7; --barre:rgba(249,249,251,.94);
    --rouge:#e5484d; --rouge-doux:rgba(229,72,77,.12);
    --vert:#16a34a; --orange:#d97706; --orange-doux:rgba(217,119,6,.13);
    --ombre:0 1px 2px rgba(17,24,39,.05), 0 6px 20px rgba(17,24,39,.06);
+   /* La couleur de l'application, au choix dans les réglages : l'indigo d'abord. Le texte et les fonds
+      d'accent ont leur teinte de jour et leur teinte de nuit. */
+   --acc:#6366f1; --acc-fonce:#4f46e5; --acc-clair:#818cf8; --acc-ombre:rgba(79,70,229,.38);
+   --acc-txt-jour:#4f46e5; --acc-txt-nuit:#a5b4fc; --acc-doux-jour:rgba(99,102,241,.12); --acc-doux-nuit:rgba(129,140,248,.16);
+   --acc-txt:var(--acc-txt-jour); --acc-doux:var(--acc-doux-jour);
  }
+ :root[data-couleur="bleu"] { --acc:#2563eb; --acc-fonce:#1d4ed8; --acc-clair:#60a5fa; --acc-ombre:rgba(29,78,216,.36);
+   --acc-txt-jour:#1d4ed8; --acc-txt-nuit:#93c5fd; --acc-doux-jour:rgba(37,99,235,.12); --acc-doux-nuit:rgba(96,165,250,.16); }
+ :root[data-couleur="sarcelle"] { --acc:#0f766e; --acc-fonce:#115e59; --acc-clair:#2dd4bf; --acc-ombre:rgba(17,94,89,.36);
+   --acc-txt-jour:#0f766e; --acc-txt-nuit:#5eead4; --acc-doux-jour:rgba(15,118,110,.12); --acc-doux-nuit:rgba(45,212,191,.16); }
+ :root[data-couleur="vert"] { --acc:#047857; --acc-fonce:#065f46; --acc-clair:#34d399; --acc-ombre:rgba(6,95,70,.36);
+   --acc-txt-jour:#047857; --acc-txt-nuit:#6ee7b7; --acc-doux-jour:rgba(4,120,87,.12); --acc-doux-nuit:rgba(52,211,153,.16); }
+ :root[data-couleur="violet"] { --acc:#9333ea; --acc-fonce:#7e22ce; --acc-clair:#c084fc; --acc-ombre:rgba(126,34,206,.36);
+   --acc-txt-jour:#7e22ce; --acc-txt-nuit:#d8b4fe; --acc-doux-jour:rgba(147,51,234,.12); --acc-doux-nuit:rgba(192,132,252,.16); }
+ :root[data-couleur="rose"] { --acc:#db2777; --acc-fonce:#be185d; --acc-clair:#f472b6; --acc-ombre:rgba(190,24,93,.34);
+   --acc-txt-jour:#be185d; --acc-txt-nuit:#f9a8d4; --acc-doux-jour:rgba(219,39,119,.12); --acc-doux-nuit:rgba(244,114,182,.16); }
+ :root[data-couleur="graphite"] { --acc:#475569; --acc-fonce:#334155; --acc-clair:#94a3b8; --acc-ombre:rgba(51,65,85,.34);
+   --acc-txt-jour:#334155; --acc-txt-nuit:#cbd5e1; --acc-doux-jour:rgba(71,85,105,.12); --acc-doux-nuit:rgba(148,163,184,.18); }
+ /* Le thème sombre : celui du téléphone, à moins que les réglages n'en choisissent un. */
  @media (prefers-color-scheme: dark) {
-   :root {
+   :root:not([data-theme="clair"]) {
      --bg:#0b0c10; --card:#17191f; --txt:#f3f4f6; --txt2:#9ca3af; --txt3:#6b7280;
-     --acc-txt:#a5b4fc; --acc-doux:rgba(129,140,248,.16);
-     --sep:rgba(255,255,255,.08); --champ:#0f1116;
+     --acc-txt:var(--acc-txt-nuit); --acc-doux:var(--acc-doux-nuit);
+     --sep:rgba(255,255,255,.08); --champ:#0f1116; --barre:rgba(18,19,24,.94);
      --rouge-doux:rgba(229,72,77,.18); --orange-doux:rgba(217,119,6,.2);
      --ombre:none;
    }
+ }
+ :root[data-theme="sombre"] {
+   --bg:#0b0c10; --card:#17191f; --txt:#f3f4f6; --txt2:#9ca3af; --txt3:#6b7280;
+   --acc-txt:var(--acc-txt-nuit); --acc-doux:var(--acc-doux-nuit);
+   --sep:rgba(255,255,255,.08); --champ:#0f1116; --barre:rgba(18,19,24,.94);
+   --rouge-doux:rgba(229,72,77,.18); --orange-doux:rgba(217,119,6,.2);
+   --ombre:none;
  }
  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
  [hidden] { display:none !important; }
@@ -45,26 +69,26 @@
  .ok .pt, .pt.ok { background:var(--vert); }
  .loin .pt, .pt.loin { background:var(--orange); }
 
- main { padding:0 16px calc(32px + env(safe-area-inset-bottom)); max-width:520px; margin:0 auto; }
+ main { padding:0 16px calc(96px + env(safe-area-inset-bottom)); max-width:520px; margin:0 auto; }
+ main > .titre:first-child { margin-top:14px; }
+ .intro { margin:8px 4px 0; font-size:14.5px; line-height:1.45; color:var(--txt2); }
 
- /* Deux parties : ce qui passe par Nuage, ce qui passe par le WiFi. L'en-tête de chacune le dit. */
- h2.partie { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:26px 4px 2px; font-size:19px; font-weight:800;
-   letter-spacing:-.01em; }
- h2.partie:first-child { margin-top:14px; }
- h2.partie .ic { width:22px; height:22px; color:var(--acc-txt); }
- h2.partie small { flex-basis:100%; margin-left:30px; font-size:13px; font-weight:500; color:var(--txt2); letter-spacing:0; }
+ /* Les onglets, en bas, à la façon de l'iPhone : cachés pendant une dictée, une note, une photo à nommer. */
+ .onglets { position:fixed; left:0; right:0; bottom:0; z-index:20; display:grid; grid-template-columns:repeat(5, 1fr);
+   padding:6px 6px calc(4px + env(safe-area-inset-bottom)); background:var(--barre); border-top:1px solid var(--sep);
+   -webkit-backdrop-filter:saturate(180%) blur(18px); backdrop-filter:saturate(180%) blur(18px); }
+ .onglet { position:relative; display:flex; flex-direction:column; align-items:center; gap:3px; min-width:0; padding:4px 0 2px;
+   border:none; background:none; color:var(--txt3); font-size:11px; font-weight:600; }
+ .onglet .ic { width:25px; height:25px; stroke-width:1.9; }
+ .onglet .nom { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+ .onglet.on { color:var(--acc-txt); }
+ .onglet .badge { position:absolute; top:0; left:calc(50% + 7px); min-width:18px; height:18px; padding:0 5px; border-radius:99px;
+   background:var(--rouge); color:#fff; font-size:11px; font-weight:700; line-height:18px; }
+ .onglet .point { position:absolute; top:3px; left:calc(50% + 9px); width:9px; height:9px; border-radius:50%;
+   background:var(--vert); box-shadow:0 0 0 2px var(--barre); }
 
  /* Dicter : le geste de la journée, au milieu de l'écran. */
  .heros { display:flex; flex-direction:column; align-items:center; padding:12px 0 4px; }
- /* Où va ce qu'on dicte : le cahier journal, ou les notes rapides de l'ordinateur. */
- .destination { display:grid; grid-template-columns:1fr 1fr; gap:4px; width:100%; padding:4px; margin-bottom:12px;
-   border-radius:14px; background:var(--card); box-shadow:var(--ombre); }
- .destination button { display:flex; align-items:center; justify-content:center; gap:7px; min-width:0; padding:10px 6px;
-   border:none; border-radius:11px; background:none; color:var(--txt2); font-size:14.5px; font-weight:600; }
- .destination button span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
- .destination button.on { background:var(--acc-doux); color:var(--acc-txt); }
- .destination button:disabled { opacity:1; }
- .destination button:disabled:not(.on) { opacity:.4; }
  /* Le jour dont on parle : aujourd'hui, ou un autre — qui se voit de loin. */
  .jour { display:flex; align-items:center; gap:8px; width:100%; padding:6px; margin-bottom:14px;
    border-radius:16px; background:var(--card); box-shadow:var(--ombre); }
@@ -87,8 +111,8 @@
  .pastille.muette > .ic:first-child { color:var(--txt3); }
  .rond-cadre { position:relative; width:164px; height:164px; margin:30px 0 12px; }
  .rond { position:relative; width:164px; height:164px; border-radius:50%; border:none; display:grid;
-   place-items:center; color:#fff; background:linear-gradient(150deg, #818cf8 0%, var(--acc) 45%, var(--acc-fonce) 100%);
-   box-shadow:0 14px 34px rgba(79,70,229,.38), inset 0 1px 0 rgba(255,255,255,.28);
+   place-items:center; color:#fff; background:linear-gradient(150deg, var(--acc-clair) 0%, var(--acc) 45%, var(--acc-fonce) 100%);
+   box-shadow:0 14px 34px var(--acc-ombre), inset 0 1px 0 rgba(255,255,255,.28);
    transition:transform .12s ease; }
  .heros > .rond { margin:30px 0 12px; }
  .rond:active { transform:scale(.96); }
@@ -145,7 +169,7 @@
  .portail-aide { font-size:12.5px; color:var(--txt2); }
  .portail-alerte { display:flex; align-items:flex-start; justify-content:center; gap:6px; margin:2px 0; font-size:13px; font-weight:600; color:var(--orange); text-align:left; }
  .portail-alerte .ic { width:16px; height:16px; flex:none; margin-top:1px; }
- .portail-code { justify-content:center; margin-top:10px; }
+ .carte > .portail { padding-bottom:0; margin-bottom:0; border-bottom:none; }
  .portail-bloc { margin-top:12px; padding:10px; border-radius:12px; background:var(--champ); }
  .portail-libelle { display:flex; align-items:center; gap:6px; font-size:14px; font-weight:600; margin-bottom:8px; }
  .minuteurs { display:flex; flex-wrap:wrap; gap:6px; }
@@ -161,7 +185,18 @@
  .portail-etapes .btn-mini:disabled { opacity:.35; }
  .portail-etapes .btn-mini { padding:8px 14px; }
  .portail-etapes .btn-mini .ic { stroke-width:2.6; }
- .minuteur-seul { margin-bottom:10px; }
+ .carte-info.seule { margin:0 4px; }
+
+ /* Les réglages : le code des tablettes, la couleur, le thème. */
+ .confirmer-code { padding:14px 16px; }
+ .confirmer-code p { margin:0; font-size:14.5px; font-weight:600; line-height:1.4; }
+ .couleurs { display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; padding:14px 16px; }
+ .pastille-couleur { width:38px; height:38px; padding:0; border:none; border-radius:50%; display:grid; place-items:center;
+   background:var(--teinte); color:#fff; }
+ .pastille-couleur.on { box-shadow:0 0 0 3px var(--card), 0 0 0 5px var(--teinte); }
+ .pastille-couleur .ic { width:20px; height:20px; stroke-width:2.6; }
+ .bascule.trois { grid-template-columns:repeat(3, 1fr); padding:4px; border-radius:12px; box-shadow:var(--ombre); }
+ .bascule.trois button { padding:10px 4px; font-size:14px; }
 
  /* Écrire plutôt que parler. */
  .note-carte { width:100%; margin-top:20px; }
@@ -238,7 +273,6 @@
 
  /* Relier : le QR code d'abord, un code collé sinon. */
  .carte { background:var(--card); border-radius:20px; box-shadow:var(--ombre); padding:24px 18px 18px; margin-top:12px; }
- .partie + .carte { margin-top:12px; }
  .carte-tete { display:flex; flex-direction:column; align-items:center; gap:12px; margin-bottom:20px; }
  .grand-ico { width:58px; height:58px; border-radius:18px; display:grid; place-items:center;
    background:var(--acc-doux); color:var(--acc-txt); }
@@ -255,10 +289,20 @@
  .erreur-ligne { margin:10px 0 0; color:var(--rouge); font-size:14px; }
  .centre { display:block; margin:12px auto 0; }
 </style>
+<script>
+  // La couleur et le thème des réglages, posés avant le premier dessin : pas d'éclair de l'autre thème.
+  try {
+    var racine = document.documentElement, theme = localStorage.getItem("dictaphone:theme") || "auto";
+    racine.dataset.couleur = localStorage.getItem("dictaphone:couleur") || "indigo";
+    racine.dataset.theme = theme;
+    if (theme !== "auto") document.querySelector('meta[name="color-scheme"]').content = theme === "sombre" ? "dark" : "light";
+  } catch (e) { /* sans stockage, les couleurs d'origine */ }
+</script>
 </head>
 <body>
-<header><h1>Dictaphone</h1><span id="liaison" class="liaison" hidden></span></header>
+<header><h1 id="titre">Dictaphone</h1><span id="liaison" class="liaison" hidden></span></header>
 <main id="ecran"></main>
+<nav id="onglets" class="onglets" aria-label="Onglets" hidden></nav>
 <!-- jsQR (licence Apache-2.0, texte dans jsQR.LICENSE.txt) : le décodage du QR code, en local. Rien n'est téléchargé
      au moment de scanner — l'application doit marcher sans réseau. -->
 <script src="./jsQR.js"></script>
