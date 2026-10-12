@@ -269,8 +269,9 @@ export function CodePhraseTab() {
           Le code de la phrase
           <Aide titre="Le code de la phrase" vers="droite">
             <p>{"Les couleurs et les marques de l'analyse, choisies une fois pour toute la classe : la carte du code les montre à l'élève pendant qu'il analyse, et les feuilles de grammaire les reprennent dans leurs consignes et leurs corrigés."}</p>
-            <p>{"Le niveau montre ce que le programme y fait apprendre, du CP à la 6e : les compléments deviennent au CE2 le complément du verbe et le complément de phrase ; au cycle 3 viennent le COD, le COI, l'attribut, le complément du nom, et de nouvelles classes de mots."}</p>
-            <p>{"Chaque élément a une couleur et une marque — souligné, entouré, encadré… — : la marque reste lisible quand la feuille est photocopiée en noir et blanc, et pour l'élève qui distingue mal les couleurs."}</p>
+            <p>{"Les noms et les niveaux sont ceux des programmes en vigueur (cycle 2, 2024 ; cycle 3, 2025) et de la « Terminologie grammaticale » d'Éduscol : le sujet et le verbe au CP ; le groupe sujet, des compléments qu'on ne distingue pas encore et le groupe nominal au CE1 et au CE2 ; le COD, le COI, le complément circonstanciel et l'épithète au CM1 ; l'attribut du sujet et le complément du nom au CM2. « Prédicat » et « complément de phrase » ne s'emploient plus."}</p>
+            <p>{"Éduscol ne fixe aucune couleur : il demande des termes et des outils partagés d'une classe à l'autre. Le code proposé reprend les habitudes les plus répandues — le sujet en bleu, le verbe en rouge, les compléments en vert."}</p>
+            <p>{"La couleur n'est jamais seule : chaque élément a sa marque — souligné, entouré, encadré, son étiquette sous le mot… —, lisible en noir et blanc et pour l'élève qui distingue mal les couleurs. « Tout en noir » le montre."}</p>
           </Aide>
         </h3>
         <Field label="Le niveau">
@@ -310,7 +311,11 @@ export function CodePhraseTab() {
             ))}
           </div>
         ))}
-        <button type="button" className="lien" onClick={() => majCode(CODE_PAR_DEFAUT)}>↺ Reprendre le code proposé</button>
+        <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+          <button type="button" className="lien" onClick={() => majCode(CODE_PAR_DEFAUT)}>↺ Reprendre le code proposé</button>
+          <button type="button" className="lien" title="Les mêmes marques, toutes en noir : la feuille photocopiée se lit pareil"
+            onClick={() => majCode(Object.fromEntries(Object.entries(code).map(([id, x]) => [id, { ...x, couleur: "noir" }])))}>Tout en noir, pour la photocopie</button>
+        </div>
         <Field label="La carte">
           <div className="seg">
             {FORMATS_CARTE.map((f) => (
