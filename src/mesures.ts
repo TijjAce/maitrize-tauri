@@ -62,9 +62,10 @@ const LETTRES = "ABCDEFGHIJKL";
 const NOIR = "#1c2233", ROUGE = "#d33a32";
 
 const SOURCE = `<span class="reference">Programme de mathématiques du cycle 2, 2024 ; Éduscol, « Grandeurs et mesures au cycle 2 », 2016.</span>`;
-const entete = (titre: string, consigne: string) => `<div class="titre">${titre}</div>
+/** Le titre, la ligne du prénom, le rappel de la leçon s'il y en a un — il ne s'imprime que si on le demande (voir optionsFeuille) —, puis la consigne. */
+const entete = (titre: string, consigne: string, rappel = "") => `<div class="titre">${titre}</div>
   <div class="sous">Prénom : ........................................ Date : ........................</div>
-  <div class="regle">${consigne} ${SOURCE}</div>`;
+  ${rappel ? `<div class="rappel">${rappel}</div>` : ""}<div class="regle">${consigne} ${SOURCE}</div>`;
 
 /** Le trait de contrôle : 10 cm, si la feuille est imprimée à 100 %. */
 const CONTROLE = `<div class="me-controle"><svg viewBox="0 0 102 4" width="102mm" height="4mm"><line x1="1" y1="2" x2="101" y2="2" stroke="#9aa0b4" stroke-width="0.5"/><line x1="1" y1="0.5" x2="1" y2="3.5" stroke="#9aa0b4" stroke-width="0.4"/><line x1="101" y1="0.5" x2="101" y2="3.5" stroke="#9aa0b4" stroke-width="0.4"/></svg><span>Ce trait mesure 10 cm : sinon, imprimez la feuille à 100 %, sans l'ajuster à la page.</span></div>`;
@@ -183,7 +184,7 @@ function feuilleComparerObjets(r: ReglagesMesures, graine: number): string {
   if (plusLong === plusADroite) { plusLong.x = 0; const autre = liste.find((c) => c !== plusLong); if (autre) autre.x = Math.max(autre.x, plusLong.mm - autre.mm + 12); }
   const lignes = liste.map((c, i) => `<div class="me-crayon"><b class="me-lettre">${LETTRES[i]}</b><svg viewBox="0 0 175 10" width="175mm" height="10mm">${crayonSvg(c.mm, c.x, couleurs[i % couleurs.length])}</svg></div>`).join("");
   const ordre = liste.map((c, i) => ({ ...c, l: LETTRES[i] })).sort((a, b) => a.mm - b.mm);
-  const tete = entete("Le plus long crayon", "Les crayons ne commencent pas tous au même endroit ! Compare leurs longueurs — avec une bande de papier, ou en les mesurant —, puis range-les du plus court au plus long.");
+  const tete = entete("Le plus long crayon", "Compare les longueurs des crayons — avec une bande de papier, ou en les mesurant —, puis range-les du plus court au plus long.", "Les crayons ne commencent pas tous au même endroit !");
   const reponse = `<div class="me-ranger">Du plus court au plus long : ${liste.map(() => `<span class="me-blanc me-blanc-court"></span>`).join(" &lt; ")}</div>`;
   const corrige = `<div class="page corrige"><div class="titre">Le plus long crayon — corrigé</div><div class="me-corrige"><div><b>${ordre.map((c) => c.l).join(" &lt; ")}</b></div>${ordre.map((c) => `<div>${c.l} : ${enCm(c.mm, true)}</div>`).join("")}</div></div>`;
   return `<div class="page">${tete}<div class="me-crayons">${lignes}</div>${reponse}</div>${corrige}`;
@@ -241,7 +242,7 @@ function feuillePerimetre(r: ReglagesMesures, graine: number): string {
   const liste = Array.from({ length: Math.max(1, Math.min(4, r.combien)) }, () => { const p = polygoneAuHasard(alea); return { ...p, angle: orientation(p.points, alea) }; });
   const cases = liste.map((p, i) => `<div class="me-case me-case-poly"><b class="me-lettre">${LETTRES[i]}</b>${polygoneSvg(p.points, p.angle)}
     <div class="me-rep">Les côtés : ……………………………………</div><div class="me-rep">Le périmètre de ${LETTRES[i]} : <span class="me-blanc"></span> cm</div></div>`).join("");
-  const tete = entete("Le périmètre d'un polygone", "Le périmètre, c'est la longueur du tour de la figure. Mesure chaque côté avec la règle graduée, puis ajoute les longueurs.");
+  const tete = entete("Le périmètre d'un polygone", "Mesure chaque côté avec la règle graduée, puis ajoute les longueurs.", "Le périmètre, c'est la longueur du tour de la figure.");
   const corrige = `<div class="page corrige"><div class="titre">Le périmètre — corrigé</div><div class="me-corrige">${liste.map((p, i) => { const c = cotes(p.points); return `<div>${LETTRES[i]} (${p.nom}) : ${c.map((x) => `${String(x).replace(".", ",")} cm`).join(" + ")} = <b>${String(c.reduce((s, x) => s + x, 0)).replace(".", ",")} cm</b></div>`; }).join("")}</div></div>`;
   return `<div class="page">${tete}<div class="me-cases">${cases}</div>${CONTROLE}</div>${corrige}`;
 }
@@ -309,7 +310,7 @@ function feuilleBalances(r: ReglagesMesures, graine: number): string {
     return `<div class="me-serie"><div class="me-serie-titre">${k + 1}. Les objets ${s.masses.map((_, i) => LETTRES[i]).join(", ")}</div><div class="me-balances">${balances}</div>
       <div class="me-ranger">Du plus léger au plus lourd : ${s.masses.map(() => `<span class="me-blanc me-blanc-court"></span>`).join(" &lt; ")}</div></div>`;
   }).join("");
-  const tete = entete("La balance : plus lourd, plus léger", "Le plateau le plus bas porte l'objet le plus lourd. Lis chaque balance, puis range les objets du plus léger au plus lourd.");
+  const tete = entete("La balance : plus lourd, plus léger", "Lis chaque balance, puis range les objets du plus léger au plus lourd.", "Le plateau le plus bas porte l'objet le plus lourd.");
   const corrige = `<div class="page corrige"><div class="titre">La balance — corrigé</div><div class="me-corrige">${series.map((s, k) => `<div>${k + 1}. <b>${s.masses.map((m, i) => ({ m, l: LETTRES[i] })).sort((a, b) => a.m - b.m).map((x) => x.l).join(" &lt; ")}</b></div>`).join("")}</div></div>`;
   return `<div class="page">${tete}${blocs}</div>${corrige}`;
 }
@@ -373,7 +374,7 @@ function feuillePesees(r: ReglagesMesures, graine: number): string {
     const objet = `<rect x="11" y="18" width="22" height="12" rx="2" fill="#f6c85f" stroke="${NOIR}" stroke-width="0.6"/>`;
     return `<div class="me-case me-pesee"><b class="me-lettre">${i + 1}</b>${balanceSvg(objet, posees, 0, 78, 21)}<div class="me-rep">${escapeHtml(o.nom.charAt(0).toUpperCase() + o.nom.slice(1))} pèse <span class="me-blanc"></span></div></div>`;
   }).join("");
-  const tete = entete("Peser avec des masses marquées", "La balance est en équilibre : l'objet pèse autant que les masses marquées de l'autre plateau. Ajoute-les pour trouver sa masse.");
+  const tete = entete("Peser avec des masses marquées", "Ajoute les masses marquées de chaque balance pour trouver la masse de l'objet.", "La balance est en équilibre : l'objet pèse autant que les masses marquées de l'autre plateau.");
   const corrige = `<div class="page corrige"><div class="titre">Peser — corrigé</div><div class="me-corrige">${liste.map((o, i) => `<div>${i + 1}. ${o.masses.map(ecrireMasse).join(" + ")} = <b>${ecrireMasse(o.g)}</b></div>`).join("")}</div></div>`;
   return `<div class="page">${tete}<div class="me-cases">${blocs}</div></div>${corrige}`;
 }
@@ -578,7 +579,7 @@ const RELATIONS: Record<Grandeur, Record<Classe, string>> = {
 function feuilleConvertir(r: ReglagesMesures, graine: number): string {
   const liste = conversions(r.grandeur, r.classe, r.combien, graine);
   const lignes = liste.map((c, i) => `<div class="me-conv"><span class="me-num">${LETTRES[i]}.</span> ${c.enonce}</div>`).join("");
-  const tete = entete("Les relations entre les unités", `Complète. Ce qu'on sait : ${RELATIONS[r.grandeur][r.classe]}`);
+  const tete = entete("Les relations entre les unités", "Complète.", `Ce que je sais : ${RELATIONS[r.grandeur][r.classe]}`);
   const corrige = `<div class="page corrige"><div class="titre">Les relations entre les unités — corrigé</div><div class="me-corrige">${liste.map((c, i) => `<div>${LETTRES[i]}. ${rempli(c)}</div>`).join("")}</div></div>`;
   return `<div class="page">${tete}<div class="me-convs">${lignes}</div></div>${corrige}`;
 }
@@ -691,7 +692,7 @@ function feuilleVerres(r: ReglagesMesures, graine: number): string {
       <div class="me-ranger">Du plus petit au plus grand : ${s.map(() => `<span class="me-blanc me-blanc-large"></span>`).join(" &lt; ")}</div>
       <div class="me-ranger">${a.nom.charAt(0).toUpperCase() + a.nom.slice(1)} contient <span class="me-blanc"></span> verres de plus que ${b.nom}.</div></div>`;
   }).join("");
-  const tete = entete("Combien de verres ?", "On a rempli chaque récipient avec le même verre. Plus il faut de verres, plus le récipient contient. Range les récipients, puis compare.");
+  const tete = entete("Combien de verres ?", "On a rempli chaque récipient avec le même verre. Range les récipients, puis compare.", "Plus il faut de verres, plus le récipient contient.");
   const corrige = `<div class="page corrige"><div class="titre">Combien de verres ? — corrigé</div><div class="me-corrige">${series.map((s, k) => { const tri = [...s].sort((x, y) => x.verres - y.verres); return `<div>${k + 1}. <b>${tri.map((x) => `${x.nom} (${x.verres})`).join(" &lt; ")}</b> ; ${tri[2].verres} − ${tri[1].verres} = ${tri[2].verres - tri[1].verres} verres de plus.</div>`; }).join("")}</div></div>`;
   return `<div class="page">${tete}${blocs}</div>${corrige}`;
 }

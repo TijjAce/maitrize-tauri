@@ -64,7 +64,7 @@ describe("les maisons du tri", () => {
     expect((html.match(/<td><\/td>/g) ?? []).length).toBe(16);
     expect(html).toContain(`<div class="page corrige">`);
     expect(html).not.toContain("Défi");
-    expect(contenuDeLaFeuille(html)).toEqual({ consigne: true, prenom: true, corrige: true, tablettes: true });
+    expect(contenuDeLaFeuille(html)).toEqual({ consigne: true, prenom: true, corrige: true, aide: false, tablettes: true });
     expect(appliquerOptionsFeuille(html, { ...OPTIONS_FEUILLE, corrige: false })).not.toContain("corrigé");
     expect(htmlTri(r(), 3)).toBe(html);
     // Trois maisons : jamais moins de trois étiquettes par ligne, pour qu'elles tiennent dans leur colonne.

@@ -6,11 +6,11 @@ import { useConsigneAtelier } from "./ConsigneAtelier";
 import { useConsignesEnPictos } from "./ConsigneEnPictos";
 import { usePictosAtelier } from "./PictosAtelier";
 import { useOptionsFeuille } from "./OptionsFeuille";
-import { appliquerOptionsFeuille, contenuDeLaFeuille, feuillesPubliees } from "../optionsFeuille";
+import { contenuDeLaFeuille, feuilleSelonOptions, feuillesPubliees } from "../optionsFeuille";
 import { consigneParDefaut, consignesParDefaut, remplacerConsigne } from "../consigneAtelier";
 import { STYLE_REFERENCES, referencesEnAide } from "../references";
 import { STYLE_DYS } from "../presentationFeuille";
-import { STYLE_CONSIGNES_STRUCTUREES, structurerConsignesHtml } from "../consignesStructurees";
+import { STYLE_CONSIGNES_STRUCTUREES } from "../consignesStructurees";
 import { feuillesAvecImages, porteDesImages } from "../imagesSelonMode";
 import { useModeDys } from "./PresentationFeuille";
 
@@ -32,7 +32,7 @@ export function ApercuFeuille({ html, style }: { html: string; style: string }) 
   const [dys] = useModeDys(atelier);
   const { options } = useOptionsFeuille(atelier);
   // La consigne de l'enseignant, ce qu'il a coché, puis la consigne structurée — une action par ligne — : comme à l'impression.
-  const remplace = React.useMemo(() => referencesEnAide(structurerConsignesHtml(appliquerOptionsFeuille(remplacerConsigne(html, consigne), options))), [html, consigne, options]);
+  const remplace = React.useMemo(() => referencesEnAide(feuilleSelonOptions(remplacerConsigne(html, consigne), options)), [html, consigne, options]);
   const { pictos: ajoutes } = usePictosAtelier(atelier);
   const pictos = useConsignesEnPictos(remplace, ajoutes);
   const { bulle, montrer, cacher } = useBulleDeReference();

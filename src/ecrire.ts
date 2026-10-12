@@ -40,6 +40,8 @@ export const REGLAGES_ECRIRE: ReglagesEcrire = { exercice: "gammes", classe: "CE
 const TETE = '<div class="sous">Prénom : ........................................ Date : ........................</div>';
 const titre = (t: string) => `<div class="titre">${escapeHtml(t)}</div>`;
 const regle = (t: string) => `<div class="regle">${t}</div>`;
+/** Ce qu'il faut savoir — la leçon —, à part de la consigne : il ne s'imprime sur la feuille que si on le demande (voir optionsFeuille). */
+const rappel = (t: string) => `<div class="rappel">${t}</div>`;
 const lignes = (n: number) => Array.from({ length: n }, () => '<div class="ec-ligne"></div>').join("");
 
 // ── Les données ───────────────────────────────────────────────────────────
@@ -160,7 +162,7 @@ export const CRITERES_RELECTURE: Record<Classe, string[]> = {
 function feuilleMotsImposes(r: ReglagesEcrire, graine: number): string {
   const series = melanger(hasard(graine), MOTS_IMPOSES[r.classe]).slice(0, r.classe === "CP" ? 4 : 5);
   const items = series.map((mots, i) => `<div class="ec-q"><div class="ec-enonce"><b>${i + 1}.</b> ${mots.map((m) => `<span class="ec-etiquette">${escapeHtml(m)}</span>`).join(" ")}</div>${lignes(r.classe === "CP" ? 1 : 2)}</div>`).join("");
-  return `<div class="page">${titre("Une phrase avec des mots imposés")}${TETE}${regle(`Écris une phrase qui contient tous les mots de la ligne. Elle commence par une majuscule et finit par un point.${r.classe === "CP" ? " Cherche les mots dans les leçons de lecture." : ""}`)}${items}</div>`;
+  return `<div class="page">${titre("Une phrase avec des mots imposés")}${TETE}${rappel("Une phrase commence par une majuscule et finit par un point.")}${regle(`Écris une phrase qui contient tous les mots de la ligne.${r.classe === "CP" ? " Cherche les mots dans les leçons de lecture." : ""}`)}${items}</div>`;
 }
 
 function feuilleGammes(r: ReglagesEcrire, graine: number): string {
@@ -179,7 +181,7 @@ function feuilleManipulations(): string {
 
 function feuilleOralEcrit(_r: ReglagesEcrire, graine: number): string {
   const items = melanger(hasard(graine), ORAL_ECRIT).slice(0, 6);
-  return `<div class="page">${titre("De l'oral à l'écrit")}${TETE}${regle(`On le dit souvent ainsi à l'oral, mais on ne l'écrit pas comme ça. Réécris chaque phrase comme on l'écrit. ${reference("Guide CE1, p. 84.")}`)}
+  return `<div class="page">${titre("De l'oral à l'écrit")}${TETE}${rappel("On le dit souvent ainsi à l'oral, mais on ne l'écrit pas comme ça.")}${regle(`Réécris chaque phrase comme on l'écrit. ${reference("Guide CE1, p. 84.")}`)}
     ${items.map((x, i) => `<div class="ec-q"><div class="ec-enonce"><b>${i + 1}.</b> ${escapeHtml(x.consigne)} <i>« ${escapeHtml(x.phrase)} »</i></div>${lignes(1)}</div>`).join("")}</div>
     <div class="page corrige">${titre("De l'oral à l'écrit — corrigé")}<div class="ec-corrige">${items.map((x, i) => `<div><b>${i + 1}.</b> ${escapeHtml(x.ecrit)}</div>`).join("")}</div></div>`;
 }
@@ -218,7 +220,7 @@ function feuilleConnecteurs(r: ReglagesEcrire, graine: number): string {
   const sujet = ETAPES_A_ENCHAINER[Math.floor(alea() * ETAPES_A_ENCHAINER.length)];
   const ordre = melanger(alea, sujet.etapes.map((e, i) => ({ e, i })));
   const relier = r.classe === "CP" ? [] : melanger(alea, A_RELIER).slice(0, 4);
-  const page = `<div class="page">${titre(`Enchaîner les phrases — ${sujet.titre.toLowerCase()}`)}${TETE}${regle("Une suite de phrases n'est pas encore un texte. Numérote les étapes dans l'ordre, puis écris le texte en les reliant avec : d'abord, puis, ensuite, enfin.")}
+  const page = `<div class="page">${titre(`Enchaîner les phrases — ${sujet.titre.toLowerCase()}`)}${TETE}${rappel("Une suite de phrases n'est pas encore un texte : les mots d'abord, puis, ensuite, enfin les relient.")}${regle("Numérote les étapes dans l'ordre, puis écris le texte en les reliant avec : d'abord, puis, ensuite, enfin.")}
     ${ordre.map(({ e }) => `<div class="ec-etape"><span class="ec-case"></span> ${escapeHtml(e)}</div>`).join("")}
     <div class="ec-boite">${["D'abord", "Puis", "Ensuite", "Enfin"].map((c) => `<span class="ec-etiquette">${c}</span>`).join(" ")}</div>${lignes(5)}
     ${relier.length ? `<div class="ec-sous-titre">Relie les deux phrases avec : alors, mais, parce que, donc, puis</div>${relier.map((x, i) => `<div class="ec-q"><div class="ec-enonce"><b>${i + 1}.</b> ${escapeHtml(x.a)} / ${escapeHtml(x.b)}</div>${lignes(1)}</div>`).join("")}` : ""}</div>`;
@@ -245,7 +247,7 @@ function feuilleRelecture(r: ReglagesEcrire): string {
 }
 
 function feuilleMessage(r: ReglagesEcrire): string {
-  return `<div class="page">${titre("Écrire à un destinataire")}${TETE}${regle("Ton lecteur n'est pas là pour te poser des questions : ton message doit tout lui dire. Pense à la formule du début et à celle de la fin.")}
+  return `<div class="page">${titre("Écrire à un destinataire")}${TETE}${rappel("Mon lecteur n'est pas là pour me poser des questions : mon message doit tout lui dire.")}${regle("Pense à la formule du début et à celle de la fin.")}
     <div class="ec-lettre"><div class="ec-droite">À ……………………………, le ……………………………</div>
       <div class="ec-champ"><b>Cher… / Chère…</b>${lignes(1)}</div>${lignes(r.classe === "CE2" ? 8 : 6)}
       <div class="ec-champ"><b>La formule de fin</b> (À bientôt, Je t'embrasse, Bien amicalement…)${lignes(1)}</div><div class="ec-droite">Ma signature : ……………………………</div></div>

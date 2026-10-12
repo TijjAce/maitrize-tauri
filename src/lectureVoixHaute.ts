@@ -143,16 +143,24 @@ function avecSouffle(phrase: string, coder: boolean): string {
 }
 
 const CONSIGNES: Record<ExerciceVoixHaute, [string, string]> = {
-  liaisons: ["Les liaisons sont codées : lis en les faisant entendre — la consonne finale se lit avec la voyelle du mot suivant.",
+  liaisons: ["Lis les phrases en faisant entendre les liaisons codées.",
     "Repère les mots qui se terminent par une consonne et sont suivis d'un mot qui commence par une voyelle. Code la liaison avec un arc ‿, puis lis la phrase en la faisant entendre."],
-  ponctuation: ["Une barre : une petite pause ; deux barres : on s'arrête. La flèche montre l'intonation : la voix descend au point, elle monte à la question.",
+  ponctuation: ["Lis les phrases en respectant les pauses et l'intonation.",
     "Entoure les signes de ponctuation. Mets une barre / après chaque virgule et deux barres // après chaque point. Lis en respectant les pauses et l'intonation."],
-  lignes: ["La phrase continue sur la ligne suivante : ne t'arrête pas au bout de la ligne, la flèche ↪ te le rappelle.",
+  lignes: ["Lis chaque phrase jusqu'au point, sans t'arrêter au bout de la ligne.",
     "Ces phrases sont écrites sur plusieurs lignes. Lis-les sans t'arrêter au bout de la ligne : on ne s'arrête qu'au point."],
-  souffle: ["Chaque arc montre un groupe de souffle : lis chaque groupe d'un seul souffle, sans t'arrêter au milieu.",
+  souffle: ["Lis chaque groupe d'un seul souffle, sans t'arrêter au milieu.",
     "Découpe chaque phrase en groupes de mots qui vont ensemble : trace une barre entre les groupes. Lis chaque groupe d'un seul souffle."],
   grille: ["", ""],
   fable: ["", ""],
+};
+
+/** Ce que dit le code des phrases déjà codées : un rappel, à part de la consigne (voir optionsFeuille). */
+const CODES: Partial<Record<ExerciceVoixHaute, string>> = {
+  liaisons: "La liaison codée ‿ : la consonne finale se lit avec la voyelle du mot suivant.",
+  ponctuation: "Une barre : une petite pause ; deux barres : je m'arrête. La flèche montre l'intonation : la voix descend au point, elle monte à la question.",
+  lignes: "La flèche ↪ montre que la phrase continue sur la ligne suivante.",
+  souffle: "Chaque arc montre un groupe de souffle.",
 };
 
 /** Les critères de la grille, de plus en plus élaborés du CP au CE2. */
@@ -223,7 +231,7 @@ export function htmlVoixHaute(r: ReglagesVoixHaute, graine: number): string {
   const [consigneCodee, consigneACoder] = CONSIGNES[r.exercice];
   const aCoder = !r.codees && r.exercice !== "lignes";
   const tete = `<div class="titre">Lire à voix haute — ${titre.toLowerCase()}</div><div class="sous">Prénom : ........................................ Date : ........................</div>
-    <div class="regle">${aCoder ? consigneACoder : consigneCodee} <span class="reference">Livrets Français CP et CE1, Éduscol.</span></div>`;
+    ${!aCoder && CODES[r.exercice] ? `<div class="rappel">${CODES[r.exercice]}</div>` : ""}<div class="regle">${aCoder ? consigneACoder : consigneCodee} <span class="reference">Livrets Français CP et CE1, Éduscol.</span></div>`;
   const page = `<div class="page">${tete}<div class="vh-liste">${liste.map((p, i) => ligne(p, i, !aCoder)).join("")}</div></div>`;
   const corrige = aCoder ? `<div class="page corrige"><div class="titre">Lire à voix haute — corrigé</div><div class="vh-liste">${liste.map((p, i) => ligne(p, i, true)).join("")}</div></div>` : "";
   return feuille(page + corrige, "vh");

@@ -267,9 +267,9 @@ export function htmlConstruireLaTable(table: number, nouveaux: number[]): string
   const egalites = (ks: number[], reponse = false) => `<div class="ma-egalites ma-serre">${ks.map((k) => egalite(k, reponse)).join("")}</div>`;
   const eleve = `<div class="page"><div class="titre">La table de ${table}</div>
     <div class="sous">Prénom : ........................................ Date : ........................</div>
-    <div class="consigne">1. Ce que je sais déjà, grâce aux autres tables : « 3 fois ${table}, c'est ${table} fois 3 ».</div>
+    <div class="ma-consigne">1. J'écris ce que je sais déjà, grâce aux autres tables : « 3 fois ${table}, c'est ${table} fois 3 ».</div>
     ${egalites(connus)}
-    <div class="consigne" style="margin-top:5mm">2. Je construis les résultats nouveaux, et je dis comment.</div>
+    <div class="ma-consigne" style="margin-top:5mm">2. Je construis chaque résultat nouveau : j'écris comment j'ai fait.</div>
     <div class="ma-construire">${nouveaux.map((k) => `<div class="ma-recherche"><div class="ma-recherche-calcul">${k} × ${table} = <span class="ma-trou"></span></div>
       <div class="ma-etiquette">Comment j'ai fait :</div><div class="ma-lignes">${'<div class="ma-ligne"></div>'.repeat(3)}</div></div>`).join("")}</div>
     <div class="ma-retenir"><div class="ma-retenir-titre">3. Ma table de ${table}</div>${egalites(tous)}</div></div>`;
@@ -304,7 +304,7 @@ function planDeLArbre(): PlanDesFeuilles {
       "Cartes autocorrectives — ajouter deux nombres inférieurs à 100"),
     feuilleDArbres(3, "Arbre à calcul — évaluation, 9 calculs en 3 minutes", (g) => additionsDeLArbre(9, g), {
       titre: "Évaluation — ajouter deux nombres",
-      consigne: "Tu as 3 minutes. Tu n'es pas obligé de tracer l'arbre : pour les calculs que tu trouves faciles, calcule dans ta tête et écris seulement le résultat.",
+      consigne: "Calcule chaque somme. Tu as 3 minutes. Tu n'es pas obligé de tracer l'arbre : pour les calculs que tu trouves faciles, calcule dans ta tête et écris seulement le résultat.",
     }),
     feuilleDeCalcul(4, "Calcul mental — ajouter deux nombres, en rituel", "CP", o, "ecrit", (g) => [additionsDeLArbre(9, g).map(({ a, b }) => somme(o, a, b))]),
     {

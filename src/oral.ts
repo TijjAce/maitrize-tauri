@@ -46,6 +46,8 @@ export const REGLAGES_ORAL: ReglagesOral = { exercice: "grille", classe: "CE1", 
 const TETE = '<div class="sous">Prénom : ........................................ Date : ........................</div>';
 const titre = (t: string) => `<div class="titre">${escapeHtml(t)}</div>`;
 const regle = (t: string) => `<div class="regle">${t}</div>`;
+/** Ce qu'il faut savoir — la leçon —, à part de la consigne : il ne s'imprime sur la feuille que si on le demande (voir optionsFeuille). */
+const rappel = (t: string) => `<div class="rappel">${t}</div>`;
 const lignes = (n: number) => Array.from({ length: n }, () => '<div class="ol-ligne"></div>').join("");
 
 /** Les critères de chaque genre, de plus en plus nombreux du CP au CE2, tirés des exemples de réussite du programme. */
@@ -189,14 +191,14 @@ function feuilleRegistres(r: ReglagesOral, graine: number): string {
   if (r.classe === "CP") {
     const paires = melanger(alea, REGISTRES).slice(0, 5);
     const items = melanger(alea, paires.flatMap(([f, c]) => [{ t: f, k: "cour" }, { t: c, k: "classe" }]));
-    return `<div class="page">${titre("Dans la cour, en classe")}${TETE}${regle("On ne parle pas de la même manière en classe et dans la cour. Pour chaque phrase, coche où on la dit plutôt.")}
+    return `<div class="page">${titre("Dans la cour, en classe")}${TETE}${rappel("On ne parle pas de la même manière en classe et dans la cour.")}${regle("Pour chaque phrase, coche où on la dit plutôt.")}
       <table class="ol-tableau"><tr><th>La phrase</th><th class="ol-centre">Dans la cour</th><th class="ol-centre">En classe</th></tr>${items.map((x) => `<tr><td>${escapeHtml(x.t)}</td><td class="ol-centre"><span class="ol-case"></span></td><td class="ol-centre"><span class="ol-case"></span></td></tr>`).join("")}</table></div>
       <div class="page corrige">${titre("Dans la cour, en classe — corrigé")}<div class="ol-corrige">${items.map((x) => `<div>${escapeHtml(x.t)} — ${x.k === "cour" ? "plutôt dans la cour" : "en classe"}</div>`).join("")}</div></div>`;
   }
   const triplets = melanger(alea, REGISTRES).slice(0, 4);
   const items = melanger(alea, triplets.flatMap(([f, c, s]) => [{ t: f, k: "familier" }, { t: c, k: "courant" }, { t: s, k: "soutenu" }]));
   const transformer = melanger(alea, REGISTRES.filter((x) => !triplets.includes(x))).slice(0, 2);
-  return `<div class="page">${titre("Familier, courant, soutenu")}${TETE}${regle("On choisit sa façon de parler selon la personne à qui l'on parle et la situation. Coche le registre de chaque phrase.")}
+  return `<div class="page">${titre("Familier, courant, soutenu")}${TETE}${rappel("On choisit sa façon de parler selon la personne à qui l'on parle et la situation.")}${regle("Coche le registre de chaque phrase.")}
     <table class="ol-tableau"><tr><th>La phrase</th><th class="ol-centre">Familier</th><th class="ol-centre">Courant</th><th class="ol-centre">Soutenu</th></tr>${items.map((x) => `<tr><td>${escapeHtml(x.t)}</td><td class="ol-centre"><span class="ol-case"></span></td><td class="ol-centre"><span class="ol-case"></span></td><td class="ol-centre"><span class="ol-case"></span></td></tr>`).join("")}</table>
     <div class="ol-sous-titre">Dis-le en registre courant, puis soutenu</div>${transformer.map(([f]) => `<div class="ol-champ">« ${escapeHtml(f)} »${lignes(2)}</div>`).join("")}</div>
     <div class="page corrige">${titre("Familier, courant, soutenu — corrigé")}<div class="ol-corrige">${items.map((x) => `<div>${escapeHtml(x.t)} — ${x.k}</div>`).join("")}${transformer.map(([f, c, s]) => `<div>« ${escapeHtml(f)} » → « ${escapeHtml(c)} » → « ${escapeHtml(s)} »</div>`).join("")}</div></div>`;
@@ -204,7 +206,7 @@ function feuilleRegistres(r: ReglagesOral, graine: number): string {
 
 function feuilleSituations(r: ReglagesOral, graine: number): string {
   const choisies = melanger(hasard(graine), SITUATIONS).slice(0, 6);
-  return `<div class="page">${titre("Les jeux de rôles")}${TETE}${regle(`Découpe les cartes. À deux, tirez une carte et jouez la scène. Ceux qui regardent disent si la façon de parler convient${r.classe === "CP" ? "." : " : familier, courant ou soutenu ?"}`)}
+  return `<div class="page">${titre("Les jeux de rôles")}${TETE}${regle(`Découpe les cartes. À deux, nous tirons une carte et nous jouons la scène. Ceux qui regardent disent si la façon de parler convient${r.classe === "CP" ? "." : " : familier, courant ou soutenu ?"}`)}
     <div class="ol-cartes ol-roles">${choisies.map((x) => `<div class="ol-carte-role"><b>Tu parles à ${escapeHtml(x.aQui)}.</b><div>${escapeHtml(x.quoi)}</div></div>`).join("")}</div></div>
     <div class="page corrige">${titre("Les jeux de rôles — pour l'adulte")}<div class="ol-corrige">${choisies.map((x) => `<div>${escapeHtml(x.aQui)} : ${escapeHtml(x.quoi)} — registre attendu : <b>${x.registre}</b></div>`).join("")}</div></div>`;
 }

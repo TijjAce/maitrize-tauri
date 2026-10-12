@@ -1,5 +1,5 @@
 // Ce qui s'imprime sur la feuille d'un atelier : la consigne, le prénom, la
-// correction ; et ce qui va aux tablettes : la consigne.
+// correction, les aides ; et ce qui va aux tablettes : la consigne.
 //
 // La consigne d'une feuille — sa règle, ses étapes — se montre sur les
 // tablettes de la classe pendant l'activité, plus sur le papier (demande de
@@ -8,26 +8,33 @@
 // tablettes la remet sur la feuille. Sa ligne « Prénom … Date … » et sa
 // correction s'impriment, sauf si on les décoche : la feuille va dans un
 // cahier qui porte déjà le prénom, la correction ne sert qu'au maître.
-// Quatre cases, les mêmes pour tous les ateliers, gardées par atelier dans un
-// réglage partagé entre les ordinateurs.
+// Les aides — le rappel de la leçon, « Je peux… », « Attention… » — ne sont
+// pas la consigne : elles restent hors de la feuille tant qu'on ne les y met
+// pas, et le rappel passe dans la correction (demande de l'enseignant,
+// octobre 2026). Cinq cases, les mêmes pour tous les ateliers, gardées par
+// atelier dans un réglage partagé entre les ordinateurs.
 //
 // On travaille sur le HTML des feuilles telles que l'application les écrit :
-// la consigne porte l'une des classes des consignes, et tout ce qui relève
-// de la correction — une page, une colonne — porte la classe « corrige ».
+// la consigne porte l'une des classes des consignes, le rappel de la leçon
+// la classe « rappel », et tout ce qui relève de la correction — une page,
+// une colonne — porte la classe « corrige ».
 
 import { CLASSES_CONSIGNE_FEUILLE } from "./consigneAtelier";
+import { aDesConsignesDExercice, structurerConsignesHtml } from "./consignesStructurees";
 
 export interface OptionsFeuille {
   /** La consigne sur la feuille. */
   consigne: boolean;
   prenom: boolean;
   corrige: boolean;
+  /** Les aides sur la feuille : le rappel de la leçon, et les lignes d'aide des consignes. */
+  aide: boolean;
   /** La consigne sur les tablettes : elle part avec la feuille posée dans une séance. */
   tablettes: boolean;
 }
 
-/** La consigne va aux tablettes, pas sur le papier ; le reste s'imprime tant qu'on ne l'a pas décoché. */
-export const OPTIONS_FEUILLE: OptionsFeuille = { consigne: false, prenom: true, corrige: true, tablettes: true };
+/** La consigne va aux tablettes, pas sur le papier ; les aides non plus ; le reste s'imprime tant qu'on ne l'a pas décoché. */
+export const OPTIONS_FEUILLE: OptionsFeuille = { consigne: false, prenom: true, corrige: true, aide: false, tablettes: true };
 
 /** La version des choix enregistrés : avant la 2, « consigne » était cochée d'office, et ce choix-là ne compte plus. */
 const VERSION = 2;
@@ -49,7 +56,7 @@ export function lireOptionsFeuille(brut: string | null | undefined): OptionsFeui
     const recent = o.v === VERSION;
     return {
       consigne: recent ? o.consigne === true : false, prenom: o.prenom !== false, corrige: o.corrige !== false,
-      tablettes: recent ? o.tablettes !== false : true,
+      aide: o.aide === true, tablettes: recent ? o.tablettes !== false : true,
     };
   } catch {
     return OPTIONS_FEUILLE;
@@ -93,13 +100,21 @@ export function retirerElements(html: string, aRetirer: (classes: string[], bali
 // La ligne « Prénom … Date … » d'une feuille, ou les deux mentions séparées d'une ardoise.
 const LIGNE_PRENOM = /<(div|p|span)\b[^>]*>\s*(?:Prénom|Date)\s*:[^<]*<\/\1>/g;
 
+/** Le rappel de la leçon : un bloc à part de la consigne. */
+const estUnRappel = (classes: string[]) => classes.includes("rappel");
+
+/** Une ligne d'aide d'une consigne structurée : « Je peux… », « Attention… » (voir consignesStructurees). */
+const LIGNE_D_AIDE = /<li class="cs-etape cs-aide">/;
+
 /** Ce que la feuille contient, pour ne proposer que les cases qui ont un effet. */
 export const contenuDeLaFeuille = (html: string): OptionsFeuille => {
   const consigne = new RegExp(`\\bclass="[^"]*\\b(${CLASSES_CONSIGNE_FEUILLE.join("|")})\\b`).test(html);
   return {
-    consigne, tablettes: consigne,
+    // Une feuille dont les exercices ont leur consigne sur le papier y garde la sienne : la case n'y ferait rien.
+    consigne: consigne && !aDesConsignesDExercice(html), tablettes: consigne,
     prenom: new RegExp(LIGNE_PRENOM.source).test(html),
     corrige: /\bclass="(?:[^"]* )?corrige(?: [^"]*)?"/.test(html),
+    aide: /\bclass="(?:[^"]* )?rappel(?: [^"]*)?"/.test(html) || LIGNE_D_AIDE.test(structurerConsignesHtml(html)),
   };
 };
 
@@ -125,13 +140,71 @@ export function consignesDeLaFeuille(html: string): string[] {
   return trouvees;
 }
 
+/** Les éléments dont les classes répondent à `choisir`, dans l'ordre, chacun entier. */
+function elementsDe(html: string, choisir: (classes: string[]) => boolean): string[] {
+  const trouves: string[] = [];
+  OUVERTURE.lastIndex = 0;
+  for (let m = OUVERTURE.exec(html); m; m = OUVERTURE.exec(html)) {
+    const classes = /\bclass="([^"]*)"/.exec(m[2])?.[1];
+    if (!classes || m[0].endsWith("/>") || !choisir(classes.split(/\s+/))) continue;
+    const fin = finDeLElement(html, m[1], m.index + m[0].length);
+    if (fin < 0) continue;
+    trouves.push(html.slice(m.index, fin));
+    OUVERTURE.lastIndex = fin;
+  }
+  return trouves;
+}
+
+/**
+ * Le rappel de la leçon ôté de la feuille de l'élève, et posé en tête de la
+ * première page de correction, sous son titre : le maître l'a sous les yeux
+ * quand il corrige. Sans page de correction, il ne s'imprime pas.
+ */
+export function rappelsDansLeCorrige(html: string): string {
+  const rappels = elementsDe(html, estUnRappel);
+  if (!rappels.length) return html;
+  const sans = retirerElements(html, estUnRappel);
+  const page = /<div\b[^>]*\bclass="(?=[^"]*\bpage\b)(?=[^"]*\bcorrige\b)[^"]*"[^>]*>/.exec(sans);
+  if (!page) return sans;
+  const debut = page.index + page[0].length;
+  // Sous le titre de la page, s'il l'ouvre.
+  const titre = /^\s*<div class="titre">[\s\S]*?<\/div>/.exec(sans.slice(debut));
+  const ici = debut + (titre ? titre[0].length : 0);
+  return sans.slice(0, ici) + rappels.join("") + sans.slice(ici);
+}
+
 /** La feuille telle qu'elle doit sortir : sans ce qu'on a décoché. */
 export function appliquerOptionsFeuille(html: string, o: OptionsFeuille): string {
   let h = html;
+  // Le rappel passe dans la correction avant que la correction ne parte, si on l'a décochée.
+  if (!o.aide) h = rappelsDansLeCorrige(h);
   if (!o.corrige) h = retirerElements(h, (classes) => classes.includes("corrige"));
-  if (!o.consigne) h = retirerElements(h, estUneConsigne);
+  // Quand un exercice porte sa consigne sur le papier, celle du premier exercice y reste aussi, avant ses phrases :
+  // sinon il resterait seul sans consigne (demande de l'enseignant, octobre 2026).
+  if (!o.consigne && !aDesConsignesDExercice(h)) h = retirerElements(h, estUneConsigne);
   if (!o.prenom) h = h.replace(LIGNE_PRENOM, "");
   return h;
+}
+
+/**
+ * Une consigne structurée sans ses lignes d'aide ; une consigne qui n'avait
+ * que des aides disparaît avec elles.
+ */
+export function sansLesAides(html: string): string {
+  const sans = retirerElements(html, (classes, balise) => balise === "li" && classes.includes("cs-aide"));
+  // Une liste d'étapes restée vide, puis le cadre qui n'a plus rien.
+  return sans.replace(/<ol class="cs-etapes"><\/ol>/g, "")
+    .replace(/<(div|p)\b[^>]*\bclass="[^"]*\bcs\b[^"]*"[^>]*>\s*<\/\1>/g, "");
+}
+
+/**
+ * La feuille telle qu'elle s'imprime et s'affiche : ce qu'on a coché, puis
+ * les consignes structurées (voir consignesStructurees), sans les aides si on
+ * ne les veut pas sur le papier.
+ */
+export function feuilleSelonOptions(html: string, o: OptionsFeuille): string {
+  const structuree = structurerConsignesHtml(appliquerOptionsFeuille(html, o));
+  return o.aide ? structuree : sansLesAides(structuree);
 }
 
 // ── Ce que les aperçus publient ────────────────────────────────────────────
@@ -141,7 +214,7 @@ export function appliquerOptionsFeuille(html: string, o: OptionsFeuille): string
 
 const contenus: Record<string, OptionsFeuille> = {};
 const abonnes = new Set<() => void>();
-const RIEN: OptionsFeuille = { consigne: false, prenom: false, corrige: false, tablettes: false };
+const RIEN: OptionsFeuille = { consigne: false, prenom: false, corrige: false, aide: false, tablettes: false };
 
 export const feuillesPubliees = {
   lire: (atelier: string): OptionsFeuille => contenus[atelier] ?? RIEN,
@@ -150,7 +223,7 @@ export const feuillesPubliees = {
   publier(atelier: string, contenu: OptionsFeuille) {
     const avant = contenus[atelier];
     if (!atelier || (avant && avant.consigne === contenu.consigne && avant.prenom === contenu.prenom && avant.corrige === contenu.corrige
-      && avant.tablettes === contenu.tablettes)) return;
+      && avant.aide === contenu.aide && avant.tablettes === contenu.tablettes)) return;
     contenus[atelier] = contenu;
     abonnes.forEach((f) => f());
   },

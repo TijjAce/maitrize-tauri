@@ -249,9 +249,10 @@ export function ajoutsSuccessifs(prix: number, donne: number, virgule: boolean):
 // ── Les feuilles ──────────────────────────────────────────────────────────
 
 const SOURCE = `<span class="reference">Programme de mathématiques du cycle 2, 2024 ; guide CP, Éduscol 2021.</span>`;
-const entete = (titre: string, consigne: string) => `<div class="titre">${titre}</div>
+/** Le titre, la ligne du prénom, le rappel de la leçon s'il y en a un — il ne s'imprime que si on le demande (voir optionsFeuille) —, puis la consigne. */
+const entete = (titre: string, consigne: string, rappel = "") => `<div class="titre">${titre}</div>
   <div class="sous">Prénom : ........................................ Date : ........................</div>
-  <div class="regle">${consigne} ${SOURCE}</div>`;
+  ${rappel ? `<div class="rappel">${rappel}</div>` : ""}<div class="regle">${consigne} ${SOURCE}</div>`;
 
 /** La ligne de réponse, selon qu'on écrit les centimes à part ou avec la virgule. */
 function ligneReponse(r: ReglagesMonnaie, debut: string): string {
@@ -375,7 +376,7 @@ export function ecritures(r: Pick<ReglagesMonnaie, "jusqua" | "combien">, graine
 function feuilleEcriture(r: ReglagesMonnaie, graine: number): string {
   const liste = ecritures(r, graine);
   const lignes = liste.map((e, i) => `<div class="mo-ecriture"><span class="mo-num-l">${i + 1}.</span> ${e.enonce}</div>`).join("");
-  const tete = entete("Euros et centimes : l'écriture à virgule", "100 centimes font 1 euro. La virgule repère le chiffre des unités d'euros : dans 2,17 €, il y a 2 € et 17 centimes ; dans 2,05 €, 2 € et 5 centimes ; dans 2,50 €, 2 € et 50 centimes. Écris chaque somme de l'autre façon.");
+  const tete = entete("Euros et centimes : l'écriture à virgule", "Écris chaque somme de l'autre façon : avec la virgule, ou en euros et en centimes.", "100 centimes font 1 euro. La virgule repère le chiffre des unités d'euros : dans 2,17 €, il y a 2 € et 17 centimes ; dans 2,05 €, 2 € et 5 centimes ; dans 2,50 €, 2 € et 50 centimes.");
   const corrige = `<div class="page corrige"><div class="titre">L'écriture à virgule — corrigé</div><div class="mo-corrige">${liste.map((e, i) => `<div>${i + 1}. <b>${e.reponse}</b></div>`).join("")}</div></div>`;
   return `<div class="page">${tete}<div class="mo-ecritures">${lignes}</div></div>${corrige}`;
 }
@@ -399,7 +400,7 @@ export const CONTRAINTES_UN_EURO: { consigne: string; exemple: number[] }[] = [
 function feuilleUnEuro(r: ReglagesMonnaie): string {
   const liste = CONTRAINTES_UN_EURO.filter((c) => c.exemple.length && total(c.exemple) === 100).slice(0, Math.max(2, Math.min(8, r.combien)));
   const blocs = liste.map((c, i) => `<div class="mo-bourse mo-payer"><div class="mo-num">${i + 1}</div><div class="mo-prix">Fais <b>1 €</b> ${c.consigne}.</div><div class="mo-cadre">Dessine ou colle les pièces.</div></div>`);
-  const tete = entete("1 € de plusieurs façons", "Une pièce de 1 € vaut autant que 100 pièces de 1 centime : 1 € = 100 centimes. Dans chaque case, fais 1 € avec des pièces de centimes, comme on te le demande.");
+  const tete = entete("1 € de plusieurs façons", "Dans chaque case, fais 1 € avec des pièces de centimes, comme on te le demande.", "Une pièce de 1 € vaut autant que 100 pièces de 1 centime : 1 € = 100 centimes.");
   const corrige = `<div class="page corrige"><div class="titre">1 € de plusieurs façons — corrigé</div><div class="mo-corrige">${liste.map((c, i) => `<div>${i + 1}. ${c.consigne} : par exemple <b>${somme(c.exemple, false)} = 1 €</b></div>`).join("")}</div></div>`;
   return pages(blocs, tete, 6) + corrige;
 }

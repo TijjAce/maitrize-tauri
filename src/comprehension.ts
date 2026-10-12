@@ -60,6 +60,8 @@ export const TYPES_DE_TEXTES: Record<TypeDeTexte, { nom: string; court: string; 
 const TETE = '<div class="sous">Prénom : ........................................ Date : ........................</div>';
 const titre = (t: string) => `<div class="titre">${escapeHtml(t)}</div>`;
 const regle = (t: string) => `<div class="regle">${t}</div>`;
+/** Ce qu'il faut savoir — la leçon —, à part de la consigne : il ne s'imprime sur la feuille que si on le demande (voir optionsFeuille). */
+const rappel = (t: string) => `<div class="rappel">${t}</div>`;
 
 /** Les textes d'un exercice : celui de l'enseignant, sinon un texte de la classe ; pour les moments, un récit. */
 export function texteDeLExercice(r: ReglagesComprehension, graine: number): TexteAComprendre {
@@ -143,7 +145,7 @@ function pageDesQuestions(t: TexteAComprendre, qs: Question[], ecoute: boolean, 
     : "Lis les questions, puis reviens au texte pour trouver la réponse. Écris le numéro de la ligne qui t'a aidé.";
   const bilan = ecoute && t.classe !== "CP"
     ? '<div class="cx-bilan">J\'ai compris le texte : <span class="cx-case"></span> tout &nbsp; <span class="cx-case"></span> presque tout &nbsp; <span class="cx-case"></span> un peu. Ce qui m\'a manqué : <span class="cx-pointilles cx-court"></span></div>' : "";
-  return `<div class="page">${titre(`${t.titre} — ${ecoute ? "j'écoute et je comprends" : "je comprends le texte"}`)}${TETE}${regle(consigne)}<div class="cx-aide">${aide}</div><div class="cx-questions">${items}${enPlus}</div>${bilan}</div>`;
+  return `<div class="page">${titre(`${t.titre} — ${ecoute ? "j'écoute et je comprends" : "je comprends le texte"}`)}${TETE}${regle(consigne)}<div class="cx-aide rappel">${aide}</div><div class="cx-questions">${items}${enPlus}</div>${bilan}</div>`;
 }
 
 function corrigeDesQuestions(t: TexteAComprendre, qs: Question[]): string {
@@ -217,7 +219,7 @@ function feuilleInferences(r: ReglagesComprehension, graine: number): string {
     : '<table class="cx-cadre"><tr><td>L\'indice dans le texte (ligne <span class="cx-case"></span>)</td><td></td></tr><tr><td>Ce que je sais déjà</td><td></td></tr><tr><td>Donc…</td><td></td></tr></table>';
   const items = qs.map((q, i) => `<div class="cx-q"><div class="cx-enonce"><b>${i + 1}.</b> ${escapeHtml(q.q)} ${pastille(q)}</div>${cadre}</div>`).join("");
   const exemple = "« J'ai pris mon parapluie. » Ce n'est pas écrit, mais je comprends qu'il pleut : l'indice, c'est le parapluie ; je sais qu'on le prend quand il pleut.";
-  const page = `<div class="page">${titre(`${t.titre} — ce qui n'est pas écrit`)}${TETE}${regle(`La réponse n'est pas écrite dans le texte : je cherche un indice, je réfléchis avec ce que je sais déjà, et j'explique. <i>${escapeHtml(exemple)}</i>`)}<div class="cx-questions">${items}</div></div>`;
+  const page = `<div class="page">${titre(`${t.titre} — ce qui n'est pas écrit`)}${TETE}${rappel(`La réponse n'est pas écrite dans le texte : on la trouve avec un indice et ce qu'on sait déjà. <i>${escapeHtml(exemple)}</i>`)}${regle("Je cherche un indice, je réfléchis avec ce que je sais déjà, et j'explique.")}<div class="cx-questions">${items}</div></div>`;
   const corrige = `<div class="page corrige">${titre(`${t.titre} — corrigé`)}<div class="cx-corrige">${qs.map((q, i) =>
     `<div class="cx-c"><b>${i + 1}.</b> ${escapeHtml(q.q)} — <b>${escapeHtml(q.r)}</b>${q.ligne ? ` <span class="cx-ligne">(indice ligne ${q.ligne} : « ${escapeHtml(ligneDe(t, q.ligne))} »)</span>` : ""}</div>`).join("")}</div></div>`;
   return pageDuTexte(t, "") + page + corrige;
@@ -236,7 +238,7 @@ function feuilleEmotions(r: ReglagesComprehension, graine: number): string {
   const items = t.emotions!.map((e, i) => `<div class="cx-q"><div class="cx-enonce"><b>${i + 1}.</b> Ligne ${e.ligne} : comment se sent ${escapeHtml(e.qui)} ? Souligne l'indice dans le texte.</div><div class="cx-rep"></div></div>`).join("");
   const ouverte = `<div class="cx-q"><div class="cx-enonce"><b>${t.emotions!.length + 1}.</b> Et toi, à sa place, qu'aurais-tu fait ? Pourquoi ?</div>${t.classe === "CP" ? "" : '<div class="cx-rep"></div><div class="cx-rep"></div>'}</div>`;
   const banque = `<div class="cx-banque">${MOTS_DES_EMOTIONS.map((m) => `<span>${escapeHtml(m)}</span>`).join("")}</div>`;
-  const page = `<div class="page">${titre(`${t.titre} — ce que ressentent les personnages`)}${TETE}${regle("Ce que ressent un personnage n'est pas toujours écrit : je cherche ce qu'il fait, ce qu'il dit, comment il le dit. Je peux prendre un mot de la boîte.")}${banque}<div class="cx-questions">${items}${ouverte}</div></div>`;
+  const page = `<div class="page">${titre(`${t.titre} — ce que ressentent les personnages`)}${TETE}${rappel("Ce que ressent un personnage n'est pas toujours écrit : ce qu'il fait, ce qu'il dit, comment il le dit le montrent.")}${regle("Je cherche ce qu'il fait, ce qu'il dit, comment il le dit. Je peux prendre un mot de la boîte.")}${banque}<div class="cx-questions">${items}${ouverte}</div></div>`;
   const corrige = `<div class="page corrige">${titre(`${t.titre} — corrigé`)}<div class="cx-corrige">${t.emotions!.map((e, i) =>
     `<div class="cx-c"><b>${i + 1}.</b> ${escapeHtml(e.qui)}, ligne ${e.ligne} : <b>${escapeHtml(e.emotion)}</b>. <span class="cx-ligne">L'indice : ${escapeHtml(e.indice)}</span></div>`).join("")}<div class="cx-c"><b>${t.emotions!.length + 1}.</b> Réponse personnelle, justifiée.</div></div></div>`;
   return pageDuTexte(t, "") + page + corrige;
@@ -286,7 +288,7 @@ function feuilleMotInconnu(r: ReglagesComprehension, graine: number): string {
       <div class="cx-preuve">Ce qui m'a aidé : <span class="cx-pointilles"></span></div></div>`;
   }).join("");
   const strategies = "Pour comprendre un mot inconnu : je relis la phrase, celle d'avant et celle d'après ; je cherche un mot de la même famille que je connais ; j'essaie de le remplacer par un mot que je connais et je vérifie que la phrase garde son sens ; puis je vérifie dans le dictionnaire.";
-  const page = `<div class="page">${titre("Le mot inconnu — je cherche le sens dans le texte")}${TETE}${regle(escapeHtml(strategies))}<div class="cx-questions">${items}</div></div>`;
+  const page = `<div class="page">${titre("Le mot inconnu — je cherche le sens dans le texte")}${TETE}${rappel(escapeHtml(strategies))}${regle("Je lis chaque extrait. Je coche le sens du mot. J'écris ce qui m'a aidé.")}<div class="cx-questions">${items}</div></div>`;
   const corrige = `<div class="page corrige">${titre("Le mot inconnu — corrigé")}<div class="cx-corrige">${textes.map((t, k) =>
     `<div class="cx-c"><b>${k + 1}.</b> « ${escapeHtml(t.motInconnu.mot)} » : <b>${escapeHtml(t.motInconnu.sens)}</b>. <span class="cx-ligne">L'indice : ${escapeHtml(t.motInconnu.indice)}</span></div>`).join("")}</div></div>`;
   return page + corrige;

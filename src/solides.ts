@@ -50,9 +50,10 @@ const f2 = (x: number) => x.toFixed(2);
 const entre = (alea: () => number, a: number, b: number) => a + Math.floor(alea() * (b - a + 1));
 
 const SOURCE = `<span class="reference">Programme de mathématiques du cycle 2, 2024 ; Éduscol, « Espace et géométrie au cycle 2 ».</span>`;
-const entete = (titre: string, consigne: string) => `<div class="titre">${titre}</div>
+/** Le titre, la ligne du prénom, le rappel de la leçon s'il y en a un — il ne s'imprime que si on le demande (voir optionsFeuille) —, puis la consigne. */
+const entete = (titre: string, consigne: string, rappel = "") => `<div class="titre">${titre}</div>
   <div class="sous">Prénom : ........................................ Date : ........................</div>
-  <div class="regle">${consigne} ${SOURCE}</div>`;
+  ${rappel ? `<div class="rappel">${rappel}</div>` : ""}<div class="regle">${consigne} ${SOURCE}</div>`;
 
 // ── Le dessin en perspective cavalière ────────────────────────────────────
 
@@ -311,7 +312,7 @@ function feuillePatrons(r: ReglagesSolides, graine: number): string {
   const liste = assemblagesDeSixCarres(alea, Math.max(2, Math.min(8, r.combien < 4 ? 6 : r.combien)));
   const carte = (a: (typeof liste)[number], i: number, corrige: boolean) => `<div class="so-patron"><b class="so-lettre">${LETTRES[i]}</b>${assemblageSvg(a.cases, 13)}
     <div class="so-legende">${corrige ? `<b>${a.patron ? "oui, c'est un patron du cube" : "non"}</b>` : "Patron du cube ? &nbsp; oui &nbsp;·&nbsp; non"}</div></div>`;
-  return `<div class="page">${entete("Est-ce un patron du cube ?", "Six carrés, mais pas toujours un patron ! Imagine le pliage : deux carrés ne doivent pas venir sur la même face. Entoure oui ou non, puis découpe l'assemblage et plie-le pour vérifier.")}<div class="so-patrons">${liste.map((a, i) => carte(a, i, false)).join("")}</div></div>
+  return `<div class="page">${entete("Est-ce un patron du cube ?", "Imagine le pliage. Entoure oui ou non, puis découpe l'assemblage et plie-le pour vérifier.", "Six carrés ne font pas toujours un patron : deux carrés ne doivent pas venir sur la même face.")}<div class="so-patrons">${liste.map((a, i) => carte(a, i, false)).join("")}</div></div>
     <div class="page corrige"><div class="titre">Est-ce un patron du cube ? — corrigé</div><div class="so-patrons">${liste.map((a, i) => carte(a, i, true)).join("")}</div></div>`;
 }
 

@@ -58,6 +58,8 @@ export const REGLAGES_ORTHOGRAPHE: ReglagesOrthographe = { exercice: "dicteeDeMo
 const TETE = '<div class="sous">Prénom : ........................................ Date : ........................</div>';
 const titre = (t: string) => `<div class="titre">${escapeHtml(t)}</div>`;
 const regle = (t: string) => `<div class="regle">${t}</div>`;
+/** Ce qu'il faut savoir — la leçon —, à part de la consigne : il ne s'imprime sur la feuille que si on le demande (voir optionsFeuille). */
+const rappel = (t: string) => `<div class="rappel">${t}</div>`;
 const lignes = (n: number, classe = "or-ligne") => Array.from({ length: n }, () => `<div class="${classe}"></div>`).join("");
 const motsSaisis = (texte: string) => texte.split("\n").map((l) => l.trim()).filter(Boolean);
 
@@ -352,9 +354,9 @@ function feuilleLettreMuette(r: ReglagesOrthographe, graine: number): string {
   const paires = melanger(hasard(graine), LETTRES_MUETTES[r.classe]).slice(0, 8);
   const cp = r.classe === "CP";
   const items = paires.map(([mot, famille], i) => `<tr><td><b>${i + 1}.</b> ${escapeHtml(mot.slice(0, -1))}<span class="or-trou"></span></td><td>${cp ? `je pense à : <i>${escapeHtml(famille)}</i>` : ""}</td><td></td></tr>`).join("");
-  return `<div class="page">${titre("La lettre muette et la famille du mot")}${TETE}${regle(cp
-    ? "La dernière lettre de ces mots ne s'entend pas. Le mot de la même famille la fait entendre : écris la lettre qui manque, puis le mot entier."
-    : "La dernière lettre ne s'entend pas : trouve un mot de la même famille qui la fait entendre, puis écris le mot entier.")}
+  return `<div class="page">${titre("La lettre muette et la famille du mot")}${TETE}${cp
+    ? rappel("La dernière lettre de ces mots ne s'entend pas. Le mot de la même famille la fait entendre.") + regle("Écris la lettre qui manque, puis le mot entier.")
+    : rappel("La dernière lettre ne s'entend pas.") + regle("Trouve un mot de la même famille qui la fait entendre, puis écris le mot entier.")}
     <table class="or-tableau"><tr><th>Le mot</th><th>${cp ? "L'indice" : "Un mot de la même famille"}</th><th>J'écris le mot</th></tr>${items}</table></div>
     <div class="page corrige">${titre("La lettre muette — corrigé")}<div class="or-corrige">${paires.map(([m, f], i) => `<div><b>${i + 1}.</b> ${escapeHtml(m)} — ${escapeHtml(f)}</div>`).join("")}</div></div>`;
 }
@@ -377,7 +379,7 @@ function feuilleMbp(_r: ReglagesOrthographe, graine: number): string {
     const i = m.search(/[aeiouy][mn](?=[^aeiouyéèê])/);
     return i < 0 ? escapeHtml(m) : escapeHtml(m.slice(0, i + 1)) + '<span class="or-trou"></span>' + escapeHtml(m.slice(i + 2));
   };
-  return `<div class="page">${titre("m devant m, b, p")}${TETE}${regle("Complète avec m ou n. Devant m, b, p, on écrit m : la lampe, la chambre. Regarde la lettre qui suit.")}
+  return `<div class="page">${titre("m devant m, b, p")}${TETE}${rappel("Devant m, b, p, on écrit m : la lampe, la chambre.")}${regle("Complète avec m ou n. Regarde la lettre qui suit.")}
     <div class="or-grille">${mots.map((m, i) => `<div><b>${i + 1}.</b> ${trou(m)}</div>`).join("")}</div></div>
     <div class="page corrige">${titre("m devant m, b, p — corrigé")}<div class="or-corrige or-grille">${mots.map((m, i) => `<div><b>${i + 1}.</b> ${escapeHtml(m)}</div>`).join("")}</div></div>`;
 }
@@ -390,7 +392,7 @@ function feuilleAccents(r: ReglagesOrthographe, graine: number): string {
       <div class="page corrige">${titre("Les accents — corrigé")}<div class="or-corrige or-grille">${mots.map((m) => `<div>${escapeHtml(m.mot)} : accent ${m.accent}</div>`).join("")}</div></div>`;
   }
   const trou = (m: string) => escapeHtml(m).replace(/[éèêâîôûà]/, '<span class="or-trou"></span>');
-  return `<div class="page">${titre("Les accents")}${TETE}${regle("Complète avec la bonne lettre : é, è, ê, à, â, î, ô… Dis le mot à voix haute : l'accent change le son.")}
+  return `<div class="page">${titre("Les accents")}${TETE}${rappel("L'accent change le son de la lettre.")}${regle("Complète avec la bonne lettre : é, è, ê, à, â, î, ô… Dis le mot à voix haute.")}
     <div class="or-grille">${mots.map((m, i) => `<div><b>${i + 1}.</b> ${trou(m.mot)}</div>`).join("")}</div></div>
     <div class="page corrige">${titre("Les accents — corrigé")}<div class="or-corrige or-grille">${mots.map((m, i) => `<div><b>${i + 1}.</b> ${escapeHtml(m.mot)}</div>`).join("")}</div></div>`;
 }

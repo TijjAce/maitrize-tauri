@@ -7,7 +7,7 @@ import {
   EVT_OPTIONS_FEUILLE, OPTIONS_FEUILLE, cleOptionsFeuille, ecrireOptionsFeuille, feuillesPubliees, lireOptionsFeuille, type OptionsFeuille as Options,
 } from "../optionsFeuille";
 
-// Ce qui s'imprime sur la feuille, depuis le bandeau de l'atelier — trois
+// Ce qui s'imprime sur la feuille, depuis le bandeau de l'atelier — quatre
 // cases, les mêmes partout —, et ce qui va aux tablettes : la consigne. Ne
 // sont proposées que celles qui ont un effet sur la feuille affichée.
 
@@ -40,6 +40,7 @@ const CASES: Case[] = [
   { cle: "consigne", libelle: "la consigne", aide: "Cochée, la consigne et la règle s'impriment aussi sur la feuille : sans tablettes, ou pour une feuille qui part à la maison." },
   { cle: "prenom", libelle: "prénom et date", aide: "Décochée, la feuille sort sans la ligne « Prénom … Date … »." },
   { cle: "corrige", libelle: "la correction", aide: "Décochée, la feuille sort sans sa correction : ni page de corrigé, ni réponses." },
+  { cle: "aide", libelle: "les aides", aide: "Cochée, le rappel de la leçon et les aides de la consigne (« Je peux… », « Attention… ») s'impriment sur la feuille. Décochée, ce qu'il faut savoir passe dans la correction." },
 ];
 
 /** La consigne sur les tablettes : elle part avec la feuille posée dans une séance du cahier journal. */

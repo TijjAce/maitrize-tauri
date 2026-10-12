@@ -55,6 +55,8 @@ export const REGLAGES_GRAMMAIRE: ReglagesGrammaire = { exercice: "constituants",
 const TETE = '<div class="sous">Prénom : ........................................ Date : ........................</div>';
 const titre = (t: string) => `<div class="titre">${escapeHtml(t)}</div>`;
 const regle = (t: string) => `<div class="regle">${t}</div>`;
+/** Ce qu'il faut savoir — la leçon —, à part de la consigne : il ne s'imprime sur la feuille que si on le demande (voir optionsFeuille). */
+const rappel = (t: string) => `<div class="rappel">${t}</div>`;
 const ligne = () => '<div class="gr-ligne"></div>';
 const corrige = (t: string, corps: string) => `<div class="page corrige">${titre(`${t} — corrigé`)}<div class="gr-corrige">${corps}</div></div>`;
 
@@ -112,6 +114,17 @@ export const PHRASES_DEMONTEES = [
   "[C:Tous les jours], [S:elle] [V:mange] [C:à la cantine].",
 ];
 export const sansMarques = (p: string) => p.replace(/\[[SVC]:([^\]]+)\]/g, "$1");
+/** La phrase sans ses compléments : « Le petit chat mange sa pâtée. » → « Le petit chat mange. » */
+export const sansLeComplement = (p: string) => {
+  const reste = sansMarques(p.replace(/\[C:[^\]]+\],?/g, "")).replace(/\s+([.,!?])/g, "$1").replace(/\s{2,}/g, " ").replace(/^[\s,]+/, "").trim();
+  return reste.charAt(0).toUpperCase() + reste.slice(1);
+};
+/** Sans son seul complément, la phrase garde-t-elle son sens ? La réponse du corrigé, pour les phrases qui n'en ont qu'un. */
+const SENS_SANS_LE_COMPLEMENT: Record<string, string> = {
+  "Le petit chat mange.": "oui",
+  "Les enfants jouent.": "oui",
+  "Ma grand-mère prépare.": "non : on ne sait plus ce qu'elle prépare",
+};
 export function phraseMarquee(p: string): string {
   return escapeHtml(p).replace(/\[([SVC]):([^\]]+)\]/g, (_m, k: string, g: string) => `<span class="gr-${k === "S" ? "sujet" : k === "V" ? "verbe" : "complement"}">${g}</span>`);
 }
@@ -240,13 +253,13 @@ export function verbesDeLaFeuille(r: ReglagesGrammaire, graine: number): string[
 function feuillePhrases(_r: ReglagesGrammaire, graine: number): string {
   const texte = TEXTES_PHRASES[Math.floor(hasard(graine)() * TEXTES_PHRASES.length)];
   const n = (texte.match(/[.!?]/g) ?? []).length;
-  return `<div class="page">${titre("Combien de phrases ?")}${TETE}${regle("Une phrase commence par une majuscule et finit par un point : . ? ou ! Entoure les majuscules en bleu et les points en rouge. Puis souligne chaque phrase d'une couleur différente.")}
+  return `<div class="page">${titre("Combien de phrases ?")}${TETE}${rappel("Une phrase commence par une majuscule et finit par un point : . ? ou !")}${regle("Entoure les majuscules en bleu et les points en rouge. Puis souligne chaque phrase d'une couleur différente.")}
     <div class="gr-texte">${escapeHtml(texte)}</div><div class="gr-q">Il y a <span class="gr-case"></span> phrases.</div></div>${corrige("Combien de phrases", `<div>${n} phrases : ${(texte.match(/[^.!?]+[.!?]/g) ?? []).map((p) => `« ${escapeHtml(p.trim())} »`).join(" ")}</div>`)}`;
 }
 
 function feuilleEstCeUnePhrase(_r: ReglagesGrammaire, graine: number): string {
   const items = melanger(hasard(graine), PHRASE_OU_PAS);
-  return `<div class="page">${titre("Est-ce une phrase ?")}${TETE}${regle("Une phrase a du sens ; elle commence par une majuscule et finit par un point. Coche oui ou non, puis dis pourquoi à ton voisin.")}
+  return `<div class="page">${titre("Est-ce une phrase ?")}${TETE}${rappel("Une phrase a du sens ; elle commence par une majuscule et finit par un point.")}${regle("Coche oui ou non, puis dis pourquoi à ton voisin.")}
     <table class="gr-tableau"><tr><th></th><th>Oui</th><th>Non</th></tr>${items.map((x) => `<tr><td class="gr-grand">${escapeHtml(x.texte)}</td><td class="gr-centre"><span class="gr-case"></span></td><td class="gr-centre"><span class="gr-case"></span></td></tr>`).join("")}</table></div>
     ${corrige("Est-ce une phrase", items.map((x) => `<div>${escapeHtml(x.texte)} — <b>${x.phrase ? "oui" : "non"}</b> : ${escapeHtml(x.pourquoi)}</div>`).join(""))}`;
 }
@@ -264,17 +277,22 @@ function feuilleTypes(r: ReglagesGrammaire, graine: number): string {
 function feuilleNegation(r: ReglagesGrammaire, graine: number): string {
   const items = [A_NEGATIVER[0], ...melanger(hasard(graine), A_NEGATIVER.slice(1)).slice(0, 5)];
   const cp = r.classe === "CP";
-  return `<div class="page">${titre("La forme négative")}${TETE}${regle(`Écris la phrase à la forme négative avec ne… pas. ${cp ? "Lis les deux phrases : qu'est-ce qui a changé dans le sens ?" : "Devant une voyelle, ne devient n'."}`)}
+  return `<div class="page">${titre("La forme négative")}${TETE}${cp ? "" : rappel("Devant une voyelle, ne devient n'.")}${regle(`Écris la phrase à la forme négative avec ne… pas.${cp ? " Lis les deux phrases : qu'est-ce qui a changé dans le sens ?" : ""}`)}
     ${items.map((x, i) => `<div class="gr-item"><div class="gr-grand"><b>${i + 1}.</b> ${escapeHtml(x.phrase)}</div>${ligne()}</div>`).join("")}</div>
     ${corrige("La forme négative", items.map((x, i) => `<div><b>${i + 1}.</b> ${escapeHtml(x.negative)}</div>`).join(""))}`;
 }
 
 function feuilleConstituants(_r: ReglagesGrammaire, graine: number): string {
   const items = melanger(hasard(graine), PHRASES_DEMONTEES).slice(0, 6);
-  return `<div class="page">${titre("Groupe sujet, verbe, compléments")}${TETE}${regle("Souligne le groupe sujet en bleu : je peux l'encadrer par « C'est… qui ». Entoure le verbe en rouge : je peux l'encadrer par « ne… pas », et il change si je change le temps. Mets les compléments entre crochets.")}
+  // La phrase qu'on transforme n'a qu'un complément : « le complément » est alors celui-là, sans hésiter.
+  const seule = items.find((p) => (p.match(/\[C:/g) ?? []).length === 1) ?? items[0];
+  const sans = sansLeComplement(seule);
+  const oui = `<div class="gr-choix"><span><span class="gr-case gr-petite"></span> oui</span><span><span class="gr-case gr-petite"></span> non</span></div>`;
+  return `<div class="page">${titre("Groupe sujet, verbe, compléments")}${TETE}${rappel("Le groupe sujet peut s'encadrer par « C'est… qui ». Le verbe peut s'encadrer par « ne… pas », et il change si je change le temps.")}${regle("Souligne le groupe sujet en bleu. Entoure le verbe en rouge. Encadre les compléments en vert.")}
     ${items.map((p, i) => `<div class="gr-item gr-grand"><b>${i + 1}.</b> ${escapeHtml(sansMarques(p))}</div>`).join("")}
-    <div class="gr-sous-titre">Déplace un complément, puis supprime-le : la phrase a-t-elle encore du sens ?</div><div class="gr-q">${escapeHtml(sansMarques(items[0]))}</div>${ligne()}${ligne()}</div>
-    ${corrige("Groupe sujet, verbe, compléments", items.map((p, i) => `<div><b>${i + 1}.</b> ${phraseMarquee(p)}</div>`).join("") + '<div class="gr-legende"><span class="gr-sujet">groupe sujet</span> <span class="gr-verbe">verbe</span> <span class="gr-complement">complément</span></div>')}`;
+    <div class="gr-sous-titre">Encadre le complément en vert. Puis écris la phrase sans le complément. Réponds : la phrase a-t-elle encore du sens ?</div><div class="gr-q">${escapeHtml(sansMarques(seule))}</div>${ligne()}${oui}</div>
+    ${corrige("Groupe sujet, verbe, compléments", items.map((p, i) => `<div><b>${i + 1}.</b> ${phraseMarquee(p)}</div>`).join("") + '<div class="gr-legende"><span class="gr-sujet">groupe sujet</span> <span class="gr-verbe">verbe</span> <span class="gr-complement">complément</span></div>'
+      + `<div>Sans le complément : <b>${escapeHtml(sans)}</b>${SENS_SANS_LE_COMPLEMENT[sans] ? ` — encore du sens ? ${escapeHtml(SENS_SANS_LE_COMPLEMENT[sans])}` : ""}</div>`)}`;
 }
 
 function feuilleClasses(r: ReglagesGrammaire, graine: number): string {
@@ -282,9 +300,9 @@ function feuilleClasses(r: ReglagesGrammaire, graine: number): string {
   const mots = melanger(hasard(graine), MOTS_A_CLASSER.filter((m) => classes.includes(m.classe) || (r.classe === "CP" && m.classe === "nom propre")))
     .map((m) => (r.classe === "CP" && m.classe === "nom propre" ? { ...m, classe: "nom commun" as ClasseDeMot } : m)).slice(0, 18);
   const nom = (c: ClasseDeMot) => (r.classe === "CP" ? { "nom commun": "la boîte des noms", "verbe": "la boîte des verbes", "déterminant": "la boîte des petits mots devant le nom", "adjectif": "la boîte des mots qui disent comment est le nom" }[c as string] ?? c : c);
-  return `<div class="page">${titre("Les classes de mots")}${TETE}${regle(r.classe === "CP"
-    ? "Range chaque mot dans sa boîte. Dans la boîte des noms, on trouve des noms d'animaux, de personnes, d'objets ; dans la boîte des verbes, on trouve souvent des actions."
-    : "Écris chaque mot dans la colonne de sa classe. Avant un nom commun, il y a souvent un déterminant ; un nom propre commence par une majuscule.")}
+  return `<div class="page">${titre("Les classes de mots")}${TETE}${r.classe === "CP"
+    ? rappel("Dans la boîte des noms, on trouve des noms d'animaux, de personnes, d'objets ; dans la boîte des verbes, on trouve souvent des actions.") + regle("Range chaque mot dans sa boîte.")
+    : rappel("Avant un nom commun, il y a souvent un déterminant ; un nom propre commence par une majuscule.") + regle("Écris chaque mot dans la colonne de sa classe.")}
     <div class="gr-banque">${mots.map((m) => `<span>${escapeHtml(m.mot)}</span>`).join("")}</div>
     <table class="gr-tableau gr-colonnes"><tr>${classes.map((c) => `<th>${escapeHtml(nom(c))}</th>`).join("")}</tr><tr>${classes.map(() => "<td></td>").join("")}</tr></table></div>
     ${corrige("Les classes de mots", classes.map((c) => `<div><b>${escapeHtml(nom(c))}</b> : ${mots.filter((m) => m.classe === c).map((m) => escapeHtml(m.mot)).join(", ") || "—"}</div>`).join(""))}`;
@@ -292,7 +310,7 @@ function feuilleClasses(r: ReglagesGrammaire, graine: number): string {
 
 function feuillePronoms(_r: ReglagesGrammaire, graine: number): string {
   const items = [SUJETS_A_REMPLACER[0], ...melanger(hasard(graine), SUJETS_A_REMPLACER.slice(1)).slice(0, 4)];
-  return `<div class="page">${titre("Le groupe sujet et le pronom")}${TETE}${regle("Remplace le groupe sujet par un pronom : il, elle, nous, vous, ils, elles. Puis, à l'inverse, remplace le pronom par un groupe nominal de ton choix.")}
+  return `<div class="page">${titre("Le groupe sujet et le pronom")}${TETE}${regle("Remplace le groupe sujet par un pronom : il, elle, nous, vous, ils, elles. Puis remplace le pronom par un groupe nominal de ton choix.")}
     ${items.map((x, i) => `<div class="gr-item"><div class="gr-grand"><b>${i + 1}.</b> ${escapeHtml(x.phrase)}</div>${ligne()}</div>`).join("")}
     <div class="gr-sous-titre">À l'inverse</div>${["Il aboie dans le jardin.", "Elles chantent une chanson."].map((p) => `<div class="gr-item"><div class="gr-grand">${escapeHtml(p)}</div>${ligne()}</div>`).join("")}</div>
     ${corrige("Le groupe sujet et le pronom", items.map((x, i) => `<div><b>${i + 1}.</b> ${escapeHtml(x.pronom)}</div>`).join("") + "<div>À l'inverse, par exemple : Le chien aboie dans le jardin. Les filles chantent une chanson.</div>")}`;
@@ -300,7 +318,7 @@ function feuillePronoms(_r: ReglagesGrammaire, graine: number): string {
 
 function feuilleDiscours(): string {
   const d = DIALOGUE;
-  return `<div class="page">${titre("Les paroles rapportées")}${TETE}${regle("Dans un récit, les paroles des personnages sont entre guillemets « … ». Surligne les paroles, puis écris qui parle.")}
+  return `<div class="page">${titre("Les paroles rapportées")}${TETE}${rappel("Dans un récit, les paroles des personnages sont entre guillemets « … ».")}${regle("Surligne les paroles, puis écris qui parle.")}
     <div class="gr-texte">${escapeHtml(d.texte)}</div>
     <table class="gr-tableau"><tr><th>Les paroles</th><th>Qui parle ?</th></tr>${d.paroles.map((_, i) => `<tr><td>${i + 1}.</td><td></td></tr>`).join("")}</table>
     <div class="gr-sous-titre">Écris ce que Léa pourrait répondre ensuite, avec les guillemets</div>${ligne()}${ligne()}</div>
@@ -309,7 +327,7 @@ function feuilleDiscours(): string {
 
 function feuilleGenreNombre(): string {
   const g = GENRE_NOMBRE_CP;
-  return `<div class="page">${titre("Masculin, féminin, singulier, pluriel")}${TETE}${regle("Un seul ou plusieurs ? Un garçon ou une fille ? Les petits mots devant le nom nous aident.")}
+  return `<div class="page">${titre("Masculin, féminin, singulier, pluriel")}${TETE}${rappel("Un seul ou plusieurs ? Un garçon ou une fille ? Les petits mots devant le nom nous aident.")}
     <div class="gr-sous-titre">1. Écris un ou une</div><div class="gr-grille">${g.unUne.map(([m]) => `<div><span class="gr-trou"></span> ${escapeHtml(m)}</div>`).join("")}</div>
     <div class="gr-sous-titre">2. Écris au pluriel : plusieurs</div>${g.pluriel.map(([a]) => `<div class="gr-paire">${escapeHtml(a)} → <span class="gr-trait"></span></div>`).join("")}
     <div class="gr-sous-titre">3. Écris au féminin</div>${g.feminin.map(([a]) => `<div class="gr-paire">${escapeHtml(a)} → <span class="gr-trait"></span></div>`).join("")}
@@ -323,7 +341,7 @@ function feuilleChaineAccords(r: ReglagesGrammaire, graine: number): string {
   const alea = hasard(graine);
   const pluriel = melanger(alea, c.pluriel).slice(0, 5), feminin = melanger(alea, c.feminin).slice(0, 3);
   const devinettes = [DEVINETTES[0], ...melanger(alea, DEVINETTES.slice(1)).slice(0, 2)];
-  return `<div class="page">${titre("La chaîne d'accords")}${TETE}${regle("Dans le groupe nominal, le déterminant, le nom et l'adjectif s'accordent : si l'un change, les autres changent aussi. Je relie les mots de la chaîne par une flèche.")}
+  return `<div class="page">${titre("La chaîne d'accords")}${TETE}${rappel("Dans le groupe nominal, le déterminant, le nom et l'adjectif s'accordent : si l'un change, les autres changent aussi.")}${regle("Je relie les mots de la chaîne par une flèche.")}
     <div class="gr-sous-titre">1. Écris au pluriel</div>${pluriel.map(([a]) => `<div class="gr-paire">${escapeHtml(a)} → <span class="gr-trait"></span></div>`).join("")}
     <div class="gr-sous-titre">2. Écris au féminin</div>${feminin.map(([a]) => `<div class="gr-paire">${escapeHtml(a)} → <span class="gr-trait"></span></div>`).join("")}
     <div class="gr-sous-titre">3. Les devinettes : explique ton choix</div>${devinettes.map((d) => `<div class="gr-paire">${escapeHtml(d.devinette)} <span class="gr-trait gr-court"></span></div>`).join("")}</div>
@@ -335,7 +353,7 @@ function feuilleSujetVerbe(r: ReglagesGrammaire, graine: number): string {
   const paires = A_RELIER_SV[r.classe];
   const droite = melanger(alea, paires.map(([, v]) => v));
   const transfos = TRANSFORMATIONS_SV[r.classe];
-  return `<div class="page">${titre("Le sujet et le verbe")}${TETE}${regle("Le verbe s'accorde avec son sujet : si le sujet change, la fin du verbe change. Avec ils, elles, ou un sujet au pluriel, le verbe se termine souvent par -nt, qu'on n'entend pas.")}
+  return `<div class="page">${titre("Le sujet et le verbe")}${TETE}${rappel("Le verbe s'accorde avec son sujet : si le sujet change, la fin du verbe change. Avec ils, elles, ou un sujet au pluriel, le verbe se termine souvent par -nt, qu'on n'entend pas.")}
     <div class="gr-sous-titre">1. Relie chaque sujet à son verbe</div><table class="gr-relier">${paires.map(([s], i) => `<tr><td class="gr-droite">${escapeHtml(s)} ●</td><td class="gr-vide"></td><td>● ${escapeHtml(droite[i])}</td></tr>`).join("")}</table>
     <div class="gr-sous-titre">2. Transforme la phrase</div>${transfos.map(([p, c]) => `<div class="gr-item"><div class="gr-grand">${escapeHtml(p)} <span class="gr-consigne">${escapeHtml(c)}</span></div>${ligne()}</div>`).join("")}</div>
     ${corrige("Le sujet et le verbe", `<div>1. ${paires.map(([s, v]) => `${escapeHtml(s)} ${escapeHtml(v)}`).join(" ; ")}</div>${transfos.map(([, , x], i) => `<div>2.${i + 1}. ${escapeHtml(x)}</div>`).join("")}`)}`;
@@ -426,8 +444,7 @@ export const STYLE_GRAMMAIRE = `
   .feuille.gr .gr-pronom { width: 18mm; color: #4a5168; font-size: 13px; }
   .feuille.gr .gr-sujet { border-bottom: 2.5px solid #2454e6; }
   .feuille.gr .gr-verbe { border: 2px solid #d33a32; border-radius: 3mm; padding: 0 1mm; }
-  .feuille.gr .gr-complement::before { content: "["; color: #1f9a48; font-weight: 800; }
-  .feuille.gr .gr-complement::after { content: "]"; color: #1f9a48; font-weight: 800; }
+  .feuille.gr .gr-complement { border: 2px solid #1f9a48; padding: 0 1mm; }
   .feuille.gr .gr-legende { margin-top: 4mm; font-size: 13px; }
   .feuille.gr .gr-legende span { margin-right: 6mm; }
   .feuille.gr .gr-corrige { font-size: 14px; line-height: 1.9; }

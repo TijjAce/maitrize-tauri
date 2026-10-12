@@ -45,7 +45,8 @@ export function htmlPhrasesEnDesordre(liste: PhraseMelee[], r: ReglagesPhrases):
   const bloc = (p: PhraseMelee, i: number) => `<div class="pe-phrase"><div class="pe-num">${i + 1}</div>
     <div class="pe-etiquettes">${p.etiquettes.map((e) => `<span class="pe-etiquette">${texte(e)}</span>`).join("")}</div>
     ${r.lignes ? `<div class="pe-ligne"></div>` : ""}</div>`;
-  const regle = `<div class="titre">Phrases en désordre</div><div class="regle"><b>La règle</b>Découpe les étiquettes d'une phrase et remets les mots dans l'ordre. La majuscule commence la phrase, le point la termine. Quand la phrase est juste, colle-la sur la ligne — ou recopie-la.</div>`;
+  const regle = `<div class="titre">Phrases en désordre</div><div class="rappel">La majuscule commence la phrase, le point la termine.</div>`
+    + `<div class="regle"><b>La règle</b>Découpe les étiquettes d'une phrase et remets les mots dans l'ordre. Quand la phrase est juste, colle-la sur la ligne — ou recopie-la.</div>`;
   const pages: string[] = [];
   for (let i = 0; i < Math.max(1, liste.length); i += 6) {
     pages.push(`<div class="page">${regle}${liste.slice(i, i + 6).map((p, j) => bloc(p, i + j)).join("")}</div>`);

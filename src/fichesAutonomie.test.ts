@@ -4,7 +4,7 @@ import {
   NIVEAUX_FICHES, RECETTES, combienDeFiches, elevesDuJour, graineDe, niveauDesFiches, nomDeLaRecette, prenomEcrit, prevuAvecLesFiches,
   proposer, recetteDe, recettesPour, repartir, titreDeLaFiche, titreLibre, uneAutre, uneDePlus, type OutilsFiche,
 } from "./fichesAutonomie";
-import { auNomDeLEleve } from "./impressionAtelier";
+import { titreSansLEleve } from "./impressionAtelier";
 import { pdfsCites } from "./materielAImprimer";
 
 const outils: OutilsFiche = {
@@ -149,19 +149,19 @@ describe("la journée", () => {
     expect(titreLibre("Mots mêlés — Eliot, 7 oct.", pris)).toBe("Mots mêlés — Eliot, 7 oct. (3)");
   });
 
-  it("le prénom à la façon d'un prénom, et la ligne « Prénom … Date … » remplie", () => {
+  it("le prénom à la façon d'un prénom ; le PDF garde le titre de la feuille, sans l'élève ni le jour", () => {
     expect(prenomEcrit("ELIOT")).toBe("Eliot");
     expect(prenomEcrit("jean-luc")).toBe("Jean-Luc");
     expect(prenomEcrit("ALOïS")).toBe("Aloïs");
-    const html = '<div class="sous">Prénom : ........................ Date : ..........</div><p>Date : le jour</p><div>Prénom : ………………</div>';
-    expect(auNomDeLEleve(html, "Inès", "mercredi 7 octobre"))
-      .toBe('<div class="sous">Prénom : Inès Date : mercredi 7 octobre</div><p>Date : le jour</p><div>Prénom : Inès</div>');
+    expect(titreSansLEleve("Mots mêlés — Eliot, 7 oct.", "Eliot")).toBe("Mots mêlés");
+    expect(titreSansLEleve("Lire l'heure — pile et demie — Jean-Luc, 7 oct. (2)", "Jean-Luc")).toBe("Lire l'heure — pile et demie");
+    expect(titreSansLEleve("Les pyramides", "Inès")).toBe("Les pyramides");
   });
 });
 
 describe("chaque fiche se fabrique, à chaque niveau et chaque période", () => {
-  it("rend une feuille, avec la ligne du prénom à remplir", async () => {
-    const sansPrenom = new Set<string>();
+  it("rend une feuille, qui ne porte pas le prénom de l'élève", async () => {
+    const aSonNom = new Set<string>();
     for (const r of RECETTES) for (const niveau of r.niveaux) for (let periode = 1; periode <= 5; periode++) {
       if (!recettesPour(niveau, periode, false).includes(r)) continue;
       for (const graine of [1, 2, 3]) {
@@ -170,9 +170,10 @@ describe("chaque fiche se fabrique, à chaque niveau et chaque période", () => 
         expect(f.html.length, `${r.id} ${niveau} P${periode}`).toBeGreaterThan(200);
         expect(f.html, `${r.id} ${niveau} P${periode}`).not.toMatch(/undefined|NaN|\[object Object\]/);
         expect(nomDeLaRecette(r, c).length).toBeGreaterThan(3);
-        if (!auNomDeLEleve(f.html, "Eliot", "mercredi 7 octobre").includes("Prénom : Eliot")) sansPrenom.add(`${r.id} ${niveau}`);
+        // Seul « J'écris mon prénom » le prend : c'est le modèle à copier.
+        if (r.id !== "prenom" && f.html.includes("Eliot")) aSonNom.add(`${r.id} ${niveau}`);
       }
     }
-    expect([...sansPrenom]).toEqual([]);
+    expect([...aSonNom]).toEqual([]);
   });
 });
