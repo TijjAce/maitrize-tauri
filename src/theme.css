@@ -1536,10 +1536,17 @@ details.cm-pli > summary .meta { margin-left: 4px; font-size: 12.5px; }
 .lv-pdf { display: inline-flex; align-items: center; gap: 4px; }
 .lv-source-courte { font-size: 12px; margin: 14px 0 0; line-height: 1.5; }
 
-/* Le code de la phrase : une rangée par groupe, sa couleur en pastilles, sa marque. */
-.cp-reglage { display: grid; gap: 6px; padding: 8px 0 10px; border-bottom: 1px solid var(--border); }
-.cp-reglage-nom { font-size: 15px; font-weight: 700; line-height: 1.9; color: var(--text); }
-.cp-couleurs { display: flex; flex-wrap: wrap; gap: 6px; }
-.cp-pastille { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--panel, #fff); box-shadow: 0 0 0 1px rgba(127, 127, 127, .6); cursor: pointer; padding: 0; }
+/* Le code de la phrase : une famille, puis une rangée par élément — sa couleur en pastilles, sa marque, sur la carte ou non. */
+.cp-famille-reglages { margin: 10px 0 4px; }
+.cp-famille-titre { font-weight: 700; }
+.cp-reglage { display: grid; gap: 4px; padding: 6px 0 8px; border-bottom: 1px solid var(--border); }
+.cp-reglage.cp-cache .cp-reglage-nom { opacity: .5; }
+.cp-reglage-tete { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cp-reglage-nom { font-size: 14px; font-weight: 700; line-height: 1.9; color: var(--text); }
+.cp-sur-carte { font-size: 11.5px; color: var(--text-2); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.cp-reglage-choix { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+.cp-reglage-choix select { min-width: 0; max-width: 170px; }
+.cp-couleurs { display: flex; flex-wrap: wrap; gap: 5px; }
+.cp-pastille { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--panel, #fff); box-shadow: 0 0 0 1px rgba(127, 127, 127, .6); cursor: pointer; padding: 0; }
 .cp-pastille.active { box-shadow: 0 0 0 2px var(--text); }
 .cp-pastille:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
