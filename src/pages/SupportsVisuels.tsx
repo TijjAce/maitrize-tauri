@@ -12,7 +12,8 @@ import { chargerImages, usePictoImage, usePictoImages } from "../components/Choi
 import { CasePicto } from "../components/CasePicto";
 import {
   CARTES_MAX, COMPORTEMENTS_MAX, DUREES_MINUTEUR, ETAPES_SCENARIO_MAX, JETONS_MAX, MINUTES_MAX, PAGE_PAYSAGE, PAGE_PORTRAIT, pageDabord,
-  IMAGES_PAR_LIGNE_MAX, JOUEURS_MAX, LIGNES_REGLES_MAX, feuilleRegles, normaliserRegles, photoDuJoueur, type Joueur, type LigneRegle,
+  BANDES_MAX, BANDE_PAR_DEFAUT, EXEMPLAIRES_BANDE_MAX, IMAGES_PAR_LIGNE_MAX, JOUEURS_MAX, LIGNES_REGLES_MAX, bandesAImprimer, copieDeBande,
+  feuilleRegles, joueursDeLaBande, nomDeLaBande, normaliserRegles, photoDuJoueur, type BandeRegles, type Joueur, type LigneRegle,
   STYLE_SUPPORTS, TITRES_ETAPES, cleImage, estVide,
   demarrer, dePrenom, dureeMs, estEnMarche, estFini, feuilleDabord, feuilleJetons, feuilleScenario, fractionAffichee, graduations,
   idsDes, mettreEnPause, minuteurPret, normaliserDabord, normaliserJetons, normaliserMinuteur, normaliserScenario,
@@ -380,30 +381,104 @@ function Scenario({ banque }: { banque: boolean }) {
 
 // ── Règles du jeu ──────────────────────────────────────────────────────────
 
+/** Les règles enregistrées sous un nom : on en reprend les bandes pour les ajouter aux autres. */
+function useReglesEnregistrees(): [{ nom: string; bandes: BandeRegles[] }[], () => void] {
+  const [liste, setListe] = React.useState<{ nom: string; bandes: BandeRegles[] }[]>([]);
+  const relire = React.useCallback(() => {
+    api.settingGet("fabriquer:supports-enregistres:regles").then((brut) => {
+      try {
+        const lu = brut ? JSON.parse(brut) : [];
+        setListe(Array.isArray(lu)
+          ? lu.filter((x) => x && typeof x.nom === "string").map((x) => ({ nom: x.nom as string, bandes: normaliserRegles(x.reglages).bandes }))
+          : []);
+      } catch { setListe([]); }
+    }).catch(() => {});
+  }, []);
+  React.useEffect(() => {
+    relire();
+    window.addEventListener(EVT_DONNEES_DISTANTES, relire);
+    return () => window.removeEventListener(EVT_DONNEES_DISTANTES, relire);
+  }, [relire]);
+  return [liste, relire];
+}
+
 function Regles({ banque }: { banque: boolean }) {
   const [r, maj, setR] = useSupport("regles", normaliserRegles);
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   const classe = React.useMemo(() => (eleves ?? [])
     .map((e): Joueur => ({ id: e.id, prenom: e.nom.trim().split(/\s+/)[0] || e.nom, photo: e.photoFichier }))
     .sort((a, b) => a.prenom.localeCompare(b.prenom, "fr")), [eleves]);
-  const joueurs = r.joueurs.map((id) => classe.find((j) => j.id === id)).filter((j): j is Joueur => Boolean(j));
-  const changerLigne = (i: number, m: Partial<LigneRegle>) => maj({ lignes: r.lignes.map((l, j) => (j === i ? { ...l, ...m } : l)) });
+  // La bande qu'on règle ; les autres attendent leur tour, dans leurs onglets.
+  const [choisie, setChoisie] = React.useState(0);
+  const n = Math.min(choisie, r.bandes.length - 1);
+  const b = r.bandes[n];
+  const majBande = (m: Partial<BandeRegles>) => maj({ bandes: r.bandes.map((x, i) => (i === n ? { ...x, ...m } : x)) });
+  const changerLigne = (i: number, m: Partial<LigneRegle>) => majBande({ lignes: b.lignes.map((l, j) => (j === i ? { ...l, ...m } : l)) });
   const deplacer = (i: number, vers: number) => {
-    if (vers < 0 || vers >= r.lignes.length) return;
-    const suite = [...r.lignes];
+    if (vers < 0 || vers >= b.lignes.length) return;
+    const suite = [...b.lignes];
     [suite[i], suite[vers]] = [suite[vers], suite[i]];
-    maj({ lignes: suite });
+    majBande({ lignes: suite });
   };
+  const [enregistrees, relireEnregistrees] = useReglesEnregistrees();
+  const ajouter = (quoi: string) => {
+    const nouvelles = quoi === "neuve" ? [copieDeBande(BANDE_PAR_DEFAUT, 1)]
+      : quoi === "copie" ? [copieDeBande(b, 1)]
+        : (enregistrees.find((m) => `enr:${m.nom}` === quoi)?.bandes ?? []).map((x) => copieDeBande(x));
+    if (!nouvelles.length) return;
+    maj({ bandes: [...r.bandes, ...nouvelles].slice(0, BANDES_MAX) });
+    setChoisie(r.bandes.length);
+  };
+  const imprimees = bandesAImprimer(r, classe);
+  const pages = Math.ceil(imprimees.length / r.parPage);
+  const joueursDeToutes = r.bandes.flatMap((x) => joueursDeLaBande(x, classe));
   return (
-    <Atelier titre="Règles du jeu" pictos={[...r.lignes.flatMap((l) => l.images), ...joueurs.map(photoDuJoueur)]}
-      feuille={(images) => feuilleRegles(r, images, joueurs)} page={PAGE_PORTRAIT}
-      aide="Une bande à poser à côté du jeu : les joueurs, le jeu, et ce qu'on y fait, une ligne par moment. Chaque image porte son mot au-dessus ; trois bandes tiennent sur une page, une par table."
+    <Atelier titre="Règles du jeu" pictos={[...r.bandes.flatMap((x) => x.lignes.flatMap((l) => l.images)), ...joueursDeToutes.map(photoDuJoueur)]}
+      feuille={(images) => feuilleRegles(r, images, classe)} page={PAGE_PORTRAIT}
+      aide="Des bandes à poser à côté du jeu : les joueurs, le jeu, et ce qu'on y fait, une ligne par moment. Chaque bande peut être différente — un jeu par table, ses joueurs — ; trois tiennent côte à côte sur une page."
       reglages={<>
-        <Modeles type="regles" valeur={r} set={setR} normaliser={normaliserRegles} exemple="Nom, par exemple « Le verger »" />
-        <Field label={`Les lignes, de haut en bas (${r.lignes.length})`}>
+        <Modeles type="regles" valeur={r} set={(v) => { setR(v); setChoisie(0); }} normaliser={normaliserRegles} exemple="Nom, par exemple « Le verger »" />
+        <Field label={`Les bandes (${r.bandes.length})`}>
+          <div className="seg" style={{ flexWrap: "wrap" }}>
+            {r.bandes.map((x, i) => (
+              <button key={i} type="button" className={i === n ? "active" : ""} onClick={() => setChoisie(i)}>
+                {nomDeLaBande(x, i)}{x.exemplaires > 1 ? ` ×${x.exemplaires}` : ""}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
+            {r.bandes.length < BANDES_MAX && (
+              <Select value="" aria-label="Ajouter une bande" style={{ flex: "1 1 100%", minWidth: 0, maxWidth: "100%" }}
+                onFocus={relireEnregistrees} onMouseDown={relireEnregistrees}
+                onChange={(e) => { if (e.target.value) ajouter(e.target.value); }}>
+                <option value="">＋ Une autre bande…</option>
+                <option value="neuve">Une bande neuve, à partir du modèle</option>
+                <option value="copie">Une copie de « {nomDeLaBande(b, n)} », pour d'autres joueurs</option>
+                {enregistrees.length > 0 && (
+                  <optgroup label="Mes règles enregistrées">
+                    {enregistrees.map((m) => <option key={m.nom} value={`enr:${m.nom}`}>{m.nom}</option>)}
+                  </optgroup>
+                )}
+              </Select>
+            )}
+            {r.bandes.length > 1 && (
+              <button type="button" className="btn ghost sm" onClick={() => { maj({ bandes: r.bandes.filter((_, i) => i !== n) }); setChoisie(Math.max(0, n - 1)); }}>
+                ✕ Retirer « {nomDeLaBande(b, n)} »
+              </button>
+            )}
+          </div>
+        </Field>
+        <Field label="Combien de cette bande">
+          <Select value={b.exemplaires} onChange={(e) => majBande({ exemplaires: Number(e.target.value) })} style={{ width: "auto" }}>
+            {Array.from({ length: EXEMPLAIRES_BANDE_MAX }, (_, k) => k + 1).map((k) => (
+              <option key={k} value={k}>{k === 1 ? "Une, pour une table" : `${k}, pour ${k} tables`}</option>
+            ))}
+          </Select>
+        </Field>
+        <Field label={`Ses lignes, de haut en bas (${b.lignes.length})`}>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {r.lignes.map((l, i) => (
-              <div key={i} className="sv-r-ligne-edition">
+            {b.lignes.map((l, i) => (
+              <div key={`${n}-${i}`} className="sv-r-ligne-edition">
                 <div className="sv-r-cases">
                   {l.images.map((p, k) => (
                     <div key={k} style={{ position: "relative" }}>
@@ -423,20 +498,20 @@ function Regles({ banque }: { banque: boolean }) {
                 </div>
                 <div className="sv-etape-actions">
                   <button className="btn ghost sm" disabled={i === 0} onClick={() => deplacer(i, i - 1)} aria-label={`Monter la ligne ${i + 1}`}>↑</button>
-                  <button className="btn ghost sm" disabled={i === r.lignes.length - 1} onClick={() => deplacer(i, i + 1)} aria-label={`Descendre la ligne ${i + 1}`}>↓</button>
-                  <button className="btn ghost sm" disabled={r.lignes.length === 1} onClick={() => maj({ lignes: r.lignes.filter((_, j) => j !== i) })}
+                  <button className="btn ghost sm" disabled={i === b.lignes.length - 1} onClick={() => deplacer(i, i + 1)} aria-label={`Descendre la ligne ${i + 1}`}>↓</button>
+                  <button className="btn ghost sm" disabled={b.lignes.length === 1} onClick={() => majBande({ lignes: b.lignes.filter((_, j) => j !== i) })}
                     aria-label={`Retirer la ligne ${i + 1}`}>✕</button>
                 </div>
                 {l.joueurs && (
                   <div className="sv-r-choix-joueurs">
                     <span className="meta">Les joueurs :</span>
                     {classe.length ? classe.map((j) => {
-                      const on = r.joueurs.includes(j.id);
+                      const on = b.joueurs.includes(j.id);
                       return (
                         <button key={j.id} type="button" className={`sv-r-joueur${on ? " on" : ""}`} aria-pressed={on}
-                          disabled={!on && r.joueurs.length >= JOUEURS_MAX}
+                          disabled={!on && b.joueurs.length >= JOUEURS_MAX}
                           title={j.photo ? "Sa photo s'imprime sur la bande" : "Pas de photo dans Élèves : son prénom s'imprime"}
-                          onClick={() => maj({ joueurs: on ? r.joueurs.filter((x) => x !== j.id) : [...r.joueurs, j.id] })}>
+                          onClick={() => majBande({ joueurs: on ? b.joueurs.filter((x) => x !== j.id) : [...b.joueurs, j.id] })}>
                           {j.photo ? "📷 " : ""}{j.prenom}
                         </button>
                       );
@@ -447,24 +522,29 @@ function Regles({ banque }: { banque: boolean }) {
             ))}
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-            {r.lignes.length < LIGNES_REGLES_MAX && (
-              <button className="btn sm" onClick={() => maj({ lignes: [...r.lignes, { images: [pictoVide()], joueurs: false }] })}>＋ Une ligne</button>
+            {b.lignes.length < LIGNES_REGLES_MAX && (
+              <button className="btn sm" onClick={() => majBande({ lignes: [...b.lignes, { images: [pictoVide()], joueurs: false }] })}>＋ Une ligne</button>
             )}
-            {!r.lignes.some((l) => l.joueurs) && r.lignes.length < LIGNES_REGLES_MAX && (
-              <button className="btn sm" onClick={() => maj({ lignes: [{ images: [{ id: null, mot: "les joueurs" }], joueurs: true }, ...r.lignes] })}>
+            {!b.lignes.some((l) => l.joueurs) && b.lignes.length < LIGNES_REGLES_MAX && (
+              <button className="btn sm" onClick={() => majBande({ lignes: [{ images: [{ id: null, mot: "les joueurs" }], joueurs: true }, ...b.lignes] })}>
                 ＋ La ligne des joueurs
               </button>
             )}
           </div>
         </Field>
         <Field label="Sur la page">
-          <Select value={r.bandes} onChange={(e) => maj({ bandes: Number(e.target.value) as 1 | 2 | 3 })}>
-            <option value={3}>Trois bandes, une par table</option>
-            <option value={2}>Deux bandes</option>
-            <option value={1}>Une seule bande</option>
+          <Select value={r.parPage} onChange={(e) => maj({ parPage: Number(e.target.value) as 1 | 2 | 3 })}>
+            <option value={3}>Trois bandes côte à côte, de 6 cm</option>
+            <option value={2}>Deux bandes côte à côte, de 9 cm</option>
+            <option value={1}>Une bande par page, de 9 cm</option>
           </Select>
         </Field>
         <Coche valeur={r.capitales} onChange={(capitales) => maj({ capitales })}>Mots en capitales</Coche>
+        <div className="meta" style={{ fontSize: 12.5, marginTop: 6 }}>
+          {imprimees.length
+            ? `${imprimees.length} bande${imprimees.length > 1 ? "s" : ""} à imprimer, ${pages > 1 ? `${pages} pages` : "une page"}.`
+            : "Rien à imprimer : donnez des images aux lignes."}
+        </div>
       </>} />
   );
 }

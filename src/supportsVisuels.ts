@@ -344,20 +344,29 @@ export function feuilleScenario(r: ReglagesScenario, images: Images): string {
 // Une bande à plastifier, posée à côté du plateau : qui joue, à quoi, et ce
 // qu'on y fait, une ligne par moment — lancer le dé, avancer le pion, gagner,
 // perdre. Chaque image porte son mot au-dessus ; la ligne des joueurs reçoit
-// la photo des élèves qui jouent. Trois bandes tiennent sur une page : une
-// par table.
+// la photo des élèves qui jouent. Les bandes se font différentes — un jeu
+// par table, les joueurs de chaque groupe — et s'impriment côte à côte, trois
+// par page au plus.
 
 export interface LigneRegle { images: PictoPose[]; joueurs: boolean }
 export const LIGNES_REGLES_MAX = 14;
 export const IMAGES_PAR_LIGNE_MAX = 4;
 export const JOUEURS_MAX = 8;
+export const BANDES_MAX = 9;
+export const EXEMPLAIRES_BANDE_MAX = 6;
 
-export interface ReglesDuJeu {
+/** Une bande : ses lignes, ses joueurs, et combien on en imprime. */
+export interface BandeRegles {
   lignes: LigneRegle[];
   /** Les élèves qui jouent, par identifiant : leur photo s'ajoute à la ligne des joueurs. */
   joueurs: string[];
-  /** Les bandes côte à côte sur la page, à découper. */
-  bandes: 1 | 2 | 3;
+  exemplaires: number;
+}
+
+export interface ReglesDuJeu {
+  bandes: BandeRegles[];
+  /** Les bandes côte à côte sur une page, ce qui fait leur largeur. */
+  parPage: 1 | 2 | 3;
   capitales: boolean;
 }
 
@@ -367,7 +376,7 @@ export interface ReglesDuJeu {
  * partie — la banque donnerait sinon « perdre » ses clés, et « règles » au
  * sens du corps.
  */
-export const REGLES_PAR_DEFAUT: ReglesDuJeu = {
+export const BANDE_PAR_DEFAUT: BandeRegles = {
   lignes: [
     { images: [{ id: 2439, mot: "les joueurs" }], joueurs: true },
     // La photo de la boîte du jeu, à prendre.
@@ -380,18 +389,25 @@ export const REGLES_PAR_DEFAUT: ReglesDuJeu = {
     { images: [{ id: 7218, mot: "gagner" }], joueurs: false },
     { images: [{ id: 22031, mot: "perdre" }], joueurs: false },
   ],
-  joueurs: [], bandes: 3, capitales: false,
+  joueurs: [], exemplaires: 1,
 };
 
-export function normaliserRegles(brut: unknown): ReglesDuJeu {
-  const o = objet(brut), d = REGLES_PAR_DEFAUT;
+/** Au départ, une bande pour trois tables. */
+export const REGLES_PAR_DEFAUT: ReglesDuJeu = { bandes: [{ ...BANDE_PAR_DEFAUT, exemplaires: 3 }], parPage: 3, capitales: false };
+
+/** Une bande neuve, à partir de celle de départ, ou la copie d'une autre : rien n'est partagé avec l'originale. */
+export const copieDeBande = (b: BandeRegles = BANDE_PAR_DEFAUT, exemplaires = b.exemplaires): BandeRegles =>
+  ({ lignes: b.lignes.map((l) => ({ ...l, images: l.images.map((i) => ({ ...i })) })), joueurs: [...b.joueurs], exemplaires });
+
+export function normaliserBande(brut: unknown, exemplairesParDefaut = 1): BandeRegles {
+  const o = objet(brut);
   const lignes = Array.isArray(o.lignes)
     ? o.lignes.slice(0, LIGNES_REGLES_MAX).map((l): LigneRegle => {
       const x = objet(l);
       const images = Array.isArray(x.images) ? x.images.slice(0, IMAGES_PAR_LIGNE_MAX).map(normaliserPicto) : [];
       return { images: images.length ? images : [pictoVide()], joueurs: booleen(x.joueurs, false) };
     })
-    : d.lignes.map((l) => ({ ...l, images: l.images.map((i) => ({ ...i })) }));
+    : copieDeBande().lignes;
   // Une seule ligne des joueurs : la première qui l'est.
   let vue = false;
   for (const l of lignes) {
@@ -402,9 +418,31 @@ export function normaliserRegles(brut: unknown): ReglesDuJeu {
   return {
     lignes: lignes.length ? lignes : [{ images: [pictoVide()], joueurs: false }],
     joueurs: [...new Set(joueurs)].slice(0, JOUEURS_MAX),
-    bandes: o.bandes === 1 || o.bandes === 2 || o.bandes === 3 ? o.bandes : d.bandes,
-    capitales: booleen(o.capitales, d.capitales),
+    exemplaires: entier(o.exemplaires, 1, EXEMPLAIRES_BANDE_MAX, exemplairesParDefaut),
   };
+}
+
+const parPageValide = (v: unknown): 1 | 2 | 3 | null => (v === 1 || v === 2 || v === 3 ? v : null);
+
+export function normaliserRegles(brut: unknown): ReglesDuJeu {
+  const o = objet(brut), d = REGLES_PAR_DEFAUT;
+  const capitales = booleen(o.capitales, d.capitales);
+  if (Array.isArray(o.bandes)) {
+    const bandes = o.bandes.slice(0, BANDES_MAX).map((b) => normaliserBande(b));
+    return { bandes: bandes.length ? bandes : [copieDeBande()], parPage: parPageValide(o.parPage) ?? d.parPage, capitales };
+  }
+  // L'ancienne forme : une seule bande, imprimée autant de fois qu'il y avait de bandes sur la page.
+  if (Array.isArray(o.lignes) || Array.isArray(o.joueurs) || parPageValide(o.bandes)) {
+    const parPage = parPageValide(o.bandes) ?? d.parPage;
+    return { bandes: [normaliserBande({ lignes: o.lignes, joueurs: o.joueurs }, parPage)], parPage, capitales };
+  }
+  return { bandes: d.bandes.map((b) => copieDeBande(b)), parPage: d.parPage, capitales };
+}
+
+/** Le nom d'une bande, pour la retrouver : le mot de sa première image hors des joueurs — « domino » —, sinon son rang. */
+export function nomDeLaBande(b: BandeRegles, rang: number): string {
+  const mot = b.lignes.filter((l) => !l.joueurs).flatMap((l) => l.images).find((i) => i.mot.trim())?.mot.trim();
+  return mot || `Bande ${rang + 1}`;
 }
 
 /** Un élève qui joue, tel que la bande le montre : son prénom, et sa photo s'il en a une. */
@@ -413,9 +451,13 @@ export interface Joueur { id: string; prenom: string; photo: string | null }
 /** La photo d'un joueur, à charger avec les autres images : elle est rangée dans les fichiers de l'application, comme celles des objets. */
 export const photoDuJoueur = (j: Joueur): PictoPose | null => (j.photo ? { id: null, mot: j.prenom, photo: j.photo } : null);
 
+/** Les joueurs d'une bande, retrouvés dans la classe, dans l'ordre où on les a cochés. */
+export const joueursDeLaBande = (b: BandeRegles, classe: Joueur[]): Joueur[] =>
+  b.joueurs.map((id) => classe.find((j) => j.id === id)).filter((j): j is Joueur => Boolean(j));
+
 /** Les lignes qu'on imprime, sans leurs cases vides ; une ligne vide disparaît, sauf celle des joueurs quand il y en a. */
-export function lignesImprimees(r: ReglesDuJeu, joueurs: Joueur[]): LigneRegle[] {
-  return r.lignes
+export function lignesImprimees(b: BandeRegles, joueurs: Joueur[]): LigneRegle[] {
+  return b.lignes
     .map((l) => ({ ...l, images: l.images.filter((i) => !estVide(i)) }))
     .filter((l) => l.images.length > 0 || (l.joueurs && joueurs.length > 0));
 }
@@ -425,8 +467,8 @@ export function lignesImprimees(r: ReglesDuJeu, joueurs: Joueur[]): LigneRegle[]
  * bandes par page, la hauteur de ses lignes pour tenir sur une page en
  * hauteur, et celle des images — la ligne, moins le mot au-dessus.
  */
-export function mesuresRegles(bandes: number, lignes: number): { largeur: number; ligne: number; image: number } {
-  const largeur = Math.min(90, Math.floor((186 - 6 * (bandes - 1)) / bandes));
+export function mesuresRegles(parPage: number, lignes: number): { largeur: number; ligne: number; image: number } {
+  const largeur = Math.min(90, Math.floor((186 - 6 * (parPage - 1)) / parPage));
   const ligne = Math.min(34, Math.floor((264 / Math.max(1, lignes)) * 10) / 10);
   return { largeur, ligne, image: Math.round((ligne - 6.5) * 10) / 10 };
 }
@@ -444,9 +486,16 @@ export function photosDesJoueurs(largeur: number, image: number, imagesDeLaLigne
   return { cote: Math.max(6, Math.min((image - 1) / 2, Math.floor(surDeux * 10) / 10)), rangees: 2 };
 }
 
-export function feuilleRegles(r: ReglesDuJeu, images: Images, joueurs: Joueur[]): string {
-  const lignes = lignesImprimees(r, joueurs);
-  const { largeur, ligne, image: hauteur } = mesuresRegles(r.bandes, lignes.length);
+/** Les bandes à imprimer, chacune autant de fois qu'on le demande, dans l'ordre ; les bandes vides ne s'impriment pas. */
+export function bandesAImprimer(r: ReglesDuJeu, classe: Joueur[]): { bande: BandeRegles; joueurs: Joueur[]; lignes: LigneRegle[] }[] {
+  return r.bandes.flatMap((bande) => {
+    const joueurs = joueursDeLaBande(bande, classe);
+    const lignes = lignesImprimees(bande, joueurs);
+    return lignes.length ? Array.from({ length: bande.exemplaires }, () => ({ bande, joueurs, lignes })) : [];
+  });
+}
+
+export function feuilleRegles(r: ReglesDuJeu, images: Images, classe: Joueur[]): string {
   const cellule = (p: PictoPose) => {
     const m = p.mot.trim();
     return `<div class="sv-r-case${m ? "" : " sv-r-seule"}">${m ? `<div class="sv-r-mot">${escapeHtml(m)}</div>` : ""}${image(p, images, "sv-r-image")}</div>`;
@@ -456,17 +505,22 @@ export function feuilleRegles(r: ReglesDuJeu, images: Images, joueurs: Joueur[])
     const src = p ? images[cleImage(p)!] : undefined;
     return src ? `<img class="sv-r-photo" src="${src}" alt="${escapeHtml(j.prenom)}"/>` : `<div class="sv-r-prenom">${escapeHtml(j.prenom)}</div>`;
   };
-  const rangee = (l: LigneRegle) => {
-    if (!l.joueurs || !joueurs.length) return "";
-    const { cote, rangees } = photosDesJoueurs(largeur, hauteur, l.images.length, joueurs.length);
-    return `<div class="sv-r-joueurs${rangees > 1 ? " sv-r-deux" : ""}" style="--photo: ${cote}mm">${joueurs.map(joueur).join("")}</div>`;
+  const bande = ({ joueurs, lignes }: { joueurs: Joueur[]; lignes: LigneRegle[] }) => {
+    const { largeur, ligne, image: hauteur } = mesuresRegles(r.parPage, lignes.length);
+    const rangee = (l: LigneRegle) => {
+      if (!l.joueurs || !joueurs.length) return "";
+      const { cote, rangees } = photosDesJoueurs(largeur, hauteur, l.images.length, joueurs.length);
+      return `<div class="sv-r-joueurs${rangees > 1 ? " sv-r-deux" : ""}" style="--photo: ${cote}mm">${joueurs.map(joueur).join("")}</div>`;
+    };
+    return `<div class="sv-r-bande" style="width: ${largeur}mm; --ligne: ${ligne}mm; --image: ${hauteur}mm">`
+      + lignes.map((l) => `<div class="sv-r-ligne">${l.images.map(cellule).join("")}${rangee(l)}</div>`).join("")
+      + `</div>`;
   };
-  const bande = `<div class="sv-r-bande" style="width: ${largeur}mm; --ligne: ${ligne}mm; --image: ${hauteur}mm">`
-    + lignes.map((l) => `<div class="sv-r-ligne">${l.images.map(cellule).join("")}${rangee(l)}</div>`).join("")
-    + `</div>`;
+  const a = bandesAImprimer(r, classe);
+  const pages: string[] = [];
+  for (let i = 0; i < a.length; i += r.parPage) pages.push(`<div class="sv-r-bandes">${a.slice(i, i + r.parPage).map(bande).join("")}</div>`);
   const classes = ["sv-feuille", "sv-regles", r.capitales && "sv-majuscules"].filter(Boolean).join(" ");
-  return `<div class="${classes}"><div class="sv-r-bandes">${Array.from({ length: r.bandes }, () => bande).join("")}</div>`
-    + `${attribution(lignes.flatMap((l) => l.images))}</div>`;
+  return `<div class="${classes}">${pages.join("")}${attribution(a.flatMap((x) => x.lignes.flatMap((l) => l.images)))}</div>`;
 }
 
 /** Styles des supports, pour l'impression comme pour l'aperçu. */
@@ -556,6 +610,8 @@ export const STYLE_SUPPORTS = `
 
   /* Les règles du jeu : des bandes côte à côte, une ligne par moment, le mot au-dessus de chaque image. */
   .sv-r-bandes { display: flex; justify-content: center; align-items: flex-start; gap: 6mm; }
+  /* Une page de bandes après l'autre : la suivante commence sur une feuille neuve. */
+  .sv-r-bandes + .sv-r-bandes { break-before: page; page-break-before: always; }
   .sv-r-bande { flex: none; box-sizing: border-box; border: 0.4mm solid #222; background: #fff; }
   .sv-r-ligne { height: var(--ligne); box-sizing: border-box; padding: 1mm 1.5mm; border-bottom: 0.3mm solid #222; overflow: hidden;
     display: flex; align-items: flex-end; justify-content: center; gap: 2mm; break-inside: avoid; page-break-inside: avoid; }
