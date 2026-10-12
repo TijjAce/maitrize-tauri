@@ -298,6 +298,27 @@ export function ManuelsPanel() {
     majExercice({ modele: { ...exercice.modele, fiche: { ...exercice.modele.fiche, ...patch } } });
   };
   const majOption = (patch: Partial<OptionsReadaptation>) => setOptions((o) => ({ ...o, ...patch }));
+
+  /**
+   * La page telle qu'elle est, sur une feuille A4 : l'histoire à lire, les
+   * questions à relire en classe. Elle remplit la feuille, couchée si la
+   * page est plus large que haute.
+   */
+  const imprimerLaPage = async () => {
+    if (!manuel || !page) return;
+    try {
+      const image = await imageDe(manuel, page);
+      const img = new Image();
+      img.src = image;
+      await img.decode();
+      const paysage = img.naturalWidth > img.naturalHeight;
+      printHTML(`${manuel.titre} — page ${page.numero}`, `<img class="page-du-manuel" src="${image}" alt="">`,
+        `@page { size: A4 ${paysage ? "landscape" : "portrait"}; margin: 8mm; }
+        body { padding: 0; }
+        img.page-du-manuel { display: block; margin: 0 auto; width: auto; height: auto; max-width: 100%; max-height: ${paysage ? 192 : 279}mm; }`);
+    } catch (e) { toast("Page non imprimée : " + texteErreur(e), { icone: "⚠️" }); }
+  };
+
   const imprimer = () => {
     if (!exercice?.modele || !manuel || !page) return;
     const { fiche, options: o } = exercice.modele;
@@ -409,6 +430,8 @@ export function ManuelsPanel() {
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
               <b style={{ fontSize: 13 }}>Page {page.numero}</b>
               <div style={{ flex: 1 }} />
+              <button type="button" className="btn sm" disabled={!images[page.id]} onClick={() => { void imprimerLaPage(); }}
+                title="La page telle qu'elle est, sur une feuille A4">🖨 Imprimer la page</button>
               {manuel.source === "telephone" && (
                 <button type="button" className="btn ghost sm" aria-label="Retirer cette page" onClick={async () => {
                   if (!(await confirmer(`Retirer la page ${page.numero}${page.exercices.length ? ` et ses ${page.exercices.length} exercice${page.exercices.length > 1 ? "s" : ""} encadré${page.exercices.length > 1 ? "s" : ""}` : ""} ?`, { oui: "Retirer", danger: true }))) return;
