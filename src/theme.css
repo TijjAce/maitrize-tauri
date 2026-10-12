@@ -888,7 +888,7 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .sv-apercu .sv-feuille + .sv-feuille { border-top: 1px dashed #c4c9d6; margin-top: 18px; padding-top: 18px; }
 .sv-apercu .sv-s-page { min-height: 0; padding: 18px 0; }
 .sv-apercu .sv-s-page + .sv-s-page { border-top: 1px dashed #c4c9d6; }
-.sv-case-picto { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px; border-radius: 10px;
+.sv-case-picto { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px; border-radius: 10px;
   border: 1px solid var(--border); background: #fff; color: #1c2233; cursor: pointer; }
 .sv-case-picto:hover { border-color: var(--accent); }
 .sv-case-picto img { object-fit: contain; }
@@ -1330,8 +1330,11 @@ details.pli-catalogue[open] .pli-chevron { transform: rotate(90deg); }
 /* Un picto de « Mes pictos » : d'où il vient, en petit — l'IA n'est pas ARASAAC. */
 .mp-etiquette { position: absolute; top: 3px; left: 3px; z-index: 1; font-size: 9.5px; font-weight: 800; line-height: 1; letter-spacing: .02em;
   padding: 2px 4px; border-radius: 4px; background: #6741d9; color: #fff; cursor: help; }
-.mp-etiquette.mp-sclera, .mp-etiquette.mp-bajard { background: #495057; }
+.mp-etiquette.mp-sclera { background: #2f9e44; }
+.mp-etiquette.mp-bajard { background: #495057; }
 .mp-etiquette.mp-photo { background: #0f766e; }
+.mp-etiquette.mp-arasaac { background: #1971c2; }
+.mp-etiquette.mp-makaton { background: #fcc419; color: #1c2233; }
 .bm-chip .mp-etiquette { position: static; }
 /* L'assistant › Trouver un pictogramme : les banques à gauche, le picto choisi à droite. */
 .tp-corps { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 14px; align-items: start; }

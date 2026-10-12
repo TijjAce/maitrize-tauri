@@ -8,13 +8,15 @@ import { nomsAMasquer } from "../nomsAMasquer";
 import { EtiquetteMonPicto, usePictoImage } from "./ChoixPicto";
 import { texteTelechargement, useBanquesAppoint } from "./ChoixPictoConsigne";
 import { infoBanque } from "../pictosAppoint";
+import { BoutonImportMakaton } from "./ImportMakaton";
 import {
   ETIQUETTES, chercherDans, cleDuMot, garderMonPicto, lireMesPictos, oublierMonPicto, renommerMonPicto, type MonPicto,
 } from "../mesPictos";
 
 // ── Trouver un pictogramme, ou le faire dessiner ──────────────────────────
 //
-// On cherche un mot dans ARASAAC, dans Sclera, et parmi ses pictos gardés.
+// On cherche un mot dans ARASAAC, dans Sclera, parmi ses symboles Makaton
+// importés, et parmi ses pictos gardés.
 // Quand aucune banque ne l'a, l'IA de Mistral en dessine un à la manière
 // d'ARASAAC ; on le garde dans « Mes pictos », et il revient ensuite dans
 // les ateliers, les listes de mots et le loto — avec son étiquette « IA » :
@@ -120,10 +122,13 @@ export function TrouverUnPicto({ onClose }: { onClose: () => void }) {
     return () => clearTimeout(t);
   }, [mot, arasaacLa, scleraLa]);
 
-  const lesMiens = chercherDans(miens, mot);
+  const trouves = chercherDans(miens, mot);
+  // Les symboles Makaton ont leur rubrique, comme les banques : ce qui se ressemble ne se confond pas.
+  const lesMiens = trouves.filter((p) => p.origine !== "makaton");
+  const makaton = trouves.filter((p) => p.origine === "makaton");
   const pret = cherche === mot && arasaacLa !== null;
   // Rien nulle part, pas même parmi ses pictos gardés : on propose le dessin.
-  const rienDansLesBanques = pret && cleDuMot(mot).length >= 2 && !arasaac.length && !sclera.length && !lesMiens.length;
+  const rienDansLesBanques = pret && cleDuMot(mot).length >= 2 && !arasaac.length && !sclera.length && !trouves.length;
 
   const dessiner = async () => {
     if (!mot) return;
@@ -195,10 +200,21 @@ export function TrouverUnPicto({ onClose }: { onClose: () => void }) {
                     actif={choix?.sorte === "sclera" && choix.reference === p.reference}
                     onClick={() => setChoix({ sorte: "sclera", reference: p.reference, mot: p.mot })} />)}</div>
                 : note(pret ? `Aucun pictogramme Sclera pour « ${mot} ».` : "Recherche…"))}
+            {section(
+              <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                {`Makaton${makaton.length ? ` (${makaton.length})` : ""}`}
+                <BoutonImportMakaton className="btn ghost sm" onImporte={() => { void relireMiens(); }} />
+              </span>,
+              makaton.length
+                ? <div className="tp-grille">{makaton.map((p) => <VignetteMienne key={p.id} p={p} actif={choix?.sorte === "mien" && choix.picto.id === p.id}
+                    onClick={() => setChoix({ sorte: "mien", picto: p })} />)}</div>
+                : note(miens.some((p) => p.origine === "makaton")
+                  ? `Aucun de vos symboles Makaton pour « ${mot} ».`
+                  : "Les symboles Makaton appartiennent à la Makaton Charity : l'application n'en livre aucun. Importez les vôtres, un fichier par mot."))}
 
             {rienDansLesBanques || dessinOuvert ? (
               <div className="tp-dessin">
-                <b>{rienDansLesBanques ? `Ni ARASAAC, ni Sclera, ni vos pictos gardés n'ont « ${mot} ».` : `Faire dessiner « ${mot} »`}</b>
+                <b>{rienDansLesBanques ? `Ni ARASAAC, ni Sclera, ni vos symboles Makaton ou vos pictos gardés n'ont « ${mot} ».` : `Faire dessiner « ${mot} »`}</b>
                 <p className="meta" style={{ fontSize: 12.5, margin: "4px 0 8px", lineHeight: 1.5 }}>
                   L'IA de Mistral peut en dessiner un, à la manière d'ARASAAC, en 10 à 30 secondes (environ 0,09 € l'image, sur
                   votre compte Mistral). Ce ne sera pas un pictogramme ARASAAC : gardé, il portera partout l'étiquette « IA ».
@@ -218,7 +234,7 @@ export function TrouverUnPicto({ onClose }: { onClose: () => void }) {
             )}
           </>)}
 
-          {!mot && !miens.length && note("Écrivez un mot : ARASAAC, Sclera et vos pictos gardés répondent ensemble.")}
+          {!mot && !miens.length && note("Écrivez un mot : ARASAAC, Sclera, vos symboles Makaton et vos pictos gardés répondent ensemble.")}
         </div>
 
         <Apercu choix={choix} occupe={occupe} dessine={dessine}

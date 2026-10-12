@@ -2,11 +2,12 @@ import React from "react";
 import { api, PictoArasaac } from "../api";
 import { Field, Input, Modal } from "./ui";
 import type { PictoPose } from "../supportsVisuels";
-import { chargerImageAppoint } from "../pictosAppoint";
+import { banqueDe, chargerImageAppoint } from "../pictosAppoint";
 import { ETIQUETTES, chercherPictos, estMonPicto, imageDeMonPicto, origineDe, type MonPicto } from "../mesPictos";
 import { PhotoParNuage } from "./PhotoParNuage";
 import { imagesSelonMode, modeImagesActif, photosChangees, type ModeImages } from "../imagesSelonMode";
 import { toast } from "./Toaster";
+import { BoutonImportMakaton } from "./ImportMakaton";
 
 // ── Choisir un pictogramme ARASAAC ─────────────────────────────────────────
 //
@@ -120,14 +121,24 @@ export function EtiquetteMonPicto({ id }: { id: number | string | null | undefin
   return <span className={`mp-etiquette mp-${origine}`} title={e.long}>{e.court}</span>;
 }
 
+/** D'où vient un picto, en petit : ARASAAC, Sclera, Makaton, Bajard, l'IA, une photo. Ce qui se ressemble ne se confond pas. */
+export function EtiquetteBanque({ id }: { id: number | string | null | undefined }) {
+  if (origineDe(id)) return <EtiquetteMonPicto id={id} />;
+  const banque = banqueDe(id);
+  if (!banque) return null;
+  const [court, long] = banque === "arasaac" ? ["ARASAAC", "Pictogramme ARASAAC (Sergio Palao, Gouvernement d'Aragon)"]
+    : banque === "sclera" ? ["Sclera", "Pictogramme Sclera (sclera.be)"] : ["Bajard", "Pictogramme des consignes de F. Bajard"];
+  return <span className={`mp-etiquette mp-${banque}`} title={long}>{court}</span>;
+}
+
 function Resultat({ picto, actif, onClick }: { picto: PictoArasaac; actif: boolean; onClick: () => void }) {
   const src = usePictoImage(picto.id, true);
   const origine = origineDe(picto.id);
   return (
-    <button type="button" onClick={onClick} title={origine ? `${picto.mot} — ${ETIQUETTES[origine].long}` : picto.mot}
+    <button type="button" onClick={onClick} title={origine ? `${picto.mot} — ${ETIQUETTES[origine].long}` : `${picto.mot} — pictogramme ARASAAC`}
       style={{ border: actif ? "3px solid var(--accent)" : "1px solid var(--border)", borderRadius: 8, background: "#fff", position: "relative",
         padding: 4, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-      <EtiquetteMonPicto id={picto.id} />
+      <EtiquetteBanque id={picto.id} />
       {src ? <img src={src} alt="" style={{ width: "100%", aspectRatio: "1", objectFit: "contain" }} />
         : <div style={{ width: "100%", aspectRatio: "1" }} />}
       <span style={{ fontSize: 11, color: "#444", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -165,14 +176,15 @@ export function ChoixPicto({ valeur, banque, titre = "Choisir un pictogramme", o
     prendrePhoto(await api.fichierSave(f.name, base64));
   };
 
+  // Sans la banque ARASAAC, les pictos gardés — vos symboles Makaton, vos photos — répondent seuls.
+  const [relire, setRelire] = React.useState(0);
   React.useEffect(() => {
-    if (!banque) return;
     const t = setTimeout(() => {
       if (q.trim().length < 2) { setResultats([]); return; }
       chercherPictos(q.trim(), 48).then(setResultats).catch(() => setResultats([]));
     }, 200);
     return () => clearTimeout(t);
-  }, [q, banque]);
+  }, [q, banque, relire]);
 
   const prendre = (p: PictoArasaac) => {
     setChoisi(p.id);
@@ -191,24 +203,24 @@ export function ChoixPicto({ valeur, banque, titre = "Choisir un pictogramme", o
           Poser
         </button>
       </>}>
-      {banque ? (
-        <>
-          <Field label="Chercher un pictogramme">
-            <Input autoFocus placeholder="travailler, tablette, ranger, récréation…" value={q} onChange={(e) => setQ(e.target.value)} />
-          </Field>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))", gap: 6, maxHeight: 280, overflowY: "auto", marginBottom: 12 }}>
-            {resultats.map((p) => <Resultat key={p.id} picto={p} actif={choisi === p.id} onClick={() => prendre(p)} />)}
-            {q.trim().length >= 2 && !resultats.length && (
-              <div style={{ gridColumn: "1/-1", fontSize: 13, color: "var(--text-2)" }}>Aucun pictogramme pour « {q} ».</div>
-            )}
-          </div>
-        </>
-      ) : (
-        <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 0 }}>
-          La banque de pictogrammes ARASAAC n'est pas encore téléchargée : l'onglet 🎲 Jeux la télécharge. En attendant,
-          le support portera le mot seul.
+      <Field label="Chercher un pictogramme">
+        <Input autoFocus placeholder="travailler, tablette, ranger, récréation…" value={q} onChange={(e) => setQ(e.target.value)} />
+      </Field>
+      {!banque && (
+        <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: -4 }}>
+          La banque ARASAAC n'est pas encore téléchargée : l'onglet 🎲 Jeux la télécharge. En attendant, seuls vos pictos gardés
+          répondent, et sans image le support porte le mot seul.
         </p>
       )}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))", gap: 6, maxHeight: 280, overflowY: "auto", marginBottom: 6 }}>
+        {resultats.map((p) => <Resultat key={p.id} picto={p} actif={choisi === p.id} onClick={() => prendre(p)} />)}
+        {q.trim().length >= 2 && !resultats.length && (
+          <div style={{ gridColumn: "1/-1", fontSize: 13, color: "var(--text-2)" }}>Aucun pictogramme pour « {q} ».</div>
+        )}
+      </div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+        <BoutonImportMakaton className="btn ghost sm" onImporte={() => setRelire((n) => n + 1)} />
+      </div>
       {photos && (
         <Field label="Ou une photo de l'objet">
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>

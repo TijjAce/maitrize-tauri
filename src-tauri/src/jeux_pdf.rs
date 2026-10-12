@@ -54,6 +54,7 @@ const ATTRIBUTION: &str = "Pictogrammes ARASAAC (Sergio Palao, arasaac.org) - Go
 const MENTION_IA: &str = "Pictogrammes dessinés par IA (Mistral AI) à la manière d'ARASAAC : ils n'en font pas partie";
 const MENTION_SCLERA: &str = "Pictogrammes Sclera (www.sclera.be) - CC BY-NC 2.0 BE";
 const MENTION_BAJARD: &str = "Pictogrammes F. Bajard (ressources-ecole-inclusive.org) - CC BY-NC-SA 4.0";
+const MENTION_MAKATON: &str = "Symboles Makaton (c) The Makaton Charity";
 
 /// Les compétences travaillées, dans la marge haute : corps en points,
 /// interligne en millimètres, et le nombre de lignes que la marge accepte
@@ -399,6 +400,10 @@ fn mentions(planche: &Planche, fournies: &Fournies) -> Vec<&'static str> {
     }
     if porte(-1_800_000_000, -2_100_000_000) {
         m.push(MENTION_BAJARD);
+    }
+    // Les symboles Makaton que l'enseignant a importés de ses fichiers (voir mesPictos.ts).
+    if porte(-600_000_000, -1_000_000_000) {
+        m.push(MENTION_MAKATON);
     }
     if porte(-1_000_000_000, -1_400_000_000) {
         m.push(MENTION_IA);
@@ -949,6 +954,7 @@ mod tests {
         assert_eq!(mentions(&planche(&[-1_000_000_007]), &ia), vec![MENTION_IA]);
         assert_eq!(mentions(&planche(&[-1_000_000_007, 2349]), &ia), vec![ATTRIBUTION, MENTION_IA]);
         assert_eq!(mentions(&planche(&[-1_400_000_001]), &Fournies::new())[1..], [MENTION_SCLERA]);
+        assert_eq!(mentions(&planche(&[-600_000_001]), &Fournies::new())[1..], [MENTION_MAKATON]);
         assert!(mentions(&planche(&[-1, -2]), &fournies).is_empty());
         // Le fond transparent d'un PNG devient blanc, pas noir.
         let Some(Pixels::Bruts(image)) = fournies.get(&-1) else { panic!("un PNG se décode") };

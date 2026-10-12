@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PLANCHE_PAR_DEFAUT, htmlPlanche, libelleTaille, nombreDeCartes, normaliserPlanche } from "./planchesPictos";
+import { PLANCHE_PAR_DEFAUT, htmlPlanche, libelleTaille, nombreDeCartes, normaliserPlanche, texteSur } from "./planchesPictos";
 import { CREDIT_ARASAAC } from "./cartesImprimables";
 
 const IMAGES = { 12: "data:image/png;base64,AAA", "photo:tasse.jpg": "data:image/jpeg;base64,BBB" };
@@ -43,5 +43,19 @@ describe("les planches de pictos", () => {
     expect(r.cadre).toBe(true);
     expect(libelleTaille(15)).toBe("1,5 cm");
     expect(libelleTaille(40)).toBe("4 cm");
+  });
+});
+
+describe("le mot dans un bandeau", () => {
+  it("met le mot dans un bandeau de couleur, d'un bord à l'autre, lisible sur sa couleur", () => {
+    const r = { ...PLANCHE_PAR_DEFAUT, pictos: [{ id: 12, mot: "lundi" }], tailles: [40], bandeau: true, couleurBandeau: "#ffd43b", capitales: true };
+    const html = htmlPlanche(r, IMAGES);
+    expect(html).toContain('<div class="pp-carte pp-avec-bandeau" style="--c: 40mm">');
+    expect(html).toContain('<div class="pp-mot pp-bandeau" style="background: #ffd43b; color: #111">lundi</div>');
+    expect(html).toContain("pp-capitales");
+    expect(texteSur("#1c2233")).toBe("#fff");
+    expect(texteSur("#ffffff")).toBe("#111");
+    // Une couleur abîmée revient au jaune.
+    expect(normaliserPlanche({ bandeau: true, couleurBandeau: "red" }).couleurBandeau).toBe("#ffd43b");
   });
 });
