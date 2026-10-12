@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide } from "../components/Aide";
 import { api, type Seance } from "../api";
 import { Field, Input, Select, Textarea, useAsync } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
@@ -26,10 +27,6 @@ import {
 // résoudre un problème, passer de la figure à l'équation, modéliser par une
 // fonction. Les deux premières se glissent aussi dans les séquences qu'on
 // crée ; « Modifier dans Fabriquer » les rouvre ici.
-
-const Presentation = ({ children }: { children: React.ReactNode }) => (
-  <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>{children}</p>
-);
 
 /** Imprime, ou range sur le bureau, une feuille dont il faut d'abord charger les images. */
 function useSortie(atelier: string, titre: string, fabriquer: () => Promise<{ html: string; style: string }>) {
@@ -71,11 +68,11 @@ export function SequentielTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Décomposer la tâche</h3>
-        <Presentation>
-          Une tâche en étapes simples, numérotées, que l'élève suit comme une recette illustrée et coche une à une. Le chaînage cache
-          l'étape qu'il apprend, version après version, jusqu'à ce qu'il se passe du support ; le soliloque la lui fait dire en la faisant.
-        </Presentation>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Décomposer la tâche
+          <Aide titre="Décomposer la tâche" vers="droite"><p>Une tâche en étapes simples, numérotées, que l'élève suit comme une recette illustrée et coche une à une. Le chaînage cache
+          l'étape qu'il apprend, version après version, jusqu'à ce qu'il se passe du support ; le soliloque la lui fait dire en la faisant.</p></Aide>
+        </h3>
         <Field label="La tâche">
           <Input value={r.titre} maxLength={120} placeholder="Coller une feuille dans mon cahier" onChange={(e) => maj({ titre: e.target.value })} />
         </Field>
@@ -111,11 +108,12 @@ export function SequentielTab() {
           </Field>
         )}
         <Field label="Le chaînage">
-          <Select value={r.chainage} onChange={(e) => maj({ chainage: e.target.value as ReglagesSequentiel["chainage"] })}
-            title={CHAINAGES.find((c) => c.id === r.chainage)?.quoi}>
-            {CHAINAGES.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
-          </Select>
-          <div className="meta" style={{ fontSize: 11.5, marginTop: 4 }}>{CHAINAGES.find((c) => c.id === r.chainage)?.quoi}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Select value={r.chainage} onChange={(e) => maj({ chainage: e.target.value as ReglagesSequentiel["chainage"] })}>
+              {CHAINAGES.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
+            </Select>
+            {(({ nom, quoi }) => <Aide titre={nom} vers="gauche"><p>{quoi}</p></Aide>)(CHAINAGES.find((c) => c.id === r.chainage) ?? CHAINAGES[0])}
+          </div>
         </Field>
         <Field label="Ce dont j'ai besoin">
           <Input value={r.materiel} maxLength={300} placeholder="Mon cahier, la colle…" onChange={(e) => maj({ materiel: e.target.value })} />
@@ -157,22 +155,24 @@ export function PriseDeParoleTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Préparer une prise de parole</h3>
-        <Presentation>
-          Organiser ses idées avant de parler : la carte mentale à compléter, le sujet au centre ; les mots pour enchaîner ; des
-          cartes-images qu'on choisit et qu'on range dans l'ordre où l'on parlera ; un dé à raconter.
-        </Presentation>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Préparer une prise de parole
+          <Aide titre="Préparer une prise de parole" vers="droite"><p>Organiser ses idées avant de parler : la carte mentale à compléter, le sujet au centre ; les mots pour enchaîner ; des
+          cartes-images qu'on choisit et qu'on range dans l'ordre où l'on parlera ; un dé à raconter.</p></Aide>
+        </h3>
         <Field label="Le sujet">
           <Input value={r.sujet} maxLength={80} placeholder="Les saisons, mon animal préféré…" onChange={(e) => maj({ sujet: e.target.value })} />
         </Field>
         <Field label="La carte">
-          <div className="seg" style={{ flexWrap: "wrap" }}>
-            {MODELES_PAROLE.map((m) => (
-              <button key={m.id} type="button" className={r.modele === m.id ? "active" : ""} title={m.quoi}
-                onClick={() => maj({ modele: m.id, branches: m.branches.slice(0, 4).map((b) => b.titre) })}>{m.nom}</button>
-            ))}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <div className="seg" style={{ flexWrap: "wrap" }}>
+              {MODELES_PAROLE.map((m) => (
+                <button key={m.id} type="button" className={r.modele === m.id ? "active" : ""} title={m.quoi}
+                  onClick={() => maj({ modele: m.id, branches: m.branches.slice(0, 4).map((b) => b.titre) })}>{m.nom}</button>
+              ))}
+            </div>
+            <Aide titre={modele.nom} vers="gauche"><p>{modele.quoi}</p></Aide>
           </div>
-          <div className="meta" style={{ fontSize: 11.5, margin: "4px 0" }}>{modele.quoi}</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
             {modele.branches.map((b) => {
               const on = r.branches.includes(b.titre);
@@ -216,12 +216,12 @@ export function ResolutionTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Résoudre un problème, étape par étape</h3>
-        <Presentation>
-          Pour les élèves qui lisent difficilement ou se repèrent mal dans un texte : on travaille l'énoncé en couleurs, la question
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Résoudre un problème, étape par étape
+          <Aide titre="Résoudre un problème, étape par étape" vers="droite"><p>Pour les élèves qui lisent difficilement ou se repèrent mal dans un texte : on travaille l'énoncé en couleurs, la question
           sort du texte et reste sous les yeux, puis quatre étapes — ce qu'on cherche, la phrase devenue égalité, la résolution,
-          la vérification et la phrase réponse.
-        </Presentation>
+          la vérification et la phrase réponse.</p></Aide>
+        </h3>
         <Field label="Niveau">
           <div className="seg">
             {NIVEAUX_RESOLUTION.map((n) => (
@@ -255,11 +255,11 @@ export function ModelisationTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>De la figure à l'équation</h3>
-        <Presentation>
-          Un problème de géométrie qui se résout par une équation, décortiqué en six étapes : lire l'énoncé en trois parts, l'expliquer
-          sur la figure, découper la figure, chercher par essais, passer aux calculs avec x, contrôler — aussi en découpant.
-        </Presentation>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          De la figure à l'équation
+          <Aide titre="De la figure à l'équation" vers="droite"><p>Un problème de géométrie qui se résout par une équation, décortiqué en six étapes : lire l'énoncé en trois parts, l'expliquer
+          sur la figure, découper la figure, chercher par essais, passer aux calculs avec x, contrôler — aussi en découpant.</p></Aide>
+        </h3>
         <Field label="L'énoncé, une phrase par ligne">
           <Textarea rows={5} value={r.enonce} onChange={(e) => maj({ enonce: e.target.value })} />
         </Field>
@@ -289,11 +289,11 @@ export function FonctionTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Modéliser par une fonction</h3>
-        <Presentation>
-          Une figure à géométrie variable, décortiquée avant de calculer : le texte et la figure aux mêmes couleurs, ce qui est fixe et
-          ce qui bouge, les points qui font bouger et ceux qui suivent, une partie de la figure isolée à la fois.
-        </Presentation>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Modéliser par une fonction
+          <Aide titre="Modéliser par une fonction" vers="droite"><p>Une figure à géométrie variable, décortiquée avant de calculer : le texte et la figure aux mêmes couleurs, ce qui est fixe et
+          ce qui bouge, les points qui font bouger et ceux qui suivent, une partie de la figure isolée à la fois.</p></Aide>
+        </h3>
         <Field label="L'énoncé, une phrase par ligne">
           <Textarea rows={4} value={r.enonce} onChange={(e) => maj({ enonce: e.target.value })} />
         </Field>

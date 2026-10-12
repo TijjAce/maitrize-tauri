@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide, AideEnLigne, LibelleAvecAide } from "../components/Aide";
 import { Field, Input, Select } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
@@ -20,7 +21,7 @@ import {
 const ATELIER = "comparer";
 
 const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string; onChange: (v: boolean) => void }) => (
-  <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span>{libelle}</span></label>
+  <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span><LibelleAvecAide libelle={libelle} /></span></label>
 );
 
 /** Les pièges du niveau, en exemple : ce que la case fait entrer dans le paquet. */
@@ -54,14 +55,14 @@ export function ComparerTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Comparer les nombres</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          {signes
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Comparer les nombres
+          <Aide titre="Comparer les nombres" vers="droite"><p>{signes
             ? <>Un paquet de cartes, chaque nombre deux fois sous deux formes, et les signes &lt;, &gt; et = : la bataille pour comparer,
               la file des nombres pour ordonner et intercaler, le nombre caché pour encadrer. D'après les programmes et le guide CP d'Éduscol.</>
             : <>Des cartes de points, de doigts et, à partir de 5 ans, de chiffres : la bataille pour dire qui en a le plus, la file pour
-              ranger. Sans signes : on compare avec « plus que », « moins que », « autant que », comme le veut le programme de maternelle.</>}
-        </p>
+              ranger. Sans signes : on compare avec « plus que », « moins que », « autant que », comme le veut le programme de maternelle.</>}</p></Aide>
+        </h3>
         <Field label="Les nombres">
           <Select value={r.niveau} onChange={(e) => changerDeNiveau(e.target.value as IdNiveau)}>
             {GROUPES_DE_NIVEAUX.map((g) => (
@@ -78,11 +79,11 @@ export function ComparerTab() {
                 title={`Par exemple : ${exempleForme(f, niv)}`} onClick={() => basculer(f)}>{libelleForme(f, niv)}</button>
             ))}
           </div>
-          <div className="meta" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.45 }}>
-            Exemple : {niv.formes.filter((f) => r.formes.includes(f)).map((f) => exempleForme(f, niv)).join(" · ")}.
-            {niv.famille === "entiers" && " Passer d'une forme à l'autre — « 3d 17u », du matériel pas tout groupé — oblige à penser aux unités de numération."}
-            {niv.famille === "decimaux" && " Les fractions décimales viennent d'abord, l'écriture à virgule ensuite, comme le veut le programme du CM1."}
-          </div>
+          <AideEnLigne libelle="Exemples">
+            <p>Exemple : {niv.formes.filter((f) => r.formes.includes(f)).map((f) => exempleForme(f, niv)).join(" · ")}.</p>
+            {niv.famille === "entiers" && <p>Passer d'une forme à l'autre — « 3d 17u », du matériel pas tout groupé — oblige à penser aux unités de numération.</p>}
+            {niv.famille === "decimaux" && <p>Les fractions décimales viennent d'abord, l'écriture à virgule ensuite, comme le veut le programme du CM1.</p>}
+          </AideEnLigne>
         </Field>
         <Field label="Combien de cartes">
           <Select value={r.cartes} onChange={(e) => maj({ cartes: Number(e.target.value) })}>
@@ -102,9 +103,7 @@ export function ComparerTab() {
         </Field>
         <Boutons atelier={ATELIER} titre={r.titre.trim() || REGLAGES_COMPARER.titre} html={html} style={STYLE_COMPARER} peut={cartes.length > 0}
           onTirage={() => setGraine(graineAuHasard())} />
-        <p className="meta" style={{ fontSize: 12, lineHeight: 1.45, margin: "8px 0 0" }}>
-          📚 Une séquence part de sa compétence : Plan de travail › Nouvelle séquence, puis la compétence visée — la séquence vient alors piocher ici ses feuilles, aux nombres de sa classe.
-        </p>
+        <AideEnLigne libelle="📚 En faire une séquence"><p>Une séquence part de sa compétence : Plan de travail › Nouvelle séquence, puis la compétence visée — la séquence vient alors piocher ici ses feuilles, aux nombres de sa classe.</p></AideEnLigne>
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_COMPARER} />}
     />

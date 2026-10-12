@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide, AideEnLigne, LibelleAvecAide } from "../components/Aide";
 import { REGLAGES_POSEES, STYLE_POSEES, htmlOperationsPosees, type OperationPosee, type ReglagesPosees } from "../operationsPosees";
 import { Field, Input, Select, Textarea, ouvrirOnglet } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
@@ -65,7 +66,7 @@ export function Boutons({ onTirage, onImprimer, onBureau, peut = true }: {
 }
 
 export const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string; onChange: (v: boolean) => void }) => (
-  <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span>{libelle}</span></label>
+  <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span><LibelleAvecAide libelle={libelle} /></span></label>
 );
 
 function Chips<T extends string | number>({ liste, choisis, onChange, libelle }: {
@@ -96,10 +97,10 @@ export function CartesNombresTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Cartes des nombres</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Le même nombre sous plusieurs formes — chiffre, constellation, boîte de dix, mot, décomposition — pour un mémory, une bataille, un loto.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Cartes des nombres
+          <Aide titre="Cartes des nombres" vers="droite"><p>Le même nombre sous plusieurs formes — chiffre, constellation, boîte de dix, mot, décomposition — pour un mémory, une bataille, un loto.</p></Aide>
+        </h3>
         <Field label="De … à …">
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <Input type="number" min={0} max={99} value={r.de} onChange={(e) => maj({ de: Math.max(0, Math.min(99, Number(e.target.value) || 0)) })} style={{ width: 70 }} aria-label="De" />
@@ -162,20 +163,22 @@ export function CubesTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Les nombres en cubes</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Le cube, la barre de dix, la plaque de cent, le gros cube de mille : lire les groupements et écrire le nombre, grouper par dix,
-          faire un nombre de plusieurs façons — passer d'une représentation à l'autre, comme le veut le programme. D'après le guide CP d'Éduscol.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Les nombres en cubes
+          <Aide titre="Les nombres en cubes" vers="droite"><p>Le cube, la barre de dix, la plaque de cent, le gros cube de mille : lire les groupements et écrire le nombre, grouper par dix,
+          faire un nombre de plusieurs façons — passer d'une représentation à l'autre, comme le veut le programme. D'après le guide CP d'Éduscol.</p></Aide>
+        </h3>
         <Field label="Les nombres">
-          <Select value={r.niveau} onChange={(e) => changerDeNiveau(e.target.value as IdNiveauCubes)}>
-            {CLASSES_CUBES.map((classe) => (
-              <optgroup key={classe} label={classe}>
-                {NIVEAUX_CUBES.filter((n) => n.classe === classe).map((n) => <option key={n.id} value={n.id}>{n.classe} — {n.libelle}</option>)}
-              </optgroup>
-            ))}
-          </Select>
-          <div className="meta" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.45 }}>{niv.repere}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Select value={r.niveau} onChange={(e) => changerDeNiveau(e.target.value as IdNiveauCubes)}>
+              {CLASSES_CUBES.map((classe) => (
+                <optgroup key={classe} label={classe}>
+                  {NIVEAUX_CUBES.filter((n) => n.classe === classe).map((n) => <option key={n.id} value={n.id}>{n.classe} — {n.libelle}</option>)}
+                </optgroup>
+              ))}
+            </Select>
+            <Aide titre={`${niv.classe} — ${niv.libelle}`} vers="gauche"><p>{niv.repere}</p></Aide>
+          </div>
         </Field>
         <Field label="Exercice">
           <Select value={r.exercice} onChange={(e) => maj({ exercice: e.target.value as ExerciceCubes })}>
@@ -186,10 +189,10 @@ export function CubesTab() {
           <Field label={r.exercice === "ecrire" || r.exercice === "grouper" ? "L'élève écrit le nombre…" : "Le nombre est écrit…"}>
             <Chips liste={ECRITURES.map((x) => x.id)} choisis={r.ecritures} onChange={(v) => maj({ ecritures: v as EcritureNombre[] })}
               libelle={(id) => ECRITURES.find((x) => x.id === id)!.libelle} />
-            <div className="meta" style={{ fontSize: 12, marginTop: 4 }}>
-              {r.exercice === "ecrire" || r.exercice === "grouper" ? "Une ligne de réponse par écriture cochée." : "Plusieurs écritures cochées : chaque exercice en tire une."}
-              {" "}Exemple : {ecritures.map(exempleDe).join(" · ")}.
-            </div>
+            <AideEnLigne libelle="Exemples">
+              <p>{r.exercice === "ecrire" || r.exercice === "grouper" ? "Une ligne de réponse par écriture cochée." : "Plusieurs écritures cochées : chaque exercice en tire une."}</p>
+              <p>Exemple : {ecritures.map(exempleDe).join(" · ")}.</p>
+            </AideEnLigne>
           </Field>
         )}
         <Field label="Exercices sur la feuille">
@@ -219,9 +222,7 @@ export function CubesTab() {
         </Field>
         <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("cubes", r.titre.trim() || REGLAGES_CUBES.titre, html, style)}
           onBureau={() => bureau("cubes", r.titre.trim() || REGLAGES_CUBES.titre, html, style)} />
-        <p className="meta" style={{ fontSize: 12, lineHeight: 1.45, margin: "8px 0 0" }}>
-          📚 Une séquence part de sa compétence : Plan de travail › Nouvelle séquence, puis la compétence visée — la séquence vient alors piocher ici ses feuilles, aux nombres de sa classe.
-        </p>
+        <AideEnLigne libelle="📚 En faire une séquence"><p>Une séquence part de sa compétence : Plan de travail › Nouvelle séquence, puis la compétence visée — la séquence vient alors piocher ici ses feuilles, aux nombres de sa classe.</p></AideEnLigne>
       </>}
       droite={<ApercuFeuille html={html} style={style} />}
     />
@@ -238,10 +239,10 @@ export function CartesCalculTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Cartes de calcul</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Le calcul devant, le résultat derrière : pour se tester, ou pour une bataille des tables.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Cartes de calcul
+          <Aide titre="Cartes de calcul" vers="droite"><p>Le calcul devant, le résultat derrière : pour se tester, ou pour une bataille des tables.</p></Aide>
+        </h3>
         <Field label="Opération">
           <Select value={r.operation} onChange={(e) => maj({ operation: e.target.value as Operation })}>
             <option value="x">multiplications (tables)</option><option value="+">additions</option><option value="-">soustractions</option>
@@ -270,10 +271,10 @@ export function OperationsPoseesTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Opérations posées</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Des additions, des soustractions, des multiplications dans un quadrillage : une case par chiffre, les unités sous les unités, une ligne pour les retenues ; posées d'avance, ou à poser. Le corrigé suit.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Opérations posées
+          <Aide titre="Opérations posées" vers="droite"><p>Des additions, des soustractions, des multiplications dans un quadrillage : une case par chiffre, les unités sous les unités, une ligne pour les retenues ; posées d'avance, ou à poser. Le corrigé suit.</p></Aide>
+        </h3>
         <Field label="Opération">
           <Select value={r.operation} onChange={(e) => maj({ operation: e.target.value as OperationPosee })}>
             <option value="+">additions</option><option value="−">soustractions</option><option value="×">multiplications</option>
@@ -323,10 +324,10 @@ export function ArbreCalculTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Arbre à calcul</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Ajouter deux nombres en décomposant en dizaines et unités : l'arbre à compléter soutient le raisonnement, puis on s'en passe.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Arbre à calcul
+          <Aide titre="Arbre à calcul" vers="droite"><p>Ajouter deux nombres en décomposant en dizaines et unités : l'arbre à compléter soutient le raisonnement, puis on s'en passe.</p></Aide>
+        </h3>
         <Field label="Calculs par fiche">
           <Select value={r.combien} onChange={(e) => maj({ combien: Number(e.target.value) })}>
             <option value={4}>4</option><option value={6}>6</option><option value={8}>8</option>
@@ -357,10 +358,10 @@ export function FractionsTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Fractions</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Les cartes pour nommer et comparer les fractions, la bande unité qu'on plie, la règle graduée en quarts, en huitièmes ou en dixièmes, la course des nageurs, des segments à mesurer ou à tracer, des fractions à comparer, à ajouter et à retrancher.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Fractions
+          <Aide titre="Fractions" vers="droite"><p>Les cartes pour nommer et comparer les fractions, la bande unité qu'on plie, la règle graduée en quarts, en huitièmes ou en dixièmes, la course des nageurs, des segments à mesurer ou à tracer, des fractions à comparer, à ajouter et à retrancher.</p></Aide>
+        </h3>
         <Field label="Matériel"><Chips liste={MATERIEL.map((m) => m[0])} choisis={r.materiel} onChange={(v) => maj({ materiel: v })} libelle={(id) => MATERIEL.find((m) => m[0] === id)![1]} /></Field>
         {r.materiel.includes("cartes") && (<>
           <Field label="Dénominateurs"><Chips liste={[2, 3, 4, 5, 6, 8, 10]} choisis={r.denominateurs} onChange={(v) => maj({ denominateurs: [...v].sort((a, b) => a - b) })} /></Field>
@@ -404,10 +405,10 @@ export function JeuDeLOieTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Jeu de l'oie</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Une piste à parcourir au dé — avec des nombres, des lettres ou des syllabes dans les cases — et le patron du dé à plier.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Jeu de l'oie
+          <Aide titre="Jeu de l'oie" vers="droite"><p>Une piste à parcourir au dé — avec des nombres, des lettres ou des syllabes dans les cases — et le patron du dé à plier.</p></Aide>
+        </h3>
         <Field label="Cases">
           <Select value={r.cases} onChange={(e) => maj({ cases: Number(e.target.value) })}>
             {[18, 24, 30, 36, 42].map((n) => <option key={n} value={n}>{n} cases</option>)}
@@ -522,10 +523,10 @@ export function MartiniereTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Calcul mental</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Un fait numérique ou une procédure à la fois, tels que les programmes les donnent classe par classe. À l'oral, c'est le procédé La Martinière ; par écrit, un test de fluence.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Calcul mental
+          <Aide titre="Calcul mental" vers="droite"><p>Un fait numérique ou une procédure à la fois, tels que les programmes les donnent classe par classe. À l'oral, c'est le procédé La Martinière ; par écrit, un test de fluence.</p></Aide>
+        </h3>
         <Field label="Classe">
           <div className="seg">
             {NIVEAUX.map((n) => (
@@ -571,9 +572,9 @@ export function MartiniereTab() {
             </div>
           </Field>
         )}
-        <div className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, margin: "2px 0 8px" }}>
-          Programme de {r.niveau} · {niveau.champ}{attendu ? ` · attendu en fin d'année : ${attendu}` : ""}.
-        </div>
+        <AideEnLigne libelle={`Le programme de ${r.niveau}`} titre="Le programme">
+          <p>{niveau.champ}{attendu ? ` · attendu en fin d'année : ${attendu}` : ""}.</p>
+        </AideEnLigne>
         <Field label="Forme">
           <Select value={r.forme} onChange={(e) => maj({ forme: e.target.value as FormeEntrainement })}>
             <option value="oral">À l'oral — procédé La Martinière</option>
@@ -608,9 +609,7 @@ export function MartiniereTab() {
             🧩 Des problèmes avec ce calcul
           </button>
         )}
-        <p className="meta" style={{ fontSize: 12, lineHeight: 1.45, margin: "8px 0 0" }}>
-          📚 Une séquence part de sa compétence : Plan de travail › Nouvelle séquence, puis la compétence visée — la séquence vient alors piocher ici ses feuilles, à la classe et à la période de la compétence.
-        </p>
+        <AideEnLigne libelle="📚 En faire une séquence"><p>Une séquence part de sa compétence : Plan de travail › Nouvelle séquence, puis la compétence visée — la séquence vient alors piocher ici ses feuilles, à la classe et à la période de la compétence.</p></AideEnLigne>
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_MARTINIERE} />}
     />
@@ -628,10 +627,10 @@ export function CompteEstBonTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Le nombre cible</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Une cible, quelques nombres, les opérations permises : on cherche un chemin, on écrit ses calculs. Une solution dans le corrigé.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Le nombre cible
+          <Aide titre="Le nombre cible" vers="droite"><p>Une cible, quelques nombres, les opérations permises : on cherche un chemin, on écrit ses calculs. Une solution dans le corrigé.</p></Aide>
+        </h3>
         <Field label="Cycle"><Cycle valeur={r.cycle} onChange={(cycle) => maj({ cycle, ...REGLAGES_COMPTE_CYCLE[cycle] })} /></Field>
         <Field label="Opérations permises">
           <Chips liste={ids} choisis={r.operations} onChange={(v) => maj({ operations: ids.filter((id) => v.includes(id)) })}
@@ -659,10 +658,10 @@ export function PyramidesTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Pyramides et carrés magiques</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Chaque brique est la somme des deux du dessous ; chaque ligne du carré fait la même somme. À compléter, le corrigé à la suite.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Pyramides et carrés magiques
+          <Aide titre="Pyramides et carrés magiques" vers="droite"><p>Chaque brique est la somme des deux du dessous ; chaque ligne du carré fait la même somme. À compléter, le corrigé à la suite.</p></Aide>
+        </h3>
         <Field label="Forme">
           <Select value={r.forme} onChange={(e) => { const forme = e.target.value as FormeCalcul; maj({ forme, ...(forme === "carre" && r.jusqua < 10 ? { jusqua: 10 } : {}) }); }}>
             <option value="pyramide">Pyramides de nombres</option><option value="carre">Carrés magiques</option>
@@ -717,10 +716,10 @@ export function HeureTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Lire l'heure</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Des horloges à lire, ou des cadrans vides où dessiner l'heure demandée — les heures pile d'abord, puis les demies, les quarts, les cinq minutes ; la durée entre deux horloges, des problèmes de durées, les moments de la journée.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Lire l'heure
+          <Aide titre="Lire l'heure" vers="droite"><p>Des horloges à lire, ou des cadrans vides où dessiner l'heure demandée — les heures pile d'abord, puis les demies, les quarts, les cinq minutes ; la durée entre deux horloges, des problèmes de durées, les moments de la journée.</p></Aide>
+        </h3>
         <Field label="Exercice">
           <Select value={exercice} onChange={(e) => choisir(e.target.value)}>
             <option value="lire">Lire l'heure sur le cadran</option><option value="dessiner">Dessiner les aiguilles</option><option value="mixte">L'un et l'autre, en alternance</option>
@@ -734,7 +733,11 @@ export function HeureTab() {
             </Select>
           </Field>
         )}
-        {r.exercice === "problemes" && <p className="meta" style={{ fontSize: 12, marginTop: 0 }}>Aux heures, demies ou quarts : les problèmes du CE1. De cinq en cinq minutes ou à la minute : ceux du CE2, avec la ligne du temps.</p>}
+        {r.exercice === "problemes" && (
+          <AideEnLigne libelle="Les problèmes du CE1 et du CE2">
+            <p>Aux heures, demies ou quarts : les problèmes du CE1. De cinq en cinq minutes ou à la minute : ceux du CE2, avec la ligne du temps.</p>
+          </AideEnLigne>
+        )}
         {r.exercice !== "problemes" && (
           <Field label="Les aides">
             <Coche on={r.couleurs} libelle="Aiguilles en couleur" onChange={(v) => maj({ couleurs: v })} />
@@ -774,10 +777,10 @@ export function NumerationTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Grands nombres et décimaux</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Tableau de numération, écriture en lettres, décomposition, comparaison, encadrement : la feuille du cycle 3, avec d'autres nombres à chaque tirage.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Grands nombres et décimaux
+          <Aide titre="Grands nombres et décimaux" vers="droite"><p>Tableau de numération, écriture en lettres, décomposition, comparaison, encadrement : la feuille du cycle 3, avec d'autres nombres à chaque tirage.</p></Aide>
+        </h3>
         <Field label="Nombres">
           <div className="seg">
             <button type="button" className={!r.decimaux ? "active" : ""} onClick={() => maj({ decimaux: false, jusqua: r.jusqua < 10000 ? 10000 : r.jusqua })}>Entiers</button>

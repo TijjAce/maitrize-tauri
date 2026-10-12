@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide } from "../components/Aide";
 import { api, Gabarit, CaseTla, NatureMot, PaletteTla, PictoArasaac, PlaceDuMot, caseVide, telechargerTexte } from "../api";
 import { Modal, Field, Input, Select, Empty, Confirm, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
@@ -82,13 +83,12 @@ export function TlaTab() {
   return (
     <>
       <div className="card" style={{ marginBottom: 14 }}>
-        <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--text-2)" }}>
-          Un tableau de langage se construit une fois puis ne bouge plus : c'est
-          la stabilité des emplacements qui permet à l'élève d'atteindre un mot
-          sans le chercher. Si l'orthophoniste ou la famille en utilise déjà un,
-          <b> importez-le</b> plutôt que d'en créer un autre.
-        </p>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <Aide titre="Les tableaux de langage" vers="droite">
+            <p>Un tableau de langage se construit une fois puis ne bouge plus : c'est la stabilité des emplacements qui permet à
+            l'élève d'atteindre un mot sans le chercher. Si l'orthophoniste ou la famille en utilise déjà un, <b>importez-le</b> plutôt
+            que d'en créer un autre.</p>
+          </Aide>
           <button className="btn primary" onClick={() => setSurTheme(true)}>✨ Tableau sur un thème</button>
           <button className="btn" onClick={creer}>➕ Tableau vide</button>
           <button className="btn" onClick={() => importInput.current?.click()}>📥 Importer un gabarit</button>
@@ -328,12 +328,14 @@ function Editeur({ gabarit, onChange, onFermer }: {
       </div>
 
       <div className="card">
-        <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--text-2)" }}>
-          Cliquez sur une case pour y poser un mot, lui donner sa couleur ou la masquer. <b>Glissez un pictogramme
-          sur un autre pour les échanger</b> ; sur une case vide, il s'y déplace.
-          Changer la taille de la grille ne déplace jamais les cases déjà
-          posées : elles gardent leurs coordonnées.
-        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 10px", fontSize: 13, color: "var(--text-2)" }}>
+          Cliquez sur une case pour la modifier ; glissez-la sur une autre pour les échanger.
+          <Aide titre="La grille" vers="droite">
+            <p>Une case se modifie d'un clic : son mot, sa couleur, la masquer. <b>Glissez un pictogramme sur un autre pour les
+            échanger</b> ; sur une case vide, il s'y déplace.</p>
+            <p>Changer la taille de la grille ne déplace jamais les cases déjà posées : elles gardent leurs coordonnées.</p>
+          </Aide>
+        </div>
         <div style={{
           display: "grid",
           gridTemplateColumns: `repeat(${gabarit.colonnes}, 1fr)`,

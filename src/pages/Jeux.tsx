@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide } from "../components/Aide";
 import { listen } from "@tauri-apps/api/event";
 import { Page } from "../App";
 import { api, raccourci, EtatBanque, ImageFournie, PictoArasaac, OptionsJeu } from "../api";
@@ -253,6 +254,11 @@ export default function Jeux() {
             <button className={rangement === "usage" ? "active" : ""} onClick={() => setRangement("usage")}
               title="Découverte, entraînement, réinvestissement, rituel : le moment de la séquence que sert chaque atelier">Par moment de la séquence</button>
           </div>
+          {rangement === "usage" && !recherche.trim() && (
+            <Aide titre="Ranger par moment" vers="droite">
+              <p>Glissez une carte d'un moment à l'autre pour ranger l'atelier — ou clic droit sur la carte. Le rangement suit sur l'autre ordinateur.</p>
+            </Aide>
+          )}
           {!recherche.trim() && (
             <button className="btn ghost sm" onClick={() => setPlis(toutPlie
               ? plis.filter((c) => !sectionsLues.includes(c)) : [...new Set([...plis, ...sectionsLues])])}>
@@ -268,9 +274,6 @@ export default function Jeux() {
           )
         ) : rangement === "usage" ? (
           <>
-            <p className="meta" style={{ fontSize: 12.5, margin: "0 0 12px" }}>
-              Glissez une carte d'un moment à l'autre pour ranger l'atelier — ou clic droit sur la carte. Le rangement suit sur l'autre ordinateur.
-            </p>
             {rangerParUsage(FAMILLES.flatMap((f) => f.outils), usages, true).map(({ usage, outils }) => (
               <section key={usage.id} className={`zone-moment${survol === usage.id ? " survol" : ""}`} aria-label={usage.nom}
                 onDragOver={(e) => {

@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide } from "../components/Aide";
 import { Field, Input, Select, Textarea } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
@@ -29,10 +30,10 @@ export function OrthographeTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Orthographe et dictées</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Les dictées des guides CP et CE1 — préparée, de mots, phrase du jour, à choix multiples, autodictée, à trous, piégée — et de quoi mémoriser l'orthographe des mots : les cartes et l'escalier, les listes analogiques, la lettre muette, s, c, g, m devant m, b, p, les accents. Le corrigé, ou le texte à dicter, à la suite.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Orthographe et dictées
+          <Aide titre="Orthographe et dictées" vers="droite"><p>Les dictées des guides CP et CE1 — préparée, de mots, phrase du jour, à choix multiples, autodictée, à trous, piégée — et de quoi mémoriser l'orthographe des mots : les cartes et l'escalier, les listes analogiques, la lettre muette, s, c, g, m devant m, b, p, les accents. Le corrigé, ou le texte à dicter, à la suite.</p></Aide>
+        </h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
           <Field label="Classe">
             <Select value={r.classe} onChange={(e) => maj({ classe: e.target.value as Classe })}>
@@ -86,10 +87,10 @@ export function EcrireTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Écrire</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Les écrits du programme et du guide CE1 : la phrase avec des mots imposés, les gammes sur une phrase modèle, déplacer-ajouter-remplacer-supprimer, de l'oral à l'écrit, le jogging d'écriture et ses lanceurs, transformer un texte, ajouter un épisode, les connecteurs ; et pour écrire un texte : le brouillon, la grille de relecture, la lettre à un destinataire.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Écrire
+          <Aide titre="Écrire" vers="droite"><p>Les écrits du programme et du guide CE1 : la phrase avec des mots imposés, les gammes sur une phrase modèle, déplacer-ajouter-remplacer-supprimer, de l'oral à l'écrit, le jogging d'écriture et ses lanceurs, transformer un texte, ajouter un épisode, les connecteurs ; et pour écrire un texte : le brouillon, la grille de relecture, la lettre à un destinataire.</p></Aide>
+        </h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
           <Field label="Classe">
             <Select value={r.classe} onChange={(e) => maj({ classe: e.target.value as Classe })}>
@@ -123,10 +124,10 @@ export function GrammaireTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Grammaire et conjugaison</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          La phrase et ses marqueurs, les types et les formes, les classes de mots, groupe sujet, verbe et compléments, les paroles rapportées ; la chaîne d'accords et l'accord du verbe ; les tableaux de conjugaison, changer le temps d'une phrase, l'infinitif — avec les exemples du programme et le corrigé.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Grammaire et conjugaison
+          <Aide titre="Grammaire et conjugaison" vers="droite"><p>La phrase et ses marqueurs, les types et les formes, les classes de mots, groupe sujet, verbe et compléments, les paroles rapportées ; la chaîne d'accords et l'accord du verbe ; les tableaux de conjugaison, changer le temps d'une phrase, l'infinitif — avec les exemples du programme et le corrigé.</p></Aide>
+        </h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
           <Field label="Classe">
             <Select value={r.classe} onChange={(e) => maj({ classe: e.target.value as Classe })}>
@@ -174,10 +175,10 @@ export function OralTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>L'oral</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Les grilles d'écoute pour raconter, présenter un exposé, dire un poème, débattre ; la carte du récit et les mots imposés ; le poème à apprendre ; le plan d'exposé ; les cartes « Je prends la parole » avec les expressions du programme, les rôles du débat ; les registres de langue et les jeux de rôles.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          L'oral
+          <Aide titre="L'oral" vers="droite"><p>Les grilles d'écoute pour raconter, présenter un exposé, dire un poème, débattre ; la carte du récit et les mots imposés ; le poème à apprendre ; le plan d'exposé ; les cartes « Je prends la parole » avec les expressions du programme, les rôles du débat ; les registres de langue et les jeux de rôles.</p></Aide>
+        </h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
           <Field label="Classe">
             <Select value={r.classe} onChange={(e) => maj({ classe: e.target.value as Classe })}>

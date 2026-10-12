@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide } from "../components/Aide";
 import { Field, Input, Select } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
@@ -31,10 +32,10 @@ export function GeometrieTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Géométrie</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Reproduire sur quadrillage et vérifier au calque, compléter un carré ou un rectangle, reconnaître les figures, les alignements, les angles, le compas, les constructions et la symétrie — d'après le programme 2024 et le document Éduscol « Espace et géométrie au cycle 2 ». À la taille réelle : imprimez à 100 %.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Géométrie
+          <Aide titre="Géométrie" vers="droite"><p>Reproduire sur quadrillage et vérifier au calque, compléter un carré ou un rectangle, reconnaître les figures, les alignements, les angles, le compas, les constructions et la symétrie — d'après le programme 2024 et le document Éduscol « Espace et géométrie au cycle 2 ». À la taille réelle : imprimez à 100 %.</p></Aide>
+        </h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <ChoixClasse valeur={r.classe} onChange={(c) => maj({ classe: c as Classe })} />
           <Field label="Combien">
@@ -79,10 +80,10 @@ export function SolidesTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Les solides</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Des solides dessinés en perspective cavalière à reconnaître et à nommer, les objets et leur forme, les faces, les sommets et les arêtes, le jeu du portrait, l'intrus ; les faces à découper, les patrons du cube, des assemblages de cubes à construire.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Les solides
+          <Aide titre="Les solides" vers="droite"><p>Des solides dessinés en perspective cavalière à reconnaître et à nommer, les objets et leur forme, les faces, les sommets et les arêtes, le jeu du portrait, l'intrus ; les faces à découper, les patrons du cube, des assemblages de cubes à construire.</p></Aide>
+        </h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <ChoixClasse valeur={r.classe} onChange={(c) => maj({ classe: c as ReglagesSolides["classe"] })} />
           {!sansNombre && (
@@ -119,10 +120,10 @@ export function DeplacementsTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Se repérer, se déplacer</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          La fusée et ses flèches, le robot qui avance et pivote d'un quart de tour, les cartes des positions — d'après le programme 2024 et la ressource Éduscol « Initiation à la programmation aux cycles 2 et 3 » : au plus dix instructions et deux virages au CP, quinze et quatre au CE1.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Se repérer, se déplacer
+          <Aide titre="Se repérer, se déplacer" vers="droite"><p>La fusée et ses flèches, le robot qui avance et pivote d'un quart de tour, les cartes des positions — d'après le programme 2024 et la ressource Éduscol « Initiation à la programmation aux cycles 2 et 3 » : au plus dix instructions et deux virages au CP, quinze et quatre au CE1.</p></Aide>
+        </h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <ChoixClasse valeur={r.classe} onChange={(c) => maj({ classe: c as "CP" | "CE1" })} classes={["CP", "CE1"]} />
           <Field label="Combien">

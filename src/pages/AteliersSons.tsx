@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide, LibelleAvecAide } from "../components/Aide";
 import { Field, Input, Select, Textarea } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { toast } from "../components/Toaster";
@@ -72,7 +73,7 @@ function Boutons({ onTirage, onImprimer, onBureau, peut }: {
 }
 
 const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string; onChange: (v: boolean) => void }) => (
-  <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span>{libelle}</span></label>
+  <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span><LibelleAvecAide libelle={libelle} /></span></label>
 );
 
 const Vide = ({ quoi }: { quoi: string }) => (
@@ -93,9 +94,11 @@ export function LotoSyllabesTab({ banque }: { banque: boolean }) {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Loto des syllabes</h3>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Loto des syllabes
+          <Aide titre="Loto des syllabes" vers="droite"><p>{"Chaque case d'une planche impose un nombre de syllabes ; on pioche une image, on scande, on compte. Le nombre sous chaque mot se corrige d'un clic."}</p></Aide>
+        </h3>
         <BanqueDeMots mots={mots} onChange={setMots} banque={banque}
-          aide="Chaque case d'une planche impose un nombre de syllabes ; on pioche une image, on scande, on compte. Le nombre sous chaque mot se corrige d'un clic."
           extra={(m) => <button type="button" className="bm-compte" title="Changer le nombre de syllabes" onClick={() => tourner(m)}>{nbSyllabes(m, r.ecrites)} syll.</button>} />
         <Field label="Planches">
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -131,9 +134,11 @@ export function DominosTab({ banque }: { banque: boolean }) {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Dominos des syllabes</h3>
-        <BanqueDeMots mots={mots} onChange={setMots} banque={banque}
-          aide="Un domino s'enchaîne quand la dernière syllabe d'une image commence la suivante : micro – crocodile. Il faut beaucoup de mots pour trouver des enchaînements — piochez un thème entier, ou deux." />
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Dominos des syllabes
+          <Aide titre="Dominos des syllabes" vers="droite"><p>{"Un domino s'enchaîne quand la dernière syllabe d'une image commence la suivante : micro – crocodile. Il faut beaucoup de mots pour trouver des enchaînements — piochez un thème entier, ou deux."}</p></Aide>
+        </h3>
+        <BanqueDeMots mots={mots} onChange={setMots} banque={banque} />
         <div className="meta" style={{ fontSize: 12.5, margin: "6px 0" }}>
           {pieces.length ? `${pieces.length} dominos trouvés (${pieces.length * 2} images).` : "Pas encore d'enchaînement : ajoutez des mots."}
         </div>
@@ -159,9 +164,11 @@ export function IntrusTab({ banque }: { banque: boolean }) {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Chasse à l'intrus</h3>
-        <BanqueDeMots mots={mots} onChange={setMots} banque={banque}
-          aide="Trois mots qui commencent (ou finissent) par la même syllabe, et un intrus : bateau, banane, tapis, ballon. Il faut des mots qui se ressemblent — un ou deux thèmes entiers." />
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Chasse à l'intrus
+          <Aide titre="Chasse à l'intrus" vers="droite"><p>{"Trois mots qui commencent (ou finissent) par la même syllabe, et un intrus : bateau, banane, tapis, ballon. Il faut des mots qui se ressemblent — un ou deux thèmes entiers."}</p></Aide>
+        </h3>
+        <BanqueDeMots mots={mots} onChange={setMots} banque={banque} />
         <Field label="Ce qui se ressemble">
           <Select value={r.mode} onChange={(e) => maj({ mode: e.target.value as ModeIntrus })}>
             <option value="attaque">la première syllabe (l'attaque)</option>
@@ -212,10 +219,10 @@ export function PairesTab({ banque }: { banque: boolean }) {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Paires de mots proches</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Deux mots qui ne diffèrent que d'un son : pour articuler et distinguer, avec le jeu du trésor et le jeu du téléphone.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Paires de mots proches
+          <Aide titre="Paires de mots proches" vers="droite"><p>Deux mots qui ne diffèrent que d'un son : pour articuler et distinguer, avec le jeu du trésor et le jeu du téléphone.</p></Aide>
+        </h3>
         {groupes.map(([titre, liste]) => (
           <Field key={titre} label={titre}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
@@ -263,11 +270,11 @@ export function FluenceTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Grille de fluence</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Syllabes, pseudo-mots et mots du graphème de la semaine, faits seulement de ce que la progression des guides CP et CE1 a déjà fait
-          étudier ; à lire chaque jour en une minute, le score se note en bas.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Grille de fluence
+          <Aide titre="Grille de fluence" vers="droite"><p>Syllabes, pseudo-mots et mots du graphème de la semaine, faits seulement de ce que la progression des guides CP et CE1 a déjà fait
+          étudier ; à lire chaque jour en une minute, le score se note en bas.</p></Aide>
+        </h3>
         <Field label="Le graphème de la semaine">
           <div style={{ display: "flex", gap: 6 }}>
             <button type="button" className="btn sm ghost" disabled={!avant} aria-label="Étape précédente"
@@ -339,10 +346,10 @@ export function SyllabaireTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Syllabaire — jeu de l'ascenseur</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Un cadre à deux fenêtres et deux bandes qui glissent : la syllabe apparaît, on la lit. Choisissez les graphèmes déjà étudiés.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Syllabaire — jeu de l'ascenseur
+          <Aide titre="Syllabaire — jeu de l'ascenseur" vers="droite"><p>Un cadre à deux fenêtres et deux bandes qui glissent : la syllabe apparaît, on la lit. Choisissez les graphèmes déjà étudiés.</p></Aide>
+        </h3>
         <Field label="Consonnes">{chips("consonnes", CONSONNES_SYLLABAIRE)}</Field>
         <Field label="Voyelles et graphèmes">{chips("voyelles", VOYELLES_SYLLABAIRE)}</Field>
         <Field label="Écriture">
@@ -365,10 +372,10 @@ export function LettresTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Les lettres</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Majuscule et minuscule à associer : mémory, mistigri, loto — et la planche de l'ophtalmologue pour nommer les lettres.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Les lettres
+          <Aide titre="Les lettres" vers="droite"><p>Majuscule et minuscule à associer : mémory, mistigri, loto — et la planche de l'ophtalmologue pour nommer les lettres.</p></Aide>
+        </h3>
         <Field label="Jeu">
           <Select value={r.jeu} onChange={(e) => maj({ jeu: e.target.value as typeof r.jeu })}>
             <option value="memory">Jeu de mémoire des lettres</option>

@@ -1,4 +1,5 @@
 import React from "react";
+import { AideEnLigne } from "../components/Aide";
 import { createPortal } from "react-dom";
 import { api } from "../api";
 import { EVT_DONNEES_DISTANTES, Field, Input, Select, Textarea, useOngletDemande } from "../components/ui";
@@ -305,9 +306,9 @@ function Dabord({ banque }: { banque: boolean }) {
               <button className="btn sm" onClick={() => maj({ cartes: [...r.cartes, pictoVide()] })}>＋ Une carte</button>
             )}
           </div>
-          <p className="meta" style={{ fontSize: 12, margin: "6px 0 0" }}>
-            D'autres activités à échanger sur la planche, au scratch : des pictos, ou des photos des objets. Elles s'impriment avec le modèle, à leur mesure.
-          </p>
+          <AideEnLigne libelle="D'autres activités">
+            <p>D'autres activités à échanger sur la planche, au scratch : des pictos, ou des photos des objets. Elles s'impriment avec le modèle, à leur mesure.</p>
+          </AideEnLigne>
         </Field>
         <Coche valeur={r.titres} onChange={(titres) => maj({ titres })}>Écrire « D'abord », « Ensuite », « Puis »</Coche>
         <Coche valeur={r.capitales} onChange={(capitales) => maj({ capitales })}>Mots en capitales</Coche>

@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide, AideEnLigne, LibelleAvecAide } from "../components/Aide";
 import { Field, Input, Select, Textarea } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { confirmer } from "../components/confirmer";
@@ -20,7 +21,7 @@ import {
 const ATELIER = "trous";
 
 const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string; onChange: (v: boolean) => void }) => (
-  <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span>{libelle}</span></label>
+  <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span><LibelleAvecAide libelle={libelle} /></span></label>
 );
 
 export function TrousTab() {
@@ -46,11 +47,11 @@ export function TrousTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Texte à trous</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Des phrases dont on a retiré le verbe conjugué — ou le mot que vous voulez. Les étiquettes, de la taille exacte des cases,
-          se découpent, s'essaient, se vérifient puis se collent. Le corrigé suit.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Texte à trous
+          <Aide titre="Texte à trous" vers="droite"><p>Des phrases dont on a retiré le verbe conjugué — ou le mot que vous voulez. Les étiquettes, de la taille exacte des cases,
+          se découpent, s'essaient, se vérifient puis se collent. Le corrigé suit.</p></Aide>
+        </h3>
         <Field label="Partir d'un modèle">
           <Select value={MODELES_TROUS.some((m) => m.id === r.modele) ? r.modele : ""} onChange={(e) => { void prendreModele(e.target.value); }}>
             <option value="">Mes phrases</option>
@@ -64,12 +65,14 @@ export function TrousTab() {
           <Textarea rows={10} value={r.phrases} onChange={(e) => maj({ phrases: e.target.value, modele: "" })}
             placeholder={"Nous *sommes* en classe.\nTu *as* un vélo bleu."} />
         </Field>
-        <p className="meta" style={{ fontSize: 12, lineHeight: 1.45, marginTop: -4 }}>
-          Plusieurs trous dans une phrase : « Je *suis* à l'école et j'*ai* faim. » Un indice après une barre : « *sommes|être* ».
-          {sansTrou.length > 0 && (
-            <span style={{ color: "var(--orange)" }}> Rien à retirer dans la phrase {sansTrou.join(", ")} : mettez le mot entre astérisques.</span>
-          )}
-        </p>
+        <AideEnLigne libelle="Plusieurs trous, un indice">
+          <p>Plusieurs trous dans une phrase : « Je *suis* à l'école et j'*ai* faim. » Un indice après une barre : « *sommes|être* ».</p>
+        </AideEnLigne>
+        {sansTrou.length > 0 && (
+          <p className="meta" style={{ fontSize: 12, lineHeight: 1.45, margin: "4px 0 0", color: "var(--orange)" }}>
+            Rien à retirer dans la phrase {sansTrou.join(", ")} : mettez le mot entre astérisques.
+          </p>
+        )}
         <details className="pli" open>
           <summary>Pour différencier</summary>
           <Coche on={r.indices} libelle={etreAvoir ? "L'infinitif en gris dans la case : être ou avoir" : "L'indice en gris dans la case (après la barre)"}

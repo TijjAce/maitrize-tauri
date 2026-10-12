@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide } from "../components/Aide";
 import { Field, Input, Select, Textarea } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
@@ -26,10 +27,10 @@ export function VoixHauteTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Lire à voix haute</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Des phrases à préparer, codées ou à coder — les liaisons, la ponctuation et l'intonation, la phrase sur plusieurs lignes, les groupes de souffle —, la grille du binôme lecteur-auditeur, et le texte partition de la fable du CE2 : d'après les livrets de français CP, CE1 et CE2.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Lire à voix haute
+          <Aide titre="Lire à voix haute" vers="droite"><p>Des phrases à préparer, codées ou à coder — les liaisons, la ponctuation et l'intonation, la phrase sur plusieurs lignes, les groupes de souffle —, la grille du binôme lecteur-auditeur, et le texte partition de la fable du CE2 : d'après les livrets de français CP, CE1 et CE2.</p></Aide>
+        </h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <Field label="Classe">
             <Select value={r.classe} onChange={(e) => maj({ classe: e.target.value as Classe })}>
@@ -77,10 +78,10 @@ export function ComprehensionTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Comprendre un texte</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Des textes à la longueur du programme — une dizaine de lignes au CP, une quinzaine au CE1, une vingtaine au CE2 —, récits, documentaires, règles et recettes, poème et théâtre au CE2. Le texte s'imprime seul, ses lignes numérotées : on le pose à côté des questions et on y revient pour justifier.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Comprendre un texte
+          <Aide titre="Comprendre un texte" vers="droite"><p>Des textes à la longueur du programme — une dizaine de lignes au CP, une quinzaine au CE1, une vingtaine au CE2 —, récits, documentaires, règles et recettes, poème et théâtre au CE2. Le texte s'imprime seul, ses lignes numérotées : on le pose à côté des questions et on y revient pour justifier.</p></Aide>
+        </h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
           <Field label="Classe">
             <Select value={r.classe} onChange={(e) => maj({ classe: e.target.value as Classe, texte: "" })}>
@@ -130,10 +131,10 @@ export function LecteurTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Carnet de lecteur</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Garder la mémoire de ses lectures, caractériser les personnages et reconnaître les personnages-types, mettre des livres en réseau, présenter un livre, choisir ses lectures : le programme « Devenir lecteur » du CP au CE2.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Carnet de lecteur
+          <Aide titre="Carnet de lecteur" vers="droite"><p>Garder la mémoire de ses lectures, caractériser les personnages et reconnaître les personnages-types, mettre des livres en réseau, présenter un livre, choisir ses lectures : le programme « Devenir lecteur » du CP au CE2.</p></Aide>
+        </h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
           <Field label="Classe">
             <Select value={r.classe} onChange={(e) => maj({ classe: e.target.value as Classe })}>
