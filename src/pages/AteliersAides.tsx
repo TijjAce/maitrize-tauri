@@ -13,9 +13,9 @@ import { STYLE_FEUILLE } from "../cartesImprimables";
 import { lireConsignes, motPrincipal, type MotDeConsigne } from "../tapuscrit";
 import type { RefPicto } from "../pictosAppoint";
 import {
-  CLE_CODE, CODE_PAR_DEFAUT, CONSTITUANTS, COULEURS, EXEMPLES_CODE, FORMATS_CARTE, MARQUES, REGLAGES_CARTE_CODE, STYLE_CODE_PHRASE,
-  htmlCodeDeLaPhrase, lireCode, marquer, phraseSansAnalyse, reglagesCarteSurs,
-  type CodeDeLaPhrase, type IdConstituant, type Marque, type MarqueDuConstituant,
+  CLE_CODE, CODE_PAR_DEFAUT, COULEURS, FAMILLES_CODE, FORMATS_CARTE, MARQUES, NIVEAUX_CODE, REGLAGES_CARTE_CODE, STYLE_CODE_PHRASE,
+  actifsPour, exemplesPour, htmlCodeDeLaPhrase, lireCode, marquer, phraseSansAnalyse, reglagesCarteSurs,
+  type CodeDeLaPhrase, type FamilleCode, type IdConstituant, type Marque, type MarqueDuConstituant, type ReglagesCarteCode,
 } from "../codeDeLaPhrase";
 import {
   CHAINAGES, ETAPES_SEQUENTIEL_MAX, EXEMPLES_RESOLUTION, FORMES_SEQUENTIEL, MODELES_PAROLE, MOTS_PAROLE_MAX, NIVEAUX_RESOLUTION,
@@ -255,11 +255,13 @@ export function ResolutionTab() {
 export function CodePhraseTab() {
   const [brutCode, majCode] = useReglages<CodeDeLaPhrase>(CLE_CODE, CODE_PAR_DEFAUT);
   const code = React.useMemo(() => lireCode(brutCode), [brutCode]);
-  const [brut, maj] = useReglages("codePhraseCarte", REGLAGES_CARTE_CODE);
+  const [brut, maj] = useReglages<ReglagesCarteCode>("codePhraseCarte", REGLAGES_CARTE_CODE);
   const r = React.useMemo(() => reglagesCarteSurs(brut), [brut]);
   const html = React.useMemo(() => htmlCodeDeLaPhrase(code, r), [code, r]);
   const sortie = useSortie("codePhrase", "Le code de la phrase", async () => ({ html, style: STYLE_CODE_PHRASE }));
-  const changer = (id: IdConstituant, m: Partial<MarqueDuConstituant>) => majCode({ [id]: { ...code[id], ...m } } as Partial<CodeDeLaPhrase>);
+  const changer = (id: IdConstituant, x: Partial<MarqueDuConstituant>) => majCode({ [id]: { ...code[id], ...x } });
+  const basculer = (id: IdConstituant) => maj({ caches: r.caches.includes(id) ? r.caches.filter((x) => x !== id) : [...r.caches, id] });
+  const famille = (f: FamilleCode) => maj({ familles: r.familles.includes(f) ? r.familles.filter((x) => x !== f) : [...r.familles, f] });
   return (
     <Colonnes
       gauche={<>
@@ -267,23 +269,45 @@ export function CodePhraseTab() {
           Le code de la phrase
           <Aide titre="Le code de la phrase" vers="droite">
             <p>{"Les couleurs et les marques de l'analyse, choisies une fois pour toute la classe : la carte du code les montre à l'élève pendant qu'il analyse, et les feuilles de grammaire les reprennent dans leurs consignes et leurs corrigés."}</p>
-            <p>{"Chaque groupe a une couleur et une marque — souligné, entouré, encadré… — : la marque reste lisible quand la feuille est photocopiée en noir et blanc, et pour l'élève qui distingue mal les couleurs."}</p>
+            <p>{"Le niveau montre ce que le programme y fait apprendre, du CP à la 6e : les compléments deviennent au CE2 le complément du verbe et le complément de phrase ; au cycle 3 viennent le COD, le COI, l'attribut, le complément du nom, et de nouvelles classes de mots."}</p>
+            <p>{"Chaque élément a une couleur et une marque — souligné, entouré, encadré… — : la marque reste lisible quand la feuille est photocopiée en noir et blanc, et pour l'élève qui distingue mal les couleurs."}</p>
           </Aide>
         </h3>
-        {CONSTITUANTS.map((c) => (
-          <div key={c.id} className="cp-reglage">
-            <div className="cp-reglage-nom" dangerouslySetInnerHTML={{ __html: marquer(code, c.id, c.libelle) }} />
-            <div className="cp-couleurs" role="radiogroup" aria-label={`La couleur : ${c.libelle.toLowerCase()}`}>
-              {COULEURS.map((k) => (
-                <button key={k.id} type="button" role="radio" aria-checked={code[c.id].couleur === k.id} aria-label={k.nom} title={k.nom}
-                  className={`cp-pastille${code[c.id].couleur === k.id ? " active" : ""}`} style={{ background: k.hex }}
-                  onClick={() => changer(c.id, { couleur: k.id })} />
-              ))}
-            </div>
-            <Select value={code[c.id].marque} aria-label={`La marque : ${c.libelle.toLowerCase()}`}
-              onChange={(e) => changer(c.id, { marque: e.target.value as Marque })}>
-              {MARQUES.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
-            </Select>
+        <Field label="Le niveau">
+          <div className="seg">
+            {NIVEAUX_CODE.map((n) => (
+              <button key={n} type="button" className={r.niveau === n ? "active" : ""} onClick={() => maj({ niveau: n, exemple: 0 })}>{n}</button>
+            ))}
+          </div>
+        </Field>
+        {FAMILLES_CODE.map((f) => (
+          <div key={f.id} className="cp-famille-reglages">
+            <label className="pb-coche cp-famille-titre">
+              <input type="checkbox" checked={r.familles.includes(f.id)} onChange={() => famille(f.id)} /><span>{f.nom}</span>
+            </label>
+            {r.familles.includes(f.id) && actifsPour(r.niveau, f.id).map((c) => (
+              <div key={c.id} className={`cp-reglage${r.caches.includes(c.id) ? " cp-cache" : ""}`}>
+                <div className="cp-reglage-tete">
+                  <span className="cp-reglage-nom" dangerouslySetInnerHTML={{ __html: marquer(code, c.id, c.libelle) }} />
+                  <label className="cp-sur-carte" title="Laisser sur la carte, ou l'en retirer : le code reste le même pour les feuilles">
+                    <input type="checkbox" checked={!r.caches.includes(c.id)} onChange={() => basculer(c.id)} /> sur la carte
+                  </label>
+                </div>
+                <div className="cp-reglage-choix">
+                  <div className="cp-couleurs" role="radiogroup" aria-label={`La couleur : ${c.libelle.toLowerCase()}`}>
+                    {COULEURS.map((k) => (
+                      <button key={k.id} type="button" role="radio" aria-checked={code[c.id].couleur === k.id} aria-label={k.nom} title={k.nom}
+                        className={`cp-pastille${code[c.id].couleur === k.id ? " active" : ""}`} style={{ background: k.hex }}
+                        onClick={() => changer(c.id, { couleur: k.id })} />
+                    ))}
+                  </div>
+                  <Select value={code[c.id].marque} aria-label={`La marque : ${c.libelle.toLowerCase()}`}
+                    onChange={(e) => changer(c.id, { marque: e.target.value as Marque })}>
+                    {MARQUES.map((x) => <option key={x.id} value={x.id}>{x.nom}</option>)}
+                  </Select>
+                </div>
+              </div>
+            ))}
           </div>
         ))}
         <button type="button" className="lien" onClick={() => majCode(CODE_PAR_DEFAUT)}>↺ Reprendre le code proposé</button>
@@ -294,12 +318,14 @@ export function CodePhraseTab() {
             ))}
           </div>
         </Field>
-        <Field label="La phrase d'exemple">
-          <Select value={r.exemple} onChange={(e) => maj({ exemple: Number(e.target.value) })}>
-            {EXEMPLES_CODE.map((p, i) => <option key={p} value={i}>{phraseSansAnalyse(p)}</option>)}
-          </Select>
-        </Field>
-        <Coche on={r.indices} libelle="Ce qui fait reconnaître chaque groupe : « C'est… qui », « ne… pas »" onChange={(v) => maj({ indices: v })} />
+        {r.familles.includes("groupes") && (
+          <Field label="La phrase d'exemple">
+            <Select value={r.exemple} onChange={(e) => maj({ exemple: Number(e.target.value) })}>
+              {exemplesPour(r.niveau).map((x, i) => <option key={x.phrase} value={i}>{phraseSansAnalyse(x.phrase)}</option>)}
+            </Select>
+          </Field>
+        )}
+        <Coche on={r.indices} libelle="Ce qui fait reconnaître chaque élément : « C'est… qui », « ne… pas »…" onChange={(v) => maj({ indices: v })} />
         <p className="meta" style={{ fontSize: 12.5, margin: "8px 0 0" }}>Ce code sert aussi aux feuilles de grammaire : leurs consignes et leurs corrigés le suivent.</p>
         <Boutons onImprimer={sortie.imprimer} onBureau={sortie.bureau} />
       </>}

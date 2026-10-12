@@ -17,7 +17,7 @@
 import { escapeHtml } from "./print";
 import { feuille } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
-import { codeActuel, etapeDuCode, marquer, phraseAnalysee, type CodeDeLaPhrase } from "./codeDeLaPhrase";
+import { actifsPour, codeActuel, etapeDuCode, marquer, phraseAnalysee, phraseSansAnalyse, type CodeDeLaPhrase, type NiveauCode } from "./codeDeLaPhrase";
 import { AU_PROGRAMME, PERSONNES, VERBES_1ER_GROUPE, tempsDe, VERBES_IRREGULIERS, avecPronom, formes, radicalEtTerminaison, type Temps } from "./conjugaison";
 
 export type Classe = "CP" | "CE1" | "CE2";
@@ -103,21 +103,28 @@ export const A_NEGATIVER: { phrase: string; negative: string }[] = [
   { phrase: "Range ta chambre.", negative: "Ne range pas ta chambre." },
 ];
 
-/** Des phrases démontées : [S:…] le groupe sujet, [V:…] le verbe, [C:…] un complément. */
+/**
+ * Des phrases démontées, au plus précis : [S:…] le groupe sujet, [V:…] le
+ * verbe, [COD:…] et [COI:…] les compléments d'objet, [CP:…] un complément de
+ * phrase. Chaque classe les marque avec ce qu'elle connaît : des compléments
+ * au CP et au CE1, du verbe ou de phrase au CE2 (voir codeDeLaPhrase).
+ */
 export const PHRASES_DEMONTEES = [
-  "[S:Le petit chat] [V:mange] [C:sa pâtée].",
-  "[S:Les enfants] [V:jouent] [C:dans la cour].",
-  "[S:Ma grand-mère] [V:prépare] [C:une tarte aux pommes].",
-  "[C:Le matin], [S:Lucas] [V:prend] [C:le bus].",
+  "[S:Le petit chat] [V:mange] [COD:sa pâtée].",
+  "[S:Les enfants] [V:jouent] [CP:dans la cour].",
+  "[S:Ma grand-mère] [V:prépare] [COD:une tarte aux pommes].",
+  "[CP:Le matin], [S:Lucas] [V:prend] [COD:le bus].",
   "[S:Le chien de Léa] [V:aboie].",
-  "[S:Nous] [V:regardons] [C:les étoiles] [C:avec papa].",
-  "[S:La maîtresse] [V:raconte] [C:une histoire] [C:aux enfants].",
-  "[C:Tous les jours], [S:elle] [V:mange] [C:à la cantine].",
+  "[S:Nous] [V:regardons] [COD:les étoiles] [CP:avec papa].",
+  "[S:La maîtresse] [V:raconte] [COD:une histoire] [COI:aux enfants].",
+  "[CP:Tous les jours], [S:elle] [V:mange] [CP:à la cantine].",
 ];
-export const sansMarques = (p: string) => p.replace(/\[[SVC]:([^\]]+)\]/g, "$1");
+export const sansMarques = phraseSansAnalyse;
+/** Les étiquettes des compléments, quels qu'ils soient. */
+const COMPLEMENTS = /\[(?:C|CV|CP|COD|COI):/g;
 /** La phrase sans ses compléments : « Le petit chat mange sa pâtée. » → « Le petit chat mange. » */
 export const sansLeComplement = (p: string) => {
-  const reste = sansMarques(p.replace(/\[C:[^\]]+\],?/g, "")).replace(/\s+([.,!?])/g, "$1").replace(/\s{2,}/g, " ").replace(/^[\s,]+/, "").trim();
+  const reste = sansMarques(p.replace(/\[(?:C|CV|CP|COD|COI):[^\]]+\],?/g, "")).replace(/\s+([.,!?])/g, "$1").replace(/\s{2,}/g, " ").replace(/^[\s,]+/, "").trim();
   return reste.charAt(0).toUpperCase() + reste.slice(1);
 };
 /** Sans son seul complément, la phrase garde-t-elle son sens ? La réponse du corrigé, pour les phrases qui n'en ont qu'un. */
@@ -126,8 +133,8 @@ const SENS_SANS_LE_COMPLEMENT: Record<string, string> = {
   "Les enfants jouent.": "oui",
   "Ma grand-mère prépare.": "non : on ne sait plus ce qu'elle prépare",
 };
-/** La phrase analysée, chaque groupe marqué selon le code de la classe (voir codeDeLaPhrase). */
-export const phraseMarquee = (p: string, code: CodeDeLaPhrase = codeActuel()) => phraseAnalysee(p, code);
+/** La phrase analysée, chaque groupe marqué selon le code de la classe, avec ce que son niveau connaît (voir codeDeLaPhrase). */
+export const phraseMarquee = (p: string, code: CodeDeLaPhrase = codeActuel(), niveau?: NiveauCode) => phraseAnalysee(p, code, niveau);
 
 export type ClasseDeMot = "nom commun" | "nom propre" | "déterminant" | "adjectif" | "verbe" | "pronom" | "adverbe";
 export const MOTS_A_CLASSER: { mot: string; classe: ClasseDeMot }[] = [
@@ -282,17 +289,20 @@ function feuilleNegation(r: ReglagesGrammaire, graine: number): string {
     ${corrige("La forme négative", items.map((x, i) => `<div><b>${i + 1}.</b> ${escapeHtml(x.negative)}</div>`).join(""))}`;
 }
 
-function feuilleConstituants(_r: ReglagesGrammaire, graine: number, code: CodeDeLaPhrase): string {
+function feuilleConstituants(r: ReglagesGrammaire, graine: number, code: CodeDeLaPhrase): string {
   const items = melanger(hasard(graine), PHRASES_DEMONTEES).slice(0, 6);
+  // Les groupes que la classe apprend : au CE2, le complément du verbe et le complément de phrase.
+  const groupes = actifsPour(r.classe, "groupes");
+  const etapes = groupes.map((c) => etapeDuCode(code, c.id, c.id === "sujet" || c.id === "verbe" ? c.nom : c.pluriel)).join(" ");
   // La phrase qu'on transforme n'a qu'un complément : « le complément » est alors celui-là, sans hésiter.
-  const seule = items.find((p) => (p.match(/\[C:/g) ?? []).length === 1) ?? items[0];
+  const seule = items.find((p) => (p.match(COMPLEMENTS) ?? []).length === 1) ?? items[0];
   const sans = sansLeComplement(seule);
   const oui = `<div class="gr-choix"><span><span class="gr-case gr-petite"></span> oui</span><span><span class="gr-case gr-petite"></span> non</span></div>`;
-  return `<div class="page">${titre("Groupe sujet, verbe, compléments")}${TETE}${rappel("Le groupe sujet peut s'encadrer par « C'est… qui ». Le verbe peut s'encadrer par « ne… pas », et il change si je change le temps.")}${regle(`${etapeDuCode(code, "sujet")} ${etapeDuCode(code, "verbe")} ${etapeDuCode(code, "complement")}`)}
+  return `<div class="page">${titre("Groupe sujet, verbe, compléments")}${TETE}${rappel("Le groupe sujet peut s'encadrer par « C'est… qui ». Le verbe peut s'encadrer par « ne… pas », et il change si je change le temps.")}${regle(etapes)}
     ${items.map((p, i) => `<div class="gr-item gr-grand"><b>${i + 1}.</b> ${escapeHtml(sansMarques(p))}</div>`).join("")}
     <div class="gr-sous-titre">${etapeDuCode(code, "complement", "le complément")} Puis écris la phrase sans le complément. Réponds : la phrase a-t-elle encore du sens ?</div><div class="gr-q">${escapeHtml(sansMarques(seule))}</div>${ligne()}${oui}</div>
-    ${corrige("Groupe sujet, verbe, compléments", items.map((p, i) => `<div><b>${i + 1}.</b> ${phraseMarquee(p, code)}</div>`).join("")
-      + `<div class="gr-legende">${marquer(code, "sujet", "groupe sujet")} ${marquer(code, "verbe", "verbe")} ${marquer(code, "complement", "complément")}</div>`
+    ${corrige("Groupe sujet, verbe, compléments", items.map((p, i) => `<div><b>${i + 1}.</b> ${phraseMarquee(p, code, r.classe)}</div>`).join("")
+      + `<div class="gr-legende">${groupes.map((c) => marquer(code, c.id, c.libelle.replace(/^(Le |La |Les |L')/, ""))).join(" ")}</div>`
       + `<div>Sans le complément : <b>${escapeHtml(sans)}</b>${SENS_SANS_LE_COMPLEMENT[sans] ? ` — encore du sens ? ${escapeHtml(SENS_SANS_LE_COMPLEMENT[sans])}` : ""}</div>`)}`;
 }
 
