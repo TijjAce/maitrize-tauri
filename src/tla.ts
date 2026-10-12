@@ -4,8 +4,9 @@
 // valeur d'un TLA — les places ne bougent pas, la grille ne se renumérote pas
 // — soient vérifiables par des tests plutôt que par l'œil.
 
-import { CaseTla, Gabarit, NatureMot, PictoArasaac, caseVide, newId } from "./api";
+import { CaseTla, Gabarit, GabaritImprime, ModeCouleurTla, NatureMot, PaletteTla, PictoArasaac, PlaceDuMot, caseVide, newId } from "./api";
 import { Squelette, plan, NATURE_DU_ROLE } from "./squelettes";
+import { estMonPicto } from "./mesPictos";
 
 export const NATURES: { id: NatureMot; label: string; couleur: string }[] = [
   { id: "personne", label: "Personne", couleur: "#fff2b8" },
@@ -14,10 +15,116 @@ export const NATURES: { id: NatureMot; label: string; couleur: string }[] = [
   { id: "social", label: "Social", couleur: "#fadeeb" },
   { id: "petit mot", label: "Petit mot", couleur: "#f0f0f0" },
   { id: "nom", label: "Nom", couleur: "#fce6ca" },
+  // Qui, quoi, où, quand, pourquoi : poser une question a sa couleur, comme dans la plupart des classeurs de communication.
+  { id: "question", label: "Question", couleur: "#e9ddf6" },
 ];
 
 export const couleurNature = (n: NatureMot) =>
   NATURES.find((x) => x.id === n)?.couleur ?? "#fce6ca";
+
+// ── Les couleurs, au choix ─────────────────────────────────────────────────
+//
+// La couleur dit la nature du mot d'un coup d'œil, mais elle n'aide pas tous
+// les élèves : certains s'y perdent, d'autres voient mieux le pictogramme sur
+// un fond blanc. Les réglages fixent donc les couleurs par défaut — sur le
+// fond de la case, sur son cadre, ou nulle part —, et chaque tableau peut
+// avoir les siennes, celles de l'orthophoniste par exemple.
+
+/** Le réglage qui garde les couleurs par défaut des tableaux. */
+export const CLE_COULEURS_TLA = "tla:couleurs";
+
+const naturesEn = (couleurs: Record<string, string>) =>
+  Object.fromEntries(NATURES.map((n) => [n.id, couleurs[n.id]])) as Record<NatureMot, string>;
+
+/** Les couleurs prêtes : des fonds pâles, des cadres vifs, ou rien. */
+export const PALETTES: { id: string; label: string; palette: PaletteTla }[] = [
+  { id: "pastel", label: "Fonds pâles", palette: { mode: "fond", couleurs: naturesEn(Object.fromEntries(NATURES.map((n) => [n.id, n.couleur]))) } },
+  { id: "vives", label: "Cadres vifs", palette: { mode: "bordure", couleurs: naturesEn({
+    personne: "#e3b800", verbe: "#2e9b3e", adjectif: "#2f6fd0", social: "#d6408f",
+    "petit mot": "#8a8f98", nom: "#e07b12", question: "#8a4fd8",
+  }) } },
+  { id: "aucune", label: "Sans couleur", palette: { mode: "aucune", couleurs: naturesEn(Object.fromEntries(NATURES.map((n) => [n.id, n.couleur]))) } },
+];
+
+export const PALETTE_DEFAUT: PaletteTla = PALETTES[0].palette;
+
+export const MODES_COULEUR: { id: ModeCouleurTla; label: string }[] = [
+  { id: "fond", label: "Le fond de la case" },
+  { id: "bordure", label: "Le cadre de la case" },
+  { id: "aucune", label: "Nulle part — sans couleur" },
+];
+
+const HEX = /^#[0-9a-f]{6}$/i;
+/** Une couleur bien écrite (« #rrggbb »), en minuscules ; rien sinon. */
+export const couleurSure = (c: unknown): string | undefined =>
+  typeof c === "string" && HEX.test(c.trim()) ? c.trim().toLowerCase() : undefined;
+
+/** Relit des couleurs gardées ou importées : ce qui manque ou est mal écrit reprend la couleur d'origine. */
+export function lirePalette(brut: unknown): PaletteTla {
+  const o = (brut && typeof brut === "object" ? brut : {}) as { mode?: unknown; couleurs?: Record<string, unknown> };
+  const mode = MODES_COULEUR.some((m) => m.id === o.mode) ? (o.mode as ModeCouleurTla) : PALETTE_DEFAUT.mode;
+  const couleurs = { ...PALETTE_DEFAUT.couleurs };
+  for (const n of NATURES) {
+    const c = couleurSure(o.couleurs?.[n.id]);
+    if (c) couleurs[n.id] = c;
+  }
+  return { mode, couleurs };
+}
+
+/**
+ * Ce que montre une case : son fond, et son cadre de couleur s'il en a un.
+ * La couleur forcée d'une case l'emporte toujours — même sur un tableau sans
+ * couleur : c'est qu'on a voulu faire ressortir ce mot-là.
+ */
+export function apparence(c: CaseTla, palette: PaletteTla): { fond: string; bord: string } {
+  const forcee = couleurSure(c.couleur);
+  const teinte = forcee ?? palette.couleurs[c.nature] ?? palette.couleurs.nom;
+  if (palette.mode === "bordure") return { fond: "#ffffff", bord: teinte };
+  if (palette.mode === "aucune" && !forcee) return { fond: "#ffffff", bord: "" };
+  return { fond: teinte, bord: "" };
+}
+
+/**
+ * Le gabarit tel que l'impression le reçoit : chaque case avec son fond et
+ * son cadre, et le fichier de l'image — celui de Mes pictos, cherché au
+ * moment d'imprimer, pour une photo prise au téléphone. Une image de Mes
+ * pictos qui n'existe plus laisse la case avec son mot seul.
+ */
+export function pourImpression(
+  g: Gabarit, palette: PaletteTla, fichierDeMonPicto: (id: number) => string | undefined, mentions = "",
+): GabaritImprime {
+  const { couleurs: _sesCouleurs, ...reste } = g;
+  return {
+    ...reste,
+    ...(mentions ? { mentions } : {}),
+    cases: g.cases.map((c) => ({
+      ...c,
+      fichier: c.pictoId !== null && estMonPicto(c.pictoId) ? fichierDeMonPicto(c.pictoId) ?? "" : c.fichier,
+      ...apparence(c, palette),
+    })),
+  };
+}
+
+/** Une copie du tableau, pour un autre élève : les mêmes cases aux mêmes places, sous un nom à elle. */
+export function dupliquer(g: Gabarit): Gabarit {
+  return {
+    ...g, id: newId(), nom: `${g.nom} (copie)`,
+    cases: g.cases.map((c) => ({ ...c })),
+    ...(g.couleurs ? { couleurs: { mode: g.couleurs.mode, couleurs: { ...g.couleurs.couleurs } } } : {}),
+  };
+}
+
+export const PLACES_DU_MOT: { id: PlaceDuMot; label: string }[] = [
+  { id: "dessous", label: "Sous l'image" },
+  { id: "dessus", label: "Au-dessus de l'image" },
+  { id: "aucune", label: "Pas de mot" },
+];
+
+export const CORPS_DU_MOT: { corps: number; label: string }[] = [
+  { corps: 7, label: "Petit" },
+  { corps: 9, label: "Moyen" },
+  { corps: 12, label: "Grand" },
+];
 
 export function nouveauGabarit(colonnes = 5, lignes = 4): Gabarit {
   return {
@@ -129,13 +236,22 @@ export function lireGabarit(json: string): Gabarit {
     paysage: brut?.paysage !== false,
     ecart: Number.isFinite(Number(brut?.ecart)) ? Number(brut.ecart) : 3,
     cases: Array.isArray(brut?.cases)
-      ? brut.cases.map((c: any): CaseTla => ({
-          pictoId: c?.pictoId === null || c?.pictoId === undefined ? null : Number(c.pictoId),
-          fichier: String(c?.fichier ?? ""),
-          mot: String(c?.mot ?? ""),
-          nature: (NATURES.some((n) => n.id === c?.nature) ? c.nature : "nom") as NatureMot,
-        }))
+      ? brut.cases.map((c: any): CaseTla => {
+          const couleur = couleurSure(c?.couleur);
+          return {
+            pictoId: c?.pictoId === null || c?.pictoId === undefined ? null : Number(c.pictoId),
+            fichier: String(c?.fichier ?? ""),
+            mot: String(c?.mot ?? ""),
+            nature: (NATURES.some((n) => n.id === c?.nature) ? c.nature : "nom") as NatureMot,
+            ...(couleur ? { couleur } : {}),
+            ...(c?.masquee === true ? { masquee: true } : {}),
+          };
+        })
       : [],
+    ...(brut?.couleurs ? { couleurs: lirePalette(brut.couleurs) } : {}),
+    ...(PLACES_DU_MOT.some((p) => p.id === brut?.placeMot) ? { placeMot: brut.placeMot as PlaceDuMot } : {}),
+    ...(Number.isFinite(Number(brut?.corpsMot)) && brut?.corpsMot != null
+      ? { corpsMot: Math.min(16, Math.max(5, Number(brut.corpsMot))) } : {}),
   };
   const soucis = verifier(g);
   if (soucis.length) throw new Error(soucis.join(" "));

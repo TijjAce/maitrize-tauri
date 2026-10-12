@@ -20,6 +20,7 @@ import { AmisTab } from "./Amis";
 import { listen } from "@tauri-apps/api/event";
 import { Licences } from "../components/Licences";
 import { ChiffrementDisqueCard } from "../components/ChiffrementDisque";
+import { FenetreCouleurs, LegendeTla, garderPaletteParDefaut, usePaletteParDefaut } from "../components/CouleursTla";
 
 const ONGLETS = [
   ["general", "Général"],
@@ -43,6 +44,9 @@ export default function Reglages() {
   // qu'au milieu d'une ESS.
   const [dataMsg, setDataMsg] = React.useState("");
   const [showMatieres, setShowMatieres] = React.useState(false);
+  // Les couleurs par défaut des tableaux de langage : sur le fond, sur le cadre, ou nulle part.
+  const [showCouleursTla, setShowCouleursTla] = React.useState(false);
+  const paletteTla = usePaletteParDefaut();
   const [cgu, setCgu] = React.useState<CguAcceptation | null>(null);
   const [version, setVersion] = React.useState("");
   React.useEffect(() => { getVersion().then(setVersion).catch(() => {}); }, []);
@@ -288,6 +292,17 @@ export default function Reglages() {
         <Field label="Emploi du temps">
           <button className="btn" onClick={() => setShowMatieres(true)}>🎨 Couleurs des matières…</button>
         </Field>
+
+        <Field label="Tableaux de langage">
+          <button className="btn" onClick={() => setShowCouleursTla(true)}>🗣 Couleurs des tableaux…</button>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 11.5, marginTop: 8 }}>
+            <LegendeTla palette={paletteTla} />
+          </div>
+          <div style={{ fontSize: 11.5, color: "var(--text-2)", marginTop: 6 }}>
+            Les couleurs que prennent les tableaux de langage : sur le fond des cases, sur leur cadre, ou aucune.
+            Un tableau peut garder les siennes.
+          </div>
+        </Field>
       </div>
 
       </>}
@@ -455,6 +470,11 @@ export default function Reglages() {
       {onglet === "general" && <Licences />}
 
       {showMatieres && <CouleursMatieresModal onClose={() => setShowMatieres(false)} />}
+      {showCouleursTla && (
+        <FenetreCouleurs titre="Couleurs des tableaux de langage" palette={paletteTla}
+          explication="Tous les tableaux les prennent, sauf ceux qui ont leurs propres couleurs (Fabriquer › Tableaux de langage)."
+          onChange={(p) => { void garderPaletteParDefaut(p); }} onClose={() => setShowCouleursTla(false)} />
+      )}
     </Page>
   );
 }
