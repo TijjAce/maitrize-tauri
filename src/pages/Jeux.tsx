@@ -83,21 +83,31 @@ const RANGEMENT_MEMORISE = "fabriquer:rangement";
 /** Les sections repliées du catalogue — « famille:maths », « moment:rituel » —, gardées sur cet ordinateur. */
 const lirePlis = (brut: unknown): string[] => (Array.isArray(brut) ? brut.filter((x): x is string => typeof x === "string") : []);
 
+/** L'icône et le nom d'une famille : « 🗣 Langage ». */
+const iconeEtNom = (libelle: string): [string, string] => {
+  const i = libelle.indexOf(" ");
+  return i > 0 ? [libelle.slice(0, i), libelle.slice(i + 1)] : ["", libelle];
+};
+
 /**
  * Une famille, ou un moment de la séquence, qui se plie : le catalogue est
- * long, on referme ce qu'on n'ouvre jamais. Pliée, la section dit combien
- * d'ateliers elle garde.
+ * long, on referme ce qu'on n'ouvre jamais. Pliée, c'est une carte — son
+ * icône, son nom, ce qu'elle fait sur une ligne, combien d'ateliers elle garde.
  */
-function PliDuCatalogue({ ouvert, onBasculer, titre, aide, nombre, children }: {
-  ouvert: boolean; onBasculer: (ouvert: boolean) => void; titre: React.ReactNode; aide: string; nombre: number; children: React.ReactNode;
+function PliDuCatalogue({ ouvert, onBasculer, icone, titre, aide, nombre, children }: {
+  ouvert: boolean; onBasculer: (ouvert: boolean) => void; icone: string; titre: string; aide: string; nombre: number; children: React.ReactNode;
 }) {
   return (
     <details className="pli-catalogue" open={ouvert}
       onToggle={(e) => { const o = e.currentTarget.open; if (o !== ouvert) onBasculer(o); }}>
-      <summary>
-        <b>{titre}</b>
-        {!ouvert && <span className="pli-nombre">{nombre} atelier{nombre > 1 ? "s" : ""}</span>}
-        <span className="meta">{aide}</span>
+      <summary title={ouvert ? undefined : aide}>
+        <span className="pli-icone" aria-hidden="true">{icone}</span>
+        <span className="pli-texte">
+          <b className="pli-titre">{titre}</b>
+          <span className="pli-aide">{aide}</span>
+        </span>
+        <span className="pli-nombre">{nombre} atelier{nombre > 1 ? "s" : ""}</span>
+        <span className="pli-chevron" aria-hidden="true">›</span>
       </summary>
       {children}
     </details>
@@ -278,7 +288,7 @@ export default function Jeux() {
                   if (id) ranger(id, usage.id);
                 }}>
                 <PliDuCatalogue ouvert={!plis.includes(`moment:${usage.id}`)} onBasculer={(o) => plier(`moment:${usage.id}`, !o)}
-                  titre={<>{usage.ico} {usage.nom}</>} aide={`${usage.quand} — ${usage.aide}`} nombre={outils.length}>
+                  icone={usage.ico} titre={usage.nom} aide={`${usage.quand} — ${usage.aide}`} nombre={outils.length}>
                   {outils.length ? (
                     <div className="ateliers">{outils.map(carteMobile)}</div>
                   ) : (
@@ -291,7 +301,7 @@ export default function Jeux() {
         ) : FAMILLES.map((f) => (
           <section key={f.id} className="famille-catalogue">
             <PliDuCatalogue ouvert={!plis.includes(`famille:${f.id}`)} onBasculer={(o) => plier(`famille:${f.id}`, !o)}
-              titre={f.libelle} aide={f.aide} nombre={f.outils.length}>
+              icone={iconeEtNom(f.libelle)[0]} titre={iconeEtNom(f.libelle)[1]} aide={f.aide} nombre={f.outils.length}>
               <div className="ateliers">{f.outils.map(carte)}</div>
             </PliDuCatalogue>
           </section>
