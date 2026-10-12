@@ -78,10 +78,12 @@ let cahier = null, cahierSouci = "";
  * Le portail des tablettes : ouvert, il montre l'aide choisie aux tablettes
  * des élèves, sur le même réseau que le téléphone. Son état vient de Rust.
  */
-const PORTAIL_FERME = { ouvert: false, adresses: [], qr: "", tablettes: 0, montree: "", montreeId: "", affichage: "fiche", etape: null, etapes: 0, texteEtape: "", minuteur: null };
+const PORTAIL_FERME = { ouvert: false, adresses: [], qr: "", adresseChangee: false, tablettes: 0, montree: "", montreeId: "", affichage: "fiche", etape: null, etapes: 0, texteEtape: "", minuteur: null };
 /** Les durées du minuteur qu'on lance d'un toucher, en minutes. */
 const MINUTEURS = [1, 2, 5, 10, 15, 20, 30];
 let portail = PORTAIL_FERME, suiviPortail = null, portailSouci = "";
+/** « Changer le code » se confirme : toutes les tablettes devront rescanner. */
+let confirmerCode = false;
 /**
  * Où va ce qu'on dicte ou qu'on écrit : au cahier journal, rangé au créneau,
  * ou aux notes rapides de l'ordinateur, en un nouveau tiret. Le cahier
@@ -841,12 +843,20 @@ setInterval(() => {
   if (el && portail.minuteur) el.textContent = resteDuMinuteur(portail.minuteur);
 }, 1000);
 
+/** Un nouveau code : l'ancien ne vaut plus sur aucune tablette — une tablette perdue, un QR code photographié. */
+async function changerLeCode() {
+  confirmerCode = false;
+  try { portail = await invoke("portail_changer_code"); portailSouci = ""; } catch (e) { portailSouci = String(e); }
+  rendre();
+}
+
 async function cacherAide() {
   try { portail = await invoke("portail_cacher"); } catch (e) { portailSouci = String(e); }
   rendre();
 }
 
 async function fermerPortail() {
+  confirmerCode = false;
   try { portail = await invoke("portail_fermer"); } catch (e) { portail = PORTAIL_FERME; }
   if (suiviPortail) { clearInterval(suiviPortail); suiviPortail = null; }
   // Plus de portail : l'écran peut s'éteindre, sauf pendant une dictée.
@@ -1206,7 +1216,8 @@ function carteDuPortail() {
       <b>${portail.tablettes} tablette${portail.tablettes > 1 ? "s" : ""} connectée${portail.tablettes > 1 ? "s" : ""}</b>
       <span>${portail.montree ? `Montrée : ${echapper(portail.montree)}` : "Rien n'est montré pour l'instant."}</span>
       <span class="portail-adresse">${adresse ? echapper(adresse) : "Aucun réseau : activez le WiFi, ou le partage de connexion pour les tablettes."}</span>
-      <span class="portail-aide">Les tablettes scannent ce code, sur le même réseau que le téléphone. Gardez le dictaphone ouvert pendant l'activité.</span>
+      ${portail.adresseChangee ? `<span class="portail-alerte">${icone("attention")}<span>Les tablettes ont gardé une autre adresse : sur ce réseau, elles doivent rescanner ce code.</span></span>` : ""}
+      <span class="portail-aide">Chaque tablette scanne ce code une fois, sur le même réseau que le téléphone, et garde la page sur son écran d'accueil : le code ne change pas. Gardez le dictaphone ouvert pendant l'activité.</span>
     </div>
     ${commandesDuDeroule()}
     ${commandesDuMinuteur()}
@@ -1214,7 +1225,15 @@ function carteDuPortail() {
       ${portail.montree ? `<button class="btn-doux" id="cacher-aide">Ne plus montrer</button>` : "<span></span>"}
       <button class="btn-doux" id="fermer-portail">Fermer le portail</button>
     </div>
+    ${changementDuCode()}
   </div>`;
+}
+
+/** Changer le code : rare — une tablette perdue —, puisque toutes les tablettes rescannent ; on le confirme. */
+function changementDuCode() {
+  if (!confirmerCode) return `<div class="pages-boutons portail-code"><button class="lien-btn" id="changer-code">Changer le code</button></div>`;
+  return `<div class="pages-gardees confirmer"><p>Toutes les tablettes devront scanner le nouveau code, et remplacer leur icône.</p>
+    <div class="pages-boutons"><button class="lien-btn rouge" id="confirmer-code">Changer le code</button><button class="lien-btn" id="garder-code">Garder celui-ci</button></div></div>`;
 }
 
 /** L'aide montrée : en fiche ou en déroulé, et l'étape où en est la classe. */
@@ -1448,6 +1467,9 @@ function rendre() {
   });
   clic("cacher-aide", () => { void cacherAide(); });
   clic("fermer-portail", () => { void fermerPortail(); });
+  clic("changer-code", () => { confirmerCode = true; rendre(); });
+  clic("garder-code", () => { confirmerCode = false; rendre(); });
+  clic("confirmer-code", () => { void changerLeCode(); });
   clic("ouvrir-portail", () => { void ouvrirLePortail(); });
   el.querySelectorAll("[data-minuteur]").forEach((b) => {
     b.onclick = () => { void auPortail("portail_minuteur", { secondes: Number(b.dataset.minuteur) }); };

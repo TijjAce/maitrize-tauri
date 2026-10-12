@@ -52,6 +52,7 @@ pub fn run() {
             portail_minuteur_arreter,
             portail_etat,
             portail_fermer,
+            portail_changer_code,
             // Les photos nommées, pour Mes pictos.
             photo_garder,
             photos_liste,
