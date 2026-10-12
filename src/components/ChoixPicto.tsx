@@ -3,7 +3,9 @@ import { api, PictoArasaac } from "../api";
 import { Field, Input, Modal } from "./ui";
 import type { PictoPose } from "../supportsVisuels";
 import { banqueDe, chargerImageAppoint } from "../pictosAppoint";
-import { ETIQUETTES, chercherPictos, estMonPicto, imageDeMonPicto, origineDe, type MonPicto } from "../mesPictos";
+import {
+  ETIQUETTES, EVT_MES_PICTOS, chercherPictos, commePicto, estMonPicto, imageDeMonPicto, lireMesPictos, origineDe, type MonPicto,
+} from "../mesPictos";
 import { PhotoParNuage } from "./PhotoParNuage";
 import { imagesSelonMode, modeImagesActif, photosChangees, type ModeImages } from "../imagesSelonMode";
 import { toast } from "./Toaster";
@@ -148,6 +150,25 @@ function Resultat({ picto, actif, onClick }: { picto: PictoArasaac; actif: boole
   );
 }
 
+/** Les photos arrivées du téléphone, les plus récentes d'abord : on en reprend une sans la reprendre en photo. */
+function usePhotosDuTelephone(actif: boolean): MonPicto[] {
+  const [liste, setListe] = React.useState<MonPicto[]>([]);
+  React.useEffect(() => {
+    if (!actif) return;
+    let vivant = true;
+    const lire = () => {
+      lireMesPictos()
+        .then((l) => { if (vivant) setListe(l.filter((p) => p.origine === "photo").sort((a, b) => b.date.localeCompare(a.date) || a.mot.localeCompare(b.mot, "fr"))); })
+        .catch(() => {});
+    };
+    lire();
+    // Une photo qui arrive pendant qu'on choisit rejoint la galerie.
+    window.addEventListener(EVT_MES_PICTOS, lire);
+    return () => { vivant = false; window.removeEventListener(EVT_MES_PICTOS, lire); };
+  }, [actif]);
+  return liste;
+}
+
 export function ChoixPicto({ valeur, banque, titre = "Choisir un pictogramme", onClose, onValider, photos = false }: {
   valeur: PictoPose; banque: boolean; titre?: string;
   onClose: () => void; onValider: (p: PictoPose) => void;
@@ -164,6 +185,14 @@ export function ChoixPicto({ valeur, banque, titre = "Choisir un pictogramme", o
   // La photo du téléphone arrive par Nuage dans Mes pictos : elle se pose comme eux, sous son numéro.
   const prendrePhotoDuTelephone = (p: MonPicto) => { setPhoto(""); setChoisi(p.id); setMot((m) => (m.trim() ? m : p.mot)); };
   const photoDuTelephone = origineDe(choisi) === "photo" ? choisi : null;
+  const photosRecues = usePhotosDuTelephone(photos);
+  // Une photo reprise de la galerie donne son nom, sauf si l'on a écrit soi-même le mot : celui d'un autre choix ne lui va pas.
+  const prendrePhotoRecue = (p: MonPicto) => {
+    setPhoto("");
+    setChoisi(p.id);
+    const venuDUnChoix = !mot.trim() || mot === valeur.mot || resultats.some((r) => r.mot === mot) || photosRecues.some((x) => x.mot === mot);
+    if (venuDUnChoix) setMot(p.mot);
+  };
   const srcPhotoDuTelephone = usePictoImage(photoDuTelephone, true);
   // Une image de l'ordinateur rejoint les fichiers de l'application, comme une photo du téléphone.
   const importer = async (f: File) => {
@@ -243,6 +272,16 @@ export function ChoixPicto({ valeur, banque, titre = "Choisir un pictogramme", o
               <button type="button" className="btn ghost sm" onClick={() => { setPhoto(""); if (photoDuTelephone != null) setChoisi(null); }}>Retirer la photo</button>
             )}
           </div>
+          {photosRecues.length > 0 && (
+            <>
+              <div className="meta" style={{ fontSize: 12, margin: "10px 0 4px" }}>Déjà arrivées du téléphone ({photosRecues.length})</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))", gap: 6, maxHeight: 210, overflowY: "auto" }}>
+                {photosRecues.map((p) => (
+                  <Resultat key={p.id} picto={commePicto(p)} actif={choisi === p.id} onClick={() => prendrePhotoRecue(p)} />
+                ))}
+              </div>
+            </>
+          )}
         </Field>
       )}
       <Field label="Mot écrit sous l'image">
