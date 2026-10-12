@@ -1,6 +1,7 @@
 import React from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Modal } from "./ui";
+import { PHOTOS_PAYSAGES } from "../photosPaysages";
 
 // Ce que Maîtrize doit à d'autres : sa propre licence, celles des pictogrammes
 // qu'il télécharge, et le texte des licences des composants qu'il embarque
@@ -49,6 +50,15 @@ export function Licences() {
           Ces licences interdisent l'usage commercial : les feuilles qui montrent ces pictogrammes se donnent, elles ne se
           vendent pas ; une feuille qui en est tirée — un coloriage, une ombre — garde la même licence.
         </p>
+        <p>
+          <b>Photographies de paysages</b> de l'atelier « Lire un paysage », venues de Wikimedia Commons et créditées sous
+          chaque photo imprimée. Une feuille qui en montre une garde sa licence :
+        </p>
+        <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+          {PHOTOS_PAYSAGES.map((p) => (
+            <li key={p.id}>{p.titre} : {p.auteur}, {p.licence === "CC0" ? "domaine public (CC0)" : `licence ${p.licence}`} — {lien(p.page, "l'original")}.</li>
+          ))}
+        </ul>
         <p>
           <b>Transcription sur l'ordinateur</b> : modèles Whisper d'OpenAI, licence Apache 2.0, téléchargés depuis Hugging Face.
           <br /><b>Programmes et guides</b> : repris d'Éduscol et des textes officiels, avec leur source.

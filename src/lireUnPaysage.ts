@@ -13,6 +13,7 @@
 import { escapeHtml } from "./print";
 import { reference } from "./references";
 import { feuille } from "./cartesImprimables";
+import { ATTENTE_PHOTO, creditPhoto, photoPaysage, photosDe } from "./photosPaysages";
 
 const esc = escapeHtml;
 const PROGRAMME = "Programme d'histoire-géographie du cycle 2, BO n° 22 du 28 mai 2026 (annexe 3) : géographie, CE1 thèmes 1 et 2, CE2 thèmes 2 et 3.";
@@ -59,15 +60,20 @@ export interface ReglagesPaysage {
   elements: boolean;
   /** Le croquis et sa légende. */
   croquis: boolean;
+  /** La photographie de l'application qu'on imprime en tête (voir photosPaysages) ; vide : on colle la sienne. */
+  photo: string;
 }
 
-export const REGLAGES_PAYSAGE: ReglagesPaysage = { famille: "villeVillage", titre: "", plans: true, elements: true, croquis: true };
+export const REGLAGES_PAYSAGE: ReglagesPaysage = { famille: "villeVillage", titre: "", plans: true, elements: true, croquis: true, photo: "" };
 
 export function reglagesPaysageSurs(brut: unknown): ReglagesPaysage {
   const o = (brut && typeof brut === "object" ? brut : {}) as Record<string, unknown>;
   const d = REGLAGES_PAYSAGE;
+  const famille = (Object.keys(FAMILLES_PAYSAGE) as FamillePaysage[]).includes(o.famille as FamillePaysage) ? (o.famille as FamillePaysage) : d.famille;
   return {
-    famille: (Object.keys(FAMILLES_PAYSAGE) as FamillePaysage[]).includes(o.famille as FamillePaysage) ? (o.famille as FamillePaysage) : d.famille,
+    famille,
+    // Une photographie d'une autre famille ne vaut plus : on revient à la sienne.
+    photo: typeof o.photo === "string" && photosDe(famille).some((p) => p.id === o.photo) ? o.photo : d.photo,
     titre: typeof o.titre === "string" ? o.titre.slice(0, 80) : d.titre,
     plans: typeof o.plans === "boolean" ? o.plans : d.plans,
     elements: typeof o.elements === "boolean" ? o.elements : d.elements,
@@ -78,7 +84,19 @@ export function reglagesPaysageSurs(brut: unknown): ReglagesPaysage {
 const coches = (liste: string[]) => `<div class="py-coches">${liste.map((x) => `<span><i></i>${esc(x)}</span>`).join("")}</div>`;
 const lignes = (n: number) => Array.from({ length: n }, () => `<div class="py-ligne"></div>`).join("");
 
-export function htmlPaysage(r: ReglagesPaysage): string {
+/**
+ * La photographie en tête de la fiche : celle de l'application, son crédit
+ * dessous — `images` la donne en données ; sans elle, l'impression la met
+ * (voir avecLesPhotosDePaysage) —, sinon le cadre où l'on colle la sienne.
+ */
+function laPhotographie(r: ReglagesPaysage, images: Record<string, string>): string {
+  const p = photoPaysage(r.photo);
+  if (!p) return `<div class="py-photo">Je colle la photographie ici.</div>`;
+  return `<figure class="py-image"><img src="${esc(images[p.id] ?? ATTENTE_PHOTO + p.id)}" alt="${esc(`${p.type} : ${p.titre}`)}">`
+    + `<figcaption>${esc(creditPhoto(p))}</figcaption></figure>`;
+}
+
+export function htmlPaysage(r: ReglagesPaysage, images: Record<string, string> = {}): string {
   const f = FAMILLES_PAYSAGE[r.famille];
   const plans = r.plans ? `<div class="py-cadre"><b>Ce que je vois</b>`
     + ["au premier plan", "au second plan", "à l'arrière-plan"].map((p) => `<div class="py-plan"><em>${p} :</em>${lignes(1)}</div>`).join("") + `</div>` : "";
@@ -92,12 +110,15 @@ export function htmlPaysage(r: ReglagesPaysage): string {
       <div class="py-cadre"><b>Ma légende</b>${Array.from({ length: 4 }, () => `<div class="py-legende"><i></i>${lignes(1)}</div>`).join("")}</div></div>` : "";
   return feuille(`<div class="page"><div class="titre">Je lis un paysage${r.titre.trim() ? ` : ${esc(r.titre.trim())}` : ""} ${reference(PROGRAMME)}</div>`
     + `<div class="sous">Prénom : ………………………… Date : ……………</div>`
-    + `<div class="py-photo">Je colle la photographie ici.</div>${plans}${elements}${nom}</div>${croquis}`, "py");
+    + `${laPhotographie(r, images)}${plans}${elements}${nom}</div>${croquis}`, "py");
 }
 
 export const STYLE_PAYSAGE = `
   .feuille.py .py-photo { height: 70mm; border: 1.5px dashed #9aa0b4; border-radius: 3mm; display: flex; align-items: center; justify-content: center;
     color: #8a91a5; font-size: 12px; margin: 2mm 0 3mm; }
+  .feuille.py .py-image { margin: 2mm 0 3mm; text-align: center; break-inside: avoid; }
+  .feuille.py .py-image img { display: block; max-width: 100%; max-height: 70mm; margin: 0 auto; border-radius: 2mm; }
+  .feuille.py .py-image figcaption { margin-top: 1mm; font-size: 9px; color: #687087; }
   .feuille.py .py-cadre { border: 1.5px solid #cfd4e2; border-radius: 3mm; padding: 2.5mm 3.5mm; margin: 0 0 3mm; break-inside: avoid; }
   .feuille.py .py-cadre > b { display: block; margin-bottom: 1.5mm; font-size: 13.5px; }
   .feuille.py .py-plan { display: flex; align-items: flex-end; gap: 2mm; font-size: 13px; }

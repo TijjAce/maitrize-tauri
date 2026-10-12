@@ -13,6 +13,7 @@ import {
 } from "../planDeLaClasse";
 import { FIGURES_PAR_DEFAUT, MODELES_FRISE, MOIS, REGLAGES_FRISE, STYLE_FRISE, htmlFrise, reglagesFriseSurs, type ModeleFrise } from "../frisesTemps";
 import { FAMILLES_PAYSAGE, REGLAGES_PAYSAGE, STYLE_PAYSAGE, htmlPaysage, reglagesPaysageSurs, type FamillePaysage } from "../lireUnPaysage";
+import { chargerPhotoPaysage, photosDe } from "../photosPaysages";
 
 // ── Fabriquer › Histoire-géographie : le plan de la classe ────────────────
 //
@@ -184,7 +185,16 @@ export function FriseTab() {
 export function PaysageTab() {
   const [brut, maj] = useReglages("paysage", REGLAGES_PAYSAGE);
   const r = React.useMemo(() => reglagesPaysageSurs(brut), [brut]);
-  const html = React.useMemo(() => htmlPaysage(r), [r]);
+  // La photographie choisie, chargée à la demande : l'aperçu et l'impression la montrent.
+  const [images, setImages] = React.useState<Record<string, string>>({});
+  React.useEffect(() => {
+    const id = r.photo;
+    if (!id || images[id]) return;
+    let vivant = true;
+    chargerPhotoPaysage(id).then((src) => { if (vivant && src) setImages((m) => ({ ...m, [id]: src })); }).catch(() => {});
+    return () => { vivant = false; };
+  }, [r.photo]); // eslint-disable-line react-hooks/exhaustive-deps
+  const html = React.useMemo(() => htmlPaysage(r, images), [r, images]);
   const titre = `Lire un paysage — ${FAMILLES_PAYSAGE[r.famille].nom}`;
   return (
     <Colonnes
@@ -200,6 +210,17 @@ export function PaysageTab() {
               <option key={f} value={f}>{FAMILLES_PAYSAGE[f].nom} ({FAMILLES_PAYSAGE[f].classe})</option>
             ))}
           </Select>
+        </Field>
+        <Field label="La photographie">
+          <Select value={r.photo} onChange={(e) => maj({ photo: e.target.value })}>
+            <option value="">Je colle la mienne (une sortie, une photo de la classe)</option>
+            {photosDe(r.famille).map((p) => <option key={p.id} value={p.id}>{p.type} — {p.titre}</option>)}
+          </Select>
+          {r.photo && (
+            <p className="meta" style={{ fontSize: 12, margin: "6px 0 0" }}>
+              Une photographie libre de Wikimedia Commons : son auteur et sa licence s'impriment dessous.
+            </p>
+          )}
         </Field>
         <Field label="Ce que montre la photographie (facultatif)">
           <Input value={r.titre} maxLength={80} placeholder="Le village de…, le port de…" onChange={(e) => maj({ titre: e.target.value })} />

@@ -1295,7 +1295,7 @@ const frise = (seance: number, titre: string, modele: ModeleFrise, aCompleter = 
   return { seance, atelier: "frise", titre, fabriquer: () => ({ html: htmlFrise(r), style: STYLE_FEUILLE + STYLE_FRISE, refaire: { frise: r } }) };
 };
 
-/** Une feuille de l'atelier « Lire un paysage ». */
+/** Une feuille de l'atelier « Lire un paysage », avec sa photographie (voir photosPaysages), qui s'y met à l'impression. */
 const paysage = (seance: number, titre: string, famille: FamillePaysage, plus: Partial<ReglagesPaysage> = {}) => (): FeuilleAFabriquer => {
   const r = reglagesPaysageSurs({ ...REGLAGES_PAYSAGE, ...plus, famille });
   return { seance, atelier: "paysage", titre, fabriquer: () => ({ html: htmlPaysage(r), style: STYLE_FEUILLE + STYLE_PAYSAGE, refaire: { paysage: r } }) };
@@ -1451,16 +1451,16 @@ const PLANS_DES_THEMES: Record<string, { feuilles: ((ctx: ContexteFeuilles | nul
   [TERRE_PEUPLEE_CE1.id]: {
     feuilles: [
       motsCles(1, "De grandes villes du monde", ["Tokyo (Asie)", "Lagos (Afrique)", "Mexico (Amérique)", "São Paulo (Amérique)", "Paris (Europe)", "Sydney (Océanie)"]),
-      paysage(2, "Ville, village ou campagne ?", "villeVillage"),
+      paysage(2, "Ville, village ou campagne ?", "villeVillage", { photo: "village" }),
     ],
     materiel: ["Une carte de la population du monde, le planisphère", "Des photographies de grandes villes", "Des photographies de ville, de village et de campagne", ""],
   },
   [LIEUX_DE_VIE_CE1.id]: {
     feuilles: [
-      paysage(0, "Je lis un paysage", "monde"),
+      paysage(0, "Je lis un paysage", "monde", { photo: "vallee" }),
       motsCles(2, "Les repères du monde", ["la zone tropicale", "la zone tempérée", "la zone froide", "la forêt amazonienne", "la forêt du bassin du Congo",
         "la forêt indonésienne", "le Sahara", "l'Antarctique", "l'Amazone", "le Mississippi", "le Nil", "les Andes", "les Alpes", "l'Atlas", "l'Himalaya", "les Rocheuses"]),
-      paysage(6, "Je lis un paysage — évaluation", "monde", { croquis: false }),
+      paysage(6, "Je lis un paysage — évaluation", "monde", { croquis: false, photo: "savane" }),
     ],
     materiel: ["Une photographie de paysage, ou une sortie", "Le planisphère, des crayons de couleur", "Des photographies de forêts, de déserts, de prairies, de savanes",
       "Des photographies de reliefs, une maquette", "Le planisphère", "Des photographies de lieux de vie", "Une photographie de paysage"],
@@ -1474,19 +1474,19 @@ const PLANS_DES_THEMES: Record<string, { feuilles: ((ctx: ContexteFeuilles | nul
   },
   [SE_LOGER_CE2.id]: {
     feuilles: [
-      paysage(1, "Je lis un paysage résidentiel", "residentiel"),
-      paysage(4, "Je lis un paysage résidentiel — croquis", "residentiel", { elements: false }),
+      paysage(1, "Je lis un paysage résidentiel", "residentiel", { photo: "centre-ville" }),
+      paysage(4, "Je lis un paysage résidentiel — croquis", "residentiel", { elements: false, photo: "lotissement" }),
       motsCles(4, "Se loger", ["le centre-ville", "le grand ensemble", "le lotissement pavillonnaire", "le quartier récent", "le village"]),
-      paysage(5, "Je lis un paysage résidentiel — évaluation", "residentiel", { croquis: false }),
+      paysage(5, "Je lis un paysage résidentiel — évaluation", "residentiel", { croquis: false, photo: "grand-ensemble" }),
     ],
     materiel: ["Des photographies du quartier ou du village", "Des photographies d'un centre-ville ancien et d'un village", "Des photographies d'un grand ensemble et d'un quartier récent",
       "Des photographies d'un lotissement", "Des photographies à trier", "Une photographie d'un espace résidentiel"],
   },
   [TRAVAILLER_CE2.id]: {
     feuilles: [
-      paysage(1, "Je lis un paysage d'activités", "activites"),
+      paysage(1, "Je lis un paysage d'activités", "activites", { photo: "agricole" }),
       motsCles(4, "Travailler", ["l'exploitation agricole", "l'usine", "le centre commercial", "le quartier d'affaires", "la station touristique"]),
-      paysage(5, "Je lis un paysage d'activités — évaluation", "activites", { croquis: false }),
+      paysage(5, "Je lis un paysage d'activités — évaluation", "activites", { croquis: false, photo: "station-littorale" }),
     ],
     materiel: ["Des photographies de lieux de travail", "Des photographies de paysages agricoles", "Des photographies de paysages industriels",
       "Des photographies d'un centre commercial et d'un quartier d'affaires", "Des photographies de stations touristiques", "Une photographie de paysage"],
