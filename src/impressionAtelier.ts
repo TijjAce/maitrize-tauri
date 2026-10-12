@@ -16,14 +16,14 @@ import { cleDesCompetences, lireCompetencesAtelier, objectifsDesAteliers, unionD
 import { CLE_ACTIF, CLE_LEXIQUE, STYLE_CONSIGNES_PICTOS, consignesActives, decorerConsignesHtml, lireLexique } from "./caa";
 import { chargerImageAppoint } from "./pictosAppoint";
 import { cleConsigne, remplacerConsigne, clePictos, lirePictosAjoutes } from "./consigneAtelier";
-import { appliquerOptionsFeuille, cleOptionsFeuille, consignesDeLaFeuille, lireOptionsFeuille, type OptionsFeuille } from "./optionsFeuille";
+import { cleOptionsFeuille, consignesDeLaFeuille, feuilleSelonOptions, lireOptionsFeuille, type OptionsFeuille } from "./optionsFeuille";
 import { ATELIERS_D_AIDE } from "./journalTelephone";
 import { documentImprimable, escapeHtml, printHTML } from "./print";
 import type { MaterielItem } from "./api";
 import { ecrireFabrication, fabricationDuMoment, modificationEnCours, type Fabrication, type Modification } from "./modifierFeuille";
 import { sansReferences } from "./references";
 import { STYLE_DYS, cleModeDys, lireModeDys } from "./presentationFeuille";
-import { STYLE_CONSIGNES_STRUCTUREES, structurerConsignesHtml } from "./consignesStructurees";
+import { STYLE_CONSIGNES_STRUCTUREES } from "./consignesStructurees";
 import { avecLesPhotosDePaysage } from "./photosPaysages";
 
 /** Combien de compétences s'écrivent en tête ; au-delà, on les compte. */
@@ -181,10 +181,10 @@ export async function avecLaConsigneDeLAtelier(atelier: string, corps: string, i
     const { api } = await import("./api");
     const reecrite = remplacerConsigne(corps, await api.settingGet(cleConsigne(atelier)));
     const options = { ...lireOptionsFeuille(await api.settingGet(cleOptionsFeuille(atelier))), ...imposees };
-    return sansReferences(structurerConsignesHtml(appliquerOptionsFeuille(reecrite, options)));
+    return sansReferences(feuilleSelonOptions(reecrite, options));
   } catch {
-    // Sans les réglages, la feuille garde tout : mieux vaut une consigne de trop qu'une feuille sans elle.
-    return sansReferences(structurerConsignesHtml(appliquerOptionsFeuille(corps, { consigne: true, prenom: true, corrige: true, tablettes: false, ...imposees })));
+    // Sans les réglages, la feuille garde tout, sauf les aides : mieux vaut une consigne de trop qu'une feuille sans elle.
+    return sansReferences(feuilleSelonOptions(corps, { consigne: true, prenom: true, corrige: true, aide: false, tablettes: false, ...imposees }));
   }
 }
 
@@ -334,46 +334,40 @@ export async function poserDansUneSeance(
 
 // ── Pour un élève ──────────────────────────────────────────────────────────
 //
-// Une fiche d'autonomie (voir `fichesAutonomie`) va à un élève : son prénom
-// et la date s'écrivent sur la ligne prévue, pour qu'elle trouve sa place
-// dans la pile qu'on distribue — et la correction reste au maître, elle n'a
-// rien à faire dans cette pile.
+// Une fiche d'autonomie (voir `fichesAutonomie`) va à un élève : elle se
+// range dans son dossier et le cahier journal la cite à son nom, mais le
+// papier ne le porte pas. Ni prénom ni date imprimés : la même feuille doit
+// pouvoir resservir à un autre élève, un autre jour (demande de l'enseignant,
+// octobre 2026) ; la ligne « Prénom … Date … » reste à remplir à la main.
+// La correction reste au maître, elle n'a rien à faire dans la pile qu'on
+// distribue.
 
-/** Les pointillés à remplir après « Prénom : » ou « Date : ». */
-const A_REMPLIR = (quoi: string) => new RegExp(`(${quoi}\\s*:\\s*)[.…_]{3,}`, "g");
-
-/**
- * La ligne « Prénom … Date … » remplie : le prénom, la date en toutes
- * lettres. Une feuille qui n'en a pas — une pyramide, des mots mêlés — la
- * reçoit en tête.
- */
-export function auNomDeLEleve(html: string, prenom: string, date: string): string {
-  if (!A_REMPLIR("Prénom").test(html)) {
-    return `<div style="font-size:12px;color:#3b4256;margin:0 0 2mm">Prénom : ${escapeHtml(prenom)} · ${escapeHtml(date)}</div>${html}`;
-  }
-  return html
-    .replace(A_REMPLIR("Prénom"), (_, debut: string) => `${debut}${escapeHtml(prenom)}`)
-    .replace(A_REMPLIR("Date"), (_, debut: string) => `${debut}${escapeHtml(date)}`);
+/** Le titre de la fiche sans l'élève ni le jour (« Pyramides — Inès, 9 oct. » → « Pyramides ») : c'est celui que garde le PDF. */
+export function titreSansLEleve(titre: string, prenom: string): string {
+  const echappe = prenom.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return (echappe ? titre.replace(new RegExp(`\\s+—\\s+${echappe},[^—]*$`), "") : titre).trim() || titre;
 }
 
 /**
  * La feuille de l'atelier telle qu'elle s'imprime — sa consigne, ses
- * compétences —, à son nom, sans corrigé, en PDF. Une fiche d'autonomie garde
- * sa consigne sur le papier : l'élève y travaille seul, sans le portail.
+ * compétences —, sans corrigé, en PDF. Une fiche d'autonomie garde sa
+ * consigne sur le papier : l'élève y travaille seul, sans le portail.
  */
 async function pdfPourLEleve(atelier: string, titre: string, corps: string, style: string, eleve: { prenom: string; date: string }): Promise<string> {
   const { api } = await import("./api");
   const entete = enteteCompetencesHtml(await competencesDeLAtelier(atelier));
   const sansCorrige = await avecLaConsigneDeLAtelier(atelier, await avecLesPhotosDePaysage(corps), { consigne: true, corrige: false });
-  const consignes = await consignesEnPictos(auNomDeLEleve(sansCorrige, eleve.prenom, eleve.date), await supplementDe(atelier, {}));
-  const html = documentImprimable(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style + await styleDeLAtelier(atelier));
+  const consignes = await consignesEnPictos(sansCorrige, await supplementDe(atelier, {}));
+  const html = documentImprimable(titreSansLEleve(titre, eleve.prenom), entete + consignes.corps,
+    (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style + await styleDeLAtelier(atelier));
   return api.feuilleEnPdf(html);
 }
 
 /**
  * La fiche d'un élève, en PDF, rangée dans un dossier du bureau : la feuille
- * de l'atelier telle qu'elle s'imprime — sa consigne, ses compétences —, à
- * son nom, sans corrigé. `refaire` dit comment l'atelier la refait.
+ * de l'atelier telle qu'elle s'imprime — sa consigne, ses compétences —, sans
+ * corrigé, et sans son prénom : seuls le titre sur le bureau et le dossier
+ * disent pour qui elle est. `refaire` dit comment l'atelier la refait.
  */
 export async function ficheDeLEleve(
   atelier: string, titre: string, corps: string, style: string, eleve: { prenom: string; date: string; dossier: string },

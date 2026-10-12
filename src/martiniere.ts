@@ -234,7 +234,7 @@ export function htmlMartiniere(series: Calcul[][], r: ReglagesMartiniere, consig
 }
 
 export const STYLE_MARTINIERE = `
-  .feuille.ma .consigne { font-size: 15px; font-weight: 700; color: #1c2233; margin: 0 0 4mm; }
+  .feuille.ma .consigne, .feuille.ma .ma-consigne { font-size: 15px; font-weight: 700; color: #1c2233; margin: 0 0 4mm; }
   .feuille.ma .ma-series { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5mm; align-items: start; }
   .feuille.ma .ma-serie { border-collapse: collapse; width: 100%; font-size: 12.5px; page-break-inside: avoid; }
   .feuille.ma .ma-serie caption { text-align: left; font-weight: 800; font-size: 13px; padding: 1mm 0; }

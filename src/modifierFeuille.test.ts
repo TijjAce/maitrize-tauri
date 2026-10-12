@@ -120,14 +120,15 @@ describe("la feuille refaite prend la place de l'ancienne", () => {
     expect(modificationEnCours.lire()).toBeNull();
   });
 
-  it("une fiche d'élève refaite reste à son nom, sans corrigé", async () => {
+  it("une fiche d'élève refaite reste rangée à son nom, sans corrigé, et sans prénom ni date sur le papier", async () => {
     const eleve = { prenom: "Inès", date: "jeudi 9 octobre" };
     base = [materiel({ seanceId: null, sequenceId: null, dossier: "Fiches d'autonomie/2026-10-09", titre: "Pyramides — Inès, 9 oct.",
       fabricationJson: ecrireFabrication({ atelier: "pyramides", eleve }) })];
     modifierDansFabriquer(base[0], lireFabrication(base[0].fabricationJson)!, () => {});
     const m = await enregistrerSurLeBureau("pyramides", "Pyramides", "<div class=\"feuille\"><div>Prénom : ........ Date : ........</div><div class=\"corrige\">12</div></div>");
     expect(m).toMatchObject({ id: "m1", dossier: "Fiches d'autonomie/2026-10-09" });
-    expect(pdfs[0]).toContain("Prénom : Inès Date : jeudi 9 octobre");
+    expect(pdfs[0]).toContain("Prénom : ........ Date : ........");
+    expect(pdfs[0]).not.toMatch(/Inès|9 octobre/);
     expect(pdfs[0]).not.toContain("class=\"corrige\"");
     expect(lireFabrication(m.fabricationJson)?.eleve).toEqual(eleve);
   });
@@ -158,9 +159,14 @@ describe("à la fabrication, la feuille note d'où elle vient", () => {
     expect(lireFabrication(m.fabricationJson)).toMatchObject({ atelier: "comparer", memoires: { comparer: { niveau: "cp-59" } }, graine: 9 });
   });
 
-  it("pour un élève, avec son prénom et la date", async () => {
-    const m = await ficheDeLEleve("pyramides", "Pyramides — Inès, 9 oct.", "<div class=\"feuille\">…</div>", "",
+  it("pour un élève : rangée à son nom, mais le papier ne porte ni son prénom ni la date", async () => {
+    const m = await ficheDeLEleve("pyramides", "Pyramides — Inès, 9 oct.",
+      "<div class=\"feuille\"><div class=\"sous\">Prénom : ............ Date : ......</div>…</div>", "",
       { prenom: "Inès", date: "jeudi 9 octobre", dossier: "Fiches d'autonomie/2026-10-09" }, { graine: 3 });
     expect(lireFabrication(m.fabricationJson)).toMatchObject({ atelier: "pyramides", graine: 3, eleve: { prenom: "Inès", date: "jeudi 9 octobre" } });
+    expect(m.titre).toBe("Pyramides — Inès, 9 oct.");
+    const pdf = pdfs[pdfs.length - 1];
+    expect(pdf).toContain("Prénom : ............ Date : ......");
+    expect(pdf).not.toMatch(/Inès|9 octobre|9 oct\./);
   });
 });

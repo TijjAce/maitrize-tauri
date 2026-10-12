@@ -168,8 +168,8 @@ export function htmlArbreCalcul(liste: Addition[], r: ReglagesArbre, entete?: { 
     ? `<div class="titre">${escapeHtml(entete.titre)}</div><div class="regle">${escapeHtml(entete.consigne)}</div>
       <div class="sous">Prénom : ........................................ Date : ........................ Score : ........ / ${liste.length}</div>`
     : `<div class="titre">Arbre à calcul — ajouter deux nombres</div>
+    <div class="rappel">L'arbre aide à raisonner ; peu à peu, je m'en passe.</div>
     <div class="regle"><b>Comment faire</b>Je décompose chaque nombre en dizaines et unités, j'ajoute les dizaines entre elles, les unités entre elles, puis je recompose la somme.
-      L'arbre soutient le raisonnement ; l'objectif est de finir par s'en passer.
       <span class="reference">Livret Mathématiques CP, Éduscol 2025.</span></div><div class="sous">Prénom : ........................................ Date : ........................</div>`;
   return feuille(`<div class="page">${regle}<div class="ar-grille">${liste.map(arbre).join("")}</div></div>`, "ar");
 }
@@ -415,7 +415,8 @@ export function htmlComparerFractions(r: ReglagesFractions, graine: number): str
     : cas === "denominateur" ? "Le même tout partagé de la même façon : on compte les parts prises."
       : "Les deux touts ont la même longueur ; l'un est partagé en deux fois, trois fois plus de parts : combien de petites parts font une grande ?";
   return `<div class="page"><div class="titre">Comparer des fractions</div>
-    <div class="regle"><b>Colorie, puis compare</b>Colorie chaque fraction sur sa bande, puis écris &lt;, &gt; ou = entre les deux. ${regle}
+    <div class="rappel">${regle}</div>
+    <div class="regle"><b>Colorie, puis compare</b>Colorie chaque fraction sur sa bande, puis écris &lt;, &gt; ou = entre les deux.
       <span class="reference">Livrets Mathématiques CE1 et CE2, Éduscol 2025.</span></div>
     <div class="sous">Prénom : ........................................ Date : ........................</div>
     ${paires.map((p) => ligne(p, false)).join("")}</div>
@@ -492,7 +493,8 @@ export function htmlFractions(r: ReglagesFractions, graine: number): string {
   if (r.materiel.includes("nageurs")) {
     const regle = `<div class="titre">La course des nageurs</div>
       <div class="regle"><b>Règle du jeu</b>Par groupes de trois, sur une feuille A3. À mon tour, je pioche une carte et je trace, depuis le bord de départ puis depuis l'extrémité de mon dernier segment, un segment de la longueur indiquée, avec la règle graduée.
-        Le premier qui atteint ou dépasse l'autre bord a gagné — on finit le tour, il peut y avoir des ex aequo. Une ligne bien droite va plus vite qu'une ligne brisée.
+        Le premier qui atteint ou dépasse l'autre bord a gagné — on finit le tour, il peut y avoir des ex aequo.
+        Astuce : une ligne bien droite va plus vite qu'une ligne brisée.
         <span class="reference">Livret Mathématiques CE2, Éduscol 2025.</span></div>`;
     parties.push(pagesDeCartes(cartesNageurs(r.graduation).map((c) => carte(c)), { colonnes: 3, lignes: 6, hauteurMm: 38 }, regle));
   }

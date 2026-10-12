@@ -60,7 +60,7 @@ describe("le calcul mental, un objectif à la fois", () => {
     expect(html).not.toContain("écrit le résultat");
     expect((html.match(/<td class="corrige">/g) ?? []).length).toBe(20);
     expect((html.match(/class="ma-case"/g) ?? []).length).toBe(2 * 20);
-    expect(contenuDeLaFeuille(html)).toEqual({ consigne: true, prenom: true, corrige: true, tablettes: true });
+    expect(contenuDeLaFeuille(html)).toEqual({ consigne: true, prenom: true, corrige: true, aide: false, tablettes: true });
     // Sans la correction : la colonne des réponses s'en va, les calculs restent.
     const sans = appliquerOptionsFeuille(html, { ...OPTIONS_FEUILLE, corrige: false });
     expect(sans).not.toContain("Réponse");
@@ -105,7 +105,7 @@ describe("le calcul mental, un objectif à la fois", () => {
     expect(html).toContain(`<div class="page corrige">`);
     expect(html).toContain(`<b>${series[0][0].reponse}</b>`);
     expect(html).not.toContain("La Martinière");
-    const sans = appliquerOptionsFeuille(html, { consigne: false, prenom: false, corrige: false, tablettes: false });
+    const sans = appliquerOptionsFeuille(html, { consigne: false, prenom: false, corrige: false, aide: false, tablettes: false });
     expect(sans).not.toContain("corrigé");
     expect(sans).not.toContain("Complète");
     expect(sans).not.toContain("Prénom");

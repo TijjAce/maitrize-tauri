@@ -56,9 +56,10 @@ const f2 = (x: number) => x.toFixed(2);
 const entre = (alea: () => number, a: number, b: number) => a + Math.floor(alea() * (b - a + 1));
 
 const SOURCE = `<span class="reference">Programme de mathématiques du cycle 2, 2024 ; Éduscol, « Espace et géométrie au cycle 2 ».</span>`;
-const entete = (titre: string, consigne: string) => `<div class="titre">${titre}</div>
+/** Le titre, la ligne du prénom, le rappel de la leçon s'il y en a un — il ne s'imprime que si on le demande (voir optionsFeuille) —, puis la consigne. */
+const entete = (titre: string, consigne: string, rappel = "") => `<div class="titre">${titre}</div>
   <div class="sous">Prénom : ........................................ Date : ........................</div>
-  <div class="regle">${consigne} ${SOURCE}</div>`;
+  ${rappel ? `<div class="rappel">${rappel}</div>` : ""}<div class="regle">${consigne} ${SOURCE}</div>`;
 
 type P = [number, number];
 
@@ -219,10 +220,10 @@ function feuilleCompleter(r: ReglagesGeometrie, graine: number): string {
     return `<path d="M${f2(amorce[0])} ${f2(amorce[1])} L${f2(a[0])} ${f2(a[1])} L${f2(b[0])} ${f2(b[1])}" fill="none" stroke="${NOIR}" stroke-width="0.5"/>`;
   });
   const consigne = r.uni
-    ? "Termine chaque figure à partir de ce qui est tracé : la règle graduée pour les longueurs, l'équerre pour les angles droits. Un carré a quatre côtés de même longueur et quatre angles droits."
+    ? "Termine chaque figure à partir de ce qui est tracé : la règle graduée pour les longueurs, l'équerre pour les angles droits."
     : "Termine chaque figure sur le quadrillage : le carré dont un côté est tracé ; le rectangle dont deux côtés sont tracés ; le triangle rectangle. Trace à la règle.";
   const carte = (f: ACompleter, i: number, complet: boolean) => `<div class="ge-carte"><b class="ge-lettre">${LETTRES[i]}</b><div class="ge-quoi">Termine le ${f.quoi}${f.mesures ? ` ${f.mesures}` : ""}.</div>${r.uni ? dessinUni(f, complet) : dessinQuadrillage(f, complet)}</div>`;
-  return `<div class="page">${entete(`Compléter des figures${r.uni ? " sur papier uni" : ""}`, consigne)}<div class="ge-cartes">${liste.map((f, i) => carte(f, i, false)).join("")}</div></div>
+  return `<div class="page">${entete(`Compléter des figures${r.uni ? " sur papier uni" : ""}`, consigne, r.uni ? "Un carré a quatre côtés de même longueur et quatre angles droits." : "")}<div class="ge-cartes">${liste.map((f, i) => carte(f, i, false)).join("")}</div></div>
     <div class="page corrige"><div class="titre">Compléter des figures — corrigé</div><div class="ge-cartes">${liste.map((f, i) => carte(f, i, true)).join("")}</div></div>`;
 }
 
@@ -453,7 +454,7 @@ function feuilleAngles(r: ReglagesGeometrie, graine: number): string {
     return `<svg viewBox="0 0 44 44" width="40mm" height="40mm"><path d="M${f2(bout(u)[0])} ${f2(bout(u)[1])} L${s[0]} ${s[1]} L${f2(bout(v)[0])} ${f2(bout(v)[1])}" fill="none" stroke="${NOIR}" stroke-width="0.6"/>${code && a.mesure === 90 ? codeAngleDroit(s, u, v) : ""}${arc}</svg>`;
   };
   const carte = (a: { mesure: number; depart: number }, i: number, corrige: boolean) => `<div class="ge-axe"><b class="ge-lettre">${LETTRES[i]}</b>${dessin(a, corrige)}<div class="ge-legende">${corrige ? `<b>${natureAngle(a.mesure)}</b>` : "droit · aigu · obtus"}</div></div>`;
-  return `<div class="page">${entete("Droit, aigu ou obtus ?", "Pose ton équerre — ou ton gabarit — sur chaque angle. Il est droit ? aigu, plus petit qu'un angle droit ? obtus, plus grand ? Entoure le bon mot ; quand il n'y a aucun doute, on peut répondre sans équerre.")}<div class="ge-axes">${liste.map((a, i) => carte(a, i, false)).join("")}</div></div>
+  return `<div class="page">${entete("Droit, aigu ou obtus ?", "Pose ton équerre — ou ton gabarit — sur chaque angle. Entoure le bon mot : droit, aigu ou obtus. Quand il n'y a aucun doute, tu peux répondre sans équerre.", "Un angle aigu est plus petit qu'un angle droit ; un angle obtus est plus grand.")}<div class="ge-axes">${liste.map((a, i) => carte(a, i, false)).join("")}</div></div>
     <div class="page corrige"><div class="titre">Droit, aigu ou obtus ? — corrigé</div><div class="ge-axes">${liste.map((a, i) => carte(a, i, true)).join("")}</div></div>`;
 }
 

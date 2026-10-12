@@ -376,7 +376,55 @@ export function structurerInterieur(interieur: string): string {
   return html + (references.length ? ` ${references.join(" ")}` : "");
 }
 
+/**
+ * Les consignes des exercices écrites en intitulé — « 1. Relie chaque sujet
+ * à son verbe » — : elles ont le même cadre et les mêmes étapes que la
+ * consigne de la feuille, à la place qu'elles occupent, juste avant leur
+ * exercice. Le numéro de l'exercice devient celui de l'étape. Un intitulé
+ * qui ne fait rien faire à l'élève — « Mes idées », « À l'inverse », ou une
+ * consigne à l'infinitif, pour l'adulte — reste un intitulé.
+ */
+const EXERCICES = ["gr-sous-titre", "ec-sous-titre", "ol-sous-titre", "fc-consigne", "nu-consigne", "ma-consigne"];
+
+/** Le numéro qui ouvre l'intitulé d'un exercice : « 1. », « <b>2.</b> ». */
+const NUMERO_D_EXERCICE = /^\s*(?:<b>\s*)?(\d{1,2})[.)](?:\s*<\/b>)?\s+/;
+
+/** Une étape que fait l'élève : elle dit « je » dans ses premiers mots. */
+const enJe = (html: string) => /(^|[\s:;,(«])(je|j['’])/i.test(texteDe(html).split(/\s+/).slice(0, 6).join(" "));
+
+/** L'intérieur d'une consigne d'exercice, structuré ; rien si c'est un intitulé qui ne fait rien faire. */
+export function structurerExercice(interieur: string): string | null {
+  const references = referencesDe(interieur);
+  const propre = sansReferences(interieur);
+  const numero = NUMERO_D_EXERCICE.exec(propre);
+  const etapes = etapesDe(numero ? propre.slice(numero[0].length) : propre);
+  const actions = etapes.filter((e) => e.sorte === "action");
+  if (!actions.length || !actions.every((e) => enJe(e.html))) return null;
+  const fin = references.length ? ` ${references.join(" ")}` : "";
+  // Une seule action : son numéro est celui de l'exercice.
+  if (numero && etapes.length === 1) {
+    return `<ol class="cs-etapes"><li class="cs-etape cs-action"><span class="cs-num">${numero[1]}</span><span class="cs-texte">${verbeEnValeur(etapes[0].html)}</span></li></ol>${fin}`;
+  }
+  return `${numero ? `<div class="cs-titre">Exercice ${numero[1]}</div>` : ""}${htmlDesEtapes(etapes)}${fin}`;
+}
+
 const OUVERTURE = /<(p|div)\b([^>]*\bclass="([^"]*)"[^>]*)>/g;
+
+/**
+ * Vrai si un exercice de la feuille porte sa consigne sur le papier, dans
+ * son cadre (voir structurerExercice) : la consigne de la feuille, celle du
+ * premier exercice, doit alors y être aussi.
+ */
+export function aDesConsignesDExercice(html: string): boolean {
+  const re = new RegExp(OUVERTURE.source, "g");
+  for (let m = re.exec(html); m; m = re.exec(html)) {
+    if (!m[3].split(/\s+/).some((c) => EXERCICES.includes(c))) continue;
+    const debut = m.index + m[0].length;
+    const fin = finDeLElement(html, m[1], debut);
+    if (fin >= 0 && structurerExercice(html.slice(debut, fin)) !== null) return true;
+  }
+  return false;
+}
 
 /** La fin de l'élément ouvert juste avant `debut` : après sa balise fermante, celles de même nom imbriquées comptées. */
 function finDeLElement(html: string, balise: string, debut: number): number {
@@ -447,14 +495,17 @@ function structurerLesConsignes(html: string): string {
   OUVERTURE.lastIndex = 0;
   for (let m = OUVERTURE.exec(html); m; m = OUVERTURE.exec(html)) {
     const classes = m[3].split(/\s+/);
-    if (!classes.some((c) => CLASSES_CONSIGNE.includes(c)) || classes.includes("cs")) continue;
+    const exercice = classes.some((c) => EXERCICES.includes(c));
+    if ((!exercice && !classes.some((c) => CLASSES_CONSIGNE.includes(c))) || classes.includes("cs")) continue;
     const debut = m.index + m[0].length;
     const fin = finDeLElement(html, m[1], debut);
     if (fin < 0) continue;
     const interieur = html.slice(debut, fin);
     if (/consigne-pictos|cs-etapes|<(ol|ul|table|div|p)\b/i.test(interieur)) continue;
-    const attributs = m[2].replace(/\bclass="([^"]*)"/, (_, c: string) => `class="${c} cs"`);
-    sortie += `${html.slice(position, m.index)}<div${attributs}>${structurerInterieur(interieur)}</div>`;
+    const structure = exercice ? structurerExercice(interieur) : structurerInterieur(interieur);
+    if (structure === null) continue;
+    const attributs = m[2].replace(/\bclass="([^"]*)"/, (_, c: string) => `class="${c} cs${exercice ? " cs-exercice" : ""}"`);
+    sortie += `${html.slice(position, m.index)}<div${attributs}>${structure}</div>`;
     position = fin + `</${m[1]}>`.length;
     OUVERTURE.lastIndex = position;
   }
@@ -467,9 +518,12 @@ function structurerLesConsignes(html: string): string {
  * une feuille photocopiée en noir et blanc se lit encore.
  */
 export const STYLE_CONSIGNES_STRUCTUREES = `
-  .cs { --cs-couleur: #1d4ed8; border-left: 1.6mm solid var(--cs-couleur) !important; padding-left: 3mm !important; }
-  /* La règle encadrée perd un peu de son blanc : les étapes, une par ligne, en prennent la place. */
-  .regle.cs { padding-top: 1.6mm !important; padding-bottom: 1.6mm !important; }
+  /* Toutes les consignes dans le même cadre — celui de la règle —, la barre de couleur à gauche : on le reconnaît partout.
+     Le cadre perd un peu de son blanc : les étapes, une par ligne, en prennent la place. */
+  .cs { --cs-couleur: #1d4ed8; border: 1px solid #cfd4e2; border-left: 1.6mm solid var(--cs-couleur) !important; border-radius: 8px;
+    background: #f7f8fc; padding: 1.6mm 3mm !important; }
+  /* La consigne d'un exercice était un intitulé en gras : dans son cadre, seul le verbe l'est. */
+  .feuille .cs.cs-exercice { font-weight: 400; }
   .cs .cs-titre { font-weight: 700; margin: 0 0 1mm; }
   .cs .cs-titre:not(:first-child) { margin-top: 2mm; }
   .cs .cs-etapes { list-style: none; margin: 0; padding: 0; }
@@ -479,6 +533,9 @@ export const STYLE_CONSIGNES_STRUCTUREES = `
   .cs .cs-num { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 1.25em; height: 1.25em;
     border-radius: 50%; background: var(--cs-couleur); color: #fff; font-weight: 800; font-size: 0.85em; line-height: 1; }
   .cs .cs-num.cs-seule { background: none; color: var(--cs-couleur); width: auto; font-size: 1em; }
+  /* Le rappel de la leçon, quand on le veut sur la feuille : un cadre à part, en pointillés, qui n'est pas la consigne. */
+  .rappel { border: 1px dashed #b45309; border-radius: 8px; padding: 1.6mm 3mm; margin: 0 0 10px; font-size: 12px; line-height: 1.5; color: #374151; }
+  .rappel::before { content: "Rappel"; display: block; font-weight: 800; color: #92400e; }
   .cs .cs-verbe { color: var(--cs-couleur); font-weight: 800; }
   /* Dans une règle encadrée, un gras était un titre, sur sa ligne : dans une étape, il reste dans la phrase. */
   .cs .cs-etape .cs-texte b { display: inline; margin: 0; }

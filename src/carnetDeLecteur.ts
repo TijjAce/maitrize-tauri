@@ -64,6 +64,8 @@ export const GENRES: { genre: string; indices: string; debut: string; source: st
 const TETE = '<div class="sous">Prénom : ........................................ Date : ........................</div>';
 const titre = (t: string) => `<div class="titre">${escapeHtml(t)}</div>`;
 const regle = (t: string) => `<div class="regle">${t}</div>`;
+/** Ce qu'il faut savoir — la leçon —, à part de la consigne : il ne s'imprime sur la feuille que si on le demande (voir optionsFeuille). */
+const rappel = (t: string) => `<div class="rappel">${t}</div>`;
 const pointilles = (n = 1) => Array.from({ length: n }, () => '<div class="cl-ligne"></div>').join("");
 const champ = (libelle: string, valeur = "", lignes = 1) => `<div class="cl-champ"><span class="cl-lib">${escapeHtml(libelle)}</span>${valeur ? `<span class="cl-val">${escapeHtml(valeur)}</span>` : pointilles(lignes)}</div>`;
 const cases = (choix: string[]) => `<div class="cl-cases">${choix.map((c) => `<span><span class="cl-case"></span> ${escapeHtml(c)}</span>`).join("")}</div>`;
@@ -96,7 +98,7 @@ const CARACTERES = ["rusé", "gentil", "méchant", "courageux", "peureux", "gour
 
 function feuillePersonnage(r: ReglagesLecteur): string {
   const ce2 = r.classe === "CE2";
-  return `<div class="page">${titre("La carte d'identité d'un personnage")}${TETE}${regle("Relis les passages où le personnage apparaît : ce qu'il fait, ce qu'il dit, ce que les autres disent de lui. Ses actions te disent comment il est.")}
+  return `<div class="page">${titre("La carte d'identité d'un personnage")}${TETE}${rappel("Les actions d'un personnage disent comment il est.") + regle("Relis les passages où le personnage apparaît : ce qu'il fait, ce qu'il dit, ce que les autres disent de lui.")}
     ${champ("Le livre", r.livre)}<div class="cl-deux"><div class="cl-dessin cl-portrait"><span>Son portrait</span></div><div>${champ("Son nom")}${champ("Qui est-il ? (un animal, un enfant, un roi…)")}${champ("Comment il est (son physique)", "", 2)}</div></div>
     <div class="cl-champ"><span class="cl-lib">Son caractère (entoure, ou ajoute un mot)</span><div class="cl-mots">${CARACTERES.map((m) => `<span>${m}</span>`).join("")}</div></div>
     ${champ("La preuve dans le livre (ce qu'il fait ou dit)", "", 2)}${champ("Ce qu'il veut", "", 1)}${champ("Ce qu'il ressent au début, à la fin", "", ce2 ? 2 : 1)}
@@ -148,7 +150,7 @@ function feuillePresenter(): string {
 function feuilleEmprunts(r: ReglagesLecteur): string {
   const indices = ["la couverture et son illustration", "le titre", "le résumé de la 4e de couverture", "un auteur que je connais déjà", "le genre : conte, documentaire, bande dessinée…", "les premières pages, que je feuillette", "le conseil d'un camarade"];
   const lignes = Array.from({ length: r.classe === "CP" ? 7 : 10 }, () => `<tr><td></td><td></td>${r.classe === "CP" ? "" : "<td></td>"}<td class="cl-av">${visage("content", 6)} ${visage("neutre", 6)} ${visage("pas", 6)}</td></tr>`).join("");
-  return `<div class="page">${titre("Choisir un livre")}${TETE}${regle("À la bibliothèque ou au coin lecture, avant de choisir, je regarde… (coche ce qui t'aide le plus)")}
+  return `<div class="page">${titre("Choisir un livre")}${TETE}${regle("Coche ce qui t'aide le plus à choisir un livre, à la bibliothèque ou au coin lecture.")}
     ${cases(indices)}
     <div class="titre cl-sous-titre">Mon carnet des emprunts</div>
     <table class="cl-tableau"><tr><th>Date</th><th>Le titre</th>${r.classe === "CP" ? "" : "<th>L'auteur</th>"}<th>Mon avis</th></tr>${lignes}</table></div>`;

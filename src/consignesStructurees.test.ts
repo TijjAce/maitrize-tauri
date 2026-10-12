@@ -114,6 +114,30 @@ describe("des consignes qu'on reconnaît d'un coup d'œil", () => {
   });
 });
 
+describe("la consigne d'un exercice, dans le même cadre", () => {
+  it("prend le cadre et les étapes ; son numéro devient celui de l'étape", () => {
+    const h = structurerConsignesHtml(`<div class="gr-sous-titre">1. Relie chaque sujet à son verbe</div><table></table>`);
+    expect(h).toBe(`<div class="gr-sous-titre cs cs-exercice"><ol class="cs-etapes"><li class="cs-etape cs-action"><span class="cs-num">1</span>`
+      + `<span class="cs-texte">Je <b class="cs-verbe">relie</b> chaque sujet à son verbe</span></li></ol></div><table></table>`);
+    const n = structurerConsignesHtml(`<div class="nu-consigne"><b>2.</b> <span class="consigne">Écris chaque nombre en lettres.</span></div>`);
+    expect(n).toContain(`class="nu-consigne cs cs-exercice"`);
+    expect(n).toContain(`<span class="cs-num">2</span>`);
+    expect(n).toMatch(/J'<b class="cs-verbe">écris<\/b> chaque nombre en lettres\./);
+  });
+
+  it("plusieurs actions : une étape chacune", () => {
+    const h = structurerConsignesHtml(`<div class="gr-sous-titre">Déplace un complément, puis supprime-le : la phrase a-t-elle encore du sens ?</div>`);
+    expect(h).toContain(`class="gr-sous-titre cs cs-exercice"`);
+    expect((h.match(/cs-etape cs-action/g) ?? []).length).toBe(2);
+  });
+
+  it("laisse un intitulé qui ne fait rien faire, ou une consigne à l'infinitif, pour l'adulte", () => {
+    for (const intitule of ["Mes idées", "À l'inverse", "Le plan (pour un récit)", "Raconter à tour de rôle, avec un mot imposé (à découper)"]) {
+      expect(structurerConsignesHtml(`<div class="ec-sous-titre">${intitule}</div>`)).not.toContain("cs-exercice");
+    }
+  });
+});
+
 describe("le verbe d'action", () => {
   it("se trouve aussi avec son pronom, après un mot de liaison, et pour les impératifs que le lexique n'a pas", () => {
     expect(verbeEnTete("Écris-le en cursive.")).toBe("Écris");
