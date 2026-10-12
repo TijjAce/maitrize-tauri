@@ -825,8 +825,29 @@ struct StreamChoice { delta: Delta }
 #[derive(Deserialize)]
 struct Delta { content: Option<String> }
 
+// Une réponse qui ne convient pas s'arrête : l'enseignant la coupe, la
+// connexion se ferme, et Mistral cesse d'écrire — et de compter des tokens.
+// La demande est notée ici ; le flux la voit au morceau suivant.
+static A_ARRETER: std::sync::OnceLock<std::sync::Mutex<std::collections::HashSet<String>>> = std::sync::OnceLock::new();
+
+fn arrets() -> std::sync::MutexGuard<'static, std::collections::HashSet<String>> {
+    A_ARRETER.get_or_init(Default::default).lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Vrai si la demande a été arrêtée — et l'oublie : un identifiant ne sert qu'une fois.
+fn est_arretee(request_id: &str) -> bool {
+    arrets().remove(request_id)
+}
+
+/// Arrête une réponse en cours : le flux s'interrompt au morceau suivant, sans rien émettre de plus.
+#[tauri::command]
+pub fn mistral_chat_arreter(request_id: String) {
+    arrets().insert(request_id);
+}
+
 /// Variante streaming : émet `mistral://chunk` au fil des tokens, puis
 /// `mistral://done` (ou `mistral://error`). Le frontend filtre par `request_id`.
+/// Une demande arrêtée (`mistral_chat_arreter`) se tait au morceau suivant.
 #[tauri::command]
 pub async fn mistral_chat_stream(
     app: AppHandle,
@@ -849,6 +870,9 @@ pub async fn mistral_chat_stream(
         .send().await
         .map_err(|e| envoyer_err(format!("Réseau : {e}")))?;
 
+    if est_arretee(&request_id) {
+        return Ok(());
+    }
     if !resp.status().is_success() {
         let code = resp.status().as_u16();
         let quota = quota_minute(resp.headers());
@@ -859,6 +883,10 @@ pub async fn mistral_chat_stream(
     // Les données arrivent en SSE : lignes « data: {json} », séparées par \n.
     let mut buf = String::new();
     loop {
+        // Arrêtée : on lâche la réponse, ce qui ferme la connexion ; la fenêtre a déjà gardé ce qui était écrit.
+        if est_arretee(&request_id) {
+            return Ok(());
+        }
         match resp.chunk().await {
             Ok(Some(bytes)) => {
                 buf.push_str(&String::from_utf8_lossy(&bytes));
@@ -1211,5 +1239,19 @@ mod tests_dessin {
         ]});
         assert!(fichiers_dessines(&v).is_empty());
         assert!(fichiers_dessines(&json!({})).is_empty());
+    }
+}
+
+#[cfg(test)]
+mod tests_arret {
+    use super::{est_arretee, mistral_chat_arreter};
+
+    #[test]
+    fn une_reponse_arretee_se_tait_une_fois_et_n_arrete_qu_elle() {
+        mistral_chat_arreter("demande-a".into());
+        assert!(!est_arretee("demande-b"));
+        assert!(est_arretee("demande-a"));
+        // L'identifiant est oublié : une autre demande du même nom ne serait pas arrêtée d'avance.
+        assert!(!est_arretee("demande-a"));
     }
 }

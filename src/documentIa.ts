@@ -191,27 +191,34 @@ export const SUGGESTIONS_DOCUMENT = [
 
 /** Le style du document sur le papier. */
 export const STYLE_DOCUMENT_IA = `
-  .doc-ia { font-size: 15px; line-height: 1.6; }
-  .doc-ia h1 { font-size: 24px; margin: 0 0 8px; }
-  .doc-ia h2 { font-size: 18px; margin: 18px 0 6px; border: 0; padding: 0; }
-  .doc-ia h3 { font-size: 16px; margin: 14px 0 4px; }
+  .doc-ia { font-size: 14px; line-height: 1.55; color: #1c2233; }
+  .doc-ia h1 { font-size: 22px; line-height: 1.25; margin: 0 0 14px; padding-bottom: 6px; border-bottom: 3px solid #6366f1; }
+  .doc-ia h2 { font-size: 17px; line-height: 1.3; margin: 20px 0 8px; padding: 0 0 3px; border: 0; border-bottom: 1px solid #d9dcea; color: #2b2f6b; }
+  .doc-ia h3 { font-size: 15px; margin: 14px 0 4px; color: #2b2f6b; }
+  .doc-ia h4, .doc-ia h5, .doc-ia h6 { font-size: 14px; margin: 12px 0 4px; }
+  .doc-ia h1, .doc-ia h2, .doc-ia h3, .doc-ia h4 { break-after: avoid; page-break-after: avoid; }
   .doc-ia p { margin: 6px 0; }
-  .doc-ia ul, .doc-ia ol { margin: 6px 0; padding-left: 24px; }
-  .doc-ia li { margin: 5px 0; }
+  .doc-ia ul, .doc-ia ol { margin: 6px 0; padding-left: 22px; }
+  .doc-ia li { margin: 4px 0; }
+  .doc-ia li > ul, .doc-ia li > ol { margin: 3px 0; }
+  .doc-ia li.tache { list-style: none; }
   .doc-ia .ligne { display: inline-block; min-width: 60mm; border-bottom: 1.2px solid #444; height: 1.1em; vertical-align: baseline; margin: 0 3px; }
   .doc-ia .case { display: inline-block; width: 6mm; height: 6mm; border: 1.5px solid #333; border-radius: 1.5px; vertical-align: middle; margin-right: 6px; background: #fff; }
   .doc-ia .case.cochee { background: #333; }
-  .doc-ia table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-  .doc-ia th, .doc-ia td { border: 1px solid #555; padding: 6px 8px; font-size: 14px; vertical-align: top; }
-  .doc-ia th { background: #f0f2f8; }
-  .doc-ia hr { border: 0; border-top: 1px solid #999; margin: 12px 0; }
+  /* Les tableaux : un mot ne se coupe jamais au milieu — la feuille commune le permet, et « Étape » devenait « Étap / e »
+     dans une colonne étroite. La césure, en français, découpe les mots trop longs aux bons endroits. */
+  .doc-ia table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px; }
+  .doc-ia th, .doc-ia td { border: 1px solid #c9cee0; padding: 6px 9px; vertical-align: top; text-align: left;
+    word-break: normal; overflow-wrap: break-word; hyphens: auto; }
+  .doc-ia th { background: #eef0fe; color: #2b2f6b; font-weight: 700; }
+  .doc-ia tbody tr:nth-child(even) td { background: #f8f9fd; }
+  .doc-ia tr { break-inside: avoid; page-break-inside: avoid; }
+  .doc-ia td p, .doc-ia th p { margin: 0; }
+  .doc-ia hr { border: 0; border-top: 1px solid #c9cee0; margin: 14px 0; }
   .doc-ia .saut { break-before: page; page-break-before: always; }
-  .doc-ia blockquote { border-left: 3px solid #6366f1; background: #eef0fe; margin: 8px 0; padding: 6px 12px; font-style: normal; }
+  .doc-ia blockquote { border-left: 3px solid #6366f1; background: #eef0fe; margin: 8px 0; padding: 6px 12px; font-style: normal; border-radius: 0 6px 6px 0; }
   .doc-ia code { font-family: inherit; background: none; }
-  .doc-ia h4, .doc-ia h5, .doc-ia h6 { font-size: 15px; margin: 12px 0 4px; }
-  .doc-ia li > ul, .doc-ia li > ol { margin: 3px 0; }
   .doc-ia del { color: #666; }
-  .doc-ia li.tache { list-style: none; }
   .doc-ia pre { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.45; background: #f5f6fa;
     border: 1px solid #ddd; border-radius: 4px; padding: 8px 10px; margin: 8px 0; white-space: pre-wrap; break-inside: avoid; }
 `;
@@ -220,7 +227,8 @@ export const STYLE_DOCUMENT_IA = `
 export function feuilleDuDocument(markdown: string): { titre: string; corps: string; style: string } {
   return {
     titre: titreDuDocument(markdown),
-    corps: `<div class="doc-ia">${markdownVersHtml(markdown, { titres: "impression" })}</div>`,
+    // En français, pour que la césure découpe les mots trop longs aux bons endroits.
+    corps: `<div class="doc-ia" lang="fr">${markdownVersHtml(markdown, { titres: "impression" })}</div>`,
     style: STYLE_DOCUMENT_IA,
   };
 }
