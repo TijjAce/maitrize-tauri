@@ -118,7 +118,9 @@ describe("le document lui-même", () => {
   it("donne une feuille prête à imprimer, sur le papier avec un h1", () => {
     const f = feuilleDuDocument("# Les fractions\nPrénom : ______ Date : ______\n## Exercice 1\n1. Colorie la moitié.");
     expect(f.titre).toBe("Les fractions");
-    expect(f.corps).toContain('<div class="doc-ia"><h1>Les fractions</h1>');
+    expect(f.corps).toContain('<div class="doc-ia" lang="fr"><h1>Les fractions</h1>');
+    // Dans un tableau, un mot ne se coupe pas au milieu : seule la césure le découpe, en français.
+    expect(f.style).toMatch(/\.doc-ia th, \.doc-ia td \{[^}]*word-break: normal;[^}]*hyphens: auto;/);
     expect(f.corps).toContain('<span class="ligne"></span>');
     expect(f.style).toContain(".doc-ia .saut");
   });

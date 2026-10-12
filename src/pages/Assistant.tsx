@@ -212,6 +212,9 @@ export default function Assistant() {
     reloadConvs();
   };
 
+  // La réponse en cours, qu'on peut arrêter si elle ne convient pas : ce qui est écrit reste, la suite ne vient pas.
+  const arret = React.useRef<(() => void) | null>(null);
+
   const envoyer = async (texte?: string) => {
     const contenu = (texte ?? input).trim();
     if (!contenu || loading) return;
@@ -226,10 +229,19 @@ export default function Assistant() {
     // réponse de mémoire affichée sous un bandeau « web » paraîtrait vérifiée
     // alors qu'elle ne l'est pas, ce qui est pire que pas de recherche.
     if (surLeWeb) {
+      // La recherche ne se coupe pas en route : arrêtée, sa réponse sera simplement ignorée.
+      let arretee = false;
+      arret.current = () => {
+        arretee = true;
+        arret.current = null;
+        const final: ChatMessage[] = [...suite, { role: "assistant", content: "_⏹ Recherche arrêtée._" }];
+        setMessages(final); setLoading(false); sauvegarderConv(final);
+      };
       try {
         // La question part sans les noms connus ; ils reviennent dans la réponse.
         const masque = pseudonymiserTout([contenu], await nomsAMasquer());
         const r = await api.mistralRechercheWeb(masque.textes[0]);
+        if (arretee) return;
         r.texte = restaurer(r.texte || "", masque.table).texte;
         const sources = r.sources.length
           ? "\n\n**Sources**\n" + r.sources.map((s) => `- [${s.titre}](${s.url})`).join("\n")
@@ -241,8 +253,10 @@ export default function Assistant() {
           { role: "assistant", content: (r.texte || "(réponse vide)") + sources + avertissement }];
         setMessages(final); sauvegarderConv(final);
       } catch (e: any) {
-        setMessages([...suite, { role: "assistant", content: "⚠️ " + String(e) }]);
-      } finally { setLoading(false); }
+        if (!arretee) setMessages([...suite, { role: "assistant", content: "⚠️ " + String(e) }]);
+      } finally {
+        if (!arretee) { setLoading(false); arret.current = null; }
+      }
       return;
     }
 
@@ -266,7 +280,18 @@ export default function Assistant() {
       // Streaming : la réponse s'affiche au fil des tokens via événements Tauri.
       const reqId = newId();
       let acc = "";
+      let arretee = false;
       setMessages([...suite, { role: "assistant", content: "" }]);
+      arret.current = () => {
+        arretee = true;
+        arret.current = null;
+        cleanup();
+        // Le flux se ferme chez Mistral au morceau suivant : il n'écrit plus, et ne compte plus.
+        invoke("mistral_chat_arreter", { requestId: reqId }).catch(() => {});
+        const ecrit = rendre(acc).trim();
+        const final: ChatMessage[] = [...suite, { role: "assistant", content: (ecrit ? `${ecrit}\n\n` : "") + "_⏹ Réponse arrêtée._" }];
+        setMessages(final); setLoading(false); sauvegarderConv(final);
+      };
       const unChunk = await listen<{ id: string; delta: string }>("mistral://chunk", (ev) => {
         if (ev.payload.id !== reqId) return;
         acc += ev.payload.delta;
@@ -275,6 +300,7 @@ export default function Assistant() {
       const unDone = await listen<{ id: string }>("mistral://done", (ev) => {
         if (ev.payload.id !== reqId) return;
         cleanup();
+        arret.current = null;
         const final: ChatMessage[] = [...suite, { role: "assistant", content: rendre(acc) }];
         setMessages(final); setLoading(false);
         sauvegarderConv(final);
@@ -282,12 +308,15 @@ export default function Assistant() {
       const unErr = await listen<{ id: string; message: string }>("mistral://error", (ev) => {
         if (ev.payload.id !== reqId) return;
         cleanup();
+        arret.current = null;
         setMessages([...suite, { role: "assistant", content: "⚠️ " + ev.payload.message }]); setLoading(false);
       });
       cleanup = () => { unChunk(); unDone(); unErr(); };
       await invoke("mistral_chat_stream", { messages: [...prefixe, ...envoyes], model, requestId: reqId });
+      if (arretee) return;
     } catch (e: any) {
       cleanup();
+      arret.current = null;
       setMessages([...suite, { role: "assistant", content: "⚠️ " + String(e) }]);
       setLoading(false);
     }
@@ -418,7 +447,11 @@ export default function Assistant() {
           {dictee.etat === "enregistrement" ? `⏹ ${mmss(dictee.secondes)}`
             : dictee.etat === "transcription" ? "⏳" : "🎙"}
         </button>
-        <button className="btn primary" disabled={loading || !input.trim()} onClick={() => envoyer()}>Envoyer</button>
+        {loading ? (
+          <button className="btn danger" onClick={() => arret.current?.()} title="Arrêter la réponse : ce qui est écrit reste, la suite ne vient pas">⏹ Arrêter</button>
+        ) : (
+          <button className="btn primary" disabled={!input.trim()} onClick={() => envoyer()}>Envoyer</button>
+        )}
       </div>
       {aClasser !== null && (
         <DicteeAtelier eleves={eleves ?? []} texteInitial={aClasser}
