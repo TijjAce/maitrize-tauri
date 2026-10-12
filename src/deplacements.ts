@@ -117,8 +117,9 @@ function feuilleFusee(r: ReglagesDeplacements, graine: number): string {
   });
   const fin = (c: (typeof liste)[number]) => c.cases[c.cases.length - 1];
   const carte = (c: (typeof liste)[number], i: number, corrige: boolean) => {
+    // Suivre le code : l'étoile d'arrivée est dessinée, l'élève vérifie lui-même que la bille la rejoint.
     const plateau = r.mode === "decoder"
-      ? plateauSvg((corrige ? chemin(c.cases) + etoile(fin(c)) : "") + depart(c.depart))
+      ? plateauSvg((corrige ? chemin(c.cases) : "") + depart(c.depart) + etoile(fin(c)))
       : plateauSvg(chemin(c.cases, r.mode === "coder" ? BLEU : ROUGE, false) + depart(c.depart) + etoile(fin(c)));
     const code = r.mode === "decoder" ? codeHtml(c.directions)
       : r.mode === "coder" ? (corrige ? codeHtml(c.directions) : codeHtml(c.directions.map(() => null)))
@@ -127,7 +128,7 @@ function feuilleFusee(r: ReglagesDeplacements, graine: number): string {
     return `<div class="de-carte"><b class="de-lettre">${String.fromCharCode(65 + i)}</b>${plateau}${code}${note}</div>`;
   };
   const consignes: Record<ModeCodage, string> = {
-    decoder: "La bille rouge part de sa case. Suis le code, une flèche pour une case, et trace son chemin. Dessine une étoile là où elle arrive.",
+    decoder: "La bille rouge doit rejoindre l'étoile. Je regarde les instructions pour le déplacement de la bille. J'applique les déplacements de la bille sur le quadrillage.",
     coder: "Le chemin de la bille est tracé jusqu'à l'étoile. Écris son code : une flèche pour chaque case.",
     corriger: "Le code devait mener la bille à l'étoile en suivant le chemin, mais une flèche est fausse. Barre-la et écris la bonne au-dessous.",
   };
@@ -228,7 +229,7 @@ function feuilleRobot(r: ReglagesDeplacements, graine: number): string {
   const carte = (p: (typeof liste)[number], i: number, corrige: boolean) => {
     const fin = p.cases[p.cases.length - 1];
     const plateau = coder || corriger ? plateauSvg(chemin(p.cases, coder ? BLEU : ROUGE) + depart(p.debut, p.dir) + etoile(fin))
-      : plateauSvg((corrige ? chemin(p.cases) + etoile(fin) : "") + depart(p.debut, p.dir));
+      : plateauSvg((corrige ? chemin(p.cases) : "") + depart(p.debut, p.dir) + etoile(fin));
     const code = coder && !corrige ? programmeHtml(Array.from({ length: p.programme.length }, () => null))
       : corriger && p.erreur ? programmeHtml(p.programme.map((x, k) => (k === p.erreur!.k ? p.erreur!.fausse : x)))
         : programmeHtml(p.programme);
@@ -241,7 +242,7 @@ function feuilleRobot(r: ReglagesDeplacements, graine: number): string {
     ? "Le chemin du robot est tracé jusqu'à l'étoile. Écris son programme, une instruction par case. Attention : le robot regarde dans la direction de sa flèche ; « pivoter » le fait tourner sans avancer."
     : corriger
       ? "Le programme devait mener le robot à l'étoile en suivant le chemin, mais une instruction est fausse. Barre-la et écris la bonne au-dessous. Attention : le robot regarde dans la direction de sa flèche ; « pivoter » le fait tourner sans avancer."
-      : "Le robot regarde dans la direction de sa flèche. Suis le programme, une instruction après l'autre, et trace son chemin ; dessine une étoile là où il s'arrête. Tu peux tourner la feuille, ou te mettre à sa place.";
+      : "Le robot doit rejoindre l'étoile ; il regarde dans la direction de sa flèche. Je regarde les instructions pour le déplacement du robot. J'applique les déplacements du robot sur le quadrillage. Je peux tourner la feuille, ou me mettre à sa place.";
   return `<div class="page">${entete("Le robot", consigne)}${legende}<div class="de-cartes">${liste.map((p, i) => carte(p, i, false)).join("")}</div></div>
     <div class="page corrige"><div class="titre">Le robot — corrigé</div><div class="de-cartes">${liste.map((p, i) => carte(p, i, true)).join("")}</div></div>`;
 }
