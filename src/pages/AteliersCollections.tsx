@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide } from "../components/Aide";
 import { Field, Select } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { toast } from "../components/Toaster";
@@ -71,22 +72,27 @@ export function CollectionsTab({ banque }: { banque: boolean }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 400px) 1fr", gap: 14, alignItems: "start" }}>
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Construire des collections</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          « Constituer une collection d'un cardinal donné » : aller chercher juste ce qu'il faut, puis le commander — les situations du guide
-          « La construction du nombre à l'école maternelle » (2023) et des livrets d'accompagnement de 2025.
-        </p>
+        {/* Les citations du programme et des guides se lisent au survol d'un « ? » : le panneau ne garde que ce qui se règle. */}
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Construire des collections
+          <Aide titre="D'où viennent ces situations" vers="droite">
+            <p>« Constituer une collection d'un cardinal donné » : aller chercher juste ce qu'il faut, puis le commander.</p>
+            <p>Les situations viennent du guide « La construction du nombre à l'école maternelle » (Éduscol, 2023) et des livrets d'accompagnement de 2025.</p>
+          </Aide>
+        </h3>
         <Field label="Classe">
-          <div className="seg">
-            {NIVEAUX.map((n) => (
-              <button key={n.id} type="button" className={r.niveau === n.id ? "active" : ""}
-                onClick={() => maj({ niveau: n.id as Niveau, ...reglagesDuNiveau(n.id) })} title={n.age}>{n.id}</button>
-            ))}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div className="seg">
+              {NIVEAUX.map((n) => (
+                <button key={n.id} type="button" className={r.niveau === n.id ? "active" : ""}
+                  onClick={() => maj({ niveau: n.id as Niveau, ...reglagesDuNiveau(n.id) })} title={n.age}>{n.id}</button>
+              ))}
+            </div>
+            <Aide titre={`Ce qu'on attend en ${r.niveau}`} vers="droite">
+              <p><b>{NIVEAUX.find((n) => n.id === r.niveau)?.age}</b> : {REPERES[r.niveau]}</p>
+            </Aide>
           </div>
         </Field>
-        <div className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, margin: "-2px 0 10px" }}>
-          {NIVEAUX.find((n) => n.id === r.niveau)?.age} : {REPERES[r.niveau]}
-        </div>
         <Field label="La situation">
           <Select value={r.situation} onChange={(e) => maj({ situation: e.target.value as Situation })}>
             {SITUATIONS.map((x) => <option key={x.id} value={x.id}>{x.nom}</option>)}
@@ -96,7 +102,10 @@ export function CollectionsTab({ banque }: { banque: boolean }) {
           {imageDe(s.objet.picto) && <img src={imageDe(s.objet.picto)} alt="" />}
           <span>{s.objet.article} {s.objet.mot} par {s.place.mot}</span>
           {imageDe(s.place.picto) && <img src={imageDe(s.place.picto)} alt="" />}
-          <span className="meta">— d'après {s.source}</span>
+          <Aide titre={s.nom} vers="droite">
+            <p><b>La règle</b> : {s.regle}.</p>
+            <p>D'après {s.source}.</p>
+          </Aide>
         </div>
         <Field label="Le matériel">
           <Select value={r.forme} onChange={(e) => maj({ forme: e.target.value as Forme })}>
