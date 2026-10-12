@@ -13,17 +13,23 @@
 //! l'aide : un disque qui se vide, comme un Time Timer, et le temps qui reste.
 //!
 //! Le portail ne sert que l'aide montrée : jamais le cahier journal, ni rien
-//! d'autre du téléphone. L'adresse porte un jeton tiré à l'ouverture ; sans
-//! lui, rien ne répond. Il se ferme quand on le ferme, ou quand le
+//! d'autre du téléphone. L'adresse porte un jeton ; sans lui, rien ne répond,
+//! que l'icône de l'écran d'accueil. Le jeton est tiré une fois et gardé sur
+//! le téléphone : chaque tablette scanne le QR code une seule fois, garde la
+//! page sur son écran d'accueil, et la retrouve chaque jour. « Changer le
+//! code » en tire un autre et coupe toutes les tablettes d'un coup — une
+//! tablette perdue. Le portail se ferme quand on le ferme, ou quand le
 //! dictaphone se ferme.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{IpAddr, Ipv4Addr, TcpListener, TcpStream};
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use tauri::Manager;
 
 type R<T> = Result<T, String>;
 
@@ -111,6 +117,10 @@ struct Etat {
     /// L'étape où en est la classe, dans le déroulé ; aucune : pas de repère.
     etape: Option<usize>,
     minuteur: Option<Minuteur>,
+    /// L'adresse où la dernière tablette est venue, « http://172.20.10.1:8765/ » : celle que les tablettes ont gardée.
+    adresse_connue: String,
+    /// Une tablette est venue à une autre adresse : le téléphone la gardera pour la fois suivante.
+    adresse_a_garder: bool,
 }
 
 impl Etat {
@@ -130,9 +140,12 @@ impl Etat {
 
 struct Portail {
     port: u16,
-    jeton: String,
+    /// Partagé avec le serveur, qui le relit à chaque requête : « Changer le code » le remplace sans rouvrir.
+    jeton: Arc<Mutex<String>>,
     etat: Arc<Mutex<Etat>>,
     arret: Arc<AtomicBool>,
+    /// Où le téléphone garde le jeton et l'adresse des tablettes.
+    fiche: PathBuf,
 }
 
 static PORTAIL: Mutex<Option<Portail>> = Mutex::new(None);
@@ -146,6 +159,9 @@ pub struct EtatPortail {
     pub adresses: Vec<String>,
     /// Le QR code de la première adresse, en SVG.
     pub qr: String,
+    /// La première adresse n'est pas celle que les tablettes ont gardée, et aucune n'y est encore venue :
+    /// un autre réseau, par exemple. Elles doivent rescanner le QR code.
+    pub adresse_changee: bool,
     pub tablettes: usize,
     pub montree: String,
     pub montree_id: String,
@@ -159,7 +175,7 @@ pub struct EtatPortail {
 }
 
 const FERME: EtatPortail = EtatPortail {
-    ouvert: false, adresses: Vec::new(), qr: String::new(), tablettes: 0, montree: String::new(), montree_id: String::new(),
+    ouvert: false, adresses: Vec::new(), qr: String::new(), adresse_changee: false, tablettes: 0, montree: String::new(), montree_id: String::new(),
     affichage: Affichage::Fiche, etape: None, etapes: 0, texte_etape: String::new(), minuteur: None,
 };
 
@@ -200,11 +216,69 @@ pub fn adresses_locales() -> Vec<Ipv4Addr> {
     vues
 }
 
+/// Les signes d'un jeton : ni 0 ni o, ni 1 ni i ni l, qu'on confondrait en le recopiant.
+const SIGNES: &[u8] = b"abcdefghjkmnpqrstuvwxyz23456789";
+
 /// Un jeton de huit lettres et chiffres, tiré au hasard.
 fn jeton() -> String {
-    const SIGNES: &[u8] = b"abcdefghjkmnpqrstuvwxyz23456789";
     let graine = uuid::Uuid::new_v4().into_bytes();
     graine.iter().take(8).map(|o| SIGNES[*o as usize % SIGNES.len()] as char).collect()
+}
+
+/// Un jeton bien formé : huit signes du tirage.
+fn jeton_valide(j: &str) -> bool {
+    j.len() == 8 && j.bytes().all(|o| SIGNES.contains(&o))
+}
+
+/// Un autre jeton que celui-ci.
+fn autre_jeton(ancien: &str) -> String {
+    loop {
+        let j = jeton();
+        if j != ancien {
+            return j;
+        }
+    }
+}
+
+/// Ce que le téléphone garde du portail d'une fois sur l'autre : le jeton que les tablettes ont mis sur
+/// leur écran d'accueil, et l'adresse où elles sont venues.
+#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
+struct Souvenir {
+    jeton: String,
+    #[serde(default)]
+    adresse: String,
+}
+
+/// Relit le souvenir du portail. La première fois — ou si la fiche est abîmée —, un jeton est tiré et gardé.
+fn relire_souvenir(fiche: &Path) -> Souvenir {
+    let lu: Souvenir = std::fs::read(fiche).ok().and_then(|o| serde_json::from_slice(&o).ok()).unwrap_or_default();
+    if jeton_valide(&lu.jeton) {
+        return lu;
+    }
+    let neuf = Souvenir { jeton: jeton(), ..lu };
+    // Sans disque, le jeton vaut quand même jusqu'à la fermeture.
+    let _ = ecrire_souvenir(fiche, &neuf);
+    neuf
+}
+
+/// Écrit la fiche d'un coup — à côté, puis renommée : jamais une fiche à moitié écrite.
+fn ecrire_souvenir(fiche: &Path, souvenir: &Souvenir) -> R<()> {
+    let provisoire = fiche.with_extension("tmp");
+    std::fs::write(&provisoire, serde_json::to_vec(souvenir).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    std::fs::rename(&provisoire, fiche).map_err(|e| e.to_string())
+}
+
+/// La fiche du portail, dans le dossier de l'application.
+fn fiche_du_portail(app: &tauri::AppHandle) -> R<PathBuf> {
+    let d = app.path().app_data_dir().map_err(|e| format!("Dossier de données introuvable : {e}"))?;
+    std::fs::create_dir_all(&d).map_err(|e| e.to_string())?;
+    Ok(d.join("portail.json"))
+}
+
+/// Faut-il rescanner ? Oui quand les tablettes ont gardé une autre adresse et qu'aucune n'est encore venue
+/// à la nouvelle. Ni la première fois, ni sans réseau : l'écran le dit autrement.
+fn adresse_changee(connue: &str, actuelle: Option<&str>, tablettes: usize) -> bool {
+    tablettes == 0 && !connue.is_empty() && actuelle.is_some_and(|a| a != connue)
 }
 
 /// Le QR code d'une adresse, en SVG, noir sur blanc.
@@ -228,10 +302,14 @@ pub fn lire_requete(premiere_ligne: &str) -> Option<(String, String)> {
 }
 
 /// La page que les tablettes ouvrent : elle attend l'aide, la montre — la fiche, ou son déroulé en grand —,
-/// suit quand elle change, et fait tourner le minuteur à l'heure du téléphone.
+/// suit quand elle change, et fait tourner le minuteur à l'heure du téléphone. Mise sur l'écran d'accueil,
+/// elle s'ouvre en plein écran sous l'icône de Maitrize ; quand le téléphone ne répond pas, elle l'attend.
 pub const PAGE_TABLETTE: &str = r##"<!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Maitrize — en classe</title>
+<title>Maitrize</title>
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Maitrize"><meta name="theme-color" content="#f2f2f7">
+<link rel="apple-touch-icon" href="/icone.png"><link rel="icon" href="/icone.png">
 <style>
   html, body { margin: 0; height: 100%; background: #f2f2f7; font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; color: #1c2233; }
   #attente { display: flex; align-items: center; justify-content: center; height: 100%; padding: 24px; box-sizing: border-box;
@@ -277,6 +355,9 @@ pub const PAGE_TABLETTE: &str = r##"<!doctype html>
   const q = (chemin) => chemin + "?t=" + encodeURIComponent(jeton);
   const $ = (id) => document.getElementById(id);
   let version = -1, decalage = 0, minuteur = null, etat = null;
+  const ATTENTE = "L'aide va s'afficher ici, dès que l'enseignant la montre.";
+  // Le téléphone ne répond pas — portail fermé, téléphone loin : la page l'attend, et se reconnecte seule.
+  const SANS_TELEPHONE = "En attente du téléphone… Le portail s'ouvre dans le dictaphone.";
   // Les étapes d'une aide, dans l'ordre : celles du séquentiel, sinon les actions de sa consigne — comme le téléphone les compte.
   const etapesDe = (doc) => { const l = doc.querySelectorAll(".at-etape:not(.at-cachee), .sv-s-etape"); return l.length ? [...l] : [...doc.querySelectorAll(".cs-etape.cs-action")]; };
   const echapper = (t) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -314,18 +395,27 @@ pub const PAGE_TABLETTE: &str = r##"<!doctype html>
     boite.classList.toggle("fini", fini);
     boite.classList.toggle("en-pause", minuteur.fin == null);
   }
+  // Le code du portail a changé : plus rien ne s'affiche, la tablette doit rescanner.
+  function perime() {
+    etat = null; minuteur = null;
+    for (const id of ["aide", "deroule", "minuteur"]) $(id).style.display = "none";
+    document.body.classList.remove("minuteur-seul", "avec-minuteur");
+    $("attente").style.display = "flex";
+    $("attente").textContent = "Le code du portail a changé : scannez le nouveau QR code du téléphone, puis remplacez l'icône de l'écran d'accueil.";
+  }
   async function suivre() {
     try {
       const r = await fetch(q("/etat"), { cache: "no-store" });
       if (r.ok) {
         const e = await r.json();
+        $("attente").textContent = ATTENTE;
         decalage = e.maintenant - Date.now();
         if (e.version !== version) { version = e.version; if (e.montree) await charger(); }
         etat = e; minuteur = e.minuteur; appliquer(); dessinerMinuteur();
       } else if (r.status === 403) {
-        $("attente").textContent = "Ce lien ne vaut plus : scannez le nouveau QR code du téléphone.";
+        return perime();
       }
-    } catch (_) { /* le téléphone s'est éloigné : on réessaie */ }
+    } catch (_) { $("attente").textContent = SANS_TELEPHONE; }
     setTimeout(suivre, 2000);
   }
   $("aide").addEventListener("load", appliquer);
@@ -368,6 +458,16 @@ pub fn page_pour_tablette(html: &str) -> String {
     }
 }
 
+/// Ce qu'une tablette lit quand son lien porte un ancien code : la page ne s'ouvre plus, elle dit quoi faire.
+pub const PAGE_PERIMEE: &str = r#"<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Maitrize</title>
+<style>html, body { margin: 0; height: 100%; background: #f2f2f7; font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; color: #1c2233; }
+  body { display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; text-align: center; font-size: 24px; line-height: 1.5; }</style></head>
+<body><p>Le code du portail a changé.<br>Scannez le nouveau QR code du téléphone, puis remplacez l'icône de l'écran d'accueil.</p></body></html>"#;
+
+/// L'icône de Maitrize, pour l'écran d'accueil des tablettes : 180 px, la taille que l'iPad demande.
+const ICONE: &[u8] = include_bytes!("../icons/ios/AppIcon-60x60@3x.png");
+
 fn repondre(flux: &mut TcpStream, code: u16, type_: &str, corps: &[u8]) {
     let raison = match code { 200 => "OK", 403 => "Forbidden", 404 => "Not Found", _ => "Bad Request" };
     let tete = format!(
@@ -379,18 +479,37 @@ fn repondre(flux: &mut TcpStream, code: u16, type_: &str, corps: &[u8]) {
 }
 
 /// Répond à une tablette : la page, l'état, ou l'aide montrée.
-fn servir(mut flux: TcpStream, jeton: &str, etat: &Mutex<Etat>) {
+fn servir(mut flux: TcpStream, jeton: &Mutex<String>, etat: &Mutex<Etat>) {
     let _ = flux.set_read_timeout(Some(Duration::from_secs(5)));
     let lu = lire_entetes(&mut flux);
     let texte = String::from_utf8_lossy(&lu);
     let Some((chemin, porte)) = lire_requete(texte.lines().next().unwrap_or("")) else {
         return repondre(&mut flux, 400, "text/plain; charset=utf-8", b"");
     };
-    if porte != jeton {
-        return repondre(&mut flux, 403, "text/plain; charset=utf-8", "Ce lien ne vaut plus.".as_bytes());
+    // L'icône se demande sans jeton, au moment de la mettre sur l'écran d'accueil : elle ne dit rien de la classe.
+    if chemin == "/icone.png" {
+        return repondre(&mut flux, 200, "image/png", ICONE);
     }
-    if let Ok(pair) = flux.peer_addr() {
-        etat.lock().unwrap().tablettes.insert(pair.ip(), Instant::now());
+    let attendu = jeton.lock().unwrap().clone();
+    if porte != attendu {
+        return match chemin.as_str() {
+            "/" => repondre(&mut flux, 403, "text/html; charset=utf-8", PAGE_PERIMEE.as_bytes()),
+            _ => repondre(&mut flux, 403, "text/plain; charset=utf-8", "Ce lien ne vaut plus.".as_bytes()),
+        };
+    }
+    {
+        let mut e = etat.lock().unwrap();
+        if let Ok(pair) = flux.peer_addr() {
+            e.tablettes.insert(pair.ip(), Instant::now());
+        }
+        // L'adresse par laquelle la tablette est venue : celle qu'elle a gardée.
+        if let Ok(ici) = flux.local_addr() {
+            let adresse = format!("http://{}:{}/", ici.ip(), ici.port());
+            if e.adresse_connue != adresse {
+                e.adresse_connue = adresse;
+                e.adresse_a_garder = true;
+            }
+        }
     }
     match chemin.as_str() {
         "/" => repondre(&mut flux, 200, "text/html; charset=utf-8", PAGE_TABLETTE.as_bytes()),
@@ -431,7 +550,7 @@ fn lire_entetes(flux: &mut TcpStream) -> Vec<u8> {
 }
 
 /// Écoute, jusqu'à ce qu'on l'arrête : une connexion à la fois suffit à une classe.
-fn ecouter(ecoute: TcpListener, jeton: String, etat: Arc<Mutex<Etat>>, arret: Arc<AtomicBool>) {
+fn ecouter(ecoute: TcpListener, jeton: Arc<Mutex<String>>, etat: Arc<Mutex<Etat>>, arret: Arc<AtomicBool>) {
     let _ = ecoute.set_nonblocking(true);
     while !arret.load(Ordering::SeqCst) {
         match ecoute.accept() {
@@ -447,12 +566,21 @@ fn ecouter(ecoute: TcpListener, jeton: String, etat: Arc<Mutex<Etat>>, arret: Ar
 
 /// L'état tel que l'écran le montre.
 fn etat_de(p: &Portail) -> EtatPortail {
+    let jeton = p.jeton.lock().unwrap().clone();
     let mut e = p.etat.lock().unwrap();
     e.tablettes.retain(|_, vu| vu.elapsed() < TABLETTE_PARTIE);
-    let adresses: Vec<String> = adresses_locales().iter().map(|ip| format!("http://{ip}:{}/?t={}", p.port, p.jeton)).collect();
+    // Une tablette est venue par une autre adresse : le téléphone s'en souviendra la fois suivante.
+    if e.adresse_a_garder {
+        e.adresse_a_garder = false;
+        let _ = ecrire_souvenir(&p.fiche, &Souvenir { jeton: jeton.clone(), adresse: e.adresse_connue.clone() });
+    }
+    let adresses: Vec<String> = adresses_locales().iter().map(|ip| format!("http://{ip}:{}/?t={jeton}", p.port)).collect();
+    let premiere = adresses.first().map(|a| a.split('?').next().unwrap_or(a));
+    let changee = adresse_changee(&e.adresse_connue, premiere, e.tablettes.len());
     EtatPortail {
         ouvert: true,
         qr: adresses.first().map(|a| qr_svg(a)).unwrap_or_default(),
+        adresse_changee: changee,
         adresses,
         tablettes: e.tablettes.len(),
         montree: e.montree.as_ref().map(|m| m.titre.clone()).unwrap_or_default(),
@@ -465,17 +593,28 @@ fn etat_de(p: &Portail) -> EtatPortail {
     }
 }
 
-/// Ouvre le portail s'il ne l'est pas ; rend son état.
+/// Ouvre le portail s'il ne l'est pas, avec le jeton gardé ; rend son état.
 #[tauri::command]
-pub fn portail_ouvrir() -> R<EtatPortail> {
+pub fn portail_ouvrir(app: tauri::AppHandle) -> R<EtatPortail> {
     let mut garde = PORTAIL.lock().unwrap();
     if let Some(p) = garde.as_ref() {
         return Ok(etat_de(p));
     }
+    let fiche = fiche_du_portail(&app)?;
+    let souvenir = relire_souvenir(&fiche);
     let ecoute = TcpListener::bind(("0.0.0.0", PORT)).or_else(|_| TcpListener::bind(("0.0.0.0", 0)))
         .map_err(|e| format!("Le portail ne peut pas s'ouvrir : {e}"))?;
     let port = ecoute.local_addr().map_err(|e| e.to_string())?.port();
-    let p = Portail { port, jeton: jeton(), etat: Arc::new(Mutex::new(Etat::default())), arret: Arc::new(AtomicBool::new(false)) };
+    // La version part de l'heure : une tablette restée ouverte depuis la veille recharge l'aide, même si son numéro
+    // retombait sur celui d'hier.
+    let etat = Etat { version: maintenant_ms(), adresse_connue: souvenir.adresse, ..Etat::default() };
+    let p = Portail {
+        port,
+        jeton: Arc::new(Mutex::new(souvenir.jeton)),
+        etat: Arc::new(Mutex::new(etat)),
+        arret: Arc::new(AtomicBool::new(false)),
+        fiche,
+    };
     let (j, e, a) = (p.jeton.clone(), p.etat.clone(), p.arret.clone());
     std::thread::spawn(move || ecouter(ecoute, j, e, a));
     let etat = etat_de(&p);
@@ -556,7 +695,30 @@ pub fn portail_etat() -> EtatPortail {
     PORTAIL.lock().unwrap().as_ref().map(etat_de).unwrap_or(FERME)
 }
 
-/// Ferme le portail : le serveur s'arrête, l'adresse ne vaut plus.
+/// Un nouveau code : l'ancien ne vaut plus sur aucune tablette — une tablette perdue, un QR code photographié.
+/// Le portail ouvert le prend aussitôt ; chaque tablette rescanne, et remplace son icône.
+#[tauri::command]
+pub fn portail_changer_code(app: tauri::AppHandle) -> R<EtatPortail> {
+    let fiche = fiche_du_portail(&app)?;
+    let garde = PORTAIL.lock().unwrap();
+    let mut souvenir = relire_souvenir(&fiche);
+    if let Some(p) = garde.as_ref() {
+        souvenir.adresse = p.etat.lock().unwrap().adresse_connue.clone();
+    }
+    souvenir.jeton = autre_jeton(&souvenir.jeton);
+    ecrire_souvenir(&fiche, &souvenir)?;
+    Ok(match garde.as_ref() {
+        Some(p) => {
+            *p.jeton.lock().unwrap() = souvenir.jeton;
+            // Plus aucune tablette n'est reliée : on ne les compte plus.
+            p.etat.lock().unwrap().tablettes.clear();
+            etat_de(p)
+        }
+        None => FERME,
+    })
+}
+
+/// Ferme le portail : le serveur s'arrête. L'adresse revaudra à la prochaine ouverture, avec le même code.
 #[tauri::command]
 pub fn portail_fermer() -> EtatPortail {
     if let Some(p) = PORTAIL.lock().unwrap().take() {
@@ -591,7 +753,46 @@ mod tests {
         assert!(qr_svg("http://172.20.10.1:8765/?t=abcdefgh").starts_with("<?xml"));
         let j = jeton();
         assert_eq!(j.len(), 8);
+        assert!(jeton_valide(&j));
         assert_ne!(j, jeton());
+        assert_ne!(autre_jeton(&j), j);
+        assert!(!jeton_valide("abc") && !jeton_valide("<script>") && !jeton_valide("abcdefg1"));
+    }
+
+    #[test]
+    fn le_code_se_garde_d_une_ouverture_a_l_autre() {
+        let d = std::env::temp_dir().join(format!("maitrize-portail-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        let fiche = d.join("portail.json");
+        // La première fois, un jeton est tiré et gardé ; le lendemain, c'est le même.
+        let premier = relire_souvenir(&fiche);
+        assert!(jeton_valide(&premier.jeton));
+        assert_eq!(relire_souvenir(&fiche), premier);
+        // L'adresse des tablettes se garde avec lui.
+        let avec_adresse = Souvenir { jeton: premier.jeton.clone(), adresse: "http://172.20.10.1:8765/".into() };
+        ecrire_souvenir(&fiche, &avec_adresse).unwrap();
+        assert_eq!(relire_souvenir(&fiche), avec_adresse);
+        // Une fiche abîmée donne un nouveau jeton, bien formé — et garde ce qu'elle peut.
+        std::fs::write(&fiche, br#"{"jeton":"<script>","adresse":"http://172.20.10.1:8765/"}"#).unwrap();
+        let repare = relire_souvenir(&fiche);
+        assert!(jeton_valide(&repare.jeton));
+        assert_eq!(repare.adresse, "http://172.20.10.1:8765/");
+        std::fs::write(&fiche, b"pas du json").unwrap();
+        assert!(jeton_valide(&relire_souvenir(&fiche).jeton));
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn il_faut_rescanner_quand_l_adresse_n_est_plus_celle_des_tablettes() {
+        let partage = "http://172.20.10.1:8765/";
+        let ecole = "http://10.0.4.27:8765/";
+        assert!(adresse_changee(partage, Some(ecole), 0));
+        // Ni à la même adresse, ni une fois qu'une tablette y est venue, ni la toute première fois, ni sans réseau.
+        assert!(!adresse_changee(partage, Some(partage), 0));
+        assert!(!adresse_changee(partage, Some(ecole), 1));
+        assert!(!adresse_changee("", Some(ecole), 0));
+        assert!(!adresse_changee(partage, None, 0));
     }
 
     #[test]
@@ -601,8 +802,9 @@ mod tests {
         let port = ecoute.local_addr().unwrap().port();
         let etat = Arc::new(Mutex::new(Etat::default()));
         let arret = Arc::new(AtomicBool::new(false));
-        let (e2, a2) = (etat.clone(), arret.clone());
-        std::thread::spawn(move || ecouter(ecoute, "jeton123".into(), e2, a2));
+        let jeton_partage = Arc::new(Mutex::new("jeton123".to_string()));
+        let (j2, e2, a2) = (jeton_partage.clone(), etat.clone(), arret.clone());
+        std::thread::spawn(move || ecouter(ecoute, j2, e2, a2));
         let demander = |cible: &str| -> (u16, String) {
             let mut f = TcpStream::connect(("127.0.0.1", port)).unwrap();
             write!(f, "GET {cible} HTTP/1.1\r\nHost: x\r\n\r\n").unwrap();
@@ -649,8 +851,28 @@ mod tests {
         assert!(deroule.contains("\"texte\":\"J'écris.\"") && deroule.contains("data:image/png;base64,AA"), "{deroule}");
         assert_eq!(etat.lock().unwrap().tablettes.len(), 1);
         // Le téléphone lit l'étape surlignée en toutes lettres.
-        let vu = etat_de(&Portail { port, jeton: "jeton123".into(), etat: etat.clone(), arret: arret.clone() });
+        let fiche = std::env::temp_dir().join(format!("maitrize-portail-essai-{}.json", std::process::id()));
+        let vu = etat_de(&Portail { port, jeton: jeton_partage.clone(), etat: etat.clone(), arret: arret.clone(), fiche: fiche.clone() });
         assert_eq!((vu.etape, vu.etapes, vu.texte_etape.as_str()), (Some(1), 2, "J'écris."));
+        // L'adresse par laquelle la tablette est venue est gardée avec le jeton, pour la fois suivante.
+        let garde: Souvenir = serde_json::from_slice(&std::fs::read(&fiche).unwrap()).unwrap();
+        assert_eq!(garde, Souvenir { jeton: "jeton123".into(), adresse: format!("http://127.0.0.1:{port}/") });
+        let _ = std::fs::remove_file(&fiche);
+        // Un nouveau code : l'ancien lien ne vaut plus, et la page dit quoi faire ; le nouveau sert aussitôt.
+        *jeton_partage.lock().unwrap() = "neufneuf".into();
+        let (code_page, page) = demander("/?t=jeton123");
+        assert_eq!(code_page, 403);
+        assert!(page.contains("Le code du portail a changé"), "{page}");
+        assert_eq!(demander("/etat?t=jeton123").0, 403);
+        assert_eq!(demander("/etat?t=neufneuf").0, 200);
+        // L'icône de l'écran d'accueil se donne sans jeton.
+        {
+            let mut f = TcpStream::connect(("127.0.0.1", port)).unwrap();
+            f.write_all(b"GET /icone.png HTTP/1.1\r\nHost: x\r\n\r\n").unwrap();
+            let mut r = Vec::new();
+            f.read_to_end(&mut r).unwrap();
+            assert!(r.starts_with(b"HTTP/1.1 200") && r.windows(4).any(|w| w == b"\x89PNG"));
+        }
         arret.store(true, Ordering::SeqCst);
     }
 
