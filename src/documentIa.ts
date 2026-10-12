@@ -190,45 +190,78 @@ export const SUGGESTIONS_DOCUMENT = [
 ];
 
 /** Le style du document sur le papier. */
+/**
+ * Plus un document en dit, plus son texte se resserre : une fiche courte
+ * s'imprime aérée, un long tableau tient sur sa feuille au lieu d'en
+ * déborder. On estime les lignes qu'il prend sur une page A4 au texte
+ * normal — une cinquantaine y tiennent — : une ligne de texte pour cent
+ * caractères, deux pour un titre, une ligne et demie au moins pour une ligne
+ * de tableau, qui s'allonge quand ses cases se remplissent.
+ */
+export type DensiteDocument = "aere" | "normal" | "serre" | "dense";
+export function lignesDuDocument(markdown: string): number {
+  let lignes = 0;
+  for (const brute of markdown.split("\n")) {
+    const l = brute.trim();
+    if (!l) { lignes += 0.4; continue; }
+    // Le filet sous l'en-tête d'un tableau ne s'imprime pas.
+    if (/^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?$/.test(l)) continue;
+    const texte = l.replace(/[#*_`>|]/g, "").replace(/\s+/g, " ").trim();
+    if (/^\|.*\|$/.test(l)) lignes += 1.6 + texte.length / 90;
+    else if (/^#{1,6}\s/.test(l)) lignes += 2;
+    else lignes += Math.max(1, Math.ceil(texte.length / 100));
+  }
+  return Math.round(lignes * 10) / 10;
+}
+export function densiteDuDocument(markdown: string): DensiteDocument {
+  const lignes = lignesDuDocument(markdown);
+  return lignes < 25 ? "aere" : lignes < 50 ? "normal" : lignes < 70 ? "serre" : "dense";
+}
+
+/** Tout se mesure depuis la taille du texte (em) : la densité la change, le reste suit. */
 export const STYLE_DOCUMENT_IA = `
-  .doc-ia { font-size: 14px; line-height: 1.55; color: #1c2233; }
-  .doc-ia h1 { font-size: 22px; line-height: 1.25; margin: 0 0 14px; padding-bottom: 6px; border-bottom: 3px solid #6366f1; }
-  .doc-ia h2 { font-size: 17px; line-height: 1.3; margin: 20px 0 8px; padding: 0 0 3px; border: 0; border-bottom: 1px solid #d9dcea; color: #2b2f6b; }
-  .doc-ia h3 { font-size: 15px; margin: 14px 0 4px; color: #2b2f6b; }
-  .doc-ia h4, .doc-ia h5, .doc-ia h6 { font-size: 14px; margin: 12px 0 4px; }
+  .doc-ia { font-size: 13px; line-height: 1.5; color: #1c2233; }
+  .doc-ia.doc-aere { font-size: 14px; line-height: 1.55; }
+  .doc-ia.doc-serre { font-size: 12px; line-height: 1.45; }
+  .doc-ia.doc-dense { font-size: 11px; line-height: 1.4; }
+  .doc-ia h1 { font-size: 1.6em; line-height: 1.25; margin: 0 0 .6em; padding-bottom: .25em; border-bottom: 3px solid #6366f1; }
+  .doc-ia h2 { font-size: 1.25em; line-height: 1.3; margin: 1.2em 0 .45em; padding: 0 0 .15em; border: 0; border-bottom: 1px solid #d9dcea; color: #2b2f6b; }
+  .doc-ia h3 { font-size: 1.08em; margin: 1em 0 .3em; color: #2b2f6b; }
+  .doc-ia h4, .doc-ia h5, .doc-ia h6 { font-size: 1em; margin: .9em 0 .3em; }
   .doc-ia h1, .doc-ia h2, .doc-ia h3, .doc-ia h4 { break-after: avoid; page-break-after: avoid; }
-  .doc-ia p { margin: 6px 0; }
-  .doc-ia ul, .doc-ia ol { margin: 6px 0; padding-left: 22px; }
-  .doc-ia li { margin: 4px 0; }
-  .doc-ia li > ul, .doc-ia li > ol { margin: 3px 0; }
+  .doc-ia p { margin: .45em 0; }
+  .doc-ia ul, .doc-ia ol { margin: .45em 0; padding-left: 1.6em; }
+  .doc-ia li { margin: .3em 0; }
+  .doc-ia li > ul, .doc-ia li > ol { margin: .2em 0; }
   .doc-ia li.tache { list-style: none; }
   .doc-ia .ligne { display: inline-block; min-width: 60mm; border-bottom: 1.2px solid #444; height: 1.1em; vertical-align: baseline; margin: 0 3px; }
-  .doc-ia .case { display: inline-block; width: 6mm; height: 6mm; border: 1.5px solid #333; border-radius: 1.5px; vertical-align: middle; margin-right: 6px; background: #fff; }
+  .doc-ia .case { display: inline-block; width: 1.25em; height: 1.25em; border: 1.5px solid #333; border-radius: 1.5px; vertical-align: middle; margin-right: .4em; background: #fff; }
   .doc-ia .case.cochee { background: #333; }
   /* Les tableaux : un mot ne se coupe jamais au milieu — la feuille commune le permet, et « Étape » devenait « Étap / e »
-     dans une colonne étroite. La césure, en français, découpe les mots trop longs aux bons endroits. */
-  .doc-ia table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px; }
-  .doc-ia th, .doc-ia td { border: 1px solid #c9cee0; padding: 6px 9px; vertical-align: top; text-align: left;
+     dans une colonne étroite. La césure, en français, découpe les mots trop longs aux bons endroits ; jamais dans un en-tête,
+     qui donne sa largeur à sa colonne. */
+  .doc-ia table { width: 100%; border-collapse: collapse; margin: .7em 0; font-size: .95em; }
+  .doc-ia th, .doc-ia td { border: 1px solid #c9cee0; padding: .4em .6em; vertical-align: top; text-align: left;
     word-break: normal; overflow-wrap: break-word; hyphens: auto; }
-  .doc-ia th { background: #eef0fe; color: #2b2f6b; font-weight: 700; }
+  .doc-ia th { background: #eef0fe; color: #2b2f6b; font-weight: 700; hyphens: manual; }
   .doc-ia tbody tr:nth-child(even) td { background: #f8f9fd; }
   .doc-ia tr { break-inside: avoid; page-break-inside: avoid; }
   .doc-ia td p, .doc-ia th p { margin: 0; }
-  .doc-ia hr { border: 0; border-top: 1px solid #c9cee0; margin: 14px 0; }
+  .doc-ia hr { border: 0; border-top: 1px solid #c9cee0; margin: 1em 0; }
   .doc-ia .saut { break-before: page; page-break-before: always; }
-  .doc-ia blockquote { border-left: 3px solid #6366f1; background: #eef0fe; margin: 8px 0; padding: 6px 12px; font-style: normal; border-radius: 0 6px 6px 0; }
+  .doc-ia blockquote { border-left: 3px solid #6366f1; background: #eef0fe; margin: .6em 0; padding: .45em .9em; font-style: normal; border-radius: 0 6px 6px 0; }
   .doc-ia code { font-family: inherit; background: none; }
   .doc-ia del { color: #666; }
-  .doc-ia pre { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.45; background: #f5f6fa;
-    border: 1px solid #ddd; border-radius: 4px; padding: 8px 10px; margin: 8px 0; white-space: pre-wrap; break-inside: avoid; }
+  .doc-ia pre { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .9em; line-height: 1.45; background: #f5f6fa;
+    border: 1px solid #ddd; border-radius: 4px; padding: .6em .8em; margin: .6em 0; white-space: pre-wrap; break-inside: avoid; }
 `;
 
 /** La feuille d'un document : son titre, son corps et son style, prêts pour `printHTML`. */
 export function feuilleDuDocument(markdown: string): { titre: string; corps: string; style: string } {
   return {
     titre: titreDuDocument(markdown),
-    // En français, pour que la césure découpe les mots trop longs aux bons endroits.
-    corps: `<div class="doc-ia" lang="fr">${markdownVersHtml(markdown, { titres: "impression" })}</div>`,
+    // En français, pour que la césure découpe les mots trop longs aux bons endroits ; resserré selon ce qu'il dit.
+    corps: `<div class="doc-ia doc-${densiteDuDocument(markdown)}" lang="fr">${markdownVersHtml(markdown, { titres: "impression" })}</div>`,
     style: STYLE_DOCUMENT_IA,
   };
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
+import { densiteDuDocument, lignesDuDocument,
   SUGGESTIONS_DOCUMENT, consigneDocument, estUnDocument, feuilleDuDocument, markdownVersHtml, titreDuDocument,
 } from "./documentIa";
 
@@ -118,7 +118,7 @@ describe("le document lui-même", () => {
   it("donne une feuille prête à imprimer, sur le papier avec un h1", () => {
     const f = feuilleDuDocument("# Les fractions\nPrénom : ______ Date : ______\n## Exercice 1\n1. Colorie la moitié.");
     expect(f.titre).toBe("Les fractions");
-    expect(f.corps).toContain('<div class="doc-ia" lang="fr"><h1>Les fractions</h1>');
+    expect(f.corps).toContain('<div class="doc-ia doc-aere" lang="fr"><h1>Les fractions</h1>');
     // Dans un tableau, un mot ne se coupe pas au milieu : seule la césure le découpe, en français.
     expect(f.style).toMatch(/\.doc-ia th, \.doc-ia td \{[^}]*word-break: normal;[^}]*hyphens: auto;/);
     expect(f.corps).toContain('<span class="ligne"></span>');
@@ -129,5 +129,26 @@ describe("le document lui-même", () => {
     const c = consigneDocument();
     for (const mot of ["Markdown", "# ", "______", "[ ]", "[page]", "Prénom", "IME"]) expect(c).toContain(mot);
     expect(SUGGESTIONS_DOCUMENT.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("la taille du texte d'un document", () => {
+  // Un paragraphe de deux lignes, et l'espace qui le suit.
+  const paragraphe = "Une consigne courte, avec un exemple concret pour l'élève, et ce qu'il doit faire ensuite, pas à pas, sans métaphore ni sous-entendu.";
+  const paragraphes = (n: number) => Array.from({ length: n }, () => paragraphe).join("\n\n");
+
+  it("se resserre à mesure que le document s'allonge : aéré, normal, serré, dense", () => {
+    expect(densiteDuDocument("# Titre\n\n" + paragraphes(3))).toBe("aere");
+    expect(densiteDuDocument(paragraphes(15))).toBe("normal");
+    expect(densiteDuDocument(paragraphes(25))).toBe("serre");
+    expect(densiteDuDocument(paragraphes(35))).toBe("dense");
+    expect(feuilleDuDocument(paragraphes(35)).corps).toContain('class="doc-ia doc-dense"');
+  });
+
+  it("compte une ligne de tableau pour plus qu'une ligne de texte, et pas son filet", () => {
+    const tableau = "| Étape | Action | À faire | Vérification |\n|---|---|---|---|\n" + "| 1 | Préparer | Nom : ___ | ✅ / ❌ |\n".repeat(16);
+    expect(lignesDuDocument("|---|---|")).toBe(0);
+    expect(densiteDuDocument(tableau)).toBe("normal");
+    expect(densiteDuDocument(tableau + "\n" + paragraphes(8))).toBe("serre");
   });
 });
