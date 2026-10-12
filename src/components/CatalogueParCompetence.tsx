@@ -51,14 +51,12 @@ const ICONES_DOMAINES: [RegExp, string][] = [
 ];
 const iconeDuDomaine = (titre: string) => ICONES_DOMAINES.find(([re]) => re.test(titre))?.[1] ?? "📘";
 
-type Montrer = "toutes" | "avec" | "sans";
-interface Choix { referentiel: string; niveau: string; montrer: Montrer; sansSeulement: boolean }
+interface Choix { referentiel: string; niveau: string; sansSeulement: boolean }
 const lireChoix = (brut: unknown): Choix => {
   const o = brut && typeof brut === "object" ? (brut as Record<string, unknown>) : {};
   return {
     referentiel: typeof o.referentiel === "string" ? o.referentiel : "",
     niveau: typeof o.niveau === "string" ? o.niveau : "",
-    montrer: o.montrer === "avec" || o.montrer === "sans" ? o.montrer : "toutes",
     sansSeulement: o.sansSeulement === true,
   };
 };
@@ -161,7 +159,6 @@ export function CatalogueParCompetence({ recherche, onOuvrir }: { recherche: str
   const liensDe = (comp: RefComp) => liens.get(identiteCompetence(ref.nom, comp.id)) ?? [];
   const garde = (dom: RefDom, sd: RefSous, cg: RefCG | null, comp: RefComp) => {
     if (!vautPourLeNiveau(comp.niveau, niveau)) return false;
-    if (choix.montrer !== "toutes" && (liensDe(comp).length > 0) !== (choix.montrer === "avec")) return false;
     return !cherche || correspond(`${comp.niveau ?? ""} ${comp.texte} ${cg?.titre ?? ""} ${sd.titre} ${dom.titre}`, cherche);
   };
   const lignesDe = (dom: RefDom, sd: RefSous) => [
@@ -239,11 +236,6 @@ export function CatalogueParCompetence({ recherche, onOuvrir }: { recherche: str
             {niveaux.map((n) => <button key={n} className={niveau === n ? "active" : ""} onClick={() => changer({ niveau: n })}>{n}</button>)}
           </div>
         )}
-        <div className="seg" role="group" aria-label="Les compétences montrées">
-          <button className={choix.montrer === "toutes" ? "active" : ""} onClick={() => changer({ montrer: "toutes" })}>Toutes</button>
-          <button className={choix.montrer === "avec" ? "active" : ""} onClick={() => changer({ montrer: "avec" })}>Avec un atelier</button>
-          <button className={choix.montrer === "sans" ? "active" : ""} onClick={() => changer({ montrer: "sans" })}>Sans atelier</button>
-        </div>
         {!cherche && domaines.length > 0 && (
           <button className="btn ghost sm" onClick={() => {
             const cles = domaines.map(({ dom }) => cleDuPli(dom));
@@ -253,15 +245,14 @@ export function CatalogueParCompetence({ recherche, onOuvrir }: { recherche: str
       </div>
       <div className="pc-bilan">
         {total} compétence{total > 1 ? "s" : ""}{niveau ? ` en ${niveau}` : ""}{cherche ? ` pour « ${cherche} »` : ""}
-        {choix.montrer === "toutes" && total > 0 ? ` · ${couvertes} avec au moins un atelier` : ""}
+        {total > 0 ? ` · ${couvertes} avec au moins un atelier` : ""}
       </div>
 
       <div className="par-competence">
         <div className="pc-arbre">
           {!domaines.length ? (
             <div className="zone-moment-vide">
-              {cherche ? `Aucune compétence ne contient « ${cherche} » ici.` : choix.montrer === "avec"
-                ? "Aucune compétence n'a encore d'atelier : glissez-en un depuis la liste, à droite." : "Aucune compétence à montrer."}
+              {cherche ? `Aucune compétence ne contient « ${cherche} » ici.` : "Aucune compétence à montrer."}
             </div>
           ) : domaines.map(({ dom, parties, total: n, couvertes: k }) => (
             <section key={dom.id} className="famille-catalogue">
