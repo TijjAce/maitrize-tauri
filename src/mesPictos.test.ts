@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   PREFIXE_MES_PICTOS, chercherDans, cleDuMot, completer, estMonPicto, ficheEcrite, lireFiches, mentionDeMesPictos, nouvelIdMonPicto,
-  origineDe, pourLeMot, type MonPicto,
+  origineDe, photoArrivee, pourLeMot, type MonPicto,
 } from "./mesPictos";
 import { estPerso } from "./imagesPerso";
 
@@ -70,5 +70,18 @@ describe("Mes pictos", () => {
     expect(deux).toContain("Sclera (www.sclera.be)");
     expect(deux).toContain("intelligence artificielle");
     expect(mentionDeMesPictos([-1_400_000_001])).not.toContain("intelligence");
+  });
+
+  it("reconnaissent la photo arrivée du téléphone pendant qu'on l'attend : celle du mot attendu d'abord", () => {
+    const deja = picto(-2_100_000_001, "la cantine");
+    const ciseaux = picto(-2_100_000_002, "les ciseaux");
+    const bus = picto(-2_100_000_003, "le bus");
+    const ia = picto(-1_000_000_009, "ciseaux");
+    const connues = new Set([deja.id]);
+    // Ni une photo déjà là, ni un picto qui n'est pas une photo.
+    expect(photoArrivee(connues, [deja, ia], "ciseaux")).toBeNull();
+    expect(photoArrivee(connues, [bus, deja, ciseaux], "ciseaux")).toBe(ciseaux);
+    expect(photoArrivee(connues, [bus, deja, ciseaux], "règle")).toBe(bus);
+    expect(photoArrivee(connues, [deja, bus], " ")).toBe(bus);
   });
 });

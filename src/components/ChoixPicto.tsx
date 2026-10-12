@@ -3,8 +3,8 @@ import { api, PictoArasaac } from "../api";
 import { Field, Input, Modal } from "./ui";
 import type { PictoPose } from "../supportsVisuels";
 import { chargerImageAppoint } from "../pictosAppoint";
-import { ETIQUETTES, chercherPictos, estMonPicto, imageDeMonPicto, origineDe } from "../mesPictos";
-import { PhotoTelephone } from "./PhotoTelephone";
+import { ETIQUETTES, chercherPictos, estMonPicto, imageDeMonPicto, origineDe, type MonPicto } from "../mesPictos";
+import { PhotoParNuage } from "./PhotoParNuage";
 import { imagesSelonMode, modeImagesActif, photosChangees, type ModeImages } from "../imagesSelonMode";
 import { toast } from "./Toaster";
 
@@ -140,7 +140,7 @@ function Resultat({ picto, actif, onClick }: { picto: PictoArasaac; actif: boole
 export function ChoixPicto({ valeur, banque, titre = "Choisir un pictogramme", onClose, onValider, photos = false }: {
   valeur: PictoPose; banque: boolean; titre?: string;
   onClose: () => void; onValider: (p: PictoPose) => void;
-  /** Une photo de l'objet aussi : prise au téléphone, ou une image de l'ordinateur. */
+  /** Une photo de l'objet aussi : prise au téléphone — elle passe par Nuage —, ou une image de l'ordinateur. */
   photos?: boolean;
 }) {
   const [q, setQ] = React.useState(valeur.mot);
@@ -150,6 +150,10 @@ export function ChoixPicto({ valeur, banque, titre = "Choisir un pictogramme", o
   const [photo, setPhoto] = React.useState(valeur.photo ?? "");
   const srcPhoto = usePictoImage(photo ? `photo:${photo}` : null, true);
   const prendrePhoto = (nom: string) => { setPhoto(nom); setChoisi(null); };
+  // La photo du téléphone arrive par Nuage dans Mes pictos : elle se pose comme eux, sous son numéro.
+  const prendrePhotoDuTelephone = (p: MonPicto) => { setPhoto(""); setChoisi(p.id); setMot((m) => (m.trim() ? m : p.mot)); };
+  const photoDuTelephone = origineDe(choisi) === "photo" ? choisi : null;
+  const srcPhotoDuTelephone = usePictoImage(photoDuTelephone, true);
   // Une image de l'ordinateur rejoint les fichiers de l'application, comme une photo du téléphone.
   const importer = async (f: File) => {
     const base64 = await new Promise<string>((ok, ko) => {
@@ -211,7 +215,10 @@ export function ChoixPicto({ valeur, banque, titre = "Choisir un pictogramme", o
             {photo && (srcPhoto
               ? <img src={srcPhoto} alt="" style={{ width: 84, height: 84, objectFit: "contain", border: "3px solid var(--accent)", borderRadius: 8, background: "#fff" }} />
               : <span className="meta">📷 {photo}</span>)}
-            <PhotoTelephone label="📱 Photographier avec le téléphone" className="btn sm" onPhoto={prendrePhoto} />
+            {!photo && photoDuTelephone != null && srcPhotoDuTelephone && (
+              <img src={srcPhotoDuTelephone} alt="" style={{ width: 84, height: 84, objectFit: "contain", border: "3px solid var(--accent)", borderRadius: 8, background: "#fff" }} />
+            )}
+            <PhotoParNuage mot={mot || q} onPhoto={prendrePhotoDuTelephone} />
             <label className="btn sm" style={{ cursor: "pointer" }}>
               🖼 Une image de l'ordinateur
               <input type="file" accept="image/*" hidden onChange={(e) => {
@@ -220,7 +227,9 @@ export function ChoixPicto({ valeur, banque, titre = "Choisir un pictogramme", o
                 if (f) importer(f).catch((err) => toast("Image non enregistrée : " + String(err), { icone: "⚠️" }));
               }} />
             </label>
-            {photo && <button type="button" className="btn ghost sm" onClick={() => setPhoto("")}>Retirer la photo</button>}
+            {(photo || photoDuTelephone != null) && (
+              <button type="button" className="btn ghost sm" onClick={() => { setPhoto(""); if (photoDuTelephone != null) setChoisi(null); }}>Retirer la photo</button>
+            )}
           </div>
         </Field>
       )}
