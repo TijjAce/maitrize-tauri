@@ -36,7 +36,7 @@ import { estUnModele, trisDuProjet } from "../triDuProjet";
 import { objectifsDesAteliers } from "../ateliersCompetences";
 import { useImagesEtOmbres } from "../components/MesImages";
 import { OMBRES_MINIMUM, REGLAGES_OMBRES, STYLE_OMBRES, feuillesDOmbres, htmlOmbres, type FormeOmbres, type ImageOmbre, type ReglagesOmbres } from "../ombres";
-import { REGLAGES_CURSIVE, REGLURES, STYLE_CURSIVE, htmlEcritureCursive, modelesDeLEtape, modelesSaisis, type ReglagesCursive } from "../ecritureCursive";
+import { HAUTEURS_HERBE, REGLAGES_CURSIVE, REGLURES, STYLE_CURSIVE, htmlEcritureCursive, modelesDeLEtape, modelesSaisis, type ReglagesCursive } from "../ecritureCursive";
 import { REGLAGES_FLUENCE, nomDeLEtape } from "../fluence";
 import { etapeDe } from "../progressionCgp";
 
@@ -142,6 +142,7 @@ export function CursiveTab() {
         <h3 style={{ marginTop: 0 }}>Écriture cursive</h3>
         <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
           Des modèles en cursive et des lignes à réglure — 3, 2,5 ou 2 mm — pour tracer la lettre du jour, l'enchaîner dans des syllabes et des mots, ou copier une phrase écrite en script.
+          Pour les premières lettres, les lignes « ciel, herbe, terre » : les petites lettres dans l'herbe, les grandes dans le ciel, les jambages dans la terre.
           Le modèle prend la police d'écriture scolaire installée sur l'ordinateur (Écriture A, Belle Allure…).
         </p>
         <Field label="Les modèles, un par ligne">
@@ -153,14 +154,31 @@ export function CursiveTab() {
           <button type="button" className="btn ghost sm" onClick={() => maj({ modeles: modelesDeLEtape(etape.id, "mots", graineAuHasard()).join("\n") })}
             title="Des syllabes et des mots déchiffrables à cette étape">Syllabes et mots</button>
         </div>
+        <Field label="Les lignes">
+          <Select value={r.guide} onChange={(e) => maj({ guide: e.target.value as ReglagesCursive["guide"] })}>
+            <option value="seyes">Cahier Seyès</option>
+            <option value="ciel">Ciel, herbe, terre</option>
+          </Select>
+        </Field>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <Field label="Réglure">
-            <Select value={r.reglure} onChange={(e) => maj({ reglure: Number(e.target.value) as ReglagesCursive["reglure"] })}>
-              {REGLURES.map((x) => <option key={x} value={x}>{String(x).replace(".", ",")} mm</option>)}
-            </Select>
-          </Field>
+          {r.guide === "ciel" ? (
+            <Field label="Hauteur de l'herbe">
+              <Select value={r.herbe} onChange={(e) => maj({ herbe: Number(e.target.value) as ReglagesCursive["herbe"] })}>
+                {HAUTEURS_HERBE.map((h) => <option key={h.mm} value={h.mm}>{h.label}</option>)}
+              </Select>
+            </Field>
+          ) : (
+            <Field label="Réglure">
+              <Select value={r.reglure} onChange={(e) => maj({ reglure: Number(e.target.value) as ReglagesCursive["reglure"] })}>
+                {REGLURES.map((x) => <option key={x} value={x}>{String(x).replace(".", ",")} mm</option>)}
+              </Select>
+            </Field>
+          )}
           <Field label="Lignes par modèle"><Input type="number" min={1} max={6} value={r.lignes} onChange={(e) => maj({ lignes: borne(e.target.value, 1, 6, 2) })} /></Field>
         </div>
+        {r.guide === "ciel" && (
+          <Coche on={r.bandes} libelle="Les bandes en couleur sur toute la ligne" onChange={(v) => maj({ bandes: v })} />
+        )}
         <Coche on={r.transcrire} libelle="Copier : le modèle en script, à écrire en cursive" onChange={(v) => maj({ transcrire: v })} />
         <Boutons atelier="cursive" titre={r.transcrire ? "Copier en cursive" : "Écriture cursive"} html={html} style={STYLE_CURSIVE} peut={modeles.length > 0} />
       </>}
