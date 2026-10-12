@@ -1,5 +1,7 @@
 import React from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { api } from "../api";
+import { creditMateriel, photoDuMateriel } from "../photosMateriel";
 import { Input, Modal } from "./ui";
 import { toast } from "./Toaster";
 import { nomDeLAtelier } from "../catalogueAteliers";
@@ -38,12 +40,28 @@ const Irremplacable = ({ m }: { m: MaterielReel }) => (m.irremplacable
   ? <span className="materiel-reel-badge" title={m.irremplacable}>le papier ne le remplace pas</span>
   : null);
 
+/** Sa page sur Wikimedia Commons, dans le navigateur : l'original, son auteur, sa licence. */
+const ouvrirLaSource = (url: string) => { openUrl(url).catch(() => window.open(url, "_blank")); };
+
+/** La photo d'un matériel, en vignette ; un clic ouvre sa page d'origine. Rien s'il n'en a pas. */
+function PhotoDuMateriel({ id, taille }: { id: string; taille: number }) {
+  const p = photoDuMateriel(id);
+  if (!p) return null;
+  return (
+    <button type="button" className="materiel-photo" style={{ width: taille, height: taille }} onClick={() => ouvrirLaSource(p.page)}
+      title={`${p.titre}. ${creditMateriel(p)} Cliquer pour voir l'original.`}>
+      <img src={p.adresse} alt={p.titre} />
+    </button>
+  );
+}
+
 /** Une ligne du matériel, telle qu'une séquence ou un atelier la montre. */
 function LigneMateriel({ m, inv }: { m: MaterielReel; inv: Inventaire }) {
   const la = inv[m.id];
   return (
     <li className="materiel-reel-ligne">
       <span className={la?.a ? "materiel-reel-etat oui" : "materiel-reel-etat"}>{la?.a ? "✓" : "○"}</span>
+      <PhotoDuMateriel id={m.id} taille={44} />
       <span>
         <b>{m.nom}</b> <Irremplacable m={m} />
         <span className="meta" style={{ display: "block", fontSize: 12 }}>
@@ -125,6 +143,7 @@ export function MaterielDeLaClasse({ onClose }: { onClose: () => void }) {
             <h4>{f.libelle}</h4>
             {liste.map((m) => (
               <div key={m.id} className="materiel-reel-fiche">
+                <PhotoDuMateriel id={m.id} taille={84} />
                 <label className="pb-coche">
                   <input type="checkbox" checked={inv[m.id]?.a ?? false} onChange={(e) => maj(m.id, { a: e.target.checked })} />
                   <span><b>{m.nom}</b></span>
@@ -134,6 +153,7 @@ export function MaterielDeLaClasse({ onClose }: { onClose: () => void }) {
                   {m.usage}{m.irremplacable ? ` ${m.irremplacable}` : ""}
                   {m.imprime && <> Fabriquer en imprime {m.imprime.quoi} (atelier « {nomDeLAtelier(m.imprime.atelier)} »).</>}
                   <span style={{ display: "block", opacity: .8 }}>📖 {m.source}</span>
+                  {photoDuMateriel(m.id) && <span className="materiel-credit">{creditMateriel(photoDuMateriel(m.id)!)}</span>}
                 </div>
                 {inv[m.id]?.a && (
                   <Input value={inv[m.id]?.lieu ?? ""} placeholder="Rangé où ? (ex. : armoire du fond, salle de sciences)"

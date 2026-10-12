@@ -2,6 +2,7 @@ import React from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Modal } from "./ui";
 import { PHOTOS_PAYSAGES } from "../photosPaysages";
+import { PHOTOS_MATERIEL } from "../photosMateriel";
 
 // Ce que Maîtrize doit à d'autres : sa propre licence, celles des pictogrammes
 // qu'il télécharge, et le texte des licences des composants qu'il embarque
@@ -56,6 +57,14 @@ export function Licences() {
         </p>
         <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
           {PHOTOS_PAYSAGES.map((p) => (
+            <li key={p.id}>{p.titre} : {p.auteur}, {p.licence === "CC0" ? "domaine public (CC0)" : `licence ${p.licence}`} — {lien(p.page, "l'original")}.</li>
+          ))}
+        </ul>
+        <p>
+          <b>Photographies du matériel de la classe</b>, venues de Wikimedia Commons et créditées sous chaque photo :
+        </p>
+        <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+          {PHOTOS_MATERIEL.map((p) => (
             <li key={p.id}>{p.titre} : {p.auteur}, {p.licence === "CC0" ? "domaine public (CC0)" : `licence ${p.licence}`} — {lien(p.page, "l'original")}.</li>
           ))}
         </ul>
