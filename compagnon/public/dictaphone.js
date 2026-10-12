@@ -82,13 +82,18 @@ const PORTAIL_FERME = { ouvert: false, adresses: [], qr: "", adresseChangee: fal
 /** Les durées du minuteur qu'on lance d'un toucher, en minutes. */
 const MINUTEURS = [1, 2, 5, 10, 15, 20, 30];
 let portail = PORTAIL_FERME, suiviPortail = null, portailSouci = "";
-/** « Changer le code » se confirme : toutes les tablettes devront rescanner. */
-let confirmerCode = false;
+/** « Changer le code » se confirme : toutes les tablettes devront rescanner. Puis on dit que c'est fait. */
+let confirmerCode = false, codeNeuf = false;
 /**
- * Où va ce qu'on dicte ou qu'on écrit : au cahier journal, rangé au créneau,
- * ou aux notes rapides de l'ordinateur, en un nouveau tiret. Le cahier
- * journal reste la règle : le choix tombe, comme le jour, après un quart
- * d'heure en arrière-plan.
+ * L'onglet ouvert : le cahier journal, les notes rapides, les tablettes, le
+ * partage par le WiFi, les réglages. On ouvre sur le cahier journal.
+ */
+let onglet = "journal";
+/**
+ * Où va ce qu'on dicte ou qu'on écrit : l'onglet le dit — au cahier journal,
+ * rangé au créneau, ou aux notes rapides de l'ordinateur, en un nouveau
+ * tiret. Le cahier journal reste la règle : on y revient, comme au jour,
+ * après un quart d'heure en arrière-plan.
  */
 let pourLesNotes = false;
 /** Ce que l'étiquette de Nuage porte pour les notes rapides. */
@@ -295,8 +300,8 @@ const QUART_D_HEURE = 15 * 60 * 1000;
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) cacheeDepuis = Date.now();
   else if (cacheeDepuis && Date.now() - cacheeDepuis > QUART_D_HEURE) {
-    // Une note rapide commencée garde sa destination : on ne la change pas sous les doigts.
-    if (pourLesNotes && !ecrit) { pourLesNotes = false; rendre(); }
+    // Une note rapide commencée, une photo à nommer gardent leur onglet : on ne le change pas sous les doigts.
+    if (onglet === "notes" && !ecrit && !photoPrise) allerA("journal");
     if (jourChoisi) void allerAuJour("");
   }
   // De retour sur l'écran : le cahier journal a pu changer sur l'ordinateur.
@@ -340,6 +345,11 @@ function enAttente() {
 /** La commande qui dépose, ou qui oublie, chaque sorte de ce qui attend. */
 const DEPOSER = { vocal: "vocal_deposer", note: "note_deposer", photo: "photo_deposer" };
 const OUBLIER = { vocal: "vocal_oublier", note: "note_oublier", photo: "photo_oublier" };
+
+/** Ce qui va au cahier journal : les dictées et les notes rangées à un créneau. */
+const versLeJournal = (x) => x.sorte !== "photo" && x.destination !== VERS_LES_NOTES;
+/** Ce qui part de l'onglet des notes : les notes rapides, dictées ou écrites, et les photos pour Mes pictos. */
+const versLesNotesRapides = (x) => !versLeJournal(x);
 
 /** Garde la note écrite, puis tente de la déposer. */
 async function garderLaNote() {
@@ -510,17 +520,18 @@ function matiereDuCreneau(id) {
 }
 
 /**
- * Dépose ce qui attend sur Nuage, et s'arrête au premier refus : le reste est
- * gardé, et repartira au prochain passage.
+ * Dépose ce qui attend sur Nuage — tout, ou ce que l'onglet envoie —, et
+ * s'arrête au premier refus : le reste est gardé, et repartira au prochain
+ * passage.
  */
-async function envoyerTout() {
+async function envoyerTout(quoi = () => true) {
   if (envoiEnCours) return;
   envoiEnCours = true;
   souci = "";
   rendre();
   let parties = 0;
   try {
-    for (const x of enAttente()) {
+    for (const x of enAttente().filter(quoi)) {
       if (!relais.relie) { souci = "Le téléphone n'est pas relié à Nuage."; break; }
       if (!relais.connecte) { souci = "Le téléphone n'est pas connecté à votre compte Nuage."; break; }
       try {
@@ -846,7 +857,7 @@ setInterval(() => {
 /** Un nouveau code : l'ancien ne vaut plus sur aucune tablette — une tablette perdue, un QR code photographié. */
 async function changerLeCode() {
   confirmerCode = false;
-  try { portail = await invoke("portail_changer_code"); portailSouci = ""; } catch (e) { portailSouci = String(e); }
+  try { portail = await invoke("portail_changer_code"); portailSouci = ""; codeNeuf = true; } catch (e) { portailSouci = String(e); }
   rendre();
 }
 
@@ -856,7 +867,6 @@ async function cacherAide() {
 }
 
 async function fermerPortail() {
-  confirmerCode = false;
   try { portail = await invoke("portail_fermer"); } catch (e) { portail = PORTAIL_FERME; }
   if (suiviPortail) { clearInterval(suiviPortail); suiviPortail = null; }
   // Plus de portail : l'écran peut s'éteindre, sauf pendant une dictée.
@@ -1048,6 +1058,8 @@ const ICONES = {
   lien: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>',
   attention: '<path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>',
   horloge: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/>',
+  tablette: '<rect x="4.5" y="2.5" width="15" height="19" rx="2.5"/><path d="M10.5 18.5h3"/>',
+  reglages: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/>',
 };
 
 const icone = (nom, classe = "") =>
@@ -1096,36 +1108,28 @@ function barreDuJour() {
   </div>`;
 }
 
-/**
- * Où va ce qu'on dicte : au cahier journal, rangé au créneau, ou aux notes
- * rapides de l'ordinateur. Pendant une dictée, le choix est pris : on le
- * montre, on n'en change pas.
- */
-function choixDeDestination() {
-  const fige = ctx ? "disabled" : "";
-  const bouton = (id, ico, libelle, on) =>
-    `<button id="${id}" class="${on ? "on" : ""}" aria-pressed="${on}" ${fige}>${icone(ico, "petit")}<span>${libelle}</span></button>`;
-  return `<div class="destination" role="group" aria-label="Où va la dictée">
-    ${bouton("vers-journal", "page", "Cahier journal", !pourLesNotes)}
-    ${bouton("vers-notes", "liste", "Notes rapides", pourLesNotes)}
-  </div>`;
-}
-
 /** À la place du jour et du créneau, ce que deviendra la note : un tiret de plus. */
 const versLesNotes = () =>
   `<p class="pastille muette">${icone("liste")}<span>Un nouveau tiret dans les notes rapides</span></p>`;
 
-/** Le grand bouton, l'autre façon de prendre une note — l'écrire —, et la photo pour un picto. */
-const auRepos = () => `
-  <button class="rond" id="go" aria-label="${pourLesNotes ? "Dicter une note rapide" : "Dicter"}">${icone("micro")}</button>
-  <p class="rond-legende">${pourLesNotes ? "Dicter une note rapide" : "Dicter"}</p>
+/**
+ * Le grand bouton, et l'autre façon de prendre une note : l'écrire. Les notes
+ * rapides ont aussi la photo pour un picto — une prise au vol, qui part à
+ * l'ordinateur comme elles.
+ */
+const auRepos = () => (pourLesNotes ? `
+  <button class="rond" id="go" aria-label="Dicter une note rapide">${icone("micro")}</button>
+  <p class="rond-legende">Dicter une note rapide</p>
   <div class="tuiles">
-    <button class="tuile" id="ecrire">${icone("crayon")}${pourLesNotes ? "Note rapide" : "Écrire une note"}</button>
+    <button class="tuile" id="ecrire">${icone("crayon")}Écrire une note</button>
     <label class="tuile">${icone("photo")}Photo pour un picto
       <input type="file" id="photo-picto" accept="image/*" capture="environment" hidden></label>
   </div>
   <label class="lien-album">ou choisir une image dans la photothèque
-    <input type="file" id="photo-album" accept="image/*" hidden></label>`;
+    <input type="file" id="photo-album" accept="image/*" hidden></label>` : `
+  <button class="rond" id="go" aria-label="Dicter">${icone("micro")}</button>
+  <p class="rond-legende">Dicter</p>
+  <button class="tuile seule" id="ecrire">${icone("crayon")}Écrire une note</button>`);
 
 /** Pendant qu'on dicte : le temps, le halo qui suit la voix, et de quoi s'arrêter. */
 const enDictee = () => `
@@ -1160,12 +1164,12 @@ const editeurDePhoto = () => `
     </div>
   </div>`;
 
-/** Ce qui vient de se passer — un avertissement, une erreur, un envoi : à lire en passant. */
-function bulles() {
+/** Ce qui vient de se passer — un avertissement, une erreur, un envoi : à lire en passant. Hors dictée, l'erreur seule. */
+function bulles(seulementLErreur = false) {
   const b = [];
-  if (avis) b.push(`<p class="bulle alerte">${icone("attention")}<span>${echapper(avis)}</span></p>`);
+  if (avis && !seulementLErreur) b.push(`<p class="bulle alerte">${icone("attention")}<span>${echapper(avis)}</span></p>`);
   if (souci) b.push(`<p class="bulle erreur">${icone("attention")}<span>${echapper(souci)}</span></p>`);
-  if (!ctx && partiParNuage) b.push(`<p class="bulle">${icone("nuage")}<span>${echapper(partiParNuage)}</span></p>`);
+  if (!ctx && partiParNuage && !seulementLErreur) b.push(`<p class="bulle">${icone("nuage")}<span>${echapper(partiParNuage)}</span></p>`);
   return b.join("");
 }
 
@@ -1196,14 +1200,15 @@ function rangDAttente(x) {
   </div>`;
 }
 
-function listeDAttente(attente) {
+/** Ce qui attend d'un onglet, et le bouton qui l'envoie par Nuage — celui-là seulement. */
+function listeDAttente(attente, bouton) {
   if (!attente.length) {
     return `<p class="titre">À envoyer</p>
       <div class="groupe"><div class="rang vide-ok"><span class="ico">${icone("coche")}</span><span class="rang-texte">Tout est envoyé</span></div></div>`;
   }
   return `<p class="titre">À envoyer · ${attente.length}</p>
     <div class="groupe">${attente.map(rangDAttente).join("")}</div>
-    <button class="btn-plein" id="envoyer" ${envoiEnCours ? "disabled" : ""}>${icone("envoyer")}${envoiEnCours ? "Envoi…" : "Envoyer maintenant"}</button>`;
+    <button class="btn-plein" id="envoyer" ${envoiEnCours ? "disabled" : ""}>${icone("nuage")}${envoiEnCours ? "Envoi…" : bouton}</button>`;
 }
 
 /** Le portail ouvert : le QR code que les tablettes scannent, combien elles sont, ce qu'elles montrent. */
@@ -1225,15 +1230,7 @@ function carteDuPortail() {
       ${portail.montree ? `<button class="btn-doux" id="cacher-aide">Ne plus montrer</button>` : "<span></span>"}
       <button class="btn-doux" id="fermer-portail">Fermer le portail</button>
     </div>
-    ${changementDuCode()}
   </div>`;
-}
-
-/** Changer le code : rare — une tablette perdue —, puisque toutes les tablettes rescannent ; on le confirme. */
-function changementDuCode() {
-  if (!confirmerCode) return `<div class="pages-boutons portail-code"><button class="lien-btn" id="changer-code">Changer le code</button></div>`;
-  return `<div class="pages-gardees confirmer"><p>Toutes les tablettes devront scanner le nouveau code, et remplacer leur icône.</p>
-    <div class="pages-boutons"><button class="lien-btn rouge" id="confirmer-code">Changer le code</button><button class="lien-btn" id="garder-code">Garder celui-ci</button></div></div>`;
 }
 
 /** L'aide montrée : en fiche ou en déroulé, et l'étape où en est la classe. */
@@ -1273,37 +1270,145 @@ function commandesDuMinuteur() {
   </div>`;
 }
 
-/** Le cahier journal du jour choisi : ses créneaux, leur prévu, leur bilan, et les aides à montrer. */
+/** Le cahier journal n'est pas là : il arrive, ou ce qui l'en empêche. */
+const cahierAbsent = () =>
+  `<p class="carte-info">${icone(cahierSouci ? "attention" : "nuage")}<span>${echapper(cahierSouci || "Le cahier journal arrive…")}</span></p>`;
+
+/** Le cahier journal du jour choisi, tel que l'ordinateur l'a publié : ses créneaux, leur prévu, leur bilan. */
 function carteCahier() {
-  const souci = (portailSouci ? `<p class="erreur-ligne">${echapper(portailSouci)}</p>` : "")
-    + (portail.ouvert ? "" : `<button class="btn-doux minuteur-seul" id="ouvrir-portail">${icone("horloge")}Un minuteur sur les tablettes</button>`);
-  if (!cahier) {
-    const texte = cahierSouci || "Le cahier journal arrive…";
-    return `<div class="carte cj">${carteDuPortail()}${souci}<p class="carte-info">${icone(cahierSouci ? "attention" : "nuage")}<span>${echapper(texte)}</span></p></div>`;
-  }
-  const rangs = cahier.creneaux.map((c) => {
-    const aides = (c.aides || []).map((a) => {
-      const montree = portail.ouvert && portail.montreeId === a.id;
-      return `<div class="cj-aide${montree ? " on" : ""}">
-        <span class="cj-aide-titre">${icone("liste", "petit")}<span>${echapper(a.titre)}</span></span>
-        <button class="btn-mini${montree ? " on" : ""}" data-montrer="${echapper(a.id)}" data-titre="${echapper(a.titre)}" ${montree ? "disabled" : ""}>${montree ? "Montrée" : "Montrer"}</button>
-      </div>`;
-    }).join("");
-    return `<div class="cj-creneau">
+  if (!cahier) return `<div class="carte cj">${cahierAbsent()}</div>`;
+  const rangs = cahier.creneaux.map((c) => `<div class="cj-creneau">
       <div class="cj-tete"><b>${echapper(heureCourte(c.debut))}</b><span>${echapper(c.matiere || "Créneau")}</span></div>
       ${c.seance ? `<div class="cj-seance">${echapper(c.seance)}</div>` : ""}
       ${(c.prevu || "").trim() ? `<div class="cj-texte">${echapper(c.prevu.trim())}</div>` : ""}
       ${(c.bilan || "").trim() ? `<details class="cj-bilan"><summary>Bilan</summary><div class="cj-texte">${echapper(c.bilan.trim())}</div></details>` : ""}
-      ${aides}
-    </div>`;
-  }).join("");
+    </div>`).join("");
   const vide = cahier.creneaux.length ? "" : `<p class="carte-info">${icone("coche")}<span>Rien au cahier journal ${estAujourdHui() ? "aujourd'hui" : "ce jour-là"}.</span></p>`;
   const publie = cahier.publie ? `<p class="cj-publie">Publié par l'ordinateur le ${echapper(cahier.publie.slice(8, 10))}/${echapper(cahier.publie.slice(5, 7))} à ${echapper(heureDe(cahier.publie))}${cahier.frais ? "" : " — gardé sur le téléphone, Nuage ne répond pas"}.</p>` : "";
-  return `<div class="carte cj">${carteDuPortail()}${souci}${rangs}${vide}${publie}</div>`;
+  return `<div class="carte cj">${rangs}${vide}${publie}</div>`;
 }
 
-/** L'en-tête d'une partie de l'écran : par où elle passe, d'un coup d'œil. */
-const entete = (ico, titre, voie) => `<h2 class="partie">${icone(ico)}<span>${titre}</span><small>${voie}</small></h2>`;
+/** Les aides à la tâche du cahier journal, créneau par créneau : chacune se montre aux tablettes d'un toucher. */
+function aidesDuJour() {
+  const titre = `<p class="titre">Aides ${estAujourdHui() ? "du jour" : `du ${dateLongue(jourDeLaDictee()).toLowerCase()}`}</p>`;
+  if (!relais.relie || !relais.connecte) {
+    return `${titre}<p class="carte-info seule">${icone("nuage")}<span>Les aides arrivent avec le cahier journal, par Nuage : reliez le dictaphone dans les réglages.</span></p>`;
+  }
+  if (!cahier) return `${titre}<div class="carte cj">${cahierAbsent()}</div>`;
+  const avecAides = cahier.creneaux.filter((c) => (c.aides || []).length);
+  if (!avecAides.length) {
+    return `${titre}<div class="groupe"><div class="rang vide-ok"><span class="ico">${icone("liste")}</span>
+      <span class="rang-texte">Aucune aide au cahier journal ${estAujourdHui() ? "aujourd'hui" : "ce jour-là"}</span></div></div>`;
+  }
+  const rangs = avecAides.map((c) => `<div class="cj-creneau">
+      <div class="cj-tete"><b>${echapper(heureCourte(c.debut))}</b><span>${echapper(c.matiere || "Créneau")}</span></div>
+      ${c.aides.map((a) => {
+        const montree = portail.ouvert && portail.montreeId === a.id;
+        return `<div class="cj-aide${montree ? " on" : ""}">
+          <span class="cj-aide-titre">${icone("liste", "petit")}<span>${echapper(a.titre)}</span></span>
+          <button class="btn-mini${montree ? " on" : ""}" data-montrer="${echapper(a.id)}" data-titre="${echapper(a.titre)}" ${montree ? "disabled" : ""}>${montree ? "Montrée" : "Montrer"}</button>
+        </div>`;
+      }).join("")}
+    </div>`).join("");
+  return `${titre}<div class="carte cj">${rangs}</div>`;
+}
+
+/** Sans Nuage, rien ne part vers l'ordinateur : on le dit, et l'on mène aux réglages. */
+function carteARelier() {
+  const relie = relais.relie;
+  return `<div class="carte">
+    <div class="carte-tete"><span class="grand-ico">${icone(relie ? "cadenas" : "nuage")}</span>
+      <h3>${relie ? "Se connecter à Nuage" : "Relier à l'ordinateur"}</h3>
+      <p class="sous">${relie ? "Le dictaphone attend votre connexion à Nuage pour envoyer à l'ordinateur." : "Le dictaphone envoie à l'ordinateur par Nuage : reliez-les une fois, par le QR code de l'ordinateur."}</p></div>
+    <button class="btn-plein" id="aller-reglages">${icone("reglages")}Ouvrir les réglages</button>
+  </div>${bulles(true)}`;
+}
+
+/** Le cahier journal : dicter ou écrire au créneau du jour choisi, ce qui attend, et ce que l'ordinateur a publié. */
+function ongletJournal() {
+  if (!relais.relie || !relais.connecte) return carteARelier();
+  return `<section class="heros">
+      ${barreDuJour()}${bandeauCreneau()}
+      ${ctx ? enDictee() : ecrit ? editeurDeNote() : auRepos()}
+    </section>
+    ${bulles()}
+    ${ctx || ecrit ? "" : `${listeDAttente(enAttente().filter(versLeJournal), "Envoyer maintenant")}<p class="titre">Le cahier journal</p>${carteCahier()}`}`;
+}
+
+/** Les notes rapides : dicter ou écrire un tiret pour l'ordinateur, photographier un picto, et le bouton qui envoie. */
+function ongletNotes() {
+  if (!relais.relie || !relais.connecte) return carteARelier();
+  return `<section class="heros">
+      ${photoPrise && !ctx && !ecrit ? `<p class="pastille muette">${icone("photo")}<span>Une photo pour Mes pictos</span></p>` : versLesNotes()}
+      ${ctx ? enDictee() : ecrit ? editeurDeNote() : photoPrise ? editeurDePhoto() : auRepos()}
+    </section>
+    ${bulles()}
+    ${ctx || ecrit || photoPrise ? "" : listeDAttente(enAttente().filter(versLesNotesRapides), "Envoyer les notes par Nuage")}`;
+}
+
+/** Les tablettes : le portail ouvert, ou de quoi l'ouvrir — puis les aides du jour à montrer. */
+function ongletTablettes() {
+  const souci = portailSouci ? `<p class="bulle erreur">${icone("attention")}<span>${echapper(portailSouci)}</span></p>` : "";
+  const carte = portail.ouvert ? `<div class="carte">${carteDuPortail()}</div>` : `<div class="carte">
+      <div class="carte-tete"><span class="grand-ico">${icone("tablette")}</span><h3>Le portail des tablettes</h3>
+        <p class="sous">Une aide, son déroulé, un minuteur : sur les tablettes et l'ordinateur de la classe, par le réseau du téléphone.</p></div>
+      <button class="btn-plein" id="ouvrir-portail">${icone("tablette")}Ouvrir le portail</button>
+    </div>`;
+  return `${carte}${souci}${aidesDuJour()}`;
+}
+
+/** Le partage par le WiFi : répondre à l'ordinateur qui demande des pages ou une photo. */
+const ongletWifi = () => `
+  <p class="intro">Quand l'ordinateur demande les pages d'un manuel ou une photo, il affiche un QR code : scannez-le ici, sur le même WiFi que lui.</p>
+  ${carteWifi()}${bulles(true)}`;
+
+/** Les couleurs qu'on peut donner à l'application ; la teinte est celle de la pastille. */
+const COULEURS = [
+  { id: "indigo", nom: "Indigo", teinte: "#6366f1" },
+  { id: "bleu", nom: "Bleu", teinte: "#2563eb" },
+  { id: "sarcelle", nom: "Sarcelle", teinte: "#0f766e" },
+  { id: "vert", nom: "Vert", teinte: "#047857" },
+  { id: "violet", nom: "Violet", teinte: "#9333ea" },
+  { id: "rose", nom: "Rose", teinte: "#db2777" },
+  { id: "graphite", nom: "Graphite", teinte: "#475569" },
+];
+const THEMES = [{ id: "auto", nom: "Automatique" }, { id: "clair", nom: "Clair" }, { id: "sombre", nom: "Sombre" }];
+
+/** Le code du portail : les tablettes le gardent ; le changer les coupe toutes — une tablette perdue. */
+function reglageDuCode() {
+  if (confirmerCode) {
+    return `<div class="groupe"><div class="confirmer-code">
+      <p>Toutes les tablettes devront scanner le nouveau code, et remplacer leur icône.</p>
+      <div class="pages-boutons"><button class="lien-btn rouge" id="confirmer-code">Changer le code</button><button class="lien-btn" id="garder-code">Garder celui-ci</button></div>
+    </div></div>`;
+  }
+  const sous = codeNeuf ? "Nouveau code, à rescanner" : "Le même chaque jour";
+  return `<div class="groupe"><div class="rang">
+      <span class="ico">${icone("qr")}</span>
+      <span class="rang-texte"><span class="rang-titre">Code du portail</span><span class="rang-sous"><span class="coupe">${sous}</span></span></span>
+      <button class="lien-btn" id="changer-code">Changer</button>
+    </div></div>`;
+}
+
+/** Les réglages : le lien avec Nuage, le code des tablettes, la couleur et le thème de l'application. */
+function ongletReglages() {
+  const nom = (COULEURS.find((c) => c.id === couleur) || COULEURS[0]).nom;
+  return `
+    <p class="titre">Nuage</p>
+    ${!relais.relie ? carteNuage() : !relais.connecte ? carteConnexion() : lienNuage()}
+    <p class="titre">Tablettes</p>
+    ${reglageDuCode()}
+    ${portailSouci ? `<p class="erreur-ligne">${echapper(portailSouci)}</p>` : ""}
+    <p class="titre">Couleur · ${echapper(nom)}</p>
+    <div class="groupe couleurs" role="group" aria-label="Couleur de l'application">
+      ${COULEURS.map((c) => `<button class="pastille-couleur${c.id === couleur ? " on" : ""}" data-choix-couleur="${c.id}"
+        style="--teinte:${c.teinte}" aria-label="${c.nom}" aria-pressed="${c.id === couleur}">${c.id === couleur ? icone("coche") : ""}</button>`).join("")}
+    </div>
+    <p class="titre">Thème</p>
+    <div class="bascule trois" role="group" aria-label="Thème">
+      ${THEMES.map((t) => `<button class="${t.id === theme ? "on" : ""}" data-choix-theme="${t.id}" aria-pressed="${t.id === theme}">${t.nom}</button>`).join("")}
+    </div>`;
+}
 
 /** La vue de la caméra, quand elle lit un QR code pour cette carte. */
 const vueDeLaCamera = (pour) => (camera && lecturePour === pour
@@ -1316,7 +1421,7 @@ function carteNuage() {
   return `<div class="carte">
     <div class="carte-tete"><span class="grand-ico">${icone("nuage")}</span><h3>Relier à l'ordinateur</h3></div>
     ${vueDeLaCamera("nuage") || `<button class="btn-plein" id="lire-nuage">${icone("qr")}Scanner le QR code</button>`}
-    ${scanSouci && lecturePour !== "wifi" && !demande ? `<p class="erreur-ligne">${echapper(scanSouci)}</p>` : ""}
+    ${scanSouci ? `<p class="erreur-ligne">${echapper(scanSouci)}</p>` : ""}
   </div>`;
 }
 
@@ -1389,16 +1494,67 @@ function carteWifi() {
       <button class="btn-doux" id="annuler-demande" ${occupe}>Annuler</button>`;
   }
   const info = demandeInfo ? `<p class="carte-info">${icone(demande ? "wifi" : "coche")}<span>${echapper(demandeInfo)}</span></p>` : "";
-  const erreur = scanSouci && (lecturePour === "wifi" || demande || relais.relie) ? `<p class="erreur-ligne">${echapper(scanSouci)}</p>` : "";
+  const erreur = scanSouci ? `<p class="erreur-ligne">${echapper(scanSouci)}</p>` : "";
   return `<div class="carte carte-wifi">${corps}${info}${erreur}${pagesGardees()}</div>`;
+}
+
+/** Les onglets, en bas de l'écran : le nom court sous l'icône, le titre en tête de page. */
+const ONGLETS = [
+  { id: "journal", ico: "page", court: "Journal", titre: "Cahier journal" },
+  { id: "notes", ico: "crayon", court: "Notes", titre: "Notes rapides" },
+  { id: "tablettes", ico: "tablette", court: "Tablettes", titre: "Tablettes" },
+  { id: "wifi", ico: "wifi", court: "WiFi", titre: "Partage WiFi" },
+  { id: "reglages", ico: "reglages", court: "Réglages", titre: "Réglages" },
+];
+
+/** Passe à un autre onglet : la caméra se ferme, les questions en suspens tombent, la page remonte. */
+function allerA(id) {
+  if (id === onglet || !ONGLETS.some((o) => o.id === id)) return;
+  fermerCamera();
+  scanSouci = ""; choixOuvert = false; confirmerCode = false; codeNeuf = false; pagesAOublier = "";
+  onglet = id;
+  pourLesNotes = id === "notes";
+  rendre();
+  window.scrollTo(0, 0);
+}
+
+/** Un onglet de la barre : ce qui attend s'y compte ; le portail ouvert s'y voit. */
+function boutonDOnglet(o) {
+  const attente = o.id === "journal" ? enAttente().filter(versLeJournal).length
+    : o.id === "notes" ? enAttente().filter(versLesNotesRapides).length : 0;
+  const signe = attente ? `<span class="badge">${attente}</span>` : o.id === "tablettes" && portail.ouvert ? `<span class="point"></span>` : "";
+  const on = o.id === onglet;
+  return `<button class="onglet${on ? " on" : ""}" data-onglet="${o.id}" ${on ? 'aria-current="page"' : ""}>${icone(o.ico)}<span class="nom">${o.court}</span>${signe}</button>`;
+}
+
+/** L'apparence choisie dans les réglages, gardée sur le téléphone. */
+let couleur = lireReglage("couleur", "indigo"), theme = lireReglage("theme", "auto");
+
+function lireReglage(cle, defaut) {
+  try { return localStorage.getItem(`dictaphone:${cle}`) || defaut; } catch (e) { return defaut; }
+}
+
+function garderReglage(cle, valeur) {
+  try { localStorage.setItem(`dictaphone:${cle}`, valeur); } catch (e) { /* le choix vaut jusqu'à la fermeture */ }
+}
+
+/** Pose la couleur et le thème sur la page ; les champs et les menus natifs suivent le thème. */
+function appliquerApparence() {
+  const racine = document.documentElement;
+  racine.dataset.couleur = COULEURS.some((c) => c.id === couleur) ? couleur : "indigo";
+  racine.dataset.theme = theme;
+  document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", theme === "clair" ? "light" : theme === "sombre" ? "dark" : "light dark");
 }
 
 function rendre() {
   const el = document.getElementById("ecran");
   if (!el) return;
-  const enCours = !!ctx;
+  // Pendant qu'on dicte, qu'on écrit ou qu'on nomme une photo, on ne quitte pas l'onglet : la barre se cache.
+  const occupe = !!ctx || ecrit || !!photoPrise;
 
-  // En tête, l'état de Nuage : c'est par lui que partent les dictées.
+  // En tête, le nom de l'onglet, et l'état de Nuage : c'est par lui que partent les dictées.
+  const titre = document.getElementById("titre");
+  if (titre) titre.textContent = (ONGLETS.find((o) => o.id === onglet) || ONGLETS[0]).titre;
   const tete = document.getElementById("liaison");
   if (tete) {
     const e = etatDeNuage();
@@ -1407,29 +1563,30 @@ function rendre() {
     tete.innerHTML = `${icone("nuage", "petit")}<span class="pt"></span>${echapper(e.texte)}`;
   }
 
-  // Deux parties, qui ne se mêlent pas : ce qui passe par Nuage, ce qui passe par le WiFi.
-  const pret = relais.relie && relais.connecte;
-  const parNuage = !relais.relie ? carteNuage() : !relais.connecte ? carteConnexion() : `
-    <section class="heros">
-      ${photoPrise && !enCours && !ecrit ? `<p class="pastille muette">${icone("photo")}<span>Une photo pour Mes pictos</span></p>` : `
-      ${choixDeDestination()}
-      ${pourLesNotes ? versLesNotes() : barreDuJour() + bandeauCreneau()}`}
-      ${enCours ? enDictee() : ecrit ? editeurDeNote() : photoPrise ? editeurDePhoto() : auRepos()}
-    </section>
-    ${bulles()}
-    ${enCours || ecrit || photoPrise ? "" : listeDAttente(enAttente()) + lienNuage()}`;
-  el.innerHTML = `
-    ${entete("nuage", "Dictées, notes et photos", "par Nuage")}
-    ${parNuage}
-    ${!pret ? bulles() : ""}
-    ${pret && !(enCours || ecrit || photoPrise) ? `${entete("page", "Le cahier journal", "par Nuage, et le portail des tablettes")}${carteCahier()}` : ""}
-    ${enCours || ecrit || photoPrise ? "" : `${entete("wifi", "Pages et photos", "par le WiFi, à la demande de l'ordinateur")}${carteWifi()}`}
-  `;
+  el.innerHTML = onglet === "notes" ? ongletNotes()
+    : onglet === "tablettes" ? ongletTablettes()
+    : onglet === "wifi" ? ongletWifi()
+    : onglet === "reglages" ? ongletReglages()
+    : ongletJournal();
+
+  const barre = document.getElementById("onglets");
+  if (barre) {
+    barre.hidden = occupe;
+    barre.innerHTML = ONGLETS.map(boutonDOnglet).join("");
+    barre.querySelectorAll("[data-onglet]").forEach((b) => { b.onclick = () => allerA(b.dataset.onglet); });
+  }
 
   const clic = (id, f) => { const b = document.getElementById(id); if (b) b.onclick = f; };
   clic("go", () => { void demarrer(); });
   clic("stop", () => { void arreter(); });
-  clic("envoyer", () => { void envoyerTout(); });
+  clic("envoyer", () => { void envoyerTout(onglet === "notes" ? versLesNotesRapides : versLeJournal); });
+  clic("aller-reglages", () => { allerA("reglages"); });
+  el.querySelectorAll("[data-choix-couleur]").forEach((b) => {
+    b.onclick = () => { couleur = b.dataset.choixCouleur; garderReglage("couleur", couleur); appliquerApparence(); rendre(); };
+  });
+  el.querySelectorAll("[data-choix-theme]").forEach((b) => {
+    b.onclick = () => { theme = b.dataset.choixTheme; garderReglage("theme", theme); appliquerApparence(); rendre(); };
+  });
   clic("lire-nuage", () => { void lireUnQrCode("nuage"); });
   clic("se-connecter", () => { void seConnecter(); });
   clic("lire-wifi", () => { void lireUnQrCode("wifi"); });
@@ -1450,8 +1607,6 @@ function rendre() {
   el.querySelectorAll("[data-creneau]").forEach((b) => {
     b.onclick = () => { creneauChoisi = b.dataset.creneau; choixOuvert = false; rendre(); };
   });
-  clic("vers-journal", () => { pourLesNotes = false; rendre(); });
-  clic("vers-notes", () => { pourLesNotes = true; choixOuvert = false; rendre(); });
   clic("ecrire", () => { ecrit = true; rendre(); document.getElementById("note")?.focus(); });
   clic("annuler-note", () => { ecrit = false; brouillon = ""; rendre(); });
   clic("garder-note", () => { void garderLaNote(); });
@@ -1501,6 +1656,8 @@ function rendre() {
 // Pas de zoom : l'écran est fait pour le pouce, et un pincement le déréglait.
 document.addEventListener("gesturestart", (e) => e.preventDefault());
 document.addEventListener("dblclick", (e) => e.preventDefault(), { passive: false });
+
+appliquerApparence();
 
 (async () => {
   try { relais = await invoke("relais_lire"); } catch (e) { relais = SANS_RELAIS; }
