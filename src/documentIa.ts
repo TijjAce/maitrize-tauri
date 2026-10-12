@@ -159,7 +159,11 @@ export function markdownVersHtml(texte: string, options: OptionsMarkdown = {}): 
 /** Le titre d'un document : son premier « # », sinon sa première ligne. */
 export function titreDuDocument(markdown: string): string {
   const lignes = markdown.split("\n").map((l) => l.trim()).filter(Boolean);
-  const brut = lignes.find((l) => /^#\s+/.test(l))?.replace(/^#\s+/, "") ?? lignes[0] ?? "";
+  // Le premier titre, du plus haut niveau qui soit — une réponse commence souvent par une phrase avant son « ## » ;
+  // la première ligne sinon.
+  const niveau = (l: string) => /^(#{1,6})\s+\S/.exec(l)?.[1].length ?? 9;
+  const plusHaut = Math.min(...lignes.map(niveau));
+  const brut = (plusHaut < 9 ? lignes.find((l) => niveau(l) === plusHaut) : undefined) ?? lignes[0] ?? "";
   const propre = brut.replace(/^#+\s*/, "").replace(/[*_`]/g, "").trim();
   return (propre || "Document").slice(0, 80);
 }
@@ -228,7 +232,7 @@ export const STYLE_DOCUMENT_IA = `
   .doc-ia h2 { font-size: 1.25em; line-height: 1.3; margin: 1.2em 0 .45em; padding: 0 0 .15em; border: 0; border-bottom: 1px solid #d9dcea; color: #2b2f6b; }
   .doc-ia h3 { font-size: 1.08em; margin: 1em 0 .3em; color: #2b2f6b; }
   .doc-ia h4, .doc-ia h5, .doc-ia h6 { font-size: 1em; margin: .9em 0 .3em; }
-  .doc-ia h1, .doc-ia h2, .doc-ia h3, .doc-ia h4 { break-after: avoid; page-break-after: avoid; }
+  .doc-ia h1, .doc-ia h2, .doc-ia h3, .doc-ia h4 { font-weight: 700; break-after: avoid; page-break-after: avoid; }
   .doc-ia p { margin: .45em 0; }
   .doc-ia ul, .doc-ia ol { margin: .45em 0; padding-left: 1.6em; }
   .doc-ia li { margin: .3em 0; }
@@ -245,6 +249,12 @@ export const STYLE_DOCUMENT_IA = `
     word-break: normal; overflow-wrap: break-word; hyphens: auto; }
   .doc-ia th { background: #eef0fe; color: #2b2f6b; font-weight: 700; hyphens: manual; }
   .doc-ia tbody tr:nth-child(even) td { background: #f8f9fd; }
+  /* Un tableau qu'on aère ou qu'on resserre à la main, dans la mise en page. */
+  .doc-ia table.air-m2 { font-size: .82em; } .doc-ia table.air-m2 th, .doc-ia table.air-m2 td { padding: .15em .35em; }
+  .doc-ia table.air-m1 { font-size: .88em; } .doc-ia table.air-m1 th, .doc-ia table.air-m1 td { padding: .25em .45em; }
+  .doc-ia table.air-1 { font-size: 1em; } .doc-ia table.air-1 th, .doc-ia table.air-1 td { padding: .6em .8em; }
+  .doc-ia table.air-2 { font-size: 1.08em; } .doc-ia table.air-2 th, .doc-ia table.air-2 td { padding: .85em 1em; }
+  .doc-ia table.air-3 { font-size: 1.15em; } .doc-ia table.air-3 th, .doc-ia table.air-3 td { padding: 1.1em 1.2em; }
   .doc-ia tr { break-inside: avoid; page-break-inside: avoid; }
   .doc-ia td p, .doc-ia th p { margin: 0; }
   .doc-ia hr { border: 0; border-top: 1px solid #c9cee0; margin: 1em 0; }
@@ -264,4 +274,26 @@ export function feuilleDuDocument(markdown: string): { titre: string; corps: str
     corps: `<div class="doc-ia doc-${densiteDuDocument(markdown)}" lang="fr">${markdownVersHtml(markdown, { titres: "impression" })}</div>`,
     style: STYLE_DOCUMENT_IA,
   };
+}
+
+/** Les degrés d'aération d'un tableau, du plus serré au plus aéré ; « » est celui de départ. */
+export const AIRS_TABLEAU = ["air-m2", "air-m1", "", "air-1", "air-2", "air-3"] as const;
+
+/**
+ * Le HTML d'une feuille retouchée, débarrassé de ce qui ne doit ni se garder
+ * ni s'imprimer : scripts, cadres, gestionnaires d'événements, liens
+ * « javascript: », et les attributs de l'édition.
+ */
+export function nettoyerMiseEnPage(html: string): string {
+  return html
+    .replace(/<(script|style|iframe|object|embed|template)\b[\s\S]*?<\/\1\s*>/gi, "")
+    .replace(/<\/?(script|style|iframe|object|embed|template|link|meta)\b[^>]*>/gi, "")
+    .replace(/\s(on[a-z]+|contenteditable|spellcheck)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/\s(href|src)\s*=\s*("|')\s*javascript:[^"']*\2/gi, ' $1="#"');
+}
+
+/** La feuille d'une réponse : retouchée si on l'a retouchée, telle que l'IA l'a écrite sinon. */
+export function feuilleDeLaReponse(m: { content: string; mise?: string }): { titre: string; corps: string; style: string } {
+  const f = feuilleDuDocument(m.content);
+  return m.mise ? { ...f, corps: nettoyerMiseEnPage(m.mise) } : f;
 }
