@@ -115,6 +115,7 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "🧠", label: "Carte mentale (affichage de la classe : un thème, ses branches, ses idées)", to: "/jeux", page: "jeux", onglet: "carteMentale", sous: "Fabriquer · affichages" },
   { ico: "🎞", label: "Images séquentielles (remettre une histoire dans l'ordre, cases fléchées)", to: "/jeux", page: "jeux", onglet: "suites", sous: "Fabriquer · maternelle" },
   { ico: "🧸", label: "Construire des collections (cardinal donné : fiches de places, « Donne-moi… », bons de commande)", to: "/jeux", page: "jeux", onglet: "collections", sous: "Fabriquer · maternelle" },
+  { ico: "🧦", label: "Les motifs (fil à linge, reproduire, compléter, prolonger, intrus, motif évolutif)", to: "/jeux", page: "jeux", onglet: "motifs", sous: "Fabriquer · maternelle" },
   { ico: "🔤", label: "Consignes en pictogrammes (CAA)", to: "/caa", page: "caa", onglet: "consignes", sous: "CAA" },
   { ico: "🗣", label: "Tableaux de langage (TLA)", to: "/caa", page: "caa", onglet: "tla", sous: "CAA" },
   { ico: "🖼", label: "Supports visuels", to: "/caa", page: "caa", onglet: "supports", sous: "CAA" },
