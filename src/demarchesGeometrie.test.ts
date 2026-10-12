@@ -5,7 +5,7 @@ import { planDesFeuilles } from "./feuillesDesSequences";
 import { programmationProposee } from "./programmation";
 import { EXERCICES_GEOMETRIE, MOITIES, REGLAGES_GEOMETRIE, FIGURES_A_REPRODUIRE, figuresACompleter, htmlGeometrie, triplets, type Classe } from "./geometrie";
 import { ASSEMBLAGES, EXERCICES_SOLIDES, REGLAGES_SOLIDES, aucunCubeCache, assemblagesDeSixCarres, estUnPatronDuCube, htmlSolides, type Case } from "./solides";
-import { EXERCICES_DEPLACEMENTS, REGLAGES_DEPLACEMENTS, cheminAuHasard, executer, htmlDeplacements, programmeAuHasard, questionDePositions, relationsVraies } from "./deplacements";
+import { EXERCICES_DEPLACEMENTS, REGLAGES_DEPLACEMENTS, cheminAuHasard, executer, htmlDeplacements, instructionFausse, programmeAuHasard, questionDePositions, relationsVraies, type Instruction } from "./deplacements";
 import { hasard } from "./hasard";
 
 const REF = "Cycle 2 — CP, CE1, CE2 (programmes 2026)";
@@ -209,5 +209,36 @@ describe("se repérer, se déplacer", () => {
       expect(html).toContain('class="page corrige"');
       expect(html).not.toMatch(/NaN|undefined/);
     }
+  });
+
+  it("la bille rouge part sans direction ; le robot a aussi son programme faux à corriger", () => {
+    const bille = htmlDeplacements({ ...REGLAGES_DEPLACEMENTS, exercice: "fusee", mode: "decoder" }, 5);
+    expect(bille).toContain('<div class="titre">La bille</div>');
+    expect(bille).toMatch(/<circle [^>]*r="2\.7" fill="#d33a32"/);
+    expect(bille).not.toContain("fusée");
+    for (const classe of ["CP", "CE1"] as const) {
+      const html = htmlDeplacements({ ...REGLAGES_DEPLACEMENTS, exercice: "robot", classe, mode: "corriger", combien: 6 }, 9);
+      expect(html.match(/L'instruction n° \d+ est fausse/g)).toHaveLength(6);
+    }
+  });
+
+  it("le programme faux du robot ne se répare que d'une façon : en rendant l'instruction changée", () => {
+    const alea = hasard(17);
+    const toutes: Instruction[] = ["A", "D", "G"];
+    let trouves = 0;
+    for (let n = 0; n < 60; n++) {
+      const p = programmeAuHasard(alea, n % 2 ? "CP" : "CE1");
+      const e = instructionFausse(alea, p);
+      if (!e) continue;
+      trouves++;
+      expect(e.fausse).not.toBe(p.programme[e.k]);
+      const faux = p.programme.map((x, i) => (i === e.k ? e.fausse : x));
+      const reparations: [number, Instruction][] = [];
+      faux.forEach((ins, j) => toutes.filter((x) => x !== ins).forEach((x) => {
+        if (JSON.stringify(executer(p.debut, p.dir, faux.map((y, i) => (i === j ? x : y))).cases) === JSON.stringify(p.cases)) reparations.push([j, x]);
+      }));
+      expect(reparations).toEqual([[e.k, p.programme[e.k]]]);
+    }
+    expect(trouves).toBeGreaterThan(50);
   });
 });

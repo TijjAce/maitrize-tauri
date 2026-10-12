@@ -8,7 +8,7 @@ import { useGraine } from "../modifierFeuille";
 import { Boutons, Coche, Colonnes, bureau, imprimer } from "./AteliersMaths";
 import { EXERCICES_GEOMETRIE, REGLAGES_GEOMETRIE, STYLE_GEOMETRIE, htmlGeometrie, type Classe, type ExerciceGeometrie, type NiveauReproduction } from "../geometrie";
 import { EXERCICES_SOLIDES, REGLAGES_SOLIDES, STYLE_SOLIDES, htmlSolides, type ExerciceSolides, type ReglagesSolides } from "../solides";
-import { EXERCICES_DEPLACEMENTS, REGLAGES_DEPLACEMENTS, STYLE_DEPLACEMENTS, htmlDeplacements, type ExerciceDeplacements, type ModeCodage } from "../deplacements";
+import { EXERCICES_DEPLACEMENTS, REGLAGES_DEPLACEMENTS, STYLE_DEPLACEMENTS, htmlDeplacements, type ModeCodage } from "../deplacements";
 
 // ── Fabriquer › Mathématiques : la géométrie, les solides, se déplacer ────
 
@@ -117,12 +117,14 @@ export function DeplacementsTab() {
   const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlDeplacements(r, graine), [r, graine]);
   const titre = titreDe(EXERCICES_DEPLACEMENTS.find((e) => e.id === r.exercice)?.libelle, "Se déplacer").split(" : ")[0];
+  // La bille et le robot sont le même exercice, à deux niveaux : on passe de l'un à l'autre pour différencier.
+  const quadrillage = r.exercice !== "positions";
   return (
     <Colonnes
       gauche={<>
         <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
           Se repérer, se déplacer
-          <Aide titre="Se repérer, se déplacer" vers="droite"><p>La fusée et ses flèches, le robot qui avance et pivote d'un quart de tour, les cartes des positions — d'après le programme 2024 et la ressource Éduscol « Initiation à la programmation aux cycles 2 et 3 » : au plus dix instructions et deux virages au CP, quinze et quatre au CE1.</p></Aide>
+          <Aide titre="Se repérer, se déplacer" vers="droite"><p>La bille et ses flèches — « La fusée » de la ressource Éduscol « Initiation à la programmation aux cycles 2 et 3 » —, le robot qui avance et pivote d'un quart de tour, les cartes des positions. D'après le programme 2024 : au plus dix instructions et deux virages au CP, quinze et quatre au CE1.</p></Aide>
         </h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <ChoixClasse valeur={r.classe} onChange={(c) => maj({ classe: c as "CP" | "CE1" })} classes={["CP", "CE1"]} />
@@ -131,19 +133,32 @@ export function DeplacementsTab() {
           </Field>
         </div>
         <Field label="Exercice">
-          <Select value={r.exercice} onChange={(e) => maj({ exercice: e.target.value as ExerciceDeplacements })}>
-            {EXERCICES_DEPLACEMENTS.map((e) => <option key={e.id} value={e.id}>{e.libelle}</option>)}
+          <Select value={quadrillage ? "quadrillage" : "positions"} onChange={(e) => maj({ exercice: e.target.value === "positions" ? "positions" : "fusee" })}>
+            <option value="quadrillage">Se déplacer sur le quadrillage</option>
+            <option value="positions">{EXERCICES_DEPLACEMENTS.find((e) => e.id === "positions")!.libelle}</option>
           </Select>
         </Field>
-        {r.exercice !== "positions" && (
+        {quadrillage && <>
+          <Field label="Le code">
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div className="seg">
+                <button type="button" className={r.exercice === "fusee" ? "active" : ""} onClick={() => maj({ exercice: "fusee" })}>Des flèches</button>
+                <button type="button" className={r.exercice === "robot" ? "active" : ""} onClick={() => maj({ exercice: "robot" })}>Des rotations (plus dur)</button>
+              </div>
+              <Aide titre="Le code" vers="gauche">
+                <p><b>Des flèches</b> : la bille rouge va dans le sens de la flèche, une case par flèche. Elle ne tourne jamais : le haut reste le haut de la feuille.</p>
+                <p><b>Des rotations</b>, comme les blocs « avancer » et « tourner ↻ ↺ » de Scratch : le robot regarde dans une direction ; ⬆ le fait avancer d'une case devant lui, ↻ et ↺ le font pivoter d'un quart de tour sans avancer. Sa droite n'est pas forcément celle de l'élève : c'est ce qui rend l'exercice plus dur.</p>
+              </Aide>
+            </div>
+          </Field>
           <Field label="Ce qu'on fait">
             <Select value={r.mode} onChange={(e) => maj({ mode: e.target.value as ModeCodage })}>
               <option value="decoder">Suivre le code et tracer le chemin</option>
               <option value="coder">Écrire le code d'un chemin tracé</option>
-              {r.exercice === "fusee" && <option value="corriger">Corriger un code faux</option>}
+              <option value="corriger">Corriger un code faux</option>
             </Select>
           </Field>
-        )}
+        </>}
         <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("deplacements", titre, html, STYLE_DEPLACEMENTS)} onBureau={() => bureau("deplacements", titre, html, STYLE_DEPLACEMENTS)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_DEPLACEMENTS} />}

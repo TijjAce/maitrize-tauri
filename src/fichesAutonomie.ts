@@ -295,7 +295,7 @@ export const RECETTES: RecetteDeFiche[] = [
         niveau: c.niveau === "CP" ? "lignes" as const : c.niveau === "CE1" ? "diagonales" as const : "obliques" as const };
       return commeLAtelier(htmlGeometrie(reglages, g), STYLE_FEUILLE + STYLE_GEOMETRIE, "geometrie", reglages);
     } },
-  { id: "fusee", atelier: "deplacements", nom: "Le chemin de la fusée", domaine: "maths", niveaux: C2,
+  { id: "fusee", atelier: "deplacements", nom: "Le chemin de la bille", domaine: "maths", niveaux: C2,
     fabriquer: (c, g) => {
       const reglages = { ...REGLAGES_DEPLACEMENTS, exercice: "fusee" as const, classe: c.niveau === "CP" ? "CP" as const : "CE1" as const, mode: "decoder" as const, combien: 4 };
       return commeLAtelier(htmlDeplacements(reglages, g), STYLE_FEUILLE + STYLE_DEPLACEMENTS, "deplacements", reglages);

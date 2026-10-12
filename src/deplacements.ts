@@ -12,6 +12,10 @@
 // du facteur », des déplacements relatifs, qui dépendent de l'orientation de
 // celui qui se déplace. Éduscol, « Espace et géométrie au cycle 2 » (2002) :
 // le jeu de loto où l'on décrit une carte « sans la montrer ».
+//
+// Sur nos feuilles, la fusée devient une bille rouge : ronde, elle ne regarde
+// nulle part, et c'est la flèche seule qui la mène. Le robot, lui, regarde
+// devant lui : c'est le niveau plus dur, celui des rotations de Scratch.
 
 import { feuille } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
@@ -21,7 +25,7 @@ export type ExerciceDeplacements = "fusee" | "robot" | "positions";
 export type ModeCodage = "decoder" | "coder" | "corriger";
 
 export const EXERCICES_DEPLACEMENTS: { id: ExerciceDeplacements; libelle: string }[] = [
-  { id: "fusee", libelle: "La fusée : des flèches sur le quadrillage" },
+  { id: "fusee", libelle: "La bille : des flèches sur le quadrillage" },
   { id: "robot", libelle: "Le robot : avancer, pivoter" },
   { id: "positions", libelle: "Les positions : à gauche, au-dessus, entre…" },
 ];
@@ -61,10 +65,11 @@ function plateauSvg(dessin: string): string {
 
 const centre = ([x, y]: Case): [number, number] => [x * C + C / 2, y * C + C / 2];
 
-/** La fusée, ou le robot tourné dans sa direction, au départ ; l'étoile à l'arrivée. */
+/** Au départ, la bille rouge et son reflet, ou le robot tourné dans sa direction ; l'étoile à l'arrivée. */
 const depart = (c: Case, dir?: Direction) => {
   const [x, y] = centre(c);
-  if (!dir) return `<path d="M${x} ${y - 3.2} L${x + 2.2} ${y + 1.8} L${x} ${y + 0.9} L${x - 2.2} ${y + 1.8} Z" fill="${BLEU}" stroke="${NOIR}" stroke-width="0.3"/>`;
+  if (!dir) return `<circle cx="${x}" cy="${y}" r="2.7" fill="${ROUGE}" stroke="${NOIR}" stroke-width="0.3"/>`
+    + `<ellipse cx="${f2(x - 0.95)}" cy="${f2(y - 1)}" rx="0.85" ry="0.55" fill="#fff" fill-opacity="0.85" transform="rotate(-35 ${f2(x - 0.95)} ${f2(y - 1)})"/>`;
   const angle = { haut: 0, droite: 90, bas: 180, gauche: 270 }[dir];
   return `<g transform="translate(${x} ${y}) rotate(${angle})"><circle r="3.2" fill="#dbe6ff" stroke="${NOIR}" stroke-width="0.35"/><path d="M0 -2.6 L1.6 0.4 L-1.6 0.4 Z" fill="${BLEU}"/></g>`;
 };
@@ -122,12 +127,12 @@ function feuilleFusee(r: ReglagesDeplacements, graine: number): string {
     return `<div class="de-carte"><b class="de-lettre">${String.fromCharCode(65 + i)}</b>${plateau}${code}${note}</div>`;
   };
   const consignes: Record<ModeCodage, string> = {
-    decoder: "La fusée part de sa case. Suis le code, une flèche pour une case, et trace son chemin. Dessine une étoile là où elle arrive.",
-    coder: "Le chemin de la fusée est tracé jusqu'à l'étoile. Écris son code : une flèche pour chaque case.",
-    corriger: "Le code devait mener la fusée à l'étoile en suivant le chemin, mais une flèche est fausse. Barre-la et écris la bonne au-dessous.",
+    decoder: "La bille rouge part de sa case. Suis le code, une flèche pour une case, et trace son chemin. Dessine une étoile là où elle arrive.",
+    coder: "Le chemin de la bille est tracé jusqu'à l'étoile. Écris son code : une flèche pour chaque case.",
+    corriger: "Le code devait mener la bille à l'étoile en suivant le chemin, mais une flèche est fausse. Barre-la et écris la bonne au-dessous.",
   };
-  return `<div class="page">${entete("La fusée", consignes[r.mode])}<div class="de-cartes">${liste.map((c, i) => carte(c, i, false)).join("")}</div></div>
-    <div class="page corrige"><div class="titre">La fusée — corrigé</div><div class="de-cartes">${liste.map((c, i) => carte(c, i, true)).join("")}</div></div>`;
+  return `<div class="page">${entete("La bille", consignes[r.mode])}<div class="de-cartes">${liste.map((c, i) => carte(c, i, false)).join("")}</div></div>
+    <div class="page corrige"><div class="titre">La bille — corrigé</div><div class="de-cartes">${liste.map((c, i) => carte(c, i, true)).join("")}</div></div>`;
 }
 
 // ── Le robot : des déplacements relatifs ──────────────────────────────────
@@ -173,24 +178,70 @@ export function programmeAuHasard(alea: () => number, classe: Classe): { debut: 
   return { debut: [0, 0], dir: "droite", programme: ["A", "A"], cases: [[0, 0], [1, 0], [2, 0]] };
 }
 
-const ICONE: Record<Instruction, string> = { A: "⬆", D: "↻", G: "↺" };
-const programmeHtml = (p: (Instruction | null)[]) => `<div class="de-code">${p.map((i) => `<span class="de-fleche">${i ? ICONE[i] : ""}</span>`).join("")}</div>`;
+const NOM_INSTRUCTION: Record<Instruction, string> = { A: "avancer", D: "pivoter à droite", G: "pivoter à gauche" };
+/**
+ * Les instructions dessinées plutôt qu'écrites : ↻ et ↺ en caractères sont
+ * petits et presque pareils, et ⬆ tourne à l'émoji sur certains ordinateurs.
+ * Pivoter à droite tourne comme les aiguilles d'une montre ; à gauche, en miroir.
+ */
+const icone = (i: Instruction, taille = 5) => {
+  const corps = i === "A"
+    ? `<path d="M5 0.9 L8.9 5.2 H6.4 V9.1 H3.6 V5.2 H1.1 Z" fill="${NOIR}"/>`
+    : `<g${i === "G" ? ' transform="translate(10 0) scale(-1 1)"' : ""}><path d="M6.5 2.9 A3 3 0 1 1 3.5 2.9" fill="none" stroke="${NOIR}" stroke-width="1.25"/>`
+      + `<path d="M5.1 2.05 L3.95 4.4 L2.45 1.75 Z" fill="${NOIR}"/></g>`;
+  return `<svg class="de-icone" viewBox="0 0 10 10" width="${taille}mm" height="${taille}mm" role="img" aria-label="${NOM_INSTRUCTION[i]}">${corps}</svg>`;
+};
+const programmeHtml = (p: (Instruction | null)[]) => `<div class="de-code">${p.map((i) => `<span class="de-fleche">${i ? icone(i) : ""}</span>`).join("")}</div>`;
+
+/**
+ * Pour corriger : une instruction changée, et une seule façon de réparer le
+ * programme faux pour retrouver le chemin tracé — l'élève qui en change une
+ * autre ne peut pas avoir raison aussi.
+ */
+export function instructionFausse(alea: () => number, p: { debut: Case; dir: Direction; programme: Instruction[]; cases: Case[] }): { k: number; fausse: Instruction } | null {
+  const toutes: Instruction[] = ["A", "D", "G"];
+  const suitLeChemin = (prog: Instruction[]) => {
+    const { cases } = executer(p.debut, p.dir, prog);
+    return cases.length === p.cases.length && cases.every(([x, y], i) => x === p.cases[i][0] && y === p.cases[i][1]);
+  };
+  const reparations = (faux: Instruction[]) => faux.reduce((n, ins, j) =>
+    n + toutes.filter((x) => x !== ins && suitLeChemin(faux.map((y, i) => (i === j ? x : y)))).length, 0);
+  for (const k of melanger(alea, p.programme.map((_, i) => i))) {
+    for (const fausse of melanger(alea, toutes.filter((x) => x !== p.programme[k]))) {
+      if (reparations(p.programme.map((x, i) => (i === k ? fausse : x))) === 1) return { k, fausse };
+    }
+  }
+  return null;
+}
 
 function feuilleRobot(r: ReglagesDeplacements, graine: number): string {
   const alea = hasard(graine);
-  const liste = Array.from({ length: Math.max(1, Math.min(6, r.combien)) }, () => programmeAuHasard(alea, r.classe));
-  const coder = r.mode === "coder";
+  const liste = Array.from({ length: Math.max(1, Math.min(6, r.combien)) }, () => {
+    for (let garde = 0; garde < 50; garde++) {
+      const p = programmeAuHasard(alea, r.classe);
+      const erreur = r.mode === "corriger" ? instructionFausse(alea, p) : null;
+      if (r.mode !== "corriger" || erreur) return { ...p, erreur };
+    }
+    return { ...programmeAuHasard(alea, r.classe), erreur: null };
+  });
+  const coder = r.mode === "coder", corriger = r.mode === "corriger";
   const carte = (p: (typeof liste)[number], i: number, corrige: boolean) => {
     const fin = p.cases[p.cases.length - 1];
-    const plateau = coder ? plateauSvg(chemin(p.cases, BLEU) + depart(p.debut, p.dir) + etoile(fin))
+    const plateau = coder || corriger ? plateauSvg(chemin(p.cases, coder ? BLEU : ROUGE) + depart(p.debut, p.dir) + etoile(fin))
       : plateauSvg((corrige ? chemin(p.cases) + etoile(fin) : "") + depart(p.debut, p.dir));
-    const code = coder && !corrige ? programmeHtml(Array.from({ length: p.programme.length }, () => null)) : programmeHtml(p.programme);
-    return `<div class="de-carte"><b class="de-lettre">${String.fromCharCode(65 + i)}</b>${plateau}${code}</div>`;
+    const code = coder && !corrige ? programmeHtml(Array.from({ length: p.programme.length }, () => null))
+      : corriger && p.erreur ? programmeHtml(p.programme.map((x, k) => (k === p.erreur!.k ? p.erreur!.fausse : x)))
+        : programmeHtml(p.programme);
+    const note = corrige && corriger && p.erreur
+      ? `<div class="de-note">L'instruction n° ${p.erreur.k + 1} est fausse : il fallait ${icone(p.programme[p.erreur.k], 4)}.</div>` : "";
+    return `<div class="de-carte"><b class="de-lettre">${String.fromCharCode(65 + i)}</b>${plateau}${code}${note}</div>`;
   };
-  const legende = `<div class="de-legende"><span><b>⬆</b> avance d'une case</span><span><b>↻</b> pivote d'un quart de tour à droite</span><span><b>↺</b> pivote d'un quart de tour à gauche</span></div>`;
+  const legende = `<div class="de-legende"><span>${icone("A")} avance d'une case</span><span>${icone("D")} pivote d'un quart de tour à droite</span><span>${icone("G")} pivote d'un quart de tour à gauche</span></div>`;
   const consigne = coder
     ? "Le chemin du robot est tracé jusqu'à l'étoile. Écris son programme, une instruction par case. Attention : le robot regarde dans la direction de sa flèche ; « pivoter » le fait tourner sans avancer."
-    : "Le robot regarde dans la direction de sa flèche. Suis le programme, une instruction après l'autre, et trace son chemin ; dessine une étoile là où il s'arrête. Tu peux tourner la feuille, ou te mettre à sa place.";
+    : corriger
+      ? "Le programme devait mener le robot à l'étoile en suivant le chemin, mais une instruction est fausse. Barre-la et écris la bonne au-dessous. Attention : le robot regarde dans la direction de sa flèche ; « pivoter » le fait tourner sans avancer."
+      : "Le robot regarde dans la direction de sa flèche. Suis le programme, une instruction après l'autre, et trace son chemin ; dessine une étoile là où il s'arrête. Tu peux tourner la feuille, ou te mettre à sa place.";
   return `<div class="page">${entete("Le robot", consigne)}${legende}<div class="de-cartes">${liste.map((p, i) => carte(p, i, false)).join("")}</div></div>
     <div class="page corrige"><div class="titre">Le robot — corrigé</div><div class="de-cartes">${liste.map((p, i) => carte(p, i, true)).join("")}</div></div>`;
 }
@@ -289,7 +340,8 @@ export const STYLE_DEPLACEMENTS = `
   .feuille.de .de-fleche { display: inline-flex; align-items: center; justify-content: center; width: 6.5mm; height: 7mm; border: 1px solid #9aa0b4; border-radius: 1mm; font-size: 16px; font-weight: 800; }
   .feuille.de .de-note { font-size: 12px; }
   .feuille.de .de-legende { display: flex; gap: 6mm; flex-wrap: wrap; font-size: 12px; margin: 0 0 4mm; }
-  .feuille.de .de-legende b { font-size: 16px; margin-right: 1mm; }
+  .feuille.de .de-legende span { display: inline-flex; align-items: center; gap: 1.5mm; }
+  .feuille.de .de-note .de-icone { display: inline-block; vertical-align: -1mm; }
   .feuille.de .de-question { margin-bottom: 5mm; page-break-inside: avoid; break-inside: avoid; }
   .feuille.de .de-description { font-size: 14px; margin-bottom: 2mm; }
   .feuille.de .de-mini-cartes { display: flex; gap: 6mm; }

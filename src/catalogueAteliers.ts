@@ -165,7 +165,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
       { id: "solides", nom: "Les solides", icone: "🧊", cycles: "Cycle 2",
         quoi: "Des solides en perspective à nommer, les objets et leur forme, faces, sommets et arêtes, le jeu du portrait, l'intrus ; les faces à découper, les patrons du cube, des assemblages de cubes à construire." },
       { id: "deplacements", nom: "Se repérer, se déplacer", icone: "🧭", cycles: "Cycle 2",
-        quoi: "La fusée et ses flèches, le robot qui avance et pivote, sur un quadrillage : suivre, écrire ou corriger un code ; les cartes des positions." },
+        quoi: "La bille et ses flèches, puis, plus dur, le robot qui avance et pivote comme dans Scratch : suivre, écrire ou corriger un code sur un quadrillage ; les cartes des positions." },
       { id: "donnees", nom: "Tableaux et diagrammes", icone: "📊", cycles: "Cycle 2",
         quoi: "Une enquête et son relevé par bâtons, le tableau, le diagramme en barres à lire ou à construire, le tableau à double entrée des formes et des couleurs, des tableaux à compléter, des problèmes." },
       { id: "numeration", nom: "Grands nombres et décimaux", icone: "💯", cycles: "Cycle 3",
