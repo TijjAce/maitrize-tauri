@@ -68,6 +68,18 @@ export function PlanchesPictosTab({ banque }: { banque: boolean }) {
             onChange={(e) => maj({ exemplaires: Number(e.target.value) || 1 })} />
         </Field>
         <Coche on={r.mot} libelle="Écrire le mot sous le picto" onChange={(mot) => maj({ mot })} />
+        {r.mot && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: "0 0 8px 26px" }}>
+            <div className="seg" role="group" aria-label="Où va le mot">
+              <button type="button" className={!r.bandeau ? "active" : ""} onClick={() => maj({ bandeau: false })}>Sous le picto</button>
+              <button type="button" className={r.bandeau ? "active" : ""} onClick={() => maj({ bandeau: true })}>Dans un bandeau</button>
+            </div>
+            {r.bandeau && (
+              <input type="color" className="sv-couleur" value={r.couleurBandeau} aria-label="La couleur du bandeau"
+                title="La couleur du bandeau" onChange={(e) => maj({ couleurBandeau: e.target.value })} />
+            )}
+          </div>
+        )}
         <Coche on={r.capitales} libelle="Le mot en capitales" onChange={(capitales) => maj({ capitales })} />
         <Coche on={r.cadre} libelle="Un cadre arrondi, plutôt que des pointillés" onChange={(cadre) => maj({ cadre })} />
         <div className="meta" style={{ fontSize: 12.5, marginTop: 6 }}>

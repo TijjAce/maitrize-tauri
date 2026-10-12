@@ -10,7 +10,7 @@ const picto = (id: number, mot: string, date = "2026-10-05"): MonPicto =>
 
 describe("Mes pictos", () => {
   it("donnent à chaque origine sa plage de numéros, loin des images d'une séance et dans les entiers 32 bits", () => {
-    for (const origine of ["ia", "sclera", "bajard", "photo"] as const) {
+    for (const origine of ["ia", "sclera", "bajard", "photo", "makaton"] as const) {
       for (const h of [0, 0.5, 0.999999999]) {
         const id = nouvelIdMonPicto(origine, () => h);
         expect(origineDe(id), `${origine} ${h}`).toBe(origine);
@@ -20,7 +20,8 @@ describe("Mes pictos", () => {
         expect(estPerso(id)).toBe(true);
       }
     }
-    for (const autre of [0, 2349, -1, -999_999_999, -2_147_000_000, -2_147_483_648, 1.5, "-1000000001", null]) expect(estMonPicto(autre)).toBe(false);
+    // Juste au-dessus de la plus haute plage, celle des symboles Makaton : une image de séance n'y descend jamais.
+    for (const autre of [0, 2349, -1, -599_999_999, -2_147_000_000, -2_147_483_648, 1.5, "-1000000001", null]) expect(estMonPicto(autre)).toBe(false);
   });
 
   it("se lisent dans les réglages ; une fiche abîmée ou un chemin sont écartés", () => {
@@ -70,6 +71,10 @@ describe("Mes pictos", () => {
     expect(deux).toContain("Sclera (www.sclera.be)");
     expect(deux).toContain("intelligence artificielle");
     expect(mentionDeMesPictos([-1_400_000_001])).not.toContain("intelligence");
+    // Un symbole Makaton importé : la feuille dit à qui il appartient, et ne le prête ni à ARASAAC ni à l'IA.
+    expect(origineDe(-600_000_001)).toBe("makaton");
+    expect(origineDe(-599_999_999)).toBe(null);
+    expect(mentionDeMesPictos([-600_000_001])).toBe("Symboles Makaton © The Makaton Charity.");
   });
 
   it("reconnaissent la photo arrivée du téléphone pendant qu'on l'attend : celle du mot attendu d'abord", () => {

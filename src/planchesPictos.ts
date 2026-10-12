@@ -8,7 +8,7 @@
 import { CREDIT_ARASAAC, feuille } from "./cartesImprimables";
 import { mentionDeMesPictos } from "./mesPictos";
 import { escapeHtml } from "./print";
-import { cleImage, estVide, normaliserPicto, pictoVide, type Images, type PictoPose } from "./supportsVisuels";
+import { cleImage, couleurValide, estVide, normaliserPicto, pictoVide, type Images, type PictoPose } from "./supportsVisuels";
 
 /** Les tailles proposées, en mm : de la plus petite qui se découpe à la plus grande qui tient deux fois sur la largeur. */
 export const TAILLES_PLANCHE_MM = [15, 20, 25, 30, 40, 50, 60, 70, 80, 100];
@@ -24,14 +24,24 @@ export interface ReglagesPlanche {
   exemplaires: number;
   /** Écrire le mot sous le picto. */
   mot: boolean;
+  /** Le mot dans un bandeau de couleur, d'un bord à l'autre de la carte — comme les cartes des jours. */
+  bandeau: boolean;
+  couleurBandeau: string;
   capitales: boolean;
   /** Un cadre arrondi, plutôt que le seul pointillé de découpe. */
   cadre: boolean;
 }
 
 export const PLANCHE_PAR_DEFAUT: ReglagesPlanche = {
-  pictos: [pictoVide()], tailles: [80, 60, 50, 40, 30, 20], exemplaires: 1, mot: true, capitales: false, cadre: false,
+  pictos: [pictoVide()], tailles: [80, 60, 50, 40, 30, 20], exemplaires: 1, mot: true, bandeau: false, couleurBandeau: "#ffd43b",
+  capitales: false, cadre: false,
 };
+
+/** Le texte se lit sur le bandeau : noir sur une couleur claire, blanc sur une foncée. */
+export function texteSur(fond: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(fond.slice(i, i + 2), 16) / 255);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.55 ? "#111" : "#fff";
+}
 
 /** « 1,5 cm », « 4 cm ». */
 export const libelleTaille = (mm: number) => `${(mm / 10).toLocaleString("fr-FR")} cm`;
@@ -53,6 +63,8 @@ export function normaliserPlanche(brut: unknown): ReglagesPlanche {
     tailles: tailles.sort((a, b) => b - a),
     exemplaires,
     mot: booleen(o.mot, d.mot),
+    bandeau: booleen(o.bandeau, d.bandeau),
+    couleurBandeau: couleurValide(o.couleurBandeau, d.couleurBandeau),
     capitales: booleen(o.capitales, d.capitales),
     cadre: booleen(o.cadre, d.cadre),
   };
@@ -88,7 +100,11 @@ export function htmlPlanche(r: ReglagesPlanche, images: Images): string {
     const src = cle !== null ? images[cle] : undefined;
     const mot = p.mot.trim();
     const image = src ? `<img src="${src}" alt="${escapeHtml(mot)}">` : `<span class="pp-manque">${escapeHtml(mot || "?")}</span>`;
-    return `<div class="pp-carte" style="--c: ${mm}mm">${image}${r.mot && mot && src ? `<div class="pp-mot">${escapeHtml(mot)}</div>` : ""}</div>`;
+    const ecrit = r.mot && mot && src;
+    const legende = !ecrit ? ""
+      : r.bandeau ? `<div class="pp-mot pp-bandeau" style="background: ${r.couleurBandeau}; color: ${texteSur(r.couleurBandeau)}">${escapeHtml(mot)}</div>`
+        : `<div class="pp-mot">${escapeHtml(mot)}</div>`;
+    return `<div class="pp-carte${ecrit && r.bandeau ? " pp-avec-bandeau" : ""}" style="--c: ${mm}mm">${image}${legende}</div>`;
   };
   const groupes = pictos.map((p) => `<div class="pp-groupe">`
     + r.tailles.flatMap((mm) => Array.from({ length: r.exemplaires }, () => carte(p, mm))).join("") + `</div>`);
@@ -111,6 +127,11 @@ export const STYLE_PLANCHE = `
   .feuille.pp .pp-mot { flex: none; max-width: 100%; font-size: calc(var(--c) * 0.13); font-weight: 700; line-height: 1.1;
     text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .feuille.pp .pp-capitales .pp-mot { text-transform: uppercase; }
+  /* Le bandeau touche les bords de la carte, sous l'image ; dans un cadre, un trait le sépare de l'image. */
+  .feuille.pp .pp-avec-bandeau { padding-bottom: 0; }
+  .feuille.pp .pp-bandeau { align-self: stretch; max-width: none; margin: 0 calc(var(--c) * -0.07); font-weight: 800;
+    padding: calc(var(--c) * 0.035) calc(var(--c) * 0.04); }
+  .feuille.pp .pp-cadre .pp-bandeau { border-top: 0.4mm solid #333; }
   .feuille.pp .pp-manque { flex: 1 1 0; align-self: stretch; display: flex; align-items: center; justify-content: center; text-align: center;
     border: 1.5px dashed #c4c9d6; border-radius: 2mm; color: #9aa0b4; font-weight: 700; font-size: calc(var(--c) * 0.12); }
 `;

@@ -2,9 +2,11 @@
 //
 // Les pictos que l'enseignant garde pour lui : dessinés par l'IA, à la
 // manière d'ARASAAC, quand ni ARASAAC ni Sclera n'ont le mot ; pris dans
-// Sclera, que les ateliers ne savent pas chercher ; ou photographiés avec le
+// Sclera, que les ateliers ne savent pas chercher ; photographiés avec le
 // téléphone — l'objet de la classe, pour l'élève qui n'entre pas dans
-// l'abstraction d'un pictogramme. On les retrouve ensuite partout où l'on
+// l'abstraction d'un pictogramme ; ou ses symboles Makaton, importés de ses
+// fichiers — la Makaton Charity n'en permet pas la diffusion : l'application
+// n'en livre aucun. On les retrouve ensuite partout où l'on
 // cherche une image par son mot : les listes de mots, le choix d'un picto,
 // le loto.
 //
@@ -21,7 +23,7 @@
 import type { PictoArasaac } from "./api";
 import { infoBanque } from "./pictosAppoint";
 
-export type OrigineMonPicto = "ia" | "sclera" | "bajard" | "photo";
+export type OrigineMonPicto = "ia" | "sclera" | "bajard" | "photo" | "makaton";
 
 export interface MonPicto {
   id: number;
@@ -42,6 +44,8 @@ export const PREFIXE_MES_PICTOS = "pictos:";
  * sous ceux des images d'une séance de travail, et dans les entiers 32 bits.
  */
 const PLAGES: [OrigineMonPicto, number, number][] = [
+  // Au-dessus de celle de l'IA, venue plus tard : les images d'une séance restent loin en dessous de -600 millions.
+  ["makaton", -600_000_000, -1_000_000_000],
   ["ia", -1_000_000_000, -1_400_000_000],
   ["sclera", -1_400_000_000, -1_800_000_000],
   ["bajard", -1_800_000_000, -2_100_000_000],
@@ -68,6 +72,7 @@ export const ETIQUETTES: Record<OrigineMonPicto, { court: string; long: string }
   sclera: { court: "Sclera", long: "Pris dans Sclera (sclera.be)" },
   bajard: { court: "Bajard", long: "Pris dans les consignes de F. Bajard" },
   photo: { court: "Photo", long: "Une photo prise avec le téléphone" },
+  makaton: { court: "Makaton", long: "Un symbole Makaton importé de vos fichiers ; il appartient à la Makaton Charity" },
 };
 
 /** Une photo de l'enseignant, et non un dessin. */
@@ -162,6 +167,7 @@ export function completer([trouves, absents]: [PictoArasaac[], string[]], miens:
 
 const MENTION_IA = "Certains pictogrammes ont été dessinés par une intelligence artificielle (Mistral AI), "
   + "à la manière d'ARASAAC : ils n'en font pas partie.";
+const MENTION_MAKATON = "Symboles Makaton © The Makaton Charity.";
 
 /** Ce que la feuille doit dire des pictos gardés qu'elle porte ; rien s'il n'y en a pas. */
 export function mentionDeMesPictos(ids: Iterable<unknown>): string {
@@ -170,6 +176,7 @@ export function mentionDeMesPictos(ids: Iterable<unknown>): string {
   const phrases: string[] = [];
   const banques = (["sclera", "bajard"] as const).filter((b) => origines.has(b)).map((b) => infoBanque(b).mention);
   if (banques.length) phrases.push(`Pictogrammes : ${banques.join(" ; ")}. Usage non commercial.`);
+  if (origines.has("makaton")) phrases.push(MENTION_MAKATON);
   if (origines.has("ia")) phrases.push(MENTION_IA);
   return phrases.join(" ");
 }
