@@ -295,7 +295,7 @@ export function TelephoneNuage() {
               <div className="qr-portable qr-relais" aria-label="QR code du relais" dangerouslySetInnerHTML={{ __html: code.qrSvg }} />
               <div style={{ minWidth: 220, flex: 1 }}>
                 <p style={{ margin: "0 0 6px", fontWeight: 600 }}>
-                  Dans le Dictaphone : « Relier à l'ordinateur », scannez ce QR code, puis « Se connecter » avec votre
+                  Dans le Dictaphone, onglet Réglages : « Scanner le QR code », puis « Se connecter » avec votre
                   compte Nuage{etat.compteDuDossier && <> (<b>{etat.compteDuDossier}</b>)</>}.
                 </p>
                 <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)", lineHeight: 1.55 }}>

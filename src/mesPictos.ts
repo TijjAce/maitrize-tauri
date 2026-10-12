@@ -135,6 +135,17 @@ export function pourLeMot(liste: MonPicto[], mot: string): MonPicto | undefined 
   return recents(liste.filter((p) => cleDuMot(p.mot) === c)) ?? (n ? recents(liste.filter((p) => cleDeNom(p.mot) === n)) : undefined);
 }
 
+/**
+ * La photo arrivée du téléphone pendant qu'on l'attendait : parmi les photos
+ * de Mes pictos qu'on ne connaissait pas, celle du mot attendu — « les
+ * ciseaux » pour « ciseaux » —, sinon la première. Rien tant qu'aucune n'est
+ * arrivée.
+ */
+export function photoArrivee(connues: ReadonlySet<number>, maintenant: MonPicto[], mot: string): MonPicto | null {
+  const neuves = maintenant.filter((p) => p.origine === "photo" && !connues.has(p.id));
+  return (mot.trim() ? pourLeMot(neuves, mot) : undefined) ?? neuves[0] ?? null;
+}
+
 /** Un picto gardé sous la forme de ceux de la banque : il se range dans les mêmes listes. */
 export const commePicto = (p: MonPicto, mot = p.mot): PictoArasaac => ({ id: p.id, mot, fichier: "" });
 
