@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide, LibelleAvecAide } from "../components/Aide";
 import { Field, Input } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { toast } from "../components/Toaster";
@@ -24,7 +25,7 @@ import {
 const ATELIER = "carteMentale";
 
 const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string; onChange: (v: boolean) => void }) => (
-  <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span>{libelle}</span></label>
+  <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span><LibelleAvecAide libelle={libelle} /></span></label>
 );
 
 /** Une branche : sa couleur, son image, son titre — et, dépliée, ses idées. */
@@ -78,11 +79,11 @@ export function CarteMentaleTab({ banque }: { banque: boolean }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 400px) 1fr", gap: 14, alignItems: "start" }}>
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Carte mentale</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Pour l'affichage : le thème au centre, ses branches autour, chacune à sa couleur, avec ses idées en mots et en images.
-          Une page A4 à l'italienne, qui s'agrandit en A3 à la photocopieuse.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Carte mentale
+          <Aide titre="Carte mentale" vers="droite"><p>Pour l'affichage : le thème au centre, ses branches autour, chacune à sa couleur, avec ses idées en mots et en images.
+          Une page A4 à l'italienne, qui s'agrandit en A3 à la photocopieuse.</p></Aide>
+        </h3>
         <Field label="Au centre">
           <div className="ct-categorie-tete">
             <CasePicto valeur={r.image} banque={banque} titre="L'image du centre" taille={30} onChange={(image) => maj({ image })} />

@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide, AideEnLigne } from "../components/Aide";
 import { listen } from "@tauri-apps/api/event";
 import { Page } from "../App";
 import { api, EtatBanque } from "../api";
@@ -158,17 +159,17 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
     <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 380px) 1fr", gap: 14, alignItems: "start" }}>
       <div>
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Les verbes des consignes</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Choisissez, pour chaque verbe d'action, le pictogramme que vos élèves connaissent. Toutes les feuilles de Fabriquer mettront
-          ces pictos devant leurs consignes — « écris », « colorie », « entoure » — pour que l'élève voie ce qu'il doit faire.
-        </p>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5 }}>
-          Les pictos viennent d'ARASAAC ; quand un verbe n'y est pas, des consignes de F. Bajard, puis de Sclera.{" "}
-          {BANQUES_APPOINT.map((b, i) => (
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Les verbes des consignes
+          <Aide titre="Les verbes des consignes" vers="droite"><p>Choisissez, pour chaque verbe d'action, le pictogramme que vos élèves connaissent. Toutes les feuilles de Fabriquer mettront
+          ces pictos devant leurs consignes — « écris », « colorie », « entoure » — pour que l'élève voie ce qu'il doit faire.</p></Aide>
+        </h3>
+        <AideEnLigne libelle="D'où viennent les pictos">
+          <p>Les pictos viennent d'ARASAAC ; quand un verbe n'y est pas, des consignes de F. Bajard, puis de Sclera.</p>
+          <p>{BANQUES_APPOINT.map((b, i) => (
             <React.Fragment key={b.cle}>{i ? " · " : ""}{b.nom} : {banques.installee(b.cle) ? `${banques.nombre(b.cle).toLocaleString("fr-FR")} pictos` : `à télécharger (${b.taille})`}</React.Fragment>
-          ))}
-        </p>
+          ))}</p>
+        </AideEnLigne>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
           <button type="button" className="btn sm primary" disabled={!banque || occupe} onClick={proposer}
             title="ARASAAC propose son premier picto pour chaque verbe qui n'en a pas ; à défaut, les consignes de F. Bajard, puis Sclera, téléchargées au passage. Vous changez ensuite ceux qui ne vont pas.">
@@ -199,11 +200,11 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
         </div>
       </div>
       <div className="card" style={{ marginTop: 14 }}>
-        <h3 style={{ marginTop: 0 }}>Les matières et les domaines</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Ceux du planning, chacun avec son picto : pour un emploi du temps en images, ou pour dire ce qui vient.
-          Ils s'impriment en cartes avec les verbes.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Les matières et les domaines
+          <Aide titre="Les matières et les domaines" vers="droite"><p>Ceux du planning, chacun avec son picto : pour un emploi du temps en images, ou pour dire ce qui vient.
+          Ils s'impriment en cartes avec les verbes.</p></Aide>
+        </h3>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
           <button type="button" className="btn sm primary" disabled={!banque || occupe} onClick={() => { void proposerMatieres(); }}
             title="ARASAAC propose le picto de la matière (« mathématiques », « EPS ») ou, à défaut, de ce qui s'y fait. Vous changez ensuite ceux qui ne vont pas.">
@@ -268,10 +269,10 @@ function ImprimerLesPictos({ lexique, matieres }: { lexique: Lexique; matieres: 
   };
   return (
     <div className="card" style={{ marginTop: 14 }}>
-      <h3 style={{ marginTop: 0 }}>🖨 Imprimer les pictos</h3>
-      <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-        En cartes à découper : en petit, ils se manipulent — plan de travail, bande velcro, table de l'élève ; en grand, ils s'affichent au tableau.
-      </p>
+      <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+        🖨 Imprimer les pictos
+        <Aide titre="🖨 Imprimer les pictos" vers="droite"><p>En cartes à découper : en petit, ils se manipulent — plan de travail, bande velcro, table de l'élève ; en grand, ils s'affichent au tableau.</p></Aide>
+      </h3>
       <Field label="Quoi">
         <Select value={r.quoi} onChange={(e) => maj({ quoi: e.target.value as QuoiImprimer })}>
           <option value="tout">Les verbes et les matières</option>

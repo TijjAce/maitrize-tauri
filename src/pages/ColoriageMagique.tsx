@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide } from "../components/Aide";
 import { api } from "../api";
 import { Field, Input, Modal, Select, useAsync } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
@@ -392,10 +393,13 @@ export function ColoriageMagiqueTab() {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 400px) 1fr", gap: 14, alignItems: "start" }}>
       <div className="card">
-        <p className="meta" style={{ fontSize: 13, lineHeight: 1.6, marginTop: 0 }}>
-          L'élève calcule, lit ou reconnaît une lettre ; la réponse lui dit la couleur, et le dessin apparaît.
-          Une case fausse se voit tout de suite : c'est la feuille qui corrige, pas vous.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Coloriage magique
+          <Aide titre="Coloriage magique" vers="droite">
+            <p>L'élève calcule, lit ou reconnaît une lettre ; la réponse lui dit la couleur, et le dessin apparaît.
+            Une case fausse se voit tout de suite : c'est la feuille qui corrige, pas vous.</p>
+          </Aide>
+        </h3>
 
         {pli("dessin", 1, "Le dessin", `${c.motif.nom} · ${casesAColorier(c.motif)} cases`, (<>
           {/* Rangés par famille : avec trente dessins, on cherche d'abord un animal, une fête, un objet. */}

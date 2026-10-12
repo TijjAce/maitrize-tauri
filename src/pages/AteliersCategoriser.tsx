@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide, LibelleAvecAide } from "../components/Aide";
 import { api } from "../api";
 import { Field, Input, Select } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
@@ -31,7 +32,7 @@ import {
 const ATELIER = "categoriser";
 
 const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string; onChange: (v: boolean) => void }) => (
-  <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span>{libelle}</span></label>
+  <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span><LibelleAvecAide libelle={libelle} /></span></label>
 );
 
 /** Le picto qui dit une catégorie, cherché dans la banque d'après son nom, ou rien. */
@@ -153,22 +154,24 @@ export function CategoriserTab({ banque }: { banque: boolean }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 400px) 1fr", gap: 14, alignItems: "start" }}>
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Catégoriser les mots</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          « Organiser les mots en catégorie et en réseau » : les jeux de la fiche Éduscol « Catégoriser » (2023) et du guide
-          « Pour enseigner le vocabulaire à l'école maternelle », avec les images de la classe.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Catégoriser les mots
+          <Aide titre="Catégoriser les mots" vers="droite"><p>« Organiser les mots en catégorie et en réseau » : les jeux de la fiche Éduscol « Catégoriser » (2023) et du guide
+          « Pour enseigner le vocabulaire à l'école maternelle », avec les images de la classe.</p></Aide>
+        </h3>
         <Field label="Classe">
-          <div className="seg">
-            {NIVEAUX.map((n) => (
-              <button key={n.id} type="button" className={r.niveau === n.id ? "active" : ""}
-                onClick={() => maj({ niveau: n.id as Niveau, ...reglagesDuNiveau(n.id) })} title={n.age}>{n.id}</button>
-            ))}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div className="seg">
+              {NIVEAUX.map((n) => (
+                <button key={n.id} type="button" className={r.niveau === n.id ? "active" : ""}
+                  onClick={() => maj({ niveau: n.id as Niveau, ...reglagesDuNiveau(n.id) })} title={n.age}>{n.id}</button>
+              ))}
+            </div>
+            <Aide titre={`Ce qu'on attend en ${r.niveau}`} vers="droite">
+              <p><b>{NIVEAUX.find((n) => n.id === r.niveau)?.age}</b> : {REPERES[r.niveau]}</p>
+            </Aide>
           </div>
         </Field>
-        <div className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, margin: "-2px 0 10px" }}>
-          {NIVEAUX.find((n) => n.id === r.niveau)?.age} : {REPERES[r.niveau]}
-        </div>
         <Field label={`Les catégories (${categories.length})`}>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {categories.map((c, i) => (
@@ -185,9 +188,17 @@ export function CategoriserTab({ banque }: { banque: boolean }) {
           </div>
         </Field>
         <Field label="Le jeu">
-          <Select value={r.forme} onChange={(e) => maj({ forme: e.target.value as Forme })}>
-            {FORMES.map((f) => <option key={f.id} value={f.id}>{f.nom} — {f.quoi}</option>)}
-          </Select>
+          {/* Le nom dans le menu ; ce que fait la feuille, au survol du « ? ». */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Select value={r.forme} onChange={(e) => maj({ forme: e.target.value as Forme })}>
+              {FORMES.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
+            </Select>
+            {FORMES.find((f) => f.id === r.forme) && (
+              <Aide titre={FORMES.find((f) => f.id === r.forme)!.nom} vers="gauche">
+                <p>{(({ quoi }) => quoi.charAt(0).toUpperCase() + quoi.slice(1))(FORMES.find((f) => f.id === r.forme)!)}.</p>
+              </Aide>
+            )}
+          </div>
         </Field>
         {r.forme === "intrus" && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -219,8 +230,8 @@ export function CategoriserTab({ banque }: { banque: boolean }) {
                 </optgroup>
               </Select>
               <button type="button" className="btn sm" disabled={!jeu || occupe} onClick={() => { void prendreLeJeu(); }}>{occupe ? "Recherche des images…" : "Prendre"}</button>
+              {jeuChoisi && <Aide titre={jeuChoisi.libelle}><p>D'après la {jeuChoisi.source}.</p></Aide>}
             </div>
-            {jeuChoisi && <div className="meta" style={{ fontSize: 12, marginTop: 4 }}>D'après la {jeuChoisi.source}.</div>}
           </Field>
           {nommable && (
             <Coche on={r.nommer} libelle="Écrire le nom et l'image des catégories — décoché, c'est l'élève qui les nomme" onChange={(nommer) => maj({ nommer })} />

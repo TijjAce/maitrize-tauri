@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide, AideEnLigne } from "../components/Aide";
 import { api } from "../api";
 import { Field, Input, Select, Textarea, useAsync } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
@@ -49,16 +50,18 @@ export function PlanClasseTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Le plan de la classe</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Les feuilles de la séquence Éduscol « La classe, un espace organisé qui se représente » (CP) : de la maquette au plan, puis lire
-          le plan pour se repérer et se déplacer. Le plan est celui de votre classe, d'après le plan de salle.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Le plan de la classe
+          <Aide titre="Le plan de la classe" vers="droite"><p>Les feuilles de la séquence Éduscol « La classe, un espace organisé qui se représente » (CP) : de la maquette au plan, puis lire
+          le plan pour se repérer et se déplacer. Le plan est celui de votre classe, d'après le plan de salle.</p></Aide>
+        </h3>
         <Field label="La feuille">
-          <Select value={r.feuille} onChange={(e) => maj({ feuille: e.target.value as typeof r.feuille })} title={nomFeuille.quoi}>
-            {FEUILLES_PLAN.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
-          </Select>
-          <div className="meta" style={{ fontSize: 11.5, marginTop: 4 }}>{nomFeuille.quoi}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Select value={r.feuille} onChange={(e) => maj({ feuille: e.target.value as typeof r.feuille })}>
+              {FEUILLES_PLAN.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
+            </Select>
+            <Aide titre={nomFeuille.nom} vers="gauche"><p>{nomFeuille.quoi}</p></Aide>
+          </div>
         </Field>
         <Field label="La salle">
           <Select value={profils.find((p) => p.nom === r.agencement && r.elements.length)?.id ?? ""} onChange={(e) => prendre(e.target.value)}>
@@ -125,20 +128,22 @@ export function FriseTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Frises et calendriers</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Se repérer dans le temps, comme le programme le fait construire : la journée, la semaine, l'année et ses saisons, le calendrier,
-          la vie de l'élève, les générations ; au CE1, le passé proche et lointain, les grandes périodes ; au CE2, la Préhistoire, Rome, le royaume.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Frises et calendriers
+          <Aide titre="Frises et calendriers" vers="droite"><p>Se repérer dans le temps, comme le programme le fait construire : la journée, la semaine, l'année et ses saisons, le calendrier,
+          la vie de l'élève, les générations ; au CE1, le passé proche et lointain, les grandes périodes ; au CE2, la Préhistoire, Rome, le royaume.</p></Aide>
+        </h3>
         <Field label="La frise">
-          <Select value={r.modele} onChange={(e) => maj({ modele: e.target.value as ModeleFrise })}>
-            {["CP", "CE1", "CE2"].map((c) => (
-              <optgroup key={c} label={c}>
-                {MODELES_FRISE.filter((m) => m.classe === c).map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
-              </optgroup>
-            ))}
-          </Select>
-          <div className="meta" style={{ fontSize: 11.5, marginTop: 4 }}>{modele.quoi}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Select value={r.modele} onChange={(e) => maj({ modele: e.target.value as ModeleFrise })}>
+              {["CP", "CE1", "CE2"].map((c) => (
+                <optgroup key={c} label={c}>
+                  {MODELES_FRISE.filter((m) => m.classe === c).map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
+                </optgroup>
+              ))}
+            </Select>
+            <Aide titre={modele.nom} vers="gauche"><p>{modele.quoi}</p></Aide>
+          </div>
         </Field>
         {!["vie", "generations"].includes(r.modele) && (
           <Coche on={r.aCompleter} libelle="À compléter, avec les étiquettes à découper (sinon complétée, pour l'affichage)" onChange={(v) => maj({ aCompleter: v })} />
@@ -199,11 +204,11 @@ export function PaysageTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Lire un paysage</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          La fiche qui accompagne une photographie ou une sortie : ce qu'on voit au premier plan et à l'arrière-plan, ce que la nature a fait
-          et ce que les êtres humains ont construit, le nom du paysage, puis le croquis et sa légende.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Lire un paysage
+          <Aide titre="Lire un paysage" vers="droite"><p>La fiche qui accompagne une photographie ou une sortie : ce qu'on voit au premier plan et à l'arrière-plan, ce que la nature a fait
+          et ce que les êtres humains ont construit, le nom du paysage, puis le croquis et sa légende.</p></Aide>
+        </h3>
         <Field label="Les paysages">
           <Select value={r.famille} onChange={(e) => maj({ famille: e.target.value as FamillePaysage })}>
             {(Object.keys(FAMILLES_PAYSAGE) as FamillePaysage[]).map((f) => (
@@ -217,9 +222,9 @@ export function PaysageTab() {
             {photosDe(r.famille).map((p) => <option key={p.id} value={p.id}>{p.type} — {p.titre}</option>)}
           </Select>
           {r.photo && (
-            <p className="meta" style={{ fontSize: 12, margin: "6px 0 0" }}>
-              Une photographie libre de Wikimedia Commons : son auteur et sa licence s'impriment dessous.
-            </p>
+            <AideEnLigne libelle="D'où vient la photo">
+              <p>Une photographie libre de Wikimedia Commons : son auteur et sa licence s'impriment dessous.</p>
+            </AideEnLigne>
           )}
         </Field>
         <Field label="Ce que montre la photographie (facultatif)">

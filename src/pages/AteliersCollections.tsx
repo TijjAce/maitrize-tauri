@@ -1,5 +1,5 @@
 import React from "react";
-import { Aide } from "../components/Aide";
+import { Aide, LibelleAvecAide } from "../components/Aide";
 import { Field, Select } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { toast } from "../components/Toaster";
@@ -31,7 +31,7 @@ import {
 const ATELIER = "collections";
 
 const Coche = ({ on, libelle, onChange, titre }: { on: boolean; libelle: string; onChange: (v: boolean) => void; titre?: string }) => (
-  <label className="pb-coche" title={titre}><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span>{libelle}</span></label>
+  <label className="pb-coche" title={titre}><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span><LibelleAvecAide libelle={libelle} /></span></label>
 );
 
 /** Ajoute ou retire un choix, sans jamais vider la liste : il reste au moins une disposition, une représentation. */
@@ -108,9 +108,17 @@ export function CollectionsTab({ banque }: { banque: boolean }) {
           </Aide>
         </div>
         <Field label="Le matériel">
-          <Select value={r.forme} onChange={(e) => maj({ forme: e.target.value as Forme })}>
-            {FORMES.map((f) => <option key={f.id} value={f.id}>{f.nom} — {f.quoi}</option>)}
-          </Select>
+          {/* Le nom dans le menu ; ce que fait la feuille, au survol du « ? ». */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Select value={r.forme} onChange={(e) => maj({ forme: e.target.value as Forme })}>
+              {FORMES.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
+            </Select>
+            {FORMES.find((f) => f.id === r.forme) && (
+              <Aide titre={FORMES.find((f) => f.id === r.forme)!.nom} vers="gauche">
+                <p>{(({ quoi }) => quoi.charAt(0).toUpperCase() + quoi.slice(1))(FORMES.find((f) => f.id === r.forme)!)}.</p>
+              </Aide>
+            )}
+          </div>
         </Field>
         {r.forme !== "evaluation" && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>

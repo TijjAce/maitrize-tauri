@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide, LibelleAvecAide } from "../components/Aide";
 import { Field, Input, Select, Textarea } from "../components/ui";
 import { Pastilles } from "../components/Pastilles";
 import { api, journal, MODELE_TACHES } from "../api";
@@ -46,7 +47,7 @@ import { etapeDe } from "../progressionCgp";
 // enveloppe de trinôme, et la corolle lexicale pour les ranger.
 
 export const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string; onChange: (v: boolean) => void }) => (
-  <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span>{libelle}</span></label>
+  <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span><LibelleAvecAide libelle={libelle} /></span></label>
 );
 
 export function EtiquettesTab({ banque }: { banque: boolean }) {
@@ -65,9 +66,11 @@ export function EtiquettesTab({ banque }: { banque: boolean }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 380px) 1fr", gap: 14, alignItems: "start" }}>
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Étiquettes à catégoriser</h3>
-        <BanqueDeMots mots={mots} onChange={setMots} banque={banque}
-          aide="Les mots collectés pendant la séquence, à regrouper, classer, trier : en grand pour le tableau, en petit dans une enveloppe par trinôme. Une image aide les élèves qui ne déchiffrent pas encore." />
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Étiquettes à catégoriser
+          <Aide titre="Étiquettes à catégoriser" vers="droite"><p>{"Les mots collectés pendant la séquence, à regrouper, classer, trier : en grand pour le tableau, en petit dans une enveloppe par trinôme. Une image aide les élèves qui ne déchiffrent pas encore."}</p></Aide>
+        </h3>
+        <BanqueDeMots mots={mots} onChange={setMots} banque={banque} />
         <Field label="Ce qu'on imprime">
           <Coche on={r.grandes} libelle="Grandes étiquettes pour le tableau" onChange={(v) => maj({ grandes: v })} />
           <Coche on={r.petites} libelle="Petites étiquettes, une enveloppe par groupe" onChange={(v) => maj({ petites: v })} />
@@ -139,12 +142,12 @@ export function CursiveTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Écriture cursive</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Des modèles en cursive et des lignes à réglure — 3, 2,5 ou 2 mm — pour tracer la lettre du jour, l'enchaîner dans des syllabes et des mots, ou copier une phrase écrite en script.
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Écriture cursive
+          <Aide titre="Écriture cursive" vers="droite"><p>Des modèles en cursive et des lignes à réglure — 3, 2,5 ou 2 mm — pour tracer la lettre du jour, l'enchaîner dans des syllabes et des mots, ou copier une phrase écrite en script.
           Pour les premières lettres, les lignes « ciel, herbe, terre » : les petites lettres dans l'herbe, les grandes dans le ciel, les jambages dans la terre.
-          Le modèle prend la police d'écriture scolaire installée sur l'ordinateur (Écriture A, Belle Allure…).
-        </p>
+          Le modèle prend la police d'écriture scolaire installée sur l'ordinateur (Écriture A, Belle Allure…).</p></Aide>
+        </h3>
         <Field label="Les modèles, un par ligne">
           <Textarea rows={6} value={r.modeles} onChange={(e) => maj({ modeles: e.target.value })} placeholder={"l\nli\nla\nlilas"} />
         </Field>
@@ -203,10 +206,10 @@ export function MotsMelesTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Mots mêlés</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Les mots de la semaine cachés dans une grille de lettres : à retrouver, à entourer. La liste s'imprime dessous, le corrigé à la suite.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Mots mêlés
+          <Aide titre="Mots mêlés" vers="droite"><p>Les mots de la semaine cachés dans une grille de lettres : à retrouver, à entourer. La liste s'imprime dessous, le corrigé à la suite.</p></Aide>
+        </h3>
         <Field label="Les mots, un par ligne">
           <Textarea rows={7} value={r.mots} onChange={(e) => maj({ mots: e.target.value })} placeholder={"chat\nchien\nlapin…"} />
           <LigneDuProjet quoi="mots" texte={r.mots} exemple={REGLAGES_MOTS_MELES.mots} appliquer={(mots) => maj({ mots })} />
@@ -262,10 +265,10 @@ export function PhrasesTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Phrases en désordre</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Les mots d'une phrase sur des étiquettes mélangées : on découpe, on remet en ordre, on colle ou on recopie. La majuscule et le point guident.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Phrases en désordre
+          <Aide titre="Phrases en désordre" vers="droite"><p>Les mots d'une phrase sur des étiquettes mélangées : on découpe, on remet en ordre, on colle ou on recopie. La majuscule et le point guident.</p></Aide>
+        </h3>
         <Field label="Les phrases, une par ligne">
           <Textarea rows={7} value={r.phrases} onChange={(e) => maj({ phrases: e.target.value })} placeholder={"Le chat dort sur le canapé.\nOù est mon cartable ?"} />
           <LigneDuProjet quoi="phrases" texte={r.phrases} exemple={REGLAGES_PHRASES.phrases} appliquer={(phrases) => maj({ phrases })} />
@@ -287,7 +290,7 @@ export function PhrasesTab() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <button type="button" className="btn sm" disabled={occupe} onClick={() => void proposer()}>{occupe ? "Le modèle écrit…" : "✨ Proposer des phrases"}</button>
-            <span className="meta" style={{ fontSize: 12 }}>Elles s'ajoutent sous les vôtres. Rien de la classe n'est envoyé.</span>
+            <Aide titre="Proposer des phrases" vers="droite"><p>Elles s'ajoutent sous les vôtres. Rien de la classe n'est envoyé.</p></Aide>
           </div>
         </div>
         <Coche on={r.lignes} libelle="Une ligne sous les étiquettes, pour coller ou recopier" onChange={(v) => maj({ lignes: v })} />
@@ -586,9 +589,11 @@ export function OmbresTab({ banque }: { banque: boolean }) {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Le jeu des ombres</h3>
-        <BanqueDeMots mots={mots} onChange={setMots} banque={banque}
-          aide="Chaque image retrouve son ombre : on découpe les images, on les pose sur la planche des silhouettes. Les pictogrammes de la banque, ou vos images : une image détourée, ou un objet photographié sur un fond uni — une feuille, une table —, donne une ombre nette ; une photo plein cadre ne donne qu'un rectangle." />
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Le jeu des ombres
+          <Aide titre="Le jeu des ombres" vers="droite"><p>{"Chaque image retrouve son ombre : on découpe les images, on les pose sur la planche des silhouettes. Les pictogrammes de la banque, ou vos images : une image détourée, ou un objet photographié sur un fond uni — une feuille, une table —, donne une ombre nette ; une photo plein cadre ne donne qu'un rectangle."}</p></Aide>
+        </h3>
+        <BanqueDeMots mots={mots} onChange={setMots} banque={banque} />
         <Field label="Forme">
           <Select value={r.forme} onChange={(e) => maj({ forme: e.target.value as FormeOmbres })}>
             <option value="poser">Des images à découper, à poser sur les ombres</option>

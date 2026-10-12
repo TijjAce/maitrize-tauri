@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide } from "../components/Aide";
 import { api, type CategorieArasaac, type PictoArasaac } from "../api";
 import { Field, Input, Select, useAsync } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
@@ -166,19 +167,21 @@ export function OeilDeLynxTab({ banque }: { banque: boolean }) {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Cherche et trouve</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Une rangée de modèles, un grand cadre plein de dessins : l'élève retrouve chaque modèle et l'entoure. Le corrigé suit, et chaque tirage
-          donne une autre feuille.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Cherche et trouve
+          <Aide titre="Cherche et trouve" vers="droite"><p>Une rangée de modèles, un grand cadre plein de dessins : l'élève retrouve chaque modèle et l'entoure. Le corrigé suit, et chaque tirage
+          donne une autre feuille.</p></Aide>
+        </h3>
         <Field label="Niveau">
-          <Select value={r.niveau} onChange={(e) => choisirNiveau(e.target.value as IdNiveauLynx)}>
-            {NIVEAUX_LYNX.map((n) => <option key={n.id} value={n.id}>{n.libelle} ({n.pour})</option>)}
-          </Select>
-          <div className="meta" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.45 }}>
-            {niv.aide}
-            {niveauModifie(r) && <> <button type="button" className="btn ghost sm" onClick={() => choisirNiveau(r.niveau)}>Revenir au niveau</button></>}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Select value={r.niveau} onChange={(e) => choisirNiveau(e.target.value as IdNiveauLynx)}>
+              {NIVEAUX_LYNX.map((n) => <option key={n.id} value={n.id}>{n.libelle} ({n.pour})</option>)}
+            </Select>
+            <Aide titre={niv.libelle} vers="gauche"><p>{niv.aide}</p></Aide>
           </div>
+          {niveauModifie(r) && (
+            <button type="button" className="btn ghost sm" style={{ marginTop: 4 }} onClick={() => choisirNiveau(r.niveau)}>Revenir au niveau</button>
+          )}
         </Field>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <Field label="Dessins à retrouver">

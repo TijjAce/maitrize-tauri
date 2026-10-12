@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide, AideEnLigne } from "../components/Aide";
 import { api, type PictoArasaac } from "../api";
 import { Field, Input, Modal, Select } from "../components/ui";
 import { toast } from "../components/Toaster";
@@ -215,10 +216,10 @@ export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
     <>
       <Colonnes
         gauche={<>
-          <h3 style={{ marginTop: 0 }}>La syllabe qui manque</h3>
-          <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-            Sous chaque dessin, le mot avec un trou : l'élève dit le mot, et écrit la syllabe qu'il entend.
-          </p>
+          <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+            La syllabe qui manque
+            <Aide titre="La syllabe qui manque" vers="droite"><p>Sous chaque dessin, le mot avec un trou : l'élève dit le mot, et écrit la syllabe qu'il entend.</p></Aide>
+          </h3>
           <Field label="Les syllabes à retrouver">
             <Input value={r.syllabes} placeholder="ma, mi, mu" onChange={(e) => maj({ syllabes: e.target.value })} />
           </Field>
@@ -300,9 +301,9 @@ export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
                 {LETTRES_EN_TETE.map((l) => <option key={l.id} value={l.id}>{l.libelle}</option>)}
               </Select>
               {r.lettres === "cursive" && (
-                <p className="meta" style={{ fontSize: 12, lineHeight: 1.45, margin: "4px 0 0" }}>
-                  La cursive prend la police d'école installée sur l'ordinateur (Belle Allure, Écriture A, Cursive standard…) ; à défaut, celle du système.
-                </p>
+                <AideEnLigne libelle="La police de la cursive">
+                  <p>La cursive prend la police d'école installée sur l'ordinateur (Belle Allure, Écriture A, Cursive standard…) ; à défaut, celle du système.</p>
+                </AideEnLigne>
               )}
             </Field>
           )}

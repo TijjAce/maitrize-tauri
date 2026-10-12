@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide, AideEnLigne, LibelleAvecAide } from "../components/Aide";
 import { Field, Input, Select } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { toast } from "../components/Toaster";
@@ -32,7 +33,7 @@ import {
 const ATELIER = "suites";
 
 const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string; onChange: (v: boolean) => void }) => (
-  <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span>{libelle}</span></label>
+  <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span><LibelleAvecAide libelle={libelle} /></span></label>
 );
 
 export function SuitesTab({ banque }: { banque: boolean }) {
@@ -79,21 +80,24 @@ export function SuitesTab({ banque }: { banque: boolean }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 400px) 1fr", gap: 14, alignItems: "start" }}>
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Images séquentielles</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          « S'approprier la notion de chronologie » (programme 2025) : remettre dans l'ordre une histoire, un geste de tous les jours,
-          une recette, un cycle de vie — puis raconter avec les mots du temps.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Images séquentielles
+          <Aide titre="Images séquentielles" vers="droite"><p>« S'approprier la notion de chronologie » (programme 2025) : remettre dans l'ordre une histoire, un geste de tous les jours,
+          une recette, un cycle de vie — puis raconter avec les mots du temps.</p></Aide>
+        </h3>
         <Field label="Classe">
-          <div className="seg">
-            {NIVEAUX.map((x) => (
-              <button key={x.id} type="button" className={r.niveau === x.id ? "active" : ""} onClick={() => maj({ niveau: x.id as Niveau })} title={x.age}>{x.id}</button>
-            ))}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div className="seg">
+              {NIVEAUX.map((x) => (
+                <button key={x.id} type="button" className={r.niveau === x.id ? "active" : ""} onClick={() => maj({ niveau: x.id as Niveau })} title={x.age}>{x.id}</button>
+              ))}
+            </div>
+            <Aide titre={`Ce qu'on attend en ${r.niveau}`} vers="droite">
+              <p><b>{NIVEAUX.find((x) => x.id === r.niveau)?.age}</b> : {REPERES[r.niveau]}</p>
+              <p>{ETAPES_CONSEILLEES[r.niveau]} images, pour commencer.</p>
+            </Aide>
           </div>
         </Field>
-        <div className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, margin: "-2px 0 10px" }}>
-          {NIVEAUX.find((x) => x.id === r.niveau)?.age} : {REPERES[r.niveau]} {ETAPES_CONSEILLEES[r.niveau]} images, pour commencer.
-        </div>
         <Field label="Le titre">
           <Input value={r.titre} placeholder="L'histoire d'un bonhomme de neige" onChange={(e) => maj({ titre: e.target.value })} />
         </Field>
@@ -116,14 +120,22 @@ export function SuitesTab({ banque }: { banque: boolean }) {
               <button type="button" className="btn sm" style={{ alignSelf: "flex-start" }} onClick={() => changer([...etapes, pictoVide()])}>＋ Une image</button>
             )}
           </div>
-          <div className="meta" style={{ fontSize: 12, marginTop: 4 }}>
-            Un picto, une photo prise au téléphone, ou une image de l'ordinateur — les illustrations d'un album, par exemple.
-          </div>
+          <AideEnLigne libelle="Quelles images">
+            <p>Un picto, une photo prise au téléphone, ou une image de l'ordinateur — les illustrations d'un album, par exemple.</p>
+          </AideEnLigne>
         </Field>
         <Field label="La feuille">
-          <Select value={r.forme} onChange={(e) => maj({ forme: e.target.value as Forme })}>
-            {FORMES.map((f) => <option key={f.id} value={f.id}>{f.nom} — {f.quoi}</option>)}
-          </Select>
+          {/* Le nom dans le menu ; ce que fait la feuille, au survol du « ? ». */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Select value={r.forme} onChange={(e) => maj({ forme: e.target.value as Forme })}>
+              {FORMES.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
+            </Select>
+            {FORMES.find((f) => f.id === r.forme) && (
+              <Aide titre={FORMES.find((f) => f.id === r.forme)!.nom} vers="gauche">
+                <p>{(({ quoi }) => quoi.charAt(0).toUpperCase() + quoi.slice(1))(FORMES.find((f) => f.id === r.forme)!)}.</p>
+              </Aide>
+            )}
+          </div>
         </Field>
         {/* Un pli : les exemples et la présentation se règlent une fois, puis se taisent. Il s'ouvre tant qu'il n'y a rien à ordonner. */}
         <details className="pli" open={n < 2}>

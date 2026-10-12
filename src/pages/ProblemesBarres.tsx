@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide } from "../components/Aide";
 import { api, raccourci } from "../api";
 import { Field, Input, Modal, Select } from "../components/ui";
 import { toast } from "../components/Toaster";
@@ -218,8 +219,10 @@ function Atelier({ atelier, intro, titre, setTitre, nombre: nombreProblemes, set
     <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 360px) 1fr", gap: 14, alignItems: "start" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Les problèmes</h3>
-          <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-2)" }}>{intro}</p>
+          <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+            Les problèmes
+            <Aide titre="Les problèmes" vers="droite"><p>{intro}</p></Aide>
+          </h3>
           {children}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <Field label="Nombre de problèmes">

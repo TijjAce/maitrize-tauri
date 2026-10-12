@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide } from "../components/Aide";
 import { Field, Input, Select } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
@@ -21,10 +22,10 @@ export function MonnaieTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>La monnaie</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Des pièces et des billets dessinés « pour jouer », et des feuilles pour compter, payer juste, comparer, rendre la monnaie, écrire avec la virgule — d'après le programme 2024 : les euros jusqu'à cent au CP, les centimes au CE1, la virgule à partir de la période 3.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          La monnaie
+          <Aide titre="La monnaie" vers="droite"><p>Des pièces et des billets dessinés « pour jouer », et des feuilles pour compter, payer juste, comparer, rendre la monnaie, écrire avec la virgule — d'après le programme 2024 : les euros jusqu'à cent au CP, les centimes au CE1, la virgule à partir de la période 3.</p></Aide>
+        </h3>
         <Field label="Exercice">
           <Select value={r.exercice} onChange={(e) => maj({ exercice: e.target.value as ExerciceMonnaie })}>
             {EXERCICES_MONNAIE.map((e) => <option key={e.id} value={e.id}>{e.libelle}</option>)}
@@ -71,10 +72,10 @@ export function MesuresTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Mesures</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Comparer, mesurer, tracer, estimer, convertir : les longueurs, les masses et les contenances du cycle 2, d'après le programme 2024 et les ressources Éduscol « Grandeurs et mesures ». Les segments sont à leur taille réelle : imprimez à 100 %.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Mesures
+          <Aide titre="Mesures" vers="droite"><p>Comparer, mesurer, tracer, estimer, convertir : les longueurs, les masses et les contenances du cycle 2, d'après le programme 2024 et les ressources Éduscol « Grandeurs et mesures ». Les segments sont à leur taille réelle : imprimez à 100 %.</p></Aide>
+        </h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <Field label="Grandeur">
             <Select value={r.grandeur} onChange={(e) => maj({ grandeur: e.target.value as Grandeur })}>
@@ -117,10 +118,10 @@ export function DonneesTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Tableaux et diagrammes</h3>
-        <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
-          Une enquête et son relevé par bâtons, le tableau, le diagramme en barres — de cubes au CP —, le tableau à double entrée, des problèmes : d'après le programme 2024, moins de quarante réponses au CP, un axe gradué de un en un au CE1, une échelle adaptée au CE2.
-        </p>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Tableaux et diagrammes
+          <Aide titre="Tableaux et diagrammes" vers="droite"><p>Une enquête et son relevé par bâtons, le tableau, le diagramme en barres — de cubes au CP —, le tableau à double entrée, des problèmes : d'après le programme 2024, moins de quarante réponses au CP, un axe gradué de un en un au CE1, une échelle adaptée au CE2.</p></Aide>
+        </h3>
         <Field label="Classe">
           <Select value={r.classe} onChange={(e) => maj({ classe: e.target.value as Classe })}>
             <option value="CP">CP</option><option value="CE1">CE1</option><option value="CE2">CE2</option>

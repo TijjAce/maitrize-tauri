@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide } from "../components/Aide";
 import { Field, Input, Select, Textarea } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { escapeHtml } from "../print";
@@ -96,12 +97,12 @@ export function LectureSonsTab() {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 360px) 1fr", gap: 14, alignItems: "start" }}>
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>La fiche de son</h3>
-        <p className="meta" style={{ fontSize: 13, lineHeight: 1.6, marginTop: 0 }}>
-          Les syllabes, les mots, ceux qu'on entoure et ceux qu'on complète. Les sons sont
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          La fiche de son
+          <Aide titre="La fiche de son" vers="droite"><p>Les syllabes, les mots, ceux qu'on entoure et ceux qu'on complète. Les sons sont
           rangés dans l'ordre des méthodes syllabiques : les voyelles, les consonnes qu'on
-          peut tenir en les prononçant, puis les graphèmes complexes.
-        </p>
+          peut tenir en les prononçant, puis les graphèmes complexes.</p></Aide>
+        </h3>
 
         <Field label="Le son travaillé">
           <Select value={r.son} onChange={(e) => maj({ son: e.target.value })}>
