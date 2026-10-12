@@ -12,7 +12,7 @@ import { EtiquetteMonPicto, usePictoImage } from "../components/ChoixPicto";
 import { FenetreCouleurs, LegendeTla, garderPaletteParDefaut, usePaletteParDefaut } from "../components/CouleursTla";
 import { SQUELETTES, squelettePour, placesDuTheme, motsDuNoyau } from "../squelettes";
 import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
-import { deposerSurLeBureau, lignesCompetencesAtelier } from "../impressionAtelier";
+import { deposerSurLeBureau } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
 
 // ── Tableaux de langage assisté ────────────────────────────────────────────
@@ -217,7 +217,8 @@ function Editeur({ gabarit, onChange, onFermer }: {
     if (soucis.length) throw new Error(soucis[0]);
     const miens: MonPicto[] = await lireMesPictos().catch((): MonPicto[] => []);
     return pourImpression(
-      { ...gabarit, competences: await lignesCompetencesAtelier("tla") },
+      // Hors séquence, pas de compétences en tête (voir imprimerAtelier).
+      { ...gabarit, competences: [] },
       palette,
       (id) => miens.find((p) => p.id === id)?.fichier,
       mentionDeMesPictos(gabarit.cases.filter((c) => !c.masquee).map((c) => c.pictoId)),
