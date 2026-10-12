@@ -902,6 +902,15 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .sv-etape-edition .textarea { resize: vertical; min-height: 48px; }
 .sv-etape-actions { display: flex; flex-direction: column; }
 .sv-etape-actions .btn { padding: 1px 7px; }
+/* Les règles du jeu : une ligne de la bande, ses images côte à côte ; la ligne des joueurs, avec les élèves à cocher. */
+.sv-r-ligne-edition { display: grid; grid-template-columns: 1fr auto; gap: 6px 8px; align-items: center; padding: 6px 6px 6px 8px;
+  border: 1px solid var(--border); border-radius: 10px; }
+.sv-r-cases { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sv-r-choix-joueurs { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 12px; }
+.sv-r-joueur { border: 1px solid var(--border); background: var(--panel); color: var(--text); border-radius: 100px; padding: 2px 9px;
+  font: inherit; font-size: 12px; cursor: pointer; }
+.sv-r-joueur.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); font-weight: 600; }
+.sv-r-joueur:disabled { opacity: .45; cursor: default; }
 .sv-durees { display: flex; flex-wrap: wrap; gap: 5px; }
 
 .sv-minuteur { display: flex; align-items: center; justify-content: center; gap: 16px; background: #fff;

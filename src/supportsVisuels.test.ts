@@ -5,6 +5,7 @@ import {
   graduations, idsDes, mettreEnPause, minuteurPret, normaliserDabord, normaliserJetons, normaliserMinuteur,
   normaliserScenario, pageDuScenario, PAGE_PAYSAGE, PAGE_PORTRAIT, prolonger, restantA, secteurRestant, tempsLisible, diametreDesJetons, pageDabord,
   cartesDabord, cleImage, mesuresDabord, normaliserPicto,
+  REGLES_PAR_DEFAUT, feuilleRegles, lignesImprimees, mesuresRegles, normaliserRegles, photosDesJoueurs, type Joueur,
 } from "./supportsVisuels";
 
 const IMAGES = { 12: "data:image/png;base64,AAA", 34: "data:image/png;base64,BBB" };
@@ -313,5 +314,70 @@ describe("les photos des objets, et les cartes à découper", () => {
     expect(normaliserDabord({ impression: "nimporte" }).impression).toBe("planche");
     expect(normaliserDabord({}).cartes).toEqual([]);
     expect(mesuresDabord({ sens: "vertical", exemplaires: 2 }).cadre).toBeLessThan(mesuresDabord({ sens: "horizontal", exemplaires: 1 }).cadre);
+  });
+});
+
+describe("les règles du jeu", () => {
+  const joueurs: Joueur[] = [
+    { id: "e1", prenom: "Adam", photo: "adam.jpg" },
+    { id: "e2", prenom: "Lina", photo: null },
+  ];
+  const IMAGES_JEU = { 12: "data:image/png;base64,AAA", "photo:adam.jpg": "data:image/jpeg;base64,CCC" };
+
+  it("part d'une bande prête : les joueurs, la photo du jeu, puis ce qu'on y fait", () => {
+    const r = normaliserRegles(undefined);
+    expect(r.lignes[0].joueurs).toBe(true);
+    expect(r.lignes.map((l) => l.images.map((i) => i.mot).join(" + "))).toEqual([
+      "les joueurs", "", "règles du jeu", "jouer", "lancer les dés", "avancer + pion", "plateau de jeu", "gagner", "perdre",
+    ]);
+    // Des pictos déjà posés, dans le sens du jeu ; la photo du jeu reste à prendre.
+    expect(r.lignes.filter((l) => l.images.every((i) => i.id != null)).length).toBe(8);
+    expect(r.bandes).toBe(3);
+  });
+
+  it("imprime trois bandes, le mot au-dessus de chaque image, sans les lignes vides", () => {
+    const r = { ...REGLES_PAR_DEFAUT, lignes: [
+      { images: [{ id: 12, mot: "jouer" }], joueurs: false },
+      { images: [{ id: null, mot: "" }], joueurs: false },
+      { images: [{ id: 12, mot: "avancer" }, { id: null, mot: "pion" }], joueurs: false },
+    ] };
+    const html = feuilleRegles(r, IMAGES_JEU, []);
+    expect(compter(html, /class="sv-r-bande"/g)).toBe(3);
+    expect(compter(html, /class="sv-r-ligne"/g)).toBe(6);
+    expect(html).toMatch(/<div class="sv-r-mot">jouer<\/div><img class="sv-r-image"/);
+    // Un mot sans image garde sa place, en pointillés.
+    expect(html).toContain('<div class="sv-r-mot">pion</div><div class="sv-r-image sv-image-vide">');
+    expect(html).toContain(ATTRIBUTION_ARASAAC);
+  });
+
+  it("met la photo des joueurs sur leur ligne, leur prénom quand ils n'en ont pas", () => {
+    const r = { ...REGLES_PAR_DEFAUT, bandes: 1 as const, lignes: [{ images: [{ id: 12, mot: "les joueurs" }], joueurs: true }] };
+    const html = feuilleRegles(r, IMAGES_JEU, joueurs);
+    expect(html).toContain('<img class="sv-r-photo" src="data:image/jpeg;base64,CCC" alt="Adam"/>');
+    expect(html).toContain('<div class="sv-r-prenom">Lina</div>');
+    // Sans joueurs choisis ni image, la ligne disparaît.
+    expect(lignesImprimees({ ...r, lignes: [{ images: [{ id: null, mot: "" }], joueurs: true }] }, [])).toEqual([]);
+  });
+
+  it("tient sur une page en hauteur, et range les joueurs nombreux sur deux rangées", () => {
+    expect(mesuresRegles(3, 9)).toEqual({ largeur: 58, ligne: 29.3, image: 22.8 });
+    expect(mesuresRegles(1, 4)).toEqual({ largeur: 90, ligne: 34, image: 27.5 });
+    expect(mesuresRegles(2, 14).ligne * 14).toBeLessThanOrEqual(264);
+    expect(photosDesJoueurs(58, 22.8, 1, 2).rangees).toBe(1);
+    const huit = photosDesJoueurs(58, 22.8, 1, 8);
+    expect(huit.rangees).toBe(2);
+    expect(huit.cote * 4 + 3).toBeLessThanOrEqual(58 - 3 - (22.8 + 2));
+  });
+
+  it("répare des réglages abîmés : une seule ligne des joueurs, des bornes", () => {
+    const r = normaliserRegles({
+      lignes: [{ images: [{ id: 3, mot: "a" }], joueurs: true }, { images: [], joueurs: true }, { images: "x" }],
+      joueurs: ["e1", "e1", 4, "", "e2"], bandes: 7, capitales: "oui",
+    });
+    expect(r.lignes.map((l) => l.joueurs)).toEqual([true, false, false]);
+    expect(r.lignes[1].images).toHaveLength(1);
+    expect(r.joueurs).toEqual(["e1", "e2"]);
+    expect(r.bandes).toBe(3);
+    expect(r.capitales).toBe(false);
   });
 });
