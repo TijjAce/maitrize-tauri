@@ -3,6 +3,7 @@ import {
   basculerCompetence, cleDesCompetences, ecrireCompetencesAtelier, lireCompetencesAtelier,
   memeCompetence,
   competencesParObjectif, objectifsDesAteliers, propositionsDesAteliers, unionDesCompetences,
+  detacherAtelier, identiteCompetence, liensParCompetence, niveauxDeLaLigne, nombreDeCompetences, rattacherAtelier, vautPourLeNiveau,
 } from "./ateliersCompetences";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 
@@ -116,5 +117,56 @@ describe("les compétences par objectif", () => {
     propositionsDesAteliers.publier("cubes", "", []);
     expect(appels).toBe(3);
     off();
+  });
+});
+
+describe("le catalogue par compétence", () => {
+  const ligne = (refId: string, titre = refId, niveau: string | null = "CP"): CompetenceSelectionnee => ({
+    id: refId, referentielNom: "Cycle 2", domaineId: "d", domaineTitre: "Mathématiques", sousDomaineTitre: "Nombres",
+    competenceGeneraleTitre: null, competenceTitre: titre, niveau, competenceRefId: refId,
+  });
+  const reglages = {
+    [cleDesCompetences("coloriage")]: ecrireCompetencesAtelier([ligne("a"), ligne("b")]),
+    [cleDesCompetences("cubes", "CP")]: ecrireCompetencesAtelier([ligne("a")]),
+    [cleDesCompetences("martiniere", "cp-complements-10")]: ecrireCompetencesAtelier([ligne("b"), { ...ligne("ancienne"), competenceRefId: null }]),
+    [cleDesCompetences("trous")]: "[]",
+    "fabriquer:rangement": "usage",
+  };
+
+  it("relit chaque compétence avec ses ateliers, et la liste qui les rattache", () => {
+    const liens = liensParCompetence(reglages);
+    expect(liens.get(identiteCompetence("Cycle 2", "a"))).toEqual([{ atelier: "coloriage", objectif: "" }, { atelier: "cubes", objectif: "CP" }]);
+    expect(liens.get(identiteCompetence("Cycle 2", "b"))).toEqual([{ atelier: "coloriage", objectif: "" }, { atelier: "martiniere", objectif: "cp-complements-10" }]);
+    // Une ligne gardée sans identifiant ne se retrouve pas dans l'arbre.
+    expect([...liens.keys()].some((k) => k.includes("ancienne"))).toBe(false);
+    expect(nombreDeCompetences(reglages)).toEqual({ coloriage: 2, cubes: 1, martiniere: 1 });
+  });
+
+  it("rattache à la liste « tous niveaux », une fois", () => {
+    const ecrit = rattacherAtelier(reglages, "trous", ligne("c"));
+    expect(Object.keys(ecrit)).toEqual([cleDesCompetences("trous")]);
+    expect(lireCompetencesAtelier(ecrit[cleDesCompetences("trous")]).map((c) => c.competenceRefId)).toEqual(["c"]);
+    // Déjà là, même par une liste de classe : rien à écrire.
+    expect(rattacherAtelier(reglages, "cubes", ligne("a"))).toEqual({});
+  });
+
+  it("détache de toutes les listes de l'atelier, et seulement des siennes", () => {
+    const tout = { ...reglages, [cleDesCompetences("cubes")]: ecrireCompetencesAtelier([ligne("a"), ligne("d")]) };
+    const ecrit = detacherAtelier(tout, "cubes", ligne("a"));
+    expect(Object.keys(ecrit).sort()).toEqual([cleDesCompetences("cubes"), cleDesCompetences("cubes", "CP")].sort());
+    expect(lireCompetencesAtelier(ecrit[cleDesCompetences("cubes")]).map((c) => c.competenceRefId)).toEqual(["d"]);
+    expect(lireCompetencesAtelier(ecrit[cleDesCompetences("cubes", "CP")])).toEqual([]);
+    expect(detacherAtelier(tout, "trous", ligne("a"))).toEqual({});
+  });
+
+  it("lit les niveaux d'une ligne : seul, en plage, ou tout le cycle", () => {
+    expect(niveauxDeLaLigne("CE1")).toEqual(["CE1"]);
+    expect(niveauxDeLaLigne("CP-CE2")).toEqual(["CP", "CE1", "CE2"]);
+    expect(niveauxDeLaLigne("")).toEqual([]);
+    expect(vautPourLeNiveau("CP-CE2", "CE1")).toBe(true);
+    expect(vautPourLeNiveau("CM1-CM2", "CE2")).toBe(false);
+    expect(vautPourLeNiveau(null, "GS")).toBe(true);
+    expect(vautPourLeNiveau("CE1", "")).toBe(true);
+    expect(vautPourLeNiveau("CE1", "CP")).toBe(false);
   });
 });
