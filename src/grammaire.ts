@@ -17,6 +17,7 @@
 import { escapeHtml } from "./print";
 import { feuille } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
+import { codeActuel, etapeDuCode, marquer, phraseAnalysee, type CodeDeLaPhrase } from "./codeDeLaPhrase";
 import { AU_PROGRAMME, PERSONNES, VERBES_1ER_GROUPE, tempsDe, VERBES_IRREGULIERS, avecPronom, formes, radicalEtTerminaison, type Temps } from "./conjugaison";
 
 export type Classe = "CP" | "CE1" | "CE2";
@@ -125,9 +126,8 @@ const SENS_SANS_LE_COMPLEMENT: Record<string, string> = {
   "Les enfants jouent.": "oui",
   "Ma grand-mère prépare.": "non : on ne sait plus ce qu'elle prépare",
 };
-export function phraseMarquee(p: string): string {
-  return escapeHtml(p).replace(/\[([SVC]):([^\]]+)\]/g, (_m, k: string, g: string) => `<span class="gr-${k === "S" ? "sujet" : k === "V" ? "verbe" : "complement"}">${g}</span>`);
-}
+/** La phrase analysée, chaque groupe marqué selon le code de la classe (voir codeDeLaPhrase). */
+export const phraseMarquee = (p: string, code: CodeDeLaPhrase = codeActuel()) => phraseAnalysee(p, code);
 
 export type ClasseDeMot = "nom commun" | "nom propre" | "déterminant" | "adjectif" | "verbe" | "pronom" | "adverbe";
 export const MOTS_A_CLASSER: { mot: string; classe: ClasseDeMot }[] = [
@@ -282,16 +282,17 @@ function feuilleNegation(r: ReglagesGrammaire, graine: number): string {
     ${corrige("La forme négative", items.map((x, i) => `<div><b>${i + 1}.</b> ${escapeHtml(x.negative)}</div>`).join(""))}`;
 }
 
-function feuilleConstituants(_r: ReglagesGrammaire, graine: number): string {
+function feuilleConstituants(_r: ReglagesGrammaire, graine: number, code: CodeDeLaPhrase): string {
   const items = melanger(hasard(graine), PHRASES_DEMONTEES).slice(0, 6);
   // La phrase qu'on transforme n'a qu'un complément : « le complément » est alors celui-là, sans hésiter.
   const seule = items.find((p) => (p.match(/\[C:/g) ?? []).length === 1) ?? items[0];
   const sans = sansLeComplement(seule);
   const oui = `<div class="gr-choix"><span><span class="gr-case gr-petite"></span> oui</span><span><span class="gr-case gr-petite"></span> non</span></div>`;
-  return `<div class="page">${titre("Groupe sujet, verbe, compléments")}${TETE}${rappel("Le groupe sujet peut s'encadrer par « C'est… qui ». Le verbe peut s'encadrer par « ne… pas », et il change si je change le temps.")}${regle("Souligne le groupe sujet en bleu. Entoure le verbe en rouge. Encadre les compléments en vert.")}
+  return `<div class="page">${titre("Groupe sujet, verbe, compléments")}${TETE}${rappel("Le groupe sujet peut s'encadrer par « C'est… qui ». Le verbe peut s'encadrer par « ne… pas », et il change si je change le temps.")}${regle(`${etapeDuCode(code, "sujet")} ${etapeDuCode(code, "verbe")} ${etapeDuCode(code, "complement")}`)}
     ${items.map((p, i) => `<div class="gr-item gr-grand"><b>${i + 1}.</b> ${escapeHtml(sansMarques(p))}</div>`).join("")}
-    <div class="gr-sous-titre">Encadre le complément en vert. Puis écris la phrase sans le complément. Réponds : la phrase a-t-elle encore du sens ?</div><div class="gr-q">${escapeHtml(sansMarques(seule))}</div>${ligne()}${oui}</div>
-    ${corrige("Groupe sujet, verbe, compléments", items.map((p, i) => `<div><b>${i + 1}.</b> ${phraseMarquee(p)}</div>`).join("") + '<div class="gr-legende"><span class="gr-sujet">groupe sujet</span> <span class="gr-verbe">verbe</span> <span class="gr-complement">complément</span></div>'
+    <div class="gr-sous-titre">${etapeDuCode(code, "complement", "le complément")} Puis écris la phrase sans le complément. Réponds : la phrase a-t-elle encore du sens ?</div><div class="gr-q">${escapeHtml(sansMarques(seule))}</div>${ligne()}${oui}</div>
+    ${corrige("Groupe sujet, verbe, compléments", items.map((p, i) => `<div><b>${i + 1}.</b> ${phraseMarquee(p, code)}</div>`).join("")
+      + `<div class="gr-legende">${marquer(code, "sujet", "groupe sujet")} ${marquer(code, "verbe", "verbe")} ${marquer(code, "complement", "complément")}</div>`
       + `<div>Sans le complément : <b>${escapeHtml(sans)}</b>${SENS_SANS_LE_COMPLEMENT[sans] ? ` — encore du sens ? ${escapeHtml(SENS_SANS_LE_COMPLEMENT[sans])}` : ""}</div>`)}`;
 }
 
@@ -396,10 +397,11 @@ function feuilleInfinitif(r: ReglagesGrammaire, graine: number): string {
     }).join(""))}`;
 }
 
-export function htmlGrammaire(r: ReglagesGrammaire, graine: number): string {
+/** La feuille de l'exercice ; l'analyse de la phrase suit le code de la classe (voir codeDeLaPhrase). */
+export function htmlGrammaire(r: ReglagesGrammaire, graine: number, code: CodeDeLaPhrase = codeActuel()): string {
   const f: Record<ExerciceGrammaire, () => string> = {
     phrases: () => feuillePhrases(r, graine), estCeUnePhrase: () => feuilleEstCeUnePhrase(r, graine), types: () => feuilleTypes(r, graine),
-    negation: () => feuilleNegation(r, graine), constituants: () => feuilleConstituants(r, graine), classes: () => feuilleClasses(r, graine),
+    negation: () => feuilleNegation(r, graine), constituants: () => feuilleConstituants(r, graine, code), classes: () => feuilleClasses(r, graine),
     pronoms: () => feuillePronoms(r, graine), discours: () => feuilleDiscours(), genreNombre: () => feuilleGenreNombre(),
     chaineAccords: () => feuilleChaineAccords(r, graine), sujetVerbe: () => feuilleSujetVerbe(r, graine), conjuguer: () => feuilleConjuguer(r, graine),
     transformerTemps: () => feuilleTransformerTemps(r, graine), infinitif: () => feuilleInfinitif(r, graine),
@@ -442,9 +444,6 @@ export const STYLE_GRAMMAIRE = `
   .feuille.gr .gr-conj th { border: 1px solid #1c2233; background: #f7f8fc; padding: 2mm; font-size: 15px; }
   .feuille.gr .gr-conj td { border: 1px solid #1c2233; height: 10mm; padding: 0 2mm; }
   .feuille.gr .gr-pronom { width: 18mm; color: #4a5168; font-size: 13px; }
-  .feuille.gr .gr-sujet { border-bottom: 2.5px solid #2454e6; }
-  .feuille.gr .gr-verbe { border: 2px solid #d33a32; border-radius: 3mm; padding: 0 1mm; }
-  .feuille.gr .gr-complement { border: 2px solid #1f9a48; padding: 0 1mm; }
   .feuille.gr .gr-legende { margin-top: 4mm; font-size: 13px; }
   .feuille.gr .gr-legende span { margin-right: 6mm; }
   .feuille.gr .gr-corrige { font-size: 14px; line-height: 1.9; }
