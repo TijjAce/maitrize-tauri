@@ -19,7 +19,7 @@ import { AtelierContext } from "../components/AtelierContext";
 import { ChoixImages, ModeImagesDeLAtelier, useModeImages } from "../components/PresentationFeuille";
 import { MaterielDeLAtelier, MaterielDeLaClasse } from "../components/MaterielDeLaClasse";
 import { MODES_IMAGES, listeSelonMode } from "../imagesSelonMode";
-import { deposerSurLeBureau, lignesCompetencesAtelier } from "../impressionAtelier";
+import { deposerSurLeBureau } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { BandeauModification } from "../components/BandeauModification";
 import { DominosTab, FluenceTab, IntrusTab, LettresTab, LotoSyllabesTab, PairesTab, SyllabaireTab } from "./AteliersSons";
@@ -642,10 +642,9 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
     setOccupe(true);
     try {
       const nom = titre.trim() || themes.map(libelleCategorie).join(" + ") || gen.quoi;
-      // Les compétences de l'atelier s'écrivent dans la marge haute du PDF.
-      const competences = await lignesCompetencesAtelier(atelier);
+      // Hors séquence, pas de compétences dans la marge haute du PDF (voir imprimerAtelier).
       const retenues = await selectionDuPdf();
-      await api.jeuGenerer(gen.id, retenues, { ...options, graine: Math.floor(Math.random() * 1e9), competences }, nom,
+      await api.jeuGenerer(gen.id, retenues, { ...options, graine: Math.floor(Math.random() * 1e9), competences: [] }, nom,
         true, await imagesDeLEnseignant(retenues));
       toast(`${gen.quoi.charAt(0).toUpperCase()}${gen.quoi.slice(1)} créé — le PDF s'ouvre.`, { icone: gen.icone });
     } catch (e: any) { toast(String(e), { icone: "⚠️" }); }
@@ -911,9 +910,8 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
             )}
             <BoutonBureau className="btn" disabled={occupe || selection.length < minimum} onEnregistrer={async () => {
               const nom = titre.trim() || themes.map(libelleCategorie).join(" + ") || gen.quoi;
-              const competences = await lignesCompetencesAtelier(atelier);
               const retenues = await selectionDuPdf();
-              const chemin = await api.jeuGenerer(gen.id, retenues, { ...options, graine: Math.floor(Math.random() * 1e9), competences }, nom,
+              const chemin = await api.jeuGenerer(gen.id, retenues, { ...options, graine: Math.floor(Math.random() * 1e9), competences: [] }, nom,
                 false, await imagesDeLEnseignant(retenues));
               return deposerSurLeBureau(atelier, nom, await api.fichierImporterDepuisChemin(chemin));
             }} />

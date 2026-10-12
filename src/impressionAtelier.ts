@@ -121,9 +121,6 @@ export async function competencesDeLAtelier(atelier: string): Promise<Competence
   }
 }
 
-/** Les lignes pour un PDF fabriqué côté Rust. */
-export const lignesCompetencesAtelier = async (atelier: string) =>
-  lignesCompetences(await competencesDeLAtelier(atelier));
 
 /**
  * Les consignes de la feuille avec les pictos de leurs verbes (voir `caa`),
@@ -217,9 +214,14 @@ export async function styleDeLAtelier(atelier: string): Promise<string> {
   }
 }
 
-/** Imprime la feuille d'un atelier : sa consigne, ses compétences en tête, ses consignes en pictos. */
+/**
+ * Imprime la feuille d'un atelier : sa consigne, ses consignes en pictos. Les
+ * compétences ne s'impriment en tête que sur une feuille de séquence, qui
+ * porte les siennes : la liste de toutes celles de l'atelier, sur une feuille
+ * faite à part, « ne fait pas sérieux » (demande de l'enseignant, octobre 2026).
+ */
 export async function imprimerAtelier(atelier: string, titre: string, corps: string, style = "", extras: ExtrasAtelier = {}): Promise<void> {
-  const entete = enteteCompetencesHtml(await competencesDeLAtelier(atelier));
+  const entete = enteteCompetencesHtml(extras.competences ?? []);
   const consignes = await consignesEnPictos(await avecLaConsigneDeLAtelier(atelier, await avecLesPhotosDePaysage(corps)), await supplementDe(atelier, extras));
   printHTML(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style + await styleDeLAtelier(atelier));
 }
@@ -307,7 +309,8 @@ async function remplacerLaFeuille(
 /** La feuille d'un atelier telle qu'elle s'imprime — compétences en tête, consignes en pictos —, en PDF dans les fichiers. */
 async function pdfDeLAtelier(atelier: string, titre: string, corps: string, style: string, extras: ExtrasAtelier): Promise<string> {
   const { api } = await import("./api");
-  const entete = enteteCompetencesHtml(extras.competences ?? await competencesDeLAtelier(atelier));
+  // Les compétences en tête : celles de la séquence, s'il y en a ; jamais la liste de l'atelier (voir imprimerAtelier).
+  const entete = enteteCompetencesHtml(extras.competences ?? []);
   const consignes = await consignesEnPictos(await avecLaConsigneDeLAtelier(atelier, await avecLesPhotosDePaysage(corps)), await supplementDe(atelier, extras));
   const html = documentImprimable(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style + await styleDeLAtelier(atelier));
   return api.feuilleEnPdf(html);
@@ -349,17 +352,16 @@ export function titreSansLEleve(titre: string, prenom: string): string {
 }
 
 /**
- * La feuille de l'atelier telle qu'elle s'imprime — sa consigne, ses
- * compétences —, sans corrigé, en PDF. Une fiche d'autonomie garde sa
- * consigne sur le papier : l'élève y travaille seul, sans le portail.
+ * La feuille de l'atelier telle qu'elle s'imprime — sa consigne —, sans
+ * corrigé ni compétences, en PDF. Une fiche d'autonomie garde sa consigne sur
+ * le papier : l'élève y travaille seul, sans le portail.
  */
 async function pdfPourLEleve(atelier: string, titre: string, corps: string, style: string, eleve: { prenom: string; date: string }): Promise<string> {
   const { api } = await import("./api");
-  const entete = enteteCompetencesHtml(await competencesDeLAtelier(atelier));
   const sansCorrige = await avecLaConsigneDeLAtelier(atelier, await avecLesPhotosDePaysage(corps), { consigne: true, corrige: false });
   const consignes = await consignesEnPictos(sansCorrige, await supplementDe(atelier, {}));
-  const html = documentImprimable(titreSansLEleve(titre, eleve.prenom), entete + consignes.corps,
-    (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style + await styleDeLAtelier(atelier));
+  // Ni compétences en tête : une fiche « En retard » n'est pas une feuille de séquence.
+  const html = documentImprimable(titreSansLEleve(titre, eleve.prenom), consignes.corps, style + consignes.style + await styleDeLAtelier(atelier));
   return api.feuilleEnPdf(html);
 }
 

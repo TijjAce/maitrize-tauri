@@ -99,12 +99,14 @@ describe("l'en-tête imprimé", () => {
 });
 
 describe("imprimer un atelier", () => {
-  it("met ses compétences en tête, puis la feuille telle quelle", async () => {
+  it("hors séquence, n'imprime pas les compétences de l'atelier ; une feuille de séquence porte les siennes en tête", async () => {
     reglages.set("fabriquer:competences:lotoSyllabes", ecrireCompetencesAtelier([comp()]));
     await imprimerAtelier("lotoSyllabes", "Loto des syllabes", "<div class=\"feuille\">…</div>", ".feuille { }");
     expect(impressions).toHaveLength(1);
-    const { titre, corps, style } = impressions[0];
-    expect(titre).toBe("Loto des syllabes");
+    expect(impressions[0].titre).toBe("Loto des syllabes");
+    expect(impressions[0].corps).toBe("<div class=\"feuille\">…</div>");
+    await imprimerAtelier("lotoSyllabes", "Loto des syllabes", "<div class=\"feuille\">…</div>", ".feuille { }", { competences: [comp()] });
+    const { corps, style } = impressions[1];
     expect(corps.startsWith('<div class="competences-atelier">')).toBe(true);
     expect(corps.endsWith("<div class=\"feuille\">…</div>")).toBe(true);
     expect(corps).toContain("Décoder des syllabes simples");
@@ -188,14 +190,14 @@ describe("sur le bureau", () => {
     expect(materielDuBureau("oie", "  ", "y.pdf", [], "id-2", "")).toMatchObject({ titre: "oie", competenceId: "", competenceTitre: "" });
   });
 
-  it("enregistre la même feuille que l'impression, compétences en tête, puis la dépose", async () => {
+  it("enregistre la même feuille que l'impression, puis la dépose : la tuile dit la compétence, le papier ne la liste pas", async () => {
     reglages.set("fabriquer:competences:cubes", ecrireCompetencesAtelier([comp()]));
     const m = await enregistrerSurLeBureau("cubes", "Les nombres en cubes", "<div class=\"feuille\">…</div>", ".feuille { }");
     expect(pdfs).toHaveLength(1);
     expect(pdfs[0]).toContain("<title>Les nombres en cubes</title>");
-    expect(pdfs[0].indexOf("competences-atelier")).toBeLessThan(pdfs[0].indexOf("<div class=\"feuille\">"));
-    expect(pdfs[0]).toContain("Décoder des syllabes simples");
+    expect(pdfs[0]).not.toContain('<div class="competences-atelier">');
     expect(pdfs[0]).toContain(".feuille { }");
+    expect(m.competenceTitre).toBe("Décoder des syllabes simples");
     expect(materiels).toHaveLength(1);
     expect(m).toMatchObject({ id: "id-neuf", titre: "Les nombres en cubes", pdfsJson: '["pdf-1.pdf"]', dateCreation: "2026-09-28T10:00:00.000Z" });
   });
