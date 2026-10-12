@@ -152,3 +152,11 @@ describe("la taille du texte d'un document", () => {
     expect(densiteDuDocument(tableau + "\n" + paragraphes(8))).toBe("serre");
   });
 });
+
+describe("le titre d'une réponse", () => {
+  it("prend le premier titre du plus haut niveau, même après une phrase d'introduction", () => {
+    expect(titreDuDocument("Voici un tableau simple.\n\n## Fiche interview sur l'IA\n\n### Étape 1")).toBe("Fiche interview sur l'IA");
+    expect(titreDuDocument("# Les fractions\n\n## Séance 1")).toBe("Les fractions");
+    expect(titreDuDocument("Une réponse sans titre, **en gras**.")).toBe("Une réponse sans titre, en gras.");
+  });
+});

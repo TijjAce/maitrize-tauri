@@ -1644,6 +1644,33 @@ pub fn enregistrer_texte(chemin: String, contenu: String) -> R<()> {
     Ok(())
 }
 
+/// Un fichier d'une archive à écrire : son chemin dans l'archive, et son texte.
+#[derive(serde::Deserialize)]
+pub struct FichierArchive { nom: String, contenu: String }
+
+/// Les noms de fichiers d'une archive : des chemins relatifs, sans remonter d'un dossier.
+fn nom_d_archive_sur(nom: &str) -> bool {
+    !nom.is_empty() && !nom.starts_with('/') && !nom.contains('\\') && nom.split('/').all(|p| !p.is_empty() && p != "..")
+}
+
+/// Écrit une archive zip de fichiers texte au chemin choisi — un document Word
+/// (.docx) en est une : l'écran en fabrique les parties, d'ici on les range.
+#[tauri::command]
+pub fn enregistrer_archive(chemin: String, fichiers: Vec<FichierArchive>) -> R<()> {
+    use std::io::Write;
+    if let Some(f) = fichiers.iter().find(|f| !nom_d_archive_sur(&f.nom)) {
+        return Err(format!("Nom refusé dans l'archive : {}", f.nom));
+    }
+    let mut zip = zip::ZipWriter::new(std::fs::File::create(&chemin).map_err(e)?);
+    let options = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    for f in fichiers {
+        zip.start_file(f.nom, options).map_err(e)?;
+        zip.write_all(f.contenu.as_bytes()).map_err(e)?;
+    }
+    zip.finish().map_err(e)?;
+    Ok(())
+}
+
 /// Écrit un document HTML temporaire et l'ouvre dans le navigateur par défaut
 /// (rendu riche : blocs positionnés, tableaux, images → imprimable / PDF natif).
 #[tauri::command]
@@ -3734,5 +3761,29 @@ mod tests_projets {
         let relu = lire(&c, "p2");
         assert_eq!(relu.mots, "");
         assert_eq!(relu.phrases, "");
+    }
+}
+
+#[cfg(test)]
+mod tests_archive {
+    use super::*;
+
+    #[test]
+    fn une_archive_s_ecrit_et_se_relit_sans_chemin_qui_remonte() {
+        let chemin = std::env::temp_dir().join(format!("maitrize-archive-{}.docx", std::process::id()));
+        let chemin = chemin.to_string_lossy().to_string();
+        enregistrer_archive(chemin.clone(), vec![
+            FichierArchive { nom: "[Content_Types].xml".into(), contenu: "<Types/>".into() },
+            FichierArchive { nom: "word/document.xml".into(), contenu: "<w:document>é</w:document>".into() },
+        ]).unwrap();
+        let mut archive = zip::ZipArchive::new(std::fs::File::open(&chemin).unwrap()).unwrap();
+        let mut texte = String::new();
+        std::io::Read::read_to_string(&mut archive.by_name("word/document.xml").unwrap(), &mut texte).unwrap();
+        assert_eq!(texte, "<w:document>é</w:document>");
+        let _ = std::fs::remove_file(&chemin);
+        for refuse in ["../x.xml", "/etc/x", "a//b", "a\\b", ""] {
+            assert!(enregistrer_archive(chemin.clone(), vec![FichierArchive { nom: refuse.into(), contenu: String::new() }]).is_err(), "{refuse}");
+        }
+        assert!(!std::path::Path::new(&chemin).exists());
     }
 }

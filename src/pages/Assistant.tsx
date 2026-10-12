@@ -13,7 +13,9 @@ import { listen } from "@tauri-apps/api/event";
 import { useDictee, mmss } from "../dictee";
 import { toast } from "../components/Toaster";
 import { DicteeAtelier } from "../components/DicteeAtelier";
-import { SUGGESTIONS_DOCUMENT, consigneDocument, feuilleDuDocument } from "../documentIa";
+import { STYLE_DOCUMENT_IA, SUGGESTIONS_DOCUMENT, consigneDocument, feuilleDeLaReponse } from "../documentIa";
+import { enregistrerEnPdf, enregistrerEnWord } from "../exportsDocument";
+import { MiseEnPageReponse } from "../components/MiseEnPageReponse";
 import { documentImprimable, printHTML } from "../print";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { deposerSurLeBureau } from "../impressionAtelier";
@@ -124,15 +126,29 @@ export default function Assistant() {
     return () => window.removeEventListener(EVT_QUESTION_ASSISTANT, prendre);
   }, []);
 
-  // Une réponse devient une feuille : imprimée, ou en PDF sur le bureau.
-  const imprimerReponse = (markdown: string) => {
-    const f = feuilleDuDocument(markdown);
+  // Une réponse devient une feuille — retouchée, si on l'a retouchée : imprimée, en PDF sur le bureau ou ailleurs, en Word.
+  const imprimerReponse = (m: ChatMessage) => {
+    const f = feuilleDeLaReponse(m);
     printHTML(f.titre, f.corps, f.style);
   };
-  const reponseSurLeBureau = async (markdown: string) => {
-    const f = feuilleDuDocument(markdown);
-    const fichier = await api.feuilleEnPdf(documentImprimable(f.titre, f.corps, f.style));
-    return deposerSurLeBureau("assistant", f.titre, fichier);
+  const feuilleSurLeBureau = async (titre: string, corps: string) => {
+    const fichier = await api.feuilleEnPdf(documentImprimable(titre, corps, STYLE_DOCUMENT_IA));
+    return deposerSurLeBureau("assistant", titre, fichier);
+  };
+  const reponseSurLeBureau = (m: ChatMessage) => { const f = feuilleDeLaReponse(m); return feuilleSurLeBureau(f.titre, f.corps); };
+  const exporterReponse = async (m: ChatMessage, quoi: "pdf" | "word") => {
+    const f = feuilleDeLaReponse(m);
+    try {
+      const ok = quoi === "pdf" ? await enregistrerEnPdf(f.titre, f.corps, f.style) : await enregistrerEnWord(f.titre, f.corps);
+      if (ok) toast(quoi === "pdf" ? `« ${f.titre} » est enregistré en PDF.` : `« ${f.titre} » est enregistré en Word : il s'ouvre dans Word, Pages ou LibreOffice.`, { icone: quoi === "pdf" ? "📄" : "📝" });
+    } catch (e) { toast("Non enregistré : " + String(e), { icone: "⚠️", duree: 8000 }); }
+  };
+  // La réponse qu'on retouche avant de l'imprimer ou de l'exporter ; sa version gardée reste dans la conversation.
+  const [aRetoucher, setARetoucher] = React.useState<number | null>(null);
+  const garderRetouche = (i: number, html: string | null) => {
+    const suite = messages.map((x, j) => (j === i ? { ...x, mise: html ?? undefined } : x));
+    setMessages(suite);
+    void sauvegarderConv(suite);
   };
   // ── Suivi du bas de la conversation ──────────────────────────────────
   // La réponse arrive token par token : chaque morceau change `messages` et
@@ -275,7 +291,8 @@ export default function Assistant() {
       // l'établissement —, masquée d'un seul tenant ; la réponse les retrouve
       // à mesure qu'elle s'écrit.
       const masque = pseudonymiserTout(suite.map((m) => m.content), await nomsAMasquer());
-      const envoyes: ChatMessage[] = suite.map((m, i) => ({ ...m, content: masque.textes[i] ?? m.content }));
+      // La version retouchée d'une réponse reste ici : seul le texte part.
+      const envoyes: ChatMessage[] = suite.map((m, i) => ({ role: m.role, content: masque.textes[i] ?? m.content }));
       const rendre = (t: string) => restaurer(t, masque.table).texte;
       // Streaming : la réponse s'affiche au fil des tokens via événements Tauri.
       const reqId = newId();
@@ -415,8 +432,12 @@ export default function Assistant() {
             {/* Une réponse finie devient une feuille : imprimée, ou en PDF sur le bureau. */}
             {m.role === "assistant" && m.content.trim() && !(loading && i === messages.length - 1) && !m.content.startsWith("⚠️") && (
               <div className="msg-actions">
-                <button type="button" className="btn ghost sm" onClick={() => imprimerReponse(m.content)} title="Cette réponse, mise en page, dans le navigateur pour l'imprimer">🖨 Imprimer</button>
-                <BoutonBureau className="btn ghost sm" onEnregistrer={() => reponseSurLeBureau(m.content)} />
+                <button type="button" className="btn ghost sm" onClick={() => setARetoucher(i)}
+                  title="Effacer un passage, aérer un tableau, changer la taille du texte — puis imprimer ou exporter">✏️ Retoucher{m.mise ? " (retouchée)" : ""}</button>
+                <button type="button" className="btn ghost sm" onClick={() => imprimerReponse(m)} title="Cette réponse, mise en page, dans le navigateur pour l'imprimer">🖨 Imprimer</button>
+                <button type="button" className="btn ghost sm" onClick={() => { void exporterReponse(m, "pdf"); }} title="Enregistrer cette réponse en PDF, là où vous voulez">📄 PDF…</button>
+                <button type="button" className="btn ghost sm" onClick={() => { void exporterReponse(m, "word"); }} title="Un document Word (.docx), à retoucher dans Word, Pages ou LibreOffice">📝 Word…</button>
+                <BoutonBureau className="btn ghost sm" onEnregistrer={() => reponseSurLeBureau(m)} />
               </div>
             )}
           </div>
@@ -453,6 +474,10 @@ export default function Assistant() {
           <button className="btn primary" disabled={!input.trim()} onClick={() => envoyer()}>Envoyer</button>
         )}
       </div>
+      {aRetoucher !== null && messages[aRetoucher] && (
+        <MiseEnPageReponse markdown={messages[aRetoucher].content} mise={messages[aRetoucher].mise}
+          onFermer={() => setARetoucher(null)} onGarder={(html) => garderRetouche(aRetoucher, html)} onBureau={feuilleSurLeBureau} />
+      )}
       {aClasser !== null && (
         <DicteeAtelier eleves={eleves ?? []} texteInitial={aClasser}
           titre="👧 Classer dans les fiches élèves"

@@ -345,7 +345,11 @@ export interface DocumentCoffre {
   id: string; nom: string; nomFichier: string; tailleOctets: number; dateAjout: string;
 }
 
-export interface ChatMessage { role: "system" | "user" | "assistant"; content: string; }
+export interface ChatMessage {
+  role: "system" | "user" | "assistant"; content: string;
+  /** La réponse retouchée avant d'être imprimée ou exportée, en HTML ; elle ne part jamais chez Mistral. */
+  mise?: string;
+}
 export interface ResultatRecherche {
   kind: string; id: string; titre: string; sousTitre: string;
   /** La ligne où les mots ont été trouvés, telle qu'elle est écrite. */
@@ -674,6 +678,8 @@ export const api = {
   /** Un manuel en PDF, rangé dans les fichiers de l'application : ses photos à la suite, ou son PDF d'origine recopié. */
   manuelEnPdf: (titre: string, pages: string[], pdf: string | null) => invoke<ManuelPdf>("manuel_en_pdf", { titre, pages, pdf }),
   enregistrerTexte: (chemin: string, contenu: string) => invoke<void>("enregistrer_texte", { chemin, contenu }),
+  /** Une archive zip de fichiers texte au chemin choisi — un document Word (.docx) en est une. */
+  enregistrerArchive: (chemin: string, fichiers: { nom: string; contenu: string }[]) => invoke<void>("enregistrer_archive", { chemin, fichiers }),
   imprimerPdf: (nom: string) => invoke<void>("imprimer_pdf", { nom }),
   /** Une feuille HTML en PDF, rangée dans les fichiers de l'application ; renvoie son nom. */
   feuilleEnPdf: (html: string) => invoke<string>("feuille_en_pdf", { html }),
