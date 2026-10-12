@@ -339,6 +339,136 @@ export function feuilleScenario(r: ReglagesScenario, images: Images): string {
   return `<div class="${classes}">${titre}<div class="sv-s-etapes">${etapes.map(etape).join("")}</div>${pied}</div>`;
 }
 
+// ── Les règles du jeu ──────────────────────────────────────────────────────
+//
+// Une bande à plastifier, posée à côté du plateau : qui joue, à quoi, et ce
+// qu'on y fait, une ligne par moment — lancer le dé, avancer le pion, gagner,
+// perdre. Chaque image porte son mot au-dessus ; la ligne des joueurs reçoit
+// la photo des élèves qui jouent. Trois bandes tiennent sur une page : une
+// par table.
+
+export interface LigneRegle { images: PictoPose[]; joueurs: boolean }
+export const LIGNES_REGLES_MAX = 14;
+export const IMAGES_PAR_LIGNE_MAX = 4;
+export const JOUEURS_MAX = 8;
+
+export interface ReglesDuJeu {
+  lignes: LigneRegle[];
+  /** Les élèves qui jouent, par identifiant : leur photo s'ajoute à la ligne des joueurs. */
+  joueurs: string[];
+  /** Les bandes côte à côte sur la page, à découper. */
+  bandes: 1 | 2 | 3;
+  capitales: boolean;
+}
+
+/**
+ * Une bande prête, comme on la fait en classe. Les pictos sont choisis dans
+ * le sens du jeu : « avancer » un pion sur un plateau, « perdre » une
+ * partie — la banque donnerait sinon « perdre » ses clés, et « règles » au
+ * sens du corps.
+ */
+export const REGLES_PAR_DEFAUT: ReglesDuJeu = {
+  lignes: [
+    { images: [{ id: 2439, mot: "les joueurs" }], joueurs: true },
+    // La photo de la boîte du jeu, à prendre.
+    { images: [pictoVide()], joueurs: false },
+    { images: [{ id: 34779, mot: "règles du jeu" }], joueurs: false },
+    { images: [{ id: 23392, mot: "jouer" }], joueurs: false },
+    { images: [{ id: 31071, mot: "lancer les dés" }], joueurs: false },
+    { images: [{ id: 39496, mot: "avancer" }, { id: 9135, mot: "pion" }], joueurs: false },
+    { images: [{ id: 9810, mot: "plateau de jeu" }], joueurs: false },
+    { images: [{ id: 7218, mot: "gagner" }], joueurs: false },
+    { images: [{ id: 22031, mot: "perdre" }], joueurs: false },
+  ],
+  joueurs: [], bandes: 3, capitales: false,
+};
+
+export function normaliserRegles(brut: unknown): ReglesDuJeu {
+  const o = objet(brut), d = REGLES_PAR_DEFAUT;
+  const lignes = Array.isArray(o.lignes)
+    ? o.lignes.slice(0, LIGNES_REGLES_MAX).map((l): LigneRegle => {
+      const x = objet(l);
+      const images = Array.isArray(x.images) ? x.images.slice(0, IMAGES_PAR_LIGNE_MAX).map(normaliserPicto) : [];
+      return { images: images.length ? images : [pictoVide()], joueurs: booleen(x.joueurs, false) };
+    })
+    : d.lignes.map((l) => ({ ...l, images: l.images.map((i) => ({ ...i })) }));
+  // Une seule ligne des joueurs : la première qui l'est.
+  let vue = false;
+  for (const l of lignes) {
+    if (l.joueurs && vue) l.joueurs = false;
+    vue ||= l.joueurs;
+  }
+  const joueurs = Array.isArray(o.joueurs) ? o.joueurs.filter((x): x is string => typeof x === "string" && x !== "") : [];
+  return {
+    lignes: lignes.length ? lignes : [{ images: [pictoVide()], joueurs: false }],
+    joueurs: [...new Set(joueurs)].slice(0, JOUEURS_MAX),
+    bandes: o.bandes === 1 || o.bandes === 2 || o.bandes === 3 ? o.bandes : d.bandes,
+    capitales: booleen(o.capitales, d.capitales),
+  };
+}
+
+/** Un élève qui joue, tel que la bande le montre : son prénom, et sa photo s'il en a une. */
+export interface Joueur { id: string; prenom: string; photo: string | null }
+
+/** La photo d'un joueur, à charger avec les autres images : elle est rangée dans les fichiers de l'application, comme celles des objets. */
+export const photoDuJoueur = (j: Joueur): PictoPose | null => (j.photo ? { id: null, mot: j.prenom, photo: j.photo } : null);
+
+/** Les lignes qu'on imprime, sans leurs cases vides ; une ligne vide disparaît, sauf celle des joueurs quand il y en a. */
+export function lignesImprimees(r: ReglesDuJeu, joueurs: Joueur[]): LigneRegle[] {
+  return r.lignes
+    .map((l) => ({ ...l, images: l.images.filter((i) => !estVide(i)) }))
+    .filter((l) => l.images.length > 0 || (l.joueurs && joueurs.length > 0));
+}
+
+/**
+ * Les mesures d'une bande, en millimètres : sa largeur selon le nombre de
+ * bandes par page, la hauteur de ses lignes pour tenir sur une page en
+ * hauteur, et celle des images — la ligne, moins le mot au-dessus.
+ */
+export function mesuresRegles(bandes: number, lignes: number): { largeur: number; ligne: number; image: number } {
+  const largeur = Math.min(90, Math.floor((186 - 6 * (bandes - 1)) / bandes));
+  const ligne = Math.min(34, Math.floor((264 / Math.max(1, lignes)) * 10) / 10);
+  return { largeur, ligne, image: Math.round((ligne - 6.5) * 10) / 10 };
+}
+
+/**
+ * La taille des photos des joueurs, à côté des images de leur ligne : aussi
+ * grandes que possible, sur une rangée, ou deux s'ils sont nombreux.
+ */
+export function photosDesJoueurs(largeur: number, image: number, imagesDeLaLigne: number, nombre: number): { cote: number; rangees: number } {
+  const place = largeur - 3 - imagesDeLaLigne * (image + 2);
+  const surUne = (place - (nombre - 1)) / Math.max(1, nombre);
+  if (surUne >= Math.min(image * 0.8, 11) || nombre < 2) return { cote: Math.max(6, Math.min(image * 0.8, Math.floor(surUne * 10) / 10)), rangees: 1 };
+  const parRangee = Math.ceil(nombre / 2);
+  const surDeux = (place - (parRangee - 1)) / parRangee;
+  return { cote: Math.max(6, Math.min((image - 1) / 2, Math.floor(surDeux * 10) / 10)), rangees: 2 };
+}
+
+export function feuilleRegles(r: ReglesDuJeu, images: Images, joueurs: Joueur[]): string {
+  const lignes = lignesImprimees(r, joueurs);
+  const { largeur, ligne, image: hauteur } = mesuresRegles(r.bandes, lignes.length);
+  const cellule = (p: PictoPose) => {
+    const m = p.mot.trim();
+    return `<div class="sv-r-case${m ? "" : " sv-r-seule"}">${m ? `<div class="sv-r-mot">${escapeHtml(m)}</div>` : ""}${image(p, images, "sv-r-image")}</div>`;
+  };
+  const joueur = (j: Joueur) => {
+    const p = photoDuJoueur(j);
+    const src = p ? images[cleImage(p)!] : undefined;
+    return src ? `<img class="sv-r-photo" src="${src}" alt="${escapeHtml(j.prenom)}"/>` : `<div class="sv-r-prenom">${escapeHtml(j.prenom)}</div>`;
+  };
+  const rangee = (l: LigneRegle) => {
+    if (!l.joueurs || !joueurs.length) return "";
+    const { cote, rangees } = photosDesJoueurs(largeur, hauteur, l.images.length, joueurs.length);
+    return `<div class="sv-r-joueurs${rangees > 1 ? " sv-r-deux" : ""}" style="--photo: ${cote}mm">${joueurs.map(joueur).join("")}</div>`;
+  };
+  const bande = `<div class="sv-r-bande" style="width: ${largeur}mm; --ligne: ${ligne}mm; --image: ${hauteur}mm">`
+    + lignes.map((l) => `<div class="sv-r-ligne">${l.images.map(cellule).join("")}${rangee(l)}</div>`).join("")
+    + `</div>`;
+  const classes = ["sv-feuille", "sv-regles", r.capitales && "sv-majuscules"].filter(Boolean).join(" ");
+  return `<div class="${classes}"><div class="sv-r-bandes">${Array.from({ length: r.bandes }, () => bande).join("")}</div>`
+    + `${attribution(lignes.flatMap((l) => l.images))}</div>`;
+}
+
 /** Styles des supports, pour l'impression comme pour l'aperçu. */
 export const STYLE_SUPPORTS = `
   .sv-feuille { color: #1c2233; font-family: Arial, Helvetica, sans-serif; background: #fff; }
@@ -423,6 +553,25 @@ export const STYLE_SUPPORTS = `
   .sv-s-livret .sv-image, .sv-s-livret .sv-image-vide { width: 320px; max-width: 70%; }
   .sv-s-livret .sv-s-texte { font-size: 34px; }
   .sv-s-couverture .sv-titre { font-size: 40px; }
+
+  /* Les règles du jeu : des bandes côte à côte, une ligne par moment, le mot au-dessus de chaque image. */
+  .sv-r-bandes { display: flex; justify-content: center; align-items: flex-start; gap: 6mm; }
+  .sv-r-bande { flex: none; box-sizing: border-box; border: 0.4mm solid #222; background: #fff; }
+  .sv-r-ligne { height: var(--ligne); box-sizing: border-box; padding: 1mm 1.5mm; border-bottom: 0.3mm solid #222; overflow: hidden;
+    display: flex; align-items: flex-end; justify-content: center; gap: 2mm; break-inside: avoid; page-break-inside: avoid; }
+  .sv-r-ligne:last-child { border-bottom: none; }
+  .sv-r-case { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+  .sv-r-mot { font-size: 3.3mm; line-height: 1.2; height: 4.2mm; max-width: 100%; text-align: center; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.3mm; }
+  .sv-r-image { height: var(--image); width: auto; max-width: 100%; object-fit: contain; }
+  .sv-r-seule .sv-r-image { height: calc(var(--ligne) - 2mm); }
+  div.sv-r-image { width: var(--image); border: 2px dashed #c4c9d6; border-radius: 2mm; box-sizing: border-box; }
+  .sv-r-joueurs { display: flex; flex-wrap: wrap; align-content: flex-end; justify-content: center; gap: 1mm; min-width: 0;
+    max-height: var(--image); }
+  .sv-r-photo { width: var(--photo); height: var(--photo); object-fit: cover; border-radius: 1mm; }
+  .sv-r-prenom { min-width: var(--photo); height: var(--photo); box-sizing: border-box; padding: 0 1mm; border: 0.3mm solid #9aa0b4;
+    border-radius: 1mm; display: flex; align-items: center; justify-content: center; font-size: 2.8mm; }
+  .sv-majuscules .sv-r-mot, .sv-majuscules .sv-r-prenom { text-transform: uppercase; }
 `;
 
 /** L'orientation de la page à l'impression ; les marges de la page suffisent. */

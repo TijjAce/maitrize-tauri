@@ -12,6 +12,7 @@ import { CompetencesAtelier } from "../components/CompetencesAtelier";
 import { Banque } from "./Jeux";
 import { TlaTab } from "./Tla";
 import { SupportsVisuelsTab, retenirSupport } from "./SupportsVisuels";
+import { PlanchesPictosTab } from "./PlanchesPictos";
 import {
   CLE_ACTIF, CLE_LEXIQUE, EVT_LEXIQUE, STYLE_CONSIGNES_PICTOS, VERBES_CONSIGNE, consignesActives, decorerConsignesHtml, ecrireLexique,
   lireLexique, type Lexique, motsAChercher, motsPourLaBanque, pictosAppointProposes, pictosProposes,
@@ -26,12 +27,13 @@ import { Boutons, Coche } from "./AteliersLangage";
 
 // ── CAA : communication alternative et augmentée ──────────────────────────
 //
-// Trois outils qui parlent en pictogrammes : les consignes en pictos, que
+// Des outils qui parlent en pictogrammes : les consignes en pictos, que
 // toutes les feuilles de Fabriquer reprennent ; les tableaux de langage,
-// pour dire ; les supports visuels, pour se repérer. Ils vivaient dans
-// Fabriquer, parmi les jeux : ils ont leur place à eux.
+// pour dire ; les supports visuels, pour se repérer ; les planches, un picto
+// à toutes les tailles. Ils vivaient dans Fabriquer, parmi les jeux : ils
+// ont leur place à eux.
 
-const ONGLETS = ["consignes", "tla", "supports"] as const;
+const ONGLETS = ["consignes", "tla", "supports", "planches"] as const;
 type Onglet = typeof ONGLETS[number];
 const lireOnglet = (brut: unknown): Onglet => (ONGLETS.includes(brut as Onglet) ? (brut as Onglet) : "consignes");
 
@@ -63,9 +65,11 @@ export default function Caa() {
         <button className={onglet === "consignes" ? "active" : ""} onClick={() => setOnglet("consignes")}>🔤 Consignes en pictos</button>
         <button className={onglet === "tla" ? "active" : ""} onClick={() => setOnglet("tla")}>🗣 Tableaux de langage</button>
         <button className={onglet === "supports" ? "active" : ""} onClick={() => setOnglet("supports")}>🖼 Supports visuels</button>
+        <button className={onglet === "planches" ? "active" : ""} onClick={() => setOnglet("planches")}>📏 Planches de pictos</button>
       </div>
       {onglet === "consignes" ? avecPictos(<ConsignesEnPictos banque={banque} />)
         : onglet === "tla" ? avecPictos(<><CompetencesAtelier atelier="tla" nom="Tableaux de langage" /><TlaTab /></>)
+        : onglet === "planches" ? <PlanchesPictosTab banque={banque} />
         : <><CompetencesAtelier atelier="supports" nom="Supports visuels" /><SupportsVisuelsTab banque={banque} /></>}
     </Page>
   );

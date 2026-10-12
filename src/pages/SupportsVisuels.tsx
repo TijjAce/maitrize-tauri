@@ -2,7 +2,7 @@ import React from "react";
 import { AideEnLigne } from "../components/Aide";
 import { createPortal } from "react-dom";
 import { api } from "../api";
-import { EVT_DONNEES_DISTANTES, Field, Input, Select, Textarea, useOngletDemande } from "../components/ui";
+import { EVT_DONNEES_DISTANTES, Field, Input, Select, Textarea, useAsync, useOngletDemande } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
@@ -11,7 +11,8 @@ import { useMemoire } from "../components/useMemoire";
 import { chargerImages, usePictoImage, usePictoImages } from "../components/ChoixPicto";
 import { CasePicto } from "../components/CasePicto";
 import {
-  CARTES_MAX, COMPORTEMENTS_MAX, DUREES_MINUTEUR, ETAPES_SCENARIO_MAX, JETONS_MAX, MINUTES_MAX, PAGE_PAYSAGE, pageDabord,
+  CARTES_MAX, COMPORTEMENTS_MAX, DUREES_MINUTEUR, ETAPES_SCENARIO_MAX, JETONS_MAX, MINUTES_MAX, PAGE_PAYSAGE, PAGE_PORTRAIT, pageDabord,
+  IMAGES_PAR_LIGNE_MAX, JOUEURS_MAX, LIGNES_REGLES_MAX, feuilleRegles, normaliserRegles, photoDuJoueur, type Joueur, type LigneRegle,
   STYLE_SUPPORTS, TITRES_ETAPES, cleImage, estVide,
   demarrer, dePrenom, dureeMs, estEnMarche, estFini, feuilleDabord, feuilleJetons, feuilleScenario, fractionAffichee, graduations,
   idsDes, mettreEnPause, minuteurPret, normaliserDabord, normaliserJetons, normaliserMinuteur, normaliserScenario,
@@ -22,10 +23,11 @@ import {
 // ── Supports visuels ───────────────────────────────────────────────────────
 //
 // Des outils de structuration à imprimer et plastifier — économie de jetons,
-// « d'abord / ensuite », scénario social — et un minuteur visuel à afficher.
+// « d'abord / ensuite », scénario social, règles du jeu — et un minuteur
+// visuel à afficher.
 // Chaque support se règle à gauche et se voit à droite tel qu'il sortira.
 
-export const SUPPORTS = ["jetons", "dabord", "scenario", "minuteur"] as const;
+export const SUPPORTS = ["jetons", "dabord", "scenario", "regles", "minuteur"] as const;
 type Support = typeof SUPPORTS[number];
 const lireSupport = (brut: unknown): Support => (SUPPORTS.includes(brut as Support) ? (brut as Support) : "jetons");
 
@@ -45,11 +47,13 @@ export function SupportsVisuelsTab({ banque }: { banque: boolean }) {
         <button className={support === "jetons" ? "active" : ""} onClick={() => setSupport("jetons")}>🪙 Économie de jetons</button>
         <button className={support === "dabord" ? "active" : ""} onClick={() => setSupport("dabord")}>➡️ D'abord / ensuite</button>
         <button className={support === "scenario" ? "active" : ""} onClick={() => setSupport("scenario")}>📖 Scénario social</button>
+        <button className={support === "regles" ? "active" : ""} onClick={() => setSupport("regles")}>🎲 Règles du jeu</button>
         <button className={support === "minuteur" ? "active" : ""} onClick={() => setSupport("minuteur")}>⏱ Minuteur visuel</button>
       </div>
       {support === "jetons" ? <Jetons banque={banque} />
         : support === "dabord" ? <Dabord banque={banque} />
         : support === "scenario" ? <Scenario banque={banque} />
+        : support === "regles" ? <Regles banque={banque} />
         : <Minuteur banque={banque} />}
     </>
   );
@@ -370,6 +374,97 @@ function Scenario({ banque }: { banque: boolean }) {
         </Field>
         <Coche valeur={r.grandTexte} onChange={(grandTexte) => maj({ grandTexte })}>Texte en grand</Coche>
         <Coche valeur={r.capitales} onChange={(capitales) => maj({ capitales })}>En capitales</Coche>
+      </>} />
+  );
+}
+
+// ── Règles du jeu ──────────────────────────────────────────────────────────
+
+function Regles({ banque }: { banque: boolean }) {
+  const [r, maj, setR] = useSupport("regles", normaliserRegles);
+  const { data: eleves } = useAsync(() => api.elevesList(), []);
+  const classe = React.useMemo(() => (eleves ?? [])
+    .map((e): Joueur => ({ id: e.id, prenom: e.nom.trim().split(/\s+/)[0] || e.nom, photo: e.photoFichier }))
+    .sort((a, b) => a.prenom.localeCompare(b.prenom, "fr")), [eleves]);
+  const joueurs = r.joueurs.map((id) => classe.find((j) => j.id === id)).filter((j): j is Joueur => Boolean(j));
+  const changerLigne = (i: number, m: Partial<LigneRegle>) => maj({ lignes: r.lignes.map((l, j) => (j === i ? { ...l, ...m } : l)) });
+  const deplacer = (i: number, vers: number) => {
+    if (vers < 0 || vers >= r.lignes.length) return;
+    const suite = [...r.lignes];
+    [suite[i], suite[vers]] = [suite[vers], suite[i]];
+    maj({ lignes: suite });
+  };
+  return (
+    <Atelier titre="Règles du jeu" pictos={[...r.lignes.flatMap((l) => l.images), ...joueurs.map(photoDuJoueur)]}
+      feuille={(images) => feuilleRegles(r, images, joueurs)} page={PAGE_PORTRAIT}
+      aide="Une bande à poser à côté du jeu : les joueurs, le jeu, et ce qu'on y fait, une ligne par moment. Chaque image porte son mot au-dessus ; trois bandes tiennent sur une page, une par table."
+      reglages={<>
+        <Modeles type="regles" valeur={r} set={setR} normaliser={normaliserRegles} exemple="Nom, par exemple « Le verger »" />
+        <Field label={`Les lignes, de haut en bas (${r.lignes.length})`}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {r.lignes.map((l, i) => (
+              <div key={i} className="sv-r-ligne-edition">
+                <div className="sv-r-cases">
+                  {l.images.map((p, k) => (
+                    <div key={k} style={{ position: "relative" }}>
+                      <CasePicto valeur={p} banque={banque} taille={44}
+                        titre={l.joueurs && k === 0 ? "Les joueurs" : `Ligne ${i + 1}${l.images.length > 1 ? `, image ${k + 1}` : ""}`}
+                        onChange={(nouveau) => changerLigne(i, { images: l.images.map((x, m) => (m === k ? nouveau : x)) })} />
+                      {l.images.length > 1 && (
+                        <button className="btn ghost sm sv-retirer" aria-label={`Retirer l'image ${k + 1} de la ligne ${i + 1}`}
+                          onClick={() => changerLigne(i, { images: l.images.filter((_, m) => m !== k) })}>✕</button>
+                      )}
+                    </div>
+                  ))}
+                  {l.images.length < IMAGES_PAR_LIGNE_MAX && (
+                    <button className="btn ghost sm" title="Une image de plus sur cette ligne, côte à côte" aria-label={`Une image de plus sur la ligne ${i + 1}`}
+                      onClick={() => changerLigne(i, { images: [...l.images, pictoVide()] })}>＋</button>
+                  )}
+                </div>
+                <div className="sv-etape-actions">
+                  <button className="btn ghost sm" disabled={i === 0} onClick={() => deplacer(i, i - 1)} aria-label={`Monter la ligne ${i + 1}`}>↑</button>
+                  <button className="btn ghost sm" disabled={i === r.lignes.length - 1} onClick={() => deplacer(i, i + 1)} aria-label={`Descendre la ligne ${i + 1}`}>↓</button>
+                  <button className="btn ghost sm" disabled={r.lignes.length === 1} onClick={() => maj({ lignes: r.lignes.filter((_, j) => j !== i) })}
+                    aria-label={`Retirer la ligne ${i + 1}`}>✕</button>
+                </div>
+                {l.joueurs && (
+                  <div className="sv-r-choix-joueurs">
+                    <span className="meta">Les joueurs :</span>
+                    {classe.length ? classe.map((j) => {
+                      const on = r.joueurs.includes(j.id);
+                      return (
+                        <button key={j.id} type="button" className={`sv-r-joueur${on ? " on" : ""}`} aria-pressed={on}
+                          disabled={!on && r.joueurs.length >= JOUEURS_MAX}
+                          title={j.photo ? "Sa photo s'imprime sur la bande" : "Pas de photo dans Élèves : son prénom s'imprime"}
+                          onClick={() => maj({ joueurs: on ? r.joueurs.filter((x) => x !== j.id) : [...r.joueurs, j.id] })}>
+                          {j.photo ? "📷 " : ""}{j.prenom}
+                        </button>
+                      );
+                    }) : <span className="meta">aucun élève dans la classe.</span>}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+            {r.lignes.length < LIGNES_REGLES_MAX && (
+              <button className="btn sm" onClick={() => maj({ lignes: [...r.lignes, { images: [pictoVide()], joueurs: false }] })}>＋ Une ligne</button>
+            )}
+            {!r.lignes.some((l) => l.joueurs) && r.lignes.length < LIGNES_REGLES_MAX && (
+              <button className="btn sm" onClick={() => maj({ lignes: [{ images: [{ id: null, mot: "les joueurs" }], joueurs: true }, ...r.lignes] })}>
+                ＋ La ligne des joueurs
+              </button>
+            )}
+          </div>
+        </Field>
+        <Field label="Sur la page">
+          <Select value={r.bandes} onChange={(e) => maj({ bandes: Number(e.target.value) as 1 | 2 | 3 })}>
+            <option value={3}>Trois bandes, une par table</option>
+            <option value={2}>Deux bandes</option>
+            <option value={1}>Une seule bande</option>
+          </Select>
+        </Field>
+        <Coche valeur={r.capitales} onChange={(capitales) => maj({ capitales })}>Mots en capitales</Coche>
       </>} />
   );
 }
