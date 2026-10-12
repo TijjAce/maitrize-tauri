@@ -8,7 +8,7 @@ export const ONGLETS = [
   "comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "trous", "motsMeles", "cursive",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "nombres", "cubes", "comparer", "calcul", "arbre", "posees", "fractions", "oie", "heure", "monnaie", "mesures", "geometrie", "solides", "deplacements", "donnees", "numeration",
   "carteMentale", "taches",
-  "sequentiel", "priseDeParole", "resolution", "modelisation", "fonction",
+  "sequentiel", "priseDeParole", "codePhrase", "resolution", "modelisation", "fonction",
   "planClasse", "frise", "paysage",
 ] as const;
 export type Onglet = typeof ONGLETS[number];
@@ -200,6 +200,8 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Les étapes d'une tâche, numérotées, avec le picto de chaque geste : check-list à cocher, séquentiel visuel, logigramme ou frise ; le chaînage qui cache l'étape apprise, le soliloque." },
       { id: "priseDeParole", nom: "Préparer une prise de parole", icone: "🎤", pictos: true, cycles: "Cycles 1 à 4",
         quoi: "La carte mentale à compléter, le sujet au centre ; les mots pour enchaîner ses idées ; les cartes-images des mots-clés ; le dé à raconter." },
+      { id: "codePhrase", nom: "Le code de la phrase", icone: "🖍", cycles: "Cycles 2 et 3",
+        quoi: "Vos couleurs et vos marques pour analyser la phrase — groupe sujet, verbe, compléments — : la carte du code pour l'élève, la table ou le mur ; les feuilles de grammaire les reprennent." },
       { id: "resolution", nom: "Résoudre un problème pas à pas", icone: "🔎", cycles: "De l'école au collège",
         quoi: "L'énoncé travaillé en couleurs, la question à part, puis quatre étapes : ce qu'on cherche, l'égalité, la résolution, la vérification et la phrase réponse." },
       { id: "modelisation", nom: "De la figure à l'équation", icone: "🔺", cycles: "3e et 2de",

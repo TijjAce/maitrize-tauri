@@ -141,6 +141,7 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "🏞", label: "Lire un paysage (premier plan, arrière-plan, croquis et légende)", to: "/jeux", page: "jeux", onglet: "paysage", sous: "Fabriquer · histoire-géographie" },
   { ico: "🗺", label: "Le plan de la classe (géographie CP : plan, chasse au trésor, plan à coller, évaluation)", to: "/jeux", page: "jeux", onglet: "planClasse", sous: "Fabriquer · histoire-géographie" },
   { ico: "📋", label: "Décomposer la tâche (check-list, séquentiel visuel, logigramme, chaînage, soliloque)", to: "/jeux", page: "jeux", onglet: "sequentiel", sous: "Fabriquer · aides à la tâche" },
+  { ico: "🖍", label: "Le code de la phrase (couleurs de l'analyse : groupe sujet, verbe, compléments)", to: "/jeux", page: "jeux", onglet: "codePhrase", sous: "Fabriquer · aides à la tâche" },
   { ico: "🎤", label: "Préparer une prise de parole (carte mentale à compléter, cartes-images, dé à raconter)", to: "/jeux", page: "jeux", onglet: "priseDeParole", sous: "Fabriquer · aides à la tâche" },
   { ico: "🔎", label: "Résoudre un problème pas à pas (énoncé en couleurs, quatre étapes, mise en équation)", to: "/jeux", page: "jeux", onglet: "resolution", sous: "Fabriquer · aides à la tâche" },
   { ico: "🔺", label: "De la figure à l'équation (modélisation mathématique, 3e-2de)", to: "/jeux", page: "jeux", onglet: "modelisation", sous: "Fabriquer · aides à la tâche" },

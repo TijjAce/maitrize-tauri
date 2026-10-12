@@ -15,7 +15,7 @@ import type { Creneau, MaterielItem, Seance } from "./api";
 import { lireFabrication } from "./modifierFeuille";
 
 /** Les ateliers de Fabriquer dont une feuille est une aide à la tâche : celles-là vont aux tablettes. */
-export const ATELIERS_D_AIDE = ["sequentiel", "priseDeParole", "resolution", "modelisation", "fonction"] as const;
+export const ATELIERS_D_AIDE = ["sequentiel", "priseDeParole", "codePhrase", "resolution", "modelisation", "fonction"] as const;
 
 /** Combien de jours avant et après aujourd'hui : ceux de l'emploi du temps publié (telephone.rs). */
 export const JOURS_PASSES = 14;
@@ -136,6 +136,13 @@ export async function pageDeLAide(m: MaterielItem): Promise<string | null> {
     case "priseDeParole": rendu = await priseDeParoleImprimable(a.reglagesParoleSurs(mem.priseDeParole)); break;
     case "resolution": rendu = { html: a.htmlResolution(a.reglagesResolutionSurs(mem.resolution)), style: a.STYLE_AIDES }; break;
     case "modelisation": rendu = { html: a.htmlModelisation(a.reglagesModelisationSurs(mem.modelisation)), style: a.STYLE_AIDES }; break;
+    case "codePhrase": {
+      // Sur la tablette, le code se lit de loin : l'affiche, quel que soit le format imprimé.
+      const c = await import("./codeDeLaPhrase");
+      const carte = c.reglagesCarteSurs((mem.codePhraseCarte ?? {}) as Partial<import("./codeDeLaPhrase").ReglagesCarteCode>);
+      rendu = { html: c.htmlCodeDeLaPhrase(c.lireCode(mem.codePhrase), { ...carte, format: "affiche" }), style: c.STYLE_CODE_PHRASE };
+      break;
+    }
     default: rendu = { html: a.htmlFonction(a.reglagesFonctionSurs(mem.fonction)), style: a.STYLE_AIDES };
   }
   const { sansReferences } = await import("./references");

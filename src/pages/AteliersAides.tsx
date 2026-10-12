@@ -13,6 +13,11 @@ import { STYLE_FEUILLE } from "../cartesImprimables";
 import { lireConsignes, motPrincipal, type MotDeConsigne } from "../tapuscrit";
 import type { RefPicto } from "../pictosAppoint";
 import {
+  CLE_CODE, CODE_PAR_DEFAUT, CONSTITUANTS, COULEURS, EXEMPLES_CODE, FORMATS_CARTE, MARQUES, REGLAGES_CARTE_CODE, STYLE_CODE_PHRASE,
+  htmlCodeDeLaPhrase, lireCode, marquer, phraseSansAnalyse, reglagesCarteSurs,
+  type CodeDeLaPhrase, type IdConstituant, type Marque, type MarqueDuConstituant,
+} from "../codeDeLaPhrase";
+import {
   CHAINAGES, ETAPES_SEQUENTIEL_MAX, EXEMPLES_RESOLUTION, FORMES_SEQUENTIEL, MODELES_PAROLE, MOTS_PAROLE_MAX, NIVEAUX_RESOLUTION,
   REGLAGES_FONCTION, REGLAGES_MODELISATION, REGLAGES_PAROLE, REGLAGES_RESOLUTION, REGLAGES_SEQUENTIEL, STYLE_AIDES, STYLE_PAROLE,
   etapesDeLaFiche, htmlFonction, htmlModelisation, htmlPriseDeParole, htmlResolution, htmlSequentiel, motsDeLaParole, modeleParole,
@@ -241,6 +246,64 @@ export function ResolutionTab() {
         <Boutons peut={Boolean(r.enonce.trim())} onImprimer={sortie.imprimer} onBureau={sortie.bureau} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_AIDES} />}
+    />
+  );
+}
+
+// ── Le code de la phrase ──────────────────────────────────────────────────
+
+export function CodePhraseTab() {
+  const [brutCode, majCode] = useReglages<CodeDeLaPhrase>(CLE_CODE, CODE_PAR_DEFAUT);
+  const code = React.useMemo(() => lireCode(brutCode), [brutCode]);
+  const [brut, maj] = useReglages("codePhraseCarte", REGLAGES_CARTE_CODE);
+  const r = React.useMemo(() => reglagesCarteSurs(brut), [brut]);
+  const html = React.useMemo(() => htmlCodeDeLaPhrase(code, r), [code, r]);
+  const sortie = useSortie("codePhrase", "Le code de la phrase", async () => ({ html, style: STYLE_CODE_PHRASE }));
+  const changer = (id: IdConstituant, m: Partial<MarqueDuConstituant>) => majCode({ [id]: { ...code[id], ...m } } as Partial<CodeDeLaPhrase>);
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Le code de la phrase
+          <Aide titre="Le code de la phrase" vers="droite">
+            <p>{"Les couleurs et les marques de l'analyse, choisies une fois pour toute la classe : la carte du code les montre à l'élève pendant qu'il analyse, et les feuilles de grammaire les reprennent dans leurs consignes et leurs corrigés."}</p>
+            <p>{"Chaque groupe a une couleur et une marque — souligné, entouré, encadré… — : la marque reste lisible quand la feuille est photocopiée en noir et blanc, et pour l'élève qui distingue mal les couleurs."}</p>
+          </Aide>
+        </h3>
+        {CONSTITUANTS.map((c) => (
+          <div key={c.id} className="cp-reglage">
+            <div className="cp-reglage-nom" dangerouslySetInnerHTML={{ __html: marquer(code, c.id, c.libelle) }} />
+            <div className="cp-couleurs" role="radiogroup" aria-label={`La couleur : ${c.libelle.toLowerCase()}`}>
+              {COULEURS.map((k) => (
+                <button key={k.id} type="button" role="radio" aria-checked={code[c.id].couleur === k.id} aria-label={k.nom} title={k.nom}
+                  className={`cp-pastille${code[c.id].couleur === k.id ? " active" : ""}`} style={{ background: k.hex }}
+                  onClick={() => changer(c.id, { couleur: k.id })} />
+              ))}
+            </div>
+            <Select value={code[c.id].marque} aria-label={`La marque : ${c.libelle.toLowerCase()}`}
+              onChange={(e) => changer(c.id, { marque: e.target.value as Marque })}>
+              {MARQUES.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
+            </Select>
+          </div>
+        ))}
+        <button type="button" className="lien" onClick={() => majCode(CODE_PAR_DEFAUT)}>↺ Reprendre le code proposé</button>
+        <Field label="La carte">
+          <div className="seg">
+            {FORMATS_CARTE.map((f) => (
+              <button key={f.id} type="button" className={r.format === f.id ? "active" : ""} title={f.quoi} onClick={() => maj({ format: f.id })}>{f.nom}</button>
+            ))}
+          </div>
+        </Field>
+        <Field label="La phrase d'exemple">
+          <Select value={r.exemple} onChange={(e) => maj({ exemple: Number(e.target.value) })}>
+            {EXEMPLES_CODE.map((p, i) => <option key={p} value={i}>{phraseSansAnalyse(p)}</option>)}
+          </Select>
+        </Field>
+        <Coche on={r.indices} libelle="Ce qui fait reconnaître chaque groupe : « C'est… qui », « ne… pas »" onChange={(v) => maj({ indices: v })} />
+        <p className="meta" style={{ fontSize: 12.5, margin: "8px 0 0" }}>Ce code sert aussi aux feuilles de grammaire : leurs consignes et leurs corrigés le suivent.</p>
+        <Boutons onImprimer={sortie.imprimer} onBureau={sortie.bureau} />
+      </>}
+      droite={<ApercuFeuille html={html} style={STYLE_CODE_PHRASE} />}
     />
   );
 }
