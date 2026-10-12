@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { api, texteErreur } from "../api";
+import { api, texteErreur, type Referentiel } from "../api";
 import { Aide } from "./Aide";
 import { EVT_DONNEES_DISTANTES, Modal, Select, ouvrirOnglet, useAsync } from "./ui";
 import { toast, toastAnnulable } from "./Toaster";
@@ -12,6 +12,7 @@ import {
   EVT_COMPETENCES_ATELIER, ORDRE_DES_NIVEAUX, PREFIXE_COMPETENCES, detacherAtelier, identiteCompetence, liensParCompetence,
   niveauxDeLaLigne, nombreDeCompetences, rattacherAtelier, vautPourLeNiveau, type LienAtelier,
 } from "../ateliersCompetences";
+import { rattacherLesAteliersDesSequences } from "../ateliersDesSequences";
 import { FAMILLES, type Onglet } from "../catalogueAteliers";
 
 // ── Fabriquer, par compétence ─────────────────────────────────────────────
@@ -24,7 +25,23 @@ import { FAMILLES, type Onglet } from "../catalogueAteliers";
 //
 // Rattacher un atelier écrit dans « Ce que cela travaille » : c'est la même
 // liste, que l'atelier montre, que sa feuille imprime, et où les séquences
-// créées sur la compétence viennent piocher.
+// créées sur la compétence viennent piocher. Les ateliers dont les séquences
+// fabriquent déjà les feuilles s'y mettent d'eux-mêmes, une fois, et à la
+// demande ensuite (voir ateliersDesSequences.ts).
+
+/** Le jour où les ateliers des séquences ont été rattachés : ils ne le sont d'eux-mêmes qu'une fois. */
+const CLE_SEQUENCES_REPRISES = "fabriquer:competences-des-sequences";
+
+/** Toutes les lignes des référentiels actifs, telles qu'on les rattache. */
+function lignesDesReferentiels(refs: Referentiel[]): CompetenceSelectionnee[] {
+  return refs.flatMap((r) => (donneesDuReferentiel(r)?.domaines ?? []).flatMap((dom) => dom.sousDomaines.flatMap((sd) => [
+    ...(sd.competences ?? []).map((c) => ({ cg: null as RefCG | null, c })),
+    ...(sd.competencesGenerales ?? []).flatMap((cg) => (cg.competences ?? []).map((c) => ({ cg, c }))),
+  ].map(({ cg, c }): CompetenceSelectionnee => ({
+    id: c.id, referentielNom: r.nom, domaineId: dom.id, domaineTitre: dom.titre, sousDomaineTitre: sd.titre,
+    competenceGeneraleTitre: cg?.titre ?? null, competenceTitre: c.texte, niveau: c.niveau ?? null, competenceRefId: c.id,
+  })))));
+}
 
 /** Ce qu'on glisse : l'identifiant d'un atelier. */
 const TYPE_ATELIER = "text/x-maitrize-atelier";
@@ -122,26 +139,58 @@ export function CatalogueParCompetence({ recherche, onOuvrir }: { recherche: str
   const niveau = niveaux.includes(choix.niveau) ? choix.niveau : "";
   const cherche = recherche.trim().length >= 2 ? recherche.trim() : "";
 
-  const ecrire = async (ecrit: Record<string, string>): Promise<boolean> => {
-    if (!Object.keys(ecrit).length) return false;
-    setReglages((r) => ({ ...r, ...ecrit }));
+  /**
+   * Écrit ce que `calcul` tire des listes relues à l'instant — un autre
+   * ordinateur a pu les changer, et l'écran n'est peut-être pas encore à
+   * jour —, puis rend ce qu'elles valaient avant, pour « Annuler ».
+   */
+  const appliquer = async (calcul: (frais: Record<string, string>) => Record<string, string>): Promise<Record<string, string> | null> => {
     try {
+      const frais = await api.settingsPrefixe(PREFIXE_COMPETENCES);
+      const ecrit = calcul(frais);
+      if (!Object.keys(ecrit).length) return null;
+      setReglages({ ...frais, ...ecrit });
       for (const [cle, valeur] of Object.entries(ecrit)) await api.settingSet(cle, valeur);
       window.dispatchEvent(new Event(EVT_COMPETENCES_ATELIER));
-      return true;
+      return Object.fromEntries(Object.keys(ecrit).map((cle) => [cle, frais[cle] ?? "[]"]));
     } catch (e) {
       toast("Non enregistré : " + texteErreur(e), { icone: "⚠️" });
       relire();
-      return false;
+      return null;
     }
   };
   const nomDe = (atelier: string) => ATELIERS.get(atelier)?.nom ?? atelier;
-  const rattacher = (atelier: string, c: CompetenceSelectionnee) => { void ecrire(rattacherAtelier(reglages, atelier, c)); };
+  const rattacher = (atelier: string, c: CompetenceSelectionnee) => { void appliquer((frais) => rattacherAtelier(frais, atelier, c)); };
   const detacher = async (atelier: string, c: CompetenceSelectionnee) => {
-    const ecrit = detacherAtelier(reglages, atelier, c);
-    const avant = Object.fromEntries(Object.keys(ecrit).map((cle) => [cle, reglages[cle] ?? "[]"]));
-    if (await ecrire(ecrit)) toastAnnulable(`${nomDe(atelier)} n'est plus rattaché à « ${raccourcir(c.competenceTitre, 60)} ».`, () => { void ecrire(avant); }, "🎯");
+    const avant = await appliquer((frais) => detacherAtelier(frais, atelier, c));
+    if (avant) toastAnnulable(`${nomDe(atelier)} n'est plus rattaché à « ${raccourcir(c.competenceTitre, 60)} ».`, () => { void appliquer(() => avant); }, "🎯");
   };
+
+  // Les ateliers dont les séquences fabriquent les feuilles : rattachés d'eux-mêmes une fois, puis à la demande.
+  const [reprise, setReprise] = React.useState(false);
+  const reprendreLesSequences = async (seul: boolean) => {
+    if (!actifs.length) return;
+    setReprise(true);
+    let bilan = { liens: 0, competences: 0 };
+    const avant = await appliquer((frais) => {
+      const r = rattacherLesAteliersDesSequences(frais, lignesDesReferentiels(actifs));
+      bilan = r;
+      return r.ecrit;
+    });
+    await api.settingSet(CLE_SEQUENCES_REPRISES, new Date().toISOString().slice(0, 10)).catch(() => {});
+    setReprise(false);
+    const { liens: n, competences: k } = bilan;
+    if (n && avant) {
+      toastAnnulable(`${n} atelier${n > 1 ? "s" : ""} rattaché${n > 1 ? "s" : ""} à ${k} compétence${k > 1 ? "s" : ""}, d'après les feuilles que leurs séquences fabriquent.`,
+        () => { void appliquer(() => avant); }, "📚");
+    } else if (!seul) {
+      toast("Rien de nouveau : les ateliers des séquences sont déjà rattachés.", { icone: "📚" });
+    }
+  };
+  React.useEffect(() => {
+    if (!actifs.length) return;
+    api.settingGet(CLE_SEQUENCES_REPRISES).then((v) => { if (!v) void reprendreLesSequences(true); }).catch(() => {});
+  }, [actifs.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const ouvrir = (a: AtelierMontre) => {
     if (a.onglet) onOuvrir(a.onglet);
     else if (a.caa) { naviguer("/caa"); setTimeout(() => ouvrirOnglet("caa", a.caa!), 140); }
@@ -242,6 +291,10 @@ export function CatalogueParCompetence({ recherche, onOuvrir }: { recherche: str
             setPlis(toutPlie ? plis.filter((p) => !cles.includes(p)) : [...new Set([...plis, ...cles])]);
           }}>{toutPlie ? "▾ Tout déplier" : "▸ Tout replier"}</button>
         )}
+        <button className="btn ghost sm" disabled={reprise} onClick={() => { void reprendreLesSequences(false); }}
+          title="Rattache à chaque compétence les ateliers dont sa séquence fabrique déjà les feuilles : les cubes pour grouper par dix, la grille de fluence pour lire à voix haute…">
+          📚 {reprise ? "Rattachement…" : "Les ateliers des séquences"}
+        </button>
       </div>
       <div className="pc-bilan">
         {total} compétence{total > 1 ? "s" : ""}{niveau ? ` en ${niveau}` : ""}{cherche ? ` pour « ${cherche} »` : ""}
