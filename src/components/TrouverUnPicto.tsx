@@ -16,7 +16,8 @@ import {
 // ── Trouver un pictogramme, ou le faire dessiner ──────────────────────────
 //
 // On cherche un mot dans ARASAAC, dans Sclera, parmi ses symboles Makaton
-// importés, et parmi ses pictos gardés.
+// importés, et parmi ses pictos gardés — ou un numéro ARASAAC, que les listes
+// de mots des ateliers reprennent (« graine 17183 »).
 // Quand aucune banque ne l'a, l'IA de Mistral en dessine un à la manière
 // d'ARASAAC ; on le garde dans « Mes pictos », et il revient ensuite dans
 // les ateliers, les listes de mots et le loto — avec son étiquette « IA » :
@@ -68,6 +69,13 @@ function copierImage(src: string) {
     })();
   navigator.clipboard.write([new ClipboardItem({ "image/png": png })])
     .then(() => toast("Image copiée : collez-la où vous voulez.", { icone: "📋" }))
+    .catch((e) => toast("Copie impossible : " + String(e), { icone: "⚠️" }));
+}
+
+/** Le numéro, à coller après un mot dans la liste d'un atelier. */
+function copierNumero(id: number) {
+  navigator.clipboard.writeText(String(id))
+    .then(() => toast(`Numéro ${id} copié : collez-le après le mot, dans la liste de mots de l'atelier.`, { icone: "🔢" }))
     .catch((e) => toast("Copie impossible : " + String(e), { icone: "⚠️" }));
 }
 
@@ -127,8 +135,10 @@ export function TrouverUnPicto({ onClose }: { onClose: () => void }) {
   const lesMiens = trouves.filter((p) => p.origine !== "makaton");
   const makaton = trouves.filter((p) => p.origine === "makaton");
   const pret = cherche === mot && arasaacLa !== null;
+  // Un numéro désigne un picto d'ARASAAC : on ne fait pas dessiner « 17183 ».
+  const parNumero = /^(?:n\s*[°º]\s*|#\s*)?\d{4,5}$/iu.test(mot);
   // Rien nulle part, pas même parmi ses pictos gardés : on propose le dessin.
-  const rienDansLesBanques = pret && cleDuMot(mot).length >= 2 && !arasaac.length && !sclera.length && !trouves.length;
+  const rienDansLesBanques = pret && !parNumero && cleDuMot(mot).length >= 2 && !arasaac.length && !sclera.length && !trouves.length;
 
   const dessiner = async () => {
     if (!mot) return;
@@ -168,8 +178,8 @@ export function TrouverUnPicto({ onClose }: { onClose: () => void }) {
       </>}>
       <div className="tp-corps">
         <div className="tp-resultats">
-          <Field label="Le mot">
-            <Input autoFocus value={q} placeholder="trottinette, ranger, piscine…" onChange={(e) => setQ(e.target.value)} />
+          <Field label="Le mot, ou le numéro du picto">
+            <Input autoFocus value={q} placeholder="trottinette, ranger, piscine… ou 17183" onChange={(e) => setQ(e.target.value)} />
           </Field>
 
           {lesMiens.length > 0 && section(`Mes pictos (${lesMiens.length})`, (
@@ -185,7 +195,7 @@ export function TrouverUnPicto({ onClose }: { onClose: () => void }) {
               : arasaac.length
                 ? <div className="tp-grille">{arasaac.map((p) => <VignetteArasaac key={p.id} p={p}
                     actif={choix?.sorte === "arasaac" && choix.id === p.id} onClick={() => setChoix({ sorte: "arasaac", id: p.id, mot: p.mot })} />)}</div>
-                : note(pret ? `Aucun pictogramme ARASAAC pour « ${mot} ».` : "Recherche…"))}
+                : note(pret ? (parNumero ? `Aucun pictogramme ARASAAC ne porte le numéro ${mot}.` : `Aucun pictogramme ARASAAC pour « ${mot} ».`) : "Recherche…"))}
             {section(`Sclera${scleraLa && pret ? ` (${sclera.length})` : ""}`, !scleraLa
               ? (
                 <p className="meta" style={{ fontSize: 12.5, margin: "0 0 12px", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -227,14 +237,14 @@ export function TrouverUnPicto({ onClose }: { onClose: () => void }) {
                   {dessine ? `✨ L'IA dessine « ${mot} »…` : `✨ Dessiner « ${mot} » à la manière d'ARASAAC`}
                 </button>
               </div>
-            ) : pret && (
+            ) : pret && !parNumero && (
               <button type="button" className="lien" style={{ fontSize: 12.5 }} onClick={() => setDessinOuvert(true)}>
                 Aucun ne convient ? Le faire dessiner par l'IA, à la manière d'ARASAAC
               </button>
             )}
           </>)}
 
-          {!mot && !miens.length && note("Écrivez un mot : ARASAAC, Sclera, vos symboles Makaton et vos pictos gardés répondent ensemble.")}
+          {!mot && !miens.length && note("Écrivez un mot : ARASAAC, Sclera, vos symboles Makaton et vos pictos gardés répondent ensemble. Un numéro (17183) retrouve un picto d'ARASAAC.")}
         </div>
 
         <Apercu choix={choix} occupe={occupe} dessine={dessine}
@@ -291,7 +301,10 @@ function Apercu({ choix, occupe, dessine, onGarder, onRedessiner, onRenommer, on
         {src ? <img className="tp-choix-image" src={src} alt={mot} /> : <div className="tp-choix-image" />}
       </div>
       <div className="meta" style={{ fontSize: 12, lineHeight: 1.45 }}>
-        {choix.sorte === "arasaac" && <>Pictogramme ARASAAC n° {choix.id}. Il est déjà dans tous les ateliers : cherchez « {choix.mot} ».</>}
+        {choix.sorte === "arasaac" && <>
+          Pictogramme ARASAAC n° {choix.id}. Il est déjà dans tous les ateliers : cherchez « {choix.mot} », ou {choix.id}.
+          Pour le donner à un autre mot, écrivez ce mot puis le numéro dans la liste de mots (« graine {choix.id} »).
+        </>}
         {choix.sorte === "sclera" && <>Pictogramme Sclera. Gardé dans Mes pictos, il rejoint les ateliers et les listes de mots.</>}
         {origine === "ia" && <>{ETIQUETTES.ia.long}.{choix.sorte === "dessin" && " Pas encore gardé : il disparaît si vous fermez."}</>}
         {choix.sorte === "mien" && choix.picto.origine !== "ia" && <>{ETIQUETTES[choix.picto.origine].long}, gardé dans Mes pictos.</>}
@@ -308,6 +321,9 @@ function Apercu({ choix, occupe, dessine, onGarder, onRedessiner, onRenommer, on
         )}
         {choix.sorte === "mien" && mot.trim() && mot.trim() !== choix.picto.mot && (
           <button type="button" className="btn primary sm" onClick={() => onRenommer(choix.picto, mot)}>✔ Changer son mot</button>
+        )}
+        {choix.sorte === "arasaac" && (
+          <button type="button" className="btn sm" onClick={() => copierNumero(choix.id)}>🔢 Copier le numéro {choix.id}</button>
         )}
         {src && <button type="button" className="btn sm" onClick={() => copierImage(src)}>📋 Copier l'image</button>}
         {choix.sorte === "dessin" && (

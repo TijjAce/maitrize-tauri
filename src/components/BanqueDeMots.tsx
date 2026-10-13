@@ -1,26 +1,38 @@
 import React from "react";
-import { api, type CategorieArasaac } from "../api";
+import { api, type CategorieArasaac, type PictoArasaac } from "../api";
 import { Field, Input, Select, Textarea, useAsync } from "./ui";
 import { toast } from "./Toaster";
 import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
 import { motsDeLaListe, uneImageParMot } from "../loto";
 import { melanger } from "../hasard";
-import { EtiquetteMonPicto, usePictoImage } from "./ChoixPicto";
+import { ChoixPicto, EtiquetteMonPicto, usePictoImage } from "./ChoixPicto";
 import { avecSeul, type MotImage } from "../jeuxSons";
 import { useProjetDuMoment } from "./ProjetDuMoment";
 import { BoutonMesImages } from "./MesImages";
 import { estPerso } from "../imagesPerso";
-import { pictosDesMots } from "../mesPictos";
+import { lireLesSaisies, pictosDesMots } from "../mesPictos";
+import type { PictoPose } from "../supportsVisuels";
 
 // Les mots d'un jeu : ceux qu'on écrit, ceux qu'un thème apporte.
 //
 // Un loto des syllabes se joue sur les mots de la classe, pas sur les nôtres :
 // l'enseignant les écrit, la banque leur trouve une image. Un thème complète
 // quand il en faut plus. Chaque mot se voit, avec son image, et se retire d'un
-// clic ; rien ne s'imprime qu'on n'ait regardé.
+// clic ; rien ne s'imprime qu'on n'ait regardé. Une image qui ne convient pas
+// se change d'un clic, cherchée par son mot ou par son numéro ARASAAC — celui
+// que montre l'outil « Pictos » ; « graine 17183 » la donne dès la saisie.
 
-function Chip({ m, extra, onRetirer, onRenommer, onSeul }: {
+/** Le mot avec l'image choisie ; « Vider » le laisse seul, sans image. */
+function avecLImage(m: MotImage, p: PictoPose): MotImage {
+  const mot = p.mot.trim() || m.mot;
+  if (p.id == null) return { ...avecSeul(m, undefined), id: null, mot };
+  return { ...m, id: p.id, mot };
+}
+
+function Chip({ m, extra, onRetirer, onRenommer, onSeul, onImage }: {
   m: MotImage; extra?: React.ReactNode; onRetirer: () => void;
+  /** Changer l'image du mot : la chercher par son mot, ou par son numéro. */
+  onImage?: () => void;
   /** Pour une image de l'enseignant : son mot s'écrit ici, le nom du fichier n'en est qu'une proposition. */
   onRenommer?: (mot: string) => void;
   /** Ce que la feuille montre du mot : son image, son mot, ou les deux — jamais rien. */
@@ -31,7 +43,14 @@ function Chip({ m, extra, onRetirer, onRenommer, onSeul }: {
   return (
     <span className={`bm-chip${sansImage ? " bm-sans-image" : ""}${sansMot ? " bm-sans-mot" : ""}`}
       title={m.id == null ? "Aucune image trouvée : le mot s'imprimera seul" : onRenommer && estPerso(m.id) ? "Votre image : écrivez son mot" : m.mot}>
-      {src ? <img src={src} alt="" /> : <span className="bm-vide" />}
+      {onImage
+        ? (
+          <button type="button" className="bm-image" onClick={onImage} aria-label={`Changer l'image de « ${m.mot} »`}
+            title={`Changer l'image de « ${m.mot} » : la chercher par son mot, ou par son numéro`}>
+            {src ? <img src={src} alt="" /> : <span className="bm-vide" />}
+          </button>
+        )
+        : src ? <img src={src} alt="" /> : <span className="bm-vide" />}
       <EtiquetteMonPicto id={m.id} />
       {onRenommer
         ? <input className="bm-renommer" value={m.mot} size={Math.max(4, m.mot.length)} aria-label="Le mot de cette image"
@@ -71,6 +90,8 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions
   const [theme, setTheme] = React.useState("");
   const [combien, setCombien] = React.useState(12);
   const [occupe, setOccupe] = React.useState(false);
+  // Le rang du mot dont on change l'image.
+  const [aChanger, setAChanger] = React.useState<number | null>(null);
   const { data: categories } = useAsync<CategorieArasaac[]>(() => (banque ? api.arasaacCategories() : Promise.resolve([])), [banque]);
   const themes = React.useMemo(() => (categories ?? []).filter((c) => c.nombre >= 6)
     .sort((a, b) => libelleCategorie(a.nom).localeCompare(libelleCategorie(b.nom), "fr")), [categories]);
@@ -82,23 +103,27 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions
 
   /** Ajoute les mots écrits — ou une liste venue d'ailleurs, comme celle du projet. */
   const ajouterMots = async (saisis?: string[]) => {
-    const liste = (saisis ?? motsDeLaListe(texte)).filter((m) => !deja.has(m.toLowerCase()));
-    if (!liste.length) return;
+    const saisies = saisis ?? motsDeLaListe(texte);
+    if (!saisies.length) return;
     setOccupe(true);
     try {
-      let suite: MotImage[] = [];
-      if (banque) {
-        const [trouves, absents] = await pictosDesMots(liste);
-        const parMot = new Map(uneImageParMot(trouves).map((x) => [x.picto.mot.toLowerCase(), x.picto]));
-        suite = liste.map((mot) => {
-          const p = parMot.get(mot.toLowerCase()) ?? trouves.find((t) => t.mot.toLowerCase() === mot.toLowerCase());
-          return { id: p?.id ?? null, mot };
-        });
-        if (absents.length) toast(`${absents.length} mot${absents.length > 1 ? "s" : ""} sans image : ${absents.slice(0, 4).join(", ")}${absents.length > 4 ? "…" : ""}`, { icone: "ℹ️" });
-      } else {
-        suite = liste.map((mot) => ({ id: null, mot }));
-      }
-      onChange([...mots, ...suite]);
+      // « graine 17183 » : le mot, avec le picto de ce numéro ; déjà dans la liste, il en change l'image.
+      const lues = banque ? await lireLesSaisies(saisies) : saisies.map((mot) => ({ mot, picto: null }));
+      const renumerotes = new Map(lues.flatMap((l) => (l.picto && deja.has(l.mot.toLowerCase()) ? [[l.mot.toLowerCase(), l.picto.id] as const] : [])));
+      const nouvelles = lues.filter((l) => !deja.has(l.mot.toLowerCase()));
+      const liste = banque ? nouvelles.filter((l) => !l.picto).map((l) => l.mot) : [];
+      const [trouves, absents]: [PictoArasaac[], string[]] = liste.length ? await pictosDesMots(liste) : [[], []];
+      const parMot = new Map(uneImageParMot(trouves).map((x) => [x.picto.mot.toLowerCase(), x.picto]));
+      const suite = nouvelles.map(({ mot, picto }): MotImage => {
+        const p = picto ?? parMot.get(mot.toLowerCase()) ?? trouves.find((t) => t.mot.toLowerCase() === mot.toLowerCase());
+        return { id: p?.id ?? null, mot };
+      });
+      if (absents.length) toast(`${absents.length} mot${absents.length > 1 ? "s" : ""} sans image : ${absents.slice(0, 4).join(", ")}${absents.length > 4 ? "…" : ""}`, { icone: "ℹ️" });
+      if (!suite.length && !renumerotes.size) return;
+      onChange([...mots.map((m) => {
+        const id = renumerotes.get(m.mot.toLowerCase());
+        return id == null ? m : { ...m, id };
+      }), ...suite]);
       if (!saisis) setTexte("");
     } catch (e) { toast(String(e), { icone: "⚠️" }); } finally { setOccupe(false); }
   };
@@ -126,6 +151,12 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions
       {aide && <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>{aide}</p>}
       <Field label="Mes mots (un par ligne, ou séparés par des virgules)">
         <Textarea value={texte} onChange={(e) => setTexte(e.target.value)} rows={3} placeholder={"bateau\nbanane\nballon"} />
+        {banque && (
+          <p className="meta" style={{ fontSize: 12, margin: "4px 0 0", lineHeight: 1.45 }}>
+            Un picto précis : son numéro après le mot (« graine 17183 »), celui que montre 🧩 Pictos. Une image ne convient pas ?
+            Cliquez dessus pour en choisir une autre.
+          </p>
+        )}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
           <button type="button" className="btn sm" disabled={occupe || !texte.trim()} onClick={() => void ajouterMots()}>
             ＋ Ajouter les mots
@@ -179,9 +210,15 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions
           <Chip key={affichage ? `rang${i}` : estPerso(m.id) ? `perso${m.id}` : `${m.mot}-${i}`} m={m} extra={extra?.(m)}
             onRetirer={() => onChange(mots.filter((_, k) => k !== i))}
             onRenommer={affichage || estPerso(m.id) ? (mot) => onChange(mots.map((x, k) => (k === i ? { ...x, mot } : x))) : undefined}
-            onSeul={affichage && m.id != null ? (seul) => onChange(mots.map((x, k) => (k === i ? avecSeul(x, seul) : x))) : undefined} />
+            onSeul={affichage && m.id != null ? (seul) => onChange(mots.map((x, k) => (k === i ? avecSeul(x, seul) : x))) : undefined}
+            onImage={() => setAChanger(i)} />
         ))}
       </div>
+      {aChanger != null && mots[aChanger] && (
+        <ChoixPicto valeur={{ id: mots[aChanger].id, mot: mots[aChanger].mot }} banque={banque}
+          titre={`L'image de « ${mots[aChanger].mot} »`} onClose={() => setAChanger(null)}
+          onValider={(p) => { onChange(mots.map((x, k) => (k === aChanger ? avecLImage(x, p) : x))); setAChanger(null); }} />
+      )}
     </div>
   );
 }

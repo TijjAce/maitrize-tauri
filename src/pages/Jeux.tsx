@@ -50,7 +50,7 @@ import { chargerPicto, usePictoImage } from "../components/ChoixPicto";
 import { BoutonMesImages, imagePourLePdf } from "../components/MesImages";
 import { gestesDemandes, gestesPourLesJeux, useNombreDeGestes } from "../components/BanqueDeGestes";
 import { estPerso } from "../imagesPerso";
-import { chercherPictos, pictosDesMots } from "../mesPictos";
+import { chercherPictos, lireLesSaisies, pictosDesMots } from "../mesPictos";
 import { FAMILLES, ONGLETS, type Onglet, type Outil } from "../catalogueAteliers";
 import { PliDuCatalogue, iconeEtNom } from "../components/PliDuCatalogue";
 import { CatalogueParCompetence } from "../components/CatalogueParCompetence";
@@ -586,9 +586,12 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
   const ajouterMots = async (mots = motsDeLaListe(texteMots)): Promise<PictoArasaac[]> => {
     if (!mots.length) return [];
     try {
-      const [trouves, pasTrouves] = await pictosDesMots(mots);
+      // « graine 17183 » : le picto de ce numéro, sous ce mot.
+      const lues = await lireLesSaisies(mots);
+      const sansNumero = lues.filter((l) => !l.picto).map((l) => l.mot);
+      const [trouves, pasTrouves]: [PictoArasaac[], string[]] = sansNumero.length ? await pictosDesMots(sansNumero) : [[], []];
       const avant = selection.length;
-      const suite = ajouter(selection, trouves);
+      const suite = ajouter(selection, [...lues.flatMap((l) => (l.picto ? [l.picto] : [])), ...trouves]);
       setSelection(suite);
       setAbsents(pasTrouves);
       toast(`${suite.length - avant} image${suite.length - avant > 1 ? "s" : ""} ajoutée${suite.length - avant > 1 ? "s" : ""}`
@@ -745,6 +748,7 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
             </button>
             <p style={{ fontSize: 12, color: "var(--text-2)", margin: "8px 0 0" }}>
               Chaque mot prend l'image qui porte exactement ce nom ; « 🔄 » en propose d'autres dessins.
+              Un picto précis : son numéro après le mot (« graine 17183 »), celui que montre 🧩 Pictos.
             </p>
             {absents.length > 0 && (
               <div style={{ marginTop: 10, fontSize: 13 }}>
@@ -759,7 +763,7 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
           </>}
 
           {mode === "recherche" && <>
-            <Input autoFocus placeholder="Chercher une image : maman, pomme, dormir…" value={recherche} onChange={(e) => setRecherche(e.target.value)} />
+            <Input autoFocus placeholder="Chercher une image : maman, pomme, dormir… ou son numéro (17183)" value={recherche} onChange={(e) => setRecherche(e.target.value)} />
             <p style={{ fontSize: 12, color: "var(--text-2)", margin: "8px 0 0" }}>
               Cliquez sur une image pour l'ajouter au loto, ou la retirer.
             </p>

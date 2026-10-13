@@ -10,6 +10,7 @@ import { historique, nomDuLieu, precedent, recents as lieuxRecents } from "../hi
 import { RACCOURCI_RETOUR, useHistorique } from "./Retour";
 import { EVT_NOUVEAU_RITUEL } from "../rituels";
 import { EVT_EN_RETARD } from "../fichesAutonomie";
+import { EVT_OUVRIR_PICTOS } from "./BoutonPictos";
 
 /**
  * Les familles de résultats, pour restreindre d'un clic.
@@ -434,6 +435,8 @@ export function CommandPalette() {
     { id: "a-retard", ico: "⏰", label: "En retard : des fiches d'autonomie pour chaque élève", sous: "Action · planning · à son niveau, sur ses créneaux du jour, au cahier journal", famille: "action", run: goAction("/planning", EVT_EN_RETARD) },
     { id: "a-docia", ico: "📄", label: "Créer un document PDF (IA)", sous: "Action · assistant · fiche, mot aux familles, affiche", famille: "action", run: goAction("/assistant", "maitrize:document-ia") },
     { id: "a-assist", ico: "🪄", label: "Ouvrir l'assistant IA", sous: "Action", famille: "action", run: goNav("/assistant") },
+    { id: "a-pictos", ico: "🧩", label: "Trouver un pictogramme (par son mot ou son numéro)", sous: "Action · ARASAAC, Sclera, Makaton, Mes pictos", famille: "action",
+      run: () => { setOpen(false); window.dispatchEvent(new Event(EVT_OUVRIR_PICTOS)); } },
     { id: "a-neuf", ico: "✨", label: "Quoi de neuf", sous: "Action · ce qui a changé dans l'app", famille: "action", run: () => { setOpen(false); montrerLesNouveautes(); } },
     { id: "r-demain", ico: "🌅", label: "Préparer pour demain", sous: "Réponse directe", famille: "action", run: repondre("Préparer pour demain", preparerDemain) },
     { id: "r-jour", ico: "📅", label: "Planning d'aujourd'hui", sous: "Réponse directe", famille: "action", run: repondre("Planning d'aujourd'hui", () => planningJour("today")) },

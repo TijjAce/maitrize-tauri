@@ -32,6 +32,7 @@ import { demarrerLaVeille } from "./veille";
 import { surveillerLeChiffrement } from "./chiffrementDisque";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { NotesPanel } from "./components/NotesPanel";
+import { BoutonPictos } from "./components/BoutonPictos";
 import { CommandPalette } from "./components/CommandPalette";
 import { Onboarding } from "./components/Onboarding";
 import { ContextMenuHost } from "./components/ctxmenu";
@@ -295,6 +296,7 @@ export default function App() {
       <LecteurMarkdownHost />
       <UpdateBanner />
       <NotesPanel />
+      <BoutonPictos />
       <CommandPalette />
       <Onboarding />
       {/* L'été : proposer de laisser place à la classe suivante (voir finDAnnee.ts). */}
