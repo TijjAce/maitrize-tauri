@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { api, texteErreur, type BureauCommun, type CompteConnu, type CompteNuage, type DossierRecu, type EntreeCommune } from "../api";
-import { Demander, Field, Input, Modal, Select, ouvrirOnglet } from "./ui";
+import { api, texteErreur, type BureauCommun, type EntreeCommune } from "../api";
+import { Demander, Field, Input, Modal, ouvrirOnglet } from "./ui";
 import { toast, toastAnnulable } from "./Toaster";
 import { confirmer } from "./confirmer";
 import { openCtx } from "./ctxmenu";
@@ -232,7 +232,7 @@ export function PanneauCommun({ compact = false, onFermer }: {
       icon: b.id === actif?.id ? "✓" : "🤝",
       onClick: () => { if (b.id !== actif?.id) setActifId(b.id); },
     })),
-    { label: "Ajouter un bureau : un lien de partage, ou un dossier de mon Nuage", icon: "🔗", sep: true, onClick: () => setAjout(true) },
+    { label: "Rejoindre un partage : coller un lien", icon: "🔗", sep: true, onClick: () => setAjout(true) },
     { label: "Partager mes dossiers…", icon: "📤", onClick: () => { nav("/reglages"); setTimeout(() => ouvrirOnglet("reglages", "donnees"), 140); } },
   ]);
   const boutonChanger = (
@@ -510,168 +510,69 @@ function PremiersPas({ onAjouter, compact = false }: { onAjouter: () => void; co
 
 /** Ajouter un bureau commun : choisir le dossier partagé, lui donner un nom. */
 function AjoutBureau({ onClose, onAjoute }: { onClose: () => void; onAjoute: (b: BureauCommun) => void }) {
-  // Deux portes. Un lien de partage — et son mot de passe, s'il en a un —
-  // suffit pour entrer dans le dossier d'un collègue : aucun compte. Avec son
-  // compte Nuage, on ouvre un de ses dossiers (son adresse, copiée dans le
-  // navigateur), ou un dossier que d'autres ont partagé avec ce compte, depuis
-  // ce Nuage ou un autre. Le compte se relie une fois ; ensuite il resert.
-  const [mode, setMode] = React.useState<"lien" | "compte">("lien");
+  // Un lien et, s'il en a un, son mot de passe : c'est tout ce qu'il faut pour
+  // entrer dans le dossier d'un collègue, de son Nuage ou d'un autre. Aucun
+  // compte, aucun réglage. L'adresse d'un dossier vu dans Nuage, elle, ne
+  // s'ouvre qu'avec un compte : la fenêtre le dit plutôt que d'essayer.
   const [nom, setNom] = React.useState("");
   const [lien, setLien] = React.useState("");
   const [motDePasse, setMotDePasse] = React.useState("");
-  const [comptes, setComptes] = React.useState<CompteConnu[]>([]);
-  // Le compte : celui d'un bureau commun déjà relié, ou "" pour en saisir un.
-  const [compteId, setCompteId] = React.useState("");
-  const [serveur, setServeur] = React.useState("");
-  const [utilisateur, setUtilisateur] = React.useState("");
-  const [motDePasseAppli, setMotDePasseAppli] = React.useState("");
-  const [adresseDossier, setAdresseDossier] = React.useState("");
-  const [recus, setRecus] = React.useState<DossierRecu[] | null>(null);
   const [erreur, setErreur] = React.useState("");
-  const [essai, setEssai] = React.useState("");
-  React.useEffect(() => {
-    api.telephoneComptes().then((l) => { setComptes(l); if (l[0]) setCompteId(l[0].id); }).catch(() => setComptes([]));
-  }, []);
+  const [essai, setEssai] = React.useState(false);
+  const champMotDePasse = React.useRef<HTMLInputElement>(null);
+  const adresse = adresseDeDossierNuage(lien);
 
-  const adresse = adresseDeDossierNuage(adresseDossier);
-  const compte: CompteNuage = compteId ? { bureau: compteId } : { serveur: serveur.trim() || adresseDossier, utilisateur, motDePasse: motDePasseAppli };
-  const comptePret = Boolean(compteId || ((serveur.trim() || adresse) && utilisateur.trim() && motDePasseAppli.trim()));
-
-  const faire = async (quoi: string, f: () => Promise<void>) => {
-    setErreur(""); setEssai(quoi);
-    try { await f(); } catch (e) { setErreur(texteErreur(e)); } finally { setEssai(""); }
-  };
-  // Coller dans le champ du lien l'adresse d'un dossier vu dans Nuage : elle demande un compte, on passe à l'autre porte.
-  const changerLien = (v: string) => {
-    setErreur("");
-    if (adresseDeDossierNuage(v)) {
-      setMode("compte"); setAdresseDossier(v); setLien("");
-      if (!serveur.trim()) setServeur(adresseDeDossierNuage(v)!.hote);
-      return;
+  const ajouter = async () => {
+    setErreur(""); setEssai(true);
+    try {
+      onAjoute(await api.communAjouterLien(nom, lien, motDePasse, ""));
+    } catch (e) {
+      const texte = texteErreur(e);
+      setErreur(texte);
+      // Le lien demande son mot de passe : on va droit au champ.
+      if (/Mot de passe du lien|mot de passe pour ce lien/.test(texte)) champMotDePasse.current?.focus();
+    } finally {
+      setEssai(false);
     }
-    setLien(v);
   };
-  const ouvrir = (dossier: string, nomParDefaut: string) => faire("ouverture", async () => {
-    const leNom = nom.trim() || nomParDefaut;
-    onAjoute(compteId
-      ? await api.communAjouterNuageCompte(leNom, dossier ? "" : adresseDossier, compteId, dossier)
-      : await api.communAjouterNuage(leNom, dossier ? serveur : adresseDossier || serveur, utilisateur, motDePasseAppli, dossier));
-  });
-  const voirLesPartages = () => faire("liste", async () => { setRecus(await api.communDossiersRecus(compte)); });
-  const accepterPuisOuvrir = (d: DossierRecu) => faire("acceptation", async () => {
-    const liste = await api.communAccepterPartage(compte, d.sorte, d.id);
-    setRecus(liste);
-    const accepte = liste.find((x) => x.sorte === d.sorte && x.id === d.id && x.chemin);
-    if (!accepte) { setErreur("Partage accepté : Nuage le range dans vos fichiers. Rouvrez la liste dans un instant pour l'ouvrir."); return; }
-    const leNom = nom.trim() || accepte.nom;
-    onAjoute(compteId
-      ? await api.communAjouterNuageCompte(leNom, "", compteId, accepte.chemin)
-      : await api.communAjouterNuage(leNom, serveur, utilisateur, motDePasseAppli, accepte.chemin));
-  });
 
   return (
-    <Modal titre="Ajouter un bureau commun" onClose={onClose}
+    <Modal titre="Rejoindre un partage" onClose={onClose}
       footer={<>
         <button className="btn" onClick={onClose}>Annuler</button>
-        {mode === "lien" && (
-          <button className="btn primary" disabled={!lien.trim() || !!essai} onClick={() => faire("lien", async () => { onAjoute(await api.communAjouterLien(nom, lien, motDePasse, "")); })}>
-            {essai ? "Connexion…" : "Se connecter"}
-          </button>
-        )}
+        <button className="btn primary" disabled={!lien.trim() || !!adresse || essai} onClick={() => { void ajouter(); }}>
+          {essai ? "Connexion…" : "Se connecter"}
+        </button>
       </>}>
-      <div className="seg" style={{ marginBottom: 12 }}>
-        <button type="button" className={mode === "lien" ? "active" : ""} onClick={() => { setMode("lien"); setErreur(""); }}>🔗 Un lien de partage</button>
-        <button type="button" className={mode === "compte" ? "active" : ""} onClick={() => { setMode("compte"); setErreur(""); }}>☁️ Avec mon compte Nuage</button>
-      </div>
-      {mode === "lien" ? (
-        <>
-          <p style={{ marginTop: 0, fontSize: 13, color: "var(--text-2)", lineHeight: 1.55 }}>
-            Un collègue vous a envoyé un lien de partage, de son Nuage ou d'un autre ? Collez-le ici. Vous n'avez besoin d'aucun
-            compte, personne ne donne son mot de passe, et le lien n'ouvre que le dossier partagé.
-          </p>
-          <Field label="Lien de partage">
-            <Input autoFocus placeholder="https://nuage03.apps.education.fr/s/aBcD1234" value={lien} onChange={(e) => changerLien(e.target.value)} />
-          </Field>
-          <div className="row">
-            <Field label="Mot de passe du lien (s'il y en a un)">
-              <Input type="password" autoComplete="off" value={motDePasse} onChange={(e) => setMotDePasse(e.target.value)} />
-            </Field>
-            <Field label="Nom du bureau commun">
-              <Input placeholder="Équipe de l'IME" value={nom} onChange={(e) => setNom(e.target.value)} />
-            </Field>
-          </div>
-          <p style={{ fontSize: 12.5, color: "var(--text-2)", marginBottom: 0 }}>
-            Un collègue a partagé un dossier avec votre compte Nuage, sans lien ? Passez par <b>☁️ Avec mon compte Nuage</b>.
-          </p>
-        </>
+      <p style={{ marginTop: 0, fontSize: 13, color: "var(--text-2)", lineHeight: 1.55 }}>
+        Un collègue vous a envoyé un lien de partage, de son Nuage ou d'un autre ? Collez-le ici. Vous n'avez besoin d'aucun
+        compte, personne ne donne son mot de passe, et le lien n'ouvre que le dossier partagé.
+      </p>
+      <Field label="Lien de partage">
+        <Input autoFocus placeholder="https://nuage03.apps.education.fr/s/aBcD1234"
+          value={lien} onChange={(e) => { setLien(e.target.value); setErreur(""); }} />
+      </Field>
+      {adresse ? (
+        <p className="commun-avis">
+          Cette adresse est celle du dossier <b>« {adresse.dossier || "racine"} »</b> vu dans Nuage ({adresse.hote}), connecté à un compte :
+          elle ne s'ouvre pas sans lui. Demandez à la personne qui partage un <b>lien de partage</b> (dans Nuage : Partager › Lien de partage).
+          Pour vos propres dossiers : <b>Réglages › Données &amp; synchro › 🤝 Partager mes dossiers</b>, où cette adresse se colle telle quelle.
+        </p>
       ) : (
-        <div className="commun-mon-nuage">
-          {comptes.length > 0 && (
-            <Field label="Le compte">
-              <Select value={compteId} onChange={(e) => { setCompteId(e.target.value); setRecus(null); }}>
-                {comptes.map((c) => <option key={c.id} value={c.id}>{c.libelle}</option>)}
-                <option value="">Un autre compte…</option>
-              </Select>
-            </Field>
-          )}
-          {!compteId && (
-            <>
-              <p style={{ margin: "0 0 8px", fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.55 }}>
-                Reliez votre compte une fois. Dans Nuage : <b>Paramètres › Sécurité › Mot de passe d'application</b>, créez-en un
-                pour Maitrize et recopiez-le ici. Il reste sur cet ordinateur, et se révoque là-bas quand vous voulez.
-              </p>
-              <Field label="Adresse de votre Nuage">
-                <Input placeholder="nuage17.apps.education.fr" value={serveur} onChange={(e) => { setServeur(e.target.value); setRecus(null); }} />
-              </Field>
-              <div className="row">
-                <Field label="Identifiant Nuage">
-                  <Input placeholder="prenom.nom" autoComplete="off" value={utilisateur} onChange={(e) => { setUtilisateur(e.target.value); setRecus(null); }} />
-                </Field>
-                <Field label="Mot de passe d'application">
-                  <Input type="password" autoComplete="off" value={motDePasseAppli} onChange={(e) => { setMotDePasseAppli(e.target.value); setRecus(null); }} />
-                </Field>
-              </div>
-            </>
-          )}
-          <Field label="Nom du bureau commun (facultatif)">
-            <Input placeholder={adresse?.dossier.split("/").pop() || "le nom du dossier"} value={nom} onChange={(e) => setNom(e.target.value)} />
+        <div className="row">
+          <Field label="Mot de passe du lien (s'il y en a un)">
+            <input ref={champMotDePasse} className="input" type="password" autoComplete="off" value={motDePasse}
+              onChange={(e) => { setMotDePasse(e.target.value); setErreur(""); }} />
           </Field>
-
-          <div className="commun-porte">
-            <b>📂 Un dossier qu'on a partagé avec vous</b>
-            <span className="meta">Depuis votre Nuage ou un autre : ce que vos collègues ont partagé avec votre compte.</span>
-            <button type="button" className="btn sm" disabled={!comptePret || !!essai} onClick={voirLesPartages}>
-              {essai === "liste" ? "Lecture…" : recus ? "🔄 Relire la liste" : "Voir les dossiers partagés avec moi"}</button>
-            {recus && (recus.length ? (
-              <ul className="commun-recus">
-                {recus.map((d) => (
-                  <li key={`${d.sorte}-${d.id}`}>
-                    <span>📁 <b>{d.nom}</b>
-                      <span className="meta"> — {d.proprietaire || "un collègue"}{d.origine ? `, depuis ${d.origine}` : ""}{d.enAttente ? " · attend votre accord" : ""}</span>
-                    </span>
-                    {d.enAttente
-                      ? <button type="button" className="btn sm" disabled={!!essai} onClick={() => accepterPuisOuvrir(d)}>Accepter et ouvrir</button>
-                      : <button type="button" className="btn sm primary" disabled={!!essai || !d.chemin} onClick={() => ouvrir(d.chemin, d.nom)}>Ouvrir</button>}
-                  </li>
-                ))}
-              </ul>
-            ) : <span className="meta">Aucun dossier n'est partagé avec ce compte pour l'instant.</span>)}
-          </div>
-
-          <div className="commun-porte">
-            <b>🔗 Un de vos dossiers, par son adresse</b>
-            <span className="meta">L'adresse que montre le navigateur quand vous êtes dans le dossier, sur Nuage.</span>
-            <Input placeholder="https://nuage17.apps.education.fr/index.php/apps/files/?dir=/fichier-commun" value={adresseDossier}
-              onChange={(e) => { setAdresseDossier(e.target.value); setErreur(""); }} />
-            {adresse && <span className="meta">Le dossier « {adresse.dossier || "racine"} », sur {adresse.hote}.</span>}
-            <button type="button" className="btn sm" disabled={!adresse || !comptePret || !!essai} onClick={() => ouvrir("", adresse?.dossier.split("/").pop() || "")}>
-              {essai === "ouverture" ? "Connexion…" : "Ouvrir ce dossier"}</button>
-          </div>
-          <p style={{ fontSize: 12.5, color: "var(--text-2)", margin: 0, lineHeight: 1.55 }}>
-            Le dossier d'un collègue qui n'est pas partagé avec votre compte ne s'ouvre que par un lien de partage : demandez-le-lui.
-          </p>
+          <Field label="Nom du bureau commun">
+            <Input placeholder="Équipe de l'IME" value={nom} onChange={(e) => setNom(e.target.value)} />
+          </Field>
         </div>
       )}
+      <p style={{ fontSize: 12.5, color: "var(--text-2)", marginBottom: 0 }}>
+        Sur Nuage, un lien de partage porte souvent un mot de passe : la personne qui vous l'envoie vous le donne aussi.
+        Pour <b>partager</b> vos propres dossiers, allez dans <b>Réglages › Données &amp; synchro › 🤝 Partager mes dossiers</b>.
+      </p>
       {erreur && <p style={{ color: "var(--danger, #ef4444)", fontSize: 13, marginBottom: 0 }}>{erreur}</p>}
     </Modal>
   );
