@@ -147,6 +147,8 @@ export interface Creneau {
   prevu: string;
   /** Cahier journal : ce qui a été fait, et le bilan. */
   bilan: string;
+  /** Le minuteur des tablettes, en minutes ; 0 ou absent : aucun. Le téléphone l'envoie avec l'aide du créneau. */
+  minuteur?: number;
 }
 
 export interface Atelier {
@@ -562,6 +564,8 @@ export const api = {
   creneauSave: (creneau: Creneau) => invoke<Creneau>("creneau_save", { creneau }),
   creneauJournalSave: (id: string, prevu: string, bilan: string) =>
     invoke<void>("creneau_journal_save", { id, prevu, bilan }),
+  /** Le minuteur des tablettes d'un créneau, en minutes (0 : aucun), et rien d'autre. */
+  creneauMinuteurSave: (id: string, minutes: number) => invoke<void>("creneau_minuteur_save", { id, minutes }),
   creneauDelete: (id: string) => invoke<void>("creneau_delete", { id }),
 
   // Élèves

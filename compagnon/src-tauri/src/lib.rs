@@ -44,6 +44,8 @@ pub fn run() {
             portail_ouvrir,
             portail_montrer,
             portail_cacher,
+            // Depuis un créneau du cahier journal : son aide et son minuteur, ensemble.
+            portail_envoyer,
             portail_affichage,
             portail_etape,
             portail_minuteur,

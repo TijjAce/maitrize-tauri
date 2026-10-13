@@ -165,7 +165,7 @@ pub fn run() {
             fin_annee::eleves_exporter,
             commands::diag_ecrire, commands::diag_ouvrir, commands::diag_rapport,
             veille::diag_battement, commands::fichier_ouvrir,
-            commands::creneau_journal_save,
+            commands::creneau_journal_save, commands::creneau_minuteur_save,
             // Copie du bureau dans un vrai dossier de l'ordinateur
             copie_bureau::copie_bureau_info, copie_bureau::copie_bureau_regler,
             copie_bureau::copie_bureau_preparer, copie_bureau::copie_bureau_appliquer, copie_bureau::copie_bureau_ouvrir,

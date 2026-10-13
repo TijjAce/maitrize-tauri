@@ -202,8 +202,14 @@ pub struct Creneau {
     /// Cahier journal : ce qui a été fait, et le bilan.
     #[serde(default)]
     pub bilan: String,
+    /// Le minuteur des tablettes, en minutes ; 0 : aucun. Le téléphone l'envoie avec l'aide du créneau.
+    #[serde(default)]
+    pub minuteur: u32,
 }
 fn nature_classe() -> String { "classe".into() }
+
+/// Le plus long minuteur des tablettes, en minutes : celui que le portail du téléphone accepte.
+pub const MINUTEUR_MAX: u32 = 120;
 
 impl Creneau {
     pub fn from_row(r: &Row) -> rusqlite::Result<Self> {
@@ -221,6 +227,8 @@ impl Creneau {
             nature: r.get("nature")?,
             prevu: r.get("prevu")?,
             bilan: r.get("bilan")?,
+            // Vide sur une ligne venue d'un ordinateur pas encore mis à jour.
+            minuteur: r.get::<_, Option<i64>>("minuteur").ok().flatten().unwrap_or(0).clamp(0, MINUTEUR_MAX as i64) as u32,
         })
     }
 }

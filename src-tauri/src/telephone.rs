@@ -1179,7 +1179,7 @@ mod tests {
         let journal = |aides: Vec<&str>| relais::Journal { publie: String::new(), jours: vec![relais::JourDuJournal { jour: "2026-10-12".into(), creneaux: vec![relais::CreneauDuJournal {
             id: "c1".into(), debut: "09:00".into(), fin: "10:00".into(), matiere: "Maths".into(), prevu: "Les dizaines".into(),
             bilan: "Lina a compté jusqu'à 40.".into(), seance: "Séance 2".into(),
-            aides: aides.into_iter().map(|k| relais::AideDuJournal { id: k.into(), titre: format!("Aide {k}") }).collect(),
+            aides: aides.into_iter().map(|k| relais::AideDuJournal { id: k.into(), titre: format!("Aide {k}") }).collect(), minuteur: 15,
         }] }] };
         en_attendant(async {
             let (j, par_id) = journal_a_publier(journal(vec!["a", "b", "inconnue"]), &[aide("a", "<p>1</p>"), aide("b", "<p>2</p>")]);

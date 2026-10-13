@@ -27,6 +27,8 @@ export interface CreneauDuJournal {
   /** La séance posée, par son titre ; vide sans séance. */
   seance: string;
   aides: AideDuJournal[];
+  /** Le minuteur des tablettes, en minutes ; 0 : aucun. Le téléphone l'envoie avec l'aide, depuis le créneau. */
+  minuteur: number;
 }
 export interface JourDuJournal { jour: string; creneaux: CreneauDuJournal[] }
 export interface JournalTelephone { publie: string; jours: JourDuJournal[] }
@@ -57,6 +59,24 @@ export const titreDeLAide = (m: MaterielItem): string => {
   return f && !estUnAtelierDAide(f.atelier) && f.consigne ? `Consigne — ${m.titre}` : m.titre;
 };
 
+/** Les aides qu'un créneau envoie aux tablettes : celles de la séance qui y est posée. */
+export const aidesDuCreneau = (c: Pick<Creneau, "seanceId">, materiel: MaterielItem[]): MaterielItem[] =>
+  c.seanceId ? materiel.filter((m) => m.seanceId === c.seanceId && estUneAide(m)) : [];
+
+/** Les durées proposées pour le minuteur des tablettes, en minutes : jusqu'à deux heures, ce que le portail du téléphone accepte. */
+export const MINUTEURS_DES_TABLETTES = [1, 2, 3, 5, 10, 15, 20, 25, 30, 40, 45, 60, 90, 120];
+
+/** « 15 min », « 1 h », « 1 h 30 » : la durée d'un minuteur, comme le téléphone l'écrit. */
+export function dureeDuMinuteur(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const reste = minutes % 60;
+  return `${Math.floor(minutes / 60)} h${reste ? ` ${String(reste).padStart(2, "0")}` : ""}`;
+}
+
+/** Le minuteur d'un créneau, en minutes entières : 0 sans minuteur, deux heures au plus. */
+export const minuteurDuCreneau = (c: Pick<Creneau, "minuteur">): number =>
+  Math.min(120, Math.max(0, Math.round(Number(c.minuteur) || 0)));
+
 /** La page de la consigne d'une feuille, pour les tablettes : son titre, ses blocs de consigne et de règle, en grand. */
 export function pageDeLaConsigne(titre: string, consigne: string): string {
   const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
@@ -76,7 +96,7 @@ export const STYLE_CONSIGNE_TABLETTE = `
  */
 export function journalDes(jours: string[], creneaux: Creneau[], seances: Seance[], materiel: MaterielItem[]): JournalTelephone {
   const titreDe = new Map(seances.map((s) => [s.id, s.titre]));
-  const aides = materiel.filter(estUneAide);
+  const aides = materiel.filter((m) => !!m.seanceId);
   return {
     publie: "",
     jours: jours.map((jour) => ({
@@ -87,7 +107,8 @@ export function journalDes(jours: string[], creneaux: Creneau[], seances: Seance
         .map((c) => ({
           id: c.id, debut: c.heureDebut, fin: c.heureFin, matiere: c.matiere ?? "", prevu: c.prevu ?? "", bilan: c.bilan ?? "",
           seance: c.seanceId ? titreDe.get(c.seanceId) ?? "" : "",
-          aides: c.seanceId ? aides.filter((m) => m.seanceId === c.seanceId).map((m) => ({ id: m.id, titre: titreDeLAide(m) })) : [],
+          aides: aidesDuCreneau(c, aides).map((m) => ({ id: m.id, titre: titreDeLAide(m) })),
+          minuteur: minuteurDuCreneau(c),
         })),
     })),
   };

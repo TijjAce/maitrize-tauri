@@ -117,6 +117,8 @@ struct Etat {
     /// L'étape où en est la classe, dans le déroulé ; aucune : pas de repère.
     etape: Option<usize>,
     minuteur: Option<Minuteur>,
+    /// Le créneau du cahier journal qui a envoyé ce que les tablettes montrent ; vide : envoyé d'ailleurs.
+    creneau: String,
     /// L'adresse où la dernière tablette est venue, « http://172.20.10.1:8765/ » : celle que les tablettes ont gardée.
     adresse_connue: String,
     /// Une tablette est venue à une autre adresse : le téléphone la gardera pour la fois suivante.
@@ -172,11 +174,13 @@ pub struct EtatPortail {
     /// Le texte de l'étape surlignée : l'enseignant voit sur le téléphone où en sont les tablettes.
     pub texte_etape: String,
     pub minuteur: Option<Minuteur>,
+    /// Le créneau qui a envoyé l'aide et le minuteur : c'est sous lui que l'écran montre le temps qui reste.
+    pub creneau: String,
 }
 
 const FERME: EtatPortail = EtatPortail {
     ouvert: false, adresses: Vec::new(), qr: String::new(), adresse_changee: false, tablettes: 0, montree: String::new(), montree_id: String::new(),
-    affichage: Affichage::Fiche, etape: None, etapes: 0, texte_etape: String::new(), minuteur: None,
+    affichage: Affichage::Fiche, etape: None, etapes: 0, texte_etape: String::new(), minuteur: None, creneau: String::new(),
 };
 
 /// Les adresses IPv4 de ce téléphone sur un réseau local : le partage de
@@ -590,6 +594,7 @@ fn etat_de(p: &Portail) -> EtatPortail {
         etapes: e.montree.as_ref().map(|m| m.etapes.len()).unwrap_or(0),
         texte_etape: e.montree.as_ref().zip(e.etape).and_then(|(m, k)| m.etapes.get(k)).map(|x| x.texte.clone()).unwrap_or_default(),
         minuteur: e.minuteur,
+        creneau: e.creneau.clone(),
     }
 }
 
@@ -630,16 +635,22 @@ fn changer(f: impl FnOnce(&mut Etat)) -> R<EtatPortail> {
     Ok(etat_de(p))
 }
 
+/// Pose l'aide que les tablettes montreront ; la classe commence à la première étape.
+fn montrer(e: &mut Etat, aide: AideAEnvoyer) {
+    let AideAEnvoyer { id, titre, html, etapes } = aide;
+    e.etape = if etapes.is_empty() { None } else { Some(0) };
+    if etapes.is_empty() { e.affichage = Affichage::Fiche; }
+    e.montree = Some(Montree { id, titre, html, etapes });
+    e.version += 1;
+}
+
 /// Montre une aide aux tablettes : celle que l'écran vient de relire, avec les étapes de son déroulé.
 /// La classe commence à la première.
 #[tauri::command]
 pub fn portail_montrer(id: String, titre: String, html: String, etapes: Option<Vec<EtapeDuDeroule>>) -> R<EtatPortail> {
-    let etapes = etapes.unwrap_or_default();
     changer(|e| {
-        e.etape = if etapes.is_empty() { None } else { Some(0) };
-        if etapes.is_empty() { e.affichage = Affichage::Fiche; }
-        e.montree = Some(Montree { id, titre, html, etapes });
-        e.version += 1;
+        montrer(e, AideAEnvoyer { id, titre, html, etapes: etapes.unwrap_or_default() });
+        e.creneau.clear();
     })
 }
 
@@ -650,7 +661,40 @@ pub fn portail_cacher() -> R<EtatPortail> {
         e.montree = None;
         e.etape = None;
         e.version += 1;
+        e.creneau.clear();
     })
+}
+
+/// L'aide qu'un créneau envoie, relue par l'écran avec les étapes de son déroulé.
+#[derive(Deserialize, Clone, Debug)]
+pub struct AideAEnvoyer {
+    pub id: String,
+    pub titre: String,
+    pub html: String,
+    #[serde(default)]
+    pub etapes: Vec<EtapeDuDeroule>,
+}
+
+/// Ce qu'un créneau du cahier journal envoie aux tablettes : son aide, ou aucune — celle d'avant s'en
+/// va —, et son minuteur, lancé aussitôt, ou aucun. Tout change d'un coup : les tablettes reçoivent
+/// l'aide et le minuteur à la même relecture.
+fn envoyer(e: &mut Etat, creneau: String, aide: Option<AideAEnvoyer>, secondes: u64, maintenant: u64) {
+    match aide {
+        Some(a) => montrer(e, a),
+        None => {
+            e.montree = None;
+            e.etape = None;
+            e.version += 1;
+        }
+    }
+    e.minuteur = (secondes > 0).then(|| Minuteur::lancer(secondes, maintenant));
+    e.creneau = creneau;
+}
+
+/// Envoie aux tablettes l'aide et le minuteur d'un créneau du cahier journal.
+#[tauri::command]
+pub fn portail_envoyer(creneau: String, aide: Option<AideAEnvoyer>, secondes: u64) -> R<EtatPortail> {
+    changer(|e| envoyer(e, creneau, aide, secondes, maintenant_ms()))
 }
 
 /// La fiche telle qu'elle s'imprime, ou le déroulé en grand.
@@ -874,6 +918,27 @@ mod tests {
             assert!(r.starts_with(b"HTTP/1.1 200") && r.windows(4).any(|w| w == b"\x89PNG"));
         }
         arret.store(true, Ordering::SeqCst);
+    }
+
+    #[test]
+    fn un_creneau_envoie_son_aide_et_son_minuteur_d_un_coup() {
+        let mut e = Etat::default();
+        let aide = |id: &str| AideAEnvoyer {
+            id: id.into(), titre: format!("Aide {id}"), html: "<p>1. Je lis.</p>".into(),
+            etapes: vec![EtapeDuDeroule { texte: "Je lis.".into(), image: String::new() }],
+        };
+        envoyer(&mut e, "c1".into(), Some(aide("a1")), 900, 1_000);
+        assert_eq!((e.montree.as_ref().map(|m| m.id.as_str()), e.etape, e.creneau.as_str()), (Some("a1"), Some(0), "c1"));
+        // Le minuteur démarre aussitôt, de toute sa durée.
+        assert_eq!(e.minuteur.map(|t| (t.duree, t.fin)), Some((900, Some(901_000))));
+        let version = e.version;
+        // Un autre créneau, sans aide : l'aide d'avant s'en va, son minuteur prend la place.
+        envoyer(&mut e, "c2".into(), None, 300, 5_000);
+        assert!(e.montree.is_none() && e.etape.is_none() && e.version > version);
+        assert_eq!((e.minuteur.map(|t| t.duree), e.creneau.as_str()), (Some(300), "c2"));
+        // Un créneau sans minuteur arrête celui qui tournait : les tablettes ne montrent que ce créneau.
+        envoyer(&mut e, "c3".into(), Some(aide("a3")), 0, 9_000);
+        assert_eq!((e.minuteur, e.creneau.as_str()), (None, "c3"));
     }
 
     #[test]

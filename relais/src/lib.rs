@@ -494,6 +494,10 @@ pub struct CreneauDuJournal {
     pub seance: String,
     #[serde(default)]
     pub aides: Vec<AideDuJournal>,
+    /// Le minuteur que l'enseignant a réglé pour les tablettes, en minutes ; 0 : aucun.
+    /// Le téléphone l'envoie avec l'aide, depuis le créneau.
+    #[serde(default)]
+    pub minuteur: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
@@ -627,7 +631,7 @@ mod tests {
             jours: vec![JourDuJournal { jour: "2026-10-12".into(), creneaux: vec![CreneauDuJournal {
                 id: "c1".into(), debut: "09:00".into(), fin: "10:00".into(), matiere: "Mathématiques".into(),
                 prevu: "📚 Les dizaines — séance 2".into(), bilan: String::new(), seance: "Les dizaines entières".into(),
-                aides: vec![AideDuJournal { id: id.clone(), titre: aide.titre.clone() }],
+                aides: vec![AideDuJournal { id: id.clone(), titre: aide.titre.clone() }], minuteur: 15,
             }] }],
         };
         let blob = chiffrer_journal(&retour, &journal).unwrap();
@@ -636,9 +640,10 @@ mod tests {
         assert_eq!(dechiffrer_journal(&retour, &blob).unwrap().du_jour("2026-10-12").unwrap().creneaux[0].aides[0].id, id);
         assert!(dechiffrer_journal(&nouvelle_cle(), &blob).is_err());
         assert_eq!(dechiffrer_aide(&retour, &chiffrer_aide(&retour, &aide).unwrap()).unwrap(), aide);
-        // Un journal d'avant, sans aides ni bilan, se relit.
+        assert_eq!(dechiffrer_journal(&retour, &blob).unwrap().jours[0].creneaux[0].minuteur, 15);
+        // Un journal d'avant, sans aides, ni bilan, ni minuteur, se relit.
         let ancien: CreneauDuJournal = serde_json::from_str(r#"{"id":"c","debut":"9","fin":"10"}"#).unwrap();
-        assert!(ancien.aides.is_empty() && ancien.bilan.is_empty());
+        assert!(ancien.aides.is_empty() && ancien.bilan.is_empty() && ancien.minuteur == 0);
     }
 
     #[test]

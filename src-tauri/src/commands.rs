@@ -344,16 +344,36 @@ pub fn creneau_save(db: State<Db>, creneau: Creneau) -> R<Creneau> {
     ecrire_creneau(&c, creneau)
 }
 
+/// Le minuteur des tablettes ne s'écrit ici qu'à la création — un créneau
+/// dupliqué garde le sien. Ensuite, seul le cahier journal le règle
+/// (`creneau_minuteur_save`) : une grille restée ouverte, qui déplace le
+/// créneau, ne le remet pas à son ancienne valeur.
 pub(crate) fn ecrire_creneau(c: &rusqlite::Connection, creneau: Creneau) -> R<Creneau> {
     c.execute(
         "INSERT INTO creneaux (id,date,heure_debut,heure_fin,matiere,couleur,seance_id,atelier_id,espace_id,eleves_json,
-          nature,prevu,bilan)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13) ON CONFLICT(id) DO UPDATE SET date = excluded.date, heure_debut = excluded.heure_debut, heure_fin = excluded.heure_fin, matiere = excluded.matiere, couleur = excluded.couleur, seance_id = excluded.seance_id, atelier_id = excluded.atelier_id, espace_id = excluded.espace_id, eleves_json = excluded.eleves_json, nature = excluded.nature, prevu = excluded.prevu, bilan = excluded.bilan",
+          nature,prevu,bilan,minuteur)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14) ON CONFLICT(id) DO UPDATE SET date = excluded.date, heure_debut = excluded.heure_debut, heure_fin = excluded.heure_fin, matiere = excluded.matiere, couleur = excluded.couleur, seance_id = excluded.seance_id, atelier_id = excluded.atelier_id, espace_id = excluded.espace_id, eleves_json = excluded.eleves_json, nature = excluded.nature, prevu = excluded.prevu, bilan = excluded.bilan",
         params![creneau.id, creneau.date, creneau.heure_debut, creneau.heure_fin,
                 creneau.matiere, creneau.couleur, creneau.seance_id, creneau.atelier_id,
-                creneau.espace_id, creneau.eleves_json, creneau.nature, creneau.prevu, creneau.bilan],
+                creneau.espace_id, creneau.eleves_json, creneau.nature, creneau.prevu, creneau.bilan,
+                creneau.minuteur.min(crate::models::MINUTEUR_MAX)],
     ).map_err(e)?;
     Ok(creneau)
+}
+
+/// Règle le minuteur des tablettes d'un créneau, en minutes (0 : aucun), et rien d'autre.
+#[tauri::command]
+pub fn creneau_minuteur_save(db: State<Db>, id: String, minutes: u32) -> R<()> {
+    let c = db.lock();
+    ecrire_minuteur_creneau(&c, &id, minutes)
+}
+
+pub(crate) fn ecrire_minuteur_creneau(c: &rusqlite::Connection, id: &str, minutes: u32) -> R<()> {
+    let n = c.execute("UPDATE creneaux SET minuteur = ?2 WHERE id = ?1", params![id, minutes.min(crate::models::MINUTEUR_MAX)]).map_err(e)?;
+    if n == 0 {
+        return Err("Ce créneau n'existe plus.".into());
+    }
+    Ok(())
 }
 
 /// Écrit le cahier journal d'un créneau, et rien d'autre.
@@ -3206,6 +3226,37 @@ mod tests_cahier_journal {
         let ancien: Creneau = serde_json::from_value(serde_json::json!({"id": "cr2", "date": "2026-09-14"})).unwrap();
         assert_eq!(ancien.nature, "classe");
         assert_eq!(ancien.prevu, "");
+        assert_eq!(ancien.minuteur, 0);
+    }
+
+    /// Le minuteur des tablettes se règle au cahier journal ; la grille, qui
+    /// réécrit toute la ligne avec ce qu'elle a chargé avant, ne l'efface pas.
+    #[test]
+    fn le_minuteur_des_tablettes_se_regle_au_journal_et_la_grille_ne_l_efface_pas() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        let cr: Creneau = serde_json::from_value(serde_json::json!({
+            "id": "cr1", "date": "2026-10-13", "heureDebut": "10:00", "heureFin": "11:00", "matiere": "Autonomie"
+        })).unwrap();
+        super::ecrire_creneau(&c, cr.clone()).unwrap();
+        let lu = |c: &rusqlite::Connection| c.query_row("SELECT * FROM creneaux WHERE id='cr1'", [], Creneau::from_row).unwrap();
+        assert_eq!(lu(&c).minuteur, 0, "aucun minuteur tant qu'on n'en règle pas");
+        super::ecrire_minuteur_creneau(&c, "cr1", 15).unwrap();
+        assert_eq!(lu(&c).minuteur, 15);
+        // La grille déplace le créneau avec la ligne chargée avant le réglage.
+        super::ecrire_creneau(&c, Creneau { heure_debut: "10:30".into(), ..cr.clone() }).unwrap();
+        assert_eq!((lu(&c).heure_debut.as_str(), lu(&c).minuteur), ("10:30", 15));
+        // Dupliqué, le créneau garde son minuteur ; trop long, il s'arrête à deux heures.
+        super::ecrire_creneau(&c, Creneau { id: "cr3".into(), ..lu(&c) }).unwrap();
+        assert_eq!(c.query_row("SELECT minuteur FROM creneaux WHERE id='cr3'", [], |r| r.get::<_, i64>(0)).unwrap(), 15);
+        super::ecrire_minuteur_creneau(&c, "cr1", 600).unwrap();
+        assert_eq!(lu(&c).minuteur, crate::models::MINUTEUR_MAX);
+        super::ecrire_minuteur_creneau(&c, "cr1", 0).unwrap();
+        assert_eq!(lu(&c).minuteur, 0);
+        assert!(super::ecrire_minuteur_creneau(&c, "absent", 5).is_err());
+        // Une ligne venue d'un ordinateur pas encore mis à jour : la colonne est vide.
+        c.execute("UPDATE creneaux SET minuteur = NULL WHERE id='cr1'", []).unwrap();
+        assert_eq!(lu(&c).minuteur, 0);
     }
 }
 

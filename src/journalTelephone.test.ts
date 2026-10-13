@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import type { Creneau, MaterielItem, Seance } from "./api";
-import { estUneAide, journalDes, joursPublies, pageDeLaConsigne, signatureDuJournal, titreDeLAide } from "./journalTelephone";
+import {
+  aidesDuCreneau, dureeDuMinuteur, estUneAide, journalDes, joursPublies, minuteurDuCreneau, MINUTEURS_DES_TABLETTES, pageDeLaConsigne, signatureDuJournal, titreDeLAide,
+} from "./journalTelephone";
 
 const creneau = (id: string, date: string, p: Partial<Creneau> = {}): Creneau => ({
   id, date, heureDebut: "09:00", heureFin: "10:00", matiere: "Mathématiques", couleur: "blue", seanceId: null, atelierId: null, espaceId: null,
@@ -39,7 +41,7 @@ describe("le cahier journal pour le téléphone", () => {
     expect(j.jours[0].creneaux.map((c) => c.id)).toEqual(["c1", "c2"]);
     expect(j.jours[0].creneaux[1]).toEqual({
       id: "c2", debut: "14:10", fin: "15:00", matiere: "Mathématiques", prevu: "📚 Les dizaines", bilan: "Bien.",
-      seance: "Le nom des dizaines", aides: [{ id: "m1", titre: "Ce que je vais faire — Le nom des dizaines" }],
+      seance: "Le nom des dizaines", aides: [{ id: "m1", titre: "Ce que je vais faire — Le nom des dizaines" }], minuteur: 0,
     });
     // Un jour sans créneau figure vide : c'est un jour sans classe, pas un silence.
     expect(j.jours[1].creneaux).toEqual([]);
@@ -62,6 +64,31 @@ describe("le cahier journal pour le téléphone", () => {
     expect(signatureDuJournal(base, [autreAide])).not.toBe(sig);
     const autreBilan = journalDes(jours, [creneau("c1", "2026-10-12", { seanceId: "s1", bilan: "Fait." })], [seance("s1", "S")], [m1]);
     expect(signatureDuJournal(autreBilan, [m1])).not.toBe(sig);
+    // Un minuteur réglé repart aussi vers le téléphone.
+    const avecMinuteur = journalDes(jours, [creneau("c1", "2026-10-12", { seanceId: "s1", minuteur: 15 })], [seance("s1", "S")], [m1]);
+    expect(signatureDuJournal(avecMinuteur, [m1])).not.toBe(sig);
+  });
+
+  it("porte le minuteur des tablettes de chaque créneau, en minutes, avec ou sans aide", () => {
+    const j = journalDes(["2026-10-13"], [
+      creneau("c1", "2026-10-13", { heureDebut: "10:00", seanceId: "s1", minuteur: 15 }),
+      creneau("c2", "2026-10-13", { heureDebut: "11:00", minuteur: 20 }),
+      creneau("c3", "2026-10-13", { heureDebut: "13:30" }),
+      creneau("c4", "2026-10-13", { heureDebut: "14:00", minuteur: 600 }),
+    ], [seance("s1", "Se laver les mains")], [materiel("m1", "Se laver les mains", "s1", "sequentiel")]);
+    expect(j.jours[0].creneaux.map((c) => [c.id, c.aides.length, c.minuteur])).toEqual([
+      ["c1", 1, 15], ["c2", 0, 20], ["c3", 0, 0], ["c4", 0, 120],
+    ]);
+  });
+
+  it("dit les aides qu'un créneau enverra : celles de la séance qui y est posée", () => {
+    const tout = [materiel("m1", "Le séquentiel", "s1", "sequentiel"), materiel("m2", "Cubes", "s1", "cubes"), materiel("m3", "Autre", "s2", "sequentiel")];
+    expect(aidesDuCreneau({ seanceId: "s1" }, tout).map((m) => m.id)).toEqual(["m1"]);
+    expect(aidesDuCreneau({ seanceId: null }, tout)).toEqual([]);
+    expect([minuteurDuCreneau({}), minuteurDuCreneau({ minuteur: 12.4 }), minuteurDuCreneau({ minuteur: -3 })]).toEqual([0, 12, 0]);
+    // Chaque durée proposée tient dans ce que le portail du téléphone accepte : deux heures.
+    expect(Math.max(...MINUTEURS_DES_TABLETTES)).toBe(120);
+    expect([5, 60, 90, 125].map(dureeDuMinuteur)).toEqual(["5 min", "1 h", "1 h 30", "2 h 05"]);
   });
 });
 

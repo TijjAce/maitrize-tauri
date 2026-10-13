@@ -39,6 +39,7 @@ import { ligneDuPdf, materielDuCreneau, pdfsCites } from "../materielAImprimer";
 import { ChoixPdfDuBureau } from "./SeanceParts";
 import { PdfViewer } from "./PdfViewer";
 import { lirePdfs } from "../materielSeance";
+import { aidesDuCreneau, dureeDuMinuteur, minuteurDuCreneau, MINUTEURS_DES_TABLETTES, publierLeJournal, titreDeLAide } from "../journalTelephone";
 
 // ── Cahier journal du jour ────────────────────────────────────────────────
 //
@@ -88,6 +89,21 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
   const navigate = useNavigate();
   // Le matériel des séances : annoncé sous le créneau, avec la molette de son échelle à l'impression.
   const { data: materiels } = useAsync(() => api.materielList(), []);
+  // Le téléphone relié : chaque créneau dit ce qu'il enverra aux tablettes, et son minuteur s'y règle.
+  const { data: telephone } = useAsync(() => api.telephoneEtat(), []);
+  const [minuteursRegles, setMinuteursRegles] = React.useState<Record<string, number>>({});
+  const reglerMinuteur = async (c: Creneau, minutes: number) => {
+    const avant = minuteursRegles[c.id] ?? minuteurDuCreneau(c);
+    setMinuteursRegles((m) => ({ ...m, [c.id]: minutes }));
+    try {
+      await api.creneauMinuteurSave(c.id, minutes);
+      // Il part tout de suite sur Nuage, sans attendre la relève suivante.
+      void publierLeJournal();
+    } catch (err) {
+      setMinuteursRegles((m) => ({ ...m, [c.id]: avant }));
+      toast("Minuteur non enregistré : " + texteErreur(err), { icone: "⚠️", duree: 6000 });
+    }
+  };
   // Les prénoms de la classe : ce que le bilan en nomme part dans les notes, et se voit en couleur.
   const prenomsDeLaClasse = React.useMemo(() => eleves.map((e) => prenomDe(e.nom)).filter(Boolean), [eleves]);
   const duJour = React.useMemo(
@@ -586,6 +602,11 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                         <RituelsCites rituels={rituelsCites(b.prevu, rituels)} onModifier={(r) => setRituelEdite({ rituel: r, nouveau: false })}
                           masques={masques[c.id]} onMasquer={(cle) => masquer(c.id, cle)} />
                         <MaterielDuJournal materiels={materielDuCreneau({ seanceId: c.seanceId, prevu: b.prevu }, sequences, seances, materiels ?? [])} />
+                        {telephone?.relie && !reunion && (
+                          <TablettesDuCreneau aides={aidesDuCreneau(c, materiels ?? []).map(titreDeLAide)}
+                            minutes={minuteursRegles[c.id] ?? minuteurDuCreneau(c)}
+                            onMinutes={(m) => { void reglerMinuteur(c, m); }} />
+                        )}
                       </>
                     )}
                   </div>
@@ -678,6 +699,35 @@ function MaterielDuJournal({ materiels }: { materiels: MaterielItem[] }) {
         );
       })}
       {vu && <PdfViewer nomFichier={vu.nom} titre={vu.titre} materiel={vu.materiel} onClose={() => setVu(null)} />}
+    </div>
+  );
+}
+
+/**
+ * Ce que le téléphone enverra aux tablettes depuis ce créneau : les aides de
+ * sa séance, et le minuteur réglé ici. Sous le créneau, sur le téléphone,
+ * « Envoyer » les montre ensemble ; le minuteur démarre aussitôt, et le
+ * téléphone le met en pause.
+ */
+function TablettesDuCreneau({ aides, minutes, onMinutes }: { aides: string[]; minutes: number; onMinutes: (m: number) => void }) {
+  // Une durée réglée ailleurs que dans la liste reste choisie.
+  const durees = minutes && !MINUTEURS_DES_TABLETTES.includes(minutes)
+    ? [...MINUTEURS_DES_TABLETTES, minutes].sort((a, b) => a - b) : MINUTEURS_DES_TABLETTES;
+  return (
+    <div className="journal-tablettes">
+      <span className="journal-tablettes-titre"
+        title="Sous ce créneau, sur le téléphone, « Envoyer » montre aux tablettes l'aide de la séance et lance ce minuteur ; le téléphone le met en pause ou l'arrête.">
+        📱 Sur les tablettes</span>
+      {aides.length > 0
+        ? <span className="journal-tablettes-aides">{aides.map((t, i) => <span key={i}>☰ {t}</span>)}</span>
+        : <span className="journal-tablettes-aides meta">{minutes ? "le minuteur seul, sans aide à la tâche" : "aucune aide à la tâche"}</span>}
+      <label className="journal-tablettes-minuteur">
+        <span aria-hidden="true">⏱</span>
+        <select className="select" value={minutes} onChange={(e) => onMinutes(Number(e.target.value))} aria-label="Minuteur des tablettes">
+          <option value={0}>sans minuteur</option>
+          {durees.map((m) => <option key={m} value={m}>{dureeDuMinuteur(m)}</option>)}
+        </select>
+      </label>
     </div>
   );
 }
