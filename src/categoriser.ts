@@ -577,9 +577,9 @@ function htmlTri(r: ReglagesCategoriser, images: Images, alea: () => number): st
 }
 
 function consigneIntrus(n: Niveau): string {
-  return n === "PS" ? "Dans chaque ligne, une image ne va pas avec les autres : entoure-la."
-    : n === "MS" ? "Dans chaque ligne, une image ne va pas avec les autres : entoure-la, puis dis pourquoi."
-    : "Dans chaque ligne, trouve l'intrus : entoure-le et explique pourquoi il ne va pas avec les autres.";
+  return n === "PS" ? "Je regarde chaque ligne. J'entoure l'image qui ne va pas avec les autres."
+    : n === "MS" ? "Je regarde chaque ligne. J'entoure l'image qui ne va pas avec les autres. Je dis pourquoi."
+    : "Je regarde chaque ligne. Je trouve l'intrus et je l'entoure. J'explique pourquoi il ne va pas avec les autres.";
 }
 
 function htmlIntrus(r: ReglagesCategoriser, images: Images, alea: () => number): string {

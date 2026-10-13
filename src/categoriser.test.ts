@@ -159,7 +159,7 @@ describe("les feuilles", () => {
     const ps = feuille({ forme: "intrus", niveau: "PS", lignes: 3, parLigne: 3 });
     expect(compter(ps, /class="ct-ligne"/g)).toBe(3);
     expect(compter(ps, /class="ct-case"/g)).toBe(9);
-    expect(ps).toContain("entoure-la.");
+    expect(ps).toContain("J&#39;entoure l&#39;image qui ne va pas avec les autres.");
     expect(feuille({ forme: "intrus", niveau: "GS" })).toContain("explique pourquoi");
     expect(ps).toMatch(/class="page corrige"/);
   });

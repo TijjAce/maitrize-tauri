@@ -126,12 +126,12 @@ export async function creerLaSequenceDeCollections(
   for (const f of feuillesPour(r)) {
     const seance = seances[f.seance];
     if (!seance) continue;
-    // Les réglages et le tirage vont avec la feuille : « Modifier dans Fabriquer » la refait.
+    // Les réglages et le tirage vont avec la feuille : « Modifier dans Fabriquer » la refait ; la compétence de la séquence s'imprime en tête.
     const graine = graineAuHasard();
     const reglages = reglagesDeLaFeuille(r, f);
     const html = htmlCollections(reglages, images, hasard(graine));
     await poserDansUneSeance("collections", titreDeLaFeuille(f), html, STYLE_FEUILLE + STYLE_COLLECTIONS, seance.id, sequence.id,
-      { fabrication: { memoires: { collections: reglages }, graine } });
+      { competences: vise ? [vise] : undefined, fabrication: { memoires: { collections: reglages }, graine } });
     posees++;
   }
   return { sequence, feuilles: posees };
