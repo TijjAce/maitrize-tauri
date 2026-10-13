@@ -696,6 +696,8 @@ export function PyramidesTab() {
           </Field>
         </>)}
         <Field label="Combien par feuille"><Input type="number" min={1} max={12} value={r.combien} onChange={(e) => maj({ combien: borne(e.target.value, 1, 12, 6) })} style={{ width: 80 }} /></Field>
+        <Coche on={r.regle !== false} onChange={(v) => maj({ regle: v })}
+          libelle={r.forme === "pyramide" ? "La règle sur la feuille : « le nombre de chaque brique est la somme des deux du dessous »" : "La règle sur la feuille : « chaque ligne fait la même somme »"} />
         <Boutons onTirage={() => setGraine(graineAuHasard())} onImprimer={() => imprimer("pyramides", titre, html, STYLE_PYRAMIDES)} onBureau={() => bureau("pyramides", titre, html, STYLE_PYRAMIDES)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_PYRAMIDES} />}
@@ -740,7 +742,11 @@ export function HeureTab() {
         )}
         {r.exercice !== "problemes" && (
           <Field label="Les aides">
-            <Coche on={r.couleurs} libelle="Aiguilles en couleur" onChange={(v) => maj({ couleurs: v })} />
+            {horloges && (
+              <Coche on={r.colorier === true} libelle="Les aiguilles à colorier : en rouge celle des heures, en bleu celle des minutes"
+                onChange={(v) => maj({ colorier: v, ...(v ? { couleurs: false } : {}) })} />
+            )}
+            <Coche on={r.couleurs} libelle="Aiguilles en couleur" onChange={(v) => maj({ couleurs: v, ...(v ? { colorier: false } : {}) })} />
             {r.couleurs && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, margin: "4px 0 8px 24px" }}>
                 <div>

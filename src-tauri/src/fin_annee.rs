@@ -249,7 +249,7 @@ mod tests {
         crate::db::migrer_pour_test(&c);
         let el = crate::models::Eleve {
             id: "x".into(), nom: "Rose".into(), niveau: "CP".into(), present: true, ine: String::new(),
-            date_naissance: String::new(), photo_fichier: None, non_verbal: false,
+            date_naissance: String::new(), photo_fichier: None, non_verbal: false, fiches_exclues: Vec::new(),
             annee_scolaire: None, date_creation: None,
         };
         let cree = crate::commands::ecrire_eleve(&c, el.clone()).unwrap();

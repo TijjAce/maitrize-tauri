@@ -407,13 +407,14 @@ pub(crate) fn ecrire_eleve(c: &rusqlite::Connection, mut eleve: Eleve) -> R<Elev
         eleve.date_creation = Some(now_iso());
     }
     c.execute(
-        "INSERT INTO eleves (id,nom,niveau,present,ine,date_naissance,photo_fichier,non_verbal,annee_scolaire,date_creation)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10) ON CONFLICT(id) DO UPDATE SET nom = excluded.nom, niveau = excluded.niveau, present = excluded.present, ine = excluded.ine, date_naissance = excluded.date_naissance, photo_fichier = excluded.photo_fichier, non_verbal = excluded.non_verbal,
+        "INSERT INTO eleves (id,nom,niveau,present,ine,date_naissance,photo_fichier,non_verbal,annee_scolaire,date_creation,fiches_exclues)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11) ON CONFLICT(id) DO UPDATE SET nom = excluded.nom, niveau = excluded.niveau, present = excluded.present, ine = excluded.ine, date_naissance = excluded.date_naissance, photo_fichier = excluded.photo_fichier, non_verbal = excluded.non_verbal,
+           fiches_exclues = excluded.fiches_exclues,
            annee_scolaire = COALESCE(excluded.annee_scolaire, eleves.annee_scolaire),
            date_creation = COALESCE(eleves.date_creation, excluded.date_creation)",
         params![eleve.id, eleve.nom, eleve.niveau, eleve.present as i64, eleve.ine,
                 eleve.date_naissance, eleve.photo_fichier, eleve.non_verbal as i64,
-                eleve.annee_scolaire, eleve.date_creation],
+                eleve.annee_scolaire, eleve.date_creation, serde_json::to_string(&eleve.fiches_exclues).map_err(e)?],
     ).map_err(e)?;
     Ok(eleve)
 }
@@ -3684,6 +3685,23 @@ mod tests_cascades {
         assert_eq!(lus.iter().map(|e| (e.id.as_str(), e.non_verbal)).collect::<Vec<_>>(), vec![("e1", true), ("e2", false)]);
         let sans: Eleve = serde_json::from_value(serde_json::json!({"id": "e3", "nom": "Eliot"})).unwrap();
         assert!(!sans.non_verbal, "un élève envoyé sans le champ n'est pas non verbal");
+    }
+
+    #[test]
+    fn les_fiches_qu_un_eleve_ne_recoit_pas_se_gardent() {
+        let c = base();
+        let el: Eleve = serde_json::from_value(serde_json::json!({"id": "e1", "nom": "Salimata", "fichesExclues": ["coloriage"]})).unwrap();
+        super::ecrire_eleve(&c, el.clone()).unwrap();
+        // Une ligne d'avant la colonne, ou abîmée : rien n'est écarté.
+        c.execute("INSERT INTO eleves (id, nom, niveau, fiches_exclues) VALUES ('e2', 'Jules', 'CE1', NULL)", []).unwrap();
+        c.execute("INSERT INTO eleves (id, nom, niveau, fiches_exclues) VALUES ('e3', 'Léa', 'CE1', 'pas du json')", []).unwrap();
+        let lus: Vec<Eleve> = c.prepare("SELECT * FROM eleves ORDER BY id").unwrap()
+            .query_map([], Eleve::from_row).unwrap().collect::<rusqlite::Result<_>>().unwrap();
+        assert_eq!(lus.iter().map(|e| e.fiches_exclues.clone()).collect::<Vec<_>>(), vec![vec!["coloriage".to_string()], vec![], vec![]]);
+        // On les retire : la liste se vide pour de bon.
+        super::ecrire_eleve(&c, Eleve { fiches_exclues: vec![], ..el }).unwrap();
+        let relu: Eleve = c.query_row("SELECT * FROM eleves WHERE id='e1'", [], Eleve::from_row).unwrap();
+        assert!(relu.fiches_exclues.is_empty());
     }
 
     #[test]

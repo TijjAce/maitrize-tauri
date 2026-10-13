@@ -460,6 +460,9 @@ pub struct Eleve {
     /// Ne parle pas : pas de fiche de lecture en autonomie.
     #[serde(default)]
     pub non_verbal: bool,
+    /// Les ateliers de Fabriquer qu'« En retard » ne lui donne pas.
+    #[serde(default)]
+    pub fiches_exclues: Vec<String>,
     /// L'année scolaire de l'élève dans la classe (« 2026-2027 ») : la dernière
     /// pour laquelle on l'a gardé. Vide pour un élève créé depuis : sa date de
     /// création le situe.
@@ -483,6 +486,9 @@ impl Eleve {
             photo_fichier: r.get("photo_fichier")?,
             // Vide sur une ligne venue d'une version sans la colonne.
             non_verbal: r.get::<_, Option<i64>>("non_verbal").ok().flatten().unwrap_or(0) != 0,
+            // Vide, ou illisible : rien n'est écarté.
+            fiches_exclues: r.get::<_, Option<String>>("fiches_exclues").ok().flatten()
+                .and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default(),
             annee_scolaire: r.get::<_, Option<String>>("annee_scolaire").ok().flatten(),
             date_creation: r.get::<_, Option<String>>("date_creation").ok().flatten(),
         })

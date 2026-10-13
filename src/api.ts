@@ -203,6 +203,8 @@ export interface Eleve {
   dateNaissance: string; photoFichier: string | null;
   /** Ne parle pas : « En retard » ne lui donne pas de fiche de lecture à faire seul. */
   nonVerbal?: boolean;
+  /** Les ateliers de Fabriquer qu'« En retard » ne lui donne pas : le coloriage magique, pour qui ne sait pas encore le faire. */
+  fichesExclues?: string[];
   /** Son année dans la classe (« 2026-2027 ») : la dernière pour laquelle on l'a gardé (voir `finDAnnee.ts`). */
   anneeScolaire?: string | null;
   /** Le jour de sa création ; vide pour un élève d'avant la colonne. */
@@ -507,7 +509,7 @@ export const nouvelOutil = (genre: OutilClasse["genre"]): OutilClasse => ({
 });
 
 export const nouvelEleve = (niveau = ""): Eleve => ({
-  id: newId(), nom: "", niveau, present: true, ine: "", dateNaissance: "", photoFichier: null, nonVerbal: false,
+  id: newId(), nom: "", niveau, present: true, ine: "", dateNaissance: "", photoFichier: null, nonVerbal: false, fichesExclues: [],
 });
 
 export const nouvelleEvaluation = (): Evaluation => ({

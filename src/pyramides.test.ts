@@ -55,3 +55,16 @@ describe("les pyramides de nombres", () => {
     expect(carres).toContain("Carrés magiques — corrigé");
   });
 });
+
+describe("la règle des pyramides", () => {
+  it("s'écrit sur la feuille tant qu'on la garde, et s'enlève d'une case", () => {
+    expect(htmlPyramides(REGLAGES_PYRAMIDES, 1)).toContain("Le nombre de chaque brique est la somme des nombres des deux briques du dessous.");
+    const sans = htmlPyramides({ ...REGLAGES_PYRAMIDES, regle: false }, 1);
+    expect(sans).not.toContain("somme des nombres des deux briques");
+    expect(sans).toContain("<b>Consigne</b>Complète la pyramide en montant.");
+    const carre = htmlPyramides({ ...REGLAGES_PYRAMIDES, forme: "carre", regle: false }, 1);
+    expect(carre).not.toContain("la somme magique.");
+    expect(carre).toContain("Retrouve les nombres qui manquent");
+  });
+});
+

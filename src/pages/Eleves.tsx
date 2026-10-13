@@ -28,6 +28,7 @@ import syntheseDomaines from "../data/syntheseGS.json";
 import { pseudonymiser, restaurer } from "../confidentialite";
 import { SyntheseEleveTab } from "./SyntheseEleve";
 import { nomsAMasquer } from "../nomsAMasquer";
+import { fabricationsDesFiches, niveauDesFiches } from "../fichesAutonomie";
 
 const ELEVES_TABS = ["liste", "dossier", "observations", "evaluations", "papiers", "dispositifs", "gevasco", "progressions"] as const;
 /** Ce qu'affiche l'onglet Évaluations : le sommatif (notes, synthèse, synthèse GS) ou le diagnostique. */
@@ -156,7 +157,38 @@ function EleveForm({ e, onClose, onSaved }: { e: Eleve; onClose: () => void; onS
         <input type="checkbox" checked={v.nonVerbal ?? false} onChange={(ev) => up({ nonVerbal: ev.target.checked })} />
         <span>Non verbal <span style={{ color: "var(--text-2)" }}>— pas de fiche de lecture à faire seul (« En retard », dans ⌘K)</span></span>
       </label>
+      <FichesExclues eleve={v} onChange={(fichesExclues) => up({ fichesExclues })} />
     </Modal>
+  );
+}
+
+/**
+ * Les fabrications qu'« En retard » ne lui donne pas : celles de son niveau,
+ * à cocher — le coloriage magique, pour l'élève qui ne sait pas encore le
+ * faire. Une fabrication écartée à un autre niveau reste écartée, et se voit.
+ */
+function FichesExclues({ eleve, onChange }: { eleve: Eleve; onChange: (liste: string[]) => void }) {
+  const exclues = eleve.fichesExclues ?? [];
+  const duNiveau = fabricationsDesFiches(niveauDesFiches(eleve.niveau));
+  const toutes = fabricationsDesFiches(null);
+  const ailleurs = exclues.filter((a) => !duNiveau.some((f) => f.atelier === a))
+    .map((atelier) => ({ atelier, nom: toutes.find((f) => f.atelier === atelier)?.nom ?? atelier }));
+  return (
+    <details className="pli" open={exclues.length > 0} style={{ marginTop: 8 }}>
+      <summary>
+        Les fiches à ne pas lui donner
+        <span className="meta"> · « En retard »{exclues.length ? ` · ${exclues.length} écartée${exclues.length > 1 ? "s" : ""}` : ""}</span>
+      </summary>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 12px", marginTop: 6 }}>
+        {[...duNiveau, ...ailleurs].map((f) => (
+          <label key={f.atelier} className="pb-coche">
+            <input type="checkbox" checked={exclues.includes(f.atelier)}
+              onChange={(ev) => onChange(ev.target.checked ? [...exclues, f.atelier] : exclues.filter((x) => x !== f.atelier))} />
+            <span>{f.nom}</span>
+          </label>
+        ))}
+      </div>
+    </details>
   );
 }
 
