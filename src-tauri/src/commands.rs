@@ -1759,6 +1759,14 @@ pub struct AnnexePlanning {
     /// L'échelle à l'impression : 1 par défaut.
     #[serde(default)]
     pub echelle: Option<f32>,
+    /// Le bandeau gris en haut de sa première page ; pas sur la fiche d'un
+    /// élève, qui lui est donnée telle quelle. Présent par défaut.
+    #[serde(default = "avec_bandeau")]
+    pub bandeau: bool,
+}
+
+fn avec_bandeau() -> bool {
+    true
 }
 
 /// Construit un PDF du planning (mise en page inspirée de l'app native) et
@@ -1775,7 +1783,13 @@ pub fn imprimer_planning(titre: String, jours: Vec<PlanningJour>, annexes: Vec<A
     } else {
         let joints: Vec<crate::fusion_pdf::Joint> = annexes
             .into_iter()
-            .map(|a| crate::fusion_pdf::Joint { titre: a.titre, quand: a.quand, chemin: fichiers_dir().join(a.fichier), echelle: a.echelle.unwrap_or(1.0) })
+            .map(|a| crate::fusion_pdf::Joint {
+                titre: a.titre,
+                quand: a.quand,
+                chemin: fichiers_dir().join(a.fichier),
+                echelle: a.echelle.unwrap_or(1.0),
+                bandeau: a.bandeau,
+            })
             .collect();
         crate::fusion_pdf::joindre(&journal, &joints)?
     };

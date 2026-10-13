@@ -508,7 +508,8 @@ export default function Planning() {
       echelles,
     );
     try {
-      const manques = await api.imprimerPlanning(`Planning — ${titre}`, data, annexes.map(({ titre, quand, fichier, echelle }) => ({ titre, quand, fichier, echelle })));
+      const manques = await api.imprimerPlanning(`Planning — ${titre}`, data,
+        annexes.map(({ titre, quand, fichier, echelle, eleve }) => ({ titre, quand, fichier, echelle, bandeau: !eleve })));
       if (manques.length) toast(`Matériel non joint : ${manques.join(" ; ")}`, { icone: "⚠️", duree: 8000 });
     } catch {
       // Repli (hors macOS) : impression via la webview.

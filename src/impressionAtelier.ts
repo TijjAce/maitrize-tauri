@@ -25,6 +25,7 @@ import { sansReferences } from "./references";
 import { STYLE_DYS, cleModeDys, lireModeDys } from "./presentationFeuille";
 import { STYLE_CONSIGNES_STRUCTUREES } from "./consignesStructurees";
 import { avecLesPhotosDePaysage } from "./photosPaysages";
+import { titreSansLEleve } from "./materielSeance";
 
 /** Combien de compétences s'écrivent en tête ; au-delà, on les compte. */
 export const LIGNES_MAX = 4;
@@ -345,11 +346,7 @@ export async function poserDansUneSeance(
 // La correction reste au maître, elle n'a rien à faire dans la pile qu'on
 // distribue.
 
-/** Le titre de la fiche sans l'élève ni le jour (« Pyramides — Inès, 9 oct. » → « Pyramides ») : c'est celui que garde le PDF. */
-export function titreSansLEleve(titre: string, prenom: string): string {
-  const echappe = prenom.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return (echappe ? titre.replace(new RegExp(`\\s+—\\s+${echappe},[^—]*$`), "") : titre).trim() || titre;
-}
+export { titreSansLEleve } from "./materielSeance";
 
 /**
  * La feuille de l'atelier telle qu'elle s'imprime — sa consigne —, sans

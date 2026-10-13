@@ -9,7 +9,8 @@
 //!
 //! Un petit bandeau gris s'écrit en haut de la première page de chaque
 //! document joint — le jour, l'heure, la séance, le titre — pour que la
-//! pile de feuilles se trie sans le journal sous les yeux. Il se dessine
+//! pile de feuilles se trie sans le journal sous les yeux ; pas sur la fiche
+//! faite à un élève, qui lui est donnée telle quelle. Il se dessine
 //! par-dessus le contenu existant, entre un `q` et un `Q` qui le protègent
 //! de l'état graphique dans lequel la page s'est arrêtée.
 
@@ -25,6 +26,8 @@ pub struct Joint {
     pub chemin: PathBuf,
     /// L'échelle à l'impression : 1 = telle quelle ; 0,8 réduit autour du centre de la page.
     pub echelle: f32,
+    /// Le bandeau en haut de la première page : pas sur la fiche d'un élève.
+    pub bandeau: bool,
 }
 
 /// Le nom, dans les ressources d'une page, de la police du bandeau.
@@ -47,7 +50,7 @@ pub fn joindre(journal: &[u8], joints: &[Joint]) -> Result<(Vec<u8>, Vec<String>
                         let _ = mettre_a_l_echelle(&mut cible, page, echelle);
                     }
                 }
-                if let Some(&premiere) = pages.first() {
+                if let (true, Some(&premiere)) = (j.bandeau, pages.first()) {
                     let texte = if j.quand.is_empty() { j.titre.clone() } else { format!("{} · {}", j.quand, j.titre) };
                     // Un bandeau qui échoue ne retire pas la feuille.
                     let _ = ecrire_bandeau(&mut cible, premiere, &texte);
@@ -265,7 +268,7 @@ mod tests {
     }
 
     fn joint(titre: &str, chemin: PathBuf) -> Joint {
-        Joint { titre: titre.into(), quand: "lundi 28 septembre · 09:00 · Lecture".into(), chemin, echelle: 1.0 }
+        Joint { titre: titre.into(), quand: "lundi 28 septembre · 09:00 · Lecture".into(), chemin, echelle: 1.0, bandeau: true }
     }
 
     #[test]
@@ -321,6 +324,20 @@ mod tests {
             assert!(page.has(b"Resources"), "page {n} sans ressources");
         }
         let _ = std::fs::remove_file(std::env::temp_dir().join(format!("maitrize-fusion-{}-fiche.pdf", std::process::id())));
+    }
+
+    #[test]
+    fn la_fiche_d_un_eleve_sort_sans_bandeau() {
+        let journal = pdf("Journal", 1);
+        let fiche = fichier("eleve.pdf", &pdf("Fiche", 1));
+        let (sortie, manques) = joindre(&journal, &[Joint { bandeau: false, ..joint("Mots mêlés", fiche) }]).expect("fusion");
+        assert!(manques.is_empty(), "{manques:?}");
+        let doc = Document::load_mem(&sortie).expect("le résultat se relit");
+        let pages = doc.get_pages();
+        assert_eq!(pages.len(), 2);
+        let jointe = doc.get_page_content(pages[&2]).unwrap();
+        assert!(!String::from_utf8_lossy(&jointe).contains("/MtzBandeau"), "pas de bandeau sur la fiche d'un élève");
+        let _ = std::fs::remove_file(std::env::temp_dir().join(format!("maitrize-fusion-{}-eleve.pdf", std::process::id())));
     }
 
     #[test]

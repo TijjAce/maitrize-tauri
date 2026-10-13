@@ -4,6 +4,7 @@ import {
   annexesDesCreneaux, annexesHtml, cleEchelle, echellesDesReglages, liensDuCreneau, ligneDuPdf, lireEchelle, materielDuCreneau, moletteDuJournalHtml,
   echellePourUneFeuille, limiteMm, octetsDeBase64, pdfsCites, STYLE_ANNEXES, titresDuMateriel,
 } from "./materielAImprimer";
+import { eleveDeLaFiche, titreSansLEleve } from "./materielSeance";
 
 const materiel = (p: Partial<MaterielItem>): MaterielItem => ({
   id: "m", titre: "Fiche", descriptionMateriel: "", competenceId: "", competenceTitre: "", domaineTitre: "",
@@ -92,6 +93,28 @@ describe("le matériel des séances du journal", () => {
     expect(annexes[2].quand).toBe("lundi 28 septembre · 14:00 · Maths");
     expect(annexesDesCreneaux(creneaux, sequences, seances, materiels)[2].quand).toBe("14:00 · Maths");
     expect(annexesDesCreneaux([], sequences, seances, materiels)).toEqual([]);
+  });
+
+  it("joint la fiche d'un élève sans son prénom ni le jour, et sans bandeau sur le papier", () => {
+    // « En retard » : la tuile garde l'élève dans son titre, la feuille ne le porte pas.
+    const fiche = materiel({
+      id: "m9", titre: "Écrire avec des mots imposés — ELIOT, 13 oct.", seanceId: "s1", pdfsJson: '["eliot.pdf"]',
+      fabricationJson: JSON.stringify({ atelier: "ecrire", eleve: { prenom: "ELIOT", date: "lundi 13 octobre" } }),
+    });
+    const [annexe] = annexesDesCreneaux([creneau("2026-10-13", "15:45", "s1", "mathématiques cycle 3")], sequences, seances, [fiche]);
+    expect(annexe).toMatchObject({ titre: "Écrire avec des mots imposés", quand: "15:45 · Les syllabes", eleve: true });
+    const html = annexesHtml([{ annexe, pages: [{ numero: 1, image: "IMG", largeur: 10, hauteur: 14 }] }]);
+    expect(html).not.toMatch(/ELIOT|13 oct/);
+    expect(html).toContain('<div class="annexe-bandeau annexe-ecran">');
+    expect(STYLE_ANNEXES).toMatch(/@media print \{ \.annexe-bandeau\.annexe-ecran \{ display: none; \} \}/);
+    // Une feuille de séance garde son bandeau, et rien ne change pour elle.
+    const [autre] = annexesDesCreneaux([creneau("2026-10-13", "09:00", "s1")], sequences, seances, materiels);
+    expect(autre.eleve).toBeUndefined();
+    // Le prénom se retire quelle que soit sa casse, et le numéro d'une fiche refaite aussi.
+    expect(titreSansLEleve("Mots mêlés — Eliot, 7 oct. (2)", "ELIOT")).toBe("Mots mêlés");
+    expect(eleveDeLaFiche(fiche)).toEqual({ prenom: "ELIOT", date: "lundi 13 octobre" });
+    expect(eleveDeLaFiche(materiel({ fabricationJson: "{" }))).toBeNull();
+    expect(eleveDeLaFiche(materiel({}))).toBeNull();
   });
 
   it("garde l'échelle d'impression de chaque matériel dans un réglage, bornée", () => {
