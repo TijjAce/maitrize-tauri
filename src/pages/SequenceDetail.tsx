@@ -2,7 +2,7 @@ import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import { demarcheDe, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre, type Demarche } from "../demarches";
-import { MATERIEL_DES_MOTS, SEANCE_DES_MOTS, avecLaSeanceDesMots } from "../motsDesProblemes";
+import { MATERIEL_DES_MOTS, avecLaSeanceDesMots, estLaSeanceDesMots } from "../motsDesProblemes";
 import { api, Sequence, Seance, MaterielItem, Jeu, nouvelleSeance, nowIso, newId, DUREES, formatDuree, telechargerTexte, teinteSequence } from "../api";
 import { decalee, deplacee, ordonnees, renumerotees } from "../ordreSeances";
 import { useSuiviSequences } from "../components/useSuiviSequences";
@@ -92,7 +92,7 @@ export default function SequenceDetail() {
     // Une séquence qui pose des problèmes s'ouvre sur la séance de leurs mots.
     const d = avecLaSeanceDesMots(brute);
     for (const [i, sc] of seancesDuCadre(d, seq.id, next).entries()) {
-      await api.seanceSave(i === 0 && d.seances[0] === SEANCE_DES_MOTS ? { ...sc, materiel: MATERIEL_DES_MOTS } : sc);
+      await api.seanceSave(i === 0 && estLaSeanceDesMots(d.seances[0]) ? { ...sc, materiel: MATERIEL_DES_MOTS } : sc);
     }
     await api.sequenceSave({ ...seq, nbSeancesPrevu: d.seances.length });
     reload(); reloadSeq();

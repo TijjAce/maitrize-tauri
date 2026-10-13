@@ -13,10 +13,13 @@ import { demarcheSuggeree } from "./demarches";
 import { classeDe, planDesFeuilles } from "./feuillesDesSequences";
 import { DEMARCHE_CATEGORISER } from "./sequenceCategoriser";
 import { DEMARCHE_COLLECTIONS } from "./sequenceCollections";
+import { ATELIER_PROBLEME_DU_JOUR, DEMARCHE_PROBLEME } from "./sequenceProblemeDuJour";
 import { niveauxDeLaLigne, rattacherAtelier } from "./ateliersCompetences";
 
 /** Les séquences de maternelle qui naissent d'un atelier, et cet atelier : leurs feuilles se font là. */
-const ATELIER_DE_LA_DEMARCHE: Record<string, string> = { [DEMARCHE_COLLECTIONS]: "collections", [DEMARCHE_CATEGORISER]: "categoriser" };
+const ATELIER_DE_LA_DEMARCHE: Record<string, string> = {
+  [DEMARCHE_COLLECTIONS]: "collections", [DEMARCHE_CATEGORISER]: "categoriser", [DEMARCHE_PROBLEME]: ATELIER_PROBLEME_DU_JOUR,
+};
 
 const PERIODES = [1, 2, 3, 4, 5];
 

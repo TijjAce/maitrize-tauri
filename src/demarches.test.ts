@@ -234,9 +234,10 @@ describe("la démarche que la compétence appelle", () => {
     }
     // Les étapes de la vie d'un animal restent une observation du vivant.
     expect(sug("6. Découvrir le monde du vivant, de la matière et des objets", "Découvrir le monde du vivant", "Reconnaitre les étapes de la vie d'un animal ou d'une plante.", c1)).toBe("investigation");
-    // Trouver un cardinal à partir d'un autre et d'un écart reste un problème.
-    expect(sug("4. Acquérir les premiers outils mathématiques", "Utiliser les nombres pour résoudre des problèmes", "Déterminer le cardinal d'une collection à partir de celui d'une autre collection et de l'écart entre les deux.", c1)).toBe("problemes");
-    expect(sug("4. Acquérir les premiers outils mathématiques", "Utiliser les nombres pour résoudre des problèmes", "Partager", c1)).toBe("problemes");
+    // Trouver un cardinal à partir d'un autre et d'un écart reste un problème : en maternelle, le problème du jour des livrets,
+    // pas la démarche du cours moyen et ses schémas en barres.
+    expect(sug("4. Acquérir les premiers outils mathématiques", "Utiliser les nombres pour résoudre des problèmes", "Déterminer le cardinal d'une collection à partir de celui d'une autre collection et de l'écart entre les deux.", c1)).toBe("probleme-du-jour-maternelle");
+    expect(sug("4. Acquérir les premiers outils mathématiques", "Utiliser les nombres pour résoudre des problèmes", "Partager", c1)).toBe("probleme-du-jour-maternelle");
     expect(sug("4. Acquérir les premiers outils mathématiques", "Explorer les solides et les formes planes", "Trier", c1)).toBe("geometrie-grandeurs");
     expect(sug("6. Découvrir le monde du vivant, de la matière et des objets", "Découvrir le monde du vivant", "Observer", c1)).toBe("investigation");
     expect(sug("5. Se repérer dans le temps et l'espace", "Se repérer dans le temps", "Ordonner", c1)).toBe("maternelle-modalites");

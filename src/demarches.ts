@@ -72,6 +72,7 @@ import { DEMARCHES_LANGUE, demarcheDeLaLangue } from "./demarchesLangue";
 import { DEMARCHES_ORAL, demarcheDeLOral } from "./demarchesOral";
 import { DEMARCHES_HISTOIRE_GEO, demarcheHistoireGeo } from "./demarchesHistoireGeo";
 import { DEMARCHES_VILAIN_PETIT_CANARD } from "./demarchesVilainPetitCanard";
+import { DEMARCHE_PROBLEME_DU_JOUR } from "./demarcheProblemeDuJour";
 import { CONSIGNES_FLUENCE } from "./fluence";
 import { ecrireConsignes } from "./tapuscrit";
 
@@ -2162,7 +2163,7 @@ export const DEMARCHES: Demarche[] = [
   PROBLEMES, CALCUL_MENTAL, GEOMETRIE_GRANDEURS,
   INVESTIGATION, ENQUETE_HISTOIRE_GEO, EMC_DEBAT,
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
-  MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, ...DEMARCHES_VILAIN_PETIT_CANARD, COLLECTIONS, CHRONOLOGIE, COMPARER_NOMBRES, NUMERATION_DIZAINE,
+  MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, ...DEMARCHES_VILAIN_PETIT_CANARD, COLLECTIONS, DEMARCHE_PROBLEME_DU_JOUR, CHRONOLOGIE, COMPARER_NOMBRES, NUMERATION_DIZAINE,
   ...DEMARCHES_NUMERATION, ...DEMARCHES_CALCUL, ...DEMARCHES_PROBLEMES, ...DEMARCHES_PROBLEMES_PROLONGES, ...DEMARCHES_FRACTIONS_PROLONGEES, ...DEMARCHES_OPERATIONS, ...DEMARCHES_GRANDEURS, ...DEMARCHES_GEOMETRIE, ...DEMARCHES_DONNEES, ...DEMARCHES_FRANCAIS, ...DEMARCHES_LECTURE, ...DEMARCHES_ORTHOGRAPHE, ...DEMARCHES_ECRITURE, ...DEMARCHES_LANGUE, ...DEMARCHES_ORAL, ...DEMARCHES_HISTOIRE_GEO,
 ];
 
@@ -2232,7 +2233,8 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string, niveau = 
     if (/vocabulaire|lexique|mots nouveaux/.test(`${sd} ${comp}`)) return "vocabulaire";
     if (/plastique|arts visuels/.test(sd)) return "arts-plastiques";
     if (/univers sonore/.test(sd)) return "musique";
-    if (/resoudre des problemes/.test(sd)) return "problemes";
+    // Le problème du jour : une sorte de problème pour une période, d'après les livrets de maternelle (voir demarcheProblemeDuJour.ts).
+    if (/resoudre des problemes/.test(sd)) return "probleme-du-jour-maternelle";
     if (/solides|formes planes|grandeurs|motifs/.test(sd)) return "geometrie-grandeurs";
     if (/vivant|matiere|objets/.test(`${dom} ${sd}`)) return "investigation";
     return "maternelle-modalites";

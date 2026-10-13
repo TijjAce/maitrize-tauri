@@ -13,7 +13,7 @@ import { graineAuHasard } from "../hasard";
 import { toast } from "./Toaster";
 import { NIVEAUX_DE_PROGRAMMATION, libelleDeProgrammation, niveauDeProgrammation, programmationProposee } from "../programmation";
 import { aideDesMots, aidesDeLaSequence, seanceDeLaParole } from "../aidesDesSequences";
-import { SEANCE_DES_MOTS, avecLesMotsDesProblemes, enoncesDuHtml, motsDesEnonces, nombreDeMots, noteDesMots } from "../motsDesProblemes";
+import { avecLesMotsDesProblemes, enoncesDuHtml, estLaSeanceDesMots, motsDesEnonces, nombreDeMots, noteDesMots } from "../motsDesProblemes";
 import { lireProfils } from "../planDeLaClasse";
 import { CLE_INVENTAIRE, lireInventaire, materielPourCompetences, noteDuMaterielReel } from "../materielDeClasse";
 import { MaterielReelListe } from "./MaterielDeLaClasse";
@@ -21,6 +21,10 @@ import { chargerImages } from "./ChoixPicto";
 import type { Images } from "../supportsVisuels";
 import { IDS_VPC } from "../vilainPetitCanard";
 import { niveauDeLaDemarche, objectifsDeLaSequence as objectifsDuCanard, planDuVilainPetitCanard, titreDeLaSequence as titreDuCanard } from "../sequenceVilainPetitCanard";
+import {
+  DEMARCHE_PROBLEME, idsDeLaPeriode, niveauMaternelle, objectifsDeLaSequence as objectifsDuProbleme, planDuProblemeDuJour,
+  reglagesPourLaCompetence, titreDeLaSequence as titreDuProbleme,
+} from "../sequenceProblemeDuJour";
 
 // Fiche d'une séquence : titre, période, compétence visée, objectifs, vignette,
 // vidéo. Elle vivait dans l'ancien onglet Séquences et avait disparu avec lui :
@@ -68,11 +72,32 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
     chargerImages(IDS_VPC).then((i) => { if (vivant) setImagesDuCanard(i); }).catch(() => { if (vivant) setImagesDuCanard({}); });
     return () => { vivant = false; };
   }, [niveauDuCanard, imagesDuCanard]);
-  /** Prendre un déroulement : celui du Vilain Petit Canard donne aussi son titre et ses objectifs à une séquence qui n'en a pas encore. */
+  // Le problème du jour aussi : la sorte de problème que la compétence appelle, à son âge, et les images de sa période.
+  const periodeDuProbleme = React.useMemo(() => {
+    const niveau = cadre === DEMARCHE_PROBLEME ? niveauMaternelle(comp?.niveau) : null;
+    return niveau ? reglagesPourLaCompetence(comp?.competenceTitre ?? "", niveau) : null;
+  }, [cadre, s.competenceVisee]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [imagesDuProbleme, setImagesDuProbleme] = React.useState<Images | null>(null);
+  // Les feuilles faites de pictogrammes attendent leurs images avant qu'on enregistre.
+  const imagesEnAttente = (!!niveauDuCanard && !imagesDuCanard) || (!!periodeDuProbleme && !imagesDuProbleme);
+  React.useEffect(() => {
+    setImagesDuProbleme(null);
+    if (!periodeDuProbleme) return;
+    let vivant = true;
+    chargerImages(idsDeLaPeriode(periodeDuProbleme)).then((i) => { if (vivant) setImagesDuProbleme(i); }).catch(() => { if (vivant) setImagesDuProbleme({}); });
+    return () => { vivant = false; };
+  }, [periodeDuProbleme]);
+  /** Prendre un déroulement : celui du Vilain Petit Canard ou du problème du jour donne aussi son titre et ses objectifs à une séquence qui n'en a pas encore. */
   const prendreLeCadre = (id: string) => {
     setCadre(id); setSuivi(""); setCadreChoisi(true);
+    const sansTitre = !s.titre.trim() || s.titre === "Nouvelle séquence";
     const n = niveauDeLaDemarche(id);
-    if (n) up({ ...(!s.titre.trim() || s.titre === "Nouvelle séquence" ? { titre: titreDuCanard(n) } : {}), ...(!s.objectifs.trim() ? { objectifs: objectifsDuCanard(n) } : {}) });
+    if (n) up({ ...(sansTitre ? { titre: titreDuCanard(n) } : {}), ...(!s.objectifs.trim() ? { objectifs: objectifsDuCanard(n) } : {}) });
+    const niveau = id === DEMARCHE_PROBLEME ? niveauMaternelle(comp?.niveau) : null;
+    if (niveau) {
+      const r = reglagesPourLaCompetence(comp?.competenceTitre ?? "", niveau);
+      up({ ...(sansTitre ? { titre: titreDuProbleme(r) } : {}), ...(!s.objectifs.trim() ? { objectifs: objectifsDuProbleme(r) } : {}) });
+    }
   };
 
   // Les feuilles : la démarche pioche dans les ateliers de Fabriquer, aux nombres de la classe de la compétence et de la
@@ -93,8 +118,10 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
   const ctx: ContexteFeuilles | null = classe ? { classe, periode: s.periode, competence: comp?.competenceTitre ?? "", objectifRattache, salle, prenoms } : null;
   const planDuCadre = React.useMemo(() => (niveauDuCanard
     ? (imagesDuCanard ? planDuVilainPetitCanard(niveauDuCanard, imagesDuCanard) : null)
-    : demarcheDuCadre && ctx ? planDesFeuilles(demarcheDuCadre.id, ctx) : null),
-    [demarcheDuCadre?.id, ctx?.classe, ctx?.periode, ctx?.competence, objectifRattache, salle, prenoms, niveauDuCanard, imagesDuCanard]); // eslint-disable-line react-hooks/exhaustive-deps
+    : periodeDuProbleme
+      ? (imagesDuProbleme ? planDuProblemeDuJour(periodeDuProbleme, imagesDuProbleme) : null)
+      : demarcheDuCadre && ctx ? planDesFeuilles(demarcheDuCadre.id, ctx) : null),
+    [demarcheDuCadre?.id, ctx?.classe, ctx?.periode, ctx?.competence, objectifRattache, salle, prenoms, niveauDuCanard, imagesDuCanard, periodeDuProbleme, imagesDuProbleme]); // eslint-disable-line react-hooks/exhaustive-deps
   // Une séquence qui pose des problèmes s'ouvre sur la séance de leurs mots : ses feuilles suivent d'une séance.
   const { demarche, plan } = React.useMemo(() => avecLesMotsDesProblemes(demarcheDuCadre, planDuCadre), [demarcheDuCadre, planDuCadre]);
   const poseLesSeances = proposeLeCadre && suivi === "oui" && !!demarche;
@@ -168,7 +195,7 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
           }
         }
         // Les mots des problèmes, relevés dans les énoncés qu'on vient de tirer : dans le matériel de la première séance, et sur leur feuille.
-        const mots = demarche.seances[0] === SEANCE_DES_MOTS ? motsDesEnonces(enonces) : null;
+        const mots = estLaSeanceDesMots(demarche.seances[0]) ? motsDesEnonces(enonces) : null;
         if (mots && nombreDeMots(mots) && seances[0]) await api.seanceSave({ ...seances[0], materiel: [seances[0].materiel, noteDesMots(mots)].filter(Boolean).join("\n") });
         // Puis les aides à la tâche, chacune dans sa séance.
         const aides = [
@@ -232,8 +259,8 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
     <Modal large titre={sequence.titre && sequence.titre !== "Nouvelle séquence" ? "Modifier la séquence" : "Nouvelle séquence"} onClose={onClose}
       footer={<>
         <button className="btn" onClick={onClose}>Annuler</button>
-        <button className="btn primary" onClick={save} disabled={!s.titre.trim() || enCours || (poseLesSeances && !!niveauDuCanard && !imagesDuCanard)}>
-          {progres || (enCours ? "Enregistrement…" : poseLesSeances && niveauDuCanard && !imagesDuCanard ? "Chargement des images…" : "Enregistrer")}
+        <button className="btn primary" onClick={save} disabled={!s.titre.trim() || enCours || (poseLesSeances && imagesEnAttente)}>
+          {progres || (enCours ? "Enregistrement…" : poseLesSeances && imagesEnAttente ? "Chargement des images…" : "Enregistrer")}
         </button>
       </>}>
       <Field label="Titre">
@@ -341,11 +368,11 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
                 📄 Les feuilles viennent {(() => {
                   const ateliers = [...new Set(plan.feuilles.map((f) => nomDeLAtelier(f.atelier)))];
                   return ateliers.length > 1 ? `des ateliers ${ateliers.join(" et ")}` : `de l'atelier ${ateliers[0]}`;
-                })()}{ctx ? `, pour le ${ctx.classe}${ctx.classe === "CP" ? `, en période ${ctx.periode}` : ""}` : niveauDuCanard ? `, en ${niveauDuCanard}` : ""} ;
+                })()}{ctx ? `, pour le ${ctx.classe}${ctx.classe === "CP" ? `, en période ${ctx.periode}` : ""}` : niveauDuCanard ? `, en ${niveauDuCanard}` : periodeDuProbleme ? `, en ${periodeDuProbleme.niveau}` : ""} ;
                 chaque séance reçoit aussi la note de son matériel. Décochez ce que vous ne voulez pas.
               </div>
             )}
-            {poseLesSeances && niveauDuCanard && !imagesDuCanard && (
+            {poseLesSeances && imagesEnAttente && (
               <div className="meta" style={{ fontSize: 12.5 }}>Chargement des pictogrammes des feuilles…</div>
             )}
             {rattaches.length > 0 && (

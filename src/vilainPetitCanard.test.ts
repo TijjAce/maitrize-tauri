@@ -191,8 +191,8 @@ describe("la séquence du Vilain Petit Canard, d'après le guide du vocabulaire 
   it("se range dans Fabriquer comme une séquence toute faite, et non comme un support à fabriquer", () => {
     const outils = FAMILLES.flatMap((f) => f.outils);
     expect(outils.find((o) => o.id === "vilainPetitCanard")?.sequence).toBe(true);
-    // Les autres ateliers fabriquent des supports : aucun ne se dit séquence toute faite.
-    expect(outils.filter((o) => o.sequence).map((o) => o.id)).toEqual(["vilainPetitCanard"]);
+    // Les autres ateliers fabriquent des supports : seul le problème du jour, qui prépare une période entière, se dit aussi séquence toute faite.
+    expect(outils.filter((o) => o.sequence).map((o) => o.id)).toEqual(["vilainPetitCanard", "problemeDuJour"]);
   });
 
   it("se nomme et vise ce que dit le guide, à chaque niveau", () => {
