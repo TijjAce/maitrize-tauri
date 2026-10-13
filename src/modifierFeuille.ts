@@ -29,7 +29,16 @@ export interface Fabrication {
   eleve?: { prenom: string; date: string };
   /** La consigne de la feuille, pour les tablettes : ses blocs de consigne et de règle, tels qu'à la fabrication (voir journalTelephone). */
   consigne?: string;
+  /**
+   * Le minuteur d'une fiche d'élève sur les tablettes, en minutes : réglé dans
+   * « En retard », ou au cahier journal. Il part avec sa consigne, depuis le
+   * créneau qui la cite. Absent : aucun.
+   */
+  minuteur?: number;
 }
+
+/** Le plus long minuteur des tablettes, en minutes : ce que le portail du téléphone accepte. */
+export const MINUTEUR_MAX = 120;
 
 const estUnObjet = (v: unknown): v is Record<string, unknown> => Boolean(v) && typeof v === "object" && !Array.isArray(v);
 
@@ -48,6 +57,7 @@ export function lireFabrication(json: string | null | undefined): Fabrication | 
       competences: Array.isArray(f.competences) ? f.competences as CompetenceSelectionnee[] : undefined,
       eleve,
       consigne: typeof f.consigne === "string" && f.consigne.trim() ? f.consigne : undefined,
+      minuteur: typeof f.minuteur === "number" && f.minuteur >= 1 ? Math.min(MINUTEUR_MAX, Math.round(f.minuteur)) : undefined,
     };
   } catch {
     return null;

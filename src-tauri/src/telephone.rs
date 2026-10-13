@@ -842,7 +842,9 @@ pub fn journal_a_publier(mut j: relais::Journal, aides: &[AideAPublier]) -> (rel
     }
     for jour in &mut j.jours {
         for c in &mut jour.creneaux {
-            c.aides = c.aides.drain(..).filter_map(|x| par_cle.get(&x.id).map(|id| relais::AideDuJournal { id: id.clone(), titre: x.titre })).collect();
+            c.aides = c.aides.drain(..)
+                .filter_map(|x| par_cle.get(&x.id).map(|id| relais::AideDuJournal { id: id.clone(), titre: x.titre, minuteur: x.minuteur }))
+                .collect();
         }
     }
     (j, par_id)
@@ -1179,11 +1181,12 @@ mod tests {
         let journal = |aides: Vec<&str>| relais::Journal { publie: String::new(), jours: vec![relais::JourDuJournal { jour: "2026-10-12".into(), creneaux: vec![relais::CreneauDuJournal {
             id: "c1".into(), debut: "09:00".into(), fin: "10:00".into(), matiere: "Maths".into(), prevu: "Les dizaines".into(),
             bilan: "Lina a compté jusqu'à 40.".into(), seance: "Séance 2".into(),
-            aides: aides.into_iter().map(|k| relais::AideDuJournal { id: k.into(), titre: format!("Aide {k}") }).collect(), minuteur: 15,
+            aides: aides.into_iter().map(|k| relais::AideDuJournal { id: k.into(), titre: format!("Aide {k}"), minuteur: 10 }).collect(), minuteur: 15,
         }] }] };
         en_attendant(async {
             let (j, par_id) = journal_a_publier(journal(vec!["a", "b", "inconnue"]), &[aide("a", "<p>1</p>"), aide("b", "<p>2</p>")]);
             assert_eq!(j.jours[0].creneaux[0].aides.len(), 2, "une citation sans aide disparaît");
+            assert_eq!(j.jours[0].creneaux[0].aides[0].minuteur, 10, "chaque aide garde son minuteur");
             let (bilan, trace) = publier_journal_dans(&r, &acces, &j, &par_id, "").await.unwrap();
             assert_eq!(bilan, BilanJournal { relie: true, journal: true, aides_envoyees: 2, aides_retirees: 0 });
             let noms = nuage.noms();

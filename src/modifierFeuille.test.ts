@@ -57,6 +57,9 @@ describe("ce qu'une feuille retient de son atelier", () => {
     // La consigne gardée pour les tablettes se relit ; vide, elle n'existe pas.
     expect(lireFabrication(JSON.stringify({ atelier: "comparer", consigne: '<div class="regle">x</div>' }))?.consigne).toBe('<div class="regle">x</div>');
     expect(lireFabrication(JSON.stringify({ atelier: "comparer", consigne: "  " }))?.consigne).toBeUndefined();
+    // Le minuteur des tablettes d'une fiche : des minutes entières, deux heures au plus ; rien d'autre ne passe.
+    expect([10, 12.6, 500, 0, -3, "10"].map((minuteur) => lireFabrication(JSON.stringify({ atelier: "comparer", minuteur }))?.minuteur))
+      .toEqual([10, 13, 120, undefined, undefined, undefined]);
     expect(lireFabrication("")).toBeNull();
     expect(lireFabrication(undefined)).toBeNull();
     expect(lireFabrication("{pas du json")).toBeNull();

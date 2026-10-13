@@ -39,7 +39,10 @@ import { ligneDuPdf, materielDuCreneau, pdfsCites } from "../materielAImprimer";
 import { ChoixPdfDuBureau } from "./SeanceParts";
 import { PdfViewer } from "./PdfViewer";
 import { lirePdfs } from "../materielSeance";
-import { aidesDuCreneau, dureeDuMinuteur, minuteurDuCreneau, MINUTEURS_DES_TABLETTES, publierLeJournal, titreDeLAide } from "../journalTelephone";
+import {
+  aidesDuCreneau, dureeDuMinuteur, fichesDuCreneau, minuteurDeLaFiche, minuteurDuCreneau, MINUTEURS_DES_TABLETTES, publierLeJournal, titreDeLAide,
+} from "../journalTelephone";
+import { ecrireFabrication, lireFabrication } from "../modifierFeuille";
 
 // ── Cahier journal du jour ────────────────────────────────────────────────
 //
@@ -101,6 +104,27 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
       void publierLeJournal();
     } catch (err) {
       setMinuteursRegles((m) => ({ ...m, [c.id]: avant }));
+      toast("Minuteur non enregistré : " + texteErreur(err), { icone: "⚠️", duree: 6000 });
+    }
+  };
+  // Une fiche d'« En retard » citée au prévu a son propre minuteur : il s'écrit avec elle.
+  const [minuteursDesFiches, setMinuteursDesFiches] = React.useState<Record<string, number>>({});
+  const reglerMinuteurFiche = async (id: string, minutes: number) => {
+    const avant = minuteursDesFiches[id];
+    setMinuteursDesFiches((m) => ({ ...m, [id]: minutes }));
+    try {
+      // Relue juste avant d'écrire : la fiche a pu être refaite entre-temps.
+      const m = (await api.materielList()).find((x) => x.id === id);
+      const f = m ? lireFabrication(m.fabricationJson) : null;
+      if (!m || !f) throw new Error("cette fiche n'est plus sur le bureau");
+      await api.materielSave({ ...m, fabricationJson: ecrireFabrication({ ...f, minuteur: minutes || undefined }) });
+      void publierLeJournal();
+    } catch (err) {
+      setMinuteursDesFiches((m) => {
+        const suite = { ...m };
+        if (avant === undefined) delete suite[id]; else suite[id] = avant;
+        return suite;
+      });
       toast("Minuteur non enregistré : " + texteErreur(err), { icone: "⚠️", duree: 6000 });
     }
   };
@@ -605,7 +629,10 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                         {telephone?.relie && !reunion && (
                           <TablettesDuCreneau aides={aidesDuCreneau(c, materiels ?? []).map(titreDeLAide)}
                             minutes={minuteursRegles[c.id] ?? minuteurDuCreneau(c)}
-                            onMinutes={(m) => { void reglerMinuteur(c, m); }} />
+                            onMinutes={(m) => { void reglerMinuteur(c, m); }}
+                            fiches={fichesDuCreneau({ prevu: b.prevu }, materiels ?? [])
+                              .map((m) => ({ id: m.id, titre: m.titre, minutes: minuteursDesFiches[m.id] ?? minuteurDeLaFiche(m) }))}
+                            onMinutesFiche={(id, m) => { void reglerMinuteurFiche(id, m); }} />
                         )}
                       </>
                     )}
@@ -703,31 +730,54 @@ function MaterielDuJournal({ materiels }: { materiels: MaterielItem[] }) {
   );
 }
 
-/**
- * Ce que le téléphone enverra aux tablettes depuis ce créneau : les aides de
- * sa séance, et le minuteur réglé ici. Sous le créneau, sur le téléphone,
- * « Envoyer » les montre ensemble ; le minuteur démarre aussitôt, et le
- * téléphone le met en pause.
- */
-function TablettesDuCreneau({ aides, minutes, onMinutes }: { aides: string[]; minutes: number; onMinutes: (m: number) => void }) {
-  // Une durée réglée ailleurs que dans la liste reste choisie.
+/** Le choix d'un minuteur des tablettes ; une durée réglée ailleurs que dans la liste reste choisie. */
+function MinuteurDesTablettes({ minutes, onMinutes, libelle }: { minutes: number; onMinutes: (m: number) => void; libelle: string }) {
   const durees = minutes && !MINUTEURS_DES_TABLETTES.includes(minutes)
     ? [...MINUTEURS_DES_TABLETTES, minutes].sort((a, b) => a - b) : MINUTEURS_DES_TABLETTES;
   return (
+    <label className="journal-tablettes-minuteur">
+      <span aria-hidden="true">⏱</span>
+      <select className="select" value={minutes} onChange={(e) => onMinutes(Number(e.target.value))} aria-label={libelle}>
+        <option value={0}>sans minuteur</option>
+        {durees.map((m) => <option key={m} value={m}>{dureeDuMinuteur(m)}</option>)}
+      </select>
+    </label>
+  );
+}
+
+/**
+ * Ce que le téléphone enverra aux tablettes depuis ce créneau : les aides de
+ * sa séance, avec le minuteur du créneau, et chaque fiche d'« En retard » de
+ * son prévu, avec le sien. Sous le créneau, sur le téléphone, « Envoyer » les
+ * montre ; le minuteur démarre aussitôt, et le téléphone le met en pause.
+ */
+function TablettesDuCreneau({ aides, minutes, onMinutes, fiches, onMinutesFiche }: {
+  aides: string[]; minutes: number; onMinutes: (m: number) => void;
+  fiches: { id: string; titre: string; minutes: number }[]; onMinutesFiche: (id: string, m: number) => void;
+}) {
+  // Le minuteur du créneau part avec les aides de la séance, ou seul ; les fiches ont chacune le leur.
+  const avecLeCreneau = aides.length > 0 || fiches.length === 0;
+  return (
     <div className="journal-tablettes">
       <span className="journal-tablettes-titre"
-        title="Sous ce créneau, sur le téléphone, « Envoyer » montre aux tablettes l'aide de la séance et lance ce minuteur ; le téléphone le met en pause ou l'arrête.">
+        title="Sous ce créneau, sur le téléphone, « Envoyer » montre aux tablettes l'aide de la séance, ou la consigne d'une fiche, et lance son minuteur ; le téléphone le met en pause ou l'arrête.">
         📱 Sur les tablettes</span>
-      {aides.length > 0
-        ? <span className="journal-tablettes-aides">{aides.map((t, i) => <span key={i}>☰ {t}</span>)}</span>
-        : <span className="journal-tablettes-aides meta">{minutes ? "le minuteur seul, sans aide à la tâche" : "aucune aide à la tâche"}</span>}
-      <label className="journal-tablettes-minuteur">
-        <span aria-hidden="true">⏱</span>
-        <select className="select" value={minutes} onChange={(e) => onMinutes(Number(e.target.value))} aria-label="Minuteur des tablettes">
-          <option value={0}>sans minuteur</option>
-          {durees.map((m) => <option key={m} value={m}>{dureeDuMinuteur(m)}</option>)}
-        </select>
-      </label>
+      <div className="journal-tablettes-liste">
+        {avecLeCreneau && (
+          <div className="journal-tablettes-ligne">
+            {aides.length > 0
+              ? <span className="journal-tablettes-aides">{aides.map((t, i) => <span key={i}>☰ {t}</span>)}</span>
+              : <span className="journal-tablettes-aides meta">{minutes ? "le minuteur seul, sans aide à la tâche" : "aucune aide à la tâche"}</span>}
+            <MinuteurDesTablettes minutes={minutes} onMinutes={onMinutes} libelle="Minuteur des tablettes" />
+          </div>
+        )}
+        {fiches.map((f) => (
+          <div key={f.id} className="journal-tablettes-ligne">
+            <span className="journal-tablettes-aides">📄 {f.titre}</span>
+            <MinuteurDesTablettes minutes={f.minutes} onMinutes={(m) => onMinutesFiche(f.id, m)} libelle={`Minuteur de la fiche ${f.titre}`} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

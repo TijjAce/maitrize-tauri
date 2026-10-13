@@ -20,7 +20,7 @@ import { cleOptionsFeuille, consignesDeLaFeuille, feuilleSelonOptions, lireOptio
 import { ATELIERS_D_AIDE } from "./journalTelephone";
 import { documentImprimable, escapeHtml, printHTML } from "./print";
 import type { MaterielItem } from "./api";
-import { ecrireFabrication, fabricationDuMoment, modificationEnCours, type Fabrication, type Modification } from "./modifierFeuille";
+import { ecrireFabrication, fabricationDuMoment, lireFabrication, modificationEnCours, type Fabrication, type Modification } from "./modifierFeuille";
 import { sansReferences } from "./references";
 import { STYLE_DYS, cleModeDys, lireModeDys } from "./presentationFeuille";
 import { STYLE_CONSIGNES_STRUCTUREES } from "./consignesStructurees";
@@ -198,6 +198,21 @@ export async function consignePourLesTablettes(atelier: string, corps: string): 
   try {
     const { api } = await import("./api");
     if (!lireOptionsFeuille(await api.settingGet(cleOptionsFeuille(atelier))).tablettes) return undefined;
+    return await consigneDeLaFiche(atelier, corps);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * La consigne d'une fiche d'élève pour les tablettes, toujours : une fiche
+ * d'« En retard » se fait seul, et le téléphone l'envoie depuis son créneau
+ * avec son minuteur. Les mêmes blocs que pour une feuille de séance.
+ */
+export async function consigneDeLaFiche(atelier: string, corps: string): Promise<string | undefined> {
+  if ((ATELIERS_D_AIDE as readonly string[]).includes(atelier)) return undefined;
+  try {
+    const { api } = await import("./api");
     const consignes = consignesDeLaFeuille(sansReferences(remplacerConsigne(corps, await api.settingGet(cleConsigne(atelier)))));
     return consignes.length ? consignes.join("\n") : undefined;
   } catch {
@@ -254,7 +269,7 @@ export function materielDuBureau(
  * cet atelier qu'on est en train de refaire.
  */
 export async function deposerSurLeBureau(atelier: string, titre: string, fichier: string, consigne?: string): Promise<MaterielItem> {
-  const refaite = await remplacerLaFeuille(atelier, async () => fichier, consigne);
+  const refaite = await remplacerLaFeuille(atelier, async () => fichier, async () => consigne);
   if (refaite) return refaite;
   const { api, newId, nowIso } = await import("./api");
   const materiel: MaterielItem = {
@@ -273,9 +288,11 @@ export async function deposerSurLeBureau(atelier: string, titre: string, fichier
  */
 export async function enregistrerSurLeBureau(atelier: string, titre: string, corps: string, style = "", extras: ExtrasAtelier = {}): Promise<MaterielItem> {
   const consigne = await consignePourLesTablettes(atelier, corps);
+  // Une fiche d'élève refaite garde sa consigne pour les tablettes, quelle que soit l'option de l'atelier.
   const refaite = await remplacerLaFeuille(atelier, (m, titreGarde) => (m.eleve
     ? pdfPourLEleve(atelier, titreGarde, corps, style, m.eleve)
-    : pdfDeLAtelier(atelier, titreGarde, corps, style, { ...extras, competences: m.competences ?? extras.competences })), consigne);
+    : pdfDeLAtelier(atelier, titreGarde, corps, style, { ...extras, competences: m.competences ?? extras.competences })),
+  async (m) => (m.eleve ? consigneDeLaFiche(atelier, corps) : consigne));
   if (refaite) return refaite;
   return deposerSurLeBureau(atelier, titre, await pdfDeLAtelier(atelier, titre, corps, style, extras), consigne);
 }
@@ -284,11 +301,13 @@ export async function enregistrerSurLeBureau(atelier: string, titre: string, cor
  * La feuille qu'on refait (voir `modifierFeuille`) : si c'est une feuille de
  * cet atelier, le nouveau PDF prend la place de l'ancien dans le même
  * matériel — même nom, même séance, même dossier, donc même ligne au cahier
- * journal —, avec de quoi la refaire encore. Rien si l'on ne refait rien ici,
- * ou si elle a été supprimée entre-temps : on enregistre alors comme d'habitude.
+ * journal —, avec de quoi la refaire encore, et le minuteur qu'on lui avait
+ * réglé pour les tablettes. Rien si l'on ne refait rien ici, ou si elle a été
+ * supprimée entre-temps : on enregistre alors comme d'habitude.
  */
 async function remplacerLaFeuille(
-  atelier: string, pdf: (m: Modification, titreGarde: string) => Promise<string>, consigne?: string,
+  atelier: string, pdf: (m: Modification, titreGarde: string) => Promise<string>,
+  consigneDe: (m: Modification) => Promise<string | undefined>,
 ): Promise<MaterielItem | null> {
   const m = modificationEnCours.lire();
   if (!m || m.atelier !== atelier) return null;
@@ -298,9 +317,13 @@ async function remplacerLaFeuille(
     modificationEnCours.finir();
     return null;
   }
+  const consigne = await consigneDe(m);
+  const minuteur = lireFabrication(avant.fabricationJson)?.minuteur;
   const apres: MaterielItem = {
     ...avant, pdfsJson: JSON.stringify([await pdf(m, avant.titre)]),
-    fabricationJson: ecrireFabrication(fabricationDuMoment(atelier, { competences: m.competences, eleve: m.eleve, ...(consigne ? { consigne } : {}) })),
+    fabricationJson: ecrireFabrication(fabricationDuMoment(atelier, {
+      competences: m.competences, eleve: m.eleve, ...(consigne ? { consigne } : {}), ...(minuteur ? { minuteur } : {}),
+    })),
   };
   await api.materielSave(apres);
   modificationEnCours.finir();
@@ -351,7 +374,7 @@ export { titreSansLEleve } from "./materielSeance";
 /**
  * La feuille de l'atelier telle qu'elle s'imprime — sa consigne —, sans
  * corrigé ni compétences, en PDF. Une fiche d'autonomie garde sa consigne sur
- * le papier : l'élève y travaille seul, sans le portail.
+ * le papier : l'élève y travaille seul, portail ouvert ou non.
  */
 async function pdfPourLEleve(atelier: string, titre: string, corps: string, style: string, eleve: { prenom: string; date: string }): Promise<string> {
   const { api } = await import("./api");
@@ -366,17 +389,20 @@ async function pdfPourLEleve(atelier: string, titre: string, corps: string, styl
  * La fiche d'un élève, en PDF, rangée dans un dossier du bureau : la feuille
  * de l'atelier telle qu'elle s'imprime — sa consigne, ses compétences —, sans
  * corrigé, et sans son prénom : seuls le titre sur le bureau et le dossier
- * disent pour qui elle est. `refaire` dit comment l'atelier la refait.
+ * disent pour qui elle est. `refaire` dit comment l'atelier la refait — et le
+ * minuteur des tablettes qu'« En retard » lui donne. Sa consigne est gardée :
+ * le téléphone l'envoie aux tablettes depuis le créneau qui cite la fiche.
  */
 export async function ficheDeLEleve(
   atelier: string, titre: string, corps: string, style: string, eleve: { prenom: string; date: string; dossier: string },
-  refaire: Pick<Fabrication, "memoires" | "graine"> = {},
+  refaire: Pick<Fabrication, "memoires" | "graine" | "minuteur"> = {},
 ): Promise<MaterielItem> {
   const { api, newId, nowIso } = await import("./api");
   const fichier = await pdfPourLEleve(atelier, titre, corps, style, eleve);
+  const consigne = await consigneDeLaFiche(atelier, corps);
   const materiel: MaterielItem = {
     ...materielDuBureau(atelier, titre, fichier, await competencesDeLAtelier(atelier), newId(), nowIso()), dossier: eleve.dossier,
-    fabricationJson: ecrireFabrication({ atelier, ...refaire, eleve: { prenom: eleve.prenom, date: eleve.date } }),
+    fabricationJson: ecrireFabrication({ atelier, ...refaire, eleve: { prenom: eleve.prenom, date: eleve.date }, ...(consigne ? { consigne } : {}) }),
   };
   await api.materielSave(materiel);
   return materiel;
