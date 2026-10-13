@@ -213,6 +213,42 @@ pub fn noms_contenant(index: &Index, morceau: &str, a_une_image: &dyn Fn(i64) ->
     sortie
 }
 
+/// Le numéro d'un pictogramme, tel que l'outil « Pictos » l'affiche :
+/// « 17183 », « n° 17183 », « #17183 ». Les numéros d'ARASAAC ont quatre ou
+/// cinq chiffres ; un nombre plus court reste un mot (« 10 » a son dessin).
+pub fn numero_cherche(q: &str) -> Option<i64> {
+    let s = q.trim().to_lowercase();
+    let s = s.strip_prefix("arasaac").unwrap_or(&s).trim_start();
+    let s = s.strip_prefix('(').and_then(|x| x.strip_suffix(')')).unwrap_or(s).trim();
+    let s = ["n°", "nº", "no.", "no", "#"].iter().find_map(|p| s.strip_prefix(p)).unwrap_or(s).trim();
+    if (4..=5).contains(&s.len()) && s.chars().all(|c| c.is_ascii_digit()) {
+        s.parse().ok()
+    } else {
+        None
+    }
+}
+
+/// Les pictos qui répondent à une recherche, du plus exact au plus vague ; le
+/// pictogramme dont on a donné le numéro passe devant, sous son libellé.
+pub fn candidats_de_la_recherche<'a>(index: &'a Index, q: &str, present: &dyn Fn(&Picto) -> bool) -> Vec<(String, &'a Picto)> {
+    let cherche = q.trim().to_lowercase();
+    let numero = numero_cherche(q);
+    let par_numero = numero.and_then(|n| index.pictos.iter().find(|p| p.id == n)).filter(|p| present(p));
+    let mut candidats: Vec<(u8, String, &Picto)> = index
+        .pictos
+        .iter()
+        .filter(|p| Some(p.id) != numero)
+        .filter_map(|p| reponse_du_picto(p, &cherche).map(|(rang, libelle)| (rang, libelle, p)))
+        .filter(|(_, _, p)| present(p))
+        .collect();
+    candidats.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.len().cmp(&b.1.len())));
+    par_numero
+        .map(|p| (p.mot.clone(), p))
+        .into_iter()
+        .chain(candidats.into_iter().map(|(_, libelle, p)| (libelle, p)))
+        .collect()
+}
+
 /// Comment un picto répond à ce qu'on cherche : 0 si un de ses mots est
 /// exactement cela, 1 s'il commence ainsi, 2 s'il le contient — et le mot
 /// qui a répondu, pour l'écrire sous le dessin quand il est exact.
@@ -625,6 +661,8 @@ pub fn themes_des_mots(index: &Index, mots: &[String]) -> Vec<Categorie> {
 /// Ici l'enseignant voit les candidats et désigne le bon ; la machine propose,
 /// elle ne tranche pas. Les résultats sont classés du plus exact au plus vague
 /// pour que le bon soit presque toujours en tête.
+///
+/// Un numéro (« 17183 ») désigne le pictogramme lui-même : il vient en tête.
 #[tauri::command(async)]
 pub fn arasaac_chercher(
     etat: tauri::State<BanqueArasaac>,
@@ -632,22 +670,15 @@ pub fn arasaac_chercher(
     limite: usize,
 ) -> Result<Vec<PictoChoisi>, String> {
     let index = charger_index(&etat)?;
-    let cherche = q.trim().to_lowercase();
-    if cherche.len() < 2 {
+    if q.trim().len() < 2 {
         return Ok(Vec::new());
     }
     let dossier = images_dir();
-    let mut candidats: Vec<(u8, String, &Picto)> = index
-        .pictos
-        .iter()
-        .filter_map(|p| reponse_du_picto(p, &cherche).map(|(rang, libelle)| (rang, libelle, p)))
-        .filter(|(_, _, p)| dossier.join(format!("{}.png", p.id)).exists())
-        .collect();
-    candidats.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.len().cmp(&b.1.len())));
+    let candidats = candidats_de_la_recherche(&index, &q, &|p| dossier.join(format!("{}.png", p.id)).exists());
     Ok(candidats
         .into_iter()
         .take(if limite == 0 { 40 } else { limite })
-        .map(|(_, libelle, p)| PictoChoisi {
+        .map(|(libelle, p)| PictoChoisi {
             id: p.id,
             mot: libelle,
             fichier: dossier.join(format!("{}.png", p.id)).to_string_lossy().into_owned(),
@@ -906,6 +937,33 @@ mod tests {
             categories: cats.iter().map(|c| c.to_string()).collect(),
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn un_picto_se_trouve_par_son_numero() {
+        assert_eq!(numero_cherche("17183"), Some(17183));
+        assert_eq!(numero_cherche(" n° 17183 "), Some(17183));
+        assert_eq!(numero_cherche("N°17183"), Some(17183));
+        assert_eq!(numero_cherche("#2348"), Some(2348));
+        assert_eq!(numero_cherche("ARASAAC n° 2348"), Some(2348));
+        assert_eq!(numero_cherche("(n° 2348)"), Some(2348));
+        assert_eq!(numero_cherche("10"), None, "un nombre court reste un mot : « 10 » a son dessin");
+        assert_eq!(numero_cherche("123456"), None);
+        assert_eq!(numero_cherche("pousser"), None);
+
+        let mut i = index_exemple();
+        i.pictos.push(picto_mots(17183, &["pousser", "germer"], &["verb"]));
+        i.pictos.push(picto_mots(2348, &["peindre"], &["verb"]));
+        i.pictos.push(picto_mots(30000, &["le 17183e"], &["number"]));
+        let tout = |_: &Picto| true;
+        let trouves = candidats_de_la_recherche(&i, "17183", &tout);
+        assert_eq!(trouves.iter().map(|(m, p)| (m.as_str(), p.id)).collect::<Vec<_>>(), vec![("pousser", 17183), ("le 17183e", 30000)],
+            "le picto du numéro en tête, sous son libellé ; puis les mots qui contiennent ces chiffres");
+        assert_eq!(candidats_de_la_recherche(&i, "n° 17183", &tout).first().map(|(_, p)| p.id), Some(17183));
+        // Sans son image sur l'ordinateur, il ne se propose pas.
+        assert!(candidats_de_la_recherche(&i, "17183", &|p: &Picto| p.id != 17183).iter().all(|(_, p)| p.id != 17183));
+        assert!(candidats_de_la_recherche(&i, "99999", &tout).is_empty());
+        assert_eq!(candidats_de_la_recherche(&i, "peindre", &tout).first().map(|(_, p)| p.id), Some(2348), "les mots répondent toujours");
     }
 
     #[test]

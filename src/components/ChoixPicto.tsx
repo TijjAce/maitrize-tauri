@@ -232,8 +232,8 @@ export function ChoixPicto({ valeur, banque, titre = "Choisir un pictogramme", o
           Poser
         </button>
       </>}>
-      <Field label="Chercher un pictogramme">
-        <Input autoFocus placeholder="travailler, tablette, ranger, récréation…" value={q} onChange={(e) => setQ(e.target.value)} />
+      <Field label="Chercher un pictogramme, par son mot ou son numéro">
+        <Input autoFocus placeholder="travailler, tablette, ranger… ou 17183" value={q} onChange={(e) => setQ(e.target.value)} />
       </Field>
       {!banque && (
         <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: -4 }}>

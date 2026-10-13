@@ -242,6 +242,36 @@ export async function pictosDesMots(mots: string[]): Promise<[PictoArasaac[], st
   return r[1].length ? completer(r, await lireMesPictos()) : r;
 }
 
+/**
+ * Un mot écrit avec le numéro de son picto — « graine 17183 », « graine
+ * (n° 17183) », « graine = 17183 » — ou ce numéro seul. Les numéros d'ARASAAC
+ * ont quatre ou cinq chiffres ; collés au mot (« graine17183 »), ils restent au mot.
+ */
+export function motEtNumero(saisie: string): { mot: string; numero: number | null } {
+  const s = saisie.trim();
+  const m = /^(.*?)(\s*(?:[=:]\s*)?\(?\s*(?:(?:n\s*[°º]|#)\s*)?(\d{4,5})\s*\)?)$/iu.exec(s);
+  if (!m || (m[1] && !/^[\s=:(#]/u.test(m[2]))) return { mot: s, numero: null };
+  return { mot: m[1].trim(), numero: Number(m[3]) };
+}
+
+/**
+ * Les saisies d'une liste de mots, chacune avec le picto de son numéro quand
+ * elle en donne un (« graine 17183 ») : il passe avant la banque, sous le mot
+ * écrit — ou, seul, sous son libellé. Un numéro que la banque n'a pas laisse
+ * la saisie telle quelle : un mot comme un autre (« l'an 2000 »).
+ */
+export async function lireLesSaisies(saisies: string[]): Promise<{ mot: string; picto: PictoArasaac | null }[]> {
+  const { api } = await import("./api");
+  return Promise.all(saisies.map(async (saisie) => {
+    const { mot, numero } = motEtNumero(saisie);
+    if (numero == null) return { mot: saisie.trim(), picto: null };
+    const [p] = await api.arasaacChercher(String(numero), 1).catch((): PictoArasaac[] => []);
+    if (p?.id !== numero) return { mot: saisie.trim(), picto: null };
+    const leMot = mot || p.mot;
+    return { mot: leMot, picto: { ...p, mot: leMot } };
+  }));
+}
+
 /** Une recherche dans la banque, précédée des pictos gardés qui répondent. */
 export async function chercherPictos(q: string, limite = 40): Promise<PictoArasaac[]> {
   const { api } = await import("./api");
