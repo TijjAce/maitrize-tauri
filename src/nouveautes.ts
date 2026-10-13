@@ -18,6 +18,27 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.25",
+    titre: "Le Vilain Petit Canard, les codes de la phrase et de la lecture à voix haute, et des feuilles sans prénom ni date",
+    points: [
+      { quoi: "Les feuilles n'impriment plus ni prénom ni date : la ligne « Prénom … Date … » reste à remplir à la main, et la même feuille resert à un autre élève, un autre jour. Les fiches « En retard » aussi, jusque dans le cahier journal imprimé, qui les joint sans bandeau.", ou: "Fabriquer ; En retard" },
+      { quoi: "Toute consigne se présente en étapes numérotées, dans un même cadre. Ce qui aide — le rappel de la leçon, « Je peux… » — n'est plus sur la feuille : la case « les aides » l'y remet ; sinon le rappel passe dans le corrigé. La consigne elle-même va aux tablettes ; « Sur la feuille : la consigne » la remet sur le papier. Les compétences ne s'impriment en tête que sur les feuilles d'une séquence.", ou: "Fabriquer · La feuille" },
+      { quoi: "Le code de la phrase : vos couleurs et vos marques pour analyser la phrase, du CP à la 6e, avec les noms des programmes en vigueur — le sujet et le verbe au CP, le groupe sujet et les compléments ensuite, le COD, le COI et le complément circonstanciel au CM1… La carte du code pour l'élève, la table ou le mur ; les feuilles de grammaire le suivent.", ou: "Fabriquer · Aides à la tâche" },
+      { quoi: "Le code de la lecture à voix haute, de même : vos signes et leurs couleurs pour la liaison, les pauses, l'intonation, les groupes de souffle, la phrase qui continue à la ligne. Sa carte, et les feuilles « Lire à voix haute », qui le suivent dans leurs phrases et leurs consignes.", ou: "Fabriquer · Aides à la tâche" },
+      { quoi: "Le Vilain Petit Canard, la séquence de vocabulaire du guide Éduscol de maternelle, en MS et en GS : treize séances — les familles d'animaux, les documentaires, l'album, les émotions ou les synonymots, les lieux, les devinettes, le plan du récit, le tapis de conte —, et en prolongement les familles de canards à colorier et les canards à décorer. Les séances reçoivent leurs feuilles et la note de leur matériel. Le texte et les images de l'album restent les vôtres : l'application n'en reprend rien.", ou: "Fabriquer · Langage ; Plan de travail · Nouvelle séquence" },
+      { quoi: "Quand une compétence a plusieurs déroulements, la nouvelle séquence les montre côte à côte dès qu'on la choisit : un clic pour prendre l'un ou l'autre. Les séquences de maternelle rappellent dans chaque séance le matériel de la classe que leur compétence demande, et où il est rangé.", ou: "Plan de travail · Nouvelle séquence" },
+      { quoi: "Les motifs organisés de la maternelle : le fil à linge de la mascotte, des bandes à reproduire, compléter, prolonger, l'intrus et sa bande autocorrective, le motif qui grandit.", ou: "Fabriquer · Mathématiques" },
+      { quoi: "« Par compétence » : les ateliers de Fabriquer rangés sous les compétences des programmes, avec ceux que les séquences prennent déjà ; on en rattache d'autres en les glissant. Les explications et les sources de chaque atelier se lisent derrière un « ? », au survol.", ou: "Fabriquer" },
+      { quoi: "Se repérer, se déplacer : la bille rouge rejoint l'étoile dessinée sur le quadrillage, chaque code s'annonce par « Instruction : », et le robot qui pivote permet de différencier, avec son programme faux à corriger.", ou: "Fabriquer · Mathématiques" },
+      { quoi: "Histoire-géographie : les documents à montrer dans chaque séance, dont le kit de cartes d'Éduscol ; les quatre séquences Éduscol de 2016, au choix ; une photographie libre pour chacun des vingt-quatre paysages du programme.", ou: "Plan de travail · Nouvelle séquence ; Fabriquer · Lire un paysage" },
+      { quoi: "Le matériel de la classe montre une photo de chaque objet ; l'écriture cursive peut tracer ses lignes en « ciel, herbe, terre » ; les tableaux de langage prennent vos couleurs, cachent des cases, reprennent vos photos.", ou: "Fabriquer ; Communication" },
+      { quoi: "Pictos : vos symboles Makaton s'importent (l'application n'en livre aucun) ; chaque picto dit sa banque ; les règles du jeu en pictos ont chacune leur bande ; la photo du téléphone arrive par Nuage, où que vous soyez, et celles déjà reçues se reprennent d'un clic.", ou: "Choisir un picto ; Communication" },
+      { quoi: "L'assistant s'arrête en cours de réponse, et une réponse se retouche avant d'être enregistrée en PDF ou en Word. Une page de manuel s'imprime telle qu'elle est.", ou: "Assistant ; Manuels" },
+      { quoi: "Corrigé : les mots mêlés du CP n'avaient aucun mot à chercher en début d'année ; « En retard » ne tire plus « Trouve l'intrus », qui se fait en disant pourquoi ; les mots du projet ne remplissent plus un atelier d'office, une case les propose." },
+      { quoi: "Le dictaphone, dans sa nouvelle version, s'organise en cinq onglets, garde le même code de portail pour les tablettes et leur montre un minuteur et le déroulé de la tâche en grand.", ou: "Dictaphone" },
+    ],
+  },
+  {
     version: "1.6.24",
     titre: "Des consignes à la première personne, une action par ligne, et les mots des problèmes en début de séquence",
     points: [
