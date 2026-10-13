@@ -31,6 +31,12 @@ export interface Outil {
   pictos?: boolean;
   /** Pour qui : « Cycle 2 », « Cycles 2 et 3 »… */
   cycles?: string;
+  /**
+   * Une séquence toute faite — ses séances et toutes leurs feuilles —, et non
+   * un support qu'on fabrique pour construire ses séquences : sa carte se
+   * distingue des autres (demande de l'enseignant, octobre 2026).
+   */
+  sequence?: true;
 }
 
 export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[] = [
@@ -48,7 +54,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Les jeux d'Éduscol pour ranger les mots en catégories : boîtes de tri, intrus, loto aveugle, « J'appelle… », familles, mistigri — et leur séquence." },
       { id: "suites", nom: "Images séquentielles", icone: "🎞", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Remettre dans l'ordre une histoire, un geste, une recette : les images à découper et les cases à remplir, en colonne ou fléchées — des pictos ou vos photos." },
-      { id: "vilainPetitCanard", nom: "Le Vilain Petit Canard — MS, GS", icone: "🦢", pictos: true, cycles: "Cycle 1",
+      { id: "vilainPetitCanard", nom: "Le Vilain Petit Canard — MS, GS", icone: "🦢", pictos: true, cycles: "Cycle 1", sequence: true,
         quoi: "La séquence de vocabulaire du guide Éduscol de maternelle : familles d'animaux, documentaires, émotions ou synonymots, lieux, devinettes, plan du récit, tapis de conte — et la séquence entière." },
       { id: "etiquettes", nom: "Étiquettes à catégoriser", icone: "🏷", cycles: "Cycles 2 et 3",
         quoi: "Les mots collectés en grand pour le tableau, en petit par enveloppe, et la corolle lexicale." },

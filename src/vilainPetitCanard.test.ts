@@ -31,6 +31,7 @@ import {
   creerLaSequenceDuVilainPetitCanard, niveauDeLaDemarche, objectifsDeLaSequence, planDuVilainPetitCanard, titreDeLaSequence,
 } from "./sequenceVilainPetitCanard";
 import { STYLE_FEUILLE } from "./cartesImprimables";
+import { FAMILLES } from "./catalogueAteliers";
 import {
   FAMILLES_DE_L_HISTOIRE, IDS_VPC, LIEUX, PERSONNAGES, P, PETITS_PAR_FAMILLE, decomposition, feuillesDeLaSequence, materielDesSeances, universEtIntrus,
   type NiveauVpc,
@@ -185,6 +186,13 @@ describe("la séquence du Vilain Petit Canard, d'après le guide du vocabulaire 
       expect(intrus.refaire?.categoriser, n).toMatchObject({ forme: "intrus", niveau: n });
       expect(intrus.html, n).toContain('class="page');
     }
+  });
+
+  it("se range dans Fabriquer comme une séquence toute faite, et non comme un support à fabriquer", () => {
+    const outils = FAMILLES.flatMap((f) => f.outils);
+    expect(outils.find((o) => o.id === "vilainPetitCanard")?.sequence).toBe(true);
+    // Les autres ateliers fabriquent des supports : aucun ne se dit séquence toute faite.
+    expect(outils.filter((o) => o.sequence).map((o) => o.id)).toEqual(["vilainPetitCanard"]);
   });
 
   it("se nomme et vise ce que dit le guide, à chaque niveau", () => {

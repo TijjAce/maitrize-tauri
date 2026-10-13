@@ -1171,6 +1171,12 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
 .atelier-besoin { font-size: 11px; color: var(--text-2); opacity: .8; margin-top: 4px; }
 .atelier-besoin::before { content: "▪ "; }
 .atelier-usage { color: var(--accent); white-space: nowrap; }
+/* Une séquence toute faite, et non un support à fabriquer : sa carte a son propre fond, et le dit en toutes lettres. */
+.atelier.atelier-sequence { background: color-mix(in srgb, var(--panel) 80%, #0d9488);
+  border-color: color-mix(in srgb, var(--border) 45%, #0d9488); }
+.atelier.atelier-sequence:hover { background: color-mix(in srgb, var(--panel-2) 72%, #0d9488); border-color: #0d9488; }
+.atelier-genre { font-weight: 700; color: color-mix(in srgb, var(--text) 55%, #0d9488); white-space: nowrap; }
+.atelier-sequence .atelier-besoin { opacity: 1; }
 /* Le moment de la séquence où l'atelier est rangé, dans son bandeau. */
 /* Le catalogue par moment : chaque moment reçoit les cartes qu'on y glisse. */
 .zone-moment { margin: 0 -6px 18px; padding: 6px; border-radius: 14px; border: 2px dashed transparent; transition: background .12s, border-color .12s; }

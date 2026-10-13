@@ -104,10 +104,11 @@ function CarteAtelier({ o, usage, onOuvrir, onRanger, enVol, onVol }: {
   onRanger?: (usage: Usage) => void;
   enVol?: boolean; onVol?: (enVol: boolean) => void;
 }) {
-  const moment = usage ? descriptionDe(usage) : null;
+  // Une séquence toute faite n'est pas le support d'un moment : elle dit ce qu'elle est, à la place.
+  const moment = usage && !o.sequence ? descriptionDe(usage) : null;
   const besoin = [o.cycles, o.pictos ? "pictogrammes ARASAAC" : ""].filter(Boolean).join(" · ");
   return (
-    <div role="button" tabIndex={0} className={`atelier${enVol ? " en-vol" : ""}`} onClick={onOuvrir}
+    <div role="button" tabIndex={0} className={`atelier${o.sequence ? " atelier-sequence" : ""}${enVol ? " en-vol" : ""}`} onClick={onOuvrir}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOuvrir(); } }}
       draggable={Boolean(onRanger)}
       onDragStart={onRanger ? (e) => {
@@ -123,8 +124,9 @@ function CarteAtelier({ o, usage, onOuvrir, onRanger, enVol, onVol }: {
       <span className="atelier-icone">{o.icone}</span>
       <span className="atelier-nom">{o.nom}</span>
       <span className="atelier-quoi">{o.quoi}</span>
-      {(besoin || moment) && (
+      {(besoin || moment || o.sequence) && (
         <span className="atelier-besoin">
+          {o.sequence && <span className="atelier-genre" title="Ses séances et toutes leurs feuilles, prêtes : on la crée d'un clic">📚 Séquence toute faite{besoin ? " · " : ""}</span>}
           {besoin}{besoin && moment ? " · " : ""}
           {moment && <span className="atelier-usage" title={`${moment.aide} — ${moment.quand}.`}>{moment.ico} {moment.nom}</span>}
         </span>
@@ -169,7 +171,7 @@ export default function Jeux() {
   const [plis, setPlis] = useMemoire<string[]>("plis", lirePlis);
   const plier = (cle: string, plie: boolean) => setPlis(plie ? [...new Set([...plis, cle])] : plis.filter((x) => x !== cle));
   // « Tout replier » vaut pour la lecture du moment : les familles, ou les moments.
-  const sectionsLues = rangement === "usage" ? USAGES.map((u) => `moment:${u.id}`) : FAMILLES.map((f) => `famille:${f.id}`);
+  const sectionsLues = rangement === "usage" ? ["moment:sequences", ...USAGES.map((u) => `moment:${u.id}`)] : FAMILLES.map((f) => `famille:${f.id}`);
   const toutPlie = sectionsLues.every((c) => plis.includes(c));
   const setOnglet = React.useCallback((o: Onglet | "") => {
     setOngletBrut(o);
@@ -255,7 +257,17 @@ export default function Jeux() {
           )
         ) : rangement === "usage" ? (
           <>
-            {rangerParUsage(FAMILLES.flatMap((f) => f.outils), usages, true).map(({ usage, outils }) => (
+            {/* Les séquences toutes faites ne servent pas un moment : elles en ont tous. Elles viennent à part, en tête. */}
+            {FAMILLES.some((f) => f.outils.some((o) => o.sequence)) && (
+              <section className="famille-catalogue">
+                <PliDuCatalogue ouvert={!plis.includes("moment:sequences")} onBasculer={(o) => plier("moment:sequences", !o)}
+                  icone="📚" titre="Séquences toutes faites" aide="Ses séances et toutes leurs feuilles, prêtes : on crée la séquence d'un clic, puis on l'adapte."
+                  nombre={FAMILLES.flatMap((f) => f.outils).filter((o) => o.sequence).length}>
+                  <div className="ateliers">{FAMILLES.flatMap((f) => f.outils).filter((o) => o.sequence).map(carte)}</div>
+                </PliDuCatalogue>
+              </section>
+            )}
+            {rangerParUsage(FAMILLES.flatMap((f) => f.outils).filter((o) => !o.sequence), usages, true).map(({ usage, outils }) => (
               <section key={usage.id} className={`zone-moment${survol === usage.id ? " survol" : ""}`} aria-label={usage.nom}
                 onDragOver={(e) => {
                   if (!enVol) return;
