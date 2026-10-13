@@ -4,8 +4,11 @@
 // demarchesVilainPetitCanard.ts) donne les douze séances, chacune reçoit ses
 // feuilles — celles des ateliers « Catégoriser les mots » et « Images
 // séquentielles », et celles de l'atelier du Vilain Petit Canard — et la note
-// du matériel à préparer. Les feuilles portent en tête la compétence de la
-// séquence ; « Modifier dans Fabriquer » rouvre l'atelier qui les a faites.
+// du matériel à préparer, avec le matériel de la classe que ses compétences
+// appellent (l'inventaire dit où il est rangé). Les feuilles portent en tête
+// la compétence qu'elles travaillent — celle de la séquence, ou, pour les
+// ateliers du prolongement, décomposer une quantité et le graphisme ;
+// « Modifier dans Fabriquer » rouvre l'atelier qui les a faites.
 
 import { api, anneeScolaireActuelle, couleurPourMatiere, newId, nowIso, type Sequence } from "./api";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
@@ -14,6 +17,7 @@ import { demarcheDe, seancesDuCadre } from "./demarches";
 import { DEMARCHE_VPC } from "./demarchesVilainPetitCanard";
 import { graineAuHasard, hasard } from "./hasard";
 import { poserDansUneSeance } from "./impressionAtelier";
+import { noteDuMaterielDesCompetences } from "./materielDeClasse";
 import type { Images } from "./supportsVisuels";
 import { chargerVacances, periodeDuJour } from "./vacances";
 import { NIVEAUX_VPC, feuillesDeLaSequence, materielDesSeances, type NiveauVpc } from "./vilainPetitCanard";
@@ -32,6 +36,15 @@ export function objectifsDeLaSequence(n: NiveauVpc): string {
     + `dans un langage correct et précis. ${n}, ${age} : ${vise}.`;
 }
 
+/** Les compétences des ateliers du prolongement, prises dans les référentiels : décomposer une quantité, le graphisme. */
+export interface CompetencesDesAteliers { maths?: CompetenceSelectionnee | null; graphisme?: CompetenceSelectionnee | null }
+
+/** Ce qu'on cherche dans les référentiels pour les ateliers du prolongement, à cet âge. */
+export const INTITULES_DES_ATELIERS = (n: NiveauVpc) => ({
+  maths: /composer (et|ou) décomposer des nombres/i,
+  graphisme: n === "GS" ? /réaliser une composition à partir de plusieurs contraintes/i : /reproduire et créer des motifs/i,
+});
+
 /**
  * Crée la séquence : la fiche, les séances de la démarche avec leur
  * matériel, puis les feuilles dans leurs séances. Les images sont celles de
@@ -39,7 +52,7 @@ export function objectifsDeLaSequence(n: NiveauVpc): string {
  * de feuilles y sont.
  */
 export async function creerLaSequenceDuVilainPetitCanard(
-  n: NiveauVpc, titre: string, competences: CompetenceSelectionnee[], images: Images,
+  n: NiveauVpc, titre: string, competences: CompetenceSelectionnee[], images: Images, ateliers: CompetencesDesAteliers = {},
 ): Promise<{ sequence: Sequence; feuilles: number }> {
   const demarche = demarcheDe(DEMARCHE_VPC[n]);
   if (!demarche) throw new Error("La démarche du Vilain Petit Canard est introuvable.");
@@ -56,18 +69,32 @@ export async function creerLaSequenceDuVilainPetitCanard(
     dossier: "", nbSeancesPrevu: demarche.seances.length, etat: "", dateMaj: "",
   };
   await api.sequenceSave(sequence);
+  const feuilles = feuillesDeLaSequence(n);
+  // La séance des ateliers vise leurs compétences, et rappelle le matériel qu'elles appellent — les jetons pour décomposer.
+  const desAteliers = [ateliers.maths, ateliers.graphisme].filter((c): c is CompetenceSelectionnee => Boolean(c));
+  const seanceDesAteliers = desAteliers.length ? feuilles.find((f) => f.competence)?.seance ?? -1 : -1;
+  const lire = (cle: string) => api.settingGet(cle);
+  const noteDeLaSequence = await noteDuMaterielDesCompetences(competences, lire);
+  const noteDesAteliers = await noteDuMaterielDesCompetences(desAteliers, lire);
   const materiel = materielDesSeances(n);
-  const seances = seancesDuCadre(demarche, sequence.id, 1).map((s, i) => ({ ...s, competences: JSON.stringify(competences), materiel: materiel[i] ?? "" }));
+  const seances = seancesDuCadre(demarche, sequence.id, 1).map((s, i) => {
+    const ateliersIci = i === seanceDesAteliers;
+    return {
+      ...s, competences: JSON.stringify(ateliersIci ? desAteliers : competences),
+      materiel: [materiel[i], ateliersIci ? noteDesAteliers : noteDeLaSequence].filter(Boolean).join("\n"),
+    };
+  });
   for (const s of seances) await api.seanceSave(s);
   let posees = 0;
-  for (const f of feuillesDeLaSequence(n)) {
+  for (const f of feuilles) {
     const seance = seances[f.seance];
     if (!seance) continue;
-    // Les réglages et le tirage vont avec la feuille : « Modifier dans Fabriquer » la refait ; la compétence de la séquence s'imprime en tête.
+    // Les réglages et le tirage vont avec la feuille : « Modifier dans Fabriquer » la refait ; sa compétence s'imprime en tête.
     const graine = graineAuHasard();
     const { html, style, memoires } = f.fabriquer(images, hasard(graine));
+    const enTete = (f.competence === "maths" ? ateliers.maths : f.competence === "graphisme" ? ateliers.graphisme : null) ?? vise;
     await poserDansUneSeance(f.atelier, f.titre, html, STYLE_FEUILLE + style, seance.id, sequence.id,
-      { competences: vise ? [vise] : undefined, fabrication: { memoires, graine } });
+      { competences: enTete ? [enTete] : undefined, fabrication: { memoires, graine } });
     posees++;
   }
   return { sequence, feuilles: posees };

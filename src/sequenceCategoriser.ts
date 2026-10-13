@@ -20,6 +20,7 @@ import {
 import { demarcheDe, seancesDuCadre } from "./demarches";
 import { graineAuHasard, hasard } from "./hasard";
 import { poserDansUneSeance } from "./impressionAtelier";
+import { noteDuMaterielDesCompetences } from "./materielDeClasse";
 import { chargerVacances, periodeDuJour } from "./vacances";
 
 export const DEMARCHE_CATEGORISER = "categoriser-maternelle";
@@ -141,7 +142,11 @@ export async function creerLaSequenceDeCategorisation(
   await api.sequenceSave(sequence);
   const feuilles = feuillesPour(r);
   const materiel = materielDesSeances(feuilles.find((f) => f.seance === SEANCE_DU_JEU)?.forme ?? "appelle");
-  const seances = seancesDuCadre(demarche, sequence.id, 1).map((s, i) => ({ ...s, competences: JSON.stringify(competences), materiel: materiel[i] ?? "" }));
+  // Le matériel de la classe que la compétence appelle, comme pour une séquence créée depuis elle : chaque séance le rappelle.
+  const noteReelle = await noteDuMaterielDesCompetences(competences, (cle) => api.settingGet(cle));
+  const seances = seancesDuCadre(demarche, sequence.id, 1).map((s, i) => ({
+    ...s, competences: JSON.stringify(competences), materiel: [materiel[i] ?? "", noteReelle].filter(Boolean).join("\n"),
+  }));
   for (const s of seances) await api.seanceSave(s);
   let posees = 0;
   for (const f of feuilles) {

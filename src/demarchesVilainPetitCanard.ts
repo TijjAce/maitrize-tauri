@@ -12,6 +12,11 @@
 // où MS et GS se séparent —, puis raconter, réinvestir et observer. Les
 // séances sont dites avec nos mots ; les modalités sont celles du guide :
 // petits groupes pour parler et observer, collectif pour la lecture.
+//
+// Une treizième séance n'est pas dans le guide : le prolongement que
+// l'enseignant a demandé (2026-10-13), d'après ses propres exercices — les
+// familles de canards à colorier, pour décomposer une quantité, et les
+// canards à décorer, en graphisme —, en deux ateliers qui tournent.
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 
@@ -145,6 +150,21 @@ function seances(n: NiveauDuCanard): SeanceCadre[] {
           ph("La collection", "10 min", "Des images de visages : pour chacune, dire l'émotion, et la ranger sur l'affiche de son émotion."),
           ph("Dire et mimer", "10 min", "Chacun choisit une image et la décrit avec le mot juste ; les autres miment l'émotion.", PETITS_GROUPES),
         ]),
+    seance("Prolongement — En ateliers : les familles de canards, la décoration des canards",
+      `colorier ${gs ? "cinq" : "quatre"} petits en canetons jaunes et en vilains petits canards gris de toutes les façons possibles, chaque famille différente, `
+        + `dire${gs ? " et écrire" : ""} combien il y a de chaque sorte, et continuer un motif graphique jusqu'au bout${gs ? " — puis en inventer un" : ""}.`,
+      25, [
+        ph("Atelier mathématiques — les familles de canards", "10 min", gs
+          ? "Chaque cane a cinq petits : des canetons jaunes et des vilains petits canards gris. On fait d'abord les familles avec des jetons jaunes et gris, puis on les colorie : aucune ne doit ressembler à une autre. Chacun dit combien il y a de jaunes et de gris, et l'écrit."
+          : "Chaque cane a quatre petits : des canetons jaunes et des vilains petits canards gris. On fait d'abord les familles avec des jetons jaunes et gris, puis on les colorie : aucune ne doit ressembler à une autre. Chacun dit combien il y a de jaunes et de gris.",
+          gs ? "Fait dire chaque décomposition — « 3 jaunes et 2 gris, ça fait 5 » — et chercher celle qui manque : il y en a six."
+            : "Fait dire chaque décomposition — « 3 jaunes et 1 gris, ça fait 4 » — et chercher celle qui manque : il y en a cinq."),
+        ph("Atelier graphisme — décorer les canards", "10 min", gs
+          ? "Sur chaque canard, le début de trois bandes de motifs : on les continue jusqu'au bout ; le dernier canard, on le décore avec les motifs qu'on choisit."
+          : "Sur chaque canard, le début d'un motif — des traits, des points, des ronds, des vagues, des pics, des créneaux — : on le continue jusqu'au bout de chaque bande.",
+          "Montre le geste, fait dire le nom du motif ; les deux ateliers tournent."),
+        ph("Bilan", "5 min", "Les familles comparées : sont-elles toutes différentes ? Les canards décorés exposés, chaque motif nommé."),
+      ]),
     seance("Évaluation — Observer, à distance",
       gs ? "montrer ce qu'ils ont acquis : nommer les animaux et leurs petits, trouver une information, employer une expression synonyme, expliquer un mot de l'histoire, la raconter. L'observation se refait un mois plus tard."
         : "montrer ce qu'ils ont acquis : nommer les animaux et leurs petits, les ranger par famille, dire l'émotion du petit canard et sa cause, remettre la naissance dans l'ordre, raconter. L'observation se refait un mois plus tard.",
@@ -157,7 +177,7 @@ function seances(n: NiveauDuCanard): SeanceCadre[] {
 }
 
 const SOURCE = "Pour enseigner le vocabulaire à l'école maternelle (guide fondamental, Éduscol, 2020), Focus « Un exemple de séquence en moyenne et grande sections à partir d'un conte traditionnel », p. 71-76 ; "
-  + "album : Attilio Cassinelli, Le Vilain Petit Canard, Gallimard Jeunesse, 2018";
+  + "album : Attilio Cassinelli, Le Vilain Petit Canard, Gallimard Jeunesse, 2018 ; prolongement : les exercices de la classe (familles de canards, décoration des canards)";
 
 export const DEMARCHES_VILAIN_PETIT_CANARD: Demarche[] = [
   {
@@ -165,7 +185,7 @@ export const DEMARCHES_VILAIN_PETIT_CANARD: Demarche[] = [
     nom: "Le Vilain Petit Canard (MS) : les mots des émotions et de la naissance",
     famille: "Maternelle",
     source: SOURCE,
-    resume: "D'abord l'univers de référence — les animaux de la ferme et de l'eau, leurs familles, les saisons —, puis l'album, lu sans les images et raconté avec des marottes ; ensuite les émotions du petit canard, rangées du plus faible au plus fort avec leurs causes, la frise de la naissance du poussin, les lieux, les silhouettes, l'intrus, les devinettes, le plan du récit ; enfin raconter avec le tapis de conte, collectionner les émotions sur d'autres visages, et observer à distance.",
+    resume: "D'abord l'univers de référence — les animaux de la ferme et de l'eau, leurs familles, les saisons —, puis l'album, lu sans les images et raconté avec des marottes ; ensuite les émotions du petit canard, rangées du plus faible au plus fort avec leurs causes, la frise de la naissance du poussin, les lieux, les silhouettes, l'intrus, les devinettes, le plan du récit ; enfin raconter avec le tapis de conte, collectionner les émotions sur d'autres visages ; en prolongement, les familles de canards à colorier (décomposer quatre) et les canards à décorer ; et observer à distance.",
     seances: seances("MS"),
   },
   {
@@ -173,7 +193,7 @@ export const DEMARCHES_VILAIN_PETIT_CANARD: Demarche[] = [
     nom: "Le Vilain Petit Canard (GS) : des synonymes pour « à la queue leu leu »",
     famille: "Maternelle",
     source: `${SOURCE} ; synonymots : Micheline Cellier, Guide pour enseigner le vocabulaire à l'école élémentaire, Retz, 2015`,
-    resume: "D'abord l'univers de référence — les animaux et leurs familles, des textes documentaires dont on tire des informations, les saisons —, puis l'album, lu sans les images et raconté avec des marottes ; ensuite les synonymots — « à la queue leu leu », « la coquille se brise » —, les lieux, les silhouettes, l'intrus, les devinettes, le plan du récit ; enfin raconter avec le tapis de conte, comparer deux versions de l'histoire, retrouver les mots du titre, et observer à distance.",
+    resume: "D'abord l'univers de référence — les animaux et leurs familles, des textes documentaires dont on tire des informations, les saisons —, puis l'album, lu sans les images et raconté avec des marottes ; ensuite les synonymots — « à la queue leu leu », « la coquille se brise » —, les lieux, les silhouettes, l'intrus, les devinettes, le plan du récit ; enfin raconter avec le tapis de conte, comparer deux versions de l'histoire, retrouver les mots du titre ; en prolongement, les familles de canards à colorier (décomposer cinq) et les canards à décorer ; et observer à distance.",
     seances: seances("GS"),
   },
 ];
