@@ -1271,6 +1271,13 @@ details.pli-catalogue[open] .pli-chevron { transform: rotate(90deg); }
 .deroulement-propose { border: 1px solid var(--accent); border-radius: 12px; padding: 10px 14px; margin: 4px 0 10px;
   background: var(--panel); font-size: 13px; }
 .deroulement-propose.ecarte { border-color: var(--border); opacity: .75; }
+/* Plusieurs déroulements pour une compétence : côte à côte, on choisit d'un clic. */
+.deroulements-possibles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin: 8px 0 4px; }
+.deroulement-choix { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; font: inherit; font-size: 13px;
+  padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--panel-2); color: var(--text); cursor: pointer; }
+.deroulement-choix:hover { border-color: var(--accent); }
+.deroulement-choix.actif { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.deroulement-choix .meta { font-size: 12px; }
 .deroulement-seances { margin: 8px 0 0; padding-left: 20px; font-size: 12.5px; line-height: 1.55; }
 .deroulement-seances li { margin: 2px 0; }
 /* Les feuilles que la démarche pioche dans les ateliers, sous chaque séance ; celles qu'on décoche s'effacent. */
