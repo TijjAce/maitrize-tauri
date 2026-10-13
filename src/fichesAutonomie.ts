@@ -202,8 +202,9 @@ function cursive(r: Partial<ReglagesCursive>): FicheFabriquee {
 const niveauDesCubes = (c: ContexteFiche): IdNiveauCubes =>
   c.niveau === "CE1" ? "ce1" : c.niveau === "CE2" ? "ce2" : c.periode <= 1 ? "cp-19" : c.periode === 2 ? "cp-59" : "cp-100";
 
+// Chaque groupement dans sa couleur, comme à l'écran, même si l'atelier a été laissé sur « une seule couleur » (demande de l'enseignant, octobre 2026).
 const cubes = (c: ContexteFiche): ReglagesCubes =>
-  reglagesCubesSurs({ ...REGLAGES_CUBES, ...reglagesLaisses<ReglagesCubes>("cubes"), niveau: niveauDesCubes(c) });
+  reglagesCubesSurs({ ...REGLAGES_CUBES, ...reglagesLaisses<ReglagesCubes>("cubes"), niveau: niveauDesCubes(c), memeCouleur: false });
 
 /** La feuille de cubes de la séquence, en moins long : au CE2, les milliers prennent une demi-page chacun. */
 function feuilleCubes(quoi: "ecrire" | "dessiner", c: ContexteFiche, graine: number): FicheFabriquee {
@@ -231,7 +232,9 @@ function posees(c: ContexteFiche): ReglagesPosees {
 function heure(c: ContexteFiche): ReglagesHeure {
   const laisses = reglagesLaisses<ReglagesHeure>("heure");
   const precision = c.niveau === "CE1" ? (c.periode <= 2 ? "heures" : "demies") : c.periode <= 2 ? "quarts" : "cinq";
-  return { ...REGLAGES_HEURE, ...laisses, exercice: "horloges", precision, sens: c.niveau === "CE1" ? "lire" : "mixte", combien: 9, apresMidi: false };
+  // L'élève seul colorie les aiguilles, la rouge des heures et la bleue des minutes : il les distingue avant de lire.
+  return { ...REGLAGES_HEURE, ...laisses, exercice: "horloges", precision, sens: c.niveau === "CE1" ? "lire" : "mixte", combien: 9, apresMidi: false,
+    colorier: true, couleurs: false };
 }
 
 /**
@@ -294,7 +297,8 @@ export const RECETTES: RecetteDeFiche[] = [
   { id: "pyramides", atelier: "pyramides", nom: "Les pyramides de nombres", domaine: "maths", niveaux: C2,
     fabriquer: (c, g) => {
       const r = c.niveau === "CP" ? { etages: 3, jusqua: c.periode <= 2 ? 3 : 6 } : c.niveau === "CE1" ? { etages: 4, jusqua: 10 } : { etages: 4, jusqua: 25 };
-      const reglages = { ...REGLAGES_PYRAMIDES, forme: "pyramide" as const, combien: 6, trous: "bas" as const, ...r };
+      // Sans la règle écrite : il connaît le jeu, la consigne dit ce qu'il fait (demande de l'enseignant, octobre 2026).
+      const reglages = { ...REGLAGES_PYRAMIDES, forme: "pyramide" as const, combien: 6, trous: "bas" as const, regle: false, ...r };
       return commeLAtelier(htmlPyramides(reglages, g), STYLE_FEUILLE + STYLE_PYRAMIDES, "pyramides", reglages);
     } },
   { id: "coloriage-calcul", atelier: "coloriage", nom: "Coloriage magique : calculer", domaine: "maths", niveaux: C2,
@@ -364,10 +368,31 @@ const PERIODES_DU_CP: Record<string, number[]> = { comprendre: DES_PERIODES(3), 
 
 export const recetteDe = (id: string) => RECETTES.find((r) => r.id === id);
 
-/** Les fiches qu'on peut donner à cet élève, à cette période. */
-export function recettesPour(n: NiveauFiches, periode: number, nonVerbal: boolean): RecetteDeFiche[] {
+/**
+ * Les fabrications que « En retard » sait donner à ce niveau — à tous, sans
+ * niveau —, une par atelier, sous leur nom de Fabriquer : ce que la fiche d'un
+ * élève peut écarter.
+ */
+export function fabricationsDesFiches(n: NiveauFiches | null): { atelier: string; nom: string }[] {
+  const vus = new Map<string, string>();
+  for (const r of RECETTES) {
+    if (n && !r.niveaux.includes(n)) continue;
+    if (vus.has(r.atelier)) continue;
+    const outil = FAMILLES.flatMap((f) => f.outils).find((o) => o.id === r.atelier);
+    vus.set(r.atelier, outil?.nom ?? (typeof r.nom === "string" ? r.nom : r.atelier));
+  }
+  return [...vus].map(([atelier, nom]) => ({ atelier, nom })).sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+}
+
+/**
+ * Les fiches qu'on peut donner à cet élève, à cette période — sans celles des
+ * fabrications que sa fiche écarte (`exclues` : des ateliers, comme le
+ * coloriage magique pour qui ne sait pas encore le faire).
+ */
+export function recettesPour(n: NiveauFiches, periode: number, nonVerbal: boolean, exclues: readonly string[] = []): RecetteDeFiche[] {
   return RECETTES.filter((r) => r.niveaux.includes(n)
     && !(nonVerbal && r.lecture)
+    && !exclues.includes(r.atelier)
     && !(n === "CP" && PERIODES_DU_CP[r.id] && !PERIODES_DU_CP[r.id].includes(periode))
     && (!r.periodes || r.periodes.includes(periode)));
 }
@@ -400,9 +425,9 @@ export interface FicheProposee { recette: string; graine: number }
  * différente à chaque fois tant qu'il en reste — puis les mêmes, autrement
  * tirées.
  */
-export function proposer(n: NiveauFiches, periode: number, nonVerbal: boolean, combien: number, graine: number): FicheProposee[] {
+export function proposer(n: NiveauFiches, periode: number, nonVerbal: boolean, combien: number, graine: number, exclues: readonly string[] = []): FicheProposee[] {
   const alea = hasard(graine);
-  const possibles = melanger(alea, recettesPour(n, periode, nonVerbal));
+  const possibles = melanger(alea, recettesPour(n, periode, nonVerbal, exclues));
   if (!possibles.length) return [];
   const ordre = ordreDesDomaines(n);
   const pris: RecetteDeFiche[] = [];
@@ -420,8 +445,10 @@ export function proposer(n: NiveauFiches, periode: number, nonVerbal: boolean, c
  * d'un autre sinon, jamais une déjà choisie — et, s'il n'y en a plus, la
  * même autrement tirée.
  */
-export function uneAutre(courante: FicheProposee, choisies: FicheProposee[], n: NiveauFiches, periode: number, nonVerbal: boolean, graine: number): FicheProposee {
-  const possibles = melanger(hasard(graine), recettesPour(n, periode, nonVerbal));
+export function uneAutre(
+  courante: FicheProposee, choisies: FicheProposee[], n: NiveauFiches, periode: number, nonVerbal: boolean, graine: number, exclues: readonly string[] = [],
+): FicheProposee {
+  const possibles = melanger(hasard(graine), recettesPour(n, periode, nonVerbal, exclues));
   const prises = new Set(choisies.map((f) => f.recette));
   const domaine = recetteDe(courante.recette)?.domaine;
   const libres = possibles.filter((r) => !prises.has(r.id));
@@ -430,8 +457,10 @@ export function uneAutre(courante: FicheProposee, choisies: FicheProposee[], n: 
 }
 
 /** Une fiche de plus : celle du domaine qui vient, parmi celles qu'il n'a pas. */
-export function uneDePlus(choisies: FicheProposee[], n: NiveauFiches, periode: number, nonVerbal: boolean, graine: number): FicheProposee | null {
-  const possibles = melanger(hasard(graine), recettesPour(n, periode, nonVerbal));
+export function uneDePlus(
+  choisies: FicheProposee[], n: NiveauFiches, periode: number, nonVerbal: boolean, graine: number, exclues: readonly string[] = [],
+): FicheProposee | null {
+  const possibles = melanger(hasard(graine), recettesPour(n, periode, nonVerbal, exclues));
   if (!possibles.length) return null;
   const ordre = ordreDesDomaines(n);
   const domaine = ordre[choisies.length % ordre.length];

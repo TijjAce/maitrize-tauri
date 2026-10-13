@@ -881,6 +881,9 @@ pub(crate) fn migrate(conn: &Connection) {
     // Un élève non verbal : « En retard » ne lui donne pas de fiche de lecture
     // à faire seul. Sans NOT NULL, pour la même raison.
     conn.execute("ALTER TABLE eleves ADD COLUMN non_verbal INTEGER DEFAULT 0", []).ok();
+    // Les fabrications qu'« En retard » ne lui donne pas (le coloriage magique,
+    // pour qui ne sait pas encore le faire) : une liste d'ateliers, en JSON.
+    conn.execute("ALTER TABLE eleves ADD COLUMN fiches_exclues TEXT DEFAULT ''", []).ok();
     // L'année scolaire d'un élève, et le jour où il a été créé : à la fin de
     // l'année, la fenêtre « Fin de l'année » propose de supprimer les élèves
     // de l'année qui se termine, et ceux-là seuls — pas ceux qu'on a gardés,

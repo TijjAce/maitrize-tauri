@@ -48,10 +48,16 @@ export interface ReglagesHeure {
   avecH: boolean;
   /** Les minutes écrites autour du cadran : 5, 10, 15… */
   minutesAutour: boolean;
+  /**
+   * Les aiguilles à colorier : l'élève colorie en rouge celle des heures, en
+   * bleu celle des minutes. La consigne le demande, et les aiguilles sont
+   * évidées pour qu'on puisse les colorier. « En retard » le coche.
+   */
+  colorier: boolean;
 }
 export const REGLAGES_HEURE: ReglagesHeure = {
   exercice: "horloges", precision: "heures", sens: "lire", combien: 9, apresMidi: false,
-  couleurs: false, couleurHeures: "#d94033", couleurMinutes: "#2454e6", avecH: true, minutesAutour: false,
+  couleurs: false, couleurHeures: "#d94033", couleurMinutes: "#2454e6", avecH: true, minutesAutour: false, colorier: false,
 };
 
 export interface Heure { h: number; m: number }
@@ -79,17 +85,25 @@ export const lireHeure = (t: Heure) => `${t.h} h ${deux(t.m)}`;
 /** L'autre lecture du même cadran : 7 h 30 et 19 h 30. */
 export const autreLecture = (t: Heure): Heure => ({ h: (t.h + 12) % 24, m: t.m });
 
-/** La consigne de la feuille, en une phrase. */
-export const consigneHeure = (r: Pick<ReglagesHeure, "sens"> & Partial<Pick<ReglagesHeure, "apresMidi">>) => {
+/** Ce qu'on demande quand les aiguilles sont à colorier. */
+export const COLORIER_LES_AIGUILLES = "Colorie en rouge l'aiguille des heures. Colorie en bleu l'aiguille des minutes.";
+
+/** La consigne de la feuille : une phrase, et les aiguilles à colorier quand on le demande. */
+export const consigneHeure = (r: Pick<ReglagesHeure, "sens"> & Partial<Pick<ReglagesHeure, "apresMidi" | "colorier">>) => {
   const lire = r.apresMidi ? "Écris l'heure qu'il est le matin, puis l'après-midi" : "Écris l'heure qu'il est";
-  return r.sens === "dessiner" ? "Dessine les aiguilles." : r.sens === "mixte" ? `${lire}, ou dessine les aiguilles.` : `${lire}.`;
+  const phrase = r.sens === "dessiner" ? "Dessine les aiguilles." : r.sens === "mixte" ? `${lire}, ou dessine les aiguilles.` : `${lire}.`;
+  return r.colorier ? `${phrase} ${COLORIER_LES_AIGUILLES}` : phrase;
 };
 
 /** Les couleurs des deux aiguilles : celles qu'on a choisies, ou le noir. */
 export const couleursDe = (r: Pick<ReglagesHeure, "couleurs" | "couleurHeures" | "couleurMinutes">) =>
   (r.couleurs ? { heures: couleurSure(r.couleurHeures), minutes: couleurSure(r.couleurMinutes) } : { heures: NOIR, minutes: NOIR });
 
-export interface OptionsCadran { mm?: number; heures?: string; minutes?: string; minutesAutour?: boolean }
+export interface OptionsCadran {
+  mm?: number; heures?: string; minutes?: string; minutesAutour?: boolean;
+  /** Les aiguilles évidées : un contour, l'intérieur blanc, pour que l'élève les colorie. */
+  creuses?: boolean;
+}
 
 const p = (v: number) => v.toFixed(1);
 
@@ -115,8 +129,16 @@ export function horlogeSvg(t: Heure | null, o: OptionsCadran = {}): string {
   let aiguilles = "";
   if (t) {
     const am = (t.m * 6 * Math.PI) / 180, ah = (((t.h % 12) * 30 + t.m * 0.5) * Math.PI) / 180;
-    aiguilles = `<line class="he-minutes" x1="50" y1="50" x2="${p(50 + 29 * Math.sin(am))}" y2="${p(50 - 29 * Math.cos(am))}" stroke="${cM}" stroke-width="2.8" stroke-linecap="round"/>`
-      + `<line class="he-heures" x1="50" y1="50" x2="${p(50 + 19 * Math.sin(ah))}" y2="${p(50 - 19 * Math.cos(ah))}" stroke="${cH}" stroke-width="4.6" stroke-linecap="round"/>`;
+    const aiguille = (classe: string, angle: number, longueur: number, epaisseur: number, couleur: string) => {
+      const bout = `x1="50" y1="50" x2="${p(50 + longueur * Math.sin(angle))}" y2="${p(50 - longueur * Math.cos(angle))}"`;
+      const trait = (c: string, e: number) => `${bout} stroke="${c}" stroke-width="${String(e)}" stroke-linecap="round"`;
+      // Évidée : le trait noir, puis un trait blanc plus fin par-dessus — l'élève colorie l'intérieur.
+      return o.creuses
+        ? `<g class="${classe} he-creuse"><line ${trait(NOIR, epaisseur + 1.6)}/><line ${trait("#fff", epaisseur)}/></g>`
+        : `<line class="${classe}" ${trait(couleur, epaisseur)}/>`;
+    };
+    // Évidées, elles s'élargissent : de quoi colorier dedans, deux à trois millimètres sur un cadran de quatre centimètres.
+    aiguilles = aiguille("he-minutes", am, 29, o.creuses ? 5.6 : 2.8, cM) + aiguille("he-heures", ah, 19, o.creuses ? 8 : 4.6, cH);
   }
   // Les minutes débordent du cercle : le cadre s'élargit, et le dessin avec lui pour que le cadran garde sa taille.
   const mm = (o.mm ?? 40) * (o.minutesAutour ? 1.18 : 1);
@@ -142,7 +164,7 @@ function heureDonnee(t: Heure, r: ReglagesHeure): string {
 
 export function htmlHeure(liste: Heure[], r: ReglagesHeure): string {
   const c = couleursDe(r);
-  const cadran = (t: Heure | null) => horlogeSvg(t, { heures: c.heures, minutes: c.minutes, minutesAutour: r.minutesAutour });
+  const cadran = (t: Heure | null) => horlogeSvg(t, { heures: c.heures, minutes: c.minutes, minutesAutour: r.minutesAutour, creuses: r.colorier === true });
   const lire = (i: number) => r.sens === "lire" || (r.sens === "mixte" && i % 2 === 0);
   const carte = (t: Heure, i: number) => `<div class="he-carte"><div class="he-num">${i + 1}</div>${lire(i)
     ? cadran(t) + (r.apresMidi ? reponse(r, "matin") + reponse(r, "après-midi") : reponse(r))

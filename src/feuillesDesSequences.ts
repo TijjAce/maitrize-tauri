@@ -101,7 +101,8 @@ export function niveauDeComparer(ctx: ContexteFeuilles): IdNiveau {
 }
 
 const cubesPour = (demarcheId: string, ctx: ContexteFeuilles): ReglagesCubes =>
-  reglagesCubesSurs({ ...REGLAGES_CUBES, ...reglagesLaisses<ReglagesCubes>("cubes"), niveau: niveauDesCubes(demarcheId, ctx) });
+  // Chaque groupement dans sa couleur, comme à l'écran, même si l'atelier a été laissé sur « une seule couleur ».
+  reglagesCubesSurs({ ...REGLAGES_CUBES, ...reglagesLaisses<ReglagesCubes>("cubes"), niveau: niveauDesCubes(demarcheId, ctx), memeCouleur: false });
 
 const comparerPour = (ctx: ContexteFeuilles): ReglagesComparer =>
   reglagesComparerSurs({ ...REGLAGES_COMPARER, ...reglagesLaisses<ReglagesComparer>("comparer"), niveau: niveauDeComparer(ctx) });
@@ -218,7 +219,7 @@ const PRODUCTEURS: Record<string, Producteur> = {
     nom: "Nombres en cubes",
     fabriquer: (ctx, graine) => {
       // Relus comme l'atelier les relit : à une autre classe, il corrige ce qui n'y a pas cours.
-      const laisses = { ...REGLAGES_CUBES, ...reglagesLaisses<ReglagesCubes>("cubes") };
+      const laisses = { ...REGLAGES_CUBES, ...reglagesLaisses<ReglagesCubes>("cubes"), memeCouleur: false };
       const r = reglagesCubesSurs(ctx ? { ...laisses, niveau: niveauDesCubes("", ctx) } : laisses);
       return { html: htmlCubes(exercicesCubes(r, graine), r, graine), style: STYLE_FEUILLE + STYLE_JEUX_MATHS + STYLE_CUBES, refaire: { cubes: r } };
     },

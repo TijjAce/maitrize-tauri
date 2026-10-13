@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Creneau, Eleve, MaterielItem } from "./api";
 import {
-  NIVEAUX_FICHES, RECETTES, combienDeFiches, elevesDuJour, graineDe, motsDuSon, niveauDesFiches, nomDeLaRecette, prenomEcrit, prevuAvecLesFiches,
+  NIVEAUX_FICHES, RECETTES, combienDeFiches, elevesDuJour, fabricationsDesFiches, graineDe, motsDuSon, niveauDesFiches, nomDeLaRecette, prenomEcrit, prevuAvecLesFiches,
   proposer, recetteDe, recettesPour, repartir, titreDeLaFiche, titreLibre, uneAutre, uneDePlus, type OutilsFiche,
 } from "./fichesAutonomie";
 import { ETAPES, motsDe } from "./progressionCgp";
@@ -193,3 +193,55 @@ describe("chaque fiche se fabrique, à chaque niveau et chaque période", () => 
     expect(mots.every((m) => periode1.has(m) && /^\p{L}{3,7}$/u.test(m)), mots.join(", ")).toBe(true);
   });
 });
+
+describe("ce que l'enseignant a demandé pour « En retard » (octobre 2026)", () => {
+  it("n'offre jamais à un élève les fabrications que sa fiche écarte, et les nomme comme Fabriquer", () => {
+    const coloriages = RECETTES.filter((r) => r.atelier === "coloriage").map((r) => r.id);
+    expect(coloriages.length).toBeGreaterThan(1);
+    for (const niveau of ["MS", "GS", "CE1"] as const) {
+      expect(recettesPour(niveau, 3, false, ["coloriage"]).some((r) => r.atelier === "coloriage"), niveau).toBe(false);
+      for (let g = 1; g <= 30; g++) {
+        const fiches = proposer(niveau, 3, false, 8, g, ["coloriage"]);
+        expect(fiches.some((f) => coloriages.includes(f.recette)), `${niveau} ${g}`).toBe(false);
+        const autre = uneAutre(fiches[0], fiches, niveau, 3, false, g, ["coloriage"]);
+        expect(coloriages.includes(autre.recette)).toBe(false);
+        const plus = uneDePlus(fiches, niveau, 3, false, g, ["coloriage"]);
+        expect(plus && coloriages.includes(plus.recette)).toBeFalsy();
+      }
+    }
+    const ms = fabricationsDesFiches("MS");
+    expect(ms.find((f) => f.atelier === "coloriage")?.nom).toBe("Coloriage magique");
+    expect(ms.map((f) => f.nom)).toEqual([...ms.map((f) => f.nom)].sort((a, b) => a.localeCompare(b, "fr")));
+    // Sans niveau, toutes, une fois chacune.
+    const toutes = fabricationsDesFiches(null);
+    expect(new Set(toutes.map((f) => f.atelier)).size).toBe(toutes.length);
+    expect(toutes.length).toBeGreaterThan(ms.length);
+  });
+
+  it("fait colorier les aiguilles, la rouge des heures et la bleue des minutes, évidées pour qu'on les colorie", async () => {
+    const r = recetteDe("heure")!;
+    const { html } = await r.fabriquer({ niveau: "CE1", periode: 1, prenom: "Eliot" }, 3, outils);
+    expect(html).toContain("Colorie en rouge l'aiguille des heures. Colorie en bleu l'aiguille des minutes.");
+    expect(html).toContain("he-creuse");
+  });
+
+  it("enlève la règle des pyramides : l'élève connaît le jeu, la consigne dit ce qu'il fait", async () => {
+    const { html } = await recetteDe("pyramides")!.fabriquer({ niveau: "CE1", periode: 2, prenom: "Eliot" }, 3, outils);
+    expect(html).not.toContain("somme des nombres des deux briques");
+    expect(html).toContain("Complète la pyramide en montant.");
+  });
+
+  it("met chaque groupement de cubes dans sa couleur, même si l'atelier a été laissé sur une seule couleur", async () => {
+    vi.stubGlobal("localStorage", { getItem: (k: string) => (k === "fabriquer:cubes" ? JSON.stringify({ memeCouleur: true }) : null) });
+    try {
+      for (const id of ["cubes-ecrire", "cubes-dessiner"]) {
+        const f = await recetteDe(id)!.fabriquer({ niveau: "CE1", periode: 2, prenom: "Eliot" }, 3, outils);
+        const cubes = f.refaire?.cubes as { memeCouleur?: boolean } | undefined;
+        if (cubes) expect(cubes.memeCouleur, id).toBe(false);
+        // Le jaune des unités et le vert des dizaines, pas une seule teinte.
+        expect(f.html, id).toContain("#62d93a");
+      }
+    } finally { vi.unstubAllGlobals(); }
+  });
+});
+

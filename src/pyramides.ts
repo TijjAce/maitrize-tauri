@@ -22,8 +22,14 @@ export interface ReglagesPyramides {
   /** Le plus grand nombre de la base, ou du carré. */
   jusqua: number;
   trous: "bas" | "meles";
+  /**
+   * La règle écrite sur la feuille (« Le nombre de chaque brique est la somme… ») ;
+   * décochée, il ne reste que ce qu'on fait. « En retard » l'enlève : l'élève
+   * qui travaille seul connaît déjà le jeu.
+   */
+  regle: boolean;
 }
-export const REGLAGES_PYRAMIDES: ReglagesPyramides = { forme: "pyramide", etages: 4, taille: 3, combien: 6, jusqua: 10, trous: "bas" };
+export const REGLAGES_PYRAMIDES: ReglagesPyramides = { forme: "pyramide", etages: 4, taille: 3, combien: 6, jusqua: 10, trous: "bas", regle: true };
 
 /** `lignes[0]` est la base ; chaque brique du dessus est la somme des deux d'en dessous. */
 export interface Pyramide { lignes: number[][]; donnees: boolean[][] }
@@ -138,15 +144,17 @@ export function htmlPyramides(r: ReglagesPyramides, graine: number): string {
   const combien = Math.max(1, Math.min(12, r.combien));
   if (r.forme === "pyramide") {
     const liste = Array.from({ length: combien }, () => pyramide(r.etages, r.jusqua, r.trous, alea));
-    const consigne = r.trous === "bas"
-      ? "Le nombre de chaque brique est la somme des nombres des deux briques du dessous. Complète la pyramide en montant."
-      : "Le nombre de chaque brique est la somme des nombres des deux briques du dessous. Retrouve les nombres qui manquent : parfois on ajoute, parfois on retranche.";
-    return feuille(`<div class="page"><div class="titre">Pyramides de nombres</div><div class="regle"><b>La règle</b>${consigne}</div>
+    const regle = r.regle === false ? "" : "Le nombre de chaque brique est la somme des nombres des deux briques du dessous. ";
+    const consigne = regle + (r.trous === "bas"
+      ? "Complète la pyramide en montant."
+      : "Retrouve les nombres qui manquent : parfois on ajoute, parfois on retranche.");
+    return feuille(`<div class="page"><div class="titre">Pyramides de nombres</div><div class="regle"><b>${regle ? "La règle" : "Consigne"}</b>${consigne}</div>
       <div class="py-grille">${liste.map((p) => dessinPyramide(p, false)).join("")}</div></div>
       <div class="page corrige"><div class="titre">Pyramides de nombres — corrigé</div><div class="py-grille">${liste.map((p) => dessinPyramide(p, true)).join("")}</div></div>`, "py");
   }
   const liste = Array.from({ length: combien }, () => carreMagique(r.taille, r.jusqua, alea));
-  return feuille(`<div class="page"><div class="titre">Carrés magiques</div><div class="regle"><b>La règle</b>Dans un carré magique, la somme des nombres de chaque ligne, de chaque colonne et des deux diagonales est la même : la somme magique. Retrouve les nombres qui manquent — commence par une ligne où il n'en manque qu'un.</div>
+  const regleDuCarre = r.regle === false ? "" : "Dans un carré magique, la somme des nombres de chaque ligne, de chaque colonne et des deux diagonales est la même : la somme magique. ";
+  return feuille(`<div class="page"><div class="titre">Carrés magiques</div><div class="regle"><b>${regleDuCarre ? "La règle" : "Consigne"}</b>${regleDuCarre}Retrouve les nombres qui manquent — commence par une ligne où il n'en manque qu'un.</div>
     <div class="py-grille py-carres">${liste.map((c) => dessinCarre(c, false)).join("")}</div></div>
     <div class="page corrige"><div class="titre">Carrés magiques — corrigé</div><div class="py-grille py-carres">${liste.map((c) => dessinCarre(c, true)).join("")}</div></div>`, "py");
 }

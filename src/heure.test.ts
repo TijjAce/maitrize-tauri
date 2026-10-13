@@ -95,3 +95,17 @@ describe("la consigne de l'heure", () => {
     expect(consigneHeure({ sens: "dessiner", apresMidi: true })).toBe("Dessine les aiguilles.");
   });
 });
+
+describe("les aiguilles à colorier", () => {
+  it("se demandent dans la consigne, et se dessinent évidées", () => {
+    expect(consigneHeure({ sens: "mixte", colorier: true })).toBe("Écris l'heure qu'il est, ou dessine les aiguilles. Colorie en rouge l'aiguille des heures. Colorie en bleu l'aiguille des minutes.");
+    expect(consigneHeure({ sens: "lire" })).toBe("Écris l'heure qu'il est.");
+    const creuse = horlogeSvg({ h: 8, m: 0 }, { creuses: true });
+    expect(creuse.match(/he-creuse/g)).toHaveLength(2);
+    expect(creuse).toContain('stroke="#fff"');
+    expect(horlogeSvg({ h: 8, m: 0 })).not.toContain("he-creuse");
+    const feuille = htmlHeure(heures({ ...REGLAGES_HEURE, colorier: true }, 4), { ...REGLAGES_HEURE, colorier: true });
+    expect(feuille).toContain("Colorie en bleu l'aiguille des minutes.");
+  });
+});
+

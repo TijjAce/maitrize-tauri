@@ -5,6 +5,7 @@ import { toast } from "./Toaster";
 import { chargerVacances, periodeDuJour } from "../vacances";
 import { ficheDeLEleve } from "../impressionAtelier";
 import {
+  fabricationsDesFiches,
   combienDeFiches, dossierDuJour, elevesDuJour, graineDe, iconeDeLaRecette, jourEnLettres, niveauDesFiches, nomDeLaRecette, prenomDe,
   prevuAvecLesFiches, proposer, recetteDe, repartir, titreDeLaFiche, titreLibre, uneAutre, uneDePlus,
   type EleveDuJour, type FicheProposee, type NiveauFiches, type OutilsFiche,
@@ -56,7 +57,7 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
   /** Ce qu'on propose à un élève, à ce niveau, pour ce tirage. */
   const propositions = React.useCallback((eleve: Eleve, creneaux: Creneau[], niveau: NiveauFiches | null): Ligne => ({
     niveau, inclus: niveau !== null,
-    fiches: niveau ? proposer(niveau, periode, eleve.nonVerbal ?? false, combienDeFiches(niveau, creneaux.length), graineDe(`${eleve.id}|${jour}|${tirage}`)) : [],
+    fiches: niveau ? proposer(niveau, periode, eleve.nonVerbal ?? false, combienDeFiches(niveau, creneaux.length), graineDe(`${eleve.id}|${jour}|${tirage}`), eleve.fichesExclues ?? []) : [],
   }), [periode, jour, tirage]);
 
   React.useEffect(() => {
@@ -179,6 +180,9 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
                       {NIVEAUX_SCOLAIRES.map((n) => <option key={n}>{n}</option>)}
                     </select>}
                   {p.eleve.nonVerbal && <span className="chip" title="Pas de fiche de lecture">🔇 non verbal</span>}
+                  {(p.eleve.fichesExclues?.length ?? 0) > 0 && (
+                    <span className="chip" title="Écartées dans sa fiche d'élève">🚫 sans {p.eleve.fichesExclues!.map((a) => fabricationsDesFiches(null).find((f) => f.atelier === a)?.nom.toLowerCase() ?? a).join(", ")}</span>
+                  )}
                   <span className="retard-creneaux">{p.creneaux.map((c) => `${hhmm(c.heureDebut)} ${c.matiere}`).join(" · ")}</span>
                 </div>
                 {l.inclus && ctx && <>
@@ -192,7 +196,7 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
                           {p.creneaux.length > 1 && <span className="retard-ou">{hhmm(p.creneaux[ou[i]].heureDebut)}</span>}
                           <button className="btn ghost sm" disabled={occupe} title="Une autre fiche"
                             onClick={() => changer(p.eleve.id, (x) => ({ ...x, fiches: x.fiches.map((y, j) => (j === i
-                              ? uneAutre(y, x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|${i}|${y.graine}`)) : y)) }))}>🔄</button>
+                              ? uneAutre(y, x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|${i}|${y.graine}`), p.eleve.fichesExclues ?? []) : y)) }))}>🔄</button>
                           <button className="btn ghost sm" disabled={occupe} title="Retirer cette fiche"
                             onClick={() => changer(p.eleve.id, (x) => ({ ...x, fiches: x.fiches.filter((_, j) => j !== i) }))}>✕</button>
                         </li>
@@ -200,7 +204,7 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
                     })}
                   </ol>
                   <button className="btn ghost sm" disabled={occupe} onClick={() => changer(p.eleve.id, (x) => {
-                    const plus = uneDePlus(x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|+${x.fiches.length}`));
+                    const plus = uneDePlus(x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|+${x.fiches.length}`), p.eleve.fichesExclues ?? []);
                     return plus ? { ...x, fiches: [...x.fiches, plus] } : x;
                   })}>＋ Une fiche</button>
                 </>}
