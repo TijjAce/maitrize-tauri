@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { api, texteErreur, type BureauCommun, type EntreeCommune } from "../api";
-import { Demander, Field, Input, Modal, Select } from "./ui";
+import { Demander, Field, Input, Modal, ouvrirOnglet } from "./ui";
 import { toast, toastAnnulable } from "./Toaster";
 import { confirmer } from "./confirmer";
 import { openCtx } from "./ctxmenu";
@@ -225,6 +225,21 @@ export function PanneauCommun({ compact = false, onFermer }: {
     await relire();
   });
 
+  /** Changer de bureau commun, ou en rejoindre un autre : toujours possible, même avec un seul. */
+  const changerDeBureau = (e: React.MouseEvent) => openCtx(e, [
+    ...(bureaux ?? []).map((b) => ({
+      label: b.present ? b.nom : `${b.nom} — absent de cet ordinateur`,
+      icon: b.id === actif?.id ? "✓" : "🤝",
+      onClick: () => { if (b.id !== actif?.id) setActifId(b.id); },
+    })),
+    { label: "Rejoindre un partage : coller un lien", icon: "🔗", sep: true, onClick: () => setAjout(true) },
+    { label: "Partager mes dossiers…", icon: "📤", onClick: () => { nav("/reglages"); setTimeout(() => ouvrirOnglet("reglages", "donnees"), 140); } },
+  ]);
+  const boutonChanger = (
+    <button className="btn sm" aria-label="Changer de bureau commun" title="Changer de bureau commun, ou en rejoindre un autre" onClick={changerDeBureau}>
+      ⇄ Changer de bureau</button>
+  );
+
   const fil = [{ nom: actif?.nom ?? "", chemin: "" }, ...dossier.split("/").filter(Boolean)
     .map((nom, i, tout) => ({ nom, chemin: tout.slice(0, i + 1).join("/") }))];
 
@@ -232,7 +247,8 @@ export function PanneauCommun({ compact = false, onFermer }: {
     <div className={compact ? "commun-panneau" : ""}>
       {compact && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-          <span style={{ fontWeight: 700 }}>🤝 Bureau commun</span>
+          <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>🤝 Bureau commun</span>
+          {actif && boutonChanger}
           <div style={{ flex: 1 }} />
           <button className="btn ghost sm" title="Ouvrir en pleine page" onClick={() => nav("/commun")}>⤢</button>
           {onFermer && <button className="btn ghost sm" title="Refermer le bureau commun" aria-label="Refermer le bureau commun" onClick={onFermer}>✕</button>}
@@ -250,11 +266,8 @@ export function PanneauCommun({ compact = false, onFermer }: {
       {actif && (
         <>
           <div className="toolbar">
-            {bureaux!.length > 1 && (
-              <Select value={actif.id} onChange={(e) => setActifId(e.target.value)} style={{ maxWidth: 240 }}>
-                {bureaux!.map((b) => <option key={b.id} value={b.id}>🤝 {b.nom}</option>)}
-              </Select>
-            )}
+            {/* Serré, le bouton est dans l'en-tête du panneau, où il y a la place. */}
+            {!compact && boutonChanger}
             <div style={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap", flex: 1 }}>
               {fil.map((n, i) => (
                 <React.Fragment key={n.chemin || "racine"}>
