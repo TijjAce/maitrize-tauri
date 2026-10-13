@@ -18,6 +18,18 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.26",
+    titre: "Le problème du jour en maternelle, et les pictos partout, par leur numéro",
+    points: [
+      { quoi: "Le problème du jour, en maternelle : une sorte de problème pour une période, dix minutes chaque jour. Avant 4 ans, on ajoute et on enlève, jusqu'à 3 ; à partir de 4 ans viennent la piste, les groupements et les partages ; en grande section, ce qu'on a ajouté ou enlevé, comparer, le coup de dé, les partages avec reste, jusqu'à 10. D'une semaine à l'autre, on passe des objets à leurs images, aux jetons, puis on cherche sans manipuler, avant d'autres situations : la valise de la mascotte, les chevaux de la ferme, les jongleurs, les poupées et leurs gâteaux, ou la vôtre.", ou: "Fabriquer · Mathématiques" },
+      { quoi: "Il imprime les cartes du jour et le plan de la période, l'affiche du problème de référence avec les façons de chercher, le matériel à découper et la piste, les étiquettes des boîtes à nombres, la feuille où l'on dessine pour chercher et la grille d'observation. D'un clic, la période devient une séquence : la séance des mots, puis une séance par semaine, à reprendre chaque jour, avec ses problèmes, ses feuilles et son matériel.", ou: "Fabriquer · Le problème du jour" },
+      { quoi: "En maternelle, une compétence de problèmes propose ce déroulement dans la nouvelle séquence, avec ses feuilles ; la séance des mots des problèmes s'y fait avec les objets, en vingt-cinq minutes.", ou: "Plan de travail · Nouvelle séquence" },
+      { quoi: "Trouver un pictogramme se fait depuis toute l'application : le bouton 🧩, à côté de celui des notes. Un picto se cherche aussi par son numéro (« 17183 »), et « Copier le numéro » le garde pour le coller ailleurs.", ou: "Bouton 🧩 ; ⌘K" },
+      { quoi: "Dans les listes de mots des ateliers et du loto, « graine 17183 » donne au mot « graine » le picto n° 17183 ; un mot déjà dans la liste change d'image. Un clic sur l'image d'un mot permet aussi d'en choisir une autre, par son mot ou son numéro.", ou: "Fabriquer · Mes mots" },
+      { quoi: "Les séquences toutes faites — le Vilain Petit Canard, le problème du jour — se distinguent dans Fabriquer, sur un autre fond, des ateliers qui fabriquent des supports.", ou: "Fabriquer" },
+    ],
+  },
+  {
     version: "1.6.25",
     titre: "Le Vilain Petit Canard, les codes de la phrase et de la lecture à voix haute, et des feuilles sans prénom ni date",
     points: [
