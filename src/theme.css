@@ -1417,13 +1417,8 @@ details.pli-catalogue[open] .pli-chevron { transform: rotate(90deg); }
 .cl-situation { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12.5px; margin: -4px 0 10px; }
 .cl-situation img { width: 34px; height: 34px; object-fit: contain; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 2px; }
 /* Le problème du jour : la situation de l'enseignant, les semaines de la période. */
-/* Le dossier de son propre Nuage, collé là où l'on rejoint un partage. */
-.commun-mon-nuage { display: grid; gap: 10px; }
-.commun-porte { display: grid; gap: 6px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--panel-2); }
-.commun-porte > .btn { justify-self: start; }
-.commun-porte .meta { font-size: 12.5px; }
-.commun-recus { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; max-height: 220px; overflow-y: auto; }
-.commun-recus li { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
+/* L'adresse d'un dossier vu dans Nuage, collée là où l'on rejoint un partage : ce qu'il faut faire à la place. */
+.commun-avis { font-size: 13px; line-height: 1.55; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--panel-2); margin: 0 0 10px; }
 .pdj-perso { border: 1px dashed var(--border); border-radius: 10px; padding: 8px 10px; margin: -4px 0 10px; }
 .pdj-semaines { margin: 6px 0 10px; padding-left: 20px; display: grid; gap: 4px; font-size: 12.5px; line-height: 1.45; }
 .dos-choix { display: flex; flex-direction: column; max-height: 220px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; }

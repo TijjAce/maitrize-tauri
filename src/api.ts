@@ -835,14 +835,6 @@ export const api = {
   /** Un bureau commun posé sur Nuage : le mot de passe d'application ne revient jamais. */
   communAjouterNuage: (nom: string, serveur: string, utilisateur: string, motDePasse: string, dossier: string) =>
     invoke<BureauCommun>("commun_ajouter_nuage", { nom, serveur, utilisateur, motDePasse, dossier }),
-  /** Un autre dossier de Nuage, avec un compte déjà connu (celui d'un bureau commun) : son adresse, ou le dossier, suffit. */
-  communAjouterNuageCompte: (nom: string, adresse: string, compte: string, dossier = "") =>
-    invoke<BureauCommun>("commun_ajouter_nuage_compte", { nom, adresse, compte, dossier }),
-  /** Les dossiers que d'autres ont partagés avec ce compte Nuage — de son Nuage ou d'un autre —, ceux qui attendent d'abord. */
-  communDossiersRecus: (compte: CompteNuage) => invoke<DossierRecu[]>("commun_dossiers_recus", { compte }),
-  /** Accepte un partage qui attend ; rend la liste à jour. */
-  communAccepterPartage: (compte: CompteNuage, sorte: string, id: string) =>
-    invoke<DossierRecu[]>("commun_accepter_partage", { compte, sorte, id }),
   /** Un bureau commun ouvert par un lien de partage : aucun compte nécessaire. */
   communAjouterLien: (nom: string, lien: string, motDePasse: string, dossier: string) =>
     invoke<BureauCommun>("commun_ajouter_lien", { nom, lien, motDePasse, dossier }),
@@ -942,18 +934,6 @@ export interface EtatRelais {
   compte: string;
 }
 export interface CompteConnu { id: string; libelle: string }
-/** Un compte Nuage : celui d'un bureau commun déjà relié, ou celui qu'on saisit. */
-export interface CompteNuage { bureau?: string; serveur?: string; utilisateur?: string; motDePasse?: string }
-/** Un dossier que quelqu'un a partagé avec le compte : où il paraît dans ses fichiers, de qui, d'où. */
-export interface DossierRecu {
-  id: string; sorte: "interne" | "federe"; nom: string;
-  /** Le dossier dans les fichiers du compte ; vide tant qu'il attend d'être accepté. */
-  chemin: string;
-  proprietaire: string;
-  /** Le Nuage d'où il vient, pour un partage venu d'un autre Nuage. */
-  origine: string;
-  enAttente: boolean;
-}
 export interface CodeTelephone { qrSvg: string }
 /** Ce qu'une relève a rapporté. */
 export interface BilanReleve {
