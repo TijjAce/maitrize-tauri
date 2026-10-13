@@ -10,6 +10,31 @@
 import type { MaterielItem } from "./api";
 import { normaliser } from "./dossiers";
 
+// ── Les fiches d'un élève ─────────────────────────────────────────────────
+//
+// « En retard » fait des fiches à un élève : son prénom et le jour restent
+// dans le titre de la tuile et dans son dossier, jamais sur le papier — ni
+// sur la fiche, ni dans le bandeau du cahier journal qui la joint. La même
+// feuille doit pouvoir resservir à un autre élève, un autre jour (demande de
+// l'enseignant, octobre 2026).
+
+/** Le titre de la fiche sans l'élève ni le jour (« Pyramides — Inès, 9 oct. » → « Pyramides ») : c'est celui que garde le papier. */
+export function titreSansLEleve(titre: string, prenom: string): string {
+  const echappe = prenom.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return (echappe ? titre.replace(new RegExp(`\\s+—\\s+${echappe},[^—]*$`, "i"), "") : titre).trim() || titre;
+}
+
+/** L'élève d'une fiche faite pour lui par « En retard » ; rien pour une autre feuille. */
+export function eleveDeLaFiche(m: Pick<MaterielItem, "fabricationJson">): { prenom: string; date: string } | null {
+  if (!m.fabricationJson) return null;
+  try {
+    const e = (JSON.parse(m.fabricationJson) as { eleve?: { prenom?: unknown; date?: unknown } } | null)?.eleve;
+    return e && typeof e.prenom === "string" && typeof e.date === "string" ? { prenom: e.prenom, date: e.date } : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Les noms de fichiers d'une liste JSON, sans faire confiance à sa forme. */
 export function lirePdfs(json: string | null | undefined): string[] {
   try {

@@ -689,7 +689,7 @@ export const api = {
   imprimerPlanning: (
     titre: string,
     jours: { jour: string; rangs: { heureDebut: string; heureFin: string; matiere: string; seance: string; couleur: string; objectifs: string; deroulement: string; prevu?: string; bilan?: string; materiel?: string[] }[][] }[],
-    annexes: { titre: string; quand: string; fichier: string; echelle?: number }[] = [],
+    annexes: { titre: string; quand: string; fichier: string; echelle?: number; bandeau?: boolean }[] = [],
   ) => invoke<string[]>("imprimer_planning", { titre, jours, annexes }),
   exporterSyntheseGs: (args: {
     ecole: string; eleveNom: string;

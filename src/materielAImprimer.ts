@@ -17,7 +17,7 @@
 
 import type { Creneau, MaterielItem, Seance, Sequence } from "./api";
 import { escapeHtml } from "./print";
-import { lirePdfs } from "./materielSeance";
+import { eleveDeLaFiche, lirePdfs, titreSansLEleve } from "./materielSeance";
 import { forme, sequencesCitees } from "./sequencesCitees";
 import type { PageRendue } from "./pdfRendu";
 
@@ -29,6 +29,11 @@ export interface AnnexeAImprimer {
   fichier: string;
   /** L'échelle à l'impression : 1 telle quelle, 0,8 réduite, 1,2 agrandie. */
   echelle: number;
+  /**
+   * Une fiche faite à un élève par « En retard » : elle va à l'élève, son
+   * bandeau ne s'imprime pas — et son titre n'a déjà plus ni prénom ni jour.
+   */
+  eleve?: true;
 }
 
 // ── L'échelle d'une feuille à l'impression ──────────────────────────────────
@@ -149,10 +154,12 @@ export function annexesDesCreneaux(
     const seance = seances.find((s) => s.id === c.seanceId)?.titre.trim();
     const quand = [jour(c).trim(), hhmm(c.heureDebut), seance || c.matiere.trim()].filter(Boolean).join(" · ");
     for (const m of materielDuCreneau(c, sequences, seances, materiels)) {
+      const eleve = eleveDeLaFiche(m);
+      const titre = (eleve ? titreSansLEleve(m.titre.trim(), eleve.prenom) : m.titre.trim()) || "Matériel";
       for (const fichier of lirePdfs(m.pdfsJson)) {
         if (vus.has(fichier)) continue;
         vus.add(fichier);
-        sortie.push({ seanceId: m.seanceId ?? c.seanceId ?? "", quand, titre: m.titre.trim() || "Matériel", fichier, echelle: echelles[m.id] ?? 1 });
+        sortie.push({ seanceId: m.seanceId ?? c.seanceId ?? "", quand, titre, fichier, echelle: echelles[m.id] ?? 1, ...(eleve ? { eleve: true as const } : {}) });
       }
     }
   }
@@ -211,7 +218,7 @@ export function annexesHtml(rendues: AnnexeRendue[]): string {
   const sections = rendues.flatMap(({ annexe, pages }, k) => pages.map((p, i) => {
     const pourcent = Math.round((annexe.echelle || 1) * 100);
     const bandeau = i === 0
-      ? `<div class="annexe-bandeau">📎 Matériel à imprimer · ${escapeHtml([annexe.quand, annexe.titre].filter(Boolean).join(" · "))}`
+      ? `<div class="annexe-bandeau${annexe.eleve ? " annexe-ecran" : ""}">📎 Matériel à imprimer · ${escapeHtml([annexe.quand, annexe.titre].filter(Boolean).join(" · "))}`
         + (pages.length > 1 ? ` · ${pages.length} pages` : "") + `</div>`
         + `<div class="annexe-outils" data-annexe="${k}">🔍 Échelle à l'impression <button type="button" data-pas="-${ECHELLE_PAS}" aria-label="Réduire">−</button>`
         + `<input type="range" min="${ECHELLE_MIN}" max="${ECHELLE_MAX}" step="${ECHELLE_PAS}" value="${pourcent}" aria-label="Échelle">`
@@ -314,6 +321,8 @@ export const STYLE_ANNEXES = `
   .journal-outils { margin: 0 0 14px; flex-wrap: wrap; }
   .journal-outils-aide { color: #687087; font-size: 11px; }
   @media print { .annexe-outils { display: none; } }
+  /* Le bandeau d'une fiche d'élève ne sort pas sur la feuille qu'on lui donne. */
+  @media print { .annexe-bandeau.annexe-ecran { display: none; } }
   .annexe-cadre { overflow: hidden; break-inside: avoid; page-break-inside: avoid; }
   .annexe img { display: block; margin: 0 auto; height: auto; max-width: none; max-height: none; border-radius: 0;
     width: calc(min(100%, var(--limite)) * min(var(--echelle), 1));
