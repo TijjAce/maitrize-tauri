@@ -229,11 +229,12 @@ function posees(c: ContexteFiche): ReglagesPosees {
 }
 
 /** L'heure : les heures pile puis les demies au CE1 ; les quarts puis les cinq minutes au CE2. */
-function heure(c: ContexteFiche): ReglagesHeure {
+function heure(c: ContexteFiche, graine: number): ReglagesHeure {
   const laisses = reglagesLaisses<ReglagesHeure>("heure");
   const precision = c.niveau === "CE1" ? (c.periode <= 2 ? "heures" : "demies") : c.periode <= 2 ? "quarts" : "cinq";
-  // L'élève seul colorie les aiguilles, la rouge des heures et la bleue des minutes : il les distingue avant de lire.
-  return { ...REGLAGES_HEURE, ...laisses, exercice: "horloges", precision, sens: c.niveau === "CE1" ? "lire" : "mixte", combien: 9, apresMidi: false,
+  // Lire l'heure, ou dessiner les aiguilles : l'un ou l'autre, d'une fiche à l'autre, jamais les deux sur la même
+  // (demande de l'enseignant, octobre 2026). L'élève seul colorie les aiguilles, la rouge des heures et la bleue des minutes.
+  return { ...REGLAGES_HEURE, ...laisses, exercice: "horloges", precision, sens: graine % 2 === 0 ? "lire" : "dessiner", combien: 9, apresMidi: false,
     colorier: true, couleurs: false };
 }
 
@@ -319,7 +320,7 @@ export const RECETTES: RecetteDeFiche[] = [
       return commeLAtelier(htmlDeplacements(reglages, g), STYLE_FEUILLE + STYLE_DEPLACEMENTS, "deplacements", reglages);
     } },
   { id: "heure", atelier: "heure", nom: "Lire l'heure", domaine: "maths", niveaux: ["CE1", "CE2"],
-    fabriquer: (c, g) => commeLAtelier(htmlAtelierHeure(heure(c), g), STYLE_FEUILLE + STYLE_HEURE + STYLE_DUREES, "heure", heure(c)) },
+    fabriquer: (c, g) => commeLAtelier(htmlAtelierHeure(heure(c, g), g), STYLE_FEUILLE + STYLE_HEURE + STYLE_DUREES, "heure", heure(c, g)) },
   { id: "monnaie", atelier: "monnaie", nom: "Combien d'argent ?", domaine: "maths", niveaux: C2,
     fabriquer: (c, g) => {
       const reglages = { ...REGLAGES_MONNAIE, exercice: "valeur" as const, jusqua: c.niveau === "CP" ? 20 : c.niveau === "CE1" ? 50 : 100, combien: 6 };
