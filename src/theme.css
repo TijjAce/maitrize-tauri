@@ -521,6 +521,13 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 /* Un clic sur le nom ouvre la feuille. */
 .lien.journal-materiel-nom { color: inherit; text-decoration: none; text-align: left; }
 .lien.journal-materiel-nom:hover { color: var(--accent); text-decoration: underline; }
+/* Sous un créneau du journal : ce que le téléphone enverra aux tablettes, et le minuteur qui part avec. */
+.journal-tablettes { margin-top: 6px; padding: 5px 9px; display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap;
+  border: 1px dashed var(--border); border-radius: 8px; font-size: 12.5px; }
+.journal-tablettes-titre { font-weight: 600; color: var(--text-2); white-space: nowrap; cursor: help; }
+.journal-tablettes-aides { flex: 1; min-width: 140px; display: flex; flex-wrap: wrap; gap: 2px 12px; }
+.journal-tablettes-minuteur { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.journal-tablettes-minuteur .select { width: auto; padding: 3px 8px; font-size: 12.5px; }
 /* La case d'un bloc cité : coché, il reste à l'écran et ne s'imprime pas. */
 .case-impression { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--text-2); cursor: pointer; white-space: nowrap; flex: none; }
 .case-impression input { margin: 0; cursor: pointer; }

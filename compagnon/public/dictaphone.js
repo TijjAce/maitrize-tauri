@@ -78,12 +78,14 @@ let cahier = null, cahierSouci = "";
  * Le portail des tablettes : ouvert, il montre l'aide choisie aux tablettes
  * des élèves, sur le même réseau que le téléphone. Son état vient de Rust.
  */
-const PORTAIL_FERME = { ouvert: false, adresses: [], qr: "", adresseChangee: false, tablettes: 0, montree: "", montreeId: "", affichage: "fiche", etape: null, etapes: 0, texteEtape: "", minuteur: null };
+const PORTAIL_FERME = { ouvert: false, adresses: [], qr: "", adresseChangee: false, tablettes: 0, montree: "", montreeId: "", affichage: "fiche", etape: null, etapes: 0, texteEtape: "", minuteur: null, creneau: "" };
 /** Les durées du minuteur qu'on lance d'un toucher, en minutes. */
 const MINUTEURS = [1, 2, 5, 10, 15, 20, 30];
 let portail = PORTAIL_FERME, suiviPortail = null, portailSouci = "";
 /** « Changer le code » se confirme : toutes les tablettes devront rescanner. Puis on dit que c'est fait. */
 let confirmerCode = false, codeNeuf = false;
+/** Le créneau qui envoie aux tablettes en ce moment, et ce qui en a empêché un : `{ creneau, texte }`. */
+let envoiCreneau = "", envoiSouci = null;
 /**
  * L'onglet ouvert : le cahier journal, les notes rapides, les tablettes, le
  * partage par le WiFi, les réglages. On ouvre sur le cahier journal.
@@ -786,7 +788,8 @@ function suivreLePortail() {
     const change = JSON.stringify(suite) !== JSON.stringify(portail);
     portail = suite;
     if (!portail.ouvert) { clearInterval(suiviPortail); suiviPortail = null; }
-    if (change) rendre();
+    // Une note qu'on écrit, une photo qu'on nomme : redessiner fermerait le clavier. On le fera en sortant.
+    if (change && !ecrit && !photoPrise) rendre();
   }, 3000);
 }
 
@@ -823,6 +826,45 @@ function etapesDeLAide(html) {
   }).filter((e) => e.texte);
 }
 
+/**
+ * Envoie aux tablettes ce qu'un créneau a prévu pour elles : son aide — celle
+ * qu'on a touchée, s'il en a plusieurs — et le minuteur réglé sur
+ * l'ordinateur, qui démarre aussitôt. Ce que les tablettes montraient avant
+ * s'en va. Le portail s'ouvre s'il ne l'est pas : les tablettes qui gardent
+ * sa page s'y reconnectent seules.
+ */
+async function envoyerAuxTablettes(creneauId, aideId) {
+  if (envoiCreneau) return;
+  const c = ((cahier && cahier.creneaux) || []).find((x) => x.id === creneauId);
+  if (!c) return;
+  envoiCreneau = creneauId; envoiSouci = null;
+  rendre();
+  try {
+    const aides = c.aides || [];
+    const choisie = aides.find((a) => a.id === aideId) || aides[0] || null;
+    let aide = null;
+    if (choisie) {
+      const lue = await invoke("aide_lire", { id: choisie.id });
+      aide = { id: choisie.id, titre: choisie.titre || lue.titre, html: lue.html, etapes: etapesDeLAide(lue.html) };
+    }
+    if (!portail.ouvert) {
+      portail = await invoke("portail_ouvrir");
+      await garderLEcranAllume();
+      suivreLePortail();
+    }
+    portail = await invoke("portail_envoyer", { creneau: c.id, aide, secondes: minutesDuCreneau(c) * 60 });
+    portailSouci = "";
+  } catch (e) {
+    envoiSouci = { creneau: creneauId, texte: String(e) };
+  } finally {
+    envoiCreneau = "";
+    rendre();
+  }
+}
+
+/** Le minuteur qu'un créneau envoie, en minutes : 0 sans minuteur. */
+const minutesDuCreneau = (c) => Math.max(0, Math.round(Number(c.minuteur) || 0));
+
 /** Ouvre le portail sans rien y montrer : le minuteur seul, au tableau ou sur les tablettes. */
 async function ouvrirLePortail() {
   portailSouci = "";
@@ -848,10 +890,10 @@ function resteDuMinuteur(t) {
   const s = Math.ceil(reste / 1000);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
-// Le temps qui reste, à la seconde, sans redessiner tout l'écran.
+// Le temps qui reste, à la seconde, sans redessiner tout l'écran : sous le portail, et sous le créneau qui l'a envoyé.
 setInterval(() => {
-  const el = document.getElementById("portail-reste");
-  if (el && portail.minuteur) el.textContent = resteDuMinuteur(portail.minuteur);
+  if (!portail.minuteur) return;
+  document.querySelectorAll("[data-reste]").forEach((el) => { el.textContent = resteDuMinuteur(portail.minuteur); });
 }, 1000);
 
 /** Un nouveau code : l'ancien ne vaut plus sur aucune tablette — une tablette perdue, un QR code photographié. */
@@ -1262,7 +1304,7 @@ function commandesDuMinuteur() {
   const enPause = t.fin == null;
   return `<div class="portail-bloc minuteur-en-cours">
     <span class="portail-libelle">${icone("horloge", "petit")}Minuteur sur les tablettes${enPause ? " — en pause" : ""}</span>
-    <b id="portail-reste" class="portail-reste">${resteDuMinuteur(t)}</b>
+    <b id="portail-reste" class="portail-reste" data-reste>${resteDuMinuteur(t)}</b>
     <div class="deux">
       <button class="btn-doux" id="${enPause ? "minuteur-reprendre" : "minuteur-pause"}">${enPause ? `${icone("lecture", "petit")}Reprendre` : `${icone("pause", "petit")}Pause`}</button>
       <button class="btn-doux" id="minuteur-arreter">${icone("stop", "petit")}Arrêter</button>
@@ -1274,13 +1316,70 @@ function commandesDuMinuteur() {
 const cahierAbsent = () =>
   `<p class="carte-info">${icone(cahierSouci ? "attention" : "nuage")}<span>${echapper(cahierSouci || "Le cahier journal arrive…")}</span></p>`;
 
-/** Le cahier journal du jour choisi, tel que l'ordinateur l'a publié : ses créneaux, leur prévu, leur bilan. */
+/** « 15 min », « 1 h », « 1 h 30 » : la durée d'un minuteur. */
+function dureeLisible(minutes) {
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60), m = minutes % 60;
+  return m ? `${h} h ${p2(m)}` : `${h} h`;
+}
+
+/**
+ * Sous un créneau : ce qu'il enverra aux tablettes — ses aides, le minuteur
+ * réglé sur l'ordinateur — et le bouton qui l'envoie. Une fois envoyé : ce
+ * que les tablettes montrent, le temps qui reste, la pause et l'arrêt.
+ */
+function envoiDuCreneau(c) {
+  const aides = c.aides || [];
+  const minutes = minutesDuCreneau(c);
+  if (!aides.length && !minutes) return "";
+  const souciIci = envoiSouci && envoiSouci.creneau === c.id ? `<p class="erreur-ligne">${echapper(envoiSouci.texte)}</p>` : "";
+  if (portail.ouvert && portail.creneau === c.id && (portail.montree || portail.minuteur)) {
+    const t = portail.minuteur, n = portail.tablettes;
+    const enPause = t && t.fin == null;
+    return `<div class="cj-tab on">
+      <div class="cj-tab-tete">${icone("tablette", "petit")}<span>Sur les tablettes</span>
+        <span class="cj-tab-plus">${n ? `${n} tablette${n > 1 ? "s" : ""}` : "aucune tablette encore"}</span></div>
+      ${portail.montree ? `<div class="cj-tab-aide">${icone("liste", "petit")}<span>${echapper(portail.montree)}</span></div>` : ""}
+      ${t ? `<b class="cj-tab-reste" data-reste>${resteDuMinuteur(t)}</b>${enPause ? `<span class="cj-tab-pause">En pause sur les tablettes</span>` : ""}
+        <div class="deux">
+          <button class="btn-doux" id="${enPause ? "minuteur-reprendre" : "minuteur-pause"}">${enPause ? `${icone("lecture", "petit")}Reprendre` : `${icone("pause", "petit")}Pause`}</button>
+          <button class="btn-doux" id="minuteur-arreter">${icone("stop", "petit")}Arrêter</button>
+        </div>` : `<div class="deux"><span></span><button class="btn-doux" id="cacher-aide">Ne plus montrer</button></div>`}
+      <button class="lien-btn" data-envoyer-creneau="${echapper(c.id)}" data-aide="${echapper(portail.montreeId)}">Renvoyer depuis le début</button>
+      ${souciIci}
+    </div>`;
+  }
+  const occupe = envoiCreneau ? "disabled" : "";
+  const enCours = envoiCreneau === c.id;
+  const tete = `<div class="cj-tab-tete">${icone("tablette", "petit")}<span>Sur les tablettes</span>
+    ${minutes ? `<span class="cj-tab-plus">${icone("horloge", "petit")}${dureeLisible(minutes)}</span>` : ""}</div>`;
+  if (aides.length > 1) {
+    // Plusieurs aides : on choisit celle qui part, le minuteur part avec.
+    return `<div class="cj-tab">${tete}
+      ${aides.map((a) => `<div class="cj-aide">
+        <span class="cj-aide-titre">${icone("liste", "petit")}<span>${echapper(a.titre)}</span></span>
+        <button class="btn-mini" data-envoyer-creneau="${echapper(c.id)}" data-aide="${echapper(a.id)}" ${occupe}>${enCours ? "Envoi…" : "Envoyer"}</button>
+      </div>`).join("")}
+      ${souciIci}
+    </div>`;
+  }
+  const aide = aides[0];
+  return `<div class="cj-tab">${tete}
+    ${aide ? `<div class="cj-tab-aide">${icone("liste", "petit")}<span>${echapper(aide.titre)}</span></div>` : ""}
+    <button class="btn-plein" data-envoyer-creneau="${echapper(c.id)}" data-aide="${aide ? echapper(aide.id) : ""}" ${occupe}>
+      ${icone(aide ? "tablette" : "horloge")}${enCours ? "Envoi…" : aide ? "Envoyer aux tablettes" : "Lancer le minuteur"}</button>
+    ${souciIci}
+  </div>`;
+}
+
+/** Le cahier journal du jour choisi, tel que l'ordinateur l'a publié : ses créneaux, leur prévu, ce qui va aux tablettes, leur bilan. */
 function carteCahier() {
   if (!cahier) return `<div class="carte cj">${cahierAbsent()}</div>`;
   const rangs = cahier.creneaux.map((c) => `<div class="cj-creneau">
       <div class="cj-tete"><b>${echapper(heureCourte(c.debut))}</b><span>${echapper(c.matiere || "Créneau")}</span></div>
       ${c.seance ? `<div class="cj-seance">${echapper(c.seance)}</div>` : ""}
       ${(c.prevu || "").trim() ? `<div class="cj-texte">${echapper(c.prevu.trim())}</div>` : ""}
+      ${envoiDuCreneau(c)}
       ${(c.bilan || "").trim() ? `<details class="cj-bilan"><summary>Bilan</summary><div class="cj-texte">${echapper(c.bilan.trim())}</div></details>` : ""}
     </div>`).join("");
   const vide = cahier.creneaux.length ? "" : `<p class="carte-info">${icone("coche")}<span>Rien au cahier journal ${estAujourdHui() ? "aujourd'hui" : "ce jour-là"}.</span></p>`;
@@ -1619,6 +1718,9 @@ function rendre() {
   clic("annuler-photo", () => { photoPrise = null; nomPhoto = ""; souci = ""; rendre(); });
   el.querySelectorAll("[data-montrer]").forEach((b) => {
     b.onclick = () => { void montrerAide(b.dataset.montrer, b.dataset.titre); };
+  });
+  el.querySelectorAll("[data-envoyer-creneau]").forEach((b) => {
+    b.onclick = () => { void envoyerAuxTablettes(b.dataset.envoyerCreneau, b.dataset.aide); };
   });
   clic("cacher-aide", () => { void cacherAide(); });
   clic("fermer-portail", () => { void fermerPortail(); });

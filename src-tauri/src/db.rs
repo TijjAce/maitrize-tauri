@@ -875,6 +875,10 @@ pub(crate) fn migrate(conn: &Connection) {
     conn.execute("ALTER TABLE creneaux ADD COLUMN nature TEXT NOT NULL DEFAULT 'classe'", []).ok();
     conn.execute("ALTER TABLE creneaux ADD COLUMN prevu TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE creneaux ADD COLUMN bilan TEXT NOT NULL DEFAULT ''", []).ok();
+    // Le minuteur que le téléphone envoie aux tablettes avec l'aide du
+    // créneau, en minutes ; 0 : aucun. Sans NOT NULL, comme plus bas : une
+    // ligne d'un ordinateur pas encore mis à jour arrive sans cette colonne.
+    conn.execute("ALTER TABLE creneaux ADD COLUMN minuteur INTEGER DEFAULT 0", []).ok();
     // Compétences du BO d'un jeu. Sans NOT NULL : une ligne créée sur un
     // ordinateur pas encore mis à jour arrive sans cette colonne.
     conn.execute("ALTER TABLE jeux ADD COLUMN competences_bo TEXT", []).ok();
