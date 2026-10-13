@@ -102,8 +102,11 @@ export function cheminAuHasard(alea: () => number, pas: number): { depart: Case;
   return { depart: [0, 0], directions: ["droite"], cases: [[0, 0], [1, 0]] };
 }
 
+/** Le mot devant le code, tel que l'enseignant le dit à la classe (octobre 2026) : « Instruction : » puis les flèches. */
+const INSTRUCTION = '<span class="de-instruction">Instruction :</span>';
+
 /** Le code en flèches, dans des cases. */
-const codeHtml = (dirs: (Direction | null)[]) => `<div class="de-code">${dirs.map((d) => `<span class="de-fleche">${d ? FLECHE[d] : ""}</span>`).join("")}</div>`;
+const codeHtml = (dirs: (Direction | null)[]) => `<div class="de-code">${INSTRUCTION}${dirs.map((d) => `<span class="de-fleche">${d ? FLECHE[d] : ""}</span>`).join("")}</div>`;
 
 function feuilleFusee(r: ReglagesDeplacements, graine: number): string {
   const alea = hasard(graine);
@@ -192,7 +195,7 @@ const icone = (i: Instruction, taille = 5) => {
       + `<path d="M5.1 2.05 L3.95 4.4 L2.45 1.75 Z" fill="${NOIR}"/></g>`;
   return `<svg class="de-icone" viewBox="0 0 10 10" width="${taille}mm" height="${taille}mm" role="img" aria-label="${NOM_INSTRUCTION[i]}">${corps}</svg>`;
 };
-const programmeHtml = (p: (Instruction | null)[]) => `<div class="de-code">${p.map((i) => `<span class="de-fleche">${i ? icone(i) : ""}</span>`).join("")}</div>`;
+const programmeHtml = (p: (Instruction | null)[]) => `<div class="de-code">${INSTRUCTION}${p.map((i) => `<span class="de-fleche">${i ? icone(i) : ""}</span>`).join("")}</div>`;
 
 /**
  * Pour corriger : une instruction changée, et une seule façon de réparer le
@@ -337,7 +340,8 @@ export const STYLE_DEPLACEMENTS = `
   .feuille.de .de-lettre { font-size: 14px; font-weight: 800; align-self: flex-start; }
   .feuille.de .de-cartes { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
   .feuille.de .de-carte { border: 1px dashed #9aa0b4; border-radius: 3mm; padding: 2.5mm; display: flex; flex-direction: column; align-items: center; gap: 2mm; page-break-inside: avoid; break-inside: avoid; }
-  .feuille.de .de-code { display: flex; flex-wrap: wrap; gap: 1mm; justify-content: center; }
+  .feuille.de .de-code { display: flex; flex-wrap: wrap; gap: 1mm; justify-content: center; align-items: center; }
+  .feuille.de .de-instruction { font-size: 13px; font-weight: 800; margin-right: 1mm; }
   .feuille.de .de-fleche { display: inline-flex; align-items: center; justify-content: center; width: 6.5mm; height: 7mm; border: 1px solid #9aa0b4; border-radius: 1mm; font-size: 16px; font-weight: 800; }
   .feuille.de .de-note { font-size: 12px; }
   .feuille.de .de-legende { display: flex; gap: 6mm; flex-wrap: wrap; font-size: 12px; margin: 0 0 4mm; }

@@ -216,6 +216,11 @@ describe("se repérer, se déplacer", () => {
     expect(bille).toContain('<div class="titre">La bille</div>');
     expect(bille).toMatch(/<circle [^>]*r="2\.7" fill="#d33a32"/);
     expect(bille).not.toContain("fusée");
+    // Chaque code est annoncé comme l'enseignant le dit : « Instruction : », puis les flèches — sur la feuille et dans le corrigé.
+    const cartes = (bille.match(/class="de-carte"/g) ?? []).length;
+    expect((bille.match(/<div class="de-code"><span class="de-instruction">Instruction :<\/span><span class="de-fleche">/g) ?? []).length).toBe(cartes);
+    const robot = htmlDeplacements({ ...REGLAGES_DEPLACEMENTS, exercice: "robot", mode: "decoder" }, 5);
+    expect(robot).toContain('<div class="de-code"><span class="de-instruction">Instruction :</span>');
     for (const classe of ["CP", "CE1"] as const) {
       const html = htmlDeplacements({ ...REGLAGES_DEPLACEMENTS, exercice: "robot", classe, mode: "corriger", combien: 6 }, 9);
       expect(html.match(/L'instruction n° \d+ est fausse/g)).toHaveLength(6);
