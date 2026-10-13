@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  MATERIEL_REEL, ecrireInventaire, lireInventaire, materielDeLAtelier, materielPourCompetences, noteDuMaterielReel,
+  CLE_INVENTAIRE, MATERIEL_REEL, ecrireInventaire, lireInventaire, materielDeLAtelier, materielPourCompetences, noteDuMaterielDesCompetences, noteDuMaterielReel,
 } from "./materielDeClasse";
 import { ONGLETS } from "./catalogueAteliers";
 
@@ -79,5 +79,19 @@ describe("le matériel de la classe", () => {
       + "À se procurer : des objets du quotidien à soupeser : un paquet d'un kilo, une plaquette de 250 g, une pomme… — le papier ne le remplace pas.",
     );
     expect(noteDuMaterielReel([], {})).toBe("");
+  });
+
+  it("donne aux séquences de maternelle la note du matériel de leurs compétences, l'inventaire relu", async () => {
+    const maths = { competenceTitre: "Composer ou décomposer des nombres inférieurs ou égaux à dix voir au delà", domaineTitre: "4. Acquérir les premiers outils mathématiques" };
+    expect(ids("Composer et décomposer des nombres inférieurs ou égaux à six", "4. Acquérir les premiers outils mathématiques")).toContain("numeration");
+    const lu: string[] = [];
+    const lire = async (cle: string) => { lu.push(cle); return ecrireInventaire({ numeration: { a: true, lieu: "le bac rouge" } }); };
+    expect(await noteDuMaterielDesCompetences([maths], lire)).toMatch(/^Matériel de la classe à sortir : des cubes emboîtables.* \(le bac rouge\)\.$/);
+    expect(lu).toEqual([CLE_INVENTAIRE]);
+    // Sans inventaire lisible, tout est à se procurer ; sans matériel, rien à dire, et rien à lire.
+    expect(await noteDuMaterielDesCompetences([maths], async () => { throw new Error("hors ligne"); })).toMatch(/^Matériel de la classe : des cubes emboîtables/);
+    lu.length = 0;
+    expect(await noteDuMaterielDesCompetences([{ competenceTitre: "Organiser les mots en catégorie et en réseau" }], lire)).toBe("");
+    expect(lu).toEqual([]);
   });
 });

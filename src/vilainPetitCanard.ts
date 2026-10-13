@@ -15,7 +15,10 @@
 // le plan de l'histoire sont écrits pour Maitrize ; les « synonymots »
 // reprennent le principe de Micheline Cellier (Retz, 2015), pas ses cartes.
 // Les feuilles viennent des ateliers quand ils savent les faire —
-// Catégoriser les mots, Images séquentielles —, les autres d'ici.
+// Catégoriser les mots, Images séquentielles —, les autres d'ici. Deux
+// exercices de l'enseignant s'y ajoutent, en prolongement : les familles de
+// canards à colorier (décomposer une quantité) et les canards à décorer
+// (graphisme).
 
 import { escapeHtml } from "./print";
 import { attributionPour, feuille, imgPicto } from "./cartesImprimables";
@@ -23,6 +26,7 @@ import { STYLE_CATEGORISER, htmlCategoriser, type Categorie, type ReglagesCatego
 import type { Images } from "./supportsVisuels";
 import { REGLAGES_SUITES, STYLE_SUITES, htmlSuites, type ReglagesSuites } from "./suitesImages";
 import { POLICE_CURSIVE } from "./ecritureCursive";
+import { DECORATIONS, GRIS, JAUNE, STYLE_CANARDS_DESSINES, nomDeLaDecoration, svgCane, svgCaneton, svgCanetonADecorer } from "./canardsDessines";
 import { melanger } from "./hasard";
 
 export type NiveauVpc = "MS" | "GS";
@@ -212,6 +216,7 @@ export const ETIQUETTES_CANARD: { mot: string; ecriture: "capitales" | "script" 
 
 const titre = (t: string, sous = "") => `<div class="titre">${escapeHtml(t)}</div>${sous ? `<div class="sous">${escapeHtml(sous)}</div>` : ""}`;
 const regle = (t: string) => `<div class="regle">${t}</div>`;
+const rappel = (t: string) => `<div class="rappel">${t}</div>`;
 const TETE = '<div class="sous">Prénom : ........................................ Date : ........................</div>';
 const img = (images: Images, id: number, mot: string, classe = "") => `<span class="vp-img ${classe}">${imgPicto(images[id], mot)}</span>`;
 
@@ -334,6 +339,57 @@ function htmlComparer(): string {
     + `<table class="vp-tableau"><tr><th></th><th>Version 1 : ……………………</th><th>Version 2 : ……………………</th></tr>${questions.map((q) => `<tr><th>${escapeHtml(q)}</th><td></td><td></td></tr>`).join("")}</table></div>`;
 }
 
+/** Combien de petits a chaque cane : on décompose cette quantité. Le programme 2025 : jusqu'à six en MS, jusqu'à dix en GS. */
+export const PETITS_PAR_FAMILLE: Record<NiveauVpc, number> = { MS: 4, GS: 5 };
+
+const accord = (n: number, mot: string) => `${n} ${mot}${n > 1 && !mot.endsWith("s") ? "s" : ""}`;
+/** « 3 jaunes et 2 gris », « 0 jaune et 4 gris ». */
+export const decomposition = (jaunes: number, gris: number) => `${accord(jaunes, "jaune")} et ${accord(gris, "gris")}`;
+
+/**
+ * Les familles de canards (mathématiques) : chaque cane a ses petits — des
+ * canetons jaunes, des vilains petits canards gris —, à colorier de sorte
+ * qu'aucune famille ne ressemble à une autre. Avec quatre petits, il y a
+ * cinq familles différentes ; avec cinq, six : toutes les décompositions.
+ */
+function htmlFamillesDeCanards(n: NiveauVpc): string {
+  const petits = PETITS_PAR_FAMILLE[n];
+  const familles = petits + 1;
+  const sortes = [{ fond: JAUNE, couleur: "jaune", qui: "un caneton" }, { fond: GRIS, couleur: "gris", qui: "un vilain petit canard" }];
+  const legende = `<div class="vp-legende">${sortes.map((x) => `<span class="vp-sorte">${svgCaneton(x.fond)}<span><b>${x.couleur}</b> : ${x.qui}</span></span>`).join("")}</div>`;
+  const combien = n === "GS" ? '<span class="vp-combien"><span class="vp-nb"></span> jaunes<br>et <span class="vp-nb"></span> gris</span>' : "";
+  // Des canards aussi grands que la page le permet : quatre petits par famille en MS, cinq et la case du nombre en GS.
+  const famille = (fonds: string[], apres: string) =>
+    `<div class="vp-famille" style="--petits:${petits};--case:${n === "MS" ? 27 : 21}mm">${svgCane()}${fonds.map((f) => svgCaneton(f)).join("")}${apres}</div>`;
+  const vierges = Array.from({ length: familles }, () => famille(Array(petits).fill("#fff"), combien)).join("");
+  const consigne = `Je colorie chaque petit en jaune ou en gris. Je fais chaque famille différente des autres. ${n === "GS" ? "J'écris" : "Je dis"} combien il y a de jaunes et de gris dans chaque famille.`;
+  const eleve = `<div class="page">${titre("Les familles de canards")}${TETE}${regle(consigne)}`
+    + `${rappel(`Chaque cane a ${petits} petits. Avec ${petits} petits, il y a ${familles} familles différentes : de ${decomposition(petits, 0)} à ${decomposition(0, petits)}.`)}`
+    + `${legende}<div class="vp-familles">${vierges}</div></div>`;
+  const solutions = Array.from({ length: familles }, (_, gris) => {
+    const jaunes = petits - gris;
+    return famille([...Array(jaunes).fill(JAUNE), ...Array(gris).fill(GRIS)], `<span class="vp-combien">${decomposition(jaunes, gris)}<br>${petits} = ${jaunes} + ${gris}</span>`);
+  }).join("");
+  const corrige = `<div class="page corrige">${titre("Les familles de canards — pour le maître")}`
+    + `<div class="sous">Les ${familles} familles différentes, dans un ordre parmi d'autres : l'ordre des familles ne compte pas, ni la place des canards gris dans la famille. Faire d'abord les familles avec des jetons jaunes et gris, puis colorier.</div>`
+    + `<div class="vp-familles">${solutions}</div></div>`;
+  return eleve + corrige;
+}
+
+/**
+ * Décorer les canards (graphisme) : sur chaque canard, le début d'une
+ * décoration ; l'élève la continue jusqu'au bout de chaque bande. En MS, un
+ * motif par canard (reproduire des motifs) ; en GS, trois bandes de motifs
+ * qui se répondent, et le dernier canard à décorer librement.
+ */
+function htmlDecorer(n: NiveauVpc): string {
+  const canards = DECORATIONS[n].map((motifs) => `<figure class="vp-canard-deco">${svgCanetonADecorer(motifs)}<figcaption>${escapeHtml(nomDeLaDecoration(motifs))}</figcaption></figure>`).join("");
+  const consigne = n === "MS"
+    ? "Je regarde le début de la décoration de chaque canard. Je continue le motif jusqu'au bout de chaque bande. Je dis le nom du motif."
+    : "Je regarde le début de la décoration de chaque canard. Je continue chaque motif jusqu'au bout de sa bande. Je décore le dernier canard avec les motifs que je choisis.";
+  return `<div class="page">${titre("Décorer les canards")}${TETE}${regle(consigne)}<div class="vp-canards-deco">${canards}</div></div>`;
+}
+
 /** Ce qu'on observe, d'après les objectifs du guide. */
 export const OBSERVABLES: Record<NiveauVpc, string[]> = {
   MS: ["Nomme les animaux et leurs petits", "Range les animaux par famille", "Dit l'émotion du petit canard et sa cause", "Remet la naissance dans l'ordre", "Raconte avec les mots de l'histoire"],
@@ -350,7 +406,7 @@ function htmlGrille(n: NiveauVpc): string {
 // ── La séquence : ses feuilles, séance par séance ─────────────────────────
 
 export type IdFeuilleVpc = "documentaires" | "marottes" | "emotions" | "synonymots-queue" | "synonymots-coquille" | "silhouettes" | "devinettes"
-  | "plan" | "tapis" | "titre" | "comparer" | "grille";
+  | "plan" | "tapis" | "titre" | "comparer" | "familles-canards" | "decorer" | "grille";
 
 export interface FeuilleVpc {
   /** Son nom stable : l'atelier la retrouve par lui. */
@@ -359,6 +415,8 @@ export interface FeuilleVpc {
   seance: number;
   titre: string;
   atelier: "categoriser" | "suites" | "vilainPetitCanard";
+  /** La compétence qu'elle travaille, quand ce n'est pas celle de la séquence : décomposer une quantité, ou le graphisme. */
+  competence?: "maths" | "graphisme";
   /** La feuille fabriquée, et ce qu'il faut garder pour la refaire dans son atelier. */
   fabriquer: (images: Images, alea: () => number) => { html: string; style: string; memoires: Record<string, unknown> };
 }
@@ -392,14 +450,16 @@ const EMOTIONS_CARTES = [
 ];
 
 /**
- * Les feuilles de la séquence, à ce niveau, séance par séance (douze
- * séances, de 0 à 11). Les séances 5, 6 et 10 diffèrent : en MS, les
+ * Les feuilles de la séquence, à ce niveau, séance par séance (treize
+ * séances, de 0 à 12). Les séances 5, 6 et 10 diffèrent : en MS, les
  * émotions, la naissance, la collection des émotions ; en GS, les
- * synonymots, puis comparer les versions et les mots écrits.
+ * synonymots, puis comparer les versions et les mots écrits. La séance 11
+ * est le prolongement de la classe, en ateliers : les familles de canards,
+ * la décoration des canards.
  */
 export function feuillesDeLaSequence(n: NiveauVpc): FeuilleVpc[] {
-  const f = (id: string, seance: number, titre: string, atelier: FeuilleVpc["atelier"], fabriquer: FeuilleVpc["fabriquer"]): FeuilleVpc =>
-    ({ id, seance, titre, atelier, fabriquer });
+  const f = (id: string, seance: number, titre: string, atelier: FeuilleVpc["atelier"], fabriquer: FeuilleVpc["fabriquer"], competence?: FeuilleVpc["competence"]): FeuilleVpc =>
+    ({ id, seance, titre, atelier, fabriquer, ...(competence ? { competence } : {}) });
   return [
     f("familles-cartes", 0, "Les familles d'animaux — les cartes", "categoriser", categoriser(n, "cartes", famillesDAnimaux(n), { legendes: true })),
     f("familles-maisons", 1, "Les maisons des familles", "categoriser", categoriser(n, "tri", famillesDAnimaux(n), { maisons: true })),
@@ -430,11 +490,13 @@ export function feuillesDeLaSequence(n: NiveauVpc): FeuilleVpc[] {
         f("titre", 10, "Les mots du titre", "vilainPetitCanard", ici(n, "titre")),
       ]
       : []),
-    f("grille", 11, "La grille d'observation", "vilainPetitCanard", ici(n, "grille")),
+    f("familles-canards", 11, "Les familles de canards", "vilainPetitCanard", ici(n, "familles-canards"), "maths"),
+    f("decorer", 11, "Décorer les canards", "vilainPetitCanard", ici(n, "decorer"), "graphisme"),
+    f("grille", 12, "La grille d'observation", "vilainPetitCanard", ici(n, "grille")),
   ];
 }
 
-/** Ce qu'il faut préparer, séance par séance (douze séances) : la note « matériel » de chacune. */
+/** Ce qu'il faut préparer, séance par séance (treize séances) : la note « matériel » de chacune. */
 export function materielDesSeances(n: NiveauVpc): string[] {
   return [
     "Des photos ou un imagier des animaux, un petit film documentaire ; les cartes des familles, découpées. Le cygne femelle, le cygneau et l'oison n'ont pas d'image à eux : vos photos les remplacent.",
@@ -448,6 +510,7 @@ export function materielDesSeances(n: NiveauVpc): string[] {
     "Les devinettes ; le plan de l'histoire et ses images ; le jeu des familles ; les cartes des actions.",
     "Le tapis de conte : les lieux et les personnages qui tiennent debout ; les marottes.",
     n === "GS" ? "Une autre version de l'histoire, si la classe en a ; le tableau des deux versions ; les mots du titre." : "Des images de visages, d'œuvres d'art, de masques pour la collection des émotions ; les affiches des émotions.",
+    `Pour les familles de canards : des jetons ou des cubes jaunes et gris — ${PETITS_PAR_FAMILLE[n]} par élève —, ou des canards de bain, pour faire les familles avant de les colorier ; des crayons de couleur jaunes et gris ; la fiche des familles. Pour la décoration : des feutres fins ou des crayons ; la fiche des canards à décorer ; les motifs du répertoire de la classe, affichés.`,
     "La grille d'observation ; les cartes-images.",
   ];
 }
@@ -466,9 +529,12 @@ export function htmlFeuilleVpc(n: NiveauVpc, id: IdFeuilleVpc, images: Images, a
     tapis: () => htmlTapis(images),
     titre: () => htmlMotsDuTitre(alea),
     comparer: () => htmlComparer(),
+    "familles-canards": () => htmlFamillesDeCanards(n),
+    decorer: () => htmlDecorer(n),
     grille: () => htmlGrille(n),
   }[id]();
-  const sansImages = id === "titre" || id === "comparer" || id === "grille";
+  // Ces feuilles n'ont pas de pictogramme de la banque : les canards à colorier sont dessinés pour Maitrize.
+  const sansImages = id === "titre" || id === "comparer" || id === "grille" || id === "familles-canards" || id === "decorer";
   return feuille(`${corps}${sansImages ? "" : attributionPour(IDS_VPC)}`, "vp");
 }
 
@@ -568,6 +634,20 @@ export const STYLE_VPC = `
   .feuille.vp .vp-ligne { border-bottom: 1.5px solid #9aa0b4; height: 16mm; margin-bottom: 4mm; }
   .feuille.vp .vp-boites { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; margin: 4mm 0; }
   .feuille.vp .vp-boite { height: 80mm; border: 2px solid #1c2233; border-radius: 3mm; padding: 3mm; font-size: 20px; }
+  .feuille.vp .vp-legende { display: flex; gap: 10mm; margin: 2mm 0 4mm; font-size: 14px; }
+  .feuille.vp .vp-sorte { display: inline-flex; align-items: center; gap: 2mm; }
+  .feuille.vp .vp-sorte svg { width: 14mm; height: auto; }
+  .feuille.vp .vp-familles { display: flex; flex-direction: column; gap: 2mm; }
+  .feuille.vp .vp-famille { display: grid; grid-template-columns: var(--case) repeat(var(--petits), var(--case)) 1fr; align-items: end; column-gap: 1.5mm;
+    border-bottom: 1px dashed #cfd4e2; padding-bottom: 2mm; page-break-inside: avoid; }
+  .feuille.vp .vp-famille svg { width: 100%; height: auto; }
+  .feuille.vp .vp-combien { font-size: 14px; line-height: 2; padding-left: 3mm; align-self: center; }
+  .feuille.vp .vp-nb { display: inline-block; width: 9mm; height: 8mm; border: 1.5px solid #4a5168; border-radius: 1.5mm; vertical-align: middle; }
+  .feuille.vp .vp-canards-deco { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm 8mm; margin-top: 2mm; }
+  .feuille.vp .vp-canard-deco { margin: 0; text-align: center; page-break-inside: avoid; }
+  .feuille.vp .vp-canard-deco svg { width: 76mm; height: auto; margin: 0 auto; }
+  .feuille.vp .vp-canard-deco figcaption { font-size: 13px; font-weight: 700; color: #4a5168; }
+  ${STYLE_CANARDS_DESSINES}
 `;
 
 /** La feuille d'un atelier réutilisé, son style : pour l'aperçu de l'atelier « Le Vilain Petit Canard ». */

@@ -69,7 +69,7 @@ export const MATERIEL_REEL: MaterielReel[] = [
     irremplacable: "",
     imprime: { atelier: "cubes", quoi: "les barres de dix et les cubes à découper, et les feuilles qui les font lire" },
     ateliers: ["cubes", "nombres", "comparer", "martiniere", "numeration"],
-    appel: /denombr|collection|groupe(r|ment)s?\b.*dix|dizaine|composer et decomposer|decompos(er|ition)s? de nombres|quantite/,
+    appel: /denombr|collection|groupe(r|ment)s?\b.*dix|dizaine|composer (et|ou) decomposer|decompos(er|ition)s? de nombres|quantite/,
     domaine: MATHS,
     source: `${GUIDE_CP} : « l'utilisation et la manipulation de supports adaptés (cubes, frise numérique, cartes à points, etc.) » ; ${MATERNELLE} : « Manipuler et verbaliser des compositions et des décompositions de nombres ».`,
   },
@@ -361,6 +361,10 @@ export function materielPourCompetences(competences: CompetenceLue[]): MaterielR
   return MATERIEL_REEL.filter((m) => lues.some((c) => m.appel.test(c.texte) && (!m.domaine || !c.domaine || m.domaine.test(c.domaine))));
 }
 
+/** Ce que des compétences choisies disent d'elles-mêmes : leur intitulé, et leur domaine. */
+export const competencesLues = (cs: { competenceTitre: string; domaineTitre?: string | null; sousDomaineTitre?: string | null }[]): CompetenceLue[] =>
+  cs.map((c) => ({ texte: c.competenceTitre, domaine: [c.domaineTitre, c.sousDomaineTitre].filter(Boolean).join(" › ") }));
+
 /** Le matériel réel dont se sert un atelier de Fabriquer. */
 export const materielDeLAtelier = (atelier: string): MaterielReel[] =>
   MATERIEL_REEL.filter((m) => m.ateliers.includes(atelier) || m.imprime?.atelier === atelier);
@@ -397,6 +401,22 @@ export const ecrireInventaire = (inv: Inventaire) => JSON.stringify(inv);
 
 /** Le nom d'un matériel, en minuscule au début : il se lit dans une phrase. */
 const enPhrase = (m: MaterielReel) => m.nom.charAt(0).toLowerCase() + m.nom.slice(1);
+
+/**
+ * La note du matériel réel que ces compétences appellent, l'inventaire de la
+ * classe relu par `lire` : ce que les séances d'une séquence rappellent,
+ * comme celles qu'on crée depuis une compétence. Vide sans matériel ; sans
+ * inventaire lisible, tout est « à se procurer ».
+ */
+export async function noteDuMaterielDesCompetences(
+  cs: { competenceTitre: string; domaineTitre?: string | null; sousDomaineTitre?: string | null }[], lire: (cle: string) => Promise<string | null>,
+): Promise<string> {
+  const materiel = materielPourCompetences(competencesLues(cs));
+  if (!materiel.length) return "";
+  let brut: string | null = null;
+  try { brut = await lire(CLE_INVENTAIRE); } catch { /* l'inventaire ne se lit pas : on fait sans */ }
+  return noteDuMaterielReel(materiel, lireInventaire(brut));
+}
 
 /**
  * La note d'une séance : le matériel réel à sortir — avec où il est rangé —,

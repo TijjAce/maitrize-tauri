@@ -8,7 +8,7 @@ import { chargerImages } from "./ChoixPicto";
 import { demarcheDe, resumeDuCadre } from "../demarches";
 import { DEMARCHE_VPC } from "../demarchesVilainPetitCanard";
 import { competenceDuProgramme } from "../sequenceCategoriser";
-import { creerLaSequenceDuVilainPetitCanard, titreDeLaSequence } from "../sequenceVilainPetitCanard";
+import { INTITULES_DES_ATELIERS, creerLaSequenceDuVilainPetitCanard, titreDeLaSequence, type CompetencesDesAteliers } from "../sequenceVilainPetitCanard";
 import { IDS_VPC, feuillesDeLaSequence, type NiveauVpc } from "../vilainPetitCanard";
 
 // ── La séquence du Vilain Petit Canard, d'un clic ─────────────────────────
@@ -24,12 +24,17 @@ export function SequenceDuVilainPetitCanard({ niveau, competences, onClose }: {
   const demarche = demarcheDe(DEMARCHE_VPC[niveau]);
   const [titre, setTitre] = React.useState(() => titreDeLaSequence(niveau));
   const [enCours, setEnCours] = React.useState(false);
-  // Sans compétence choisie pour l'atelier, celle du programme à cet âge, prise dans les référentiels.
+  // Sans compétence choisie pour l'atelier, celle du programme à cet âge, prise dans les référentiels ; et celles des ateliers du prolongement.
   const [duProgramme, setDuProgramme] = React.useState<CompetenceSelectionnee | null>(null);
+  const [ateliers, setAteliers] = React.useState<CompetencesDesAteliers>({});
   React.useEffect(() => {
-    if (competences.length) return;
     let vivant = true;
-    api.referentielsList().then((refs) => { if (vivant) setDuProgramme(competenceDuProgramme(refs, niveau)); }).catch(() => {});
+    api.referentielsList().then((refs) => {
+      if (!vivant) return;
+      if (!competences.length) setDuProgramme(competenceDuProgramme(refs, niveau));
+      const intitules = INTITULES_DES_ATELIERS(niveau);
+      setAteliers({ maths: competenceDuProgramme(refs, niveau, intitules.maths), graphisme: competenceDuProgramme(refs, niveau, intitules.graphisme) });
+    }).catch(() => {});
     return () => { vivant = false; };
   }, [competences.length, niveau]);
   const visees = competences.length ? competences : duProgramme ? [duProgramme] : [];
@@ -39,7 +44,7 @@ export function SequenceDuVilainPetitCanard({ niveau, competences, onClose }: {
     setEnCours(true);
     try {
       const images = await chargerImages(IDS_VPC);
-      const { sequence, feuilles: posees } = await creerLaSequenceDuVilainPetitCanard(niveau, titre, visees, images);
+      const { sequence, feuilles: posees } = await creerLaSequenceDuVilainPetitCanard(niveau, titre, visees, images, ateliers);
       toast(`Séquence créée : ${demarche.seances.length} séances, ${posees} feuilles rangées dans leurs séances.`, { icone: "📚" });
       onClose();
       navigate(`/sequences/${sequence.id}`);
@@ -61,8 +66,9 @@ export function SequenceDuVilainPetitCanard({ niveau, competences, onClose }: {
       </Field>
       <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>
         Les quatre phases du guide Éduscol du vocabulaire en maternelle : l'univers de référence, la découverte de l'album, la structuration,
-        la mémorisation et le réinvestissement — puis l'observation, à distance. {resumeDuCadre(demarche)}. Chaque séance reçoit ses feuilles
-        et la note du matériel à préparer. L'album reste le vôtre : ni son texte ni ses images ne sont dans l'application.
+        la mémorisation et le réinvestissement —, vos exercices en prolongement, puis l'observation, à distance. {resumeDuCadre(demarche)}.
+        Chaque séance reçoit ses feuilles et la note du matériel à préparer, avec le matériel de la classe que ses compétences appellent.
+        L'album reste le vôtre : ni son texte ni ses images ne sont dans l'application.
       </p>
       <ol style={{ margin: "0 0 10px", paddingLeft: 22, display: "grid", gap: 7 }}>
         {demarche.seances.map((s, i) => (
@@ -81,6 +87,9 @@ export function SequenceDuVilainPetitCanard({ niveau, competences, onClose }: {
           : duProgramme
             ? <>🎯 Compétence visée : <b>{duProgramme.competenceTitre}</b> ({duProgramme.niveau ?? niveau}) — {duProgramme.referentielNom}</>
             : "🎯 La compétence « Organiser les mots en catégorie et en réseau » n'est pas dans vos référentiels actifs : la séquence n'en visera pas. Choisissez-la plus tard sur la séquence."}
+        {(ateliers.maths || ateliers.graphisme) && (
+          <><br />🎯 Les ateliers du prolongement : {[ateliers.maths, ateliers.graphisme].filter(Boolean).map((c) => `« ${c!.competenceTitre} »`).join(" et ")}.</>
+        )}
       </p>
     </Modal>
   );
