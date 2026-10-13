@@ -697,6 +697,137 @@ pub async fn base_qui_repond(acces: &Acces, bases: &[String]) -> R<String> {
     Err(derniere)
 }
 
+// ── Les dossiers que d'autres ont partagés avec le compte ──────────────────
+//
+// Un collègue partage un dossier avec son compte, sur le même Nuage, ou depuis
+// un autre (nuage03 vers nuage17 : le partage « fédéré ») : le dossier paraît
+// alors dans les fichiers du compte, là où Nuage l'a monté, et s'ouvre avec ce
+// compte comme un dossier à soi. Un partage venu d'un autre Nuage peut
+// attendre qu'on l'accepte.
+
+/// Un dossier reçu : où il paraît dans les fichiers du compte, et de qui il vient.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DossierRecu {
+    /// Le numéro du partage chez Nuage : c'est par lui qu'on l'accepte.
+    pub id: String,
+    /// « interne » (même Nuage) ou « federe » (venu d'un autre).
+    pub sorte: String,
+    pub nom: String,
+    /// Le dossier dans les fichiers du compte, sans barre de tête ; vide tant qu'il attend.
+    pub chemin: String,
+    /// Qui l'a partagé.
+    pub proprietaire: String,
+    /// Le Nuage d'où il vient, pour un partage fédéré : « nuage03.apps.education.fr ».
+    pub origine: String,
+    /// Il attend d'être accepté.
+    pub en_attente: bool,
+}
+
+/// Le texte d'un champ OCS, qu'il arrive en texte ou en nombre.
+fn texte_ocs(v: &serde_json::Value) -> String {
+    match v {
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Number(n) => n.to_string(),
+        _ => String::new(),
+    }
+}
+
+/// Le dernier morceau d'un chemin : le nom du dossier.
+fn nom_du_chemin(chemin: &str) -> String {
+    chemin.trim_matches('/').rsplit('/').next().unwrap_or("").to_string()
+}
+
+/// L'hôte d'une adresse : « https://nuage03.apps.education.fr/ » → « nuage03.apps.education.fr ».
+fn hote_de(adresse: &str) -> String {
+    adresse.trim().trim_start_matches("https://").trim_start_matches("http://").split('/').next().unwrap_or("").to_string()
+}
+
+/// Les dossiers partagés avec le compte sur le même Nuage (« shares?shared_with_me »), ou en attente (« shares/pending »).
+pub fn lire_partages_recus(corps: &str, en_attente: bool) -> Vec<DossierRecu> {
+    let v: serde_json::Value = serde_json::from_str(corps).unwrap_or_default();
+    v["ocs"]["data"].as_array().map(|liste| liste.iter()
+        .filter(|p| p["item_type"].as_str() == Some("folder"))
+        .map(|p| {
+            let chemin = p["path"].as_str().or_else(|| p["file_target"].as_str()).unwrap_or("").trim_matches('/').to_string();
+            let proprietaire = p["displayname_owner"].as_str().filter(|s| !s.is_empty())
+                .or_else(|| p["uid_owner"].as_str()).unwrap_or("").to_string();
+            DossierRecu {
+                id: texte_ocs(&p["id"]), sorte: "interne".into(), nom: nom_du_chemin(&chemin),
+                chemin: if en_attente { String::new() } else { chemin }, proprietaire, origine: String::new(), en_attente,
+            }
+        })
+        .filter(|d| !d.nom.is_empty())
+        .collect()).unwrap_or_default()
+}
+
+/// Les dossiers partagés depuis un autre Nuage (« remote_shares », et « remote_shares/pending » pour ceux qui attendent).
+pub fn lire_partages_federes(corps: &str) -> Vec<DossierRecu> {
+    let v: serde_json::Value = serde_json::from_str(corps).unwrap_or_default();
+    v["ocs"]["data"].as_array().map(|liste| liste.iter()
+        // Un fichier seul n'est pas un bureau ; un partage en attente ne dit pas toujours sa sorte.
+        .filter(|p| p["type"].as_str().map(|t| t == "dir").unwrap_or(true)
+            && p["mimetype"].as_str().map(|m| m == "httpd/unix-directory").unwrap_or(true))
+        .map(|p| {
+            let accepte = matches!(texte_ocs(&p["accepted"]).as_str(), "1" | "true") || p["accepted"].as_bool() == Some(true);
+            let point = p["mountpoint"].as_str().unwrap_or("");
+            // « {{TemporaryMountPointName#/Projet}} » : pas encore monté.
+            let chemin = if accepte && !point.starts_with("{{") { point.trim_matches('/').to_string() } else { String::new() };
+            let nom = nom_du_chemin(p["name"].as_str().unwrap_or(""));
+            DossierRecu {
+                id: texte_ocs(&p["id"]), sorte: "federe".into(),
+                nom: if nom.is_empty() { nom_du_chemin(&chemin) } else { nom },
+                chemin, proprietaire: p["owner"].as_str().unwrap_or("").to_string(), origine: hote_de(p["remote"].as_str().unwrap_or("")),
+                en_attente: !accepte,
+            }
+        })
+        .filter(|d| !d.nom.is_empty())
+        .collect()).unwrap_or_default()
+}
+
+/// Une demande OCS au nom du compte ; `None` quand Nuage ne connaît pas ce service (le partage fédéré coupé, par exemple).
+async fn ocs(acces: &Acces, methode: reqwest::Method, chemin: &str) -> R<Option<String>> {
+    let rep = client(&acces.serveur)?
+        .request(methode, format!("{}/ocs/v2.php/apps/files_sharing/api/v1/{chemin}", acces.serveur))
+        .header("Authorization", autorisation(acces))
+        .header("OCS-APIRequest", "true")
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|e| format!("Nuage injoignable : {e}"))?;
+    match rep.status().as_u16() {
+        200..=299 => Ok(Some(rep.text().await.unwrap_or_default())),
+        401 => Err("Nuage refuse l'identifiant ou le mot de passe d'application.".into()),
+        404 | 501 => Ok(None),
+        _ => Err(erreur_http(rep.status(), "les partages")),
+    }
+}
+
+/// Les dossiers que d'autres ont partagés avec ce compte, de ce Nuage ou d'un autre, ceux qui attendent d'abord.
+pub async fn dossiers_recus(acces: &Acces) -> R<Vec<DossierRecu>> {
+    let get = || reqwest::Method::GET;
+    let mut tout = Vec::new();
+    if let Some(c) = ocs(acces, get(), "shares?shared_with_me=true&format=json").await? { tout.extend(lire_partages_recus(&c, false)); }
+    // Ceux-ci n'existent pas partout : leur absence n'est pas une panne.
+    if let Ok(Some(c)) = ocs(acces, get(), "shares/pending?format=json").await { tout.extend(lire_partages_recus(&c, true)); }
+    if let Ok(Some(c)) = ocs(acces, get(), "remote_shares?format=json").await { tout.extend(lire_partages_federes(&c)); }
+    if let Ok(Some(c)) = ocs(acces, get(), "remote_shares/pending?format=json").await { tout.extend(lire_partages_federes(&c)); }
+    let mut vus = std::collections::HashSet::new();
+    tout.retain(|d| vus.insert((d.sorte.clone(), d.id.clone())));
+    tout.sort_by(|a, b| b.en_attente.cmp(&a.en_attente).then_with(|| a.nom.to_lowercase().cmp(&b.nom.to_lowercase())));
+    Ok(tout)
+}
+
+/// Accepte un partage qui attend : il paraît ensuite dans les fichiers du compte.
+pub async fn accepter_partage(acces: &Acces, sorte: &str, id: &str) -> R<()> {
+    let id = encoder(id.trim());
+    let chemin = if sorte == "federe" { format!("remote_shares/pending/{id}?format=json") } else { format!("shares/pending/{id}?format=json") };
+    match ocs(acces, reqwest::Method::POST, &chemin).await? {
+        Some(_) => Ok(()),
+        None => Err("Ce partage n'attend plus : il a peut-être été accepté, ou retiré.".into()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -867,4 +998,32 @@ mod tests {
         assert!(par_lien(&Acces { base: "public.php/webdav".into(), ..lien }));
     }
 
+    #[test]
+    fn les_dossiers_recus_se_lisent_de_ce_nuage_et_d_un_autre() {
+        let internes = r#"{"ocs":{"meta":{"status":"ok"},"data":[
+          {"id":"115","share_type":0,"uid_owner":"marie.dupont","displayname_owner":"Marie Dupont","path":"/Projet IME","item_type":"folder","file_target":"/Projet IME"},
+          {"id":116,"share_type":1,"uid_owner":"paul.martin","displayname_owner":"","path":"/Partagés/Classe de Paul","item_type":"folder"},
+          {"id":"117","uid_owner":"marie.dupont","path":"/fiche.pdf","item_type":"file"}]}}"#;
+        let lus = lire_partages_recus(internes, false);
+        assert_eq!(lus.len(), 2, "un fichier seul n'est pas un bureau");
+        assert_eq!(lus[0], DossierRecu {
+            id: "115".into(), sorte: "interne".into(), nom: "Projet IME".into(), chemin: "Projet IME".into(),
+            proprietaire: "Marie Dupont".into(), origine: String::new(), en_attente: false,
+        });
+        assert_eq!((lus[1].id.as_str(), lus[1].chemin.as_str(), lus[1].proprietaire.as_str()), ("116", "Partagés/Classe de Paul", "paul.martin"));
+        // En attente : pas encore de place dans les fichiers.
+        assert_eq!(lire_partages_recus(internes, true)[0].chemin, "");
+
+        let federes = r#"{"ocs":{"data":[
+          {"id":"7","remote":"https://nuage03.apps.education.fr/","name":"/Projet jardin","owner":"marie.dupont","mountpoint":"/Projet jardin","accepted":1,"type":"dir","mimetype":"httpd/unix-directory"},
+          {"id":8,"remote":"https://nuage03.apps.education.fr","name":"/Sorties","owner":"marie.dupont","mountpoint":"{{TemporaryMountPointName#/Sorties}}","accepted":0},
+          {"id":"9","remote":"https://cloud.exemple.fr/","name":"/note.txt","owner":"x","mountpoint":"/note.txt","accepted":"1","type":"file","mimetype":"text/plain"}]}}"#;
+        let lus = lire_partages_federes(federes);
+        assert_eq!(lus.len(), 2);
+        assert_eq!((lus[0].nom.as_str(), lus[0].chemin.as_str(), lus[0].origine.as_str(), lus[0].en_attente), ("Projet jardin", "Projet jardin", "nuage03.apps.education.fr", false));
+        assert_eq!((lus[1].nom.as_str(), lus[1].chemin.as_str(), lus[1].en_attente, lus[1].sorte.as_str()), ("Sorties", "", true, "federe"));
+        // Une réponse illisible ne fait rien tomber.
+        assert!(lire_partages_recus("<html>", false).is_empty());
+        assert!(lire_partages_federes("").is_empty());
+    }
 }

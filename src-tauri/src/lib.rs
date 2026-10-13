@@ -184,6 +184,8 @@ pub fn run() {
             commun::communs_liste, commun::commun_ajouter,
             commun::commun_ajouter_nuage,
             commun::commun_ajouter_nuage_compte,
+            commun::commun_dossiers_recus,
+            commun::commun_accepter_partage,
             commun::commun_ajouter_lien,
             commun::commun_creer_lien,
             commun::commun_resume, commun::commun_renommer, commun::commun_oublier,
