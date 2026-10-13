@@ -467,13 +467,17 @@ pub const FICHIER_JOURNAL: &str = "journal.mtz";
 /// Le dossier des aides à la tâche, dans le retour.
 pub const DOSSIER_AIDES: &str = "aides";
 
-/// Une aide à la tâche citée par un créneau : de quoi la retrouver, et son titre.
+/// Une aide à la tâche citée par un créneau : de quoi la retrouver, son titre, et son minuteur.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct AideDuJournal {
     /// L'empreinte de son contenu (voir `id_de_l_aide`).
     pub id: String,
     pub titre: String,
+    /// Le minuteur qui part avec elle, en minutes ; 0 : aucun. Celui du créneau pour une aide de
+    /// sa séance, le sien pour une fiche d'« En retard ».
+    #[serde(default)]
+    pub minuteur: u32,
 }
 
 /// Un créneau du cahier journal, tel que le téléphone le montre.
@@ -631,7 +635,7 @@ mod tests {
             jours: vec![JourDuJournal { jour: "2026-10-12".into(), creneaux: vec![CreneauDuJournal {
                 id: "c1".into(), debut: "09:00".into(), fin: "10:00".into(), matiere: "Mathématiques".into(),
                 prevu: "📚 Les dizaines — séance 2".into(), bilan: String::new(), seance: "Les dizaines entières".into(),
-                aides: vec![AideDuJournal { id: id.clone(), titre: aide.titre.clone() }], minuteur: 15,
+                aides: vec![AideDuJournal { id: id.clone(), titre: aide.titre.clone(), minuteur: 10 }], minuteur: 15,
             }] }],
         };
         let blob = chiffrer_journal(&retour, &journal).unwrap();
@@ -641,9 +645,12 @@ mod tests {
         assert!(dechiffrer_journal(&nouvelle_cle(), &blob).is_err());
         assert_eq!(dechiffrer_aide(&retour, &chiffrer_aide(&retour, &aide).unwrap()).unwrap(), aide);
         assert_eq!(dechiffrer_journal(&retour, &blob).unwrap().jours[0].creneaux[0].minuteur, 15);
+        assert_eq!(dechiffrer_journal(&retour, &blob).unwrap().jours[0].creneaux[0].aides[0].minuteur, 10);
         // Un journal d'avant, sans aides, ni bilan, ni minuteur, se relit.
         let ancien: CreneauDuJournal = serde_json::from_str(r#"{"id":"c","debut":"9","fin":"10"}"#).unwrap();
         assert!(ancien.aides.is_empty() && ancien.bilan.is_empty() && ancien.minuteur == 0);
+        let aide_d_avant: AideDuJournal = serde_json::from_str(r#"{"id":"a","titre":"T"}"#).unwrap();
+        assert_eq!(aide_d_avant.minuteur, 0);
     }
 
     #[test]

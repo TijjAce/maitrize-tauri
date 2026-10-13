@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import type { Creneau, MaterielItem, Seance } from "./api";
 import {
-  aidesDuCreneau, dureeDuMinuteur, estUneAide, journalDes, joursPublies, minuteurDuCreneau, MINUTEURS_DES_TABLETTES, pageDeLaConsigne, signatureDuJournal, titreDeLAide,
+  aidesDuCreneau, dureeDuMinuteur, estUneAide, estUneFicheDEleve, fichesDuCreneau, journalDes, joursPublies, minuteurDuCreneau, MINUTEURS_DES_TABLETTES,
+  pageDeLaConsigne, signatureDuJournal, titreDeLAide, titrePourLesTablettes,
 } from "./journalTelephone";
 
 const creneau = (id: string, date: string, p: Partial<Creneau> = {}): Creneau => ({
@@ -41,7 +42,7 @@ describe("le cahier journal pour le téléphone", () => {
     expect(j.jours[0].creneaux.map((c) => c.id)).toEqual(["c1", "c2"]);
     expect(j.jours[0].creneaux[1]).toEqual({
       id: "c2", debut: "14:10", fin: "15:00", matiere: "Mathématiques", prevu: "📚 Les dizaines", bilan: "Bien.",
-      seance: "Le nom des dizaines", aides: [{ id: "m1", titre: "Ce que je vais faire — Le nom des dizaines" }], minuteur: 0,
+      seance: "Le nom des dizaines", aides: [{ id: "m1", titre: "Ce que je vais faire — Le nom des dizaines", minuteur: 0 }], minuteur: 0,
     });
     // Un jour sans créneau figure vide : c'est un jour sans classe, pas un silence.
     expect(j.jours[1].creneaux).toEqual([]);
@@ -105,11 +106,51 @@ describe("la consigne d'une feuille, pour les tablettes", () => {
     expect(estUneAide(avecConsigne(materiel("m6", "Mots mêlés", null, "motsMeles"), regle))).toBe(false);
     expect(titreDeLAide(materiel("m1", "Ce que je vais faire", "s1", "sequentiel"))).toBe("Ce que je vais faire");
     const j = journalDes(["2026-10-12"], [creneau("c1", "2026-10-12", { seanceId: "s1" })], [seance("s1", "Lire des mots")], [feuille]);
-    expect(j.jours[0].creneaux[0].aides).toEqual([{ id: "m4", titre: "Consigne — Mots mêlés" }]);
+    expect(j.jours[0].creneaux[0].aides).toEqual([{ id: "m4", titre: "Consigne — Mots mêlés", minuteur: 0 }]);
   });
 
   it("se montre sur une page à elle : le titre, puis la règle", () => {
     expect(pageDeLaConsigne("Consigne — Mots mêlés", regle)).toBe(`<div class="page"><div class="titre">Consigne — Mots mêlés</div>${regle}</div>`);
     expect(pageDeLaConsigne("<b>", "")).toContain("&lt;b&gt;");
+  });
+});
+
+describe("les fiches d'« En retard », pour les tablettes", () => {
+  const fiche = (id: string, titre: string, prenom: string, plus: Record<string, unknown> = {}): MaterielItem => ({
+    ...materiel(id, titre, null, "motsMeles"), pdfsJson: JSON.stringify([`${id}.pdf`]), dossier: "Fiches d'autonomie/2026-10-13",
+    fabricationJson: JSON.stringify({ atelier: "motsMeles", eleve: { prenom, date: "lundi 13 octobre" }, ...plus }),
+  });
+  const pyramides = fiche("f1", "Les pyramides de nombres — RACHID, 13 oct.", "RACHID", { consigne: '<div class="regle">Je complète.</div>', minuteur: 10 });
+  const meles = fiche("f2", "Mots mêlés — ZENON, 13 oct.", "ZENON");
+  const prevu = "⏰ En autonomie :\n📄 Les pyramides de nombres — RACHID, 13 oct.\n📄 Mots mêlés — ZENON, 13 oct.";
+
+  it("partent du créneau qui les cite, chacune avec son minuteur, après les aides de la séance", () => {
+    const j = journalDes(["2026-10-13"], [
+      creneau("c1", "2026-10-13", { heureDebut: "11:00", seanceId: "s1", prevu, minuteur: 20 }),
+      creneau("c2", "2026-10-13", { heureDebut: "13:30", prevu: "Rituels" }),
+    ], [seance("s1", "S")], [materiel("m1", "Le séquentiel", "s1", "sequentiel"), pyramides, meles, fiche("f3", "Autre — LINA, 13 oct.", "LINA")]);
+    expect(j.jours[0].creneaux[0].aides).toEqual([
+      { id: "m1", titre: "Le séquentiel", minuteur: 20 },
+      { id: "f1", titre: "Les pyramides de nombres — RACHID, 13 oct.", minuteur: 10 },
+      { id: "f2", titre: "Mots mêlés — ZENON, 13 oct.", minuteur: 0 },
+    ]);
+    // Une fiche que le prévu ne cite pas reste sur le bureau.
+    expect(j.jours[0].creneaux[1].aides).toEqual([]);
+  });
+
+  it("se reconnaissent à leur élève, et les tablettes lisent leur titre sans lui, comme le papier", () => {
+    expect([estUneFicheDEleve(pyramides), estUneFicheDEleve(materiel("m1", "x", null, "motsMeles"))]).toEqual([true, false]);
+    expect(estUneFicheDEleve({ ...pyramides, pdfsJson: "[]" })).toBe(false);
+    expect(fichesDuCreneau({ prevu }, [meles, pyramides]).map((m) => m.id)).toEqual(["f1", "f2"]);
+    expect(titreDeLAide(pyramides)).toBe("Les pyramides de nombres — RACHID, 13 oct.");
+    expect(titrePourLesTablettes(pyramides)).toBe("Les pyramides de nombres");
+  });
+
+  it("change de signature quand le minuteur d'une fiche change", () => {
+    const jours = ["2026-10-13"];
+    const c = [creneau("c1", "2026-10-13", { prevu })];
+    const sig = signatureDuJournal(journalDes(jours, c, [], [pyramides, meles]), [pyramides, meles]);
+    const plusLong = { ...pyramides, fabricationJson: (pyramides.fabricationJson ?? "").replace('"minuteur":10', '"minuteur":15') };
+    expect(signatureDuJournal(journalDes(jours, c, [], [plusLong, meles]), [plusLong, meles])).not.toBe(sig);
   });
 });

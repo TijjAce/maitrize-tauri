@@ -168,7 +168,11 @@
  .cj-tab-plus { margin-left:auto; display:flex; align-items:center; gap:4px; font-weight:600; color:var(--txt2); white-space:nowrap; }
  .cj-tab-aide { display:flex; align-items:center; gap:6px; margin-top:6px; font-size:14px; min-width:0; }
  .cj-tab-aide span { overflow:hidden; text-overflow:ellipsis; }
- .cj-tab .cj-aide { margin:6px 0 0; background:var(--card); }
+ /* Plusieurs aides sous un créneau : le titre sur sa ligne, puis le minuteur et le bouton. */
+ .cj-tab .cj-aide { margin:6px 0 0; background:var(--card); flex-wrap:wrap; row-gap:6px; }
+ .cj-tab .cj-aide-titre { flex-basis:100%; }
+ .cj-tab .cj-aide .btn-mini { margin-left:auto; }
+ .cj-aide-duree { flex:none; display:flex; align-items:center; gap:3px; font-size:13px; font-weight:600; color:var(--txt2); white-space:nowrap; }
  .carte .cj-tab .btn-plein { margin-top:8px; padding:11px 12px; font-size:15px; }
  .carte .cj-tab .btn-doux { padding:11px 12px; font-size:15px; background:var(--card); }
  .cj-tab-reste { display:block; margin-top:4px; text-align:center; font-size:34px; font-weight:700; font-variant-numeric:tabular-nums; }

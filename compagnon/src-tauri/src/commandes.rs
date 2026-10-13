@@ -1218,7 +1218,7 @@ mod tests {
         let journal = relais::Journal { publie: "2026-10-10T08:00:00".into(), jours: vec![relais::JourDuJournal {
             jour: "2026-10-12".into(),
             creneaux: vec![relais::CreneauDuJournal { id: "c1".into(), debut: "09:00".into(), fin: "10:00".into(),
-                aides: vec![relais::AideDuJournal { id: "aaaaaaaaaaaaaaaaaaaaaaaa".into(), titre: "Le séquentiel".into() }], ..Default::default() }],
+                aides: vec![relais::AideDuJournal { id: "aaaaaaaaaaaaaaaaaaaaaaaa".into(), titre: "Le séquentiel".into(), minuteur: 0 }], ..Default::default() }],
         }] };
         let j = super::jour_du(&journal, "2026-10-12", true);
         assert_eq!((j.creneaux.len(), j.publie.as_str(), j.frais), (1, "2026-10-10T08:00:00", true));

@@ -803,7 +803,8 @@ async function montrerAide(id, titre) {
       await garderLEcranAllume();
       suivreLePortail();
     }
-    portail = await invoke("portail_montrer", { id, titre: titre || aide.titre, html: aide.html, etapes: etapesDeLAide(aide.html) });
+    // Le titre de l'aide elle-même : celui d'une fiche d'élève ne porte ni l'élève ni le jour, comme le papier.
+    portail = await invoke("portail_montrer", { id, titre: aide.titre || titre, html: aide.html, etapes: etapesDeLAide(aide.html) });
   } catch (e) {
     portailSouci = String(e);
   }
@@ -828,7 +829,8 @@ function etapesDeLAide(html) {
 
 /**
  * Envoie aux tablettes ce qu'un créneau a prévu pour elles : son aide — celle
- * qu'on a touchée, s'il en a plusieurs — et le minuteur réglé sur
+ * qu'on a touchée, s'il en a plusieurs : une aide de sa séance, ou la
+ * consigne d'une fiche d'« En retard » — et le minuteur réglé pour elle sur
  * l'ordinateur, qui démarre aussitôt. Ce que les tablettes montraient avant
  * s'en va. Le portail s'ouvre s'il ne l'est pas : les tablettes qui gardent
  * sa page s'y reconnectent seules.
@@ -845,14 +847,15 @@ async function envoyerAuxTablettes(creneauId, aideId) {
     let aide = null;
     if (choisie) {
       const lue = await invoke("aide_lire", { id: choisie.id });
-      aide = { id: choisie.id, titre: choisie.titre || lue.titre, html: lue.html, etapes: etapesDeLAide(lue.html) };
+      aide = { id: choisie.id, titre: lue.titre || choisie.titre, html: lue.html, etapes: etapesDeLAide(lue.html) };
     }
     if (!portail.ouvert) {
       portail = await invoke("portail_ouvrir");
       await garderLEcranAllume();
       suivreLePortail();
     }
-    portail = await invoke("portail_envoyer", { creneau: c.id, aide, secondes: minutesDuCreneau(c) * 60 });
+    const minutes = choisie ? minutesDe(choisie) : minutesDuCreneau(c);
+    portail = await invoke("portail_envoyer", { creneau: c.id, aide, secondes: minutes * 60 });
     portailSouci = "";
   } catch (e) {
     envoiSouci = { creneau: creneauId, texte: String(e) };
@@ -862,8 +865,10 @@ async function envoyerAuxTablettes(creneauId, aideId) {
   }
 }
 
-/** Le minuteur qu'un créneau envoie, en minutes : 0 sans minuteur. */
-const minutesDuCreneau = (c) => Math.max(0, Math.round(Number(c.minuteur) || 0));
+/** Un minuteur, en minutes : 0 sans minuteur. */
+const minutesDe = (x) => Math.max(0, Math.round(Number(x.minuteur) || 0));
+/** Le minuteur qu'un créneau envoie seul, sans aide. */
+const minutesDuCreneau = minutesDe;
 
 /** Ouvre le portail sans rien y montrer : le minuteur seul, au tableau ou sur les tablettes. */
 async function ouvrirLePortail() {
@@ -1351,20 +1356,21 @@ function envoiDuCreneau(c) {
   }
   const occupe = envoiCreneau ? "disabled" : "";
   const enCours = envoiCreneau === c.id;
-  const tete = `<div class="cj-tab-tete">${icone("tablette", "petit")}<span>Sur les tablettes</span>
-    ${minutes ? `<span class="cj-tab-plus">${icone("horloge", "petit")}${dureeLisible(minutes)}</span>` : ""}</div>`;
+  const tete = (m) => `<div class="cj-tab-tete">${icone("tablette", "petit")}<span>Sur les tablettes</span>
+    ${m ? `<span class="cj-tab-plus">${icone("horloge", "petit")}${dureeLisible(m)}</span>` : ""}</div>`;
   if (aides.length > 1) {
-    // Plusieurs aides : on choisit celle qui part, le minuteur part avec.
-    return `<div class="cj-tab">${tete}
+    // Plusieurs aides — celles de la séance, les fiches des élèves : on choisit celle qui part, son minuteur part avec.
+    return `<div class="cj-tab">${tete(0)}
       ${aides.map((a) => `<div class="cj-aide">
         <span class="cj-aide-titre">${icone("liste", "petit")}<span>${echapper(a.titre)}</span></span>
+        ${minutesDe(a) ? `<span class="cj-aide-duree">${icone("horloge", "petit")}${dureeLisible(minutesDe(a))}</span>` : ""}
         <button class="btn-mini" data-envoyer-creneau="${echapper(c.id)}" data-aide="${echapper(a.id)}" ${occupe}>${enCours ? "Envoi…" : "Envoyer"}</button>
       </div>`).join("")}
       ${souciIci}
     </div>`;
   }
   const aide = aides[0];
-  return `<div class="cj-tab">${tete}
+  return `<div class="cj-tab">${tete(aide ? minutesDe(aide) : minutes)}
     ${aide ? `<div class="cj-tab-aide">${icone("liste", "petit")}<span>${echapper(aide.titre)}</span></div>` : ""}
     <button class="btn-plein" data-envoyer-creneau="${echapper(c.id)}" data-aide="${aide ? echapper(aide.id) : ""}" ${occupe}>
       ${icone(aide ? "tablette" : "horloge")}${enCours ? "Envoi…" : aide ? "Envoyer aux tablettes" : "Lancer le minuteur"}</button>
