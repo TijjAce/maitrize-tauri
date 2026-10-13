@@ -12,10 +12,16 @@
 // sont réalisées » —, de plus en plus élaborés jusqu'au ton des dialogues
 // en fin de CE2. Les phrases s'écrivent une par ligne ; une barre « | »
 // sépare les groupes de souffle.
+//
+// Les signes — l'arc de la liaison, les barres des pauses, les flèches de
+// l'intonation, la marque des groupes de souffle — sont ceux du code de la
+// classe, que l'enseignant choisit dans Aides à la tâche (voir
+// codeDeLaLecture.ts) : la feuille, ses consignes et ses rappels le suivent.
 
 import { escapeHtml } from "./print";
 import { feuille } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
+import { CODE_LECTURE_PAR_DEFAUT, codeLectureActuel, enCouleur, groupeMarque, nomDuSigne, signe, type CodeDeLaLecture } from "./codeDeLaLecture";
 
 export type Classe = "CP" | "CE1" | "CE2";
 export type ExerciceVoixHaute = "liaisons" | "ponctuation" | "lignes" | "souffle" | "grille" | "fable";
@@ -115,9 +121,9 @@ export function phrasesDe(r: Pick<ReglagesVoixHaute, "phrases" | "classe" | "com
 }
 
 /** La phrase avec ses liaisons codées : « Les‿endives sont‿amères. » */
-export function avecLiaisons(phrase: string, coder: boolean): string {
+export function avecLiaisons(phrase: string, coder: boolean, code: CodeDeLaLecture = CODE_LECTURE_PAR_DEFAUT): string {
   const mots = phrase.replace(/\s*\|\s*/g, " ").split(/\s+/).filter(Boolean);
-  return mots.map((m, i) => escapeHtml(m) + (i < mots.length - 1 ? (coder && liaison(m, mots[i + 1]) ? '<span class="vh-liaison">‿</span>' : " ") : "")).join("");
+  return mots.map((m, i) => escapeHtml(m) + (i < mots.length - 1 ? (coder && liaison(m, mots[i + 1]) ? signe(code, "liaison", "vh-liaison") : " ") : "")).join("");
 }
 
 /** Les liaisons d'une phrase, pour le corrigé : « petit‿éléphant ». */
@@ -127,41 +133,61 @@ export const liaisonsDe = (phrase: string) => {
 };
 
 /** La ponctuation qui se voit, et ce qu'elle fait faire à la voix : une pause, un arrêt, une montée. */
-function avecPonctuation(phrase: string, coder: boolean): string {
+function avecPonctuation(phrase: string, coder: boolean, code: CodeDeLaLecture): string {
   const texte = escapeHtml(phrase.replace(/\s*\|\s*/g, " "));
   if (!coder) return texte;
+  const ton = (p: string) => signe(code, p === "?" ? "tonMonte" : p === "!" ? "exclamation" : "tonDescend", "vh-ton");
   return texte
-    .replace(/,/g, ',<span class="vh-pause">/</span>')
-    .replace(/([.!?])(\s|$|&raquo;|»)/g, (_m, p, apres) => `${p}<span class="vh-pause">//</span>${p === "?" ? '<span class="vh-ton">↗</span>' : p === "!" ? '<span class="vh-ton">!</span>' : '<span class="vh-ton">↘</span>'}${apres}`);
+    .replace(/,/g, `,${signe(code, "pauseCourte", "vh-pause")}`)
+    .replace(/([.!?])(\s|$|&raquo;|»)/g, (_m, p, apres) => `${p}${signe(code, "pauseLongue", "vh-pause")}${ton(p)}${apres}`);
 }
 
-/** Les groupes de souffle : un arc sous chaque groupe ; sinon, la phrase entière, à découper. */
-function avecSouffle(phrase: string, coder: boolean): string {
+/** Les groupes de souffle : chacun marqué selon le code ; sinon, la phrase entière, à découper. */
+function avecSouffle(phrase: string, coder: boolean, code: CodeDeLaLecture): string {
   const groupes = phrase.split("|").map((g) => g.trim()).filter(Boolean);
   if (!coder) return escapeHtml(groupes.join(" "));
-  return groupes.map((g) => `<span class="vh-groupe">${escapeHtml(g)}</span>`).join(" ");
+  return groupes.map((g) => groupeMarque(code, g)).join(" ");
 }
 
-const CONSIGNES: Record<ExerciceVoixHaute, [string, string]> = {
-  liaisons: ["Lis les phrases en faisant entendre les liaisons codées.",
-    "Repère les mots qui se terminent par une consonne et sont suivis d'un mot qui commence par une voyelle. Code la liaison avec un arc ‿, puis lis la phrase en la faisant entendre."],
-  ponctuation: ["Lis les phrases en respectant les pauses et l'intonation.",
-    "Entoure les signes de ponctuation. Mets une barre / après chaque virgule et deux barres // après chaque point. Lis en respectant les pauses et l'intonation."],
-  lignes: ["Lis chaque phrase jusqu'au point, sans t'arrêter au bout de la ligne.",
-    "Ces phrases sont écrites sur plusieurs lignes. Lis-les sans t'arrêter au bout de la ligne : on ne s'arrête qu'au point."],
-  souffle: ["Lis chaque groupe d'un seul souffle, sans t'arrêter au milieu.",
-    "Découpe chaque phrase en groupes de mots qui vont ensemble : trace une barre entre les groupes. Lis chaque groupe d'un seul souffle."],
-  grille: ["", ""],
-  fable: ["", ""],
-};
+/** Ce que l'élève trace pour marquer un groupe de souffle, selon le code. */
+function tracerLesGroupes(code: CodeDeLaLecture): string {
+  const couleur = enCouleur(code, "groupeSouffle");
+  switch (code.groupeSouffle.forme) {
+    case "souligne": return `Souligne${couleur} chaque groupe de mots qui vont ensemble.`;
+    case "crochets": return `Mets chaque groupe de mots qui vont ensemble entre crochets${couleur}.`;
+    case "entoure": return `Entoure${couleur} chaque groupe de mots qui vont ensemble.`;
+    default: return `Trace un arc${couleur} sous chaque groupe de mots qui vont ensemble.`;
+  }
+}
+
+/** La consigne, selon que les phrases sont déjà codées ou que l'élève les code — avec les signes du code. */
+function consigneDe(exercice: ExerciceVoixHaute, aCoder: boolean, code: CodeDeLaLecture): string {
+  switch (exercice) {
+    case "liaisons": return aCoder
+      ? `Repère les mots qui se terminent par une consonne et sont suivis d'un mot qui commence par une voyelle. Code la liaison avec ${nomDuSigne(code, "liaison")}, puis lis la phrase en la faisant entendre.`
+      : "Lis les phrases en faisant entendre les liaisons codées.";
+    case "ponctuation": return aCoder
+      ? `Entoure les signes de ponctuation. Mets ${nomDuSigne(code, "pauseCourte")} après chaque virgule et ${nomDuSigne(code, "pauseLongue")} après chaque point. Lis en respectant les pauses et l'intonation.`
+      : "Lis les phrases en respectant les pauses et l'intonation.";
+    case "lignes": return "Lis chaque phrase jusqu'au point, sans t'arrêter au bout de la ligne.";
+    case "souffle": return aCoder
+      ? `${tracerLesGroupes(code)} Lis chaque groupe d'un seul souffle.`
+      : "Lis chaque groupe d'un seul souffle, sans t'arrêter au milieu.";
+    default: return "";
+  }
+}
 
 /** Ce que dit le code des phrases déjà codées : un rappel, à part de la consigne (voir optionsFeuille). */
-const CODES: Partial<Record<ExerciceVoixHaute, string>> = {
-  liaisons: "La liaison codée ‿ : la consonne finale se lit avec la voyelle du mot suivant.",
-  ponctuation: "Une barre : une petite pause ; deux barres : je m'arrête. La flèche montre l'intonation : la voix descend au point, elle monte à la question.",
-  lignes: "La flèche ↪ montre que la phrase continue sur la ligne suivante.",
-  souffle: "Chaque arc montre un groupe de souffle.",
-};
+function rappelDuCode(exercice: ExerciceVoixHaute, code: CodeDeLaLecture): string {
+  switch (exercice) {
+    case "liaisons": return `La liaison codée ${signe(code, "liaison")} : la consonne finale se lit avec la voyelle du mot suivant.`;
+    case "ponctuation": return `${signe(code, "pauseCourte")} : une petite pause ; ${signe(code, "pauseLongue")} : je m'arrête. `
+      + `${signe(code, "tonDescend")} : la voix descend au point ; ${signe(code, "tonMonte")} : elle monte à la question ; ${signe(code, "exclamation")} : je mets le ton.`;
+    case "lignes": return `${signe(code, "suite")} montre que la phrase continue sur la ligne suivante.`;
+    case "souffle": return `Chaque ${groupeMarque(code, "groupe")} se lit d'un seul souffle.`;
+    default: return "";
+  }
+}
 
 /** Les critères de la grille, de plus en plus élaborés du CP au CE2. */
 export const CRITERES: Record<Classe, string[]> = {
@@ -206,32 +232,33 @@ const VOIX: Record<"N" | "G" | "S" | "F", { nom: string; couleur: string }> = {
 };
 
 /** Le texte partition de la fable : chaque voix à sa couleur, une marge pour les indications de lecture. */
-function feuilleFable(): string {
+function feuilleFable(code: CodeDeLaLecture): string {
   const legende = Object.values(VOIX).map((v) => `<span style="color:${v.couleur}">■ ${v.nom}</span>`).join(" ");
   const vers = FABLE.map((morceaux, i) => `<tr><td class="vh-num">${i + 1}</td><td class="vh-vers">${morceaux.map((m) => `<span style="color:${VOIX[m.voix].couleur}">${escapeHtml(m.texte)}</span>`).join(" ")}</td><td class="vh-marge"></td></tr>`).join("");
   return `<div class="page"><div class="titre">La Grenouille qui se veut faire aussi grosse que le Bœuf — le texte partition</div>
     <div class="sous">Prénom : ........................................ Date : ........................</div>
-    <div class="regle">Chaque voix a sa couleur. Dans la marge, écris tes indications de lecture : plus fort, plus vite, une pause, une voix qui se moque… Code aussi les liaisons ‿ et les pauses /. <span style="color:#687087">— Jean de La Fontaine, Fables, I, 3.</span> <span class="reference">Livret Français CE2, Éduscol.</span></div>
+    <div class="regle">Chaque voix a sa couleur. Dans la marge, écris tes indications de lecture : plus fort, plus vite, une pause, une voix qui se moque… Code aussi les liaisons ${signe(code, "liaison")} et les pauses ${signe(code, "pauseCourte")}. <span style="color:#687087">— Jean de La Fontaine, Fables, I, 3.</span> <span class="reference">Livret Français CE2, Éduscol.</span></div>
     <div class="vh-legende">${legende}</div>
     <table class="vh-fable"><tr><th></th><th>La fable</th><th>Mes indications</th></tr>${vers}</table></div>`;
 }
 
-export function htmlVoixHaute(r: ReglagesVoixHaute, graine: number): string {
+export function htmlVoixHaute(r: ReglagesVoixHaute, graine: number, code: CodeDeLaLecture = codeLectureActuel()): string {
   if (r.exercice === "grille") return feuille(feuilleGrille(r), "vh");
-  if (r.exercice === "fable") return feuille(feuilleFable(), "vh");
+  if (r.exercice === "fable") return feuille(feuilleFable(code), "vh");
   const liste = phrasesDe(r, graine);
-  const rendu = (p: string, coder: boolean) => (r.exercice === "liaisons" ? avecLiaisons(p, coder)
-    : r.exercice === "ponctuation" ? avecPonctuation(p, coder)
-      : r.exercice === "souffle" ? avecSouffle(p, coder)
+  const rendu = (p: string, coder: boolean) => (r.exercice === "liaisons" ? avecLiaisons(p, coder, code)
+    : r.exercice === "ponctuation" ? avecPonctuation(p, coder, code)
+      : r.exercice === "souffle" ? avecSouffle(p, coder, code)
         : escapeHtml(p.replace(/\s*\|\s*/g, " ")));
+  const suite = signe(code, "suite", "vh-suite");
   const ligne = (p: string, i: number, coder: boolean) => (r.exercice === "lignes"
-    ? `<div class="vh-etroite"><b>${i + 1}.</b> ${rendu(p, false).split(" ").map((m, k, t) => (k > 0 && k % 4 === 0 ? `${coder ? '<span class="vh-suite">↪</span>' : ""}<br>${m}` : m) + (k < t.length - 1 && (k + 1) % 4 !== 0 ? " " : "")).join("")}</div>`
+    ? `<div class="vh-etroite"><b>${i + 1}.</b> ${rendu(p, false).split(" ").map((m, k, t) => (k > 0 && k % 4 === 0 ? `${coder ? suite : ""}<br>${m}` : m) + (k < t.length - 1 && (k + 1) % 4 !== 0 ? " " : "")).join("")}</div>`
     : `<div class="vh-phrase"><b>${i + 1}.</b> ${rendu(p, coder)}</div>`);
   const titre = EXERCICES_VOIX_HAUTE.find((e) => e.id === r.exercice)!.libelle;
-  const [consigneCodee, consigneACoder] = CONSIGNES[r.exercice];
   const aCoder = !r.codees && r.exercice !== "lignes";
+  const rappel = aCoder ? "" : rappelDuCode(r.exercice, code);
   const tete = `<div class="titre">Lire à voix haute — ${titre.toLowerCase()}</div><div class="sous">Prénom : ........................................ Date : ........................</div>
-    ${!aCoder && CODES[r.exercice] ? `<div class="rappel">${CODES[r.exercice]}</div>` : ""}<div class="regle">${aCoder ? consigneACoder : consigneCodee} <span class="reference">Livrets Français CP et CE1, Éduscol.</span></div>`;
+    ${rappel ? `<div class="rappel">${rappel}</div>` : ""}<div class="regle">${consigneDe(r.exercice, aCoder, code)} <span class="reference">Livrets Français CP et CE1, Éduscol.</span></div>`;
   const page = `<div class="page">${tete}<div class="vh-liste">${liste.map((p, i) => ligne(p, i, !aCoder)).join("")}</div></div>`;
   const corrige = aCoder ? `<div class="page corrige"><div class="titre">Lire à voix haute — corrigé</div><div class="vh-liste">${liste.map((p, i) => ligne(p, i, true)).join("")}</div></div>` : "";
   return feuille(page + corrige, "vh");
@@ -241,12 +268,12 @@ export const STYLE_VOIX_HAUTE = `
   .feuille.vh .vh-liste { display: block; }
   .feuille.vh .vh-phrase { font-size: 22px; line-height: 2.3; margin-bottom: 3mm; page-break-inside: avoid; break-inside: avoid; }
   .feuille.vh .vh-phrase b, .feuille.vh .vh-etroite b { font-size: 13px; color: #687087; margin-right: 2mm; }
-  .feuille.vh .vh-liaison { color: #d33a32; font-weight: 800; font-size: 26px; margin: 0 -1px; }
-  .feuille.vh .vh-pause { color: #2454e6; font-weight: 800; margin: 0 1.5mm; }
-  .feuille.vh .vh-ton { color: #d33a32; font-weight: 800; margin-right: 1.5mm; }
-  .feuille.vh .vh-groupe { border-bottom: 2.5px solid #2454e6; border-radius: 0 0 14px 14px; padding: 0 2px 3px; margin-right: 2mm; }
+  .feuille.vh .vh-liaison { font-size: 26px; margin: 0 -1px; }
+  .feuille.vh .vh-pause { margin: 0 1.5mm; }
+  .feuille.vh .vh-ton { margin-right: 1.5mm; }
+  .feuille.vh .vh-groupe { margin-right: 2mm; }
   .feuille.vh .vh-etroite { width: 70mm; font-size: 20px; line-height: 1.9; margin: 0 0 6mm; page-break-inside: avoid; break-inside: avoid; border-left: 2px solid #c4c9d6; padding-left: 3mm; }
-  .feuille.vh .vh-suite { color: #d33a32; font-weight: 800; margin-left: 1.5mm; }
+  .feuille.vh .vh-suite { margin-left: 1.5mm; }
   .feuille.vh .vh-grille { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 3mm; }
   .feuille.vh .vh-grille th, .feuille.vh .vh-grille td { border: 1px solid #1c2233; padding: 3mm 2mm; text-align: center; }
   .feuille.vh .vh-grille td.vh-critere { text-align: left; width: 42%; font-weight: 600; }

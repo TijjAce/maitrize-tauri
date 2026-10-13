@@ -439,7 +439,7 @@ export const STYLE_CODE_PHRASE = `
   .feuille.cp .cp-court { line-height: 2.2; }
   .feuille.cp .cp-indice { color: #4a5168; line-height: 1.35; }
   /* Quatre cartes par page : deux par rangée. */
-  .feuille.cp-cartes.cp-par4 .cp-planche { grid-template-columns: 1fr 1fr; grid-auto-rows: 128mm; }
+  .feuille.cp-cartes.cp-par4 .cp-planche { grid-template-columns: 1fr 1fr; grid-auto-rows: 124mm; }
   .feuille.cp-cartes.cp-par4 .cp-titre { font-size: 17px; }
   .feuille.cp-cartes.cp-par4 .cp-famille { font-size: 10px; }
   .feuille.cp-cartes.cp-par4 .cp-exemple { font-size: 18px; }
@@ -447,7 +447,7 @@ export const STYLE_CODE_PHRASE = `
   .feuille.cp-cartes.cp-par4 .cp-court { font-size: 13px; }
   .feuille.cp-cartes.cp-par4 .cp-indice { font-size: 12px; }
   /* Deux cartes par page, sur toute la largeur : les lignes sur deux colonnes. */
-  .feuille.cp-cartes.cp-par2 .cp-planche { grid-template-columns: 1fr; grid-auto-rows: 128mm; }
+  .feuille.cp-cartes.cp-par2 .cp-planche { grid-template-columns: 1fr; grid-auto-rows: 124mm; }
   .feuille.cp-cartes.cp-par2 .cp-lignes, .feuille.cp-par1 .cp-lignes { grid-template-columns: 1fr 1fr; }
   .feuille.cp-cartes.cp-par2 .cp-titre { font-size: 16px; }
   .feuille.cp-cartes.cp-par2 .cp-famille { font-size: 9.5px; }
@@ -457,7 +457,7 @@ export const STYLE_CODE_PHRASE = `
   .feuille.cp-cartes.cp-par2 .cp-indice { font-size: 10.5px; }
   /* Le bandeau : la largeur de la table. */
   .feuille.cp-bandeau.cp-par3 .cp-planche { grid-template-columns: 1fr; grid-auto-rows: 84mm; }
-  .feuille.cp-bandeau.cp-par2 .cp-planche { grid-template-columns: 1fr; grid-auto-rows: 128mm; }
+  .feuille.cp-bandeau.cp-par2 .cp-planche { grid-template-columns: 1fr; grid-auto-rows: 124mm; }
   .feuille.cp-bandeau .cp-lignes { grid-template-columns: repeat(3, 1fr); }
   .feuille.cp-bandeau .cp-titre { font-size: 15px; }
   .feuille.cp-bandeau .cp-famille { font-size: 9.5px; }
@@ -466,7 +466,7 @@ export const STYLE_CODE_PHRASE = `
   .feuille.cp-bandeau .cp-court { font-size: 11px; line-height: 1.7; }
   .feuille.cp-bandeau .cp-indice { font-size: 10px; }
   /* Une seule carte, ou l'affiche : la page entière. */
-  .feuille.cp-par1 .cp-planche { grid-template-columns: 1fr; grid-auto-rows: 262mm; }
+  .feuille.cp-par1 .cp-planche { grid-template-columns: 1fr; grid-auto-rows: 250mm; }
   .feuille.cp-cartes.cp-par1 .cp-titre, .feuille.cp-bandeau.cp-par1 .cp-titre { font-size: 18px; }
   .feuille.cp-cartes.cp-par1 .cp-exemple, .feuille.cp-bandeau.cp-par1 .cp-exemple { font-size: 17px; }
   .feuille.cp-cartes.cp-par1 .cp-echantillon, .feuille.cp-bandeau.cp-par1 .cp-echantillon { font-size: 14px; }

@@ -18,6 +18,10 @@ import {
   type CodeDeLaPhrase, type FamilleCode, type IdConstituant, type Marque, type MarqueDuConstituant, type ReglagesCarteCode,
 } from "../codeDeLaPhrase";
 import {
+  CLE_CODE_LECTURE, CODE_LECTURE_PAR_DEFAUT, FORMATS_CARTE_LECTURE, REGLAGES_CARTE_LECTURE, SIGNES, STYLE_CODE_LECTURE, groupeMarque,
+  htmlCodeDeLaLecture, lireCodeLecture, reglagesCarteLectureSurs, signe, type CodeDeLaLecture, type IdSigne, type ReglagesCarteLecture,
+} from "../codeDeLaLecture";
+import {
   CHAINAGES, ETAPES_SEQUENTIEL_MAX, EXEMPLES_RESOLUTION, FORMES_SEQUENTIEL, MODELES_PAROLE, MOTS_PAROLE_MAX, NIVEAUX_RESOLUTION,
   REGLAGES_FONCTION, REGLAGES_MODELISATION, REGLAGES_PAROLE, REGLAGES_RESOLUTION, REGLAGES_SEQUENTIEL, STYLE_AIDES, STYLE_PAROLE,
   etapesDeLaFiche, htmlFonction, htmlModelisation, htmlPriseDeParole, htmlResolution, htmlSequentiel, motsDeLaParole, modeleParole,
@@ -335,6 +339,73 @@ export function CodePhraseTab() {
         <Boutons onImprimer={sortie.imprimer} onBureau={sortie.bureau} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_CODE_PHRASE} />}
+    />
+  );
+}
+
+// ── Le code de la lecture à voix haute ─────────────────────────────────────
+
+export function CodeLectureTab() {
+  const [brutCode, majCode] = useReglages<CodeDeLaLecture>(CLE_CODE_LECTURE, CODE_LECTURE_PAR_DEFAUT);
+  const code = React.useMemo(() => lireCodeLecture(brutCode), [brutCode]);
+  const [brut, maj] = useReglages<ReglagesCarteLecture>("codeLectureCarte", REGLAGES_CARTE_LECTURE);
+  const r = React.useMemo(() => reglagesCarteLectureSurs(brut), [brut]);
+  const html = React.useMemo(() => htmlCodeDeLaLecture(code, r), [code, r]);
+  const sortie = useSortie("codeLecture", "Le code de la lecture à voix haute", async () => ({ html, style: STYLE_CODE_LECTURE }));
+  const changer = (id: IdSigne, x: Partial<CodeDeLaLecture[IdSigne]>) => majCode({ [id]: { ...code[id], ...x } });
+  const basculer = (id: IdSigne) => maj({ caches: r.caches.includes(id) ? r.caches.filter((x) => x !== id) : [...r.caches, id] });
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Le code de la lecture à voix haute
+          <Aide titre="Le code de la lecture à voix haute" vers="droite">
+            <p>{"Comme le code de la phrase pour la grammaire : les signes que l'élève trace pour préparer sa lecture — la liaison, les pauses, l'intonation, les groupes de souffle —, choisis une fois pour toute la classe. La carte du code les montre à l'élève ; les feuilles « Lire à voix haute » les reprennent dans leurs phrases, leurs consignes et leurs rappels."}</p>
+            <p>{"Les livrets de français CP (2025) et CE1 (2026) d'Éduscol, focus « Fluence et lecture à voix haute », demandent de coder pour penser à faire la liaison, puis font travailler la ponctuation et l'intonation, la phrase sur plusieurs lignes, les groupes de souffle. Ils ne fixent ni signe ni couleur : le code proposé reprend ceux de nos feuilles."}</p>
+            <p>{"La couleur n'est jamais seule : chaque signe a sa forme, lisible photocopiée en noir et blanc. « Tout en noir » le montre."}</p>
+          </Aide>
+        </h3>
+        {SIGNES.map((s) => (
+          <div key={s.id} className={`cp-reglage${r.caches.includes(s.id) ? " cp-cache" : ""}`}>
+            <div className="cp-reglage-tete">
+              <span className="cp-reglage-nom">
+                <span dangerouslySetInnerHTML={{ __html: s.id === "groupeSouffle" ? groupeMarque(code, "le groupe") : signe(code, s.id) }} /> {s.libelle}
+              </span>
+              <label className="cp-sur-carte" title="Laisser sur la carte, ou l'en retirer : le code reste le même pour les feuilles">
+                <input type="checkbox" checked={!r.caches.includes(s.id)} onChange={() => basculer(s.id)} /> sur la carte
+              </label>
+            </div>
+            <div className="cp-reglage-choix">
+              <div className="cp-couleurs" role="radiogroup" aria-label={`La couleur : ${s.libelle.toLowerCase()}`}>
+                {COULEURS.map((k) => (
+                  <button key={k.id} type="button" role="radio" aria-checked={code[s.id].couleur === k.id} aria-label={k.nom} title={k.nom}
+                    className={`cp-pastille${code[s.id].couleur === k.id ? " active" : ""}`} style={{ background: k.hex }}
+                    onClick={() => changer(s.id, { couleur: k.id })} />
+                ))}
+              </div>
+              <Select value={code[s.id].forme} aria-label={`Le signe : ${s.libelle.toLowerCase()}`} onChange={(e) => changer(s.id, { forme: e.target.value })}>
+                {s.formes.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
+              </Select>
+            </div>
+          </div>
+        ))}
+        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 6 }}>
+          <button type="button" className="lien" onClick={() => majCode(CODE_LECTURE_PAR_DEFAUT)}>↺ Reprendre le code proposé</button>
+          <button type="button" className="lien" title="Les mêmes signes, tous en noir : la feuille photocopiée se lit pareil"
+            onClick={() => majCode(Object.fromEntries(Object.entries(code).map(([id, x]) => [id, { ...x, couleur: "noir" }])) as CodeDeLaLecture)}>Tout en noir, pour la photocopie</button>
+        </div>
+        <Field label="La carte">
+          <div className="seg">
+            {FORMATS_CARTE_LECTURE.map((f) => (
+              <button key={f.id} type="button" className={r.format === f.id ? "active" : ""} title={f.quoi} onClick={() => maj({ format: f.id })}>{f.nom}</button>
+            ))}
+          </div>
+        </Field>
+        <Coche on={r.voix} libelle="Ce que fait la voix, sous chaque signe : « Je fais une petite pause »…" onChange={(v) => maj({ voix: v })} />
+        <p className="meta" style={{ fontSize: 12.5, margin: "8px 0 0" }}>Ce code sert aussi aux feuilles « Lire à voix haute » : leurs phrases codées, leurs consignes et leurs rappels le suivent.</p>
+        <Boutons onImprimer={sortie.imprimer} onBureau={sortie.bureau} />
+      </>}
+      droite={<ApercuFeuille html={html} style={STYLE_CODE_LECTURE} />}
     />
   );
 }
