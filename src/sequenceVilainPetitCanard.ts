@@ -12,6 +12,7 @@
 
 import { api, anneeScolaireActuelle, couleurPourMatiere, newId, nowIso, type Sequence } from "./api";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
+import type { PlanDesFeuilles } from "./feuillesDesSequences";
 import { STYLE_FEUILLE } from "./cartesImprimables";
 import { demarcheDe, seancesDuCadre } from "./demarches";
 import { DEMARCHE_VPC } from "./demarchesVilainPetitCanard";
@@ -21,6 +22,28 @@ import { noteDuMaterielDesCompetences } from "./materielDeClasse";
 import type { Images } from "./supportsVisuels";
 import { chargerVacances, periodeDuJour } from "./vacances";
 import { NIVEAUX_VPC, feuillesDeLaSequence, materielDesSeances, type NiveauVpc } from "./vilainPetitCanard";
+
+/** Le niveau d'une démarche du Vilain Petit Canard ; rien pour une autre démarche. */
+export const niveauDeLaDemarche = (id: string): NiveauVpc | null => (id === DEMARCHE_VPC.MS ? "MS" : id === DEMARCHE_VPC.GS ? "GS" : null);
+
+/**
+ * Les feuilles et le matériel de la séquence, pour la fiche d'une séquence
+ * qu'on crée depuis sa compétence : les mêmes que depuis l'atelier, chacune
+ * dans sa séance, avec ce qu'il faut pour la refaire dans son atelier. Les
+ * images sont celles de la séquence (`IDS_VPC`), déjà chargées.
+ */
+export function planDuVilainPetitCanard(n: NiveauVpc, images: Images): PlanDesFeuilles {
+  return {
+    feuilles: feuillesDeLaSequence(n).map((f) => ({
+      seance: f.seance, atelier: f.atelier, titre: f.titre,
+      fabriquer: (graine: number) => {
+        const { html, style, memoires } = f.fabriquer(images, hasard(graine));
+        return { html, style: STYLE_FEUILLE + style, refaire: memoires };
+      },
+    })),
+    materiel: materielDesSeances(n),
+  };
+}
 
 /** Le titre proposé : « Le Vilain Petit Canard : les émotions et la naissance (MS) ». */
 export const titreDeLaSequence = (n: NiveauVpc) =>

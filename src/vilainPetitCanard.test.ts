@@ -24,10 +24,13 @@ vi.mock("./vacances", () => ({ chargerVacances: async () => [], periodeDuJour: (
 
 import { cequiManque as manqueCategoriser, type ReglagesCategoriser } from "./categoriser";
 import { cequiManque as manqueSuites, type ReglagesSuites } from "./suitesImages";
-import { DEBUT_OBJECTIF_SEANCE, demarcheDe } from "./demarches";
+import { DEBUT_OBJECTIF_SEANCE, demarcheDe, demarchesPour } from "./demarches";
 import { DEMARCHE_VPC } from "./demarchesVilainPetitCanard";
 import { hasard } from "./hasard";
-import { creerLaSequenceDuVilainPetitCanard, objectifsDeLaSequence, titreDeLaSequence } from "./sequenceVilainPetitCanard";
+import {
+  creerLaSequenceDuVilainPetitCanard, niveauDeLaDemarche, objectifsDeLaSequence, planDuVilainPetitCanard, titreDeLaSequence,
+} from "./sequenceVilainPetitCanard";
+import { STYLE_FEUILLE } from "./cartesImprimables";
 import {
   FAMILLES_DE_L_HISTOIRE, IDS_VPC, LIEUX, PERSONNAGES, P, PETITS_PAR_FAMILLE, decomposition, feuillesDeLaSequence, materielDesSeances, universEtIntrus,
   type NiveauVpc,
@@ -156,6 +159,32 @@ describe("la séquence du Vilain Petit Canard, d'après le guide du vocabulaire 
     expect(nomDeLaDecoration(["vagues", "vagues"])).toBe("des vagues");
     expect(nomDeLaDecoration(["boucles", "points", "boucles"])).toBe("des boucles et des points");
     expect(nomDeLaDecoration([null, null, null])).toBe("ma décoration, que j'invente");
+  });
+
+  it("se propose à côté de « Catégoriser les mots », pour la même compétence, en MS et en GS", () => {
+    const competence = (niveau: string) => ({ domaineTitre: "1. Mobiliser le langage dans toutes ses dimensions", sousDomaineTitre: "Acquérir le langage oral",
+      competenceTitre: "Organiser les mots en catégorie et en réseau", niveau });
+    const ids = (niveau: string) => demarchesPour(competence(niveau), "Cycle 1 — Programme 2025").map((d) => d.id);
+    expect(ids("GS")).toEqual(["categoriser-maternelle", DEMARCHE_VPC.GS]);
+    expect(ids("MS")).toEqual(["categoriser-maternelle", DEMARCHE_VPC.MS]);
+    expect(ids("PS")).toEqual(["categoriser-maternelle"]);
+    // Une autre compétence n'en a qu'un.
+    expect(demarchesPour({ ...competence("GS"), competenceTitre: "Constituer une collection d'un cardinal donné" }, "Cycle 1").length).toBe(1);
+    expect(niveauDeLaDemarche(DEMARCHE_VPC.MS)).toBe("MS");
+    expect(niveauDeLaDemarche("categoriser-maternelle")).toBeNull();
+  });
+
+  it("donne à la fiche d'une séquence créée depuis sa compétence les mêmes feuilles et le même matériel que l'atelier", () => {
+    for (const n of NIVEAUX) {
+      const plan = planDuVilainPetitCanard(n, IMAGES);
+      const feuilles = feuillesDeLaSequence(n);
+      expect(plan.feuilles.map((f) => [f.seance, f.atelier, f.titre]), n).toEqual(feuilles.map((f) => [f.seance, f.atelier, f.titre]));
+      expect(plan.materiel, n).toEqual(materielDesSeances(n));
+      const intrus = plan.feuilles.find((f) => f.titre === "L'intrus")!.fabriquer(4);
+      expect(intrus.style.startsWith(STYLE_FEUILLE), n).toBe(true);
+      expect(intrus.refaire?.categoriser, n).toMatchObject({ forme: "intrus", niveau: n });
+      expect(intrus.html, n).toContain('class="page');
+    }
   });
 
   it("se nomme et vise ce que dit le guide, à chaque niveau", () => {

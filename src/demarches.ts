@@ -114,6 +114,12 @@ export interface Demarche {
   /** Ce qu'elle fait, en une phrase. */
   resume: string;
   seances: SeanceCadre[];
+  /**
+   * La compétence qu'elle sert quand ce n'est pas elle qu'on propose d'abord :
+   * on la montre à côté, au choix — le Vilain Petit Canard à côté de
+   * « Catégoriser les mots ». Les mots de l'intitulé, et les niveaux.
+   */
+  visee?: { intitule: RegExp; niveaux?: string[] };
 }
 
 /** Les colonnes du tableau de déroulement, celles que l'éditeur propose déjà. */
@@ -2196,6 +2202,21 @@ export function demarcheSuggeree(cible: CibleDemarche | string, referentielNom =
   return demarcheDe(idSuggere(plat(c.domaineTitre), plat(c.sousDomaineTitre), plat(c.competenceTitre), plat(referentielNom), plat(c.niveau), periode,
     plat(c.competenceGeneraleTitre)))
     ?? DEMARCHES[0];
+}
+
+/**
+ * Les démarches qui servent une compétence : celle qu'on propose d'abord,
+ * puis les autres séquences bâties pour elle (voir `visee`). Quand il y en a
+ * plusieurs, la fiche de la séquence les montre côte à côte, et l'on choisit
+ * d'un clic (demande de l'enseignant, octobre 2026).
+ */
+export function demarchesPour(cible: CibleDemarche, referentielNom = "", periode = 0): Demarche[] {
+  const premiere = demarcheSuggeree(cible, referentielNom, periode);
+  const intitule = cible.competenceTitre ?? "";
+  const niveau = (cible.niveau ?? "").trim().toUpperCase();
+  const autres = DEMARCHES.filter((d) => d !== premiere && d.visee && d.visee.intitule.test(intitule)
+    && (!d.visee.niveaux || d.visee.niveaux.includes(niveau)));
+  return [premiere, ...autres];
 }
 
 function idSuggere(dom: string, sd: string, comp: string, ref: string, niveau = "", periode = 0, cg = ""): string {

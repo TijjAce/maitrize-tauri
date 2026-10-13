@@ -4,7 +4,7 @@ import { Modal, Field, Input, Select, Textarea, useAsync } from "./ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "./CompetenceTree";
 import { FichierImg } from "./Deroulement";
 import { PhotoTelephone } from "./PhotoTelephone";
-import { demarcheDe, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre } from "../demarches";
+import { demarcheDe, demarchesPour, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre } from "../demarches";
 import { sequencesParCompetence, titresVisant } from "../sequencesVisees";
 import { ateliersRattaches, classeDe, feuilleRattachee, planDesFeuilles, type ContexteFeuilles, type FeuilleAFabriquer } from "../feuillesDesSequences";
 import { nomDeLAtelier } from "../catalogueAteliers";
@@ -17,6 +17,10 @@ import { SEANCE_DES_MOTS, avecLesMotsDesProblemes, enoncesDuHtml, motsDesEnonces
 import { lireProfils } from "../planDeLaClasse";
 import { CLE_INVENTAIRE, lireInventaire, materielPourCompetences, noteDuMaterielReel } from "../materielDeClasse";
 import { MaterielReelListe } from "./MaterielDeLaClasse";
+import { chargerImages } from "./ChoixPicto";
+import type { Images } from "../supportsVisuels";
+import { IDS_VPC } from "../vilainPetitCanard";
+import { niveauDeLaDemarche, objectifsDeLaSequence as objectifsDuCanard, planDuVilainPetitCanard, titreDeLaSequence as titreDuCanard } from "../sequenceVilainPetitCanard";
 
 // Fiche d'une séquence : titre, période, compétence visée, objectifs, vignette,
 // vidéo. Elle vivait dans l'ancien onglet Séquences et avait disparu avec lui :
@@ -52,6 +56,24 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
   const [ajouterCadre, setAjouterCadre] = React.useState(false);
   const demarcheDuCadre = demarcheDe(cadre);
   const proposeLeCadre = !!comp && !!demarcheDuCadre && !!existantes && (nbExistantes === 0 || ajouterCadre);
+  // Les déroulements qui servent la compétence : quand il y en a plusieurs, ils se montrent côte à côte, au choix d'un clic.
+  const possibles = React.useMemo(() => (comp ? demarchesPour(comp, comp.referentielNom, s.periode) : []),
+    [s.competenceVisee, s.periode]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Le Vilain Petit Canard a ses feuilles à lui, faites de pictogrammes : on les charge dès qu'on le choisit.
+  const niveauDuCanard = niveauDeLaDemarche(cadre);
+  const [imagesDuCanard, setImagesDuCanard] = React.useState<Images | null>(null);
+  React.useEffect(() => {
+    if (!niveauDuCanard || imagesDuCanard) return;
+    let vivant = true;
+    chargerImages(IDS_VPC).then((i) => { if (vivant) setImagesDuCanard(i); }).catch(() => { if (vivant) setImagesDuCanard({}); });
+    return () => { vivant = false; };
+  }, [niveauDuCanard, imagesDuCanard]);
+  /** Prendre un déroulement : celui du Vilain Petit Canard donne aussi son titre et ses objectifs à une séquence qui n'en a pas encore. */
+  const prendreLeCadre = (id: string) => {
+    setCadre(id); setSuivi(""); setCadreChoisi(true);
+    const n = niveauDeLaDemarche(id);
+    if (n) up({ ...(!s.titre.trim() || s.titre === "Nouvelle séquence" ? { titre: titreDuCanard(n) } : {}), ...(!s.objectifs.trim() ? { objectifs: objectifsDuCanard(n) } : {}) });
+  };
 
   // Les feuilles : la démarche pioche dans les ateliers de Fabriquer, aux nombres de la classe de la compétence et de la
   // période de la séquence. Chacune se décoche ; les jeux qu'on a rattachés soi-même à la compétence s'y ajoutent.
@@ -69,8 +91,10 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
   }, [reglages]);
   const prenoms = React.useMemo(() => (eleves ?? []).map((e) => e.nom.trim().split(/\s+/)[0]).filter(Boolean), [eleves]);
   const ctx: ContexteFeuilles | null = classe ? { classe, periode: s.periode, competence: comp?.competenceTitre ?? "", objectifRattache, salle, prenoms } : null;
-  const planDuCadre = React.useMemo(() => (demarcheDuCadre && ctx ? planDesFeuilles(demarcheDuCadre.id, ctx) : null),
-    [demarcheDuCadre?.id, ctx?.classe, ctx?.periode, ctx?.competence, objectifRattache, salle, prenoms]); // eslint-disable-line react-hooks/exhaustive-deps
+  const planDuCadre = React.useMemo(() => (niveauDuCanard
+    ? (imagesDuCanard ? planDuVilainPetitCanard(niveauDuCanard, imagesDuCanard) : null)
+    : demarcheDuCadre && ctx ? planDesFeuilles(demarcheDuCadre.id, ctx) : null),
+    [demarcheDuCadre?.id, ctx?.classe, ctx?.periode, ctx?.competence, objectifRattache, salle, prenoms, niveauDuCanard, imagesDuCanard]); // eslint-disable-line react-hooks/exhaustive-deps
   // Une séquence qui pose des problèmes s'ouvre sur la séance de leurs mots : ses feuilles suivent d'une séance.
   const { demarche, plan } = React.useMemo(() => avecLesMotsDesProblemes(demarcheDuCadre, planDuCadre), [demarcheDuCadre, planDuCadre]);
   const poseLesSeances = proposeLeCadre && suivi === "oui" && !!demarche;
@@ -208,7 +232,9 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
     <Modal large titre={sequence.titre && sequence.titre !== "Nouvelle séquence" ? "Modifier la séquence" : "Nouvelle séquence"} onClose={onClose}
       footer={<>
         <button className="btn" onClick={onClose}>Annuler</button>
-        <button className="btn primary" onClick={save} disabled={!s.titre.trim() || enCours}>{progres || (enCours ? "Enregistrement…" : "Enregistrer")}</button>
+        <button className="btn primary" onClick={save} disabled={!s.titre.trim() || enCours || (poseLesSeances && !!niveauDuCanard && !imagesDuCanard)}>
+          {progres || (enCours ? "Enregistrement…" : poseLesSeances && niveauDuCanard && !imagesDuCanard ? "Chargement des images…" : "Enregistrer")}
+        </button>
       </>}>
       <Field label="Titre">
         <Input value={s.titre} autoFocus onChange={(e) => up({ titre: e.target.value })}
@@ -267,11 +293,24 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
         {proposeLeCadre && demarche && (
           <div className={`deroulement-propose${suivi === "non" ? " ecarte" : ""}`}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-              <b>🧭 {nbExistantes > 0 ? "Un déroulement peut être ajouté à la suite" : "Un déroulement peut être suivi"}</b>
+              <b>🧭 {nbExistantes > 0 ? "Un déroulement peut être ajouté à la suite"
+                : possibles.length > 1 ? `${possibles.length} déroulements pour cette compétence : choisissez` : "Un déroulement peut être suivi"}</b>
               <span className="meta">{resumeDuCadre(demarche)}</span>
             </div>
+            {possibles.length > 1 && (
+              <div className="deroulements-possibles" role="radiogroup" aria-label="Les déroulements de cette compétence">
+                {possibles.map((d) => (
+                  <button key={d.id} type="button" role="radio" aria-checked={cadre === d.id}
+                    className={`deroulement-choix${cadre === d.id ? " actif" : ""}`} onClick={() => prendreLeCadre(d.id)}>
+                    <b>{d.nom}</b>
+                    <span className="meta">{resumeDuCadre(d)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "8px 0 6px" }}>
-              <Select value={cadre} onChange={(e) => { setCadre(e.target.value); setSuivi(""); setCadreChoisi(true); }} style={{ maxWidth: 460 }}>
+              {possibles.length > 1 && <span className="meta" style={{ fontSize: 12.5 }}>ou un autre :</span>}
+              <Select value={cadre} onChange={(e) => prendreLeCadre(e.target.value)} style={{ maxWidth: 460 }}>
                 {demarchesParFamille().map((g) => (
                   <optgroup key={g.famille} label={g.famille}>
                     {g.demarches.map((d) => <option key={d.id} value={d.id}>{d.nom}</option>)}
@@ -297,14 +336,17 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
                 </li>
               ))}
             </ol>
-            {plan && ctx && plan.feuilles.length > 0 && (
+            {plan && plan.feuilles.length > 0 && (
               <div className="meta" style={{ fontSize: 12.5, lineHeight: 1.5 }}>
                 📄 Les feuilles viennent {(() => {
                   const ateliers = [...new Set(plan.feuilles.map((f) => nomDeLAtelier(f.atelier)))];
                   return ateliers.length > 1 ? `des ateliers ${ateliers.join(" et ")}` : `de l'atelier ${ateliers[0]}`;
-                })()}, pour le {ctx.classe}
-                {ctx.classe === "CP" ? `, en période ${ctx.periode}` : ""} ; chaque séance reçoit aussi la note de son matériel. Décochez ce que vous ne voulez pas.
+                })()}{ctx ? `, pour le ${ctx.classe}${ctx.classe === "CP" ? `, en période ${ctx.periode}` : ""}` : niveauDuCanard ? `, en ${niveauDuCanard}` : ""} ;
+                chaque séance reçoit aussi la note de son matériel. Décochez ce que vous ne voulez pas.
               </div>
+            )}
+            {poseLesSeances && niveauDuCanard && !imagesDuCanard && (
+              <div className="meta" style={{ fontSize: 12.5 }}>Chargement des pictogrammes des feuilles…</div>
             )}
             {rattaches.length > 0 && (
               <div className="deroulement-rattaches">
