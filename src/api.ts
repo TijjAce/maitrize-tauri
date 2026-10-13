@@ -833,6 +833,9 @@ export const api = {
   /** Un bureau commun posé sur Nuage : le mot de passe d'application ne revient jamais. */
   communAjouterNuage: (nom: string, serveur: string, utilisateur: string, motDePasse: string, dossier: string) =>
     invoke<BureauCommun>("commun_ajouter_nuage", { nom, serveur, utilisateur, motDePasse, dossier }),
+  /** Un autre dossier de Nuage, avec un compte déjà connu (celui d'un bureau commun) : son adresse suffit. */
+  communAjouterNuageCompte: (nom: string, adresse: string, compte: string) =>
+    invoke<BureauCommun>("commun_ajouter_nuage_compte", { nom, adresse, compte }),
   /** Un bureau commun ouvert par un lien de partage : aucun compte nécessaire. */
   communAjouterLien: (nom: string, lien: string, motDePasse: string, dossier: string) =>
     invoke<BureauCommun>("commun_ajouter_lien", { nom, lien, motDePasse, dossier }),

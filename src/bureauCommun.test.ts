@@ -5,8 +5,7 @@ import {
 import {
   base64EnTexte, compter, contenuDUnElement, contenuDuDossier, couleursDeballees, couleursDuDossier, deballer,
   descriptionDuResume, destinationLibre, estPaquet, fichiersDe, nomDeFichierSur, nomDuPaquet, resumeDe, texteEnBase64,
-  titreDuPaquet, titreSansAuteur, type Contenu, type Paquet,
-} from "./bureauCommun";
+  titreDuPaquet, titreSansAuteur, type Contenu, type Paquet, adresseDeDossierNuage } from "./bureauCommun";
 
 const materiel = (p: Partial<MaterielItem>): MaterielItem => ({
   id: "m1", titre: "Fiche", descriptionMateriel: "", competenceId: "", competenceTitre: "", domaineTitre: "",
@@ -187,3 +186,21 @@ describe("dire ce qu'un dossier Maitrize contient", () => {
     expect(titreSansAuteur("cycle 1 (Clément Titet).maitrize", "")).toBe("cycle 1 (Clément Titet)");
   });
 });
+
+describe("l'adresse d'un dossier de son Nuage", () => {
+  it("se reconnaît, avec son serveur et son dossier, telle que le navigateur la montre", () => {
+    expect(adresseDeDossierNuage("https://nuage17.apps.education.fr/index.php/apps/files/files/1167348?dir=/fichier-commun"))
+      .toEqual({ hote: "nuage17.apps.education.fr", dossier: "fichier-commun" });
+    expect(adresseDeDossierNuage(" https://nuage03.apps.education.fr/apps/files/?dir=/%C3%89quipe%20IME/Projets&fileid=12 "))
+      .toEqual({ hote: "nuage03.apps.education.fr", dossier: "Équipe IME/Projets" });
+    expect(adresseDeDossierNuage("https://nuage03.apps.education.fr/index.php/apps/files/")).toEqual({ hote: "nuage03.apps.education.fr", dossier: "" });
+  });
+
+  it("laisse les liens de partage aux liens de partage, et le reste au message d'erreur", () => {
+    expect(adresseDeDossierNuage("https://nuage03.apps.education.fr/s/aBcD1234")).toBeNull();
+    expect(adresseDeDossierNuage("https://nuage03.apps.education.fr/index.php/s/aBcD1234?dir=/x")).toBeNull();
+    expect(adresseDeDossierNuage("nuage17.apps.education.fr")).toBeNull();
+    expect(adresseDeDossierNuage("bonjour")).toBeNull();
+  });
+});
+

@@ -350,6 +350,25 @@ pub async fn commun_ajouter_nuage(
     Ok(vu)
 }
 
+/// Ajoute un autre dossier de Nuage avec un compte que cet ordinateur connaît
+/// déjà par un bureau commun : l'adresse du dossier, copiée dans le
+/// navigateur, suffit ; le mot de passe d'application ne se redemande pas.
+#[tauri::command]
+pub async fn commun_ajouter_nuage_compte(db: State<'_, Db>, nom: String, adresse: String, compte: String) -> R<BureauCommun> {
+    let source = comptes_nuage(&db)
+        .into_iter()
+        .find(|b| b.id == compte)
+        .ok_or_else(|| "Ce compte Nuage n'est plus connu de cet ordinateur.".to_string())?;
+    if crate::webdav::serveur_propre(&adresse) != source.serveur {
+        return Err(format!(
+            "Ce dossier n'est pas sur le même Nuage que le compte {} ({}).",
+            source.utilisateur,
+            source.serveur.trim_start_matches("https://")
+        ));
+    }
+    commun_ajouter_nuage(db, nom, adresse, source.utilisateur, source.mot_de_passe, String::new()).await
+}
+
 /// Ajoute un bureau commun : un nom, et le dossier partagé choisi.
 #[tauri::command(async)]
 pub fn commun_ajouter(db: State<'_, Db>, nom: String, chemin: String) -> R<BureauCommun> {

@@ -111,6 +111,23 @@ export function descriptionDuResume(r: Resume | null): { icone: string; texte: s
   return { icone, texte: dits.join(" · ") };
 }
 
+/**
+ * L'adresse d'un dossier de Nuage telle que le navigateur la montre —
+ * « …/index.php/apps/files/files/1167348?dir=/fichier-commun » —, et non un
+ * lien de partage (« …/s/aBcD1234 ») : elle ne s'ouvre qu'avec le compte de
+ * son propriétaire. Rend le serveur et le dossier, ou rien.
+ */
+export function adresseDeDossierNuage(lien: string): { hote: string; dossier: string } | null {
+  const t = lien.trim();
+  if (!/^https?:\/\/[^/\s]+\//i.test(t) || /\/s\/[^/?#\s]+/.test(t)) return null;
+  if (!/\/apps\/files(?:[/?#]|$)/.test(t) && !/[?&]dir=/.test(t)) return null;
+  const hote = t.replace(/^https?:\/\//i, "").split(/[/?#]/)[0];
+  const brut = /[?&]dir=([^&#]*)/.exec(t)?.[1] ?? "";
+  let dossier = brut;
+  try { dossier = decodeURIComponent(brut.replace(/\+/g, " ")); } catch { /* gardé tel quel */ }
+  return { hote, dossier: dossier.replace(/^\/+|\/+$/g, "") };
+}
+
 /** L'extension d'un dossier Maitrize posé sur un bureau commun. */
 export const EXTENSION_PAQUET = ".maitrize";
 
