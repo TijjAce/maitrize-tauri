@@ -48,7 +48,7 @@ import { REGLAGES_GRAMMAIRE, STYLE_GRAMMAIRE, htmlGrammaire, type ExerciceGramma
 import { MOTS_FREQUENTS, PHRASES_DU_JOUR, REGLAGES_ORTHOGRAPHE, STYLE_ORTHOGRAPHE, htmlOrthographe } from "./orthographe";
 import { REGLAGES_ECRIRE, STYLE_ECRIRE, htmlEcrire } from "./ecrire";
 import { etapeDeLaSequence, reglureDe } from "./feuillesDuFrancais";
-import { etapeDe, motsDe } from "./progressionCgp";
+import { ETAPES, motsDe } from "./progressionCgp";
 
 /** Demande au planning d'ouvrir « En retard » au jour qu'il montre. */
 export const EVT_EN_RETARD = "maitrize:en-retard";
@@ -234,10 +234,22 @@ function heure(c: ContexteFiche): ReglagesHeure {
   return { ...REGLAGES_HEURE, ...laisses, exercice: "horloges", precision, sens: c.niveau === "CE1" ? "lire" : "mixte", combien: 9, apresMidi: false };
 }
 
-/** Les mots du son de la période, au CP : ceux qu'on sait déjà lire. */
-function motsDuSon(c: ContexteFiche, graine: number, combien: number): string[] {
-  const mots = motsDe(etapeDe(etapeDeLaSequence("CP", c.periode)), []).corpus.filter((m) => /^\p{L}{3,7}$/u.test(m));
-  return piocher(hasard(graine), mots, combien);
+/**
+ * Les mots qu'on sait déjà lire, au CP : ceux de toutes les étapes vues,
+ * jusqu'à celle de la fluence ou à la première de la période ; et, quand
+ * c'est trop tôt pour en avoir assez, ceux de toute la période. La première
+ * étape du CP n'a que des voyelles : prise seule, elle ne donnait aucun mot,
+ * et les mots mêlés sortaient sans mots à chercher (signalé par l'enseignant,
+ * octobre 2026).
+ */
+export function motsDuSon(c: Pick<ContexteFiche, "periode">, graine: number, combien: number): string[] {
+  const jusqua = ETAPES.findIndex((e) => e.id === etapeDeLaSequence("CP", c.periode));
+  const periode = Math.min(5, Math.max(1, c.periode));
+  const finDeLaPeriode = ETAPES.reduce((fin, e, i) => (e.periode === periode ? i : fin), jusqua);
+  const lisibles = (fin: number) =>
+    [...new Set(ETAPES.slice(0, fin + 1).flatMap((e) => motsDe(e, []).corpus))].filter((m) => /^\p{L}{3,7}$/u.test(m));
+  const vus = lisibles(jusqua);
+  return piocher(hasard(graine), vus.length >= combien ? vus : lisibles(Math.max(jusqua, finDeLaPeriode)), combien);
 }
 
 /** Des mots fréquents de la classe, d'un seul tenant. */
@@ -245,7 +257,9 @@ const motsFrequents = (classe: Elementaire, graine: number, combien: number) =>
   piocher(hasard(graine), MOTS_FREQUENTS[classe].filter((m) => /^\p{L}+$/u.test(m) && m.length <= 10), combien);
 
 function motsMeles(c: ContexteFiche, graine: number): FicheFabriquee {
-  const mots = c.niveau === "CP" ? motsDuSon(c, graine, 8) : motsFrequents(elementaire(c.niveau), graine, 8);
+  const lus = c.niveau === "CP" ? motsDuSon(c, graine, 8) : motsFrequents(elementaire(c.niveau), graine, 8);
+  // Jamais une grille sans mots à chercher : s'il en manque, des mots fréquents de la classe complètent.
+  const mots = lus.length >= 6 ? lus : [...lus, ...motsFrequents(elementaire(c.niveau), graine, 8).filter((m) => !lus.includes(m))].slice(0, 8);
   const r = { ...REGLAGES_MOTS_MELES, mots: mots.join("\n"), taille: c.niveau === "CP" ? 9 : 10, diagonales: false, inverses: false, liste: true, grilles: 1 };
   return commeLAtelier(htmlMotsMeles([grilleMotsMeles(mots, r, graine)], r), STYLE_FEUILLE + STYLE_MOTS_MELES, "motsMeles", r);
 }
