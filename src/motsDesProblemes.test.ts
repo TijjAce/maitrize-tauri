@@ -2,9 +2,12 @@ import { describe, it, expect } from "vitest";
 import { DEBUT_OBJECTIF_SEANCE, DEMARCHES, demarcheDe } from "./demarches";
 import { DUREES } from "./api";
 import { planDesFeuilles, type ClasseC2 } from "./feuillesDesSequences";
+import { REGLAGES_PROBLEME, TYPES, maxParDefaut, problemesDeLaPeriode, reglagesSurs } from "./problemeDuJour";
+import { DEMARCHE_PROBLEME, planDuProblemeDuJour } from "./sequenceProblemeDuJour";
+import { hasard } from "./hasard";
 import {
-  DEMARCHES_A_PROBLEMES, MATERIEL_DES_MOTS, SEANCE_DES_MOTS, avecLaSeanceDesMots, avecLesMotsDesProblemes, enoncesDuHtml, htmlMotsDesProblemes,
-  motsDeLEnonce, motsDesEnonces, noteDesMots,
+  DEMARCHES_A_PROBLEMES, MATERIEL_DES_MOTS, SEANCE_DES_MOTS, SEANCE_DES_MOTS_MATERNELLE, avecLaSeanceDesMots, avecLesMotsDesProblemes, enoncesDuHtml,
+  estLaSeanceDesMots, htmlMotsDesProblemes, motsDeLEnonce, motsDesEnonces, noteDesMots,
 } from "./motsDesProblemes";
 
 const CLASSES: ClasseC2[] = ["CP", "CE1", "CE2"];
@@ -13,7 +16,17 @@ const CLASSES: ClasseC2[] = ["CP", "CE1", "CE2"];
 const OUTILS = new Set(`de a y dans le la a-t-il et des un en sont à que les au lui sur avec ont-ils avait ont fait une elle du grand bord est pour
   son deux autour font ils va-t-il on avait-il sous vers se a-t-elle celle aux peuvent leur tout c sa est-il tous doit petite ses peut-on est-elle
   calcul chez puis encore être prêt cours faire toutes passé peut-elle trois est-ce qui plus longtemps ou sept peut-il ce huit vingt six quatre
-  cher possible il`.split(/\s+/));
+  cher possible il sans ai quelques-unes quelques-uns grande doit-elle avoir aura aura-t-il auront pourront`.split(/\s+/));
+
+/** Les énoncés du problème du jour de maternelle : chaque sorte de problème, à chaque âge, dans chacune de ses situations. */
+function enoncesDuProblemeDuJour(): string[] {
+  const enonces: string[] = [];
+  for (const t of TYPES) for (const niveau of t.niveaux) for (const situation of t.situations.filter((s) => s !== "perso")) for (let g = 1; g <= 4; g++) {
+    const r = reglagesSurs({ ...REGLAGES_PROBLEME, niveau, type: t.id, situation, max: maxParDefaut(niveau, t.id) });
+    for (const semaine of problemesDeLaPeriode(r, hasard(g * 7919))) for (const p of semaine) enonces.push(p.enonce);
+  }
+  return enonces;
+}
 
 /** Les mots d'un énoncé que le dictionnaire ne connaît pas, prénoms et mots outils mis à part. */
 function inconnusDe(enonce: string): string[] {
@@ -29,13 +42,17 @@ describe("les mots des problèmes", () => {
         for (const e of enoncesDuHtml(f.fabriquer(g * 7919).html)) for (const m of inconnusDe(e)) if (!oublies.has(m)) oublies.set(m, e);
       }
     }
+    for (const e of enoncesDuProblemeDuJour()) for (const m of inconnusDe(e)) if (!oublies.has(m)) oublies.set(m, e);
     expect([...oublies.entries()].map(([m, e]) => `${m} — « ${e} »`)).toEqual([]);
   }, 60_000);
 
   it("ouvrent toute séquence qui pose des problèmes, et seulement celles-là", () => {
     for (const d of DEMARCHES) {
       const pose = CLASSES.some((classe) => (planDesFeuilles(d.id, { classe, periode: 3 })?.feuilles ?? [])
-        .some((f) => enoncesDuHtml(f.fabriquer(12345).html).length >= 3));
+        .some((f) => enoncesDuHtml(f.fabriquer(12345).html).length >= 3))
+        // Le problème du jour fait ses feuilles lui-même, pour la maternelle.
+        || (d.id === DEMARCHE_PROBLEME && planDuProblemeDuJour(reglagesSurs(REGLAGES_PROBLEME), {}).feuilles
+          .some((f) => enoncesDuHtml(f.fabriquer(12345).html).length >= 3));
       // La démarche générale des problèmes n'a pas de feuilles : elle en pose quand même.
       expect(DEMARCHES_A_PROBLEMES.has(d.id), d.id).toBe(pose || d.id === "problemes");
     }
@@ -78,6 +95,11 @@ describe("la séance des mots", () => {
     const vocabulaire = demarcheDe("vocabulaire")!;
     expect(avecLaSeanceDesMots(vocabulaire)).toBe(vocabulaire);
     expect(avecLaSeanceDesMots(demarcheDe("problemes")!).seances[0]).toBe(SEANCE_DES_MOTS);
+    // En maternelle, la séance des mots se fait avec les objets, plus courte ; elle aussi ne vient qu'une fois.
+    const duJour = avecLaSeanceDesMots(demarcheDe(DEMARCHE_PROBLEME)!);
+    expect(duJour.seances[0]).toBe(SEANCE_DES_MOTS_MATERNELLE);
+    expect(estLaSeanceDesMots(duJour.seances[0])).toBe(true);
+    expect(avecLaSeanceDesMots(duJour)).toBe(duJour);
   });
 
   it("se dit à l'élève à la première personne, dans son séquentiel", async () => {
@@ -87,10 +109,12 @@ describe("la séance des mots", () => {
   });
 
   it("suit les règles des séances des démarches", () => {
-    expect(SEANCE_DES_MOTS.objectifs.startsWith(`${DEBUT_OBJECTIF_SEANCE} `)).toBe(true);
-    expect(DUREES).toContain(SEANCE_DES_MOTS.duree);
-    expect(SEANCE_DES_MOTS.phases.length).toBeLessThanOrEqual(6);
-    expect(SEANCE_DES_MOTS.phases.reduce((t, p) => t + parseInt(p.duree, 10), 0)).toBeLessThanOrEqual(SEANCE_DES_MOTS.duree);
+    for (const s of [SEANCE_DES_MOTS, SEANCE_DES_MOTS_MATERNELLE]) {
+      expect(s.objectifs.startsWith(`${DEBUT_OBJECTIF_SEANCE} `)).toBe(true);
+      expect(DUREES).toContain(s.duree);
+      expect(s.phases.length).toBeLessThanOrEqual(6);
+      expect(s.phases.reduce((t, p) => t + parseInt(p.duree, 10), 0)).toBeLessThanOrEqual(s.duree);
+    }
   });
 
   it("dit ses mots dans le matériel, et les montre sur une feuille : l'image quand on en a une, le mot toujours", () => {

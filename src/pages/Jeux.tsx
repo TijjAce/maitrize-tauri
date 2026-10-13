@@ -36,6 +36,7 @@ import { ComparerTab } from "./AteliersComparer";
 import { GestesTab, MotsEnGestesTab } from "./AteliersGestes";
 import { CategoriserTab } from "./AteliersCategoriser";
 import { CollectionsTab } from "./AteliersCollections";
+import { ProblemeDuJourTab } from "./AtelierProblemeDuJour";
 import { MotifsTab } from "./AtelierMotifs";
 import { SuitesTab } from "./AteliersSuites";
 import { VilainPetitCanardTab } from "./AtelierVilainPetitCanard";
@@ -328,6 +329,7 @@ export default function Jeux() {
         : onglet === "motsGestes" ? <MotsEnGestesTab banque={Boolean(etat?.installee)} />
         : onglet === "syllabeManquante" ? <SyllabeManquanteTab banque={Boolean(etat?.installee)} />
         : onglet === "collections" ? <CollectionsTab banque={Boolean(etat?.installee)} />
+        : onglet === "problemeDuJour" ? <ProblemeDuJourTab banque={Boolean(etat?.installee)} />
         : onglet === "motifs" ? <MotifsTab banque={Boolean(etat?.installee)} />
         : onglet === "suites" ? <SuitesTab banque={Boolean(etat?.installee)} />
         : onglet === "vilainPetitCanard" ? <VilainPetitCanardTab />

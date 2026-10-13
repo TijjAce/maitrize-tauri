@@ -48,7 +48,7 @@ const CHOSES: Entree[] = [
   ["le client", "client", "clients"], ["le clown", "clown", "clown"], ["le coffre", "coffre", "coffre coffres"],
   ["le coquillage", "coquillage", "coquillages"], ["la corde à sauter", "corde à sauter", "@cordes? à sauter"], ["le cornet de glace", "cornet de glace", "cornet cornets"],
   ["le costume", "déguisement", "costumes"], ["la cour", "cour de récréation", "cour"], ["la course", "course", "course"],
-  ["le crayon", "crayon", "crayons"], ["le croissant", "croissant", "croissant"], ["la danse", "danse", "danse"],
+  ["le crayon", "crayon", "crayon crayons"], ["le croissant", "croissant", "croissant"], ["la danse", "danse", "danse"],
   ["le dessert", "dessert", "dessert desserts"], ["les devoirs", "devoirs", "devoirs"], ["le dictionnaire", "dictionnaire", "dictionnaire dictionnaires"],
   ["le documentaire", "livre", "documentaire documentaires"], ["l'école", "école", "école"], ["l'élève", "élève", "élèves"],
   ["l'enfant", "enfant", "enfants"], ["l'entracte", "entracte", "entracte"], ["l'entrée", "", "entrée entrées"],
@@ -66,15 +66,15 @@ const CHOSES: Entree[] = [
   ["la maîtresse", "maîtresse", "maîtresse maitresse"], ["le match", "match", "match"], ["le menu", "menu", "menus"],
   ["la minute", "minute", "minutes min"], ["la mirabelle", "mirabelle", "mirabelles"], ["la moto", "moto", "moto motos"],
   ["le mouton", "mouton", "mouton moutons"], ["la musique", "musique", "musique"], ["le navet", "navet", "navets"],
-  ["l'oiseau", "oiseau", "oiseaux"], ["l'oiseau migrateur", "oiseau", "@oiseaux migrateurs"], ["la page", "page", "page pages"], ["le pain", "pain", "pain pains"],
+  ["l'oiseau", "oiseau", "oiseau oiseaux"], ["l'oiseau migrateur", "oiseau", "@oiseaux migrateurs"], ["la page", "page", "page pages"], ["le pain", "pain", "pain pains"],
   ["la paire", "paire", "paire"], ["le panier", "panier", "panier"], ["le pantalon", "pantalon", "pantalon pantalons"],
   ["papi", "papi", "papi"], ["mamie", "mamie", "mamie"], ["tata", "tante", "tata"],
   ["tonton", "oncle", "tonton"], ["le paquet", "paquet", "paquet paquets"], ["le parfum", "", "parfum parfums"],
   ["le parking", "parking", "parking"], ["la pause", "pause", "pause"], ["la peinture", "peinture", "peinture"],
-  ["la peluche", "peluche", "peluche"], ["la personne", "personne", "personnes"], ["la pièce d'or", "trésor", "@pièces? d'or"],
+  ["la peluche", "peluche", "peluche peluches"], ["la personne", "personne", "personnes"], ["la pièce d'or", "trésor", "@pièces? d'or"],
   ["la pièce", "monnaie", "pièce pièces"], ["la poire", "poire", "poires"], ["le point", "", "points"],
   ["le poisson", "poisson", "poisson poissons"], ["la pomme", "pomme", "pomme pommes"], ["le potager", "potager", "potager"],
-  ["la poupée", "poupée", "poupée"], ["le professeur", "professeur", "professeur"], ["la prune", "prune", "prunes"],
+  ["la poupée", "poupée", "poupée poupées"], ["le professeur", "professeur", "professeur"], ["la prune", "prune", "prunes"],
   ["le pré", "pré", "pré"], ["le préau", "préau", "préau"], ["le puzzle", "puzzle", "puzzle"],
   ["le restaurant", "restaurant", "restaurant"], ["le rosier", "rosier", "rosiers"], ["la récréation", "récréation", "récréation"],
   ["le sac à dos", "sac à dos", "@sacs? à dos"], ["le sac", "sac", "sac sacs"], ["la salle", "salle", "salle"],
@@ -89,27 +89,38 @@ const CHOSES: Entree[] = [
   ["midi", "midi", "midi"], ["l'Afrique", "Afrique", "afrique"], ["rouge", "rouge", "rouge rouges"],
   ["bleu", "bleu", "bleu bleue bleus bleues"], ["jaune", "jaune", "jaune jaunes"], ["vert", "vert", "verts verte vertes"],
   ["noir", "noir", "noire noires"], ["blanc", "blanc", "blanches"],
+  // Le problème du jour, en maternelle (problemeDuJour.ts).
+  ["la valise", "valise", "valise"], ["le bonnet", "bonnet", "bonnet bonnets"], ["la ferme", "ferme", "ferme"],
+  ["l'enclos", "clôture", "enclos"], ["le cheval", "cheval", "cheval chevaux"], ["la branche", "branche", "branche"],
+  ["le pion", "pion", "pion"], ["la case", "jeu de l'oie", "case cases"], ["le dé", "dé", "dé"],
+  ["le nombre", "nombres", "nombre"], ["la grenouille", "grenouille", "grenouille"], ["la pierre", "pierre", "pierre"],
+  ["le saut", "sauter", "saut sauts"], ["le jongleur", "jongleur", "jongleur jongleurs"], ["la balle", "balle", "balle balles"],
+  ["le marchand", "vendeur", "marchand"], ["la perle", "perle", "perle perles"],
 ];
 
 /** Ce qui se passe dans les énoncés, à l'infinitif. */
 const ACTIONS: Entree[] = [
   ["acheter", "acheter", "acheté achète"], ["ajouter", "mettre", "ajoute ajoutent ajouté ajoutées"], ["apporter", "apporter", "apporte"],
-  ["arriver", "arriver", "arrivent arriver arrivé arrivés"], ["attendre", "attendre", "attendre"], ["bêcher", "bêcher", "bêcher"],
+  ["arriver", "arriver", "arrive arrivent arriver arrivé arrivés arrive-t-il arrive-t-elle"], ["attendre", "attendre", "attendre"], ["bêcher", "bêcher", "bêcher"],
   ["choisir", "choisir", "choisit"], ["coller", "coller", "colle"], ["commencer", "commencer", "commence"],
   ["composer", "", "composer"], ["contenir", "contenir", "contient"], ["cueillir", "cueillir", "cueilli cueillies"],
   ["cuire", "cuire", "cuire"], ["descendre", "descendre", "descendent descendues descendus"], ["déguiser", "déguiser", "déguiser"],
-  ["distribuer", "distribuer", "distribue"], ["donner", "donner", "donne"], ["durer", "durer", "dure durent dure-t-il"],
+  ["distribuer", "distribuer", "distribue"], ["donner", "donner", "donne donné"], ["durer", "durer", "dure durent dure-t-il"],
   ["emprunter", "emprunter", "empruntent"], ["enlever", "retirer", "enlevé enlevées enlève"], ["entrer", "entrer", "entrés"],
-  ["s'envoler", "battre des ailes", "envolent envolés"], ["finir", "finir", "fini finit"], ["gagner", "gagner", "gagne"],
+  ["s'envoler", "battre des ailes", "envole envolent envolés"], ["finir", "finir", "fini finit"], ["gagner", "gagner", "gagne"],
   ["habiller", "habiller", "habiller"], ["installer", "installer", "installe"], ["jouer", "jouer", "jouent"],
-  ["livrer", "livrer", "livrée"], ["mesurer", "mesurer", "mesure mesurent"], ["mettre", "mettre", "met mettre mis mises"],
+  ["livrer", "livrer", "livrée"], ["mesurer", "mesurer", "mesure mesurent"], ["mettre", "mettre", "met mets mettre mis mises"],
   ["monter", "monter les escaliers", "montent montées montés"], ["partir", "partir", "parti partie"], ["payer", "payer", "paie payé"],
-  ["perdre", "perdre", "perd"], ["placer", "placer", "place placées"], ["poser", "mettre", "pose"],
-  ["prendre", "prendre", "prennent pris prises"], ["ranger", "ranger", "range rangé rangées"], ["recevoir", "recevoir", "recevoir"],
-  ["remplir", "remplir", "remplit"], ["rendre", "rendre la monnaie", "rendre rend-on"], ["rentrer", "rentrer", "rentré rentrée"],
-  ["rester", "rester", "resté restée"], ["s'asseoir", "s'asseoir sur une chaise", "asseoir"], ["sortir", "sortir", "sorti sortie sortis"],
+  ["perdre", "perdre", "perd perdu"], ["placer", "placer", "place placées"], ["poser", "mettre", "pose"],
+  ["prendre", "prendre", "prennent pris prises"], ["ranger", "ranger", "range ranger rangé rangées"], ["recevoir", "recevoir", "recevoir reçoit"],
+  ["remplir", "remplir", "remplit remplir"], ["rendre", "rendre la monnaie", "rendre rend-on"], ["rentrer", "rentrer", "rentré rentrée"],
+  ["rester", "rester", "resté restée"], ["s'asseoir", "s'asseoir sur une chaise", "asseoir"], ["sortir", "sortir", "sort sortent sorti sortie sortis"],
   ["tailler", "tailler", "tailler"], ["terminer", "terminer", "termine"], ["travailler", "travailler", "travaille"],
   ["utiliser", "utiliser", "utilise"], ["coûter", "prix", "coute coûte"], ["former", "former", "forment"],
+  ["avancer", "avancer", "avance"], ["reculer", "aller en arrière", "recule"], ["se poser", "se poser", "poser"],
+  ["venir", "venir", "vient viennent venus venues"], ["fermer", "fermer", "fermée"], ["montrer", "montrer", "montrer"],
+  ["vouloir", "vouloir", "veut voudrait"], ["aller", "aller", "aller"], ["chercher", "chercher", "chercher"],
+  ["jongler", "jongler", "jongler"], ["avoir besoin", "", "besoin"],
 ];
 
 /**
@@ -121,7 +132,7 @@ const ACTIONS: Entree[] = [
 const QUESTION: Entree[] = [
   ["combien", "combien", "combien(?! de temps)"], ["combien de temps", "temps", "combien de temps"], ["à quelle heure", "horloge", "à quelle heure"],
   ["quel, quelle", "", "quel(?:le)?s?"], ["il faut", "", "faut-il|il faut"],
-  ["en tout", "", "en tout"], ["il reste", "", "reste(?:-t-il)?"], ["maintenant", "maintenant", "maintenant"],
+  ["en tout", "", "en tout"], ["il reste", "", "reste(?:-t-il)?|restera-t-il"], ["maintenant", "maintenant", "maintenant"],
   ["avant", "avant", "avant"], ["au début", "", "au début|début"], ["de plus", "", "de plus"],
   ["de moins", "", "de moins"], ["fois plus", "", "fois plus"], ["fois moins", "", "fois moins"],
   ["chaque", "", "chaque"], ["ensemble", "", "ensemble"], ["autant", "", "autant|le même nombre"],
@@ -129,6 +140,7 @@ const QUESTION: Entree[] = [
   ["les autres", "", "autres?"], ["parmi", "", "parmi"], ["différent", "", "différente?s?"], ["la sorte", "", "sortes?"], ["bout à bout", "", "bout à bout"],
   ["plus tard", "plus tard", "plus tard"], ["pendant", "pendant", "pendant"], ["de combien de façons", "", "façons"],
   ["premier, deuxième", "premier", "premi(?:er|ère)|deuxième"],
+  ["en avant, en arrière", "", "en avant|en arrière"], ["dedans", "dedans", "dedans"],
 ];
 
 /** Une expression, entière : ni au milieu d'un mot, accents compris. */
@@ -193,10 +205,10 @@ export function motsDesEnonces(enonces: string[]): MotsDesProblemes {
   return { choses: de("choses"), actions: de("actions"), question: de("question") };
 }
 
-/** Les énoncés des problèmes d'une feuille : ceux des problèmes en barres, des durées, de la monnaie, du calcul, des cartes à tâches. */
+/** Les énoncés des problèmes d'une feuille : ceux des problèmes en barres, des durées, de la monnaie, du calcul, des cartes à tâches, du problème du jour. */
 export function enoncesDuHtml(html: string): string[] {
   const sortie: string[] = [];
-  for (const m of html.matchAll(/<(div|p)\b[^>]*class="[^"]*\b(?:pb|he|mo|ma|ct)-enonce\b[^"]*"[^>]*>([\s\S]*?)<\/\1>/g)) {
+  for (const m of html.matchAll(/<(div|p)\b[^>]*class="[^"]*\b(?:pb|he|mo|ma|ct|pj)-enonce\b[^"]*"[^>]*>([\s\S]*?)<\/\1>/g)) {
     const texte = m[2].replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
     if (texte) sortie.push(texte);
   }
@@ -215,6 +227,7 @@ export const DEMARCHES_A_PROBLEMES = new Set([
   "parties-tout-comparaison-ce2", "multiplicatifs-ce2", "mixtes-ce2", "comparaison-multiplicative-ce2", "produits-cartesiens-ce2",
   "sens-addition-soustraction-cp", "sens-multiplication-cp", "multiplication-ce1", "division-ce2",
   "monnaie-cp", "monnaie-ce1", "monnaie-ce2", "durees-ce1", "durees-ce2",
+  "probleme-du-jour-maternelle",
 ]);
 
 /** La séance qui ouvre une séquence de problèmes. */
@@ -246,18 +259,57 @@ export const SEANCE_DES_MOTS: SeanceCadre = {
   ],
 };
 
+/**
+ * La séance des mots en maternelle : vingt-cinq minutes plutôt que
+ * quarante-cinq, avec les objets de la situation, et des images à retrouver
+ * plutôt que des étiquettes à trier.
+ */
+export const SEANCE_DES_MOTS_MATERNELLE: SeanceCadre = {
+  titre: "Les mots des problèmes",
+  objectifs: "À la fin de cette séance, les élèves sauront nommer les objets, les personnages et les lieux des problèmes de la période, dire ce qui s'y passe — mettre, sortir, arriver, avancer, partager — et comprendre « combien », « encore », « il reste », « autant ».",
+  duree: 25,
+  phases: [
+    {
+      phase: "Rencontrer les mots", duree: "10 min",
+      description: "Les objets de la situation, en vrai — la valise et les peluches, l'enclos et les chevaux, les poupées et leurs assiettes —, puis leurs images (la feuille « Les mots des problèmes ») : on les nomme, on les touche, on dit à quoi ils servent.",
+      posture: "Nomme, fait répéter, reformule ; une chose nouvelle à la fois.",
+    },
+    {
+      phase: "Jouer les actions", duree: "5 min",
+      description: "Ce qui se passe dans les problèmes, joué avec les objets : mettre dans la valise, sortir, arriver, s'envoler, avancer le pion, distribuer. Un élève fait, les autres disent ce qu'il fait.",
+      posture: "Fait dire la phrase entière : « Lulu met un bonnet dans sa valise »."
+    },
+    {
+      phase: "Les mots de la question", duree: "5 min",
+      description: "« Combien », « encore », « il reste », « autant », « chacun » : chaque mot montré par une petite scène, avec les objets ; on dit ce qu'on cherche, sans chercher la réponse.",
+      posture: "Ne lie pas un mot à une opération : « encore » ne veut pas toujours dire qu'on ajoute.",
+    },
+    {
+      phase: "Retrouver les images", duree: "5 min",
+      description: "Le maître dit un mot, l'élève montre son image ; puis un élève dit, un autre montre. Les images restent au mur, près du coin des problèmes.",
+      posture: "Peu d'images à la fois ; on y revient au début de chaque problème du jour.",
+    },
+  ],
+};
+
+/** La séance des mots de cette démarche : celle de la maternelle, ou celle des autres classes. */
+export const seanceDesMotsPour = (d: Pick<Demarche, "famille">): SeanceCadre => (d.famille === "Maternelle" ? SEANCE_DES_MOTS_MATERNELLE : SEANCE_DES_MOTS);
+
+/** La séance ouvre-t-elle déjà la séquence sur ses mots ? */
+export const estLaSeanceDesMots = (s: SeanceCadre | undefined) => s === SEANCE_DES_MOTS || s === SEANCE_DES_MOTS_MATERNELLE;
+
 /** Le matériel de la séance, avant qu'on sache ses mots. */
 export const MATERIEL_DES_MOTS = "Les objets des problèmes, en vrai quand on les a ; la feuille « Les mots des problèmes », imprimée deux fois : une pour le tableau, une à découper pour trier.";
 
 /** Une démarche qui pose des problèmes s'ouvre sur la séance des mots ; les autres restent telles. */
 export function avecLaSeanceDesMots(d: Demarche): Demarche {
-  if (!DEMARCHES_A_PROBLEMES.has(d.id) || d.seances[0] === SEANCE_DES_MOTS) return d;
-  return { ...d, seances: [SEANCE_DES_MOTS, ...d.seances] };
+  if (!DEMARCHES_A_PROBLEMES.has(d.id) || estLaSeanceDesMots(d.seances[0])) return d;
+  return { ...d, seances: [seanceDesMotsPour(d), ...d.seances] };
 }
 
 /** La démarche et ses feuilles, la séance des mots en tête : chaque feuille passe à la séance suivante. */
 export function avecLesMotsDesProblemes(d: Demarche | undefined, plan: PlanDesFeuilles | null): { demarche: Demarche | undefined; plan: PlanDesFeuilles | null } {
-  if (!d || !DEMARCHES_A_PROBLEMES.has(d.id) || d.seances[0] === SEANCE_DES_MOTS) return { demarche: d, plan };
+  if (!d || !DEMARCHES_A_PROBLEMES.has(d.id) || estLaSeanceDesMots(d.seances[0])) return { demarche: d, plan };
   return {
     demarche: avecLaSeanceDesMots(d),
     plan: plan && {
