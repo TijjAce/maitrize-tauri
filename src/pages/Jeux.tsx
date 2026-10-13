@@ -38,6 +38,7 @@ import { CategoriserTab } from "./AteliersCategoriser";
 import { CollectionsTab } from "./AteliersCollections";
 import { MotifsTab } from "./AtelierMotifs";
 import { SuitesTab } from "./AteliersSuites";
+import { VilainPetitCanardTab } from "./AtelierVilainPetitCanard";
 import { CarteMentaleTab } from "./AteliersCarteMentale";
 import { OeilDeLynxTab } from "./AteliersObservation";
 import { SyllabeManquanteTab } from "./AtelierSyllabes";
@@ -317,6 +318,7 @@ export default function Jeux() {
         : onglet === "collections" ? <CollectionsTab banque={Boolean(etat?.installee)} />
         : onglet === "motifs" ? <MotifsTab banque={Boolean(etat?.installee)} />
         : onglet === "suites" ? <SuitesTab banque={Boolean(etat?.installee)} />
+        : onglet === "vilainPetitCanard" ? <VilainPetitCanardTab />
         : onglet === "carteMentale" ? <CarteMentaleTab banque={Boolean(etat?.installee)} />
         : onglet === "nombres" ? <CartesNombresTab />
         : onglet === "cubes" ? <CubesTab />

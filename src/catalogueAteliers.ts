@@ -3,7 +3,7 @@
 // Il vit à part de la page : d'autres écrans le lisent — la fiche d'une séquence nomme les ateliers où elle va piocher.
 
 export const ONGLETS = [
-  "jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres", "oeilDeLynx",
+  "jeux", "memory", "imagier", "categoriser", "suites", "vilainPetitCanard", "etiquettes", "ombres", "oeilDeLynx",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "trous", "motsMeles", "cursive",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "motifs", "nombres", "cubes", "comparer", "calcul", "arbre", "posees", "fractions", "oie", "heure", "monnaie", "mesures", "geometrie", "solides", "deplacements", "donnees", "numeration",
@@ -48,6 +48,8 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Les jeux d'Éduscol pour ranger les mots en catégories : boîtes de tri, intrus, loto aveugle, « J'appelle… », familles, mistigri — et leur séquence." },
       { id: "suites", nom: "Images séquentielles", icone: "🎞", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Remettre dans l'ordre une histoire, un geste, une recette : les images à découper et les cases à remplir, en colonne ou fléchées — des pictos ou vos photos." },
+      { id: "vilainPetitCanard", nom: "Le Vilain Petit Canard — MS, GS", icone: "🦢", pictos: true, cycles: "Cycle 1",
+        quoi: "La séquence de vocabulaire du guide Éduscol de maternelle : familles d'animaux, documentaires, émotions ou synonymots, lieux, devinettes, plan du récit, tapis de conte — et la séquence entière." },
       { id: "etiquettes", nom: "Étiquettes à catégoriser", icone: "🏷", cycles: "Cycles 2 et 3",
         quoi: "Les mots collectés en grand pour le tableau, en petit par enveloppe, et la corolle lexicale." },
       { id: "ombres", nom: "Jeu des ombres", icone: "👤", cycles: "Cycles 1 et 2",
