@@ -220,9 +220,22 @@ describe("ce que l'enseignant a demandé pour « En retard » (octobre 2026)", (
 
   it("fait colorier les aiguilles, la rouge des heures et la bleue des minutes, évidées pour qu'on les colorie", async () => {
     const r = recetteDe("heure")!;
-    const { html } = await r.fabriquer({ niveau: "CE1", periode: 1, prenom: "Eliot" }, 3, outils);
+    const { html } = await r.fabriquer({ niveau: "CE1", periode: 1, prenom: "Eliot" }, 4, outils);
     expect(html).toContain("Colorie en rouge l'aiguille des heures. Colorie en bleu l'aiguille des minutes.");
     expect(html).toContain("he-creuse");
+  });
+
+  it("fait lire l'heure, ou dessiner les aiguilles : l'un ou l'autre, jamais les deux sur la même fiche", async () => {
+    const r = recetteDe("heure")!;
+    const sortes = new Set<string>();
+    for (const niveau of r.niveaux) for (let g = 1; g <= 12; g++) {
+      const { html } = await r.fabriquer({ niveau, periode: 3, prenom: "Eliot" }, g, outils);
+      const lire = html.includes("Écris l'heure qu'il est"), dessiner = html.includes("Dessine les aiguilles");
+      expect(lire !== dessiner, `${niveau} ${g}`).toBe(true);
+      expect(html, `${niveau} ${g}`).not.toContain("ou dessine les aiguilles");
+      sortes.add(lire ? "lire" : "dessiner");
+    }
+    expect([...sortes].sort()).toEqual(["dessiner", "lire"]);
   });
 
   it("enlève la règle des pyramides : l'élève connaît le jeu, la consigne dit ce qu'il fait", async () => {
