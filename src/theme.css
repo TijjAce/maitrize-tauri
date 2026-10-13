@@ -1417,6 +1417,8 @@ details.pli-catalogue[open] .pli-chevron { transform: rotate(90deg); }
 .cl-situation { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12.5px; margin: -4px 0 10px; }
 .cl-situation img { width: 34px; height: 34px; object-fit: contain; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 2px; }
 /* Le problème du jour : la situation de l'enseignant, les semaines de la période. */
+/* Le dossier de son propre Nuage, collé là où l'on rejoint un partage. */
+.commun-mon-nuage { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--panel-2); }
 .pdj-perso { border: 1px dashed var(--border); border-radius: 10px; padding: 8px 10px; margin: -4px 0 10px; }
 .pdj-semaines { margin: 6px 0 10px; padding-left: 20px; display: grid; gap: 4px; font-size: 12.5px; line-height: 1.45; }
 .dos-choix { display: flex; flex-direction: column; max-height: 220px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; }
