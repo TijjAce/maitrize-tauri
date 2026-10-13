@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Creneau, Eleve, MaterielItem } from "./api";
 import {
-  NIVEAUX_FICHES, RECETTES, combienDeFiches, elevesDuJour, graineDe, niveauDesFiches, nomDeLaRecette, prenomEcrit, prevuAvecLesFiches,
+  NIVEAUX_FICHES, RECETTES, combienDeFiches, elevesDuJour, graineDe, motsDuSon, niveauDesFiches, nomDeLaRecette, prenomEcrit, prevuAvecLesFiches,
   proposer, recetteDe, recettesPour, repartir, titreDeLaFiche, titreLibre, uneAutre, uneDePlus, type OutilsFiche,
 } from "./fichesAutonomie";
+import { ETAPES, motsDe } from "./progressionCgp";
 import { titreSansLEleve } from "./impressionAtelier";
 import { pdfsCites } from "./materielAImprimer";
 
@@ -175,5 +176,20 @@ describe("chaque fiche se fabrique, à chaque niveau et chaque période", () => 
       }
     }
     expect([...aSonNom]).toEqual([]);
+  });
+
+  it("donne toujours des mots à chercher aux mots mêlés — au CP, des mots qu'on sait lire, dès la première période", async () => {
+    const r = recetteDe("mots-meles")!;
+    for (const niveau of r.niveaux) for (let periode = 1; periode <= 5; periode++) for (const graine of [1, 2, 3, 4]) {
+      const ou = `${niveau} P${periode} ${graine}`;
+      const { html } = await r.fabriquer({ niveau, periode, prenom: "Eliot" }, graine, outils);
+      const liste = /<div class="mm-liste">(.*?)<\/div>/.exec(html)?.[1] ?? "";
+      expect((liste.match(/<span>/g) ?? []).length, ou).toBeGreaterThanOrEqual(6);
+    }
+    // En période 1, la première étape n'a que des voyelles : les mots viennent de toute la période, déchiffrables avec elle.
+    const periode1 = new Set(ETAPES.filter((e) => e.periode === 1).flatMap((e) => motsDe(e, []).corpus));
+    const mots = motsDuSon({ periode: 1 }, 5, 8);
+    expect(mots).toHaveLength(8);
+    expect(mots.every((m) => periode1.has(m) && /^\p{L}{3,7}$/u.test(m)), mots.join(", ")).toBe(true);
   });
 });
