@@ -7,6 +7,7 @@ import { graineAuHasard } from "../hasard";
 import { useGraine } from "../modifierFeuille";
 import { Boutons, Coche, Colonnes, bureau, imprimer } from "./AteliersMaths";
 import { EXERCICES_VOIX_HAUTE, REGLAGES_VOIX_HAUTE, STYLE_VOIX_HAUTE, htmlVoixHaute, type Classe, type ExerciceVoixHaute } from "../lectureVoixHaute";
+import { ouvrirOnglet } from "../ongletDemande";
 import { EXERCICES_COMPREHENSION, REGLAGES_COMPREHENSION, STYLE_COMPREHENSION, htmlComprehension, type ExerciceComprehension, type ReglagesComprehension } from "../comprehension";
 import { TEXTES } from "../textesDeComprehension";
 import { EXERCICES_LECTEUR, REGLAGES_LECTEUR, STYLE_LECTEUR, htmlLecteur, type ExerciceLecteur } from "../carnetDeLecteur";
@@ -54,6 +55,10 @@ export function VoixHauteTab() {
             <Textarea rows={5} value={r.phrases} placeholder="Vide : les phrases de la classe. Exemple : Le petit éléphant | a un gros appétit." onChange={(e) => maj({ phrases: e.target.value })} />
           </Field>
         </>}
+        <p className="meta" style={{ fontSize: 12.5, margin: "6px 0 0" }}>
+          🎙 Les signes et leurs couleurs suivent le code de la classe :{" "}
+          <button type="button" className="lien" onClick={() => ouvrirOnglet("jeux", "codeLecture")}>Aides à la tâche › Le code de la lecture à voix haute</button>.
+        </p>
         <Boutons onTirage={avecPhrases && !r.phrases.trim() ? () => setGraine(graineAuHasard()) : undefined} onImprimer={() => imprimer("voixHaute", titre, html, STYLE_VOIX_HAUTE)} onBureau={() => bureau("voixHaute", titre, html, STYLE_VOIX_HAUTE)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_VOIX_HAUTE} />}

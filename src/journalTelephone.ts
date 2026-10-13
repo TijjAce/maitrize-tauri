@@ -15,7 +15,7 @@ import type { Creneau, MaterielItem, Seance } from "./api";
 import { lireFabrication } from "./modifierFeuille";
 
 /** Les ateliers de Fabriquer dont une feuille est une aide à la tâche : celles-là vont aux tablettes. */
-export const ATELIERS_D_AIDE = ["sequentiel", "priseDeParole", "codePhrase", "resolution", "modelisation", "fonction"] as const;
+export const ATELIERS_D_AIDE = ["sequentiel", "priseDeParole", "codePhrase", "codeLecture", "resolution", "modelisation", "fonction"] as const;
 
 /** Combien de jours avant et après aujourd'hui : ceux de l'emploi du temps publié (telephone.rs). */
 export const JOURS_PASSES = 14;
@@ -141,6 +141,13 @@ export async function pageDeLAide(m: MaterielItem): Promise<string | null> {
       const c = await import("./codeDeLaPhrase");
       const carte = c.reglagesCarteSurs((mem.codePhraseCarte ?? {}) as Partial<import("./codeDeLaPhrase").ReglagesCarteCode>);
       rendu = { html: c.htmlCodeDeLaPhrase(c.lireCode(mem.codePhrase), { ...carte, format: "affiche" }), style: c.STYLE_CODE_PHRASE };
+      break;
+    }
+    case "codeLecture": {
+      // De même : l'affiche du code de la lecture, lisible de loin.
+      const c = await import("./codeDeLaLecture");
+      const carte = c.reglagesCarteLectureSurs((mem.codeLectureCarte ?? {}) as Partial<import("./codeDeLaLecture").ReglagesCarteLecture>);
+      rendu = { html: c.htmlCodeDeLaLecture(c.lireCodeLecture(mem.codeLecture), { ...carte, format: "affiche" }), style: c.STYLE_CODE_LECTURE };
       break;
     }
     default: rendu = { html: a.htmlFonction(a.reglagesFonctionSurs(mem.fonction)), style: a.STYLE_AIDES };

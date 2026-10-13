@@ -68,7 +68,7 @@ export const USAGE_PAR_DEFAUT: Record<string, Usage> = {
   // Évaluer : en fin de séquence, savoir où en est chacun.
   taches: "reinvestissement",
   // Aides à la tâche : on les manipule pendant qu'on fait ; la prise de parole se prépare pour le bilan.
-  sequentiel: "manipulation", priseDeParole: "reinvestissement", codePhrase: "manipulation", resolution: "entrainement", modelisation: "entrainement", fonction: "entrainement",
+  sequentiel: "manipulation", priseDeParole: "reinvestissement", codePhrase: "manipulation", codeLecture: "manipulation", resolution: "entrainement", modelisation: "entrainement", fonction: "entrainement",
   // Histoire-géographie : le plan se manipule, se lit, se refait.
   planClasse: "manipulation", frise: "rituel", paysage: "entrainement",
 };

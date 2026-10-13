@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { demarcheDe } from "./demarches";
 import { planDesFeuilles } from "./feuillesDesSequences";
 import { EXERCICES_VOIX_HAUTE, FABLE, PHRASES_DE_LA_CLASSE, REGLAGES_VOIX_HAUTE, avecLiaisons, htmlVoixHaute, liaison, liaisonsDe, phrasesDe, type Classe } from "./lectureVoixHaute";
+import { lireCodeLecture } from "./codeDeLaLecture";
 
 describe("lire à voix haute", () => {
   it("code les liaisons comme les livrets : les‿endives sont‿amères, le petit‿éléphant a un gros‿appétit", () => {
@@ -13,9 +14,28 @@ describe("lire à voix haute", () => {
     expect(liaison("un", "et")).toBe(false);
     expect(liaison("les", "haricots")).toBe(false);
     expect(liaison("beau,", "il")).toBe(false);
-    expect(avecLiaisons("Les endives sont amères.", true)).toContain('Les<span class="vh-liaison">‿</span>endives');
+    expect(avecLiaisons("Les endives sont amères.", true)).toContain('Les<span class="vh-liaison" style="color:#d33a32;font-weight:800">‿</span>endives');
     // Chaque phrase de la classe se lit sans erreur, et les groupes de souffle disparaissent du texte lu.
     for (const classe of ["CP", "CE1", "CE2"] as Classe[]) for (const p of PHRASES_DE_LA_CLASSE[classe]) expect(avecLiaisons(p, true)).not.toContain("|");
+  });
+
+  it("suit le code de la classe : ses signes et ses couleurs, dans les phrases, les consignes et les rappels", () => {
+    const code = lireCodeLecture({ liaison: { couleur: "vert", forme: "_" }, pauseCourte: { couleur: "violet", forme: "|" }, pauseLongue: { couleur: "noir", forme: "||" },
+      groupeSouffle: { couleur: "orange", forme: "crochets" } });
+    const r = { ...REGLAGES_VOIX_HAUTE, phrases: "Les enfants, | ce matin, | jouent." };
+    const liaisons = htmlVoixHaute({ ...r, exercice: "liaisons" }, 1, code);
+    expect(liaisons).toContain('Les<span class="vh-liaison" style="color:#1f9a48;font-weight:800">_</span>enfants');
+    expect(liaisons).toContain("La liaison codée <span");
+    expect(htmlVoixHaute({ ...r, exercice: "liaisons", codees: false }, 1, code)).toContain("Code la liaison avec un trait _ en vert");
+    const ponctuation = htmlVoixHaute({ ...r, exercice: "ponctuation" }, 1, code);
+    expect(ponctuation).toContain(',<span class="vh-pause" style="color:#7c3aed;font-weight:800">|</span>');
+    expect(ponctuation).toContain('.<span class="vh-pause" style="color:#1c2233;font-weight:800">||</span>');
+    // Le noir ne se nomme pas : « deux traits || », pas « en noir ».
+    expect(htmlVoixHaute({ ...r, exercice: "ponctuation", codees: false }, 1, code)).toContain("Mets un trait | en violet après chaque virgule et deux traits || après chaque point.");
+    const souffle = htmlVoixHaute({ ...r, exercice: "souffle" }, 1, code);
+    expect(souffle).toContain('<span class="vh-groupe"><b style="color:#e8590c">[</b>Les enfants,<b style="color:#e8590c">]</b></span>');
+    expect(htmlVoixHaute({ ...r, exercice: "souffle", codees: false }, 1, code)).toContain("Mets chaque groupe de mots qui vont ensemble entre crochets en orange.");
+    expect(htmlVoixHaute({ ...REGLAGES_VOIX_HAUTE, exercice: "fable" }, 1, code)).toContain("Code aussi les liaisons <span");
   });
 
   it("prend les phrases de l'enseignant, ou celles de la classe", () => {

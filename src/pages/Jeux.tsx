@@ -43,7 +43,7 @@ import { CarteMentaleTab } from "./AteliersCarteMentale";
 import { OeilDeLynxTab } from "./AteliersObservation";
 import { SyllabeManquanteTab } from "./AtelierSyllabes";
 import { CartesATachesTab } from "./AteliersCartes";
-import { CodePhraseTab, FonctionTab, ModelisationTab, PriseDeParoleTab, ResolutionTab, SequentielTab } from "./AteliersAides";
+import { CodeLectureTab, CodePhraseTab, FonctionTab, ModelisationTab, PriseDeParoleTab, ResolutionTab, SequentielTab } from "./AteliersAides";
 import { FriseTab, PaysageTab, PlanClasseTab } from "./AteliersHistoireGeo";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { chargerPicto, usePictoImage } from "../components/ChoixPicto";
@@ -353,6 +353,7 @@ export default function Jeux() {
         : onglet === "paysage" ? <PaysageTab />
         : onglet === "priseDeParole" ? <PriseDeParoleTab />
         : onglet === "codePhrase" ? <CodePhraseTab />
+        : onglet === "codeLecture" ? <CodeLectureTab />
         : onglet === "resolution" ? <ResolutionTab />
         : onglet === "modelisation" ? <ModelisationTab />
         : onglet === "fonction" ? <FonctionTab />
