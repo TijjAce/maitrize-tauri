@@ -18,6 +18,14 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.28",
+    titre: "Le PDF d'un manuel s'allège, et un document part sur Nuage en vrai PDF",
+    points: [
+      { quoi: "Le PDF d'un manuel photographié se choisit à son poids : « Photos d'origine », « Allégé » — net à l'écran comme à l'impression — ou « Léger », pour l'envoyer par mél. Chaque choix dit ce que pèserait le PDF : pour un manuel de 160 pages, environ 133, 46 ou 19 Mo. Le choix vaut pour « Enregistrer en PDF » comme pour « Sur le bureau », et se retient ; le PDF fait, le message dit son poids. Un manuel importé en PDF garde le sien.", ou: "Adapter · Manuels" },
+      { quoi: "Un document glissé du bureau sur un bureau commun y arrive tel qu'il est — son PDF, ses images, à son nom —, que Nuage montre et qu'un collègue ouvre même sans Maitrize ; plusieurs fichiers vont dans un dossier à son nom. Les dossiers, les séquences et les jeux partent toujours en « .maitrize », avec leurs séances ; une fiche de Fabriquer part en PDF, sans de quoi la refaire.", ou: "Plan de travail · 🤝 Bureaux communs" },
+    ],
+  },
+  {
     version: "1.6.27",
     titre: "Les tablettes suivent le créneau : l'aide, le minuteur et ce qui va se passer, envoyés du téléphone",
     points: [
