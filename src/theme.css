@@ -530,6 +530,7 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .journal-tablettes-aides { flex: 1; min-width: 140px; display: flex; flex-wrap: wrap; gap: 2px 12px; }
 .journal-tablettes-minuteur { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .journal-tablettes-minuteur .select { width: auto; padding: 3px 8px; font-size: 12.5px; }
+.journal-tablettes-duree { white-space: nowrap; color: var(--text-2); font-variant-numeric: tabular-nums; }
 /* La case d'un bloc cité : coché, il reste à l'écran et ne s'imprime pas. */
 .case-impression { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--text-2); cursor: pointer; white-space: nowrap; flex: none; }
 .case-impression input { margin: 0; cursor: pointer; }
@@ -1036,7 +1037,14 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .retard-ou { font-size: 11.5px; color: var(--text-2); font-variant-numeric: tabular-nums; }
 /* Le minuteur des tablettes : pour chaque fiche, et pour toutes d'un coup. */
 .retard-minuteur.select { width: auto; flex: none; padding: 2px 6px; font-size: 12px; }
-.retard-minuteur-tous { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-2); white-space: nowrap; }
+.retard-minuteur-tous { margin-left: auto; font-size: 12.5px; white-space: nowrap; }
+/* Réglages › En retard : le temps de chaque sorte de fiche, par rubrique. */
+.retard-reglages { margin-top: 12px; }
+.retard-reglages-titre { font-size: 12px; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+.retard-reglages-ligne { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; padding: 4px 0; border-top: 1px solid var(--border); font-size: 13.5px; }
+.retard-reglages-nom { flex: 1; min-width: 220px; }
+.retard-reglages-niveaux { font-size: 12px; color: var(--text-2); white-space: nowrap; }
+.retard-reglages-ligne .select { width: auto; padding: 4px 8px; font-size: 13px; }
 .retard-avance { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--text-2); margin: 0 0 10px; }
 .retard-barre { flex: 0 0 180px; height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; }
 .retard-barre span { display: block; height: 100%; background: var(--accent); transition: width .2s; }

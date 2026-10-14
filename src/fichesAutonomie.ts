@@ -369,6 +369,50 @@ const PERIODES_DU_CP: Record<string, number[]> = { comprendre: DES_PERIODES(3), 
 
 export const recetteDe = (id: string) => RECETTES.find((r) => r.id === id);
 
+// ── Le minuteur de chaque fiche ────────────────────────────────────────────
+//
+// Chaque sorte de fiche a son temps. « En retard » le donne à la fiche quand
+// il la fabrique ; il part ensuite aux tablettes avec sa consigne, depuis le
+// créneau qui la cite (voir journalTelephone). Réglages › En retard le change
+// pour les fiches à venir ; celles déjà faites gardent le leur.
+
+/** Le temps de base de chaque fiche, en minutes : à peu près ce qu'un élève y passe seul. */
+export const MINUTEURS_DE_BASE: Record<string, number> = {
+  suite: 15, "coloriage-chiffres": 15, "coloriage-lettres": 15, prenom: 10,
+  "cubes-ecrire": 10, "cubes-dessiner": 10, comparer: 10, pyramides: 10, "coloriage-calcul": 20, posees: 15,
+  reproduire: 15, fusee: 10, heure: 10, monnaie: 10, mesurer: 10,
+  cursive: 10, "mots-meles": 15, comprendre: 15, grammaire: 10, listes: 10, "mots-imposes": 15,
+};
+
+/** Où Réglages › En retard garde les temps changés : un réglage partagé avec l'autre ordinateur (préfixe « fabriquer: »). */
+export const CLE_MINUTEURS_RETARD = "fabriquer:retard-minuteurs";
+
+/** Le plus long minuteur, en minutes : celui que le portail du téléphone accepte. */
+const MINUTEUR_LE_PLUS_LONG = 120;
+
+/** Les temps changés, par fiche ; 0 : sans minuteur. Ce qui n'est ni une fiche ni un temps possible ne compte pas. */
+export function lireMinuteursRetard(brut: string | null | undefined): Record<string, number> {
+  let o: unknown;
+  try { o = JSON.parse(brut || "{}"); } catch { return {}; }
+  if (!o || typeof o !== "object" || Array.isArray(o)) return {};
+  return Object.fromEntries(Object.entries(o as Record<string, unknown>).filter(([id, m]) =>
+    !!recetteDe(id) && typeof m === "number" && Number.isInteger(m) && m >= 0 && m <= MINUTEUR_LE_PLUS_LONG)) as Record<string, number>;
+}
+
+/** Le minuteur d'une fiche quand on la fabrique : celui des réglages, sinon son temps de base. */
+export const minuteurDeLaRecette = (id: string, regles: Record<string, number>): number =>
+  id in regles ? regles[id] : MINUTEURS_DE_BASE[id] ?? 10;
+
+/** Le nom d'une fiche, tous niveaux confondus : « Des additions posées / Des soustractions posées ». */
+export function nomDeToutesLesFiches(r: RecetteDeFiche): string {
+  if (typeof r.nom === "string") return r.nom;
+  return [...new Set(r.niveaux.map((niveau) => nomDeLaRecette(r, { niveau, periode: 1, prenom: "" })))].join(" / ");
+}
+
+/** La rubrique d'une fiche dans les réglages : la maternelle, puis les mathématiques et le français de l'élémentaire. */
+export const rubriqueDeLaRecette = (r: RecetteDeFiche): "Maternelle" | "Mathématiques" | "Français" =>
+  r.niveaux.every(enMaternelle) ? "Maternelle" : r.domaine === "maths" ? "Mathématiques" : "Français";
+
 /**
  * Les fabrications que « En retard » sait donner à ce niveau — à tous, sans
  * niveau —, une par atelier, sous leur nom de Fabriquer : ce que la fiche d'un

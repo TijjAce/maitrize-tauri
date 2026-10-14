@@ -42,7 +42,6 @@ import { lirePdfs } from "../materielSeance";
 import {
   aidesDuCreneau, dureeDuMinuteur, fichesDuCreneau, minuteurDeLaFiche, minuteurDuCreneau, MINUTEURS_DES_TABLETTES, publierLeJournal, titreDeLAide,
 } from "../journalTelephone";
-import { ecrireFabrication, lireFabrication } from "../modifierFeuille";
 
 // ── Cahier journal du jour ────────────────────────────────────────────────
 //
@@ -107,27 +106,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
       toast("Minuteur non enregistré : " + texteErreur(err), { icone: "⚠️", duree: 6000 });
     }
   };
-  // Une fiche d'« En retard » citée au prévu a son propre minuteur : il s'écrit avec elle.
-  const [minuteursDesFiches, setMinuteursDesFiches] = React.useState<Record<string, number>>({});
-  const reglerMinuteurFiche = async (id: string, minutes: number) => {
-    const avant = minuteursDesFiches[id];
-    setMinuteursDesFiches((m) => ({ ...m, [id]: minutes }));
-    try {
-      // Relue juste avant d'écrire : la fiche a pu être refaite entre-temps.
-      const m = (await api.materielList()).find((x) => x.id === id);
-      const f = m ? lireFabrication(m.fabricationJson) : null;
-      if (!m || !f) throw new Error("cette fiche n'est plus sur le bureau");
-      await api.materielSave({ ...m, fabricationJson: ecrireFabrication({ ...f, minuteur: minutes || undefined }) });
-      void publierLeJournal();
-    } catch (err) {
-      setMinuteursDesFiches((m) => {
-        const suite = { ...m };
-        if (avant === undefined) delete suite[id]; else suite[id] = avant;
-        return suite;
-      });
-      toast("Minuteur non enregistré : " + texteErreur(err), { icone: "⚠️", duree: 6000 });
-    }
-  };
+
   // Les prénoms de la classe : ce que le bilan en nomme part dans les notes, et se voit en couleur.
   const prenomsDeLaClasse = React.useMemo(() => eleves.map((e) => prenomDe(e.nom)).filter(Boolean), [eleves]);
   const duJour = React.useMemo(
@@ -630,9 +609,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                           <TablettesDuCreneau aides={aidesDuCreneau(c, materiels ?? []).map(titreDeLAide)}
                             minutes={minuteursRegles[c.id] ?? minuteurDuCreneau(c)}
                             onMinutes={(m) => { void reglerMinuteur(c, m); }}
-                            fiches={fichesDuCreneau({ prevu: b.prevu }, materiels ?? [])
-                              .map((m) => ({ id: m.id, titre: m.titre, minutes: minuteursDesFiches[m.id] ?? minuteurDeLaFiche(m) }))}
-                            onMinutesFiche={(id, m) => { void reglerMinuteurFiche(id, m); }} />
+                            fiches={fichesDuCreneau({ prevu: b.prevu }, materiels ?? []).map((m) => ({ id: m.id, titre: m.titre, minutes: minuteurDeLaFiche(m) }))} />
                         )}
                       </>
                     )}
@@ -748,12 +725,13 @@ function MinuteurDesTablettes({ minutes, onMinutes, libelle }: { minutes: number
 /**
  * Ce que le téléphone enverra aux tablettes depuis ce créneau : les aides de
  * sa séance, avec le minuteur du créneau, et chaque fiche d'« En retard » de
- * son prévu, avec le sien. Sous le créneau, sur le téléphone, « Envoyer » les
- * montre ; le minuteur démarre aussitôt, et le téléphone le met en pause.
+ * son prévu, avec le temps qu'elle a reçu à sa fabrication — il ne se change
+ * pas ici. Sous le créneau, sur le téléphone, « Envoyer » les montre ; le
+ * minuteur démarre aussitôt, et le téléphone le met en pause.
  */
-function TablettesDuCreneau({ aides, minutes, onMinutes, fiches, onMinutesFiche }: {
+function TablettesDuCreneau({ aides, minutes, onMinutes, fiches }: {
   aides: string[]; minutes: number; onMinutes: (m: number) => void;
-  fiches: { id: string; titre: string; minutes: number }[]; onMinutesFiche: (id: string, m: number) => void;
+  fiches: { id: string; titre: string; minutes: number }[];
 }) {
   // Le minuteur du créneau part avec les aides de la séance, ou seul ; les fiches ont chacune le leur.
   const avecLeCreneau = aides.length > 0 || fiches.length === 0;
@@ -774,7 +752,8 @@ function TablettesDuCreneau({ aides, minutes, onMinutes, fiches, onMinutesFiche 
         {fiches.map((f) => (
           <div key={f.id} className="journal-tablettes-ligne">
             <span className="journal-tablettes-aides">📄 {f.titre}</span>
-            <MinuteurDesTablettes minutes={f.minutes} onMinutes={(m) => onMinutesFiche(f.id, m)} libelle={`Minuteur de la fiche ${f.titre}`} />
+            <span className="journal-tablettes-duree" title="Le temps que la fiche a reçu à sa fabrication, d'après Réglages › En retard">
+              ⏱ {f.minutes ? dureeDuMinuteur(f.minutes) : "sans minuteur"}</span>
           </div>
         ))}
       </div>

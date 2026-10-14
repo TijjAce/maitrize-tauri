@@ -3,7 +3,9 @@ import type { Creneau, Eleve, MaterielItem } from "./api";
 import {
   NIVEAUX_FICHES, RECETTES, combienDeFiches, elevesDuJour, fabricationsDesFiches, graineDe, motsDuSon, niveauDesFiches, nomDeLaRecette, prenomEcrit, prevuAvecLesFiches,
   proposer, recetteDe, recettesPour, repartir, titreDeLaFiche, titreLibre, uneAutre, uneDePlus, type OutilsFiche,
+  MINUTEURS_DE_BASE, lireMinuteursRetard, minuteurDeLaRecette, nomDeToutesLesFiches, rubriqueDeLaRecette,
 } from "./fichesAutonomie";
+import { MINUTEURS_DES_TABLETTES } from "./journalTelephone";
 import { ETAPES, motsDe } from "./progressionCgp";
 import { titreSansLEleve } from "./impressionAtelier";
 import { pdfsCites } from "./materielAImprimer";
@@ -258,3 +260,25 @@ describe("ce que l'enseignant a demandé pour « En retard » (octobre 2026)", (
   });
 });
 
+
+
+describe("le temps de chaque fiche", () => {
+  it("chaque sorte de fiche a son temps de base, parmi ceux qu'on propose", () => {
+    for (const r of RECETTES) expect(MINUTEURS_DES_TABLETTES, r.id).toContain(MINUTEURS_DE_BASE[r.id]);
+    expect(Object.keys(MINUTEURS_DE_BASE).sort()).toEqual(RECETTES.map((r) => r.id).sort());
+  });
+
+  it("prend le temps réglé, « sans minuteur » compris, sinon celui de base", () => {
+    const regles = lireMinuteursRetard(JSON.stringify({ pyramides: 20, heure: 0, inconnue: 5, listes: 12.5, "mots-meles": 500, comparer: "10" }));
+    expect(regles).toEqual({ pyramides: 20, heure: 0 });
+    expect([minuteurDeLaRecette("pyramides", regles), minuteurDeLaRecette("heure", regles), minuteurDeLaRecette("listes", regles)])
+      .toEqual([20, 0, MINUTEURS_DE_BASE.listes]);
+    expect([lireMinuteursRetard(""), lireMinuteursRetard("pas du json"), lireMinuteursRetard("[1]")]).toEqual([{}, {}, {}]);
+  });
+
+  it("se règle par sorte de fiche, sous un nom qui vaut pour tous les niveaux, rangé par rubrique", () => {
+    expect(nomDeToutesLesFiches(recetteDe("posees")!)).toBe("Des additions posées / Des soustractions posées");
+    expect(nomDeToutesLesFiches(recetteDe("heure")!)).toBe("Lire l'heure");
+    expect(["suite", "pyramides", "mots-meles"].map((id) => rubriqueDeLaRecette(recetteDe(id)!))).toEqual(["Maternelle", "Mathématiques", "Français"]);
+  });
+});
