@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { avecRituels, ecrireRituels, ligneDeRituel, lireRituels, nouveauRituel, rituelsCites, rituelsImprimes, trierRituels } from "./rituels";
+import { avecRituels, ecrireRituels, ligneDeRituel, lireRituels, nouveauRituel, rituelsCites, rituelsImprimes, titresDesRituels, trierRituels } from "./rituels";
 
 const date = { id: "r1", titre: "La date", deroulement: "Pointage du jour : Amédée, Lucille.\nÉcrire la date : Eliot, Jules.", duree: 10 };
 const appel = { id: "r2", titre: "L'appel", deroulement: "", duree: 0 };
@@ -23,6 +23,11 @@ describe("les rituels", () => {
     expect(rituelsCites(prevu, rituels).map((r) => r.id)).toEqual(["r1", "r2"]);
     expect(rituelsCites("La date sans la marque", rituels)).toEqual([]);
     expect(rituelsCites("", rituels)).toEqual([]);
+  });
+
+  it("se lisent dans le prévu par leur titre, même sans être enregistrés, une fois chacun", () => {
+    expect(titresDesRituels("🔁 La date\nRécré\n  🔁 La météo \n🔁 la DATE\n🔁 ")).toEqual(["La date", "La météo"]);
+    expect(titresDesRituels("")).toEqual([]);
   });
 
   it("s'impriment sous le prévu avec leur déroulement, et se rangent par titre", () => {

@@ -1374,7 +1374,7 @@ function dureeLisible(minutes) {
 function envoiDuCreneau(c) {
   const aides = c.aides || [];
   const minutes = minutesDuCreneau(c);
-  if (!aides.length && !minutes) return "";
+  if (!aides.length && !minutes && !c.deroule) return "";
   const souciIci = envoiSouci && envoiSouci.creneau === c.id ? `<p class="erreur-ligne">${echapper(envoiSouci.texte)}</p>` : "";
   if (portail.ouvert && portail.creneau === c.id && (portail.montree || portail.minuteur)) {
     const t = portail.minuteur, n = portail.tablettes;
@@ -1382,7 +1382,13 @@ function envoiDuCreneau(c) {
     // La fiche montrée, et celle qui vient après elle dans le déroulement du créneau.
     const montree = aides.find((a) => a.id === portail.montreeId);
     const suivante = montree && montree.etape != null ? aides.find((a) => a.etape === montree.etape + 1) : null;
-    const place = portail.plan && portail.etape != null ? `<span class="cj-tab-place">Fiche ${portail.etape + 1} sur ${portail.etapes}</span>` : "";
+    // Où en est la classe dans le déroulement — le rituel, les phases, les fiches —, et de quoi avancer.
+    const k = portail.etape;
+    const place = portail.plan ? `<div class="portail-etapes cj-tab-etapes">
+        <button class="btn-mini" id="etape-avant" ${k == null || k === 0 ? "disabled" : ""} aria-label="Étape précédente">${icone("gauche", "petit")}</button>
+        <span class="cj-tab-place">${k == null ? "Aucune étape surlignée" : `Étape ${k + 1} sur ${portail.etapes}${portail.texteEtape && portail.texteEtape !== portail.montree ? ` : ${echapper(portail.texteEtape)}` : ""}`}</span>
+        <button class="btn-mini" id="etape-apres" ${k != null && k >= portail.etapes - 1 ? "disabled" : ""} aria-label="Étape suivante">${icone("droite", "petit")}</button>
+      </div>` : "";
     return `<div class="cj-tab on">
       <div class="cj-tab-tete">${icone("tablette", "petit")}<span>Sur les tablettes</span>
         <span class="cj-tab-plus">${n ? `${n} tablette${n > 1 ? "s" : ""}` : "aucune tablette encore"}</span></div>
@@ -1420,9 +1426,10 @@ function envoiDuCreneau(c) {
   }
   const aide = aides[0];
   return `<div class="cj-tab">${tete(aide ? minutesDe(aide) : minutes)}
+    ${c.deroule ? `<button class="lien-btn cj-tab-deroule" data-deroule="${echapper(c.id)}" ${occupe}>${icone("liste", "petit")}Montrer ce qui va se passer</button>` : ""}
     ${aide ? `<div class="cj-tab-aide">${icone("liste", "petit")}<span>${echapper(aide.titre)}</span></div>` : ""}
-    <button class="btn-plein" data-envoyer-creneau="${echapper(c.id)}" data-aide="${aide ? echapper(aide.id) : ""}" ${occupe}>
-      ${icone(aide ? "tablette" : "horloge")}${enCours ? "Envoi…" : aide ? "Envoyer aux tablettes" : "Lancer le minuteur"}</button>
+    ${aide || minutes ? `<button class="btn-plein" data-envoyer-creneau="${echapper(c.id)}" data-aide="${aide ? echapper(aide.id) : ""}" ${occupe}>
+      ${icone(aide ? "tablette" : "horloge")}${enCours ? "Envoi…" : aide ? "Envoyer aux tablettes" : "Lancer le minuteur"}</button>` : ""}
     ${souciIci}
   </div>`;
 }
