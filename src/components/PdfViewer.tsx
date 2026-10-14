@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { api, texteErreur, type MaterielItem } from "../api";
 import { toast } from "./Toaster";
-import { lireFabrication, modifierDansFabriquer } from "../modifierFeuille";
+import { lireFabrication, modifierDansFabriquer, seRefaitDansFabriquer } from "../modifierFeuille";
 import { nomDeLAtelier } from "../catalogueAteliers";
 import { ouvrirPdf, proportionPdf, rendrePageSelectionnable, textePage, type DocumentPdf } from "../pdfRendu";
 import { aplatir, morceauxCouverts, occurrences, type TexteAplati } from "../rechercheDansPdf";
@@ -163,7 +163,7 @@ export function PdfViewer({ nomFichier, titre, onClose, materiel }: {
     <div className="overlay" style={{ zIndex: 160 }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal" style={{ maxWidth: "92vw", width: 1020, height: "90vh", display: "flex", flexDirection: "column" }}>
         <div className="modal-head"><h2>{titre}</h2><div className="spacer" />
-          {materiel && fabrication && (
+          {materiel && seRefaitDansFabriquer(fabrication) && (
             <button className="btn sm" onClick={() => { onClose(); modifierDansFabriquer(materiel, fabrication, navigate); }}
               title={`Rouvrir l'atelier « ${nomDeLAtelier(fabrication.atelier)} » réglé comme cette feuille : ce que vous y enregistrerez prendra sa place`}>
               ✏️ Modifier dans Fabriquer

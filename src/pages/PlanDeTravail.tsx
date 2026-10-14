@@ -29,7 +29,7 @@ import { PanneauCommun, TYPE_COMMUN, lireDepotCommun } from "../components/Panne
 import { estPaquet, titreDuPaquet } from "../bureauCommun";
 import { confirmer } from "../components/confirmer";
 import { contenuDirect, nature } from "../bureau";
-import { lireFabrication, modifierDansFabriquer } from "../modifierFeuille";
+import { lireFabrication, modifierDansFabriquer, seRefaitDansFabriquer } from "../modifierFeuille";
 import { estSurLeBureau } from "../materielSeance";
 import { useEtatDuPlan, useSuiviSequences } from "../components/useSuiviSequences";
 import { BadgeSuivi } from "../components/SuiviSequence";
@@ -1000,7 +1000,7 @@ export default function PlanDeTravail() {
       case "materiel": {
         // Une feuille fabriquée se refait dans son atelier, et la nouvelle prend sa place.
         const f = lireFabrication(e.mat.fabricationJson);
-        return f ? [{ label: "Modifier dans Fabriquer", icon: "🎲", onClick: () => modifierDansFabriquer(e.mat, f, nav) }] : [];
+        return seRefaitDansFabriquer(f) ? [{ label: "Modifier dans Fabriquer", icon: "🎲", onClick: () => modifierDansFabriquer(e.mat, f, nav) }] : [];
       }
       default: return [];
     }

@@ -110,7 +110,11 @@ export const fichesDuCreneau = (c: Pick<Creneau, "prevu">, materiel: MaterielIte
  * phase de séance celui du domaine de la séance, une fiche d'élève celui du
  * domaine de sa sorte, retrouvé en dessinant la page (voir pictosMatieres).
  */
-export interface PasDuDeroulement { texte: string; matiere: string; domaine?: string; rituel?: boolean; fiche?: boolean }
+export interface PasDuDeroulement {
+  texte: string; matiere: string; domaine?: string; rituel?: boolean; fiche?: boolean;
+  /** Une fiche faite d'un support de travail : sa photo, qui lui sert de picto (voir supportsDeTravail). */
+  picto?: number;
+}
 
 /** Le domaine d'une séance, par sa première compétence — la sienne, sinon celle de sa séquence : le sous-domaine, sinon le domaine. */
 export function domaineDeLaSeance(seance: Pick<Seance, "competences">, sequence?: Pick<Sequence, "competences">): string {
@@ -149,7 +153,11 @@ export function pasDuDeroulement(
   return [
     { texte: rituels.length ? rituels.join(" · ") : "Rituel", matiere: rituels.length ? "Rituel" : "", rituel: true },
     ...(seance ? (phases.length ? phases : [seance.titre]) : []).map((texte) => ({ texte, matiere: "", ...(domaineDeSeance ? { domaine: domaineDeSeance } : {}) })),
-    ...lesFiches.map((m) => ({ texte: titrePourLesTablettes(m), matiere: "", fiche: true })),
+    ...lesFiches.map((m) => {
+      // Un support de travail montre sa photo, et dit sa matière ; une fiche la retrouve par sa sorte, au dessin.
+      const support = lireFabrication(m.fabricationJson)?.support;
+      return { texte: titrePourLesTablettes(m), matiere: support?.matiere ?? "", fiche: true, ...(support ? { picto: support.photo } : {}) };
+    }),
   ];
 }
 
@@ -354,7 +362,7 @@ export async function pageDuDeroulement(etapes: PasDuDeroulement[]): Promise<str
   // Une fiche d'élève : sa matière, écrite au-dessus, et son domaine, retrouvés par sa sorte.
   const { domaineDeLaRecette, matiereDeLaRecette, recetteDuTitre } = await import("./fichesAutonomie");
   const pas = etapes.map((p) => {
-    const r = p.fiche ? recetteDuTitre(p.texte) : undefined;
+    const r = p.fiche && p.picto == null ? recetteDuTitre(p.texte) : undefined;
     return r ? { ...p, matiere: matiereDeLaRecette(r), domaine: domaineDeLaRecette(r) } : p;
   });
   // Le picto de la matière, par défaut ; celui du domaine si l'enseignant détaille la matière et l'a choisi — jamais
@@ -368,7 +376,8 @@ export async function pageDuDeroulement(etapes: PasDuDeroulement[]): Promise<str
   try {
     const aProposer = [...new Set(cibles.flatMap((x) => (x ? [x.matiere ?? x.nom] : [])))];
     const proposes = await pictosProposes(aProposer).catch((): Record<string, number> => ({}));
-    const refs = cibles.map((x) => (x ? pictoDuDomaine(x.nom, x.matiere, choix, parDomaine, domaines, proposes) : null));
+    // La photo d'un support d'abord ; sinon le picto de la matière, ou du domaine.
+    const refs = cibles.map((x, i) => pas[i].picto ?? (x ? pictoDuDomaine(x.nom, x.matiere, choix, parDomaine, domaines, proposes) : null));
     const { chargerImages } = await import("./components/ChoixPicto");
     const dessins = await chargerImages([...new Set(refs.filter((r): r is number | string => r != null))], true);
     refs.forEach((r, i) => { if (r != null) images[i] = dessins[r]; });

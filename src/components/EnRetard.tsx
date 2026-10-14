@@ -10,7 +10,10 @@ import {
   combienDeFiches, dossierDuJour, elevesDuJour, graineDe, iconeDeLaRecette, jourEnLettres, niveauDesFiches, nomDeLaRecette, prenomDe,
   prevuAvecLesFiches, proposer, recetteDe, repartir, titreDeLaFiche, titreLibre, uneAutre, uneDePlus,
   type EleveDuJour, type FicheProposee, type NiveauFiches, type OutilsFiche,
+  recettesDesSupports, type RecetteDeFiche, type SupportDonne,
 } from "../fichesAutonomie";
+import { lireMesPictos, imageDeMonPicto } from "../mesPictos";
+import { estUnSupport } from "../supportsDeTravail";
 import { dureeDuMinuteur, MINUTEURS_DES_TABLETTES } from "../journalTelephone";
 
 // « En retard » : pour chaque élève de la journée, des fiches à faire seul,
@@ -49,6 +52,31 @@ const OUTILS: OutilsFiche = {
   },
 };
 
+/**
+ * La photo d'un support, réduite à 900 points de côté : la fiche et sa consigne pour les tablettes — gardée avec
+ * la fiche — la portent sans peser les mégaoctets d'une photo de téléphone.
+ */
+async function photoReduite(id: number): Promise<string> {
+  const brute = await imageDeMonPicto(id);
+  return new Promise((ok) => {
+    const img = new Image();
+    img.onload = () => {
+      const echelle = Math.min(1, 900 / Math.max(img.naturalWidth, img.naturalHeight, 1));
+      const toile = document.createElement("canvas");
+      toile.width = Math.max(1, Math.round(img.naturalWidth * echelle));
+      toile.height = Math.max(1, Math.round(img.naturalHeight * echelle));
+      const g = toile.getContext("2d");
+      if (!g) { ok(brute); return; }
+      g.fillStyle = "#fff";
+      g.fillRect(0, 0, toile.width, toile.height);
+      g.drawImage(img, 0, 0, toile.width, toile.height);
+      ok(toile.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = () => ok(brute);
+    img.src = brute;
+  });
+}
+
 export function EnRetard({ jourInitial, onClose, onFini }: {
   jourInitial: string; onClose: () => void; onFini: (jour: string) => void;
 }) {
@@ -64,6 +92,18 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
   const [minuteurs, setMinuteurs] = React.useState<Record<string, number> | null>(null);
   React.useEffect(() => {
     api.settingGet(CLE_MINUTEURS_RETARD).then((brut) => setMinuteurs(lireMinuteursRetard(brut))).catch(() => setMinuteurs({}));
+  }, []);
+  // Les photos réglées comme supports de travail (Réglages › Personnalisation) : des fiches de plus, pour leur niveau.
+  const [supports, setSupports] = React.useState<RecetteDeFiche[] | null>(null);
+  React.useEffect(() => {
+    void (async () => {
+      const [photos, jeux] = await Promise.all([lireMesPictos().catch(() => []), api.jeuxList().catch(() => [])]);
+      const donnes: SupportDonne[] = photos.filter(estUnSupport).map((photo) => {
+        const jeu = jeux.find((j) => j.id === photo.jeuId);
+        return { photo, jeu: jeu?.titre ?? "", regles: jeu?.regles ?? "" };
+      });
+      setSupports(recettesDesSupports(donnes, photoReduite));
+    })();
   }, []);
   /** Une fiche, avec le temps de sa sorte. */
   const avecSonTemps = React.useCallback((f: FicheProposee): FicheDuJour => ({ ...f, minuteur: minuteurDeLaRecette(f.recette, minuteurs ?? {}) }), [minuteurs]);
@@ -86,13 +126,14 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
   const propositions = React.useCallback((eleve: Eleve, creneaux: Creneau[], niveau: NiveauFiches | null): Ligne => ({
     niveau, inclus: niveau !== null,
     fiches: niveau
-      ? proposer(niveau, periode, eleve.nonVerbal ?? false, combienDeFiches(niveau, creneaux.length), graineDe(`${eleve.id}|${jour}|${tirage}`), eleve.fichesExclues ?? [])
+      ? proposer(niveau, periode, eleve.nonVerbal ?? false, combienDeFiches(niveau, creneaux.length), graineDe(`${eleve.id}|${jour}|${tirage}`),
+        eleve.fichesExclues ?? [], supports ?? [])
         .map(avecSonTemps)
       : [],
-  }), [periode, jour, tirage, avecSonTemps]);
+  }), [periode, jour, tirage, avecSonTemps, supports]);
 
   React.useEffect(() => {
-    if (!journee || !minuteurs) return;
+    if (!journee || !minuteurs || !supports) return;
     setLignes(Object.fromEntries(journee.presents.map(({ eleve, creneaux }) => [eleve.id, propositions(eleve, creneaux, niveauDesFiches(eleve.niveau))])));
   }, [journee, minuteurs, propositions]);
 
@@ -118,7 +159,7 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
       if (!l?.inclus || !l.niveau) continue;
       const ou = repartir(l.fiches.length, creneaux.length);
       for (const [i, f] of l.fiches.entries()) {
-        const recette = recetteDe(f.recette);
+        const recette = recetteDe(f.recette, supports ?? []);
         if (!recette) continue;
         const c = { niveau: l.niveau, periode, prenom: prenomDe(eleve) };
         const nom = nomDeLaRecette(recette, c);
@@ -127,7 +168,7 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
           const { html, style, refaire } = await recette.fabriquer(c, f.graine, OUTILS);
           const titre = titreLibre(titreDeLaFiche(nom, c.prenom, jour), pris);
           await ficheDeLEleve(recette.atelier, titre, html, style, { prenom: c.prenom, date: jourEnLettres(jour), dossier: dossierDuJour(jour) },
-            { memoires: refaire, graine: f.graine, ...(f.minuteur ? { minuteur: f.minuteur } : {}) });
+            { memoires: refaire, graine: f.graine, ...(f.minuteur ? { minuteur: f.minuteur } : {}), ...(recette.support ? { support: recette.support } : {}) });
           const creneau = creneaux[ou[i]];
           parCreneau.set(creneau.id, [...(parCreneau.get(creneau.id) ?? []), titre]);
         } catch {
@@ -224,7 +265,7 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
                 {l.inclus && ctx && <>
                   <ol className="retard-fiches">
                     {l.fiches.map((f, i) => {
-                      const r = recetteDe(f.recette);
+                      const r = recetteDe(f.recette, supports ?? []);
                       if (!r) return null;
                       return (
                         <li key={`${i}-${f.recette}-${f.graine}`}>
@@ -236,7 +277,7 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
                           )}
                           <button className="btn ghost sm" disabled={occupe} title="Une autre fiche"
                             onClick={() => changer(p.eleve.id, (x) => ({ ...x, fiches: x.fiches.map((y, j) => (j === i
-                              ? avecSonTemps(uneAutre(y, x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|${i}|${y.graine}`), p.eleve.fichesExclues ?? []))
+                              ? avecSonTemps(uneAutre(y, x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|${i}|${y.graine}`), p.eleve.fichesExclues ?? [], supports ?? []))
                               : y)) }))}>🔄</button>
                           <button className="btn ghost sm" disabled={occupe} title="Retirer cette fiche"
                             onClick={() => changer(p.eleve.id, (x) => ({ ...x, fiches: x.fiches.filter((_, j) => j !== i) }))}>✕</button>
@@ -245,7 +286,7 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
                     })}
                   </ol>
                   <button className="btn ghost sm" disabled={occupe} onClick={() => changer(p.eleve.id, (x) => {
-                    const plus = uneDePlus(x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|+${x.fiches.length}`), p.eleve.fichesExclues ?? []);
+                    const plus = uneDePlus(x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|+${x.fiches.length}`), p.eleve.fichesExclues ?? [], supports ?? []);
                     return plus ? { ...x, fiches: [...x.fiches, avecSonTemps(plus)] } : x;
                   })}>＋ Une fiche</button>
                 </>}

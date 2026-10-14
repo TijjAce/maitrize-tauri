@@ -182,6 +182,18 @@ describe("les fiches d'« En retard », pour les tablettes", () => {
     expect(j.jours[0].creneaux[0].aides.map((a) => [a.id, a.etape])).toEqual([["m1", 1], ["f1", 3], ["f2", 3]]);
   });
 
+  it("montrent sur le déroulement la photo d'un support de travail, et sa matière", () => {
+    const support: MaterielItem = {
+      ...materiel("s9", "Le jeu des boîtes — RACHID, 13 oct.", null, "motsMeles"), pdfsJson: '["s9.pdf"]',
+      fabricationJson: JSON.stringify({ atelier: "support", eleve: { prenom: "RACHID", date: "lundi 13 octobre" }, support: { photo: -2_100_000_100, matiere: "Mathématiques" } }),
+    };
+    const c = creneau("c1", "2026-10-13", { prevu: "📄 Le jeu des boîtes — RACHID, 13 oct.\n" + prevu });
+    expect(pasDuDeroulement(c, undefined, () => [], [support, pyramides], "", "RACHID").slice(1)).toEqual([
+      { texte: "Le jeu des boîtes", matiere: "Mathématiques", fiche: true, picto: -2_100_000_100 },
+      { texte: "Les pyramides de nombres", matiere: "", fiche: true },
+    ]);
+  });
+
   it("se reconnaissent à leur élève, et les tablettes lisent leur titre sans lui, comme le papier", () => {
     expect([estUneFicheDEleve(pyramides), estUneFicheDEleve(materiel("m1", "x", null, "motsMeles"))]).toEqual([true, false]);
     expect(estUneFicheDEleve({ ...pyramides, pdfsJson: "[]" })).toBe(false);

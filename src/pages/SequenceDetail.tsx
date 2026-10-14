@@ -25,6 +25,7 @@ import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { FormSequence } from "../components/FormSequence";
 import { ReglesCitees, useLudotheque } from "../components/ReglesDesJeux";
+import { SupportsDeLaSequence } from "../components/SupportsDeTravail";
 import { sansMarqueurs, STYLE_REGLES } from "../jeuxCites";
 import { htmlDeLaSequence, imagesDeLaSequence } from "../sequenceHtml";
 import { useCorrecteur, ZoneCorrigeable } from "../components/CorrigerSelection";
@@ -262,6 +263,9 @@ export default function SequenceDetail() {
         </div>
         {matsSeq.length > 0 && <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{matsSeq.map(matChip)}</div>}
       </div>
+
+      {/* Les photos du dictaphone rattachées à la séquence dans les réglages : ses supports de travail. */}
+      <SupportsDeLaSequence sequenceId={seq.id} />
 
       {/* Les exercices des manuels qui portent la compétence visée : d'un geste dans une séance. */}
       <ExercicesDesManuels competence={comp} sequenceId={seq.id} cycle={seq.cycle} seances={liste}

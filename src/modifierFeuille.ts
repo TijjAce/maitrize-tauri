@@ -35,7 +35,19 @@ export interface Fabrication {
    * créneau qui la cite. Absent : aucun.
    */
   minuteur?: number;
+  /**
+   * Un support de travail donné par « En retard » : la photo de Mes pictos et
+   * sa matière (voir supportsDeTravail). Aucun atelier ne le refait ; le
+   * déroulement des tablettes montre sa photo.
+   */
+  support?: { photo: number; matiere: string };
 }
+
+/** L'« atelier » d'une fiche faite d'un support de travail : la photo d'un objet ou d'un jeu de la classe, et ses règles. */
+export const ATELIER_SUPPORT = "support";
+
+/** Une fabrication qu'un atelier de Fabriquer sait refaire : pas un support de travail. */
+export const seRefaitDansFabriquer = (f: Fabrication | null): f is Fabrication => !!f && f.atelier !== ATELIER_SUPPORT;
 
 /** Le plus long minuteur des tablettes, en minutes : ce que le portail du téléphone accepte. */
 export const MINUTEUR_MAX = 120;
@@ -47,7 +59,7 @@ export function lireFabrication(json: string | null | undefined): Fabrication | 
   if (!json) return null;
   try {
     const f: unknown = JSON.parse(json);
-    if (!estUnObjet(f) || typeof f.atelier !== "string" || !(ONGLETS as readonly string[]).includes(f.atelier)) return null;
+    if (!estUnObjet(f) || typeof f.atelier !== "string" || !((ONGLETS as readonly string[]).includes(f.atelier) || f.atelier === ATELIER_SUPPORT)) return null;
     const eleve = estUnObjet(f.eleve) && typeof f.eleve.prenom === "string" && typeof f.eleve.date === "string"
       ? { prenom: f.eleve.prenom, date: f.eleve.date } : undefined;
     return {
@@ -58,6 +70,8 @@ export function lireFabrication(json: string | null | undefined): Fabrication | 
       eleve,
       consigne: typeof f.consigne === "string" && f.consigne.trim() ? f.consigne : undefined,
       minuteur: typeof f.minuteur === "number" && f.minuteur >= 1 ? Math.min(MINUTEUR_MAX, Math.round(f.minuteur)) : undefined,
+      support: estUnObjet(f.support) && typeof f.support.photo === "number" && typeof f.support.matiere === "string"
+        ? { photo: f.support.photo, matiere: f.support.matiere } : undefined,
     };
   } catch {
     return null;

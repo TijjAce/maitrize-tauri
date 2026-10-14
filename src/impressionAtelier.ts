@@ -395,7 +395,7 @@ async function pdfPourLEleve(atelier: string, titre: string, corps: string, styl
  */
 export async function ficheDeLEleve(
   atelier: string, titre: string, corps: string, style: string, eleve: { prenom: string; date: string; dossier: string },
-  refaire: Pick<Fabrication, "memoires" | "graine" | "minuteur"> = {},
+  refaire: Pick<Fabrication, "memoires" | "graine" | "minuteur" | "support"> = {},
 ): Promise<MaterielItem> {
   const { api, newId, nowIso } = await import("./api");
   const fichier = await pdfPourLEleve(atelier, titre, corps, style, eleve);

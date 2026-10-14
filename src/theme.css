@@ -1613,5 +1613,17 @@ details.cm-pli > summary .meta { margin-left: 4px; font-size: 12.5px; }
 .pm-image img.propose { opacity: .45; }
 .pm-vide { color: var(--text-2); font-size: 16px; }
 .pm-nom { flex: 1; min-width: 0; font-size: 13.5px; }
+/* Mes photos, supports de travail : l'image, puis son nom et ce qui en fait un support. */
+.sdt-ligne { display: grid; grid-template-columns: 64px 1fr; gap: 12px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.sdt-image { width: 64px; height: 64px; border: 1px solid var(--border); border-radius: 8px; background: #fff; overflow: hidden; }
+.sdt-image img { width: 100%; height: 100%; object-fit: cover; }
+.sdt-champs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sdt-champs .input, .sdt-champs .select { width: auto; padding: 6px 9px; font-size: 13px; }
+.sdt-champs .sdt-nom { flex: 1 1 100%; font-weight: 600; }
+.sdt-a-completer { flex-basis: 100%; font-size: 12px; }
+.sdt-sequence { margin-bottom: 14px; }
+.sdt-sequence .sdt-ligne:last-child { border-bottom: none; }
+.sdt-regles { margin-top: 4px; font-size: 13px; }
+.sdt-regles summary { cursor: pointer; color: var(--accent); }
 /* « par domaine » : détailler une matière — ses domaines paraissent dessous. */
 .pm-detail { display: flex; align-items: center; gap: 5px; flex: none; font-size: 12.5px; color: var(--text-2); white-space: nowrap; cursor: pointer; }
