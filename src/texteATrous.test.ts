@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  MODELES_TROUS, REGLAGES_TROUS, estUnTrou, etiquettesEnPlus, htmlTexteATrous, largeurDesCases, morceauxDe, pagesATrous, phrasesATrous,
+  METHODE_PRONOM, MODELES_TROUS, REGLAGES_TROUS, estUnTrou, etiquettesEnPlus, htmlTexteATrous, largeurDesCases, morceauxDe, pagesATrous, phrasesATrous,
   phrasesSansTrou, queDesFormesEtreAvoir, reglagesTrousSurs, trousDe, type ReglagesTrous,
 } from "./texteATrous";
 
@@ -82,6 +82,20 @@ describe("le texte à trous", () => {
     expect(sobre).not.toContain("tt-methode");
     expect(sobre).not.toContain("tt-indice");
     expect(htmlTexteATrous(r({ capitales: true, taille: "grande" }), 3)).toContain('class="feuille tt tt-grande tt-capitales"');
+  });
+
+  it("montre la façon de vérifier en étapes numérotées, dans le cadre des consignes, le verbe en couleur", () => {
+    const html = htmlTexteATrous(r({ phrases: MODELES_TROUS[0].phrases, texteMethode: METHODE_PRONOM }), 3);
+    const bloc = html.slice(html.indexOf('class="tt-methode cs"'), html.indexOf("tt-phrases"));
+    expect(bloc).toContain('<div class="cs-titre">🔎 Je vérifie</div>');
+    expect(compter(bloc, /class="cs-etape cs-action"/g)).toBe(3);
+    expect([...bloc.matchAll(/<b class="cs-verbe">([^<]+)<\/b>/g)].map((m) => m[1])).toEqual(["remplace", "relis", "réponds"]);
+    // Des réglages gardés d'avant portent la méthode d'un seul tenant : elle prend la forme en étapes.
+    const avant = "Pour vérifier, je remplace le sujet par un pronom — il, elle, ils, elles, nous, vous — et je relis la phrase à voix basse : est-ce qu'elle se dit ?";
+    expect(reglagesTrousSurs({ texteMethode: avant }).texteMethode).toBe(METHODE_PRONOM);
+    // Celle qu'un enseignant écrit, ligne par ligne, garde ses lignes comme étapes.
+    const sienne = htmlTexteATrous(r({ phrases: MODELES_TROUS[0].phrases, texteMethode: "Je lis la phrase.\nJe cherche le verbe." }), 3);
+    expect(compter(sienne.slice(sienne.indexOf("tt-methode")), /class="cs-etape cs-action"/g)).toBeGreaterThanOrEqual(2);
   });
 
   it("répare des réglages abîmés", () => {
