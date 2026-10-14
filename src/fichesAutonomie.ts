@@ -414,8 +414,8 @@ export function nomDeToutesLesFiches(r: RecetteDeFiche): string {
 // Les fiches d'un créneau se suivent : les tablettes les montrent dans
 // l'ordre, chacune dans son cadre, reliées par des flèches — ce qui va se
 // passer (voir journalTelephone). Chaque cadre porte le picto de son domaine,
-// sinon de sa matière, comme un emploi du temps visuel (demande de
-// l'enseignant, octobre 2026) : Réglages › Personnalisation, ou la page CAA.
+// et lui seul (demande de l'enseignant, octobre 2026) : Réglages ›
+// Personnalisation, ou la page CAA.
 
 /**
  * La matière et le domaine de chaque fiche : ceux de la liste des matières et
@@ -449,7 +449,7 @@ export const DOMAINE_DES_FICHES: Record<string, { matiere: string; domaine: stri
 /** La matière d'une fiche, écrite au-dessus de son nom dans le déroulement. */
 export const matiereDeLaRecette = (r: RecetteDeFiche): string => DOMAINE_DES_FICHES[r.id]?.matiere ?? "";
 
-/** Le domaine d'une fiche : son picto, s'il en a un, passe avant celui de la matière. */
+/** Le domaine d'une fiche : c'est son picto que le déroulement montre. */
 export const domaineDeLaRecette = (r: RecetteDeFiche): string => DOMAINE_DES_FICHES[r.id]?.domaine ?? "";
 
 /**
