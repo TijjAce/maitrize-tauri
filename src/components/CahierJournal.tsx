@@ -38,7 +38,7 @@ import { MoletteEchelle } from "./MoletteEchelle";
 import { ligneDuPdf, materielDuCreneau, pdfsCites } from "../materielAImprimer";
 import { ChoixPdfDuBureau } from "./SeanceParts";
 import { PdfViewer } from "./PdfViewer";
-import { lirePdfs } from "../materielSeance";
+import { eleveDeLaFiche, lirePdfs, titreSansLEleve } from "../materielSeance";
 import {
   aidesDuCreneau, dureeDuMinuteur, fichesDuCreneau, minuteurDeLaFiche, minuteurDuCreneau, MINUTEURS_DES_TABLETTES, publierLeJournal, titreDeLAide,
 } from "../journalTelephone";
@@ -604,12 +604,13 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                           masques={masques[c.id]} onMasquer={(cle) => masquer(c.id, cle)} />
                         <RituelsCites rituels={rituelsCites(b.prevu, rituels)} onModifier={(r) => setRituelEdite({ rituel: r, nouveau: false })}
                           masques={masques[c.id]} onMasquer={(cle) => masquer(c.id, cle)} />
-                        <MaterielDuJournal materiels={materielDuCreneau({ seanceId: c.seanceId, prevu: b.prevu }, sequences, seances, materiels ?? [])} />
+                        <MaterielDuJournal materiels={materielDuCreneau({ seanceId: c.seanceId, prevu: b.prevu }, sequences, seances, materiels ?? [])}
+                          avecTablettes={!!telephone?.relie && !reunion} />
                         {telephone?.relie && !reunion && (
                           <TablettesDuCreneau aides={aidesDuCreneau(c, materiels ?? []).map(titreDeLAide)}
                             minutes={minuteursRegles[c.id] ?? minuteurDuCreneau(c)}
                             onMinutes={(m) => { void reglerMinuteur(c, m); }}
-                            fiches={fichesDuCreneau({ prevu: b.prevu }, materiels ?? []).map((m) => ({ id: m.id, titre: m.titre, minutes: minuteurDeLaFiche(m) }))} />
+                            aDesFiches={fichesDuCreneau({ prevu: b.prevu }, materiels ?? []).length > 0} />
                         )}
                       </>
                     )}
@@ -681,27 +682,50 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
 
 /** Les images posées dans le prévu : ce qu'on y a découpé, et de quoi le retirer. */
 /**
- * Le matériel qui suivra le journal à l'impression, avec la molette de son
- * échelle : c'est ici qu'on voit la feuille partir, c'est ici qu'on la règle.
+ * Ce qui suivra le journal à l'impression, en une liste : les fiches des
+ * élèves, rangées sous leur prénom — sans lui dans leur titre —, puis le reste
+ * du matériel. Chacun a sa taille d'impression, repliée derrière son
+ * pourcentage ; le téléphone relié, chaque fiche dit aussi son temps sur les
+ * tablettes. Les mêmes fiches ne se lisent plus deux fois (demande de
+ * l'enseignant, octobre 2026).
  */
-function MaterielDuJournal({ materiels }: { materiels: MaterielItem[] }) {
+function MaterielDuJournal({ materiels, avecTablettes }: { materiels: MaterielItem[]; avecTablettes: boolean }) {
   const [vu, setVu] = React.useState<{ nom: string; titre: string; materiel: MaterielItem } | null>(null);
   if (!materiels.length) return null;
+  const parEleve = new Map<string, MaterielItem[]>();
+  const autres: MaterielItem[] = [];
+  for (const m of materiels) {
+    const eleve = eleveDeLaFiche(m);
+    if (eleve) parEleve.set(eleve.prenom, [...(parEleve.get(eleve.prenom) ?? []), m]);
+    else autres.push(m);
+  }
+  const ligne = (m: MaterielItem, titre: string, fiche: boolean) => {
+    const premier = lirePdfs(m.pdfsJson)[0];
+    const minutes = minuteurDeLaFiche(m);
+    return (
+      <div key={m.id} className="journal-materiel-ligne">
+        {premier
+          ? <button type="button" className="lien journal-materiel-nom" title="Voir le PDF" onClick={() => setVu({ nom: premier, titre: m.titre, materiel: m })}>📄 {titre}</button>
+          : <span className="journal-materiel-nom">📄 {titre}</span>}
+        {fiche && avecTablettes && (
+          <span className="journal-tablettes-duree" title="Son temps sur les tablettes, reçu à sa fabrication (Réglages › En retard) ; il se règle à la roue sur le téléphone">
+            ⏱ {minutes ? dureeDuMinuteur(minutes) : "sans minuteur"}</span>
+        )}
+        <MoletteEchelle materiel={m} repliee />
+      </div>
+    );
+  };
   return (
     <div className="journal-materiel">
-      <div className="journal-materiel-titre">🖨 Matériel à imprimer, joint à la suite du journal</div>
-      {materiels.map((m) => {
-        const premier = lirePdfs(m.pdfsJson)[0];
-        const titre = m.titre.trim() || "Matériel";
-        return (
-          <div key={m.id} className="journal-materiel-ligne">
-            {premier
-              ? <button type="button" className="lien journal-materiel-nom" title="Voir le PDF" onClick={() => setVu({ nom: premier, titre, materiel: m })}>📄 {titre}</button>
-              : <span className="journal-materiel-nom">📄 {titre}</span>}
-            <MoletteEchelle materiel={m} compact />
-          </div>
-        );
-      })}
+      <div className="journal-materiel-titre">🖨 À imprimer à la suite du journal</div>
+      {[...parEleve].map(([prenom, fiches]) => (
+        <div key={prenom} className="journal-materiel-eleve">
+          <div className="journal-materiel-prenom">{prenom}</div>
+          {fiches.map((m) => ligne(m, titreSansLEleve(m.titre, prenom), true))}
+        </div>
+      ))}
+      {autres.length > 0 && parEleve.size > 0 && <div className="journal-materiel-prenom">Le matériel</div>}
+      {autres.map((m) => ligne(m, m.titre.trim() || "Matériel", false))}
       {vu && <PdfViewer nomFichier={vu.nom} titre={vu.titre} materiel={vu.materiel} onClose={() => setVu(null)} />}
     </div>
   );
@@ -723,39 +747,28 @@ function MinuteurDesTablettes({ minutes, onMinutes, libelle }: { minutes: number
 }
 
 /**
- * Ce que le téléphone enverra aux tablettes depuis ce créneau : les aides de
- * sa séance, avec le minuteur du créneau, et chaque fiche d'« En retard » de
- * son prévu, avec le temps qu'elle a reçu à sa fabrication — il ne se change
- * pas ici. Sous le créneau, sur le téléphone, « Envoyer » les montre ; le
- * minuteur démarre aussitôt, et le téléphone le met en pause.
+ * Ce que le téléphone enverra à la classe depuis ce créneau : les aides de sa
+ * séance, avec le minuteur du créneau. Les fiches des élèves ont chacune le
+ * leur, écrit avec elles dans la liste à imprimer. Sur le téléphone, onglet
+ * Tablettes, « Envoyer » les montre ; le minuteur démarre aussitôt.
  */
-function TablettesDuCreneau({ aides, minutes, onMinutes, fiches }: {
-  aides: string[]; minutes: number; onMinutes: (m: number) => void;
-  fiches: { id: string; titre: string; minutes: number }[];
+function TablettesDuCreneau({ aides, minutes, onMinutes, aDesFiches }: {
+  aides: string[]; minutes: number; onMinutes: (m: number) => void; aDesFiches: boolean;
 }) {
-  // Le minuteur du créneau part avec les aides de la séance, ou seul ; les fiches ont chacune le leur.
-  const avecLeCreneau = aides.length > 0 || fiches.length === 0;
+  // Le minuteur du créneau part avec les aides de la séance, ou seul ; un créneau de fiches n'en a pas besoin.
+  if (!aides.length && aDesFiches) return null;
   return (
     <div className="journal-tablettes">
       <span className="journal-tablettes-titre"
         title="Sous ce créneau, sur le téléphone, « Envoyer » montre aux tablettes l'aide de la séance, ou la consigne d'une fiche, et lance son minuteur ; le téléphone le met en pause ou l'arrête.">
         📱 Sur les tablettes</span>
       <div className="journal-tablettes-liste">
-        {avecLeCreneau && (
-          <div className="journal-tablettes-ligne">
-            {aides.length > 0
-              ? <span className="journal-tablettes-aides">{aides.map((t, i) => <span key={i}>☰ {t}</span>)}</span>
-              : <span className="journal-tablettes-aides meta">{minutes ? "le minuteur seul, sans aide à la tâche" : "aucune aide à la tâche"}</span>}
-            <MinuteurDesTablettes minutes={minutes} onMinutes={onMinutes} libelle="Minuteur des tablettes" />
-          </div>
-        )}
-        {fiches.map((f) => (
-          <div key={f.id} className="journal-tablettes-ligne">
-            <span className="journal-tablettes-aides">📄 {f.titre}</span>
-            <span className="journal-tablettes-duree" title="Le temps que la fiche a reçu à sa fabrication, d'après Réglages › En retard">
-              ⏱ {f.minutes ? dureeDuMinuteur(f.minutes) : "sans minuteur"}</span>
-          </div>
-        ))}
+        <div className="journal-tablettes-ligne">
+          {aides.length > 0
+            ? <span className="journal-tablettes-aides">{aides.map((t, i) => <span key={i}>☰ {t}</span>)}</span>
+            : <span className="journal-tablettes-aides meta">{minutes ? "le minuteur seul, sans aide à la tâche" : "aucune aide à la tâche"}</span>}
+          <MinuteurDesTablettes minutes={minutes} onMinutes={onMinutes} libelle="Minuteur des tablettes" />
+        </div>
       </div>
     </div>
   );

@@ -438,6 +438,8 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .ctx-item:disabled:hover { background: none; color: var(--text); }
 
 /* Le menu du bureau (plan de travail), dans la barre du haut : chercher, filtrer, ranger. */
+/* Chercher, trier, partager : trois boutons côte à côte dans la barre du haut. */
+.menu-bureau-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .menu-bureau-ancre { position: relative; }
 .menu-bureau { position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; width: 300px;
   background: var(--panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow);
@@ -518,6 +520,17 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .journal-materiel-titre { font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
 .journal-materiel-ligne { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 2px 0; }
 .journal-materiel-nom { flex: 1; min-width: 140px; }
+/* Les fiches d'un élève, sous son prénom ; la taille d'impression, repliée derrière son pourcentage. */
+.journal-materiel-eleve + .journal-materiel-eleve, .journal-materiel-eleve + .journal-materiel-prenom { margin-top: 4px; }
+.journal-materiel-prenom { font-size: 11.5px; font-weight: 700; letter-spacing: .3px; color: var(--text-2); margin: 2px 0 0; }
+.journal-materiel-eleve .journal-materiel-ligne { padding-left: 8px; }
+.echelle-repliee { position: relative; display: inline-flex; }
+.echelle-bouton { border: 1px solid transparent; border-radius: 6px; background: none; padding: 1px 6px; font: inherit; font-size: 12px;
+  color: var(--text-2); cursor: pointer; font-variant-numeric: tabular-nums; }
+.echelle-bouton:hover { border-color: var(--border); background: var(--panel); }
+.echelle-bouton.changee { color: var(--accent); font-weight: 600; }
+.echelle-pop { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; padding: 6px 8px; background: var(--panel);
+  border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow); white-space: nowrap; }
 /* Un clic sur le nom ouvre la feuille. */
 .lien.journal-materiel-nom { color: inherit; text-decoration: none; text-align: left; }
 .lien.journal-materiel-nom:hover { color: var(--accent); text-decoration: underline; }
@@ -1614,11 +1627,13 @@ details.cm-pli > summary .meta { margin-left: 4px; font-size: 12.5px; }
 .pm-vide { color: var(--text-2); font-size: 16px; }
 .pm-nom { flex: 1; min-width: 0; font-size: 13.5px; }
 /* Mes photos, supports de travail : l'image, puis son nom et ce qui en fait un support. */
-.sdt-ligne { display: grid; grid-template-columns: 64px 1fr; gap: 12px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--border); }
+/* La colonne des champs rétrécit avec la carte : un titre de séquence long ne la pousse pas au-delà. */
+.sdt-ligne { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--border); }
 .sdt-image { width: 64px; height: 64px; border: 1px solid var(--border); border-radius: 8px; background: #fff; overflow: hidden; }
 .sdt-image img { width: 100%; height: 100%; object-fit: cover; }
-.sdt-champs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.sdt-champs .input, .sdt-champs .select { width: auto; padding: 6px 9px; font-size: 13px; }
+.sdt-champs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+.sdt-champs .input, .sdt-champs .select { width: auto; min-width: 0; max-width: 100%; padding: 6px 9px; font-size: 13px; }
+.sdt-champs .select { flex: 0 1 auto; text-overflow: ellipsis; }
 .sdt-champs .sdt-nom { flex: 1 1 100%; font-weight: 600; }
 .sdt-a-completer { flex-basis: 100%; font-size: 12px; }
 .sdt-sequence { margin-bottom: 14px; }
@@ -1627,3 +1642,21 @@ details.cm-pli > summary .meta { margin-left: 4px; font-size: 12.5px; }
 .sdt-regles summary { cursor: pointer; color: var(--accent); }
 /* « par domaine » : détailler une matière — ses domaines paraissent dessous. */
 .pm-detail { display: flex; align-items: center; gap: 5px; flex: none; font-size: 12.5px; color: var(--text-2); white-space: nowrap; cursor: pointer; }
+
+/* Programmer en IME : qui a quoi — une ligne par compétence, une colonne par élève, son prénom de bas en haut. */
+.qaq { overflow-x: auto; margin-top: 8px; }
+.qaq-table { border-collapse: collapse; font-size: 12.5px; }
+.qaq-table th, .qaq-table td { border-bottom: 1px solid var(--border); padding: 3px 4px; }
+.qaq-table thead th { vertical-align: bottom; border-bottom: 1.5px solid var(--border); }
+.qaq-competence { text-align: left; font-weight: 500; min-width: 200px; max-width: 320px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; position: sticky; left: 0; z-index: 1; background: var(--panel); }
+.qaq-eleve { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0 auto; padding: 3px 2px; border: none;
+  border-radius: 6px; background: none; color: var(--text); font: inherit; cursor: pointer; }
+.qaq-eleve:hover { background: var(--accent-soft); }
+.qaq-eleve.actif { background: var(--accent-soft); outline: 1.5px solid var(--accent); }
+.qaq-nom { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; font-weight: 600; max-height: 110px; overflow: hidden; text-overflow: ellipsis; }
+.qaq-compte { font-size: 11px; font-weight: 700; }
+.qaq-table td { min-width: 26px; text-align: center; color: var(--accent); font-weight: 800; }
+.qaq-table td.oui { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.qaq-table td.filtre { box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--accent) 6%, transparent); }
+
