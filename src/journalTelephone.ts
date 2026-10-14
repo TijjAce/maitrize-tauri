@@ -8,7 +8,9 @@
 // pendant l'activité. La consigne d'une feuille posée dans la séance part
 // aussi, comme une aide : elle n'est plus sur le papier (voir optionsFeuille).
 // Les fiches d'« En retard » citées au prévu du créneau partent de même, une
-// par une, chacune avec sa consigne et son minuteur.
+// par une, chacune avec sa consigne et son minuteur ; quand le créneau en a
+// plusieurs, leur déroulement part avec elles — ce qui va se passer, dans
+// l'ordre —, et la tablette y surligne la fiche en cours.
 //
 // Tout part chiffré avec la clé du retour (voir telephone.rs) : Nuage ne lit
 // rien. Rien ne repart qui n'a pas changé ; ici, rien ne se redessine non plus.
@@ -30,7 +32,11 @@ export const JOURS_PUBLIES = 14;
  * (0 : aucun) : celui du créneau pour une aide de sa séance, le sien pour une
  * fiche d'« En retard ».
  */
-export interface AideDuJournal { id: string; titre: string; minuteur: number }
+export interface AideDuJournal {
+  id: string; titre: string; minuteur: number;
+  /** Sa place dans le déroulement du créneau, pour une fiche d'élève ; absente sinon. */
+  etape?: number;
+}
 export interface CreneauDuJournal {
   id: string; debut: string; fin: string; matiere: string; prevu: string; bilan: string;
   /** La séance posée, par son titre ; vide sans séance. */
@@ -38,6 +44,8 @@ export interface CreneauDuJournal {
   aides: AideDuJournal[];
   /** Le minuteur des tablettes, en minutes ; 0 : aucun. Le téléphone l'envoie avec l'aide, depuis le créneau. */
   minuteur: number;
+  /** Le déroulement du créneau — ses fiches, dans l'ordre —, cité par sa clé ; vide sans déroulement. */
+  deroule: string;
 }
 export interface JourDuJournal { jour: string; creneaux: CreneauDuJournal[] }
 export interface JournalTelephone { publie: string; jours: JourDuJournal[] }
@@ -88,6 +96,11 @@ export const aidesDuCreneau = (c: Pick<Creneau, "seanceId">, materiel: MaterielI
 export const fichesDuCreneau = (c: Pick<Creneau, "prevu">, materiel: MaterielItem[]): MaterielItem[] =>
   pdfsCites(c.prevu ?? "", materiel.filter(estUneFicheDEleve));
 
+/** La clé du déroulement d'un créneau : la publication la remplace par l'empreinte de sa page. */
+export const cleDuDeroulement = (creneauId: string) => `deroule:${creneauId}`;
+/** Le titre du déroulement, en tête de sa page et sur les tablettes. */
+export const TITRE_DU_DEROULEMENT = "Ce qui va se passer";
+
 /** Le minuteur d'une fiche d'élève, en minutes ; 0 : aucun. */
 export const minuteurDeLaFiche = (m: MaterielItem): number => lireFabrication(m.fabricationJson)?.minuteur ?? 0;
 
@@ -136,14 +149,18 @@ export function journalDes(jours: string[], creneaux: Creneau[], seances: Seance
         .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut))
         .map((c) => {
           const minuteur = minuteurDuCreneau(c);
+          const lesFiches = fichesDuCreneau(c, fiches);
+          // Plusieurs fiches se suivent : leur déroulement part avec elles.
+          const avecDeroule = lesFiches.length >= 2;
           return {
             id: c.id, debut: c.heureDebut, fin: c.heureFin, matiere: c.matiere ?? "", prevu: c.prevu ?? "", bilan: c.bilan ?? "",
             seance: c.seanceId ? titreDe.get(c.seanceId) ?? "" : "",
             aides: [
               ...aidesDuCreneau(c, deSeance).map((m) => ({ id: m.id, titre: titreDeLAide(m), minuteur })),
-              ...fichesDuCreneau(c, fiches).map((m) => ({ id: m.id, titre: titreDeLAide(m), minuteur: minuteurDeLaFiche(m) })),
+              ...lesFiches.map((m, i) => ({ id: m.id, titre: titreDeLAide(m), minuteur: minuteurDeLaFiche(m), ...(avecDeroule ? { etape: i } : {}) })),
             ],
             minuteur,
+            deroule: avecDeroule ? cleDuDeroulement(c.id) : "",
           };
         }),
     })),
@@ -219,6 +236,68 @@ export async function pageDeLAide(m: MaterielItem): Promise<string | null> {
   return page;
 }
 
+// ── Le déroulement d'un créneau ────────────────────────────────────────────
+
+/** Les déroulements déjà dessinés, par leurs fiches : un créneau qui ne change pas ne se redessine pas. */
+const deroulementsDessines = new Map<string, string>();
+
+const echapper = (t: string) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+
+/** La flèche d'un cadre au suivant, de haut en bas. */
+const FLECHE_DU_DEROULEMENT = '<svg class="dr-fleche" viewBox="0 0 24 44" aria-hidden="true"><path d="M12 3v36M4 30l8 9 8-9" fill="none" stroke="#3a3a3a" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+const STYLE_DU_DEROULEMENT = `
+  .page > .titre { font-size: 28px; font-weight: 800; text-align: center; margin: 4px 0 16px; }
+  .dr { display: flex; flex-direction: column; align-items: center; }
+  .dr-etape { display: flex; align-items: center; gap: 16px; width: 100%; max-width: 560px; box-sizing: border-box; padding: 12px 18px;
+    border: 3px solid #3a3a3a; border-radius: 18px; background: #fff; }
+  .dr-etape img, .dr-vide { width: 88px; height: 88px; object-fit: contain; flex: none; }
+  .dr-vide { border: 2px dashed #cbc8d8; border-radius: 12px; box-sizing: border-box; }
+  .dr-mots { display: flex; flex-direction: column; gap: 3px; }
+  .dr-matiere { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; }
+  .dr .at-texte { font-size: 22px; font-weight: 700; line-height: 1.25; }
+  .dr-fleche { display: block; width: 24px; height: 44px; margin: 4px 0; }
+`;
+
+/**
+ * Le déroulement d'un créneau, pour les tablettes : ses fiches dans l'ordre,
+ * chacune dans son cadre — sa matière, son picto, son nom sans l'élève —,
+ * reliées par des flèches, de haut en bas. Chaque cadre est une étape : le
+ * téléphone les lit pour que la tablette surligne la fiche en cours.
+ */
+export async function pageDuDeroulement(fiches: MaterielItem[]): Promise<string> {
+  const cle = fiches.map((m) => `${m.id}|${m.titre}`).join("\n");
+  const deja = deroulementsDessines.get(cle);
+  if (deja) return deja;
+  const { api } = await import("./api");
+  const { documentImprimable } = await import("./print");
+  const { matiereDeLaRecette, motDuPictoDeLaFiche, recetteDuTitre } = await import("./fichesAutonomie");
+  const etapes = fiches.map((m) => {
+    const titre = titrePourLesTablettes(m);
+    const r = recetteDuTitre(titre);
+    return { titre, matiere: r ? matiereDeLaRecette(r) : "", mot: r ? motDuPictoDeLaFiche(r, titre) : "" };
+  });
+  // Les pictos de la banque de l'ordinateur, au sens de la classe comme ceux des consignes ; sans elle, des cadres sans image.
+  const ids = new Map<string, number>();
+  const images = new Map<number, string>();
+  try {
+    const trouves = await api.arasaacPourConsignes([...new Set(etapes.map((e) => e.mot).filter(Boolean))]);
+    for (const p of trouves) ids.set(p.mot.toLowerCase(), p.id);
+    for (const id of new Set(ids.values())) {
+      try { images.set(id, `data:image/png;base64,${await api.arasaacImage(id)}`); } catch { /* ce picto manque */ }
+    }
+  } catch { /* pas de banque */ }
+  const cadres = etapes.map((e, i) => {
+    const image = images.get(ids.get(e.mot.toLowerCase()) ?? -1);
+    return (i ? FLECHE_DU_DEROULEMENT : "") + `<div class="at-etape dr-etape">${image ? `<img src="${image}" alt="">` : '<span class="dr-vide"></span>'}`
+      + `<span class="dr-mots">${e.matiere ? `<span class="dr-matiere">${echapper(e.matiere)}</span>` : ""}<span class="at-texte">${echapper(e.titre)}</span></span></div>`;
+  }).join("");
+  const page = documentImprimable(TITRE_DU_DEROULEMENT,
+    `<div class="page"><div class="titre">${TITRE_DU_DEROULEMENT}</div><div class="dr">${cadres}</div></div>`, STYLE_DU_DEROULEMENT);
+  deroulementsDessines.set(cle, page);
+  return page;
+}
+
 // ── Publier ────────────────────────────────────────────────────────────────
 
 let publiee = "";
@@ -246,6 +325,14 @@ export async function publierLeJournal(maintenant = new Date()): Promise<void> {
     for (const m of materiel.filter((x) => cites.has(x.id))) {
       const html = await pageDeLAide(m).catch(() => null);
       if (html) aides.push({ cle: m.id, titre: titrePourLesTablettes(m), html });
+    }
+    // Le déroulement des créneaux à plusieurs fiches : les fiches de leur prévu, dans l'ordre.
+    const fiches = materiel.filter(estUneFicheDEleve);
+    for (const c of creneaux) {
+      const cle = cleDuDeroulement(c.id);
+      if (!journal.jours.some((j) => j.creneaux.some((x) => x.deroule === cle))) continue;
+      const html = await pageDuDeroulement(fichesDuCreneau(c, fiches)).catch(() => null);
+      if (html) aides.push({ cle, titre: TITRE_DU_DEROULEMENT, html });
     }
     const bilan = await api.telephonePublierJournal(journal, aides);
     if (bilan.relie) publiee = signature;

@@ -1022,10 +1022,10 @@ fn jour_du(journal: &relais::Journal, jour: &str, frais: bool) -> JourDuCahier {
     }
 }
 
-/// Les aides gardées qu'aucun créneau du journal ne cite plus s'en vont.
+/// Les aides gardées qu'aucun créneau du journal ne cite plus s'en vont ; le déroulement d'un créneau compte comme une aide.
 fn ranger_les_aides(d: &std::path::Path, journal: &relais::Journal) {
     let citees: std::collections::HashSet<String> = journal.jours.iter()
-        .flat_map(|j| j.creneaux.iter().flat_map(|c| c.aides.iter().map(|a| a.id.clone())))
+        .flat_map(|j| j.creneaux.iter().flat_map(|c| c.aides.iter().map(|a| a.id.clone()).chain((!c.deroule.is_empty()).then(|| c.deroule.clone()))))
         .collect();
     let Ok(entrees) = std::fs::read_dir(d) else { return };
     for e in entrees.flatten() {
@@ -1218,7 +1218,8 @@ mod tests {
         let journal = relais::Journal { publie: "2026-10-10T08:00:00".into(), jours: vec![relais::JourDuJournal {
             jour: "2026-10-12".into(),
             creneaux: vec![relais::CreneauDuJournal { id: "c1".into(), debut: "09:00".into(), fin: "10:00".into(),
-                aides: vec![relais::AideDuJournal { id: "aaaaaaaaaaaaaaaaaaaaaaaa".into(), titre: "Le séquentiel".into(), minuteur: 0 }], ..Default::default() }],
+                aides: vec![relais::AideDuJournal { id: "aaaaaaaaaaaaaaaaaaaaaaaa".into(), titre: "Le séquentiel".into(), minuteur: 0, etape: None }],
+                deroule: "cccccccccccccccccccccccc".into(), ..Default::default() }],
         }] };
         let j = super::jour_du(&journal, "2026-10-12", true);
         assert_eq!((j.creneaux.len(), j.publie.as_str(), j.frais), (1, "2026-10-10T08:00:00", true));
@@ -1227,8 +1228,10 @@ mod tests {
         let d = dossier_d_essai("aides");
         std::fs::write(d.join("aaaaaaaaaaaaaaaaaaaaaaaa.json"), b"{}").unwrap();
         std::fs::write(d.join("bbbbbbbbbbbbbbbbbbbbbbbb.json"), b"{}").unwrap();
+        std::fs::write(d.join("cccccccccccccccccccccccc.json"), b"{}").unwrap();
         super::ranger_les_aides(&d, &journal);
         assert!(d.join("aaaaaaaaaaaaaaaaaaaaaaaa.json").exists());
+        assert!(d.join("cccccccccccccccccccccccc.json").exists(), "le déroulement du créneau se garde");
         assert!(!d.join("bbbbbbbbbbbbbbbbbbbbbbbb.json").exists());
         let _ = std::fs::remove_dir_all(&d);
     }
