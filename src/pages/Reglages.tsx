@@ -19,6 +19,7 @@ import { TelephoneNuage } from "../components/TelephoneNuage";
 import { AmisTab } from "./Amis";
 import { ReglagesEnRetard } from "../components/ReglagesEnRetard";
 import { PictosDesMatieres } from "../components/PictosDesMatieres";
+import { SupportsDeTravail } from "../components/SupportsDeTravail";
 import { listen } from "@tauri-apps/api/event";
 import { Licences } from "../components/Licences";
 import { ChiffrementDisqueCard } from "../components/ChiffrementDisque";
@@ -307,6 +308,12 @@ export default function Reglages() {
           <button className={vueMatieres === "pictos" ? "active" : ""} onClick={() => setVueMatieres("pictos")}>🧩 Pictos</button>
         </div>
         {vueMatieres === "pictos" ? <PictosDesMatieres /> : <CouleursDesMatieres />}
+      </div>
+
+      {/* Les photos du dictaphone, supports de travail : leur nom, leur matière, leur niveau, leur jeu, leur séquence. */}
+      <div className="card" style={{ marginBottom: 18, maxWidth: 760 }}>
+        <h3 style={{ marginTop: 0 }}>📷 Mes photos, des supports de travail</h3>
+        <SupportsDeTravail />
       </div>
 
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>

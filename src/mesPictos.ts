@@ -35,7 +35,19 @@ export interface MonPicto {
   date: string;
   /** Ce qu'on a demandé à l'IA d'y voir : « un enfant debout sur une trottinette ». */
   precision?: string;
+  /**
+   * Une photo est aussi un support de travail : l'objet, le jeu de la classe.
+   * Sa matière, son niveau (« tous », ou CP, CE1…), le jeu de la ludothèque
+   * dont elle prend les règles, la séquence où elle sert (voir supportsDeTravail).
+   */
+  matiere?: string;
+  niveau?: string;
+  jeuId?: string;
+  sequenceId?: string;
 }
+
+/** Ce qu'une photo dit d'elle comme support de travail, et qui se règle dans Réglages › Personnalisation. */
+export const CHAMPS_DU_SUPPORT = ["matiere", "niveau", "jeuId", "sequenceId"] as const;
 
 export const PREFIXE_MES_PICTOS = "pictos:";
 
@@ -106,14 +118,17 @@ export function lireFiches(reglages: Record<string, string>): MonPicto[] {
     // Un nom de fichier, jamais un chemin.
     if (!mot || !/^[^/\\]+$/.test(fichier) || fichier.includes("..")) continue;
     const precision = typeof f.precision === "string" ? f.precision.trim() : "";
-    fiches.push({ id, mot, fichier, origine, date: typeof f.date === "string" ? f.date : "", ...(precision ? { precision } : {}) });
+    const support = Object.fromEntries(CHAMPS_DU_SUPPORT.flatMap((c) => (typeof f[c] === "string" && (f[c] as string).trim() ? [[c, (f[c] as string).trim()]] : [])));
+    fiches.push({ id, mot, fichier, origine, date: typeof f.date === "string" ? f.date : "", ...(precision ? { precision } : {}), ...support });
   }
   return fiches.sort((a, b) => a.mot.localeCompare(b.mot, "fr") || b.date.localeCompare(a.date));
 }
 
 /** La fiche d'un picto, telle qu'elle s'écrit dans son réglage. */
-export const ficheEcrite = (p: MonPicto) =>
-  JSON.stringify({ mot: p.mot, fichier: p.fichier, date: p.date, ...(p.precision ? { precision: p.precision } : {}) });
+export const ficheEcrite = (p: MonPicto) => JSON.stringify({
+  mot: p.mot, fichier: p.fichier, date: p.date, ...(p.precision ? { precision: p.precision } : {}),
+  ...Object.fromEntries(CHAMPS_DU_SUPPORT.flatMap((c) => (p[c] ? [[c, p[c]]] : []))),
+});
 
 /** Ceux dont le mot contient ce qu'on cherche, ceux qui le sont exactement d'abord ; tous si l'on ne cherche rien. */
 export function chercherDans(liste: MonPicto[], q: string): MonPicto[] {
@@ -207,9 +222,17 @@ export async function garderMonPicto(o: { mot: string; base64: string; origine: 
 
 /** Change le mot d'un picto gardé. */
 export async function renommerMonPicto(p: MonPicto, mot: string): Promise<MonPicto> {
-  const { api } = await import("./api");
   if (!mot.trim()) throw new Error("Écrivez le mot de ce picto.");
-  const suite = { ...p, mot: mot.trim() };
+  return changerMonPicto(p, { mot: mot.trim() });
+}
+
+/** Change ce qu'un picto gardé dit de lui : son mot, ou, pour une photo, ce qu'elle est comme support de travail. */
+export async function changerMonPicto(
+  p: MonPicto, changements: Partial<Pick<MonPicto, "mot" | (typeof CHAMPS_DU_SUPPORT)[number]>>,
+): Promise<MonPicto> {
+  const { api } = await import("./api");
+  const suite = { ...p, ...changements };
+  if (!suite.mot.trim()) throw new Error("Écrivez le mot de ce picto.");
   await api.settingSet(PREFIXE_MES_PICTOS + p.id, ficheEcrite(suite));
   annoncer();
   return suite;

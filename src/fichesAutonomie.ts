@@ -19,7 +19,10 @@
 // intrus possibles — les tongs avec les gants, la ceinture ou le bonnet ?
 
 import type { Creneau, Eleve } from "./api";
-import { STYLE_FEUILLE } from "./cartesImprimables";
+import { STYLE_FEUILLE, feuille } from "./cartesImprimables";
+import type { MonPicto } from "./mesPictos";
+import { escapeHtml } from "./print";
+import { TOUS_LES_NIVEAUX } from "./supportsDeTravail";
 import { FAMILLES } from "./catalogueAteliers";
 import { hasard, melanger, piocher } from "./hasard";
 import { ligneDuPdf } from "./materielAImprimer";
@@ -31,7 +34,7 @@ import { REGLAGES_CURSIVE, STYLE_CURSIVE, htmlEcritureCursive, modelesDeLEtape, 
 // Mathématiques
 import { PART_A_REGROUPER, REGLAGES_CUBES, exercicesCubes, htmlCubes, reglagesCubesSurs, type IdNiveauCubes, type ReglagesCubes } from "./cubesNumeration";
 import { STYLE_SEQUENCE_CUBES, reglagesDeLaFeuille as feuilleDeCubes } from "./sequenceCubes";
-import { memesReglages } from "./modifierFeuille";
+import { ATELIER_SUPPORT, memesReglages } from "./modifierFeuille";
 import { REGLAGES_COMPARER, reglagesComparerSurs, type IdNiveau as IdNiveauComparer, type ReglagesComparer } from "./comparerNombres";
 import { STYLE_SEQUENCE_COMPARER, htmlDeLaFeuille as htmlDeLaFeuilleComparer } from "./sequenceComparer";
 import { REGLAGES_PYRAMIDES, STYLE_PYRAMIDES, htmlPyramides } from "./pyramides";
@@ -116,6 +119,8 @@ export interface RecetteDeFiche {
   periodes?: number[];
   /** Il faut lire pour la faire : un élève non verbal ne la reçoit pas. */
   lecture?: boolean;
+  /** Un support de travail : la photo de Mes pictos et sa matière (voir recettesDesSupports). */
+  support?: { photo: number; matiere: string };
   fabriquer: (c: ContexteFiche, graine: number, outils: OutilsFiche) => FicheFabriquee | Promise<FicheFabriquee>;
 }
 
@@ -123,7 +128,7 @@ export const nomDeLaRecette = (r: RecetteDeFiche, c: ContexteFiche) => (typeof r
 
 /** L'icône de l'atelier qui fait la fiche. */
 export const iconeDeLaRecette = (r: RecetteDeFiche) =>
-  FAMILLES.flatMap((f) => f.outils).find((o) => o.id === r.atelier)?.icone ?? "📄";
+  r.atelier === ATELIER_SUPPORT ? "📷" : FAMILLES.flatMap((f) => f.outils).find((o) => o.id === r.atelier)?.icone ?? "📄";
 
 const elementaire = (n: NiveauFiches): Elementaire => (enMaternelle(n) ? "CP" : n);
 
@@ -367,7 +372,57 @@ export const RECETTES: RecetteDeFiche[] = [
 // vient en fin d'année.
 const PERIODES_DU_CP: Record<string, number[]> = { comprendre: DES_PERIODES(3), grammaire: DES_PERIODES(4), monnaie: DES_PERIODES(4) };
 
-export const recetteDe = (id: string) => RECETTES.find((r) => r.id === id);
+/** La recette d'une fiche : l'une de la liste, ou l'un des supports de travail du jour. */
+export const recetteDe = (id: string, supports: readonly RecetteDeFiche[] = []) =>
+  RECETTES.find((r) => r.id === id) ?? supports.find((r) => r.id === id);
+
+// ── Les supports de travail ────────────────────────────────────────────────
+//
+// Les photos de la classe que l'enseignant a réglées comme supports — une
+// matière, un niveau (voir supportsDeTravail) — se donnent comme des fiches,
+// à tout élève de leur niveau (demande de l'enseignant, octobre 2026) : la
+// photo en grand, et les règles du jeu qu'elle prend, en étapes. La photo est
+// un bloc de consigne : la tablette la montre avec les règles. Il n'y a rien
+// à lire pour s'y mettre.
+
+/** Une photo réglée comme support, et le jeu dont elle prend les règles. */
+export interface SupportDonne { photo: MonPicto; jeu: string; regles: string }
+
+/** Le domaine d'« En retard » d'une matière : l'ordre des fiches d'un élève le suit. */
+const DOMAINE_DU_SUPPORT: Record<string, Domaine> = {
+  "Mathématiques": "maths", "Structurer sa pensée": "nombres", "Français": "francais", "Mobiliser le langage": "langage", "Explorer le monde": "temps",
+};
+
+/**
+ * Une recette par support, pour les niveaux d'« En retard » qu'il vise —
+ * tous, ou le sien. `image` donne la photo, en data URL.
+ */
+export function recettesDesSupports(supports: SupportDonne[], image: (id: number) => Promise<string>): RecetteDeFiche[] {
+  return supports.flatMap(({ photo, jeu, regles }): RecetteDeFiche[] => {
+    const niveaux = NIVEAUX_FICHES.filter((n) => photo.niveau === TOUS_LES_NIVEAUX || photo.niveau === n);
+    if (!niveaux.length || !photo.matiere) return [];
+    return [{
+      id: `${ATELIER_SUPPORT}:${photo.id}`, atelier: ATELIER_SUPPORT, nom: photo.mot,
+      domaine: DOMAINE_DU_SUPPORT[photo.matiere] ?? "francais", niveaux, support: { photo: photo.id, matiere: photo.matiere },
+      fabriquer: async () => ({ html: pageDuSupport(photo.mot, await image(photo.id).catch(() => ""), jeu, regles), style: STYLE_FEUILLE + STYLE_SUPPORT }),
+    }];
+  });
+}
+
+/** La page d'un support : son nom, sa photo en grand, et les règles du jeu qu'il prend, s'il en prend. */
+export function pageDuSupport(nom: string, image: string, jeu: string, regles: string): string {
+  // Un bloc de consigne, autour d'un bloc : la photo part aux tablettes, et rien ne la découpe en étapes.
+  const photo = image
+    ? `<div class="consigne sp-support"><div class="sp-photo"><img src="${image}" alt="" style="max-width:100%;max-height:70vh;object-fit:contain"></div></div>` : "";
+  const lesRegles = regles.trim()
+    ? `<div class="regle"><b>Les règles${jeu.trim() ? ` du jeu « ${escapeHtml(jeu.trim())} »` : ""}</b>${escapeHtml(regles.trim()).replace(/\n+/g, "<br>")}</div>` : "";
+  return feuille(`<div class="page"><div class="titre">${escapeHtml(nom)}</div>${photo}${lesRegles}</div>`, "sp");
+}
+
+export const STYLE_SUPPORT = `
+  .feuille.sp .sp-support { border: none !important; background: none !important; padding: 0 !important; margin: 4mm 0; text-align: center; }
+  .feuille.sp .sp-photo img { max-height: 150mm !important; border-radius: 3mm; }
+`;
 
 // ── Le minuteur de chaque fiche ────────────────────────────────────────────
 //
@@ -487,8 +542,10 @@ export function fabricationsDesFiches(n: NiveauFiches | null): { atelier: string
  * fabrications que sa fiche écarte (`exclues` : des ateliers, comme le
  * coloriage magique pour qui ne sait pas encore le faire).
  */
-export function recettesPour(n: NiveauFiches, periode: number, nonVerbal: boolean, exclues: readonly string[] = []): RecetteDeFiche[] {
-  return RECETTES.filter((r) => r.niveaux.includes(n)
+export function recettesPour(
+  n: NiveauFiches, periode: number, nonVerbal: boolean, exclues: readonly string[] = [], supports: readonly RecetteDeFiche[] = [],
+): RecetteDeFiche[] {
+  return [...RECETTES, ...supports].filter((r) => r.niveaux.includes(n)
     && !(nonVerbal && r.lecture)
     && !exclues.includes(r.atelier)
     && !(n === "CP" && PERIODES_DU_CP[r.id] && !PERIODES_DU_CP[r.id].includes(periode))
@@ -523,9 +580,11 @@ export interface FicheProposee { recette: string; graine: number }
  * différente à chaque fois tant qu'il en reste — puis les mêmes, autrement
  * tirées.
  */
-export function proposer(n: NiveauFiches, periode: number, nonVerbal: boolean, combien: number, graine: number, exclues: readonly string[] = []): FicheProposee[] {
+export function proposer(
+  n: NiveauFiches, periode: number, nonVerbal: boolean, combien: number, graine: number, exclues: readonly string[] = [], supports: readonly RecetteDeFiche[] = [],
+): FicheProposee[] {
   const alea = hasard(graine);
-  const possibles = melanger(alea, recettesPour(n, periode, nonVerbal, exclues));
+  const possibles = melanger(alea, recettesPour(n, periode, nonVerbal, exclues, supports));
   if (!possibles.length) return [];
   const ordre = ordreDesDomaines(n);
   const pris: RecetteDeFiche[] = [];
@@ -545,10 +604,11 @@ export function proposer(n: NiveauFiches, periode: number, nonVerbal: boolean, c
  */
 export function uneAutre(
   courante: FicheProposee, choisies: FicheProposee[], n: NiveauFiches, periode: number, nonVerbal: boolean, graine: number, exclues: readonly string[] = [],
+  supports: readonly RecetteDeFiche[] = [],
 ): FicheProposee {
-  const possibles = melanger(hasard(graine), recettesPour(n, periode, nonVerbal, exclues));
+  const possibles = melanger(hasard(graine), recettesPour(n, periode, nonVerbal, exclues, supports));
   const prises = new Set(choisies.map((f) => f.recette));
-  const domaine = recetteDe(courante.recette)?.domaine;
+  const domaine = recetteDe(courante.recette, supports)?.domaine;
   const libres = possibles.filter((r) => !prises.has(r.id));
   const r = libres.find((x) => x.domaine === domaine) ?? libres[0];
   return { recette: r?.id ?? courante.recette, graine: (graine + 104729) % 1_000_000_007 };
@@ -557,8 +617,9 @@ export function uneAutre(
 /** Une fiche de plus : celle du domaine qui vient, parmi celles qu'il n'a pas. */
 export function uneDePlus(
   choisies: FicheProposee[], n: NiveauFiches, periode: number, nonVerbal: boolean, graine: number, exclues: readonly string[] = [],
+  supports: readonly RecetteDeFiche[] = [],
 ): FicheProposee | null {
-  const possibles = melanger(hasard(graine), recettesPour(n, periode, nonVerbal, exclues));
+  const possibles = melanger(hasard(graine), recettesPour(n, periode, nonVerbal, exclues, supports));
   if (!possibles.length) return null;
   const ordre = ordreDesDomaines(n);
   const domaine = ordre[choisies.length % ordre.length];
