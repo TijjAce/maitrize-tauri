@@ -13,6 +13,7 @@
 // l'infinitif se trouve tout seul.
 
 import { escapeHtml } from "./print";
+import { structurerInterieur } from "./consignesStructurees";
 import { HAUTEUR_UTILE_MM, LARGEUR_CONTENU_MM, feuille } from "./cartesImprimables";
 import { hasard, melanger, piocher } from "./hasard";
 
@@ -39,7 +40,14 @@ export interface ReglagesTrous {
   capitales: boolean;
 }
 
-export const METHODE_PRONOM = "Pour vérifier, je remplace le sujet par un pronom — il, elle, ils, elles, nous, vous — et je relis la phrase à voix basse : est-ce qu'elle se dit ?";
+/**
+ * La façon de vérifier, une action par phrase, à la première personne, comme
+ * toute consigne : la feuille la montre en étapes numérotées, la question
+ * finale tournée en action (« Je réponds : … ») pour être numérotée aussi.
+ */
+export const METHODE_PRONOM = "Je remplace le sujet par un pronom : il, elle, ils, elles, nous ou vous. Je relis la phrase à voix basse. Je réponds : est-ce qu'elle se dit ?";
+/** La même, écrite d'un seul tenant avant octobre 2026 : des réglages gardés la portent encore. */
+const METHODE_D_AVANT = "Pour vérifier, je remplace le sujet par un pronom — il, elle, ils, elles, nous, vous — et je relis la phrase à voix basse : est-ce qu'elle se dit ?";
 
 export const MODELES_TROUS: { id: string; nom: string; titre: string; phrases: string; methode: string }[] = [
   {
@@ -77,7 +85,8 @@ export function reglagesTrousSurs(brut: Partial<ReglagesTrous>): ReglagesTrous {
   const texte = (v: unknown, defaut: string) => (typeof v === "string" ? v : defaut);
   return {
     modele: texte(b.modele, ""), titre: texte(b.titre, ""), phrases: texte(b.phrases, ""),
-    indices: b.indices === true, methode: b.methode !== false, texteMethode: texte(b.texteMethode, METHODE_PRONOM),
+    indices: b.indices === true, methode: b.methode !== false,
+    texteMethode: ((t) => (t.trim() === METHODE_D_AVANT ? METHODE_PRONOM : t))(texte(b.texteMethode, METHODE_PRONOM)),
     intrus: typeof b.intrus === "number" && Number.isFinite(b.intrus) ? Math.max(0, Math.min(6, Math.round(b.intrus))) : 0,
     autres: texte(b.autres, ""), lignes: b.lignes === true, taille: b.taille === "grande" ? "grande" : "normale", capitales: b.capitales === true,
   };
@@ -181,7 +190,7 @@ export function pagesATrous(phrases: Morceau[][], r: ReglagesTrous, graine: numb
   const enPlus = etiquettesEnPlus(phrases, r, graine);
   const largeur = largeurDesCases([...phrases.flatMap(trousDe).map((t) => t.mot), ...enPlus], r);
   const alea = hasard(graine);
-  // Le titre et la consigne ; le rappel pour vérifier, sur deux ou trois lignes.
+  // Le titre et la consigne ; la façon de vérifier, son titre et ses étapes, une par ligne, serrées (voir STYLE_TROUS).
   const entete = (premiere: boolean) => (premiere ? 32 + (r.methode && r.texteMethode.trim() ? 20 : 0) : 12);
   const pages: PageTrous[] = [];
   let courante: Morceau[][] = [];
@@ -217,7 +226,9 @@ export function htmlTexteATrous(r: ReglagesTrous, graine: number): string {
   const pages = pagesATrous(phrases, r, graine);
   const largeur = largeurDesCases([...phrases.flatMap(trousDe).map((t) => t.mot), ...etiquettesEnPlus(phrases, r, graine)], r);
   const titre = escapeHtml(r.titre.trim() || "Texte à trous");
-  const methode = r.methode && r.texteMethode.trim() ? `<div class="tt-methode"><b>🔎 Je vérifie</b>${escapeHtml(r.texteMethode.trim())}</div>` : "";
+  // La façon de vérifier, dans le cadre des consignes : son titre, puis une action par ligne, numérotée, le verbe en couleur.
+  const methode = r.methode && r.texteMethode.trim()
+    ? `<div class="tt-methode cs">${structurerInterieur(`<b>🔎 Je vérifie</b>${escapeHtml(r.texteMethode.trim()).replace(/\n/g, "<br>")}`)}</div>` : "";
   const morceau = (m: Morceau) => (estUnTrou(m)
     ? `<span class="tt-trou">${r.indices && m.trou.indice ? `<span class="tt-indice">${escapeHtml(m.trou.indice)}</span>` : ""}</span>`
     : escapeHtml(m.texte));
@@ -239,8 +250,10 @@ export const STYLE_TROUS = `
   .feuille.tt .tt-cadre { --h: 10mm; --police: 17px; }
   .feuille.tt-grande .tt-cadre { --h: 13mm; --police: 22px; }
   .feuille.tt-capitales .tt-texte, .feuille.tt-capitales .tt-etiquette, .feuille.tt-capitales .tt-corrige { text-transform: uppercase; }
-  .feuille.tt .tt-methode { border: 1.5px solid #2454e6; border-radius: 8px; background: #eef3ff; padding: 6px 12px; font-size: 13px; line-height: 1.45; margin: 0 0 10px; }
-  .feuille.tt .tt-methode b { display: block; color: #2454e6; margin-bottom: 2px; }
+  /* La façon de vérifier, en étapes : serrée pour tenir la place qu'elle avait d'un seul tenant — la page compte ses millimètres. */
+  .feuille.tt .tt-methode { font-size: 12px; margin: 0 0 6px; line-height: 1.25; padding-top: 1.2mm !important; padding-bottom: 1.2mm !important; }
+  .feuille.tt .tt-methode .cs-titre { margin-bottom: .4mm; }
+  .feuille.tt .tt-methode .cs-etape { line-height: 1.25; }
   .feuille.tt .tt-phrases { margin: 0; padding-left: 8mm; }
   .feuille.tt .tt-phrase { font-size: var(--police); margin: 0 0 3mm; page-break-inside: avoid; break-inside: avoid; }
   .feuille.tt .tt-phrase::marker { font-size: 12px; font-weight: 700; color: #687087; }
