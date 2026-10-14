@@ -16,6 +16,7 @@
 use candle_core::{Device, IndexOp, Tensor};
 use candle_nn::VarBuilder;
 use candle_transformers::models::whisper::{self as m, audio, model::Whisper, Config};
+use crate::noms_entendus;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use tokenizers::Tokenizer;
@@ -82,7 +83,17 @@ pub struct Charge {
     depart: Vec<u32>,
     fin: u32,
     interdits: Vec<u32>,
+    /// Le jeton qui annonce « ce qui a été dit avant » : les noms qu'on y
+    /// glisse, le modèle les écrit ensuite comme on les lui a montrés.
+    avant: Option<u32>,
 }
+
+/// Ce qu'on montre au modèle avant la seconde écoute : quelques prénoms, loin
+/// de la moitié de son contexte (448 jetons), qu'il faut garder au texte.
+const JETONS_DE_L_INVITE: usize = 100;
+
+/// Les jetons d'une fenêtre de trente secondes, au plus.
+const PLAFOND: usize = 224;
 
 /// Le moteur, partagé : charger 300 Mo à chaque phrase serait absurde.
 #[derive(Default)]
@@ -145,25 +156,40 @@ impl Charge {
             jeton(&tokenizer, m::NO_TIMESTAMPS_TOKEN)?,
         ];
         let fin = jeton(&tokenizer, m::EOT_TOKEN)?;
+        let avant = tokenizer.token_to_id("<|startofprev|>");
         let mut interdits = config.suppress_tokens.clone();
-        for t in [m::SOT_TOKEN, m::TRANSCRIBE_TOKEN, m::TRANSLATE_TOKEN, m::NO_TIMESTAMPS_TOKEN] {
+        for t in [m::SOT_TOKEN, m::TRANSCRIBE_TOKEN, m::TRANSLATE_TOKEN, m::NO_TIMESTAMPS_TOKEN, "<|startofprev|>"] {
             if let Some(id) = tokenizer.token_to_id(t) {
                 interdits.push(id);
             }
         }
-        Ok(Self { nom: nom.to_string(), modele, tokenizer, device, filtres, config, depart, fin, interdits })
+        Ok(Self { nom: nom.to_string(), modele, tokenizer, device, filtres, config, depart, fin, interdits, avant })
     }
 
     /// Transcrit un enregistrement, découpé en fenêtres de trente secondes.
     ///
     /// Whisper ne sait travailler que sur trente secondes : un passage plus
     /// court se complète de silence, un passage plus long se découpe.
-    pub fn transcrire(&mut self, pcm: &[f32]) -> R<String> {
+    ///
+    /// `noms` : ceux qu'il doit savoir écrire — les élèves de la classe (voir
+    /// `noms_entendus`). Quand la première écoute a écrit un mot qui
+    /// ressemble à l'un d'eux sans l'être, le même passage se réécoute, les
+    /// prénoms montrés avant, et l'on n'en garde que les prénoms.
+    pub fn transcrire(&mut self, pcm: &[f32], noms: &[String]) -> R<String> {
+        let depart = self.depart.clone();
         let mut morceaux: Vec<String> = Vec::new();
         for fenetre in pcm.chunks(m::N_SAMPLES) {
             let mut plein = fenetre.to_vec();
             plein.resize(m::N_SAMPLES, 0.0);
-            let texte = self.une_fenetre(&plein)?;
+            let son = self.ecouter(&plein)?;
+            let mut texte = self.ecrire(&son, &depart, PLAFOND)?;
+            let proches = noms_entendus::prenoms_proches(&texte, noms);
+            if let Some(guide) = self.prefixe(&self.invite_qui_tient(&proches)?)? {
+                // Guère plus long que la première : une écoute qui divague s'arrête là.
+                let plafond = self.encoder(&texte)?.len() + 16;
+                let reecoute = self.ecrire(&son, &guide, plafond)?;
+                texte = noms_entendus::corriger_les_noms(&texte, &reecoute, noms);
+            }
             if !texte.is_empty() {
                 morceaux.push(texte);
             }
@@ -171,7 +197,43 @@ impl Charge {
         Ok(morceaux.join(" "))
     }
 
-    fn une_fenetre(&mut self, pcm: &[f32]) -> R<String> {
+    fn encoder(&self, texte: &str) -> R<Vec<u32>> {
+        // L'espace en tête, comme dans le texte que le modèle a appris.
+        Ok(self
+            .tokenizer
+            .encode(format!(" {texte}"), false)
+            .map_err(|e| format!("Noms illisibles : {e}"))?
+            .get_ids()
+            .to_vec())
+    }
+
+    /// Les noms à montrer, sans dépasser la place qu'on leur donne : on retire
+    /// les derniers plutôt que d'en couper un en deux, ce qui apprendrait au
+    /// modèle une orthographe qui n'existe pas.
+    fn invite_qui_tient(&self, noms: &[String]) -> R<String> {
+        for n in (1..=noms.len()).rev() {
+            let invite = invite_des_noms(&noms[..n]);
+            if !invite.is_empty() && self.encoder(&invite)?.len() <= JETONS_DE_L_INVITE {
+                return Ok(invite);
+            }
+        }
+        Ok(String::new())
+    }
+
+    /// Ce qui précède l'audio pour la seconde écoute : les noms, comme un texte
+    /// déjà entendu, puis les jetons de service. Rien sans nom.
+    fn prefixe(&self, invite: &str) -> R<Option<Vec<u32>>> {
+        let Some(avant) = self.avant.filter(|_| !invite.is_empty()) else {
+            return Ok(None);
+        };
+        let mut prefixe = vec![avant];
+        prefixe.extend(self.encoder(invite)?);
+        prefixe.extend(&self.depart);
+        Ok(Some(prefixe))
+    }
+
+    /// Le son d'une fenêtre, tel que le décodeur le lit — une fois pour les deux écoutes.
+    fn ecouter(&mut self, pcm: &[f32]) -> R<Tensor> {
         let bandes = self.config.num_mel_bins;
         let brut = audio::pcm_to_mel(&self.config, pcm, &self.filtres);
         let mel = recadrer_mel(&brut, bandes, m::N_FRAMES);
@@ -179,14 +241,17 @@ impl Charge {
             .map_err(|e| format!("Spectrogramme impossible : {e}"))?;
 
         self.modele.reset_kv_cache();
-        let audio_features = self
-            .modele
+        self.modele
             .encoder
             .forward(&mel, true)
-            .map_err(|e| format!("Analyse du son impossible : {e}"))?;
+            .map_err(|e| format!("Analyse du son impossible : {e}"))
+    }
 
-        let mut jetons = self.depart.clone();
-        let plafond = self.config.max_target_positions.min(224);
+    /// Le texte d'une fenêtre, après `prefixe`, en `plafond` jetons au plus.
+    fn ecrire(&mut self, audio_features: &Tensor, prefixe: &[u32], plafond: usize) -> R<String> {
+        let mut jetons = prefixe.to_vec();
+        // Le texte et ce qui le précède partagent les 448 positions du modèle.
+        let plafond = self.config.max_target_positions.saturating_sub(prefixe.len()).min(plafond);
         for i in 0..plafond {
             let entree = Tensor::new(jetons.as_slice(), &self.device)
                 .and_then(|t| t.unsqueeze(0))
@@ -194,7 +259,7 @@ impl Charge {
             let ys = self
                 .modele
                 .decoder
-                .forward(&entree, &audio_features, i == 0)
+                .forward(&entree, audio_features, i == 0)
                 .map_err(|e| format!("Décodage impossible : {e}"))?;
             let (_, longueur, _) = ys.dims3().map_err(|e| e.to_string())?;
             let logits = ys
@@ -223,10 +288,63 @@ impl Charge {
 
         let texte = self
             .tokenizer
-            .decode(&jetons[self.depart.len()..], true)
+            .decode(&jetons[prefixe.len()..], true)
             .map_err(|e| format!("Texte illisible : {e}"))?;
         Ok(nettoyer(&texte))
     }
+}
+
+/**
+ * Un nom tel qu'il s'écrit dans une phrase : « THANH » devient « Thanh »,
+ * « MARIE-PAULE » « Marie-Paule ».
+ *
+ * La liste des élèves est souvent tapée en capitales ; montrées telles
+ * quelles, elles pousseraient le modèle à crier les prénoms. Un nom qui a
+ * déjà ses minuscules reste comme on l'a écrit.
+ */
+pub fn comme_un_prenom(nom: &str) -> String {
+    let nom = nom.split_whitespace().collect::<Vec<_>>().join(" ");
+    if nom.chars().any(char::is_lowercase) {
+        return nom;
+    }
+    let mut sortie = String::with_capacity(nom.len());
+    let mut debut = true;
+    for c in nom.chars() {
+        if debut { sortie.extend(c.to_uppercase()) } else { sortie.extend(c.to_lowercase()) }
+        debut = !c.is_alphabetic();
+    }
+    sortie
+}
+
+/**
+ * Ce qu'on montre au modèle avant la seconde écoute : « Ce matin, j'ai
+ * travaillé avec Thanh et Siaka. » ; rien sans nom.
+ *
+ * Une phrase comme celles qu'on dicte, et non une liste : sur les mêmes
+ * enregistrements, « Thanh, Siaka. » ou « Les élèves : … » laissaient le
+ * prénom mal écrit, la phrase le faisait écrire juste.
+ */
+pub fn invite_des_noms(noms: &[String]) -> String {
+    let mut vus: Vec<String> = Vec::new();
+    for nom in noms.iter().map(|n| comme_un_prenom(n)).filter(|n| !n.is_empty()) {
+        // Ni virgule ni point dans un nom : ils servent à séparer.
+        let nom = nom.replace([',', '.'], " ").split_whitespace().collect::<Vec<_>>().join(" ");
+        if !nom.is_empty() && !vus.contains(&nom) {
+            vus.push(nom);
+        }
+    }
+    match vus.split_last() {
+        None => String::new(),
+        Some((seul, [])) => format!("Ce matin, j'ai travaillé avec {seul}."),
+        Some((dernier, autres)) => format!("Ce matin, j'ai travaillé avec {} et {dernier}.", autres.join(", ")),
+    }
+}
+
+/// Les élèves de la classe, que la transcription doit savoir écrire.
+pub fn noms_de_la_classe(c: &rusqlite::Connection) -> Vec<String> {
+    c.prepare("SELECT nom FROM eleves ORDER BY nom COLLATE NOCASE")
+        .and_then(|mut st| st.query_map([], |r| r.get::<_, String>(0))?.collect())
+        .unwrap_or_default()
 }
 
 /**
@@ -550,8 +668,10 @@ fn avec_le_modele<T>(moteur: &State<'_, Moteur>, nom: &str, f: impl FnOnce(&mut 
  *
  * Le modèle reste chargé d'un passage à l'autre : relire trois cents
  * méga-octets à chaque phrase coûterait plus cher que la transcription.
+ *
+ * `noms` : ceux qu'il doit savoir écrire (voir `Charge::transcrire`).
  */
-pub fn transcrire_octets(moteur: &State<'_, Moteur>, octets: &[u8], modele: &str) -> R<String> {
+pub fn transcrire_octets(moteur: &State<'_, Moteur>, octets: &[u8], modele: &str, noms: &[String]) -> R<String> {
     let pcm = pcm_du_wav(octets)?;
     if pcm.is_empty() {
         return Err("Enregistrement vide.".into());
@@ -561,24 +681,37 @@ pub fn transcrire_octets(moteur: &State<'_, Moteur>, octets: &[u8], modele: &str
     } else {
         modele.to_string()
     };
-    avec_le_modele(moteur, &voulu, |c| c.transcrire(&pcm))
+    avec_le_modele(moteur, &voulu, |c| c.transcrire(&pcm, noms))
 }
 
-/// Transcrit un enregistrement (WAV 16 kHz mono, en base64) sur la machine.
+/**
+ * Transcrit un enregistrement (WAV 16 kHz mono, en base64) sur la machine.
+ *
+ * `avec_les_noms` : les prénoms de la classe s'écrivent juste, au prix d'une
+ * seconde écoute quand un mot leur ressemble. Une dictée le demande ; une
+ * réunion, qui doit suivre la parole, non.
+ */
 #[tauri::command]
-pub async fn transcrire_local(moteur: State<'_, Moteur>, audio_b64: String, modele: Option<String>) -> R<String> {
+pub async fn transcrire_local(
+    db: State<'_, Db>,
+    moteur: State<'_, Moteur>,
+    audio_b64: String,
+    modele: Option<String>,
+    avec_les_noms: Option<bool>,
+) -> R<String> {
     use base64::Engine;
     let octets = base64::engine::general_purpose::STANDARD
         .decode(audio_b64.as_bytes())
         .map_err(|e| format!("Audio illisible : {e}"))?;
-    transcrire_octets(&moteur, &octets, modele.as_deref().unwrap_or(""))
+    let noms = if avec_les_noms.unwrap_or(false) { noms_de_la_classe(&db.lock()) } else { Vec::new() };
+    transcrire_octets(&moteur, &octets, modele.as_deref().unwrap_or(""), &noms)
 }
 
 /// Charge un modèle et lui fait transcrire une seconde de silence : dit ce qui cloche, en clair.
 #[tauri::command]
 pub async fn whisper_tester(moteur: State<'_, Moteur>, modele: String) -> R<String> {
     let debut = std::time::Instant::now();
-    avec_le_modele(&moteur, &modele, |c| c.transcrire(&vec![0f32; m::SAMPLE_RATE]))?;
+    avec_le_modele(&moteur, &modele, |c| c.transcrire(&vec![0f32; m::SAMPLE_RATE], &[]))?;
     Ok(format!("« {modele} » prêt en {} s", debut.elapsed().as_secs_f32().round()))
 }
 
@@ -674,12 +807,69 @@ mod tests {
         let rms = (pcm.iter().map(|x| x * x).sum::<f32>() / pcm.len() as f32).sqrt();
         println!("pcm : {} échantillons, crête {crete:.3}, rms {rms:.4}", pcm.len());
         let secondes = pcm.len() as f32 / 16000.0;
+        // MAITRIZE_NOMS="THANH,SIAKA" : les élèves ; MAITRIZE_INVITE, pour
+        // essayer une autre façon de les montrer à la seconde écoute.
+        let noms: Vec<String> = std::env::var("MAITRIZE_NOMS")
+            .map(|n| n.split(',').filter(|n| !n.is_empty()).map(str::to_string).collect())
+            .unwrap_or_default();
         let debut = std::time::Instant::now();
-        let texte = charge.transcrire(&pcm).unwrap();
+        let texte = match std::env::var("MAITRIZE_INVITE") {
+            Ok(gabarit) => {
+                // Les deux écoutes d'une fenêtre, montrées l'une après l'autre ;
+                // MAITRIZE_INVITE="Bilan avec {noms}." : la façon de montrer les prénoms.
+                let mut plein = pcm.clone();
+                plein.resize(m::N_SAMPLES, 0.0);
+                let son = charge.ecouter(&plein).unwrap();
+                let entendu = charge.ecrire(&son, &charge.depart.clone(), PLAFOND).unwrap();
+                let proches = noms_entendus::prenoms_proches(&entendu, &noms);
+                println!("1re écoute → {entendu}");
+                println!("proches    → {proches:?}");
+                if proches.is_empty() {
+                    entendu
+                } else {
+                    let invite = gabarit.replace("{noms}", &proches.join(", "));
+                    let guide = charge.prefixe(&invite).unwrap().unwrap();
+                    let plafond = charge.encoder(&entendu).unwrap().len() + 16;
+                    let reecoute = charge.ecrire(&son, &guide, plafond).unwrap();
+                    println!("2e écoute  → {reecoute}");
+                    noms_entendus::corriger_les_noms(&entendu, &reecoute, &noms)
+                }
+            }
+            Err(_) => charge.transcrire(&pcm, &noms).unwrap(),
+        };
         let mis = debut.elapsed();
         println!("{secondes:.1} s d'audio transcrites en {mis:?}");
         println!("→ {texte}");
-        assert!(texte.to_lowercase().contains("famille"), "texte obtenu : {texte}");
+        let attendu = std::env::var("MAITRIZE_ATTENDU").unwrap_or_else(|_| "famille".into());
+        assert!(texte.to_lowercase().contains(&attendu.to_lowercase()), "texte obtenu : {texte}");
+    }
+
+    #[test]
+    fn ecrit_les_noms_comme_dans_une_phrase() {
+        assert_eq!(comme_un_prenom("THANH"), "Thanh");
+        assert_eq!(comme_un_prenom("MARIE-PAULE"), "Marie-Paule");
+        assert_eq!(comme_un_prenom("N'GOLO  KANTÉ"), "N'Golo Kanté");
+        assert_eq!(comme_un_prenom("ÉLODIE"), "Élodie");
+        // Des minuscules : on garde ce que l'enseignant a écrit.
+        assert_eq!(comme_un_prenom("Siaka"), "Siaka");
+        assert_eq!(comme_un_prenom("McKenzie"), "McKenzie");
+    }
+
+    #[test]
+    fn l_invite_nomme_chaque_eleve_une_fois() {
+        let classe = noms(&["THANH", "Siaka", "", "Thanh", "Lou, Anne"]);
+        // La virgule d'un nom ne le coupe pas en deux élèves.
+        assert_eq!(invite_des_noms(&classe), "Ce matin, j'ai travaillé avec Thanh, Siaka et Lou Anne.");
+        assert_eq!(invite_des_noms(&noms(&["SIAKA"])), "Ce matin, j'ai travaillé avec Siaka.");
+        assert_eq!(invite_des_noms(&[]), "");
+    }
+
+    #[test]
+    fn lit_les_noms_de_la_classe() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        c.execute_batch("CREATE TABLE eleves (id TEXT, nom TEXT); INSERT INTO eleves VALUES ('1','siaka'),('2','THANH'),('3','Lou-Anne');")
+            .unwrap();
+        assert_eq!(noms_de_la_classe(&c), noms(&["Lou-Anne", "siaka", "THANH"]));
     }
 
     fn noms(n: &[&str]) -> Vec<String> {

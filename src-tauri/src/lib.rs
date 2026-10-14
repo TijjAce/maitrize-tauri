@@ -11,6 +11,7 @@ mod commands;
 mod commun;
 mod veille;
 mod whisper_embarque;
+mod noms_entendus;
 mod webdav;
 mod copie_bureau;
 mod db;
