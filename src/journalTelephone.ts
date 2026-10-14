@@ -99,14 +99,12 @@ export const fichesDuCreneau = (c: Pick<Creneau, "prevu">, materiel: MaterielIte
   pdfsCites(c.prevu ?? "", materiel.filter(estUneFicheDEleve));
 
 /**
- * Une étape du déroulement d'un créneau, avant son image : ce qu'on lit, la
- * matière au-dessus, le mot de son picto — vide : le verbe de la phrase. Une
- * fiche d'élève prend sa matière et son picto de sa sorte, en dessinant la page.
+ * Une étape du déroulement d'un créneau, avant son image : ce qu'on lit, et
+ * la matière au-dessus. Le rituel prend le picto de la matière « Rituel » ;
+ * une fiche d'élève, celui de son domaine ou de sa matière, d'après sa
+ * sorte (voir pictosDesMatieres) ; une phase de séance, celui de son verbe.
  */
-export interface PasDuDeroulement { texte: string; matiere: string; mot: string; fiche?: boolean }
-
-/** Le picto du rituel, cherché dans la banque : le calendrier, celui des rituels de la classe. */
-export const MOT_DU_RITUEL = "calendrier";
+export interface PasDuDeroulement { texte: string; matiere: string; rituel?: boolean; fiche?: boolean }
 
 /** Les étapes d'une séance pour l'élève — ses consignes, ou ses phases dites pour lui (voir aidesALaTache). */
 export type EtapesDeLaSeance = (s: Seance) => string[];
@@ -122,9 +120,9 @@ export function pasDuDeroulement(c: Pick<Creneau, "prevu">, seance: Seance | und
   const rituels = titresDesRituels(c.prevu ?? "");
   const phases = seance ? etapesDe(seance) : [];
   return [
-    { texte: rituels.length ? rituels.join(" · ") : "Rituel", matiere: rituels.length ? "Rituel" : "", mot: MOT_DU_RITUEL },
-    ...(seance ? (phases.length ? phases : [seance.titre]) : []).map((texte) => ({ texte, matiere: "", mot: "" })),
-    ...lesFiches.map((m) => ({ texte: titrePourLesTablettes(m), matiere: "", mot: "", fiche: true })),
+    { texte: rituels.length ? rituels.join(" · ") : "Rituel", matiere: rituels.length ? "Rituel" : "", rituel: true },
+    ...(seance ? (phases.length ? phases : [seance.titre]) : []).map((texte) => ({ texte, matiere: "" })),
+    ...lesFiches.map((m) => ({ texte: titrePourLesTablettes(m), matiere: "", fiche: true })),
   ];
 }
 
@@ -305,30 +303,38 @@ const STYLE_DU_DEROULEMENT = `
  * surligne où en est la classe.
  */
 export async function pageDuDeroulement(etapes: PasDuDeroulement[]): Promise<string> {
-  const cle = JSON.stringify(etapes);
-  const deja = deroulementsDessines.get(cle);
-  if (deja) return deja;
   const { api } = await import("./api");
   const { documentImprimable } = await import("./print");
-  // Une fiche d'élève : la matière et le picto de sa sorte, retrouvée par son titre.
-  const { matiereDeLaRecette, motDuPictoDeLaFiche, recetteDuTitre } = await import("./fichesAutonomie");
+  const { CLE_PICTOS_MATIERES, lirePictosMatieres, pictoChoisi, pictosProposes } = await import("./pictosDesMatieres");
+  const choix = lirePictosMatieres(await api.settingGet(CLE_PICTOS_MATIERES).catch(() => ""));
+  // Les pictos choisis font partie de la page : un choix nouveau la redessine.
+  const cle = JSON.stringify([etapes, choix]);
+  const deja = deroulementsDessines.get(cle);
+  if (deja) return deja;
+  // Une fiche d'élève : sa matière, écrite au-dessus, et son domaine, retrouvés par sa sorte.
+  const { domaineDeLaRecette, matiereDeLaRecette, recetteDuTitre } = await import("./fichesAutonomie");
   const pas = etapes.map((p) => {
     const r = p.fiche ? recetteDuTitre(p.texte) : undefined;
-    return r ? { ...p, matiere: matiereDeLaRecette(r), mot: motDuPictoDeLaFiche(r, p.texte) } : p;
+    return { ...p, ...(r ? { matiere: matiereDeLaRecette(r) } : {}), domaine: r ? domaineDeLaRecette(r) : "" };
   });
+  // Les noms dont chaque étape prend le picto : le domaine de la fiche, puis sa matière ; la matière « Rituel » pour le rituel.
+  const noms = pas.map((p) => (p.rituel ? ["Rituel"] : p.fiche ? [p.domaine, p.matiere].filter(Boolean) : []));
   const images: (string | undefined)[] = pas.map(() => undefined);
-  // Le calendrier du rituel, ce qu'on fait sur chaque fiche : des mots cherchés au sens de la classe, comme ceux des consignes.
   try {
-    const trouves = await api.arasaacPourConsignes([...new Set(pas.map((p) => p.mot).filter(Boolean))]);
-    const ids = new Map(trouves.map((p) => [p.mot.toLowerCase(), p.id]));
-    const parId = new Map<number, string>();
-    for (const id of new Set(ids.values())) {
-      try { parId.set(id, `data:image/png;base64,${await api.arasaacImage(id)}`); } catch { /* ce picto manque */ }
-    }
-    pas.forEach((p, i) => { if (p.mot) images[i] = parId.get(ids.get(p.mot.toLowerCase()) ?? -1); });
+    // Le choix de l'enseignant d'abord, sur tous les noms ; sinon ce que la banque propose pour eux.
+    const proposes = await pictosProposes([...new Set(noms.flat())]).catch((): Record<string, number> => ({}));
+    const { cleImage } = await import("./supportsVisuels");
+    const refs = noms.map((liste) => {
+      for (const nom of liste) { const c = pictoChoisi(choix, nom); if (c) return cleImage(c); }
+      for (const nom of liste) if (proposes[nom] != null) return proposes[nom];
+      return null;
+    });
+    const { chargerImages } = await import("./components/ChoixPicto");
+    const dessins = await chargerImages([...new Set(refs.filter((r): r is number | string => r != null))], true);
+    refs.forEach((r, i) => { if (r != null) images[i] = dessins[r]; });
   } catch { /* pas de banque : des cadres sans image */ }
   // Les phases d'une séance : le picto de leur verbe, comme dans son séquentiel — avec les pictos choisis par l'enseignant.
-  const phrases = pas.flatMap((p, i) => (p.mot ? [] : [i]));
+  const phrases = pas.flatMap((p, i) => (p.rituel || p.fiche ? [] : [i]));
   if (phrases.length) {
     try {
       const { motPrincipal } = await import("./tapuscrit");
@@ -374,7 +380,9 @@ export async function publierLeJournal(maintenant = new Date()): Promise<void> {
       api.creneauxList(jours[0], jours[jours.length - 1]), api.seancesList(), api.materielList(),
     ]);
     const journal = journalDes(jours, creneaux, seances, materiel, etapesDeLaSeance);
-    const signature = signatureDuJournal(journal, materiel);
+    // Un picto de matière choisi dans les réglages change les déroulements : ils repartent.
+    const { CLE_PICTOS_MATIERES } = await import("./pictosDesMatieres");
+    const signature = `${signatureDuJournal(journal, materiel)}|${await api.settingGet(CLE_PICTOS_MATIERES).catch(() => "") ?? ""}`;
     if (signature === publiee) return;
     const cites = new Set(journal.jours.flatMap((j) => j.creneaux.flatMap((c) => c.aides.map((a) => a.id))));
     const aides: AideAPublier[] = [];

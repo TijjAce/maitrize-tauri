@@ -412,29 +412,45 @@ export function nomDeToutesLesFiches(r: RecetteDeFiche): string {
 // ── Le déroulement d'un créneau, sur les tablettes ─────────────────────────
 //
 // Les fiches d'un créneau se suivent : les tablettes les montrent dans
-// l'ordre, chacune dans son cadre avec son picto et sa matière, reliées par
-// des flèches — ce qui va se passer (voir journalTelephone).
+// l'ordre, chacune dans son cadre, reliées par des flèches — ce qui va se
+// passer (voir journalTelephone). Chaque cadre porte le picto de son domaine,
+// sinon de sa matière, comme un emploi du temps visuel (demande de
+// l'enseignant, octobre 2026) : Réglages › Général › Pictos des matières.
 
 /**
- * Le mot du picto de chaque fiche, cherché dans la banque d'images de
- * l'ordinateur, au sens de la classe : ce que l'élève y fait. Choisis sur la
- * banque (octobre 2026) : ni « histoire », ni « phrase », ni « mot », dont les
- * pictos portent des mots espagnols.
+ * La matière et le domaine de chaque fiche : ceux de la liste des matières et
+ * des référentiels de la classe — programmes 2026 au cycle 2, domaines du
+ * cycle 1 en maternelle.
  */
-export const PICTO_DE_LA_FICHE: Record<string, string> = {
-  suite: "raconter", "coloriage-chiffres": "colorier", "coloriage-lettres": "colorier", prenom: "prénom",
-  "cubes-ecrire": "cube", "cubes-dessiner": "cube", comparer: "nombres", pyramides: "addition", "coloriage-calcul": "colorier", posees: "addition",
-  reproduire: "quadrillage", fusee: "chemin", heure: "horloge", monnaie: "argent", mesurer: "mesurer",
-  cursive: "écrire", "mots-meles": "chercher", comprendre: "lire", grammaire: "verbe", listes: "écrire", "mots-imposes": "écrire",
+export const DOMAINE_DES_FICHES: Record<string, { matiere: string; domaine: string }> = {
+  suite: { matiere: "Explorer le monde", domaine: "Se repérer dans le temps et l'espace" },
+  "coloriage-chiffres": { matiere: "Structurer sa pensée", domaine: "Acquérir les premiers outils mathématiques" },
+  "coloriage-lettres": { matiere: "Mobiliser le langage", domaine: "Mobiliser le langage dans toutes ses dimensions" },
+  prenom: { matiere: "Mobiliser le langage", domaine: "Mobiliser le langage dans toutes ses dimensions" },
+  "cubes-ecrire": { matiere: "Mathématiques", domaine: "Nombres, calcul et résolution de problèmes" },
+  "cubes-dessiner": { matiere: "Mathématiques", domaine: "Nombres, calcul et résolution de problèmes" },
+  comparer: { matiere: "Mathématiques", domaine: "Nombres, calcul et résolution de problèmes" },
+  pyramides: { matiere: "Mathématiques", domaine: "Nombres, calcul et résolution de problèmes" },
+  "coloriage-calcul": { matiere: "Mathématiques", domaine: "Nombres, calcul et résolution de problèmes" },
+  posees: { matiere: "Mathématiques", domaine: "Nombres, calcul et résolution de problèmes" },
+  reproduire: { matiere: "Mathématiques", domaine: "Espace et géométrie" },
+  fusee: { matiere: "Mathématiques", domaine: "Espace et géométrie" },
+  heure: { matiere: "Mathématiques", domaine: "Grandeurs et mesures" },
+  monnaie: { matiere: "Mathématiques", domaine: "Grandeurs et mesures" },
+  mesurer: { matiere: "Mathématiques", domaine: "Grandeurs et mesures" },
+  cursive: { matiere: "Français", domaine: "Écriture" },
+  "mots-meles": { matiere: "Français", domaine: "Lecture" },
+  comprendre: { matiere: "Français", domaine: "Lecture" },
+  grammaire: { matiere: "Français", domaine: "Grammaire et orthographe" },
+  listes: { matiere: "Français", domaine: "Grammaire et orthographe" },
+  "mots-imposes": { matiere: "Français", domaine: "Écriture" },
 };
 
-/** Le mot du picto d'une fiche faite : celui de sa sorte — des soustractions posées, la soustraction. */
-export const motDuPictoDeLaFiche = (r: RecetteDeFiche, titre: string): string =>
-  r.id === "posees" && /soustraction/i.test(titre) ? "soustraction" : PICTO_DE_LA_FICHE[r.id] ?? "";
-
 /** La matière d'une fiche, écrite au-dessus de son nom dans le déroulement. */
-export const matiereDeLaRecette = (r: RecetteDeFiche): string =>
-  r.domaine === "maths" || r.domaine === "nombres" ? "Mathématiques" : r.domaine === "temps" ? "Le temps" : "Français";
+export const matiereDeLaRecette = (r: RecetteDeFiche): string => DOMAINE_DES_FICHES[r.id]?.matiere ?? "";
+
+/** Le domaine d'une fiche : son picto, s'il en a un, passe avant celui de la matière. */
+export const domaineDeLaRecette = (r: RecetteDeFiche): string => DOMAINE_DES_FICHES[r.id]?.domaine ?? "";
 
 /**
  * La recette d'une fiche déjà faite, d'après son titre sans l'élève : « Les
