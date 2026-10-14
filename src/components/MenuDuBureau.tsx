@@ -1,6 +1,6 @@
-import React from "react";
 import { ETATS_SEQUENCE, type EtatSequence } from "../suiviSequences";
 import { MODES_RANGEMENT, type ModeRangement } from "../rangement";
+import { MenuDeroulant } from "./MenuDeroulant";
 
 // ── Le menu du bureau ─────────────────────────────────────────────────────
 //
@@ -30,7 +30,7 @@ export function MenuDuBureau({
   const mode = MODES_RANGEMENT.find((m) => m.id === rangement);
   return (
     <div className="menu-bureau-barre">
-      <Deroulant libelle={cherche} actif={!!recherche.trim() || !!etat} titre="Chercher sur le bureau">
+      <MenuDeroulant libelle={cherche} actif={!!recherche.trim() || !!etat} titre="Chercher sur le bureau">
         {(fermer) => (
           <>
             <input className="input" autoFocus placeholder="Rechercher partout…" value={recherche}
@@ -49,9 +49,9 @@ export function MenuDuBureau({
             ))}
           </>
         )}
-      </Deroulant>
+      </MenuDeroulant>
 
-      <Deroulant libelle={peutRanger && mode ? `${mode.ico} Trier` : "↕ Trier"} titre="Trier ce dossier">
+      <MenuDeroulant libelle={peutRanger && mode ? `${mode.ico} Trier` : "↕ Trier"} titre="Trier ce dossier">
         {(fermer) => (
           <>
             <div className="menu-bureau-titre">Trier ce dossier</div>
@@ -65,9 +65,9 @@ export function MenuDuBureau({
             ))}
           </>
         )}
-      </Deroulant>
+      </MenuDeroulant>
 
-      <Deroulant libelle="🤝 Partager" actif={scinde} titre="Partager le bureau">
+      <MenuDeroulant libelle="🤝 Partager" actif={scinde} titre="Partager le bureau">
         {(fermer) => (
           <>
             <button className={`ctx-item${scinde ? " coche" : ""}`} onClick={() => { onScinde(!scinde); fermer(); }}
@@ -81,31 +81,7 @@ export function MenuDuBureau({
             )}
           </>
         )}
-      </Deroulant>
-    </div>
-  );
-}
-
-/** Un bouton qui s'ouvre sur ses choix, et se referme en cliquant ailleurs ou par Échap. */
-function Deroulant({ libelle, actif = false, titre, children }: {
-  libelle: string; actif?: boolean; titre: string; children: (fermer: () => void) => React.ReactNode;
-}) {
-  const [ouvert, setOuvert] = React.useState(false);
-  const ancre = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => {
-    if (!ouvert) return;
-    const ailleurs = (e: MouseEvent) => { if (!ancre.current?.contains(e.target as Node)) setOuvert(false); };
-    const echap = (e: KeyboardEvent) => { if (e.key === "Escape") setOuvert(false); };
-    document.addEventListener("mousedown", ailleurs);
-    document.addEventListener("keydown", echap);
-    return () => { document.removeEventListener("mousedown", ailleurs); document.removeEventListener("keydown", echap); };
-  }, [ouvert]);
-  return (
-    <div className="menu-bureau-ancre" ref={ancre}>
-      <button className={`btn${actif ? " primary" : ""}`} aria-haspopup="dialog" aria-expanded={ouvert} onClick={() => setOuvert(!ouvert)}>
-        {libelle} <span aria-hidden="true">▾</span>
-      </button>
-      {ouvert && <div className="menu-bureau" role="dialog" aria-label={titre}>{children(() => setOuvert(false))}</div>}
+      </MenuDeroulant>
     </div>
   );
 }

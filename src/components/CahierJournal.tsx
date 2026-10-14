@@ -35,6 +35,7 @@ import type { CompetenceSelectionnee } from "./CompetenceTree";
 import { FichierImg } from "./Deroulement";
 import { useAsync } from "./ui";
 import { MoletteEchelle } from "./MoletteEchelle";
+import { MenuDeroulant } from "./MenuDeroulant";
 import { ligneDuPdf, materielDuCreneau, pdfsCites } from "../materielAImprimer";
 import { ChoixPdfDuBureau } from "./SeanceParts";
 import { PdfViewer } from "./PdfViewer";
@@ -514,43 +515,68 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                 const occupe = dictee.etat !== "repos" && !actif;
                 return (
                   <div key={champ} style={{ marginTop: champ === "bilan" ? 8 : 0 }}>
-                    {/* Six boutons ne tiennent pas sur une ligne étroite : ils s'y replient. */}
+                    {/* Le prévu range ses outils en deux menus — écrire, ajouter — (demande de l'enseignant, octobre
+                        2026) ; le bilan garde ses deux boutons. Une dictée en cours reste à portée : on l'arrête d'ici. */}
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>{LIBELLES[champ].titre}</span>
-                      <button className="btn ghost sm" disabled={occupe || dictee.etat === "transcription"}
-                        onClick={() => basculerDictee(c.id, champ)}
-                        aria-label={actif ? "Arrêter la dictée" : `Dicter : ${LIBELLES[champ].titre}`}
-                        style={actif ? { background: "#dc2626", color: "#fff", borderColor: "#dc2626" } : undefined}>
-                        {actif && dictee.etat === "enregistrement" ? `⏹ ${mmss(dictee.secondes)}`
-                          : actif && dictee.etat === "transcription" ? "Transcription…" : "🎙"}
-                      </button>
-                      <button className="btn ghost sm" disabled={corrigeant === `${c.id}|${champ}`}
-                        onClick={() => { void corriger(c, champ); }}
-                        title="Corriger l'orthographe et la grammaire avec l'IA, sans reformuler. Surlignez un passage pour ne corriger que lui.">
-                        {corrigeant === `${c.id}|${champ}` ? "Correction…" : "✨ Corriger"}
-                      </button>
+                      {(champ === "bilan" || (actif && dictee.etat !== "repos")) && (
+                        <button className="btn ghost sm" disabled={occupe || dictee.etat === "transcription"}
+                          onClick={() => basculerDictee(c.id, champ)}
+                          aria-label={actif ? "Arrêter la dictée" : `Dicter : ${LIBELLES[champ].titre}`}
+                          style={actif ? { background: "#dc2626", color: "#fff", borderColor: "#dc2626" } : undefined}>
+                          {actif && dictee.etat === "enregistrement" ? `⏹ ${mmss(dictee.secondes)}`
+                            : actif && dictee.etat === "transcription" ? "Transcription…" : "🎙"}
+                        </button>
+                      )}
+                      {champ === "bilan" && (
+                        <button className="btn ghost sm" disabled={corrigeant === `${c.id}|${champ}`}
+                          onClick={() => { void corriger(c, champ); }}
+                          title="Corriger l'orthographe et la grammaire avec l'IA, sans reformuler. Surlignez un passage pour ne corriger que lui.">
+                          {corrigeant === `${c.id}|${champ}` ? "Correction…" : "✨ Corriger"}
+                        </button>
+                      )}
                       {champ === "prevu" ? (
                         <>
-                          <button className="btn ghost sm" onClick={() => reprendre(c)}
-                            title="Reprendre ce qui était prévu sur ce créneau la semaine dernière">↩ Semaine dernière</button>
-                          <button className="btn ghost sm" onClick={() => ajouterJeu(c)}
-                            title="Ajouter à la ludothèque le jeu écrit sur la ligne du curseur, avec sa règle : elle s'affichera ici dès qu'il est cité">
-                            🎲 Règle d'un jeu</button>
-                          <button className="btn ghost sm" onClick={() => setSequencePour(c)} disabled={!sequences.length}
-                            title={sequences.length ? "Poser une séquence ou une séance dans le prévu : ses objectifs et son déroulement s'afficheront ici" : "Aucune séquence pour l'instant"}>
-                            📚 Séquence</button>
-                          <button className="btn ghost sm" onClick={() => setPdfPour(c)}
-                            title="Citer un PDF posé sur le plan de travail, sans passer par une séance : il se voit sous le créneau et s'imprime à la suite du cahier journal">
-                            📄 PDF du bureau</button>
-                          <button className="btn ghost sm" onClick={() => setRituelPour(c)}
-                            title="Poser un rituel dans le prévu — la date, l'appel, le calcul mental — : son déroulement s'affichera ici. On le crée aussi là.">
-                            🔁 Rituel</button>
-                          <button className="btn ghost sm" onClick={() => setManuelPour(c)}
-                            title="Citer une page d'un manuel du coffre-fort, et y découper l'exercice : son image se pose dans le prévu et s'imprime avec le jour">
-                            📖 Manuel</button>
-                          <button className="btn ghost sm" onClick={() => setCompetencePour(c)}
-                            title="Poser une compétence des référentiels dans le prévu">
-                            🎯 Compétence</button>
+                          <MenuDeroulant petit cote="gauche" titre="Écrire le prévu"
+                            libelle={corrigeant === `${c.id}|${champ}` ? "✍️ Correction…" : "✍️ Écrire"}>
+                            {(fermer) => (
+                              <>
+                                <button className="ctx-item" disabled={occupe || dictee.etat !== "repos"}
+                                  onClick={() => { fermer(); basculerDictee(c.id, champ); }} title="Dicter le prévu : ce que vous dites s'écrit à la suite">
+                                  <span className="ctx-ico" aria-hidden="true">🎙</span>Dicter</button>
+                                <button className="ctx-item" disabled={corrigeant === `${c.id}|${champ}`} onClick={() => { fermer(); void corriger(c, champ); }}
+                                  title="Corriger l'orthographe et la grammaire avec l'IA, sans reformuler. Surlignez un passage pour ne corriger que lui.">
+                                  <span className="ctx-ico" aria-hidden="true">✨</span>Corriger</button>
+                                <button className="ctx-item" onClick={() => { fermer(); reprendre(c); }}
+                                  title="Reprendre ce qui était prévu sur ce créneau la semaine dernière">
+                                  <span className="ctx-ico" aria-hidden="true">↩</span>Reprendre la semaine dernière</button>
+                              </>
+                            )}
+                          </MenuDeroulant>
+                          <MenuDeroulant petit cote="gauche" titre="Ajouter au prévu" libelle="＋ Ajouter">
+                            {(fermer) => (
+                              <>
+                                <button className="ctx-item" disabled={!sequences.length} onClick={() => { fermer(); setSequencePour(c); }}
+                                  title={sequences.length ? "Poser une séquence ou une séance dans le prévu : ses objectifs et son déroulement s'afficheront ici" : "Aucune séquence pour l'instant"}>
+                                  <span className="ctx-ico" aria-hidden="true">📚</span>Une séquence</button>
+                                <button className="ctx-item" onClick={() => { fermer(); setRituelPour(c); }}
+                                  title="Poser un rituel dans le prévu — la date, l'appel, le calcul mental — : son déroulement s'affichera ici. On le crée aussi là.">
+                                  <span className="ctx-ico" aria-hidden="true">🔁</span>Un rituel</button>
+                                <button className="ctx-item" onClick={() => { fermer(); setCompetencePour(c); }}
+                                  title="Poser une compétence des référentiels dans le prévu">
+                                  <span className="ctx-ico" aria-hidden="true">🎯</span>Une compétence</button>
+                                <button className="ctx-item" onClick={() => { fermer(); ajouterJeu(c); }}
+                                  title="Ajouter à la ludothèque le jeu écrit sur la ligne du curseur, avec sa règle : elle s'affichera ici dès qu'il est cité">
+                                  <span className="ctx-ico" aria-hidden="true">🎲</span>La règle d'un jeu</button>
+                                <button className="ctx-item" onClick={() => { fermer(); setPdfPour(c); }}
+                                  title="Citer un PDF posé sur le plan de travail, sans passer par une séance : il se voit sous le créneau et s'imprime à la suite du cahier journal">
+                                  <span className="ctx-ico" aria-hidden="true">📄</span>Un PDF du bureau</button>
+                                <button className="ctx-item" onClick={() => { fermer(); setManuelPour(c); }}
+                                  title="Citer une page d'un manuel du coffre-fort, et y découper l'exercice : son image se pose dans le prévu et s'imprime avec le jour">
+                                  <span className="ctx-ico" aria-hidden="true">📖</span>Un manuel</button>
+                              </>
+                            )}
+                          </MenuDeroulant>
                         </>
                       ) : (
                         <span className="meta journal-indication" style={{ fontSize: 12 }}
