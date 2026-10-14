@@ -150,6 +150,12 @@
  .cj-creneau:first-of-type { border-top:none; }
  .cj-tete { display:flex; gap:8px; align-items:baseline; font-size:15.5px; }
  .cj-tete b { min-width:44px; }
+ /* Onglet Tablettes : un créneau replié — son heure, sa matière, le bouton qui ouvre son envoi aux tablettes. */
+ .cj-tete-tablettes { align-items:center; }
+ .cj-tete-tablettes > span:first-of-type { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+ .cj-actif { display:flex; color:var(--acc); }
+ /* Déplié, l'envoi d'un créneau prend toute la largeur : pas de colonne d'heure à suivre ici. */
+ .cj-tete-tablettes ~ .cj-tab { margin-left:0; }
  .cj-seance { margin:3px 0 0 52px; font-size:13.5px; font-weight:600; color:var(--acc-txt); }
  .cj-texte { margin:4px 0 0 52px; font-size:14px; line-height:1.45; color:var(--txt); white-space:pre-wrap; }
  .cj-bilan { margin:4px 0 0 52px; font-size:13.5px; color:var(--txt2); }

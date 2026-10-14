@@ -88,6 +88,8 @@ let confirmerCode = false, codeNeuf = false;
 let envoiCreneau = "", envoiEleve = "", envoiSouci = null;
 /** Les minutes choisies sur le téléphone pour une fiche d'élève, par créneau, élève et fiche ; sinon, le temps de la fiche. */
 const minutesChoisies = new Map();
+/** Le créneau ouvert dans l'onglet Tablettes : son envoi aux tablettes se déplie ; les autres restent repliés. */
+let creneauOuvert = "";
 /**
  * L'onglet ouvert : le cahier journal, les notes rapides, les tablettes, le
  * partage par le WiFi, les réglages. On ouvre sur le cahier journal.
@@ -793,24 +795,6 @@ function suivreLePortail() {
     // Une note qu'on écrit, une photo qu'on nomme : redessiner fermerait le clavier. On le fera en sortant.
     if (change && !ecrit && !photoPrise) rendre();
   }, 3000);
-}
-
-/** Montre une aide aux tablettes : le portail s'ouvre s'il ne l'est pas. */
-async function montrerAide(id, titre) {
-  portailSouci = "";
-  try {
-    const aide = await invoke("aide_lire", { id });
-    if (!portail.ouvert) {
-      portail = await invoke("portail_ouvrir");
-      await garderLEcranAllume();
-      suivreLePortail();
-    }
-    // Le titre de l'aide elle-même : celui d'une fiche d'élève ne porte ni l'élève ni le jour, comme le papier.
-    portail = await invoke("portail_montrer", { id, titre: aide.titre || titre, html: aide.html, etapes: etapesDeLAide(aide.html) });
-  } catch (e) {
-    portailSouci = String(e);
-  }
-  rendre();
 }
 
 /**
@@ -1703,7 +1687,6 @@ function carteCahier() {
       <div class="cj-tete"><b>${echapper(heureCourte(c.debut))}</b><span>${echapper(c.matiere || "Créneau")}</span></div>
       ${c.seance ? `<div class="cj-seance">${echapper(c.seance)}</div>` : ""}
       ${(c.prevu || "").trim() ? `<div class="cj-texte">${echapper(c.prevu.trim())}</div>` : ""}
-      ${envoiDuCreneau(c)}
       ${(c.bilan || "").trim() ? `<details class="cj-bilan"><summary>Bilan</summary><div class="cj-texte">${echapper(c.bilan.trim())}</div></details>` : ""}
     </div>`).join("");
   const vide = cahier.creneaux.length ? "" : `<p class="carte-info">${icone("coche")}<span>Rien au cahier journal ${estAujourdHui() ? "aujourd'hui" : "ce jour-là"}.</span></p>`;
@@ -1711,28 +1694,41 @@ function carteCahier() {
   return `<div class="carte cj">${rangs}${vide}${publie}</div>`;
 }
 
-/** Les aides à la tâche du cahier journal, créneau par créneau : chacune se montre aux tablettes d'un toucher. */
+/** Ce qu'un créneau montre en ce moment sur les tablettes — à la classe, ou à l'un de ses élèves. */
+function surLesTablettes(c) {
+  if (!portail.ouvert) return false;
+  if (portail.creneau === c.id && (portail.montree || portail.minuteur)) return true;
+  return elevesDuCreneau(c).some(({ eleve }) => ecranDeLEleve(c, eleve));
+}
+
+/**
+ * Les créneaux du jour qui ont quelque chose pour les tablettes — des aides,
+ * des fiches d'élèves, un déroulement, un minuteur —, repliés : leur heure,
+ * leur matière, et le bouton qui ouvre leur envoi aux tablettes (demande de
+ * l'enseignant, octobre 2026 : le cahier journal ne le porte plus).
+ */
 function aidesDuJour() {
   const titre = `<p class="titre">Aides ${estAujourdHui() ? "du jour" : `du ${dateLongue(jourDeLaDictee()).toLowerCase()}`}</p>`;
   if (!relais.relie || !relais.connecte) {
     return `${titre}<p class="carte-info seule">${icone("nuage")}<span>Les aides arrivent avec le cahier journal, par Nuage : reliez le dictaphone dans les réglages.</span></p>`;
   }
   if (!cahier) return `${titre}<div class="carte cj">${cahierAbsent()}</div>`;
-  const avecAides = cahier.creneaux.filter((c) => (c.aides || []).length);
-  if (!avecAides.length) {
+  const pourTablettes = cahier.creneaux.filter((c) => (c.aides || []).length || c.deroule || minutesDuCreneau(c));
+  if (!pourTablettes.length) {
     return `${titre}<div class="groupe"><div class="rang vide-ok"><span class="ico">${icone("liste")}</span>
       <span class="rang-texte">Aucune aide au cahier journal ${estAujourdHui() ? "aujourd'hui" : "ce jour-là"}</span></div></div>`;
   }
-  const rangs = avecAides.map((c) => `<div class="cj-creneau">
-      <div class="cj-tete"><b>${echapper(heureCourte(c.debut))}</b><span>${echapper(c.matiere || "Créneau")}</span></div>
-      ${c.aides.map((a) => {
-        const montree = portail.ouvert && portail.montreeId === a.id;
-        return `<div class="cj-aide${montree ? " on" : ""}">
-          <span class="cj-aide-titre">${icone("liste", "petit")}<span>${echapper(a.titre)}</span></span>
-          <button class="btn-mini${montree ? " on" : ""}" data-montrer="${echapper(a.id)}" data-titre="${echapper(a.titre)}" ${montree ? "disabled" : ""}>${montree ? "Montrée" : "Montrer"}</button>
-        </div>`;
-      }).join("")}
-    </div>`).join("");
+  const rangs = pourTablettes.map((c) => {
+    const ouvert = creneauOuvert === c.id;
+    const libelle = ouvert ? "Fermer" : elevesDuCreneau(c).length ? "Tablettes par élève" : "Sur les tablettes";
+    return `<div class="cj-creneau">
+      <div class="cj-tete cj-tete-tablettes"><b>${echapper(heureCourte(c.debut))}</b><span>${echapper(c.matiere || "Créneau")}</span>
+        ${!ouvert && surLesTablettes(c) ? `<span class="cj-actif" title="En cours sur les tablettes">${icone("tablette", "petit")}</span>` : ""}
+        <button class="btn-mini${ouvert ? " on" : ""}" data-ouvrir-creneau="${echapper(c.id)}" aria-expanded="${ouvert}">${libelle}</button>
+      </div>
+      ${ouvert ? envoiDuCreneau(c) : ""}
+    </div>`;
+  }).join("");
   return `${titre}<div class="carte cj">${rangs}</div>`;
 }
 
@@ -2040,8 +2036,8 @@ function rendre() {
     if (entree) entree.onchange = () => { const f = entree.files && entree.files[0]; if (f) void prendrePhoto(f); };
   }
   clic("annuler-photo", () => { photoPrise = null; nomPhoto = ""; souci = ""; rendre(); });
-  el.querySelectorAll("[data-montrer]").forEach((b) => {
-    b.onclick = () => { void montrerAide(b.dataset.montrer, b.dataset.titre); };
+  el.querySelectorAll("[data-ouvrir-creneau]").forEach((b) => {
+    b.onclick = () => { creneauOuvert = creneauOuvert === b.dataset.ouvrirCreneau ? "" : b.dataset.ouvrirCreneau; rendre(); };
   });
   el.querySelectorAll("[data-envoyer-creneau]").forEach((b) => {
     b.onclick = () => { void envoyerAuxTablettes(b.dataset.envoyerCreneau, b.dataset.aide); };
