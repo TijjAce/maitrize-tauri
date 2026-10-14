@@ -18,6 +18,16 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.29",
+    titre: "Une tablette par élève : chacun ses fiches, son déroulement et son minuteur, menés depuis le téléphone",
+    points: [
+      { quoi: "Dans un créneau « En autonomie », chaque élève a sa tablette. Sous le créneau, le dictaphone donne une ligne à chaque élève qui a des fiches : sa tablette, choisie dans la liste et retenue ; « Fiche 1 sur 4 » et le temps qui lui reste ; sa fiche suivante, avec le minuteur qu'on lui donne, prérempli avec le temps de la fiche. « Envoyer à chaque tablette » donne à chacun sa première fiche, « Suivante » la sienne ; « Pause pour tous » met tout le monde en pause.", ou: "Dictaphone · Journal" },
+      { quoi: "Chaque tablette affiche son numéro — « Tablette 2 » — sur son écran d'attente, et le garde d'un jour à l'autre. Seul le téléphone sait à quel élève elle va : une tablette ne reçoit que ses fiches, sans prénom. Les tablettes sans élève suivent la classe, comme avant. Une tablette déjà ouverte recharge sa page une fois pour recevoir son numéro.", ou: "Dictaphone · Tablettes" },
+      { quoi: "Le déroulement de chaque élève part avec ses fiches : le rituel, les phases de la séance, puis ses fiches à lui. « Montrer ce qui va se passer » et la flèche ↻ le montrent à chacun, sur sa tablette ; celui de la classe garde le rituel et les phases.", ou: "Dictaphone · Journal" },
+      { quoi: "Le dictaphone, dans sa nouvelle version, est nécessaire pour donner une tablette à chaque élève.", ou: "Dictaphone" },
+    ],
+  },
+  {
     version: "1.6.28",
     titre: "Le PDF d'un manuel s'allège, et un document part sur Nuage en vrai PDF",
     points: [
