@@ -20,9 +20,17 @@
 //! code » en tire un autre et coupe toutes les tablettes d'un coup — une
 //! tablette perdue. Le portail se ferme quand on le ferme, ou quand le
 //! dictaphone se ferme.
+//!
+//! Chaque élève peut avoir sa tablette (demande de l'enseignant, octobre
+//! 2026). Une tablette tire un identifiant la première fois et le garde ;
+//! le téléphone lui donne un numéro durable — « Tablette 2 » —, qu'elle
+//! écrit sur son écran d'attente. Le téléphone seul sait à quel élève elle
+//! va : une tablette ne reçoit que son numéro et ses fiches, jamais un
+//! prénom. Une tablette qui a son écran montre ses fiches, avec son
+//! déroulement et son minuteur ; les autres suivent l'écran de la classe.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::io::{Read, Write};
 use std::net::{IpAddr, Ipv4Addr, TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
@@ -109,31 +117,29 @@ pub enum Affichage {
     Deroule,
 }
 
-/// Ce que le portail sait, partagé entre l'écran et le serveur.
+/// Ce qu'un écran montre : l'aide, son affichage, l'étape, le minuteur. Celui de la classe, que suivent les
+/// tablettes ; celui d'une tablette d'élève, qu'elle seule montre.
 #[derive(Default)]
-struct Etat {
+struct Ecran {
     montree: Option<Montree>,
-    /// Change à chaque aide montrée : les tablettes rechargent quand il change.
+    /// Change à chaque aide montrée : la tablette recharge quand il change. Il vient d'un compteur commun à tous
+    /// les écrans : une tablette qui passe de l'écran de la classe au sien recharge aussi.
     version: u64,
-    tablettes: HashMap<IpAddr, Instant>,
     affichage: Affichage,
-    /// L'étape où en est la classe, dans le déroulé ; aucune : pas de repère.
+    /// L'étape où en est la classe — ou l'élève —, dans le déroulé ; aucune : pas de repère.
     etape: Option<usize>,
     minuteur: Option<Minuteur>,
-    /// Le créneau du cahier journal qui a envoyé ce que les tablettes montrent ; vide : envoyé d'ailleurs.
+    /// Le créneau du cahier journal qui a envoyé ce que l'écran montre ; vide : envoyé d'ailleurs.
     creneau: String,
-    /// Les étapes sont le déroulement du créneau — ses fiches dans l'ordre —, pas celles de l'aide : les tablettes
-    /// les montrent à côté de la fiche, et n'en surlignent rien dans la fiche.
+    /// Les étapes sont le déroulement du créneau — ses fiches dans l'ordre —, pas celles de l'aide : la tablette
+    /// les montre à côté de la fiche, et n'en surligne rien dans la fiche.
     plan: bool,
-    /// L'adresse où la dernière tablette est venue, « http://172.20.10.1:8765/ » : celle que les tablettes ont gardée.
-    adresse_connue: String,
-    /// Une tablette est venue à une autre adresse : le téléphone la gardera pour la fois suivante.
-    adresse_a_garder: bool,
 }
 
-impl Etat {
-    /// Ce que les tablettes relisent toutes les deux secondes : léger — l'aide et le déroulé se chargent à part.
-    fn en_json(&self, maintenant: u64) -> serde_json::Value {
+impl Ecran {
+    /// Ce qu'une tablette relit toutes les deux secondes : léger — l'aide et le déroulé se chargent à part —, et
+    /// son numéro, qu'elle écrit sur son écran d'attente.
+    fn en_json(&self, maintenant: u64, tablette: Option<u32>) -> serde_json::Value {
         serde_json::json!({
             "version": self.version,
             "montree": self.montree.as_ref().map(|m| m.titre.clone()),
@@ -143,7 +149,95 @@ impl Etat {
             "minuteur": self.minuteur.map(|t| serde_json::json!({ "duree": t.duree, "fin": t.fin, "reste": t.reste_a(maintenant), "enPause": t.fin.is_none() })),
             "plan": self.plan,
             "maintenant": maintenant,
+            "tablette": tablette,
         })
+    }
+
+    /// Ce que l'écran du téléphone en montre.
+    fn vu(&self) -> EcranVu {
+        EcranVu {
+            montree: self.montree.as_ref().map(|m| m.titre.clone()).unwrap_or_default(),
+            montree_id: self.montree.as_ref().map(|m| m.id.clone()).unwrap_or_default(),
+            affichage: self.affichage,
+            etape: self.etape,
+            etapes: self.montree.as_ref().map(|m| m.etapes.len()).unwrap_or(0),
+            texte_etape: self.montree.as_ref().zip(self.etape).and_then(|(m, k)| m.etapes.get(k)).map(|x| x.texte.clone()).unwrap_or_default(),
+            minuteur: self.minuteur,
+            creneau: self.creneau.clone(),
+            plan: self.plan,
+        }
+    }
+}
+
+/// Ce que le portail sait, partagé entre l'écran et le serveur.
+#[derive(Default)]
+struct Etat {
+    /// L'écran de la classe : toutes les tablettes le suivent, sauf celles qui ont le leur.
+    classe: Ecran,
+    /// L'écran de chaque tablette d'élève, par son numéro : ses fiches à lui.
+    perso: BTreeMap<u32, Ecran>,
+    /// Le dernier numéro de version donné à un écran.
+    version: u64,
+    tablettes: HashMap<IpAddr, Instant>,
+    /// Les tablettes connues : l'identifiant que chacune a tiré et garde, et son numéro — « Tablette 2 ».
+    numeros: BTreeMap<String, u32>,
+    /// Quand chaque tablette est venue pour la dernière fois, par son numéro.
+    vues: HashMap<u32, Instant>,
+    /// L'élève de chaque tablette, par son prénom. Il reste sur le téléphone : une tablette ne reçoit que son numéro.
+    eleves: BTreeMap<u32, String>,
+    /// L'adresse où la dernière tablette est venue, « http://172.20.10.1:8765/ » : celle que les tablettes ont gardée.
+    adresse_connue: String,
+    /// L'adresse des tablettes, leurs numéros ou leurs élèves ont changé : le téléphone les gardera.
+    a_garder: bool,
+}
+
+impl Etat {
+    /// Un numéro de version neuf, pour un écran qui change.
+    fn version_neuve(&mut self) -> u64 {
+        self.version += 1;
+        self.version
+    }
+
+    /// L'écran qu'une tablette montre : le sien, sinon celui de la classe.
+    fn ecran_de(&self, tablette: Option<u32>) -> &Ecran {
+        tablette.and_then(|n| self.perso.get(&n)).unwrap_or(&self.classe)
+    }
+
+    /// L'écran où va ce qu'on envoie : celui d'une tablette — qui l'a dès lors —, ou celui de la classe.
+    fn ecran_pour(&mut self, tablette: Option<u32>) -> &mut Ecran {
+        match tablette {
+            Some(n) => self.perso.entry(n).or_default(),
+            None => &mut self.classe,
+        }
+    }
+
+    /// L'écran qu'on règle — l'étape, l'affichage, le minuteur — : celui de la tablette si elle a le sien, sinon
+    /// celui de la classe, qu'elle montre.
+    fn ecran_regle(&mut self, tablette: Option<u32>) -> &mut Ecran {
+        match tablette {
+            Some(n) if self.perso.contains_key(&n) => self.perso.get_mut(&n).expect("l'écran vient d'être vu"),
+            _ => &mut self.classe,
+        }
+    }
+
+    /// Les écrans qu'un ordre du minuteur vise : celui d'une tablette ; sans tablette, tous — la classe et chaque élève.
+    fn ecrans_vises(&mut self, tablette: Option<u32>) -> Vec<&mut Ecran> {
+        match tablette {
+            Some(_) => vec![self.ecran_regle(tablette)],
+            None => std::iter::once(&mut self.classe).chain(self.perso.values_mut()).collect(),
+        }
+    }
+
+    /// Le numéro d'une tablette, par l'identifiant qu'elle a tiré : une tablette nouvelle prend le premier libre.
+    fn numero_de(&mut self, id: &str) -> u32 {
+        if let Some(n) = self.numeros.get(id) {
+            return *n;
+        }
+        let pris: std::collections::BTreeSet<u32> = self.numeros.values().copied().collect();
+        let n = (1..).find(|k| !pris.contains(k)).unwrap_or(1);
+        self.numeros.insert(id.to_string(), n);
+        self.a_garder = true;
+        n
     }
 }
 
@@ -185,11 +279,42 @@ pub struct EtatPortail {
     pub creneau: String,
     /// Les étapes sont le déroulement du créneau : l'écran dit « fiche 2 sur 4 ».
     pub plan: bool,
+    /// Les tablettes connues, par leur numéro : leur élève, si elles sont là, et ce qu'elles montrent.
+    pub les_tablettes: Vec<TabletteVue>,
+}
+
+/// Une tablette, telle que le téléphone la montre.
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TabletteVue {
+    pub numero: u32,
+    /// Venue il y a peu : allumée, la page ouverte.
+    pub presente: bool,
+    /// Son élève, par son prénom ; vide : elle suit la classe.
+    pub eleve: String,
+    /// Son écran à elle, si elle en a un : ce qu'elle montre.
+    pub ecran: Option<EcranVu>,
+}
+
+/// Ce qu'un écran de tablette montre, vu du téléphone.
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct EcranVu {
+    pub montree: String,
+    pub montree_id: String,
+    pub affichage: Affichage,
+    pub etape: Option<usize>,
+    pub etapes: usize,
+    pub texte_etape: String,
+    pub minuteur: Option<Minuteur>,
+    pub creneau: String,
+    pub plan: bool,
 }
 
 const FERME: EtatPortail = EtatPortail {
     ouvert: false, adresses: Vec::new(), qr: String::new(), adresse_changee: false, tablettes: 0, montree: String::new(), montree_id: String::new(),
     affichage: Affichage::Fiche, etape: None, etapes: 0, texte_etape: String::new(), minuteur: None, creneau: String::new(), plan: false,
+    les_tablettes: Vec::new(),
 };
 
 /// Les adresses IPv4 de ce téléphone sur un réseau local : le partage de
@@ -260,6 +385,12 @@ struct Souvenir {
     jeton: String,
     #[serde(default)]
     adresse: String,
+    /// Les tablettes connues, par l'identifiant qu'elles ont tiré : leur numéro.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    tablettes: BTreeMap<String, u32>,
+    /// L'élève de chaque tablette, par son prénom : il ne quitte pas le téléphone.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    eleves: BTreeMap<u32, String>,
 }
 
 /// Relit le souvenir du portail. La première fois — ou si la fiche est abîmée —, un jeton est tiré et gardé.
@@ -302,16 +433,21 @@ pub fn qr_svg(adresse: &str) -> String {
     }
 }
 
-/// Ce qu'une requête demande : le chemin, et le jeton qu'elle porte.
-pub fn lire_requete(premiere_ligne: &str) -> Option<(String, String)> {
+/// Ce qu'une requête demande : le chemin, le jeton qu'elle porte, et l'identifiant de la tablette qui la fait.
+pub fn lire_requete(premiere_ligne: &str) -> Option<(String, String, String)> {
     let mut morceaux = premiere_ligne.split_whitespace();
     if morceaux.next()? != "GET" {
         return None;
     }
     let cible = morceaux.next()?;
     let (chemin, requete) = cible.split_once('?').unwrap_or((cible, ""));
-    let jeton = requete.split('&').find_map(|p| p.strip_prefix("t=")).unwrap_or("").to_string();
-    Some((chemin.to_string(), jeton))
+    let valeur = |cle: &str| requete.split('&').find_map(|p| p.strip_prefix(cle)).unwrap_or("").to_string();
+    Some((chemin.to_string(), valeur("t="), valeur("tab=")))
+}
+
+/// Un identifiant de tablette bien formé : de 6 à 32 lettres minuscules et chiffres, tirés par sa page.
+fn tablette_valide(id: &str) -> bool {
+    (6..=32).contains(&id.len()) && id.bytes().all(|o| o.is_ascii_lowercase() || o.is_ascii_digit())
 }
 
 /// La page que les tablettes ouvrent : elle attend l'aide, la montre — la fiche, ou son déroulé en grand —,
@@ -326,7 +462,10 @@ pub const PAGE_TABLETTE: &str = r##"<!doctype html>
 <style>
   html, body { margin: 0; height: 100%; background: #f2f2f7; font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; color: #1c2233; }
   #attente { display: flex; align-items: center; justify-content: center; height: 100%; padding: 24px; box-sizing: border-box;
-    text-align: center; font-size: 24px; line-height: 1.5; color: #4b5563; }
+    text-align: center; font-size: 24px; line-height: 1.5; color: #4b5563; flex-direction: column; }
+  /* Le numéro de la tablette, en grand : l'enseignant le lit pour la donner à un élève, depuis le téléphone. */
+  #numero { display: block; font-size: 56px; font-weight: 800; color: #1c2233; margin-bottom: 10px; }
+  #numero:empty { display: none; }
   iframe { display: none; border: 0; width: 100%; height: 100%; background: #fff; }
   /* Le minuteur a sa colonne : il ne cache rien de la fiche. */
   body.avec-minuteur iframe { width: calc(100% - 30vmin); }
@@ -378,7 +517,7 @@ pub const PAGE_TABLETTE: &str = r##"<!doctype html>
   @keyframes fini { 50% { box-shadow: 0 0 0 2vmin #bbf7d0; } }
 </style></head>
 <body>
-<div id="attente">L'aide va s'afficher ici, dès que l'enseignant la montre.</div>
+<div id="attente"><b id="numero"></b><span id="message">L'aide va s'afficher ici, dès que l'enseignant la montre.</span></div>
 <iframe id="aide" title="Aide à la tâche"></iframe>
 <div id="deroule"><h1 id="titre"></h1><div id="etapes"></div></div>
 <aside id="plan" aria-label="Ce qui va se passer"></aside>
@@ -386,7 +525,17 @@ pub const PAGE_TABLETTE: &str = r##"<!doctype html>
   <path id="secteur" fill="#e11d48"/><circle cx="50" cy="50" r="4" fill="#1c2233"/></svg><div id="reste"></div></div>
 <script>
   const jeton = new URLSearchParams(location.search).get("t") || "";
-  const q = (chemin) => chemin + "?t=" + encodeURIComponent(jeton);
+  // La tablette tire son identifiant la première fois et le garde : le téléphone lui donne un numéro durable,
+  // « Tablette 2 », et lui envoie les fiches de son élève. Sans mémoire — navigation privée —, un identifiant pour la séance.
+  const tablette = (() => {
+    const neuf = () => Array.from(crypto.getRandomValues(new Uint8Array(12)), (o) => (o % 36).toString(36)).join("");
+    try {
+      let id = localStorage.getItem("maitrize-tablette");
+      if (!/^[a-z0-9]{6,32}$/.test(id || "")) { id = neuf(); localStorage.setItem("maitrize-tablette", id); }
+      return id;
+    } catch (_) { return neuf(); }
+  })();
+  const q = (chemin) => chemin + "?t=" + encodeURIComponent(jeton) + "&tab=" + tablette;
   const $ = (id) => document.getElementById(id);
   let version = -1, decalage = 0, minuteur = null, etat = null;
   const ATTENTE = "L'aide va s'afficher ici, dès que l'enseignant la montre.";
@@ -449,21 +598,22 @@ pub const PAGE_TABLETTE: &str = r##"<!doctype html>
     for (const id of ["aide", "deroule", "minuteur", "plan"]) $(id).style.display = "none";
     document.body.classList.remove("minuteur-seul", "avec-minuteur", "avec-plan");
     $("attente").style.display = "flex";
-    $("attente").textContent = "Le code du portail a changé : scannez le nouveau QR code du téléphone, puis remplacez l'icône de l'écran d'accueil.";
+    $("message").textContent = "Le code du portail a changé : scannez le nouveau QR code du téléphone, puis remplacez l'icône de l'écran d'accueil.";
   }
   async function suivre() {
     try {
       const r = await fetch(q("/etat"), { cache: "no-store" });
       if (r.ok) {
         const e = await r.json();
-        $("attente").textContent = ATTENTE;
+        $("message").textContent = ATTENTE;
+        $("numero").textContent = e.tablette != null ? "Tablette " + e.tablette : "";
         decalage = e.maintenant - Date.now();
         if (e.version !== version) { version = e.version; if (e.montree) await charger(e); }
         etat = e; minuteur = e.minuteur; appliquer(); dessinerMinuteur();
       } else if (r.status === 403) {
         return perime();
       }
-    } catch (_) { $("attente").textContent = SANS_TELEPHONE; }
+    } catch (_) { $("message").textContent = SANS_TELEPHONE; }
     setTimeout(suivre, 2000);
   }
   $("aide").addEventListener("load", appliquer);
@@ -531,7 +681,7 @@ fn servir(mut flux: TcpStream, jeton: &Mutex<String>, etat: &Mutex<Etat>) {
     let _ = flux.set_read_timeout(Some(Duration::from_secs(5)));
     let lu = lire_entetes(&mut flux);
     let texte = String::from_utf8_lossy(&lu);
-    let Some((chemin, porte)) = lire_requete(texte.lines().next().unwrap_or("")) else {
+    let Some((chemin, porte, tablette)) = lire_requete(texte.lines().next().unwrap_or("")) else {
         return repondre(&mut flux, 400, "text/plain; charset=utf-8", b"");
     };
     // L'icône se demande sans jeton, au moment de la mettre sur l'écran d'accueil : elle ne dit rien de la classe.
@@ -545,7 +695,7 @@ fn servir(mut flux: TcpStream, jeton: &Mutex<String>, etat: &Mutex<Etat>) {
             _ => repondre(&mut flux, 403, "text/plain; charset=utf-8", "Ce lien ne vaut plus.".as_bytes()),
         };
     }
-    {
+    let numero = {
         let mut e = etat.lock().unwrap();
         if let Ok(pair) = flux.peer_addr() {
             e.tablettes.insert(pair.ip(), Instant::now());
@@ -555,25 +705,31 @@ fn servir(mut flux: TcpStream, jeton: &Mutex<String>, etat: &Mutex<Etat>) {
             let adresse = format!("http://{}:{}/", ici.ip(), ici.port());
             if e.adresse_connue != adresse {
                 e.adresse_connue = adresse;
-                e.adresse_a_garder = true;
+                e.a_garder = true;
             }
         }
-    }
+        // La tablette se présente par l'identifiant qu'elle a tiré : son numéro, et l'heure où on l'a vue.
+        let numero = tablette_valide(&tablette).then(|| e.numero_de(&tablette));
+        if let Some(n) = numero {
+            e.vues.insert(n, Instant::now());
+        }
+        numero
+    };
     match chemin.as_str() {
         "/" => repondre(&mut flux, 200, "text/html; charset=utf-8", PAGE_TABLETTE.as_bytes()),
         "/etat" => {
-            let json = etat.lock().unwrap().en_json(maintenant_ms());
+            let json = etat.lock().unwrap().ecran_de(numero).en_json(maintenant_ms(), numero);
             repondre(&mut flux, 200, "application/json", json.to_string().as_bytes());
         }
         "/deroule" => {
-            let deroule = etat.lock().unwrap().montree.as_ref().map(|m| serde_json::json!({ "titre": m.titre, "etapes": m.etapes }));
+            let deroule = etat.lock().unwrap().ecran_de(numero).montree.as_ref().map(|m| serde_json::json!({ "titre": m.titre, "etapes": m.etapes }));
             match deroule {
                 Some(d) => repondre(&mut flux, 200, "application/json", d.to_string().as_bytes()),
                 None => repondre(&mut flux, 404, "text/plain; charset=utf-8", b""),
             }
         }
         "/aide" => {
-            let page = etat.lock().unwrap().montree.as_ref().map(|m| page_pour_tablette(&m.html));
+            let page = etat.lock().unwrap().ecran_de(numero).montree.as_ref().map(|m| page_pour_tablette(&m.html));
             match page {
                 Some(p) => repondre(&mut flux, 200, "text/html; charset=utf-8", p.as_bytes()),
                 None => repondre(&mut flux, 404, "text/plain; charset=utf-8", b""),
@@ -617,29 +773,42 @@ fn etat_de(p: &Portail) -> EtatPortail {
     let jeton = p.jeton.lock().unwrap().clone();
     let mut e = p.etat.lock().unwrap();
     e.tablettes.retain(|_, vu| vu.elapsed() < TABLETTE_PARTIE);
-    // Une tablette est venue par une autre adresse : le téléphone s'en souviendra la fois suivante.
-    if e.adresse_a_garder {
-        e.adresse_a_garder = false;
-        let _ = ecrire_souvenir(&p.fiche, &Souvenir { jeton: jeton.clone(), adresse: e.adresse_connue.clone() });
+    // Une tablette est venue par une autre adresse, une tablette nouvelle a reçu son numéro, une tablette a changé
+    // d'élève : le téléphone s'en souviendra la fois suivante.
+    if e.a_garder {
+        e.a_garder = false;
+        let souvenir = Souvenir { jeton: jeton.clone(), adresse: e.adresse_connue.clone(), tablettes: e.numeros.clone(), eleves: e.eleves.clone() };
+        let _ = ecrire_souvenir(&p.fiche, &souvenir);
     }
     let adresses: Vec<String> = adresses_locales().iter().map(|ip| format!("http://{ip}:{}/?t={jeton}", p.port)).collect();
     let premiere = adresses.first().map(|a| a.split('?').next().unwrap_or(a));
     let changee = adresse_changee(&e.adresse_connue, premiere, e.tablettes.len());
+    let mut numeros: Vec<u32> = e.numeros.values().copied().collect();
+    numeros.sort_unstable();
+    numeros.dedup();
+    let les_tablettes = numeros.into_iter().map(|n| TabletteVue {
+        numero: n,
+        presente: e.vues.get(&n).is_some_and(|vu| vu.elapsed() < TABLETTE_PARTIE),
+        eleve: e.eleves.get(&n).cloned().unwrap_or_default(),
+        ecran: e.perso.get(&n).map(Ecran::vu),
+    }).collect();
+    let classe = e.classe.vu();
     EtatPortail {
         ouvert: true,
         qr: adresses.first().map(|a| qr_svg(a)).unwrap_or_default(),
         adresse_changee: changee,
         adresses,
         tablettes: e.tablettes.len(),
-        montree: e.montree.as_ref().map(|m| m.titre.clone()).unwrap_or_default(),
-        montree_id: e.montree.as_ref().map(|m| m.id.clone()).unwrap_or_default(),
-        affichage: e.affichage,
-        etape: e.etape,
-        etapes: e.montree.as_ref().map(|m| m.etapes.len()).unwrap_or(0),
-        texte_etape: e.montree.as_ref().zip(e.etape).and_then(|(m, k)| m.etapes.get(k)).map(|x| x.texte.clone()).unwrap_or_default(),
-        minuteur: e.minuteur,
-        creneau: e.creneau.clone(),
-        plan: e.plan,
+        montree: classe.montree,
+        montree_id: classe.montree_id,
+        affichage: classe.affichage,
+        etape: classe.etape,
+        etapes: classe.etapes,
+        texte_etape: classe.texte_etape,
+        minuteur: classe.minuteur,
+        creneau: classe.creneau,
+        plan: classe.plan,
+        les_tablettes,
     }
 }
 
@@ -657,7 +826,15 @@ pub fn portail_ouvrir(app: tauri::AppHandle) -> R<EtatPortail> {
     let port = ecoute.local_addr().map_err(|e| e.to_string())?.port();
     // La version part de l'heure : une tablette restée ouverte depuis la veille recharge l'aide, même si son numéro
     // retombait sur celui d'hier.
-    let etat = Etat { version: maintenant_ms(), adresse_connue: souvenir.adresse, ..Etat::default() };
+    let depart = maintenant_ms();
+    let etat = Etat {
+        version: depart,
+        classe: Ecran { version: depart, ..Ecran::default() },
+        adresse_connue: souvenir.adresse,
+        numeros: souvenir.tablettes,
+        eleves: souvenir.eleves,
+        ..Etat::default()
+    };
     let p = Portail {
         port,
         jeton: Arc::new(Mutex::new(souvenir.jeton)),
@@ -680,35 +857,40 @@ fn changer(f: impl FnOnce(&mut Etat)) -> R<EtatPortail> {
     Ok(etat_de(p))
 }
 
-/// Pose l'aide que les tablettes montreront ; la classe commence à la première étape.
-fn montrer(e: &mut Etat, aide: AideAEnvoyer) {
+/// Pose l'aide qu'un écran montrera ; la classe — ou l'élève — commence à la première étape.
+fn montrer(e: &mut Ecran, aide: AideAEnvoyer, version: u64) {
     let AideAEnvoyer { id, titre, html, etapes } = aide;
     e.etape = if etapes.is_empty() { None } else { Some(0) };
     if etapes.is_empty() { e.affichage = Affichage::Fiche; }
     e.montree = Some(Montree { id, titre, html, etapes });
-    e.version += 1;
+    e.version = version;
 }
 
 /// Montre une aide aux tablettes : celle que l'écran vient de relire, avec les étapes de son déroulé.
-/// La classe commence à la première.
+/// La classe commence à la première ; montrée hors d'un créneau, toutes les tablettes la suivent.
 #[tauri::command]
 pub fn portail_montrer(id: String, titre: String, html: String, etapes: Option<Vec<EtapeDuDeroule>>) -> R<EtatPortail> {
     changer(|e| {
-        montrer(e, AideAEnvoyer { id, titre, html, etapes: etapes.unwrap_or_default() });
-        e.creneau.clear();
-        e.plan = false;
+        let v = e.version_neuve();
+        e.perso.clear();
+        montrer(&mut e.classe, AideAEnvoyer { id, titre, html, etapes: etapes.unwrap_or_default() }, v);
+        e.classe.creneau.clear();
+        e.classe.plan = false;
     })
 }
 
-/// Plus rien de montré : les tablettes attendent — ou ne gardent que le minuteur.
+/// Plus rien de montré : les tablettes attendent — ou ne gardent que le minuteur. Sans tablette, l'écran de la
+/// classe ; avec, celle de cet élève seule.
 #[tauri::command]
-pub fn portail_cacher() -> R<EtatPortail> {
+pub fn portail_cacher(tablette: Option<u32>) -> R<EtatPortail> {
     changer(|e| {
-        e.montree = None;
-        e.etape = None;
-        e.version += 1;
-        e.creneau.clear();
-        e.plan = false;
+        let v = e.version_neuve();
+        let ecran = e.ecran_pour(tablette);
+        ecran.montree = None;
+        ecran.etape = None;
+        ecran.version = v;
+        ecran.creneau.clear();
+        ecran.plan = false;
     })
 }
 
@@ -728,14 +910,14 @@ pub struct AideAEnvoyer {
 ///
 /// `plan` : les étapes de l'aide sont le déroulement du créneau — ses fiches, dans l'ordre —, et
 /// `etape` la place de la fiche envoyée. Les tablettes montrent la fiche, et le déroulement à côté.
-fn envoyer(e: &mut Etat, creneau: String, aide: Option<AideAEnvoyer>, secondes: u64, etape: Option<usize>, plan: bool, maintenant: u64) {
+fn envoyer(e: &mut Ecran, creneau: String, aide: Option<AideAEnvoyer>, secondes: u64, etape: Option<usize>, plan: bool, maintenant: u64, version: u64) {
     let avec_plan = plan && aide.as_ref().is_some_and(|a| !a.etapes.is_empty());
     match aide {
-        Some(a) => montrer(e, a),
+        Some(a) => montrer(e, a, version),
         None => {
             e.montree = None;
             e.etape = None;
-            e.version += 1;
+            e.version = version;
         }
     }
     e.plan = avec_plan;
@@ -748,46 +930,85 @@ fn envoyer(e: &mut Etat, creneau: String, aide: Option<AideAEnvoyer>, secondes: 
     e.creneau = creneau;
 }
 
-/// Envoie aux tablettes l'aide et le minuteur d'un créneau du cahier journal — et son déroulement.
+/// Envoie l'aide et le minuteur d'un créneau du cahier journal — et son déroulement — à la tablette d'un
+/// élève, ou, sans tablette, à la classe. Envoyée à la classe, elle libère les tablettes des élèves qui suivaient
+/// un autre créneau : elles la montrent aussi ; celles du même créneau gardent leurs fiches.
 #[tauri::command]
-pub fn portail_envoyer(creneau: String, aide: Option<AideAEnvoyer>, secondes: u64, etape: Option<usize>, plan: Option<bool>) -> R<EtatPortail> {
-    changer(|e| envoyer(e, creneau, aide, secondes, etape, plan.unwrap_or(false), maintenant_ms()))
+pub fn portail_envoyer(
+    creneau: String, aide: Option<AideAEnvoyer>, secondes: u64, etape: Option<usize>, plan: Option<bool>, tablette: Option<u32>,
+) -> R<EtatPortail> {
+    changer(|e| envoyer_a(e, tablette, creneau, aide, secondes, etape, plan.unwrap_or(false), maintenant_ms()))
 }
 
-/// La fiche telle qu'elle s'imprime, ou le déroulé en grand.
-#[tauri::command]
-pub fn portail_affichage(affichage: String) -> R<EtatPortail> {
-    changer(|e| e.affichage = if affichage == "deroule" { Affichage::Deroule } else { Affichage::Fiche })
+/// Ce que fait `portail_envoyer` : l'écran visé change, avec une version neuve ; envoyé à la classe, les écrans
+/// des élèves d'un autre créneau s'effacent.
+#[allow(clippy::too_many_arguments)]
+fn envoyer_a(
+    e: &mut Etat, tablette: Option<u32>, creneau: String, aide: Option<AideAEnvoyer>, secondes: u64, etape: Option<usize>, plan: bool, maintenant: u64,
+) {
+    let v = e.version_neuve();
+    if tablette.is_none() {
+        e.perso.retain(|_, ecran| !creneau.is_empty() && ecran.creneau == creneau);
+    }
+    envoyer(e.ecran_pour(tablette), creneau, aide, secondes, etape, plan, maintenant, v)
 }
 
-/// L'étape où en est la classe — bornée aux étapes de l'aide ; aucune pour ôter le repère.
+/// La fiche telle qu'elle s'imprime, ou le déroulé en grand — sur la tablette d'un élève, ou pour la classe.
 #[tauri::command]
-pub fn portail_etape(etape: Option<usize>) -> R<EtatPortail> {
+pub fn portail_affichage(affichage: String, tablette: Option<u32>) -> R<EtatPortail> {
+    changer(|e| e.ecran_regle(tablette).affichage = if affichage == "deroule" { Affichage::Deroule } else { Affichage::Fiche })
+}
+
+/// L'étape où en est la classe, ou l'élève — bornée aux étapes de l'aide ; aucune pour ôter le repère.
+#[tauri::command]
+pub fn portail_etape(etape: Option<usize>, tablette: Option<u32>) -> R<EtatPortail> {
     changer(|e| {
-        let n = e.montree.as_ref().map(|m| m.etapes.len()).unwrap_or(0);
-        e.etape = etape.filter(|_| n > 0).map(|k| k.min(n - 1));
+        let ecran = e.ecran_regle(tablette);
+        let n = ecran.montree.as_ref().map(|m| m.etapes.len()).unwrap_or(0);
+        ecran.etape = etape.filter(|_| n > 0).map(|k| k.min(n - 1));
     })
 }
 
 /// Lance le minuteur pour tant de secondes ; il remplace celui qui tournait.
 #[tauri::command]
-pub fn portail_minuteur(secondes: u64) -> R<EtatPortail> {
-    changer(|e| e.minuteur = Some(Minuteur::lancer(secondes, maintenant_ms())))
+pub fn portail_minuteur(secondes: u64, tablette: Option<u32>) -> R<EtatPortail> {
+    changer(|e| e.ecran_regle(tablette).minuteur = Some(Minuteur::lancer(secondes, maintenant_ms())))
+}
+
+/// Le minuteur en pause : celui de la tablette d'un élève ; sans tablette, tous — la classe et chaque élève.
+#[tauri::command]
+pub fn portail_minuteur_pause(tablette: Option<u32>) -> R<EtatPortail> {
+    let m = maintenant_ms();
+    changer(|e| e.ecrans_vises(tablette).into_iter().for_each(|ecran| ecran.minuteur = ecran.minuteur.map(|t| t.pause(m))))
 }
 
 #[tauri::command]
-pub fn portail_minuteur_pause() -> R<EtatPortail> {
-    changer(|e| e.minuteur = e.minuteur.map(|t| t.pause(maintenant_ms())))
+pub fn portail_minuteur_reprendre(tablette: Option<u32>) -> R<EtatPortail> {
+    let m = maintenant_ms();
+    changer(|e| e.ecrans_vises(tablette).into_iter().for_each(|ecran| ecran.minuteur = ecran.minuteur.map(|t| t.reprendre(m))))
 }
 
 #[tauri::command]
-pub fn portail_minuteur_reprendre() -> R<EtatPortail> {
-    changer(|e| e.minuteur = e.minuteur.map(|t| t.reprendre(maintenant_ms())))
+pub fn portail_minuteur_arreter(tablette: Option<u32>) -> R<EtatPortail> {
+    changer(|e| e.ecrans_vises(tablette).into_iter().for_each(|ecran| ecran.minuteur = None))
 }
 
+/// Donne une tablette à un élève, par son prénom — ou, sans prénom, la rend à la classe. Un élève n'a qu'une
+/// tablette : celle qu'il avait la quitte. Le téléphone le garde ; la tablette n'en sait rien.
 #[tauri::command]
-pub fn portail_minuteur_arreter() -> R<EtatPortail> {
-    changer(|e| e.minuteur = None)
+pub fn portail_attribuer(tablette: u32, eleve: String) -> R<EtatPortail> {
+    changer(|e| attribuer(e, tablette, &eleve))
+}
+
+fn attribuer(e: &mut Etat, tablette: u32, eleve: &str) {
+    let eleve = eleve.trim();
+    if eleve.is_empty() {
+        e.eleves.remove(&tablette);
+    } else {
+        e.eleves.retain(|_, x| x != eleve);
+        e.eleves.insert(tablette, eleve.to_string());
+    }
+    e.a_garder = true;
 }
 
 /// L'état du portail, pour l'écran : combien de tablettes, ce qu'elles montrent.
@@ -804,15 +1025,21 @@ pub fn portail_changer_code(app: tauri::AppHandle) -> R<EtatPortail> {
     let garde = PORTAIL.lock().unwrap();
     let mut souvenir = relire_souvenir(&fiche);
     if let Some(p) = garde.as_ref() {
-        souvenir.adresse = p.etat.lock().unwrap().adresse_connue.clone();
+        let e = p.etat.lock().unwrap();
+        souvenir.adresse = e.adresse_connue.clone();
+        souvenir.tablettes = e.numeros.clone();
+        souvenir.eleves = e.eleves.clone();
     }
     souvenir.jeton = autre_jeton(&souvenir.jeton);
     ecrire_souvenir(&fiche, &souvenir)?;
     Ok(match garde.as_ref() {
         Some(p) => {
             *p.jeton.lock().unwrap() = souvenir.jeton;
-            // Plus aucune tablette n'est reliée : on ne les compte plus.
-            p.etat.lock().unwrap().tablettes.clear();
+            // Plus aucune tablette n'est reliée : on ne les compte plus. Elles gardent leur numéro en rescannant.
+            let mut e = p.etat.lock().unwrap();
+            e.tablettes.clear();
+            e.vues.clear();
+            drop(e);
             etat_de(p)
         }
         None => FERME,
@@ -833,10 +1060,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn une_requete_dit_son_chemin_et_son_jeton() {
-        assert_eq!(lire_requete("GET /etat?t=abc23 HTTP/1.1"), Some(("/etat".into(), "abc23".into())));
-        assert_eq!(lire_requete("GET /aide?v=3&t=abc23 HTTP/1.1"), Some(("/aide".into(), "abc23".into())));
-        assert_eq!(lire_requete("GET / HTTP/1.1"), Some(("/".into(), String::new())));
+    fn une_requete_dit_son_chemin_son_jeton_et_sa_tablette() {
+        assert_eq!(lire_requete("GET /etat?t=abc23 HTTP/1.1"), Some(("/etat".into(), "abc23".into(), String::new())));
+        assert_eq!(lire_requete("GET /aide?v=3&t=abc23&tab=k3x9q2 HTTP/1.1"), Some(("/aide".into(), "abc23".into(), "k3x9q2".into())));
+        assert_eq!(lire_requete("GET / HTTP/1.1"), Some(("/".into(), String::new(), String::new())));
+        // Un identifiant de tablette tient en lettres minuscules et chiffres, ni trop court ni trop long.
+        assert!(tablette_valide("k3x9q2") && tablette_valide(&"a".repeat(32)));
+        assert!(!tablette_valide("k3x9") && !tablette_valide(&"a".repeat(33)) && !tablette_valide("<script>") && !tablette_valide("ABCDEF"));
         assert_eq!(lire_requete("POST /etat?t=abc HTTP/1.1"), None);
         assert_eq!(lire_requete(""), None);
     }
@@ -871,7 +1101,7 @@ mod tests {
         assert!(jeton_valide(&premier.jeton));
         assert_eq!(relire_souvenir(&fiche), premier);
         // L'adresse des tablettes se garde avec lui.
-        let avec_adresse = Souvenir { jeton: premier.jeton.clone(), adresse: "http://172.20.10.1:8765/".into() };
+        let avec_adresse = Souvenir { jeton: premier.jeton.clone(), adresse: "http://172.20.10.1:8765/".into(), ..Default::default() };
         ecrire_souvenir(&fiche, &avec_adresse).unwrap();
         assert_eq!(relire_souvenir(&fiche), avec_adresse);
         // Une fiche abîmée donne un nouveau jeton, bien formé — et garde ce qu'elle peut.
@@ -879,6 +1109,13 @@ mod tests {
         let repare = relire_souvenir(&fiche);
         assert!(jeton_valide(&repare.jeton));
         assert_eq!(repare.adresse, "http://172.20.10.1:8765/");
+        // Les numéros des tablettes et leurs élèves se gardent aussi ; une fiche d'avant, sans eux, se relit.
+        let complet = Souvenir {
+            jeton: premier.jeton.clone(), adresse: String::new(),
+            tablettes: [("k3x9q2".to_string(), 2)].into(), eleves: [(2, "JULES".to_string())].into(),
+        };
+        ecrire_souvenir(&fiche, &complet).unwrap();
+        assert_eq!(relire_souvenir(&fiche), complet);
         std::fs::write(&fiche, b"pas du json").unwrap();
         assert!(jeton_valide(&relire_souvenir(&fiche).jeton));
         let _ = std::fs::remove_dir_all(&d);
@@ -934,11 +1171,11 @@ mod tests {
         {
             let mut e = etat.lock().unwrap();
             let etapes = vec![EtapeDuDeroule { texte: "Je lis.".into(), image: String::new(), matiere: String::new() }, EtapeDuDeroule { texte: "J'écris.".into(), image: "data:image/png;base64,AA".into(), matiere: String::new() }];
-            e.montree = Some(Montree { id: "a1".into(), titre: "Le séquentiel".into(), html: "<body><p>Je lis.</p></body>".into(), etapes });
-            e.etape = Some(1);
-            e.affichage = Affichage::Deroule;
-            e.minuteur = Some(Minuteur::lancer(300, maintenant_ms()));
-            e.version += 1;
+            e.classe.montree = Some(Montree { id: "a1".into(), titre: "Le séquentiel".into(), html: "<body><p>Je lis.</p></body>".into(), etapes });
+            e.classe.etape = Some(1);
+            e.classe.affichage = Affichage::Deroule;
+            e.classe.minuteur = Some(Minuteur::lancer(300, maintenant_ms()));
+            e.classe.version = 1;
         }
         let (_, json) = demander("/etat?t=jeton123");
         assert!(json.contains("\"montree\":\"Le séquentiel\"") && json.contains("\"version\":1"), "{json}");
@@ -957,7 +1194,28 @@ mod tests {
         assert_eq!((vu.etape, vu.etapes, vu.texte_etape.as_str()), (Some(1), 2, "J'écris."));
         // L'adresse par laquelle la tablette est venue est gardée avec le jeton, pour la fois suivante.
         let garde: Souvenir = serde_json::from_slice(&std::fs::read(&fiche).unwrap()).unwrap();
-        assert_eq!(garde, Souvenir { jeton: "jeton123".into(), adresse: format!("http://127.0.0.1:{port}/") });
+        assert_eq!(garde, Souvenir { jeton: "jeton123".into(), adresse: format!("http://127.0.0.1:{port}/"), ..Default::default() });
+        // Une tablette qui se présente reçoit son numéro, qu'elle lit dans l'état ; elle suit la classe tant
+        // qu'elle n'a pas son écran, puis ne montre que le sien — la fiche de son élève, et rien d'autre.
+        let (_, json) = demander("/etat?t=jeton123&tab=k3x9q2");
+        assert!(json.contains("\"tablette\":1") && json.contains("\"montree\":\"Le séquentiel\""), "{json}");
+        {
+            let mut e = etat.lock().unwrap();
+            let v = e.version_neuve();
+            let fiche_de_jean = AideAEnvoyer { id: "f1".into(), titre: "Les pyramides de nombres".into(), html: "<body><p>Je complète.</p></body>".into(), etapes: Vec::new() };
+            envoyer(e.ecran_pour(Some(1)), "c1".into(), Some(fiche_de_jean), 600, None, false, maintenant_ms(), v);
+        }
+        let (_, json) = demander("/etat?t=jeton123&tab=k3x9q2");
+        assert!(json.contains("\"montree\":\"Les pyramides de nombres\"") && json.contains("\"duree\":600"), "{json}");
+        assert!(demander("/aide?t=jeton123&tab=k3x9q2").1.contains("Je complète."));
+        let (_, json) = demander("/etat?t=jeton123&tab=autre7");
+        assert!(json.contains("\"tablette\":2") && json.contains("\"montree\":\"Le séquentiel\""), "{json}");
+        let vu = etat_de(&Portail { port, jeton: jeton_partage.clone(), etat: etat.clone(), arret: arret.clone(), fiche: fiche.clone() });
+        assert_eq!(vu.les_tablettes.iter().map(|t| (t.numero, t.presente, t.ecran.as_ref().map(|x| x.montree.clone()))).collect::<Vec<_>>(),
+            vec![(1, true, Some("Les pyramides de nombres".to_string())), (2, true, None)]);
+        // Les numéros se gardent : une tablette les retrouve à la prochaine ouverture du portail.
+        let garde: Souvenir = serde_json::from_slice(&std::fs::read(&fiche).unwrap()).unwrap();
+        assert_eq!(garde.tablettes, [("k3x9q2".to_string(), 1), ("autre7".to_string(), 2)].into());
         let _ = std::fs::remove_file(&fiche);
         // Un nouveau code : l'ancien lien ne vaut plus, et la page dit quoi faire ; le nouveau sert aussitôt.
         *jeton_partage.lock().unwrap() = "neufneuf".into();
@@ -979,34 +1237,72 @@ mod tests {
 
     #[test]
     fn un_creneau_envoie_son_aide_et_son_minuteur_d_un_coup() {
-        let mut e = Etat::default();
+        let mut e = Ecran::default();
         let aide = |id: &str| AideAEnvoyer {
             id: id.into(), titre: format!("Aide {id}"), html: "<p>1. Je lis.</p>".into(),
             etapes: vec![EtapeDuDeroule { texte: "Je lis.".into(), image: String::new(), matiere: String::new() }],
         };
-        envoyer(&mut e, "c1".into(), Some(aide("a1")), 900, None, false, 1_000);
+        envoyer(&mut e, "c1".into(), Some(aide("a1")), 900, None, false, 1_000, 1);
         assert_eq!((e.montree.as_ref().map(|m| m.id.as_str()), e.etape, e.creneau.as_str()), (Some("a1"), Some(0), "c1"));
         // Le minuteur démarre aussitôt, de toute sa durée.
         assert_eq!(e.minuteur.map(|t| (t.duree, t.fin)), Some((900, Some(901_000))));
         let version = e.version;
         // Un autre créneau, sans aide : l'aide d'avant s'en va, son minuteur prend la place.
-        envoyer(&mut e, "c2".into(), None, 300, None, false, 5_000);
+        envoyer(&mut e, "c2".into(), None, 300, None, false, 5_000, 2);
         assert!(e.montree.is_none() && e.etape.is_none() && e.version > version);
         assert_eq!((e.minuteur.map(|t| t.duree), e.creneau.as_str()), (Some(300), "c2"));
         // Un créneau sans minuteur arrête celui qui tournait : les tablettes ne montrent que ce créneau.
-        envoyer(&mut e, "c3".into(), Some(aide("a3")), 0, None, false, 9_000);
+        envoyer(&mut e, "c3".into(), Some(aide("a3")), 0, None, false, 9_000, 3);
         assert_eq!((e.minuteur, e.creneau.as_str()), (None, "c3"));
         // Une fiche d'un créneau qui en a trois : son déroulement part avec elle, la fiche à sa place.
         let deroule = |n: usize| (0..n).map(|i| EtapeDuDeroule { texte: format!("Fiche {i}"), image: String::new(), matiere: "Français".into() }).collect::<Vec<_>>();
         e.affichage = Affichage::Deroule;
-        envoyer(&mut e, "c4".into(), Some(AideAEnvoyer { etapes: deroule(3), ..aide("f2") }), 600, Some(1), true, 12_000);
+        envoyer(&mut e, "c4".into(), Some(AideAEnvoyer { etapes: deroule(3), ..aide("f2") }), 600, Some(1), true, 12_000, 4);
         assert_eq!((e.plan, e.etape, e.affichage), (true, Some(1), Affichage::Fiche));
-        assert!(e.en_json(12_000).to_string().contains("\"plan\":true"));
+        assert!(e.en_json(12_000, None).to_string().contains("\"plan\":true"));
         // Une place hors du déroulement ne surligne rien ; une aide montrée d'ailleurs n'a plus de déroulement.
-        envoyer(&mut e, "c4".into(), Some(AideAEnvoyer { etapes: deroule(3), ..aide("f9") }), 600, Some(7), true, 13_000);
+        envoyer(&mut e, "c4".into(), Some(AideAEnvoyer { etapes: deroule(3), ..aide("f9") }), 600, Some(7), true, 13_000, 5);
         assert_eq!((e.plan, e.etape), (true, None));
-        envoyer(&mut e, "c5".into(), Some(aide("a5")), 0, None, false, 14_000);
+        envoyer(&mut e, "c5".into(), Some(aide("a5")), 0, None, false, 14_000, 6);
         assert_eq!((e.plan, e.etape), (false, Some(0)));
+    }
+
+    #[test]
+    fn chaque_eleve_a_sa_tablette_et_la_classe_garde_la_sienne() {
+        let mut e = Etat::default();
+        let aide = |id: &str| AideAEnvoyer { id: id.into(), titre: format!("Fiche {id}"), html: "<p>Je lis.</p>".into(), etapes: Vec::new() };
+        let (jules, yasmine) = (e.numero_de("tablettejules"), e.numero_de("tabletteyasmine"));
+        assert_eq!((jules, yasmine, e.numero_de("tablettejules")), (1, 2, 1), "une tablette garde son numéro");
+        // L'enseignant donne chaque tablette à son élève ; un élève n'en a qu'une.
+        attribuer(&mut e, jules, "JULES");
+        attribuer(&mut e, yasmine, "YASMINE");
+        attribuer(&mut e, 3, "JULES");
+        assert_eq!(e.eleves, [(2, "YASMINE".to_string()), (3, "JULES".to_string())].into());
+        attribuer(&mut e, 3, "");
+        attribuer(&mut e, jules, "JULES");
+        // Chaque élève reçoit sa fiche et son minuteur, sur sa tablette seule.
+        for (tablette, fiche, minutes) in [(jules, "f1", 15), (yasmine, "f5", 10)] {
+            envoyer_a(&mut e, Some(tablette), "c1".into(), Some(aide(fiche)), minutes * 60, None, false, 1_000);
+        }
+        assert_eq!(e.ecran_de(Some(jules)).montree.as_ref().map(|m| m.id.as_str()), Some("f1"));
+        assert_eq!(e.ecran_de(Some(yasmine)).minuteur.map(|t| t.duree), Some(600));
+        assert!(e.ecran_de(None).montree.is_none() && e.ecran_de(Some(7)).montree.is_none(), "les autres suivent la classe");
+        assert_ne!(e.ecran_de(Some(jules)).version, e.ecran_de(Some(yasmine)).version);
+        // La pause d'un élève ne touche que lui ; la pause de tous, tout le monde.
+        let pause = |e: &mut Etat, t: Option<u32>| e.ecrans_vises(t).into_iter().for_each(|x| x.minuteur = x.minuteur.map(|m| m.pause(2_000)));
+        pause(&mut e, Some(jules));
+        assert!(e.ecran_de(Some(jules)).minuteur.is_some_and(|t| t.fin.is_none()) && e.ecran_de(Some(yasmine)).minuteur.is_some_and(|t| t.fin.is_some()));
+        pause(&mut e, None);
+        assert!(e.ecran_de(Some(yasmine)).minuteur.is_some_and(|t| t.fin.is_none()));
+        // L'étape d'un élève se règle sur sa tablette ; une tablette sans écran règle celui de la classe.
+        assert!(std::ptr::eq(e.ecran_regle(Some(7)) as *const Ecran, &e.classe as *const Ecran));
+        // Envoyer à la classe pour le même créneau : les élèves gardent leurs fiches ; pour un autre, leurs tablettes
+        // le montrent aussi.
+        envoyer_a(&mut e, None, "c1".into(), Some(aide("seance")), 0, None, false, 3_000);
+        assert_eq!((e.perso.len(), e.ecran_de(Some(jules)).montree.as_ref().map(|m| m.id.as_str())), (2, Some("f1")));
+        envoyer_a(&mut e, None, "c2".into(), Some(aide("suite")), 0, None, false, 4_000);
+        assert!(e.perso.is_empty());
+        assert_eq!(e.ecran_de(Some(jules)).montree.as_ref().map(|m| m.id.as_str()), Some("suite"));
     }
 
     #[test]

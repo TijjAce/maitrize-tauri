@@ -8,10 +8,11 @@
 // pendant l'activité. La consigne d'une feuille posée dans la séance part
 // aussi, comme une aide : elle n'est plus sur le papier (voir optionsFeuille).
 // Les fiches d'« En retard » citées au prévu du créneau partent de même, une
-// par une, chacune avec sa consigne et son minuteur. Le déroulement du
-// créneau part avec elles — ce qui va se passer, dans l'ordre : toujours le
-// rituel d'abord (demande de l'enseignant, octobre 2026), puis les phases de
-// sa séance, puis ses fiches —, et la tablette y surligne où en est la classe.
+// par une, chacune avec sa consigne, son minuteur et son élève : chaque élève
+// a sa tablette (demande de l'enseignant, octobre 2026), que le téléphone lui
+// attribue. Les déroulements partent avec elles — ce qui va se passer, dans
+// l'ordre : toujours le rituel d'abord, puis les phases de la séance ; celui
+// de chaque élève finit par ses fiches —, et la tablette y surligne l'étape.
 //
 // Tout part chiffré avec la clé du retour (voir telephone.rs) : Nuage ne lit
 // rien. Rien ne repart qui n'a pas changé ; ici, rien ne se redessine non plus.
@@ -36,8 +37,10 @@ export const JOURS_PUBLIES = 14;
  */
 export interface AideDuJournal {
   id: string; titre: string; minuteur: number;
-  /** Sa place dans le déroulement du créneau : celle de la fiche d'élève, la première phase pour une aide de la séance. */
+  /** Sa place dans le déroulement : la première phase dans celui de la classe pour une aide de la séance, la sienne dans celui de son élève pour une fiche. */
   etape?: number;
+  /** L'élève d'une fiche, par son prénom : le téléphone l'envoie à sa tablette. Absent pour une aide de la séance. */
+  eleve?: string;
 }
 export interface CreneauDuJournal {
   id: string; debut: string; fin: string; matiere: string; prevu: string; bilan: string;
@@ -46,8 +49,10 @@ export interface CreneauDuJournal {
   aides: AideDuJournal[];
   /** Le minuteur des tablettes, en minutes ; 0 : aucun. Le téléphone l'envoie avec l'aide, depuis le créneau. */
   minuteur: number;
-  /** Le déroulement du créneau — le rituel, les phases de sa séance, ses fiches —, cité par sa clé ; vide sans déroulement. */
+  /** Le déroulement de la classe — le rituel, les phases de sa séance —, cité par sa clé ; vide sans séance. */
   deroule: string;
+  /** Le déroulement de chaque élève qui a des fiches — celui de la classe, puis ses fiches —, par son prénom. */
+  deroules?: Record<string, string>;
 }
 export interface JourDuJournal { jour: string; creneaux: CreneauDuJournal[] }
 export interface JournalTelephone { publie: string; jours: JourDuJournal[] }
@@ -123,15 +128,21 @@ export function domaineDeLaSeance(seance: Pick<Seance, "competences">, sequence?
 /** Les étapes d'une séance pour l'élève — ses consignes, ou ses phases dites pour lui (voir aidesALaTache). */
 export type EtapesDeLaSeance = (s: Seance) => string[];
 
+/** Les élèves qui ont des fiches au créneau, par leur prénom, dans l'ordre du prévu : chacun a sa tablette. */
+export const elevesDesFiches = (fiches: MaterielItem[]): string[] =>
+  [...new Set(fiches.map((m) => eleveDeLaFiche(m)?.prenom ?? "").filter(Boolean))];
+
 /**
  * Le déroulement d'un créneau : le rituel toujours en premier — ceux du prévu
  * par leur nom —, puis les phases de sa séance — son titre seul si elle n'en
- * dit rien —, puis ses fiches d'élève, dans l'ordre. Rien sans séance ni fiche.
+ * dit rien. Celui d'un `eleve` finit par ses fiches, dans l'ordre du prévu ;
+ * celui de la classe n'en a pas, chaque élève ayant les siennes. Rien sans
+ * séance ni fiche.
  */
 export function pasDuDeroulement(
-  c: Pick<Creneau, "prevu">, seance: Seance | undefined, etapesDe: EtapesDeLaSeance, fiches: MaterielItem[], domaineDeSeance = "",
+  c: Pick<Creneau, "prevu">, seance: Seance | undefined, etapesDe: EtapesDeLaSeance, fiches: MaterielItem[], domaineDeSeance = "", eleve?: string,
 ): PasDuDeroulement[] {
-  const lesFiches = fichesDuCreneau(c, fiches);
+  const lesFiches = eleve === undefined ? [] : fichesDuCreneau(c, fiches).filter((m) => eleveDeLaFiche(m)?.prenom === eleve);
   if (!seance && !lesFiches.length) return [];
   const rituels = titresDesRituels(c.prevu ?? "");
   const phases = seance ? etapesDe(seance) : [];
@@ -144,6 +155,8 @@ export function pasDuDeroulement(
 
 /** La clé du déroulement d'un créneau : la publication la remplace par l'empreinte de sa page. */
 export const cleDuDeroulement = (creneauId: string) => `deroule:${creneauId}`;
+/** La clé du déroulement d'un élève au créneau, remplacée de même. */
+export const cleDuDeroulementDe = (creneauId: string, eleve: string) => `deroule:${creneauId}:${eleve}`;
 /** Le titre du déroulement, en tête de sa page et sur les tablettes. */
 export const TITRE_DU_DEROULEMENT = "Ce qui va se passer";
 
@@ -199,20 +212,26 @@ export function journalDes(
           const minuteur = minuteurDuCreneau(c);
           const seance = c.seanceId ? seanceDe.get(c.seanceId) : undefined;
           const lesFiches = fichesDuCreneau(c, fiches);
-          // Le déroulement : le rituel, les phases de la séance, puis les fiches, qui en sont la fin.
+          // Le déroulement de la classe : le rituel, les phases de la séance. Celui d'un élève y ajoute ses
+          // fiches, qui en sont la fin — après le rituel seul, sans séance.
           const pas = pasDuDeroulement(c, seance, etapesDe, fiches);
-          const premiereFiche = pas.length - lesFiches.length;
-          const place = (k: number) => (pas.length ? { etape: k } : {});
+          const eleves = elevesDesFiches(lesFiches);
+          const debutDesFiches = pas.length || 1;
+          const sesFiches = (prenom: string) => lesFiches.filter((m) => eleveDeLaFiche(m)?.prenom === prenom);
           return {
             id: c.id, debut: c.heureDebut, fin: c.heureFin, matiere: c.matiere ?? "", prevu: c.prevu ?? "", bilan: c.bilan ?? "",
             seance: seance?.titre ?? "",
             aides: [
               // Une aide de la séance commence avec sa première phase, juste après le rituel.
-              ...aidesDuCreneau(c, deSeance).map((m) => ({ id: m.id, titre: titreDeLAide(m), minuteur, ...place(1) })),
-              ...lesFiches.map((m, i) => ({ id: m.id, titre: titreDeLAide(m), minuteur: minuteurDeLaFiche(m), ...place(premiereFiche + i) })),
+              ...aidesDuCreneau(c, deSeance).map((m) => ({ id: m.id, titre: titreDeLAide(m), minuteur, ...(pas.length ? { etape: 1 } : {}) })),
+              ...lesFiches.map((m) => {
+                const eleve = eleveDeLaFiche(m)?.prenom ?? "";
+                return { id: m.id, titre: titreDeLAide(m), minuteur: minuteurDeLaFiche(m), etape: debutDesFiches + sesFiches(eleve).indexOf(m), eleve };
+              }),
             ],
             minuteur,
             deroule: pas.length ? cleDuDeroulement(c.id) : "",
+            ...(eleves.length ? { deroules: Object.fromEntries(eleves.map((e) => [e, cleDuDeroulementDe(c.id, e)])) } : {}),
           };
         }),
     })),
@@ -388,18 +407,25 @@ export async function publierLeJournal(maintenant = new Date()): Promise<void> {
       const html = await pageDeLAide(m).catch(() => null);
       if (html) aides.push({ cle: m.id, titre: titrePourLesTablettes(m), html });
     }
-    // Le déroulement de chaque créneau qui en a un : le rituel, les phases de sa séance, ses fiches.
+    // Les déroulements de chaque créneau qui en a : celui de la classe — le rituel, les phases de sa séance —,
+    // et celui de chaque élève qui a des fiches, qui finit par les siennes.
     const fiches = materiel.filter(estUneFicheDEleve);
     const seanceDe = new Map(seances.map((s) => [s.id, s]));
     const sequenceDe = new Map(sequences.map((q) => [q.id, q]));
+    const publies = new Map(journal.jours.flatMap((j) => j.creneaux).map((x) => [x.id, x]));
     for (const c of creneaux) {
-      const cle = cleDuDeroulement(c.id);
-      if (!journal.jours.some((j) => j.creneaux.some((x) => x.deroule === cle))) continue;
+      const publie = publies.get(c.id);
+      if (!publie) continue;
       const seance = c.seanceId ? seanceDe.get(c.seanceId) : undefined;
       const domaine = seance ? domaineDeLaSeance(seance, seance.sequenceId ? sequenceDe.get(seance.sequenceId) : undefined) : "";
-      const pas = pasDuDeroulement(c, seance, etapesDeLaSeance, fiches, domaine);
-      const html = await pageDuDeroulement(pas).catch(() => null);
-      if (html) aides.push({ cle, titre: TITRE_DU_DEROULEMENT, html });
+      const aPublier: [string, string | undefined][] = [
+        ...(publie.deroule ? [[publie.deroule, undefined] as [string, undefined]] : []),
+        ...Object.entries(publie.deroules ?? {}).map(([eleve, cle]) => [cle, eleve] as [string, string]),
+      ];
+      for (const [cle, eleve] of aPublier) {
+        const html = await pageDuDeroulement(pasDuDeroulement(c, seance, etapesDeLaSeance, fiches, domaine, eleve)).catch(() => null);
+        if (html) aides.push({ cle, titre: TITRE_DU_DEROULEMENT, html });
+      }
     }
     const bilan = await api.telephonePublierJournal(journal, aides);
     if (bilan.relie) publiee = signature;
