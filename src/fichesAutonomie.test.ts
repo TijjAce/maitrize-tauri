@@ -4,8 +4,9 @@ import {
   NIVEAUX_FICHES, RECETTES, combienDeFiches, elevesDuJour, fabricationsDesFiches, graineDe, motsDuSon, niveauDesFiches, nomDeLaRecette, prenomEcrit, prevuAvecLesFiches,
   proposer, recetteDe, recettesPour, repartir, titreDeLaFiche, titreLibre, uneAutre, uneDePlus, type OutilsFiche,
   MINUTEURS_DE_BASE, lireMinuteursRetard, minuteurDeLaRecette, nomDeToutesLesFiches, rubriqueDeLaRecette,
-  PICTO_DE_LA_FICHE, matiereDeLaRecette, recetteDuTitre,
+  DOMAINE_DES_FICHES, domaineDeLaRecette, matiereDeLaRecette, recetteDuTitre,
 } from "./fichesAutonomie";
+import { MATIERES } from "./api";
 import { MINUTEURS_DES_TABLETTES } from "./journalTelephone";
 import { ETAPES, motsDe } from "./progressionCgp";
 import { titreSansLEleve } from "./impressionAtelier";
@@ -285,10 +286,14 @@ describe("le temps de chaque fiche", () => {
 });
 
 describe("le déroulement d'un créneau", () => {
-  it("donne à chaque sorte de fiche le mot de son picto et sa matière", () => {
-    for (const r of RECETTES) expect(PICTO_DE_LA_FICHE[r.id], r.id).toBeTruthy();
+  it("range chaque sorte de fiche dans une matière de la liste et un domaine des référentiels", () => {
+    for (const r of RECETTES) {
+      expect(MATIERES, r.id).toContain(DOMAINE_DES_FICHES[r.id]?.matiere);
+      expect(DOMAINE_DES_FICHES[r.id]?.domaine, r.id).toBeTruthy();
+    }
     expect([matiereDeLaRecette(recetteDe("posees")!), matiereDeLaRecette(recetteDe("listes")!), matiereDeLaRecette(recetteDe("suite")!)])
-      .toEqual(["Mathématiques", "Français", "Le temps"]);
+      .toEqual(["Mathématiques", "Français", "Explorer le monde"]);
+    expect([domaineDeLaRecette(recetteDe("heure")!), domaineDeLaRecette(recetteDe("mots-imposes")!)]).toEqual(["Grandeurs et mesures", "Écriture"]);
   });
 
   it("retrouve la sorte d'une fiche déjà faite par son titre, quel que soit le niveau", () => {

@@ -18,6 +18,7 @@ import { VocauxRecus } from "../components/VocauxRecus";
 import { TelephoneNuage } from "../components/TelephoneNuage";
 import { AmisTab } from "./Amis";
 import { ReglagesEnRetard } from "../components/ReglagesEnRetard";
+import { PictosDesMatieres } from "../components/PictosDesMatieres";
 import { listen } from "@tauri-apps/api/event";
 import { Licences } from "../components/Licences";
 import { ChiffrementDisqueCard } from "../components/ChiffrementDisque";
@@ -45,7 +46,8 @@ export default function Reglages() {
   // L'essai du moteur local : il vaut mieux découvrir un chemin faux ici
   // qu'au milieu d'une ESS.
   const [dataMsg, setDataMsg] = React.useState("");
-  const [showMatieres, setShowMatieres] = React.useState(false);
+  // La fenêtre des matières, sur ses couleurs ou sur ses pictos.
+  const [showMatieres, setShowMatieres] = React.useState<false | OngletMatieres>(false);
   // Les couleurs par défaut des tableaux de langage : sur le fond, sur le cadre, ou nulle part.
   const [showCouleursTla, setShowCouleursTla] = React.useState(false);
   const paletteTla = usePaletteParDefaut();
@@ -292,7 +294,11 @@ export default function Reglages() {
         </Field>
 
         <Field label="Emploi du temps">
-          <button className="btn" onClick={() => setShowMatieres(true)}>🎨 Couleurs des matières…</button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="btn" onClick={() => setShowMatieres("couleurs")}>🎨 Couleurs des matières…</button>
+            <button className="btn" onClick={() => setShowMatieres("pictos")}
+              title="Le picto de chaque matière et de ses domaines : les tablettes les montrent dans le déroulement d'un créneau">🧩 Pictos des matières…</button>
+          </div>
         </Field>
 
         <Field label="Tableaux de langage">
@@ -473,7 +479,7 @@ export default function Reglages() {
       )}
       {onglet === "general" && <Licences />}
 
-      {showMatieres && <CouleursMatieresModal onClose={() => setShowMatieres(false)} />}
+      {showMatieres && <CouleursMatieresModal onglet={showMatieres} onClose={() => setShowMatieres(false)} />}
       {showCouleursTla && (
         <FenetreCouleurs titre="Couleurs des tableaux de langage" palette={paletteTla}
           explication="Tous les tableaux les prennent, sauf ceux qui ont leurs propres couleurs (Fabriquer › Tableaux de langage)."
@@ -486,7 +492,11 @@ export default function Reglages() {
 // Liste d'années scolaires autour de l'année donnée (pour le sélecteur du seed).
 
 // Carte « Développement » : génère des données factices pour tester rapidement.
-function CouleursMatieresModal({ onClose }: { onClose: () => void }) {
+type OngletMatieres = "couleurs" | "pictos";
+
+/** Les matières et leurs domaines : leurs couleurs dans un onglet, leurs pictos dans l'autre. */
+function CouleursMatieresModal({ onglet: ongletInitial, onClose }: { onglet: OngletMatieres; onClose: () => void }) {
+  const [onglet, setOnglet] = React.useState<OngletMatieres>(ongletInitial);
   const [over, setOver] = React.useState<Record<string, string>>(() => ({ ...getMatiereOverrides() }));
   // Les domaines des référentiels actifs : une séquence porte celui de sa compétence.
   const [domaines, setDomaines] = React.useState<string[]>([]);
@@ -529,8 +539,13 @@ function CouleursMatieresModal({ onClose }: { onClose: () => void }) {
   );
 
   return (
-    <Modal large titre="🎨 Couleurs des matières" onClose={onClose}
+    <Modal large titre={onglet === "pictos" ? "🧩 Pictos des matières" : "🎨 Couleurs des matières"} onClose={onClose}
       footer={<><div className="spacer" /><button className="btn primary" onClick={onClose}>Terminé</button></>}>
+      <div className="onglets" style={{ marginBottom: 12 }}>
+        <button className={onglet === "couleurs" ? "active" : ""} onClick={() => setOnglet("couleurs")}>🎨 Couleurs</button>
+        <button className={onglet === "pictos" ? "active" : ""} onClick={() => setOnglet("pictos")}>🧩 Pictos</button>
+      </div>
+      {onglet === "pictos" ? <PictosDesMatieres /> : <>
       <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
         Personnalisez la couleur de chaque matière : le planning, les séquences et le bureau la prennent. Sous chaque matière, les domaines
         de vos référentiels — une séquence porte celui de sa compétence — prennent sa couleur, sauf si vous leur en choisissez une.
@@ -551,6 +566,7 @@ function CouleursMatieresModal({ onClose }: { onClose: () => void }) {
           {intitules.map((m) => ligne(m))}
         </>
       )}
+      </>}
     </Modal>
   );
 }

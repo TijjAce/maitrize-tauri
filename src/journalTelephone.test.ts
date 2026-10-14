@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { Creneau, MaterielItem, Seance } from "./api";
 import {
   aidesDuCreneau, cleDuDeroulement, dureeDuMinuteur, estUneAide, estUneFicheDEleve, fichesDuCreneau, journalDes, joursPublies, minuteurDuCreneau, MINUTEURS_DES_TABLETTES,
-  MOT_DU_RITUEL, pasDuDeroulement,
+  pasDuDeroulement,
   pageDeLaConsigne, signatureDuJournal, titreDeLAide, titrePourLesTablettes,
 } from "./journalTelephone";
 
@@ -156,11 +156,11 @@ describe("les fiches d'« En retard », pour les tablettes", () => {
     const phases = () => ["Je découvre les mots.", "Je cherche."];
     const c = creneau("c1", "2026-10-13", { seanceId: "s1", prevu: "🔁 La date\n🔁 La météo\n" + prevu });
     expect(pasDuDeroulement(c, seanceDuJour, phases, [pyramides, meles])).toEqual([
-      { texte: "La date · La météo", matiere: "Rituel", mot: MOT_DU_RITUEL },
-      { texte: "Je découvre les mots.", matiere: "", mot: "" },
-      { texte: "Je cherche.", matiere: "", mot: "" },
-      { texte: "Les pyramides de nombres", matiere: "", mot: "", fiche: true },
-      { texte: "Mots mêlés", matiere: "", mot: "", fiche: true },
+      { texte: "La date · La météo", matiere: "Rituel", rituel: true },
+      { texte: "Je découvre les mots.", matiere: "" },
+      { texte: "Je cherche.", matiere: "" },
+      { texte: "Les pyramides de nombres", matiere: "", fiche: true },
+      { texte: "Mots mêlés", matiere: "", fiche: true },
     ]);
     // Sans rituel au prévu : « Rituel » ; une séance qui ne dit rien de ses phases : son titre.
     expect(pasDuDeroulement(creneau("c2", "2026-10-13", { seanceId: "s1" }), seanceDuJour, () => [], []).map((p) => p.texte))
