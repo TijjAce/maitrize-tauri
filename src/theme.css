@@ -1613,3 +1613,5 @@ details.cm-pli > summary .meta { margin-left: 4px; font-size: 12.5px; }
 .pm-image img.propose { opacity: .45; }
 .pm-vide { color: var(--text-2); font-size: 16px; }
 .pm-nom { flex: 1; min-width: 0; font-size: 13.5px; }
+/* « par domaine » : détailler une matière — ses domaines paraissent dessous. */
+.pm-detail { display: flex; align-items: center; gap: 5px; flex: none; font-size: 12.5px; color: var(--text-2); white-space: nowrap; cursor: pointer; }

@@ -340,12 +340,15 @@ const STYLE_DU_DEROULEMENT = `
 export async function pageDuDeroulement(etapes: PasDuDeroulement[]): Promise<string> {
   const { api } = await import("./api");
   const { documentImprimable } = await import("./print");
-  const { CLE_MATIERES, pictoChoisi, pictosProposes } = await import("./pictosMatieres");
+  const { CLE_MATIERES, CLE_PAR_DOMAINE, domainesParMatiere, lireParDomaine, matiereDuNom, pictoDuDomaine, pictosProposes } = await import("./pictosMatieres");
   const { lireLexique } = await import("./caa");
-  // Les pictos des matières et des domaines : ceux de la page CAA et de Réglages › Personnalisation.
+  // Les pictos des matières et des domaines : ceux de la page CAA et de Réglages › Personnalisation, et les matières
+  // que l'enseignant détaille par domaine.
   const choix = lireLexique(await api.settingGet(CLE_MATIERES).catch(() => ""));
+  const parDomaine = lireParDomaine(await api.settingGet(CLE_PAR_DOMAINE).catch(() => ""));
+  const domaines = domainesParMatiere(await api.referentielsList().catch(() => []));
   // Les pictos choisis font partie de la page : un choix nouveau la redessine.
-  const cle = JSON.stringify([etapes, choix]);
+  const cle = JSON.stringify([etapes, choix, parDomaine, domaines]);
   const deja = deroulementsDessines.get(cle);
   if (deja) return deja;
   // Une fiche d'élève : sa matière, écrite au-dessus, et son domaine, retrouvés par sa sorte.
@@ -354,13 +357,18 @@ export async function pageDuDeroulement(etapes: PasDuDeroulement[]): Promise<str
     const r = p.fiche ? recetteDuTitre(p.texte) : undefined;
     return r ? { ...p, matiere: matiereDeLaRecette(r), domaine: domaineDeLaRecette(r) } : p;
   });
-  // Le picto du domaine, c'est tout : ni celui de la matière, ni celui du verbe (demande de l'enseignant).
-  // Le rituel a le sien, sous « Rituel ». Un domaine sans picto choisi prend celui que la banque propose pour lui.
-  const noms = pas.map((p) => (p.rituel ? "Rituel" : p.domaine ?? ""));
+  // Le picto de la matière, par défaut ; celui du domaine si l'enseignant détaille la matière et l'a choisi — jamais
+  // celui du verbe (demandes de l'enseignant). Le rituel a le sien, sous « Rituel ».
+  const cibles = pas.map((p) => {
+    if (p.rituel) return { nom: "Rituel", matiere: "Rituel" };
+    const nom = p.domaine ?? "";
+    return nom ? { nom, matiere: (p.fiche && p.matiere) || matiereDuNom(nom, domaines) } : null;
+  });
   const images: (string | undefined)[] = pas.map(() => undefined);
   try {
-    const proposes = await pictosProposes([...new Set(noms.filter(Boolean))]).catch((): Record<string, number> => ({}));
-    const refs = noms.map((nom) => (nom ? pictoChoisi(choix, nom) ?? proposes[nom] ?? null : null));
+    const aProposer = [...new Set(cibles.flatMap((x) => (x ? [x.matiere ?? x.nom] : [])))];
+    const proposes = await pictosProposes(aProposer).catch((): Record<string, number> => ({}));
+    const refs = cibles.map((x) => (x ? pictoDuDomaine(x.nom, x.matiere, choix, parDomaine, domaines, proposes) : null));
     const { chargerImages } = await import("./components/ChoixPicto");
     const dessins = await chargerImages([...new Set(refs.filter((r): r is number | string => r != null))], true);
     refs.forEach((r, i) => { if (r != null) images[i] = dessins[r]; });
@@ -397,9 +405,10 @@ export async function publierLeJournal(maintenant = new Date()): Promise<void> {
       api.creneauxList(jours[0], jours[jours.length - 1]), api.seancesList(), api.materielList(), api.sequencesList().catch((): Sequence[] => []),
     ]);
     const journal = journalDes(jours, creneaux, seances, materiel, etapesDeLaSeance);
-    // Un picto de matière ou de domaine choisi change les déroulements : ils repartent.
-    const { CLE_MATIERES } = await import("./pictosMatieres");
-    const signature = `${signatureDuJournal(journal, materiel)}|${await api.settingGet(CLE_MATIERES).catch(() => "") ?? ""}`;
+    // Un picto de matière ou de domaine choisi, une matière détaillée ou non : les déroulements changent, ils repartent.
+    const { CLE_MATIERES, CLE_PAR_DOMAINE } = await import("./pictosMatieres");
+    const reglage = async (cle: string) => (await api.settingGet(cle).catch(() => "")) ?? "";
+    const signature = `${signatureDuJournal(journal, materiel)}|${await reglage(CLE_MATIERES)}|${await reglage(CLE_PAR_DOMAINE)}`;
     if (signature === publiee) return;
     const cites = new Set(journal.jours.flatMap((j) => j.creneaux.flatMap((c) => c.aides.map((a) => a.id))));
     const aides: AideAPublier[] = [];
