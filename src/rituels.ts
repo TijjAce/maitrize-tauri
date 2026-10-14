@@ -74,6 +74,17 @@ export function rituelsCites(texte: string, rituels: Rituel[]): Rituel[] {
   return sortie;
 }
 
+/** Les titres des rituels posés dans un texte — « 🔁 La date » —, tels qu'écrits, dans l'ordre, une fois chacun. */
+export function titresDesRituels(texte: string): string[] {
+  const sortie: string[] = [];
+  for (const ligne of (texte ?? "").split("\n")) {
+    const propre = ligne.trim();
+    const titre = propre.startsWith(MARQUE) ? propre.slice(MARQUE.length).trim() : "";
+    if (titre && !sortie.some((t) => forme(t) === forme(titre))) sortie.push(titre);
+  }
+  return sortie;
+}
+
 /** Les rituels cités, imprimés sous le prévu — comme les séquences citées. */
 export function rituelsImprimes(rituels: Rituel[]): string {
   if (!rituels.length) return "";

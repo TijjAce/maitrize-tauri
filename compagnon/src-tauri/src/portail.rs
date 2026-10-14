@@ -348,6 +348,11 @@ pub const PAGE_TABLETTE: &str = r##"<!doctype html>
   #plan .fleche { height: 3.6vmin; margin: .2vmin auto; }
   .pl .nom { display: block; font-weight: 700; line-height: 1.2; }
   .pl .sur { font-size: 1.8vmin; }
+  /* Cinq étapes ou plus — le rituel et quatre fiches — : la colonne se resserre pour les montrer toutes. */
+  #plan.serre .pl { padding: .7vmin; font-size: 2vmin; }
+  #plan.serre .pl img { width: 7vmin; height: 7vmin; margin-bottom: .3vmin; }
+  #plan.serre .pl .sur { font-size: 1.6vmin; }
+  #plan.serre .fleche { height: 2.8vmin; }
   .pl.en-cours { border-color: #f59e0b; background: #fffbeb; box-shadow: 0 0 0 .7vmin #fde68a; }
   .pl.passee { opacity: .45; }
   .etape img { width: 12vmin; height: 12vmin; object-fit: contain; flex: none; }
@@ -404,6 +409,7 @@ pub const PAGE_TABLETTE: &str = r##"<!doctype html>
       + image(x) + "<span>" + sur(x) + echapper(x.texte) + "</span></div>").join("");
     $("plan").innerHTML = e.plan ? d.etapes.map((x, i) => (i ? FLECHE : "") + '<div class="pl">' + image(x) + sur(x)
       + '<span class="nom">' + echapper(x.texte) + "</span></div>").join("") : "";
+    $("plan").classList.toggle("serre", d.etapes.length >= 5);
   }
   function appliquer() {
     const e = etat; if (!e) return;
