@@ -18,6 +18,21 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.27",
+    titre: "Les tablettes suivent le créneau : l'aide, le minuteur et ce qui va se passer, envoyés du téléphone",
+    points: [
+      { quoi: "Sous chaque créneau du cahier journal, le dictaphone envoie aux tablettes l'aide à la tâche et son minuteur, qui démarre aussitôt ; il se met en pause, reprend ou s'arrête depuis le téléphone. Le minuteur d'un créneau se règle sur l'ordinateur, dans le cahier journal, à la ligne « Sur les tablettes ».", ou: "Cahier journal ; Dictaphone · Journal" },
+      { quoi: "Ce qui va se passer s'affiche sur les tablettes, en colonne à côté de la fiche : le rituel d'abord — ou les rituels posés au prévu, par leur nom —, puis les phases de la séance, puis les fiches, chacune dans son cadre avec le picto de son domaine, reliées par des flèches. L'étape en cours se surligne, celles d'avant pâlissent ; « Le déroulé en grand » le montre à la place de la fiche, numéroté.", ou: "Dictaphone · Journal" },
+      { quoi: "Sous le créneau, le téléphone dit « Étape 3 sur 5 » et fait avancer le déroulement d'une flèche ; « Suivante » envoie la fiche d'après avec son minuteur ; « Montrer ce qui va se passer » affiche le déroulement seul, avant de commencer ; la flèche ↻ reprend la séance du début, au rituel.", ou: "Dictaphone · Journal" },
+      { quoi: "En retard : chaque sorte de fiche a son temps — 10, 15 ou 20 minutes de base —, réglable dans un nouvel onglet des réglages. La fiche le reçoit à sa fabrication, avec sa consigne pour les tablettes ; on peut encore le changer pour une fiche, dans la fenêtre « En retard ».", ou: "Réglages · En retard ; Planning · En retard" },
+      { quoi: "Un onglet Personnalisation réunit les couleurs et les pictos des matières et de leurs domaines — ceux de vos référentiels : Français › Lecture, Écriture… —, et les couleurs des tableaux de langage. Les pictos des matières sont ceux de la page CAA ; tant qu'un domaine n'en a pas, la banque en propose un, en pâle.", ou: "Réglages · Personnalisation" },
+      { quoi: "Les feuilles de cubes générées — séquences, « En retard », ateliers rattachés — mettent chaque groupement dans sa couleur. Sur la fiche d'un élève, « Les fiches à ne pas lui donner » écarte des fabrications d'« En retard » : le coloriage magique, pour qui ne sait pas encore le faire.", ou: "Planning · En retard ; Élèves" },
+      { quoi: "« Lire l'heure », dans « En retard », fait lire l'heure ou dessiner les aiguilles, jamais les deux, et les aiguilles se colorient — en rouge celle des heures, en bleu celle des minutes ; les pyramides n'y impriment plus leur règle. Dans Fabriquer, « Les aiguilles à colorier » et « La règle sur la feuille » se cochent au choix.", ou: "Planning · En retard ; Fabriquer · Mathématiques" },
+      { quoi: "Bureau commun : « ⇄ Changer de bureau » est toujours là, même avec un seul bureau. L'adresse d'un dossier vu dans Nuage, collée à la place d'un lien de partage, s'explique : demander un lien de partage, ou, pour vos propres dossiers, Réglages › Données & synchro › Partager mes dossiers. Un lien protégé demande son mot de passe ; un lien supprimé ou expiré le dit.", ou: "Bureau commun" },
+      { quoi: "Le dictaphone, dans sa nouvelle version, est nécessaire pour envoyer depuis les créneaux et montrer le déroulement aux tablettes. Son clavier ne se ferme plus pendant qu'on écrit une note ou qu'on nomme une photo.", ou: "Dictaphone" },
+    ],
+  },
+  {
     version: "1.6.26",
     titre: "Le problème du jour en maternelle, et les pictos partout, par leur numéro",
     points: [
