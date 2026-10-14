@@ -1,11 +1,12 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { api, NIVEAUX_SCOLAIRES, type Creneau, type Eleve } from "../api";
-import { Input, Modal, useAsync } from "./ui";
+import { Input, Modal, ouvrirOnglet, useAsync } from "./ui";
 import { toast } from "./Toaster";
 import { chargerVacances, periodeDuJour } from "../vacances";
 import { ficheDeLEleve } from "../impressionAtelier";
 import {
-  fabricationsDesFiches,
+  CLE_MINUTEURS_RETARD, fabricationsDesFiches, lireMinuteursRetard, minuteurDeLaRecette,
   combienDeFiches, dossierDuJour, elevesDuJour, graineDe, iconeDeLaRecette, jourEnLettres, niveauDesFiches, nomDeLaRecette, prenomDe,
   prevuAvecLesFiches, proposer, recetteDe, repartir, titreDeLaFiche, titreLibre, uneAutre, uneDePlus,
   type EleveDuJour, type FicheProposee, type NiveauFiches, type OutilsFiche,
@@ -15,24 +16,14 @@ import { dureeDuMinuteur, MINUTEURS_DES_TABLETTES } from "../journalTelephone";
 // « En retard » : pour chaque élève de la journée, des fiches à faire seul,
 // à son niveau (voir `fichesAutonomie`). On voit ce qui est proposé, on en
 // change une, on en retire, on en ajoute ; puis tout se fabrique, se range
-// sur le bureau et s'écrit au cahier journal. Le téléphone relié, chaque
-// fiche reçoit aussi son minuteur : depuis le créneau qui la cite, le
-// téléphone envoie aux tablettes sa consigne et ce minuteur.
+// sur le bureau et s'écrit au cahier journal. Chaque fiche reçoit aussi le
+// temps de sa sorte (Réglages › En retard) : depuis le créneau qui la cite,
+// le téléphone envoie aux tablettes sa consigne et ce minuteur. Il se règle
+// ici, à la fabrication, et plus après.
 
 /** Une fiche proposée, et son minuteur sur les tablettes, en minutes (0 : aucun). */
 type FicheDuJour = FicheProposee & { minuteur: number };
 interface Ligne { niveau: NiveauFiches | null; inclus: boolean; fiches: FicheDuJour[] }
-
-/** Le minuteur qu'on donne à chaque fiche, retenu sur cet ordinateur d'une fois à l'autre. */
-const CLE_MINUTEUR = "retard:minuteur";
-function minuteurRetenu(): number {
-  try {
-    const n = Number(localStorage.getItem(CLE_MINUTEUR));
-    return MINUTEURS_DES_TABLETTES.includes(n) ? n : 0;
-  } catch {
-    return 0;
-  }
-}
 
 /** Les durées d'un minuteur de fiche, « sans » d'abord. */
 function ChoixDuMinuteur({ valeur, onChange, disabled, libelle }: { valeur: number; onChange: (m: number) => void; disabled?: boolean; libelle: string }) {
@@ -61,17 +52,21 @@ const OUTILS: OutilsFiche = {
 export function EnRetard({ jourInitial, onClose, onFini }: {
   jourInitial: string; onClose: () => void; onFini: (jour: string) => void;
 }) {
+  const nav = useNavigate();
   const [jour, setJour] = React.useState(jourInitial);
   const [donnees, setDonnees] = React.useState<{ jour: string; creneaux: Creneau[]; eleves: Eleve[]; periode: number } | null>(null);
   const [tirage, setTirage] = React.useState(0);
   const [lignes, setLignes] = React.useState<Record<string, Ligne>>({});
   const [enCours, setEnCours] = React.useState<{ fait: number; total: number; quoi: string } | null>(null);
-  // Le téléphone relié : chaque fiche a son minuteur pour les tablettes.
+  // Le téléphone relié, le minuteur de chaque fiche se voit, et se change pour celle-ci.
   const { data: telephone } = useAsync(() => api.telephoneEtat(), []);
-  const [minuteur, setMinuteur] = React.useState(minuteurRetenu);
-  // Lu au moment de proposer : changer le minuteur ne tire pas d'autres fiches.
-  const minuteurRef = React.useRef(minuteur);
-  minuteurRef.current = minuteur;
+  // Le temps de chaque sorte de fiche, réglé dans Réglages › En retard ; rien ne se propose avant de le connaître.
+  const [minuteurs, setMinuteurs] = React.useState<Record<string, number> | null>(null);
+  React.useEffect(() => {
+    api.settingGet(CLE_MINUTEURS_RETARD).then((brut) => setMinuteurs(lireMinuteursRetard(brut))).catch(() => setMinuteurs({}));
+  }, []);
+  /** Une fiche, avec le temps de sa sorte. */
+  const avecSonTemps = React.useCallback((f: FicheProposee): FicheDuJour => ({ ...f, minuteur: minuteurDeLaRecette(f.recette, minuteurs ?? {}) }), [minuteurs]);
 
   React.useEffect(() => {
     let vivant = true;
@@ -92,23 +87,16 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
     niveau, inclus: niveau !== null,
     fiches: niveau
       ? proposer(niveau, periode, eleve.nonVerbal ?? false, combienDeFiches(niveau, creneaux.length), graineDe(`${eleve.id}|${jour}|${tirage}`), eleve.fichesExclues ?? [])
-        .map((f) => ({ ...f, minuteur: minuteurRef.current }))
+        .map(avecSonTemps)
       : [],
-  }), [periode, jour, tirage]);
+  }), [periode, jour, tirage, avecSonTemps]);
 
   React.useEffect(() => {
-    if (!journee) return;
+    if (!journee || !minuteurs) return;
     setLignes(Object.fromEntries(journee.presents.map(({ eleve, creneaux }) => [eleve.id, propositions(eleve, creneaux, niveauDesFiches(eleve.niveau))])));
-  }, [journee, propositions]);
+  }, [journee, minuteurs, propositions]);
 
   const changer = (id: string, f: (l: Ligne) => Ligne) => setLignes((avant) => (avant[id] ? { ...avant, [id]: f(avant[id]) } : avant));
-
-  /** Le même minuteur pour toutes les fiches ; chacune peut ensuite avoir le sien. */
-  const minuteurPourToutes = (m: number) => {
-    setMinuteur(m);
-    try { localStorage.setItem(CLE_MINUTEUR, String(m)); } catch { /* il vaut pour cette fois */ }
-    setLignes((avant) => Object.fromEntries(Object.entries(avant).map(([id, l]) => [id, { ...l, fiches: l.fiches.map((f) => ({ ...f, minuteur: m })) }])));
-  };
 
   /** Un élève sans niveau : on le dit ici, et sa fiche le garde. */
   const choisirNiveau = (p: EleveDuJour, niveau: string) => {
@@ -184,11 +172,9 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
           {jourEnLettres(jour)} · période {periode}
         </div>
         {telephone?.relie && (
-          <label className="retard-minuteur-tous"
-            title="Sur les tablettes, depuis le créneau : le téléphone envoie la consigne de la fiche et lance ce minuteur. Chaque fiche peut ensuite avoir le sien.">
-            <span>Minuteur de chaque fiche</span>
-            <ChoixDuMinuteur valeur={minuteur} onChange={minuteurPourToutes} disabled={occupe} libelle="Le minuteur de chaque fiche, sur les tablettes" />
-          </label>
+          <button type="button" className="lien retard-minuteur-tous" disabled={occupe}
+            title="Le temps de chaque sorte de fiche, qu'elle emporte à sa fabrication : le téléphone l'envoie aux tablettes avec sa consigne, depuis le créneau."
+            onClick={() => { onClose(); nav("/reglages"); setTimeout(() => ouvrirOnglet("reglages", "retard"), 140); }}>⏱ Le temps de chaque fiche : Réglages › En retard</button>
         )}
       </div>
       <p className="meta" style={{ fontSize: 12.5, marginTop: 0 }}>
@@ -250,7 +236,7 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
                           )}
                           <button className="btn ghost sm" disabled={occupe} title="Une autre fiche"
                             onClick={() => changer(p.eleve.id, (x) => ({ ...x, fiches: x.fiches.map((y, j) => (j === i
-                              ? { ...uneAutre(y, x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|${i}|${y.graine}`), p.eleve.fichesExclues ?? []), minuteur: y.minuteur }
+                              ? avecSonTemps(uneAutre(y, x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|${i}|${y.graine}`), p.eleve.fichesExclues ?? []))
                               : y)) }))}>🔄</button>
                           <button className="btn ghost sm" disabled={occupe} title="Retirer cette fiche"
                             onClick={() => changer(p.eleve.id, (x) => ({ ...x, fiches: x.fiches.filter((_, j) => j !== i) }))}>✕</button>
@@ -260,7 +246,7 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
                   </ol>
                   <button className="btn ghost sm" disabled={occupe} onClick={() => changer(p.eleve.id, (x) => {
                     const plus = uneDePlus(x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|+${x.fiches.length}`), p.eleve.fichesExclues ?? []);
-                    return plus ? { ...x, fiches: [...x.fiches, { ...plus, minuteur: minuteurRef.current }] } : x;
+                    return plus ? { ...x, fiches: [...x.fiches, avecSonTemps(plus)] } : x;
                   })}>＋ Une fiche</button>
                 </>}
               </div>

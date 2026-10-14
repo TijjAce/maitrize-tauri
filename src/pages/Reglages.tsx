@@ -17,6 +17,7 @@ import { Aide } from "../components/Aide";
 import { VocauxRecus } from "../components/VocauxRecus";
 import { TelephoneNuage } from "../components/TelephoneNuage";
 import { AmisTab } from "./Amis";
+import { ReglagesEnRetard } from "../components/ReglagesEnRetard";
 import { listen } from "@tauri-apps/api/event";
 import { Licences } from "../components/Licences";
 import { ChiffrementDisqueCard } from "../components/ChiffrementDisque";
@@ -27,6 +28,7 @@ const ONGLETS = [
   ["ia", "Assistant IA"],
   ["donnees", "Données & synchro"],
   ["partage", "Téléphone"],
+  ["retard", "En retard"],
   ["amis", "Amis"],
 ] as const;
 type Onglet = typeof ONGLETS[number][0];
@@ -406,6 +408,8 @@ export default function Reglages() {
       </Repli>
       </Famille>
       </>}
+
+      {onglet === "retard" && <ReglagesEnRetard />}
 
       {onglet === "amis" && <AmisTab />}
 
