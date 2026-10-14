@@ -1,5 +1,5 @@
 import React from "react";
-import { MODELE_TACHES, api, newId, nowIso, texteErreur } from "../api";
+import { MODELE_TACHES, api, newId, nowIso, texteErreur, type ManuelPdf, type PoidsDuManuel, type PoidsPdf } from "../api";
 import { Field, Input, Modal, Select, Textarea, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
@@ -13,9 +13,10 @@ import { printHTML } from "../print";
 import { nombreDePages, octetsDuFichier, rendrePage } from "../pdfRendu";
 import { imageDeLaPage, pngDeLaZone } from "../exercicesDesManuels";
 import {
-  CLE_INDEX, OPTIONS_PAR_DEFAUT, STYLE_FICHE_ADAPTEE, TYPES_EXERCICE, ajouterPagePhoto, cleManuel, consigneLectureEncadre,
+  CLE_INDEX, CLE_POIDS_PDF, OPTIONS_PAR_DEFAUT, POIDS_PDF, STYLE_FICHE_ADAPTEE, TYPES_EXERCICE, ajouterPagePhoto, cleManuel, consigneLectureEncadre,
   consigneReadaptation, ecrireManuel, estLu, exerciceEncadre, exercicesParCompetence, ficheDepuisLExercice, htmlFicheAdaptee, indexAvec,
-  indexSans, lireExerciceDeLEncadre, lireFicheAdaptee, lireIndex, lireManuel, nomExercice, nouveauManuel, retirerPage,
+  indexSans, libelleDuPoids, lireExerciceDeLEncadre, lireFicheAdaptee, lireIndex, lireManuel, lirePoidsPdf, nomExercice, nouveauManuel, poidsLisible,
+  retirerPage,
   type ExerciceManuel, type FicheAdaptee, type Manuel, type OptionsReadaptation, type PageManuel, type ResumeManuel, type Zone,
 } from "../manuels";
 
@@ -67,6 +68,30 @@ export function ManuelsPanel() {
   const [occupe, setOccupe] = React.useState("");
   const [images, setImages] = React.useState<Record<string, string>>({});
   const entree = React.useRef<HTMLInputElement>(null);
+
+  // Le poids du PDF, retenu d'une fois à l'autre, et ce que pèserait chaque choix pour le manuel ouvert.
+  const [poidsPdf, setPoidsPdf] = React.useState<PoidsPdf>("origine");
+  React.useEffect(() => { api.settingGet(CLE_POIDS_PDF).then((b) => setPoidsPdf(lirePoidsPdf(b))).catch(() => {}); }, []);
+  const choisirPoids = (p: PoidsPdf) => { setPoidsPdf(p); api.settingSet(CLE_POIDS_PDF, p).catch(() => {}); };
+  const [pesee, setPesee] = React.useState<{ cle: string; poids: PoidsDuManuel } | null>(null);
+  const photosDuManuel = manuel && manuel.source !== "pdf" ? manuel.pages.map((p) => p.fichier).filter(Boolean) : [];
+  const cleDeLaPesee = manuel ? `${manuel.id}|${photosDuManuel.join(",")}` : "";
+  const derniereCle = React.useRef("");
+  React.useEffect(() => {
+    if (photosDuManuel.length === 0 || derniereCle.current === cleDeLaPesee) return;
+    let vivant = true;
+    // Pendant un scan, les pages arrivent une à une : on pèse quand elles ont fini d'arriver.
+    const attente = window.setTimeout(() => {
+      api.manuelPoidsPdf(photosDuManuel).then((poids) => {
+        if (!vivant) return;
+        derniereCle.current = cleDeLaPesee;
+        setPesee({ cle: cleDeLaPesee, poids });
+      }).catch(() => {});
+    }, 1500);
+    return () => { vivant = false; window.clearTimeout(attente); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cleDeLaPesee]);
+  const poidsDuManuel = pesee && pesee.cle === cleDeLaPesee ? pesee.poids : null;
 
   // Le manuel tel qu'il est à l'instant, pour ce qui finit plus tard (le modèle d'un encadré) :
   // repartir d'une copie prise avant l'attente effacerait ce qui s'est fait entre-temps.
@@ -168,13 +193,13 @@ export function ManuelsPanel() {
   }, [manuel, page, images, imageDe]);
 
   // ── Le manuel en PDF : sur le bureau, ou là où l'on veut ──
-  const pdfDuManuel = async (m: Manuel): Promise<string> => {
-    const r = await api.manuelEnPdf(m.titre, m.pages.map((p) => p.fichier).filter(Boolean), m.source === "pdf" ? m.fichierPdf : null);
+  const pdfDuManuel = async (m: Manuel): Promise<ManuelPdf> => {
+    const r = await api.manuelEnPdf(m.titre, m.pages.map((p) => p.fichier).filter(Boolean), m.source === "pdf" ? m.fichierPdf : null, poidsPdf);
     if (r.illisibles.length) {
       const n = r.illisibles.length;
       toast(`Page${n > 1 ? "s" : ""} ${r.illisibles.join(", ")} laissée${n > 1 ? "s" : ""} de côté : illisible${n > 1 ? "s" : ""}.`, { icone: "⚠️", duree: 7000 });
     }
-    return r.fichier;
+    return r;
   };
   const enregistrerLePdf = async () => {
     if (!manuel) return;
@@ -183,17 +208,17 @@ export function ManuelsPanel() {
     if (!chemin) return;
     setOccupe("Le PDF se fabrique…");
     try {
-      const fichier = await pdfDuManuel(manuel);
-      await api.fichierExporter(fichier, chemin);
-      api.fichierDelete(fichier).catch(() => {});
-      toast(`« ${manuel.titre} » est enregistré en PDF.`, { icone: "📄" });
+      const r = await pdfDuManuel(manuel);
+      await api.fichierExporter(r.fichier, chemin);
+      api.fichierDelete(r.fichier).catch(() => {});
+      toast(`« ${manuel.titre} » est enregistré en PDF : ${poidsLisible(r.octets)}.`, { icone: "📄" });
     } catch (e) { toast("PDF non enregistré : " + texteErreur(e), { icone: "⚠️", duree: 7000 }); }
     finally { setOccupe(""); }
   };
   // Le manuel déjà posé sur le bureau y est remplacé : refaire le PDF après de nouvelles pages n'en pose pas un second.
   const poserSurLeBureau = async () => {
     if (!manuel) throw new Error("Aucun manuel ouvert.");
-    const fichier = await pdfDuManuel(manuel);
+    const { fichier } = await pdfDuManuel(manuel);
     const ancien = manuel.surLeBureau;
     const deja = ancien ? (await api.materielList()).find((x) => x.id === ancien.materielId) : undefined;
     let materiel = materielDuBureau("manuels", manuel.titre, fichier, [], newId(), nowIso());
@@ -393,6 +418,15 @@ export function ManuelsPanel() {
           <Input value={manuel.titre} onChange={(e) => setManuel({ ...manuel, titre: e.target.value })} onBlur={() => enregistrer(manuel)} style={{ maxWidth: 260, fontWeight: 700 }} aria-label="Titre du manuel" />
           <Input value={manuel.niveau} onChange={(e) => setManuel({ ...manuel, niveau: e.target.value })} onBlur={() => enregistrer(manuel)} placeholder="Niveau (CP, CE2…)" style={{ maxWidth: 140 }} aria-label="Niveau" />
           <div style={{ flex: 1 }} />
+          {manuel.source !== "pdf" && manuel.pages.length > 0 && (
+            <label style={{ display: "flex", alignItems: "center", gap: 6 }}
+              title={`Pour « Enregistrer en PDF » comme pour « Sur le bureau ». ${POIDS_PDF.map((p) => `${p.nom} : ${p.pour}`).join(" ; ")}.`}>
+              <span className="meta" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>Poids du PDF</span>
+              <Select value={poidsPdf} disabled={!!occupe} onChange={(e) => choisirPoids(lirePoidsPdf(e.target.value))} style={{ width: "auto", padding: "6px 9px" }}>
+                {POIDS_PDF.map((p) => <option key={p.id} value={p.id}>{libelleDuPoids(p.id, poidsDuManuel)}</option>)}
+              </Select>
+            </label>
+          )}
           <button type="button" className="btn sm" disabled={!!occupe || manuel.pages.length === 0} onClick={enregistrerLePdf}
             title="Toutes les pages à la suite, une par feuille, là où vous voulez">📄 Enregistrer en PDF</button>
           <BoutonBureau disabled={!!occupe || manuel.pages.length === 0} onEnregistrer={poserSurLeBureau} />

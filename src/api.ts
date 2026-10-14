@@ -681,8 +681,11 @@ export const api = {
   fichierImporterDepuisChemin: (chemin: string) => invoke<string>("fichier_importer_depuis_chemin", { chemin }),
   /** Recopie un fichier de l'application là où l'on a choisi de l'enregistrer. */
   fichierExporter: (nom: string, chemin: string) => invoke<void>("fichier_exporter", { nom, chemin }),
-  /** Un manuel en PDF, rangé dans les fichiers de l'application : ses photos à la suite, ou son PDF d'origine recopié. */
-  manuelEnPdf: (titre: string, pages: string[], pdf: string | null) => invoke<ManuelPdf>("manuel_en_pdf", { titre, pages, pdf }),
+  /** Un manuel en PDF, rangé dans les fichiers de l'application : ses photos à la suite, au poids choisi, ou son PDF d'origine recopié. */
+  manuelEnPdf: (titre: string, pages: string[], pdf: string | null, poids: PoidsPdf = "origine") =>
+    invoke<ManuelPdf>("manuel_en_pdf", { titre, pages, pdf, poids }),
+  /** Ce que pèserait le PDF d'un manuel photographié, à chaque poids : exact pour les photos d'origine, estimé pour les autres. */
+  manuelPoidsPdf: (pages: string[]) => invoke<PoidsDuManuel>("manuel_poids_pdf", { pages }),
   enregistrerTexte: (chemin: string, contenu: string) => invoke<void>("enregistrer_texte", { chemin, contenu }),
   /** Une archive zip de fichiers texte au chemin choisi — un document Word (.docx) en est une. */
   enregistrerArchive: (chemin: string, fichiers: { nom: string; contenu: string }[]) => invoke<void>("enregistrer_archive", { chemin, fichiers }),
@@ -1149,8 +1152,12 @@ export interface ReponseWeb { texte: string; sources: SourceWeb[]; aCherche: boo
 /** Verdict d'un test réel sur un modèle, pour l'écran des réglages. */
 export interface EtatModele { id: string; disponible: boolean; detail: string }
 
-/** Un manuel en PDF : le fichier, et le numéro des pages laissées de côté parce qu'illisibles. */
-export interface ManuelPdf { fichier: string; illisibles: number[] }
+/** Un manuel en PDF : le fichier, le numéro des pages laissées de côté parce qu'illisibles, et ce qu'il pèse, en octets. */
+export interface ManuelPdf { fichier: string; illisibles: number[]; octets: number }
+/** Le poids du PDF d'un manuel photographié : ses photos d'origine, allégées (150 points par pouce) ou légères (100). */
+export type PoidsPdf = "origine" | "allege" | "leger";
+/** Ce que pèserait le PDF d'un manuel à chaque poids, en octets. */
+export type PoidsDuManuel = Record<PoidsPdf, number>;
 
 /**
  * Les jetons que l'IA a dépensés sur cet ordinateur ; `depuis` (« AAAA-MM-JJ ») est vide tant que rien n'est compté.
