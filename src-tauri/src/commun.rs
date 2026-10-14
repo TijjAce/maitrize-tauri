@@ -590,10 +590,45 @@ pub async fn commun_ecrire(
 ) -> R<String> {
     let b = bureau_de(&db, &bureau)?;
     let octets = STANDARD.decode(base64.trim()).map_err(|_| "Fichier illisible.".to_string())?;
+    ecrire(&b, &dossier, &nom, octets, remplacer).await
+}
+
+/// Au-delà, un fichier de Maitrize ne part pas sur un bureau commun : comme
+/// `TAILLE_MAX` dans l'interface, pour ce qu'on y glisse depuis le Finder.
+const POIDS_MAX: u64 = 150 * 1024 * 1024;
+
+/// Pose sur le bureau commun un fichier de Maitrize tel qu'il est — le PDF
+/// d'un document du bureau, ses images —, que chacun ouvre ensuite, même sans
+/// Maitrize. Il va du disque au bureau commun sans passer par l'interface :
+/// le PDF d'un manuel pèse des dizaines de mégaoctets. Un nom déjà pris
+/// devient « nom (2) ». Rend le chemin écrit.
+#[tauri::command]
+pub async fn commun_poser_fichier(db: State<'_, Db>, bureau: String, dossier: String, nom: String, fichier: String) -> R<String> {
+    let b = bureau_de(&db, &bureau)?;
+    if fichier.is_empty() || fichier.contains('/') || fichier.contains('\\') || fichier.contains("..") {
+        return Err("Nom de fichier invalide.".into());
+    }
+    let chemin = crate::db::fichiers_dir().join(&fichier);
+    let poids = std::fs::metadata(&chemin).map_err(|_| format!("« {nom} » n'est plus sur cet ordinateur."))?.len();
+    if poids > POIDS_MAX {
+        return Err(format!(
+            "« {nom} » pèse {} Mo : trop lourd pour le bureau commun. Le PDF d'un manuel s'allège par « Poids du PDF » ; \
+             un autre fichier se glisse directement dans le dossier partagé.",
+            poids / 1_000_000
+        ));
+    }
+    let octets = std::fs::read(&chemin).map_err(e)?;
+    ecrire(&b, &dossier, &nom, octets, false).await
+}
+
+/// Écrit sur le bureau commun — chez Nuage, ou dans le dossier partagé —, dans
+/// `dossier` (créé au besoin). Sans `remplacer`, un nom déjà pris devient
+/// « nom (2) ». Rend le chemin écrit.
+async fn ecrire(b: &BureauCommun, dossier: &str, nom: &str, octets: Vec<u8>, remplacer: bool) -> R<String> {
     if b.sur_nuage() {
         let acces = b.acces();
-        let d = relatif_sur(&dossier)?;
-        let nom = segments(&nom)?.pop().ok_or_else(|| "Nom de fichier vide.".to_string())?;
+        let d = relatif_sur(dossier)?;
+        let nom = segments(nom)?.pop().ok_or_else(|| "Nom de fichier vide.".to_string())?;
         if !d.is_empty() {
             crate::webdav::creer_dossiers(&acces, &d).await?;
         }
@@ -609,9 +644,9 @@ pub async fn commun_ecrire(
         crate::webdav::ecrire(&acces, &chemin, octets).await?;
         return Ok(chemin);
     }
-    let r = racine_de(&b)?;
-    let d = dans(&r, &dossier)?;
-    let nom = segments(&nom)?.pop().ok_or_else(|| "Nom de fichier vide.".to_string())?;
+    let r = racine_de(b)?;
+    let d = dans(&r, dossier)?;
+    let nom = segments(nom)?.pop().ok_or_else(|| "Nom de fichier vide.".to_string())?;
     std::fs::create_dir_all(&d).map_err(e)?;
     let nom = if remplacer { nom } else { nom_libre(&d, &nom) };
     let p = dans(&r, &format!("{dossier}/{nom}"))?;
@@ -695,6 +730,27 @@ pub async fn commun_ouvrir(db: State<'_, Db>, bureau: String, chemin: String) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn un_fichier_pose_sur_un_bureau_local_garde_son_nom_ou_en_prend_un_libre() {
+        let attendre = |f| tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(f);
+        let r = dossier_d_essai();
+        let b = BureauCommun {
+            id: "b".into(), nom: "Équipe".into(), chemin: r.to_string_lossy().into(), present: true, sorte: "dossier".into(),
+            serveur: String::new(), utilisateur: String::new(), dossier_distant: String::new(), base: String::new(), mot_de_passe: String::new(),
+        };
+        let premier = attendre(ecrire(&b, "Manuels", "Dictées.pdf", b"%PDF-1".to_vec(), false)).unwrap();
+        let second = attendre(ecrire(&b, "Manuels", "Dictées.pdf", b"%PDF-2".to_vec(), false)).unwrap();
+        assert_eq!((premier.as_str(), second.as_str()), ("Manuels/Dictées.pdf", "Manuels/Dictées (2).pdf"));
+        assert_eq!(std::fs::read(r.join("Manuels/Dictées.pdf")).unwrap(), b"%PDF-1");
+        // Remplacer écrit par-dessus, sans laisser de fichier provisoire à synchroniser.
+        attendre(ecrire(&b, "Manuels", "Dictées.pdf", b"%PDF-3".to_vec(), true)).unwrap();
+        assert_eq!(std::fs::read(r.join("Manuels/Dictées.pdf")).unwrap(), b"%PDF-3");
+        assert!(!std::fs::read_dir(r.join("Manuels")).unwrap().any(|f| f.unwrap().file_name().to_string_lossy().ends_with(".tmp")));
+        // Rien ne sort du bureau.
+        assert!(attendre(ecrire(&b, "../ailleurs", "x.pdf", Vec::new(), false)).is_err());
+        std::fs::remove_dir_all(&r).ok();
+    }
 
     fn dossier_d_essai() -> PathBuf {
         let d = std::env::temp_dir().join(format!("maitrize-commun-{}", uuid::Uuid::new_v4()));

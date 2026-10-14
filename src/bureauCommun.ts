@@ -2,9 +2,10 @@
 //
 // Un bureau commun est un dossier partagé par un service de stockage (Nuage,
 // OneDrive, Google Drive…). On y glisse des fichiers ordinaires — PDF, images,
-// documents —, qui restent lisibles par tous, même sans Maitrize ; et des
-// dossiers Maitrize, qui partent en un seul fichier « .maitrize » pour garder
-// tout ce qui fait une séquence ou un jeu.
+// documents —, qui restent lisibles par tous, même sans Maitrize ; un document
+// du bureau y part de même, en son PDF ; et des dossiers Maitrize, qui partent
+// en un seul fichier « .maitrize » pour garder tout ce qui fait une séquence
+// ou un jeu.
 //
 // Un dossier part entier — séquences et leurs séances, pièces jointes,
 // matériel, textes, jeux, outils, affichages, évaluations, ateliers, espaces — avec ses
@@ -197,6 +198,21 @@ const vide = (): Contenu => ({
 const liste = <T>(json: string | null | undefined): T[] => {
   try { const v = JSON.parse(json || "[]"); return Array.isArray(v) ? v : []; } catch { return []; }
 };
+
+/**
+ * Un document du bureau — un matériel : ses PDF, ses images —, tel qu'il part
+ * sur un bureau commun : ses fichiers, à son nom, que chacun ouvre même sans
+ * Maitrize. Nuage les montre, un collègue les lit ; aucun paquet que seul
+ * Maitrize déballe. Rien pour un matériel sans fichier.
+ */
+export function documentsDuMateriel(m: MaterielItem, titre = m.titre): { nom: string; fichier: string }[] {
+  const fichiers = [...liste<string>(m.pdfsJson), ...liste<string>(m.imagesJson)].filter((f) => typeof f === "string" && f.trim());
+  const base = nomDeFichierSur(titre);
+  return fichiers.map((fichier, i) => {
+    const extension = /\.([a-z0-9]{1,5})$/i.exec(fichier)?.[1]?.toLowerCase();
+    return { nom: `${base}${i ? ` (${i + 1})` : ""}${extension ? `.${extension}` : ""}`, fichier };
+  });
+}
 
 /** Le chemin d'un élément, relatif au dossier déposé. */
 const relatif = (racine: string, chemin: string) => {

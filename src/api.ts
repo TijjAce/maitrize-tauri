@@ -858,6 +858,9 @@ export const api = {
   communEcrire: (bureau: string, dossier: string, nom: string, base64: string, remplacer = false) =>
     invoke<string>("commun_ecrire", { bureau, dossier, nom, base64, remplacer }),
   communCreerDossier: (bureau: string, dossier: string, nom: string) => invoke<string>("commun_creer_dossier", { bureau, dossier, nom }),
+  /** Pose un fichier de Maitrize sur le bureau commun, tel qu'il est : le PDF d'un document du bureau. Rend le chemin écrit. */
+  communPoserFichier: (bureau: string, dossier: string, nom: string, fichier: string) =>
+    invoke<string>("commun_poser_fichier", { bureau, dossier, nom, fichier }),
   communSupprimer: (bureau: string, chemin: string) => invoke<void>("commun_supprimer", { bureau, chemin }),
   communOuvrir: (bureau: string, chemin: string) => invoke<void>("commun_ouvrir", { bureau, chemin }),
   sauvegardeVerifier: (cle?: string) => invoke<VerifSauvegarde>("sauvegarde_verifier", { cle: cle ?? null }),
