@@ -82,7 +82,7 @@ export function useDictee(usage: Usage = "dictees"): Dictee {
       fil.current = fil.current.then(async () => {
         if (enCours.current !== moi) return;
         try {
-          const texte = await api.transcrireLocal(await enBase64(t.blob), modele.current);
+          const texte = await api.transcrireLocal(await enBase64(t.blob), modele.current, true);
           if (enCours.current === moi) textes.current[rang] = texte;
         } catch (e) {
           if (enCours.current !== moi) return;

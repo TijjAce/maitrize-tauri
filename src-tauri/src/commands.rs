@@ -1310,18 +1310,20 @@ pub async fn vocal_transcrire(
     moteur: State<'_, crate::whisper_embarque::Moteur>,
     id: String,
 ) -> R<Vocal> {
-    use crate::whisper_embarque::{choix_ici, transcrire_octets, Choix, Usage};
-    let (fichier, choix) = {
+    use crate::whisper_embarque::{choix_ici, noms_de_la_classe, transcrire_octets, Choix, Usage};
+    let (fichier, choix, noms) = {
         let c = db.lock();
         let fichier = c
             .query_row("SELECT fichier FROM vocaux WHERE id=?1", params![id], |r| r.get::<_, String>(0))
             .map_err(|_| "Ce vocal n'existe plus.".to_string())?;
-        (fichier, choix_ici(&c, Usage::Observations))
+        (fichier, choix_ici(&c, Usage::Observations), noms_de_la_classe(&c))
     };
     let octets = std::fs::read(fichiers_dir().join(&fichier))
         .map_err(|er| format!("Enregistrement introuvable : {er}"))?;
     let resultat = match choix {
-        Ok(Choix::Local(modele)) => transcrire_octets(&moteur, &octets, &modele),
+        // Les noms de la classe aident Whisper, sur cet ordinateur ; ils ne
+        // partent pas avec l'audio quand on transcrit en ligne.
+        Ok(Choix::Local(modele)) => transcrire_octets(&moteur, &octets, &modele, &noms),
         Ok(Choix::EnLigne) => {
             use base64::Engine;
             let b64 = base64::engine::general_purpose::STANDARD.encode(&octets);

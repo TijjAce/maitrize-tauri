@@ -730,8 +730,14 @@ export const api = {
   /** Transcrit un enregistrement audio (base64) en texte, via Mistral. */
   transcrireAudio: (audioB64: string, nomFichier: string) =>
     invoke<string>("transcrire_audio", { audioB64, nomFichier }),
-  /** Transcrit sur cette machine (WAV 16 kHz), sans que l'audio en sorte. */
-  transcrireLocal: (audioB64: string, modele: string) => pendant(invoke<string>("transcrire_local", { audioB64, modele }), "de l'enregistrement"),
+  /**
+   * Transcrit sur cette machine (WAV 16 kHz), sans que l'audio en sorte.
+   * `avecLesNoms` : les prénoms de la classe s'écrivent juste, au prix d'une
+   * seconde écoute quand un mot leur ressemble — pas pour une réunion, qui
+   * doit suivre la parole.
+   */
+  transcrireLocal: (audioB64: string, modele: string, avecLesNoms = false) =>
+    pendant(invoke<string>("transcrire_local", { audioB64, modele, avecLesNoms }), "de l'enregistrement"),
   /** Où transcrire un usage, et avec quel modèle ; une erreur s'il veut un modèle absent. */
   transcriptionChoix: (usage: string) => invoke<{ moteur: "local" | "ligne"; modele: string }>("transcription_choix", { usage }),
   /** Vérifie que le moteur local est bien là, et le dit en clair. */
