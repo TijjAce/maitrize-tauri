@@ -903,6 +903,29 @@ async function montrerLeDeroulement(creneauId) {
   }
 }
 
+/**
+ * Reprend la séance d'un créneau du début, quand on a loupé quelque chose :
+ * le cahier journal relu — l'ordinateur a pu le changer —, puis, sur les
+ * tablettes, le déroulement seul, au rituel, sans minuteur. Sans déroulement,
+ * les tablettes attendent et le minuteur s'arrête.
+ */
+async function reprendreDuDebut(creneauId) {
+  if (envoiCreneau) return;
+  envoiSouci = null;
+  await relireCahier();
+  const c = ((cahier && cahier.creneaux) || []).find((x) => x.id === creneauId);
+  if (c && c.deroule) { await montrerLeDeroulement(creneauId); return; }
+  if (portail.ouvert && portail.creneau === creneauId) {
+    try {
+      await invoke("portail_cacher");
+      portail = await invoke("portail_minuteur_arreter");
+    } catch (e) {
+      envoiSouci = { creneau: creneauId, texte: String(e) };
+    }
+  }
+  rendre();
+}
+
 /** Un minuteur, en minutes : 0 sans minuteur. */
 const minutesDe = (x) => Math.max(0, Math.round(Number(x.minuteur) || 0));
 /** Le minuteur qu'un créneau envoie seul, sans aide. */
@@ -1145,6 +1168,7 @@ const ICONES = {
   horloge: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/>',
   tablette: '<rect x="4.5" y="2.5" width="15" height="19" rx="2.5"/><path d="M10.5 18.5h3"/>',
   reglages: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/>',
+  rotation: '<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4.5v5h-5"/>',
 };
 
 const icone = (nom, classe = "") =>
@@ -1376,22 +1400,27 @@ function envoiDuCreneau(c) {
   const minutes = minutesDuCreneau(c);
   if (!aides.length && !minutes && !c.deroule) return "";
   const souciIci = envoiSouci && envoiSouci.creneau === c.id ? `<p class="erreur-ligne">${echapper(envoiSouci.texte)}</p>` : "";
+  // La petite flèche qui reprend la séance du début, au rituel : on a loupé quelque chose.
+  const reprendre = `<button class="icone-btn cj-tab-reprendre" data-reprendre="${echapper(c.id)}" ${envoiCreneau ? "disabled" : ""}
+    aria-label="Reprendre la séance du début" title="Reprendre la séance du début">${icone("rotation")}</button>`;
   if (portail.ouvert && portail.creneau === c.id && (portail.montree || portail.minuteur)) {
     const t = portail.minuteur, n = portail.tablettes;
     const enPause = t && t.fin == null;
-    // La fiche montrée, et celle qui vient après elle dans le déroulement du créneau.
+    // Où en est la classe — l'étape surlignée du déroulement, ou celle de l'aide montrée —, et l'aide qui vient après :
+    // après le rituel, la première ; après une fiche, la suivante.
     const montree = aides.find((a) => a.id === portail.montreeId);
-    const suivante = montree && montree.etape != null ? aides.find((a) => a.etape === montree.etape + 1) : null;
+    const ici = portail.plan || portail.montreeId === c.deroule ? portail.etape : montree ? montree.etape : null;
+    const suivante = ici != null ? aides.filter((a) => a.etape != null && a.etape > ici).sort((x, y) => x.etape - y.etape)[0] : null;
     // Où en est la classe dans le déroulement — le rituel, les phases, les fiches —, et de quoi avancer.
     const k = portail.etape;
-    const place = portail.plan ? `<div class="portail-etapes cj-tab-etapes">
+    const place = portail.plan || portail.montreeId === c.deroule ? `<div class="portail-etapes cj-tab-etapes">
         <button class="btn-mini" id="etape-avant" ${k == null || k === 0 ? "disabled" : ""} aria-label="Étape précédente">${icone("gauche", "petit")}</button>
         <span class="cj-tab-place">${k == null ? "Aucune étape surlignée" : `Étape ${k + 1} sur ${portail.etapes}${portail.texteEtape && portail.texteEtape !== portail.montree ? ` : ${echapper(portail.texteEtape)}` : ""}`}</span>
         <button class="btn-mini" id="etape-apres" ${k != null && k >= portail.etapes - 1 ? "disabled" : ""} aria-label="Étape suivante">${icone("droite", "petit")}</button>
       </div>` : "";
     return `<div class="cj-tab on">
       <div class="cj-tab-tete">${icone("tablette", "petit")}<span>Sur les tablettes</span>
-        <span class="cj-tab-plus">${n ? `${n} tablette${n > 1 ? "s" : ""}` : "aucune tablette encore"}</span></div>
+        <span class="cj-tab-plus">${n ? `${n} tablette${n > 1 ? "s" : ""}` : "aucune tablette encore"}</span>${reprendre}</div>
       ${portail.montree ? `<div class="cj-tab-aide">${icone("liste", "petit")}<span>${echapper(portail.montree)}</span></div>` : ""}
       ${place}
       ${t ? `<b class="cj-tab-reste" data-reste>${resteDuMinuteur(t)}</b>${enPause ? `<span class="cj-tab-pause">En pause sur les tablettes</span>` : ""}
@@ -1410,7 +1439,7 @@ function envoiDuCreneau(c) {
   const occupe = envoiCreneau ? "disabled" : "";
   const enCours = envoiCreneau === c.id;
   const tete = (m) => `<div class="cj-tab-tete">${icone("tablette", "petit")}<span>Sur les tablettes</span>
-    ${m ? `<span class="cj-tab-plus">${icone("horloge", "petit")}${dureeLisible(m)}</span>` : ""}</div>`;
+    <span class="cj-tab-plus">${m ? `${icone("horloge", "petit")}${dureeLisible(m)}` : ""}</span>${c.deroule ? reprendre : ""}</div>`;
   if (aides.length > 1) {
     // Plusieurs aides — celles de la séance, les fiches des élèves : on choisit celle qui part, son minuteur part avec.
     // Le déroulement des fiches se montre aussi seul, avant de commencer.
@@ -1786,6 +1815,9 @@ function rendre() {
   });
   el.querySelectorAll("[data-deroule]").forEach((b) => {
     b.onclick = () => { void montrerLeDeroulement(b.dataset.deroule); };
+  });
+  el.querySelectorAll("[data-reprendre]").forEach((b) => {
+    b.onclick = () => { void reprendreDuDebut(b.dataset.reprendre); };
   });
   clic("cacher-aide", () => { void cacherAide(); });
   clic("fermer-portail", () => { void fermerPortail(); });

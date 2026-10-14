@@ -165,7 +165,11 @@
  .cj-tab { margin:8px 0 0 52px; padding:10px; border-radius:12px; background:var(--champ); }
  .cj-tab.on { background:var(--acc-doux); }
  .cj-tab-tete { display:flex; align-items:center; gap:6px; font-size:13.5px; font-weight:700; color:var(--acc-txt); }
- .cj-tab-plus { margin-left:auto; display:flex; align-items:center; gap:4px; font-weight:600; color:var(--txt2); white-space:nowrap; }
+ .cj-tab-tete > span:first-of-type { white-space:nowrap; }
+ .cj-tab-plus { margin-left:auto; display:flex; align-items:center; gap:4px; font-weight:600; color:var(--txt2); white-space:nowrap; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+ /* La flèche qui reprend la séance du début, en haut à droite du créneau. */
+ .icone-btn.cj-tab-reprendre { width:32px; height:32px; margin:-4px -2px -4px 6px; background:var(--card); color:var(--acc-txt); }
+ .icone-btn.cj-tab-reprendre .ic { width:17px; height:17px; stroke-width:2.4; }
  .cj-tab-aide { display:flex; align-items:center; gap:6px; margin-top:6px; font-size:14px; min-width:0; }
  .cj-tab-aide span { overflow:hidden; text-overflow:ellipsis; }
  /* Plusieurs aides sous un créneau : le titre sur sa ligne, puis le minuteur et le bouton. */
