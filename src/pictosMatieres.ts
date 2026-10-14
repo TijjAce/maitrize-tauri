@@ -10,9 +10,10 @@ import type { RefPicto } from "./pictosAppoint";
 // emploi du temps en images, ou dire ce qui vient. Ils se choisissent comme
 // ceux des verbes et s'impriment avec eux, en cartes à découper — ici, dans
 // la page CAA, ou dans Réglages › Personnalisation, qui y ajoute les
-// domaines des référentiels. Le déroulement des tablettes montre le picto du
-// domaine, et lui seul — celui d'une fiche, celui d'une séance — ; le rituel,
-// celui de « Rituel ». Sans choix, la banque propose celui de leur nom.
+// domaines des référentiels. Le déroulement des tablettes montre, pour une
+// fiche ou une séance, le picto de sa matière — ou celui de son domaine, si
+// l'enseignant détaille la matière par domaine et l'a choisi ; le rituel,
+// celui de « Rituel ». Sans choix, la banque propose celui du nom.
 
 /** Ce qui reçoit un picto : tout le planning, sauf « Autre ». */
 export const MATIERES_EN_PICTOS: string[] = MATIERES.filter((m) => m !== "Autre");
@@ -163,3 +164,54 @@ export function domainesParMatiere(referentiels: Pick<Referentiel, "actif" | "do
   }
   return sortie;
 }
+
+// ── Un picto par domaine, ou celui de la matière ───────────────────────────
+//
+// Par défaut, un domaine prend le picto de sa matière : les compétences
+// générales des référentiels — « Les êtres vivants dans leur environnement »,
+// « Construire des équilibres »… — sont nombreuses, et leurs pictos parlent
+// moins aux élèves que celui de la matière (demande de l'enseignant, octobre
+// 2026). L'enseignant peut détailler une matière par domaine : chaque domaine
+// prend alors son picto, s'il en a un choisi, et celui de la matière sinon.
+// Ne plus la détailler garde les pictos choisis, sans s'en servir.
+
+/** Les matières détaillées par domaine, ou non, quand l'enseignant l'a dit : `{ "Français": true }`. */
+export const CLE_PAR_DOMAINE = "caa:matieres-par-domaine";
+
+export function lireParDomaine(brut: string | null | undefined): Record<string, boolean> {
+  try {
+    const v: unknown = JSON.parse(brut || "{}");
+    if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+    return Object.fromEntries(Object.entries(v).filter(([, oui]) => typeof oui === "boolean")) as Record<string, boolean>;
+  } catch {
+    return {};
+  }
+}
+
+/** Une matière se détaille par domaine si l'enseignant l'a dit ; sans réponse, si l'un de ses domaines a déjà son picto. */
+export function detailleeParDomaine(matiere: string, parDomaine: Record<string, boolean>, sesDomaines: string[], choix: Lexique): boolean {
+  return parDomaine[matiere] ?? sesDomaines.some((d) => pictoChoisi(choix, d) != null);
+}
+
+/** La matière d'un nom : lui-même pour une matière de la liste, celle sous laquelle il se range pour un domaine des référentiels. */
+export function matiereDuNom(nom: string, domaines: Record<string, string[]>): string | undefined {
+  const f = formeDuNom(nom);
+  if (!f) return undefined;
+  return MATIERES_EN_PICTOS.find((m) => formeDuNom(m) === f) ?? Object.keys(domaines).find((m) => domaines[m].some((d) => formeDuNom(d) === f));
+}
+
+/**
+ * Le picto d'un domaine sur le déroulement : le sien, si sa matière se
+ * détaille par domaine et qu'on l'a choisi ; sinon celui de sa matière,
+ * choisi ou proposé par la banque. Sans matière connue : le sien, choisi ou
+ * proposé.
+ */
+export function pictoDuDomaine(
+  nom: string, matiere: string | undefined, choix: Lexique, parDomaine: Record<string, boolean>,
+  domaines: Record<string, string[]>, proposes: Record<string, number>,
+): RefPicto | null {
+  if (!matiere) return pictoChoisi(choix, nom) ?? proposes[nom] ?? null;
+  const detaille = formeDuNom(nom) !== formeDuNom(matiere) && detailleeParDomaine(matiere, parDomaine, domaines[matiere] ?? [], choix);
+  return (detaille ? pictoChoisi(choix, nom) : null) ?? pictoChoisi(choix, matiere) ?? proposes[matiere] ?? null;
+}
+

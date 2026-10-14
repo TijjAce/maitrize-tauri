@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { MATIERES } from "./api";
 import {
-  MATIERES_EN_PICTOS, MOTS_DES_MATIERES, domainesParMatiere, etiquetteDeMatiere, formeDuNom, matieresAvecPicto, motsDeLaMatiere, motsDuNom, pictoChoisi,
-  pictosDesMatieresProposes,
+  MATIERES_EN_PICTOS, MOTS_DES_MATIERES, detailleeParDomaine, domainesParMatiere, etiquetteDeMatiere, formeDuNom, lireParDomaine, matiereDuNom,
+  matieresAvecPicto, motsDeLaMatiere, motsDuNom, pictoChoisi, pictoDuDomaine, pictosDesMatieresProposes,
 } from "./pictosMatieres";
 
 describe("les matières en pictos", () => {
@@ -72,3 +72,42 @@ describe("les domaines en pictos", () => {
     expect(domainesParMatiere([{ actif: true, donnees: "pas du json" }])).toEqual({});
   });
 });
+
+describe("un domaine sur le déroulement", () => {
+  const domaines = { "Sciences et technologie": ["Les êtres vivants dans leur environnement", "Le corps humain et la santé"], "Français": ["Lecture"] };
+  const choix = { "Sciences et technologie": 101, "Le corps humain et la santé": 202, "Lecture": 303 };
+
+  it("prend par défaut le picto de sa matière, et celui de la banque pour une matière sans choix", () => {
+    expect(pictoDuDomaine("Les êtres vivants dans leur environnement", "Sciences et technologie", choix, {}, domaines, {})).toBe(101);
+    expect(pictoDuDomaine("Lecture", "Français", { "Français": 9 }, {}, domaines, {})).toBe(9);
+    expect(pictoDuDomaine("Écriture", "Français", {}, {}, domaines, { "Français": 55, "Écriture": 66 })).toBe(55);
+  });
+
+  it("prend le sien quand l'enseignant détaille la matière par domaine et l'a choisi — celui de la matière sinon", () => {
+    const parDomaine = { "Sciences et technologie": true };
+    expect(pictoDuDomaine("Le corps humain et la santé", "Sciences et technologie", choix, parDomaine, domaines, {})).toBe(202);
+    expect(pictoDuDomaine("Les êtres vivants dans leur environnement", "Sciences et technologie", choix, parDomaine, domaines, {})).toBe(101);
+    // Ne plus la détailler garde le choix, sans s'en servir.
+    expect(pictoDuDomaine("Le corps humain et la santé", "Sciences et technologie", choix, { "Sciences et technologie": false }, domaines, {})).toBe(101);
+  });
+
+  it("garde détaillée, sans réponse de l'enseignant, une matière dont un domaine a déjà son picto", () => {
+    expect(detailleeParDomaine("Sciences et technologie", {}, domaines["Sciences et technologie"], choix)).toBe(true);
+    expect(detailleeParDomaine("Sciences et technologie", {}, domaines["Sciences et technologie"], { "Sciences et technologie": 101 })).toBe(false);
+    expect(detailleeParDomaine("Français", { "Français": false }, domaines["Français"], choix)).toBe(false);
+  });
+
+  it("retrouve sa matière, et sans elle prend le sien", () => {
+    expect(matiereDuNom("le corps humain et la sante", domaines)).toBe("Sciences et technologie");
+    expect(matiereDuNom("Français", domaines)).toBe("Français");
+    expect(matiereDuNom("Un domaine inconnu", domaines)).toBeUndefined();
+    expect(pictoDuDomaine("Un domaine inconnu", undefined, { "Un domaine inconnu": 7 }, {}, domaines, {})).toBe(7);
+    expect(pictoDuDomaine("Rituel", "Rituel", { Rituel: 4 }, {}, domaines, {})).toBe(4);
+  });
+
+  it("lit le réglage des matières détaillées, et rien d'autre", () => {
+    expect(lireParDomaine('{"Français":true,"Mathématiques":false,"x":"oui"}')).toEqual({ "Français": true, "Mathématiques": false });
+    expect([lireParDomaine(null), lireParDomaine("[]"), lireParDomaine("abîmé")]).toEqual([{}, {}, {}]);
+  });
+});
+
