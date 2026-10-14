@@ -4,6 +4,7 @@ import {
   NIVEAUX_FICHES, RECETTES, combienDeFiches, elevesDuJour, fabricationsDesFiches, graineDe, motsDuSon, niveauDesFiches, nomDeLaRecette, prenomEcrit, prevuAvecLesFiches,
   proposer, recetteDe, recettesPour, repartir, titreDeLaFiche, titreLibre, uneAutre, uneDePlus, type OutilsFiche,
   MINUTEURS_DE_BASE, lireMinuteursRetard, minuteurDeLaRecette, nomDeToutesLesFiches, rubriqueDeLaRecette,
+  PICTO_DE_LA_FICHE, matiereDeLaRecette, recetteDuTitre,
 } from "./fichesAutonomie";
 import { MINUTEURS_DES_TABLETTES } from "./journalTelephone";
 import { ETAPES, motsDe } from "./progressionCgp";
@@ -280,5 +281,20 @@ describe("le temps de chaque fiche", () => {
     expect(nomDeToutesLesFiches(recetteDe("posees")!)).toBe("Des additions posées / Des soustractions posées");
     expect(nomDeToutesLesFiches(recetteDe("heure")!)).toBe("Lire l'heure");
     expect(["suite", "pyramides", "mots-meles"].map((id) => rubriqueDeLaRecette(recetteDe(id)!))).toEqual(["Maternelle", "Mathématiques", "Français"]);
+  });
+});
+
+describe("le déroulement d'un créneau", () => {
+  it("donne à chaque sorte de fiche le mot de son picto et sa matière", () => {
+    for (const r of RECETTES) expect(PICTO_DE_LA_FICHE[r.id], r.id).toBeTruthy();
+    expect([matiereDeLaRecette(recetteDe("posees")!), matiereDeLaRecette(recetteDe("listes")!), matiereDeLaRecette(recetteDe("suite")!)])
+      .toEqual(["Mathématiques", "Français", "Le temps"]);
+  });
+
+  it("retrouve la sorte d'une fiche déjà faite par son titre, quel que soit le niveau", () => {
+    expect(recetteDuTitre("Des soustractions posées")?.id).toBe("posees");
+    expect(recetteDuTitre("Les classes de mots")?.id).toBe("grammaire");
+    expect(recetteDuTitre("Mots mêlés (2)")?.id).toBe("mots-meles");
+    expect(recetteDuTitre("Une fiche d'ailleurs")).toBeUndefined();
   });
 });

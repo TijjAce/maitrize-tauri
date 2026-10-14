@@ -409,6 +409,43 @@ export function nomDeToutesLesFiches(r: RecetteDeFiche): string {
   return [...new Set(r.niveaux.map((niveau) => nomDeLaRecette(r, { niveau, periode: 1, prenom: "" })))].join(" / ");
 }
 
+// ── Le déroulement d'un créneau, sur les tablettes ─────────────────────────
+//
+// Les fiches d'un créneau se suivent : les tablettes les montrent dans
+// l'ordre, chacune dans son cadre avec son picto et sa matière, reliées par
+// des flèches — ce qui va se passer (voir journalTelephone).
+
+/**
+ * Le mot du picto de chaque fiche, cherché dans la banque d'images de
+ * l'ordinateur, au sens de la classe : ce que l'élève y fait. Choisis sur la
+ * banque (octobre 2026) : ni « histoire », ni « phrase », ni « mot », dont les
+ * pictos portent des mots espagnols.
+ */
+export const PICTO_DE_LA_FICHE: Record<string, string> = {
+  suite: "raconter", "coloriage-chiffres": "colorier", "coloriage-lettres": "colorier", prenom: "prénom",
+  "cubes-ecrire": "cube", "cubes-dessiner": "cube", comparer: "nombres", pyramides: "addition", "coloriage-calcul": "colorier", posees: "addition",
+  reproduire: "quadrillage", fusee: "chemin", heure: "horloge", monnaie: "argent", mesurer: "mesurer",
+  cursive: "écrire", "mots-meles": "chercher", comprendre: "lire", grammaire: "verbe", listes: "écrire", "mots-imposes": "écrire",
+};
+
+/** Le mot du picto d'une fiche faite : celui de sa sorte — des soustractions posées, la soustraction. */
+export const motDuPictoDeLaFiche = (r: RecetteDeFiche, titre: string): string =>
+  r.id === "posees" && /soustraction/i.test(titre) ? "soustraction" : PICTO_DE_LA_FICHE[r.id] ?? "";
+
+/** La matière d'une fiche, écrite au-dessus de son nom dans le déroulement. */
+export const matiereDeLaRecette = (r: RecetteDeFiche): string =>
+  r.domaine === "maths" || r.domaine === "nombres" ? "Mathématiques" : r.domaine === "temps" ? "Le temps" : "Français";
+
+/**
+ * La recette d'une fiche déjà faite, d'après son titre sans l'élève : « Les
+ * pyramides de nombres ». Un titre doublé — « Mots mêlés (2) » — la retrouve
+ * aussi ; rien pour une fiche qu'aucune recette ne nomme plus.
+ */
+export function recetteDuTitre(base: string): RecetteDeFiche | undefined {
+  const t = base.replace(/\s+\(\d+\)$/, "").trim().toLowerCase();
+  return RECETTES.find((r) => r.niveaux.some((niveau) => nomDeLaRecette(r, { niveau, periode: 1, prenom: "" }).toLowerCase() === t));
+}
+
 /** La rubrique d'une fiche dans les réglages : la maternelle, puis les mathématiques et le français de l'élémentaire. */
 export const rubriqueDeLaRecette = (r: RecetteDeFiche): "Maternelle" | "Mathématiques" | "Français" =>
   r.niveaux.every(enMaternelle) ? "Maternelle" : r.domaine === "maths" ? "Mathématiques" : "Français";

@@ -38,12 +38,15 @@ const PORT: u16 = 8765;
 /// Une tablette qui ne s'est pas manifestée depuis ce délai n'est plus comptée.
 const TABLETTE_PARTIE: Duration = Duration::from_secs(10);
 
-/// Une étape du déroulé, telle que les tablettes l'affichent : son texte, son picto (une image en data URL, ou rien).
+/// Une étape du déroulé, telle que les tablettes l'affichent : son texte, son picto (une image en data URL, ou rien),
+/// et, pour une fiche du déroulement d'un créneau, sa matière, écrite au-dessus.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct EtapeDuDeroule {
     pub texte: String,
     #[serde(default)]
     pub image: String,
+    #[serde(default)]
+    pub matiere: String,
 }
 
 /// L'aide que les tablettes montrent, et ses étapes pour le déroulé.
@@ -119,6 +122,9 @@ struct Etat {
     minuteur: Option<Minuteur>,
     /// Le créneau du cahier journal qui a envoyé ce que les tablettes montrent ; vide : envoyé d'ailleurs.
     creneau: String,
+    /// Les étapes sont le déroulement du créneau — ses fiches dans l'ordre —, pas celles de l'aide : les tablettes
+    /// les montrent à côté de la fiche, et n'en surlignent rien dans la fiche.
+    plan: bool,
     /// L'adresse où la dernière tablette est venue, « http://172.20.10.1:8765/ » : celle que les tablettes ont gardée.
     adresse_connue: String,
     /// Une tablette est venue à une autre adresse : le téléphone la gardera pour la fois suivante.
@@ -135,6 +141,7 @@ impl Etat {
             "etape": self.etape,
             "etapes": self.montree.as_ref().map(|m| m.etapes.len()).unwrap_or(0),
             "minuteur": self.minuteur.map(|t| serde_json::json!({ "duree": t.duree, "fin": t.fin, "reste": t.reste_a(maintenant), "enPause": t.fin.is_none() })),
+            "plan": self.plan,
             "maintenant": maintenant,
         })
     }
@@ -176,11 +183,13 @@ pub struct EtatPortail {
     pub minuteur: Option<Minuteur>,
     /// Le créneau qui a envoyé l'aide et le minuteur : c'est sous lui que l'écran montre le temps qui reste.
     pub creneau: String,
+    /// Les étapes sont le déroulement du créneau : l'écran dit « fiche 2 sur 4 ».
+    pub plan: bool,
 }
 
 const FERME: EtatPortail = EtatPortail {
     ouvert: false, adresses: Vec::new(), qr: String::new(), adresse_changee: false, tablettes: 0, montree: String::new(), montree_id: String::new(),
-    affichage: Affichage::Fiche, etape: None, etapes: 0, texte_etape: String::new(), minuteur: None, creneau: String::new(),
+    affichage: Affichage::Fiche, etape: None, etapes: 0, texte_etape: String::new(), minuteur: None, creneau: String::new(), plan: false,
 };
 
 /// Les adresses IPv4 de ce téléphone sur un réseau local : le partage de
@@ -324,8 +333,23 @@ pub const PAGE_TABLETTE: &str = r##"<!doctype html>
   #deroule { display: none; height: 100%; box-sizing: border-box; padding: 3vmin 4vmin; overflow: auto; }
   body.avec-minuteur #deroule { padding-right: 32vmin; }
   #deroule h1 { font-size: 4.6vmin; margin: 0 0 2.4vmin; }
-  .etape { display: flex; align-items: center; gap: 2.6vmin; padding: 1.6vmin 2.4vmin; margin: 0 0 1.8vmin; background: #fff;
-    border: .5vmin solid #d1d5db; border-radius: 2vmin; font-size: 4.2vmin; line-height: 1.25; }
+  .etape { display: flex; align-items: center; gap: 2.6vmin; padding: 1.6vmin 2.4vmin; margin: 0; background: #fff;
+    border: .5vmin solid #3a3a3a; border-radius: 2vmin; font-size: 4.2vmin; line-height: 1.25; }
+  /* D'une étape à la suivante, une flèche, de haut en bas. */
+  .fleche { display: block; margin: .5vmin auto; width: 3.6vmin; height: 5.6vmin; }
+  .sur { display: block; font-size: .5em; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; }
+  /* Le déroulement du créneau, à gauche de la fiche : ce qui va se passer, dans l'ordre. */
+  #plan { display: none; position: fixed; left: 0; top: 0; bottom: 0; width: 25vmin; box-sizing: border-box; padding: 1.2vmin 1.4vmin;
+    overflow: auto; background: #f2f2f7; }
+  body.avec-plan iframe { margin-left: 25vmin; width: calc(100% - 25vmin); }
+  body.avec-plan.avec-minuteur iframe { width: calc(100% - 55vmin); }
+  .pl { background: #fff; border: .45vmin solid #3a3a3a; border-radius: 2vmin; padding: 1vmin; text-align: center; font-size: 2.3vmin; }
+  .pl img { display: block; width: 9vmin; height: 9vmin; object-fit: contain; margin: 0 auto .5vmin; }
+  #plan .fleche { height: 3.6vmin; margin: .2vmin auto; }
+  .pl .nom { display: block; font-weight: 700; line-height: 1.2; }
+  .pl .sur { font-size: 1.8vmin; }
+  .pl.en-cours { border-color: #f59e0b; background: #fffbeb; box-shadow: 0 0 0 .7vmin #fde68a; }
+  .pl.passee { opacity: .45; }
   .etape img { width: 12vmin; height: 12vmin; object-fit: contain; flex: none; }
   .etape .num { flex: none; width: 7vmin; height: 7vmin; border-radius: 50%; background: #1d4ed8; color: #fff; font-weight: 800;
     display: flex; align-items: center; justify-content: center; font-size: 3.8vmin; }
@@ -352,6 +376,7 @@ pub const PAGE_TABLETTE: &str = r##"<!doctype html>
 <div id="attente">L'aide va s'afficher ici, dès que l'enseignant la montre.</div>
 <iframe id="aide" title="Aide à la tâche"></iframe>
 <div id="deroule"><h1 id="titre"></h1><div id="etapes"></div></div>
+<aside id="plan" aria-label="Ce qui va se passer"></aside>
 <div id="minuteur" aria-live="polite"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="#fff" stroke="#9ca3af" stroke-width="1.5"/>
   <path id="secteur" fill="#e11d48"/><circle cx="50" cy="50" r="4" fill="#1c2233"/></svg><div id="reste"></div></div>
 <script>
@@ -365,13 +390,20 @@ pub const PAGE_TABLETTE: &str = r##"<!doctype html>
   // Les étapes d'une aide, dans l'ordre : celles du séquentiel, sinon les actions de sa consigne — comme le téléphone les compte.
   const etapesDe = (doc) => { const l = doc.querySelectorAll(".at-etape:not(.at-cachee), .sv-s-etape"); return l.length ? [...l] : [...doc.querySelectorAll(".cs-etape.cs-action")]; };
   const echapper = (t) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  async function charger() {
+  // La flèche d'une étape à la suivante, dessinée : pas de signe que l'iPad changerait en émoji.
+  const FLECHE = '<svg class="fleche" viewBox="0 0 24 44" aria-hidden="true"><path d="M12 3v36M4 30l8 9 8-9" fill="none" stroke="#3a3a3a" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  async function charger(e) {
     const aide = $("aide");
     aide.srcdoc = await (await fetch(q("/aide") + "&v=" + version, { cache: "no-store" })).text();
     const d = await (await fetch(q("/deroule") + "&v=" + version, { cache: "no-store" })).json();
-    $("titre").textContent = d.titre || "";
-    $("etapes").innerHTML = d.etapes.map((e, i) => '<div class="etape"><span class="num">' + (i + 1) + "</span>"
-      + (e.image ? '<img alt="" src="' + echapper(e.image) + '">' : "") + "<span>" + echapper(e.texte) + "</span></div>").join("");
+    // Les étapes d'un créneau : ses fiches, ce qui va se passer ; sinon celles de l'aide, sous son titre.
+    $("titre").textContent = e.plan ? "Ce qui va se passer" : d.titre || "";
+    const sur = (x) => (x.matiere ? '<span class="sur">' + echapper(x.matiere) + "</span>" : "");
+    const image = (x) => (x.image ? '<img alt="" src="' + echapper(x.image) + '">' : "");
+    $("etapes").innerHTML = d.etapes.map((x, i) => (i ? FLECHE : "") + '<div class="etape"><span class="num">' + (i + 1) + "</span>"
+      + image(x) + "<span>" + sur(x) + echapper(x.texte) + "</span></div>").join("");
+    $("plan").innerHTML = e.plan ? d.etapes.map((x, i) => (i ? FLECHE : "") + '<div class="pl">' + image(x) + sur(x)
+      + '<span class="nom">' + echapper(x.texte) + "</span></div>").join("") : "";
   }
   function appliquer() {
     const e = etat; if (!e) return;
@@ -381,10 +413,16 @@ pub const PAGE_TABLETTE: &str = r##"<!doctype html>
     $("attente").style.display = !e.montree && !e.minuteur ? "flex" : "none";
     document.body.classList.toggle("minuteur-seul", !e.montree && !!e.minuteur);
     document.body.classList.toggle("avec-minuteur", !!e.minuteur);
-    // L'étape en cours : surlignée dans le déroulé comme dans la fiche ; celles d'avant, faites.
-    [...$("etapes").children].forEach((el, i) => { el.classList.toggle("en-cours", i === e.etape); el.classList.toggle("passee", e.etape != null && i < e.etape); });
-    const enCours = $("etapes").children[e.etape]; if (deroule && enCours) enCours.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    try { etapesDe($("aide").contentDocument).forEach((el, i) => el.classList.toggle("en-cours", i === e.etape)); } catch (_) { /* pas encore chargée */ }
+    // Le déroulement du créneau se tient à côté de la fiche.
+    const avecPlan = !!e.plan && fiche;
+    $("plan").style.display = avecPlan ? "block" : "none";
+    document.body.classList.toggle("avec-plan", avecPlan);
+    // L'étape en cours : surlignée dans le déroulé, en grand ou à côté ; celles d'avant, faites.
+    const marquer = (liste) => { liste.forEach((el, i) => { el.classList.toggle("en-cours", i === e.etape); el.classList.toggle("passee", e.etape != null && i < e.etape); }); return liste[e.etape]; };
+    const enCours = marquer([...$("etapes").querySelectorAll(".etape")]); if (deroule && enCours) enCours.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    const dansLePlan = marquer([...$("plan").querySelectorAll(".pl")]); if (avecPlan && dansLePlan) dansLePlan.scrollIntoView({ block: "nearest" });
+    // Les étapes d'un créneau ne sont pas celles de la fiche : rien ne s'y surligne alors.
+    if (!e.plan) { try { etapesDe($("aide").contentDocument).forEach((el, i) => el.classList.toggle("en-cours", i === e.etape)); } catch (_) { /* pas encore chargée */ } }
   }
   function dessinerMinuteur() {
     const boite = $("minuteur");
@@ -402,8 +440,8 @@ pub const PAGE_TABLETTE: &str = r##"<!doctype html>
   // Le code du portail a changé : plus rien ne s'affiche, la tablette doit rescanner.
   function perime() {
     etat = null; minuteur = null;
-    for (const id of ["aide", "deroule", "minuteur"]) $(id).style.display = "none";
-    document.body.classList.remove("minuteur-seul", "avec-minuteur");
+    for (const id of ["aide", "deroule", "minuteur", "plan"]) $(id).style.display = "none";
+    document.body.classList.remove("minuteur-seul", "avec-minuteur", "avec-plan");
     $("attente").style.display = "flex";
     $("attente").textContent = "Le code du portail a changé : scannez le nouveau QR code du téléphone, puis remplacez l'icône de l'écran d'accueil.";
   }
@@ -414,7 +452,7 @@ pub const PAGE_TABLETTE: &str = r##"<!doctype html>
         const e = await r.json();
         $("attente").textContent = ATTENTE;
         decalage = e.maintenant - Date.now();
-        if (e.version !== version) { version = e.version; if (e.montree) await charger(); }
+        if (e.version !== version) { version = e.version; if (e.montree) await charger(e); }
         etat = e; minuteur = e.minuteur; appliquer(); dessinerMinuteur();
       } else if (r.status === 403) {
         return perime();
@@ -595,6 +633,7 @@ fn etat_de(p: &Portail) -> EtatPortail {
         texte_etape: e.montree.as_ref().zip(e.etape).and_then(|(m, k)| m.etapes.get(k)).map(|x| x.texte.clone()).unwrap_or_default(),
         minuteur: e.minuteur,
         creneau: e.creneau.clone(),
+        plan: e.plan,
     }
 }
 
@@ -651,6 +690,7 @@ pub fn portail_montrer(id: String, titre: String, html: String, etapes: Option<V
     changer(|e| {
         montrer(e, AideAEnvoyer { id, titre, html, etapes: etapes.unwrap_or_default() });
         e.creneau.clear();
+        e.plan = false;
     })
 }
 
@@ -662,6 +702,7 @@ pub fn portail_cacher() -> R<EtatPortail> {
         e.etape = None;
         e.version += 1;
         e.creneau.clear();
+        e.plan = false;
     })
 }
 
@@ -678,7 +719,11 @@ pub struct AideAEnvoyer {
 /// Ce qu'un créneau du cahier journal envoie aux tablettes : son aide, ou aucune — celle d'avant s'en
 /// va —, et son minuteur, lancé aussitôt, ou aucun. Tout change d'un coup : les tablettes reçoivent
 /// l'aide et le minuteur à la même relecture.
-fn envoyer(e: &mut Etat, creneau: String, aide: Option<AideAEnvoyer>, secondes: u64, maintenant: u64) {
+///
+/// `plan` : les étapes de l'aide sont le déroulement du créneau — ses fiches, dans l'ordre —, et
+/// `etape` la place de la fiche envoyée. Les tablettes montrent la fiche, et le déroulement à côté.
+fn envoyer(e: &mut Etat, creneau: String, aide: Option<AideAEnvoyer>, secondes: u64, etape: Option<usize>, plan: bool, maintenant: u64) {
+    let avec_plan = plan && aide.as_ref().is_some_and(|a| !a.etapes.is_empty());
     match aide {
         Some(a) => montrer(e, a),
         None => {
@@ -687,14 +732,20 @@ fn envoyer(e: &mut Etat, creneau: String, aide: Option<AideAEnvoyer>, secondes: 
             e.version += 1;
         }
     }
+    e.plan = avec_plan;
+    if avec_plan {
+        let n = e.montree.as_ref().map(|m| m.etapes.len()).unwrap_or(0);
+        e.etape = etape.filter(|k| *k < n);
+        e.affichage = Affichage::Fiche;
+    }
     e.minuteur = (secondes > 0).then(|| Minuteur::lancer(secondes, maintenant));
     e.creneau = creneau;
 }
 
-/// Envoie aux tablettes l'aide et le minuteur d'un créneau du cahier journal.
+/// Envoie aux tablettes l'aide et le minuteur d'un créneau du cahier journal — et son déroulement.
 #[tauri::command]
-pub fn portail_envoyer(creneau: String, aide: Option<AideAEnvoyer>, secondes: u64) -> R<EtatPortail> {
-    changer(|e| envoyer(e, creneau, aide, secondes, maintenant_ms()))
+pub fn portail_envoyer(creneau: String, aide: Option<AideAEnvoyer>, secondes: u64, etape: Option<usize>, plan: Option<bool>) -> R<EtatPortail> {
+    changer(|e| envoyer(e, creneau, aide, secondes, etape, plan.unwrap_or(false), maintenant_ms()))
 }
 
 /// La fiche telle qu'elle s'imprime, ou le déroulé en grand.
@@ -876,7 +927,7 @@ mod tests {
         assert_eq!(demander("/deroule?t=jeton123").0, 404);
         {
             let mut e = etat.lock().unwrap();
-            let etapes = vec![EtapeDuDeroule { texte: "Je lis.".into(), image: String::new() }, EtapeDuDeroule { texte: "J'écris.".into(), image: "data:image/png;base64,AA".into() }];
+            let etapes = vec![EtapeDuDeroule { texte: "Je lis.".into(), image: String::new(), matiere: String::new() }, EtapeDuDeroule { texte: "J'écris.".into(), image: "data:image/png;base64,AA".into(), matiere: String::new() }];
             e.montree = Some(Montree { id: "a1".into(), titre: "Le séquentiel".into(), html: "<body><p>Je lis.</p></body>".into(), etapes });
             e.etape = Some(1);
             e.affichage = Affichage::Deroule;
@@ -925,20 +976,31 @@ mod tests {
         let mut e = Etat::default();
         let aide = |id: &str| AideAEnvoyer {
             id: id.into(), titre: format!("Aide {id}"), html: "<p>1. Je lis.</p>".into(),
-            etapes: vec![EtapeDuDeroule { texte: "Je lis.".into(), image: String::new() }],
+            etapes: vec![EtapeDuDeroule { texte: "Je lis.".into(), image: String::new(), matiere: String::new() }],
         };
-        envoyer(&mut e, "c1".into(), Some(aide("a1")), 900, 1_000);
+        envoyer(&mut e, "c1".into(), Some(aide("a1")), 900, None, false, 1_000);
         assert_eq!((e.montree.as_ref().map(|m| m.id.as_str()), e.etape, e.creneau.as_str()), (Some("a1"), Some(0), "c1"));
         // Le minuteur démarre aussitôt, de toute sa durée.
         assert_eq!(e.minuteur.map(|t| (t.duree, t.fin)), Some((900, Some(901_000))));
         let version = e.version;
         // Un autre créneau, sans aide : l'aide d'avant s'en va, son minuteur prend la place.
-        envoyer(&mut e, "c2".into(), None, 300, 5_000);
+        envoyer(&mut e, "c2".into(), None, 300, None, false, 5_000);
         assert!(e.montree.is_none() && e.etape.is_none() && e.version > version);
         assert_eq!((e.minuteur.map(|t| t.duree), e.creneau.as_str()), (Some(300), "c2"));
         // Un créneau sans minuteur arrête celui qui tournait : les tablettes ne montrent que ce créneau.
-        envoyer(&mut e, "c3".into(), Some(aide("a3")), 0, 9_000);
+        envoyer(&mut e, "c3".into(), Some(aide("a3")), 0, None, false, 9_000);
         assert_eq!((e.minuteur, e.creneau.as_str()), (None, "c3"));
+        // Une fiche d'un créneau qui en a trois : son déroulement part avec elle, la fiche à sa place.
+        let deroule = |n: usize| (0..n).map(|i| EtapeDuDeroule { texte: format!("Fiche {i}"), image: String::new(), matiere: "Français".into() }).collect::<Vec<_>>();
+        e.affichage = Affichage::Deroule;
+        envoyer(&mut e, "c4".into(), Some(AideAEnvoyer { etapes: deroule(3), ..aide("f2") }), 600, Some(1), true, 12_000);
+        assert_eq!((e.plan, e.etape, e.affichage), (true, Some(1), Affichage::Fiche));
+        assert!(e.en_json(12_000).to_string().contains("\"plan\":true"));
+        // Une place hors du déroulement ne surligne rien ; une aide montrée d'ailleurs n'a plus de déroulement.
+        envoyer(&mut e, "c4".into(), Some(AideAEnvoyer { etapes: deroule(3), ..aide("f9") }), 600, Some(7), true, 13_000);
+        assert_eq!((e.plan, e.etape), (true, None));
+        envoyer(&mut e, "c5".into(), Some(aide("a5")), 0, None, false, 14_000);
+        assert_eq!((e.plan, e.etape), (false, Some(0)));
     }
 
     #[test]

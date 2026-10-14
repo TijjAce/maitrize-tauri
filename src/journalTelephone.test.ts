@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { Creneau, MaterielItem, Seance } from "./api";
 import {
-  aidesDuCreneau, dureeDuMinuteur, estUneAide, estUneFicheDEleve, fichesDuCreneau, journalDes, joursPublies, minuteurDuCreneau, MINUTEURS_DES_TABLETTES,
+  aidesDuCreneau, cleDuDeroulement, dureeDuMinuteur, estUneAide, estUneFicheDEleve, fichesDuCreneau, journalDes, joursPublies, minuteurDuCreneau, MINUTEURS_DES_TABLETTES,
   pageDeLaConsigne, signatureDuJournal, titreDeLAide, titrePourLesTablettes,
 } from "./journalTelephone";
 
@@ -42,7 +42,7 @@ describe("le cahier journal pour le téléphone", () => {
     expect(j.jours[0].creneaux.map((c) => c.id)).toEqual(["c1", "c2"]);
     expect(j.jours[0].creneaux[1]).toEqual({
       id: "c2", debut: "14:10", fin: "15:00", matiere: "Mathématiques", prevu: "📚 Les dizaines", bilan: "Bien.",
-      seance: "Le nom des dizaines", aides: [{ id: "m1", titre: "Ce que je vais faire — Le nom des dizaines", minuteur: 0 }], minuteur: 0,
+      seance: "Le nom des dizaines", aides: [{ id: "m1", titre: "Ce que je vais faire — Le nom des dizaines", minuteur: 0 }], minuteur: 0, deroule: "",
     });
     // Un jour sans créneau figure vide : c'est un jour sans classe, pas un silence.
     expect(j.jours[1].creneaux).toEqual([]);
@@ -131,11 +131,20 @@ describe("les fiches d'« En retard », pour les tablettes", () => {
     ], [seance("s1", "S")], [materiel("m1", "Le séquentiel", "s1", "sequentiel"), pyramides, meles, fiche("f3", "Autre — LINA, 13 oct.", "LINA")]);
     expect(j.jours[0].creneaux[0].aides).toEqual([
       { id: "m1", titre: "Le séquentiel", minuteur: 20 },
-      { id: "f1", titre: "Les pyramides de nombres — RACHID, 13 oct.", minuteur: 10 },
-      { id: "f2", titre: "Mots mêlés — ZENON, 13 oct.", minuteur: 0 },
+      { id: "f1", titre: "Les pyramides de nombres — RACHID, 13 oct.", minuteur: 10, etape: 0 },
+      { id: "f2", titre: "Mots mêlés — ZENON, 13 oct.", minuteur: 0, etape: 1 },
     ]);
+    // Deux fiches se suivent : leur déroulement part avec elles, cité par la clé du créneau.
+    expect(j.jours[0].creneaux[0].deroule).toBe(cleDuDeroulement("c1"));
     // Une fiche que le prévu ne cite pas reste sur le bureau.
     expect(j.jours[0].creneaux[1].aides).toEqual([]);
+    expect(j.jours[0].creneaux[1].deroule).toBe("");
+  });
+
+  it("n'a pas de déroulement pour une fiche seule : rien ne la suit", () => {
+    const j = journalDes(["2026-10-13"], [creneau("c1", "2026-10-13", { prevu: "📄 Mots mêlés — ZENON, 13 oct." })], [], [meles]);
+    expect(j.jours[0].creneaux[0].aides).toEqual([{ id: "f2", titre: "Mots mêlés — ZENON, 13 oct.", minuteur: 0 }]);
+    expect(j.jours[0].creneaux[0].deroule).toBe("");
   });
 
   it("se reconnaissent à leur élève, et les tablettes lisent leur titre sans lui, comme le papier", () => {
