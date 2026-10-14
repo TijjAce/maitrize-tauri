@@ -305,8 +305,10 @@ const STYLE_DU_DEROULEMENT = `
 export async function pageDuDeroulement(etapes: PasDuDeroulement[]): Promise<string> {
   const { api } = await import("./api");
   const { documentImprimable } = await import("./print");
-  const { CLE_PICTOS_MATIERES, lirePictosMatieres, pictoChoisi, pictosProposes } = await import("./pictosDesMatieres");
-  const choix = lirePictosMatieres(await api.settingGet(CLE_PICTOS_MATIERES).catch(() => ""));
+  const { CLE_MATIERES, pictoChoisi, pictosProposes } = await import("./pictosMatieres");
+  const { lireLexique } = await import("./caa");
+  // Les pictos des matières et des domaines : ceux de la page CAA et de Réglages › Personnalisation.
+  const choix = lireLexique(await api.settingGet(CLE_MATIERES).catch(() => ""));
   // Les pictos choisis font partie de la page : un choix nouveau la redessine.
   const cle = JSON.stringify([etapes, choix]);
   const deja = deroulementsDessines.get(cle);
@@ -323,9 +325,8 @@ export async function pageDuDeroulement(etapes: PasDuDeroulement[]): Promise<str
   try {
     // Le choix de l'enseignant d'abord, sur tous les noms ; sinon ce que la banque propose pour eux.
     const proposes = await pictosProposes([...new Set(noms.flat())]).catch((): Record<string, number> => ({}));
-    const { cleImage } = await import("./supportsVisuels");
     const refs = noms.map((liste) => {
-      for (const nom of liste) { const c = pictoChoisi(choix, nom); if (c) return cleImage(c); }
+      for (const nom of liste) { const c = pictoChoisi(choix, nom); if (c != null) return c; }
       for (const nom of liste) if (proposes[nom] != null) return proposes[nom];
       return null;
     });
@@ -380,9 +381,9 @@ export async function publierLeJournal(maintenant = new Date()): Promise<void> {
       api.creneauxList(jours[0], jours[jours.length - 1]), api.seancesList(), api.materielList(),
     ]);
     const journal = journalDes(jours, creneaux, seances, materiel, etapesDeLaSeance);
-    // Un picto de matière choisi dans les réglages change les déroulements : ils repartent.
-    const { CLE_PICTOS_MATIERES } = await import("./pictosDesMatieres");
-    const signature = `${signatureDuJournal(journal, materiel)}|${await api.settingGet(CLE_PICTOS_MATIERES).catch(() => "") ?? ""}`;
+    // Un picto de matière ou de domaine choisi change les déroulements : ils repartent.
+    const { CLE_MATIERES } = await import("./pictosMatieres");
+    const signature = `${signatureDuJournal(journal, materiel)}|${await api.settingGet(CLE_MATIERES).catch(() => "") ?? ""}`;
     if (signature === publiee) return;
     const cites = new Set(journal.jours.flatMap((j) => j.creneaux.flatMap((c) => c.aides.map((a) => a.id))));
     const aides: AideAPublier[] = [];
