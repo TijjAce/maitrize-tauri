@@ -183,6 +183,26 @@
  .cj-tab-pause { display:block; text-align:center; font-size:13px; font-weight:600; color:var(--txt2); }
  .cj-tab .deux { margin-top:6px; }
  .cj-tab .lien-btn { display:block; margin:4px auto 0; font-size:14px; }
+ /* Une tablette par élève : chacun sa ligne — sa tablette, où il en est, sa fiche suivante et son minuteur. */
+ .cj-eleve { margin:6px 0 0; padding:8px 10px; border-radius:12px; background:var(--card); }
+ .cj-eleve.on { box-shadow:inset 3px 0 0 var(--acc); }
+ .cj-eleve-tete { display:flex; align-items:center; gap:8px; font-size:15px; }
+ .cj-eleve-tete b { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+ .cj-eleve-choix { flex:none; max-width:60%; border:1px solid var(--sep); border-radius:9px; padding:6px 8px; background:var(--champ); color:var(--txt); font:inherit; font-size:14.5px; }
+ .cj-eleve-place { margin-top:4px; font-size:13.5px; line-height:1.35; color:var(--txt2); }
+ .cj-eleve-minuteur { display:flex; align-items:center; gap:6px; margin-top:4px; font-size:13px; color:var(--txt2); }
+ .cj-eleve-minuteur b { font-size:20px; font-variant-numeric:tabular-nums; color:var(--txt); }
+ .cj-eleve-minuteur .btn-mini { margin-left:auto; padding:6px 10px; }
+ .carte .cj-tab .cj-eleve ~ .btn-doux { display:flex; align-items:center; justify-content:center; gap:6px; width:100%; margin-top:6px; }
+ .cj-eleve-envoi { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px; }
+ .cj-eleve-suite { flex-basis:100%; font-size:14px; }
+ .cj-eleve-envoi .btn-mini { margin-left:auto; }
+ .cj-eleve-aide { margin:6px 0 0; font-size:13px; line-height:1.4; color:var(--txt2); }
+ /* Les tablettes du portail : leur numéro, allumées ou non, leur élève. */
+ .tablettes { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+ .tablette-numero { display:flex; align-items:center; gap:6px; padding:5px 10px 5px 5px; border-radius:999px; background:var(--champ); font-size:13.5px; color:var(--txt2); }
+ .tablette-numero b { display:flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; background:var(--sep); color:var(--txt); font-size:13px; }
+ .tablette-numero.allumee b { background:var(--acc); color:#fff; }
  .cj-tab .erreur-ligne { margin:8px 0 0; }
  .cj-tab-place { display:block; margin-top:4px; text-align:center; font-size:13px; font-weight:700; color:var(--acc-txt); }
  .cj-tab-etapes { margin-top:6px; }

@@ -478,9 +478,14 @@ pub struct AideDuJournal {
     /// sa séance, le sien pour une fiche d'« En retard ».
     #[serde(default)]
     pub minuteur: u32,
-    /// Sa place dans le déroulement du créneau, pour une fiche d'élève ; rien sinon.
+    /// Sa place dans le déroulement : celui de la classe pour une aide de la séance, celui de son
+    /// élève pour une fiche d'« En retard » ; rien sans déroulement.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub etape: Option<u32>,
+    /// L'élève d'une fiche d'« En retard », par son prénom : le téléphone l'envoie à sa tablette.
+    /// Vide pour une aide de la séance, qui va à toute la classe.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub eleve: String,
 }
 
 /// Un créneau du cahier journal, tel que le téléphone le montre.
@@ -505,10 +510,14 @@ pub struct CreneauDuJournal {
     /// Le téléphone l'envoie avec l'aide, depuis le créneau.
     #[serde(default)]
     pub minuteur: u32,
-    /// Le déroulement du créneau — ses fiches dans l'ordre —, une page publiée comme une aide :
-    /// son empreinte ; vide sans déroulement.
+    /// Le déroulement du créneau pour la classe — le rituel, les phases de sa séance —, une page
+    /// publiée comme une aide : son empreinte ; vide sans séance.
     #[serde(default)]
     pub deroule: String,
+    /// Le déroulement de chaque élève qui a des fiches au créneau — le rituel, les phases de la
+    /// séance, puis ses fiches —, par son prénom : l'empreinte de sa page. Sa tablette le montre.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub deroules: std::collections::BTreeMap<String, String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
@@ -642,8 +651,8 @@ mod tests {
             jours: vec![JourDuJournal { jour: "2026-10-12".into(), creneaux: vec![CreneauDuJournal {
                 id: "c1".into(), debut: "09:00".into(), fin: "10:00".into(), matiere: "Mathématiques".into(),
                 prevu: "📚 Les dizaines — séance 2".into(), bilan: String::new(), seance: "Les dizaines entières".into(),
-                aides: vec![AideDuJournal { id: id.clone(), titre: aide.titre.clone(), minuteur: 10, etape: Some(0) }], minuteur: 15,
-                deroule: id.clone(),
+                aides: vec![AideDuJournal { id: id.clone(), titre: aide.titre.clone(), minuteur: 10, etape: Some(0), eleve: "Lina".into() }], minuteur: 15,
+                deroule: id.clone(), deroules: [("Lina".to_string(), id.clone())].into(),
             }] }],
         };
         let blob = chiffrer_journal(&retour, &journal).unwrap();
@@ -659,8 +668,12 @@ mod tests {
         let ancien: CreneauDuJournal = serde_json::from_str(r#"{"id":"c","debut":"9","fin":"10"}"#).unwrap();
         assert!(ancien.aides.is_empty() && ancien.bilan.is_empty() && ancien.minuteur == 0);
         let aide_d_avant: AideDuJournal = serde_json::from_str(r#"{"id":"a","titre":"T"}"#).unwrap();
-        assert_eq!((aide_d_avant.minuteur, aide_d_avant.etape), (0, None));
-        assert!(ancien.deroule.is_empty());
+        assert_eq!((aide_d_avant.minuteur, aide_d_avant.etape, aide_d_avant.eleve.as_str()), (0, None, ""));
+        assert!(ancien.deroule.is_empty() && ancien.deroules.is_empty());
+        // L'élève d'une fiche et son déroulement voyagent, chiffrés avec le reste.
+        let relu = dechiffrer_journal(&retour, &blob).unwrap();
+        assert_eq!((relu.jours[0].creneaux[0].aides[0].eleve.as_str(), relu.jours[0].creneaux[0].deroules["Lina"].as_str()), ("Lina", id.as_str()));
+        assert!(!blob.windows(4).any(|w| w == b"Lina"));
     }
 
     #[test]

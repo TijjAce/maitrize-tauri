@@ -845,8 +845,11 @@ pub fn journal_a_publier(mut j: relais::Journal, aides: &[AideAPublier]) -> (rel
             c.aides = c.aides.drain(..)
                 .filter_map(|x| par_cle.get(&x.id).map(|id| relais::AideDuJournal { id: id.clone(), ..x }))
                 .collect();
-            // Le déroulement du créneau, cité comme une aide : par l'empreinte de sa page, ou rien.
+            // Les déroulements du créneau, cités comme des aides : par l'empreinte de leur page, ou rien.
             c.deroule = par_cle.get(&c.deroule).cloned().unwrap_or_default();
+            c.deroules = std::mem::take(&mut c.deroules).into_iter()
+                .filter_map(|(eleve, cle)| par_cle.get(&cle).map(|id| (eleve, id.clone())))
+                .collect();
         }
     }
     (j, par_id)
@@ -1183,16 +1186,21 @@ mod tests {
         let journal = |aides: Vec<&str>| relais::Journal { publie: String::new(), jours: vec![relais::JourDuJournal { jour: "2026-10-12".into(), creneaux: vec![relais::CreneauDuJournal {
             id: "c1".into(), debut: "09:00".into(), fin: "10:00".into(), matiere: "Maths".into(), prevu: "Les dizaines".into(),
             bilan: "Lina a compté jusqu'à 40.".into(), seance: "Séance 2".into(),
-            aides: aides.into_iter().map(|k| relais::AideDuJournal { id: k.into(), titre: format!("Aide {k}"), minuteur: 10, etape: None }).collect(), minuteur: 15,
-            deroule: "deroule:c1".into(),
+            aides: aides.into_iter().map(|k| relais::AideDuJournal { id: k.into(), titre: format!("Aide {k}"), minuteur: 10, etape: None, eleve: String::new() }).collect(),
+            minuteur: 15, deroule: "deroule:c1".into(), deroules: [("Lina".to_string(), "deroule:c1:Lina".to_string())].into(),
         }] }] };
         en_attendant(async {
             let (j, par_id) = journal_a_publier(journal(vec!["a", "b", "inconnue"]), &[aide("a", "<p>1</p>"), aide("b", "<p>2</p>")]);
             assert_eq!(j.jours[0].creneaux[0].aides.len(), 2, "une citation sans aide disparaît");
             assert_eq!(j.jours[0].creneaux[0].aides[0].minuteur, 10, "chaque aide garde son minuteur");
             assert_eq!(j.jours[0].creneaux[0].deroule, "", "un déroulement sans page publiée disparaît");
-            let (avec, _) = journal_a_publier(journal(vec!["a"]), &[aide("a", "<p>1</p>"), aide("deroule:c1", "<p>Ce qui va se passer</p>")]);
+            assert!(j.jours[0].creneaux[0].deroules.is_empty(), "celui d'un élève aussi");
+            let (avec, _) = journal_a_publier(journal(vec!["a"]), &[
+                aide("a", "<p>1</p>"), aide("deroule:c1", "<p>Ce qui va se passer</p>"), aide("deroule:c1:Lina", "<p>Ce qui va se passer pour Lina</p>"),
+            ]);
             assert_eq!(avec.jours[0].creneaux[0].deroule.len(), 24, "le déroulement est cité par l'empreinte de sa page");
+            assert_eq!(avec.jours[0].creneaux[0].deroules["Lina"].len(), 24, "celui de chaque élève aussi, sous son prénom");
+            assert_ne!(avec.jours[0].creneaux[0].deroules["Lina"], avec.jours[0].creneaux[0].deroule);
             let (bilan, trace) = publier_journal_dans(&r, &acces, &j, &par_id, "").await.unwrap();
             assert_eq!(bilan, BilanJournal { relie: true, journal: true, aides_envoyees: 2, aides_retirees: 0 });
             let noms = nuage.noms();
