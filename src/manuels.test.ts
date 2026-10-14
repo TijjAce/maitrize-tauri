@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   OPTIONS_PAR_DEFAUT, ajouterPagePhoto, consigneLectureEncadre, consigneReadaptation, enTexte, estLu, exerciceEncadre, exercicesParCompetence,
   exercicesQuiTravaillent, ficheDepuisLExercice, htmlFicheAdaptee, indexAvec, indexSans, lireExerciceDeLEncadre, lireFicheAdaptee, lireIndex, lireManuel,
-  ecrireManuel, nomExercice, nouveauManuel, resumeDe, retirerPage, texteExercice, type ExerciceManuel, type Manuel,
+  ecrireManuel, libelleDuPoids, lirePoidsPdf, nomExercice, nouveauManuel, poidsLisible, resumeDe, retirerPage, texteExercice, type ExerciceManuel,
+  type Manuel,
 } from "./manuels";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 
@@ -214,5 +215,27 @@ describe("les exercices d'une compétence", () => {
       ["Accorder le verbe avec son sujet", ["a2"]],
     ]);
     expect(sans.map((x) => x.exercice.id)).toEqual(["a3"]);
+  });
+});
+
+describe("le poids du PDF d'un manuel", () => {
+  it("se dit en Ko ou en Mo, comme le Finder", () => {
+    expect(poidsLisible(850_000)).toBe("850 Ko");
+    expect(poidsLisible(4_640_000)).toBe("4,6 Mo");
+    expect(poidsLisible(133_292_880)).toBe("133 Mo");
+    expect(poidsLisible(0)).toBe("0 Ko");
+  });
+  it("garde le choix de l'enseignant, et les photos d'origine sinon", () => {
+    expect(lirePoidsPdf("allege")).toBe("allege");
+    expect(lirePoidsPdf("leger")).toBe("leger");
+    expect(lirePoidsPdf(null)).toBe("origine");
+    expect(lirePoidsPdf("n'importe")).toBe("origine");
+  });
+  it("s'annonce avec son poids une fois estimé, son nom seul avant", () => {
+    const poids = { origine: 133_292_880, allege: 45_593_637, leger: 19_250_383 };
+    expect(libelleDuPoids("origine", poids)).toBe("Photos d'origine · environ 133 Mo");
+    expect(libelleDuPoids("allege", poids)).toBe("Allégé · environ 46 Mo");
+    expect(libelleDuPoids("leger", poids)).toBe("Léger · environ 19 Mo");
+    expect(libelleDuPoids("leger", null)).toBe("Léger");
   });
 });

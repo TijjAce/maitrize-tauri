@@ -11,12 +11,14 @@
 // séquences qui la visent, prêt à poser dans une séance. Le manuel reste sur
 // cet ordinateur ; seul l'encadré part chez le modèle, quand on le lui donne.
 
-import type { ChatMessage } from "./api";
+import type { ChatMessage, PoidsDuManuel, PoidsPdf } from "./api";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 import { lireCompetencesAtelier } from "./ateliersCompetences";
 import { escapeHtml } from "./print";
 
 export const CLE_INDEX = "manuels:index";
+/** Le poids choisi pour le PDF des manuels, retenu d'une fois à l'autre sur cet ordinateur. */
+export const CLE_POIDS_PDF = "manuels:poids-pdf";
 export const cleManuel = (id: string) => `manuel:${id}`;
 
 export type SourceManuel = "telephone" | "pdf";
@@ -194,6 +196,34 @@ export const texteExercice = (e: ExerciceManuel) =>
 /** Le nom court d'un exercice, pour une liste : le titre de son modèle simplifié, sinon le sien, sinon sa consigne. */
 export const nomExercice = (e: ExerciceManuel) =>
   e.modele?.fiche.titre || e.titre || e.consigne.split("\n")[0] || "Exercice à lire";
+
+// ── Le manuel en PDF ──────────────────────────────────────────────────────
+//
+// Des photos telles quelles pèsent lourd : plus de 130 Mo pour un manuel de
+// 160 pages, trop pour un mél. L'enseignant choisit le poids, et le choix vaut
+// pour « Enregistrer en PDF » comme pour « Sur le bureau ». Un manuel importé
+// en PDF garde le sien.
+
+export const POIDS_PDF: { id: PoidsPdf; nom: string; pour: string }[] = [
+  { id: "origine", nom: "Photos d'origine", pour: "telles qu'elles sont arrivées" },
+  { id: "allege", nom: "Allégé", pour: "net à l'écran comme à l'impression" },
+  { id: "leger", nom: "Léger", pour: "pour l'envoyer par mél" },
+];
+
+export const lirePoidsPdf = (brut: string | null | undefined): PoidsPdf => (brut === "allege" || brut === "leger" ? brut : "origine");
+
+/** « 133 Mo », « 4,6 Mo », « 850 Ko » : en millions d'octets, comme le Finder. */
+export function poidsLisible(octets: number): string {
+  if (octets < 995_000) return `${Math.round(octets / 1e3)} Ko`;
+  const mo = octets / 1e6;
+  return mo < 9.95 ? `${mo.toFixed(1).replace(".", ",")} Mo` : `${Math.round(mo)} Mo`;
+}
+
+/** Ce que dit le choix : « Allégé · environ 46 Mo », ou son nom seul tant que les poids ne sont pas connus. */
+export function libelleDuPoids(id: PoidsPdf, poids: PoidsDuManuel | null): string {
+  const nom = POIDS_PDF.find((p) => p.id === id)?.nom ?? id;
+  return poids ? `${nom} · environ ${poidsLisible(poids[id])}` : nom;
+}
 
 // ── Le modèle simplifié ───────────────────────────────────────────────────
 //

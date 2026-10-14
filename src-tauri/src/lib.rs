@@ -151,7 +151,7 @@ pub fn run() {
             ai::mistral_modeles_disponibles, ai::mistral_vision, ai::mistral_recherche_web, ai::mistral_jetons,
             ai::mistral_dessiner_picto,
             // Un manuel photographié, en PDF ; et un fichier recopié où l'on veut.
-            manuel_pdf::manuel_en_pdf, manuel_pdf::fichier_exporter,
+            manuel_pdf::manuel_en_pdf, manuel_pdf::manuel_poids_pdf, manuel_pdf::fichier_exporter,
             pictos_appoint::pictos_appoint_etat, pictos_appoint::pictos_appoint_telecharger, pictos_appoint::pictos_appoint_par_mots,
             pictos_appoint::pictos_appoint_chercher, pictos_appoint::pictos_appoint_image,
             arasaac::arasaac_etat, arasaac::arasaac_telecharger, arasaac::arasaac_categories,
