@@ -204,6 +204,13 @@
  .cj-eleve-suite { flex-basis:100%; font-size:14px; }
  .cj-eleve-envoi .btn-mini { margin-left:auto; }
  .cj-eleve-aide { margin:6px 0 0; font-size:13px; line-height:1.4; color:var(--txt2); }
+ /* La roue du minuteur : on touche le temps qui reste, la liste s'ouvre en roue sur l'iPhone. */
+ .roue { position:relative; display:inline-flex; align-items:center; gap:2px; padding:2px 6px 2px 8px; border-radius:10px; background:var(--champ); color:var(--txt); }
+ .roue select { position:absolute; inset:0; width:100%; height:100%; opacity:0; font-size:16px; }
+ .roue .ic { width:16px; height:16px; color:var(--txt2); }
+ .roue-grande { display:flex; justify-content:center; width:max-content; margin:4px auto 0; padding:2px 10px 2px 14px; }
+ .roue-grande .ic { width:22px; height:22px; }
+ .cj-tab .roue-grande .cj-tab-reste { margin-top:0; }
  /* Les tablettes du portail : leur numéro, allumées ou non, leur élève. */
  .tablettes { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
  .tablette-numero { display:flex; align-items:center; gap:6px; padding:5px 10px 5px 5px; border-radius:999px; background:var(--champ); font-size:13.5px; color:var(--txt2); }

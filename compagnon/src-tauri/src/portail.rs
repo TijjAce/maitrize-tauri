@@ -102,6 +102,11 @@ impl Minuteur {
             Some(_) => self,
         }
     }
+    /// Le temps qui reste, réglé à la roue : la durée devient celle-ci, et le disque repart plein ; en pause, il le reste.
+    pub fn regler(self, secondes: u64, maintenant: u64) -> Minuteur {
+        let duree = secondes.clamp(1, Self::DUREE_MAX);
+        Minuteur { duree, fin: self.fin.map(|_| maintenant + duree * 1000), reste: duree * 1000 }
+    }
     /// Ce qui reste, en millisecondes.
     pub fn reste_a(self, maintenant: u64) -> u64 {
         self.fin.map(|fin| fin.saturating_sub(maintenant)).unwrap_or(self.reste)
@@ -975,6 +980,20 @@ pub fn portail_minuteur(secondes: u64, tablette: Option<u32>) -> R<EtatPortail> 
     changer(|e| e.ecran_regle(tablette).minuteur = Some(Minuteur::lancer(secondes, maintenant_ms())))
 }
 
+/// Le temps qui reste au minuteur, réglé à la roue — celui de la tablette d'un élève, ou celui de la classe —, sans
+/// rien changer à ce qu'elle montre ; en pause, il le reste. Sans minuteur, il en lance un.
+#[tauri::command]
+pub fn portail_minuteur_regler(secondes: u64, tablette: Option<u32>) -> R<EtatPortail> {
+    let m = maintenant_ms();
+    changer(|e| {
+        let ecran = e.ecran_regle(tablette);
+        ecran.minuteur = Some(match ecran.minuteur {
+            Some(t) => t.regler(secondes, m),
+            None => Minuteur::lancer(secondes, m),
+        });
+    })
+}
+
 /// Le minuteur en pause : celui de la tablette d'un élève ; sans tablette, tous — la classe et chaque élève.
 #[tauri::command]
 pub fn portail_minuteur_pause(tablette: Option<u32>) -> R<EtatPortail> {
@@ -1314,6 +1333,11 @@ mod tests {
         let repris = pause.reprendre(100_000);
         assert_eq!(repris.reste_a(110_000), 20_000);
         assert_eq!(repris.reste_a(500_000), 0);
+        // Réglé à la roue : le temps choisi, le disque plein ; en pause, il le reste.
+        let regle = Minuteur::lancer(600, 1_000).regler(1_200, 61_000);
+        assert_eq!((regle.duree, regle.fin, regle.reste_a(61_000)), (1_200, Some(1_261_000), 1_200_000));
+        let en_pause = Minuteur::lancer(600, 1_000).pause(61_000).regler(300, 90_000);
+        assert_eq!((en_pause.fin, en_pause.reste_a(500_000)), (None, 300_000));
         // Ni zéro ni plus de deux heures.
         assert_eq!(Minuteur::lancer(0, 0).duree, 1);
         assert_eq!(Minuteur::lancer(99_999, 0).duree, 7200);

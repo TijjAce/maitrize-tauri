@@ -86,8 +86,6 @@ let portail = PORTAIL_FERME, suiviPortail = null, portailSouci = "";
 let confirmerCode = false, codeNeuf = false;
 /** Le créneau qui envoie aux tablettes en ce moment — et à quel élève —, et ce qui en a empêché un : `{ creneau, texte }`. */
 let envoiCreneau = "", envoiEleve = "", envoiSouci = null;
-/** Les minutes choisies sur le téléphone pour une fiche d'élève, par créneau, élève et fiche ; sinon, le temps de la fiche. */
-const minutesChoisies = new Map();
 /** Le créneau ouvert dans l'onglet Tablettes : son envoi aux tablettes se déplie ; les autres restent repliés. */
 let creneauOuvert = "";
 /**
@@ -793,7 +791,9 @@ function suivreLePortail() {
     portail = suite;
     if (!portail.ouvert) { clearInterval(suiviPortail); suiviPortail = null; }
     // Une note qu'on écrit, une photo qu'on nomme : redessiner fermerait le clavier. On le fera en sortant.
-    if (change && !ecrit && !photoPrise) rendre();
+    // Une roue qu'on tourne se fermerait aussi : on attend qu'elle soit lâchée.
+    const roueOuverte = document.activeElement && document.activeElement.matches("select");
+    if (change && !ecrit && !photoPrise && !roueOuverte) rendre();
   }, 3000);
 }
 
@@ -843,7 +843,7 @@ async function envoyerLAide(c, choisie) {
     aide = { id: choisie.id, titre: lue.titre || choisie.titre, html: lue.html, etapes: plan.length ? plan : etapesDeLAide(lue.html) };
   }
   await portailOuvert();
-  const minutes = choisie ? minutesPour(c, choisie) : minutesDuCreneau(c);
+  const minutes = choisie ? minutesDe(choisie) : minutesDuCreneau(c);
   portail = await invoke("portail_envoyer", {
     creneau: c.id, aide, secondes: minutes * 60, etape: plan.length ? choisie.etape : null, plan: plan.length > 0,
     tablette: tablette ? tablette.numero : null,
@@ -908,9 +908,6 @@ function titreSansLEleve(a, eleve) {
   return a.titre.replace(new RegExp(`\\s+—\\s+${echappe},[^—]*$`, "i"), "").trim() || a.titre;
 }
 
-const cleMinutes = (creneau, eleve, aide) => `${creneau}|${eleve}|${aide}`;
-/** Le minuteur d'une fiche, en minutes : celui qu'on a choisi sur le téléphone, sinon le sien. */
-const minutesPour = (c, a) => minutesChoisies.get(cleMinutes(c.id, a.eleve || "", a.id)) ?? minutesDe(a);
 
 /** Chaque élève reçoit sur sa tablette sa fiche suivante — la première, pour commencer —, avec son minuteur. */
 async function envoyerAChacun(creneauId) {
@@ -1493,7 +1490,7 @@ function commandesDuMinuteur() {
   const enPause = t.fin == null;
   return `<div class="portail-bloc minuteur-en-cours">
     <span class="portail-libelle">${icone("horloge", "petit")}Minuteur sur les tablettes${enPause ? " — en pause" : ""}</span>
-    <b id="portail-reste" class="portail-reste" data-reste>${resteDuMinuteur(t)}</b>
+    ${roueDuMinuteur(t, "", "Changer le temps qui reste, sur les tablettes", 'id="portail-reste" class="portail-reste" data-reste', "roue-grande")}
     <div class="deux">
       <button class="btn-doux" id="${enPause ? "minuteur-reprendre" : "minuteur-pause"}">${enPause ? `${icone("lecture", "petit")}Reprendre` : `${icone("pause", "petit")}Pause`}</button>
       <button class="btn-doux" id="minuteur-arreter">${icone("stop", "petit")}Arrêter</button>
@@ -1523,12 +1520,23 @@ function envoiDuCreneau(c) {
   return envoiALaClasse(classe) + envoiAuxEleves(c, eleves);
 }
 
-/** Les durées qu'on donne à une fiche, en minutes : celles des tablettes, et celle de la fiche si elle n'y est pas. */
-const DUREES_DES_FICHES = [1, 2, 3, 5, 10, 15, 20, 25, 30, 40, 45, 60, 90, 120];
-function optionsDeMinutes(choisie) {
-  const durees = [...new Set([...DUREES_DES_FICHES, choisie].filter((m) => m > 0))].sort((x, y) => x - y);
-  return `<option value="0" ${choisie ? "" : "selected"}>sans minuteur</option>`
-    + durees.map((m) => `<option value="${m}" ${m === choisie ? "selected" : ""}>${dureeLisible(m)}</option>`).join("");
+/** Les minutes de la roue : chacune jusqu'à une heure, puis de dix en dix jusqu'à deux heures — le plus long qu'un minuteur accepte. */
+const MINUTES_DE_LA_ROUE = [...Array.from({ length: 60 }, (_, i) => i + 1), 70, 80, 90, 100, 110, 120];
+
+/**
+ * Le temps qui reste, qu'on touche pour le changer : une roue de minutes —
+ * sur l'iPhone, la liste s'ouvre en roue —, arrêtée sur ce qui reste. Le
+ * minuteur repart du temps choisi, son disque plein ; en pause, il le reste.
+ * `tablette` : son numéro, ou "" pour la classe ; `reste` : l'attribut que
+ * l'horloge de l'écran rafraîchit chaque seconde.
+ */
+function roueDuMinuteur(t, tablette, libelle, reste, classe = "") {
+  const ici = Math.max(1, Math.ceil((t.fin != null ? Math.max(0, t.fin - Date.now()) : t.reste) / 60000));
+  const arret = MINUTES_DE_LA_ROUE.find((m) => m >= ici) ?? 120;
+  return `<label class="roue${classe ? ` ${classe}` : ""}"><b ${reste}>${resteDuMinuteur(t)}</b>${icone("chevron", "petit")}
+    <select data-roue="${tablette}" aria-label="${echapper(libelle)}">
+      ${MINUTES_DE_LA_ROUE.map((m) => `<option value="${m}" ${m === arret ? "selected" : ""}>${dureeLisible(m)}</option>`).join("")}
+    </select></label>`;
 }
 
 /** Le choix de la tablette d'un élève : celles que le portail connaît, par leur numéro, celle qui est à un autre dite. */
@@ -1548,14 +1556,14 @@ function ligneDeLEleve(c, eleve, fiches, occupe) {
   const place = ici >= 0 ? `Fiche ${ici + 1} sur ${n} : ${echapper(titreSansLEleve(fiches[ici], eleve))}`
     : ecran && ecran.montreeId === (c.deroules || {})[eleve] ? `Ce qui va se passer · ${combien}` : combien;
   const m = ecran && ecran.minuteur;
-  const minuteur = m ? `<div class="cj-eleve-minuteur">${icone("horloge", "petit")}<b data-reste-tablette="${t.numero}">${resteDuMinuteur(m)}</b>
+  const minuteur = m ? `<div class="cj-eleve-minuteur">${icone("horloge", "petit")}
+      ${roueDuMinuteur(m, t.numero, `Changer le temps qui reste à ${eleve}`, `data-reste-tablette="${t.numero}"`)}
       ${m.fin == null ? `<span>en pause</span>` : ""}
       <button class="btn-mini on" data-pause-tablette="${t.numero}" data-pause="${m.fin == null ? "0" : "1"}" ${occupe}
         aria-label="${m.fin == null ? "Reprendre" : "Pause"}, pour ${echapper(eleve)}">${icone(m.fin == null ? "lecture" : "pause", "petit")}</button></div>` : "";
   const envoi = suivante ? `<div class="cj-eleve-envoi">
       <span class="cj-eleve-suite">${ici >= 0 ? "Suivante : " : ""}${echapper(titreSansLEleve(suivante, eleve))}</span>
-      <select class="cj-eleve-choix" data-minutes-de="${echapper(cleMinutes(c.id, eleve, suivante.id))}" aria-label="Le minuteur de la fiche, pour ${echapper(eleve)}">
-        ${optionsDeMinutes(minutesPour(c, suivante))}</select>
+      ${minutesDe(suivante) ? `<span class="cj-aide-duree">${icone("horloge", "petit")}${dureeLisible(minutesDe(suivante))}</span>` : ""}
       <button class="btn-mini" data-envoyer-creneau="${echapper(c.id)}" data-aide="${echapper(suivante.id)}" ${t ? occupe : "disabled"}>
         ${envoiCreneau === c.id && envoiEleve === eleve ? "Envoi…" : ici >= 0 ? "Suivante" : "Envoyer"}</button>
     </div>` : `<p class="cj-eleve-aide">Toutes ses fiches sont passées.</p>`;
@@ -1640,7 +1648,7 @@ function envoiALaClasse(c) {
         <span class="cj-tab-plus">${n ? `${n} tablette${n > 1 ? "s" : ""}` : "aucune tablette encore"}</span>${reprendre}</div>
       ${portail.montree ? `<div class="cj-tab-aide">${icone("liste", "petit")}<span>${echapper(portail.montree)}</span></div>` : ""}
       ${place}
-      ${t ? `<b class="cj-tab-reste" data-reste>${resteDuMinuteur(t)}</b>${enPause ? `<span class="cj-tab-pause">En pause sur les tablettes</span>` : ""}
+      ${t ? `${roueDuMinuteur(t, "", "Changer le temps qui reste, sur les tablettes", 'class="cj-tab-reste" data-reste', "roue-grande")}${enPause ? `<span class="cj-tab-pause">En pause sur les tablettes</span>` : ""}
         <div class="deux">
           <button class="btn-doux" id="${enPause ? "minuteur-reprendre" : "minuteur-pause"}">${enPause ? `${icone("lecture", "petit")}Reprendre` : `${icone("pause", "petit")}Pause`}</button>
           <button class="btn-doux" id="minuteur-arreter">${icone("stop", "petit")}Arrêter</button>
@@ -2052,8 +2060,11 @@ function rendre() {
   el.querySelectorAll("[data-tablette-de]").forEach((choix) => {
     choix.onchange = () => { void donnerTablette(choix.dataset.tabletteDe, choix.value); };
   });
-  el.querySelectorAll("[data-minutes-de]").forEach((choix) => {
-    choix.onchange = () => { minutesChoisies.set(choix.dataset.minutesDe, Number(choix.value) || 0); };
+  el.querySelectorAll("[data-roue]").forEach((roue) => {
+    roue.onchange = () => {
+      const tablette = roue.dataset.roue === "" ? null : Number(roue.dataset.roue);
+      void auPortail("portail_minuteur_regler", { secondes: (Number(roue.value) || 1) * 60, tablette });
+    };
   });
   el.querySelectorAll("[data-envoyer-chacun]").forEach((b) => { b.onclick = () => { void envoyerAChacun(b.dataset.envoyerChacun); }; });
   el.querySelectorAll("[data-deroule-chacun]").forEach((b) => { b.onclick = () => { void montrerAChacun(b.dataset.derouleChacun, false); }; });
