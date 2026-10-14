@@ -415,7 +415,7 @@ export function nomDeToutesLesFiches(r: RecetteDeFiche): string {
 // l'ordre, chacune dans son cadre, reliées par des flèches — ce qui va se
 // passer (voir journalTelephone). Chaque cadre porte le picto de son domaine,
 // sinon de sa matière, comme un emploi du temps visuel (demande de
-// l'enseignant, octobre 2026) : Réglages › Général › Pictos des matières.
+// l'enseignant, octobre 2026) : Réglages › Personnalisation, ou la page CAA.
 
 /**
  * La matière et le domaine de chaque fiche : ceux de la liste des matières et

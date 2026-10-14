@@ -115,7 +115,7 @@ export function EtiquettesDos({ annee, onClose }: { annee: string; onClose: () =
             </div>
           </Field>
           <p className="meta" style={{ fontSize: 12, lineHeight: 1.5 }}>
-            Les couleurs sont celles de Réglages › Couleurs des matières : un domaine prend celle de sa matière, sauf si vous lui en avez choisi une.
+            Les couleurs sont celles de Réglages › Personnalisation : un domaine prend celle de sa matière, sauf si vous lui en avez choisi une.
           </p>
         </div>
         <div className="pb-apercu-page apercu-feuille" style={{ maxHeight: "70vh" }}>
