@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { Creneau, MaterielItem, Seance } from "./api";
 import {
   aidesDuCreneau, cleDuDeroulement, dureeDuMinuteur, estUneAide, estUneFicheDEleve, fichesDuCreneau, journalDes, joursPublies, minuteurDuCreneau, MINUTEURS_DES_TABLETTES,
-  pasDuDeroulement,
+  domaineDeLaSeance, pasDuDeroulement,
   pageDeLaConsigne, signatureDuJournal, titreDeLAide, titrePourLesTablettes,
 } from "./journalTelephone";
 
@@ -165,6 +165,9 @@ describe("les fiches d'« En retard », pour les tablettes", () => {
     // Sans rituel au prévu : « Rituel » ; une séance qui ne dit rien de ses phases : son titre.
     expect(pasDuDeroulement(creneau("c2", "2026-10-13", { seanceId: "s1" }), seanceDuJour, () => [], []).map((p) => p.texte))
       .toEqual(["Rituel", "Les mots de l'automne"]);
+    // Les phases d'une séance portent son domaine : c'est son picto qu'elles montrent.
+    expect(pasDuDeroulement(creneau("c2", "2026-10-13", { seanceId: "s1" }), seanceDuJour, phases, [], "Lecture").slice(1))
+      .toEqual([{ texte: "Je découvre les mots.", matiere: "", domaine: "Lecture" }, { texte: "Je cherche.", matiere: "", domaine: "Lecture" }]);
     // Ni séance ni fiche : rien à dérouler.
     expect(pasDuDeroulement(creneau("c3", "2026-10-13", { prevu: "🔁 La date" }), undefined, phases, [pyramides])).toEqual([]);
     // Au journal : les aides de la séance prennent sa première phase, les fiches suivent les phases.
@@ -186,5 +189,15 @@ describe("les fiches d'« En retard », pour les tablettes", () => {
     const sig = signatureDuJournal(journalDes(jours, c, [], [pyramides, meles]), [pyramides, meles]);
     const plusLong = { ...pyramides, fabricationJson: (pyramides.fabricationJson ?? "").replace('"minuteur":10', '"minuteur":15') };
     expect(signatureDuJournal(journalDes(jours, c, [], [plusLong, meles]), [plusLong, meles])).not.toBe(sig);
+  });
+});
+
+describe("le domaine d'une séance", () => {
+  it("vient de sa première compétence — le sous-domaine, sinon le domaine —, sinon de celle de sa séquence", () => {
+    const comp = (domaineTitre: string, sousDomaineTitre: string) => JSON.stringify([{ id: "c", referentielNom: "", domaineId: "", domaineTitre, sousDomaineTitre, competenceTitre: "" }]);
+    expect(domaineDeLaSeance({ competences: comp("Français", "Lecture") })).toBe("Lecture");
+    expect(domaineDeLaSeance({ competences: comp("1. Mobiliser le langage dans toutes ses dimensions", "") })).toBe("1. Mobiliser le langage dans toutes ses dimensions");
+    expect(domaineDeLaSeance({ competences: "[]" }, { competences: comp("Mathématiques", "Grandeurs et mesures") })).toBe("Grandeurs et mesures");
+    expect(domaineDeLaSeance({ competences: "pas du json" }, { competences: "" })).toBe("");
   });
 });

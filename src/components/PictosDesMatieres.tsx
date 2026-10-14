@@ -14,9 +14,8 @@ import {
 //
 // Le picto de chaque matière — les mêmes que dans la page CAA —, et sous elle
 // de chacun de ses domaines, ceux des référentiels actifs. Le déroulement des
-// tablettes les montre : une fiche avec celui de son domaine, sinon de sa
-// matière ; le rituel avec celui de « Rituel ». Sans choix, la banque propose
-// le picto du nom, en pâle.
+// tablettes montre celui du domaine, et lui seul ; le rituel, celui de
+// « Rituel ». Sans choix, la banque propose le picto du nom, en pâle.
 
 export function PictosDesMatieres() {
   const [choix, setChoix] = React.useState<Lexique>({});
@@ -52,8 +51,8 @@ export function PictosDesMatieres() {
     <>
       <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
         Le picto de chaque matière — le même que dans la page CAA — et de ses domaines, ceux de vos référentiels. Sur les
-        tablettes, le déroulement d'un créneau les montre : chaque fiche avec celui de son domaine, sinon de sa matière ; le
-        rituel avec celui de « Rituel ». Tant que vous n'en choisissez pas, la banque d'images en propose un d'après le nom, en pâle.
+        tablettes, le déroulement d'un créneau montre celui du domaine, et lui seul : le domaine de chaque fiche, celui de la
+        séance ; le rituel, celui de « Rituel ». Tant que vous n'en choisissez pas, la banque d'images en propose un d'après le nom, en pâle.
       </p>
       {MATIERES_EN_PICTOS.map((m) => (
         <React.Fragment key={m}>

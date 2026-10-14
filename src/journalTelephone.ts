@@ -16,7 +16,7 @@
 // Tout part chiffré avec la clé du retour (voir telephone.rs) : Nuage ne lit
 // rien. Rien ne repart qui n'a pas changé ; ici, rien ne se redessine non plus.
 
-import type { Creneau, MaterielItem, Seance } from "./api";
+import type { Creneau, MaterielItem, Seance, Sequence } from "./api";
 import { pdfsCites } from "./materielAImprimer";
 import { eleveDeLaFiche, lirePdfs, titreSansLEleve } from "./materielSeance";
 import { lireFabrication, MINUTEUR_MAX } from "./modifierFeuille";
@@ -99,12 +99,26 @@ export const fichesDuCreneau = (c: Pick<Creneau, "prevu">, materiel: MaterielIte
   pdfsCites(c.prevu ?? "", materiel.filter(estUneFicheDEleve));
 
 /**
- * Une étape du déroulement d'un créneau, avant son image : ce qu'on lit, et
- * la matière au-dessus. Le rituel prend le picto de la matière « Rituel » ;
- * une fiche d'élève, celui de son domaine ou de sa matière, d'après sa
- * sorte (voir pictosDesMatieres) ; une phase de séance, celui de son verbe.
+ * Une étape du déroulement d'un créneau, avant son image : ce qu'on lit, la
+ * matière au-dessus, et le domaine dont elle prend le picto — rien d'autre
+ * (demande de l'enseignant, octobre 2026) : le rituel celui de « Rituel », une
+ * phase de séance celui du domaine de la séance, une fiche d'élève celui du
+ * domaine de sa sorte, retrouvé en dessinant la page (voir pictosMatieres).
  */
-export interface PasDuDeroulement { texte: string; matiere: string; rituel?: boolean; fiche?: boolean }
+export interface PasDuDeroulement { texte: string; matiere: string; domaine?: string; rituel?: boolean; fiche?: boolean }
+
+/** Le domaine d'une séance, par sa première compétence — la sienne, sinon celle de sa séquence : le sous-domaine, sinon le domaine. */
+export function domaineDeLaSeance(seance: Pick<Seance, "competences">, sequence?: Pick<Sequence, "competences">): string {
+  for (const json of [seance.competences, sequence?.competences]) {
+    try {
+      const liste: unknown = JSON.parse(json || "[]");
+      const c = Array.isArray(liste) ? (liste[0] as { sousDomaineTitre?: unknown; domaineTitre?: unknown } | undefined) : undefined;
+      const domaine = [c?.sousDomaineTitre, c?.domaineTitre].find((x): x is string => typeof x === "string" && x.trim() !== "");
+      if (domaine) return domaine.trim();
+    } catch { /* compétences illisibles : on regarde la séquence */ }
+  }
+  return "";
+}
 
 /** Les étapes d'une séance pour l'élève — ses consignes, ou ses phases dites pour lui (voir aidesALaTache). */
 export type EtapesDeLaSeance = (s: Seance) => string[];
@@ -114,14 +128,16 @@ export type EtapesDeLaSeance = (s: Seance) => string[];
  * par leur nom —, puis les phases de sa séance — son titre seul si elle n'en
  * dit rien —, puis ses fiches d'élève, dans l'ordre. Rien sans séance ni fiche.
  */
-export function pasDuDeroulement(c: Pick<Creneau, "prevu">, seance: Seance | undefined, etapesDe: EtapesDeLaSeance, fiches: MaterielItem[]): PasDuDeroulement[] {
+export function pasDuDeroulement(
+  c: Pick<Creneau, "prevu">, seance: Seance | undefined, etapesDe: EtapesDeLaSeance, fiches: MaterielItem[], domaineDeSeance = "",
+): PasDuDeroulement[] {
   const lesFiches = fichesDuCreneau(c, fiches);
   if (!seance && !lesFiches.length) return [];
   const rituels = titresDesRituels(c.prevu ?? "");
   const phases = seance ? etapesDe(seance) : [];
   return [
     { texte: rituels.length ? rituels.join(" · ") : "Rituel", matiere: rituels.length ? "Rituel" : "", rituel: true },
-    ...(seance ? (phases.length ? phases : [seance.titre]) : []).map((texte) => ({ texte, matiere: "" })),
+    ...(seance ? (phases.length ? phases : [seance.titre]) : []).map((texte) => ({ texte, matiere: "", ...(domaineDeSeance ? { domaine: domaineDeSeance } : {}) })),
     ...lesFiches.map((m) => ({ texte: titrePourLesTablettes(m), matiere: "", fiche: true })),
   ];
 }
@@ -317,38 +333,19 @@ export async function pageDuDeroulement(etapes: PasDuDeroulement[]): Promise<str
   const { domaineDeLaRecette, matiereDeLaRecette, recetteDuTitre } = await import("./fichesAutonomie");
   const pas = etapes.map((p) => {
     const r = p.fiche ? recetteDuTitre(p.texte) : undefined;
-    return { ...p, ...(r ? { matiere: matiereDeLaRecette(r) } : {}), domaine: r ? domaineDeLaRecette(r) : "" };
+    return r ? { ...p, matiere: matiereDeLaRecette(r), domaine: domaineDeLaRecette(r) } : p;
   });
-  // Les noms dont chaque étape prend le picto : le domaine de la fiche, puis sa matière ; la matière « Rituel » pour le rituel.
-  const noms = pas.map((p) => (p.rituel ? ["Rituel"] : p.fiche ? [p.domaine, p.matiere].filter(Boolean) : []));
+  // Le picto du domaine, c'est tout : ni celui de la matière, ni celui du verbe (demande de l'enseignant).
+  // Le rituel a le sien, sous « Rituel ». Un domaine sans picto choisi prend celui que la banque propose pour lui.
+  const noms = pas.map((p) => (p.rituel ? "Rituel" : p.domaine ?? ""));
   const images: (string | undefined)[] = pas.map(() => undefined);
   try {
-    // Le choix de l'enseignant d'abord, sur tous les noms ; sinon ce que la banque propose pour eux.
-    const proposes = await pictosProposes([...new Set(noms.flat())]).catch((): Record<string, number> => ({}));
-    const refs = noms.map((liste) => {
-      for (const nom of liste) { const c = pictoChoisi(choix, nom); if (c != null) return c; }
-      for (const nom of liste) if (proposes[nom] != null) return proposes[nom];
-      return null;
-    });
+    const proposes = await pictosProposes([...new Set(noms.filter(Boolean))]).catch((): Record<string, number> => ({}));
+    const refs = noms.map((nom) => (nom ? pictoChoisi(choix, nom) ?? proposes[nom] ?? null : null));
     const { chargerImages } = await import("./components/ChoixPicto");
     const dessins = await chargerImages([...new Set(refs.filter((r): r is number | string => r != null))], true);
     refs.forEach((r, i) => { if (r != null) images[i] = dessins[r]; });
   } catch { /* pas de banque : des cadres sans image */ }
-  // Les phases d'une séance : le picto de leur verbe, comme dans son séquentiel — avec les pictos choisis par l'enseignant.
-  const phrases = pas.flatMap((p, i) => (p.rituel || p.fiche ? [] : [i]));
-  if (phrases.length) {
-    try {
-      const { motPrincipal } = await import("./tapuscrit");
-      const { resoudrePictos } = await import("./components/Tapuscrit");
-      const mots = phrases.map((i) => motPrincipal(pas[i].texte));
-      const { pictoDe, images: dessins } = await resoudrePictos(mots.filter((m): m is NonNullable<typeof m> => m !== null));
-      phrases.forEach((i, k) => {
-        const m = mots[k];
-        const ref = m ? pictoDe(m) : null;
-        if (ref != null) images[i] = dessins[String(ref)];
-      });
-    } catch { /* sans picto */ }
-  }
   const cadres = pas.map((e, i) => {
     const image = images[i];
     return (i ? FLECHE_DU_DEROULEMENT : "") + `<div class="at-etape dr-etape">${image ? `<img src="${image}" alt="">` : '<span class="dr-vide"></span>'}`
@@ -377,8 +374,8 @@ export async function publierLeJournal(maintenant = new Date()): Promise<void> {
     const { api } = await import("./api");
     const { etapesDeLaSeance } = await import("./aidesALaTache");
     const jours = joursPublies(maintenant);
-    const [creneaux, seances, materiel] = await Promise.all([
-      api.creneauxList(jours[0], jours[jours.length - 1]), api.seancesList(), api.materielList(),
+    const [creneaux, seances, materiel, sequences] = await Promise.all([
+      api.creneauxList(jours[0], jours[jours.length - 1]), api.seancesList(), api.materielList(), api.sequencesList().catch((): Sequence[] => []),
     ]);
     const journal = journalDes(jours, creneaux, seances, materiel, etapesDeLaSeance);
     // Un picto de matière ou de domaine choisi change les déroulements : ils repartent.
@@ -394,10 +391,13 @@ export async function publierLeJournal(maintenant = new Date()): Promise<void> {
     // Le déroulement de chaque créneau qui en a un : le rituel, les phases de sa séance, ses fiches.
     const fiches = materiel.filter(estUneFicheDEleve);
     const seanceDe = new Map(seances.map((s) => [s.id, s]));
+    const sequenceDe = new Map(sequences.map((q) => [q.id, q]));
     for (const c of creneaux) {
       const cle = cleDuDeroulement(c.id);
       if (!journal.jours.some((j) => j.creneaux.some((x) => x.deroule === cle))) continue;
-      const pas = pasDuDeroulement(c, c.seanceId ? seanceDe.get(c.seanceId) : undefined, etapesDeLaSeance, fiches);
+      const seance = c.seanceId ? seanceDe.get(c.seanceId) : undefined;
+      const domaine = seance ? domaineDeLaSeance(seance, seance.sequenceId ? sequenceDe.get(seance.sequenceId) : undefined) : "";
+      const pas = pasDuDeroulement(c, seance, etapesDeLaSeance, fiches, domaine);
       const html = await pageDuDeroulement(pas).catch(() => null);
       if (html) aides.push({ cle, titre: TITRE_DU_DEROULEMENT, html });
     }

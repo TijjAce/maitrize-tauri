@@ -10,8 +10,8 @@ import type { RefPicto } from "./pictosAppoint";
 // emploi du temps en images, ou dire ce qui vient. Ils se choisissent comme
 // ceux des verbes et s'impriment avec eux, en cartes à découper — ici, dans
 // la page CAA, ou dans Réglages › Personnalisation, qui y ajoute les
-// domaines des référentiels. Le déroulement des tablettes les montre : une
-// fiche avec le picto de son domaine, sinon de sa matière ; le rituel avec
+// domaines des référentiels. Le déroulement des tablettes montre le picto du
+// domaine, et lui seul — celui d'une fiche, celui d'une séance — ; le rituel,
 // celui de « Rituel ». Sans choix, la banque propose celui de leur nom.
 
 /** Ce qui reçoit un picto : tout le planning, sauf « Autre ». */
