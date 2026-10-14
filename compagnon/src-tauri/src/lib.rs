@@ -52,6 +52,7 @@ pub fn run() {
             portail_minuteur_pause,
             portail_minuteur_reprendre,
             portail_minuteur_arreter,
+            portail_minuteur_regler,
             portail_attribuer,
             portail_etat,
             portail_fermer,
