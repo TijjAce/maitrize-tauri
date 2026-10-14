@@ -4,7 +4,7 @@ import {
 } from "./api";
 import {
   base64EnTexte, compter, contenuDUnElement, contenuDuDossier, couleursDeballees, couleursDuDossier, deballer,
-  descriptionDuResume, destinationLibre, estPaquet, fichiersDe, nomDeFichierSur, nomDuPaquet, resumeDe, texteEnBase64,
+  descriptionDuResume, destinationLibre, documentsDuMateriel, estPaquet, fichiersDe, nomDeFichierSur, nomDuPaquet, resumeDe, texteEnBase64,
   titreDuPaquet, titreSansAuteur, type Contenu, type Paquet, adresseDeDossierNuage } from "./bureauCommun";
 
 const materiel = (p: Partial<MaterielItem>): MaterielItem => ({
@@ -204,3 +204,19 @@ describe("l'adresse d'un dossier de son Nuage", () => {
   });
 });
 
+describe("un document du bureau, sur un bureau commun", () => {
+  it("part en son PDF, à son nom : un fichier que Nuage montre et que chacun ouvre", () => {
+    expect(documentsDuMateriel(materiel({ titre: "Dictées pour l'école", pdfsJson: '["3f2a.pdf"]' })))
+      .toEqual([{ nom: "Dictées pour l'école.pdf", fichier: "3f2a.pdf" }]);
+  });
+  it("garde chacun de ses fichiers, numérotés après le premier, sous un nom sûr partout", () => {
+    expect(documentsDuMateriel(materiel({ pdfsJson: '["a.pdf","b.PDF"]', imagesJson: '["c.jpg"]' }), "Loto : les fruits")).toEqual([
+      { nom: "Loto les fruits.pdf", fichier: "a.pdf" },
+      { nom: "Loto les fruits (2).pdf", fichier: "b.PDF" },
+      { nom: "Loto les fruits (3).jpg", fichier: "c.jpg" },
+    ]);
+  });
+  it("ne donne rien pour un matériel sans fichier : il part alors en paquet", () => {
+    expect(documentsDuMateriel(materiel({ pdfsJson: "[]", imagesJson: "abîmé" }))).toEqual([]);
+  });
+});

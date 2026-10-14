@@ -9,7 +9,7 @@ import { lireCouleurs, normaliser, PREFIXE_COULEUR, SANS_COULEUR, sousDossiers }
 import { estImage, fichierEnBase64 } from "./dragdrop";
 import {
   base64EnTexte, compter, contenuDUnElement, contenuDuDossier, couleursDeballees, couleursDuDossier, deballer,
-  destinationLibre, estPaquet, fichiersDe, nomDeFichierSur, nomDuPaquet, resumeDe, TAILLE_MAX, texteEnBase64, titreDuPaquet,
+  destinationLibre, documentsDuMateriel, estPaquet, fichiersDe, nomDeFichierSur, nomDuPaquet, resumeDe, TAILLE_MAX, texteEnBase64, titreDuPaquet,
   type Contenu, type GenreElement, type Paquet, type Resume,
 } from "./bureauCommun";
 
@@ -90,15 +90,37 @@ export async function deposerDossier(chemin: string, bureau: BureauCommun, ou = 
 
 /**
  * Dépose un seul élément — une séquence, un jeu, un matériel… — glissé sur le
- * bureau commun. Il part comme un dossier d'un seul objet.
+ * bureau commun. Il part comme un dossier d'un seul objet ; un document — un
+ * matériel, le PDF d'un manuel — part tel qu'il est, lisible par tous.
  */
 export async function deposerElement(
   genre: GenreElement, id: string, titre: string, bureau: BureauCommun, ou = "",
 ): Promise<{ nom: string; elements: number }> {
   const { tout } = await toutLeBureau();
+  if (genre === "materiel") {
+    const materiel = tout.materiels.find((m) => m.id === id);
+    const documents = materiel ? documentsDuMateriel(materiel, titre) : [];
+    if (documents.length) return deposerDocuments(documents, titre, bureau, ou);
+  }
   const contenu = contenuDUnElement(genre, id, tout);
   if (!compter(contenu)) throw new Error("Cet élément n'est plus sur votre bureau.");
   return deposerContenu(contenu, titre.trim() || "Sans titre", {}, bureau, ou);
+}
+
+/**
+ * Les fichiers d'un document, posés tels quels : un seul à son nom, plusieurs
+ * dans un dossier au nom du document. Rend ce qu'on supprime pour annuler.
+ */
+async function deposerDocuments(
+  documents: { nom: string; fichier: string }[], titre: string, bureau: BureauCommun, ou: string,
+): Promise<{ nom: string; elements: number }> {
+  if (documents.length === 1) {
+    const chemin = await api.communPoserFichier(bureau.id, ou, documents[0].nom, documents[0].fichier);
+    return { nom: dernier(chemin), elements: 1 };
+  }
+  const dossier = await api.communCreerDossier(bureau.id, ou, nomDeFichierSur(titre));
+  for (const d of documents) await api.communPoserFichier(bureau.id, dossier, d.nom, d.fichier);
+  return { nom: dernier(dossier), elements: 1 };
 }
 
 /**
