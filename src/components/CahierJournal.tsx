@@ -4,7 +4,7 @@ import { api, Creneau, Seance, Sequence, Eleve, Jeu, journal, nouveauJeu, teinte
 import { toast, toastAnnulable } from "./Toaster";
 import { PoserObservation } from "./PoserObservation";
 import { appliquer, porterAuDossier } from "../notesDuBilan";
-import { prenomsNommes, segmentsDuBilan } from "../surlignage";
+import { segmentsDuBilan } from "../surlignage";
 import { prenomDe } from "../veilleEleve";
 import { ZoneSurlignee } from "./ZoneSurlignee";
 import { enAttente } from "../journalEnAttente";
@@ -578,19 +578,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                             )}
                           </MenuDeroulant>
                         </>
-                      ) : (
-                        <span className="meta journal-indication" style={{ fontSize: 12 }}
-                          title="Les phrases qui nomment un élève vont dans ses notes, au dossier — en couleur pendant que vous écrivez. Le bilan s'imprime aussi en tête du cahier journal du prochain jour de classe.">
-                          {(() => {
-                            const nommes = prenomsNommes(b.bilan, prenomsDeLaClasse);
-                            const de = /^[aeiouyàâäéèêëîïôöùûü]/i.test(nommes[0] ?? "") ? "d'" : "de ";
-                            return nommes.length
-                              ? <>📋 <mark className="surligne-phrase">en couleur</mark> : va dans les notes {de}{nommes.join(", ")}</>
-                              : "📋 ce qui nomme un élève va dans ses notes";
-                          })()}
-                          {!reunion && " · 🖨 s'imprime sur le journal du lendemain"}
-                        </span>
-                      )}
+                      ) : null}
                     </div>
                     {(() => {
                       const proprietes = {
