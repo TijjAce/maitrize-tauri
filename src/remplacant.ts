@@ -15,7 +15,8 @@ export interface DonneesClasse {
   /** « Professeur des écoles spécialisé », tel qu'il signe. */
   fonction?: string;
   niveau: string;
-  ime: boolean;
+  /** La structure, en toutes lettres ; vide en classe ordinaire (voir classe.ts). */
+  structure: string;
   annee: string;
   eleves: { id: string; nom: string; niveau: string; dispositifs: string[]; axe: string }[];
   edt: SlotEdt[];
@@ -31,7 +32,7 @@ const prenom = (nom: string) => nom.trim().split(/\s+/)[0] ?? nom;
 export function blocClasse(d: DonneesClasse, aujourdhui: string): string {
   const lignes = [
     ["École ou établissement", d.ecole || aCompleter],
-    ["Classe", [d.ime ? "Unité d'enseignement (IME)" : "", d.niveau].filter(Boolean).join(" · ") || aCompleter],
+    ["Classe", [d.structure, d.niveau].filter(Boolean).join(" · ") || aCompleter],
     ["Enseignant·e", [d.enseignant, d.fonction].filter(Boolean).join(" — ") || aCompleter],
     ["Effectif", d.eleves.length ? `${d.eleves.length} élève${d.eleves.length > 1 ? "s" : ""}` : aCompleter],
     ["Année scolaire", d.annee],

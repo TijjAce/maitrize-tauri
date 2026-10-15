@@ -23,13 +23,13 @@ export interface Piece {
 }
 
 /**
- * Les pièces qu'on s'attend à trouver, selon le contexte d'exercice.
+ * Les pièces qu'on s'attend à trouver dans un dossier.
  *
- * En IME s'ajoutent le GEVA-Sco, le PPI et le projet pédagogique, qui n'ont
- * pas cours en classe ordinaire ; les annoncer partout ferait paraître tous
- * les dossiers incomplets.
+ * Les mêmes partout : la structure choisie dans les Réglages ne retire rien
+ * (voir classe.ts). Le PPI, le GEVA-Sco et le projet pédagogique viennent en
+ * tête, ce sont eux qu'une équipe de suivi demande d'abord.
  */
-export function piecesAttendues(ime: boolean): { typeDoc: string; label: string; onglet: string }[] {
+export function piecesAttendues(): { typeDoc: string; label: string; onglet: string }[] {
   const communes = [
     { typeDoc: "evaldiag:observation", label: "Observation générale", onglet: "evaluations" },
     { typeDoc: "evaldiag:besoins", label: "Observation S4C", onglet: "evaluations" },
@@ -40,7 +40,7 @@ export function piecesAttendues(ime: boolean): { typeDoc: string; label: string;
     { typeDoc: "gevasco", label: "GEVA-Sco", onglet: "gevasco" },
     { typeDoc: "projetPedagogique", label: "Projet pédagogique", onglet: "dispositifs" },
   ];
-  return ime ? [... imeSeules, ...communes] : communes;
+  return [...imeSeules, ...communes];
 }
 
 /**
@@ -180,10 +180,9 @@ export function construire(
   docs: DocumentEleve[],
   papiers: PapierEleve[],
   progressions: ProgressionEleve[],
-  ime: boolean,
 ): Dossier {
   const obs = observations(commentaires.filter((c) => c.eleveId === eleve.id));
-  const p = pieces(piecesAttendues(ime), docs.filter((d) => d.eleveId === eleve.id));
+  const p = pieces(piecesAttendues(), docs.filter((d) => d.eleveId === eleve.id));
   const miennes = progressions.filter((x) => x.eleveId === eleve.id);
 
   const manques: string[] = [];

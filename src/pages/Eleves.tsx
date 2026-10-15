@@ -35,25 +35,18 @@ type VueEvaluation = "notees" | "synthese" | "gs" | "diagnostique";
 export default function Eleves() {
   const [onglet, setOnglet] = React.useState<typeof ELEVES_TABS[number]>("liste");
   const [vueEvaluation, setVueEvaluation] = React.useState<VueEvaluation>("notees");
-  // Mode IME/ULIS/inclusion (Réglages → Type de structure) : ajoute les onglets
-  // Dispositifs (PPS, PAP, PAI, PPRE, PPI) et GEVA-Sco.
-  const { data: typeStructure } = useAsync(() => api.settingGet("typeStructure"), []);
-  const ime = typeStructure === "ime";
-  const tabs = React.useMemo(() => ELEVES_TABS.filter((t) => (t !== "dispositifs" && t !== "gevasco") || ime), [ime]);
-  useSegmentNav(tabs, onglet, setOnglet);
-  // Dispositifs et GEVA-Sco n'existent qu'en mode IME : plutôt qu'un clic sans
-  // effet, on dit pourquoi l'onglet demandé n'est pas là.
-  useOngletDemande("eleves", tabs, setOnglet, (demande) => {
+  // Tous les onglets, quelle que soit la structure choisie dans les Réglages : elle ne retire rien.
+  useSegmentNav(ELEVES_TABS, onglet, setOnglet);
+  useOngletDemande("eleves", ELEVES_TABS, setOnglet, (demande) => {
     // Synthèse et synthèse GS vivent dans l'évaluation sommative : les liens
     // du dossier de l'élève et de ⌘K y mènent toujours.
     if (demande === "synthese") { setOnglet("evaluations"); setVueEvaluation("gs"); return; }
-    if (demande === "syntheseEleve") { setOnglet("evaluations"); setVueEvaluation("synthese"); return; }
-    toast("Cet onglet demande le mode IME (Réglages → Type de structure).", { icone: "⚙️" });
+    if (demande === "syntheseEleve") { setOnglet("evaluations"); setVueEvaluation("synthese"); }
   });
   return (
     <Page titre="Élèves" sous="Classe, observations et évaluations">
       <div className="onglets">
-        {[["liste", "Classe"], ["dossier", "Dossier"], ["observations", "Observations"], ["evaluations", "Évaluations"], ["papiers", "Papiers"], ...(ime ? [["dispositifs", "Dispositifs"], ["gevasco", "GEVA-Sco"]] : [])]
+        {[["liste", "Classe"], ["dossier", "Dossier"], ["observations", "Observations"], ["evaluations", "Évaluations"], ["papiers", "Papiers"], ["dispositifs", "Dispositifs"], ["gevasco", "GEVA-Sco"]]
           .map(([k, l]) => <button key={k} className={onglet === k ? "active" : ""} onClick={() => setOnglet(k as any)}>{l}</button>)}
       </div>
       {onglet === "liste" && <ListeEleves />}
@@ -61,8 +54,8 @@ export default function Eleves() {
       {onglet === "observations" && <Observations />}
       {onglet === "evaluations" && <Evaluations vue={vueEvaluation} setVue={setVueEvaluation} />}
       {onglet === "papiers" && <Papiers />}
-      {onglet === "dispositifs" && ime && <DispositifsTab />}
-      {onglet === "gevasco" && ime && <GevaScoTab />}
+      {onglet === "dispositifs" && <DispositifsTab />}
+      {onglet === "gevasco" && <GevaScoTab />}
     </Page>
   );
 }

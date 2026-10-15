@@ -7,7 +7,7 @@ import { lireEtablissement } from "./etablissement";
 import { nettoyerHtml } from "./texteRiche";
 
 const donnees = (p: Partial<DonneesClasse> = {}): DonneesClasse => ({
-  ecole: "IME Les Tilleuls", enseignant: "C. Martin", niveau: "", ime: true, annee: "2026-2027",
+  ecole: "IME Les Tilleuls", enseignant: "C. Martin", niveau: "", structure: "IME — institut médico-éducatif", annee: "2026-2027",
   eleves: [
     { id: "e1", nom: "Zénon Blanc", niveau: "GS", dispositifs: ["PPS", "PAI"], axe: "Attendre son tour" },
     { id: "e2", nom: "Amédée <Roux>", niveau: "CP", dispositifs: [], axe: "" },

@@ -68,8 +68,11 @@ export interface InfosGarde {
   fonction: string;
   telephone: string;
   niveau: string;
-  /** Unité d'enseignement : le ton et le contenu ne sont pas les mêmes. */
-  ime: boolean;
+  /**
+   * Où l'on enseigne, pour l'IA : « IME », « SESSAD »… ; vide en classe
+   * ordinaire (voir classe.ts). Les cases proposées n'en dépendent pas.
+   */
+  structure: string;
   /** Les cases cochées : ce que le document doit contenir. */
   choix: string[];
   /** Les précisions communes : lignage des cahiers, pages, couverture… */
@@ -109,8 +112,6 @@ export interface OptionGarde {
   precise?: string[];
   /** Cochée à l'ouverture. */
   dOffice?: boolean;
-  /** Proposée seulement en IME, ou seulement hors IME. */
-  quand?: "ime" | "ordinaire";
   /** Écrite ici, même quand l'IA rédige : les dates, la citation exacte, les cadres. */
   local?: boolean;
 }
@@ -206,13 +207,12 @@ export const REGLAGES: Partial<Record<SorteGarde, ReglageGarde[]>> = {
 /**
  * Les précisions à l'ouverture.
  *
- * Le Seyès agrandi de 3 mm est celui que l'on conseille aux enfants qui
- * apprennent encore le geste : c'est le bon défaut en unité d'enseignement.
- * Ailleurs, le Seyès ordinaire. Le reste, on ne le précise pas : une liste de
- * rentrée n'a pas à imposer un grammage.
+ * Le Seyès ordinaire, que l'on change d'un clic — l'agrandi de 3 mm pour les
+ * enfants qui apprennent encore le geste. Le reste, on ne le précise pas : une
+ * liste de rentrée n'a pas à imposer un grammage.
  */
-export const reglagesParDefaut = (sorte: SorteGarde, ime: boolean): Record<string, string> =>
-  (sorte === "fournitures" ? { lignage: ime ? "seyes3" : "seyes" } : sorte === "journal" ? { citation: "0", frise: "ecole" } : {});
+export const reglagesParDefaut = (sorte: SorteGarde): Record<string, string> =>
+  (sorte === "fournitures" ? { lignage: "seyes" } : sorte === "journal" ? { citation: "0", frise: "ecole" } : {});
 
 /**
  * Le texte d'une précision, ou rien si elle n'est pas donnée.
@@ -247,7 +247,7 @@ export const GROUPES: Record<SorteGarde, GroupeGarde[]> = {
       c("photo", "De la place pour une photo ou un dessin", "un espace vide au milieu, pour coller une photo ou faire un dessin",
         centre("<br><br><br>") + centre("<i>photo ou dessin de l'élève</i>")),
       c("picto", "De la place pour un pictogramme", "la place d'un pictogramme, à côté du titre",
-        centre("<br>"), { quand: "ime" }),
+        centre("<br>")),
     ] },
     { titre: "Le ton", options: [
       c("role", "Une phrase qui dit à quoi sert ce cahier", "une phrase qui dit à quoi sert ce cahier",
@@ -290,8 +290,7 @@ export const GROUPES: Record<SorteGarde, GroupeGarde[]> = {
         { dOffice: true }),
       c("traces", "Que la quantité d'écrit varie d'un élève à l'autre",
         "que la quantité de traces écrites varie beaucoup d'un jeune à l'autre, et que les rituels ont été photocopiés pour donner tout de même une vue d'ensemble",
-        ligne("La quantité de traces écrites varie beaucoup d'un jeune à l'autre : certains manipulent longuement sans pouvoir écrire, et laissent donc peu de traces. J'ai photocopié et collé la plupart des rituels pour que vous ayez tout de même une vue d'ensemble du travail proposé."),
-        { dOffice: true, quand: "ime" }),
+        ligne("La quantité de traces écrites varie beaucoup d'un jeune à l'autre : certains manipulent longuement sans pouvoir écrire, et laissent donc peu de traces. J'ai photocopié et collé la plupart des rituels pour que vous ayez tout de même une vue d'ensemble du travail proposé.")),
       c("regarder", "Comment le regarder avec son enfant", "comment le regarder avec son enfant, en le laissant raconter",
         ligne("Regardez-le avec votre enfant : qu'il vous raconte ce qu'il a fait, ce qu'il a aimé, ce qui lui a demandé des efforts. C'est le meilleur moyen de valoriser son travail."),
         { dOffice: true }),
@@ -320,21 +319,21 @@ export const GROUPES: Record<SorteGarde, GroupeGarde[]> = {
     { titre: "Écrire", options: [
       f("trousse", "Trousse", "Une trousse", { dOffice: true }),
       f("crayon", "Crayon à papier, gomme, taille-crayon", "Un crayon à papier, une gomme et un taille-crayon à réservoir", { dOffice: true }),
-      f("crayonsGros", "Crayons triangulaires ou épais", "Des crayons à papier triangulaires, faciles à tenir", { quand: "ime" }),
-      f("stylos", "Stylos bleu, vert, rouge, noir", "Quatre stylos : bleu, vert, rouge et noir", { quand: "ordinaire" }),
-      f("plume", "Stylo plume, cartouches, effaceur", "Un stylo plume, des cartouches et un effaceur", { quand: "ordinaire" }),
-      f("portemine", "Porte-mine et mines", "Un porte-mine et une recharge de mines", { quand: "ordinaire" }),
+      f("crayonsGros", "Crayons triangulaires ou épais", "Des crayons à papier triangulaires, faciles à tenir"),
+      f("stylos", "Stylos bleu, vert, rouge, noir", "Quatre stylos : bleu, vert, rouge et noir"),
+      f("plume", "Stylo plume, cartouches, effaceur", "Un stylo plume, des cartouches et un effaceur"),
+      f("portemine", "Porte-mine et mines", "Un porte-mine et une recharge de mines"),
       f("ardoise", "Ardoise, feutres et chiffon", "Une ardoise, des feutres effaçables et un chiffon"),
-      f("surligneurs", "Surligneurs", "Deux surligneurs de couleurs différentes", { quand: "ordinaire" }),
+      f("surligneurs", "Surligneurs", "Deux surligneurs de couleurs différentes"),
       f("trousse2", "Seconde trousse pour les couleurs", "Une seconde trousse, pour les crayons de couleur et les feutres"),
-      f("grips", "Manchons ou grips pour crayons", "Des manchons à enfiler sur les crayons, pour mieux les tenir", { quand: "ime" }),
+      f("grips", "Manchons ou grips pour crayons", "Des manchons à enfiler sur les crayons, pour mieux les tenir"),
       f("reserve", "Réserve de crayons, feutres et colles",
         "Une réserve pour l'année, dans un sac marqué à son nom : crayons à papier, feutres d'ardoise, bâtons de colle"),
     ] },
     { titre: "Couper, coller, colorier", options: [
       f("colle", "Bâtons de colle", "Deux bâtons de colle", { dOffice: true }),
       f("ciseaux", "Ciseaux à bouts ronds", "Une paire de ciseaux à bouts ronds", { dOffice: true }),
-      f("ciseauxRessort", "Ciseaux à ressort", "Une paire de ciseaux à ressort", { quand: "ime" }),
+      f("ciseauxRessort", "Ciseaux à ressort", "Une paire de ciseaux à ressort"),
       f("ciseauxGaucher", "Ciseaux pour gaucher", "Une paire de ciseaux pour gaucher, si votre enfant l'est"),
       f("couleurs", "Crayons de couleur et feutres", "Des crayons de couleur et des feutres", { dOffice: true }),
       f("craies", "Craies grasses ou pastels", "Une boîte de craies grasses"),
@@ -345,7 +344,7 @@ export const GROUPES: Record<SorteGarde, GroupeGarde[]> = {
       f("cahierPetit", "Cahier petit format", "Un cahier 17 × 22 cm",
         { precise: ["pages", "lignage", "couverture", "grammage"] }),
       f("cahierA4", "Cahier A4", "Un cahier 21 × 29,7 cm",
-        { precise: ["pages", "lignage", "couverture", "grammage"], quand: "ordinaire" }),
+        { precise: ["pages", "lignage", "couverture", "grammage"] }),
       f("cahierGrand", "Cahier grand format", "Un cahier 24 × 32 cm, assez grand pour y coller une feuille A4",
         { precise: ["pages", "lignage", "couverture", "grammage"] }),
       f("cahierTP", "Cahier de travaux pratiques", "Un cahier de travaux pratiques : une page unie, une page réglée",
@@ -357,18 +356,18 @@ export const GROUPES: Record<SorteGarde, GroupeGarde[]> = {
       f("brouillon", "Cahier de brouillon", "Un cahier de brouillon", { precise: ["pages"] }),
       f("cahierLiaison", "Cahier de liaison", "Un petit cahier de liaison", { precise: ["pages", "couverture"] }),
       f("feuilles", "Feuilles simples et doubles", "Un paquet de feuilles simples et un paquet de feuilles doubles, perforées",
-        { precise: ["lignage"], quand: "ordinaire" }),
-      f("repertoire", "Répertoire", "Un petit répertoire", { quand: "ordinaire" }),
+        { precise: ["lignage"] }),
+      f("repertoire", "Répertoire", "Un petit répertoire"),
       f("porteVues", "Porte-vues", "Un porte-vues de quarante vues"),
       f("dessin", "Feuilles à dessin", "Une pochette de feuilles à dessin"),
       f("ramette", "Ramette de papier A4", "Une ramette de papier blanc A4"),
     ] },
     { titre: "Ranger", options: [
       f("pochette", "Pochette à élastiques", "Une pochette à élastiques", { dOffice: true }),
-      f("protege", "Protège-cahiers", "Des protège-cahiers, à la taille des cahiers", { quand: "ordinaire" }),
-      f("classeur", "Classeur, intercalaires, pochettes", "Un classeur, des intercalaires et des pochettes transparentes", { quand: "ordinaire" }),
-      f("trieur", "Trieur", "Un trieur à huit compartiments", { quand: "ordinaire" }),
-      f("agenda", "Agenda ou cahier de textes", "Un agenda ou un cahier de textes", { quand: "ordinaire" }),
+      f("protege", "Protège-cahiers", "Des protège-cahiers, à la taille des cahiers"),
+      f("classeur", "Classeur, intercalaires, pochettes", "Un classeur, des intercalaires et des pochettes transparentes"),
+      f("trieur", "Trieur", "Un trieur à huit compartiments"),
+      f("agenda", "Agenda ou cahier de textes", "Un agenda ou un cahier de textes"),
       f("cartable", "Cartable", "Un cartable assez grand pour un classeur"),
       f("sacDos", "Sac à dos pour les sorties", "Un petit sac à dos pour les sorties"),
       f("boite", "Boîte de rangement", "Une boîte de rangement pour le casier"),
@@ -376,22 +375,22 @@ export const GROUPES: Record<SorteGarde, GroupeGarde[]> = {
       f("pot", "Petit pot pour la table", "Un petit pot pour tenir les crayons sur la table"),
     ] },
     { titre: "Mesurer et compter", options: [
-      f("equerre", "Équerre et compas", "Une équerre et un compas", { quand: "ordinaire" }),
-      f("regleGraduee", "Règle graduée de 30 cm", "Une règle graduée de 30 cm", { quand: "ordinaire" }),
-      f("rapporteur", "Rapporteur", "Un rapporteur", { quand: "ordinaire" }),
-      f("calculatrice", "Calculatrice simple", "Une calculatrice à quatre opérations", { quand: "ordinaire" }),
+      f("equerre", "Équerre et compas", "Une équerre et un compas"),
+      f("regleGraduee", "Règle graduée de 30 cm", "Une règle graduée de 30 cm"),
+      f("rapporteur", "Rapporteur", "Un rapporteur"),
+      f("calculatrice", "Calculatrice simple", "Une calculatrice à quatre opérations"),
     ] },
     { titre: "Lire", options: [
-      f("dictionnaire", "Dictionnaire", "Un dictionnaire de poche", { quand: "ordinaire" }),
+      f("dictionnaire", "Dictionnaire", "Un dictionnaire de poche"),
       f("livre", "Un livre pour le coin lecture", "Un livre, prêté au coin lecture de la classe"),
-      f("album", "Un album ou un imagier de la maison", "Un album ou un imagier de la maison, à partager en classe", { quand: "ime" }),
+      f("album", "Un album ou un imagier de la maison", "Un album ou un imagier de la maison, à partager en classe"),
     ] },
     { titre: "Pour la journée", options: [
       f("sport", "Tenue de sport", "Une tenue de sport dans un sac", { dOffice: true }),
-      f("change", "Change complet", "Un change complet, au nom de l'enfant", { quand: "ime", dOffice: true }),
-      f("sacLinge", "Sac pour le linge sale", "Un sac en tissu pour le linge à rapporter", { quand: "ime" }),
-      f("serviette", "Serviette de table", "Une serviette de table, marquée à son nom", { quand: "ime" }),
-      f("chaussons", "Chaussons", "Une paire de chaussons", { quand: "ime" }),
+      f("change", "Change complet", "Un change complet, au nom de l'enfant"),
+      f("sacLinge", "Sac pour le linge sale", "Un sac en tissu pour le linge à rapporter"),
+      f("serviette", "Serviette de table", "Une serviette de table, marquée à son nom"),
+      f("chaussons", "Chaussons", "Une paire de chaussons"),
       f("mouchoirs", "Boîte de mouchoirs", "Une boîte de mouchoirs"),
       f("gourde", "Gourde", "Une gourde marquée à son nom"),
       f("casquette", "Casquette ou chapeau", "Une casquette ou un chapeau pour la cour"),
@@ -399,15 +398,15 @@ export const GROUPES: Record<SorteGarde, GroupeGarde[]> = {
       f("gobelet", "Gobelet réutilisable", "Un gobelet réutilisable, marqué à son nom"),
       f("chasuble", "Chasuble de sécurité", "Une chasuble de sécurité pour les sorties"),
       f("sacTravail", "Sac pour rapporter le travail", "Un grand sac pour rapporter le travail à chaque période"),
-      f("doudou", "Doudou", "Son doudou, s'il en a un", { quand: "ime" }),
-      f("sieste", "Coussin et plaid pour le temps calme", "Un petit coussin et un plaid pour le temps calme, marqués à son nom", { quand: "ime" }),
+      f("doudou", "Doudou", "Son doudou, s'il en a un"),
+      f("sieste", "Coussin et plaid pour le temps calme", "Un petit coussin et un plaid pour le temps calme, marqués à son nom"),
     ] },
     { titre: "Si votre enfant en a besoin", options: [
-      f("casque", "Casque anti-bruit", "Un casque anti-bruit", { quand: "ime" }),
-      f("coussin", "Coussin d'assise dynamique", "Un coussin d'assise dynamique", { quand: "ime" }),
-      f("timer", "Minuteur visuel", "Un minuteur visuel, pour voir le temps passer", { quand: "ime" }),
-      f("loupe", "Règle-loupe ou fenêtre de lecture", "Une règle-loupe, ou une fenêtre de lecture", { quand: "ime" }),
-      f("manipuler", "Petit objet à manipuler", "Un petit objet à manipuler, discret, pour se concentrer", { quand: "ime" }),
+      f("casque", "Casque anti-bruit", "Un casque anti-bruit"),
+      f("coussin", "Coussin d'assise dynamique", "Un coussin d'assise dynamique"),
+      f("timer", "Minuteur visuel", "Un minuteur visuel, pour voir le temps passer"),
+      f("loupe", "Règle-loupe ou fenêtre de lecture", "Une règle-loupe, ou une fenêtre de lecture"),
+      f("manipuler", "Petit objet à manipuler", "Un petit objet à manipuler, discret, pour se concentrer"),
     ] },
     { titre: "Papiers à ne pas oublier", options: [
       f("assurance", "Attestation d'assurance scolaire",
@@ -426,8 +425,7 @@ export const GROUPES: Record<SorteGarde, GroupeGarde[]> = {
       c("poids", "Penser au poids du cartable", "de tenir compte du poids du cartable"),
       c("adapte", "Proposer d'adapter le matériel si besoin",
         "qu'un matériel adapté est possible — crayon plus épais, ciseaux à ressort — et qu'il suffit d'en parler",
-        ligne("Si votre enfant a besoin d'un matériel particulier — un crayon plus épais, des ciseaux à ressort —, parlez-m'en : nous verrons ensemble."),
-        { quand: "ime" }),
+        ligne("Si votre enfant a besoin d'un matériel particulier — un crayon plus épais, des ciseaux à ressort —, parlez-m'en : nous verrons ensemble.")),
       c("difficulte", "Dire que l'on peut en parler si c'est difficile",
         "que l'on peut m'en parler si cette liste pose une difficulté",
         ligne("Si cette liste pose une difficulté, dites-le moi : nous trouverons une solution, discrètement.")),
@@ -443,20 +441,22 @@ export const GROUPES: Record<SorteGarde, GroupeGarde[]> = {
   ],
 };
 
-/** Les cases proposées pour ce document : l'IME n'achète pas la même chose. */
-export function groupesDe(sorte: SorteGarde, ime: boolean): GroupeGarde[] {
-  return GROUPES[sorte]
-    .map((g) => ({ ...g, options: g.options.filter((o) => !o.quand || (o.quand === "ime") === ime) }))
-    .filter((g) => g.options.length > 0);
+/**
+ * Les cases proposées pour ce document : toutes, quelle que soit la
+ * structure — le matériel de compensation comme la géométrie, chacun coche
+ * ce qui convient à sa classe.
+ */
+export function groupesDe(sorte: SorteGarde): GroupeGarde[] {
+  return GROUPES[sorte].filter((g) => g.options.length > 0);
 }
 
 /** Toutes les cases d'un document, groupes mis à plat. */
-export const optionsDe = (sorte: SorteGarde, ime: boolean): OptionGarde[] =>
-  groupesDe(sorte, ime).flatMap((g) => g.options);
+export const optionsDe = (sorte: SorteGarde): OptionGarde[] =>
+  groupesDe(sorte).flatMap((g) => g.options);
 
 /** Les cases cochées à l'ouverture : un document déjà correct, à ajuster. */
-export const choixParDefaut = (sorte: SorteGarde, ime: boolean): string[] =>
-  optionsDe(sorte, ime).filter((o) => o.dOffice).map((o) => o.id);
+export const choixParDefaut = (sorte: SorteGarde): string[] =>
+  optionsDe(sorte).filter((o) => o.dOffice).map((o) => o.id);
 
 /** Coche ou décoche une case. */
 export const basculer = (choix: string[], id: string): string[] =>
@@ -464,7 +464,7 @@ export const basculer = (choix: string[], id: string): string[] =>
 
 /** Les cases cochées, dans l'ordre où elles sont proposées — pas celui des clics. */
 export const cochees = (i: InfosGarde): OptionGarde[] =>
-  optionsDe(i.sorte, i.ime).filter((o) => i.choix.includes(o.id));
+  optionsDe(i.sorte).filter((o) => i.choix.includes(o.id));
 
 // ── Le document ───────────────────────────────────────────────────────────
 
@@ -591,7 +591,7 @@ export function consigneIA(i: InfosGarde): string {
     fournitures: "une liste de fournitures scolaires à acheter pour la rentrée, en une liste à puces précédée d'une phrase d'introduction",
   }[i.sorte];
   return [
-    `Tu aides un enseignant${i.ime ? " spécialisé, en unité d'enseignement d'un IME," : ""} à rédiger, en français, ${quoi}.`,
+    `Tu aides un enseignant${i.structure ? ` spécialisé, en ${i.structure},` : ""} à rédiger, en français, ${quoi}.`,
     "Ton bienveillant et simple, sans jargon, phrases courtes ; vouvoiement.",
     "Traite tout ce qui t'est demandé, et rien d'autre : ce qui n'est pas dans la demande n'a pas sa place dans le document.",
     "N'invente aucun fait : ni date, ni horaire, ni prix, ni numéro de téléphone, ni nom de personne ou d'établissement.",
@@ -611,7 +611,7 @@ const ATTENDU: Record<SorteGarde, string> = {
 export function demandeIA(i: InfosGarde): string {
   const lignes = [`Document : ${i.titre.trim() || SORTES.find((s) => s.id === i.sorte)!.titre}.`];
   if (i.niveau.trim()) lignes.push(`Niveau des élèves : ${i.niveau.trim()}.`);
-  if (i.ime) lignes.push("Contexte : unité d'enseignement d'un IME, élèves aux besoins très variés, beaucoup de manipulation.");
+  if (i.structure) lignes.push(`Contexte : ${i.structure}, élèves aux besoins très variés, beaucoup de manipulation.`);
   // Ce qui s'écrit ici — dates, citation, cadres — ne se demande pas au modèle.
   const choisies = cochees(i).filter((o) => !o.local);
   const aLister = choisies.filter((o) => o.puce);

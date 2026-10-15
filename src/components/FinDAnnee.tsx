@@ -64,9 +64,8 @@ function FenetreFinDAnnee({ fin, eleves, onClose }: { fin: Fin; eleves: Eleve[];
     if (typeof choix !== "string") return;
     setOccupe("export");
     try {
-      const ime = (await api.settingGet("typeStructure").catch(() => null)) === "ime";
       const dossiers: { id: string; html: string }[] = [];
-      for (const e of eleves) dossiers.push({ id: e.id, html: await dossierExporte(e, ime, fin.annee) });
+      for (const e of eleves) dossiers.push({ id: e.id, html: await dossierExporte(e, fin.annee) });
       setBilan(await api.elevesExporter(choix, fin.annee, dossiers));
     } catch (e) {
       setErreur(texteErreur(e));

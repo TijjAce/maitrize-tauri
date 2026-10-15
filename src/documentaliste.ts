@@ -18,6 +18,7 @@ import { pseudonymiserTout, restaurer } from "./confidentialite";
 import { nomsAMasquer } from "./nomsAMasquer";
 import { normaliser } from "./competencesTravaillees";
 import eduscol from "./data/eduscol.json";
+import { nomDeStructure, structureDe } from "./classe";
 
 /** Une compétence trouvée dans un référentiel, avec de quoi la citer. */
 export interface TrouvailleBO {
@@ -252,8 +253,8 @@ export async function contexteDeLaClasse(): Promise<string> {
   const r = await api.settingsAll().catch(() => ({} as Record<string, string>));
   const bouts = [
     r.niveauClasse && `La classe est de niveau ${r.niveauClasse}.`,
-    (r.typeStructure === "ime" || r["edt:mode"] === "ime")
-      && "L'enseignant exerce en ESMS (IME) : les pistes doivent convenir à des élèves en situation de handicap, avec des supports très concrets.",
+    nomDeStructure(structureDe(r))
+      && `L'enseignant exerce en ${nomDeStructure(structureDe(r))} : les pistes doivent convenir à des élèves à besoins éducatifs particuliers, avec des supports très concrets.`,
   ].filter(Boolean);
   return bouts.join(" ");
 }
