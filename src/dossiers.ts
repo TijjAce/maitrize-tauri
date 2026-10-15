@@ -51,6 +51,29 @@ export function renommerChemin(chemin: string, ancien: string, nouveau: string):
 }
 
 
+/**
+ * La poubelle du plan de travail : un dossier à la racine, où ce qu'on jette
+ * garde le chemin d'où il vient — « Français/Lecture » y devient
+ * « 🗑 Poubelle/Français/Lecture ». Il se remet donc en place tel quel, et un
+ * dossier jeté entier y retrouve ses sous-dossiers.
+ *
+ * Les listes et la recherche, côté Rust, écartent ce même nom (POUBELLE, dans
+ * commands.rs) : ce qu'on a jeté ne paraît nulle part ailleurs.
+ */
+export const POUBELLE = "🗑 Poubelle";
+
+/** Vrai pour la poubelle et pour tout ce qu'elle contient. */
+export const estALaPoubelle = (chemin: string): boolean => estDans(normaliser(chemin), POUBELLE);
+
+/** Où va dans la poubelle ce qui était rangé dans `chemin`. */
+export const versLaPoubelle = (chemin: string): string => normaliser(`${POUBELLE}${SEPARATEUR}${chemin}`);
+
+/** Où revient ce qui sort de la poubelle : là d'où il venait. */
+export function horsDeLaPoubelle(chemin: string): string {
+  const propre = normaliser(chemin);
+  return estALaPoubelle(propre) ? normaliser(propre.slice(POUBELLE.length)) : propre;
+}
+
 /** Un sous-dossier visible depuis un dossier courant. */
 export interface SousDossier {
   chemin: string;

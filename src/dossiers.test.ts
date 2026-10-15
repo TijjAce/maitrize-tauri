@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  POUBELLE, estALaPoubelle, versLaPoubelle, horsDeLaPoubelle,
   estDans, filDAriane, normaliser, parent, renommerChemin, sousDossiers,
   destinationDossier, reporterCouleurs, lireCouleurs, SANS_COULEUR, couleurDe, materielsDeCreationDeDossier,
 } from "./dossiers";
@@ -170,5 +171,31 @@ describe("dossiers des onglets rangés comme le bureau", () => {
 
   it("nomment la racine du fil d'Ariane", () => {
     expect(filDAriane("Maths/Nombres", "Jeux").map((x) => x.nom)).toEqual(["Jeux", "Maths", "Nombres"]);
+  });
+});
+
+describe("la poubelle", () => {
+  it("garde le chemin d'où vient ce qu'on y jette, et l'y renvoie", () => {
+    expect(versLaPoubelle("Français/Lecture")).toBe("🗑 Poubelle/Français/Lecture");
+    expect(versLaPoubelle("")).toBe(POUBELLE);
+    expect(horsDeLaPoubelle("🗑 Poubelle/Français/Lecture")).toBe("Français/Lecture");
+    expect(horsDeLaPoubelle(POUBELLE)).toBe("");
+    // Ce qui n'y est pas ne bouge pas.
+    expect(horsDeLaPoubelle("Français")).toBe("Français");
+  });
+  it("reconnaît la poubelle et ce qu'elle contient, pas un dossier au nom voisin", () => {
+    expect(estALaPoubelle(POUBELLE)).toBe(true);
+    expect(estALaPoubelle(" 🗑 Poubelle / Maths ")).toBe(true);
+    expect(estALaPoubelle("🗑 Poubelles de tri")).toBe(false);
+    expect(estALaPoubelle("Français")).toBe(false);
+    expect(estALaPoubelle("")).toBe(false);
+  });
+  it("paraît à la racine, même vide, et nulle part ailleurs", () => {
+    const elements = [{ id: "a", dossier: "Maths" }, { id: "b", dossier: "🗑 Poubelle/Maths/Calcul" }];
+    expect(Object.fromEntries(sousDossiers(elements, "", [POUBELLE]).map((d) => [d.nom, d.total]))).toEqual({ Maths: 1, [POUBELLE]: 1 });
+    expect(sousDossiers([], "", [POUBELLE]).map((d) => d.nom)).toEqual([POUBELLE]);
+    expect(sousDossiers(elements, "Maths", [POUBELLE])).toEqual([]);
+    // Dedans, les dossiers jetés retrouvent leur arbre.
+    expect(sousDossiers(elements, POUBELLE, [POUBELLE]).map((d) => d.chemin)).toEqual(["🗑 Poubelle/Maths"]);
   });
 });

@@ -7,7 +7,7 @@ import {
 } from "../api";
 import { Confirm, Demander, Modal, ColorPicker, useAsync } from "../components/ui";
 import { VignettePdf } from "../components/VignettePdf";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 import { openCtx } from "../components/ctxmenu";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { FormMateriel } from "../components/FormMateriel";
@@ -43,7 +43,7 @@ import { useFileDropZone, estPdf, estImage, estDocument, typeDocument, fichierEn
 import {
   sousDossiers, filDAriane, normaliser, parent, estDans, renommerChemin, SousDossier,
   destinationDossier, reporterCouleurs, lireCouleurs, PREFIXE_COULEUR, SANS_COULEUR, couleurDe,
-  materielsDeCreationDeDossier,
+  materielsDeCreationDeDossier, POUBELLE, estALaPoubelle, versLaPoubelle, horsDeLaPoubelle,
 } from "../dossiers";
 
 // ── Le bureau ──────────────────────────────────────────────────────────────
@@ -213,14 +213,15 @@ async function dupliquerSequence(seq: Sequence) {
 
 export default function PlanDeTravail() {
   const nav = useNavigate();
-  const { data: sequences, reload: rS } = useAsync(() => api.sequencesList(), []);
-  const { data: materiels, reload: rM } = useAsync(() => api.materielList(), []);
-  const { data: textes, reload: rT } = useAsync(() => api.textesList(), []);
-  const { data: ateliers, reload: rA } = useAsync(() => api.ateliersList(), []);
-  const { data: espaces, reload: rE } = useAsync(() => api.espacesList(), []);
+  // Le bureau seul voit aussi ce qu'on a jeté : il montre la poubelle.
+  const { data: sequences, reload: rS } = useAsync(() => api.sequencesList(true), []);
+  const { data: materiels, reload: rM } = useAsync(() => api.materielList(true), []);
+  const { data: textes, reload: rT } = useAsync(() => api.textesList(true), []);
+  const { data: ateliers, reload: rA } = useAsync(() => api.ateliersList(true), []);
+  const { data: espaces, reload: rE } = useAsync(() => api.espacesList(true), []);
   const { data: liens, reload: rL } = useAsync(() => api.atelierEspaceList(), []);
-  const { data: jeux, reload: rJ } = useAsync(() => api.jeuxList(), []);
-  const { data: outilsClasse, reload: rO } = useAsync(() => api.outilsClasseList(), []);
+  const { data: jeux, reload: rJ } = useAsync(() => api.jeuxList(true), []);
+  const { data: outilsClasse, reload: rO } = useAsync(() => api.outilsClasseList(true), []);
   // La copie de ce bureau dans un vrai dossier de l'ordinateur (voir CopieDuBureau).
   const { data: copie } = useAsync(() => api.copieBureauInfo(), []);
   const ouvrirCopie = () => {
@@ -425,7 +426,11 @@ export default function PlanDeTravail() {
     if (Date.now() > attente.jusqua) { enAttente.current = null; return; }
     if (designer(attente.demande)) enAttente.current = null;
   }, [elements, designer]);
-  const dossiers = filtre || etatFiltre ? [] : sousDossiers(elements, dossier, Object.keys(couleurs));
+  // Regarde-t-on la poubelle, ou l'un de ses dossiers ? Ses gestes ne sont pas ceux du bureau.
+  const dansLaPoubelle = estALaPoubelle(dossier);
+  const aLaPoubelle = elements.filter((e) => estALaPoubelle(e.dossier));
+  // La poubelle paraît toujours à la racine, même vide.
+  const dossiers = filtre || etatFiltre ? [] : sousDossiers(elements, dossier, [...Object.keys(couleurs), POUBELLE]);
   // Changer de dossier, chercher, filtrer : la sélection reste derrière.
   React.useEffect(() => { setSelection(new Set()); }, [dossier, filtre, etatFiltre]);
   // Une recherche regarde partout : sinon il faudrait deviner où se trouve ce
@@ -433,10 +438,11 @@ export default function PlanDeTravail() {
   // montre que des séquences, où qu'elles soient rangées, la plus active en tête.
   const correspond = (e: Element) => !filtre || e.titre.toLowerCase().includes(filtre) || texteCherche(e).toLowerCase().includes(filtre);
   const ici = etatFiltre
-    ? rangerParActivite(elements.filter((e) => dansLEtat(e, etatFiltre) && correspond(e)).map((e) => suivis.get(e.id)!))
+    ? rangerParActivite(elements.filter((e) => !estALaPoubelle(e.dossier) && dansLEtat(e, etatFiltre) && correspond(e)).map((e) => suivis.get(e.id)!))
       .map((s) => elements.find((e) => e.genre === "sequence" && e.id === s.sequence.id)!)
     : elements
-      .filter((e) => (filtre ? correspond(e) : normaliser(e.dossier) === dossier))
+      // Une recherche faite dans la poubelle n'y cherche qu'elle ; ailleurs, elle l'ignore.
+      .filter((e) => (filtre ? estALaPoubelle(e.dossier) === dansLaPoubelle && correspond(e) : normaliser(e.dossier) === dossier))
       .sort((a, b) => a.titre.localeCompare(b.titre, "fr"));
 
   // ── Disposition libre ──
@@ -472,7 +478,10 @@ export default function PlanDeTravail() {
     })),
     ...ici.map((e): Icone => ({ cle: cleElement(e), nom: e.titre, dossier: false, total: 0, rangDuGenre: ORDRE_DES_GENRES.indexOf(e.genre), date: dateDe(e) })),
   ];
-  const cles = filtre || etatFiltre ? icones.map((i) => i.cle) : ordonner(icones, modeIci);
+  const rangees = filtre || etatFiltre ? icones.map((i) => i.cle) : ordonner(icones, modeIci);
+  // La poubelle se range en dernier, au bout du bureau, tant qu'on ne l'a pas posée ailleurs.
+  const clePoubelle = `d:${POUBELLE}`;
+  const cles = rangees.includes(clePoubelle) ? [...rangees.filter((k) => k !== clePoubelle), clePoubelle] : rangees;
   const cleDisposition = cles.join("|");
   const disposition = React.useMemo(() => disposer(cles, dispositions[dossier] ?? {}, nbCols),
     [cleDisposition, dispositions, dossier, nbCols]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -553,6 +562,7 @@ export default function PlanDeTravail() {
   const deposerLien = async (texte: string) => {
     const v = lireLien(texte);
     if (!v) return false;
+    if (dansLaPoubelle) { toast("La poubelle ne reçoit que ce qu'on jette du bureau.", { icone: "⚠️" }); return true; }
     await api.materielSave({
       ...materielVierge(dossier),
       titre: v.youtubeId ? "Vidéo YouTube" : new URL(v.url).hostname.replace(/^www\./, ""),
@@ -571,6 +581,7 @@ export default function PlanDeTravail() {
    */
   const deposerFichiers = async (fichiers: File[], ou: { dans?: string; caseDepot?: Case | null } = {}) => {
     const cible = ou.dans ?? dossier;
+    if (estALaPoubelle(cible)) { toast("La poubelle ne reçoit que ce qu'on jette du bureau.", { icone: "⚠️" }); return; }
     const cles: string[] = [];
     for (const f of fichiers) {
       try {
@@ -643,12 +654,26 @@ export default function PlanDeTravail() {
 
   /** Ce qu'on lâche sur un dossier : un élément s'y range, un dossier y entre. */
   const deposerSur = (dt: DataTransfer, cible: string) => {
-    if (Array.from(dt.types).includes(TYPE_COMMUN)) { void recupererDuCommun(dt, cible); return; }
+    if (Array.from(dt.types).includes(TYPE_COMMUN)) {
+      if (estALaPoubelle(cible)) { toast("Ce qui vient du bureau commun ne va pas dans la poubelle.", { icone: "⚠️" }); return; }
+      void recupererDuCommun(dt, cible);
+      return;
+    }
     // Plusieurs éléments à la fois : ils entrent tous.
     const groupe = lireSelectionGlissee(dt);
+    const { element, dossier: d } = groupe ? {} : lireDepotInterne(dt);
+    // Lâché sur la poubelle : on jette, et chacun garde le chemin d'où il vient.
+    if (normaliser(cible) === POUBELLE && !dansLaPoubelle) {
+      const lesElements = groupe ? groupe.elements : element ? [element] : [];
+      const lesDossiers = groupe ? groupe.dossiers : d ? [d] : [];
+      void jeterAvecRetour({
+        elements: elements.filter((x) => lesElements.some((y) => y.genre === x.genre && y.id === x.id)),
+        dossiers: dossiers.filter((x) => lesDossiers.includes(x.chemin)),
+      });
+      return;
+    }
     if (groupe) { void rangerPlusieurs(groupe, cible); return; }
-    const { element, dossier: d } = lireDepotInterne(dt);
-    if (d) deplacerDossier(d, cible);
+    if (d) { if (d !== POUBELLE) deplacerDossier(d, cible); }
     else if (element) ranger(element, cible);
   };
 
@@ -856,6 +881,89 @@ export default function PlanDeTravail() {
     recharger();
   };
 
+  // ── La poubelle ──
+  /**
+   * Jette des éléments et des dossiers : ils vont à la poubelle, rangés comme
+   * ils l'étaient, et se remettent en place d'un geste. Un dossier vide n'a
+   * rien à garder : il s'efface.
+   */
+  const jeter = async (c: { elements: Element[]; dossiers: SousDossier[] }) => {
+    for (const e of c.elements) await enregistrerDossier(e, versLaPoubelle(normaliser(e.dossier)));
+    for (const d of c.dossiers) {
+      if (d.total) await deplacerDossierSeul(d.chemin, versLaPoubelle(parent(d.chemin)));
+      else await supprimerDossierSeul(d);
+    }
+  };
+  /** Remet en place ce qui est à la poubelle : là d'où il venait. */
+  const remettre = async (c: { elements: Element[]; dossiers: SousDossier[] }) => {
+    for (const e of c.elements) if (estALaPoubelle(e.dossier)) await enregistrerDossier(e, horsDeLaPoubelle(e.dossier));
+    for (const d of c.dossiers) await deplacerDossierSeul(d.chemin, horsDeLaPoubelle(parent(d.chemin)));
+  };
+  // « Annuler » arrive après le rechargement : il remet en place d'après ce que l'écran montre alors.
+  const remettreRef = React.useRef(remettre);
+  remettreRef.current = remettre;
+  /** Le nom de ce qu'on déplace, s'il n'y en a qu'un ; sinon combien. */
+  const designation = (c: { elements: Element[]; dossiers: SousDossier[] }) => {
+    const n = c.elements.length + c.dossiers.length;
+    return n === 1 ? `« ${c.elements[0]?.titre ?? c.dossiers[0]?.nom} »` : `${n} éléments`;
+  };
+  const jeterAvecRetour = async (c: { elements: Element[]; dossiers: SousDossier[] }) => {
+    if (!c.elements.length && !c.dossiers.length) return;
+    const jetes = c.elements.map(cleElement);
+    const dossiersJetes = c.dossiers.filter((d) => d.total).map((d) => versLaPoubelle(d.chemin));
+    try {
+      await jeter(c);
+    } catch (e) {
+      toast("Mise à la poubelle interrompue : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
+      return;
+    } finally {
+      setSelection(new Set());
+      recharger();
+    }
+    const seul = c.elements.length + c.dossiers.length === 1;
+    toastAnnulable(`${designation(c)} ${seul ? "est" : "sont"} dans la poubelle.`, async () => {
+      await remettreRef.current({
+        elements: elementsRef.current.filter((x) => jetes.includes(cleElement(x))),
+        dossiers: dossiersJetes.map((chemin) => ({ chemin, nom: chemin.slice(chemin.lastIndexOf("/") + 1), total: 1 })),
+      });
+      recharger();
+    });
+  };
+  const remettreEnPlace = async (c: { elements: Element[]; dossiers: SousDossier[] }) => {
+    try {
+      await remettre(c);
+      const seul = c.elements.length + c.dossiers.length === 1;
+      toast(`${designation(c)} ${seul ? "est remis" : "sont remis"} en place.`, { icone: "↩️" });
+    } catch (e) {
+      toast("Remise en place interrompue : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
+    } finally {
+      setSelection(new Set());
+      recharger();
+    }
+  };
+  /** Vide la poubelle : tout ce qu'elle contient s'efface pour de bon. */
+  const viderLaPoubelle = async () => {
+    const partants = elements.filter((e) => estALaPoubelle(e.dossier));
+    const n = partants.length;
+    if (!n || !(await confirmer(`Vider la poubelle ? ${n === 1 ? "L'élément qu'elle contient sera supprimé" : `Les ${n} éléments qu'elle contient seront supprimés`} définitivement`
+      + `${partants.some((e) => e.genre === "sequence") ? " — les séances et les pièces jointes des séquences avec eux" : ""}. Rien ne pourra être récupéré.`,
+      { oui: "Vider la poubelle", danger: true }))) return;
+    try {
+      for (const e of partants) await effacer(e);
+      // Les couleurs, les places et les rangements de ses dossiers partent avec eux.
+      const dedans = (chemins: string[]) => chemins.filter((c) => estALaPoubelle(c));
+      await ecrireCouleurs(Object.fromEntries(dedans(Object.keys(couleurs)).map((c) => [PREFIXE_COULEUR + c, ""])));
+      await ecrireDispositions(Object.fromEntries(dedans(Object.keys(dispositions)).map((c) => [PREFIXE_BUREAU + c, ""])));
+      await ecrireRangements(Object.fromEntries(dedans(Object.keys(rangements)).map((c) => [PREFIXE_RANGEMENT + c, ""])));
+      if (dansLaPoubelle) setDossier(POUBELLE);
+      toast(`La poubelle est vide : ${n} élément${n > 1 ? "s" : ""} supprimé${n > 1 ? "s" : ""}.`, { icone: "🗑" });
+    } catch (e) {
+      toast("La poubelle n'a pas pu être vidée : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
+    } finally {
+      recharger();
+    }
+  };
+
   const fil = filDAriane(dossier);
 
   // ── Plusieurs éléments à la fois ──
@@ -879,7 +987,7 @@ export default function PlanDeTravail() {
         await enregistrerDossier(e, cible);
         ranges++;
       }
-      for (const chemin of g.dossiers) if (await deplacerDossierSeul(chemin, cible)) ranges++;
+      for (const chemin of g.dossiers) if (chemin !== POUBELLE && await deplacerDossierSeul(chemin, cible)) ranges++;
     } catch (e) {
       toast("Rangement interrompu : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
     } finally {
@@ -889,14 +997,22 @@ export default function PlanDeTravail() {
     const s = ranges > 1 ? "s" : "";
     if (ranges) toast(cible ? `${ranges} élément${s} rangé${s} dans ${cible}` : `${ranges} élément${s} sorti${s} sur le bureau`, { icone: "📂" });
   };
-  /** ⌫ ou « Supprimer » : un élément ou un dossier seul garde sa question ; plusieurs, une question pour tous. */
-  const demanderSuppression = () => {
-    const c = choisisParmi(selection);
+  /**
+   * ⌫ ou « Supprimer » : hors de la poubelle, on jette, sans question — on
+   * peut annuler, ou reprendre dans la poubelle. Dans la poubelle, c'est pour
+   * de bon : un élément ou un dossier seul garde sa question ; plusieurs, une
+   * question pour tous.
+   */
+  const demanderSuppressionDe = (choix: { elements: Element[]; dossiers: SousDossier[] }) => {
+    const c = { elements: choix.elements, dossiers: choix.dossiers.filter((d) => d.chemin !== POUBELLE) };
     const total = c.elements.length + c.dossiers.length;
+    if (!total) return;
+    if (!dansLaPoubelle) { void jeterAvecRetour(c); return; }
     if (total === 1) {
       if (c.elements.length) setASupprimer(c.elements[0]); else setDossierASupprimer(c.dossiers[0]);
-    } else if (total > 1) setSelectionASupprimer(c);
+    } else setSelectionASupprimer(c);
   };
+  const demanderSuppression = () => demanderSuppressionDe(choisisParmi(selection));
   const supprimerSelection = async (c: { elements: Element[]; dossiers: SousDossier[] }) => {
     setSelectionASupprimer(null);
     const total = c.elements.length + c.dossiers.length;
@@ -917,6 +1033,11 @@ export default function PlanDeTravail() {
   const menuDuGroupe = (): CtxItem[] => {
     const c = choisisParmi(selection);
     const n = c.elements.length + c.dossiers.length;
+    if (dansLaPoubelle) return [
+      { label: `Remettre les ${n} éléments en place`, icon: "↩️", onClick: () => { void remettreEnPlace(c); } },
+      { label: "Ne plus rien choisir", icon: "✕", onClick: () => setSelection(new Set()) },
+      { label: `Supprimer définitivement les ${n} éléments…`, icon: "🗑", danger: true, sep: true, onClick: demanderSuppression },
+    ];
     return [
       { label: `Ranger les ${n} éléments dans…`, icon: "📂", onClick: () => setDemande({
         titre: `Ranger ${n} éléments`, label: "Chemin du dossier", valeur: dossier, placeholder: "Français/Lecture",
@@ -924,7 +1045,7 @@ export default function PlanDeTravail() {
       }) },
       ...(dossier ? [{ label: "Les sortir d'un cran", icon: "📤", onClick: () => { void rangerPlusieurs(pourGlisser(c), parent(dossier)); } }] : []),
       { label: "Ne plus rien choisir", icon: "✕", onClick: () => setSelection(new Set()) },
-      { label: `Supprimer les ${n} éléments…`, icon: "🗑", danger: true, sep: true, onClick: demanderSuppression },
+      { label: `Mettre les ${n} éléments à la poubelle`, icon: "🗑", danger: true, sep: true, onClick: demanderSuppression },
     ];
   };
 
@@ -1021,7 +1142,8 @@ export default function PlanDeTravail() {
         valeur: e.dossier, placeholder: "Français/Lecture",
         sur: (c) => ranger(e, c),
       })}
-      onSupprimer={() => setASupprimer(e)}
+      onSupprimer={() => demanderSuppressionDe({ elements: [e], dossiers: [] })}
+      jete={estALaPoubelle(e.dossier) ? { remettre: () => { void remettreEnPlace({ elements: [e], dossiers: [] }); } } : undefined}
       onDuplique={recharger}
       onGlisser={(ev) => commencerGlisser(cleElement(e), ev)} onFinGlisser={finirGlisser} />
   );
@@ -1029,7 +1151,7 @@ export default function PlanDeTravail() {
   return (
     <Page titre="Plan de travail" sous="Votre bureau : séquences, matériel, documents, ateliers, jeux, outils, affichages, évaluations"
       actions={<MenuDuBureau recherche={q} onRecherche={setQ} etat={etatFiltre} onEtat={setEtatFiltre}
-        compte={(etat) => elements.filter((x) => dansLEtat(x, etat)).length}
+        compte={(etat) => elements.filter((x) => !estALaPoubelle(x.dossier) && dansLEtat(x, etat)).length}
         rangement={dispositions[dossier] ? null : modeIci} peutRanger={!filtre && !etatFiltre} onRanger={(m) => { void rangerPar(m); }}
         scinde={scinde} onScinde={setScinde} copie={copie?.active ? copie : null} onCopie={ouvrirCopie} />}>
 
@@ -1056,6 +1178,9 @@ export default function PlanDeTravail() {
             </React.Fragment>
           ))}
         </div>
+        {dansLaPoubelle && aLaPoubelle.length > 0 && (
+          <button className="btn danger sm" onClick={() => { void viderLaPoubelle(); }}>🗑 Vider la poubelle</button>
+        )}
       </div>
 
       {/* Ce que le menu du bureau montre en ce moment : une recherche, ou les séquences d'un état. */}
@@ -1127,6 +1252,12 @@ export default function PlanDeTravail() {
         onContextMenu={(e) => {
           // Sur une tuile, c'est son propre menu qui s'ouvre.
           if ((e.target as HTMLElement).closest("[draggable]")) return;
+          // Dans la poubelle, on ne crée rien : on la vide.
+          if (dansLaPoubelle) {
+            if (aLaPoubelle.length) openCtx(e, [{ label: "Vider la poubelle…", icon: "🗑", danger: true, onClick: () => { void viderLaPoubelle(); } }]);
+            else e.preventDefault();
+            return;
+          }
           // Ce qu'on crée d'un clic droit apparaît à l'endroit du clic.
           const caseClic = filtre || !surfaceEl.current ? null : caseSous(e.clientX, e.clientY);
           const avecCase = (f: () => void) => () => { caseCreation.current = caseClic; f(); };
@@ -1164,13 +1295,19 @@ export default function PlanDeTravail() {
           transition: "background .15s",
         }}>
 
-        {!dossiers.length && !ici.length ? (
+        {!dossiers.some((d) => d.chemin !== POUBELLE) && !ici.length ? (
           <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-2)" }}>
-            <div style={{ fontSize: 44, marginBottom: 10 }}>{filtre ? "🔍" : "🖥"}</div>
+            <div style={{ fontSize: 44, marginBottom: 10 }}>{filtre ? "🔍" : dansLaPoubelle ? "🗑" : "🖥"}</div>
             <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text)" }}>
-              {filtre ? "Rien trouvé" : dossier ? "Dossier vide" : "Bureau vide"}
+              {filtre ? "Rien trouvé" : dossier === POUBELLE ? "La poubelle est vide" : dossier ? "Dossier vide" : "Bureau vide"}
             </div>
-            {!filtre && (
+            {/* Un bureau vide garde l'accès à sa poubelle : on y a peut-être jeté ce qu'on cherche. */}
+            {!dossier && !filtre && aLaPoubelle.length > 0 && (
+              <button className="btn sm" style={{ marginTop: 10 }} onClick={() => setDossier(POUBELLE)}>
+                🗑 Ouvrir la poubelle ({aLaPoubelle.length})
+              </button>
+            )}
+            {!filtre && !dansLaPoubelle && (
               <div style={{ fontSize: 13, marginTop: 6 }}>
                 Déposez ici un lien YouTube, un PDF, un document Word, Excel ou LibreOffice, une image.<br />
                 Clic droit pour créer un dossier, un texte, une séquence, ou importer des fichiers.
@@ -1204,9 +1341,11 @@ export default function PlanDeTravail() {
                       onDepose={(dt) => deposerSur(dt, d.chemin)}
                       onColorer={() => setAColorer(d)}
                       onRenommer={() => renommerDossier(d)}
-                      onVider={() => setDossierASupprimer(d)}
+                      onVider={() => demanderSuppressionDe({ elements: [], dossiers: [d] })}
                       onSortir={d.total ? () => { void viderDossier(d); } : undefined}
-                      partages={deposesPossibles(d)}
+                      partages={dansLaPoubelle ? [] : deposesPossibles(d)}
+                      laPoubelle={d.chemin === POUBELLE ? { vider: aLaPoubelle.length ? () => { void viderLaPoubelle(); } : undefined } : undefined}
+                      jete={dansLaPoubelle ? { remettre: () => { void remettreEnPlace({ elements: [], dossiers: [d] }); } } : undefined}
                       onGlisser={(e) => commencerGlisser(cleDossier(d), e)} onFinGlisser={finirGlisser}
                       estSaisi={() => Boolean(glisse.current?.groupe.includes(cleDossier(d)))} />
                   </div>
@@ -1265,7 +1404,7 @@ export default function PlanDeTravail() {
         <EditeurTexte texte={texteOuvert} onClose={() => { setTexteOuvert(null); recharger(); }} />
       )}
       {editA && <AtelierForm a={editA} onClose={() => setEditA(null)} onSaved={() => { setEditA(null); recharger(); }} />}
-      {editE && <EspaceForm e={editE} ateliers={ateliers ?? []} liens={liens ?? []}
+      {editE && <EspaceForm e={editE} ateliers={(ateliers ?? []).filter((a) => !estALaPoubelle(a.dossier))} liens={liens ?? []}
         onClose={() => setEditE(null)} onSaved={() => { setEditE(null); recharger(); rL(); }} />}
       {suivi && <SuiviEspace espace={suivi} onClose={() => setSuivi(null)} />}
       {editJ && <JeuForm j={editJ} onClose={() => setEditJ(null)} onSaved={() => { setEditJ(null); recharger(); }} />}
@@ -1280,7 +1419,7 @@ export default function PlanDeTravail() {
           onSaved={() => { setMaterielOuvert(null); recharger(); }} />
       )}
       {aSupprimer && (
-        <Confirm message={`Supprimer « ${aSupprimer.titre} » ?`}
+        <Confirm message={`Supprimer définitivement « ${aSupprimer.titre} » ? Rien ne pourra être récupéré.`}
           onYes={() => supprimer(aSupprimer)} onClose={() => setASupprimer(null)} />
       )}
       {selectionASupprimer && (
@@ -1294,7 +1433,7 @@ export default function PlanDeTravail() {
       {dossierASupprimer && (
         <Confirm
           message={dossierASupprimer.total
-            ? `Supprimer « ${dossierASupprimer.nom} » et les ${dossierASupprimer.total} élément${dossierASupprimer.total > 1 ? "s" : ""} qu'il contient, sous-dossiers compris ? Les séances et les pièces jointes des séquences partent avec elles. Rien ne pourra être récupéré.`
+            ? `Supprimer définitivement « ${dossierASupprimer.nom} » et les ${dossierASupprimer.total} élément${dossierASupprimer.total > 1 ? "s" : ""} qu'il contient, sous-dossiers compris ? Les séances et les pièces jointes des séquences partent avec elles. Rien ne pourra être récupéré.`
             : `Supprimer le dossier vide « ${dossierASupprimer.nom} » ?`}
           onYes={() => supprimerDossier(dossierASupprimer)}
           onClose={() => setDossierASupprimer(null)} />
@@ -1311,7 +1450,7 @@ function questionDeSuppression(c: { elements: Element[]; dossiers: SousDossier[]
   const contenu = dedans === 1 ? ` avec l'élément ${contiennent}` : dedans > 1 ? ` avec les ${dedans} éléments ${contiennent}, sous-dossiers compris` : "";
   const parties = [n ? `${n} élément${n > 1 ? "s" : ""}` : "", nd ? `${nd} dossier${nd > 1 ? "s" : ""}${contenu}` : ""].filter(Boolean).join(" et ");
   const sequences = dedans > 0 || c.elements.some((e) => e.genre === "sequence");
-  return `Supprimer ${parties} ?${sequences ? " Les séances et les pièces jointes des séquences partent avec elles." : ""} Rien ne pourra être récupéré.`;
+  return `Supprimer définitivement ${parties} ?${sequences ? " Les séances et les pièces jointes des séquences partent avec elles." : ""} Rien ne pourra être récupéré.`;
 }
 
 /** Ce qu'une tuile du bureau sait de la sélection. */
@@ -1330,7 +1469,7 @@ interface ChoixDeTuile {
 /** Un dossier posé sur le bureau : on y entre, on y dépose. */
 function TuileDossier({
   dossier, survole, couleur, onOuvrir, onSurvol, onDepose, onColorer, onRenommer, onVider, onSortir, partages = [], onGlisser, onFinGlisser, estSaisi,
-  cle, choisie, onPresse, onClic, menuGroupe, onSeule,
+  laPoubelle, jete, cle, choisie, onPresse, onClic, menuGroupe, onSeule,
 }: ChoixDeTuile & {
   dossier: SousDossier; survole: boolean; couleur: string; onOuvrir: () => void;
   onSurvol: (c: string | null) => void; onDepose: (dt: DataTransfer) => void;
@@ -1342,7 +1481,30 @@ function TuileDossier({
   onGlisser?: (e: React.DragEvent<HTMLElement>) => void; onFinGlisser?: () => void;
   /** Vrai quand c'est ce dossier même qu'on déplace : il ne se reçoit pas, il se pose ailleurs. */
   estSaisi?: () => boolean;
+  /** La poubelle elle-même : on l'ouvre, on la vide, on y jette. */
+  laPoubelle?: { vider?: () => void };
+  /** Un dossier jeté : il se remet en place, ou part pour de bon. */
+  jete?: { remettre: () => void };
 }) {
+  const menu: CtxItem[] = laPoubelle
+    ? [
+      { label: "Ouvrir", icon: "📂", onClick: onOuvrir },
+      ...(laPoubelle.vider ? [{ label: "Vider la poubelle…", icon: "🗑", danger: true, sep: true, onClick: laPoubelle.vider }] : []),
+    ]
+    : jete
+      ? [
+        { label: "Ouvrir", icon: "📂", onClick: onOuvrir },
+        { label: "Remettre en place", icon: "↩️", onClick: jete.remettre },
+        { label: "Supprimer définitivement…", icon: "🗑", danger: true, sep: true, onClick: onVider },
+      ]
+      : [
+        { label: "Ouvrir", icon: "📂", onClick: onOuvrir },
+        { label: "Renommer", icon: "✏️", onClick: onRenommer },
+        { label: "Couleur…", icon: "🎨", onClick: onColorer },
+        ...partages.map((p, i) => ({ ...p, sep: i === 0 })),
+        ...(onSortir ? [{ label: "Sortir le contenu, garder les éléments", icon: "📤", sep: true, onClick: onSortir }] : []),
+        { label: "Mettre à la poubelle", icon: "🗑", danger: true, sep: !onSortir, onClick: onVider },
+      ];
   return (
     <div draggable data-chemin={dossier.chemin} data-cle={cle} className={`tuile-bureau${choisie ? " choisie" : ""}`}
       onMouseDown={onPresse} onClick={onClic}
@@ -1364,25 +1526,20 @@ function TuileDossier({
       onContextMenu={(e) => {
         if (menuGroupe) { openCtx(e, menuGroupe()); return; }
         onSeule();
-        openCtx(e, [
-          { label: "Ouvrir", icon: "📂", onClick: onOuvrir },
-          { label: "Renommer", icon: "✏️", onClick: onRenommer },
-          { label: "Couleur…", icon: "🎨", onClick: onColorer },
-          ...partages.map((p, i) => ({ ...p, sep: i === 0 })),
-          ...(onSortir ? [{ label: "Sortir le contenu, garder les éléments", icon: "📤", sep: true, onClick: onSortir }] : []),
-          { label: "Supprimer le dossier et son contenu", icon: "🗑", danger: true, sep: !onSortir, onClick: onVider },
-        ]);
+        openCtx(e, menu);
       }}
-      title={`${dossier.nom} — ${dossier.total} élément(s)`}
+      title={laPoubelle ? `Poubelle — ${dossier.total ? `${dossier.total} élément(s)` : "vide"}` : `${dossier.nom} — ${dossier.total} élément(s)`}
       style={{ cursor: "pointer", textAlign: "center", padding: 8, borderRadius: 10, transition: "background .12s",
         ...(survole ? { background: "var(--accent)", color: "#fff" } : {}) }}>
-      <IconeDossier couleur={couleur} ouvert={survole} />
+      {laPoubelle
+        ? <div aria-hidden="true" style={{ height: 62, fontSize: 50, lineHeight: "62px", opacity: dossier.total ? 1 : 0.55 }}>🗑️</div>
+        : <IconeDossier couleur={couleur} ouvert={survole} />}
       <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 4, overflow: "hidden",
         display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-        {dossier.nom}
+        {laPoubelle ? "Poubelle" : dossier.nom}
       </div>
       <div style={{ fontSize: 10.5, color: survole ? "#fff" : "var(--text-2)" }}>
-        {dossier.total} élément{dossier.total > 1 ? "s" : ""}
+        {laPoubelle && !dossier.total ? "vide" : `${dossier.total} élément${dossier.total > 1 ? "s" : ""}`}
       </div>
     </div>
   );
@@ -1425,7 +1582,7 @@ const EMOJI_FICHE: Record<OutilClasse["genre"], string> = { outil: "📏", affic
 const emojiDe = (e: Element) => (e.genre === "outil" ? EMOJI_FICHE[e.outil.genre] : EMOJI[e.genre]);
 
 function TuileElement({
-  element, actions = [], onOuvrir, onModifier, onRanger, onSupprimer, onDuplique, onGlisser, onFinGlisser, designe = false, suivi,
+  element, actions = [], onOuvrir, onModifier, onRanger, onSupprimer, onDuplique, onGlisser, onFinGlisser, designe = false, suivi, jete,
   cle, choisie, onPresse, onClic, menuGroupe, onSeule,
 }: ChoixDeTuile & {
   element: Element; onOuvrir: () => void; onRanger: () => void;
@@ -1439,6 +1596,8 @@ function TuileElement({
   onModifier?: () => void;
   onSupprimer: () => void; onDuplique: () => void;
   onGlisser?: (e: React.DragEvent<HTMLElement>) => void; onFinGlisser?: () => void;
+  /** Un élément jeté : il se remet en place, ou part pour de bon. */
+  jete?: { remettre: () => void };
 }) {
   const seq = element.genre === "sequence" ? element.seq : null;
   const fiche = ficheDe(element);
@@ -1458,14 +1617,18 @@ function TuileElement({
       onContextMenu={(e) => {
         if (menuGroupe) { openCtx(e, menuGroupe()); return; }
         onSeule();
-        openCtx(e, [
+        openCtx(e, jete ? [
+          { label: "Ouvrir", icon: "↗", onClick: onOuvrir },
+          { label: "Remettre en place", icon: "↩️", onClick: jete.remettre },
+          { label: "Supprimer définitivement…", icon: "🗑", danger: true, sep: true, onClick: onSupprimer },
+        ] : [
           { label: "Ouvrir", icon: "↗", onClick: onOuvrir },
           ...(onModifier ? [{ label: "Modifier…", icon: "✏️", onClick: onModifier }] : []),
           ...(element.genre === "sequence" ? [{ label: "Dupliquer", icon: "📑",
             onClick: () => dupliquerSequence(element.seq).then(onDuplique) }] : []),
           ...actions,
           { label: "Ranger dans…", icon: "📂", onClick: onRanger },
-          { label: "Supprimer", icon: "🗑", danger: true, sep: true, onClick: onSupprimer },
+          { label: "Mettre à la poubelle", icon: "🗑", danger: true, sep: true, onClick: onSupprimer },
         ]);
       }}
       title={element.titre}
