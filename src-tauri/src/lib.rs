@@ -148,7 +148,7 @@ pub fn run() {
             // Vacances scolaires
             vacances_scolaires,
             // IA Mistral
-            ai::mistral_chat, ai::mistral_test, ai::mistral_chat_stream, ai::mistral_chat_arreter, ai::transcrire_audio,
+            ai::mistral_chat, ai::mistral_test, ai::mistral_chat_stream, ai::mistral_chat_arreter, ai::transcrire_audio, ai::voix_lire,
             ai::mistral_modeles_disponibles, ai::mistral_vision, ai::mistral_recherche_web, ai::mistral_jetons,
             ai::mistral_dessiner_picto,
             // Un manuel photographié, en PDF ; et un fichier recopié où l'on veut.

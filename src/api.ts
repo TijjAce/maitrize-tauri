@@ -737,6 +737,8 @@ export const api = {
    * seconde écoute quand un mot leur ressemble — pas pour une réunion, qui
    * doit suivre la parole.
    */
+  /** Une phrase de consigne lue à voix haute (Mistral), en mp3 base64 ; gardée sur le disque, elle ne se refait pas. */
+  voixLire: (texte: string) => invoke<string>("voix_lire", { texte }),
   transcrireLocal: (audioB64: string, modele: string, avecLesNoms = false) =>
     pendant(invoke<string>("transcrire_local", { audioB64, modele, avecLesNoms }), "de l'enregistrement"),
   /** Où transcrire un usage, et avec quel modèle ; une erreur s'il veut un modèle absent. */

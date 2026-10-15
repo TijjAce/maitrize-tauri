@@ -278,8 +278,9 @@ export async function pageDeLAide(m: MaterielItem): Promise<string | null> {
     const titre = titrePourLesTablettes(m);
     const pictos = await consignesEnPictos(structurerConsignesHtml(pageDeLaConsigne(titre, f.consigne ?? "")));
     const page = documentImprimable(titre, pictos.corps, STYLE_FEUILLE + STYLE_CONSIGNES_STRUCTUREES + pictos.style + STYLE_CONSIGNE_TABLETTE);
-    dessinees.set(cle, page);
-    return page;
+    const lue = await avecSaVoix(page);
+    dessinees.set(cle, lue);
+    return lue;
   }
   const a = await import("./aidesALaTache");
   const { sequentielImprimable, priseDeParoleImprimable } = await import("./aidesDesSequences");
@@ -311,8 +312,19 @@ export async function pageDeLAide(m: MaterielItem): Promise<string | null> {
   }
   const { sansReferences } = await import("./references");
   const page = documentImprimable(m.titre, sansReferences(structurerConsignesHtml(rendu.html)), STYLE_FEUILLE + rendu.style + STYLE_CONSIGNES_STRUCTUREES);
-  dessinees.set(cle, page);
-  return page;
+  const lue = await avecSaVoix(page);
+  dessinees.set(cle, lue);
+  return lue;
+}
+
+/**
+ * La page, chacune de ses étapes avec son haut-parleur : sur la tablette,
+ * l'élève l'entend (voir voixDesConsignes.ts). L'audio se prépare une fois par
+ * phrase ; sans clé ni réseau, la tablette lit de sa propre voix.
+ */
+async function avecSaVoix(page: string): Promise<string> {
+  const [{ avecLaVoix }, { api }] = await Promise.all([import("./voixDesConsignes"), import("./api")]);
+  return avecLaVoix(page, (texte) => api.voixLire(texte));
 }
 
 // ── Le déroulement d'un créneau ────────────────────────────────────────────
@@ -389,8 +401,9 @@ export async function pageDuDeroulement(etapes: PasDuDeroulement[]): Promise<str
   }).join("");
   const page = documentImprimable(TITRE_DU_DEROULEMENT,
     `<div class="page"><div class="titre">${TITRE_DU_DEROULEMENT}</div><div class="dr">${cadres}</div></div>`, STYLE_DU_DEROULEMENT);
-  deroulementsDessines.set(cle, page);
-  return page;
+  const lue = await avecSaVoix(page);
+  deroulementsDessines.set(cle, lue);
+  return lue;
 }
 
 // ── Publier ────────────────────────────────────────────────────────────────

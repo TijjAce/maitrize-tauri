@@ -628,7 +628,9 @@ pub const PAGE_TABLETTE: &str = r##"<!doctype html>
 </body></html>"##;
 
 /// Ce que la page d'une aide reçoit en plus sur la tablette : toucher une étape la coche,
-/// et la case de « J'ai réussi si » se coche avec elle.
+/// et la case de « J'ai réussi si » se coche avec elle. Le haut-parleur d'une étape la lit à
+/// voix haute — l'audio que l'ordinateur a préparé, sinon la voix de la tablette —, et
+/// « Écouter » lit toute la consigne.
 pub const COCHER: &str = r#"<style>
   .sv-s-etape, .at-etape, .cs-etape, .at-case { cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .sv-s-etape.fait, .at-etape.fait, .cs-etape.fait { background: #dcfce7 !important; }
@@ -636,9 +638,75 @@ pub const COCHER: &str = r#"<style>
   .at-case.fait::after { content: "✓"; position: absolute; inset: 0; color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; }
   .sv-s-etape.fait .sv-s-numero, .at-etape.fait .at-num { background: #16a34a !important; }
   .sv-s-etape.en-cours, .at-etape.en-cours, .cs-etape.en-cours { outline: 4px solid #f59e0b; outline-offset: 2px; background: #fffbeb !important; }
+  .voix-tout { position: fixed; right: 2.4vmin; bottom: 2.4vmin; z-index: 9; display: flex; align-items: center; gap: 1.4vmin;
+    padding: 1.6vmin 3.2vmin 1.6vmin 2.4vmin; border: .5vmin solid #bfdbfe; border-radius: 99px; background: #eff6ff; color: #1d4ed8;
+    font: 700 3.6vmin -apple-system, system-ui, sans-serif; box-shadow: 0 1vmin 3vmin rgba(0,0,0,.15); cursor: pointer;
+    -webkit-tap-highlight-color: transparent; }
+  .voix-tout::before { content: ""; width: 4.6vmin; height: 4.6vmin; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231d4ed8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9.5h3.5L12 5.5v13l-4.5-4H4z' fill='%231d4ed8'/%3E%3Cpath d='M15.5 8.8a4.6 4.6 0 0 1 0 6.4M18.2 6.2a8.2 8.2 0 0 1 0 11.6'/%3E%3C/svg%3E") center / contain no-repeat; }
+  .voix-tout.en-lecture, .voix.en-lecture { background-color: #fde68a; border-color: #f59e0b; }
   .cs-critere.fait .cs-marque-critere { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect x='2.2' y='2.2' width='15.6' height='15.6' rx='2.4' fill='%23166534' stroke='%23166534' stroke-width='2.2'/%3E%3Cpath d='M5.6 10.4l3 3 5.8-6.6' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important; }
 </style>
 <script>
+  (function () {
+    // Un seul lecteur pour toute la page : l'iPad le laisse jouer d'une phrase à la suivante.
+    var lecteur = new Audio(), tour = 0;
+    function arreter() {
+      tour++; lecteur.onended = lecteur.onerror = null; lecteur.pause();
+      try { speechSynthesis.cancel(); } catch (e) {}
+      [].forEach.call(document.querySelectorAll(".en-lecture"), function (x) { x.classList.remove("en-lecture"); });
+    }
+    function voixFrancaise() {
+      try {
+        var v = speechSynthesis.getVoices().filter(function (x) { return /^fr/i.test(x.lang); });
+        return v.filter(function (x) { return /premium|enhanced|amélie|audrey|aurélie|thomas/i.test(x.name); })[0] || v[0] || null;
+      } catch (e) { return null; }
+    }
+    function dire(b, suite) {
+      var t = tour;
+      b.classList.add("en-lecture");
+      var fini = function () { if (t !== tour) return; b.classList.remove("en-lecture"); if (suite) suite(); };
+      var parler = function () {
+        try {
+          var u = new SpeechSynthesisUtterance(b.getAttribute("data-lire") || "");
+          u.lang = "fr-FR"; u.rate = 0.9;
+          var v = voixFrancaise(); if (v) u.voice = v;
+          u.onend = fini; u.onerror = fini;
+          speechSynthesis.speak(u);
+        } catch (e) { fini(); }
+      };
+      var audio = b.getAttribute("data-audio");
+      if (!audio) return parler();
+      lecteur.onended = fini;
+      lecteur.onerror = function () { if (t === tour) parler(); };
+      lecteur.src = audio;
+      var p = lecteur.play();
+      if (p && p.catch) p.catch(function () { if (t === tour) parler(); });
+    }
+    function toutLire(bouton) {
+      var liste = [].slice.call(document.querySelectorAll(".voix")), t = tour;
+      bouton.classList.add("en-lecture");
+      (function suivante() {
+        if (t !== tour) return;
+        var b = liste.shift();
+        if (b) dire(b, suivante); else bouton.classList.remove("en-lecture");
+      })();
+    }
+    if (document.querySelector(".voix")) {
+      var tout = document.createElement("button");
+      tout.type = "button"; tout.className = "voix-tout"; tout.textContent = "Écouter";
+      document.body.appendChild(tout);
+    }
+    // Avant le geste qui coche : le haut-parleur lit, il ne coche pas l'étape.
+    document.addEventListener("click", function (e) {
+      var b = e.target.closest(".voix, .voix-tout");
+      if (!b) return;
+      e.stopImmediatePropagation();
+      var enLecture = b.classList.contains("en-lecture");
+      arreter();
+      if (enLecture) return;
+      if (b.classList.contains("voix-tout")) toutLire(b); else dire(b);
+    }, true);
+  })();
   document.addEventListener("click", function (e) {
     var ligne = e.target.closest(".at-etape, .sv-s-etape, .cs-etape");
     if (ligne) {
@@ -1096,6 +1164,15 @@ mod tests {
         assert!(p.contains("classList.toggle(\"fait\", fait)"));
         assert!(p.ends_with("</body></html>"));
         assert!(page_pour_tablette("<p>sans corps</p>").contains("classList.toggle"));
+    }
+
+    #[test]
+    fn la_page_d_une_aide_sait_lire_ses_etapes_a_voix_haute() {
+        let p = page_pour_tablette("<html><body><li class=\"cs-etape\">Je colorie.<button class=\"voix\" data-lire=\"Je colorie.\"></button></li></body></html>");
+        // Le haut-parleur passe avant le geste qui coche, et la voix de la tablette prend le relais d'un audio absent.
+        assert!(p.contains("closest(\".voix, .voix-tout\")") && p.contains("stopImmediatePropagation"));
+        assert!(p.contains("speechSynthesis.speak") && p.contains("lecteur.play()"));
+        assert!(p.contains("\"Écouter\""));
     }
 
     #[test]
