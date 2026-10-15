@@ -1,0 +1,10 @@
+[package]
+name = "maitrize-relais-apple"
+version = "0.1.0"
+description = "Le chiffrement du relais sur l'iPhone : CryptoKit, la bibliothèque d'Apple"
+license = "AGPL-3.0-or-later"
+edition = "2021"
+
+[build-dependencies]
+# Ce qui compile le paquet Swift et le lie : le même outil que les greffons de Tauri.
+swift-rs = { version = "1.0.9", features = ["build"] }

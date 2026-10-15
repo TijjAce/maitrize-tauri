@@ -29,12 +29,9 @@ serde_json = "1"
 base64 = "0.22"
 uuid = { version = "1", features = ["v4"] }
 chrono = "0.4"
-# L'envoi part de Rust et non de la page : les règles réseau d'iOS
-# (App Transport Security) ne s'appliquent pas aux sockets, ce qui évite
-# d'avoir à déclarer une exception pour parler en clair au Mac du WiFi.
-reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
 # Le relais de Nuage : le format et le chiffrement des dépôts, communs au
-# dictaphone et à l'application de bureau. Du Rust pur, sans rien du système.
+# dictaphone et à l'application de bureau. Sur l'iPhone, le chiffrement est
+# celui d'Apple (CryptoKit) ; ailleurs, du Rust.
 maitrize-relais = { path = "../../relais" }
 tokio = { version = "1", features = ["rt-multi-thread", "time"] }
 tauri-plugin-dialog = "2.7.3"
@@ -49,3 +46,14 @@ libc = "0.2.190"
 # application, et jamais copié dans une sauvegarde.
 [target.'cfg(target_vendor = "apple")'.dependencies]
 security-framework = "3"
+
+# L'envoi part de Rust et non de la page : les règles réseau d'iOS
+# (App Transport Security) ne s'appliquent pas aux sockets, ce qui évite
+# d'avoir à déclarer une exception pour parler en clair au Mac du WiFi.
+# Le HTTPS de l'iPhone est celui du système, comme son chiffrement (voir
+# relais/Cargo.toml) ; rustls ne sert qu'aux essais, sur l'ordinateur.
+[target.'cfg(target_os = "ios")'.dependencies]
+reqwest = { version = "0.12", features = ["native-tls"], default-features = false }
+
+[target.'cfg(not(target_os = "ios"))'.dependencies]
+reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }

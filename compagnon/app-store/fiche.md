@@ -72,13 +72,16 @@ ses partenaires d'y accéder. Ici :
 
 ## Conformité à l'export (chiffrement)
 
-Le relais chiffre avec des algorithmes standard (X25519, ChaCha20-Poly1305,
-HKDF-SHA256) et parle en TLS par rustls : ce n'est pas le chiffrement
-d'iOS. Réponse à App Store Connect : « algorithmes de chiffrement standard,
-au lieu ou en plus de ceux d'iOS ». Pour la France, Apple demande alors la
-déclaration française : la fourniture d'un moyen de cryptologie qui assure
-la confidentialité se déclare à l'ANSSI (décret 2007-663, art. 3 et 4), en
-ligne sur demarches.numeriques.
+Sur l'iPhone, le compagnon ne chiffre qu'avec Apple :
+- CryptoKit scelle les dépôts et ouvre le retour (X25519, HKDF-SHA-256, ChaCha20-Poly1305 : voir `relais/apple`) ;
+- le TLS du système (Security) parle à Nuage ;
+- le binaire ne contient aucun algorithme de chiffrement à lui (`cargo tree --target aarch64-apple-ios` ; `nm`).
+
+Réponses dans App Store Connect :
+- « Votre app utilise-t-elle le chiffrement ? » : oui.
+- « Quel type d'algorithmes ? » : aucun de ceux de la liste, c'est-à-dire seulement le chiffrement du système d'Apple.
+
+Aucun document n'est alors demandé, pas même la déclaration française.
 
 ## Informations pour la vérification (App Review)
 
