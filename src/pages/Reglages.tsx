@@ -28,12 +28,14 @@ import { FenetreCouleurs, LegendeTla, garderPaletteParDefaut, usePaletteParDefau
 
 const ONGLETS = [
   ["general", "Général"],
+  ["apparence", "Apparence"],
   ["personnalisation", "Personnalisation"],
   ["ia", "Assistant IA"],
   ["donnees", "Données & synchro"],
   ["partage", "Téléphone"],
   ["retard", "En retard"],
   ["amis", "Amis"],
+  ["licences", "Licences"],
 ] as const;
 type Onglet = typeof ONGLETS[number][0];
 
@@ -235,6 +237,9 @@ export default function Reglages() {
         ))}
       </div>
 
+      </>}
+
+      {onglet === "apparence" && <>
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
         <h3 style={{ marginTop: 0 }}>🎨 Apparence</h3>
 
@@ -500,7 +505,7 @@ export default function Reglages() {
         )}
       </div>
       )}
-      {onglet === "general" && <Licences />}
+      {onglet === "licences" && <Licences />}
 
       {showCouleursTla && (
         <FenetreCouleurs titre="Couleurs des tableaux de langage" palette={paletteTla}
