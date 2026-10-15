@@ -116,11 +116,15 @@ export function htmlPlanche(r: ReglagesPlanche, images: Images): string {
 export const STYLE_PLANCHE = `
   @page { size: A4 portrait; margin: 10mm; }
   @media print { body { padding: 0; } }
-  .feuille.pp .pp-planche { display: flex; flex-direction: column; gap: 5mm; }
-  .feuille.pp .pp-groupe { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 3mm; }
-  .feuille.pp .pp-groupe + .pp-groupe { border-top: 1px solid #e3e6ef; padding-top: 5mm; }
-  .feuille.pp .pp-carte { width: var(--c); height: var(--c); box-sizing: border-box; border: 1px dashed #9aa0b4;
-    padding: calc(var(--c) * 0.07); display: flex; flex-direction: column; align-items: center; justify-content: center;
+  /* Les cartes sont posées « en ligne », et non en flexbox : WebKit coupait une carte entre deux pages,
+     malgré break-inside, alors qu'il ne coupe jamais un élément en ligne. Un picto et toutes ses tailles
+     restent ensemble quand la page le permet ; la marge négative du groupe garde les rangées d'avant. */
+  .feuille.pp .pp-planche { display: block; }
+  .feuille.pp .pp-groupe { display: block; margin: 0 -3mm -3mm 0; break-inside: avoid; page-break-inside: avoid; }
+  .feuille.pp .pp-groupe + .pp-groupe { border-top: 1px solid #e3e6ef; padding-top: 5mm; margin-top: 5mm; }
+  .feuille.pp .pp-carte { display: inline-flex; vertical-align: top; margin: 0 3mm 3mm 0;
+    width: var(--c); height: var(--c); box-sizing: border-box; border: 1px dashed #9aa0b4;
+    padding: calc(var(--c) * 0.07); flex-direction: column; align-items: center; justify-content: center;
     gap: calc(var(--c) * 0.03); overflow: hidden; break-inside: avoid; page-break-inside: avoid; }
   .feuille.pp .pp-cadre .pp-carte { border: 0.5mm solid #333; border-radius: calc(var(--c) * 0.1); }
   .feuille.pp .pp-carte img { flex: 1 1 0; min-height: 0; width: 100%; object-fit: contain; margin: 0; max-height: none; }
