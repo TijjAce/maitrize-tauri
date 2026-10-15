@@ -24,6 +24,9 @@
 -->
 <plist version="1.0">
 <dict>
+	<!-- Le chiffrement est celui d'iOS seul (CryptoKit, TLS du système) : aucun document d'export à fournir. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleDisplayName</key>
 	<string>MaitrizeV2 Compagnon</string>
 	<key>UIApplicationSceneManifest</key>
