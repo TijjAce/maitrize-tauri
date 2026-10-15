@@ -127,10 +127,11 @@ export const STYLE_PLANCHE = `
   .feuille.pp .pp-mot { flex: none; max-width: 100%; font-size: calc(var(--c) * 0.13); font-weight: 700; line-height: 1.1;
     text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .feuille.pp .pp-capitales .pp-mot { text-transform: uppercase; }
-  /* Le bandeau touche les bords de la carte, sous l'image ; dans un cadre, un trait le sépare de l'image. */
-  .feuille.pp .pp-avec-bandeau { padding-bottom: 0; }
-  .feuille.pp .pp-bandeau { align-self: stretch; max-width: none; margin: 0 calc(var(--c) * -0.07); font-weight: 800;
-    padding: calc(var(--c) * 0.035) calc(var(--c) * 0.04); }
+  /* Avec un bandeau, comme sur les cartes des jours : le picto monte près des bords, aussi grand qu'il peut ; le
+     bandeau touche les bords de la carte, sous l'image, et, dans un cadre, un trait le sépare de l'image. */
+  .feuille.pp .pp-avec-bandeau { padding: calc(var(--c) * 0.04) calc(var(--c) * 0.04) 0; }
+  .feuille.pp .pp-bandeau { align-self: stretch; max-width: none; margin: 0 calc(var(--c) * -0.04); font-weight: 800;
+    padding: calc(var(--c) * 0.028) calc(var(--c) * 0.04); }
   .feuille.pp .pp-cadre .pp-bandeau { border-top: 0.4mm solid #333; }
   .feuille.pp .pp-manque { flex: 1 1 0; align-self: stretch; display: flex; align-items: center; justify-content: center; text-align: center;
     border: 1.5px dashed #c4c9d6; border-radius: 2mm; color: #9aa0b4; font-weight: 700; font-size: calc(var(--c) * 0.12); }
