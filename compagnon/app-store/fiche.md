@@ -56,6 +56,10 @@ dictaphone,enseignant,classe,école,cahier journal,tablette,consigne,pictogramme
 **Politique de confidentialité** : https://maitrize.com/politique-de-confidentialite (le compagnon doit y être décrit avant l'envoi)
 **Copyright** : 2026 Clément Titet
 
+**Captures** (Gestionnaire des visuels de la version) :
+- obligatoire, « iPhone avec Dynamic Island (écran moyen) », 6,1 ou 6,3 pouces : `captures-6-3-pouces/`, en 1206 × 2622 ;
+- facultatif, « grand écran », 6,9 pouces : `captures/`, en 1320 × 2868.
+
 ## Confidentialité de l'app (App Privacy)
 
 « Aucune donnée collectée ». Au sens d'Apple, « collecter » veut dire
@@ -93,5 +97,7 @@ Aucun document n'est alors demandé, pas même la déclaration française.
 The app is the iPhone companion of Maîtrize, a free and open-source desktop app (Mac/Windows) for French primary-school teachers: https://maitrize.com. It records the teacher's dictations in class and sends them, end-to-end encrypted, to the teacher's own computer through the teacher's Nuage folder (apps.education.fr, the French Ministry of Education's cloud, reserved to its staff). The computer transcribes them and files them in the class diary. The phone also serves a local web page to the students' tablets (task instructions, schedule, timer), over the classroom network.
 
 Without a paired computer and a Nuage account, the Journal and Notes tabs ask to pair. The Tablets tab works on its own: "Ouvrir le portail" shows a QR code that any tablet on the same network can open.
+
+Envoyées ainsi avec la version 1.0.0 (3), sans vidéo. Si Apple en demande une, ajouter :
 
 A demo video showing pairing, a dictation and the tablets: [lien de la vidéo]
