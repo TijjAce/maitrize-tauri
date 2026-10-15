@@ -524,7 +524,8 @@ export const nouvelleEvaluation = (): Evaluation => ({
 // ============================================================
 export const api = {
   // Séquences
-  sequencesList: () => invoke<Sequence[]>("sequences_list"),
+  /** `avecPoubelle` : le plan de travail seul voit ce qu'on a jeté (voir POUBELLE, dans dossiers.ts). */
+  sequencesList: (avecPoubelle = false) => invoke<Sequence[]>("sequences_list", { avecPoubelle }),
   sequenceSave: (sequence: Sequence) => invoke<Sequence>("sequence_save", { sequence }),
   sequenceDelete: (id: string) => invoke<void>("sequence_delete", { id }),
 
@@ -534,10 +535,10 @@ export const api = {
   seanceDelete: (id: string) => invoke<void>("seance_delete", { id }),
 
   // Ateliers / espaces
-  ateliersList: () => invoke<Atelier[]>("ateliers_list"),
+  ateliersList: (avecPoubelle = false) => invoke<Atelier[]>("ateliers_list", { avecPoubelle }),
   atelierSave: (atelier: Atelier) => invoke<Atelier>("atelier_save", { atelier }),
   atelierDelete: (id: string) => invoke<void>("atelier_delete", { id }),
-  espacesList: () => invoke<Espace[]>("espaces_list"),
+  espacesList: (avecPoubelle = false) => invoke<Espace[]>("espaces_list", { avecPoubelle }),
   espaceSave: (espace: Espace) => invoke<Espace>("espace_save", { espace }),
   espaceDelete: (id: string) => invoke<void>("espace_delete", { id }),
   atelierEspaceList: () => invoke<[string, string][]>("atelier_espace_list"),
@@ -550,11 +551,11 @@ export const api = {
   progressionEleveDelete: (id: string) => invoke<void>("progression_eleve_delete", { id }),
 
   // Jeux
-  jeuxList: () => invoke<Jeu[]>("jeux_list"),
+  jeuxList: (avecPoubelle = false) => invoke<Jeu[]>("jeux_list", { avecPoubelle }),
   jeuSave: (jeu: Jeu) => invoke<Jeu>("jeu_save", { jeu }),
   jeuDelete: (id: string) => invoke<void>("jeu_delete", { id }),
   // Outils pour l'élève et affichages
-  outilsClasseList: () => invoke<OutilClasse[]>("outils_classe_list"),
+  outilsClasseList: (avecPoubelle = false) => invoke<OutilClasse[]>("outils_classe_list", { avecPoubelle }),
   outilClasseSave: (outil: OutilClasse) => invoke<OutilClasse>("outil_classe_save", { outil }),
   outilClasseDelete: (id: string) => invoke<void>("outil_classe_delete", { id }),
 
@@ -591,10 +592,10 @@ export const api = {
   noteEleveDelete: (id: string) => invoke<void>("note_eleve_delete", { id }),
 
   // Matériel
-  textesList: () => invoke<Texte[]>("textes_list"),
+  textesList: (avecPoubelle = false) => invoke<Texte[]>("textes_list", { avecPoubelle }),
   texteSave: (texte: Texte) => invoke<Texte>("texte_save", { texte }),
   texteDelete: (id: string) => invoke<void>("texte_delete", { id }),
-  materielList: () => invoke<MaterielItem[]>("materiel_list"),
+  materielList: (avecPoubelle = false) => invoke<MaterielItem[]>("materiel_list", { avecPoubelle }),
   materielSave: (materiel: MaterielItem) => invoke<MaterielItem>("materiel_save", { materiel }),
   materielDelete: (id: string) => invoke<void>("materiel_delete", { id }),
 

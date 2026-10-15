@@ -9,14 +9,36 @@ use tauri::State;
 type R<T> = Result<T, String>;
 fn e<E: std::fmt::Display>(err: E) -> String { err.to_string() }
 
+/// Le dossier où le plan de travail range ce qu'on y jette. Un élément y garde,
+/// derrière ce nom, le chemin d'où il vient, et se remet en place tel quel
+/// (voir `versLaPoubelle`, dans dossiers.ts).
+pub const POUBELLE: &str = "🗑 Poubelle";
+
+/// Ce qui n'est pas à la poubelle, en SQL — écrit en toutes lettres pour
+/// entrer dans les requêtes constantes de la recherche, et donc à tenir
+/// d'accord avec `POUBELLE`.
+macro_rules! hors_poubelle {
+    ($colonne:literal) => {
+        concat!("(", $colonne, " IS NULL OR (", $colonne, " <> '🗑 Poubelle' AND ", $colonne, " NOT LIKE '🗑 Poubelle/%'))")
+    };
+}
+
+/// Ce qu'on a jeté ne paraît nulle part ailleurs que sur le plan de travail,
+/// qui seul demande à voir la poubelle : ni dans le cahier journal, ni dans
+/// Fabriquer, ni dans une liste à choisir.
+fn sauf_poubelle(avec_poubelle: Option<bool>) -> &'static str {
+    if avec_poubelle == Some(true) { "" } else { concat!(" WHERE ", hors_poubelle!("dossier")) }
+}
+
 // ============================================================
 // SÉQUENCES
 // ============================================================
 
 #[tauri::command]
-pub fn sequences_list(db: State<Db>) -> R<Vec<Sequence>> {
+pub fn sequences_list(db: State<Db>, avec_poubelle: Option<bool>) -> R<Vec<Sequence>> {
     let c = db.lock();
-    let mut st = c.prepare("SELECT * FROM sequences ORDER BY date_creation DESC").map_err(e)?;
+    let sql = format!("SELECT * FROM sequences{} ORDER BY date_creation DESC", sauf_poubelle(avec_poubelle));
+    let mut st = c.prepare(&sql).map_err(e)?;
     let rows = st.query_map([], Sequence::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
 }
@@ -105,9 +127,9 @@ pub fn seance_delete(db: State<Db>, id: String) -> R<()> {
 // ============================================================
 
 #[tauri::command]
-pub fn ateliers_list(db: State<Db>) -> R<Vec<Atelier>> {
+pub fn ateliers_list(db: State<Db>, avec_poubelle: Option<bool>) -> R<Vec<Atelier>> {
     let c = db.lock();
-    let mut st = c.prepare("SELECT * FROM ateliers ORDER BY titre").map_err(e)?;
+    let mut st = c.prepare(&format!("SELECT * FROM ateliers{} ORDER BY titre", sauf_poubelle(avec_poubelle))).map_err(e)?;
     let rows = st.query_map([], Atelier::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
 }
@@ -134,9 +156,9 @@ pub fn atelier_delete(db: State<Db>, id: String) -> R<()> {
 }
 
 #[tauri::command]
-pub fn espaces_list(db: State<Db>) -> R<Vec<Espace>> {
+pub fn espaces_list(db: State<Db>, avec_poubelle: Option<bool>) -> R<Vec<Espace>> {
     let c = db.lock();
-    let mut st = c.prepare("SELECT * FROM espaces ORDER BY titre").map_err(e)?;
+    let mut st = c.prepare(&format!("SELECT * FROM espaces{} ORDER BY titre", sauf_poubelle(avec_poubelle))).map_err(e)?;
     let rows = st.query_map([], Espace::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
 }
@@ -167,13 +189,13 @@ pub fn espace_delete(db: State<Db>, id: String) -> R<()> {
 // ============================================================
 
 #[tauri::command]
-pub fn textes_list(db: State<Db>) -> R<Vec<Texte>> {
+pub fn textes_list(db: State<Db>, avec_poubelle: Option<bool>) -> R<Vec<Texte>> {
     let c = db.lock();
-    lire_textes(&c)
+    lire_textes(&c, avec_poubelle)
 }
 
-pub(crate) fn lire_textes(c: &rusqlite::Connection) -> R<Vec<Texte>> {
-    let mut st = c.prepare("SELECT * FROM textes ORDER BY titre").map_err(e)?;
+pub(crate) fn lire_textes(c: &rusqlite::Connection, avec_poubelle: Option<bool>) -> R<Vec<Texte>> {
+    let mut st = c.prepare(&format!("SELECT * FROM textes{} ORDER BY titre", sauf_poubelle(avec_poubelle))).map_err(e)?;
     let rows = st.query_map([], Texte::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
 }
@@ -202,9 +224,9 @@ pub fn texte_delete(db: State<Db>, id: String) -> R<()> {
 }
 
 #[tauri::command]
-pub fn jeux_list(db: State<Db>) -> R<Vec<Jeu>> {
+pub fn jeux_list(db: State<Db>, avec_poubelle: Option<bool>) -> R<Vec<Jeu>> {
     let c = db.lock();
-    let mut st = c.prepare("SELECT * FROM jeux ORDER BY titre").map_err(e)?;
+    let mut st = c.prepare(&format!("SELECT * FROM jeux{} ORDER BY titre", sauf_poubelle(avec_poubelle))).map_err(e)?;
     let rows = st.query_map([], Jeu::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
 }
@@ -229,9 +251,9 @@ pub(crate) fn ecrire_jeu(c: &rusqlite::Connection, jeu: Jeu) -> R<Jeu> {
 // ── Outils pour l'élève et affichages ──────────────────────────────────────
 
 #[tauri::command]
-pub fn outils_classe_list(db: State<Db>) -> R<Vec<OutilClasse>> {
+pub fn outils_classe_list(db: State<Db>, avec_poubelle: Option<bool>) -> R<Vec<OutilClasse>> {
     let c = db.lock();
-    let mut st = c.prepare("SELECT * FROM outils_classe ORDER BY titre").map_err(e)?;
+    let mut st = c.prepare(&format!("SELECT * FROM outils_classe{} ORDER BY titre", sauf_poubelle(avec_poubelle))).map_err(e)?;
     let rows = st.query_map([], OutilClasse::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
 }
@@ -825,9 +847,10 @@ pub fn note_eleve_delete(db: State<Db>, id: String) -> R<()> {
 // ============================================================
 
 #[tauri::command]
-pub fn materiel_list(db: State<Db>) -> R<Vec<MaterielItem>> {
+pub fn materiel_list(db: State<Db>, avec_poubelle: Option<bool>) -> R<Vec<MaterielItem>> {
     let c = db.lock();
-    let mut st = c.prepare("SELECT * FROM materiel_items ORDER BY date_creation DESC").map_err(e)?;
+    let sql = format!("SELECT * FROM materiel_items{} ORDER BY date_creation DESC", sauf_poubelle(avec_poubelle));
+    let mut st = c.prepare(&sql).map_err(e)?;
     let rows = st.query_map([], MaterielItem::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
 }
@@ -1137,74 +1160,65 @@ pub fn dossiers_bureau(db: State<Db>) -> R<Vec<String>> {
     ];
     let c = db.lock();
     let mut tous: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
-    let mut poser = |chemin: &str| {
-        let propre = chemin.trim().trim_matches('/');
-        if propre.is_empty() || propre.starts_with('@') {
-            return;
-        }
-        // Chaque parent existe aussi : on peut vouloir y aller.
-        let mut cumul = String::new();
-        for bout in propre.split('/') {
-            if bout.trim().is_empty() {
-                continue;
-            }
-            if !cumul.is_empty() {
-                cumul.push('/');
-            }
-            cumul.push_str(bout.trim());
-            tous.insert(cumul.clone());
-        }
-    };
     for sql in SOURCES {
         // Une table absente d'une vieille base ne doit pas vider la liste.
         let Ok(mut st) = c.prepare(sql) else { continue };
         let Ok(rows) = st.query_map([], |r| r.get::<_, String>(0)) else { continue };
         for chemin in rows.flatten() {
-            poser(&chemin);
+            poser_dossier(&mut tous, &chemin);
         }
     }
     // Les dossiers créés à la main, qui vivent dans les réglages.
     if let Ok(mut st) = c.prepare("SELECT cle FROM settings WHERE cle LIKE 'dossier:%'") {
         if let Ok(rows) = st.query_map([], |r| r.get::<_, String>(0)) {
             for cle in rows.flatten() {
-                poser(cle.trim_start_matches("dossier:"));
+                poser_dossier(&mut tous, cle.trim_start_matches("dossier:"));
             }
         }
     }
     Ok(tous.into_iter().collect())
 }
 
+/// Ajoute un dossier et ses parents à ceux du bureau. Les dossiers réservés
+/// (« @… ») n'en sont pas, ni la poubelle : elle ne se visite que depuis le
+/// plan de travail.
+fn poser_dossier(tous: &mut std::collections::BTreeSet<String>, chemin: &str) {
+    let propre = chemin.trim().trim_matches('/');
+    let jete = propre == POUBELLE || propre.strip_prefix(POUBELLE).is_some_and(|r| r.starts_with('/'));
+    if propre.is_empty() || propre.starts_with('@') || jete {
+        return;
+    }
+    // Chaque parent existe aussi : on peut vouloir y aller.
+    let mut cumul = String::new();
+    for bout in propre.split('/') {
+        if bout.trim().is_empty() {
+            continue;
+        }
+        if !cumul.is_empty() {
+            cumul.push('/');
+        }
+        cumul.push_str(bout.trim());
+        tous.insert(cumul.clone());
+    }
+}
+
 #[cfg(test)]
 mod tests_dossiers_bureau {
     use rusqlite::Connection;
 
-    /// Le cœur de `dossiers_bureau`, sans la base : ce qui se range et ce qui
-    /// se jette. Recopié tel quel dans la commande, qui n'a que les requêtes
-    /// en plus.
-    fn poser(tous: &mut std::collections::BTreeSet<String>, chemin: &str) {
-        let propre = chemin.trim().trim_matches('/');
-        if propre.is_empty() || propre.starts_with('@') {
-            return;
-        }
-        let mut cumul = String::new();
-        for bout in propre.split('/') {
-            if bout.trim().is_empty() {
-                continue;
-            }
-            if !cumul.is_empty() {
-                cumul.push('/');
-            }
-            cumul.push_str(bout.trim());
-            tous.insert(cumul.clone());
-        }
-    }
-
     fn dossiers(chemins: &[&str]) -> Vec<String> {
         let mut tous = std::collections::BTreeSet::new();
         for c in chemins {
-            poser(&mut tous, c);
+            super::poser_dossier(&mut tous, c);
         }
         tous.into_iter().collect()
+    }
+
+    #[test]
+    fn la_poubelle_n_est_pas_un_dossier_ou_aller() {
+        assert_eq!(dossiers(&["🗑 Poubelle", "🗑 Poubelle/Maths/Calcul", "Maths"]), vec!["Maths"]);
+        // Un dossier qui ne fait que commencer pareil reste un dossier.
+        assert_eq!(dossiers(&["🗑 Poubelles de tri"]), vec!["🗑 Poubelles de tri"]);
     }
 
     #[test]
@@ -1238,7 +1252,7 @@ mod tests_dossiers_bureau {
         assert_eq!(cles, vec!["dossier:Arts/Peinture"]);
         let mut tous = std::collections::BTreeSet::new();
         for cle in &cles {
-            poser(&mut tous, cle.trim_start_matches("dossier:"));
+            super::poser_dossier(&mut tous, cle.trim_start_matches("dossier:"));
         }
         assert_eq!(tous.into_iter().collect::<Vec<_>>(), vec!["Arts", "Arts/Peinture"]);
     }
@@ -2422,14 +2436,14 @@ fn extrait(texte: &str, mots: &[String]) -> String {
 /// maintenant toutes, et les tables absentes d'une base plus ancienne sont
 /// simplement sautées.
 const SOURCES: &[(&str, &str)] = &[
-    ("sequence", "SELECT id, COALESCE(NULLIF(titre,''),'Séquence'), COALESCE(matiere,''),
+    ("sequence", concat!("SELECT id, COALESCE(NULLIF(titre,''),'Séquence'), COALESCE(matiere,''),
                   COALESCE(objectifs,'') || '\n' || COALESCE(competence_visee,''),
-                  COALESCE(date_creation,''), '' FROM sequences"),
-    ("seance", "SELECT s.id, COALESCE(NULLIF(s.titre,''), 'Séance ' || s.numero),
+                  COALESCE(date_creation,''), '' FROM sequences WHERE ", hors_poubelle!("dossier"))),
+    ("seance", concat!("SELECT s.id, COALESCE(NULLIF(s.titre,''), 'Séance ' || s.numero),
                 'Séance ' || s.numero || COALESCE(' · ' || NULLIF(q.titre,''), ''),
                 COALESCE(s.objectifs,'') || '\n' || COALESCE(s.deroulement,'') || '\n' || COALESCE(s.materiel,'') || '\n' || COALESCE(s.bilan,''),
                 COALESCE(s.date,''), COALESCE(s.sequence_id,'')
-                FROM seances s LEFT JOIN sequences q ON q.id = s.sequence_id"),
+                FROM seances s LEFT JOIN sequences q ON q.id = s.sequence_id WHERE ", hors_poubelle!("q.dossier"))),
     ("creneau", "SELECT id, COALESCE(NULLIF(matiere,''),'Créneau'),
                  COALESCE(heure_debut,'') || '–' || COALESCE(heure_fin,''),
                  COALESCE(prevu,'') || '\n' || COALESCE(bilan,''), COALESCE(date,''), COALESCE(date,'')
@@ -2437,22 +2451,22 @@ const SOURCES: &[(&str, &str)] = &[
     ("observation", "SELECT c.id, COALESCE(NULLIF(e.nom,''),'Observation'), COALESCE(c.type,''),
                      COALESCE(c.texte,''), COALESCE(c.date,''), COALESCE(c.eleve_id,'')
                      FROM commentaires_eleve c LEFT JOIN eleves e ON e.id = c.eleve_id"),
-    ("atelier", "SELECT id, COALESCE(NULLIF(titre,''),'Atelier'), COALESCE(matiere,''),
-                 COALESCE(objectifs,'') || '\n' || COALESCE(materiel,''), '', '' FROM ateliers"),
-    ("espace", "SELECT id, COALESCE(NULLIF(titre,''),'Espace'), '',
-                COALESCE(description_espace,''), '', '' FROM espaces"),
-    ("jeu", "SELECT id, COALESCE(NULLIF(titre,''),'Jeu'), COALESCE(type_jeu,''),
+    ("atelier", concat!("SELECT id, COALESCE(NULLIF(titre,''),'Atelier'), COALESCE(matiere,''),
+                 COALESCE(objectifs,'') || '\n' || COALESCE(materiel,''), '', '' FROM ateliers WHERE ", hors_poubelle!("dossier"))),
+    ("espace", concat!("SELECT id, COALESCE(NULLIF(titre,''),'Espace'), '',
+                COALESCE(description_espace,''), '', '' FROM espaces WHERE ", hors_poubelle!("dossier"))),
+    ("jeu", concat!("SELECT id, COALESCE(NULLIF(titre,''),'Jeu'), COALESCE(type_jeu,''),
              COALESCE(regles,'') || '\n' || COALESCE(description_jeu,'') || '\n' || COALESCE(competences,''),
-             COALESCE(date_creation,''), '' FROM jeux"),
-    ("outil", "SELECT id, COALESCE(NULLIF(titre,''),'Outil'),
+             COALESCE(date_creation,''), '' FROM jeux WHERE ", hors_poubelle!("dossier"))),
+    ("outil", concat!("SELECT id, COALESCE(NULLIF(titre,''),'Outil'),
                CASE genre WHEN 'affichage' THEN 'Affichage' WHEN 'evaluation' THEN 'Évaluation' ELSE 'Outil' END
                || COALESCE(' · ' || NULLIF(categorie,''),''),
-               COALESCE(usage,'') || '\n' || COALESCE(consignes,''), COALESCE(date_creation,''), COALESCE(genre,'') FROM outils_classe"),
-    ("texte", "SELECT id, COALESCE(NULLIF(titre,''),'Texte'), COALESCE(dossier,''), COALESCE(contenu,''),
-               COALESCE(NULLIF(date_modification,''), date_creation), '' FROM textes"),
+               COALESCE(usage,'') || '\n' || COALESCE(consignes,''), COALESCE(date_creation,''), COALESCE(genre,'') FROM outils_classe WHERE ", hors_poubelle!("dossier"))),
+    ("texte", concat!("SELECT id, COALESCE(NULLIF(titre,''),'Texte'), COALESCE(dossier,''), COALESCE(contenu,''),
+               COALESCE(NULLIF(date_modification,''), date_creation), '' FROM textes WHERE ", hors_poubelle!("dossier"))),
     ("eleve", "SELECT id, COALESCE(NULLIF(nom,''),'Élève'), COALESCE(niveau,''), COALESCE(notes,''), '', '' FROM eleves"),
-    ("materiel", "SELECT id, COALESCE(NULLIF(titre,''),'Matériel'), COALESCE(competence_titre,''),
-                  COALESCE(description_materiel,''), '', '' FROM materiel_items"),
+    ("materiel", concat!("SELECT id, COALESCE(NULLIF(titre,''),'Matériel'), COALESCE(competence_titre,''),
+                  COALESCE(description_materiel,''), '', '' FROM materiel_items WHERE ", hors_poubelle!("dossier"))),
 ];
 
 /// Combien de résultats on rend : au-delà, on ne lit plus, on fouille.
@@ -2528,12 +2542,12 @@ mod tests_recherche {
         let c = Connection::open_in_memory().unwrap();
         c.execute_batch(
             "CREATE TABLE sequences (id TEXT PRIMARY KEY, titre TEXT, matiere TEXT, objectifs TEXT,
-                 competence_visee TEXT, date_creation TEXT);
+                 competence_visee TEXT, date_creation TEXT, dossier TEXT NOT NULL DEFAULT '');
              CREATE TABLE seances (id TEXT PRIMARY KEY, titre TEXT, numero INTEGER, objectifs TEXT,
                  deroulement TEXT, materiel TEXT, bilan TEXT, date TEXT, sequence_id TEXT);
              CREATE TABLE creneaux (id TEXT PRIMARY KEY, date TEXT, heure_debut TEXT, heure_fin TEXT,
                  matiere TEXT, prevu TEXT, bilan TEXT);
-             INSERT INTO sequences VALUES ('q1','Les fractions','Maths','Partager','','2026-09-01');
+             INSERT INTO sequences VALUES ('q1','Les fractions','Maths','Partager','','2026-09-01','');
              INSERT INTO seances VALUES ('s1','Partager une pizza',1,'Comprendre le demi',
                  'On découpe une pizza en parts égales.','Pizza en carton','','2026-09-12','q1');
              INSERT INTO creneaux VALUES ('c1','2026-09-15','09:00','10:00','Atelier cuisine',
@@ -2556,6 +2570,38 @@ mod tests_recherche {
         assert_eq!(r[0].date, "2026-09-15");
         // Ni le bilan.
         assert!(chercher(&c, "amedee").iter().any(|x| x.kind == "creneau"));
+    }
+
+    #[test]
+    fn la_recherche_ne_trouve_rien_de_ce_qui_est_a_la_poubelle() {
+        let c = base();
+        c.execute("UPDATE sequences SET dossier = '🗑 Poubelle/Maths' WHERE id = 'q1'", []).unwrap();
+        // Ni la séquence jetée, ni ses séances.
+        assert!(chercher(&c, "fractions").is_empty());
+        assert!(chercher(&c, "pizza").is_empty());
+        // Remise en place, elle se retrouve.
+        c.execute("UPDATE sequences SET dossier = 'Maths' WHERE id = 'q1'", []).unwrap();
+        assert_eq!(chercher(&c, "fractions").first().map(|x| x.id.as_str()), Some("q1"));
+        // Un dossier qui ne fait que commencer comme la poubelle n'en est pas une.
+        c.execute("UPDATE sequences SET dossier = '🗑 Poubelles de tri' WHERE id = 'q1'", []).unwrap();
+        assert!(!chercher(&c, "fractions").is_empty());
+    }
+
+    #[test]
+    fn la_poubelle_ne_parait_que_si_on_la_demande() {
+        let c = Connection::open_in_memory().unwrap();
+        c.execute_batch(
+            "CREATE TABLE jeux (id TEXT, titre TEXT, dossier TEXT);
+             INSERT INTO jeux VALUES ('a','Loto','Maths'), ('b','Memory','🗑 Poubelle'),
+                                     ('c','Dominos','🗑 Poubelle/Maths/Calcul'), ('d','Uno', NULL);",
+        ).unwrap();
+        let ids = |avec: Option<bool>| -> Vec<String> {
+            let sql = format!("SELECT id FROM jeux{} ORDER BY id", super::sauf_poubelle(avec));
+            c.prepare(&sql).unwrap().query_map([], |r| r.get(0)).unwrap().map(Result::unwrap).collect()
+        };
+        assert_eq!(ids(None), ["a", "d"]);
+        assert_eq!(ids(Some(false)), ["a", "d"]);
+        assert_eq!(ids(Some(true)), ["a", "b", "c", "d"]);
     }
 
     #[test]
@@ -3362,7 +3408,7 @@ mod tests_textes {
         };
         let enregistre = super::ecrire_texte(&c, t).unwrap();
         assert!(!enregistre.date_modification.is_empty(), "la date de modification n'est pas posée");
-        let lus = super::lire_textes(&c).unwrap();
+        let lus = super::lire_textes(&c, None).unwrap();
         assert_eq!(lus.len(), 1);
         assert_eq!(lus[0].contenu, "Amandine a lu seule.");
         assert_eq!(lus[0].dossier, "Réunions");
