@@ -28,7 +28,7 @@ Dictez en classe sans sortir l'ordinateur, et donnez à chaque tablette sa consi
 Le compagnon iPhone de Maîtrize, l'application gratuite des enseignants du premier degré, sur Mac et Windows.
 
 DICTER EN CLASSE
-Un bouton, un chronomètre. Ce que vous dites à 10 h 12 part, scellé, vers votre ordinateur, par votre Nuage (apps.education.fr). L'ordinateur le transcrit sur place et le range au bon créneau du cahier journal. Le téléphone, lui, ne peut pas le relire.
+Un bouton, un chronomètre. Ce que vous dites à 10 h 12 part, scellé, vers votre ordinateur, par votre Nuage (apps.education.fr). L'ordinateur le transcrit et le range au bon créneau du cahier journal. Le téléphone, lui, ne peut pas le relire.
 
 LE CAHIER JOURNAL DU JOUR
 Le prévu de la journée, publié par votre ordinateur et chiffré pour votre téléphone seul. Des notes rapides, écrites ou dictées.

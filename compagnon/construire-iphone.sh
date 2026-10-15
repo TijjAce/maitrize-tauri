@@ -7,19 +7,13 @@
 # Le numéro de build (CFBundleVersion) est `bundle.iOS.bundleVersion` dans
 # tauri.conf.json : l'App Store en veut un nouveau à chaque envoi.
 #
-# Le détour par `--debug` n'est pas un choix : Xcode 27 embarque Swift 6.4,
-# dont le nouveau moteur de compilation donne une visibilité locale aux
-# fonctions `@_cdecl` non publiques. En release, les symboles du pont Swift de
-# Tauri — `run_plugin_command`, `string_from_bytes`, `retain_object` — ne sont
-# plus exportés, et l'édition de liens échoue.
-#
-#   https://github.com/tauri-apps/tauri/issues/16130
-#
-# Le contournement, donné par le rapport : compiler en configuration debug,
-# où la visibilité reste correcte, et optimiser la partie Rust par les
-# variables du profil. On obtient un binaire optimisé sans le bogue.
-#
-# À retirer quand Tauri aura marqué ses entrées `@_cdecl` comme publiques.
+# Une construction de publication : l'App Store refuse celle de débogage, où
+# Xcode sépare l'application en un lanceur et une bibliothèque de débogage
+# (« Invalid Signature » à l'envoi). Le détour par `--debug` n'est plus
+# nécessaire : Xcode 27 rendait invisibles les entrées `@_cdecl` non
+# publiques des paquets Swift (https://github.com/tauri-apps/tauri/issues/16130),
+# et Tauri 2.12.3, le greffon de dialogue 2.8.3 et notre scanner les
+# déclarent maintenant publiques.
 
 set -e
 cd "$(dirname "$0")"
@@ -64,9 +58,5 @@ if "PrivacyInfo.xcprivacy" not in s:
     open(p, "w", encoding="utf-8").write(s)
 PY
 
-CARGO_PROFILE_DEV_OPT_LEVEL=3 \
-CARGO_PROFILE_DEV_DEBUG=line-tables-only \
-CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=false \
-CARGO_PROFILE_DEV_OVERFLOW_CHECKS=false \
 LANG=en_US.UTF-8 \
-  npm run tauri -- ios build --debug --target aarch64 --export-method "${EXPORT:-debugging}" "$@"
+  npm run tauri -- ios build --target aarch64 --export-method "${EXPORT:-debugging}" "$@"

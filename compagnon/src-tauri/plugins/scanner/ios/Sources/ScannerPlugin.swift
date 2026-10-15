@@ -144,7 +144,9 @@ extension ScannerPlugin: ASWebAuthenticationPresentationContextProviding {
   }
 }
 
+// Publique : depuis Xcode 27, une entrée @_cdecl qui ne l'est pas devient
+// invisible à l'édition de liens d'une construction de publication.
 @_cdecl("init_plugin_scanner")
-func initPlugin() -> Plugin {
+public func initPlugin() -> Plugin {
   return ScannerPlugin()
 }
