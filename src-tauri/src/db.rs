@@ -931,6 +931,168 @@ pub(crate) fn migrate(conn: &Connection) {
     conn.execute("ALTER TABLE reunions ADD COLUMN texte TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE reunions ADD COLUMN resumes_json TEXT NOT NULL DEFAULT '[]'", []).ok();
     migrer_organisation_ime(conn);
+    fusionner_emplois_du_temps(conn);
+}
+
+/// Deux créneaux d'emploi du temps sont le même s'ils ont le même jour, les
+/// mêmes heures et le même intitulé.
+fn meme_creneau(a: &serde_json::Value, b: &serde_json::Value) -> bool {
+    ["jour", "heureDebut", "heureFin", "titre"].iter().all(|k| a.get(k) == b.get(k))
+}
+
+/**
+ * L'EDT de classe et l'organisation IME ne font plus qu'un emploi du temps
+ * par année, sous la clé de l'année.
+ *
+ * Deux écrans, deux enregistrements — `<année>` et `<année>·IME` — pour une
+ * seule chose : la semaine de l'enseignant. L'organisation IME portait déjà
+ * tout ce que la trame de classe savait dire, et davantage (les élèves
+ * présents, la nature du temps) ; elle devient l'emploi du temps de l'année.
+ *
+ * Rien ne se perd. Quand l'année n'a pas d'autre emploi du temps,
+ * l'organisation est renommée sur place : elle garde son identifiant, et deux
+ * ordinateurs synchronisés arrivent au même résultat. Quand l'année en a déjà
+ * un, les créneaux de l'organisation s'y ajoutent, sans doubler un créneau
+ * présent des deux côtés — celui de l'organisation, qui sait qui est là,
+ * l'emporte.
+ */
+pub(crate) fn fusionner_emplois_du_temps(conn: &Connection) {
+    let lire = |sql: &str, cle: &str| -> Vec<(String, String)> {
+        conn.prepare(sql)
+            .and_then(|mut st| st.query_map([cle], |r| Ok((r.get(0)?, r.get(1)?)))?.collect())
+            .unwrap_or_default()
+    };
+    let creneaux = |json: &str| serde_json::from_str::<Vec<serde_json::Value>>(json).unwrap_or_default();
+    let organisations: Vec<(String, String, String)> = conn
+        .prepare("SELECT id, annee, slots_json FROM edt_typique WHERE annee LIKE '%·IME'")
+        .and_then(|mut st| st.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?.collect())
+        .unwrap_or_default();
+    for (id, cle_ime, json_ime) in organisations {
+        let annee = cle_ime.trim_end_matches("·IME");
+        let ime = creneaux(&json_ime);
+        let (remplies, vides): (Vec<_>, Vec<_>) = lire("SELECT id, slots_json FROM edt_typique WHERE annee=?1", annee)
+            .into_iter()
+            .partition(|(_, json)| !creneaux(json).is_empty());
+        // Une trame vide masquerait l'organisation : elle s'efface.
+        for (vide, _) in &vides {
+            conn.execute("DELETE FROM edt_typique WHERE id=?1", [vide]).ok();
+        }
+        match remplies.first() {
+            None => {
+                conn.execute("UPDATE edt_typique SET annee=?1 WHERE id=?2", [annee, &id]).ok();
+            }
+            Some((classe, json_classe)) => {
+                if !ime.is_empty() {
+                    let mut tous = creneaux(json_classe);
+                    for s in ime {
+                        match tous.iter().position(|t| meme_creneau(t, &s)) {
+                            Some(i) => tous[i] = s,
+                            None => tous.push(s),
+                        }
+                    }
+                    let json = serde_json::Value::Array(tous).to_string();
+                    conn.execute("UPDATE edt_typique SET slots_json=?1 WHERE id=?2", [&json, classe]).ok();
+                }
+                conn.execute("DELETE FROM edt_typique WHERE id=?1", [&id]).ok();
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests_fusion_emplois_du_temps {
+    use super::*;
+
+    fn base() -> Connection {
+        let c = Connection::open_in_memory().unwrap();
+        c.execute_batch(
+            "CREATE TABLE settings (cle TEXT PRIMARY KEY, valeur TEXT);
+             CREATE TABLE edt_typique (id TEXT PRIMARY KEY, annee TEXT, slots_json TEXT);",
+        ).unwrap();
+        c
+    }
+    fn poser(c: &Connection, id: &str, annee: &str, slots: &str) {
+        c.execute("INSERT INTO edt_typique VALUES (?1, ?2, ?3)", rusqlite::params![id, annee, slots]).unwrap();
+    }
+    fn tout(c: &Connection) -> Vec<(String, String, String)> {
+        c.prepare("SELECT id, annee, slots_json FROM edt_typique ORDER BY id").unwrap()
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?))).unwrap()
+            .collect::<Result<_, _>>().unwrap()
+    }
+    fn s(id: &str, jour: &str, titre: &str) -> String {
+        format!(r#"{{"id":"{id}","jour":"{jour}","heureDebut":"09:00","heureFin":"10:00","titre":"{titre}"}}"#)
+    }
+
+    #[test]
+    fn l_organisation_devient_l_emploi_du_temps_de_l_annee_sous_le_meme_identifiant() {
+        // Deux ordinateurs synchronisés renomment la même ligne : même résultat des deux côtés.
+        let c = base();
+        poser(&c, "ime", "2026-2027·IME", &format!("[{}]", s("a", "Lundi", "Scolarité")));
+        poser(&c, "classe-2025", "2025-2026", &format!("[{}]", s("b", "Mardi", "Français")));
+        fusionner_emplois_du_temps(&c);
+        assert_eq!(tout(&c), vec![
+            ("classe-2025".into(), "2025-2026".into(), format!("[{}]", s("b", "Mardi", "Français"))),
+            ("ime".into(), "2026-2027".into(), format!("[{}]", s("a", "Lundi", "Scolarité"))),
+        ]);
+    }
+
+    #[test]
+    fn une_trame_vide_s_efface_devant_l_organisation() {
+        let c = base();
+        poser(&c, "classe", "2026-2027", "[]");
+        poser(&c, "ime", "2026-2027·IME", &format!("[{}]", s("a", "Lundi", "Scolarité")));
+        fusionner_emplois_du_temps(&c);
+        assert_eq!(tout(&c), vec![("ime".into(), "2026-2027".into(), format!("[{}]", s("a", "Lundi", "Scolarité")))]);
+    }
+
+    #[test]
+    fn deux_emplois_du_temps_remplis_se_rejoignent_sans_doubler_un_creneau() {
+        let c = base();
+        poser(&c, "classe", "2026-2027", &format!("[{},{}]", s("a", "Lundi", "Français"), s("b", "Mardi", "Maths")));
+        let present = r#"{"id":"c","jour":"Mardi","heureDebut":"09:00","heureFin":"10:00","titre":"Maths","eleves":["e1"]}"#;
+        poser(&c, "ime", "2026-2027·IME", &format!("[{present},{}]", s("d", "Jeudi", "Piscine")));
+        fusionner_emplois_du_temps(&c);
+        let lignes = tout(&c);
+        assert_eq!(lignes.len(), 1, "l'organisation rejoint la trame de l'année");
+        let creneaux: Vec<serde_json::Value> = serde_json::from_str(&lignes[0].2).unwrap();
+        let ids: Vec<&str> = creneaux.iter().map(|x| x["id"].as_str().unwrap()).collect();
+        // Le créneau des deux côtés n'est qu'une fois, avec ses élèves présents.
+        assert_eq!(ids, ["a", "c", "d"]);
+        assert_eq!(creneaux[1]["eleves"][0], "e1");
+    }
+
+    #[test]
+    fn une_organisation_vide_s_efface_et_la_trame_reste() {
+        let c = base();
+        poser(&c, "classe", "2025-2026", &format!("[{}]", s("a", "Lundi", "Français")));
+        poser(&c, "ime", "2025-2026·IME", "[]");
+        fusionner_emplois_du_temps(&c);
+        assert_eq!(tout(&c), vec![("classe".into(), "2025-2026".into(), format!("[{}]", s("a", "Lundi", "Français")))]);
+    }
+
+    #[test]
+    fn repasser_ne_change_rien() {
+        let c = base();
+        poser(&c, "classe", "2026-2027", &format!("[{}]", s("a", "Lundi", "Français")));
+        poser(&c, "ime", "2026-2027·IME", &format!("[{}]", s("b", "Mardi", "Piscine")));
+        fusionner_emplois_du_temps(&c);
+        let une_fois = tout(&c);
+        fusionner_emplois_du_temps(&c);
+        assert_eq!(tout(&c), une_fois);
+    }
+
+    #[test]
+    fn la_reprise_des_semaines_ne_repasse_pas_sur_l_emploi_du_temps_fusionne() {
+        // Sans quoi chaque démarrage ajouterait une ancienne semaine à côté de lui.
+        let c = base();
+        c.execute("INSERT INTO settings VALUES ('anneeCourante', '2026-2027')", []).unwrap();
+        poser(&c, "fusion", "2026-2027", &format!("[{}]", s("a", "Lundi", "Scolarité")));
+        poser(&c, "semaine", "IME:2026-09-07", &format!("[{}]", s("b", "Mardi", "Piscine")));
+        migrer_organisation_ime(&c);
+        fusionner_emplois_du_temps(&c);
+        assert_eq!(tout(&c).iter().filter(|(_, annee, _)| annee.starts_with("2026")).count(), 1);
+        assert_eq!(tout(&c).iter().find(|(id, _, _)| id == "fusion").unwrap().2, format!("[{}]", s("a", "Lundi", "Scolarité")));
+    }
 }
 
 #[cfg(test)]
@@ -1152,12 +1314,17 @@ pub(crate) fn migrer_organisation_ime(conn: &Connection) {
         return;
     }
     let cible = format!("{annee}·IME");
-    let deja: Option<String> = conn
-        .query_row("SELECT slots_json FROM edt_typique WHERE annee=?1", [&cible], |r| r.get(0))
-        .ok();
-    // Déjà des créneaux à l'année : on ne remplace rien.
-    if deja.is_some_and(|s| s.len() > 2) {
-        return;
+    // Déjà des créneaux à l'année : on ne remplace rien. Depuis la fusion
+    // (voir `fusionner_emplois_du_temps`), l'organisation d'année vit sous la
+    // clé de l'année elle-même : sans ce second regard, chaque démarrage
+    // reprendrait une semaine de plus à côté d'elle.
+    for cle in [&cible, &annee] {
+        let deja: Option<String> = conn
+            .query_row("SELECT slots_json FROM edt_typique WHERE annee=?1", [cle], |r| r.get(0))
+            .ok();
+        if deja.is_some_and(|s| s.len() > 2) {
+            return;
+        }
     }
 
     // La semaine la mieux remplie : à défaut de savoir laquelle faisait foi,

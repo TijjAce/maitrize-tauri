@@ -10,7 +10,7 @@ const ETAPES: Etape[] = [
   { titre: "Plan de travail", ico: "🗂", couleur: "#6366f1", to: "/plan",
     phrase: "Tout commence ici. Une séquence regroupe des séances autour d'un objectif. L'IA peut même vous en générer une." },
   { titre: "Planning", ico: "🗓️", couleur: "#a855f7", to: "/planning",
-    phrase: "Posez vos créneaux à l'heure exacte, glissez-les, ou générez la semaine depuis votre EDT type." },
+    phrase: "Posez vos créneaux à l'heure exacte, glissez-les, ou générez la semaine depuis votre emploi du temps." },
   { titre: "Élèves", ico: "👧", couleur: "#f59e0b", to: "/eleves",
     phrase: "Faites l'appel en un clic, suivez les présences, notez vos observations et vos évaluations." },
   { titre: "Réglages", ico: "⚙️", couleur: "#14b8a6", to: "/reglages",

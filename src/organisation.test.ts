@@ -5,20 +5,17 @@ const edt = (annee: string, n = 1) => ({ id: annee, annee, slotsJson: JSON.strin
 const lundi14 = new Date(2026, 8, 14);
 
 describe("organisationPour", () => {
-  it("en IME, prend l'organisation fixe de l'année", () => {
-    const r = organisationPour([edt("2026-2027"), edt("2026-2027·IME")], lundi14, true);
-    expect(r?.edt.annee).toBe("2026-2027·IME");
-    expect(r?.source).toBe("ime");
+  it("prend l'emploi du temps de l'année", () => {
+    expect(organisationPour([edt("2025-2026"), edt("2026-2027")], lundi14)?.annee).toBe("2026-2027");
   });
-  it("retrouve encore une ancienne organisation IME semaine par semaine", () => {
-    expect(organisationPour([edt("IME:2026-09-14")], new Date(2026, 8, 16), true)?.edt.annee).toBe("IME:2026-09-14");
+  it("lit encore les organisations IME d'avant la fusion, à l'année puis à la semaine", () => {
+    expect(organisationPour([edt("2026-2027·IME")], lundi14)?.annee).toBe("2026-2027·IME");
+    expect(organisationPour([edt("IME:2026-09-14")], new Date(2026, 8, 16))?.annee).toBe("IME:2026-09-14");
+    // L'emploi du temps de l'année passe avant elles.
+    expect(organisationPour([edt("2026-2027·IME"), edt("2026-2027")], lundi14)?.annee).toBe("2026-2027");
   });
-  it("en classe, prend la trame de classe, puis l'IME à défaut", () => {
-    expect(organisationPour([edt("2026-2027"), edt("2026-2027·IME")], lundi14, false)?.edt.annee).toBe("2026-2027");
-    expect(organisationPour([edt("2026-2027·IME")], lundi14, false)?.edt.annee).toBe("2026-2027·IME");
-  });
-  it("ignore une organisation vide ou d'une autre année", () => {
-    expect(organisationPour([edt("2026-2027·IME", 0), edt("2025-2026·IME")], lundi14, true)).toBeNull();
+  it("ignore un emploi du temps vide ou d'une autre année", () => {
+    expect(organisationPour([edt("2026-2027", 0), edt("2025-2026")], lundi14)).toBeNull();
   });
 });
 

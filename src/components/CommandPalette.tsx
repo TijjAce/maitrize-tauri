@@ -154,7 +154,7 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "📚", label: "Lectures à l'école : albums et livres des listes de référence (cycles 1, 2, 3)", to: "/ressources", page: "ressources", onglet: "lectures", sous: "Ressources · Éduscol" },
   { ico: "🗒", label: "Programmation", to: "/organisation", page: "organisation", onglet: "prog", sous: "Organisation" },
   { ico: "📉", label: "Progression annuelle", to: "/organisation", page: "organisation", onglet: "annuelle", sous: "Organisation" },
-  { ico: "🕘", label: "EDT type", to: "/organisation", page: "organisation", onglet: "edt", sous: "Organisation" },
+  { ico: "🕘", label: "Emploi du temps", to: "/organisation", page: "organisation", onglet: "edt", sous: "Organisation" },
   { ico: "🤝", label: "Travail de cycle", to: "/organisation", page: "organisation", onglet: "cycle", sous: "Organisation" },
   { ico: "🪑", label: "Plan de salle", to: "/organisation", page: "organisation", onglet: "salle", sous: "Organisation" },
   { ico: "📋", label: "Projet pédagogique", to: "/organisation", page: "organisation", onglet: "projet", sous: "Organisation" },
@@ -251,13 +251,13 @@ async function listerSequences(): Promise<string> {
 }
 async function heuresParMatiere(): Promise<string> {
   const edt = (await api.edtTypiqueList()).find((e) => e.annee === anneeScolaireActuelle());
-  if (!edt) return "Aucun EDT type défini.";
+  if (!edt) return "Aucun emploi du temps.";
   let slots: { heureDebut: string; heureFin: string; titre: string }[] = [];
   try { slots = JSON.parse(edt.slotsJson); } catch { /* */ }
   const m: Record<string, number> = {};
   for (const s of slots) m[s.titre] = (m[s.titre] ?? 0) + (toMin(s.heureFin) - toMin(s.heureDebut));
   const lignes = Object.entries(m).sort((a, b) => b[1] - a[1]).map(([mat, min]) => `• ${mat} : ${(min / 60).toFixed(1)} h`);
-  return lignes.length ? "Volume hebdomadaire (EDT type) :\n" + lignes.join("\n") : "EDT type vide.";
+  return lignes.length ? "Volume hebdomadaire (emploi du temps) :\n" + lignes.join("\n") : "Emploi du temps vide.";
 }
 async function bilanSemaine(): Promise<string> {
   const lun = new Date(); lun.setDate(lun.getDate() - ((lun.getDay() + 6) % 7));

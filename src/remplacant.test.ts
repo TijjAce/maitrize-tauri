@@ -17,7 +17,7 @@ const donnees = (p: Partial<DonneesClasse> = {}): DonneesClasse => ({
     { id: "s2", jour: "Mardi", heureDebut: "09:00", heureFin: "10:00", titre: "Piscine", couleur: "blue" },
     { id: "s3", jour: "Lundi", heureDebut: "13:30", heureFin: "14:00", titre: "Synthèse", couleur: "blue", nature: "reunion" },
   ],
-  sourceEdt: "ime", ateliers: [], espaces: [], ...p,
+  ateliers: [], espaces: [], ...p,
 });
 
 describe("feuille pour le remplaçant", () => {
@@ -33,7 +33,6 @@ describe("feuille pour le remplaçant", () => {
     expect(html).toContain("<th>Horaire</th><th>Lundi</th><th>Mardi</th>");
     expect(html.indexOf("09h00–10h00")).toBeLessThan(html.indexOf("13h30–14h00"));
     expect(html).toContain("<b>Scolarité</b><br>Zénon, Amédée");
-    expect(html).toContain("(organisation IME)");
   });
 
   it("liste les élèves avec leurs dispositifs, texte échappé", () => {
@@ -48,7 +47,7 @@ describe("feuille pour le remplaçant", () => {
   });
 
   it("laisse des lignes à compléter quand l'application ne sait pas", () => {
-    expect(blocEmploiDuTemps(donnees({ edt: [], sourceEdt: null }))).toBe("<h2>Emploi du temps</h2><p>…</p>");
+    expect(blocEmploiDuTemps(donnees({ edt: [] }))).toBe("<h2>Emploi du temps</h2><p>…</p>");
   });
 
   it("reprend les contacts et les repères des réglages, et laisse le reste à compléter", () => {
