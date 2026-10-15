@@ -18,6 +18,24 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.30",
+    titre: "Les consignes s'écoutent sur les tablettes, un seul emploi du temps, et une poubelle sur le plan de travail",
+    points: [
+      { quoi: "Sur les tablettes, chaque étape d'une consigne a son haut-parleur, et « Écouter » lit toute la consigne : pour l'élève qui ne lit pas encore. La voix est celle de Mistral quand l'assistant IA a sa clé, préparée une fois par phrase sur l'ordinateur ; sinon, celle de la tablette.", ou: "Dictaphone · Tablettes" },
+      { quoi: "Les tablettes se mènent depuis l'onglet Tablettes du dictaphone, créneau par créneau. Le minuteur en cours se règle à la roue : on touche le temps qui reste.", ou: "Dictaphone · Tablettes" },
+      { quoi: "Le dictaphone s'appelle maintenant « MaitrizeV2 Compagnon », et il chiffre avec la bibliothèque d'Apple. Le cahier journal lui arrive dans un nouveau format : mettez le compagnon à jour avec cette version. Les dictées d'un compagnon plus ancien s'ouvrent toujours.", ou: "Dictaphone" },
+      { quoi: "La transcription sur l'ordinateur écrit juste les prénoms des élèves. Quand Whisper entend un mot qui se dit comme un prénom de la classe sans l'être, il réécoute le passage avec les prénoms proches, et n'en reprend que le prénom.", ou: "Dictées" },
+      { quoi: "Un seul emploi du temps : l'EDT type de la classe et l'organisation IME n'en font plus qu'un, sans lignes d'aide. Les créneaux des deux s'y retrouvent, sans doublon.", ou: "Organisation › Emploi du temps" },
+      { quoi: "Le plan de travail a sa poubelle. Ce qu'on y jette attend, se remet en place d'un clic, ou s'efface pour de bon.", ou: "Plan de travail" },
+      { quoi: "Plusieurs niveaux de classe se cochent, la liste des structures s'allonge (SESSAD, ULIS, UEMA, ITEP…), et la structure ne masque plus rien : toute l'application reste là. Deux nouveaux onglets : Apparence et Licences.", ou: "Réglages" },
+      { quoi: "Le prévu du cahier journal range ses outils en deux menus, « Écrire » et « Ajouter ». Le bureau se cherche, se trie et se partage par trois boutons. Programmer en IME montre, par « 👧 Élèves », quelles compétences sont celles de chaque élève.", ou: "Cahier journal · Bureau · Programmer" },
+      { quoi: "Les photos de Mes pictos deviennent des supports de travail : un nom, une matière, un niveau, le jeu dont elles prennent les règles, la séquence où elles servent. « En retard » les donne aux élèves de leur niveau.", ou: "Réglages › Personnalisation" },
+      { quoi: "Un domaine prend le picto de sa matière, sauf si l'on détaille la matière par domaine.", ou: "Réglages › Personnalisation" },
+      { quoi: "Planches de pictos : avec un bandeau, le picto va presque au trait de découpe, et une carte ne se coupe plus entre deux pages. Texte à trous : « Je vérifie » se lit en étapes, dans le cadre des consignes.", ou: "Fabriquer" },
+      { quoi: "L'onglet Progressions des élèves s'en va.", ou: "Élèves" },
+    ],
+  },
+  {
     version: "1.6.29",
     titre: "Une tablette par élève : chacun ses fiches, son déroulement et son minuteur, menés depuis le téléphone",
     points: [
