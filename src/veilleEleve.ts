@@ -21,6 +21,7 @@ import { normaliser } from "./competencesTravaillees";
 import { pseudonymiser, restaurer } from "./confidentialite";
 import { lireResumes, lireTranches, riendedit } from "./reunion";
 import { SECTIONS_SYNTHESE, sansAutresEleves, type Section, type SyntheseEleve } from "./synthese";
+import { nomDeStructure, structureDe } from "./classe";
 
 /** D'où vient un écrit — pour que l'enseignant puisse aller le relire. */
 export type Origine = "observation" | "journal" | "reunion";
@@ -301,8 +302,9 @@ export async function redigerSyntheseSuivie(a: {
     throw new Error("Rien n'a encore été écrit sur cet élève pour cette période.");
   }
   const reglages = await api.settingsAll().catch(() => ({} as Record<string, string>));
-  const contexte = reglages.typeStructure === "ime" || reglages["edt:mode"] === "ime"
-    ? "L'enseignant exerce en ESMS (IME) : la synthèse décrit les progrès d'élèves en situation de handicap, sans les comparer à une norme d'âge."
+  const structure = nomDeStructure(structureDe(reglages));
+  const contexte = structure
+    ? `L'enseignant exerce en ${structure} : la synthèse décrit les progrès d'élèves à besoins éducatifs particuliers, sans les comparer à une norme d'âge.`
     : "";
 
   const sansCamarades = (t: string) => sansAutresEleves(t, a.autresEleves);

@@ -10,12 +10,12 @@ const infos = (p: Partial<InfosGarde> = {}): InfosGarde => {
   const tout = {
     sorte: "lettre" as SorteGarde, titre: "Cahier de classe", annee: "2026-2027", ecole: "IME <Perce-Neige>",
     enseignant: "Clément Titet", fonction: "Professeur des écoles spécialisé", telephone: "01 85 74 27 87",
-    niveau: "", ime: true, choix: [] as string[], reglages: {} as Record<string, string>, precisions: "", ...p,
+    niveau: "", structure: "IME", choix: [] as string[], reglages: {} as Record<string, string>, precisions: "", ...p,
   };
   return {
     ...tout,
-    choix: p.choix ?? choixParDefaut(tout.sorte, tout.ime),
-    reglages: p.reglages ?? reglagesParDefaut(tout.sorte, tout.ime),
+    choix: p.choix ?? choixParDefaut(tout.sorte),
+    reglages: p.reglages ?? reglagesParDefaut(tout.sorte),
   };
 };
 
@@ -45,9 +45,9 @@ describe("pages de garde", () => {
     }
     expect(corpsParDefaut(infos({ sorte: "cahier" }))).toContain("Nom de l'élève");
     expect(corpsParDefaut(infos({ sorte: "fournitures" }))).toContain("<li>");
-    // En IME, le mot aux familles parle des traces écrites qui varient.
-    expect(corpsParDefaut(infos({ sorte: "lettre" }))).toContain("manipulent");
-    expect(corpsParDefaut(infos({ sorte: "lettre", ime: false }))).not.toContain("manipulent");
+    // Le mot aux familles peut parler des traces écrites qui varient : proposé à tous, coché par personne d'office.
+    expect(corpsParDefaut(infos({ sorte: "lettre" }))).not.toContain("manipulent");
+    expect(corpsParDefaut(infos({ sorte: "lettre", choix: [...choixParDefaut("lettre"), "traces"] }))).toContain("manipulent");
   });
 
   it("ne transmet au modèle que le document et le contexte, jamais d'élève", () => {
@@ -74,7 +74,7 @@ describe("les cases à cocher", () => {
     expect(corpsParDefaut(seul)).toBe(
       "<p>Chères familles,</p><p>Merci de le signer avant de le rendre.</p><p>Bien cordialement,</p>");
     // Une case décochée emporte sa phrase, et elle seule.
-    const sansRdv = infos({ sorte: "lettre", choix: basculer(choixParDefaut("lettre", true), "rdv") });
+    const sansRdv = infos({ sorte: "lettre", choix: basculer(choixParDefaut("lettre"), "rdv") });
     expect(corpsParDefaut(sansRdv)).not.toContain("rendez-vous");
     expect(corpsParDefaut(sansRdv)).toContain("Regardez-le avec votre enfant");
     // Tout décocher laisse un document vide, prêt à écrire à la main.
@@ -89,27 +89,26 @@ describe("les cases à cocher", () => {
     expect(corps.indexOf("</ul>")).toBeLessThan(corps.indexOf("marquer chaque objet"));
   });
 
-  it("ne propose pas les mêmes cases en IME et en classe ordinaire", () => {
-    const ids = (sorte: SorteGarde, ime: boolean) => optionsDe(sorte, ime).map((o) => o.id);
-    expect(ids("fournitures", true)).toContain("change");
-    expect(ids("fournitures", true)).not.toContain("stylos");
-    expect(ids("fournitures", false)).toContain("stylos");
-    expect(ids("fournitures", false)).not.toContain("change");
-    // Un groupe vidé de ses cases ne s'affiche pas : la géométrie n'est pas
-    // au programme d'une unité d'enseignement.
-    expect(groupesDe("fournitures", false).map((g) => g.titre)).toContain("Mesurer et compter");
-    expect(groupesDe("fournitures", true).map((g) => g.titre)).not.toContain("Mesurer et compter");
-    // Le matériel de compensation ne se propose qu'en IME.
-    expect(groupesDe("fournitures", true).map((g) => g.titre)).toContain("Si votre enfant en a besoin");
-    expect(groupesDe("fournitures", false).map((g) => g.titre)).not.toContain("Si votre enfant en a besoin");
-    // Il y a de quoi composer une liste sans écrire une ligne, dans les deux cas.
-    expect(optionsDe("fournitures", true).length).toBeGreaterThan(55);
-    expect(optionsDe("fournitures", false).length).toBeGreaterThan(55);
+  it("propose toutes les cases à tous, quelle que soit la structure", () => {
+    const ids = (sorte: SorteGarde) => optionsDe(sorte).map((o) => o.id);
+    // Le matériel de compensation comme les stylos : chacun coche ce qui convient à sa classe.
+    expect(ids("fournitures")).toEqual(expect.arrayContaining(["change", "stylos", "grips"]));
+    expect(groupesDe("fournitures").map((g) => g.titre)).toEqual(expect.arrayContaining(["Mesurer et compter", "Si votre enfant en a besoin"]));
+    expect(optionsDe("fournitures").length).toBeGreaterThan(55);
     // Mais on n'en coche qu'une dizaine d'office : une liste de rentrée reste courte.
-    expect(choixParDefaut("fournitures", true).length).toBeLessThan(15);
+    expect(choixParDefaut("fournitures").length).toBeLessThan(15);
+    expect(choixParDefaut("fournitures")).not.toContain("change");
     // Les cases d'office donnent un document complet dès l'ouverture.
-    expect(choixParDefaut("cahier", true).length).toBeGreaterThan(1);
-    expect(choixParDefaut("fournitures", false).every((id) => ids("fournitures", false).includes(id))).toBe(true);
+    expect(choixParDefaut("cahier").length).toBeGreaterThan(1);
+    expect(choixParDefaut("fournitures").every((id) => ids("fournitures").includes(id))).toBe(true);
+    expect(reglagesParDefaut("fournitures")).toEqual({ lignage: "seyes" });
+  });
+
+  it("dit la structure au modèle, et rien en classe ordinaire", () => {
+    expect(demandeIA(infos({ sorte: "lettre", structure: "SESSAD" }))).toContain("Contexte : SESSAD");
+    expect(consigneIA(infos({ sorte: "lettre", structure: "SESSAD" }))).toContain("spécialisé, en SESSAD");
+    expect(demandeIA(infos({ sorte: "lettre", structure: "" }))).not.toContain("Contexte :");
+    expect(consigneIA(infos({ sorte: "lettre", structure: "" }))).not.toContain("spécialisé");
   });
 
   it("reprend les cases dans la demande au modèle, liste et consignes séparées", () => {
@@ -124,12 +123,10 @@ describe("les cases à cocher", () => {
 
   it("garde un document propre quelles que soient les cases", () => {
     for (const sorte of ["cahier", "journal", "lettre", "fournitures"] as const) {
-      for (const ime of [true, false]) {
-        const tout = infos({ sorte, ime, choix: optionsDe(sorte, ime).map((o) => o.id) });
-        expect(nettoyerHtml(modeleLocal(tout))).toBe(modeleLocal(tout));
-        // Une case inconnue — un vieux document, un autre contexte — est ignorée.
-        expect(corpsParDefaut({ ...tout, choix: [...tout.choix, "inconnue"] })).toBe(corpsParDefaut(tout));
-      }
+      const tout = infos({ sorte, choix: optionsDe(sorte).map((o) => o.id) });
+      expect(nettoyerHtml(modeleLocal(tout))).toBe(modeleLocal(tout));
+      // Une case inconnue — un vieux document, un autre contexte — est ignorée.
+      expect(corpsParDefaut({ ...tout, choix: [...tout.choix, "inconnue"] })).toBe(corpsParDefaut(tout));
     }
   });
 
@@ -182,11 +179,12 @@ describe("les précisions sur les cahiers", () => {
       avec({ pages: "mille" }))).toBe("Un cahier de brouillon");
   });
 
-  it("part du Seyès agrandi en IME, du Seyès ordinaire ailleurs", () => {
-    expect(reglagesParDefaut("fournitures", true).lignage).toBe("seyes3");
-    expect(reglagesParDefaut("fournitures", false).lignage).toBe("seyes");
+  it("part du Seyès ordinaire, quelle que soit la structure", () => {
+    expect(reglagesParDefaut("fournitures").lignage).toBe("seyes");
+    // L'agrandi de 3 mm reste à un clic.
+    expect(REGLAGES.fournitures!.flatMap((r) => r.valeurs.map((v) => v.id))).toContain("seyes3");
     // Les autres documents ne se précisent pas ainsi.
-    expect(reglagesParDefaut("lettre", true)).toEqual({});
+    expect(reglagesParDefaut("lettre")).toEqual({});
     expect(REGLAGES.lettre).toBeUndefined();
     // Chaque réglage propose de ne rien préciser.
     for (const r of REGLAGES.fournitures!) expect(r.valeurs.some((v) => v.id === "" && v.texte === "")).toBe(true);

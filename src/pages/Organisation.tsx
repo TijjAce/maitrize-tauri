@@ -17,6 +17,7 @@ import { InformationsTab } from "./Informations";
 import { PagesDeGardeTab } from "./PagesDeGarde";
 import { confirmer } from "../components/confirmer";
 import { tempsDeLaSemaineType, natureDuSlot, type SlotEdt } from "../organisation";
+import { lireNiveaux } from "../classe";
 import { duree, plageGrille } from "../heures";
 import { ProgrammationIme } from "../components/ProgrammationIme";
 import { IndicateurZoom, useZoomPince } from "../components/ZoomPince";
@@ -315,14 +316,16 @@ function Programmation({ annee, setAnnee }: AnneeProps) {
   const prog = data?.find((p) => p.annee === annee && !p.estImportee && p.niveau !== "ime");
   const [lien, setLien] = React.useState<{ ligneId: string; col: string } | null>(null);
   const [partagerOuvert, setPartagerOuvert] = React.useState(false);
-  // En IME, on programme par élève : le réglage de structure décide du mode
-  // par défaut, et le choix de l'enseignant prime ensuite.
+  // Programmer par classe ou par élève : le choix de l'enseignant, que la
+  // structure ne décide pas (voir classe.ts). Qui programmait par élève parce
+  // que son emploi du temps était une « Organisation IME » — réglage que plus
+  // rien n'écrit — le garde : ce défaut d'avant devient son choix.
   const [mode, setMode] = React.useState<"classe" | "ime">("classe");
   React.useEffect(() => {
     api.settingsAll().then((r) => {
       const choisi = r[CLE_MODE_PROG];
       if (choisi === "ime" || choisi === "classe") { setMode(choisi); return; }
-      if (r.typeStructure === "ime" || r["edt:mode"] === "ime") setMode("ime");
+      if (r["edt:mode"] === "ime") { setMode("ime"); api.settingSet(CLE_MODE_PROG, "ime").catch(() => {}); }
     }).catch(() => {});
   }, []);
   const choisirMode = (m: "classe" | "ime") => {
@@ -772,11 +775,7 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
   // Un seul emploi du temps par année, posé à l'année : chaque créneau dit sa
   // nature et, s'il y a lieu, les élèves présents. L'EDT de classe et
   // l'organisation IME n'en font plus qu'un (voir `fusionner_emplois_du_temps`,
-  // côté Rust). En IME, pas de volumes officiels à comparer : ce bilan-là se tait.
-  const [structureIme, setStructureIme] = React.useState(false);
-  React.useEffect(() => {
-    api.settingsAll().then((r) => setStructureIme(r.typeStructure === "ime" || r["edt:mode"] === "ime")).catch(() => {});
-  }, []);
+  // côté Rust).
   const edt = data?.find((e) => e.annee === annee);
   const [niveau, setNiveau] = React.useState("");
   const [edit, setEdit] = React.useState<Slot | null>(null);
@@ -905,7 +904,10 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
   // Bilan minutes/matière
   const minutesParMatiere: Record<string, number> = {};
   for (const s of slots) minutesParMatiere[s.titre] = (minutesParMatiere[s.titre] ?? 0) + (toMin(s.heureFin) - toMin(s.heureDebut));
-  const officiel = HEURES_PROGRAMME[niveau] ?? {};
+  // Une classe à plusieurs niveaux se compare aux volumes du premier qui en a.
+  const niveaux = lireNiveaux(niveau);
+  const repere = niveaux.find((n) => HEURES_PROGRAMME[n]);
+  const officiel = repere ? HEURES_PROGRAMME[repere] : {};
   const matieresBilan = Array.from(new Set([...Object.keys(officiel), ...Object.keys(minutesParMatiere).filter((m) => MATIERES.includes(m))])).sort();
 
   return (
@@ -1010,11 +1012,11 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
         intitules={[...new Set(slots.map((x) => x.titre).filter(Boolean))]}
         onSave={(s) => { upsert(s); setEdit(null); }} onDelete={() => { supprimer(edit.id); setEdit(null); }} />}
 
-      {/* Bilan hebdomadaire vs volumes officiels (classe ordinaire uniquement) */}
-      {!structureIme &&
+      {/* Bilan hebdomadaire vs volumes officiels */}
       <div className="card" style={{ marginTop: 18 }}>
-        <h3 style={{ marginTop: 0 }}>📊 Bilan hebdomadaire {niveau ? `(${niveau})` : ""}</h3>
-        {!niveau ? <p style={{ color: "var(--text-2)" }}>Renseignez le niveau de la classe dans les Réglages pour comparer aux volumes officiels.</p> :
+        <h3 style={{ marginTop: 0 }}>📊 Bilan hebdomadaire {niveaux.length ? `(${niveaux.join(", ")})` : ""}</h3>
+        {niveaux.length > 1 && repere && <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>Comparé aux volumes officiels du {repere}.</p>}
+        {!repere ? <p style={{ color: "var(--text-2)" }}>Cochez les niveaux de la classe dans les Réglages pour comparer aux volumes officiels.</p> :
           <table className="tbl">
             <thead><tr><th>Matière</th><th>Planifié</th><th>Officiel</th><th>Écart</th></tr></thead>
             <tbody>
@@ -1035,7 +1037,7 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
               })}
             </tbody>
           </table>}
-      </div>}
+      </div>
 
       {slots.length > 0 && (
         <div className="card" style={{ marginTop: 18 }}>

@@ -15,6 +15,7 @@ import {
   htmlDeLaReponse, lireMeta, modeleLocal, optionsDe, pourDesEleves, REGLAGES, reglagesParDefaut, rienPourLIA, SORTES, SORTES_DU_CHOIX, STYLE_EXEMPLAIRES,
   type InfosGarde, type MetaGarde, type SorteGarde,
 } from "../pagesDeGarde";
+import { nomDeStructure, structureDe } from "../classe";
 import { chargerVacances, periodesDeLAnnee } from "../vacances";
 import { isoJour } from "../dates";
 import { pseudonymiserTout, restaurer } from "../confidentialite";
@@ -31,14 +32,14 @@ import { nomsAMasquer } from "../nomsAMasquer";
 /** Les réglages qui remplissent l'en-tête et la signature ; les périodes de l'année, pour le cahier journal. */
 async function infosParDefaut(annee: string, sorte: SorteGarde): Promise<InfosGarde> {
   const r = await api.settingsAll().catch(() => ({} as Record<string, string>));
-  const ime = r.typeStructure === "ime" || r["edt:mode"] === "ime";
+  const structure = nomDeStructure(structureDe(r));
   const debut = Number(annee.slice(0, 4)) || new Date().getFullYear();
   const periodes = periodesDeLAnnee(await chargerVacances(isoJour(new Date())).catch(() => []), debut);
   return {
     sorte, titre: SORTES.find((s) => s.id === sorte)!.titre, annee,
     ecole: r.ecole ?? "", enseignant: r.enseignantNom ?? "", fonction: r.enseignantFonction ?? "",
     telephone: r["etab:telephone"] ?? "", niveau: r.niveauClasse ?? "",
-    ime, choix: choixParDefaut(sorte, ime), reglages: reglagesParDefaut(sorte, ime), precisions: "", periodes, eleves: [],
+    structure, choix: choixParDefaut(sorte), reglages: reglagesParDefaut(sorte), precisions: "", periodes, eleves: [],
   };
 }
 
@@ -163,8 +164,8 @@ export function PagesDeGardeTab({ annee }: { annee: string }) {
  * plutôt que de le décrire dans un champ libre, qui reste là pour le reste.
  */
 function CasesDuDocument({ infos, onChange }: { infos: InfosGarde; onChange: (i: InfosGarde) => void }) {
-  const groupes = groupesDe(infos.sorte, infos.ime);
-  const toutes = optionsDe(infos.sorte, infos.ime);
+  const groupes = groupesDe(infos.sorte);
+  const toutes = optionsDe(infos.sorte);
   const coche = (choix: string[]) => onChange({ ...infos, choix });
   return (
     <Field label={`Ce que le document doit contenir — ${infos.choix.length} sur ${toutes.length}`}>
@@ -185,7 +186,7 @@ function CasesDuDocument({ infos, onChange }: { infos: InfosGarde; onChange: (i:
       <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
         <button className="btn ghost sm" onClick={() => coche(toutes.map((o) => o.id))}>Tout cocher</button>
         <button className="btn ghost sm" onClick={() => coche([])}>Tout décocher</button>
-        <button className="btn ghost sm" onClick={() => coche(choixParDefaut(infos.sorte, infos.ime))}>Rétablir</button>
+        <button className="btn ghost sm" onClick={() => coche(choixParDefaut(infos.sorte))}>Rétablir</button>
       </div>
     </Field>
   );
@@ -230,7 +231,7 @@ function NouveauDocument({ infos, onChange, onClose, onCreer }: {
     if (id === infos.sorte) return;
     const nouvelle = SORTES.find((s) => s.id === id)!;
     onChange({
-      ...infos, sorte: id, choix: choixParDefaut(id, infos.ime), reglages: reglagesParDefaut(id, infos.ime),
+      ...infos, sorte: id, choix: choixParDefaut(id), reglages: reglagesParDefaut(id),
       titre: infos.titre === sorte.titre ? nouvelle.titre : infos.titre,
     });
   };

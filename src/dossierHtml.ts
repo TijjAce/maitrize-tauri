@@ -103,8 +103,8 @@ export function valeurHtml(v: unknown): string {
 }
 
 /** Le nom d'un document, d'après son type. */
-function nomDuDocument(type: string, ime: boolean): string {
-  const connu = piecesAttendues(ime).find((p) => p.typeDoc === type) ?? piecesAttendues(!ime).find((p) => p.typeDoc === type);
+function nomDuDocument(type: string): string {
+  const connu = piecesAttendues().find((p) => p.typeDoc === type);
   if (connu) return connu.label;
   const dispositif = type.match(/^dispositif:(.+)$/);
   if (dispositif) return dispositif[1].toUpperCase();
@@ -113,14 +113,14 @@ function nomDuDocument(type: string, ime: boolean): string {
 }
 
 /** Le contenu des documents de l'élève, document par document. */
-export function documentsHtml(docs: DocumentEleve[], ime: boolean): string {
+export function documentsHtml(docs: DocumentEleve[]): string {
   const parties = docs.map((doc) => {
     let valeur: unknown = doc.donnees;
     try { valeur = JSON.parse(doc.donnees); } catch { /* un texte simple */ }
     const contenu = valeurHtml(valeur);
     if (!contenu) return "";
     const quand = doc.dateMaj ? ` <span class="meta">(mis à jour le ${new Date(doc.dateMaj).toLocaleDateString("fr-FR")})</span>` : "";
-    return `<h3>${escapeHtml(nomDuDocument(doc.typeDoc, ime))}${quand}</h3>${contenu}`;
+    return `<h3>${escapeHtml(nomDuDocument(doc.typeDoc))}${quand}</h3>${contenu}`;
   }).filter(Boolean);
   return parties.length ? `<h2>Documents</h2>${parties.join("")}` : "";
 }
@@ -153,7 +153,7 @@ export const STYLE_EXPORT = `
  * Le dossier complet d'un élève, à exporter : le dossier imprimable, ses
  * temps d'observation et le contenu de ses documents, dans une page autonome.
  */
-export async function dossierExporte(eleve: Eleve, ime: boolean, annee: string): Promise<string> {
+export async function dossierExporte(eleve: Eleve, annee: string): Promise<string> {
   const [commentaires, notes, evaluations, docs, papiers, progressions, observations] = await Promise.all([
     api.commentairesList(eleve.id),
     api.notesEleveList(),
@@ -164,9 +164,9 @@ export async function dossierExporte(eleve: Eleve, ime: boolean, annee: string):
     api.observationsList(eleve.id),
   ]);
   const objectifs = intitulesDesObjectifs(docs.find((d) => d.typeDoc === "ppi")?.donnees ?? null);
-  const d = construire(eleve, commentaires, notes, evaluations, docs, papiers, progressions, ime);
+  const d = construire(eleve, commentaires, notes, evaluations, docs, papiers, progressions);
   const entete = `<div class="meta">Exporté de Maitrize le ${new Date().toLocaleDateString("fr-FR")}, à la fin de l'année scolaire ${escapeHtml(annee)}.</div>`;
   return documentImprimable(`Dossier — ${eleve.nom}`,
-    entete + corpsDuDossier(d, objectifs, tempsDObservationHtml(observations) + documentsHtml(docs, ime)),
+    entete + corpsDuDossier(d, objectifs, tempsDObservationHtml(observations) + documentsHtml(docs)),
     STYLE_EXPORT);
 }

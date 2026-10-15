@@ -42,19 +42,18 @@ describe("état d'une pièce du dossier", () => {
     expect(documentRempli('{"remarques":"   "}')).toBe(false);
   });
 
-  it("n'attend les pièces IME qu'en mode IME", () => {
-    const ordinaire = piecesAttendues(false).map((p) => p.typeDoc);
-    expect(ordinaire).not.toContain("gevasco");
-    expect(ordinaire).not.toContain("ppi");
-    expect(piecesAttendues(true).map((p) => p.typeDoc)).toContain("gevasco");
+  it("attend les mêmes pièces partout, le PPI et le GEVA-Sco d'abord", () => {
+    const attendues = piecesAttendues().map((p) => p.typeDoc);
+    expect(attendues.slice(0, 2)).toEqual(["ppi", "gevasco"]);
+    expect(attendues).toContain("syntheseGS");
   });
 
   it("renvoie vers l'onglet où remplir chaque pièce", () => {
-    for (const p of piecesAttendues(true)) expect(p.onglet).toBeTruthy();
+    for (const p of piecesAttendues()) expect(p.onglet).toBeTruthy();
   });
 
   it("croise les pièces attendues et les documents trouvés", () => {
-    const p = pieces(piecesAttendues(false), [doc("syntheseGS", '{"langage":"Parle par phrases courtes."}')]);
+    const p = pieces(piecesAttendues(), [doc("syntheseGS", '{"langage":"Parle par phrases courtes."}')]);
     expect(p.find((x) => x.typeDoc === "syntheseGS")!.rempli).toBe(true);
     expect(p.find((x) => x.typeDoc === "evaldiag:observation")!.rempli).toBe(false);
   });
@@ -149,17 +148,17 @@ describe("dossier complet", () => {
   const vide = { papiers: [] as PapierEleve[], progressions: [] as ProgressionEleve[] };
 
   it("signale l'absence d'axe de travail", () => {
-    const d = construire(eleve(), [obs("divers", "x")], [], [], [], vide.papiers, vide.progressions, false);
+    const d = construire(eleve(), [obs("divers", "x")], [], [], [], vide.papiers, vide.progressions);
     expect(d.manques.join(" ")).toMatch(/axe de travail/);
   });
 
   it("ne le signale plus dès qu'un axe est posé", () => {
-    const d = construire(eleve(), [obs("axe de travail", "tour de rôle")], [], [], [], vide.papiers, vide.progressions, false);
+    const d = construire(eleve(), [obs("axe de travail", "tour de rôle")], [], [], [], vide.papiers, vide.progressions);
     expect(d.manques.join(" ")).not.toMatch(/axe de travail/);
   });
 
   it("énumère les pièces à remplir", () => {
-    const d = construire(eleve(), [], [], [], [doc("syntheseGS", '{"langage":"Parle par phrases courtes."}')], vide.papiers, vide.progressions, false);
+    const d = construire(eleve(), [], [], [], [doc("syntheseGS", '{"langage":"Parle par phrases courtes."}')], vide.papiers, vide.progressions);
     const texte = d.manques.join(" ");
     expect(texte).toMatch(/Observation générale/);
     expect(texte).not.toMatch(/Synthèse des acquis GS/);
@@ -167,7 +166,7 @@ describe("dossier complet", () => {
 
   it("ne mélange pas les élèves", () => {
     const autre: CommentaireEleve = { ...obs("divers", "pas à lui"), eleveId: "e2" };
-    const d = construire(eleve(), [obs("divers", "à lui"), autre], [], [], [], vide.papiers, vide.progressions, false);
+    const d = construire(eleve(), [obs("divers", "à lui"), autre], [], [], [], vide.papiers, vide.progressions);
     expect(d.observations.total).toBe(1);
   });
 
@@ -177,6 +176,6 @@ describe("dossier complet", () => {
       { id: "p2", nomEleve: "Quentin", eleveId: "e1", fait: false, espaceId: null },
       { id: "p3", nomEleve: "Autre", eleveId: "e2", fait: true, espaceId: null },
     ];
-    expect(construire(eleve(), [], [], [], [], [], p, false).progressions).toEqual({ faites: 1, total: 2 });
+    expect(construire(eleve(), [], [], [], [], [], p).progressions).toEqual({ faites: 1, total: 2 });
   });
 });

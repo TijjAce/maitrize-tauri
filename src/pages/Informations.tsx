@@ -11,6 +11,7 @@ import { nettoyerHtml } from "../texteRiche";
 import { avecImages } from "../components/imagesTexte";
 import { documentRempli } from "../dossier";
 import { organisationPour } from "../organisation";
+import { structureDe } from "../classe";
 import { BLOCS_REMPLACANT, DOSSIER_INFORMATIONS, feuilleRemplacant, type DonneesClasse } from "../remplacant";
 import { lireEtablissement } from "../etablissement";
 
@@ -30,13 +31,13 @@ async function lireDonneesClasse(annee: string): Promise<DonneesClasse> {
     api.settingsAll(), api.elevesList(), api.documentsEleveList(), api.commentairesList(),
     api.edtTypiqueList(), api.ateliersList().catch(() => []), api.espacesList().catch(() => []),
   ]);
-  const ime = reglages.typeStructure === "ime" || reglages["edt:mode"] === "ime";
+  const structure = structureDe(reglages);
   const trouve = organisationPour(edts, new Date());
   let edt: DonneesClasse["edt"] = [];
   try { edt = trouve ? JSON.parse(trouve.slotsJson) : []; } catch { /* emploi du temps illisible */ }
   return {
     ecole: reglages.ecole ?? "", enseignant: reglages.enseignantNom ?? "", fonction: reglages.enseignantFonction ?? "",
-    niveau: reglages.niveauClasse ?? "", ime, annee, etablissement: lireEtablissement(reglages),
+    niveau: reglages.niveauClasse ?? "", structure: structure.specialisee ? structure.libelle : "", annee, etablissement: lireEtablissement(reglages),
     eleves: eleves.map((e) => {
       const axes = observations.filter((o) => o.eleveId === e.id && o.type === TYPE_AXE).sort((a, b) => b.date.localeCompare(a.date));
       const axe = axes[0]?.texte.trim() ?? "";

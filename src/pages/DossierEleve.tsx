@@ -19,8 +19,6 @@ import { construire, libelleAge, Dossier, Piece } from "../dossier";
 
 export function DossierTab() {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
-  const { data: typeStructure } = useAsync(() => api.settingGet("typeStructure"), []);
-  const ime = typeStructure === "ime";
   const [eleveId, setEleveId] = React.useState("");
 
   React.useEffect(() => { if (!eleveId && eleves?.[0]) setEleveId(eleves[0].id); }, [eleves, eleveId]);
@@ -44,8 +42,8 @@ export function DossierTab() {
       api.progressionsEleveList(),
     ]);
     setObjectifs(intitulesDesObjectifs(await api.documentEleveGet(eleveId, "ppi").catch(() => null)));
-    return construire(eleve, commentaires, notes, evaluations, docs, papiers, progressions, ime);
-  }, [eleveId, eleves, ime]);
+    return construire(eleve, commentaires, notes, evaluations, docs, papiers, progressions);
+  }, [eleveId, eleves]);
 
   if (!eleves?.length) {
     return <Empty icone="🎓" titre="Aucun élève" sous="Ajoutez vos élèves dans l'onglet Classe." />;

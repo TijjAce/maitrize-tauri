@@ -18,6 +18,7 @@ import { VocauxRecus } from "../components/VocauxRecus";
 import { TelephoneNuage } from "../components/TelephoneNuage";
 import { AmisTab } from "./Amis";
 import { ReglagesEnRetard } from "../components/ReglagesEnRetard";
+import { ecrireNiveaux, GROUPES_DE_STRUCTURES, lireNiveaux, STRUCTURES, structureDe } from "../classe";
 import { PictosDesMatieres } from "../components/PictosDesMatieres";
 import { SupportsDeTravail } from "../components/SupportsDeTravail";
 import { listen } from "@tauri-apps/api/event";
@@ -172,10 +173,20 @@ export default function Reglages() {
         </Field>
         <Field label="École"><Input value={s.ecole ?? ""} onChange={(e) => set("ecole", e.target.value)} /></Field>
         <div className="row">
-          <Field label="Niveau de la classe">
-            <Select value={s.niveauClasse ?? ""} onChange={(e) => set("niveauClasse", e.target.value)}>
-              <option value="">—</option>{NIVEAUX_SCOLAIRES.map((n) => <option key={n}>{n}</option>)}
-            </Select>
+          {/* Une classe à plusieurs niveaux en coche plusieurs. */}
+          <Field label="Niveaux de la classe">
+            <div role="group" aria-label="Niveaux de la classe" style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+              {NIVEAUX_SCOLAIRES.map((n) => {
+                const niveaux = lireNiveaux(s.niveauClasse);
+                const pris = niveaux.includes(n);
+                return (
+                  <button key={n} type="button" className={`btn sm${pris ? " primary" : ""}`} aria-pressed={pris}
+                    onClick={() => set("niveauClasse", ecrireNiveaux(pris ? niveaux.filter((x) => x !== n) : [...niveaux, n]))}>
+                    {n}
+                  </button>
+                );
+              })}
+            </div>
           </Field>
           <Field label="Zone de vacances">
             <Select value={s.zoneVacances ?? "A"} onChange={(e) => set("zoneVacances", e.target.value)}>
@@ -183,18 +194,16 @@ export default function Reglages() {
             </Select>
           </Field>
         </div>
+        {/* La structure ne change rien à ce que propose l'application : elle dit où l'on enseigne (voir classe.ts). */}
         <Field label="Type de structure">
-          <Select value={s.typeStructure ?? "ordinaire"} onChange={(e) => set("typeStructure", e.target.value)}>
-            <option value="ordinaire">Classe ordinaire</option>
-            <option value="ime">IME / ULIS / inclusion (suivi individualisé)</option>
+          <Select value={structureDe(s).id} onChange={(e) => set("typeStructure", e.target.value)}>
+            {GROUPES_DE_STRUCTURES.map((g) => (
+              <optgroup key={g} label={g}>
+                {STRUCTURES.filter((x) => x.groupe === g).map((x) => <option key={x.id} value={x.id}>{x.libelle}</option>)}
+              </optgroup>
+            ))}
           </Select>
         </Field>
-        {(s.typeStructure ?? "ordinaire") === "ime" && (
-          <div style={{ fontSize: 12, color: "var(--text-2)" }}>
-            Active les onglets <b>Dispositifs</b> (PPS, PAP, PAI, PPRE, PPI) et <b>GEVA-Sco</b> dans Élèves,
-            et, dans l'emploi du temps, les <b>élèves présents</b> à chaque créneau, que « Générer le jour » reprend.
-          </div>
-        )}
       </div>
 
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
