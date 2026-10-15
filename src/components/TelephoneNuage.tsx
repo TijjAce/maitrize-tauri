@@ -1,6 +1,7 @@
 import React from "react";
 import { api, texteErreur, type CodeTelephone, type CompteConnu, type EtatRelais } from "../api";
 import { Field, Input } from "./ui";
+import { Aide } from "./Aide";
 import { toast } from "./Toaster";
 import { confirmer } from "./confirmer";
 import { EVT_RELEVE, derniereReleve, releverMaintenant, resumeDeLaReleve, type EtatReleve } from "../releveTelephone";
@@ -35,6 +36,35 @@ function quandLisible(iso: string): string {
   if (jour(d) === jour(new Date())) return `aujourd'hui à ${h}`;
   if (jour(d) === jour(hier)) return `hier à ${h}`;
   return `le ${d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} à ${h}`;
+}
+
+/**
+ * Relier le téléphone, pas à pas : où se fait chaque geste — ici ou sur
+ * l'iPhone —, l'étape où l'on en est en avant, celles qui sont faites
+ * cochées. Le téléphone montre le même guide, vu de son côté.
+ */
+const ETAPES_POUR_RELIER: { ou: string; quoi: React.ReactNode }[] = [
+  { ou: "📱 Sur l'iPhone", quoi: <>Installez <b>MaitrizeV2 Compagnon</b>, depuis l'App Store.</> },
+  { ou: "💻 Ici", quoi: <>Choisissez le compte Nuage qui portera le dossier du téléphone, puis <b>Relier le téléphone</b>.</> },
+  { ou: "💻 Ici", quoi: <><b>QR code du téléphone</b> : il s'affiche dans ce cadre.</> },
+  { ou: "📱 Sur l'iPhone", quoi: <>Onglet Réglages : <b>Scanner le QR code</b>, et visez celui de l'écran.</> },
+  { ou: "📱 Sur l'iPhone", quoi: <><b>Se connecter</b> : la page de Nuage s'ouvre ; entrez votre compte, puis acceptez. Dictées, notes et photos arrivent ensuite ici, à chaque relève.</> },
+];
+
+function EtapesPourRelier({ ici }: { ici: number }) {
+  return (
+    <ol className="etapes-relier" aria-label="Relier le téléphone">
+      {ETAPES_POUR_RELIER.map((e, i) => {
+        const n = i + 1;
+        return (
+          <li key={n} className={n < ici && n > 1 ? "faite" : n === ici ? "ici" : ""} aria-current={n === ici ? "step" : undefined}>
+            <span className="etape-ou">{e.ou}</span>
+            <span>{e.quoi}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
 }
 
 /** Le compte que Maitrize garde déjà, et le compte à saisir : deux choix qui ne sont pas des bureaux communs. */
@@ -206,24 +236,31 @@ export function TelephoneNuage() {
     <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h3 style={{ margin: 0 }}>☁️ Le téléphone par Nuage</h3>
+        <Aide titre="Ce qui passe par Nuage" vers="droite">
+          <p>
+            Le compagnon dépose dictées, notes et photos dans un dossier de votre Nuage dès qu'il a du réseau — c'est
+            leur seul chemin —, et Maitrize les relève tout seul quand il est ouvert ; une photo nommée rejoint Mes pictos.
+          </p>
+          <p>
+            Ce dossier n'est ouvert qu'à <b>votre compte</b> : aucun lien de partage, aucun mot de passe dans le QR code —
+            le téléphone s'y connecte lui-même, avec votre compte. Tout est chiffré avant de quitter le téléphone : Nuage
+            ne voit que des fichiers fermés, et le téléphone lui-même ne peut pas les rouvrir.
+          </p>
+          <p>
+            En retour, il reçoit l'emploi du temps — une heure et un intitulé, sans personne dedans — et le cahier
+            journal — le prévu, le bilan, les aides à la tâche et le minuteur des tablettes de chaque créneau —, chiffré
+            pour lui seul : Nuage ne peut pas le lire.
+          </p>
+        </Aide>
         <div className="spacer" style={{ flex: 1 }} />
         <span className="meta" style={{ color: etat.relie ? "var(--green, #16a34a)" : undefined }}>
           {etat.relie ? `● Relié — ${etat.serveur}` : "○ Non relié"}
         </span>
       </div>
-      <p style={{ color: "var(--text-2)", marginTop: 10, fontSize: 13, lineHeight: 1.6 }}>
-        Le <b>Dictaphone</b> dépose dictées, notes et photos dans un dossier de votre Nuage dès qu'il a du réseau — c'est
-        leur seul chemin —, et Maitrize les relève tout seul quand il est ouvert ; une photo nommée rejoint Mes pictos. Ce dossier n'est ouvert qu'à
-        <b> votre compte</b> : aucun lien de partage, aucun mot de passe dans le QR code — le téléphone s'y connecte
-        lui-même, avec votre compte. Tout est chiffré avant de quitter le téléphone : Nuage ne voit que des fichiers
-        fermés, et le téléphone lui-même ne peut pas les rouvrir. En retour, il reçoit l'emploi du temps — une heure
-        et un intitulé, sans personne dedans — et le cahier journal — le prévu, le bilan, les aides à la tâche et le
-        minuteur des tablettes de chaque créneau —, chiffré pour lui seul : Nuage ne peut pas le lire.
-      </p>
-
       {!etat.relie ? (
         <>
           {!avecCode && <>
+            <EtapesPourRelier ici={2} />
             {choixDuCompte("Le compte Nuage qui portera le dossier du téléphone")}
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
               <button className="btn primary" disabled={!!occupe || !peutRelier} onClick={() => { void relier(); }}>
@@ -290,14 +327,14 @@ export function TelephoneNuage() {
             <button className="btn danger" onClick={() => { void oublier(); }}>Oublier</button>
           </div>
 
+          {code && <EtapesPourRelier ici={4} />}
           {code && (
             <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap", marginTop: 14 }}>
               <div className="qr-portable qr-relais" aria-label="QR code du relais" dangerouslySetInnerHTML={{ __html: code.qrSvg }} />
               <div style={{ minWidth: 220, flex: 1 }}>
-                <p style={{ margin: "0 0 6px", fontWeight: 600 }}>
-                  Dans le Dictaphone, onglet Réglages : « Scanner le QR code », puis « Se connecter » avec votre
-                  compte Nuage{etat.compteDuDossier && <> (<b>{etat.compteDuDossier}</b>)</>}.
-                </p>
+                {etat.compteDuDossier && (
+                  <p style={{ margin: "0 0 6px", fontWeight: 600 }}>Le compte Nuage à entrer sur l'iPhone : <b>{etat.compteDuDossier}</b>.</p>
+                )}
                 <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)", lineHeight: 1.55 }}>
                   Ce code ne contient aucun mot de passe : sans votre compte, il n'ouvre rien. Il porte la clé de
                   l'emploi du temps — refermez-le une fois scanné.

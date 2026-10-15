@@ -1740,6 +1740,27 @@ function aidesDuJour() {
   return `${titre}<div class="carte cj">${rangs}</div>`;
 }
 
+/**
+ * Relier le téléphone à l'ordinateur, pas à pas : deux gestes sur
+ * l'ordinateur, deux ici. L'étape où l'on en est passe en avant ; celles
+ * qui sont faites se cochent. Le même guide paraît partout où le téléphone
+ * attend d'être relié — le journal, les notes, les réglages.
+ */
+function etapesPourRelier() {
+  const ici = !relais.relie ? 3 : 4;
+  const etapes = [
+    ["Sur l'ordinateur", "Dans Maitrize : <b>Réglages › Téléphone</b>. Choisissez votre compte Nuage, puis <b>Relier le téléphone</b>."],
+    ["Sur l'ordinateur", "Cliquez sur <b>QR code du téléphone</b> : il s'affiche à l'écran."],
+    ["Sur ce téléphone", "Onglet Réglages : <b>Scanner le QR code</b>, et visez celui de l'ordinateur."],
+    ["Sur ce téléphone", "<b>Se connecter</b> : la page de Nuage s'ouvre. Entrez votre compte, puis acceptez."],
+  ];
+  return `<ol class="etapes" aria-label="Relier le téléphone à l'ordinateur">${etapes.map(([ou, quoi], i) => {
+    const n = i + 1;
+    const classe = relais.relie && n < ici ? "faite" : n === ici ? "ici" : "";
+    return `<li class="${classe}"${n === ici ? ' aria-current="step"' : ""}><span><span class="etape-ou">${ou}</span>${quoi}</span></li>`;
+  }).join("")}</ol>`;
+}
+
 /** Sans Nuage, rien ne part vers l'ordinateur : on le dit, et l'on mène aux réglages. */
 function carteARelier() {
   const relie = relais.relie;
@@ -1747,6 +1768,7 @@ function carteARelier() {
     <div class="carte-tete"><span class="grand-ico">${icone(relie ? "cadenas" : "nuage")}</span>
       <h3>${relie ? "Se connecter à Nuage" : "Relier à l'ordinateur"}</h3>
       <p class="sous">${relie ? "Le dictaphone attend votre connexion à Nuage pour envoyer à l'ordinateur." : "Le dictaphone envoie à l'ordinateur par Nuage : reliez-les une fois, par le QR code de l'ordinateur."}</p></div>
+    ${etapesPourRelier()}
     <button class="btn-plein" id="aller-reglages">${icone("reglages")}Ouvrir les réglages</button>
   </div>${bulles(true)}`;
 }
@@ -1847,7 +1869,7 @@ const vueDeLaCamera = (pour) => (camera && lecturePour === pour
 function carteNuage() {
   return `<div class="carte">
     <div class="carte-tete"><span class="grand-ico">${icone("nuage")}</span><h3>Relier à l'ordinateur</h3></div>
-    ${vueDeLaCamera("nuage") || `<button class="btn-plein" id="lire-nuage">${icone("qr")}Scanner le QR code</button>`}
+    ${vueDeLaCamera("nuage") || `${etapesPourRelier()}<button class="btn-plein" id="lire-nuage">${icone("qr")}Scanner le QR code</button>`}
     ${scanSouci ? `<p class="erreur-ligne">${echapper(scanSouci)}</p>` : ""}
   </div>`;
 }
@@ -1860,6 +1882,7 @@ function carteConnexion() {
   return `<div class="carte">
     <div class="carte-tete"><span class="grand-ico">${icone("cadenas")}</span><h3>Se connecter à Nuage</h3>
       <p class="sous">avec le compte <b>${echapper(relais.compte)}</b></p></div>
+    ${etapesPourRelier()}
     <button class="btn-plein" id="se-connecter" ${connexionEnCours ? "disabled" : ""}>${icone("cadenas")}${connexionEnCours ? "Connexion…" : "Se connecter"}</button>
     ${connexionSouci ? `<p class="erreur-ligne">${echapper(connexionSouci)}</p>` : ""}
     <button class="btn-doux" id="oublier-relais" ${connexionEnCours ? "disabled" : ""}>Oublier ce QR code</button>
