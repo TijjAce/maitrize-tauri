@@ -34,7 +34,7 @@ chrono = "0.4"
 # celui d'Apple (CryptoKit) ; ailleurs, du Rust.
 maitrize-relais = { path = "../../relais" }
 tokio = { version = "1", features = ["rt-multi-thread", "time"] }
-tauri-plugin-dialog = "2.7.3"
+tauri-plugin-dialog = "2.8.3"
 # Le scanner de documents de l'iPhone : un manuel se photographie page à
 # page comme dans Notes, redressé et nettoyé. Écrit ici, dans `plugins/`.
 tauri-plugin-scanner = { path = "plugins/scanner" }
