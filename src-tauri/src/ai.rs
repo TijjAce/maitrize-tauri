@@ -975,6 +975,121 @@ pub async fn transcrire_audio(
 }
 
 
+// ── La voix des consignes ──────────────────────────────────────────────────
+//
+// Sur les tablettes, un élève qui ne lit pas encore touche une étape de la
+// consigne et l'entend. L'audio se prépare ici, une fois par phrase, avec la
+// synthèse vocale de Mistral (Voxtral TTS) : seule la phrase part, jamais un
+// prénom — une consigne n'en porte pas. Gardé sur le disque, il ne se refait
+// pas : la même page garde la même empreinte, et ne repart pas vers le téléphone.
+
+/// Le modèle et la voix qui lisent les consignes : une voix française, posée.
+const MODELE_VOIX: &str = "voxtral-mini-tts-latest";
+const VOIX_DES_CONSIGNES: &str = "fr_marie_neutral";
+const DOLLARS_PAR_MILLE_CARACTERES_VOIX: f64 = 0.016;
+/// Une consigne, pas un chapitre : au-delà, ce n'est plus une étape qu'on écoute.
+const CARACTERES_MAX_VOIX: usize = 1000;
+
+/// La phrase telle qu'on la lit : ses blancs resserrés.
+pub(crate) fn phrase_a_lire(texte: &str) -> String {
+    texte.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Le fichier où l'audio d'une phrase est gardé : son nom dit la voix et la phrase.
+pub(crate) fn fichier_de_la_voix(dossier: &std::path::Path, phrase: &str) -> std::path::PathBuf {
+    use sha2::{Digest, Sha256};
+    let empreinte: String = Sha256::digest(format!("{MODELE_VOIX}|{VOIX_DES_CONSIGNES}|{phrase}").as_bytes())
+        .iter().take(16).map(|o| format!("{o:02x}")).collect();
+    dossier.join(format!("{empreinte}.mp3"))
+}
+
+/// Une phrase de consigne, lue à voix haute : un mp3, en base64.
+#[tauri::command]
+pub async fn voix_lire(db: State<'_, Db>, texte: String) -> Result<String, String> {
+    use base64::Engine;
+    let b64 = base64::engine::general_purpose::STANDARD;
+    let phrase = phrase_a_lire(&texte);
+    if phrase.is_empty() {
+        return Err("Rien à lire.".into());
+    }
+    if phrase.chars().count() > CARACTERES_MAX_VOIX {
+        return Err("Cette consigne est trop longue pour être lue d'un trait.".into());
+    }
+    let fichier = fichier_de_la_voix(&crate::db::data_dir().join("Voix"), &phrase);
+    if let Ok(octets) = std::fs::read(&fichier) {
+        if !octets.is_empty() {
+            return Ok(b64.encode(octets));
+        }
+    }
+    let cle = cle_mistral(&db)?;
+    let corps = serde_json::json!({
+        "model": MODELE_VOIX, "input": phrase, "voice_id": VOIX_DES_CONSIGNES, "response_format": "mp3",
+    });
+    let client = reqwest::Client::new();
+    let mut essai = 0;
+    let (statut, quota, texte_rep) = loop {
+        let rep = client
+            .post("https://api.mistral.ai/v1/audio/speech")
+            .bearer_auth(&cle)
+            .json(&corps)
+            .timeout(std::time::Duration::from_secs(60))
+            .send()
+            .await
+            .map_err(|e| format!("Envoi impossible : {e}"))?;
+        let statut = rep.status();
+        let quota = quota_minute(rep.headers());
+        let texte_rep = rep.text().await.map_err(|e| e.to_string())?;
+        // Une rafale de phrases : Mistral demande d'attendre un peu, on attend.
+        if statut.as_u16() == 429 && essai < REESSAIS_429 {
+            essai += 1;
+            tokio::time::sleep(std::time::Duration::from_millis(1500 * essai as u64)).await;
+            continue;
+        }
+        break (statut, quota, texte_rep);
+    };
+    if !statut.is_success() {
+        return Err(message_erreur(statut.as_u16(), &texte_rep, quota));
+    }
+    let json: serde_json::Value = serde_json::from_str(&texte_rep).map_err(|e| format!("Réponse illisible : {e}"))?;
+    let audio = json
+        .get("audio_data")
+        .and_then(|v| v.as_str())
+        .ok_or("Réponse sans audio.")?;
+    let octets = b64.decode(audio.as_bytes()).map_err(|e| format!("Audio illisible : {e}"))?;
+    noter_depense(&db, Depense {
+        jetons: jetons_de(json.get("usage")),
+        dollars: phrase.chars().count() as f64 / 1000.0 * DOLLARS_PAR_MILLE_CARACTERES_VOIX,
+    });
+    if let Some(dossier) = fichier.parent() {
+        let _ = std::fs::create_dir_all(dossier);
+    }
+    // Pas de disque : on lit quand même, la prochaine fois refera l'appel.
+    let _ = std::fs::write(&fichier, &octets);
+    Ok(b64.encode(octets))
+}
+
+#[cfg(test)]
+mod tests_voix {
+    use super::*;
+
+    #[test]
+    fn une_phrase_se_lit_ses_blancs_resserres() {
+        assert_eq!(phrase_a_lire("  Je   colorie\n les ronds. "), "Je colorie les ronds.");
+        assert_eq!(phrase_a_lire(" \n "), "");
+    }
+
+    #[test]
+    fn la_meme_phrase_garde_le_meme_fichier() {
+        // Le même audio, la même page : son empreinte ne change pas, elle ne repart pas vers le téléphone.
+        let d = std::path::Path::new("/tmp/voix");
+        let a = fichier_de_la_voix(d, "Je colorie les ronds.");
+        assert_eq!(a, fichier_de_la_voix(d, "Je colorie les ronds."));
+        assert_ne!(a, fichier_de_la_voix(d, "Je colorie les carrés."));
+        assert_eq!(a.extension().and_then(|x| x.to_str()), Some("mp3"));
+        assert_eq!(a.parent(), Some(d));
+    }
+}
+
 #[cfg(test)]
 mod tests_erreurs {
     use super::message_erreur;
