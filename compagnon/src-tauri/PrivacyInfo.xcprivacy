@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Le manifeste de confidentialité que l'App Store exige.
+
+  Le dictaphone ne suit personne et ne collecte rien : ce qu'il envoie est
+  scellé pour l'ordinateur de l'enseignant, que ni Maitrize ni personne
+  d'autre ne peut rouvrir.
+
+  Il déclare les API « à raison requise » que le binaire appelle — Rust,
+  Tao et WebKit compris :
+    - les dates des fichiers (stat, fstat, lstat) : ceux du dossier de
+      l'application, les dictées qui attendent leur envoi (C617.1) ;
+    - le temps écoulé depuis le démarrage (systemUptime) : mesurer une durée
+      dans l'application, jamais la date du démarrage elle-même (35F9.1) ;
+    - les préférences (NSUserDefaults) : celles de l'application seule (CA92.1) ;
+    - les claviers actifs (activeInputModes) : afficher le bon clavier
+      dans la page (54BD.1).
+  Un binaire qui en appellerait une autre doit l'ajouter ici, sans quoi
+  l'App Store refuse l'envoi.
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>35F9.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryActiveKeyboards</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>54BD.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

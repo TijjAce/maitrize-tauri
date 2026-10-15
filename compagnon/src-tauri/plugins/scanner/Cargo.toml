@@ -7,7 +7,7 @@ edition = "2021"
 links = "tauri-plugin-scanner"
 
 [dependencies]
-tauri = { version = "=2.11.2", features = [] }
+tauri = { version = "=2.12.3", features = [] }
 serde = { version = "1", features = ["derive"] }
 
 [build-dependencies]
