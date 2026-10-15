@@ -21,13 +21,24 @@
 //!
 //! Cette bibliothèque est commune aux deux applications : le format ne peut
 //! pas diverger entre celui qui écrit et celui qui lit.
+//!
+//! Sur l'iPhone, le chiffrement est celui d'Apple : CryptoKit (voir `apple/`)
+//! scelle les dépôts et ouvre le retour, et le TLS du système parle à Nuage.
+//! Le compagnon n'embarque ainsi aucun algorithme de chiffrement à lui, ce
+//! qui dispense l'App Store de toute déclaration. L'ordinateur, lui, chiffre
+//! et déchiffre en Rust, au même format.
 
 use base64::{engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD}, Engine as _};
-use chacha20poly1305::{aead::{Aead, KeyInit, Payload}, Key, XChaCha20Poly1305, XNonce};
-use hkdf::Hkdf;
-use rand_core::{OsRng, RngCore};
 use serde::{Deserialize, Serialize};
+#[cfg(not(target_os = "ios"))]
+use chacha20poly1305::{aead::{Aead, KeyInit, Payload}, ChaCha20Poly1305, Key, Nonce, XChaCha20Poly1305, XNonce};
+#[cfg(not(target_os = "ios"))]
+use hkdf::Hkdf;
+#[cfg(not(target_os = "ios"))]
+use rand_core::{OsRng, RngCore};
+#[cfg(not(target_os = "ios"))]
 use sha2::Sha256;
+#[cfg(not(target_os = "ios"))]
 use x25519_dalek::{PublicKey, StaticSecret};
 
 pub mod connexion;
@@ -43,8 +54,15 @@ pub const FICHIER_AGENDA: &str = "agenda.mtz";
 /// Ce par quoi commence un code d'appairage : un QR code quelconque ne passe pas pour un relais.
 pub const PREFIXE_CODE: &str = "maitrize-relais:";
 
-const MARQUE_DEPOT: &[u8; 4] = b"MTZ1";
-const MARQUE_RETOUR: &[u8; 4] = b"MTZR";
+/// Les marques des fichiers : la version 2 qu'on écrit, la 1 que l'ordinateur relit encore (voir « Sceller un dépôt »).
+#[cfg(not(target_os = "ios"))]
+const MARQUE_DEPOT: &[u8; 4] = b"MTZ2";
+#[cfg(not(target_os = "ios"))]
+const MARQUE_RETOUR: &[u8; 4] = b"MTR2";
+#[cfg(not(target_os = "ios"))]
+const MARQUE_DEPOT_V1: &[u8; 4] = b"MTZ1";
+const MARQUE_RETOUR_V1: &[u8; 4] = b"MTZR";
+#[cfg(not(target_os = "ios"))]
 const CONTEXTE_DEPOT: &[u8] = b"maitrize-relais-depot-v1";
 
 // ── L'appairage ────────────────────────────────────────────────────────────
@@ -204,6 +222,7 @@ pub fn cle_en_texte(cle: &[u8; 32]) -> String {
 }
 
 /// Une paire de clés neuve pour un relais : la privée reste sur l'ordinateur, la publique part dans le QR code.
+#[cfg(not(target_os = "ios"))]
 pub fn nouvelle_paire() -> ([u8; 32], [u8; 32]) {
     let privee = StaticSecret::random_from_rng(OsRng);
     let publique = PublicKey::from(&privee);
@@ -211,6 +230,7 @@ pub fn nouvelle_paire() -> ([u8; 32], [u8; 32]) {
 }
 
 /// Trente-deux octets tirés au hasard : la clé du retour.
+#[cfg(not(target_os = "ios"))]
 pub fn nouvelle_cle() -> [u8; 32] {
     let mut cle = [0u8; 32];
     OsRng.fill_bytes(&mut cle);
@@ -218,12 +238,22 @@ pub fn nouvelle_cle() -> [u8; 32] {
 }
 
 /// La clé publique d'une clé privée : pour vérifier qu'une paire va ensemble.
+#[cfg(not(target_os = "ios"))]
 pub fn publique_de(privee: &[u8; 32]) -> [u8; 32] {
     PublicKey::from(&StaticSecret::from(*privee)).to_bytes()
 }
 
 // ── Sceller un dépôt ───────────────────────────────────────────────────────
+//
+// Deux versions du format. La première (« MTZ1 », « MTZR ») chiffrait en
+// XChaCha20-Poly1305, que CryptoKit ne connaît pas. La seconde (« MTZ2 »,
+// « MTR2 ») chiffre en ChaCha20-Poly1305 (RFC 8439), avec un nonce de 12
+// octets tiré au hasard, et la clé d'un dépôt tirée de la même façon : c'est
+// ce que l'iPhone fait avec la seule bibliothèque d'Apple, et ce que
+// l'ordinateur écrit désormais. L'ordinateur relit encore la première
+// version : un téléphone pas encore mis à jour dépose toujours.
 
+#[cfg(not(target_os = "ios"))]
 fn cle_du_scelle(partage: &[u8; 32], ephemere: &[u8; 32], destinataire: &[u8; 32]) -> R<[u8; 32]> {
     // Le sel lie la clé aux deux clés publiques : un dépôt rejoué pour un autre destinataire ne s'ouvre pas.
     let mut sel = Vec::with_capacity(64);
@@ -241,17 +271,18 @@ fn cle_du_scelle(partage: &[u8; 32], ephemere: &[u8; 32], destinataire: &[u8; 32
 /// Une clé jetable est tirée pour chaque dépôt : celui qui scelle ne garde
 /// rien qui permette de rouvrir. Le blob porte la marque, la clé publique
 /// jetable, le nonce, puis le contenu chiffré et authentifié.
+#[cfg(not(target_os = "ios"))]
 pub fn sceller(destinataire: &[u8; 32], clair: &[u8]) -> R<Vec<u8>> {
     let jetable = StaticSecret::random_from_rng(OsRng);
     let ephemere = PublicKey::from(&jetable).to_bytes();
     let partage = jetable.diffie_hellman(&PublicKey::from(*destinataire));
     let cle = cle_du_scelle(partage.as_bytes(), &ephemere, destinataire)?;
-    let mut nonce = [0u8; 24];
+    let mut nonce = [0u8; 12];
     OsRng.fill_bytes(&mut nonce);
-    let chiffre = XChaCha20Poly1305::new(Key::from_slice(&cle))
-        .encrypt(XNonce::from_slice(&nonce), Payload { msg: clair, aad: MARQUE_DEPOT })
+    let chiffre = ChaCha20Poly1305::new(Key::from_slice(&cle))
+        .encrypt(Nonce::from_slice(&nonce), Payload { msg: clair, aad: MARQUE_DEPOT })
         .map_err(|_| "Chiffrement impossible.".to_string())?;
-    let mut blob = Vec::with_capacity(4 + 32 + 24 + chiffre.len());
+    let mut blob = Vec::with_capacity(4 + 32 + 12 + chiffre.len());
     blob.extend_from_slice(MARQUE_DEPOT);
     blob.extend_from_slice(&ephemere);
     blob.extend_from_slice(&nonce);
@@ -259,45 +290,91 @@ pub fn sceller(destinataire: &[u8; 32], clair: &[u8]) -> R<Vec<u8>> {
     Ok(blob)
 }
 
-/// Rouvre un dépôt avec la clé privée de l'ordinateur.
+/// Scelle un contenu pour la clé publique de l'ordinateur : sur l'iPhone, par CryptoKit.
+#[cfg(target_os = "ios")]
+pub fn sceller(destinataire: &[u8; 32], clair: &[u8]) -> R<Vec<u8>> {
+    maitrize_relais_apple::sceller(destinataire, clair)
+}
+
+/// Rouvre un dépôt avec la clé privée de l'ordinateur : de la version 2, ou de la 1.
+#[cfg(not(target_os = "ios"))]
 pub fn desceller(privee: &[u8; 32], blob: &[u8]) -> R<Vec<u8>> {
-    if blob.len() < 4 + 32 + 24 + 16 || &blob[..4] != MARQUE_DEPOT {
-        return Err("Ce fichier n'est pas un dépôt du téléphone.".into());
+    let pas_un_depot = || "Ce fichier n'est pas un dépôt du téléphone.".to_string();
+    let marque = blob.get(..4).ok_or_else(pas_un_depot)?;
+    let v1 = marque == MARQUE_DEPOT_V1;
+    if !v1 && marque != MARQUE_DEPOT {
+        return Err(pas_un_depot());
+    }
+    let long_nonce = if v1 { 24 } else { 12 };
+    if blob.len() < 4 + 32 + long_nonce + 16 {
+        return Err(pas_un_depot());
     }
     let ephemere: [u8; 32] = blob[4..36].try_into().map_err(|_| "Dépôt abîmé.".to_string())?;
     let secret = StaticSecret::from(*privee);
     let destinataire = PublicKey::from(&secret).to_bytes();
     let partage = secret.diffie_hellman(&PublicKey::from(ephemere));
     let cle = cle_du_scelle(partage.as_bytes(), &ephemere, &destinataire)?;
-    XChaCha20Poly1305::new(Key::from_slice(&cle))
-        .decrypt(XNonce::from_slice(&blob[36..60]), Payload { msg: &blob[60..], aad: MARQUE_DEPOT })
-        .map_err(|_| "Ce dépôt ne s'ouvre pas : il n'a pas été scellé pour cet ordinateur, ou il est abîmé.".to_string())
+    let (nonce, chiffre) = blob[36..].split_at(long_nonce);
+    let charge = Payload { msg: chiffre, aad: marque };
+    let clair = if v1 {
+        XChaCha20Poly1305::new(Key::from_slice(&cle)).decrypt(XNonce::from_slice(nonce), charge)
+    } else {
+        ChaCha20Poly1305::new(Key::from_slice(&cle)).decrypt(Nonce::from_slice(nonce), charge)
+    };
+    clair.map_err(|_| "Ce dépôt ne s'ouvre pas : il n'a pas été scellé pour cet ordinateur, ou il est abîmé.".to_string())
 }
 
 // ── Chiffrer le retour ─────────────────────────────────────────────────────
 
 /// Chiffre ce que l'ordinateur laisse au téléphone, avec la clé du retour.
+#[cfg(not(target_os = "ios"))]
 pub fn chiffrer_retour(cle: &[u8; 32], clair: &[u8]) -> R<Vec<u8>> {
-    let mut nonce = [0u8; 24];
+    let mut nonce = [0u8; 12];
     OsRng.fill_bytes(&mut nonce);
-    let chiffre = XChaCha20Poly1305::new(Key::from_slice(cle))
-        .encrypt(XNonce::from_slice(&nonce), Payload { msg: clair, aad: MARQUE_RETOUR })
+    let chiffre = ChaCha20Poly1305::new(Key::from_slice(cle))
+        .encrypt(Nonce::from_slice(&nonce), Payload { msg: clair, aad: MARQUE_RETOUR })
         .map_err(|_| "Chiffrement impossible.".to_string())?;
-    let mut blob = Vec::with_capacity(4 + 24 + chiffre.len());
+    let mut blob = Vec::with_capacity(4 + 12 + chiffre.len());
     blob.extend_from_slice(MARQUE_RETOUR);
     blob.extend_from_slice(&nonce);
     blob.extend_from_slice(&chiffre);
     Ok(blob)
 }
 
-/// Relit ce que l'ordinateur a laissé.
+/// Ce que dit le téléphone devant le retour d'un ordinateur pas encore mis à jour, qu'il ne sait plus ouvrir.
+pub const RETOUR_D_AVANT: &str =
+    "Ce cahier journal vient d'une version plus ancienne de Maitrize : mettez l'application à jour sur l'ordinateur.";
+
+/// Relit ce que l'ordinateur a laissé : de la version 2, ou de la 1.
+#[cfg(not(target_os = "ios"))]
 pub fn dechiffrer_retour(cle: &[u8; 32], blob: &[u8]) -> R<Vec<u8>> {
-    if blob.len() < 4 + 24 + 16 || &blob[..4] != MARQUE_RETOUR {
-        return Err("Ce fichier n'est pas un retour de l'ordinateur.".into());
+    let pas_un_retour = || "Ce fichier n'est pas un retour de l'ordinateur.".to_string();
+    let marque = blob.get(..4).ok_or_else(pas_un_retour)?;
+    let v1 = marque == MARQUE_RETOUR_V1;
+    if !v1 && marque != MARQUE_RETOUR {
+        return Err(pas_un_retour());
     }
-    XChaCha20Poly1305::new(Key::from_slice(cle))
-        .decrypt(XNonce::from_slice(&blob[4..28]), Payload { msg: &blob[28..], aad: MARQUE_RETOUR })
-        .map_err(|_| "Ce retour ne s'ouvre pas avec la clé de ce téléphone.".to_string())
+    let long_nonce = if v1 { 24 } else { 12 };
+    if blob.len() < 4 + long_nonce + 16 {
+        return Err(pas_un_retour());
+    }
+    let (nonce, chiffre) = blob[4..].split_at(long_nonce);
+    let charge = Payload { msg: chiffre, aad: marque };
+    let clair = if v1 {
+        XChaCha20Poly1305::new(Key::from_slice(cle)).decrypt(XNonce::from_slice(nonce), charge)
+    } else {
+        ChaCha20Poly1305::new(Key::from_slice(cle)).decrypt(Nonce::from_slice(nonce), charge)
+    };
+    clair.map_err(|_| "Ce retour ne s'ouvre pas avec la clé de ce téléphone.".to_string())
+}
+
+/// Relit ce que l'ordinateur a laissé : sur l'iPhone, par CryptoKit, la version 2 seulement.
+#[cfg(target_os = "ios")]
+pub fn dechiffrer_retour(cle: &[u8; 32], blob: &[u8]) -> R<Vec<u8>> {
+    if blob.starts_with(MARQUE_RETOUR_V1) {
+        return Err(RETOUR_D_AVANT.into());
+    }
+    maitrize_relais_apple::ouvrir_retour(cle, blob)
 }
 
 // ── Ce qu'on dépose ────────────────────────────────────────────────────────
@@ -403,6 +480,7 @@ pub fn preparer_depot(appairage: &Appairage, etiquette: &Etiquette, contenu: &[u
 }
 
 /// Un dépôt relevé : rouvert, puis déballé.
+#[cfg(not(target_os = "ios"))]
 pub fn ouvrir_depot(privee: &[u8; 32], blob: &[u8]) -> R<(Etiquette, Vec<u8>)> {
     deballer(&desceller(privee, blob)?)
 }
@@ -443,6 +521,7 @@ impl Agenda {
 }
 
 /// L'agenda, chiffré pour le téléphone.
+#[cfg(not(target_os = "ios"))]
 pub fn chiffrer_agenda(cle: &[u8; 32], agenda: &Agenda) -> R<Vec<u8>> {
     chiffrer_retour(cle, &serde_json::to_vec(agenda).map_err(|e| e.to_string())?)
 }
@@ -550,6 +629,7 @@ pub struct Aide {
 }
 
 /// Le cahier journal, chiffré pour le téléphone.
+#[cfg(not(target_os = "ios"))]
 pub fn chiffrer_journal(cle: &[u8; 32], journal: &Journal) -> R<Vec<u8>> {
     chiffrer_retour(cle, &serde_json::to_vec(journal).map_err(|e| e.to_string())?)
 }
@@ -560,6 +640,7 @@ pub fn dechiffrer_journal(cle: &[u8; 32], blob: &[u8]) -> R<Journal> {
 }
 
 /// Une aide, chiffrée pour le téléphone.
+#[cfg(not(target_os = "ios"))]
 pub fn chiffrer_aide(cle: &[u8; 32], aide: &Aide) -> R<Vec<u8>> {
     chiffrer_retour(cle, &serde_json::to_vec(aide).map_err(|e| e.to_string())?)
 }
@@ -571,6 +652,7 @@ pub fn dechiffrer_aide(cle: &[u8; 32], blob: &[u8]) -> R<Aide> {
 
 /// L'identifiant d'une aide : l'empreinte de son contenu. Deux aides pareilles
 /// n'en font qu'une, et une aide qui change change de nom.
+#[cfg(not(target_os = "ios"))]
 pub fn id_de_l_aide(aide: &Aide) -> String {
     use sha2::Digest;
     let mut h = Sha256::new();
@@ -588,6 +670,64 @@ pub fn nom_de_l_aide(id: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Un dépôt scellé par CryptoKit, comme le fait l'iPhone (apple/swift), pour
+    /// la clé publique de la clé privée 1, 2, …, 32. Si l'un des deux côtés
+    /// change de format, ce dépôt cesse de s'ouvrir.
+    const DEPOT_DE_CRYPTOKIT: &[&str] = &[
+        "4d545a32118bb7f0cd90f254382a7e47192f2b14c23f98441a818a646be306fa4e8b18093a11e824b540ae3c20602ca8",
+        "64a3b026cdb215df63e53fc906e4d61610926b361a7e43ec4209cdfe1bb4f9efa4614797f29888fe5a3f009d40147028",
+        "ad121a28a6d5cea71ccb",
+    ];
+
+    fn octets(hex: &str) -> Vec<u8> {
+        (0..hex.len()).step_by(2).map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap()).collect()
+    }
+
+    #[test]
+    fn un_depot_scelle_par_cryptokit_s_ouvre_sur_l_ordinateur() {
+        let privee: [u8; 32] = core::array::from_fn(|i| (i + 1) as u8);
+        let blob = octets(&DEPOT_DE_CRYPTOKIT.concat());
+        assert_eq!(&blob[..4], b"MTZ2");
+        assert_eq!(desceller(&privee, &blob).unwrap(), "Une dictée de 10 h 12, pour l'ordinateur.".as_bytes());
+        // Un octet changé, une autre clé : rien ne s'ouvre.
+        let mut abime = blob.clone();
+        *abime.last_mut().unwrap() ^= 1;
+        assert!(desceller(&privee, &abime).is_err());
+        assert!(desceller(&nouvelle_paire().0, &blob).is_err());
+    }
+
+    #[test]
+    fn on_ecrit_la_version_2_que_cryptokit_sait_ouvrir() {
+        let (privee, publique) = nouvelle_paire();
+        let blob = sceller(&publique, b"abc").unwrap();
+        assert_eq!((&blob[..4], blob.len()), (&b"MTZ2"[..], 4 + 32 + 12 + 3 + 16));
+        assert_eq!(desceller(&privee, &blob).unwrap(), b"abc");
+        let cle = nouvelle_cle();
+        let retour = chiffrer_retour(&cle, b"le journal").unwrap();
+        assert_eq!((&retour[..4], retour.len()), (&b"MTR2"[..], 4 + 12 + 10 + 16));
+        assert_eq!(dechiffrer_retour(&cle, &retour).unwrap(), b"le journal");
+        assert!(dechiffrer_retour(&nouvelle_cle(), &retour).is_err());
+    }
+
+    #[test]
+    fn l_ordinateur_relit_encore_la_version_1() {
+        // Ce qu'écrivaient le téléphone et l'ordinateur avant CryptoKit : XChaCha20-Poly1305, nonce de 24 octets.
+        let v1 = |cle: &[u8; 32], marque: &[u8; 4], tete: &[u8], clair: &[u8]| {
+            let nonce = [9u8; 24];
+            let chiffre = XChaCha20Poly1305::new(Key::from_slice(cle))
+                .encrypt(XNonce::from_slice(&nonce), Payload { msg: clair, aad: marque })
+                .unwrap();
+            [&marque[..], tete, &nonce, &chiffre].concat()
+        };
+        let (privee, publique) = nouvelle_paire();
+        let jetable = StaticSecret::random_from_rng(OsRng);
+        let ephemere = PublicKey::from(&jetable).to_bytes();
+        let cle = cle_du_scelle(jetable.diffie_hellman(&PublicKey::from(publique)).as_bytes(), &ephemere, &publique).unwrap();
+        assert_eq!(desceller(&privee, &v1(&cle, b"MTZ1", &ephemere, b"une dictee")).unwrap(), b"une dictee");
+        let retour = nouvelle_cle();
+        assert_eq!(dechiffrer_retour(&retour, &v1(&retour, b"MTZR", &[], b"le journal")).unwrap(), b"le journal");
+    }
 
     fn appairage() -> (Appairage, [u8; 32], [u8; 32]) {
         let (privee, publique) = nouvelle_paire();
