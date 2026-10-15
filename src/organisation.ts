@@ -1,8 +1,10 @@
-// Quelle organisation remplit le planning d'un jour donné.
+// Quel emploi du temps remplit le planning d'un jour donné.
 //
-// L'organisation IME est fixe sur l'année et s'enregistre sous « 2026-2027·IME ».
-// La génération cherchait encore l'ancienne clé semaine par semaine
-// (« IME:2026-09-14 ») et ne la trouvait donc jamais.
+// Un seul emploi du temps par année, sous la clé de l'année (« 2026-2027 ») :
+// l'EDT de classe et l'organisation IME ne font plus qu'un (voir
+// `fusionner_emplois_du_temps`, côté Rust). Les anciennes clés — « ·IME », et
+// avant elle la semaine (« IME:2026-09-14 ») — se lisent encore, pour ce
+// qu'enverrait un ordinateur resté à une version d'avant.
 import type { EdtTypique } from "./api";
 import { anneeDe, isoJour, lundiDe } from "./dates";
 import { natureDepuisTitre, minutesParNature, type Nature } from "./heures";
@@ -14,21 +16,17 @@ export interface SlotEdt {
   nature?: Nature;
 }
 
-/** L'organisation à utiliser pour cette date, ou null s'il n'y en a aucune. */
-export function organisationPour(edts: EdtTypique[], date: Date, imeActive: boolean):
-  { edt: EdtTypique; source: "ime" | "classe" } | null {
+/** L'emploi du temps à utiliser pour cette date, ou null s'il n'y en a aucun. */
+export function organisationPour(edts: EdtTypique[], date: Date): EdtTypique | null {
   const annee = anneeDe(isoJour(date));
   const avecCreneaux = (e?: EdtTypique) => {
     if (!e) return false;
     try { return (JSON.parse(e.slotsJson) as unknown[]).length > 0; } catch { return false; }
   };
-  const ime = edts.find((e) => e.annee === `${annee}·IME`);
-  const imeAncienne = edts.find((e) => e.annee === `IME:${isoJour(lundiDe(date))}`);
-  const classe = edts.find((e) => e.annee === annee);
-  const ordre: [EdtTypique | undefined, "ime" | "classe"][] = imeActive
-    ? [[ime, "ime"], [imeAncienne, "ime"], [classe, "classe"]]
-    : [[classe, "classe"], [ime, "ime"], [imeAncienne, "ime"]];
-  for (const [e, source] of ordre) if (avecCreneaux(e)) return { edt: e!, source };
+  for (const cle of [annee, `${annee}·IME`, `IME:${isoJour(lundiDe(date))}`]) {
+    const e = edts.find((x) => x.annee === cle);
+    if (avecCreneaux(e)) return e!;
+  }
   return null;
 }
 

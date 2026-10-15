@@ -200,27 +200,23 @@ export default function Planning() {
     setAncre(d);
   };
 
-  // Remplit les créneaux libres à partir de l'emploi du temps de l'année :
-  // l'organisation IME (créneaux avec les élèves présents) ou la trame de
-  // classe ordinaire, selon ce qui est choisi dans Organisation → EDT type.
+  // Remplit les créneaux libres à partir de l'emploi du temps de l'année
+  // (Organisation → Emploi du temps), élèves présents compris.
   const generer = async () => {
     const jour = vue === "jour";
     const l = lundiDe(ancre);
     const semJours = JOURS.map((_, i) => { const d = new Date(l); d.setDate(d.getDate() + i); return d; });
     const refDate = jour ? ancre : l;
-    const [structure, modeEdt, edtsFrais] = await Promise.all([
-      api.settingGet("typeStructure"), api.settingGet("edt:mode"), api.edtTypiqueList()]);
-    const trouve = organisationPour(edtsFrais, refDate, structure === "ime" || modeEdt === "ime");
+    const trouve = organisationPour(await api.edtTypiqueList(), refDate);
     if (!trouve) {
-      toast(`Aucun emploi du temps pour ${anneeDe(iso(refDate))}. Créez-le dans Organisation → EDT type.`,
+      toast(`Aucun emploi du temps pour ${anneeDe(iso(refDate))}. Créez-le dans Organisation → Emploi du temps.`,
         { icone: "⚠️", duree: 6000 });
       return;
     }
-    const nomSource = trouve.source === "ime" ? "l'organisation IME" : "l'EDT type";
     let slots: SlotEdt[] = [];
-    try { slots = JSON.parse(trouve.edt.slotsJson); } catch { /* */ }
-    if (!(await confirmer(jour ? `Remplir les créneaux libres de ce jour depuis ${nomSource} ?`
-                              : `Remplir les créneaux libres de la semaine depuis ${nomSource} ?`, { oui: "Remplir" }))) return;
+    try { slots = JSON.parse(trouve.slotsJson); } catch { /* */ }
+    if (!(await confirmer(jour ? "Remplir les créneaux libres de ce jour depuis l'emploi du temps ?"
+                              : "Remplir les créneaux libres de la semaine depuis l'emploi du temps ?", { oui: "Remplir" }))) return;
     const chevauche = (date: string, d: string, f: string) => (creneaux ?? []).some((c) =>
       c.date.slice(0, 10) === date && toMin(d) < toMin(c.heureFin) && toMin(c.heureDebut) < toMin(f));
     const ancreDi = ancre.getDay() - 1; // Lundi = 0 … Vendredi = 4 (week-end : hors plage)

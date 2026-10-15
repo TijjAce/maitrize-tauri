@@ -98,7 +98,7 @@ function imprimerProgrammation(annee: string, lignes: Ligne[]) {
 const SEGMENTS = [
   { id: "prog", label: "Programmation" },
   { id: "annuelle", label: "Progression" },
-  { id: "edt", label: "EDT type" },
+  { id: "edt", label: "Emploi du temps" },
   { id: "cycle", label: "Travail de cycle" },
   { id: "salle", label: "Plan de salle" },
   { id: "projet", label: "Projet pédagogique" },
@@ -126,7 +126,7 @@ function AnneeSelect({ annee, setAnnee }: { annee: string; setAnnee: (a: string)
   );
 }
 
-const SOUS_TITRE = "Programmation, progression annuelle, emploi du temps type et travail de cycle";
+const SOUS_TITRE = "Programmation, progression annuelle, emploi du temps et travail de cycle";
 export default function Organisation() {
   const [onglet, setOnglet] = React.useState<SegId>("prog");
   const segments = React.useMemo(() => SEGMENTS.slice(), []);
@@ -627,8 +627,8 @@ function LierSequences({ sequences, selection, onClose, onValider }: {
   );
 }
 
-// ── EDT type + bilan vs volumes officiels ──────────────────────────────────
-/** Créneau de l'emploi du temps : élèves présents et nature (organisation IME). */
+// ── Emploi du temps + bilan vs volumes officiels ──────────────────────────────────
+/** Créneau de l'emploi du temps : sa nature et, s'il y a lieu, les élèves présents. */
 type Slot = SlotEdt;
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const toMin = (s: string) => { const [h, m] = s.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
@@ -657,9 +657,9 @@ function layoutSlots(ss: Slot[]): Map<string, { lane: number; lanes: number }> {
   return res;
 }
 
-function SlotForm({ slot, onClose, onSave, onDelete, ime, eleves, intitules }: {
+function SlotForm({ slot, onClose, onSave, onDelete, eleves, intitules }: {
   slot: Slot; onClose: () => void; onSave: (s: Slot) => void; onDelete: () => void;
-  ime: boolean; eleves: Eleve[]; intitules: string[];
+  eleves: Eleve[]; intitules: string[];
 }) {
   const [s, setS] = React.useState<Slot>(slot);
   const up = (p: Partial<Slot>) => setS((c) => ({ ...c, ...p }));
@@ -681,7 +681,7 @@ function SlotForm({ slot, onClose, onSave, onDelete, ime, eleves, intitules }: {
   const basculer = (id: string) =>
     up({ eleves: presents.includes(id) ? presents.filter((x) => x !== id) : [...presents, id] });
   return (
-    <Modal titre={ime ? "Créneau" : "Créneau type"} onClose={onClose}
+    <Modal titre="Créneau" onClose={onClose}
       footer={<>
         <button className="btn danger" onClick={onDelete}>Supprimer</button>
         <div className="spacer" />
@@ -694,62 +694,51 @@ function SlotForm({ slot, onClose, onSave, onDelete, ime, eleves, intitules }: {
         <div className="field"><label>Début</label><Input type="time" value={s.heureDebut} onChange={(e) => up({ heureDebut: e.target.value })} /></div>
         <div className="field"><label>Fin</label><Input type="time" value={s.heureFin} onChange={(e) => up({ heureFin: e.target.value })} /></div>
       </div>
-      {ime ? (
-        <>
-          <div className="field"><label>Intitulé</label>
-            <Input list="edt-intitules" value={s.titre} placeholder="Scolarité, Piscine, Atelier artistique…"
-              onChange={(e) => changerTitre(e.target.value)} />
-            <datalist id="edt-intitules">{intitules.map((t) => <option key={t} value={t} />)}</datalist>
+      {/* Une matière ou un intitulé libre : les deux se proposent à la frappe. */}
+      <div className="field"><label>Intitulé</label>
+        <Input list="edt-intitules" value={s.titre} placeholder="Français, Scolarité, Piscine, Atelier artistique…"
+          onChange={(e) => changerTitre(e.target.value)} />
+        <datalist id="edt-intitules">{[...new Set([...intitules, ...MATIERES])].map((t) => <option key={t} value={t} />)}</datalist>
+      </div>
+      <ChoixCouleur titre={s.titre} couleur={couleur} onChange={(c) => { setCouleur(c); setCouleurChoisie(true); }}
+        portee={(t) => MATIERES.includes(t) ? `Pour toute la matière « ${t} », dans toute l'application.`
+          : `Pour tous les créneaux « ${t} », ici et dans le planning.`} />
+      <div className="field"><label>Nature du temps</label>
+        <div className="seg" role="radiogroup" aria-label="Nature du temps">
+          {([["classe", "🧑‍🏫 Temps de classe"], ["reunion", "🗣️ Réunion ou formation"]] as const).map(([n, libelle]) => (
+            <button key={n} type="button" role="radio" aria-checked={natureDuSlot(s) === n}
+              className={natureDuSlot(s) === n ? "active" : ""} onClick={() => up({ nature: n })}>{libelle}</button>
+          ))}
+        </div>
+        {!s.nature && s.titre && (
+          <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 4 }}>Déduit de l’intitulé — cliquez pour choisir.</div>
+        )}
+      </div>
+      <div className="field">
+        <label>Élèves présents ({presents.length})</label>
+        {eleves.length === 0 ? (
+          <div style={{ fontSize: 13, color: "var(--text-2)", fontStyle: "italic" }}>
+            Ajoutez vos élèves dans l'onglet Élèves.
           </div>
-          <ChoixCouleur titre={s.titre} couleur={couleur} onChange={(c) => { setCouleur(c); setCouleurChoisie(true); }}
-            portee={(t) => `Pour tous les créneaux « ${t} », ici et dans le planning.`} />
-          <div className="field"><label>Nature du temps</label>
-            <div className="seg" role="radiogroup" aria-label="Nature du temps">
-              {([["classe", "🧑‍🏫 Temps de classe"], ["reunion", "🗣️ Réunion ou formation"]] as const).map(([n, libelle]) => (
-                <button key={n} type="button" role="radio" aria-checked={natureDuSlot(s) === n}
-                  className={natureDuSlot(s) === n ? "active" : ""} onClick={() => up({ nature: n })}>{libelle}</button>
+        ) : (
+          <>
+            <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+              <button className="btn sm" onClick={() => up({ eleves: eleves.map((e) => e.id) })}>Tous</button>
+              <button className="btn sm" onClick={() => up({ eleves: [] })}>Aucun</button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+              gap: 2, maxHeight: 220, overflowY: "auto" }}>
+              {eleves.map((e) => (
+                <label key={e.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 4px",
+                  borderRadius: 6, cursor: "pointer", fontSize: 13 }}>
+                  <input type="checkbox" checked={presents.includes(e.id)} onChange={() => basculer(e.id)} />
+                  {e.nom}
+                </label>
               ))}
             </div>
-            {!s.nature && s.titre && (
-              <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 4 }}>Déduit de l’intitulé — cliquez pour choisir.</div>
-            )}
-          </div>
-          <div className="field">
-            <label>Élèves présents ({presents.length})</label>
-            {eleves.length === 0 ? (
-              <div style={{ fontSize: 13, color: "var(--text-2)", fontStyle: "italic" }}>
-                Ajoutez vos élèves dans l'onglet Élèves.
-              </div>
-            ) : (
-              <>
-                <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-                  <button className="btn sm" onClick={() => up({ eleves: eleves.map((e) => e.id) })}>Tous</button>
-                  <button className="btn sm" onClick={() => up({ eleves: [] })}>Aucun</button>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
-                  gap: 2, maxHeight: 220, overflowY: "auto" }}>
-                  {eleves.map((e) => (
-                    <label key={e.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 4px",
-                      borderRadius: 6, cursor: "pointer", fontSize: 13 }}>
-                      <input type="checkbox" checked={presents.includes(e.id)} onChange={() => basculer(e.id)} />
-                      {e.nom}
-                    </label>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </>
-      ) : (
-        <div className="field"><label>Matière</label>
-          <Select value={s.titre} onChange={(e) => changerTitre(e.target.value)}>
-            {MATIERES.map((m) => <option key={m}>{m}</option>)}
-          </Select></div>
-      )}
-      {!ime && (
-        <ChoixCouleur titre={s.titre} couleur={couleur} onChange={(c) => { setCouleur(c); setCouleurChoisie(true); }}
-          portee={(t) => `Pour toute la matière « ${t} », dans toute l'application.`} />
-      )}
+          </>
+        )}
+      </div>
     </Modal>
   );
 }
@@ -780,19 +769,15 @@ interface EdtDrag { id: string; jourIndex: number; startMin: number; durMin: num
 function EdtType({ annee, setAnnee }: AnneeProps) {
   const { data, reload } = useAsync(() => api.edtTypiqueList(), []);
   const { data: eleves } = useAsync(() => api.elevesList(), []);
-  // Deux organisations distinctes derrière le même écran : la trame type de la
-  // classe ordinaire, et l'organisation IME dont les créneaux portent les
-  // élèves présents. Chacune a son enregistrement, elles ne se mélangent pas.
-  const [mode, setMode] = React.useState<"classe" | "ime">("classe");
-  React.useEffect(() => { api.settingGet("edt:mode").then((v) => { if (v === "ime") setMode("ime"); }); }, []);
-  const choisirMode = (m: "classe" | "ime") => { setMode(m); api.settingSet("edt:mode", m); };
-  const ime = mode === "ime";
-  // L'organisation IME est fixe sur l'année, comme la trame de classe
-  // ordinaire. Elle se faisait auparavant semaine par semaine, ce qui obligeait
-  // à la reporter sans cesse alors qu'elle ne bouge pas d'une semaine à
-  // l'autre : les emplois du temps d'établissement sont posés à l'année.
-  const cleAnnee = ime ? `${annee}·IME` : annee;
-  const edt = data?.find((e) => e.annee === cleAnnee);
+  // Un seul emploi du temps par année, posé à l'année : chaque créneau dit sa
+  // nature et, s'il y a lieu, les élèves présents. L'EDT de classe et
+  // l'organisation IME n'en font plus qu'un (voir `fusionner_emplois_du_temps`,
+  // côté Rust). En IME, pas de volumes officiels à comparer : ce bilan-là se tait.
+  const [structureIme, setStructureIme] = React.useState(false);
+  React.useEffect(() => {
+    api.settingsAll().then((r) => setStructureIme(r.typeStructure === "ime" || r["edt:mode"] === "ime")).catch(() => {});
+  }, []);
+  const edt = data?.find((e) => e.annee === annee);
   const [niveau, setNiveau] = React.useState("");
   const [edit, setEdit] = React.useState<Slot | null>(null);
   const [deplacer, setDeplacer] = React.useState(false);
@@ -803,10 +788,10 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
 
   // État des créneaux avec annuler/rétablir (⌘Z / Ctrl+Z, ⌘⇧Z / Ctrl+Y).
   const { present: slots, reset: chargerSlots, commit: persister } = useHistorique<Slot[]>([], (next) => {
-    const e: EdtTypique = edt ? { ...edt, slotsJson: JSON.stringify(next) } : { id: newId(), annee: cleAnnee, slotsJson: JSON.stringify(next) };
+    const e: EdtTypique = edt ? { ...edt, slotsJson: JSON.stringify(next) } : { id: newId(), annee, slotsJson: JSON.stringify(next) };
     api.edtTypiqueSave(e).then(() => { if (!edt) reload(); });
   });
-  React.useEffect(() => { try { chargerSlots(edt ? JSON.parse(edt.slotsJson) : []); } catch { chargerSlots([]); } }, [edt?.id, cleAnnee]);
+  React.useEffect(() => { try { chargerSlots(edt ? JSON.parse(edt.slotsJson) : []); } catch { chargerSlots([]); } }, [edt?.id, annee]);
   React.useEffect(() => { api.settingGet("niveauClasse").then((v) => setNiveau(v ?? "")); }, []);
   const upsert = (s: Slot) => persister(slots.some((x) => x.id === s.id) ? slots.map((x) => x.id === s.id ? s : x) : [...slots, s]);
 
@@ -814,18 +799,17 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
   // Vide l'emploi du temps de l'année affichée. Les créneaux déjà posés dans le
   // planning ne bougent pas ; ⌘Z rétablit tout.
   const viderAnnee = async () => {
-    const nom = ime ? `l'organisation IME ${annee}` : `l'EDT type ${annee}`;
-    if (!(await confirmer(`Supprimer ${nom} (${slots.length} créneau${slots.length > 1 ? "x" : ""}) ?\n\n`
+    if (!(await confirmer(`Supprimer l'emploi du temps ${annee} (${slots.length} créneau${slots.length > 1 ? "x" : ""}) ?\n\n`
       + "Les créneaux déjà posés dans le planning restent. ⌘Z (Ctrl+Z) annule la suppression.",
       { oui: "Supprimer", danger: true }))) return;
     persister([]);
-    toast(`${nom[0].toUpperCase()}${nom.slice(1)} est supprimé${ime ? "e" : ""}.`, { icone: "🗑" });
+    toast(`L'emploi du temps ${annee} est supprimé.`, { icone: "🗑" });
   };
   const temps = tempsDeLaSemaineType(slots);
 
   const fileRef = React.useRef<HTMLInputElement>(null);
   const exporter = () => {
-    telechargerTexte(`edt-type-${annee}.json`, JSON.stringify({ annee, slots }, null, 2));
+    telechargerTexte(`emploi-du-temps-${annee}.json`, JSON.stringify({ annee, slots }, null, 2));
   };
   const importer = async (file: File) => {
     try {
@@ -833,7 +817,7 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
       const arr: Slot[] = Array.isArray(b) ? b : (b.slots ?? []);
       if (!Array.isArray(arr)) throw new Error();
       persister(arr.map((s) => ({ ...s, id: s.id || newId() })));
-    } catch { toast("Fichier EDT type invalide.", { icone: "⚠️" }); }
+    } catch { toast("Fichier d'emploi du temps illisible.", { icone: "⚠️" }); }
   };
   const imprimer = () => {
     const hex = (c: string) => couleurHex[c] || couleurHex.blue;
@@ -864,11 +848,11 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
 
     const html =
       `<style>@page { size: A4 landscape; }</style>` +
-      `<h1 style="text-align:center;margin:0 0 10px">EDT ${escapeHtml(annee)}${niveau ? " — " + escapeHtml(niveau) : ""}</h1>` +
+      `<h1 style="text-align:center;margin:0 0 10px">Emploi du temps ${escapeHtml(annee)}${niveau ? " — " + escapeHtml(niveau) : ""}</h1>` +
       `<table style="table-layout:fixed">${head}${rows}</table>` +
       `<div style="margin-top:14px;font-weight:700">Répartition horaire :</div>` +
       `<div style="margin-top:4px">${legende}</div>`;
-    printHTML(`EDT ${annee}`, html);
+    printHTML(`Emploi du temps ${annee}`, html);
   };
 
   // De 8h à 20h, plus si un créneau déborde.
@@ -927,12 +911,6 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
   return (
     <>
       <div className="toolbar"><AnneeSelect annee={annee} setAnnee={setAnnee} />
-        <div className="seg">
-          <button className={!ime ? "active" : ""} title="Trame hebdomadaire d'une classe ordinaire"
-            onClick={() => choisirMode("classe")}>EDT type — classe</button>
-          <button className={ime ? "active" : ""} title="Organisation IME : chaque créneau porte les élèves présents"
-            onClick={() => choisirMode("ime")}>Organisation IME</button>
-        </div>
         <div className="spacer" />
         {slots.length > 0 && <button className="btn" onClick={() => setDeplacer((v) => !v)}
           style={deplacer ? { background: "var(--accent)", color: "#fff", borderColor: "var(--accent)" } : undefined}
@@ -943,7 +921,7 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
           ...(slots.length > 0 ? [{ label: "Imprimer (PDF)", icon: "🖨", onClick: imprimer }] : []),
           ...(slots.length > 0 ? [{ label: "Exporter (fichier)", icon: "⬇️", onClick: exporter }] : []),
           { label: "Importer (fichier)", icon: "⬆️", onClick: () => fileRef.current?.click() },
-          ...(slots.length > 0 ? [{ label: ime ? `Supprimer l'organisation IME ${annee}` : `Supprimer l'EDT type ${annee}`,
+          ...(slots.length > 0 ? [{ label: `Supprimer l'emploi du temps ${annee}`,
             icon: "🗑", danger: true, sep: true, onClick: viderAnnee }] : []),
         ])}>📄 Fichier ▾</button>
       </div>
@@ -953,7 +931,7 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
         <IndicateurZoom zoom={zoom} onReinitialiser={() => majZoom(1)} />
       </div>
 
-      {ime && slots.length > 0 && (
+      {slots.length > 0 && (
         <div className="heures-semaine" aria-label="Temps de travail de la semaine">
           <span>⏱ Temps de travail de la semaine <b>{duree(temps.semaine.total)}</b></span>
           <span>🧑‍🏫 Classe <b>{duree(temps.semaine.classe)}</b></span>
@@ -998,8 +976,8 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
                         overflow: "hidden", fontSize: 11, lineHeight: 1.25, boxShadow: "0 1px 3px rgba(0,0,0,.2)",
                         outline: deplacer ? "2px dashed rgba(255,255,255,.7)" : "none", cursor: deplacer ? "grab" : "pointer", userSelect: "none" }}>
                       <div style={{ opacity: 0.9 }}>{s.heureDebut}–{s.heureFin}</div>
-                      <div style={{ fontWeight: 700 }}>{ime && natureDuSlot(s) === "reunion" ? "🗣️ " : ""}{s.titre}</div>
-                      {ime && (s.eleves?.length ?? 0) > 0 && (
+                      <div style={{ fontWeight: 700 }}>{natureDuSlot(s) === "reunion" ? "🗣️ " : ""}{s.titre}</div>
+                      {(s.eleves?.length ?? 0) > 0 && (
                         <div style={{ opacity: 0.92, fontSize: 10, lineHeight: 1.2 }}>
                           👥 {s.eleves!.length} · {s.eleves!
                             .map((id) => (eleves ?? []).find((e) => e.id === id)?.nom.split(" ")[0])
@@ -1027,12 +1005,12 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
         </div>
       </div>
 
-      {edit && <SlotForm slot={edit} onClose={() => setEdit(null)} ime={ime} eleves={eleves ?? []}
+      {edit && <SlotForm slot={edit} onClose={() => setEdit(null)} eleves={eleves ?? []}
         intitules={[...new Set(slots.map((x) => x.titre).filter(Boolean))]}
         onSave={(s) => { upsert(s); setEdit(null); }} onDelete={() => { supprimer(edit.id); setEdit(null); }} />}
 
       {/* Bilan hebdomadaire vs volumes officiels (classe ordinaire uniquement) */}
-      {!ime &&
+      {!structureIme &&
       <div className="card" style={{ marginTop: 18 }}>
         <h3 style={{ marginTop: 0 }}>📊 Bilan hebdomadaire {niveau ? `(${niveau})` : ""}</h3>
         {!niveau ? <p style={{ color: "var(--text-2)" }}>Renseignez le niveau de la classe dans les Réglages pour comparer aux volumes officiels.</p> :
@@ -1058,7 +1036,7 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
           </table>}
       </div>}
 
-      {ime && slots.length > 0 && (
+      {slots.length > 0 && (
         <div className="card" style={{ marginTop: 18 }}>
           <h3 style={{ marginTop: 0 }}>⏱ Temps de travail de la semaine</h3>
           <table className="tbl">
@@ -1087,7 +1065,7 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
         </div>
       )}
 
-      {ime && (
+      {structureIme && (
         <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 14 }}>
           Chaque créneau porte les élèves présents : cliquez une plage vide pour en créer un,
           puis cochez qui y participe et s’il s’agit de classe ou d’une réunion. Le nombre d'élèves s'affiche sur le créneau.

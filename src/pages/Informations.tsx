@@ -31,9 +31,9 @@ async function lireDonneesClasse(annee: string): Promise<DonneesClasse> {
     api.edtTypiqueList(), api.ateliersList().catch(() => []), api.espacesList().catch(() => []),
   ]);
   const ime = reglages.typeStructure === "ime" || reglages["edt:mode"] === "ime";
-  const trouve = organisationPour(edts, new Date(), ime);
+  const trouve = organisationPour(edts, new Date());
   let edt: DonneesClasse["edt"] = [];
-  try { edt = trouve ? JSON.parse(trouve.edt.slotsJson) : []; } catch { /* organisation illisible */ }
+  try { edt = trouve ? JSON.parse(trouve.slotsJson) : []; } catch { /* emploi du temps illisible */ }
   return {
     ecole: reglages.ecole ?? "", enseignant: reglages.enseignantNom ?? "", fonction: reglages.enseignantFonction ?? "",
     niveau: reglages.niveauClasse ?? "", ime, annee, etablissement: lireEtablissement(reglages),
@@ -47,7 +47,7 @@ async function lireDonneesClasse(annee: string): Promise<DonneesClasse> {
         axe: axe.length > 160 ? `${axe.slice(0, 157).trimEnd()}…` : axe,
       };
     }),
-    edt, sourceEdt: trouve?.source ?? null,
+    edt,
     ateliers: ateliers.map((a) => ({ titre: a.titre, matiere: a.matiere })),
     espaces: espaces.map((e) => ({ titre: e.titre, description: e.descriptionEspace })),
   };

@@ -192,7 +192,7 @@ export default function Reglages() {
         {(s.typeStructure ?? "ordinaire") === "ime" && (
           <div style={{ fontSize: 12, color: "var(--text-2)" }}>
             Active les onglets <b>Dispositifs</b> (PPS, PAP, PAI, PPRE, PPI) et <b>GEVA-Sco</b> dans Élèves,
-            et l'<b>organisation IME par semaine</b> dans l'emploi du temps, dont « Générer le jour » tient compte.
+            et, dans l'emploi du temps, les <b>élèves présents</b> à chaque créneau, que « Générer le jour » reprend.
           </div>
         )}
       </div>
@@ -520,7 +520,7 @@ function CouleursDesMatieres() {
     }).catch(() => {});
     return () => { vivant = false; };
   }, []);
-  // Les intitulés de l'emploi du temps (organisation IME) dont la couleur a été choisie — pas les domaines.
+  // Les intitulés de l'emploi du temps dont la couleur a été choisie — pas les domaines.
   const [intitules] = React.useState(() => Object.keys(getMatiereOverrides()).filter((m) => !MATIERES.includes(m) && !matiereDuDomaine(m))
     .sort((a, b) => a.localeCompare(b, "fr")));
   const domainesDe = (m: string) => domaines.filter((d) => matiereDuDomaine(d) === m);

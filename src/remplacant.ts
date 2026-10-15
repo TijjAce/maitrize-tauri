@@ -19,7 +19,6 @@ export interface DonneesClasse {
   annee: string;
   eleves: { id: string; nom: string; niveau: string; dispositifs: string[]; axe: string }[];
   edt: SlotEdt[];
-  sourceEdt: "ime" | "classe" | null;
   ateliers: { titre: string; matiere: string }[];
   espaces: { titre: string; description: string }[];
   /** Contacts et repères renseignés dans les réglages ; absents, ils restent à compléter. */
@@ -43,7 +42,7 @@ export function blocClasse(d: DonneesClasse, aujourdhui: string): string {
 }
 
 export function blocEmploiDuTemps(d: DonneesClasse): string {
-  const titre = `<h2>Emploi du temps${d.sourceEdt === "ime" ? " (organisation IME)" : ""}</h2>`;
+  const titre = "<h2>Emploi du temps</h2>";
   if (!d.edt.length) return `${titre}<p>${aCompleter}</p>`;
   const noms = new Map(d.eleves.map((e) => [e.id, prenom(e.nom)]));
   const plages = [...new Set(d.edt.map((s) => `${s.heureDebut}|${s.heureFin}`))]
