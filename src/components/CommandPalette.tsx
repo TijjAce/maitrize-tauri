@@ -107,8 +107,6 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "📘", label: "Pages de garde, mot aux familles, fournitures", to: "/organisation", page: "organisation", onglet: "garde", sous: "Organisation · rentrée" },
   { ico: "🧾", label: "Dispositifs (PPS, PAP, PAI, PPRE)", to: "/eleves", page: "eleves", onglet: "dispositifs", sous: "Élèves · mode IME" },
   { ico: "📋", label: "GEVA-Sco", to: "/eleves", page: "eleves", onglet: "gevasco", sous: "Élèves · mode IME" },
-  { ico: "📈", label: "Progressions par élève", to: "/eleves", page: "eleves", onglet: "progressions", sous: "Élèves" },
-  { ico: "📚", label: "Compétences travaillées par élève (BO)", to: "/eleves", page: "eleves", onglet: "progressions", sous: "Élèves" },
   { ico: "▦", label: "Fiches : ateliers, espaces, jeux, outils, affichages, évaluations", to: "/ateliers", page: "ateliers", onglet: "", sous: "Plan de travail · avec les filtres" },
   { ico: "🤝", label: "Bureaux communs", to: "/commun", page: "commun", onglet: "", sous: "Plan de travail · partager avec des collègues" },
   { ico: "🎲", label: "Loto (pictogrammes)", to: "/jeux", page: "jeux", onglet: "jeux", sous: "Fabriquer" },
@@ -469,9 +467,9 @@ export function CommandPalette() {
     })),
   ];
   const sousCmds: Cmd[] = SOUS_ONGLETS.map((s) => ({
-    // Le libellé fait partie de l'identifiant : deux entrées mènent au même
-    // onglet (« Progressions par élève » et « Compétences travaillées »), et
-    // l'identifiant commun laissait une ligne périmée en tête de liste.
+    // Le libellé fait partie de l'identifiant : deux entrées peuvent mener au
+    // même onglet, et un identifiant commun laissait une ligne périmée en
+    // tête de liste.
     id: "sub" + s.page + s.onglet + s.label, ico: s.ico, label: s.label, sous: "Aller à · " + s.sous,
     // Les fabriques de jeux se cherchent avec les jeux : on cherche un loto,
     // sans savoir s'il est déjà rangé sur le bureau ou encore à fabriquer.
