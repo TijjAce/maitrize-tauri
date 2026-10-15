@@ -334,7 +334,20 @@
  .choix-rang.on { color:var(--acc-txt); font-weight:700; }
  .choix-rang .ic { color:var(--acc-txt); }
 
- /* Relier : le QR code d'abord, un code collé sinon. */
+ /* Les étapes pour relier le téléphone à l'ordinateur : où l'on en est, ce qui reste. */
+.etapes { list-style:none; margin:0 0 18px; padding:0; display:grid; gap:12px; counter-reset:etape; text-align:left; }
+.etapes li { counter-increment:etape; display:grid; grid-template-columns:28px 1fr; gap:10px; align-items:start;
+  font-size:14.5px; line-height:1.45; color:var(--txt2); }
+.etapes li::before { content:counter(etape); width:26px; height:26px; border-radius:50%; display:grid; place-items:center;
+  font-weight:700; font-size:13px; background:var(--champ); color:var(--txt2); }
+.etapes li.faite::before { content:""; background:var(--acc-doux) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2316a34a' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 14px no-repeat; }
+.etapes li.ici { color:var(--txt); }
+.etapes li.ici::before { background:var(--acc); color:#fff; }
+.etapes .etape-ou { display:block; font-size:11.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--txt3); }
+.etapes li.ici .etape-ou { color:var(--acc-txt); }
+.etapes b { color:var(--txt); font-weight:600; }
+
+/* Relier : le QR code d'abord, un code collé sinon. */
  .carte { background:var(--card); border-radius:20px; box-shadow:var(--ombre); padding:24px 18px 18px; margin-top:12px; }
  .carte-tete { display:flex; flex-direction:column; align-items:center; gap:12px; margin-bottom:20px; }
  .grand-ico { width:58px; height:58px; border-radius:18px; display:grid; place-items:center;

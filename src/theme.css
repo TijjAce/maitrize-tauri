@@ -1661,3 +1661,15 @@ details.cm-pli > summary .meta { margin-left: 4px; font-size: 12.5px; }
 .qaq-table td.oui { background: color-mix(in srgb, var(--accent) 9%, transparent); }
 .qaq-table td.filtre { box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--accent) 6%, transparent); }
 
+/* Relier le téléphone, pas à pas : où se fait chaque geste, l'étape en cours en avant, celles qui sont faites cochées. */
+.etapes-relier { list-style: none; margin: 14px 0 16px; padding: 0; display: grid; gap: 10px; counter-reset: etape; }
+.etapes-relier li { counter-increment: etape; display: grid; grid-template-columns: 26px 1fr; column-gap: 10px; align-items: start;
+  font-size: 13px; line-height: 1.5; color: var(--text-2); }
+.etapes-relier li::before { content: counter(etape); grid-row: span 2; width: 24px; height: 24px; border-radius: 50%; display: grid;
+  place-items: center; font-weight: 700; font-size: 12px; background: var(--panel-2); color: var(--text-2); }
+.etapes-relier li.faite::before { content: "✓"; background: var(--accent-soft); color: var(--green, #16a34a); }
+.etapes-relier li.ici { color: var(--text); }
+.etapes-relier li.ici::before { background: var(--accent); color: #fff; }
+.etapes-relier .etape-ou { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--text-2); opacity: .8; }
+.etapes-relier li.ici .etape-ou { color: var(--accent); opacity: 1; }
+.etapes-relier b { color: var(--text); }
