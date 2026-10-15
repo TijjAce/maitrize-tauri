@@ -13,11 +13,26 @@
   qu'on les supprime. Et le réseau local, parce que l'envoi à l'ordinateur se
   fait d'iPhone à Mac sur le WiFi de l'école — iOS le demande depuis sa
   version 14, même pour une connexion directe par adresse IP.
+
+  Le nom sous l'icône est celui de l'App Store : « MaitrizeV2 Compagnon ».
+
+  Et la vie de l'application en « scènes », qu'iOS 27 exige des applications
+  construites avec son SDK : sans elle, l'application ne s'ouvre pas. Tao,
+  le fenêtrage de Tauri, fournit la configuration de la scène et son
+  délégué, mais seulement quand l'application accepte plusieurs scènes :
+  d'où le « oui » ci-dessous. Sur iPhone, il n'y en a jamais qu'une.
 -->
 <plist version="1.0">
 <dict>
+	<key>CFBundleDisplayName</key>
+	<string>MaitrizeV2 Compagnon</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<true/>
+	</dict>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Pour enregistrer ce que vous dictez en classe. Le son reste sur le téléphone, puis part sur votre ordinateur — il ne sort pas de là.</string>
+	<string>Pour enregistrer ce que vous dictez en classe. Le son part scellé vers votre ordinateur, par votre Nuage : lui seul peut l'ouvrir.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Pour lire le QR code affiché par votre ordinateur, photographier les pages d'un manuel qu'il vous demande, et prendre les photos que vous rangez dans Mes pictos. Les pages restent sur le téléphone jusqu'à ce que vous les supprimiez ; les photos partent scellées vers votre ordinateur.</string>
 	<key>NSLocalNetworkUsageDescription</key>
