@@ -10,7 +10,6 @@ import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../component
 import { openCtx } from "../components/ctxmenu";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { DispositifsTab } from "./Dispositifs";
-import { ProgressionsTab } from "./Progressions";
 import { GevaScoTab } from "./GevaSco";
 import { DicteeAtelier } from "../components/DicteeAtelier";
 import { GrilleObservation } from "../components/GrilleObservation";
@@ -30,7 +29,7 @@ import { SyntheseEleveTab } from "./SyntheseEleve";
 import { nomsAMasquer } from "../nomsAMasquer";
 import { fabricationsDesFiches, niveauDesFiches } from "../fichesAutonomie";
 
-const ELEVES_TABS = ["liste", "dossier", "observations", "evaluations", "papiers", "dispositifs", "gevasco", "progressions"] as const;
+const ELEVES_TABS = ["liste", "dossier", "observations", "evaluations", "papiers", "dispositifs", "gevasco"] as const;
 /** Ce qu'affiche l'onglet Évaluations : le sommatif (notes, synthèse, synthèse GS) ou le diagnostique. */
 type VueEvaluation = "notees" | "synthese" | "gs" | "diagnostique";
 export default function Eleves() {
@@ -54,7 +53,7 @@ export default function Eleves() {
   return (
     <Page titre="Élèves" sous="Classe, observations et évaluations">
       <div className="onglets">
-        {[["liste", "Classe"], ["dossier", "Dossier"], ["observations", "Observations"], ["evaluations", "Évaluations"], ["papiers", "Papiers"], ...(ime ? [["dispositifs", "Dispositifs"], ["gevasco", "GEVA-Sco"]] : []), ["progressions", "Progressions"]]
+        {[["liste", "Classe"], ["dossier", "Dossier"], ["observations", "Observations"], ["evaluations", "Évaluations"], ["papiers", "Papiers"], ...(ime ? [["dispositifs", "Dispositifs"], ["gevasco", "GEVA-Sco"]] : [])]
           .map(([k, l]) => <button key={k} className={onglet === k ? "active" : ""} onClick={() => setOnglet(k as any)}>{l}</button>)}
       </div>
       {onglet === "liste" && <ListeEleves />}
@@ -64,7 +63,6 @@ export default function Eleves() {
       {onglet === "papiers" && <Papiers />}
       {onglet === "dispositifs" && ime && <DispositifsTab />}
       {onglet === "gevasco" && ime && <GevaScoTab />}
-      {onglet === "progressions" && <ProgressionsTab />}
     </Page>
   );
 }

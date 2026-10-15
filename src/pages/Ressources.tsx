@@ -121,8 +121,7 @@ function CoffreFort({ demande = "", demandeTraitee }: { demande?: string; demand
         <div className="card" style={{ marginBottom: 14 }}>
           <h3 style={{ marginTop: 0 }}>📥 Programmes officiels en vigueur</h3>
           <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 0 }}>
-            Les textes du BO d’où viennent les référentiels de l’application. Enregistrés ici, ils se consultent hors ligne
-            et on y surligne les compétences à citer pour chaque élève (Élèves → Progressions).
+            Les textes du BO d’où viennent les référentiels de l’application. Enregistrés ici, ils se consultent hors ligne.
           </p>
           <ProgrammesPourLeCoffre docs={docs ?? []} onAjoute={() => reload()} onOuvrir={setOuvert} />
         </div>

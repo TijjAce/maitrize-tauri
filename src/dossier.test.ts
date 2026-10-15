@@ -54,9 +54,9 @@ describe("état d'une pièce du dossier", () => {
   });
 
   it("croise les pièces attendues et les documents trouvés", () => {
-    const p = pieces(piecesAttendues(false), [doc("progressions", '[{"fait":true}]')]);
-    expect(p.find((x) => x.typeDoc === "progressions")!.rempli).toBe(true);
-    expect(p.find((x) => x.typeDoc === "syntheseGS")!.rempli).toBe(false);
+    const p = pieces(piecesAttendues(false), [doc("syntheseGS", '{"langage":"Parle par phrases courtes."}')]);
+    expect(p.find((x) => x.typeDoc === "syntheseGS")!.rempli).toBe(true);
+    expect(p.find((x) => x.typeDoc === "evaldiag:observation")!.rempli).toBe(false);
   });
 });
 
@@ -159,10 +159,10 @@ describe("dossier complet", () => {
   });
 
   it("énumère les pièces à remplir", () => {
-    const d = construire(eleve(), [], [], [], [doc("progressions", '[{"a":1}]')], vide.papiers, vide.progressions, false);
+    const d = construire(eleve(), [], [], [], [doc("syntheseGS", '{"langage":"Parle par phrases courtes."}')], vide.papiers, vide.progressions, false);
     const texte = d.manques.join(" ");
-    expect(texte).toMatch(/Synthèse des acquis GS/);
-    expect(texte).not.toMatch(/À remplir.*Progressions/);
+    expect(texte).toMatch(/Observation générale/);
+    expect(texte).not.toMatch(/Synthèse des acquis GS/);
   });
 
   it("ne mélange pas les élèves", () => {

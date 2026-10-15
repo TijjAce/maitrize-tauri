@@ -33,7 +33,6 @@ export function piecesAttendues(ime: boolean): { typeDoc: string; label: string;
   const communes = [
     { typeDoc: "evaldiag:observation", label: "Observation générale", onglet: "evaluations" },
     { typeDoc: "evaldiag:besoins", label: "Observation S4C", onglet: "evaluations" },
-    { typeDoc: "progressions", label: "Progressions", onglet: "progressions" },
     { typeDoc: "syntheseGS", label: "Synthèse des acquis GS", onglet: "synthese" },
   ];
   const imeSeules = [

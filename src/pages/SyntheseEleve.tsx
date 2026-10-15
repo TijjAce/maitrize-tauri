@@ -144,7 +144,7 @@ export function SyntheseEleveTab() {
         ? `${r.remplies} section${r.remplies > 1 ? "s" : ""} pré-remplie${r.remplies > 1 ? "s" : ""} d'après le suivi — à relire. Les sections déjà écrites n'ont pas changé.`
         : dansLaPeriode(frais, synthese.debut, synthese.fin).length
           ? "Les sections qui ont des données sont déjà écrites."
-          : "Rien sur cette période : citez des compétences (Progressions), positionnez des évaluations ou notez des observations.",
+          : "Rien sur cette période : positionnez des évaluations ou notez des observations.",
         { icone: r.remplies ? "✨" : "ℹ️", duree: 6500 });
     }
   };
