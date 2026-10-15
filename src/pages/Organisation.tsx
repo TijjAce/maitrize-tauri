@@ -925,11 +925,12 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
             icon: "🗑", danger: true, sep: true, onClick: viderAnnee }] : []),
         ])}>📄 Fichier ▾</button>
       </div>
-      <div style={{ fontSize: 12, color: "var(--text-2)", margin: "-8px 0 12px", display: "flex", alignItems: "center", gap: 10 }}>
-        <span>{deplacer ? "✋ Glissez un créneau pour le déplacer (jour et horaire)." : "Cliquez sur une plage vide pour ajouter un créneau · clic droit pour dupliquer/supprimer · pincer (trackpad) pour zoomer."}</span>
-        <div className="spacer" />
-        <IndicateurZoom zoom={zoom} onReinitialiser={() => majZoom(1)} />
-      </div>
+      {zoom !== 1 && (
+        <div style={{ fontSize: 12, color: "var(--text-2)", margin: "-8px 0 12px", display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="spacer" />
+          <IndicateurZoom zoom={zoom} onReinitialiser={() => majZoom(1)} />
+        </div>
+      )}
 
       {slots.length > 0 && (
         <div className="heures-semaine" aria-label="Temps de travail de la semaine">
@@ -1065,12 +1066,6 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
         </div>
       )}
 
-      {structureIme && (
-        <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 14 }}>
-          Chaque créneau porte les élèves présents : cliquez une plage vide pour en créer un,
-          puis cochez qui y participe et s’il s’agit de classe ou d’une réunion. Le nombre d'élèves s'affiche sur le créneau.
-        </div>
-      )}
     </>
   );
 }
