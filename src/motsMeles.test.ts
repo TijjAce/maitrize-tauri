@@ -4,11 +4,16 @@ import { REGLAGES_MOTS_MELES, casesDesMots, grilleMotsMeles, htmlMotsMeles, lett
 const mots = motsSaisis(REGLAGES_MOTS_MELES.mots);
 
 describe("les mots mêlés", () => {
-  it("lisent les mots saisis, sans accents ni tirets dans la grille", () => {
-    expect(lettresDuMot("grand-père")).toBe("GRANDPERE");
-    expect(lettresDuMot("l'école")).toBe("LECOLE");
+  it("lisent les mots saisis : dans la grille, sans tiret ni apostrophe, mais avec leurs accents", () => {
+    expect(lettresDuMot("grand-père")).toBe("GRANDPÈRE");
+    expect(lettresDuMot("l'école")).toBe("LÉCOLE");
     expect(lettresDuMot("cœur")).toBe("COEUR");
+    // Un é tapé en deux signes, la lettre puis l'accent : une seule case.
+    expect(lettresDuMot("e\u0301te\u0301")).toBe("ÉTÉ");
+    expect(lettresDuMot("e\u0301te\u0301")).toHaveLength(3);
     expect(motsSaisis("chat, Chat\nchien;  \nâne")).toEqual(["chat", "chien", "âne"]);
+    // « été » et « ete » : le même mot.
+    expect(motsSaisis("été, ete")).toEqual(["été"]);
   });
 
   it("placent chaque mot, lisible dans sa direction, et remplissent le reste", () => {
@@ -21,9 +26,37 @@ describe("les mots mêlés", () => {
       const lu = Array.from({ length: m.lettres.length }, (_, i) => g.cases[m.y + m.dy * i][m.x + m.dx * i]).join("");
       expect(lu).toBe(m.lettres);
     }
-    for (const ligne of g.cases) for (const c of ligne) expect(c).toMatch(/^[A-Z]$/);
+    // Des capitales, et le Â de « âne » : la seule accentuée des mots, dans les mots comme dans le remplissage.
+    for (const ligne of g.cases) for (const c of ligne) expect(c).toMatch(/^[A-ZÂ]$/);
     expect(grilleMotsMeles(mots, REGLAGES_MOTS_MELES, 5)).toEqual(g);
     expect(grilleMotsMeles(mots, REGLAGES_MOTS_MELES, 6).cases).not.toEqual(g.cases);
+  });
+
+  it("gardent les accents des mots dans la grille, et en glissent quelques-uns parmi les lettres de remplissage", () => {
+    const accentues = ["été", "élève", "fête", "chat", "règle"];
+    let ailleurs = 0;
+    for (let graine = 1; graine <= 20; graine++) {
+      const g = grilleMotsMeles(accentues, { ...REGLAGES_MOTS_MELES, taille: 10 }, graine);
+      expect(g.oublies).toEqual([]);
+      for (const m of g.places) {
+        const lu = Array.from({ length: m.lettres.length }, (_, i) => g.cases[m.y + m.dy * i][m.x + m.dx * i]).join("");
+        expect(lu).toBe(m.lettres);
+      }
+      expect(g.places.map((m) => m.lettres).sort()).toEqual(["CHAT", "FÊTE", "RÈGLE", "ÉLÈVE", "ÉTÉ"].sort());
+      // Hors des mots, seules les accentuées des mots : É, È, Ê.
+      const dansLesMots = casesDesMots(g);
+      for (let y = 0; y < g.taille; y++) for (let x = 0; x < g.taille; x++) {
+        const c = g.cases[y][x];
+        expect(c).toMatch(/^[A-ZÉÈÊ]$/);
+        if (!dansLesMots.has(`${x},${y}`) && /[ÉÈÊ]/.test(c)) ailleurs++;
+      }
+    }
+    expect(ailleurs).toBeGreaterThan(0);
+    // Des mots sans accent : un remplissage sans accent, tiré comme avant.
+    const sans = grilleMotsMeles(["chat", "chien", "lapin"], REGLAGES_MOTS_MELES, 4);
+    for (const ligne of sans.cases) for (const c of ligne) expect(c).toMatch(/^[A-Z]$/);
+    // En minuscules, l'accent reste.
+    expect(htmlMotsMeles([grilleMotsMeles(["été"], { ...REGLAGES_MOTS_MELES, taille: 5 }, 2)], { ...REGLAGES_MOTS_MELES, capitales: false })).toContain("<td>é</td>");
   });
 
   it("agrandissent la grille pour le mot le plus long, et savent les diagonales et l'envers", () => {
