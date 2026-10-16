@@ -45,8 +45,6 @@ pub struct PortableInfo {
     pub url_nom: String,
 }
 
-/// Instantané des données envoyé au téléphone (lecture seule).
-
 /// Un élève tel que le téléphone le voit : son nom et son niveau, rien de plus.
 /// Le partage passe par le Wi-Fi de l'école, en clair : l'INE, la date de
 /// naissance, la photo ou ce qui touche au handicap n'ont rien à y faire —
@@ -63,6 +61,8 @@ impl From<Eleve> for EleveVuDuTelephone {
         Self { id: e.id, nom: e.nom, niveau: e.niveau }
     }
 }
+
+/// Instantané des données envoyé au téléphone (lecture seule).
 #[derive(serde::Serialize)]
 struct Bundle {
     planning: Vec<Creneau>,
@@ -379,6 +379,10 @@ fn ecrire_vocal(app: &tauri::AppHandle, url: &str, octets: Vec<u8>) -> Result<St
  * relevé deux fois — par deux ordinateurs, ou après une coupure avant
  * l'effacement —, et il ne doit se ranger qu'une fois.
  */
+// Le Wi-Fi décrit un vocal par les paramètres de l'adresse, le relais par une
+// étiquette : les grouper n'ajouterait qu'une structure de passage, pour deux
+// appels.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn ranger_vocal(
     c: &rusqlite::Connection, dossier: &std::path::Path, id: &str, debut: &str, duree: f64, creneau: &str, destination: &str,
     octets: &[u8],

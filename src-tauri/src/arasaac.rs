@@ -890,7 +890,7 @@ pub fn picto_en_classe<'a>(index: &'a Index, cherche: &str, verbe: bool) -> Opti
     let mut meilleur: Option<(&Picto, i32)> = None;
     for p in index.pictos.iter().filter(|p| !p.sensible && p.mots.iter().any(|m| m == cherche)) {
         let n = note(p);
-        if meilleur.map_or(true, |(_, m)| n > m) {
+        if meilleur.is_none_or(|(_, m)| n > m) {
             meilleur = Some((p, n));
         }
     }
