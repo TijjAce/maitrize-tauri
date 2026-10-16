@@ -31,8 +31,9 @@ import { TOUS_LES_NIVEAUX } from "./supportsDeTravail";
 import { FAMILLES } from "./catalogueAteliers";
 import { hasard, melanger, piocher } from "./hasard";
 import { ligneDuPdf } from "./materielAImprimer";
+import { TETE_EN_AUTONOMIE } from "./lignesCitees";
 import { reglagesLaisses } from "./reglagesLaisses";
-import { forme, ligneDeSequence } from "./sequencesCitees";
+import { forme, ligneDeSequence, rangDeLaSeance } from "./sequencesCitees";
 import { domaineDeLaSeance } from "./journalTelephone";
 import type { SuiviSequence } from "./suiviSequences";
 // Maternelle
@@ -457,13 +458,17 @@ export function recettesDesSeances(
     if (!suit) continue;
     const seance = s.apres;
     sortie.push({
-      id: PREFIXE_SEANCE + seance.id, atelier: "seance", nom: ligneDeSequence(s.sequence, seance, s.prevues).replace(/^📚\s*/u, ""),
+      id: PREFIXE_SEANCE + seance.id, atelier: "seance", nom: seance.titre.trim() || `Séance ${seance.numero}`,
       domaine: "seance", niveaux: NIVEAUX_FICHES, seance: { sequence: s.sequence, seance, total: s.prevues },
       fabriquer: () => { throw new Error("Une séance ne se fabrique pas : elle s'écrit au cahier journal."); },
     });
   }
   return sortie;
 }
+
+/** Sous le titre d'une séance proposée : son rang et sa séquence, « séance 4/6 · Conjuguer être et avoir ». */
+export const detailDeLaSeance = (r: RecetteDeFiche): string =>
+  r.seance ? `${rangDeLaSeance(r.seance.seance, r.seance.total)} · ${r.seance.sequence.titre.trim()}` : "";
 
 /** La ligne d'une séance proposée, au nom de son élève : celle du bouton 📚, que le journal reconnaît. */
 export const ligneDeLaSeance = (r: RecetteDeFiche, prenom: string): string =>
@@ -795,7 +800,7 @@ export function titreLibre(titre: string, pris: Set<string>): string {
 /** Le dossier du bureau où se rangent les fiches du jour. */
 export const dossierDuJour = (jour: string) => `Fiches d'autonomie/${jour}`;
 
-export const TETE_DU_JOURNAL = "⏰ En autonomie :";
+export const TETE_DU_JOURNAL = TETE_EN_AUTONOMIE;
 
 /**
  * Le prévu d'un créneau, ce qu'« En retard » y pose à la suite : une ligne 📄

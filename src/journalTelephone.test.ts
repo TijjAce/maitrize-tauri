@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import type { Creneau, MaterielItem, Seance } from "./api";
+import type { Creneau, MaterielItem, Seance, Sequence } from "./api";
 import {
+  aFaireDuCreneau, cleDeLaSeance, minuteurDeLaSeance,
   aidesDuCreneau, cleDuDeroulement, cleDuDeroulementDe, dureeDuMinuteur, estUneAide, estUneFicheDEleve, fichesDuCreneau, journalDes, joursPublies, minuteurDuCreneau, MINUTEURS_DES_TABLETTES,
   domaineDeLaSeance, pasDuDeroulement,
   pageDeLaConsigne, signatureDuJournal, titreDeLAide, titrePourLesTablettes,
@@ -208,6 +209,63 @@ describe("les fiches d'« En retard », pour les tablettes", () => {
     const sig = signatureDuJournal(journalDes(jours, c, [], [pyramides, meles]), [pyramides, meles]);
     const plusLong = { ...pyramides, fabricationJson: (pyramides.fabricationJson ?? "").replace('"minuteur":10', '"minuteur":15') };
     expect(signatureDuJournal(journalDes(jours, c, [], [plusLong, meles]), [plusLong, meles])).not.toBe(sig);
+  });
+});
+
+describe("les séances d'« En retard », pour les tablettes (demande de l'enseignant, octobre 2026)", () => {
+  const conjuguer: Sequence = {
+    id: "q2", titre: "Apprendre à conjuguer être et avoir au présent", matiere: "Français", cycle: "", objectifs: "", competences: "", competenceVisee: "",
+    imageNom: null, couleur: "", dateCreation: "", periode: 1, annee: "2026-2027", ratingEngagement: 0, ratingFacilite: 0, ratingApprentissage: 0,
+    ratingDateMaj: null, projetId: null, video: "", dossier: "", nbSeancesPrevu: 6, etat: "", dateMaj: "",
+  };
+  const entrainer: Seance = {
+    ...seance("s4", "S'entraîner et automatiser"), numero: 4, sequenceId: "q2", duree: 30,
+    competences: JSON.stringify([{ domaineTitre: "Français", sousDomaineTitre: "Grammaire et orthographe" }]),
+  };
+  const fiche = (id: string, titre: string, prenom: string, minuteur: number): MaterielItem => ({
+    ...materiel(id, titre, null, "motsMeles"), pdfsJson: JSON.stringify([`${id}.pdf`]), sequenceId: null,
+    fabricationJson: JSON.stringify({ atelier: "motsMeles", eleve: { prenom, date: "vendredi 16 octobre" }, minuteur }),
+  });
+  const meles = fiche("f1", "Mots mêlés — RACHID, 16 oct.", "RACHID", 15);
+  const prevu = [
+    "Accueil.", "", "⏰ En autonomie :",
+    "📚 Apprendre à conjuguer être et avoir au présent · séance 4/6 : S'entraîner et automatiser — RACHID",
+    "📄 Mots mêlés — RACHID, 16 oct.",
+    "📚 Apprendre à conjuguer être et avoir au présent · séance 4/6 : S'entraîner et automatiser — ZENON",
+  ].join("\n");
+  const c = creneau("c1", "2026-10-16", { prevu });
+
+  it("se lisent au prévu, sous « En autonomie », à leur élève et dans l'ordre, avec les fiches", () => {
+    expect(aFaireDuCreneau(c, [meles], [conjuguer], [entrainer]).map((x) => [x.eleve, x.seance?.id ?? x.fiche?.id]))
+      .toEqual([["RACHID", "s4"], ["RACHID", "f1"], ["ZENON", "s4"]]);
+    // La ligne du bouton 📚 posée à la main, hors du bloc d'« En retard », reste celle de la classe.
+    expect(aFaireDuCreneau(creneau("c2", "2026-10-16", { prevu: "📚 Apprendre à conjuguer être et avoir au présent · séance 4/6 — RACHID" }), [], [conjuguer], [entrainer]))
+      .toEqual([]);
+  });
+
+  it("partent chacune à la tablette de son élève, avec la durée de la séance pour minuteur, à sa place parmi ses fiches", () => {
+    const j = journalDes(["2026-10-16"], [c], [entrainer], [meles], () => [], [conjuguer]);
+    const creneauDuJour = j.jours[0].creneaux[0];
+    expect(creneauDuJour.aides).toEqual([
+      { id: cleDeLaSeance("s4"), titre: "S'entraîner et automatiser", minuteur: 30, etape: 1, eleve: "RACHID" },
+      { id: "f1", titre: "Mots mêlés — RACHID, 16 oct.", minuteur: 15, etape: 2, eleve: "RACHID" },
+      { id: cleDeLaSeance("s4"), titre: "S'entraîner et automatiser", minuteur: 30, etape: 1, eleve: "ZENON" },
+    ]);
+    expect(creneauDuJour.deroules).toEqual({ RACHID: cleDuDeroulementDe("c1", "RACHID"), ZENON: cleDuDeroulementDe("c1", "ZENON") });
+    expect(pasDuDeroulement(c, undefined, () => [], [meles], "", "RACHID", [conjuguer], [entrainer])).toEqual([
+      { texte: "Rituel", matiere: "", rituel: true },
+      { texte: "S'entraîner et automatiser", matiere: "Français", fiche: true, domaine: "Grammaire et orthographe" },
+      { texte: "Mots mêlés", matiere: "", fiche: true },
+    ]);
+    // Deux heures au plus, et rien sans durée.
+    expect([minuteurDeLaSeance({ duree: 45 }), minuteurDeLaSeance({ duree: 300 }), minuteurDeLaSeance({ duree: 0 })]).toEqual([45, 120, 0]);
+  });
+
+  it("change de signature quand les étapes d'une séance envoyée changent, pas celles d'une autre", () => {
+    const j = journalDes(["2026-10-16"], [c], [entrainer], [meles], () => [], [conjuguer]);
+    const sig = signatureDuJournal(j, [meles], [entrainer]);
+    expect(signatureDuJournal(j, [meles], [{ ...entrainer, consignes: "Je lis le verbe.\nJ'écris la bonne forme." }])).not.toBe(sig);
+    expect(signatureDuJournal(j, [meles], [entrainer, { ...seance("s9", "Une autre"), consignes: "Rien." }])).toBe(sig);
   });
 });
 

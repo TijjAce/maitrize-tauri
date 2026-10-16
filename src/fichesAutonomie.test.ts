@@ -5,7 +5,7 @@ import {
   proposer, recetteDe, recettesPour, repartir, titreDeLaFiche, titreLibre, uneAutre, uneDePlus, type OutilsFiche,
   MINUTEURS_DE_BASE, lireMinuteursRetard, minuteurDeLaRecette, nomDeToutesLesFiches, rubriqueDeLaRecette,
   DOMAINE_DES_FICHES, domaineDeLaRecette, matiereDeLaRecette, recetteDuTitre,
-  creneauDeLaFiche, estUneSeance, familleDeMatiere, iconeDeLaRecette, ligneDeLaSeance, prevuEnAutonomie, recettesDesSeances, recettesDesSupports,
+  creneauDeLaFiche, detailDeLaSeance, estUneSeance, familleDeMatiere, iconeDeLaRecette, ligneDeLaSeance, prevuEnAutonomie, recettesDesSeances, recettesDesSupports,
 } from "./fichesAutonomie";
 import { MATIERES } from "./api";
 import { MINUTEURS_DES_TABLETTES } from "./journalTelephone";
@@ -368,8 +368,10 @@ describe("les ateliers en photo et les séances qui viennent (demande de l'ensei
     // Au créneau de toute la classe, le jardin ; aux familles de mots, la 3 après la 2 — pas la 1, jamais écrite au journal.
     expect(seancesDe("e3").map((r) => r.seance?.seance.id)).toEqual(["j2", "m3"]);
     const r = seancesDe("e1")[0];
-    expect([r.id, r.domaine, iconeDeLaRecette(r), nomDeLaRecette(r, { niveau: "CP", periode: 1, prenom: "Eliot" })])
-      .toEqual(["seance:s3", "seance", "📚", "Comparer les nombres jusqu'à 30 · séance 3/4 : Ranger"]);
+    // Un nom court — celui de la séance —, son rang et sa séquence dessous.
+    expect([r.id, r.domaine, iconeDeLaRecette(r), nomDeLaRecette(r, { niveau: "CP", periode: 1, prenom: "Eliot" }), detailDeLaSeance(r)])
+      .toEqual(["seance:s3", "seance", "📚", "Ranger", "séance 3/4 · Comparer les nombres jusqu'à 30"]);
+    expect(detailDeLaSeance(recetteDe("pyramides")!)).toBe("");
     expect(estUneSeance(r.id)).toBe(true);
     expect(estUneSeance("pyramides")).toBe(false);
   });
