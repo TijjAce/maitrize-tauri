@@ -607,7 +607,7 @@ fn ficher_la_photo(c: &Connection, fichier: &str, nom: &str, date: &str, depot: 
     let largeur = (haut - bas - 1) as u64;
     let empreinte = depot.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ b as u64).wrapping_mul(0x0000_0100_0000_01b3));
     let mut numero = haut - (empreinte % largeur) as i64;
-    while crate::sync::get_setting(c, &format!("pictos:{numero}")) != "" {
+    while !crate::sync::get_setting(c, &format!("pictos:{numero}")).is_empty() {
         numero = if numero - 1 > bas { numero - 1 } else { haut };
     }
     let fiche = serde_json::json!({ "mot": nom, "fichier": fichier, "date": date });
