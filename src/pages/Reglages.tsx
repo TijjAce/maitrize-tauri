@@ -4,7 +4,7 @@ import { api, isMac, texteErreur, type InfoCopie, type SauvegardeAuto, type Sauv
 import { Field, Input, Select, Confirm, useAsync, useOngletDemande } from "../components/ui";
 import { PartagerMesDossiers } from "../components/PartagerMesDossiers";
 import { confirmer } from "../components/confirmer";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 import { EVT_PARTAGE, fermerPartage, lirePartage, ouvrirPartage } from "../partageWifi";
 import { InterrupteurPartage } from "../components/InterrupteurPartage";
 import { applyTheme, MODES, ACCENTS, STYLES, TAILLES } from "../theme";
@@ -535,7 +535,7 @@ function CouleursDesMatieres() {
     return () => { vivant = false; };
   }, []);
   // Les intitulés de l'emploi du temps dont la couleur a été choisie — pas les domaines.
-  const [intitules] = React.useState(() => Object.keys(getMatiereOverrides()).filter((m) => !MATIERES.includes(m) && !matiereDuDomaine(m))
+  const [intitules, setIntitules] = React.useState(() => Object.keys(getMatiereOverrides()).filter((m) => !MATIERES.includes(m) && !matiereDuDomaine(m))
     .sort((a, b) => a.localeCompare(b, "fr")));
   const domainesDe = (m: string) => domaines.filter((d) => matiereDuDomaine(d) === m);
   const autresDomaines = domaines.filter((d) => !matiereDuDomaine(d) && !intitules.includes(d));
@@ -544,8 +544,19 @@ function CouleursDesMatieres() {
     choisirCouleurMatiere(m, c).catch((e) => toast(`Couleur non enregistrée : ${e}`, { icone: "⚠️" }));
     setOver({ ...getMatiereOverrides() });
   };
+  // Un intitulé n'est dans la liste que par sa couleur : le supprimer l'oublie,
+  // et ses créneaux reprennent celle qu'ils auraient sans choix.
+  const supprimer = (m: string) => {
+    const avant = over[m];
+    choisir(m, "");
+    setIntitules((l) => l.filter((x) => x !== m));
+    toastAnnulable(`« ${m} » retiré : ses créneaux reprennent leur couleur par défaut.`, () => {
+      if (avant) choisir(m, avant);
+      setIntitules((l) => (l.includes(m) ? l : [...l, m].sort((a, b) => a.localeCompare(b, "fr"))));
+    });
+  };
   // Un domaine se range sous sa matière, en retrait : il en prend la couleur, sauf si on lui en choisit une.
-  const ligne = (m: string, domaine = false) => (
+  const ligne = (m: string, domaine = false, onSupprimer?: () => void) => (
     <div key={m} style={{ display: "flex", alignItems: "center", gap: 8, padding: domaine ? "3px 0 3px 18px" : "6px 0",
       borderBottom: "1px solid var(--border)" }}>
       <div style={{ flex: 1, fontSize: domaine ? 12.5 : 13.5, color: domaine ? "var(--text-2)" : undefined }}>
@@ -557,32 +568,37 @@ function CouleursDesMatieres() {
             style={{ width: domaine ? 16 : 20, height: domaine ? 16 : 20, borderRadius: 5, background: couleurHex[c], cursor: "pointer",
               border: couleurPourMatiere(m) === c ? "2.5px solid var(--text)" : "2px solid transparent" }} />
         ))}
-        {over[m] && <button className="btn ghost sm" onClick={() => choisir(m, "")}>{domaine ? "comme sa matière" : "défaut"}</button>}
+        {onSupprimer
+          ? <button className="btn ghost sm" title="Supprimer" aria-label={`Supprimer « ${m} »`} onClick={onSupprimer}>🗑</button>
+          : over[m] && <button className="btn ghost sm" onClick={() => choisir(m, "")}>{domaine ? "comme sa matière" : "défaut"}</button>}
       </div>
     </div>
   );
 
   return (
     <>
-      <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
-        Personnalisez la couleur de chaque matière : le planning, les séquences et le bureau la prennent. Sous chaque matière, les domaines
-        de vos référentiels — une séquence porte celui de sa compétence — prennent sa couleur, sauf si vous leur en choisissez une.
-      </p>
-      {MATIERES.map((m) => <React.Fragment key={m}>{ligne(m)}{domainesDe(m).map((d) => ligne(d, true))}</React.Fragment>)}
-      {autresDomaines.length > 0 && (
-        <>
-          <h4 style={{ margin: "16px 0 2px" }}>Autres domaines des référentiels</h4>
-          {autresDomaines.map((d) => ligne(d))}
-        </>
-      )}
+      <Repli titre="Matières et domaines" resume={`${MATIERES.length} matières`} largeur="100%">
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
+            Personnalisez la couleur de chaque matière : le planning, les séquences et le bureau la prennent. Sous chaque matière, les domaines
+            de vos référentiels — une séquence porte celui de sa compétence — prennent sa couleur, sauf si vous leur en choisissez une.
+          </p>
+          {MATIERES.map((m) => <React.Fragment key={m}>{ligne(m)}{domainesDe(m).map((d) => ligne(d, true))}</React.Fragment>)}
+          {autresDomaines.length > 0 && (
+            <>
+              <h4 style={{ margin: "16px 0 2px" }}>Autres domaines des référentiels</h4>
+              {autresDomaines.map((d) => ligne(d))}
+            </>
+          )}
+        </div>
+      </Repli>
       {intitules.length > 0 && (
-        <>
-          <h4 style={{ margin: "16px 0 2px" }}>Intitulés de l'emploi du temps</h4>
+        <Repli titre="Intitulés de l'emploi du temps" resume={`${intitules.length} intitulé${intitules.length > 1 ? "s" : ""}`} largeur="100%">
           <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 12.5 }}>
             Couleurs choisies dans Organisation, sur un créneau.
           </p>
-          {intitules.map((m) => ligne(m))}
-        </>
+          {intitules.map((m) => ligne(m, false, () => supprimer(m)))}
+        </Repli>
       )}
     </>
   );
@@ -1159,11 +1175,14 @@ function Famille({ titre, children }: { titre: string; children: React.ReactNode
  * se consultent qu'un jour de panne, et ils poussaient tout le reste vers le
  * bas le reste de l'année. `resume` dit sur la ligne ce qu'on venait
  * vérifier — la date de la dernière copie —, pour ne pas avoir à ouvrir.
+ * `largeur` : celle des cartes de Données ; dans une carte, toute la sienne.
  */
-function Repli({ titre, resume, children }: { titre: string; resume?: React.ReactNode; children: React.ReactNode }) {
+function Repli({ titre, resume, largeur = 620, children }: {
+  titre: string; resume?: React.ReactNode; largeur?: number | string; children: React.ReactNode;
+}) {
   const [ouvert, setOuvert] = React.useState(false);
   return (
-    <div style={{ maxWidth: 620 }}>
+    <div style={{ maxWidth: largeur }}>
       <button className="btn ghost" style={{ width: "100%", justifyContent: "flex-start", marginBottom: 10 }}
         onClick={() => setOuvert((v) => !v)} aria-expanded={ouvert}>
         {ouvert ? "▾" : "▸"} {titre}
