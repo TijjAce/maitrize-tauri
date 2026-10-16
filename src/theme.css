@@ -1047,8 +1047,13 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .retard-tete { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .retard-creneaux { margin-left: auto; font-size: 12px; color: var(--text-2); }
 .retard-fiches { margin: 6px 0 2px; padding-left: 4px; list-style: none; }
-.retard-fiches li { display: flex; align-items: center; gap: 4px; font-size: 13px; padding: 1px 0; }
-.retard-nom { flex: 1; min-width: 0; }
+.retard-fiches li { display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 3px 0; }
+.retard-icone { flex: none; width: 44px; height: 44px; display: grid; place-items: center; font-size: 30px; line-height: 1; }
+.retard-icone img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+.retard-nom { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.retard-titre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.retard-detail { font-size: 12px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.retard-duree { flex: none; font-size: 12px; color: var(--text-2); white-space: nowrap; padding: 0 6px; }
 .retard-ou { font-size: 11.5px; color: var(--text-2); font-variant-numeric: tabular-nums; }
 /* Le minuteur des tablettes : pour chaque fiche, et pour toutes d'un coup. */
 .retard-minuteur.select { width: auto; flex: none; padding: 2px 6px; font-size: 12px; }

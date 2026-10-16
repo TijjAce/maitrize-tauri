@@ -13,6 +13,10 @@
 // attribue. Les déroulements partent avec elles — ce qui va se passer, dans
 // l'ordre : toujours le rituel d'abord, puis les phases de la séance ; celui
 // de chaque élève finit par ses fiches —, et la tablette y surligne l'étape.
+// Une séance qu'« En retard » a posée pour un élève part de même à sa
+// tablette, à sa place parmi ses fiches : son « Décomposer la tâche », ou le
+// séquentiel de ses étapes, avec sa durée pour minuteur (demande de
+// l'enseignant, octobre 2026).
 //
 // Tout part chiffré avec la clé du retour (voir telephone.rs) : Nuage ne lit
 // rien. Rien ne repart qui n'a pas changé ; ici, rien ne se redessine non plus.
@@ -22,6 +26,8 @@ import { pdfsCites } from "./materielAImprimer";
 import { eleveDeLaFiche, lirePdfs, titreSansLEleve } from "./materielSeance";
 import { lireFabrication, MINUTEUR_MAX } from "./modifierFeuille";
 import { titresDesRituels } from "./rituels";
+import { TETE_EN_AUTONOMIE } from "./lignesCitees";
+import { sequencesCitees } from "./sequencesCitees";
 
 /** Les ateliers de Fabriquer dont une feuille est une aide à la tâche : celles-là vont aux tablettes. */
 export const ATELIERS_D_AIDE = ["sequentiel", "priseDeParole", "codePhrase", "codeLecture", "resolution", "modelisation", "fonction"] as const;
@@ -103,6 +109,41 @@ export const aidesDuCreneau = (c: Pick<Creneau, "seanceId">, materiel: MaterielI
 export const fichesDuCreneau = (c: Pick<Creneau, "prevu">, materiel: MaterielItem[]): MaterielItem[] =>
   pdfsCites(c.prevu ?? "", materiel.filter(estUneFicheDEleve));
 
+/** La clé d'une séance qu'« En retard » a posée pour un élève : sa tablette la reçoit comme une aide. */
+export const cleDeLaSeance = (seanceId: string) => `seance:${seanceId}`;
+
+/** Le minuteur d'une séance, en minutes : sa durée, deux heures au plus ; 0 sans durée. */
+export const minuteurDeLaSeance = (s: Pick<Seance, "duree">): number => Math.min(MINUTEUR_MAX, Math.max(0, Math.round(Number(s.duree) || 0)));
+
+/** Ce qu'un élève a à faire au créneau : une fiche d'« En retard », ou une séance qu'« En retard » lui a posée. */
+export type AFaire = { eleve: string; fiche: MaterielItem; seance?: undefined } | { eleve: string; seance: Seance; fiche?: undefined };
+
+/**
+ * Ce que chaque élève a à faire au créneau, dans l'ordre du prévu : ses
+ * fiches, citées par leur ligne 📄, et ses séances — sous « ⏰ En autonomie : »,
+ * la ligne du bouton 📚 qu'« En retard » finit par « — PRÉNOM ».
+ */
+export function aFaireDuCreneau(c: Pick<Creneau, "prevu">, fiches: MaterielItem[], sequences: Sequence[] = [], seances: Seance[] = []): AFaire[] {
+  const lesFiches = fichesDuCreneau(c, fiches);
+  const sortie: AFaire[] = [];
+  const vues = new Set<string>();
+  let enAutonomie = false;
+  for (const ligne of (c.prevu ?? "").split("\n")) {
+    if (ligne.trim() === TETE_EN_AUTONOMIE) { enAutonomie = true; continue; }
+    if (/^\s*📄/u.test(ligne)) {
+      const m = pdfsCites(ligne, lesFiches)[0];
+      if (m && !vues.has(m.id)) { vues.add(m.id); sortie.push({ eleve: eleveDeLaFiche(m)?.prenom ?? "", fiche: m }); }
+      continue;
+    }
+    const pour = enAutonomie ? /^\s*📚.*\s—\s+(\S.*?)\s*$/u.exec(ligne) : null;
+    const seance = pour ? sequencesCitees(ligne, sequences, seances)[0]?.seance : null;
+    if (pour && seance) sortie.push({ eleve: pour[1], seance });
+  }
+  // Une fiche que le prévu cite autrement : à la suite.
+  for (const m of lesFiches) if (!vues.has(m.id)) sortie.push({ eleve: eleveDeLaFiche(m)?.prenom ?? "", fiche: m });
+  return sortie;
+}
+
 /**
  * Une étape du déroulement d'un créneau, avant son image : ce qu'on lit, la
  * matière au-dessus, et le domaine dont elle prend le picto — rien d'autre
@@ -136,6 +177,9 @@ export type EtapesDeLaSeance = (s: Seance) => string[];
 export const elevesDesFiches = (fiches: MaterielItem[]): string[] =>
   [...new Set(fiches.map((m) => eleveDeLaFiche(m)?.prenom ?? "").filter(Boolean))];
 
+/** Les élèves qui ont quelque chose à faire au créneau — une fiche, une séance —, dans l'ordre du prévu. */
+export const elevesDuCreneau = (aFaire: AFaire[]): string[] => [...new Set(aFaire.map((x) => x.eleve).filter(Boolean))];
+
 /**
  * Le déroulement d'un créneau : le rituel toujours en premier — ceux du prévu
  * par leur nom —, puis les phases de sa séance — son titre seul si elle n'en
@@ -145,18 +189,25 @@ export const elevesDesFiches = (fiches: MaterielItem[]): string[] =>
  */
 export function pasDuDeroulement(
   c: Pick<Creneau, "prevu">, seance: Seance | undefined, etapesDe: EtapesDeLaSeance, fiches: MaterielItem[], domaineDeSeance = "", eleve?: string,
+  sequences: Sequence[] = [], seances: Seance[] = [],
 ): PasDuDeroulement[] {
-  const lesFiches = eleve === undefined ? [] : fichesDuCreneau(c, fiches).filter((m) => eleveDeLaFiche(m)?.prenom === eleve);
-  if (!seance && !lesFiches.length) return [];
+  const lesSiennes = eleve === undefined ? [] : aFaireDuCreneau(c, fiches, sequences, seances).filter((x) => x.eleve === eleve);
+  if (!seance && !lesSiennes.length) return [];
   const rituels = titresDesRituels(c.prevu ?? "");
   const phases = seance ? etapesDe(seance) : [];
   return [
     { texte: rituels.length ? rituels.join(" · ") : "Rituel", matiere: rituels.length ? "Rituel" : "", rituel: true },
     ...(seance ? (phases.length ? phases : [seance.titre]) : []).map((texte) => ({ texte, matiere: "", ...(domaineDeSeance ? { domaine: domaineDeSeance } : {}) })),
-    ...lesFiches.map((m) => {
+    ...lesSiennes.map((x): PasDuDeroulement => {
+      if (x.seance) {
+        // Une séance posée par « En retard » : son titre, la matière de sa séquence, le picto de son domaine.
+        const sequence = sequences.find((q) => q.id === x.seance.sequenceId);
+        const domaine = domaineDeLaSeance(x.seance, sequence);
+        return { texte: x.seance.titre, matiere: sequence?.matiere ?? "", fiche: true, ...(domaine ? { domaine } : {}) };
+      }
       // Un support de travail montre sa photo, et dit sa matière ; une fiche la retrouve par sa sorte, au dessin.
-      const support = lireFabrication(m.fabricationJson)?.support;
-      return { texte: titrePourLesTablettes(m), matiere: support?.matiere ?? "", fiche: true, ...(support ? { picto: support.photo } : {}) };
+      const support = lireFabrication(x.fiche.fabricationJson)?.support;
+      return { texte: titrePourLesTablettes(x.fiche), matiere: support?.matiere ?? "", fiche: true, ...(support ? { picto: support.photo } : {}) };
     }),
   ];
 }
@@ -204,7 +255,7 @@ export const STYLE_CONSIGNE_TABLETTE = `
  * alors que c'est un jour sans classe.
  */
 export function journalDes(
-  jours: string[], creneaux: Creneau[], seances: Seance[], materiel: MaterielItem[], etapesDe: EtapesDeLaSeance = () => [],
+  jours: string[], creneaux: Creneau[], seances: Seance[], materiel: MaterielItem[], etapesDe: EtapesDeLaSeance = () => [], sequences: Sequence[] = [],
 ): JournalTelephone {
   const seanceDe = new Map(seances.map((s) => [s.id, s]));
   const deSeance = materiel.filter((m) => !!m.seanceId);
@@ -219,22 +270,24 @@ export function journalDes(
         .map((c) => {
           const minuteur = minuteurDuCreneau(c);
           const seance = c.seanceId ? seanceDe.get(c.seanceId) : undefined;
-          const lesFiches = fichesDuCreneau(c, fiches);
+          const aFaire = aFaireDuCreneau(c, fiches, sequences, seances);
           // Le déroulement de la classe : le rituel, les phases de la séance. Celui d'un élève y ajoute ses
-          // fiches, qui en sont la fin — après le rituel seul, sans séance.
+          // fiches et ses séances, qui en sont la fin — après le rituel seul, sans séance.
           const pas = pasDuDeroulement(c, seance, etapesDe, fiches);
-          const eleves = elevesDesFiches(lesFiches);
+          const eleves = elevesDuCreneau(aFaire);
           const debutDesFiches = pas.length || 1;
-          const sesFiches = (prenom: string) => lesFiches.filter((m) => eleveDeLaFiche(m)?.prenom === prenom);
+          const lesSiennes = (prenom: string) => aFaire.filter((x) => x.eleve === prenom);
           return {
             id: c.id, debut: c.heureDebut, fin: c.heureFin, matiere: c.matiere ?? "", prevu: c.prevu ?? "", bilan: c.bilan ?? "",
             seance: seance?.titre ?? "",
             aides: [
               // Une aide de la séance commence avec sa première phase, juste après le rituel.
               ...aidesDuCreneau(c, deSeance).map((m) => ({ id: m.id, titre: titreDeLAide(m), minuteur, ...(pas.length ? { etape: 1 } : {}) })),
-              ...lesFiches.map((m) => {
-                const eleve = eleveDeLaFiche(m)?.prenom ?? "";
-                return { id: m.id, titre: titreDeLAide(m), minuteur: minuteurDeLaFiche(m), etape: debutDesFiches + sesFiches(eleve).indexOf(m), eleve };
+              ...aFaire.map((x) => {
+                const etape = debutDesFiches + lesSiennes(x.eleve).indexOf(x);
+                return x.seance
+                  ? { id: cleDeLaSeance(x.seance.id), titre: x.seance.titre, minuteur: minuteurDeLaSeance(x.seance), etape, eleve: x.eleve }
+                  : { id: x.fiche.id, titre: titreDeLAide(x.fiche), minuteur: minuteurDeLaFiche(x.fiche), etape, eleve: x.eleve };
               }),
             ],
             minuteur,
@@ -247,9 +300,13 @@ export function journalDes(
 }
 
 /** Ce qui suffit à savoir que le journal n'a pas changé depuis la dernière publication. */
-export function signatureDuJournal(journal: JournalTelephone, materiel: MaterielItem[]): string {
+export function signatureDuJournal(journal: JournalTelephone, materiel: MaterielItem[], seances: Seance[] = []): string {
   const cites = new Set(journal.jours.flatMap((j) => j.creneaux.flatMap((c) => c.aides.map((a) => a.id))));
-  return JSON.stringify([journal.jours, materiel.filter((m) => cites.has(m.id)).map((m) => [m.id, m.titre, m.fabricationJson ?? ""])]);
+  // Une séance envoyée à un élève se redessine si ses étapes changent — ou son « Décomposer la tâche ».
+  const envoyees = new Set(seances.filter((x) => cites.has(cleDeLaSeance(x.id))).map((x) => x.id));
+  return JSON.stringify([journal.jours,
+    materiel.filter((m) => cites.has(m.id) || (m.seanceId && envoyees.has(m.seanceId))).map((m) => [m.id, m.titre, m.fabricationJson ?? ""]),
+    seances.filter((x) => envoyees.has(x.id)).map((x) => [x.id, x.titre, x.consignes ?? "", x.tableauDeroulement ?? ""])]);
 }
 
 // ── Dessiner une aide ──────────────────────────────────────────────────────
@@ -312,6 +369,30 @@ export async function pageDeLAide(m: MaterielItem): Promise<string | null> {
   }
   const { sansReferences } = await import("./references");
   const page = documentImprimable(m.titre, sansReferences(structurerConsignesHtml(rendu.html)), STYLE_FEUILLE + rendu.style + STYLE_CONSIGNES_STRUCTUREES);
+  const lue = await avecSaVoix(page);
+  dessinees.set(cle, lue);
+  return lue;
+}
+
+/**
+ * La page d'une séance qu'« En retard » a posée pour un élève, sur sa
+ * tablette : son « Décomposer la tâche » s'il en a un, sinon le séquentiel
+ * de ses étapes — ses consignes, ou ses phases dites pour l'élève.
+ */
+export async function pageDeLaSeance(s: Seance, materiel: MaterielItem[]): Promise<string | null> {
+  const sienne = materiel.find((m) => m.seanceId === s.id && lireFabrication(m.fabricationJson)?.atelier === "sequentiel");
+  if (sienne) return pageDeLAide(sienne);
+  const cle = `seance|${s.id}|${s.titre}|${s.consignes ?? ""}|${s.tableauDeroulement ?? ""}`;
+  const deja = dessinees.get(cle);
+  if (deja) return deja;
+  const a = await import("./aidesALaTache");
+  const { sequentielImprimable } = await import("./aidesDesSequences");
+  const { STYLE_FEUILLE } = await import("./cartesImprimables");
+  const { documentImprimable } = await import("./print");
+  const { STYLE_CONSIGNES_STRUCTUREES, structurerConsignesHtml } = await import("./consignesStructurees");
+  const { sansReferences } = await import("./references");
+  const rendu = await sequentielImprimable(a.sequentielDeLaSeance(s.titre, a.etapesDeLaSeance(s)));
+  const page = documentImprimable(s.titre, sansReferences(structurerConsignesHtml(rendu.html)), STYLE_FEUILLE + rendu.style + STYLE_CONSIGNES_STRUCTUREES);
   const lue = await avecSaVoix(page);
   dessinees.set(cle, lue);
   return lue;
@@ -426,17 +507,22 @@ export async function publierLeJournal(maintenant = new Date()): Promise<void> {
     const [creneaux, seances, materiel, sequences] = await Promise.all([
       api.creneauxList(jours[0], jours[jours.length - 1]), api.seancesList(), api.materielList(), api.sequencesList().catch((): Sequence[] => []),
     ]);
-    const journal = journalDes(jours, creneaux, seances, materiel, etapesDeLaSeance);
+    const journal = journalDes(jours, creneaux, seances, materiel, etapesDeLaSeance, sequences);
     // Un picto de matière ou de domaine choisi, une matière détaillée ou non : les déroulements changent, ils repartent.
     const { CLE_MATIERES, CLE_PAR_DOMAINE } = await import("./pictosMatieres");
     const reglage = async (cle: string) => (await api.settingGet(cle).catch(() => "")) ?? "";
-    const signature = `${signatureDuJournal(journal, materiel)}|${await reglage(CLE_MATIERES)}|${await reglage(CLE_PAR_DOMAINE)}`;
+    const signature = `${signatureDuJournal(journal, materiel, seances)}|${await reglage(CLE_MATIERES)}|${await reglage(CLE_PAR_DOMAINE)}`;
     if (signature === publiee) return;
     const cites = new Set(journal.jours.flatMap((j) => j.creneaux.flatMap((c) => c.aides.map((a) => a.id))));
     const aides: AideAPublier[] = [];
     for (const m of materiel.filter((x) => cites.has(x.id))) {
       const html = await pageDeLAide(m).catch(() => null);
       if (html) aides.push({ cle: m.id, titre: titrePourLesTablettes(m), html });
+    }
+    // Les séances qu'« En retard » a posées pour un élève : chacune sa page, une fois.
+    for (const x of seances.filter((s) => cites.has(cleDeLaSeance(s.id)))) {
+      const html = await pageDeLaSeance(x, materiel).catch(() => null);
+      if (html) aides.push({ cle: cleDeLaSeance(x.id), titre: x.titre, html });
     }
     // Les déroulements de chaque créneau qui en a : celui de la classe — le rituel, les phases de sa séance —,
     // et celui de chaque élève qui a des fiches, qui finit par les siennes.
@@ -454,7 +540,7 @@ export async function publierLeJournal(maintenant = new Date()): Promise<void> {
         ...Object.entries(publie.deroules ?? {}).map(([eleve, cle]) => [cle, eleve] as [string, string]),
       ];
       for (const [cle, eleve] of aPublier) {
-        const html = await pageDuDeroulement(pasDuDeroulement(c, seance, etapesDeLaSeance, fiches, domaine, eleve)).catch(() => null);
+        const html = await pageDuDeroulement(pasDuDeroulement(c, seance, etapesDeLaSeance, fiches, domaine, eleve, sequences, seances)).catch(() => null);
         if (html) aides.push({ cle, titre: TITRE_DU_DEROULEMENT, html });
       }
     }

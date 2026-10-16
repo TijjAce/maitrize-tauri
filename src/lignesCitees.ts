@@ -12,3 +12,6 @@ export const citeAutreChose = (ligne: string) => AUTRE_CITATION.test(ligne);
 /** Le texte sans ces lignes : ce qui reste peut nommer une séquence ou un jeu. */
 export const sansAutresCitations = (texte: string) =>
   (texte ?? "").split("\n").filter((ligne) => !citeAutreChose(ligne)).join("\n");
+
+/** L'en-tête qu'« En retard » pose au prévu, avant ses fiches (📄) et ses séances (📚). */
+export const TETE_EN_AUTONOMIE = "⏰ En autonomie :";

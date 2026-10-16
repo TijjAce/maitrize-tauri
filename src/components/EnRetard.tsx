@@ -11,11 +11,12 @@ import {
   prevuEnAutonomie, proposer, recetteDe, repartir, titreDeLaFiche, titreLibre, uneAutre, uneDePlus,
   type EleveDuJour, type FicheProposee, type NiveauFiches, type OutilsFiche,
   recettesDesSupports, type RecetteDeFiche, type SupportDonne,
-  creneauDeLaFiche, estUneSeance, ligneDeLaSeance, recettesDesSeances,
+  creneauDeLaFiche, detailDeLaSeance, estUneSeance, ligneDeLaSeance, recettesDesSeances,
 } from "../fichesAutonomie";
 import { lireMesPictos, imageDeMonPicto } from "../mesPictos";
 import { estUnSupport } from "../supportsDeTravail";
-import { dureeDuMinuteur, MINUTEURS_DES_TABLETTES } from "../journalTelephone";
+import { dureeDuMinuteur, minuteurDeLaSeance, MINUTEURS_DES_TABLETTES } from "../journalTelephone";
+import { usePictoImage } from "./ChoixPicto";
 import { ligneDuPdf } from "../materielAImprimer";
 import { suivisDesSequences, type SuiviSequence } from "../suiviSequences";
 
@@ -50,6 +51,16 @@ function ChoixDuMinuteur({ valeur, onChange, disabled, libelle }: { valeur: numb
 }
 
 const hhmm = (h: string) => h.slice(0, 5);
+
+/** L'image d'une fiche, en grand : la photo d'un atelier de la classe, l'icône de son atelier pour les autres. */
+function IconeDeLaFiche({ recette }: { recette: RecetteDeFiche }) {
+  const photo = usePictoImage(recette.support?.photo ?? null, true);
+  return (
+    <span className="retard-icone" aria-hidden="true">
+      {recette.support && photo ? <img src={photo} alt="" /> : iconeDeLaRecette(recette)}
+    </span>
+  );
+}
 
 /** Les pictogrammes de la banque installée sur l'ordinateur. */
 const OUTILS: OutilsFiche = {
@@ -314,9 +325,16 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
                       if (!r) return null;
                       return (
                         <li key={`${i}-${f.recette}-${f.graine}`}>
-                          <span className="retard-nom">{iconeDeLaRecette(r)} {nomDeLaRecette(r, ctx)}</span>
+                          <IconeDeLaFiche recette={r} />
+                          <span className="retard-nom">
+                            <span className="retard-titre">{nomDeLaRecette(r, ctx)}</span>
+                            {r.seance && <span className="retard-detail" title={detailDeLaSeance(r)}>{detailDeLaSeance(r)}</span>}
+                          </span>
                           {p.creneaux.length > 1 && <span className="retard-ou">{hhmm(p.creneaux[creneauDeLaFiche(r, p.creneaux, ou[i])].heureDebut)}</span>}
-                          {/* Une séance ne part pas aux tablettes comme une fiche : elle n'a pas de minuteur à elle. */}
+                          {/* Une séance a son temps à elle, sa durée : il part avec elle à la tablette de l'élève. */}
+                          {r.seance && minuteurDeLaSeance(r.seance.seance) > 0 && (
+                            <span className="retard-duree" title="La durée de la séance : le minuteur de la tablette">⏱ {dureeDuMinuteur(minuteurDeLaSeance(r.seance.seance))}</span>
+                          )}
                           {telephone?.relie && !r.seance && (
                             <ChoixDuMinuteur valeur={f.minuteur} disabled={occupe} libelle={`Le minuteur de « ${nomDeLaRecette(r, ctx)} », sur les tablettes`}
                               onChange={(m) => changer(p.eleve.id, (x) => ({ ...x, fiches: x.fiches.map((y, j) => (j === i ? { ...y, minuteur: m } : y)) }))} />
