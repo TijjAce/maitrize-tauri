@@ -1,5 +1,5 @@
 import React from "react";
-import { api, Identite, Ami, SyncConfig, SyncMessage, BoiteItem } from "../api";
+import { api, Identite, Ami, SyncMessage, BoiteItem } from "../api";
 import { Field, Input, Modal, Empty, Confirm, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { releverBoiteAuxLettres, messageRecu } from "../inbox";
@@ -7,8 +7,9 @@ import { releverBoiteAuxLettres, messageRecu } from "../inbox";
 // « Amis », un onglet des Réglages : identité de l'appareil, appariement par
 // code d'invitation, boîte aux lettres et synchronisation chiffrée avec un
 // collègue. Il avait sa page dans le menu ; c'est un réglage qu'on fait une
-// fois, il rejoint les autres.
-export function AmisTab() {
+// fois, il rejoint les autres. Le stockage des échanges est celui des
+// sauvegardes : il se règle dans « Données & synchro », et ici on le nomme.
+export function AmisTab({ versLeStockage }: { versLeStockage?: () => void }) {
   const { data: identite, reload: reloadId } = useAsync(() => api.identiteGet(), []);
   const { data: amis, reload: reloadAmis } = useAsync(() => api.amisList(), []);
   const [inviter, setInviter] = React.useState(false);
@@ -50,7 +51,7 @@ export function AmisTab() {
 
       <BoiteAuxLettresCard />
 
-      <SyncConfigCard />
+      <StockageDesEchanges versLeStockage={versLeStockage} />
 
       {inviter && <InviterModal onClose={() => setInviter(false)} />}
       {echange && <EchangeModal ami={echange} onClose={() => setEchange(null)} />}
@@ -196,49 +197,22 @@ function BoiteAuxLettresCard() {
   );
 }
 
-// Configuration du stockage S3 (MinIO en local pour tester) + bouton de test.
-function SyncConfigCard() {
-  const { data: cfg, reload } = useAsync(() => api.syncConfigGet(), []);
-  const [form, setForm] = React.useState<SyncConfig | null>(null);
-  const [secret, setSecret] = React.useState("");
-  const [msg, setMsg] = React.useState("");
-  const [ouvert, setOuvert] = React.useState(false);
-  React.useEffect(() => { if (cfg) setForm(cfg); }, [cfg]);
-  if (!form) return null;
-  const up = (p: Partial<SyncConfig>) => setForm({ ...form, ...p });
-  const enregistrer = async () => {
-    await api.syncConfigSet({ endpoint: form.endpoint, region: form.region, bucket: form.bucket, access: form.access, secret: secret || undefined });
-    setSecret(""); setMsg("Enregistré."); reload();
-  };
-  const tester = async () => {
-    setMsg("Test en cours…");
-    try { setMsg(await api.syncTest()); } catch (e) { setMsg(String(e)); }
-  };
+/**
+ * Le stockage par où passent les échanges : celui des sauvegardes. Il ne se
+ * règle qu'à un endroit, dans « Données & synchro » ; ici, on dit lequel, et
+ * on y mène.
+ */
+function StockageDesEchanges({ versLeStockage }: { versLeStockage?: () => void }) {
+  const { data: cfg } = useAsync(() => api.syncConfigGet(), []);
+  if (!cfg) return null;
+  const regle = cfg.aSecret && cfg.endpoint.trim() && cfg.bucket.trim();
   return (
-    <div className="card" style={{ marginTop: 14 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => setOuvert((v) => !v)}>
-        <h3 style={{ margin: 0, flex: 1 }}>⚙️ Stockage de synchro {cfg?.aSecret ? "✅" : "(non configuré)"}</h3>
-        <span>{ouvert ? "▲" : "▼"}</span>
-      </div>
-      {ouvert && <div style={{ marginTop: 12 }}>
-        <p className="meta" style={{ marginTop: 0 }}>Test local : lancez MinIO et renseignez l'endpoint <code>http://localhost:9000</code>, un bucket, et les clés MinIO.</p>
-        <div className="row">
-          <Field label="Endpoint"><Input value={form.endpoint} placeholder="http://localhost:9000" onChange={(e) => up({ endpoint: e.target.value })} /></Field>
-          <Field label="Région"><Input value={form.region} placeholder="us-east-1" onChange={(e) => up({ region: e.target.value })} /></Field>
-        </div>
-        <div className="row">
-          <Field label="Bucket"><Input value={form.bucket} placeholder="maitrize-sync" onChange={(e) => up({ bucket: e.target.value })} /></Field>
-          <Field label="Access Key"><Input value={form.access} onChange={(e) => up({ access: e.target.value })} /></Field>
-        </div>
-        <Field label={"Secret Key" + (cfg?.aSecret ? " (déjà enregistré — laissez vide pour garder)" : "")}>
-          <Input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} />
-        </Field>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
-          <button className="btn primary" onClick={enregistrer}>Enregistrer</button>
-          <button className="btn" onClick={tester}>🔌 Tester la connexion</button>
-          {msg && <span className="meta">{msg}</span>}
-        </div>
-      </div>}
+    <div className="card" style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <span style={{ flex: 1, minWidth: 220 }}>
+        <b>⚙️ Stockage des échanges</b>{" "}
+        <span className="meta">{regle ? `${cfg.endpoint.trim()} · ${cfg.bucket.trim()} ✅` : "pas encore réglé"} — celui des sauvegardes.</span>
+      </span>
+      {versLeStockage && <button className="btn sm" onClick={versLeStockage}>Régler le stockage</button>}
     </div>
   );
 }

@@ -43,6 +43,9 @@ export default function Reglages() {
   const [onglet, setOnglet] = React.useState<Onglet>("general");
   // L'annonce d'une dictée arrivée mène droit à l'onglet du téléphone.
   useOngletDemande<Onglet>("reglages", ONGLETS.map(([k]) => k), setOnglet);
+  // « Régler le stockage », depuis l'onglet Amis : on arrive sur le stockage, déplié.
+  const [versLeStockage, setVersLeStockage] = React.useState(false);
+  React.useEffect(() => { if (onglet !== "donnees") setVersLeStockage(false); }, [onglet]);
   const [s, setS] = React.useState<Record<string, string>>({});
   const [chargé, setChargé] = React.useState(false);
   const [testMsg, setTestMsg] = React.useState("");
@@ -406,8 +409,10 @@ export default function Reglages() {
 
       <Famille titre="Sauvegardes">
         {/* Le stockage se règle une fois, puis la sauvegarde part toute seule :
-            cinq champs et une phrase secrète n'ont pas à rester sous les yeux. */}
-        <Repli titre="Sauvegarde sur mon stockage (S3 / MinIO)">
+            cinq champs et une phrase secrète n'ont pas à rester sous les yeux.
+            C'est le seul endroit où il se règle : les échanges avec les amis
+            passent par lui aussi. */}
+        <Repli titre="Sauvegarde sur mon stockage (S3 / MinIO)" ouvertAuDepart={versLeStockage}>
           <SauvegardeS3Card />
         </Repli>
         <CopiesAutomatiquesRepliees />
@@ -445,7 +450,7 @@ export default function Reglages() {
 
       {onglet === "retard" && <ReglagesEnRetard />}
 
-      {onglet === "amis" && <AmisTab />}
+      {onglet === "amis" && <AmisTab versLeStockage={() => { setVersLeStockage(true); setOnglet("donnees"); }} />}
 
       {onglet === "partage" && <>
       {/* Le Dictaphone : ses dictées et ses notes passent par Nuage, où que soit l'ordinateur. */}
@@ -606,6 +611,9 @@ function CouleursDesMatieres() {
 
 // Sauvegarde chiffrée de toute la base sur un stockage S3-compatible
 // (MinIO local aujourd'hui ; serveur en ligne plus tard = juste l'adresse change).
+// Ce stockage est aussi celui des échanges avec les amis : il ne se règle
+// qu'ici. L'onglet Amis le rappelait sous ses mêmes champs ; ils ne disaient
+// qu'une chose, deux fois (remarque de l'enseignant, octobre 2026).
 function SauvegardeS3Card() {
   const [cfg, setCfg] = React.useState({ endpoint: "", region: "us-east-1", bucket: "", access: "", secret: "", aSecret: false });
   const [phrase, setPhrase] = React.useState("");
@@ -639,13 +647,13 @@ function SauvegardeS3Card() {
 
   return (
     <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
-      <h3 style={{ marginTop: 0 }}>☁️ Sauvegarde sur mon stockage (S3 / MinIO)</h3>
       <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
-        Sauvegarde chiffrée de toutes vos données sur votre propre stockage (MinIO en local, un NAS, ou un serveur en ligne — il suffira de changer l'adresse). Le stockage ne voit que du contenu chiffré.
+        Sauvegarde chiffrée de toutes vos données sur votre propre stockage (MinIO en local, un NAS, ou un serveur en ligne — il suffira de changer l'adresse). Le stockage ne voit que du contenu chiffré. Les échanges avec vos amis passent par lui aussi.
       </p>
       <div className="row">
         <Field label="Adresse (endpoint)"><Input value={cfg.endpoint} placeholder="http://192.168.1.20:9000" onChange={(e) => setCfg({ ...cfg, endpoint: e.target.value })} /></Field>
         <Field label="Bucket"><Input value={cfg.bucket} placeholder="maitrize" onChange={(e) => setCfg({ ...cfg, bucket: e.target.value })} /></Field>
+        <Field label="Région"><Input value={cfg.region} placeholder="us-east-1" onChange={(e) => setCfg({ ...cfg, region: e.target.value })} /></Field>
       </div>
       <div className="row">
         <Field label="Clé d'accès"><Input value={cfg.access} onChange={(e) => setCfg({ ...cfg, access: e.target.value })} /></Field>
@@ -1177,10 +1185,14 @@ function Famille({ titre, children }: { titre: string; children: React.ReactNode
  * vérifier — la date de la dernière copie —, pour ne pas avoir à ouvrir.
  * `largeur` : celle des cartes de Données ; dans une carte, toute la sienne.
  */
-function Repli({ titre, resume, largeur = 620, children }: {
-  titre: string; resume?: React.ReactNode; largeur?: number | string; children: React.ReactNode;
+function Repli({ titre, resume, largeur = 620, ouvertAuDepart = false, children }: {
+  titre: string; resume?: React.ReactNode; largeur?: number | string;
+  /** Déplié quand on y arrive exprès — « Régler le stockage », depuis l'onglet Amis. */
+  ouvertAuDepart?: boolean;
+  children: React.ReactNode;
 }) {
-  const [ouvert, setOuvert] = React.useState(false);
+  const [ouvert, setOuvert] = React.useState(ouvertAuDepart);
+  React.useEffect(() => { if (ouvertAuDepart) setOuvert(true); }, [ouvertAuDepart]);
   return (
     <div style={{ maxWidth: largeur }}>
       <button className="btn ghost" style={{ width: "100%", justifyContent: "flex-start", marginBottom: 10 }}
