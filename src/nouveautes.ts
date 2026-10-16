@@ -18,6 +18,17 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.31",
+    titre: "« En retard » propose vos ateliers en photo et la séance qui vient, jusqu'aux tablettes",
+    points: [
+      { quoi: "« En retard » donne à chaque élève un atelier en photo de Mes pictos dès qu'il y en a un à son niveau, à sa place dans la journée. Un niveau suffit, ou « Tous les niveaux » : la matière n'est plus obligatoire.", ou: "En retard (⌘K) · Réglages › Personnalisation" },
+      { quoi: "Il propose aussi la séance qui vient de chaque séquence que l'élève suit : celle d'après la plus avancée des séances faites. Elle s'écrit à son nom au cahier journal, au créneau de sa matière, et son matériel s'imprime avec lui.", ou: "En retard · Cahier journal" },
+      { quoi: "Cette séance part sur la tablette de l'élève, à sa place parmi ses fiches, avec sa durée pour minuteur : son « Décomposer la tâche », ou ses étapes en pictos.", ou: "Dictaphone · Tablettes" },
+      { quoi: "Les lignes d'« En retard » montrent leur image en grand — la photo de l'atelier —, et une séance par son titre court, son rang et sa séquence dessous, et son temps.", ou: "En retard" },
+      { quoi: "Relier le téléphone se fait pas à pas : les étapes s'affichent sur l'ordinateur et sur l'iPhone, celle où l'on en est mise en avant.", ou: "Réglages › Téléphone · Dictaphone" },
+    ],
+  },
+  {
     version: "1.6.30",
     titre: "Les consignes s'écoutent sur les tablettes, un seul emploi du temps, et une poubelle sur le plan de travail",
     points: [
