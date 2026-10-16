@@ -3,8 +3,11 @@
 // Les mots de la semaine — ceux de la dictée, du thème, de la leçon — cachés
 // dans une grille de lettres. Au cycle 2, de gauche à droite et de haut en
 // bas, en capitales ; au cycle 3, en diagonale et à l'envers aussi. La liste
-// des mots s'imprime à côté, avec leurs accents ; dans la grille, les lettres
-// n'en ont pas, comme dans tous les mots mêlés.
+// des mots s'imprime à côté, avec leurs accents, et la grille les garde aussi :
+// « été » s'y cherche avec ses É, comme il s'écrit (demande de l'enseignant,
+// octobre 2026). Pour qu'un É ne montre pas du doigt où se cache un mot,
+// quelques lettres accentuées des mots se glissent aussi parmi celles qui
+// remplissent la grille.
 
 import { escapeHtml } from "./print";
 import { feuille } from "./cartesImprimables";
@@ -34,17 +37,27 @@ export interface GrilleMeles { taille: number; cases: string[][]; places: MotPla
 export function motsSaisis(texte: string): string[] {
   const vus = new Set<string>();
   return (texte ?? "").split(/[\n,;]+/).map((m) => m.trim()).filter((m) => {
-    const cle = lettresDuMot(m);
+    // « été » et « ete » sont le même mot : un seul dans la grille.
+    const cle = lettresDuMot(m).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     if (!cle || vus.has(cle)) return false;
     vus.add(cle);
     return true;
   });
 }
 
-/** « grand-père » → « GRANDPERE » : les lettres de la grille, sans accent ni tiret. */
-export const lettresDuMot = (mot: string) => mot.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/œ/gi, "OE").replace(/[^a-zA-Z]/g, "").toUpperCase();
+/**
+ * « grand-père » → « GRANDPÈRE » : les lettres de la grille, en capitales
+ * avec leurs accents, sans tiret ni apostrophe. Une lettre accentuée tient
+ * dans une case — même tapée en deux signes, la lettre et son accent — ; « œ »
+ * s'écrit OE, en deux.
+ */
+export const lettresDuMot = (mot: string) =>
+  (mot ?? "").normalize("NFC").replace(/œ/gi, "OE").replace(/æ/gi, "AE").replace(/[^\p{L}]/gu, "").toLocaleUpperCase("fr");
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+/** La part des lettres de remplissage prises parmi les accentuées des mots, quand il y en a. */
+const PART_ACCENTUEE = 0.08;
 
 export function grilleMotsMeles(mots: string[], r: ReglagesMotsMeles, graine: number): GrilleMeles {
   const alea = hasard(graine);
@@ -76,7 +89,11 @@ export function grilleMotsMeles(mots: string[], r: ReglagesMotsMeles, graine: nu
     }
     if (!pose) oublies.push(m.mot);
   }
-  for (const ligne of cases) for (let x = 0; x < taille; x++) if (!ligne[x]) ligne[x] = ALPHABET[Math.floor(alea() * 26)];
+  // Quelques lettres accentuées parmi celles qui remplissent : celles des mots placés, pour qu'un É n'en trahisse aucun.
+  const accentuees = [...new Set(places.flatMap((m) => [...m.lettres]).filter((c) => !/^[A-Z]$/.test(c)))];
+  const remplissage = () => (accentuees.length && alea() < PART_ACCENTUEE
+    ? accentuees[Math.floor(alea() * accentuees.length)] : ALPHABET[Math.floor(alea() * 26)]);
+  for (const ligne of cases) for (let x = 0; x < taille; x++) if (!ligne[x]) ligne[x] = remplissage();
   return { taille, cases, places, oublies };
 }
 
@@ -89,7 +106,7 @@ export function casesDesMots(g: GrilleMeles): Set<string> {
 
 function grilleHtml(g: GrilleMeles, r: ReglagesMotsMeles, corrige: boolean): string {
   const trouvees = corrige ? casesDesMots(g) : new Set<string>();
-  const lettre = (c: string) => (r.capitales ? c : c.toLowerCase());
+  const lettre = (c: string) => (r.capitales ? c : c.toLocaleLowerCase("fr"));
   return `<table class="mm-grille">${g.cases.map((ligne, y) => `<tr>${ligne.map((c, x) => `<td${trouvees.has(`${x},${y}`) ? ' class="mm-trouve"' : ""}>${lettre(c)}</td>`).join("")}</tr>`).join("")}</table>`;
 }
 
