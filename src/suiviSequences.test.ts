@@ -93,6 +93,19 @@ describe("l'état d'une séquence", () => {
     expect(libelleDuSuivi(s, AUJOURDHUI)).toBe("En classe depuis le 30/09 · séance 1/4 · aucune séance posée");
   });
 
+  it("dit la séance d'après la plus avancée des séances faites : la 3 après la 2, même si la 1 n'a pas été écrite au journal", () => {
+    const passer = (...ids: string[]) => suiviDeLaSequence(fractions, siennes,
+      passagesParSequence(ids.map((id, i) => creneau(`c${i}`, `2026-09-2${i}`, { seanceId: id })), [fractions], seances).get("q1") ?? [], AUJOURDHUI);
+    const sautee = passer("b");
+    expect([sautee.suivante?.numero, sautee.apres?.numero]).toEqual([1, 3]);
+    // Refaire la 1 après la 3 ne fait pas revenir en arrière.
+    expect(passer("a", "c", "a").apres?.numero).toBe(4);
+    // Après la dernière de la séquence, celle qu'on a sautée ; sans séance faite, la première.
+    expect(passer("b", "d").apres?.numero).toBe(1);
+    expect(passer().apres?.numero).toBe(1);
+    expect(passer("a", "b", "c", "d").apres).toBeNull();
+  });
+
   it("est « terminée » quand toutes les séances prévues sont faites", () => {
     const passages = passagesParSequence(
       ["a", "b", "c", "d"].map((id, i) => creneau(`c${i}`, `2026-09-1${i + 1}`, { seanceId: id })), [fractions], seances).get("q1")!;

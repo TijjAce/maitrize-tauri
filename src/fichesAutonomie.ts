@@ -17,8 +17,13 @@
 // boîtes de tri. Ni « Trouve l'intrus » : il se fait en disant pourquoi, à
 // quelqu'un qui écoute, et une ligne tirée au hasard a souvent plusieurs
 // intrus possibles — les tongs avec les gants, la ceinture ou le bonnet ?
+//
+// Deux choses s'y ajoutent, chacune à sa place dans la journée de l'élève
+// (demande de l'enseignant, octobre 2026) : un atelier en photo de Mes
+// pictos, quand il y en a un à son niveau, et la séance qui vient de chaque
+// séquence qu'il suit (voir recettesDesSeances).
 
-import type { Creneau, Eleve } from "./api";
+import type { Creneau, Eleve, Seance, Sequence } from "./api";
 import { STYLE_FEUILLE, feuille } from "./cartesImprimables";
 import type { MonPicto } from "./mesPictos";
 import { escapeHtml } from "./print";
@@ -27,6 +32,9 @@ import { FAMILLES } from "./catalogueAteliers";
 import { hasard, melanger, piocher } from "./hasard";
 import { ligneDuPdf } from "./materielAImprimer";
 import { reglagesLaisses } from "./reglagesLaisses";
+import { forme, ligneDeSequence } from "./sequencesCitees";
+import { domaineDeLaSeance } from "./journalTelephone";
+import type { SuiviSequence } from "./suiviSequences";
 // Maternelle
 import { ETAPES_CONSEILLEES, REGLAGES_SUITES, STYLE_SUITES, htmlSuites, suitesPour } from "./suitesImages";
 import { MOTIFS, REGLAGES_PAR_DEFAUT as REGLAGES_COLORIAGE, couleursDuMotif, fabriquerColoriage, feuilleDuColoriage, type Graphie, type ReglagesColoriage } from "./coloriageMagique";
@@ -87,7 +95,8 @@ export const combienDeFiches = (n: NiveauFiches, creneaux = 0) =>
 
 // ── Les fiches ────────────────────────────────────────────────────────────
 
-export type Domaine = "langage" | "temps" | "nombres" | "lettres" | "francais" | "maths";
+/** Ce qu'une fiche travaille ; « atelier », une photo de Mes pictos ; « seance », la séance qui vient d'une séquence. */
+export type Domaine = "langage" | "temps" | "nombres" | "lettres" | "francais" | "maths" | "atelier" | "seance";
 
 /** Ce qu'une fiche sait de l'élève qui la reçoit. */
 export interface ContexteFiche { niveau: NiveauFiches; periode: number; prenom: string }
@@ -121,14 +130,16 @@ export interface RecetteDeFiche {
   lecture?: boolean;
   /** Un support de travail : la photo de Mes pictos et sa matière (voir recettesDesSupports). */
   support?: { photo: number; matiere: string };
+  /** La séance qui vient d'une séquence que l'élève suit : elle ne se fabrique pas, elle s'écrit au cahier journal (voir recettesDesSeances). */
+  seance?: { sequence: Sequence; seance: Seance; total: number };
   fabriquer: (c: ContexteFiche, graine: number, outils: OutilsFiche) => FicheFabriquee | Promise<FicheFabriquee>;
 }
 
 export const nomDeLaRecette = (r: RecetteDeFiche, c: ContexteFiche) => (typeof r.nom === "function" ? r.nom(c) : r.nom);
 
-/** L'icône de l'atelier qui fait la fiche. */
+/** L'icône de l'atelier qui fait la fiche ; celle du bouton 📚 pour une séance. */
 export const iconeDeLaRecette = (r: RecetteDeFiche) =>
-  r.atelier === ATELIER_SUPPORT ? "📷" : FAMILLES.flatMap((f) => f.outils).find((o) => o.id === r.atelier)?.icone ?? "📄";
+  r.seance ? "📚" : r.atelier === ATELIER_SUPPORT ? "📷" : FAMILLES.flatMap((f) => f.outils).find((o) => o.id === r.atelier)?.icone ?? "📄";
 
 const elementaire = (n: NiveauFiches): Elementaire => (enMaternelle(n) ? "CP" : n);
 
@@ -372,42 +383,91 @@ export const RECETTES: RecetteDeFiche[] = [
 // vient en fin d'année.
 const PERIODES_DU_CP: Record<string, number[]> = { comprendre: DES_PERIODES(3), grammaire: DES_PERIODES(4), monnaie: DES_PERIODES(4) };
 
-/** La recette d'une fiche : l'une de la liste, ou l'un des supports de travail du jour. */
+/** La recette d'une fiche : l'une de la liste, ou l'un des supports de travail et des séances du jour. */
 export const recetteDe = (id: string, supports: readonly RecetteDeFiche[] = []) =>
   RECETTES.find((r) => r.id === id) ?? supports.find((r) => r.id === id);
 
 // ── Les supports de travail ────────────────────────────────────────────────
 //
-// Les photos de la classe que l'enseignant a réglées comme supports — une
-// matière, un niveau (voir supportsDeTravail) — se donnent comme des fiches,
-// à tout élève de leur niveau (demande de l'enseignant, octobre 2026) : la
-// photo en grand, et les règles du jeu qu'elle prend, en étapes. La photo est
-// un bloc de consigne : la tablette la montre avec les règles. Il n'y a rien
-// à lire pour s'y mettre.
+// Les photos de la classe que l'enseignant a réglées comme supports — un
+// niveau, une matière s'il veut (voir supportsDeTravail) — se donnent comme
+// des fiches, à tout élève de leur niveau (demande de l'enseignant, octobre
+// 2026) : la photo en grand, et les règles du jeu qu'elle prend, en étapes.
+// La photo est un bloc de consigne : la tablette la montre avec les règles.
+// Il n'y a rien à lire pour s'y mettre. Ce sont les ateliers de la classe :
+// chaque élève en reçoit un dès qu'il y en a un à son niveau, à sa place dans
+// la journée (voir ordreDesDomaines), plutôt que tiré au hasard parmi les
+// fiches — où il ne sortait presque jamais.
 
 /** Une photo réglée comme support, et le jeu dont elle prend les règles. */
 export interface SupportDonne { photo: MonPicto; jeu: string; regles: string }
 
-/** Le domaine d'« En retard » d'une matière : l'ordre des fiches d'un élève le suit. */
-const DOMAINE_DU_SUPPORT: Record<string, Domaine> = {
-  "Mathématiques": "maths", "Structurer sa pensée": "nombres", "Français": "francais", "Mobiliser le langage": "langage", "Explorer le monde": "temps",
-};
-
 /**
  * Une recette par support, pour les niveaux d'« En retard » qu'il vise —
- * tous, ou le sien. `image` donne la photo, en data URL.
+ * tous, ou le sien, lu comme celui d'un élève : une photo du CM2 va avec les
+ * fiches du CE2. `image` donne la photo, en data URL.
  */
 export function recettesDesSupports(supports: SupportDonne[], image: (id: number) => Promise<string>): RecetteDeFiche[] {
   return supports.flatMap(({ photo, jeu, regles }): RecetteDeFiche[] => {
-    const niveaux = NIVEAUX_FICHES.filter((n) => photo.niveau === TOUS_LES_NIVEAUX || photo.niveau === n);
-    if (!niveaux.length || !photo.matiere) return [];
+    const sien = niveauDesFiches(photo.niveau);
+    const niveaux = photo.niveau === TOUS_LES_NIVEAUX ? NIVEAUX_FICHES : sien ? [sien] : [];
+    if (!niveaux.length) return [];
     return [{
       id: `${ATELIER_SUPPORT}:${photo.id}`, atelier: ATELIER_SUPPORT, nom: photo.mot,
-      domaine: DOMAINE_DU_SUPPORT[photo.matiere] ?? "francais", niveaux, support: { photo: photo.id, matiere: photo.matiere },
+      domaine: "atelier", niveaux, support: { photo: photo.id, matiere: photo.matiere ?? "" },
       fabriquer: async () => ({ html: pageDuSupport(photo.mot, await image(photo.id).catch(() => ""), jeu, regles), style: STYLE_FEUILLE + STYLE_SUPPORT }),
     }];
   });
 }
+
+// ── Les séances qui viennent ───────────────────────────────────────────────
+//
+// Un élève qui suit une séquence en classe — l'une de ses séances est passée
+// dans un créneau où il était, ou dans un créneau de toute la classe —
+// reçoit aussi la séance qui vient : celle d'après la plus avancée des
+// séances faites — la 3 après la 2, même si la 1 n'a jamais été écrite au
+// journal (demande de l'enseignant, octobre 2026). Elle ne se fabrique pas :
+// elle s'écrit au cahier journal de son créneau, sur la ligne du bouton 📚,
+// à son nom. Le journal montre alors son déroulement, et son matériel
+// s'imprime à la suite (voir materielAImprimer) ; une fois passée, le suivi
+// de la séquence la compte faite.
+
+/** Le début de l'identifiant d'une séance proposée : « seance:<id> ». */
+export const PREFIXE_SEANCE = "seance:";
+
+/** Vrai pour une séance proposée, qui s'écrit au journal sans rien fabriquer. */
+export const estUneSeance = (id: string) => id.startsWith(PREFIXE_SEANCE);
+
+/**
+ * La séance qui vient de chaque séquence en classe que cet élève suit, d'après
+ * les passages de leur suivi et les créneaux où ils ont eu lieu.
+ */
+export function recettesDesSeances(
+  eleveId: string, suivis: Iterable<SuiviSequence>, creneaux: ReadonlyMap<string, Pick<Creneau, "elevesJson">>,
+): RecetteDeFiche[] {
+  const sortie: RecetteDeFiche[] = [];
+  for (const s of suivis) {
+    if (s.etat !== "classe" || !s.apres) continue;
+    const suit = s.passages.some((p) => {
+      const c = creneaux.get(p.creneauId);
+      if (!c) return false;
+      const la = elevesDuCreneau(c);
+      return !la.length || la.includes(eleveId);
+    });
+    if (!suit) continue;
+    const seance = s.apres;
+    sortie.push({
+      id: PREFIXE_SEANCE + seance.id, atelier: "seance", nom: ligneDeSequence(s.sequence, seance, s.prevues).replace(/^📚\s*/u, ""),
+      domaine: "seance", niveaux: NIVEAUX_FICHES, seance: { sequence: s.sequence, seance, total: s.prevues },
+      fabriquer: () => { throw new Error("Une séance ne se fabrique pas : elle s'écrit au cahier journal."); },
+    });
+  }
+  return sortie;
+}
+
+/** La ligne d'une séance proposée, au nom de son élève : celle du bouton 📚, que le journal reconnaît. */
+export const ligneDeLaSeance = (r: RecetteDeFiche, prenom: string): string =>
+  r.seance ? `${ligneDeSequence(r.seance.sequence, r.seance.seance, r.seance.total)} — ${prenom}` : "";
 
 /** La page d'un support : son nom, sa photo en grand, et les règles du jeu qu'il prend, s'il en prend. */
 export function pageDuSupport(nom: string, image: string, jeu: string, regles: string): string {
@@ -556,13 +616,31 @@ export function recettesPour(
  * L'ordre des domaines, d'une fiche à la suivante : en maternelle, les
  * nombres, les lettres en grande section, le temps ; ensuite, le français et
  * les maths tour à tour. Le langage n'a plus de fiche à faire seul : il se
- * travaille en parlant.
+ * travaille en parlant. La séance qui vient d'une séquence passe en premier,
+ * et l'atelier en photo prend sa place parmi les autres : chacun n'y est que
+ * si l'élève en a un (voir ordreServi).
  */
 export function ordreDesDomaines(n: NiveauFiches): Domaine[] {
-  if (n === "PS") return ["temps"];
-  if (n === "MS") return ["nombres", "temps"];
-  if (n === "GS") return ["nombres", "lettres", "temps"];
-  return ["francais", "maths"];
+  if (n === "PS") return ["seance", "atelier", "temps"];
+  if (n === "MS") return ["seance", "nombres", "atelier", "temps"];
+  if (n === "GS") return ["seance", "nombres", "atelier", "lettres", "temps"];
+  return ["seance", "francais", "maths", "atelier"];
+}
+
+/** L'ordre des domaines de cet élève : seulement ceux qu'il peut recevoir — pas de place de séance pour qui ne suit aucune séquence. */
+function ordreServi(n: NiveauFiches, possibles: readonly RecetteDeFiche[]): Domaine[] {
+  const ordre = ordreDesDomaines(n).filter((d) => possibles.some((r) => r.domaine === d));
+  return ordre.length ? ordre : ordreDesDomaines(n);
+}
+
+/**
+ * Où piocher quand toutes les recettes sont prises : les mêmes, autrement
+ * tirées — sauf une séance ou une photo, qui reviendraient à l'identique.
+ */
+function vivierDe(possibles: readonly RecetteDeFiche[], restantes: RecetteDeFiche[]): readonly RecetteDeFiche[] {
+  if (restantes.length) return restantes;
+  const refaisables = possibles.filter((r) => !r.seance && !r.support);
+  return refaisables.length ? refaisables : possibles;
 }
 
 /** Une graine tirée d'un texte : le même élève, le même jour, le même tirage. */
@@ -586,11 +664,10 @@ export function proposer(
   const alea = hasard(graine);
   const possibles = melanger(alea, recettesPour(n, periode, nonVerbal, exclues, supports));
   if (!possibles.length) return [];
-  const ordre = ordreDesDomaines(n);
+  const ordre = ordreServi(n, possibles);
   const pris: RecetteDeFiche[] = [];
   for (let i = 0; pris.length < combien; i++) {
-    const restantes = possibles.filter((r) => !pris.includes(r));
-    const vivier = restantes.length ? restantes : possibles;
+    const vivier = vivierDe(possibles, possibles.filter((r) => !pris.includes(r)));
     const domaine = ordre[i % ordre.length];
     pris.push(vivier.find((r) => r.domaine === domaine) ?? vivier[0]);
   }
@@ -621,11 +698,10 @@ export function uneDePlus(
 ): FicheProposee | null {
   const possibles = melanger(hasard(graine), recettesPour(n, periode, nonVerbal, exclues, supports));
   if (!possibles.length) return null;
-  const ordre = ordreDesDomaines(n);
+  const ordre = ordreServi(n, possibles);
   const domaine = ordre[choisies.length % ordre.length];
   const prises = new Set(choisies.map((f) => f.recette));
-  const libres = possibles.filter((r) => !prises.has(r.id));
-  const vivier = libres.length ? libres : possibles;
+  const vivier = vivierDe(possibles, possibles.filter((r) => !prises.has(r.id)));
   return { recette: (vivier.find((r) => r.domaine === domaine) ?? vivier[0]).id, graine: (graine + 15485863) % 1_000_000_007 };
 }
 
@@ -666,6 +742,33 @@ export function elevesDuJour(creneaux: Creneau[], eleves: Eleve[]): { presents: 
 export const repartir = (fiches: number, creneaux: number): number[] =>
   Array.from({ length: fiches }, (_, i) => (creneaux > 0 ? i % creneaux : -1));
 
+/**
+ * La grande famille d'une matière, d'un domaine ou d'un créneau, lue dans son
+ * nom : « nombres, calcul et résolution de problèmes cycle 2 » est des maths,
+ * « Compréhension écrite » du français, « Se repérer dans le temps et
+ * l'espace » du monde. Rien quand le nom ne le dit pas.
+ */
+export function familleDeMatiere(texte: string): "maths" | "francais" | "monde" | "" {
+  const t = forme(texte);
+  if (/ (math|nombre|calcul|geometr|grandeur|mesure|probleme|numeration|fraction)/.test(t)) return "maths";
+  if (/ (francais|lecture|lire|ecri|comprehension|grammaire|orthograph|vocabulaire|conjug|oral|langage|phrase|mots? )/.test(t)) return "francais";
+  if (/ (monde|vivant|temps|espace|histoire|geograph|science|questionner)/.test(t)) return "monde";
+  return "";
+}
+
+/**
+ * Le créneau d'une séance proposée : le premier de l'élève qui est de la
+ * famille de sa séquence — une séance de maths au créneau de maths —, sinon
+ * celui que la répartition lui donne. Une fiche garde le sien.
+ */
+export function creneauDeLaFiche(r: RecetteDeFiche, creneaux: Pick<Creneau, "matiere">[], parDefaut: number): number {
+  if (!r.seance) return parDefaut;
+  const { sequence, seance } = r.seance;
+  const famille = familleDeMatiere(sequence.matiere) || familleDeMatiere(domaineDeLaSeance(seance, sequence));
+  const i = famille ? creneaux.findIndex((c) => familleDeMatiere(c.matiere) === famille) : -1;
+  return i >= 0 ? i : parDefaut;
+}
+
 /** Le prénom d'un élève : le premier mot de son nom, comme dans le planning. */
 export const prenomDe = (e: Pick<Eleve, "nom">) => e.nom.trim().split(/\s+/)[0] || "Élève";
 
@@ -694,10 +797,18 @@ export const dossierDuJour = (jour: string) => `Fiches d'autonomie/${jour}`;
 
 export const TETE_DU_JOURNAL = "⏰ En autonomie :";
 
-/** Le prévu d'un créneau, les fiches à la suite : une ligne 📄 par fiche, que le journal imprimé joint. */
-export function prevuAvecLesFiches(prevu: string, titres: string[]): string {
-  if (!titres.length) return prevu;
-  const bloc = [TETE_DU_JOURNAL, ...titres.map((titre) => ligneDuPdf({ titre }))].join("\n");
+/**
+ * Le prévu d'un créneau, ce qu'« En retard » y pose à la suite : une ligne 📄
+ * par fiche, que le journal imprimé joint, et une ligne 📚 par séance, dont
+ * le matériel s'imprime de même.
+ */
+export function prevuEnAutonomie(prevu: string, lignes: string[]): string {
+  if (!lignes.length) return prevu;
+  const bloc = [TETE_DU_JOURNAL, ...lignes].join("\n");
   const avant = (prevu ?? "").replace(/\s+$/, "");
   return avant ? `${avant}\n\n${bloc}` : bloc;
 }
+
+/** Le prévu d'un créneau, les fiches à la suite : une ligne 📄 par fiche. */
+export const prevuAvecLesFiches = (prevu: string, titres: string[]): string =>
+  prevuEnAutonomie(prevu, titres.map((titre) => ligneDuPdf({ titre })));

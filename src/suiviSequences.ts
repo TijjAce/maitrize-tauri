@@ -86,6 +86,12 @@ export interface SuiviSequence {
   aVenir: Passage[];
   /** La séance qui vient : la première, par numéro, qui n'a pas été faite. */
   suivante: Seance | null;
+  /**
+   * La séance d'après la plus avancée des séances faites : la 3 après la 2,
+   * même si la 1 n'a jamais été écrite au journal. Sans séance faite, ou
+   * après la dernière de la séquence : la première pas encore faite.
+   */
+  apres: Seance | null;
 }
 
 /** Le nombre de jours de `a` à `b` (dates ISO « AAAA-MM-JJ ») ; négatif si `b` est avant. */
@@ -110,8 +116,11 @@ export function suiviDeLaSequence(sequence: Sequence, siennes: Seance[], passage
     : prevues > 0 && faites.length >= prevues ? "terminee"
     : !prochain && derniereLe && joursEntre(derniereLe, aujourdHui) > 7 * SEMAINES_AVANT_PAUSE ? "pause"
     : "classe";
-  const suivante = [...siennes].sort(parNumero).find((s) => !faites.some((f) => f.id === s.id)) ?? null;
-  return { sequence, etat, manuel, passages: passes, faites, prevues, demarreeLe: passes[0]?.date ?? null, derniereLe, prochain, aVenir, suivante };
+  const triees = [...siennes].sort(parNumero);
+  const suivante = triees.find((s) => !faites.some((f) => f.id === s.id)) ?? null;
+  const plusAvancee = faites[faites.length - 1];
+  const apres = (plusAvancee ? triees.find((s) => s.numero > plusAvancee.numero) : undefined) ?? suivante;
+  return { sequence, etat, manuel, passages: passes, faites, prevues, demarreeLe: passes[0]?.date ?? null, derniereLe, prochain, aVenir, suivante, apres };
 }
 
 /** Le suivi de toutes les séquences, en une passe sur les créneaux. */

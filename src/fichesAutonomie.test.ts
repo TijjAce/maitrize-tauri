@@ -1,16 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Creneau, Eleve, MaterielItem } from "./api";
+import type { Creneau, Eleve, MaterielItem, Seance, Sequence } from "./api";
 import {
   NIVEAUX_FICHES, RECETTES, combienDeFiches, elevesDuJour, fabricationsDesFiches, graineDe, motsDuSon, niveauDesFiches, nomDeLaRecette, prenomEcrit, prevuAvecLesFiches,
   proposer, recetteDe, recettesPour, repartir, titreDeLaFiche, titreLibre, uneAutre, uneDePlus, type OutilsFiche,
   MINUTEURS_DE_BASE, lireMinuteursRetard, minuteurDeLaRecette, nomDeToutesLesFiches, rubriqueDeLaRecette,
   DOMAINE_DES_FICHES, domaineDeLaRecette, matiereDeLaRecette, recetteDuTitre,
+  creneauDeLaFiche, estUneSeance, familleDeMatiere, iconeDeLaRecette, ligneDeLaSeance, prevuEnAutonomie, recettesDesSeances, recettesDesSupports,
 } from "./fichesAutonomie";
 import { MATIERES } from "./api";
 import { MINUTEURS_DES_TABLETTES } from "./journalTelephone";
 import { ETAPES, motsDe } from "./progressionCgp";
 import { titreSansLEleve } from "./impressionAtelier";
-import { pdfsCites } from "./materielAImprimer";
+import { liensDuCreneau, pdfsCites } from "./materielAImprimer";
+import { sequencesCitees } from "./sequencesCitees";
+import { suivisDesSequences } from "./suiviSequences";
 
 const outils: OutilsFiche = {
   image: async (id) => `data:image/png;base64,${id}`,
@@ -301,5 +304,110 @@ describe("le déroulement d'un créneau", () => {
     expect(recetteDuTitre("Les classes de mots")?.id).toBe("grammaire");
     expect(recetteDuTitre("Mots mêlés (2)")?.id).toBe("mots-meles");
     expect(recetteDuTitre("Une fiche d'ailleurs")).toBeUndefined();
+  });
+});
+
+describe("les ateliers en photo et les séances qui viennent (demande de l'enseignant, octobre 2026)", () => {
+  // Une photo de Mes pictos, réglée pour tous les niveaux, sans matière.
+  const PHOTO = -2_100_000_100;
+  const atelier = recettesDesSupports(
+    [{ photo: { id: PHOTO, mot: "Le geo shorter", fichier: "g.jpg", origine: "photo", date: "2026-10-15", niveau: "tous" }, jeu: "", regles: "" }],
+    async () => "");
+
+  const sequence = (id: string, titre: string, p: Partial<Sequence> = {}): Sequence => ({
+    id, titre, matiere: "Mathématiques", cycle: "", objectifs: "", competences: "", competenceVisee: "", imageNom: null, couleur: "", dateCreation: "2026-09-01",
+    periode: 1, annee: "2026-2027", ratingEngagement: 0, ratingFacilite: 0, ratingApprentissage: 0, ratingDateMaj: null, projetId: null, video: "", dossier: "",
+    nbSeancesPrevu: 0, etat: "", dateMaj: "", ...p,
+  });
+  const seance = (id: string, sequenceId: string, numero: number, titre: string): Seance => ({
+    id, titre, numero, objectifs: "", competences: "", deroulement: "", materiel: "", duree: 45, date: null, tableauDeroulement: "[]", imagesDeroulement: "[]",
+    bilan: "", bilanDate: null, sequenceId, dateMaj: "",
+  });
+  const comparer = sequence("q1", "Comparer les nombres jusqu'à 30", { nbSeancesPrevu: 4 });
+  const jardin = sequence("q2", "Le jardin de l'école");
+  const fractions = sequence("q3", "Les fractions décimales");
+  const solides = sequence("q4", "Les solides de la classe", { etat: "pause" });
+  const heure = sequence("q5", "Lire l'heure pile");
+  const familles = sequence("q6", "Les familles de mots");
+  const sequences = [comparer, jardin, fractions, solides, heure, familles];
+  const seances = [
+    seance("s1", "q1", 1, "Découvrir"), seance("s2", "q1", 2, "Comparer deux nombres"), seance("s3", "q1", 3, "Ranger"), seance("s4", "q1", 4, "Encadrer"),
+    seance("j1", "q2", 1, "Semer"), seance("j2", "q2", 2, "Arroser"),
+    seance("f1", "q3", 1, "Partager"), seance("f2", "q3", 2, "Les dixièmes"),
+    seance("o1", "q4", 1, "Toucher"), seance("o2", "q4", 2, "Trier"),
+    seance("h1", "q5", 1, "Les heures pile"),
+    seance("m1", "q6", 1, "Des mots de la même famille"), seance("m2", "q6", 2, "Le radical"), seance("m3", "q6", 3, "Écrire un mot de la famille"),
+  ];
+  // Une classe d'IME : chaque créneau dit qui y est — sauf celui du jardin, en classe entière.
+  const creneaux = [
+    creneau("c1", "09:00", ["e1"], { date: "2026-10-05", prevu: "📚 Comparer les nombres jusqu'à 30 · séance 1/4 : Découvrir" }),
+    creneau("c2", "09:00", ["e1", "e2"], { date: "2026-10-06", seanceId: "s2" }),
+    creneau("c3", "10:00", ["e2"], { date: "2026-10-06", prevu: "📚 Les fractions décimales · séance 1 : Partager" }),
+    creneau("c4", "14:00", [], { date: "2026-10-06", seanceId: "j1" }),
+    creneau("c5", "15:00", ["e1"], { date: "2026-10-06", seanceId: "o1" }),
+    creneau("c6", "16:00", ["e1"], { date: "2026-10-06", seanceId: "h1" }),
+    // La séance 1 des familles de mots n'a pas été écrite au journal : la 2 l'a été.
+    creneau("c7", "11:00", ["e3"], { date: "2026-10-06", prevu: "📚 Les familles de mots · séance 2 : Le radical" }),
+  ];
+  const suivis = [...suivisDesSequences(sequences, seances, creneaux, "2026-10-07").values()];
+  const parId = new Map(creneaux.map((c) => [c.id, c]));
+  const seancesDe = (eleveId: string) => recettesDesSeances(eleveId, suivis, parId);
+
+  it("chaque élève reçoit un atelier en photo dès qu'il y en a un à son niveau, à sa place dans la journée", () => {
+    for (let g = 1; g < 30; g++) {
+      expect(proposer("CE1", 1, false, 4, g, [], atelier).map((f) => recetteDe(f.recette, atelier)?.domaine)).toEqual(["francais", "maths", "atelier", "francais"]);
+      expect(proposer("MS", 1, false, 3, g, [], atelier).map((f) => recetteDe(f.recette, atelier)?.domaine)).toEqual(["nombres", "atelier", "temps"]);
+      // Une seule photo : elle ne revient pas, même quand toutes les fiches sont prises.
+      expect(proposer("PS", 1, false, 5, g, [], atelier).filter((f) => f.recette === `support:${PHOTO}`)).toHaveLength(1);
+    }
+  });
+
+  it("propose la séance qui vient de chaque séquence en classe qu'il suit — ni celles des autres, ni une séquence en pause ou terminée", () => {
+    expect(seancesDe("e1").map((r) => r.seance?.seance.id)).toEqual(["s3", "j2"]);
+    expect(seancesDe("e2").map((r) => r.seance?.seance.id)).toEqual(["s3", "j2", "f2"]);
+    // Au créneau de toute la classe, le jardin ; aux familles de mots, la 3 après la 2 — pas la 1, jamais écrite au journal.
+    expect(seancesDe("e3").map((r) => r.seance?.seance.id)).toEqual(["j2", "m3"]);
+    const r = seancesDe("e1")[0];
+    expect([r.id, r.domaine, iconeDeLaRecette(r), nomDeLaRecette(r, { niveau: "CP", periode: 1, prenom: "Eliot" })])
+      .toEqual(["seance:s3", "seance", "📚", "Comparer les nombres jusqu'à 30 · séance 3/4 : Ranger"]);
+    expect(estUneSeance(r.id)).toBe(true);
+    expect(estUneSeance("pyramides")).toBe(false);
+  });
+
+  it("passe la séance en premier, puis les fiches et l'atelier ; une autre séance à la place, s'il en suit une autre", () => {
+    const siennes = [...seancesDe("e1"), ...atelier];
+    for (let g = 1; g < 30; g++) {
+      const fiches = proposer("CP", 1, false, 4, g, [], siennes);
+      expect(fiches.map((f) => recetteDe(f.recette, siennes)?.domaine)).toEqual(["seance", "francais", "maths", "atelier"]);
+      const autre = uneAutre(fiches[0], fiches, "CP", 1, false, g + 1, [], siennes);
+      expect(recetteDe(autre.recette, siennes)?.domaine).toBe("seance");
+      expect(autre.recette).not.toBe(fiches[0].recette);
+    }
+    // Sans séquence suivie, pas de place pour une séance : le français et les maths, comme avant.
+    expect(proposer("CE2", 2, false, 4, 3, [], []).map((f) => recetteDe(f.recette)?.domaine)).toEqual(["francais", "maths", "francais", "maths"]);
+  });
+
+  it("va au créneau de sa matière quand l'élève en a un : une séance de maths au créneau de maths", () => {
+    expect(["nombres, calcul et résolution de problèmes cycle 2", "Compréhension écrite cycle 2", "Mathématiques", "Français",
+      "1. Mobiliser le langage dans toutes ses dimensions", "4. Acquérir les premiers outils mathématiques", "5. Se repérer dans le temps et l'espace",
+      "questionner le monde cycle 2", "Espace et géométrie", "Les familles de mots", "Accueil"].map(familleDeMatiere))
+      .toEqual(["maths", "francais", "maths", "francais", "francais", "maths", "monde", "monde", "maths", "francais", ""]);
+    const journee = [creneau("j1", "09:00", ["e1"], { matiere: "Compréhension écrite cycle 2" }), creneau("j2", "10:00", ["e1"], { matiere: "nombres, calcul et résolution de problèmes cycle 2" })];
+    const maths = seancesDe("e1")[0];
+    expect(creneauDeLaFiche(maths, journee, 0)).toBe(1);
+    // Sans créneau de sa matière, ou pour une fiche : la place de la répartition.
+    expect(creneauDeLaFiche(maths, [journee[0]], 0)).toBe(0);
+    expect(creneauDeLaFiche(recetteDe("pyramides")!, journee, 0)).toBe(0);
+  });
+
+  it("s'écrit au cahier journal sur la ligne du bouton 📚, à son nom : le journal reconnaît la séance, et son matériel s'imprime à la suite", () => {
+    const ligne = ligneDeLaSeance(seancesDe("e1")[0], "Eliot");
+    expect(ligne).toBe("📚 Comparer les nombres jusqu'à 30 · séance 3/4 : Ranger — Eliot");
+    const prevu = prevuEnAutonomie("Accueil.", [ligne, "📄 Les pyramides de nombres — Eliot, 7 oct."]);
+    expect(prevu).toBe("Accueil.\n\n⏰ En autonomie :\n📚 Comparer les nombres jusqu'à 30 · séance 3/4 : Ranger — Eliot\n📄 Les pyramides de nombres — Eliot, 7 oct.");
+    expect(sequencesCitees(prevu, sequences, seances).map((c) => [c.sequence.id, c.seance?.id])).toEqual([["q1", "s3"]]);
+    expect([...liensDuCreneau({ seanceId: null, prevu }, sequences, seances).seances]).toEqual(["s3"]);
+    // Une fiche n'est pas une séance : rien à écrire pour elle sur cette ligne.
+    expect(ligneDeLaSeance(recetteDe("pyramides")!, "Eliot")).toBe("");
   });
 });

@@ -8,13 +8,16 @@ import { ficheDeLEleve } from "../impressionAtelier";
 import {
   CLE_MINUTEURS_RETARD, fabricationsDesFiches, lireMinuteursRetard, minuteurDeLaRecette,
   combienDeFiches, dossierDuJour, elevesDuJour, graineDe, iconeDeLaRecette, jourEnLettres, niveauDesFiches, nomDeLaRecette, prenomDe,
-  prevuAvecLesFiches, proposer, recetteDe, repartir, titreDeLaFiche, titreLibre, uneAutre, uneDePlus,
+  prevuEnAutonomie, proposer, recetteDe, repartir, titreDeLaFiche, titreLibre, uneAutre, uneDePlus,
   type EleveDuJour, type FicheProposee, type NiveauFiches, type OutilsFiche,
   recettesDesSupports, type RecetteDeFiche, type SupportDonne,
+  creneauDeLaFiche, estUneSeance, ligneDeLaSeance, recettesDesSeances,
 } from "../fichesAutonomie";
 import { lireMesPictos, imageDeMonPicto } from "../mesPictos";
 import { estUnSupport } from "../supportsDeTravail";
 import { dureeDuMinuteur, MINUTEURS_DES_TABLETTES } from "../journalTelephone";
+import { ligneDuPdf } from "../materielAImprimer";
+import { suivisDesSequences, type SuiviSequence } from "../suiviSequences";
 
 // « En retard » : pour chaque élève de la journée, des fiches à faire seul,
 // à son niveau (voir `fichesAutonomie`). On voit ce qui est proposé, on en
@@ -22,7 +25,14 @@ import { dureeDuMinuteur, MINUTEURS_DES_TABLETTES } from "../journalTelephone";
 // sur le bureau et s'écrit au cahier journal. Chaque fiche reçoit aussi le
 // temps de sa sorte (Réglages › En retard) : depuis le créneau qui la cite,
 // le téléphone envoie aux tablettes sa consigne et ce minuteur. Il se règle
-// ici, à la fabrication, et plus après.
+// ici, à la fabrication, et plus après. La séance qui vient d'une séquence
+// que l'élève suit ne se fabrique pas : elle s'écrit au journal, ligne 📚.
+
+/** Le 1er août de l'année scolaire d'un jour : d'où le suivi des séquences lit les créneaux. */
+const debutDeLAnnee = (jour: string) => {
+  const an = Number(jour.slice(0, 4));
+  return `${Number(jour.slice(5, 7)) >= 8 ? an : an - 1}-08-01`;
+};
 
 /** Une fiche proposée, et son minuteur sur les tablettes, en minutes (0 : aucun). */
 type FicheDuJour = FicheProposee & { minuteur: number };
@@ -82,7 +92,11 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
 }) {
   const nav = useNavigate();
   const [jour, setJour] = React.useState(jourInitial);
-  const [donnees, setDonnees] = React.useState<{ jour: string; creneaux: Creneau[]; eleves: Eleve[]; periode: number } | null>(null);
+  const [donnees, setDonnees] = React.useState<{
+    jour: string; creneaux: Creneau[]; eleves: Eleve[]; periode: number;
+    /** Le suivi des séquences à ce jour, et les créneaux de l'année où leurs séances sont passées. */
+    suivis: SuiviSequence[]; creneauxDeLAnnee: Map<string, Creneau>;
+  } | null>(null);
   const [tirage, setTirage] = React.useState(0);
   const [lignes, setLignes] = React.useState<Record<string, Ligne>>({});
   const [enCours, setEnCours] = React.useState<{ fait: number; total: number; quoi: string } | null>(null);
@@ -111,10 +125,12 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
   React.useEffect(() => {
     let vivant = true;
     void (async () => {
-      const [creneaux, eleves, vacances] = await Promise.all([
+      const [creneaux, eleves, vacances, sequences, seances, deLAnnee] = await Promise.all([
         api.creneauxList(jour, jour).catch((): Creneau[] => []), api.elevesList().catch((): Eleve[] => []), chargerVacances(jour).catch(() => []),
+        api.sequencesList().catch(() => []), api.seancesList().catch(() => []), api.creneauxList(debutDeLAnnee(jour), jour).catch((): Creneau[] => []),
       ]);
-      if (vivant) setDonnees({ jour, creneaux, eleves, periode: periodeDuJour(jour, vacances) });
+      const suivis = [...suivisDesSequences(sequences, seances, deLAnnee, jour).values()];
+      if (vivant) setDonnees({ jour, creneaux, eleves, periode: periodeDuJour(jour, vacances), suivis, creneauxDeLAnnee: new Map(deLAnnee.map((c) => [c.id, c])) });
     })();
     return () => { vivant = false; };
   }, [jour]);
@@ -122,20 +138,27 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
   const journee = React.useMemo(() => (donnees ? elevesDuJour(donnees.creneaux, donnees.eleves) : null), [donnees]);
   const periode = donnees?.periode ?? 1;
 
+  // La séance qui vient de chaque séquence que suit chaque élève de la journée.
+  const seancesDe = React.useMemo(() => (donnees && journee
+    ? new Map(journee.presents.map(({ eleve }) => [eleve.id, recettesDesSeances(eleve.id, donnees.suivis, donnees.creneauxDeLAnnee)]))
+    : null), [donnees, journee]);
+  /** Ce qu'un élève peut recevoir en plus des fiches de Fabriquer : les ateliers en photo, et ses séances. */
+  const extrasDe = React.useCallback((eleveId: string): RecetteDeFiche[] => [...(supports ?? []), ...(seancesDe?.get(eleveId) ?? [])], [supports, seancesDe]);
+
   /** Ce qu'on propose à un élève, à ce niveau, pour ce tirage. */
   const propositions = React.useCallback((eleve: Eleve, creneaux: Creneau[], niveau: NiveauFiches | null): Ligne => ({
     niveau, inclus: niveau !== null,
     fiches: niveau
       ? proposer(niveau, periode, eleve.nonVerbal ?? false, combienDeFiches(niveau, creneaux.length), graineDe(`${eleve.id}|${jour}|${tirage}`),
-        eleve.fichesExclues ?? [], supports ?? [])
+        eleve.fichesExclues ?? [], extrasDe(eleve.id))
         .map(avecSonTemps)
       : [],
-  }), [periode, jour, tirage, avecSonTemps, supports]);
+  }), [periode, jour, tirage, avecSonTemps, extrasDe]);
 
   React.useEffect(() => {
-    if (!journee || !minuteurs || !supports) return;
+    if (!journee || !minuteurs || !supports || !seancesDe) return;
     setLignes(Object.fromEntries(journee.presents.map(({ eleve, creneaux }) => [eleve.id, propositions(eleve, creneaux, niveauDesFiches(eleve.niveau))])));
-  }, [journee, minuteurs, propositions]);
+  }, [journee, minuteurs, propositions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const changer = (id: string, f: (l: Ligne) => Ligne) => setLignes((avant) => (avant[id] ? { ...avant, [id]: f(avant[id]) } : avant));
 
@@ -146,22 +169,41 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
     if (niveau) api.eleveSave({ ...p.eleve, niveau }).catch(() => toast("Le niveau n'a pas pu s'enregistrer sur sa fiche.", { icone: "⚠️" }));
   };
 
-  const total = Object.values(lignes).reduce((n, l) => n + (l.inclus ? l.fiches.length : 0), 0);
+  // Les fiches à fabriquer, et les séances qui s'écrivent seulement au journal.
+  const compte = Object.values(lignes).reduce((n, l) => {
+    if (l.inclus) for (const f of l.fiches) { if (estUneSeance(f.recette)) n.seances++; else n.fiches++; }
+    return n;
+  }, { fiches: 0, seances: 0 });
+  const total = compte.fiches + compte.seances;
+  const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? "s" : ""}`;
+  const aFaire = [compte.fiches ? `Fabriquer ${pluriel(compte.fiches, "fiche")}` : "", compte.seances ? `${compte.fiches ? "poser" : "Poser"} ${pluriel(compte.seances, "séance")}` : ""]
+    .filter(Boolean).join(" et ") || "Fabriquer 0 fiche";
 
   const fabriquer = async () => {
     if (!journee || !total) return;
     const pris = new Set((await api.materielList().catch(() => [])).map((m) => m.titre.trim().toLowerCase()));
+    // Les lignes à écrire au prévu de chaque créneau : 📄 pour une fiche, 📚 pour une séance.
     const parCreneau = new Map<string, string[]>();
+    const poser = (creneauId: string, ligne: string) => parCreneau.set(creneauId, [...(parCreneau.get(creneauId) ?? []), ligne]);
     const echecs: string[] = [];
     let fait = 0;
+    let fiches = 0;
+    let seances = 0;
     for (const { eleve, creneaux } of journee.presents) {
       const l = lignes[eleve.id];
       if (!l?.inclus || !l.niveau) continue;
       const ou = repartir(l.fiches.length, creneaux.length);
       for (const [i, f] of l.fiches.entries()) {
-        const recette = recetteDe(f.recette, supports ?? []);
+        const recette = recetteDe(f.recette, extrasDe(eleve.id));
         if (!recette) continue;
         const c = { niveau: l.niveau, periode, prenom: prenomDe(eleve) };
+        const creneau = creneaux[creneauDeLaFiche(recette, creneaux, ou[i])];
+        if (recette.seance) {
+          poser(creneau.id, ligneDeLaSeance(recette, c.prenom));
+          seances++;
+          fait++;
+          continue;
+        }
         const nom = nomDeLaRecette(recette, c);
         setEnCours({ fait, total, quoi: `${c.prenom} — ${nom}` });
         try {
@@ -169,8 +211,8 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
           const titre = titreLibre(titreDeLaFiche(nom, c.prenom, jour), pris);
           await ficheDeLEleve(recette.atelier, titre, html, style, { prenom: c.prenom, date: jourEnLettres(jour), dossier: dossierDuJour(jour) },
             { memoires: refaire, graine: f.graine, ...(f.minuteur ? { minuteur: f.minuteur } : {}), ...(recette.support ? { support: recette.support } : {}) });
-          const creneau = creneaux[ou[i]];
-          parCreneau.set(creneau.id, [...(parCreneau.get(creneau.id) ?? []), titre]);
+          poser(creneau.id, ligneDuPdf({ titre }));
+          fiches++;
         } catch {
           echecs.push(`${c.prenom} : ${nom}`);
         }
@@ -180,15 +222,16 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
     // Le prévu relu juste avant d'écrire : ce qu'on vient d'y taper reste.
     setEnCours({ fait, total, quoi: "Le cahier journal" });
     const frais = await api.creneauxList(jour, jour).catch((): Creneau[] => []);
-    for (const [id, titres] of parCreneau) {
+    for (const [id, lignesDuCreneau] of parCreneau) {
       const c = frais.find((x) => x.id === id);
-      if (c) await api.creneauJournalSave(id, prevuAvecLesFiches(c.prevu ?? "", titres), c.bilan ?? "").catch(() => echecs.push(`le journal de ${hhmm(c.heureDebut)}`));
+      if (c) await api.creneauJournalSave(id, prevuEnAutonomie(c.prevu ?? "", lignesDuCreneau), c.bilan ?? "").catch(() => echecs.push(`le journal de ${hhmm(c.heureDebut)}`));
     }
-    const posees = [...parCreneau.values()].reduce((n, t) => n + t.length, 0);
     setEnCours(null);
-    toast(`${posees} fiche${posees > 1 ? "s" : ""} d'autonomie dans le cahier journal du ${jourEnLettres(jour)}, sur le bureau dans « Fiches d'autonomie ».`
-      + (echecs.length ? ` ${echecs.length} n'${echecs.length > 1 ? "ont" : "a"} pas pu se faire : ${echecs.join(", ")}.` : ""),
-    { icone: echecs.length ? "⚠️" : "⏰", duree: 12000 });
+    toast([
+      fiches ? `${pluriel(fiches, "fiche")} d'autonomie dans le cahier journal du ${jourEnLettres(jour)}, sur le bureau dans « Fiches d'autonomie ».` : "",
+      seances ? `${pluriel(seances, "séance")} à suivre, posée${seances > 1 ? "s" : ""} au cahier journal${fiches ? "" : ` du ${jourEnLettres(jour)}`}.` : "",
+      echecs.length ? `${echecs.length} n'${echecs.length > 1 ? "ont" : "a"} pas pu se faire : ${echecs.join(", ")}.` : "",
+    ].filter(Boolean).join(" "), { icone: echecs.length ? "⚠️" : "⏰", duree: 12000 });
     onFini(jour);
   };
 
@@ -202,7 +245,7 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
         <span style={{ flex: 1 }} />
         <button className="btn" disabled={occupe} onClick={onClose}>Annuler</button>
         <button className="btn primary" disabled={occupe || !total} onClick={() => void fabriquer()}>
-          {occupe ? `Fiche ${Math.min(enCours.fait + 1, enCours.total)} sur ${enCours.total}…` : `Fabriquer ${total} fiche${total > 1 ? "s" : ""}`}
+          {occupe ? `Fiche ${Math.min(enCours.fait + 1, enCours.total)} sur ${enCours.total}…` : aFaire}
         </button>
       </>}>
       <div className="row" style={{ alignItems: "center", marginBottom: 6 }}>
@@ -219,9 +262,10 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
         )}
       </div>
       <p className="meta" style={{ fontSize: 12.5, marginTop: 0 }}>
-        Pour chaque élève de la journée, des fiches à son niveau tirées des ateliers de Fabriquer : trois en maternelle, quatre du CP au CE2,
-        une au moins par créneau. Pas de fiche de lecture pour un élève non verbal. Chaque fiche porte son prénom, s'écrit au cahier journal
-        de son créneau, à la suite, et s'imprime avec lui.
+        Pour chaque élève de la journée, des fiches à son niveau tirées des ateliers de Fabriquer, un atelier en photo de Mes pictos s'il y en
+        a un à son niveau, et la séance qui vient de chaque séquence qu'il suit : trois en maternelle, quatre du CP au CE2, une au moins par
+        créneau. Pas de fiche de lecture pour un élève non verbal. Tout s'écrit à son nom au cahier journal de son créneau, à la suite, et
+        s'imprime avec lui.
       </p>
       {enCours && (
         <div className="retard-avance" role="status">
@@ -241,6 +285,7 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
             if (!l) return null;
             const ou = repartir(l.fiches.length, p.creneaux.length);
             const ctx = l.niveau ? { niveau: l.niveau, periode, prenom: prenomDe(p.eleve) } : null;
+            const extras = extrasDe(p.eleve.id);
             return (
               <div key={p.eleve.id} className={`card retard-eleve${l.inclus ? "" : " exclu"}`}>
                 <div className="retard-tete">
@@ -265,19 +310,20 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
                 {l.inclus && ctx && <>
                   <ol className="retard-fiches">
                     {l.fiches.map((f, i) => {
-                      const r = recetteDe(f.recette, supports ?? []);
+                      const r = recetteDe(f.recette, extras);
                       if (!r) return null;
                       return (
                         <li key={`${i}-${f.recette}-${f.graine}`}>
                           <span className="retard-nom">{iconeDeLaRecette(r)} {nomDeLaRecette(r, ctx)}</span>
-                          {p.creneaux.length > 1 && <span className="retard-ou">{hhmm(p.creneaux[ou[i]].heureDebut)}</span>}
-                          {telephone?.relie && (
+                          {p.creneaux.length > 1 && <span className="retard-ou">{hhmm(p.creneaux[creneauDeLaFiche(r, p.creneaux, ou[i])].heureDebut)}</span>}
+                          {/* Une séance ne part pas aux tablettes comme une fiche : elle n'a pas de minuteur à elle. */}
+                          {telephone?.relie && !r.seance && (
                             <ChoixDuMinuteur valeur={f.minuteur} disabled={occupe} libelle={`Le minuteur de « ${nomDeLaRecette(r, ctx)} », sur les tablettes`}
                               onChange={(m) => changer(p.eleve.id, (x) => ({ ...x, fiches: x.fiches.map((y, j) => (j === i ? { ...y, minuteur: m } : y)) }))} />
                           )}
                           <button className="btn ghost sm" disabled={occupe} title="Une autre fiche"
                             onClick={() => changer(p.eleve.id, (x) => ({ ...x, fiches: x.fiches.map((y, j) => (j === i
-                              ? avecSonTemps(uneAutre(y, x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|${i}|${y.graine}`), p.eleve.fichesExclues ?? [], supports ?? []))
+                              ? avecSonTemps(uneAutre(y, x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|${i}|${y.graine}`), p.eleve.fichesExclues ?? [], extras))
                               : y)) }))}>🔄</button>
                           <button className="btn ghost sm" disabled={occupe} title="Retirer cette fiche"
                             onClick={() => changer(p.eleve.id, (x) => ({ ...x, fiches: x.fiches.filter((_, j) => j !== i) }))}>✕</button>
@@ -286,7 +332,7 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
                     })}
                   </ol>
                   <button className="btn ghost sm" disabled={occupe} onClick={() => changer(p.eleve.id, (x) => {
-                    const plus = uneDePlus(x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|+${x.fiches.length}`), p.eleve.fichesExclues ?? [], supports ?? []);
+                    const plus = uneDePlus(x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|+${x.fiches.length}`), p.eleve.fichesExclues ?? [], extras);
                     return plus ? { ...x, fiches: [...x.fiches, avecSonTemps(plus)] } : x;
                   })}>＋ Une fiche</button>
                 </>}
