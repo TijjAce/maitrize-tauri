@@ -45,10 +45,16 @@ export interface ReglagesGeometrie {
   niveau: NiveauReproduction;
   /** Compléter sur papier uni, la figure inclinée, plutôt que sur quadrillage. */
   uni: boolean;
+  /**
+   * Reproduire avec un repère orthonormé, sur le modèle comme sur la grille de
+   * l'élève : en différenciation, chaque sommet se lit sur les deux axes et se
+   * reporte au même endroit (demande de l'enseignant, octobre 2026).
+   */
+  repere?: boolean;
   combien: number;
 }
 
-export const REGLAGES_GEOMETRIE: ReglagesGeometrie = { exercice: "reproduire", classe: "CE1", support: "quadrille", niveau: "lignes", uni: false, combien: 3 };
+export const REGLAGES_GEOMETRIE: ReglagesGeometrie = { exercice: "reproduire", classe: "CE1", support: "quadrille", niveau: "lignes", uni: false, repere: false, combien: 3 };
 
 const NOIR = "#1c2233", ROUGE = "#d33a32", GRIS = "#b9c2d6", BLEU = "#2454e6";
 const LETTRES = "ABCDEFGHIJKLMNOP";
@@ -65,17 +71,41 @@ type P = [number, number];
 
 // ── Les quadrillages ──────────────────────────────────────────────────────
 
-/** Un quadrillage — ou un papier pointé — de `cols` × `lignes` carreaux de `pas` millimètres, et ce qu'on y dessine. */
-export function grilleSvg(cols: number, lignes: number, pas: number, support: "quadrille" | "pointe", dessin = ""): string {
+/**
+ * Un quadrillage — ou un papier pointé — de `cols` × `lignes` carreaux de
+ * `pas` millimètres, et ce qu'on y dessine. Avec `repere`, un repère
+ * orthonormé : l'origine en bas à gauche, l'axe des abscisses le long du bord
+ * du bas, celui des ordonnées le long du bord de gauche, un carreau pour
+ * unité sur les deux, et chaque nœud numéroté.
+ */
+export function grilleSvg(cols: number, lignes: number, pas: number, support: "quadrille" | "pointe", dessin = "", repere = false): string {
   const w = cols * pas, h = lignes * pas, m = 1;
+  // Avec le repère : la place des nombres à gauche et en bas, celle des flèches au bout des axes.
+  const [gauche, haut, droite, bas] = repere ? [6, 4, 4, 6] : [m, m, m, m];
   let fond = "";
   if (support === "quadrille") {
-    for (let i = 0; i <= cols; i++) fond += `<line x1="${f2(m + i * pas)}" y1="${m}" x2="${f2(m + i * pas)}" y2="${f2(m + h)}" stroke="${GRIS}" stroke-width="0.22"/>`;
-    for (let j = 0; j <= lignes; j++) fond += `<line x1="${m}" y1="${f2(m + j * pas)}" x2="${f2(m + w)}" y2="${f2(m + j * pas)}" stroke="${GRIS}" stroke-width="0.22"/>`;
+    for (let i = 0; i <= cols; i++) fond += `<line x1="${f2(gauche + i * pas)}" y1="${haut}" x2="${f2(gauche + i * pas)}" y2="${f2(haut + h)}" stroke="${GRIS}" stroke-width="0.22"/>`;
+    for (let j = 0; j <= lignes; j++) fond += `<line x1="${gauche}" y1="${f2(haut + j * pas)}" x2="${f2(gauche + w)}" y2="${f2(haut + j * pas)}" stroke="${GRIS}" stroke-width="0.22"/>`;
   } else {
-    for (let i = 0; i <= cols; i++) for (let j = 0; j <= lignes; j++) fond += `<circle cx="${f2(m + i * pas)}" cy="${f2(m + j * pas)}" r="0.42" fill="#7d869c"/>`;
+    for (let i = 0; i <= cols; i++) for (let j = 0; j <= lignes; j++) fond += `<circle cx="${f2(gauche + i * pas)}" cy="${f2(haut + j * pas)}" r="0.42" fill="#7d869c"/>`;
   }
-  return `<svg class="ge-grille" viewBox="0 0 ${f2(w + 2 * m)} ${f2(h + 2 * m)}" width="${f2(w + 2 * m)}mm" height="${f2(h + 2 * m)}mm">${fond}<g transform="translate(${m} ${m})">${dessin}</g></svg>`;
+  const axes = repere ? repereSvg(cols, lignes, pas, gauche, haut) : "";
+  return `<svg class="ge-grille" viewBox="0 0 ${f2(gauche + w + droite)} ${f2(haut + h + bas)}" width="${f2(gauche + w + droite)}mm" height="${f2(haut + h + bas)}mm">${fond}${axes}<g transform="translate(${gauche} ${haut})">${dessin}</g></svg>`;
+}
+
+/** Les deux axes du repère, fléchés, et le numéro de chaque nœud : 0 à l'origine, en bas à gauche de la grille dont le coin haut gauche est en (`x0`, `y0`). */
+function repereSvg(cols: number, lignes: number, pas: number, x0: number, y0: number): string {
+  const ox = x0, oy = y0 + lignes * pas, fin = 2.6, pointe = 1.4;
+  const axe = (x2: number, y2: number) => `<line class="ge-axe" x1="${f2(ox)}" y1="${f2(oy)}" x2="${f2(x2)}" y2="${f2(y2)}" stroke="${NOIR}" stroke-width="0.4"/>`;
+  const nombre = (x: number, y: number, n: number, ancre: "middle" | "end") =>
+    `<text class="ge-graduation" x="${f2(x)}" y="${f2(y)}" font-size="3.2" font-family="Helvetica, Arial, sans-serif" text-anchor="${ancre}" fill="${NOIR}">${n}</text>`;
+  const xf = ox + cols * pas + fin, yf = y0 - fin;
+  let s = axe(xf, oy) + axe(ox, yf)
+    + `<path d="M${f2(xf)} ${f2(oy)} l${f2(-pointe * 1.6)} ${f2(-pointe)} v${f2(2 * pointe)} Z" fill="${NOIR}"/>`
+    + `<path d="M${f2(ox)} ${f2(yf)} l${f2(-pointe)} ${f2(pointe * 1.6)} h${f2(2 * pointe)} Z" fill="${NOIR}"/>`;
+  for (let i = 0; i <= cols; i++) s += nombre(ox + i * pas, oy + 4.2, i, "middle");
+  for (let j = 1; j <= lignes; j++) s += nombre(ox - 1.6, oy - j * pas + 1.1, j, "end");
+  return s;
 }
 
 /** Des traits sur les nœuds d'un quadrillage : des polygones fermés et des lignes ouvertes. */
@@ -133,14 +163,18 @@ function feuilleReproduire(r: ReglagesGeometrie, graine: number): string {
   const alea = hasard(graine);
   const pas = pasDe(r.classe);
   const liste = melanger(alea, FIGURES_A_REPRODUIRE[r.niveau]).slice(0, Math.max(1, Math.min(6, r.combien)));
+  // Le même repère sur le modèle, sur la grille de l'élève et sur le calque : ils se superposent.
+  const repere = !!r.repere;
   const rangee = (f: { figure: Figure }, i: number, montrer: boolean) => `<div class="ge-rangee"><b class="ge-lettre">${LETTRES[i]}</b>
-    <div class="ge-paire"><div><div class="ge-etiquette">${montrer ? "" : "Le modèle"}</div>${grilleSvg(8, 8, pas, r.support, montrer ? "" : traits(f.figure, pas))}</div>
-    <div><div class="ge-etiquette">${montrer ? "Le calque : superpose-le à ta reproduction" : "Ta reproduction"}</div>${grilleSvg(8, 8, pas, r.support, montrer ? traits(f.figure, pas, ROUGE) : "")}</div></div></div>`;
+    <div class="ge-paire"><div><div class="ge-etiquette">${montrer ? "" : "Le modèle"}</div>${grilleSvg(8, 8, pas, r.support, montrer ? "" : traits(f.figure, pas), repere)}</div>
+    <div><div class="ge-etiquette">${montrer ? "Le calque : superpose-le à ta reproduction" : "Ta reproduction"}</div>${grilleSvg(8, 8, pas, r.support, montrer ? traits(f.figure, pas, ROUGE) : "", repere)}</div></div></div>`;
   const pages = (montrer: boolean) => {
     const sortie: string[] = [];
     for (let i = 0; i < liste.length; i += 3) {
       const tete = montrer ? `<div class="titre">Reproduire — le calque de vérification</div><div class="sous">Imprimez cette page sur un transparent ou un calque, à 100 % : posée sur la feuille de l'élève, elle montre si la reproduction est exacte.</div>`
-        : entete("Reproduire une figure", `Reproduis chaque figure sur ${r.support === "quadrille" ? "le quadrillage" : "le papier pointé"}, exactement pareille. Compte les carreaux, repère les points de départ${r.niveau === "lignes" ? "" : " et les nœuds par où passent les traits"} ; trace à la règle. Ensuite, on superpose le calque pour vérifier.`);
+        : entete("Reproduire une figure", `Reproduis chaque figure sur ${r.support === "quadrille" ? "le quadrillage" : "le papier pointé"}, exactement pareille. ${repere
+          ? "Lis chaque coin de la figure sur les deux axes : le nombre en bas, puis le nombre à gauche ; place-le au même endroit sur ta grille, puis relie les coins"
+          : `Compte les carreaux, repère les points de départ${r.niveau === "lignes" ? "" : " et les nœuds par où passent les traits"}`} ; trace à la règle. Ensuite, on superpose le calque pour vérifier.`);
       sortie.push(`<div class="page${montrer ? " corrige" : ""}">${tete}${liste.slice(i, i + 3).map((f, k) => rangee(f, i + k, montrer)).join("")}</div>`);
     }
     return sortie.join("");

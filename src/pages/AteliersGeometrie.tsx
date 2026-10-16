@@ -56,6 +56,7 @@ export function GeometrieTab() {
             </Select>
           </Field>
         )}
+        {r.exercice === "reproduire" && <Coche on={!!r.repere} libelle="Un repère orthonormé, pour différencier" onChange={(v) => maj({ repere: v })} />}
         {r.exercice === "completer" && <Coche on={r.uni} libelle="Sur papier uni, les figures inclinées (CE1, CE2)" onChange={(v) => maj({ uni: v })} />}
         {surGrille && (
           <Field label="Le support">
