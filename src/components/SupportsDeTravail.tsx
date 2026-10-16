@@ -40,8 +40,9 @@ export function SupportsDeTravail() {
     <>
       <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13, lineHeight: 1.55 }}>
         Les photos prises avec le dictaphone — l'objet, le jeu de la classe — sont des supports de travail, pour l'élève qui
-        n'entre pas dans l'abstraction d'un pictogramme. Donnez à chacune son nom, sa matière et son niveau : « En retard » peut
-        alors la donner à tout élève de ce niveau. Un jeu de la ludothèque lui prête ses règles ; une séquence la montre avec son matériel.
+        n'entre pas dans l'abstraction d'un pictogramme. Donnez à chacune son nom et son niveau : « En retard » la propose alors à
+        tout élève de ce niveau. Sa matière s'écrit au-dessus d'elle sur les tablettes. Un jeu de la ludothèque lui prête ses règles ;
+        une séquence la montre avec son matériel.
       </p>
       {photos.length === 0 && (
         <p className="meta" style={{ fontSize: 13 }}>
@@ -60,7 +61,7 @@ function LigneDeSupport({ photo, jeux, sequences, onChanger }: {
   photo: MonPicto; jeux: Jeu[]; sequences: Sequence[]; onChanger: (champs: Champs) => void;
 }) {
   const src = usePictoImage(photo.id, true);
-  const complet = !!photo.matiere && !!photo.niveau;
+  const complet = !!photo.niveau;
   return (
     <div className="sdt-ligne">
       <div className="sdt-image">{src ? <img src={src} alt="" /> : null}</div>
@@ -85,7 +86,7 @@ function LigneDeSupport({ photo, jeux, sequences, onChanger }: {
           <option value="">Aucune séquence</option>
           {sequences.map((q) => <option key={q.id} value={q.id}>{q.titre}</option>)}
         </select>
-        {!complet && <span className="meta sdt-a-completer">Une matière et un niveau, et c'est un support.</span>}
+        {!complet && <span className="meta sdt-a-completer">Un niveau, et « En retard » la propose.</span>}
       </div>
     </div>
   );
