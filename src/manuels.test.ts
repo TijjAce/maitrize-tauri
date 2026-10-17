@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   OPTIONS_PAR_DEFAUT, ajouterPagePhoto, consigneLectureEncadre, consigneReadaptation, enTexte, estLu, exerciceEncadre, exercicesParCompetence,
   exercicesQuiTravaillent, ficheDepuisLExercice, htmlFicheAdaptee, indexAvec, indexSans, lireExerciceDeLEncadre, lireFicheAdaptee, lireIndex, lireManuel,
-  ecrireManuel, libelleDuPoids, lirePoidsPdf, nomExercice, nouveauManuel, poidsLisible, resumeDe, retirerPage, texteExercice, type ExerciceManuel,
+  ecrireManuel, libelleDuPoids, lirePoidsPdf, nomExercice, nouveauManuel, pageDuNumero, pageVoisine, poidsLisible, resumeDe, retirerPage, texteExercice,
+  type ExerciceManuel,
   type Manuel,
 } from "./manuels";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
@@ -12,6 +13,25 @@ const ex = (numero: string, consigne: string, contenu: string): ExerciceManuel =
 const comp = (competenceTitre: string, competenceRefId = competenceTitre): CompetenceSelectionnee => ({
   id: `c-${competenceRefId}`, referentielNom: "Cycle 3 — CM1, CM2 (programmes 2026)", domaineId: "FR", domaineTitre: "Français",
   sousDomaineTitre: "Étude de la langue", competenceGeneraleTitre: null, competenceTitre, niveau: null, competenceRefId,
+});
+
+describe("aller d'une page à l'autre (demande de l'enseignant, octobre 2026)", () => {
+  const pages = nouveauManuel("Maths CE1", "pdf", "2026-10-17", "abc.pdf", 143).pages;
+  it("mène à la page d'à côté, sans passer le bord", () => {
+    expect(pageVoisine(pages, pages[56].id, 1)?.numero).toBe(58);
+    expect(pageVoisine(pages, pages[56].id, -1)?.numero).toBe(56);
+    expect(pageVoisine(pages, pages[0].id, -1)?.numero).toBe(1);
+    expect(pageVoisine(pages, pages[142].id, 1)?.numero).toBe(143);
+    expect(pageVoisine(pages, "aucune", 1)?.numero).toBe(1);
+    expect(pageVoisine([], "", 1)).toBeNull();
+  });
+  it("trouve la page d'un numéro tapé, la plus proche quand il dépasse", () => {
+    expect(pageDuNumero(pages, " 57 ")?.numero).toBe(57);
+    expect(pageDuNumero(pages, "500")?.numero).toBe(143);
+    expect(pageDuNumero(pages, "0")?.numero).toBe(1);
+    expect(pageDuNumero(pages, "abc")).toBeNull();
+    expect(pageDuNumero([], "3")).toBeNull();
+  });
 });
 
 describe("un manuel", () => {

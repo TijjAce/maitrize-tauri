@@ -1,10 +1,11 @@
 import React from "react";
 import { MODELE_TACHES, api, newId, nowIso, texteErreur, type ManuelPdf, type PoidsDuManuel, type PoidsPdf } from "../api";
-import { Field, Input, Modal, Select, Textarea, useAsync } from "../components/ui";
+import { Field, Input, Modal, PageVisibleContext, Select, Textarea, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { PhotoTelephone } from "../components/PhotoTelephone";
 import { BoutonBureau } from "../components/BoutonBureau";
+import { BandeDesPages } from "../components/BandeDesPages";
 import { PageEncadree, teinteExercice } from "../components/PageEncadree";
 import { CompetenceTree, labelCourt } from "../components/CompetenceTree";
 import { basculerCompetence, memeCompetence } from "../ateliersCompetences";
@@ -15,8 +16,8 @@ import { imageDeLaPage, pngDeLaZone } from "../exercicesDesManuels";
 import {
   CLE_INDEX, CLE_POIDS_PDF, OPTIONS_PAR_DEFAUT, POIDS_PDF, STYLE_FICHE_ADAPTEE, TYPES_EXERCICE, ajouterPagePhoto, cleManuel, consigneLectureEncadre,
   consigneReadaptation, ecrireManuel, estLu, exerciceEncadre, exercicesParCompetence, ficheDepuisLExercice, htmlFicheAdaptee, indexAvec,
-  indexSans, libelleDuPoids, lireExerciceDeLEncadre, lireFicheAdaptee, lireIndex, lireManuel, lirePoidsPdf, nomExercice, nouveauManuel, poidsLisible,
-  retirerPage,
+  indexSans, libelleDuPoids, lireExerciceDeLEncadre, lireFicheAdaptee, lireIndex, lireManuel, lirePoidsPdf, nomExercice, nouveauManuel, pageDuNumero, pageVoisine,
+  poidsLisible, retirerPage,
   type ExerciceManuel, type FicheAdaptee, type Manuel, type OptionsReadaptation, type PageManuel, type ResumeManuel, type Zone,
 } from "../manuels";
 
@@ -185,6 +186,26 @@ export function ManuelsPanel() {
   }, [images]);
 
   const page = manuel?.pages.find((p) => p.id === pageId) ?? null;
+  /** Aller à une page : elle s'ouvre, sans exercice choisi. */
+  const allerA = React.useCallback((p: PageManuel | null) => { if (p) { setPageId(p.id); setExerciceId(""); } }, []);
+
+  // Au clavier, ← et → mènent d'une page à l'autre — hors d'un champ, d'une fenêtre ou d'un menu, et quand la page est à l'écran.
+  const visible = React.useContext(PageVisibleContext);
+  const pagesOuvertes = vue === "pages" && visible ? manuel?.pages ?? null : null;
+  React.useEffect(() => {
+    if (!pagesOuvertes?.length) return;
+    const touche = (e: KeyboardEvent) => {
+      if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      const cible = e.target instanceof HTMLElement ? e.target : null;
+      if (cible?.isContentEditable || cible?.closest("input, textarea, select") || document.querySelector(".modal, .overlay, .ctx-menu")) return;
+      e.preventDefault();
+      setPageId((id) => { const voisine = pageVoisine(pagesOuvertes, id, e.key === "ArrowLeft" ? -1 : 1); return voisine?.id ?? id; });
+      setExerciceId("");
+    };
+    window.addEventListener("keydown", touche);
+    return () => window.removeEventListener("keydown", touche);
+  }, [pagesOuvertes]);
+
   React.useEffect(() => {
     if (!manuel || !page || images[page.id]) return;
     let vivant = true;
@@ -444,16 +465,9 @@ export function ManuelsPanel() {
             <button type="button" className="btn sm" onClick={() => { void scanner(continuerParPhotos); }}>📱 Scanner d'autres pages</button>
           )}
         </div>
-        {vue === "pages" && <div className="man-pages">
-          {manuel.pages.map((p) => (
-            <button key={p.id} type="button" className={`man-page${p.id === pageId ? " on" : ""}`} onClick={() => { setPageId(p.id); setExerciceId(""); }}
-              title={p.exercices.length ? `${p.exercices.length} exercice${p.exercices.length > 1 ? "s" : ""} encadré${p.exercices.length > 1 ? "s" : ""}` : "Aucun exercice encadré"}>
-              <span className="man-page-num">{p.numero}</span>
-              <span className="man-page-etat">{p.exercices.length ? `${p.exercices.length} ex.` : "·"}</span>
-            </button>
-          ))}
-          {manuel.pages.length === 0 && <span className="meta" style={{ fontSize: 12.5 }}>Aucune page : photographiez-les depuis le téléphone.</span>}
-        </div>}
+        {vue === "pages" && (manuel.pages.length > 0
+          ? <BandeDesPages manuel={manuel} pageId={pageId} onChoisir={(id) => allerA(manuel.pages.find((p) => p.id === id) ?? null)} />
+          : <p className="meta" style={{ fontSize: 12.5, margin: "12px 0 0" }}>Aucune page : photographiez-les depuis le téléphone.</p>)}
       </div>
 
       {vue === "competences" && <ExercicesParCompetence manuel={manuel} onMontrer={montrer} />}
@@ -462,7 +476,19 @@ export function ManuelsPanel() {
         <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 1fr) minmax(340px, 1fr)", gap: 14, alignItems: "start" }}>
           <div className="card">
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-              <b style={{ fontSize: 13 }}>Page {page.numero}</b>
+              <div className="man-nav" role="group" aria-label="Aller d'une page à l'autre">
+                <button type="button" className="btn ghost sm" disabled={page.id === manuel.pages[0]?.id} onClick={() => allerA(pageVoisine(manuel.pages, page.id, -1))}
+                  title="Page précédente (←)" aria-label="Page précédente">‹</button>
+                <b style={{ fontSize: 13 }}>Page</b>
+                <Input key={page.id} type="text" inputMode="numeric" defaultValue={page.numero} aria-label="Numéro de la page — Entrée pour y aller"
+                  title="Tapez un numéro, puis Entrée"
+                  onFocus={(e) => e.currentTarget.select()}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); allerA(pageDuNumero(manuel.pages, e.currentTarget.value)); e.currentTarget.blur(); } }}
+                  onBlur={(e) => { e.currentTarget.value = String(page.numero); }} />
+                <span className="meta" style={{ fontSize: 13 }}>/ {manuel.pages.length}</span>
+                <button type="button" className="btn ghost sm" disabled={page.id === manuel.pages[manuel.pages.length - 1]?.id} onClick={() => allerA(pageVoisine(manuel.pages, page.id, 1))}
+                  title="Page suivante (→)" aria-label="Page suivante">›</button>
+              </div>
               <div style={{ flex: 1 }} />
               <button type="button" className="btn sm" disabled={!images[page.id]} onClick={() => { void imprimerLaPage(); }}
                 title="La page telle qu'elle est, sur une feuille A4">🖨 Imprimer la page</button>

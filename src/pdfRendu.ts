@@ -103,6 +103,32 @@ export async function rendrePage(octets: Uint8Array, numero: number, options: Op
   }
 }
 
+// ── Les miniatures ────────────────────────────────────────────────────────
+
+export interface RenduDeMiniatures {
+  /** La page (numérotée à partir de 1), petite, en data URL JPEG. */
+  miniature: (numero: number) => Promise<string>;
+  fermer: () => void;
+}
+
+/**
+ * Les miniatures des pages d'un PDF : le document reste ouvert tant qu'on
+ * les demande — l'ouvrir pour chacune coûterait, sur un manuel de deux cents
+ * pages, autant que de rendre les pages en grand —, et chaque page se rend
+ * petite, en JPEG, sans rogner ses marges.
+ */
+export async function miniaturesDuPdf(octets: Uint8Array, largeur = 140): Promise<RenduDeMiniatures> {
+  const doc = await (await pdfjsCharge()).getDocument({ data: copie(octets) }).promise;
+  let ferme = false;
+  return {
+    miniature: async (numero) => {
+      if (ferme) throw new Error("Le document est fermé.");
+      return (await toileDeLaPage(doc, numero, largeur)).toDataURL("image/jpeg", 0.75);
+    },
+    fermer: () => { ferme = true; void doc.destroy(); },
+  };
+}
+
 // ── Les pages à joindre à une impression ──────────────────────────────────
 
 export interface Cadre { x0: number; y0: number; x1: number; y1: number }
