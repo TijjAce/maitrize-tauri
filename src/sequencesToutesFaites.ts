@@ -4,10 +4,10 @@
 // créant une séquence — les séquences des livrets, ou bâties sur le programme
 // et les guides — se prennent aussi tout faits dans Fabriquer : leurs
 // séances, et toutes les feuilles que les ateliers savent en fabriquer, à la
-// classe que leur nom donne. Puis, dans un seul onglet, « par famille,
-// niveaux, moment de l'année » : les mathématiques, le français et
-// l'histoire-géographie du CP au CE2, rangés par discipline et domaine, par
-// classe, ou par période — celle du programme ou du livret, sinon celle que
+// classe que leur nom donne. Puis « par famille, niveaux, moment de
+// l'année » : un dossier par classe, du CP au CE2, où les mathématiques, le
+// français et l'histoire-géographie se rangent par discipline et domaine, ou
+// par période — celle du programme ou du livret, sinon celle que
 // l'enseignant leur donne. La soustraction posée du CE1 y est aussi.
 //
 // En numération et en calcul, chaque séance s'ouvre sur le calcul mental, au
@@ -137,18 +137,6 @@ export function classesDeLaDemarche(d: Pick<Demarche, "id" | "nom">): ClasseC2[]
 /** Le nom sans la classe qui le termine : la classe est déjà dite. */
 export const nomSansClasse = (nom: string) => nom.replace(/\s*\((?:CP|CE1|CE2)(?:\s*[-,]\s*(?:CP|CE1|CE2))*\)\s*$/, "");
 
-/** La classe des élèves, quand c'est l'une de celles-là : la plus nombreuse — la première à égalité — ; rien sinon. */
-export function classeDesEleves(eleves: { niveau?: string | null }[], possibles: ClasseC2[]): ClasseC2 | null {
-  const compte = new Map<ClasseC2, number>();
-  for (const e of eleves) {
-    const n = (e.niveau ?? "").trim().toUpperCase() as ClasseC2;
-    if (possibles.includes(n)) compte.set(n, (compte.get(n) ?? 0) + 1);
-  }
-  let meilleure: ClasseC2 | null = null;
-  for (const c of possibles) if ((compte.get(c) ?? 0) > (meilleure ? compte.get(meilleure) ?? 0 : 0)) meilleure = c;
-  return meilleure;
-}
-
 /** La période que le programme ou le livret fixe pour la démarche, à cette classe ; rien quand ils n'en disent pas. */
 export const periodeDeLaDemarche = (demarcheId: string, classe: ClasseC2, competence = ""): number | null =>
   programmationProposee({ niveau: classe, competenceTitre: competence }, demarcheId)?.periode ?? null;
@@ -195,9 +183,16 @@ export function sequencesToutesFaites(): SequenceToutefaite[] {
   return toutes;
 }
 
-// ── Ranger : par famille, par niveau, par moment de l'année ───────────────
+// ── Les dossiers : un par classe ───────────────────────────────────────────
 
-export type Rangement = "famille" | "niveau" | "moment";
+/** L'onglet de Fabriquer de chaque dossier, et sa classe : sa carte est au catalogue (voir catalogueAteliers.ts). */
+export const DOSSIERS: Record<string, ClasseC2> = { sequencesCP: "CP", sequencesCE1: "CE1", sequencesCE2: "CE2" };
+
+export const classeDuDossier = (onglet: string): ClasseC2 | null => DOSSIERS[onglet] ?? null;
+
+// ── Ranger : par famille, par moment de l'année ────────────────────────────
+
+export type Rangement = "famille" | "moment";
 
 export interface GroupeDeSequences { titre: string; sequences: SequenceToutefaite[] }
 export interface SectionDeSequences { cle: string; icone: string; titre: string; aide: string; nombre: number; groupes: GroupeDeSequences[] }
@@ -214,9 +209,9 @@ const minuscule = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
 /**
  * Les séquences rangées : par famille — une section par discipline, un
- * groupe par domaine —, par niveau — une section par classe —, ou par moment
- * de l'année — une section par période, et celles dont la période n'est pas
- * fixée. Dans chaque groupe, par classe, puis par période.
+ * groupe par domaine —, ou par moment de l'année — une section par période,
+ * et celles dont la période n'est pas fixée. Dans chaque groupe, par classe,
+ * puis par période.
  */
 export function rangerLesSequences(liste: SequenceToutefaite[], rangement: Rangement, periodeDe: (s: SequenceToutefaite) => number | null): SectionDeSequences[] {
   const rang = new Map(liste.map((s, i) => [s, i]));
@@ -231,12 +226,10 @@ export function rangerLesSequences(liste: SequenceToutefaite[], rangement: Range
     ? DISCIPLINES.map((d) => section(`famille:${d.nom}`, d.icone, d.nom,
       DOMAINES.filter((x) => x.discipline === d.nom).map((x, i) => (i ? minuscule(x.nom) : x.nom)).join(", "),
       liste.filter((s) => s.domaine.discipline === d.nom), false))
-    : rangement === "niveau"
-      ? CLASSES.map((c) => section(`niveau:${c}`, "🎒", c, "", liste.filter((s) => s.classe === c)))
-      : [
-        ...PERIODES_DE_L_ANNEE.map(({ periode, aide }) => section(`moment:${periode}`, "🗓", `Période ${periode}`, aide, liste.filter((s) => periodeDe(s) === periode))),
-        section("moment:sans", "🗓", "Sans période fixée", "Le programme n'en fixe pas : choisissez-la dans la séquence", liste.filter((s) => periodeDe(s) === null)),
-      ];
+    : [
+      ...PERIODES_DE_L_ANNEE.map(({ periode, aide }) => section(`moment:${periode}`, "🗓", `Période ${periode}`, aide, liste.filter((s) => periodeDe(s) === periode))),
+      section("moment:sans", "🗓", "Sans période fixée", "Le programme n'en fixe pas : choisissez-la dans la séquence", liste.filter((s) => periodeDe(s) === null)),
+    ];
   return sections.filter((s) => s.nombre > 0);
 }
 

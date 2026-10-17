@@ -6,7 +6,7 @@ export const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "vilainPetitCanard", "etiquettes", "ombres", "oeilDeLynx",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "trous", "motsMeles", "cursive",
-  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "problemeDuJour", "motifs", "nombres", "cubes", "comparer", "calcul", "arbre", "posees", "soustractionPosee", "sequencesToutesFaites", "fractions", "oie", "heure", "monnaie", "mesures", "geometrie", "solides", "deplacements", "donnees", "numeration",
+  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "problemeDuJour", "motifs", "nombres", "cubes", "comparer", "calcul", "arbre", "posees", "soustractionPosee", "sequencesCP", "sequencesCE1", "sequencesCE2", "fractions", "oie", "heure", "monnaie", "mesures", "geometrie", "solides", "deplacements", "donnees", "numeration",
   "carteMentale", "taches",
   "sequentiel", "priseDeParole", "codePhrase", "codeLecture", "resolution", "modelisation", "fonction",
   "planClasse", "frise", "paysage",
@@ -37,15 +37,21 @@ export interface Outil {
    * distingue des autres (demande de l'enseignant, octobre 2026).
    */
   sequence?: true;
+  /** Un dossier de séquences toutes faites — celles d'une classe — plutôt qu'une seule (demande de l'enseignant, octobre 2026). */
+  dossier?: true;
 }
 
 export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[] = [
   {
     id: "sequences", libelle: "📚 Séquences toutes faites",
-    aide: "Leurs séances et toutes leurs feuilles, prêtes : on crée la séquence d'un clic, puis on l'adapte.",
+    aide: "Un dossier par classe : les séquences, leurs séances et toutes leurs feuilles, prêtes ; on crée la séquence d'un clic, puis on l'adapte.",
     outils: [
-      { id: "sequencesToutesFaites", nom: "Les séquences du CP au CE2", icone: "📚", cycles: "Cycle 2 (CP, CE1, CE2)", sequence: true,
-        quoi: "Les déroulements de la fiche d'une séquence, tout faits — mathématiques, français, histoire-géographie —, par famille, par niveau ou par moment de l'année, avec toutes leurs feuilles." },
+      { id: "sequencesCP", nom: "CP", icone: "📁", sequence: true, dossier: true,
+        quoi: "Grouper par dix, les nombres jusqu'à 100, l'addition posée, les problèmes ; le code et la fluence, les premières phrases, les dictées ; le temps qui passe, le plan de la classe — par famille ou par moment de l'année, avec toutes leurs feuilles." },
+      { id: "sequencesCE1", nom: "CE1", icone: "📁", sequence: true, dossier: true,
+        quoi: "La centaine, la table de 7, la soustraction posée, les fractions, l'heure et la monnaie ; comprendre un texte, les dictées, le passé composé ; les grandes périodes de l'histoire — par famille ou par moment de l'année, avec toutes leurs feuilles." },
+      { id: "sequencesCE2", nom: "CE2", icone: "📁", sequence: true, dossier: true,
+        quoi: "Le millier, multiplier par 4, la multiplication posée, la division, les fractions égales ; lire à voix haute, l'imparfait, l'exposé ; la Préhistoire, Rome, se loger — par famille ou par moment de l'année, avec toutes leurs feuilles." },
     ],
   },
   {
