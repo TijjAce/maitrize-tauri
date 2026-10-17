@@ -39,6 +39,7 @@ import { CollectionsTab } from "./AteliersCollections";
 import { ProblemeDuJourTab } from "./AtelierProblemeDuJour";
 import { SoustractionPoseeTab } from "./AtelierSoustractionPosee";
 import { SequencesToutesFaitesTab } from "./AtelierSequencesToutesFaites";
+import { classeDuDossier } from "../sequencesToutesFaites";
 import { MotifsTab } from "./AtelierMotifs";
 import { SuitesTab } from "./AteliersSuites";
 import { VilainPetitCanardTab } from "./AtelierVilainPetitCanard";
@@ -71,6 +72,12 @@ const OCTETS = (n: number) =>
 
 /** L'atelier lui-même. */
 const outilDe = (o: Onglet) => FAMILLES.flatMap((f) => f.outils).find((x) => x.id === o);
+
+/** Un dossier se nomme avec sa famille : « Séquences toutes faites — CP ». */
+const dossierDe = (o: Outil) => {
+  const famille = o.dossier ? FAMILLES.find((f) => f.outils.includes(o)) : undefined;
+  return famille ? `${iconeEtNom(famille.libelle)[1]} — ` : "";
+};
 
 /** Les ateliers qui répondent à ce qu'on cherche — nom, phrase, famille, cycle, ou le moment où ils sont rangés. */
 export function chercherAteliers(
@@ -129,7 +136,11 @@ function CarteAtelier({ o, usage, onOuvrir, onRanger, enVol, onVol }: {
       <span className="atelier-quoi">{o.quoi}</span>
       {(besoin || moment || o.sequence) && (
         <span className="atelier-besoin">
-          {o.sequence && <span className="atelier-genre" title="Ses séances et toutes leurs feuilles, prêtes : on la crée d'un clic">📚 Séquence toute faite{besoin ? " · " : ""}</span>}
+          {o.sequence && (
+            <span className="atelier-genre" title={o.dossier ? "Des séquences, leurs séances et toutes leurs feuilles, prêtes : chacune se crée d'un clic" : "Ses séances et toutes leurs feuilles, prêtes : on la crée d'un clic"}>
+              {o.dossier ? "📁 Séquences toutes faites" : "📚 Séquence toute faite"}{besoin ? " · " : ""}
+            </span>
+          )}
           {besoin}{besoin && moment ? " · " : ""}
           {moment && <span className="atelier-usage" title={`${moment.aide} — ${moment.quand}.`}>{moment.ico} {moment.nom}</span>}
         </span>
@@ -300,7 +311,8 @@ export default function Jeux() {
         ) : FAMILLES.map((f) => (
           <section key={f.id} className="famille-catalogue">
             <PliDuCatalogue ouvert={!plis.includes(`famille:${f.id}`)} onBasculer={(o) => plier(`famille:${f.id}`, !o)}
-              icone={iconeEtNom(f.libelle)[0]} titre={iconeEtNom(f.libelle)[1]} aide={f.aide} nombre={f.outils.length}>
+              icone={iconeEtNom(f.libelle)[0]} titre={iconeEtNom(f.libelle)[1]} aide={f.aide} nombre={f.outils.length}
+              compte={f.outils.every((o) => o.dossier) ? `${f.outils.length} dossier${f.outils.length > 1 ? "s" : ""}` : undefined}>
               <div className="ateliers">{f.outils.map(carte)}</div>
             </PliDuCatalogue>
           </section>
@@ -312,7 +324,7 @@ export default function Jeux() {
   // ── Dans un atelier ──
   return (
     <ProjetDuMomentProvider>
-    <Page titre={outil ? `${outil.icone} ${outil.nom}` : "Fabriquer"} sous={outil?.quoi}
+    <Page titre={outil ? `${outil.icone} ${dossierDe(outil)}${outil.nom}` : "Fabriquer"} sous={outil?.quoi}
       actions={<button className="btn ghost sm" onClick={() => setOnglet("")}>← Tous les ateliers</button>}>
       <BandeauModification atelier={onglet} onReprendre={(a) => setOnglet(a as Onglet)} />
       {outil && <FeuilleDeLAtelier atelier={outil.id} nom={outil.nom} />}
@@ -343,7 +355,7 @@ export default function Jeux() {
         : onglet === "arbre" ? <ArbreCalculTab />
         : onglet === "posees" ? <OperationsPoseesTab />
         : onglet === "soustractionPosee" ? <SoustractionPoseeTab />
-        : onglet === "sequencesToutesFaites" ? <SequencesToutesFaitesTab />
+        : classeDuDossier(onglet) ? <SequencesToutesFaitesTab key={onglet} classe={classeDuDossier(onglet)!} />
         : onglet === "monnaie" ? <MonnaieTab />
         : onglet === "mesures" ? <MesuresTab />
         : onglet === "geometrie" ? <GeometrieTab />

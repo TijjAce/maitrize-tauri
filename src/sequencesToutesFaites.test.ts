@@ -41,7 +41,7 @@ import { planDesFeuilles, type ClasseC2 } from "./feuillesDesSequences";
 import { estLaSeanceDesMots } from "./motsDesProblemes";
 import { DEMARCHE_SOUSTRACTION_POSEE, FEUILLES_SOUSTRACTION_POSEE, graineDeLaFeuille } from "./sequenceSoustractionPosee";
 import {
-  CLASSES, DISCIPLINES, DOMAINES, PHASE_LA_MARTINIERE, classeDesEleves, classesDeLaDemarche, competenceDeLaDemarche, creerLaSequenceToutefaite,
+  CLASSES, DISCIPLINES, DOMAINES, DOSSIERS, PHASE_LA_MARTINIERE, classeDuDossier, classesDeLaDemarche, competenceDeLaDemarche, creerLaSequenceToutefaite,
   domaineDeLaDemarche, lirePeriodes, nomSansClasse, periodeDeLaDemarche, planToutFait, rangerLesSequences, sequencesToutesFaites,
   type SequenceToutefaite,
 } from "./sequencesToutesFaites";
@@ -87,7 +87,7 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     expect(DEMARCHES_HISTOIRE_GEO.filter((d) => domaineDeLaDemarche(d)?.id === "temps")).toHaveLength(10);
   });
 
-  it("se rangent par famille, par niveau ou par moment de l'année, dans l'ordre de l'année", () => {
+  it("se rangent dans le dossier de leur classe, par famille ou par moment de l'année, dans l'ordre de l'année", () => {
     // La période du programme ou du livret, comme l'onglet la lit : par la démarche, sinon par sa compétence.
     const periodes = new Map(toutes.map((s) => {
       const fixee = periodeDeLaDemarche(s.demarche.id, s.classe);
@@ -106,14 +106,18 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     expect(nombres.indexOf("numeration-dizaine-cp:CP")).toBeLessThan(nombres.indexOf("nombres-livret-cp-59:CP"));
     expect(nombres.indexOf("nombres-livret-cp-59:CP")).toBeLessThan(nombres.indexOf("nombres-livret-cp-100:CP"));
     expect(nombres.indexOf("nombres-livret-cp-100:CP")).toBeLessThan(nombres.indexOf("groupements-ce1:CE1"));
-    // Par niveau : une section par classe, ses groupes disent la discipline.
-    const parNiveau = rangerLesSequences(toutes, "niveau", programme);
-    expect(parNiveau.map((s) => s.titre)).toEqual(["CP", "CE1", "CE2"]);
-    for (const s of parNiveau) for (const g of s.groupes) for (const x of g.sequences) expect(x.classe).toBe(s.titre);
-    expect(parNiveau[1].groupes[0].titre).toBe("Mathématiques — les nombres");
-    // Par moment de l'année : les cinq périodes, puis celles que le programme ne fixe pas ; le choix de l'enseignant les déplace.
+    // Un dossier par classe : chaque séquence est dans celui de sa classe, et dans un seul.
+    expect(Object.values(DOSSIERS)).toEqual(CLASSES);
+    expect(classeDuDossier("sequencesCE1")).toBe("CE1");
+    expect(classeDuDossier("posees")).toBeNull();
+    const parDossier = CLASSES.map((c) => toutes.filter((s) => s.classe === c));
+    expect(parDossier.reduce((n, ss) => n + ss.length, 0)).toBe(toutes.length);
+    for (const ss of parDossier) expect(rangerLesSequences(ss, "famille", programme).map((x) => x.titre)).toEqual(DISCIPLINES.map((d) => d.nom));
+    // Par moment de l'année : les cinq périodes, puis celles que le programme ne fixe pas ; leurs groupes disent la discipline ;
+    // le choix de l'enseignant les déplace.
     const parMoment = rangerLesSequences(toutes, "moment", programme);
     expect(parMoment.map((s) => s.cle)).toEqual(["moment:1", "moment:2", "moment:3", "moment:4", "moment:5", "moment:sans"]);
+    expect(parMoment[0].groupes[0].titre).toBe("Mathématiques — les nombres");
     const dans = (sections: typeof parMoment, cle: string) => sections.find((s) => s.groupes.some((g) => g.sequences.some((x) => x.cle === cle)))?.cle;
     expect(dans(parMoment, "prehistoire-ce2:CE2")).toBe("moment:1");
     expect(dans(parMoment, "rome-gaule-ce2:CE2")).toBe("moment:2");
@@ -121,7 +125,7 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     const choisies: Record<string, number> = { "heure-cp:CP": 4 };
     expect(dans(rangerLesSequences(toutes, "moment", (s) => choisies[s.cle] ?? programme(s)), "heure-cp:CP")).toBe("moment:4");
     // Une section vide ne se montre pas.
-    expect(rangerLesSequences(toutes.filter((s) => s.classe === "CP"), "niveau", programme).map((s) => s.titre)).toEqual(["CP"]);
+    expect(rangerLesSequences(toutes.filter((s) => s.domaine.discipline === "Français"), "famille", programme).map((s) => s.titre)).toEqual(["Français"]);
   });
 
   it("gardent les périodes choisies telles qu'on peut s'y fier", () => {
@@ -131,7 +135,7 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     expect(lirePeriodes(null)).toEqual({});
   });
 
-  it("prennent la classe dans le nom du déroulement quand il la donne, et celle des élèves d'abord", () => {
+  it("prennent la classe dans le nom du déroulement quand il la donne", () => {
     expect(classesDeLaDemarche({ id: "x", nom: "Pair ou impair (CE1)" })).toEqual(["CE1"]);
     expect(classesDeLaDemarche({ id: "x", nom: "Automatiser la lecture (CE1-CE2)" })).toEqual(["CE1", "CE2"]);
     expect(classesDeLaDemarche({ id: "x", nom: "Les accents (CP, CE1, CE2)" })).toEqual(["CP", "CE1", "CE2"]);
@@ -141,10 +145,6 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     expect(nomSansClasse("Pair ou impair (CE1)")).toBe("Pair ou impair");
     expect(nomSansClasse("Les accents (CP, CE1, CE2)")).toBe("Les accents");
     expect(nomSansClasse("Paléolithique et Néolithique (CE2, période 1)")).toBe("Paléolithique et Néolithique (CE2, période 1)");
-    expect(classeDesEleves([{ niveau: "CE1" }, { niveau: "ce1 " }, { niveau: "CP" }, { niveau: "GS" }], CLASSES)).toBe("CE1");
-    expect(classeDesEleves([{ niveau: "CE2" }, { niveau: "CP" }], CLASSES)).toBe("CP");
-    expect(classeDesEleves([{ niveau: "CP" }], ["CE1", "CE2"])).toBeNull();
-    expect(classeDesEleves([], CLASSES)).toBeNull();
   });
 
   it("ouvrent chaque séance de numération et de calcul sur le calcul mental La Martinière de la classe, avec sa fiche en tête", () => {
@@ -283,11 +283,16 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     expect(r.aides).toBe(0);
   });
 
-  it("se présentent dans Fabriquer en une seule carte bleue, en tête du catalogue", () => {
+  it("se présentent dans Fabriquer en dossiers bleus, un par classe, en tête du catalogue", () => {
     expect(FAMILLES[0].id).toBe("sequences");
-    expect(FAMILLES[0].outils.map((o) => [o.id, o.sequence])).toEqual([["sequencesToutesFaites", true]]);
-    expect((ONGLETS as readonly string[]).includes("sequencesToutesFaites")).toBe(true);
-    for (const id of ["sequencesNombres", "sequencesCalcul", "sequencesProblemes", "sequencesFractions", "sequencesGrandeurs", "sequencesGeometrie", "sequencesDonnees"]) {
+    expect(FAMILLES[0].outils.map((o) => [o.id, o.nom, o.sequence, o.dossier])).toEqual([
+      ["sequencesCP", "CP", true, true], ["sequencesCE1", "CE1", true, true], ["sequencesCE2", "CE2", true, true],
+    ]);
+    for (const [onglet, classe] of Object.entries(DOSSIERS)) {
+      expect((ONGLETS as readonly string[]).includes(onglet), onglet).toBe(true);
+      expect(FAMILLES[0].outils.find((o) => o.id === onglet)?.nom).toBe(classe);
+    }
+    for (const id of ["sequencesToutesFaites", "sequencesNombres", "sequencesCalcul", "sequencesProblemes", "sequencesFractions", "sequencesGrandeurs", "sequencesGeometrie", "sequencesDonnees"]) {
       expect((ONGLETS as readonly string[]).includes(id), id).toBe(false);
     }
   });
