@@ -8,7 +8,7 @@
 // comme la licence le demande. La monnaie, le circuit électrique, le globe
 // et le calendrier n'en ont pas encore : ce qu'on a trouvé ne montrait pas des
 // euros, était un dessin, un globe découpé aux noms allemands, des mois en
-// anglais.
+// anglais. L'abaque triangulaire non plus : Commons n'en a pas (octobre 2026).
 
 export interface PhotoMateriel {
   /** L'identifiant du matériel (voir materielDeClasse.ts), qui est aussi le nom du fichier, sans « .jpg ». */
@@ -24,6 +24,8 @@ export interface PhotoMateriel {
 export const PHOTOS_MATERIEL: PhotoMateriel[] = [
   { id: "numeration", titre: "Cubes plastiques emboîtables (« Multilink ») utilisés pour l'enseignement des mathématiques.", auteur: "Annielogue", licence: "CC BY-SA 3.0",
     page: "https://commons.wikimedia.org/wiki/File:Multilink_cubes.JPG" },
+  { id: "boulier", titre: "Boulier d'école en bois : dix tiges de dix perles, cinq de couleur et cinq en bois clair.", auteur: "Mcannac", licence: "CC BY-SA 4.0",
+    page: "https://commons.wikimedia.org/wiki/File:Boulier-ecole-maternelle-bois.jpg" },
   { id: "balance", titre: "Balance de Roberval ancienne à deux plateaux, avec ses poids, sur fond blanc.", auteur: "Nikodem Nijaki", licence: "CC BY-SA 3.0",
     page: "https://commons.wikimedia.org/wiki/File:Balance_scale_IMGP9755.jpg" },
   { id: "massesReference", titre: "Paquet d'un kilogramme de riz (sachet transparent de riz à risotto du Tessin) : masse de référence de 1 kg.", auteur: "Schofför", licence: "CC BY-SA 2.5 CH",

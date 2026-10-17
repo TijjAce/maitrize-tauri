@@ -36,6 +36,14 @@ describe("le matériel de la classe", () => {
       .toEqual(["recipients", "eau"]);
   });
 
+  it("propose l'abaque triangulaire et le boulier aux compétences qui les appellent (demande de l'enseignant, octobre 2026)", () => {
+    expect(ids("Comprendre que: dans la suite orale des nombres, chaque nombre s'obtient en ajoutant un au nombre précédent", "4. Acquérir les premiers outils mathématiques")).toContain("abaque");
+    expect(ids("Trouver le complément d’un nombre à la dizaine supérieure.", MATHS)).toContain("boulier");
+    expect(ids("Connaitre les doubles et les moitiés de nombres usuels.", MATHS)).toContain("boulier");
+    expect(ids("Connaitre et utiliser diverses représentations d’un nombre et passer de l’une à l’autre.", MATHS)).toContain("boulier");
+    for (const id of ["abaque", "boulier"]) expect(MATERIEL_REEL.find((m) => m.id === id)?.irremplacable, id).toBeTruthy();
+  });
+
   it("ne confond pas les mots d'un domaine avec ceux d'un autre", () => {
     // Les « états solides » de l'eau ne sont pas des solides de géométrie.
     expect(ids("Reconnaitre et identifier les états solides et liquides de l’eau.", SCIENCES)).toEqual(["eau"]);
