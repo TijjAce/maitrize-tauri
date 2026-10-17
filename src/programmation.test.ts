@@ -71,3 +71,36 @@ describe("les fractions du CE1", () => {
     expect(propose("CE1", "Savoir interpréter, représenter, écrire et lire des fractions inférieures ou égales à 1.")!.periode).toBeNull();
   });
 });
+
+describe("les repères relevés dans le texte des programmes de 2024 (demande de l'enseignant, octobre 2026)", () => {
+  it("placent les séquences que le programme place, chacune avec sa phrase", () => {
+    const cas: [string, string, number, RegExp][] = [
+      ["egalites-fractions-ce2", "CE2", 1, /^Programme de mathématiques du cycle 2 \(2024\), CE2 : « Au début du CE2, les élèves réinvestissent/],
+      ["posees-ce2", "CE2", 2, /« L'addition posée de montants en euro .+ au plus tard en période 2\. »$/],
+      ["comprendre-cp", "CP", 3, /^Programme de français du cycle 2 \(2024\), CP : « Progressivement, à partir de la 3e période de CP/],
+      ["familles-orthographe-c2", "CP", 2, /« Dès la fin de la 2e période — Écrire des mots dictés avec des lettres muettes apprises/],
+      ["ecrire-un-texte-c2", "CE1", 1, /« Dès la période 1 — Écrire un texte court de une à trois phrases\. »$/],
+      ["strategies-de-copie", "CE1", 1, /« À l'issue de la période 1 — Copier quatre à cinq phrases courtes\. »$/],
+      ["strategies-de-copie", "CP", 2, /^Livret d'accompagnement de français du CP/],
+    ];
+    for (const [id, niveau, periode, raison] of cas) {
+      expect(demarcheDe(id), id).toBeDefined();
+      const p = propose(niveau, "", id)!;
+      expect(p.periode, `${id} ${niveau}`).toBe(periode);
+      expect(p.raison, `${id} ${niveau}`).toMatch(raison);
+    }
+    // Chaque classe son repère : ce que le programme dit du CE1 ne vaut pas au CE2, ni ce qu'il dit du CP au CE1.
+    expect(propose("CE2", "", "strategies-de-copie")!.periode).toBeNull();
+    expect(propose("CE2", "", "ecrire-un-texte-c2")!.periode).toBeNull();
+    expect(propose("CE1", "", "familles-orthographe-c2")!.periode).toBeNull();
+    // Ils ne viennent qu'en dernier : la compétence qui dit sa période la garde.
+    expect(propose("CE2", "Poser et effectuer des soustractions de montants en euro.", "posees-ce2")!.periode).toBe(4);
+    expect(propose("CE1", "Écrire un texte de six ou sept phrases maximum en assurant la cohérence syntaxique et logique du texte produit. (en fin d'année)", "ecrire-un-texte-c2")!.periode).toBe(5);
+  });
+
+  it("cite la compétence entière quand son intitulé porte le moment de l'année", () => {
+    const p = propose("CP", "Copier une phrase en lien avec les 12/15 correspondances graphophonémiques étudiées. (dès la fin de la période 1)")!;
+    expect(p.periode).toBe(1);
+    expect(p.raison).toBe("Programme de français du cycle 2 (2024), CP : « Copier une phrase en lien avec les 12/15 correspondances graphophonémiques étudiées. (dès la fin de la période 1) »");
+  });
+});

@@ -4,10 +4,17 @@
 // Une séquence prend son sens à un moment de l'année : la centaine dès le
 // début du CE1, les nombres jusqu'à 59 au plus tard en période 2 du CP.
 // Quand le programme le dit — pour la numération, les opérations posées, les
-// fractions, la monnaie, les tables d'addition — ou la séquence d'un livret —
+// fractions, la monnaie, les tables d'addition ; en français, le code, la
+// copie, la cursive, la dictée, l'écriture — ou la séquence d'un livret —
 // l'arbre à calcul, la table de 7… —, on propose la période, et l'on cite sa
 // phrase ; le niveau, lui, est celui de la compétence. Ce n'est qu'une proposition :
 // l'enseignant la garde ou la change.
+//
+// Les repères des programmes de 2024 ont été relevés dans leur texte entier
+// (octobre 2026, à la demande de l'enseignant) : ce sont les « repères annuels
+// de progression », que les nouveaux programmes portent eux-mêmes. Ils ne
+// fixent de période qu'à ces notions-là : la géométrie, les grandeurs hors
+// monnaie, les données, la grammaire, l'oral n'en ont pas.
 
 /** Les niveaux pour lesquels une séquence peut être pensée. */
 export const NIVEAUX_DE_PROGRAMMATION = ["PS", "MS", "GS", "CP", "CE1", "CE2", "CM1", "CM2"] as const;
@@ -23,13 +30,19 @@ export interface ProgrammationProposee {
 
 const PROGRAMME = "Programme de mathématiques du cycle 2 (2024)";
 const cite = (classe: string, phrase: string) => `${PROGRAMME}, ${classe} : « ${phrase} »`;
+const PROGRAMME_DE_FRANCAIS = "Programme de français du cycle 2 (2024)";
+/** Une phrase du programme de français ; dans ses tableaux, le moment de l'année vient en tête de la ligne, avant le tiret. */
+const citeLeProgrammeDeFrancais = (classe: string, phrase: string) => `${PROGRAMME_DE_FRANCAIS}, ${classe} : « ${phrase} »`;
 /** Les séquences des livrets d'accompagnement disent elles-mêmes quand elles se font. */
 const citeLeLivret = (classe: string, phrase: string) => `Livret d'accompagnement de mathématiques du ${classe} (Éduscol, 2025) : « ${phrase} »`;
 const citeLeLivretDeFrancais = (classe: string, phrase: string) =>
   `Livret d'accompagnement de français du ${classe} (Éduscol, ${classe === "CP" ? 2025 : 2026}) : « ${phrase} »`;
 
-/** La période des séquences de numération, d'après les repères du programme ; `niveau` : le repère ne vaut qu'à cette classe. */
-const PAR_DEMARCHE: Record<string, { periode: number; raison: string; niveau?: string }> = {
+/** La période d'une séquence, et la phrase qui la donne ; `niveau` : le repère ne vaut qu'à cette classe. */
+interface ReperePeriode { periode: number; raison: string; niveau?: string }
+
+/** La période des séquences, d'après les repères du programme ou des livrets ; plusieurs quand chaque classe a le sien. */
+const PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
   // L'histoire au CE2 : l'ordre et les périodes que le programme recommande ; au CP et au CE1, aucune — ses dimensions se travaillent toute l'année.
   "prehistoire-ce2": { periode: 1, niveau: "CE2", raison: "Programme d'histoire-géographie du cycle 2 (2026), CE2 : « première période »" },
   "rome-gaule-ce2": { periode: 2, niveau: "CE2", raison: "Programme d'histoire-géographie du cycle 2 (2026), CE2 : « deuxième et troisième périodes »" },
@@ -70,6 +83,29 @@ const PAR_DEMARCHE: Record<string, { periode: number; raison: string; niveau?: s
   "prosodie-ce1": { niveau: "CE1", periode: 1, raison: citeLeLivretDeFrancais("CE1", "À partir de la période 1 du CE1, pour les élèves des groupes ou profils 2, 3 et 4") },
   "ecriture-cursive": { niveau: "CP", periode: 1, raison: citeLeLivretDeFrancais("CP", "À partir de la période 1 et tout au long de l'année, sur les séances quotidiennes.") },
   "strategies-de-copie": { niveau: "CP", periode: 2, raison: citeLeLivretDeFrancais("CP", "À partir de la période 2, plusieurs fois par semaine.") },
+};
+
+/**
+ * Relevées dans le texte des programmes de 2024 (octobre 2026) : les périodes
+ * qu'aucun intitulé de compétence ne porte, et qui placent une séquence
+ * entière. Elles ne viennent qu'en dernier, quand ni la séquence d'un livret,
+ * ni la compétence n'en disent rien : la soustraction posée de montants en
+ * euro garde sa période 4.
+ */
+const SINON_PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
+  "strategies-de-copie": { niveau: "CE1", periode: 1, raison: citeLeProgrammeDeFrancais("CE1", "À l'issue de la période 1 — Copier quatre à cinq phrases courtes.") },
+  "egalites-fractions-ce2": { niveau: "CE2", periode: 1,
+    raison: cite("CE2", "Au début du CE2, les élèves réinvestissent les fractions d'un tout étudiées au CE1 afin d'établir des égalités entre fractions comme 5/10 = 1/2.") },
+  // Les additions et les soustractions posées du CE2, en euros comme en nombres entiers : l'addition des montants au plus tard
+  // en période 2, la soustraction au plus tard en période 4 — la séquence qui fait les deux vient donc en période 2.
+  "posees-ce2": { niveau: "CE2", periode: 2,
+    raison: cite("CE2", "L'addition posée de montants en euro utilisant l'écriture à virgule est introduite au plus tard en période 2.") },
+  "comprendre-cp": { niveau: "CP", periode: 3,
+    raison: citeLeProgrammeDeFrancais("CP", "Progressivement, à partir de la 3e période de CP, les élèves sont amenés à acquérir et automatiser ces stratégies de compréhension à partir de textes qu'ils auront eux-mêmes décodés.") },
+  "familles-orthographe-c2": { niveau: "CP", periode: 2,
+    raison: citeLeProgrammeDeFrancais("CP", "Dès la fin de la 2e période — Écrire des mots dictés avec des lettres muettes apprises (mettre en relation des morphogrammes lexicaux et grammaticaux).") },
+  "ecrire-un-texte-c2": { niveau: "CE1", periode: 1,
+    raison: citeLeProgrammeDeFrancais("CE1", "Dès la période 1 — Écrire un texte court de une à trois phrases.") },
 };
 
 /**
@@ -133,17 +169,19 @@ export function programmationProposee(
 ): ProgrammationProposee | null {
   if (!c) return null;
   const niveau = niveauDeProgrammation(c.niveau);
-  const parDemarche = PAR_DEMARCHE[demarcheId];
-  if (parDemarche && (!parDemarche.niveau || parDemarche.niveau === niveau)) return { niveau, periode: parDemarche.periode, raison: parDemarche.raison };
+  const repereDe = (table: Record<string, ReperePeriode | ReperePeriode[]>) =>
+    ([] as ReperePeriode[]).concat(table[demarcheId] ?? []).find((r) => !r.niveau || r.niveau === niveau);
+  const parDemarche = repereDe(PAR_DEMARCHE);
+  if (parDemarche) return { niveau, periode: parDemarche.periode, raison: parDemarche.raison };
   const titre = plat(c.competenceTitre);
   const repere = REPERES.find((r) => r.niveau === niveau && r.motif.test(titre));
   if (repere) return { niveau, periode: repere.periode, raison: repere.raison };
-  // Le repère écrit dans la compétence, cité tel quel.
+  // Le repère écrit dans la compétence : on cite la compétence entière, son moment de l'année compris.
   for (const [motif, periode] of MARQUES_DE_PERIODE) {
-    const m = titre.match(motif);
-    const ecrit = (c.competenceTitre ?? "").match(/\(([^()]*)\)\s*$/)?.[1];
-    if (m && niveau) return { niveau, periode: periode(m), raison: `Programme de français du cycle 2 (2024), ${niveau} : « ${ecrit ?? m[0].slice(1, -1)} »` };
+    if (titre.match(motif) && niveau) return { niveau, periode: periode(titre.match(motif)!), raison: citeLeProgrammeDeFrancais(niveau, (c.competenceTitre ?? "").trim()) };
   }
+  const sinon = repereDe(SINON_PAR_DEMARCHE);
+  if (sinon) return { niveau, periode: sinon.periode, raison: sinon.raison };
   return niveau ? { niveau, periode: null, raison: "" } : null;
 }
 

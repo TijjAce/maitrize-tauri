@@ -18,7 +18,7 @@ import { lireProfils } from "../planDeLaClasse";
 import { graineDeLaFeuille } from "../sequenceSoustractionPosee";
 import {
   CLE_PERIODES, COLONNES_DU_TABLEAU, PERIODES_DE_L_ANNEE, competenceDeLaDemarche, creerLaSequenceToutefaite, lirePeriodes, nomSansClasse,
-  ouvreSurLeCalculMental, periodeDeLaDemarche, planToutFait, sequencesToutesFaites, tableauDesSequences,
+  ouvreSurLeCalculMental, planToutFait, repereDeLaDemarche, sequencesToutesFaites, tableauDesSequences,
   type ContexteDeLaClasse, type PlanToutFait, type SequenceToutefaite,
 } from "../sequencesToutesFaites";
 import { chargerVacances, periodeDuJour } from "../vacances";
@@ -39,10 +39,15 @@ const lirePlis = (brut: unknown): string[] => (Array.isArray(brut) ? brut.filter
 
 const finDePhrase = (s: string) => (/[.!?…»]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
 
+/** Au survol d'une séquence du tableau : son nom entier, et la phrase du programme ou du livret qui la place. */
+const titreDeLaPuce = (s: SequenceToutefaite, infos?: { periode: number | null; raison: string }) =>
+  (infos?.periode ? `${s.demarche.nom}\nPériode ${infos.periode} — ${infos.raison}` : s.demarche.nom);
+
 /** Le type de donnée d'une séquence qu'on glisse d'une période à l'autre. */
 const TYPE_SEQUENCE = "text/x-maitrize-sequence";
 
-interface Infos { competence: CompetenceSelectionnee | null; periode: number | null }
+/** Ce qu'on sait d'une séquence : la compétence qu'elle vise, et la période du programme ou du livret, avec sa phrase. */
+interface Infos { competence: CompetenceSelectionnee | null; periode: number | null; raison: string }
 
 export function SequencesToutesFaitesTab({ classe }: { classe: ClasseC2 }) {
   const toutes = React.useMemo(() => sequencesToutesFaites().filter((s) => s.classe === classe), [classe]);
@@ -62,13 +67,14 @@ export function SequencesToutesFaitesTab({ classe }: { classe: ClasseC2 }) {
   const { data: periodesLues } = useAsync(() => api.settingGet(CLE_PERIODES).then(lirePeriodes).catch(() => ({} as Record<string, number>)), []);
   const [periodesChoisies, setPeriodesChoisies] = React.useState<Record<string, number> | null>(null);
   const choisies = React.useMemo(() => periodesChoisies ?? periodesLues ?? {}, [periodesChoisies, periodesLues]);
-  // La compétence que chaque séquence vise, et la période que le programme ou le livret lui fixe.
+  // La compétence que chaque séquence vise, et la période que le programme ou le livret lui fixe — avec sa phrase.
   const infos = React.useMemo(() => {
     const sortie = new Map<string, Infos>();
     for (const s of toutes) {
-      const fixee = periodeDeLaDemarche(s.demarche.id, s.classe);
-      const competence = referentiels ? competenceDeLaDemarche(referentiels, s.demarche.id, s.classe, fixee ?? periodeDuMoment ?? 1) : null;
-      sortie.set(s.cle, { competence, periode: fixee ?? periodeDeLaDemarche(s.demarche.id, s.classe, competence?.competenceTitre ?? "") });
+      const fixe = repereDeLaDemarche(s.demarche.id, s.classe);
+      const competence = referentiels ? competenceDeLaDemarche(referentiels, s.demarche.id, s.classe, fixe?.periode ?? periodeDuMoment ?? 1) : null;
+      const repere = fixe ?? repereDeLaDemarche(s.demarche.id, s.classe, competence?.competenceTitre ?? "");
+      sortie.set(s.cle, { competence, periode: repere?.periode ?? null, raison: repere?.raison ?? "" });
     }
     return sortie;
   }, [toutes, referentiels, periodeDuMoment]);
@@ -162,7 +168,7 @@ export function SequencesToutesFaitesTab({ classe }: { classe: ClasseC2 }) {
                               if (s && c.periode !== null && periodeDe(s) !== c.periode) ranger(s, c.periode);
                             } : undefined}>
                             {ligne.cases[j].map((s) => (
-                              <button key={s.cle} type="button" draggable aria-pressed={s === choisie} title={s.demarche.nom}
+                              <button key={s.cle} type="button" draggable aria-pressed={s === choisie} title={titreDeLaPuce(s, infos.get(s.cle))}
                                 className={`stf-puce${s === choisie ? " actif" : ""}${s.cle === enVol ? " en-vol" : ""}`}
                                 onClick={() => setChoisieCle(s === choisie ? "" : s.cle)}
                                 onContextMenu={(e) => menu(e, s)}
@@ -226,6 +232,7 @@ function DetailDeLaSequence({ s, infos, periode, onPeriode, classeDuPlan, compet
             <Aide titre="D'où vient cette séquence" vers="droite">
               <p>{finDePhrase(s.demarche.source)}</p>
               <p>{s.demarche.resume}</p>
+              {infos?.periode ? <p><b>Période {infos.periode}</b> — {infos.raison}</p> : null}
             </Aide>
           </h3>
           <p className="martiniere-quand">{resumeDuCadre(tout.demarche)}{tout.calculMental ? " — chacune s'ouvre sur le calcul mental La Martinière" : ""}.</p>
@@ -243,7 +250,7 @@ function DetailDeLaSequence({ s, infos, periode, onPeriode, classeDuPlan, compet
             </div>
             <Aide titre="La période" vers="droite">
               <p>Celle où vous la ferez : la séquence se range là, « par moment de l'année ». Au CP, elle choisit aussi les nombres des feuilles et du calcul mental.</p>
-              {infos?.periode ? <p>Le programme ou le livret la place en période {infos.periode}.</p> : <p>Le programme ne lui fixe pas de période.</p>}
+              {infos?.periode ? <p><b>Période {infos.periode}</b> — {infos.raison}</p> : <p>Le programme ne lui fixe pas de période.</p>}
             </Aide>
           </div>
           <ol className="sp-seances">
