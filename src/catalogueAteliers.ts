@@ -47,11 +47,11 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
     aide: "Un dossier par classe : les séquences, leurs séances et toutes leurs feuilles, prêtes ; on crée la séquence d'un clic, puis on l'adapte.",
     outils: [
       { id: "sequencesCP", nom: "CP", icone: "📁", sequence: true, dossier: true,
-        quoi: "Grouper par dix, les nombres jusqu'à 100, l'addition posée, les problèmes ; le code et la fluence, les premières phrases, les dictées ; le temps qui passe, le plan de la classe — par famille ou par moment de l'année, avec toutes leurs feuilles." },
+        quoi: "Grouper par dix, les nombres jusqu'à 100, l'addition posée, les problèmes ; le code et la fluence, les premières phrases, les dictées ; le temps qui passe, le plan de la classe — en tableau, période par période, avec toutes leurs feuilles." },
       { id: "sequencesCE1", nom: "CE1", icone: "📁", sequence: true, dossier: true,
-        quoi: "La centaine, la table de 7, la soustraction posée, les fractions, l'heure et la monnaie ; comprendre un texte, les dictées, le passé composé ; les grandes périodes de l'histoire — par famille ou par moment de l'année, avec toutes leurs feuilles." },
+        quoi: "La centaine, la table de 7, la soustraction posée, les fractions, l'heure et la monnaie ; comprendre un texte, les dictées, le passé composé ; les grandes périodes de l'histoire — en tableau, période par période, avec toutes leurs feuilles." },
       { id: "sequencesCE2", nom: "CE2", icone: "📁", sequence: true, dossier: true,
-        quoi: "Le millier, multiplier par 4, la multiplication posée, la division, les fractions égales ; lire à voix haute, l'imparfait, l'exposé ; la Préhistoire, Rome, se loger — par famille ou par moment de l'année, avec toutes leurs feuilles." },
+        quoi: "Le millier, multiplier par 4, la multiplication posée, la division, les fractions égales ; lire à voix haute, l'imparfait, l'exposé ; la Préhistoire, Rome, se loger — en tableau, période par période, avec toutes leurs feuilles." },
     ],
   },
   {
