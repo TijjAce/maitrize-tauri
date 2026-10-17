@@ -4,16 +4,15 @@ import { Modal, Field, Input, Select, Textarea, useAsync } from "./ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "./CompetenceTree";
 import { FichierImg } from "./Deroulement";
 import { PhotoTelephone } from "./PhotoTelephone";
-import { demarcheDe, demarchesPour, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre } from "../demarches";
+import { demarcheDe, demarchesPour, demarcheSuggeree, demarchesParFamille, resumeDuCadre } from "../demarches";
 import { sequencesParCompetence, titresVisant } from "../sequencesVisees";
 import { ateliersRattaches, classeDe, feuilleRattachee, planDesFeuilles, type ContexteFeuilles, type FeuilleAFabriquer } from "../feuillesDesSequences";
 import { nomDeLAtelier } from "../catalogueAteliers";
-import { poserDansUneSeance } from "../impressionAtelier";
-import { graineAuHasard } from "../hasard";
+import { poserLeDeroulement } from "../poserLeDeroulement";
 import { toast } from "./Toaster";
 import { NIVEAUX_DE_PROGRAMMATION, libelleDeProgrammation, niveauDeProgrammation, programmationProposee } from "../programmation";
-import { aideDesMots, aidesDeLaSequence, seanceDeLaParole } from "../aidesDesSequences";
-import { avecLesMotsDesProblemes, enoncesDuHtml, estLaSeanceDesMots, motsDesEnonces, nombreDeMots, noteDesMots } from "../motsDesProblemes";
+import { seanceDeLaParole } from "../aidesDesSequences";
+import { avecLesMotsDesProblemes } from "../motsDesProblemes";
 import { lireProfils } from "../planDeLaClasse";
 import { CLE_INVENTAIRE, lireInventaire, materielPourCompetences, noteDuMaterielReel } from "../materielDeClasse";
 import { MaterielReelListe } from "./MaterielDeLaClasse";
@@ -167,55 +166,15 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
       };
       await api.sequenceSave(propre);
       if (poseLesSeances) {
-        // À la suite des séances qui existent : numérotées après elles, avec la note du matériel, les documents à montrer et la compétence visée.
-        // Le matériel réel de la classe, relu à l'enregistrement : ce qu'on vient de cocher dans l'inventaire compte.
+        // À la suite des séances qui existent (voir poserLeDeroulement.ts). Le matériel réel de la classe, relu à
+        // l'enregistrement : ce qu'on vient de cocher dans l'inventaire compte.
         const noteReelle = noteDuMaterielReel(materielReel, lireInventaire(await api.settingGet(CLE_INVENTAIRE).catch(() => null)));
-        const seances = seancesDuCadre(demarche, propre.id, nbExistantes + 1).map((sc, i) => ({
-          ...sc, materiel: [plan?.materiel[i] || sc.materiel, plan?.documents?.[i], noteReelle].filter(Boolean).join("\n"),
-          competences: comp ? JSON.stringify([comp]) : sc.competences,
-        }));
-        for (const seance of seances) await api.seanceSave(seance);
-        // Puis les feuilles, chacune dans sa séance, en PDF, avec la compétence de la séquence en tête.
-        let faites = 0;
-        const enonces: string[] = [];
-        for (const f of aFabriquer) {
-          const seance = seances[f.seance];
-          if (!seance) continue;
-          setProgres(`Feuilles : ${faites + 1} sur ${aFabriquer.length}…`);
-          try {
-            // Le tirage et les réglages vont avec la feuille : « Modifier dans Fabriquer » la refait.
-            const graine = graineAuHasard();
-            const sortie = f.fabriquer(graine);
-            enonces.push(...enoncesDuHtml(sortie.html));
-            await poserDansUneSeance(f.atelier, f.titre, sortie.html, sortie.style, seance.id, propre.id,
-              { competences: comp ? [comp] : undefined, fabrication: { memoires: sortie.refaire, graine: sortie.graine ?? graine } });
-            faites++;
-          } catch (e) {
-            toast(`« ${f.titre} » n'a pas pu être fabriquée : ${String(e)}`, { icone: "⚠️" });
-          }
-        }
-        // Les mots des problèmes, relevés dans les énoncés qu'on vient de tirer : dans le matériel de la première séance, et sur leur feuille.
-        const mots = estLaSeanceDesMots(demarche.seances[0]) ? motsDesEnonces(enonces) : null;
-        if (mots && nombreDeMots(mots) && seances[0]) await api.seanceSave({ ...seances[0], materiel: [seances[0].materiel, noteDesMots(mots)].filter(Boolean).join("\n") });
-        // Puis les aides à la tâche, chacune dans sa séance.
-        const aides = [
-          ...(mots && nombreDeMots(mots) ? [aideDesMots(0, mots)] : []),
-          ...aidesDeLaSequence(seances, propre, { sequentiel: aideSequentiel, parole: seanceParole }),
-        ];
-        let aidees = 0;
-        for (const a of aides) {
-          const seance = seances[a.seance];
-          if (!seance) continue;
-          setProgres(`Aides à la tâche : ${aidees + 1} sur ${aides.length}…`);
-          try {
-            const sortie = await a.fabriquer();
-            await poserDansUneSeance(a.atelier, a.titre, sortie.html, sortie.style, seance.id, propre.id,
-              { competences: comp ? [comp] : undefined, fabrication: { memoires: sortie.refaire } });
-            aidees++;
-          } catch (e) {
-            toast(`« ${a.titre} » n'a pas pu être fabriquée : ${String(e)}`, { icone: "⚠️" });
-          }
-        }
+        const { seances, feuilles: faites, aides: aidees } = await poserLeDeroulement({
+          sequence: propre, demarche, plan, feuilles: aFabriquer, competence: comp, depuis: nbExistantes + 1, noteReelle,
+          aides: { sequentiel: aideSequentiel, parole: seanceParole },
+          onProgres: setProgres,
+          onEchec: (titre, e) => toast(`« ${titre} » n'a pas pu être fabriquée : ${String(e)}`, { icone: "⚠️" }),
+        });
         if (aFabriquer.length || aidees) {
           const total = faites + aidees;
           toast(`${seances.length} séances créées, ${total} feuille${total > 1 ? "s" : ""} rangée${total > 1 ? "s" : ""} dans leurs séances`

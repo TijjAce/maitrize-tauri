@@ -1047,6 +1047,12 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .sp-feuille { border: 1px solid var(--border); background: var(--panel-2); color: var(--text); border-radius: 999px; padding: 2px 9px; font-size: 12px; cursor: pointer; }
 .sp-feuille.choisie { border-color: #0d9488; background: color-mix(in srgb, var(--panel) 75%, #0d9488); font-weight: 600; }
 .martiniere-quand { margin: -2px 0 12px; font-size: 13.5px; font-weight: 600; color: var(--text-2); }
+/* Les séquences toutes faites d'un domaine : la classe et ses séquences en tête ; la séquence choisie, ses séances et leurs feuilles en dessous. */
+.stf-choix { margin-bottom: 14px; }
+.stf-tete { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.stf-option { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 0 0 10px; cursor: pointer; }
+.stf-periode { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 13px; }
+.sp-feuille.sp-feuille-plus { cursor: default; border-style: dashed; color: var(--text-2); }
 .retard-eleve { padding: 10px 12px; margin-bottom: 8px; box-shadow: none; }
 .retard-eleve.exclu { opacity: .6; }
 .retard-tete { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
