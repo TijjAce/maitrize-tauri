@@ -39,7 +39,6 @@ import { CollectionsTab } from "./AteliersCollections";
 import { ProblemeDuJourTab } from "./AtelierProblemeDuJour";
 import { SoustractionPoseeTab } from "./AtelierSoustractionPosee";
 import { SequencesToutesFaitesTab } from "./AtelierSequencesToutesFaites";
-import { themeDeLOnglet } from "../sequencesToutesFaites";
 import { MotifsTab } from "./AtelierMotifs";
 import { SuitesTab } from "./AteliersSuites";
 import { VilainPetitCanardTab } from "./AtelierVilainPetitCanard";
@@ -344,7 +343,7 @@ export default function Jeux() {
         : onglet === "arbre" ? <ArbreCalculTab />
         : onglet === "posees" ? <OperationsPoseesTab />
         : onglet === "soustractionPosee" ? <SoustractionPoseeTab />
-        : themeDeLOnglet(onglet) ? <SequencesToutesFaitesTab key={onglet} theme={themeDeLOnglet(onglet)!} />
+        : onglet === "sequencesToutesFaites" ? <SequencesToutesFaitesTab />
         : onglet === "monnaie" ? <MonnaieTab />
         : onglet === "mesures" ? <MesuresTab />
         : onglet === "geometrie" ? <GeometrieTab />
