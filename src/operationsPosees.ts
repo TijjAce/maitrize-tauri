@@ -35,7 +35,17 @@ export interface ReglagesPosees {
   posees: boolean;
   /** Des montants en euros, avec la virgule (additions et soustractions). */
   euros: boolean;
+  /**
+   * Une soustraction où l'on casse, et quoi : une dizaine seulement, une
+   * centaine seulement, ou les deux. Éduscol veut qu'on étudie les cas
+   * séparément avant de les mêler (fiche d'intervention de début de CE2,
+   * 2026). Absent : comme le dit `retenue`.
+   */
+  cassage?: Cassage;
 }
+
+/** Ce qu'une soustraction casse : une dizaine, une centaine, ou les deux. */
+export type Cassage = "dizaine" | "centaine" | "deux";
 
 export const REGLAGES_POSEES: ReglagesPosees = {
   operation: "+", chiffres: 2, chiffresDuSecond: 1, troisTermes: false, retenue: "melange", combien: 6, posees: true, euros: false,
@@ -56,6 +66,30 @@ function aUneRetenue(termes: number[], operation: OperationPosee): boolean {
   }
   return false;
 }
+
+/**
+ * Les rangs qu'une soustraction posée par cassage casse : 1 pour une dizaine
+ * défaite en dix unités, 2 pour une centaine défaite en dix dizaines… Quand
+ * le rang du dessus est vide — 302 − 128 —, on casse d'abord une centaine,
+ * puis une de ses dizaines.
+ */
+export function cassagesDe(a: number, b: number): Set<number> {
+  const da = chiffresDe(a).reverse(), db = chiffresDe(b).reverse();
+  const casses = new Set<number>();
+  for (let k = 0; k < da.length; k++) {
+    if (da[k] >= (db[k] ?? 0)) continue;
+    let j = k + 1;
+    while (j < da.length - 1 && da[j] === 0) j++;
+    for (let r = j; r > k; r--) { da[r] -= 1; da[r - 1] += 10; casses.add(r); }
+  }
+  return casses;
+}
+
+/** La soustraction casse-t-elle ce qu'on a demandé ? */
+const casseCommeDemande = (a: number, b: number, voulu: Cassage) => {
+  const c = cassagesDe(a, b);
+  return voulu === "dizaine" ? c.size === 1 && c.has(1) : voulu === "centaine" ? c.size === 1 && c.has(2) : c.has(1) && c.has(2);
+};
 
 /** Des opérations posées, toutes différentes, avec ou sans retenue comme on l'a demandé — une sur deux quand on mélange. */
 export function operationsPosees(r: ReglagesPosees, graine: number): Posee[] {
@@ -78,9 +112,13 @@ export function operationsPosees(r: ReglagesPosees, graine: number): Posee[] {
       termes = [entre(alea, min, max), entre(alea, chiffres > 2 && alea() < 0.3 ? 10 ** (chiffres - 2) : min, max)];
       if (r.troisTermes) termes.splice(1, 0, entre(alea, 2, 9));
     }
-    const retenue = aUneRetenue(termes, r.operation);
-    const voulue = r.retenue === "melange" ? sortie.length % 2 === 1 : r.retenue === "avec";
-    if (retenue !== voulue) continue;
+    if (r.operation === "−" && r.cassage && chiffres >= 3) {
+      if (!casseCommeDemande(termes[0], termes[1], r.cassage)) continue;
+    } else {
+      const retenue = aUneRetenue(termes, r.operation);
+      const voulue = r.retenue === "melange" ? sortie.length % 2 === 1 : r.retenue === "avec";
+      if (retenue !== voulue) continue;
+    }
     const resultat = r.operation === "+" ? termes.reduce((s, t) => s + t, 0) : r.operation === "−" ? termes[0] - termes[1] : termes[0] * termes[1];
     if (r.euros && r.operation !== "×" && resultat > 99999) continue;
     // Le champ des nombres du CE2 : jusqu'à 10 000.

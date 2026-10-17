@@ -68,7 +68,7 @@ export const MATERIEL_REEL: MaterielReel[] = [
     usage: "Dénombrer, grouper par dix, composer et décomposer : on manipule et on dit ce qu'on fait avant d'écrire.",
     irremplacable: "",
     imprime: { atelier: "cubes", quoi: "les barres de dix et les cubes à découper, et les feuilles qui les font lire" },
-    ateliers: ["cubes", "nombres", "comparer", "martiniere", "numeration"],
+    ateliers: ["cubes", "nombres", "comparer", "martiniere", "numeration", "soustractionPosee"],
     appel: /denombr|collection|groupe(r|ment)s?\b.*dix|dizaine|composer (et|ou) decomposer|decompos(er|ition)s? de nombres|quantite/,
     domaine: MATHS,
     source: `${GUIDE_CP} : « l'utilisation et la manipulation de supports adaptés (cubes, frise numérique, cartes à points, etc.) » ; ${MATERNELLE} : « Manipuler et verbaliser des compositions et des décompositions de nombres ».`,
