@@ -106,6 +106,21 @@ export function retirerPage(m: Manuel, pageId: string): Manuel {
   return { ...m, pages: m.pages.filter((p) => p.id !== pageId).map((p, i) => ({ ...p, numero: i + 1 })) };
 }
 
+/** La page d'à côté — `pas` de -1 pour la précédente, 1 pour la suivante —, sans passer le bord ; la première quand aucune n'est choisie. */
+export function pageVoisine(pages: PageManuel[], pageId: string, pas: number): PageManuel | null {
+  if (!pages.length) return null;
+  const i = pages.findIndex((p) => p.id === pageId);
+  if (i < 0) return pages[0];
+  return pages[Math.min(pages.length - 1, Math.max(0, i + pas))];
+}
+
+/** La page d'un numéro tapé ; la plus proche quand il dépasse ; rien quand ce n'est pas un nombre. */
+export function pageDuNumero(pages: PageManuel[], saisi: string): PageManuel | null {
+  const n = Number.parseInt(saisi.trim(), 10);
+  if (!pages.length || !Number.isFinite(n)) return null;
+  return pages.find((p) => p.numero === n) ?? (n < pages[0].numero ? pages[0] : pages[pages.length - 1]);
+}
+
 /** Un exercice neuf, encadré sur sa page : il reste à le lire. */
 export function exerciceEncadre(zone: Zone, id: string = nouvelId()): ExerciceManuel {
   return { id, numero: "", titre: "", consigne: "", contenu: "", type: "autre", zone, competences: [] };

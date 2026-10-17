@@ -24,15 +24,36 @@ export async function chargerLesManuels(): Promise<Manuel[]> {
 /** Les octets d'un PDF de Fichiers/, gardés le temps de la visite : un manuel importé se relit page après page. */
 const pdfsLus = new Map<string, Uint8Array>();
 
-/** L'image d'une page, en data URL : sa photo, ou la page de son PDF rendue. */
-export async function imageDeLaPage(m: Manuel, p: PageManuel): Promise<string> {
-  if (p.fichier) return `data:${mimeDe(p.fichier)};base64,${await api.fichierRead(p.fichier)}`;
+/** Les octets du PDF d'un manuel importé, lus une fois par visite. */
+export async function octetsDuPdfDuManuel(m: Manuel): Promise<Uint8Array> {
   let octets = pdfsLus.get(m.fichierPdf);
   if (!octets) {
     octets = Uint8Array.from(atob(await api.fichierRead(m.fichierPdf)), (c) => c.charCodeAt(0));
     pdfsLus.set(m.fichierPdf, octets);
   }
-  return `data:image/png;base64,${(await rendrePage(octets, p.numero)).image}`;
+  return octets;
+}
+
+/** L'image d'une page, en data URL : sa photo, ou la page de son PDF rendue. */
+export async function imageDeLaPage(m: Manuel, p: PageManuel): Promise<string> {
+  if (p.fichier) return `data:${mimeDe(p.fichier)};base64,${await api.fichierRead(p.fichier)}`;
+  return `data:image/png;base64,${(await rendrePage(await octetsDuPdfDuManuel(m), p.numero)).image}`;
+}
+
+/** La miniature d'une page photographiée : la photo réduite, en JPEG. */
+export async function miniatureDeLaPhoto(fichier: string, largeur = 140): Promise<string> {
+  const img = new Image();
+  const source = `data:${mimeDe(fichier)};base64,${await api.fichierRead(fichier)}`;
+  await new Promise<void>((ok, ko) => { img.onload = () => ok(); img.onerror = () => ko(new Error("Image illisible")); img.src = source; });
+  const toile = document.createElement("canvas");
+  toile.width = largeur;
+  toile.height = Math.max(1, Math.round((img.height * largeur) / Math.max(1, img.width)));
+  const ctx = toile.getContext("2d");
+  if (!ctx) throw new Error("Rendu impossible dans cette fenêtre.");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, toile.width, toile.height);
+  ctx.drawImage(img, 0, 0, toile.width, toile.height);
+  return toile.toDataURL("image/jpeg", 0.75);
 }
 
 /** L'encadré d'une page, découpé dans son image — avec un liseré pour ne pas couper une lettre —, en PNG base64. */

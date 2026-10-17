@@ -1510,12 +1510,20 @@ details.pli-catalogue[open] .pli-chevron { transform: rotate(90deg); }
 .man-ouvrir b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .man-ouvrir .meta { font-size: 12px; }
 .man-ligne.on .man-ouvrir b { color: var(--accent); }
-.man-pages { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-.man-page { width: 46px; height: 58px; border: 1.5px solid var(--border); border-radius: 6px; background: var(--panel-2); color: var(--text); cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: inherit; }
-.man-page.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
-.man-page-num { font-weight: 700; font-size: 15px; }
-.man-page-etat { font-size: 10.5px; color: var(--text-2); }
+/* Les pages d'un manuel en une bande de miniatures qui défile, au-dessus de la page ouverte ; ← et → vont de l'une à l'autre. */
+.man-bande { position: relative; display: flex; gap: 8px; overflow-x: auto; overflow-y: hidden; margin-top: 12px; padding: 3px 3px 8px; }
+.man-vignette { flex: none; position: relative; width: 68px; padding: 4px 4px 3px; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  border: 1.5px solid var(--border); border-radius: 8px; background: var(--panel-2); color: var(--text); cursor: pointer; font: inherit; }
+.man-vignette:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.man-vignette.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.man-vignette-image { width: 58px; height: 78px; border-radius: 3px; background: #fff; box-shadow: 0 0 0 1px var(--border); overflow: hidden; display: grid; place-items: center; }
+.man-vignette-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.man-vignette-num { font-size: 12px; font-weight: 700; line-height: 1.1; }
+.man-vignette.on .man-vignette-num { color: var(--accent); }
+.man-vignette-ex { position: absolute; top: 1px; right: 1px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; display: grid; place-items: center;
+  background: var(--accent); color: #fff; font-size: 10.5px; font-weight: 700; }
+.man-nav { display: flex; align-items: center; gap: 6px; }
+.man-nav .input { width: 54px; padding: 4px 6px; text-align: center; font-weight: 700; }
 .man-exo { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left; background: none; border: none; border-top: 1px solid var(--border); padding: 8px 4px; cursor: pointer; color: var(--text); font: inherit; }
 .man-exo.on { background: var(--accent-soft); border-radius: 6px; }
 .man-exo-num { flex: none; font-weight: 700; font-size: 13px; min-width: 52px; }
