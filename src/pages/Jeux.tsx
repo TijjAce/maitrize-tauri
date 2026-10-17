@@ -37,6 +37,7 @@ import { GestesTab, MotsEnGestesTab } from "./AteliersGestes";
 import { CategoriserTab } from "./AteliersCategoriser";
 import { CollectionsTab } from "./AteliersCollections";
 import { ProblemeDuJourTab } from "./AtelierProblemeDuJour";
+import { SoustractionPoseeTab } from "./AtelierSoustractionPosee";
 import { MotifsTab } from "./AtelierMotifs";
 import { SuitesTab } from "./AteliersSuites";
 import { VilainPetitCanardTab } from "./AtelierVilainPetitCanard";
@@ -340,6 +341,7 @@ export default function Jeux() {
         : onglet === "calcul" ? <CartesCalculTab />
         : onglet === "arbre" ? <ArbreCalculTab />
         : onglet === "posees" ? <OperationsPoseesTab />
+        : onglet === "soustractionPosee" ? <SoustractionPoseeTab />
         : onglet === "monnaie" ? <MonnaieTab />
         : onglet === "mesures" ? <MesuresTab />
         : onglet === "geometrie" ? <GeometrieTab />
