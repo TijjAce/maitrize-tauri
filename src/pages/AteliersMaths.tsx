@@ -527,6 +527,8 @@ export function MartiniereTab() {
           Calcul mental
           <Aide titre="Calcul mental" vers="droite"><p>Un fait numérique ou une procédure à la fois, tels que les programmes les donnent classe par classe. À l'oral, c'est le procédé La Martinière ; par écrit, un test de fluence.</p></Aide>
         </h3>
+        {/* Quand il se fait, en tête : c'est ce qu'on doit savoir avant de choisir quoi travailler (demande de l'enseignant, octobre 2026). */}
+        <p className="martiniere-quand">En début de séance de numération et de calcul.</p>
         <Field label="Classe">
           <div className="seg">
             {NIVEAUX.map((n) => (
