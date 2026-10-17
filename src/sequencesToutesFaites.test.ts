@@ -42,7 +42,8 @@ import { estLaSeanceDesMots } from "./motsDesProblemes";
 import { DEMARCHE_SOUSTRACTION_POSEE, FEUILLES_SOUSTRACTION_POSEE, graineDeLaFeuille } from "./sequenceSoustractionPosee";
 import {
   CLASSES, DISCIPLINES, DOSSIERS, PHASE_LA_MARTINIERE, classeDuDossier, classesDeLaDemarche, competenceDeLaDemarche, creerLaSequenceToutefaite,
-  domaineDeLaDemarche, lirePeriodes, nomSansClasse, periodeDeLaDemarche, planToutFait, sequencesToutesFaites, tableauDesSequences, COLONNES_DU_TABLEAU,
+  domaineDeLaDemarche, lirePeriodes, nomSansClasse, periodeDeLaDemarche, planToutFait, repereDeLaDemarche, sequencesToutesFaites, tableauDesSequences,
+  COLONNES_DU_TABLEAU,
   type SequenceToutefaite,
 } from "./sequencesToutesFaites";
 
@@ -124,6 +125,25 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     expect(colonne(ce2, "rome-gaule-ce2:CE2")).toBe(1);
     // Une discipline sans séquence ne se montre pas.
     expect(tableauDesSequences(cp.filter((s) => s.domaine.discipline === "Français"), programme).map((b) => b.discipline)).toEqual(["Français"]);
+  });
+
+  it("se placent d'office quand le programme ou un livret les place, chacune avec sa phrase", () => {
+    const reperes = toutes.map((s) => {
+      const fixe = repereDeLaDemarche(s.demarche.id, s.classe);
+      const comp = competenceDeLaDemarche(REFERENTIELS, s.demarche.id, s.classe, fixe?.periode ?? 1);
+      return { s, repere: fixe ?? repereDeLaDemarche(s.demarche.id, s.classe, comp?.competenceTitre ?? "") };
+    });
+    const placees = reperes.filter((x) => x.repere);
+    // 48 avant le relevé du texte des programmes ; six de plus après.
+    expect(placees.length).toBeGreaterThanOrEqual(54);
+    for (const { s, repere } of placees) {
+      expect(repere!.periode, s.cle).toBeGreaterThanOrEqual(1);
+      expect(repere!.raison, s.cle).toMatch(/^(Programme|Livret).+ : « .+ »$/);
+    }
+    const de = (cle: string) => reperes.find((x) => x.s.cle === cle)?.repere?.periode;
+    expect(de("egalites-fractions-ce2:CE2")).toBe(1);
+    expect(de("comprendre-cp:CP")).toBe(3);
+    expect(de("strategies-de-copie:CE1")).toBe(1);
   });
 
   it("gardent les périodes choisies telles qu'on peut s'y fier", () => {

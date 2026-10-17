@@ -137,9 +137,15 @@ export function classesDeLaDemarche(d: Pick<Demarche, "id" | "nom">): ClasseC2[]
 /** Le nom sans la classe qui le termine : la classe est déjà dite. */
 export const nomSansClasse = (nom: string) => nom.replace(/\s*\((?:CP|CE1|CE2)(?:\s*[-,]\s*(?:CP|CE1|CE2))*\)\s*$/, "");
 
-/** La période que le programme ou le livret fixe pour la démarche, à cette classe ; rien quand ils n'en disent pas. */
+/** La période que le programme ou le livret fixe pour la démarche, à cette classe, et la phrase qui la donne ; rien quand ils n'en disent pas. */
+export function repereDeLaDemarche(demarcheId: string, classe: ClasseC2, competence = ""): { periode: number; raison: string } | null {
+  const p = programmationProposee({ niveau: classe, competenceTitre: competence }, demarcheId);
+  return p?.periode ? { periode: p.periode, raison: p.raison } : null;
+}
+
+/** La période seule. */
 export const periodeDeLaDemarche = (demarcheId: string, classe: ClasseC2, competence = ""): number | null =>
-  programmationProposee({ niveau: classe, competenceTitre: competence }, demarcheId)?.periode ?? null;
+  repereDeLaDemarche(demarcheId, classe, competence)?.periode ?? null;
 
 // ── Les séquences ──────────────────────────────────────────────────────────
 

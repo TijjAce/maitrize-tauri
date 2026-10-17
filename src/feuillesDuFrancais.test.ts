@@ -101,7 +101,8 @@ describe("le français du cycle 2, d'après les livrets", () => {
   it("proposent la période du livret, ou celle que la compétence écrit", () => {
     const p = (niveau: string, titre: string, id: string) => programmationProposee({ niveau, competenceTitre: titre }, id)!;
     const cgp = p("CP", "Décoder et encoder 12 à 15 correspondances grapho-phonémiques (CGP) régulières, fréquentes et aisément prononçables. (en fin de période 1)", "cgp-deux-jours-cp");
-    expect([cgp.periode, cgp.raison]).toEqual([1, "Programme de français du cycle 2 (2024), CP : « en fin de période 1 »"]);
+    // La citation est la compétence entière, son moment de l'année compris.
+    expect([cgp.periode, cgp.raison]).toEqual([1, "Programme de français du cycle 2 (2024), CP : « Décoder et encoder 12 à 15 correspondances grapho-phonémiques (CGP) régulières, fréquentes et aisément prononçables. (en fin de période 1) »"]);
     expect(p("CP", "Décoder et encoder de 25 à 30 CGP. (en milieu d’année)", "cgp-deux-jours-cp").periode).toBe(3);
     expect(p("CP", "Écrire des mots dictés avec des lettres muettes apprises (mettre en relation des morphogrammes lexicaux et grammaticaux). (dès la fin de la 2e période)", "cgp-deux-jours-cp").periode).toBe(2);
     // La routine du livret l'emporte : la prosodie à partir de la période 2.
