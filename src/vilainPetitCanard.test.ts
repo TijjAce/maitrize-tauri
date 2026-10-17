@@ -191,9 +191,12 @@ describe("la séquence du Vilain Petit Canard, d'après le guide du vocabulaire 
   it("se range dans Fabriquer comme une séquence toute faite, et non comme un support à fabriquer", () => {
     const outils = FAMILLES.flatMap((f) => f.outils);
     expect(outils.find((o) => o.id === "vilainPetitCanard")?.sequence).toBe(true);
-    // Les autres ateliers fabriquent des supports : le problème du jour, qui prépare une période entière, et la soustraction posée du CE1
-    // se disent aussi séquences toutes faites.
-    expect(outils.filter((o) => o.sequence).map((o) => o.id)).toEqual(["vilainPetitCanard", "problemeDuJour", "soustractionPosee"]);
+    // Les autres ateliers fabriquent des supports : le problème du jour, qui prépare une période entière, la soustraction posée du CE1
+    // et les séquences des déroulements de mathématiques, domaine par domaine, se disent aussi séquences toutes faites.
+    expect(outils.filter((o) => o.sequence).map((o) => o.id)).toEqual([
+      "vilainPetitCanard", "sequencesProblemes", "problemeDuJour", "sequencesNombres", "soustractionPosee", "sequencesCalcul",
+      "sequencesFractions", "sequencesGrandeurs", "sequencesGeometrie", "sequencesDonnees",
+    ]);
   });
 
   it("se nomme et vise ce que dit le guide, à chaque niveau", () => {
