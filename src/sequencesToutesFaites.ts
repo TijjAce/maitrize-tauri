@@ -5,10 +5,10 @@
 // et les guides — se prennent aussi tout faits dans Fabriquer : leurs
 // séances, et toutes les feuilles que les ateliers savent en fabriquer, à la
 // classe que leur nom donne. Puis « par famille, niveaux, moment de
-// l'année » : un dossier par classe, du CP au CE2, où les mathématiques, le
-// français et l'histoire-géographie se rangent par discipline et domaine, ou
-// par période — celle du programme ou du livret, sinon celle que
-// l'enseignant leur donne. La soustraction posée du CE1 y est aussi.
+// l'année » : un dossier par classe, du CP au CE2, et dedans un tableau — les
+// mathématiques, le français et l'histoire-géographie en lignes, domaine par
+// domaine, les périodes en colonnes : celle du programme ou du livret, sinon
+// celle où l'enseignant les glisse. La soustraction posée du CE1 y est aussi.
 //
 // En numération et en calcul, chaque séance s'ouvre sur le calcul mental, au
 // procédé La Martinière (demande de l'enseignant) — sauf les séquences de
@@ -190,12 +190,7 @@ export const DOSSIERS: Record<string, ClasseC2> = { sequencesCP: "CP", sequences
 
 export const classeDuDossier = (onglet: string): ClasseC2 | null => DOSSIERS[onglet] ?? null;
 
-// ── Ranger : par famille, par moment de l'année ────────────────────────────
-
-export type Rangement = "famille" | "moment";
-
-export interface GroupeDeSequences { titre: string; sequences: SequenceToutefaite[] }
-export interface SectionDeSequences { cle: string; icone: string; titre: string; aide: string; nombre: number; groupes: GroupeDeSequences[] }
+// ── Le tableau : les familles en lignes, les périodes en colonnes ──────────
 
 export const PERIODES_DE_L_ANNEE: { periode: number; aide: string }[] = [
   { periode: 1, aide: "De la rentrée à la Toussaint" },
@@ -205,32 +200,28 @@ export const PERIODES_DE_L_ANNEE: { periode: number; aide: string }[] = [
   { periode: 5, aide: "Des vacances de printemps à l'été" },
 ];
 
-const minuscule = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
+/** Les colonnes du tableau : les cinq périodes, puis les séquences que le programme ne place pas. */
+export const COLONNES_DU_TABLEAU: { periode: number | null; titre: string; aide: string }[] = [
+  ...PERIODES_DE_L_ANNEE.map(({ periode, aide }) => ({ periode, titre: `Période ${periode}`, aide })),
+  { periode: null, titre: "Sans période", aide: "Le programme n'en fixe pas" },
+];
+
+export interface LigneDuTableau { domaine: Domaine; cases: SequenceToutefaite[][] }
+export interface BlocDuTableau { discipline: Discipline; icone: string; nombre: number; lignes: LigneDuTableau[] }
 
 /**
- * Les séquences rangées : par famille — une section par discipline, un
- * groupe par domaine —, ou par moment de l'année — une section par période,
- * et celles dont la période n'est pas fixée. Dans chaque groupe, par classe,
- * puis par période.
+ * Le tableau d'une classe, comme une programmation de l'année : une ligne par
+ * domaine qui a des séquences, groupées par discipline ; une case par
+ * colonne — la période du programme ou du livret, ou celle que l'enseignant
+ * a choisie.
  */
-export function rangerLesSequences(liste: SequenceToutefaite[], rangement: Rangement, periodeDe: (s: SequenceToutefaite) => number | null): SectionDeSequences[] {
-  const rang = new Map(liste.map((s, i) => [s, i]));
-  const ordre = (a: SequenceToutefaite, b: SequenceToutefaite) => CLASSES.indexOf(a.classe) - CLASSES.indexOf(b.classe)
-    || (periodeDe(a) ?? 6) - (periodeDe(b) ?? 6) || rang.get(a)! - rang.get(b)!;
-  const parDomaine = (ss: SequenceToutefaite[], avecLaDiscipline: boolean): GroupeDeSequences[] => DOMAINES
-    .map((d) => ({ titre: avecLaDiscipline ? `${d.discipline} — ${minuscule(d.nom)}` : d.nom, sequences: ss.filter((s) => s.domaine === d).sort(ordre) }))
-    .filter((g) => g.sequences.length > 0);
-  const section = (cle: string, icone: string, titre: string, aide: string, ss: SequenceToutefaite[], avecLaDiscipline = true): SectionDeSequences =>
-    ({ cle, icone, titre, aide, nombre: ss.length, groupes: parDomaine(ss, avecLaDiscipline) });
-  const sections = rangement === "famille"
-    ? DISCIPLINES.map((d) => section(`famille:${d.nom}`, d.icone, d.nom,
-      DOMAINES.filter((x) => x.discipline === d.nom).map((x, i) => (i ? minuscule(x.nom) : x.nom)).join(", "),
-      liste.filter((s) => s.domaine.discipline === d.nom), false))
-    : [
-      ...PERIODES_DE_L_ANNEE.map(({ periode, aide }) => section(`moment:${periode}`, "🗓", `Période ${periode}`, aide, liste.filter((s) => periodeDe(s) === periode))),
-      section("moment:sans", "🗓", "Sans période fixée", "Le programme n'en fixe pas : choisissez-la dans la séquence", liste.filter((s) => periodeDe(s) === null)),
-    ];
-  return sections.filter((s) => s.nombre > 0);
+export function tableauDesSequences(liste: SequenceToutefaite[], periodeDe: (s: SequenceToutefaite) => number | null): BlocDuTableau[] {
+  return DISCIPLINES.map((d) => {
+    const lignes = DOMAINES.filter((x) => x.discipline === d.nom)
+      .map((domaine) => ({ domaine, cases: COLONNES_DU_TABLEAU.map((c) => liste.filter((s) => s.domaine === domaine && periodeDe(s) === c.periode)) }))
+      .filter((l) => l.cases.some((c) => c.length > 0));
+    return { discipline: d.nom, icone: d.icone, nombre: lignes.reduce((n, l) => n + l.cases.reduce((m, c) => m + c.length, 0), 0), lignes };
+  }).filter((b) => b.nombre > 0);
 }
 
 // ── Le calcul mental en tête de séance ─────────────────────────────────────

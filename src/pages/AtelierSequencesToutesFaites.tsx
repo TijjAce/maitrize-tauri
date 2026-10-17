@@ -5,7 +5,7 @@ import { seanceDeLaParole } from "../aidesDesSequences";
 import { Aide } from "../components/Aide";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import type { CompetenceSelectionnee } from "../components/CompetenceTree";
-import { PliDuCatalogue } from "../components/PliDuCatalogue";
+import { openCtx } from "../components/ctxmenu";
 import { toast } from "../components/Toaster";
 import { Empty, Field, Input, Modal, useAsync } from "../components/ui";
 import { useMemoire } from "../components/useMemoire";
@@ -17,9 +17,9 @@ import { avecLaSeanceDesMots, estLaSeanceDesMots } from "../motsDesProblemes";
 import { lireProfils } from "../planDeLaClasse";
 import { graineDeLaFeuille } from "../sequenceSoustractionPosee";
 import {
-  CLE_PERIODES, DISCIPLINES, competenceDeLaDemarche, creerLaSequenceToutefaite, lirePeriodes, nomSansClasse,
-  ouvreSurLeCalculMental, periodeDeLaDemarche, planToutFait, rangerLesSequences, sequencesToutesFaites,
-  type ContexteDeLaClasse, type Discipline, type PlanToutFait, type Rangement, type SequenceToutefaite,
+  CLE_PERIODES, COLONNES_DU_TABLEAU, PERIODES_DE_L_ANNEE, competenceDeLaDemarche, creerLaSequenceToutefaite, lirePeriodes, nomSansClasse,
+  ouvreSurLeCalculMental, periodeDeLaDemarche, planToutFait, sequencesToutesFaites, tableauDesSequences,
+  type ContexteDeLaClasse, type PlanToutFait, type SequenceToutefaite,
 } from "../sequencesToutesFaites";
 import { chargerVacances, periodeDuJour } from "../vacances";
 import { Colonnes } from "./AteliersMaths";
@@ -27,17 +27,20 @@ import { Colonnes } from "./AteliersMaths";
 // ── Fabriquer › Séquences toutes faites › un dossier par classe ───────────
 //
 // Les déroulements de la fiche d'une séquence, pris tout faits (voir
-// sequencesToutesFaites.ts), dans le dossier de leur classe : rangés par
-// famille ou par moment de l'année, comme le catalogue l'est par famille ou
-// par moment de la séquence. La séquence qu'on choisit s'ouvre sous son
-// groupe : ses séances, leurs feuilles, et à droite la feuille choisie telle
-// qu'elle s'imprimera, du même tirage que celle qu'on créera.
+// sequencesToutesFaites.ts), dans le dossier de leur classe, en tableau
+// (demande de l'enseignant) : les familles en lignes, domaine par domaine,
+// les périodes de l'année en colonnes. Une séquence se glisse d'une période
+// à l'autre de sa ligne — ou se range au clic droit — : c'est la
+// programmation de la classe. Celle qu'on choisit s'ouvre sous sa ligne :
+// ses séances, leurs feuilles, et à droite la feuille choisie telle qu'elle
+// s'imprimera, du même tirage que celle qu'on créera.
 
-const lireRangement = (brut: unknown): Rangement => (brut === "moment" ? brut : "famille");
-const lireDiscipline = (brut: unknown): Discipline | "toutes" => (DISCIPLINES.some((d) => d.nom === brut) ? (brut as Discipline) : "toutes");
 const lirePlis = (brut: unknown): string[] => (Array.isArray(brut) ? brut.filter((x): x is string => typeof x === "string") : []);
 
 const finDePhrase = (s: string) => (/[.!?…»]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
+
+/** Le type de donnée d'une séquence qu'on glisse d'une période à l'autre. */
+const TYPE_SEQUENCE = "text/x-maitrize-sequence";
 
 interface Infos { competence: CompetenceSelectionnee | null; periode: number | null }
 
@@ -51,12 +54,10 @@ export function SequencesToutesFaitesTab({ classe }: { classe: ClasseC2 }) {
     const vacances = await chargerVacances(jour).catch(() => []);
     return periodeDuJour(jour, Array.isArray(vacances) ? vacances : []);
   }, []);
-  const [rangement, setRangement] = useMemoire<Rangement>("sequencesToutesFaites:rangement", lireRangement);
-  const [discipline, setDiscipline] = useMemoire<Discipline | "toutes">("sequencesToutesFaites:discipline", lireDiscipline);
+  // Chaque dossier garde ses disciplines repliées.
   const [plis, setPlis] = useMemoire<string[]>("sequencesToutesFaites:plis", lirePlis);
-  // Chaque dossier garde ses plis.
-  const pli = (cle: string) => `${classe}:${cle}`;
-  const plier = (cle: string, plie: boolean) => setPlis(plie ? [...new Set([...plis, pli(cle)])] : plis.filter((x) => x !== pli(cle)));
+  const pli = (discipline: string) => `${classe}:${discipline}`;
+  const basculer = (discipline: string) => setPlis(plis.includes(pli(discipline)) ? plis.filter((x) => x !== pli(discipline)) : [...plis, pli(discipline)]);
   // La période que l'enseignant donne à une séquence : un réglage, qui suit d'un ordinateur à l'autre.
   const { data: periodesLues } = useAsync(() => api.settingGet(CLE_PERIODES).then(lirePeriodes).catch(() => ({} as Record<string, number>)), []);
   const [periodesChoisies, setPeriodesChoisies] = React.useState<Record<string, number> | null>(null);
@@ -72,17 +73,20 @@ export function SequencesToutesFaitesTab({ classe }: { classe: ClasseC2 }) {
     return sortie;
   }, [toutes, referentiels, periodeDuMoment]);
   const periodeDe = React.useCallback((s: SequenceToutefaite) => choisies[s.cle] ?? infos.get(s.cle)?.periode ?? null, [choisies, infos]);
-  // Par famille, toutes les disciplines ; par moment de l'année, celle qu'on choisit.
-  const visibles = React.useMemo(() => toutes.filter((s) => rangement === "famille" || discipline === "toutes" || s.domaine.discipline === discipline),
-    [toutes, rangement, discipline]);
-  const sections = React.useMemo(() => rangerLesSequences(visibles, rangement, periodeDe), [visibles, rangement, periodeDe]);
+  const tableau = React.useMemo(() => tableauDesSequences(toutes, periodeDe), [toutes, periodeDe]);
   const [choisieCle, setChoisieCle] = React.useState("");
-  const choisie = visibles.find((s) => s.cle === choisieCle) ?? null;
-  const choisirPeriode = (s: SequenceToutefaite, p: number) => {
-    const suite = { ...choisies, [s.cle]: p };
+  const choisie = toutes.find((s) => s.cle === choisieCle) ?? null;
+  /** Ranger une séquence dans une période ; `null` la rend à celle du programme, ou à aucune. */
+  const ranger = (s: SequenceToutefaite, p: number | null) => {
+    const suite = { ...choisies };
+    if (p === null) delete suite[s.cle]; else suite[s.cle] = p;
     setPeriodesChoisies(suite);
     api.settingSet(CLE_PERIODES, JSON.stringify(suite)).catch((e) => toast("Période non enregistrée : " + String(e), { icone: "⚠️" }));
   };
+  // La séquence qu'on glisse, et la case survolée.
+  const [enVol, setEnVol] = React.useState("");
+  const [survol, setSurvol] = React.useState("");
+  const glissee = toutes.find((s) => s.cle === enVol);
   // Le plan de la classe et les étiquettes des maquettes de la géographie, comme la fiche d'une séquence.
   const classeDuPlan: ContexteDeLaClasse = React.useMemo(() => {
     const profil = lireProfils(reglages?.["salle:profils"])[0];
@@ -91,62 +95,104 @@ export function SequencesToutesFaitesTab({ classe }: { classe: ClasseC2 }) {
       prenoms: (eleves ?? []).map((e) => e.nom.trim().split(/\s+/)[0]).filter(Boolean),
     };
   }, [reglages, eleves]);
-  const meta = (s: SequenceToutefaite) => {
-    const p = periodeDe(s);
-    return [
-      rangement !== "moment" && p ? `période ${p}` : "",
-      `${avecLaSeanceDesMots(s.demarche).seances.length} séances`,
-    ].filter(Boolean).join(" · ");
+  const menu = (e: React.MouseEvent, s: SequenceToutefaite) => {
+    const programme = infos.get(s.cle)?.periode ?? null;
+    openCtx(e, [
+      ...PERIODES_DE_L_ANNEE.map(({ periode }) => ({
+        label: `Ranger en période ${periode}${periodeDe(s) === periode ? " ✓" : ""}`, icon: "🗓", onClick: () => ranger(s, periode),
+      })),
+      ...(choisies[s.cle] !== undefined ? [{
+        label: programme ? `Revenir à la période ${programme} du programme` : "Retirer de sa période", icon: "↺", sep: true, onClick: () => ranger(s, null),
+      }] : []),
+    ]);
   };
+  const colonnes = COLONNES_DU_TABLEAU.length + 1;
   return (
     <>
-      <div className="stf-barre">
-        <div className="seg" role="group" aria-label="Ranger les séquences">
-          <button type="button" className={rangement === "famille" ? "active" : ""} onClick={() => setRangement("famille")}>Par famille</button>
-          <button type="button" className={rangement === "moment" ? "active" : ""} onClick={() => setRangement("moment")}>Par moment de l'année</button>
-        </div>
-        {rangement === "moment" && (
-          <div className="seg" role="group" aria-label="La discipline">
-            <button type="button" className={discipline === "toutes" ? "active" : ""} onClick={() => setDiscipline("toutes")}>Toutes</button>
-            {DISCIPLINES.map((d) => (
-              <button key={d.nom} type="button" className={d.nom === discipline ? "active" : ""} onClick={() => setDiscipline(d.nom)}>{d.icone} {d.court}</button>
-            ))}
-          </div>
-        )}
-        <Aide titre="D'où viennent ces séquences" vers="droite">
-          <p>Ce sont les déroulements que propose la fiche d'une séquence : les séquences des livrets d'Éduscol, ou bâties sur le programme et sur les guides. Chacune dit sa source.</p>
-          <p>La période vient du programme ou du livret quand ils la fixent ; sinon, choisissez-la dans la séquence : elle s'y range.</p>
-          <p>Les feuilles viennent des ateliers de Fabriquer, à la classe de la séquence : chacune se refait dans son atelier.</p>
-        </Aide>
-      </div>
-      {sections.map((section) => (
-        <section key={section.cle} className="famille-catalogue">
-          <PliDuCatalogue ouvert={!plis.includes(pli(section.cle))} onBasculer={(o) => plier(section.cle, !o)}
-            icone={section.icone} titre={section.titre} aide={section.aide} nombre={section.nombre}
-            compte={`${section.nombre} séquence${section.nombre > 1 ? "s" : ""}`}>
-            {section.groupes.map((g) => (
-              <div key={g.titre} className="stf-groupe">
-                <div className="stf-groupe-titre">{g.titre}</div>
-                <div className="deroulements-possibles stf-liste" role="radiogroup" aria-label={g.titre}>
-                  {g.sequences.map((s) => (
-                    <button key={s.cle} type="button" role="radio" aria-checked={s === choisie}
-                      className={`deroulement-choix${s === choisie ? " actif" : ""}`} onClick={() => setChoisieCle(s === choisie ? "" : s.cle)}>
-                      <b>{nomSansClasse(s.demarche.nom)}</b>
-                      <span className="meta">{meta(s)}</span>
+      <div className="stf-tableau-cadre">
+        <table className="stf-tableau">
+          <thead>
+            <tr>
+              <th className="stf-coin">
+                <Aide titre="Le tableau des séquences" vers="droite">
+                  <p>Ce sont les déroulements que propose la fiche d'une séquence : les séquences des livrets d'Éduscol, ou bâties sur le programme et sur les guides. Chacune dit sa source.</p>
+                  <p>Chacune est dans la période où le programme ou le livret la place. Glissez-la dans une autre période de sa ligne, ou rangez-la au clic droit : le tableau devient la programmation de la classe.</p>
+                  <p>Un clic l'ouvre : ses séances, et toutes les feuilles que les ateliers en fabriquent.</p>
+                </Aide>
+              </th>
+              {COLONNES_DU_TABLEAU.map((c) => (
+                <th key={c.titre} scope="col">{c.titre}<span className="stf-colonne-aide">{c.aide}</span></th>
+              ))}
+            </tr>
+          </thead>
+          {tableau.map((bloc) => {
+            const plie = plis.includes(pli(bloc.discipline));
+            return (
+              <tbody key={bloc.discipline}>
+                <tr className="stf-discipline">
+                  <th colSpan={colonnes} scope="rowgroup">
+                    <button type="button" aria-expanded={!plie} onClick={() => basculer(bloc.discipline)}>
+                      <span className={`pli-chevron${plie ? "" : " ouvert"}`} aria-hidden="true">›</span>
+                      {bloc.icone} {bloc.discipline}
+                      <span className="pli-nombre">{bloc.nombre} séquence{bloc.nombre > 1 ? "s" : ""}</span>
                     </button>
-                  ))}
-                </div>
-                {choisie && g.sequences.includes(choisie) && (
-                  <DetailDeLaSequence key={`${choisie.cle}:${section.cle}`} s={choisie} infos={infos.get(choisie.cle)}
-                    periode={periodeDe(choisie) ?? periodeDuMoment ?? 1} onPeriode={(p) => choisirPeriode(choisie, p)}
-                    classeDuPlan={classeDuPlan} competenceCherchee={Boolean(referentiels)} />
-                )}
-              </div>
-            ))}
-          </PliDuCatalogue>
-        </section>
-      ))}
-      {!sections.length && <Empty icone="📁" titre="Aucune séquence" sous={`Au ${classe}, dans cette discipline, aucune séquence n'est toute faite.`} />}
+                  </th>
+                </tr>
+                {!plie && bloc.lignes.map((ligne) => (
+                  <React.Fragment key={ligne.domaine.id}>
+                    <tr>
+                      <th scope="row" className="stf-domaine">{ligne.domaine.nom}</th>
+                      {COLONNES_DU_TABLEAU.map((c, j) => {
+                        const cleCase = `${ligne.domaine.id}:${c.periode ?? "sans"}`;
+                        // On glisse dans une période de sa ligne ; « Sans période » ne se choisit pas.
+                        const accepte = c.periode !== null && glissee?.domaine === ligne.domaine;
+                        return (
+                          <td key={cleCase} className={`stf-case${survol === cleCase ? " survol" : ""}`}
+                            onDragOver={accepte ? (e) => {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = "move";
+                              if (survol !== cleCase) setSurvol(cleCase);
+                            } : undefined}
+                            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setSurvol((x) => (x === cleCase ? "" : x)); }}
+                            onDrop={accepte ? (e) => {
+                              e.preventDefault();
+                              const s = toutes.find((x) => x.cle === (e.dataTransfer.getData(TYPE_SEQUENCE) || enVol));
+                              setSurvol("");
+                              setEnVol("");
+                              if (s && c.periode !== null && periodeDe(s) !== c.periode) ranger(s, c.periode);
+                            } : undefined}>
+                            {ligne.cases[j].map((s) => (
+                              <button key={s.cle} type="button" draggable aria-pressed={s === choisie} title={s.demarche.nom}
+                                className={`stf-puce${s === choisie ? " actif" : ""}${s.cle === enVol ? " en-vol" : ""}`}
+                                onClick={() => setChoisieCle(s === choisie ? "" : s.cle)}
+                                onContextMenu={(e) => menu(e, s)}
+                                onDragStart={(e) => { e.dataTransfer.setData(TYPE_SEQUENCE, s.cle); e.dataTransfer.effectAllowed = "move"; setEnVol(s.cle); }}
+                                onDragEnd={() => { setEnVol(""); setSurvol(""); }}>
+                                <span className="stf-puce-nom">{nomSansClasse(s.demarche.nom)}</span>
+                                <span className="stf-puce-meta">{avecLaSeanceDesMots(s.demarche).seances.length} séances</span>
+                              </button>
+                            ))}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    {choisie && choisie.domaine === ligne.domaine && (
+                      <tr className="stf-ligne-detail">
+                        <td colSpan={colonnes}>
+                          <DetailDeLaSequence key={choisie.cle} s={choisie} infos={infos.get(choisie.cle)}
+                            periode={periodeDe(choisie) ?? periodeDuMoment ?? 1} onPeriode={(p) => ranger(choisie, p)}
+                            classeDuPlan={classeDuPlan} competenceCherchee={Boolean(referentiels)} />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            );
+          })}
+        </table>
+      </div>
+      {!tableau.length && <Empty icone="📁" titre="Aucune séquence" sous={`Au ${classe}, aucune séquence n'est toute faite.`} />}
     </>
   );
 }
