@@ -26,7 +26,7 @@ describe("tableau d'économie de jetons", () => {
     expect(dePrenom("Tom")).toBe("de Tom");
     expect(dePrenom("Ines")).toBe("d'Ines");
     expect(dePrenom("émile")).toBe("d'émile");
-    expect(dePrenom("Hugo")).toBe("de Hugo");
+    expect(dePrenom("Henri")).toBe("de Henri");
   });
 
   it("découpe des jetons de la taille des cases : une seule mesure pour les deux", () => {

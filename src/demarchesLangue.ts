@@ -80,7 +80,7 @@ const PHRASE_CP: Demarche = {
 const TYPES_FORMES: Demarche = {
   id: "types-formes-c2", nom: "Les types et les formes de phrases (CP, CE1, CE2)", famille: "Français",
   source: SOURCE,
-  resume: "S'appuyer sur la ponctuation pour reconnaître les trois types de phrases — déclarative, interrogative, impérative — et reconnaître les formes négative et exclamative ; au CE1, savoir effectuer des transformations ; au CE2, les produire. Exemples de réussite : au CP, manipuler les phrases déclaratives et impératives avec la forme négative et expliciter le changement de sens ; au CE2, « Jean, ferme la porte. → Jean, ne ferme pas la porte. ». En lecture à voix haute, la ponctuation guide l'intonation.",
+  resume: "S'appuyer sur la ponctuation pour reconnaître les trois types de phrases — déclarative, interrogative, impérative — et reconnaître les formes négative et exclamative ; au CE1, savoir effectuer des transformations ; au CE2, les produire. Exemples de réussite : au CP, manipuler les phrases déclaratives et impératives avec la forme négative et expliciter le changement de sens ; au CE2, mettre une phrase impérative à la forme négative : « Ferme la porte. → Ne ferme pas la porte. ». En lecture à voix haute, la ponctuation guide l'intonation.",
   seances: [
     trois("Dire, demander, ordonner", "reconnaître une phrase qui dit, une phrase qui demande, une phrase qui donne un ordre.",
       "Trois phrases dites à voix haute : « Tu ranges ta chambre. Tu ranges ta chambre ? Range ta chambre. » Qu'est-ce qui change ?",

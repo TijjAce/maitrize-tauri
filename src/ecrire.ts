@@ -115,7 +115,7 @@ export const A_TRANSFORMER: Record<Classe, { texte: string; mots: string[]; cons
   ],
   CE2: [
     { texte: "Le petit renard sort de son terrier. Il renifle l'air frais du matin et part chercher à manger.", mots: ["Les petits renards", "leur", "ils"], consigne: "Réécris le texte avec plusieurs personnages : accorde ce qui doit l'être.", exemple: "Les petits renards sortent de leur terrier. Ils reniflent l'air frais du matin et partent chercher à manger." },
-    { texte: "Aujourd'hui, Hugo prend le train. Il regarde le paysage et mange une pomme.", mots: ["Hier", "demain"], consigne: "Réécris le texte au passé (Hier, …), puis au futur (Demain, …).", exemple: "Hier, Hugo a pris le train. Il a regardé le paysage et a mangé une pomme. — Demain, Hugo prendra le train. Il regardera le paysage et mangera une pomme." },
+    { texte: "Aujourd'hui, Nils prend le train. Il regarde le paysage et mange une pomme.", mots: ["Hier", "demain"], consigne: "Réécris le texte au passé (Hier, …), puis au futur (Demain, …).", exemple: "Hier, Nils a pris le train. Il a regardé le paysage et a mangé une pomme. — Demain, Nils prendra le train. Il regardera le paysage et mangera une pomme." },
   ],
 };
 

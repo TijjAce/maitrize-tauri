@@ -8,8 +8,8 @@
 // la terminaison, la conjugaison. Les exemples du programme sont repris :
 // « un petit garçon → une petite fille », « Le chat miaule → Les chats
 // miaulent », « Je suis bleue : suis-je la mer ou l'océan ? », « La
-// maitresse raconte une histoire aux enfants → Elle raconte… », « Jean,
-// ferme la porte → Jean, ne ferme pas la porte », « ils plieront, tu as
+// maitresse raconte une histoire aux enfants → Elle raconte… », « Armand,
+// ferme la porte → Armand, ne ferme pas la porte », « ils plieront, tu as
 // plié, vous pliez → plier ». Guide CE1 (2019), p. 95-97 : la leçon part de
 // l'observation et de la manipulation d'un corpus — classer, réécrire,
 // surligner, recopier dans un tableau, « démonter des phrases ».
@@ -94,7 +94,7 @@ export const PHRASES_A_PONCTUER: { phrase: string; type: TypeDePhrase; point: ".
 
 /** Les phrases à mettre à la forme négative ; la première, l'exemple du programme (CE2). */
 export const A_NEGATIVER: { phrase: string; negative: string }[] = [
-  { phrase: "Jean, ferme la porte.", negative: "Jean, ne ferme pas la porte." },
+  { phrase: "Armand, ferme la porte.", negative: "Armand, ne ferme pas la porte." },
   { phrase: "Le chat dort.", negative: "Le chat ne dort pas." },
   { phrase: "Nous aimons les épinards.", negative: "Nous n'aimons pas les épinards." },
   { phrase: "Elle est contente.", negative: "Elle n'est pas contente." },
