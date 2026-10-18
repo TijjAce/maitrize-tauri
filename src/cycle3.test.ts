@@ -131,3 +131,75 @@ describe("le calcul du cours moyen : estimer, les parenthèses, le calcul posé"
     }
   });
 });
+
+describe("les problèmes, l'algèbre et la proportionnalité du cours moyen", () => {
+  const PROBLEMES = MATHS.filter((c) => /résolution de problèmes|algèbre|proportionnalité/i.test(c.cible.competenceGeneraleTitre ?? ""));
+
+  it("donnent à chaque compétence une séquence de sa classe, avec ses feuilles", () => {
+    expect(PROBLEMES.length).toBe(30);
+    const vues = new Set<string>();
+    for (const { cible, classe } of PROBLEMES) {
+      const d = demarcheSuggeree(cible, REF);
+      expect(d.id, `${classe} — ${cible.competenceTitre}`).toMatch(new RegExp(`-${classe.toLowerCase()}$`));
+      expect(d.source, d.id).toMatch(/programme de mathématiques du cycle 3 \(2025\)|Livret d'accompagnement de mathématiques du CM[12]/);
+      if (vues.has(d.id)) continue;
+      vues.add(d.id);
+      const plan = planDesFeuilles(d.id, { classe, periode: 3, competence: cible.competenceTitre ?? "" })!;
+      expect(plan.materiel.length, d.id).toBe(d.seances.length);
+      for (const f of plan.feuilles) {
+        expect(f.seance, `${d.id} — ${f.titre}`).toBeLessThan(d.seances.length);
+        // Ni nombre faux, ni « 2,0 » : un entier s'écrit sans virgule.
+        for (const graine of [1, 2, 3]) expect(f.fabriquer(graine).html, `${d.id} — ${f.titre}`).not.toMatch(/NaN|undefined|Infinity|\[object|\d,0+(?!\d)/);
+      }
+    }
+    expect(vues.size).toBe(17);
+    // Les deux séquences des livrets : l'algèbre au CM1, la proportionnalité au CM2.
+    const inconnu = PROBLEMES.find((c) => c.classe === "CM1" && /valeur d.un nombre inconnu/.test(c.cible.competenceTitre ?? ""))!;
+    expect(demarcheSuggeree(inconnu.cible, REF).id).toBe("algebre-cm1");
+    const resoudre = PROBLEMES.find((c) => c.classe === "CM2" && /résoudre un problème de proportionnalité/i.test(c.cible.competenceTitre ?? ""))!;
+    expect(demarcheSuggeree(resoudre.cible, REF).id).toBe("proportionnalite-cm2");
+  });
+
+  it("écrivent au corrigé des calculs tous justes", async () => {
+    const { problemesCM } = await import("./problemesCoursMoyen");
+    const { htmlAlgebre, EXERCICES_ALGEBRE } = await import("./algebreCoursMoyen");
+    const NOMBRE = String.raw`\d{1,3}(?:[   ]\d{3})*(?:,\d+)?`;
+    const OPERATION = new RegExp(String.raw`(?<![\d,/(])(\(?${NOMBRE}(?:\s[+−×÷]\s\(?${NOMBRE}\)?)+)\s=\s(${NOMBRE})(?![\d/])`, "g");
+    const lire = (t: string) => Number(t.replace(/[   ]/g, "").replace(",", "."));
+    // a op b op c…, × et ÷ d'abord ; une parenthèse ouvrante se calcule en premier.
+    const valeur = (expr: string): number => {
+      const dedans = /\(([^()]*)\)/.exec(expr);
+      if (dedans) return valeur(expr.replace(dedans[0], String(valeur(dedans[1])).replace(".", ",")));
+      const morceaux = expr.trim().split(/\s([+−×÷])\s/);
+      const termes: (number | string)[] = [lire(morceaux[0])];
+      for (let i = 1; i < morceaux.length; i += 2) {
+        const x = lire(morceaux[i + 1]);
+        if (morceaux[i] === "×" || morceaux[i] === "÷") { const g = termes.pop() as number; termes.push(morceaux[i] === "×" ? g * x : g / x); } else termes.push(morceaux[i], x);
+      }
+      let v = termes[0] as number;
+      for (let i = 1; i < termes.length; i += 2) v = termes[i] === "+" ? v + (termes[i + 1] as number) : v - (termes[i + 1] as number);
+      return v;
+    };
+    let verifiees = 0;
+    const verifier = (texte: string, ou: string) => {
+      for (const m of texte.matchAll(OPERATION)) {
+        verifiees++;
+        expect(valeur(m[1]), `${ou} : ${m[0]}`).toBeCloseTo(lire(m[2]), 6);
+      }
+    };
+    const sortes = ["partie-tout", "comparaison", "deux-etapes", "comparaison-deux-etapes", "parts-egales", "comparaison-multiplicative", "mixte",
+      "denombrement", "optimisation", "algorithme", "proportionnalite", "proportionnalite-deux-etapes", "proportionnalite-additive", "proportionnalite-combinee"] as const;
+    for (const classe of ["CM1", "CM2"] as const) {
+      for (const sorte of sortes) for (let g = 1; g <= 25; g++) {
+        for (const pb of problemesCM({ classe, sortes: [sorte], combien: 4 }, g)) verifier(pb.calcul, `${classe} ${sorte} ${g}`);
+      }
+      // Les égalités à trou se vérifient à part : leurs « … » comblés ne sont pas des calculs écrits.
+      for (const { id } of EXERCICES_ALGEBRE.filter((e) => e.id !== "egalites")) for (let g = 1; g <= 25; g++) {
+        const corrige = htmlAlgebre({ classe, exercices: [id], combien: 6 }, g).split('class="page corrige"')[1]
+          .replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+        verifier(corrige, `${classe} ${id} ${g}`);
+      }
+    }
+    expect(verifiees).toBeGreaterThan(3000);
+  });
+});

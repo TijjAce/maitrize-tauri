@@ -137,6 +137,14 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
     ...ligne("après les fractions décimales de la période 2, l'écriture à virgule qui les code — « introduits sous la forme de fractions "
       + "décimales puis exprimés avec une écriture à virgule », dit le programme — ; puis comparer, arrondir, ranger.",
     { "nombres-decimaux-cm1": 3, "comparer-decimaux-cm1": 4 }),
+    ...ligne("dans la continuité du cycle 2, les problèmes additifs en une étape dès la rentrée, avec les décimaux et les fractions que le "
+      + "programme fait rencontrer dès la période 1 ; puis ceux en deux ou trois étapes.", { "problemes-additifs-cm1": 1, "problemes-etapes-cm1": 3 }),
+    ...ligne("avec les tables de multiplication revues et la division de la période 2 ; puis les problèmes qui mêlent les quatre opérations.",
+      { "problemes-multiplicatifs-cm1": 2, "problemes-mixtes-cm1": 4 }),
+    ...ligne("après les problèmes additifs et multiplicatifs, dont la séquence du livret réutilise le sens des opérations ; les égalités à trou "
+      + "après les procédures de calcul mental qu'elles mobilisent ; les suites en fin d'année.", { "algebre-cm1": 3, "egalites-programmes-cm1": 4, "suites-cm1": 5 }),
+    ...ligne("en fin d'année, quand la multiplication et la division sont sûres : reconnaître la proportionnalité et l'utiliser une fois ; "
+      + "et les problèmes à chercher, qui demandent d'organiser sa recherche.", { "proportionnalite-cm1": 5, "denombrer-optimiser-cm1": 5 }),
   },
   CM2: {
     ...ligne("après les millions, qui viennent en période 3 : les comparer, les ranger, les placer.", { "comparer-nombres-cm2": 4 }),
@@ -148,6 +156,12 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
       + "puis le produit d'un entier et d'une fraction.", { "operer-fractions-cm2": 2, "produit-fraction-cm2": 3 }),
     ...ligne("après les écritures des décimaux jusqu'aux millièmes, rencontrés dès la période 1 : placer, comparer, arrondir.",
       { "comparer-decimaux-cm2": 2 }),
+    ...ligne("dès la rentrée, des problèmes additifs dans la continuité du CM1 ; les multiplicatifs avec la multiplication des décimaux ; "
+      + "puis les problèmes mixtes.", { "problemes-additifs-cm2": 1, "problemes-multiplicatifs-cm2": 2, "problemes-mixtes-cm2": 3 }),
+    ...ligne("les égalités à trou et les programmes de calcul tôt dans l'année, avec le calcul mental ; les problèmes algébriques après les "
+      + "problèmes multiplicatifs ; les suites en fin d'année.", { "egalites-programmes-cm2": 2, "algebre-cm2": 3, "suites-cm2": 5 }),
+    ...ligne("après les problèmes multiplicatifs et mixtes, la séquence du livret, qui réactive d'abord ce qu'on a fait au CM1 ; et les "
+      + "recherches de toutes les solutions en fin d'année, avant les algorithmes de sixième.", { "proportionnalite-cm2": 4, "chercher-cm2": 5 }),
   },
 };
 

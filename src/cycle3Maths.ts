@@ -5,10 +5,11 @@
 
 import { DEMARCHES_CALCUL_CM, demarcheDuCalculCM } from "./cycle3Calcul";
 import { DEMARCHES_NOMBRES_CM, demarcheDesNombresCM } from "./cycle3Nombres";
+import { DEMARCHES_PROBLEMES_CM, demarcheDesProblemesCM } from "./cycle3Problemes";
 import type { Demarche } from "./demarches";
 import { demarcheDuLivretDeCalcul } from "./demarchesCalcul";
 
-export const DEMARCHES_MATHS_CM: Demarche[] = [...DEMARCHES_NOMBRES_CM, ...DEMARCHES_CALCUL_CM];
+export const DEMARCHES_MATHS_CM: Demarche[] = [...DEMARCHES_NOMBRES_CM, ...DEMARCHES_CALCUL_CM, ...DEMARCHES_PROBLEMES_CM];
 
 /** La séquence d'une compétence de mathématiques du CM1 ou du CM2 ; en minuscules sans accents. */
 export function demarcheDesMathsCM(classe: string, cg: string, comp: string, periode = 0): string | null {
@@ -16,5 +17,7 @@ export function demarcheDesMathsCM(classe: string, cg: string, comp: string, per
   // Le calcul mental : la séquence du livret quand il y en a une (multiplier par 5, au CM1) ; sinon, le procédé La Martinière.
   if (/calcul mental/.test(cg)) return demarcheDuLivretDeCalcul(classe, comp, periode);
   if (/quatre operations/.test(cg)) return demarcheDuCalculCM(classe, comp);
+  // La résolution de problèmes, l'algèbre et la proportionnalité (voir cycle3Problemes.ts).
+  if (/resolution de problemes|algebre|proportionnalite/.test(cg)) return demarcheDesProblemesCM(classe, cg, comp);
   return null;
 }

@@ -45,6 +45,7 @@ import { poserLeDeroulement } from "./poserLeDeroulement";
 import { DEMARCHES_PROBLEMES_PROLONGES } from "./problemesProlonges";
 import { DEMARCHES_NOMBRES_CM } from "./cycle3Nombres";
 import { DEMARCHES_CALCUL_CM } from "./cycle3Calcul";
+import { DEMARCHES_PROBLEMES_CM } from "./cycle3Problemes";
 import { programmationProposee } from "./programmation";
 import {
   DEMARCHE_SOUSTRACTION_POSEE, FEUILLES_SOUSTRACTION_POSEE, MATERIEL_SOUSTRACTION_POSEE, competenceDeLaSoustraction, graineDeLaFeuille,
@@ -68,11 +69,13 @@ export const DOMAINES: Domaine[] = [
   { id: "nombres", discipline: "Mathématiques", nom: "Les nombres" },
   { id: "calcul", discipline: "Mathématiques", nom: "Le calcul" },
   { id: "problemes", discipline: "Mathématiques", nom: "Les problèmes" },
+  { id: "algebre", discipline: "Mathématiques", nom: "L'algèbre" },
   { id: "fractions", discipline: "Mathématiques", nom: "Les fractions" },
   { id: "decimaux", discipline: "Mathématiques", nom: "Les nombres décimaux" },
   { id: "grandeurs", discipline: "Mathématiques", nom: "Grandeurs et mesures" },
   { id: "geometrie", discipline: "Mathématiques", nom: "Espace et géométrie" },
   { id: "donnees", discipline: "Mathématiques", nom: "Données" },
+  { id: "proportionnalite", discipline: "Mathématiques", nom: "La proportionnalité" },
   { id: "code", discipline: "Français", nom: "Lire : le code et la fluence" },
   { id: "comprendre", discipline: "Français", nom: "Comprendre des textes" },
   { id: "geste", discipline: "Français", nom: "Écrire : le geste et la copie" },
@@ -100,6 +103,8 @@ export function domaineDeLaDemarche(d: Pick<Demarche, "id" | "famille">): Domain
     if (d.id === DEMARCHE_SOUSTRACTION_POSEE.id) return domaine("calcul");
     // Le cours moyen : les décimaux ont leur ligne, et les fractions décimales vont avec eux.
     if (dans(DEMARCHES_NOMBRES_CM)) return domaine(/decima/.test(d.id) ? "decimaux" : /fraction/.test(d.id) ? "fractions" : "nombres");
+    // Ses problèmes, son algèbre et sa proportionnalité, que le programme du cycle 3 range à part.
+    if (dans(DEMARCHES_PROBLEMES_CM)) return domaine(/^proportionnalite/.test(d.id) ? "proportionnalite" : /^(algebre|egalites|suites)/.test(d.id) ? "algebre" : "problemes");
     if (/fraction/.test(d.id)) return domaine("fractions");
     if (d.id === "numeration-dizaine-cp" || d.id === "comparer-nombres-cp" || dans(DEMARCHES_NUMERATION)) return domaine("nombres");
     if (dans(DEMARCHES_CALCUL) || dans(DEMARCHES_OPERATIONS) || dans(DEMARCHES_CALCUL_CM)) return domaine("calcul");
