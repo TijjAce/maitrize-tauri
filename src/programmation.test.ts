@@ -129,6 +129,8 @@ describe("les séquences sans période du programme, datées par les livrets, le
       ["valeur-des-lettres-c2", "CP", 4, /« Période 4 \(mars-avril\) — Consonnes fricatives 5 - les différents graphèmes pour les phonèmes ‘s’ et ‘j’ »/],
       ["valeur-des-lettres-c2", "CE1", 1, /^Guide « Pour enseigner la lecture et l'écriture au CE1 » \(Éduscol, 2019\) : « .+tous les jours en période 1.+la valeur sonore de certaines lettres/],
       ["connecteurs-ce1", "CE1", 1, /« Au cours des périodes 1 à 3, .+ insérer des connecteurs pour lier les phrases entre elles/],
+      ["genre-nombre-cp", "CP", 3, /^Programme de français du cycle 2 \(2024\), CP : « En milieu d'année — .+ identifie les marques grammaticales en genre et en nombre\. »$/],
+      ["sujet-verbe-c2", "CP", 3, /^Guide « Pour enseigner la lecture et l'écriture au CP » .+-ent : terminaison muette — Pluriel des verbes du premier groupe » : le « -nt »/],
       ["lecture-expressive-ce2", "CE2", 1, /^Livret d'accompagnement de français du CE2 \(Éduscol, 2026\) : « Séances décrochées régulières à mener depuis la période 1/],
     ];
     for (const [id, niveau, periode, raison] of cas) {
@@ -142,6 +144,7 @@ describe("les séquences sans période du programme, datées par les livrets, le
     // Chaque classe son repère : les accents datés au CP ne le sont pas au CE1 ; s, c, g ne le sont pas au CE2.
     expect(propose("CE1", "", "accents-c2")!.periode).toBeNull();
     expect(propose("CE2", "", "valeur-des-lettres-c2")!.periode).toBeNull();
+    expect(propose("CE1", "", "sujet-verbe-c2")!.periode).toBeNull();
   });
 
   it("rangent la conjugaison dans l'ordre des temps du programme, comme la fiche d'une séquence", () => {

@@ -168,6 +168,11 @@ const SINON_PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
     { niveau: "CE1", periode: 1,
       raison: citeLeGuide(GUIDE_LECTURE_CE1, "Des séances régulières (tous les jours en période 1, puis trois fois par semaine en périodes 2, 3, 4, et deux fois par semaine en période 5) renforcent les habiletés de décodage. […] on invitera l'élève à se centrer sur la valeur sonore de certaines lettres en fonction de leur voisinage pour effectuer un choix pertinent, et sur la composition de certains graphèmes selon la lettre qui suit : an/am, en/em, on/om, in/im.") },
   ],
+  "genre-nombre-cp": { niveau: "CP", periode: 3,
+    raison: citeLeProgrammeDeFrancais("CP", "En milieu d'année — Il déchiffre tous les mots selon la progression des CGP et identifie les marques grammaticales en genre et en nombre.") },
+  "sujet-verbe-c2": { niveau: "CP", periode: 3,
+    raison: `${citeLeGuide(GUIDE_LECTURE_CP, "Période 3 (janvier-février) — […] -ent : terminaison muette — Pluriel des verbes du premier groupe")} : `
+      + "le « -nt » qu'on n'entend pas, que la séquence fait découvrir (« les chats miaulent »)." },
   "connecteurs-ce1": { niveau: "CE1", periode: 1,
     raison: citeLeGuide(GUIDE_LECTURE_CE1, "Au cours des périodes 1 à 3, l'élève s'apercevra qu'une suite de phrases ne peut se suffire à constituer un texte cohérent ; il faudra apprendre à insérer des connecteurs pour lier les phrases entre elles et pour produire une unité de sens.") },
   "conjuguer-present-c2": dansLOrdreDesTemps(1),

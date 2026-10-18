@@ -14,6 +14,7 @@ import type { ClasseC2 } from "../feuillesDesSequences";
 import { graineAuHasard } from "../hasard";
 import { useGraine } from "../modifierFeuille";
 import { avecLaSeanceDesMots, estLaSeanceDesMots } from "../motsDesProblemes";
+import { periodeProposee } from "../periodesProposees";
 import { lireProfils } from "../planDeLaClasse";
 import { graineDeLaFeuille } from "../sequenceSoustractionPosee";
 import {
@@ -39,15 +40,18 @@ const lirePlis = (brut: unknown): string[] => (Array.isArray(brut) ? brut.filter
 
 const finDePhrase = (s: string) => (/[.!?…»]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
 
-/** Au survol d'une séquence du tableau : son nom entier, et la phrase du programme ou du livret qui la place. */
+/** Au survol d'une séquence du tableau : son nom entier, et la phrase qui la place — d'un texte, ou la proposition de Maitrize. */
 const titreDeLaPuce = (s: SequenceToutefaite, infos?: { periode: number | null; raison: string }) =>
   (infos?.periode ? `${s.demarche.nom}\nPériode ${infos.periode} — ${infos.raison}` : s.demarche.nom);
 
 /** Le type de donnée d'une séquence qu'on glisse d'une période à l'autre. */
 const TYPE_SEQUENCE = "text/x-maitrize-sequence";
 
-/** Ce qu'on sait d'une séquence : la compétence qu'elle vise, et la période du programme ou du livret, avec sa phrase. */
-interface Infos { competence: CompetenceSelectionnee | null; periode: number | null; raison: string }
+/**
+ * Ce qu'on sait d'une séquence : la compétence qu'elle vise, et sa période avec sa phrase — celle d'un texte, programme, livret
+ * ou guide, sinon celle que Maitrize propose (`proposee`).
+ */
+interface Infos { competence: CompetenceSelectionnee | null; periode: number | null; raison: string; proposee: boolean }
 
 export function SequencesToutesFaitesTab({ classe }: { classe: ClasseC2 }) {
   const toutes = React.useMemo(() => sequencesToutesFaites().filter((s) => s.classe === classe), [classe]);
@@ -67,22 +71,28 @@ export function SequencesToutesFaitesTab({ classe }: { classe: ClasseC2 }) {
   const { data: periodesLues } = useAsync(() => api.settingGet(CLE_PERIODES).then(lirePeriodes).catch(() => ({} as Record<string, number>)), []);
   const [periodesChoisies, setPeriodesChoisies] = React.useState<Record<string, number> | null>(null);
   const choisies = React.useMemo(() => periodesChoisies ?? periodesLues ?? {}, [periodesChoisies, periodesLues]);
-  // La compétence que chaque séquence vise, et la période que le programme ou le livret lui fixe — avec sa phrase.
+  // La compétence que chaque séquence vise, et la période qu'un texte lui fixe — avec sa phrase —, sinon celle que Maitrize propose.
   const infos = React.useMemo(() => {
     const sortie = new Map<string, Infos>();
     for (const s of toutes) {
       const fixe = repereDeLaDemarche(s.demarche.id, s.classe);
-      const competence = referentiels ? competenceDeLaDemarche(referentiels, s.demarche.id, s.classe, fixe?.periode ?? periodeDuMoment ?? 1) : null;
+      const proposee = periodeProposee(s.demarche.id, s.classe);
+      const competence = referentiels
+        ? competenceDeLaDemarche(referentiels, s.demarche.id, s.classe, fixe?.periode ?? proposee?.periode ?? periodeDuMoment ?? 1) : null;
       const repere = fixe ?? repereDeLaDemarche(s.demarche.id, s.classe, competence?.competenceTitre ?? "");
-      sortie.set(s.cle, { competence, periode: repere?.periode ?? null, raison: repere?.raison ?? "" });
+      const retenue = repere ?? proposee;
+      sortie.set(s.cle, { competence, periode: retenue?.periode ?? null, raison: retenue?.raison ?? "", proposee: !repere && Boolean(proposee) });
     }
     return sortie;
   }, [toutes, referentiels, periodeDuMoment]);
   const periodeDe = React.useCallback((s: SequenceToutefaite) => choisies[s.cle] ?? infos.get(s.cle)?.periode ?? null, [choisies, infos]);
   const tableau = React.useMemo(() => tableauDesSequences(toutes, periodeDe), [toutes, periodeDe]);
+  // « Sans période » ne se montre que s'il y reste une séquence.
+  const colonnesVues = COLONNES_DU_TABLEAU.map((c, j) => ({ c, j }))
+    .filter(({ c, j }) => c.periode !== null || tableau.some((b) => b.lignes.some((l) => l.cases[j].length > 0)));
   const [choisieCle, setChoisieCle] = React.useState("");
   const choisie = toutes.find((s) => s.cle === choisieCle) ?? null;
-  /** Ranger une séquence dans une période ; `null` la rend à celle du programme, ou à aucune. */
+  /** Ranger une séquence dans une période ; `null` la rend à la sienne — celle d'un texte, ou celle que Maitrize propose —, ou à aucune. */
   const ranger = (s: SequenceToutefaite, p: number | null) => {
     const suite = { ...choisies };
     if (p === null) delete suite[s.cle]; else suite[s.cle] = p;
@@ -102,17 +112,18 @@ export function SequencesToutesFaitesTab({ classe }: { classe: ClasseC2 }) {
     };
   }, [reglages, eleves]);
   const menu = (e: React.MouseEvent, s: SequenceToutefaite) => {
-    const programme = infos.get(s.cle)?.periode ?? null;
+    const sienne = infos.get(s.cle);
     openCtx(e, [
       ...PERIODES_DE_L_ANNEE.map(({ periode }) => ({
         label: `Ranger en période ${periode}${periodeDe(s) === periode ? " ✓" : ""}`, icon: "🗓", onClick: () => ranger(s, periode),
       })),
       ...(choisies[s.cle] !== undefined ? [{
-        label: programme ? `Revenir à la période ${programme} du programme` : "Retirer de sa période", icon: "↺", sep: true, onClick: () => ranger(s, null),
+        label: sienne?.periode ? `Revenir à la période ${sienne.periode} ${sienne.proposee ? "proposée" : "de sa source"}` : "Retirer de sa période",
+        icon: "↺", sep: true, onClick: () => ranger(s, null),
       }] : []),
     ]);
   };
-  const colonnes = COLONNES_DU_TABLEAU.length + 1;
+  const colonnes = colonnesVues.length + 1;
   return (
     <>
       <div className="stf-tableau-cadre">
@@ -123,11 +134,12 @@ export function SequencesToutesFaitesTab({ classe }: { classe: ClasseC2 }) {
                 <Aide titre="Le tableau des séquences" vers="droite">
                   <p>Ce sont les déroulements que propose la fiche d'une séquence : les séquences des livrets d'Éduscol, ou bâties sur le programme et sur les guides. Chacune dit sa source.</p>
                   <p>Chacune est dans la période où la placent le programme ou un texte d'Éduscol — livret, guide, repères annuels —, cité au survol. Glissez-la dans une autre période de sa ligne, ou rangez-la au clic droit : le tableau devient la programmation de la classe.</p>
+                  <p>Bord en pointillés : aucun texte ne la date. Maitrize lui propose une période, ligne par ligne — du plus simple au plus complexe, du proche au lointain — et dit pourquoi au survol.</p>
                   <p>Un clic l'ouvre : ses séances, et toutes les feuilles que les ateliers en fabriquent.</p>
                 </Aide>
               </th>
-              {COLONNES_DU_TABLEAU.map((c) => (
-                <th key={c.titre} scope="col">{c.titre}<span className="stf-colonne-aide">{c.aide}</span></th>
+              {colonnesVues.map(({ c }) => (
+                <th key={c.titre} scope="col" className={c.periode === null ? "stf-sans" : undefined}>{c.titre}<span className="stf-colonne-aide">{c.aide}</span></th>
               ))}
             </tr>
           </thead>
@@ -148,12 +160,12 @@ export function SequencesToutesFaitesTab({ classe }: { classe: ClasseC2 }) {
                   <React.Fragment key={ligne.domaine.id}>
                     <tr>
                       <th scope="row" className="stf-domaine">{ligne.domaine.nom}</th>
-                      {COLONNES_DU_TABLEAU.map((c, j) => {
+                      {colonnesVues.map(({ c, j }) => {
                         const cleCase = `${ligne.domaine.id}:${c.periode ?? "sans"}`;
                         // On glisse dans une période de sa ligne ; « Sans période » ne se choisit pas.
                         const accepte = c.periode !== null && glissee?.domaine === ligne.domaine;
                         return (
-                          <td key={cleCase} className={`stf-case${survol === cleCase ? " survol" : ""}`}
+                          <td key={cleCase} className={`stf-case${c.periode === null ? " stf-sans" : ""}${survol === cleCase ? " survol" : ""}`}
                             onDragOver={accepte ? (e) => {
                               e.preventDefault();
                               e.dataTransfer.dropEffect = "move";
@@ -169,7 +181,7 @@ export function SequencesToutesFaitesTab({ classe }: { classe: ClasseC2 }) {
                             } : undefined}>
                             {ligne.cases[j].map((s) => (
                               <button key={s.cle} type="button" draggable aria-pressed={s === choisie} title={titreDeLaPuce(s, infos.get(s.cle))}
-                                className={`stf-puce${s === choisie ? " actif" : ""}${s.cle === enVol ? " en-vol" : ""}`}
+                                className={`stf-puce${s === choisie ? " actif" : ""}${s.cle === enVol ? " en-vol" : ""}${infos.get(s.cle)?.proposee && choisies[s.cle] === undefined ? " proposee" : ""}`}
                                 onClick={() => setChoisieCle(s === choisie ? "" : s.cle)}
                                 onContextMenu={(e) => menu(e, s)}
                                 onDragStart={(e) => { e.dataTransfer.setData(TYPE_SEQUENCE, s.cle); e.dataTransfer.effectAllowed = "move"; setEnVol(s.cle); }}

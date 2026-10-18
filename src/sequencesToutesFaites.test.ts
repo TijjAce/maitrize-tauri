@@ -39,6 +39,7 @@ import { DEMARCHES_HISTOIRE_GEO } from "./demarchesHistoireGeo";
 import { objectifParId } from "./faitsNumeriques";
 import { planDesFeuilles, type ClasseC2 } from "./feuillesDesSequences";
 import { estLaSeanceDesMots } from "./motsDesProblemes";
+import { PERIODES_PROPOSEES, periodeProposee } from "./periodesProposees";
 import { DEMARCHE_SOUSTRACTION_POSEE, FEUILLES_SOUSTRACTION_POSEE, graineDeLaFeuille } from "./sequenceSoustractionPosee";
 import {
   CLASSES, DISCIPLINES, DOSSIERS, PHASE_LA_MARTINIERE, classeDuDossier, classesDeLaDemarche, competenceDeLaDemarche, creerLaSequenceToutefaite,
@@ -134,8 +135,8 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
       return { s, repere: fixe ?? repereDeLaDemarche(s.demarche.id, s.classe, comp?.competenceTitre ?? "") };
     });
     const placees = reperes.filter((x) => x.repere);
-    // 48 avant le relevé du texte des programmes, six de plus après ; 81 avec les livrets, les guides et les repères de 2019.
-    expect(placees.length).toBeGreaterThanOrEqual(81);
+    // 48 avant le relevé du texte des programmes, six de plus après ; 83 avec les livrets, les guides et les repères de 2019.
+    expect(placees.length).toBeGreaterThanOrEqual(83);
     for (const { s, repere } of placees) {
       expect(repere!.periode, s.cle).toBeGreaterThanOrEqual(1);
       expect(repere!.raison, s.cle).toMatch(/^(Programme|Livret|Guide|Repères) .+ : « .+ »/);
@@ -147,6 +148,39 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     expect(de("multiplicatifs-cp:CP")).toBe(4);
     expect(de("conjuguer-imparfait-c2:CE2")).toBe(3);
     expect(de("valeur-des-lettres-c2:CE1")).toBe(1);
+    expect(de("genre-nombre-cp:CP")).toBe(3);
+  });
+
+  it("reçoivent, quand aucun texte ne les date, la période que Maitrize propose, dite comme telle", () => {
+    const datee = (s: SequenceToutefaite) => {
+      const fixe = repereDeLaDemarche(s.demarche.id, s.classe);
+      const comp = competenceDeLaDemarche(REFERENTIELS, s.demarche.id, s.classe, fixe?.periode ?? periodeProposee(s.demarche.id, s.classe)?.periode ?? 1);
+      return fixe ?? repereDeLaDemarche(s.demarche.id, s.classe, comp?.competenceTitre ?? "");
+    };
+    for (const s of toutes) {
+      const proposee = periodeProposee(s.demarche.id, s.classe);
+      if (datee(s)) {
+        expect(proposee, `${s.cle} : un texte la date déjà`).toBeNull();
+        continue;
+      }
+      expect(proposee, s.cle).not.toBeNull();
+      expect([1, 2, 3, 4, 5], s.cle).toContain(proposee!.periode);
+      expect(proposee!.raison, s.cle).toMatch(/^Proposition de Maitrize : ni le programme ni les guides ne la datent\. [A-ZÀ-Ý].+\.$/);
+    }
+    // Chaque proposition est celle d'une séquence du tableau : aucune ne se perd sur une faute de frappe.
+    const cles = new Set(toutes.map((s) => s.cle));
+    for (const classe of CLASSES) for (const id of Object.keys(PERIODES_PROPOSEES[classe])) expect(cles.has(`${id}:${classe}`), `${id}:${classe}`).toBe(true);
+    // Plus rien sans période : la colonne ne se montre plus.
+    const sans = COLONNES_DU_TABLEAU.findIndex((c) => c.periode === null);
+    for (const classe of CLASSES) {
+      const tableau = tableauDesSequences(toutes.filter((s) => s.classe === classe), (s) => datee(s)?.periode ?? periodeProposee(s.demarche.id, s.classe)?.periode ?? null);
+      expect(tableau.flatMap((b) => b.lignes.flatMap((l) => l.cases[sans])).map((s) => s.cle), classe).toEqual([]);
+    }
+    // Au CP, se repérer dans la classe à la rentrée, les tracés sur quadrillage en fin d'année ; au CE1, la parité avec la table de 2.
+    expect(periodeProposee("positions-cp", "CP")!.periode).toBe(1);
+    expect(periodeProposee("reproduire-cp", "CP")!.periode).toBe(5);
+    expect(periodeProposee("parite-ce1", "CE1")!.periode).toBe(2);
+    expect(periodeProposee("parite-ce1", "CE2")).toBeNull();
   });
 
   it("gardent les périodes choisies telles qu'on peut s'y fier", () => {
