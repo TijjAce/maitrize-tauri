@@ -223,6 +223,11 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
       + "pour l'Union européenne — et laisse l'ordre libre : le territoire sur les deux premières périodes, l'eau douce en périodes 3 et 4, "
       + "l'Union européenne en fin d'année, avec la construction européenne que l'histoire étudie en période 5.",
     { "territoire-francais-cm2": 1, "eau-douce-cm2": 3, "union-europeenne-cm2": 5 }),
+    ...ligne("le programme de 2020, encore en vigueur au CM2 cette année, ne donne aucune période ; ses fiches Éduscol suivent l'ordre des thèmes "
+      + "— Internet « après celle du thème « se déplacer » » — et mettent le temps de la République en début d'année : l'âge industriel en "
+      + "période 3, les guerres mondiales et l'Union européenne en période 4 ; en géographie, se déplacer à la rentrée, Internet en période 3, "
+      + "mieux habiter en fin d'année.",
+    { "age-industriel-2020-cm2": 3, "guerres-mondiales-ue-cm2": 4, "se-deplacer-2020-cm2": 1, "internet-2020-cm2": 3, "mieux-habiter-cm2": 5 }),
   },
 };
 

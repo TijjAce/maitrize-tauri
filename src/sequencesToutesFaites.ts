@@ -50,7 +50,7 @@ import { DEMARCHES_GRANDEURS_CM } from "./cycle3Grandeurs";
 import { DEMARCHES_GEOMETRIE_CM } from "./cycle3Geometrie";
 import { DEMARCHES_DONNEES_CM } from "./cycle3Donnees";
 import { DEMARCHES_LANGUE_CM } from "./cycle3Langue";
-import { DEMARCHES_HISTOIRE_GEO_CM, HISTOIRE_CM } from "./cycle3HistoireGeo";
+import { DEMARCHES_HISTOIRE_GEO_CM, DEMARCHES_HISTOIRE_GEO_CM_2020, HISTOIRE_CM } from "./cycle3HistoireGeo";
 import { DEMARCHES_LECTURE_CM } from "./cycle3Lecture";
 import { DEMARCHES_ECRITURE_CM } from "./cycle3Ecriture";
 import { DEMARCHES_ORAL_CM } from "./cycle3Oral";
@@ -95,6 +95,9 @@ export const DOMAINES: Domaine[] = [
   { id: "oral", discipline: "Français", nom: "L'oral" },
   { id: "temps", discipline: "Histoire-géographie", nom: "Se situer dans le temps : l'histoire" },
   { id: "espace", discipline: "Histoire-géographie", nom: "Se situer dans l'espace : la géographie" },
+  // Le CM2 suit encore le programme de 2020 en 2026-2027 : ses séquences ont leurs lignes à elles (voir cycle3HistoireGeo.ts).
+  { id: "temps2020", discipline: "Histoire-géographie", nom: "L'histoire du programme 2020 (CM2 en 2026-2027)" },
+  { id: "espace2020", discipline: "Histoire-géographie", nom: "La géographie du programme 2020 (CM2 en 2026-2027)" },
 ];
 
 const domaine = (id: string) => DOMAINES.find((d) => d.id === id)!;
@@ -137,6 +140,7 @@ export function domaineDeLaDemarche(d: Pick<Demarche, "id" | "famille">): Domain
   if (dans(DEMARCHES_ORAL)) return domaine("oral");
   if (dans(DEMARCHES_HISTOIRE_GEO)) return domaine(HISTOIRE.has(d.id) ? "temps" : "espace");
   if (dans(DEMARCHES_HISTOIRE_GEO_CM)) return domaine(HISTOIRE_CM.has(d.id) ? "temps" : "espace");
+  if (dans(DEMARCHES_HISTOIRE_GEO_CM_2020)) return domaine(HISTOIRE_CM.has(d.id) ? "temps2020" : "espace2020");
   return null;
 }
 

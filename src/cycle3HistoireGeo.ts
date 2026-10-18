@@ -716,6 +716,277 @@ const UNION_EUROPEENNE_CM2: Demarche = {
   ],
 };
 
+// ── Le CM2 du programme de 2020, encore en vigueur en 2026-2027 ───────────
+//
+// La page Éduscol du cycle 3 (septembre 2026) : le programme de 2026 entre en
+// vigueur au CM2 à la rentrée 2027 ; cette année, le CM2 suit encore celui de
+// 2020, dont Éduscol garde les fiches « S'approprier les différents thèmes du
+// programme » (mars 2016). À la demande de l'enseignant (octobre 2026), une
+// séquence par thème, d'après sa fiche : sa problématique, ses sous-thèmes,
+// ses pistes de mise en œuvre, ses repères, et ses écueils évités. Elles ne
+// sont la séquence d'aucune compétence du référentiel, qui suit le programme
+// de 2026 : le dossier CM2 les range à part, et celles d'histoire se
+// proposent à côté des compétences de 2026 qui en sont proches (`visee`).
+
+const EDUSCOL_2020 = (discipline: "histoire" | "géographie", theme: string) =>
+  `Éduscol, ressources d'accompagnement du cycle 3 (mars 2016) — « S'approprier les différents thèmes du programme », ${discipline}, CM2, `
+  + `« ${theme} » : problématique, sous-thèmes, mise en œuvre et repères ; programme de 2020, encore en vigueur au CM2 en 2026-2027`;
+
+const TEMPS_REPUBLIQUE_CM2: Demarche = {
+  id: "temps-republique-cm2", nom: "Le temps de la République — programme 2020 (CM2)", famille: FAMILLE,
+  source: EDUSCOL_2020("histoire", "Thème 1 - Le temps de la République"),
+  visee: { intitule: /lois fondatrices de la République|symboles de la République|participent à la vie politique/i, niveaux: ["CM2"] },
+  resume: "« Comment les Français se sont-ils unis autour de la République ? » La problématique de la fiche Éduscol : quand la France est devenue une "
+    + "République, le rôle qu'y joue l'école, ce qu'est la citoyenneté. 1892, la République fête ses cent ans ; ses symboles ; l'école primaire au temps "
+    + "de Jules Ferry, d'hier à aujourd'hui ; des républiques, une démocratie : des libertés, des droits et des devoirs. Repères : 1880, le 14 juillet "
+    + "fête nationale ; 1881-1882, les lois scolaires de Jules Ferry ; 1905, la séparation des Églises et de l'État ; 1944, le droit de vote des femmes. "
+    + "Écueils que la fiche signale : la liste détaillée des régimes, un traitement trop abstrait, une République idéalisée.",
+  seances: [
+    etape("1892 : la République fête ses cent ans", "expliquer que la République, née en 1792, ne s'installe durablement qu'à partir de 1870.",
+      "Une affiche du centenaire de 1892 : qu'est-ce qu'on y fête ? Depuis quand la France est-elle une République ?",
+      "Observer l'affiche du centenaire — Marianne, les symboles de la Révolution étudiée au CM1 — ; lire le document ; observer les portraits des "
+        + "souverains du XIXe siècle, sans en dresser la liste ; compléter la frise.",
+      "La République naît en 1792 ; rois et empereurs reviennent ; à partir de 1870, la IIIe République s'installe et unit les Français autour des "
+        + "symboles de la Révolution.", RECIT),
+    etape("Les symboles de la République", "nommer les symboles de la République et dire leur sens.",
+      "Où voit-on la République autour de nous ?",
+      "Chercher les symboles sur la façade de la mairie et de l'école, sur les pièces ; relier chaque symbole à sa description, en lien avec "
+        + "l'enseignement moral et civique.",
+      "Le drapeau tricolore, La Marseillaise, le 14 juillet, Marianne, la devise : des symboles qui rassemblent les Français."),
+    etape("L'école au temps de Jules Ferry", "expliquer le rôle de l'école primaire de Jules Ferry dans la République.",
+      "Comment allait-on à l'école vers 1900 ?",
+      "Lire le document ; observer des photographies de classes de la IIIe République — celles du Musée national de l'Éducation — et le bâtiment de "
+        + "l'école ou de la mairie-école ; relever les objets, les règles, ce qu'on y apprend ; observer une carte murale de l'empire colonial.",
+      "Gratuite (1881), obligatoire et laïque (1882), l'école de Jules Ferry instruit tous les enfants de 6 à 13 ans et forme des citoyens.", DOCUMENT),
+    etape("L'école d'hier et d'aujourd'hui", "comparer l'école vers 1900 et l'école d'aujourd'hui.",
+      "Qu'est-ce qui a changé à l'école depuis 1900 ?",
+      "Trier les étiquettes ; chercher l'histoire du bâtiment de l'école — sa date, ses entrées des filles et des garçons — dans les archives de la "
+        + "commune ou de la famille ; comparer les rites de l'école d'hier avec ceux de la classe.",
+      "L'école a changé — la mixité, les outils, l'instruction jusqu'à 16 ans —, mais elle reste au cœur de la République."),
+    etape("Des droits et des devoirs", "dire ce qu'est la citoyenneté : des libertés, des droits et des devoirs.",
+      "Qu'est-ce qu'être citoyen ?",
+      "Lire le document ; classer des droits et des devoirs ; débattre, avec l'enseignement moral et civique, d'un droit conquis : l'égalité entre "
+        + "filles et garçons, ou le droit à l'éducation.",
+      "Le citoyen a des droits et des devoirs ; ils se sont étendus : le vote des hommes en 1848, celui des femmes en 1944, la Déclaration universelle "
+        + "des droits de l'homme en 1948.", ECRIRE),
+    evaluation("expliquer quand la France est devenue une République, nommer ses symboles, dire le rôle de l'école et ce qu'est la citoyenneté",
+      "La frise de la République reste affichée."),
+  ],
+};
+
+const AGE_INDUSTRIEL_2020_CM2: Demarche = {
+  id: "age-industriel-2020-cm2", nom: "L'âge industriel en France — programme 2020 (CM2)", famille: FAMILLE,
+  source: EDUSCOL_2020("histoire", "Thème 2 - L'âge industriel en France"),
+  visee: { intitule: /transformations de la vie quotidienne|progrès de la médecine|ouvrières et des ouvriers/i, niveaux: ["CM2"] },
+  resume: "« Comment l'industrialisation a-t-elle transformé les manières de travailler et de vivre ? » La problématique de la fiche Éduscol : ce qu'est "
+    + "l'industrialisation, ce qu'elle change dans la manière de produire, la vie quotidienne et la société, dans les villes et les campagnes. Quatre "
+    + "sujets d'étude — énergies et machines ; le travail à la mine, à l'usine, à l'atelier, au grand magasin ; la ville industrielle ; le monde rural — "
+    + "dont le programme fait choisir deux, d'après le patrimoine local : la séquence les propose tous. Repères : la révolution industrielle en "
+    + "Angleterre à la fin du XVIIIe siècle, l'essor de l'industrialisation en France après 1830, la France majoritairement urbaine en 1931.",
+  seances: [
+    etape("Qu'est-ce que l'âge industriel ?", "situer l'âge industriel et dire ce qu'est l'industrialisation.",
+      "Comment fabriquait-on avant les usines ?",
+      "Comparer un atelier d'artisan et une usine du XIXe siècle ; compléter la frise : la révolution industrielle en Angleterre, l'essor en France "
+        + "après 1830, la France urbaine en 1931 ; choisir avec la classe les deux sujets d'étude.",
+      "L'industrialisation : produire en grand, avec des machines, dans des usines ; elle commence en Angleterre et s'étend en France après 1830."),
+    etape("Sujet d'étude : énergies et machines", "expliquer comment les énergies et les machines changent la manière de produire et de se déplacer.",
+      "Qu'est-ce qui fait tourner les machines ?",
+      "Lire le document ; observer des machines du Musée des arts et métiers ou d'un musée proche — la machine à vapeur, la locomotive, le moteur — ; "
+        + "relier chaque énergie à ses usages.",
+      "Le charbon et la vapeur, puis l'électricité et le pétrole après 1880, font tourner les usines, les trains, les bateaux, les automobiles.", DOCUMENT),
+    etape("Sujet d'étude : le travail à la mine, à l'usine, à l'atelier, au grand magasin", "décrire les conditions de travail à l'âge industriel, et leur diversité.",
+      "Comment travaille-t-on à l'âge industriel ?",
+      "Lire un ou deux documents, selon le sujet choisi ; comparer des photographies et des tableaux de mines, d'usines, d'ateliers, de grands "
+        + "magasins ; s'aider d'un écomusée proche.",
+      "Des journées longues, un travail dur et souvent dangereux, une discipline stricte ; les ouvriers s'unissent : grèves, syndicats en 1884.", DOCUMENT),
+    etape("Sujet d'étude : la ville industrielle", "expliquer comment l'industrialisation transforme la ville.",
+      "Que reste-t-il de l'âge industriel dans la ville la plus proche ?",
+      "Lire le document ; chercher des traces dans une ville proche — une gare, un pont ou une halle en métal, une cité ouvrière, une usine — et les "
+        + "situer sur un plan ; les visiter si c'est possible.",
+      "Les villes grandissent et changent : gares, usines, quartiers ouvriers et bourgeois ; en 1931, la majorité des Français vit en ville."),
+    etape("Sujet d'étude : le monde rural", "expliquer comment l'industrialisation transforme les campagnes.",
+      "Les campagnes sont-elles restées à l'écart de l'industrialisation ?",
+      "Lire le document ; comparer des outils agricoles d'hier et d'aujourd'hui, au musée local ; chercher, avec des travaux d'histoire locale, ce qui a "
+        + "changé dans la commune : le train, les cultures, l'électricité.",
+      "Les campagnes se vident — l'exode rural —, se désenclavent, se spécialisent, puis se modernisent : la France reste longtemps rurale."),
+    etape("La vie quotidienne change", "expliquer les transformations de la vie quotidienne à l'âge industriel.",
+      "Qu'est-ce que l'industrialisation change dans la vie de tous les jours ?",
+      "Trier les étiquettes : avant le XIXe siècle, à la fin du XIXe siècle ; relier les changements au sujet d'étude choisi ; écrire comment un "
+        + "progrès change la vie.",
+      "L'éclairage, les transports, l'eau courante, les communications, les vêtements : la vie quotidienne change, d'abord en ville.", ECRIRE),
+    evaluation("dire ce qu'est l'industrialisation, décrire le travail à l'âge industriel et ce qu'il change en ville ou à la campagne",
+      "La frise de l'âge industriel reste affichée."),
+  ],
+};
+
+const GUERRES_UE_CM2: Demarche = {
+  id: "guerres-mondiales-ue-cm2", nom: "La France, des guerres mondiales à l'Union européenne — programme 2020 (CM2)", famille: FAMILLE,
+  source: EDUSCOL_2020("histoire", "Thème 3 - La France, des guerres mondiales à l'Union européenne"),
+  visee: {
+    intitule: /Première Guerre mondiale|vie sur le front|mobilisation humaine|bilan humain de la guerre|Seconde Guerre mondiale|sous l.Occupation|Résistance|Justes parmi les Nations|construction européenne/i,
+    niveaux: ["CM2"],
+  },
+  resume: "« Comment les traumatismes des deux guerres mondiales sont-ils à l'origine de la recherche d'une paix durable en Europe ? » La problématique "
+    + "de la fiche Éduscol : la France a connu deux conflits mondiaux, d'une violence extrême et massive, et cette expérience l'a conduite à s'engager "
+    + "dans la construction européenne. Les traces des guerres dans la commune, des témoignages — un poilu à Verdun, un enfant juif sous l'Occupation —, "
+    + "la comparaison des deux guerres, puis la construction de la paix : 1951, 1957, 1992, les droits de l'homme, la citoyenneté européenne. Écueils "
+    + "que la fiche signale : traiter les deux guerres sans les relier, une chronologie trop détaillée, une place trop petite pour l'après 1945.",
+  seances: [
+    etape("Deux guerres mondiales sur la frise", "situer les deux guerres mondiales et la construction européenne sur une frise.",
+      "Pourquoi parle-t-on de guerres « mondiales » ?",
+      "Compléter la frise : 1914-1918, 1939-1945, 1951, 1957, 1992 ; situer sur un planisphère les pays en guerre.",
+      "Deux guerres mondiales au XXe siècle, 1914-1918 et 1939-1945 ; puis, depuis 1951, la construction européenne."),
+    etape("Les traces des guerres dans notre commune", "identifier les traces des deux guerres dans leur environnement proche.",
+      "Que reste-t-il des guerres dans notre commune ?",
+      "Étudier le monument aux morts : compter les noms des deux guerres, chercher les familles ; relever les plaques et les noms de rues ; lire le "
+        + "document ; recueillir, si c'est possible, des archives ou des objets de famille.",
+      "Chaque commune garde la mémoire de ses morts ; on s'en souvient chaque 11 novembre et chaque 8 mai.", DOCUMENT),
+    etape("Combattre dans les tranchées", "raconter la vie des soldats pendant la Première Guerre mondiale, à partir d'un témoignage.",
+      "Comment vivaient les poilus à Verdun ?",
+      "Lire le document ; écouter le témoignage d'un poilu pendant la bataille de Verdun ; observer des objets : un casque, un masque à gaz.",
+      "La guerre de position, les tranchées, Verdun en 1916 : une violence extrême et massive.", RECIT),
+    etape("La France dans la Seconde Guerre mondiale", "raconter la défaite, l'Occupation, la Résistance et la persécution des Juifs, à partir d'un témoignage.",
+      "Comment la France a-t-elle vécu la Seconde Guerre mondiale ?",
+      "Lire les documents ; écouter le témoignage d'un enfant juif caché sous l'Occupation ; situer le débarquement du 6 juin 1944 ; présenter le "
+        + "général de Gaulle, dont le parcours relie les deux guerres.",
+      "La défaite de 1940, l'Occupation, la collaboration du régime de Vichy, la Résistance, la déportation des Juifs ; la Libération à partir de 1944.",
+      "Un sujet grave : des documents choisis, la parole des élèves accueillie."),
+    etape("Comparer les deux guerres", "comparer les deux guerres mondiales : les combats, les civils, le bilan.",
+      "Qu'ont-elles en commun ? Qu'est-ce qui les distingue ?",
+      "Compléter le tableau avec les documents des séances précédentes ; écrire une phrase qui compare les deux guerres.",
+      "Deux guerres d'une violence extrême ; la seconde fait encore plus de morts, en majorité des civils.", ECRIRE),
+    etape("Construire la paix en Europe", "expliquer que l'expérience des deux guerres a conduit la France à s'engager dans la construction européenne.",
+      "Comment éviter une nouvelle guerre en Europe ?",
+      "Lire les documents ; observer les cartes de l'Europe en 1957, en 1992 et aujourd'hui ; débattre d'un article de la Déclaration universelle des "
+        + "droits de l'homme, en lien avec l'enseignement moral et civique.",
+      "Pour rendre la guerre impossible, la France et l'Allemagne se réconcilient et construisent l'Europe : 1951, 1957, 1992 ; les citoyens européens "
+        + "ont des droits communs.", DOCUMENT),
+    evaluation("situer les deux guerres, expliquer leur violence et pourquoi la France s'est engagée dans la construction européenne",
+      "La frise des guerres mondiales et de l'Union européenne reste affichée."),
+  ],
+};
+
+const SE_DEPLACER_2020_CM2: Demarche = {
+  id: "se-deplacer-2020-cm2", nom: "Se déplacer — programme 2020 (CM2)", famille: FAMILLE,
+  source: EDUSCOL_2020("géographie", "Thème 1 - Se déplacer"),
+  resume: "« Quels sont les motifs, les modes et les contraintes des déplacements, au quotidien et hors du quotidien ? Quels aménagements leur sont "
+    + "liés ? » Les problématiques de la fiche Éduscol, en démarche inductive : se déplacer au quotidien en France, d'après les déplacements de la "
+    + "famille, puis dans un autre lieu du monde, pour comparer ; la distance en kilomètres et en temps ; se déplacer de ville en ville, en France, en "
+    + "Europe et dans le monde ; un aménagement de transport, l'aéroport international. Repères : le lieu où l'on habite et l'école, un itinéraire "
+    + "quotidien, quelques grandes villes françaises, européennes et mondiales.",
+  seances: [
+    etape("Nos déplacements quotidiens", "décrire les déplacements quotidiens de leur famille : les motifs, les modes, les distances.",
+      "Comment se déplace ma famille dans une journée, dans une semaine ?",
+      "Remplir le tableau de ses déplacements ; tracer son trajet sur le plan de la commune ou avec un outil de géolocalisation ; faire le relevé de la "
+        + "classe.",
+      "On se déplace chaque jour pour l'école, le travail, les courses, les loisirs : à pied, à vélo, en car, en voiture, en transports en commun."),
+    etape("Distance en kilomètres, distance en temps", "exprimer une distance en kilomètres et en temps, selon le mode de transport.",
+      "Un lieu loin, c'est loin comment ?",
+      "Lire le document ; calculer la durée d'un même trajet à pied, à vélo, en voiture ; comparer des itinéraires sur un plan ou une carte.",
+      "Deux mesures : la distance en kilomètres, la distance en temps, qui dépend du mode de transport et des infrastructures."),
+    etape("Se déplacer au quotidien ailleurs dans le monde", "comparer les déplacements quotidiens en France et dans un autre lieu du monde.",
+      "Comment les enfants vont-ils à l'école ailleurs dans le monde ?",
+      "Lire le document ; regarder un ou deux extraits du film Sur le chemin de l'école ; localiser les pays sur le planisphère ; comparer avec nos "
+        + "trajets.",
+      "Selon les lieux, on va à l'école à pied, à cheval, en scooter, en car : les déplacements dépendent des distances, des infrastructures, de la "
+        + "richesse.", DOCUMENT),
+    etape("De ville en ville : les infrastructures", "identifier les infrastructures de transport et les échelles des déplacements.",
+      "Que faut-il pour aller loin ?",
+      "Lire le document sur l'aéroport de Roissy-Charles-de-Gaulle ; relier les modes de transport et leurs infrastructures ; lire des cartes des "
+        + "autoroutes, des lignes à grande vitesse, des vols long-courriers.",
+      "Aéroports, gares, ports, autoroutes : des infrastructures où l'on change de mode de transport pour aller en France, en Europe, dans le monde."),
+    etape("Nos voyages, en France, en Europe, dans le monde", "localiser des déplacements hors du quotidien, à différentes échelles.",
+      "Où sommes-nous déjà allés ? Comment ?",
+      "Placer sur des cartes les lieux des vacances, des visites familiales, des rencontres sportives, ou le voyage d'une personne imaginée ; calculer "
+        + "les distances en kilomètres et en temps ; coller les étiquettes des villes.",
+      "Le tourisme, les visites, les migrations : on se déplace de plus en plus loin et de plus en plus vite ; tous ne le peuvent pas de la même façon.",
+      ECRIRE),
+    evaluation("décrire les motifs et les modes des déplacements, quotidiens ou plus lointains, et les infrastructures qu'ils demandent",
+      "Les villes repères restent sur les cartes de la classe."),
+  ],
+};
+
+const INTERNET_2020_CM2: Demarche = {
+  id: "internet-2020-cm2", nom: "Communiquer d'un bout à l'autre du monde grâce à l'Internet — programme 2020 (CM2)", famille: FAMILLE,
+  source: EDUSCOL_2020("géographie", "Thème 2 - Communiquer d'un bout à l'autre du monde grâce à l'Internet"),
+  resume: "« Comment l'Internet met-il les hommes et les territoires en contact ? Tous les êtres humains y ont-ils également accès ? » Les "
+    + "problématiques de la fiche Éduscol, en démarche inductive : les usages des élèves et de leur famille ; un monde de réseaux — les câbles "
+    + "sous-marins, les serveurs — ; un habitant connecté au monde, par un projet de classe ; des habitants inégalement connectés, dans le monde et en "
+    + "France. Écueils que la fiche signale : en rester aux pratiques individuelles, une étude seulement technique, oublier l'éducation aux médias.",
+  seances: [
+    etape("Pourquoi utilisons-nous Internet ?", "décrire les usages d'Internet, à partir de leurs pratiques.",
+      "Que faisons-nous, nous et nos familles, avec Internet ?",
+      "Remplir le tableau de ses usages ; faire le relevé de la classe ; classer les usages : s'informer, communiquer, se divertir, acheter, apprendre.",
+      "Internet sert à chercher, apprendre, écrire, regarder, jouer, acheter, appeler : il est partout dans la vie quotidienne."),
+    etape("Un monde de réseaux", "expliquer qu'Internet repose sur un réseau bien matériel : des câbles, des serveurs, des satellites.",
+      "Internet est-il magique ?",
+      "Lire le document ; observer la carte mondiale des câbles sous-marins ; représenter par un schéma la mise en réseau des appareils de la classe ; "
+        + "coller les étiquettes sur le planisphère.",
+      "Les informations circulent par des câbles, jusque sous les océans, et par des satellites ; les grandes entreprises d'Internet sont surtout aux "
+        + "États-Unis.", DOCUMENT),
+    etape("Un habitant connecté au monde", "expliquer comment Internet met en contact des personnes éloignées, et s'informer avec prudence.",
+      "Avec qui la classe peut-elle communiquer grâce à Internet ?",
+      "Mener un projet : une correspondance avec une classe lointaine, un article pour Vikidia ou le blog de l'école ; localiser les lieux avec "
+        + "lesquels la classe communique ; lire le document.",
+      "Internet met en contact des personnes du monde entier ; on vérifie d'où vient une information, et on respecte le droit à l'image.", ECRIRE),
+    etape("Des habitants inégalement connectés", "décrire l'inégal accès à Internet dans le monde et en France.",
+      "Tout le monde a-t-il accès à Internet ?",
+      "Lire le document ; lire le planisphère de la part des habitants connectés, par pays, et la carte de la couverture mobile en France ; repérer des "
+        + "zones blanches.",
+      "L'accès à Internet est inégal : très fort en Europe et en Amérique du Nord, plus faible en Afrique subsaharienne ; en France, des zones "
+        + "blanches dans des campagnes et en montagne.", DOCUMENT),
+    evaluation("expliquer comment Internet met en contact les personnes et les lieux, et décrire l'inégal accès à Internet", "Les câbles restent tracés sur le planisphère."),
+  ],
+};
+
+const MIEUX_HABITER_CM2: Demarche = {
+  id: "mieux-habiter-cm2", nom: "Mieux habiter — programme 2020 (CM2)", famille: FAMILLE,
+  source: EDUSCOL_2020("géographie", "Thème 3 - Mieux habiter"),
+  resume: "« Comment mieux habiter par l'amélioration du cadre de vie et la gestion de l'environnement ? » La problématique de la fiche Éduscol, sur "
+    + "un quartier ou une commune proches : favoriser la place de la nature en ville, recycler, habiter un écoquartier — des sous-thèmes que la fiche "
+    + "laisse traiter dans l'ordre qu'on veut, et pas forcément tous. Un échange, une sortie et son diagnostic, des propositions présentées. Écueils que "
+    + "la fiche signale : opposer la nature et la ville, être trop théorique, idéaliser les écoquartiers.",
+  seances: [
+    etape("Qu'est-ce qui rend un lieu agréable à vivre ?", "dire ce qui fait un cadre de vie agréable, à partir de leur quartier.",
+      "Qu'aimons-nous là où nous habitons ? Que changerions-nous ?",
+      "Échanger à partir des lieux que chacun aime fréquenter ; remobiliser le thème « Se déplacer » ; préparer la sortie : le plan du quartier, les "
+        + "questions à se poser.",
+      "Mieux habiter : un cadre de vie agréable, une place pour la nature, des déplacements faciles, des lieux de rencontre, un environnement respecté."),
+    etape("Le diagnostic du quartier", "observer et décrire le cadre de vie d'un quartier : la nature, les déplacements, les déchets, les lieux de rencontre.",
+      "Notre quartier est-il agréable à vivre ?",
+      "Sortie en petits groupes, avec le plan et le tableau du diagnostic ; photographier, enregistrer ; rencontrer des habitants, un élu, un "
+        + "professionnel ; de retour en classe, faire le croquis du quartier.",
+      "Le diagnostic : ce qui va bien, ce qui pourrait changer.",
+      "Une production graphique : le croquis du quartier, avec ses espaces verts, ses circulations douces, ses points de collecte des déchets."),
+    etape("La nature en ville", "expliquer comment et pourquoi on donne une place à la nature en ville.",
+      "La nature a-t-elle sa place en ville ?",
+      "Lire le document ; repérer les espaces verts, les jardins, les berges sur le plan de la commune ; comparer avec ce qu'on a vu pendant la sortie.",
+      "Parcs, jardins partagés, toits couverts de plantes, berges aménagées : la nature abrite des animaux, rafraîchit la ville, réunit les habitants.",
+      DOCUMENT),
+    etape("Trier et recycler", "décrire la chaîne du tri et du recyclage des déchets.",
+      "Que deviennent nos déchets ?",
+      "Trier les déchets ; remettre dans l'ordre le chemin d'une bouteille recyclée ; chercher où se trouvent le centre de tri et l'usine "
+        + "d'incinération ; si c'est possible, en visiter un, ou un site de compostage.",
+      "Trier permet de recycler : moins de déchets, des matières réutilisées, moins de pollution ; on suit les consignes de tri de sa commune."),
+    etape("Habiter un écoquartier", "décrire un écoquartier et ce qu'il cherche à améliorer, sans l'idéaliser.",
+      "Peut-on construire un quartier pour mieux y vivre ?",
+      "Lire le document ; regarder une courte vidéo d'un écoquartier, proche si possible ; relever ce qui concerne l'environnement, les habitants, le "
+        + "travail ; chercher aussi ce qui reste difficile.",
+      "Un écoquartier limite la pollution, laisse une place à la nature, mêle les habitants et les activités ; il ne règle pas tout.", DOCUMENT),
+    etape("Nos propositions pour mieux habiter", "proposer des améliorations pour mieux habiter leur quartier.",
+      "Que proposons-nous pour notre quartier ?",
+      "Réaliser un poster, une maquette ou un diaporama : le diagnostic et des propositions ; les présenter à une autre classe ou au conseil municipal "
+        + "des enfants.",
+      "Il n'y a pas une, mais des solutions pour mieux habiter ; elles sont construites par les habitants et les élus.", ECRIRE),
+    evaluation("décrire comment on peut mieux habiter : la nature en ville, le tri et le recyclage, l'écoquartier", "Le croquis du quartier reste affiché."),
+  ],
+};
+
+/** Les six séquences du CM2 du programme de 2020, au choix cette année. */
+export const DEMARCHES_HISTOIRE_GEO_CM_2020: Demarche[] = [
+  TEMPS_REPUBLIQUE_CM2, AGE_INDUSTRIEL_2020_CM2, GUERRES_UE_CM2, SE_DEPLACER_2020_CM2, INTERNET_2020_CM2, MIEUX_HABITER_CM2,
+];
+
 export const DEMARCHES_HISTOIRE_GEO_CM: Demarche[] = [
   MOYEN_AGE_CM1, MONARCHIE_CM1, EXPLORATIONS_CM1, REVOLUTION_CM1,
   REPUBLIQUE_EMPIRE_CM2, VERS_REPUBLIQUE_CM2, AGE_INDUSTRIEL_CM2, PREMIERE_GUERRE_CM2, SECONDE_GUERRE_CM2, DEPUIS_1945_CM2,
@@ -980,6 +1251,74 @@ const PLANS: Record<string, PlanHG> = {
       "Le drapeau européen, une pièce d'euro, une photographie du Parlement européen à Strasbourg ; le document",
       "La carte de l'Europe ; les étiquettes des pays ; la feuille à relier et le tableau",
       "Une photographie d'un panneau « projet cofinancé par l'Union européenne » ; le site de la région ; la fiche à compléter",
+      "",
+    ],
+  },
+  [TEMPS_REPUBLIQUE_CM2.id]: {
+    feuilles: feuillesDuTheme(TEMPS_REPUBLIQUE_CM2.id, { centenaire: 0, symboles: 1, "ecole-ferry": 2, "ecole-hier": 3, "droits-devoirs": 4 }, 0, null, 5),
+    materiel: [
+      "Une affiche du centenaire de la République (1892) ; les portraits des souverains du XIXe siècle ; la frise du thème et ses étiquettes ; le document",
+      "Des photographies de la façade de la mairie et de l'école, des pièces de monnaie ; la feuille à relier",
+      "Des photographies de classes de la IIIe République (Musée national de l'Éducation) ; une carte murale de l'empire colonial ; le document",
+      "La feuille à trier ; l'histoire du bâtiment de l'école, d'après les archives de la commune",
+      "Le document ; un article de la Déclaration universelle des droits de l'homme, affiché",
+      "",
+    ],
+  },
+  [AGE_INDUSTRIEL_2020_CM2.id]: {
+    feuilles: feuillesDuTheme(AGE_INDUSTRIEL_2020_CM2.id, { energies: 1, mine: 2, "usine-magasin": 2, ville: 3, rural: 4, "vie-quotidienne": 5 }, 0, null, 6),
+    materiel: [
+      "L'image d'un atelier d'artisan et celle d'une usine du XIXe siècle ; la frise du thème et ses étiquettes",
+      "Des images de machines (Musée des arts et métiers) ; le document",
+      "Des photographies et des tableaux de mines, d'usines, de grands magasins ; les ressources d'un écomusée proche ; les documents",
+      "Le plan d'une ville proche et des photographies de ses traces industrielles ; le document",
+      "Des outils agricoles anciens ou leurs images ; des travaux d'histoire locale ; le document",
+      "La feuille à trier",
+      "",
+    ],
+  },
+  [GUERRES_UE_CM2.id]: {
+    feuilles: feuillesDuTheme(GUERRES_UE_CM2.id, { "bilan-1918": 1, tranchees: 2, occupation: 3, "vichy-juifs": 3, "comparer-guerres": 4, europe: 5, "droits-europe": 5 }, 0, null, 6),
+    materiel: [
+      "La frise du thème et ses étiquettes ; un planisphère",
+      "La liste des noms du monument aux morts de la commune, ou une sortie pour le voir ; des plaques, des noms de rues ; le document",
+      "Le témoignage d'un poilu à Verdun ; un casque, un masque à gaz, ou leurs images ; le document",
+      "Le témoignage d'un enfant juif caché, adapté à l'âge des élèves ; une image du débarquement du 6 juin 1944 ; les documents",
+      "Le tableau à compléter ; les documents des séances précédentes",
+      "Des cartes de l'Europe en 1957, en 1992 et aujourd'hui ; les documents",
+      "",
+    ],
+  },
+  [SE_DEPLACER_2020_CM2.id]: {
+    feuilles: feuillesDuTheme(SE_DEPLACER_2020_CM2.id, { "mes-deplacements": 0, "km-temps": 1, ailleurs: 2, infrastructures: 3, aeroport: 3 }, null, 4, 5),
+    materiel: [
+      "Le tableau à remplir ; le plan de la commune ; un outil de géolocalisation",
+      "Une carte avec ses distances ; le document",
+      "Un ou deux extraits du film Sur le chemin de l'école (2013) ; le planisphère ; le document",
+      "Des cartes des autoroutes, des lignes à grande vitesse, des vols long-courriers ; le document ; la feuille à relier",
+      "Des cartes de France, d'Europe et du monde ; les étiquettes des villes",
+      "",
+    ],
+  },
+  [INTERNET_2020_CM2.id]: {
+    feuilles: feuillesDuTheme(INTERNET_2020_CM2.id, { usages: 0, fonctionnement: 1, "info-en-ligne": 2, acces: 3 }, null, 1, 4),
+    materiel: [
+      "Le tableau à remplir ; une affiche pour le relevé de la classe",
+      "La carte mondiale des câbles sous-marins, projetée ; le planisphère et les étiquettes ; le document",
+      "Un projet de correspondance ou d'article en ligne ; le document",
+      "Le planisphère des habitants connectés, par pays ; la carte de la couverture mobile en France ; le document",
+      "",
+    ],
+  },
+  [MIEUX_HABITER_CM2.id]: {
+    feuilles: feuillesDuTheme(MIEUX_HABITER_CM2.id, { diagnostic: 1, "nature-ville": 2, poubelles: 3, "chemin-dechet": 3, ecoquartier: 4 }, null, null, 6),
+    materiel: [
+      "Le plan du quartier ou de la commune ; une affiche pour les questions de la sortie",
+      "Le plan du quartier, le tableau du diagnostic, un appareil photo ou une tablette ; l'autorisation de sortie",
+      "Le plan de la commune ; les photographies de la sortie ; le document",
+      "Des emballages propres à trier ; les consignes de tri de la commune ; la feuille à trier et les étapes à remettre dans l'ordre",
+      "Une courte vidéo d'un écoquartier ; le document",
+      "Du papier pour l'affiche, ou une tablette pour le diaporama",
       "",
     ],
   },

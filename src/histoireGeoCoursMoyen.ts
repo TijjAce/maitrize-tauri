@@ -281,6 +281,8 @@ export const STYLE_HISTOIRE_GEO_CM = `
     text-align: center; overflow: hidden; font-weight: 800; font-size: 11px; line-height: 1.15; padding: 0 1mm; }
   .feuille.hg .hgf-bande.hgf-rang2 { font-weight: 700; font-size: 9.5px; }
   .feuille.hg .hgf-bande .hgf-petit { font-size: 7.5px; font-weight: 700; }
+  /* Les noms des bandes et les graduations sont cotés au millimètre, comme un schéma : le mode dys leur laisse leur espacement (voir STYLE_DYS). */
+  .feuille.hg .hgf-bande span, .feuille.hg .hgf-grad span { letter-spacing: normal; word-spacing: normal; }
   .feuille.hg .hgf-fleche { position: absolute; right: 0; width: 0; height: 0; border-left: 8mm solid #1c2233; border-top-style: solid; border-bottom-style: solid;
     border-top-color: transparent; border-bottom-color: transparent; }
   .feuille.hg .hgf-grad { position: absolute; width: 0; z-index: 2; }

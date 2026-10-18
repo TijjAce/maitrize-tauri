@@ -1554,11 +1554,467 @@ const UNION_EUROPEENNE: ThemeHGCM = {
   ],
 };
 
+// ── Le CM2 du programme de 2020, encore en vigueur en 2026-2027 ───────────
+//
+// Les fiches Éduscol « S'approprier les différents thèmes du programme »
+// (ressources d'accompagnement du cycle 3, mars 2016), pour les six thèmes
+// du CM2 : leur problématique, leurs sous-thèmes, leurs pistes de mise en
+// œuvre, leurs repères. Les feuilles déjà écrites pour le programme de 2026
+// servent quand elles disent la même chose ; les autres sont écrites ici.
+
+/** Un exercice d'un thème, repris tel quel dans un autre. */
+const exo = (t: ThemeHGCM, id: string): ExerciceHGCM => t.exercices.find((e) => e.id === id)!;
+
+const TEMPS_REPUBLIQUE_2020: ThemeHGCM = {
+  id: "temps-republique-cm2", classe: "CM2", histoire: true, titre: "Le temps de la République (programme 2020)",
+  question: "Comment les Français se sont-ils unis autour de la République ?",
+  frise: {
+    titre: "La République, de 1792 à aujourd'hui", debut: 1780, fin: 1970, pas: 20,
+    bandes: [
+      { nom: "Roi", debut: 1780, fin: jour(1792, 9, 21), couleur: BLEU },
+      { nom: "Ire République", debut: jour(1792, 9, 21), fin: jour(1804, 5, 18), couleur: ROSE, aPlacer: true },
+      { nom: "Empereurs et rois", debut: jour(1804, 5, 18), fin: jour(1848, 2, 24), couleur: BLEU },
+      { nom: "IIe Rép.", debut: jour(1848, 2, 24), fin: jour(1852, 12, 2), couleur: ROSE },
+      { nom: "Empereur", debut: jour(1852, 12, 2), fin: jour(1870, 9, 4), couleur: BLEU },
+      { nom: "IIIe République", debut: jour(1870, 9, 4), fin: jour(1940, 7, 10), couleur: ROSE, aPlacer: true },
+      { nom: "Vichy", debut: jour(1940, 7, 10), fin: jour(1944, 8, 25), couleur: GRIS },
+      { nom: "", debut: jour(1944, 8, 25), fin: jour(1946, 10, 27), couleur: GRIS },
+      { nom: "IVe R.", debut: jour(1946, 10, 27), fin: jour(1958, 10, 4), couleur: ROSE },
+      { nom: "Ve République", debut: jour(1958, 10, 4), fin: 1970, couleur: ROSE, aPlacer: true },
+    ],
+    reperes: [
+      { date: jour(1792, 9, 21), quand: "1792", quoi: "La naissance de la Ire République" },
+      { date: jour(1848, 2, 24), quand: "1848", quoi: "La IIe République : le suffrage universel masculin" },
+      { date: jour(1870, 9, 4), quand: "1870", quoi: "La IIIe République" },
+      { date: jour(1880, 7, 6), quand: "1880", quoi: "Le 14 juillet devient la fête nationale" },
+      { date: 1881.5, quand: "1881 – 1882", quoi: "Les lois de Jules Ferry sur l'école" },
+      { date: jour(1905, 12, 9), quand: "1905", quoi: "La séparation des Églises et de l'État" },
+      { date: jour(1944, 4, 21), quand: "1944", quoi: "Le droit de vote des femmes" },
+      { date: jour(1958, 10, 4), quand: "1958", quoi: "La Ve République" },
+    ],
+  },
+  motsCles: [
+    ["la République", "Un régime sans roi ni empereur, où le pouvoir vient du peuple et de ses élus."],
+    ["la démocratie", "Un régime où le peuple choisit ses dirigeants par des élections libres."],
+    ["le citoyen, la citoyenne", "Celui, celle qui a des droits — voter, s'exprimer — et des devoirs — respecter la loi."],
+    ["la laïcité", "Le principe qui sépare les religions et l'État : chacun est libre de croire ou de ne pas croire."],
+    ["l'école gratuite, laïque et obligatoire", "L'école des lois Ferry (1881-1882), ouverte à tous les enfants de 6 à 13 ans."],
+    ["la fête nationale", "Le 14 juillet, depuis 1880."],
+    ["la devise", "Liberté, Égalité, Fraternité."],
+    ["le suffrage universel", "Le droit de vote de tous les citoyens : les hommes en 1848, les femmes en 1944."],
+  ],
+  exercices: [
+    {
+      sorte: "document", id: "centenaire", titre: "1892 : la République fête ses cent ans",
+      rappel: "La République naît en 1792 ; rois et empereurs reviennent ; à partir de 1870, la IIIe République s'installe et unit les Français autour des symboles de la Révolution.",
+      texte: [
+        "En septembre 1892, la France fête les cent ans de la République, née le 21 septembre 1792. Pourtant, la France n'a pas été une République pendant tout ce siècle : après la Ire République, Napoléon Ier, puis des rois, puis Napoléon III ont gouverné. La IIe République n'a duré que de 1848 à 1852.",
+        "Depuis 1870, la IIIe République s'installe. Ses partisans, comme Léon Gambetta et Jules Ferry, veulent unir tous les Français autour d'elle. Ils lui donnent les symboles de la Révolution : La Marseillaise devient l'hymne national en 1879, et le 14 juillet, la fête nationale en 1880. Le drapeau tricolore est celui de la France depuis 1830. La devise « Liberté, Égalité, Fraternité » est inscrite sur les bâtiments publics. Aujourd'hui encore, Marianne représente la République sur les mairies, les pièces et les timbres.",
+        "Pour le centenaire de 1892, des fêtes sont organisées dans tout le pays ; les affiches montrent Marianne et les symboles républicains.",
+      ],
+      questions: [
+        ["Depuis combien de temps la République existe-t-elle en 1892 ?", "Cent ans : elle est née en 1792."],
+        ["La France a-t-elle toujours été une République de 1792 à 1892 ? J'explique.", "Non : Napoléon Ier, des rois, puis Napoléon III ont gouverné ; la République ne s'installe durablement qu'à partir de 1870."],
+        ["Je relève trois symboles de la République, avec leur date quand le texte la donne.", "La Marseillaise, hymne national en 1879 ; le 14 juillet, fête nationale en 1880 ; le drapeau tricolore, depuis 1830 ; la devise ; Marianne."],
+        ["Pourquoi les républicains choisissent-ils les symboles de la Révolution ?", "Pour unir tous les Français autour de la République, héritière de 1789."],
+      ],
+    },
+    exo(VERS_REPUBLIQUE, "symboles"),
+    {
+      sorte: "document", id: "ecole-ferry", titre: "L'école primaire au temps de Jules Ferry",
+      rappel: "Gratuite (1881), obligatoire de 6 à 13 ans et laïque (1882), l'école de Jules Ferry instruit tous les enfants et forme des citoyens.",
+      texte: [
+        "Pour les républicains, instruire le peuple est la clé de la République. Avec les lois de Jules Ferry, l'école primaire publique devient gratuite en 1881, puis obligatoire de 6 à 13 ans et laïque en 1882 : la morale y remplace l'instruction religieuse. En 1886, tous les maîtres des écoles publiques sont laïcs.",
+        "Dans chaque commune, on construit une école, souvent avec la mairie : c'est la mairie-école. Les filles et les garçons ont des classes séparées. La classe a son tableau noir, son poêle, ses cartes de France au mur, ses pupitres où l'on écrit à la plume et à l'encre. La journée commence par une leçon de morale. Les filles apprennent aussi la couture et la tenue de la maison. Vers 12 ans, les bons élèves passent le certificat d'études.",
+        "Sur les cartes accrochées aux murs, l'empire colonial français s'étend en Afrique et en Asie : l'école apprend aussi à en être fier.",
+      ],
+      questions: [
+        ["Que changent les lois de Jules Ferry ?", "L'école primaire publique devient gratuite, obligatoire de 6 à 13 ans et laïque."],
+        ["Pourquoi les républicains veulent-ils instruire tous les enfants ?", "Pour enraciner la République et former des citoyens."],
+        ["Je relève trois objets d'une classe vers 1900.", "Le tableau noir, le poêle, les cartes, les pupitres, la plume et l'encre."],
+        ["Qu'apprennent les filles en plus des garçons ?", "La couture et la tenue de la maison."],
+      ],
+    },
+    {
+      sorte: "trier", id: "ecole-hier", titre: "L'école vers 1900 et aujourd'hui",
+      consigne: "Je lis chaque étiquette. Je l'écris dans la bonne colonne : l'école vers 1900, ou l'école d'aujourd'hui.",
+      rappel: "L'école a changé depuis 1900 : la mixité, les outils, l'instruction jusqu'à 16 ans. Elle reste au cœur de la République.",
+      colonnes: ["L'école vers 1900", "L'école d'aujourd'hui"],
+      items: [
+        ["on écrit à la plume et à l'encre", 0], ["un poêle chauffe la classe", 0], ["les filles et les garçons sont dans des classes séparées", 0],
+        ["une leçon de morale commence la journée", 0], ["le certificat d'études, vers 12 ans", 0], ["l'école est obligatoire jusqu'à 13 ans", 0],
+        ["on écrit au stylo ou au clavier", 1], ["les classes sont mixtes", 1], ["l'enseignement moral et civique", 1],
+        ["l'instruction est obligatoire de 3 à 16 ans", 1], ["un tableau numérique", 1], ["des tablettes ou des ordinateurs", 1],
+      ],
+    },
+    {
+      sorte: "document", id: "droits-devoirs", titre: "Des droits et des devoirs",
+      rappel: "Le citoyen a des droits et des devoirs. Ils se sont étendus : le vote des hommes en 1848, celui des femmes en 1944, la Déclaration universelle des droits de l'homme en 1948.",
+      texte: [
+        "Dans une démocratie, les citoyens ont des droits et des devoirs. Ils ont le droit de voter, de dire ce qu'ils pensent, de croire ou de ne pas croire, de s'instruire, d'être soignés. Ils ont le devoir de respecter les lois et les autres, et de payer leurs impôts selon leurs moyens ; ils peuvent être appelés comme jurés dans un procès.",
+        "Ces droits se sont étendus au fil du temps. En 1848, tous les hommes peuvent voter ; en 1944, les femmes aussi. En 1948, la Déclaration universelle des droits de l'homme, adoptée par l'Organisation des Nations unies, proclame les droits de tous les êtres humains. Aujourd'hui, en France, on vote à partir de 18 ans, et l'instruction est obligatoire de 3 à 16 ans, pour les filles comme pour les garçons.",
+      ],
+      questions: [
+        ["Je cite deux droits et deux devoirs du citoyen.", "Voter, s'exprimer, s'instruire, être soigné ; respecter les lois et les autres, payer ses impôts, être juré."],
+        ["Depuis quand les femmes votent-elles en France ?", "Depuis 1944."],
+        ["Qu'est-ce que la Déclaration universelle des droits de l'homme ?", "Un texte adopté par l'ONU en 1948, qui proclame les droits de tous les êtres humains."],
+      ],
+    },
+  ],
+  evaluation: [
+    ["J'explique quand la France est devenue durablement une République.", "La République naît en 1792, mais ne s'installe durablement qu'à partir de 1870, avec la IIIe République."],
+    ["Je nomme trois symboles de la République.", "Le drapeau tricolore, La Marseillaise, le 14 juillet, Marianne, la devise."],
+    ["J'explique le rôle de l'école de Jules Ferry pour la République.", "Gratuite, obligatoire et laïque, elle instruit tous les enfants et forme des citoyens attachés à la République."],
+    ["Je cite un droit et un devoir du citoyen.", "Voter, s'exprimer ; respecter les lois, payer ses impôts."],
+  ],
+};
+
+const AGE_INDUSTRIEL_2020: ThemeHGCM = {
+  id: "age-industriel-2020-cm2", classe: "CM2", histoire: true, titre: "L'âge industriel en France (programme 2020)",
+  question: "Comment l'industrialisation a-t-elle transformé les manières de travailler et de vivre ?",
+  frise: {
+    titre: "L'âge industriel en France", debut: 1750, fin: 1950, pas: 25,
+    bandes: [
+      { nom: "XVIIIe siècle", debut: 1750, fin: 1801, couleur: JAUNE },
+      { nom: "XIXe siècle", debut: 1801, fin: 1901, couleur: GRIS },
+      { nom: "XXe siècle", debut: 1901, fin: 1950, couleur: BLEU },
+    ],
+    reperes: [
+      { date: 1770, quand: "Fin du XVIIIe s.", quoi: "La révolution industrielle commence en Angleterre" },
+      { date: 1830, quand: "Après 1830", quoi: "L'industrialisation prend son essor en France" },
+      { date: 1852, quand: "1852", quoi: "Le premier grand magasin : le Bon Marché, à Paris" },
+      { date: 1884, quand: "1884", quoi: "La loi qui autorise les syndicats" },
+      { date: jour(1906, 3, 10), quand: "1906", quoi: "La catastrophe de la mine de Courrières : plus de 1 000 morts" },
+      { date: 1931, quand: "1931", quoi: "La majorité des Français vit en ville" },
+    ],
+  },
+  motsCles: [
+    ...AGE_INDUSTRIEL.motsCles,
+    ["le grand magasin", "Un très grand magasin qui vend de tout, à prix fixe, né au XIXe siècle."],
+    ["l'exode rural", "Le départ des habitants des campagnes vers les villes."],
+  ],
+  exercices: [
+    {
+      sorte: "document", id: "energies", titre: "Énergies et machines",
+      rappel: "Le charbon et la vapeur, puis l'électricité et le pétrole, font tourner les machines : on produit plus, on va plus vite.",
+      texte: [
+        "Au XIXe siècle, la machine à vapeur, qui brûle du charbon, fait tourner les usines, les locomotives et les bateaux. Les ateliers et les usines produisent beaucoup plus. Les chemins de fer se développent : en 1900, ils relient toutes les grandes villes de France.",
+        "À partir de 1880, deux nouvelles énergies arrivent : l'électricité, qui éclaire les villes et fait tourner les moteurs, et le pétrole, qui fait marcher le moteur des premières automobiles. Avant 1914, la France est l'un des premiers pays à fabriquer des automobiles. Dans les campagnes, les machines agricoles se répandent surtout après la Première Guerre mondiale.",
+      ],
+      questions: [
+        ["Quelle énergie fait tourner les machines au début de l'âge industriel ?", "La vapeur, produite en brûlant du charbon."],
+        ["Quelles énergies nouvelles arrivent à partir de 1880 ? À quoi servent-elles ?", "L'électricité, pour éclairer et faire tourner les moteurs ; le pétrole, pour le moteur des automobiles."],
+        ["Je cite trois machines de l'âge industriel.", "La machine à vapeur, la locomotive, le bateau à vapeur, l'automobile, les machines agricoles."],
+      ],
+    },
+    {
+      sorte: "document", id: "mine", titre: "Le travail à la mine",
+      rappel: "À la mine, le travail est dur et dangereux ; autour d'elle naissent des cités ouvrières ; les mineurs luttent pour de meilleures conditions.",
+      texte: [
+        "Avant 1914, les trois quarts des mines de charbon de France se trouvent dans le Nord et le Pas-de-Calais. Au fond, les mineurs abattent le charbon à la lumière de leur lampe ; en surface, sur le carreau de la mine, des femmes et des enfants trient le charbon remonté.",
+        "Le travail est dangereux : en 1906, à Courrières, une explosion tue plus de 1 000 mineurs. Autour des mines, les compagnies construisent des cités ouvrières. Des mineurs viennent de Belgique, de Pologne, d'Italie. Les mineurs font grève pour obtenir de meilleurs salaires et moins de danger ; depuis 1874, les femmes n'ont plus le droit de travailler au fond.",
+      ],
+      questions: [
+        ["Où se trouvent la plupart des mines de charbon de France avant 1914 ?", "Dans le Nord et le Pas-de-Calais."],
+        ["Je décris le travail au fond et sur le carreau de la mine.", "Au fond, les mineurs abattent le charbon ; sur le carreau, des femmes et des enfants le trient."],
+        ["Pourquoi le travail à la mine est-il dangereux ?", "Les explosions, les éboulements : à Courrières, en 1906, plus de 1 000 mineurs meurent."],
+      ],
+    },
+    {
+      sorte: "document", id: "usine-magasin", titre: "L'usine, l'atelier, le grand magasin",
+      rappel: "Usine, atelier, grand magasin : des conditions de travail différentes, souvent dures ; en 1884, les syndicats sont autorisés.",
+      texte: [
+        "À l'usine, des centaines d'ouvriers et d'ouvrières travaillent sur des machines, aux mêmes heures, selon un règlement strict ; une erreur peut coûter une amende. Dans le textile, beaucoup de femmes et d'enfants travaillent. L'atelier, plus petit et plus ancien, reste très répandu en France : on y travaille plus longtemps, mais la discipline y est moins dure.",
+        "En 1852, Aristide Boucicaut ouvre à Paris le premier grand magasin, le Bon Marché. On y vend des vêtements tout faits, à prix fixe, à une clientèle nombreuse. Des vendeuses et des vendeurs y travaillent ; des ouvrières cousent chez elles, payées à la pièce.",
+        "En 1884, la loi autorise les syndicats, qui défendent les droits des travailleurs.",
+      ],
+      questions: [
+        ["Je compare le travail à l'usine et à l'atelier.", "À l'usine, beaucoup d'ouvriers, des machines, des horaires stricts, un règlement ; à l'atelier, plus petit, des journées plus longues mais une discipline moins dure."],
+        ["Qu'est-ce qu'un grand magasin ? Lequel ouvre le premier ?", "Un très grand magasin qui vend de tout, à prix fixe ; le Bon Marché, à Paris, en 1852."],
+        ["Que permet la loi de 1884 ?", "Créer des syndicats pour défendre les droits des travailleurs."],
+      ],
+    },
+    {
+      sorte: "document", id: "ville", titre: "La ville industrielle",
+      rappel: "Avec l'industrie, les villes grandissent et changent : gares, usines, quartiers ouvriers et bourgeois ; en 1931, la majorité des Français vit en ville.",
+      texte: [
+        "Avec l'industrie, les villes grandissent : en 1831, moins d'un Français sur cinq vit en ville ; en 1931, plus d'un sur deux. Des villes naissent autour d'une mine ou d'une usine, comme Decazeville, dans l'Aveyron ; d'autres se transforment, comme Le Creusot avec les usines Schneider.",
+        "La ville change : on construit des gares, des ponts et des halles en métal, puis des tramways. À Paris, le préfet Haussmann fait percer de larges avenues ; beaucoup d'ouvriers partent vers la périphérie. Les villes ont des quartiers d'usines, des quartiers ouvriers pauvres, des quartiers bourgeois. Le charbon pollue l'air, mais l'eau courante, les égouts et le ramassage des ordures progressent : dans les années 1880, le préfet Poubelle impose les boîtes à ordures à Paris.",
+      ],
+      questions: [
+        ["Quelle part des Français vit en ville en 1831 ? Et en 1931 ?", "Moins d'un sur cinq ; plus d'un sur deux."],
+        ["Je cite deux villes nées ou transformées par l'industrie.", "Decazeville, Le Creusot."],
+        ["Je relève deux changements dans la ville industrielle.", "Des gares, des ponts en métal, des tramways, de larges avenues, l'eau courante, les égouts, le ramassage des ordures."],
+      ],
+    },
+    {
+      sorte: "document", id: "rural", titre: "Le monde rural",
+      rappel: "La France reste longtemps rurale ; les campagnes se vident, se désenclavent, se spécialisent, puis se modernisent.",
+      texte: [
+        "Au XIXe siècle, la France reste un pays de paysans : vers 1850, la majorité des Français travaillent la terre, et on n'a jamais cultivé autant de champs. Les campagnes sont très peuplées et souvent pauvres ; beaucoup de jeunes partent vers les villes pour devenir ouvriers ou domestiques : c'est l'exode rural.",
+        "Le chemin de fer désenclave les campagnes : les produits voyagent plus loin. Peu à peu, chaque région se spécialise : la vigne, le blé, l'élevage. Les engrais et les machines agricoles se répandent surtout après la Première Guerre mondiale ; en 1932, quatre communes rurales sur cinq ont l'électricité.",
+      ],
+      questions: [
+        ["Pourquoi beaucoup de jeunes quittent-ils les campagnes ?", "Les campagnes sont très peuplées et souvent pauvres ; en ville, ils espèrent un travail d'ouvrier ou de domestique."],
+        ["Qu'est-ce que l'exode rural ?", "Le départ des habitants des campagnes vers les villes."],
+        ["Je relève deux changements dans les campagnes.", "Le chemin de fer, la spécialisation des régions, les machines, les engrais, l'électricité."],
+      ],
+    },
+    exo(AGE_INDUSTRIEL, "vie-quotidienne"),
+  ],
+  evaluation: [
+    ["J'explique ce qu'est l'industrialisation.", "Le développement des machines et des usines, qui change la manière de produire."],
+    ["Je décris le travail à la mine, à l'usine ou au grand magasin.", "Des journées longues, un travail dur et souvent dangereux, une discipline stricte ; des syndicats à partir de 1884."],
+    ["J'explique comment l'industrialisation transforme la ville ou la campagne.", "Les villes grandissent, avec gares, usines et quartiers ouvriers ; les campagnes se vident et se modernisent."],
+  ],
+};
+
+const GUERRES_UE_2020: ThemeHGCM = {
+  id: "guerres-mondiales-ue-cm2", classe: "CM2", histoire: true, titre: "La France, des guerres mondiales à l'Union européenne (programme 2020)",
+  question: "Comment les traumatismes des deux guerres mondiales sont-ils à l'origine de la recherche d'une paix durable en Europe ?",
+  frise: {
+    titre: "Des guerres mondiales à l'Union européenne", debut: 1910, fin: 2005, pas: 10,
+    bandes: [
+      { nom: "", debut: 1910, fin: jour(1914, 8, 3), couleur: VERT },
+      { nom: "Guerre", debut: jour(1914, 8, 3), fin: jour(1918, 11, 11), couleur: ROSE },
+      { nom: "", debut: jour(1918, 11, 11), fin: jour(1939, 9, 3), couleur: VERT },
+      { nom: "Guerre", debut: jour(1939, 9, 3), fin: jour(1945, 5, 8), couleur: ROSE },
+      { nom: "", debut: jour(1945, 5, 8), fin: 1951, couleur: VERT },
+      { nom: "La construction européenne", debut: 1951, fin: 2005, couleur: BLEU, aPlacer: true },
+    ],
+    reperes: [
+      { date: jour(1914, 8, 3), quand: "1914 – 1918", quoi: "La Première Guerre mondiale" },
+      { date: jour(1939, 9, 3), quand: "1939 – 1945", quoi: "La Seconde Guerre mondiale" },
+      { date: jour(1944, 6, 6), quand: "6 juin 1944", quoi: "Le débarquement des Alliés en Normandie" },
+      { date: 1951, quand: "1951", quoi: "Le début de la construction européenne" },
+      { date: jour(1957, 3, 25), quand: "1957", quoi: "Le traité de Rome" },
+      { date: 1992, quand: "1992", quoi: "Le traité de Maastricht : l'Union européenne" },
+    ],
+  },
+  motsCles: [
+    ["la guerre mondiale", "Une guerre où s'affrontent des pays de tous les continents."],
+    ["le poilu", "Le surnom des soldats français de la Première Guerre mondiale."],
+    ["l'armistice", "L'accord qui arrête les combats : le 11 novembre 1918."],
+    ["l'Occupation", "La présence de l'armée allemande en France, de 1940 à 1944."],
+    ["la Résistance", "Ceux et celles qui luttent contre l'occupant et le régime de Vichy."],
+    ["le génocide", "L'extermination organisée d'un peuple : celle des Juifs d'Europe pendant la Seconde Guerre mondiale."],
+    ["la construction européenne", "L'union progressive des pays d'Europe, depuis 1951, pour garantir la paix."],
+    ["la citoyenneté européenne", "Les droits des citoyens des pays de l'Union européenne, comme circuler librement ou élire le Parlement européen."],
+  ],
+  exercices: [
+    exo(PREMIERE_GUERRE, "bilan-1918"),
+    exo(PREMIERE_GUERRE, "tranchees"),
+    exo(SECONDE_GUERRE, "occupation"),
+    exo(SECONDE_GUERRE, "vichy-juifs"),
+    {
+      sorte: "tableau", id: "comparer-guerres", titre: "Deux guerres mondiales",
+      consigne: "Je complète le tableau avec les documents de la séquence. Puis j'écris une phrase qui compare les deux guerres.",
+      rappel: "Les deux guerres mondiales ont été d'une violence extrême : environ 18,6 millions de morts pour la première, 62 millions pour la seconde, dont une majorité de civils.",
+      entetes: ["", "La Première Guerre mondiale", "La Seconde Guerre mondiale"],
+      lignes: [["Les dates", "", ""], ["Les combats en France", "", ""], ["Les morts dans le monde", "", ""], ["Plus de soldats ou plus de civils tués ?", "", ""],
+        ["Un évènement marquant", "", ""], ["Ce qu'elle laisse dans ma commune", "", ""]],
+      reponses: [["Les dates", "1914 – 1918", "1939 – 1945"], ["Les combats en France", "Au nord et à l'est : le front, les tranchées", "La défaite de 1940, l'Occupation, puis la Libération"],
+        ["Les morts dans le monde", "Environ 18,6 millions", "Environ 62 millions"], ["Plus de soldats ou plus de civils tués ?", "Plus de soldats", "Plus de civils"],
+        ["Un évènement marquant", "La bataille de Verdun, en 1916", "Le débarquement du 6 juin 1944"], ["Ce qu'elle laisse dans ma commune", "Le monument aux morts", "D'autres noms sur le monument, des plaques"]],
+    },
+    exo(DEPUIS_1945, "europe"),
+    {
+      sorte: "document", id: "droits-europe", titre: "Des droits pour tous, une citoyenneté européenne",
+      rappel: "Après 1945 : l'ONU, la Déclaration universelle des droits de l'homme (1948) ; les citoyens de l'Union européenne sont aussi citoyens européens.",
+      texte: [
+        "Après 1945, pour que de telles horreurs ne recommencent pas, les pays du monde fondent l'Organisation des Nations unies, l'ONU. En 1948, elle adopte la Déclaration universelle des droits de l'homme : « Tous les êtres humains naissent libres et égaux en dignité et en droits. » En 1950, des pays d'Europe signent la Convention européenne des droits de l'homme.",
+        "Les citoyens des pays de l'Union européenne sont aussi citoyens européens : ils peuvent circuler, vivre, étudier et travailler dans les autres pays de l'Union, et ils élisent le Parlement européen. En 2000, l'Union adopte sa Charte des droits fondamentaux.",
+      ],
+      questions: [
+        ["Pourquoi les pays du monde fondent-ils l'ONU en 1945 ?", "Pour que de telles horreurs ne recommencent pas, et pour maintenir la paix."],
+        ["Que proclame la Déclaration universelle de 1948 ?", "Que tous les êtres humains naissent libres et égaux en dignité et en droits."],
+        ["Je cite deux droits des citoyens européens.", "Circuler, vivre, étudier, travailler dans un autre pays de l'Union ; élire le Parlement européen."],
+      ],
+    },
+  ],
+  evaluation: [
+    ["Je situe les deux guerres mondiales sur la frise.", "1914 – 1918 ; 1939 – 1945."],
+    ["J'explique pourquoi ces deux guerres ont été d'une violence extrême.", "Des millions de morts — 18,6 puis 62 millions —, des civils tués en masse, le génocide des Juifs."],
+    ["J'explique pourquoi la France s'est engagée dans la construction européenne.", "Pour rendre la guerre impossible entre les pays européens et garantir une paix durable."],
+    ["Je cite deux étapes de la construction européenne.", "1951, le charbon et l'acier en commun ; 1957, le traité de Rome ; 1992, le traité de Maastricht."],
+  ],
+};
+
+const SE_DEPLACER_2020: ThemeHGCM = {
+  id: "se-deplacer-2020-cm2", classe: "CM2", histoire: false, titre: "Se déplacer (programme 2020)",
+  question: "Quels sont les motifs, les modes et les contraintes des déplacements, au quotidien et hors du quotidien ? Quels aménagements leur sont liés ?",
+  motsCles: [
+    ["la mobilité", "L'ensemble des déplacements des personnes."],
+    ["les déplacements quotidiens", "Ceux qu'on fait chaque jour : aller à l'école, au travail, faire les courses."],
+    ["le tourisme", "Un déplacement de loisir, d'au moins une nuit hors de chez soi."],
+    ["la migration", "Un déplacement pour s'installer durablement ailleurs."],
+    ["l'infrastructure de transport", "Ce qu'on construit pour se déplacer : routes, voies ferrées, gares, ports, aéroports."],
+    ["la distance en temps", "La durée d'un trajet, qui dépend du mode de transport."],
+    ["le covoiturage", "Partager une voiture pour un même trajet."],
+  ],
+  lieux: ["Paris", "Lyon", "Marseille", "Toulouse", "Lille", "Bordeaux", "Londres", "Bruxelles", "Berlin", "Madrid", "Rome", "New York", "Tokyo", "Dakar", "Montréal"],
+  exercices: [
+    exo(SE_DEPLACER, "mes-deplacements"),
+    exo(SE_DEPLACER, "km-temps"),
+    {
+      sorte: "document", id: "ailleurs", titre: "Aller à l'école ailleurs dans le monde",
+      rappel: "Selon les lieux, on va à l'école à pied, à cheval, à vélo, en scooter, en car : les déplacements dépendent des distances, des infrastructures, de la richesse.",
+      texte: [
+        "Dans le documentaire Sur le chemin de l'école (Pascal Plisson, 2013), des enfants du Kenya, du Maroc, d'Argentine et d'Inde font chaque jour des kilomètres pour aller à l'école : à pied à travers la savane ou la montagne, à cheval, ou poussé en fauteuil roulant par ses frères.",
+        "Dans de nombreux villages d'Afrique ou d'Asie, il n'y a ni car scolaire ni route goudronnée : on marche longtemps. Dans les grandes villes d'Asie, les scooters et les vélos sont partout. En France, à la campagne, on prend souvent la voiture ou le car scolaire ; en ville, on marche, on prend le bus, le métro ou le tramway.",
+      ],
+      questions: [
+        ["Je relève trois façons d'aller à l'école dans le monde.", "À pied, à cheval, en fauteuil roulant poussé par ses frères, en scooter, à vélo, en car, en voiture, en métro."],
+        ["Pourquoi certains enfants marchent-ils si longtemps ?", "L'école est loin, et il n'y a ni car scolaire ni route goudronnée."],
+        ["Je compare avec mon trajet jusqu'à l'école.", "La réponse dépend de l'élève."],
+      ],
+    },
+    exo(SE_DEPLACER, "infrastructures"),
+    {
+      sorte: "document", id: "aeroport", titre: "De ville en ville : un aéroport international",
+      rappel: "Gares, ports, aéroports : on y change de mode de transport pour aller loin, en France, en Europe, dans le monde.",
+      texte: [
+        "L'aéroport de Roissy-Charles-de-Gaulle, au nord de Paris, est le plus grand aéroport de France. Des avions y relient Paris aux grandes villes d'Europe et du monde : Londres, Madrid, New York, Tokyo, Dakar, Montréal.",
+        "Pour y venir, on peut prendre la voiture par l'autoroute, le RER depuis Paris, ou le TGV : une gare TGV se trouve dans l'aéroport. On y change de mode de transport. Chaque jour, des pilotes, des touristes, des familles qui rendent visite à leurs proches et des personnes qui voyagent pour leur travail s'y croisent.",
+      ],
+      questions: [
+        ["Je relève trois moyens de transport pour aller à l'aéroport.", "La voiture, le RER, le TGV."],
+        ["Pourquoi dit-on qu'on y change de mode de transport ?", "On arrive en voiture, en RER ou en train, et on repart en avion."],
+        ["Pour quelles raisons voyage-t-on de ville en ville ?", "Le travail, le tourisme, les visites à la famille."],
+      ],
+    },
+  ],
+  evaluation: [
+    ["Je cite deux raisons de se déplacer chaque jour, et deux raisons de voyager plus loin.", "Aller à l'école, au travail, faire les courses ; le tourisme, les visites à la famille, le travail."],
+    ["J'explique la différence entre la distance en kilomètres et la distance en temps.", "La première est la longueur du trajet ; la seconde, sa durée, qui dépend du mode de transport."],
+    ["Je nomme trois infrastructures de transport.", "Une gare, un aéroport, un port, une autoroute, une voie cyclable."],
+    ["Je compare les déplacements en France et dans un autre lieu du monde.", "En France, la voiture et les transports en commun ; ailleurs, parfois de longues marches, le scooter, le vélo."],
+  ],
+};
+
+const INTERNET_2020: ThemeHGCM = {
+  id: "internet-2020-cm2", classe: "CM2", histoire: false, titre: "Communiquer d'un bout à l'autre du monde grâce à l'Internet (programme 2020)",
+  question: "Comment l'Internet met-il les hommes et les territoires en contact ? Tous les êtres humains y ont-ils également accès ?",
+  motsCles: [
+    ...INTERNET.motsCles,
+    ["la fracture numérique", "L'inégalité entre ceux qui ont accès à Internet et ceux qui n'y ont pas accès."],
+  ],
+  lieux: [...(INTERNET.lieux ?? []), "les États-Unis"],
+  exercices: [
+    exo(INTERNET, "usages"),
+    exo(INTERNET, "fonctionnement"),
+    {
+      sorte: "document", id: "info-en-ligne", titre: "Qui écrit ce qu'on lit sur Internet ?",
+      rappel: "Sur Internet, chacun peut écrire : on vérifie d'où vient une information, et on respecte le droit à l'image.",
+      texte: [
+        "Sur Internet, chacun peut lire, mais aussi écrire : un article de blog, une vidéo, un commentaire. Les encyclopédies en ligne, comme Wikipédia ou, pour les jeunes, Vikidia, sont écrites et corrigées par leurs utilisateurs. C'est leur force, car chacun peut partager ce qu'il sait ; c'est aussi leur limite, car une information peut être fausse.",
+        "Avant de croire une information, on se demande qui l'a écrite, quand, et si d'autres sources sérieuses disent la même chose. On ne publie pas la photo de quelqu'un sans son accord : c'est le droit à l'image. Les grandes entreprises d'Internet ont surtout leurs bureaux aux États-Unis, et elles gardent beaucoup d'informations sur leurs utilisateurs.",
+      ],
+      questions: [
+        ["Qui écrit les articles d'une encyclopédie en ligne comme Vikidia ?", "Ses utilisateurs."],
+        ["Quelles questions je me pose avant de croire une information ?", "Qui l'a écrite ? Quand ? D'autres sources sérieuses disent-elles la même chose ?"],
+        ["Qu'est-ce que le droit à l'image ?", "Le droit de refuser qu'on publie sa photo sans son accord."],
+      ],
+    },
+    exo(INTERNET, "acces"),
+  ],
+  evaluation: [
+    ["J'explique comment Internet met en contact des personnes très éloignées.", "Les informations circulent en quelques secondes par des câbles, jusque sous les océans, et par des satellites."],
+    ["Je décris l'inégal accès à Internet dans le monde et en France.", "Presque tout le monde est connecté en Europe et en Amérique du Nord, beaucoup moins en Afrique subsaharienne ; en France, des zones blanches."],
+    ["Je cite une précaution à prendre avec une information trouvée sur Internet.", "Vérifier qui l'a écrite, et la comparer avec d'autres sources."],
+  ],
+};
+
+const MIEUX_HABITER: ThemeHGCM = {
+  id: "mieux-habiter-cm2", classe: "CM2", histoire: false, titre: "Mieux habiter (programme 2020)",
+  question: "Comment mieux habiter par l'amélioration du cadre de vie et la gestion de l'environnement ?",
+  motsCles: [
+    ["le cadre de vie", "Tout ce qui entoure les habitants là où ils vivent : les logements, les rues, les espaces verts, les services."],
+    ["la nature en ville", "Les parcs, les jardins, les arbres, les toits et les murs couverts de plantes, les berges aménagées."],
+    ["le jardin partagé", "Un jardin cultivé ensemble par des habitants d'un quartier."],
+    ["le tri sélectif", "Séparer ses déchets selon leur sorte, pour qu'ils soient recyclés."],
+    ["le recyclage", "Transformer un déchet trié en une nouvelle matière ou un nouvel objet."],
+    ["le compost", "Un engrais naturel fait avec les déchets de cuisine et de jardin."],
+    ["l'écoquartier", "Un quartier construit pour limiter la pollution, laisser une place à la nature et mêler les habitants."],
+    ["le développement durable", "Répondre aux besoins d'aujourd'hui sans empêcher les générations futures de répondre aux leurs."],
+  ],
+  exercices: [
+    {
+      sorte: "tableau", id: "diagnostic", titre: "Notre quartier : un diagnostic",
+      consigne: "Pendant la sortie, j'observe le quartier. Je complète le tableau. Puis je propose une amélioration.",
+      rappel: "Mieux habiter : un cadre de vie agréable, une place pour la nature, des déplacements faciles, des lieux de rencontre, l'environnement respecté.",
+      entetes: ["", "Ce que j'observe", "Ce que je propose"],
+      lignes: [["La nature : parcs, jardins, arbres", "", ""], ["Se déplacer à pied, à vélo, en bus", "", ""], ["Le tri et le recyclage des déchets", "", ""],
+        ["Les lieux de rencontre et de loisirs", "", ""], ["Ce qui pourrait être plus agréable", "", ""]],
+    },
+    {
+      sorte: "document", id: "nature-ville", titre: "La nature en ville",
+      rappel: "La nature en ville abrite des animaux et des plantes, rafraîchit la ville, retient l'eau de pluie, et offre des lieux de rencontre.",
+      texte: [
+        "En ville, la nature a sa place : les parcs, les squares et les avenues plantées d'arbres existent depuis le XIXe siècle. Aujourd'hui, on va plus loin : des toits et des murs se couvrent de plantes, des jardins partagés réunissent les habitants d'un quartier, des berges de fleuves deviennent des promenades pour les piétons et les cyclistes, des ruches sont installées sur des toits, comme à Paris, à Nantes ou à Saint-Étienne.",
+        "Les plantes abritent des oiseaux et des insectes ; elles rafraîchissent la ville en été et retiennent l'eau de pluie. Les jardins et les parcs sont aussi des lieux de rencontre et de loisirs.",
+      ],
+      questions: [
+        ["Je relève trois façons de donner une place à la nature en ville.", "Les parcs, les toits et les murs couverts de plantes, les jardins partagés, les berges aménagées, les ruches."],
+        ["À quoi sert la nature en ville ?", "Elle abrite des animaux et des plantes, rafraîchit la ville, retient l'eau de pluie ; elle offre des lieux de rencontre."],
+        ["Je nomme un lieu de nature près de l'école.", "La réponse dépend de l'école."],
+      ],
+    },
+    {
+      sorte: "trier", id: "poubelles", titre: "Où va ce déchet ?",
+      consigne: "Je lis chaque déchet. Je l'écris dans la colonne où il doit aller.",
+      rappel: "Les consignes de tri changent un peu d'une commune à l'autre : on vérifie celles de la nôtre. Les piles et les ampoules vont dans un point de collecte.",
+      colonnes: ["Le bac des emballages et des papiers", "Le verre", "Le compost, les déchets de cuisine", "Les ordures ménagères"],
+      items: [
+        ["une bouteille en plastique", 0], ["une canette", 0], ["un carton de céréales", 0], ["un journal", 0],
+        ["un pot de confiture en verre", 1], ["une bouteille de jus en verre", 1],
+        ["des épluchures de légumes", 2], ["un trognon de pomme", 2],
+        ["une couche", 3], ["une brosse à dents usée", 3],
+      ],
+    },
+    {
+      sorte: "ordonner", id: "chemin-dechet", titre: "Le chemin d'une bouteille en plastique recyclée",
+      consigne: "Je lis les étapes. J'écris dans chaque case le numéro de l'étape, dans l'ordre : 1 pour la première.",
+      rappel: "Trier, collecter, séparer, recycler : le déchet devient une nouvelle matière.",
+      etapes: [
+        "La bouteille vide est jetée dans le bac de tri des emballages.",
+        "Un camion de collecte sélective ramasse le contenu du bac.",
+        "Au centre de tri, les déchets sont séparés selon leur matière.",
+        "À l'usine de recyclage, les bouteilles sont broyées, lavées, puis fondues.",
+        "Le plastique recyclé sert à fabriquer de nouveaux objets : des bouteilles, des fibres pour des vêtements.",
+      ],
+    },
+    {
+      sorte: "document", id: "ecoquartier", titre: "Habiter un écoquartier",
+      rappel: "Un écoquartier limite la pollution, laisse une place à la nature, mêle les habitants et les activités ; ses habitants participent à sa vie.",
+      texte: [
+        "Un écoquartier est un quartier construit ou rénové pour mieux habiter. On le bâtit souvent sur une friche, un ancien terrain industriel, militaire ou portuaire : à Grenoble, l'écoquartier de Bonne est construit à la place d'une ancienne caserne.",
+        "Il cherche à limiter la pollution : des bâtiments bien isolés, des énergies renouvelables, le tri des déchets, une place pour les piétons et les vélos, des jardins. Il mêle des logements de toutes sortes, pour des familles, des personnes âgées, des étudiants, avec des commerces, des bureaux et des écoles, pour qu'on puisse y vivre et y travailler sans aller loin. Les habitants participent à la vie du quartier. Depuis 2012, l'État donne un label « ÉcoQuartier » aux quartiers qui respectent ces règles.",
+      ],
+      questions: [
+        ["Sur quels terrains construit-on souvent un écoquartier ?", "Sur des friches : d'anciens terrains industriels, militaires ou portuaires."],
+        ["Je relève deux façons de limiter la pollution dans un écoquartier.", "Des bâtiments isolés, des énergies renouvelables, le tri, une place pour les piétons et les vélos, des jardins."],
+        ["Pourquoi mêle-t-on logements, commerces et bureaux ?", "Pour que des habitants variés vivent ensemble, et puissent travailler sans aller loin."],
+      ],
+    },
+  ],
+  evaluation: [
+    ["Je cite deux façons de donner une place à la nature en ville.", "Des parcs, des jardins partagés, des toits couverts de plantes, des berges aménagées."],
+    ["J'explique pourquoi on trie et on recycle les déchets.", "Pour réutiliser les matières, économiser les ressources et limiter la pollution."],
+    ["Je décris un écoquartier.", "Un quartier qui limite la pollution, laisse une place à la nature et mêle les habitants et les activités."],
+    ["Je propose une amélioration pour mieux habiter notre quartier.", "La réponse dépend du quartier."],
+  ],
+};
+
+/** Les six thèmes du CM2 du programme de 2020 : au choix, cette année. */
+export const THEMES_HG_CM_2020: ThemeHGCM[] = [TEMPS_REPUBLIQUE_2020, AGE_INDUSTRIEL_2020, GUERRES_UE_2020, SE_DEPLACER_2020, INTERNET_2020, MIEUX_HABITER];
+
 export const THEMES_HG_CM: ThemeHGCM[] = [
   MOYEN_AGE, MONARCHIE, EXPLORATIONS, REVOLUTION,
   REPUBLIQUE_EMPIRE, VERS_REPUBLIQUE, AGE_INDUSTRIEL, PREMIERE_GUERRE, SECONDE_GUERRE, DEPUIS_1945,
   SE_NOURRIR, INEGALITES, SE_DEPLACER, INTERNET,
   TERRITOIRE, EAU_DOUCE, UNION_EUROPEENNE,
+  ...THEMES_HG_CM_2020,
 ];
 
 export const themeHGCM = (id: string): ThemeHGCM | undefined => THEMES_HG_CM.find((t) => t.id === id);

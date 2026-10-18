@@ -75,6 +75,9 @@ const PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
   "premiere-guerre-cm2": { periode: 3, niveau: "CM2", raison: citeLHistoireDuCycle3("CM2", "Thème 4 : La France dans la Première Guerre mondiale (1914-1918) (troisième période)") },
   "seconde-guerre-cm2": { periode: 4, niveau: "CM2", raison: citeLHistoireDuCycle3("CM2", "Thème 5 : La France pendant la Seconde Guerre mondiale (1939-1945) (quatrième période)") },
   "depuis-1945-cm2": { periode: 5, niveau: "CM2", raison: citeLHistoireDuCycle3("CM2", "Thème 6 : la France depuis 1945 : 80 ans de transformations (cinquième période)") },
+  // Le CM2 du programme de 2020 : la fiche Éduscol du premier thème le met en début d'année.
+  "temps-republique-cm2": { periode: 1, niveau: "CM2",
+    raison: "Fiche Éduscol « Le temps de la République » (ressources d'accompagnement du cycle 3, mars 2016 ; programme de 2020) : « Le premier thème d'histoire de l'année de CM2 »" },
   "numeration-dizaine-cp": { periode: 1, raison: cite("CP", "L'aspect décimal (base dix) et l'aspect positionnel […] sont abordés dès la période 1 : les élèves comparent, dénombrent et constituent des collections organisées en groupes de dix unités et en unités isolées.") },
   "nombres-livret-cp-59": { periode: 2, raison: cite("CP", "Au plus tard en période 2, les élèves travaillent avec des quantités et des nombres allant jusqu'à cinquante-neuf.") },
   "nombres-livret-cp-100": { periode: 3, raison: cite("CP", "Au plus tard en période 3, les élèves travaillent avec des quantités et des nombres allant jusqu'à cent.") },
