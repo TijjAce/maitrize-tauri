@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
-  DEBUT_OBJECTIF_SEANCE, DEMARCHES, ENTETE_TABLEAU, FAMILLES, demarcheDe, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre,
-  tableauDesPhases,
+  DEBUT_OBJECTIF_SEANCE, DEMARCHES, ENTETE_TABLEAU, FAMILLES, demarcheDe, demarchesDeLaCompetence, demarcheSuggeree, demarchesParFamille, resumeDuCadre,
+  seancesDuCadre, tableauDesPhases, type CibleDemarche,
 } from "./demarches";
+import cycle2 from "../src-tauri/referentiels/competences_cycle2.json";
 import { DUREES } from "./api";
 
 describe("les démarches", () => {
@@ -352,3 +353,37 @@ describe("la numération du cycle 2, compétence par compétence", () => {
   });
 });
 
+
+describe("les déroulements d'une compétence, en cartes (demande de l'enseignant, octobre 2026)", () => {
+  const REF = "Cycle 2 — CP, CE1, CE2 (programmes 2026)";
+  type Comp = { texte: string; niveau?: string | null };
+  type Sous = { titre: string; competences?: Comp[]; competencesGenerales?: { titre: string; competences?: Comp[] }[] };
+  /** La compétence du programme du cycle 2 dont l'intitulé commence ainsi, à cette classe. */
+  const cible = (niveau: string, debut: string): CibleDemarche => {
+    for (const dom of (cycle2 as { domaines: { titre: string; sousDomaines?: Sous[] }[] }).domaines) for (const sd of dom.sousDomaines ?? []) {
+      const groupes = [{ cg: null as string | null, comps: sd.competences ?? [] }, ...(sd.competencesGenerales ?? []).map((cg) => ({ cg: cg.titre, comps: cg.competences ?? [] }))];
+      for (const { cg, comps } of groupes) for (const c of comps) {
+        if (c.niveau === niveau && c.texte.startsWith(debut)) {
+          return { domaineTitre: dom.titre, sousDomaineTitre: sd.titre, competenceGeneraleTitre: cg, competenceTitre: c.texte, niveau: c.niveau };
+        }
+      }
+    }
+    throw new Error(`Compétence introuvable : ${niveau} ${debut}`);
+  };
+  const ids = (niveau: string, debut: string) => demarchesDeLaCompetence(cible(niveau, debut), REF).map((d) => d.id);
+
+  it("propose tous ceux de la compétence, à toutes les périodes, dans l'ordre de l'année", () => {
+    // Au CP, la valeur des chiffres : les nombres jusqu'à 59, puis jusqu'à 100 — et rien d'autre.
+    expect(ids("CP", "Connaitre la valeur des chiffres en fonction de leur position")).toEqual(["nombres-livret-cp-59", "nombres-livret-cp-100"]);
+    expect(ids("CP", "Connaitre la suite écrite et la suite orale des nombres jusqu")).toEqual(["nombres-livret-cp-59", "nombres-livret-cp-100"]);
+    // Au CE1, les tables de multiplication : La Martinière, et la table de 7 de la période 3.
+    expect(ids("CE1", "Connaitre dans les deux sens les tables de multiplication").sort()).toEqual(["calcul-mental-martiniere", "table-de-7-ce1"]);
+    // La conjugaison : les quatre temps.
+    expect(ids("CE1", "Apprendre à conjuguer au présent").sort()).toEqual(["conjuguer-futur-c2", "conjuguer-imparfait-c2", "conjuguer-passe-compose-c2", "conjuguer-present-c2"]);
+  });
+
+  it("n'en propose qu'un quand la compétence n'en a qu'un", () => {
+    expect(ids("CE1", "Poser et effectuer des additions et des soustractions en colonnes")).toEqual(["posees-ce1"]);
+    expect(ids("CE2", "Partager une unité de longueur en fractions")).toEqual(["fractions-longueurs-ce2"]);
+  });
+});
