@@ -372,8 +372,8 @@ describe("les déroulements d'une compétence, en cartes (demande de l'enseignan
   const ids = (niveau: string, debut: string) => demarchesDeLaCompetence(cible(niveau, debut), REF).map((d) => d.id);
 
   it("propose tous ceux de la compétence, à toutes les périodes, dans l'ordre de l'année", () => {
-    // Au CP, la valeur des chiffres : les nombres jusqu'à 59, puis jusqu'à 100 — et rien d'autre.
-    expect(ids("CP", "Connaitre la valeur des chiffres en fonction de leur position")).toEqual(["nombres-livret-cp-59", "nombres-livret-cp-100"]);
+    // Au CP, la valeur des chiffres : les nombres jusqu'à 59, ceux de 10 à 20 d'après le manuel du CRPE de l'enseignant, puis jusqu'à 100 — et rien d'autre.
+    expect(ids("CP", "Connaitre la valeur des chiffres en fonction de leur position")).toEqual(["nombres-livret-cp-59", "nombres-10-20-cp", "nombres-livret-cp-100"]);
     expect(ids("CP", "Connaitre la suite écrite et la suite orale des nombres jusqu")).toEqual(["nombres-livret-cp-59", "nombres-livret-cp-100"]);
     // Au CE1, les tables de multiplication : La Martinière, et la table de 7 de la période 3.
     expect(ids("CE1", "Connaitre dans les deux sens les tables de multiplication").sort()).toEqual(["calcul-mental-martiniere", "table-de-7-ce1"]);

@@ -25,6 +25,7 @@ import { estUneDemarcheDesGrandeurs, planDesGrandeurs } from "./demarchesGrandeu
 import { estUneDemarcheDeGeometrie, planDeLaGeometrie } from "./demarchesGeometrie";
 import { estUneDemarcheDeDonnees, planDesDonnees } from "./demarchesDonnees";
 import { estUneDemarcheDuReperage, planDuReperage } from "./demarchesReperage";
+import { DEMARCHE_DIX_A_VINGT, estUneDemarcheDixAVingt, planDixAVingt } from "./demarcheDixAVingt";
 import { estUneDemarcheDeFractions, planDesFractions } from "./fractionsDesLivrets";
 import { estUneDemarcheDeFrancais, planDuFrancais } from "./feuillesDuFrancais";
 import { estUneDemarcheDeLecture, planDeLaLecture } from "./demarchesLecture";
@@ -101,6 +102,7 @@ export function classeDe(niveau: string | null | undefined): Classe | null {
 
 /** Le niveau de l'atelier des cubes pour une séquence : les nombres du livret, ou ceux de la période au CP. */
 export function niveauDesCubes(demarcheId: string, ctx: ContexteFeuilles): IdNiveauCubes {
+  if (demarcheId === DEMARCHE_DIX_A_VINGT) return "cp-19";
   if (demarcheId === "nombres-livret-cp-59") return "cp-59";
   if (demarcheId === "nombres-livret-cp-100") return "cp-100";
   if (ctx.classe === "CE1") return "ce1";
@@ -212,6 +214,8 @@ export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): Plan
   if (estUneDemarcheDuVocabulaireCM(demarcheId)) return planDuVocabulaireCM(demarcheId, ctx);
   // L'histoire et la géographie du cours moyen : la frise, les documents, les tris, l'évaluation de chaque thème (voir cycle3HistoireGeo.ts).
   if (estUneDemarcheHistoireGeoCM(demarcheId)) return planHistoireGeoCM(demarcheId);
+  // Les nombres de 10 à 20, d'après le manuel du CRPE de l'enseignant : ses feuilles, et celle des cubes à la séance de la dizaine.
+  if (estUneDemarcheDixAVingt(demarcheId)) return planDixAVingt([feuilleDeCubes(1, "ecrire", cubesPour(demarcheId, ctx))]);
   if (!CLASSE_DES_DEMARCHES[demarcheId]) return null;
   // Grouper par dix, la centaine, le millier : les huit feuilles des cubes, de la grande collection à l'évaluation.
   if (demarcheId === "numeration-dizaine-cp" || demarcheId.startsWith("groupements-")) {
