@@ -52,6 +52,7 @@ import { DEMARCHES_DONNEES_CM } from "./cycle3Donnees";
 import { DEMARCHES_LANGUE_CM } from "./cycle3Langue";
 import { DEMARCHES_LECTURE_CM } from "./cycle3Lecture";
 import { DEMARCHES_ECRITURE_CM } from "./cycle3Ecriture";
+import { DEMARCHES_ORAL_CM } from "./cycle3Oral";
 import { programmationProposee } from "./programmation";
 import {
   DEMARCHE_SOUSTRACTION_POSEE, FEUILLES_SOUSTRACTION_POSEE, MATERIEL_SOUSTRACTION_POSEE, competenceDeLaSoustraction, graineDeLaFeuille,
@@ -124,6 +125,7 @@ export function domaineDeLaDemarche(d: Pick<Demarche, "id" | "famille">): Domain
   // Le cours moyen : la fluidité et la voix haute avec le code et la fluence ; la compréhension, les documents et les œuvres à part.
   if (dans(DEMARCHES_LECTURE_CM)) return domaine(/^(fluence|voix-haute)/.test(d.id) ? "code" : "comprendre");
   if (dans(DEMARCHES_ECRITURE_CM)) return domaine(/^copie/.test(d.id) ? "geste" : "ecrire");
+  if (dans(DEMARCHES_ORAL_CM)) return domaine("oral");
   if (dans(DEMARCHES_FRANCAIS)) return domaine(/^vocabulaire-/.test(d.id) ? "vocabulaire" : /cursive|copie/.test(d.id) ? "geste" : "code");
   if (dans(DEMARCHES_LECTURE)) return domaine("comprendre");
   if (dans(DEMARCHES_ORTHOGRAPHE)) return domaine("orthographe");

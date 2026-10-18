@@ -6,9 +6,10 @@
 import { DEMARCHES_LANGUE_CM, demarcheDeLaLangueCM } from "./cycle3Langue";
 import { DEMARCHES_LECTURE_CM, demarcheDeLaLectureCM } from "./cycle3Lecture";
 import { DEMARCHES_ECRITURE_CM, demarcheDeLEcritureCM } from "./cycle3Ecriture";
+import { DEMARCHES_ORAL_CM, demarcheDeLOralCM } from "./cycle3Oral";
 import type { Demarche } from "./demarches";
 
-export const DEMARCHES_FRANCAIS_CM: Demarche[] = [...DEMARCHES_LECTURE_CM, ...DEMARCHES_ECRITURE_CM, ...DEMARCHES_LANGUE_CM];
+export const DEMARCHES_FRANCAIS_CM: Demarche[] = [...DEMARCHES_LECTURE_CM, ...DEMARCHES_ECRITURE_CM, ...DEMARCHES_ORAL_CM, ...DEMARCHES_LANGUE_CM];
 
 /** La séquence d'une compétence de français du CM1 ou du CM2 ; en minuscules sans accents. */
 export function demarcheDuFrancaisCM(classe: string, sd: string, cg: string, comp: string): string | null {
@@ -16,6 +17,8 @@ export function demarcheDuFrancaisCM(classe: string, sd: string, cg: string, com
   if (/^lecture/.test(sd)) return demarcheDeLaLectureCM(classe, cg);
   // L'écriture : la copie, les écrits de travail, les écrits variés, la révision (voir cycle3Ecriture.ts).
   if (/^ecriture/.test(sd)) return demarcheDeLEcritureCM(classe, cg, comp);
+  // L'oral : écouter, dire, échanger (voir cycle3Oral.ts).
+  if (/^oral/.test(sd)) return demarcheDeLOralCM(classe, cg);
   // La grammaire, l'orthographe grammaticale et la conjugaison (voir cycle3Langue.ts).
   if (/grammaire/.test(sd)) return demarcheDeLaLangueCM(classe, cg, comp);
   return null;
