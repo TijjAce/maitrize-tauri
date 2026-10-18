@@ -8,7 +8,7 @@
 // calculs mêmes du livret quand il les donne, tirés au hasard dans ce que la
 // séance travaille sinon — des nombres où la procédure du jour est la bonne.
 
-import type { Classe, ClasseC2, ContexteFeuilles, FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
+import type { Classe, ContexteFeuilles, FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
 import { STYLE_FEUILLE, feuille } from "./cartesImprimables";
 import { objectifParId, type Calcul } from "./faitsNumeriques";
 import { hasard } from "./hasard";
@@ -220,7 +220,7 @@ const STYLE_CALCUL_MENTAL = STYLE_FEUILLE + STYLE_MARTINIERE;
 const STYLE_ATELIERS_MATHS = STYLE_FEUILLE + STYLE_JEUX_MATHS;
 
 /** Les réglages de l'atelier « Calcul mental » pour une feuille : un objectif, ses séries telles qu'on les a tirées. */
-function reglagesMartiniere(classe: ClasseC2, objectifs: string[], forme: FormeEntrainement, series: Calcul[][], tables: number[] = []): ReglagesMartiniere {
+function reglagesMartiniere(classe: Classe, objectifs: string[], forme: FormeEntrainement, series: Calcul[][], tables: number[] = []): ReglagesMartiniere {
   return {
     ...REGLAGES_MARTINIERE, niveau: classe, objectifs, revision: objectifs.length > 1, tables, forme,
     parSerie: Math.max(1, ...series.map((s) => s.length)), series: Math.max(1, series.length),
@@ -229,7 +229,7 @@ function reglagesMartiniere(classe: ClasseC2, objectifs: string[], forme: FormeE
 
 /** Une feuille de l'atelier « Calcul mental », ses calculs tirés à chaque fabrication. */
 function feuilleDeCalcul(
-  seance: number, titre: string, classe: ClasseC2, objectif: string, forme: FormeEntrainement,
+  seance: number, titre: string, classe: Classe, objectif: string, forme: FormeEntrainement,
   series: (graine: number) => Calcul[][], options: { tables?: number[]; consigne?: string } = {},
 ): FeuilleAFabriquer {
   return {
@@ -276,7 +276,7 @@ const CARTES_RECTO_VERSO: ReglagesCalcul = { operation: "+", tables: [], rectoVe
 const enCartes = (calculs: Calcul[]): CarteCalcul[] => calculs.map((c) => ({ question: c.ecrit.replace(/ = …$/, ""), reponse: Number(c.reponse.replace(/\s/g, "")) }));
 
 /** La feuille du matériel de manipulation de l'objectif, à découper. */
-const feuilleDuMateriel = (seance: number, classe: ClasseC2, objectif: string, tables: number[] = []) =>
+const feuilleDuMateriel = (seance: number, classe: Classe, objectif: string, tables: number[] = []) =>
   feuilleDeCalcul(seance, "Calcul mental — matériel de manipulation", classe, objectif, "materiel", () => [], { tables });
 
 /** La table à construire tient sur une page : trois colonnes d'égalités, les trois recherches côte à côte. */
@@ -475,6 +475,59 @@ function planDuCE2FoisQuatre(): PlanDesFeuilles {
   };
 }
 
+/** Multiplier par 5 un nombre inférieur à 200 (livret CM1) : des nombres pairs d'abord, dont la moitié vient vite, puis tous. */
+function foisCinq(objectif: string, n: number, graine: number, tous: boolean): Calcul[] {
+  return tirerDistincts(n, graine, (alea, rang) => {
+    const m = tous && rang % 2 === 1 ? entier(alea, 11, 199) : 2 * entier(alea, 6, 99);
+    return m % 10 === 0 && m < 100 ? null : produit(objectif, 5, m);
+  });
+}
+
+/** Les cas où une autre procédure va plus vite (séance 4 du livret) : par 100 ou par 1 000, la table, des dizaines entières. */
+function foisCinqMeles(objectif: string, n: number, graine: number): Calcul[] {
+  return tirerDistincts(n, graine, (alea, rang) => {
+    const sorte = rang % 4;
+    const m = sorte === 0 ? choisir(alea, [100, 1000, 200, 300])
+      : sorte === 1 ? entier(alea, 2, 9)
+        : sorte === 2 ? 10 * entier(alea, 2, 9)
+          : 2 * entier(alea, 6, 99);
+    return produit(objectif, 5, m);
+  });
+}
+
+/** Une série mêlée des procédures de l'année (séance 5 du livret), chacune tirée par son objectif de l'atelier. */
+function procedureMelees(objectifs: string[], n: number, graine: number): Calcul[] {
+  return tirerDistincts(n, graine, (alea, rang) => {
+    const o = objectifParId(objectifs[rang % objectifs.length]);
+    if (!o) return null;
+    return { objectif: o.id, ...o.tirer(alea, TOUTES_LES_TABLES) };
+  });
+}
+
+function planDuCM1FoisCinq(): PlanDesFeuilles {
+  const o = "cm1-fois-5";
+  const ecrit = (seance: number, titre: string, series: (g: number) => Calcul[][], consigne?: string) =>
+    feuilleDeCalcul(seance, titre, "CM1", o, "ecrit", series, { consigne });
+  const feuilles: FeuilleAFabriquer[] = [
+    feuilleDeCalcul(0, "Calcul mental — découverte : multiplier par 5", "CM1", o, "decouverte", () => [liste(o, [[5, 24], [5, 46], [5, 18]], produit)]),
+    feuilleDeCalcul(1, "Multiplier par 5 — à l'ardoise", "CM1", o, "oral", (g) => [foisCinq(o, 10, g, false)]),
+    ecrit(2, "Multiplier par 5 — sur fiche, en temps limité", (g) => [foisCinq(o, 8, g, true)], "Calcule de tête : multiplie par 10, puis prends la moitié."),
+    ecrit(3, "Multiplier par 5 — quand l'utiliser ?", (g) => [foisCinqMeles(o, 8, g)], "Avant de calculer, réfléchis : quelle procédure va le plus vite ?"),
+    ecrit(4, "Les procédures de l'année — une série mêlée", (g) => [procedureMelees([o, "cm1-fois-4-8", "cm1-fois-10-100-1000", "cm1-doubles-moities"], 12, g)],
+      "Calcule de tête. Pour chaque calcul, choisis ta procédure."),
+  ];
+  return {
+    feuilles,
+    materiel: notes(feuilles, [
+      "Le glisse-nombre et le matériel de base dix, pour qui en a besoin ; les ardoises ; le cahier de mathématiques pour la trace écrite",
+      "Les ardoises ; la trace écrite de la séance 1, affichée",
+      "Un chronomètre",
+      "Les ardoises",
+      "Un chronomètre",
+    ]),
+  };
+}
+
 // ── La démarche du guide CP, au procédé La Martinière ─────────────────────
 //
 // Elle installe un fait ou une procédure dans la durée : une découverte en
@@ -563,7 +616,7 @@ function planDeLaMartiniere(classe: Classe, objectifs: string[], tables: number[
 
 /** Les démarches de calcul mental dont on sait fabriquer les feuilles. */
 export const estUneDemarcheDeCalcul = (demarcheId: string) =>
-  ["arbre-a-calcul-cp", "ajouter-9-19-29-ce1", "table-de-7-ce1", "multiplier-par-4-ce2", "calcul-mental-martiniere"].includes(demarcheId);
+  ["arbre-a-calcul-cp", "ajouter-9-19-29-ce1", "table-de-7-ce1", "multiplier-par-4-ce2", "multiplier-par-5-cm1", "calcul-mental-martiniere"].includes(demarcheId);
 
 /**
  * Les feuilles et le matériel d'une démarche de calcul mental. Celle du guide
@@ -575,6 +628,7 @@ export function planDuCalcul(demarcheId: string, ctx: ContexteFeuilles): PlanDes
   if (demarcheId === "ajouter-9-19-29-ce1") return planDuCE1Ajouter19();
   if (demarcheId === "table-de-7-ce1") return planDeLaTableDe7();
   if (demarcheId === "multiplier-par-4-ce2") return planDuCE2FoisQuatre();
+  if (demarcheId === "multiplier-par-5-cm1") return planDuCM1FoisCinq();
   if (demarcheId !== "calcul-mental-martiniere") return null;
   const rattache = ctx.objectifRattache && objectifParId(ctx.objectifRattache)?.niveau === ctx.classe ? ctx.objectifRattache : null;
   const duProgramme = objectifsDuCalcul(ctx);
