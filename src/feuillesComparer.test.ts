@@ -71,6 +71,8 @@ describe("les feuilles de la séquence « comparer les nombres »", () => {
     for (const id of DU_CYCLE_2) {
       const niv = niveauParId(id);
       const lignes = lignesDuCorrige(htmlOrdonnerIntercaler(r({ niveau: id }), niv.max));
+      // Des entiers, sans virgule ni zéros après, sur la feuille comme au corrigé.
+      expect(htmlOrdonnerIntercaler(r({ niveau: id }), niv.max)).not.toMatch(/\d,\d/);
       for (const l of lignes.slice(0, 3)) {
         const n = l.split(" < ").map(nombre);
         expect(n).toEqual([...n].sort((a, b) => a - b));
