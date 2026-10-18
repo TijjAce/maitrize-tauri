@@ -118,6 +118,9 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     const colonne = (t: typeof tableau, cle: string) => t.flatMap((b) => b.lignes).map((l) => l.cases.findIndex((c) => c.some((s) => s.cle === cle))).find((i) => i >= 0);
     expect(colonne(tableau, "numeration-dizaine-cp:CP")).toBe(0);
     expect(colonne(tableau, "nombres-livret-cp-59:CP")).toBe(1);
+    // Les nombres de 10 à 20, d'après le manuel du CRPE de l'enseignant : en période 2, juste sous les nombres jusqu'à 59.
+    const periode2 = tableau.flatMap((b) => b.lignes).find((l) => l.domaine.id === "nombres")!.cases[1].map((s) => s.cle);
+    expect(periode2.indexOf("nombres-10-20-cp:CP")).toBe(periode2.indexOf("nombres-livret-cp-59:CP") + 1);
     expect(colonne(tableau, "nombres-livret-cp-100:CP")).toBe(2);
     expect(colonne(tableau, "heure-cp:CP")).toBe(5);
     // Glissée en période 4 par l'enseignant, elle y va.
@@ -142,8 +145,9 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     expect(placees.length).toBeGreaterThanOrEqual(83);
     for (const { s, repere } of placees) {
       expect(repere!.periode, s.cle).toBeGreaterThanOrEqual(1);
-      // Une fiche thématique d'Éduscol aussi : celle du premier thème d'histoire du CM2, programme de 2020.
-      expect(repere!.raison, s.cle).toMatch(/^(Programme|Livret|Guide|Repères|Fiche) .+ : « .+ »/);
+      // Une fiche thématique d'Éduscol aussi : celle du premier thème d'histoire du CM2, programme de 2020 ; et le manuel du CRPE de
+      // l'enseignant, pour la séquence qui en vient.
+      expect(repere!.raison, s.cle).toMatch(/^(Programme|Livret|Guide|Repères|Fiche|Manuel) .+ : « .+ »/);
     }
     const de = (cle: string) => reperes.find((x) => x.s.cle === cle)?.repere?.periode;
     expect(de("egalites-fractions-ce2:CE2")).toBe(1);

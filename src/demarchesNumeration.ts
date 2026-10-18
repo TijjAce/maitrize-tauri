@@ -19,6 +19,7 @@
 // CE2, comme le prévoient les repères de progression — et le disent.
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
+import { NOMBRES_DE_10_A_20 } from "./demarcheDixAVingt";
 import { fr } from "./nombres";
 
 const T1 = "Temps 1 – Définition des objectifs et mise en réussite";
@@ -384,9 +385,14 @@ function comparerProlonge(p: Palier): Demarche {
   };
 }
 
-/** Les démarches de numération ajoutées au catalogue. */
+/**
+ * Les démarches de numération ajoutées au catalogue. Les nombres de 10 à 20,
+ * d'après le manuel du CRPE de l'enseignant (voir demarcheDixAVingt.ts),
+ * suivent ceux jusqu'à 59 : l'ordre du catalogue est celui des cases du
+ * tableau des séquences, et l'enseignant la voulait juste dessous.
+ */
 export const DEMARCHES_NUMERATION: Demarche[] = [
-  livretDesNombres(PALIERS["cp-59"]), livretDesNombres(PALIERS["cp-100"]), livretDesNombres(PALIERS.ce1), livretDesNombres(PALIERS.ce2),
+  livretDesNombres(PALIERS["cp-59"]), NOMBRES_DE_10_A_20, livretDesNombres(PALIERS["cp-100"]), livretDesNombres(PALIERS.ce1), livretDesNombres(PALIERS.ce2),
   groupementsProlonges(PALIERS.ce1), groupementsProlonges(PALIERS.ce2),
   comparerProlonge(PALIERS.ce1), comparerProlonge(PALIERS.ce2),
 ];

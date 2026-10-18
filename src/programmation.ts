@@ -19,7 +19,9 @@
 // Ce que les programmes laissent libre, d'autres textes d'Éduscol le datent
 // parfois : le tableau de progression d'un livret, les guides du CP et du CE1,
 // les repères annuels de 2019. Ils ne viennent qu'en dernier, et les repères de
-// 2019, d'avant les programmes de 2024, le disent dans leur citation.
+// 2019, d'avant les programmes de 2024, le disent dans leur citation. Une
+// séquence tirée d'un manuel que l'enseignant a fourni prend la période que
+// ce manuel lui donne, cité de même.
 
 /** Les niveaux pour lesquels une séquence peut être pensée. */
 export const NIVEAUX_DE_PROGRAMMATION = ["PS", "MS", "GS", "CP", "CE1", "CE2", "CM1", "CM2"] as const;
@@ -50,6 +52,8 @@ const GUIDE_MATHS_CP = "Guide « Pour enseigner les nombres, le calcul et la ré
 const GUIDE_LECTURE_CP = "Guide « Pour enseigner la lecture et l'écriture au CP » (Éduscol, 2019)";
 const GUIDE_LECTURE_CE1 = "Guide « Pour enseigner la lecture et l'écriture au CE1 » (Éduscol, 2019)";
 const citeLeGuide = (guide: string, phrase: string) => `${guide} : « ${phrase} »`;
+/** Une séquence tirée d'un manuel de l'enseignant : le manuel dit lui-même quand elle se fait. */
+const citeLeManuel = (manuel: string, phrase: string) => `Manuel ${manuel} : « ${phrase} »`;
 /** Les repères annuels de 2019 ont précédé les programmes de 2024 : la citation le dit. */
 const citeLesReperesDe2019 = (classe: string, phrase: string) =>
   `Repères annuels de progression en mathématiques du cycle 2 (Éduscol, 2019 — d'avant les programmes de 2024), ${classe} : « ${phrase} »`;
@@ -80,6 +84,8 @@ const PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
     raison: "Fiche Éduscol « Le temps de la République » (ressources d'accompagnement du cycle 3, mars 2016 ; programme de 2020) : « Le premier thème d'histoire de l'année de CM2 »" },
   "numeration-dizaine-cp": { periode: 1, raison: cite("CP", "L'aspect décimal (base dix) et l'aspect positionnel […] sont abordés dès la période 1 : les élèves comparent, dénombrent et constituent des collections organisées en groupes de dix unités et en unités isolées.") },
   "nombres-livret-cp-59": { periode: 2, raison: cite("CP", "Au plus tard en période 2, les élèves travaillent avec des quantités et des nombres allant jusqu'à cinquante-neuf.") },
+  // Les nombres de 10 à 20, d'après le manuel du CRPE de l'enseignant (voir demarcheDixAVingt.ts) : la période que le manuel donne à sa séance.
+  "nombres-10-20-cp": { periode: 2, niveau: "CP", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 43", "avec des élèves de CP en période 2") },
   "nombres-livret-cp-100": { periode: 3, raison: cite("CP", "Au plus tard en période 3, les élèves travaillent avec des quantités et des nombres allant jusqu'à cent.") },
   // Les nombres de la séquence du guide — 71 et 68 — vont jusqu'à cent.
   "comparer-nombres-cp": { periode: 3, raison: cite("CP", "Au plus tard en période 3, les élèves travaillent avec des quantités et des nombres allant jusqu'à cent.") },
