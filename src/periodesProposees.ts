@@ -148,6 +148,10 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
     ...ligne("les angles dès la rentrée, qui ne demandent aucun calcul ; l'heure et les durées ensuite ; les longueurs et le périmètre avec "
       + "l'écriture à virgule de la période 3, qui code les sous-multiples du mètre ; puis les masses, les contenances et les aires.",
     { "angles-cm1": 1, "heure-durees-cm1": 2, "longueurs-cm1": 3, "perimetre-cm1": 3, "masses-cm1": 4, "contenances-cm1": 5, "aires-cm1": 5 }),
+    ...ligne("les droites et les solides dès la rentrée ; les déplacements ensuite ; les figures usuelles et le patron du cube quand les "
+      + "droites perpendiculaires et parallèles sont sûres ; le cercle et les constructions, qui les réunissent ; la symétrie et les "
+      + "assemblages de cubes en fin d'année.",
+    { "droites-cm1": 1, "solides-cm1": 1, "deplacements-cm1": 2, "figures-cm1": 3, "patrons-cube-cm1": 3, "cercle-cm1": 4, "constructions-cm1": 4, "symetrie-cm1": 5, "assemblages-cubes-cm1": 5 }),
   },
   CM2: {
     ...ligne("après les millions, qui viennent en période 3 : les comparer, les ranger, les placer.", { "comparer-nombres-cm2": 4 }),
@@ -167,6 +171,9 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
       + "recherches de toutes les solutions en fin d'année, avant les algorithmes de sixième.", { "proportionnalite-cm2": 4, "chercher-cm2": 5 }),
     ...ligne("les durées à la seconde tôt dans l'année ; les angles et le degré au printemps ; les unités d'aire et l'aire du rectangle "
       + "en fin d'année, quand la multiplication des décimaux est sûre.", { "heure-durees-cm2": 2, "angles-cm2": 4, "aires-cm2": 5 }),
+    ...ligne("les droites et les solides dès la rentrée ; les figures et les patrons ensuite ; le cercle et les constructions, qui les "
+      + "réunissent ; la symétrie et les déplacements au printemps ; les assemblages et leurs vues en fin d'année.",
+    { "droites-cm2": 1, "solides-cm2": 1, "figures-cm2": 2, "patrons-cm2": 2, "cercle-cm2": 3, "constructions-cm2": 3, "symetrie-cm2": 4, "deplacements-cm2": 4, "assemblages-cubes-cm2": 5 }),
   },
 };
 

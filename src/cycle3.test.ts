@@ -258,3 +258,42 @@ describe("les grandeurs et mesures du cours moyen", () => {
     expect(verifies).toBeGreaterThan(500);
   });
 });
+
+describe("l'espace et la géométrie du cours moyen", () => {
+  const GEOMETRIE = MATHS.filter((c) => /^Espace et géométrie/.test(c.cible.sousDomaineTitre ?? "") || /^Espace et géométrie/.test(c.cible.domaineTitre ?? ""));
+
+  it("donnent à chaque compétence une séquence de sa classe, avec ses feuilles", () => {
+    expect(GEOMETRIE.length).toBe(44);
+    const vues = new Set<string>();
+    for (const { cible, classe } of GEOMETRIE) {
+      const d = demarcheSuggeree(cible, REF);
+      expect(d.id, `${classe} — ${cible.competenceTitre}`).toMatch(new RegExp(`-${classe.toLowerCase()}$`));
+      expect(d.source, d.id).toMatch(/programme de mathématiques du cycle 3 \(2025\)/);
+      if (vues.has(d.id)) continue;
+      vues.add(d.id);
+      const plan = planDesFeuilles(d.id, { classe, periode: 3, competence: cible.competenceTitre ?? "" })!;
+      expect(plan.materiel.length, d.id).toBe(d.seances.length);
+      for (const f of plan.feuilles) {
+        expect(f.seance, `${d.id} — ${f.titre}`).toBeLessThan(d.seances.length);
+        for (const graine of [1, 2, 3]) {
+          const { html } = f.fabriquer(graine);
+          expect(html, `${d.id} — ${f.titre}`).not.toMatch(/NaN|undefined|Infinity|\[object/);
+          expect(html, `${d.id} — ${f.titre}`).not.toMatch(/cycle 2/);
+        }
+      }
+    }
+    expect(vues.size).toBe(18);
+    const symetrie = GEOMETRIE.find((c) => c.classe === "CM2" && /diagonale du quadrillage/.test(c.cible.competenceTitre ?? ""))!;
+    expect(demarcheSuggeree(symetrie.cible, REF).id).toBe("symetrie-cm2");
+  });
+
+  it("connaît les onze patrons du cube et les faces opposées de chacun", async () => {
+    const { PATRONS_DU_CUBE, facesDuPatron } = await import("./geometrieCoursMoyen");
+    expect(PATRONS_DU_CUBE).toHaveLength(11);
+    expect(new Set(PATRONS_DU_CUBE.map((p) => JSON.stringify(p))).size).toBe(11);
+    for (const p of PATRONS_DU_CUBE) expect(new Set(facesDuPatron(p)).size, JSON.stringify(p)).toBe(6);
+    // La croix : le carré du haut et celui du bas sont opposés.
+    const croix = facesDuPatron([[1, 0], [0, 1], [1, 1], [2, 1], [3, 1], [1, 2]])!;
+    expect(Number(croix[0]) + Number(croix[5])).toBe(7);
+  });
+});
