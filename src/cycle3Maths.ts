@@ -8,10 +8,11 @@ import { DEMARCHES_NOMBRES_CM, demarcheDesNombresCM } from "./cycle3Nombres";
 import { DEMARCHES_PROBLEMES_CM, demarcheDesProblemesCM } from "./cycle3Problemes";
 import { DEMARCHES_GRANDEURS_CM, demarcheDesGrandeursCM } from "./cycle3Grandeurs";
 import { DEMARCHES_GEOMETRIE_CM, demarcheDeLaGeometrieCM } from "./cycle3Geometrie";
+import { DEMARCHES_DONNEES_CM, demarcheDesDonneesCM } from "./cycle3Donnees";
 import type { Demarche } from "./demarches";
 import { demarcheDuLivretDeCalcul } from "./demarchesCalcul";
 
-export const DEMARCHES_MATHS_CM: Demarche[] = [...DEMARCHES_NOMBRES_CM, ...DEMARCHES_CALCUL_CM, ...DEMARCHES_PROBLEMES_CM, ...DEMARCHES_GRANDEURS_CM, ...DEMARCHES_GEOMETRIE_CM];
+export const DEMARCHES_MATHS_CM: Demarche[] = [...DEMARCHES_NOMBRES_CM, ...DEMARCHES_CALCUL_CM, ...DEMARCHES_PROBLEMES_CM, ...DEMARCHES_GRANDEURS_CM, ...DEMARCHES_GEOMETRIE_CM, ...DEMARCHES_DONNEES_CM];
 
 /** La séquence d'une compétence de mathématiques du CM1 ou du CM2 ; en minuscules sans accents. */
 export function demarcheDesMathsCM(classe: string, cg: string, comp: string, periode = 0): string | null {
@@ -25,5 +26,7 @@ export function demarcheDesMathsCM(classe: string, cg: string, comp: string, per
   if (/longueurs|masses|contenances|aires|angles|dans le temps/.test(cg)) return demarcheDesGrandeursCM(classe, cg, comp);
   // L'espace et la géométrie (voir cycle3Geometrie.ts).
   if (/geometrie plane|solides|dans l.espace/.test(cg)) return demarcheDeLaGeometrieCM(classe, cg, comp);
+  // Les données et les probabilités (voir cycle3Donnees.ts).
+  if (/gestion de donnees|probabilites/.test(cg)) return demarcheDesDonneesCM(classe, cg);
   return null;
 }

@@ -297,3 +297,39 @@ describe("l'espace et la géométrie du cours moyen", () => {
     expect(Number(croix[0]) + Number(croix[5])).toBe(7);
   });
 });
+
+describe("les données et les probabilités du cours moyen", () => {
+  const DONNEES = MATHS.filter((c) => /gestion de données|probabilités/i.test(c.cible.competenceGeneraleTitre ?? ""));
+
+  it("donnent à chaque compétence une séquence de sa classe, celles des livrets pour les probabilités", async () => {
+    expect(DONNEES.length).toBe(18);
+    const vues = new Set<string>();
+    for (const { cible, classe } of DONNEES) {
+      const d = demarcheSuggeree(cible, REF);
+      expect(d.id, `${classe} — ${cible.competenceTitre}`).toMatch(new RegExp(`-${classe.toLowerCase()}$`));
+      if (/probabilités/i.test(cible.competenceGeneraleTitre ?? "")) expect(d.source, d.id).toMatch(new RegExp(`Livret d'accompagnement de mathématiques du ${classe}.*séquence n° 3`));
+      if (vues.has(d.id)) continue;
+      vues.add(d.id);
+      const plan = planDesFeuilles(d.id, { classe, periode: 3, competence: cible.competenceTitre ?? "" })!;
+      expect(plan.materiel.length, d.id).toBe(d.seances.length);
+      for (const f of plan.feuilles) for (const graine of [1, 2, 3]) {
+        const { html } = f.fabriquer(graine);
+        expect(html, `${d.id} — ${f.titre}`).not.toMatch(/NaN|undefined|Infinity|\[object|cycle 2/);
+      }
+    }
+    expect(vues.size).toBe(4);
+    // Le programme date le début des probabilités au CM2.
+    const { periodeDeLaDemarche } = await import("./sequencesToutesFaites");
+    expect(periodeDeLaDemarche("probabilites-cm2", "CM2")).toBe(2);
+  });
+});
+
+describe("les mathématiques du cours moyen, en entier", () => {
+  it("donnent à chaque compétence du CM1 et du CM2 une séquence propre au cours moyen", () => {
+    expect(MATHS.length).toBeGreaterThan(200);
+    for (const { cible, classe } of MATHS) {
+      const d = demarcheSuggeree(cible, REF);
+      expect(d.id === "calcul-mental-martiniere" || new RegExp(`-${classe.toLowerCase()}$`).test(d.id), `${classe} — ${cible.competenceTitre} : ${d.id}`).toBe(true);
+    }
+  });
+});
