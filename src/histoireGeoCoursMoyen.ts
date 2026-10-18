@@ -19,7 +19,7 @@ import { SOURCE_MAITRIZE, themeHGCM, type ExerciceHGCM, type FriseCM, type Reper
 export interface ReglagesHistoireGeoCM {
   /** L'identifiant du thème : celui de sa séquence. */
   theme: string;
-  /** « frise », « lexique », « evaluation », ou l'identifiant d'un exercice du thème. */
+  /** « frise », « lexique », « etiquettes-mots », « etiquettes-lieux », « evaluation », ou l'identifiant d'un exercice du thème. */
   exercice: string;
   /** La frise à compléter, avec ses étiquettes ; sinon complétée, pour l'affichage. */
   aCompleter?: boolean;
@@ -201,17 +201,27 @@ function feuilleEvaluation(t: ThemeHGCM, graine: number): string {
     + corrige(nom, `<ol class="hg-liste">${reponses.join("")}</ol>`);
 }
 
-// ── La feuille ────────────────────────────────────────────────────────────
-
-/** Les feuilles d'un thème, telles que l'atelier les propose : la frise, les exercices, le lexique, l'évaluation. */
-export function feuillesDuTheme(t: ThemeHGCM): { exercice: string; titre: string }[] {
-  return [
-    ...(t.frise ? [{ exercice: "frise", titre: t.frise.titre }] : []),
-    ...t.exercices.map((e) => ({ exercice: e.id, titre: e.titre })),
-    { exercice: "lexique", titre: "Les mots du thème" },
-    { exercice: "evaluation", titre: "Évaluation" },
-  ];
+/**
+ * Les étiquettes du thème, à découper : ses mots-clés pour le tableau, ou ses
+ * lieux pour la carte de la classe ; puis un jeu par élève, en petit. Chaque
+ * étiquette a la taille de son texte : une expression longue — « le suffrage
+ * universel masculin » — passe à la ligne au lieu d'être coupée, en mode dys
+ * aussi ; et une étiquette, en ligne, ne se coupe jamais entre deux pages.
+ */
+function feuilleEtiquettes(t: ThemeHGCM, sorte: "mots" | "lieux", graine: number): string {
+  const mots = sorte === "mots" ? t.motsCles.map(([m]) => m) : t.lieux ?? [];
+  const nom = sorte === "mots" ? "Les mots-clés" : "Les lieux à localiser";
+  const jeu = melanger(hasard(graine), mots);
+  const jeux = Math.max(1, Math.min(6, Math.floor(48 / Math.max(1, mots.length))));
+  const petites = Array.from({ length: jeux }, () => jeu.map((m) => `<span class="hge hge-petite">${esc(m)}</span>`).join("")).join('<span class="hge-saut"></span>');
+  return `<div class="page">${titre(`${nom} — ${t.titre}`)}`
+    + `<div class="sous">Les grandes étiquettes, pour ${sorte === "mots" ? "le tableau" : "la carte de la classe"}. ${SOURCE}</div>`
+    + `<div class="hge-liste">${mots.map((m) => `<span class="hge hge-grande">${esc(m)}</span>`).join("")}</div></div>`
+    + `<div class="page">${titre(`${nom} — pour les élèves`)}<div class="sous">${jeux > 1 ? `${jeux} jeux, un par élève ou par groupe.` : "Un jeu par élève ou par groupe."}</div>`
+    + `<div class="hge-liste">${petites}</div></div>`;
 }
+
+// ── La feuille ────────────────────────────────────────────────────────────
 
 export function htmlHistoireGeoCM(r: ReglagesHistoireGeoCM, graine: number): string {
   const t = themeHGCM(r.theme);
@@ -219,6 +229,8 @@ export function htmlHistoireGeoCM(r: ReglagesHistoireGeoCM, graine: number): str
   const exercice = t.exercices.find((e) => e.id === r.exercice);
   const corps = r.exercice === "frise" && t.frise ? feuilleFrise(t, r.aCompleter !== false, graine)
     : r.exercice === "lexique" ? feuilleLexique(t)
+      : r.exercice === "etiquettes-mots" ? feuilleEtiquettes(t, "mots", graine)
+        : r.exercice === "etiquettes-lieux" && t.lieux ? feuilleEtiquettes(t, "lieux", graine)
       : exercice ? feuilleExercice(exercice, graine)
         : feuilleEvaluation(t, graine);
   return feuille(corps, "hg");
@@ -257,6 +269,12 @@ export const STYLE_HISTOIRE_GEO_CM = `
   .feuille.hg .hg-date { width: 40mm; }
   .feuille.hg .hg-liste { font-size: 13px; line-height: 1.55; padding-left: 6mm; }
   .feuille.hg .hg-liste li { margin: 0 0 2mm; }
+  .feuille.hg .hge-liste { display: block; }
+  .feuille.hg .hge { display: inline-block; vertical-align: top; box-sizing: border-box; max-width: 100%; border: 1.5px dashed #9aa0b4;
+    text-align: center; overflow-wrap: break-word; }
+  .feuille.hg .hge-grande { font-size: 26px; font-weight: 800; line-height: 1.25; padding: 4mm 6mm; margin: 0 3mm 3mm 0; min-width: 40mm; }
+  .feuille.hg .hge-petite { font-size: 13px; font-weight: 700; line-height: 1.3; padding: 2mm 3mm; margin: 0 1.5mm 1.5mm 0; }
+  .feuille.hg .hge-saut { display: block; height: 3mm; }
   .feuille.hg .hgf { position: relative; margin: 4mm 0 0; }
   .feuille.hg .hgf-zone { position: absolute; left: 0; right: 8mm; top: 0; bottom: 0; }
   .feuille.hg .hgf-bande { position: absolute; box-sizing: border-box; border: 1px solid #1c2233; display: flex; align-items: center; justify-content: center;
