@@ -483,3 +483,30 @@ describe("l'écriture du cours moyen", () => {
     expect(lignesDuModele(htmlEcritureCM({ ...REGLAGES_ECRITURE_CM, classe: "CM2", exercice: "copie" }, 1))).toBe(18);
   });
 });
+
+describe("l'oral du cours moyen", () => {
+  const ORAL = FRANCAIS.filter((c) => /^oral/i.test(c.cible.sousDomaineTitre ?? ""));
+
+  it("donne à chaque compétence une séquence de sa classe, avec ses feuilles et une période", async () => {
+    const { DEMARCHES_ORAL_CM } = await import("./cycle3Oral");
+    const { htmlOralCM, EXERCICES_ORAL_CM } = await import("./oralCoursMoyen");
+    const { domaineDeLaDemarche } = await import("./sequencesToutesFaites");
+    const { periodeProposee } = await import("./periodesProposees");
+    expect(ORAL.length).toBe(28);
+    const vues = new Set<string>();
+    for (const { cible, classe } of ORAL) {
+      const d = demarcheSuggeree(cible, REF);
+      expect(DEMARCHES_ORAL_CM.map((x) => x.id), `${classe} — ${cible.competenceTitre} : ${d.id}`).toContain(d.id);
+      expect(d.id).toMatch(new RegExp(`-${classe.toLowerCase()}$`));
+      if (vues.has(d.id)) continue;
+      vues.add(d.id);
+      const plan = planDesFeuilles(d.id, { classe, periode: 1, competence: cible.competenceTitre ?? "" })!;
+      expect(plan.materiel.length, d.id).toBe(d.seances.length);
+      for (const f of plan.feuilles) for (const graine of [1, 2, 3]) expect(f.fabriquer(graine).html, `${d.id} — ${f.titre}`).not.toMatch(/NaN|undefined|Infinity|\[object|cycle 2/);
+      expect(domaineDeLaDemarche(d)?.id, d.id).toBe("oral");
+      expect(periodeProposee(d.id, classe)?.raison, d.id).toMatch(/^Suggestion de Maitrize/);
+    }
+    expect([...vues].sort()).toEqual(DEMARCHES_ORAL_CM.map((x) => x.id).sort());
+    for (const e of EXERCICES_ORAL_CM) for (const classe of ["CM1", "CM2"] as const) expect(htmlOralCM({ classe, exercice: e.id }, 1), e.id).not.toMatch(/NaN|undefined|null/);
+  });
+});
