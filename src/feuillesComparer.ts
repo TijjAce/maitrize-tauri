@@ -219,7 +219,7 @@ function bornes(alea: Alea, niv: Niveau): [number, number] {
 }
 
 const ligneDeCases = (n: number, s: string) => `<div class="fc-ligne">${Array.from({ length: n }, () => caseVide).join(signe(s))}</div>`;
-const donnes = (liste: number[]) => `<span class="fc-donnes">${liste.map(fr).join(" &nbsp; ")}</span>`;
+const donnes = (liste: number[]) => `<span class="fc-donnes">${liste.map((x) => fr(x)).join(" &nbsp; ")}</span>`;
 const entreLesDeux = (a: number, b: number) => (b - a - 1 <= 8
   ? Array.from({ length: b - a - 1 }, (_, i) => fr(a + 1 + i)).join(", ")
   : `tout nombre de ${fr(a + 1)} à ${fr(b - 1)}`);
@@ -241,8 +241,8 @@ export function htmlOrdonnerIntercaler(r: ReglagesComparer, graine: number): str
   </div>`;
   const croissant = (s: number[]) => [...s].sort((x, y) => x - y);
   const lignes = [
-    ...series.map((s) => croissant(s).map(fr).join(" &lt; ")),
-    croissant(decroissante).reverse().map(fr).join(" &gt; "),
+    ...series.map((s) => croissant(s).map((x) => fr(x)).join(" &lt; ")),
+    croissant(decroissante).reverse().map((x) => fr(x)).join(" &gt; "),
     ...intervalles.map(([a, b]) => `Entre ${fr(a)} et ${fr(b)} : ${entreLesDeux(a, b)}`),
   ];
   return feuille(page + corrige(titre, lignes), "cn fc");
@@ -295,7 +295,7 @@ export function htmlEncadrer(r: ReglagesComparer, graine: number): string {
   const lignes = [
     ...encadres.map((n) => `${fr(Math.floor(n / pas) * pas)} &lt; ${fr(n)} &lt; ${fr(Math.floor(n / pas) * pas + pas)}`),
     ...voisins.map((n) => `${fr(n - 1)} &lt; ${fr(n)} &lt; ${fr(n + 1)}`),
-    ...bandes.map((b) => `La bande de ${fr(b.debut)} à ${fr(b.debut + 10)} : ${[...b.vides].sort((x, y) => x - y).map(fr).join(", ")}`),
+    ...bandes.map((b) => `La bande de ${fr(b.debut)} à ${fr(b.debut + 10)} : ${[...b.vides].sort((x, y) => x - y).map((x) => fr(x)).join(", ")}`),
   ];
   return feuille(page + corrige(titre, lignes), "cn fc");
 }
@@ -391,7 +391,7 @@ export function htmlEvaluation(r: ReglagesComparer, graine: number): string {
   </div>`;
   const lignes = [
     ...paires.map((p) => `${lu(p.a, niv)} ${html(signeEntre(p.a.n, p.b.n))} ${lu(p.b, niv)}`),
-    [...serie].sort((x, y) => x - y).map(fr).join(" &lt; "),
+    [...serie].sort((x, y) => x - y).map((x) => fr(x)).join(" &lt; "),
     ...intervalles.map(([a, b]) => `Entre ${fr(a)} et ${fr(b)} : ${entreLesDeux(a, b)}`),
     ...encadres.map((n) => `${fr(Math.floor(n / pas) * pas)} &lt; ${fr(n)} &lt; ${fr(Math.floor(n / pas) * pas + pas)}`),
     `${fr(probleme.a)} ${html(signeEntre(probleme.a, probleme.b))} ${fr(probleme.b)} — ${escapeHtml(probleme.reponse)}`,

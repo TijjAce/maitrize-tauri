@@ -322,7 +322,7 @@ function estimation(r: ReglagesCalculCM, alea: () => number): { calcul: string; 
   const estime = multiplier ? ea * eb : ea + eb;
   const proposees = [estime / 10, estime, estime * 10];
   return {
-    calcul: `${fr(a)} ${multiplier ? "×" : "+"} ${fr(b)}`, proposees: proposees.map(fr), bonne: 1,
+    calcul: `${fr(a)} ${multiplier ? "×" : "+"} ${fr(b)}`, proposees: proposees.map((x) => fr(x)), bonne: 1,
     explication: `${fr(ea)} ${multiplier ? "×" : "+"} ${fr(eb)} = ${fr(estime)}`,
   };
 }
