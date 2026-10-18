@@ -458,8 +458,9 @@ function autourDeLaCarte(c: CarteHGCM, corrige: boolean, graine: number, colonne
   const r = hasard(graine);
   const noms = (c.numeros ?? []).map((n) => n.nom);
   const textes = (c.traits ?? []).flatMap((t) => t.liste.filter((x) => x.texte).map((x) => x.texte as string));
+  // Une grille, rangée colonne par colonne : WebKit, qui imprime dans l'application, ignore les colonnes CSS d'une liste.
   const liste = (elements: string[], marque: (i: number) => string, cols: number) => (elements.length
-    ? `<ol class="hgc-noms${corrige ? " hgc-reponses" : ""}" style="columns:${cols}">${elements.map((e, i) => `<li><b>${marque(i)}.</b> `
+    ? `<ol class="hgc-noms${corrige ? " hgc-reponses" : ""}" style="grid-template-columns:repeat(${cols},minmax(0,1fr));grid-template-rows:repeat(${Math.ceil(elements.length / cols)},auto)">${elements.map((e, i) => `<li><b>${marque(i)}.</b> `
       + (corrige ? escapeHtml(e) : '<span class="hgc-ligne"></span>') + "</li>").join("")}</ol>` : "");
   const banque = (elements: string[]) => (c.banque && !corrige && elements.length
     ? `<div class="hg-banque hgc-banque">${melanger(r, elements).map((e) => `<span>${escapeHtml(e)}</span>`).join("")}</div>` : "");
@@ -525,7 +526,7 @@ export const STYLE_CARTES_HG = `
   .feuille.hg .hgc-bloc.hgc-large { flex: 1 1 100%; }
   .feuille.hg .hgc-banque { margin: 0 0 2mm; }
   .feuille.hg .hgc-banque span { font-size: 12px; padding: 1mm 2mm; }
-  .feuille.hg .hgc-noms { list-style: none; margin: 0; padding: 0; font-size: 12.5px; column-gap: 5mm; }
+  .feuille.hg .hgc-noms { list-style: none; margin: 0; padding: 0; font-size: 12.5px; display: grid; grid-auto-flow: column; column-gap: 5mm; }
   .feuille.hg .hgc-noms li { display: flex; align-items: flex-end; gap: 1.5mm; break-inside: avoid; page-break-inside: avoid; min-height: 7mm; line-height: 1.35; }
   .feuille.hg .hgc-noms li b { flex: none; }
   .feuille.hg .hgc-noms.hgc-reponses li { align-items: baseline; min-height: 0; margin: 0 0 1.5mm; }
