@@ -36,6 +36,7 @@ import { estUneDemarcheDesNombresCM, planDesNombresCM } from "./cycle3Nombres";
 import { estUneDemarcheDuCalculCM, planDuCalculCM } from "./cycle3Calcul";
 import { estUneDemarcheDesProblemesCM, planDesProblemesCM } from "./cycle3Problemes";
 import { estUneDemarcheDesGrandeursCM, planDesGrandeursCM } from "./cycle3Grandeurs";
+import { estUneDemarcheDeLaGeometrieCM, planDeLaGeometrieCM } from "./cycle3Geometrie";
 import type { ElemSalle } from "./planDeLaClasse";
 import { reglagesLaisses } from "./reglagesLaisses";
 import { memesReglages } from "./modifierFeuille";
@@ -191,6 +192,7 @@ export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): Plan
   if (estUneDemarcheDuCalculCM(demarcheId)) return planDuCalculCM(demarcheId, ctx);
   if (estUneDemarcheDesProblemesCM(demarcheId)) return planDesProblemesCM(demarcheId, ctx);
   if (estUneDemarcheDesGrandeursCM(demarcheId)) return planDesGrandeursCM(demarcheId, ctx);
+  if (estUneDemarcheDeLaGeometrieCM(demarcheId)) return planDeLaGeometrieCM(demarcheId, ctx);
   if (!CLASSE_DES_DEMARCHES[demarcheId]) return null;
   // Grouper par dix, la centaine, le millier : les huit feuilles des cubes, de la grande collection à l'évaluation.
   if (demarcheId === "numeration-dizaine-cp" || demarcheId.startsWith("groupements-")) {
