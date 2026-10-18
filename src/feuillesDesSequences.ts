@@ -43,6 +43,7 @@ import { estUneDemarcheDeLectureCM, planDeLaLectureCM } from "./cycle3Lecture";
 import { estUneDemarcheDEcritureCM, planDeLEcritureCM } from "./cycle3Ecriture";
 import { estUneDemarcheDOralCM, planDeLOralCM } from "./cycle3Oral";
 import { estUneDemarcheDuVocabulaireCM, planDuVocabulaireCM } from "./cycle3Vocabulaire";
+import { estUneDemarcheHistoireGeoCM, planHistoireGeoCM } from "./cycle3HistoireGeo";
 import type { ElemSalle } from "./planDeLaClasse";
 import { reglagesLaisses } from "./reglagesLaisses";
 import { memesReglages } from "./modifierFeuille";
@@ -206,6 +207,8 @@ export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): Plan
   if (estUneDemarcheDEcritureCM(demarcheId)) return planDeLEcritureCM(demarcheId, ctx);
   if (estUneDemarcheDOralCM(demarcheId)) return planDeLOralCM(demarcheId, ctx);
   if (estUneDemarcheDuVocabulaireCM(demarcheId)) return planDuVocabulaireCM(demarcheId, ctx);
+  // L'histoire et la géographie du cours moyen : la frise, les documents, les tris, l'évaluation de chaque thème (voir cycle3HistoireGeo.ts).
+  if (estUneDemarcheHistoireGeoCM(demarcheId)) return planHistoireGeoCM(demarcheId);
   if (!CLASSE_DES_DEMARCHES[demarcheId]) return null;
   // Grouper par dix, la centaine, le millier : les huit feuilles des cubes, de la grande collection à l'évaluation.
   if (demarcheId === "numeration-dizaine-cp" || demarcheId.startsWith("groupements-")) {

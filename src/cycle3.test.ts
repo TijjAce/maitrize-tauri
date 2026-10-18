@@ -547,3 +547,92 @@ describe("le vocabulaire et l'orthographe des mots du cours moyen", () => {
     }
   });
 });
+
+const HISTOIRE_GEO = competences("Histoire-géographie");
+
+describe("l'histoire et la géographie du cours moyen", () => {
+  it("donnent à chaque compétence la séquence de son thème, avec ses feuilles et sa période", async () => {
+    const { DEMARCHES_HISTOIRE_GEO_CM, HISTOIRE_CM } = await import("./cycle3HistoireGeo");
+    const { domaineDeLaDemarche, repereDeLaDemarche } = await import("./sequencesToutesFaites");
+    const { periodeProposee } = await import("./periodesProposees");
+    expect(HISTOIRE_GEO.length).toBe(57);
+    const vues = new Set<string>();
+    for (const { cible, classe } of HISTOIRE_GEO) {
+      const d = demarcheSuggeree(cible, REF);
+      expect(DEMARCHES_HISTOIRE_GEO_CM.map((x) => x.id), `${classe} — ${cible.competenceTitre} : ${d.id}`).toContain(d.id);
+      expect(d.id).toMatch(new RegExp(`-${classe.toLowerCase()}$`));
+      if (vues.has(d.id)) continue;
+      vues.add(d.id);
+      const plan = planDesFeuilles(d.id, { classe, periode: 1, competence: cible.competenceTitre ?? "" })!;
+      expect(plan.materiel.length, d.id).toBe(d.seances.length);
+      for (const f of plan.feuilles) {
+        expect(f.seance, `${d.id} — ${f.titre}`).toBeLessThan(d.seances.length);
+        for (const graine of [1, 2, 3]) expect(f.fabriquer(graine).html, `${d.id} — ${f.titre}`).not.toMatch(/NaN|undefined|Infinity|\[object|cycle 2|Thème inconnu/);
+      }
+      if (HISTOIRE_CM.has(d.id)) {
+        // L'histoire : la période que le programme donne au titre du thème.
+        expect(domaineDeLaDemarche(d)?.id, d.id).toBe("temps");
+        expect(repereDeLaDemarche(d.id, classe)?.raison, d.id).toMatch(/^Programme d'histoire-géographie du cycle 3 \(2026\), CM[12] : « Thème \d/);
+      } else {
+        // La géographie : le programme ne donne que des durées ; Maitrize propose les périodes.
+        expect(domaineDeLaDemarche(d)?.id, d.id).toBe("espace");
+        expect(repereDeLaDemarche(d.id, classe), d.id).toBeNull();
+        expect(periodeProposee(d.id, classe)?.raison, d.id).toMatch(/^Suggestion de Maitrize/);
+      }
+    }
+    expect([...vues].sort()).toEqual(DEMARCHES_HISTOIRE_GEO_CM.map((x) => x.id).sort());
+    expect(HISTOIRE_CM.size).toBe(10);
+  });
+
+  it("suivent l'ordre et les périodes que le programme donne à l'histoire", async () => {
+    const { periodeDeLaDemarche } = await import("./sequencesToutesFaites");
+    const attendues: [string, "CM1" | "CM2", number][] = [
+      ["moyen-age-cm1", "CM1", 1], ["monarchie-cm1", "CM1", 2], ["explorations-cm1", "CM1", 4], ["revolution-1789-cm1", "CM1", 5],
+      ["republique-empire-cm2", "CM2", 1], ["vers-republique-cm2", "CM2", 2], ["age-industriel-cm2", "CM2", 2],
+      ["premiere-guerre-cm2", "CM2", 3], ["seconde-guerre-cm2", "CM2", 4], ["depuis-1945-cm2", "CM2", 5],
+    ];
+    for (const [id, classe, periode] of attendues) expect(periodeDeLaDemarche(id, classe), id).toBe(periode);
+  });
+
+  it("ont des feuilles cohérentes : les repères de la frise, les exercices, le corrigé", async () => {
+    const { THEMES_HG_CM, REGIONS, PAYS_UE } = await import("./themesHistoireGeoCM");
+    const { htmlHistoireGeoCM, htmlFriseCM } = await import("./histoireGeoCoursMoyen");
+    expect(THEMES_HG_CM.length).toBe(17);
+    expect(REGIONS.length).toBe(18);
+    expect(PAYS_UE.length).toBe(27);
+    for (const t of THEMES_HG_CM) {
+      const ids = t.exercices.map((e) => e.id);
+      expect(new Set(ids).size, t.id).toBe(ids.length);
+      expect(t.evaluation.length, t.id).toBeGreaterThan(1);
+      // Les consignes de l'évaluation se disent à la première personne : elles prennent le cadre des consignes.
+      for (const [q] of t.evaluation) expect(q, t.id).toMatch(/^(Je |J')/);
+      for (const [mot, definition] of t.motsCles) expect(`${mot} ${definition}`, t.id).not.toMatch(/undefined/);
+      if (t.histoire) {
+        const f = t.frise!;
+        expect(f, t.id).toBeDefined();
+        for (const r of f.reperes) {
+          expect(r.date, `${t.id} — ${r.quoi}`).toBeGreaterThanOrEqual(f.debut);
+          expect(r.date, `${t.id} — ${r.quoi}`).toBeLessThanOrEqual(f.fin);
+        }
+        // À compléter : les cases sont vides, les évènements sont sur les étiquettes ; complétée : ils sont dans les cases.
+        const vide = htmlFriseCM(f, true), pleine = htmlFriseCM(f, false);
+        expect(vide.match(/hgf-vide/g)?.length, t.id).toBe(f.reperes.length);
+        for (const r of f.reperes) expect(pleine, t.id).toContain(r.quoi.replace(/'/g, "&#39;"));
+        const feuille = htmlHistoireGeoCM({ theme: t.id, exercice: "frise", aCompleter: true }, 3);
+        expect(feuille, t.id).toContain("Les étiquettes à découper");
+        expect(feuille, t.id).toContain('class="page corrige"');
+      } else {
+        expect(t.frise, t.id).toBeUndefined();
+      }
+      for (const e of t.exercices) {
+        const html = htmlHistoireGeoCM({ theme: t.id, exercice: e.id }, 5);
+        // Un tableau à remplir sans réponse unique n'a pas de corrigé ; les autres en ont un.
+        if (e.sorte !== "tableau" || e.reponses) expect(html, `${t.id} — ${e.id}`).toContain('class="page corrige"');
+        if (e.sorte === "trier") for (const [, k] of e.items) expect(k, `${t.id} — ${e.id}`).toBeLessThan(e.colonnes.length);
+        if (e.sorte === "ordonner" && e.dates) expect(e.dates.length, `${t.id} — ${e.id}`).toBe(e.etapes.length);
+        if (e.sorte === "tableau") for (const l of [...e.lignes, ...(e.reponses ?? [])]) expect(l.length, `${t.id} — ${e.id}`).toBe(e.entetes.length);
+      }
+      expect(htmlHistoireGeoCM({ theme: t.id, exercice: "evaluation" }, 2), t.id).toContain('class="hg-consigne"');
+    }
+  });
+});

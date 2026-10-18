@@ -1,0 +1,1564 @@
+// Les thèmes d'histoire et de géographie du cours moyen, et ce que leurs
+// feuilles montrent (voir histoireGeoCoursMoyen.ts).
+//
+// Programme d'histoire-géographie du cycle 3 (BO n° 22 du 28 mai 2026,
+// annexe 4), à la demande de l'enseignant (octobre 2026) : pour chaque
+// thème, sa question, ses repères — sur la frise —, ses mots-clés et leur
+// définition, et des exercices sur ses attendus. Les documents sont écrits
+// pour Maitrize, d'après le programme et les faits établis : ils le disent
+// sous leur texte. Quand le programme donne un repère qu'on doit préciser —
+// 1515 pour Léonard de Vinci, 2000 pour l'euro —, la séquence le dit (voir
+// cycle3HistoireGeo.ts).
+
+export type ClasseCM = "CM1" | "CM2";
+
+/** Un repère de la frise : sa place (une année, avec ses mois en décimales), ce qu'on lit, ce qui s'est passé. */
+export interface RepereCM { date: number; quand: string; quoi: string }
+
+/** Une bande de la frise : une période ou un règne ; au rang 2, sous la première. À placer : vide sur la frise à compléter. */
+export interface BandeCM { nom: string; debut: number; fin: number; couleur: string; rang?: 1 | 2; aPlacer?: boolean }
+
+export interface FriseCM {
+  titre: string;
+  debut: number;
+  fin: number;
+  /** L'écart entre deux graduations, en années ; ou les graduations elles-mêmes. */
+  pas: number;
+  graduations?: { date: number; nom: string }[];
+  bandes: BandeCM[];
+  reperes: RepereCM[];
+}
+
+export type ExerciceHGCM =
+  | { sorte: "document"; id: string; titre: string; texte: string[]; source?: string; questions: [string, string][]; rappel?: string }
+  | { sorte: "trier"; id: string; titre: string; consigne: string; colonnes: string[]; items: [string, number][]; rappel?: string }
+  | { sorte: "relier"; id: string; titre: string; consigne: string; paires: [string, string][]; rappel?: string }
+  /** Des étapes à remettre dans l'ordre ; leurs dates, s'il y en a, ne se montrent que dans le corrigé : on ne range pas des dates. */
+  | { sorte: "ordonner"; id: string; titre: string; consigne: string; etapes: string[]; dates?: string[]; rappel?: string }
+  | { sorte: "tableau"; id: string; titre: string; consigne: string; entetes: string[]; lignes: string[][]; reponses?: string[][]; rappel?: string };
+
+export interface ThemeHGCM {
+  id: string;
+  classe: ClasseCM;
+  histoire: boolean;
+  titre: string;
+  question: string;
+  frise?: FriseCM;
+  /** Les mots-clés du programme, et quelques mots du thème, avec leur définition. */
+  motsCles: [string, string][];
+  exercices: ExerciceHGCM[];
+  /** Les questions de l'évaluation, à la première personne, et ce qu'on attend. */
+  evaluation: [string, string][];
+  /** Les lieux à localiser sur le planisphère ou la carte de la classe : leurs étiquettes. */
+  lieux?: string[];
+}
+
+/** Un jour de l'année, en années décimales : le 14 juillet 1789 tombe un peu après le milieu de 1789. */
+export const jour = (annee: number, mois: number, j = 1) => annee + (mois - 1 + (j - 1) / 31) / 12;
+
+export const SOURCE_MAITRIZE = "Texte écrit pour Maitrize, d'après le programme d'histoire-géographie du cycle 3 (2026).";
+
+const BRUN = "#e9d8c4", JAUNE = "#f6e3a1", BLEU = "#cfe0f3", VERT = "#d8ecd0", ROSE = "#f3d1d6", MAUVE = "#e3d7f0", GRIS = "#e4e7ee";
+
+// ── Histoire, CM1 ─────────────────────────────────────────────────────────
+
+const MOYEN_AGE: ThemeHGCM = {
+  id: "moyen-age-cm1", classe: "CM1", histoire: true, titre: "La vie quotidienne au Moyen Âge (XIe – XIIIe siècles)",
+  question: "Comment les femmes et les hommes vivaient-ils au Moyen Âge ?",
+  frise: {
+    titre: "Le Moyen Âge (476 – 1492)", debut: 300, fin: 1600, pas: 100,
+    bandes: [
+      { nom: "Antiquité", debut: 300, fin: 476, couleur: JAUNE },
+      { nom: "Le Moyen Âge", debut: 476, fin: 1492, couleur: BLEU, aPlacer: true },
+      { nom: "Temps modernes", debut: 1492, fin: 1600, couleur: VERT },
+      { nom: "XIe – XIIIe siècles", debut: 1001, fin: 1300, couleur: MAUVE, rang: 2, aPlacer: true },
+    ],
+    reperes: [
+      { date: 476, quand: "476", quoi: "La fin de l'Empire romain d'Occident : le début du Moyen Âge" },
+      { date: 910, quand: "910", quoi: "La fondation de l'abbaye de Cluny" },
+      { date: 1163, quand: "1163", quoi: "Le début de la construction de Notre-Dame de Paris" },
+      { date: 1492, quand: "1492", quoi: "Christophe Colomb en Amérique : la fin du Moyen Âge" },
+    ],
+  },
+  motsCles: [
+    ["l'abbaye", "Un monastère dirigé par un abbé ou une abbesse, où vivent des moines ou des moniales."],
+    ["l'art roman", "L'art des églises des XIe et XIIe siècles : murs épais, petites fenêtres, voûtes en berceau."],
+    ["l'art gothique", "L'art des églises à partir du XIIe siècle : arcs-boutants, croisées d'ogives, grands vitraux."],
+    ["la cathédrale", "L'église de l'évêque, la plus grande église d'une ville."],
+    ["le château fort", "La demeure fortifiée du seigneur."],
+    ["le clergé", "L'ensemble des hommes et des femmes d'Église : prêtres, moines, moniales."],
+    ["la corvée", "Le travail gratuit que les paysans doivent au seigneur."],
+    ["la dîme", "La part des récoltes donnée à l'Église."],
+    ["l'Église, une église", "L'Église : les chrétiens et leur clergé ; une église : le bâtiment où l'on prie."],
+    ["la paroisse", "Le territoire d'un prêtre et de son église."],
+    ["la paysanne, le paysan", "Celle, celui qui cultive la terre et élève des animaux."],
+    ["le seigneur", "Celui qui domine une seigneurie."],
+    ["la seigneurie", "Le territoire d'un seigneur et les personnes qui y vivent."],
+  ],
+  exercices: [
+    {
+      sorte: "document", id: "chateau", titre: "Le château fort et la seigneurie",
+      rappel: "Le château fort protège, le seigneur y vit, il montre sa puissance. La seigneurie, c'est le territoire du seigneur et les personnes qui y vivent.",
+      texte: [
+        "Au Moyen Âge, le seigneur domine un territoire, la seigneurie, et les personnes qui y vivent. Au centre se dresse son château fort. Bâti sur une hauteur, entouré de murailles épaisses et de fossés, il protège : en cas d'attaque, les paysans des alentours viennent s'y réfugier avec leurs bêtes.",
+        "C'est aussi là que le seigneur vit avec sa famille et ses chevaliers, dans le donjon, la plus haute tour. Le château montre enfin la puissance du seigneur : on le voit de loin.",
+        "Le seigneur rend la justice et lève des taxes. Les paysans travaillent gratuitement sur ses terres plusieurs jours par an : c'est la corvée. Ils lui donnent une part de leurs récoltes, et doivent payer pour utiliser son moulin, son four et son pressoir.",
+      ],
+      questions: [
+        ["Qu'est-ce qu'une seigneurie ?", "Le territoire que domine un seigneur, avec les personnes qui y vivent."],
+        ["Je cite les trois fonctions du château fort.", "Il protège ; le seigneur y vit ; il montre sa puissance."],
+        ["Pourquoi le château est-il bâti sur une hauteur ?", "Pour mieux se défendre et voir venir l'ennemi ; on le voit de loin : il montre la puissance du seigneur."],
+        ["Qu'est-ce que la corvée ?", "Les jours de travail gratuit que les paysans doivent sur les terres du seigneur."],
+        ["Je cite deux autres obligations des paysans envers le seigneur.", "Lui donner une part des récoltes ; payer pour utiliser son moulin, son four, son pressoir."],
+      ],
+    },
+    {
+      sorte: "relier", id: "calendrier", titre: "Le calendrier des travaux des champs",
+      consigne: "Je relie chaque mois au travail des paysans.",
+      rappel: "Les calendriers peints ou sculptés du Moyen Âge montrent un travail pour chaque mois : toute l'année, les paysans travaillent la terre.",
+      paires: [
+        ["février", "couper du bois et se chauffer"], ["mars", "tailler la vigne"], ["juin", "faucher les foins"], ["juillet", "moissonner le blé"],
+        ["septembre", "vendanger le raisin"], ["octobre", "labourer et semer"], ["novembre", "mener les porcs manger les glands en forêt"], ["décembre", "tuer le cochon"],
+      ],
+    },
+    {
+      sorte: "trier", id: "obligations", titre: "Qui doit quoi ?",
+      consigne: "Je lis chaque obligation des paysans. Je l'écris dans la bonne colonne : envers le seigneur, ou envers l'Église.",
+      rappel: "Les paysans doivent au seigneur la corvée, des taxes et une part des récoltes ; à l'Église, la dîme et la prière.",
+      colonnes: ["Envers le seigneur", "Envers l'Église"],
+      items: [
+        ["la corvée", 0], ["une part des récoltes", 0], ["payer pour moudre son grain au moulin", 0], ["payer pour cuire son pain au four", 0], ["être jugé à son tribunal", 0],
+        ["la dîme", 1], ["aller à la messe le dimanche", 1], ["faire baptiser ses enfants", 1], ["ne pas travailler les jours de fête religieuse", 1],
+      ],
+    },
+    {
+      sorte: "document", id: "ville", titre: "La ville au Moyen Âge",
+      rappel: "Derrière ses remparts, la ville vit de l'artisanat et du commerce : les ateliers, le marché, les foires. Ses habitants sont les bourgeois.",
+      texte: [
+        "À partir du XIe siècle, les villes grandissent. Protégées par des remparts, elles attirent des paysans venus chercher du travail.",
+        "Dans les rues étroites, les artisans travaillent dans leur atelier, ouvert sur la rue : on trouve la rue des boulangers, celle des tanneurs, celle des forgerons. Les artisans d'un même métier s'organisent en corporation.",
+        "Chaque semaine, le marché se tient sur la place : on y vend les produits des campagnes. Plusieurs fois par an, de grandes foires réunissent des marchands venus de loin, comme les foires de Champagne, à Troyes ou à Provins. Les habitants des villes, les bourgeois, obtiennent souvent du seigneur une charte qui leur donne des libertés.",
+      ],
+      questions: [
+        ["Qu'est-ce qui protège la ville ?", "Les remparts."],
+        ["Où travaillent les artisans ?", "Dans leur atelier, ouvert sur la rue."],
+        ["Quelle est la différence entre un marché et une foire ?", "Le marché a lieu chaque semaine et vend les produits des campagnes ; la foire, plusieurs fois par an, réunit des marchands venus de loin."],
+        ["Comment appelle-t-on les habitants des villes ?", "Les bourgeois."],
+      ],
+    },
+    {
+      sorte: "document", id: "eglise", titre: "L'Église au cœur de la vie",
+      rappel: "L'Église encadre la vie de chacun, de la naissance à la mort. Elle aide les pauvres, soigne les malades, enseigne.",
+      texte: [
+        "Au Moyen Âge, presque tout le monde est chrétien. La vie de chacun est rythmée par l'Église : on est baptisé à la naissance, on se marie et on est enterré dans sa paroisse ; les cloches sonnent les heures de la prière et du travail. Le dimanche et les jours de fête, on ne travaille pas.",
+        "Les hommes et les femmes d'Église forment le clergé : les prêtres, et les moines et les moniales qui vivent dans les monastères et les abbayes, comme celle de Cluny, fondée en 910.",
+        "L'Église accueille les pauvres et les voyageurs, et soigne les malades à l'Hôtel-Dieu ; les moines distribuent de la nourriture aux pauvres. Elle enseigne aussi : dans les écoles des monastères et des cathédrales, on apprend à lire, à écrire et à compter. Pour tout cela, l'Église reçoit la dîme, une part des récoltes.",
+      ],
+      questions: [
+        ["Comment appelle-t-on les hommes et les femmes d'Église ?", "Le clergé : les prêtres, les moines, les moniales."],
+        ["Je relève deux moments de la vie où l'on va à l'église.", "Le baptême, le mariage, l'enterrement."],
+        ["Comment l'Église aide-t-elle les pauvres et les malades ?", "Elle les accueille et les soigne à l'Hôtel-Dieu ; les moines distribuent de la nourriture."],
+        ["Où peut-on apprendre à lire au Moyen Âge ?", "Dans les écoles des monastères et des cathédrales."],
+        ["Qu'est-ce que la dîme ?", "La part des récoltes donnée à l'Église."],
+      ],
+    },
+    {
+      sorte: "trier", id: "roman-gothique", titre: "Art roman ou art gothique ?",
+      consigne: "Je lis chaque caractéristique. Je l'écris dans la colonne de l'art roman ou de l'art gothique.",
+      rappel: "L'art roman (XIe – XIIe siècles) : des murs épais, de petites fenêtres. L'art gothique (à partir du XIIe siècle) : des édifices hauts et lumineux.",
+      colonnes: ["L'art roman (XIe – XIIe siècles)", "L'art gothique (à partir du XIIe siècle)"],
+      items: [
+        ["des murs épais", 0], ["de petites fenêtres", 0], ["des voûtes en berceau", 0], ["des arcs en plein cintre, arrondis", 0], ["un intérieur sombre", 0],
+        ["des arcs-boutants", 1], ["des voûtes sur croisées d'ogives", 1], ["de grands vitraux", 1], ["des arcs brisés, pointus", 1], ["un édifice très haut et lumineux", 1], ["une grande rosace", 1],
+      ],
+    },
+  ],
+  evaluation: [
+    ["Je cite les trois fonctions du château fort.", "Il protège ; le seigneur y vit ; il montre sa puissance."],
+    ["Je cite deux obligations des paysans envers le seigneur, et une envers l'Église.", "La corvée, une part des récoltes, payer pour le moulin ou le four ; la dîme."],
+    ["Je décris le rôle de l'Église auprès des pauvres et des malades.", "Elle les accueille, les nourrit, les soigne à l'Hôtel-Dieu ; elle enseigne aussi."],
+    ["Je donne deux différences entre une église romane et une église gothique.", "Murs épais et petites fenêtres / arcs-boutants et grands vitraux ; voûte en berceau / croisée d'ogives ; sombre / lumineuse."],
+  ],
+};
+
+const MONARCHIE: ThemeHGCM = {
+  id: "monarchie-cm1", classe: "CM1", histoire: true, titre: "La monarchie en France (XVIe – XVIIe siècles)",
+  question: "Comment le roi incarne-t-il le pouvoir aux XVIe et XVIIe siècles ?",
+  frise: {
+    titre: "Trois rois de France (XVIe – XVIIe siècles)", debut: 1500, fin: 1725, pas: 25,
+    bandes: [
+      { nom: "XVIe siècle", debut: 1500, fin: 1600, couleur: VERT },
+      { nom: "XVIIe siècle", debut: 1600, fin: 1700, couleur: BLEU },
+      { nom: "XVIIIe s.", debut: 1700, fin: 1725, couleur: JAUNE },
+      { nom: "François Ier (1515 – 1547)", debut: 1515, fin: 1547, couleur: ROSE, rang: 2, aPlacer: true },
+      { nom: "Henri IV (1589 – 1610)", debut: 1589, fin: 1610, couleur: ROSE, rang: 2, aPlacer: true },
+      { nom: "Louis XIV (1643 – 1715)", debut: 1643, fin: 1715, couleur: ROSE, rang: 2, aPlacer: true },
+    ],
+    reperes: [
+      { date: 1515, quand: "1515 – 1519", quoi: "Léonard de Vinci en France, jusqu'à sa mort" },
+      { date: 1562, quand: "1562", quoi: "Le début des guerres de religion" },
+      { date: 1598, quand: "1598", quoi: "L'édit de Nantes" },
+      { date: 1682, quand: "1682", quoi: "La Cour s'installe à Versailles" },
+    ],
+  },
+  motsCles: [
+    ["l'artiste", "Celui ou celle qui crée des œuvres d'art : peintre, sculpteur, architecte, musicien."],
+    ["le catholique", "Le chrétien fidèle au pape."],
+    ["les guerres de religion", "Les guerres entre catholiques et protestants en France, de 1562 à 1598."],
+    ["le mécène", "Celui qui protège et paie des artistes."],
+    ["la monarchie absolue", "Un régime où le roi a tous les pouvoirs."],
+    ["la noblesse", "L'ordre des nobles, qui ont des privilèges."],
+    ["le protestant", "Le chrétien qui ne reconnaît pas l'autorité du pape."],
+    ["la société d'ordres", "La société divisée en trois ordres : le clergé, la noblesse, le tiers état."],
+    ["la Renaissance", "Le grand renouveau des arts et des sciences, venu d'Italie, aux XVe et XVIe siècles."],
+  ],
+  exercices: [
+    {
+      sorte: "document", id: "francois-leonard", titre: "François Ier et Léonard de Vinci",
+      rappel: "François Ier, roi de 1515 à 1547, est un mécène : il protège les artistes de la Renaissance, comme Léonard de Vinci, et diffuse leur art en France.",
+      texte: [
+        "François Ier devient roi de France en 1515. Il admire les artistes italiens de la Renaissance, ce grand mouvement qui renouvelle les arts et les sciences en Europe.",
+        "Il invite en France le plus célèbre d'entre eux, Léonard de Vinci, peintre, ingénieur et inventeur. Léonard arrive avec plusieurs tableaux, dont La Joconde, et s'installe au Clos Lucé, près du château d'Amboise, où le roi lui verse une pension. Il y imagine des machines et prépare des fêtes pour la Cour, jusqu'à sa mort en 1519.",
+        "François Ier protège et paie les artistes : c'est un mécène. Il fait construire ou embellir des châteaux, comme Chambord et Fontainebleau, et commence la collection d'œuvres d'art qui est aujourd'hui au musée du Louvre.",
+      ],
+      questions: [
+        ["Qu'est-ce que la Renaissance ?", "Un grand mouvement, venu d'Italie, qui renouvelle les arts et les sciences en Europe."],
+        ["Qui François Ier invite-t-il en France ? Quels sont ses métiers ?", "Léonard de Vinci : peintre, ingénieur et inventeur."],
+        ["Qu'est-ce qu'un mécène ?", "Celui qui protège et paie les artistes."],
+        ["Je relève deux châteaux que François Ier fait construire ou embellir.", "Chambord et Fontainebleau."],
+        ["Pourquoi peut-on voir La Joconde au Louvre aujourd'hui ?", "Léonard l'a apportée en France ; elle est entrée dans la collection du roi, aujourd'hui au Louvre."],
+      ],
+    },
+    {
+      sorte: "document", id: "henri-iv", titre: "Henri IV pacifie le royaume",
+      rappel: "Pendant les guerres de religion, catholiques et protestants s'affrontent. Henri IV ramène la paix par l'édit de Nantes, en 1598.",
+      texte: [
+        "Au XVIe siècle, les chrétiens d'Europe se divisent : les catholiques restent fidèles au pape ; les protestants croient autrement et refusent son autorité. En France, catholiques et protestants se font la guerre pendant plus de trente ans : ce sont les guerres de religion. En 1572, lors du massacre de la Saint-Barthélemy, des milliers de protestants sont tués.",
+        "Henri de Navarre, un protestant, devient roi en 1589 sous le nom d'Henri IV. Pour être accepté par la majorité catholique, il se convertit au catholicisme.",
+        "En 1598, il signe l'édit de Nantes : les protestants peuvent pratiquer leur religion dans certains lieux, et peuvent, comme les catholiques, devenir officiers du roi. La paix revient. Henri IV est assassiné en 1610.",
+      ],
+      questions: [
+        ["Pourquoi les Français se font-ils la guerre au XVIe siècle ?", "Catholiques et protestants s'opposent : ce sont les guerres de religion."],
+        ["Quelle est la religion d'Henri de Navarre ? Pourquoi en change-t-il ?", "Il est protestant ; il devient catholique pour être accepté par la majorité catholique."],
+        ["Que permet l'édit de Nantes aux protestants ?", "Pratiquer leur religion dans certains lieux, et devenir officiers du roi comme les catholiques."],
+        ["Pourquoi dit-on qu'Henri IV pacifie le royaume ?", "Par l'édit de Nantes, il met fin aux guerres de religion : la paix revient."],
+      ],
+    },
+    {
+      sorte: "document", id: "versailles", titre: "Versailles, le pouvoir absolu du roi",
+      rappel: "Louis XIV a tous les pouvoirs : c'est la monarchie absolue. Versailles montre sa gloire ; la Cour vit autour de lui.",
+      texte: [
+        "Louis XIV devient roi en 1643, à quatre ans. Quand il gouverne seul, à partir de 1661, il décide de tout : il fait les lois, rend la justice, décide de la guerre et des impôts. C'est la monarchie absolue : le roi dit tenir son pouvoir de Dieu.",
+        "Il fait agrandir le château de Versailles, où la Cour s'installe en 1682. Tout y montre la gloire du roi : la galerie des Glaces, les peintures, les jardins immenses, le soleil, son emblème. Des milliers de nobles vivent à la Cour pour obtenir ses faveurs. Ils assistent à son lever, à ses repas, à son coucher, réglés comme des cérémonies : c'est l'étiquette.",
+        "Les femmes ont leur place à la Cour. La reine et les princesses ont leur maison, avec leurs dames d'honneur. Des femmes organisent des fêtes, écrivent, protègent des artistes ; certaines ont l'oreille du roi, comme Madame de Maintenon, qui fonde à Saint-Cyr une école pour les jeunes filles nobles et pauvres.",
+      ],
+      questions: [
+        ["Qu'est-ce que la monarchie absolue ?", "Le roi décide de tout : les lois, la justice, la guerre, les impôts ; il dit tenir son pouvoir de Dieu."],
+        ["Je relève trois éléments de Versailles qui montrent la gloire du roi.", "La galerie des Glaces, les peintures, les jardins immenses, le soleil."],
+        ["Pourquoi les nobles vivent-ils à la Cour ?", "Pour obtenir les faveurs du roi."],
+        ["Je décris le rôle des femmes à la Cour.", "La reine et les princesses ont leur maison et leurs dames d'honneur ; des femmes organisent des fêtes, écrivent, protègent des artistes ; certaines conseillent le roi, comme Madame de Maintenon."],
+      ],
+    },
+    {
+      sorte: "trier", id: "ordres", titre: "La société d'ordres",
+      consigne: "Je lis chaque étiquette. Je l'écris dans la colonne de l'ordre qu'elle décrit.",
+      rappel: "Trois ordres : le clergé prie, la noblesse combat, le tiers état travaille. Le tiers état, surtout des paysans, est presque toute la population.",
+      colonnes: ["Le clergé", "La noblesse", "Le tiers état"],
+      items: [
+        ["ceux qui prient", 0], ["les prêtres, les moines, les religieuses", 0], ["reçoit la dîme", 0],
+        ["ceux qui combattent", 1], ["les seigneurs, les nobles de la Cour", 1], ["ne paie pas la taille, l'impôt du roi", 1],
+        ["ceux qui travaillent", 2], ["les paysans, les artisans, les marchands, les bourgeois", 2], ["paie presque tous les impôts", 2], ["plus de neuf Français sur dix", 2],
+      ],
+    },
+  ],
+  evaluation: [
+    ["J'écris les dates du règne de François Ier, d'Henri IV et de Louis XIV.", "François Ier : 1515 – 1547 ; Henri IV : 1589 – 1610 ; Louis XIV : 1643 – 1715."],
+    ["J'explique pourquoi François Ier est un roi mécène.", "Il protège et paie des artistes de la Renaissance, comme Léonard de Vinci, et fait construire des châteaux."],
+    ["J'explique comment Henri IV ramène la paix.", "Il signe l'édit de Nantes (1598), qui met fin aux guerres de religion."],
+    ["J'explique comment Versailles montre le pouvoir absolu du roi.", "Tout y montre la gloire du roi : la galerie des Glaces, les jardins, le soleil ; les nobles y vivent pour obtenir ses faveurs."],
+    ["Je nomme les trois ordres de la société.", "Le clergé, la noblesse, le tiers état."],
+  ],
+};
+
+const EXPLORATIONS: ThemeHGCM = {
+  id: "explorations-cm1", classe: "CM1", histoire: true, titre: "Explorations et conquêtes par les Européens (XVe – XVIIe siècles)",
+  question: "Pourquoi les Européens explorent-ils le monde et comment cela mène-t-il à la première colonisation ?",
+  frise: {
+    titre: "Explorations et conquêtes (XVe – XVIIe siècles)", debut: 1450, fin: 1700, pas: 25,
+    bandes: [
+      { nom: "Moyen Âge", debut: 1450, fin: 1492, couleur: BLEU },
+      { nom: "Temps modernes", debut: 1492, fin: 1700, couleur: VERT },
+    ],
+    reperes: [
+      { date: 1492, quand: "1492", quoi: "Christophe Colomb débarque en Amérique" },
+      { date: 1519, quand: "1519 – 1522", quoi: "L'expédition de Magellan fait le tour du monde" },
+      { date: 1521, quand: "1521", quoi: "Cortés conquiert l'empire des Aztèques" },
+      { date: 1534, quand: "1534", quoi: "Jacques Cartier explore le Canada" },
+      { date: 1685, quand: "1685", quoi: "Le « Code noir », édit royal de Louis XIV" },
+    ],
+  },
+  motsCles: [
+    ["la boussole", "L'instrument dont l'aiguille aimantée indique le nord."],
+    ["la caravelle", "Un navire léger et rapide, celui des grandes explorations."],
+    ["la carte", "La représentation d'un espace : les côtes, les ports, les routes de navigation."],
+    ["le commerce triangulaire", "Le commerce entre l'Europe, l'Afrique et l'Amérique, fondé sur la traite des esclaves."],
+    ["l'empire colonial", "L'ensemble des territoires qu'un pays a conquis et qu'il domine."],
+    ["l'esclavage", "La situation d'une personne qui appartient à une autre, comme un objet."],
+    ["la plantation", "Une grande exploitation agricole des colonies, où travaillent des esclaves."],
+    ["la traite", "Le commerce d'êtres humains réduits en esclavage."],
+  ],
+  lieux: ["l'Espagne", "le Portugal", "la France", "l'Angleterre", "le Mexique (empire des Aztèques)", "le Pérou (empire des Incas)", "le Brésil",
+    "la Nouvelle-France (Canada)", "les Antilles", "l'Afrique de l'Ouest", "l'océan Atlantique", "l'océan Pacifique"],
+  exercices: [
+    {
+      sorte: "relier", id: "inventions", titre: "Naviguer au grand large",
+      consigne: "Je relie chaque invention à ce qu'elle permet.",
+      rappel: "La caravelle, la boussole, l'astrolabe, le gouvernail et les cartes permettent aux Européens de s'aventurer en haute mer.",
+      paires: [
+        ["la caravelle", "un navire léger et rapide, qui avance même quand le vent est de côté"],
+        ["la boussole", "indique le nord, même sans soleil ni étoiles"],
+        ["l'astrolabe", "mesure la hauteur des astres, pour savoir où l'on est entre le nord et le sud"],
+        ["le gouvernail d'étambot", "fixé à l'arrière du navire, il le dirige plus facilement"],
+        ["la carte", "dessine les côtes, les ports et les routes de navigation"],
+      ],
+    },
+    {
+      sorte: "document", id: "voyages", titre: "Les grands voyages",
+      rappel: "1492 : Christophe Colomb débarque en Amérique. 1519 – 1522 : l'expédition de Magellan fait le tour du monde.",
+      texte: [
+        "En 1492, Christophe Colomb, un navigateur génois au service des souverains d'Espagne, part vers l'ouest pour atteindre l'Asie et ses épices. Après plus de deux mois de traversée, il débarque sur une île d'Amérique, un continent que les Européens ne connaissaient pas : il croit être arrivé aux Indes.",
+        "En 1519, Fernand de Magellan, un Portugais au service de l'Espagne, part avec cinq navires et environ 240 hommes. Il traverse l'Atlantique, contourne l'Amérique du Sud par le détroit qui porte aujourd'hui son nom, puis traverse l'océan Pacifique. Magellan est tué aux Philippines en 1521.",
+        "Un seul navire revient en Espagne en 1522, avec 18 hommes : c'est le premier tour du monde. Il montre qu'on peut faire le tour de la Terre par la mer, et que les océans communiquent.",
+      ],
+      questions: [
+        ["Que cherche Christophe Colomb en partant vers l'ouest ?", "Une route vers l'Asie et ses épices."],
+        ["Où arrive-t-il vraiment ? Que croit-il ?", "En Amérique ; il croit être arrivé aux Indes."],
+        ["Combien de navires partent avec Magellan ? Combien reviennent ?", "Cinq navires partent ; un seul revient."],
+        ["Que montre ce premier tour du monde ?", "Qu'on peut faire le tour de la Terre par la mer, et que les océans communiquent."],
+      ],
+    },
+    {
+      sorte: "relier", id: "empires", titre: "Les premiers empires coloniaux en Amérique",
+      consigne: "Je relie chaque pays d'Europe aux territoires qu'il domine en Amérique. Puis je les colorie sur la carte.",
+      rappel: "L'Espagne et le Portugal se partagent d'abord l'Amérique ; la France, l'Angleterre et les Pays-Bas y fondent ensuite des colonies.",
+      paires: [
+        ["l'Espagne", "le Mexique et le Pérou, conquis sur les Aztèques et les Incas"],
+        ["le Portugal", "le Brésil"],
+        ["la France", "la Nouvelle-France, au Canada, et des îles des Antilles"],
+        ["l'Angleterre", "des colonies sur la côte est de l'Amérique du Nord"],
+      ],
+    },
+    {
+      sorte: "document", id: "amerindiens", titre: "La conquête et les Amérindiens",
+      rappel: "La conquête bouleverse la vie des Amérindiens : guerres, travail forcé, maladies venues d'Europe. La plus grande partie d'entre eux meurt.",
+      texte: [
+        "Les Espagnols arrivent en Amérique avec des chevaux, des armures et des armes à feu, que les Amérindiens ne connaissent pas. Hernán Cortés conquiert l'empire des Aztèques en 1521, Francisco Pizarro celui des Incas en 1533. Les conquérants s'emparent de l'or et de l'argent, et obligent les Amérindiens à travailler dans les mines et dans les champs.",
+        "Surtout, les Européens apportent des maladies, comme la variole, contre lesquelles les Amérindiens ne sont pas protégés. En un siècle, la plus grande partie de la population amérindienne disparaît. Des religieux, comme Bartolomé de Las Casas, dénoncent ces violences.",
+      ],
+      questions: [
+        ["Pourquoi les Espagnols battent-ils les Amérindiens ?", "Ils ont des chevaux, des armures et des armes à feu que les Amérindiens ne connaissent pas ; ils apportent aussi des maladies."],
+        ["Je cite deux conséquences de la conquête pour les Amérindiens.", "Le travail forcé dans les mines et les champs ; les maladies : la plus grande partie de la population disparaît."],
+        ["Qui dénonce ces violences ?", "Des religieux, comme Bartolomé de Las Casas."],
+      ],
+    },
+    {
+      sorte: "document", id: "traite", titre: "La traite et les esclaves des plantations",
+      rappel: "Le commerce triangulaire relie l'Europe, l'Afrique et l'Amérique. Dans les plantations, les esclaves travaillent de force ; en 1685, le Code noir fait d'eux des biens.",
+      texte: [
+        "Pour remplacer les Amérindiens morts et faire travailler leurs plantations, les colons font venir des esclaves d'Afrique. Des navires partent des ports d'Europe, comme Nantes ou Bordeaux, chargés de tissus, d'armes et d'alcool, échangés en Afrique contre des captifs. Entassés dans les cales, ces hommes, ces femmes et ces enfants traversent l'Atlantique ; beaucoup meurent pendant le voyage. En Amérique, ils sont vendus aux planteurs, et les navires rentrent en Europe chargés de sucre, de tabac, de coton. C'est le commerce triangulaire.",
+        "Dans les plantations de canne à sucre des Antilles, les esclaves travaillent du lever au coucher du soleil, sous la menace du fouet. Ils sont la propriété de leur maître, qui peut les vendre. En 1685, le Code noir, un édit de Louis XIV, fixe les règles de l'esclavage dans les colonies françaises : l'esclave y est considéré comme un bien.",
+      ],
+      questions: [
+        ["Pourquoi les colons font-ils venir des esclaves d'Afrique ?", "Pour remplacer les Amérindiens morts et faire travailler les plantations."],
+        ["Je décris les trois étapes du commerce triangulaire.", "De l'Europe à l'Afrique : des marchandises échangées contre des captifs ; de l'Afrique à l'Amérique : les captifs vendus comme esclaves ; de l'Amérique à l'Europe : le sucre, le tabac, le coton."],
+        ["Je décris la vie des esclaves dans une plantation.", "Ils travaillent du lever au coucher du soleil, sous la menace du fouet ; ils appartiennent à leur maître, qui peut les vendre."],
+        ["Qu'est-ce que le Code noir ?", "Un édit de Louis XIV (1685) qui fixe les règles de l'esclavage dans les colonies françaises : l'esclave y est un bien."],
+      ],
+    },
+    {
+      sorte: "trier", id: "denrees", titre: "Des denrées venues d'Amérique",
+      consigne: "Je lis chaque aliment. Je l'écris dans la bonne colonne : venu d'Amérique, ou connu en Europe avant 1492.",
+      rappel: "La tomate, le cacao du chocolat, le haricot, la pomme de terre, le maïs viennent d'Amérique. Le sucre de canne est produit en grand dans les plantations des colonies.",
+      colonnes: ["Venu d'Amérique", "Connu en Europe avant 1492"],
+      items: [
+        ["la tomate", 0], ["le cacao, pour le chocolat", 0], ["le haricot", 0], ["la pomme de terre", 0], ["le maïs", 0], ["la dinde", 0], ["la vanille", 0],
+        ["le blé", 1], ["le raisin", 1], ["la pomme", 1], ["le chou", 1], ["la lentille", 1], ["l'olive", 1],
+      ],
+    },
+  ],
+  evaluation: [
+    ["Je cite deux inventions qui permettent de naviguer au grand large.", "La caravelle, la boussole, l'astrolabe, le gouvernail d'étambot, les cartes."],
+    ["Je cite une conséquence de la conquête pour les Amérindiens.", "Le travail forcé ; les maladies : la plus grande partie d'entre eux meurt."],
+    ["Je décris la vie des esclaves dans une plantation.", "Ils travaillent du lever au coucher du soleil, sous la menace du fouet ; ils appartiennent à leur maître."],
+    ["Je nomme trois denrées venues des colonies d'Amérique.", "La tomate, le chocolat, le haricot, la pomme de terre, le maïs, le sucre de canne."],
+  ],
+};
+
+const REVOLUTION: ThemeHGCM = {
+  id: "revolution-1789-cm1", classe: "CM1", histoire: true, titre: "1789, une année révolutionnaire en France",
+  question: "Comment l'année 1789 met-elle fin à la monarchie absolue et à la société d'ordres ?",
+  frise: {
+    titre: "L'année 1789", debut: 1789, fin: 1790, pas: 1,
+    graduations: ["janv.", "févr.", "mars", "avril", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."].map((nom, i) => ({ date: jour(1789, i + 1), nom })),
+    bandes: [{ nom: "1789", debut: 1789, fin: 1790, couleur: ROSE }],
+    reperes: [
+      { date: jour(1789, 3, 15), quand: "Printemps 1789", quoi: "On écrit les cahiers de doléances" },
+      { date: jour(1789, 5, 5), quand: "5 mai", quoi: "L'ouverture des États généraux à Versailles" },
+      { date: jour(1789, 7, 14), quand: "14 juillet", quoi: "La prise de la Bastille" },
+      { date: jour(1789, 8, 4), quand: "Nuit du 4 août", quoi: "L'abolition des privilèges" },
+      { date: jour(1789, 8, 26), quand: "26 août", quoi: "La Déclaration des droits de l'homme et du citoyen" },
+      { date: jour(1789, 10, 5), quand: "5 – 6 octobre", quoi: "La marche des femmes à Versailles" },
+    ],
+  },
+  motsCles: [
+    ["l'Ancien Régime", "La France d'avant 1789 : un roi absolu, trois ordres, des privilèges."],
+    ["la citoyenneté", "Le fait d'être citoyen, avec des droits et des devoirs."],
+    ["la constitution", "Le texte qui fixe l'organisation du pouvoir."],
+    ["les droits de l'Homme", "Les droits que chaque être humain a dès sa naissance."],
+    ["l'égalité", "Le fait d'avoir les mêmes droits."],
+    ["l'Encyclopédie", "L'ouvrage qui rassemble les savoirs de son temps, dirigé par Diderot et d'Alembert."],
+    ["la liberté", "Le droit de faire tout ce qui ne nuit pas aux autres."],
+    ["les Lumières", "Les philosophes du XVIIIe siècle qui défendent la raison, la liberté et la tolérance."],
+    ["la Révolution", "Un bouleversement rapide et profond de la société et du pouvoir."],
+    ["la souveraineté nationale", "Le principe selon lequel le pouvoir appartient à la Nation."],
+  ],
+  exercices: [
+    {
+      sorte: "document", id: "royaume-1789", titre: "Le royaume en 1789",
+      rappel: "En 1789, le roi manque d'argent, le peuple a faim, le tiers état paie presque tous les impôts, et les Lumières critiquent cette société inégale.",
+      texte: [
+        "En 1789, le royaume de France compte environ 28 millions d'habitants ; la plupart sont des paysans. Le roi Louis XVI manque d'argent : les guerres et les dépenses de la Cour ont creusé les dettes.",
+        "La récolte de 1788 a été mauvaise et l'hiver très froid : le prix du pain augmente, et beaucoup ont faim. Le tiers état paie presque tous les impôts, alors que le clergé et la noblesse ont des privilèges.",
+        "Des philosophes, ceux des Lumières, critiquent depuis des années cette société inégale et le pouvoir absolu du roi. Pour trouver de l'argent, Louis XVI réunit les États généraux, des députés des trois ordres. Dans tout le royaume, on écrit des cahiers de doléances pour dire au roi ce qui ne va pas.",
+      ],
+      questions: [
+        ["Pourquoi le roi manque-t-il d'argent ?", "À cause des guerres et des dépenses de la Cour : il a des dettes."],
+        ["Pourquoi le peuple a-t-il faim en 1789 ?", "La récolte de 1788 a été mauvaise et l'hiver très froid : le prix du pain augmente."],
+        ["Qui paie presque tous les impôts ?", "Le tiers état."],
+        ["Qu'est-ce qu'un cahier de doléances ?", "Un cahier où l'on écrit les plaintes et les demandes adressées au roi."],
+      ],
+    },
+    {
+      sorte: "relier", id: "lumieres", titre: "Les idées des Lumières",
+      consigne: "Je relie chaque philosophe des Lumières à son idée.",
+      rappel: "Les Lumières défendent la raison, la liberté, l'égalité, la tolérance, et le savoir pour tous.",
+      paires: [
+        ["Montesquieu", "Les pouvoirs doivent être séparés : faire les lois, les faire appliquer et juger ne sont pas dans les mêmes mains."],
+        ["Voltaire", "Il faut tolérer toutes les religions et lutter contre l'injustice."],
+        ["Rousseau", "Le pouvoir appartient au peuple, qui fait les lois."],
+        ["Diderot et d'Alembert", "Il faut rassembler tous les savoirs dans l'Encyclopédie, pour que chacun puisse s'instruire."],
+        ["Émilie du Châtelet", "Les femmes doivent pouvoir étudier les sciences ; elle traduit les travaux du savant Newton."],
+      ],
+    },
+    {
+      sorte: "ordonner", id: "annee-1789", titre: "L'année 1789, dans l'ordre",
+      consigne: "Je lis les évènements. J'écris dans chaque case le numéro de l'évènement, dans l'ordre : 1 pour le premier.",
+      rappel: "Printemps : les cahiers de doléances et les États généraux ; 14 juillet : la Bastille ; 4 août : la fin des privilèges ; 26 août : la Déclaration ; 5 et 6 octobre : la marche des femmes.",
+      etapes: [
+        "On écrit les cahiers de doléances.",
+        "Les États généraux s'ouvrent à Versailles.",
+        "Le peuple de Paris prend la Bastille.",
+        "Les députés abolissent les privilèges.",
+        "Les députés votent la Déclaration des droits de l'homme et du citoyen.",
+        "Les femmes de Paris marchent sur Versailles et ramènent le roi à Paris.",
+      ],
+      dates: ["Printemps 1789", "5 mai 1789", "14 juillet 1789", "Nuit du 4 août 1789", "26 août 1789", "5 et 6 octobre 1789"],
+    },
+    {
+      sorte: "document", id: "declaration", titre: "La Déclaration des droits de l'homme et du citoyen",
+      source: "Déclaration des droits de l'homme et du citoyen, 26 août 1789 (extraits).",
+      rappel: "La Déclaration proclame la liberté et l'égalité en droits, la souveraineté de la Nation, la liberté d'opinion et d'expression.",
+      texte: [
+        "Article 1. Les hommes naissent et demeurent libres et égaux en droits. Les distinctions sociales ne peuvent être fondées que sur l'utilité commune.",
+        "Article 2. Le but de toute association politique est la conservation des droits naturels et imprescriptibles de l'Homme. Ces droits sont la liberté, la propriété, la sûreté, et la résistance à l'oppression.",
+        "Article 3. Le principe de toute Souveraineté réside essentiellement dans la Nation.",
+        "Article 9. Tout homme étant présumé innocent jusqu'à ce qu'il ait été déclaré coupable […].",
+        "Article 10. Nul ne doit être inquiété pour ses opinions, même religieuses […].",
+        "Article 11. La libre communication des pensées et des opinions est un des droits les plus précieux de l'Homme : tout Citoyen peut donc parler, écrire, imprimer librement […].",
+      ],
+      questions: [
+        ["Je relève les quatre droits naturels de l'article 2.", "La liberté, la propriété, la sûreté, la résistance à l'oppression."],
+        ["Quel article met fin à la société d'ordres ? Pourquoi ?", "L'article 1 : les hommes naissent libres et égaux en droits ; il n'y a plus de privilèges."],
+        ["À qui appartient le pouvoir, d'après l'article 3 ?", "À la Nation."],
+        ["Quelle liberté l'article 11 protège-t-il ?", "La liberté d'expression : parler, écrire, imprimer librement."],
+      ],
+    },
+    {
+      sorte: "document", id: "femmes-1789", titre: "Les femmes en 1789",
+      rappel: "Les 5 et 6 octobre 1789, les femmes de Paris marchent sur Versailles pour réclamer du pain et ramènent le roi à Paris.",
+      texte: [
+        "Le 5 octobre 1789, à Paris, le pain manque. Des milliers de femmes du peuple, des marchandes des Halles, des ouvrières, se rassemblent devant l'Hôtel de Ville, puis marchent jusqu'à Versailles, sous la pluie, pour réclamer du pain au roi. Des gardes nationaux les suivent.",
+        "Le lendemain, le 6 octobre, la foule ramène à Paris le roi, la reine et leur fils : « le boulanger, la boulangère et le petit mitron ». Désormais, le roi vit à Paris, sous le regard du peuple.",
+        "Des femmes ont aussi écrit pour demander l'instruction des filles et le droit de travailler. En 1791, Olympe de Gouges écrira une Déclaration des droits de la femme et de la citoyenne.",
+      ],
+      questions: [
+        ["Pourquoi les femmes de Paris marchent-elles vers Versailles ?", "Pour réclamer du pain au roi."],
+        ["Que se passe-t-il le 6 octobre ?", "La foule ramène à Paris le roi, la reine et leur fils."],
+        ["Pourquoi les surnomme-t-on « le boulanger, la boulangère et le petit mitron » ?", "Le peuple espère qu'avec eux à Paris, il aura du pain."],
+        ["Que demandent certaines femmes ?", "L'instruction des filles et le droit de travailler."],
+      ],
+    },
+  ],
+  evaluation: [
+    ["Je cite deux idées des Lumières.", "Séparer les pouvoirs ; tolérer les religions ; le pouvoir appartient au peuple ; le savoir pour tous."],
+    ["Je raconte ce que font les femmes de Paris les 5 et 6 octobre 1789.", "Elles marchent sur Versailles pour réclamer du pain et ramènent le roi à Paris."],
+    ["Je cite trois droits de la Déclaration des droits de l'homme et du citoyen.", "La liberté, l'égalité en droits, la propriété, la sûreté, la résistance à l'oppression, la liberté d'opinion et d'expression."],
+  ],
+};
+
+// ── Histoire, CM2 ─────────────────────────────────────────────────────────
+
+const REPUBLIQUE_EMPIRE: ThemeHGCM = {
+  id: "republique-empire-cm2", classe: "CM2", histoire: true, titre: "De la République à l'Empire (1792 – 1815)",
+  question: "Comment la République et l'Empire ont-ils transformé la vie des Français et des Françaises ?",
+  frise: {
+    titre: "De la Révolution à l'Empire (1789 – 1815)", debut: 1789, fin: 1816, pas: 3,
+    graduations: [1789, 1792, 1795, 1798, 1801, 1804, 1807, 1810, 1813, 1816].map((date) => ({ date, nom: String(date) })),
+    bandes: [
+      { nom: "Monarchie", debut: 1789, fin: jour(1792, 9, 21), couleur: BLEU },
+      { nom: "Première République", debut: jour(1792, 9, 21), fin: jour(1804, 5, 18), couleur: ROSE, aPlacer: true },
+      { nom: "Premier Empire", debut: jour(1804, 5, 18), fin: jour(1815, 6, 22), couleur: JAUNE, aPlacer: true },
+      { nom: "Restauration", debut: jour(1815, 6, 22), fin: 1816, couleur: BLEU },
+      { nom: "Le Consulat : Bonaparte", debut: jour(1799, 11, 9), fin: jour(1804, 5, 18), couleur: MAUVE, rang: 2, aPlacer: true },
+    ],
+    reperes: [
+      { date: jour(1792, 3, 6), quand: "Mars 1792", quoi: "La pétition de 319 femmes (Pauline Léon) pour la garde nationale" },
+      { date: jour(1792, 4, 25), quand: "Avril 1792", quoi: "La composition de La Marseillaise" },
+      { date: jour(1792, 9, 21), quand: "Septembre 1792", quoi: "La naissance de la République" },
+      { date: jour(1794, 2, 4), quand: "1794", quoi: "La première abolition de l'esclavage" },
+      { date: jour(1802, 5, 20), quand: "1802", quoi: "Le rétablissement de l'esclavage" },
+      { date: jour(1804, 12, 2), quand: "2 décembre 1804", quoi: "Le sacre de Napoléon Ier" },
+    ],
+  },
+  motsCles: [
+    ["l'empereur, l'empire", "Le souverain d'un empire ; un empire, un État qui domine de nombreux territoires."],
+    ["l'esclavage", "La situation d'une personne qui appartient à une autre, comme un objet."],
+    ["le Code civil", "Le recueil des lois qui règlent la vie des Français — la famille, la propriété, les contrats —, en 1804."],
+    ["la liberté de la presse", "Le droit de publier journaux et livres sans censure."],
+    ["le lycée", "L'établissement créé en 1802 pour former les futurs officiers et fonctionnaires."],
+    ["le préfet", "Le représentant de l'État dans chaque département, depuis 1800."],
+    ["la République", "Un régime sans roi, où le pouvoir appartient au peuple et à ses élus."],
+  ],
+  exercices: [
+    {
+      sorte: "document", id: "vie-politique", titre: "Les Français et les Françaises dans la vie politique",
+      rappel: "Depuis 1789, les Français lisent les journaux, discutent dans les clubs, écrivent des pétitions, votent. Les femmes ne votent pas, mais elles agissent.",
+      texte: [
+        "Depuis 1789, les Français participent à la vie politique. Ils lisent les journaux, devenus nombreux grâce à la liberté de la presse, discutent dans les clubs et les sociétés populaires, écrivent des pétitions.",
+        "En 1790 et en 1791, seuls les hommes qui paient assez d'impôts votent. En 1792, pour la première fois, tous les hommes de plus de 21 ans peuvent voter, sauf les domestiques.",
+        "Les femmes n'ont pas le droit de vote, mais elles agissent. En mars 1792, Pauline Léon présente une pétition signée par 319 femmes : elles demandent le droit de s'armer pour défendre la patrie dans la garde nationale. Des femmes participent aux clubs, aux manifestations, aux fêtes révolutionnaires.",
+      ],
+      questions: [
+        ["Je relève trois façons de participer à la vie politique depuis 1789.", "Lire les journaux, discuter dans les clubs, écrire des pétitions, voter."],
+        ["Qui peut voter en 1792 ?", "Tous les hommes de plus de 21 ans, sauf les domestiques."],
+        ["Les femmes peuvent-elles voter ? Comment agissent-elles ?", "Non ; elles signent des pétitions, comme celle de Pauline Léon, participent aux clubs et aux manifestations."],
+      ],
+    },
+    {
+      sorte: "document", id: "republique-1792", titre: "La chute du roi et la naissance de la République",
+      rappel: "En guerre, la France se méfie du roi. Le 10 août 1792, il est renversé ; le 21 septembre 1792, la République naît.",
+      texte: [
+        "En 1791, Louis XVI tente de fuir à l'étranger ; il est arrêté à Varennes et ramené à Paris. Beaucoup de Français ne lui font plus confiance.",
+        "En avril 1792, la France entre en guerre contre l'Autriche. À Strasbourg, Rouget de Lisle compose un chant de guerre pour l'armée du Rhin : chanté par les volontaires venus de Marseille, il devient La Marseillaise.",
+        "Les armées ennemies menacent Paris, et le roi est soupçonné de les soutenir. Le 10 août 1792, les Parisiens prennent le palais des Tuileries ; le roi est arrêté. Le 21 septembre 1792, une nouvelle assemblée, la Convention, abolit la royauté : c'est la naissance de la République. Louis XVI est jugé et guillotiné en janvier 1793.",
+      ],
+      questions: [
+        ["Pourquoi les Français ne font-ils plus confiance au roi ?", "Il a tenté de fuir à l'étranger ; on le soupçonne de soutenir les armées ennemies."],
+        ["Comment La Marseillaise est-elle née ?", "C'est un chant de guerre composé à Strasbourg par Rouget de Lisle en avril 1792, chanté par les volontaires de Marseille."],
+        ["Que se passe-t-il le 10 août 1792 ? Et le 21 septembre 1792 ?", "Les Parisiens prennent les Tuileries et le roi est arrêté ; la Convention abolit la royauté : la République naît."],
+      ],
+    },
+    {
+      sorte: "document", id: "abolition", titre: "Le combat pour l'abolition de l'esclavage",
+      rappel: "L'esclavage est aboli en 1794, rétabli par Napoléon Bonaparte en 1802, aboli définitivement en 1848.",
+      texte: [
+        "Dans les colonies françaises des Antilles, des centaines de milliers d'esclaves travaillent dans les plantations. En France, la Société des amis des Noirs, fondée en 1788, demande la fin de la traite.",
+        "En 1791, à Saint-Domingue, la plus riche des colonies, les esclaves se révoltent ; Toussaint Louverture devient leur chef. Le 4 février 1794, la Convention abolit l'esclavage dans toutes les colonies françaises : les anciens esclaves deviennent des citoyens.",
+        "Mais en 1802, Napoléon Bonaparte rétablit l'esclavage. En Guadeloupe, des insurgés menés par Louis Delgrès, et des femmes comme Solitude, résistent ; ils sont vaincus. Saint-Domingue gagne son indépendance en 1804 : c'est Haïti. Il faudra attendre 1848 pour que l'esclavage soit aboli pour de bon.",
+      ],
+      questions: [
+        ["Qui demande la fin de la traite en France ?", "La Société des amis des Noirs."],
+        ["Que se passe-t-il à Saint-Domingue en 1791 ?", "Les esclaves se révoltent ; Toussaint Louverture devient leur chef."],
+        ["Je complète : l'esclavage est aboli en …, rétabli en … par …, aboli définitivement en ….", "1794 ; 1802, par Napoléon Bonaparte ; 1848."],
+      ],
+    },
+    {
+      sorte: "ordonner", id: "bonaparte", titre: "Comment Bonaparte devient empereur",
+      consigne: "Je lis les étapes. J'écris dans chaque case le numéro de l'étape, dans l'ordre : 1 pour la première.",
+      rappel: "Général victorieux, Bonaparte prend le pouvoir en 1799 ; consul à vie en 1802, il est sacré empereur le 2 décembre 1804.",
+      etapes: [
+        "Le jeune général Bonaparte remporte des victoires en Italie.",
+        "Il mène une expédition en Égypte.",
+        "Par un coup d'État, il prend le pouvoir : il devient Premier consul.",
+        "Il est nommé consul à vie.",
+        "À Notre-Dame de Paris, il est sacré empereur des Français : Napoléon Ier.",
+        "Battu à Waterloo, il est exilé sur l'île de Sainte-Hélène.",
+      ],
+      dates: ["1796 – 1797", "1798 – 1799", "Novembre 1799", "1802", "2 décembre 1804", "1815"],
+    },
+    {
+      sorte: "trier", id: "reformes", titre: "Les réformes de Napoléon",
+      consigne: "Je lis chaque étiquette. Je l'écris dans la bonne colonne : ce que Napoléon crée, ou ce qu'il remet en cause.",
+      rappel: "Napoléon crée le Code civil, les lycées, les préfets ; mais il gouverne seul, censure la presse et rétablit l'esclavage.",
+      colonnes: ["Ce que Napoléon crée", "Ce qu'il remet en cause"],
+      items: [
+        ["le Code civil (1804)", 0], ["les lycées (1802)", 0], ["les préfets, un par département (1800)", 0], ["la Banque de France (1800)", 0], ["la Légion d'honneur (1802)", 0],
+        ["il rétablit l'esclavage (1802)", 1], ["il censure les journaux : fin de la liberté de la presse", 1], ["il gouverne seul : fin de la République", 1], ["la femme mariée doit obéir à son mari", 1],
+      ],
+    },
+  ],
+  evaluation: [
+    ["Je raconte comment la République naît en 1792.", "La France est en guerre, le roi est soupçonné ; le 10 août 1792, il est renversé ; le 21 septembre, la Convention abolit la royauté."],
+    ["Je raconte le combat pour l'abolition de l'esclavage.", "Révolte de Saint-Domingue (1791) ; abolition en 1794 ; rétablissement par Bonaparte en 1802 ; abolition définitive en 1848."],
+    ["J'explique comment Bonaparte devient empereur.", "Général victorieux, il prend le pouvoir par un coup d'État en 1799, devient consul à vie, puis se fait sacrer empereur en 1804."],
+    ["Je nomme trois réformes de Napoléon.", "Le Code civil, les lycées, les préfets, la Banque de France, le rétablissement de l'esclavage."],
+  ],
+};
+
+const VERS_REPUBLIQUE: ThemeHGCM = {
+  id: "vers-republique-cm2", classe: "CM2", histoire: true, titre: "Vers une France républicaine (1848 – 1914)",
+  question: "Comment la France est-elle devenue une République ?",
+  frise: {
+    titre: "Vers une France républicaine (1848 – 1914)", debut: 1845, fin: 1915, pas: 10,
+    graduations: [1845, 1855, 1865, 1875, 1885, 1895, 1905, 1915].map((date) => ({ date, nom: String(date) })),
+    bandes: [
+      { nom: "Monarchie", debut: 1845, fin: jour(1848, 2, 24), couleur: BLEU },
+      { nom: "IIe République", debut: jour(1848, 2, 24), fin: jour(1852, 12, 2), couleur: ROSE, aPlacer: true },
+      { nom: "Second Empire", debut: jour(1852, 12, 2), fin: jour(1870, 9, 4), couleur: JAUNE },
+      { nom: "IIIe République", debut: jour(1870, 9, 4), fin: 1915, couleur: ROSE, aPlacer: true },
+    ],
+    reperes: [
+      { date: jour(1848, 4, 27), quand: "1848", quoi: "Le suffrage universel masculin et l'abolition définitive de l'esclavage" },
+      { date: jour(1870, 9, 4), quand: "1870", quoi: "La proclamation de la IIIe République" },
+      { date: jour(1881, 7, 29), quand: "1881", quoi: "La loi sur la liberté de la presse" },
+      { date: 1882, quand: "1882 – 1886", quoi: "Les lois Ferry sur l'École" },
+      { date: jour(1905, 12, 9), quand: "9 décembre 1905", quoi: "La séparation des Églises et de l'État" },
+    ],
+  },
+  motsCles: [
+    ["l'abolition de l'esclavage", "La suppression de l'esclavage par la loi ; en France, définitivement en 1848."],
+    ["la colonisation", "La conquête et la domination d'un territoire et de ses habitants par un pays étranger."],
+    ["la démocratie", "Un régime où le peuple choisit ses dirigeants par des élections libres."],
+    ["la laïcité", "Le principe qui sépare les religions et l'État : chacun est libre de croire ou de ne pas croire."],
+    ["la république", "Un régime où le pouvoir n'est pas héréditaire : le chef de l'État est élu."],
+    ["le suffrage universel masculin", "Le droit de vote de tous les hommes adultes."],
+  ],
+  lieux: ["l'Algérie", "la Tunisie", "le Maroc", "l'Afrique-Occidentale française", "l'Afrique-Équatoriale française", "Madagascar", "l'Indochine",
+    "les Antilles", "la Guyane", "La Réunion", "la Nouvelle-Calédonie", "Tahiti"],
+  exercices: [
+    {
+      sorte: "document", id: "deuxieme-republique", titre: "1848, la IIe République",
+      rappel: "En 1848, la IIe République donne le droit de vote à tous les hommes et abolit définitivement l'esclavage. Elle prend fin en 1852.",
+      texte: [
+        "En février 1848, les Parisiens se révoltent et chassent le roi Louis-Philippe. La IIe République est proclamée. Elle prend aussitôt de grandes décisions : tous les hommes de plus de 21 ans peuvent voter, c'est le suffrage universel masculin ; le 27 avril 1848, grâce à Victor Schœlcher, l'esclavage est aboli définitivement dans les colonies françaises. Les femmes, elles, ne votent toujours pas.",
+        "En décembre 1848, les Français élisent un président de la République : Louis-Napoléon Bonaparte, le neveu de Napoléon Ier. En 1851, il prend tous les pouvoirs par un coup d'État, puis se fait proclamer empereur en 1852, sous le nom de Napoléon III. La IIe République n'a duré que quatre ans.",
+      ],
+      questions: [
+        ["Je cite deux grandes décisions de la IIe République en 1848.", "Le suffrage universel masculin ; l'abolition définitive de l'esclavage."],
+        ["Qui a obtenu l'abolition de l'esclavage ?", "Victor Schœlcher."],
+        ["Qui ne vote toujours pas ?", "Les femmes."],
+        ["Comment la IIe République prend-elle fin ?", "Par le coup d'État de Louis-Napoléon Bonaparte en 1851 ; il devient l'empereur Napoléon III en 1852."],
+      ],
+    },
+    {
+      sorte: "relier", id: "lois", titre: "Les grandes lois de la République",
+      consigne: "Je relie chaque loi à ce qu'elle permet.",
+      rappel: "Les grandes lois fondent la République : le suffrage universel masculin, l'abolition de l'esclavage, la liberté de la presse, l'école gratuite, obligatoire et laïque, la laïcité.",
+      paires: [
+        ["1848 : le suffrage universel masculin", "Tous les hommes de plus de 21 ans votent."],
+        ["1848 : l'abolition de l'esclavage", "Plus personne ne peut être esclave dans les colonies françaises."],
+        ["1881 : la liberté de la presse", "Chacun peut publier un journal sans autorisation."],
+        ["1882 – 1886 : les lois Ferry", "L'école primaire est gratuite, obligatoire de 6 à 13 ans, et laïque."],
+        ["1905 : la séparation des Églises et de l'État", "L'État ne paie aucune religion et garantit à chacun la liberté de croire ou de ne pas croire."],
+      ],
+    },
+    {
+      sorte: "relier", id: "symboles", titre: "Les symboles de la République",
+      consigne: "Je relie chaque symbole de la République à sa description.",
+      rappel: "Cinq symboles : le drapeau tricolore, le 14 juillet, Marianne, la Marseillaise, la devise Liberté, Égalité, Fraternité.",
+      paires: [
+        ["le drapeau tricolore", "bleu, blanc, rouge : il est né pendant la Révolution"],
+        ["le 14 juillet", "la fête nationale depuis 1880, en souvenir de 1789 et de 1790"],
+        ["Marianne", "la femme coiffée du bonnet phrygien qui représente la République"],
+        ["la Marseillaise", "l'hymne national, composé en 1792"],
+        ["la devise", "Liberté, Égalité, Fraternité, écrite sur les mairies et les écoles"],
+      ],
+    },
+    {
+      sorte: "document", id: "empire-colonial", titre: "L'empire colonial français vers 1914",
+      rappel: "Vers 1914, la France possède le deuxième empire colonial du monde, surtout en Afrique. Les colonisés n'ont pas les mêmes droits que les Français.",
+      texte: [
+        "À la fin du XIXe siècle, la France conquiert un immense empire colonial : en 1914, il est le deuxième du monde, après celui du Royaume-Uni. Il s'étend surtout en Afrique : l'Algérie, conquise à partir de 1830, la Tunisie, le Maroc, l'Afrique-Occidentale française, l'Afrique-Équatoriale française, Madagascar. En Asie, la France domine l'Indochine. Elle garde aussi ses anciennes colonies — les Antilles, la Guyane, La Réunion — et possède des îles du Pacifique, comme la Nouvelle-Calédonie et Tahiti.",
+        "Les colonisés n'ont pas les mêmes droits que les Français : ils sont soumis à des lois particulières, sont souvent obligés de travailler de force, et ne votent pas. La République, qui proclame la liberté et l'égalité, ne les applique pas dans ses colonies.",
+      ],
+      questions: [
+        ["Sur quel continent se trouve la plus grande partie de l'empire colonial français ?", "En Afrique."],
+        ["Je relève trois territoires de l'empire. Je les colorie sur le planisphère.", "L'Algérie, le Maroc, la Tunisie, l'AOF, l'AEF, Madagascar, l'Indochine, les Antilles, la Guyane, La Réunion, la Nouvelle-Calédonie…"],
+        ["Les colonisés ont-ils les mêmes droits que les Français ?", "Non : ils sont soumis à des lois particulières, au travail forcé, et ne votent pas."],
+      ],
+    },
+  ],
+  evaluation: [
+    ["Je nomme deux grandes lois fondatrices de la République.", "Le suffrage universel masculin, l'abolition de l'esclavage, la liberté de la presse, les lois Ferry, la laïcité (1905)."],
+    ["Je nomme les cinq symboles de la République.", "Le drapeau tricolore, le 14 juillet, Marianne, la Marseillaise, la devise Liberté, Égalité, Fraternité."],
+    ["Je nomme trois territoires de l'empire colonial français vers 1914.", "L'Algérie, Madagascar, l'Indochine, l'Afrique-Occidentale française…"],
+  ],
+};
+
+const AGE_INDUSTRIEL: ThemeHGCM = {
+  id: "age-industriel-cm2", classe: "CM2", histoire: true, titre: "L'âge industriel en France au XIXe siècle",
+  question: "Quelles sont les transformations économiques et sociales en France au XIXe siècle ?",
+  frise: {
+    titre: "L'âge industriel (XIXe siècle)", debut: 1800, fin: 1910, pas: 10,
+    bandes: [
+      { nom: "XIXe siècle", debut: 1800, fin: 1901, couleur: GRIS },
+      { nom: "XXe siècle", debut: 1901, fin: 1910, couleur: BLEU },
+    ],
+    reperes: [
+      { date: 1814, quand: "Début du XIXe siècle", quoi: "Stephenson met au point la locomotive" },
+      { date: 1837, quand: "1837", quoi: "La première ligne de train pour voyageurs : Paris – Saint-Germain" },
+      { date: 1841, quand: "1841", quoi: "La première loi qui limite le travail des enfants" },
+      { date: 1864, quand: "1864", quoi: "Le droit de grève" },
+      { date: 1884, quand: "1884", quoi: "La liberté syndicale" },
+      { date: 1885, quand: "1885", quoi: "Pasteur : le vaccin contre la rage" },
+    ],
+  },
+  motsCles: [
+    ["l'atelier", "Un lieu où l'on fabrique à la main ou avec quelques machines."],
+    ["le bourgeois", "Celui qui vit de ses biens, d'un commerce, d'une usine ou d'un métier qualifié, en ville."],
+    ["la grève", "L'arrêt collectif du travail pour obtenir quelque chose."],
+    ["l'industrialisation", "Le développement des usines et des machines."],
+    ["la mine", "Le lieu où l'on extrait du sous-sol le charbon ou les minerais."],
+    ["l'ouvrier", "Celui qui travaille de ses mains pour un patron, contre un salaire."],
+    ["le syndicat", "Une association qui défend les droits des travailleurs."],
+    ["l'urbanisation", "La croissance des villes."],
+    ["l'usine", "Un grand établissement où des machines fabriquent des produits en grande quantité."],
+    ["le vaccin", "Un produit qui protège d'une maladie."],
+  ],
+  exercices: [
+    {
+      sorte: "document", id: "vapeur", titre: "La vapeur et le chemin de fer",
+      rappel: "Au XIXe siècle, la machine à vapeur fait tourner les usines ; le chemin de fer relie les villes. On produit plus, on voyage plus vite, les villes grandissent.",
+      texte: [
+        "Au XIXe siècle, la machine à vapeur, qui brûle du charbon, remplace la force des bras, des animaux, du vent et de l'eau. Elle fait tourner les machines des usines, où l'on produit beaucoup plus, et moins cher : des tissus, de l'acier, des outils. On extrait toujours plus de charbon dans les mines du Nord et de la région de Saint-Étienne.",
+        "Au début du siècle, l'Anglais George Stephenson met au point la locomotive. En France, la première ligne pour voyageurs relie Paris à Saint-Germain-en-Laye en 1837 ; en 1900, des dizaines de milliers de kilomètres de voies ferrées couvrent le pays. On voyage plus vite et plus loin ; les produits circulent.",
+        "Les villes grandissent : des paysans viennent y chercher du travail dans les usines.",
+      ],
+      questions: [
+        ["Quelle énergie fait tourner les machines au XIXe siècle ?", "La vapeur, produite en brûlant du charbon."],
+        ["Qui a mis au point la locomotive ?", "L'Anglais George Stephenson."],
+        ["Je cite deux conséquences du chemin de fer.", "On voyage plus vite et plus loin ; les produits circulent."],
+        ["Pourquoi les villes grandissent-elles ?", "Des paysans viennent y chercher du travail dans les usines : c'est l'urbanisation."],
+      ],
+    },
+    {
+      sorte: "trier", id: "vie-quotidienne", titre: "La vie quotidienne change",
+      consigne: "Je lis chaque étiquette. Je l'écris dans la bonne colonne : avant le XIXe siècle, ou à la fin du XIXe siècle.",
+      rappel: "Les progrès techniques changent la vie quotidienne : l'éclairage, les transports, l'eau, les communications, les vêtements.",
+      colonnes: ["Avant le XIXe siècle", "À la fin du XIXe siècle"],
+      items: [
+        ["s'éclairer à la bougie", 0], ["voyager en diligence, tirée par des chevaux", 0], ["chercher l'eau au puits ou à la fontaine", 0], ["envoyer une lettre qui met des jours à arriver", 0], ["faire peindre son portrait", 0],
+        ["l'éclairage au gaz, puis à l'électricité, dans les villes", 1], ["voyager en train", 1], ["l'eau courante dans les immeubles des villes", 1], ["envoyer un télégramme, téléphoner", 1], ["se faire photographier", 1],
+      ],
+    },
+    {
+      sorte: "relier", id: "medecine", titre: "Les progrès de la médecine",
+      consigne: "Je relie chaque savant à son progrès.",
+      rappel: "Au XIXe siècle, on découvre les microbes, on invente des vaccins, on endort les malades pour les opérer, on voit l'intérieur du corps.",
+      paires: [
+        ["Louis Pasteur", "montre que les microbes causent des maladies, et met au point le vaccin contre la rage (1885)"],
+        ["William Morton, dentiste américain", "endort un malade à l'éther pour l'opérer sans douleur : l'anesthésie (1846)"],
+        ["Joseph Lister", "désinfecte les plaies et les instruments pendant les opérations"],
+        ["Wilhelm Röntgen", "découvre les rayons X, qui permettent de voir les os (1895)"],
+        ["Marie et Pierre Curie", "découvrent le radium (1898), utilisé ensuite pour soigner des cancers"],
+      ],
+    },
+    {
+      sorte: "document", id: "ouvriers", titre: "Ouvrières et ouvriers",
+      rappel: "Les ouvriers travaillent longtemps, pour de faibles salaires, dans des conditions dangereuses. Ils luttent : grèves, syndicats.",
+      texte: [
+        "Dans les mines, les usines et les ateliers, les ouvriers et les ouvrières travaillent douze à quinze heures par jour, six jours sur sept. Le travail est dur et dangereux : coups de grisou dans les mines, accidents avec les machines.",
+        "Les enfants travaillent aussi : une loi de 1841 interdit seulement de les faire travailler avant huit ans dans les grandes usines. Les salaires sont faibles ; les familles vivent souvent à plusieurs dans une seule pièce, sans eau ni chauffage.",
+        "Pour améliorer leur sort, les ouvriers s'unissent. En 1864, la grève, l'arrêt collectif du travail, n'est plus un délit ; en 1884, ils peuvent créer des syndicats pour défendre leurs droits. Peu à peu, ils obtiennent des lois : l'école obligatoire éloigne les enfants des usines, la journée de travail raccourcit.",
+      ],
+      questions: [
+        ["Je décris les conditions de travail des ouvriers.", "Douze à quinze heures par jour, six jours sur sept ; un travail dur et dangereux ; des salaires faibles."],
+        ["Que dit la loi de 1841 ?", "Elle interdit de faire travailler les enfants de moins de huit ans dans les grandes usines."],
+        ["Qu'est-ce qu'une grève ? Qu'est-ce qu'un syndicat ?", "L'arrêt collectif du travail ; une association qui défend les droits des travailleurs."],
+      ],
+    },
+    {
+      sorte: "document", id: "bourgeois", titre: "Bourgeoises et bourgeois",
+      rappel: "Les bourgeois vivent dans le confort des beaux quartiers. La bourgeoise dirige la maison. Mais en 1900, la France reste un pays de paysans.",
+      texte: [
+        "Les bourgeois sont les patrons des usines, les banquiers, les grands commerçants, mais aussi les médecins, les avocats, les ingénieurs. Ils vivent dans les beaux quartiers des villes, dans de grands appartements ou des hôtels particuliers, servis par des domestiques. Ils se déplacent en voiture à cheval, vont au théâtre, à l'opéra, en vacances au bord de la mer. Leurs fils vont au lycée.",
+        "La bourgeoise dirige la maison et les domestiques, s'occupe de l'éducation des enfants et reçoit. Elle ne travaille pas hors de chez elle : d'après le Code civil, la femme mariée doit obéissance à son mari. À la fin du siècle, des femmes réclament le droit de faire des études et de travailler.",
+        "Mais la France reste un pays de paysans : en 1900, plus de la moitié des Français vivent à la campagne.",
+      ],
+      questions: [
+        ["Qui sont les bourgeois ?", "Les patrons, les banquiers, les grands commerçants, les médecins, les avocats, les ingénieurs."],
+        ["Je compare le logement d'une famille bourgeoise et celui d'une famille ouvrière.", "Un grand appartement, des domestiques ; une seule pièce, sans eau ni chauffage."],
+        ["Je décris le rôle de la bourgeoise.", "Elle dirige la maison et les domestiques, s'occupe de l'éducation des enfants, reçoit."],
+      ],
+    },
+  ],
+  evaluation: [
+    ["J'explique comment un progrès technique transforme la vie quotidienne.", "Le chemin de fer : on voyage plus vite ; l'électricité : on éclaire les villes ; l'eau courante…"],
+    ["Je nomme deux progrès de la médecine.", "Le vaccin contre la rage (Pasteur), l'anesthésie, la désinfection, les rayons X."],
+    ["Je décris les conditions de vie des ouvriers et leurs luttes.", "Douze à quinze heures de travail, des salaires faibles, des logements pauvres ; grèves (1864), syndicats (1884)."],
+    ["Je décris la vie quotidienne des bourgeois.", "Ils vivent dans les beaux quartiers, avec des domestiques, vont au théâtre, en vacances."],
+  ],
+};
+
+const PREMIERE_GUERRE: ThemeHGCM = {
+  id: "premiere-guerre-cm2", classe: "CM2", histoire: true, titre: "La France dans la Première Guerre mondiale (1914 – 1918)",
+  question: "Comment la Première Guerre mondiale a-t-elle bouleversé la société française ?",
+  frise: {
+    titre: "La Première Guerre mondiale (1914 – 1918)", debut: 1913, fin: 1920, pas: 1,
+    bandes: [
+      { nom: "Paix", debut: 1913, fin: jour(1914, 8, 3), couleur: VERT },
+      { nom: "La Première Guerre mondiale", debut: jour(1914, 8, 3), fin: jour(1918, 11, 11), couleur: ROSE, aPlacer: true },
+      { nom: "Paix", debut: jour(1918, 11, 11), fin: 1920, couleur: VERT },
+      { nom: "Mouvement", debut: jour(1914, 8, 3), fin: jour(1914, 11, 20), couleur: JAUNE, rang: 2 },
+      { nom: "Guerre de position : les tranchées", debut: jour(1914, 11, 20), fin: jour(1918, 3, 21), couleur: BRUN, rang: 2, aPlacer: true },
+      { nom: "Mouvement", debut: jour(1918, 3, 21), fin: jour(1918, 11, 11), couleur: JAUNE, rang: 2 },
+    ],
+    reperes: [
+      { date: jour(1914, 8, 1), quand: "1er août 1914", quoi: "La mobilisation générale en France" },
+      { date: jour(1914, 9, 6), quand: "Septembre 1914", quoi: "La bataille de la Marne" },
+      { date: jour(1916, 2, 21), quand: "1916", quoi: "La bataille de Verdun, dix mois de combats" },
+      { date: jour(1918, 11, 11), quand: "11 novembre 1918", quoi: "L'armistice" },
+      { date: jour(1919, 6, 28), quand: "1919", quoi: "Le traité de Versailles" },
+    ],
+  },
+  motsCles: [
+    ["l'armistice", "L'accord qui arrête les combats : le 11 novembre 1918."],
+    ["la guerre de mouvement", "Les armées avancent et reculent rapidement."],
+    ["la guerre de position", "Les armées s'enterrent dans des tranchées ; le front ne bouge presque plus."],
+    ["le poilu", "Le surnom des soldats français de la Première Guerre mondiale."],
+    ["le front", "La ligne où les armées s'affrontent."],
+    ["la tranchée", "Le fossé creusé où vivent et combattent les soldats."],
+    ["l'arrière", "Le reste du pays, loin des combats."],
+  ],
+  exercices: [
+    {
+      sorte: "document", id: "tranchees", titre: "La vie des poilus au front",
+      rappel: "Dans les tranchées, les poilus vivent dans la boue, le froid, la peur, sous les obus. À Verdun, en 1916, les combats durent dix mois.",
+      texte: [
+        "Après les premiers mois de 1914, les armées s'enterrent dans des tranchées, de la mer du Nord à la Suisse : c'est la guerre de position. Les soldats français, les poilus, vivent dans la boue et le froid, au milieu des rats et des poux. Ils mangent froid, dorment peu, attendent la soupe, les lettres et la relève.",
+        "Les obus tombent jour et nuit ; à partir de 1915, les gaz brûlent les yeux et les poumons. Au signal, les soldats sortent de la tranchée pour l'assaut, sous le feu des mitrailleuses, vers la tranchée ennemie.",
+        "À Verdun, en 1916, Français et Allemands se battent pendant dix mois : plus de 300 000 soldats y meurent. Les lettres et les carnets des poilus racontent la peur, la fatigue, la camaraderie, et la pensée de la famille restée à l'arrière.",
+      ],
+      questions: [
+        ["Qu'est-ce que la guerre de position ?", "Les armées s'enterrent dans des tranchées ; le front ne bouge presque plus."],
+        ["Je relève trois difficultés de la vie des poilus.", "La boue, le froid, les rats, les poux, les obus, les gaz, le manque de sommeil."],
+        ["Combien de temps dure la bataille de Verdun ? Combien de soldats y meurent ?", "Dix mois ; plus de 300 000."],
+        ["Que racontent les lettres des poilus ?", "La peur, la fatigue, la camaraderie, la pensée de la famille."],
+      ],
+    },
+    {
+      sorte: "trier", id: "mouvement-position", titre: "Guerre de mouvement ou guerre de position ?",
+      consigne: "Je lis chaque étiquette. Je l'écris dans la bonne colonne : guerre de mouvement, ou guerre de position.",
+      rappel: "1914 et 1918 : la guerre de mouvement. De la fin 1914 au printemps 1918 : la guerre de position, dans les tranchées.",
+      colonnes: ["Guerre de mouvement", "Guerre de position"],
+      items: [
+        ["les armées avancent ou reculent vite", 0], ["août et septembre 1914", 0], ["la bataille de la Marne", 0], ["les offensives du printemps et de l'été 1918", 0],
+        ["les soldats creusent des tranchées", 1], ["le front ne bouge presque plus", 1], ["de la fin 1914 au début de 1918", 1], ["la bataille de Verdun", 1],
+      ],
+    },
+    {
+      sorte: "document", id: "arriere", titre: "Toute la population mobilisée",
+      rappel: "À l'arrière, les femmes remplacent les hommes ; les usines fabriquent des armes ; les colonies envoient des soldats et des travailleurs.",
+      texte: [
+        "Les hommes sont partis au front : ce sont les femmes qui les remplacent. Dans les campagnes, elles labourent, sèment, moissonnent. En ville, elles conduisent les tramways, distribuent le courrier, et des centaines de milliers d'ouvrières, les « munitionnettes », fabriquent les obus dans les usines d'armement. D'autres soignent les blessés comme infirmières.",
+        "Toute l'économie travaille pour la guerre : les usines fabriquent des canons, des obus, des camions, des avions. La France fait aussi venir des soldats et des travailleurs de ses colonies : des tirailleurs sénégalais, algériens, malgaches, indochinois combattent sur le front.",
+        "Les journaux, les affiches, les cartes postales, les livres pour enfants encouragent à tenir : c'est la propagande. L'État demande aux Français de lui prêter leur argent pour payer la guerre.",
+      ],
+      questions: [
+        ["Comment les femmes participent-elles à la guerre ?", "Elles remplacent les hommes aux champs, dans les usines et les transports ; elles soignent les blessés."],
+        ["Que fabriquent les usines ?", "Des canons, des obus, des camions, des avions."],
+        ["Qui vient des colonies ?", "Des soldats, les tirailleurs, et des travailleurs."],
+        ["Qu'est-ce que la propagande ?", "Des journaux, des affiches, des images qui encouragent la population à soutenir la guerre."],
+      ],
+    },
+    {
+      sorte: "document", id: "bilan-1918", titre: "Le bilan humain de la guerre",
+      rappel: "La guerre a fait environ 10 millions de morts au combat, dont 1,4 million de Français. Chaque commune a son monument aux morts.",
+      texte: [
+        "La Première Guerre mondiale a fait environ 10 millions de morts au combat, dont 1,4 million de Français. Des millions de soldats reviennent blessés : certains ont perdu un bras, une jambe ; ceux qu'on appelle les « gueules cassées » ont le visage défiguré.",
+        "Des centaines de milliers de femmes sont devenues veuves, et des enfants, orphelins : l'État les adopte, ce sont les « pupilles de la Nation ».",
+        "Dans presque toutes les communes de France, on élève un monument aux morts, où sont gravés les noms des soldats tués. Chaque 11 novembre, on s'y rassemble pour se souvenir.",
+      ],
+      questions: [
+        ["Combien de soldats sont morts au combat ? Combien de Français ?", "Environ 10 millions ; 1,4 million de Français."],
+        ["Qui sont les « gueules cassées » ?", "Des soldats revenus avec le visage défiguré."],
+        ["Qu'est-ce qu'un pupille de la Nation ?", "Un orphelin de guerre que l'État adopte."],
+        ["Sur le monument aux morts de ma commune, je compte les noms des soldats de 1914 – 1918.", "La réponse dépend de la commune."],
+      ],
+    },
+  ],
+  evaluation: [
+    ["Je raconte la vie des poilus dans les tranchées.", "La boue, le froid, les rats, les obus, les gaz, les assauts ; la peur et la camaraderie."],
+    ["J'explique comment toute la population participe à la guerre, en particulier les femmes.", "Les femmes remplacent les hommes aux champs, dans les usines d'armement, les transports ; elles soignent ; les colonies envoient soldats et travailleurs."],
+    ["Je cite le nombre de morts au combat.", "Environ 10 millions, dont 1,4 million de Français."],
+  ],
+};
+
+const SECONDE_GUERRE: ThemeHGCM = {
+  id: "seconde-guerre-cm2", classe: "CM2", histoire: true, titre: "La France pendant la Seconde Guerre mondiale (1939 – 1945)",
+  question: "Comment la France a-t-elle vécu la défaite, l'Occupation puis la Libération ?",
+  frise: {
+    titre: "La France dans la Seconde Guerre mondiale (1939 – 1945)", debut: 1939, fin: 1946, pas: 1,
+    bandes: [
+      { nom: "« Drôle de guerre »", debut: jour(1939, 9, 3), fin: jour(1940, 5, 10), couleur: JAUNE, aPlacer: true },
+      { nom: "Défaite", debut: jour(1940, 5, 10), fin: jour(1940, 6, 22), couleur: ROSE },
+      { nom: "Occupation et collaboration", debut: jour(1940, 6, 22), fin: jour(1944, 6, 6), couleur: BRUN, aPlacer: true },
+      { nom: "Libération", debut: jour(1944, 6, 6), fin: jour(1945, 5, 8), couleur: VERT, aPlacer: true },
+      { nom: "Paix", debut: jour(1945, 5, 8), fin: 1946, couleur: BLEU },
+      { nom: "Le régime de Vichy", debut: jour(1940, 7, 10), fin: jour(1944, 8, 20), couleur: GRIS, rang: 2 },
+    ],
+    reperes: [
+      { date: jour(1939, 9, 3), quand: "3 septembre 1939", quoi: "La France et le Royaume-Uni déclarent la guerre à l'Allemagne" },
+      { date: jour(1940, 6, 18), quand: "18 juin 1940", quoi: "L'appel du général de Gaulle" },
+      { date: jour(1942, 7, 16), quand: "Juillet 1942", quoi: "La rafle du Vel d'Hiv" },
+      { date: jour(1944, 6, 6), quand: "6 juin 1944", quoi: "Le débarquement des Alliés en Normandie" },
+      { date: jour(1944, 8, 25), quand: "25 août 1944", quoi: "La libération de Paris" },
+      { date: jour(1945, 5, 8), quand: "8 mai 1945", quoi: "La capitulation de l'Allemagne nazie" },
+    ],
+  },
+  motsCles: [
+    ["l'antisémitisme", "La haine des Juifs."],
+    ["la collaboration", "La politique du régime de Vichy, qui aide l'Allemagne nazie."],
+    ["le nazisme", "L'idéologie raciste et antisémite d'Hitler, au pouvoir en Allemagne de 1933 à 1945."],
+    ["le régime de Vichy", "Le gouvernement du maréchal Pétain, installé à Vichy de 1940 à 1944."],
+    ["la Résistance", "Ceux et celles qui luttent contre l'occupant allemand et contre Vichy."],
+    ["l'Occupation", "La présence de l'armée allemande en France, de 1940 à 1944."],
+    ["la Libération", "Le moment où la France est délivrée de l'occupant, en 1944 et 1945."],
+    ["la déportation", "L'envoi de force dans des camps de concentration ou d'extermination."],
+  ],
+  exercices: [
+    {
+      sorte: "ordonner", id: "etapes-39-45", titre: "Les étapes de la guerre en France",
+      consigne: "Je lis les étapes. J'écris dans chaque case le numéro de l'étape, dans l'ordre : 1 pour la première.",
+      rappel: "La « drôle de guerre », la défaite de juin 1940, l'Occupation et la collaboration, la Libération.",
+      etapes: [
+        "La « drôle de guerre » : la France et le Royaume-Uni sont en guerre contre l'Allemagne, mais les armées attendent sans combattre.",
+        "L'armée allemande envahit la France : c'est la défaite.",
+        "L'armistice : la France est coupée en deux, une zone occupée et une zone libre.",
+        "Le maréchal Pétain reçoit les pleins pouvoirs ; le régime de Vichy collabore avec l'Allemagne.",
+        "L'armée allemande occupe toute la France.",
+        "Les Alliés débarquent en Normandie : la Libération commence.",
+        "L'Allemagne nazie capitule.",
+      ],
+      dates: ["Septembre 1939 – mai 1940", "Mai – juin 1940", "22 juin 1940", "Juillet 1940", "Novembre 1942", "6 juin 1944", "8 mai 1945"],
+    },
+    {
+      sorte: "document", id: "occupation", titre: "Vivre sous l'Occupation",
+      rappel: "Sous l'Occupation, tout manque : on vit avec des tickets de rationnement, le couvre-feu, la ligne de démarcation, la peur.",
+      texte: [
+        "Pendant quatre ans, l'armée allemande occupe la France. L'occupant prend une grande partie de la nourriture, du charbon, des produits des usines. Tout manque : pour acheter du pain, de la viande, du sucre, il faut des tickets de rationnement, et faire la queue des heures devant les magasins. On a froid l'hiver ; on remplace le café par de l'orge grillée, les semelles de cuir par du bois.",
+        "Un couvre-feu interdit de sortir la nuit. Une ligne de démarcation sépare la zone occupée de la zone libre : il faut un laissez-passer pour la franchir. Les lettres sont lues, les journaux et la radio contrôlés.",
+        "À partir de 1943, des jeunes hommes doivent partir travailler en Allemagne : c'est le Service du travail obligatoire. Beaucoup refusent, se cachent, et rejoignent les maquis de la Résistance.",
+      ],
+      questions: [
+        ["Pourquoi tout manque-t-il ?", "L'occupant prend une grande partie de la nourriture, du charbon, des produits des usines."],
+        ["Qu'est-ce qu'un ticket de rationnement ?", "Un ticket qui donne droit à une petite quantité de nourriture."],
+        ["Je relève deux autres difficultés de la vie sous l'Occupation.", "Le couvre-feu, la ligne de démarcation, la censure, le Service du travail obligatoire."],
+      ],
+    },
+    {
+      sorte: "document", id: "resister", titre: "Résister : le général de Gaulle et Jean Moulin",
+      rappel: "Le 18 juin 1940, de Gaulle appelle à continuer le combat. En France, Jean Moulin unit la Résistance.",
+      texte: [
+        "Le 18 juin 1940, depuis Londres, à la radio de la BBC, le général de Gaulle appelle les Français à continuer le combat : « la flamme de la résistance française ne doit pas s'éteindre et ne s'éteindra pas ». Il crée la France libre, dont les soldats combattent aux côtés des Alliés.",
+        "En France, des hommes et des femmes résistent : ils impriment des journaux clandestins, cachent des personnes recherchées, transmettent des renseignements aux Alliés, sabotent des voies ferrées. Des femmes comme Lucie Aubrac ou Germaine Tillion s'engagent.",
+        "Jean Moulin, envoyé par de Gaulle, unit les mouvements de résistance dans le Conseil national de la Résistance, en mai 1943. Arrêté en juin 1943, torturé, il meurt sans avoir parlé.",
+      ],
+      questions: [
+        ["Que demande le général de Gaulle le 18 juin 1940 ?", "Il appelle les Français à continuer le combat."],
+        ["Je relève trois actions des résistants.", "Imprimer des journaux clandestins, cacher des personnes, renseigner les Alliés, saboter des voies ferrées."],
+        ["Quel est le rôle de Jean Moulin ?", "Il unit les mouvements de résistance dans le Conseil national de la Résistance (1943)."],
+      ],
+    },
+    {
+      sorte: "document", id: "vichy-juifs", titre: "Vichy et la persécution des Juifs",
+      rappel: "Le régime de Vichy, antisémite, collabore avec l'Allemagne nazie et participe à la déportation des Juifs. Des Justes en sauvent au péril de leur vie.",
+      texte: [
+        "Le régime de Vichy, dirigé par le maréchal Pétain, collabore avec l'Allemagne nazie, qui veut exterminer les Juifs d'Europe. Dès octobre 1940, Vichy adopte des lois antisémites : les Juifs sont exclus de nombreux métiers, puis leurs biens sont confisqués. En zone occupée, à partir de juin 1942, ils doivent porter une étoile jaune.",
+        "Les 16 et 17 juillet 1942, à Paris, la police française arrête plus de 13 000 Juifs, dont plus de 4 000 enfants ; la plupart des familles sont enfermées au Vélodrome d'Hiver : c'est la rafle du Vel d'Hiv. Ils sont ensuite déportés vers le camp d'extermination d'Auschwitz. Environ 76 000 Juifs ont été déportés de France ; très peu sont revenus. Les Tsiganes, eux, ont été internés dans des camps en France.",
+        "Des Français ont caché et sauvé des Juifs, au péril de leur vie : l'État d'Israël les honore du titre de « Justes parmi les Nations ». Au Chambon-sur-Lignon, en Haute-Loire, des habitants ont accueilli et caché des milliers de personnes, dont beaucoup d'enfants juifs.",
+      ],
+      questions: [
+        ["Qui dirige le régime de Vichy ? Avec qui collabore-t-il ?", "Le maréchal Pétain ; avec l'Allemagne nazie."],
+        ["Que se passe-t-il les 16 et 17 juillet 1942 ?", "La police française arrête plus de 13 000 Juifs à Paris : c'est la rafle du Vel d'Hiv ; ils sont déportés à Auschwitz."],
+        ["Qui sont les « Justes parmi les Nations » ?", "Des personnes qui ont caché et sauvé des Juifs, au péril de leur vie."],
+      ],
+    },
+  ],
+  evaluation: [
+    ["Je remets dans l'ordre : la Libération, la « drôle de guerre », l'Occupation, la défaite.", "La « drôle de guerre », la défaite, l'Occupation, la Libération."],
+    ["Je décris deux difficultés de la vie sous l'Occupation.", "Les tickets de rationnement, les queues, le froid, le couvre-feu, la ligne de démarcation, le travail obligatoire."],
+    ["J'explique le rôle du général de Gaulle ou celui de Jean Moulin dans la Résistance.", "De Gaulle appelle à continuer le combat le 18 juin 1940 et crée la France libre ; Jean Moulin unit les mouvements de résistance en 1943."],
+    ["Je cite le bilan humain de la guerre.", "Entre 60 et 70 millions de morts dans le monde, dont 6 millions de Juifs, 60 % des Juifs d'Europe."],
+  ],
+};
+
+const DEPUIS_1945: ThemeHGCM = {
+  id: "depuis-1945-cm2", classe: "CM2", histoire: true, titre: "La France depuis 1945 : 80 ans de transformations",
+  question: "Comment expliquer la longue période de paix et de transformation depuis 1945 ?",
+  frise: {
+    titre: "La France depuis 1945", debut: 1940, fin: 2030, pas: 10,
+    bandes: [
+      { nom: "Guerre", debut: 1940, fin: jour(1945, 5, 8), couleur: BRUN },
+      { nom: "", debut: jour(1945, 5, 8), fin: jour(1946, 10, 27), couleur: GRIS },
+      { nom: "IVe République", debut: jour(1946, 10, 27), fin: jour(1958, 10, 4), couleur: JAUNE },
+      { nom: "Ve République", debut: jour(1958, 10, 4), fin: 2030, couleur: ROSE, aPlacer: true },
+    ],
+    reperes: [
+      { date: jour(1944, 4, 21), quand: "1944", quoi: "Le droit de vote des femmes" },
+      { date: jour(1945, 10, 4), quand: "1945", quoi: "La création de la Sécurité sociale" },
+      { date: jour(1957, 3, 25), quand: "1957", quoi: "Le traité de Rome crée la Communauté économique européenne" },
+      { date: jour(1958, 10, 4), quand: "1958", quoi: "La fondation de la Ve République, avec le général de Gaulle" },
+      { date: jour(1965, 7, 13), quand: "1965", quoi: "Les Françaises peuvent travailler et ouvrir un compte sans l'autorisation de leur époux" },
+      { date: 1992, quand: "1992", quoi: "Le traité de Maastricht crée l'Union européenne" },
+      { date: 2002, quand: "1999 – 2002", quoi: "L'euro remplace le franc" },
+    ],
+  },
+  motsCles: [
+    ["l'innovation", "Une invention nouvelle qui change la vie : la télévision, le téléphone portable, Internet."],
+    ["le loisir", "Le temps libre, et ce qu'on y fait."],
+    ["la Sécurité sociale", "L'organisme créé en 1945 qui protège contre la maladie et la vieillesse, et aide les familles."],
+    ["la société de consommation", "Une société où l'on achète beaucoup de produits, souvent renouvelés."],
+    ["le traité", "Un accord signé entre plusieurs États."],
+    ["la Ve République", "La République fondée en 1958, celle d'aujourd'hui."],
+  ],
+  exercices: [
+    {
+      sorte: "document", id: "republique-sociale", titre: "Une République démocratique et sociale",
+      rappel: "1944 : le droit de vote des femmes ; 1945 : la Sécurité sociale ; 1958 : la Ve République, fondée par le général de Gaulle.",
+      texte: [
+        "À la Libération, la France se reconstruit. Le 21 avril 1944, le gouvernement provisoire du général de Gaulle accorde le droit de vote aux femmes : elles votent pour la première fois en 1945.",
+        "En 1945, la Sécurité sociale est créée : elle rembourse les soins des malades, verse une pension aux personnes âgées et des allocations aux familles. En 1946, une nouvelle constitution fonde la IVe République.",
+        "En 1958, en pleine guerre d'Algérie, le général de Gaulle revient au pouvoir et fonde la Ve République, celle d'aujourd'hui. Le président de la République y a un rôle important ; depuis 1962, il est élu par tous les Français et toutes les Françaises.",
+      ],
+      questions: [
+        ["En quelle année les femmes obtiennent-elles le droit de vote ?", "En 1944 ; elles votent pour la première fois en 1945."],
+        ["Que fait la Sécurité sociale ?", "Elle rembourse les soins, verse des pensions aux personnes âgées et des allocations aux familles."],
+        ["Quand la Ve République est-elle fondée ? Par qui ?", "En 1958, par le général de Gaulle."],
+      ],
+    },
+    {
+      sorte: "relier", id: "droits-femmes", titre: "Des droits pour les femmes",
+      consigne: "Je relie chaque date au droit obtenu par les femmes.",
+      rappel: "Depuis 1944, les femmes obtiennent peu à peu les mêmes droits que les hommes : voter, travailler librement, être payées autant.",
+      paires: [
+        ["1944", "Les femmes obtiennent le droit de vote."],
+        ["1946", "La Constitution garantit aux femmes des droits égaux à ceux des hommes."],
+        ["1965", "Une femme mariée peut travailler et ouvrir un compte en banque sans l'autorisation de son mari."],
+        ["1972", "À travail égal, salaire égal : la loi impose la même paie aux femmes et aux hommes."],
+        ["2000", "La loi sur la parité : autant de candidates que de candidats à de nombreuses élections."],
+      ],
+    },
+    {
+      sorte: "trier", id: "vie-change", titre: "La vie a changé",
+      consigne: "Je lis chaque étiquette. Je l'écris dans la bonne colonne : vers 1950, ou aujourd'hui.",
+      rappel: "Depuis 1945, la société s'est transformée : les transports, les appareils de la maison, les loisirs, les métiers, la façon de communiquer.",
+      colonnes: ["Vers 1950", "Aujourd'hui"],
+      items: [
+        ["on lave le linge à la main", 0], ["la plupart des familles n'ont pas de voiture", 0], ["on écoute la radio", 0], ["on écrit des lettres", 0], ["près d'un Français sur trois travaille dans l'agriculture", 0], ["on fait ses courses chez l'épicier", 0],
+        ["la machine à laver", 1], ["la plupart des familles ont une voiture", 1], ["on regarde des vidéos sur Internet", 1], ["on envoie des messages avec un téléphone portable", 1], ["moins de trois Français sur cent travaillent dans l'agriculture", 1], ["on fait ses courses au supermarché ou en ligne", 1],
+      ],
+    },
+    {
+      sorte: "document", id: "europe", titre: "Les étapes de la construction européenne",
+      rappel: "1951 : le charbon et l'acier en commun ; 1957 : le traité de Rome ; 1992 : le traité de Maastricht ; 2002 : l'euro dans les porte-monnaie.",
+      texte: [
+        "Après deux guerres mondiales, des Européens veulent rendre la guerre impossible entre leurs pays. En 1951, six pays — la France, l'Allemagne de l'Ouest, l'Italie, la Belgique, les Pays-Bas et le Luxembourg — mettent en commun leur charbon et leur acier.",
+        "En 1957, par le traité de Rome, ils créent la Communauté économique européenne : un marché commun où les marchandises circulent librement. D'autres pays les rejoignent peu à peu.",
+        "En 1992, le traité de Maastricht crée l'Union européenne : ses habitants deviennent aussi citoyens européens. L'euro naît en 1999 ; en 2002, ses pièces et ses billets remplacent le franc dans les porte-monnaie. Aujourd'hui, l'Union européenne compte 27 pays.",
+      ],
+      questions: [
+        ["Pourquoi les Européens veulent-ils s'unir après 1945 ?", "Pour rendre la guerre impossible entre leurs pays."],
+        ["Quels sont les six pays fondateurs ?", "La France, l'Allemagne de l'Ouest, l'Italie, la Belgique, les Pays-Bas, le Luxembourg."],
+        ["Que crée le traité de Rome en 1957 ? Et celui de Maastricht en 1992 ?", "La Communauté économique européenne ; l'Union européenne."],
+      ],
+    },
+  ],
+  evaluation: [
+    ["Je cite un exemple de réforme sociale et un exemple de droit des femmes.", "La Sécurité sociale (1945) ; le droit de vote des femmes (1944), le droit de travailler sans l'autorisation du mari (1965)."],
+    ["Je cite la date de la fondation de la Ve République.", "1958."],
+    ["Je décris deux transformations de la société française depuis 1945.", "La voiture, les appareils ménagers, la télévision puis Internet, les supermarchés, les loisirs ; moins de paysans."],
+    ["Je raconte deux étapes de la construction européenne.", "1957, le traité de Rome ; 1992, le traité de Maastricht ; 2002, l'euro."],
+  ],
+};
+
+// ── Géographie, CM1 : la diversité des modes de vie dans le monde ─────────
+
+const SE_NOURRIR: ThemeHGCM = {
+  id: "se-nourrir-cm1", classe: "CM1", histoire: false, titre: "Se nourrir",
+  question: "Comment se nourrit-on dans le monde ?",
+  motsCles: [
+    ["la malnutrition", "Une alimentation déséquilibrée : il manque des aliments utiles, ou il y en a trop."],
+    ["la sous-nutrition", "Le fait de ne pas manger assez pour être en bonne santé."],
+    ["le produit agricole", "Un produit tel qu'il sort de la ferme : le lait, le blé, la pomme."],
+    ["le produit alimentaire transformé", "Un aliment fabriqué à partir de produits agricoles : le yaourt, le pain, la compote."],
+    ["la ration alimentaire", "La quantité de nourriture qu'une personne mange chaque jour."],
+  ],
+  lieux: ["les États-Unis (Amérique)", "la France (Europe)", "Madagascar (Afrique)", "Haïti (Amérique)", "la Côte d'Ivoire", "le Brésil", "l'Espagne", "l'Inde"],
+  exercices: [
+    {
+      sorte: "relier", id: "provenance", titre: "D'où viennent nos aliments ?",
+      consigne: "Je relie chaque aliment au pays ou à la région d'où il vient souvent. Puis je les localise sur le planisphère.",
+      rappel: "Une partie de ce que nous mangeons vient de France ; une autre vient de loin : les bananes, le cacao, le café, le riz.",
+      paires: [
+        ["la banane", "les Antilles, la Côte d'Ivoire"],
+        ["le cacao du chocolat", "la Côte d'Ivoire, le Ghana"],
+        ["le café", "le Brésil, le Viêt Nam"],
+        ["le riz", "l'Asie, et la Camargue en France"],
+        ["l'orange", "l'Espagne, le Maroc"],
+        ["le blé du pain", "les plaines de France, comme la Beauce"],
+      ],
+    },
+    {
+      sorte: "trier", id: "agricole-transforme", titre: "Produit agricole ou produit transformé ?",
+      consigne: "Je lis chaque aliment. Je l'écris dans la bonne colonne : produit agricole, ou produit alimentaire transformé.",
+      rappel: "Un produit agricole sort de la ferme ; un produit transformé est fabriqué à partir de produits agricoles, souvent en usine.",
+      colonnes: ["Produit agricole", "Produit alimentaire transformé"],
+      items: [
+        ["le lait", 0], ["le blé", 0], ["la pomme", 0], ["les fèves de cacao", 0], ["la pomme de terre", 0], ["le raisin", 0], ["la tomate", 0],
+        ["le yaourt", 1], ["le pain", 1], ["la compote", 1], ["le chocolat", 1], ["les chips", 1], ["le jus de raisin", 1], ["le ketchup", 1],
+      ],
+    },
+    {
+      sorte: "ordonner", id: "chaine-yaourt", titre: "La chaîne de production d'un yaourt",
+      consigne: "Je lis les étapes. J'écris dans chaque case le numéro de l'étape, dans l'ordre : 1 pour la première.",
+      rappel: "Du lait de la ferme au yaourt du réfrigérateur : l'élevage, la collecte, la laiterie, l'emballage, le transport, le magasin.",
+      etapes: [
+        "À la ferme, l'éleveur nourrit et trait les vaches.",
+        "Un camion-citerne collecte le lait à la ferme.",
+        "À la laiterie, le lait est analysé, puis chauffé pour détruire les microbes.",
+        "On ajoute des ferments : le lait devient yaourt dans ses pots, au chaud.",
+        "Les yaourts sont refroidis, emballés et étiquetés.",
+        "Des camions frigorifiques les transportent jusqu'aux magasins.",
+        "Le consommateur les achète et les garde au réfrigérateur.",
+      ],
+    },
+    {
+      sorte: "document", id: "manger-monde", titre: "Manger dans le monde",
+      rappel: "Dans un pays riche, on mange à sa faim, souvent trop ; dans un pays en développement, beaucoup ne mangent pas assez ou mal.",
+      texte: [
+        "Dans un pays riche, comme les États-Unis ou la France, la plupart des habitants mangent à leur faim. Ils achètent surtout des produits transformés, au supermarché, venus parfois de très loin. Ils mangent souvent trop de sucre, de graisses et de viande : beaucoup de personnes sont en surpoids.",
+        "Dans un pays en développement, comme Madagascar ou Haïti, une grande partie de la population ne mange pas assez : c'est la sous-nutrition. D'autres mangent assez, mais pas assez varié : c'est la malnutrition. Beaucoup de familles cultivent elles-mêmes ce qu'elles mangent : du riz, du maïs, du manioc. Une mauvaise récolte, une sécheresse, un cyclone ou une guerre peuvent provoquer la faim.",
+        "Dans le monde, près de 700 millions de personnes souffrent de la faim.",
+      ],
+      questions: [
+        ["Je décris l'alimentation dans un pays riche.", "On mange à sa faim, surtout des produits transformés achetés au supermarché, souvent trop sucrés et trop gras."],
+        ["Quelle est la différence entre la sous-nutrition et la malnutrition ?", "Sous-nutrition : ne pas manger assez ; malnutrition : manger de façon déséquilibrée."],
+        ["Je nomme deux pays à ration alimentaire très riche et deux pays à ration insuffisante, avec leur continent.", "Les États-Unis (Amérique), la France (Europe) ; Madagascar (Afrique), Haïti (Amérique)."],
+      ],
+    },
+  ],
+  evaluation: [
+    ["Je décris une différence entre l'alimentation d'un pays riche et celle d'un pays en développement.", "Dans un pays riche, on mange à sa faim, souvent trop, des produits transformés ; dans un pays en développement, beaucoup ne mangent pas assez."],
+    ["J'explique la différence entre un produit agricole et un produit transformé, avec un exemple.", "Le produit agricole sort de la ferme (le lait) ; le produit transformé est fabriqué à partir de lui (le yaourt)."],
+    ["Je décris la chaîne de production d'un aliment.", "La ferme, la collecte, l'usine ou la laiterie, l'emballage, le transport, le magasin, le consommateur."],
+  ],
+};
+
+const INEGALITES: ThemeHGCM = {
+  id: "inegalites-monde-cm1", classe: "CM1", histoire: false, titre: "Les inégalités dans le monde",
+  question: "Comment décrire les inégalités de niveau de vie dans le monde ?",
+  motsCles: [
+    ["les inégalités", "Les différences de richesse, d'accès à l'eau, à la santé, à l'école entre les personnes ou les pays."],
+    ["l'aire régionale", "Une grande partie d'un continent, qui regroupe des pays voisins."],
+    ["le niveau de vie", "Ce que les habitants peuvent se payer, et leurs conditions de vie."],
+    ["l'eau potable", "L'eau qu'on peut boire sans danger."],
+  ],
+  lieux: ["l'Afrique subsaharienne", "le Maghreb", "l'Amérique du Nord", "l'Amérique du Sud", "l'Asie du Sud-Est", "l'Asie de l'Est", "l'Europe", "l'Océanie"],
+  exercices: [
+    {
+      sorte: "relier", id: "aires", titre: "Les aires régionales",
+      consigne: "Je relie chaque aire régionale à des pays qui en font partie. Puis je la colorie sur le planisphère.",
+      rappel: "Huit aires régionales : l'Afrique subsaharienne, le Maghreb, l'Amérique du Nord, l'Amérique du Sud, l'Asie du Sud-Est, l'Asie de l'Est, l'Europe, l'Océanie.",
+      paires: [
+        ["l'Afrique subsaharienne", "le Sénégal, le Kenya"], ["le Maghreb", "le Maroc, l'Algérie, la Tunisie"], ["l'Amérique du Nord", "les États-Unis, le Canada"],
+        ["l'Amérique du Sud", "le Brésil, l'Argentine"], ["l'Asie du Sud-Est", "le Viêt Nam, l'Indonésie"], ["l'Asie de l'Est", "la Chine, le Japon"],
+        ["l'Europe", "la France, l'Allemagne"], ["l'Océanie", "l'Australie, la Nouvelle-Zélande"],
+      ],
+    },
+    {
+      sorte: "document", id: "eau-potable", titre: "L'accès à l'eau potable",
+      rappel: "Plus de deux milliards de personnes n'ont pas d'eau potable sûre chez elles : c'est une grande inégalité dans le monde.",
+      texte: [
+        "Ouvrir un robinet et boire une eau saine : en France, c'est un geste de tous les jours. Dans le monde, plus de deux milliards de personnes n'ont pas accès chez elles à une eau potable sûre.",
+        "En Afrique subsaharienne, dans les villages, ce sont surtout les femmes et les filles qui vont chercher l'eau au puits, à la rivière ou à la borne-fontaine, parfois à plusieurs kilomètres : cette corvée prend des heures chaque jour, et des filles manquent l'école.",
+        "L'eau sale transmet des maladies, comme le choléra ou les diarrhées, qui tuent chaque année des centaines de milliers d'enfants. Des puits, des pompes, des réseaux d'eau permettent de réduire ces inégalités.",
+      ],
+      questions: [
+        ["Combien de personnes n'ont pas accès à une eau potable sûre ?", "Plus de deux milliards."],
+        ["Qui va chercher l'eau dans les villages ? Avec quelles conséquences ?", "Les femmes et les filles ; cela prend des heures, et des filles manquent l'école."],
+        ["Pourquoi l'eau sale est-elle dangereuse ?", "Elle transmet des maladies, comme le choléra et les diarrhées."],
+      ],
+    },
+    {
+      sorte: "document", id: "ecole-monde", titre: "Aller à l'école dans le monde",
+      rappel: "Environ 250 millions d'enfants et de jeunes ne vont pas à l'école, surtout en Afrique subsaharienne et en Asie du Sud.",
+      texte: [
+        "En France, l'instruction est obligatoire de 3 à 16 ans. Dans le monde, environ 250 millions d'enfants et de jeunes ne vont pas à l'école. La plupart vivent en Afrique subsaharienne et en Asie du Sud.",
+        "Certains doivent travailler pour aider leur famille ; d'autres vivent trop loin d'une école, ou dans un pays en guerre. Dans plusieurs pays, les filles sont plus souvent privées d'école que les garçons. Dans certaines classes, il y a plus de soixante élèves pour un seul enseignant, sans livres ni électricité.",
+      ],
+      questions: [
+        ["Combien d'enfants et de jeunes ne vont pas à l'école dans le monde ?", "Environ 250 millions."],
+        ["Dans quelles aires régionales vivent la plupart d'entre eux ?", "En Afrique subsaharienne et en Asie du Sud."],
+        ["Je relève deux raisons pour lesquelles des enfants ne vont pas à l'école.", "Ils travaillent pour aider leur famille ; l'école est trop loin ; la guerre ; ce sont des filles."],
+      ],
+    },
+    {
+      sorte: "tableau", id: "deux-familles", titre: "Comparer deux familles",
+      consigne: "J'observe les photographies de deux familles, dans deux pays. Je complète le tableau. Puis j'écris une phrase qui compare leur niveau de vie.",
+      rappel: "Le logement, l'eau, l'école, la santé, les revenus : on compare le niveau de vie avec des indices précis.",
+      entetes: ["", "Famille 1 : …………………", "Famille 2 : …………………"],
+      lignes: [["Le pays et l'aire régionale", "", ""], ["Le logement", "", ""], ["L'accès à l'eau", "", ""], ["L'école des enfants", "", ""], ["La santé, les soins", "", ""], ["Les revenus du mois", "", ""]],
+    },
+  ],
+  evaluation: [
+    ["Je nomme trois aires régionales et un pays de chacune.", "L'Afrique subsaharienne (le Sénégal), le Maghreb (le Maroc), l'Amérique du Nord (les États-Unis)…"],
+    ["Je décris une inégalité de niveau de vie dans le monde : l'accès à l'eau, à la santé ou à l'école.", "Plus de deux milliards de personnes sans eau potable sûre ; 250 millions d'enfants sans école…"],
+  ],
+};
+
+const SE_DEPLACER: ThemeHGCM = {
+  id: "se-deplacer-cm1", classe: "CM1", histoire: false, titre: "Se déplacer",
+  question: "Comment se déplace-t-on dans le monde ?",
+  motsCles: [
+    ["l'avion, l'aéroport", "L'avion décolle et atterrit à l'aéroport."],
+    ["le bateau, le port", "Le bateau s'amarre au port."],
+    ["la marche, le trottoir", "Le piéton marche sur le trottoir et traverse au passage piéton."],
+    ["le métro, la station", "Le métro s'arrête à la station."],
+    ["le train, la gare", "Le train s'arrête à la gare."],
+    ["le vélo, la voie cyclable", "Le vélo roule sur la piste ou la bande cyclable."],
+    ["la voiture, la route", "La voiture roule sur la route et l'autoroute."],
+    ["la distance en kilomètres", "La longueur du trajet."],
+    ["la distance en temps", "La durée du trajet."],
+  ],
+  exercices: [
+    {
+      sorte: "tableau", id: "mes-deplacements", titre: "Mes déplacements",
+      consigne: "Je complète le tableau avec mes déplacements. J'écris la distance en kilomètres et la durée du trajet.",
+      rappel: "Pour dire si un lieu est loin, on donne sa distance en kilomètres, ou en temps.",
+      entetes: ["", "Où je vais", "Comment j'y vais", "La distance (km)", "La durée"],
+      lignes: [["Pour aller à l'école", "", "", "", ""], ["Le mercredi", "", "", "", ""], ["Le week-end", "", "", "", ""], ["Pendant les vacances", "", "", "", ""]],
+    },
+    {
+      sorte: "document", id: "km-temps", titre: "Distance en kilomètres, distance en temps",
+      rappel: "La distance en kilomètres et la distance en temps ne disent pas la même chose : tout dépend du mode de transport.",
+      texte: [
+        "Pour dire si un lieu est loin, on peut donner sa distance en kilomètres, ou le temps qu'il faut pour y aller. Les deux ne disent pas la même chose : 10 kilomètres, c'est environ deux heures à pied, quarante minutes à vélo, un quart d'heure en voiture sur une route dégagée.",
+        "Paris et Marseille sont à environ 775 kilomètres par la route. Il faut environ 7 h 30 en voiture, un peu plus de 3 heures en TGV, 1 h 20 en avion — sans compter le trajet jusqu'à l'aéroport et l'attente avant d'embarquer.",
+      ],
+      questions: [
+        ["Combien de temps faut-il pour faire 10 km à pied ? Et à vélo ?", "Environ deux heures à pied ; quarante minutes à vélo."],
+        ["Quel mode de transport est le plus rapide entre Paris et Marseille ?", "L'avion, 1 h 20 de vol."],
+        ["Pourquoi le TGV est-il parfois plus pratique que l'avion ?", "Il va de centre-ville à centre-ville, sans trajet jusqu'à l'aéroport ni longue attente."],
+        ["J'écris la distance en kilomètres et la durée de mon trajet jusqu'à l'école.", "La réponse dépend de l'élève."],
+      ],
+    },
+    {
+      sorte: "relier", id: "infrastructures", titre: "Les modes de transport et leurs infrastructures",
+      consigne: "Je relie chaque mode de transport à son infrastructure.",
+      rappel: "Chaque mode de transport a ses infrastructures : l'avion et l'aéroport, le bateau et le port, le train et la gare…",
+      paires: [
+        ["l'avion", "l'aéroport"], ["le bateau", "le port"], ["le train", "la gare"], ["la voiture", "la route"], ["le métro", "la station"], ["le vélo", "la voie cyclable"], ["la marche", "le trottoir"],
+      ],
+    },
+  ],
+  evaluation: [
+    ["J'associe deux modes de transport à leur infrastructure.", "L'avion et l'aéroport, le train et la gare, le bateau et le port…"],
+    ["J'explique la différence entre la distance en kilomètres et la distance en temps.", "La première est la longueur du trajet, la seconde sa durée, qui dépend du mode de transport."],
+    ["Je cite deux modes de déplacement pour aller près, et deux pour aller loin.", "La marche, le vélo ; le train, l'avion."],
+  ],
+};
+
+const INTERNET: ThemeHGCM = {
+  id: "internet-cm1", classe: "CM1", histoire: false, titre: "Communiquer dans le monde avec Internet",
+  question: "Comment communique-t-on avec Internet dans le monde ?",
+  motsCles: [
+    ["le câble sous-marin", "Un câble posé au fond de l'océan, qui transporte les communications entre les continents."],
+    ["Internet", "Le réseau mondial qui relie les ordinateurs, les téléphones et les tablettes."],
+    ["le réseau", "Un ensemble de lignes qui relient des lieux entre eux."],
+    ["le satellite", "Un engin qui tourne autour de la Terre et relaie les communications."],
+    ["le centre de données", "Un bâtiment rempli d'ordinateurs qui gardent les données."],
+    ["la zone blanche", "Un lieu sans réseau de téléphone mobile."],
+  ],
+  lieux: ["l'Amérique du Nord", "l'Europe", "l'Asie de l'Est", "l'Afrique subsaharienne", "l'océan Atlantique", "l'océan Pacifique", "l'océan Indien"],
+  exercices: [
+    {
+      sorte: "tableau", id: "usages", titre: "Nos usages d'Internet",
+      consigne: "Pour chaque usage d'Internet, je coche ce qui est vrai pour moi.",
+      rappel: "On utilise Internet pour chercher, apprendre, écrire, regarder, jouer, appeler.",
+      entetes: ["Ce que je fais avec Internet", "À la maison", "À l'école", "Jamais"],
+      lignes: [["Chercher une information", "", "", ""], ["Regarder une vidéo", "", "", ""], ["Écrire un message", "", "", ""], ["Appeler en vidéo", "", "", ""], ["Jouer", "", "", ""], ["Écouter de la musique", "", "", ""]],
+    },
+    {
+      sorte: "document", id: "fonctionnement", titre: "Comment fonctionne Internet ?",
+      rappel: "Internet repose sur des câbles — sur les continents et sous les océans — et sur des satellites.",
+      texte: [
+        "Quand on envoie un message ou qu'on regarde une vidéo, les informations voyagent dans des câbles. Sur les continents, des câbles relient les ordinateurs, les antennes et les centres de données, ces immenses bâtiments remplis d'ordinateurs qui gardent les données et consomment beaucoup d'électricité.",
+        "Pour traverser les océans, plus de 500 câbles sous-marins sont posés au fond de la mer : ils transportent presque toutes les communications entre les continents. Ils sont très nombreux entre l'Amérique du Nord, l'Europe et l'Asie de l'Est.",
+        "Des satellites, qui tournent autour de la Terre, relient aussi des lieux isolés : des bateaux en mer, des îles, des villages de montagne.",
+      ],
+      questions: [
+        ["Comment les informations traversent-elles les océans ?", "Par des câbles sous-marins."],
+        ["Entre quelles aires régionales les câbles sont-ils les plus nombreux ?", "Entre l'Amérique du Nord, l'Europe et l'Asie de l'Est."],
+        ["À quoi servent les satellites ?", "À relier des lieux isolés : des bateaux, des îles, des villages de montagne."],
+        ["Qu'est-ce qu'un centre de données ?", "Un bâtiment rempli d'ordinateurs qui gardent les données."],
+      ],
+    },
+    {
+      sorte: "document", id: "acces", titre: "Tout le monde n'a pas accès à Internet",
+      rappel: "Environ deux personnes sur trois utilisent Internet. L'accès est inégal dans le monde, et en France aussi.",
+      texte: [
+        "Dans le monde, environ deux personnes sur trois utilisent Internet. En Europe et en Amérique du Nord, presque tout le monde est connecté. En Afrique subsaharienne, c'est un peu plus d'une personne sur trois : dans les campagnes, il manque souvent l'électricité, les antennes, ou l'argent pour payer un téléphone et un abonnement.",
+        "En France aussi, l'accès est inégal. Les grandes villes ont la fibre et la 5G, l'Internet mobile le plus rapide ; dans certaines campagnes et en montagne, le réseau est faible, voire absent : ce sont des « zones blanches ».",
+      ],
+      questions: [
+        ["Quelle part de la population mondiale utilise Internet ?", "Environ deux personnes sur trois."],
+        ["Je nomme une aire régionale très bien reliée à Internet, et une aire faiblement reliée.", "L'Europe ou l'Amérique du Nord ; l'Afrique subsaharienne."],
+        ["Pourquoi certaines régions sont-elles mal reliées ?", "Il manque l'électricité, les antennes, ou l'argent pour un téléphone et un abonnement."],
+        ["Qu'est-ce qu'une zone blanche ?", "Un lieu où le réseau mobile est absent."],
+      ],
+    },
+  ],
+  evaluation: [
+    ["J'explique comment Internet relie les continents.", "Par des câbles posés au fond des océans, et par des satellites."],
+    ["Je décris une inégalité d'accès à Internet dans le monde.", "Presque tout le monde est connecté en Europe et en Amérique du Nord, un peu plus d'un tiers en Afrique subsaharienne."],
+    ["Je décris une inégalité d'accès à Internet en France.", "La fibre et la 5G dans les villes ; des zones blanches dans certaines campagnes et en montagne."],
+  ],
+};
+
+// ── Géographie, CM2 : la France, l'Union européenne ───────────────────────
+
+/** Les dix-huit régions et leur capitale : treize dans l'Hexagone, cinq en outre-mer. */
+export const REGIONS: [string, string][] = [
+  ["Auvergne-Rhône-Alpes", "Lyon"], ["Bourgogne-Franche-Comté", "Dijon"], ["Bretagne", "Rennes"], ["Centre-Val de Loire", "Orléans"], ["Corse", "Ajaccio"],
+  ["Grand Est", "Strasbourg"], ["Hauts-de-France", "Lille"], ["Île-de-France", "Paris"], ["Normandie", "Rouen"], ["Nouvelle-Aquitaine", "Bordeaux"],
+  ["Occitanie", "Toulouse"], ["Pays de la Loire", "Nantes"], ["Provence-Alpes-Côte d'Azur", "Marseille"],
+  ["Guadeloupe", "Basse-Terre"], ["Martinique", "Fort-de-France"], ["Guyane", "Cayenne"], ["La Réunion", "Saint-Denis"], ["Mayotte", "Mamoudzou"],
+];
+
+const TERRITOIRE: ThemeHGCM = {
+  id: "territoire-francais-cm2", classe: "CM2", histoire: false, titre: "L'organisation du territoire français",
+  question: "Comment est organisé le territoire français ?",
+  motsCles: [
+    ["la commune", "La plus petite division du territoire, dirigée par un maire et son conseil municipal."],
+    ["le département", "Une division du territoire, avec un numéro et une préfecture ; il y en a 101."],
+    ["la région", "Une grande division du territoire, avec sa capitale régionale ; il y en a 18."],
+    ["le TGV", "Le train à grande vitesse, qui roule jusqu'à 320 km/h sur des lignes spéciales."],
+    ["l'agglomération", "Une ville et les communes qui l'entourent, sans coupure entre les constructions."],
+    ["l'autoroute", "Une route à deux fois deux voies, sans croisement, pour aller vite et loin."],
+  ],
+  lieux: ["Paris", "Lyon", "Marseille", "Lille", "Toulouse", "l'autoroute A1 (Paris – Lille)", "l'autoroute A6 (Paris – Lyon)", "l'autoroute A7 (Lyon – Marseille)",
+    "l'autoroute A10 (Paris – Bordeaux)", "la LGV Paris – Lyon", "la LGV Paris – Lille", "la LGV Paris – Bordeaux", ...REGIONS.map(([r]) => r)],
+  exercices: [
+    {
+      sorte: "document", id: "etoile", titre: "Un réseau en étoile",
+      rappel: "Les cinq principales agglomérations : Paris, Lyon, Marseille, Lille, Toulouse. Les grands axes partent de Paris, en étoile.",
+      texte: [
+        "Les cinq principales agglomérations françaises sont Paris, Lyon, Marseille, Lille et Toulouse. Paris est de très loin la plus peuplée : plus de dix millions d'habitants.",
+        "Les grandes autoroutes et les lignes à grande vitesse partent de Paris vers les grandes villes, comme les branches d'une étoile : vers Lille et la Belgique au nord, vers Strasbourg à l'est, vers Lyon et Marseille au sud-est, vers Bordeaux au sud-ouest, vers Rennes et Nantes à l'ouest. Le premier TGV a relié Paris à Lyon en 1981.",
+        "Pour aller d'une grande ville à une autre, il est souvent plus rapide de passer par Paris.",
+      ],
+      questions: [
+        ["Je nomme les cinq principales agglomérations françaises.", "Paris, Lyon, Marseille, Lille, Toulouse."],
+        ["Pourquoi dit-on que le réseau français est en étoile ?", "Les grands axes partent de Paris vers les grandes villes, comme les branches d'une étoile."],
+        ["Je relève un axe et les villes qu'il relie.", "La ligne à grande vitesse Paris – Lyon ; l'autoroute Paris – Lille…"],
+      ],
+    },
+    {
+      sorte: "document", id: "decoupage", titre: "Commune, département, région",
+      rappel: "La France est découpée en communes, en départements — 101 — et en régions — 18, dont 5 en outre-mer.",
+      texte: [
+        "La France est découpée en communes — près de 35 000 —, dirigées chacune par un maire et un conseil municipal. Elle est aussi découpée en départements — 101 —, qui ont chacun un numéro et une préfecture, et en régions — 18, dont 5 en outre-mer —, dirigées par un conseil régional qui siège dans la capitale régionale.",
+        "Chaque niveau a ses missions : la commune s'occupe des écoles maternelles et élémentaires ; le département, des collèges et des routes départementales ; la région, des lycées et des trains régionaux.",
+      ],
+      questions: [
+        ["Combien y a-t-il de départements en France ? Et de régions ?", "101 départements ; 18 régions, dont 5 en outre-mer."],
+        ["Qui s'occupe des écoles ? Des collèges ? Des lycées ?", "La commune ; le département ; la région."],
+        ["Je complète : j'habite la commune de …, dans le département …, numéro …, dans la région …, dont la capitale est ….", "La réponse dépend de l'école."],
+      ],
+    },
+    {
+      sorte: "tableau", id: "regions", titre: "Les dix-huit régions et leur capitale",
+      consigne: "J'écris la capitale de chaque région. Puis je colorie ma région sur la carte.",
+      rappel: "Dix-huit régions : treize dans l'Hexagone, cinq en outre-mer — la Guadeloupe, la Martinique, la Guyane, La Réunion, Mayotte.",
+      entetes: ["La région", "Sa capitale"],
+      lignes: REGIONS.map(([r]) => [r, ""]),
+      reponses: REGIONS.map(([r, c]) => [r, c]),
+    },
+    {
+      sorte: "tableau", id: "deux-regions", titre: "Ma région et une autre",
+      consigne: "Je complète le tableau pour ma région et pour une autre région. Puis j'écris une phrase qui les compare.",
+      rappel: "Une région se décrit par sa capitale, son relief, ses grandes villes, ses activités, ses paysages.",
+      entetes: ["", "Ma région : …………………", "Une autre région : …………………"],
+      lignes: [["Sa capitale", "", ""], ["Son relief", "", ""], ["Ses grandes villes", "", ""], ["Ses activités", "", ""], ["Un paysage", "", ""], ["Un département et son numéro", "", ""]],
+    },
+  ],
+  evaluation: [
+    ["Je nomme les cinq principales agglomérations françaises.", "Paris, Lyon, Marseille, Lille, Toulouse."],
+    ["Je nomme cinq régions et leur capitale.", "Bretagne (Rennes), Occitanie (Toulouse), Grand Est (Strasbourg), Hauts-de-France (Lille), Normandie (Rouen)…"],
+    ["J'écris le nom de ma commune, de mon département et de ma région.", "La réponse dépend de l'école."],
+  ],
+};
+
+const EAU_DOUCE: ThemeHGCM = {
+  id: "eau-douce-cm2", classe: "CM2", histoire: false, titre: "Les usages de l'eau douce en France",
+  question: "Pourquoi gérer l'eau douce en France ?",
+  motsCles: [
+    ["le conflit d'usages", "Une opposition entre plusieurs utilisateurs d'une même ressource, comme l'eau."],
+    ["la nappe phréatique", "L'eau de pluie stockée dans le sous-sol."],
+    ["l'eau douce", "L'eau non salée des rivières, des lacs, des nappes et des glaciers."],
+    ["le fleuve", "Un cours d'eau qui se jette dans la mer."],
+    ["l'irrigation", "L'arrosage des champs."],
+    ["la sécheresse", "Un long manque de pluie."],
+  ],
+  lieux: ["la Seine", "la Loire", "la Garonne", "le Rhône", "le Rhin", "le Maroni (Guyane)", "les Alpes", "les Pyrénées", "le Massif central", "le Jura", "les Vosges", "la Corse",
+    "le lac du Bourget (lac naturel)", "le lac de Serre-Ponçon (lac de barrage)"],
+  exercices: [
+    {
+      sorte: "document", id: "ressource", titre: "L'eau douce, une ressource limitée",
+      rappel: "L'eau douce est rare : environ 3 % de l'eau de la Terre, surtout gelée. Avec le dérèglement climatique, les sécheresses sont plus fréquentes.",
+      texte: [
+        "Sur la Terre, il y a beaucoup d'eau, mais presque toute est salée : l'eau douce ne représente qu'environ 3 % de l'eau de la planète, et la plus grande partie est gelée dans les glaciers et les calottes polaires. Les êtres humains utilisent surtout l'eau des rivières, des lacs et des nappes phréatiques, l'eau stockée dans le sous-sol.",
+        "En France, il pleut en moyenne assez, mais pas partout ni toute l'année. Avec le dérèglement climatique, les sécheresses sont plus fréquentes : en été, des rivières sont à sec et les nappes baissent. Les préfets peuvent alors limiter l'arrosage, le lavage des voitures ou le remplissage des piscines.",
+      ],
+      questions: [
+        ["Quelle part de l'eau de la Terre est douce ? Où se trouve-t-elle surtout ?", "Environ 3 % ; surtout gelée dans les glaciers et les calottes polaires."],
+        ["Qu'est-ce qu'une nappe phréatique ?", "L'eau stockée dans le sous-sol."],
+        ["Que peut faire le préfet en cas de sécheresse ?", "Limiter l'arrosage, le lavage des voitures, le remplissage des piscines."],
+      ],
+    },
+    {
+      sorte: "relier", id: "fleuves", titre: "Les grands fleuves français",
+      consigne: "Je relie chaque fleuve à une grande ville qu'il traverse. Puis je le repasse en bleu sur la carte.",
+      rappel: "Six grands fleuves : la Seine, la Loire, la Garonne, le Rhône, le Rhin, et le Maroni en Guyane.",
+      paires: [
+        ["la Seine", "Paris"], ["la Loire", "Nantes"], ["la Garonne", "Bordeaux"], ["le Rhône", "Lyon"], ["le Rhin", "Strasbourg"], ["le Maroni", "Saint-Laurent-du-Maroni, en Guyane"],
+      ],
+    },
+    {
+      sorte: "trier", id: "usages-eau", titre: "Les usages de l'eau",
+      consigne: "Je lis chaque usage de l'eau. Je l'écris dans la bonne colonne.",
+      rappel: "On utilise l'eau à la maison, pour l'agriculture, pour l'industrie et l'énergie, pour les loisirs et le transport.",
+      colonnes: ["À la maison", "L'agriculture", "L'industrie et l'énergie", "Les loisirs et le transport"],
+      items: [
+        ["boire et cuisiner", 0], ["se laver", 0], ["tirer la chasse d'eau", 0],
+        ["irriguer les champs de maïs", 1], ["abreuver les animaux", 1],
+        ["refroidir une centrale nucléaire", 2], ["produire de l'électricité dans un barrage", 2], ["fabriquer du papier ou de l'acier", 2],
+        ["se baigner, faire du canoë", 3], ["transporter des marchandises en péniche", 3], ["fabriquer de la neige pour les pistes de ski", 3],
+      ],
+    },
+    {
+      sorte: "document", id: "serre-poncon", titre: "Un conflit d'usages : le lac de Serre-Ponçon",
+      rappel: "Quand l'eau manque, ses usagers — agriculteurs, villes, tourisme, production d'électricité — s'opposent : c'est un conflit d'usages. Il faut partager l'eau.",
+      texte: [
+        "Dans les Hautes-Alpes, le barrage de Serre-Ponçon, achevé en 1960, retient la Durance : il forme l'un des plus grands lacs artificiels d'Europe. Son eau a plusieurs usages : elle produit de l'électricité dans les centrales du barrage et de la vallée ; elle irrigue les vergers et les champs de Provence ; elle fournit l'eau potable de villes comme Marseille ; en été, le lac attire les touristes qui s'y baignent et y naviguent.",
+        "Pendant la sécheresse de 2022, le niveau du lac a beaucoup baissé. Les agriculteurs avaient besoin d'eau pour arroser, les villes pour boire, les communes du lac pour le tourisme, et l'électricien pour produire du courant. Il a fallu choisir, et partager l'eau : c'est un conflit d'usages.",
+      ],
+      questions: [
+        ["Je cite quatre usages de l'eau du lac de Serre-Ponçon.", "Produire de l'électricité, irriguer, fournir l'eau potable, le tourisme."],
+        ["Que se passe-t-il pendant la sécheresse de 2022 ?", "Le niveau du lac baisse ; tous les usagers ont besoin d'eau ; il faut choisir et partager."],
+        ["Qu'est-ce qu'un conflit d'usages ?", "Une opposition entre ceux qui veulent utiliser la même eau pour des usages différents."],
+      ],
+    },
+  ],
+  evaluation: [
+    ["Je décris trois usages de l'eau en France.", "Boire et se laver ; irriguer les champs ; refroidir les centrales, produire de l'électricité ; les loisirs."],
+    ["J'explique, avec un exemple précis, ce qu'est un conflit d'usages.", "À Serre-Ponçon, en 2022, agriculteurs, villes, tourisme et production d'électricité voulaient la même eau, devenue rare."],
+    ["Je nomme trois grands fleuves et deux massifs de montagne français.", "La Seine, la Loire, la Garonne, le Rhône, le Rhin, le Maroni ; les Alpes, les Pyrénées, le Massif central, le Jura, les Vosges, la Corse."],
+  ],
+};
+
+/** Les 27 pays de l'Union européenne et leur capitale ; les six fondateurs d'abord. */
+export const PAYS_UE: [string, string][] = [
+  ["l'Allemagne", "Berlin"], ["la Belgique", "Bruxelles"], ["la France", "Paris"], ["l'Italie", "Rome"], ["le Luxembourg", "Luxembourg"], ["les Pays-Bas", "Amsterdam"],
+  ["l'Autriche", "Vienne"], ["la Bulgarie", "Sofia"], ["Chypre", "Nicosie"], ["la Croatie", "Zagreb"], ["le Danemark", "Copenhague"], ["l'Espagne", "Madrid"],
+  ["l'Estonie", "Tallinn"], ["la Finlande", "Helsinki"], ["la Grèce", "Athènes"], ["la Hongrie", "Budapest"], ["l'Irlande", "Dublin"], ["la Lettonie", "Riga"],
+  ["la Lituanie", "Vilnius"], ["Malte", "La Valette"], ["la Pologne", "Varsovie"], ["le Portugal", "Lisbonne"], ["la Roumanie", "Bucarest"], ["la Slovaquie", "Bratislava"],
+  ["la Slovénie", "Ljubljana"], ["la Suède", "Stockholm"], ["la Tchéquie", "Prague"],
+];
+
+const UNION_EUROPEENNE: ThemeHGCM = {
+  id: "union-europeenne-cm2", classe: "CM2", histoire: false, titre: "L'Union européenne",
+  question: "Qu'est-ce que l'Union européenne ?",
+  motsCles: [
+    ["l'Europe", "Un continent, limité à l'est, par convention, par les monts Oural."],
+    ["l'Union européenne", "L'union politique et économique de 27 États d'Europe."],
+    ["le pays fondateur", "L'un des six pays qui ont créé la Communauté économique européenne en 1957."],
+    ["le traité", "Un accord signé entre plusieurs États."],
+    ["l'euro", "La monnaie commune d'une vingtaine de pays de l'Union européenne."],
+  ],
+  lieux: [...PAYS_UE.map(([p]) => p), "la Suisse", "la Norvège", "le Royaume-Uni", "les monts Oural"],
+  exercices: [
+    {
+      sorte: "trier", id: "europe-ue", titre: "En Europe, dans l'Union européenne ?",
+      consigne: "Je lis chaque pays d'Europe. Je l'écris dans la bonne colonne : dans l'Union européenne, ou hors de l'Union européenne.",
+      rappel: "L'Europe est un continent ; l'Union européenne, une construction politique de 27 de ses États. Tout pays d'Europe n'est pas dans l'Union.",
+      colonnes: ["Dans l'Union européenne", "En Europe, hors de l'Union européenne"],
+      items: [
+        ["la France", 0], ["l'Allemagne", 0], ["l'Italie", 0], ["l'Espagne", 0], ["la Pologne", 0], ["la Suède", 0], ["la Grèce", 0],
+        ["la Suisse", 1], ["la Norvège", 1], ["le Royaume-Uni", 1], ["l'Islande", 1], ["la Serbie", 1], ["l'Ukraine", 1],
+      ],
+    },
+    {
+      sorte: "document", id: "qu-est-ce-que-ue", titre: "Qu'est-ce que l'Union européenne ?",
+      rappel: "L'Europe, un continent d'une cinquantaine d'États ; l'Union européenne, 27 États unis par des traités : 1957, traité de Rome ; 1992, traité de Maastricht.",
+      texte: [
+        "L'Europe est un continent, limité par l'océan Atlantique à l'ouest, l'océan Arctique au nord, la mer Méditerranée au sud, et à l'est, par convention, par les monts Oural et le Caucase. Elle compte une cinquantaine d'États.",
+        "L'Union européenne, elle, est une construction politique : 27 de ces États ont décidé de s'unir, par des traités — celui de Rome en 1957, celui de Maastricht en 1992. Ils ont des institutions communes, comme le Parlement européen, élu par les citoyens, qui siège à Strasbourg et à Bruxelles. Les personnes et les marchandises circulent librement entre la plupart de ces pays ; une vingtaine d'entre eux partagent la même monnaie, l'euro.",
+        "Le drapeau de l'Union est bleu, avec un cercle de douze étoiles d'or ; sa devise est « Unie dans la diversité ». La Suisse ou la Norvège sont en Europe, mais pas dans l'Union européenne.",
+      ],
+      questions: [
+        ["Quelle est la différence entre l'Europe et l'Union européenne ?", "L'Europe est un continent ; l'Union européenne est une union politique de 27 États."],
+        ["Je cite deux pays d'Europe qui ne sont pas dans l'Union européenne.", "La Suisse, la Norvège, le Royaume-Uni…"],
+        ["Où siège le Parlement européen ?", "À Strasbourg et à Bruxelles."],
+        ["Je relève les dates de deux traités.", "1957, le traité de Rome ; 1992, le traité de Maastricht."],
+      ],
+    },
+    {
+      sorte: "relier", id: "fondateurs", titre: "Les six pays fondateurs",
+      consigne: "Je relie chaque pays fondateur à sa capitale. Puis je le colorie sur la carte de l'Europe.",
+      rappel: "Six pays fondateurs, en 1957 : l'Allemagne, la Belgique, la France, l'Italie, le Luxembourg, les Pays-Bas.",
+      paires: PAYS_UE.slice(0, 6),
+    },
+    {
+      sorte: "tableau", id: "dix-pays", titre: "Dix pays de l'Union européenne",
+      consigne: "J'écris le nom de dix pays de l'Union européenne, dont les six fondateurs, et leur capitale. Puis je les colorie sur la carte.",
+      rappel: "Les six fondateurs, puis par exemple l'Espagne, le Portugal, la Pologne, la Grèce, la Suède.",
+      entetes: ["", "Le pays", "Sa capitale"],
+      lignes: Array.from({ length: 10 }, (_, i) => [String(i + 1), "", ""]),
+      reponses: PAYS_UE.slice(0, 10).map(([p, c], i) => [String(i + 1), p, c]),
+    },
+    {
+      sorte: "tableau", id: "projet-europeen", titre: "L'Union européenne près de chez nous",
+      consigne: "Je cherche un aménagement réalisé avec l'aide de l'Union européenne dans notre région. Je complète le tableau.",
+      rappel: "Un panneau dit souvent « Projet cofinancé par l'Union européenne » sur une route, une gare, un équipement, une rénovation.",
+      entetes: ["", "Ce que j'ai trouvé"],
+      lignes: [["Le nom de l'aménagement", ""], ["Où se trouve-t-il ?", ""], ["À quoi sert-il ?", ""], ["Ce que l'Union européenne a donné", ""], ["Où j'ai trouvé l'information", ""]],
+    },
+  ],
+  evaluation: [
+    ["J'explique la différence entre l'Europe et l'Union européenne.", "L'Europe est un continent ; l'Union européenne, une construction politique de 27 États."],
+    ["Je nomme les six pays fondateurs.", "L'Allemagne, la Belgique, la France, l'Italie, le Luxembourg, les Pays-Bas."],
+    ["Je nomme quatre autres pays de l'Union européenne.", "L'Espagne, le Portugal, la Pologne, la Grèce, la Suède…"],
+    ["J'écris la date du traité de Rome et celle du traité de Maastricht.", "1957 ; 1992."],
+  ],
+};
+
+export const THEMES_HG_CM: ThemeHGCM[] = [
+  MOYEN_AGE, MONARCHIE, EXPLORATIONS, REVOLUTION,
+  REPUBLIQUE_EMPIRE, VERS_REPUBLIQUE, AGE_INDUSTRIEL, PREMIERE_GUERRE, SECONDE_GUERRE, DEPUIS_1945,
+  SE_NOURRIR, INEGALITES, SE_DEPLACER, INTERNET,
+  TERRITOIRE, EAU_DOUCE, UNION_EUROPEENNE,
+];
+
+export const themeHGCM = (id: string): ThemeHGCM | undefined => THEMES_HG_CM.find((t) => t.id === id);

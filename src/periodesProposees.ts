@@ -173,6 +173,10 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
       + "composé ensuite, les verbes dont le radical change en fin d'année.",
     { "phrase-types-cm1": 1, "verbe-sujet-cm1": 1, "complements-cm1": 2, "present-imparfait-futur-cm1": 2, "classes-mots-cm1": 3, "groupe-nominal-cm1": 3,
       "accords-gn-cm1": 4, "passe-compose-cm1": 4, "accord-sujet-verbe-cm1": 5, "radical-cm1": 5 }),
+    ...ligne("en géographie, le programme ne donne que des durées — « 1 ou 2 périodes au choix » pour se nourrir et pour les inégalités, « 1 période » "
+      + "pour se déplacer et pour Internet — et laisse l'ordre libre : se nourrir sur les deux premières périodes, les inégalités en période 3, se "
+      + "déplacer en période 4, Internet en période 5.",
+    { "se-nourrir-cm1": 1, "inegalites-monde-cm1": 3, "se-deplacer-cm1": 4, "internet-cm1": 5 }),
   },
   CM2: {
     ...ligne("après les millions, qui viennent en période 3 : les comparer, les ranger, les placer.", { "comparer-nombres-cm2": 4 }),
@@ -215,6 +219,10 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
       + "les radicaux en fin d'année.",
     { "phrase-types-cm2": 1, "sujet-inverse-cm2": 1, "complements-cm2": 2, "passe-simple-cm2": 2, "groupe-nominal-cm2": 3, "accords-gn-cm2": 3,
       "accord-sujet-verbe-cm2": 3, "temps-composes-cm2": 4, "classes-mots-cm2": 4, "phrase-complexe-cm2": 5, "radical-cm2": 5 }),
+    ...ligne("en géographie, le programme ne donne que des durées — « 2 périodes » pour le territoire français et pour l'eau douce, « 1 période » "
+      + "pour l'Union européenne — et laisse l'ordre libre : le territoire sur les deux premières périodes, l'eau douce en périodes 3 et 4, "
+      + "l'Union européenne en fin d'année, avec la construction européenne que l'histoire étudie en période 5.",
+    { "territoire-francais-cm2": 1, "eau-douce-cm2": 3, "union-europeenne-cm2": 5 }),
   },
 };
 

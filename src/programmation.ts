@@ -42,6 +42,8 @@ const citeLeProgrammeDeFrancais = (classe: string, phrase: string) => `${PROGRAM
 const citeLeLivret = (classe: string, phrase: string) => `Livret d'accompagnement de mathématiques du ${classe} (Éduscol, 2025) : « ${phrase} »`;
 const citeLeLivretDeFrancais = (classe: string, phrase: string) =>
   `Livret d'accompagnement de français du ${classe} (Éduscol, ${classe === "CP" ? 2025 : 2026}) : « ${phrase} »`;
+/** Le programme d'histoire-géographie du cycle 3 (BO n° 22 du 28 mai 2026) : le titre du thème porte sa période. */
+const citeLHistoireDuCycle3 = (classe: string, theme: string) => `Programme d'histoire-géographie du cycle 3 (2026), ${classe} : « ${theme} »`;
 /** Le programme de mathématiques du cycle 3 (BO n° 16 du 17 avril 2025) : le cours moyen. */
 const citeLeProgrammeDuCycle3 = (classe: string, phrase: string) => `Programme de mathématiques du cycle 3 (2025), ${classe} : « ${phrase} »`;
 const GUIDE_MATHS_CP = "Guide « Pour enseigner les nombres, le calcul et la résolution de problèmes au CP » (Éduscol, 2021)";
@@ -61,6 +63,18 @@ const PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
   "prehistoire-ce2": { periode: 1, niveau: "CE2", raison: "Programme d'histoire-géographie du cycle 2 (2026), CE2 : « première période »" },
   "rome-gaule-ce2": { periode: 2, niveau: "CE2", raison: "Programme d'histoire-géographie du cycle 2 (2026), CE2 : « deuxième et troisième périodes »" },
   "royaume-france-ce2": { periode: 4, niveau: "CE2", raison: "Programme d'histoire-géographie du cycle 2 (2026), CE2 : « quatrième et cinquième périodes »" },
+  // L'histoire au cours moyen : l'ordre et les périodes que le programme du cycle 3 recommande, au titre de chaque thème.
+  "moyen-age-cm1": { periode: 1, niveau: "CM1", raison: citeLHistoireDuCycle3("CM1", "Thème 1 : La vie quotidienne au Moyen Âge (XIe - XIIIe siècles) (première et deuxième période)") },
+  "monarchie-cm1": { periode: 2, niveau: "CM1", raison: citeLHistoireDuCycle3("CM1", "Thème 2 : La monarchie en France (XVIe – XVIIe siècles) (deuxième et troisième périodes)") },
+  "explorations-cm1": { periode: 4, niveau: "CM1", raison: citeLHistoireDuCycle3("CM1", "Thème 3 : Explorations et conquêtes par les Européens du XVe au XVIIe siècle (quatrième période)") },
+  "revolution-1789-cm1": { periode: 5, niveau: "CM1", raison: citeLHistoireDuCycle3("CM1", "Thème 4 : 1789, une année révolutionnaire en France (cinquième période)") },
+  "republique-empire-cm2": { periode: 1, niveau: "CM2", raison: citeLHistoireDuCycle3("CM2", "Thème 1 : De la République à l'Empire (1792-1815) (première période)") },
+  "vers-republique-cm2": { periode: 2, niveau: "CM2",
+    raison: citeLHistoireDuCycle3("CM2", "Thème 2 : Vers une France républicaine : la IIe République (1848-1852) et la IIIe République de 1870 à 1914 (deuxième période)") },
+  "age-industriel-cm2": { periode: 2, niveau: "CM2", raison: citeLHistoireDuCycle3("CM2", "Thème 3 : L'âge industriel en France au XIXe siècle (deuxième période)") },
+  "premiere-guerre-cm2": { periode: 3, niveau: "CM2", raison: citeLHistoireDuCycle3("CM2", "Thème 4 : La France dans la Première Guerre mondiale (1914-1918) (troisième période)") },
+  "seconde-guerre-cm2": { periode: 4, niveau: "CM2", raison: citeLHistoireDuCycle3("CM2", "Thème 5 : La France pendant la Seconde Guerre mondiale (1939-1945) (quatrième période)") },
+  "depuis-1945-cm2": { periode: 5, niveau: "CM2", raison: citeLHistoireDuCycle3("CM2", "Thème 6 : la France depuis 1945 : 80 ans de transformations (cinquième période)") },
   "numeration-dizaine-cp": { periode: 1, raison: cite("CP", "L'aspect décimal (base dix) et l'aspect positionnel […] sont abordés dès la période 1 : les élèves comparent, dénombrent et constituent des collections organisées en groupes de dix unités et en unités isolées.") },
   "nombres-livret-cp-59": { periode: 2, raison: cite("CP", "Au plus tard en période 2, les élèves travaillent avec des quantités et des nombres allant jusqu'à cinquante-neuf.") },
   "nombres-livret-cp-100": { periode: 3, raison: cite("CP", "Au plus tard en période 3, les élèves travaillent avec des quantités et des nombres allant jusqu'à cent.") },
