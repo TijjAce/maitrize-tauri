@@ -149,7 +149,7 @@ describe("les problèmes, l'algèbre et la proportionnalité du cours moyen", ()
       for (const f of plan.feuilles) {
         expect(f.seance, `${d.id} — ${f.titre}`).toBeLessThan(d.seances.length);
         // Ni nombre faux, ni « 2,0 » : un entier s'écrit sans virgule.
-        for (const graine of [1, 2, 3]) expect(f.fabriquer(graine).html, `${d.id} — ${f.titre}`).not.toMatch(/NaN|undefined|Infinity|\[object|\d,0+(?!\d)/);
+        for (const graine of [1, 2, 3]) expect(f.fabriquer(graine).html.replace(/<svg[\s\S]*?<\/svg>/g, ""), `${d.id} — ${f.titre}`).not.toMatch(/NaN|undefined|Infinity|\[object|\d,0+(?!\d)/);
       }
     }
     expect(vues.size).toBe(17);
@@ -201,5 +201,60 @@ describe("les problèmes, l'algèbre et la proportionnalité du cours moyen", ()
       }
     }
     expect(verifiees).toBeGreaterThan(3000);
+  });
+});
+
+describe("les grandeurs et mesures du cours moyen", () => {
+  const GRANDEURS = MATHS.filter((c) => /^Grandeurs/.test(c.cible.sousDomaineTitre ?? ""));
+
+  it("donnent à chaque compétence une séquence de sa classe, avec ses feuilles", () => {
+    expect(GRANDEURS.length).toBe(44);
+    const vues = new Set<string>();
+    for (const { cible, classe } of GRANDEURS) {
+      const d = demarcheSuggeree(cible, REF);
+      expect(d.id, `${classe} — ${cible.competenceTitre}`).toMatch(new RegExp(`-${classe.toLowerCase()}$`));
+      expect(d.source, d.id).toMatch(/programme de mathématiques du cycle 3 \(2025\)/);
+      if (vues.has(d.id)) continue;
+      vues.add(d.id);
+      const plan = planDesFeuilles(d.id, { classe, periode: 3, competence: cible.competenceTitre ?? "" })!;
+      expect(plan.materiel.length, d.id).toBe(d.seances.length);
+      for (const f of plan.feuilles) {
+        expect(f.seance, `${d.id} — ${f.titre}`).toBeLessThan(d.seances.length);
+        for (const graine of [1, 2, 3]) {
+          const { html } = f.fabriquer(graine);
+          // Le texte, hors des dessins, dont les coordonnées s'écrivent « 35,0 ».
+          expect(html.replace(/<svg[\s\S]*?<\/svg>/g, ""), `${d.id} — ${f.titre}`).not.toMatch(/NaN|undefined|Infinity|\[object|\d,0+(?!\d)/);
+          // Une feuille reprise du cycle 2 cite le programme du cycle 3.
+          expect(html, `${d.id} — ${f.titre}`).not.toMatch(/cycle 2/);
+        }
+      }
+    }
+    expect(vues.size).toBe(10);
+    const perimetre = GRANDEURS.find((c) => c.classe === "CM1" && /périmètre d.un polygone en utilisant/.test(c.cible.competenceTitre ?? ""))!;
+    expect(demarcheSuggeree(perimetre.cible, REF).id).toBe("perimetre-cm1");
+  });
+
+  it("convertissent et calculent juste, les durées comprises", async () => {
+    const { htmlGrandeursCM, EXERCICES_GRANDEURS } = await import("./grandeursCoursMoyen");
+    const NOMBRE = String.raw`\d{1,3}(?:[   ]\d{3})*(?:,\d+)?`;
+    const UNITE = "km|hm|dam|m|dm|cm|mm|t|kg|hg|dag|g|dg|cg|mg|hL|daL|L|dL|cL|mL|m²|dm²|cm²";
+    const FACTEUR: Record<string, number> = { km: 1e3, hm: 1e2, dam: 10, m: 1, dm: 0.1, cm: 0.01, mm: 0.001, t: 1e6, kg: 1e3, hg: 1e2, dag: 10, g: 1, dg: 0.1, cg: 0.01, mg: 0.001,
+      hL: 100, daL: 10, L: 1, dL: 0.1, cL: 0.01, mL: 0.001, "m²": 1, "dm²": 0.01, "cm²": 0.0001 };
+    const lire = (t: string) => Number(t.replace(/[   ]/g, "").replace(",", "."));
+    const secondes = (t: string) => { const m = /(?:(\d+) h)?\s?(?:(\d+) min)?\s?(?:(\d+) s)?/.exec(t.trim())!; return Number(m[1] ?? 0) * 3600 + Number(m[2] ?? 0) * 60 + Number(m[3] ?? 0); };
+    let verifies = 0;
+    for (const classe of ["CM1", "CM2"] as const) for (const grandeur of ["longueur", "masse", "contenance"] as const) for (const { id } of EXERCICES_GRANDEURS) for (let g = 1; g <= 12; g++) {
+      const corrige = htmlGrandeursCM({ classe, grandeur, exercices: [id], combien: 6 }, g).split('class="page corrige"')[1]
+        .replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+      for (const m of corrige.matchAll(new RegExp(String.raw`(?<![+−] |[\d,]|\d[   ])(${NOMBRE}) (${UNITE}) = (${NOMBRE}) (${UNITE})(?![A-Za-z\d²])`, "g"))) {
+        verifies++;
+        expect(lire(m[3]) * FACTEUR[m[4]], m[0]).toBeCloseTo(lire(m[1]) * FACTEUR[m[2]], 6);
+      }
+      for (const m of corrige.matchAll(/De ([\d hmins]+?) à ([\d hmins]+?) : .*?En tout : ([\d hmins]+?)(?= De |$)/g)) {
+        verifies++;
+        expect(secondes(m[3]), m[0]).toBe(secondes(m[2]) - secondes(m[1]));
+      }
+    }
+    expect(verifies).toBeGreaterThan(500);
   });
 });
