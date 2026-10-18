@@ -56,6 +56,8 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
       { "classe-espace-organise-cp": 1, "ecole-quartier-cp": 3, "representations-monde-cp": 5 }),
   },
   CE1: {
+    ...ligne("les rangs jusqu'à cent prolongent ceux du CP, une fois les nombres jusqu'à mille installés — au plus tard en période 2, "
+      + "d'après le programme — ; les suites évolutives, plus difficiles, viennent en fin de séquence.", { "ordinaux-ce1": 3 }),
     ...ligne("après le symbole × de la période 1, avec la table de 2 et les doubles, que le livret du CE1 met en périodes 1 et 2.", { "parite-ce1": 2 }),
     ...ligne("commencés en fin de CP — en périodes 4 ou 5, d'après le guide du CP —, les problèmes de comparaison reviennent en période 2, "
       + "entre les problèmes en deux étapes et les parties-tout.", { "comparaison-ce1": 2 }),

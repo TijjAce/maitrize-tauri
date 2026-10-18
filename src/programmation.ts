@@ -89,6 +89,12 @@ const PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
   "groupements-ce2": { periode: 1, raison: cite("CE2", "Des nombres supérieurs à mille sont rencontrés dès le début de la période 1.") },
   "nombres-livret-ce2": { periode: 2, raison: cite("CE2", "Au plus tard en période 2, les élèves travaillent avec des quantités et des nombres allant jusqu'à 10 000.") },
   "comparer-nombres-ce2": { periode: 2, raison: cite("CE2", "Au plus tard en période 2, les élèves travaillent avec des quantités et des nombres allant jusqu'à 10 000.") },
+  // La demi-droite graduée va jusqu'aux nombres de la classe : la période où le programme les met.
+  "demi-droite-cp": { periode: 3, raison: cite("CP", "Au plus tard en période 3, les élèves travaillent avec des quantités et des nombres allant jusqu'à cent.") },
+  "demi-droite-ce1": { periode: 2, raison: cite("CE1", "Au plus tard en période 2, les élèves travaillent avec des quantités et des nombres allant jusqu'à mille.") },
+  "demi-droite-ce2": { periode: 2, raison: cite("CE2", "Au plus tard en période 2, les élèves travaillent avec des quantités et des nombres allant jusqu'à 10 000.") },
+  // Les ordinaux du CP : le guide les met dans les progressions des périodes 3 à 5.
+  "ordinaux-cp": { periode: 3, raison: citeLeGuide(GUIDE_MATHS_CP, "Les progressions pour les périodes 3 à 5 […] Repérage d'un rang ou d'une position (jusqu'à 100).") },
   // Le calcul mental : la période que donne la séquence du livret.
   "arbre-a-calcul-cp": { periode: 3, raison: citeLeLivret("CP", "Cette séquence peut être abordée en période 3.") },
   "ajouter-9-19-29-ce1": { periode: 2, raison: citeLeLivret("CE1", "À partir de la période 2, au fur et à mesure de l'apprentissage des nombres : la séquence comprendra plusieurs séances qui respecteront les rythmes d'apprentissages des élèves.") },
