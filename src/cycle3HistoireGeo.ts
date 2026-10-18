@@ -20,6 +20,9 @@ import { THEMES_HG_CM, themeHGCM } from "./themesHistoireGeoCM";
 
 export const PROGRAMME_HG_C3 = "Bâtie sur le programme d'histoire-géographie du cycle 3 (BO n° 22 du 28 mai 2026, annexe 4), à la demande de l'enseignant : "
   + "la question du thème, ses objectifs, ses attendus, ses repères et ses mots-clés";
+/** Au CM2, ce programme ne s'applique qu'à la rentrée 2027 : la séquence le dit (page Éduscol du cycle 3, septembre 2026). */
+const PROGRAMME_HG_C3_CM2 = `${PROGRAMME_HG_C3}. Ce programme s'applique au CM2 à la rentrée 2027 ; en 2026-2027, le CM2 suit encore celui de 2020 `
+  + "(Éduscol, ressources d'accompagnement du cycle 3, septembre 2026)";
 
 const ph = (phase: string, duree: string, description: string, posture = ""): PhaseCadre => ({ phase, duree, description, posture });
 const seance = (titre: string, objectifs: string, duree: number, phases: PhaseCadre[]): SeanceCadre => ({ titre, objectifs, duree, phases });
@@ -226,7 +229,7 @@ const REVOLUTION_CM1: Demarche = {
 // ── Histoire, CM2 ─────────────────────────────────────────────────────────
 
 const REPUBLIQUE_EMPIRE_CM2: Demarche = {
-  id: "republique-empire-cm2", nom: "De la République à l'Empire, 1792-1815 (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3,
+  id: "republique-empire-cm2", nom: "De la République à l'Empire, 1792-1815 (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3_CM2,
   resume: "« Comment la République et l'Empire ont-ils transformé la vie des Français et des Françaises ? » Participer à la vie politique depuis 1789 : "
     + "les clubs, les journaux, les pétitions — celle de 319 femmes menées par Pauline Léon, en mars 1792 — ; la guerre, La Marseillaise (avril 1792), "
     + "la chute du roi et la naissance de la République (septembre 1792) ; le combat pour l'abolition de l'esclavage (1794), son rétablissement (1802) ; "
@@ -266,7 +269,7 @@ const REPUBLIQUE_EMPIRE_CM2: Demarche = {
 };
 
 const VERS_REPUBLIQUE_CM2: Demarche = {
-  id: "vers-republique-cm2", nom: "Vers une France républicaine : la IIe et la IIIe République, 1848-1914 (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3,
+  id: "vers-republique-cm2", nom: "Vers une France républicaine : la IIe et la IIIe République, 1848-1914 (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3_CM2,
   resume: "« Comment la France est-elle devenue une République ? » 1848 : la IIe République, le suffrage universel masculin et l'abolition définitive "
     + "de l'esclavage ; la IIIe République et ses grandes lois — la liberté de la presse, les lois Ferry sur l'École (1882-1886), la séparation des "
     + "Églises et de l'État le 9 décembre 1905 — ; les symboles de la République, en remobilisant l'enseignement moral et civique ; l'empire colonial "
@@ -301,7 +304,7 @@ const VERS_REPUBLIQUE_CM2: Demarche = {
 };
 
 const AGE_INDUSTRIEL_CM2: Demarche = {
-  id: "age-industriel-cm2", nom: "L'âge industriel en France au XIXe siècle (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3,
+  id: "age-industriel-cm2", nom: "L'âge industriel en France au XIXe siècle (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3_CM2,
   resume: "« Quelles sont les transformations économiques et sociales en France au XIXe siècle ? » La vapeur, le charbon, la locomotive de Stephenson, le "
     + "chemin de fer et les usines ; la vie quotidienne transformée ; les progrès de la médecine — Pasteur et le vaccin contre la rage — ; les "
     + "ouvrières et les ouvriers, à la mine, à l'atelier, à l'usine, et leurs luttes — le droit de grève, la liberté syndicale — ; la vie des "
@@ -342,7 +345,7 @@ const AGE_INDUSTRIEL_CM2: Demarche = {
 };
 
 const PREMIERE_GUERRE_CM2: Demarche = {
-  id: "premiere-guerre-cm2", nom: "La France dans la Première Guerre mondiale, 1914-1918 (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3,
+  id: "premiere-guerre-cm2", nom: "La France dans la Première Guerre mondiale, 1914-1918 (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3_CM2,
   resume: "« Comment la Première Guerre mondiale a-t-elle bouleversé la société française ? » Situer la guerre sur la frise (1914-1918, l'armistice du "
     + "11 novembre 1918) ; le nord et l'est de la France, lieu des combats du front occidental ; la vie des poilus dans les tranchées, une grande "
     + "bataille — Verdun — ; la guerre de mouvement et la guerre de position ; la mobilisation de toute la population, des femmes, de l'économie et des "
@@ -383,7 +386,7 @@ const PREMIERE_GUERRE_CM2: Demarche = {
 };
 
 const SECONDE_GUERRE_CM2: Demarche = {
-  id: "seconde-guerre-cm2", nom: "La France pendant la Seconde Guerre mondiale, 1939-1945 (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3,
+  id: "seconde-guerre-cm2", nom: "La France pendant la Seconde Guerre mondiale, 1939-1945 (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3_CM2,
   resume: "« Comment la France a-t-elle vécu la défaite, l'Occupation puis la Libération ? » Les étapes de la guerre en France — la « drôle de guerre », "
     + "la défaite de juin 1940, l'Occupation et la collaboration, la Libération — ; la vie sous l'Occupation ; la Résistance, l'appel du 18 juin 1940 et "
     + "Jean Moulin ; le régime de Vichy, sa politique antisémite et sa participation à l'extermination des Juifs — la rafle du Vel d'Hiv, en 1942 — ou "
@@ -427,7 +430,7 @@ const SECONDE_GUERRE_CM2: Demarche = {
 };
 
 const DEPUIS_1945_CM2: Demarche = {
-  id: "depuis-1945-cm2", nom: "La France depuis 1945 : 80 ans de transformations (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3,
+  id: "depuis-1945-cm2", nom: "La France depuis 1945 : 80 ans de transformations (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3_CM2,
   resume: "« Comment expliquer la longue période de paix et de transformation depuis 1945 ? » Une République démocratique et sociale : le droit de vote "
     + "des femmes (1944), la Sécurité sociale (1945), la Ve République fondée en 1958 avec le général de Gaulle ; des droits pour les femmes, dont ceux "
     + "de 1965 ; une société transformée — les transports, la maison, les loisirs, Internet — ; la construction européenne, du traité de Rome (1957) à "
@@ -600,7 +603,7 @@ const INTERNET_CM1: Demarche = {
 // ── Géographie, CM2 : la France, l'Union européenne ───────────────────────
 
 const TERRITOIRE_CM2: Demarche = {
-  id: "territoire-francais-cm2", nom: "L'organisation du territoire français (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3,
+  id: "territoire-francais-cm2", nom: "L'organisation du territoire français (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3_CM2,
   resume: "« Comment est organisé le territoire français ? » Les cinq principales agglomérations ; les principaux axes autoroutiers et ferroviaires, en "
     + "étoile autour de Paris ; le découpage administratif — la commune, le département, la région — ; les dix-huit régions administratives et leur "
     + "capitale ; les caractéristiques de deux régions, dont celle de l'école ; le département où vit l'élève ; un croquis du territoire, la production "
@@ -640,7 +643,7 @@ const TERRITOIRE_CM2: Demarche = {
 };
 
 const EAU_DOUCE_CM2: Demarche = {
-  id: "eau-douce-cm2", nom: "Les usages de l'eau douce en France (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3,
+  id: "eau-douce-cm2", nom: "Les usages de l'eau douce en France (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3_CM2,
   resume: "« Pourquoi gérer l'eau douce en France ? » L'eau, une ressource limitée ; les grands fleuves — la Garonne, la Loire, le Maroni, le Rhin, le "
     + "Rhône, la Seine —, les principaux massifs — les Alpes, la Corse, le Jura, le Massif central, les Pyrénées, les Vosges — et deux grands lacs, dont "
     + "un lac naturel ; les différents usages de l'eau ; un conflit d'usages, à partir d'un exemple précis — le lac de Serre-Ponçon, ou un exemple "
@@ -680,7 +683,7 @@ const EAU_DOUCE_CM2: Demarche = {
 };
 
 const UNION_EUROPEENNE_CM2: Demarche = {
-  id: "union-europeenne-cm2", nom: "L'Union européenne (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3,
+  id: "union-europeenne-cm2", nom: "L'Union européenne (CM2)", famille: FAMILLE, source: PROGRAMME_HG_C3_CM2,
   resume: "« Qu'est-ce que l'Union européenne ? » La différence entre le continent européen et la construction politique qu'est l'Union européenne, "
     + "sur un fond de carte de l'Europe dans ses limites conventionnelles ; le traité de Rome (1957), le traité de Maastricht (1992) ; dix pays membres, "
     + "dont les six fondateurs, localisés et nommés ; un aménagement réalisé avec le soutien de l'Union européenne dans la région de l'école. Le programme "
