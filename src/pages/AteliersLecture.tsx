@@ -8,7 +8,7 @@ import { useGraine } from "../modifierFeuille";
 import { Boutons, Coche, Colonnes, bureau, imprimer } from "./AteliersMaths";
 import { EXERCICES_VOIX_HAUTE, REGLAGES_VOIX_HAUTE, STYLE_VOIX_HAUTE, htmlVoixHaute, type Classe, type ExerciceVoixHaute } from "../lectureVoixHaute";
 import { ouvrirOnglet } from "../ongletDemande";
-import { EXERCICES_COMPREHENSION, REGLAGES_COMPREHENSION, STYLE_COMPREHENSION, htmlComprehension, type ExerciceComprehension, type ReglagesComprehension } from "../comprehension";
+import { EXERCICES_COMPREHENSION, REGLAGES_COMPREHENSION, STYLE_COMPREHENSION, exercicesDeLaClasse, htmlComprehension, type ExerciceComprehension, type ReglagesComprehension } from "../comprehension";
 import { TEXTES } from "../textesDeComprehension";
 import { EXERCICES_LECTEUR, REGLAGES_LECTEUR, STYLE_LECTEUR, htmlLecteur, type ExerciceLecteur } from "../carnetDeLecteur";
 
@@ -78,24 +78,28 @@ export function ComprehensionTab() {
   const titre = `Comprendre un texte — ${minusculeInitiale(libelle)}`;
   // Les textes de la classe d'abord ; puis ceux des autres classes, pour qui en a besoin.
   const textes = [...TEXTES.filter((t) => t.classe === r.classe), ...TEXTES.filter((t) => t.classe !== r.classe)];
-  const avecTexte = r.exercice !== "typesDeTextes";
+  const avecTexte = r.exercice !== "typesDeTextes" && r.exercice !== "genres";
   const avecFiltre = r.exercice === "questions" || r.exercice === "ecoute";
   return (
     <Colonnes
       gauche={<>
         <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
           Comprendre un texte
-          <Aide titre="Comprendre un texte" vers="droite"><p>Des textes à la longueur du programme — une dizaine de lignes au CP, une quinzaine au CE1, une vingtaine au CE2 —, récits, documentaires, règles et recettes, poème et théâtre au CE2. Le texte s'imprime seul, ses lignes numérotées : on le pose à côté des questions et on y revient pour justifier.</p></Aide>
+          <Aide titre="Comprendre un texte" vers="droite"><p>Des textes à la longueur du programme — une dizaine de lignes au CP, une quinzaine au CE1, une vingtaine au CE2, une page au cours moyen —, récits, documentaires, règles et recettes, poèmes et théâtre à partir du CE2 ; au cours moyen, une fable de La Fontaine et un poème de Victor Hugo, qui raconte, les paragraphes, les genres. Le texte s'imprime seul, ses lignes numérotées : on le pose à côté des questions et on y revient pour justifier.</p></Aide>
         </h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
           <Field label="Classe">
-            <Select value={r.classe} onChange={(e) => maj({ classe: e.target.value as Classe, texte: "" })}>
-              <option value="CP">CP</option><option value="CE1">CE1</option><option value="CE2">CE2</option>
+            <Select value={r.classe} onChange={(e) => {
+              const classe = e.target.value as Classe;
+              // Un exercice du cours moyen n'a pas de sens au cycle 2 : on revient aux questions.
+              maj({ classe, texte: "", ...(exercicesDeLaClasse(classe).some((x) => x.id === r.exercice) ? {} : { exercice: "questions" as ExerciceComprehension }) });
+            }}>
+              <option value="CP">CP</option><option value="CE1">CE1</option><option value="CE2">CE2</option><option value="CM1">CM1</option><option value="CM2">CM2</option>
             </Select>
           </Field>
           <Field label="Exercice">
             <Select value={r.exercice} onChange={(e) => maj({ exercice: e.target.value as ExerciceComprehension })}>
-              {EXERCICES_COMPREHENSION.map((e) => <option key={e.id} value={e.id}>{e.libelle}</option>)}
+              {exercicesDeLaClasse(r.classe).map((e) => <option key={e.id} value={e.id}>{e.libelle}</option>)}
             </Select>
           </Field>
         </div>
@@ -117,7 +121,7 @@ export function ComprehensionTab() {
             </Select>
           </Field>
         )}
-        <Boutons onTirage={!r.texte || r.exercice === "typesDeTextes" || r.exercice === "motInconnu" ? () => setGraine(graineAuHasard()) : undefined}
+        <Boutons onTirage={!r.texte || r.exercice === "typesDeTextes" || r.exercice === "genres" || r.exercice === "motInconnu" ? () => setGraine(graineAuHasard()) : undefined}
           onImprimer={() => imprimer("comprehension", titre, html, STYLE_COMPREHENSION)} onBureau={() => bureau("comprehension", titre, html, STYLE_COMPREHENSION)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_COMPREHENSION} />}

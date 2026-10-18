@@ -39,6 +39,7 @@ import { estUneDemarcheDesGrandeursCM, planDesGrandeursCM } from "./cycle3Grande
 import { estUneDemarcheDeLaGeometrieCM, planDeLaGeometrieCM } from "./cycle3Geometrie";
 import { estUneDemarcheDesDonneesCM, planDesDonneesCM } from "./cycle3Donnees";
 import { estUneDemarcheDeLangueCM, planDeLaLangueCM } from "./cycle3Langue";
+import { estUneDemarcheDeLectureCM, planDeLaLectureCM } from "./cycle3Lecture";
 import type { ElemSalle } from "./planDeLaClasse";
 import { reglagesLaisses } from "./reglagesLaisses";
 import { memesReglages } from "./modifierFeuille";
@@ -196,8 +197,9 @@ export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): Plan
   if (estUneDemarcheDesGrandeursCM(demarcheId)) return planDesGrandeursCM(demarcheId, ctx);
   if (estUneDemarcheDeLaGeometrieCM(demarcheId)) return planDeLaGeometrieCM(demarcheId, ctx);
   if (estUneDemarcheDesDonneesCM(demarcheId)) return planDesDonneesCM(demarcheId, ctx);
-  // Le français du cours moyen : la grammaire et la conjugaison (voir cycle3Langue.ts).
+  // Le français du cours moyen : la grammaire et la conjugaison, la lecture (voir cycle3Langue.ts, cycle3Lecture.ts).
   if (estUneDemarcheDeLangueCM(demarcheId)) return planDeLaLangueCM(demarcheId, ctx);
+  if (estUneDemarcheDeLectureCM(demarcheId)) return planDeLaLectureCM(demarcheId, ctx);
   if (!CLASSE_DES_DEMARCHES[demarcheId]) return null;
   // Grouper par dix, la centaine, le millier : les huit feuilles des cubes, de la grande collection à l'évaluation.
   if (demarcheId === "numeration-dizaine-cp" || demarcheId.startsWith("groupements-")) {

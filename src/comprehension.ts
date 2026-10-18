@@ -12,11 +12,12 @@
 import { escapeHtml } from "./print";
 import { feuille } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
-import { TEXTES, ligneDe, lignesNumerotees, textesDeLaClasse, texteDe, type Classe, type Question, type TexteAComprendre, type TypeDeQuestion, type TypeDeTexte } from "./textesDeComprehension";
+import { TEXTES, ligneDe, lignesNumerotees, paragraphesDe, textesDeLaClasse, texteDe, type Classe, type Question, type TexteAComprendre, type TypeDeQuestion, type TypeDeTexte } from "./textesDeComprehension";
 
-export type ExerciceComprehension = "questions" | "vraiFaux" | "sensGlobal" | "moments" | "reprises" | "inferences" | "emotions" | "motInconnu" | "typesDeTextes" | "ecoute";
+export type ExerciceComprehension = "questions" | "vraiFaux" | "sensGlobal" | "moments" | "reprises" | "inferences" | "emotions" | "motInconnu" | "typesDeTextes" | "ecoute"
+  | "narrateur" | "paragraphes" | "genres";
 
-export const EXERCICES_COMPREHENSION: { id: ExerciceComprehension; libelle: string }[] = [
+export const EXERCICES_COMPREHENSION: { id: ExerciceComprehension; libelle: string; cm?: boolean }[] = [
   { id: "questions", libelle: "Lire et répondre en revenant au texte" },
   { id: "vraiFaux", libelle: "Vrai, faux, ou je ne peux pas savoir" },
   { id: "sensGlobal", libelle: "Le sens global : le bon résumé" },
@@ -27,7 +28,15 @@ export const EXERCICES_COMPREHENSION: { id: ExerciceComprehension; libelle: stri
   { id: "motInconnu", libelle: "Le mot inconnu : le sens par le contexte" },
   { id: "typesDeTextes", libelle: "Récit, documentaire, règle ou recette, poème, théâtre" },
   { id: "ecoute", libelle: "Écouter pour comprendre : le texte lu par l'adulte" },
+  // Le cours moyen : exemples de réussite du programme du cycle 3.
+  { id: "narrateur", libelle: "Qui raconte ? Les personnages, le thème (CM)", cm: true },
+  { id: "paragraphes", libelle: "Un titre par paragraphe ; l'essentiel du texte (CM)", cm: true },
+  { id: "genres", libelle: "Le genre : récit, conte, fable, poème, théâtre, documentaire (CM)", cm: true },
 ];
+
+const auCoursMoyen = (c: Classe) => c === "CM1" || c === "CM2";
+/** Les exercices d'une classe : ceux du cours moyen n'y servent qu'au CM. */
+export const exercicesDeLaClasse = (c: Classe) => EXERCICES_COMPREHENSION.filter((e) => !e.cm || auCoursMoyen(c));
 
 export interface ReglagesComprehension {
   exercice: ExerciceComprehension;
@@ -96,10 +105,22 @@ export function souligner(ligne: string, mots: string[], classe = "cx-souligne")
 
 /** Le texte, lignes numérotées ; `marques` : les mots à souligner, ligne par ligne. */
 function pageDuTexte(t: TexteAComprendre, consigne: string, marques: Map<number, string[]> = new Map(), entete = TETE, classe = "page", apres = "", sansTitre = false): string {
+  const titres = intertitresDe(t);
   const lignes = lignesNumerotees(t).map(({ n, texte }) => (n === null
     ? '<tr class="cx-strophe"><td></td><td></td></tr>'
-    : `<tr><td class="cx-n">${n}</td><td class="cx-l">${souligner(texte, marques.get(n) ?? [])}</td></tr>`)).join("");
-  return `<div class="${classe}">${titre(sansTitre ? "Le texte" : t.titre)}${entete}${consigne ? regle(consigne) : ""}<table class="cx-texte cx-${t.classe.toLowerCase()}">${lignes}</table>${apres}</div>`;
+    : `<tr><td class="cx-n">${n}</td><td class="cx-l${titres.has(n) ? " cx-intertitre" : ""}">${souligner(texte, marques.get(n) ?? [])}</td></tr>`)).join("");
+  const source = t.source ? `<div class="cx-source">${escapeHtml(t.source)}</div>` : "";
+  return `<div class="${classe}">${titre(sansTitre ? "Le texte" : t.titre)}${entete}${consigne ? regle(consigne) : ""}<table class="cx-texte cx-${t.classe.toLowerCase()}">${lignes}</table>${source}${apres}</div>`;
+}
+
+/**
+ * Les intertitres d'un documentaire ou d'une règle : la première ligne d'un
+ * paragraphe qui ne finit pas sa phrase par un point, une virgule… Un récit
+ * coupe ses phrases d'une ligne à l'autre : il n'en a pas.
+ */
+function intertitresDe(t: TexteAComprendre): Set<number> {
+  if (!auCoursMoyen(t.classe) || (t.type !== "informatif" && t.type !== "prescriptif")) return new Set();
+  return new Set(paragraphesDe(t).map((p) => p.de).filter((n) => !/[.,;:!?…»)]\s*$/.test(ligneDe(t, n))));
 }
 
 const pastille = (q: Question) => `<span class="cx-pastille cx-${q.type === "littérale" ? "lit" : q.type === "inférence" ? "inf" : q.type === "reprise" ? "rep" : "voc"}">${TYPES_DE_QUESTIONS[q.type].pastille}</span>`;
@@ -297,8 +318,8 @@ function feuilleMotInconnu(r: ReglagesComprehension, graine: number): string {
 /** Les types de textes : un extrait de chaque, à reconnaître ; au CE2, le poème et le théâtre en plus. */
 function feuilleTypes(r: ReglagesComprehension, graine: number): string {
   const alea = hasard(graine + 13);
-  const types: TypeDeTexte[] = r.classe === "CE2" ? ["narratif", "informatif", "prescriptif", "poétique", "théâtral"] : ["narratif", "informatif", "prescriptif"];
-  const rang = { CP: 0, CE1: 1, CE2: 2 };
+  const types: TypeDeTexte[] = r.classe === "CP" || r.classe === "CE1" ? ["narratif", "informatif", "prescriptif"] : ["narratif", "informatif", "prescriptif", "poétique", "théâtral"];
+  const rang: Record<Classe, number> = { CP: 0, CE1: 1, CE2: 2, CM1: 3, CM2: 4 };
   const extraits = melanger(alea, types.map((ty) => {
     // Un texte de ce type, de la classe ou d'une classe d'avant.
     const parmi = TEXTES.filter((t) => t.type === ty && rang[t.classe] <= rang[r.classe]);
@@ -314,6 +335,100 @@ function feuilleTypes(r: ReglagesComprehension, graine: number): string {
   return page + corrige;
 }
 
+/** Un texte qui a ce qu'il faut pour l'exercice : celui de l'enseignant, sinon un de la classe, sinon de la classe la plus proche. */
+function texteAvec(r: ReglagesComprehension, graine: number, convient: (t: TexteAComprendre) => boolean): TexteAComprendre {
+  const choisi = r.texte ? texteDe(r.texte) : undefined;
+  if (choisi && convient(choisi)) return choisi;
+  const ordre: Classe[] = r.classe === "CM2" ? ["CM2", "CM1", "CE2"] : r.classe === "CM1" ? ["CM1", "CM2", "CE2"] : [r.classe, "CM1"];
+  for (const c of ordre) {
+    const candidats = textesDeLaClasse(c).filter(convient);
+    if (candidats.length) return candidats[Math.floor(hasard(graine)() * candidats.length)];
+  }
+  return texteDeLExercice(r, graine);
+}
+
+const NARRATIONS: { id: NonNullable<TexteAComprendre["narration"]>; libelle: string }[] = [
+  { id: "je", libelle: "quelqu'un qui dit « je » : un personnage de l'histoire, ou le poète" },
+  { id: "il", libelle: "un narrateur qui n'est pas dans l'histoire : il dit « il » ou « elle »" },
+  { id: "theatre", libelle: "personne : ce sont les personnages qui parlent (le théâtre)" },
+];
+
+/**
+ * Qui raconte, les personnages, le personnage principal, le thème, un titre
+ * qui résume l'histoire — les exemples de réussite du CM1 : « Il identifie le
+ * narrateur, les personnages (dont le personnage principal) et le
+ * thème/sujet. Il choisit un titre qui résume l'histoire. » Le titre de
+ * l'auteur est caché sur la page du texte, donné au corrigé.
+ */
+function feuilleNarrateur(r: ReglagesComprehension, graine: number): string {
+  const t = texteAvec(r, graine, (x) => !!x.narration && !!x.personnages);
+  const choix = NARRATIONS.map((n) => `<div class="cx-choix"><span class="cx-case"></span> ${escapeHtml(n.libelle)}</div>`).join("");
+  const q = (n: number, enonce: string, corps: string) => `<div class="cx-q"><div class="cx-enonce"><b>${n}.</b> ${escapeHtml(enonce)}</div>${corps}</div>`;
+  const rep = (n = 1) => '<div class="cx-rep"></div>'.repeat(n);
+  const items = [
+    q(1, "Qui raconte ? Je coche.", `${choix}<div class="cx-preuve">L'indice : <span class="cx-pointilles"></span></div>`),
+    q(2, "Quels sont les personnages ? J'écris leurs noms.", rep()),
+    q(3, "Qui est le personnage principal ? J'explique pourquoi.", rep(2)),
+    q(4, "Quel est le thème du texte, de quoi parle-t-il ? Je l'écris en quelques mots.", rep()),
+    q(5, "Je propose un titre qui résume le texte.", rep()),
+  ].join("");
+  const page = `<div class="page">${titre("Qui raconte ? Les personnages, le thème")}${TETE}${regle("Je lis le texte en entier. Puis je réponds aux questions en revenant au texte.")}<div class="cx-questions">${items}</div></div>`;
+  const narration = NARRATIONS.find((n) => n.id === t.narration)!;
+  const corrige = `<div class="page corrige">${titre(`${t.titre} — corrigé`)}<div class="cx-corrige">
+    <div class="cx-c"><b>1.</b> <b>${escapeHtml(narration.libelle)}</b>. <span class="cx-ligne">${escapeHtml(t.narrateur ?? "")}</span></div>
+    <div class="cx-c"><b>2.</b> <b>${escapeHtml(t.personnages!.join(", "))}</b>.</div>
+    <div class="cx-c"><b>3.</b> <b>${escapeHtml(t.principal ?? t.personnages![0])}</b> <span class="cx-ligne">— c'est autour de lui ou d'elle que tout se passe.</span></div>
+    <div class="cx-c"><b>4.</b> <b>${escapeHtml(t.theme ?? "")}</b>.</div>
+    <div class="cx-c"><b>5.</b> Le titre de l'auteur : <b>${escapeHtml(t.titre)}</b> <span class="cx-ligne">— tout titre qui dit l'essentiel convient.</span></div></div></div>`;
+  return pageDuTexte(t, "", new Map(), TETE, "page", "", true) + page + corrige;
+}
+
+/**
+ * Les idées essentielles : un titre pour chaque paragraphe, puis l'essentiel
+ * du texte — « Il trouve les idées essentielles d'un texte et propose des
+ * titres de paragraphes » (exemples de réussite du CM2) ; « restituer
+ * l'essentiel d'un texte » (programme du CM2).
+ */
+function feuilleParagraphes(r: ReglagesComprehension, graine: number): string {
+  const t = texteAvec(r, graine, (x) => !!x.titresDesParagraphes && x.titresDesParagraphes.length === paragraphesDe(x).length);
+  const ps = paragraphesDe(t);
+  const lignes = ps.map((p, i) => `<tr><td class="cx-centre"><b>${i + 1}</b></td><td class="cx-centre">${p.de} à ${p.a}</td><td></td></tr>`).join("");
+  const page = `<div class="page">${titre(`${t.titre} — l'essentiel`)}${TETE}${regle("Je relis le texte paragraphe par paragraphe. Pour chacun, j'écris un titre qui dit l'essentiel. Puis j'écris l'essentiel du texte en trois ou quatre phrases.")}
+    <table class="cx-tableau cx-par"><tr><th class="cx-centre">Paragraphe</th><th class="cx-centre">Lignes</th><th>Mon titre</th></tr>${lignes}</table>
+    <div class="cx-q"><div class="cx-enonce">L'essentiel du texte, en trois ou quatre phrases :</div>${'<div class="cx-rep"></div>'.repeat(4)}</div></div>`;
+  const corrige = `<div class="page corrige">${titre(`${t.titre} — corrigé`)}<table class="cx-tableau cx-par"><tr><th class="cx-centre">Paragraphe</th><th class="cx-centre">Lignes</th><th>Un titre possible</th></tr>${
+    ps.map((p, i) => `<tr><td class="cx-centre">${i + 1}</td><td class="cx-centre">${p.de} à ${p.a}</td><td>${escapeHtml(t.titresDesParagraphes![i])}</td></tr>`).join("")}</table>
+    <div class="cx-corrige"><div class="cx-c">L'essentiel : <b>${escapeHtml(t.resumes[0])}</b> <span class="cx-ligne">— tout titre et tout résumé qui disent l'essentiel conviennent.</span></div></div></div>`;
+  return pageDuTexte(t, "") + page + corrige;
+}
+
+/** Les genres du cours moyen et ce qui les fait reconnaître (exemples de réussite du CM1 et du CM2). */
+export const GENRES_CM: { genre: string; indices: string }[] = [
+  { genre: "un récit", indices: "des personnages qui vivent une histoire, racontée par un narrateur ; des paragraphes." },
+  { genre: "un récit merveilleux", indices: "une histoire où arrive l'impossible — le temps qui recule, la magie — dans un monde qui ressemble au nôtre." },
+  { genre: "une fable", indices: "une courte histoire, souvent en vers, avec des animaux qui parlent ; une morale, au début ou à la fin." },
+  { genre: "un poème", indices: "des vers et des strophes ; souvent des rimes ; des images ; quelqu'un qui dit « je »." },
+  { genre: "une pièce de théâtre", indices: "le nom du personnage devant ce qu'il dit ; des tirets ; des didascalies qui disent comment jouer ; pas de narrateur." },
+  { genre: "un documentaire", indices: "des informations vraies sur un sujet ; des intertitres ; pas d'histoire ni de personnages." },
+  { genre: "une règle, un mode d'emploi", indices: "le matériel, des étapes numérotées, des verbes qui disent quoi faire." },
+];
+
+/** Le genre de quatre extraits, et deux indices pour chacun — « reconnaître et nommer les principaux genres littéraires » (CM2). */
+function feuilleGenres(_r: ReglagesComprehension, graine: number): string {
+  const alea = hasard(graine + 23);
+  const parGenre = new Map<string, TexteAComprendre[]>();
+  for (const t of TEXTES.filter((x) => x.genre && auCoursMoyen(x.classe))) parGenre.set(t.genre!, [...(parGenre.get(t.genre!) ?? []), t]);
+  const extraits = melanger(alea, [...parGenre.values()].map((ts) => ts[Math.floor(alea() * ts.length)])).slice(0, 5);
+  const cases = GENRES_CM.map((g) => `<span class="cx-option"><span class="cx-case"></span> ${escapeHtml(g.genre)}</span>`).join(" ");
+  const items = extraits.map((t, k) => `<div class="cx-q"><div class="cx-enonce"><b>Extrait ${k + 1}</b></div><div class="cx-extrait">${t.lignes.filter((l) => l.trim()).slice(0, 4).map(escapeHtml).join("<br>")}</div>
+    <div class="cx-choix">C'est ${cases}</div><div class="cx-preuve">Deux indices : <span class="cx-pointilles"></span></div></div>`).join("");
+  const rappelDesGenres = rappel(GENRES_CM.map((g) => `<b>${escapeHtml(g.genre)}</b> : ${escapeHtml(g.indices)}`).join("<br>"));
+  const page = `<div class="page">${titre("Quel genre de texte ?")}${TETE}${rappelDesGenres}${regle("Je lis chaque extrait. Je coche son genre. J'écris deux indices qui m'ont aidé.")}<div class="cx-questions">${items}</div></div>`;
+  const corrige = `<div class="page corrige">${titre("Quel genre de texte ? — corrigé")}<div class="cx-corrige">${extraits.map((t, k) =>
+    `<div class="cx-c"><b>Extrait ${k + 1}</b> (« ${escapeHtml(t.titre)} »${t.source && !/Maitrize/.test(t.source) ? `, ${escapeHtml(t.source.replace(/\.$/, ""))}` : ""}) : <b>${escapeHtml(t.genre!)}</b> — ${escapeHtml(GENRES_CM.find((g) => g.genre === t.genre)?.indices ?? "")}</div>`).join("")}</div></div>`;
+  return page + corrige;
+}
+
 export function htmlComprehension(r: ReglagesComprehension, graine: number): string {
   const corps = r.exercice === "questions" ? feuilleQuestions(r, graine)
     : r.exercice === "vraiFaux" ? feuilleVraiFaux(r, graine)
@@ -324,7 +439,10 @@ export function htmlComprehension(r: ReglagesComprehension, graine: number): str
             : r.exercice === "inferences" ? feuilleInferences(r, graine)
               : r.exercice === "emotions" ? feuilleEmotions(r, graine)
             : r.exercice === "motInconnu" ? feuilleMotInconnu(r, graine)
-              : feuilleTypes(r, graine);
+              : r.exercice === "narrateur" ? feuilleNarrateur(r, graine)
+                : r.exercice === "paragraphes" ? feuilleParagraphes(r, graine)
+                  : r.exercice === "genres" ? feuilleGenres(r, graine)
+                    : feuilleTypes(r, graine);
   return feuille(corps, "cx");
 }
 
@@ -335,6 +453,10 @@ export const STYLE_COMPREHENSION = `
   .feuille.cx .cx-cp .cx-l { font-size: 21px; line-height: 2; }
   .feuille.cx .cx-ce1 .cx-l { font-size: 17.5px; line-height: 1.85; }
   .feuille.cx .cx-ce2 .cx-l { font-size: 15.5px; line-height: 1.75; }
+  .feuille.cx .cx-cm1 .cx-l, .feuille.cx .cx-cm2 .cx-l { font-size: 14.5px; line-height: 1.7; }
+  .feuille.cx .cx-l.cx-intertitre { font-weight: 800; padding-top: 1.5mm !important; }
+  .feuille.cx .cx-par .cx-centre { width: 24mm; white-space: nowrap; }
+  .feuille.cx .cx-source { font-size: 11px; color: #687087; text-align: right; margin-top: 2mm; font-style: italic; }
   .feuille.cx .cx-strophe td { height: 3mm; }
   .feuille.cx .cx-souligne { border-bottom: 2.5px solid #d33a32; padding-bottom: 1px; font-weight: 700; }
   .feuille.cx .cx-gras { font-weight: 800; border-bottom: 2px solid #2454e6; }

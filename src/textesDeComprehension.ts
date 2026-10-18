@@ -9,7 +9,9 @@
 // porte ses questions, leur réponse et la ligne qui la justifie, ses
 // reprises — le mot, sa ligne, ce qu'il désigne — et un mot à élucider.
 
-export type Classe = "CP" | "CE1" | "CE2";
+import { TEXTES_CM } from "./textesCoursMoyen";
+
+export type Classe = "CP" | "CE1" | "CE2" | "CM1" | "CM2";
 export type TypeDeTexte = "narratif" | "informatif" | "prescriptif" | "poétique" | "théâtral";
 export type TypeDeQuestion = "littérale" | "inférence" | "reprise" | "vocabulaire";
 
@@ -35,11 +37,25 @@ export interface TexteAComprendre {
   affirmations: { a: string; v: "vrai" | "faux" | "?"; ligne?: number }[];
   /** Un mot à élucider par le contexte, son sens, l'indice qui le donne et deux sens qui ne conviennent pas. */
   motInconnu: { mot: string; ligne: number; sens: string; indice: string; leurres: string[] };
+  // Ce qui suit sert au cours moyen (voir textesCoursMoyen.ts).
+  /** D'où vient le texte : son auteur et son œuvre, ou « écrit pour Maitrize ». */
+  source?: string;
+  /** Son genre, que l'élève apprend à nommer au CM2 : un récit, une fable, un poème, une pièce de théâtre… */
+  genre?: string;
+  /** Qui raconte : un personnage qui dit « je », un narrateur hors de l'histoire, ou personne (le théâtre). */
+  narration?: "je" | "il" | "theatre";
+  narrateur?: string;
+  personnages?: string[];
+  principal?: string;
+  /** Le thème, ou le sujet, en quelques mots. */
+  theme?: string;
+  /** Un titre pour chaque paragraphe — les paragraphes sont séparés par une ligne vide. */
+  titresDesParagraphes?: string[];
 }
 
 const T = (t: TexteAComprendre) => t;
 
-export const TEXTES: TexteAComprendre[] = [
+const TEXTES_C2: TexteAComprendre[] = [
   // ── CP : une dizaine de lignes ─────────────────────────────────────────
   T({
     id: "chaton", classe: "CP", type: "narratif", titre: "Le chaton perdu",
@@ -742,6 +758,9 @@ export const TEXTES: TexteAComprendre[] = [
   }),
 ];
 
+/** Les textes du cycle 2, puis ceux du cours moyen. */
+export const TEXTES: TexteAComprendre[] = [...TEXTES_C2, ...TEXTES_CM];
+
 /** Les lignes du texte avec leur numéro ; une ligne vide, entre deux strophes, n'en a pas. */
 export function lignesNumerotees(t: TexteAComprendre): { n: number | null; texte: string }[] {
   let n = 0;
@@ -749,6 +768,16 @@ export function lignesNumerotees(t: TexteAComprendre): { n: number | null; texte
 }
 
 /** La ligne numéro n (à partir de 1), sans compter les lignes vides. */
+/** Les paragraphes du texte — ou ses strophes —, séparés par une ligne vide : la première et la dernière ligne de chacun. */
+export function paragraphesDe(t: TexteAComprendre): { de: number; a: number }[] {
+  const sortie: { de: number; a: number }[] = [];
+  let n = 0, debut = 0;
+  for (const l of [...t.lignes, ""]) {
+    if (l.trim()) { n++; if (!debut) debut = n; } else if (debut) { sortie.push({ de: debut, a: n }); debut = 0; }
+  }
+  return sortie;
+}
+
 export const ligneDe = (t: TexteAComprendre, n: number) => t.lignes.filter((l) => l.trim())[n - 1] ?? "";
 
 export const textesDeLaClasse = (classe: Classe) => TEXTES.filter((t) => t.classe === classe);

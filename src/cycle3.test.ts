@@ -389,3 +389,58 @@ describe("la grammaire, l'orthographe grammaticale et la conjugaison du cours mo
     expect(() => formesCM("céder", "futur")).toThrow();
   });
 });
+
+describe("la lecture du cours moyen", () => {
+  const LECTURE = FRANCAIS.filter((c) => /^lecture/i.test(c.cible.sousDomaineTitre ?? ""));
+
+  it("donne à chaque compétence une séquence de sa classe, avec ses feuilles et une période", async () => {
+    const { DEMARCHES_LECTURE_CM } = await import("./cycle3Lecture");
+    const { domaineDeLaDemarche } = await import("./sequencesToutesFaites");
+    const { periodeProposee } = await import("./periodesProposees");
+    expect(LECTURE.length).toBe(34);
+    const vues = new Set<string>();
+    for (const { cible, classe } of LECTURE) {
+      const d = demarcheSuggeree(cible, REF);
+      expect(DEMARCHES_LECTURE_CM.map((x) => x.id), `${classe} — ${cible.competenceTitre} : ${d.id}`).toContain(d.id);
+      expect(d.id).toMatch(new RegExp(`-${classe.toLowerCase()}$`));
+      if (vues.has(d.id)) continue;
+      vues.add(d.id);
+      const plan = planDesFeuilles(d.id, { classe, periode: 1, competence: cible.competenceTitre ?? "" })!;
+      expect(plan.materiel.length, d.id).toBe(d.seances.length);
+      for (const f of plan.feuilles) for (const graine of [1, 2, 3]) {
+        const { html } = f.fabriquer(graine);
+        expect(html, `${d.id} — ${f.titre}`).not.toMatch(/NaN|undefined|Infinity|\[object|cycle 2/);
+      }
+      expect(["code", "comprendre"], d.id).toContain(domaineDeLaDemarche(d)?.id);
+      expect(periodeProposee(d.id, classe)?.raison, d.id).toMatch(/^Suggestion de Maitrize/);
+    }
+    expect([...vues].sort()).toEqual(DEMARCHES_LECTURE_CM.map((x) => x.id).sort());
+  });
+
+  it("compte les mots du texte chronométré, et vise 110 puis 120 mots par minute", async () => {
+    const { motsDeLaLigne, htmlLectureCM, REGLAGES_LECTURE_CM } = await import("./lectureCoursMoyen");
+    expect(motsDeLaLigne("Le lendemain, Nour raconta tout à son frère Basile. Il haussa les")).toBe(12);
+    expect(motsDeLaLigne("« Je ne veux pas que demain arrive, sanglota-t-il. Demain, on")).toBe(10);
+    expect(motsDeLaLigne("L'eau que tu bois aujourd'hui a peut-être été bue par un dinosaure !")).toBe(12);
+    const cm1 = htmlLectureCM({ ...REGLAGES_LECTURE_CM, classe: "CM1", texte: "chien-gare-cm1" }, 1);
+    expect(cm1).toContain("110 mots correctement lus");
+    expect(htmlLectureCM({ ...REGLAGES_LECTURE_CM, classe: "CM2", texte: "horloge-cm2" }, 1)).toContain("120 mots correctement lus");
+    // Les mots des exemples de réussite du CM1 sont toujours dans la liste.
+    const mots = htmlLectureCM({ ...REGLAGES_LECTURE_CM, classe: "CM1", exercice: "irreguliers" }, 4);
+    for (const m of ["second", "monsieur", "oignon", "œufs", "femme", "chœur"]) expect(mots).toContain(`<td>${m}</td>`);
+  });
+
+  it("fait nommer la nature et la source des documents, et les éléments d'un document composite au CM2", async () => {
+    const { htmlDocumentsCM, EXERCICES_DOCUMENTS_CM } = await import("./documentsCoursMoyen");
+    for (const e of EXERCICES_DOCUMENTS_CM) for (const classe of ["CM1", "CM2"] as const) {
+      const html = htmlDocumentsCM({ classe, exercice: e.id }, 2);
+      expect(html, e.id).toContain('class="page corrige"');
+      expect(html, e.id).not.toMatch(/NaN|undefined|null/);
+    }
+    const nature = htmlDocumentsCM({ classe: "CM1", exercice: "nature-source" }, 1);
+    expect(nature).toMatch(/src="paysage:[a-z-]+"/);
+    expect(nature).toContain("Wikimedia Commons");
+    expect(htmlDocumentsCM({ classe: "CM2", exercice: "composite" }, 1)).toContain("A le titre ; B le chapeau");
+    expect(htmlDocumentsCM({ classe: "CM1", exercice: "composite" }, 1)).not.toContain("dc-marque\">A");
+  });
+});
