@@ -42,6 +42,8 @@ const citeLeProgrammeDeFrancais = (classe: string, phrase: string) => `${PROGRAM
 const citeLeLivret = (classe: string, phrase: string) => `Livret d'accompagnement de mathématiques du ${classe} (Éduscol, 2025) : « ${phrase} »`;
 const citeLeLivretDeFrancais = (classe: string, phrase: string) =>
   `Livret d'accompagnement de français du ${classe} (Éduscol, ${classe === "CP" ? 2025 : 2026}) : « ${phrase} »`;
+/** Le programme de mathématiques du cycle 3 (BO n° 16 du 17 avril 2025) : le cours moyen. */
+const citeLeProgrammeDuCycle3 = (classe: string, phrase: string) => `Programme de mathématiques du cycle 3 (2025), ${classe} : « ${phrase} »`;
 const GUIDE_MATHS_CP = "Guide « Pour enseigner les nombres, le calcul et la résolution de problèmes au CP » (Éduscol, 2021)";
 const GUIDE_LECTURE_CP = "Guide « Pour enseigner la lecture et l'écriture au CP » (Éduscol, 2019)";
 const GUIDE_LECTURE_CE1 = "Guide « Pour enseigner la lecture et l'écriture au CE1 » (Éduscol, 2019)";
@@ -96,6 +98,21 @@ const PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
   "ecriture-cursive": { niveau: "CP", periode: 1, raison: citeLeLivretDeFrancais("CP", "À partir de la période 1 et tout au long de l'année, sur les séances quotidiennes.") },
   "strategies-de-copie": { niveau: "CP", periode: 2, raison: citeLeLivretDeFrancais("CP", "À partir de la période 2, plusieurs fois par semaine.") },
   "lecture-expressive-ce2": { niveau: "CE2", periode: 1, raison: citeLeLivretDeFrancais("CE2", "Séances décrochées régulières à mener depuis la période 1 et tout au long de l'année.") },
+  // Le cours moyen : les nombres, d'après le programme de 2025.
+  "numeration-cm1": { niveau: "CM1", periode: 1,
+    raison: citeLeProgrammeDuCycle3("CM1", "Toutefois, afin de renforcer les connaissances sur la numération relevant du cycle 2 et de privilégier en début d'année l'approfondissement de l'étude des fractions et des nombres décimaux, on se limite, pendant les deux premières périodes de l'année, aux nombres entiers s'écrivant avec au plus quatre chiffres.") },
+  "grands-nombres-cm1": { niveau: "CM1", periode: 3,
+    raison: citeLeProgrammeDuCycle3("CM1", "Les nombres écrits avec cinq ou six chiffres ne sont abordés qu'à partir de la période 3 ou du début de la période 4.") },
+  "fractions-cm1": { niveau: "CM1", periode: 1,
+    raison: citeLeProgrammeDuCycle3("CM1", "Dans la continuité du cycle 2, les élèves travaillent avec des fractions dès la période 1 et les utilisent tout au long de l'année scolaire.") },
+  "fractions-decimales-cm1": { niveau: "CM1", periode: 2,
+    raison: citeLeProgrammeDuCycle3("CM1", "L'étude plus générale des nombres décimaux, introduits sous la forme de fractions décimales puis exprimés avec une écriture à virgule, est menée dès la période 2 du CM1.") },
+  "grands-nombres-cm2": { niveau: "CM2", periode: 3,
+    raison: `${citeLeProgrammeDuCycle3("CM2", "Toutefois, afin de privilégier en début d'année le travail sur les fractions et les nombres décimaux, les nombres entiers rencontrés pendant les deux premières périodes de l'année seront ceux qui ont été étudiés au CM1 et qui s'écrivent avec au plus six chiffres.")} Les millions viennent donc en période 3.` },
+  "fractions-cm2": { niveau: "CM2", periode: 1,
+    raison: citeLeProgrammeDuCycle3("CM2", "Dans la continuité du CM1, les élèves travaillent avec des fractions dès la période 1 et les utilisent tout au long de l'année scolaire.") },
+  "decimaux-cm2": { niveau: "CM2", periode: 1,
+    raison: citeLeProgrammeDuCycle3("CM2", "Au CM2, des nombres décimaux sont rencontrés dès la période 1 dans la continuité du travail mené au CM1 aussi bien par des écritures fractionnaires que des écritures à virgule.") },
 };
 
 /** Le programme range les temps — « au présent, à l'imparfait, au futur puis au passé composé » — sans leur donner de période ; la fiche d'une séquence les répartit dans cet ordre (`tempsDeLaPeriode`), le tableau aussi. */

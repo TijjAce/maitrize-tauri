@@ -35,7 +35,7 @@ import { DEMARCHES_ORAL } from "./demarchesOral";
 import { DEMARCHES_ORTHOGRAPHE } from "./demarchesOrthographe";
 import { DEMARCHES_PROBLEMES } from "./demarchesProblemes";
 import { objectifParId, type Objectif } from "./faitsNumeriques";
-import { planDesFeuilles, type ClasseC2, type FeuilleAFabriquer, type PlanDesFeuilles } from "./feuillesDesSequences";
+import { planDesFeuilles, type Classe, type FeuilleAFabriquer, type PlanDesFeuilles } from "./feuillesDesSequences";
 import { DEMARCHES_FRACTIONS_PROLONGEES } from "./fractionsProlongees";
 import { REGLAGES_MARTINIERE, STYLE_MARTINIERE, calculsMartiniere, htmlMartiniere, libelleTravaille, type ReglagesMartiniere } from "./martiniere";
 import { noteDuMaterielDesCompetences } from "./materielDeClasse";
@@ -43,12 +43,13 @@ import { avecLesMotsDesProblemes, estLaSeanceDesMots } from "./motsDesProblemes"
 import type { ElemSalle } from "./planDeLaClasse";
 import { poserLeDeroulement } from "./poserLeDeroulement";
 import { DEMARCHES_PROBLEMES_PROLONGES } from "./problemesProlonges";
+import { DEMARCHES_NOMBRES_CM } from "./cycle3Nombres";
 import { programmationProposee } from "./programmation";
 import {
   DEMARCHE_SOUSTRACTION_POSEE, FEUILLES_SOUSTRACTION_POSEE, MATERIEL_SOUSTRACTION_POSEE, competenceDeLaSoustraction, graineDeLaFeuille,
 } from "./sequenceSoustractionPosee";
 
-export const CLASSES: ClasseC2[] = ["CP", "CE1", "CE2"];
+export const CLASSES: Classe[] = ["CP", "CE1", "CE2", "CM1", "CM2"];
 
 // ── Les familles : les disciplines et leurs domaines ───────────────────────
 
@@ -67,6 +68,7 @@ export const DOMAINES: Domaine[] = [
   { id: "calcul", discipline: "Mathématiques", nom: "Le calcul" },
   { id: "problemes", discipline: "Mathématiques", nom: "Les problèmes" },
   { id: "fractions", discipline: "Mathématiques", nom: "Les fractions" },
+  { id: "decimaux", discipline: "Mathématiques", nom: "Les nombres décimaux" },
   { id: "grandeurs", discipline: "Mathématiques", nom: "Grandeurs et mesures" },
   { id: "geometrie", discipline: "Mathématiques", nom: "Espace et géométrie" },
   { id: "donnees", discipline: "Mathématiques", nom: "Données" },
@@ -95,6 +97,8 @@ export function domaineDeLaDemarche(d: Pick<Demarche, "id" | "famille">): Domain
   const dans = (liste: Demarche[]) => liste.some((x) => x.id === d.id);
   if (d.famille === "Mathématiques") {
     if (d.id === DEMARCHE_SOUSTRACTION_POSEE.id) return domaine("calcul");
+    // Le cours moyen : les décimaux ont leur ligne, et les fractions décimales vont avec eux.
+    if (dans(DEMARCHES_NOMBRES_CM)) return domaine(/decima/.test(d.id) ? "decimaux" : /fraction/.test(d.id) ? "fractions" : "nombres");
     if (/fraction/.test(d.id)) return domaine("fractions");
     if (d.id === "numeration-dizaine-cp" || d.id === "comparer-nombres-cp" || dans(DEMARCHES_NUMERATION)) return domaine("nombres");
     if (dans(DEMARCHES_CALCUL) || dans(DEMARCHES_OPERATIONS)) return domaine("calcul");
@@ -123,45 +127,45 @@ export function domaineDeLaDemarche(d: Pick<Demarche, "id" | "famille">): Domain
  * celle de son identifiant ; aucune pour une démarche des guides, qui vaut
  * pour toutes.
  */
-export function classesDeLaDemarche(d: Pick<Demarche, "id" | "nom">): ClasseC2[] {
+export function classesDeLaDemarche(d: Pick<Demarche, "id" | "nom">): Classe[] {
   const fixee = CLASSE_DES_DEMARCHES[d.id];
   if (fixee) return [fixee];
   const parentheses = d.nom.match(/\(([^()]*)\)\s*$/)?.[1] ?? "";
-  const intervalle = parentheses.replace(/\s/g, "").match(/^(CP|CE1|CE2)-(CP|CE1|CE2)$/);
-  if (intervalle) return CLASSES.slice(CLASSES.indexOf(intervalle[1] as ClasseC2), CLASSES.indexOf(intervalle[2] as ClasseC2) + 1);
+  const intervalle = parentheses.replace(/\s/g, "").match(/^(CP|CE1|CE2|CM1|CM2)-(CP|CE1|CE2|CM1|CM2)$/);
+  if (intervalle) return CLASSES.slice(CLASSES.indexOf(intervalle[1] as Classe), CLASSES.indexOf(intervalle[2] as Classe) + 1);
   const nommees = CLASSES.filter((c) => new RegExp(`\\b${c}\\b`).test(parentheses));
   if (nommees.length) return nommees;
-  const suffixe = d.id.match(/-(cp|ce1|ce2)(?:-|$)/)?.[1];
-  return suffixe ? [suffixe.toUpperCase() as ClasseC2] : [];
+  const suffixe = d.id.match(/-(cp|ce1|ce2|cm1|cm2)(?:-|$)/)?.[1];
+  return suffixe ? [suffixe.toUpperCase() as Classe] : [];
 }
 
 /** Le nom sans la classe qui le termine : la classe est déjà dite. */
-export const nomSansClasse = (nom: string) => nom.replace(/\s*\((?:CP|CE1|CE2)(?:\s*[-,]\s*(?:CP|CE1|CE2))*\)\s*$/, "");
+export const nomSansClasse = (nom: string) => nom.replace(/\s*\((?:CP|CE1|CE2|CM1|CM2)(?:\s*[-,]\s*(?:CP|CE1|CE2|CM1|CM2))*\)\s*$/, "");
 
 /** La période que le programme ou le livret fixe pour la démarche, à cette classe, et la phrase qui la donne ; rien quand ils n'en disent pas. */
-export function repereDeLaDemarche(demarcheId: string, classe: ClasseC2, competence = ""): { periode: number; raison: string } | null {
+export function repereDeLaDemarche(demarcheId: string, classe: Classe, competence = ""): { periode: number; raison: string } | null {
   const p = programmationProposee({ niveau: classe, competenceTitre: competence }, demarcheId);
   return p?.periode ? { periode: p.periode, raison: p.raison } : null;
 }
 
 /** La période seule. */
-export const periodeDeLaDemarche = (demarcheId: string, classe: ClasseC2, competence = ""): number | null =>
+export const periodeDeLaDemarche = (demarcheId: string, classe: Classe, competence = ""): number | null =>
   repereDeLaDemarche(demarcheId, classe, competence)?.periode ?? null;
 
 // ── Les séquences ──────────────────────────────────────────────────────────
 
 /** Une séquence toute faite : une démarche, à une classe. */
-export interface SequenceToutefaite { cle: string; demarche: Demarche; classe: ClasseC2; domaine: Domaine }
+export interface SequenceToutefaite { cle: string; demarche: Demarche; classe: Classe; domaine: Domaine }
 
 /** Les séquences toutes faites qui ne sont pas un déroulement de la fiche d'une séquence : leurs séances et leurs feuilles sont à elles. */
-interface Propre { demarche: Demarche; classe: ClasseC2; plan: () => PlanDesFeuilles; competence: (refs: Referentiel[]) => CompetenceSelectionnee | null }
+interface Propre { demarche: Demarche; classe: Classe; plan: () => PlanDesFeuilles; competence: (refs: Referentiel[]) => CompetenceSelectionnee | null }
 const PROPRES: Propre[] = [{
   demarche: DEMARCHE_SOUSTRACTION_POSEE, classe: "CE1", competence: competenceDeLaSoustraction,
   plan: () => ({ feuilles: FEUILLES_SOUSTRACTION_POSEE, materiel: MATERIEL_SOUSTRACTION_POSEE }),
 }];
 const propreDe = (id: string) => PROPRES.find((p) => p.demarche.id === id);
 
-const lesFeuilles = (d: Demarche, classe: ClasseC2) => planDesFeuilles(d.id, { classe, periode: periodeDeLaDemarche(d.id, classe) ?? 3, competence: "" })?.feuilles.length ?? 0;
+const lesFeuilles = (d: Demarche, classe: Classe) => planDesFeuilles(d.id, { classe, periode: periodeDeLaDemarche(d.id, classe) ?? 3, competence: "" })?.feuilles.length ?? 0;
 
 let toutes: SequenceToutefaite[] | null = null;
 
@@ -175,7 +179,7 @@ let toutes: SequenceToutefaite[] | null = null;
 export function sequencesToutesFaites(): SequenceToutefaite[] {
   if (toutes) return toutes;
   const sortie: SequenceToutefaite[] = [];
-  const ajouter = (demarche: Demarche, classe: ClasseC2) => {
+  const ajouter = (demarche: Demarche, classe: Classe) => {
     const d = domaineDeLaDemarche(demarche);
     if (d) sortie.push({ cle: `${demarche.id}:${classe}`, demarche, classe, domaine: d });
   };
@@ -193,9 +197,9 @@ export function sequencesToutesFaites(): SequenceToutefaite[] {
 // ── Les dossiers : un par classe ───────────────────────────────────────────
 
 /** L'onglet de Fabriquer de chaque dossier, et sa classe : sa carte est au catalogue (voir catalogueAteliers.ts). */
-export const DOSSIERS: Record<string, ClasseC2> = { sequencesCP: "CP", sequencesCE1: "CE1", sequencesCE2: "CE2" };
+export const DOSSIERS: Record<string, Classe> = { sequencesCP: "CP", sequencesCE1: "CE1", sequencesCE2: "CE2", sequencesCM1: "CM1", sequencesCM2: "CM2" };
 
-export const classeDuDossier = (onglet: string): ClasseC2 | null => DOSSIERS[onglet] ?? null;
+export const classeDuDossier = (onglet: string): Classe | null => DOSSIERS[onglet] ?? null;
 
 // ── Le tableau : les familles en lignes, les périodes en colonnes ──────────
 
@@ -238,14 +242,14 @@ export const PHASE_LA_MARTINIERE = "Calcul mental — procédé La Martinière";
 /** Les séquences dont chaque séance s'ouvre sur le calcul mental : la numération et le calcul, hors séquences de calcul mental des livrets. */
 export const ouvreSurLeCalculMental = (d: Pick<Demarche, "id" | "famille">): boolean => {
   const id = domaineDeLaDemarche(d)?.id;
-  return (id === "nombres" || id === "calcul") && !DEMARCHES_CALCUL.some((x) => x.id === d.id);
+  return (id === "nombres" || id === "decimaux" || id === "calcul") && !DEMARCHES_CALCUL.some((x) => x.id === d.id);
 };
 
 /** Ce qu'une séquence de calcul travaille : les nombres, l'addition et la soustraction, ou la multiplication et la division. */
 type Genre = "nombres" | "additif" | "multiplicatif";
 const MULTIPLICATIVES = new Set(["sens-multiplication-cp", "multiplication-ce1", "parite-ce1", "multiplication-posee-ce2", "division-ce2"]);
 const genreDe = (d: Pick<Demarche, "id" | "famille">): Genre =>
-  (domaineDeLaDemarche(d)?.id === "nombres" ? "nombres" : MULTIPLICATIVES.has(d.id) ? "multiplicatif" : "additif");
+  (["nombres", "decimaux"].includes(domaineDeLaDemarche(d)?.id ?? "") ? "nombres" : MULTIPLICATIVES.has(d.id) ? "multiplicatif" : "additif");
 
 const TOUTES_LES_TABLES = [2, 3, 4, 5, 6, 7, 8, 9, 10];
 
@@ -257,7 +261,7 @@ const TOUTES_LES_TABLES = [2, 3, 4, 5, 6, 7, 8, 9, 10];
  * des nombres qui ne dépassent pas ceux de la période ; au CE1, les tables de
  * multiplication déjà apprises — celle de 7 en période 3, de 8 en période 4.
  */
-export function calculMentalDOuverture(classe: ClasseC2, periode: number, genre: Genre): { objectifs: string[]; tables: number[] } {
+export function calculMentalDOuverture(classe: Classe, periode: number, genre: Genre): { objectifs: string[]; tables: number[] } {
   if (classe === "CP") {
     if (periode <= 2) return { objectifs: periode <= 1 ? ["cp-sommes-10", "cp-complements-10"] : ["cp-sommes-10", "cp-complements-10", "cp-doubles"], tables: [] };
     return {
@@ -274,6 +278,28 @@ export function calculMentalDOuverture(classe: ClasseC2, periode: number, genre:
         : genre === "multiplicatif" ? [...(periode >= 3 ? ["ce1-table-multiplication"] : []), "ce1-doubles", "ce1-moities", "ce1-multiples-25", "ce1-fois-10"]
           : ["ce1-tables-addition", "ce1-soustraire-unites", "ce1-dizaines-centaines", "ce1-doubles", "ce1-moities"],
       tables: apprises,
+    };
+  }
+  // Le cours moyen : les objectifs du programme de 2025. Au CM1, les décimaux n'arrivent qu'en période 2 — le calcul mental
+  // de la période 1 reste sur les entiers.
+  if (classe === "CM1") {
+    const entiers = periode <= 1;
+    return {
+      objectifs: genre === "nombres"
+        ? (entiers ? ["cm1-fois-10-100-1000", "cm1-doubles-moities", "cm1-multiples-25", "cm1-fractions"]
+          : ["cm1-fois-10-100-1000", "cm1-rang-par-rang", "cm1-fractions", "cm1-ecritures-decimales", "cm1-decimal-fois-10"])
+        : genre === "multiplicatif" ? ["cm1-table-multiplication", "cm1-tables-envers", "cm1-fois-dizaines-centaines", "cm1-fois-4-8", "cm1-fois-5", "cm1-distributivite"]
+          : entiers ? ["cm1-presque-ronds", "cm1-doubles-moities", "cm1-multiples-25", "cm1-fois-10-100-1000"]
+            : ["cm1-presque-ronds", "cm1-rang-par-rang", "cm1-doubles-moities", "cm1-multiples-25"],
+      tables: TOUTES_LES_TABLES,
+    };
+  }
+  if (classe === "CM2") {
+    return {
+      objectifs: genre === "nombres" ? ["cm2-decimal-fois", "cm2-decimal-divise", "cm2-entier-decimal", "cm2-fractions", "cm2-ecritures-decimales"]
+        : genre === "multiplicatif" ? ["cm2-table-multiplication", "cm2-tables-envers", "cm2-produits-ronds", "cm2-distributivite", "cm2-diviser-4-8", "cm2-decimal-fois-5"]
+          : ["cm2-presque-ronds", "cm2-entier-decimal", "cm2-entier-decimal-retenue", "cm2-somme-decimaux", "cm2-double-decimal", "cm2-moitie-decimal"],
+      tables: TOUTES_LES_TABLES,
     };
   }
   return {
@@ -294,7 +320,7 @@ const phaseDuCalculMental = (o: Objectif, tables: number[]): PhaseCadre => ({
 });
 
 /** La fiche du maître, et les ardoises papier : celle de l'atelier « Calcul mental ». */
-function feuilleDuCalculMental(seance: number, o: Objectif, classe: ClasseC2, tables: number[]): FeuilleAFabriquer {
+function feuilleDuCalculMental(seance: number, o: Objectif, classe: Classe, tables: number[]): FeuilleAFabriquer {
   const r: ReglagesMartiniere = { ...REGLAGES_MARTINIERE, niveau: classe, objectifs: [o.id], revision: false, tables, forme: "oral", ardoises: true };
   return {
     seance, atelier: "martiniere", titre: `Calcul mental — ${libelleTravaille(o, tables)}`,
@@ -311,7 +337,7 @@ const ARDOISES = "Les ardoises, pour le calcul mental du début de séance.";
  * matériel, et la fiche du maître en tête de ses feuilles. La séance des mots
  * des problèmes reste telle quelle.
  */
-export function avecLeCalculMental(d: Demarche, plan: PlanDesFeuilles, classe: ClasseC2, periode: number): { demarche: Demarche; plan: PlanDesFeuilles } {
+export function avecLeCalculMental(d: Demarche, plan: PlanDesFeuilles, classe: Classe, periode: number): { demarche: Demarche; plan: PlanDesFeuilles } {
   const { objectifs, tables } = calculMentalDOuverture(classe, periode, genreDe(d));
   const connus = objectifs.map(objectifParId).filter((o): o is Objectif => !!o && o.niveau === classe);
   if (!connus.length) return { demarche: d, plan };
@@ -377,7 +403,7 @@ export interface ContexteDeLaClasse { salle?: { elements: ElemSalle[]; agencemen
  * veut pas.
  */
 export function planToutFait(
-  d: Demarche, classe: ClasseC2, periode: number, options: { calculMental?: boolean; competence?: string } & ContexteDeLaClasse = {},
+  d: Demarche, classe: Classe, periode: number, options: { calculMental?: boolean; competence?: string } & ContexteDeLaClasse = {},
 ): PlanToutFait {
   const propre = propreDe(d.id);
   let base: { demarche: Demarche; plan: PlanDesFeuilles };
@@ -415,7 +441,7 @@ const DOMAINE_DU_PROGRAMME: Record<Discipline, RegExp> = {
  * à la période choisie d'abord, puis aux autres (au CP, les nombres jusqu'à 59
  * ou jusqu'à 100 suivent la période). Rien si aucune ne le propose.
  */
-export function competenceDeLaDemarche(referentiels: Referentiel[], demarcheId: string, classe: ClasseC2, periode: number): CompetenceSelectionnee | null {
+export function competenceDeLaDemarche(referentiels: Referentiel[], demarcheId: string, classe: Classe, periode: number): CompetenceSelectionnee | null {
   const propre = propreDe(demarcheId);
   if (propre) return propre.competence(referentiels);
   const demarche = demarcheDe(demarcheId);
@@ -460,7 +486,7 @@ export function competenceDeLaDemarche(referentiels: Referentiel[], demarcheId: 
  * déroulement (voir poserLeDeroulement.ts).
  */
 export async function creerLaSequenceToutefaite(choix: {
-  tout: PlanToutFait; classe: ClasseC2; periode: number; titre: string; competence: CompetenceSelectionnee | null; graine: number;
+  tout: PlanToutFait; classe: Classe; periode: number; titre: string; competence: CompetenceSelectionnee | null; graine: number;
   aides: { sequentiel: boolean; parole: number };
   onProgres?: (texte: string) => void; onEchec?: (titre: string, erreur: unknown) => void;
 }): Promise<{ sequence: Sequence; seances: number; feuilles: number; aides: number }> {

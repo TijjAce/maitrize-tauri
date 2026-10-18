@@ -32,15 +32,19 @@ import { estUneDemarcheDEcriture, planDeLEcriture } from "./demarchesEcriture";
 import { estUneDemarcheDeLangue, planDeLaLangue } from "./demarchesLangue";
 import { estUneDemarcheDOral, planDeLOral } from "./demarchesOral";
 import { estUneDemarcheHistoireGeo, planHistoireGeo } from "./demarchesHistoireGeo";
+import { estUneDemarcheDesNombresCM, planDesNombresCM } from "./cycle3Nombres";
 import type { ElemSalle } from "./planDeLaClasse";
 import { reglagesLaisses } from "./reglagesLaisses";
 import { memesReglages } from "./modifierFeuille";
 
 export type ClasseC2 = "CP" | "CE1" | "CE2";
+/** Le cours moyen : le cycle 3 de l'école (le référentiel de Maitrize s'arrête au CM2). */
+export type ClasseC3 = "CM1" | "CM2";
+export type Classe = ClasseC2 | ClasseC3;
 
 /** Ce que la séquence dit d'elle-même : la classe de sa compétence, et la période où elle se fait. */
 export interface ContexteFeuilles {
-  classe: ClasseC2;
+  classe: Classe;
   periode: number;
   /** L'intitulé de la compétence : il dit ce qu'une séquence de calcul mental travaille. */
   competence?: string;
@@ -77,10 +81,10 @@ export interface PlanDesFeuilles {
   documents?: string[];
 }
 
-/** La classe d'une compétence, d'après son niveau : CP, CE1 ou CE2 ; rien hors du cycle 2. */
-export function classeDe(niveau: string | null | undefined): ClasseC2 | null {
+/** La classe d'une compétence, d'après son niveau : du CP au CM2 ; rien hors de l'école élémentaire. */
+export function classeDe(niveau: string | null | undefined): Classe | null {
   const n = (niveau ?? "").toUpperCase();
-  return n === "CP" || n === "CE1" || n === "CE2" ? n : null;
+  return n === "CP" || n === "CE1" || n === "CE2" || n === "CM1" || n === "CM2" ? n : null;
 }
 
 /** Le niveau de l'atelier des cubes pour une séquence : les nombres du livret, ou ceux de la période au CP. */
@@ -88,7 +92,7 @@ export function niveauDesCubes(demarcheId: string, ctx: ContexteFeuilles): IdNiv
   if (demarcheId === "nombres-livret-cp-59") return "cp-59";
   if (demarcheId === "nombres-livret-cp-100") return "cp-100";
   if (ctx.classe === "CE1") return "ce1";
-  if (ctx.classe === "CE2") return "ce2";
+  if (ctx.classe !== "CP") return "ce2";
   // La progression du livret CP : de 1 à 20 en période 1, jusqu'à 59 en période 2, jusqu'à 100 ensuite.
   return ctx.periode <= 1 ? "cp-19" : ctx.periode === 2 ? "cp-59" : "cp-100";
 }
@@ -96,7 +100,7 @@ export function niveauDesCubes(demarcheId: string, ctx: ContexteFeuilles): IdNiv
 /** Le niveau de l'atelier « Comparer les nombres » : la classe, et au CP la période. */
 export function niveauDeComparer(ctx: ContexteFeuilles): IdNiveau {
   if (ctx.classe === "CE1") return "ce1";
-  if (ctx.classe === "CE2") return "ce2";
+  if (ctx.classe !== "CP") return "ce2";
   return ctx.periode <= 1 ? "cp-30" : ctx.periode === 2 ? "cp-59" : "cp-100";
 }
 
@@ -179,6 +183,8 @@ export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): Plan
   if (estUneDemarcheDOral(demarcheId)) return planDeLOral(demarcheId, ctx);
   // L'histoire et la géographie : le plan de la classe, et ce que les autres thèmes demandent (voir demarchesHistoireGeo.ts).
   if (estUneDemarcheHistoireGeo(demarcheId)) return planHistoireGeo(demarcheId, ctx);
+  // Le cours moyen : les nombres (voir cycle3Nombres.ts).
+  if (estUneDemarcheDesNombresCM(demarcheId)) return planDesNombresCM(demarcheId, ctx);
   if (!CLASSE_DES_DEMARCHES[demarcheId]) return null;
   // Grouper par dix, la centaine, le millier : les huit feuilles des cubes, de la grande collection à l'évaluation.
   if (demarcheId === "numeration-dizaine-cp" || demarcheId.startsWith("groupements-")) {

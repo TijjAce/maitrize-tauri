@@ -44,6 +44,7 @@ const { feuilleProblemes, genererMultiplicatifs, genererPartieTout, lirePrenoms,
 const { REGLAGES_CATEGORISER, htmlCategoriser, normaliserCategories } = await import("./categoriser");
 const { REGLAGES_SUITES, htmlSuites, reglagesSurs: suitesSures } = await import("./suitesImages");
 const { REGLAGES_PAR_DEFAUT: REGLAGES_COLORIAGE, fabriquerColoriage, feuilleDuColoriage } = await import("./coloriageMagique");
+const { REGLAGES_NUMERATION, htmlNumeration } = await import("./numeration");
 const { hasard } = await import("./hasard");
 
 type Memoires = Record<string, any>;
@@ -59,6 +60,7 @@ const ATELIERS: Record<string, (m: Memoires, g: number) => string> = {
   martiniere: (m, g) => { const r = lu(REGLAGES_MARTINIERE, m.martiniere); return htmlMartiniere(calculsMartiniere(r, g), r); },
   calcul: (m, g) => { const r = lu(J.REGLAGES_CALCUL, m.cartesCalcul); return J.htmlCartesCalcul(J.cartesCalcul(r, g), r); },
   fractions: (m, g) => J.htmlFractions(lu(J.REGLAGES_FRACTIONS, m.fractions), g),
+  numeration: (m, g) => htmlNumeration(lu(REGLAGES_NUMERATION, m.numeration), g),
   posees: (m, g) => htmlOperationsPosees(lu(REGLAGES_POSEES, m.operationsPosees), g),
   pyramides: (m, g) => htmlPyramides(lu(REGLAGES_PYRAMIDES, m.pyramides), g),
   heure: (m, g) => htmlAtelierHeure(lu(REGLAGES_HEURE, m.heure), g),
