@@ -828,6 +828,10 @@ export const api = {
     invoke<PictoAppoint[]>("pictos_appoint_chercher", { banque, q, limite }),
   pictosAppointImage: (reference: string) => invoke<string>("pictos_appoint_image", { reference }),
   tlaGenerer: (gabarit: GabaritImprime, ouvrir = true) => invoke<string>("tla_generer", { gabarit, ouvrir }),
+  /** Le classeur entier — l'accueil, puis les pages où mènent ses cases — en un seul PDF. */
+  tlaClasseur: (pages: GabaritImprime[], ouvrir = true) => invoke<string>("tla_classeur", { pages, ouvrir }),
+  /** Le classeur au format ouvert OBZ, que lisent LibreAAC, Cboard ou AsTeRICS Grid : écrit au chemin choisi. */
+  tlaExporterObz: (pages: GabaritImprime[], chemin: string) => invoke<void>("tla_exporter_obz", { pages, chemin }),
 
   // Amis (appariement chiffré, 100 % local pour l'instant)
   identiteGet: () => invoke<Identite>("identite_get"),
@@ -1130,6 +1134,8 @@ export interface CaseTla {
   couleur?: string;
   /** Masquée : elle garde son mot et sa place, mais s'imprime vide — le vocabulaire s'ouvre peu à peu, sans que rien ne bouge. */
   masquee?: boolean;
+  /** Le tableau qu'elle ouvre, dans un classeur à pages liées : son identifiant. */
+  lien?: string;
 }
 /** Où va la couleur d'une case : son fond, son cadre, ou nulle part. */
 export type ModeCouleurTla = "fond" | "bordure" | "aucune";
@@ -1151,10 +1157,21 @@ export interface Gabarit {
 }
 /** Ce que l'impression reçoit : chaque case avec ses couleurs déjà résolues (fond, cadre), et les mentions des images. */
 export interface GabaritImprime extends Omit<Gabarit, "cases" | "couleurs"> {
-  cases: (CaseTla & { fond: string; bord: string })[];
+  cases: (CaseTla & {
+    fond: string; bord: string;
+    /** Dans un classeur : le numéro de la page que la case ouvre. */
+    pageLiee?: number;
+    /** La licence de son image, pour l'export au format ouvert (OBZ). */
+    licence?: LicenceImageTla;
+  })[];
   /** Les mentions des images qui ne viennent pas d'ARASAAC : Sclera, l'IA… */
   mentions?: string;
+  /** Dans un classeur : le numéro de cette page, et le nombre de pages. */
+  numero?: number;
+  total?: number;
 }
+/** La licence d'une image, telle que le format ouvert des tableaux (OBF) la décrit. */
+export interface LicenceImageTla { type: string; auteur: string; url: string; mention: string }
 export const caseVide = (): CaseTla => ({ pictoId: null, fichier: "", mot: "", nature: "nom" });
 
 /** Réponse d'une recherche web, avec ses sources. */

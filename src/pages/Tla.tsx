@@ -5,7 +5,7 @@ import { Modal, Field, Input, Select, Empty, Confirm, useAsync } from "../compon
 import { toast } from "../components/Toaster";
 import {
   NATURES, CORPS_DU_MOT, PLACES_DU_MOT, apparence, couleurSure, dupliquer, nouveauGabarit, pourImpression, redimensionner,
-  casesPerdues, poser, echanger, remplies, verifier, lireGabarit, tableauSurTheme,
+  casesPerdues, poser, echanger, remplies, verifier, lireGabarit, tableauSurTheme, accueilDu, pagesDuClasseur, classeurPourImpression,
 } from "../tla";
 import { chercherPictos, estMonPicto, lireMesPictos, mentionDeMesPictos, type MonPicto } from "../mesPictos";
 import { EtiquetteMonPicto, usePictoImage } from "../components/ChoixPicto";
@@ -73,11 +73,25 @@ export function TlaTab() {
     }
   };
 
+  /** Une nouvelle page du classeur, faite comme celle d'où l'on vient : la même grille, les mêmes couleurs. */
+  const creerPage = (nom: string, modele: Gabarit): Gabarit => {
+    const g = { ...nouveauGabarit(modele.colonnes, modele.lignes), nom, eleve: modele.eleve, paysage: modele.paysage, ecart: modele.ecart,
+      ...(modele.couleurs ? { couleurs: { mode: modele.couleurs.mode, couleurs: { ...modele.couleurs.couleurs } } } : {}),
+      ...(modele.placeMot ? { placeMot: modele.placeMot } : {}), ...(modele.corpsMot ? { corpsMot: modele.corpsMot } : {}) };
+    enregistrer([...ref.current, g]);
+    return g;
+  };
+  /** Supprimer un tableau : les cases qui l'ouvraient n'ouvrent plus rien. */
+  const supprimer = (g: Gabarit) => enregistrer(ref.current.filter((x) => x.id !== g.id).map((x) => (
+    x.cases.some((c) => c.lien === g.id) ? { ...x, cases: x.cases.map((c) => (c.lien === g.id ? (({ lien: _l, ...reste }) => reste)(c) : c)) } : x
+  )));
+
   const edite = gabarits.find((g) => g.id === ouvert);
   if (!charge) return <div />;
 
   if (edite) {
-    return <Editeur gabarit={edite} onChange={majUn} onFermer={() => setOuvert("")} />;
+    return <Editeur gabarit={edite} tous={gabarits} onChange={majUn} onFermer={() => setOuvert("")}
+      onCreerPage={(nom, modele) => creerPage(nom, modele)} onOuvrir={setOuvert} />;
   }
 
   return (
@@ -110,6 +124,10 @@ export function TlaTab() {
               <div style={{ fontWeight: 600 }}>{g.nom}</div>
               <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 2 }}>
                 {g.eleve && `${g.eleve} · `}{g.colonnes} × {g.lignes} · {remplies(g)} mots
+                {(() => {
+                  const n = new Set(g.cases.map((c) => c.lien).filter((id) => id && gabarits.some((x) => x.id === id))).size;
+                  return n ? ` · ↗ ${n} page${n > 1 ? "s" : ""}` : "";
+                })()}
               </div>
               <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
                 <button className="btn sm" onClick={() => setOuvert(g.id)}>✏️ Ouvrir</button>
@@ -135,7 +153,7 @@ export function TlaTab() {
 
       {aSupprimer && (
         <Confirm message={`Supprimer le tableau « ${aSupprimer.nom} » ?`}
-          onYes={() => { enregistrer(ref.current.filter((x) => x.id !== aSupprimer.id)); setASupprimer(null); }}
+          onYes={() => { supprimer(aSupprimer); setASupprimer(null); }}
           onClose={() => setASupprimer(null)} />
       )}
 
@@ -150,8 +168,12 @@ export function TlaTab() {
 
 // ── Éditeur ────────────────────────────────────────────────────────────────
 
-function Editeur({ gabarit, onChange, onFermer }: {
-  gabarit: Gabarit; onChange: (g: Gabarit) => void; onFermer: () => void;
+function Editeur({ gabarit, tous, onChange, onFermer, onCreerPage, onOuvrir }: {
+  gabarit: Gabarit; tous: Gabarit[]; onChange: (g: Gabarit) => void; onFermer: () => void;
+  /** Une nouvelle page du classeur, faite comme celle-ci ; elle est enregistrée. */
+  onCreerPage: (nom: string, modele: Gabarit) => Gabarit;
+  /** Ouvrir une autre page du classeur. */
+  onOuvrir: (id: string) => void;
 }) {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   const [caseEditee, setCaseEditee] = React.useState<number | null>(null);
@@ -234,6 +256,44 @@ function Editeur({ gabarit, onChange, onFermer }: {
     finally { setOccupe(false); }
   };
 
+  // Le classeur de la page : son accueil, et les pages où l'on va de case en case — cette page telle qu'on la modifie.
+  const aJour = tous.map((g) => (g.id === gabarit.id ? gabarit : g));
+  const accueil = accueilDu(gabarit, aJour);
+  const pages = pagesDuClasseur(accueil, aJour);
+  const nomDe = (id?: string) => aJour.find((g) => g.id === id)?.nom;
+
+  /** Les pages prêtes à imprimer ou à exporter : chacune avec ses couleurs, ses images, ses mentions, ses liens numérotés. */
+  const preparerClasseur = async () => {
+    for (const p of pages) {
+      const soucis = verifier(p);
+      if (soucis.length) throw new Error(`« ${p.nom} » : ${soucis[0]}`);
+    }
+    const miens: MonPicto[] = await lireMesPictos().catch((): MonPicto[] => []);
+    return classeurPourImpression(pages, (p) => p.couleurs ?? paletteParDefaut, (id) => miens.find((x) => x.id === id)?.fichier,
+      (p) => mentionDeMesPictos(p.cases.filter((c) => !c.masquee).map((c) => c.pictoId)));
+  };
+  const imprimerClasseur = async () => {
+    setOccupe(true);
+    try {
+      await api.tlaClasseur(await preparerClasseur());
+      toast(`Classeur de ${pages.length} pages créé — le PDF s'ouvre.`, { icone: "🖨" });
+    } catch (e: any) { toast(String(e?.message ?? e), { icone: "⚠️" }); }
+    finally { setOccupe(false); }
+  };
+  const exporterObz = async () => {
+    try {
+      const imprimees = await preparerClasseur();
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const nom = accueil.nom.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").toLowerCase() || "classeur";
+      const chemin = await save({ defaultPath: `${nom}.obz`, filters: [{ name: "Tableaux de communication (OBZ)", extensions: ["obz"] }] });
+      if (!chemin) return;
+      setOccupe(true);
+      await api.tlaExporterObz(imprimees, chemin);
+      toast("Classeur exporté : il s'ouvre dans LibreAAC, Cboard ou AsTeRICS Grid.", { icone: "📤" });
+    } catch (e: any) { toast(String(e?.message ?? e), { icone: "⚠️" }); }
+    finally { setOccupe(false); }
+  };
+
   const placeMot = gabarit.placeMot ?? "dessous";
   const corpsMot = gabarit.corpsMot ?? 7;
   const masquees = gabarit.cases.filter((c) => c.masquee && c.pictoId !== null).length;
@@ -285,6 +345,25 @@ function Editeur({ gabarit, onChange, onFermer }: {
           <button className="btn primary" disabled={occupe} onClick={imprimer}>
             {occupe ? "Création…" : "🖨 Imprimer le tableau"}
           </button>
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10, fontSize: 13 }}>
+          <span>📒 {pages.length > 1 ? <>Classeur « {accueil.nom} » : {pages.length} pages</> : "Un tableau seul"}</span>
+          <Aide titre="Le classeur à pages liées" vers="droite">
+            <p>Une case peut <b>ouvrir une autre page</b> — « je veux » mène aux aliments, aux jeux —, comme dans les classeurs de
+            communication (le PODD de Gayle Porter). Choisissez la page en cliquant sur la case. Le classeur, c'est l'accueil et toutes
+            les pages qu'on atteint de case en case : il s'imprime d'un coup, chaque case liée portant le numéro de sa page.</p>
+            <p>L'export <b>.obz</b> est le format ouvert des tableaux de communication : il s'ouvre dans LibreAAC, Cboard ou
+            AsTeRICS Grid, sur la tablette de l'élève, avec ses images et leurs licences. Le nom de l'élève n'y part pas.</p>
+          </Aide>
+          {pages.length > 1 && (
+            <Select value={gabarit.id} aria-label="Aller à une page du classeur" style={{ maxWidth: 260 }}
+              onChange={(e) => onOuvrir(e.target.value)}>
+              {pages.map((p, i) => <option key={p.id} value={p.id}>{`Page ${i + 1} — ${p.nom}`}</option>)}
+            </Select>
+          )}
+          <div style={{ flex: 1 }} />
+          {pages.length > 1 && <button className="btn sm" disabled={occupe} onClick={imprimerClasseur}>🖨 Imprimer le classeur</button>}
+          <button className="btn sm" disabled={occupe} onClick={exporterObz}>📤 Exporter pour une tablette (.obz)</button>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap", marginTop: 10 }}>
           <Field label="Couleurs">
@@ -344,7 +423,7 @@ function Editeur({ gabarit, onChange, onFermer }: {
           maxWidth: gabarit.paysage ? "100%" : 620,
         }}>
           {gabarit.cases.map((c, i) => (
-            <CaseBouton key={i} valeur={c} palette={palette} placeMot={placeMot} corpsMot={corpsMot}
+            <CaseBouton key={i} valeur={c} palette={palette} placeMot={placeMot} corpsMot={corpsMot} versPage={nomDe(c.lien)}
               onClick={() => setCaseEditee(i)}
               glissee={glissee === i} visee={visee === i && glissee !== i}
               onDragStart={(e) => {
@@ -375,8 +454,15 @@ function Editeur({ gabarit, onChange, onFermer }: {
 
       {caseEditee !== null && (
         <ChoixMot valeur={gabarit.cases[caseEditee]} palette={palette}
+          autresPages={aJour.filter((g) => g.id !== gabarit.id)}
           onClose={() => setCaseEditee(null)}
-          onValider={(v) => { changer(poser(gabarit, caseEditee, v)); setCaseEditee(null); }} />
+          onValider={(v, nouvellePage) => {
+            // Une nouvelle page : elle naît du mot de la case, avec la grille de cette page.
+            const lien = nouvellePage ? onCreerPage(nouvellePage, gabarit).id : v.lien;
+            const { lien: _ancien, ...sans } = v;
+            changer(poser(gabarit, caseEditee, lien ? { ...sans, lien } : sans));
+            setCaseEditee(null);
+          }} />
       )}
 
       {redim && (
@@ -397,8 +483,10 @@ function Editeur({ gabarit, onChange, onFermer }: {
 
 type GlisserCase = Pick<React.HTMLAttributes<HTMLDivElement>, "onDragStart" | "onDragOver" | "onDragLeave" | "onDrop" | "onDragEnd">;
 
-function CaseBouton({ valeur, palette, placeMot, corpsMot, onClick, glissee, visee, ...glisser }: {
+function CaseBouton({ valeur, palette, placeMot, corpsMot, versPage, onClick, glissee, visee, ...glisser }: {
   valeur: CaseTla; palette: PaletteTla; placeMot: PlaceDuMot; corpsMot: number; onClick: () => void;
+  /** Le nom de la page qu'elle ouvre, dans un classeur. */
+  versPage?: string;
   /** La case qu'on est en train de glisser. */
   glissee: boolean;
   /** La case au-dessus de laquelle on la tient : c'est avec elle qu'elle s'échangera. */
@@ -421,7 +509,7 @@ function CaseBouton({ valeur, palette, placeMot, corpsMot, onClick, glissee, vis
     <div role="button" tabIndex={0} draggable={!vide} {...glisser}
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
-      title={vide ? "Poser un mot" : masquee ? `${valeur.mot} — masquée : elle s'imprime vide` : valeur.mot}
+      title={vide ? "Poser un mot" : masquee ? `${valeur.mot} — masquée : elle s'imprime vide` : versPage ? `${valeur.mot} — ouvre « ${versPage} »` : valeur.mot}
       aria-label={vide ? "Case vide : poser un mot" : `${valeur.mot}${masquee ? ", masquée" : ""} : changer le mot, ou glisser pour échanger`}
       style={{
         position: "relative",
@@ -454,6 +542,13 @@ function CaseBouton({ valeur, palette, placeMot, corpsMot, onClick, glissee, vis
           fontSize: 12, lineHeight: 1, padding: "3px 6px", fontWeight: 700,
         }}>⇄</span>
       )}
+      {versPage && !vide && !visee && (
+        <span aria-hidden="true" style={{
+          position: "absolute", top: 3, right: 3, pointerEvents: "none", maxWidth: "70%",
+          background: "#33333f", color: "#fff", borderRadius: 4, fontSize: 10, lineHeight: 1.2, padding: "2px 5px", fontWeight: 700,
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>↗ {versPage}</span>
+      )}
     </div>
   );
 }
@@ -464,8 +559,13 @@ function CaseBouton({ valeur, palette, placeMot, corpsMot, onClick, glissee, vis
 // correspondance partielle, interdite dans la génération de jeux : chercher
 // « terre » ramène aussi des drapeaux, mais on les voit avant de choisir.
 
-function ChoixMot({ valeur, palette, onClose, onValider }: {
-  valeur: CaseTla; palette: PaletteTla; onClose: () => void; onValider: (v: CaseTla) => void;
+function ChoixMot({ valeur, palette, autresPages, onClose, onValider }: {
+  valeur: CaseTla; palette: PaletteTla;
+  /** Les autres tableaux, que la case peut ouvrir. */
+  autresPages: Gabarit[];
+  onClose: () => void;
+  /** La case posée ; et, si l'on en veut une, le nom de la nouvelle page qu'elle ouvre. */
+  onValider: (v: CaseTla, nouvellePage?: string) => void;
 }) {
   const [q, setQ] = React.useState(valeur.mot);
   const [resultats, setResultats] = React.useState<PictoArasaac[]>([]);
@@ -477,6 +577,8 @@ function ChoixMot({ valeur, palette, onClose, onValider }: {
   // Vide : la couleur de sa nature ; sinon, une couleur à elle.
   const [couleur, setCouleur] = React.useState(couleurSure(valeur.couleur) ?? "");
   const [masquee, setMasquee] = React.useState(!!valeur.masquee);
+  // La page qu'elle ouvre : un tableau, aucun, ou « nouvelle » — une page à créer à son nom.
+  const [ouvre, setOuvre] = React.useState(valeur.lien && autresPages.some((g) => g.id === valeur.lien) ? valeur.lien : "");
 
   // Mes pictos d'abord — les photos prises au téléphone, les dessins gardés —, puis ARASAAC.
   React.useEffect(() => {
@@ -504,7 +606,8 @@ function ChoixMot({ valeur, palette, onClose, onValider }: {
       pictoId: choisi.id, fichier: choisi.fichier, mot: mot.trim(), nature,
       ...(propre ? { couleur: propre } : {}),
       ...(masquee ? { masquee: true } : {}),
-    });
+      ...(ouvre && ouvre !== "nouvelle" ? { lien: ouvre } : {}),
+    }, ouvre === "nouvelle" ? mot.trim() : undefined);
   };
 
   return (
@@ -562,6 +665,13 @@ function ChoixMot({ valeur, palette, onClose, onValider }: {
             <input type="checkbox" checked={masquee} onChange={(e) => setMasquee(e.target.checked)} />
             Elle s'imprime vide, mais garde sa place et son mot
           </label>
+        </Field>
+        <Field label="Elle ouvre la page">
+          <Select value={ouvre} onChange={(e) => setOuvre(e.target.value)}>
+            <option value="">— aucune —</option>
+            {autresPages.map((g) => <option key={g.id} value={g.id}>{g.nom}</option>)}
+            <option value="nouvelle">➕ Une nouvelle page{mot.trim() ? ` : « ${mot.trim()} »` : ""}</option>
+          </Select>
         </Field>
       </div>
     </Modal>

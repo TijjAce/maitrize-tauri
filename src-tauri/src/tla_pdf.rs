@@ -53,6 +53,23 @@ pub struct CaseTla {
     /// Masquée : la case garde sa place, mais s'imprime blanche et vide.
     #[serde(default)]
     pub masquee: bool,
+    /// Dans un classeur : le numéro de la page que la case ouvre ; la case le porte, dans un onglet.
+    #[serde(default)]
+    pub page_liee: Option<u32>,
+    /// La licence de son image, pour l'export au format ouvert.
+    #[serde(default)]
+    pub licence: Option<LicenceImage>,
+}
+
+/// La licence d'une image, telle que la fenêtre la décrit : ARASAAC, une banque d'appoint, une photo…
+#[derive(Deserialize, Clone, Default)]
+pub struct LicenceImage {
+    #[serde(rename = "type", default)]
+    pub sorte: String,
+    #[serde(default)]
+    pub auteur: String,
+    #[serde(default)]
+    pub url: String,
 }
 
 #[derive(Deserialize, Clone)]
@@ -84,6 +101,11 @@ pub struct Gabarit {
     /// La mention des images qui ne viennent pas d'ARASAAC : Sclera, l'IA…
     #[serde(default)]
     pub mentions: String,
+    /// Dans un classeur : le numéro de cette page, et le nombre de pages ; écrits devant le titre.
+    #[serde(default)]
+    pub numero: Option<u32>,
+    #[serde(default)]
+    pub total: Option<u32>,
 }
 
 fn ecart_defaut() -> f32 {
@@ -152,7 +174,8 @@ fn charger_sur(chemin: &str, fond: (f32, f32, f32)) -> Result<::image::RgbImage,
     Ok(sortie)
 }
 
-pub fn construire(g: &Gabarit) -> Result<Vec<u8>, String> {
+/// Une grille qui se tient : autant de cases que la grille en annonce.
+fn verifier(g: &Gabarit) -> Result<(), String> {
     if g.colonnes == 0 || g.lignes == 0 {
         return Err("Le gabarit n'a pas de grille.".into());
     }
@@ -165,19 +188,50 @@ pub fn construire(g: &Gabarit) -> Result<Vec<u8>, String> {
             g.cases.len()
         ));
     }
+    Ok(())
+}
 
-    let (largeur, hauteur) = if g.paysage { (297.0, 210.0) } else { (210.0, 297.0) };
-    let (doc, page, couche) = PdfDocument::new(
-        format!("Tableau de langage — {}", g.nom),
-        Mm(largeur),
-        Mm(hauteur),
-        "Tableau",
-    );
+const fn format_de(g: &Gabarit) -> (f32, f32) {
+    if g.paysage {
+        (297.0, 210.0)
+    } else {
+        (210.0, 297.0)
+    }
+}
+
+pub fn construire(g: &Gabarit) -> Result<Vec<u8>, String> {
+    construire_classeur(std::slice::from_ref(g))
+}
+
+/// Un classeur de communication : une page par tableau, chacune à son orientation, dans l'ordre reçu — l'accueil d'abord.
+pub fn construire_classeur(pages: &[Gabarit]) -> Result<Vec<u8>, String> {
+    let premiere = pages.first().ok_or_else(|| "Le classeur n'a pas de page.".to_string())?;
+    for g in pages {
+        verifier(g)?;
+    }
+    let (largeur, hauteur) = format_de(premiere);
+    let titre = if pages.len() > 1 {
+        format!("Classeur de communication — {}", premiere.nom)
+    } else {
+        format!("Tableau de langage — {}", premiere.nom)
+    };
+    let (doc, page, couche) = PdfDocument::new(titre, Mm(largeur), Mm(hauteur), "Tableau");
     let police = doc.add_builtin_font(BuiltinFont::Helvetica).map_err(|e| format!("Police : {e}"))?;
     let gras = doc
         .add_builtin_font(BuiltinFont::HelveticaBold)
         .map_err(|e| format!("Police : {e}"))?;
-    let c = doc.get_page(page).get_layer(couche);
+    dessiner(&doc.get_page(page).get_layer(couche), premiere, &police, &gras)?;
+    for g in &pages[1..] {
+        let (l, h) = format_de(g);
+        let (page, couche) = doc.add_page(Mm(l), Mm(h), "Tableau");
+        dessiner(&doc.get_page(page).get_layer(couche), g, &police, &gras)?;
+    }
+    doc.save_to_bytes().map_err(|e| format!("Écriture du PDF : {e}"))
+}
+
+/// Une page : le bandeau, la grille, les cases, les mentions au pied.
+fn dessiner(c: &PdfLayerReference, g: &Gabarit, police: &IndirectFontRef, gras: &IndirectFontRef) -> Result<(), String> {
+    let (largeur, hauteur) = format_de(g);
 
     // Marges minces : chaque millimètre rendu est de la place pour un mot.
     const MARGE: f32 = 8.0;
@@ -218,14 +272,18 @@ pub fn construire(g: &Gabarit) -> Result<Vec<u8>, String> {
         );
     }
 
-    // Bandeau : à qui est ce tableau, et lequel c'est.
+    // Bandeau : à qui est ce tableau, et lequel c'est ; dans un classeur, son numéro de page d'abord.
     c.set_fill_color(couleur((0.2, 0.2, 0.25)));
-    let titre = if g.eleve.is_empty() { g.nom.clone() } else { format!("{} — {}", g.eleve, g.nom) };
-    c.use_text(&titre, 10.0, Mm(MARGE), Mm(hauteur - MARGE - 3.0), &gras);
+    let nom = if g.eleve.is_empty() { g.nom.clone() } else { format!("{} — {}", g.eleve, g.nom) };
+    let titre = match (g.numero, g.total) {
+        (Some(n), Some(t)) if t > 1 => format!("Page {n} sur {t} — {nom}"),
+        _ => nom,
+    };
+    c.use_text(&titre, 10.0, Mm(MARGE), Mm(hauteur - MARGE - 3.0), gras);
     c.set_fill_color(couleur((0.42, 0.42, 0.47)));
     for (k, ligne) in competences.iter().enumerate() {
         let y = hauteur - MARGE - 6.4 - k as f32 * INTERLIGNE_COMPETENCES;
-        c.use_text(ligne, CORPS_COMPETENCES, Mm(MARGE), Mm(y), &police);
+        c.use_text(ligne, CORPS_COMPETENCES, Mm(MARGE), Mm(y), police);
     }
 
     let place_mot = g.place_mot.as_str();
@@ -328,24 +386,37 @@ pub fn construire(g: &Gabarit) -> Result<Vec<u8>, String> {
         if avec_mot {
             c.set_fill_color(couleur((0.1, 0.1, 0.1)));
             let ligne = if dessus { y + case_h - marge - corps * 0.3528 } else { y + marge + 0.1 };
-            c.use_text(mot, corps, Mm(x + (case_l - largeur_texte(mot, corps)) / 2.0), Mm(ligne), &police);
+            c.use_text(mot, corps, Mm(x + (case_l - largeur_texte(mot, corps)) / 2.0), Mm(ligne), police);
+        }
+
+        // Une case qui ouvre une autre page du classeur porte son numéro dans un onglet sombre, en haut à droite :
+        // l'adulte partenaire tourne les pages sans chercher.
+        if let Some(n) = case.page_liee {
+            let texte = format!("p. {n}");
+            let corps_onglet = 8.0;
+            let l = largeur_texte(&texte, corps_onglet) + 2.6;
+            let h = 5.0;
+            let (ox, oy) = (x + case_l - l - 0.8, y + case_h - h - 0.8);
+            c.set_fill_color(couleur((0.2, 0.2, 0.25)));
+            c.add_rect(Rect::new(Mm(ox), Mm(oy), Mm(ox + l), Mm(oy + h)).with_mode(printpdf::path::PaintMode::Fill));
+            c.set_fill_color(couleur(BLANC));
+            c.use_text(&texte, corps_onglet, Mm(ox + 1.3), Mm(oy + 1.5), gras);
         }
     }
 
     c.set_fill_color(couleur((0.6, 0.6, 0.6)));
     for (k, ligne) in mentions.iter().enumerate() {
         let y = 4.0 + (mentions.len() - k) as f32 * 2.6;
-        c.use_text(ligne, CORPS_MENTION, Mm((largeur - largeur_texte(ligne, CORPS_MENTION)) / 2.0), Mm(y), &police);
+        c.use_text(ligne, CORPS_MENTION, Mm((largeur - largeur_texte(ligne, CORPS_MENTION)) / 2.0), Mm(y), police);
     }
     c.use_text(
         ATTRIBUTION,
         CORPS_MENTION,
         Mm((largeur - largeur_texte(ATTRIBUTION, CORPS_MENTION)) / 2.0),
         Mm(4.0),
-        &police,
+        police,
     );
-
-    doc.save_to_bytes().map_err(|e| format!("Écriture du PDF : {e}"))
+    Ok(())
 }
 
 #[cfg(test)]
@@ -364,6 +435,8 @@ mod tests {
             place_mot: String::new(),
             corps_mot: None,
             mentions: String::new(),
+            numero: None,
+            total: None,
             cases: (0..n)
                 .map(|i| CaseTla {
                     picto_id: None,
@@ -373,6 +446,8 @@ mod tests {
                     fond: String::new(),
                     bord: String::new(),
                     masquee: false,
+                    page_liee: None,
+                    licence: None,
                 })
                 .collect(),
         }
@@ -449,6 +524,8 @@ mod tests {
             place_mot: std::env::var("MAITRIZE_MOT").unwrap_or_default(),
             corps_mot: None,
             mentions: String::new(),
+            numero: None,
+            total: None,
             cases: mots
                 .iter()
                 .enumerate()
@@ -460,6 +537,8 @@ mod tests {
                     fond: String::new(),
                     bord: std::env::var("MAITRIZE_CADRE").unwrap_or_default(),
                     masquee: i % 9 == 8,
+                    page_liee: None,
+                    licence: None,
                 })
                 .collect(),
         };
@@ -467,6 +546,60 @@ mod tests {
         let sortie = std::env::var("MAITRIZE_SORTIE").unwrap_or_else(|_| "/tmp/tla.pdf".into());
         std::fs::write(&sortie, &pdf).unwrap();
         println!("PDF écrit : {sortie} ({} octets)", pdf.len());
+    }
+
+    #[test]
+    fn un_classeur_a_une_page_par_tableau() {
+        let mut accueil = gabarit(5, 4, 20);
+        accueil.numero = Some(1);
+        accueil.total = Some(3);
+        accueil.cases[3].page_liee = Some(2);
+        accueil.cases[4].page_liee = Some(3);
+        let mut manger = gabarit(4, 3, 12);
+        manger.paysage = false;
+        manger.numero = Some(2);
+        manger.total = Some(3);
+        manger.cases[0].page_liee = Some(1);
+        let mut jouer = gabarit(4, 3, 12);
+        jouer.numero = Some(3);
+        jouer.total = Some(3);
+        let pdf = construire_classeur(&[accueil, manger, jouer]).expect("classeur");
+        assert_eq!(nombre_de_pages(&pdf), 3, "trois pages");
+        assert_eq!(nombre_de_pages(&construire(&gabarit(5, 4, 20)).unwrap()), 1);
+        assert!(construire_classeur(&[]).is_err(), "un classeur sans page");
+    }
+
+    /// Les pages d'un PDF : les objets « /Type /Page », pas « /Pages ».
+    fn nombre_de_pages(pdf: &[u8]) -> usize {
+        let t = String::from_utf8_lossy(pdf);
+        t.match_indices("/Page")
+            .filter(|(i, _)| !t[i + 5..].starts_with('s') && t[..*i].trim_end().ends_with("/Type"))
+            .count()
+    }
+
+    /// Un classeur de deux pages sur de vraies images, pour juger de l'œil l'onglet des cases liées :
+    ///   MAITRIZE_BANQUE=/chemin/ARASAAC/images MAITRIZE_SORTIE=/tmp/classeur.pdf cargo test rendu_classeur -- --ignored
+    #[test]
+    #[ignore]
+    fn rendu_classeur() {
+        let banque = std::path::PathBuf::from(std::env::var("MAITRIZE_BANQUE").expect("MAITRIZE_BANQUE"));
+        let image = |id: u32| banque.join(format!("{id}.png")).to_string_lossy().into_owned();
+        let case = |id: u32, mot: &str, page: Option<u32>| CaseTla { picto_id: Some(id as i64), fichier: image(id), mot: mot.into(), page_liee: page, ..case_posee("") };
+        let mut accueil = gabarit(5, 2, 10);
+        accueil.nom = "Accueil".into();
+        accueil.eleve = String::new();
+        accueil.cases = vec![case(2617, "je", None), case(2418, "vouloir", None), case(2349, "manger", Some(2)), case(2439, "jouer", Some(2)), case(4570, "aider", None),
+            case(5583, "oui", None), case(5525, "non", None), case(37163, "encore", None), case(5358, "fini", None), case(2369, "dormir", None)];
+        let mut repas = gabarit(3, 2, 6);
+        repas.nom = "Le repas".into();
+        repas.eleve = String::new();
+        repas.cases = vec![case(2494, "pain", None), case(2462, "pomme", None), case(2445, "lait", None), case(2248, "eau", None), case(2276, "boire", None), case(38249, "retour", Some(1))];
+        for (n, g) in [&mut accueil, &mut repas].into_iter().enumerate() {
+            g.numero = Some(n as u32 + 1);
+            g.total = Some(2);
+        }
+        let pdf = construire_classeur(&[accueil, repas]).expect("classeur");
+        std::fs::write(std::env::var("MAITRIZE_SORTIE").unwrap_or_else(|_| "/tmp/classeur.pdf".into()), pdf).unwrap();
     }
 
     #[test]
@@ -490,6 +623,8 @@ mod tests {
             fond: String::new(),
             bord: String::new(),
             masquee: false,
+            page_liee: None,
+            licence: None,
         }
     }
 

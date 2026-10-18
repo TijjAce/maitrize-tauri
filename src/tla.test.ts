@@ -3,6 +3,7 @@ import {
   NATURES, couleurNature, nouveauGabarit, redimensionner,
   casesPerdues, poser, remplies, verifier, lireGabarit, echanger,
   PALETTES, PALETTE_DEFAUT, apparence, dupliquer, lirePalette, pourImpression,
+  accueilDu, pagesDuClasseur, classeurPourImpression, licenceDeLImage,
 } from "./tla";
 import type { CaseTla, Gabarit, PaletteTla } from "./api";
 
@@ -249,5 +250,52 @@ describe("tableau dupliqué, tableau importé", () => {
     expect(g.couleurs?.mode).toBe("aucune");
     expect(g.placeMot).toBe("aucune");
     expect(g.corpsMot).toBe(16);
+  });
+});
+
+describe("le classeur à pages liées", () => {
+  // L'accueil mène au repas et aux jeux ; le repas, à la boisson et, en retour, à l'accueil ; les jeux aussi y reviennent.
+  const page = (nom: string) => ({ ...nouveauGabarit(3, 2), nom });
+  const accueil = page("Accueil"), repas = page("Le repas"), jeux = page("Les jeux"), boire = page("Boire"), seul = page("Seul");
+  accueil.cases[0] = { ...mot("manger", 1), lien: repas.id };
+  accueil.cases[1] = { ...mot("jouer", 2), lien: jeux.id };
+  accueil.cases[2] = { ...mot("perdu", 3), lien: "un-tableau-supprime" };
+  repas.cases[0] = { ...mot("boire", 4), lien: boire.id };
+  repas.cases[5] = { ...mot("retour", 5), lien: accueil.id };
+  jeux.cases[5] = { ...mot("retour", 5), lien: accueil.id };
+  boire.cases[0] = { pictoId: -2_100_000_007, fichier: "", mot: "mon verre", nature: "nom" };
+  // Rangés comme l'écran les garde, dans l'ordre de leur création — mais l'accueil n'a pas à être le premier.
+  const tous = [seul, accueil, repas, jeux, boire];
+
+  it("part de l'accueil et prend chaque page une fois, dans l'ordre où les cases y mènent", () => {
+    expect(pagesDuClasseur(accueil, tous).map((g) => g.nom)).toEqual(["Accueil", "Le repas", "Les jeux", "Boire"]);
+    expect(pagesDuClasseur(seul, tous).map((g) => g.nom)).toEqual(["Seul"]);
+  });
+
+  it("retrouve l'accueil depuis n'importe quelle page, même quand des cases y reviennent", () => {
+    expect(accueilDu(boire, tous).nom).toBe("Accueil");
+    expect(accueilDu(jeux, tous).nom).toBe("Accueil");
+    expect(accueilDu(repas, tous).nom).toBe("Accueil");
+    expect(accueilDu(seul, tous).nom).toBe("Seul");
+  });
+
+  it("numérote les pages et porte dans chaque case liée le numéro de sa page, et la licence de son image", () => {
+    const pages = pagesDuClasseur(accueil, tous);
+    const imprimees = classeurPourImpression(pages, () => PALETTE_DEFAUT, () => "photo-verre.jpg", () => "");
+    expect(imprimees.map((p) => [p.numero, p.total])).toEqual([[1, 4], [2, 4], [3, 4], [4, 4]]);
+    expect(imprimees[0].cases[0].pageLiee).toBe(2);
+    expect(imprimees[0].cases[1].pageLiee).toBe(3);
+    // Un tableau supprimé : la case ne mène plus nulle part.
+    expect(imprimees[0].cases[2].pageLiee).toBeUndefined();
+    expect(imprimees[1].cases[5].pageLiee).toBe(1);
+    expect(imprimees[0].cases[0].licence?.type).toBe("CC BY-NC-SA 4.0");
+    expect(imprimees[3].cases[0]).toMatchObject({ fichier: "photo-verre.jpg", licence: { type: "private", auteur: "L'enseignant" } });
+    expect(imprimees[0].cases[3].licence).toBeUndefined();
+    expect(licenceDeLImage(-600_000_001)?.auteur).toBe("The Makaton Charity");
+  });
+
+  it("n'importe pas les liens d'un tableau venu d'un fichier : ses pages ne viennent pas avec lui", () => {
+    const g = lireGabarit(JSON.stringify({ nom: "Accueil", colonnes: 1, lignes: 1, cases: [{ pictoId: 1, fichier: "1.png", mot: "manger", nature: "verbe", lien: "ailleurs" }] }));
+    expect(g.cases[0].lien).toBeUndefined();
   });
 });

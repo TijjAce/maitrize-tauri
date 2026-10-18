@@ -4,9 +4,9 @@
 // valeur d'un TLA — les places ne bougent pas, la grille ne se renumérote pas
 // — soient vérifiables par des tests plutôt que par l'œil.
 
-import { CaseTla, Gabarit, GabaritImprime, ModeCouleurTla, NatureMot, PaletteTla, PictoArasaac, PlaceDuMot, caseVide, newId } from "./api";
+import { CaseTla, Gabarit, GabaritImprime, LicenceImageTla, ModeCouleurTla, NatureMot, PaletteTla, PictoArasaac, PlaceDuMot, caseVide, newId } from "./api";
 import { Squelette, plan, NATURE_DU_ROLE } from "./squelettes";
-import { estMonPicto } from "./mesPictos";
+import { estMonPicto, origineDe } from "./mesPictos";
 
 export const NATURES: { id: NatureMot; label: string; couleur: string }[] = [
   { id: "personne", label: "Personne", couleur: "#fff2b8" },
@@ -103,6 +103,109 @@ export function pourImpression(
       ...apparence(c, palette),
     })),
   };
+}
+
+// ── Le classeur à pages liées ──────────────────────────────────────────────
+//
+// Sur le principe des classeurs de communication — le PODD de Gayle Porter —,
+// une case peut ouvrir une autre page : « je veux » mène aux aliments, aux
+// jeux, aux lieux. Maitrize ne reprend pas les pages du PODD, protégées : on
+// construit ses propres tableaux avec ARASAAC et Mes pictos, et on les relie.
+// Le classeur d'un tableau, c'est son accueil et toutes les pages qu'on
+// atteint de case en case ; il s'imprime d'un coup, chaque case liée portant
+// le numéro de sa page, et s'exporte au format ouvert OBZ.
+
+/** Les tableaux qui ont une case vers celui-ci. */
+export const tableauxQuiMenentA = (g: Gabarit, tous: Gabarit[]): Gabarit[] =>
+  tous.filter((x) => x.id !== g.id && x.cases.some((c) => c.lien === g.id));
+
+/**
+ * L'accueil du classeur d'un tableau. Parmi les pages qui mènent à lui, de
+ * proche en proche, c'est celle d'où l'on atteint le plus de pages, et au plus
+ * court — le carrefour — ; à égalité, la plus ancienne : un classeur grandit
+ * depuis son accueil. Les cases « retour », qui ramènent à l'accueil, ne le
+ * déplacent pas.
+ */
+export function accueilDu(g: Gabarit, tous: Gabarit[]): Gabarit {
+  // Les pages d'où l'on peut arriver à celle-ci, elle comprise.
+  const candidates = [g];
+  const vues = new Set([g.id]);
+  for (let i = 0; i < candidates.length; i++) {
+    for (const avant of tableauxQuiMenentA(candidates[i], tous)) {
+      if (!vues.has(avant.id)) { vues.add(avant.id); candidates.push(avant); }
+    }
+  }
+  /** Le nombre de pages atteintes, et la somme de leurs distances, depuis une page. */
+  const portee = (depart: Gabarit) => {
+    const distance = new Map([[depart.id, 0]]);
+    const file = [depart];
+    for (let i = 0; i < file.length; i++) {
+      for (const c of file[i].cases) {
+        const suite = c.lien && !distance.has(c.lien) ? tous.find((x) => x.id === c.lien) : undefined;
+        if (suite) { distance.set(suite.id, distance.get(file[i].id)! + 1); file.push(suite); }
+      }
+    }
+    return { pages: distance.size, chemins: [...distance.values()].reduce((a, b) => a + b, 0) };
+  };
+  const rang = (x: Gabarit) => { const i = tous.findIndex((y) => y.id === x.id); return i < 0 ? tous.length : i; };
+  return candidates.map((x) => ({ x, ...portee(x) }))
+    .sort((a, b) => b.pages - a.pages || a.chemins - b.chemins || rang(a.x) - rang(b.x))[0].x;
+}
+
+/** Les pages du classeur : l'accueil, puis chaque tableau où mène une case, dans l'ordre où on le rencontre, une fois chacun. */
+export function pagesDuClasseur(accueil: Gabarit, tous: Gabarit[]): Gabarit[] {
+  const pages = [accueil];
+  const vus = new Set([accueil.id]);
+  for (let i = 0; i < pages.length; i++) {
+    for (const c of pages[i].cases) {
+      if (!c.lien || vus.has(c.lien)) continue;
+      const suite = tous.find((x) => x.id === c.lien);
+      if (!suite) continue;
+      vus.add(suite.id);
+      pages.push(suite);
+    }
+  }
+  return pages;
+}
+
+/**
+ * La licence de l'image d'une case, pour le format ouvert : ARASAAC, une
+ * banque d'appoint, un dessin de l'IA, une photo de l'enseignant, un symbole
+ * Makaton importé. Rien pour une case vide.
+ */
+export function licenceDeLImage(pictoId: number | null): LicenceImageTla | undefined {
+  if (pictoId === null) return undefined;
+  switch (origineDe(pictoId)) {
+    case null: return { type: "CC BY-NC-SA 4.0", auteur: "Sergio Palao, ARASAAC (Gouvernement d'Aragon)", url: "https://arasaac.org", mention: "Pictogrammes ARASAAC — usage non commercial" };
+    case "sclera": return { type: "CC BY-NC 2.0 BE", auteur: "Sclera vzw", url: "https://www.sclera.be", mention: "Pictogramme Sclera — usage non commercial" };
+    case "bajard": return { type: "CC BY-NC-SA 4.0", auteur: "François Bajard", url: "https://ressources-ecole-inclusive.org", mention: "Pictogramme de F. Bajard — usage non commercial" };
+    case "ia": return { type: "private", auteur: "Mistral AI, à la demande de l'enseignant", url: "", mention: "Dessiné par une IA à la manière d'ARASAAC : ce n'est pas un pictogramme ARASAAC" };
+    case "makaton": return { type: "private", auteur: "The Makaton Charity", url: "https://makaton.org", mention: "Symbole Makaton © The Makaton Charity, importé par l'enseignant" };
+    case "photo": return { type: "private", auteur: "L'enseignant", url: "", mention: "Photo de l'enseignant" };
+  }
+}
+
+/**
+ * Les pages du classeur telles que l'impression et l'export les reçoivent :
+ * chacune avec son numéro, et dans chaque case liée le numéro de la page
+ * qu'elle ouvre ; une case qui mène hors du classeur — un tableau supprimé —
+ * n'en porte pas.
+ */
+export function classeurPourImpression(
+  pages: Gabarit[], paletteDe: (g: Gabarit) => PaletteTla, fichierDeMonPicto: (id: number) => string | undefined, mentionsDe: (g: Gabarit) => string,
+): GabaritImprime[] {
+  const numero = new Map(pages.map((p, i) => [p.id, i + 1]));
+  return pages.map((p, i) => {
+    const imprime = pourImpression({ ...p, competences: [] }, paletteDe(p), fichierDeMonPicto, mentionsDe(p));
+    return {
+      ...imprime, numero: i + 1, total: pages.length,
+      cases: imprime.cases.map((c) => {
+        const page = c.lien ? numero.get(c.lien) : undefined;
+        const licence = licenceDeLImage(c.pictoId);
+        return { ...c, ...(page ? { pageLiee: page } : {}), ...(licence ? { licence } : {}) };
+      }),
+    };
+  });
 }
 
 /** Une copie du tableau, pour un autre élève : les mêmes cases aux mêmes places, sous un nom à elle. */

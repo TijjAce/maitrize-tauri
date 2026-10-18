@@ -2294,14 +2294,24 @@ pub fn jeu_generer(
 /// justement à installer.
 #[tauri::command]
 pub fn tla_generer(mut gabarit: crate::tla_pdf::Gabarit, ouvrir: Option<bool>) -> R<String> {
-    // Une image de Mes pictos — une photo prise au téléphone — arrive par son seul nom : elle se cherche
-    // parmi les fichiers de l'application, sans jamais en sortir.
+    images_du_tableau(&mut gabarit)?;
+    let bytes = crate::tla_pdf::construire(&gabarit)?;
+    ecrire_pdf_du_tableau("tla", &gabarit, &bytes, ouvrir)
+}
+
+/// Une image de Mes pictos — une photo prise au téléphone — arrive par son seul nom : elle se cherche
+/// parmi les fichiers de l'application, sans jamais en sortir.
+fn images_du_tableau(gabarit: &mut crate::tla_pdf::Gabarit) -> R<()> {
     for case in gabarit.cases.iter_mut() {
         if !case.fichier.is_empty() && !std::path::Path::new(&case.fichier).is_absolute() {
             case.fichier = fichier_de_l_application(&case.fichier)?.to_string_lossy().into_owned();
         }
     }
-    let bytes = crate::tla_pdf::construire(&gabarit)?;
+    Ok(())
+}
+
+/// Le PDF d'un tableau ou d'un classeur, dans le dossier temporaire, ouvert si on le demande ; son chemin.
+fn ecrire_pdf_du_tableau(prefixe: &str, gabarit: &crate::tla_pdf::Gabarit, bytes: &[u8], ouvrir: Option<bool>) -> R<String> {
     let propre: String = format!("{} {}", gabarit.eleve, gabarit.nom)
         .chars()
         .map(|c| if c.is_alphanumeric() { c } else { '_' })
@@ -2309,16 +2319,37 @@ pub fn tla_generer(mut gabarit: crate::tla_pdf::Gabarit, ouvrir: Option<bool>) -
         .trim_matches('_')
         .to_lowercase();
     let nom = format!(
-        "tla-{}-{}.pdf",
+        "{prefixe}-{}-{}.pdf",
         if propre.is_empty() { "tableau".into() } else { propre },
         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
     );
     let path = dossier_temporaire().join(&nom);
-    std::fs::write(&path, &bytes).map_err(e)?;
+    std::fs::write(&path, bytes).map_err(e)?;
     if ouvrir.unwrap_or(true) {
         tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
     }
     Ok(path.to_string_lossy().into_owned())
+}
+
+/// Imprime un classeur de communication : l'accueil, puis chaque page où mènent ses cases, en un seul PDF.
+#[tauri::command]
+pub fn tla_classeur(mut pages: Vec<crate::tla_pdf::Gabarit>, ouvrir: Option<bool>) -> R<String> {
+    for page in pages.iter_mut() {
+        images_du_tableau(page)?;
+    }
+    let bytes = crate::tla_pdf::construire_classeur(&pages)?;
+    let accueil = pages.first().ok_or_else(|| "Le classeur n'a pas de page.".to_string())?;
+    ecrire_pdf_du_tableau("classeur", accueil, &bytes, ouvrir)
+}
+
+/// Écrit le classeur au format ouvert OBZ, au chemin choisi dans la fenêtre « Enregistrer sous ».
+#[tauri::command(async)]
+pub fn tla_exporter_obz(mut pages: Vec<crate::tla_pdf::Gabarit>, chemin: String) -> R<()> {
+    for page in pages.iter_mut() {
+        images_du_tableau(page)?;
+    }
+    let octets = crate::tla_obz::construire_obz(&pages)?;
+    std::fs::write(&chemin, octets).map_err(e)
 }
 
 #[tauri::command(async)]

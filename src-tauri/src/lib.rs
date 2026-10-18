@@ -5,6 +5,7 @@ mod manuel_pdf;
 mod pictos_appoint;
 mod journal;
 mod texte_crdt;
+mod tla_obz;
 mod tla_pdf;
 mod amis;
 mod commands;
@@ -158,7 +159,7 @@ pub fn run() {
             arasaac::arasaac_etat, arasaac::arasaac_telecharger, arasaac::arasaac_categories,
             arasaac::arasaac_selection, arasaac::arasaac_themes_des_mots, arasaac::arasaac_par_mots, arasaac::arasaac_image,
             arasaac::arasaac_chercher, arasaac::arasaac_nature, arasaac::arasaac_mots_des_ids, arasaac::arasaac_noms_contenant, arasaac::arasaac_pour_consignes, arasaac::arasaac_pour_tapuscrit,
-            commands::jeu_generer, commands::tla_generer,
+            commands::jeu_generer, commands::tla_generer, commands::tla_classeur, commands::tla_exporter_obz,
             commands::dossier_donnees_get, commands::dossier_donnees_set,
             // Le disque est-il chiffré ? (FileVault, BitLocker)
             disque::chiffrement_disque, disque::ouvrir_reglages_chiffrement,
