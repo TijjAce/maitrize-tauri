@@ -647,8 +647,9 @@ describe("l'histoire et la géographie du cours moyen", () => {
   });
 
   it("dessinent leurs cartes sur les fonds de Natural Earth : chaque numéro, chaque pays, chaque lieu y est", async () => {
-    const { THEMES_HG_CM } = await import("./themesHistoireGeoCM");
+    const { THEMES_HG_CM, carteDEvaluation } = await import("./themesHistoireGeoCM");
     const { FONDS_DE_CARTE, LIEUX_DES_CARTES, cadreDeLaCarte, carteEnPaysage, formesDuGroupe, placeDuNumero, projeter, svgDeLaCarte } = await import("./cartesHistoireGeo");
+    type Carte = Parameters<typeof svgDeLaCarte>[0];
     const { enPaysage, htmlHistoireGeoCM } = await import("./histoireGeoCoursMoyen");
     const { monde, europe, france } = FONDS_DE_CARTE;
     // Les fonds : le planisphère, l'Europe avec la Russie, la France — ses 18 régions, ses six fleuves, ses six massifs, ses cinq encarts.
@@ -667,35 +668,40 @@ describe("l'histoire et la géographie du cours moyen", () => {
     const guyane = france.cadres!.find((c) => c.id === "GUF")!;
     const [cx, cy] = projeter(france, [-52.335, 4.9224], "GUF");
     expect(cx > guyane.x && cx < guyane.x + guyane.l && cy > guyane.y && cy < guyane.y + guyane.h).toBe(true);
+    /** Ce qu'une carte demande au fond : chaque numéro trouve sa place dans la partie montrée, chaque pays et chaque lieu existe, le dessin est entier. */
+    const verifierLaCarte = (c: Carte, quoi: string) => {
+      const fond = FONDS_DE_CARTE[c.fond];
+      const [vx, vy, vl, vh] = cadreDeLaCarte(c);
+      for (const n of c.numeros ?? []) {
+        const place = placeDuNumero(fond, n);
+        expect(place, `${quoi} — ${n.nom}`).not.toBeNull();
+        expect(place!.x >= vx && place!.x <= vx + vl && place!.y >= vy && place!.y <= vy + vh, `${quoi} — ${n.nom}`).toBe(true);
+      }
+      const noms = (c.numeros ?? []).map((n) => n.nom);
+      expect(new Set(noms).size, quoi).toBe(noms.length);
+      const ids = new Set(fond.formes.map((f) => f.id));
+      for (const g of c.colorier ?? []) for (const id of formesDuGroupe(fond, g.formes)) expect(ids.has(id), `${quoi} — ${id}`).toBe(true);
+      const lieux = [...(c.points?.lieux ?? []), ...(c.reperes ?? []), ...(c.traits ?? []).flatMap((g) => g.liste.flatMap((x) => x.par.filter((p): p is string => typeof p === "string")))];
+      for (const l of lieux) expect(LIEUX_DES_CARTES[l], `${quoi} — ${l}`).toBeDefined();
+      for (const a of c.aplats ?? []) for (const [lon, lat] of a.contour) expect(Math.abs(lon) <= 180 && Math.abs(lat) <= 90, `${quoi} — ${a.nom}`).toBe(true);
+      for (const corrige of [false, true]) expect(svgDeLaCarte(c, corrige, 182, 140), quoi).not.toMatch(/NaN|undefined|Infinity/);
+      return noms;
+    };
     let cartes = 0;
     for (const t of THEMES_HG_CM) {
       for (const e of t.exercices) {
         if (e.sorte !== "carte") continue;
         cartes++;
         const quoi = `${t.id} — ${e.id}`;
-        const c = e.carte, fond = FONDS_DE_CARTE[c.fond];
+        const c = e.carte;
         for (const consigne of e.consignes) expect(consigne, quoi).toMatch(/^(Je |J')/);
-        // Chaque numéro trouve sa place, dans la partie montrée ; chaque nom est attendu une fois.
-        const [vx, vy, vl, vh] = cadreDeLaCarte(c);
-        for (const n of c.numeros ?? []) {
-          const place = placeDuNumero(fond, n);
-          expect(place, `${quoi} — ${n.nom}`).not.toBeNull();
-          expect(place!.x >= vx && place!.x <= vx + vl && place!.y >= vy && place!.y <= vy + vh, `${quoi} — ${n.nom}`).toBe(true);
-        }
-        const noms = (c.numeros ?? []).map((n) => n.nom);
-        expect(new Set(noms).size, quoi).toBe(noms.length);
-        // Chaque pays à colorier est sur le fond ; chaque lieu marqué ou relié existe.
-        const ids = new Set(fond.formes.map((f) => f.id));
-        for (const g of c.colorier ?? []) for (const id of formesDuGroupe(fond, g.formes)) expect(ids.has(id), `${quoi} — ${id}`).toBe(true);
-        const lieux = [...(c.points?.lieux ?? []), ...(c.reperes ?? []), ...(c.traits ?? []).flatMap((g) => g.liste.flatMap((x) => x.par.filter((p): p is string => typeof p === "string")))];
-        for (const l of lieux) expect(LIEUX_DES_CARTES[l], `${quoi} — ${l}`).toBeDefined();
-        // Le dessin, pour l'élève et pour le corrigé : sans valeur perdue ; le corrigé colorie, trace, et donne les noms.
-        for (const corrige of [false, true]) expect(svgDeLaCarte(c, corrige, 182, 140), quoi).not.toMatch(/NaN|undefined|Infinity/);
+        const noms = verifierLaCarte(c, quoi);
         const html = htmlHistoireGeoCM({ theme: t.id, exercice: e.id }, 3);
         const [eleve, corrigé] = html.split('class="page corrige"');
         expect(corrigé, quoi).toBeDefined();
         for (const nom of noms) expect(corrigé, `${quoi} — ${nom}`).toContain(nom.replace(/'/g, "&#39;"));
-        for (const g of c.colorier ?? []) {
+        // Ce qui se colorie — des pays, des zones — ne l'est qu'au corrigé.
+        for (const g of [...(c.colorier ?? []), ...(c.aplats ?? [])]) {
           expect(eleve, quoi).not.toContain(`fill="${g.couleur}"`);
           expect(corrigé, quoi).toContain(`fill="${g.couleur}"`);
         }
@@ -705,7 +711,23 @@ describe("l'histoire et la géographie du cours moyen", () => {
         expect(enPaysage({ theme: t.id, exercice: e.id }), quoi).toBe(carteEnPaysage(c));
       }
     }
-    expect(cartes).toBe(17);
+    expect(cartes).toBe(22);
+    // Les évaluations qui font localiser ont leur carte, sur une page à elle, sans banque de noms ; le corrigé la donne.
+    let evaluations = 0;
+    for (const t of THEMES_HG_CM) {
+      const ce = carteDEvaluation(t.id);
+      if (!ce) continue;
+      evaluations++;
+      const quoi = `${t.id} — évaluation`;
+      expect(ce.consigne, quoi).toMatch(/^(Je |J')/);
+      expect(ce.carte.banque, quoi).toBeFalsy();
+      const noms = verifierLaCarte(ce.carte, quoi);
+      const [eleve, corrigé] = htmlHistoireGeoCM({ theme: t.id, exercice: "evaluation" }, 3).split('class="page corrige"');
+      expect(eleve, quoi).toContain('class="hg-eval-carte"');
+      for (const nom of noms) expect(corrigé, `${quoi} — ${nom}`).toContain(nom.replace(/'/g, "&#39;"));
+      expect(enPaysage({ theme: t.id, exercice: "evaluation" }), quoi).toBe(false);
+    }
+    expect(evaluations).toBe(13);
   });
 
   it("proposent au CM2 de cette année les séquences du programme de 2020, d'après les fiches Éduscol", async () => {

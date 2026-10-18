@@ -882,6 +882,88 @@ const AGE_INDUSTRIEL: ThemeHGCM = {
   ],
 };
 
+/**
+ * Le front de l'Ouest, de la fin 1914 au printemps 1918, de la mer du Nord à
+ * la Suisse — Nieuport, Ypres, Arras, l'Aisne et le Chemin des Dames, Reims,
+ * l'Argonne, Verdun, le saillant de Saint-Mihiel, la Lorraine, les Vosges,
+ * Thann —, et la frontière de 1871, qui laisse l'Alsace et la Moselle à
+ * l'Allemagne. Tracés simplifiés, pour la carte de France.
+ */
+const FRONT_1914_1918: [number, number][] = [
+  [2.73, 51.15], [2.86, 50.98], [2.9, 50.85], [2.93, 50.64], [2.74, 50.42], [2.8, 50.3], [2.68, 50.12], [2.76, 49.98], [2.78, 49.84], [2.76, 49.68],
+  [2.96, 49.54], [3.12, 49.44], [3.33, 49.41], [3.6, 49.45], [3.86, 49.43], [4.05, 49.3], [4.45, 49.2], [4.88, 49.2], [5.12, 49.24], [5.42, 49.24],
+  [5.6, 49.08], [5.54, 48.9], [5.85, 48.86], [6.05, 48.92], [6.3, 48.8], [6.55, 48.72], [6.86, 48.55], [7.04, 48.4], [7.12, 48.18], [7.19, 47.95],
+  [7.15, 47.78], [7.12, 47.62], [7.17, 47.5],
+];
+const FRONTIERE_1871: [number, number][] = [
+  [5.94, 49.5], [5.96, 49.33], [5.98, 49.2], [6.02, 49.04], [6.03, 48.95], [6.2, 48.88], [6.45, 48.76], [6.8, 48.63], [7.0, 48.53], [7.17, 48.51],
+  [7.08, 48.3], [7.1, 48.2], [7.02, 48.04], [6.93, 47.92], [6.84, 47.82], [6.97, 47.68], [7.05, 47.58], [7.12, 47.5],
+];
+
+/** La carte du front : les batailles, le front à repasser, les territoires tenus par l'Allemagne. Elle sert aussi au programme de 2020. */
+const CARTE_FRONT: ExerciceHGCM = {
+  sorte: "carte", id: "carte-front", titre: "Le front de l'Ouest, de 1914 à 1918",
+  rappel: "De la fin 1914 au printemps 1918, le front va de la mer du Nord à la Suisse. Les grandes batailles : la Marne (1914), Verdun et la Somme (1916), le Chemin des Dames (1917).",
+  consignes: [
+    "Je repasse en rouge la ligne de front.",
+    "Je colorie les territoires tenus par l'Allemagne, puis la case de la légende.",
+    "J'écris le nom des batailles numérotées.",
+  ],
+  carte: {
+    fond: "france", cadrage: [-0.5, 46.9, 8.6, 51.4], hauteur: 110,
+    numeros: [
+      { ou: [3.6, 48.86], nom: "la Marne (1914)" }, { quoi: "verdun", nom: "Verdun (1916)" }, { ou: [2.85, 49.93], nom: "la Somme (1916)" },
+      { ou: [3.65, 49.47], nom: "le Chemin des Dames (1917)" },
+    ],
+    reperes: ["paris"],
+    traits: [
+      { sorte: "limite", legende: "la ligne de front (fin 1914 – 1918)", liste: [{ par: FRONT_1914_1918 }] },
+      { sorte: "frontiere", legende: "la frontière de 1871 à 1918", liste: [{ par: FRONTIERE_1871 }] },
+    ],
+    aplats: [{ nom: "les territoires tenus par l'Allemagne", couleur: "#c9b8a6", contour: [...FRONT_1914_1918, [10.5, 47.5], [10.5, 52], [2.73, 52]] }],
+    banque: true,
+    note: "Tracé simplifié. L'Alsace et la Moselle sont allemandes de 1871 à 1918.",
+  },
+};
+
+/**
+ * La ligne de démarcation de juin 1940 à novembre 1942, simplifiée : de la
+ * frontière suisse près de Genève, par Dole, Chalon-sur-Saône,
+ * Paray-le-Monial, Moulins, Vierzon, Loches, l'est d'Angoulême, Libourne,
+ * Mont-de-Marsan et Orthez, jusqu'à la frontière espagnole près de
+ * Saint-Jean-Pied-de-Port. Les deux zones la partagent ; leurs contours se
+ * referment par la mer et par la Suisse, coupés ensuite à l'Hexagone.
+ */
+const DEMARCATION_1940: [number, number][] = [
+  [5.95, 46.2], [5.75, 46.6], [5.45, 46.95], [4.85, 46.77], [4.12, 46.45], [3.33, 46.56], [2.9, 46.85], [2.07, 47.21], [1.45, 47.28], [1.0, 47.12],
+  [0.78, 46.8], [0.68, 46.36], [0.4, 46.0], [0.3, 45.65], [0.0, 45.25], [-0.25, 44.92], [-0.25, 44.55], [-0.45, 44.1], [-0.5, 43.89], [-0.77, 43.49],
+  [-1.24, 43.16], [-1.28, 43.1],
+];
+const PAR_LA_SUISSE: [number, number][] = [[10.5, 46.6], [7.0, 46.6], [6.2, 46.45]];
+
+const CARTE_1940: ExerciceHGCM = {
+  sorte: "carte", id: "carte-1940", titre: "La France coupée en deux, de 1940 à 1942",
+  rappel: "L'armistice du 22 juin 1940 coupe la France en deux : la zone occupée par l'armée allemande, la zone libre, où siège à Vichy le gouvernement de Pétain. Une ligne de démarcation les sépare.",
+  consignes: [
+    "Je colorie la zone occupée d'une couleur, la zone libre d'une autre, puis leurs cases dans la légende.",
+    "J'écris le nom des lieux numérotés.",
+  ],
+  carte: {
+    fond: "france", cadrage: [-5.3, 41.3, 9.9, 51.3], hauteur: 120,
+    numeros: [
+      { quoi: "paris", nom: "Paris, en zone occupée" }, { quoi: "vichy", nom: "Vichy, où siège le gouvernement de Pétain" },
+      { ou: [-0.6, 49.38], nom: "les plages du Débarquement (6 juin 1944)" }, { quoi: "chambon-sur-lignon", nom: "Le Chambon-sur-Lignon, village de Justes" },
+    ],
+    traits: [{ sorte: "limite", legende: "la ligne de démarcation", liste: [{ par: DEMARCATION_1940 }] }],
+    aplats: [
+      { nom: "la zone occupée", couleur: "#a9bfdc", contour: [...DEMARCATION_1940, [-7, 43.1], [-7, 52], [10.5, 52], ...PAR_LA_SUISSE] },
+      { nom: "la zone libre", couleur: "#f3d48a", contour: [...DEMARCATION_1940, [-1.28, 41.2], [10.5, 41.2], ...PAR_LA_SUISSE] },
+    ],
+    banque: true,
+    note: "Tracé simplifié. L'Alsace et la Moselle sont annexées par l'Allemagne ; en novembre 1942, l'armée allemande occupe toute la France.",
+  },
+};
+
 const PREMIERE_GUERRE: ThemeHGCM = {
   id: "premiere-guerre-cm2", classe: "CM2", histoire: true, titre: "La France dans la Première Guerre mondiale (1914 – 1918)",
   question: "Comment la Première Guerre mondiale a-t-elle bouleversé la société française ?",
@@ -938,6 +1020,7 @@ const PREMIERE_GUERRE: ThemeHGCM = {
         ["les soldats creusent des tranchées", 1], ["le front ne bouge presque plus", 1], ["de la fin 1914 au début de 1918", 1], ["la bataille de Verdun", 1],
       ],
     },
+    CARTE_FRONT,
     {
       sorte: "document", id: "arriere", titre: "Toute la population mobilisée",
       rappel: "À l'arrière, les femmes remplacent les hommes ; les usines fabriquent des armes ; les colonies envoient des soldats et des travailleurs.",
@@ -1038,6 +1121,7 @@ const SECONDE_GUERRE: ThemeHGCM = {
         ["Je relève deux autres difficultés de la vie sous l'Occupation.", "Le couvre-feu, la ligne de démarcation, la censure, le Service du travail obligatoire."],
       ],
     },
+    CARTE_1940,
     {
       sorte: "document", id: "resister", titre: "Résister : le général de Gaulle et Jean Moulin",
       rappel: "Le 18 juin 1940, de Gaulle appelle à continuer le combat. En France, Jean Moulin unit la Résistance.",
@@ -1073,6 +1157,42 @@ const SECONDE_GUERRE: ThemeHGCM = {
     ["J'explique le rôle du général de Gaulle ou celui de Jean Moulin dans la Résistance.", "De Gaulle appelle à continuer le combat le 18 juin 1940 et crée la France libre ; Jean Moulin unit les mouvements de résistance en 1943."],
     ["Je cite le bilan humain de la guerre.", "Entre 60 et 70 millions de morts dans le monde, dont 6 millions de Juifs, 60 % des Juifs d'Europe."],
   ],
+};
+
+/** Les 27 pays de l'Union européenne et leur capitale ; les six fondateurs d'abord. */
+export const PAYS_UE: [string, string][] = [
+  ["l'Allemagne", "Berlin"], ["la Belgique", "Bruxelles"], ["la France", "Paris"], ["l'Italie", "Rome"], ["le Luxembourg", "Luxembourg"], ["les Pays-Bas", "Amsterdam"],
+  ["l'Autriche", "Vienne"], ["la Bulgarie", "Sofia"], ["Chypre", "Nicosie"], ["la Croatie", "Zagreb"], ["le Danemark", "Copenhague"], ["l'Espagne", "Madrid"],
+  ["l'Estonie", "Tallinn"], ["la Finlande", "Helsinki"], ["la Grèce", "Athènes"], ["la Hongrie", "Budapest"], ["l'Irlande", "Dublin"], ["la Lettonie", "Riga"],
+  ["la Lituanie", "Vilnius"], ["Malte", "La Valette"], ["la Pologne", "Varsovie"], ["le Portugal", "Lisbonne"], ["la Roumanie", "Bucarest"], ["la Slovaquie", "Bratislava"],
+  ["la Slovénie", "Ljubljana"], ["la Suède", "Stockholm"], ["la Tchéquie", "Prague"],
+];
+
+/** Le code de chaque pays de l'Union sur le fond de carte. */
+const CODES_UE: Record<string, string> = {
+  "l'Allemagne": "DEU", "la Belgique": "BEL", "la France": "FRA", "l'Italie": "ITA", "le Luxembourg": "LUX", "les Pays-Bas": "NLD", "l'Autriche": "AUT", "la Bulgarie": "BGR",
+  "Chypre": "CYP", "la Croatie": "HRV", "le Danemark": "DNK", "l'Espagne": "ESP", "l'Estonie": "EST", "la Finlande": "FIN", "la Grèce": "GRC", "la Hongrie": "HUN",
+  "l'Irlande": "IRL", "la Lettonie": "LVA", "la Lituanie": "LTU", "Malte": "MLT", "la Pologne": "POL", "le Portugal": "PRT", "la Roumanie": "ROU", "la Slovaquie": "SVK",
+  "la Slovénie": "SVN", "la Suède": "SWE", "la Tchéquie": "CZE",
+};
+
+/** Les 27 pays sur la carte de l'Europe ; Chypre en entier, comme sur la carte de l'Union. Elle sert aussi au programme de 2020. */
+const CARTE_UE: ExerciceHGCM = {
+  sorte: "carte", id: "carte-ue", titre: "Les 27 pays de l'Union européenne, sur la carte",
+  rappel: "Six pays fondateurs, en 1957 : l'Allemagne, la Belgique, la France, l'Italie, le Luxembourg, les Pays-Bas. Aujourd'hui, l'Union compte 27 pays.",
+  consignes: [
+    "J'écris le nom des six pays fondateurs, numérotés.",
+    "Je colorie les pays fondateurs d'une couleur, les autres pays de l'Union européenne d'une autre, puis leurs cases dans la légende.",
+  ],
+  carte: {
+    fond: "europe",
+    colorier: [
+      { nom: "les six pays fondateurs (1957)", couleur: "#7ea7dc", formes: PAYS_UE.slice(0, 6).map(([p]) => CODES_UE[p]) },
+      { nom: "les 21 autres pays de l'Union européenne", couleur: "#f6d365", formes: [...PAYS_UE.slice(6).map(([p]) => CODES_UE[p]), "CYN"] },
+    ],
+    numeros: PAYS_UE.slice(0, 6).map(([nom]) => ({ quoi: CODES_UE[nom], nom })),
+    banque: true,
+  },
 };
 
 const DEPUIS_1945: ThemeHGCM = {
@@ -1155,6 +1275,7 @@ const DEPUIS_1945: ThemeHGCM = {
         ["Que crée le traité de Rome en 1957 ? Et celui de Maastricht en 1992 ?", "La Communauté économique européenne ; l'Union européenne."],
       ],
     },
+    CARTE_UE,
   ],
   evaluation: [
     ["Je cite un exemple de réforme sociale et un exemple de droit des femmes.", "La Sécurité sociale (1945) ; le droit de vote des femmes (1944), le droit de travailler sans l'autorisation du mari (1965)."],
@@ -1700,42 +1821,6 @@ const EAU_DOUCE: ThemeHGCM = {
   ],
 };
 
-/** Les 27 pays de l'Union européenne et leur capitale ; les six fondateurs d'abord. */
-export const PAYS_UE: [string, string][] = [
-  ["l'Allemagne", "Berlin"], ["la Belgique", "Bruxelles"], ["la France", "Paris"], ["l'Italie", "Rome"], ["le Luxembourg", "Luxembourg"], ["les Pays-Bas", "Amsterdam"],
-  ["l'Autriche", "Vienne"], ["la Bulgarie", "Sofia"], ["Chypre", "Nicosie"], ["la Croatie", "Zagreb"], ["le Danemark", "Copenhague"], ["l'Espagne", "Madrid"],
-  ["l'Estonie", "Tallinn"], ["la Finlande", "Helsinki"], ["la Grèce", "Athènes"], ["la Hongrie", "Budapest"], ["l'Irlande", "Dublin"], ["la Lettonie", "Riga"],
-  ["la Lituanie", "Vilnius"], ["Malte", "La Valette"], ["la Pologne", "Varsovie"], ["le Portugal", "Lisbonne"], ["la Roumanie", "Bucarest"], ["la Slovaquie", "Bratislava"],
-  ["la Slovénie", "Ljubljana"], ["la Suède", "Stockholm"], ["la Tchéquie", "Prague"],
-];
-
-/** Le code de chaque pays de l'Union sur le fond de carte. */
-const CODES_UE: Record<string, string> = {
-  "l'Allemagne": "DEU", "la Belgique": "BEL", "la France": "FRA", "l'Italie": "ITA", "le Luxembourg": "LUX", "les Pays-Bas": "NLD", "l'Autriche": "AUT", "la Bulgarie": "BGR",
-  "Chypre": "CYP", "la Croatie": "HRV", "le Danemark": "DNK", "l'Espagne": "ESP", "l'Estonie": "EST", "la Finlande": "FIN", "la Grèce": "GRC", "la Hongrie": "HUN",
-  "l'Irlande": "IRL", "la Lettonie": "LVA", "la Lituanie": "LTU", "Malte": "MLT", "la Pologne": "POL", "le Portugal": "PRT", "la Roumanie": "ROU", "la Slovaquie": "SVK",
-  "la Slovénie": "SVN", "la Suède": "SWE", "la Tchéquie": "CZE",
-};
-
-/** Les 27 pays sur la carte de l'Europe ; Chypre en entier, comme sur la carte de l'Union. Elle sert aussi au programme de 2020. */
-const CARTE_UE: ExerciceHGCM = {
-  sorte: "carte", id: "carte-ue", titre: "Les 27 pays de l'Union européenne, sur la carte",
-  rappel: "Six pays fondateurs, en 1957 : l'Allemagne, la Belgique, la France, l'Italie, le Luxembourg, les Pays-Bas. Aujourd'hui, l'Union compte 27 pays.",
-  consignes: [
-    "J'écris le nom des six pays fondateurs, numérotés.",
-    "Je colorie les pays fondateurs d'une couleur, les autres pays de l'Union européenne d'une autre, puis leurs cases dans la légende.",
-  ],
-  carte: {
-    fond: "europe",
-    colorier: [
-      { nom: "les six pays fondateurs (1957)", couleur: "#7ea7dc", formes: PAYS_UE.slice(0, 6).map(([p]) => CODES_UE[p]) },
-      { nom: "les 21 autres pays de l'Union européenne", couleur: "#f6d365", formes: [...PAYS_UE.slice(6).map(([p]) => CODES_UE[p]), "CYN"] },
-    ],
-    numeros: PAYS_UE.slice(0, 6).map(([nom]) => ({ quoi: CODES_UE[nom], nom })),
-    banque: true,
-  },
-};
-
 const UNION_EUROPEENNE: ThemeHGCM = {
   id: "union-europeenne-cm2", classe: "CM2", histoire: false, titre: "L'Union européenne",
   question: "Qu'est-ce que l'Union européenne ?",
@@ -2067,7 +2152,9 @@ const GUERRES_UE_2020: ThemeHGCM = {
   exercices: [
     exo(PREMIERE_GUERRE, "bilan-1918"),
     exo(PREMIERE_GUERRE, "tranchees"),
+    CARTE_FRONT,
     exo(SECONDE_GUERRE, "occupation"),
+    CARTE_1940,
     exo(SECONDE_GUERRE, "vichy-juifs"),
     {
       sorte: "tableau", id: "comparer-guerres", titre: "Deux guerres mondiales",
@@ -2308,6 +2395,64 @@ const MIEUX_HABITER: ThemeHGCM = {
 };
 
 /** Les six thèmes du CM2 du programme de 2020 : au choix, cette année. */
+// ── Les cartes des évaluations ───────────────────────────────────────────
+
+/** Une carte d'exercice reprise pour l'évaluation : quelques-uns de ses numéros, sans la banque des noms ; ses zones à colorier, si on les garde. */
+function pourLEvaluation(e: ExerciceHGCM, garder: number[] | "tous", consigne: string, colorier = true): CarteDEvaluation {
+  if (e.sorte !== "carte") throw new Error(`${e.id} n'est pas une carte`);
+  const { colorier: groupes, aplats, numeros = [], ...reste } = e.carte;
+  return {
+    consigne,
+    carte: { ...reste, numeros: garder === "tous" ? numeros : garder.map((i) => numeros[i]), banque: false, ...(colorier ? { colorier: groupes, aplats } : {}) },
+  };
+}
+
+/** La carte d'une évaluation : sa consigne, et la carte, sans banque de noms. */
+export interface CarteDEvaluation { consigne: string; carte: CarteHGCM }
+
+/**
+ * Les thèmes dont l'évaluation fait localiser — « localiser et nommer sur un
+ * fond de carte » — : leur carte, prise à celle d'un exercice quand il y en a
+ * une. Les aires régionales et le territoire français ont la leur.
+ */
+const CARTES_D_EVALUATION: Record<string, CarteDEvaluation> = {
+  [EXPLORATIONS.id]: pourLEvaluation(exo(EXPLORATIONS, "carte-empires"), [0, 1, 4, 5], "J'écris le nom des lieux numérotés. Je colorie l'empire espagnol et l'empire portugais."),
+  [VERS_REPUBLIQUE.id]: pourLEvaluation(exo(VERS_REPUBLIQUE, "carte-empire-1914"), [0, 3, 5, 6, 7], "J'écris le nom des territoires numérotés de l'empire colonial français.", false),
+  [PREMIERE_GUERRE.id]: pourLEvaluation(CARTE_FRONT, "tous", "Je repasse la ligne de front. J'écris le nom des batailles numérotées.", false),
+  [SECONDE_GUERRE.id]: pourLEvaluation(CARTE_1940, [0, 1], "Je colorie la zone occupée et la zone libre. J'écris le nom des villes numérotées."),
+  [SE_NOURRIR.id]: pourLEvaluation(exo(SE_NOURRIR, "carte-quatre-pays"), [0, 1, 2, 3], "J'écris le nom des quatre pays numérotés."),
+  [INEGALITES.id]: {
+    consigne: "J'écris le nom des aires régionales numérotées.",
+    carte: {
+      fond: "monde",
+      numeros: [
+        { ou: [-100, 45], nom: "l'Amérique du Nord" }, { ou: [-60, -12], nom: "l'Amérique du Sud" }, { ou: [15, 50], nom: "l'Europe" }, { ou: [2, 30], nom: "le Maghreb" },
+        { ou: [22, 2], nom: "l'Afrique subsaharienne" }, { ou: [108, 36], nom: "l'Asie de l'Est" }, { ou: [104, 14], nom: "l'Asie du Sud-Est" }, { ou: [134, -25], nom: "l'Océanie" },
+      ],
+    },
+  },
+  [INTERNET.id]: pourLEvaluation(exo(INTERNET, "carte-cables"), "tous", "J'écris le nom des aires régionales et des océans numérotés."),
+  [INTERNET_2020.id]: pourLEvaluation(exo(INTERNET, "carte-cables"), "tous", "J'écris le nom des aires régionales et des océans numérotés."),
+  [TERRITOIRE.id]: {
+    consigne: "J'écris le nom des cinq grandes agglomérations et des régions numérotées.",
+    carte: {
+      fond: "france",
+      numeros: [
+        { quoi: "paris", nom: "Paris" }, { quoi: "lyon", nom: "Lyon" }, { quoi: "marseille", nom: "Marseille" }, { quoi: "lille", nom: "Lille" }, { quoi: "toulouse", nom: "Toulouse" },
+        { quoi: "BRE", nom: "Bretagne" }, { quoi: "GES", nom: "Grand Est" }, { quoi: "OCC", nom: "Occitanie" },
+      ],
+      legendeNumeros: "une grande agglomération",
+    },
+  },
+  [EAU_DOUCE.id]: pourLEvaluation(exo(EAU_DOUCE, "carte-fleuves"), [0, 1, 2, 3, 4, 6, 7, 8], "J'écris le nom des fleuves et des massifs numérotés."),
+  [UNION_EUROPEENNE.id]: pourLEvaluation(CARTE_UE, "tous", "J'écris le nom des six pays fondateurs numérotés.", false),
+  [GUERRES_UE_2020.id]: pourLEvaluation(CARTE_UE, "tous", "J'écris le nom des six pays fondateurs numérotés.", false),
+  [SE_DEPLACER_2020.id]: pourLEvaluation(exo(SE_DEPLACER_2020, "carte-villes-france"), "tous", "J'écris le nom des grandes villes numérotées."),
+};
+
+/** La carte de l'évaluation d'un thème, s'il en a une. */
+export const carteDEvaluation = (themeId: string): CarteDEvaluation | undefined => CARTES_D_EVALUATION[themeId];
+
 export const THEMES_HG_CM_2020: ThemeHGCM[] = [TEMPS_REPUBLIQUE_2020, AGE_INDUSTRIEL_2020, GUERRES_UE_2020, SE_DEPLACER_2020, INTERNET_2020, MIEUX_HABITER];
 
 export const THEMES_HG_CM: ThemeHGCM[] = [
