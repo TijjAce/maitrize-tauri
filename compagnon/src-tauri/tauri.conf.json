@@ -31,7 +31,7 @@
     ],
     "iOS": {
       "developmentTeam": "AZZ5PTTNXH",
-      "bundleVersion": "3",
+      "bundleVersion": "4",
       "minimumSystemVersion": "15.0"
     }
   }

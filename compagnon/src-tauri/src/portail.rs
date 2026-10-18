@@ -736,8 +736,9 @@ pub const PAGE_PERIMEE: &str = r#"<!doctype html>
   body { display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; text-align: center; font-size: 24px; line-height: 1.5; }</style></head>
 <body><p>Le code du portail a changé.<br>Scannez le nouveau QR code du téléphone, puis remplacez l'icône de l'écran d'accueil.</p></body></html>"#;
 
-/// L'icône de Maitrize, pour l'écran d'accueil des tablettes : 180 px, la taille que l'iPad demande.
-const ICONE: &[u8] = include_bytes!("../icons/ios/AppIcon-60x60@3x.png");
+/// L'icône de Maitrize — le « Z » —, pour l'écran d'accueil des tablettes : 180 px, la taille que l'iPad demande.
+/// Le compagnon a la sienne, le micro devant le Z : l'App Store veut deux icônes bien distinctes.
+const ICONE: &[u8] = include_bytes!("../icons/portail-tablettes.png");
 
 fn repondre(flux: &mut TcpStream, code: u16, type_: &str, corps: &[u8]) {
     let raison = match code { 200 => "OK", 403 => "Forbidden", 404 => "Not Found", _ => "Bad Request" };
