@@ -1,0 +1,128 @@
+// ── Les périodes que Maitrize propose, faute de texte ──────────────────────
+//
+// Ni le programme ni les textes d'Éduscol — livrets, guides, repères
+// annuels — ne datent la géométrie, les grandeurs hors monnaie, les données,
+// l'oral, la plupart de la grammaire… (relevé d'octobre 2026, voir
+// programmation.ts). L'enseignant a demandé qu'elles prennent quand même
+// leur place dans le tableau des séquences toutes faites : Maitrize leur
+// propose une période, ligne par ligne, et le dit — la raison commence par
+// « Proposition de Maitrize ». Une ligne se répartit sur l'année, du plus
+// simple au plus complexe ou du proche au lointain, autour des séquences que
+// les textes datent. L'enseignant change une période en glissant la séquence.
+
+import type { ClasseC2 } from "./feuillesDesSequences";
+
+export interface PeriodeProposee { periode: number; raison: string }
+
+const PROPOSITION = "Proposition de Maitrize : ni le programme ni les guides ne la datent. ";
+
+/** Une ligne du tableau : sa raison, et la période de chacune de ses séquences. */
+const ligne = (raison: string, periodes: Record<string, number>): Record<string, PeriodeProposee> =>
+  Object.fromEntries(Object.entries(periodes).map(([id, periode]) => [id, { periode, raison: PROPOSITION + raison[0].toUpperCase() + raison.slice(1) }]));
+
+const CORPUS = "le programme veut que « le professeur enseigne quatre corpus par période au CP, cinq au CE1 puis six au CE2 » : "
+  + "la séquence commence à la rentrée, puis se reprend chaque période avec un autre corpus.";
+const ORAL = "les règles de l'échange à la rentrée ; puis écouter et adapter sa façon de parler, raconter, dire un poème — le Printemps "
+  + "des poètes est en mars — ; l'exposé en fin d'année.";
+const COMPRENDRE = "la compréhension et les livres de la classe dès la rentrée ; puis les stratégies une à une — mots inconnus, reprises, "
+  + "inférences —, avec une œuvre complète et les personnages des contes ; les genres et les types de textes en fin d'année.";
+
+export const PERIODES_PROPOSEES: Record<ClasseC2, Record<string, PeriodeProposee>> = {
+  CP: {
+    ...ligne("une grandeur par période, dans l'ordre du programme : comparer des longueurs à la rentrée, puis les mesurer à la règle ; "
+      + "les masses ; l'heure en fin d'année. La monnaie garde la période 2 que lui donne le programme.",
+    { "longueurs-comparer-cp": 1, "longueurs-mesurer-cp": 3, "masses-cp": 4, "heure-cp": 5 }),
+    ...ligne("de l'espace proche aux figures, dans la continuité de la maternelle : se repérer, puis se déplacer dans la classe ; "
+      + "les solides et leurs assemblages ; les figures planes et les alignements ; enfin les tracés sur quadrillage.",
+    { "positions-cp": 1, "deplacements-cp": 2, "solides-cp": 3, "assemblages-cp": 3, "figures-cp": 4, "alignements-cp": 4, "reproduire-cp": 5 }),
+    ...ligne("le tableau à double entrée d'abord, qui prolonge les tris de la maternelle ; l'enquête et son diagramme en barres "
+      + "quand les nombres jusqu'à cent sont connus — en période 3 au plus tard, d'après le programme.",
+    { "double-entree-cp": 2, "donnees-cp": 4 }),
+    ...ligne("aller vers les livres et les contes dès la rentrée, sur des textes entendus ; les stratégies — mots inconnus, reprises, "
+      + "inférences — à mesure que les élèves lisent seuls, « à partir de la 3e période de CP » d'après le programme ; les types de textes en fin d'année.",
+    { "lieux-de-lecture-c2": 1, "personnages-types-c2": 1, "mots-inconnus-c2": 2, "reprises-c2": 3, "inferences-c2": 4, "types-et-genres-c2": 5 }),
+    ...ligne("le programme la veut « tout au long de l'année » : la séquence qui installe la méthode vient à la rentrée.", { "mots-frequents-c2": 1 }),
+    ...ligne("après la phrase de la rentrée : ses types, avec la ponctuation, et les classes de mots, avant le genre, le nombre et le sujet "
+      + "du verbe, que les textes mettent en période 3 ; être et avoir au présent ensuite.",
+    { "types-formes-c2": 2, "classes-de-mots-c2": 2, "etre-avoir-cp": 4 }),
+    ...ligne(CORPUS, { "vocabulaire-cp": 1 }),
+    ...ligne("les règles de l'échange à la rentrée ; puis écouter, raconter, dire un poème — le Printemps des poètes est en mars — ; "
+      + "les registres de langue en fin d'année.",
+    { "echanger-c2": 1, "ecouter-comprendre-c2": 2, "raconter-c2": 3, "dire-un-poeme-c2": 4, "registres-c2": 5 }),
+    ...ligne("le calendrier dès la rentrée, avec les rituels ; le jour, la nuit et les saisons ; puis situer des évènements — "
+      + "la séquence de la Petite Sirène le fait autrement, plus tard dans l'année.",
+    { "temps-represente-cp": 1, "temps-naturel-cp": 2, "situer-evenements-cp": 3, "petite-sirene-cp": 4 }),
+    ...ligne("du proche au lointain : la classe à la rentrée, l'école et le quartier, puis le globe et le planisphère.",
+      { "classe-espace-organise-cp": 1, "ecole-quartier-cp": 3, "representations-monde-cp": 5 }),
+  },
+  CE1: {
+    ...ligne("après le symbole × de la période 1, avec la table de 2 et les doubles, que le livret du CE1 met en périodes 1 et 2.", { "parite-ce1": 2 }),
+    ...ligne("commencés en fin de CP — en périodes 4 ou 5, d'après le guide du CP —, les problèmes de comparaison reviennent en période 2, "
+      + "entre les problèmes en deux étapes et les parties-tout.", { "comparaison-ce1": 2 }),
+    ...ligne("une grandeur à la fois, dans l'ordre du programme : mesurer des longueurs avant leurs unités (période 2), les masses, "
+      + "puis l'heure et les durées. La monnaie garde les périodes du programme.",
+    { "longueurs-mesurer-ce1": 1, "masses-ce1": 3, "heure-ce1": 4, "durees-ce1": 5 }),
+    ...ligne("de l'espace aux figures : se repérer dans l'école et le quartier, coder des déplacements, les solides et leurs assemblages, "
+      + "les figures, puis les tracés à la règle, à l'équerre et au compas.",
+    { "positions-ce1": 1, "deplacements-ce1": 2, "solides-ce1": 3, "assemblages-ce1": 3, "figures-ce1": 4, "construire-ce1": 5 }),
+    ...ligne("quand les nombres jusqu'à mille sont connus — en période 2 au plus tard, d'après le programme —, pour des diagrammes à graduer.",
+      { "donnees-ce1": 3 }),
+    ...ligne(COMPRENDRE, {
+      "comprendre-ce1": 1, "lieux-de-lecture-c2": 1, "mots-inconnus-c2": 2, "oeuvre-complete-c2": 2,
+      "reprises-c2": 3, "personnages-types-c2": 3, "inferences-c2": 4, "types-et-genres-c2": 5,
+    }),
+    ...ligne("le programme la veut « au cours des périodes 1 à 5 » ; la période 1 a déjà trois séquences d'écriture.", { "transformer-un-texte-c2": 2 }),
+    ...ligne("les dictées dès la rentrée ; puis la mémorisation des mots fréquents, les accents et les familles de mots, une notion par période.",
+      { "dictees-ce1": 1, "mots-frequents-c2": 2, "accents-c2": 3, "familles-orthographe-c2": 4 }),
+    ...ligne("de la phrase aux accords, à côté des temps que le programme ordonne : les types de phrases, les classes de mots et l'infinitif "
+      + "du verbe, le sujet et le verbe, la chaîne d'accords du groupe nominal, puis les constituants de la phrase.",
+    { "types-formes-c2": 1, "classes-de-mots-c2": 2, "verbe-infinitif-c2": 2, "sujet-verbe-c2": 3, "chaine-accords-c2": 4, "constituants-c2": 5 }),
+    ...ligne(CORPUS, { "vocabulaire-ce1": 1 }),
+    ...ligne(ORAL, { "echanger-c2": 1, "ecouter-comprendre-c2": 2, "registres-c2": 2, "raconter-c2": 3, "dire-un-poeme-c2": 4, "expose-c2": 5 }),
+    ...ligne("du passé proche au passé lointain : le lexique du temps, les traces du passé autour de l'école, puis les grandes périodes sur la frise.",
+      { "passe-proche-lointain-ce1": 1, "traces-passe-ce1": 3, "grandes-periodes-ce1": 5 }),
+    ...ligne("du proche au lointain : les marchés d'ici et d'ailleurs, une ville par ses paysages et son plan, puis les lieux de vie "
+      + "du monde et le peuplement de la Terre.",
+    { "marches-ce1": 1, "lion-a-paris-ce1": 2, "lieux-de-vie-ce1": 4, "terre-peuplee-ce1": 5 }),
+  },
+  CE2: {
+    ...ligne("pour les élèves qui n'ont pas encore automatisé les correspondances graphème-phonème : dès la rentrée, comme au CE1.",
+      { "precision-vitesse-ce1": 1 }),
+    ...ligne("le calcul mental de la rentrée : le double du double, sur les doubles du CE1.", { "multiplier-par-4-ce2": 1 }),
+    ...ligne("les repères annuels de 2019 font chercher le quotient et le reste d'une division « à partir de la période 3 ».", { "division-ce2": 3 }),
+    ...ligne("après les problèmes multiplicatifs du début d'année : la comparaison multiplicative en période 2, les produits cartésiens "
+      + "en période 4, avec la multiplication posée.", { "comparaison-multiplicative-ce2": 2, "produits-cartesiens-ce2": 4 }),
+    ...ligne("entre les égalités de fractions du début du CE2 et les fractions d'une longueur de la période 3 : comparer en période 2 ; "
+      + "additionner et soustraire en période 4.", { "comparer-fractions-ce2": 2, "additionner-fractions-ce2": 4 }),
+    ...ligne("une grandeur à la fois, dans l'ordre du programme : les longueurs — unités, tracés, périmètre —, les masses, l'heure et "
+      + "les durées, puis les contenances. La monnaie garde sa période 1.",
+    { "longueurs-unites-ce2": 1, "mesurer-tracer-ce2": 2, "perimetre-ce2": 2, "masses-ce2": 3, "heure-ce2": 4, "durees-ce2": 4, "contenances-ce2": 5 }),
+    ...ligne("des solides aux figures : nommer les solides, construire le cube par son patron, les polygones, les tracés sur tout support, "
+      + "puis la symétrie.", { "solides-ce2": 1, "patron-cube-ce2": 2, "figures-ce2": 3, "construire-ce2": 4, "symetrie-ce2": 5 }),
+    ...ligne("après les problèmes qui lisent des tableaux et des graphiques dès le début de l'année : produire les siens, avec une échelle.",
+      { "donnees-ce2": 2 }),
+    ...ligne(COMPRENDRE, {
+      "comprendre-ce2": 1, "lieux-de-lecture-c2": 1, "mots-inconnus-c2": 2, "oeuvre-complete-c2": 2,
+      "reprises-c2": 3, "personnages-types-c2": 3, "inferences-c2": 4, "types-et-genres-c2": 5,
+    }),
+    ...ligne("le programme veut ces compétences développées « tout au long de l'année » : la méthode s'installe à la rentrée.",
+      { "ecrire-un-texte-c2": 1 }),
+    ...ligne("une fois la méthode d'écriture installée : retravailler un texte, en milieu d'année.", { "transformer-un-texte-c2": 3 }),
+    ...ligne("la mémorisation des mots fréquents dès la rentrée, puis les accents et les familles de mots ; les dictées ont la période "
+      + "que leur donne le programme.", { "mots-frequents-c2": 1, "accents-c2": 2, "familles-orthographe-c2": 3 }),
+    ...ligne("de la phrase aux accords, à côté des temps que le programme ordonne : les types de phrases, les classes de mots, l'infinitif "
+      + "et les paroles rapportées, le sujet et le verbe, la chaîne d'accords du groupe nominal, puis les constituants de la phrase.",
+    {
+      "types-formes-c2": 1, "classes-de-mots-c2": 2, "verbe-infinitif-c2": 2, "discours-rapporte-ce2": 2,
+      "sujet-verbe-c2": 3, "chaine-accords-c2": 4, "constituants-c2": 5,
+    }),
+    ...ligne(CORPUS, { "vocabulaire-ce2": 1 }),
+    ...ligne(ORAL, { "echanger-c2": 1, "ecouter-comprendre-c2": 2, "registres-c2": 2, "raconter-c2": 3, "dire-un-poeme-c2": 4, "expose-c2": 5 }),
+    ...ligne("du proche au lointain : le quartier comparé à un village, se loger et travailler en France, la répartition de la population, "
+      + "puis les transports dans le monde.",
+    { "quartier-village-ce2": 1, "se-loger-ce2": 2, "travailler-ce2": 3, "population-france-ce2": 4, "transports-ce2": 5 }),
+  },
+};
+
+/** La période que Maitrize propose à une séquence qu'aucun texte ne date, et pourquoi ; rien pour les autres. */
+export const periodeProposee = (demarcheId: string, classe: ClasseC2): PeriodeProposee | null => PERIODES_PROPOSEES[classe]?.[demarcheId] ?? null;

@@ -1054,7 +1054,7 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .stf-tableau th, .stf-tableau td { vertical-align: top; text-align: left; padding: 6px; border-bottom: 1px solid var(--border); }
 .stf-tableau thead th { font-size: 13px; font-weight: 700; color: var(--text); border-bottom: 2px solid var(--border); }
 .stf-tableau th.stf-coin { width: 150px; vertical-align: bottom; }
-.stf-tableau thead th:last-child, .stf-case:last-child { background: color-mix(in srgb, var(--panel-2) 45%, transparent); }
+.stf-tableau thead th.stf-sans, .stf-case.stf-sans { background: color-mix(in srgb, var(--panel-2) 45%, transparent); }
 .stf-colonne-aide { display: block; margin-top: 2px; font-size: 11px; font-weight: 400; color: var(--text-2); line-height: 1.3; }
 .stf-discipline > th { padding: 16px 0 6px; }
 .stf-discipline button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 0; font: inherit; font-size: 15px; font-weight: 700;
@@ -1065,6 +1065,8 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .stf-case.survol { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
 .stf-puce { display: block; width: 100%; margin: 0 0 6px; padding: 6px 8px; text-align: left; font: inherit; color: var(--text);
   background: var(--panel-2); border: 1px solid var(--border); border-radius: 9px; cursor: grab; }
+/* Une période que Maitrize propose, faute de texte qui la date : un bord en pointillés, plus marqué pour qu'on le voie. */
+.stf-puce.proposee { border-style: dashed; border-color: color-mix(in srgb, var(--text-2) 45%, var(--border)); }
 .stf-puce:hover { border-color: var(--accent); }
 .stf-puce.actif { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
 .stf-puce.en-vol { opacity: .45; }
