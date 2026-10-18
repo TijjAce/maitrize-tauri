@@ -145,6 +145,9 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
       + "après les procédures de calcul mental qu'elles mobilisent ; les suites en fin d'année.", { "algebre-cm1": 3, "egalites-programmes-cm1": 4, "suites-cm1": 5 }),
     ...ligne("en fin d'année, quand la multiplication et la division sont sûres : reconnaître la proportionnalité et l'utiliser une fois ; "
       + "et les problèmes à chercher, qui demandent d'organiser sa recherche.", { "proportionnalite-cm1": 5, "denombrer-optimiser-cm1": 5 }),
+    ...ligne("les angles dès la rentrée, qui ne demandent aucun calcul ; l'heure et les durées ensuite ; les longueurs et le périmètre avec "
+      + "l'écriture à virgule de la période 3, qui code les sous-multiples du mètre ; puis les masses, les contenances et les aires.",
+    { "angles-cm1": 1, "heure-durees-cm1": 2, "longueurs-cm1": 3, "perimetre-cm1": 3, "masses-cm1": 4, "contenances-cm1": 5, "aires-cm1": 5 }),
   },
   CM2: {
     ...ligne("après les millions, qui viennent en période 3 : les comparer, les ranger, les placer.", { "comparer-nombres-cm2": 4 }),
@@ -162,6 +165,8 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
       + "problèmes multiplicatifs ; les suites en fin d'année.", { "egalites-programmes-cm2": 2, "algebre-cm2": 3, "suites-cm2": 5 }),
     ...ligne("après les problèmes multiplicatifs et mixtes, la séquence du livret, qui réactive d'abord ce qu'on a fait au CM1 ; et les "
       + "recherches de toutes les solutions en fin d'année, avant les algorithmes de sixième.", { "proportionnalite-cm2": 4, "chercher-cm2": 5 }),
+    ...ligne("les durées à la seconde tôt dans l'année ; les angles et le degré au printemps ; les unités d'aire et l'aire du rectangle "
+      + "en fin d'année, quand la multiplication des décimaux est sûre.", { "heure-durees-cm2": 2, "angles-cm2": 4, "aires-cm2": 5 }),
   },
 };
 
