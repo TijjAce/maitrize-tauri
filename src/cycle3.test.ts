@@ -99,3 +99,35 @@ describe("les nombres du cours moyen : entiers, fractions, décimaux", () => {
     expect(vues.size).toBe(18);
   });
 });
+
+describe("le calcul du cours moyen : estimer, les parenthèses, le calcul posé", () => {
+  const OPERATIONS = MATHS.filter((c) => /quatre opérations/i.test(c.cible.competenceGeneraleTitre ?? ""));
+
+  it("donnent à chaque compétence une séquence de sa classe, avec ses feuilles justes", () => {
+    expect(OPERATIONS.length).toBe(11);
+    const vues = new Set<string>();
+    for (const { cible, classe } of OPERATIONS) {
+      const d = demarcheSuggeree(cible, REF);
+      expect(d.id, `${classe} — ${cible.competenceTitre}`).toMatch(new RegExp(`-${classe.toLowerCase()}$`));
+      if (vues.has(d.id)) continue;
+      vues.add(d.id);
+      const plan = planDesFeuilles(d.id, { classe, periode: 3, competence: cible.competenceTitre ?? "" })!;
+      expect(plan.materiel.length, d.id).toBe(d.seances.length);
+      for (const f of plan.feuilles) for (const graine of [1, 2]) expect(f.fabriquer(graine).html, `${d.id} — ${f.titre}`).not.toMatch(/NaN|undefined|Infinity/);
+    }
+    expect(vues.size).toBe(8);
+  });
+
+  it("posent des divisions dont le corrigé est juste, la virgule du quotient comprise", async () => {
+    const { htmlCalculCM, REGLAGES_CALCUL_CM } = await import("./calculCoursMoyen");
+    for (const dividende of ["entier", "decimal"] as const) {
+      for (let g = 1; g <= 40; g++) {
+        const corrige = htmlCalculCM({ ...REGLAGES_CALCUL_CM, classe: "CM2", exercice: "division-decimale", combien: 4, posees: true, dividende }, g).split('class="page corrige"')[1];
+        for (const m of corrige.matchAll(/<div class="cm-enligne">([^<]*) ÷ (\d) = <b>([^<]*)<\/b>/g)) {
+          const nombre = (s: string) => Number(s.replace(/\s| | /g, "").replace(",", "."));
+          expect(nombre(m[3]), m[0]).toBeCloseTo(nombre(m[1]) / Number(m[2]), 9);
+        }
+      }
+    }
+  });
+});

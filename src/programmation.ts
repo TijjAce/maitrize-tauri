@@ -111,6 +111,8 @@ const PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
     raison: `${citeLeProgrammeDuCycle3("CM2", "Toutefois, afin de privilégier en début d'année le travail sur les fractions et les nombres décimaux, les nombres entiers rencontrés pendant les deux premières périodes de l'année seront ceux qui ont été étudiés au CM1 et qui s'écrivent avec au plus six chiffres.")} Les millions viennent donc en période 3.` },
   "fractions-cm2": { niveau: "CM2", periode: 1,
     raison: citeLeProgrammeDuCycle3("CM2", "Dans la continuité du CM1, les élèves travaillent avec des fractions dès la période 1 et les utilisent tout au long de l'année scolaire.") },
+  "multiplication-posee-cm1": { niveau: "CM1", periode: 1,
+    raison: citeLeProgrammeDuCycle3("CM1", "Des additions, des soustractions et des multiplications posées sont régulièrement utilisées dès le début de l'année, quand les nombres en jeu le justifient.") },
   "decimaux-cm2": { niveau: "CM2", periode: 1,
     raison: citeLeProgrammeDuCycle3("CM2", "Au CM2, des nombres décimaux sont rencontrés dès la période 1 dans la continuité du travail mené au CM1 aussi bien par des écritures fractionnaires que des écritures à virgule.") },
 };

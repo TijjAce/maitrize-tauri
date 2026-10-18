@@ -126,6 +126,11 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
     ...ligne("après les nombres de cinq et six chiffres, que le programme fait aborder à partir de la période 3 : les comparer, les ranger, "
       + "les placer sur la demi-droite.", { "comparer-nombres-cm1": 4 }),
     ...ligne("avec les tables de multiplication revues en début d'année, avant les fractions qu'on compare et qu'on additionne.", { "multiples-cm1": 2 }),
+    ...ligne("estimer d'abord, pour contrôler chaque calcul posé ; la division après la multiplication posée de la rentrée ; les décimaux "
+      + "posés après l'écriture à virgule de la période 3, puis multipliés par un entier.",
+    { "estimer-calculer-cm1": 2, "division-cm1": 2, "posees-decimaux-cm1": 3, "multiplication-decimal-cm1": 4 }),
+    ...ligne("après la reprise, à la rentrée, des deux procédures qu'elle demande — multiplier par 10, prendre la moitié — : le livret veut "
+      + "qu'on les réactive d'abord.", { "multiplier-par-5-cm1": 2 }),
     ...ligne("après les fractions plus grandes que 1 de la période 1, les comparer et les additionner — le programme veut les fractions "
       + "« tout au long de l'année » —, puis prendre une fraction d'une quantité, avec la division.",
     { "comparer-fractions-cm1": 2, "fraction-quantite-cm1": 4 }),
@@ -135,6 +140,8 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
   },
   CM2: {
     ...ligne("après les millions, qui viennent en période 3 : les comparer, les ranger, les placer.", { "comparer-nombres-cm2": 4 }),
+    ...ligne("estimer dès la rentrée, pour contrôler les calculs de l'année ; multiplier les décimaux, rencontrés dès la période 1, "
+      + "puis les diviser.", { "estimer-calculer-cm2": 1, "multiplication-decimal-cm2": 2, "division-decimale-cm2": 3 }),
     ...ligne("dès la rentrée, pour les fractions : le programme renforce diviseurs et multiples « en vue de leur utilisation lors de travaux "
       + "sur les fractions ».", { "multiples-diviseurs-cm2": 1 }),
     ...ligne("après les écritures et la comparaison des fractions de la période 1 : les additionner et les soustraire, la séquence du livret ; "

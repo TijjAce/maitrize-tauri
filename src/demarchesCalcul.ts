@@ -8,7 +8,9 @@
 //   mental : ajouter 9, 19 ou 29 » ;
 // - CE1, « Proposition de séquence n° 3 – Construire et mémoriser à long terme
 //   la table de 7 (multiplication) » ;
-// - CE2, « Proposition de séquence n° 2 – Multiplier un nombre par 4 ».
+// - CE2, « Proposition de séquence n° 2 – Multiplier un nombre par 4 » ;
+// - CM1 (livret du cycle 3, 2026), « Proposition de séquence n° 1 – Multiplier
+//   un nombre entier par 5 ».
 // On les suit séance par séance, avec leurs calculs. Les autres compétences de
 // calcul mental gardent la démarche du guide CP (« Une séquence de calcul ») :
 // le procédé La Martinière, un fait ou une procédure à la fois.
@@ -287,11 +289,59 @@ const FOIS_4_CE2: Demarche = {
   ],
 };
 
-export const DEMARCHES_CALCUL: Demarche[] = [ARBRE_CP, AJOUTER_19_CE1, TABLE_DE_7_CE1, FOIS_4_CE2];
+// ── CM1 : multiplier un nombre entier par 5 ──────────────────────────────
+
+const LIVRET_C3 = (classe: string, n: number, titre: string) =>
+  `Éduscol, livret d'accompagnement du programme de mathématiques du ${classe} (2026), « Proposition de séquence n° ${n} – ${titre} »`;
+
+const FOIS_5_CM1: Demarche = {
+  id: "multiplier-par-5-cm1",
+  nom: "Multiplier un nombre entier par 5 : par 10, puis la moitié (CM1)",
+  famille: "Mathématiques",
+  source: LIVRET_C3("CM1", 1, "Multiplier un nombre entier par 5"),
+  resume: "La séquence du livret CM1 : multiplier par 5 un nombre entier inférieur à 200, en le multipliant par 10 puis en prenant la moitié — les deux procédures qu'elle demande, et qu'elle renforce. Les quatre premières séances se tiennent en deux semaines ; la quatrième apprend à ne pas appliquer la procédure partout — 5 × 100 va plus vite autrement — ; la cinquième mêle les procédures de l'année, et peut servir d'évaluation.",
+  seances: [
+    seance("Découvrir la procédure",
+      "À la fin de cette séance, les élèves sauront multiplier un nombre entier par 5 en le multipliant par 10, puis en prenant la moitié du résultat, et diront pourquoi cela marche.",
+      45, [
+        ph(T1, "15 min", "L'enseignant annonce une nouvelle procédure, sans la nommer, pour aller plus vite. Une fiche de calculs à faire le plus vite possible : 5 × 24, 5 × 46, 5 × 18… Certains posent l'opération dans leur tête : juste, mais lent.",
+          "Les prérequis — multiplier par 10, prendre la moitié — ont été réactivés les jours d'avant ; des séances décrochées pour qui en a besoin."),
+        ph(T2, "20 min", "La procédure, proposée par des élèves ou par l'enseignant, verbalisée et justifiée : 5, c'est la moitié de 10 ; 5 × 24 = 240 ÷ 2 = 120. Premières utilisations guidées, chaque étape dite à voix haute ; on peut noter le produit par 10 avant d'en chercher la moitié.",
+          "Le glisse-nombre pour multiplier par 10, le matériel de base dix pour la moitié : pour qui en a besoin."),
+        ph(T3, "10 min", "La trace écrite, indispensable : « Pour multiplier un nombre par 5, je le multiplie par 10, puis je prends la moitié. 5 × 24 = 240 ÷ 2 = 120. » La moitié de 54, c'est la moitié de 50 plus la moitié de 4."),
+      ]),
+    seance("Asseoir la procédure à l'ardoise",
+      "À la fin de cette séance, les élèves sauront appliquer la procédure calcul après calcul, en la disant.",
+      25, [
+        ph("Calculs à l'ardoise", "20 min", "Des enchaînements d'items, par séries de cinq : projetés ou dictés un par un, puis projetés par séries. Une large place à la verbalisation, avec la trace écrite de la séance 1."),
+        ph("Bilan", "5 min", "Les réussites, et ce qui coince encore : le produit par 10, ou la moitié."),
+      ]),
+    seance("Asseoir la procédure sur papier, en temps limité",
+      "À la fin de cette séance, les élèves sauront multiplier par 5 de plus en plus vite.",
+      20, [
+        ph("Séries chronométrées", "15 min", "Des items sur papier, par séries, avec une contrainte de temps ; à refaire au moins deux fois — 10 minutes les fois suivantes."),
+        ph("Correction", "5 min", "On corrige ensemble ; chacun note son score."),
+      ]),
+    seance("Savoir quand l'utiliser",
+      "À la fin de cette séance, les élèves sauront reconnaître les calculs où une autre procédure va plus vite.",
+      30, [
+        ph(T2, "20 min", "Des items qui sortent du domaine de la procédure — 5 × 100, 5 × 7, 5 × 30 — mêlés aux autres ; un temps de réflexion est imposé avant de calculer, pour ne pas appliquer la procédure par automatisme.",
+          "À refaire au moins deux fois, 10 minutes les fois suivantes."),
+        ph(T3, "10 min", "On compare les procédures : pour 5 × 100, on multiplie par 100 ; pour 5 × 7, c'est la table."),
+      ]),
+    seance("Retrouver la procédure la plus adaptée",
+      "À la fin de cette séance, les élèves sauront choisir, dans une série mêlée, la procédure qui convient à chaque calcul.",
+      30, [
+        ph(T4, "30 min", "Le rebrassage des procédures apprises depuis la rentrée : des séries mixtes — multiplier par 5, par 4 ou par 8, par 10, 100 ou 1 000, doubles et moitiés. Cette séance peut être différée et servir d'évaluation ; ensuite, on réinterroge régulièrement la procédure pour qu'elle ne s'oublie pas."),
+      ]),
+  ],
+};
+
+export const DEMARCHES_CALCUL: Demarche[] = [ARBRE_CP, AJOUTER_19_CE1, TABLE_DE_7_CE1, FOIS_4_CE2, FOIS_5_CM1];
 
 /** La classe de chaque démarche des livrets. */
-export const CLASSE_DES_DEMARCHES_CALCUL: Record<string, "CP" | "CE1" | "CE2"> = {
-  "arbre-a-calcul-cp": "CP", "ajouter-9-19-29-ce1": "CE1", "table-de-7-ce1": "CE1", "multiplier-par-4-ce2": "CE2",
+export const CLASSE_DES_DEMARCHES_CALCUL: Record<string, "CP" | "CE1" | "CE2" | "CM1"> = {
+  "arbre-a-calcul-cp": "CP", "ajouter-9-19-29-ce1": "CE1", "table-de-7-ce1": "CE1", "multiplier-par-4-ce2": "CE2", "multiplier-par-5-cm1": "CM1",
 };
 
 /**
@@ -307,5 +357,6 @@ export function demarcheDuLivretDeCalcul(classe: string, competence: string, per
   if (classe === "ce1" && /ajouter 9, 19 (ou|et) 29/.test(competence)) return "ajouter-9-19-29-ce1";
   if (classe === "ce1" && /connaitre dans les deux sens les tables de multiplication/.test(competence)) return periode === 0 || periode === 3 ? "table-de-7-ce1" : null;
   if (classe === "ce2" && /multiplier un nombre (entier )?par 4/.test(competence)) return "multiplier-par-4-ce2";
+  if (classe === "cm1" && /multiplier un nombre entier par 5\b/.test(competence)) return "multiplier-par-5-cm1";
   return null;
 }

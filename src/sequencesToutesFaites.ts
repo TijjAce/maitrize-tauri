@@ -44,6 +44,7 @@ import type { ElemSalle } from "./planDeLaClasse";
 import { poserLeDeroulement } from "./poserLeDeroulement";
 import { DEMARCHES_PROBLEMES_PROLONGES } from "./problemesProlonges";
 import { DEMARCHES_NOMBRES_CM } from "./cycle3Nombres";
+import { DEMARCHES_CALCUL_CM } from "./cycle3Calcul";
 import { programmationProposee } from "./programmation";
 import {
   DEMARCHE_SOUSTRACTION_POSEE, FEUILLES_SOUSTRACTION_POSEE, MATERIEL_SOUSTRACTION_POSEE, competenceDeLaSoustraction, graineDeLaFeuille,
@@ -101,7 +102,7 @@ export function domaineDeLaDemarche(d: Pick<Demarche, "id" | "famille">): Domain
     if (dans(DEMARCHES_NOMBRES_CM)) return domaine(/decima/.test(d.id) ? "decimaux" : /fraction/.test(d.id) ? "fractions" : "nombres");
     if (/fraction/.test(d.id)) return domaine("fractions");
     if (d.id === "numeration-dizaine-cp" || d.id === "comparer-nombres-cp" || dans(DEMARCHES_NUMERATION)) return domaine("nombres");
-    if (dans(DEMARCHES_CALCUL) || dans(DEMARCHES_OPERATIONS)) return domaine("calcul");
+    if (dans(DEMARCHES_CALCUL) || dans(DEMARCHES_OPERATIONS) || dans(DEMARCHES_CALCUL_CM)) return domaine("calcul");
     if (dans(DEMARCHES_PROBLEMES) || dans(DEMARCHES_PROBLEMES_PROLONGES)) return domaine("problemes");
     if (dans(DEMARCHES_FRACTIONS_PROLONGEES)) return domaine("fractions");
     if (dans(DEMARCHES_GRANDEURS)) return domaine("grandeurs");
@@ -247,7 +248,8 @@ export const ouvreSurLeCalculMental = (d: Pick<Demarche, "id" | "famille">): boo
 
 /** Ce qu'une séquence de calcul travaille : les nombres, l'addition et la soustraction, ou la multiplication et la division. */
 type Genre = "nombres" | "additif" | "multiplicatif";
-const MULTIPLICATIVES = new Set(["sens-multiplication-cp", "multiplication-ce1", "parite-ce1", "multiplication-posee-ce2", "division-ce2"]);
+const MULTIPLICATIVES = new Set(["sens-multiplication-cp", "multiplication-ce1", "parite-ce1", "multiplication-posee-ce2", "division-ce2",
+  "multiplication-posee-cm1", "multiplication-decimal-cm1", "division-cm1", "multiplication-decimal-cm2", "division-decimale-cm2"]);
 const genreDe = (d: Pick<Demarche, "id" | "famille">): Genre =>
   (["nombres", "decimaux"].includes(domaineDeLaDemarche(d)?.id ?? "") ? "nombres" : MULTIPLICATIVES.has(d.id) ? "multiplicatif" : "additif");
 
