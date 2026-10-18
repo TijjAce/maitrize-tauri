@@ -13,7 +13,7 @@ import {
   niveauxDeLaLigne, nombreDeCompetences, rattacherAtelier, vautPourLeNiveau, type LienAtelier,
 } from "../ateliersCompetences";
 import { rattacherLesAteliersDesSequences } from "../ateliersDesSequences";
-import { FAMILLES, type Onglet } from "../catalogueAteliers";
+import { FAMILLES_DE_SUPPORTS, type Onglet } from "../catalogueAteliers";
 
 // ── Fabriquer, par compétence ─────────────────────────────────────────────
 //
@@ -50,7 +50,8 @@ const TYPE_ATELIER = "text/x-maitrize-atelier";
 interface AtelierMontre { id: string; nom: string; icone: string; quoi: string; onglet?: Onglet; caa?: string }
 
 const FAMILLES_MONTREES: { id: string; libelle: string; ateliers: AtelierMontre[] }[] = [
-  ...FAMILLES.map((f) => ({ id: f.id, libelle: f.libelle, ateliers: f.outils.map((o) => ({ id: o.id, nom: o.nom, icone: o.icone, quoi: o.quoi, onglet: o.id })) })),
+  // Les séquences toutes faites ont leur onglet : ici, les seuls supports.
+  ...FAMILLES_DE_SUPPORTS.map((f) => ({ id: f.id, libelle: f.libelle, ateliers: f.outils.map((o) => ({ id: o.id, nom: o.nom, icone: o.icone, quoi: o.quoi, onglet: o.id })) })),
   {
     id: "caa", libelle: "💬 Communication",
     ateliers: [

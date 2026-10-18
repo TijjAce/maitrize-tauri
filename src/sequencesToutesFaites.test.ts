@@ -32,7 +32,7 @@ vi.mock("./aidesDesSequences", () => {
 });
 
 import type { Referentiel } from "./api";
-import { FAMILLES, ONGLETS } from "./catalogueAteliers";
+import { FAMILLES, FAMILLES_DE_SUPPORTS, ONGLETS, SEQUENCES_TOUTES_FAITES } from "./catalogueAteliers";
 import { DEMARCHES, demarcheDe } from "./demarches";
 import { DEMARCHES_CALCUL } from "./demarchesCalcul";
 import { DEMARCHES_HISTOIRE_GEO } from "./demarchesHistoireGeo";
@@ -313,5 +313,16 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     for (const id of ["sequencesToutesFaites", "sequencesNombres", "sequencesCalcul", "sequencesProblemes", "sequencesFractions", "sequencesGrandeurs", "sequencesGeometrie", "sequencesDonnees"]) {
       expect((ONGLETS as readonly string[]).includes(id), id).toBe(false);
     }
+  });
+
+  it("ont leur onglet à part dans Fabriquer : le catalogue des supports ne les montre plus", () => {
+    expect(SEQUENCES_TOUTES_FAITES.map((o) => o.id)).toEqual(["sequencesCP", "sequencesCE1", "sequencesCE2", "vilainPetitCanard", "problemeDuJour", "soustractionPosee"]);
+    const supports = FAMILLES_DE_SUPPORTS.flatMap((f) => f.outils);
+    expect(supports.some((o) => o.sequence)).toBe(false);
+    // La famille des dossiers n'a plus rien à montrer parmi les supports ; les autres gardent leurs ateliers.
+    expect(FAMILLES_DE_SUPPORTS.map((f) => f.id)).not.toContain("sequences");
+    expect(FAMILLES_DE_SUPPORTS.find((f) => f.id === "langage")?.outils.map((o) => o.id)).not.toContain("vilainPetitCanard");
+    // Chaque carte est d'un côté, et d'un seul.
+    expect(supports.length + SEQUENCES_TOUTES_FAITES.length).toBe(FAMILLES.flatMap((f) => f.outils).length);
   });
 });
