@@ -581,7 +581,7 @@ describe("l'histoire et la géographie du cours moyen", () => {
       }
     }
     expect([...vues].sort()).toEqual(DEMARCHES_HISTOIRE_GEO_CM.map((x) => x.id).sort());
-    expect(HISTOIRE_CM.size).toBe(10);
+    expect(HISTOIRE_CM.size).toBe(13);
   });
 
   it("suivent l'ordre et les périodes que le programme donne à l'histoire", async () => {
@@ -597,7 +597,7 @@ describe("l'histoire et la géographie du cours moyen", () => {
   it("ont des feuilles cohérentes : les repères de la frise, les exercices, le corrigé", async () => {
     const { THEMES_HG_CM, REGIONS, PAYS_UE } = await import("./themesHistoireGeoCM");
     const { htmlHistoireGeoCM, htmlFriseCM } = await import("./histoireGeoCoursMoyen");
-    expect(THEMES_HG_CM.length).toBe(17);
+    expect(THEMES_HG_CM.length).toBe(23);
     expect(REGIONS.length).toBe(18);
     expect(PAYS_UE.length).toBe(27);
     for (const t of THEMES_HG_CM) {
@@ -644,5 +644,43 @@ describe("l'histoire et la géographie du cours moyen", () => {
         for (const lieu of t.lieux) expect(lieux, `${t.id} — ${lieu}`).toContain(`<span class="hge hge-grande">${echappe(lieu)}</span>`);
       }
     }
+  });
+
+  it("proposent au CM2 de cette année les séquences du programme de 2020, d'après les fiches Éduscol", async () => {
+    const { DEMARCHES_HISTOIRE_GEO_CM_2020, HISTOIRE_CM } = await import("./cycle3HistoireGeo");
+    const { domaineDeLaDemarche, repereDeLaDemarche, sequencesToutesFaites, tableauDesSequences, periodeDeLaDemarche } = await import("./sequencesToutesFaites");
+    const { periodeProposee } = await import("./periodesProposees");
+    const { demarchesPour } = await import("./demarches");
+    expect(DEMARCHES_HISTOIRE_GEO_CM_2020.length).toBe(6);
+    for (const d of DEMARCHES_HISTOIRE_GEO_CM_2020) {
+      expect(d.id).toMatch(/-cm2$/);
+      expect(d.nom, d.id).toMatch(/— programme 2020 \(CM2\)$/);
+      expect(d.source, d.id).toMatch(/^Éduscol, ressources d'accompagnement du cycle 3 \(mars 2016\).*programme de 2020, encore en vigueur au CM2 en 2026-2027$/);
+      const plan = planDesFeuilles(d.id, { classe: "CM2", periode: 1, competence: "" })!;
+      expect(plan.materiel.length, d.id).toBe(d.seances.length);
+      for (const f of plan.feuilles) {
+        expect(f.seance, `${d.id} — ${f.titre}`).toBeLessThan(d.seances.length);
+        for (const graine of [1, 2, 3]) expect(f.fabriquer(graine).html, `${d.id} — ${f.titre}`).not.toMatch(/NaN|undefined|Infinity|\[object|cycle 2|Thème inconnu/);
+      }
+      expect(domaineDeLaDemarche(d)?.id, d.id).toBe(HISTOIRE_CM.has(d.id) ? "temps2020" : "espace2020");
+      // Le temps de la République : en début d'année, d'après sa fiche ; les autres, une suggestion de Maitrize.
+      if (d.id === "temps-republique-cm2") expect(repereDeLaDemarche(d.id, "CM2")?.raison).toMatch(/^Fiche Éduscol « Le temps de la République » .+ : « Le premier thème/);
+      else expect(periodeProposee(d.id, "CM2")?.raison, d.id).toMatch(/^Suggestion de Maitrize/);
+    }
+    expect(periodeDeLaDemarche("temps-republique-cm2", "CM2")).toBe(1);
+    // Celles d'histoire se proposent à côté des compétences de 2026 qui en sont proches, au CM2 seulement.
+    const cm2 = (competenceTitre: string, niveau = "CM2") => demarchesPour({ domaineTitre: "Histoire-géographie", sousDomaineTitre: "Histoire", competenceGeneraleTitre: "", competenceTitre, niveau }, REF).map((x) => x.id);
+    expect(cm2("Nommer les symboles de la République : le drapeau tricolore, le 14 juillet, Marianne, la Marseillaise, la devise.")).toContain("temps-republique-cm2");
+    expect(cm2("Raconter la vie sur le front : combats et conditions de vie.")).toContain("guerres-mondiales-ue-cm2");
+    expect(cm2("Nommer quelques progrès de la médecine.")).toContain("age-industriel-2020-cm2");
+    expect(cm2("Nommer les symboles de la République.", "CM1")).not.toContain("temps-republique-cm2");
+    // Le dossier du CM2 les range à part, sur deux lignes ; celui du CM1 n'en a pas.
+    const lignes = (classe: "CM1" | "CM2") => {
+      const liste = sequencesToutesFaites().filter((x) => x.classe === classe);
+      const periode = (x: (typeof liste)[number]) => periodeDeLaDemarche(x.demarche.id, x.classe) ?? periodeProposee(x.demarche.id, x.classe)?.periode ?? null;
+      return tableauDesSequences(liste, periode).flatMap((b) => b.lignes).map((l) => [l.domaine.id, l.cases.reduce((n, c) => n + c.length, 0)] as const);
+    };
+    expect(lignes("CM2")).toEqual(expect.arrayContaining([["temps2020", 3], ["espace2020", 3]]));
+    expect(lignes("CM1").map(([id]) => id)).not.toContain("temps2020");
   });
 });

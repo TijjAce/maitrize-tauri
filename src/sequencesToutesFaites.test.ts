@@ -142,7 +142,8 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     expect(placees.length).toBeGreaterThanOrEqual(83);
     for (const { s, repere } of placees) {
       expect(repere!.periode, s.cle).toBeGreaterThanOrEqual(1);
-      expect(repere!.raison, s.cle).toMatch(/^(Programme|Livret|Guide|Repères) .+ : « .+ »/);
+      // Une fiche thématique d'Éduscol aussi : celle du premier thème d'histoire du CM2, programme de 2020.
+      expect(repere!.raison, s.cle).toMatch(/^(Programme|Livret|Guide|Repères|Fiche) .+ : « .+ »/);
     }
     const de = (cle: string) => reperes.find((x) => x.s.cle === cle)?.repere?.periode;
     expect(de("egalites-fractions-ce2:CE2")).toBe(1);
