@@ -55,7 +55,7 @@ import { BoutonMesImages, imagePourLePdf } from "../components/MesImages";
 import { gestesDemandes, gestesPourLesJeux, useNombreDeGestes } from "../components/BanqueDeGestes";
 import { estPerso } from "../imagesPerso";
 import { chercherPictos, lireLesSaisies, pictosDesMots } from "../mesPictos";
-import { FAMILLES, ONGLETS, type Onglet, type Outil } from "../catalogueAteliers";
+import { FAMILLES, FAMILLES_DE_SUPPORTS, ONGLETS, SEQUENCES_TOUTES_FAITES, type Onglet, type Outil } from "../catalogueAteliers";
 import { PliDuCatalogue, iconeEtNom } from "../components/PliDuCatalogue";
 import { CatalogueParCompetence } from "../components/CatalogueParCompetence";
 
@@ -91,8 +91,21 @@ export function chercherAteliers(
     sans(`${o.nom} ${o.quoi} ${f.libelle} ${o.cycles ?? ""} ${usages[o.id] ? descriptionDe(usages[o.id]).nom : ""}`).includes(cible)));
 }
 
-/** Comment le catalogue se lit : par famille d'ateliers, par moment de la séquence, ou depuis les compétences des programmes. */
-type Rangement = "famille" | "usage" | "competence";
+/**
+ * Comment le catalogue se lit : les supports par famille d'ateliers, par moment de la séquence, ou depuis les compétences
+ * des programmes ; ou, à part, les séquences toutes faites (demande de l'enseignant, octobre 2026).
+ */
+type Rangement = "famille" | "usage" | "competence" | "sequences";
+
+/** Les séquences toutes faites, en deux groupes : du CP au CE2, et en maternelle. */
+const SEQUENCES_DE_MATERNELLE = SEQUENCES_TOUTES_FAITES.filter((o) => /cycle 1/i.test(o.cycles ?? ""));
+const SEQUENCES_DE_L_ECOLE = SEQUENCES_TOUTES_FAITES.filter((o) => !SEQUENCES_DE_MATERNELLE.includes(o));
+/** Ce que compte un groupe : « 3 dossiers, 1 séquence ». */
+const compteDesSequences = (outils: Outil[]) => {
+  const dossiers = outils.filter((o) => o.dossier).length;
+  const seules = outils.length - dossiers;
+  return [dossiers ? `${dossiers} dossier${dossiers > 1 ? "s" : ""}` : "", seules ? `${seules} séquence${seules > 1 ? "s" : ""}` : ""].filter(Boolean).join(", ");
+};
 const RANGEMENT_MEMORISE = "fabriquer:rangement";
 
 /** Les sections repliées du catalogue — « famille:maths », « moment:rituel » —, gardées sur cet ordinateur. */
@@ -175,7 +188,7 @@ export default function Jeux() {
   const [rangement, setRangementBrut] = React.useState<Rangement>(() => {
     try {
       const lu = localStorage.getItem(RANGEMENT_MEMORISE);
-      return lu === "usage" || lu === "competence" ? lu : "famille";
+      return lu === "usage" || lu === "competence" || lu === "sequences" ? lu : "famille";
     } catch { return "famille"; }
   });
   const setRangement = (r: Rangement) => {
@@ -184,8 +197,9 @@ export default function Jeux() {
   };
   const [plis, setPlis] = useMemoire<string[]>("plis", lirePlis);
   const plier = (cle: string, plie: boolean) => setPlis(plie ? [...new Set([...plis, cle])] : plis.filter((x) => x !== cle));
-  // « Tout replier » vaut pour la lecture du moment : les familles, ou les moments.
-  const sectionsLues = rangement === "usage" ? ["moment:sequences", ...USAGES.map((u) => `moment:${u.id}`)] : FAMILLES.map((f) => `famille:${f.id}`);
+  // « Tout replier » vaut pour la lecture du moment : les familles, les moments, ou les groupes de séquences.
+  const sectionsLues = rangement === "usage" ? USAGES.map((u) => `moment:${u.id}`)
+    : rangement === "sequences" ? ["sequences:ecole", "sequences:maternelle"] : FAMILLES_DE_SUPPORTS.map((f) => `famille:${f.id}`);
   const toutPlie = sectionsLues.every((c) => plis.includes(c));
   const setOnglet = React.useCallback((o: Onglet | "") => {
     setOngletBrut(o);
@@ -221,7 +235,7 @@ export default function Jeux() {
     !etat ? <div /> : !etat.installee ? <Banque progression={progression} onTelecharger={telecharger} /> : contenu;
 
   const outil = onglet ? outilDe(onglet) : undefined;
-  const trouves = chercherAteliers(FAMILLES, recherche, usages);
+  const trouves = chercherAteliers(FAMILLES_DE_SUPPORTS, recherche, usages);
 
   // ── Devant les ateliers ──
   if (!onglet) {
@@ -238,30 +252,46 @@ export default function Jeux() {
         {inventaireOuvert && <MaterielDeLaClasse onClose={() => setInventaireOuvert(false)} />}
         <BandeauModification atelier="" onReprendre={(a) => setOnglet(a as Onglet)} />
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
-          <Input value={recherche} onChange={(e) => setRecherche(e.target.value)}
-            placeholder={rangement === "competence" ? "Chercher une compétence : décoder, addition, se repérer…"
-              : "Chercher un atelier : loto, syllabes, calcul mental, fractions, cycle 3, rituel…"}
-            aria-label={rangement === "competence" ? "Chercher une compétence" : "Chercher un atelier"} style={{ flex: "1 1 260px", maxWidth: 420 }} />
-          <div className="seg" role="group" aria-label="Ranger le catalogue">
+          {rangement !== "sequences" && (
+            <Input value={recherche} onChange={(e) => setRecherche(e.target.value)}
+              placeholder={rangement === "competence" ? "Chercher une compétence : décoder, addition, se repérer…"
+                : "Chercher un atelier : loto, syllabes, calcul mental, fractions, cycle 3, rituel…"}
+              aria-label={rangement === "competence" ? "Chercher une compétence" : "Chercher un atelier"} style={{ flex: "1 1 260px", maxWidth: 420 }} />
+          )}
+          <div className="seg" role="group" aria-label="Le catalogue">
             <button className={rangement === "famille" ? "active" : ""} onClick={() => setRangement("famille")}>Par famille</button>
             <button className={rangement === "usage" ? "active" : ""} onClick={() => setRangement("usage")}
               title="Découverte, entraînement, réinvestissement, rituel : le moment de la séquence que sert chaque atelier">Par moment de la séquence</button>
             <button className={rangement === "competence" ? "active" : ""} onClick={() => setRangement("competence")}
               title="Les compétences des programmes, et les ateliers qui travaillent chacune">Par compétence</button>
+            <button className={rangement === "sequences" ? "active" : ""} onClick={() => setRangement("sequences")}
+              title="À part des supports : des séquences prêtes, leurs séances et toutes leurs feuilles">📚 Séquences toutes faites</button>
           </div>
           {rangement === "usage" && !recherche.trim() && (
             <Aide titre="Ranger par moment" vers="droite">
               <p>Glissez une carte d'un moment à l'autre pour ranger l'atelier — ou clic droit sur la carte. Le rangement suit sur l'autre ordinateur.</p>
             </Aide>
           )}
-          {!recherche.trim() && rangement !== "competence" && (
+          {(rangement === "sequences" || !recherche.trim()) && rangement !== "competence" && (
             <button className="btn ghost sm" onClick={() => setPlis(toutPlie
               ? plis.filter((c) => !sectionsLues.includes(c)) : [...new Set([...plis, ...sectionsLues])])}>
               {toutPlie ? "▾ Tout déplier" : "▸ Tout replier"}
             </button>
           )}
         </div>
-        {rangement === "competence" ? (
+        {rangement === "sequences" ? (
+          [
+            { cle: "sequences:ecole", icone: "📁", titre: "Du CP au CE2", aide: "Un dossier par classe, en tableau période par période ; et la soustraction posée du CE1.", outils: SEQUENCES_DE_L_ECOLE },
+            { cle: "sequences:maternelle", icone: "🧸", titre: "Maternelle", aide: "Des séquences de la PS à la GS, avec leurs pictogrammes.", outils: SEQUENCES_DE_MATERNELLE },
+          ].filter((g) => g.outils.length > 0).map((g) => (
+            <section key={g.cle} className="famille-catalogue">
+              <PliDuCatalogue ouvert={!plis.includes(g.cle)} onBasculer={(o) => plier(g.cle, !o)}
+                icone={g.icone} titre={g.titre} aide={g.aide} nombre={g.outils.length} compte={compteDesSequences(g.outils)}>
+                <div className="ateliers">{g.outils.map(carte)}</div>
+              </PliDuCatalogue>
+            </section>
+          ))
+        ) : rangement === "competence" ? (
           <CatalogueParCompetence recherche={recherche} onOuvrir={setOnglet} />
         ) : recherche.trim() ? (
           trouves.length ? (
@@ -271,17 +301,7 @@ export default function Jeux() {
           )
         ) : rangement === "usage" ? (
           <>
-            {/* Les séquences toutes faites ne servent pas un moment : elles en ont tous. Elles viennent à part, en tête. */}
-            {FAMILLES.some((f) => f.outils.some((o) => o.sequence)) && (
-              <section className="famille-catalogue">
-                <PliDuCatalogue ouvert={!plis.includes("moment:sequences")} onBasculer={(o) => plier("moment:sequences", !o)}
-                  icone="📚" titre="Séquences toutes faites" aide="Ses séances et toutes leurs feuilles, prêtes : on crée la séquence d'un clic, puis on l'adapte."
-                  nombre={FAMILLES.flatMap((f) => f.outils).filter((o) => o.sequence).length}>
-                  <div className="ateliers">{FAMILLES.flatMap((f) => f.outils).filter((o) => o.sequence).map(carte)}</div>
-                </PliDuCatalogue>
-              </section>
-            )}
-            {rangerParUsage(FAMILLES.flatMap((f) => f.outils).filter((o) => !o.sequence), usages, true).map(({ usage, outils }) => (
+            {rangerParUsage(FAMILLES_DE_SUPPORTS.flatMap((f) => f.outils), usages, true).map(({ usage, outils }) => (
               <section key={usage.id} className={`zone-moment${survol === usage.id ? " survol" : ""}`} aria-label={usage.nom}
                 onDragOver={(e) => {
                   if (!enVol) return;
@@ -308,11 +328,10 @@ export default function Jeux() {
               </section>
             ))}
           </>
-        ) : FAMILLES.map((f) => (
+        ) : FAMILLES_DE_SUPPORTS.map((f) => (
           <section key={f.id} className="famille-catalogue">
             <PliDuCatalogue ouvert={!plis.includes(`famille:${f.id}`)} onBasculer={(o) => plier(`famille:${f.id}`, !o)}
-              icone={iconeEtNom(f.libelle)[0]} titre={iconeEtNom(f.libelle)[1]} aide={f.aide} nombre={f.outils.length}
-              compte={f.outils.every((o) => o.dossier) ? `${f.outils.length} dossier${f.outils.length > 1 ? "s" : ""}` : undefined}>
+              icone={iconeEtNom(f.libelle)[0]} titre={iconeEtNom(f.libelle)[1]} aide={f.aide} nombre={f.outils.length}>
               <div className="ateliers">{f.outils.map(carte)}</div>
             </PliDuCatalogue>
           </section>

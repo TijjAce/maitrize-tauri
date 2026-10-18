@@ -250,6 +250,17 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
   },
 ];
 
+/**
+ * Les familles telles que le catalogue des supports les montre : sans les
+ * séquences toutes faites, qui ont leur onglet à part — on y prend une
+ * séquence, quand le reste sert à créer des supports (demande de
+ * l'enseignant, octobre 2026). Une famille qui n'en garde aucun s'efface.
+ */
+export const FAMILLES_DE_SUPPORTS = FAMILLES.map((f) => ({ ...f, outils: f.outils.filter((o) => !o.sequence) })).filter((f) => f.outils.length > 0);
+
+/** Les séquences toutes faites, pour leur onglet : les dossiers du CP au CE2, puis les autres, dans l'ordre du catalogue. */
+export const SEQUENCES_TOUTES_FAITES: Outil[] = FAMILLES.flatMap((f) => f.outils).filter((o) => o.sequence);
+
 /** Le nom d'un atelier, avec son icône : « 🧱 Nombres en cubes » ; son identifiant s'il n'est pas au catalogue. */
 export function nomDeLAtelier(id: string): string {
   const o = FAMILLES.flatMap((f) => f.outils).find((x) => x.id === id);
