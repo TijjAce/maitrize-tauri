@@ -48,6 +48,7 @@ import { DEMARCHES_CALCUL_CM } from "./cycle3Calcul";
 import { DEMARCHES_PROBLEMES_CM } from "./cycle3Problemes";
 import { DEMARCHES_GRANDEURS_CM } from "./cycle3Grandeurs";
 import { DEMARCHES_GEOMETRIE_CM } from "./cycle3Geometrie";
+import { DEMARCHES_DONNEES_CM } from "./cycle3Donnees";
 import { programmationProposee } from "./programmation";
 import {
   DEMARCHE_SOUSTRACTION_POSEE, FEUILLES_SOUSTRACTION_POSEE, MATERIEL_SOUSTRACTION_POSEE, competenceDeLaSoustraction, graineDeLaFeuille,
@@ -114,7 +115,7 @@ export function domaineDeLaDemarche(d: Pick<Demarche, "id" | "famille">): Domain
     if (dans(DEMARCHES_FRACTIONS_PROLONGEES)) return domaine("fractions");
     if (dans(DEMARCHES_GRANDEURS) || dans(DEMARCHES_GRANDEURS_CM)) return domaine("grandeurs");
     if (dans(DEMARCHES_GEOMETRIE) || dans(DEMARCHES_GEOMETRIE_CM)) return domaine("geometrie");
-    if (dans(DEMARCHES_DONNEES)) return domaine("donnees");
+    if (dans(DEMARCHES_DONNEES) || dans(DEMARCHES_DONNEES_CM)) return domaine("donnees");
     return null;
   }
   if (dans(DEMARCHES_FRANCAIS)) return domaine(/^vocabulaire-/.test(d.id) ? "vocabulaire" : /cursive|copie/.test(d.id) ? "geste" : "code");

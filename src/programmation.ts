@@ -113,6 +113,8 @@ const PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
     raison: citeLeProgrammeDuCycle3("CM2", "Dans la continuité du CM1, les élèves travaillent avec des fractions dès la période 1 et les utilisent tout au long de l'année scolaire.") },
   "multiplication-posee-cm1": { niveau: "CM1", periode: 1,
     raison: citeLeProgrammeDuCycle3("CM1", "Des additions, des soustractions et des multiplications posées sont régulièrement utilisées dès le début de l'année, quand les nombres en jeu le justifient.") },
+  "probabilites-cm2": { niveau: "CM2", periode: 2,
+    raison: citeLeProgrammeDuCycle3("CM2", "Au CM2, le travail sur les probabilités est amorcé au plus tard en période 2.") },
   "decimaux-cm2": { niveau: "CM2", periode: 1,
     raison: citeLeProgrammeDuCycle3("CM2", "Au CM2, des nombres décimaux sont rencontrés dès la période 1 dans la continuité du travail mené au CM1 aussi bien par des écritures fractionnaires que des écritures à virgule.") },
 };

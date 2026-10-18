@@ -152,6 +152,8 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
       + "droites perpendiculaires et parallèles sont sûres ; le cercle et les constructions, qui les réunissent ; la symétrie et les "
       + "assemblages de cubes en fin d'année.",
     { "droites-cm1": 1, "solides-cm1": 1, "deplacements-cm1": 2, "figures-cm1": 3, "patrons-cube-cm1": 3, "cercle-cm1": 4, "constructions-cm1": 4, "symetrie-cm1": 5, "assemblages-cubes-cm1": 5 }),
+    ...ligne("les données en période 4, quand les grands nombres permettent de graduer les axes ; les probabilités en fin d'année, après la "
+      + "moitié et les fractions, qui justifient « une chance sur deux ».", { "donnees-cm1": 4, "probabilites-cm1": 5 }),
   },
   CM2: {
     ...ligne("après les millions, qui viennent en période 3 : les comparer, les ranger, les placer.", { "comparer-nombres-cm2": 4 }),
@@ -174,6 +176,7 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
     ...ligne("les droites et les solides dès la rentrée ; les figures et les patrons ensuite ; le cercle et les constructions, qui les "
       + "réunissent ; la symétrie et les déplacements au printemps ; les assemblages et leurs vues en fin d'année.",
     { "droites-cm2": 1, "solides-cm2": 1, "figures-cm2": 2, "patrons-cm2": 2, "cercle-cm2": 3, "constructions-cm2": 3, "symetrie-cm2": 4, "deplacements-cm2": 4, "assemblages-cubes-cm2": 5 }),
+    ...ligne("les données au milieu de l'année, avec les fractions qui font lire un diagramme circulaire.", { "donnees-cm2": 3 }),
   },
 };
 
