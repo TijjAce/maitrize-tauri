@@ -8,7 +8,7 @@
 // l'année » : un dossier par classe, du CP au CE2, et dedans un tableau — les
 // mathématiques, le français et l'histoire-géographie en lignes, domaine par
 // domaine, les périodes en colonnes : celle du programme, d'un livret ou d'un
-// guide, sinon celle que Maitrize propose (periodesProposees.ts) ; l'enseignant
+// guide, sinon celle que Maitrize suggère (periodesProposees.ts) ; l'enseignant
 // les glisse où il veut. La soustraction posée du CE1 y est aussi.
 //
 // En numération et en calcul, chaque séance s'ouvre sur le calcul mental, au
@@ -207,10 +207,10 @@ export const PERIODES_DE_L_ANNEE: { periode: number; aide: string }[] = [
   { periode: 5, aide: "Des vacances de printemps à l'été" },
 ];
 
-/** Les colonnes du tableau : les cinq périodes, puis les séquences qui n'en ont aucune — ni d'un texte, ni proposée (voir periodesProposees.ts). */
+/** Les colonnes du tableau : les cinq périodes, puis les séquences qui n'en ont aucune — ni d'un texte, ni suggérée (voir periodesProposees.ts). */
 export const COLONNES_DU_TABLEAU: { periode: number | null; titre: string; aide: string }[] = [
   ...PERIODES_DE_L_ANNEE.map(({ periode, aide }) => ({ periode, titre: `Période ${periode}`, aide })),
-  { periode: null, titre: "Sans période", aide: "Aucune période proposée" },
+  { periode: null, titre: "Sans période", aide: "Aucune période suggérée" },
 ];
 
 export interface LigneDuTableau { domaine: Domaine; cases: SequenceToutefaite[][] }

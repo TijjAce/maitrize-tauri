@@ -118,7 +118,7 @@ export function SequencesToutesFaitesTab({ classe }: { classe: ClasseC2 }) {
         label: `Ranger en période ${periode}${periodeDe(s) === periode ? " ✓" : ""}`, icon: "🗓", onClick: () => ranger(s, periode),
       })),
       ...(choisies[s.cle] !== undefined ? [{
-        label: sienne?.periode ? `Revenir à la période ${sienne.periode} ${sienne.proposee ? "proposée" : "de sa source"}` : "Retirer de sa période",
+        label: sienne?.periode ? `Revenir à la période ${sienne.periode} ${sienne.proposee ? "suggérée" : "de sa source"}` : "Retirer de sa période",
         icon: "↺", sep: true, onClick: () => ranger(s, null),
       }] : []),
     ]);
@@ -134,7 +134,7 @@ export function SequencesToutesFaitesTab({ classe }: { classe: ClasseC2 }) {
                 <Aide titre="Le tableau des séquences" vers="droite">
                   <p>Ce sont les déroulements que propose la fiche d'une séquence : les séquences des livrets d'Éduscol, ou bâties sur le programme et sur les guides. Chacune dit sa source.</p>
                   <p>Chacune est dans la période où la placent le programme ou un texte d'Éduscol — livret, guide, repères annuels —, cité au survol. Glissez-la dans une autre période de sa ligne, ou rangez-la au clic droit : le tableau devient la programmation de la classe.</p>
-                  <p>Bord en pointillés : aucun texte ne la date. Maitrize lui propose une période, ligne par ligne — du plus simple au plus complexe, du proche au lointain — et dit pourquoi au survol.</p>
+                  <p>« Suggestion Maitrize » en haut d'une séquence : aucun texte ne la date. Maitrize lui suggère une période, ligne par ligne — du plus simple au plus complexe, du proche au lointain — et dit pourquoi au survol. La mention s'efface quand vous la rangez ailleurs.</p>
                   <p>Un clic l'ouvre : ses séances, et toutes les feuilles que les ateliers en fabriquent.</p>
                 </Aide>
               </th>
@@ -181,11 +181,12 @@ export function SequencesToutesFaitesTab({ classe }: { classe: ClasseC2 }) {
                             } : undefined}>
                             {ligne.cases[j].map((s) => (
                               <button key={s.cle} type="button" draggable aria-pressed={s === choisie} title={titreDeLaPuce(s, infos.get(s.cle))}
-                                className={`stf-puce${s === choisie ? " actif" : ""}${s.cle === enVol ? " en-vol" : ""}${infos.get(s.cle)?.proposee && choisies[s.cle] === undefined ? " proposee" : ""}`}
+                                className={`stf-puce${s === choisie ? " actif" : ""}${s.cle === enVol ? " en-vol" : ""}`}
                                 onClick={() => setChoisieCle(s === choisie ? "" : s.cle)}
                                 onContextMenu={(e) => menu(e, s)}
                                 onDragStart={(e) => { e.dataTransfer.setData(TYPE_SEQUENCE, s.cle); e.dataTransfer.effectAllowed = "move"; setEnVol(s.cle); }}
                                 onDragEnd={() => { setEnVol(""); setSurvol(""); }}>
+                                {infos.get(s.cle)?.proposee && choisies[s.cle] === undefined && <span className="stf-puce-suggestion">Suggestion Maitrize</span>}
                                 <span className="stf-puce-nom">{nomSansClasse(s.demarche.nom)}</span>
                                 <span className="stf-puce-meta">{avecLaSeanceDesMots(s.demarche).seances.length} séances</span>
                               </button>

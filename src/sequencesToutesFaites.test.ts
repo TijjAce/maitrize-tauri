@@ -165,7 +165,7 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
       }
       expect(proposee, s.cle).not.toBeNull();
       expect([1, 2, 3, 4, 5], s.cle).toContain(proposee!.periode);
-      expect(proposee!.raison, s.cle).toMatch(/^Proposition de Maitrize : ni le programme ni les guides ne la datent\. [A-ZÀ-Ý].+\.$/);
+      expect(proposee!.raison, s.cle).toMatch(/^Suggestion de Maitrize : ni le programme ni les guides ne la datent\. [A-ZÀ-Ý].+\.$/);
     }
     // Chaque proposition est celle d'une séquence du tableau : aucune ne se perd sur une faute de frappe.
     const cles = new Set(toutes.map((s) => s.cle));

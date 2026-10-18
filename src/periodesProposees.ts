@@ -5,8 +5,8 @@
 // l'oral, la plupart de la grammaire… (relevé d'octobre 2026, voir
 // programmation.ts). L'enseignant a demandé qu'elles prennent quand même
 // leur place dans le tableau des séquences toutes faites : Maitrize leur
-// propose une période, ligne par ligne, et le dit — la raison commence par
-// « Proposition de Maitrize ». Une ligne se répartit sur l'année, du plus
+// propose une période, ligne par ligne, et le dit — « Suggestion Maitrize »
+// en haut de la séquence, et sa raison commence par « Suggestion de Maitrize ». Une ligne se répartit sur l'année, du plus
 // simple au plus complexe ou du proche au lointain, autour des séquences que
 // les textes datent. L'enseignant change une période en glissant la séquence.
 
@@ -14,7 +14,7 @@ import type { ClasseC2 } from "./feuillesDesSequences";
 
 export interface PeriodeProposee { periode: number; raison: string }
 
-const PROPOSITION = "Proposition de Maitrize : ni le programme ni les guides ne la datent. ";
+const PROPOSITION = "Suggestion de Maitrize : ni le programme ni les guides ne la datent. ";
 
 /** Une ligne du tableau : sa raison, et la période de chacune de ses séquences. */
 const ligne = (raison: string, periodes: Record<string, number>): Record<string, PeriodeProposee> =>
