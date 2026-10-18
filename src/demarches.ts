@@ -2220,6 +2220,21 @@ export function demarchesPour(cible: CibleDemarche, referentielNom = "", periode
   return [premiere, ...autres];
 }
 
+/**
+ * Toutes les démarches qui servent une compétence, quelle que soit la
+ * période : au CP, les nombres jusqu'à 59 puis jusqu'à 100 ; au CE1, la table
+ * de 7 et La Martinière ; les quatre temps à conjuguer… Dans l'ordre de
+ * l'année. La fiche d'une séquence les montre en cartes, et seulement elles
+ * (demande de l'enseignant, octobre 2026).
+ */
+export function demarchesDeLaCompetence(cible: CibleDemarche, referentielNom = ""): Demarche[] {
+  const toutes: Demarche[] = [];
+  for (const periode of [1, 2, 3, 4, 5]) {
+    for (const d of demarchesPour(cible, referentielNom, periode)) if (!toutes.includes(d)) toutes.push(d);
+  }
+  return toutes;
+}
+
 function idSuggere(dom: string, sd: string, comp: string, ref: string, niveau = "", periode = 0, cg = ""): string {
   if (/\beps\b|physique et sportive|activite(s)? physique/.test(`${dom} ${sd}`)) return "eps-module";
   const maternelle = /cycle 1|maternelle/.test(ref)
