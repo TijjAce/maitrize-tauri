@@ -55,6 +55,8 @@ export const LIEUX_DES_CARTES: Record<string, LieuDeCarte> = {
   // L'histoire : les ports du commerce triangulaire, les premières colonies.
   goree: lieu("Gorée", -17.3983, 14.6672), "saint-domingue": lieu("Saint-Domingue", -72.2, 19.76), quebec: lieu("Québec", -71.2082, 46.8139),
   jamestown: lieu("Jamestown", -76.7775, 37.2097),
+  // Les deux guerres mondiales.
+  verdun: lieu("Verdun", 5.3844, 49.1598), vichy: lieu("Vichy", 3.4264, 46.1278), "chambon-sur-lignon": lieu("Le Chambon-sur-Lignon", 4.3017, 45.0611),
 };
 
 // ── Les projections ───────────────────────────────────────────────────────
@@ -95,7 +97,7 @@ export interface NumeroDeCarte { quoi?: string; ou?: [number, number]; nom: stri
 
 /** Des traits d'une même sorte : des flèches, des câbles, des routes, des lignes à grande vitesse. */
 export interface TraitsDeCarte {
-  sorte: "fleche" | "cable" | "route" | "lgv";
+  sorte: "fleche" | "cable" | "route" | "lgv" | "limite" | "frontiere";
   /** Ce que la légende en dit. */
   legende: string;
   /** À tracer par l'élève : seul le corrigé les montre ; la légende, si. */
@@ -108,6 +110,8 @@ export interface CarteHGCM {
   fond: NomDuFond;
   /** La partie du fond qu'on montre : ouest, sud, est, nord, en degrés. */
   cadrage?: [number, number, number, number];
+  /** La hauteur de la carte sur la page, en mm, au plus : moins, quand la légende et les noms prennent de la place dessous. */
+  hauteur?: number;
   /** Les pays ou les régions à colorier, groupe par groupe : la case de la légende reste blanche chez l'élève. « @europe » : les pays du continent européen. */
   colorier?: { nom: string; couleur: string; formes: string[] }[];
   numeros?: NumeroDeCarte[];
@@ -124,6 +128,13 @@ export interface CarteHGCM {
   massifs?: boolean;
   /** Le continent européen dans ses limites conventionnelles, teinté. */
   continent?: boolean;
+  /**
+   * Des zones à colorier qui ne suivent pas les frontières — la zone occupée
+   * de 1940 — : leur contour en longitude et latitude, coupé à la terre du
+   * fond (l'Hexagone, pour la carte de France). Le corrigé les colorie ; la
+   * case de la légende reste blanche chez l'élève.
+   */
+  aplats?: { nom: string; couleur: string; contour: [number, number][] }[];
   /** Les noms à écrire, dans le désordre, au-dessus de la liste. */
   banque?: boolean;
   /** Une remarque sous la carte : les frontières d'aujourd'hui, un schéma. */
@@ -157,6 +168,8 @@ const STYLE_TRAIT: Record<TraitsDeCarte["sorte"], { couleur: string; eleve?: str
   cable: { couleur: "#c0392b", eleve: "#8a90a0", epaisseur: 0.4 },
   route: { couleur: "#d8342c", epaisseur: 0.75 },
   lgv: { couleur: "#2563c9", epaisseur: 0.65, tirets: [1.8, 1.1] },
+  limite: { couleur: "#b3261e", eleve: "#8a90a0", epaisseur: 0.9 },
+  frontiere: { couleur: "#4a5060", epaisseur: 0.5, tirets: [1.4, 0.9] },
 };
 const FLEUVE = { couleur: "#1f6fd1", eleve: "#9db8d8" };
 const MASSIF = { couleur: "#b08968", bord: "#7a5c3e" };
@@ -326,6 +339,14 @@ export function svgDeLaCarte(c: CarteHGCM, corrige: boolean, largeurMax: number,
     parties.push(`<g fill="#f3e1a6" style="mix-blend-mode:multiply"><path d="${fond.continent}"/>`
       + fond.formes.filter((f) => f.europe).map((f) => `<use href="#${prefixe}-${f.id}"/>`).join("") + "</g>");
   }
+  // Les aplats, au corrigé : coupés à la terre — sans les encarts —, leur teinte multipliée garde les frontières par-dessus.
+  if (corrige && c.aplats?.length) {
+    const encarts = new Set((fond.cadres ?? []).map((x) => x.id));
+    parties.push(`<clipPath id="${prefixe}-terre">${fond.formes.filter((f) => !encarts.has(f.id)).map((f) => `<path d="${f.d}"/>`).join("")}</clipPath>`
+      + `<g clip-path="url(#${prefixe}-terre)" style="mix-blend-mode:multiply">`
+      + c.aplats.map((a) => `<path fill="${a.couleur}" d="${chemin(a.contour.map((p) => projeter(fond, p)))}z"/>`).join("")
+      + "</g>");
+  }
   if (c.massifs && fond.zones) {
     parties.push(corrige
       ? `<g fill="${MASSIF.couleur}" fill-opacity="0.5" stroke="${MASSIF.bord}" stroke-width="${mm(0.2)}">${fond.zones.map((z) => `<path d="${z.d}"/>`).join("")}</g>`
@@ -434,7 +455,7 @@ export function svgDeLaCarte(c: CarteHGCM, corrige: boolean, largeurMax: number,
 /** Un échantillon de trait pour la légende. */
 function echantillon(sorte: TraitsDeCarte["sorte"] | "fleuve", corrige: boolean): string {
   const s = sorte === "fleuve" ? { couleur: FLEUVE.couleur, epaisseur: 0.6, tirets: undefined } : STYLE_TRAIT[sorte];
-  const couleur = sorte === "cable" && !corrige ? STYLE_TRAIT.cable.eleve : s.couleur;
+  const couleur = !corrige && sorte !== "fleuve" && STYLE_TRAIT[sorte].eleve ? STYLE_TRAIT[sorte].eleve : s.couleur;
   return `<svg class="hgc-ech" viewBox="0 0 10 4" style="width:10mm;height:4mm"><path d="M0.5 2L${sorte === "fleche" ? 7.5 : 9.5} 2" stroke="${couleur}" stroke-width="${s.epaisseur}"`
     + `${s.tirets ? ` stroke-dasharray="${s.tirets[0]} ${s.tirets[1]}"` : ""} fill="none"/>${sorte === "fleche" ? `<path d="M9.5 2L7 0.8L7 3.2z" fill="${couleur}"/>` : ""}</svg>`;
 }
@@ -444,7 +465,7 @@ function legende(c: CarteHGCM, corrige: boolean): string {
   const ligne = (signe: string, texte: string) => lignes.push(`<div class="hgc-l">${signe}<span>${escapeHtml(texte)}</span></div>`);
   const point = '<span class="hgc-signe"><i class="hgc-point"></i></span>';
   if (c.continent) ligne('<span class="hgc-case" style="background:#f3e1a6"></span>', "le continent européen, jusqu'à l'Oural et au Caucase");
-  for (const g of c.colorier ?? []) ligne(`<span class="hgc-case"${corrige ? ` style="background:${g.couleur}"` : ""}></span>`, g.nom);
+  for (const g of [...(c.colorier ?? []), ...(c.aplats ?? [])]) ligne(`<span class="hgc-case"${corrige ? ` style="background:${g.couleur}"` : ""}></span>`, g.nom);
   if (c.legendeNumeros) ligne(point, c.legendeNumeros);
   if (c.points) ligne(point, c.points.legende);
   if (c.fleuves) ligne(`<span class="hgc-signe">${echantillon("fleuve", corrige)}</span>`, "un fleuve");
@@ -482,9 +503,8 @@ const PAGE = { paysage: 277, portrait: 182 };
  * les noms à écrire s'y mettent, et la banque des noms passe dessous ; sinon,
  * tout va sous la carte. Pour l'élève, ou pour le corrigé.
  */
-export function htmlDeLaCarte(c: CarteHGCM, corrige: boolean, graine: number): string {
-  const paysage = carteEnPaysage(c);
-  const [largeurMax, hauteurMax] = paysage ? [190, 100] : [182, 140];
+export function htmlDeLaCarte(c: CarteHGCM, corrige: boolean, graine: number, paysage = carteEnPaysage(c)): string {
+  const [largeurMax, hauteurMax] = paysage ? [190, Math.min(100, c.hauteur ?? 100)] : [182, Math.min(140, c.hauteur ?? 140)];
   const taille = tailleDeLaCarte(c, largeurMax, hauteurMax);
   const page = paysage ? PAGE.paysage : PAGE.portrait;
   const panneau = page - taille.largeur - 5;

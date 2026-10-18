@@ -1151,21 +1151,21 @@ const PLANS: Record<string, PlanHG> = {
     ],
   },
   [PREMIERE_GUERRE_CM2.id]: {
-    feuilles: feuillesDuTheme(PREMIERE_GUERRE_CM2.id, { tranchees: 1, "mouvement-position": 2, arriere: 3, "bilan-1918": 4 }, 0, null, 5),
+    feuilles: feuillesDuTheme(PREMIERE_GUERRE_CM2.id, { tranchees: 1, "mouvement-position": 2, "carte-front": 2, arriere: 3, "bilan-1918": 4 }, 0, null, 5),
     materiel: [
       "La frise du XXe siècle de la classe ; la frise du thème et ses étiquettes ; une carte du front occidental",
       "Des extraits de lettres de poilus, des photographies de tranchées ; le document",
-      "Une carte de la bataille de Verdun ; des photographies du champ de bataille, avant et après ; la feuille à trier",
+      "Une carte de la bataille de Verdun ; des photographies du champ de bataille, avant et après ; la feuille à trier ; la carte du front à compléter",
       "Des photographies de munitionnettes et de paysannes ; des affiches de propagande et d'emprunt ; le document",
       "La liste des noms du monument aux morts de la commune, ou une sortie pour le voir ; le document",
       "",
     ],
   },
   [SECONDE_GUERRE_CM2.id]: {
-    feuilles: feuillesDuTheme(SECONDE_GUERRE_CM2.id, { "etapes-39-45": 0, occupation: 1, resister: 2, "vichy-juifs": 3 }, 0, null, 5),
+    feuilles: feuillesDuTheme(SECONDE_GUERRE_CM2.id, { "etapes-39-45": 0, occupation: 1, "carte-1940": 1, resister: 2, "vichy-juifs": 3 }, 0, null, 5),
     materiel: [
       "La frise du XXe siècle de la classe ; la frise du thème et ses étiquettes ; une carte de la zone occupée et de la zone libre",
-      "Des tickets de rationnement, une affiche de la ligne de démarcation ; le document",
+      "Des tickets de rationnement, une affiche de la ligne de démarcation ; le document ; la carte des deux zones à compléter",
       "L'enregistrement d'un extrait de l'appel du 18 juin 1940 ; un journal clandestin ; le document",
       "Le document, lu avec le professeur ; les ressources du Mémorial de la Shoah pour l'école ; l'exemple du Chambon-sur-Lignon ou d'un Juste de la région",
       "Le monument aux morts de la commune ; une carte des lieux de mémoire proches",
@@ -1173,12 +1173,12 @@ const PLANS: Record<string, PlanHG> = {
     ],
   },
   [DEPUIS_1945_CM2.id]: {
-    feuilles: feuillesDuTheme(DEPUIS_1945_CM2.id, { "republique-sociale": 0, "droits-femmes": 1, "vie-change": 2, europe: 3 }, 0, null, 4),
+    feuilles: feuillesDuTheme(DEPUIS_1945_CM2.id, { "republique-sociale": 0, "droits-femmes": 1, "vie-change": 2, europe: 3, "carte-ue": 3 }, 0, null, 4),
     materiel: [
       "La frise du thème et ses étiquettes ; l'affiche de la Sécurité sociale ; une photographie des premières électrices, en 1945 ; le document",
       "La feuille à relier ; une loi de 1965 ou de 1972, en extrait",
       "Des photographies d'objets et de scènes de 1950 et d'aujourd'hui ; les questions préparées pour un grand-parent ; la feuille à trier",
-      "Une carte de l'Europe ; le document",
+      "La carte de l'Union européenne à compléter ; le document",
       "",
     ],
   },
@@ -1278,12 +1278,12 @@ const PLANS: Record<string, PlanHG> = {
     ],
   },
   [GUERRES_UE_CM2.id]: {
-    feuilles: feuillesDuTheme(GUERRES_UE_CM2.id, { "bilan-1918": 1, tranchees: 2, occupation: 3, "vichy-juifs": 3, "comparer-guerres": 4, europe: 5, "carte-ue": 5, "droits-europe": 5 }, 0, null, 6),
+    feuilles: feuillesDuTheme(GUERRES_UE_CM2.id, { "bilan-1918": 1, tranchees: 2, "carte-front": 2, occupation: 3, "carte-1940": 3, "vichy-juifs": 3, "comparer-guerres": 4, europe: 5, "carte-ue": 5, "droits-europe": 5 }, 0, null, 6),
     materiel: [
       "La frise du thème et ses étiquettes ; un planisphère",
       "La liste des noms du monument aux morts de la commune, ou une sortie pour le voir ; des plaques, des noms de rues ; le document",
-      "Le témoignage d'un poilu à Verdun ; un casque, un masque à gaz, ou leurs images ; le document",
-      "Le témoignage d'un enfant juif caché, adapté à l'âge des élèves ; une image du débarquement du 6 juin 1944 ; les documents",
+      "Le témoignage d'un poilu à Verdun ; un casque, un masque à gaz, ou leurs images ; le document ; la carte du front à compléter",
+      "Le témoignage d'un enfant juif caché, adapté à l'âge des élèves ; une image du débarquement du 6 juin 1944 ; les documents ; la carte des deux zones à compléter",
       "Le tableau à compléter ; les documents des séances précédentes",
       "Des cartes de l'Europe en 1957, en 1992 et aujourd'hui ; la carte de l'Union européenne à compléter ; les documents",
       "",

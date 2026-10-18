@@ -14,7 +14,7 @@
 import { escapeHtml } from "./print";
 import { feuille } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
-import { SOURCE_MAITRIZE, themeHGCM, type ExerciceHGCM, type FriseCM, type RepereCM, type ThemeHGCM } from "./themesHistoireGeoCM";
+import { SOURCE_MAITRIZE, carteDEvaluation, themeHGCM, type ExerciceHGCM, type FriseCM, type RepereCM, type ThemeHGCM } from "./themesHistoireGeoCM";
 import { STYLE_CARTES_HG, carteEnPaysage, htmlDeLaCarte } from "./cartesHistoireGeo";
 
 export interface ReglagesHistoireGeoCM {
@@ -200,9 +200,15 @@ function feuilleEvaluation(t: ThemeHGCM, graine: number): string {
     parties.push(`${consigne(esc(q))}${trait}${trait}${trait}`);
     reponses.push(`<li>${esc(rep)}</li>`);
   }
+  // Localiser sur un fond de carte : la carte du thème, sur une page à elle, en portrait comme la feuille.
+  const carte = carteDEvaluation(t.id);
+  if (carte) {
+    parties.push(`<div class="hg-eval-carte">${consigne(esc(carte.consigne))}${htmlDeLaCarte(carte.carte, false, graine, false)}</div>`);
+    reponses.push("<li>La carte : ci-dessous.</li>");
+  }
   const nom = `Évaluation — ${t.titre}`;
   return `<div class="page">${titre(nom)}${TETE}${regle(`Je fais les exercices dans l'ordre. Je relis mes réponses. ${SOURCE}`)}${parties.join("")}</div>`
-    + corrige(nom, `<ol class="hg-liste">${reponses.join("")}</ol>`);
+    + corrige(nom, `<ol class="hg-liste">${reponses.join("")}</ol>${carte ? htmlDeLaCarte(carte.carte, true, graine, false) : ""}`);
 }
 
 /**
@@ -249,6 +255,7 @@ export const STYLE_HISTOIRE_GEO_CM = `
   .feuille.hg .hg-q { font-size: 13.5px; margin: 0 0 3mm; line-height: 1.5; break-inside: avoid; page-break-inside: avoid; }
   .feuille.hg .hg-trait { border-bottom: 1px dotted #687087; height: 8mm; }
   .feuille.hg .hg-consigne { font-size: 13.5px; font-weight: 700; margin: 5mm 0 2mm; }
+  .feuille.hg .hg-eval-carte { break-before: page; page-break-before: always; }
   .feuille.hg .hg-banque { display: flex; flex-wrap: wrap; gap: 2mm; margin: 0 0 4mm; }
   .feuille.hg .hg-banque span { border: 1px dashed #9aa0b4; border-radius: 1.5mm; padding: 1.5mm 2.5mm; font-size: 13px; }
   .feuille.hg table.hg-tri { width: 100%; border-collapse: collapse; table-layout: fixed; }
