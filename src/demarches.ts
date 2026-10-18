@@ -73,6 +73,7 @@ import { DEMARCHES_ORAL, demarcheDeLOral } from "./demarchesOral";
 import { DEMARCHES_HISTOIRE_GEO, demarcheHistoireGeo } from "./demarchesHistoireGeo";
 import { DEMARCHES_MATHS_CM, demarcheDesMathsCM } from "./cycle3Maths";
 import { DEMARCHES_FRANCAIS_CM, demarcheDuFrancaisCM } from "./cycle3Francais";
+import { DEMARCHES_HISTOIRE_GEO_CM, demarcheHistoireGeoCM } from "./cycle3HistoireGeo";
 import { DEMARCHES_VILAIN_PETIT_CANARD } from "./demarchesVilainPetitCanard";
 import { DEMARCHE_PROBLEME_DU_JOUR } from "./demarcheProblemeDuJour";
 import { CONSIGNES_FLUENCE } from "./fluence";
@@ -2167,7 +2168,7 @@ export const DEMARCHES: Demarche[] = [
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
   MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, ...DEMARCHES_VILAIN_PETIT_CANARD, COLLECTIONS, DEMARCHE_PROBLEME_DU_JOUR, CHRONOLOGIE, COMPARER_NOMBRES, NUMERATION_DIZAINE,
   ...DEMARCHES_NUMERATION, ...DEMARCHES_CALCUL, ...DEMARCHES_PROBLEMES, ...DEMARCHES_PROBLEMES_PROLONGES, ...DEMARCHES_FRACTIONS_PROLONGEES, ...DEMARCHES_OPERATIONS, ...DEMARCHES_GRANDEURS, ...DEMARCHES_GEOMETRIE, ...DEMARCHES_DONNEES, ...DEMARCHES_FRANCAIS, ...DEMARCHES_LECTURE, ...DEMARCHES_ORTHOGRAPHE, ...DEMARCHES_ECRITURE, ...DEMARCHES_LANGUE, ...DEMARCHES_ORAL, ...DEMARCHES_HISTOIRE_GEO,
-  ...DEMARCHES_MATHS_CM, ...DEMARCHES_FRANCAIS_CM,
+  ...DEMARCHES_MATHS_CM, ...DEMARCHES_FRANCAIS_CM, ...DEMARCHES_HISTOIRE_GEO_CM,
 ];
 
 export const demarcheDe = (id: string) => DEMARCHES.find((d) => d.id === id);
@@ -2344,8 +2345,12 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string, niveau = 
     return "eduscol-quatre-temps";
   }
   if (/sciences|technologie|questionner le monde/.test(dom)) return "investigation";
-  // Le thème de la compétence a sa séquence quand Éduscol en propose une ; sinon, l'enquête.
-  if (/histoire|geographie/.test(dom)) return demarcheHistoireGeo(niveau, sd, cg, comp) ?? "enquete-histoire-geo";
+  // Le thème de la compétence a sa séquence quand Éduscol en propose une ; sinon, l'enquête. Au cours moyen, chaque thème
+  // du programme du cycle 3 a la sienne (voir cycle3HistoireGeo.ts).
+  if (/histoire|geographie/.test(dom)) {
+    const coursMoyen = /^(cm1|cm2)$/.test(niveau) ? demarcheHistoireGeoCM(niveau, sd, cg) : null;
+    return coursMoyen ?? demarcheHistoireGeo(niveau, sd, cg, comp) ?? "enquete-histoire-geo";
+  }
   if (/moral et civique|\bemc\b/.test(dom)) return "emc-debat";
   if (/artistique|\barts\b/.test(dom)) {
     if (/musical|musique/.test(sd)) return "musique";

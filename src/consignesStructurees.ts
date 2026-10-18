@@ -389,7 +389,9 @@ export function structurerInterieur(interieur: string): string {
  */
 const EXERCICES = ["gr-sous-titre", "ec-sous-titre", "ol-sous-titre", "fc-consigne", "nu-consigne", "ma-consigne",
   // Les feuilles du cours moyen : nombres, grandeurs, algèbre, géométrie, données, étude de la langue.
-  "nc-consigne", "gr-consigne", "al-consigne", "ge-consigne", "do-consigne", "gm-consigne", "ew-sous-titre"];
+  "nc-consigne", "gr-consigne", "al-consigne", "ge-consigne", "do-consigne", "gm-consigne", "ew-sous-titre",
+  // L'histoire-géographie du cours moyen : les exercices de l'évaluation.
+  "hg-consigne"];
 
 /** Le numéro qui ouvre l'intitulé d'un exercice : « 1. », « <b>2.</b> ». */
 const NUMERO_D_EXERCICE = /^\s*(?:<b>\s*)?(\d{1,2})[.)](?:\s*<\/b>)?\s+/;
@@ -454,7 +456,7 @@ function finDeLElement(html: string, balise: string, debut: number): number {
  * passe par les deux points », « Paie 3 € », « Mets au pluriel ». Elles ne se
  * découpent pas en étapes, mais se disent aussi à la première personne.
  */
-const INSTRUCTIONS = ["ge-quoi", "fr-consigne", "nu-consigne", "fc-consigne", "gr-consigne", "nc-consigne", "al-consigne", "ge-consigne", "do-consigne", "gm-consigne", "ew-sous-titre", "ct-question", "do-question", "de-question",
+const INSTRUCTIONS = ["ge-quoi", "fr-consigne", "nu-consigne", "fc-consigne", "gr-consigne", "nc-consigne", "al-consigne", "ge-consigne", "do-consigne", "gm-consigne", "ew-sous-titre", "hg-consigne", "ct-question", "do-question", "de-question",
   "mo-cadre", "mo-prix", "cx-enonce", "ec-enonce", "ec-sous-titre", "gr-sous-titre", "ol-sous-titre"];
 
 /** Un texte phrase par phrase, chacune passée par `f` ; ce qui les sépare reste tel quel. */
