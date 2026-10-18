@@ -333,3 +333,59 @@ describe("les mathématiques du cours moyen, en entier", () => {
     }
   });
 });
+
+const FRANCAIS = competences("Français");
+
+describe("la grammaire, l'orthographe grammaticale et la conjugaison du cours moyen", () => {
+  const LANGUE = FRANCAIS.filter((c) => /grammaire/i.test(c.cible.sousDomaineTitre ?? ""));
+
+  it("donnent à chaque compétence une séquence de sa classe, bâtie sur le programme du cycle 3, avec ses feuilles", async () => {
+    const { DEMARCHES_LANGUE_CM } = await import("./cycle3Langue");
+    const { domaineDeLaDemarche } = await import("./sequencesToutesFaites");
+    const { periodeProposee } = await import("./periodesProposees");
+    expect(LANGUE.length).toBeGreaterThan(60);
+    const vues = new Set<string>();
+    for (const { cible, classe } of LANGUE) {
+      const d = demarcheSuggeree(cible, REF);
+      expect(DEMARCHES_LANGUE_CM.map((x) => x.id), `${classe} — ${cible.competenceTitre} : ${d.id}`).toContain(d.id);
+      expect(d.id).toMatch(new RegExp(`-${classe.toLowerCase()}$`));
+      expect(d.source).toMatch(/programme de français du cycle 3 \(2025\)/);
+      if (vues.has(d.id)) continue;
+      vues.add(d.id);
+      const plan = planDesFeuilles(d.id, { classe, periode: 3, competence: cible.competenceTitre ?? "" })!;
+      expect(plan.materiel.length, d.id).toBe(d.seances.length);
+      expect(plan.feuilles.length, d.id).toBeGreaterThan(1);
+      expect(Math.max(...plan.feuilles.map((f) => f.seance)), d.id).toBeLessThan(d.seances.length);
+      for (const f of plan.feuilles) for (const graine of [1, 2, 3]) {
+        const { html } = f.fabriquer(graine);
+        expect(html, `${d.id} — ${f.titre}`).not.toMatch(/NaN|undefined|Infinity|\[object|cycle 2/);
+        expect(html, `${d.id} — ${f.titre}`).toContain('class="page corrige"');
+      }
+      expect(domaineDeLaDemarche(d)?.id, d.id).toBe("langue");
+      // Aucun texte ne date la grammaire du cours moyen : Maitrize propose une période, et le dit.
+      expect(periodeProposee(d.id, classe)?.raison, d.id).toMatch(/^Suggestion de Maitrize/);
+    }
+    // Chaque séquence répond à au moins une compétence.
+    expect([...vues].sort()).toEqual(DEMARCHES_LANGUE_CM.map((x) => x.id).sort());
+  });
+
+  it("décomposent les formes verbales comme les exemples de réussite, et conjuguent juste", async () => {
+    const { marques, conjugaisonCM, formesCM } = await import("./conjugaisonCM");
+    expect(marques("chanter", "imparfait", 0)).toEqual({ radical: "chant", temps: "ai", personne: "s" });
+    expect(marques("chanter", "imparfait", 3)).toEqual({ radical: "chant", temps: "i", personne: "ons" });
+    expect(marques("finir", "futur", 0)).toEqual({ radical: "fini", temps: "r", personne: "ai" });
+    expect(marques("chanter", "passeSimple", 0)).toEqual({ radical: "chant", temps: "ai", personne: "" });
+    expect(marques("chanter", "passeSimple", 5)).toEqual({ radical: "chant", temps: "è", personne: "rent" });
+    expect(marques("venir", "passeSimple", 2)).toEqual({ radical: "v", temps: "in", personne: "t" });
+    expect(marques("venir", "passeSimple", 3)).toEqual({ radical: "v", temps: "în", personne: "mes" });
+    expect(conjugaisonCM("appeler", "present")).toEqual(["j'appelle", "tu appelles", "il appelle", "nous appelons", "vous appelez", "ils appellent"]);
+    expect(conjugaisonCM("nettoyer", "futur")[0]).toBe("je nettoierai");
+    expect(conjugaisonCM("lever", "futur")[3]).toBe("nous lèverons");
+    expect(conjugaisonCM("manger", "imparfait")[5]).toBe("ils mangeaient");
+    expect(conjugaisonCM("commencer", "present")[3]).toBe("nous commençons");
+    expect(formesCM("aller", "plusQueParfait")[5]).toBe("étaient allés");
+    expect(formesCM("prendre", "passeSimple")).toEqual(["pris", "pris", "prit", "prîmes", "prîtes", "prirent"]);
+    // Le futur des verbes en -é- s'écrit de deux façons depuis les rectifications de 1990 : on ne le donne pas.
+    expect(() => formesCM("céder", "futur")).toThrow();
+  });
+});

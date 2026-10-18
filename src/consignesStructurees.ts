@@ -104,7 +104,8 @@ const IMPERATIFS = new Set([
   "remplis", "remplace", "résous", "retiens", "utilise", "vise", "mime", "chante", "récite", "épelle", "frappe", "marche", "saute", "attrape",
   "verse", "transvase", "pèse", "soupèse", "vide", "estime", "range", "dispose", "assemble", "partage", "distribue", "écoute",
   "répète", "redis", "marque", "passe", "recompose", "demande", "aide", "forme", "transforme", "reporte", "change", "résume", "reviens",
-  "essaie", "note", "supprime", "déplace", "ordonne",
+  "essaie", "note", "supprime", "déplace", "ordonne", "conjugue", "justifie", "accorde", "oublie", "applique", "dénombre", "identifie",
+  "indique", "analyse", "rédige", "enregistre", "mémorise", "apprends", "crée",
 ]);
 
 /** Ce qui peut précéder le verbe d'une ligne sans en être : « Puis écris… », « Ensuite, colle… ». */
@@ -128,7 +129,9 @@ export const estImperatif = (mot: string): boolean => {
   if (IMPERATIFS.has(m)) return true;
   const verbe = verbeDeLaForme(m);
   const plat = (x: string) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  return !!verbe && plat(verbe) !== plat(m) && !/(t|ez|ons)$/.test(m);
+  // Un participe passé — « placé devant le verbe », « rangées » — n'est jamais un impératif ; « crée » en est un.
+  if (!verbe || /(é|és|ées)$/.test(m) || (/ée$/.test(m) && !/éer$/.test(verbe))) return false;
+  return plat(verbe) !== plat(m) && !/(t|ez|ons)$/.test(m);
 };
 
 /** Les sujets d'une consigne : « je », « tu », « on »… */
@@ -384,7 +387,9 @@ export function structurerInterieur(interieur: string): string {
  * qui ne fait rien faire à l'élève — « Mes idées », « À l'inverse », ou une
  * consigne à l'infinitif, pour l'adulte — reste un intitulé.
  */
-const EXERCICES = ["gr-sous-titre", "ec-sous-titre", "ol-sous-titre", "fc-consigne", "nu-consigne", "ma-consigne"];
+const EXERCICES = ["gr-sous-titre", "ec-sous-titre", "ol-sous-titre", "fc-consigne", "nu-consigne", "ma-consigne",
+  // Les feuilles du cours moyen : nombres, grandeurs, algèbre, géométrie, données, étude de la langue.
+  "nc-consigne", "gr-consigne", "al-consigne", "ge-consigne", "do-consigne", "gm-consigne"];
 
 /** Le numéro qui ouvre l'intitulé d'un exercice : « 1. », « <b>2.</b> ». */
 const NUMERO_D_EXERCICE = /^\s*(?:<b>\s*)?(\d{1,2})[.)](?:\s*<\/b>)?\s+/;
@@ -449,7 +454,7 @@ function finDeLElement(html: string, balise: string, debut: number): number {
  * passe par les deux points », « Paie 3 € », « Mets au pluriel ». Elles ne se
  * découpent pas en étapes, mais se disent aussi à la première personne.
  */
-const INSTRUCTIONS = ["ge-quoi", "fr-consigne", "nu-consigne", "fc-consigne", "gr-consigne", "ct-question", "do-question", "de-question",
+const INSTRUCTIONS = ["ge-quoi", "fr-consigne", "nu-consigne", "fc-consigne", "gr-consigne", "nc-consigne", "al-consigne", "ge-consigne", "do-consigne", "gm-consigne", "ct-question", "do-question", "de-question",
   "mo-cadre", "mo-prix", "cx-enonce", "ec-enonce", "ec-sous-titre", "gr-sous-titre", "ol-sous-titre"];
 
 /** Un texte phrase par phrase, chacune passée par `f` ; ce qui les sépare reste tel quel. */

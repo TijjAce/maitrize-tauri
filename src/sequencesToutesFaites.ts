@@ -49,6 +49,7 @@ import { DEMARCHES_PROBLEMES_CM } from "./cycle3Problemes";
 import { DEMARCHES_GRANDEURS_CM } from "./cycle3Grandeurs";
 import { DEMARCHES_GEOMETRIE_CM } from "./cycle3Geometrie";
 import { DEMARCHES_DONNEES_CM } from "./cycle3Donnees";
+import { DEMARCHES_LANGUE_CM } from "./cycle3Langue";
 import { programmationProposee } from "./programmation";
 import {
   DEMARCHE_SOUSTRACTION_POSEE, FEUILLES_SOUSTRACTION_POSEE, MATERIEL_SOUSTRACTION_POSEE, competenceDeLaSoustraction, graineDeLaFeuille,
@@ -122,7 +123,7 @@ export function domaineDeLaDemarche(d: Pick<Demarche, "id" | "famille">): Domain
   if (dans(DEMARCHES_LECTURE)) return domaine("comprendre");
   if (dans(DEMARCHES_ORTHOGRAPHE)) return domaine("orthographe");
   if (dans(DEMARCHES_ECRITURE)) return domaine("ecrire");
-  if (dans(DEMARCHES_LANGUE)) return domaine("langue");
+  if (dans(DEMARCHES_LANGUE) || dans(DEMARCHES_LANGUE_CM)) return domaine("langue");
   if (dans(DEMARCHES_ORAL)) return domaine("oral");
   if (dans(DEMARCHES_HISTOIRE_GEO)) return domaine(HISTOIRE.has(d.id) ? "temps" : "espace");
   return null;

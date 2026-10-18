@@ -155,7 +155,7 @@ function barresLire(alea: Alea, r: ReglagesDonneesCM): Bloc {
   ];
   const svg = barresSvg(noms, valeurs, true, "Nombre d'élèves");
   return {
-    consigne: `Le sport pratiqué par les élèves de l'école${r.classe === "CM2" ? " : lis les graduations" : ""}. Lis le diagramme, puis réponds.`,
+    consigne: `Le diagramme montre le sport pratiqué par les élèves de l'école. Je lis le diagramme${r.classe === "CM2" ? " et ses graduations" : ""}, puis je réponds.`,
     corps: svg + lignes(questions.map(([q], k) => `${escapeHtml(q)} ${k === 1 || k === 2 ? MOT : TROU}`)), corrige: svg + lignes(questions.map(([q, rep]) => `${escapeHtml(q)} <b>${escapeHtml(rep)}</b>`)),
   };
 }
@@ -215,7 +215,7 @@ function circulaire(alea: Alea, _r: ReglagesDonneesCM): Bloc {
   const cocktail = camembertSvg(recette.map(([n, x, y]) => ({ nom: `${n} : ${x}/${y}`, valeur: x / y })), ["#e07b00", "#f2c94c", "#d94033", "#7fb8e6"]);
   const question = `Un verre contient ${volume} mL d'un cocktail réalisé avec la recette du diagramme. Quel volume de ${nom} y a-t-il dans ce verre ?`;
   return {
-    consigne: "Lequel des quatre diagrammes représente le tableau ? Dis pourquoi tu rejettes les trois autres. Puis résous le problème du cocktail.",
+    consigne: "J'entoure le diagramme qui représente le tableau. J'écris pourquoi je rejette les trois autres. Puis je résous le problème du cocktail.",
     corps: tab + cases(candidats.map((c, i) => `<b>${"ABCD"[i]}</b>${c.svg}`)) + lignes([`Le bon diagramme : ${TROU}`, `Pourquoi pas les autres : ${TRAIT}`]) + cocktail + lignes([`${escapeHtml(question)} ${TROU} mL`]),
     corrige: tab + cases(candidats.map((c, i) => `<b>${"ABCD"[i]}</b>${c.svg}<div><b>${c.juste ? "Oui" : "Non"}</b> : ${escapeHtml(c.raison)}</div>`)) + cocktail
       + lignes([`${escapeHtml(question)} <b>${volume} ÷ ${b} = ${volume / b} ; ${a} × ${volume / b} = ${(a * volume) / b} mL</b>`]),
@@ -234,7 +234,7 @@ function probleme(alea: Alea, _r: ReglagesDonneesCM): Bloc {
     ["Combien d'élèves y a-t-il en CM1 dans cette école ?", `${totaux.join(" + ")} = ${totaux.reduce((s, v) => s + v, 0)}`],
   ];
   return {
-    consigne: "Le nombre d'élèves de chaque classe de CM1 de l'école. Prends les données dans l'énoncé et sur le graphique.",
+    consigne: "Le graphique donne le nombre d'élèves de chaque classe de CM1 de l'école. Je prends les données dans l'énoncé et sur le graphique.",
     corps: svg + lignes(questions.map(([q]) => `${escapeHtml(q)} ${TROU}`)), corrige: svg + lignes(questions.map(([q, rep]) => `${escapeHtml(q)} <b>${escapeHtml(rep)}</b>`)),
   };
 }
@@ -270,7 +270,7 @@ function qualifierEvenements(alea: Alea, r: ReglagesDonneesCM): Bloc {
   });
   const vie = melanger(alea, EVENEMENTS_VIE).slice(0, Math.max(2, Math.min(5, r.combien)));
   return {
-    consigne: "On retourne la bouteille : une seule bille apparaît, au hasard. « Obtenir une bille verte » : est-ce impossible, peu probable, une chance sur deux, probable ou certain ? Dis-le aussi des évènements écrits.",
+    consigne: "La bouteille retournée ne montre qu'une bille, au hasard. Pour « obtenir une bille verte », j'écris : impossible, peu probable, une chance sur deux, probable ou certain. Je fais de même pour les évènements écrits.",
     corps: cases(bouteilles.map((b) => `${bouteille(b.billes)}<div>${MOT}</div>`)) + lignes(vie.map(([e]) => `${escapeHtml(e)} ${MOT}`)),
     corrige: cases(bouteilles.map((b) => `${bouteille(b.billes)}<div><b>${b.mot}</b> : ${b.verts} bille${b.verts > 1 ? "s" : ""} verte${b.verts > 1 ? "s" : ""} sur ${b.total}.</div>`))
       + lignes(vie.map(([e, m]) => `${escapeHtml(e)} <b>${m}</b>`)),
@@ -352,7 +352,7 @@ function chances(alea: Alea, r: ReglagesDonneesCM): Bloc {
   ]).slice(0, 3));
   const compare = (a: number, b: number) => (2 * a === b ? "égale à" : 2 * a < b ? "inférieure à" : "supérieure à");
   return {
-    consigne: "Écris la probabilité de chaque évènement sous la forme « a chances sur b ». Est-elle supérieure, égale ou inférieure à une chance sur deux ? Compare a à la moitié de b.",
+    consigne: "J'écris la probabilité de chaque évènement sous la forme « a chances sur b ». J'écris si elle est supérieure, égale ou inférieure à une chance sur deux : je compare a à la moitié de b.",
     corps: cases(items.filter((x) => x.svg).map((x) => `${x.svg}<div>${escapeHtml(x.texte)} : ${TROU} chance(s) sur ${TROU}</div>`))
       + lignes(items.filter((x) => !x.svg).map((x) => `${escapeHtml(x.texte)} : ${TROU} chance(s) sur ${TROU} ; par rapport à une chance sur deux : ${TRAIT}`)),
     corrige: cases(items.filter((x) => x.svg).map((x) => `${x.svg}<div>${escapeHtml(x.texte)} : <b>${x.a} chance${x.a > 1 ? "s" : ""} sur ${x.b}</b>, ${compare(x.a, x.b)} une chance sur deux.</div>`))
@@ -368,7 +368,7 @@ function comparer(alea: Alea, _r: ReglagesDonneesCM): Bloc {
   ] as [string, number, number, string, number, number][]).slice(0, 3);
   const plus = (p: (typeof paires)[number]) => (p[1] * p[5] > p[4] * p[2] ? p[0] : p[1] * p[5] < p[4] * p[2] ? p[3] : "les deux sont aussi probables");
   return {
-    consigne: "Quel évènement est le plus probable ? Écris d'abord chaque probabilité sous la forme « a chances sur b ».",
+    consigne: "J'écris d'abord chaque probabilité sous la forme « a chances sur b ». Puis j'écris l'évènement le plus probable.",
     corps: lignes(paires.map((p) => `« ${escapeHtml(p[0])} » ou « ${escapeHtml(p[3])} » ?<div>${TRAIT}</div>`)),
     corrige: lignes(paires.map((p) => `« ${escapeHtml(p[0])} » : ${p[1]} chance${p[1] > 1 ? "s" : ""} sur ${p[2]} ; « ${escapeHtml(p[3])} » : ${p[4]} chance${p[4] > 1 ? "s" : ""} sur ${p[5]}. <b>Le plus probable : ${escapeHtml(plus(p))}.</b>`)),
   };
@@ -428,7 +428,7 @@ export function htmlDonneesCM(r: ReglagesDonneesCM, graine: number): string {
   const exos: string[] = [], corriges: string[] = [];
   EXERCICES_DONNEES_CM.map((e) => e.id).filter((e) => r.exercices.includes(e)).forEach((ex, i) => {
     const b = FABRIQUES[ex](alea, { ...r, combien: Math.max(1, Math.min(10, r.combien)) });
-    exos.push(`<div class="do-exo"><div class="do-consigne"><b>${i + 1}.</b> <span class="consigne">${b.consigne}</span></div>${b.corps}</div>`);
+    exos.push(`<div class="do-exo"><div class="do-consigne"><b>${i + 1}.</b> ${b.consigne}</div>${b.corps}</div>`);
     corriges.push(`<div class="do-exo"><div class="do-consigne"><b>${i + 1}.</b> ${b.consigne}</div>${b.corrige}</div>`);
   });
   return feuille(`<div class="page"><div class="titre">${escapeHtml(titre)}</div><div class="sous">Prénom : ........................................ Date : ........................</div>${exos.join("")}</div>
