@@ -510,3 +510,40 @@ describe("l'oral du cours moyen", () => {
     for (const e of EXERCICES_ORAL_CM) for (const classe of ["CM1", "CM2"] as const) expect(htmlOralCM({ classe, exercice: e.id }, 1), e.id).not.toMatch(/NaN|undefined|null/);
   });
 });
+
+describe("le vocabulaire et l'orthographe des mots du cours moyen", () => {
+  const VOCABULAIRE = FRANCAIS.filter((c) => /vocabulaire/i.test(c.cible.sousDomaineTitre ?? ""));
+
+  it("donnent à chaque compétence une séquence de sa classe, avec ses feuilles et une période", async () => {
+    const { DEMARCHES_VOCABULAIRE_CM } = await import("./cycle3Vocabulaire");
+    const { htmlVocabulaireCM, EXERCICES_VOCABULAIRE_CM } = await import("./vocabulaireCoursMoyen");
+    const { domaineDeLaDemarche } = await import("./sequencesToutesFaites");
+    const { periodeProposee } = await import("./periodesProposees");
+    expect(VOCABULAIRE.length).toBe(17);
+    const vues = new Set<string>();
+    for (const { cible, classe } of VOCABULAIRE) {
+      const d = demarcheSuggeree(cible, REF);
+      expect(DEMARCHES_VOCABULAIRE_CM.map((x) => x.id), `${classe} — ${cible.competenceTitre} : ${d.id}`).toContain(d.id);
+      expect(d.id).toMatch(new RegExp(`-${classe.toLowerCase()}$`));
+      if (vues.has(d.id)) continue;
+      vues.add(d.id);
+      const plan = planDesFeuilles(d.id, { classe, periode: 1, competence: cible.competenceTitre ?? "" })!;
+      expect(plan.materiel.length, d.id).toBe(d.seances.length);
+      for (const f of plan.feuilles) for (const graine of [1, 2, 3]) expect(f.fabriquer(graine).html, `${d.id} — ${f.titre}`).not.toMatch(/NaN|undefined|Infinity|\[object|cycle 2/);
+      expect(["vocabulaire", "orthographe"], d.id).toContain(domaineDeLaDemarche(d)?.id);
+      expect(periodeProposee(d.id, classe)?.raison, d.id).toMatch(/^Suggestion de Maitrize/);
+    }
+    expect([...vues].sort()).toEqual(DEMARCHES_VOCABULAIRE_CM.map((x) => x.id).sort());
+    for (const e of EXERCICES_VOCABULAIRE_CM) for (const classe of ["CM1", "CM2"] as const) expect(htmlVocabulaireCM({ classe, exercice: e.id }, 1), e.id).not.toMatch(/NaN|undefined|null/);
+    // L'ordre alphabétique du corrigé, au-delà de la première lettre.
+    expect(htmlVocabulaireCM({ classe: "CM1", exercice: "dictionnaire" }, 1).split('class="page corrige"')[1]).toMatch(/cabane, caméra, carotte, cartable, cascade, castor|monstre, montagne, morceau, moteur, moulin, mouton|peinture, pelote, pendant, pendule, pensée, pente|trace, tracteur, trafic, tramway, trapèze, travail/);
+  });
+
+  it("couvrent toutes les compétences de français du CM1 et du CM2 d'une séquence du cours moyen", () => {
+    expect(FRANCAIS.length).toBe(176);
+    for (const { cible, classe } of FRANCAIS) {
+      const d = demarcheSuggeree(cible, REF);
+      expect(d.id, `${classe} — ${cible.competenceTitre}`).toMatch(new RegExp(`-${classe.toLowerCase()}$`));
+    }
+  });
+});

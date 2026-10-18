@@ -53,9 +53,9 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
       { id: "sequencesCE2", nom: "CE2", icone: "📁", sequence: true, dossier: true,
         quoi: "Le millier, multiplier par 4, la multiplication posée, la division, les fractions égales ; lire à voix haute, l'imparfait, l'exposé ; la Préhistoire, Rome, se loger — en tableau, période par période, avec toutes leurs feuilles." },
       { id: "sequencesCM1", nom: "CM1", icone: "📁", sequence: true, dossier: true,
-        quoi: "Les nombres jusqu'à 999 999, les fractions et les décimaux, le calcul, les problèmes, l'algèbre — enveloppes et balances —, la proportionnalité, les grandeurs et la géométrie ; la grammaire et la conjugaison — en tableau, période par période, avec toutes leurs feuilles." },
+        quoi: "Les nombres jusqu'à 999 999, les fractions et les décimaux, le calcul, les problèmes, l'algèbre — enveloppes et balances —, la proportionnalité, les grandeurs et la géométrie ; lire, écrire, l'oral, le vocabulaire, la grammaire et la conjugaison — en tableau, période par période, avec toutes leurs feuilles." },
       { id: "sequencesCM2", nom: "CM2", icone: "📁", sequence: true, dossier: true,
-        quoi: "Les grands nombres, les fractions et les décimaux jusqu'aux millièmes, le calcul, les problèmes, l'algèbre, la proportionnalité, les grandeurs et la géométrie ; la grammaire, le passé simple et la phrase complexe — en tableau, période par période, avec toutes leurs feuilles." },
+        quoi: "Les grands nombres, les fractions et les décimaux jusqu'aux millièmes, le calcul, les problèmes, l'algèbre, la proportionnalité, les grandeurs et la géométrie ; lire, écrire, l'oral, le vocabulaire, la grammaire, le passé simple et la phrase complexe — en tableau, période par période, avec toutes leurs feuilles." },
     ],
   },
   {
