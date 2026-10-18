@@ -402,7 +402,7 @@ const carreaux = (aire: number) => `${decimal(Math.round(aire * 10), -1)} carrea
 function airePavage(alea: Alea, r: ReglagesGrandeursCM): Bloc {
   const items = Array.from({ length: Math.max(2, Math.min(4, r.combien)) }, () => figureEnCarreaux(alea, 9, 7, entier(alea, 2, 5)));
   return {
-    consigne: "Quelle est l'aire de chaque figure, en carreaux ? Compte les carreaux entiers, puis les demi-carreaux : deux demi-carreaux font un carreau.",
+    consigne: "J'écris l'aire de chaque figure, en carreaux. Je compte les carreaux entiers, puis les demi-carreaux : deux demi-carreaux font un carreau.",
     corps: `<div class="gr-figures">${items.map((x) => `<div class="gr-case">${x.svg}<div>Aire : ${TROU} carreaux</div></div>`).join("")}</div>`,
     corrige: `<div class="gr-figures">${items.map((x) => `<div class="gr-case">${x.svg}<div><b>${carreaux(x.aire)}</b></div></div>`).join("")}</div>`,
   };
@@ -412,7 +412,7 @@ function airePavage(alea: Alea, r: ReglagesGrandeursCM): Bloc {
 function aireCm2(alea: Alea, r: ReglagesGrandeursCM): Bloc {
   const items = Array.from({ length: Math.max(1, Math.min(2, Math.ceil(r.combien / 2))) }, () => figureEnCarreaux(alea, 8, 6, entier(alea, 2, 4), 10));
   return {
-    consigne: "Chaque carreau est un carré de 1 cm de côté : son aire est 1 cm². Quelle est l'aire de chaque figure ?",
+    consigne: "Chaque carreau est un carré de 1 cm de côté : son aire est 1 cm². J'écris l'aire de chaque figure.",
     corps: `<div class="gr-figures">${items.map((x) => `<div class="gr-case">${x.svg}<div>Aire : ${TROU} cm²</div></div>`).join("")}</div>`,
     corrige: `<div class="gr-figures">${items.map((x) => `<div class="gr-case">${x.svg}<div><b>${decimal(Math.round(x.aire * 10), -1)} cm²</b></div></div>`).join("")}</div>`,
   };
@@ -455,7 +455,7 @@ function airePerimetre(alea: Alea, r: ReglagesGrandeursCM): Bloc {
     + `<div>Aire : ${corrige ? `<b>${L * l} carreaux</b>` : `${TROU} carreaux`}</div><div>Périmètre : ${corrige ? `<b>${2 * (L + l)} côtés de carreau</b>` : `${TROU} côtés de carreau`}</div></div>`).join("")}</div>`
     + (corrige ? `<div>${p[0].L * p[0].l === p[1].L * p[1].l ? "Même aire, mais des périmètres différents." : "Même périmètre, mais des aires différentes."}</div>` : `<div>Que remarques-tu ? <span class="gr-trait"></span></div>`);
   return {
-    consigne: "Pour chaque figure, trouve l'aire en carreaux et le périmètre en côtés de carreau. Compare.",
+    consigne: "Pour chaque figure, je trouve l'aire en carreaux et le périmètre en côtés de carreau. Puis je compare.",
     corps: paires.map((p) => unePaire(p, false)).join(""), corrige: paires.map((p) => unePaire(p, true)).join(""),
   };
 }
@@ -518,7 +518,7 @@ function anglesNature(alea: Alea, r: ReglagesGrandeursCM): Bloc {
     return { svg: angleSvg(ouverture, entier(alea, 0, 359), [entier(alea, 14, 22), entier(alea, 14, 22)]), nature };
   });
   return {
-    consigne: "Cet angle est-il aigu, droit ou obtus ? Vérifie avec ton équerre.",
+    consigne: "Sous chaque angle, j'entoure : aigu, droit ou obtus. Je vérifie avec mon équerre.",
     corps: `<div class="gr-figures">${items.map((x) => `<div class="gr-case">${x.svg}<div>${["aigu", "droit", "obtus"].map((n) => `<span class="gr-choix">${n}</span>`).join(" ")}</div></div>`).join("")}</div>`,
     corrige: `<div class="gr-figures">${items.map((x) => `<div class="gr-case">${x.svg}<div><b>${x.nature}</b></div></div>`).join("")}</div>`,
   };
@@ -534,7 +534,7 @@ function anglesComparer(alea: Alea, r: ReglagesGrandeursCM): Bloc {
     return { svgA: angleSvg(a, entier(alea, 0, 359), ca), svgB: angleSvg(b, entier(alea, 0, 359), cb), plusGrand: a > b ? "A" : "B" };
   });
   return {
-    consigne: "Quel angle est le plus grand, A ou B ? Fabrique un gabarit de l'un sur du papier calque pour comparer. Attention : la longueur des côtés ne compte pas.",
+    consigne: "J'écris le plus grand angle, A ou B. Je fabrique un gabarit de l'un sur du papier calque pour comparer. Attention : la longueur des côtés ne compte pas.",
     corps: paires.map((p) => `<div class="gr-figures"><div class="gr-case">${p.svgA}<div>Angle A</div></div><div class="gr-case">${p.svgB}<div>Angle B</div></div><div class="gr-case gr-reponse">Le plus grand : ${TROU}</div></div>`).join(""),
     corrige: paires.map((p) => `<div class="gr-figures"><div class="gr-case">${p.svgA}<div>Angle A</div></div><div class="gr-case">${p.svgB}<div>Angle B</div></div><div class="gr-case gr-reponse">Le plus grand : <b>${p.plusGrand}</b></div></div>`).join(""),
   };
@@ -599,7 +599,7 @@ function durees(alea: Alea, r: ReglagesGrandeursCM): Bloc {
     return { a, b };
   });
   return {
-    consigne: "Quelle durée s'écoule entre ces deux instants ? Avance par étapes sur l'axe du temps : jusqu'à l'heure ronde, puis d'heure en heure.",
+    consigne: "Je calcule la durée qui s'écoule entre les deux instants. J'avance par étapes sur l'axe du temps : jusqu'à l'heure ronde, puis d'heure en heure.",
     corps: lignes(items.map(({ a, b }) => `De ${ecrireDuree(a, secondes, true)} à ${ecrireDuree(b, secondes, true)} : ${TROU}`)),
     corrige: lignes(items.map(({ a, b }) => `De ${ecrireDuree(a, secondes, true)} à ${ecrireDuree(b, secondes, true)} : <b>${dureeParEtapes(a, b, secondes)}</b>`)),
   };
@@ -706,7 +706,7 @@ export function htmlGrandeursCM(r: ReglagesGrandeursCM, graine: number): string 
   const exos: string[] = [], corriges: string[] = [];
   EXERCICES_GRANDEURS.map((e) => e.id).filter((e) => r.exercices.includes(e)).forEach((ex, i) => {
     const b = FABRIQUES[ex](alea, { ...r, combien: Math.max(1, Math.min(10, r.combien)) });
-    exos.push(`<div class="gr-exo"><div class="gr-consigne"><b>${i + 1}.</b> <span class="consigne">${b.consigne}</span></div>${b.corps}</div>`);
+    exos.push(`<div class="gr-exo"><div class="gr-consigne"><b>${i + 1}.</b> ${b.consigne}</div>${b.corps}</div>`);
     corriges.push(`<div class="gr-exo"><div class="gr-consigne"><b>${i + 1}.</b> ${b.consigne}</div>${b.corrige}</div>`);
   });
   return feuille(`<div class="page"><div class="titre">${escapeHtml(titre)}</div><div class="sous">Prénom : ........................................ Date : ........................</div>${exos.join("")}</div>

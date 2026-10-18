@@ -72,6 +72,7 @@ import { DEMARCHES_LANGUE, demarcheDeLaLangue } from "./demarchesLangue";
 import { DEMARCHES_ORAL, demarcheDeLOral } from "./demarchesOral";
 import { DEMARCHES_HISTOIRE_GEO, demarcheHistoireGeo } from "./demarchesHistoireGeo";
 import { DEMARCHES_MATHS_CM, demarcheDesMathsCM } from "./cycle3Maths";
+import { DEMARCHES_FRANCAIS_CM, demarcheDuFrancaisCM } from "./cycle3Francais";
 import { DEMARCHES_VILAIN_PETIT_CANARD } from "./demarchesVilainPetitCanard";
 import { DEMARCHE_PROBLEME_DU_JOUR } from "./demarcheProblemeDuJour";
 import { CONSIGNES_FLUENCE } from "./fluence";
@@ -2166,7 +2167,7 @@ export const DEMARCHES: Demarche[] = [
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
   MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, ...DEMARCHES_VILAIN_PETIT_CANARD, COLLECTIONS, DEMARCHE_PROBLEME_DU_JOUR, CHRONOLOGIE, COMPARER_NOMBRES, NUMERATION_DIZAINE,
   ...DEMARCHES_NUMERATION, ...DEMARCHES_CALCUL, ...DEMARCHES_PROBLEMES, ...DEMARCHES_PROBLEMES_PROLONGES, ...DEMARCHES_FRACTIONS_PROLONGEES, ...DEMARCHES_OPERATIONS, ...DEMARCHES_GRANDEURS, ...DEMARCHES_GEOMETRIE, ...DEMARCHES_DONNEES, ...DEMARCHES_FRANCAIS, ...DEMARCHES_LECTURE, ...DEMARCHES_ORTHOGRAPHE, ...DEMARCHES_ECRITURE, ...DEMARCHES_LANGUE, ...DEMARCHES_ORAL, ...DEMARCHES_HISTOIRE_GEO,
-  ...DEMARCHES_MATHS_CM,
+  ...DEMARCHES_MATHS_CM, ...DEMARCHES_FRANCAIS_CM,
 ];
 
 export const demarcheDe = (id: string) => DEMARCHES.find((d) => d.id === id);
@@ -2257,6 +2258,9 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string, niveau = 
     return "maternelle-modalites";
   }
   if (/francais/.test(dom)) {
+    // Le cours moyen : les séquences bâties sur le programme du cycle 3 (2025) et ses exemples de réussite (voir cycle3Francais.ts).
+    const francaisCM = /^(cm1|cm2)$/.test(niveau) ? demarcheDuFrancaisCM(niveau, sd, cg, comp) : null;
+    if (francaisCM) return francaisCM;
     // La séquence du livret de la classe quand il y en a une : décoder, lire à voix haute, la cursive, la copie, le
     // vocabulaire (voir demarchesFrancais.ts) ; sinon, la démarche du guide.
     const livretDeFrancais = /^(cp|ce1|ce2)$/.test(niveau) ? demarcheDuLivretDeFrancais(niveau, sd, cg, comp) : null;

@@ -214,7 +214,7 @@ function ajouterFractions(alea: () => number, r: ReglagesNombresCM): Bloc {
     return { a: premiere.k, na: premiere.n, b: seconde.k, nb: seconde.n, plus, grand, ga, gb, resultat: plus ? ga + gb : ga - gb };
   }, (x) => `${x.a}/${x.na}${x.plus}${x.b}/${x.nb}`).filter((x) => x.resultat > 0);
   return {
-    consigne: "Calcule. Quand les dénominateurs ne sont pas les mêmes, écris d'abord les deux fractions avec le même dénominateur.",
+    consigne: "Je calcule. J'écris d'abord les deux fractions avec le même dénominateur, quand il le faut.",
     corps: lignes(valides.map((x) => `${frac(x.a, x.na)} ${x.plus ? "+" : "−"} ${frac(x.b, x.nb)} = <span class="nc-trait"></span>`)),
     corrige: lignes(valides.map((x) => `${frac(x.a, x.na)} ${x.plus ? "+" : "−"} ${frac(x.b, x.nb)}`
       + (x.na !== x.grand || x.nb !== x.grand ? ` = ${frac(x.ga, x.grand)} ${x.plus ? "+" : "−"} ${frac(x.gb, x.grand)}` : "")
@@ -450,7 +450,7 @@ export function htmlNombresCM(r: ReglagesNombresCM, graine: number): string {
   const corriges: string[] = [];
   EXERCICES_CM.map((e) => e.id).filter((e) => r.exercices.includes(e)).forEach((ex, i) => {
     const b = FABRIQUES[ex](alea, reglages);
-    exercices.push(`<div class="nc-exo"><div class="nc-consigne"><b>${i + 1}.</b> <span class="consigne">${b.consigne}</span></div>${b.corps}</div>`);
+    exercices.push(`<div class="nc-exo"><div class="nc-consigne"><b>${i + 1}.</b> ${b.consigne}</div>${b.corps}</div>`);
     corriges.push(`<div class="nc-exo"><div class="nc-consigne"><b>${i + 1}.</b> ${b.consigne}</div>${b.corrige}</div>`);
   });
   return feuille(`<div class="page"><div class="titre">${escapeHtml(titre)}</div><div class="sous">Prénom : ........................................ Date : ........................</div>${exercices.join("")}</div>

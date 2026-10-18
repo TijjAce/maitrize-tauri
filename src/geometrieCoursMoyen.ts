@@ -144,7 +144,7 @@ function perpendiculaires(alea: Alea, r: ReglagesGeometrieCM): Bloc {
   const w = 82, h = 52;
   const perp = (c: (typeof constructions)[number]) => { const [p, q] = droiteDansCadre(c.A, c.a + 90, w, h); return segment(p, q, ROUGE, 0.5) + angleDroit(c.H, c.A, [c.H[0] + Math.cos(rad(c.a)) * 5, c.H[1] + Math.sin(rad(c.a)) * 5], 2.6, ROUGE); };
   return {
-    consigne: "Ces droites sont-elles perpendiculaires ? Quand tu hésites, vérifie avec ton équerre. Puis trace, à l'équerre, la droite perpendiculaire à (d) qui passe par A.",
+    consigne: "Sous chaque paire de droites, j'entoure « perpendiculaires » ou « non ». Quand j'hésite, je vérifie avec mon équerre. Puis je trace, à l'équerre, la droite perpendiculaire à (d) qui passe par A.",
     corps: cases(paires.map((x) => `${cadre(64, 42, x.dessin)}<div>${choix(["perpendiculaires", "non"])}</div>`))
       + cases(constructions.map((c) => cadre(w, h, c.dessin))),
     corrige: cases(paires.map((x) => `${cadre(64, 42, x.dessin)}<div><b>${x.e === 90 ? "Perpendiculaires : elles forment un angle droit." : "Non : elles ne forment pas d'angle droit."}</b></div>`))
@@ -177,7 +177,7 @@ function paralleles(alea: Alea, r: ReglagesGeometrieCM): Bloc {
   };
   const reponse = (s: string) => (s === "paralleles" ? "Parallèles : elles ne se coupent pas." : s === "secantes" ? "Sécantes : elles se coupent sur la feuille." : "Sécantes : elles se coupent, hors de la feuille.");
   return {
-    consigne: "Ces droites sont-elles parallèles ou sécantes ? Puis trace la droite parallèle à (d) qui passe par A : trace d'abord à l'équerre la perpendiculaire à (d) passant par A, puis la perpendiculaire à cette droite, toujours en A.",
+    consigne: "Sous chaque paire de droites, j'entoure « parallèles » ou « sécantes ». Puis je trace la droite parallèle à (d) qui passe par A : je trace d'abord à l'équerre la perpendiculaire à (d) passant par A, puis la perpendiculaire à cette droite, toujours en A.",
     corps: cases(paires.map((x) => `${cadre(w, h, x.dessin)}<div>${choix(["parallèles", "sécantes"])}</div>`)) + cases(constructions.map((c) => cadre(W, H, c.dessin))),
     corrige: cases(paires.map((x) => `${cadre(w, h, x.dessin)}<div><b>${reponse(x.s)}</b></div>`)) + cases(constructions.map((c) => cadre(W, H, c.dessin + para(c)))),
   };
@@ -519,7 +519,7 @@ function patronPave(alea: Alea, _r: ReglagesGeometrieCM): Bloc {
     return cadre(w, h, f.map((q) => `<rect x="${q.x * C + 1}" y="${q.y * C + 1}" width="${q.w * C}" height="${q.h * C}" fill="${corrige && patron ? couleurs[q.paire] : "#fff"}" stroke="${NOIR}" stroke-width="0.5"/>`).join(""));
   };
   return {
-    consigne: "Lequel de ces assemblages est un patron d'un pavé ? Dis pourquoi les autres n'en sont pas : le nombre de faces, leurs dimensions, leur position. Sur le patron, colorie de la même couleur les faces qui seront opposées.",
+    consigne: "J'entoure l'assemblage qui est un patron d'un pavé. J'écris pourquoi les autres n'en sont pas : le nombre de faces, leurs dimensions, leur position. Sur le patron, je colorie de la même couleur les faces qui seront opposées.",
     corps: cases(assemblages.map((x, i) => `<b>${"ABC"[i]}</b>${dessin(x.faces, false, x.patron)}<div>${TRAIT}</div>`)),
     corrige: cases(assemblages.map((x, i) => `<b>${"ABC"[i]}</b>${dessin(x.faces, true, x.patron)}<div><b>${escapeHtml(x.raison)}</b></div>`)),
   };
@@ -546,7 +546,7 @@ function cubesCompter(alea: Alea, r: ReglagesGeometrieCM): Bloc {
     items.push({ svg: assemblageCubesSvg(reste, 7), question: `Ce solide était un gros cube de ${n} petits cubes de côté. Combien de petits cubes a-t-on retirés ?`, reponse: `${n} × ${n} × ${n} = ${n ** 3} ; il en reste ${reste.length} ; on en a retiré ${k1 * k2 * k3} (${k3} × ${k2} × ${k1})` });
   }
   return {
-    consigne: "Dénombre les petits cubes, ceux qu'on voit et ceux qu'on ne voit pas : compte par couches ou par colonnes.",
+    consigne: "Je dénombre les petits cubes, ceux que je vois et ceux que je ne vois pas : je compte par couches ou par colonnes.",
     corps: cases(items.map((x) => `${x.svg}<div>${escapeHtml(x.question)} ${TROU}</div>`)),
     corrige: cases(items.map((x) => `${x.svg}<div>${escapeHtml(x.question)} <b>${escapeHtml(x.reponse)}</b></div>`)),
   };
@@ -573,7 +573,7 @@ function vues(alea: Alea, _r: ReglagesGeometrieCM): Bloc {
   }
   const ordre = melanger(alea, ["face", "dessus", "droite", "gauche"] as const);
   return {
-    consigne: "Voici un assemblage de cubes et quatre de ses vues. Quelle lettre est la vue de face ? de dessus ? de droite ? de gauche ? Construis l'assemblage pour vérifier.",
+    consigne: "Voici un assemblage de cubes et quatre de ses vues. J'écris la lettre de la vue de face, de dessus, de droite et de gauche. Je construis l'assemblage pour vérifier.",
     corps: cases([assemblageCubesSvg(a, 8), ...ordre.map((c, i) => `<b>${"ABCD"[i]}</b>${vue(a, c)}`)]) + lignes([`Vue de face : ${TROU} ; de dessus : ${TROU} ; de droite : ${TROU} ; de gauche : ${TROU}`]),
     corrige: cases([assemblageCubesSvg(a, 8), ...ordre.map((c, i) => `<b>${"ABCD"[i]}</b>${vue(a, c)}<div><b>vue ${c === "face" ? "de face" : c === "dessus" ? "de dessus" : c === "droite" ? "de droite" : "de gauche"}</b></div>`)]),
   };
@@ -590,7 +590,7 @@ export function htmlGeometrieCM(r: ReglagesGeometrieCM, graine: number): string 
   const exos: string[] = [], corriges: string[] = [];
   EXERCICES_GEOMETRIE_CM.map((e) => e.id).filter((e) => r.exercices.includes(e)).forEach((ex, i) => {
     const b = FABRIQUES[ex](alea, { ...r, combien: Math.max(1, Math.min(10, r.combien)) });
-    exos.push(`<div class="ge-exo"><div class="ge-consigne"><b>${i + 1}.</b> <span class="consigne">${b.consigne}</span></div>${b.corps}</div>`);
+    exos.push(`<div class="ge-exo"><div class="ge-consigne"><b>${i + 1}.</b> ${b.consigne}</div>${b.corps}</div>`);
     corriges.push(`<div class="ge-exo"><div class="ge-consigne"><b>${i + 1}.</b> ${b.consigne}</div>${b.corrige}</div>`);
   });
   return feuille(`<div class="page"><div class="titre">${escapeHtml(titre)}</div><div class="sous">Prénom : ........................................ Date : ........................</div>${exos.join("")}</div>

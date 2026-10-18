@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { enActions, etapesDe, sorteDe, structurerConsignesHtml, verbeEnTete } from "./consignesStructurees";
+import { enActions, estImperatif, etapesDe, sorteDe, structurerConsignesHtml, verbeEnTete } from "./consignesStructurees";
+import { alaPremierePersonne } from "./premierePersonne";
 
 const DICTEE = "1. Je lis le texte en silence, puis à voix haute. 2. Je compte. 3. Je le copie en disant tout ce que j'écris, en sautant une ligne. "
   + "4. Je vérifie : si je me suis trompé, je ne raye pas, je fais un petit trait dessous et je réécris le mot au-dessus.";
@@ -163,5 +164,14 @@ describe("le verbe d'action", () => {
     expect(verbeEnTete("Des pièces pour jouer, à découper.")).toBeNull();
     expect(verbeEnTete("« Écrivez ! » : chacun écrit sa réponse.")).toBe("Écrivez");
     expect(verbeEnTete("L'adulte lit tout le texte.")).toBe("lit");
+  });
+
+  it("n'est jamais un participe passé ; les impératifs des feuilles du cours moyen sont connus", () => {
+    for (const p of ["placé", "rangées", "placée", "accordé"]) expect(estImperatif(p), p).toBe(false);
+    for (const v of ["crée", "conjugue", "justifie", "oublie", "applique", "dénombre", "souligne"]) expect(estImperatif(v), v).toBe(true);
+    const je = (t: string) => alaPremierePersonne(t, estImperatif);
+    expect(je("Remplace le complément par un pronom — le, la, les — placé devant le verbe.")).toBe("Je remplace le complément par un pronom — le, la, les — placé devant le verbe.");
+    expect(je("Conjugue chaque verbe, puis justifie.")).toBe("Je conjugue chaque verbe, puis je justifie.");
+    expect(je("N'oublie pas le -t-.")).toBe("Je n'oublie pas le -t-.");
   });
 });

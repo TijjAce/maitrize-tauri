@@ -154,6 +154,12 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
     { "droites-cm1": 1, "solides-cm1": 1, "deplacements-cm1": 2, "figures-cm1": 3, "patrons-cube-cm1": 3, "cercle-cm1": 4, "constructions-cm1": 4, "symetrie-cm1": 5, "assemblages-cubes-cm1": 5 }),
     ...ligne("les données en période 4, quand les grands nombres permettent de graduer les axes ; les probabilités en fin d'année, après la "
       + "moitié et les fractions, qui justifient « une chance sur deux ».", { "donnees-cm1": 4, "probabilites-cm1": 5 }),
+    ...ligne("la phrase, ses types et ses formes, puis le verbe et son sujet dès la rentrée ; les compléments ensuite ; les classes de mots "
+      + "et le groupe nominal au milieu de l'année, avant la chaîne d'accords ; l'accord du sujet et du verbe avec celui du participe "
+      + "passé, une fois le passé composé étudié. La conjugaison suit l'année : le présent, l'imparfait et le futur d'abord, le passé "
+      + "composé ensuite, les verbes dont le radical change en fin d'année.",
+    { "phrase-types-cm1": 1, "verbe-sujet-cm1": 1, "complements-cm1": 2, "present-imparfait-futur-cm1": 2, "classes-mots-cm1": 3, "groupe-nominal-cm1": 3,
+      "accords-gn-cm1": 4, "passe-compose-cm1": 4, "accord-sujet-verbe-cm1": 5, "radical-cm1": 5 }),
   },
   CM2: {
     ...ligne("après les millions, qui viennent en période 3 : les comparer, les ranger, les placer.", { "comparer-nombres-cm2": 4 }),
@@ -177,6 +183,12 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
       + "réunissent ; la symétrie et les déplacements au printemps ; les assemblages et leurs vues en fin d'année.",
     { "droites-cm2": 1, "solides-cm2": 1, "figures-cm2": 2, "patrons-cm2": 2, "cercle-cm2": 3, "constructions-cm2": 3, "symetrie-cm2": 4, "deplacements-cm2": 4, "assemblages-cubes-cm2": 5 }),
     ...ligne("les données au milieu de l'année, avec les fractions qui font lire un diagramme circulaire.", { "donnees-cm2": 3 }),
+    ...ligne("consolider à la rentrée la phrase et le sujet, même inversé ; les compléments et l'attribut ensuite, puis le groupe nominal "
+      + "et les accords qu'ils commandent ; les conjonctions de subordination et la phrase complexe en fin d'année, avant la "
+      + "proposition de sixième. Le passé simple tôt, pour les récits lus ; les temps composés et l'accord du participe passé ensuite ; "
+      + "les radicaux en fin d'année.",
+    { "phrase-types-cm2": 1, "sujet-inverse-cm2": 1, "complements-cm2": 2, "passe-simple-cm2": 2, "groupe-nominal-cm2": 3, "accords-gn-cm2": 3,
+      "accord-sujet-verbe-cm2": 3, "temps-composes-cm2": 4, "classes-mots-cm2": 4, "phrase-complexe-cm2": 5, "radical-cm2": 5 }),
   },
 };
 

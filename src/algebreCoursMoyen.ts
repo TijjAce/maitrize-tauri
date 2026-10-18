@@ -108,7 +108,7 @@ function programme(alea: () => number, r: ReglagesAlgebre): Bloc {
       : '<div class="al-regle"><span class="al-trait"></span></div><div class="al-regle"><span class="al-trait"></span></div>'}</div></div>`
     : "");
   return {
-    consigne: cm2 ? "Applique ce programme de calcul aux nombres du tableau. Puis écris le tien." : "Applique ce programme de calcul aux nombres du tableau.",
+    consigne: cm2 ? "J'applique ce programme de calcul aux nombres du tableau. Puis j'écris le mien." : "J'applique ce programme de calcul aux nombres du tableau.",
     corps: texte + tableau(false) + produire(false),
     corrige: texte + tableau(true) + produire(true),
   };
@@ -197,7 +197,7 @@ function suiteMotifs(alea: () => number, r: ReglagesAlgebre): Bloc {
     `Comment passe-t-on d'une étape à la suivante ? ${corrige ? escapeHtml(m.regle) : '<span class="al-trait"></span>'}`,
   ]);
   return {
-    consigne: "Voici les trois premières étapes d'une suite de motifs. Combien de carrés y aura-t-il aux étapes suivantes ?",
+    consigne: "Voici les trois premières étapes d'une suite de motifs. J'écris combien de carrés il y aura aux étapes suivantes, puis comment je passe d'une étape à la suivante.",
     corps: `<div class="al-motifs">${[1, 2, 3].map(etape).join("")}</div>${questions(false)}`,
     corrige: `<div class="al-motifs">${[1, 2, 3].map(etape).join("")}</div>${questions(true)}`,
   };
@@ -216,7 +216,7 @@ function enveloppes(alea: () => number, r: ReglagesAlgebre): Bloc {
     return { texte: `1 enveloppe ${ENVELOPPE} et ${horsDe} cartes hors de l'enveloppe`, autre: dans + horsDe, dans, calcul: `${dans + horsDe} = ${horsDe} + ${dans} ; ${dans + horsDe} − ${horsDe} = ${dans}` };
   });
   return {
-    consigne: "Les deux enfants ont autant de cartes. Combien y a-t-il de cartes dans chaque enveloppe ? Écris l'égalité, puis le calcul.",
+    consigne: "Les deux enfants ont autant de cartes. Je trouve le nombre de cartes dans chaque enveloppe. J'écris l'égalité, puis le calcul.",
     corps: lignes(items.map((x) => `Théo a ${escapeHtml(x.texte)}. Léa a ${x.autre} cartes. Dans chaque enveloppe : ${TROU} cartes.${ECRIRE("L'égalité, le calcul")}`)),
     corrige: lignes(items.map((x) => `Théo a ${escapeHtml(x.texte)}. Léa a ${x.autre} cartes. <b>${escapeHtml(x.calcul)}</b> : ${x.dans} cartes par enveloppe.`)),
   };
@@ -265,7 +265,7 @@ function balance(alea: () => number, r: ReglagesAlgebre): Bloc {
     return { o, m, gauche: [o.etiquette, grammes(a)], droite: [grammes(m + a)], calcul: `${fr(m + a)} − ${a} = ${m}` };
   });
   return {
-    consigne: "La balance est à l'équilibre : les deux plateaux pèsent autant. Quelle est la masse d'un objet ? Écris le calcul.",
+    consigne: "La balance est à l'équilibre : les deux plateaux pèsent autant. Je trouve la masse d'un objet. J'écris le calcul.",
     corps: items.map((x) => pesee(balanceSvg(x.gauche, x.droite), `Masse d'${x.o.une} : ${TROU} g${ECRIRE("Le calcul")}`)).join(""),
     corrige: items.map((x) => pesee(balanceSvg(x.gauche, x.droite), `<b>${x.calcul}</b> : ${x.o.une} pèse ${x.m} g.`)).join(""),
   };
@@ -360,7 +360,7 @@ function contextes(alea: () => number, r: ReglagesAlgebre): Bloc {
     }
   });
   return {
-    consigne: "Comme avec les enveloppes et les balances : écris l'égalité, puis le calcul.",
+    consigne: "J'écris l'égalité, puis le calcul, comme avec les enveloppes et les balances.",
     corps: lignes(items.map((x) => `${escapeHtml(x.texte)} ${TROU} ${x.unite}${ECRIRE("L'égalité, le calcul")}`)),
     corrige: lignes(items.map((x) => `${escapeHtml(x.texte)} <b>${escapeHtml(x.egalite)} ; ${escapeHtml(x.calcul)}</b>`)),
   };
@@ -377,7 +377,7 @@ export function htmlAlgebre(r: ReglagesAlgebre, graine: number): string {
   const exos: string[] = [], corriges: string[] = [];
   EXERCICES_ALGEBRE.map((e) => e.id).filter((e) => r.exercices.includes(e)).forEach((ex, i) => {
     const b = FABRIQUES[ex](alea, { ...r, combien: Math.max(1, Math.min(10, r.combien)) });
-    exos.push(`<div class="al-exo"><div class="al-consigne"><b>${i + 1}.</b> <span class="consigne">${b.consigne}</span></div>${b.corps}</div>`);
+    exos.push(`<div class="al-exo"><div class="al-consigne"><b>${i + 1}.</b> ${b.consigne}</div>${b.corps}</div>`);
     corriges.push(`<div class="al-exo"><div class="al-consigne"><b>${i + 1}.</b> ${b.consigne}</div>${b.corrige}</div>`);
   });
   return feuille(`<div class="page"><div class="titre">${escapeHtml(titre)}</div><div class="sous">Prénom : ........................................ Date : ........................</div>${exos.join("")}</div>
