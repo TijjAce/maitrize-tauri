@@ -153,7 +153,8 @@ describe("les problèmes et les fractions des livrets", () => {
     expect(periode("CE1", "parties-tout-ce1")).toBe(3);
     expect(periode("CE1", "fractions-unitaires-ce1")).toBe(2);
     expect(periode("CE2", "fractions-longueurs-ce2")).toBe(3);
-    // Le livret CE2 ne date pas sa séquence de problèmes en deux étapes.
-    expect(periode("CE2", "deux-etapes-ce2")).toBeNull();
+    // Le livret CE2 ne date pas sa séquence de problèmes en deux étapes ; les repères de 2019 ouvrent l'année sur tous les problèmes.
+    expect(periode("CE2", "deux-etapes-ce2")).toBe(1);
+    expect(programmationProposee({ niveau: "CE2", competenceTitre: "" }, "deux-etapes-ce2")!.raison).toMatch(/^Repères annuels de progression .+2019/);
   });
 });

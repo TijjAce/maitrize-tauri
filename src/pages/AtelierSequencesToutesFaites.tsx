@@ -122,7 +122,7 @@ export function SequencesToutesFaitesTab({ classe }: { classe: ClasseC2 }) {
               <th className="stf-coin">
                 <Aide titre="Le tableau des séquences" vers="droite">
                   <p>Ce sont les déroulements que propose la fiche d'une séquence : les séquences des livrets d'Éduscol, ou bâties sur le programme et sur les guides. Chacune dit sa source.</p>
-                  <p>Chacune est dans la période où le programme ou le livret la place. Glissez-la dans une autre période de sa ligne, ou rangez-la au clic droit : le tableau devient la programmation de la classe.</p>
+                  <p>Chacune est dans la période où la placent le programme ou un texte d'Éduscol — livret, guide, repères annuels —, cité au survol. Glissez-la dans une autre période de sa ligne, ou rangez-la au clic droit : le tableau devient la programmation de la classe.</p>
                   <p>Un clic l'ouvre : ses séances, et toutes les feuilles que les ateliers en fabriquent.</p>
                 </Aide>
               </th>
@@ -249,8 +249,8 @@ function DetailDeLaSequence({ s, infos, periode, onPeriode, classeDuPlan, compet
               ))}
             </div>
             <Aide titre="La période" vers="droite">
-              <p>Celle où vous la ferez : la séquence se range là, « par moment de l'année ». Au CP, elle choisit aussi les nombres des feuilles et du calcul mental.</p>
-              {infos?.periode ? <p><b>Période {infos.periode}</b> — {infos.raison}</p> : <p>Le programme ne lui fixe pas de période.</p>}
+              <p>Celle où vous la ferez : la séquence va dans cette colonne du tableau. Au CP, elle choisit aussi les nombres des feuilles et du calcul mental.</p>
+              {infos?.periode ? <p><b>Période {infos.periode}</b> — {infos.raison}</p> : <p>Ni le programme ni les guides ne lui fixent de période.</p>}
             </Aide>
           </div>
           <ol className="sp-seances">

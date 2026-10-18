@@ -113,8 +113,12 @@ describe("le français du cycle 2, d'après les livrets", () => {
     expect(p("CE1", "Copier quatre à cinq phrases courtes. (à l’issue de la période 1)", "strategies-de-copie").periode).toBe(1);
     expect(p("CE1", "Copier cinq ou six lignes sans erreur. (à partir de la période 3)", "strategies-de-copie").periode).toBe(3);
     expect(p("CE1", "Automatiser le décodage des correspondances graphophonémiques (CGP) apprises au CP. (tout au long de l’année)", "precision-vitesse-ce1").periode).toBe(1);
+    // La compétence ne fixe pas de période ; le livret du CE2 mène ses séances « depuis la période 1 ».
+    const expressive = p("CE2", "Lire un texte adapté à son niveau de lecture avec une vitesse de 90 mots par minute.", "lecture-expressive-ce2");
+    expect(expressive.periode).toBe(1);
+    expect(expressive.raison).toMatch(/^Livret d'accompagnement de français du CE2/);
     // Rien ne fixe la période : le niveau seul.
-    expect(p("CE2", "Lire un texte adapté à son niveau de lecture avec une vitesse de 90 mots par minute.", "lecture-expressive-ce2").periode).toBeNull();
+    expect(p("CE2", "Lire un texte adapté à son niveau de lecture avec une vitesse de 90 mots par minute.", "").periode).toBeNull();
   });
 });
 
