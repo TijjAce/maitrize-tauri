@@ -15,6 +15,11 @@
 // de progression », que les nouveaux programmes portent eux-mêmes. Ils ne
 // fixent de période qu'à ces notions-là : la géométrie, les grandeurs hors
 // monnaie, les données, la grammaire, l'oral n'en ont pas.
+//
+// Ce que les programmes laissent libre, d'autres textes d'Éduscol le datent
+// parfois : le tableau de progression d'un livret, les guides du CP et du CE1,
+// les repères annuels de 2019. Ils ne viennent qu'en dernier, et les repères de
+// 2019, d'avant les programmes de 2024, le disent dans leur citation.
 
 /** Les niveaux pour lesquels une séquence peut être pensée. */
 export const NIVEAUX_DE_PROGRAMMATION = ["PS", "MS", "GS", "CP", "CE1", "CE2", "CM1", "CM2"] as const;
@@ -37,6 +42,13 @@ const citeLeProgrammeDeFrancais = (classe: string, phrase: string) => `${PROGRAM
 const citeLeLivret = (classe: string, phrase: string) => `Livret d'accompagnement de mathématiques du ${classe} (Éduscol, 2025) : « ${phrase} »`;
 const citeLeLivretDeFrancais = (classe: string, phrase: string) =>
   `Livret d'accompagnement de français du ${classe} (Éduscol, ${classe === "CP" ? 2025 : 2026}) : « ${phrase} »`;
+const GUIDE_MATHS_CP = "Guide « Pour enseigner les nombres, le calcul et la résolution de problèmes au CP » (Éduscol, 2021)";
+const GUIDE_LECTURE_CP = "Guide « Pour enseigner la lecture et l'écriture au CP » (Éduscol, 2019)";
+const GUIDE_LECTURE_CE1 = "Guide « Pour enseigner la lecture et l'écriture au CE1 » (Éduscol, 2019)";
+const citeLeGuide = (guide: string, phrase: string) => `${guide} : « ${phrase} »`;
+/** Les repères annuels de 2019 ont précédé les programmes de 2024 : la citation le dit. */
+const citeLesReperesDe2019 = (classe: string, phrase: string) =>
+  `Repères annuels de progression en mathématiques du cycle 2 (Éduscol, 2019 — d'avant les programmes de 2024), ${classe} : « ${phrase} »`;
 
 /** La période d'une séquence, et la phrase qui la donne ; `niveau` : le repère ne vaut qu'à cette classe. */
 interface ReperePeriode { periode: number; raison: string; niveau?: string }
@@ -83,14 +95,29 @@ const PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
   "prosodie-ce1": { niveau: "CE1", periode: 1, raison: citeLeLivretDeFrancais("CE1", "À partir de la période 1 du CE1, pour les élèves des groupes ou profils 2, 3 et 4") },
   "ecriture-cursive": { niveau: "CP", periode: 1, raison: citeLeLivretDeFrancais("CP", "À partir de la période 1 et tout au long de l'année, sur les séances quotidiennes.") },
   "strategies-de-copie": { niveau: "CP", periode: 2, raison: citeLeLivretDeFrancais("CP", "À partir de la période 2, plusieurs fois par semaine.") },
+  "lecture-expressive-ce2": { niveau: "CE2", periode: 1, raison: citeLeLivretDeFrancais("CE2", "Séances décrochées régulières à mener depuis la période 1 et tout au long de l'année.") },
 };
+
+/** Le programme range les temps — « au présent, à l'imparfait, au futur puis au passé composé » — sans leur donner de période ; la fiche d'une séquence les répartit dans cet ordre (`tempsDeLaPeriode`), le tableau aussi. */
+const dansLOrdreDesTemps = (periode: number): ReperePeriode[] => ["CE1", "CE2"].map((niveau) => ({
+  niveau, periode,
+  raison: `${citeLeProgrammeDeFrancais("CE1", "Apprendre à conjuguer au présent, à l'imparfait, au futur puis au passé composé de l'indicatif être et avoir et les verbes du premier groupe.")} `
+    + `Le programme donne l'ordre des temps, sans période : Maitrize les répartit sur l'année${niveau === "CE2" ? ", au CE2 comme au CE1" : ""} — le présent en périodes 1 et 2, l'imparfait en 3, le futur en 4, le passé composé en 5.`,
+}));
+
+/** Au CE2, les repères de 2019 ouvrent l'année sur tous les problèmes : leurs séquences commencent en période 1, l'enseignant les étale. */
+const PROBLEMES_DU_DEBUT_DU_CE2: ReperePeriode = { niveau: "CE2", periode: 1,
+  raison: citeLesReperesDe2019("CE2", "Dès le début de l'année, les élèves résolvent des problèmes additifs et multiplicatifs portant sur des nombres plus grands, ou des problèmes relevant de plusieurs opérations, nécessitant par exemple l'exploration d'un tableau ou d'un graphique.") };
 
 /**
  * Relevées dans le texte des programmes de 2024 (octobre 2026) : les périodes
  * qu'aucun intitulé de compétence ne porte, et qui placent une séquence
- * entière. Elles ne viennent qu'en dernier, quand ni la séquence d'un livret,
+ * entière ; puis celles que donnent les livrets, les guides Éduscol et les
+ * repères annuels de 2019 aux séquences que les programmes laissent sans
+ * période. Elles ne viennent qu'en dernier, quand ni la séquence d'un livret,
  * ni la compétence n'en disent rien : la soustraction posée de montants en
- * euro garde sa période 4.
+ * euro garde sa période 4. Un repère qui couvre plusieurs périodes
+ * (« au cours des périodes 1 à 3 ») place la séquence à la première.
  */
 const SINON_PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
   "strategies-de-copie": { niveau: "CE1", periode: 1, raison: citeLeProgrammeDeFrancais("CE1", "À l'issue de la période 1 — Copier quatre à cinq phrases courtes.") },
@@ -106,6 +133,47 @@ const SINON_PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
     raison: citeLeProgrammeDeFrancais("CP", "Dès la fin de la 2e période — Écrire des mots dictés avec des lettres muettes apprises (mettre en relation des morphogrammes lexicaux et grammaticaux).") },
   "ecrire-un-texte-c2": { niveau: "CE1", periode: 1,
     raison: citeLeProgrammeDeFrancais("CE1", "Dès la période 1 — Écrire un texte court de une à trois phrases.") },
+  // Les opérations et les problèmes : le livret de CE1, le guide de maths du CP, les repères de 2019.
+  "multiplication-ce1": { niveau: "CE1", periode: 1,
+    raison: citeLeLivret("CE1", "Périodes 1 et 2 : Connaitre et utiliser le symbole « x ». Comprendre et savoir que la multiplication est commutative.") },
+  "sens-addition-soustraction-cp": { niveau: "CP", periode: 2,
+    raison: citeLeGuide(GUIDE_MATHS_CP, "Symboles mathématiques — Utilisation progressive des symboles « = », « + », « − » (en période 2).") },
+  "sens-multiplication-cp": { niveau: "CP", periode: 3,
+    raison: citeLesReperesDe2019("CP", "À partir de la période 3, les élèves résolvent aussi quelques problèmes multiplicatifs portant sur de petits nombres et dont la résolution s'appuie sur une itération d'additions, sans aucune difficulté calculatoire mais invitant à construire en situation le sens de la multiplication.") },
+  "deux-etapes-cp": { niveau: "CP", periode: 3,
+    raison: citeLeGuide(GUIDE_MATHS_CP, "La résolution de problèmes arithmétiques : périodes 3 à 5 […] Certains problèmes complexes pourront être proposés pour préparer le CE1 (en commençant par travailler avec des nombres inférieurs à 20), par exemple : […] problèmes de transformation mettant en jeu deux transformations successives avec recherche de l'état final (2 étapes)") },
+  "multiplicatifs-cp": { niveau: "CP", periode: 4,
+    raison: citeLeGuide(GUIDE_MATHS_CP, "Problèmes multiplicatifs (avec trois nombres en jeu inférieurs à 30 – périodes 4 et 5)") },
+  "deux-etapes-ce1": { niveau: "CE1", periode: 1,
+    raison: citeLeLivret("CE1", "En début d'année de CE1, la résolution de problèmes additifs du type parties-tout en une ou plusieurs étapes portant sur des nombres inférieurs à 100 est entretenue.") },
+  "multiplicatifs-ce1": { niveau: "CE1", periode: 3,
+    raison: citeLesReperesDe2019("CE1", "À partir de la période 3, ils rencontrent de nouveaux problèmes multiplicatifs qu'ils peuvent résoudre en utilisant leurs connaissances des premières tables de multiplication (exemple de la tablette de chocolat : combien y a-t-il de carreaux dans une tablette de 3 carreaux par 6 ?).") },
+  "mixtes-ce1": { niveau: "CE1", periode: 4,
+    raison: citeLesReperesDe2019("CE1", "En période 4, l'étude du sens de la division est préparée par la résolution de deux types de problèmes […]. En parallèle, les élèves résolvent des problèmes à deux étapes mixant addition et soustraction, ou multiplication lorsque les nombres en jeu ne nécessitent pas la mise en œuvre d'un algorithme opératoire.") },
+  "parties-tout-comparaison-ce2": PROBLEMES_DU_DEBUT_DU_CE2,
+  "multiplicatifs-ce2": PROBLEMES_DU_DEBUT_DU_CE2,
+  "deux-etapes-ce2": PROBLEMES_DU_DEBUT_DU_CE2,
+  "mixtes-ce2": PROBLEMES_DU_DEBUT_DU_CE2,
+  "problemes-donnees-ce2": PROBLEMES_DU_DEBUT_DU_CE2,
+  // Le français : les guides de lecture et d'écriture du CP et du CE1, et l'ordre des temps du programme.
+  "phrase-cp": { niveau: "CP", periode: 1,
+    raison: citeLeGuide(GUIDE_LECTURE_CP, "Dès la première phrase de l'année, ils doivent savoir qu'elle commence par une majuscule et se termine par un point.") },
+  "accents-c2": { niveau: "CP", periode: 3,
+    raison: `${citeLeGuide(GUIDE_LECTURE_CP, "Dès qu'apparaîtront les lettres accentuées, on n'hésitera pas à utiliser les mots qui conviennent : accent aigu, accent grave, accent circonflexe.")} `
+      + "Sa progression des correspondances graphème-phonème les fait paraître en période 3 (janvier-février) : à, â, è, ê, ë." },
+  "valeur-des-lettres-c2": [
+    { niveau: "CP", periode: 4,
+      raison: `${citeLeGuide(GUIDE_LECTURE_CP, "Période 4 (mars-avril) — Consonnes fricatives 5 - les différents graphèmes pour les phonèmes ‘s’ et ‘j’")} : `
+        + "c prononcé ‘ss’ et ç, g prononcé ‘j’ et ge — après s prononcé ‘z’ en période 2, puis c et g prononcés ‘k’ et ‘g’, am et im devant m, b, p en période 3." },
+    { niveau: "CE1", periode: 1,
+      raison: citeLeGuide(GUIDE_LECTURE_CE1, "Des séances régulières (tous les jours en période 1, puis trois fois par semaine en périodes 2, 3, 4, et deux fois par semaine en période 5) renforcent les habiletés de décodage. […] on invitera l'élève à se centrer sur la valeur sonore de certaines lettres en fonction de leur voisinage pour effectuer un choix pertinent, et sur la composition de certains graphèmes selon la lettre qui suit : an/am, en/em, on/om, in/im.") },
+  ],
+  "connecteurs-ce1": { niveau: "CE1", periode: 1,
+    raison: citeLeGuide(GUIDE_LECTURE_CE1, "Au cours des périodes 1 à 3, l'élève s'apercevra qu'une suite de phrases ne peut se suffire à constituer un texte cohérent ; il faudra apprendre à insérer des connecteurs pour lier les phrases entre elles et pour produire une unité de sens.") },
+  "conjuguer-present-c2": dansLOrdreDesTemps(1),
+  "conjuguer-imparfait-c2": dansLOrdreDesTemps(3),
+  "conjuguer-futur-c2": dansLOrdreDesTemps(4),
+  "conjuguer-passe-compose-c2": dansLOrdreDesTemps(5),
 };
 
 /**

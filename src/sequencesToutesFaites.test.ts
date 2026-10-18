@@ -134,16 +134,19 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
       return { s, repere: fixe ?? repereDeLaDemarche(s.demarche.id, s.classe, comp?.competenceTitre ?? "") };
     });
     const placees = reperes.filter((x) => x.repere);
-    // 48 avant le relevé du texte des programmes ; six de plus après.
-    expect(placees.length).toBeGreaterThanOrEqual(54);
+    // 48 avant le relevé du texte des programmes, six de plus après ; 81 avec les livrets, les guides et les repères de 2019.
+    expect(placees.length).toBeGreaterThanOrEqual(81);
     for (const { s, repere } of placees) {
       expect(repere!.periode, s.cle).toBeGreaterThanOrEqual(1);
-      expect(repere!.raison, s.cle).toMatch(/^(Programme|Livret).+ : « .+ »$/);
+      expect(repere!.raison, s.cle).toMatch(/^(Programme|Livret|Guide|Repères) .+ : « .+ »/);
     }
     const de = (cle: string) => reperes.find((x) => x.s.cle === cle)?.repere?.periode;
     expect(de("egalites-fractions-ce2:CE2")).toBe(1);
     expect(de("comprendre-cp:CP")).toBe(3);
     expect(de("strategies-de-copie:CE1")).toBe(1);
+    expect(de("multiplicatifs-cp:CP")).toBe(4);
+    expect(de("conjuguer-imparfait-c2:CE2")).toBe(3);
+    expect(de("valeur-des-lettres-c2:CE1")).toBe(1);
   });
 
   it("gardent les périodes choisies telles qu'on peut s'y fier", () => {

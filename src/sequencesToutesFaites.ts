@@ -209,7 +209,7 @@ export const PERIODES_DE_L_ANNEE: { periode: number; aide: string }[] = [
 /** Les colonnes du tableau : les cinq périodes, puis les séquences que le programme ne place pas. */
 export const COLONNES_DU_TABLEAU: { periode: number | null; titre: string; aide: string }[] = [
   ...PERIODES_DE_L_ANNEE.map(({ periode, aide }) => ({ periode, titre: `Période ${periode}`, aide })),
-  { periode: null, titre: "Sans période", aide: "Le programme n'en fixe pas" },
+  { periode: null, titre: "Sans période", aide: "Ni le programme ni les guides n'en fixent" },
 ];
 
 export interface LigneDuTableau { domaine: Domaine; cases: SequenceToutefaite[][] }

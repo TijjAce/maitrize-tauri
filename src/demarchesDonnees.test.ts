@@ -24,7 +24,8 @@ describe("l'organisation et la gestion de données, bâties sur le programme", (
   it("donnent à chaque compétence sa séquence, disent leurs sources et donnent leurs feuilles", () => {
     for (const [niveau, titre, attendue] of COMPETENCES) {
       expect(demarcheSuggeree(cible(niveau, titre), REF).id, `${niveau} — ${titre}`).toBe(attendue);
-      expect(programmationProposee({ niveau, competenceTitre: titre }, attendue)!.periode).toBeNull();
+      // Le programme ne date pas les données ; seuls leurs problèmes, au CE2, ont un repère : ceux de 2019 ouvrent l'année sur tous les problèmes.
+      expect(programmationProposee({ niveau, competenceTitre: titre }, attendue)!.periode).toBe(attendue === "problemes-donnees-ce2" ? 1 : null);
     }
     expect(demarcheDe("problemes-donnees-ce2")!.resume).toContain("école Poséidon");
     for (const d of DEMARCHES_DONNEES) {
