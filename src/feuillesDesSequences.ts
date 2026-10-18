@@ -34,6 +34,7 @@ import { estUneDemarcheDOral, planDeLOral } from "./demarchesOral";
 import { estUneDemarcheHistoireGeo, planHistoireGeo } from "./demarchesHistoireGeo";
 import { estUneDemarcheDesNombresCM, planDesNombresCM } from "./cycle3Nombres";
 import { estUneDemarcheDuCalculCM, planDuCalculCM } from "./cycle3Calcul";
+import { estUneDemarcheDesProblemesCM, planDesProblemesCM } from "./cycle3Problemes";
 import type { ElemSalle } from "./planDeLaClasse";
 import { reglagesLaisses } from "./reglagesLaisses";
 import { memesReglages } from "./modifierFeuille";
@@ -187,6 +188,7 @@ export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): Plan
   // Le cours moyen : les nombres (voir cycle3Nombres.ts).
   if (estUneDemarcheDesNombresCM(demarcheId)) return planDesNombresCM(demarcheId, ctx);
   if (estUneDemarcheDuCalculCM(demarcheId)) return planDuCalculCM(demarcheId, ctx);
+  if (estUneDemarcheDesProblemesCM(demarcheId)) return planDesProblemesCM(demarcheId, ctx);
   if (!CLASSE_DES_DEMARCHES[demarcheId]) return null;
   // Grouper par dix, la centaine, le millier : les huit feuilles des cubes, de la grande collection à l'évaluation.
   if (demarcheId === "numeration-dizaine-cp" || demarcheId.startsWith("groupements-")) {
