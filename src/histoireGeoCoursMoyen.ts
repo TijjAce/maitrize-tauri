@@ -15,6 +15,7 @@ import { escapeHtml } from "./print";
 import { feuille } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
 import { SOURCE_MAITRIZE, themeHGCM, type ExerciceHGCM, type FriseCM, type RepereCM, type ThemeHGCM } from "./themesHistoireGeoCM";
+import { STYLE_CARTES_HG, carteEnPaysage, htmlDeLaCarte } from "./cartesHistoireGeo";
 
 export interface ReglagesHistoireGeoCM {
   /** L'identifiant du thème : celui de sa séquence. */
@@ -167,6 +168,9 @@ function feuilleExercice(e: ExerciceHGCM, graine: number): string {
       return `<div class="page">${tete}${regle(`${esc(e.consigne)} ${SOURCE}`)}${tableau(e.lignes)}</div>`
         + (e.reponses ? corrige(e.titre, tableau(e.reponses)) : "");
     }
+    case "carte":
+      return `<div class="page">${tete}${regle(`${e.consignes.map(esc).join(" ")} ${SOURCE}`)}${htmlDeLaCarte(e.carte, false, graine)}</div>`
+        + corrige(e.titre, htmlDeLaCarte(e.carte, true, graine));
   }
 }
 
@@ -300,6 +304,13 @@ export const STYLE_HISTOIRE_GEO_CM = `
     justify-content: center; text-align: center; font-size: 10px; font-weight: 700; line-height: 1.2; padding: 1mm 1.5mm; }
 `;
 
-/** Le style d'une feuille : la frise se met en paysage. */
-export const styleHistoireGeoCM = (r: Pick<ReglagesHistoireGeoCM, "exercice">) =>
-  STYLE_HISTOIRE_GEO_CM + (r.exercice === "frise" ? "\n  @page { size: A4 landscape; margin: 10mm; }\n" : "");
+/** La feuille se met en paysage : la frise, le planisphère entier. */
+export function enPaysage(r: Pick<ReglagesHistoireGeoCM, "theme" | "exercice">): boolean {
+  if (r.exercice === "frise") return true;
+  const e = themeHGCM(r.theme)?.exercices.find((x) => x.id === r.exercice);
+  return e?.sorte === "carte" && carteEnPaysage(e.carte);
+}
+
+/** Le style d'une feuille : en paysage, la frise et le planisphère. */
+export const styleHistoireGeoCM = (r: Pick<ReglagesHistoireGeoCM, "theme" | "exercice">) =>
+  STYLE_HISTOIRE_GEO_CM + STYLE_CARTES_HG + (enPaysage(r) ? "\n  @page { size: A4 landscape; margin: 10mm; }\n" : "");

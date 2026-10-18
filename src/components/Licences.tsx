@@ -69,7 +69,8 @@ export function Licences() {
           ))}
         </ul>
         <p>
-          <b>Transcription sur l'ordinateur</b> : modèles Whisper d'OpenAI, licence Apache 2.0, téléchargés depuis Hugging Face.
+          <b>Fonds de carte</b> de l'histoire-géographie du cours moyen : {lien("https://www.naturalearthdata.com", "Natural Earth")}, domaine public.
+          <br /><b>Transcription sur l'ordinateur</b> : modèles Whisper d'OpenAI, licence Apache 2.0, téléchargés depuis Hugging Face.
           <br /><b>Programmes et guides</b> : repris d'Éduscol et des textes officiels, avec leur source.
         </p>
       </div>

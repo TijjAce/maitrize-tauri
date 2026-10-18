@@ -10,6 +10,8 @@
 // 1515 pour Léonard de Vinci, 2000 pour l'euro —, la séquence le dit (voir
 // cycle3HistoireGeo.ts).
 
+import type { CarteHGCM, TraitsDeCarte } from "./cartesHistoireGeo";
+
 export type ClasseCM = "CM1" | "CM2";
 
 /** Un repère de la frise : sa place (une année, avec ses mois en décimales), ce qu'on lit, ce qui s'est passé. */
@@ -35,7 +37,9 @@ export type ExerciceHGCM =
   | { sorte: "relier"; id: string; titre: string; consigne: string; paires: [string, string][]; rappel?: string }
   /** Des étapes à remettre dans l'ordre ; leurs dates, s'il y en a, ne se montrent que dans le corrigé : on ne range pas des dates. */
   | { sorte: "ordonner"; id: string; titre: string; consigne: string; etapes: string[]; dates?: string[]; rappel?: string }
-  | { sorte: "tableau"; id: string; titre: string; consigne: string; entetes: string[]; lignes: string[][]; reponses?: string[][]; rappel?: string };
+  | { sorte: "tableau"; id: string; titre: string; consigne: string; entetes: string[]; lignes: string[][]; reponses?: string[][]; rappel?: string }
+  /** Une carte à compléter : ses consignes, numérotées sur la feuille ; ce qu'on y met (voir cartesHistoireGeo.ts). */
+  | { sorte: "carte"; id: string; titre: string; consignes: string[]; carte: CarteHGCM; rappel?: string };
 
 export interface ThemeHGCM {
   id: string;
@@ -349,6 +353,28 @@ const EXPLORATIONS: ThemeHGCM = {
       ],
     },
     {
+      sorte: "carte", id: "carte-empires", titre: "Les premiers empires coloniaux en Amérique, sur la carte",
+      rappel: "L'Espagne et le Portugal se partagent d'abord l'Amérique ; la France et l'Angleterre y fondent ensuite leurs colonies, au début du XVIIe siècle : Jamestown en 1607, Québec en 1608.",
+      consignes: [
+        "J'écris le nom des pays d'Europe, des colonies et des océans numérotés.",
+        "Je colorie l'empire espagnol d'une couleur, l'empire portugais d'une autre, puis leurs cases dans la légende.",
+      ],
+      carte: {
+        fond: "monde", cadrage: [-120, -56, 10, 62],
+        colorier: [
+          { nom: "l'empire espagnol", couleur: "#f2c14e", formes: ["MEX", "GTM", "BLZ", "HND", "SLV", "NIC", "CRI", "PAN", "CUB", "JAM", "DOM", "PRI", "TTO", "COL", "VEN", "ECU", "PER", "BOL", "CHL", "ARG", "PRY", "URY"] },
+          { nom: "l'empire portugais", couleur: "#7cc37f", formes: ["BRA"] },
+        ],
+        numeros: [
+          { quoi: "ESP", nom: "l'Espagne" }, { quoi: "PRT", nom: "le Portugal" }, { quoi: "FRA", nom: "la France" }, { quoi: "GBR", nom: "l'Angleterre" },
+          { quoi: "quebec", nom: "Québec, en Nouvelle-France" }, { quoi: "jamestown", nom: "Jamestown, colonie anglaise" },
+          { ou: [-40, 28], nom: "l'océan Atlantique" }, { ou: [-108, -12], nom: "l'océan Pacifique" },
+        ],
+        banque: true,
+        note: "Les frontières sont celles d'aujourd'hui : au XVIe siècle, les Espagnols ne contrôlaient pas tout le territoire de ces pays.",
+      },
+    },
+    {
       sorte: "document", id: "amerindiens", titre: "La conquête et les Amérindiens",
       rappel: "La conquête bouleverse la vie des Amérindiens : guerres, travail forcé, maladies venues d'Europe. La plus grande partie d'entre eux meurt.",
       texte: [
@@ -374,6 +400,25 @@ const EXPLORATIONS: ThemeHGCM = {
         ["Je décris la vie des esclaves dans une plantation.", "Ils travaillent du lever au coucher du soleil, sous la menace du fouet ; ils appartiennent à leur maître, qui peut les vendre."],
         ["Qu'est-ce que le Code noir ?", "Un édit de Louis XIV (1685) qui fixe les règles de l'esclavage dans les colonies françaises : l'esclave y est un bien."],
       ],
+    },
+    {
+      sorte: "carte", id: "carte-triangulaire", titre: "Le commerce triangulaire, sur la carte",
+      rappel: "Le commerce triangulaire relie l'Europe, l'Afrique et l'Amérique : des marchandises échangées contre des captifs, les captifs vendus comme esclaves, le sucre, le tabac et le coton rapportés en Europe.",
+      consignes: ["J'écris le nom des trois ports numérotés.", "J'écris, pour chaque flèche, ce que transportent les navires."],
+      carte: {
+        fond: "monde", cadrage: [-100, -5, 25, 55],
+        numeros: [{ quoi: "nantes", nom: "Nantes" }, { quoi: "goree", nom: "Gorée" }, { quoi: "saint-domingue", nom: "Saint-Domingue" }],
+        textes: [{ ou: [16, 47], texte: "EUROPE" }, { ou: [3, 20], texte: "AFRIQUE" }, { ou: [-92, 40], texte: "AMÉRIQUE" }],
+        traits: [{
+          sorte: "fleche", legende: "le trajet des navires",
+          liste: [
+            { par: ["nantes", [-7, 45.5], [-13, 38], [-19, 25], "goree"], texte: "des tissus, des armes, de l'alcool" },
+            { par: ["goree", [-45, 11], "saint-domingue"], texte: "des captifs africains, vendus comme esclaves" },
+            { par: ["saint-domingue", [-50, 38], "nantes"], texte: "du sucre, du tabac, du coton" },
+          ],
+        }],
+        banque: true,
+      },
     },
     {
       sorte: "trier", id: "denrees", titre: "Des denrées venues d'Amérique",
@@ -696,6 +741,33 @@ const VERS_REPUBLIQUE: ThemeHGCM = {
         ["Je relève trois territoires de l'empire. Je les colorie sur le planisphère.", "L'Algérie, le Maroc, la Tunisie, l'AOF, l'AEF, Madagascar, l'Indochine, les Antilles, la Guyane, La Réunion, la Nouvelle-Calédonie…"],
         ["Les colonisés ont-ils les mêmes droits que les Français ?", "Non : ils sont soumis à des lois particulières, au travail forcé, et ne votent pas."],
       ],
+    },
+    {
+      sorte: "carte", id: "carte-empire-1914", titre: "L'empire colonial français en 1914, sur le planisphère",
+      rappel: "Vers 1914, la France possède le deuxième empire colonial du monde, surtout en Afrique.",
+      consignes: [
+        "J'écris le nom des territoires numérotés.",
+        "Je colorie la France d'une couleur, son empire colonial d'une autre, puis leurs cases dans la légende.",
+      ],
+      carte: {
+        fond: "monde",
+        colorier: [
+          { nom: "la France", couleur: "#7ea7dc", formes: ["FRA"] },
+          // L'Algérie, les protectorats de Tunisie et du Maroc, l'AOF, l'AEF, Madagascar et les Comores, la Côte française des Somalis,
+          // l'Indochine, les vieilles colonies, le Pacifique. Le Togo et le Cameroun sont encore allemands.
+          {
+            nom: "l'empire colonial français", couleur: "#f0a07a",
+            formes: ["DZA", "TUN", "MAR", "MRT", "SEN", "MLI", "GIN", "CIV", "BFA", "BEN", "NER", "GAB", "COG", "CAF", "TCD", "MDG", "COM", "DJI", "VNM", "LAO", "KHM", "GUF", "MTQ", "REU", "NCL", "PYF"],
+          },
+        ],
+        numeros: [
+          { quoi: "DZA", nom: "l'Algérie" }, { quoi: "TUN", nom: "la Tunisie" }, { quoi: "MAR", nom: "le Maroc" }, { quoi: "MLI", nom: "l'Afrique-Occidentale française" },
+          { quoi: "TCD", nom: "l'Afrique-Équatoriale française" }, { quoi: "MDG", nom: "Madagascar" }, { quoi: "LAO", nom: "l'Indochine" }, { quoi: "GUF", nom: "la Guyane" },
+          { ou: [-61.2, 15.3], nom: "les Antilles" }, { quoi: "REU", nom: "La Réunion" }, { quoi: "NCL", nom: "la Nouvelle-Calédonie" }, { ou: [-149.4, -17.65], nom: "Tahiti" },
+        ],
+        banque: true,
+        note: "Les frontières sont celles d'aujourd'hui.",
+      },
     },
   ],
   evaluation: [
@@ -1094,6 +1166,22 @@ const DEPUIS_1945: ThemeHGCM = {
 
 // ── Géographie, CM1 : la diversité des modes de vie dans le monde ─────────
 
+/** Les huit aires régionales du thème, pays par pays : le Maghreb, ses trois pays et le Sahara occidental ; l'Afrique subsaharienne, comme la Banque mondiale. */
+const AIRES_REGIONALES: CarteHGCM["colorier"] = [
+  { nom: "l'Amérique du Nord", couleur: "#80b1d3", formes: ["USA", "CAN"] },
+  { nom: "l'Amérique du Sud", couleur: "#b3de69", formes: ["ARG", "BOL", "BRA", "CHL", "COL", "ECU", "GUY", "PRY", "PER", "SUR", "URY", "VEN", "GUF"] },
+  { nom: "l'Europe", couleur: "#bebada", formes: ["@europe"] },
+  { nom: "le Maghreb", couleur: "#ffed6f", formes: ["MAR", "SAH", "DZA", "TUN"] },
+  {
+    nom: "l'Afrique subsaharienne", couleur: "#fdb462",
+    formes: ["MRT", "SEN", "GMB", "GNB", "GIN", "SLE", "LBR", "CIV", "MLI", "BFA", "GHA", "TGO", "BEN", "NER", "NGA", "TCD", "SDN", "SDS", "ETH", "ERI", "DJI", "SOM", "SOL",
+      "KEN", "UGA", "RWA", "BDI", "TZA", "CMR", "CAF", "GNQ", "GAB", "COG", "COD", "AGO", "ZMB", "MWI", "MOZ", "ZWE", "NAM", "BWA", "ZAF", "LSO", "SWZ", "MDG", "COM", "MUS"],
+  },
+  { nom: "l'Asie de l'Est", couleur: "#fb8072", formes: ["CHN", "JPN", "KOR", "PRK", "MNG", "TWN"] },
+  { nom: "l'Asie du Sud-Est", couleur: "#fccde5", formes: ["MMR", "THA", "LAO", "KHM", "VNM", "MYS", "IDN", "BRN", "PHL", "TLS"] },
+  { nom: "l'Océanie", couleur: "#8dd3c7", formes: ["AUS", "NZL", "PNG", "FJI", "SLB", "VUT", "NCL", "PYF", "WSM"] },
+];
+
 const SE_NOURRIR: ThemeHGCM = {
   id: "se-nourrir-cm1", classe: "CM1", histoire: false, titre: "Se nourrir",
   question: "Comment se nourrit-on dans le monde ?",
@@ -1118,6 +1206,19 @@ const SE_NOURRIR: ThemeHGCM = {
         ["l'orange", "l'Espagne, le Maroc"],
         ["le blé du pain", "les plaines de France, comme la Beauce"],
       ],
+    },
+    {
+      sorte: "carte", id: "carte-provenance", titre: "D'où viennent nos aliments ? Sur le planisphère",
+      rappel: "Une partie de ce que nous mangeons vient de France ; une autre vient de loin : les bananes, le cacao, le café, le riz.",
+      consignes: ["J'écris le nom des pays et de la région d'où viennent nos aliments, à côté de leur numéro."],
+      carte: {
+        fond: "monde",
+        numeros: [
+          { quoi: "FRA", nom: "la France" }, { quoi: "ESP", nom: "l'Espagne" }, { quoi: "MAR", nom: "le Maroc" }, { quoi: "CIV", nom: "la Côte d'Ivoire" },
+          { quoi: "GHA", nom: "le Ghana" }, { quoi: "BRA", nom: "le Brésil" }, { quoi: "VNM", nom: "le Viêt Nam" }, { ou: [-61.2, 15.3], nom: "les Antilles" },
+        ],
+        banque: true,
+      },
     },
     {
       sorte: "trier", id: "agricole-transforme", titre: "Produit agricole ou produit transformé ?",
@@ -1157,6 +1258,19 @@ const SE_NOURRIR: ThemeHGCM = {
         ["Je nomme deux pays à ration alimentaire très riche et deux pays à ration insuffisante, avec leur continent.", "Les États-Unis (Amérique), la France (Europe) ; Madagascar (Afrique), Haïti (Amérique)."],
       ],
     },
+    {
+      sorte: "carte", id: "carte-quatre-pays", titre: "Quatre pays et leur continent, sur le planisphère",
+      rappel: "Les États-Unis (Amérique) et la France (Europe) ont une ration alimentaire très riche ; à Madagascar (Afrique) et en Haïti (Amérique), beaucoup ne mangent pas assez.",
+      consignes: ["J'écris le nom des quatre pays numérotés, puis celui des continents."],
+      carte: {
+        fond: "monde",
+        numeros: [
+          { quoi: "USA", nom: "les États-Unis" }, { quoi: "FRA", nom: "la France" }, { quoi: "MDG", nom: "Madagascar" }, { quoi: "HTI", nom: "Haïti" },
+          { ou: [-62, -10], nom: "l'Amérique" }, { ou: [28, 54], nom: "l'Europe" }, { ou: [20, 8], nom: "l'Afrique" }, { ou: [95, 45], nom: "l'Asie" }, { ou: [134, -25], nom: "l'Océanie" },
+        ],
+        banque: true,
+      },
+    },
   ],
   evaluation: [
     ["Je décris une différence entre l'alimentation d'un pays riche et celle d'un pays en développement.", "Dans un pays riche, on mange à sa faim, souvent trop, des produits transformés ; dans un pays en développement, beaucoup ne mangent pas assez."],
@@ -1185,6 +1299,12 @@ const INEGALITES: ThemeHGCM = {
         ["l'Amérique du Sud", "le Brésil, l'Argentine"], ["l'Asie du Sud-Est", "le Viêt Nam, l'Indonésie"], ["l'Asie de l'Est", "la Chine, le Japon"],
         ["l'Europe", "la France, l'Allemagne"], ["l'Océanie", "l'Australie, la Nouvelle-Zélande"],
       ],
+    },
+    {
+      sorte: "carte", id: "carte-aires", titre: "Les aires régionales, sur le planisphère",
+      rappel: "Huit aires régionales : l'Afrique subsaharienne, le Maghreb, l'Amérique du Nord, l'Amérique du Sud, l'Asie du Sud-Est, l'Asie de l'Est, l'Europe, l'Océanie.",
+      consignes: ["Je choisis une couleur pour chaque aire régionale de la légende : je colorie sa case, puis l'aire sur le planisphère."],
+      carte: { fond: "monde", colorier: AIRES_REGIONALES },
     },
     {
       sorte: "document", id: "eau-potable", titre: "L'accès à l'eau potable",
@@ -1279,6 +1399,30 @@ const SE_DEPLACER: ThemeHGCM = {
   ],
 };
 
+/**
+ * Quelques grands câbles sous-marins, d'après la carte de TeleGeography
+ * (submarinecablemap.com) : leurs points d'atterrissage, et des points en mer
+ * pour contourner les côtes — l'Atlantique Nord, Dunant, Southern Cross,
+ * Jupiter, Curie, EllaLink, SACS, la côte ouest de l'Afrique, de Marseille à
+ * Hong Kong par Suez, EASSy, Indigo.
+ */
+const CABLES: TraitsDeCarte["liste"] = [
+  { par: ["new-york", [-40, 46], "bude"] },
+  { par: ["virginia-beach", [-40, 42], "saint-hilaire-de-riez"] },
+  { par: ["los-angeles", [-158, 21.4], [178.4, -18.1], "sydney"] },
+  { par: ["los-angeles", [-160, 32], "tokyo"] },
+  { par: ["los-angeles", [-116, 24], [-100, 12], [-88, 2], [-84, -8], [-75, -22], "valparaiso"] },
+  { par: ["fortaleza", [-28, 15], "sines"] },
+  { par: ["fortaleza", "luanda"] },
+  { par: ["sines", [-12.5, 30.5], [-13.3, 27.9], [-16.5, 23], "dakar", [-18, 9], [-12, 3.5], [-3, 3.5], "lagos", [8, -15], "le-cap"] },
+  {
+    par: ["marseille", [8, 39], [12, 37.3], "port-said", [32.55, 29.9], [33.8, 27.6], [36, 23], [40, 17], "djibouti", [52, 13], "bombay", [76, 7], [80.5, 5],
+      [94, 6.5], [98.8, 5.5], [101.2, 2.7], "singapour", [106, 4], [110, 10], "hong-kong"],
+  },
+  { par: ["djibouti", [51.5, 12.3], [52, 8], [47, 1], "mombasa", [41.5, -12], [36.5, -22], "mtunzini"] },
+  { par: ["singapour", [104.8, -2.3], [105.8, -6.1], [108, -20], "perth"] },
+];
+
 const INTERNET: ThemeHGCM = {
   id: "internet-cm1", classe: "CM1", histoire: false, titre: "Communiquer dans le monde avec Internet",
   question: "Comment communique-t-on avec Internet dans le monde ?",
@@ -1315,6 +1459,21 @@ const INTERNET: ThemeHGCM = {
       ],
     },
     {
+      sorte: "carte", id: "carte-cables", titre: "Les câbles sous-marins, sur le planisphère",
+      rappel: "Internet repose sur des câbles — sur les continents et sous les océans — et sur des satellites. Les câbles sont très nombreux entre l'Amérique du Nord, l'Europe et l'Asie de l'Est.",
+      consignes: ["J'écris le nom des aires régionales et des océans numérotés.", "Je repasse en rouge les câbles sous-marins."],
+      carte: {
+        fond: "monde",
+        numeros: [
+          { ou: [-100, 45], nom: "l'Amérique du Nord" }, { ou: [20, 52], nom: "l'Europe" }, { ou: [110, 36], nom: "l'Asie de l'Est" }, { ou: [22, 2], nom: "l'Afrique subsaharienne" },
+          { ou: [-40, 25], nom: "l'océan Atlantique" }, { ou: [-150, 5], nom: "l'océan Pacifique" }, { ou: [78, -22], nom: "l'océan Indien" },
+        ],
+        traits: [{ sorte: "cable", legende: "un câble sous-marin", liste: CABLES }],
+        banque: true,
+        note: "Schéma : quelques grands câbles seulement, d'après la carte de TeleGeography (submarinecablemap.com) ; il y en a plus de 500.",
+      },
+    },
+    {
       sorte: "document", id: "acces", titre: "Tout le monde n'a pas accès à Internet",
       rappel: "Environ deux personnes sur trois utilisent Internet. L'accès est inégal dans le monde, et en France aussi.",
       texte: [
@@ -1344,6 +1503,14 @@ export const REGIONS: [string, string][] = [
   ["Grand Est", "Strasbourg"], ["Hauts-de-France", "Lille"], ["Île-de-France", "Paris"], ["Normandie", "Rouen"], ["Nouvelle-Aquitaine", "Bordeaux"],
   ["Occitanie", "Toulouse"], ["Pays de la Loire", "Nantes"], ["Provence-Alpes-Côte d'Azur", "Marseille"],
   ["Guadeloupe", "Basse-Terre"], ["Martinique", "Fort-de-France"], ["Guyane", "Cayenne"], ["La Réunion", "Saint-Denis"], ["Mayotte", "Mamoudzou"],
+];
+
+/** Les régions sur la carte, du nord au sud puis l'outre-mer : leur forme sur le fond, leur nom, leur capitale. */
+const REGIONS_SUR_LA_CARTE: [string, string, string][] = [
+  ["HDF", "Hauts-de-France", "lille"], ["NOR", "Normandie", "rouen"], ["IDF", "Île-de-France", "paris"], ["GES", "Grand Est", "strasbourg"], ["BRE", "Bretagne", "rennes"],
+  ["PDL", "Pays de la Loire", "nantes"], ["CVL", "Centre-Val de Loire", "orleans"], ["BFC", "Bourgogne-Franche-Comté", "dijon"], ["NAQ", "Nouvelle-Aquitaine", "bordeaux"],
+  ["ARA", "Auvergne-Rhône-Alpes", "lyon"], ["OCC", "Occitanie", "toulouse"], ["PAC", "Provence-Alpes-Côte d'Azur", "marseille"], ["COR", "Corse", "ajaccio"],
+  ["GLP", "Guadeloupe", "basse-terre"], ["MTQ", "Martinique", "fort-de-france"], ["GUF", "Guyane", "cayenne"], ["REU", "La Réunion", "saint-denis"], ["MYT", "Mayotte", "mamoudzou"],
 ];
 
 const TERRITOIRE: ThemeHGCM = {
@@ -1396,11 +1563,51 @@ const TERRITOIRE: ThemeHGCM = {
       reponses: REGIONS.map(([r, c]) => [r, c]),
     },
     {
+      sorte: "carte", id: "carte-regions", titre: "Les dix-huit régions, sur la carte",
+      rappel: "Dix-huit régions : treize dans l'Hexagone, cinq en outre-mer. Chacune a sa capitale régionale.",
+      consignes: ["J'écris le nom de chaque région à côté de son numéro.", "Je colorie ma région."],
+      carte: {
+        fond: "france",
+        numeros: REGIONS_SUR_LA_CARTE.map(([quoi, nom]) => ({ quoi, nom })),
+        points: { legende: "la capitale d'une région", lieux: REGIONS_SUR_LA_CARTE.map(([, , capitale]) => capitale) },
+        banque: true,
+      },
+    },
+    {
       sorte: "tableau", id: "deux-regions", titre: "Ma région et une autre",
       consigne: "Je complète le tableau pour ma région et pour une autre région. Puis j'écris une phrase qui les compare.",
       rappel: "Une région se décrit par sa capitale, son relief, ses grandes villes, ses activités, ses paysages.",
       entetes: ["", "Ma région : …………………", "Une autre région : …………………"],
       lignes: [["Sa capitale", "", ""], ["Son relief", "", ""], ["Ses grandes villes", "", ""], ["Ses activités", "", ""], ["Un paysage", "", ""], ["Un département et son numéro", "", ""]],
+    },
+    {
+      sorte: "carte", id: "croquis-territoire", titre: "Croquis : les grandes agglomérations et les grands axes",
+      rappel: "Les cinq principales agglomérations : Paris, Lyon, Marseille, Lille, Toulouse. Les grands axes partent de Paris, en étoile.",
+      consignes: [
+        "J'écris le nom des cinq grandes agglomérations numérotées.",
+        "Je trace en rouge les autoroutes A1, A6, A7 et A10 ; en bleu, les lignes à grande vitesse de Paris à Lille, à Lyon et à Bordeaux, comme dans la légende.",
+      ],
+      carte: {
+        fond: "france",
+        numeros: [{ quoi: "paris", nom: "Paris" }, { quoi: "lyon", nom: "Lyon" }, { quoi: "marseille", nom: "Marseille" }, { quoi: "lille", nom: "Lille" }, { quoi: "toulouse", nom: "Toulouse" }],
+        legendeNumeros: "une grande agglomération",
+        reperes: ["bordeaux"],
+        traits: [
+          {
+            sorte: "route", legende: "une autoroute", aTracer: true,
+            liste: [
+              { par: ["paris", "lille"], nom: "A1", decalage: -1.1 }, { par: ["paris", "lyon"], nom: "A6", decalage: -1.1 },
+              { par: ["lyon", "marseille"], nom: "A7" }, { par: ["paris", "bordeaux"], nom: "A10", decalage: -1.1 },
+            ],
+          },
+          {
+            sorte: "lgv", legende: "une ligne à grande vitesse", aTracer: true,
+            liste: [{ par: ["paris", "lille"], decalage: 1.1 }, { par: ["paris", "lyon"], decalage: 1.1 }, { par: ["paris", "bordeaux"], decalage: 1.1 }],
+          },
+        ],
+        banque: true,
+        note: "Un croquis simplifie : les axes y sont tracés en ligne droite.",
+      },
     },
   ],
   evaluation: [
@@ -1446,6 +1653,21 @@ const EAU_DOUCE: ThemeHGCM = {
       ],
     },
     {
+      sorte: "carte", id: "carte-fleuves", titre: "Les fleuves, les massifs et deux lacs, sur la carte",
+      rappel: "Six grands fleuves : la Seine, la Loire, la Garonne, le Rhône, le Rhin, le Maroni. Les massifs : les Alpes, les Pyrénées, le Massif central, le Jura, les Vosges, la Corse.",
+      consignes: ["J'écris le nom des fleuves, des massifs et des lacs numérotés.", "Je repasse les fleuves en bleu ; je colorie les massifs en marron."],
+      carte: {
+        fond: "france", fleuves: true, massifs: true,
+        numeros: [
+          { quoi: "seine", nom: "la Seine" }, { quoi: "loire", nom: "la Loire" }, { quoi: "garonne", nom: "la Garonne" }, { quoi: "rhone", nom: "le Rhône" },
+          { quoi: "rhin", nom: "le Rhin" }, { quoi: "maroni", nom: "le Maroni" }, { quoi: "alpes", nom: "les Alpes" }, { quoi: "pyrenees", nom: "les Pyrénées" },
+          { quoi: "massif-central", nom: "le Massif central" }, { quoi: "jura", nom: "le Jura" }, { quoi: "vosges", nom: "les Vosges" }, { quoi: "corse", nom: "la Corse" },
+          { quoi: "lac-du-bourget", nom: "le lac du Bourget" }, { quoi: "lac-de-serre-poncon", nom: "le lac de Serre-Ponçon" },
+        ],
+        banque: true,
+      },
+    },
+    {
       sorte: "trier", id: "usages-eau", titre: "Les usages de l'eau",
       consigne: "Je lis chaque usage de l'eau. Je l'écris dans la bonne colonne.",
       rappel: "On utilise l'eau à la maison, pour l'agriculture, pour l'industrie et l'énergie, pour les loisirs et le transport.",
@@ -1487,6 +1709,33 @@ export const PAYS_UE: [string, string][] = [
   ["la Slovénie", "Ljubljana"], ["la Suède", "Stockholm"], ["la Tchéquie", "Prague"],
 ];
 
+/** Le code de chaque pays de l'Union sur le fond de carte. */
+const CODES_UE: Record<string, string> = {
+  "l'Allemagne": "DEU", "la Belgique": "BEL", "la France": "FRA", "l'Italie": "ITA", "le Luxembourg": "LUX", "les Pays-Bas": "NLD", "l'Autriche": "AUT", "la Bulgarie": "BGR",
+  "Chypre": "CYP", "la Croatie": "HRV", "le Danemark": "DNK", "l'Espagne": "ESP", "l'Estonie": "EST", "la Finlande": "FIN", "la Grèce": "GRC", "la Hongrie": "HUN",
+  "l'Irlande": "IRL", "la Lettonie": "LVA", "la Lituanie": "LTU", "Malte": "MLT", "la Pologne": "POL", "le Portugal": "PRT", "la Roumanie": "ROU", "la Slovaquie": "SVK",
+  "la Slovénie": "SVN", "la Suède": "SWE", "la Tchéquie": "CZE",
+};
+
+/** Les 27 pays sur la carte de l'Europe ; Chypre en entier, comme sur la carte de l'Union. Elle sert aussi au programme de 2020. */
+const CARTE_UE: ExerciceHGCM = {
+  sorte: "carte", id: "carte-ue", titre: "Les 27 pays de l'Union européenne, sur la carte",
+  rappel: "Six pays fondateurs, en 1957 : l'Allemagne, la Belgique, la France, l'Italie, le Luxembourg, les Pays-Bas. Aujourd'hui, l'Union compte 27 pays.",
+  consignes: [
+    "J'écris le nom des six pays fondateurs, numérotés.",
+    "Je colorie les pays fondateurs d'une couleur, les autres pays de l'Union européenne d'une autre, puis leurs cases dans la légende.",
+  ],
+  carte: {
+    fond: "europe",
+    colorier: [
+      { nom: "les six pays fondateurs (1957)", couleur: "#7ea7dc", formes: PAYS_UE.slice(0, 6).map(([p]) => CODES_UE[p]) },
+      { nom: "les 21 autres pays de l'Union européenne", couleur: "#f6d365", formes: [...PAYS_UE.slice(6).map(([p]) => CODES_UE[p]), "CYN"] },
+    ],
+    numeros: PAYS_UE.slice(0, 6).map(([nom]) => ({ quoi: CODES_UE[nom], nom })),
+    banque: true,
+  },
+};
+
 const UNION_EUROPEENNE: ThemeHGCM = {
   id: "union-europeenne-cm2", classe: "CM2", histoire: false, titre: "L'Union européenne",
   question: "Qu'est-ce que l'Union européenne ?",
@@ -1508,6 +1757,19 @@ const UNION_EUROPEENNE: ThemeHGCM = {
         ["la France", 0], ["l'Allemagne", 0], ["l'Italie", 0], ["l'Espagne", 0], ["la Pologne", 0], ["la Suède", 0], ["la Grèce", 0],
         ["la Suisse", 1], ["la Norvège", 1], ["le Royaume-Uni", 1], ["l'Islande", 1], ["la Serbie", 1], ["l'Ukraine", 1],
       ],
+    },
+    {
+      sorte: "carte", id: "carte-continent", titre: "L'Europe, un continent",
+      rappel: "L'Europe est limitée par l'océan Atlantique, l'océan Arctique, la mer Méditerranée, et à l'est, par convention, par les monts Oural et le Caucase.",
+      consignes: ["J'écris le nom des océans, de la mer et des montagnes numérotés : ils limitent l'Europe."],
+      carte: {
+        fond: "europe", continent: true,
+        numeros: [
+          { ou: [-17, 46], nom: "l'océan Atlantique" }, { ou: [38, 71], nom: "l'océan Arctique" }, { ou: [5, 38.5], nom: "la mer Méditerranée" },
+          { ou: [59.5, 60], nom: "les monts Oural" }, { ou: [44, 42.7], nom: "le Caucase" },
+        ],
+        banque: true,
+      },
     },
     {
       sorte: "document", id: "qu-est-ce-que-ue", titre: "Qu'est-ce que l'Union européenne ?",
@@ -1538,6 +1800,7 @@ const UNION_EUROPEENNE: ThemeHGCM = {
       lignes: Array.from({ length: 10 }, (_, i) => [String(i + 1), "", ""]),
       reponses: PAYS_UE.slice(0, 10).map(([p, c], i) => [String(i + 1), p, c]),
     },
+    CARTE_UE,
     {
       sorte: "tableau", id: "projet-europeen", titre: "L'Union européenne près de chez nous",
       consigne: "Je cherche un aménagement réalisé avec l'aide de l'Union européenne dans notre région. Je complète le tableau.",
@@ -1818,6 +2081,7 @@ const GUERRES_UE_2020: ThemeHGCM = {
         ["Un évènement marquant", "La bataille de Verdun, en 1916", "Le débarquement du 6 juin 1944"], ["Ce qu'elle laisse dans ma commune", "Le monument aux morts", "D'autres noms sur le monument, des plaques"]],
     },
     exo(DEPUIS_1945, "europe"),
+    CARTE_UE,
     {
       sorte: "document", id: "droits-europe", titre: "Des droits pour tous, une citoyenneté européenne",
       rappel: "Après 1945 : l'ONU, la Déclaration universelle des droits de l'homme (1948) ; les citoyens de l'Union européenne sont aussi citoyens européens.",
@@ -1883,6 +2147,42 @@ const SE_DEPLACER_2020: ThemeHGCM = {
         ["Pour quelles raisons voyage-t-on de ville en ville ?", "Le travail, le tourisme, les visites à la famille."],
       ],
     },
+    {
+      sorte: "carte", id: "carte-villes-france", titre: "Des villes repères en France",
+      rappel: "Six grandes villes françaises : Paris, Lyon, Marseille, Toulouse, Lille, Bordeaux.",
+      consignes: ["J'écris le nom des grandes villes numérotées.", "Je marque d'une croix le lieu où j'habite."],
+      carte: {
+        fond: "france",
+        numeros: [{ quoi: "paris", nom: "Paris" }, { quoi: "lyon", nom: "Lyon" }, { quoi: "marseille", nom: "Marseille" }, { quoi: "toulouse", nom: "Toulouse" },
+          { quoi: "lille", nom: "Lille" }, { quoi: "bordeaux", nom: "Bordeaux" }],
+        legendeNumeros: "une grande ville",
+        banque: true,
+      },
+    },
+    {
+      sorte: "carte", id: "carte-villes-europe", titre: "Des villes repères en Europe",
+      rappel: "Des capitales européennes : Paris, Londres, Bruxelles, Berlin, Madrid, Rome.",
+      consignes: ["J'écris le nom des capitales numérotées."],
+      carte: {
+        fond: "europe",
+        numeros: [{ quoi: "paris", nom: "Paris" }, { quoi: "londres", nom: "Londres" }, { quoi: "bruxelles", nom: "Bruxelles" }, { quoi: "berlin", nom: "Berlin" },
+          { quoi: "madrid", nom: "Madrid" }, { quoi: "rome", nom: "Rome" }],
+        legendeNumeros: "une capitale",
+        banque: true,
+      },
+    },
+    {
+      sorte: "carte", id: "carte-villes-monde", titre: "Des villes repères dans le monde",
+      rappel: "De grandes villes du monde : Paris, New York, Montréal, Dakar, Tokyo.",
+      consignes: ["J'écris le nom des grandes villes numérotées."],
+      carte: {
+        fond: "monde",
+        numeros: [{ quoi: "paris", nom: "Paris" }, { quoi: "new-york", nom: "New York" }, { quoi: "montreal", nom: "Montréal" }, { quoi: "dakar", nom: "Dakar" },
+          { quoi: "tokyo", nom: "Tokyo" }],
+        legendeNumeros: "une grande ville",
+        banque: true,
+      },
+    },
   ],
   evaluation: [
     ["Je cite deux raisons de se déplacer chaque jour, et deux raisons de voyager plus loin.", "Aller à l'école, au travail, faire les courses ; le tourisme, les visites à la famille, le travail."],
@@ -1903,6 +2203,7 @@ const INTERNET_2020: ThemeHGCM = {
   exercices: [
     exo(INTERNET, "usages"),
     exo(INTERNET, "fonctionnement"),
+    exo(INTERNET, "carte-cables"),
     {
       sorte: "document", id: "info-en-ligne", titre: "Qui écrit ce qu'on lit sur Internet ?",
       rappel: "Sur Internet, chacun peut écrire : on vérifie d'où vient une information, et on respecte le droit à l'image.",
