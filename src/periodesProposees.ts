@@ -10,7 +10,7 @@
 // simple au plus complexe ou du proche au lointain, autour des séquences que
 // les textes datent. L'enseignant change une période en glissant la séquence.
 
-import type { ClasseC2 } from "./feuillesDesSequences";
+import type { Classe } from "./feuillesDesSequences";
 
 export interface PeriodeProposee { periode: number; raison: string }
 
@@ -27,7 +27,7 @@ const ORAL = "les règles de l'échange à la rentrée ; puis écouter et adapte
 const COMPRENDRE = "la compréhension et les livres de la classe dès la rentrée ; puis les stratégies une à une — mots inconnus, reprises, "
   + "inférences —, avec une œuvre complète et les personnages des contes ; les genres et les types de textes en fin d'année.";
 
-export const PERIODES_PROPOSEES: Record<ClasseC2, Record<string, PeriodeProposee>> = {
+export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>> = {
   CP: {
     ...ligne("une grandeur par période, dans l'ordre du programme : comparer des longueurs à la rentrée, puis les mesurer à la règle ; "
       + "les masses ; l'heure en fin d'année. La monnaie garde la période 2 que lui donne le programme.",
@@ -122,7 +122,27 @@ export const PERIODES_PROPOSEES: Record<ClasseC2, Record<string, PeriodeProposee
       + "puis les transports dans le monde.",
     { "quartier-village-ce2": 1, "se-loger-ce2": 2, "travailler-ce2": 3, "population-france-ce2": 4, "transports-ce2": 5 }),
   },
+  CM1: {
+    ...ligne("après les nombres de cinq et six chiffres, que le programme fait aborder à partir de la période 3 : les comparer, les ranger, "
+      + "les placer sur la demi-droite.", { "comparer-nombres-cm1": 4 }),
+    ...ligne("avec les tables de multiplication revues en début d'année, avant les fractions qu'on compare et qu'on additionne.", { "multiples-cm1": 2 }),
+    ...ligne("après les fractions plus grandes que 1 de la période 1, les comparer et les additionner — le programme veut les fractions "
+      + "« tout au long de l'année » —, puis prendre une fraction d'une quantité, avec la division.",
+    { "comparer-fractions-cm1": 2, "fraction-quantite-cm1": 4 }),
+    ...ligne("après les fractions décimales de la période 2, l'écriture à virgule qui les code — « introduits sous la forme de fractions "
+      + "décimales puis exprimés avec une écriture à virgule », dit le programme — ; puis comparer, arrondir, ranger.",
+    { "nombres-decimaux-cm1": 3, "comparer-decimaux-cm1": 4 }),
+  },
+  CM2: {
+    ...ligne("après les millions, qui viennent en période 3 : les comparer, les ranger, les placer.", { "comparer-nombres-cm2": 4 }),
+    ...ligne("dès la rentrée, pour les fractions : le programme renforce diviseurs et multiples « en vue de leur utilisation lors de travaux "
+      + "sur les fractions ».", { "multiples-diviseurs-cm2": 1 }),
+    ...ligne("après les écritures et la comparaison des fractions de la période 1 : les additionner et les soustraire, la séquence du livret ; "
+      + "puis le produit d'un entier et d'une fraction.", { "operer-fractions-cm2": 2, "produit-fraction-cm2": 3 }),
+    ...ligne("après les écritures des décimaux jusqu'aux millièmes, rencontrés dès la période 1 : placer, comparer, arrondir.",
+      { "comparer-decimaux-cm2": 2 }),
+  },
 };
 
 /** La période que Maitrize propose à une séquence qu'aucun texte ne date, et pourquoi ; rien pour les autres. */
-export const periodeProposee = (demarcheId: string, classe: ClasseC2): PeriodeProposee | null => PERIODES_PROPOSEES[classe]?.[demarcheId] ?? null;
+export const periodeProposee = (demarcheId: string, classe: Classe): PeriodeProposee | null => PERIODES_PROPOSEES[classe]?.[demarcheId] ?? null;

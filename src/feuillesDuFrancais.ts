@@ -16,6 +16,7 @@
 //   fable.
 
 import type { ClasseC2, ContexteFeuilles, FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
+import { classeDuCycle2 } from "./classeDuCycle2";
 import { STYLE_FEUILLE } from "./cartesImprimables";
 import { REGLAGES_ETIQUETTES, STYLE_ETIQUETTES, htmlEtiquettes } from "./etiquettes";
 import { REGLAGES_FLUENCE, REGLAGES_SYLLABAIRE, STYLE_FLUENCE, grilleFluence, htmlFluence, htmlSyllabaire, nomDeLEtape, type ReglagesFluence, type ReglagesSyllabaire } from "./fluence";
@@ -117,7 +118,7 @@ function feuilleVoixHaute(seance: number, titre: string, r: Partial<ReglagesVoix
 }
 
 export function planDuFrancais(demarcheId: string, ctx: ContexteFeuilles): PlanDesFeuilles | null {
-  const { classe, periode } = ctx;
+  const classe = classeDuCycle2(ctx.classe), periode = ctx.periode;
   if (demarcheId === "cgp-deux-jours-cp") {
     const feuilles = [feuilleDuSyllabaire(0), feuilleDeFluence(3, classe, periode), feuilleDeFluence(9, classe, periode, { puissance4: true })];
     return {

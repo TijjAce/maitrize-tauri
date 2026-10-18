@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import cycle2 from "../src-tauri/referentiels/competences_cycle2.json";
+import cycle3 from "../src-tauri/referentiels/competences_cycle3.json";
 
 const enregistres = { sequences: [] as any[], seances: [] as any[], feuilles: [] as any[] };
 let compteur = 0;
@@ -37,7 +38,7 @@ import { DEMARCHES, demarcheDe } from "./demarches";
 import { DEMARCHES_CALCUL } from "./demarchesCalcul";
 import { DEMARCHES_HISTOIRE_GEO } from "./demarchesHistoireGeo";
 import { objectifParId } from "./faitsNumeriques";
-import { planDesFeuilles, type ClasseC2 } from "./feuillesDesSequences";
+import { planDesFeuilles, type Classe } from "./feuillesDesSequences";
 import { estLaSeanceDesMots } from "./motsDesProblemes";
 import { PERIODES_PROPOSEES, periodeProposee } from "./periodesProposees";
 import { DEMARCHE_SOUSTRACTION_POSEE, FEUILLES_SOUSTRACTION_POSEE, graineDeLaFeuille } from "./sequenceSoustractionPosee";
@@ -49,10 +50,12 @@ import {
 } from "./sequencesToutesFaites";
 
 const toutes = sequencesToutesFaites();
-const periodeDe = (id: string, c: ClasseC2) => periodeDeLaDemarche(id, c) ?? 3;
+const periodeDe = (id: string, c: Classe) => periodeDeLaDemarche(id, c) ?? 3;
 const REFERENTIELS: Referentiel[] = [{
   id: "cycle2", nom: "Cycle 2 — CP, CE1, CE2 (programmes 2026)", cycle: "Cycle 2", donnees: JSON.stringify(cycle2),
   estIntegre: true, dateAjout: "", actif: true,
+}, {
+  id: "cycle3", nom: cycle3.titre, cycle: "Cycle 3", donnees: JSON.stringify(cycle3), estIntegre: true, dateAjout: "", actif: true,
 }];
 const sequence = (cle: string) => toutes.find((s) => s.cle === cle)!;
 
@@ -342,6 +345,7 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     expect(FAMILLES[0].id).toBe("sequences");
     expect(FAMILLES[0].outils.map((o) => [o.id, o.nom, o.sequence, o.dossier])).toEqual([
       ["sequencesCP", "CP", true, true], ["sequencesCE1", "CE1", true, true], ["sequencesCE2", "CE2", true, true],
+      ["sequencesCM1", "CM1", true, true], ["sequencesCM2", "CM2", true, true],
     ]);
     for (const [onglet, classe] of Object.entries(DOSSIERS)) {
       expect((ONGLETS as readonly string[]).includes(onglet), onglet).toBe(true);
@@ -353,7 +357,7 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
   });
 
   it("ont leur onglet à part dans Fabriquer : le catalogue des supports ne les montre plus", () => {
-    expect(SEQUENCES_TOUTES_FAITES.map((o) => o.id)).toEqual(["sequencesCP", "sequencesCE1", "sequencesCE2", "vilainPetitCanard", "problemeDuJour", "soustractionPosee"]);
+    expect(SEQUENCES_TOUTES_FAITES.map((o) => o.id)).toEqual(["sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "vilainPetitCanard", "problemeDuJour", "soustractionPosee"]);
     const supports = FAMILLES_DE_SUPPORTS.flatMap((f) => f.outils);
     expect(supports.some((o) => o.sequence)).toBe(false);
     // La famille des dossiers n'a plus rien à montrer parmi les supports ; les autres gardent leurs ateliers.

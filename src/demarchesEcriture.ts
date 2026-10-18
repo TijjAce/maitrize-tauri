@@ -18,6 +18,7 @@
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 import type { ClasseC2, ContexteFeuilles, FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
+import { classeDuCycle2 } from "./classeDuCycle2";
 import { STYLE_FEUILLE } from "./cartesImprimables";
 import { REGLAGES_ECRIRE, STYLE_ECRIRE, htmlEcrire, type ReglagesEcrire } from "./ecrire";
 import { REGLAGES_PHRASES, STYLE_PHRASES, htmlPhrasesEnDesordre, phrasesEnDesordre } from "./phrasesEnDesordre";
@@ -261,7 +262,7 @@ export const estUneDemarcheDEcriture = (id: string) => id in PLANS;
 export function planDeLEcriture(demarcheId: string, ctx: ContexteFeuilles): PlanDesFeuilles | null {
   const fabrique = PLANS[demarcheId];
   if (!fabrique) return null;
-  const p = fabrique(ctx.classe);
+  const p = fabrique(classeDuCycle2(ctx.classe));
   const materiel = p.materiel.map((debut, s) => {
     const f = p.feuilles.filter((x) => x.seance === s).map((x) => `« ${x.titre} »`);
     return f.length ? `${debut} ; ${f.length > 1 ? "les feuilles" : "la feuille"} ${f.join(" et ")}.` : `${debut}.`;

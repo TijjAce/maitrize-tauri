@@ -10,7 +10,7 @@ import { toast } from "../components/Toaster";
 import { Empty, Field, Input, Modal, useAsync } from "../components/ui";
 import { useMemoire } from "../components/useMemoire";
 import { resumeDuCadre } from "../demarches";
-import type { ClasseC2 } from "../feuillesDesSequences";
+import type { Classe } from "../feuillesDesSequences";
 import { graineAuHasard } from "../hasard";
 import { useGraine } from "../modifierFeuille";
 import { avecLaSeanceDesMots, estLaSeanceDesMots } from "../motsDesProblemes";
@@ -53,7 +53,7 @@ const TYPE_SEQUENCE = "text/x-maitrize-sequence";
  */
 interface Infos { competence: CompetenceSelectionnee | null; periode: number | null; raison: string; proposee: boolean }
 
-export function SequencesToutesFaitesTab({ classe }: { classe: ClasseC2 }) {
+export function SequencesToutesFaitesTab({ classe }: { classe: Classe }) {
   const toutes = React.useMemo(() => sequencesToutesFaites().filter((s) => s.classe === classe), [classe]);
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   const { data: reglages } = useAsync(() => api.settingsAll(), []);
@@ -299,7 +299,7 @@ function DetailDeLaSequence({ s, infos, periode, onPeriode, classeDuPlan, compet
 
 /** Avant de créer : le titre, la compétence visée — celle du programme —, et les aides à la tâche. */
 function CreerLaSequence({ tout, classe, periode, graine, competence, competenceCherchee, onClose }: {
-  tout: PlanToutFait; classe: ClasseC2; periode: number; graine: number;
+  tout: PlanToutFait; classe: Classe; periode: number; graine: number;
   competence: CompetenceSelectionnee | null; competenceCherchee: boolean; onClose: () => void;
 }) {
   const navigate = useNavigate();

@@ -281,7 +281,7 @@ export default function Jeux() {
         </div>
         {rangement === "sequences" ? (
           [
-            { cle: "sequences:ecole", icone: "📁", titre: "Du CP au CE2", aide: "Un dossier par classe, en tableau période par période ; et la soustraction posée du CE1.", outils: SEQUENCES_DE_L_ECOLE },
+            { cle: "sequences:ecole", icone: "📁", titre: "Du CP au CM2", aide: "Un dossier par classe, en tableau période par période ; et la soustraction posée du CE1.", outils: SEQUENCES_DE_L_ECOLE },
             { cle: "sequences:maternelle", icone: "🧸", titre: "Maternelle", aide: "Des séquences de la PS à la GS, avec leurs pictogrammes.", outils: SEQUENCES_DE_MATERNELLE },
           ].filter((g) => g.outils.length > 0).map((g) => (
             <section key={g.cle} className="famille-catalogue">

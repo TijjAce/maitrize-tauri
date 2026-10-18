@@ -8,7 +8,7 @@
 // calculs mêmes du livret quand il les donne, tirés au hasard dans ce que la
 // séance travaille sinon — des nombres où la procédure du jour est la bonne.
 
-import type { ClasseC2, ContexteFeuilles, FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
+import type { Classe, ClasseC2, ContexteFeuilles, FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
 import { STYLE_FEUILLE, feuille } from "./cartesImprimables";
 import { objectifParId, type Calcul } from "./faitsNumeriques";
 import { hasard } from "./hasard";
@@ -23,7 +23,7 @@ const plat = (s: string | null | undefined) => (s ?? "").toLowerCase().normalize
 // ── Les objectifs de l'atelier « Calcul mental » qui servent une compétence ──
 
 interface ObjectifsDUneCompetence {
-  classe: ClasseC2;
+  classe: Classe;
   motif: RegExp;
   /** Les objectifs, dans l'ordre où la séquence les travaille ; selon la période quand le programme le dit. */
   objectifs: string[] | ((periode: number) => string[]);
@@ -70,6 +70,37 @@ const OBJECTIFS_DES_COMPETENCES: ObjectifsDUneCompetence[] = [
   { classe: "CE2", motif: /par 4 ou par 8/, objectifs: ["ce2-fois-4-8"] },
   { classe: "CE2", motif: /inferieur a 10 par un nombre entier de dizaines/, objectifs: ["ce2-fois-dizaines"] },
   { classe: "CE2", motif: /compris entre 11 et 99/, objectifs: ["ce2-produit-11-99"] },
+  // Le cours moyen (programme de 2025) : les objectifs de l'atelier suivent ses compétences une à une ; les tables, toutes.
+  { classe: "CM1", motif: /faits numeriques usuels/, objectifs: ["cm1-table-multiplication", "cm1-tables-envers", "cm1-doubles-moities", "cm1-multiples-25"],
+    tables: () => TOUTES_LES_TABLES },
+  { classe: "CM1", motif: /relations entre des fractions usuelles/, objectifs: ["cm1-fractions"] },
+  { classe: "CM1", motif: /ecriture decimale de fractions usuelles/, objectifs: ["cm1-ecritures-decimales"] },
+  { classe: "CM1", motif: /d.unites, de dizaines, de centaines, de dixiemes ou de centiemes a un nombre decimal/, objectifs: ["cm1-rang-par-rang"] },
+  { classe: "CM1", motif: /multiplier un nombre entier par 10, 100 ou 1 000/, objectifs: ["cm1-fois-10-100-1000"] },
+  { classe: "CM1", motif: /multiplier un nombre decimal par 10\b/, objectifs: ["cm1-decimal-fois-10"] },
+  { classe: "CM1", motif: /diviser un nombre decimal par 10\b/, objectifs: ["cm1-decimal-divise-10"] },
+  { classe: "CM1", motif: /ajouter ou soustraire 8, 9, 18/, objectifs: ["cm1-presque-ronds"] },
+  { classe: "CM1", motif: /inferieur a 10 par un nombre entier de dizaines ou de centaines/, objectifs: ["cm1-fois-dizaines-centaines"] },
+  { classe: "CM1", motif: /par 4 ou par 8/, objectifs: ["cm1-fois-4-8"] },
+  { classe: "CM1", motif: /multiplier un nombre entier par 5\b/, objectifs: ["cm1-fois-5"] },
+  { classe: "CM1", motif: /distributivite/, objectifs: ["cm1-distributivite"] },
+  { classe: "CM2", motif: /faits numeriques usuels/, objectifs: ["cm2-table-multiplication", "cm2-tables-envers"], tables: () => TOUTES_LES_TABLES },
+  { classe: "CM2", motif: /moitie des nombres impairs/, objectifs: ["cm2-moities-impairs"] },
+  { classe: "CM2", motif: /relations entre des fractions usuelles/, objectifs: ["cm2-fractions"] },
+  { classe: "CM2", motif: /ecriture decimale de fractions usuelles/, objectifs: ["cm2-ecritures-decimales"] },
+  { classe: "CM2", motif: /entier a un nombre decimal lorsqu.il n.y a pas de retenue/, objectifs: ["cm2-entier-decimal"] },
+  { classe: "CM2", motif: /entier a un nombre decimal lorsqu.il y a une retenue/, objectifs: ["cm2-entier-decimal-retenue"] },
+  { classe: "CM2", motif: /multiplier un nombre decimal par 10, 100 ou 1 000/, objectifs: ["cm2-decimal-fois"] },
+  { classe: "CM2", motif: /diviser un nombre decimal par 10, 100 ou 1 000/, objectifs: ["cm2-decimal-divise"] },
+  { classe: "CM2", motif: /ajouter deux nombres decimaux inferieurs a 10/, objectifs: ["cm2-somme-decimaux"] },
+  { classe: "CM2", motif: /ajouter ou soustraire 8, 9, 18/, objectifs: ["cm2-presque-ronds"] },
+  { classe: "CM2", motif: /de dizaines, de centaines ou de milliers par/, objectifs: ["cm2-produits-ronds"] },
+  { classe: "CM2", motif: /distributivite/, objectifs: ["cm2-distributivite"] },
+  { classe: "CM2", motif: /double d.un nombre decimal/, objectifs: ["cm2-double-decimal"] },
+  { classe: "CM2", motif: /moitie d.un nombre decimal/, objectifs: ["cm2-moitie-decimal"] },
+  { classe: "CM2", motif: /diviser un nombre entier par 4 ou par 8/, objectifs: ["cm2-diviser-4-8"] },
+  { classe: "CM2", motif: /multiplier un nombre decimal par 50/, objectifs: ["cm2-decimal-fois-50"] },
+  { classe: "CM2", motif: /multiplier un nombre decimal par 5\b/, objectifs: ["cm2-decimal-fois-5"] },
 ];
 
 /** Ce que l'atelier « Calcul mental » travaille pour une compétence : ses objectifs et ses tables ; rien quand on ne sait pas. */
@@ -485,7 +516,7 @@ function objectifsDeLaFeuille(f: FeuilleDeSequence, objectifs: string[]): string
   return objectifs;
 }
 
-function planDeLaMartiniere(classe: ClasseC2, objectifs: string[], tables: number[]): PlanDesFeuilles | null {
+function planDeLaMartiniere(classe: Classe, objectifs: string[], tables: number[]): PlanDesFeuilles | null {
   const premier = objectifParId(objectifs[0]);
   if (!premier || premier.niveau !== classe) return null;
   const feuilles: FeuilleAFabriquer[] = FEUILLES_LA_MARTINIERE.map((f) => {
