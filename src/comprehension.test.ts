@@ -1,23 +1,41 @@
 import { describe, it, expect } from "vitest";
-import { EXERCICES_COMPREHENSION, REGLAGES_COMPREHENSION, htmlComprehension, questionsChoisies, souligner, texteDeLExercice } from "./comprehension";
-import { TEXTES, ligneDe, lignesNumerotees, type Classe } from "./textesDeComprehension";
+import { REGLAGES_COMPREHENSION, exercicesDeLaClasse, htmlComprehension, questionsChoisies, souligner, texteDeLExercice } from "./comprehension";
+import { TEXTES, ligneDe, lignesNumerotees, paragraphesDe, type Classe } from "./textesDeComprehension";
 
 const sansAccents = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 describe("les textes à comprendre", () => {
-  it("ont la longueur que le programme donne à chaque classe : une dizaine, une quinzaine, une vingtaine de lignes", () => {
-    const bornes: Record<Classe, [number, number]> = { CP: [9, 12], CE1: [13, 17], CE2: [16, 22] };
+  it("ont la longueur que le programme donne à chaque classe : une dizaine, une quinzaine, une vingtaine de lignes ; une page au cours moyen", () => {
+    // Au cours moyen, « un texte d'une page » au CM1, plus long au CM2 ; un poème ou une fable, moins.
+    const bornes: Record<Classe, [number, number]> = { CP: [9, 12], CE1: [13, 17], CE2: [16, 22], CM1: [22, 34], CM2: [24, 38] };
     for (const t of TEXTES) {
       const n = t.lignes.filter((l) => l.trim()).length;
-      expect(n, t.id).toBeGreaterThanOrEqual(bornes[t.classe][0]);
-      expect(n, t.id).toBeLessThanOrEqual(bornes[t.classe][1]);
+      const [min, max] = t.type === "poétique" && (t.classe === "CM1" || t.classe === "CM2") ? [12, 24] : bornes[t.classe];
+      expect(n, t.id).toBeGreaterThanOrEqual(min);
+      expect(n, t.id).toBeLessThanOrEqual(max);
     }
     // Chaque classe a ses récits, ses documentaires, ses règles ou recettes ; le CE2, un poème et une scène de théâtre.
     for (const classe of ["CP", "CE1", "CE2"] as Classe[]) for (const type of ["narratif", "informatif", "prescriptif"]) {
       expect(TEXTES.some((t) => t.classe === classe && t.type === type), `${classe} ${type}`).toBe(true);
     }
-    expect(TEXTES.filter((t) => t.type === "poétique" || t.type === "théâtral").every((t) => t.classe === "CE2")).toBe(true);
+    // Le CM1 distingue un extrait de théâtre, un poème, un texte narratif ; le CM2 nomme les genres.
+    for (const classe of ["CM1", "CM2"] as Classe[]) for (const type of ["narratif", "informatif", "poétique", "théâtral"]) {
+      expect(TEXTES.some((t) => t.classe === classe && t.type === type), `${classe} ${type}`).toBe(true);
+    }
+    expect(TEXTES.filter((t) => t.type === "poétique" || t.type === "théâtral").every((t) => ["CE2", "CM1", "CM2"].includes(t.classe))).toBe(true);
     expect(new Set(TEXTES.map((t) => t.id)).size).toBe(TEXTES.length);
+  });
+
+  it("disent au cours moyen leur source, leur genre, qui raconte, et un titre par paragraphe", () => {
+    for (const t of TEXTES.filter((x) => x.classe === "CM1" || x.classe === "CM2")) {
+      expect(t.source, t.id).toBeTruthy();
+      expect(t.genre, t.id).toBeTruthy();
+      if (t.type === "narratif" || t.type === "théâtral") {
+        expect(t.narration, t.id).toBeTruthy();
+        expect(t.personnages?.length, t.id).toBeGreaterThan(0);
+      }
+      if (t.titresDesParagraphes) expect(t.titresDesParagraphes.length, t.id).toBe(paragraphesDe(t).length);
+    }
   });
 
   it("renvoient à des lignes qui disent bien ce qu'on y cherche", () => {
@@ -73,7 +91,7 @@ describe("l'atelier « Comprendre un texte »", () => {
   });
 
   it("imprime chaque exercice, pour chaque classe et plusieurs tirages, avec son corrigé", () => {
-    for (const e of EXERCICES_COMPREHENSION) for (const classe of ["CP", "CE1", "CE2"] as Classe[]) for (const graine of [1, 2, 3, 4]) {
+    for (const classe of ["CP", "CE1", "CE2", "CM1", "CM2"] as Classe[]) for (const e of exercicesDeLaClasse(classe)) for (const graine of [1, 2, 3, 4]) {
       const html = htmlComprehension({ ...REGLAGES_COMPREHENSION, exercice: e.id, classe }, graine);
       expect(html, `${e.id} ${classe}`).toMatch(/^<div class="feuille cx">/);
       expect(html, `${e.id} ${classe}`).toContain('class="page corrige"');
