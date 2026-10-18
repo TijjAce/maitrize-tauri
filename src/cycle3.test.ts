@@ -646,6 +646,68 @@ describe("l'histoire et la géographie du cours moyen", () => {
     }
   });
 
+  it("dessinent leurs cartes sur les fonds de Natural Earth : chaque numéro, chaque pays, chaque lieu y est", async () => {
+    const { THEMES_HG_CM } = await import("./themesHistoireGeoCM");
+    const { FONDS_DE_CARTE, LIEUX_DES_CARTES, cadreDeLaCarte, carteEnPaysage, formesDuGroupe, placeDuNumero, projeter, svgDeLaCarte } = await import("./cartesHistoireGeo");
+    const { enPaysage, htmlHistoireGeoCM } = await import("./histoireGeoCoursMoyen");
+    const { monde, europe, france } = FONDS_DE_CARTE;
+    // Les fonds : le planisphère, l'Europe avec la Russie, la France — ses 18 régions, ses six fleuves, ses six massifs, ses cinq encarts.
+    expect(monde.formes.length).toBeGreaterThan(170);
+    expect(europe.formes.map((f) => f.id)).toEqual(expect.arrayContaining(["RUS", "FRA", "DEU", "CYP", "MLT"]));
+    expect(france.formes.length).toBe(18);
+    expect(france.lignes?.map((l) => l.id).sort()).toEqual(["garonne", "loire", "maroni", "rhin", "rhone", "seine"]);
+    expect(france.zones?.length).toBe(6);
+    expect(france.cadres?.map((c) => c.id)).toEqual(["GLP", "MTQ", "GUF", "REU", "MYT"]);
+    // La projection refaite au dessin est celle du générateur : le point (0, 0) au milieu du planisphère, Paris dans l'Île-de-France, Cayenne dans son encart.
+    const [x0, y0] = projeter(monde, [0, 0]);
+    expect([x0, y0]).toEqual([expect.closeTo(monde.largeur / 2, 1), expect.closeTo(monde.hauteur / 2, 0)]);
+    const idf = france.formes.find((f) => f.id === "IDF")!.centre!;
+    const [px, py] = projeter(france, [2.3522, 48.8566]);
+    expect(Math.hypot(px - idf[0], py - idf[1])).toBeLessThan(35);
+    const guyane = france.cadres!.find((c) => c.id === "GUF")!;
+    const [cx, cy] = projeter(france, [-52.335, 4.9224], "GUF");
+    expect(cx > guyane.x && cx < guyane.x + guyane.l && cy > guyane.y && cy < guyane.y + guyane.h).toBe(true);
+    let cartes = 0;
+    for (const t of THEMES_HG_CM) {
+      for (const e of t.exercices) {
+        if (e.sorte !== "carte") continue;
+        cartes++;
+        const quoi = `${t.id} — ${e.id}`;
+        const c = e.carte, fond = FONDS_DE_CARTE[c.fond];
+        for (const consigne of e.consignes) expect(consigne, quoi).toMatch(/^(Je |J')/);
+        // Chaque numéro trouve sa place, dans la partie montrée ; chaque nom est attendu une fois.
+        const [vx, vy, vl, vh] = cadreDeLaCarte(c);
+        for (const n of c.numeros ?? []) {
+          const place = placeDuNumero(fond, n);
+          expect(place, `${quoi} — ${n.nom}`).not.toBeNull();
+          expect(place!.x >= vx && place!.x <= vx + vl && place!.y >= vy && place!.y <= vy + vh, `${quoi} — ${n.nom}`).toBe(true);
+        }
+        const noms = (c.numeros ?? []).map((n) => n.nom);
+        expect(new Set(noms).size, quoi).toBe(noms.length);
+        // Chaque pays à colorier est sur le fond ; chaque lieu marqué ou relié existe.
+        const ids = new Set(fond.formes.map((f) => f.id));
+        for (const g of c.colorier ?? []) for (const id of formesDuGroupe(fond, g.formes)) expect(ids.has(id), `${quoi} — ${id}`).toBe(true);
+        const lieux = [...(c.points?.lieux ?? []), ...(c.reperes ?? []), ...(c.traits ?? []).flatMap((g) => g.liste.flatMap((x) => x.par.filter((p): p is string => typeof p === "string")))];
+        for (const l of lieux) expect(LIEUX_DES_CARTES[l], `${quoi} — ${l}`).toBeDefined();
+        // Le dessin, pour l'élève et pour le corrigé : sans valeur perdue ; le corrigé colorie, trace, et donne les noms.
+        for (const corrige of [false, true]) expect(svgDeLaCarte(c, corrige, 182, 140), quoi).not.toMatch(/NaN|undefined|Infinity/);
+        const html = htmlHistoireGeoCM({ theme: t.id, exercice: e.id }, 3);
+        const [eleve, corrigé] = html.split('class="page corrige"');
+        expect(corrigé, quoi).toBeDefined();
+        for (const nom of noms) expect(corrigé, `${quoi} — ${nom}`).toContain(nom.replace(/'/g, "&#39;"));
+        for (const g of c.colorier ?? []) {
+          expect(eleve, quoi).not.toContain(`fill="${g.couleur}"`);
+          expect(corrigé, quoi).toContain(`fill="${g.couleur}"`);
+        }
+        if (c.banque) for (const nom of noms) expect(eleve, `${quoi} — ${nom}`).toContain(`<span>${nom.replace(/'/g, "&#39;")}</span>`);
+        expect(html, quoi).toContain("Natural Earth");
+        // Le planisphère entier se met en paysage.
+        expect(enPaysage({ theme: t.id, exercice: e.id }), quoi).toBe(carteEnPaysage(c));
+      }
+    }
+    expect(cartes).toBe(17);
+  });
+
   it("proposent au CM2 de cette année les séquences du programme de 2020, d'après les fiches Éduscol", async () => {
     const { DEMARCHES_HISTOIRE_GEO_CM_2020, HISTOIRE_CM } = await import("./cycle3HistoireGeo");
     const { domaineDeLaDemarche, repereDeLaDemarche, sequencesToutesFaites, tableauDesSequences, periodeDeLaDemarche } = await import("./sequencesToutesFaites");
