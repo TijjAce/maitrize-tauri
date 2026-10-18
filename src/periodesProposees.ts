@@ -164,6 +164,9 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
     ...ligne("les règles de l'échange à la rentrée ; l'écoute de textes et de documents ensuite ; les exposés et la récitation au milieu de l'année, "
       + "quand les élèves savent prendre des notes et chercher dans les documents.",
     { "echanger-cm1": 1, "ecouter-cm1": 2, "dire-cm1": 3 }),
+    ...ligne("le mot inconnu, le dictionnaire et l'orthographe des mots dès la rentrée, pour toute l'année ; les relations entre les mots ensuite ; "
+      + "le réemploi au milieu de l'année, quand les corpus des disciplines se sont étoffés.",
+    { "enrichir-vocabulaire-cm1": 1, "orthographe-mots-cm1": 1, "relations-mots-cm1": 2, "reemployer-cm1": 3 }),
     ...ligne("la phrase, ses types et ses formes, puis le verbe et son sujet dès la rentrée ; les compléments ensuite ; les classes de mots "
       + "et le groupe nominal au milieu de l'année, avant la chaîne d'accords ; l'accord du sujet et du verbe avec celui du participe "
       + "passé, une fois le passé composé étudié. La conjugaison suit l'année : le présent, l'imparfait et le futur d'abord, le passé "
@@ -203,6 +206,9 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
     ...ligne("les règles de l'échange à la rentrée ; l'écoute de textes et de documents ensuite ; les exposés et la récitation au milieu de l'année, "
       + "quand les élèves savent prendre des notes et chercher dans les documents.",
     { "echanger-cm2": 1, "ecouter-cm2": 2, "dire-cm2": 3 }),
+    ...ligne("le mot inconnu, le dictionnaire et l'orthographe des mots dès la rentrée, pour toute l'année ; les relations entre les mots ensuite ; "
+      + "le réemploi au milieu de l'année, quand les corpus des disciplines se sont étoffés.",
+    { "enrichir-vocabulaire-cm2": 1, "orthographe-mots-cm2": 1, "relations-mots-cm2": 2, "reemployer-cm2": 3 }),
     ...ligne("consolider à la rentrée la phrase et le sujet, même inversé ; les compléments et l'attribut ensuite, puis le groupe nominal "
       + "et les accords qu'ils commandent ; les conjonctions de subordination et la phrase complexe en fin d'année, avant la "
       + "proposition de sixième. Le passé simple tôt, pour les récits lus ; les temps composés et l'accord du participe passé ensuite ; "
