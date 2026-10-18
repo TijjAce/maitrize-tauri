@@ -444,3 +444,42 @@ describe("la lecture du cours moyen", () => {
     expect(htmlDocumentsCM({ classe: "CM1", exercice: "composite" }, 1)).not.toContain("dc-marque\">A");
   });
 });
+
+describe("l'écriture du cours moyen", () => {
+  const ECRITURE = FRANCAIS.filter((c) => /^écriture/i.test(c.cible.sousDomaineTitre ?? ""));
+
+  it("donne à chaque compétence une séquence de sa classe, avec ses feuilles et une période", async () => {
+    const { DEMARCHES_ECRITURE_CM } = await import("./cycle3Ecriture");
+    const { domaineDeLaDemarche } = await import("./sequencesToutesFaites");
+    const { periodeProposee } = await import("./periodesProposees");
+    expect(ECRITURE.length).toBe(24);
+    const vues = new Set<string>();
+    for (const { cible, classe } of ECRITURE) {
+      const d = demarcheSuggeree(cible, REF);
+      expect(DEMARCHES_ECRITURE_CM.map((x) => x.id), `${classe} — ${cible.competenceTitre} : ${d.id}`).toContain(d.id);
+      expect(d.id).toMatch(new RegExp(`-${classe.toLowerCase()}$`));
+      if (vues.has(d.id)) continue;
+      vues.add(d.id);
+      const plan = planDesFeuilles(d.id, { classe, periode: 1, competence: cible.competenceTitre ?? "" })!;
+      expect(plan.materiel.length, d.id).toBe(d.seances.length);
+      for (const f of plan.feuilles) for (const graine of [1, 2, 3]) {
+        const { html } = f.fabriquer(graine);
+        expect(html, `${d.id} — ${f.titre}`).not.toMatch(/NaN|undefined|Infinity|\[object|cycle 2/);
+      }
+      expect(["geste", "ecrire"], d.id).toContain(domaineDeLaDemarche(d)?.id);
+      expect(periodeProposee(d.id, classe)?.raison, d.id).toMatch(/^Suggestion de Maitrize/);
+    }
+    expect([...vues].sort()).toEqual(DEMARCHES_ECRITURE_CM.map((x) => x.id).sort());
+  });
+
+  it("imprime chaque feuille d'écriture, et copie une quinzaine de lignes au CM1, une vingtaine au CM2", async () => {
+    const { htmlEcritureCM, EXERCICES_ECRITURE_CM, REGLAGES_ECRITURE_CM } = await import("./ecritureCoursMoyen");
+    for (const e of EXERCICES_ECRITURE_CM) for (const classe of ["CM1", "CM2"] as const) for (const graine of [1, 2]) {
+      const html = htmlEcritureCM({ ...REGLAGES_ECRITURE_CM, classe, exercice: e.id }, graine);
+      expect(html, `${e.id} ${classe}`).not.toMatch(/NaN|undefined|null/);
+    }
+    const lignesDuModele = (html: string) => (html.split('class="ew-modele"')[1].split("</div><div class=\"ew-source\"")[0].match(/<div>/g) ?? []).length;
+    expect(lignesDuModele(htmlEcritureCM({ ...REGLAGES_ECRITURE_CM, classe: "CM1", exercice: "copie" }, 1))).toBe(16);
+    expect(lignesDuModele(htmlEcritureCM({ ...REGLAGES_ECRITURE_CM, classe: "CM2", exercice: "copie" }, 1))).toBe(18);
+  });
+});

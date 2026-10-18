@@ -158,6 +158,9 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
       + "aussi, pour en lire sept dans l'année ; la lecture à voix haute préparée ensuite, quand la mesure de la fluidité a donné ses repères ; "
       + "les documents au milieu de l'année, avec la géographie et les sciences.",
     { "fluence-cm1": 1, "comprendre-cm1": 1, "oeuvre-cm1": 1, "voix-haute-cm1": 2, "documents-cm1": 3 }),
+    ...ligne("la copie, les écrits de travail et l'écriture quotidienne dès la rentrée — le programme veut qu'on écrive tous les jours — ; "
+      + "raconter et expliquer ensuite ; le brouillon, la cohérence et la révision quand les premiers écrits longs sont là.",
+    { "copie-cm1": 1, "ecrits-travail-cm1": 1, "ecrire-chaque-jour-cm1": 1, "raconter-expliquer-cm1": 2, "reviser-cm1": 3 }),
     ...ligne("la phrase, ses types et ses formes, puis le verbe et son sujet dès la rentrée ; les compléments ensuite ; les classes de mots "
       + "et le groupe nominal au milieu de l'année, avant la chaîne d'accords ; l'accord du sujet et du verbe avec celui du participe "
       + "passé, une fois le passé composé étudié. La conjugaison suit l'année : le présent, l'imparfait et le futur d'abord, le passé "
@@ -191,6 +194,9 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
       + "aussi, pour en lire sept dans l'année ; la mise en voix ensuite ; les documents composites et rapprochés au milieu de l'année, avec "
       + "l'histoire, la géographie et les sciences.",
     { "fluence-cm2": 1, "comprendre-cm2": 1, "oeuvre-cm2": 1, "voix-haute-cm2": 2, "documents-cm2": 3 }),
+    ...ligne("la copie, les écrits de travail et l'écriture quotidienne dès la rentrée — le programme veut qu'on écrive tous les jours — ; "
+      + "décrire et dialoguer ensuite ; le brouillon, la cohérence et la révision quand les récits s'allongent.",
+    { "copie-cm2": 1, "ecrits-travail-cm2": 1, "ecrire-chaque-jour-cm2": 1, "decrire-dialoguer-cm2": 2, "reviser-cm2": 3 }),
     ...ligne("consolider à la rentrée la phrase et le sujet, même inversé ; les compléments et l'attribut ensuite, puis le groupe nominal "
       + "et les accords qu'ils commandent ; les conjonctions de subordination et la phrase complexe en fin d'année, avant la "
       + "proposition de sixième. Le passé simple tôt, pour les récits lus ; les temps composés et l'accord du participe passé ensuite ; "
