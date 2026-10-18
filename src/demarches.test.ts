@@ -272,9 +272,8 @@ describe("le calcul mental au procédé La Martinière", () => {
 
 describe("la numération du cycle 2, compétence par compétence", () => {
   // Les 38 compétences « Les nombres entiers » du référentiel « Cycle 2 — CP, CE1, CE2 (programmes 2026) », et la démarche
-  // que chacune appelle à sa classe. « Plus tard » : la demi-droite graduée et les ordinaux attendent leur démarche.
+  // que chacune appelle à sa classe. La demi-droite graduée et les ordinaux, d'abord laissés pour plus tard, ont les leurs (octobre 2026).
   const REF = "Cycle 2 — CP, CE1, CE2 (programmes 2026)";
-  const PLUS_TARD = "eduscol-quatre-temps";
   const COMPETENCES: [string, string, string][] = [
     ["CP", "Comparer et dénombrer des collections en les organisant.", "numeration-dizaine-cp"],
     ["CP", "Construire des collections de cardinal donné.", "numeration-dizaine-cp"],
@@ -283,12 +282,12 @@ describe("la numération du cycle 2, compétence par compétence", () => {
     ["CP", "Connaitre la valeur des chiffres en fonction de leur position (unités, dizaines).", "nombres-livret-cp-59"],
     ["CP", "Comparer, encadrer, intercaler des nombres entiers en utilisant les symboles =, < et >.", "comparer-nombres-cp"],
     ["CP", "Ordonner des nombres dans l’ordre croissant ou décroissant.", "comparer-nombres-cp"],
-    ["CP", "Savoir placer des nombres sur une demi-droite graduée de un en un.", PLUS_TARD],
-    ["CP", "Connaitre les nombres ordinaux jusqu’à « vingtième ».", PLUS_TARD],
-    ["CP", "Comprendre et utiliser les nombres ordinaux.", PLUS_TARD],
-    ["CP", "Repérer un rang ou une position dans une file orientée ou dans une liste d’objets ou de personnes.", PLUS_TARD],
-    ["CP", "Faire le lien entre le rang d’un objet dans une liste et le nombre d’éléments qui le précèdent.", PLUS_TARD],
-    ["CP", "Utiliser les nombres ordinaux dans le cadre de l’étude de suites de symboles, de formes, de lettres ou de nombres.", PLUS_TARD],
+    ["CP", "Savoir placer des nombres sur une demi-droite graduée de un en un.", "demi-droite-cp"],
+    ["CP", "Connaitre les nombres ordinaux jusqu’à « vingtième ».", "ordinaux-cp"],
+    ["CP", "Comprendre et utiliser les nombres ordinaux.", "ordinaux-cp"],
+    ["CP", "Repérer un rang ou une position dans une file orientée ou dans une liste d’objets ou de personnes.", "ordinaux-cp"],
+    ["CP", "Faire le lien entre le rang d’un objet dans une liste et le nombre d’éléments qui le précèdent.", "ordinaux-cp"],
+    ["CP", "Utiliser les nombres ordinaux dans le cadre de l’étude de suites de symboles, de formes, de lettres ou de nombres.", "ordinaux-cp"],
     ["CE1", "Dénombrer des collections en les organisant.", "groupements-ce1"],
     ["CE1", "Construire des collections de cardinal donné.", "groupements-ce1"],
     ["CE1", "Connaitre et utiliser la relation entre unités et dizaines, entre dizaines et centaines, entre unités et centaines.", "groupements-ce1"],
@@ -298,12 +297,12 @@ describe("la numération du cycle 2, compétence par compétence", () => {
     ["CE1", "Comparer, encadrer, intercaler des nombres entiers en utilisant les symboles (=, <, >).", "comparer-nombres-ce1"],
     ["CE1", "Ordonner des nombres dans l’ordre croissant ou décroissant.", "comparer-nombres-ce1"],
     ["CE1", "Comprendre et savoir utiliser les expressions « égal à », « supérieur à », « inférieur à », « compris entre … et … ».", "comparer-nombres-ce1"],
-    ["CE1", "Savoir placer des nombres sur une demi-droite graduée.", PLUS_TARD],
-    ["CE1", "Connaitre les nombres ordinaux jusqu’à cent.", PLUS_TARD],
-    ["CE1", "Comprendre et utiliser les nombres ordinaux.", PLUS_TARD],
-    ["CE1", "Repérer un rang ou une position dans une file orientée ou dans une liste d’objets ou de personnes.", PLUS_TARD],
-    ["CE1", "Faire le lien entre le rang d’un objet dans une liste et le nombre d’éléments qui le précèdent.", PLUS_TARD],
-    ["CE1", "Utiliser les nombres ordinaux dans le cadre de suite de symboles, de lettres ou de nombres.", PLUS_TARD],
+    ["CE1", "Savoir placer des nombres sur une demi-droite graduée.", "demi-droite-ce1"],
+    ["CE1", "Connaitre les nombres ordinaux jusqu’à cent.", "ordinaux-ce1"],
+    ["CE1", "Comprendre et utiliser les nombres ordinaux.", "ordinaux-ce1"],
+    ["CE1", "Repérer un rang ou une position dans une file orientée ou dans une liste d’objets ou de personnes.", "ordinaux-ce1"],
+    ["CE1", "Faire le lien entre le rang d’un objet dans une liste et le nombre d’éléments qui le précèdent.", "ordinaux-ce1"],
+    ["CE1", "Utiliser les nombres ordinaux dans le cadre de suite de symboles, de lettres ou de nombres.", "ordinaux-ce1"],
     ["CE2", "Dénombrer des collections.", "groupements-ce2"],
     ["CE2", "Construire des collections de cardinal donné.", "groupements-ce2"],
     ["CE2", "Connaitre et utiliser les relations entre les unités de numération.", "groupements-ce2"],
@@ -313,7 +312,7 @@ describe("la numération du cycle 2, compétence par compétence", () => {
     ["CE2", "Comparer, encadrer, intercaler des nombres entiers en utilisant les symboles (=, <, >).", "comparer-nombres-ce2"],
     ["CE2", "Ordonner des nombres dans l’ordre croissant ou décroissant.", "comparer-nombres-ce2"],
     ["CE2", "Comprendre et savoir utiliser les expressions « égal à », « supérieur à », « inférieur à », « compris entre … et … ».", "comparer-nombres-ce2"],
-    ["CE2", "Savoir placer des nombres sur une demi-droite graduée.", PLUS_TARD],
+    ["CE2", "Savoir placer des nombres sur une demi-droite graduée.", "demi-droite-ce2"],
   ];
   const cible = (niveau: string, competenceTitre: string) =>
     ({ domaineTitre: "Mathématiques", sousDomaineTitre: "Nombres, calcul et résolution de problèmes", competenceTitre, niveau });

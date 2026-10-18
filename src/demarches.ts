@@ -65,6 +65,7 @@ import { DEMARCHES_OPERATIONS, demarcheDesOperations } from "./demarchesOperatio
 import { DEMARCHES_GRANDEURS, demarcheDesGrandeurs } from "./demarchesGrandeurs";
 import { DEMARCHES_GEOMETRIE, demarcheDeLaGeometrie } from "./demarchesGeometrie";
 import { DEMARCHES_DONNEES, demarcheDesDonnees } from "./demarchesDonnees";
+import { DEMARCHES_REPERAGE, demarcheDuReperage } from "./demarchesReperage";
 import { DEMARCHES_LECTURE, demarcheDeLaLecture } from "./demarchesLecture";
 import { DEMARCHES_ORTHOGRAPHE, demarcheDeLOrthographe } from "./demarchesOrthographe";
 import { DEMARCHES_ECRITURE, demarcheDeLEcriture } from "./demarchesEcriture";
@@ -2167,7 +2168,7 @@ export const DEMARCHES: Demarche[] = [
   INVESTIGATION, ENQUETE_HISTOIRE_GEO, EMC_DEBAT,
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
   MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, ...DEMARCHES_VILAIN_PETIT_CANARD, COLLECTIONS, DEMARCHE_PROBLEME_DU_JOUR, CHRONOLOGIE, COMPARER_NOMBRES, NUMERATION_DIZAINE,
-  ...DEMARCHES_NUMERATION, ...DEMARCHES_CALCUL, ...DEMARCHES_PROBLEMES, ...DEMARCHES_PROBLEMES_PROLONGES, ...DEMARCHES_FRACTIONS_PROLONGEES, ...DEMARCHES_OPERATIONS, ...DEMARCHES_GRANDEURS, ...DEMARCHES_GEOMETRIE, ...DEMARCHES_DONNEES, ...DEMARCHES_FRANCAIS, ...DEMARCHES_LECTURE, ...DEMARCHES_ORTHOGRAPHE, ...DEMARCHES_ECRITURE, ...DEMARCHES_LANGUE, ...DEMARCHES_ORAL, ...DEMARCHES_HISTOIRE_GEO,
+  ...DEMARCHES_NUMERATION, ...DEMARCHES_CALCUL, ...DEMARCHES_PROBLEMES, ...DEMARCHES_PROBLEMES_PROLONGES, ...DEMARCHES_FRACTIONS_PROLONGEES, ...DEMARCHES_OPERATIONS, ...DEMARCHES_GRANDEURS, ...DEMARCHES_GEOMETRIE, ...DEMARCHES_DONNEES, ...DEMARCHES_REPERAGE, ...DEMARCHES_FRANCAIS, ...DEMARCHES_LECTURE, ...DEMARCHES_ORTHOGRAPHE, ...DEMARCHES_ECRITURE, ...DEMARCHES_LANGUE, ...DEMARCHES_ORAL, ...DEMARCHES_HISTOIRE_GEO,
   ...DEMARCHES_MATHS_CM, ...DEMARCHES_FRANCAIS_CM, ...DEMARCHES_HISTOIRE_GEO_CM, ...DEMARCHES_HISTOIRE_GEO_CM_2020,
 ];
 
@@ -2297,6 +2298,9 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string, niveau = 
     // livrets d'accompagnement du CM1 et du CM2 (voir cycle3Maths.ts).
     const coursMoyen = /^(cm1|cm2)$/.test(niveau) ? demarcheDesMathsCM(niveau, cg, comp, periode) : null;
     if (coursMoyen) return coursMoyen;
+    // La demi-droite graduée et les nombres ordinaux : des séquences bâties sur le programme (voir demarchesReperage.ts).
+    const reperage = /^(cp|ce1|ce2)$/.test(niveau) ? demarcheDuReperage(niveau, comp) : null;
+    if (reperage) return reperage;
     // Les grandeurs et mesures : des séquences bâties sur le programme et les guides, classe par classe (voir demarchesGrandeurs.ts).
     const grandeurs = /^(cp|ce1|ce2)$/.test(niveau) && /grandeurs/.test(sd) ? demarcheDesGrandeurs(niveau, cg, comp) : null;
     if (grandeurs) return grandeurs;

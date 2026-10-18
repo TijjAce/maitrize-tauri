@@ -22,6 +22,7 @@ import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 import { DEMARCHES, demarcheDe, demarchesPour, type Demarche, type PhaseCadre, type SeanceCadre } from "./demarches";
 import { DEMARCHES_CALCUL } from "./demarchesCalcul";
 import { DEMARCHES_DONNEES } from "./demarchesDonnees";
+import { DEMARCHES_REPERAGE } from "./demarchesReperage";
 import { DEMARCHES_ECRITURE } from "./demarchesEcriture";
 import { DEMARCHES_FRANCAIS } from "./demarchesFrancais";
 import { DEMARCHES_GEOMETRIE } from "./demarchesGeometrie";
@@ -118,7 +119,7 @@ export function domaineDeLaDemarche(d: Pick<Demarche, "id" | "famille">): Domain
     // Ses problèmes, son algèbre et sa proportionnalité, que le programme du cycle 3 range à part.
     if (dans(DEMARCHES_PROBLEMES_CM)) return domaine(/^proportionnalite/.test(d.id) ? "proportionnalite" : /^(algebre|egalites|suites)/.test(d.id) ? "algebre" : "problemes");
     if (/fraction/.test(d.id)) return domaine("fractions");
-    if (d.id === "numeration-dizaine-cp" || d.id === "comparer-nombres-cp" || dans(DEMARCHES_NUMERATION)) return domaine("nombres");
+    if (d.id === "numeration-dizaine-cp" || d.id === "comparer-nombres-cp" || dans(DEMARCHES_NUMERATION) || dans(DEMARCHES_REPERAGE)) return domaine("nombres");
     if (dans(DEMARCHES_CALCUL) || dans(DEMARCHES_OPERATIONS) || dans(DEMARCHES_CALCUL_CM)) return domaine("calcul");
     if (dans(DEMARCHES_PROBLEMES) || dans(DEMARCHES_PROBLEMES_PROLONGES)) return domaine("problemes");
     if (dans(DEMARCHES_FRACTIONS_PROLONGEES)) return domaine("fractions");

@@ -24,6 +24,7 @@ import { estUneDemarcheDesOperations, planDesOperations } from "./demarchesOpera
 import { estUneDemarcheDesGrandeurs, planDesGrandeurs } from "./demarchesGrandeurs";
 import { estUneDemarcheDeGeometrie, planDeLaGeometrie } from "./demarchesGeometrie";
 import { estUneDemarcheDeDonnees, planDesDonnees } from "./demarchesDonnees";
+import { estUneDemarcheDuReperage, planDuReperage } from "./demarchesReperage";
 import { estUneDemarcheDeFractions, planDesFractions } from "./fractionsDesLivrets";
 import { estUneDemarcheDeFrancais, planDuFrancais } from "./feuillesDuFrancais";
 import { estUneDemarcheDeLecture, planDeLaLecture } from "./demarchesLecture";
@@ -179,6 +180,8 @@ export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): Plan
   if (estUneDemarcheDesGrandeurs(demarcheId)) return planDesGrandeurs(demarcheId);
   if (estUneDemarcheDeGeometrie(demarcheId)) return planDeLaGeometrie(demarcheId);
   if (estUneDemarcheDeDonnees(demarcheId)) return planDesDonnees(demarcheId);
+  // La demi-droite graduée et les nombres ordinaux (voir demarchesReperage.ts).
+  if (estUneDemarcheDuReperage(demarcheId)) return planDuReperage(demarcheId);
   if (estUneDemarcheDeFractions(demarcheId)) return planDesFractions(demarcheId);
   // Le français des livrets : la grille de fluence, le syllabaire, les étiquettes du vocabulaire (voir feuillesDuFrancais.ts).
   if (estUneDemarcheDeFrancais(demarcheId)) return planDuFrancais(demarcheId, ctx);
