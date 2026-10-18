@@ -715,7 +715,7 @@ const AGE_INDUSTRIEL: ThemeHGCM = {
       { nom: "XXe siècle", debut: 1901, fin: 1910, couleur: BLEU },
     ],
     reperes: [
-      { date: 1814, quand: "Début du XIXe siècle", quoi: "Stephenson met au point la locomotive" },
+      { date: 1814, quand: "Début du XIXe s.", quoi: "Stephenson met au point la locomotive" },
       { date: 1837, quand: "1837", quoi: "La première ligne de train pour voyageurs : Paris – Saint-Germain" },
       { date: 1841, quand: "1841", quoi: "La première loi qui limite le travail des enfants" },
       { date: 1864, quand: "1864", quoi: "Le droit de grève" },

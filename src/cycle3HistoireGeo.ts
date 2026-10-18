@@ -15,7 +15,6 @@
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 import type { FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
 import { STYLE_FEUILLE } from "./cartesImprimables";
-import { REGLAGES_ETIQUETTES, STYLE_ETIQUETTES, htmlEtiquettes } from "./etiquettes";
 import { htmlHistoireGeoCM, styleHistoireGeoCM, type ReglagesHistoireGeoCM } from "./histoireGeoCoursMoyen";
 import { THEMES_HG_CM, themeHGCM } from "./themesHistoireGeoCM";
 
@@ -764,22 +763,15 @@ export function demarcheHistoireGeoCM(classe: string, sd: string, cg: string): s
 
 // ── Les feuilles ──────────────────────────────────────────────────────────
 
-/** Une feuille du thème : la frise, un exercice, les mots du thème, l'évaluation. L'histoire va avec les frises, la géographie avec les paysages. */
+/**
+ * Une feuille du thème : la frise, un exercice, les mots du thème, ses étiquettes, l'évaluation. L'histoire va avec
+ * les frises, la géographie avec les paysages, les étiquettes avec l'atelier « Étiquettes » : chacune prend ses réglages
+ * — le mode dys, ce qui s'imprime.
+ */
 const feuilleHG = (seance: number, titre: string, theme: string, exercice: string, aCompleter?: boolean) => (): FeuilleAFabriquer => {
   const r: ReglagesHistoireGeoCM = { theme, exercice, ...(aCompleter === undefined ? {} : { aCompleter }) };
-  return {
-    seance, atelier: HISTOIRE_CM.has(theme) ? "frise" : "paysage", titre,
-    fabriquer: (g) => ({ html: htmlHistoireGeoCM(r, g), style: STYLE_FEUILLE + styleHistoireGeoCM(r) }),
-  };
-};
-
-/** Des étiquettes, grandes pour le tableau et petites pour les enveloppes : les mots-clés du thème, ou les lieux à localiser. */
-const etiquettesHG = (seance: number, titre: string, mots: string[]) => (): FeuilleAFabriquer => {
-  const r = { ...REGLAGES_ETIQUETTES, pictos: false, corolle: false, titreCorolle: titre };
-  return {
-    seance, atelier: "etiquettes", titre,
-    fabriquer: () => ({ html: htmlEtiquettes(mots.map((mot) => ({ id: null, mot })), {}, r), style: STYLE_FEUILLE + STYLE_ETIQUETTES }),
-  };
+  const atelier = exercice.startsWith("etiquettes") ? "etiquettes" : HISTOIRE_CM.has(theme) ? "frise" : "paysage";
+  return { seance, atelier, titre, fabriquer: (g) => ({ html: htmlHistoireGeoCM(r, g), style: STYLE_FEUILLE + styleHistoireGeoCM(r) }) };
 };
 
 /**
@@ -794,10 +786,10 @@ function feuillesDuTheme(id: string, ou: Record<string, number>, frise: number |
     liste.push(feuilleHG(frise, `${t.frise.titre} — à compléter`, id, "frise", true));
     liste.push(feuilleHG(frise, `${t.frise.titre} — pour le mur`, id, "frise", false));
   }
-  liste.push(etiquettesHG(0, `Les mots-clés — ${t.titre}`, t.motsCles.map(([m]) => m)));
+  liste.push(feuilleHG(0, `Les mots-clés — ${t.titre}`, id, "etiquettes-mots"));
   liste.push(feuilleHG(0, "Les mots du thème", id, "lexique"));
   for (const e of t.exercices) liste.push(feuilleHG(ou[e.id] ?? 0, e.titre, id, e.id));
-  if (lieux !== null && t.lieux) liste.push(etiquettesHG(lieux, `Les lieux à localiser — ${t.titre}`, t.lieux));
+  if (lieux !== null && t.lieux) liste.push(feuilleHG(lieux, `Les lieux à localiser — ${t.titre}`, id, "etiquettes-lieux"));
   liste.push(feuilleHG(derniere, `Évaluation — ${t.titre}`, id, "evaluation"));
   return liste;
 }

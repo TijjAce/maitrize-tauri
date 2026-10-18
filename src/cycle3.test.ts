@@ -633,6 +633,16 @@ describe("l'histoire et la géographie du cours moyen", () => {
         if (e.sorte === "tableau") for (const l of [...e.lignes, ...(e.reponses ?? [])]) expect(l.length, `${t.id} — ${e.id}`).toBe(e.entetes.length);
       }
       expect(htmlHistoireGeoCM({ theme: t.id, exercice: "evaluation" }, 2), t.id).toContain('class="hg-consigne"');
+      // Les étiquettes : chaque mot-clé, chaque lieu, sur une étiquette à sa taille, avec la source du cycle 3 et non celle des livrets du CP.
+      const echappe = (m: string) => m.replace(/'/g, "&#39;");
+      const etiquettes = htmlHistoireGeoCM({ theme: t.id, exercice: "etiquettes-mots" }, 4);
+      for (const [mot] of t.motsCles) expect(etiquettes, `${t.id} — ${mot}`).toContain(`<span class="hge hge-grande">${echappe(mot)}</span>`);
+      expect(etiquettes, t.id).toContain("cycle 3");
+      expect(etiquettes, t.id).not.toMatch(/Livrets? Français CP/);
+      if (t.lieux) {
+        const lieux = htmlHistoireGeoCM({ theme: t.id, exercice: "etiquettes-lieux" }, 4);
+        for (const lieu of t.lieux) expect(lieux, `${t.id} — ${lieu}`).toContain(`<span class="hge hge-grande">${echappe(lieu)}</span>`);
+      }
     }
   });
 });
