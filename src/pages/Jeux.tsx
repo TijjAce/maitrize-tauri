@@ -29,6 +29,9 @@ import {
 import { CursiveTab, EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
 import { AbaqueTab, BillesTab, SuiteNombresTab } from "./AteliersNumerationCP";
 import { DemiDroiteTab, OrdinauxTab } from "./AteliersReperage";
+import { GenerateurPersoTab } from "./AtelierGenerateurPerso";
+import { enregistrerGenerateur, useGenerateursPerso } from "../components/GenerateursPerso";
+import type { GenerateurPerso } from "../generateursPerso";
 import { DonneesTab, MesuresTab, MonnaieTab } from "./AteliersMesures";
 import { ComprehensionTab, LecteurTab, VoixHauteTab } from "./AteliersLecture";
 import { EcrireTab, GrammaireTab, OralTab, OrthographeTab } from "./AteliersFrancais";
@@ -168,6 +171,27 @@ function CartesParMoment({ outils, usages, carte }: { outils: Outil[]; usages: R
   );
 }
 
+/**
+ * Les générateurs de l'enseignant, par moment de la séquence comme les autres
+ * ateliers ; un clic les ouvre, le clic droit les range dans un autre moment.
+ */
+function CartesDesGenerateurs({ generateurs, onOuvrir }: { generateurs: GenerateurPerso[]; onOuvrir: (g: GenerateurPerso) => void }) {
+  return (
+    <>
+      {USAGES.map((u) => ({ u, liste: generateurs.filter((g) => g.moment === u.id) })).filter((m) => m.liste.length).map(({ u, liste }) => (
+        <React.Fragment key={u.id}>
+          <div className="ateliers-moment" title={`${u.quand} — ${u.aide}`}>{u.ico} {u.nom}</div>
+          {liste.map((g) => (
+            <CarteAtelier key={g.id} o={{ id: "perso", nom: g.nom, icone: g.icone, quoi: g.quoi || g.demande, cycles: g.classe || undefined }} usage={g.moment}
+              onOuvrir={() => onOuvrir(g)}
+              onRanger={(m) => { if (m !== g.moment) void enregistrerGenerateur({ ...g, moment: m }); }} />
+          ))}
+        </React.Fragment>
+      ))}
+    </>
+  );
+}
+
 export default function Jeux() {
   // Vide : on est devant les ateliers, et non dans l'un d'eux.
   const [onglet, setOngletBrut] = React.useState<Onglet | "">(() => {
@@ -239,7 +263,16 @@ export default function Jeux() {
     !etat ? <div /> : !etat.installee ? <Banque progression={progression} onTelecharger={telecharger} /> : contenu;
 
   const outil = onglet ? outilDe(onglet) : undefined;
+  // Les générateurs de l'enseignant : leur famille les montre, et un clic ouvre l'atelier sur l'un d'eux.
+  const generateurs = useGenerateursPerso();
+  const ouvrirGenerateur = (g: GenerateurPerso | null) => {
+    try { localStorage.setItem("fabriquer:perso", JSON.stringify({ id: g?.id ?? "" })); } catch { /* stockage indisponible */ }
+    setOnglet("perso");
+  };
   const trouves = chercherAteliers(FAMILLES_DE_SUPPORTS, recherche, usages);
+  // Les générateurs de l'enseignant répondent aussi à la recherche : par leur titre, leur phrase, ce qu'il avait demandé.
+  const plie = (t: string) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const generateursTrouves = recherche.trim() ? generateurs.filter((g) => plie(`${g.nom} ${g.quoi} ${g.demande}`).includes(plie(recherche.trim()))) : [];
 
   // ── Devant les ateliers ──
   if (!onglet) {
@@ -294,9 +327,10 @@ export default function Jeux() {
         ) : rangement === "competence" ? (
           <CatalogueParCompetence recherche={recherche} onOuvrir={setOnglet} />
         ) : recherche.trim() ? (
-          trouves.length ? (
-            <CartesParMoment outils={trouves} usages={usages} carte={carteRangeable} />
-          ) : (
+          trouves.length || generateursTrouves.length ? (<>
+            {trouves.length > 0 && <CartesParMoment outils={trouves} usages={usages} carte={carteRangeable} />}
+            {generateursTrouves.length > 0 && <div className="ateliers" style={{ marginTop: 12 }}><CartesDesGenerateurs generateurs={generateursTrouves} onOuvrir={ouvrirGenerateur} /></div>}
+          </>) : (
             <Empty icone="🔍" titre="Aucun atelier" sous="Essayez « loto », « problèmes », « sons », « rituel »…" />
           )
         ) : FAMILLES_DE_SUPPORTS.map((f) => {
@@ -305,8 +339,13 @@ export default function Jeux() {
           return (
             <section key={f.id} className="famille-catalogue">
               <PliDuCatalogue ouvert={!plis.includes(`famille:${f.id}`)} onBasculer={(o) => plier(`famille:${f.id}`, !o)}
-                icone={iconeEtNom(f.libelle)[0]} titre={iconeEtNom(f.libelle)[1]} aide={f.aide} nombre={f.outils.length}>
-                {parties ? parties.map((p) => (
+                icone={iconeEtNom(f.libelle)[0]} titre={iconeEtNom(f.libelle)[1]} aide={f.aide} nombre={f.outils.length + (f.id === "perso" ? generateurs.length : 0)}>
+                {f.id === "perso" ? (
+                  <div className="ateliers">
+                    {f.outils.map((o) => <CarteAtelier key={o.id} o={o} onOuvrir={() => ouvrirGenerateur(null)} />)}
+                    <CartesDesGenerateurs generateurs={generateurs} onOuvrir={ouvrirGenerateur} />
+                  </div>
+                ) : parties ? parties.map((p) => (
                   <SousPliDuCatalogue key={p.id} ouvert={!plis.includes(`famille:${f.id}:${p.id}`)} onBasculer={(o) => plier(`famille:${f.id}:${p.id}`, !o)}
                     titre={p.nom} nombre={p.outils.length}>
                     <CartesParMoment outils={p.outils} usages={usages} carte={carteRangeable} />
@@ -354,6 +393,7 @@ export default function Jeux() {
         : onglet === "suiteNombres" ? <SuiteNombresTab />
         : onglet === "demiDroite" ? <DemiDroiteTab />
         : onglet === "ordinaux" ? <OrdinauxTab />
+        : onglet === "perso" ? <GenerateurPersoTab banque={Boolean(etat?.installee)} />
         : onglet === "comparer" ? <ComparerTab />
         : onglet === "calcul" ? <CartesCalculTab />
         : onglet === "arbre" ? <ArbreCalculTab />
