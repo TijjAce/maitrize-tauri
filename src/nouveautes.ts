@@ -18,6 +18,22 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.32",
+    titre: "Le CM1 et le CM2 au complet, les séquences toutes faites dans leur onglet, et vos générateurs faits avec l'IA",
+    points: [
+      { quoi: "Le cours moyen au complet : chaque compétence du CM1 et du CM2 — mathématiques, français, histoire-géographie — a sa séquence, avec ses feuilles et leur corrigé. Le CM2 suit encore cette année le programme d'histoire-géographie de 2020 : ses six thèmes y sont aussi.", ou: "Plan de travail › Nouvelle séquence · Fabriquer › Séquences toutes faites" },
+      { quoi: "En histoire-géographie du CM : des frises à l'échelle, des documents, et des cartes à compléter sur trois fonds — le monde, l'Europe, la France —, dont celles des deux guerres.", ou: "Fabriquer › Séquences toutes faites › CM1, CM2" },
+      { quoi: "Les séquences toutes faites ont leur onglet : un dossier par classe, du CP au CM2, en tableau — une ligne par domaine, une colonne par période. Une séquence se glisse d'une période à l'autre. « Suggestion Maitrize » marque celles qu'aucun texte ne date ; pour les autres, le « ? » cite le programme, le livret ou le guide.", ou: "Fabriquer › 📚 Séquences toutes faites" },
+      { quoi: "En créant une séquence, on choisit son déroulement parmi des cartes : tous ceux de la compétence, chacun avec sa période.", ou: "Plan de travail › Nouvelle séquence" },
+      { quoi: "Fabriquer se range par domaine, comme les programmes — en mathématiques : les nombres, le calcul, les problèmes, les grandeurs et mesures, l'espace et la géométrie, les données —, et dans chaque domaine par moment de la séquence. Un clic droit change le moment d'un atelier.", ou: "Fabriquer › Par domaine" },
+      { quoi: "Mes générateurs : décrivez une feuille en quelques phrases, l'IA de Mistral en fait un générateur — relier, trier, compter, coller le mot sous l'image, remettre dans l'ordre, cocher la bonne image… —, que vous retouchez : les mots, les pictos, vos photos, la place des images. Chaque feuille est tirée au sort, avec son corrigé. Les prénoms des élèves ne partent pas chez Mistral.", ou: "Fabriquer › ✨ Mes générateurs" },
+      { quoi: "De nouveaux générateurs pour les nombres : billes et calots, l'abaque, la suite des nombres, la demi-droite graduée, les nombres ordinaux. Au cycle 2, la demi-droite graduée et les nombres ordinaux ont leurs séquences ; au CP, celle des nombres de 10 à 20 ; au CE1, la soustraction posée, d'après Éduscol.", ou: "Fabriquer › Mathématiques › Les nombres" },
+      { quoi: "Tableaux de langage : une case peut ouvrir un autre tableau. Le classeur à pages liées s'imprime d'un coup, et s'exporte au format ouvert .obz des tableaux de communication (LibreAAC, Cboard, AsTeRICS Grid).", ou: "Communication › Tableaux de langage" },
+      { quoi: "Et aussi : un repère orthonormé pour reproduire une figure, en différenciation ; les accents dans les mots mêlés ; l'abaque triangulaire et le boulier dans le matériel de la classe ; les pages des manuels en bande de miniatures, ← → d'une page à l'autre ; le stockage S3 qui ne se règle plus qu'à un endroit.", ou: "Fabriquer · Réglages › Données & synchro" },
+      { quoi: "Corrigé : la feuille « Ordonner et intercaler » écrivait « 2,0 » ou « 14,00 » pour des nombres entiers.", ou: "Fabriquer › Comparer les nombres" },
+    ],
+  },
+  {
     version: "1.6.31",
     titre: "« En retard » propose vos ateliers en photo et la séance qui vient, jusqu'aux tablettes",
     points: [
