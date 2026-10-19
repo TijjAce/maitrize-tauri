@@ -2,15 +2,16 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import {
-  api, ProgrammationFinale, EdtTypique, Sequence, Ami, Eleve, anneeScolaireActuelle, MATIERES, NIVEAUX_SCOLAIRES,
+  api, ProgrammationFinale, Sequence, Ami, Eleve, anneeScolaireActuelle, MATIERES, NIVEAUX_SCOLAIRES,
   HEURES_PROGRAMME, couleurHex, couleurPourMatiere, getMatiereOverrides, matiereDuDomaine, newId, telechargerTexte,
 } from "../api";
-import { Empty, Input, Select, Modal, ColorPicker, useAsync, useSegmentNav, useHistorique, useOngletDemande } from "../components/ui";
+import { Empty, Input, Select, Modal, ColorPicker, useAsync, useSegmentNav, useOngletDemande } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { Aide } from "../components/Aide";
 import { chargerVacances, periodesDeLAnnee, type PeriodeDeClasse } from "../vacances";
 import { isoJour } from "../dates";
+import { useCollectionParEcart } from "../ecritureParEcart";
 import {
   avecCase, casesDeLaColonne, cleCase, copieDesColonnes, datesDeLaSemaine, deplacerColonne, enJson, lireEtat, memeEtat,
   niveauxAffiches, nombreDeSemaines, progressionDe, remettreColonne, sansColonne, semainesDeLaPeriode, sourcesDeColonnes,
@@ -184,9 +185,6 @@ interface AnneeProps { annee: string; setAnnee: (a: string) => void }
 interface Cible { annee: string; niveau: string; periode: number }
 const cleCible = (c: Cible) => `${c.annee}|${c.niveau}|${c.periode}`;
 
-/** Les écritures d'une progression : ce que la base a déjà, ce qui reste à envoyer. */
-interface Ecrivain { envoye: EtatProg; aEnvoyer: EtatProg | null; actif: boolean }
-
 function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
   const { data, reload } = useAsync(() => api.progressionsAnnuelleList(), []);
   const liste = React.useMemo(() => data ?? [], [data]);
@@ -228,72 +226,13 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
   const periodeCal = periodesCal.find((p) => p.numero === periode);
   const semainesCal = periodeCal ? semainesDeLaPeriode(periodeCal) : [];
 
-  // Colonnes + cases en un seul bloc, avec annuler/rétablir (⌘Z / Ctrl+Z, ⌘⇧Z / Ctrl+Y).
-  const ecrivains = React.useRef(new Map<string, Ecrivain>());
-  const affichee = React.useRef("");
-  const { present: etat, reset: afficher, commit } = useHistorique<EtatProg>({ colonnes: [], cellules: {} }, (suivant) => envoyer(cibleRef.current, suivant));
-  const etatRef = React.useRef(etat); etatRef.current = etat;
-  const cibleRef = React.useRef(cible); cibleRef.current = cible;
-  const dataRef = React.useRef(liste); dataRef.current = liste;
-
-  const ecrivain = (c: Cible): Ecrivain => {
-    const k = cleCible(c);
-    let w = ecrivains.current.get(k);
-    if (!w) {
-      w = { envoye: lireEtat(progressionDe(dataRef.current, c.annee, c.niveau, c.periode)), aEnvoyer: null, actif: false };
-      ecrivains.current.set(k, w);
-    }
-    return w;
-  };
-  const occupe = (w?: Ecrivain) => !!w && (w.actif || w.aEnvoyer !== null);
-
-  /** Envoie la dernière version, une écriture à la fois : les versions intermédiaires se fondent dans la suivante. */
-  const vider = async (c: Cible, w: Ecrivain) => {
-    w.actif = true;
-    try {
-      while (w.aEnvoyer) {
-        const version = w.aEnvoyer;
-        if (memeEtat(version, w.envoye)) { w.aEnvoyer = null; break; }
-        await api.progressionAnnuelleEcrire(c.annee, c.niveau, c.periode, enJson(w.envoye), enJson(version));
-        w.envoye = version;
-        if (w.aEnvoyer === version) w.aEnvoyer = null;
-      }
-    } catch (err) {
-      // Ce qui n'est pas parti reste à envoyer : la prochaine saisie le reprend.
-      toast(`Progression non enregistrée : ${String(err)}`, { icone: "⚠️" });
-    } finally {
-      w.actif = false;
-    }
-    if (!occupe(w)) reload();
-  };
-  function envoyer(c: Cible, suivant: EtatProg) {
-    const w = ecrivain(c);
-    w.aEnvoyer = suivant;
-    if (!w.actif) void vider(c, w);
-  }
-  /** Modifie une progression, affichée ou non (l'annulation d'une suppression peut arriver après un changement de période). */
-  const modifier = (c: Cible, f: (e: EtatProg) => EtatProg) => {
-    if (cleCible(c) === cleCible(cibleRef.current)) { commit(f(etatRef.current)); return; }
-    const w = ecrivain(c);
-    envoyer(c, f(w.aEnvoyer ?? w.envoye));
-  };
-
-  // Afficher la progression choisie, puis ce qui arrive d'ailleurs — jamais pendant que nos écritures partent.
-  React.useEffect(() => {
-    if (!data) return;
-    const w = ecrivain(cible);
-    if (affichee.current !== cle) {
-      affichee.current = cle;
-      afficher(occupe(w) ? (w.aEnvoyer ?? w.envoye) : lireEtat(prog));
-      if (!occupe(w)) w.envoye = lireEtat(prog);
-      return;
-    }
-    if (occupe(w)) return;
-    const recu = lireEtat(prog);
-    w.envoye = recu;
-    if (!memeEtat(recu, etatRef.current)) afficher(recu);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, cle]);
+  // Colonnes + cases en un seul bloc, avec annuler/rétablir (⌘Z / Ctrl+Z, ⌘⇧Z / Ctrl+Y), écrites par écart.
+  const lireCle = (k: string): Cible => { const [a, n, p] = k.split("|"); return { annee: a, niveau: n, periode: Number(p) }; };
+  const { present: etat, commit, modifier } = useCollectionParEcart<EtatProg>({
+    cle, lecture: data, vide: { colonnes: [], cellules: {} }, relire: reload, pareil: memeEtat, echec: "Progression non enregistrée",
+    enBase: (k) => { const c = lireCle(k); return lireEtat(progressionDe(liste, c.annee, c.niveau, c.periode)); },
+    ecrire: (k, avant, apres) => { const c = lireCle(k); return api.progressionAnnuelleEcrire(c.annee, c.niveau, c.periode, enJson(avant), enJson(apres)); },
+  });
 
   const { colonnes, cellules } = etat;
   const nb = nombreDeSemaines(semainesCal.length, cellules);
@@ -317,7 +256,7 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
     commit(sansColonne(etat, c.id));
     setEditCol(null);
     toastAnnulable(`Colonne « ${c.titre || "sans titre"} » supprimée${n ? `, avec ${n} case${n > 1 ? "s" : ""}` : ""}.`,
-      () => modifier(ici, (e) => remettreColonne(e, c, place, cases)));
+      () => modifier(cleCible(ici), (e) => remettreColonne(e, c, place, cases)));
   };
   const menuCol = (e: React.MouseEvent, c: Colonne) => {
     const i = colonnes.findIndex((x) => x.id === c.id);
@@ -522,6 +461,12 @@ function ColonneForm({ colonne, nouvelle, sources, teinte, onClose, onValider, o
   );
 }
 
+/** Une liste rangée en JSON ; rien d'illisible ne fait tomber l'écran. */
+function lireListe<T>(json: string | null | undefined): T[] {
+  try { const v = JSON.parse(json || "[]"); return Array.isArray(v) ? v as T[] : []; } catch { return []; }
+}
+const lireLignes = (p?: ProgrammationFinale) => lireListe<Ligne>(p?.lignesJson);
+
 /** Le mode de programmation choisi sur ce poste : classe, ou par élève. */
 const CLE_MODE_PROG = "programmationMode";
 
@@ -538,9 +483,6 @@ function Programmation({ annee, setAnnee }: AnneeProps) {
   const nav = useNavigate();
   const { data, reload } = useAsync(() => api.programmationsFinaleList(), []);
   const { data: sequences } = useAsync(() => api.sequencesList(), []);
-  // La ligne « ime » vit à côté de la grille de classe : la prendre ici
-  // ferait lire une programmation par élève comme un tableau de lignes.
-  const prog = data?.find((p) => p.annee === annee && !p.estImportee && p.niveau !== "ime");
   const [lien, setLien] = React.useState<{ ligneId: string; col: string } | null>(null);
   const [partagerOuvert, setPartagerOuvert] = React.useState(false);
   // Programmer par classe ou par élève : le choix de l'enseignant, que la
@@ -561,13 +503,15 @@ function Programmation({ annee, setAnnee }: AnneeProps) {
   };
   const fileRefProg = React.useRef<HTMLInputElement>(null);
 
-  // État de la grille avec annuler/rétablir (⌘Z / Ctrl+Z, ⌘⇧Z / Ctrl+Y).
-  const { present: lignes, reset: chargerLignes, commit: persister } = useHistorique<Ligne[]>([], (next) => {
-    const p: ProgrammationFinale = prog ? { ...prog, lignesJson: JSON.stringify(next) }
-      : { id: newId(), annee, lignesJson: JSON.stringify(next), niveau: "", enseignant: "", estImportee: false };
-    api.programmationFinaleSave(p).then(() => { if (!prog) reload(); });
+  // État de la grille avec annuler/rétablir (⌘Z / Ctrl+Z, ⌘⇧Z / Ctrl+Y), écrit par écart :
+  // une ligne ajoutée sur un autre ordinateur reste quand on en modifie une ici.
+  // La ligne « ime » vit à côté de la grille de classe : la prendre ici
+  // ferait lire une programmation par élève comme un tableau de lignes.
+  const { present: lignes, commit: persister } = useCollectionParEcart<Ligne[]>({
+    cle: annee, lecture: data, vide: [], relire: reload, echec: "Programmation non enregistrée",
+    enBase: (k) => lireLignes(data?.find((p) => p.annee === k && !p.estImportee && p.niveau !== "ime")),
+    ecrire: (k, avant, apres) => api.programmationFinaleEcrire(k, false, JSON.stringify(avant), JSON.stringify(apres)),
   });
-  React.useEffect(() => { try { chargerLignes(prog ? JSON.parse(prog.lignesJson) : []); } catch { chargerLignes([]); } }, [prog?.id]);
 
   const nouvelle = (estDomaine: boolean): Ligne => ({ id: newId(), estDomaine,
     label: estDomaine ? "Nouveau domaine" : "Nouvelle activité", couleur: estDomaine ? "blue" : undefined,
@@ -1003,7 +947,6 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
   // nature et, s'il y a lieu, les élèves présents. L'EDT de classe et
   // l'organisation IME n'en font plus qu'un (voir `fusionner_emplois_du_temps`,
   // côté Rust).
-  const edt = data?.find((e) => e.annee === annee);
   const [niveau, setNiveau] = React.useState("");
   const [edit, setEdit] = React.useState<Slot | null>(null);
   const [deplacer, setDeplacer] = React.useState(false);
@@ -1012,12 +955,13 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
   const colsRef = React.useRef<HTMLDivElement>(null);
   const majDrag = (d: EdtDrag | null) => { dragRef.current = d; setDrag(d); };
 
-  // État des créneaux avec annuler/rétablir (⌘Z / Ctrl+Z, ⌘⇧Z / Ctrl+Y).
-  const { present: slots, reset: chargerSlots, commit: persister } = useHistorique<Slot[]>([], (next) => {
-    const e: EdtTypique = edt ? { ...edt, slotsJson: JSON.stringify(next) } : { id: newId(), annee, slotsJson: JSON.stringify(next) };
-    api.edtTypiqueSave(e).then(() => { if (!edt) reload(); });
+  // État des créneaux avec annuler/rétablir (⌘Z / Ctrl+Z, ⌘⇧Z / Ctrl+Y), écrit par écart :
+  // un créneau posé sur un autre ordinateur reste quand on en déplace un ici.
+  const { present: slots, commit: persister } = useCollectionParEcart<Slot[]>({
+    cle: annee, lecture: data, vide: [], relire: reload, echec: "Emploi du temps non enregistré",
+    enBase: (k) => lireListe<Slot>(data?.find((e) => e.annee === k)?.slotsJson),
+    ecrire: (k, avant, apres) => api.edtTypiqueEcrire(k, JSON.stringify(avant), JSON.stringify(apres)),
   });
-  React.useEffect(() => { try { chargerSlots(edt ? JSON.parse(edt.slotsJson) : []); } catch { chargerSlots([]); } }, [edt?.id, annee]);
   React.useEffect(() => { api.settingGet("niveauClasse").then((v) => setNiveau(v ?? "")); }, []);
   const upsert = (s: Slot) => persister(slots.some((x) => x.id === s.id) ? slots.map((x) => x.id === s.id ? s : x) : [...slots, s]);
 
