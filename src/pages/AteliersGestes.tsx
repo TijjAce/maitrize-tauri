@@ -4,6 +4,8 @@ import { useReglages } from "../components/useMemoire";
 import { usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
+import { ApercuExemple, useMotsExemple } from "../components/Exemple";
+import { MOTS_EXEMPLE } from "../exemplesDesAteliers";
 import { BanqueDeGestes, demanderLesGestesAuJeu, useBanqueDeGestes } from "../components/BanqueDeGestes";
 import type { MotImage } from "../jeuxSons";
 import { graineAuHasard } from "../hasard";
@@ -31,9 +33,12 @@ export function GestesTab() {
   const banque = useBanqueDeGestes();
   const [r, maj] = useReglages("gestesCartes", REGLAGES_CARTES);
   const retenus = React.useMemo(() => gestesRetenus(r, banque.images), [r, banque.images]);
+  // Sans image ni son choisi, les cartes d'un exemple : leur place, leur son, le cadre où viendra votre image du geste.
+  const exemple = React.useMemo(() => (retenus.length ? [] : GESTES.slice(0, 6)), [retenus.length]);
+  const montres = retenus.length ? retenus : exemple;
   // En petit, la vignette suffit et allège la feuille ; au-delà, l'image entière.
   const images = r.taille === "petit" ? { ...banque.images, ...banque.vignettes } : banque.images;
-  const html = React.useMemo(() => htmlCartesGestes(retenus, images, r), [retenus, images, r]);
+  const html = React.useMemo(() => htmlCartesGestes(montres, images, r), [montres, images, r]);
   const pages = pagesDeCartesGestes(retenus.length, r);
   const choisis = new Set(r.choisis);
   const basculer = (id: string) => maj({ choisis: choisis.has(id) ? r.choisis.filter((x) => x !== id) : [...r.choisis, id] });
@@ -80,7 +85,8 @@ export function GestesTab() {
           </div>
         )}
       </>}
-      droite={<ApercuFeuille html={html} style={STYLE_GESTES} />}
+      droite={retenus.length ? <ApercuFeuille html={html} style={STYLE_GESTES} />
+        : <ApercuExemple onPrendre={() => maj({ choisis: exemple.map((g) => g.id) })}><ApercuFeuille html={html} style={STYLE_GESTES} /></ApercuExemple>}
     />
   );
 }
@@ -120,12 +126,15 @@ export function MotsEnGestesTab({ banque }: { banque: boolean }) {
   // Les corrections se gardent : « ville » ne se corrige qu'une fois.
   const [gardees, majGardees] = useReglages("gestesCorrections", { mots: {} as Record<string, string[]> });
   const [graine, setGraine] = useGraine();
-  const ids = mots.map((m) => m.id).filter((x): x is number => x != null);
+  // Sans mots, ceux d'un exemple : ce que donnera la feuille.
+  const exemple = useMotsExemple(MOTS_EXEMPLE.motsGestes, !mots.length);
+  const montres = mots.length ? mots : exemple ?? [];
+  const ids = montres.map((m) => m.id).filter((x): x is number => x != null);
   const pictos = usePictoImages(ids);
 
-  const codages = React.useMemo(() => mots.map((m) => codageCorrige(m.mot, gardees.mots, { eFinal: r.eFinal })), [mots, gardees.mots, r.eFinal]);
-  const codes: MotCode[] = React.useMemo(() => mots.map((m, k) => motCode(m.mot, codages[k], m.id != null ? pictos[m.id] : undefined, m.id)),
-    [mots, codages, pictos]);
+  const codages = React.useMemo(() => montres.map((m) => codageCorrige(m.mot, gardees.mots, { eFinal: r.eFinal })), [montres, gardees.mots, r.eFinal]);
+  const codes: MotCode[] = React.useMemo(() => montres.map((m, k) => motCode(m.mot, codages[k], m.id != null ? pictos[m.id] : undefined, m.id)),
+    [montres, codages, pictos]);
   // Dans la suite d'un mot, la vignette suffit : la feuille reste légère.
   const images = React.useMemo(() => ({ ...gestes.images, ...gestes.vignettes }), [gestes.images, gestes.vignettes]);
   const html = React.useMemo(() => htmlMotsCodes(codes, images, r, graine), [codes, images, r, graine]);
@@ -150,7 +159,7 @@ export function MotsEnGestesTab({ banque }: { banque: boolean }) {
   const manquants = demandes.filter((id) => gestes.pret && !gestes.images[id]).map((id) => gesteDe(id)?.graphies[0] ?? id);
   const feuilles = plan.length ? plan.length + 1 : 0;
   const aColorier = plan.reduce((n, p) => n + p.colorier.length, 0);
-  const peut = utiles.length >= MOTS_CODES_MINIMUM;
+  const peut = mots.length > 0 && utiles.length >= MOTS_CODES_MINIMUM;
   const bilan = !peut
     ? (r.forme === "colorier" && prets.length >= MOTS_CODES_MINIMUM
       ? "Il faut au moins deux mots qui aient une image, pour en faire choisir une."
@@ -201,14 +210,16 @@ export function MotsEnGestesTab({ banque }: { banque: boolean }) {
         </Field>
         <Coche on={r.eFinal} libelle="Le « e » final se dit avec son geste (fè-ve)" onChange={(v) => maj({ eFinal: v })} />
         <div className="meta" style={{ fontSize: 12.5, marginTop: 6 }}>
-          {bilan}
-          {manquants.length > 0 && <span style={{ color: "var(--orange)" }}> Il manque l'image de : {manquants.join(", ")}.</span>}
+          {mots.length > 0 && bilan}
+          {mots.length > 0 && manquants.length > 0 && <span style={{ color: "var(--orange)" }}> Il manque l'image de : {manquants.join(", ")}.</span>}
           {sansImage.length > 0 && <span style={{ color: "var(--orange)" }}> Sans dessin, donc écarté{sansImage.length > 1 ? "s" : ""} : {sansImage.join(", ")}.</span>}
           {tropLongs.length > 0 && <span style={{ color: "var(--orange)" }}> Trop long{tropLongs.length > 1 ? "s" : ""} pour une ligne : {tropLongs.join(", ")}.</span>}
         </div>
         <Boutons atelier="motsGestes" titre="Les mots en gestes" html={html} style={STYLE_GESTES} peut={peut} onTirage={() => setGraine(graineAuHasard())} />
       </>}
-      droite={<ApercuFeuille html={html} style={STYLE_GESTES} />}
+      droite={!mots.length && utiles.length
+        ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_GESTES} /></ApercuExemple>
+        : <ApercuFeuille html={html} style={STYLE_GESTES} />}
     />
   );
 }

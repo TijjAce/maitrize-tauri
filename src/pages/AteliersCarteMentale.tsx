@@ -7,6 +7,9 @@ import { chargerImages, usePictoImages } from "../components/ChoixPicto";
 import { CasePicto } from "../components/CasePicto";
 import { EditeurCarteMentale } from "../components/EditeurCarteMentale";
 import { BanqueDeMots } from "../components/BanqueDeMots";
+import { ApercuExemple, motsAvecImages } from "../components/Exemple";
+import { ApercuFeuille } from "../components/ApercuFeuille";
+import { CARTE_EXEMPLE, motsDeLaCarte } from "../exemplesDesAteliers";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { STYLE_FEUILLE } from "../cartesImprimables";
@@ -64,12 +67,31 @@ export function CarteMentaleTab({ banque }: { banque: boolean }) {
   const [brut, maj] = useReglages<ReglagesCarte>(ATELIER, REGLAGES_CARTE);
   const r = React.useMemo(() => reglagesSurs(brut), [brut]);
   const [ouverte, setOuverte] = React.useState(-1);
-  const ids = React.useMemo(() => idsDesImages(r), [r]);
+  // Une carte vide : celle d'un exemple, ce que donnera la vôtre.
+  const vide = !r.centre.trim() && r.branches.every((b) => !b.titre.trim() && !b.idees.length);
+  const [exemple, setExemple] = React.useState<ReglagesCarte | null>(null);
+  React.useEffect(() => {
+    if (!vide || exemple) return;
+    let vivant = true;
+    motsAvecImages(motsDeLaCarte()).then((mots) => {
+      const image = (m: string) => mots.find((x) => x.mot === m) ?? { id: null, mot: m };
+      const centre = image(CARTE_EXEMPLE.image);
+      if (vivant) {
+        setExemple({
+          ...r, centre: CARTE_EXEMPLE.centre, image: { id: centre.id, mot: centre.mot },
+          branches: CARTE_EXEMPLE.branches.map((b, i) => ({ ...brancheVide(i), titre: b.titre, idees: b.idees.map(image) })),
+        });
+      }
+    }).catch(() => {});
+    return () => { vivant = false; };
+  }, [vide]); // eslint-disable-line react-hooks/exhaustive-deps
+  const montree = vide && exemple ? { ...exemple, pictos: r.pictos, capitales: r.capitales } : r;
+  const ids = React.useMemo(() => idsDesImages(montree), [montree]);
   const images = usePictoImages(ids);
   const manque = cequiManque(r);
-  const html = React.useMemo(() => htmlCarteMentale(r, images), [r, images]);
+  const html = React.useMemo(() => htmlCarteMentale(montree, images), [montree, images]);
   const titre = r.centre.trim() ? `Carte mentale — ${r.centre.trim()}` : "Carte mentale";
-  const feuilleImprimee = async () => htmlCarteMentale(r, await chargerImages(ids));
+  const feuilleImprimee = async () => htmlCarteMentale(r, await chargerImages(idsDesImages(r)));
   const imprimer = async () => {
     try { await imprimerAtelier(ATELIER, titre, await feuilleImprimee(), STYLE_FEUILLE + STYLE_CARTE_MENTALE); }
     catch (e) { toast(String(e), { icone: "⚠️" }); }
@@ -118,7 +140,11 @@ export function CarteMentaleTab({ banque }: { banque: boolean }) {
         </div>
       </div>
       <div style={{ minWidth: 0 }}>
-        <EditeurCarteMentale r={r} html={html} onChange={maj} onChoisirBranche={setOuverte} />
+        {vide && exemple
+          ? <ApercuExemple onPrendre={() => maj({ centre: exemple.centre, image: exemple.image, branches: exemple.branches })}>
+              <ApercuFeuille html={html} style={STYLE_CARTE_MENTALE} />
+            </ApercuExemple>
+          : <EditeurCarteMentale r={r} html={html} onChange={maj} onChoisirBranche={setOuverte} />}
       </div>
     </div>
   );

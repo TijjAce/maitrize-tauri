@@ -6,6 +6,8 @@ import { toast } from "../components/Toaster";
 import { chargerImages, usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
+import { ApercuExemple, useMotsExemple } from "../components/Exemple";
+import { MOTS_EXEMPLE } from "../exemplesDesAteliers";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { CasesFeuille } from "../components/OptionsFeuille";
@@ -86,9 +88,12 @@ export function LotoSyllabesTab({ banque }: { banque: boolean }) {
   const [mots, setMots] = React.useState<MotImage[]>([]);
   const [r, maj] = useReglages("lotoSyllabes", REGLAGES_LOTO_SYLLABES);
   const [graine, setGraine] = useGraine();
-  const planches = React.useMemo(() => planchesLotoSyllabes(mots, r, hasard(graine)), [mots, r, graine]);
-  const images = usePictoImages(ids(mots));
-  const html = React.useMemo(() => htmlLotoSyllabes(planches, mots, images, r), [planches, mots, images, r]);
+  // Sans mots, les planches d'un exemple : ce que donnera votre loto.
+  const exemple = useMotsExemple(MOTS_EXEMPLE.lotoSyllabes, !mots.length);
+  const montres = mots.length ? mots : exemple ?? [];
+  const planches = React.useMemo(() => planchesLotoSyllabes(montres, r, hasard(graine)), [montres, r, graine]);
+  const images = usePictoImages(ids(montres));
+  const html = React.useMemo(() => htmlLotoSyllabes(planches, montres, images, r), [planches, montres, images, r]);
   // Un clic sur le compte le fait tourner : notre découpage n'est pas parole d'évangile.
   const tourner = (m: MotImage) => setMots(mots.map((x) => (x === m ? { ...x, syllabes: (nbSyllabes(x, r.ecrites) % r.maximum) + 1 } : x)));
   return (
@@ -113,11 +118,13 @@ export function LotoSyllabesTab({ banque }: { banque: boolean }) {
         </Field>
         <Coche on={r.ecrites} libelle="Compter le e muet final (ta-ble : 2 syllabes)" onChange={(v) => maj({ ecrites: v })} />
         <Coche on={r.legendes} libelle="Écrire le mot sous chaque image" onChange={(v) => maj({ legendes: v })} />
-        <Boutons peut={planches.length > 0} onTirage={() => setGraine(graineAuHasard())}
+        <Boutons peut={mots.length > 0 && planches.length > 0} onTirage={() => setGraine(graineAuHasard())}
           onImprimer={() => imprimer("lotoSyllabes", "Loto des syllabes", (im) => htmlLotoSyllabes(planches, mots, im, r), ids(mots), STYLE_JEUX_SONS)}
           onBureau={() => bureau("lotoSyllabes", "Loto des syllabes", (im) => htmlLotoSyllabes(planches, mots, im, r), ids(mots), STYLE_JEUX_SONS)} />
       </>}
-      droite={planches.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} /> : <Vide quoi="Ajoutez des mots : le loto se fabrique avec les mots de la classe et leurs images." />}
+      droite={planches.length && mots.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} />
+        : planches.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_JEUX_SONS} /></ApercuExemple>
+        : <Vide quoi="Ajoutez des mots : le loto se fabrique avec les mots de la classe et leurs images." />}
     />
   );
 }
@@ -128,8 +135,11 @@ export function DominosTab({ banque }: { banque: boolean }) {
   const [mots, setMots] = React.useState<MotImage[]>([]);
   const [legendes, setLegendes] = React.useState(false);
   const [graine, setGraine] = useGraine();
-  const pieces = React.useMemo(() => dominos(pairesQuiSenchainent(mots, hasard(graine))), [mots, graine]);
-  const images = usePictoImages(ids(mots));
+  // Sans mots, les dominos d'un exemple : des mots qui s'enchaînent.
+  const exemple = useMotsExemple(MOTS_EXEMPLE.dominos, !mots.length);
+  const montres = mots.length ? mots : exemple ?? [];
+  const pieces = React.useMemo(() => dominos(pairesQuiSenchainent(montres, hasard(graine))), [montres, graine]);
+  const images = usePictoImages(ids(montres));
   const html = React.useMemo(() => htmlDominos(pieces, images, legendes), [pieces, images, legendes]);
   return (
     <Colonnes
@@ -139,15 +149,19 @@ export function DominosTab({ banque }: { banque: boolean }) {
           <Aide titre="Dominos des syllabes" vers="droite"><p>{"Un domino s'enchaîne quand la dernière syllabe d'une image commence la suivante : micro – crocodile. Il faut beaucoup de mots pour trouver des enchaînements — piochez un thème entier, ou deux."}</p></Aide>
         </h3>
         <BanqueDeMots mots={mots} onChange={setMots} banque={banque} />
-        <div className="meta" style={{ fontSize: 12.5, margin: "6px 0" }}>
-          {pieces.length ? `${pieces.length} dominos trouvés (${pieces.length * 2} images).` : "Pas encore d'enchaînement : ajoutez des mots."}
-        </div>
+        {mots.length > 0 && (
+          <div className="meta" style={{ fontSize: 12.5, margin: "6px 0" }}>
+            {pieces.length ? `${pieces.length} dominos trouvés (${pieces.length * 2} images).` : "Pas encore d'enchaînement : ajoutez des mots."}
+          </div>
+        )}
         <Coche on={legendes} libelle="Écrire le mot sous chaque image" onChange={setLegendes} />
-        <Boutons peut={pieces.length >= 3} onTirage={() => setGraine(graineAuHasard())}
+        <Boutons peut={mots.length > 0 && pieces.length >= 3} onTirage={() => setGraine(graineAuHasard())}
           onImprimer={() => imprimer("dominos", "Dominos des syllabes", (im) => htmlDominos(pieces, im, legendes), ids(mots), STYLE_JEUX_SONS)}
           onBureau={() => bureau("dominos", "Dominos des syllabes", (im) => htmlDominos(pieces, im, legendes), ids(mots), STYLE_JEUX_SONS)} />
       </>}
-      droite={pieces.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} /> : <Vide quoi="Les dominos apparaîtront dès que des mots s'enchaînent : la rime de l'un est l'attaque de l'autre." />}
+      droite={pieces.length && mots.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} />
+        : pieces.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_JEUX_SONS} /></ApercuExemple>
+        : <Vide quoi="Les dominos apparaîtront dès que des mots s'enchaînent : la rime de l'un est l'attaque de l'autre." />}
     />
   );
 }
@@ -158,8 +172,11 @@ export function IntrusTab({ banque }: { banque: boolean }) {
   const [mots, setMots] = React.useState<MotImage[]>([]);
   const [r, maj] = useReglages("intrus", { mode: "attaque" as ModeIntrus, combien: 6, legendes: false });
   const [graine, setGraine] = useGraine();
-  const lignes = React.useMemo(() => lignesIntrus(mots, r.mode, r.combien, hasard(graine)), [mots, r.mode, r.combien, graine]);
-  const images = usePictoImages(ids(mots));
+  // Sans mots, les lignes d'un exemple : des mots qui commencent pareil, et leur intrus.
+  const exemple = useMotsExemple(MOTS_EXEMPLE.intrus, !mots.length);
+  const montres = mots.length ? mots : exemple ?? [];
+  const lignes = React.useMemo(() => lignesIntrus(montres, r.mode, r.combien, hasard(graine)), [montres, r.mode, r.combien, graine]);
+  const images = usePictoImages(ids(montres));
   const html = React.useMemo(() => htmlIntrus(lignes, images, r.mode, r.legendes), [lignes, images, r]);
   return (
     <Colonnes
@@ -178,13 +195,15 @@ export function IntrusTab({ banque }: { banque: boolean }) {
         <Field label="Lignes">
           <Input type="number" min={1} max={15} value={r.combien} onChange={(e) => maj({ combien: Math.max(1, Math.min(15, Number(e.target.value) || 1)) })} style={{ width: 70 }} />
         </Field>
-        <div className="meta" style={{ fontSize: 12.5, margin: "6px 0" }}>{lignes.length ? `${lignes.length} ligne${lignes.length > 1 ? "s" : ""} possible${lignes.length > 1 ? "s" : ""}.` : "Pas encore trois mots qui se ressemblent."}</div>
+        {mots.length > 0 && <div className="meta" style={{ fontSize: 12.5, margin: "6px 0" }}>{lignes.length ? `${lignes.length} ligne${lignes.length > 1 ? "s" : ""} possible${lignes.length > 1 ? "s" : ""}.` : "Pas encore trois mots qui se ressemblent."}</div>}
         <Coche on={r.legendes} libelle="Écrire le mot sous chaque image" onChange={(v) => maj({ legendes: v })} />
-        <Boutons peut={lignes.length > 0} onTirage={() => setGraine(graineAuHasard())}
+        <Boutons peut={mots.length > 0 && lignes.length > 0} onTirage={() => setGraine(graineAuHasard())}
           onImprimer={() => imprimer("intrus", "Chasse à l'intrus", (im) => htmlIntrus(lignes, im, r.mode, r.legendes), ids(mots), STYLE_JEUX_SONS)}
           onBureau={() => bureau("intrus", "Chasse à l'intrus", (im) => htmlIntrus(lignes, im, r.mode, r.legendes), ids(mots), STYLE_JEUX_SONS)} />
       </>}
-      droite={lignes.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} /> : <Vide quoi="Les lignes apparaîtront dès que trois mots partagent une syllabe." />}
+      droite={lignes.length && mots.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} />
+        : lignes.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_JEUX_SONS} /></ApercuExemple>
+        : <Vide quoi="Les lignes apparaîtront dès que trois mots partagent une syllabe." />}
     />
   );
 }

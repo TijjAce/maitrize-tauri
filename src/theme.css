@@ -1756,3 +1756,6 @@ details.cm-pli > summary .meta { margin-left: 4px; font-size: 12.5px; }
 .etapes-relier .etape-ou { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--text-2); opacity: .8; }
 .etapes-relier li.ici .etape-ou { color: var(--accent); opacity: 1; }
 .etapes-relier b { color: var(--text); }
+/* L'exemple d'un générateur vide : un bandeau au-dessus de la feuille, et de quoi en partir (voir components/Exemple.tsx). */
+.apercu-exemple-bandeau { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; margin: 0 0 8px; border: 1px dashed var(--accent); border-radius: 10px; background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.apercu-exemple-titre { font-weight: 700; font-size: 13px; color: var(--accent); }
