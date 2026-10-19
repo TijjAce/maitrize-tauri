@@ -325,7 +325,7 @@ export default function Jeux() {
             </section>
           ))
         ) : rangement === "competence" ? (
-          <CatalogueParCompetence recherche={recherche} onOuvrir={setOnglet} />
+          <CatalogueParCompetence recherche={recherche} onOuvrir={setOnglet} onOuvrirGenerateur={(id) => ouvrirGenerateur(generateurs.find((g) => g.id === id) ?? null)} />
         ) : recherche.trim() ? (
           trouves.length || generateursTrouves.length ? (<>
             {trouves.length > 0 && <CartesParMoment outils={trouves} usages={usages} carte={carteRangeable} />}

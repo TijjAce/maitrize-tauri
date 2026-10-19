@@ -6,7 +6,10 @@ import { FichierImg } from "./Deroulement";
 import { PhotoTelephone } from "./PhotoTelephone";
 import { demarcheDe, demarchesDeLaCompetence, demarcheSuggeree, demarchesParFamille, resumeDuCadre } from "../demarches";
 import { sequencesParCompetence, titresVisant } from "../sequencesVisees";
-import { ateliersRattaches, classeDe, feuilleRattachee, planDesFeuilles, type ContexteFeuilles, type FeuilleAFabriquer } from "../feuillesDesSequences";
+import {
+  ateliersRattaches, classeDe, feuilleDuGenerateur, feuilleRattachee, planDesFeuilles, type AtelierRattache, type ContexteFeuilles, type FeuilleAFabriquer,
+} from "../feuillesDesSequences";
+import { CLE_GENERATEURS, PREFIXE_GENERATEUR, imagesDeLaRecette, lireGenerateurs } from "../generateursPerso";
 import { nomDeLAtelier } from "../catalogueAteliers";
 import { poserLeDeroulement } from "../poserLeDeroulement";
 import { toast } from "./Toaster";
@@ -143,10 +146,32 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
   const seanceParDefaut = demarche && /évaluation/i.test(demarche.seances[derniere]?.titre ?? "") ? Math.max(0, derniere - 1) : derniere;
   const [ajouts, setAjouts] = React.useState<Record<string, number>>({});
   const seanceDuJeu = (atelier: string) => ajouts[atelier] ?? seanceParDefaut;
+  // Les générateurs de l'enseignant rattachés à la compétence : leurs images se chargent avant qu'on enregistre.
+  const generateursRattaches = React.useMemo(() => {
+    const tous = lireGenerateurs(reglages?.[CLE_GENERATEURS]);
+    return tous.filter((g) => rattaches.some((a) => a.atelier === PREFIXE_GENERATEUR + g.id));
+  }, [rattaches, reglages]);
+  const idsDesGenerateurs = [...new Set(generateursRattaches.flatMap(imagesDeLaRecette))];
+  const [imagesDesGenerateurs, setImagesDesGenerateurs] = React.useState<Images | null>(null);
+  React.useEffect(() => {
+    setImagesDesGenerateurs(null);
+    if (!idsDesGenerateurs.length) return;
+    let vivant = true;
+    chargerImages(idsDesGenerateurs).then((i) => { if (vivant) setImagesDesGenerateurs(i); }).catch(() => { if (vivant) setImagesDesGenerateurs({}); });
+    return () => { vivant = false; };
+  }, [idsDesGenerateurs.map(String).sort().join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+  const generateursEnAttente = idsDesGenerateurs.length > 0 && !imagesDesGenerateurs
+    && generateursRattaches.some((g) => seanceDuJeu(PREFIXE_GENERATEUR + g.id) >= 0);
+  const enAttente = imagesEnAttente || generateursEnAttente;
+  const nomDuRattache = (a: AtelierRattache) => (a.atelier.startsWith(PREFIXE_GENERATEUR) ? a.nom ?? a.atelier : nomDeLAtelier(a.atelier));
   const aFabriquer: FeuilleAFabriquer[] = [
     ...(plan?.feuilles.filter((_, k) => !retirees.has(k)) ?? []),
     ...rattaches.flatMap((a) => {
-      const f = seanceDuJeu(a.atelier) >= 0 ? feuilleRattachee(a.atelier, seanceDuJeu(a.atelier), ctx) : null;
+      const seance = seanceDuJeu(a.atelier);
+      if (seance < 0) return [];
+      const g = generateursRattaches.find((x) => PREFIXE_GENERATEUR + x.id === a.atelier);
+      if (g) return [feuilleDuGenerateur(g, seance, imagesDesGenerateurs ?? {})];
+      const f = feuilleRattachee(a.atelier, seance, ctx);
       return f ? [f] : [];
     }),
   ];
@@ -222,8 +247,8 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
     <Modal large titre={sequence.titre && sequence.titre !== "Nouvelle séquence" ? "Modifier la séquence" : "Nouvelle séquence"} onClose={onClose}
       footer={<>
         <button className="btn" onClick={onClose}>Annuler</button>
-        <button className="btn primary" onClick={save} disabled={!s.titre.trim() || enCours || (poseLesSeances && imagesEnAttente)}>
-          {progres || (enCours ? "Enregistrement…" : poseLesSeances && imagesEnAttente ? "Chargement des images…" : "Enregistrer")}
+        <button className="btn primary" onClick={save} disabled={!s.titre.trim() || enCours || (poseLesSeances && enAttente)}>
+          {progres || (enCours ? "Enregistrement…" : poseLesSeances && enAttente ? "Chargement des images…" : "Enregistrer")}
         </button>
       </>}>
       <Field label="Titre">
@@ -339,7 +364,7 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
                 chaque séance reçoit aussi la note de son matériel. Décochez ce que vous ne voulez pas.
               </div>
             )}
-            {poseLesSeances && imagesEnAttente && (
+            {poseLesSeances && enAttente && (
               <div className="meta" style={{ fontSize: 12.5 }}>Chargement des pictogrammes des feuilles…</div>
             )}
             {rattaches.length > 0 && (
@@ -348,16 +373,16 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
                 {rattaches.map((a) => (a.fabricable ? (
                   <div key={a.atelier} className="deroulement-rattache">
                     <label><input type="checkbox" checked={seanceDuJeu(a.atelier) >= 0}
-                      onChange={(e) => setAjouts((avant) => ({ ...avant, [a.atelier]: e.target.checked ? seanceParDefaut : -1 }))} /> {nomDeLAtelier(a.atelier)}, tel que réglé</label>
+                      onChange={(e) => setAjouts((avant) => ({ ...avant, [a.atelier]: e.target.checked ? seanceParDefaut : -1 }))} /> {nomDuRattache(a)}, tel que réglé</label>
                     {seanceDuJeu(a.atelier) >= 0 && (
                       <Select value={seanceDuJeu(a.atelier)} onChange={(e) => setAjouts((avant) => ({ ...avant, [a.atelier]: Number(e.target.value) }))}
-                        aria-label={`La séance qui reçoit ${nomDeLAtelier(a.atelier)}`} style={{ maxWidth: 300 }}>
+                        aria-label={`La séance qui reçoit ${nomDuRattache(a)}`} style={{ maxWidth: 300 }}>
                         {demarche.seances.map((sc, i) => <option key={i} value={i}>Séance {i + 1} — {sc.titre}</option>)}
                       </Select>
                     )}
                   </div>
                 ) : (
-                  <div key={a.atelier} className="meta" style={{ fontSize: 12.5 }}>{nomDeLAtelier(a.atelier)} — à imprimer depuis son atelier, la séance ouverte.</div>
+                  <div key={a.atelier} className="meta" style={{ fontSize: 12.5 }}>{nomDuRattache(a)} — à imprimer depuis son atelier, la séance ouverte.</div>
                 )))}
               </div>
             )}

@@ -16,6 +16,8 @@ import { FEUILLES_DE_LA_SEQUENCE, STYLE_SEQUENCE_COMPARER, htmlDeLaFeuille as ht
 import { REGLAGES_NOMBRES, REGLAGES_OIE, STYLE_JEUX_MATHS, cartesNombres, htmlCartesNombres, htmlJeuDeLOie, type ReglagesNombres, type ReglagesOie } from "./jeuxMaths";
 import { CLASSE_DES_DEMARCHES } from "./demarchesNumeration";
 import { PREFIXE_COMPETENCES, lireCompetencesAtelier, memeCompetence } from "./ateliersCompetences";
+import { CLE_GENERATEURS, PREFIXE_GENERATEUR, STYLE_GENERATEURS_PERSO, htmlGenerateurPerso, lireGenerateurs, type GenerateurPerso } from "./generateursPerso";
+import type { Images } from "./supportsVisuels";
 import { estUneDemarcheDeCalcul, planDuCalcul } from "./feuillesDuCalcul";
 import { estUneDemarcheDeProblemes, planDesProblemes } from "./problemesDesLivrets";
 import { estUneDemarcheProlongee, planDesProblemesProlonges } from "./problemesProlonges";
@@ -289,6 +291,7 @@ const PRODUCTEURS: Record<string, Producteur> = {
 /** Un atelier rattaché à la compétence : par quelle liste, et si l'on sait fabriquer sa feuille d'ici. */
 export interface AtelierRattache { atelier: string; nom?: string; objectif: string; fabricable: boolean }
 
+
 /**
  * Les ateliers dont « Ce que cela travaille » contient la compétence — pour
  * tous les niveaux, ou pour la classe de la séquence —, lus dans les
@@ -298,6 +301,7 @@ export interface AtelierRattache { atelier: string; nom?: string; objectif: stri
 export function ateliersRattaches(reglages: Record<string, string>, c: CompetenceSelectionnee): AtelierRattache[] {
   const classe = classeDe(c.niveau);
   const sortie: AtelierRattache[] = [];
+  let generateurs: GenerateurPerso[] | null = null;
   for (const [cle, valeur] of Object.entries(reglages)) {
     if (!cle.startsWith(PREFIXE_COMPETENCES)) continue;
     const [atelier, ...reste] = cle.slice(PREFIXE_COMPETENCES.length).split(":");
@@ -306,10 +310,30 @@ export function ateliersRattaches(reglages: Record<string, string>, c: Competenc
     const autreClasse = /^(PS|MS|GS|CP|CE1|CE2|CM1|CM2)$/.test(objectif) && objectif !== classe;
     if (!atelier || autreClasse) continue;
     if (!lireCompetencesAtelier(valeur).some((x) => memeCompetence(x, c))) continue;
+    // Les générateurs de l'enseignant : chacun sa liste, sous son numéro ; un générateur supprimé ne compte plus.
+    if (atelier === "perso") {
+      generateurs ??= lireGenerateurs(reglages[CLE_GENERATEURS]);
+      const g = generateurs.find((x) => x.id === objectif);
+      if (g && !sortie.some((a) => a.atelier === PREFIXE_GENERATEUR + g.id)) {
+        sortie.push({ atelier: PREFIXE_GENERATEUR + g.id, nom: `${g.icone} ${g.nom}`, objectif, fabricable: true });
+      }
+      continue;
+    }
     if (sortie.some((a) => a.atelier === atelier)) continue;
     sortie.push({ atelier, nom: PRODUCTEURS[atelier]?.nom, objectif, fabricable: Boolean(PRODUCTEURS[atelier]) });
   }
   return sortie;
+}
+
+/**
+ * La feuille d'un générateur de l'enseignant, pour une séance : ses images,
+ * chargées d'avance, et de quoi la rouvrir dans Fabriquer.
+ */
+export function feuilleDuGenerateur(g: GenerateurPerso, seance: number, images: Images): FeuilleAFabriquer {
+  return {
+    seance, atelier: "perso", titre: g.nom,
+    fabriquer: (graine) => ({ html: htmlGenerateurPerso(g, graine, images), style: STYLE_FEUILLE + STYLE_GENERATEURS_PERSO, refaire: { perso: { id: g.id } } }),
+  };
 }
 
 /** La feuille d'un atelier rattaché, telle qu'on l'a réglée — à la classe de la séquence pour les cubes et la comparaison. */

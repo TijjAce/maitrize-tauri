@@ -6,8 +6,9 @@ import React from "react";
 import { api, newId, nowIso, type ChatMessage } from "../api";
 import { pseudonymiserTout, restaurer } from "../confidentialite";
 import { nomsAMasquer } from "../nomsAMasquer";
+import { lireMesPictos, pourLeMot, type MonPicto } from "../mesPictos";
 import {
-  CLE_GENERATEURS, CONSIGNE_DE_L_IA, EVT_GENERATEURS, demandeALIA, lireGenerateurs, lireRecette, motsSansImage, poserLesPictos, retoucheALIA,
+  CLE_GENERATEURS, CONSIGNE_DE_L_IA, EVT_GENERATEURS, demandeALIA, lireGenerateurs, lireRecette, motsSansImage, poserLesPictos, retoucheALIA, variantesDuMot,
   type GenerateurPerso,
 } from "../generateursPerso";
 import { EVT_DONNEES_DISTANTES } from "./ui";
@@ -49,8 +50,19 @@ async function demanderUneRecette(message: string): Promise<GenerateurPerso> {
   const masque = pseudonymiserTout([message], await nomsAMasquer());
   const messages: ChatMessage[] = [{ role: "system", content: CONSIGNE_DE_L_IA }, { role: "user", content: masque.textes[0] }];
   const modele = await api.modeleActif();
+  // Mistral répond par un objet JSON ; un modèle qui ne le saurait pas répond comme d'habitude.
+  let json = true;
+  const demander = async () => {
+    try {
+      return await api.mistralChat(messages, modele, json);
+    } catch (e) {
+      if (!json || !/\(code 4(00|22)\)/.test(String((e as Error)?.message ?? e))) throw e;
+      json = false;
+      return api.mistralChat(messages, modele);
+    }
+  };
   for (let essai = 0; essai < 2; essai++) {
-    const reponse = await api.mistralChat(messages, modele);
+    const reponse = await demander();
     const recette = lireRecette(restaurer(reponse, masque.table).texte);
     if (recette) return recette;
     messages.push({ role: "assistant", content: reponse },
@@ -59,11 +71,42 @@ async function demanderUneRecette(message: string): Promise<GenerateurPerso> {
   throw new Error("L'IA n'a pas proposé d'exercice lisible. Décrivez autrement ce que vous voulez, ou essayez un autre modèle dans les réglages de l'IA.");
 }
 
-/** Les pictos de la banque pour les mots qui n'ont pas encore d'image ; `garder` : les images d'avant, mot pour mot. */
+/**
+ * L'image de chaque mot : le picto qui porte exactement ce mot ; sinon celui
+ * du mot sans article ou au singulier ; sinon l'image gardée dans Mes pictos —
+ * une photo, un picto dessiné, un symbole Makaton. Un mot sans rien n'est pas
+ * dans la réponse.
+ */
+export async function pictosPourLesMots(mots: string[]): Promise<{ id: number; mot: string }[]> {
+  const liste = [...new Set(mots.map((m) => m.trim().toLowerCase()).filter(Boolean))];
+  if (!liste.length) return [];
+  const [exacts, absents] = await api.arasaacParMots(liste).catch((): [{ id: number; mot: string }[], string[]] => [[], liste]);
+  const trouves = exacts.map((p) => ({ id: p.id, mot: p.mot }));
+  const reste = new Set(absents);
+  // Sans article, au singulier : la première écriture que la banque connaît.
+  const variantes = new Map<string, string>();
+  for (const m of reste) for (const v of variantesDuMot(m)) if (!variantes.has(v)) variantes.set(v, m);
+  if (variantes.size) {
+    const [parVariante] = await api.arasaacParMots([...variantes.keys()]).catch((): [{ id: number; mot: string }[], string[]] => [[], []]);
+    for (const p of parVariante) {
+      const m = variantes.get(p.mot);
+      if (m && reste.has(m)) { trouves.push({ id: p.id, mot: m }); reste.delete(m); }
+    }
+  }
+  if (reste.size) {
+    const miens = await lireMesPictos().catch((): MonPicto[] => []);
+    for (const m of [...reste]) {
+      const p = pourLeMot(miens, m) ?? variantesDuMot(m).map((v) => pourLeMot(miens, v)).find(Boolean);
+      if (p) { trouves.push({ id: p.id, mot: m }); reste.delete(m); }
+    }
+  }
+  return trouves;
+}
+
+/** Les images des mots qui n'en ont pas encore ; `garder` : les images d'avant, mot pour mot. */
 export async function avecLesPictos(g: GenerateurPerso, garder: GenerateurPerso | null): Promise<GenerateurPerso> {
   const mots = motsSansImage(garder ? poserLesPictos(g, [], garder) : g);
-  const [trouves] = mots.length ? await api.arasaacParMots(mots).catch((): [never[], string[]] => [[], []]) : [[], []];
-  return poserLesPictos(g, trouves, garder);
+  return poserLesPictos(g, await pictosPourLesMots(mots), garder);
 }
 
 /** Un nouveau générateur, d'après ce que l'enseignant a décrit. */

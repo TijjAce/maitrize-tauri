@@ -33,6 +33,10 @@ struct MistralRequest {
     messages: Vec<ChatMessage>,
     #[serde(skip_serializing_if = "Option::is_none")]
     temperature: Option<f64>,
+    /// `{"type": "json_object"}` quand on attend un objet JSON et rien autour :
+    /// Mistral garantit alors une réponse que l'on peut relire.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    response_format: Option<serde_json::Value>,
 }
 
 #[derive(Deserialize)]
@@ -283,12 +287,14 @@ pub fn mistral_jetons(db: State<Db>) -> BilanJetons {
     }
 }
 
-/// Envoie une conversation à Mistral et renvoie la réponse de l'assistant.
+/// Envoie une conversation à Mistral et renvoie la réponse de l'assistant ;
+/// `json` : la réponse sera un objet JSON, sans texte autour.
 #[tauri::command]
 pub async fn mistral_chat(
     db: State<'_, Db>,
     messages: Vec<ChatMessage>,
     model: Option<String>,
+    json: Option<bool>,
 ) -> Result<String, String> {
     let cle = cle_mistral(&db)?;
     let model = model.unwrap_or_else(|| MODELE_DEFAUT.to_string());
@@ -298,6 +304,7 @@ pub async fn mistral_chat(
         model,
         messages,
         temperature: Some(0.4),
+        response_format: json.unwrap_or(false).then(|| serde_json::json!({ "type": "json_object" })),
     };
 
     let client = reqwest::Client::new();
@@ -747,7 +754,7 @@ pub async fn mistral_dessiner_picto(
 pub async fn mistral_test(db: State<'_, Db>, model: Option<String>) -> Result<bool, String> {
     let _ = cle_mistral(&db)?;
     let msgs = vec![ChatMessage { role: "user".into(), content: "ping".into() }];
-    mistral_chat(db, msgs, model).await.map(|_| true)
+    mistral_chat(db, msgs, model, None).await.map(|_| true)
 }
 
 /// État d'un modèle pour le compte en cours : utilisable ou non, et pourquoi.

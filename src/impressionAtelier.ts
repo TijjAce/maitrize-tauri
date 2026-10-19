@@ -15,7 +15,7 @@ import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 import { cleDesCompetences, lireCompetencesAtelier, objectifsDesAteliers, unionDesCompetences } from "./ateliersCompetences";
 import { CLE_ACTIF, CLE_LEXIQUE, STYLE_CONSIGNES_PICTOS, consignesActives, decorerConsignesHtml, lireLexique } from "./caa";
 import { chargerImageAppoint } from "./pictosAppoint";
-import { cleConsigne, remplacerConsigne, clePictos, lirePictosAjoutes } from "./consigneAtelier";
+import { CONSIGNE_DANS_L_ATELIER, cleConsigne, remplacerConsigne, clePictos, lirePictosAjoutes } from "./consigneAtelier";
 import { cleOptionsFeuille, consignesDeLaFeuille, feuilleSelonOptions, lireOptionsFeuille, type OptionsFeuille } from "./optionsFeuille";
 import { ATELIERS_D_AIDE } from "./journalTelephone";
 import { documentImprimable, escapeHtml, printHTML } from "./print";
@@ -177,7 +177,7 @@ const supplementDe = async (atelier: string, extras: ExtrasAtelier) => [...new S
 export async function avecLaConsigneDeLAtelier(atelier: string, corps: string, imposees: Partial<OptionsFeuille> = {}): Promise<string> {
   try {
     const { api } = await import("./api");
-    const reecrite = remplacerConsigne(corps, await api.settingGet(cleConsigne(atelier)));
+    const reecrite = CONSIGNE_DANS_L_ATELIER.has(atelier) ? corps : remplacerConsigne(corps, await api.settingGet(cleConsigne(atelier)));
     const options = { ...lireOptionsFeuille(await api.settingGet(cleOptionsFeuille(atelier))), ...imposees };
     return sansReferences(feuilleSelonOptions(reecrite, options));
   } catch {
@@ -213,7 +213,7 @@ export async function consigneDeLaFiche(atelier: string, corps: string): Promise
   if ((ATELIERS_D_AIDE as readonly string[]).includes(atelier)) return undefined;
   try {
     const { api } = await import("./api");
-    const consignes = consignesDeLaFeuille(sansReferences(remplacerConsigne(corps, await api.settingGet(cleConsigne(atelier)))));
+    const consignes = consignesDeLaFeuille(sansReferences(CONSIGNE_DANS_L_ATELIER.has(atelier) ? corps : remplacerConsigne(corps, await api.settingGet(cleConsigne(atelier)))));
     return consignes.length ? consignes.join("\n") : undefined;
   } catch {
     return undefined;

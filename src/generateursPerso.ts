@@ -6,7 +6,8 @@
 // L'IA n'écrit pas la feuille : elle écrit une recette, faite de blocs que
 // Maitrize sait dessiner et corriger — relier, trier en colonnes, compléter,
 // compter, entourer, des questions, des étiquettes à découper, une planche
-// où l'on place des images. Maitrize tire au sort à chaque feuille dans les
+// où l'on place des images, coller le mot sous l'image, remettre dans
+// l'ordre, cocher la bonne image. Maitrize tire au sort à chaque feuille dans les
 // listes de la recette, fait le corrigé, et la feuille prend le chemin des
 // autres : consignes en étapes, mode dys, options d'impression. Chaque mot
 // reçoit le picto de la banque qui porte exactement ce nom ; l'enseignant le
@@ -27,7 +28,7 @@ import { estUnUsage, type Usage } from "./usageAtelier";
 /** Ce qu'un élément montre : son mot, son picto, ou les deux. */
 export type Affichage = "mot" | "picto" | "les-deux";
 
-export type SorteDeBloc = "relier" | "trier" | "completer" | "compter" | "entourer" | "questions" | "etiquettes" | "planche";
+export type SorteDeBloc = "relier" | "trier" | "completer" | "compter" | "entourer" | "questions" | "etiquettes" | "planche" | "associer" | "ordre" | "choisir";
 
 export interface BlocRelier { sorte: "relier"; consigne: string; paires: [PictoPose, PictoPose][]; combien: number; affichage: Affichage }
 export interface BlocTrier { sorte: "trier"; consigne: string; categories: { nom: string; elements: PictoPose[] }[]; combien: number; affichage: Affichage }
@@ -41,8 +42,18 @@ export interface BlocEtiquettes { sorte: "etiquettes"; consigne: string; element
 /** Une image placée sur la planche : son centre en pourcentage du cadre, sa largeur en millimètres. */
 export interface ObjetPlace { element: PictoPose; x: number; y: number; taille: number }
 export interface BlocPlanche { sorte: "planche"; consigne: string; objets: ObjetPlace[]; hauteur: number; legendes: boolean }
+/** Des images, chacune avec sa case vide ; les mots à découper, à coller dessous. */
+export interface BlocAssocier { sorte: "associer"; consigne: string; elements: PictoPose[]; combien: number }
+/** Des étapes dans leur ordre — une histoire, une recette, une routine — que la feuille mélange ; à numéroter, ou à découper et coller. */
+export interface BlocOrdre { sorte: "ordre"; consigne: string; etapes: PictoPose[]; affichage: Affichage; decouper: boolean }
+export interface ItemChoisir { question: string; bonne: PictoPose; autres: PictoPose[] }
+/** Pour chaque question, la bonne image parmi d'autres, à cocher. */
+export interface BlocChoisir { sorte: "choisir"; consigne: string; items: ItemChoisir[]; combien: number; affichage: Affichage }
 
-export type BlocPerso = BlocRelier | BlocTrier | BlocCompleter | BlocCompter | BlocEntourer | BlocQuestions | BlocEtiquettes | BlocPlanche;
+export type BlocPerso = BlocRelier | BlocTrier | BlocCompleter | BlocCompter | BlocEntourer | BlocQuestions | BlocEtiquettes | BlocPlanche
+  | BlocAssocier | BlocOrdre | BlocChoisir;
+/** Les exercices dont une feuille montre une partie, tirée au sort. */
+export type SorteAvecCombien = Extract<BlocPerso, { combien: number }>["sorte"];
 
 export interface GenerateurPerso {
   id: string;
@@ -74,7 +85,12 @@ export const BLOCS_PERSO: { sorte: SorteDeBloc; nom: string; consigne: string }[
   { sorte: "questions", nom: "Questions", consigne: "Je réponds à chaque question." },
   { sorte: "etiquettes", nom: "Étiquettes à découper", consigne: "Je découpe les étiquettes." },
   { sorte: "planche", nom: "Planche d'images", consigne: "J'écris le nom de chaque image." },
+  { sorte: "associer", nom: "Coller le mot sous l'image", consigne: "Je découpe les mots. Je colle chaque mot sous son image." },
+  { sorte: "ordre", nom: "Remettre dans l'ordre", consigne: "J'écris le numéro de chaque image, dans l'ordre." },
+  { sorte: "choisir", nom: "Cocher la bonne image", consigne: "Je coche la bonne image." },
 ];
+/** La consigne de l'ordre quand les images se découpent. */
+export const CONSIGNE_ORDRE_A_DECOUPER = "Je découpe les images. Je les colle dans l'ordre.";
 export const nomDuBloc = (s: SorteDeBloc) => BLOCS_PERSO.find((b) => b.sorte === s)!.nom;
 
 // ── Relire une recette, d'où qu'elle vienne ───────────────────────────────
@@ -105,13 +121,15 @@ const elements = (v: unknown, max = 40) => liste(v).map(elementSur).filter((e): 
 const iconeLue = (v: unknown) => (typeof v === "string" && v.trim().length <= 8 && /\p{Extended_Pictographic}/u.test(v) ? v.trim() : "✨");
 
 /** Combien une feuille en montre, au moins et au plus, selon l'exercice. */
-export const BORNES_COMBIEN: Record<Exclude<SorteDeBloc, "planche">, [number, number]> = {
+export const BORNES_COMBIEN: Record<SorteAvecCombien, [number, number]> = {
   relier: [2, 8], trier: [2, 12], completer: [1, 10], compter: [1, 9], entourer: [4, 25], questions: [1, 10], etiquettes: [1, 24],
+  associer: [2, 12], choisir: [1, 8],
 };
 const combienLu = (sorte: keyof typeof BORNES_COMBIEN, v: unknown, defaut: number) => entier(v, BORNES_COMBIEN[sorte][0], BORNES_COMBIEN[sorte][1], defaut);
 
 const VIDE: PictoPose = { id: null, mot: "" };
 const plein = (e: PictoPose) => Boolean(e.mot || e.id !== null || e.photo);
+const aUneImage = (e: PictoPose) => e.id !== null || Boolean(e.photo);
 
 /** Une question et ses choix : la bonne réponse en est, quand il y en a ; un seul choix n'en est pas un, la question reste ouverte. */
 function avecLaReponse(q: QuestionPerso): QuestionPerso {
@@ -168,11 +186,31 @@ export function blocSur(v: unknown): BlocPerso | null {
       }).filter((p): p is ObjetPlace => !!p).slice(0, 30);
       return { sorte: "planche", consigne, objets, hauteur: entier(o.hauteur, 40, 230, 120), legendes: o.legendes !== false };
     }
+    case "associer":
+      return { sorte: "associer", consigne, elements: elements(o.elements), combien: combienLu("associer", o.combien, 6) };
+    case "ordre": {
+      const decouper = o.decouper === true;
+      return {
+        sorte: "ordre", consigne: texte(o.consigne, 240) || (decouper ? CONSIGNE_ORDRE_A_DECOUPER : defaut.consigne),
+        etapes: elements(o.etapes, 8), affichage: affichageLu(o.affichage), decouper,
+      };
+    }
+    case "choisir": {
+      const items = liste(o.items).map((x) => {
+        const it = objet(x);
+        return { question: texte(it.question, 240), bonne: elementSur(it.bonne) ?? VIDE, autres: elements(it.autres, 3) };
+      }).filter((it) => it.question || plein(it.bonne) || it.autres.length).slice(0, 30);
+      return { sorte: "choisir", consigne, items, combien: combienLu("choisir", o.combien, 5), affichage: affichageLu(o.affichage) };
+    }
   }
 }
 
-/** Le bloc tel qu'il va sur la feuille, sans ce qui est encore incomplet ; ou ce qui lui manque pour y aller. */
-export function blocPret(b: BlocPerso): BlocPerso | string {
+/**
+ * Le bloc tel qu'il va sur la feuille, sans ce qui est encore incomplet ; ou
+ * ce qui lui manque pour y aller. `images` faux : la recette que l'IA vient
+ * d'écrire, dont les mots n'ont pas encore cherché leur image.
+ */
+export function blocPret(b: BlocPerso, images = true): BlocPerso | string {
   switch (b.sorte) {
     case "relier": {
       const paires = b.paires.filter(([x, y]) => plein(x) && plein(y));
@@ -194,13 +232,26 @@ export function blocPret(b: BlocPerso): BlocPerso | string {
     }
     case "etiquettes": return b.elements.length ? b : "il faut une étiquette.";
     case "planche": return b.objets.length ? b : "il faut une image.";
+    case "associer": {
+      const elements = b.elements.filter(images ? aUneImage : plein);
+      return elements.length >= 2 ? { ...b, elements } : "il faut au moins deux mots, chacun avec son image.";
+    }
+    case "ordre": {
+      const etapes = b.etapes.filter(plein);
+      return etapes.length >= 2 ? { ...b, etapes } : "il faut au moins deux étapes.";
+    }
+    case "choisir": {
+      const items = b.items.map((it) => ({ ...it, autres: it.autres.filter(plein) })).filter((it) => it.question && plein(it.bonne) && it.autres.length);
+      return items.length ? { ...b, items } : "il faut une question, sa bonne image et une autre.";
+    }
   }
 }
 
 /** Ce qui manque à un bloc pour aller sur la feuille ; rien s'il est complet. */
 export const ceQuiManque = (b: BlocPerso): string | null => { const r = blocPret(b); return typeof r === "string" ? r : null; };
 /** Les blocs qui vont sur la feuille, prêts. */
-const blocsPrets = (g: GenerateurPerso): BlocPerso[] => g.blocs.map(blocPret).filter((b): b is BlocPerso => typeof b !== "string");
+const blocsPrets = (g: GenerateurPerso, images = true): BlocPerso[] =>
+  g.blocs.map((b) => blocPret(b, images)).filter((b): b is BlocPerso => typeof b !== "string");
 
 /** Un générateur lisible, quoi qu'on ait gardé ou que l'IA ait répondu. */
 export function generateurSur(v: unknown): GenerateurPerso {
@@ -233,6 +284,9 @@ export function blocVide(sorte: SorteDeBloc): BlocPerso {
     case "questions": return { sorte, consigne, questions: [{ question: "Quel animal miaule ?", reponse: "le chat", choix: ["le chat", "le chien"] }], combien: 5 };
     case "etiquettes": return { sorte, consigne, elements: [e("chat")], combien: 12, affichage: "les-deux" };
     case "planche": return { sorte, consigne, objets: [{ element: e("chat"), x: 30, y: 50, taille: 26 }, { element: e("chien"), x: 70, y: 50, taille: 26 }], hauteur: 120, legendes: true };
+    case "associer": return { sorte, consigne, elements: [e("chat"), e("chien"), e("vache"), e("poule")], combien: 4 };
+    case "ordre": return { sorte, consigne, etapes: [e("graine"), e("plante"), e("fleur")], affichage: "les-deux", decouper: false };
+    case "choisir": return { sorte, consigne, items: [{ question: "Qui pond des œufs ?", bonne: e("poule"), autres: [e("chat"), e("chien")] }], combien: 5, affichage: "les-deux" };
   }
 }
 
@@ -240,6 +294,8 @@ export function blocVide(sorte: SorteDeBloc): BlocPerso {
 
 /** Le réglage qui les garde, partagé entre les ordinateurs de l'enseignant. */
 export const CLE_GENERATEURS = "generateurs:perso";
+/** Un générateur parmi les ateliers — rattaché à une compétence, proposé à une séquence — : « perso: » et son numéro. */
+export const PREFIXE_GENERATEUR = "perso:";
 export const EVT_GENERATEURS = "maitrize:generateurs-perso";
 
 export function lireGenerateurs(brut: string | null | undefined): GenerateurPerso[] {
@@ -261,6 +317,14 @@ function el(e: PictoPose, aff: Affichage, images: Images, taille = 16): string {
   const img = aff !== "mot" && src ? `<img src="${src}" alt="" style="width:${taille}mm;height:${taille}mm">` : "";
   const mot = aff !== "picto" || !img ? `<span class="gp-mot">${esc(e.mot)}</span>` : "";
   return `<span class="gp-el">${img}${mot}</span>`;
+}
+
+/** L'image seule d'un élément, sans son mot — c'est lui qu'on cherche — ; une case vide si elle manque. */
+function imageSeule(e: PictoPose, images: Images, taille: number): string {
+  const cle = cleImage(e);
+  const src = cle !== null ? images[cle] : "";
+  const carre = `width:${taille}mm;height:${taille}mm`;
+  return src ? `<img src="${src}" alt="" style="${carre}">` : `<span class="gp-image-manque" style="${carre}"></span>`;
 }
 
 /** `combien` éléments de la liste, différents tant qu'il y en a assez, puis repris. */
@@ -388,6 +452,43 @@ function tirerLeBloc(b: BlocPerso, alea: () => number): Tirage {
           return `<div class="gp-objet" style="left:calc(${x}% - ${l / 2}mm);top:calc(${y}% - ${o.taille / 2}mm);width:${l}mm">${image}${legende}</div>`;
         }).join("")}</div>`,
       };
+    case "associer": {
+      const els = tirer(alea, b.elements, Math.min(b.combien, b.elements.length));
+      const mots = melanger(alea, els.map((e) => e.mot));
+      return {
+        bloc: b, corrige: true,
+        dessin: (corr, images) => `<div class="gp-associer">${els.map((e) => `<div class="gp-associer-case">${imageSeule(e, images, 22)}`
+          + `<div class="gp-associer-boite">${corr ? `<b class="gp-rep">${esc(e.mot)}</b>` : ""}</div></div>`).join("")}</div>`
+          + (corr ? "" : `<div class="gp-a-couper">${mots.map((m) => `<div class="gp-mot-a-couper">${esc(m)}</div>`).join("")}</div>`),
+      };
+    }
+    case "ordre": {
+      let ordre = melanger(alea, b.etapes.map((_, i) => i));
+      // Jamais déjà rangées.
+      if (ordre.every((v, i) => v === i)) ordre = [...ordre.slice(1), ordre[0]];
+      const image = (e: PictoPose, images: Images) => el(e, b.affichage, images, 22);
+      return {
+        bloc: b, corrige: true,
+        dessin: (corr, images) => (b.decouper
+          ? `<div class="gp-ordre-places">${b.etapes.map((e, k) => `<div class="gp-ordre-place"><span class="gp-ordre-rang">${k + 1}</span>${corr ? image(e, images) : ""}</div>`).join("")}</div>`
+            + (corr ? "" : `<div class="gp-a-couper">${ordre.map((i) => `<div class="gp-ordre-image">${image(b.etapes[i], images)}</div>`).join("")}</div>`)
+          : `<div class="gp-ordre">${ordre.map((i) => `<div class="gp-ordre-case">${image(b.etapes[i], images)}`
+            + `<div class="gp-ordre-numero">${corr ? `<b class="gp-rep">${i + 1}</b>` : ""}</div></div>`).join("")}</div>`),
+      };
+    }
+    case "choisir": {
+      const items = tirer(alea, b.items, Math.min(b.combien, b.items.length)).map((it) => ({
+        question: it.question,
+        options: melanger(alea, [{ e: it.bonne, bonne: true }, ...it.autres.map((e) => ({ e, bonne: false }))]),
+      }));
+      return {
+        bloc: b, corrige: true,
+        // Deux questions par ligne ; chacune en bloc en ligne, que WebKit ne coupe jamais entre deux pages.
+        dessin: (corr, images) => `<div class="gp-choisir">${items.map((it, k) => `<div class="gp-choisir-item"><div class="gp-choisir-question"><b>${k + 1}.</b> ${esc(it.question)}</div>`
+          + `<div class="gp-choisir-options">${it.options.map((o) => `<div class="gp-choisir-option${corr && o.bonne ? " gp-bonne" : ""}">${el(o.e, b.affichage, images, 16)}`
+            + `<span class="gp-case-a-cocher${corr && o.bonne ? " gp-coche" : ""}"></span></div>`).join("")}</div></div>`).join("")}</div>`,
+      };
+    }
   }
 }
 
@@ -410,17 +511,7 @@ export function placeDansLaPlanche(o: ObjetPlace, b: Pick<BlocPlanche, "hauteur"
 /** Les images dont la feuille a besoin : les pictos et les photos de la recette. */
 export function imagesDeLaRecette(g: GenerateurPerso): (number | string)[] {
   const cles = new Set<number | string>();
-  const voir = (e: PictoPose) => { const c = cleImage(e); if (c !== null) cles.add(c); };
-  for (const b of g.blocs) {
-    switch (b.sorte) {
-      case "relier": b.paires.forEach(([x, y]) => { voir(x); voir(y); }); break;
-      case "trier": b.categories.forEach((c) => c.elements.forEach(voir)); break;
-      case "compter": case "etiquettes": b.elements.forEach(voir); break;
-      case "entourer": [...b.cibles, ...b.autres].forEach(voir); break;
-      case "planche": b.objets.forEach((o) => voir(o.element)); break;
-      default: break;
-    }
-  }
+  for (const b of g.blocs) for (const e of elementsDu(b)) { const c = cleImage(e); if (c !== null) cles.add(c); }
   return [...cles];
 }
 
@@ -467,10 +558,15 @@ Les blocs possibles, avec leur forme exacte :
 - questions : {"sorte": "questions", "consigne": "Je réponds aux questions.", "questions": [{"question": "Quel animal donne du lait ?", "reponse": "la vache", "choix": ["la vache", "le chat", "la poule"]}], "combien": 5}
 - etiquettes : {"sorte": "etiquettes", "consigne": "Je découpe les étiquettes.", "elements": ["chat", "chien"], "combien": 12, "affichage": "les-deux"}
 - planche : {"sorte": "planche", "consigne": "J'écris le nom de chaque image.", "objets": [{"element": "soleil", "x": 20, "y": 25, "taille": 26}], "hauteur": 120, "legendes": true}
+- associer (coller chaque mot sous son image) : {"sorte": "associer", "consigne": "Je découpe les mots. Je colle chaque mot sous son image.", "elements": ["chat", "vache", "poule"], "combien": 6}
+- ordre (remettre des images dans l'ordre : une histoire, une recette, une routine, une croissance) : {"sorte": "ordre", "consigne": "J'écris le numéro de chaque image, dans l'ordre.", "etapes": ["graine", "plante", "fleur"], "decouper": false, "affichage": "les-deux"}
+- choisir (cocher la bonne image) : {"sorte": "choisir", "consigne": "Je coche la bonne image.", "items": [{"question": "Qui pond des œufs ?", "bonne": "poule", "autres": ["chat", "chien"]}], "combien": 5, "affichage": "les-deux"}
 
 Règles :
 - Les éléments sont des mots simples, au singulier, sans article (« chat », pas « le chat » ni « chats ») : chacun recevra le pictogramme qui porte ce nom.
 - Donne nettement plus d'éléments que « combien », pour que chaque feuille soit différente : 8 à 16 paires, 6 à 10 éléments par colonne, 8 à 12 phrases, 6 à 10 questions.
+- « ordre » : les étapes dans le bon ordre, de 3 à 8 ; « decouper » vaut true pour découper et coller. « choisir » : 2 ou 3 « autres » par question.
+- Pour des élèves qui ne lisent pas, préfère relier, trier, compter, entourer, associer, ordre, choisir et étiquettes, avec « affichage » à « picto » ou « les-deux ».
 - « combien » : ce qu'une feuille en montre ; adapte-le à l'âge (moins pour la maternelle).
 - Les consignes commencent par « Je » ou « J' » suivi d'un verbe, en phrases courtes ; une action par phrase.
 - « affichage » vaut « mot », « picto » ou « les-deux » : « picto » ou « les-deux » pour des élèves qui ne lisent pas.
@@ -484,19 +580,10 @@ export const demandeALIA = (demande: string, classe: string) =>
 
 /** La retouche d'une recette : la recette telle qu'elle est, en mots seulement, et ce que l'enseignant veut changer. */
 export function retoucheALIA(g: GenerateurPerso, consigne: string): string {
-  const mot = (e: PictoPose) => e.mot;
-  const blocs = g.blocs.map((b) => {
-    switch (b.sorte) {
-      case "relier": return { ...b, paires: b.paires.map(([x, y]) => [mot(x), mot(y)]) };
-      case "trier": return { ...b, categories: b.categories.map((c) => ({ nom: c.nom, elements: c.elements.map(mot) })) };
-      case "compter": case "etiquettes": return { ...b, elements: b.elements.map(mot) };
-      case "entourer": return { ...b, cibles: b.cibles.map(mot), autres: b.autres.map(mot) };
-      case "planche": return { ...b, objets: b.objets.map((o) => ({ ...o, element: mot(o.element) })) };
-      default: return b;
-    }
-  });
-  const recette = { nom: g.nom, icone: g.icone, quoi: g.quoi, classe: g.classe, moment: g.moment, blocs };
-  return `Voici la recette actuelle :\n${JSON.stringify(recette)}\n\nCe que l'enseignant veut changer : ${consigne.trim()}\nRéponds par la recette entière, modifiée, au même format JSON.`;
+  const recette = { nom: g.nom, icone: g.icone, quoi: g.quoi, classe: g.classe, moment: g.moment, blocs: g.blocs };
+  // Chaque élément n'y est que son mot : l'IA ne connaît pas les numéros des pictos.
+  const enMots = (_cle: string, v: unknown) => (v && typeof v === "object" && "mot" in v && "id" in v ? (v as PictoPose).mot : v);
+  return `Voici la recette actuelle :\n${JSON.stringify(recette, enMots)}\n\nCe que l'enseignant veut changer : ${consigne.trim()}\nRéponds par la recette entière, modifiée, au même format JSON.`;
 }
 
 /** La recette que l'IA a répondue : le premier objet JSON de sa réponse, relu ; rien s'il n'y a pas d'exercice lisible. */
@@ -505,27 +592,43 @@ export function lireRecette(reponse: string): GenerateurPerso | null {
   if (debut < 0 || fin <= debut) return null;
   try {
     const g = generateurSur(JSON.parse(reponse.slice(debut, fin + 1)));
-    const blocs = blocsPrets(g);
+    const blocs = blocsPrets(g, false);
     return blocs.length ? { ...g, blocs } : null;
   } catch {
     return null;
   }
 }
 
+const ARTICLES = /^(?:l'|l’|le |la |les |un |une |des |du |de la |de l'|de l’|de |d'|d’)/;
+
+/**
+ * Les autres écritures d'un mot que la banque connaît peut-être, quand elle
+ * n'a pas le mot tel quel : sans article (« le chat »), au singulier
+ * (« chevaux », « oiseaux », « choux »), « oeuf » ou « œuf ».
+ */
+export function variantesDuMot(brut: string): string[] {
+  const mot = brut.trim().toLowerCase().replace(/\s+/g, " ");
+  const sans = mot.replace(ARTICLES, "").trim();
+  const sortie = new Set<string>([sans]);
+  for (const m of [...sortie]) {
+    if (m.length < 4 || m.includes(" ")) continue;
+    if (m.endsWith("eaux") || m.endsWith("eux")) sortie.add(m.slice(0, -1));
+    else if (m.endsWith("aux")) { sortie.add(`${m.slice(0, -3)}al`); sortie.add(m.slice(0, -1)); }
+    else if (m.endsWith("s") || m.endsWith("x")) sortie.add(m.slice(0, -1));
+  }
+  for (const m of [...sortie]) {
+    if (m.includes("oe")) sortie.add(m.replace(/oe/g, "œ"));
+    if (m.includes("œ")) sortie.add(m.replace(/œ/g, "oe"));
+  }
+  sortie.delete(mot);
+  sortie.delete("");
+  return [...sortie];
+}
+
 /** Tous les mots de la recette qui n'ont encore ni picto ni photo : ceux qu'on cherche dans la banque. */
 export function motsSansImage(g: GenerateurPerso): string[] {
   const mots = new Set<string>();
-  const voir = (e: PictoPose) => { if (e.id === null && !e.photo && e.mot) mots.add(e.mot.toLowerCase()); };
-  for (const b of g.blocs) {
-    switch (b.sorte) {
-      case "relier": b.paires.forEach(([x, y]) => { voir(x); voir(y); }); break;
-      case "trier": b.categories.forEach((c) => c.elements.forEach(voir)); break;
-      case "compter": case "etiquettes": b.elements.forEach(voir); break;
-      case "entourer": [...b.cibles, ...b.autres].forEach(voir); break;
-      case "planche": b.objets.forEach((o) => voir(o.element)); break;
-      default: break;
-    }
-  }
+  for (const b of g.blocs) for (const e of elementsDu(b)) if (e.id === null && !e.photo && e.mot) mots.add(e.mot.toLowerCase());
   return [...mots];
 }
 
@@ -545,14 +648,55 @@ export function poserLesPictos(g: GenerateurPerso, trouves: { id: number; mot: s
   return { ...g, blocs: g.blocs.map((b) => mapElements(b, poser)) };
 }
 
+/** Les éléments d'un bloc, dans l'ordre. */
+function elementsDu(b: BlocPerso): PictoPose[] {
+  const sortie: PictoPose[] = [];
+  mapElements(b, (e) => { sortie.push(e); return e; });
+  return sortie;
+}
+const memeImage = (a: PictoPose, b: PictoPose) => a.id === b.id && (a.photo ?? "") === (b.photo ?? "");
+const cleMot = (mot: string) => mot.trim().toLowerCase();
+
+/**
+ * Un mot, une image : celle qu'on donne à un mot va à chaque fois qu'il
+ * revient dans la recette ; le mot aussi, si on l'a changé en la choisissant.
+ */
+export function poserPartout(g: GenerateurPerso, mot: string, image: PictoPose): GenerateurPerso {
+  const cle = cleMot(mot);
+  const poser = (e: PictoPose): PictoPose => {
+    if (cleMot(e.mot) !== cle) return e;
+    const nouveau = image.mot.trim() || e.mot;
+    return image.photo ? { id: null, mot: nouveau, photo: image.photo } : { id: image.id, mot: nouveau };
+  };
+  return { ...g, blocs: g.blocs.map((b) => mapElements(b, poser)) };
+}
+
+/**
+ * Les blocs après qu'on a changé l'image d'un élément sans changer son mot :
+ * ses semblables, ailleurs dans la recette, prennent la même.
+ */
+export function memeImagePartout(blocs: BlocPerso[], avant: BlocPerso, apres: BlocPerso): BlocPerso[] {
+  const a = elementsDu(avant), b = elementsDu(apres);
+  if (a.length !== b.length) return blocs;
+  const changes = b.filter((e, i) => cleMot(e.mot) && cleMot(e.mot) === cleMot(a[i].mot) && !memeImage(e, a[i]));
+  if (!changes.length) return blocs;
+  const parMot = new Map(changes.map((e) => [cleMot(e.mot), e]));
+  return blocs.map((x) => mapElements(x, (e) => {
+    const n = parMot.get(cleMot(e.mot));
+    return n && !memeImage(e, n) ? (n.photo ? { id: null, mot: e.mot, photo: n.photo } : { id: n.id, mot: e.mot }) : e;
+  }));
+}
+
 /** Le même bloc, chaque élément passé par `f`. */
 export function mapElements(b: BlocPerso, f: (e: PictoPose) => PictoPose): BlocPerso {
   switch (b.sorte) {
     case "relier": return { ...b, paires: b.paires.map(([x, y]) => [f(x), f(y)] as [PictoPose, PictoPose]) };
     case "trier": return { ...b, categories: b.categories.map((c) => ({ ...c, elements: c.elements.map(f) })) };
-    case "compter": case "etiquettes": return { ...b, elements: b.elements.map(f) };
+    case "compter": case "etiquettes": case "associer": return { ...b, elements: b.elements.map(f) };
     case "entourer": return { ...b, cibles: b.cibles.map(f), autres: b.autres.map(f) };
     case "planche": return { ...b, objets: b.objets.map((o) => ({ ...o, element: f(o.element) })) };
+    case "ordre": return { ...b, etapes: b.etapes.map(f) };
+    case "choisir": return { ...b, items: b.items.map((it) => ({ ...it, bonne: f(it.bonne), autres: it.autres.map(f) })) };
     default: return b;
   }
 }
@@ -602,6 +746,25 @@ export const STYLE_GENERATEURS_PERSO = `
   .feuille.gp .gp-planche { position: relative; width: ${LARGEUR_PLANCHE}mm; max-width: 100%; border: 1.2px solid #c4c9d6; border-radius: 3mm; }
   .feuille.gp .gp-objet { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 1mm; }
   .feuille.gp .gp-objet img { object-fit: contain; display: block; }
+  .feuille.gp .gp-image-manque { display: inline-block; border: 1.2px dashed #c4c9d6; border-radius: 2mm; }
+  .feuille.gp .gp-associer { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm 3mm; margin: 1mm 0 4mm; }
+  .feuille.gp .gp-associer-case { display: flex; flex-direction: column; align-items: center; gap: 2mm; }
+  .feuille.gp .gp-associer-boite { width: 36mm; height: 12mm; border: 1.4px solid #1c2233; border-radius: 1.5mm; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .feuille.gp .gp-a-couper { display: flex; flex-wrap: wrap; justify-content: center; border-top: 1.2px dashed #9aa0b4; padding-top: 3mm; }
+  .feuille.gp .gp-mot-a-couper { width: 34mm; height: 11mm; border: 1px dashed #9aa0b4; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; }
+  .feuille.gp .gp-ordre { display: flex; flex-wrap: wrap; gap: 4mm; justify-content: center; margin: 1mm 0 3mm; }
+  .feuille.gp .gp-ordre-case { display: flex; flex-direction: column; align-items: center; gap: 2mm; width: 36mm; }
+  .feuille.gp .gp-ordre-numero { width: 11mm; height: 11mm; border: 1.6px solid #1c2233; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .feuille.gp .gp-ordre-places { display: flex; flex-wrap: wrap; gap: 3mm; justify-content: center; margin: 1mm 0 4mm; }
+  .feuille.gp .gp-ordre-place { position: relative; width: 36mm; height: 36mm; border: 1.4px solid #1c2233; border-radius: 2mm; display: flex; align-items: center; justify-content: center; }
+  .feuille.gp .gp-ordre-rang { position: absolute; top: 1mm; left: 1.5mm; font-size: 13px; font-weight: 700; color: #687087; }
+  .feuille.gp .gp-ordre-image { width: 34mm; height: 34mm; border: 1px dashed #9aa0b4; display: flex; align-items: center; justify-content: center; }
+  .feuille.gp .gp-choisir { font-size: 14px; }
+  .feuille.gp .gp-choisir-item { display: inline-block; vertical-align: top; width: calc(50% - 4mm); margin: 0 3mm 4mm 0; }
+  .feuille.gp .gp-choisir-question { font-weight: 700; margin: 0 0 1.5mm; }
+  .feuille.gp .gp-choisir-options { display: flex; flex-wrap: wrap; gap: 2mm 3mm; }
+  .feuille.gp .gp-choisir-option { display: flex; flex-direction: column; align-items: center; gap: 1.5mm; padding: 1mm 1.5mm; border: 2.4px solid transparent; border-radius: 3mm; }
+  .feuille.gp .gp-choisir-option.gp-bonne { border-color: #d64545; }
   .feuille.gp .gp-sans-image { display: flex; align-items: center; justify-content: center; text-align: center; font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
   .feuille.gp .gp-legende { display: inline-flex; align-items: flex-end; justify-content: center; min-width: 22mm; height: 6mm; border-bottom: 2px dotted #1c2233; font-size: 12px; }
 `;

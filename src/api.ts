@@ -768,8 +768,9 @@ export const api = {
   vacancesScolaires: (zone: string) => invoke<VacancePeriode[]>("vacances_scolaires", { zone }),
 
   // IA Mistral
-  mistralChat: (messages: ChatMessage[], model?: string) =>
-    invoke<string>("mistral_chat", { messages, model: normaliserModele(model) }),
+  /** `json` : Mistral répond par un objet JSON, sans rien autour. */
+  mistralChat: (messages: ChatMessage[], model?: string, json = false) =>
+    invoke<string>("mistral_chat", { messages, model: normaliserModele(model), ...(json ? { json: true } : {}) }),
   mistralTest: (model?: string) =>
     invoke<boolean>("mistral_test", { model: normaliserModele(model) }),
   /** Essaie chaque modèle et dit lesquels l'abonnement accepte réellement. */
