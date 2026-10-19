@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import {
-  api, ProgrammationFinale, Sequence, Ami, Eleve, anneeScolaireActuelle, MATIERES, NIVEAUX_SCOLAIRES,
+  api, ProgrammationFinale, ProgressionAnnuelle, Sequence, Ami, Eleve, anneeScolaireActuelle, MATIERES, NIVEAUX_SCOLAIRES,
   HEURES_PROGRAMME, couleurHex, couleurPourMatiere, getMatiereOverrides, matiereDuDomaine, newId, telechargerTexte,
 } from "../api";
 import { Empty, Input, Select, Modal, ColorPicker, useAsync, useSegmentNav, useOngletDemande } from "../components/ui";
@@ -13,9 +13,9 @@ import { chargerVacances, periodesDeLAnnee, type PeriodeDeClasse } from "../vaca
 import { isoJour } from "../dates";
 import { useCollectionParEcart } from "../ecritureParEcart";
 import {
-  avecCase, casesDeLaColonne, cleCase, copieDesColonnes, datesDeLaSemaine, deplacerColonne, enJson, lireEtat, memeEtat,
-  niveauxAffiches, nombreDeSemaines, progressionDe, remettreColonne, sansColonne, semainesDeLaPeriode, sourcesDeColonnes,
-  titreConnu, titresProposes, TOUS_NIVEAUX, type Colonne, type EtatProg, type GroupeDeTitres, type SourceDeColonnes,
+  avecCase, casesDeLaColonne, cleCase, cleNiveauAjoute, copieDesColonnes, datesDeLaSemaine, deplacerColonne, enJson, LA_CLASSE,
+  lireEtat, memeEtat, niveauxDeLaPeriode, nombreDeSemaines, progressionDe, remettreColonne, sansColonne, semainesDeLaPeriode,
+  sourcesDeColonnes, titreConnu, titresProposes, type Colonne, type EtatProg, type GroupeDeTitres, type SemaineDeClasse, type SourceDeColonnes,
 } from "../progressionAnnuelle";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
 import { COULEURS, choisirCouleurMatiere, teinteSequence } from "../api";
@@ -87,15 +87,21 @@ function DomaineLabel({ label, onChange }: { label: string; onChange: (v: string
   );
 }
 
-/** La progression affichée, à imprimer : son niveau, ses semaines datées, les retours à la ligne des cases. */
-function imprimerProgression(annee: string, niveau: string, periode: number, colonnes: { id: string; titre: string; teinte: string }[],
-  cellules: Record<string, string>, semaines: { numero: number; dates: string }[]) {
-  const head = `<tr><th>Semaine</th>${colonnes.map((c) => `<th style="border-top:4px solid ${c.teinte}">${escapeHtml(c.titre)}</th>`).join("")}</tr>`;
-  const rows = semaines.map((s) =>
-    `<tr><td><b>S${s.numero}</b>${s.dates ? `<br><small>${escapeHtml(s.dates)}</small>` : ""}</td>${colonnes.map((c) =>
-      `<td>${escapeHtml(cellules[cleCase(s.numero, c.id)] ?? "").replace(/\n/g, "<br>")}</td>`).join("")}</tr>`).join("");
-  const sous = [annee, niveau || TOUS_NIVEAUX, `Période ${periode}`].map(escapeHtml).join(" · ");
-  printHTML(`Progression ${annee} ${niveau || TOUS_NIVEAUX} P${periode}`, `<h1>Progression — ${sous}</h1><table>${head}${rows}</table>`);
+/** La période à imprimer : le tableau de la classe puis ceux des niveaux, leurs semaines datées, les retours à la ligne des cases. */
+function imprimerProgression(annee: string, periode: number,
+  tableaux: { niveau: string; colonnes: { id: string; titre: string; teinte: string }[]; cellules: Record<string, string> }[],
+  semainesCal: SemaineDeClasse[]) {
+  const corps = tableaux.filter((t) => t.colonnes.length > 0).map((t) => {
+    const nb = nombreDeSemaines(semainesCal.length, t.cellules);
+    const head = `<tr><th>Semaine</th>${t.colonnes.map((c) => `<th style="border-top:4px solid ${c.teinte}">${escapeHtml(c.titre)}</th>`).join("")}</tr>`;
+    const rows = Array.from({ length: nb }, (_, i) => i + 1).map((n) => {
+      const s = semainesCal[n - 1];
+      return `<tr><td><b>S${n}</b>${s ? `<br><small>${escapeHtml(datesDeLaSemaine(s))}</small>` : ""}</td>${t.colonnes.map((c) =>
+        `<td>${escapeHtml(t.cellules[cleCase(n, c.id)] ?? "").replace(/\n/g, "<br>")}</td>`).join("")}</tr>`;
+    }).join("");
+    return `${t.niveau ? `<h2>${escapeHtml(t.niveau)}</h2>` : ""}<table>${head}${rows}</table>`;
+  }).join("");
+  printHTML(`Progression ${annee} P${periode}`, `<h1>Progression — ${escapeHtml(annee)} · Période ${periode}</h1>${corps}`);
 }
 
 function imprimerProgrammation(annee: string, lignes: Ligne[]) {
@@ -184,19 +190,17 @@ interface AnneeProps { annee: string; setAnnee: (a: string) => void }
 
 interface Cible { annee: string; niveau: string; periode: number }
 const cleCible = (c: Cible) => `${c.annee}|${c.niveau}|${c.periode}`;
+const lireCle = (k: string): Cible => { const [a, n, p] = k.split("|"); return { annee: a, niveau: n, periode: Number(p) }; };
 
 function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
   const { data, reload } = useAsync(() => api.progressionsAnnuelleList(), []);
   const liste = React.useMemo(() => data ?? [], [data]);
   const [periode, setPeriode] = React.useState(1);
-  const [niveau, setNiveau] = React.useState("");
+  // Les niveaux ajoutés à une période par « + Niveau », le temps qu'ils reçoivent leur progression.
   const [ajoutes, setAjoutes] = React.useState<string[]>([]);
-  const [niveauxClasse, setNiveauxClasse] = React.useState<string[]>([]);
-  React.useEffect(() => { api.settingGet("niveauClasse").then((v) => setNiveauxClasse(lireNiveaux(v))).catch(() => {}); }, []);
-  const niveaux = niveauxAffiches(NIVEAUX_SCOLAIRES, niveauxClasse, liste, annee, ajoutes);
-  const cible: Cible = { annee, niveau, periode };
-  const cle = cleCible(cible);
-  const prog = progressionDe(liste, annee, niveau, periode);
+  // Le tableau où l'on travaille : c'est lui que ⌘Z annule.
+  const [actif, setActif] = React.useState("");
+  const niveaux = niveauxDeLaPeriode(NIVEAUX_SCOLAIRES, liste, annee, periode, ajoutes);
 
   // Les titres proposés, et la couleur qu'ils donnent à leur colonne.
   const [sources, setSources] = React.useState<GroupeDeTitres[]>([{ groupe: "Matières", titres: MATIERES }]);
@@ -225,14 +229,79 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
   }, [annee]);
   const periodeCal = periodesCal.find((p) => p.numero === periode);
   const semainesCal = periodeCal ? semainesDeLaPeriode(periodeCal) : [];
+  const dates = periodeCal ? `${datesDeLaSemaine({ numero: 0, debut: periodeCal.debut, fin: periodeCal.fin })} · ${semainesCal.length} semaines` : "";
 
-  // Colonnes + cases en un seul bloc, avec annuler/rétablir (⌘Z / Ctrl+Z, ⌘⇧Z / Ctrl+Y), écrites par écart.
-  const lireCle = (k: string): Cible => { const [a, n, p] = k.split("|"); return { annee: a, niveau: n, periode: Number(p) }; };
+  // Ce que montre chaque tableau, pour imprimer la période entière.
+  const etats = React.useRef(new Map<string, EtatProg>());
+  const tableaux = ["", ...niveaux];
+  const etatDe = (n: string) => etats.current.get(cleCible({ annee, niveau: n, periode })) ?? lireEtat(progressionDe(liste, annee, n, periode));
+  const imprimer = () => imprimerProgression(annee, periode, tableaux.map((n) => {
+    const e = etatDe(n);
+    return { niveau: n, colonnes: e.colonnes.map((c) => ({ ...c, teinte: teinte(c) })), cellules: e.cellules };
+  }), semainesCal);
+
+  const ajouterNiveau = (e: React.MouseEvent) => {
+    const libres = NIVEAUX_SCOLAIRES.filter((n) => !niveaux.includes(n));
+    openCtx(e, libres.map((n) => ({ label: n, onClick: () => { setAjoutes((a) => [...a, cleNiveauAjoute(annee, periode, n)]); setActif(n); } })));
+  };
+  /** Retire un niveau de la période : sa progression se vide, et revient par « Annuler ». */
+  const retirerNiveau = async (n: string) => {
+    const avant = etatDe(n);
+    const vide: EtatProg = { colonnes: [], cellules: {} };
+    setAjoutes((a) => a.filter((k) => k !== cleNiveauAjoute(annee, periode, n)));
+    try {
+      await api.progressionAnnuelleEcrire(annee, n, periode, enJson(avant), enJson(vide));
+      reload();
+      toastAnnulable(`${n} retiré de la période ${periode}.`, async () => {
+        await api.progressionAnnuelleEcrire(annee, n, periode, enJson(vide), enJson(avant));
+        setAjoutes((a) => [...a, cleNiveauAjoute(annee, periode, n)]);
+        reload();
+      });
+    } catch (err) { toast(`Niveau non retiré : ${String(err)}`, { icone: "⚠️" }); }
+  };
+
+  return (
+    <>
+      <div className="toolbar">
+        <AnneeSelect annee={annee} setAnnee={setAnnee} />
+        <div className="spacer" />
+        <button className="btn" onClick={imprimer} disabled={tableaux.every((n) => etatDe(n).colonnes.length === 0)}>🖨 PDF</button>
+      </div>
+      <div className="prog-periodes">
+        {[1, 2, 3, 4, 5].map((p) => <PeriodeChip key={p} p={p} selected={periode === p} onClick={() => setPeriode(p)} />)}
+        {dates && <span className="meta">{dates}</span>}
+      </div>
+      {tableaux.map((n) => (
+        <SectionProgression key={n || "classe"} cible={{ annee, niveau: n, periode }} liste={liste} lecture={data} relire={reload}
+          sources={sources} teinte={teinte} semainesCal={semainesCal} clavier={actif === n} onActif={() => setActif(n)}
+          surEtat={(e) => etats.current.set(cleCible({ annee, niveau: n, periode }), e)}
+          onRetirer={n ? () => { void retirerNiveau(n); } : undefined} />
+      ))}
+      <div className="prog-ajout-niveau">
+        <button className="btn" onClick={ajouterNiveau} title="Ajouter à cette période la progression d'un niveau">+ Niveau</button>
+      </div>
+    </>
+  );
+}
+
+/**
+ * Le tableau d'une progression : celle de la classe, ou d'un niveau ajouté à
+ * la période. Il s'écrit par écart, comme tout ce qui se range en collection.
+ */
+function SectionProgression({ cible, liste, lecture, relire, sources, teinte, semainesCal, clavier, onActif, surEtat, onRetirer }: {
+  cible: Cible; liste: ProgressionAnnuelle[]; lecture: unknown; relire: () => void;
+  sources: GroupeDeTitres[]; teinte: (c: Colonne) => string; semainesCal: SemaineDeClasse[];
+  clavier: boolean; onActif: () => void; surEtat: (e: EtatProg) => void; onRetirer?: () => void;
+}) {
+  const { annee, niveau, periode } = cible;
+  const cle = cleCible(cible);
+  const prog = progressionDe(liste, annee, niveau, periode);
   const { present: etat, commit, modifier } = useCollectionParEcart<EtatProg>({
-    cle, lecture: data, vide: { colonnes: [], cellules: {} }, relire: reload, pareil: memeEtat, echec: "Progression non enregistrée",
+    cle, lecture, vide: { colonnes: [], cellules: {} }, relire, pareil: memeEtat, echec: "Progression non enregistrée", clavier,
     enBase: (k) => { const c = lireCle(k); return lireEtat(progressionDe(liste, c.annee, c.niveau, c.periode)); },
     ecrire: (k, avant, apres) => { const c = lireCle(k); return api.progressionAnnuelleEcrire(c.annee, c.niveau, c.periode, enJson(avant), enJson(apres)); },
   });
+  surEtat(etat);
 
   const { colonnes, cellules } = etat;
   const nb = nombreDeSemaines(semainesCal.length, cellules);
@@ -249,14 +318,14 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
     setEditCol(null);
   };
   const supprimerCol = (c: Colonne) => {
-    const ici = { ...cible };
+    const ici = cleCible(cible);
     const place = colonnes.findIndex((x) => x.id === c.id);
     const cases = casesDeLaColonne(etat, c.id);
     const n = Object.keys(cases).length;
     commit(sansColonne(etat, c.id));
     setEditCol(null);
     toastAnnulable(`Colonne « ${c.titre || "sans titre"} » supprimée${n ? `, avec ${n} case${n > 1 ? "s" : ""}` : ""}.`,
-      () => modifier(cleCible(ici), (e) => remettreColonne(e, c, place, cases)));
+      () => modifier(ici, (e) => remettreColonne(e, c, place, cases)));
   };
   const menuCol = (e: React.MouseEvent, c: Colonne) => {
     const i = colonnes.findIndex((x) => x.id === c.id);
@@ -268,11 +337,6 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
     ]);
   };
   const setCase = (semaine: number, colonne: string, texte: string) => commit(avecCase(etat, semaine, colonne, texte));
-
-  const ajouterNiveau = (e: React.MouseEvent) => {
-    const libres = NIVEAUX_SCOLAIRES.filter((n) => !niveaux.includes(n));
-    openCtx(e, libres.map((n) => ({ label: n, onClick: () => { setAjoutes((a) => [...a, n]); setNiveau(n); } })));
-  };
   const reprises = colonnes.length === 0 ? sourcesDeColonnes(liste, annee, niveau, periode) : [];
   const reprendre = (src: SourceDeColonnes) => commit({ colonnes: copieDesColonnes(src.colonnes, newId), cellules });
 
@@ -288,7 +352,7 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
       progressionsAnnuelles: [{ id: prog?.id ?? newId(), annee: "", periode, niveau, colonnesJSON: colonnesJson, cellulesJSON: cellulesJson }],
     };
     const d = new Date().toISOString().slice(0, 10);
-    telechargerTexte(`Progression_${annee}_${niveau || "tous-niveaux"}_P${periode}_${d}.json`, JSON.stringify(bundle, null, 2));
+    telechargerTexte(`Progression_${annee}_${niveau || "classe"}_P${periode}_${d}.json`, JSON.stringify(bundle, null, 2));
   };
   const importer = async (file: File) => {
     try {
@@ -302,41 +366,29 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
       const dto = dtos.find((d) => d.periode === periode) ?? dtos[0];
       const recu = lireEtat({ colonnesJson: dto.colonnesJSON || "[]", cellulesJson: dto.cellulesJSON || "{}" });
       if (recu.colonnes.length === 0) throw new Error();
-      if (colonnes.length > 0 && !(await confirmer("Remplacer la progression affichée par celle du fichier ?", { oui: "Remplacer", danger: true }))) return;
+      if (colonnes.length > 0 && !(await confirmer("Remplacer ce tableau par celui du fichier ?", { oui: "Remplacer", danger: true }))) return;
       commit(recu);
     } catch { toast("Fichier de progression invalide.", { icone: "⚠️" }); }
   };
-
-  const dates = periodeCal ? `${datesDeLaSemaine({ numero: 0, debut: periodeCal.debut, fin: periodeCal.fin })} · ${semainesCal.length} semaines` : "";
-  const aImprimer = colonnes.map((c) => ({ ...c, teinte: teinte(c) }));
+  const menuTableau = (e: React.MouseEvent) => openCtx(e, [
+    ...(colonnes.length > 0 ? [{ label: "Exporter ce tableau", icon: "⬇️", onClick: exporter }] : []),
+    { label: "Importer un tableau…", icon: "⬆️", onClick: () => fileRef.current?.click() },
+    ...(onRetirer ? [{ label: `Retirer ${niveau} de la période`, icon: "🗑", danger: true, sep: true, onClick: onRetirer }] : []),
+  ]);
 
   return (
-    <>
-      <div className="toolbar">
-        <AnneeSelect annee={annee} setAnnee={setAnnee} />
-        <div className="seg" role="group" aria-label="Niveau">
-          {niveaux.map((n) => (
-            <button key={n || "tous"} className={niveau === n ? "active" : ""} aria-pressed={niveau === n} onClick={() => setNiveau(n)}>
-              {n || TOUS_NIVEAUX}
-            </button>
-          ))}
-          <button title="Ajouter un niveau" aria-label="Ajouter un niveau" onClick={ajouterNiveau}>＋</button>
-        </div>
+    <section className="prog-section" onFocusCapture={onActif} onMouseDown={onActif}>
+      <div className="prog-section-tete">
+        {niveau ? <h3>{niveau}</h3> : <span />}
         <div className="spacer" />
         <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: "none" }}
           onChange={(e) => { const f = e.target.files?.[0]; if (f) void importer(f); e.target.value = ""; }} />
-        <button className="btn" onClick={() => imprimerProgression(annee, niveau, periode, aImprimer, cellules, semaines)} disabled={colonnes.length === 0}>🖨 PDF</button>
-        <button className="btn" onClick={exporter} disabled={colonnes.length === 0}>⬇️ Exporter</button>
-        <button className="btn" onClick={() => fileRef.current?.click()}>⬆️ Importer</button>
-        <button className="btn primary" onClick={ajouterCol}>+ Colonne</button>
-      </div>
-      <div className="prog-periodes">
-        {[1, 2, 3, 4, 5].map((p) => <PeriodeChip key={p} p={p} selected={periode === p} onClick={() => setPeriode(p)} />)}
-        {dates && <span className="meta">{dates}</span>}
+        <button className="btn sm" onClick={ajouterCol}>+ Colonne</button>
+        <button className="btn sm ghost" aria-label={`Actions du tableau ${niveau || LA_CLASSE}`} onClick={menuTableau}>⋯</button>
       </div>
       {colonnes.length === 0 ? (
         <div className="prog-vide">
-          <Empty icone="📅" titre={`Progression ${niveau || TOUS_NIVEAUX} · P${periode} vide`} sous="Ajoutez des colonnes, puis remplissez semaine par semaine." />
+          <Empty icone="📅" titre={`${niveau ? `${niveau} · ` : ""}P${periode} : aucune colonne`} />
           <div className="prog-vide-actions">
             {reprises.map((s) => (
               <button key={s.libelle} className="btn" onClick={() => reprendre(s)}>
@@ -372,7 +424,7 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
                   {colonnes.map((c) => (
                     <td key={c.id} className="prog-case" style={{ "--couleur": teinte(c) } as React.CSSProperties}>
                       <CaseProgression valeur={cellules[cleCase(s.numero, c.id)] ?? ""} onChange={(v) => setCase(s.numero, c.id, v)}
-                        libelle={`${c.titre}, semaine ${s.numero}`} />
+                        libelle={`${niveau ? `${niveau}, ` : ""}${c.titre}, semaine ${s.numero}`} />
                     </td>
                   ))}
                 </tr>
@@ -383,7 +435,7 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
       )}
       {editCol && <ColonneForm colonne={editCol.colonne} nouvelle={editCol.nouvelle} sources={sources} teinte={teinte}
         onClose={() => setEditCol(null)} onValider={validerCol} onSupprimer={editCol.nouvelle ? undefined : () => supprimerCol(editCol.colonne)} />}
-    </>
+    </section>
   );
 }
 

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { ProgressionAnnuelle } from "./api";
 import {
-  avecCase, casesDeLaColonne, copieDesColonnes, datesDeLaSemaine, deplacerColonne, enJson, lireEtat, memeEtat, niveauxAffiches,
+  avecCase, casesDeLaColonne, copieDesColonnes, datesDeLaSemaine, deplacerColonne, enJson, lireEtat, memeEtat,
   nombreDeSemaines, progressionDe, remettreColonne, sansColonne, semainesDeLaPeriode, sourcesDeColonnes, titreConnu,
-  titresProposes, TOUS_NIVEAUX,
+  titresProposes, LA_CLASSE, niveauxDeLaPeriode, cleNiveauAjoute,
 } from "./progressionAnnuelle";
 
 const NIVEAUX = ["TPS", "PS", "MS", "GS", "CP", "CE1", "CE2", "CM1", "CM2"];
@@ -48,10 +48,16 @@ describe("la progression annuelle", () => {
     expect(nombreDeSemaines(7, { w9_c1: "  " })).toBe(7);
   });
 
-  it("montre « Tous niveaux », puis les niveaux de la classe, ceux qui ont une progression et ceux qu'on ajoute, dans l'ordre de l'école", () => {
-    const liste = [prog("2026-2027", "CM1", 1), prog("2025-2026", "CM2", 1)];
-    expect(niveauxAffiches(NIVEAUX, ["CP", "CE1"], liste, "2026-2027", ["GS"])).toEqual(["", "GS", "CP", "CE1", "CM1"]);
-    expect(niveauxAffiches(NIVEAUX, [], [], "2026-2027", [])).toEqual([""]);
+  it("montre sous la classe les niveaux de la période : ceux qui y ont une progression et ceux qu'on vient d'ajouter", () => {
+    const liste = [
+      prog("2026-2027", "CM1", 1, [{ id: "a", titre: "EPS" }]),
+      prog("2026-2027", "CP", 1),                                   // vide : retirée, elle ne se montre plus
+      prog("2026-2027", "CE1", 2, [{ id: "b", titre: "EPS" }]),     // une autre période
+      prog("2025-2026", "CM2", 1, [{ id: "c", titre: "EPS" }]),     // une autre année
+    ];
+    expect(niveauxDeLaPeriode(NIVEAUX, liste, "2026-2027", 1, [cleNiveauAjoute("2026-2027", 1, "GS"), cleNiveauAjoute("2026-2027", 2, "PS")]))
+      .toEqual(["GS", "CM1"]);
+    expect(niveauxDeLaPeriode(NIVEAUX, [], "2026-2027", 1, [])).toEqual([]);
   });
 
   it("tire les titres des matières, des domaines et des intitulés, chacun une fois, et les filtre sans accents", () => {
@@ -74,7 +80,7 @@ describe("la progression annuelle", () => {
       prog("2026-2027", "CE1", 2, [{ id: "d", titre: "Français" }]),
     ];
     const sources = sourcesDeColonnes(liste, "2026-2027", "CP", 2);
-    expect(sources.map((s) => s.libelle)).toEqual(["P1", TOUS_NIVEAUX]);
+    expect(sources.map((s) => s.libelle)).toEqual(["P1", LA_CLASSE]);
     expect(sources[0].colonnes.map((c) => c.titre)).toEqual(["EPS"]);
     let n = 0;
     expect(copieDesColonnes(sources[0].colonnes, () => `neuf${++n}`)).toEqual([{ id: "neuf1", titre: "EPS", couleur: "blue" }]);
