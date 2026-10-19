@@ -3176,10 +3176,16 @@ pub fn dossier_donnees_set(chemin: Option<String>) -> R<DossierDonnees> {
 #[tauri::command]
 pub fn diag_ecrire(ligne: String) {
     use std::io::Write;
+    // Les essais n'écrivent pas dans le vrai journal de l'enseignant.
+    if cfg!(test) {
+        return;
+    }
     let chemin = crate::db::data_dir().join("diagnostic.log");
-    // Borne la taille : un journal qui grossit sans fin finit par gêner.
+    // Borne la taille : un journal qui grossit sans fin finit par gêner. Il
+    // passe à « diagnostic.1.log » plutôt que de partir d'un coup : effacé,
+    // il emportait les incidents de la veille, ceux qu'on cherche.
     if std::fs::metadata(&chemin).map(|m| m.len() > 512_000).unwrap_or(false) {
-        std::fs::remove_file(&chemin).ok();
+        std::fs::rename(&chemin, chemin.with_file_name("diagnostic.1.log")).ok();
     }
     if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&chemin) {
         // Avec la date : le fichier garde plusieurs jours, et « 15:14 » ne dit
@@ -3241,7 +3247,9 @@ pub fn diag_arret() {
 #[tauri::command]
 pub fn diag_rapport(lignes: usize) -> R<String> {
     let chemin = diag_chemin();
-    let contenu = std::fs::read_to_string(&chemin).unwrap_or_default();
+    // Juste après une rotation, le journal est court : le précédent le complète.
+    let precedent = std::fs::read_to_string(chemin.with_file_name("diagnostic.1.log")).unwrap_or_default();
+    let contenu = precedent + &std::fs::read_to_string(&chemin).unwrap_or_default();
     let n = lignes.clamp(20, 2000);
     let dernieres: Vec<&str> = contenu.lines().rev().take(n).collect();
     let corps = dernieres.into_iter().rev().collect::<Vec<_>>().join("\n");

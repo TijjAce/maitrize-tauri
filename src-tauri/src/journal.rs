@@ -115,7 +115,7 @@ const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:", "dossier:", "bure
 /// Le repère d'envoi copié, lui, dépassait le journal local : plus aucune
 /// modification ne partait.
 pub const REGLAGES_DU_POSTE: &[&str] = &[
-    "identifiantMachine", "nomMachine", "derniereSync", "derniereSauvegardeAuto",
+    "identifiantMachine", "nomMachine", "derniereSync", "derniereSauvegardeAuto", crate::db::CLE_VERSION_BASE,
     "syncSeqEnvoyee", "syncDeltasVus", CLE_DOSSIERS_ANNONCES,
     // La copie du bureau vit dans un dossier de cet ordinateur-ci.
     crate::copie_bureau::CLE_ACTIVE, crate::copie_bureau::CLE_EMPLACEMENT,
