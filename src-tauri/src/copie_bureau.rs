@@ -14,6 +14,7 @@ use crate::db::{fichiers_dir, Db};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Mutex;
 use tauri::State;
 
@@ -22,6 +23,9 @@ type R<T> = Result<T, String>;
 /// Le dossier créé dans l'emplacement choisi.
 pub const NOM_RACINE: &str = "Maitrize — copie du bureau";
 pub const DOSSIER_ARCHIVES: &str = "Anciennes versions";
+/// Le journal d'incidents, recopié à côté du travail : on le trouve sans ouvrir Maitrize.
+pub const DOSSIER_INCIDENTS: &str = "Rapport d'incidents";
+const FICHIER_INCIDENTS: &str = "Journal d'incidents.txt";
 const MANIFESTE: &str = ".maitrize-copie.json";
 const A_LIRE: &str = "À lire.txt";
 /// Durée de conservation des anciennes versions.
@@ -52,6 +56,10 @@ version, la vôtre est d'abord rangée dans « Anciennes versions ».
 Rien n'est effacé sans filet : ce qui est supprimé, déplacé ou remplacé dans
 Maitrize est rangé dans « Anciennes versions », à la date du jour, et y reste
 trois mois.
+
+« Rapport d'incidents » contient le journal des incidents de l'application,
+tenu à jour tout seul : joignez-le à un message si quelque chose ne va pas.
+Il note les erreurs, jamais ce que vous écrivez.
 ";
 
 /// Un fichier que la copie doit contenir.
@@ -140,7 +148,7 @@ fn chemin_valide(chemin: &str) -> Option<PathBuf> {
         return None;
     }
     let premier = segments[0].to_lowercase();
-    if [DOSSIER_ARCHIVES, MANIFESTE, A_LIRE].iter().any(|r| r.to_lowercase() == premier) {
+    if [DOSSIER_ARCHIVES, MANIFESTE, A_LIRE, DOSSIER_INCIDENTS].iter().any(|r| r.to_lowercase() == premier) {
         return None;
     }
     Some(segments.iter().collect())
@@ -601,8 +609,12 @@ fn emplacement(db: &Db) -> (PathBuf, bool) {
 fn info(db: &Db) -> InfoCopie {
     let (lieu, par_defaut) = emplacement(db);
     let racine = lieu.join(NOM_RACINE);
+    let active = reglage(db, CLE_ACTIVE) != "non";
+    if let Ok(mut r) = RACINE_ACTIVE.lock() {
+        *r = active.then(|| racine.clone());
+    }
     InfoCopie {
-        active: reglage(db, CLE_ACTIVE) != "non",
+        active,
         emplacement: lieu.to_string_lossy().to_string(),
         par_defaut,
         synchronise: crate::db::service_de_synchro(&lieu).map(str::to_string),
@@ -613,6 +625,57 @@ fn info(db: &Db) -> InfoCopie {
 
 /// Une seule copie à la fois : deux passages simultanés se disputeraient les fichiers.
 static EN_COURS: Mutex<()> = Mutex::new(());
+
+// ── Le rapport d'incidents, à côté du travail ─────────────────────────────
+//
+// Le journal d'incidents vit dans les données de Maitrize, qu'on n'ouvre pas.
+// Il est recopié dans la copie du travail (demande de l'enseignant, octobre
+// 2026) : au démarrage, après chaque copie, et quand un incident s'écrit — au
+// plus une fois par minute, le reste attend la suivante.
+
+/// Le dossier de la copie, retenu dès qu'on l'a lu : le journal s'écrit sans la base sous la main.
+static RACINE_ACTIVE: Mutex<Option<PathBuf>> = Mutex::new(None);
+/// Le dernier miroir, en secondes.
+static DERNIER_MIROIR: AtomicI64 = AtomicI64::new(0);
+
+/// Écrit le rapport dans « Rapport d'incidents » s'il a changé ; vrai s'il a été écrit.
+///
+/// Le rapport commence par sa date : on compare ce qui suit, sans quoi
+/// chaque passage réécrirait le même journal.
+fn ecrire_rapport(racine: &Path, rapport: &str) -> bool {
+    let corps = |r: &str| r.split_once("\n\n").map(|(_, c)| c.to_string()).unwrap_or_default();
+    let dossier = racine.join(DOSSIER_INCIDENTS);
+    let cible = dossier.join(FICHIER_INCIDENTS);
+    if std::fs::read_to_string(&cible).map(|ancien| corps(&ancien) == corps(rapport)).unwrap_or(false) {
+        return false;
+    }
+    std::fs::create_dir_all(&dossier).is_ok() && ecrire_atomique(&cible, rapport.as_bytes()).is_ok()
+}
+
+/// Recopie le journal d'incidents à côté du travail, si la copie est active.
+///
+/// `tout_de_suite` passe outre l'attente d'une minute. Un échec ne s'écrit pas
+/// dans le journal : il recommencerait à chaque ligne.
+pub fn miroir_incidents(tout_de_suite: bool) {
+    let maintenant = chrono::Local::now().timestamp();
+    if !tout_de_suite && maintenant - DERNIER_MIROIR.load(Ordering::Relaxed) < 60 {
+        return;
+    }
+    let Some(racine) = RACINE_ACTIVE.lock().ok().and_then(|r| r.clone()) else { return };
+    if !racine.is_dir() {
+        return;
+    }
+    DERNIER_MIROIR.store(maintenant, Ordering::Relaxed);
+    if let Ok(rapport) = crate::commands::diag_rapport(2000) {
+        ecrire_rapport(&racine, &rapport);
+    }
+}
+
+/// Au démarrage : retenir où est la copie, et y recopier le journal.
+pub fn au_demarrage(db: &Db) {
+    info(db);
+    miroir_incidents(true);
+}
 
 #[tauri::command(async)]
 pub fn copie_bureau_info(db: State<Db>) -> R<InfoCopie> {
@@ -673,6 +736,7 @@ pub async fn copie_bureau_appliquer(db: State<'_, Db>, entrees: Vec<Entree>, dos
         if !bilan.erreurs.is_empty() {
             crate::commands::diag_ecrire(format!("COPIE BUREAU {} erreur(s) : {}", bilan.erreurs.len(), bilan.erreurs.join(" | ")));
         }
+        miroir_incidents(true);
         Ok(bilan)
     })
     .await
@@ -689,6 +753,20 @@ pub fn copie_bureau_ouvrir(db: State<Db>) -> R<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn le_rapport_d_incidents_se_recopie_a_cote_du_travail_sans_se_reecrire_pour_rien() {
+        let racine = std::env::temp_dir().join(format!("maitrize-incidents-{}", uuid::Uuid::new_v4()));
+        assert!(ecrire_rapport(&racine, "Rapport Maitrize — 20/10/2026 10:00\n\n20/10 09:59:00 ERREUR x"));
+        let fichier = racine.join(DOSSIER_INCIDENTS).join(FICHIER_INCIDENTS);
+        assert!(std::fs::read_to_string(&fichier).unwrap().contains("ERREUR x"));
+        // Même journal, autre heure de rapport : rien à réécrire.
+        assert!(!ecrire_rapport(&racine, "Rapport Maitrize — 20/10/2026 10:05\n\n20/10 09:59:00 ERREUR x"));
+        assert!(ecrire_rapport(&racine, "Rapport Maitrize — 20/10/2026 10:06\n\n20/10 09:59:00 ERREUR x\n20/10 10:06:00 ERREUR y"));
+        // Le bureau ne peut pas écrire dans ce dossier.
+        assert!(chemin_valide("Rapport d'incidents/autre.txt").is_none());
+        std::fs::remove_dir_all(&racine).ok();
+    }
 
     struct Bac {
         racine: PathBuf,

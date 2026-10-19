@@ -72,6 +72,8 @@ pub fn run() {
                 // Les secrets encore en clair passent sous la clé du trousseau.
                 trousseau::migrer(&c);
                 drop(c);
+                // Le journal d'incidents, recopié à côté du travail.
+                copie_bureau::au_demarrage(&db);
                 // Les documents ouverts la veille — bilans, GEVA-Sco — ne restent pas dans le dossier temporaire.
                 commands::purger_temporaires();
             });
